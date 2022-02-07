@@ -16,19 +16,37 @@ Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.1.7
 --------------
 
-Released TBD
+Released 2022/02/07
 
-- Support building MoltenVK with static Vulkan linkage symbols hidden.
+- Add `MVK_HIDE_VULKAN_SYMBOLS` env var to support building MoltenVK with static Vulkan linkage symbols hidden.
+- Improve accuracy of `VkPhysicalDeviceLimits::timestampPeriod`.
 - Do not use `MTLEvent` for `VkSemaphore` under *Rosetta2*.
 - On *Apple Silicon (iOS, tvOS & macOS)*, set `VkPhysicalDeviceProperties::deviceID` from GPU capabilities.
 - Support compiling *MSL 2.4* in runtime pipelines and `MoltenVKShaderConverterTool`.
 - Fix issue where *MSL 2.3* only available on *Apple Silicon*, even on *macOS*.
 - Fix memory leak of dummy `MTLTexture` in render subpasses that use no attachments.
 - Fix Metal object retain-release errors in assignment operators.
-- Improve accuracy of `VkPhysicalDeviceLimits::timestampPeriod`.
+- Fix use of GPU counter sets on older versions of iOS running on the simulator.
+- `mvk::getShaderOutputs()` in `SPRIVReflection.h` support flattening nested structures.
+- Replaced ASL logging levels with `MVKConfigLogLevel`.
+- `MoltenVKShaderConverter` tool support loading tessellation shader files.
+- `MoltenVKShaderConverter` tool update to *MSL 2.4* by default.
+- Upgrade to *Vulkan 1.3* headers.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `33`.
+- Update copyright notices to year 2022.
 - Update to latest SPIRV-Cross:
 	- MSL: Add 64 bit support for `OpSwitch`.
 	- MSL: Don't output depth and stencil values with explicit early fragment tests.
+	- MSL: Fix incorrect MSL `gl_TessCoord` variable type.
+	- MSL: Allow copy array from `UniformConstant` storage.
+	- MSL: Handle signed `atomic min/max`.
+	- Fix `normalize` on `half3/half2`.
+	- MSL: Handle constant construct of block-like array types.
+	- MSL: Rethink how opaque descriptors are passed to leaf functions.
+	- Rework how loop iteration counts are validated.
+	- Clamp vector element access to vector size.
+	- Handle aliased names in spec constants.
+	- Add support for `LocalSizeId`.
 
 
 
