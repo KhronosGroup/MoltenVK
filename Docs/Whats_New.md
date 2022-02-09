@@ -13,6 +13,15 @@ Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.1.8
+--------------
+
+Released TBD
+
+- Remove logged warning if MoltenVK does not support `VkApplicationInfo::apiVersion` value.
+
+
+
 MoltenVK 1.1.7
 --------------
 
