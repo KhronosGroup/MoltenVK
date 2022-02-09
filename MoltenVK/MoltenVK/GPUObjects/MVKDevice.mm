@@ -3503,7 +3503,7 @@ void MVKDevice::freeMemory(MVKDeviceMemory* mvkDevMem,
 	if (mvkDevMem) { mvkDevMem->destroy(); }
 }
 
-// Look for an available pre-reserved private data slot and return it's address if found.
+// Look for an available pre-reserved private data slot and return its address if found.
 // Otherwise create a new instance and return it.
 VkResult MVKDevice::createPrivateDataSlot(const VkPrivateDataSlotCreateInfoEXT* pCreateInfo,
 										  const VkAllocationCallbacks* pAllocator,
