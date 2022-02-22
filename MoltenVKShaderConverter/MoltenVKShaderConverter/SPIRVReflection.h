@@ -32,7 +32,10 @@ namespace mvk {
 #pragma mark -
 #pragma mark SPIRVTessReflectionData
 
-	/** Reflection data for a pair of tessellation shaders. This contains the information needed to construct a tessellation pipeline. */
+	/**
+	 * Reflection data for a pair of tessellation shaders.
+	 * This contains the information needed to construct a tessellation pipeline.
+	 */
 	struct SPIRVTessReflectionData {
 		/** The partition mode, one of SpacingEqual, SpacingFractionalEven, or SpacingFractionalOdd. */
 		spv::ExecutionMode partitionMode = spv::ExecutionModeMax;
@@ -53,7 +56,11 @@ namespace mvk {
 #pragma mark -
 #pragma mark SPIRVShaderOutputData
 
-	/** Reflection data on a single output of a shader. This contains the information needed to construct a stage-input descriptor for the next stage of a pipeline. */
+	/**
+	 * Reflection data on a single output of a shader.
+	 * This contains the information needed to construct a
+	 * stage-input descriptor for the next stage of a pipeline.
+	 */
 	struct SPIRVShaderOutput {
 		/** The type of the output. */
 		SPIRV_CROSS_NAMESPACE::SPIRType::BaseType baseType;
@@ -67,6 +74,12 @@ namespace mvk {
 		/** The component index of the output. */
 		uint32_t component;
 
+		/**
+		 * If this is the first member of a struct, this will contain the alignment
+		 * of the struct containing this output, otherwise this will be zero.
+		 */
+		uint32_t firstStructMemberAlignment;
+
 		/** If this is a builtin, the kind of builtin this is. */
 		spv::BuiltIn builtin;
 
@@ -77,10 +90,14 @@ namespace mvk {
 		bool isUsed;
 	};
 
+
 #pragma mark -
 #pragma mark Functions
 
-	/** Given a tessellation control shader and a tessellation evaluation shader, both in SPIR-V format, returns tessellation reflection data. */
+	/**
+	 * Given a tessellation control shader and a tessellation evaluation shader,
+	 * both in SPIR-V format, returns tessellation reflection data.
+	 */
 	template<typename Vs>
 	static inline bool getTessReflectionData(const Vs& tesc, const std::string& tescEntryName,
 											 const Vs& tese, const std::string& teseEntryName,
@@ -173,14 +190,50 @@ namespace mvk {
 #endif
 	}
 
+	/** Returns the size in bytes of the output. */
+	static inline uint32_t getShaderOutputSize(const SPIRVShaderOutput& output) {
+		if ( !output.isUsed ) { return 0; }		// Unused outputs consume no buffer space.
+
+		uint32_t vecWidth = output.vecWidth;
+		if (vecWidth == 3) { vecWidth = 4; }	// Metal 3-vectors consume same as 4-vectors.
+		switch (output.baseType) {
+			case SPIRV_CROSS_NAMESPACE::SPIRType::SByte:
+			case SPIRV_CROSS_NAMESPACE::SPIRType::UByte:
+				return 1 * vecWidth;
+			case SPIRV_CROSS_NAMESPACE::SPIRType::Short:
+			case SPIRV_CROSS_NAMESPACE::SPIRType::UShort:
+			case SPIRV_CROSS_NAMESPACE::SPIRType::Half:
+				return 2 * vecWidth;
+			case SPIRV_CROSS_NAMESPACE::SPIRType::Int:
+			case SPIRV_CROSS_NAMESPACE::SPIRType::UInt:
+			case SPIRV_CROSS_NAMESPACE::SPIRType::Float:
+			default:
+				return 4 * vecWidth;
+		}
+	}
+
+	/**
+	 * Returns the alignment of the shader output, which typically matches the size of the output,
+	 * but the first member of a nested output struct may inherit special alignment from the struct.
+	 */
+	static inline uint32_t getShaderOutputAlignment(const SPIRVShaderOutput& output) {
+		if(output.firstStructMemberAlignment && output.isUsed) {
+			return output.firstStructMemberAlignment;
+		} else {
+			return getShaderOutputSize(output);
+		}
+	}
+
 	auto addSat = [](uint32_t a, uint32_t b) { return a == uint32_t(-1) ? a : a + b; };
 
 	template<typename Vo>
-	static inline uint32_t getShaderOutputStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect, Vo& outputs,
+	static inline uint32_t getShaderOutputStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
+														Vo& outputs, SPIRVShaderOutput* pParentFirstMember,
 														const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
 														bool patch, uint32_t loc) {
 		bool isUsed = true;
 		auto biType = spv::BuiltInMax;
+		SPIRVShaderOutput* pFirstMember = nullptr;
 		size_t mbrCnt = structType->member_types.size();
 		for (uint32_t mbrIdx = 0; mbrIdx < mbrCnt; mbrIdx++) {
 			// Each member may have a location decoration. If not, each member
@@ -197,15 +250,28 @@ namespace mvk {
 			}
 			const SPIRV_CROSS_NAMESPACE::SPIRType* type = &reflect.get_type(structType->member_types[mbrIdx]);
 			uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
-			for (uint32_t i = 0; i < elemCnt; i++) {
+			for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 				if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct)
-					loc = getShaderOutputStructMembers(reflect, outputs, type, storage, patch, loc);
+					loc = getShaderOutputStructMembers(reflect, outputs, pFirstMember, type, storage, patch, loc);
 				else {
-					outputs.push_back({type->basetype, type->vecsize, loc, cmp, biType, patch, isUsed});
+					// The alignment of a structure is the same as the largest member of the structure.
+					// Consequently, the first flattened member of a structure should align with structure itself.
+					outputs.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
+					auto& currOutput = outputs.back();
+					if ( !pFirstMember ) { pFirstMember = &currOutput; }
+					pFirstMember->firstStructMemberAlignment = std::max(pFirstMember->firstStructMemberAlignment, getShaderOutputSize(currOutput));
 					loc = addSat(loc, 1);
 				}
 			}
 		}
+
+		// Set the parent's first member alignment to the largest alignment found so far.
+		if ( !pParentFirstMember ) {
+			pParentFirstMember = pFirstMember;
+		} else if (pParentFirstMember && pFirstMember) {
+			pParentFirstMember->firstStructMemberAlignment = std::max(pParentFirstMember->firstStructMemberAlignment, pFirstMember->firstStructMemberAlignment);
+		}
+
 		return loc;
 	}
 
@@ -252,10 +318,11 @@ namespace mvk {
 
 				uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
 				for (uint32_t i = 0; i < elemCnt; i++) {
-					if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct)
-						loc = getShaderOutputStructMembers(reflect, outputs, type, storage, patch, loc);
-					else {
-						outputs.push_back({type->basetype, type->vecsize, loc, cmp, biType, patch, isUsed});
+					if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct) {
+						SPIRVShaderOutput* pFirstMember = nullptr;
+						loc = getShaderOutputStructMembers(reflect, outputs, pFirstMember, type, storage, patch, loc);
+					} else {
+						outputs.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
 						loc = addSat(loc, 1);
 					}
 				}
