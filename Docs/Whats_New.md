@@ -13,14 +13,22 @@ Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
-MoltenVK 1.1.8
+MoltenVK 1.1.9
 --------------
 
 Released TBD
 
 - Update *glslang* version, to use `python3` in *glslang* scripts, to replace missing `python` on *macOS 12.3*.
-- Remove logged warning if MoltenVK does not support `VkApplicationInfo::apiVersion` value.
 - Fix alignment between outputs and inputs between shader stages when using nested structures. 
+
+
+
+MoltenVK 1.1.8
+--------------
+
+Released 2022/02/22
+
+- Remove logged warning if MoltenVK does not support `VkApplicationInfo::apiVersion` value.
 
 
 
