@@ -190,8 +190,8 @@ public:
      */
     bool populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc,
                                                    MVKRenderSubpass* subpass,
+												   MVKImageView* attachment,
                                                    bool isRenderingEntireAttachment,
-												   bool isMemorylessAttachment,
 												   bool hasResolveAttachment,
 												   bool canResolveFormat,
                                                    bool isStencil,
@@ -200,8 +200,8 @@ public:
 	/** If a render encoder is active, sets the store action for this attachment to it. */
 	void encodeStoreAction(MVKCommandEncoder* cmdEncoder,
 						   MVKRenderSubpass* subpass,
+						   MVKImageView* attachment,
 						   bool isRenderingEntireAttachment,
-						   bool isMemorylessAttachment,
 						   bool hasResolveAttachment,
 						   bool canResolveFormat,
 						   uint32_t caIdx,
