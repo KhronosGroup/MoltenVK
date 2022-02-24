@@ -19,7 +19,8 @@ MoltenVK 1.1.9
 Released TBD
 
 - Update *glslang* version, to use `python3` in *glslang* scripts, to replace missing `python` on *macOS 12.3*.
-- Fix alignment between outputs and inputs between shader stages when using nested structures. 
+- Fix alignment between outputs and inputs between shader stages when using nested structures.
+- Fix issue where the depth component of a stencil-only renderpass attachment was incorrectly attempting to be stored.
 
 
 
