@@ -809,14 +809,12 @@ MVKRenderPassAttachment::MVKRenderPassAttachment(MVKRenderPass* renderPass,
 #pragma mark MVKRenderPass
 
 VkExtent2D MVKRenderPass::getRenderAreaGranularity() {
-#if MVK_APPLE_SILICON
     if (_device->_pMetalFeatures->tileBasedDeferredRendering) {
         // This is the tile area.
         // FIXME: We really ought to use MTLRenderCommandEncoder.tile{Width,Height}, but that requires
         // creating a command buffer.
         return { 32, 32 };
     }
-#endif
     return { 1, 1 };
 }
 
