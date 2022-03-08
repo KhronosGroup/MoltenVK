@@ -1497,12 +1497,15 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.postDepthCoverage = true;
 		_metalFeatures.renderLinearTextures = true;
 		_metalFeatures.tileBasedDeferredRendering = true;
+
+#if MVK_XCODE_12
 		if (supportsMTLGPUFamily(Apple6)) {
 			_metalFeatures.astcHDRTextures = true;
 		}
 		if (supportsMTLGPUFamily(Apple7)) {
 			_metalFeatures.maxQueryBufferSize = (256 * KIBI);
 		}
+#endif
 	}
 
 	// Don't use barriers in render passes on Apple GPUs. Apple GPUs don't support them,
