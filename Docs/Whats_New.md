@@ -19,9 +19,18 @@ MoltenVK 1.1.9
 Released TBD
 
 - Reinstate memory barriers on non-Apple GPUs, which were inadvertently disabled in an earlier update.
-- Update *glslang* version, to use `python3` in *glslang* scripts, to replace missing `python` on *macOS 12.3*.
+- Support base vertex instance support in shader conversion.
 - Fix alignment between outputs and inputs between shader stages when using nested structures.
 - Fix issue where the depth component of a stencil-only renderpass attachment was incorrectly attempting to be stored.
+- `MoltenVKShaderConverter` tool defaults to the highest MSL version supported on runtime OS.
+- Update *glslang* version, to use `python3` in *glslang* scripts, to replace missing `python` on *macOS 12.3*.
+- Update to latest SPIRV-Cross:
+	- MSL: Support input/output blocks containing nested struct arrays.
+	- MSL: Use var name instead of var-type name for flattened interface members.
+	- MSL: Handle aliased variable names for resources placed in IB struct.
+	- MSL: Append entry point args to local variable names to avoid conflicts.
+	- MSL: Consider that gl_IsHelperInvocation can be Volatile.
+	- MSL: Refactor and fix use of quadgroup vs simdgroup.
 
 
 
