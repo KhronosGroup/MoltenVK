@@ -1478,38 +1478,45 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	}
 
 #if MVK_XCODE_12
-	if ( mvkOSVersionIsAtLeast(10.16) ) {
+	if ( mvkOSVersionIsAtLeast(11.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
-		if (supportsMTLGPUFamily(Apple5)) {
-			// This is an Apple GPU--treat it accordingly.
-			_metalFeatures.mtlCopyBufferAlignment = 1;
-			_metalFeatures.mtlBufferAlignment = 16;     // Min float4 alignment for typical vertex buffers. MTLBuffer may go down to 4 bytes for other data.
-			_metalFeatures.maxQueryBufferSize = (64 * KIBI);
-			_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
-			_metalFeatures.postDepthCoverage = true;
-			_metalFeatures.renderLinearTextures = true;
-			_metalFeatures.tileBasedDeferredRendering = true;
-			if (supportsMTLGPUFamily(Apple6)) {
-				_metalFeatures.astcHDRTextures = true;
-			}
-			if (supportsMTLGPUFamily(Apple7)) {
-				_metalFeatures.maxQueryBufferSize = (256 * KIBI);
-			}
-		}
-	} else
+	}
 #endif
-	{
+#if MVK_XCODE_13
+	if ( mvkOSVersionIsAtLeast(12.0) ) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_4;
+	}
+#endif
+
+	// This is an Apple GPU--treat it accordingly.
+	if (supportsMTLGPUFamily(Apple1)) {
+		_metalFeatures.mtlCopyBufferAlignment = 1;
+		_metalFeatures.mtlBufferAlignment = 16;     // Min float4 alignment for typical vertex buffers. MTLBuffer may go down to 4 bytes for other data.
+		_metalFeatures.maxQueryBufferSize = (64 * KIBI);
+		_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
+		_metalFeatures.postDepthCoverage = true;
+		_metalFeatures.renderLinearTextures = true;
+		_metalFeatures.tileBasedDeferredRendering = true;
+
+#if MVK_XCODE_12
+		if (supportsMTLGPUFamily(Apple6)) {
+			_metalFeatures.astcHDRTextures = true;
+		}
+		if (supportsMTLGPUFamily(Apple7)) {
+			_metalFeatures.maxQueryBufferSize = (256 * KIBI);
+		}
+#endif
+	}
+
+	// Don't use barriers in render passes on Apple GPUs. Apple GPUs don't support them,
+	// and in fact Metal's validation layer will complain if you try to use them.
+	if ( !supportsMTLGPUFamily(Apple1) ) {
 		if (supportsMTLFeatureSet(macOS_GPUFamily1_v4)) {
 			_metalFeatures.memoryBarriers = true;
 		}
 		_metalFeatures.textureBarriers = true;
 	}
 
-#if MVK_XCODE_13
-	if ( mvkOSVersionIsAtLeast(12.0) ) {
-		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_4;
-	}
-#endif
 #endif
 
     // Note the selector name, which is different from the property name.

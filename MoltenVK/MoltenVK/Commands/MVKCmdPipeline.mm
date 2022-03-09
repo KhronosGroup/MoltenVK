@@ -113,14 +113,13 @@ void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	}
 #endif
 
-#if MVK_APPLE_SILICON
 	// Apple GPUs do not support renderpass barriers, and do not support rendering/writing
 	// to an attachment and then reading from that attachment within a single renderpass.
 	// So, in the case where we are inside a Metal renderpass, we need to split those activities
 	// into separate Metal renderpasses. Since this is a potentially expensive operation,
 	// verify that at least one attachment is being used both as an input and render attachment
 	// by checking for a VK_IMAGE_LAYOUT_GENERAL layout.
-	if (cmdEncoder->_mtlRenderEncoder) {
+	if (cmdEncoder->_mtlRenderEncoder && cmdEncoder->getDevice()->_pMetalFeatures->tileBasedDeferredRendering) {
 		bool needsRenderpassRestart = false;
 		for (auto& b : _barriers) {
 			if (b.type == MVKPipelineBarrier::Image && b.newLayout == VK_IMAGE_LAYOUT_GENERAL) {
@@ -133,7 +132,6 @@ void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 			cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
 		}
 	}
-#endif
 
 	MVKDevice* mvkDvc = cmdEncoder->getDevice();
 	MVKCommandUse cmdUse = kMVKCommandUsePipelineBarrier;
