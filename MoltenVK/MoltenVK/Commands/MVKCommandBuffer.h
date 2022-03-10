@@ -29,7 +29,6 @@
 #include <unordered_map>
 
 class MVKCommandPool;
-class MVKQueue;
 class MVKQueueCommandBufferSubmission;
 class MVKCommandEncoder;
 class MVKCommandEncodingPool;
@@ -491,8 +490,6 @@ public:
 #pragma mark Construction
 
 	MVKCommandEncoder(MVKCommandBuffer* cmdBuffer);
-
-	~MVKCommandEncoder() override;
 
 protected:
     void addActivatedQueries(MVKQueryPool* pQueryPool, uint32_t query, uint32_t queryCount);

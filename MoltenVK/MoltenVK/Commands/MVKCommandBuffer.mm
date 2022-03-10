@@ -830,7 +830,14 @@ void MVKCommandEncoder::encodeTimestampStageCounterSamples() {}
 #endif
 
 id<MTLFence> MVKCommandEncoder::getStageCountersMTLFence() {
-	if ( !_stageCountersMTLFence ) { _stageCountersMTLFence = [getMTLDevice() newFence]; }		//retained
+	if ( !_stageCountersMTLFence ) {
+		// Create MTLFence as local ref and pass to completion handler
+		// block to release once MTLCommandBuffer no longer needs it.
+		id<MTLFence> mtlFence = [getMTLDevice() newFence];
+		[_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mcb) { [mtlFence release]; }];
+
+		_stageCountersMTLFence = mtlFence;		// retained
+	}
 	return _stageCountersMTLFence;
 }
 
@@ -897,10 +904,6 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer) : MVKBaseDevic
             _mtlBlitEncoderUse = kMVKCommandUseNone;
 			_pEncodingContext = nullptr;
 			_stageCountersMTLFence = nil;
-}
-
-MVKCommandEncoder::~MVKCommandEncoder() {
-	[_stageCountersMTLFence release];
 }
 
 
