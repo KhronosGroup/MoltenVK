@@ -2698,9 +2698,16 @@ uint64_t MVKPhysicalDevice::getCurrentAllocatedSize() {
 #endif
 }
 
+// When using argument buffers, Metal imposes a hard limit on the number of MTLSamplerState
+// objects that can be created within the app. When not using argument buffers, no such
+// limit is imposed. This has been verified with testing up to 1M MTLSamplerStates.
 uint32_t MVKPhysicalDevice::getMaxSamplerCount() {
-	return ([_mtlDevice respondsToSelector: @selector(maxArgumentBufferSamplerCount)]
-			? (uint32_t)_mtlDevice.maxArgumentBufferSamplerCount : 1024);
+	if (isUsingMetalArgumentBuffers()) {
+		return ([_mtlDevice respondsToSelector: @selector(maxArgumentBufferSamplerCount)]
+				? (uint32_t)_mtlDevice.maxArgumentBufferSamplerCount : 1024);
+	} else {
+		return kMVKUndefinedLargeUInt32;
+	}
 }
 
 void MVKPhysicalDevice::initExternalMemoryProperties() {

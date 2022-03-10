@@ -23,6 +23,7 @@ Released TBD
 - Fix alignment between outputs and inputs between shader stages when using nested structures.
 - Fix issue where the depth component of a stencil-only renderpass attachment was incorrectly attempting to be stored.
 - Fix deletion of GPU counter `MTLFence` while it is being used by `MTLCommandBuffer`.
+- Remove limit on `VkPhysicalDeviceLimits::maxSamplerAllocationCount` when not using Metal argument buffers.
 - `MoltenVKShaderConverter` tool defaults to the highest MSL version supported on runtime OS.
 - Update *glslang* version, to use `python3` in *glslang* scripts, to replace missing `python` on *macOS 12.3*.
 - Update to latest SPIRV-Cross:
