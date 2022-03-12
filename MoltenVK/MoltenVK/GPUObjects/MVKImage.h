@@ -565,14 +565,14 @@ public:
 
 #pragma mark Metal
 
-	/** Returns the Metal texture underlying this image view. */
-	id<MTLTexture> getMTLTexture(uint8_t planeIndex = 0) { return _planes[planeIndex]->getMTLTexture(); }
+	/** Returns the Metal texture underlying this image view.  */
+	id<MTLTexture> getMTLTexture(uint8_t planeIndex = 0) { return planeIndex < _planes.size() ? _planes[planeIndex]->getMTLTexture() : nil; }	// Guard against destroyed instance retained in a descriptor.
 
 	/** Returns the Metal pixel format of this image view. */
-	MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex = 0) { return _planes[planeIndex]->_mtlPixFmt; }
+	MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex = 0) { return planeIndex < _planes.size() ? _planes[planeIndex]->_mtlPixFmt : MTLPixelFormatInvalid; }	// Guard against destroyed instance retained in a descriptor.
     
     /** Returns the packed component swizzle of this image view. */
-    uint32_t getPackedSwizzle() { return _planes[0]->getPackedSwizzle(); }
+    uint32_t getPackedSwizzle() { return _planes.empty() ? 0 : _planes[0]->getPackedSwizzle(); }	// Guard against destroyed instance retained in a descriptor.
     
     /** Returns the number of planes of this image view. */
     uint8_t getPlaneCount() { return _planes.size(); }
@@ -599,10 +599,13 @@ public:
 
 	~MVKImageView();
 
+	void destroy() override;
+
 protected:
     friend MVKImageViewPlane;
     
 	void propagateDebugName() override;
+	void detachMemory();
 
     MVKImage* _image;
     MVKSmallVector<MVKImageViewPlane*, 3> _planes;
@@ -686,10 +689,13 @@ public:
 
 	~MVKSampler() override;
 
+	void destroy() override;
+
 protected:
 	void propagateDebugName() override {}
 	MTLSamplerDescriptor* newMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo);
 	void initConstExprSampler(const VkSamplerCreateInfo* pCreateInfo);
+	void detachMemory();
 
 	id<MTLSamplerState> _mtlSamplerState;
 	SPIRV_CROSS_NAMESPACE::MSLConstexprSampler _constExprSampler;

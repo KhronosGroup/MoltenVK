@@ -87,6 +87,8 @@ public:
 
 	~MVKBuffer() override;
 
+	void destroy() override;
+
 protected:
 	friend class MVKDeviceMemory;
 
@@ -99,6 +101,7 @@ protected:
 	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
 	VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);
 	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
+	void detachMemory();
 
 	VkBufferUsageFlags _usage;
 	bool _isHostCoherentTexelBuffer = false;
@@ -133,8 +136,11 @@ public:
 
     ~MVKBufferView() override;
 
+	void destroy() override;
+
 protected:
 	void propagateDebugName() override;
+	void detachMemory();
 
     MVKBuffer* _buffer;
     NSUInteger _offset;

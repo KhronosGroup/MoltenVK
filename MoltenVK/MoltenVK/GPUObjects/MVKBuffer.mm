@@ -241,10 +241,33 @@ void MVKBuffer::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) 
 	}
 }
 
+// Memory detached in destructor too, as a fail-safe.
 MVKBuffer::~MVKBuffer() {
+	detachMemory();
+}
+
+// Overridden to detach from the resource memory when the app destroys this object.
+// This object can be retained in a descriptor after the app destroys it, even
+// though the descriptor can't use it. But doing so retains usuable resource memory.
+// In addition, a potential race condition exists if the app updates the descriptor
+// on one thread at the same time it is destroying the buffer and freeing the device
+// memory on another thread. The race condition occurs when the device memory calls
+// back to this buffer to unbind from it. By detaching from the device memory here,
+// (when the app destroys the buffer), even if this buffer is retained by a descriptor,
+// when the device memory is freed by the app, it won't try to call back here to unbind.
+void MVKBuffer::destroy() {
+	detachMemory();
+	MVKResource::destroy();
+}
+
+// Potentially called twice, from destroy() and destructor, so ensure everything is nulled out.
+void MVKBuffer::detachMemory() {
 	if (_deviceMemory) { _deviceMemory->removeBuffer(this); }
-	if (_mtlBuffer) { [_mtlBuffer release]; }
-    if (_mtlBufferCache) { [_mtlBufferCache release]; }
+	_deviceMemory = nullptr;
+	[_mtlBuffer release];
+	_mtlBuffer = nil;
+	[_mtlBufferCache release];
+	_mtlBufferCache = nil;
 }
 
 
@@ -342,8 +365,21 @@ MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pC
     }
 }
 
+// Memory detached in destructor too, as a fail-safe.
 MVKBufferView::~MVKBufferView() {
-    [_mtlTexture release];
-    _mtlTexture = nil;
+	detachMemory();
 }
 
+// Overridden to detach from the resource memory when the app destroys this object.
+// This object can be retained in a descriptor after the app destroys it, even
+// though the descriptor can't use it. But doing so retains usuable resource memory.
+void MVKBufferView::destroy() {
+	detachMemory();
+	MVKVulkanAPIDeviceObject::destroy();
+}
+
+// Potentially called twice, from destroy() and destructor, so ensure everything is nulled out.
+void MVKBufferView::detachMemory() {
+	[_mtlTexture release];
+	_mtlTexture = nil;
+}
