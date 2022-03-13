@@ -135,6 +135,9 @@ public:
 	 * Once all references have been released, this object is free to be deleted.
 	 * If the destroy() function has already been called on this instance by the time
 	 * this function is called, this instance will be deleted.
+	 *
+	 * Note that the destroy() function is called on the BaseClass.
+	 * Releasing will not call any overridden destroy() function in a descendant class.
 	 */
 	void release() { if (--_refCount == 0) { BaseClass::destroy(); } }
 
