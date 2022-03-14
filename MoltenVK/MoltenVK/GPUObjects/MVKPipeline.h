@@ -100,10 +100,10 @@ public:
 	uint32_t getTessCtlLevelBufferIndex() { return _tessCtlLevelBufferIndex; }
 
 	/** Returns the number of textures in this layout. This is used to calculate the size of the swizzle buffer. */
-	uint32_t getTextureCount() { return _pushConstantsMTLResourceIndexes.getMaxTextureIndex(); }
+	uint32_t getTextureCount() { return _mtlResourceCounts.getMaxTextureIndex(); }
 
 	/** Returns the number of buffers in this layout. This is used to calculate the size of the buffer size buffer. */
-	uint32_t getBufferCount() { return _pushConstantsMTLResourceIndexes.getMaxBufferIndex(); }
+	uint32_t getBufferCount() { return _mtlResourceCounts.getMaxBufferIndex(); }
 
 	/** Returns the number of descriptor sets in this pipeline layout. */
 	uint32_t getDescriptorSetCount() { return (uint32_t)_descriptorSetLayouts.size(); }
@@ -114,9 +114,6 @@ public:
 	/** Returns the descriptor set layout. */
 	MVKDescriptorSetLayout* getDescriptorSetLayout(uint32_t descSetIndex) { return _descriptorSetLayouts[descSetIndex]; }
 
-	/** Returns the push constant binding info. */
-	const MVKShaderResourceBinding& getPushConstantBindings() { return _pushConstantsMTLResourceIndexes; }
-
 	/** Constructs an instance for the specified device. */
 	MVKPipelineLayout(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
 
@@ -126,10 +123,12 @@ protected:
 	friend class MVKPipeline;
 
 	void propagateDebugName() override {}
+	bool stageUsesPushConstants(MVKShaderStage mvkStage);
 
 	MVKSmallVector<MVKDescriptorSetLayout*, 1> _descriptorSetLayouts;
 	MVKSmallVector<MVKShaderResourceBinding, 1> _dslMTLResourceIndexOffsets;
 	MVKSmallVector<VkPushConstantRange> _pushConstants;
+	MVKShaderResourceBinding _mtlResourceCounts;
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
 	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
@@ -203,8 +202,9 @@ protected:
 	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
 	MVKShaderImplicitRezBinding _dynamicOffsetBufferIndex;
 	MVKShaderImplicitRezBinding _indirectParamsIndex;
-	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
+	MVKShaderImplicitRezBinding _pushConstantsBufferIndex;
 	uint32_t _descriptorSetCount;
+	bool _stageUsesPushConstants[kMVKShaderStageCount];
 	bool _fullImageViewSwizzle;
 	bool _hasValidMTLPipelineStates = true;
 

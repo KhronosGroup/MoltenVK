@@ -18,6 +18,7 @@ MoltenVK 1.1.9
 
 Released TBD
 
+- Fixes to pipeline layout compatibility.
 - Reinstate memory barriers on non-Apple GPUs, which were inadvertently disabled in an earlier update.
 - Support base vertex instance support in shader conversion.
 - Fix alignment between outputs and inputs between shader stages when using nested structures.

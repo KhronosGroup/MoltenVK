@@ -82,6 +82,21 @@ void MVKPipelineLayout::populateShaderConversionConfig(SPIRVToMSLConversionConfi
 	shaderConfig.discreteDescriptorSets.clear();
 	shaderConfig.dynamicBufferDescriptors.clear();
 
+	// Add any resource bindings used by push-constants.
+	// Use VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT descriptor type as compatible with push constants in Metal.
+	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
+		if (stageUsesPushConstants((MVKShaderStage)stage)) {
+			mvkPopulateShaderConversionConfig(shaderConfig,
+											  _pushConstantsMTLResourceIndexes.stages[stage],
+											  MVKShaderStage(stage),
+											  kPushConstDescSet,
+											  kPushConstBinding,
+											  1,
+											  VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT,
+											  nullptr);
+		}
+	}
+
     // Add resource bindings defined in the descriptor set layouts
 	uint32_t dslCnt = getDescriptorSetCount();
 	for (uint32_t dslIdx = 0; dslIdx < dslCnt; dslIdx++) {
@@ -89,60 +104,64 @@ void MVKPipelineLayout::populateShaderConversionConfig(SPIRVToMSLConversionConfi
 																	  _dslMTLResourceIndexOffsets[dslIdx],
 																	  dslIdx);
 	}
+}
 
-	// Add any resource bindings used by push-constants.
-	// Use VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT descriptor type as compatible with push constants in Metal.
-	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
-		mvkPopulateShaderConversionConfig(shaderConfig,
-										  _pushConstantsMTLResourceIndexes.stages[stage],
-										  MVKShaderStage(stage),
-										  kPushConstDescSet,
-										  kPushConstBinding,
-										  1,
-										  VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT,
-										  nullptr);
+bool MVKPipelineLayout::stageUsesPushConstants(MVKShaderStage mvkStage) {
+	VkShaderStageFlagBits vkStage = mvkVkShaderStageFlagBitsFromMVKShaderStage(mvkStage);
+	for (auto pushConst : _pushConstants) {
+		if (mvkIsAnyFlagEnabled(pushConst.stageFlags, vkStage)) {
+			return true;
+		}
 	}
+	return false;
 }
 
 MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
                                      const VkPipelineLayoutCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 
-    // Add descriptor set layouts, accumulating the resource index offsets used by the
-    // corresponding DSL, and associating the current accumulated resource index offsets
-    // with each DSL as it is added. The final accumulation of resource index offsets
-    // becomes the resource index offsets that will be used for push contants.
-	// If we are using Metal argument buffers, reserve space for the Metal argument
-	// buffers themselves, and clear indexes of offsets used in Metal argument buffers,
-	// but still accumulate dynamic offset buffer indexes across descriptor sets.
+	// For pipeline layout compatibility (“compatible for set N”),
+	// consume the Metal resource indexes in this order:
+	//   - Fixed count of argument buffers for descriptor sets (if using Metal argument buffers).
+	//   - Push constants
+	//   - Descriptor set content
 
-    // According to the Vulkan spec, VkDescriptorSetLayout is intended to be consumed when passed
-	// to any Vulkan function, and may be safely destroyed by app immediately after. In order for
-	// this pipeline layout to retain the VkDescriptorSetLayout, the MVKDescriptorSetLayout
-	// instance is retained, so that it will live on here after it has been destroyed by the API.
+	// If we are using Metal argument buffers, consume a fixed number
+	// of buffer indexes for the Metal argument buffers themselves.
+	if (isUsingMetalArgumentBuffers()) {
+		_mtlResourceCounts.addArgumentBuffers(kMVKMaxDescriptorSetCount);
+	}
 
+	// Add push constants from config
+	_pushConstants.reserve(pCreateInfo->pushConstantRangeCount);
+	for (uint32_t i = 0; i < pCreateInfo->pushConstantRangeCount; i++) {
+		_pushConstants.push_back(pCreateInfo->pPushConstantRanges[i]);
+	}
+
+	// Set push constant resource indexes, and consume a buffer index for any stage that uses a push constant buffer.
+	_pushConstantsMTLResourceIndexes = _mtlResourceCounts;
+	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
+		if (stageUsesPushConstants((MVKShaderStage)stage)) {
+			_mtlResourceCounts.stages[stage].bufferIndex++;
+		}
+	}
+
+	// Add descriptor set layouts, accumulating the resource index offsets used by the corresponding DSL,
+	// and associating the current accumulated resource index offsets with each DSL as it is added.
 	uint32_t dslCnt = pCreateInfo->setLayoutCount;
-	_pushConstantsMTLResourceIndexes.addArgumentBuffers(dslCnt);
-
 	_descriptorSetLayouts.reserve(dslCnt);
 	for (uint32_t i = 0; i < dslCnt; i++) {
 		MVKDescriptorSetLayout* pDescSetLayout = (MVKDescriptorSetLayout*)pCreateInfo->pSetLayouts[i];
 		pDescSetLayout->retain();
 		_descriptorSetLayouts.push_back(pDescSetLayout);
 
-		MVKShaderResourceBinding adjstdDSLRezOfsts = _pushConstantsMTLResourceIndexes;
+		MVKShaderResourceBinding adjstdDSLRezOfsts = _mtlResourceCounts;
 		MVKShaderResourceBinding adjstdDSLRezCnts = pDescSetLayout->_mtlResourceCounts;
 		if (pDescSetLayout->isUsingMetalArgumentBuffer()) {
 			adjstdDSLRezOfsts.clearArgumentBufferResources();
 			adjstdDSLRezCnts.clearArgumentBufferResources();
 		}
 		_dslMTLResourceIndexOffsets.push_back(adjstdDSLRezOfsts);
-		_pushConstantsMTLResourceIndexes += adjstdDSLRezCnts;
-	}
-
-	// Add push constants
-	_pushConstants.reserve(pCreateInfo->pushConstantRangeCount);
-	for (uint32_t i = 0; i < pCreateInfo->pushConstantRangeCount; i++) {
-		_pushConstants.push_back(pCreateInfo->pPushConstantRanges[i]);
+		_mtlResourceCounts += adjstdDSLRezCnts;
 	}
 
 	// Set implicit buffer indices
@@ -150,7 +169,7 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 	// present--or at least, we should move the ones that are down to avoid running over
 	// the limit of available buffers. But we can't know that until we compile the shaders.
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
-		_dynamicOffsetBufferIndex.stages[i] = _pushConstantsMTLResourceIndexes.stages[i].bufferIndex + 1;
+		_dynamicOffsetBufferIndex.stages[i] = _mtlResourceCounts.stages[i].bufferIndex + 1;
 		_bufferSizeBufferIndex.stages[i] = _dynamicOffsetBufferIndex.stages[i] + 1;
 		_swizzleBufferIndex.stages[i] = _bufferSizeBufferIndex.stages[i] + 1;
 		_indirectParamsIndex.stages[i] = _swizzleBufferIndex.stages[i] + 1;
@@ -175,9 +194,9 @@ MVKPipelineLayout::~MVKPipelineLayout() {
 #pragma mark MVKPipeline
 
 void MVKPipeline::bindPushConstants(MVKCommandEncoder* cmdEncoder) {
-	if (cmdEncoder) {
-		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
-			cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)))->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.stages[i].bufferIndex);
+	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
+		if (cmdEncoder && _stageUsesPushConstants[stage]) {
+			cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(stage)))->setMTLBufferIndex(_pushConstantsBufferIndex.stages[stage]);
 		}
 	}
 }
@@ -205,9 +224,15 @@ void MVKPipeline::addMTLArgumentEncoders(MVKMTLFunction& mvkMTLFunc,
 MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout, MVKPipeline* parent) :
 	MVKVulkanAPIDeviceObject(device),
 	_pipelineCache(pipelineCache),
-	_pushConstantsMTLResourceIndexes(layout->getPushConstantBindings()),
 	_fullImageViewSwizzle(mvkConfig().fullImageViewSwizzle),
-	_descriptorSetCount(layout->getDescriptorSetCount()) {}
+	_descriptorSetCount(layout->getDescriptorSetCount()) {
+
+		// Establish push constant use.
+		for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
+			_stageUsesPushConstants[stage] = layout->stageUsesPushConstants((MVKShaderStage)stage);
+			_pushConstantsBufferIndex.stages[stage] = layout->_pushConstantsMTLResourceIndexes.stages[stage].bufferIndex;
+		}
+	}
 
 
 #pragma mark -
