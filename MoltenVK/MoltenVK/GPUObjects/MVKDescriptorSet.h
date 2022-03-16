@@ -363,15 +363,3 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet descriptorSet,
 										VkDescriptorUpdateTemplateKHR updateTemplate,
 										const void* pData);
-
-/**
- * If the shader stage binding has a binding defined for the specified stage, populates
- * the context at the descriptor set binding from the shader stage resource binding.
- */
-void mvkPopulateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
-									   MVKShaderStageResourceBinding& ssRB,
-									   spv::ExecutionModel stage,
-									   uint32_t descriptorSetIndex,
-									   uint32_t bindingIndex,
-									   uint32_t count,
-									   MVKSampler* immutableSampler);

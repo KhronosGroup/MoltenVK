@@ -75,35 +75,11 @@ public:
 	/** Populates the specified shader conversion config. */
 	void populateShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig);
 
-	/** Returns the current swizzle buffer bindings. */
-	const MVKShaderImplicitRezBinding& getSwizzleBufferIndex() { return _swizzleBufferIndex; }
-
-	/** Returns the current buffer size buffer bindings. */
-	const MVKShaderImplicitRezBinding& getBufferSizeBufferIndex() { return _bufferSizeBufferIndex; }
-
-	/** Returns the current dynamic buffer offset buffer bindings. */
-	const MVKShaderImplicitRezBinding& getDynamicOffsetBufferIndex() { return _dynamicOffsetBufferIndex; }
-
-	/** Returns the current view range buffer binding for multiview draws. */
-	const MVKShaderImplicitRezBinding& getViewRangeBufferIndex() { return _viewRangeBufferIndex; }
-
-	/** Returns the current indirect parameter buffer bindings. */
-	const MVKShaderImplicitRezBinding& getIndirectParamsIndex() { return _indirectParamsIndex; }
-
-	/** Returns the current captured output buffer bindings. */
-	const MVKShaderImplicitRezBinding& getOutputBufferIndex() { return _outputBufferIndex; }
-
-	/** Returns the current captured per-patch output buffer binding for the tess. control shader. */
-	uint32_t getTessCtlPatchOutputBufferIndex() { return _tessCtlPatchOutputBufferIndex; }
-
-	/** Returns the current tessellation level buffer binding for the tess. control shader. */
-	uint32_t getTessCtlLevelBufferIndex() { return _tessCtlLevelBufferIndex; }
-
 	/** Returns the number of textures in this layout. This is used to calculate the size of the swizzle buffer. */
-	uint32_t getTextureCount() { return _pushConstantsMTLResourceIndexes.getMaxTextureIndex(); }
+	uint32_t getTextureCount() { return _mtlResourceCounts.getMaxTextureIndex(); }
 
 	/** Returns the number of buffers in this layout. This is used to calculate the size of the buffer size buffer. */
-	uint32_t getBufferCount() { return _pushConstantsMTLResourceIndexes.getMaxBufferIndex(); }
+	uint32_t getBufferCount() { return _mtlResourceCounts.getMaxBufferIndex(); }
 
 	/** Returns the number of descriptor sets in this pipeline layout. */
 	uint32_t getDescriptorSetCount() { return (uint32_t)_descriptorSetLayouts.size(); }
@@ -114,9 +90,6 @@ public:
 	/** Returns the descriptor set layout. */
 	MVKDescriptorSetLayout* getDescriptorSetLayout(uint32_t descSetIndex) { return _descriptorSetLayouts[descSetIndex]; }
 
-	/** Returns the push constant binding info. */
-	const MVKShaderResourceBinding& getPushConstantBindings() { return _pushConstantsMTLResourceIndexes; }
-
 	/** Constructs an instance for the specified device. */
 	MVKPipelineLayout(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
 
@@ -126,19 +99,13 @@ protected:
 	friend class MVKPipeline;
 
 	void propagateDebugName() override {}
+	bool stageUsesPushConstants(MVKShaderStage mvkStage);
 
 	MVKSmallVector<MVKDescriptorSetLayout*, 1> _descriptorSetLayouts;
 	MVKSmallVector<MVKShaderResourceBinding, 1> _dslMTLResourceIndexOffsets;
 	MVKSmallVector<VkPushConstantRange> _pushConstants;
+	MVKShaderResourceBinding _mtlResourceCounts;
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
-	MVKShaderImplicitRezBinding _swizzleBufferIndex;
-	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
-	MVKShaderImplicitRezBinding _dynamicOffsetBufferIndex;
-	MVKShaderImplicitRezBinding _viewRangeBufferIndex;
-	MVKShaderImplicitRezBinding _indirectParamsIndex;
-	MVKShaderImplicitRezBinding _outputBufferIndex;
-	uint32_t _tessCtlPatchOutputBufferIndex = 0;
-	uint32_t _tessCtlLevelBufferIndex = 0;
 };
 
 
@@ -199,12 +166,14 @@ protected:
 															  MVKShaderStage stage);
 
 	MVKPipelineCache* _pipelineCache;
+	MVKShaderImplicitRezBinding _descriptorBufferCounts;
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
 	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
 	MVKShaderImplicitRezBinding _dynamicOffsetBufferIndex;
 	MVKShaderImplicitRezBinding _indirectParamsIndex;
-	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
+	MVKShaderImplicitRezBinding _pushConstantsBufferIndex;
 	uint32_t _descriptorSetCount;
+	bool _stageUsesPushConstants[kMVKShaderStageCount];
 	bool _fullImageViewSwizzle;
 	bool _hasValidMTLPipelineStates = true;
 
@@ -338,8 +307,10 @@ protected:
     void addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo);
     bool isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo);
     bool isRasterizationDisabled(const VkGraphicsPipelineCreateInfo* pCreateInfo);
-	bool verifyImplicitBuffer(bool needsBuffer, MVKShaderImplicitRezBinding& index, MVKShaderStage stage, const char* name, uint32_t reservedBuffers);
+	bool verifyImplicitBuffer(bool needsBuffer, MVKShaderImplicitRezBinding& index, MVKShaderStage stage, const char* name);
 	uint32_t getTranslatedVertexBinding(uint32_t binding, uint32_t translationOffset, uint32_t maxBinding);
+	uint32_t getImplicitBufferIndex(const VkGraphicsPipelineCreateInfo* pCreateInfo, MVKShaderStage stage, uint32_t bufferIndexOffset);
+	uint32_t getReservedBufferCount(const VkGraphicsPipelineCreateInfo* pCreateInfo, MVKShaderStage stage);
 
 	const VkPipelineShaderStageCreateInfo* _pVertexSS = nullptr;
 	const VkPipelineShaderStageCreateInfo* _pTessCtlSS = nullptr;
@@ -434,6 +405,7 @@ public:
 
 protected:
     MVKMTLFunction getMTLFunction(const VkComputePipelineCreateInfo* pCreateInfo);
+	uint32_t getImplicitBufferIndex(uint32_t bufferIndexOffset);
 
     id<MTLComputePipelineState> _mtlPipelineState;
 	MVKSmallVector<MVKMTLArgumentEncoder> _mtlArgumentEncoders;
