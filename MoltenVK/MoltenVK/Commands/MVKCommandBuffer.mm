@@ -59,7 +59,7 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
             _immediateCmdEncodingContext = new MVKCommandEncodingContext;
             
             _immediateCmdEncoder = new MVKCommandEncoder(this);
-            _immediateCmdEncoder->beginImmediateEncoding(_prefilledMTLCmdBuffer, _immediateCmdEncodingContext);
+            _immediateCmdEncoder->beginEncoding(_prefilledMTLCmdBuffer, _immediateCmdEncodingContext);
         }
     }
     
@@ -102,7 +102,7 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 VkResult MVKCommandBuffer::end() {
 	_canAcceptCommands = false;
     if(_immediateCmdEncoder) {
-        _immediateCmdEncoder->endImmediateEncoding();
+        _immediateCmdEncoder->endEncoding();
         delete _immediateCmdEncoder;
         _immediateCmdEncoder = nullptr;
         
@@ -116,7 +116,7 @@ VkResult MVKCommandBuffer::end() {
 
 void MVKCommandBuffer::addCommand(MVKCommand* command) {
     if(_immediateCmdEncoder) {
-        _immediateCmdEncoder->encodeImmediateCommand(command);
+        _immediateCmdEncoder->encodeCommands(command);
         
         return;
     }
@@ -274,36 +274,12 @@ MVKRenderSubpass* MVKCommandBuffer::getLastMultiviewSubpass() {
 
 void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff,
 							   MVKCommandEncodingContext* pEncodingContext) {
-	_framebuffer = nullptr;
-	_renderPass = nullptr;
-	_subpassContents = VK_SUBPASS_CONTENTS_INLINE;
-	_renderSubpassIndex = 0;
-	_multiviewPassIndex = 0;
-	_canUseLayeredRendering = false;
-
-	_pEncodingContext = pEncodingContext;
-	_mtlCmdBuffer = mtlCmdBuff;		// not retained
-
-	setLabelIfNotNil(_mtlCmdBuffer, _cmdBuffer->_debugName);
-
-	MVKCommand* cmd = _cmdBuffer->_head;
-	while (cmd) {
-		uint32_t prevMVPassIdx = _multiviewPassIndex;
-		cmd->encode(this);
-		if (_multiviewPassIndex > prevMVPassIdx) {
-			// This means we're in a multiview render pass, and we moved on to the
-			// next view group. Re-encode all commands in the subpass again for this group.
-			cmd = _lastMultiviewPassCmd->_next;
-		} else {
-			cmd = cmd->_next;
-		}
-	}
-
-	endCurrentMetalEncoding();
-	finishQueries();
+    beginEncoding(mtlCmdBuff, pEncodingContext);
+    encodeCommands(_cmdBuffer->_head);
+    endEncoding();
 }
 
-void MVKCommandEncoder::beginImmediateEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext) {
+void MVKCommandEncoder::beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext) {
     _framebuffer = nullptr;
     _renderPass = nullptr;
     _subpassContents = VK_SUBPASS_CONTENTS_INLINE;
@@ -317,20 +293,23 @@ void MVKCommandEncoder::beginImmediateEncoding(id<MTLCommandBuffer> mtlCmdBuff, 
     setLabelIfNotNil(_mtlCmdBuffer, _cmdBuffer->_debugName);
 }
 
-void MVKCommandEncoder::encodeImmediateCommand(MVKCommand* command) {
+void MVKCommandEncoder::encodeCommands(MVKCommand* command) {
     while(command) {
         uint32_t prevMVPassIdx = _multiviewPassIndex;
         command->encode(this);
         
         if(_multiviewPassIndex > prevMVPassIdx) {
+            // This means we're in a multiview render pass, and we moved on to the
+            // next view group. Re-encode all commands in the subpass again for this group.
+            
             command = _lastMultiviewPassCmd->_next;
         } else {
-            command = nullptr;
+            command = command->_next;
         }
     }
 }
 
-void MVKCommandEncoder::endImmediateEncoding() {
+void MVKCommandEncoder::endEncoding() {
     endCurrentMetalEncoding();
     finishQueries();
 }

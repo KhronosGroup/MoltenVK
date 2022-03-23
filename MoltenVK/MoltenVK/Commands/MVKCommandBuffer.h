@@ -31,7 +31,6 @@
 class MVKCommandPool;
 class MVKQueueCommandBufferSubmission;
 class MVKCommandEncoder;
-class MVKCommandEncodingContext;
 class MVKCommandEncodingPool;
 class MVKCmdBeginRenderPassBase;
 class MVKCmdNextSubpass;
@@ -278,9 +277,9 @@ public:
 	/** Encode commands from the command buffer onto the Metal command buffer. */
 	void encode(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext);
     
-    void beginImmediateEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext);
-    void encodeImmediateCommand(MVKCommand* command);
-    void endImmediateEncoding();
+    void beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext);
+    void encodeCommands(MVKCommand* command);
+    void endEncoding();
 
 	/** Encode commands from the specified secondary command buffer onto the Metal command buffer. */
 	void encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer);
