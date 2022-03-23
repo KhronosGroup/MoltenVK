@@ -495,7 +495,7 @@ void mvkRemoveFirstOccurance(C& container, T val) {
 /** Removes all occurances of the specified value from the specified container. */
 template<class C, class T>
 void mvkRemoveAllOccurances(C& container, T val) {
-    container.erase(remove(container.begin(), container.end(), val), container.end());
+    container.erase(std::remove(container.begin(), container.end(), val), container.end());
 }
 
 
