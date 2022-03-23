@@ -50,8 +50,20 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 	const VkCommandBufferInheritanceInfo* pInheritInfo = (_isSecondary ? pBeginInfo->pInheritanceInfo : NULL);
 	bool hasInheritInfo = mvkSetOrClear(&_secondaryInheritanceInfo, pInheritInfo);
 	_doesContinueRenderPass = mvkAreAllFlagsEnabled(usage, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) && hasInheritInfo;
-
-	return getConfigurationResult();
+    
+    if (!_isReusable && canPrefill()) {
+        @autoreleasepool {
+            uint32_t qIdx = 0;
+            _prefilledMTLCmdBuffer = _commandPool->newMTLCommandBuffer(qIdx);    // retain
+            
+            _immediateCmdEncodingContext = new MVKCommandEncodingContext;
+            
+            _immediateCmdEncoder = new MVKCommandEncoder(this);
+            _immediateCmdEncoder->beginImmediateEncoding(_prefilledMTLCmdBuffer, _immediateCmdEncodingContext);
+        }
+    }
+    
+    return getConfigurationResult();
 }
 
 void MVKCommandBuffer::releaseCommands() {
@@ -89,11 +101,26 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 
 VkResult MVKCommandBuffer::end() {
 	_canAcceptCommands = false;
-	prefill();
+    if(_immediateCmdEncoder) {
+        _immediateCmdEncoder->endImmediateEncoding();
+        delete _immediateCmdEncoder;
+        _immediateCmdEncoder = nullptr;
+        
+        delete _immediateCmdEncodingContext;
+        _immediateCmdEncodingContext = nullptr;
+    } else {
+        prefill();
+    }
 	return getConfigurationResult();
 }
 
 void MVKCommandBuffer::addCommand(MVKCommand* command) {
+    if(_immediateCmdEncoder) {
+        _immediateCmdEncoder->encodeImmediateCommand(command);
+        
+        return;
+    }
+    
 	if ( !_canAcceptCommands ) {
 		setConfigurationResult(reportError(VK_NOT_READY, "Command buffer cannot accept commands before vkBeginCommandBuffer() is called."));
 		return;
@@ -155,10 +182,6 @@ void MVKCommandBuffer::prefill() {
 		MVKCommandEncodingContext encodingContext;
 		MVKCommandEncoder encoder(this);
 		encoder.encode(_prefilledMTLCmdBuffer, &encodingContext);
-
-		// Once encoded onto Metal, if this command buffer is not reusable, we don't need the
-		// MVKCommand instances anymore, so release them in order to reduce memory pressure.
-		if ( !_isReusable ) { releaseCommands(); }
 	}
 }
 
@@ -278,6 +301,38 @@ void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff,
 
 	endCurrentMetalEncoding();
 	finishQueries();
+}
+
+void MVKCommandEncoder::beginImmediateEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext) {
+    _framebuffer = nullptr;
+    _renderPass = nullptr;
+    _subpassContents = VK_SUBPASS_CONTENTS_INLINE;
+    _renderSubpassIndex = 0;
+    _multiviewPassIndex = 0;
+    _canUseLayeredRendering = false;
+
+    _pEncodingContext = pEncodingContext;
+    _mtlCmdBuffer = mtlCmdBuff;        // not retained
+
+    setLabelIfNotNil(_mtlCmdBuffer, _cmdBuffer->_debugName);
+}
+
+void MVKCommandEncoder::encodeImmediateCommand(MVKCommand* command) {
+    while(command) {
+        uint32_t prevMVPassIdx = _multiviewPassIndex;
+        command->encode(this);
+        
+        if(_multiviewPassIndex > prevMVPassIdx) {
+            command = _lastMultiviewPassCmd->_next;
+        } else {
+            command = nullptr;
+        }
+    }
+}
+
+void MVKCommandEncoder::endImmediateEncoding() {
+    endCurrentMetalEncoding();
+    finishQueries();
 }
 
 void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {

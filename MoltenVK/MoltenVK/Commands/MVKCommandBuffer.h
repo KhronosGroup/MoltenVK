@@ -31,6 +31,7 @@
 class MVKCommandPool;
 class MVKQueueCommandBufferSubmission;
 class MVKCommandEncoder;
+class MVKCommandEncodingContext;
 class MVKCommandEncodingPool;
 class MVKCmdBeginRenderPassBase;
 class MVKCmdNextSubpass;
@@ -175,6 +176,8 @@ protected:
 	std::atomic_flag _isExecutingNonConcurrently;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
 	id<MTLCommandBuffer> _prefilledMTLCmdBuffer = nil;
+    MVKCommandEncodingContext* _immediateCmdEncodingContext = nullptr;
+    MVKCommandEncoder* _immediateCmdEncoder = nullptr;
 	bool _isSecondary;
 	bool _doesContinueRenderPass;
 	bool _canAcceptCommands;
@@ -274,6 +277,10 @@ public:
 
 	/** Encode commands from the command buffer onto the Metal command buffer. */
 	void encode(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext);
+    
+    void beginImmediateEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext);
+    void encodeImmediateCommand(MVKCommand* command);
+    void endImmediateEncoding();
 
 	/** Encode commands from the specified secondary command buffer onto the Metal command buffer. */
 	void encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer);
