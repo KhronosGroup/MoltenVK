@@ -66,20 +66,23 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
     return getConfigurationResult();
 }
 
-void MVKCommandBuffer::releaseCommands() {
-	MVKCommand* cmd = _head;
-	while (cmd) {
-		MVKCommand* nextCmd = cmd->_next;	// Establish next before returning current to pool.
-		(cmd->getTypePool(getCommandPool()))->returnObject(cmd);
-		cmd = nextCmd;
-	}
+void MVKCommandBuffer::releaseCommands(MVKCommand* command) {
+    while(command) {
+        MVKCommand* nextCommand = command->_next; // Establish next before returning current to pool.
+        (command->getTypePool(getCommandPool()))->returnObject(command);
+        command = nextCommand;
+    }
+}
+
+void MVKCommandBuffer::releaseRecordedCommands() {
+    releaseCommands(_head);
 	_head = nullptr;
 	_tail = nullptr;
 }
 
 VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	clearPrefilledMTLCommandBuffer();
-	releaseCommands();
+	releaseRecordedCommands();
 	_doesContinueRenderPass = false;
 	_canAcceptCommands = false;
 	_isReusable = false;
@@ -117,6 +120,7 @@ VkResult MVKCommandBuffer::end() {
 void MVKCommandBuffer::addCommand(MVKCommand* command) {
     if(_immediateCmdEncoder) {
         _immediateCmdEncoder->encodeCommands(command);
+        releaseCommands(command);
         
         return;
     }
