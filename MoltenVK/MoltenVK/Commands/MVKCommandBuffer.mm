@@ -51,7 +51,7 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 	bool hasInheritInfo = mvkSetOrClear(&_secondaryInheritanceInfo, pInheritInfo);
 	_doesContinueRenderPass = mvkAreAllFlagsEnabled(usage, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) && hasInheritInfo;
     
-    if (!_isReusable && canPrefill()) {
+    if(canPrefill()) {
         @autoreleasepool {
             uint32_t qIdx = 0;
             _prefilledMTLCmdBuffer = _commandPool->newMTLCommandBuffer(qIdx);    // retain
@@ -104,6 +104,7 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 
 VkResult MVKCommandBuffer::end() {
 	_canAcceptCommands = false;
+    
     if(_immediateCmdEncoder) {
         _immediateCmdEncoder->endEncoding();
         delete _immediateCmdEncoder;
@@ -111,24 +112,25 @@ VkResult MVKCommandBuffer::end() {
         
         delete _immediateCmdEncodingContext;
         _immediateCmdEncodingContext = nullptr;
-    } else {
-        prefill();
     }
+    
 	return getConfigurationResult();
 }
 
 void MVKCommandBuffer::addCommand(MVKCommand* command) {
-    if(_immediateCmdEncoder) {
-        _immediateCmdEncoder->encodeCommands(command);
-        releaseCommands(command);
-        
+    if ( !_canAcceptCommands ) {
+        setConfigurationResult(reportError(VK_NOT_READY, "Command buffer cannot accept commands before vkBeginCommandBuffer() is called."));
         return;
     }
     
-	if ( !_canAcceptCommands ) {
-		setConfigurationResult(reportError(VK_NOT_READY, "Command buffer cannot accept commands before vkBeginCommandBuffer() is called."));
-		return;
-	}
+    if(_immediateCmdEncoder) {
+        _immediateCmdEncoder->encodeCommands(command);
+        
+        if( !_isReusable ) {
+            releaseCommands(command);
+            return;
+        }
+    }
 
     if (_tail) { _tail->_next = command; }
     command->_next = nullptr;
@@ -170,23 +172,6 @@ bool MVKCommandBuffer::canExecute() {
 
 	_wasExecuted = true;
 	return true;
-}
-
-// If we can, prefill a MTLCommandBuffer with the commands in this command buffer.
-// Wrap in autorelease pool to capture autoreleased Metal encoding activity.
-void MVKCommandBuffer::prefill() {
-	@autoreleasepool {
-		clearPrefilledMTLCommandBuffer();
-
-		if ( !canPrefill() ) { return; }
-
-		uint32_t qIdx = 0;
-		_prefilledMTLCmdBuffer = _commandPool->newMTLCommandBuffer(qIdx);	// retain
-
-		MVKCommandEncodingContext encodingContext;
-		MVKCommandEncoder encoder(this);
-		encoder.encode(_prefilledMTLCmdBuffer, &encodingContext);
-	}
 }
 
 bool MVKCommandBuffer::canPrefill() {
