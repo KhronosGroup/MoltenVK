@@ -6,19 +6,82 @@
 
 # What's New in MoltenVK
 
-Copyright (c) 2015-2021 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
+Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 [comment]: # "This document is written in Markdown (http://en.wikipedia.org/wiki/Markdown) format."
 [comment]: # "For best results, use a Markdown reader."
 
 
 
-MoltenVK 1.1.7
+MoltenVK 1.1.9
 --------------
 
 Released TBD
 
-- Support building MoltenVK with static Vulkan linkage symbols hidden. 
+- Fixes to pipeline layout compatibility.
+- Reinstate memory barriers on non-Apple GPUs, which were inadvertently disabled in an earlier update.
+- Support base vertex instance support in shader conversion.
+- Fix alignment between outputs and inputs between shader stages when using nested structures.
+- Fix issue where the depth component of a stencil-only renderpass attachment was incorrectly attempting to be stored.
+- Fix deletion of GPU counter `MTLFence` while it is being used by `MTLCommandBuffer`.
+- Remove limit on `VkPhysicalDeviceLimits::maxSamplerAllocationCount` when not using Metal argument buffers.
+- Avoid adjusting SRGB clear color values by half-ULP on GPUs that round float clear colors down.
+- Fixes to optimize resource objects retained by descriptors beyond their lifetimes.
+- `MoltenVKShaderConverter` tool defaults to the highest MSL version supported on runtime OS.
+- Update *glslang* version, to use `python3` in *glslang* scripts, to replace missing `python` on *macOS 12.3*.
+- Update to latest SPIRV-Cross:
+	- MSL: Support input/output blocks containing nested struct arrays.
+	- MSL: Use var name instead of var-type name for flattened interface members.
+	- MSL: Handle aliased variable names for resources placed in IB struct.
+	- MSL: Append entry point args to local variable names to avoid conflicts.
+	- MSL: Consider that gl_IsHelperInvocation can be Volatile.
+	- MSL: Refactor and fix use of quadgroup vs simdgroup.
+
+
+
+MoltenVK 1.1.8
+--------------
+
+Released 2022/02/22
+
+- Remove logged warning if MoltenVK does not support `VkApplicationInfo::apiVersion` value.
+
+
+
+MoltenVK 1.1.7
+--------------
+
+Released 2022/02/07
+
+- Add `MVK_HIDE_VULKAN_SYMBOLS` env var to support building MoltenVK with static Vulkan linkage symbols hidden.
+- Improve accuracy of `VkPhysicalDeviceLimits::timestampPeriod`.
+- Do not use `MTLEvent` for `VkSemaphore` under *Rosetta2*.
+- On *Apple Silicon (iOS, tvOS & macOS)*, set `VkPhysicalDeviceProperties::deviceID` from GPU capabilities.
+- Support compiling *MSL 2.4* in runtime pipelines and `MoltenVKShaderConverterTool`.
+- Fix issue where *MSL 2.3* only available on *Apple Silicon*, even on *macOS*.
+- Fix memory leak of dummy `MTLTexture` in render subpasses that use no attachments.
+- Fix Metal object retain-release errors in assignment operators.
+- Fix use of GPU counter sets on older versions of iOS running on the simulator.
+- `mvk::getShaderOutputs()` in `SPRIVReflection.h` support flattening nested structures.
+- Replaced ASL logging levels with `MVKConfigLogLevel`.
+- `MoltenVKShaderConverter` tool support loading tessellation shader files.
+- `MoltenVKShaderConverter` tool update to *MSL 2.4* by default.
+- Upgrade to *Vulkan 1.3* headers.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `33`.
+- Update copyright notices to year 2022.
+- Update to latest SPIRV-Cross:
+	- MSL: Add 64 bit support for `OpSwitch`.
+	- MSL: Don't output depth and stencil values with explicit early fragment tests.
+	- MSL: Fix incorrect MSL `gl_TessCoord` variable type.
+	- MSL: Allow copy array from `UniformConstant` storage.
+	- MSL: Handle signed `atomic min/max`.
+	- Fix `normalize` on `half3/half2`.
+	- MSL: Handle constant construct of block-like array types.
+	- MSL: Rethink how opaque descriptors are passed to leaf functions.
+	- Rework how loop iteration counts are validated.
+	- Clamp vector element access to vector size.
+	- Handle aliased names in spec constants.
+	- Add support for `LocalSizeId`.
 
 
 

@@ -1,7 +1,7 @@
 /*
  * MVKBaseObject.h
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include "mvk_vulkan.h"
+#include "vk_mvk_moltenvk.h"
 #include <string>
 #include <atomic>
 
@@ -47,7 +47,7 @@ public:
 	 * and some subclasses will also forward the message to their VkInstance for
 	 * output to the Vulkan debug report messaging API.
 	 */
-	void reportMessage(int aslLvl, const char* format, ...) __printflike(3, 4);
+	void reportMessage(MVKConfigLogLevel logLevel, const char* format, ...) __printflike(3, 4);
 
 	/**
 	 * Report a Vulkan error message, on behalf of the object, which may be nil.
@@ -55,7 +55,7 @@ public:
 	 * is not nil and has access to the VkInstance, the message will also be forwarded
 	 * to the VkInstance for output to the Vulkan debug report messaging API.
 	 */
-	static void reportMessage(MVKBaseObject* mvkObj, int aslLvl, const char* format, ...) __printflike(3, 4);
+	static void reportMessage(MVKBaseObject* mvkObj, MVKConfigLogLevel logLevel, const char* format, ...) __printflike(3, 4);
 
 	/**
 	 * Report a Vulkan error message, on behalf of the object, which may be nil.
@@ -65,7 +65,7 @@ public:
 	 *
 	 * This is the core reporting implementation. Other similar functions delegate here.
 	 */
-	static void reportMessage(MVKBaseObject* mvkObj, int aslLvl, const char* format, va_list args) __printflike(3, 0);
+	static void reportMessage(MVKBaseObject* mvkObj, MVKConfigLogLevel logLevel, const char* format, va_list args) __printflike(3, 0);
 
 	/**
 	 * Report a Vulkan error message. This includes logging to a standard system logging stream,
@@ -135,6 +135,9 @@ public:
 	 * Once all references have been released, this object is free to be deleted.
 	 * If the destroy() function has already been called on this instance by the time
 	 * this function is called, this instance will be deleted.
+	 *
+	 * Note that the destroy() function is called on the BaseClass.
+	 * Releasing will not call any overridden destroy() function in a descendant class.
 	 */
 	void release() { if (--_refCount == 0) { BaseClass::destroy(); } }
 

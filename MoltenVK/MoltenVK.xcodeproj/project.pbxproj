@@ -680,6 +680,7 @@
 		A98149401FB6A3F7005F00B4 /* Utility */ = {
 			isa = PBXGroup;
 			children = (
+				A9F0429E1FB4CF82009FCCB8 /* MVKLogging.h */,
 				A98149421FB6A3F7005F00B4 /* MVKBaseObject.h */,
 				A98149411FB6A3F7005F00B4 /* MVKBaseObject.mm */,
 				A9D7104E25CDE05E00E38106 /* MVKBitArray.h */,
@@ -751,7 +752,6 @@
 			isa = PBXGroup;
 			children = (
 				A9F0429D1FB4CF82009FCCB8 /* MVKCommonEnvironment.h */,
-				A9F0429E1FB4CF82009FCCB8 /* MVKLogging.h */,
 				A9B51BD6225E986A00AC74D2 /* MVKOSExtensions.h */,
 				A9B51BD2225E986A00AC74D2 /* MVKOSExtensions.mm */,
 				A981496A1FB6A998005F00B4 /* MVKStrings.h */,
@@ -1072,7 +1072,7 @@
 		A9F55D25198BE6A7004EC31B /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1300;
+				LastUpgradeCheck = 1330;
 				ORGANIZATIONNAME = "The Brenwill Workshop Ltd.";
 				TargetAttributes = {
 					A9B8EE091A98D796009C5A02 = {

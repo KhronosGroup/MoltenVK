@@ -1,7 +1,7 @@
 /*
  * MVKOSExtensions.h
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -95,7 +95,7 @@ void mvkDispatchToMainAndWait(dispatch_block_t block);
  * Returns the value of the environment variable at the given name,
  * or an empty string if no environment variable with that name exists.
  *
- * If pWasFound is not null, it's value is set to true if the environment
+ * If pWasFound is not null, its value is set to true if the environment
  * variable exists, or false if not.
  */
 std::string mvkGetEnvVar(std::string varName, bool* pWasFound = nullptr);
@@ -104,7 +104,7 @@ std::string mvkGetEnvVar(std::string varName, bool* pWasFound = nullptr);
  * Returns the value of the environment variable at the given name,
  * or zero if no environment variable with that name exists.
  *
- * If pWasFound is not null, it's value is set to true if the environment
+ * If pWasFound is not null, its value is set to true if the environment
  * variable exists, or false if not.
  */
 int64_t mvkGetEnvVarInt64(std::string varName, bool* pWasFound = nullptr);
@@ -113,7 +113,7 @@ int64_t mvkGetEnvVarInt64(std::string varName, bool* pWasFound = nullptr);
  * Returns the value of the environment variable at the given name,
  * or false if no environment variable with that name exists.
  *
- * If pWasFound is not null, it's value is set to true if the environment
+ * If pWasFound is not null, its value is set to true if the environment
  * variable exists, or false if not.
  */
 bool mvkGetEnvVarBool(std::string varName, bool* pWasFound = nullptr);

@@ -1,7 +1,7 @@
 /*
  * vk_mvk_moltenvk.mm
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,7 +69,7 @@ MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceMetalFeaturesMVK(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceMetalFeaturesMVK(
 	VkPhysicalDevice                            physicalDevice,
 	MVKPhysicalDeviceMetalFeatures*             pMetalFeatures,
 	size_t*                                     pMetalFeaturesSize) {
@@ -78,7 +78,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceMetalFeaturesMVK(
 	return mvkCopy(pMetalFeatures, mvkPD->getMetalFeatures(), pMetalFeaturesSize);
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetPerformanceStatisticsMVK(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPerformanceStatisticsMVK(
 	VkDevice                                    device,
 	MVKPerformanceStatistics*            		pPerf,
 	size_t*                                     pPerfSize) {
@@ -105,7 +105,7 @@ MVK_PUBLIC_SYMBOL void vkGetVersionStringsMVK(
 	pVulkanVersionStringBuffer[len] = 0;    // terminator
 }
 
-MVK_PUBLIC_SYMBOL void vkGetMTLDeviceMVK(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetMTLDeviceMVK(
     VkPhysicalDevice                           physicalDevice,
     id<MTLDevice>*                             pMTLDevice) {
 
@@ -113,7 +113,7 @@ MVK_PUBLIC_SYMBOL void vkGetMTLDeviceMVK(
     *pMTLDevice = mvkPD->getMTLDevice();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkSetMTLTextureMVK(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetMTLTextureMVK(
     VkImage                                     image,
     id<MTLTexture>                              mtlTexture) {
 
@@ -121,7 +121,7 @@ MVK_PUBLIC_SYMBOL VkResult vkSetMTLTextureMVK(
     return mvkImg->setMTLTexture(0, mtlTexture);
 }
 
-MVK_PUBLIC_SYMBOL void vkGetMTLTextureMVK(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetMTLTextureMVK(
     VkImage                                     image,
     id<MTLTexture>*                             pMTLTexture) {
 
@@ -129,7 +129,7 @@ MVK_PUBLIC_SYMBOL void vkGetMTLTextureMVK(
     *pMTLTexture = mvkImg->getMTLTexture(0);
 }
 
-MVK_PUBLIC_SYMBOL void vkGetMTLBufferMVK(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetMTLBufferMVK(
     VkBuffer                                    buffer,
     id<MTLBuffer>*                              pMTLBuffer) {
 
@@ -137,7 +137,7 @@ MVK_PUBLIC_SYMBOL void vkGetMTLBufferMVK(
     *pMTLBuffer = mvkBuffer->getMTLBuffer();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetMTLCommandQueueMVK(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetMTLCommandQueueMVK(
     VkQueue                                     queue,
     id<MTLCommandQueue>*                        pMTLCommandQueue) {
 
@@ -145,7 +145,7 @@ MVK_PUBLIC_SYMBOL void vkGetMTLCommandQueueMVK(
     *pMTLCommandQueue = mvkQueue->getMTLCommandQueue();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkUseIOSurfaceMVK(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkUseIOSurfaceMVK(
     VkImage                                     image,
     IOSurfaceRef                                ioSurface) {
 
@@ -153,7 +153,7 @@ MVK_PUBLIC_SYMBOL VkResult vkUseIOSurfaceMVK(
     return mvkImg->useIOSurface(ioSurface);
 }
 
-MVK_PUBLIC_SYMBOL void vkGetIOSurfaceMVK(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetIOSurfaceMVK(
     VkImage                                     image,
     IOSurfaceRef*                               pIOSurface) {
 
@@ -161,7 +161,7 @@ MVK_PUBLIC_SYMBOL void vkGetIOSurfaceMVK(
     *pIOSurface = mvkImg->getIOSurface();
 }
 
-MVK_PUBLIC_SYMBOL void vkSetWorkgroupSizeMVK(
+MVK_PUBLIC_VULKAN_SYMBOL void vkSetWorkgroupSizeMVK(
     VkShaderModule                              shaderModule,
     uint32_t                                    x,
     uint32_t                                    y,

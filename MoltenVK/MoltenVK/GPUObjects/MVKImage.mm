@@ -1,7 +1,7 @@
 /*
  * MVKImage.mm
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1873,7 +1873,21 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
     }
 }
 
+// Memory detached in destructor too, as a fail-safe.
 MVKImageView::~MVKImageView() {
+	detachMemory();
+}
+
+// Overridden to detach from the resource memory when the app destroys this object.
+// This object can be retained in a descriptor after the app destroys it, even
+// though the descriptor can't use it. But doing so retains usuable resource memory.
+void MVKImageView::destroy() {
+	detachMemory();
+	MVKVulkanAPIDeviceObject::destroy();
+}
+
+// Potentially called twice, from destroy() and destructor, so ensure everything is nulled out.
+void MVKImageView::detachMemory() {
 	mvkDestroyContainerContents(_planes);
 }
 
@@ -2127,8 +2141,23 @@ void MVKSampler::initConstExprSampler(const VkSamplerCreateInfo* pCreateInfo) {
     }
 }
 
+// Memory detached in destructor too, as a fail-safe.
 MVKSampler::~MVKSampler() {
+	detachMemory();
+}
+
+// Overridden to detach from the resource memory when the app destroys this object.
+// This object can be retained in a descriptor after the app destroys it, even
+// though the descriptor can't use it. But doing so retains usuable resource memory.
+void MVKSampler::destroy() {
+	detachMemory();
+	MVKVulkanAPIDeviceObject::destroy();
+}
+
+// Potentially called twice, from destroy() and destructor, so ensure everything is nulled out.
+void MVKSampler::detachMemory() {
 	@synchronized (getMTLDevice()) {
 		[_mtlSamplerState release];
+		_mtlSamplerState = nil;
 	}
 }

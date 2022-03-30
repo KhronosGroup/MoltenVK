@@ -1,7 +1,7 @@
 /*
  * MVKCmdTransfer.mm
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1234,7 +1234,7 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	simd::float4 vertices[vtxCnt];
 	simd::float4 clearColors[kMVKClearAttachmentCount];
 
-	VkExtent2D fbExtent = cmdEncoder->_framebufferExtent;
+	VkExtent2D fbExtent = cmdEncoder->getFramebufferExtent();
 #if MVK_MACOS_OR_IOS
 	// I need to know if the 'renderTargetWidth' and 'renderTargetHeight' properties
 	// actually do something, but [MTLRenderPassDescriptor instancesRespondToSelector: @selector(renderTargetWidth)]
@@ -1255,7 +1255,7 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
     // Populate the render pipeline state attachment key with info from the subpass and framebuffer.
 	_rpsKey.mtlSampleCount = mvkSampleCountFromVkSampleCountFlagBits(subpass->getSampleCount());
 	if (cmdEncoder->_canUseLayeredRendering &&
-		(cmdEncoder->_framebufferLayerCount > 1 || cmdEncoder->getSubpass()->isMultiview())) {
+		(cmdEncoder->getFramebufferLayerCount() > 1 || cmdEncoder->getSubpass()->isMultiview())) {
 		_rpsKey.enableLayeredRendering();
 	}
 
@@ -1310,22 +1310,22 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
     [mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangle vertexStart: 0 vertexCount: vtxCnt];
     [mtlRendEnc popDebugGroup];
 
-#if MVK_APPLE_SILICON
 	// Apple GPUs do not support rendering/writing to an attachment and then reading from
 	// that attachment within a single Metal renderpass. So, if any of the attachments just
 	// cleared is an input attachment, we need to restart into separate Metal renderpasses.
-	bool needsRenderpassRestart = false;
-	for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
-		if (_rpsKey.isAttachmentEnabled(caIdx) && subpass->isColorAttachmentAlsoInputAttachment(caIdx)) {
-			needsRenderpassRestart = true;
-			break;
+	if (cmdEncoder->getDevice()->_pMetalFeatures->tileBasedDeferredRendering) {
+		bool needsRenderpassRestart = false;
+		for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
+			if (_rpsKey.isAttachmentEnabled(caIdx) && subpass->isColorAttachmentAlsoInputAttachment(caIdx)) {
+				needsRenderpassRestart = true;
+				break;
+			}
+		}
+		if (needsRenderpassRestart) {
+			cmdEncoder->encodeStoreActions(true);
+			cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
 		}
 	}
-	if (needsRenderpassRestart) {
-		cmdEncoder->encodeStoreActions(true);
-		cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
-	}
-#endif
 
 	// Return to the previous rendering state on the next render activity
 	cmdEncoder->_graphicsPipelineState.markDirty();

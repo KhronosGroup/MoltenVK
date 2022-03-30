@@ -1,7 +1,7 @@
 /*
  * MVKDevice.mm
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,8 @@
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 
 #import "CAMetalLayer+MoltenVK.h"
+
+#include <cmath>
 
 using namespace std;
 
@@ -504,11 +506,10 @@ void MVKPhysicalDevice::populate(VkPhysicalDeviceIDProperties* pDevIdProps) {
 	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(mvkVersion);
 	uuidComponentOffset += sizeof(mvkVersion);
 
-	// Next 4 bytes contains highest Metal feature set supported by this device
-	uint32_t mtlFeatSet = getHighestMTLFeatureSet();
-	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatSet);
-	uuidComponentOffset += sizeof(mtlFeatSet);
-
+	// Next 4 bytes contains highest GPU capability supported by this device
+	uint32_t gpuCap = getHighestGPUCapability();
+	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(gpuCap);
+	uuidComponentOffset += sizeof(gpuCap);
 
 	// ---- LUID ignored for Metal devices ------------------------
 	mvkClear(pDevIdProps->deviceLUID, VK_LUID_SIZE);
@@ -1101,6 +1102,25 @@ VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 	return rslt;
 }
 
+// Don't need to do this for Apple GPUs, where the GPU and CPU timestamps
+// are the same, or if we're not using GPU timestamp counters.
+void MVKPhysicalDevice::startTimestampCorrelation(MTLTimestamp& cpuStart, MTLTimestamp& gpuStart) {
+	if (_properties.vendorID == kAppleVendorId || !_timestampMTLCounterSet) { return; }
+	[_mtlDevice sampleTimestamps: &cpuStart gpuTimestamp: &gpuStart];
+}
+
+// Don't need to do this for Apple GPUs, where the GPU and CPU timestamps
+// are the same, or if we're not using GPU timestamp counters.
+void MVKPhysicalDevice::updateTimestampPeriod(MTLTimestamp cpuStart, MTLTimestamp gpuStart) {
+	if (_properties.vendorID == kAppleVendorId || !_timestampMTLCounterSet) { return; }
+
+	MTLTimestamp cpuEnd;
+	MTLTimestamp gpuEnd;
+	[_mtlDevice sampleTimestamps: &cpuEnd gpuTimestamp: &gpuEnd];
+
+	_properties.limits.timestampPeriod = (double)(cpuEnd - cpuStart) / (double)(gpuEnd - gpuStart);
+}
+
 
 #pragma mark Memory models
 
@@ -1273,6 +1293,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
 	}
 #endif
+#if MVK_XCODE_13
+	if ( mvkOSVersionIsAtLeast(15.0) ) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_4;
+	}
+#endif
 
 #endif
 
@@ -1377,6 +1402,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		}
 	}
 #endif
+#if MVK_XCODE_13
+	if ( mvkOSVersionIsAtLeast(15.0) ) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_4;
+	}
+#endif
 
 #endif
 
@@ -1447,28 +1477,40 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		}
 	}
 
-#if MVK_MACOS_APPLE_SILICON
-	if ( mvkOSVersionIsAtLeast(10.16) ) {
+#if MVK_XCODE_12
+	if ( mvkOSVersionIsAtLeast(11.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
-		if (supportsMTLGPUFamily(Apple5)) {
-			// This is an Apple GPU--treat it accordingly.
-			_metalFeatures.mtlCopyBufferAlignment = 1;
-			_metalFeatures.mtlBufferAlignment = 16;     // Min float4 alignment for typical vertex buffers. MTLBuffer may go down to 4 bytes for other data.
-			_metalFeatures.maxQueryBufferSize = (64 * KIBI);
-			_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
-			_metalFeatures.postDepthCoverage = true;
-			_metalFeatures.renderLinearTextures = true;
-			_metalFeatures.tileBasedDeferredRendering = true;
-			if (supportsMTLGPUFamily(Apple6)) {
-				_metalFeatures.astcHDRTextures = true;
-			}
-			if (supportsMTLGPUFamily(Apple7)) {
-				_metalFeatures.maxQueryBufferSize = (256 * KIBI);
-			}
-		}
-	} else
+	}
 #endif
-	{
+#if MVK_XCODE_13
+	if ( mvkOSVersionIsAtLeast(12.0) ) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_4;
+	}
+#endif
+
+	// This is an Apple GPU--treat it accordingly.
+	if (supportsMTLGPUFamily(Apple1)) {
+		_metalFeatures.mtlCopyBufferAlignment = 1;
+		_metalFeatures.mtlBufferAlignment = 16;     // Min float4 alignment for typical vertex buffers. MTLBuffer may go down to 4 bytes for other data.
+		_metalFeatures.maxQueryBufferSize = (64 * KIBI);
+		_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
+		_metalFeatures.postDepthCoverage = true;
+		_metalFeatures.renderLinearTextures = true;
+		_metalFeatures.tileBasedDeferredRendering = true;
+
+#if MVK_XCODE_12
+		if (supportsMTLGPUFamily(Apple6)) {
+			_metalFeatures.astcHDRTextures = true;
+		}
+		if (supportsMTLGPUFamily(Apple7)) {
+			_metalFeatures.maxQueryBufferSize = (256 * KIBI);
+		}
+#endif
+	}
+
+	// Don't use barriers in render passes on Apple GPUs. Apple GPUs don't support them,
+	// and in fact Metal's validation layer will complain if you try to use them.
+	if ( !supportsMTLGPUFamily(Apple1) ) {
 		if (supportsMTLFeatureSet(macOS_GPUFamily1_v4)) {
 			_metalFeatures.memoryBarriers = true;
 		}
@@ -1604,10 +1646,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	checkSupportsMTLCounterSamplingPoint(Stage, PIPELINE_STAGE);
 #endif
 
-#if !MVK_APPLE_SILICON
+#if MVK_MACOS
 	// On macOS, if we couldn't query supported sample points (on macOS 11),
 	// but the platform can support immediate-mode sample points, indicate that here.
-	if (!_metalFeatures.counterSamplingPoints && mvkOSVersionIsAtLeast(10.15)) {  \
+	if (!_metalFeatures.counterSamplingPoints && mvkOSVersionIsAtLeast(10.15) && !supportsMTLGPUFamily(Apple1)) {  \
 		_metalFeatures.counterSamplingPoints = MVK_COUNTER_SAMPLING_AT_DRAW | MVK_COUNTER_SAMPLING_AT_DISPATCH | MVK_COUNTER_SAMPLING_AT_BLIT;  \
 	}
 #endif
@@ -2062,7 +2104,7 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.optimalBufferCopyRowPitchAlignment = 1;
 
 	_properties.limits.timestampComputeAndGraphics = VK_TRUE;
-	_properties.limits.timestampPeriod = mvkGetTimestampPeriod();
+	_properties.limits.timestampPeriod = _metalFeatures.counterSamplingPoints ? 1.0 : mvkGetTimestampPeriod();
 
     _properties.limits.pointSizeRange[0] = 1;
 	switch (_properties.vendorID) {
@@ -2194,32 +2236,23 @@ static uint32_t mvkGetEntryProperty(io_registry_entry_t entry, CFStringRef prope
 
 void MVKPhysicalDevice::initGPUInfoProperties() {
 
-	bool isFound = false;
-
 	bool isIntegrated = getHasUnifiedMemory();
 	_properties.deviceType = isIntegrated ? VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU : VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 	strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
 
-	if (supportsMTLGPUFamily(Apple5)) {
-		// This is an Apple GPU. It won't have a 'device-id' property, so fill it in
-		// like on iOS/tvOS.
+	// For Apple Silicon, the Device ID is determined by the highest
+	// GPU capability, which is a combination of OS version and GPU type.
+	// We determine Apple Silicon directly from the GPU, instead
+	// of from the build, in case we are running Rosetta2.
+	if (supportsMTLGPUFamily(Apple1)) {
 		_properties.vendorID = kAppleVendorId;
-#if MVK_MACOS_APPLE_SILICON
-		if (supportsMTLGPUFamily(Apple7)) {
-			_properties.deviceID = 0xa140;
-		} else if (supportsMTLGPUFamily(Apple6)) {
-			_properties.deviceID = 0xa130;
-		} else {
-			_properties.deviceID = 0xa120;
-		}
-#else
-		_properties.deviceID = 0xa120;
-#endif
+		_properties.deviceID = getHighestGPUCapability();
 		return;
 	}
 
 	// If the device has an associated registry ID, we can use that to get the associated IOKit node.
 	// The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released.
+	bool isFound = false;
 	io_registry_entry_t entry;
 	uint64_t regID = mvkGetRegistryID(_mtlDevice);
 	if (regID) {
@@ -2261,53 +2294,16 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 
 #endif	//MVK_MACOS
 
-#if MVK_IOS
-
-// For iOS devices, the Device ID is the SoC model (A8, A10X...), in the hex form 0xaMMX, where
-//"a" is the Apple brand, MM is the SoC model number (8, 10...) and X is 1 for X version, 0 for other.
+#if MVK_IOS_OR_TVOS
+// For Apple Silicon, the Device ID is determined by the highest
+// GPU capability, which is a combination of OS version and GPU type.
 void MVKPhysicalDevice::initGPUInfoProperties() {
-	NSUInteger coreCnt = NSProcessInfo.processInfo.processorCount;
-	uint32_t devID = 0xa070;
-#if MVK_XCODE_12
-	if (supportsMTLGPUFamily(Apple7)) {
-		devID = 0xa140;
-	} else
-#endif
-	if (supportsMTLGPUFamily(Apple6)) {
-		devID = 0xa130;
-	} else if (supportsMTLFeatureSet(iOS_GPUFamily5_v1)) {
-		devID = 0xa120;
-	} else if (supportsMTLFeatureSet(iOS_GPUFamily4_v1)) {
-		devID = 0xa110;
-	} else if (supportsMTLFeatureSet(iOS_GPUFamily3_v1)) {
-		devID = coreCnt > 2 ? 0xa101 : 0xa100;
-	} else if (supportsMTLFeatureSet(iOS_GPUFamily2_v1)) {
-		devID = coreCnt > 2 ? 0xa081 : 0xa080;
-	}
-
 	_properties.vendorID = kAppleVendorId;
-	_properties.deviceID = devID;
+	_properties.deviceID = getHighestGPUCapability();
 	_properties.deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
 	strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
 }
-#endif	//MVK_IOS
-
-#if MVK_TVOS
-
-// For tvOS devices, the Device ID is the SoC model (A8, A10X...), in the hex form 0xaMMX, where
-//"a" is the Apple brand, MM is the SoC model number (8, 10...) and X is 1 for X version, 0 for other.
-void MVKPhysicalDevice::initGPUInfoProperties() {
-	uint32_t devID = 0xa080;
-	if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
-		devID = 0xa101;
-	}
-
-  _properties.vendorID = kAppleVendorId;
-  _properties.deviceID = devID;
-  _properties.deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
-  strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
-}
-#endif
+#endif	//MVK_IOS_OR_TVOS
 
 #pragma mark VkPhysicalDeviceLimits - List of feature limits available on the device
 
@@ -2444,10 +2440,10 @@ void MVKPhysicalDevice::initPipelineCacheUUID() {
 	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mvkRev);
 	uuidComponentOffset += sizeof(mvkRev);
 
-	// Next 4 bytes contains highest Metal feature set supported by this device
-	uint32_t mtlFeatSet = getHighestMTLFeatureSet();
-	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatSet);
-	uuidComponentOffset += sizeof(mtlFeatSet);
+	// Next 4 bytes contains highest GPU capability supported by this device
+	uint32_t gpuCap = getHighestGPUCapability();
+	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(gpuCap);
+	uuidComponentOffset += sizeof(gpuCap);
 
 	// Next 4 bytes contains flags based on enabled Metal features that
 	// might affect the contents of the pipeline cache (mostly MSL content).
@@ -2457,37 +2453,38 @@ void MVKPhysicalDevice::initPipelineCacheUUID() {
 	uuidComponentOffset += sizeof(mtlFeatures);
 }
 
-uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
+uint32_t MVKPhysicalDevice::getHighestGPUCapability() {
 
-	// On newer OS's, combine highest Metal version with highest GPU family
-	// (Mac & Apple GPU lists should be mutex on platform)
-	uint32_t mtlVer = 0;
-#if MVK_IOS_OR_TVOS
-	if (mvkOSVersionIsAtLeast(13.0)) { mtlVer = 0x30000; }
-	if (mvkOSVersionIsAtLeast(14.0)) { mtlVer = 0x40000; }
+	// On newer OS's, combine OS version with highest GPU family.
+	// On macOS, Apple GPU fam takes precedence over others.
+	MTLGPUFamily gpuFam = MTLGPUFamily(0);
+	if (supportsMTLGPUFamily(Mac1)) { gpuFam = MTLGPUFamilyMac1; }
+	if (supportsMTLGPUFamily(Mac2)) { gpuFam = MTLGPUFamilyMac2; }
+
+	if (supportsMTLGPUFamily(Apple1)) { gpuFam = MTLGPUFamilyApple1; }
+	if (supportsMTLGPUFamily(Apple2)) { gpuFam = MTLGPUFamilyApple2; }
+	if (supportsMTLGPUFamily(Apple3)) { gpuFam = MTLGPUFamilyApple3; }
+	if (supportsMTLGPUFamily(Apple4)) { gpuFam = MTLGPUFamilyApple4; }
+	if (supportsMTLGPUFamily(Apple5)) { gpuFam = MTLGPUFamilyApple5; }
+#if MVK_IOS || (MVK_MACOS && MVK_XCODE_12)
+	if (supportsMTLGPUFamily(Apple6)) { gpuFam = MTLGPUFamilyApple6; }
 #endif
-#if MVK_MACOS
-	if (mvkOSVersionIsAtLeast(10.15)) { mtlVer = 0x30000; }
-	if (mvkOSVersionIsAtLeast(10.16)) { mtlVer = 0x40000; }
+#if (MVK_IOS || MVK_MACOS) && MVK_XCODE_12
+	if (supportsMTLGPUFamily(Apple7)) { gpuFam = MTLGPUFamilyApple7; }
 #endif
-
-	MTLGPUFamily mtlFam = MTLGPUFamily(0);
-	if (supportsMTLGPUFamily(Mac1)) { mtlFam = MTLGPUFamilyMac1; }
-	if (supportsMTLGPUFamily(Mac2)) { mtlFam = MTLGPUFamilyMac2; }
-
-	if (supportsMTLGPUFamily(Apple1)) { mtlFam = MTLGPUFamilyApple1; }
-	if (supportsMTLGPUFamily(Apple2)) { mtlFam = MTLGPUFamilyApple2; }
-	if (supportsMTLGPUFamily(Apple3)) { mtlFam = MTLGPUFamilyApple3; }
-	if (supportsMTLGPUFamily(Apple4)) { mtlFam = MTLGPUFamilyApple4; }
-	if (supportsMTLGPUFamily(Apple5)) { mtlFam = MTLGPUFamilyApple5; }
-#if MVK_IOS || MVK_MACOS_APPLE_SILICON
-	if (supportsMTLGPUFamily(Apple6)) { mtlFam = MTLGPUFamilyApple6; }
-	if (supportsMTLGPUFamily(Apple7)) { mtlFam = MTLGPUFamilyApple7; }
+#if MVK_IOS && MVK_XCODE_13
+	if (supportsMTLGPUFamily(Apple8)) { gpuFam = MTLGPUFamilyApple8; }
 #endif
 
-	// Not explicitly guaranteed to be unique...but close enough without spilling over
-	uint32_t mtlFS = (mtlVer << 8) + (uint32_t)mtlFam;
-	if (mtlFS) { return mtlFS; }
+	// Combine OS major (8 bits), OS minor (8 bits), and GPU family (16 bits)
+	// into one 32-bit value summarizing highest GPU capability.
+	if (gpuFam) {
+		float fosMaj, fosMin;
+		fosMin = modf(mvkOSVersion(), &fosMaj);
+		uint8_t osMaj = (uint8_t)fosMaj;
+		uint8_t osMin = (uint8_t)(fosMin * 100);
+		return (osMaj << 24) + (osMin << 16) + (uint16_t)gpuFam;
+	}
 
 	// Fall back to legacy feature sets on older OS's
 #if MVK_IOS
@@ -2622,7 +2619,7 @@ void MVKPhysicalDevice::initMemoryProperties() {
 
 	// Memoryless storage
 	uint32_t memlessBit = 0;
-#if MVK_MACOS_APPLE_SILICON
+#if MVK_MACOS
 	if (supportsMTLGPUFamily(Apple5)) {
 		memlessBit = 1 << typeIdx;
 		setMemoryType(typeIdx, mainHeapIdx, MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS);
@@ -2701,9 +2698,16 @@ uint64_t MVKPhysicalDevice::getCurrentAllocatedSize() {
 #endif
 }
 
+// When using argument buffers, Metal imposes a hard limit on the number of MTLSamplerState
+// objects that can be created within the app. When not using argument buffers, no such
+// limit is imposed. This has been verified with testing up to 1M MTLSamplerStates.
 uint32_t MVKPhysicalDevice::getMaxSamplerCount() {
-	return ([_mtlDevice respondsToSelector: @selector(maxArgumentBufferSamplerCount)]
-			? (uint32_t)_mtlDevice.maxArgumentBufferSamplerCount : 1024);
+	if (isUsingMetalArgumentBuffers()) {
+		return ([_mtlDevice respondsToSelector: @selector(maxArgumentBufferSamplerCount)]
+				? (uint32_t)_mtlDevice.maxArgumentBufferSamplerCount : 1024);
+	} else {
+		return kMVKUndefinedLargeUInt32;
+	}
 }
 
 void MVKPhysicalDevice::initExternalMemoryProperties() {
@@ -2808,8 +2812,13 @@ void MVKPhysicalDevice::logGPUInfo() {
 	logMsg += "\n\tsupports the following Metal Versions, GPU's and Feature Sets:";
 	logMsg += "\n\t\tMetal Shading Language %s";
 
-#if MVK_IOS || MVK_MACOS_APPLE_SILICON
+#if MVK_IOS && MVK_XCODE_13
+	if (supportsMTLGPUFamily(Apple8)) { logMsg += "\n\t\tGPU Family Apple 8"; }
+#endif
+#if (MVK_IOS || MVK_MACOS) && MVK_XCODE_12
 	if (supportsMTLGPUFamily(Apple7)) { logMsg += "\n\t\tGPU Family Apple 7"; }
+#endif
+#if MVK_IOS || (MVK_MACOS && MVK_XCODE_12)
 	if (supportsMTLGPUFamily(Apple6)) { logMsg += "\n\t\tGPU Family Apple 6"; }
 #endif
 	if (supportsMTLGPUFamily(Apple5)) { logMsg += "\n\t\tGPU Family Apple 5"; }
@@ -3508,7 +3517,7 @@ void MVKDevice::freeMemory(MVKDeviceMemory* mvkDevMem,
 	if (mvkDevMem) { mvkDevMem->destroy(); }
 }
 
-// Look for an available pre-reserved private data slot and return it's address if found.
+// Look for an available pre-reserved private data slot and return its address if found.
 // Otherwise create a new instance and return it.
 VkResult MVKDevice::createPrivateDataSlot(const VkPrivateDataSlotCreateInfoEXT* pCreateInfo,
 										  const VkAllocationCallbacks* pAllocator,
@@ -4020,9 +4029,12 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 
 	// Decide whether Vulkan semaphores should use a MTLEvent or MTLFence if they are available.
 	// Prefer MTLEvent, because MTLEvent handles sync across MTLCommandBuffers and MTLCommandQueues.
-	// However, do not allow use of MTLEvents on NVIDIA GPUs, which have demonstrated trouble with MTLEvents.
-	// Since MTLFence config is disabled by default, emulation will be used on NVIDIA unless MTLFence is enabled.
-	bool canUseMTLEventForSem4 = _pMetalFeatures->events && mvkConfig().semaphoreUseMTLEvent && (_pProperties->vendorID != kNVVendorId);
+	// However, do not allow use of MTLEvents on Rosetta2 (x86 build on M1 runtime) or NVIDIA GPUs,
+	// which have demonstrated trouble with MTLEvents. In that case, since MTLFence use is disabled
+	// by default, unless MTLFence is deliberately enabled, CPU emulation will be used.
+	bool isNVIDIA = _pProperties->vendorID == kNVVendorId;
+	bool isRosetta2 = _pProperties->vendorID == kAppleVendorId && !MVK_APPLE_SILICON;
+	bool canUseMTLEventForSem4 = _pMetalFeatures->events && mvkConfig().semaphoreUseMTLEvent && !(isRosetta2 || isNVIDIA);
 	bool canUseMTLFenceForSem4 = _pMetalFeatures->fences && mvkConfig().semaphoreUseMTLFence;
 	_vkSemaphoreStyle = canUseMTLEventForSem4 ? VkSemaphoreStyleUseMTLEvent : (canUseMTLFenceForSem4 ? VkSemaphoreStyleUseMTLFence : VkSemaphoreStyleUseEmulation);
 	switch (_vkSemaphoreStyle) {
