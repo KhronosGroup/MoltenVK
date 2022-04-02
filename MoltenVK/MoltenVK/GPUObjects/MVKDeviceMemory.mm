@@ -1,7 +1,7 @@
 /*
  * MVKDeviceMemory.mm
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -283,6 +283,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 
 	_allocationSize = pAllocateInfo->allocationSize;
 
+	bool willExportMTLBuffer = false;
 	VkImage dedicatedImage = VK_NULL_HANDLE;
 	VkBuffer dedicatedBuffer = VK_NULL_HANDLE;
 	VkExternalMemoryHandleTypeFlags handleTypes = 0;
@@ -298,6 +299,22 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 			case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO: {
 				auto* pExpMemInfo = (VkExportMemoryAllocateInfo*)next;
 				handleTypes = pExpMemInfo->handleTypes;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_IMPORT_METAL_BUFFER_INFO_EXT: {
+				// Setting Metal objects directly will override Vulkan settings.
+				// It is responsibility of app to ensure these are consistent. Not doing so results in undefined behavior.
+				const auto* pMTLBuffInfo = (VkImportMetalBufferInfoEXT*)next;
+				[_mtlBuffer release];							// guard against dups
+				_mtlBuffer = [pMTLBuffInfo->mtlBuffer retain];	// retained
+				_mtlStorageMode = _mtlBuffer.storageMode;
+				_mtlCPUCacheMode = _mtlBuffer.cpuCacheMode;
+				_allocationSize = _mtlBuffer.length;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_EXPORT_METAL_OBJECT_CREATE_INFO_EXT: {
+				const auto* pExportInfo = (VkExportMetalObjectCreateInfoEXT*)next;
+				willExportMTLBuffer = mvkIsAnyFlagEnabled(pExportInfo->exportObjectTypes, VK_EXPORT_METAL_OBJECT_TYPE_METAL_BUFFER_BIT_EXT);
 				break;
 			}
 			default:
@@ -344,8 +361,9 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 	}
 
 	// If memory needs to be coherent it must reside in an MTLBuffer, since an open-ended map() must work.
-	if (isMemoryHostCoherent() && !ensureMTLBuffer() ) {
-		setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate a host-coherent VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize));
+	// Or if a MTLBuffer will be exported, ensure it exists.
+	if ((isMemoryHostCoherent() || willExportMTLBuffer) && !ensureMTLBuffer() ) {
+		setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate a host-coherent or exportable VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize));
 	}
 }
 

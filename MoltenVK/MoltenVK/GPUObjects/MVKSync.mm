@@ -1,7 +1,7 @@
 /*
  * MVKSync.mm
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -211,11 +211,21 @@ void MVKTimelineSemaphoreMTLEvent::unregisterWait(MVKFenceSitter* sitter) {
 	_sitters.erase(sitter);
 }
 
-MVKTimelineSemaphoreMTLEvent::MVKTimelineSemaphoreMTLEvent(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo, const VkSemaphoreTypeCreateInfo* pTypeCreateInfo) :
-	MVKTimelineSemaphore(device, pCreateInfo, pTypeCreateInfo),
-	_mtlEvent([device->getMTLDevice() newSharedEvent]) { 	//retained
+MVKTimelineSemaphoreMTLEvent::MVKTimelineSemaphoreMTLEvent(MVKDevice* device,
+														   const VkSemaphoreCreateInfo* pCreateInfo,
+														   const VkSemaphoreTypeCreateInfo* pTypeCreateInfo,
+														   const VkExportMetalObjectCreateInfoEXT* pExportInfo,
+														   const VkImportMetalSharedEventInfoEXT* pImportInfo) :
+	MVKTimelineSemaphore(device, pCreateInfo, pTypeCreateInfo, pExportInfo, pImportInfo) {
 
-	_mtlEvent.signaledValue = pTypeCreateInfo->initialValue;
+	// Import or create a Metal event
+	_mtlEvent = (pImportInfo
+				 ? [pImportInfo->mtlSharedEvent retain]
+				 : [device->getMTLDevice() newSharedEvent]);	//retained
+
+	if (pTypeCreateInfo) {
+		_mtlEvent.signaledValue = pTypeCreateInfo->initialValue;
+	}
 }
 
 MVKTimelineSemaphoreMTLEvent::~MVKTimelineSemaphoreMTLEvent() {
@@ -284,9 +294,18 @@ void MVKTimelineSemaphoreEmulated::unregisterWait(MVKFenceSitter* sitter) {
 	for (auto value : emptySets) { _sitters.erase(value); }
 }
 
-MVKTimelineSemaphoreEmulated::MVKTimelineSemaphoreEmulated(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo, const VkSemaphoreTypeCreateInfo* pTypeCreateInfo) :
-	MVKTimelineSemaphore(device, pCreateInfo, pTypeCreateInfo),
-	_value(pTypeCreateInfo->initialValue) {}
+MVKTimelineSemaphoreEmulated::MVKTimelineSemaphoreEmulated(MVKDevice* device,
+														   const VkSemaphoreCreateInfo* pCreateInfo,
+														   const VkSemaphoreTypeCreateInfo* pTypeCreateInfo,
+														   const VkExportMetalObjectCreateInfoEXT* pExportInfo,
+														   const VkImportMetalSharedEventInfoEXT* pImportInfo) :
+	MVKTimelineSemaphore(device, pCreateInfo, pTypeCreateInfo, pExportInfo, pImportInfo),
+	_value(pTypeCreateInfo ? pTypeCreateInfo->initialValue : 0) {
+
+	if (pExportInfo && mvkIsAnyFlagEnabled(pExportInfo->exportObjectTypes, VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT)) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkCreateEvent(): MTLSharedEvent is not available on this platform."));
+	}
+}
 
 
 #pragma mark -
@@ -375,8 +394,16 @@ void MVKEventNative::encodeWait(id<MTLCommandBuffer> mtlCmdBuff) {
 	}
 }
 
-MVKEventNative::MVKEventNative(MVKDevice* device, const VkEventCreateInfo* pCreateInfo) : MVKEvent(device, pCreateInfo) {
-	_mtlEvent = [_device->getMTLDevice() newSharedEvent];	// retained
+MVKEventNative::MVKEventNative(MVKDevice* device,
+							   const VkEventCreateInfo* pCreateInfo,
+							   const VkExportMetalObjectCreateInfoEXT* pExportInfo,
+							   const VkImportMetalSharedEventInfoEXT* pImportInfo) :
+	MVKEvent(device, pCreateInfo, pExportInfo, pImportInfo) {
+
+	// Import or create a Metal event
+	_mtlEvent = (pImportInfo
+				 ? [pImportInfo->mtlSharedEvent retain]
+				 : [device->getMTLDevice() newSharedEvent]);	//retained
 }
 
 MVKEventNative::~MVKEventNative() {
@@ -421,8 +448,16 @@ void MVKEventEmulated::encodeWait(id<MTLCommandBuffer> mtlCmdBuff) {
 	}
 }
 
-MVKEventEmulated::MVKEventEmulated(MVKDevice* device, const VkEventCreateInfo* pCreateInfo) :
-	MVKEvent(device, pCreateInfo), _blocker(false, 1), _inlineSignalStatus(false) {}
+MVKEventEmulated::MVKEventEmulated(MVKDevice* device,
+								   const VkEventCreateInfo* pCreateInfo,
+								   const VkExportMetalObjectCreateInfoEXT* pExportInfo,
+								   const VkImportMetalSharedEventInfoEXT* pImportInfo) :
+	MVKEvent(device, pCreateInfo, pExportInfo, pImportInfo), _blocker(false, 1), _inlineSignalStatus(false) {
+
+	if (pExportInfo && mvkIsAnyFlagEnabled(pExportInfo->exportObjectTypes, VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT)) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkCreateEvent(): MTLSharedEvent is not available on this platform."));
+	}
+}
 
 
 #pragma mark -

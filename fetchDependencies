@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2016-2021 The Brenwill Workshop Ltd.
+# Copyright (c) 2016-2022 The Brenwill Workshop Ltd.
 #
 # fetchDependencies - Retrieves the correct versions of all dependencies
 #

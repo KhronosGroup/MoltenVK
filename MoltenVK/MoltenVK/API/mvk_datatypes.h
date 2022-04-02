@@ -1,7 +1,7 @@
 /*
  * mvk_datatypes.h
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -321,7 +321,7 @@ typedef enum {
 	kMVKShaderStageFragment,
 	kMVKShaderStageCompute,
 	kMVKShaderStageCount,
-	kMVKShaderStageMax = kMVKShaderStageCount	// Pubic API legacy value
+	kMVKShaderStageMax = kMVKShaderStageCount	// Public API legacy value
 } MVKShaderStage;
 
 /** Returns the Metal MTLColorWriteMask corresponding to the specified Vulkan VkColorComponentFlags. */

@@ -1,7 +1,7 @@
 /*
  * OSSupport.mm
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,6 +71,11 @@ bool mvk::compile(const string& mslSourceCode,
 #define mslVer(MJ, MN, PT)	mslVersionMajor == MJ && mslVersionMinor == MN && mslVersionPoint == PT
 
 	MTLLanguageVersion mslVerEnum = (MTLLanguageVersion)0;
+#if MVK_XCODE_13
+	if (mslVer(2, 4, 0)) {
+		mslVerEnum = MTLLanguageVersion2_4;
+	} else
+#endif
 #if MVK_XCODE_12
 	if (mslVer(2, 3, 0)) {
 		mslVerEnum = MTLLanguageVersion2_3;
@@ -95,12 +100,18 @@ bool mvk::compile(const string& mslSourceCode,
 	}
 
 	@autoreleasepool {
+		NSArray* mtlDevs = [MTLCopyAllDevices() autorelease];
+		if (mtlDevs.count == 0) {
+			errMsg = "Could not retrieve MTLDevice to compile shader.";
+			return false;
+		}
+
 		MTLCompileOptions* mtlCompileOptions  = [[MTLCompileOptions new] autorelease];
 		mtlCompileOptions.languageVersion = mslVerEnum;
 		NSError* err = nil;
-		id<MTLLibrary> mtlLib = [[MTLCreateSystemDefaultDevice() newLibraryWithSource: @(mslSourceCode.c_str())
-																			  options: mtlCompileOptions
-																				error: &err] autorelease];
+		id<MTLLibrary> mtlLib = [[mtlDevs[0] newLibraryWithSource: @(mslSourceCode.c_str())
+														  options: mtlCompileOptions
+															error: &err] autorelease];
 		errMsg = err ? [NSString stringWithFormat: @"(Error code %li):\n%@", (long)err.code, err.localizedDescription].UTF8String : "";
 		return !!mtlLib;
 	}

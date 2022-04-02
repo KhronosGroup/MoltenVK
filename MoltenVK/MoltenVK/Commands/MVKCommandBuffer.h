@@ -1,7 +1,7 @@
 /*
  * MVKCommandBuffer.h
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@
 #include <unordered_map>
 
 class MVKCommandPool;
-class MVKQueue;
 class MVKQueueCommandBufferSubmission;
 class MVKCommandEncoder;
 class MVKCommandEncodingPool;
@@ -283,8 +282,7 @@ public:
 	void beginRenderpass(MVKCommand* passCmd,
 						 VkSubpassContents subpassContents,
 						 MVKRenderPass* renderPass,
-						 VkExtent2D framebufferExtent,
-						 uint32_t framebufferLayerCount,
+						 MVKFramebuffer* framebuffer,
 						 VkRect2D& renderArea,
 						 MVKArrayRef<VkClearValue> clearValues,
 						 MVKArrayRef<MVKImageView*> attachments);
@@ -306,6 +304,12 @@ public:
 
 	/** Returns the render subpass that is currently active. */
 	MVKRenderSubpass* getSubpass();
+
+	/** The extent of current framebuffer.*/
+	VkExtent2D getFramebufferExtent();
+
+	/** The layer count of current framebuffer.*/
+	uint32_t getFramebufferLayerCount();
 
 	/** Returns the index of the currently active multiview subpass, or zero if the current render pass is not multiview. */
 	uint32_t getMultiviewPassIndex();
@@ -483,17 +487,9 @@ public:
 	/** Indicates whether the current draw is an indexed draw. */
 	bool _isIndexedDraw;
 
-	/** The extent of current framebuffer.*/
-	VkExtent2D _framebufferExtent;
-
-	/** The layer count of current framebuffer.*/
-	uint32_t _framebufferLayerCount;
-
 #pragma mark Construction
 
 	MVKCommandEncoder(MVKCommandBuffer* cmdBuffer);
-
-	~MVKCommandEncoder() override;
 
 protected:
     void addActivatedQueries(MVKQueryPool* pQueryPool, uint32_t query, uint32_t queryCount);
@@ -513,6 +509,7 @@ protected:
 
 	VkSubpassContents _subpassContents;
 	MVKRenderPass* _renderPass;
+	MVKFramebuffer* _framebuffer;
 	MVKCommand* _lastMultiviewPassCmd;
 	uint32_t _renderSubpassIndex;
 	uint32_t _multiviewPassIndex;

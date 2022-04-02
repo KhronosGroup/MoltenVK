@@ -1,7 +1,7 @@
 /*
  * MVKBuffer.h
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,6 +87,8 @@ public:
 
 	~MVKBuffer() override;
 
+	void destroy() override;
+
 protected:
 	friend class MVKDeviceMemory;
 
@@ -99,6 +101,7 @@ protected:
 	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
 	VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);
 	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
+	void detachMemory();
 
 	VkBufferUsageFlags _usage;
 	bool _isHostCoherentTexelBuffer = false;
@@ -133,8 +136,11 @@ public:
 
     ~MVKBufferView() override;
 
+	void destroy() override;
+
 protected:
 	void propagateDebugName() override;
+	void detachMemory();
 
     MVKBuffer* _buffer;
     NSUInteger _offset;

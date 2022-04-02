@@ -1,7 +1,7 @@
 /*
  * MVKCommonEnvironment.h
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -100,6 +100,10 @@ extern "C" {
 /** Directive to identify public symbols. */
 #define MVK_PUBLIC_SYMBOL        	__attribute__((visibility("default")))
 
+
+/** Directive to make a public alias of another symbol. */
+#define MVK_PUBLIC_ALIAS(ALIAS, TARGET)   asm(".globl _" #ALIAS "\n\t_" #ALIAS " = _" #TARGET)
+
 /**
  * Directives to hide public symbols from the Vulkan API, to avoid library linking
  * conflicts when bound to a Vulkan Loader that also exports identical symbols.
@@ -109,12 +113,11 @@ extern "C" {
 #endif
 #if MVK_HIDE_VULKAN_SYMBOLS
 #	define MVK_PUBLIC_VULKAN_SYMBOL
+#	define MVK_PUBLIC_VULKAN_ALIAS(ALIAS, TARGET)
 #else
 #	define MVK_PUBLIC_VULKAN_SYMBOL		MVK_PUBLIC_SYMBOL
+#	define MVK_PUBLIC_VULKAN_ALIAS(ALIAS, TARGET)	MVK_PUBLIC_ALIAS(ALIAS, TARGET)
 #endif
-
-/** Directive to make a public alias of another symbol. */
-#define MVK_PUBLIC_ALIAS(ALIAS, TARGET)   asm(".globl _" #ALIAS "\n\t_" #ALIAS " = _" #TARGET)
 
 
 #ifdef __cplusplus

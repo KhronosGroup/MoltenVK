@@ -1,7 +1,7 @@
 /*
  * MVKPixelFormats.mm
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -472,6 +472,8 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 				// For normalized formats, increment the clear value by half the ULP
 				// (i.e. 1/(2*(2**component_size - 1))), to force Metal to round up.
 				// This should fix some problems with clear values being off by one ULP on some platforms.
+				// This adjustment is not performed on SRGB formats, which Vulkan
+				// requires to be treated as linear, with the value managed by the app.
 #define OFFSET_NORM(MIN_VAL, COLOR, BIT_WIDTH)  \
 	if (mtlClr.COLOR > (MIN_VAL) && mtlClr.COLOR < 1.0) {  \
 		mtlClr.COLOR += 1.0 / (2.0 * ((1U << (BIT_WIDTH)) - 1));  \
@@ -497,14 +499,12 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 						OFFSET_UNORM(blue, 5)
 						break;
 					case VK_FORMAT_R8_UNORM:
-					case VK_FORMAT_R8_SRGB:
 						OFFSET_UNORM(red, 8)
 						break;
 					case VK_FORMAT_R8_SNORM:
 						OFFSET_SNORM(red, 8)
 						break;
 					case VK_FORMAT_R8G8_UNORM:
-					case VK_FORMAT_R8G8_SRGB:
 						OFFSET_UNORM(red, 8)
 						OFFSET_UNORM(green, 8)
 						break;
@@ -513,11 +513,8 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 						OFFSET_SNORM(green, 8)
 						break;
 					case VK_FORMAT_R8G8B8A8_UNORM:
-					case VK_FORMAT_R8G8B8A8_SRGB:
 					case VK_FORMAT_B8G8R8A8_UNORM:
-					case VK_FORMAT_B8G8R8A8_SRGB:
 					case VK_FORMAT_A8B8G8R8_UNORM_PACK32:
-					case VK_FORMAT_A8B8G8R8_SRGB_PACK32:
 						OFFSET_UNORM(red, 8)
 						OFFSET_UNORM(green, 8)
 						OFFSET_UNORM(blue, 8)

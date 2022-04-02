@@ -1,7 +1,7 @@
 /*
  * MVKRenderPass.mm
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -196,8 +196,7 @@ uint32_t MVKRenderSubpass::getViewCountUpToMetalPass(uint32_t passIdx) const {
 
 void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* mtlRPDesc,
 													   uint32_t passIdx,
-													   VkExtent2D framebufferExtent,
-													   uint32_t framebufferLayerCount,
+													   MVKFramebuffer* framebuffer,
 													   const MVKArrayRef<MVKImageView*> attachments,
 													   const MVKArrayRef<VkClearValue> clearValues,
 													   bool isRenderingEntireAttachment,
@@ -238,13 +237,8 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 
             // Configure the color attachment
             MVKRenderPassAttachment* clrMVKRPAtt = &_renderPass->_attachments[clrRPAttIdx];
-			attachments[clrRPAttIdx]->populateMTLRenderPassAttachmentDescriptor(mtlColorAttDesc);
-			bool isMemorylessAttachment = false;
-#if MVK_APPLE_SILICON
-			isMemorylessAttachment = attachments[clrRPAttIdx]->getMTLTexture(0).storageMode == MTLStorageModeMemoryless;
-#endif
-			if (clrMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlColorAttDesc, this,
-                                                                       isRenderingEntireAttachment, isMemorylessAttachment,
+			if (clrMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlColorAttDesc, this, attachments[clrRPAttIdx],
+                                                                       isRenderingEntireAttachment,
                                                                        hasResolveAttachment, canResolveFormat,
 																	   false, loadOverride)) {
 				mtlColorAttDesc.clearColor = pixFmts->getMTLClearColor(clearValues[clrRPAttIdx], clrMVKRPAtt->getFormat());
@@ -282,13 +276,8 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 					mtlDepthAttDesc.resolveSlice += getFirstViewIndexInMetalPass(passIdx);
 				}
 			}
-			dsImage->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc);
-			bool isMemorylessAttachment = false;
-#if MVK_APPLE_SILICON
-			isMemorylessAttachment = dsImage->getMTLTexture(0).storageMode == MTLStorageModeMemoryless;
-#endif
-			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc, this,
-                                                                      isRenderingEntireAttachment, isMemorylessAttachment,
+			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc, this, dsImage,
+                                                                      isRenderingEntireAttachment,
                                                                       hasResolveAttachment, true,
 																	  false, loadOverride)) {
                 mtlDepthAttDesc.clearDepth = pixFmts->getMTLClearDepthValue(clearValues[dsRPAttIdx]);
@@ -309,13 +298,8 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 					mtlStencilAttDesc.resolveSlice += getFirstViewIndexInMetalPass(passIdx);
 				}
 			}
-			dsImage->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc);
-			bool isMemorylessAttachment = false;
-#if MVK_APPLE_SILICON
-			isMemorylessAttachment = dsImage->getMTLTexture(0).storageMode == MTLStorageModeMemoryless;
-#endif
-			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc, this,
-                                                                      isRenderingEntireAttachment, isMemorylessAttachment,
+			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc, this, dsImage,
+                                                                      isRenderingEntireAttachment,
                                                                       hasResolveAttachment, true,
 																	  true, loadOverride)) {
 				mtlStencilAttDesc.clearStencil = pixFmts->getMTLClearStencilValue(clearValues[dsRPAttIdx]);
@@ -326,67 +310,22 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 		}
 	}
 
-	_mtlDummyTex = nil;
+	// Vulkan supports rendering without attachments, but older Metal does not.
+	// If Metal does not support rendering without attachments, create a dummy attachment to pass Metal validation.
 	if (caUsedCnt == 0 && dsRPAttIdx == VK_ATTACHMENT_UNUSED) {
-		uint32_t sampleCount = mvkSampleCountFromVkSampleCountFlagBits(_defaultSampleCount);
         if (_renderPass->getDevice()->_pMetalFeatures->renderWithoutAttachments) {
-            // We support having no attachments.
 #if MVK_MACOS_OR_IOS
-            mtlRPDesc.defaultRasterSampleCount = sampleCount;
+            mtlRPDesc.defaultRasterSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_defaultSampleCount);
 #endif
-            return;
-        }
-
-		// Add a dummy attachment so this passes validation.
-		VkExtent2D fbExtent = framebufferExtent;
-		MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatR8Unorm width: fbExtent.width height: fbExtent.height mipmapped: NO];
-		if (isMultiview()) {
-#if MVK_MACOS_OR_IOS
-			if (sampleCount > 1 && _renderPass->getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
-				mtlTexDesc.textureType = MTLTextureType2DMultisampleArray;
-				mtlTexDesc.sampleCount = sampleCount;
-			} else {
-				mtlTexDesc.textureType = MTLTextureType2DArray;
-			}
-#else
-			mtlTexDesc.textureType = MTLTextureType2DArray;
-#endif
-			mtlTexDesc.arrayLength = getViewCountInMetalPass(passIdx);
-		} else if (framebufferLayerCount > 1) {
-#if MVK_MACOS
-			if (sampleCount > 1 && _renderPass->getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
-				mtlTexDesc.textureType = MTLTextureType2DMultisampleArray;
-				mtlTexDesc.sampleCount = sampleCount;
-			} else {
-				mtlTexDesc.textureType = MTLTextureType2DArray;
-			}
-#else
-			mtlTexDesc.textureType = MTLTextureType2DArray;
-#endif
-			mtlTexDesc.arrayLength = framebufferLayerCount;
-		} else if (sampleCount > 1) {
-			mtlTexDesc.textureType = MTLTextureType2DMultisample;
-			mtlTexDesc.sampleCount = sampleCount;
-		}
-#if MVK_IOS
-		if ([_renderPass->getMTLDevice() supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3]) {
-			mtlTexDesc.storageMode = MTLStorageModeMemoryless;
 		} else {
-			mtlTexDesc.storageMode = MTLStorageModePrivate;
+			MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = mtlRPDesc.colorAttachments[0];
+			mtlColorAttDesc.texture = framebuffer->getDummyAttachmentMTLTexture(this, passIdx);
+			mtlColorAttDesc.level = 0;
+			mtlColorAttDesc.slice = 0;
+			mtlColorAttDesc.depthPlane = 0;
+			mtlColorAttDesc.loadAction = MTLLoadActionDontCare;
+			mtlColorAttDesc.storeAction = MTLStoreActionDontCare;
 		}
-#else
-		mtlTexDesc.storageMode = MTLStorageModePrivate;
-#endif
-		mtlTexDesc.usage = MTLTextureUsageRenderTarget;
-		_mtlDummyTex = [_renderPass->getMTLDevice() newTextureWithDescriptor: mtlTexDesc];  // not retained
-		[_mtlDummyTex setPurgeableState: MTLPurgeableStateVolatile];
-		MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = mtlRPDesc.colorAttachments[0];
-		mtlColorAttDesc.texture = _mtlDummyTex;
-		mtlColorAttDesc.level = 0;
-		mtlColorAttDesc.slice = 0;
-		mtlColorAttDesc.depthPlane = 0;
-		mtlColorAttDesc.loadAction = MTLLoadActionDontCare;
-		mtlColorAttDesc.storeAction = MTLStoreActionDontCare;
 	}
 }
 
@@ -405,11 +344,7 @@ void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
 			uint32_t rslvRPAttIdx = _resolveAttachments.empty() ? VK_ATTACHMENT_UNUSED : _resolveAttachments[caIdx].attachment;
 			bool hasResolveAttachment = (rslvRPAttIdx != VK_ATTACHMENT_UNUSED);
 			bool canResolveFormat = hasResolveAttachment && mvkAreAllFlagsEnabled(pixFmts->getCapabilities(attachments[rslvRPAttIdx]->getMTLPixelFormat()), kMVKMTLFmtCapsResolve);
-			bool isMemorylessAttachment = false;
-#if MVK_APPLE_SILICON
-			isMemorylessAttachment = attachments[clrRPAttIdx]->getMTLTexture(0).storageMode == MTLStorageModeMemoryless;
-#endif
-			_renderPass->_attachments[clrRPAttIdx].encodeStoreAction(cmdEncoder, this, isRenderingEntireAttachment, isMemorylessAttachment, hasResolveAttachment, canResolveFormat, caIdx, false, storeOverride);
+			_renderPass->_attachments[clrRPAttIdx].encodeStoreAction(cmdEncoder, this, attachments[clrRPAttIdx], isRenderingEntireAttachment, hasResolveAttachment, canResolveFormat, caIdx, false, storeOverride);
         }
     }
     uint32_t dsRPAttIdx = _depthStencilAttachment.attachment;
@@ -418,12 +353,8 @@ void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
         bool hasDepthResolveAttachment = hasResolveAttachment && _depthResolveMode != VK_RESOLVE_MODE_NONE;
         bool hasStencilResolveAttachment = hasResolveAttachment && _stencilResolveMode != VK_RESOLVE_MODE_NONE;
 		bool canResolveFormat = true;
-		bool isMemorylessAttachment = false;
-#if MVK_APPLE_SILICON
-		isMemorylessAttachment = attachments[dsRPAttIdx]->getMTLTexture(0).storageMode == MTLStorageModeMemoryless;
-#endif
-        _renderPass->_attachments[dsRPAttIdx].encodeStoreAction(cmdEncoder, this, isRenderingEntireAttachment, isMemorylessAttachment, hasDepthResolveAttachment, canResolveFormat, 0, false, storeOverride);
-        _renderPass->_attachments[dsRPAttIdx].encodeStoreAction(cmdEncoder, this, isRenderingEntireAttachment, isMemorylessAttachment, hasStencilResolveAttachment, canResolveFormat, 0, true, storeOverride);
+        _renderPass->_attachments[dsRPAttIdx].encodeStoreAction(cmdEncoder, this, attachments[dsRPAttIdx], isRenderingEntireAttachment, hasDepthResolveAttachment, canResolveFormat, 0, false, storeOverride);
+        _renderPass->_attachments[dsRPAttIdx].encodeStoreAction(cmdEncoder, this, attachments[dsRPAttIdx], isRenderingEntireAttachment, hasStencilResolveAttachment, canResolveFormat, 0, true, storeOverride);
     }
 }
 
@@ -656,13 +587,21 @@ VkSampleCountFlagBits MVKRenderPassAttachment::getSampleCount() { return _info.s
 
 bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc,
                                                                         MVKRenderSubpass* subpass,
+																		MVKImageView* attachment,
                                                                         bool isRenderingEntireAttachment,
-																		bool isMemorylessAttachment,
 																		bool hasResolveAttachment,
 																		bool canResolveFormat,
                                                                         bool isStencil,
                                                                         bool loadOverride) {
-    // Only allow clearing of entire attachment if we're actually
+	// Populate from the attachment image view
+	attachment->populateMTLRenderPassAttachmentDescriptor(mtlAttDesc);
+
+	bool isMemorylessAttachment = false;
+#if MVK_APPLE_SILICON
+	isMemorylessAttachment = attachment->getMTLTexture().storageMode == MTLStorageModeMemoryless;
+#endif
+
+	// Only allow clearing of entire attachment if we're actually
 	// rendering to the entire attachment AND we're in the first subpass.
 	MTLLoadAction mtlLA;
 	if (loadOverride || !isRenderingEntireAttachment || !isFirstUseOfAttachment(subpass)) {
@@ -683,27 +622,45 @@ bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRende
     if ( _renderPass->getDevice()->_pMetalFeatures->deferredStoreActions ) {
         mtlAttDesc.storeAction = MTLStoreActionUnknown;
     } else {
-        mtlAttDesc.storeAction = getMTLStoreAction(subpass, isRenderingEntireAttachment, isMemorylessAttachment, hasResolveAttachment, canResolveFormat, isStencil, false);
+		// For a combined depth-stencil format in an attachment with VK_IMAGE_ASPECT_STENCIL_BIT,
+		// the attachment format may have been swizzled to a stencil-only format. In this case,
+		// we want to guard against an attempt to store the non-existent depth component.
+		MTLPixelFormat mtlFmt = attachment->getMTLPixelFormat();
+		MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
+		bool isDepthFormat = pixFmts->isDepthFormat(mtlFmt);
+		bool isStencilFormat = pixFmts->isStencilFormat(mtlFmt);
+		if (isStencilFormat && !isStencil && !isDepthFormat) {
+			mtlAttDesc.storeAction = MTLStoreActionDontCare;
+		} else {
+			mtlAttDesc.storeAction = getMTLStoreAction(subpass, isRenderingEntireAttachment, isMemorylessAttachment, hasResolveAttachment, canResolveFormat, isStencil, false);
+		}
     }
     return (mtlLA == MTLLoadActionClear);
 }
 
 void MVKRenderPassAttachment::encodeStoreAction(MVKCommandEncoder* cmdEncoder,
                                                 MVKRenderSubpass* subpass,
+												MVKImageView* attachment,
                                                 bool isRenderingEntireAttachment,
-												bool isMemorylessAttachment,
 												bool hasResolveAttachment,
 												bool canResolveFormat,
                                                 uint32_t caIdx,
                                                 bool isStencil,
                                                 bool storeOverride) {
-    MTLStoreAction storeAction = getMTLStoreAction(subpass, isRenderingEntireAttachment, isMemorylessAttachment, hasResolveAttachment, canResolveFormat, isStencil, storeOverride);
-    MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
-
-	MTLPixelFormat mtlFmt = pixFmts->getMTLPixelFormat(_info.format);
+	// For a combined depth-stencil format in an attachment with VK_IMAGE_ASPECT_STENCIL_BIT,
+	// the attachment format may have been swizzled to a stencil-only format. In this case,
+	// we want to guard against an attempt to store the non-existent depth component.
+	MTLPixelFormat mtlFmt = attachment->getMTLPixelFormat();
+	MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
 	bool isDepthFormat = pixFmts->isDepthFormat(mtlFmt);
 	bool isStencilFormat = pixFmts->isStencilFormat(mtlFmt);
 	bool isColorFormat = !(isDepthFormat || isStencilFormat);
+
+	bool isMemorylessAttachment = false;
+#if MVK_APPLE_SILICON
+	isMemorylessAttachment = attachment->getMTLTexture().storageMode == MTLStorageModeMemoryless;
+#endif
+	MTLStoreAction storeAction = getMTLStoreAction(subpass, isRenderingEntireAttachment, isMemorylessAttachment, hasResolveAttachment, canResolveFormat, isStencil, storeOverride);
 
 	if (isColorFormat) {
 		[cmdEncoder->_mtlRenderEncoder setColorStoreAction: storeAction atIndex: caIdx];
@@ -852,14 +809,12 @@ MVKRenderPassAttachment::MVKRenderPassAttachment(MVKRenderPass* renderPass,
 #pragma mark MVKRenderPass
 
 VkExtent2D MVKRenderPass::getRenderAreaGranularity() {
-#if MVK_APPLE_SILICON
     if (_device->_pMetalFeatures->tileBasedDeferredRendering) {
         // This is the tile area.
         // FIXME: We really ought to use MTLRenderCommandEncoder.tile{Width,Height}, but that requires
         // creating a command buffer.
         return { 32, 32 };
     }
-#endif
     return { 1, 1 };
 }
 

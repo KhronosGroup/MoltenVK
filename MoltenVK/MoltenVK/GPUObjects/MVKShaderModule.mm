@@ -1,7 +1,7 @@
 /*
  * MVKShaderModule.mm
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,8 +37,10 @@ MVKMTLFunction::MVKMTLFunction(const MVKMTLFunction& other) {
 }
 
 MVKMTLFunction& MVKMTLFunction::operator=(const MVKMTLFunction& other) {
-	[_mtlFunction release];
-	_mtlFunction = [other._mtlFunction retain];		// retained
+	if (_mtlFunction != other._mtlFunction) {
+		[_mtlFunction release];
+		_mtlFunction = [other._mtlFunction retain];		// retained
+	}
 	shaderConversionResults = other.shaderConversionResults;
 	threadGroupSize = other.threadGroupSize;
 	return *this;
@@ -179,9 +181,11 @@ MVKShaderLibrary::MVKShaderLibrary(const MVKShaderLibrary& other) {
 }
 
 MVKShaderLibrary& MVKShaderLibrary::operator=(const MVKShaderLibrary& other) {
-	[_mtlLibrary release];
+	if (_mtlLibrary != other._mtlLibrary) {
+		[_mtlLibrary release];
+		_mtlLibrary = [other._mtlLibrary retain];
+	}
 	_owner = other._owner;
-	_mtlLibrary = [other._mtlLibrary retain];
 	_shaderConversionResults = other._shaderConversionResults;
 	_msl = other._msl;
 	return *this;

@@ -1,7 +1,7 @@
 /*
  * MVKFramebuffer.h
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,9 @@
 #include "MVKDevice.h"
 #include "MVKImage.h"
 #include "MVKSmallVector.h"
+#include <mutex>
+
+class MVKRenderSubpass;
 
 
 #pragma mark MVKFramebuffer
@@ -45,16 +48,25 @@ public:
 	/** Returns the attachments.  */
 	MVKArrayRef<MVKImageView*> getAttachments() { return _attachments.contents(); }
 
+	/**
+	 * Returns a MTLTexture for use as a dummy texture when a render subpass,
+	 * that is compatible with the specified subpass, has no attachments.
+	 */
+	id<MTLTexture> getDummyAttachmentMTLTexture(MVKRenderSubpass* subpass, uint32_t passIdx);
+
 #pragma mark Construction
 
-	/** Constructs an instance for the specified device. */
 	MVKFramebuffer(MVKDevice* device, const VkFramebufferCreateInfo* pCreateInfo);
+
+	~MVKFramebuffer() override;
 
 protected:
 	void propagateDebugName() override {}
 
+	MVKSmallVector<MVKImageView*, 4> _attachments;
+	id<MTLTexture> _mtlDummyTex = nil;
+	std::mutex _lock;
 	VkExtent2D _extent;
 	uint32_t _layerCount;
-	MVKSmallVector<MVKImageView*, 4> _attachments;
 };
 

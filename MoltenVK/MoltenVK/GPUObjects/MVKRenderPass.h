@@ -1,7 +1,7 @@
 /*
  * MVKRenderPass.h
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -76,6 +76,9 @@ public:
 	/** Returns the Vulkan sample count of the attachments used in this subpass. */
 	VkSampleCountFlagBits getSampleCount();
 
+	/** Returns the default sample count for when there are no attachments used in this subpass. */
+	VkSampleCountFlagBits getDefaultSampleCount() { return _defaultSampleCount; }
+
 	/** Sets the default sample count for when there are no attachments used in this subpass. */
 	void setDefaultSampleCount(VkSampleCountFlagBits count) { _defaultSampleCount = count; }
 
@@ -104,8 +107,7 @@ public:
 	 */
 	void populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* mtlRPDesc,
 										 uint32_t passIdx,
-										 VkExtent2D framebufferExtent,
-										 uint32_t framebufferLayerCount,
+										 MVKFramebuffer* framebuffer,
 										 const MVKArrayRef<MVKImageView*> attachments,
 										 const MVKArrayRef<VkClearValue> clearValues,
 										 bool isRenderingEntireAttachment,
@@ -161,7 +163,6 @@ private:
 	VkAttachmentReference2 _depthStencilResolveAttachment;
 	VkResolveModeFlagBits _depthResolveMode = VK_RESOLVE_MODE_NONE;
 	VkResolveModeFlagBits _stencilResolveMode = VK_RESOLVE_MODE_NONE;
-	id<MTLTexture> _mtlDummyTex = nil;
 	VkSampleCountFlagBits _defaultSampleCount = VK_SAMPLE_COUNT_1_BIT;
 };
 
@@ -189,8 +190,8 @@ public:
      */
     bool populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc,
                                                    MVKRenderSubpass* subpass,
+												   MVKImageView* attachment,
                                                    bool isRenderingEntireAttachment,
-												   bool isMemorylessAttachment,
 												   bool hasResolveAttachment,
 												   bool canResolveFormat,
                                                    bool isStencil,
@@ -199,8 +200,8 @@ public:
 	/** If a render encoder is active, sets the store action for this attachment to it. */
 	void encodeStoreAction(MVKCommandEncoder* cmdEncoder,
 						   MVKRenderSubpass* subpass,
+						   MVKImageView* attachment,
 						   bool isRenderingEntireAttachment,
-						   bool isMemorylessAttachment,
 						   bool hasResolveAttachment,
 						   bool canResolveFormat,
 						   uint32_t caIdx,

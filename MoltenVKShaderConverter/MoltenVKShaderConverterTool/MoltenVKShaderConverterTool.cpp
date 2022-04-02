@@ -1,7 +1,7 @@
 /*
  * MoltenVKShaderConverterTool.cpp
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +30,12 @@ using namespace mvk;
 
 // The default list of vertex file extensions.
 static const char* _defaultVertexShaderExtns = "vs vsh vert vertex";
+
+// The default list of tessellation control file extensions.
+static const char* _defaultTescShaderExtns = "tcs tcsh tesc";
+
+// The default list of tessellation evaluation file extensions.
+static const char* _defaultTeseShaderExtns = "tes tesh tese";
 
 // The default list of fragment file extensions.
 static const char* _defaultFragShaderExtns = "fs fsh frag fragment";
@@ -261,6 +267,8 @@ bool MoltenVKShaderConverterTool::convertSPIRV(const vector<uint32_t>& spv,
 
 MVKGLSLConversionShaderStage MoltenVKShaderConverterTool::shaderStageFromFileExtension(string& pathExtension) {
     for (auto& fx : _glslVtxFileExtns) { if (fx == pathExtension) { return kMVKGLSLConversionShaderStageVertex; } }
+	for (auto& fx : _glslTescFileExtns) { if (fx == pathExtension) { return kMVKGLSLConversionShaderStageTessControl; } }
+	for (auto& fx : _glslTeseFileExtns) { if (fx == pathExtension) { return kMVKGLSLConversionShaderStageTessEval; } }
     for (auto& fx : _glslFragFileExtns) { if (fx == pathExtension) { return kMVKGLSLConversionShaderStageFragment; } }
     for (auto& fx : _glslCompFileExtns) { if (fx == pathExtension) { return kMVKGLSLConversionShaderStageCompute; } }
 	return kMVKGLSLConversionShaderStageAuto;
@@ -268,6 +276,8 @@ MVKGLSLConversionShaderStage MoltenVKShaderConverterTool::shaderStageFromFileExt
 
 bool MoltenVKShaderConverterTool::isGLSLFileExtension(string& pathExtension) {
     for (auto& fx : _glslVtxFileExtns) { if (fx == pathExtension) { return true; } }
+	for (auto& fx : _glslTescFileExtns) { if (fx == pathExtension) { return true; } }
+	for (auto& fx : _glslTeseFileExtns) { if (fx == pathExtension) { return true; } }
     for (auto& fx : _glslFragFileExtns) { if (fx == pathExtension) { return true; } }
     for (auto& fx : _glslCompFileExtns) { if (fx == pathExtension) { return true; } }
 	return false;
@@ -344,6 +354,10 @@ void MoltenVKShaderConverterTool::showUsage() {
 	log("                       (myshdr.vsh -> myshdr.metal).");
 	log("  -vx \"fileExtns\"    - List of GLSL vertex shader file extensions.");
 	log("                       May be omitted for defaults (\"vs vsh vert vertex\").");
+	log("  -tcx \"fileExtns\"   - List of GLSL tessellation control shader file extensions.");
+	log("                       May be omitted for defaults (\"tcs tcsh tesc\").");
+	log("  -tex \"fileExtns\"   - List of GLSL tessellation evaluation shader file extensions.");
+	log("                       May be omitted for defaults (\"tes tesh tese\").");
 	log("  -fx \"fileExtns\"    - List of GLSL fragment shader file extensions.");
 	log("                       May be omitted for defaults (\"fs fsh frag fragment\").");
     log("  -cx \"fileExtns\"    - List of GLSL compute shader file extensions.");
@@ -386,6 +400,8 @@ void MoltenVKShaderConverterTool::reportPerformance(MVKPerformanceTracker& shade
 
 MoltenVKShaderConverterTool::MoltenVKShaderConverterTool(int argc, const char* argv[]) {
 	extractTokens(_defaultVertexShaderExtns, _glslVtxFileExtns);
+	extractTokens(_defaultTescShaderExtns, _glslTescFileExtns);
+	extractTokens(_defaultTeseShaderExtns, _glslTeseFileExtns);
 	extractTokens(_defaultFragShaderExtns, _glslFragFileExtns);
     extractTokens(_defaultCompShaderExtns, _glslCompFileExtns);
 	extractTokens(_defaultSPIRVShaderExtns, _spvFileExtns);
@@ -405,8 +421,27 @@ MoltenVKShaderConverterTool::MoltenVKShaderConverterTool(int argc, const char* a
 	_quietMode = false;
 
 	_mslVersionMajor = 2;
-	_mslVersionMinor = 2;
+
+	if (mvkOSVersionIsAtLeast(12.0)) {
+		_mslVersionMinor = 4;
+	} else if (mvkOSVersionIsAtLeast(11.0)) {
+		_mslVersionMinor = 3;
+	} else if (mvkOSVersionIsAtLeast(10.15)) {
+		_mslVersionMinor = 2;
+	} else if (mvkOSVersionIsAtLeast(10.14)) {
+		_mslVersionMinor = 1;
+	} else if (mvkOSVersionIsAtLeast(10.13)) {
+		_mslVersionMinor = 0;
+	} else if (mvkOSVersionIsAtLeast(10.12)) {
+		_mslVersionMajor = 1;
+		_mslVersionMinor = 2;
+	} else {
+		_mslVersionMajor = 1;
+		_mslVersionMinor = 1;
+	}
+
 	_mslVersionPatch = 0;
+
 	_mslPlatform = SPIRVToMSLConversionOptions().mslOptions.platform;
 
 	_isActive = parseArgs(argc, argv);
@@ -550,6 +585,24 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 			argIdx = optionalParam(shdrExtnStr, argIdx, argc, argv);
 			if (argIdx == optIdx || shdrExtnStr.length() == 0) { return false; }
 			extractTokens(shdrExtnStr, _glslVtxFileExtns);
+			continue;
+		}
+
+		if (equal(arg, "-tcx", true)) {
+			int optIdx = argIdx;
+			string shdrExtnStr;
+			argIdx = optionalParam(shdrExtnStr, argIdx, argc, argv);
+			if (argIdx == optIdx || shdrExtnStr.length() == 0) { return false; }
+			extractTokens(shdrExtnStr, _glslTescFileExtns);
+			continue;
+		}
+
+		if (equal(arg, "-tex", true)) {
+			int optIdx = argIdx;
+			string shdrExtnStr;
+			argIdx = optionalParam(shdrExtnStr, argIdx, argc, argv);
+			if (argIdx == optIdx || shdrExtnStr.length() == 0) { return false; }
+			extractTokens(shdrExtnStr, _glslTeseFileExtns);
 			continue;
 		}
 

@@ -1,7 +1,7 @@
 /*
  * MVKImage.mm
  *
- * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -987,14 +987,14 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	// It is responsibility of app to ensure these are consistent. Not doing so results in undefined behavior.
 	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
-			case VK_STRUCTURE_TYPE_IMAGE_CREATE_METAL_TEXTURE_INFO_EXT: {
-				const VkImageCreateMetalTextureInfoEXT* pMTLTexInfo = (VkImageCreateMetalTextureInfoEXT*)next;
+			case VK_STRUCTURE_TYPE_IMPORT_METAL_TEXTURE_INFO_EXT: {
+				const auto* pMTLTexInfo = (VkImportMetalTextureInfoEXT*)next;
 				uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(pMTLTexInfo->aspectMask);
 				setConfigurationResult(setMTLTexture(planeIndex, pMTLTexInfo->mtlTexture));
 				break;
 			}
-			case VK_STRUCTURE_TYPE_IMAGE_CREATE_METAL_IOSURFACE_INFO_EXT: {
-				VkImageCreateMetalIOSurfaceInfoEXT* pIOSurfInfo = (VkImageCreateMetalIOSurfaceInfoEXT*)next;
+			case VK_STRUCTURE_TYPE_IMPORT_METAL_IO_SURFACE_INFO_EXT: {
+				const auto* pIOSurfInfo = (VkImportMetalIOSurfaceInfoEXT*)next;
 				setConfigurationResult(useIOSurface(pIOSurfInfo->ioSurface));
 				break;
 			}
@@ -1002,7 +1002,6 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 				break;
 		}
 	}
-
 }
 
 VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
@@ -1873,7 +1872,21 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
     }
 }
 
+// Memory detached in destructor too, as a fail-safe.
 MVKImageView::~MVKImageView() {
+	detachMemory();
+}
+
+// Overridden to detach from the resource memory when the app destroys this object.
+// This object can be retained in a descriptor after the app destroys it, even
+// though the descriptor can't use it. But doing so retains usuable resource memory.
+void MVKImageView::destroy() {
+	detachMemory();
+	MVKVulkanAPIDeviceObject::destroy();
+}
+
+// Potentially called twice, from destroy() and destructor, so ensure everything is nulled out.
+void MVKImageView::detachMemory() {
 	mvkDestroyContainerContents(_planes);
 }
 
@@ -2127,8 +2140,23 @@ void MVKSampler::initConstExprSampler(const VkSamplerCreateInfo* pCreateInfo) {
     }
 }
 
+// Memory detached in destructor too, as a fail-safe.
 MVKSampler::~MVKSampler() {
+	detachMemory();
+}
+
+// Overridden to detach from the resource memory when the app destroys this object.
+// This object can be retained in a descriptor after the app destroys it, even
+// though the descriptor can't use it. But doing so retains usuable resource memory.
+void MVKSampler::destroy() {
+	detachMemory();
+	MVKVulkanAPIDeviceObject::destroy();
+}
+
+// Potentially called twice, from destroy() and destructor, so ensure everything is nulled out.
+void MVKSampler::detachMemory() {
 	@synchronized (getMTLDevice()) {
 		[_mtlSamplerState release];
+		_mtlSamplerState = nil;
 	}
 }

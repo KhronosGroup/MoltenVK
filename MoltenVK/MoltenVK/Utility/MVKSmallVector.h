@@ -1,7 +1,7 @@
 /*
  * MVKSmallVector.h
  *
- * Copyright (c) 2012-2021 Dr. Torsten Hans (hans@ipacs.de)
+ * Copyright (c) 2012-2022 Dr. Torsten Hans (hans@ipacs.de)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,13 +62,18 @@ class MVKSmallVectorImpl
   Allocator  alc;
   
 public:
-  class iterator : public std::iterator<std::random_access_iterator_tag, Type>
+  class iterator
   {
     const MVKSmallVectorImpl *vector;
     size_t               index;
 
   public:
-    typedef typename std::iterator_traits<iterator>::difference_type diff_type;
+    using iterator_category = std::random_access_iterator_tag;
+    using value_type = Type;
+    using pointer = value_type*;
+    using reference = value_type&;
+    using difference_type = std::ptrdiff_t;
+    typedef difference_type diff_type;
 
     iterator() : vector{ nullptr }, index{ 0 } { }
     iterator( const size_t _index, const MVKSmallVectorImpl &_vector ) : vector{ &_vector }, index{ _index } { }
@@ -516,13 +521,18 @@ class MVKSmallVectorImpl<Type*, Allocator>
   Allocator  alc;
 
 public:
-  class iterator : public std::iterator<std::random_access_iterator_tag, Type*>
+  class iterator
   {
     MVKSmallVectorImpl *vector;
     size_t         index;
 
   public:
-    typedef typename std::iterator_traits<iterator>::difference_type diff_type;
+    using iterator_category = std::random_access_iterator_tag;
+    using value_type = Type*;
+    using pointer = value_type*;
+    using reference = value_type&;
+    using difference_type = std::ptrdiff_t;
+    typedef difference_type diff_type;
 
     iterator() : vector{ nullptr }, index{ 0 } { }
     iterator( const size_t _index, MVKSmallVectorImpl &_vector ) : vector{ &_vector }, index{ _index } { }
