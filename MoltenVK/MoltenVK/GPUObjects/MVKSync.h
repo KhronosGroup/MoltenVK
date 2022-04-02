@@ -183,6 +183,12 @@ public:
 	/** Returns whether this semaphore uses command encoding. */
 	virtual bool isUsingCommandEncoding() = 0;
 
+	/**
+	 * Returns the MTLSharedEvent underlying this Vulkan semaphore,
+	 * or nil if this semaphore is not underpinned by a MTLSharedEvent.
+	 */
+	virtual id<MTLSharedEvent> getMTLSharedEvent() { return nil; };
+
 
 #pragma mark Construction
 
@@ -290,7 +296,11 @@ public:
 
 #pragma mark Construction
 
-    MVKTimelineSemaphore(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo, const VkSemaphoreTypeCreateInfo* pTypeCreateInfo)
+	MVKTimelineSemaphore(MVKDevice* device,
+						 const VkSemaphoreCreateInfo* pCreateInfo,
+						 const VkSemaphoreTypeCreateInfo* pTypeCreateInfo,
+						 const VkExportMetalObjectCreateInfoEXT* pExportInfo,
+						 const VkImportMetalSharedEventInfoEXT* pImportInfo)
         : MVKSemaphore(device, pCreateInfo) {}
 
 };
@@ -306,18 +316,23 @@ public:
 	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) override;
 	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) override;
 	bool isUsingCommandEncoding() override { return true; }
+	id<MTLSharedEvent> getMTLSharedEvent() override { return _mtlEvent; };
 
 	uint64_t getCounterValue() override { return _mtlEvent.signaledValue; }
 	void signal(const VkSemaphoreSignalInfo* pSignalInfo) override;
 	bool registerWait(MVKFenceSitter* sitter, const VkSemaphoreWaitInfo* pWaitInfo, uint32_t index) override;
 	void unregisterWait(MVKFenceSitter* sitter) override;
 
-	MVKTimelineSemaphoreMTLEvent(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo, const VkSemaphoreTypeCreateInfo* pTypeCreateInfo);
+	MVKTimelineSemaphoreMTLEvent(MVKDevice* device,
+								 const VkSemaphoreCreateInfo* pCreateInfo,
+								 const VkSemaphoreTypeCreateInfo* pTypeCreateInfo,
+								 const VkExportMetalObjectCreateInfoEXT* pExportInfo,
+								 const VkImportMetalSharedEventInfoEXT* pImportInfo);
 
 	~MVKTimelineSemaphoreMTLEvent() override;
 
 protected:
-	id<MTLSharedEvent> _mtlEvent;
+	id<MTLSharedEvent> _mtlEvent = nil;
 	std::mutex _lock;
 	std::unordered_set<MVKFenceSitter*> _sitters;
 };
@@ -339,7 +354,11 @@ public:
 	bool registerWait(MVKFenceSitter* sitter, const VkSemaphoreWaitInfo* pWaitInfo, uint32_t index) override;
 	void unregisterWait(MVKFenceSitter* sitter) override;
 
-	MVKTimelineSemaphoreEmulated(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo, const VkSemaphoreTypeCreateInfo* pTypeCreateInfo);
+	MVKTimelineSemaphoreEmulated(MVKDevice* device,
+								 const VkSemaphoreCreateInfo* pCreateInfo,
+								 const VkSemaphoreTypeCreateInfo* pTypeCreateInfo,
+								 const VkExportMetalObjectCreateInfoEXT* pExportInfo,
+								 const VkImportMetalSharedEventInfoEXT* pImportInfo);
 
 protected:
 	void signalImpl(uint64_t value);
@@ -476,12 +495,15 @@ public:
 	virtual void encodeWait(id<MTLCommandBuffer> mtlCmdBuff) = 0;
 
 	/** Returns the MTLSharedEvent underlying this Vulkan event. */
-	virtual id<MTLSharedEvent> getMTLEvent() = 0;
+	virtual id<MTLSharedEvent> getMTLSharedEvent() = 0;
 
 
 #pragma mark Construction
 
-	MVKEvent(MVKDevice* device, const VkEventCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {}
+	MVKEvent(MVKDevice* device,
+			 const VkEventCreateInfo* pCreateInfo,
+			 const VkExportMetalObjectCreateInfoEXT* pExportInfo,
+			 const VkImportMetalSharedEventInfoEXT* pImportInfo) : MVKVulkanAPIDeviceObject(device) {}
 
 protected:
 	void propagateDebugName() override {}
@@ -500,9 +522,12 @@ public:
 	void signal(bool status) override;
 	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, bool status) override;
 	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff) override;
-	id<MTLSharedEvent> getMTLEvent() override { return _mtlEvent; };
+	id<MTLSharedEvent> getMTLSharedEvent() override { return _mtlEvent; };
 
-	MVKEventNative(MVKDevice* device, const VkEventCreateInfo* pCreateInfo);
+	MVKEventNative(MVKDevice* device,
+				   const VkEventCreateInfo* pCreateInfo,
+				   const VkExportMetalObjectCreateInfoEXT* pExportInfo,
+				   const VkImportMetalSharedEventInfoEXT* pImportInfo);
 
 	~MVKEventNative() override;
 
@@ -522,9 +547,12 @@ public:
 	void signal(bool status) override;
 	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, bool status) override;
 	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff) override;
-	id<MTLSharedEvent> getMTLEvent() override { return nil; };
+	id<MTLSharedEvent> getMTLSharedEvent() override { return nil; };
 
-	MVKEventEmulated(MVKDevice* device, const VkEventCreateInfo* pCreateInfo);
+	MVKEventEmulated(MVKDevice* device,
+					 const VkEventCreateInfo* pCreateInfo,
+					 const VkExportMetalObjectCreateInfoEXT* pExportInfo,
+					 const VkImportMetalSharedEventInfoEXT* pImportInfo);
 
 protected:
 	MVKSemaphoreImpl _blocker;

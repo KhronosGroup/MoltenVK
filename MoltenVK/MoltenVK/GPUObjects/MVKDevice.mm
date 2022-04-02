@@ -3269,20 +3269,31 @@ void MVKDevice::destroyFence(MVKFence* mvkFence,
 MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInfo,
 										 const VkAllocationCallbacks* pAllocator) {
 	const VkSemaphoreTypeCreateInfo* pTypeCreateInfo = nullptr;
+	const VkExportMetalObjectCreateInfoEXT* pExportInfo = nullptr;
+	const VkImportMetalSharedEventInfoEXT* pImportInfo = nullptr;
 	for (auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO:
 				pTypeCreateInfo = (VkSemaphoreTypeCreateInfo*)next;
 				break;
+			case VK_STRUCTURE_TYPE_EXPORT_METAL_OBJECT_CREATE_INFO_EXT:
+				pExportInfo = (VkExportMetalObjectCreateInfoEXT*)next;
+				break;
+			case VK_STRUCTURE_TYPE_IMPORT_METAL_SHARED_EVENT_INFO_EXT:
+				pImportInfo = (VkImportMetalSharedEventInfoEXT*)next;
+				break;
 			default:
 				break;
 		}
 	}
-	if (pTypeCreateInfo && pTypeCreateInfo->semaphoreType == VK_SEMAPHORE_TYPE_TIMELINE) {
+
+	if ((pTypeCreateInfo && pTypeCreateInfo->semaphoreType == VK_SEMAPHORE_TYPE_TIMELINE) ||
+		(pExportInfo && mvkIsAnyFlagEnabled(pExportInfo->exportObjectTypes, VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT)) ||
+		 pImportInfo) {
 		if (_pMetalFeatures->events) {
-			return new MVKTimelineSemaphoreMTLEvent(this, pCreateInfo, pTypeCreateInfo);
+			return new MVKTimelineSemaphoreMTLEvent(this, pCreateInfo, pTypeCreateInfo, pExportInfo, pImportInfo);
 		} else {
-			return new MVKTimelineSemaphoreEmulated(this, pCreateInfo, pTypeCreateInfo);
+			return new MVKTimelineSemaphoreEmulated(this, pCreateInfo, pTypeCreateInfo, pExportInfo, pImportInfo);
 		}
 	} else {
 		switch (_vkSemaphoreStyle) {
@@ -3300,10 +3311,25 @@ void MVKDevice::destroySemaphore(MVKSemaphore* mvkSem4,
 
 MVKEvent* MVKDevice::createEvent(const VkEventCreateInfo* pCreateInfo,
 								 const VkAllocationCallbacks* pAllocator) {
+	const VkExportMetalObjectCreateInfoEXT* pExportInfo = nullptr;
+	const VkImportMetalSharedEventInfoEXT* pImportInfo = nullptr;
+	for (auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_EXPORT_METAL_OBJECT_CREATE_INFO_EXT:
+				pExportInfo = (VkExportMetalObjectCreateInfoEXT*)next;
+				break;
+			case VK_STRUCTURE_TYPE_IMPORT_METAL_SHARED_EVENT_INFO_EXT:
+				pImportInfo = (VkImportMetalSharedEventInfoEXT*)next;
+				break;
+			default:
+				break;
+		}
+	}
+
 	if (_pMetalFeatures->events) {
-		return new MVKEventNative(this, pCreateInfo);
+		return new MVKEventNative(this, pCreateInfo, pExportInfo, pImportInfo);
 	} else {
-		return new MVKEventEmulated(this, pCreateInfo);
+		return new MVKEventEmulated(this, pCreateInfo, pExportInfo, pImportInfo);
 	}
 }
 
@@ -3867,29 +3893,28 @@ void MVKDevice::stopAutoGPUCapture(MVKConfigAutoGPUCaptureScope autoGPUCaptureSc
 	}
 }
 
-void MVKDevice::getMetalObjects(VkMetalObjectsInfoEXT* pMetalObjectsInfo) {
+void MVKDevice::getMetalObjects(VkExportMetalObjectsInfoEXT* pMetalObjectsInfo) {
 	for (auto* next = (VkBaseOutStructure*)pMetalObjectsInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
-			case VK_STRUCTURE_TYPE_METAL_DEVICE_INFO_EXT: {
-				VkMetalDeviceInfoEXT* pDvcInfo = (VkMetalDeviceInfoEXT*)next;
+			case VK_STRUCTURE_TYPE_EXPORT_METAL_DEVICE_INFO_EXT: {
+				auto* pDvcInfo = (VkExportMetalDeviceInfoEXT*)next;
 				pDvcInfo->mtlDevice = getMTLDevice();
 				break;
 			}
-			case VK_STRUCTURE_TYPE_METAL_COMMAND_QUEUE_INFO_EXT: {
-				VkMetalCommandQueueInfoEXT* pQInfo = (VkMetalCommandQueueInfoEXT*)next;
+			case VK_STRUCTURE_TYPE_EXPORT_METAL_COMMAND_QUEUE_INFO_EXT: {
+				auto* pQInfo = (VkExportMetalCommandQueueInfoEXT*)next;
 				MVKQueue* mvkQ = MVKQueue::getMVKQueue(pQInfo->queue);
 				pQInfo->mtlCommandQueue = mvkQ->getMTLCommandQueue();
 				break;
 			}
-			case VK_STRUCTURE_TYPE_METAL_BUFFER_INFO_EXT: {
-				VkMetalBufferInfoEXT* pBuffInfo = (VkMetalBufferInfoEXT*)next;
-				auto* mvkBuff = (MVKBuffer*)pBuffInfo->buffer;
-				pBuffInfo->mtlBuffer = mvkBuff->getMTLBuffer();
-				pBuffInfo->mtlBufferOffset = mvkBuff->getMTLBufferOffset();
+			case VK_STRUCTURE_TYPE_EXPORT_METAL_BUFFER_INFO_EXT: {
+				auto* pBuffInfo = (VkExportMetalBufferInfoEXT*)next;
+				auto* mvkDevMem = (MVKDeviceMemory*)pBuffInfo->memory;
+				pBuffInfo->mtlBuffer = mvkDevMem->getMTLBuffer();
 				break;
 			}
-			case VK_STRUCTURE_TYPE_METAL_TEXTURE_INFO_EXT: {
-				VkMetalTextureInfoEXT* pImgInfo = (VkMetalTextureInfoEXT*)next;
+			case VK_STRUCTURE_TYPE_EXPORT_METAL_TEXTURE_INFO_EXT: {
+				auto* pImgInfo = (VkExportMetalTextureInfoEXT*)next;
 				uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(pImgInfo->aspectMask);
 				auto* mvkImg = (MVKImage*)pImgInfo->image;
 				auto* mvkImgView = (MVKImageView*)pImgInfo->imageView;
@@ -3903,16 +3928,21 @@ void MVKDevice::getMetalObjects(VkMetalObjectsInfoEXT* pMetalObjectsInfo) {
 				}
 				break;
 			}
-			case VK_STRUCTURE_TYPE_METAL_IOSURFACE_INFO_EXT: {
-				VkMetalIOSurfaceInfoEXT* pIOSurfInfo = (VkMetalIOSurfaceInfoEXT*)next;
+			case VK_STRUCTURE_TYPE_EXPORT_METAL_IO_SURFACE_INFO_EXT: {
+				auto* pIOSurfInfo = (VkExportMetalIOSurfaceInfoEXT*)next;
 				auto* mvkImg = (MVKImage*)pIOSurfInfo->image;
 				pIOSurfInfo->ioSurface = mvkImg->getIOSurface();
 				break;
 			}
-			case VK_STRUCTURE_TYPE_METAL_EVENT_INFO_EXT: {
-				VkMetalEventInfoEXT* pEvtInfo = (VkMetalEventInfoEXT*)next;
-				auto* mvkEvt = (MVKEvent*)pEvtInfo->event;
-				pEvtInfo->mtlSharedEvent = mvkEvt->getMTLEvent();
+			case VK_STRUCTURE_TYPE_EXPORT_METAL_SHARED_EVENT_INFO_EXT: {
+				auto* pShEvtInfo = (VkExportMetalSharedEventInfoEXT*)next;
+				auto* mvkSem4 = (MVKSemaphore*)pShEvtInfo->semaphore;
+				auto* mvkEvt = (MVKEvent*)pShEvtInfo->event;
+				if (mvkSem4) {
+					pShEvtInfo->mtlSharedEvent = mvkSem4->getMTLSharedEvent();
+				} else if (mvkEvt) {
+					pShEvtInfo->mtlSharedEvent = mvkEvt->getMTLSharedEvent();
+				}
 				break;
 			}
 			default:

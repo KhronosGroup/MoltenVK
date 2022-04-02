@@ -987,14 +987,14 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	// It is responsibility of app to ensure these are consistent. Not doing so results in undefined behavior.
 	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
-			case VK_STRUCTURE_TYPE_IMAGE_CREATE_METAL_TEXTURE_INFO_EXT: {
-				const VkImageCreateMetalTextureInfoEXT* pMTLTexInfo = (VkImageCreateMetalTextureInfoEXT*)next;
+			case VK_STRUCTURE_TYPE_IMPORT_METAL_TEXTURE_INFO_EXT: {
+				const auto* pMTLTexInfo = (VkImportMetalTextureInfoEXT*)next;
 				uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(pMTLTexInfo->aspectMask);
 				setConfigurationResult(setMTLTexture(planeIndex, pMTLTexInfo->mtlTexture));
 				break;
 			}
-			case VK_STRUCTURE_TYPE_IMAGE_CREATE_METAL_IOSURFACE_INFO_EXT: {
-				VkImageCreateMetalIOSurfaceInfoEXT* pIOSurfInfo = (VkImageCreateMetalIOSurfaceInfoEXT*)next;
+			case VK_STRUCTURE_TYPE_IMPORT_METAL_IO_SURFACE_INFO_EXT: {
+				const auto* pIOSurfInfo = (VkImportMetalIOSurfaceInfoEXT*)next;
 				setConfigurationResult(useIOSurface(pIOSurfInfo->ioSurface));
 				break;
 			}
@@ -1002,7 +1002,6 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 				break;
 		}
 	}
-
 }
 
 VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {

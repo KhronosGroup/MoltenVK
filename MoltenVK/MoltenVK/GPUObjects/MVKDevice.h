@@ -747,7 +747,7 @@ public:
 	inline bool isCurrentlyAutoGPUCapturing() { return _isCurrentlyAutoGPUCapturing; }
 
 	/** Returns the Metal objects underpinning the Vulkan objects indicated in the pNext chain of pMetalObjectsInfo. */
-	void getMetalObjects(VkMetalObjectsInfoEXT* pMetalObjectsInfo);
+	void getMetalObjects(VkExportMetalObjectsInfoEXT* pMetalObjectsInfo);
 
 
 #pragma mark Properties directly accessible
