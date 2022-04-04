@@ -52,7 +52,7 @@ public:
 
 	union {
 		struct {
-#define MVK_EXTENSION(var, EXT, type) MVKExtension vk_ ##var;
+#define MVK_EXTENSION(var, EXT, type, macos, ios) MVKExtension vk_ ##var;
 #include "MVKExtensions.def"
 		};
 		MVKExtension extensionArray;
