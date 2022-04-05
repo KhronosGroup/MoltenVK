@@ -166,7 +166,9 @@ protected:
 	bool canPrefill();
 	void prefill();
 	void clearPrefilledMTLCommandBuffer();
-	void releaseCommands();
+    void releaseCommands(MVKCommand* command);
+	void releaseRecordedCommands();
+    void flushImmediateCmdEncoder();
 
 	MVKCommand* _head = nullptr;
 	MVKCommand* _tail = nullptr;
@@ -175,6 +177,8 @@ protected:
 	std::atomic_flag _isExecutingNonConcurrently;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
 	id<MTLCommandBuffer> _prefilledMTLCmdBuffer = nil;
+    MVKCommandEncodingContext* _immediateCmdEncodingContext = nullptr;
+    MVKCommandEncoder* _immediateCmdEncoder = nullptr;
 	bool _isSecondary;
 	bool _doesContinueRenderPass;
 	bool _canAcceptCommands;
@@ -274,6 +278,10 @@ public:
 
 	/** Encode commands from the command buffer onto the Metal command buffer. */
 	void encode(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext);
+    
+    void beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext);
+    void encodeCommands(MVKCommand* command);
+    void endEncoding();
 
 	/** Encode commands from the specified secondary command buffer onto the Metal command buffer. */
 	void encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer);

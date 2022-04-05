@@ -50,24 +50,51 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 	const VkCommandBufferInheritanceInfo* pInheritInfo = (_isSecondary ? pBeginInfo->pInheritanceInfo : NULL);
 	bool hasInheritInfo = mvkSetOrClear(&_secondaryInheritanceInfo, pInheritInfo);
 	_doesContinueRenderPass = mvkAreAllFlagsEnabled(usage, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) && hasInheritInfo;
-
-	return getConfigurationResult();
+    
+    if(canPrefill()) {
+        @autoreleasepool {
+            uint32_t qIdx = 0;
+            _prefilledMTLCmdBuffer = _commandPool->newMTLCommandBuffer(qIdx);    // retain
+            
+            _immediateCmdEncodingContext = new MVKCommandEncodingContext;
+            
+            _immediateCmdEncoder = new MVKCommandEncoder(this);
+            _immediateCmdEncoder->beginEncoding(_prefilledMTLCmdBuffer, _immediateCmdEncodingContext);
+        }
+    }
+    
+    return getConfigurationResult();
 }
 
-void MVKCommandBuffer::releaseCommands() {
-	MVKCommand* cmd = _head;
-	while (cmd) {
-		MVKCommand* nextCmd = cmd->_next;	// Establish next before returning current to pool.
-		(cmd->getTypePool(getCommandPool()))->returnObject(cmd);
-		cmd = nextCmd;
-	}
+void MVKCommandBuffer::releaseCommands(MVKCommand* command) {
+    while(command) {
+        MVKCommand* nextCommand = command->_next; // Establish next before returning current to pool.
+        (command->getTypePool(getCommandPool()))->returnObject(command);
+        command = nextCommand;
+    }
+}
+
+void MVKCommandBuffer::releaseRecordedCommands() {
+    releaseCommands(_head);
 	_head = nullptr;
 	_tail = nullptr;
 }
 
+void MVKCommandBuffer::flushImmediateCmdEncoder() {
+    if(_immediateCmdEncoder) {
+        _immediateCmdEncoder->endEncoding();
+        delete _immediateCmdEncoder;
+        _immediateCmdEncoder = nullptr;
+        
+        delete _immediateCmdEncodingContext;
+        _immediateCmdEncodingContext = nullptr;
+    }
+}
+
 VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
+    flushImmediateCmdEncoder();
 	clearPrefilledMTLCommandBuffer();
-	releaseCommands();
+	releaseRecordedCommands();
 	_doesContinueRenderPass = false;
 	_canAcceptCommands = false;
 	_isReusable = false;
@@ -89,15 +116,26 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 
 VkResult MVKCommandBuffer::end() {
 	_canAcceptCommands = false;
-	prefill();
+    
+    flushImmediateCmdEncoder();
+    
 	return getConfigurationResult();
 }
 
 void MVKCommandBuffer::addCommand(MVKCommand* command) {
-	if ( !_canAcceptCommands ) {
-		setConfigurationResult(reportError(VK_NOT_READY, "Command buffer cannot accept commands before vkBeginCommandBuffer() is called."));
-		return;
-	}
+    if ( !_canAcceptCommands ) {
+        setConfigurationResult(reportError(VK_NOT_READY, "Command buffer cannot accept commands before vkBeginCommandBuffer() is called."));
+        return;
+    }
+    
+    if(_immediateCmdEncoder) {
+        _immediateCmdEncoder->encodeCommands(command);
+        
+        if( !_isReusable ) {
+            releaseCommands(command);
+            return;
+        }
+    }
 
     if (_tail) { _tail->_next = command; }
     command->_next = nullptr;
@@ -139,27 +177,6 @@ bool MVKCommandBuffer::canExecute() {
 
 	_wasExecuted = true;
 	return true;
-}
-
-// If we can, prefill a MTLCommandBuffer with the commands in this command buffer.
-// Wrap in autorelease pool to capture autoreleased Metal encoding activity.
-void MVKCommandBuffer::prefill() {
-	@autoreleasepool {
-		clearPrefilledMTLCommandBuffer();
-
-		if ( !canPrefill() ) { return; }
-
-		uint32_t qIdx = 0;
-		_prefilledMTLCmdBuffer = _commandPool->newMTLCommandBuffer(qIdx);	// retain
-
-		MVKCommandEncodingContext encodingContext;
-		MVKCommandEncoder encoder(this);
-		encoder.encode(_prefilledMTLCmdBuffer, &encodingContext);
-
-		// Once encoded onto Metal, if this command buffer is not reusable, we don't need the
-		// MVKCommand instances anymore, so release them in order to reduce memory pressure.
-		if ( !_isReusable ) { releaseCommands(); }
-	}
 }
 
 bool MVKCommandBuffer::canPrefill() {
@@ -251,33 +268,44 @@ MVKRenderSubpass* MVKCommandBuffer::getLastMultiviewSubpass() {
 
 void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff,
 							   MVKCommandEncodingContext* pEncodingContext) {
-	_framebuffer = nullptr;
-	_renderPass = nullptr;
-	_subpassContents = VK_SUBPASS_CONTENTS_INLINE;
-	_renderSubpassIndex = 0;
-	_multiviewPassIndex = 0;
-	_canUseLayeredRendering = false;
+    beginEncoding(mtlCmdBuff, pEncodingContext);
+    encodeCommands(_cmdBuffer->_head);
+    endEncoding();
+}
 
-	_pEncodingContext = pEncodingContext;
-	_mtlCmdBuffer = mtlCmdBuff;		// not retained
+void MVKCommandEncoder::beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext) {
+    _framebuffer = nullptr;
+    _renderPass = nullptr;
+    _subpassContents = VK_SUBPASS_CONTENTS_INLINE;
+    _renderSubpassIndex = 0;
+    _multiviewPassIndex = 0;
+    _canUseLayeredRendering = false;
 
-	setLabelIfNotNil(_mtlCmdBuffer, _cmdBuffer->_debugName);
+    _pEncodingContext = pEncodingContext;
+    _mtlCmdBuffer = mtlCmdBuff;        // not retained
 
-	MVKCommand* cmd = _cmdBuffer->_head;
-	while (cmd) {
-		uint32_t prevMVPassIdx = _multiviewPassIndex;
-		cmd->encode(this);
-		if (_multiviewPassIndex > prevMVPassIdx) {
-			// This means we're in a multiview render pass, and we moved on to the
-			// next view group. Re-encode all commands in the subpass again for this group.
-			cmd = _lastMultiviewPassCmd->_next;
-		} else {
-			cmd = cmd->_next;
-		}
-	}
+    setLabelIfNotNil(_mtlCmdBuffer, _cmdBuffer->_debugName);
+}
 
-	endCurrentMetalEncoding();
-	finishQueries();
+void MVKCommandEncoder::encodeCommands(MVKCommand* command) {
+    while(command) {
+        uint32_t prevMVPassIdx = _multiviewPassIndex;
+        command->encode(this);
+        
+        if(_multiviewPassIndex > prevMVPassIdx) {
+            // This means we're in a multiview render pass, and we moved on to the
+            // next view group. Re-encode all commands in the subpass again for this group.
+            
+            command = _lastMultiviewPassCmd->_next;
+        } else {
+            command = command->_next;
+        }
+    }
+}
+
+void MVKCommandEncoder::endEncoding() {
+    endCurrentMetalEncoding();
+    finishQueries();
 }
 
 void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
