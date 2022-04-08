@@ -801,8 +801,10 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
                     });
                 }
                 CFDictionaryAddValue(properties, (id)kIOSurfacePlaneInfo, planeProperties);
+                CFRelease(planeProperties);
             }
             _ioSurface = IOSurfaceCreate(properties);
+            CFRelease(properties);
         }
     }
 
