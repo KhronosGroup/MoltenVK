@@ -322,7 +322,8 @@ void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
 										MVKFramebuffer* framebuffer,
 										VkRect2D& renderArea,
 										MVKArrayRef<VkClearValue> clearValues,
-										MVKArrayRef<MVKImageView*> attachments) {
+										MVKArrayRef<MVKImageView*> attachments,
+										MVKArrayRef<MVKArrayRef<MTLSamplePosition>> subpassSamplePositions) {
 	_renderPass = renderPass;
 	_framebuffer = framebuffer;
 	_renderArea = renderArea;
@@ -330,6 +331,14 @@ void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
 									mvkVkExtent2DsAreEqual(_renderArea.extent, getFramebufferExtent()));
 	_clearValues.assign(clearValues.begin(), clearValues.end());
 	_attachments.assign(attachments.begin(), attachments.end());
+
+	// Copy the sample positions array of arrays, one array of sample positions for each subpass index.
+	_subpassSamplePositions.resize(subpassSamplePositions.size);
+	for (uint32_t spSPIdx = 0; spSPIdx < subpassSamplePositions.size; spSPIdx++) {
+		_subpassSamplePositions[spSPIdx].assign(subpassSamplePositions[spSPIdx].begin(),
+												subpassSamplePositions[spSPIdx].end());
+	}
+
 	setSubpass(passCmd, subpassContents, 0);
 }
 
@@ -364,6 +373,10 @@ void MVKCommandEncoder::beginNextMultiviewPass() {
 }
 
 uint32_t MVKCommandEncoder::getMultiviewPassIndex() { return _multiviewPassIndex; }
+
+void MVKCommandEncoder::setDynamicSamplePositions(MVKArrayRef<MTLSamplePosition> dynamicSamplePositions) {
+	_dynamicSamplePositions.assign(dynamicSamplePositions.begin(), dynamicSamplePositions.end());
+}
 
 // Creates _mtlRenderEncoder and marks cached render state as dirty so it will be set into the _mtlRenderEncoder.
 void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
@@ -416,6 +429,14 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
         }
     }
 
+	// If programmable sample positions are supported, set them into the render pass descriptor.
+	// If no custom sample positions are established, size will be zero,
+	// and Metal will default to using default sample postions.
+	if (_pDeviceMetalFeatures->programmableSamplePositions) {
+		auto cstmSampPosns = getCustomSamplePositions();
+		[mtlRPDesc setSamplePositions: cstmSampPosns.data count: cstmSampPosns.size];
+	}
+
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];     // not retained
 	setLabelIfNotNil(_mtlRenderEncoder, getMTLRenderCommandEncoderName(cmdUse));
 
@@ -437,6 +458,18 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
     _depthStencilState.beginMetalRenderPass();
     _stencilReferenceValueState.beginMetalRenderPass();
     _occlusionQueryState.beginMetalRenderPass();
+}
+
+// If custom sample positions have been set, return them, otherwise return an empty array.
+// For Metal, VkPhysicalDeviceSampleLocationsPropertiesEXT::variableSampleLocations is false.
+// As such, Vulkan requires that sample positions must be established at the beginning of
+// a renderpass, and that both pipeline and dynamic sample locations must be the same as those
+// set for each subpass. Therefore, the only sample positions of use are those set for each
+// subpass when the renderpass begins. The pipeline and dynamic sample positions are ignored.
+MVKArrayRef<MTLSamplePosition> MVKCommandEncoder::getCustomSamplePositions() {
+	return (_renderSubpassIndex < _subpassSamplePositions.size()
+			? _subpassSamplePositions[_renderSubpassIndex].contents()
+			: MVKArrayRef<MTLSamplePosition>());
 }
 
 void MVKCommandEncoder::encodeStoreActions(bool storeOverride) {

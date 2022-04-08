@@ -261,8 +261,11 @@ public:
     /** Returns the granularity of the render area of this instance.  */
     VkExtent2D getRenderAreaGranularity();
 
-	/** Returns the format of the color attachment at the specified index. */
-	MVKRenderSubpass* getSubpass(uint32_t subpassIndex);
+	/** Returns the number of subpasses. */
+	size_t getSubpassCount() { return _subpasses.size(); }
+
+	/** Returns the subpass at the specified index. */
+	MVKRenderSubpass* getSubpass(uint32_t subpassIndex) { return &_subpasses[subpassIndex]; }
 
 	/** Returns whether or not this render pass is a multiview render pass. */
 	bool isMultiview() const;

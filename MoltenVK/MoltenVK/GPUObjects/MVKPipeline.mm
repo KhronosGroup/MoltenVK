@@ -309,17 +309,18 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 }
 
 bool MVKGraphicsPipeline::supportsDynamicState(VkDynamicState state) {
-
-    // First test if this dynamic state is explicitly turned off
-    if ( (state >= kMVKVkDynamicStateCount) || !_dynamicStateEnabled[state] ) { return false; }
-
-    // Some dynamic states have other restrictions
-    switch (state) {
-        case VK_DYNAMIC_STATE_DEPTH_BIAS:
-            return _rasterInfo.depthBiasEnable;
-        default:
-            return true;
-    }
+	for (auto& ds : _dynamicState) {
+		if (state == ds) {
+			// Some dynamic states have other restrictions
+			switch (state) {
+				case VK_DYNAMIC_STATE_DEPTH_BIAS:
+					return _rasterInfo.depthBiasEnable;
+				default:
+					return true;
+			}
+		}
+	}
+	return false;
 }
 
 static const char vtxCompilerType[] = "Vertex stage pipeline for tessellation";
@@ -408,13 +409,11 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 		}
 	}
 
-	// Track dynamic state in _dynamicStateEnabled array
-	mvkClear(_dynamicStateEnabled, kMVKVkDynamicStateCount);	// start with all dynamic state disabled
+	// Track dynamic state
 	const VkPipelineDynamicStateCreateInfo* pDS = pCreateInfo->pDynamicState;
 	if (pDS) {
 		for (uint32_t i = 0; i < pDS->dynamicStateCount; i++) {
-			VkDynamicState ds = pDS->pDynamicStates[i];
-			_dynamicStateEnabled[ds] = true;
+			_dynamicState.push_back(pDS->pDynamicStates[i]);
 		}
 	}
 
@@ -457,6 +456,9 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 		}
 	}
 
+	// Must run after _isRasterizing and _dynamicState are populated
+	initCustomSamplePositions(pCreateInfo);
+
 	// Render pipeline state
 	initMTLRenderPipelineState(pCreateInfo, reflectData);
 
@@ -472,7 +474,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 		for (uint32_t vpIdx = 0; vpIdx < vpCnt; vpIdx++) {
 			// If viewport is dyanamic, we still add a dummy so that the count will be tracked.
 			VkViewport vp;
-			if ( !_dynamicStateEnabled[VK_DYNAMIC_STATE_VIEWPORT] ) { vp = pVPState->pViewports[vpIdx]; }
+			if ( !supportsDynamicState(VK_DYNAMIC_STATE_VIEWPORT) ) { vp = pVPState->pViewports[vpIdx]; }
 			_viewports.push_back(vp);
 		}
 
@@ -481,7 +483,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 		for (uint32_t sIdx = 0; sIdx < sCnt; sIdx++) {
 			// If scissor is dyanamic, we still add a dummy so that the count will be tracked.
 			VkRect2D sc;
-			if ( !_dynamicStateEnabled[VK_DYNAMIC_STATE_SCISSOR] ) { sc = pVPState->pScissors[sIdx]; }
+			if ( !supportsDynamicState(VK_DYNAMIC_STATE_SCISSOR) ) { sc = pVPState->pScissors[sIdx]; }
 			_scissors.push_back(sc);
 		}
 	}
@@ -510,6 +512,31 @@ id<MTLComputePipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLCompute
 		if ( !plState ) { _hasValidMTLPipelineStates = false; }
 	}
 	return plState;
+}
+
+// Must run after _isRasterizing and _dynamicState are populated
+void MVKGraphicsPipeline::initCustomSamplePositions(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
+
+	// Must ignore allowed bad pMultisampleState pointer if rasterization disabled
+	if ( !(_isRasterizing && pCreateInfo->pMultisampleState) ) { return; }
+
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pMultisampleState->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT: {
+				auto* pSampLocnsCreateInfo = (VkPipelineSampleLocationsStateCreateInfoEXT*)next;
+				_isUsingCustomSamplePositions = pSampLocnsCreateInfo->sampleLocationsEnable;
+				if (_isUsingCustomSamplePositions && !supportsDynamicState(VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT)) {
+					for (uint32_t slIdx = 0; slIdx < pSampLocnsCreateInfo->sampleLocationsInfo.sampleLocationsCount; slIdx++) {
+						auto& sl = pSampLocnsCreateInfo->sampleLocationsInfo.pSampleLocations[slIdx];
+						_customSamplePositions.push_back(MTLSamplePositionMake(sl.x, sl.y));
+					}
+				}
+				break;
+			}
+			default:
+				break;
+		}
+	}
 }
 
 // Constructs the underlying Metal render pipeline.

@@ -75,6 +75,9 @@ static const uint32_t kAMDRadeonRX5500DeviceId = 0x7340;
 static const uint32_t kAMDRadeonRX6800DeviceId = 0x73bf;
 static const uint32_t kAMDRadeonRX6700DeviceId = 0x73df;
 
+static const VkExtent2D kMetalSamplePositionGridSize = { 1, 1 };
+static const VkExtent2D kMetalSamplePositionGridSizeNotSupported = { 0, 0 };
+
 #pragma clang diagnostic pop
 
 
@@ -457,6 +460,16 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				portabilityProps->minVertexInputBindingStrideAlignment = (uint32_t)_metalFeatures.vertexStrideAlignment;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT: {
+				auto* sampLocnProps = (VkPhysicalDeviceSampleLocationsPropertiesEXT*)next;
+				sampLocnProps->sampleLocationSampleCounts = _metalFeatures.supportedSampleCounts;
+				sampLocnProps->maxSampleLocationGridSize = kMetalSamplePositionGridSize;
+				sampLocnProps->sampleLocationCoordinateRange[0] = 0.0;
+				sampLocnProps->sampleLocationCoordinateRange[1] = (15.0 / 16.0);
+				sampLocnProps->sampleLocationSubPixelBits = 4;
+				sampLocnProps->variableSampleLocations = VK_FALSE;
+				break;
+			}
 			default:
 				break;
 		}
@@ -524,6 +537,15 @@ void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties*
 void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties2KHR* pFormatProperties) {
 	pFormatProperties->sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR;
 	getFormatProperties(format, &pFormatProperties->formatProperties);
+}
+
+void MVKPhysicalDevice::getMultisampleProperties(VkSampleCountFlagBits samples,
+												 VkMultisamplePropertiesEXT* pMultisampleProperties) {
+	if (pMultisampleProperties) {
+		pMultisampleProperties->maxSampleLocationGridSize = (mvkIsOnlyAnyFlagEnabled(samples, _metalFeatures.supportedSampleCounts)
+															 ? kMetalSamplePositionGridSize
+															 : kMetalSamplePositionGridSizeNotSupported);
+	}
 }
 
 VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
@@ -1519,9 +1541,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 #endif
 
-    // Note the selector name, which is different from the property name.
+	if ( [_mtlDevice respondsToSelector: @selector(areProgrammableSamplePositionsSupported)] ) {
+		_metalFeatures.programmableSamplePositions = _mtlDevice.areProgrammableSamplePositionsSupported;
+	}
+
     if ( [_mtlDevice respondsToSelector: @selector(areRasterOrderGroupsSupported)] ) {
-        _metalFeatures.rasterOrderGroups = _mtlDevice.rasterOrderGroupsSupported;
+        _metalFeatures.rasterOrderGroups = _mtlDevice.areRasterOrderGroupsSupported;
     }
 #if MVK_XCODE_12
 	if ( [_mtlDevice respondsToSelector: @selector(supportsPullModelInterpolation)] ) {
@@ -2737,6 +2762,9 @@ void MVKPhysicalDevice::initExtensions() {
 #endif
 	if (!_metalFeatures.samplerMirrorClampToEdge) {
 		pWritableExtns->vk_KHR_sampler_mirror_clamp_to_edge.enabled = false;
+	}
+	if (!_metalFeatures.programmableSamplePositions) {
+		pWritableExtns->vk_EXT_sample_locations.enabled = false;
 	}
 	if (!_metalFeatures.rasterOrderGroups) {
 		pWritableExtns->vk_EXT_fragment_shader_interlock.enabled = false;

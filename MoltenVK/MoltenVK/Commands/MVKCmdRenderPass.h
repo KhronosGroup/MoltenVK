@@ -46,6 +46,7 @@ public:
 
 protected:
 
+	MVKSmallVector<MVKSmallVector<MTLSamplePosition>> _subpassSamplePositions;
 	MVKRenderPass* _renderPass;
 	MVKFramebuffer* _framebuffer;
 	VkRect2D _renderArea;
@@ -134,6 +135,25 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetSampleLocations
+
+/** Vulkan command to dynamically set custom sample locations. */
+class MVKCmdSetSampleLocations : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const VkSampleLocationsInfoEXT* pSampleLocationsInfo);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MVKSmallVector<MTLSamplePosition, 8> _samplePositions;
 };
 
 

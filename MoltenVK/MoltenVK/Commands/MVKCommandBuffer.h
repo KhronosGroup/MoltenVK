@@ -191,74 +191,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCommandEncoder
 
-// The following commands can be issued both inside and outside a renderpass and their state must
-// span multiple MTLRenderCommandEncoders, to allow state to be set before a renderpass, and to
-// allow more than one MTLRenderCommandEncoder to be used for a single Vulkan renderpass or subpass.
-//
-// + vkCmdBindPipeline() : _graphicsPipelineState & _computePipelineState
-// + vkCmdBindDescriptorSets() : _graphicsResourcesState & _computeResourcesState
-// + vkCmdBindVertexBuffers() : _graphicsResourcesState
-// + vkCmdBindIndexBuffer() : _graphicsResourcesState
-// + vkCmdPushConstants() : _vertexPushConstants & _tessCtlPushConstants & _tessEvalPushConstants & _fragmentPushConstants & _computePushConstants
-// + vkCmdSetViewport() : _viewportState
-// + vkCmdSetDepthBias() : _depthBiasState
-// + vkCmdSetScissor() : _scissorState
-// + vkCmdSetStencilCompareMask() : _depthStencilState
-// + vkCmdSetStencilWriteMask() : _depthStencilState
-// + vkCmdSetStencilReference() : _stencilReferenceValueState
-// + vkCmdSetBlendConstants() : _blendColorState
-// + vkCmdBeginQuery() : _occlusionQueryState
-// + vkCmdEndQuery() : _occlusionQueryState
-// + vkCmdPipelineBarrier() : handled via textureBarrier and MTLBlitCommandEncoder
-// + vkCmdWriteTimestamp() : doesn't affect MTLCommandEncoders
-// + vkCmdExecuteCommands() : state managed by embedded commands
-// - vkCmdSetLineWidth() - unsupported by Metal
-// - vkCmdSetDepthBounds() - unsupported by Metal
-// - vkCmdWaitEvents() - unsupported by Metal
-
-// The above list of Vulkan commands covers the following corresponding MTLRenderCommandEncoder state:
-// + setBlendColorRed : _blendColorState
-// + setCullMode : _graphicsPipelineState
-// + setDepthBias : _depthBiasState
-// + setDepthClipMode : _graphicsPipelineState
-// + setDepthStencilState : _depthStencilState
-// + setFrontFacingWinding : _graphicsPipelineState
-// + setRenderPipelineState : _graphicsPipelineState
-// + setScissorRect : _scissorState
-// + setStencilFrontReferenceValue : _stencilReferenceValueState
-// + setStencilReferenceValue (unused) : _stencilReferenceValueState
-// + setTriangleFillMode : _graphicsPipelineState
-// + setViewport : _viewportState
-// + setVisibilityResultMode : _occlusionQueryState
-// + setVertexBuffer : _graphicsResourcesState & _vertexPushConstants & _tessEvalPushConstants
-// + setVertexBuffers (unused) : _graphicsResourcesState
-// + setVertexBytes : _vertexPushConstants & _tessEvalPushConstants
-// + setVertexBufferOffset (unused) : _graphicsResourcesState
-// + setVertexTexture : _graphicsResourcesState
-// + setVertexTextures (unused) : _graphicsResourcesState
-// + setVertexSamplerState : _graphicsResourcesState
-// + setVertexSamplerStates : (unused) : _graphicsResourcesState
-// + setFragmentBuffer : _graphicsResourcesState & _fragmentPushConstants
-// + setFragmentBuffers (unused) : _graphicsResourcesState
-// + setFragmentBytes : _fragmentPushConstants
-// + setFragmentBufferOffset (unused) : _graphicsResourcesState
-// + setFragmentTexture : _graphicsResourcesState
-// + setFragmentTextures (unused) : _graphicsResourcesState
-// + setFragmentSamplerState : _graphicsResourcesState
-// + setFragmentSamplerStates : (unused) : _graphicsResourcesState
-
-// The above list of Vulkan commands covers the following corresponding MTLComputeCommandEncoder state:
-// + setComputePipelineState : _computePipelineState & _graphicsPipelineState
-// + setBuffer : _computeResourcesState & _computePushConstants & _graphicsResourcesState & _tessCtlPushConstants
-// + setBuffers (unused) : _computeResourcesState & _graphicsResourcesState
-// + setBytes : _computePushConstants & _tessCtlPushConstants
-// + setBufferOffset (unused) : _computeResourcesState & _graphicsResourcesState
-// + setTexture : _computeResourcesState & _graphicsResourcesState
-// + setTextures (unused) : _computeResourcesState & _graphicsResourcesState
-// + setSamplerState : _computeResourcesState & _graphicsResourcesState
-// + setSamplerStates : (unused) : _computeResourcesState & _graphicsResourcesState
-
-
 /*** Holds a collection of active queries for each query pool. */
 typedef std::unordered_map<MVKQueryPool*, MVKSmallVector<uint32_t, kMVKDefaultQueryCount>> MVKActivatedQueries;
 
@@ -293,13 +225,17 @@ public:
 						 MVKFramebuffer* framebuffer,
 						 VkRect2D& renderArea,
 						 MVKArrayRef<VkClearValue> clearValues,
-						 MVKArrayRef<MVKImageView*> attachments);
+						 MVKArrayRef<MVKImageView*> attachments,
+						 MVKArrayRef<MVKArrayRef<MTLSamplePosition>> subpassSamplePositions);
 
 	/** Begins the next render subpass. */
 	void beginNextSubpass(MVKCommand* subpassCmd, VkSubpassContents renderpassContents);
 
 	/** Begins the next multiview Metal render pass. */
 	void beginNextMultiviewPass();
+
+	/** Sets the dynamic custom sample positions to use when rendering. */
+	void setDynamicSamplePositions(MVKArrayRef<MTLSamplePosition> dynamicSamplePositions);
 
 	/** Begins a Metal render pass for the current render subpass. */
 	void beginMetalRenderPass(MVKCommandUse cmdUse);
@@ -509,6 +445,7 @@ protected:
 	void encodeTimestampStageCounterSamples();
 	bool hasTimestampStageCounterQueries() { return !_timestampStageCounterQueries.empty(); }
 	id<MTLFence> getStageCountersMTLFence();
+	MVKArrayRef<MTLSamplePosition> getCustomSamplePositions();
 
 	typedef struct GPUCounterQuery {
 		MVKGPUCounterQueryPool* queryPool = nullptr;
@@ -526,6 +463,8 @@ protected:
 	MVKSmallVector<GPUCounterQuery, 16> _timestampStageCounterQueries;
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
 	MVKSmallVector<MVKImageView*, kMVKDefaultAttachmentCount> _attachments;
+	MVKSmallVector<MTLSamplePosition> _dynamicSamplePositions;
+	MVKSmallVector<MVKSmallVector<MTLSamplePosition>> _subpassSamplePositions;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	MVKCommandUse _mtlComputeEncoderUse;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
