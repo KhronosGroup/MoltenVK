@@ -128,6 +128,10 @@ public:
 	/** Populates the specified structure with the format properties of this device. */
 	void getFormatProperties(VkFormat format, VkFormatProperties2* pFormatProperties);
 
+	/** Populates the specified structure with the multisample properties of this device. */
+	void getMultisampleProperties(VkSampleCountFlagBits samples,
+								  VkMultisamplePropertiesEXT* pMultisampleProperties);
+
 	/** Populates the image format properties supported on this device. */
     VkResult getImageFormatProperties(VkFormat format,
                                       VkImageType type,

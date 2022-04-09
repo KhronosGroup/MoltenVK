@@ -18,6 +18,8 @@ MoltenVK 1.1.9
 
 Released TBD
 
+- Add support for extensions:
+	- `VK_EXT_sample_locations`
 - Fixes to pipeline layout compatibility.
 - Reinstate memory barriers on non-Apple GPUs, which were inadvertently disabled in an earlier update.
 - Support base vertex instance support in shader conversion.
@@ -29,6 +31,7 @@ Released TBD
 - Fixes to optimize resource objects retained by descriptors beyond their lifetimes.
 - `MoltenVKShaderConverter` tool defaults to the highest MSL version supported on runtime OS.
 - Update *glslang* version, to use `python3` in *glslang* scripts, to replace missing `python` on *macOS 12.3*.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `34`.
 - Update to latest SPIRV-Cross:
 	- MSL: Support input/output blocks containing nested struct arrays.
 	- MSL: Use var name instead of var-type name for flattened interface members.

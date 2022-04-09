@@ -3099,6 +3099,29 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPastPresentationTimingGOOGLE(
 }
 
 #pragma mark -
+#pragma mark VK_EXT_sample_locations extension
+
+void vkGetPhysicalDeviceMultisamplePropertiesEXT(
+	VkPhysicalDevice                            physicalDevice,
+	VkSampleCountFlagBits                       samples,
+	VkMultisamplePropertiesEXT*                 pMultisampleProperties) {
+
+	MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	mvkPD->getMultisampleProperties(samples, pMultisampleProperties);
+	MVKTraceVulkanCallEnd();
+}
+
+void vkCmdSetSampleLocationsEXT(
+	VkCommandBuffer                             commandBuffer,
+	const VkSampleLocationsInfoEXT*             pSampleLocationsInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(SetSampleLocations, commandBuffer, pSampleLocationsInfo);
+	MVKTraceVulkanCallEnd();
+}
+
+#pragma mark -
 #pragma mark iOS & macOS surface extensions
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreate_PLATFORM_SurfaceMVK(

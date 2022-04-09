@@ -203,9 +203,6 @@ struct MVKStagedDescriptorBindingUse {
 	MVKBitArray stages[4] = {};
 };
 
-/** The number of dynamic states possible in Vulkan. */
-static const uint32_t kMVKVkDynamicStateCount = 32;
-
 /** Represents an Vulkan graphics pipeline. */
 class MVKGraphicsPipeline : public MVKPipeline {
 
@@ -259,6 +256,12 @@ public:
 	/** Returns true if the tessellation control shader needs a buffer to store its per-patch output. */
 	bool needsTessCtlPatchOutputBuffer() { return _needsTessCtlPatchOutputBuffer; }
 
+	/** Returns whether this pipeline has custom sample positions enabled. */
+	bool isUsingCustomSamplePositions() { return _isUsingCustomSamplePositions; }
+
+	/** Returns the custom samples used by this pipeline. */
+	MVKArrayRef<MTLSamplePosition> getCustomSamplePositions() { return _customSamplePositions.contents(); }
+
 	/** Returns the Metal vertex buffer index to use for the specified vertex attribute binding number.  */
 	uint32_t getMetalBufferIndexForVertexAttributeBinding(uint32_t binding) { return _device->getMetalBufferIndexForVertexAttributeBinding(binding); }
 
@@ -287,6 +290,7 @@ protected:
 
     id<MTLRenderPipelineState> getOrCompilePipeline(MTLRenderPipelineDescriptor* plDesc, id<MTLRenderPipelineState>& plState);
     id<MTLComputePipelineState> getOrCompilePipeline(MTLComputePipelineDescriptor* plDesc, id<MTLComputePipelineState>& plState, const char* compilerType);
+	void initCustomSamplePositions(const VkGraphicsPipelineCreateInfo* pCreateInfo);
     void initMTLRenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
     void initShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig, const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
     void addVertexInputToShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig, const VkGraphicsPipelineCreateInfo* pCreateInfo);
@@ -323,6 +327,8 @@ protected:
 
 	MVKSmallVector<VkViewport, kMVKCachedViewportScissorCount> _viewports;
 	MVKSmallVector<VkRect2D, kMVKCachedViewportScissorCount> _scissors;
+	MVKSmallVector<VkDynamicState> _dynamicState;
+	MVKSmallVector<MTLSamplePosition> _customSamplePositions;
 	MVKSmallVector<MVKTranslatedVertexBinding> _translatedVertexBindings;
 	MVKSmallVector<MVKZeroDivisorVertexBinding> _zeroDivisorVertexBindings;
 	MVKSmallVector<MVKStagedMTLArgumentEncoders> _mtlArgumentEncoders;
@@ -350,7 +356,6 @@ protected:
 	uint32_t _tessCtlPatchOutputBufferIndex = 0;
 	uint32_t _tessCtlLevelBufferIndex = 0;
 
-	bool _dynamicStateEnabled[kMVKVkDynamicStateCount];
 	bool _needsVertexSwizzleBuffer = false;
 	bool _needsVertexBufferSizeBuffer = false;
 	bool _needsVertexDynamicOffsetBuffer = false;
@@ -372,6 +377,7 @@ protected:
 	bool _isRasterizing = false;
 	bool _isRasterizingColor = false;
 	bool _isRasterizingDepthStencil = false;
+	bool _isUsingCustomSamplePositions = false;
 };
 
 

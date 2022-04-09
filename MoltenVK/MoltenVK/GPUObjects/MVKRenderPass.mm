@@ -818,8 +818,6 @@ VkExtent2D MVKRenderPass::getRenderAreaGranularity() {
     return { 1, 1 };
 }
 
-MVKRenderSubpass* MVKRenderPass::getSubpass(uint32_t subpassIndex) { return &_subpasses[subpassIndex]; }
-
 bool MVKRenderPass::isMultiview() const { return _subpasses[0].isMultiview(); }
 
 MVKRenderPass::MVKRenderPass(MVKDevice* device,
