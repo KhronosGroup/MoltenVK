@@ -752,6 +752,10 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                                            b.mtlBytes,
                                                            b.size,
                                                            b.index);
+                           else if (b.justOffset)
+                               [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl)
+                                            setBufferOffset: b.offset
+                                            atIndex: b.index];
                            else
                                [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl) setBuffer: b.mtlBuffer
                                                                                                              offset: b.offset
@@ -785,9 +789,14 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                                               b.size,
                                                               b.index);
                                } else {
-                                   [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
-                                                                           offset: b.offset
-                                                                          atIndex: b.index];
+                                   if (b.justOffset) {
+                                       [cmdEncoder->_mtlRenderEncoder setVertexBufferOffset: b.offset
+                                                                                    atIndex: b.index];
+                                   } else {
+                                       [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
+                                                                               offset: b.offset
+                                                                              atIndex: b.index];
+                                   }
 
                                    // Add any translated vertex bindings for this binding
                                    auto xltdVtxBindings = pipeline->getTranslatedVertexBindings();
@@ -828,6 +837,9 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                                            b.mtlBytes,
                                                            b.size,
                                                            b.index);
+                           else if (b.justOffset)
+                               [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl) setBufferOffset: b.offset
+                                                                                                                  atIndex: b.index];
                            else
                                [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl) setBuffer: b.mtlBuffer
                                                                                                              offset: b.offset
@@ -858,6 +870,9 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                                           b.mtlBytes,
                                                           b.size,
                                                           b.index);
+                           else if (b.justOffset)
+                               [cmdEncoder->_mtlRenderEncoder setVertexBufferOffset: b.offset
+                                                                            atIndex: b.index];
                            else
                                [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
                                                                        offset: b.offset
@@ -888,6 +903,9 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                                             b.mtlBytes,
                                                             b.size,
                                                             b.index);
+                           else if (b.justOffset)
+                               [cmdEncoder->_mtlRenderEncoder setFragmentBufferOffset: b.offset
+                                                                              atIndex: b.index];
                            else
                                [cmdEncoder->_mtlRenderEncoder setFragmentBuffer: b.mtlBuffer
                                                                          offset: b.offset
@@ -1027,7 +1045,12 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
 										b.mtlBytes,
 										b.size,
 										b.index);
-		} else {
+        } else if (b.justOffset) {
+            [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch)
+                        setBufferOffset: b.offset
+                                atIndex: b.index];
+
+        } else {
 			[cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setBuffer: b.mtlBuffer
 																		 offset: b.offset
 																		atIndex: b.index];
