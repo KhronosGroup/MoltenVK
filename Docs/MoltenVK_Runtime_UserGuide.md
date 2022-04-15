@@ -332,6 +332,15 @@ In order to visibly display your content on *macOS*, *iOS*, or *tvOS*, you must 
 *Vulkan* rendering surface. You can enable the `VK_EXT_metal_surface` extension by defining the `VK_USE_PLATFORM_METAL_EXT` guard macro in your compiler build settings. See the description of 
 the `mvk_vulkan.h` file below for  a convenient way to enable this extension automatically.
 
+Because **MoltenVK** supports the `VK_KHR_portability_subset` extension, when using the 
+*Vulkan Loader* from the *Vulkan SDK* to run **MoltenVK** on *macOS*, the *Vulkan Loader* 
+will only include **MoltenVK** `VkPhysicalDevices` in the list returned by 
+`vkEnumeratePhysicalDevices()` if the `VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR` 
+flag is enabled in `vkCreateInstance()`. See the description of the `VK_KHR_portability_enumeration` 
+extension in the *Vulkan* specification for more information about the use of the 
+`VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR` flag.
+
+
 
 <a name="moltenvk_extension"></a>
 ### MoltenVK `VK_MVK_moltenvk` Extension

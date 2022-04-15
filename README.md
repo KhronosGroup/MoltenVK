@@ -37,7 +37,7 @@ Developing Vulkan Applications for *macOS, iOS, and tvOS*
 The recommended method for developing a *Vulkan* application for *macOS* is to use the 
 [*Vulkan SDK*](https://vulkan.lunarg.com/sdk/home).
 
-The *Vulkan SDK* includes a  **MoltenVK** runtime library for *macOS*. *Vulkan* is a layered 
+The *Vulkan SDK* includes a **MoltenVK** runtime library for *macOS*. *Vulkan* is a layered 
 architecture that allows applications to add additional functionality without modifying the 
 application itself. The *Validation Layers* included in the *Vulkan SDK* are an essential debugging
 tool for application developers because they identify inappropriate use of the *Vulkan API*. 
@@ -45,6 +45,14 @@ If you are developing a *Vulkan* application for *macOS*, it is highly recommend
 [*Vulkan SDK*](https://vulkan.lunarg.com/sdk/home) and the **MoltenVK** library included in it.
 Refer to the *Vulkan SDK [Getting Started](https://vulkan.lunarg.com/doc/sdk/latest/mac/getting_started.html)* 
 document for more info.
+
+Because **MoltenVK** supports the `VK_KHR_portability_subset` extension, when using the 
+*Vulkan Loader* from the *Vulkan SDK* to run **MoltenVK** on *macOS*, the *Vulkan Loader* 
+will only include **MoltenVK** `VkPhysicalDevices` in the list returned by 
+`vkEnumeratePhysicalDevices()` if the `VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR` 
+flag is enabled in `vkCreateInstance()`. See the description of the `VK_KHR_portability_enumeration` 
+extension in the *Vulkan* specification for more information about the use of the 
+`VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR` flag.
 
 If you are developing a *Vulkan* application for *iOS* or *tvOS*, or are developing a *Vulkan* 
 application for *macOS* and want to use a different version of the **MoltenVK** runtime library 

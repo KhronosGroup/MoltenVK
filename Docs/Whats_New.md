@@ -13,6 +13,18 @@ Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.1.10
+--------------
+
+Released TBD
+
+- Add support for extensions:
+	- `VK_KHR_portability_enumeration` support added to `MoltenVK_icd.json`, and documentation
+	  updated to indicate the impact of the `VK_KHR_portability_enumeration` extension during 
+	  runtime loading on *macOS* via the *Vulkan Loader*.
+
+
+
 MoltenVK 1.1.9
 --------------
 
