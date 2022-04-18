@@ -166,18 +166,19 @@ void MVKPushConstantsCommandEncoderState:: setPushConstants(uint32_t offset, MVK
     if (pcBuffSize > 0) { markDirty(); }
 }
 
-void MVKPushConstantsCommandEncoderState::setMTLBufferIndex(uint32_t mtlBufferIndex) {
-    if (mtlBufferIndex != _mtlBufferIndex) {
-        _mtlBufferIndex = mtlBufferIndex;
-        markDirty();
-    }
+void MVKPushConstantsCommandEncoderState::setMTLBufferIndex(uint32_t mtlBufferIndex, bool pipelineStageUsesPushConstants) {
+	if ((mtlBufferIndex != _mtlBufferIndex) || (pipelineStageUsesPushConstants != _pipelineStageUsesPushConstants)) {
+		_mtlBufferIndex = mtlBufferIndex;
+		_pipelineStageUsesPushConstants = pipelineStageUsesPushConstants;
+		markDirty();
+	}
 }
 
 // At this point, I have been marked not-dirty, under the assumption that I will make changes to the encoder.
 // However, some of the paths below decide not to actually make any changes to the encoder. In that case,
 // I should remain dirty until I actually do make encoder changes.
 void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
-    if (_pushConstants.empty() ) { return; }
+    if ( !_pipelineStageUsesPushConstants || _pushConstants.empty() ) { return; }
 
 	_isDirty = true;	// Stay dirty until I actually decide to make a change to the encoder
 
@@ -739,7 +740,7 @@ void MVKGraphicsResourcesCommandEncoderState::markDirty() {
 
 void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 
-    MVKGraphicsPipeline* pipeline = (MVKGraphicsPipeline*)_cmdEncoder->_graphicsPipelineState.getPipeline();
+    MVKGraphicsPipeline* pipeline = (MVKGraphicsPipeline*)getPipeline();
     bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle() || getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     bool forTessellation = pipeline->isTessellationPipeline();
 
@@ -975,7 +976,7 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
 
 	encodeMetalArgumentBuffer(kMVKShaderStageCompute);
 
-    MVKPipeline* pipeline = _cmdEncoder->_computePipelineState.getPipeline();
+    MVKPipeline* pipeline = getPipeline();
 	bool fullImageViewSwizzle = pipeline ? pipeline->fullImageViewSwizzle() : false;
 
     if (_resourceBindings.swizzleBufferBinding.isDirty) {
