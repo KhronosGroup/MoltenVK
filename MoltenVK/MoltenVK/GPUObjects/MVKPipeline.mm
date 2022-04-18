@@ -175,8 +175,9 @@ MVKPipelineLayout::~MVKPipelineLayout() {
 
 void MVKPipeline::bindPushConstants(MVKCommandEncoder* cmdEncoder) {
 	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
-		if (cmdEncoder && _stageUsesPushConstants[stage]) {
-			cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(stage)))->setMTLBufferIndex(_pushConstantsBufferIndex.stages[stage]);
+		if (cmdEncoder) {
+			auto* pcState = cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(stage)));
+			pcState->setMTLBufferIndex(_pushConstantsBufferIndex.stages[stage], _stageUsesPushConstants[stage]);
 		}
 	}
 }

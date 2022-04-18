@@ -198,7 +198,7 @@ public:
     void setPushConstants(uint32_t offset, MVKArrayRef<char> pushConstants);
 
     /** Sets the index of the Metal buffer used to hold the push constants. */
-    void setMTLBufferIndex(uint32_t mtlBufferIndex);
+    void setMTLBufferIndex(uint32_t mtlBufferIndex, bool pipelineStageUsesPushConstants);
 
     /** Constructs this instance for the specified command encoder. */
     MVKPushConstantsCommandEncoderState(MVKCommandEncoder* cmdEncoder,
@@ -212,6 +212,7 @@ protected:
     MVKSmallVector<char, 128> _pushConstants;
     VkShaderStageFlagBits _shaderStage;
     uint32_t _mtlBufferIndex = 0;
+	bool _pipelineStageUsesPushConstants = false;
 };
 
 
