@@ -25,6 +25,7 @@ Released TBD
 	  runtime loading on *macOS* via the *Vulkan Loader*.
 - Fix error where previously bound push constants can override a descriptor buffer binding 
   used by a subsequent pipeline that does not use push constants.
+- Support attachment clearing when some clearing formats are not specified.
 
 
 
