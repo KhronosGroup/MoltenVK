@@ -600,11 +600,9 @@ public:
 							const VkAllocationCallbacks* pAllocator);
 
 	MVKRenderPass* createRenderPass(const VkRenderPassCreateInfo* pCreateInfo,
-									const VkAllocationCallbacks* pAllocator,
-									VkRenderingFlags renderingFlags = 0);
+									const VkAllocationCallbacks* pAllocator);
 	MVKRenderPass* createRenderPass(const VkRenderPassCreateInfo2* pCreateInfo,
-									const VkAllocationCallbacks* pAllocator,
-									VkRenderingFlags renderingFlags = 0);
+									const VkAllocationCallbacks* pAllocator);
 	void destroyRenderPass(MVKRenderPass* mvkRP,
 						   const VkAllocationCallbacks* pAllocator);
 

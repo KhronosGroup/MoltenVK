@@ -52,6 +52,16 @@ typedef uint64_t MVKMTLCommandBufferID;
 typedef struct MVKCommandEncodingContext {
 	NSUInteger mtlVisibilityResultOffset = 0;
 	const MVKMTLBufferAllocation* visibilityResultBuffer = nullptr;
+
+	MVKRenderPass* getRenderPass() { return _renderPass; }
+	MVKFramebuffer* getFramebuffer() { return _framebuffer; }
+	void setRenderingContext(MVKRenderPass* renderPass, MVKFramebuffer* framebuffer);
+	VkRenderingFlags getRenderingFlags() { return _renderPass ? _renderPass->getRenderingFlags() : 0; }
+	~MVKCommandEncodingContext();
+
+private:
+	MVKRenderPass* _renderPass = nullptr;
+	MVKFramebuffer* _framebuffer = nullptr;
 } MVKCommandEncodingContext;
 
 
@@ -172,14 +182,15 @@ protected:
 
 	MVKCommand* _head = nullptr;
 	MVKCommand* _tail = nullptr;
-	uint32_t _commandCount;
+	MVKSmallVector<VkFormat, kMVKDefaultAttachmentCount> _colorAttachmentFormats;
 	MVKCommandPool* _commandPool;
-	std::atomic_flag _isExecutingNonConcurrently;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
 	VkCommandBufferInheritanceRenderingInfo _inerhitanceRenderingInfo;
 	id<MTLCommandBuffer> _prefilledMTLCmdBuffer = nil;
     MVKCommandEncodingContext* _immediateCmdEncodingContext = nullptr;
     MVKCommandEncoder* _immediateCmdEncoder = nullptr;
+	uint32_t _commandCount;
+	std::atomic_flag _isExecutingNonConcurrently;
 	bool _isSecondary;
 	bool _doesContinueRenderPass;
 	bool _canAcceptCommands;
@@ -248,7 +259,7 @@ public:
 	void encodeStoreActions(bool storeOverride = false);
 
 	/** Returns whether or not we are presently in a render pass. */
-	bool isInRenderPass() { return _renderPass != nullptr; }
+	bool isInRenderPass() { return _pEncodingContext->getRenderPass() != nullptr; }
 
 	/** Returns the render subpass that is currently active. */
 	MVKRenderSubpass* getSubpass();
@@ -442,8 +453,6 @@ public:
 
 	MVKCommandEncoder(MVKCommandBuffer* cmdBuffer);
 
-	~MVKCommandEncoder() override;
-
 protected:
     void addActivatedQueries(MVKQueryPool* pQueryPool, uint32_t query, uint32_t queryCount);
     void finishQueries();
@@ -455,8 +464,6 @@ protected:
 	bool hasTimestampStageCounterQueries() { return !_timestampStageCounterQueries.empty(); }
 	id<MTLFence> getStageCountersMTLFence();
 	MVKArrayRef<MTLSamplePosition> getCustomSamplePositions();
-	void setRenderPass(MVKRenderPass* renderPass);
-	void setFramebuffer(MVKFramebuffer* framebuffer);
 
 	typedef struct GPUCounterQuery {
 		MVKGPUCounterQueryPool* queryPool = nullptr;
@@ -464,8 +471,6 @@ protected:
 	} GPUCounterQuery;
 
 	VkSubpassContents _subpassContents;
-	MVKRenderPass* _renderPass;
-	MVKFramebuffer* _framebuffer;
 	MVKCommand* _lastMultiviewPassCmd;
 	uint32_t _renderSubpassIndex;
 	uint32_t _multiviewPassIndex;

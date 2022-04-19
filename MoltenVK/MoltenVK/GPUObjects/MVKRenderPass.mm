@@ -557,7 +557,7 @@ bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRende
 #if MVK_APPLE_SILICON
 	isMemorylessAttachment = attachment->getMTLTexture().storageMode == MTLStorageModeMemoryless;
 #endif
-	bool isResuming = mvkIsAnyFlagEnabled(_renderPass->_renderingFlags, VK_RENDERING_RESUMING_BIT);
+	bool isResuming = mvkIsAnyFlagEnabled(_renderPass->getRenderingFlags(), VK_RENDERING_RESUMING_BIT);
 
 	// Only allow clearing of entire attachment if we're actually
 	// rendering to the entire attachment AND we're in the first subpass.
@@ -668,7 +668,7 @@ MTLStoreAction MVKRenderPassAttachment::getMTLStoreAction(MVKRenderSubpass* subp
 														  bool storeOverride) {
 
 	// If the renderpass is going to be suspended, and resumed later, store the contents to preserve them until then.
-	bool isSuspending = mvkIsAnyFlagEnabled(_renderPass->_renderingFlags, VK_RENDERING_SUSPENDING_BIT);
+	bool isSuspending = mvkIsAnyFlagEnabled(_renderPass->getRenderingFlags(), VK_RENDERING_SUSPENDING_BIT);
 	if (isSuspending) { return MTLStoreActionStore; }
 
 	// If a resolve attachment exists, this attachment must resolve once complete.
@@ -785,10 +785,7 @@ VkExtent2D MVKRenderPass::getRenderAreaGranularity() {
 bool MVKRenderPass::isMultiview() const { return _subpasses[0].isMultiview(); }
 
 MVKRenderPass::MVKRenderPass(MVKDevice* device,
-							 const VkRenderPassCreateInfo* pCreateInfo,
-							 VkRenderingFlags renderingFlags) :
-	MVKVulkanAPIDeviceObject(device),
-	_renderingFlags(renderingFlags) {
+							 const VkRenderPassCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 
 	const VkRenderPassInputAttachmentAspectCreateInfo* pInputAspectCreateInfo = nullptr;
 	const VkRenderPassMultiviewCreateInfo* pMultiviewCreateInfo = nullptr;
@@ -850,10 +847,7 @@ MVKRenderPass::MVKRenderPass(MVKDevice* device,
 
 
 MVKRenderPass::MVKRenderPass(MVKDevice* device,
-							 const VkRenderPassCreateInfo2* pCreateInfo,
-							 VkRenderingFlags renderingFlags) :
-	MVKVulkanAPIDeviceObject(device),
-	_renderingFlags(renderingFlags) {
+							 const VkRenderPassCreateInfo2* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 
     // Add subpasses and dependencies first
 	_subpasses.reserve(pCreateInfo->subpassCount);
@@ -1032,7 +1026,9 @@ MVKRenderPass* mvkCreateRenderPass(MVKDevice* device, const VkRenderingInfo* pRe
 	rpCreateInfo.correlatedViewMaskCount = 0;
 	rpCreateInfo.pCorrelatedViewMasks = nullptr;
 
-	return device->createRenderPass(&rpCreateInfo, nullptr, pRenderingInfo->flags);
+	auto* mvkRP = device->createRenderPass(&rpCreateInfo, nullptr);
+	mvkRP->setRenderingFlags(pRenderingInfo->flags);
+	return mvkRP;
 }
 
 uint32_t mvkGetAttachments(const VkRenderingInfo* pRenderingInfo,

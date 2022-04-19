@@ -3516,15 +3516,13 @@ void MVKDevice::destroyFramebuffer(MVKFramebuffer* mvkFB,
 }
 
 MVKRenderPass* MVKDevice::createRenderPass(const VkRenderPassCreateInfo* pCreateInfo,
-										   const VkAllocationCallbacks* pAllocator,
-										   VkRenderingFlags renderingFlags) {
-	return new MVKRenderPass(this, pCreateInfo, renderingFlags);
+										   const VkAllocationCallbacks* pAllocator) {
+	return new MVKRenderPass(this, pCreateInfo);
 }
 
 MVKRenderPass* MVKDevice::createRenderPass(const VkRenderPassCreateInfo2* pCreateInfo,
-										   const VkAllocationCallbacks* pAllocator,
-										   VkRenderingFlags renderingFlags) {
-	return new MVKRenderPass(this, pCreateInfo, renderingFlags);
+										   const VkAllocationCallbacks* pAllocator) {
+	return new MVKRenderPass(this, pCreateInfo);
 }
 
 void MVKDevice::destroyRenderPass(MVKRenderPass* mvkRP,

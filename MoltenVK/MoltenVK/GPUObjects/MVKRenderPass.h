@@ -272,13 +272,15 @@ public:
 	/** Returns whether or not this render pass is a multiview render pass. */
 	bool isMultiview() const;
 
-	MVKRenderPass(MVKDevice* device,
-				  const VkRenderPassCreateInfo* pCreateInfo,
-				  VkRenderingFlags renderingFlags = 0);
+	/** Returns the dynamic rendering flags. */
+	VkRenderingFlags getRenderingFlags() { return _renderingFlags; }
 
-	MVKRenderPass(MVKDevice* device,
-				  const VkRenderPassCreateInfo2* pCreateInfo,
-				  VkRenderingFlags renderingFlags = 0);
+	/** Sets the dynamic rendering flags. */
+	void setRenderingFlags(VkRenderingFlags renderingFlags) { _renderingFlags = renderingFlags; }
+
+	MVKRenderPass(MVKDevice* device, const VkRenderPassCreateInfo* pCreateInfo);
+
+	MVKRenderPass(MVKDevice* device, const VkRenderPassCreateInfo2* pCreateInfo);
 
 protected:
 	friend class MVKRenderSubpass;
