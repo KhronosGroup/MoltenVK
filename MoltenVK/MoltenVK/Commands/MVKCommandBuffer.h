@@ -176,6 +176,7 @@ protected:
 	MVKCommandPool* _commandPool;
 	std::atomic_flag _isExecutingNonConcurrently;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
+	VkCommandBufferInheritanceRenderingInfo _inerhitanceRenderingInfo;
 	id<MTLCommandBuffer> _prefilledMTLCmdBuffer = nil;
     MVKCommandEncodingContext* _immediateCmdEncodingContext = nullptr;
     MVKCommandEncoder* _immediateCmdEncoder = nullptr;
@@ -223,7 +224,7 @@ public:
 						 VkSubpassContents subpassContents,
 						 MVKRenderPass* renderPass,
 						 MVKFramebuffer* framebuffer,
-						 VkRect2D& renderArea,
+						 const VkRect2D& renderArea,
 						 MVKArrayRef<VkClearValue> clearValues,
 						 MVKArrayRef<MVKImageView*> attachments,
 						 MVKArrayRef<MVKArrayRef<MTLSamplePosition>> subpassSamplePositions);
@@ -236,6 +237,9 @@ public:
 
 	/** Sets the dynamic custom sample positions to use when rendering. */
 	void setDynamicSamplePositions(MVKArrayRef<MTLSamplePosition> dynamicSamplePositions);
+
+	/** Begins dynamic rendering. */
+	void beginRendering(MVKCommand* rendCmd, const VkRenderingInfo* pRenderingInfo);
 
 	/** Begins a Metal render pass for the current render subpass. */
 	void beginMetalRenderPass(MVKCommandUse cmdUse);
@@ -292,6 +296,9 @@ public:
 
 	/** Ends the current renderpass. */
 	void endRenderpass();
+
+	/** Ends the current dymamic rendering. */
+	void endRendering();
 
 	/** 
 	 * Ends all encoding operations on the current Metal command encoder.
@@ -435,6 +442,8 @@ public:
 
 	MVKCommandEncoder(MVKCommandBuffer* cmdBuffer);
 
+	~MVKCommandEncoder() override;
+
 protected:
     void addActivatedQueries(MVKQueryPool* pQueryPool, uint32_t query, uint32_t queryCount);
     void finishQueries();
@@ -446,6 +455,8 @@ protected:
 	bool hasTimestampStageCounterQueries() { return !_timestampStageCounterQueries.empty(); }
 	id<MTLFence> getStageCountersMTLFence();
 	MVKArrayRef<MTLSamplePosition> getCustomSamplePositions();
+	void setRenderPass(MVKRenderPass* renderPass);
+	void setFramebuffer(MVKFramebuffer* framebuffer);
 
 	typedef struct GPUCounterQuery {
 		MVKGPUCounterQueryPool* queryPool = nullptr;

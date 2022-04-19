@@ -19,6 +19,7 @@ MoltenVK 1.1.10
 Released TBD
 
 - Add support for extensions:
+	- `VK_KHR_dynamic_rendering`
 	- `VK_KHR_portability_enumeration` support added to `MoltenVK_icd.json`, and documentation
 	  updated to indicate the impact of the `VK_KHR_portability_enumeration` extension during 
 	  runtime loading on *macOS* via the *Vulkan Loader*.

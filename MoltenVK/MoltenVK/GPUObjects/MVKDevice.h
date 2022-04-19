@@ -600,9 +600,11 @@ public:
 							const VkAllocationCallbacks* pAllocator);
 
 	MVKRenderPass* createRenderPass(const VkRenderPassCreateInfo* pCreateInfo,
-									const VkAllocationCallbacks* pAllocator);
+									const VkAllocationCallbacks* pAllocator,
+									VkRenderingFlags renderingFlags = 0);
 	MVKRenderPass* createRenderPass(const VkRenderPassCreateInfo2* pCreateInfo,
-									const VkAllocationCallbacks* pAllocator);
+									const VkAllocationCallbacks* pAllocator,
+									VkRenderingFlags renderingFlags = 0);
 	void destroyRenderPass(MVKRenderPass* mvkRP,
 						   const VkAllocationCallbacks* pAllocator);
 
@@ -667,6 +669,15 @@ public:
 
 	/** Invalidates the memory regions. */
 	VkResult invalidateMappedMemoryRanges(uint32_t memRangeCount, const VkMappedMemoryRange* pMemRanges);
+
+	/** Returns the number of Metal render passes needed to render all views. */
+	uint32_t getMultiviewMetalPassCount(uint32_t viewMask) const;
+
+	/** Returns the first view to be rendered in the given multiview pass. */
+	uint32_t getFirstViewIndexInMetalPass(uint32_t viewMask, uint32_t passIdx) const;
+
+	/** Returns the number of views to be rendered in the given multiview pass. */
+	uint32_t getViewCountInMetalPass(uint32_t viewMask, uint32_t passIdx) const;
 
 	/** Log all performance statistics. */
 	void logPerformanceSummary();
@@ -771,6 +782,7 @@ public:
 	const VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT _enabledVtxAttrDivFeatures;
 	const VkPhysicalDevicePortabilitySubsetFeaturesKHR _enabledPortabilityFeatures;
 	const VkPhysicalDeviceImagelessFramebufferFeaturesKHR _enabledImagelessFramebufferFeatures;
+	const VkPhysicalDeviceDynamicRenderingFeatures _enabledDynamicRenderingFeatures;
 
 	/** The list of Vulkan extensions, indicating whether each has been enabled by the app for this device. */
 	const MVKExtensionList _enabledExtensions;

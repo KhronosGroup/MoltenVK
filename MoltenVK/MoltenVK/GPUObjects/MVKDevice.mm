@@ -277,6 +277,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				imagelessFramebufferFeatures->imagelessFramebuffer = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES: {
+				auto* dynamicRenderingFeatures = (VkPhysicalDeviceDynamicRenderingFeatures*)next;
+				dynamicRenderingFeatures->dynamicRendering = true;
+				break;
+			}
 			default:
 				break;
 		}
@@ -3511,13 +3516,15 @@ void MVKDevice::destroyFramebuffer(MVKFramebuffer* mvkFB,
 }
 
 MVKRenderPass* MVKDevice::createRenderPass(const VkRenderPassCreateInfo* pCreateInfo,
-										   const VkAllocationCallbacks* pAllocator) {
-	return new MVKRenderPass(this, pCreateInfo);
+										   const VkAllocationCallbacks* pAllocator,
+										   VkRenderingFlags renderingFlags) {
+	return new MVKRenderPass(this, pCreateInfo, renderingFlags);
 }
 
 MVKRenderPass* MVKDevice::createRenderPass(const VkRenderPassCreateInfo2* pCreateInfo,
-										   const VkAllocationCallbacks* pAllocator) {
-	return new MVKRenderPass(this, pCreateInfo);
+										   const VkAllocationCallbacks* pAllocator,
+										   VkRenderingFlags renderingFlags) {
+	return new MVKRenderPass(this, pCreateInfo, renderingFlags);
 }
 
 void MVKDevice::destroyRenderPass(MVKRenderPass* mvkRP,
@@ -3735,6 +3742,57 @@ VkResult MVKDevice::invalidateMappedMemoryRanges(uint32_t memRangeCount, const V
 	}
 }
 
+uint32_t MVKDevice::getMultiviewMetalPassCount(uint32_t viewMask) const {
+	if ( !viewMask ) { return 0; }
+	if ( !_physicalDevice->canUseInstancingForMultiview() ) {
+		// If we can't use instanced drawing for this, we'll have to unroll the render pass.
+		return __builtin_popcount(viewMask);
+	}
+	uint32_t mask = viewMask;
+	uint32_t count;
+	// Step through each clump until there are no more clumps. I'll know this has
+	// happened when the mask becomes 0, since mvkGetNextViewMaskGroup() clears each group of bits
+	// as it finds them, and returns the remainder of the mask.
+	for (count = 0; mask != 0; ++count) {
+		mask = mvkGetNextViewMaskGroup(mask, nullptr, nullptr);
+	}
+	return count;
+}
+
+uint32_t MVKDevice::getFirstViewIndexInMetalPass(uint32_t viewMask, uint32_t passIdx) const {
+	if ( !viewMask ) { return 0; }
+	assert(passIdx < getMultiviewMetalPassCount(viewMask));
+	uint32_t mask = viewMask;
+	uint32_t startView = 0, viewCount = 0;
+	if ( !_physicalDevice->canUseInstancingForMultiview() ) {
+		for (uint32_t i = 0; mask != 0; ++i) {
+			mask = mvkGetNextViewMaskGroup(mask, &startView, &viewCount);
+			while (passIdx-- > 0 && viewCount-- > 0) {
+				startView++;
+			}
+		}
+	} else {
+		for (uint32_t i = 0; i <= passIdx; ++i) {
+			mask = mvkGetNextViewMaskGroup(mask, &startView, nullptr);
+		}
+	}
+	return startView;
+}
+
+uint32_t MVKDevice::getViewCountInMetalPass(uint32_t viewMask, uint32_t passIdx) const {
+	if ( !viewMask ) { return 0; }
+	assert(passIdx < getMultiviewMetalPassCount(viewMask));
+	if ( !_physicalDevice->canUseInstancingForMultiview() ) {
+		return 1;
+	}
+	uint32_t mask = viewMask;
+	uint32_t viewCount = 0;
+	for (uint32_t i = 0; i <= passIdx; ++i) {
+		mask = mvkGetNextViewMaskGroup(mask, nullptr, &viewCount);
+	}
+	return viewCount;
+}
+
 
 #pragma mark Metal
 
@@ -3916,6 +3974,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledPrivateDataFeatures(),
 	_enabledPortabilityFeatures(),
 	_enabledImagelessFramebufferFeatures(),
+	_enabledDynamicRenderingFeatures(),
 	_enabledExtensions(this),
 	_isCurrentlyAutoGPUCapturing(false)
 {
@@ -4044,10 +4103,15 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	mvkClear(&_enabledVtxAttrDivFeatures);
 	mvkClear(&_enabledPortabilityFeatures);
 	mvkClear(&_enabledImagelessFramebufferFeatures);
+	mvkClear(&_enabledDynamicRenderingFeatures);
+
+	VkPhysicalDeviceDynamicRenderingFeatures pdDynamicRenderingFeatures;
+	pdDynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+	pdDynamicRenderingFeatures.pNext = NULL;
 
 	VkPhysicalDeviceImagelessFramebufferFeaturesKHR pdImagelessFramebufferFeatures;
 	pdImagelessFramebufferFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES;
-	pdImagelessFramebufferFeatures.pNext = NULL;
+	pdImagelessFramebufferFeatures.pNext = &pdDynamicRenderingFeatures;
     
 	// Fetch the available physical device features.
 	VkPhysicalDevicePortabilitySubsetFeaturesKHR pdPortabilityFeatures;
@@ -4242,6 +4306,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				enableFeatures(&_enabledImagelessFramebufferFeatures.imagelessFramebuffer,
 							   &requestedFeatures->imagelessFramebuffer,
 							   &pdImagelessFramebufferFeatures.imagelessFramebuffer, 1);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES: {
+				auto* requestedFeatures = (VkPhysicalDeviceDynamicRenderingFeatures*)next;
+				enableFeatures(&_enabledDynamicRenderingFeatures.dynamicRendering,
+							   &requestedFeatures->dynamicRendering,
+							   &pdDynamicRenderingFeatures.dynamicRendering, 1);
 				break;
 			}
 			default:

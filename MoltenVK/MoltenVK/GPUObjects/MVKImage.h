@@ -570,7 +570,13 @@ public:
 
 	/** Returns the Metal pixel format of this image view. */
 	MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex = 0) { return planeIndex < _planes.size() ? _planes[planeIndex]->_mtlPixFmt : MTLPixelFormatInvalid; }	// Guard against destroyed instance retained in a descriptor.
-    
+
+	/** Returns the Vulkan pixel format of this image view. */
+	VkFormat getVkFormat(uint8_t planeIndex = 0) { return getPixelFormats()->getVkFormat(getMTLPixelFormat(planeIndex)); }
+
+	/** Returns the number of samples for each pixel of this image view. */
+	VkSampleCountFlagBits getSampleCount() { return _image->getSampleCount(); }
+
     /** Returns the packed component swizzle of this image view. */
     uint32_t getPackedSwizzle() { return _planes.empty() ? 0 : _planes[0]->getPackedSwizzle(); }	// Guard against destroyed instance retained in a descriptor.
     

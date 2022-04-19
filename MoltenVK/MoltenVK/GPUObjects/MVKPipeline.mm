@@ -367,6 +367,20 @@ id<MTLComputePipelineState> MVKGraphicsPipeline::getTessVertexStageIndex32State(
 
 #pragma mark Construction
 
+// Extracts and returns a VkPipelineRenderingCreateInfo from the renderPass or pNext chain of pCreateInfo, or returns null if not found
+static const VkPipelineRenderingCreateInfo* getRenderingCreateInfo(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
+	if (pCreateInfo->renderPass) {
+		return ((MVKRenderPass*)pCreateInfo->renderPass)->getSubpass(pCreateInfo->subpass)->getPipelineRenderingCreateInfo();
+	}
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO: return (VkPipelineRenderingCreateInfo*)next;
+			default: break;
+		}
+	}
+	return nullptr;
+}
+
 MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 										 MVKPipelineCache* pipelineCache,
 										 MVKPipeline* parent,
@@ -374,11 +388,10 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, parent) {
 
 	// Determine rasterization early, as various other structs are validated and interpreted in this context.
-	MVKRenderPass* mvkRendPass = (MVKRenderPass*)pCreateInfo->renderPass;
-	MVKRenderSubpass* mvkRenderSubpass = mvkRendPass->getSubpass(pCreateInfo->subpass);
+	const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
 	_isRasterizing = !isRasterizationDisabled(pCreateInfo);
-	_isRasterizingColor = _isRasterizing && mvkRenderSubpass->hasColorAttachments();
-	_isRasterizingDepthStencil = _isRasterizing && mvkRenderSubpass->hasDepthStencilAttachment();
+	_isRasterizingColor = _isRasterizing && mvkHasColorAttachments(pRendInfo);
+	_isRasterizingDepthStencil = _isRasterizing && mvkGetDepthStencilFormat(pRendInfo) != VK_FORMAT_UNDEFINED;
 
 	// Get the tessellation shaders, if present. Do this now, because we need to extract
 	// reflection data from them that informs everything else.
@@ -556,9 +569,8 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 	if (!isTessellationPipeline()) {
 		MTLRenderPipelineDescriptor* plDesc = newMTLRenderPipelineDescriptor(pCreateInfo, reflectData);	// temp retain
 		if (plDesc) {
-			MVKRenderPass* mvkRendPass = (MVKRenderPass*)pCreateInfo->renderPass;
-			MVKRenderSubpass* mvkSubpass = mvkRendPass->getSubpass(pCreateInfo->subpass);
-			if (mvkSubpass->isMultiview()) {
+			const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
+			if (pRendInfo && mvkIsMultiview(pRendInfo->viewMask)) {
 				// We need to adjust the step rate for per-instance attributes to account for the
 				// extra instances needed to render all views. But, there's a problem: vertex input
 				// descriptions are static pipeline state. If we need multiple passes, and some have
@@ -566,8 +578,8 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 				// for these passes. We'll need to make a pipeline for every pass view count we can see
 				// in the render pass. This really sucks.
 				std::unordered_set<uint32_t> viewCounts;
-				for (uint32_t passIdx = 0; passIdx < mvkSubpass->getMultiviewMetalPassCount(); ++passIdx) {
-					viewCounts.insert(mvkSubpass->getViewCountInMetalPass(passIdx));
+				for (uint32_t passIdx = 0; passIdx < getDevice()->getMultiviewMetalPassCount(pRendInfo->viewMask); ++passIdx) {
+					viewCounts.insert(getDevice()->getViewCountInMetalPass(pRendInfo->viewMask, passIdx));
 				}
 				auto count = viewCounts.cbegin();
 				adjustVertexInputForMultiview(plDesc.vertexDescriptor, pCreateInfo->pVertexInputState, *count);
@@ -1451,11 +1463,6 @@ void MVKGraphicsPipeline::addTessellationToPipeline(MTLRenderPipelineDescriptor*
 
 void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc,
 													  const VkGraphicsPipelineCreateInfo* pCreateInfo) {
-
-    // Retrieve the render subpass for which this pipeline is being constructed
-    MVKRenderPass* mvkRendPass = (MVKRenderPass*)pCreateInfo->renderPass;
-    MVKRenderSubpass* mvkRenderSubpass = mvkRendPass->getSubpass(pCreateInfo->subpass);
-
 	// Topology
 	if (pCreateInfo->pInputAssemblyState) {
 		plDesc.inputPrimitiveTopologyMVK = isRenderingPoints(pCreateInfo)
@@ -1463,14 +1470,17 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
 												: mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
 	}
 
-    // Color attachments - must ignore bad pColorBlendState pointer if rasterization is disabled or subpass has no color attachments
+	const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
+
+	// Color attachments - must ignore bad pColorBlendState pointer if rasterization is disabled or subpass has no color attachments
     uint32_t caCnt = 0;
-    if (_isRasterizingColor && pCreateInfo->pColorBlendState) {
+    if (_isRasterizingColor && pRendInfo && pCreateInfo->pColorBlendState) {
         for (uint32_t caIdx = 0; caIdx < pCreateInfo->pColorBlendState->attachmentCount; caIdx++) {
             const VkPipelineColorBlendAttachmentState* pCA = &pCreateInfo->pColorBlendState->pAttachments[caIdx];
 
-            MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[caIdx];
-            colorDesc.pixelFormat = getPixelFormats()->getMTLPixelFormat(mvkRenderSubpass->getColorAttachmentFormat(caIdx));
+			MTLPixelFormat mtlPixFmt = getPixelFormats()->getMTLPixelFormat(pRendInfo->pColorAttachmentFormats[caIdx]);
+			MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[caIdx];
+            colorDesc.pixelFormat = mtlPixFmt;
             if (colorDesc.pixelFormat == MTLPixelFormatRGB9E5Float) {
                 // Metal doesn't allow disabling individual channels for a RGB9E5 render target.
                 // Either all must be disabled or none must be disabled.
@@ -1483,7 +1493,7 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
             // Don't set the blend state if we're not using this attachment.
             // The pixel format will be MTLPixelFormatInvalid in that case, and
             // Metal asserts if we turn on blending with that pixel format.
-            if (mvkRenderSubpass->isColorAttachmentUsed(caIdx)) {
+            if (mtlPixFmt) {
                 caCnt++;
                 colorDesc.blendingEnabled = pCA->blendEnable;
                 colorDesc.rgbBlendOperation = mvkMTLBlendOperationFromVkBlendOp(pCA->colorBlendOp);
@@ -1498,7 +1508,7 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
 
     // Depth & stencil attachments
 	MVKPixelFormats* pixFmts = getPixelFormats();
-    MTLPixelFormat mtlDSFormat = pixFmts->getMTLPixelFormat(mvkRenderSubpass->getDepthStencilFormat());
+    MTLPixelFormat mtlDSFormat = pixFmts->getMTLPixelFormat(mvkGetDepthStencilFormat(pRendInfo));
     if (pixFmts->isDepthFormat(mtlDSFormat)) { plDesc.depthAttachmentPixelFormat = mtlDSFormat; }
     if (pixFmts->isStencilFormat(mtlDSFormat)) { plDesc.stencilAttachmentPixelFormat = mtlDSFormat; }
 
@@ -1515,9 +1525,13 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
     // Multisampling - must ignore allowed bad pMultisampleState pointer if rasterization disabled
     if (_isRasterizing && pCreateInfo->pMultisampleState) {
         plDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(pCreateInfo->pMultisampleState->rasterizationSamples);
-        mvkRenderSubpass->setDefaultSampleCount(pCreateInfo->pMultisampleState->rasterizationSamples);
         plDesc.alphaToCoverageEnabled = pCreateInfo->pMultisampleState->alphaToCoverageEnable;
         plDesc.alphaToOneEnabled = pCreateInfo->pMultisampleState->alphaToOneEnable;
+
+		// If the pipeline uses a specific render subpass, set its default sample count
+		if (pCreateInfo->renderPass) {
+			((MVKRenderPass*)pCreateInfo->renderPass)->getSubpass(pCreateInfo->subpass)->setDefaultSampleCount(pCreateInfo->pMultisampleState->rasterizationSamples);
+		}
     }
 }
 
@@ -1574,10 +1588,9 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	// view range buffer as for the indirect paramters buffer.
 	_viewRangeBufferIndex = _indirectParamsIndex;
 
-    MVKRenderPass* mvkRendPass = (MVKRenderPass*)pCreateInfo->renderPass;
-    MVKRenderSubpass* mvkRenderSubpass = mvkRendPass->getSubpass(pCreateInfo->subpass);
+	const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
 	MVKPixelFormats* pixFmts = getPixelFormats();
-    MTLPixelFormat mtlDSFormat = pixFmts->getMTLPixelFormat(mvkRenderSubpass->getDepthStencilFormat());
+    MTLPixelFormat mtlDSFormat = pixFmts->getMTLPixelFormat(mvkGetDepthStencilFormat(pRendInfo));
 
 	// Disable any unused color attachments, because Metal validation can complain if the
 	// fragment shader outputs a color value without a corresponding color attachment.
@@ -1588,7 +1601,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	shaderConfig.options.mslOptions.enable_frag_output_mask = hasA2C ? 1 : 0;
 	if (_isRasterizingColor && pCreateInfo->pColorBlendState) {
 		for (uint32_t caIdx = 0; caIdx < pCreateInfo->pColorBlendState->attachmentCount; caIdx++) {
-			if (mvkRenderSubpass->isColorAttachmentUsed(caIdx)) {
+			if (mvkIsColorAttachmentUsed(pRendInfo, caIdx)) {
 				mvkEnableFlags(shaderConfig.options.mslOptions.enable_frag_output_mask, 1 << caIdx);
 			}
 		}
@@ -1602,7 +1615,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
     shaderConfig.options.shouldFlipVertexY = mvkConfig().shaderConversionFlipVertexY;
     shaderConfig.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     shaderConfig.options.mslOptions.tess_domain_origin_lower_left = pTessDomainOriginState && pTessDomainOriginState->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
-    shaderConfig.options.mslOptions.multiview = mvkRendPass->isMultiview();
+    shaderConfig.options.mslOptions.multiview = mvkIsMultiview(pRendInfo->viewMask);
     shaderConfig.options.mslOptions.multiview_layered_rendering = getPhysicalDevice()->canUseInstancingForMultiview();
     shaderConfig.options.mslOptions.view_index_from_device_index = mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT);
 #if MVK_MACOS

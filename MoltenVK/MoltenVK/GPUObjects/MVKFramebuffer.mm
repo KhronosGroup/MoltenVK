@@ -85,8 +85,8 @@ MVKFramebuffer::MVKFramebuffer(MVKDevice* device,
     _extent = { .width = pCreateInfo->width, .height = pCreateInfo->height };
 	_layerCount = pCreateInfo->layers;
 
-	if (!(pCreateInfo->flags & VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT_KHR)) {
-		// Add attachments
+	// If this is not an image-less framebuffer, add the attachments
+	if ( !mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT) ) {
 		_attachments.reserve(pCreateInfo->attachmentCount);
 		for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
 			_attachments.push_back((MVKImageView*)pCreateInfo->pAttachments[i]);
@@ -96,5 +96,49 @@ MVKFramebuffer::MVKFramebuffer(MVKDevice* device,
 
 MVKFramebuffer::~MVKFramebuffer() {
 	[_mtlDummyTex release];
+}
+
+
+#pragma mark -
+#pragma mark Support functions
+
+MVKFramebuffer* mvkCreateFramebuffer(MVKDevice* device,
+									 const VkRenderingInfo* pRenderingInfo,
+									 MVKRenderPass* mvkRenderPass) {
+	uint32_t attCnt = 0;
+	VkExtent3D fbExtent = {};
+	for (uint32_t caIdx = 0; caIdx < pRenderingInfo->colorAttachmentCount; caIdx++) {
+		auto& clrAtt = pRenderingInfo->pColorAttachments[caIdx];
+		if (clrAtt.imageView) {
+			fbExtent = ((MVKImageView*)clrAtt.imageView)->getExtent3D();
+			attCnt++;
+			if (clrAtt.resolveImageView && clrAtt.resolveMode != VK_RESOLVE_MODE_NONE) {
+				attCnt++;
+			}
+		}
+	}
+	auto* pDSAtt = pRenderingInfo->pDepthAttachment ? pRenderingInfo->pDepthAttachment : pRenderingInfo->pStencilAttachment;
+	if (pDSAtt) {
+		if (pDSAtt->imageView) {
+			fbExtent = ((MVKImageView*)pDSAtt->imageView)->getExtent3D();
+			attCnt++;
+		}
+		if (pDSAtt->resolveImageView && pDSAtt->resolveMode != VK_RESOLVE_MODE_NONE) {
+			attCnt++;
+		}
+	}
+
+	VkFramebufferCreateInfo fbCreateInfo;
+	fbCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	fbCreateInfo.pNext = nullptr;
+	fbCreateInfo.flags = VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT;
+	fbCreateInfo.renderPass = (VkRenderPass)mvkRenderPass;
+	fbCreateInfo.attachmentCount = attCnt;
+	fbCreateInfo.pAttachments = nullptr;
+	fbCreateInfo.width = fbExtent.width;
+	fbCreateInfo.height = fbExtent.height;
+	fbCreateInfo.layers = pRenderingInfo->layerCount;
+
+	return device->createFramebuffer(&fbCreateInfo, nullptr);
 }
 

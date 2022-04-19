@@ -47,10 +47,25 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 
 	// If this is a secondary command buffer, and contains inheritance info, set the inheritance info and determine
 	// whether it contains render pass continuation info. Otherwise, clear the inheritance info, and ignore it.
-	const VkCommandBufferInheritanceInfo* pInheritInfo = (_isSecondary ? pBeginInfo->pInheritanceInfo : NULL);
+	// Also check for and set any dynamic rendering inheritance info.
+	const VkCommandBufferInheritanceInfo* pInheritInfo = (_isSecondary ? pBeginInfo->pInheritanceInfo : nullptr);
+	const VkCommandBufferInheritanceRenderingInfo* pInerhitanceRenderingInfo = nullptr;
 	bool hasInheritInfo = mvkSetOrClear(&_secondaryInheritanceInfo, pInheritInfo);
 	_doesContinueRenderPass = mvkAreAllFlagsEnabled(usage, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) && hasInheritInfo;
-    
+	if (hasInheritInfo) {
+		for (const auto* next = (VkBaseInStructure*)_secondaryInheritanceInfo.pNext; next; next = next->pNext) {
+			switch (next->sType) {
+				case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO: {
+					pInerhitanceRenderingInfo = (VkCommandBufferInheritanceRenderingInfo*)next;
+					break;
+				}
+				default:
+					break;
+			}
+		}
+	}
+	mvkSetOrClear(&_inerhitanceRenderingInfo, pInerhitanceRenderingInfo);
+
     if(canPrefill()) {
         @autoreleasepool {
             uint32_t qIdx = 0;
@@ -274,8 +289,8 @@ void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff,
 }
 
 void MVKCommandEncoder::beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext) {
-    _framebuffer = nullptr;
-    _renderPass = nullptr;
+	setRenderPass(nullptr);
+	setFramebuffer(nullptr);
     _subpassContents = VK_SUBPASS_CONTENTS_INLINE;
     _renderSubpassIndex = 0;
     _multiviewPassIndex = 0;
@@ -316,16 +331,69 @@ void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
 	}
 }
 
+// Sets the renderpass object, releasing the old object, and retaining the new object.
+// Retaining the new is performed first, in case the old and new are the same object.
+// With dynamic rendering. the object is transient and only lives as long as the duration
+// of the current renderpass. To make it transient, it is released by the calling code
+// after it has been retained here, so that when it is released again here at the end
+// of the renderpass, it will automatically be destroyed. App-created objects are not
+// released by the calling code, and will not be destroyed by the release here.
+void MVKCommandEncoder::setRenderPass(MVKRenderPass* renderPass) {
+	if (renderPass) { renderPass->retain(); }
+	if (_renderPass) { _renderPass->release(); }
+	_renderPass = renderPass;
+}
+
+// Sets the framebuffer object, releasing the old object, and retaining the new object.
+// Retaining the new is performed first, in case the old and new are the same object.
+// With dynamic rendering. the object is transient and only lives as long as the duration
+// of the current renderpass. To make it transient, it is released by the calling code
+// after it has been retained here, so that when it is released again here at the end
+// of the renderpass, it will automatically be destroyed. App-created objects are not
+// released by the calling code, and will not be destroyed by the release here.
+void MVKCommandEncoder::setFramebuffer(MVKFramebuffer* framebuffer) {
+	if (framebuffer) { framebuffer->retain(); }
+	if (_framebuffer) { _framebuffer->release(); }
+	_framebuffer = framebuffer;
+}
+
+void MVKCommandEncoder::beginRendering(MVKCommand* rendCmd, const VkRenderingInfo* pRenderingInfo) {
+
+	VkSubpassContents contents = (mvkIsAnyFlagEnabled(pRenderingInfo->flags, VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT)
+								  ? VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
+								  : VK_SUBPASS_CONTENTS_INLINE);
+
+	uint32_t maxAttCnt = (pRenderingInfo->colorAttachmentCount + 1) * 2;
+	MVKImageView* attachments[maxAttCnt];
+	VkClearValue clearValues[maxAttCnt];
+	uint32_t attCnt = mvkGetAttachments(pRenderingInfo, attachments, clearValues);
+
+	MVKDevice* mvkDvc = getDevice();
+	MVKRenderPass* mvkRP = mvkCreateRenderPass(mvkDvc, pRenderingInfo);
+	MVKFramebuffer* mvkFB = mvkCreateFramebuffer(mvkDvc, pRenderingInfo, mvkRP);
+
+	beginRenderpass(rendCmd, contents, mvkRP, mvkFB,
+					pRenderingInfo->renderArea,
+					MVKArrayRef(clearValues, attCnt),
+					MVKArrayRef(attachments, attCnt),
+					MVKArrayRef<MVKArrayRef<MTLSamplePosition>>());
+
+	// Once retained by this encoder, mark these objects as transient by releasing them from their
+	// initial creation retain, so they will be destroyed when released at the end of the renderpass.
+	mvkRP->release();
+	mvkFB->release();
+}
+
 void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
 										VkSubpassContents subpassContents,
 										MVKRenderPass* renderPass,
 										MVKFramebuffer* framebuffer,
-										VkRect2D& renderArea,
+										const VkRect2D& renderArea,
 										MVKArrayRef<VkClearValue> clearValues,
 										MVKArrayRef<MVKImageView*> attachments,
 										MVKArrayRef<MVKArrayRef<MTLSamplePosition>> subpassSamplePositions) {
-	_renderPass = renderPass;
-	_framebuffer = framebuffer;
+	setRenderPass(renderPass);
+	setFramebuffer(framebuffer);
 	_renderArea = renderArea;
 	_isRenderingEntireAttachment = (mvkVkOffset2DsAreEqual(_renderArea.offset, {0,0}) &&
 									mvkVkExtent2DsAreEqual(_renderArea.extent, getFramebufferExtent()));
@@ -636,12 +704,15 @@ void MVKCommandEncoder::finalizeDispatchState() {
     _computePushConstants.encode();
 }
 
+void MVKCommandEncoder::endRendering() {
+	endRenderpass();
+}
+
 void MVKCommandEncoder::endRenderpass() {
 	encodeStoreActions();
 	endMetalRenderEncoding();
-
-	_renderPass = nullptr;
-	_framebuffer = nullptr;
+	setRenderPass(nullptr);
+	setFramebuffer(nullptr);
 	_attachments.clear();
 	_renderSubpassIndex = 0;
 }
@@ -965,6 +1036,14 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer) : MVKBaseDevic
             _mtlBlitEncoderUse = kMVKCommandUseNone;
 			_pEncodingContext = nullptr;
 			_stageCountersMTLFence = nil;
+			_renderPass = nullptr;
+			_framebuffer = nullptr;
+}
+
+// Release rendering objects in case this instance is destroyed before ending the current renderpass.
+MVKCommandEncoder::~MVKCommandEncoder() {
+	setRenderPass(nullptr);
+	setFramebuffer(nullptr);
 }
 
 
