@@ -35,7 +35,7 @@ using namespace std;
 
 // Sets the rendering objects, releasing the old objects, and retaining the new objects.
 // Retaining the new is performed first, in case the old and new are the same object.
-// With dynamic rendering. the objects are transient and only lives as long as the
+// With dynamic rendering, the objects are transient and only live as long as the
 // duration of the active renderpass. To make it transient, it is released by the calling
 // code after it has been retained here, so that when it is released again here at the
 // end of the renderpass, it will automatically be destroyed. App-created objects are
