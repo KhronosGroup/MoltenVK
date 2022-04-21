@@ -51,6 +51,7 @@ MVK_EXTENSION(KHR_descriptor_update_template,      KHR_DESCRIPTOR_UPDATE_TEMPLAT
 MVK_EXTENSION(KHR_device_group,                    KHR_DEVICE_GROUP,                     DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_device_group_creation,           KHR_DEVICE_GROUP_CREATION,            INSTANCE, 10.11,  8.0)
 MVK_EXTENSION(KHR_driver_properties,               KHR_DRIVER_PROPERTIES,                DEVICE,   10.11,  8.0)
+MVK_EXTENSION(KHR_dynamic_rendering,               KHR_DYNAMIC_RENDERING,                DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_external_fence,                  KHR_EXTERNAL_FENCE,                   DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_external_fence_capabilities,     KHR_EXTERNAL_FENCE_CAPABILITIES,      INSTANCE, 10.11,  8.0)
 MVK_EXTENSION(KHR_external_memory,                 KHR_EXTERNAL_MEMORY,                  DEVICE,   10.11,  8.0)

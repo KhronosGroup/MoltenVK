@@ -164,6 +164,54 @@ void MVKCmdEndRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
 		cmdEncoder->endRenderpass();
 }
 
+
+#pragma mark -
+#pragma mark MVKCmdBeginRendering
+
+template <size_t N>
+VkResult MVKCmdBeginRendering<N>::setContent(MVKCommandBuffer* cmdBuff,
+											 const VkRenderingInfo* pRenderingInfo) {
+	_renderingInfo = *pRenderingInfo;
+
+	// Copy attachments content, redirect info pointers to copied content, and remove any stale pNext refs
+	_colorAttachments.assign(_renderingInfo.pColorAttachments,
+							 _renderingInfo.pColorAttachments + _renderingInfo.colorAttachmentCount);
+	_renderingInfo.pColorAttachments = _colorAttachments.data();
+	for (auto caAtt : _colorAttachments) { caAtt.pNext = nullptr; }
+
+	if (mvkSetOrClear(&_depthAttachment, _renderingInfo.pDepthAttachment)) {
+		_renderingInfo.pDepthAttachment = &_depthAttachment;
+	}
+	if (mvkSetOrClear(&_stencilAttachment, _renderingInfo.pStencilAttachment)) {
+		_renderingInfo.pStencilAttachment = &_stencilAttachment;
+	}
+
+	return VK_SUCCESS;
+}
+
+template <size_t N>
+void MVKCmdBeginRendering<N>::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->beginRendering(this, &_renderingInfo);
+}
+
+template class MVKCmdBeginRendering<1>;
+template class MVKCmdBeginRendering<2>;
+template class MVKCmdBeginRendering<4>;
+template class MVKCmdBeginRendering<8>;
+
+
+#pragma mark -
+#pragma mark MVKCmdEndRendering
+
+VkResult MVKCmdEndRendering::setContent(MVKCommandBuffer* cmdBuff) {
+	return VK_SUCCESS;
+}
+
+void MVKCmdEndRendering::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->endRendering();
+}
+
+
 #pragma mark -
 #pragma mark MVKCmdSetSampleLocations
 

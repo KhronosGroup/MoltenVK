@@ -30,6 +30,32 @@
 
 using namespace std;
 
+#pragma mark -
+#pragma mark MVKCommandEncodingContext
+
+// Sets the rendering objects, releasing the old objects, and retaining the new objects.
+// Retaining the new is performed first, in case the old and new are the same object.
+// With dynamic rendering, the objects are transient and only live as long as the
+// duration of the active renderpass. To make it transient, it is released by the calling
+// code after it has been retained here, so that when it is released again here at the
+// end of the renderpass, it will automatically be destroyed. App-created objects are
+// not released by the calling code, and will not be destroyed by the release here.
+void MVKCommandEncodingContext::setRenderingContext(MVKRenderPass* renderPass, MVKFramebuffer* framebuffer) {
+
+	if (renderPass) { renderPass->retain(); }
+	if (_renderPass) { _renderPass->release(); }
+	_renderPass = renderPass;
+
+	if (framebuffer) { framebuffer->retain(); }
+	if (_framebuffer) { _framebuffer->release(); }
+	_framebuffer = framebuffer;
+}
+
+// Release rendering objects in case this instance is destroyed before ending the current renderpass.
+MVKCommandEncodingContext::~MVKCommandEncodingContext() {
+	setRenderingContext(nullptr, nullptr);
+}
+
 
 #pragma mark -
 #pragma mark MVKCommandBuffer
@@ -47,10 +73,28 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 
 	// If this is a secondary command buffer, and contains inheritance info, set the inheritance info and determine
 	// whether it contains render pass continuation info. Otherwise, clear the inheritance info, and ignore it.
-	const VkCommandBufferInheritanceInfo* pInheritInfo = (_isSecondary ? pBeginInfo->pInheritanceInfo : NULL);
+	// Also check for and set any dynamic rendering inheritance info. The color format array must be copied locally.
+	const VkCommandBufferInheritanceInfo* pInheritInfo = (_isSecondary ? pBeginInfo->pInheritanceInfo : nullptr);
 	bool hasInheritInfo = mvkSetOrClear(&_secondaryInheritanceInfo, pInheritInfo);
 	_doesContinueRenderPass = mvkAreAllFlagsEnabled(usage, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) && hasInheritInfo;
-    
+	if (hasInheritInfo) {
+		for (const auto* next = (VkBaseInStructure*)_secondaryInheritanceInfo.pNext; next; next = next->pNext) {
+			switch (next->sType) {
+				case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO: {
+					if (mvkSetOrClear(&_inerhitanceRenderingInfo, (VkCommandBufferInheritanceRenderingInfo*)next)) {
+						for (uint32_t caIdx = 0; caIdx < _inerhitanceRenderingInfo.colorAttachmentCount; caIdx++) {
+							_colorAttachmentFormats.push_back(_inerhitanceRenderingInfo.pColorAttachmentFormats[caIdx]);
+						}
+						_inerhitanceRenderingInfo.pColorAttachmentFormats = _colorAttachmentFormats.data();
+					}
+					break;
+				}
+				default:
+					break;
+			}
+		}
+	}
+
     if(canPrefill()) {
         @autoreleasepool {
             uint32_t qIdx = 0;
@@ -274,14 +318,13 @@ void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff,
 }
 
 void MVKCommandEncoder::beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext) {
-    _framebuffer = nullptr;
-    _renderPass = nullptr;
+	_pEncodingContext = pEncodingContext;
+
     _subpassContents = VK_SUBPASS_CONTENTS_INLINE;
     _renderSubpassIndex = 0;
     _multiviewPassIndex = 0;
     _canUseLayeredRendering = false;
 
-    _pEncodingContext = pEncodingContext;
     _mtlCmdBuffer = mtlCmdBuff;        // not retained
 
     setLabelIfNotNil(_mtlCmdBuffer, _cmdBuffer->_debugName);
@@ -316,16 +359,58 @@ void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
 	}
 }
 
+void MVKCommandEncoder::beginRendering(MVKCommand* rendCmd, const VkRenderingInfo* pRenderingInfo) {
+
+	VkSubpassContents contents = (mvkIsAnyFlagEnabled(pRenderingInfo->flags, VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT)
+								  ? VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
+								  : VK_SUBPASS_CONTENTS_INLINE);
+
+	uint32_t maxAttCnt = (pRenderingInfo->colorAttachmentCount + 1) * 2;
+	MVKImageView* attachments[maxAttCnt];
+	VkClearValue clearValues[maxAttCnt];
+	uint32_t attCnt = mvkGetAttachments(pRenderingInfo, attachments, clearValues);
+
+	// If we're resuming a suspended renderpass, continue to use the existing renderpass
+	// (with updated rendering flags) and framebuffer. Otherwise, create new transient
+	// renderpass and framebuffer objects from the pRenderingInfo, and retain them until
+	// the renderpass is completely finished, which may span multiple command encoders.
+	MVKRenderPass* mvkRP;
+	MVKFramebuffer* mvkFB;
+	bool isResumingSuspended = (mvkIsAnyFlagEnabled(_pEncodingContext->getRenderingFlags(), VK_RENDERING_SUSPENDING_BIT) &&
+								mvkIsAnyFlagEnabled(pRenderingInfo->flags, VK_RENDERING_RESUMING_BIT));
+	if (isResumingSuspended) {
+		mvkRP = _pEncodingContext->getRenderPass();
+		mvkRP->setRenderingFlags(pRenderingInfo->flags);
+		mvkFB = _pEncodingContext->getFramebuffer();
+	} else {
+		mvkRP = mvkCreateRenderPass(getDevice(), pRenderingInfo);
+		mvkFB = mvkCreateFramebuffer(getDevice(), pRenderingInfo, mvkRP);
+	}
+	beginRenderpass(rendCmd, contents, mvkRP, mvkFB,
+					pRenderingInfo->renderArea,
+					MVKArrayRef(clearValues, attCnt),
+					MVKArrayRef(attachments, attCnt),
+					MVKArrayRef<MVKArrayRef<MTLSamplePosition>>());
+
+	// If we've just created new transient objects, once retained by this encoder,
+	// mark the objects as transient by releasing them from their initial creation
+	// retain, so they will be destroyed when released at the end of the renderpass,
+	// which may span multiple command encoders.
+	if ( !isResumingSuspended ) {
+		mvkRP->release();
+		mvkFB->release();
+	}
+}
+
 void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
 										VkSubpassContents subpassContents,
 										MVKRenderPass* renderPass,
 										MVKFramebuffer* framebuffer,
-										VkRect2D& renderArea,
+										const VkRect2D& renderArea,
 										MVKArrayRef<VkClearValue> clearValues,
 										MVKArrayRef<MVKImageView*> attachments,
 										MVKArrayRef<MVKArrayRef<MTLSamplePosition>> subpassSamplePositions) {
-	_renderPass = renderPass;
-	_framebuffer = framebuffer;
+	_pEncodingContext->setRenderingContext(renderPass, framebuffer);
 	_renderArea = renderArea;
 	_isRenderingEntireAttachment = (mvkVkOffset2DsAreEqual(_renderArea.offset, {0,0}) &&
 									mvkVkExtent2DsAreEqual(_renderArea.extent, getFramebufferExtent()));
@@ -387,7 +472,7 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
     MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
 	getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc,
 												  _multiviewPassIndex,
-												  _framebuffer,
+												  _pEncodingContext->getFramebuffer(),
 												  _attachments.contents(),
 												  _clearValues.contents(),
 												  _isRenderingEntireAttachment,
@@ -479,13 +564,13 @@ void MVKCommandEncoder::encodeStoreActions(bool storeOverride) {
 									 storeOverride);
 }
 
-MVKRenderSubpass* MVKCommandEncoder::getSubpass() { return _renderPass->getSubpass(_renderSubpassIndex); }
+MVKRenderSubpass* MVKCommandEncoder::getSubpass() { return _pEncodingContext->getRenderPass()->getSubpass(_renderSubpassIndex); }
 
 // Returns a name for use as a MTLRenderCommandEncoder label
 NSString* MVKCommandEncoder::getMTLRenderCommandEncoderName(MVKCommandUse cmdUse) {
 	NSString* rpName;
 
-	rpName = _renderPass->getDebugName();
+	rpName = _pEncodingContext->getRenderPass()->getDebugName();
 	if (rpName) { return rpName; }
 
 	rpName = _cmdBuffer->getDebugName();
@@ -494,9 +579,15 @@ NSString* MVKCommandEncoder::getMTLRenderCommandEncoderName(MVKCommandUse cmdUse
 	return mvkMTLRenderCommandEncoderLabel(cmdUse);
 }
 
-VkExtent2D MVKCommandEncoder::getFramebufferExtent() { return _framebuffer ? _framebuffer->getExtent2D() : VkExtent2D{0,0}; }
+VkExtent2D MVKCommandEncoder::getFramebufferExtent() {
+	auto* mvkFB = _pEncodingContext->getFramebuffer();
+	return mvkFB ? mvkFB->getExtent2D() : VkExtent2D{0,0};
+}
 
-uint32_t MVKCommandEncoder::getFramebufferLayerCount() { return _framebuffer ? _framebuffer->getLayerCount() : 0; }
+uint32_t MVKCommandEncoder::getFramebufferLayerCount() {
+	auto* mvkFB = _pEncodingContext->getFramebuffer();
+	return mvkFB ? mvkFB->getLayerCount() : 0;
+}
 
 void MVKCommandEncoder::bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline) {
     switch (pipelineBindPoint) {
@@ -636,12 +727,16 @@ void MVKCommandEncoder::finalizeDispatchState() {
     _computePushConstants.encode();
 }
 
+void MVKCommandEncoder::endRendering() {
+	endRenderpass();
+}
+
 void MVKCommandEncoder::endRenderpass() {
 	encodeStoreActions();
 	endMetalRenderEncoding();
-
-	_renderPass = nullptr;
-	_framebuffer = nullptr;
+	if ( !mvkIsAnyFlagEnabled(_pEncodingContext->getRenderingFlags(), VK_RENDERING_SUSPENDING_BIT) ) {
+		_pEncodingContext->setRenderingContext(nullptr, nullptr);
+	}
 	_attachments.clear();
 	_renderSubpassIndex = 0;
 }
@@ -814,7 +909,7 @@ void MVKCommandEncoder::encodeGPUCounterSample(MVKGPUCounterQueryPool* mvkQryPoo
 void MVKCommandEncoder::beginOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags) {
     _occlusionQueryState.beginOcclusionQuery(pQueryPool, query, flags);
     uint32_t queryCount = 1;
-    if (_renderPass && getSubpass()->isMultiview()) {
+    if (isInRenderPass() && getSubpass()->isMultiview()) {
         queryCount = getSubpass()->getViewCountInMetalPass(_multiviewPassIndex);
     }
     addActivatedQueries(pQueryPool, query, queryCount);
@@ -826,7 +921,7 @@ void MVKCommandEncoder::endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uin
 
 void MVKCommandEncoder::markTimestamp(MVKTimestampQueryPool* pQueryPool, uint32_t query) {
     uint32_t queryCount = 1;
-    if (_renderPass && getSubpass()->isMultiview()) {
+    if (isInRenderPass() && getSubpass()->isMultiview()) {
         queryCount = getSubpass()->getViewCountInMetalPass(_multiviewPassIndex);
     }
 	addActivatedQueries(pQueryPool, query, queryCount);
