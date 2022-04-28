@@ -26,6 +26,8 @@ Released TBD
 - Fix error where previously bound push constants can override a descriptor buffer binding 
   used by a subsequent pipeline that does not use push constants.
 - Support attachment clearing when some clearing formats are not specified.
+- Update to latest SPIRV-Cross:
+	- MSL: Emit interface block members of array length 1 as arrays instead of scalars.
 
 
 
