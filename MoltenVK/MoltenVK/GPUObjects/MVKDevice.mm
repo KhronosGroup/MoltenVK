@@ -736,6 +736,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImageFormatInfo2 *pImageFormatInfo,
 													 VkImageFormatProperties2* pImageFormatProperties) {
 
+	auto usage = pImageFormatInfo->usage;
 	for (const auto* nextInfo = (VkBaseInStructure*)pImageFormatInfo->pNext; nextInfo; nextInfo = nextInfo->pNext) {
 		switch (nextInfo->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO: {
@@ -747,6 +748,13 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
 						auto* pExtImgFmtProps = (VkExternalImageFormatProperties*)nextProps;
 						pExtImgFmtProps->externalMemoryProperties = getExternalImageProperties(pExtImgFmtInfo->handleType);
 					}
+				}
+				break;
+			}
+			case VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO: {
+				// If the format includes a stencil component, combine any separate stencil usage with non-stencil usage.
+				if (_pixelFormats.isStencilFormat(_pixelFormats.getMTLPixelFormat(pImageFormatInfo->format))) {
+					usage |= ((VkImageStencilUsageCreateInfo*)nextInfo)->stencilUsage;
 				}
 				break;
 			}
@@ -770,7 +778,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
 	if ( !_pixelFormats.isSupported(pImageFormatInfo->format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
 	return getImageFormatProperties(pImageFormatInfo->format, pImageFormatInfo->type,
-									pImageFormatInfo->tiling, pImageFormatInfo->usage,
+									pImageFormatInfo->tiling, usage,
 									pImageFormatInfo->flags,
 									&pImageFormatProperties->imageFormatProperties);
 }
