@@ -98,6 +98,7 @@ MVK_EXTENSION(EXT_private_data,                    EXT_PRIVATE_DATA,            
 MVK_EXTENSION(EXT_robustness2,                     EXT_ROBUSTNESS_2,                     DEVICE,   10.11,  8.0)
 MVK_EXTENSION(EXT_sample_locations,                EXT_SAMPLE_LOCATIONS,                 DEVICE,   10.13, 11.0)
 MVK_EXTENSION(EXT_scalar_block_layout,             EXT_SCALAR_BLOCK_LAYOUT,              DEVICE,   10.11,  8.0)
+MVK_EXTENSION(EXT_separate_stencil_usage,          EXT_SEPARATE_STENCIL_USAGE,           DEVICE,   10.11,  8.0)
 MVK_EXTENSION(EXT_shader_stencil_export,           EXT_SHADER_STENCIL_EXPORT,            DEVICE,   10.14, 12.0)
 MVK_EXTENSION(EXT_shader_viewport_index_layer,     EXT_SHADER_VIEWPORT_INDEX_LAYER,      DEVICE,   10.11,  8.0)
 MVK_EXTENSION(EXT_subgroup_size_control,           EXT_SUBGROUP_SIZE_CONTROL,            DEVICE,   10.14, 13.0)

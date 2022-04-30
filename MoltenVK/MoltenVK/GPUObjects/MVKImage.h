@@ -344,6 +344,7 @@ protected:
 	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
     void releaseIOSurface();
 	bool getIsValidViewFormat(VkFormat viewFormat);
+	VkImageUsageFlags getCombinedUsage() { return _usage | _stencilUsage; }
 	MTLTextureUsage getMTLTextureUsage(MTLPixelFormat mtlPixFmt);
 
     MVKSmallVector<MVKImageMemoryBinding*, 3> _memoryBindings;
@@ -354,6 +355,7 @@ protected:
     uint32_t _arrayLayers;
     VkSampleCountFlagBits _samples;
     VkImageUsageFlags _usage;
+	VkImageUsageFlags _stencilUsage;
     VkFormat _vkFormat;
 	MTLTextureType _mtlTextureType;
     std::mutex _lock;
