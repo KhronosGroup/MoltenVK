@@ -23,6 +23,7 @@ Released TBD
 	  updated to indicate the impact of the `VK_KHR_portability_enumeration` extension during 
 	  runtime loading on *macOS* via the *Vulkan Loader*.
 	- `VK_KHR_dynamic_rendering`
+	- `VK_KHR_separate_depth_stencil_layouts`
 	- `VK_EXT_separate_stencil_usage`
 - Fix error where previously bound push constants can override a descriptor buffer binding 
   used by a subsequent pipeline that does not use push constants.

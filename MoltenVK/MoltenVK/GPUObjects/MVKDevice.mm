@@ -282,6 +282,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				dynamicRenderingFeatures->dynamicRendering = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES: {
+				auto* separateDepthStencilLayoutsFeatures = (VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures*)next;
+				separateDepthStencilLayoutsFeatures->separateDepthStencilLayouts = true;
+				break;
+			}
 			default:
 				break;
 		}
@@ -3327,9 +3332,9 @@ MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInf
 		}
 	} else {
 		switch (_vkSemaphoreStyle) {
-			case VkSemaphoreStyleUseMTLEvent:  return new MVKSemaphoreMTLEvent(this, pCreateInfo);
-			case VkSemaphoreStyleUseMTLFence:  return new MVKSemaphoreMTLFence(this, pCreateInfo);
-			case VkSemaphoreStyleUseEmulation: return new MVKSemaphoreEmulated(this, pCreateInfo);
+			case MVKSemaphoreStyleUseMTLEvent:  return new MVKSemaphoreMTLEvent(this, pCreateInfo);
+			case MVKSemaphoreStyleUseMTLFence:  return new MVKSemaphoreMTLFence(this, pCreateInfo);
+			case MVKSemaphoreStyleUseEmulation: return new MVKSemaphoreEmulated(this, pCreateInfo);
 		}
 	}
 }
@@ -3981,10 +3986,10 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledPortabilityFeatures(),
 	_enabledImagelessFramebufferFeatures(),
 	_enabledDynamicRenderingFeatures(),
-	_enabledExtensions(this),
-	_isCurrentlyAutoGPUCapturing(false)
-{
-	// If the physical device is lost, bail.
+	_enabledSeparateDepthStencilLayoutsFeatures(),
+	_enabledExtensions(this) {
+
+		// If the physical device is lost, bail.
 	if (physicalDevice->getConfigurationResult() != VK_SUCCESS) {
 		setConfigurationResult(physicalDevice->getConfigurationResult());
 		return;
@@ -3992,8 +3997,8 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 
 	initPerformanceTracking();
 	initPhysicalDevice(physicalDevice, pCreateInfo);
-	enableFeatures(pCreateInfo);
 	enableExtensions(pCreateInfo);
+	enableFeatures(pCreateInfo);
 	initQueues(pCreateInfo);
 	reservePrivateData(pCreateInfo);
 
@@ -4075,15 +4080,15 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	bool isRosetta2 = _pProperties->vendorID == kAppleVendorId && !MVK_APPLE_SILICON;
 	bool canUseMTLEventForSem4 = _pMetalFeatures->events && mvkConfig().semaphoreUseMTLEvent && !(isRosetta2 || isNVIDIA);
 	bool canUseMTLFenceForSem4 = _pMetalFeatures->fences && mvkConfig().semaphoreUseMTLFence;
-	_vkSemaphoreStyle = canUseMTLEventForSem4 ? VkSemaphoreStyleUseMTLEvent : (canUseMTLFenceForSem4 ? VkSemaphoreStyleUseMTLFence : VkSemaphoreStyleUseEmulation);
+	_vkSemaphoreStyle = canUseMTLEventForSem4 ? MVKSemaphoreStyleUseMTLEvent : (canUseMTLFenceForSem4 ? MVKSemaphoreStyleUseMTLFence : MVKSemaphoreStyleUseEmulation);
 	switch (_vkSemaphoreStyle) {
-		case VkSemaphoreStyleUseMTLEvent:
+		case MVKSemaphoreStyleUseMTLEvent:
 			MVKLogInfo("Using MTLEvent for Vulkan semaphores.");
 			break;
-		case VkSemaphoreStyleUseMTLFence:
+		case MVKSemaphoreStyleUseMTLFence:
 			MVKLogInfo("Using MTLFence for Vulkan semaphores.");
 			break;
-		case VkSemaphoreStyleUseEmulation:
+		case MVKSemaphoreStyleUseEmulation:
 			MVKLogInfo("Using emulation for Vulkan semaphores.");
 			break;
 	}
@@ -4110,10 +4115,15 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	mvkClear(&_enabledPortabilityFeatures);
 	mvkClear(&_enabledImagelessFramebufferFeatures);
 	mvkClear(&_enabledDynamicRenderingFeatures);
+	mvkClear(&_enabledSeparateDepthStencilLayoutsFeatures);
+
+	VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures pdSeparateDepthStencilLayoutsFeatures;
+	pdSeparateDepthStencilLayoutsFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES;
+	pdSeparateDepthStencilLayoutsFeatures.pNext = nullptr;
 
 	VkPhysicalDeviceDynamicRenderingFeatures pdDynamicRenderingFeatures;
 	pdDynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
-	pdDynamicRenderingFeatures.pNext = NULL;
+	pdDynamicRenderingFeatures.pNext = &pdSeparateDepthStencilLayoutsFeatures;
 
 	VkPhysicalDeviceImagelessFramebufferFeaturesKHR pdImagelessFramebufferFeatures;
 	pdImagelessFramebufferFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES;
@@ -4319,6 +4329,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				enableFeatures(&_enabledDynamicRenderingFeatures.dynamicRendering,
 							   &requestedFeatures->dynamicRendering,
 							   &pdDynamicRenderingFeatures.dynamicRendering, 1);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES: {
+				auto* requestedFeatures = (VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures*)next;
+				enableFeatures(&_enabledSeparateDepthStencilLayoutsFeatures.separateDepthStencilLayouts,
+							   &requestedFeatures->separateDepthStencilLayouts,
+							   &pdSeparateDepthStencilLayoutsFeatures.separateDepthStencilLayouts, 1);
 				break;
 			}
 			default:
