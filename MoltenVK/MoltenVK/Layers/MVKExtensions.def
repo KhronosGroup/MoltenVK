@@ -72,6 +72,7 @@ MVK_EXTENSION(KHR_push_descriptor,                 KHR_PUSH_DESCRIPTOR,         
 MVK_EXTENSION(KHR_relaxed_block_layout,            KHR_RELAXED_BLOCK_LAYOUT,             DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_sampler_mirror_clamp_to_edge,    KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE,     DEVICE,   10.11, 14.0)
 MVK_EXTENSION(KHR_sampler_ycbcr_conversion,        KHR_SAMPLER_YCBCR_CONVERSION,         DEVICE,   10.11,  8.0)
+MVK_EXTENSION(KHR_separate_depth_stencil_layouts,  KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS,   DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_shader_draw_parameters,          KHR_SHADER_DRAW_PARAMETERS,           DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_shader_float16_int8,             KHR_SHADER_FLOAT16_INT8,              DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_shader_subgroup_extended_types,  KHR_SHADER_SUBGROUP_EXTENDED_TYPES,   DEVICE,   10.14, 13.0)

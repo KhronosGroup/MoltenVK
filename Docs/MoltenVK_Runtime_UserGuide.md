@@ -270,6 +270,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_device_group`
 - `VK_KHR_device_group_creation`
 - `VK_KHR_driver_properties`
+- `VK_KHR_dynamic_rendering`
 - `VK_KHR_get_memory_requirements2`
 - `VK_KHR_get_physical_device_properties2`
 - `VK_KHR_get_surface_capabilities2`
@@ -284,6 +285,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_relaxed_block_layout`
 - `VK_KHR_sampler_mirror_clamp_to_edge` *(requires a Mac GPU or Apple family 7 GPU)*
 - `VK_KHR_sampler_ycbcr_conversion`
+- `VK_KHR_separate_depth_stencil_layouts`
 - `VK_KHR_shader_draw_parameters`
 - `VK_KHR_shader_float16_int8`
 - `VK_KHR_shader_subgroup_extended_types` *(requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS)*
@@ -309,6 +311,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_robustness2`
 - `VK_EXT_sample_locations`
 - `VK_EXT_scalar_block_layout`
+- `VK_EXT_separate_stencil_usage`
 - `VK_EXT_shader_stencil_export` *(requires Mac GPU family 2 or iOS GPU family 5)*
 - `VK_EXT_shader_viewport_index_layer`
 - `VK_EXT_subgroup_size_control` *(requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS)*
