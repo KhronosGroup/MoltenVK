@@ -147,6 +147,7 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	_isExecutingNonConcurrently.clear();
 	_commandCount = 0;
 	_needsVisibilityResultMTLBuffer = false;
+	_hasStageCounterTimestampCommand = false;
 	_lastTessellationPipeline = nullptr;
 	_lastMultiviewSubpass = nullptr;
 	setConfigurationResult(VK_NOT_READY);
@@ -171,7 +172,9 @@ void MVKCommandBuffer::addCommand(MVKCommand* command) {
         setConfigurationResult(reportError(VK_NOT_READY, "Command buffer cannot accept commands before vkBeginCommandBuffer() is called."));
         return;
     }
-    
+
+	_commandCount++;
+
     if(_immediateCmdEncoder) {
         _immediateCmdEncoder->encodeCommands(command);
         
@@ -185,7 +188,6 @@ void MVKCommandBuffer::addCommand(MVKCommand* command) {
     command->_next = nullptr;
     _tail = command;
     if ( !_head ) { _head = command; }
-    _commandCount++;
 }
 
 void MVKCommandBuffer::submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit,
@@ -258,19 +260,20 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 	reset(0);
 }
 
-// If the initial visibility result buffer has not been set, promote the first visibility result buffer
-// found among any of the secondary command buffers, to support the case where a render pass is started in
-// the primary command buffer but the visibility query is started inside one of the secondary command buffers.
+// Promote the initial visibility buffer and indication of timestamp use from the secondary buffers.
 void MVKCommandBuffer::recordExecuteCommands(const MVKArrayRef<MVKCommandBuffer*> secondaryCommandBuffers) {
-	if (!_needsVisibilityResultMTLBuffer) {
-		for (MVKCommandBuffer* cmdBuff : secondaryCommandBuffers) {
-			if (cmdBuff->_needsVisibilityResultMTLBuffer) {
-				_needsVisibilityResultMTLBuffer = true;
-				break;
-			}
-		}
+	for (MVKCommandBuffer* cmdBuff : secondaryCommandBuffers) {
+		if (cmdBuff->_needsVisibilityResultMTLBuffer) { _needsVisibilityResultMTLBuffer = true; }
+		if (cmdBuff->_hasStageCounterTimestampCommand) { _hasStageCounterTimestampCommand = true; }
 	}
 }
+
+// Track whether a stage-based timestamp command has been added, so we know
+// to update the timestamp command fence when ending a Metal command encoder.
+void MVKCommandBuffer::recordTimestampCommand() {
+	_hasStageCounterTimestampCommand = mvkIsAnyFlagEnabled(_device->_pMetalFeatures->counterSamplingPoints, MVK_COUNTER_SAMPLING_AT_PIPELINE_STAGE);
+}
+
 
 #pragma mark -
 #pragma mark Tessellation constituent command management
@@ -334,7 +337,7 @@ void MVKCommandEncoder::encodeCommands(MVKCommand* command) {
     while(command) {
         uint32_t prevMVPassIdx = _multiviewPassIndex;
         command->encode(this);
-        
+
         if(_multiviewPassIndex > prevMVPassIdx) {
             // This means we're in a multiview render pass, and we moved on to the
             // next view group. Re-encode all commands in the subpass again for this group.
@@ -744,7 +747,7 @@ void MVKCommandEncoder::endRenderpass() {
 void MVKCommandEncoder::endMetalRenderEncoding() {
     if (_mtlRenderEncoder == nil) { return; }
 
-	if (hasTimestampStageCounterQueries() ) { [_mtlRenderEncoder updateFence: getStageCountersMTLFence() afterStages: MTLRenderStageFragment]; }
+	if (_cmdBuffer->_hasStageCounterTimestampCommand) { [_mtlRenderEncoder updateFence: getStageCountersMTLFence() afterStages: MTLRenderStageFragment]; }
     [_mtlRenderEncoder endEncoding];
 	_mtlRenderEncoder = nil;    // not retained
 
@@ -772,12 +775,12 @@ void MVKCommandEncoder::endCurrentMetalEncoding() {
 	_computeResourcesState.markDirty();
 	_computePushConstants.markDirty();
 
-	if (_mtlComputeEncoder && hasTimestampStageCounterQueries() ) { [_mtlComputeEncoder updateFence: getStageCountersMTLFence()]; }
+	if (_mtlComputeEncoder && _cmdBuffer->_hasStageCounterTimestampCommand) { [_mtlComputeEncoder updateFence: getStageCountersMTLFence()]; }
 	[_mtlComputeEncoder endEncoding];
 	_mtlComputeEncoder = nil;       // not retained
 	_mtlComputeEncoderUse = kMVKCommandUseNone;
 
-	if (_mtlBlitEncoder && hasTimestampStageCounterQueries() ) { [_mtlBlitEncoder updateFence: getStageCountersMTLFence()]; }
+	if (_mtlBlitEncoder && _cmdBuffer->_hasStageCounterTimestampCommand) { [_mtlBlitEncoder updateFence: getStageCountersMTLFence()]; }
 	[_mtlBlitEncoder endEncoding];
 	_mtlBlitEncoder = nil;          // not retained
     _mtlBlitEncoderUse = kMVKCommandUseNone;
