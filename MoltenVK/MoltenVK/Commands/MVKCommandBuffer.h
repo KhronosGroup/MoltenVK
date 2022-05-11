@@ -118,6 +118,10 @@ public:
 	/** Called when a MVKCmdExecuteCommands is added to this command buffer. */
 	void recordExecuteCommands(const MVKArrayRef<MVKCommandBuffer*> secondaryCommandBuffers);
 
+	/** Called when a timestamp command is added. */
+	void recordTimestampCommand();
+
+
 #pragma mark Tessellation constituent command management
 
 	/** Update the last recorded pipeline with tessellation shaders */
@@ -197,6 +201,7 @@ protected:
 	bool _isReusable;
 	bool _supportsConcurrentExecution;
 	bool _wasExecuted;
+	bool _hasStageCounterTimestampCommand;
 };
 
 
@@ -461,7 +466,6 @@ protected:
     NSString* getMTLRenderCommandEncoderName(MVKCommandUse cmdUse);
 	void encodeGPUCounterSample(MVKGPUCounterQueryPool* mvkQryPool, uint32_t sampleIndex, MVKCounterSamplingFlags samplingPoints);
 	void encodeTimestampStageCounterSamples();
-	bool hasTimestampStageCounterQueries() { return !_timestampStageCounterQueries.empty(); }
 	id<MTLFence> getStageCountersMTLFence();
 	MVKArrayRef<MTLSamplePosition> getCustomSamplePositions();
 
@@ -470,11 +474,8 @@ protected:
 		uint32_t query = 0;
 	} GPUCounterQuery;
 
-	VkSubpassContents _subpassContents;
-	MVKCommand* _lastMultiviewPassCmd;
-	uint32_t _renderSubpassIndex;
-	uint32_t _multiviewPassIndex;
 	VkRect2D _renderArea;
+	MVKCommand* _lastMultiviewPassCmd;
     MVKActivatedQueries* _pActivatedQueries;
 	MVKSmallVector<GPUCounterQuery, 16> _timestampStageCounterQueries;
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
@@ -482,16 +483,19 @@ protected:
 	MVKSmallVector<MTLSamplePosition> _dynamicSamplePositions;
 	MVKSmallVector<MVKSmallVector<MTLSamplePosition>> _subpassSamplePositions;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
-	MVKCommandUse _mtlComputeEncoderUse;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
 	id<MTLFence> _stageCountersMTLFence;
-    MVKCommandUse _mtlBlitEncoderUse;
 	MVKPushConstantsCommandEncoderState _vertexPushConstants;
 	MVKPushConstantsCommandEncoderState _tessCtlPushConstants;
 	MVKPushConstantsCommandEncoderState _tessEvalPushConstants;
 	MVKPushConstantsCommandEncoderState _fragmentPushConstants;
 	MVKPushConstantsCommandEncoderState _computePushConstants;
     MVKOcclusionQueryCommandEncoderState _occlusionQueryState;
+	VkSubpassContents _subpassContents;
+	MVKCommandUse _mtlComputeEncoderUse;
+	MVKCommandUse _mtlBlitEncoderUse;
+	uint32_t _renderSubpassIndex;
+	uint32_t _multiviewPassIndex;
     uint32_t _flushCount = 0;
 	bool _isRenderingEntireAttachment;
 };
