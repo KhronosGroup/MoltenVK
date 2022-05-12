@@ -30,6 +30,7 @@ Released TBD
   used by a subsequent pipeline that does not use push constants.
 - Fix error on some Apple GPU's where a `vkCmdTimestampQuery()` after a renderpass was 
   writing timestamp before renderpass activity was complete.
+- Work around zombie memory bug in Intel Iris Plus Graphics driver when repeatedly retrieving GPU counter sets.
 - Update to latest SPIRV-Cross:
 	- MSL: Emit interface block members of array length 1 as arrays instead of scalars.
 

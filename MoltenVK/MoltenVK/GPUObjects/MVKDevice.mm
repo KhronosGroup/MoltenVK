@@ -2812,6 +2812,14 @@ void MVKPhysicalDevice::initCounterSets() {
 	@autoreleasepool {
 		if (_metalFeatures.counterSamplingPoints) {
 			NSArray<id<MTLCounterSet>>* counterSets = _mtlDevice.counterSets;
+
+			// Workaround for a bug in Intel Iris Plus Graphics driver where the counterSets
+			// array is not properly retained internally, and becomes a zombie when counterSets
+			// is called more than once, which occurs when an app creates more than one VkInstance.
+			// This workaround will cause a very small memory leak on systems that do not have this
+			// bug, so we apply the workaround only when absolutely needed for specific devices.
+			if (_properties.vendorID == kIntelVendorId && _properties.deviceID == 0x8a53) { [counterSets retain]; }
+
 			for (id<MTLCounterSet> cs in counterSets){
 				NSString* csName = cs.name;
 				if ( [csName caseInsensitiveCompare: MTLCommonCounterSetTimestamp] == NSOrderedSame) {
