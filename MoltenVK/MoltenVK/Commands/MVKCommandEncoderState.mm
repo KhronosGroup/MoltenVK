@@ -775,26 +775,33 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 	} else if (!forTessellation && stage == kMVKGraphicsStageRasterization) {
         encodeBindings(kMVKShaderStageVertex, "vertex", fullImageViewSwizzle,
                        [pipeline](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
-					       if (b.isInline) {
-                               cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
-                                                          b.mtlBytes,
-                                                          b.size,
-                                                          b.index);
-					       } else {
-                               [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
-                                                                       offset: b.offset
-                                                                      atIndex: b.index];
+                           // The app may have bound more vertex attribute buffers than used by the pipeline.
+                           // We must not bind those extra buffers to the shader because they might overwrite
+                           // any implicit buffers used by the pipeline.
+                           if (pipeline->isValidVertexBufferIndex(kMVKShaderStageVertex, b.index)) {
+                               if (b.isInline) {
+                                   cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
+                                                              b.mtlBytes,
+                                                              b.size,
+                                                              b.index);
+                               } else {
+                                   [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
+                                                                           offset: b.offset
+                                                                          atIndex: b.index];
 
-							   // Add any translated vertex bindings for this binding
-							   auto xltdVtxBindings = pipeline->getTranslatedVertexBindings();
-							   for (auto& xltdBind : xltdVtxBindings) {
-								   if (b.index == pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.binding)) {
-									   [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
-																			   offset: b.offset + xltdBind.translationOffset
-																			  atIndex: pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.translationBinding)];
-								   }
-							   }
-					       }
+                                   // Add any translated vertex bindings for this binding
+                                   auto xltdVtxBindings = pipeline->getTranslatedVertexBindings();
+                                   for (auto& xltdBind : xltdVtxBindings) {
+                                       if (b.index == pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.binding)) {
+                                           [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
+                                                                                   offset: b.offset + xltdBind.translationOffset
+                                                                                  atIndex: pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.translationBinding)];
+                                       }
+                                   }
+                               }
+                           } else {
+                               b.isDirty = true;	// We haven't written it out, so leave dirty until next time.
+						   }
                        },
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, const MVKArrayRef<uint32_t> s)->void {
                            cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,

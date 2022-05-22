@@ -407,6 +407,7 @@ protected:
 
     // Template function that executes a lambda expression on each dirty element of
     // a vector of bindings, and marks the bindings and the vector as no longer dirty.
+	// Clear isDirty flag before operation to allow operation to possibly override.
 	template<class T, class V>
 	void encodeBinding(V& bindings,
 					   bool& bindingsDirtyFlag,
@@ -415,8 +416,9 @@ protected:
 			bindingsDirtyFlag = false;
 			for (auto& b : bindings) {
 				if (b.isDirty) {
-					mtlOperation(_cmdEncoder, b);
 					b.isDirty = false;
+					mtlOperation(_cmdEncoder, b);
+					if (b.isDirty) { bindingsDirtyFlag = true; }
 				}
 			}
 		}

@@ -869,7 +869,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 				}
 				innerLoc = location;
 			}
-			plDesc.vertexDescriptor.attributes[location].bufferIndex = kMVKTessEvalLevelBufferIndex;
+			plDesc.vertexDescriptor.attributes[location].bufferIndex = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalLevelBufferBinding);
 			if (reflectData.patchKind == spv::ExecutionModeTriangles || output.builtin == spv::BuiltInTessLevelOuter) {
 				plDesc.vertexDescriptor.attributes[location].offset = 0;
 				plDesc.vertexDescriptor.attributes[location].format = MTLVertexFormatHalf4;	// FIXME Should use Float4
@@ -879,7 +879,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 			}
 		} else if (output.perPatch) {
 			patchOffset = (uint32_t)mvkAlignByteCount(patchOffset, getShaderOutputAlignment(output));
-			plDesc.vertexDescriptor.attributes[output.location].bufferIndex = kMVKTessEvalPatchInputBufferIndex;
+			plDesc.vertexDescriptor.attributes[output.location].bufferIndex = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalPatchInputBufferBinding);
 			plDesc.vertexDescriptor.attributes[output.location].format = getPixelFormats()->getMTLVertexFormat(mvkFormatFromOutput(output));
 			plDesc.vertexDescriptor.attributes[output.location].offset = patchOffset;
 			patchOffset += getShaderOutputSize(output);
@@ -887,7 +887,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 			usedPerPatch = true;
 		} else {
 			offset = (uint32_t)mvkAlignByteCount(offset, getShaderOutputAlignment(output));
-			plDesc.vertexDescriptor.attributes[output.location].bufferIndex = kMVKTessEvalInputBufferIndex;
+			plDesc.vertexDescriptor.attributes[output.location].bufferIndex = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalInputBufferBinding);
 			plDesc.vertexDescriptor.attributes[output.location].format = getPixelFormats()->getMTLVertexFormat(mvkFormatFromOutput(output));
 			plDesc.vertexDescriptor.attributes[output.location].offset = offset;
 			offset += getShaderOutputSize(output);
@@ -896,16 +896,19 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 		}
 	}
 	if (usedPerVertex) {
-		plDesc.vertexDescriptor.layouts[kMVKTessEvalInputBufferIndex].stepFunction = MTLVertexStepFunctionPerPatchControlPoint;
-		plDesc.vertexDescriptor.layouts[kMVKTessEvalInputBufferIndex].stride = mvkAlignByteCount(offset, getShaderOutputAlignment(*firstVertex));
+		uint32_t mtlVBIdx = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalInputBufferBinding);
+		plDesc.vertexDescriptor.layouts[mtlVBIdx].stepFunction = MTLVertexStepFunctionPerPatchControlPoint;
+		plDesc.vertexDescriptor.layouts[mtlVBIdx].stride = mvkAlignByteCount(offset, getShaderOutputAlignment(*firstVertex));
 	}
 	if (usedPerPatch) {
-		plDesc.vertexDescriptor.layouts[kMVKTessEvalPatchInputBufferIndex].stepFunction = MTLVertexStepFunctionPerPatch;
-		plDesc.vertexDescriptor.layouts[kMVKTessEvalPatchInputBufferIndex].stride = mvkAlignByteCount(patchOffset, getShaderOutputAlignment(*firstPatch));
+		uint32_t mtlVBIdx = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalPatchInputBufferBinding);
+		plDesc.vertexDescriptor.layouts[mtlVBIdx].stepFunction = MTLVertexStepFunctionPerPatch;
+		plDesc.vertexDescriptor.layouts[mtlVBIdx].stride = mvkAlignByteCount(patchOffset, getShaderOutputAlignment(*firstPatch));
 	}
 	if (outerLoc != (uint32_t)(-1) || innerLoc != (uint32_t)(-1)) {
-		plDesc.vertexDescriptor.layouts[kMVKTessEvalLevelBufferIndex].stepFunction = MTLVertexStepFunctionPerPatch;
-		plDesc.vertexDescriptor.layouts[kMVKTessEvalLevelBufferIndex].stride =
+		uint32_t mtlVBIdx = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalLevelBufferBinding);
+		plDesc.vertexDescriptor.layouts[mtlVBIdx].stepFunction = MTLVertexStepFunctionPerPatch;
+		plDesc.vertexDescriptor.layouts[mtlVBIdx].stride =
 			reflectData.patchKind == spv::ExecutionModeTriangles ? sizeof(MTLTriangleTessellationFactorsHalf) :
 																   sizeof(MTLQuadTessellationFactorsHalf);
 	}
@@ -1074,7 +1077,7 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	shaderConfig.options.entryPointName = _pTessCtlSS->pName;
 	shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageTessCtl];
 	shaderConfig.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageTessCtl];
-	shaderConfig.options.mslOptions.shader_input_buffer_index = kMVKTessCtlInputBufferIndex;
+	shaderConfig.options.mslOptions.shader_input_buffer_index = getMetalBufferIndexForVertexAttributeBinding(kMVKTessCtlInputBufferBinding);
 	shaderConfig.options.mslOptions.shader_output_buffer_index = _outputBufferIndex.stages[kMVKShaderStageTessCtl];
 	shaderConfig.options.mslOptions.shader_patch_output_buffer_index = _tessCtlPatchOutputBufferIndex;
 	shaderConfig.options.mslOptions.shader_tess_factor_buffer_index = _tessCtlLevelBufferIndex;
@@ -1571,16 +1574,17 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	// FIXME: Many of these are optional. We shouldn't set the ones that aren't
 	// present--or at least, we should move the ones that are down to avoid running over
 	// the limit of available buffers. But we can't know that until we compile the shaders.
+	initReservedVertexAttributeBufferCount(pCreateInfo);
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
 		MVKShaderStage stage = (MVKShaderStage)i;
-		_dynamicOffsetBufferIndex.stages[stage] = getImplicitBufferIndex(pCreateInfo, stage, 0);
-		_bufferSizeBufferIndex.stages[stage] = getImplicitBufferIndex(pCreateInfo, stage, 1);
-		_swizzleBufferIndex.stages[stage] = getImplicitBufferIndex(pCreateInfo, stage, 2);
-		_indirectParamsIndex.stages[stage] = getImplicitBufferIndex(pCreateInfo, stage, 3);
-		_outputBufferIndex.stages[stage] = getImplicitBufferIndex(pCreateInfo, stage, 4);
+		_dynamicOffsetBufferIndex.stages[stage] = getImplicitBufferIndex(stage, 0);
+		_bufferSizeBufferIndex.stages[stage] = getImplicitBufferIndex(stage, 1);
+		_swizzleBufferIndex.stages[stage] = getImplicitBufferIndex(stage, 2);
+		_indirectParamsIndex.stages[stage] = getImplicitBufferIndex(stage, 3);
+		_outputBufferIndex.stages[stage] = getImplicitBufferIndex(stage, 4);
 		if (stage == kMVKShaderStageTessCtl) {
-			_tessCtlPatchOutputBufferIndex = getImplicitBufferIndex(pCreateInfo, stage, 5);
-			_tessCtlLevelBufferIndex = getImplicitBufferIndex(pCreateInfo, stage, 6);
+			_tessCtlPatchOutputBufferIndex = getImplicitBufferIndex(stage, 5);
+			_tessCtlLevelBufferIndex = getImplicitBufferIndex(stage, 6);
 		}
 	}
 	// Since we currently can't use multiview with tessellation or geometry shaders,
@@ -1630,17 +1634,48 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
     shaderConfig.options.numTessControlPoints = reflectData.numControlPoints;
 }
 
-uint32_t MVKGraphicsPipeline::getImplicitBufferIndex(const VkGraphicsPipelineCreateInfo* pCreateInfo, MVKShaderStage stage, uint32_t bufferIndexOffset) {
-	return _device->_pMetalFeatures->maxPerStageBufferCount - (getReservedBufferCount(pCreateInfo, stage) + bufferIndexOffset + 1);
+uint32_t MVKGraphicsPipeline::getImplicitBufferIndex(MVKShaderStage stage, uint32_t bufferIndexOffset) {
+	return getMetalBufferIndexForVertexAttributeBinding(_reservedVertexAttributeBufferCount.stages[stage] + bufferIndexOffset);
 }
 
-uint32_t MVKGraphicsPipeline::getReservedBufferCount(const VkGraphicsPipelineCreateInfo* pCreateInfo, MVKShaderStage stage) {
-	switch (stage) {
-		case kMVKShaderStageVertex:		return pCreateInfo->pVertexInputState->vertexBindingDescriptionCount;
-		case kMVKShaderStageTessCtl:	return kMVKTessCtlNumReservedBuffers;
-		case kMVKShaderStageTessEval:	return kMVKTessEvalNumReservedBuffers;
-		default:						return 0;
+// Set the number of vertex attribute buffers consumed by this pipeline at each stage.
+// Any implicit buffers needed by this pipeline will be assigned indexes below the range
+// defined by this count below the max number of Metal buffer bindings per stage.
+// Must be called before any calls to getImplicitBufferIndex().
+void MVKGraphicsPipeline::initReservedVertexAttributeBufferCount(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
+	int32_t maxBinding = -1;
+	uint32_t xltdBuffCnt = 0;
+
+	const VkPipelineVertexInputStateCreateInfo* pVI = pCreateInfo->pVertexInputState;
+	uint32_t vaCnt = pVI->vertexAttributeDescriptionCount;
+	uint32_t vbCnt = pVI->vertexBindingDescriptionCount;
+
+	// Determine the highest binding number used by the vertex buffers
+	for (uint32_t vbIdx = 0; vbIdx < vbCnt; vbIdx++) {
+		const VkVertexInputBindingDescription* pVKVB = &pVI->pVertexBindingDescriptions[vbIdx];
+		maxBinding = max<int32_t>(pVKVB->binding, maxBinding);
+
+		// Iterate through the vertex attributes and determine if any need a synthetic binding buffer to
+		// accommodate offsets that are outside the stride, which Vulkan supports, but Metal does not.
+		// This value will be worst case, as some synthetic buffers may end up being shared.
+		for (uint32_t vaIdx = 0; vaIdx < vaCnt; vaIdx++) {
+			const VkVertexInputAttributeDescription* pVKVA = &pVI->pVertexAttributeDescriptions[vaIdx];
+			if ((pVKVA->binding == pVKVB->binding) && (pVKVA->offset + getPixelFormats()->getBytesPerBlock(pVKVA->format) > pVKVB->stride)) {
+				xltdBuffCnt++;
+			}
+		}
 	}
+
+	// The number of reserved bindings we need for the vertex stage is determined from the largest vertex
+	// attribute binding number, plus any synthetic buffer bindings created to support translated offsets.
+	mvkClear<uint32_t>(_reservedVertexAttributeBufferCount.stages, kMVKShaderStageCount);
+	_reservedVertexAttributeBufferCount.stages[kMVKShaderStageVertex] = (maxBinding + 1) + xltdBuffCnt;
+	_reservedVertexAttributeBufferCount.stages[kMVKShaderStageTessCtl] = kMVKTessCtlNumReservedBuffers;
+	_reservedVertexAttributeBufferCount.stages[kMVKShaderStageTessEval] = kMVKTessEvalNumReservedBuffers;
+}
+
+bool MVKGraphicsPipeline::isValidVertexBufferIndex(MVKShaderStage stage, uint32_t mtlBufferIndex) {
+	return mtlBufferIndex < _descriptorBufferCounts.stages[stage] || mtlBufferIndex > getImplicitBufferIndex(stage, 0);
 }
 
 // Initializes the vertex attributes in a shader conversion configuration.
