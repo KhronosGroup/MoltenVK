@@ -426,10 +426,15 @@ VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRe
 #if MVK_MACOS && !MVK_MACCAT
 	// Find the screen for the window whose content view is backed by the swapchains CAMetalLayer.
 	// Default to the mainScreen if no such window can be found.
-	NSScreen *screen = [NSScreen mainScreen];
+	NSScreen* screen = [NSScreen mainScreen];
+	CALayer* layer = _mtlLayer;
+	while (layer.superlayer) {
+		layer = layer.superlayer;
+	}
+
 	for (NSWindow* window in [[NSApplication sharedApplication] windows]) {
 		NSView *view = [window contentView];
-		if (view && ([view layer] == _mtlLayer)) {
+		if (view && ([view layer] == layer)) { // Check against layer and not _mtlLayer.
 			screen = [window screen];
 		}
 	}
