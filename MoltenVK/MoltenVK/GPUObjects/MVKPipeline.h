@@ -112,13 +112,13 @@ protected:
 #pragma mark -
 #pragma mark MVKPipeline
 
-static const uint32_t kMVKTessCtlInputBufferIndex = 30;
 static const uint32_t kMVKTessCtlNumReservedBuffers = 1;
+static const uint32_t kMVKTessCtlInputBufferBinding = 0;
 
-static const uint32_t kMVKTessEvalInputBufferIndex = 30;
-static const uint32_t kMVKTessEvalPatchInputBufferIndex = 29;
-static const uint32_t kMVKTessEvalLevelBufferIndex = 28;
 static const uint32_t kMVKTessEvalNumReservedBuffers = 3;
+static const uint32_t kMVKTessEvalInputBufferBinding = 0;
+static const uint32_t kMVKTessEvalPatchInputBufferBinding = 1;
+static const uint32_t kMVKTessEvalLevelBufferBinding = 2;
 
 /** Represents an abstract Vulkan pipeline. */
 class MVKPipeline : public MVKVulkanAPIDeviceObject {
@@ -259,6 +259,13 @@ public:
 	/** Returns whether this pipeline has custom sample positions enabled. */
 	bool isUsingCustomSamplePositions() { return _isUsingCustomSamplePositions; }
 
+	/**
+	 * Returns whether the MTLBuffer vertex shader buffer index is valid for a stage of this pipeline.
+	 * It is if it is a descriptor binding within the descriptor binding range,
+	 * or a vertex attribute binding above any implicit buffer bindings.
+	 */
+	bool isValidVertexBufferIndex(MVKShaderStage stage, uint32_t mtlBufferIndex);
+
 	/** Returns the custom samples used by this pipeline. */
 	MVKArrayRef<MTLSamplePosition> getCustomSamplePositions() { return _customSamplePositions.contents(); }
 
@@ -293,6 +300,7 @@ protected:
 	void initCustomSamplePositions(const VkGraphicsPipelineCreateInfo* pCreateInfo);
     void initMTLRenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
     void initShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig, const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
+	void initReservedVertexAttributeBufferCount(const VkGraphicsPipelineCreateInfo* pCreateInfo);
     void addVertexInputToShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig, const VkGraphicsPipelineCreateInfo* pCreateInfo);
     void addPrevStageOutputToShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig, SPIRVShaderOutputs& outputs);
     MTLRenderPipelineDescriptor* newMTLRenderPipelineDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
@@ -313,8 +321,7 @@ protected:
     bool isRasterizationDisabled(const VkGraphicsPipelineCreateInfo* pCreateInfo);
 	bool verifyImplicitBuffer(bool needsBuffer, MVKShaderImplicitRezBinding& index, MVKShaderStage stage, const char* name);
 	uint32_t getTranslatedVertexBinding(uint32_t binding, uint32_t translationOffset, uint32_t maxBinding);
-	uint32_t getImplicitBufferIndex(const VkGraphicsPipelineCreateInfo* pCreateInfo, MVKShaderStage stage, uint32_t bufferIndexOffset);
-	uint32_t getReservedBufferCount(const VkGraphicsPipelineCreateInfo* pCreateInfo, MVKShaderStage stage);
+	uint32_t getImplicitBufferIndex(MVKShaderStage stage, uint32_t bufferIndexOffset);
 
 	const VkPipelineShaderStageCreateInfo* _pVertexSS = nullptr;
 	const VkPipelineShaderStageCreateInfo* _pTessCtlSS = nullptr;
@@ -351,6 +358,7 @@ protected:
 
     float _blendConstants[4] = { 0.0, 0.0, 0.0, 1.0 };
     uint32_t _outputControlPointCount;
+	MVKShaderImplicitRezBinding _reservedVertexAttributeBufferCount;
 	MVKShaderImplicitRezBinding _viewRangeBufferIndex;
 	MVKShaderImplicitRezBinding _outputBufferIndex;
 	uint32_t _tessCtlPatchOutputBufferIndex = 0;
