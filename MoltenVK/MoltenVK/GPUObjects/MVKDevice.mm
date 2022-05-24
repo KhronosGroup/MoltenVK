@@ -287,6 +287,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				separateDepthStencilLayoutsFeatures->separateDepthStencilLayouts = true;
 				break;
 			}
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR: {
+                auto* barycentricProperties = (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)next;
+                barycentricProperties->fragmentShaderBarycentric = true;
+                break;
+            }
 			default:
 				break;
 		}
@@ -480,6 +485,11 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				sampLocnProps->variableSampleLocations = VK_FALSE;
 				break;
 			}
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_PROPERTIES_KHR: {
+                auto* barycentricProperties = (VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR*)next;
+                barycentricProperties->triStripVertexOrderIndependentOfProvokingVertex = false;
+                break;
+            }
 			default:
 				break;
 		}
