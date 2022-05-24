@@ -2986,6 +2986,123 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkSubmitDebugUtilsMessageEXT(
 
 
 #pragma mark -
+#pragma mark VK_EXT_extended_dynamic_state
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindVertexBuffers2EXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    firstBinding,
+    uint32_t                                    bindingCount,
+    const VkBuffer*                             pBuffers,
+    const VkDeviceSize*                         pOffsets,
+    const VkDeviceSize*                         pSizes,
+    const VkDeviceSize*                         pStrides) {
+
+    MVKTraceVulkanCallStart();
+
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetCullModeEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkCullModeFlags                             cullMode) {
+
+    MVKTraceVulkanCallStart();
+    MVKAddCmd(SetCullMode, commandBuffer, cullMode);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthBoundsTestEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    depthBoundsTestEnable) {
+    
+    MVKTraceVulkanCallStart();
+
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthCompareOpEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkCompareOp                                 depthCompareOp) {
+    
+    MVKTraceVulkanCallStart();
+
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthTestEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    depthTestEnable) {
+    
+    MVKTraceVulkanCallStart();
+
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthWriteEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    depthWriteEnable) {
+    
+    MVKTraceVulkanCallStart();
+
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetFrontFaceEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkFrontFace                                 frontFace) {
+    
+    MVKTraceVulkanCallStart();
+    MVKAddCmd(SetFrontFace, commandBuffer, frontFace);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetPrimitiveTopologyEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkPrimitiveTopology                         primitiveTopology) {
+    
+    MVKTraceVulkanCallStart();
+
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetScissorWithCountEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    scissorCount,
+    const VkRect2D*                             pScissors) {
+    
+    MVKTraceVulkanCallStart();
+    MVKAddCmdFromThreshold(SetScissor, scissorCount, 1, commandBuffer, 0, scissorCount, pScissors);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetStencilOpEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkStencilFaceFlags                          faceMask,
+    VkStencilOp                                 failOp,
+    VkStencilOp                                 passOp,
+    VkStencilOp                                 depthFailOp,
+    VkCompareOp                                 compareOp) {
+    
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetStencilTestEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    stencilTestEnable) {
+    
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetViewportWithCountEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    viewportCount,
+    const VkViewport*                           pViewports) {
+    
+    MVKTraceVulkanCallStart();
+    MVKAddCmdFromThreshold(SetViewport, viewportCount, 1, commandBuffer, 0, viewportCount, pViewports);
+    MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
 #pragma mark VK_EXT_hdr_metadata extension
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkSetHdrMetadataEXT(

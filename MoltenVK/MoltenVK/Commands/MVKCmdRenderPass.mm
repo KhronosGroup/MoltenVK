@@ -439,3 +439,51 @@ void MVKCmdSetStencilReference::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->_stencilReferenceValueState.setReferenceValues(_faceMask, _stencilReference);
 }
 
+
+#pragma mark -
+#pragma mark MVKCmdSetCullMode
+
+VkResult MVKCmdSetCullMode::setContent(MVKCommandBuffer* cmdBuff,
+                                       VkCullModeFlags cullMode) {
+    switch (cullMode) {
+        case VK_CULL_MODE_NONE: {
+            _cullMode = MTLCullModeNone;
+            break;
+        }
+        case VK_CULL_MODE_FRONT_BIT: {
+            _cullMode = MTLCullModeFront;
+            break;
+        }
+        case VK_CULL_MODE_BACK_BIT: {
+            _cullMode = MTLCullModeBack;
+            break;
+        }
+        case VK_CULL_MODE_FRONT_AND_BACK: {
+            // Metal doesn't have a equivalent to this...
+        }
+    }
+
+    return VK_SUCCESS;
+}
+
+void MVKCmdSetCullMode::encode(MVKCommandEncoder* cmdEncoder) {
+    [((id<MTLRenderCommandEncoder>)cmdEncoder->getMTLEncoder()) setCullMode:_cullMode];
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetFrontFace
+
+VkResult MVKCmdSetFrontFace::setContent(MVKCommandBuffer* cmdBuff,
+                                       VkFrontFace frontFace) {
+    _frontFace = frontFace == VK_FRONT_FACE_COUNTER_CLOCKWISE
+        ? MTLWindingClockwise
+        : MTLWindingCounterClockwise;
+
+    return VK_SUCCESS;
+}
+
+void MVKCmdSetFrontFace::encode(MVKCommandEncoder* cmdEncoder) {
+    [((id<MTLRenderCommandEncoder>)cmdEncoder->getMTLEncoder()) setFrontFacingWinding:_frontFace];
+}
+
