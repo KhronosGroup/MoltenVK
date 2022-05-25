@@ -289,7 +289,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR: {
                 auto* barycentricProperties = (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)next;
-                barycentricProperties->fragmentShaderBarycentric = true;
+                barycentricProperties->fragmentShaderBarycentric = [_mtlDevice barycentricCoordsSupported];
                 break;
             }
 			default:
