@@ -58,6 +58,7 @@ MVK_EXTENSION(KHR_external_memory,                 KHR_EXTERNAL_MEMORY,         
 MVK_EXTENSION(KHR_external_memory_capabilities,    KHR_EXTERNAL_MEMORY_CAPABILITIES,     INSTANCE, 10.11,  8.0)
 MVK_EXTENSION(KHR_external_semaphore,              KHR_EXTERNAL_SEMAPHORE,               DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_external_semaphore_capabilities, KHR_EXTERNAL_SEMAPHORE_CAPABILITIES,  INSTANCE, 10.11,  8.0)
+MVK_EXTENSION(KHR_fragment_shader_barycentric,     KHR_FRAGMENT_SHADER_BARYCENTRIC,      DEVICE,   10.15, 14.0)
 MVK_EXTENSION(KHR_get_memory_requirements2,        KHR_GET_MEMORY_REQUIREMENTS_2,        DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_get_physical_device_properties2, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2, INSTANCE, 10.11,  8.0)
 MVK_EXTENSION(KHR_get_surface_capabilities2,       KHR_GET_SURFACE_CAPABILITIES_2,       INSTANCE, 10.11,  8.0)
@@ -117,6 +118,7 @@ MVK_EXTENSION(GOOGLE_display_timing,               GOOGLE_DISPLAY_TIMING,       
 MVK_EXTENSION(MVK_ios_surface,                     MVK_IOS_SURFACE,                      INSTANCE, MVK_NA, 8.0)
 MVK_EXTENSION(MVK_macos_surface,                   MVK_MACOS_SURFACE,                    INSTANCE, 10.11, MVK_NA)
 MVK_EXTENSION(MVK_moltenvk,                        MVK_MOLTENVK,                         INSTANCE, 10.11,  8.0)
+MVK_EXTENSION(NV_fragment_shader_barycentric,      NV_FRAGMENT_SHADER_BARYCENTRIC,       DEVICE,   10.15, 14.0)
 MVK_EXTENSION_LAST(NV_glsl_shader,                 NV_GLSL_SHADER,                       DEVICE,   10.11,  8.0)
 
 #undef MVK_EXTENSION

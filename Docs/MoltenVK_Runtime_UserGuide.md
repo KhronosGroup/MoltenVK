@@ -271,6 +271,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_device_group_creation`
 - `VK_KHR_driver_properties`
 - `VK_KHR_dynamic_rendering`
+- `VK_KHR_fragment_shader_barycentric` *(requires Metal 2.2 on Mac or Metal 2.3 on iOS)*
 - `VK_KHR_get_memory_requirements2`
 - `VK_KHR_get_physical_device_properties2`
 - `VK_KHR_get_surface_capabilities2`
@@ -328,6 +329,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_AMD_shader_trinary_minmax` *(requires Metal 2.1)*
 - `VK_IMG_format_pvrtc` *(requires Apple GPU)*
 - `VK_INTEL_shader_integer_functions2`
+- `VK_NV_fragment_shader_barycentric` *(requires Metal 2.2 on Mac or Metal 2.3 on iOS)*
 - `VK_NV_glsl_shader`
 
 In order to visibly display your content on *macOS*, *iOS*, or *tvOS*, you must enable the
