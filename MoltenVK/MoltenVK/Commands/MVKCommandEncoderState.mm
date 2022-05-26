@@ -314,6 +314,8 @@ void MVKDepthStencilCommandEncoderState::setStencilWriteMask(VkStencilFaceFlags 
 }
 
 void MVKDepthStencilCommandEncoderState::beginMetalRenderPass() {
+    MVKCommandEncoderState::beginMetalRenderPass();
+
 	MVKRenderSubpass* mvkSubpass = _cmdEncoder->getSubpass();
 	MVKPixelFormats* pixFmts = _cmdEncoder->getPixelFormats();
 	MTLPixelFormat mtlDSFormat = pixFmts->getMTLPixelFormat(mvkSubpass->getDepthStencilFormat());
