@@ -302,7 +302,7 @@ MVKTimelineSemaphoreEmulated::MVKTimelineSemaphoreEmulated(MVKDevice* device,
 	MVKTimelineSemaphore(device, pCreateInfo, pTypeCreateInfo, pExportInfo, pImportInfo),
 	_value(pTypeCreateInfo ? pTypeCreateInfo->initialValue : 0) {
 
-	if (pExportInfo && mvkIsAnyFlagEnabled(pExportInfo->exportObjectTypes, VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT)) {
+	if (pExportInfo && pExportInfo->exportObjectType == VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkCreateEvent(): MTLSharedEvent is not available on this platform."));
 	}
 }
@@ -454,7 +454,7 @@ MVKEventEmulated::MVKEventEmulated(MVKDevice* device,
 								   const VkImportMetalSharedEventInfoEXT* pImportInfo) :
 	MVKEvent(device, pCreateInfo, pExportInfo, pImportInfo), _blocker(false, 1), _inlineSignalStatus(false) {
 
-	if (pExportInfo && mvkIsAnyFlagEnabled(pExportInfo->exportObjectTypes, VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT)) {
+	if (pExportInfo && pExportInfo->exportObjectType == VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkCreateEvent(): MTLSharedEvent is not available on this platform."));
 	}
 }

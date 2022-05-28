@@ -113,8 +113,9 @@ namespace std {
 
 /**
  * Key to use for looking up cached MTLRenderPipelineState instances.
- * Indicates which attachments are used, and holds the Metal pixel formats for each
- * color attachment plus one depth/stencil attachment. Also holds the Metal sample count.
+ * Indicates which attachments are enabled and used, and holds the Metal pixel formats for
+ * each color attachment plus one depth/stencil attachment. Also holds the Metal sample count.
+ * An attachment is considered used if it is enabled and has a valid Metal pixel format.
  *
  * This structure can be used as a key in a std::map and std::unordered_map.
  */
@@ -130,6 +131,8 @@ typedef struct MVKRPSKeyClearAtt {
     void disableAttachment(uint32_t attIdx) { mvkDisableFlags(flags, bitFlag << attIdx); }
 
     bool isAttachmentEnabled(uint32_t attIdx) { return mvkIsAnyFlagEnabled(flags, bitFlag << attIdx); }
+
+	bool isAttachmentUsed(uint32_t attIdx) { return isAttachmentEnabled(attIdx) && attachmentMTLPixelFormats[attIdx]; }
 
 	bool isAnyAttachmentEnabled() { return mvkIsAnyFlagEnabled(flags, (bitFlag << kMVKClearAttachmentCount) - 1); }
 

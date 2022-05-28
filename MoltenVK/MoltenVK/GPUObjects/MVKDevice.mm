@@ -75,6 +75,9 @@ static const uint32_t kAMDRadeonRX5500DeviceId = 0x7340;
 static const uint32_t kAMDRadeonRX6800DeviceId = 0x73bf;
 static const uint32_t kAMDRadeonRX6700DeviceId = 0x73df;
 
+static const VkExtent2D kMetalSamplePositionGridSize = { 1, 1 };
+static const VkExtent2D kMetalSamplePositionGridSizeNotSupported = { 0, 0 };
+
 #pragma clang diagnostic pop
 
 
@@ -274,6 +277,16 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				imagelessFramebufferFeatures->imagelessFramebuffer = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES: {
+				auto* dynamicRenderingFeatures = (VkPhysicalDeviceDynamicRenderingFeatures*)next;
+				dynamicRenderingFeatures->dynamicRendering = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES: {
+				auto* separateDepthStencilLayoutsFeatures = (VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures*)next;
+				separateDepthStencilLayoutsFeatures->separateDepthStencilLayouts = true;
+				break;
+			}
 			default:
 				break;
 		}
@@ -457,6 +470,16 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				portabilityProps->minVertexInputBindingStrideAlignment = (uint32_t)_metalFeatures.vertexStrideAlignment;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT: {
+				auto* sampLocnProps = (VkPhysicalDeviceSampleLocationsPropertiesEXT*)next;
+				sampLocnProps->sampleLocationSampleCounts = _metalFeatures.supportedSampleCounts;
+				sampLocnProps->maxSampleLocationGridSize = kMetalSamplePositionGridSize;
+				sampLocnProps->sampleLocationCoordinateRange[0] = 0.0;
+				sampLocnProps->sampleLocationCoordinateRange[1] = (15.0 / 16.0);
+				sampLocnProps->sampleLocationSubPixelBits = 4;
+				sampLocnProps->variableSampleLocations = VK_FALSE;
+				break;
+			}
 			default:
 				break;
 		}
@@ -524,6 +547,15 @@ void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties*
 void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties2KHR* pFormatProperties) {
 	pFormatProperties->sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR;
 	getFormatProperties(format, &pFormatProperties->formatProperties);
+}
+
+void MVKPhysicalDevice::getMultisampleProperties(VkSampleCountFlagBits samples,
+												 VkMultisamplePropertiesEXT* pMultisampleProperties) {
+	if (pMultisampleProperties) {
+		pMultisampleProperties->maxSampleLocationGridSize = (mvkIsOnlyAnyFlagEnabled(samples, _metalFeatures.supportedSampleCounts)
+															 ? kMetalSamplePositionGridSize
+															 : kMetalSamplePositionGridSizeNotSupported);
+	}
 }
 
 VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
@@ -709,6 +741,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImageFormatInfo2 *pImageFormatInfo,
 													 VkImageFormatProperties2* pImageFormatProperties) {
 
+	auto usage = pImageFormatInfo->usage;
 	for (const auto* nextInfo = (VkBaseInStructure*)pImageFormatInfo->pNext; nextInfo; nextInfo = nextInfo->pNext) {
 		switch (nextInfo->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO: {
@@ -720,6 +753,13 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
 						auto* pExtImgFmtProps = (VkExternalImageFormatProperties*)nextProps;
 						pExtImgFmtProps->externalMemoryProperties = getExternalImageProperties(pExtImgFmtInfo->handleType);
 					}
+				}
+				break;
+			}
+			case VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO: {
+				// If the format includes a stencil component, combine any separate stencil usage with non-stencil usage.
+				if (_pixelFormats.isStencilFormat(_pixelFormats.getMTLPixelFormat(pImageFormatInfo->format))) {
+					usage |= ((VkImageStencilUsageCreateInfo*)nextInfo)->stencilUsage;
 				}
 				break;
 			}
@@ -743,7 +783,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
 	if ( !_pixelFormats.isSupported(pImageFormatInfo->format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
 	return getImageFormatProperties(pImageFormatInfo->format, pImageFormatInfo->type,
-									pImageFormatInfo->tiling, pImageFormatInfo->usage,
+									pImageFormatInfo->tiling, usage,
 									pImageFormatInfo->flags,
 									&pImageFormatProperties->imageFormatProperties);
 }
@@ -1519,9 +1559,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 #endif
 
-    // Note the selector name, which is different from the property name.
+	if ( [_mtlDevice respondsToSelector: @selector(areProgrammableSamplePositionsSupported)] ) {
+		_metalFeatures.programmableSamplePositions = _mtlDevice.areProgrammableSamplePositionsSupported;
+	}
+
     if ( [_mtlDevice respondsToSelector: @selector(areRasterOrderGroupsSupported)] ) {
-        _metalFeatures.rasterOrderGroups = _mtlDevice.rasterOrderGroupsSupported;
+        _metalFeatures.rasterOrderGroups = _mtlDevice.areRasterOrderGroupsSupported;
     }
 #if MVK_XCODE_12
 	if ( [_mtlDevice respondsToSelector: @selector(supportsPullModelInterpolation)] ) {
@@ -2738,6 +2781,9 @@ void MVKPhysicalDevice::initExtensions() {
 	if (!_metalFeatures.samplerMirrorClampToEdge) {
 		pWritableExtns->vk_KHR_sampler_mirror_clamp_to_edge.enabled = false;
 	}
+	if (!_metalFeatures.programmableSamplePositions) {
+		pWritableExtns->vk_EXT_sample_locations.enabled = false;
+	}
 	if (!_metalFeatures.rasterOrderGroups) {
 		pWritableExtns->vk_EXT_fragment_shader_interlock.enabled = false;
 	}
@@ -2766,6 +2812,14 @@ void MVKPhysicalDevice::initCounterSets() {
 	@autoreleasepool {
 		if (_metalFeatures.counterSamplingPoints) {
 			NSArray<id<MTLCounterSet>>* counterSets = _mtlDevice.counterSets;
+
+			// Workaround for a bug in Intel Iris Plus Graphics driver where the counterSets
+			// array is not properly retained internally, and becomes a zombie when counterSets
+			// is called more than once, which occurs when an app creates more than one VkInstance.
+			// This workaround will cause a very small memory leak on systems that do not have this
+			// bug, so we apply the workaround only when absolutely needed for specific devices.
+			if (_properties.vendorID == kIntelVendorId && _properties.deviceID == 0x8a53) { [counterSets retain]; }
+
 			for (id<MTLCounterSet> cs in counterSets){
 				NSString* csName = cs.name;
 				if ( [csName caseInsensitiveCompare: MTLCommonCounterSetTimestamp] == NSOrderedSame) {
@@ -3288,7 +3342,7 @@ MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInf
 	}
 
 	if ((pTypeCreateInfo && pTypeCreateInfo->semaphoreType == VK_SEMAPHORE_TYPE_TIMELINE) ||
-		(pExportInfo && mvkIsAnyFlagEnabled(pExportInfo->exportObjectTypes, VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT)) ||
+		(pExportInfo && pExportInfo->exportObjectType == VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT) ||
 		 pImportInfo) {
 		if (_pMetalFeatures->events) {
 			return new MVKTimelineSemaphoreMTLEvent(this, pCreateInfo, pTypeCreateInfo, pExportInfo, pImportInfo);
@@ -3297,9 +3351,9 @@ MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInf
 		}
 	} else {
 		switch (_vkSemaphoreStyle) {
-			case VkSemaphoreStyleUseMTLEvent:  return new MVKSemaphoreMTLEvent(this, pCreateInfo);
-			case VkSemaphoreStyleUseMTLFence:  return new MVKSemaphoreMTLFence(this, pCreateInfo);
-			case VkSemaphoreStyleUseEmulation: return new MVKSemaphoreEmulated(this, pCreateInfo);
+			case MVKSemaphoreStyleUseMTLEvent:  return new MVKSemaphoreMTLEvent(this, pCreateInfo);
+			case MVKSemaphoreStyleUseMTLFence:  return new MVKSemaphoreMTLFence(this, pCreateInfo);
+			case MVKSemaphoreStyleUseEmulation: return new MVKSemaphoreEmulated(this, pCreateInfo);
 		}
 	}
 }
@@ -3733,6 +3787,57 @@ VkResult MVKDevice::invalidateMappedMemoryRanges(uint32_t memRangeCount, const V
 	}
 }
 
+uint32_t MVKDevice::getMultiviewMetalPassCount(uint32_t viewMask) const {
+	if ( !viewMask ) { return 0; }
+	if ( !_physicalDevice->canUseInstancingForMultiview() ) {
+		// If we can't use instanced drawing for this, we'll have to unroll the render pass.
+		return __builtin_popcount(viewMask);
+	}
+	uint32_t mask = viewMask;
+	uint32_t count;
+	// Step through each clump until there are no more clumps. I'll know this has
+	// happened when the mask becomes 0, since mvkGetNextViewMaskGroup() clears each group of bits
+	// as it finds them, and returns the remainder of the mask.
+	for (count = 0; mask != 0; ++count) {
+		mask = mvkGetNextViewMaskGroup(mask, nullptr, nullptr);
+	}
+	return count;
+}
+
+uint32_t MVKDevice::getFirstViewIndexInMetalPass(uint32_t viewMask, uint32_t passIdx) const {
+	if ( !viewMask ) { return 0; }
+	assert(passIdx < getMultiviewMetalPassCount(viewMask));
+	uint32_t mask = viewMask;
+	uint32_t startView = 0, viewCount = 0;
+	if ( !_physicalDevice->canUseInstancingForMultiview() ) {
+		for (uint32_t i = 0; mask != 0; ++i) {
+			mask = mvkGetNextViewMaskGroup(mask, &startView, &viewCount);
+			while (passIdx-- > 0 && viewCount-- > 0) {
+				startView++;
+			}
+		}
+	} else {
+		for (uint32_t i = 0; i <= passIdx; ++i) {
+			mask = mvkGetNextViewMaskGroup(mask, &startView, nullptr);
+		}
+	}
+	return startView;
+}
+
+uint32_t MVKDevice::getViewCountInMetalPass(uint32_t viewMask, uint32_t passIdx) const {
+	if ( !viewMask ) { return 0; }
+	assert(passIdx < getMultiviewMetalPassCount(viewMask));
+	if ( !_physicalDevice->canUseInstancingForMultiview() ) {
+		return 1;
+	}
+	uint32_t mask = viewMask;
+	uint32_t viewCount = 0;
+	for (uint32_t i = 0; i <= passIdx; ++i) {
+		mask = mvkGetNextViewMaskGroup(mask, nullptr, &viewCount);
+	}
+	return viewCount;
+}
+
 
 #pragma mark Metal
 
@@ -3915,7 +4020,7 @@ void MVKDevice::getMetalObjects(VkExportMetalObjectsInfoEXT* pMetalObjectsInfo) 
 			}
 			case VK_STRUCTURE_TYPE_EXPORT_METAL_TEXTURE_INFO_EXT: {
 				auto* pImgInfo = (VkExportMetalTextureInfoEXT*)next;
-				uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(pImgInfo->aspectMask);
+				uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(pImgInfo->plane);
 				auto* mvkImg = (MVKImage*)pImgInfo->image;
 				auto* mvkImgView = (MVKImageView*)pImgInfo->imageView;
 				auto* mvkBuffView = (MVKBufferView*)pImgInfo->bufferView;
@@ -3972,10 +4077,11 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledPrivateDataFeatures(),
 	_enabledPortabilityFeatures(),
 	_enabledImagelessFramebufferFeatures(),
-	_enabledExtensions(this),
-	_isCurrentlyAutoGPUCapturing(false)
-{
-	// If the physical device is lost, bail.
+	_enabledDynamicRenderingFeatures(),
+	_enabledSeparateDepthStencilLayoutsFeatures(),
+	_enabledExtensions(this) {
+
+		// If the physical device is lost, bail.
 	if (physicalDevice->getConfigurationResult() != VK_SUCCESS) {
 		setConfigurationResult(physicalDevice->getConfigurationResult());
 		return;
@@ -3983,8 +4089,8 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 
 	initPerformanceTracking();
 	initPhysicalDevice(physicalDevice, pCreateInfo);
-	enableFeatures(pCreateInfo);
 	enableExtensions(pCreateInfo);
+	enableFeatures(pCreateInfo);
 	initQueues(pCreateInfo);
 	reservePrivateData(pCreateInfo);
 
@@ -4066,15 +4172,15 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	bool isRosetta2 = _pProperties->vendorID == kAppleVendorId && !MVK_APPLE_SILICON;
 	bool canUseMTLEventForSem4 = _pMetalFeatures->events && mvkConfig().semaphoreUseMTLEvent && !(isRosetta2 || isNVIDIA);
 	bool canUseMTLFenceForSem4 = _pMetalFeatures->fences && mvkConfig().semaphoreUseMTLFence;
-	_vkSemaphoreStyle = canUseMTLEventForSem4 ? VkSemaphoreStyleUseMTLEvent : (canUseMTLFenceForSem4 ? VkSemaphoreStyleUseMTLFence : VkSemaphoreStyleUseEmulation);
+	_vkSemaphoreStyle = canUseMTLEventForSem4 ? MVKSemaphoreStyleUseMTLEvent : (canUseMTLFenceForSem4 ? MVKSemaphoreStyleUseMTLFence : MVKSemaphoreStyleUseEmulation);
 	switch (_vkSemaphoreStyle) {
-		case VkSemaphoreStyleUseMTLEvent:
+		case MVKSemaphoreStyleUseMTLEvent:
 			MVKLogInfo("Using MTLEvent for Vulkan semaphores.");
 			break;
-		case VkSemaphoreStyleUseMTLFence:
+		case MVKSemaphoreStyleUseMTLFence:
 			MVKLogInfo("Using MTLFence for Vulkan semaphores.");
 			break;
-		case VkSemaphoreStyleUseEmulation:
+		case MVKSemaphoreStyleUseEmulation:
 			MVKLogInfo("Using emulation for Vulkan semaphores.");
 			break;
 	}
@@ -4100,10 +4206,20 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	mvkClear(&_enabledVtxAttrDivFeatures);
 	mvkClear(&_enabledPortabilityFeatures);
 	mvkClear(&_enabledImagelessFramebufferFeatures);
+	mvkClear(&_enabledDynamicRenderingFeatures);
+	mvkClear(&_enabledSeparateDepthStencilLayoutsFeatures);
+
+	VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures pdSeparateDepthStencilLayoutsFeatures;
+	pdSeparateDepthStencilLayoutsFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES;
+	pdSeparateDepthStencilLayoutsFeatures.pNext = nullptr;
+
+	VkPhysicalDeviceDynamicRenderingFeatures pdDynamicRenderingFeatures;
+	pdDynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+	pdDynamicRenderingFeatures.pNext = &pdSeparateDepthStencilLayoutsFeatures;
 
 	VkPhysicalDeviceImagelessFramebufferFeaturesKHR pdImagelessFramebufferFeatures;
 	pdImagelessFramebufferFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES;
-	pdImagelessFramebufferFeatures.pNext = NULL;
+	pdImagelessFramebufferFeatures.pNext = &pdDynamicRenderingFeatures;
     
 	// Fetch the available physical device features.
 	VkPhysicalDevicePortabilitySubsetFeaturesKHR pdPortabilityFeatures;
@@ -4298,6 +4414,20 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				enableFeatures(&_enabledImagelessFramebufferFeatures.imagelessFramebuffer,
 							   &requestedFeatures->imagelessFramebuffer,
 							   &pdImagelessFramebufferFeatures.imagelessFramebuffer, 1);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES: {
+				auto* requestedFeatures = (VkPhysicalDeviceDynamicRenderingFeatures*)next;
+				enableFeatures(&_enabledDynamicRenderingFeatures.dynamicRendering,
+							   &requestedFeatures->dynamicRendering,
+							   &pdDynamicRenderingFeatures.dynamicRendering, 1);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES: {
+				auto* requestedFeatures = (VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures*)next;
+				enableFeatures(&_enabledSeparateDepthStencilLayoutsFeatures.separateDepthStencilLayouts,
+							   &requestedFeatures->separateDepthStencilLayouts,
+							   &pdSeparateDepthStencilLayoutsFeatures.separateDepthStencilLayouts, 1);
 				break;
 			}
 			default:

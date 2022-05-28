@@ -2375,6 +2375,28 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEndRenderPass2KHR(
 
 
 #pragma mark -
+#pragma mark VK_KHR_dynamic_rendering extension
+
+void vkCmdBeginRenderingKHR(
+	VkCommandBuffer                             commandBuffer,
+	const VkRenderingInfo*                      pRenderingInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmdFrom3Thresholds(BeginRendering, pRenderingInfo->colorAttachmentCount,
+							 1, 2, 4, commandBuffer, pRenderingInfo);
+	MVKTraceVulkanCallEnd();
+}
+
+void vkCmdEndRenderingKHR(
+	VkCommandBuffer                             commandBuffer) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(EndRendering, commandBuffer);
+	MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
 #pragma mark VK_KHR_descriptor_update_template extension
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCreateDescriptorUpdateTemplate);
@@ -3082,6 +3104,29 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkGetPrivateDataEXT(
 	MVKTraceVulkanCallStart();
 	MVKPrivateDataSlot* mvkPDS = (MVKPrivateDataSlot*)privateDataSlot;
 	*pData = mvkPDS->getData(objectType, objectHandle);
+	MVKTraceVulkanCallEnd();
+}
+
+#pragma mark -
+#pragma mark VK_EXT_sample_locations extension
+
+void vkGetPhysicalDeviceMultisamplePropertiesEXT(
+	VkPhysicalDevice                            physicalDevice,
+	VkSampleCountFlagBits                       samples,
+	VkMultisamplePropertiesEXT*                 pMultisampleProperties) {
+
+	MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	mvkPD->getMultisampleProperties(samples, pMultisampleProperties);
+	MVKTraceVulkanCallEnd();
+}
+
+void vkCmdSetSampleLocationsEXT(
+	VkCommandBuffer                             commandBuffer,
+	const VkSampleLocationsInfoEXT*             pSampleLocationsInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(SetSampleLocations, commandBuffer, pSampleLocationsInfo);
 	MVKTraceVulkanCallEnd();
 }
 

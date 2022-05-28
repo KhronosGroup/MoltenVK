@@ -42,7 +42,6 @@ class MVKRenderSubpass : public MVKBaseObject {
 
 public:
 
-
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override;
 
@@ -83,10 +82,10 @@ public:
 	void setDefaultSampleCount(VkSampleCountFlagBits count) { _defaultSampleCount = count; }
 
 	/** Returns whether or not this is a multiview subpass. */
-	bool isMultiview() const { return _viewMask != 0; }
+	bool isMultiview() const { return _pipelineRenderingCreateInfo.viewMask != 0; }
 
 	/** Returns the total number of views to be rendered. */
-	uint32_t getViewCount() const { return __builtin_popcount(_viewMask); }
+	uint32_t getViewCount() const { return __builtin_popcount(_pipelineRenderingCreateInfo.viewMask); }
 
 	/** Returns the number of Metal render passes needed to render all views. */
 	uint32_t getMultiviewMetalPassCount() const;
@@ -99,6 +98,9 @@ public:
 
 	/** Returns the number of views to be rendered in all multiview passes up to the given one. */
 	uint32_t getViewCountUpToMetalPass(uint32_t passIdx) const;
+
+	/** Returns pipeline rendering create info that describes this subpass. */
+	const VkPipelineRenderingCreateInfo* getPipelineRenderingCreateInfo() { return &_pipelineRenderingCreateInfo; }
 
 	/** 
 	 * Populates the specified Metal MTLRenderPassDescriptor with content from this
@@ -151,19 +153,21 @@ private:
 
 	uint32_t getViewMaskGroupForMetalPass(uint32_t passIdx);
 	MVKMTLFmtCaps getRequiredFormatCapabilitiesForAttachmentAt(uint32_t rpAttIdx);
+	void populatePipelineRenderingCreateInfo();
 
 	MVKRenderPass* _renderPass;
-	uint32_t _subpassIndex;
-	uint32_t _viewMask;
 	MVKSmallVector<VkAttachmentReference2, kMVKDefaultAttachmentCount> _inputAttachments;
 	MVKSmallVector<VkAttachmentReference2, kMVKDefaultAttachmentCount> _colorAttachments;
 	MVKSmallVector<VkAttachmentReference2, kMVKDefaultAttachmentCount> _resolveAttachments;
 	MVKSmallVector<uint32_t, kMVKDefaultAttachmentCount> _preserveAttachments;
+	MVKSmallVector<VkFormat, kMVKDefaultAttachmentCount> _colorAttachmentFormats;
+	VkPipelineRenderingCreateInfo _pipelineRenderingCreateInfo;
 	VkAttachmentReference2 _depthStencilAttachment;
 	VkAttachmentReference2 _depthStencilResolveAttachment;
 	VkResolveModeFlagBits _depthResolveMode = VK_RESOLVE_MODE_NONE;
 	VkResolveModeFlagBits _stencilResolveMode = VK_RESOLVE_MODE_NONE;
 	VkSampleCountFlagBits _defaultSampleCount = VK_SAMPLE_COUNT_1_BIT;
+	uint32_t _subpassIndex;
 };
 
 
@@ -214,11 +218,9 @@ public:
     /** Returns whether this attachment should be cleared in the subpass. */
     bool shouldClearAttachment(MVKRenderSubpass* subpass, bool isStencil);
 
-	/** Constructs an instance for the specified parent renderpass. */
 	MVKRenderPassAttachment(MVKRenderPass* renderPass,
 							const VkAttachmentDescription* pCreateInfo);
 
-	/** Constructs an instance for the specified parent renderpass. */
 	MVKRenderPassAttachment(MVKRenderPass* renderPass,
 							const VkAttachmentDescription2* pCreateInfo);
 
@@ -261,16 +263,23 @@ public:
     /** Returns the granularity of the render area of this instance.  */
     VkExtent2D getRenderAreaGranularity();
 
-	/** Returns the format of the color attachment at the specified index. */
-	MVKRenderSubpass* getSubpass(uint32_t subpassIndex);
+	/** Returns the number of subpasses. */
+	size_t getSubpassCount() { return _subpasses.size(); }
+
+	/** Returns the subpass at the specified index. */
+	MVKRenderSubpass* getSubpass(uint32_t subpassIndex) { return &_subpasses[subpassIndex]; }
 
 	/** Returns whether or not this render pass is a multiview render pass. */
 	bool isMultiview() const;
 
-	/** Constructs an instance for the specified device. */
+	/** Returns the dynamic rendering flags. */
+	VkRenderingFlags getRenderingFlags() { return _renderingFlags; }
+
+	/** Sets the dynamic rendering flags. */
+	void setRenderingFlags(VkRenderingFlags renderingFlags) { _renderingFlags = renderingFlags; }
+
 	MVKRenderPass(MVKDevice* device, const VkRenderPassCreateInfo* pCreateInfo);
 
-	/** Constructs an instance for the specified device. */
 	MVKRenderPass(MVKDevice* device, const VkRenderPassCreateInfo2* pCreateInfo);
 
 protected:
@@ -282,6 +291,44 @@ protected:
 	MVKSmallVector<MVKRenderPassAttachment> _attachments;
 	MVKSmallVector<MVKRenderSubpass> _subpasses;
 	MVKSmallVector<VkSubpassDependency2> _subpassDependencies;
+	VkRenderingFlags _renderingFlags = 0;
 
 };
+
+
+#pragma mark -
+#pragma mark Support functions
+
+/** Returns a MVKRenderPass object created from the rendering info. */
+MVKRenderPass* mvkCreateRenderPass(MVKDevice* device, const VkRenderingInfo* pRenderingInfo);
+
+/**
+ * Extracts the usable attachments and their clear values from the rendering info,
+ * and sets them in the corresponding arrays, which must be large enough to hold
+ * all of the extracted values, and returns the number of attachments extracted.
+ * For consistency, the clear value of any resolve attachments are populated,
+ * even though they are ignored.
+ */
+uint32_t mvkGetAttachments(const VkRenderingInfo* pRenderingInfo,
+						   MVKImageView* attachments[],
+						   VkClearValue clearValues[]);
+
+/** Returns whether the view mask uses multiview. */
+static inline bool mvkIsMultiview(uint32_t viewMask) { return viewMask != 0; }
+
+/** Returns whether the attachment is being used. */
+bool mvkIsColorAttachmentUsed(const VkPipelineRenderingCreateInfo* pRendInfo, uint32_t colorAttIdx);
+
+/** Returns whether any attachment is being used. */
+bool mvkHasColorAttachments(const VkPipelineRenderingCreateInfo* pRendInfo);
+
+/** Extracts and returns the combined depth/stencil format . */
+VkFormat mvkGetDepthStencilFormat(const VkPipelineRenderingCreateInfo* pRendInfo);
+
+/**
+ * Extracts the first view, number of views, and the portion of the mask
+ * to be rendered from the lowest clump of set bits in a view mask.
+ */
+uint32_t mvkGetNextViewMaskGroup(uint32_t viewMask, uint32_t* startView,
+								 uint32_t* viewCount, uint32_t *groupMask = nullptr);
 

@@ -193,7 +193,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                 if (pipeline->needsVertexOutputBuffer()) {
                     [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                           offset: vtxOutBuff->_offset
-                                         atIndex: kMVKTessCtlInputBufferIndex];
+                                         atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessCtlInputBufferBinding)];
                 }
 				
 				NSUInteger sgSize = pipeline->getTessControlStageState().threadExecutionWidth;
@@ -221,16 +221,16 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                     if (pipeline->needsTessCtlOutputBuffer()) {
                         [cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcOutBuff->_mtlBuffer
                                                                 offset: tcOutBuff->_offset
-                                                               atIndex: kMVKTessEvalInputBufferIndex];
+                                                               atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalInputBufferBinding)];
                     }
                     if (pipeline->needsTessCtlPatchOutputBuffer()) {
                         [cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcPatchOutBuff->_mtlBuffer
                                                                 offset: tcPatchOutBuff->_offset
-                                                               atIndex: kMVKTessEvalPatchInputBufferIndex];
+                                                               atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalPatchInputBufferBinding)];
                     }
                     [cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcLevelBuff->_mtlBuffer
                                                             offset: tcLevelBuff->_offset
-                                                           atIndex: kMVKTessEvalLevelBufferIndex];
+                                                           atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalLevelBufferBinding)];
                     [cmdEncoder->_mtlRenderEncoder setTessellationFactorBuffer: tcLevelBuff->_mtlBuffer
                                                                         offset: tcLevelBuff->_offset
                                                                 instanceStride: 0];
@@ -395,7 +395,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                 if (pipeline->needsVertexOutputBuffer()) {
                     [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                           offset: vtxOutBuff->_offset
-                                         atIndex: kMVKTessCtlInputBufferIndex];
+                                         atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessCtlInputBufferBinding)];
                 }
 				// The vertex shader produced output in the correct order, so there's no need to use
 				// an index buffer here.
@@ -424,16 +424,16 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                     if (pipeline->needsTessCtlOutputBuffer()) {
                         [cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcOutBuff->_mtlBuffer
                                                                 offset: tcOutBuff->_offset
-                                                               atIndex: kMVKTessEvalInputBufferIndex];
+                                                               atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalInputBufferBinding)];
                     }
                     if (pipeline->needsTessCtlPatchOutputBuffer()) {
                         [cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcPatchOutBuff->_mtlBuffer
                                                                 offset: tcPatchOutBuff->_offset
-                                                               atIndex: kMVKTessEvalPatchInputBufferIndex];
+                                                               atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalPatchInputBufferBinding)];
                     }
                     [cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcLevelBuff->_mtlBuffer
                                                             offset: tcLevelBuff->_offset
-                                                           atIndex: kMVKTessEvalLevelBufferIndex];
+                                                           atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalLevelBufferBinding)];
                     [cmdEncoder->_mtlRenderEncoder setTessellationFactorBuffer: tcLevelBuff->_mtlBuffer
                                                                         offset: tcLevelBuff->_offset
                                                                 instanceStride: 0];
@@ -741,7 +741,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                     if (pipeline->needsVertexOutputBuffer()) {
                         [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                               offset: vtxOutBuff->_offset
-                                             atIndex: kMVKTessCtlInputBufferIndex];
+                                             atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessCtlInputBufferBinding)];
                     }
                     [mtlTessCtlEncoder dispatchThreadgroupsWithIndirectBuffer: mtlIndBuff
                                                          indirectBufferOffset: mtlIndBuffOfst
@@ -757,16 +757,16 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 							if (pipeline->needsTessCtlOutputBuffer()) {
 								[cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcOutBuff->_mtlBuffer
 																		offset: tcOutBuff->_offset
-																	   atIndex: kMVKTessEvalInputBufferIndex];
+																	   atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalInputBufferBinding)];
 							}
 							if (pipeline->needsTessCtlPatchOutputBuffer()) {
 								[cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcPatchOutBuff->_mtlBuffer
 																		offset: tcPatchOutBuff->_offset
-																	   atIndex: kMVKTessEvalPatchInputBufferIndex];
+																	   atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalPatchInputBufferBinding)];
 							}
 							[cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcLevelBuff->_mtlBuffer
 																	offset: tcLevelBuff->_offset
-																   atIndex: kMVKTessEvalLevelBufferIndex];
+																   atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalLevelBufferBinding)];
 							[cmdEncoder->_mtlRenderEncoder setTessellationFactorBuffer: tcLevelBuff->_mtlBuffer
 																				offset: tcLevelBuff->_offset
 																		instanceStride: 0];
@@ -1076,7 +1076,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                     if (pipeline->needsVertexOutputBuffer()) {
                         [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                               offset: vtxOutBuff->_offset
-                                             atIndex: kMVKTessCtlInputBufferIndex];
+                                             atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessCtlInputBufferBinding)];
                     }
                     [mtlTessCtlEncoder dispatchThreadgroupsWithIndirectBuffer: mtlIndBuff
                                                          indirectBufferOffset: mtlTempIndBuffOfst
@@ -1092,16 +1092,16 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 							if (pipeline->needsTessCtlOutputBuffer()) {
 								[cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcOutBuff->_mtlBuffer
 																		offset: tcOutBuff->_offset
-																	   atIndex: kMVKTessEvalInputBufferIndex];
+																	   atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalInputBufferBinding)];
 							}
 							if (pipeline->needsTessCtlPatchOutputBuffer()) {
 								[cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcPatchOutBuff->_mtlBuffer
 																		offset: tcPatchOutBuff->_offset
-																	   atIndex: kMVKTessEvalPatchInputBufferIndex];
+																	   atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalPatchInputBufferBinding)];
 							}
 							[cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcLevelBuff->_mtlBuffer
 																	offset: tcLevelBuff->_offset
-																   atIndex: kMVKTessEvalLevelBufferIndex];
+																   atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalLevelBufferBinding)];
 							[cmdEncoder->_mtlRenderEncoder setTessellationFactorBuffer: tcLevelBuff->_mtlBuffer
 																				offset: tcLevelBuff->_offset
 																		instanceStride: 0];

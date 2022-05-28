@@ -330,7 +330,7 @@ id<MTLFunction> MVKCommandResourceFactory::newClearFragFunction(MVKRPSKeyClearAt
 		[msl appendLineMVK];
 		[msl appendLineMVK: @"typedef struct {"];
 		for (uint32_t caIdx = 0; caIdx < kMVKClearAttachmentDepthStencilIndex; caIdx++) {
-			if (attKey.isAttachmentEnabled(caIdx)) {
+			if (attKey.isAttachmentUsed(caIdx)) {
 				NSString* typeStr = getMTLFormatTypeString((MTLPixelFormat)attKey.attachmentMTLPixelFormats[caIdx]);
 				[msl appendFormat: @"    %@4 color%u [[color(%u)]];", typeStr, caIdx, caIdx];
 				[msl appendLineMVK];
@@ -344,7 +344,7 @@ id<MTLFunction> MVKCommandResourceFactory::newClearFragFunction(MVKRPSKeyClearAt
 		[msl appendLineMVK];
 		[msl appendLineMVK: @"    ClearColorsOut ccOut;"];
 		for (uint32_t caIdx = 0; caIdx < kMVKClearAttachmentDepthStencilIndex; caIdx++) {
-			if (attKey.isAttachmentEnabled(caIdx)) {
+			if (attKey.isAttachmentUsed(caIdx)) {
 				NSString* typeStr = getMTLFormatTypeString((MTLPixelFormat)attKey.attachmentMTLPixelFormats[caIdx]);
 				[msl appendFormat: @"    ccOut.color%u = %@4(ccIn.colors[%u]);", caIdx, typeStr, caIdx];
 				[msl appendLineMVK];
@@ -371,7 +371,7 @@ NSString* MVKCommandResourceFactory::getMTLFormatTypeString(MTLPixelFormat mtlPi
 		case kMVKFormatColorFloat:
 		case kMVKFormatDepthStencil:
 		case kMVKFormatCompressed:		return @"float";
-		default:						return @"unexpected_type";
+		case kMVKFormatNone:			return @"unexpected_MTLPixelFormatInvalid";
 	}
 }
 

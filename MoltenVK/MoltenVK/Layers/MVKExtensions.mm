@@ -39,13 +39,12 @@ static VkExtensionProperties mvkMakeExtProps(const char* extensionName, uint32_t
 }
 
 // Extension properties
-#define MVK_EXTENSION(var, EXT, type) \
+#define MVK_EXTENSION(var, EXT, type, macos, ios) \
 static VkExtensionProperties kVkExtProps_ ##EXT = mvkMakeExtProps(VK_ ##EXT ##_EXTENSION_NAME, VK_ ##EXT ##_SPEC_VERSION);
 #include "MVKExtensions.def"
 
 // Returns whether the specified properties are valid for this platform
 static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
-#define MVK_NA  kMVKOSVersionUnsupported
 #define MVK_EXTENSION_MIN_OS(EXT, MAC, IOS) \
 	if (pProperties == &kVkExtProps_##EXT) { return mvkOSVersionIsAtLeast(MAC, IOS); }
 
@@ -53,6 +52,7 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 	// only advertise those supported extensions that have been specifically configured.
 	auto advExtns = mvkConfig().advertiseExtensions;
 	if ( !mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL) ) {
+#define MVK_NA  kMVKOSVersionUnsupported
 		if (mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_MOLTENVK)) {
 			MVK_EXTENSION_MIN_OS(MVK_MOLTENVK,                         10.11,  8.0)
 		}
@@ -67,32 +67,17 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 			MVK_EXTENSION_MIN_OS(KHR_PORTABILITY_SUBSET,               10.11,  8.0)
 			MVK_EXTENSION_MIN_OS(KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2, 10.11,  8.0)
 		}
+#undef MVK_NA
 
 		return false;
 	}
 
-	MVK_EXTENSION_MIN_OS(MVK_IOS_SURFACE,                    MVK_NA, 8.0)
-	MVK_EXTENSION_MIN_OS(MVK_MACOS_SURFACE,                  10.11,  MVK_NA)
-
-	MVK_EXTENSION_MIN_OS(EXT_HDR_METADATA,                   10.15,  MVK_NA)
-	MVK_EXTENSION_MIN_OS(AMD_SHADER_IMAGE_LOAD_STORE_LOD,    10.16,  8.0)
-	MVK_EXTENSION_MIN_OS(IMG_FORMAT_PVRTC,                   10.16,  8.0)
-	MVK_EXTENSION_MIN_OS(KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE,   10.11,  14.0)
-	MVK_EXTENSION_MIN_OS(EXT_SWAPCHAIN_COLOR_SPACE,          10.11,  9.0)
-	MVK_EXTENSION_MIN_OS(KHR_SHADER_SUBGROUP_EXTENDED_TYPES, 10.14,  13.0)
-	MVK_EXTENSION_MIN_OS(EXT_FRAGMENT_SHADER_INTERLOCK,      10.13,  11.0)
-	MVK_EXTENSION_MIN_OS(EXT_MEMORY_BUDGET,                  10.13,  11.0)
-	MVK_EXTENSION_MIN_OS(EXT_POST_DEPTH_COVERAGE,            10.16,  11.0)
-	MVK_EXTENSION_MIN_OS(EXT_SHADER_STENCIL_EXPORT,          10.14,  12.0)
-	MVK_EXTENSION_MIN_OS(EXT_SUBGROUP_SIZE_CONTROL,          10.14,  13.0)
-	MVK_EXTENSION_MIN_OS(EXT_TEXEL_BUFFER_ALIGNMENT,         10.13,  11.0)
-	MVK_EXTENSION_MIN_OS(EXT_TEXTURE_COMPRESSION_ASTC_HDR,   10.16,  13.0)
-	MVK_EXTENSION_MIN_OS(AMD_SHADER_TRINARY_MINMAX,          10.14,  12.0)
-
-	return true;
-
-#undef MVK_NA
+	// Otherwise, emumerate all available extensions to match the extension being validated for OS support.
+#define MVK_EXTENSION(var, EXT, type, macos, ios)  MVK_EXTENSION_MIN_OS(EXT, macos, ios)
+#include "MVKExtensions.def"
 #undef MVK_EXTENSION_MIN_OS
+
+	return false;
 }
 
 // Disable by default unless asked to enable for platform and the extension is valid for this platform
@@ -106,8 +91,8 @@ MVKExtension::MVKExtension(VkExtensionProperties* pProperties, bool enableForPla
 #pragma mark MVKExtensionList
 
 MVKExtensionList::MVKExtensionList(MVKVulkanAPIObject* apiObject, bool enableForPlatform) : _apiObject(apiObject),
-#define MVK_EXTENSION_LAST(var, EXT, type)		vk_ ##var(&kVkExtProps_ ##EXT, enableForPlatform)
-#define MVK_EXTENSION(var, EXT, type)			MVK_EXTENSION_LAST(var, EXT, type),
+#define MVK_EXTENSION_LAST(var, EXT, type, macos, ios)		vk_ ##var(&kVkExtProps_ ##EXT, enableForPlatform)
+#define MVK_EXTENSION(var, EXT, type, macos, ios)			MVK_EXTENSION_LAST(var, EXT, type, macos, ios),
 #include "MVKExtensions.def"
 {
 	initCount();
@@ -118,7 +103,7 @@ MVKExtensionList::MVKExtensionList(MVKVulkanAPIObject* apiObject, bool enableFor
 void MVKExtensionList::initCount() {
 	_count = 0;
 
-#define MVK_EXTENSION(var, EXT, type) _count++;
+#define MVK_EXTENSION(var, EXT, type, macos, ios) _count++;
 #include "MVKExtensions.def"
 }
 
@@ -127,14 +112,14 @@ void MVKExtensionList::initCount() {
 void MVKExtensionList::disableAllButEnabledInstanceExtensions() {
 #define MVK_EXTENSION_INSTANCE         true
 #define MVK_EXTENSION_DEVICE           false
-#define MVK_EXTENSION(var, EXT, type)  MVK_ENSURE_EXTENSION_TYPE(var, EXT, type)
+#define MVK_EXTENSION(var, EXT, type, macos, ios)  MVK_ENSURE_EXTENSION_TYPE(var, EXT, type)
 #include "MVKExtensions.def"
 }
 
 void MVKExtensionList::disableAllButEnabledDeviceExtensions() {
 #define MVK_EXTENSION_INSTANCE         false
 #define MVK_EXTENSION_DEVICE           true
-#define MVK_EXTENSION(var, EXT, type)  MVK_ENSURE_EXTENSION_TYPE(var, EXT, type)
+#define MVK_EXTENSION(var, EXT, type, macos, ios)  MVK_ENSURE_EXTENSION_TYPE(var, EXT, type)
 #include "MVKExtensions.def"
 }
 

@@ -46,6 +46,7 @@ public:
 
 protected:
 
+	MVKSmallVector<MVKSmallVector<MTLSamplePosition>> _subpassSamplePositions;
 	MVKRenderPass* _renderPass;
 	MVKFramebuffer* _framebuffer;
 	VkRect2D _renderArea;
@@ -134,6 +135,75 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdBeginRendering
+
+/**
+ * Vulkan command to begin rendering.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
+class MVKCmdBeginRendering : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer*
+						cmdBuff, const VkRenderingInfo* pRenderingInfo);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	VkRenderingInfo _renderingInfo;
+	MVKSmallVector<VkRenderingAttachmentInfo, N> _colorAttachments;
+	VkRenderingAttachmentInfo _depthAttachment;
+	VkRenderingAttachmentInfo _stencilAttachment;
+};
+
+// Concrete template class implementations.
+typedef MVKCmdBeginRendering<1> MVKCmdBeginRendering1;
+typedef MVKCmdBeginRendering<2> MVKCmdBeginRendering2;
+typedef MVKCmdBeginRendering<4> MVKCmdBeginRendering4;
+typedef MVKCmdBeginRendering<8> MVKCmdBeginRenderingMulti;
+
+
+#pragma mark -
+#pragma mark MVKCmdEndRendering
+
+/** Vulkan command to end the current dynamic rendering. */
+class MVKCmdEndRendering : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetSampleLocations
+
+/** Vulkan command to dynamically set custom sample locations. */
+class MVKCmdSetSampleLocations : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const VkSampleLocationsInfoEXT* pSampleLocationsInfo);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MVKSmallVector<MTLSamplePosition, 8> _samplePositions;
 };
 
 

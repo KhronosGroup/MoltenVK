@@ -93,102 +93,42 @@ VkSampleCountFlagBits MVKRenderSubpass::getSampleCount() {
 	return VK_SAMPLE_COUNT_1_BIT;
 }
 
-// Extract the first view, number of views, and the portion of the mask to be rendered from
-// the lowest clump of set bits in a view mask.
-static uint32_t getNextViewMaskGroup(uint32_t viewMask, uint32_t* startView, uint32_t* viewCount, uint32_t *groupMask = nullptr) {
-	// First, find the first set bit. This is the start of the next clump of views to be rendered.
-	// n.b. ffs(3) returns a 1-based index. This actually bit me during development of this feature.
-	int pos = ffs(viewMask) - 1;
-	int end = pos;
-	if (groupMask) { *groupMask = 0; }
-	// Now we'll step through the bits one at a time until we find a bit that isn't set.
-	// This is one past the end of the next clump. Clear the bits as we go, so we can use
-	// ffs(3) again on the next clump.
-	// TODO: Find a way to make this faster.
-	while (viewMask & (1 << end)) {
-		if (groupMask) { *groupMask |= viewMask & (1 << end); }
-		viewMask &= ~(1 << (end++));
-	}
-	if (startView) { *startView = pos; }
-	if (viewCount) { *viewCount = end - pos; }
-	return viewMask;
-}
-
 // Get the portion of the view mask that will be rendered in the specified Metal render pass.
 uint32_t MVKRenderSubpass::getViewMaskGroupForMetalPass(uint32_t passIdx) {
-	if (!_viewMask) { return 0; }
+	if (!_pipelineRenderingCreateInfo.viewMask) { return 0; }
 	assert(passIdx < getMultiviewMetalPassCount());
 	if (!_renderPass->getPhysicalDevice()->canUseInstancingForMultiview()) {
 		return 1 << getFirstViewIndexInMetalPass(passIdx);
 	}
-	uint32_t mask = _viewMask, groupMask = 0;
+	uint32_t mask = _pipelineRenderingCreateInfo.viewMask, groupMask = 0;
 	for (uint32_t i = 0; i <= passIdx; ++i) {
-		mask = getNextViewMaskGroup(mask, nullptr, nullptr, &groupMask);
+		mask = mvkGetNextViewMaskGroup(mask, nullptr, nullptr, &groupMask);
 	}
 	return groupMask;
 }
 
 uint32_t MVKRenderSubpass::getMultiviewMetalPassCount() const {
-	if (!_viewMask) { return 0; }
-	if (!_renderPass->getPhysicalDevice()->canUseInstancingForMultiview()) {
-		// If we can't use instanced drawing for this, we'll have to unroll the render pass.
-		return __builtin_popcount(_viewMask);
-	}
-	uint32_t mask = _viewMask;
-	uint32_t count;
-	// Step through each clump until there are no more clumps. I'll know this has
-	// happened when the mask becomes 0, since getNextViewMaskGroup() clears each group of bits
-	// as it finds them, and returns the remainder of the mask.
-	for (count = 0; mask != 0; ++count) {
-		mask = getNextViewMaskGroup(mask, nullptr, nullptr);
-	}
-	return count;
+	return _renderPass->getDevice()->getMultiviewMetalPassCount(_pipelineRenderingCreateInfo.viewMask);
 }
 
 uint32_t MVKRenderSubpass::getFirstViewIndexInMetalPass(uint32_t passIdx) const {
-	if (!_viewMask) { return 0; }
-	assert(passIdx < getMultiviewMetalPassCount());
-	uint32_t mask = _viewMask;
-	uint32_t startView = 0, viewCount = 0;
-	if (!_renderPass->getPhysicalDevice()->canUseInstancingForMultiview()) {
-		for (uint32_t i = 0; mask != 0; ++i) {
-			mask = getNextViewMaskGroup(mask, &startView, &viewCount);
-			while (passIdx-- > 0 && viewCount-- > 0) {
-				startView++;
-			}
-		}
-	} else {
-		for (uint32_t i = 0; i <= passIdx; ++i) {
-			mask = getNextViewMaskGroup(mask, &startView, nullptr);
-		}
-	}
-	return startView;
+	return _renderPass->getDevice()->getFirstViewIndexInMetalPass(_pipelineRenderingCreateInfo.viewMask, passIdx);
 }
 
 uint32_t MVKRenderSubpass::getViewCountInMetalPass(uint32_t passIdx) const {
-	if (!_viewMask) { return 0; }
-	assert(passIdx < getMultiviewMetalPassCount());
-	if (!_renderPass->getPhysicalDevice()->canUseInstancingForMultiview()) {
-		return 1;
-	}
-	uint32_t mask = _viewMask;
-	uint32_t viewCount = 0;
-	for (uint32_t i = 0; i <= passIdx; ++i) {
-		mask = getNextViewMaskGroup(mask, nullptr, &viewCount);
-	}
-	return viewCount;
+	return _renderPass->getDevice()->getViewCountInMetalPass(_pipelineRenderingCreateInfo.viewMask, passIdx);
 }
 
 uint32_t MVKRenderSubpass::getViewCountUpToMetalPass(uint32_t passIdx) const {
-	if (!_viewMask) { return 0; }
+	if (!_pipelineRenderingCreateInfo.viewMask) { return 0; }
 	if (!_renderPass->getPhysicalDevice()->canUseInstancingForMultiview()) {
 		return passIdx+1;
 	}
-	uint32_t mask = _viewMask;
+	uint32_t mask = _pipelineRenderingCreateInfo.viewMask;
 	uint32_t totalViewCount = 0;
 	for (uint32_t i = 0; i <= passIdx; ++i) {
 		uint32_t viewCount;
-		mask = getNextViewMaskGroup(mask, nullptr, &viewCount);
+		mask = mvkGetNextViewMaskGroup(mask, nullptr, &viewCount);
 		totalViewCount += viewCount;
 	}
 	return totalViewCount;
@@ -314,9 +254,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 	// If Metal does not support rendering without attachments, create a dummy attachment to pass Metal validation.
 	if (caUsedCnt == 0 && dsRPAttIdx == VK_ATTACHMENT_UNUSED) {
         if (_renderPass->getDevice()->_pMetalFeatures->renderWithoutAttachments) {
-#if MVK_MACOS_OR_IOS
             mtlRPDesc.defaultRasterSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_defaultSampleCount);
-#endif
 		} else {
 			MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = mtlRPDesc.colorAttachments[0];
 			mtlColorAttDesc.texture = framebuffer->getDummyAttachmentMTLTexture(this, passIdx);
@@ -467,13 +405,32 @@ void MVKRenderSubpass::resolveUnresolvableAttachments(MVKCommandEncoder* cmdEnco
 	}
 }
 
+// Must be called after renderpass has both subpasses and attachments bound
+void MVKRenderSubpass::populatePipelineRenderingCreateInfo() {
+	MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
+	_pipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+	_pipelineRenderingCreateInfo.pNext = nullptr;
+
+	uint32_t caCnt = getColorAttachmentCount();
+	for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
+		_colorAttachmentFormats.push_back(getColorAttachmentFormat(caIdx));
+	}
+	_pipelineRenderingCreateInfo.pColorAttachmentFormats = _colorAttachmentFormats.data();
+	_pipelineRenderingCreateInfo.colorAttachmentCount = caCnt;
+
+	VkFormat dsFmt = getDepthStencilFormat();
+	MTLPixelFormat dsMTLFmt = pixFmts->getMTLPixelFormat(dsFmt);
+	_pipelineRenderingCreateInfo.depthAttachmentFormat = pixFmts->isDepthFormat(dsMTLFmt) ? dsFmt : VK_FORMAT_UNDEFINED;
+	_pipelineRenderingCreateInfo.stencilAttachmentFormat = pixFmts->isStencilFormat(dsMTLFmt) ? dsFmt : VK_FORMAT_UNDEFINED;
+}
+
 MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass,
 								   const VkSubpassDescription* pCreateInfo,
 								   const VkRenderPassInputAttachmentAspectCreateInfo* pInputAspects,
 								   uint32_t viewMask) {
 	_renderPass = renderPass;
 	_subpassIndex = (uint32_t)_renderPass->_subpasses.size();
-	_viewMask = viewMask;
+	_pipelineRenderingCreateInfo.viewMask = viewMask;
 
 	// Add attachments
 	_inputAttachments.reserve(pCreateInfo->inputAttachmentCount);
@@ -535,7 +492,7 @@ MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass,
 
 	_renderPass = renderPass;
 	_subpassIndex = (uint32_t)_renderPass->_subpasses.size();
-	_viewMask = pCreateInfo->viewMask;
+	_pipelineRenderingCreateInfo.viewMask = pCreateInfo->viewMask;
 
 	// Add attachments
 	_inputAttachments.reserve(pCreateInfo->inputAttachmentCount);
@@ -600,11 +557,13 @@ bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRende
 #if MVK_APPLE_SILICON
 	isMemorylessAttachment = attachment->getMTLTexture().storageMode == MTLStorageModeMemoryless;
 #endif
+	bool isResuming = mvkIsAnyFlagEnabled(_renderPass->getRenderingFlags(), VK_RENDERING_RESUMING_BIT);
 
 	// Only allow clearing of entire attachment if we're actually
 	// rendering to the entire attachment AND we're in the first subpass.
+	// If the renderpass was suspended, and is now being resumed, load the contents.
 	MTLLoadAction mtlLA;
-	if (loadOverride || !isRenderingEntireAttachment || !isFirstUseOfAttachment(subpass)) {
+	if (loadOverride || isResuming || !isRenderingEntireAttachment || !isFirstUseOfAttachment(subpass)) {
 		mtlLA = MTLLoadActionLoad;
     } else {
         VkAttachmentLoadOp loadOp = isStencil ? _info.stencilLoadOp : _info.loadOp;
@@ -679,14 +638,14 @@ void MVKRenderPassAttachment::populateMultiviewClearRects(MVKSmallVector<VkClear
 	VkRect2D renderArea = cmdEncoder->clipToRenderArea({{0, 0}, {kMVKUndefinedLargeUInt32, kMVKUndefinedLargeUInt32}});
 	uint32_t startView, viewCount;
 	do {
-		clearMask = getNextViewMaskGroup(clearMask, &startView, &viewCount);
+		clearMask = mvkGetNextViewMaskGroup(clearMask, &startView, &viewCount);
 		clearRects.push_back({renderArea, startView, viewCount});
 	} while (clearMask);
 }
 
 bool MVKRenderPassAttachment::isFirstUseOfAttachment(MVKRenderSubpass* subpass) {
 	if ( subpass->isMultiview() ) {
-		return _firstUseViewMasks[subpass->_subpassIndex] == subpass->_viewMask;
+		return _firstUseViewMasks[subpass->_subpassIndex] == subpass->_pipelineRenderingCreateInfo.viewMask;
 	} else {
 		return _firstUseSubpassIdx == subpass->_subpassIndex;
 	}
@@ -694,7 +653,7 @@ bool MVKRenderPassAttachment::isFirstUseOfAttachment(MVKRenderSubpass* subpass) 
 
 bool MVKRenderPassAttachment::isLastUseOfAttachment(MVKRenderSubpass* subpass) {
 	if ( subpass->isMultiview() ) {
-		return _lastUseViewMasks[subpass->_subpassIndex] == subpass->_viewMask;
+		return _lastUseViewMasks[subpass->_subpassIndex] == subpass->_pipelineRenderingCreateInfo.viewMask;
 	} else {
 		return _lastUseSubpassIdx == subpass->_subpassIndex;
 	}
@@ -707,7 +666,12 @@ MTLStoreAction MVKRenderPassAttachment::getMTLStoreAction(MVKRenderSubpass* subp
 														  bool canResolveFormat,
 														  bool isStencil,
 														  bool storeOverride) {
-    // If a resolve attachment exists, this attachment must resolve once complete.
+
+	// If the renderpass is going to be suspended, and resumed later, store the contents to preserve them until then.
+	bool isSuspending = mvkIsAnyFlagEnabled(_renderPass->getRenderingFlags(), VK_RENDERING_SUSPENDING_BIT);
+	if (isSuspending) { return MTLStoreActionStore; }
+
+	// If a resolve attachment exists, this attachment must resolve once complete.
     if (hasResolveAttachment && canResolveFormat && !_renderPass->getDevice()->_pMetalFeatures->combinedStoreResolveAction) {
         return MTLStoreActionMultisampleResolve;
     }
@@ -759,7 +723,7 @@ void MVKRenderPassAttachment::validateFormat() {
 			_firstUseSubpassIdx = min(spIdx, _firstUseSubpassIdx);
 			_lastUseSubpassIdx = max(spIdx, _lastUseSubpassIdx);
 			if ( subPass.isMultiview() ) {
-				uint32_t viewMask = subPass._viewMask;
+				uint32_t viewMask = subPass._pipelineRenderingCreateInfo.viewMask;
 				std::for_each(_lastUseViewMasks.begin(), _lastUseViewMasks.end(), [viewMask](uint32_t& mask) { mask &= ~viewMask; });
 				_lastUseViewMasks.push_back(viewMask);
 				std::for_each(_firstUseViewMasks.begin(), _firstUseViewMasks.end(), [&viewMask](uint32_t mask) { viewMask &= ~mask; });
@@ -818,8 +782,6 @@ VkExtent2D MVKRenderPass::getRenderAreaGranularity() {
     return { 1, 1 };
 }
 
-MVKRenderSubpass* MVKRenderPass::getSubpass(uint32_t subpassIndex) { return &_subpasses[subpassIndex]; }
-
 bool MVKRenderPass::isMultiview() const { return _subpasses[0].isMultiview(); }
 
 MVKRenderPass::MVKRenderPass(MVKDevice* device,
@@ -876,7 +838,13 @@ MVKRenderPass::MVKRenderPass(MVKDevice* device,
 	for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
 		_attachments.emplace_back(this, &pCreateInfo->pAttachments[i]);
 	}
+
+	// Populate additional subpass info after attachments added.
+	for (auto& mvkSP : _subpasses) {
+		mvkSP.populatePipelineRenderingCreateInfo();
+	}
 }
+
 
 MVKRenderPass::MVKRenderPass(MVKDevice* device,
 							 const VkRenderPassCreateInfo2* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
@@ -896,6 +864,246 @@ MVKRenderPass::MVKRenderPass(MVKDevice* device,
 	for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
 		_attachments.emplace_back(this, &pCreateInfo->pAttachments[i]);
 	}
+
+	// Populate additional subpass info after attachments added.
+	for (auto& mvkSP : _subpasses) {
+		mvkSP.populatePipelineRenderingCreateInfo();
+	}
 }
 
 
+#pragma mark -
+#pragma mark Support functions
+
+// Adds the rendering attachment info to the array of attachment descriptors at the index,
+// and increments the index, for both the base view and the resolve view, if it is present.
+static void mvkAddAttachmentDescriptor(const VkRenderingAttachmentInfo* pAttInfo,
+									   const VkRenderingAttachmentInfo* pStencilAttInfo,
+									   VkAttachmentDescription2 attachmentDescriptors[],
+									   uint32_t& attDescIdx) {
+	VkAttachmentDescription2 attDesc;
+	attDesc.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
+	attDesc.pNext = nullptr;
+	attDesc.flags = 0;
+	attDesc.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attDesc.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+	// Handle stencil-only possibility.
+	if ( !pAttInfo ) { pAttInfo = pStencilAttInfo; }
+
+	if (pAttInfo && pAttInfo->imageView) {
+		MVKImageView* mvkImgView = (MVKImageView*)pAttInfo->imageView;
+		attDesc.format = mvkImgView->getVkFormat();
+		attDesc.samples = mvkImgView->getSampleCount();
+		attDesc.loadOp = pAttInfo->loadOp;
+		attDesc.storeOp = pAttInfo->storeOp;
+		attDesc.stencilLoadOp = pStencilAttInfo ? pStencilAttInfo->loadOp : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		attDesc.stencilStoreOp = pStencilAttInfo ? pStencilAttInfo->storeOp : VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		attDesc.initialLayout = pAttInfo->imageLayout;
+		attDesc.finalLayout = pAttInfo->imageLayout;
+		attachmentDescriptors[attDescIdx++] = attDesc;
+
+		if (pAttInfo->resolveImageView && pAttInfo->resolveMode != VK_RESOLVE_MODE_NONE) {
+			attDesc.samples = VK_SAMPLE_COUNT_1_BIT;
+			attDesc.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			attDesc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			attDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			attDesc.stencilStoreOp = pStencilAttInfo ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			attDesc.initialLayout = pAttInfo->resolveImageLayout;
+			attDesc.finalLayout = pAttInfo->resolveImageLayout;
+			attachmentDescriptors[attDescIdx++] = attDesc;
+		}
+	}
+}
+
+MVKRenderPass* mvkCreateRenderPass(MVKDevice* device, const VkRenderingInfo* pRenderingInfo) {
+
+	// Renderpass attachments are sequentially indexed in this order:
+	//     [color, color-resolve], ..., ds, ds-resolve
+	// skipping any attachments that do not have a VkImageView
+	uint32_t maxAttDescCnt = (pRenderingInfo->colorAttachmentCount + 1) * 2;
+	VkAttachmentDescription2 attachmentDescriptors[maxAttDescCnt];
+	VkAttachmentReference2 colorAttachmentRefs[pRenderingInfo->colorAttachmentCount];
+	VkAttachmentReference2 resolveAttachmentRefs[pRenderingInfo->colorAttachmentCount];
+
+	VkAttachmentReference2 attRef;
+	attRef.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
+	attRef.pNext = nullptr;
+	attRef.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+	uint32_t attDescIdx = 0;
+	uint32_t caRefIdx = 0;
+	bool hasClrRslvAtt = false;
+	for (uint32_t caIdx = 0; caIdx < pRenderingInfo->colorAttachmentCount; caIdx++) {
+		auto& clrAtt = pRenderingInfo->pColorAttachments[caIdx];
+		if (clrAtt.imageView) {
+			attRef.layout = clrAtt.imageLayout;
+			attRef.attachment = attDescIdx;
+			colorAttachmentRefs[caRefIdx] = attRef;
+
+			if (clrAtt.resolveImageView && clrAtt.resolveMode != VK_RESOLVE_MODE_NONE) {
+				attRef.layout = clrAtt.resolveImageLayout;
+				attRef.attachment = attDescIdx + 1;
+				resolveAttachmentRefs[caRefIdx] = attRef;
+				hasClrRslvAtt = true;
+			}
+			caRefIdx++;
+		}
+		mvkAddAttachmentDescriptor(&clrAtt, nullptr, attachmentDescriptors, attDescIdx);
+	}
+
+	// Combine depth and stencil attachments into one depth-stencil attachment.
+	// If both depth and stencil are present, their views and layouts must match.
+	VkAttachmentReference2 dsAttRef;
+	VkAttachmentReference2 dsRslvAttRef;
+	VkResolveModeFlagBits depthResolveMode = VK_RESOLVE_MODE_NONE;
+	VkResolveModeFlagBits stencilResolveMode = VK_RESOLVE_MODE_NONE;
+
+	attRef.aspectMask = 0;
+	attRef.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	VkImageLayout rslvLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+	if (pRenderingInfo->pDepthAttachment && pRenderingInfo->pDepthAttachment->imageView) {
+		attRef.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+		depthResolveMode = pRenderingInfo->pDepthAttachment->resolveMode;
+		attRef.layout = pRenderingInfo->pDepthAttachment->imageLayout;
+		rslvLayout = pRenderingInfo->pDepthAttachment->resolveImageLayout;
+	}
+	if (pRenderingInfo->pStencilAttachment && pRenderingInfo->pStencilAttachment->imageView) {
+		attRef.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+		stencilResolveMode = pRenderingInfo->pStencilAttachment->resolveMode;
+		attRef.layout = pRenderingInfo->pStencilAttachment->imageLayout;
+		rslvLayout = pRenderingInfo->pStencilAttachment->resolveImageLayout;
+	}
+
+	attRef.attachment = attRef.aspectMask ? attDescIdx : VK_ATTACHMENT_UNUSED;
+	dsAttRef = attRef;
+
+	attRef.layout = rslvLayout;
+	attRef.attachment = attDescIdx + 1;
+	dsRslvAttRef = attRef;
+
+	mvkAddAttachmentDescriptor(pRenderingInfo->pDepthAttachment,
+							   pRenderingInfo->pStencilAttachment,
+							   attachmentDescriptors, attDescIdx);
+
+	// Depth/stencil resolve handled via VkSubpassDescription2 pNext
+	VkSubpassDescriptionDepthStencilResolve dsRslv;
+	dsRslv.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE;
+	dsRslv.pNext = nullptr;
+	dsRslv.depthResolveMode = depthResolveMode;
+	dsRslv.stencilResolveMode = stencilResolveMode;
+	dsRslv.pDepthStencilResolveAttachment = &dsRslvAttRef;
+	bool hasDSRslvAtt = depthResolveMode != VK_RESOLVE_MODE_NONE || stencilResolveMode != VK_RESOLVE_MODE_NONE;
+
+	// Define the subpass
+	VkSubpassDescription2 spDesc;
+	spDesc.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2;
+	spDesc.pNext = hasDSRslvAtt ? &dsRslv : nullptr;
+	spDesc.flags = 0;
+	spDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	spDesc.viewMask = pRenderingInfo->viewMask;
+	spDesc.inputAttachmentCount = 0;
+	spDesc.pInputAttachments = nullptr;
+	spDesc.colorAttachmentCount = caRefIdx;
+	spDesc.pColorAttachments = colorAttachmentRefs;
+	spDesc.pResolveAttachments = hasClrRslvAtt ? resolveAttachmentRefs : nullptr;;
+	spDesc.pDepthStencilAttachment = &dsAttRef;
+	spDesc.preserveAttachmentCount = 0;
+	spDesc.pPreserveAttachments = nullptr;
+
+	// Define the renderpass
+	VkRenderPassCreateInfo2 rpCreateInfo;
+	rpCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2;
+	rpCreateInfo.pNext = nullptr;
+	rpCreateInfo.flags = 0;
+	rpCreateInfo.attachmentCount = attDescIdx;
+	rpCreateInfo.pAttachments = attachmentDescriptors;
+	rpCreateInfo.subpassCount = 1;
+	rpCreateInfo.pSubpasses = &spDesc;
+	rpCreateInfo.dependencyCount = 0;
+	rpCreateInfo.pDependencies = nullptr;
+	rpCreateInfo.correlatedViewMaskCount = 0;
+	rpCreateInfo.pCorrelatedViewMasks = nullptr;
+
+	auto* mvkRP = device->createRenderPass(&rpCreateInfo, nullptr);
+	mvkRP->setRenderingFlags(pRenderingInfo->flags);
+	return mvkRP;
+}
+
+uint32_t mvkGetAttachments(const VkRenderingInfo* pRenderingInfo,
+						   MVKImageView* attachments[],
+						   VkClearValue clearValues[]) {
+
+	// Renderpass attachments are sequentially indexed in this order:
+	//     [color, color-resolve], ..., ds, ds-resolve
+	// skipping any attachments that do not have a VkImageView
+	// For consistency, we populate the clear value of any resolve attachments, even though they are ignored.
+	uint32_t attIdx = 0;
+	for (uint32_t caIdx = 0; caIdx < pRenderingInfo->colorAttachmentCount; caIdx++) {
+		auto& clrAtt = pRenderingInfo->pColorAttachments[caIdx];
+		if (clrAtt.imageView) {
+			clearValues[attIdx] = clrAtt.clearValue;
+			attachments[attIdx++] = (MVKImageView*)clrAtt.imageView;
+			if (clrAtt.resolveImageView && clrAtt.resolveMode != VK_RESOLVE_MODE_NONE) {
+				clearValues[attIdx] = clrAtt.clearValue;
+				attachments[attIdx++] = (MVKImageView*)clrAtt.resolveImageView;
+			}
+		}
+	}
+
+	// We need to combine the DS attachments into one
+	auto* pDSAtt = pRenderingInfo->pDepthAttachment ? pRenderingInfo->pDepthAttachment : pRenderingInfo->pStencilAttachment;
+	if (pDSAtt) {
+		if (pDSAtt->imageView) {
+			clearValues[attIdx] = pDSAtt->clearValue;
+			attachments[attIdx++] = (MVKImageView*)pDSAtt->imageView;
+		}
+		if (pDSAtt->resolveImageView && pDSAtt->resolveMode != VK_RESOLVE_MODE_NONE) {
+			clearValues[attIdx] = pDSAtt->clearValue;
+			attachments[attIdx++] = (MVKImageView*)pDSAtt->resolveImageView;
+		}
+	}
+
+	return attIdx;
+}
+
+bool mvkIsColorAttachmentUsed(const VkPipelineRenderingCreateInfo* pRendInfo, uint32_t colorAttIdx) {
+	return pRendInfo && pRendInfo->pColorAttachmentFormats[colorAttIdx];
+}
+
+bool mvkHasColorAttachments(const VkPipelineRenderingCreateInfo* pRendInfo) {
+	if (pRendInfo) {
+		for (uint32_t caIdx = 0; caIdx < pRendInfo->colorAttachmentCount; caIdx++) {
+			if (mvkIsColorAttachmentUsed(pRendInfo, caIdx)) { return true; }
+		}
+	}
+	return false;
+}
+
+VkFormat mvkGetDepthStencilFormat(const VkPipelineRenderingCreateInfo* pRendInfo) {
+	return (pRendInfo
+			? (pRendInfo->depthAttachmentFormat
+			   ? pRendInfo->depthAttachmentFormat
+			   : pRendInfo->stencilAttachmentFormat)
+			: VK_FORMAT_UNDEFINED);
+}
+
+uint32_t mvkGetNextViewMaskGroup(uint32_t viewMask, uint32_t* startView, uint32_t* viewCount, uint32_t *groupMask) {
+	// First, find the first set bit. This is the start of the next clump of views to be rendered.
+	// n.b. ffs(3) returns a 1-based index. This actually bit me during development of this feature.
+	int pos = ffs(viewMask) - 1;
+	int end = pos;
+	if (groupMask) { *groupMask = 0; }
+	// Now we'll step through the bits one at a time until we find a bit that isn't set.
+	// This is one past the end of the next clump. Clear the bits as we go, so we can use
+	// ffs(3) again on the next clump.
+	// TODO: Find a way to make this faster.
+	while (viewMask & (1 << end)) {
+		if (groupMask) { *groupMask |= viewMask & (1 << end); }
+		viewMask &= ~(1 << (end++));
+	}
+	if (startView) { *startView = pos; }
+	if (viewCount) { *viewCount = end - pos; }
+	return viewMask;
+}

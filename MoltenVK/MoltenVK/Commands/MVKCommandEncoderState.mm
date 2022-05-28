@@ -166,18 +166,19 @@ void MVKPushConstantsCommandEncoderState:: setPushConstants(uint32_t offset, MVK
     if (pcBuffSize > 0) { markDirty(); }
 }
 
-void MVKPushConstantsCommandEncoderState::setMTLBufferIndex(uint32_t mtlBufferIndex) {
-    if (mtlBufferIndex != _mtlBufferIndex) {
-        _mtlBufferIndex = mtlBufferIndex;
-        markDirty();
-    }
+void MVKPushConstantsCommandEncoderState::setMTLBufferIndex(uint32_t mtlBufferIndex, bool pipelineStageUsesPushConstants) {
+	if ((mtlBufferIndex != _mtlBufferIndex) || (pipelineStageUsesPushConstants != _pipelineStageUsesPushConstants)) {
+		_mtlBufferIndex = mtlBufferIndex;
+		_pipelineStageUsesPushConstants = pipelineStageUsesPushConstants;
+		markDirty();
+	}
 }
 
 // At this point, I have been marked not-dirty, under the assumption that I will make changes to the encoder.
 // However, some of the paths below decide not to actually make any changes to the encoder. In that case,
 // I should remain dirty until I actually do make encoder changes.
 void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
-    if (_pushConstants.empty() ) { return; }
+    if ( !_pipelineStageUsesPushConstants || _pushConstants.empty() ) { return; }
 
 	_isDirty = true;	// Stay dirty until I actually decide to make a change to the encoder
 
@@ -739,7 +740,7 @@ void MVKGraphicsResourcesCommandEncoderState::markDirty() {
 
 void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 
-    MVKGraphicsPipeline* pipeline = (MVKGraphicsPipeline*)_cmdEncoder->_graphicsPipelineState.getPipeline();
+    MVKGraphicsPipeline* pipeline = (MVKGraphicsPipeline*)getPipeline();
     bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle() || getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     bool forTessellation = pipeline->isTessellationPipeline();
 
@@ -774,26 +775,33 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 	} else if (!forTessellation && stage == kMVKGraphicsStageRasterization) {
         encodeBindings(kMVKShaderStageVertex, "vertex", fullImageViewSwizzle,
                        [pipeline](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
-					       if (b.isInline) {
-                               cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
-                                                          b.mtlBytes,
-                                                          b.size,
-                                                          b.index);
-					       } else {
-                               [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
-                                                                       offset: b.offset
-                                                                      atIndex: b.index];
+                           // The app may have bound more vertex attribute buffers than used by the pipeline.
+                           // We must not bind those extra buffers to the shader because they might overwrite
+                           // any implicit buffers used by the pipeline.
+                           if (pipeline->isValidVertexBufferIndex(kMVKShaderStageVertex, b.index)) {
+                               if (b.isInline) {
+                                   cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
+                                                              b.mtlBytes,
+                                                              b.size,
+                                                              b.index);
+                               } else {
+                                   [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
+                                                                           offset: b.offset
+                                                                          atIndex: b.index];
 
-							   // Add any translated vertex bindings for this binding
-							   auto xltdVtxBindings = pipeline->getTranslatedVertexBindings();
-							   for (auto& xltdBind : xltdVtxBindings) {
-								   if (b.index == pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.binding)) {
-									   [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
-																			   offset: b.offset + xltdBind.translationOffset
-																			  atIndex: pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.translationBinding)];
-								   }
-							   }
-					       }
+                                   // Add any translated vertex bindings for this binding
+                                   auto xltdVtxBindings = pipeline->getTranslatedVertexBindings();
+                                   for (auto& xltdBind : xltdVtxBindings) {
+                                       if (b.index == pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.binding)) {
+                                           [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
+                                                                                   offset: b.offset + xltdBind.translationOffset
+                                                                                  atIndex: pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.translationBinding)];
+                                       }
+                                   }
+                               }
+                           } else {
+                               b.isDirty = true;	// We haven't written it out, so leave dirty until next time.
+						   }
                        },
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, const MVKArrayRef<uint32_t> s)->void {
                            cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
@@ -975,7 +983,7 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
 
 	encodeMetalArgumentBuffer(kMVKShaderStageCompute);
 
-    MVKPipeline* pipeline = _cmdEncoder->_computePipelineState.getPipeline();
+    MVKPipeline* pipeline = getPipeline();
 	bool fullImageViewSwizzle = pipeline ? pipeline->fullImageViewSwizzle() : false;
 
     if (_resourceBindings.swizzleBufferBinding.isDirty) {

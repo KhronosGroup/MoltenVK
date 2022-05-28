@@ -314,7 +314,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 			}
 			case VK_STRUCTURE_TYPE_EXPORT_METAL_OBJECT_CREATE_INFO_EXT: {
 				const auto* pExportInfo = (VkExportMetalObjectCreateInfoEXT*)next;
-				willExportMTLBuffer = mvkIsAnyFlagEnabled(pExportInfo->exportObjectTypes, VK_EXPORT_METAL_OBJECT_TYPE_METAL_BUFFER_BIT_EXT);
+				willExportMTLBuffer = pExportInfo->exportObjectType == VK_EXPORT_METAL_OBJECT_TYPE_METAL_BUFFER_BIT_EXT;
 				break;
 			}
 			default:

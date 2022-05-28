@@ -141,7 +141,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkGetMTLCommandQueueMVK(
     VkQueue                                     queue,
     id<MTLCommandQueue>*                        pMTLCommandQueue) {
 
-    MVKQueue* mvkQueue = (MVKQueue*)queue;
+    MVKQueue* mvkQueue = MVKQueue::getMVKQueue(queue);
     *pMTLCommandQueue = mvkQueue->getMTLCommandQueue();
 }
 

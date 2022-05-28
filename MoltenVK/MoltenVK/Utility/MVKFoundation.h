@@ -442,6 +442,11 @@ struct MVKArrayRef {
 	const Type* end() const { return &data[size]; }
 	const Type& operator[]( const size_t i ) const { return data[i]; }
 	Type& operator[]( const size_t i ) { return data[i]; }
+	MVKArrayRef<Type>& operator=(const MVKArrayRef<Type>& other) {
+		data = other.data;
+		*(size_t*)&size = other.size;
+		return *this;
+	}
 	MVKArrayRef() : MVKArrayRef(nullptr, 0) {}
 	MVKArrayRef(Type* d, size_t s) : data(d), size(s) {}
 };

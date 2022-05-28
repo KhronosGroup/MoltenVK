@@ -36,6 +36,30 @@ VkResult MVKCmdBeginRenderPassBase::setContent(MVKCommandBuffer* cmdBuff,
 	_renderPass = (MVKRenderPass*)pRenderPassBegin->renderPass;
 	_framebuffer = (MVKFramebuffer*)pRenderPassBegin->framebuffer;
 	_renderArea = pRenderPassBegin->renderArea;
+	_subpassSamplePositions.clear();
+
+	for (const auto* next = (VkBaseInStructure*)pRenderPassBegin->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT: {
+				// Build an array of arrays, one array of sample positions for each subpass index.
+				// For subpasses not included in VkRenderPassSampleLocationsBeginInfoEXT, the resulting array of samples will be empty.
+				_subpassSamplePositions.resize(_renderPass->getSubpassCount());
+				auto* pRPSampLocnsInfo = (VkRenderPassSampleLocationsBeginInfoEXT*)next;
+				for (uint32_t spSLIdx = 0; spSLIdx < pRPSampLocnsInfo->postSubpassSampleLocationsCount; spSLIdx++) {
+					auto& spsl = pRPSampLocnsInfo->pPostSubpassSampleLocations[spSLIdx];
+					uint32_t spIdx = spsl.subpassIndex;
+					auto& spSampPosns = _subpassSamplePositions[spIdx];
+					for (uint32_t slIdx = 0; slIdx < spsl.sampleLocationsInfo.sampleLocationsCount; slIdx++) {
+						auto& sl = spsl.sampleLocationsInfo.pSampleLocations[slIdx];
+						spSampPosns.push_back(MTLSamplePositionMake(sl.x, sl.y));
+					}
+				}
+				break;
+			}
+			default:
+				break;
+		}
+	}
 
 	return VK_SUCCESS;
 }
@@ -61,13 +85,23 @@ VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
 template <size_t N_CV, size_t N_A>
 void MVKCmdBeginRenderPass<N_CV, N_A>::encode(MVKCommandEncoder* cmdEncoder) {
 //	MVKLogDebug("Encoding vkCmdBeginRenderPass(). Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
+
+	// Convert the sample position array of arrays to an array of array-references,
+	// so that it can be passed to the command encoder.
+	size_t spSPCnt = _subpassSamplePositions.size();
+	MVKArrayRef<MTLSamplePosition> spSPRefs[spSPCnt];
+	for (uint32_t spSPIdx = 0; spSPIdx < spSPCnt; spSPIdx++) {
+		spSPRefs[spSPIdx] = _subpassSamplePositions[spSPIdx].contents();
+	}
+	
 	cmdEncoder->beginRenderpass(this,
 								_contents,
 								_renderPass,
 								_framebuffer,
 								_renderArea,
 								_clearValues.contents(),
-								_attachments.contents());
+								_attachments.contents(),
+								MVKArrayRef(spSPRefs, spSPCnt));
 }
 
 template class MVKCmdBeginRenderPass<1, 0>;
@@ -128,6 +162,72 @@ void MVKCmdEndRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
 		cmdEncoder->beginNextMultiviewPass();
 	else
 		cmdEncoder->endRenderpass();
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdBeginRendering
+
+template <size_t N>
+VkResult MVKCmdBeginRendering<N>::setContent(MVKCommandBuffer* cmdBuff,
+											 const VkRenderingInfo* pRenderingInfo) {
+	_renderingInfo = *pRenderingInfo;
+
+	// Copy attachments content, redirect info pointers to copied content, and remove any stale pNext refs
+	_colorAttachments.assign(_renderingInfo.pColorAttachments,
+							 _renderingInfo.pColorAttachments + _renderingInfo.colorAttachmentCount);
+	_renderingInfo.pColorAttachments = _colorAttachments.data();
+	for (auto caAtt : _colorAttachments) { caAtt.pNext = nullptr; }
+
+	if (mvkSetOrClear(&_depthAttachment, _renderingInfo.pDepthAttachment)) {
+		_renderingInfo.pDepthAttachment = &_depthAttachment;
+	}
+	if (mvkSetOrClear(&_stencilAttachment, _renderingInfo.pStencilAttachment)) {
+		_renderingInfo.pStencilAttachment = &_stencilAttachment;
+	}
+
+	return VK_SUCCESS;
+}
+
+template <size_t N>
+void MVKCmdBeginRendering<N>::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->beginRendering(this, &_renderingInfo);
+}
+
+template class MVKCmdBeginRendering<1>;
+template class MVKCmdBeginRendering<2>;
+template class MVKCmdBeginRendering<4>;
+template class MVKCmdBeginRendering<8>;
+
+
+#pragma mark -
+#pragma mark MVKCmdEndRendering
+
+VkResult MVKCmdEndRendering::setContent(MVKCommandBuffer* cmdBuff) {
+	return VK_SUCCESS;
+}
+
+void MVKCmdEndRendering::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->endRendering();
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetSampleLocations
+
+VkResult MVKCmdSetSampleLocations::setContent(MVKCommandBuffer* cmdBuff,
+											  const VkSampleLocationsInfoEXT* pSampleLocationsInfo) {
+
+	for (uint32_t slIdx = 0; slIdx < pSampleLocationsInfo->sampleLocationsCount; slIdx++) {
+		auto& sl = pSampleLocationsInfo->pSampleLocations[slIdx];
+		_samplePositions.push_back(MTLSamplePositionMake(sl.x, sl.y));
+	}
+
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetSampleLocations::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->setDynamicSamplePositions(_samplePositions.contents());
 }
 
 

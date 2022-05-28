@@ -13,29 +13,65 @@ Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
-MoltenVK 1.1.9
+MoltenVK 1.1.10
 --------------
 
 Released TBD
 
-- Fixes to pipeline layout compatibility.
+- Add support for extensions:
+	- `VK_KHR_portability_enumeration` support added to `MoltenVK_icd.json`, and documentation
+	  updated to indicate the impact of the `VK_KHR_portability_enumeration` extension during 
+	  runtime loading on *macOS* via the *Vulkan Loader*.
+	- `VK_KHR_dynamic_rendering`
+	- `VK_KHR_separate_depth_stencil_layouts`
+	- `VK_EXT_separate_stencil_usage`
+- Support attachment clearing when some clearing formats are not specified.
+- Fix error where previously bound push constants can override a descriptor buffer binding 
+  used by a subsequent pipeline that does not use push constants.
+- Fix error on some Apple GPU's where a `vkCmdTimestampQuery()` after a renderpass was 
+  writing timestamp before renderpass activity was complete.
+- Fix regression error in vertex buffer binding counts when establishing implicit buffers binding indexes.
+- Work around zombie memory bug in Intel Iris Plus Graphics driver when repeatedly retrieving GPU counter sets.
+- Update to latest SPIRV-Cross:
+	- MSL: Emit interface block members of array length 1 as arrays instead of scalars.
+
+
+
+MoltenVK 1.1.9
+--------------
+
+Released 2022/04/11
+
+- Add support for extensions:
+	- `VK_EXT_sample_locations` _(Custom locations settable via_ `vkCmdBeginRenderPass()` _only, 
+	   since_ `VkPhysicalDeviceSampleLocationsPropertiesEXT::variableSampleLocations` _is `false`)_.
+- Fixes to pipeline layout compatibility between sequentially bound pipelines.
 - Reinstate memory barriers on non-Apple GPUs, which were inadvertently disabled in an earlier update.
 - Support base vertex instance support in shader conversion.
 - Fix alignment between outputs and inputs between shader stages when using nested structures.
 - Fix issue where the depth component of a stencil-only renderpass attachment was incorrectly attempting to be stored.
 - Fix deletion of GPU counter `MTLFence` while it is being used by `MTLCommandBuffer`.
+- Fix crash in `vkGetMTLCommandQueueMVK()`.
+- Fix leak of `CoreFoundation` objects during calls to `vkUseIOSurfaceMVK()`.
 - Remove limit on `VkPhysicalDeviceLimits::maxSamplerAllocationCount` when not using Metal argument buffers.
 - Avoid adjusting SRGB clear color values by half-ULP on GPUs that round float clear colors down.
 - Fixes to optimize resource objects retained by descriptors beyond their lifetimes.
+- Optimize behavior for `VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT` when 
+  `MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS` is used
 - `MoltenVKShaderConverter` tool defaults to the highest MSL version supported on runtime OS.
 - Update *glslang* version, to use `python3` in *glslang* scripts, to replace missing `python` on *macOS 12.3*.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `34`.
 - Update to latest SPIRV-Cross:
 	- MSL: Support input/output blocks containing nested struct arrays.
 	- MSL: Use var name instead of var-type name for flattened interface members.
 	- MSL: Handle aliased variable names for resources placed in IB struct.
+	- MSL: Handle awkward mix and match of `Offset` / `ArrayStride` in constants.
 	- MSL: Append entry point args to local variable names to avoid conflicts.
-	- MSL: Consider that gl_IsHelperInvocation can be Volatile.
+	- MSL: Consider that `gl_IsHelperInvocation` can be `Volatile`.
 	- MSL: Refactor and fix use of quadgroup vs simdgroup.
+	- Handle `OpTerminateInvocation`.
+	- Fixup names of anonymous inner structs.
+	- Fix regression from adding 64-bit switch support.
 
 
 

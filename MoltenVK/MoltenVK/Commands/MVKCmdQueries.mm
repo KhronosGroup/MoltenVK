@@ -85,6 +85,8 @@ VkResult MVKCmdWriteTimestamp::setContent(MVKCommandBuffer* cmdBuff,
 
 	_pipelineStage = pipelineStage;
 
+	cmdBuff->recordTimestampCommand();
+
 	return rslt;
 }
 

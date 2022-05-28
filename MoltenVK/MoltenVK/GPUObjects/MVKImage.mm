@@ -392,7 +392,7 @@ VkResult MVKImageMemoryBinding::getMemoryRequirements(const void*, VkMemoryRequi
         switch (next->sType) {
         case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
             auto* dedicatedReqs = (VkMemoryDedicatedRequirements*)next;
-            bool writable = mvkIsAnyFlagEnabled(_image->_usage, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+            bool writable = mvkIsAnyFlagEnabled(_image->getCombinedUsage(), VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
             bool canUseTexelBuffer = _device->_pMetalFeatures->texelBuffers && _image->_isLinear && !_image->getIsCompressed();
             dedicatedReqs->requiresDedicatedAllocation = _requiresDedicatedMemoryAllocation;
             dedicatedReqs->prefersDedicatedAllocation = (dedicatedReqs->requiresDedicatedAllocation ||
@@ -609,7 +609,7 @@ void MVKImage::getTransferDescriptorData(MVKImageDescriptorData& imgData) {
     imgData.mipLevels = _mipLevels;
     imgData.arrayLayers = _arrayLayers;
     imgData.samples = _samples;
-    imgData.usage = _usage;
+    imgData.usage = getCombinedUsage();
 }
 
 // Returns whether an MVKImageView can have the specified format.
@@ -651,8 +651,8 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
     // Only transient attachments may use memoryless storage.
 	// Using memoryless as an input attachment requires shader framebuffer fetch, which MoltenVK does not support yet.
 	// TODO: support framebuffer fetch so VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT uses color(m) in shader instead of setFragmentTexture:, which crashes Metal
-    if (!mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ||
-		 mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) ) {
+    if (!mvkIsAnyFlagEnabled(getCombinedUsage(), VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ||
+		 mvkIsAnyFlagEnabled(getCombinedUsage(), VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) ) {
         mvkDisableFlags(pMemoryRequirements->memoryTypeBits, getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
     }
 
@@ -729,6 +729,7 @@ VkResult MVKImage::setMTLTexture(uint8_t planeIndex, id<MTLTexture> mtlTexture) 
 	_samples = mvkVkSampleCountFlagBitsFromSampleCount(mtlTexture.sampleCount);
 	_arrayLayers = uint32_t(mtlTexture.arrayLength);
 	_usage = getPixelFormats()->getVkImageUsageFlags(mtlTexture.usage, mtlTexture.pixelFormat);
+	_stencilUsage = _usage;
 
 	if (_device->_pMetalFeatures->ioSurfaces) {
 		_ioSurface = mtlTexture.iosurface;
@@ -750,7 +751,8 @@ IOSurfaceRef MVKImage::getIOSurface() { return _ioSurface; }
 VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 	lock_guard<mutex> lock(_lock);
 
-	if (_ioSurface == ioSurface) { return VK_SUCCESS; }
+	// Don't recreate existing. But special case of incoming nil if already nil means create a new IOSurface.
+	if (ioSurface && _ioSurface == ioSurface) { return VK_SUCCESS; }
 
     if (!_device->_pMetalFeatures->ioSurfaces) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkUseIOSurfaceMVK() : IOSurfaces are not supported on this platform."); }
 
@@ -807,8 +809,10 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
                     });
                 }
                 CFDictionaryAddValue(properties, (id)kIOSurfacePlaneInfo, planeProperties);
+                CFRelease(planeProperties);
             }
             _ioSurface = IOSurfaceCreate(properties);
+            CFRelease(properties);
         }
     }
 
@@ -852,7 +856,7 @@ MTLTextureUsage MVKImage::getMTLTextureUsage(MTLPixelFormat mtlPixFmt) {
 		needsReinterpretation = needsReinterpretation || !pixFmts->compatibleAsLinearOrSRGB(mtlPixFmt, viewFmt);
 	}
 
-	MTLTextureUsage mtlUsage = pixFmts->getMTLTextureUsage(_usage, mtlPixFmt, _samples, _isLinear, needsReinterpretation, _hasExtendedUsage);
+	MTLTextureUsage mtlUsage = pixFmts->getMTLTextureUsage(getCombinedUsage(), mtlPixFmt, _samples, _isLinear, needsReinterpretation, _hasExtendedUsage);
 
 	// Metal before 3.0 doesn't support 3D compressed textures, so we'll
 	// decompress the texture ourselves, and we need to be able to write to it.
@@ -869,6 +873,10 @@ MTLTextureUsage MVKImage::getMTLTextureUsage(MTLPixelFormat mtlPixFmt) {
 MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 	_ioSurface = nil;
 
+	// Stencil usage is implied to be the same as usage, unless overridden in the pNext chain.
+	_usage = pCreateInfo->usage;
+	_stencilUsage = _usage;
+
 	const VkExternalMemoryImageCreateInfo* pExtMemInfo = nullptr;
 	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
@@ -884,6 +892,9 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 				}
 				break;
 			}
+			case VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO:
+				_stencilUsage = ((VkImageStencilUsageCreateInfo*)next)->stencilUsage;
+				break;
 			default:
 				break;
 		}
@@ -912,7 +923,6 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 
 	MVKPixelFormats* pixFmts = getPixelFormats();
     _vkFormat = pCreateInfo->format;
-	_usage = pCreateInfo->usage;
     _isAliasable = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_ALIAS_BIT);
 	_hasMutableFormat = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT);
 	_hasExtendedUsage = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_EXTENDED_USAGE_BIT);
@@ -920,7 +930,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     // If this is a storage image of format R32_UINT or R32_SINT, or MUTABLE_FORMAT is set
     // and R32_UINT is in the set of possible view formats, then we must use a texel buffer,
     // or image atomics won't work.
-	_isLinearForAtomics = (_isLinear && mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_STORAGE_BIT) &&
+	_isLinearForAtomics = (_isLinear && mvkIsAnyFlagEnabled(getCombinedUsage(), VK_IMAGE_USAGE_STORAGE_BIT) &&
 						   ((_vkFormat == VK_FORMAT_R32_UINT || _vkFormat == VK_FORMAT_R32_SINT) ||
 							(_hasMutableFormat && pixFmts->getViewClass(_vkFormat) == MVKMTLViewClass::Color32 &&
 							 (getIsValidViewFormat(VK_FORMAT_R32_UINT) || getIsValidViewFormat(VK_FORMAT_R32_SINT)))));
@@ -985,11 +995,12 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 
 	// Setting Metal objects directly will override Vulkan settings.
 	// It is responsibility of app to ensure these are consistent. Not doing so results in undefined behavior.
+	const VkExportMetalObjectCreateInfoEXT* pExportInfo = nullptr;
 	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_IMPORT_METAL_TEXTURE_INFO_EXT: {
 				const auto* pMTLTexInfo = (VkImportMetalTextureInfoEXT*)next;
-				uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(pMTLTexInfo->aspectMask);
+				uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(pMTLTexInfo->plane);
 				setConfigurationResult(setMTLTexture(planeIndex, pMTLTexInfo->mtlTexture));
 				break;
 			}
@@ -998,9 +1009,18 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 				setConfigurationResult(useIOSurface(pIOSurfInfo->ioSurface));
 				break;
 			}
+			case VK_STRUCTURE_TYPE_EXPORT_METAL_OBJECT_CREATE_INFO_EXT:
+				pExportInfo = (VkExportMetalObjectCreateInfoEXT*)next;
+				break;
 			default:
 				break;
 		}
+	}
+
+	// If we're expecting to export an IOSurface, and weren't give one,
+	// base this image on a new IOSurface that matches its configuration.
+	if (pExportInfo && pExportInfo->exportObjectType == VK_EXPORT_METAL_OBJECT_TYPE_METAL_IOSURFACE_BIT_EXT && !_ioSurface) {
+		setConfigurationResult(useIOSurface(nil));
 	}
 }
 
@@ -1774,11 +1794,21 @@ void MVKImageView::populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPas
 
 MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 	_image = (MVKImage*)pCreateInfo->image;
-	// Transfer commands don't use image views.
-	_usage = _image->_usage;
-	mvkDisableFlags(_usage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT));
     _mtlTextureType = mvkMTLTextureTypeFromVkImageViewType(pCreateInfo->viewType,
 														   _image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT);
+
+	// Per spec, for depth/stencil formats, determine the appropriate usage
+	// based on whether stencil or depth or both aspects are being used.
+	VkImageAspectFlags aspectMask = pCreateInfo->subresourceRange.aspectMask;
+	if (mvkAreAllFlagsEnabled(aspectMask, VK_IMAGE_ASPECT_STENCIL_BIT | VK_IMAGE_ASPECT_DEPTH_BIT)) {
+		_usage = _image->_usage & _image->_stencilUsage;
+	} else if (mvkIsAnyFlagEnabled(aspectMask, VK_IMAGE_ASPECT_STENCIL_BIT)) {
+		_usage = _image->_stencilUsage;
+	} else {
+		_usage = _image->_usage;
+	}
+	// Image views can't be used in transfer commands.
+	mvkDisableFlags(_usage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT));
 
 	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {

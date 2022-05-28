@@ -128,6 +128,10 @@ public:
 	/** Populates the specified structure with the format properties of this device. */
 	void getFormatProperties(VkFormat format, VkFormatProperties2* pFormatProperties);
 
+	/** Populates the specified structure with the multisample properties of this device. */
+	void getMultisampleProperties(VkSampleCountFlagBits samples,
+								  VkMultisamplePropertiesEXT* pMultisampleProperties);
+
 	/** Populates the image format properties supported on this device. */
     VkResult getImageFormatProperties(VkFormat format,
                                       VkImageType type,
@@ -425,6 +429,12 @@ typedef struct MVKMTLBlitEncoder {
 	id<MTLCommandBuffer> mtlCmdBuffer = nil;
 } MVKMTLBlitEncoder;
 
+typedef enum {
+	MVKSemaphoreStyleUseMTLEvent,
+	MVKSemaphoreStyleUseMTLFence,
+	MVKSemaphoreStyleUseEmulation
+} MVKSemaphoreStyle;
+
 /** Represents a Vulkan logical GPU device, associated with a physical device. */
 class MVKDevice : public MVKDispatchableVulkanAPIObject {
 
@@ -664,6 +674,15 @@ public:
 	/** Invalidates the memory regions. */
 	VkResult invalidateMappedMemoryRanges(uint32_t memRangeCount, const VkMappedMemoryRange* pMemRanges);
 
+	/** Returns the number of Metal render passes needed to render all views. */
+	uint32_t getMultiviewMetalPassCount(uint32_t viewMask) const;
+
+	/** Returns the first view to be rendered in the given multiview pass. */
+	uint32_t getFirstViewIndexInMetalPass(uint32_t viewMask, uint32_t passIdx) const;
+
+	/** Returns the number of views to be rendered in the given multiview pass. */
+	uint32_t getViewCountInMetalPass(uint32_t viewMask, uint32_t passIdx) const;
+
 	/** Log all performance statistics. */
 	void logPerformanceSummary();
 
@@ -752,6 +771,9 @@ public:
 
 #pragma mark Properties directly accessible
 
+	/** The list of Vulkan extensions, indicating whether each has been enabled by the app for this device. */
+	const MVKExtensionList _enabledExtensions;
+
 	/** Device features available and enabled. */
 	const VkPhysicalDeviceFeatures _enabledFeatures;
 	const VkPhysicalDevice16BitStorageFeatures _enabledStorage16Features;
@@ -770,9 +792,8 @@ public:
 	const VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT _enabledVtxAttrDivFeatures;
 	const VkPhysicalDevicePortabilitySubsetFeaturesKHR _enabledPortabilityFeatures;
 	const VkPhysicalDeviceImagelessFramebufferFeaturesKHR _enabledImagelessFramebufferFeatures;
-
-	/** The list of Vulkan extensions, indicating whether each has been enabled by the app for this device. */
-	const MVKExtensionList _enabledExtensions;
+	const VkPhysicalDeviceDynamicRenderingFeatures _enabledDynamicRenderingFeatures;
+	const VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures _enabledSeparateDepthStencilLayoutsFeatures;
 
 	/** Pointer to the Metal-specific features of the underlying physical device. */
 	const MVKPhysicalDeviceMetalFeatures* _pMetalFeatures;
@@ -847,21 +868,15 @@ protected:
 	std::mutex _rezLock;
 	std::mutex _sem4Lock;
     std::mutex _perfLock;
-    id<MTLBuffer> _globalVisibilityResultMTLBuffer;
-	id<MTLSamplerState> _defaultMTLSamplerState;
-	id<MTLBuffer> _dummyBlitMTLBuffer;
-    uint32_t _globalVisibilityQueryCount;
-    std::mutex _vizLock;
-	bool _logActivityPerformanceInline;
-	bool _isPerformanceTracking;
-	bool _isCurrentlyAutoGPUCapturing;
-
-	typedef enum {
-		VkSemaphoreStyleUseMTLEvent,
-		VkSemaphoreStyleUseMTLFence,
-		VkSemaphoreStyleUseEmulation
-	} VkSemaphoreStyle;
-	VkSemaphoreStyle _vkSemaphoreStyle;
+	std::mutex _vizLock;
+    id<MTLBuffer> _globalVisibilityResultMTLBuffer = nil;
+	id<MTLSamplerState> _defaultMTLSamplerState = nil;
+	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
+	MVKSemaphoreStyle _vkSemaphoreStyle = MVKSemaphoreStyleUseEmulation;
+    uint32_t _globalVisibilityQueryCount = 0;
+	bool _logActivityPerformanceInline = false;
+	bool _isPerformanceTracking = false;
+	bool _isCurrentlyAutoGPUCapturing = false;
 
 };
 
