@@ -712,6 +712,7 @@ MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCr
 	MVKVulkanAPIDeviceObject(device),
 	_descriptorSets(pCreateInfo->maxSets, MVKDescriptorSet(this)),
 	_descriptorSetAvailablility(pCreateInfo->maxSets, true),
+	_inlineBlockMTLBufferAllocator(device, device->_pMetalFeatures->dynamicMTLBufferSize, true),
 	_uniformBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, poolDescriptors)),
 	_storageBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, poolDescriptors)),
 	_uniformBufferDynamicDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, poolDescriptors)),
@@ -724,7 +725,6 @@ MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCr
 	_combinedImageSamplerDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, poolDescriptors)),
 	_uniformTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, poolDescriptors)),
 	_storageTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, poolDescriptors)),
-	_inlineBlockMTLBufferAllocator(device, device->_pMetalFeatures->dynamicMTLBufferSize, true),
 	_hasPooledDescriptors(poolDescriptors) {
 		initMetalArgumentBuffer(pCreateInfo);
 	}

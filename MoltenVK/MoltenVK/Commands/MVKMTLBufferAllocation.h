@@ -58,7 +58,7 @@ public:
                            id<MTLBuffer> mtlBuffer,
                            NSUInteger offset,
                            NSUInteger length,
-                           uint64_t poolIndex) : _pool(pool), _mtlBuffer(mtlBuffer), _offset(offset), _length(length), _poolIndex(poolIndex) {}
+                           uint64_t poolIndex) : _mtlBuffer(mtlBuffer), _offset(offset), _length(length), _pool(pool), _poolIndex(poolIndex) {}
 
 protected:
     friend class MVKMTLBufferAllocationPool;
