@@ -359,7 +359,7 @@
 		A9F55D25198BE6A7004EC31B /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1330;
+				LastUpgradeCheck = 1340;
 				ORGANIZATIONNAME = "The Brenwill Workshop Ltd.";
 				TargetAttributes = {
 					A9092A8C1A81717B00051823 = {
@@ -636,6 +636,7 @@
 				PRODUCT_NAME = MoltenVKShaderConverter;
 				SKIP_INSTALL = YES;
 				TVOS_DEPLOYMENT_TARGET = 9.0;
+				WARNING_CFLAGS = "-Wreorder";
 			};
 			name = Debug;
 		};
@@ -696,6 +697,7 @@
 				SKIP_INSTALL = YES;
 				TVOS_DEPLOYMENT_TARGET = 9.0;
 				VALIDATE_PRODUCT = YES;
+				WARNING_CFLAGS = "-Wreorder";
 			};
 			name = Release;
 		};

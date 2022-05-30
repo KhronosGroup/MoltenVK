@@ -1072,7 +1072,7 @@
 		A9F55D25198BE6A7004EC31B /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1330;
+				LastUpgradeCheck = 1340;
 				ORGANIZATIONNAME = "The Brenwill Workshop Ltd.";
 				TargetAttributes = {
 					A9B8EE091A98D796009C5A02 = {
@@ -1604,6 +1604,7 @@
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
 				TVOS_DEPLOYMENT_TARGET = 9.0;
+				WARNING_CFLAGS = "-Wreorder";
 			};
 			name = Debug;
 		};
@@ -1677,6 +1678,7 @@
 				SKIP_INSTALL = YES;
 				TVOS_DEPLOYMENT_TARGET = 9.0;
 				VALIDATE_PRODUCT = YES;
+				WARNING_CFLAGS = "-Wreorder";
 			};
 			name = Release;
 		};

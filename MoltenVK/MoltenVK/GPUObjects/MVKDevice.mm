@@ -3986,6 +3986,7 @@ void MVKDevice::stopAutoGPUCapture(MVKConfigAutoGPUCaptureScope autoGPUCaptureSc
 #pragma mark Construction
 
 MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) :
+	_enabledExtensions(this),
 	_enabledFeatures(),
 	_enabledStorage16Features(),
 	_enabledStorage8Features(),
@@ -4004,8 +4005,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledPortabilityFeatures(),
 	_enabledImagelessFramebufferFeatures(),
 	_enabledDynamicRenderingFeatures(),
-	_enabledSeparateDepthStencilLayoutsFeatures(),
-	_enabledExtensions(this) {
+	_enabledSeparateDepthStencilLayoutsFeatures() {
 
 		// If the physical device is lost, bail.
 	if (physicalDevice->getConfigurationResult() != VK_SUCCESS) {
