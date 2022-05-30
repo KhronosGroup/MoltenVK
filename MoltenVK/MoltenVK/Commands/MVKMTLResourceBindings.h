@@ -71,6 +71,11 @@ typedef struct MVKPipelineBarrier {
 		Image,
 	} MVKPipelineBarrierType;
 
+	MVKPipelineBarrierType type = None;
+	VkAccessFlags srcAccessMask = 0;
+	VkAccessFlags dstAccessMask = 0;
+	uint8_t srcQueueFamilyIndex = 0;
+	uint8_t dstQueueFamilyIndex = 0;
 	union { MVKBuffer* mvkBuffer = nullptr; MVKImage* mvkImage; MVKResource* mvkResource; };
 	union {
 		struct {
@@ -86,12 +91,6 @@ typedef struct MVKPipelineBarrier {
 			uint8_t levelCount;
 		};
 	};
-	VkAccessFlags srcAccessMask = 0;
-	VkAccessFlags dstAccessMask = 0;
-	uint8_t srcQueueFamilyIndex = 0;
-	uint8_t dstQueueFamilyIndex = 0;
-
-	MVKPipelineBarrierType type = None;
 
 	bool isMemoryBarrier() { return type == Memory; }
 	bool isBufferBarrier() { return type == Buffer; }
@@ -118,15 +117,15 @@ typedef struct MVKPipelineBarrier {
 		type(Image),
 		srcAccessMask(vkBarrier.srcAccessMask),
 		dstAccessMask(vkBarrier.dstAccessMask),
-		newLayout(vkBarrier.newLayout),
 		srcQueueFamilyIndex(vkBarrier.srcQueueFamilyIndex),
 		dstQueueFamilyIndex(vkBarrier.dstQueueFamilyIndex),
 		mvkImage((MVKImage*)vkBarrier.image),
+		newLayout(vkBarrier.newLayout),
 		aspectMask(vkBarrier.subresourceRange.aspectMask),
-		baseMipLevel(vkBarrier.subresourceRange.baseMipLevel),
-		levelCount(vkBarrier.subresourceRange.levelCount),
 		baseArrayLayer(vkBarrier.subresourceRange.baseArrayLayer),
-		layerCount(vkBarrier.subresourceRange.layerCount)
+		layerCount(vkBarrier.subresourceRange.layerCount),
+		baseMipLevel(vkBarrier.subresourceRange.baseMipLevel),
+		levelCount(vkBarrier.subresourceRange.levelCount)
 		{}
 
 } MVKPipelineBarrier;

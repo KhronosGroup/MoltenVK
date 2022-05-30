@@ -90,10 +90,11 @@ MVKExtension::MVKExtension(VkExtensionProperties* pProperties, bool enableForPla
 #pragma mark -
 #pragma mark MVKExtensionList
 
-MVKExtensionList::MVKExtensionList(MVKVulkanAPIObject* apiObject, bool enableForPlatform) : _apiObject(apiObject),
+MVKExtensionList::MVKExtensionList(MVKVulkanAPIObject* apiObject, bool enableForPlatform) :
 #define MVK_EXTENSION_LAST(var, EXT, type, macos, ios)		vk_ ##var(&kVkExtProps_ ##EXT, enableForPlatform)
 #define MVK_EXTENSION(var, EXT, type, macos, ios)			MVK_EXTENSION_LAST(var, EXT, type, macos, ios),
 #include "MVKExtensions.def"
+	, _apiObject(apiObject)
 {
 	initCount();
 }

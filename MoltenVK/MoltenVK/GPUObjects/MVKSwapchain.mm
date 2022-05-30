@@ -241,12 +241,12 @@ void MVKSwapchain::setHDRMetadataEXT(const VkHdrMetadataEXT& metadata) {
 MVKSwapchain::MVKSwapchain(MVKDevice* device,
 						   const VkSwapchainCreateInfoKHR* pCreateInfo) :
 	MVKVulkanAPIDeviceObject(device),
-	_surfaceLost(false),
-	_currentAcquisitionID(0),
-	_layerObserver(nil),
-	_currentPerfLogFrameCount(0),
-	_lastFrameTime(0),
 	_licenseWatermark(nil),
+	_currentAcquisitionID(0),
+	_lastFrameTime(0),
+	_currentPerfLogFrameCount(0),
+	_surfaceLost(false),
+	_layerObserver(nil),
 	_presentHistoryCount(0),
 	_presentHistoryIndex(0),
 	_presentHistoryHeadIndex(0) {

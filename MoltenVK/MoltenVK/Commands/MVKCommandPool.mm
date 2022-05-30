@@ -94,15 +94,15 @@ MVKCommandPool::MVKCommandPool(MVKDevice* device,
 							   const VkCommandPoolCreateInfo* pCreateInfo,
 							   bool usePooling) :
 	MVKVulkanAPIDeviceObject(device),
-	_queueFamilyIndex(pCreateInfo->queueFamilyIndex),
-	_commandBufferPool(device, usePooling),
-	_commandEncodingPool(this),
 
 // Initialize the command type pool member variables.
 #	define MVK_CMD_TYPE_POOL_LAST(cmdType)  _cmd ##cmdType ##Pool(usePooling)
 #	define MVK_CMD_TYPE_POOL(cmdType)  MVK_CMD_TYPE_POOL_LAST(cmdType),
 #	include "MVKCommandTypePools.def"
-
+	,
+	_commandBufferPool(device, usePooling),
+	_commandEncodingPool(this),
+	_queueFamilyIndex(pCreateInfo->queueFamilyIndex)
 {}
 
 MVKCommandPool::~MVKCommandPool() {
