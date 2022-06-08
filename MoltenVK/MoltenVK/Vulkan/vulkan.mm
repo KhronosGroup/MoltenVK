@@ -2326,6 +2326,33 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkBindImageMemory2);
 
 
 #pragma mark -
+#pragma mark VK_KHR_buffer_device_address
+
+MVK_PUBLIC_VULKAN_SYMBOL VkDeviceAddress vkGetBufferDeviceAddressKHR(
+	VkDevice                                    device,
+	const VkBufferDeviceAddressInfo*            pInfo) {
+	
+	MVKTraceVulkanCallStart();
+	uint64_t result = ((MVKBuffer*)pInfo->buffer)->getMTLBufferGPUAddress();
+	MVKTraceVulkanCallEnd();
+	return (VkDeviceAddress)result;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL uint64_t vkGetBufferOpaqueCaptureAddressKHR(
+	VkDevice                                    device,
+	const VkBufferDeviceAddressInfo*            pInfo) {
+	
+	return 0;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL uint64_t vkGetDeviceMemoryOpaqueCaptureAddressKHR(
+	VkDevice                                    device,
+	const VkDeviceMemoryOpaqueCaptureAddressInfo*            pInfo) {
+	
+	return 0;
+}
+
+#pragma mark -
 #pragma mark VK_KHR_create_renderpass2 extension
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateRenderPass2KHR(

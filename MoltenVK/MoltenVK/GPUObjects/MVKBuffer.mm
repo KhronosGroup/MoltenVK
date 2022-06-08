@@ -212,6 +212,13 @@ id<MTLBuffer> MVKBuffer::getMTLBufferCache() {
     return _mtlBufferCache;
 }
 
+uint64_t MVKBuffer::getMTLBufferGPUAddress() {
+#if MVK_XCODE_14
+	return [getMTLBuffer() gpuAddress] + getMTLBufferOffset();
+#endif
+	return 0;
+}
+
 #pragma mark Construction
 
 MVKBuffer::MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo) : MVKResource(device), _usage(pCreateInfo->usage) {

@@ -79,7 +79,9 @@ public:
 
     /** Returns the Metal buffer used as a cache for host-coherent texel buffers. */
     id<MTLBuffer> getMTLBufferCache();
-
+    
+	/** Returns the GPU address for this MTLBuffer, respecting its offset. */
+	uint64_t getMTLBufferGPUAddress();
 
 #pragma mark Construction
 	
