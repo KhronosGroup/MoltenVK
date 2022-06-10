@@ -205,8 +205,8 @@ void MVKPipeline::addMTLArgumentEncoders(MVKMTLFunction& mvkMTLFunc,
 MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout, MVKPipeline* parent) :
 	MVKVulkanAPIDeviceObject(device),
 	_pipelineCache(pipelineCache),
-	_fullImageViewSwizzle(mvkConfig().fullImageViewSwizzle),
-	_descriptorSetCount(layout->getDescriptorSetCount()) {
+	_descriptorSetCount(layout->getDescriptorSetCount()),
+	_fullImageViewSwizzle(mvkConfig().fullImageViewSwizzle) {
 
 		// Establish descriptor counts and push constants use.
 		for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {

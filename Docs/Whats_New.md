@@ -16,24 +16,33 @@ Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.1.10
 --------------
 
-Released TBD
+Released 2022/06/06
 
 - Add support for extensions:
 	- `VK_KHR_portability_enumeration` support added to `MoltenVK_icd.json`, and documentation
 	  updated to indicate the impact of the `VK_KHR_portability_enumeration` extension during 
 	  runtime loading on *macOS* via the *Vulkan Loader*.
 	- `VK_KHR_dynamic_rendering`
+	- `VK_KHR_fragment_shader_barycentric`
 	- `VK_KHR_separate_depth_stencil_layouts`
 	- `VK_EXT_separate_stencil_usage`
+- Implement `vkGetRefreshCycleDurationGOOGLE()` for _macOS_.
 - Support attachment clearing when some clearing formats are not specified.
-- Fix error where previously bound push constants can override a descriptor buffer binding 
-  used by a subsequent pipeline that does not use push constants.
+- Fix regression error where previously bound push constants can override a descriptor buffer 
+  binding used by a subsequent pipeline that does not use push constants.
 - Fix error on some Apple GPU's where a `vkCmdTimestampQuery()` after a renderpass was 
   writing timestamp before renderpass activity was complete.
 - Fix regression error in vertex buffer binding counts when establishing implicit buffers binding indexes.
+- Fix `vkSetMoltenVKConfigurationMVK()` function pointer typedef.
 - Work around zombie memory bug in Intel Iris Plus Graphics driver when repeatedly retrieving GPU counter sets.
+- Fix reorder-ctor warnings and add Xcode clang -Wreorder warning to catch future misalignments.
+- Update build settings to support Xcode 13.4.
 - Update to latest SPIRV-Cross:
 	- MSL: Emit interface block members of array length 1 as arrays instead of scalars.
+	- MSL: Potentially cast loaded Input variables.
+	- Emit KHR barycentrics if source enables the KHR extension.
+	- Handle early reads from loop variables with initializers.
+	- Attempt more optimal codegen for `OpCompositeInsert`.
 
 
 

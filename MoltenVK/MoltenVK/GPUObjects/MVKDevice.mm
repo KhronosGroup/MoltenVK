@@ -287,6 +287,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				separateDepthStencilLayoutsFeatures->separateDepthStencilLayouts = true;
 				break;
 			}
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR: {
+                auto* barycentricProperties = (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)next;
+                barycentricProperties->fragmentShaderBarycentric = true;
+                break;
+            }
 			default:
 				break;
 		}
@@ -480,6 +485,11 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				sampLocnProps->variableSampleLocations = VK_FALSE;
 				break;
 			}
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_PROPERTIES_KHR: {
+                auto* barycentricProperties = (VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR*)next;
+                barycentricProperties->triStripVertexOrderIndependentOfProvokingVertex = false;
+                break;
+            }
 			default:
 				break;
 		}
@@ -4060,6 +4070,7 @@ void MVKDevice::getMetalObjects(VkExportMetalObjectsInfoEXT* pMetalObjectsInfo) 
 #pragma mark Construction
 
 MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) :
+	_enabledExtensions(this),
 	_enabledFeatures(),
 	_enabledStorage16Features(),
 	_enabledStorage8Features(),
@@ -4071,15 +4082,14 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledInterlockFeatures(),
 	_enabledHostQryResetFeatures(),
 	_enabledSamplerYcbcrConversionFeatures(),
+	_enabledPrivateDataFeatures(),
 	_enabledScalarLayoutFeatures(),
 	_enabledTexelBuffAlignFeatures(),
 	_enabledVtxAttrDivFeatures(),
-	_enabledPrivateDataFeatures(),
 	_enabledPortabilityFeatures(),
 	_enabledImagelessFramebufferFeatures(),
 	_enabledDynamicRenderingFeatures(),
-	_enabledSeparateDepthStencilLayoutsFeatures(),
-	_enabledExtensions(this) {
+	_enabledSeparateDepthStencilLayoutsFeatures() {
 
 		// If the physical device is lost, bail.
 	if (physicalDevice->getConfigurationResult() != VK_SUCCESS) {

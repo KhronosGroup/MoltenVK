@@ -1039,15 +1039,15 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer) : MVKBaseDevic
         _scissorState(this),
         _depthBiasState(this),
         _blendColorState(this),
+        _depthStencilState(this),
+        _stencilReferenceValueState(this),
+        _graphicsResourcesState(this),
+        _computeResourcesState(this),
         _vertexPushConstants(this, VK_SHADER_STAGE_VERTEX_BIT),
         _tessCtlPushConstants(this, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT),
         _tessEvalPushConstants(this, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT),
         _fragmentPushConstants(this, VK_SHADER_STAGE_FRAGMENT_BIT),
         _computePushConstants(this, VK_SHADER_STAGE_COMPUTE_BIT),
-        _depthStencilState(this),
-        _stencilReferenceValueState(this),
-        _graphicsResourcesState(this),
-        _computeResourcesState(this),
         _occlusionQueryState(this) {
 
             _pDeviceFeatures = &_device->_enabledFeatures;

@@ -29,8 +29,15 @@
 #import "CAMetalLayer+MoltenVK.h"
 #import "MVKBlockObserver.h"
 
-#if MVK_IOS_OR_TVOS
+#if MVK_IOS_OR_TVOS || MVK_MACCAT
 #	include <UIKit/UIScreen.h>
+#endif
+
+#if MVK_MACOS && !MVK_MACCAT
+#	include <AppKit/NSApplication.h>
+#	include <AppKit/NSScreen.h>
+#	include <AppKit/NSWindow.h>
+#	include <AppKit/NSView.h>
 #endif
 
 #include <libkern/OSByteOrder.h>
@@ -234,12 +241,12 @@ void MVKSwapchain::setHDRMetadataEXT(const VkHdrMetadataEXT& metadata) {
 MVKSwapchain::MVKSwapchain(MVKDevice* device,
 						   const VkSwapchainCreateInfoKHR* pCreateInfo) :
 	MVKVulkanAPIDeviceObject(device),
-	_surfaceLost(false),
-	_currentAcquisitionID(0),
-	_layerObserver(nil),
-	_currentPerfLogFrameCount(0),
-	_lastFrameTime(0),
 	_licenseWatermark(nil),
+	_currentAcquisitionID(0),
+	_lastFrameTime(0),
+	_currentPerfLogFrameCount(0),
+	_surfaceLost(false),
+	_layerObserver(nil),
 	_presentHistoryCount(0),
 	_presentHistoryIndex(0),
 	_presentHistoryHeadIndex(0) {
@@ -408,15 +415,43 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRefreshCycleDuration) {
 	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 
+#if MVK_IOS_OR_TVOS || MVK_MACCAT
 	NSInteger framesPerSecond = 60;
-#if MVK_IOS_OR_TVOS
 	UIScreen* screen = [UIScreen mainScreen];
 	if ([screen respondsToSelector: @selector(maximumFramesPerSecond)]) {
 		framesPerSecond = screen.maximumFramesPerSecond;
 	}
 #endif
-#if MVK_MACOS
-	// TODO: hook this up for macOS, probably need to use CGDisplayModeGetRefeshRate
+
+#if MVK_MACOS && !MVK_MACCAT
+	// Find the screen for the window whose content view is backed by the swapchains CAMetalLayer.
+	// Default to the mainScreen if no such window can be found.
+	NSScreen* screen = [NSScreen mainScreen];
+	CALayer* layer = _mtlLayer;
+	while (layer.superlayer) {
+		layer = layer.superlayer;
+	}
+
+	for (NSWindow* window in [[NSApplication sharedApplication] windows]) {
+		NSView *view = [window contentView];
+		if (view && ([view layer] == layer)) { // Check against layer and not _mtlLayer.
+			screen = [window screen];
+		}
+	}
+
+	CGDirectDisplayID displayId = [[[screen deviceDescription] objectForKey:@"NSScreenNumber"] unsignedIntValue];
+	CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayId);
+	double framesPerSecond = CGDisplayModeGetRefreshRate(mode);
+	CGDisplayModeRelease(mode);
+
+#if MVK_XCODE_13
+	if (framesPerSecond == 0 && [screen respondsToSelector: @selector(maximumFramesPerSecond)])
+     	framesPerSecond = [screen maximumFramesPerSecond];
+#endif
+
+	// Builtin panels, e.g., on MacBook, report a zero refresh rate.
+	if (framesPerSecond == 0)
+		framesPerSecond = 60.0;
 #endif
 
 	pRefreshCycleDuration->refreshDuration = (uint64_t)1e9 / framesPerSecond;

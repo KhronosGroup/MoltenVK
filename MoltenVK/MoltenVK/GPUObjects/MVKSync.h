@@ -101,8 +101,8 @@ private:
 
 	std::mutex _lock;
 	std::condition_variable _blocker;
-	uint32_t _reservationCount;
 	bool _shouldWaitAll;
+	uint32_t _reservationCount;
 };
 
 

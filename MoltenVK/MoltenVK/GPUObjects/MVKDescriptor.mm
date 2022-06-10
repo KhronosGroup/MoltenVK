@@ -602,9 +602,9 @@ MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(const MVKDescriptor
 	_layout(binding._layout),
 	_info(binding._info),
 	_flags(binding._flags),
-	_descriptorIndex(binding._descriptorIndex),
 	_immutableSamplers(binding._immutableSamplers),
-	_mtlResourceIndexOffsets(binding._mtlResourceIndexOffsets) {
+	_mtlResourceIndexOffsets(binding._mtlResourceIndexOffsets),
+	_descriptorIndex(binding._descriptorIndex) {
 
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
         _applyToStage[i] = binding._applyToStage[i];

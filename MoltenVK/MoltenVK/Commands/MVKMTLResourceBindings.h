@@ -34,6 +34,16 @@ typedef struct MVKMTLTextureBinding {
     uint32_t swizzle = 0;
 	uint16_t index = 0;
     bool isDirty = true;
+
+    inline void markDirty() { isDirty = true; }
+
+    inline void update(const MVKMTLTextureBinding &other) {
+        if (mtlTexture != other.mtlTexture || swizzle != other.swizzle) {
+            mtlTexture = other.mtlTexture;
+            swizzle = other.swizzle;
+            markDirty();
+        }
+    }
 } MVKMTLTextureBinding;
 
 /** Describes a MTLSamplerState resource binding. */
@@ -41,6 +51,15 @@ typedef struct MVKMTLSamplerStateBinding {
     union { id<MTLSamplerState> mtlSamplerState = nil; id<MTLSamplerState> mtlResource; }; // aliases
     uint16_t index = 0;
     bool isDirty = true;
+
+    inline void markDirty() { isDirty = true; }
+
+    inline void update(const MVKMTLSamplerStateBinding &other) {
+        if (mtlSamplerState != other.mtlSamplerState) {
+            mtlSamplerState = other.mtlSamplerState;
+            markDirty();
+        }
+    }
 } MVKMTLSamplerStateBinding;
 
 /** Describes a MTLBuffer resource binding. */
@@ -49,8 +68,27 @@ typedef struct MVKMTLBufferBinding {
     VkDeviceSize offset = 0;
     uint32_t size = 0;
 	uint16_t index = 0;
+    bool justOffset = false;
     bool isDirty = true;
     bool isInline = false;
+
+    inline void markDirty() { justOffset = false; isDirty = true; }
+
+    inline void update(const MVKMTLBufferBinding &other) {
+        if (mtlBuffer != other.mtlBuffer || size != other.size || isInline != other.isInline) {
+            mtlBuffer = other.mtlBuffer;
+            size = other.size;
+            isInline = other.isInline;
+            offset = other.offset;
+
+            justOffset = false;
+            isDirty = true;
+        } else if (offset != other.offset) {
+            offset = other.offset;
+            justOffset = !isDirty || justOffset;
+            isDirty = true;
+        }
+    }
 } MVKMTLBufferBinding;
 
 /** Describes a MTLBuffer resource binding as used for an index buffer. */
@@ -71,6 +109,11 @@ typedef struct MVKPipelineBarrier {
 		Image,
 	} MVKPipelineBarrierType;
 
+	MVKPipelineBarrierType type = None;
+	VkAccessFlags srcAccessMask = 0;
+	VkAccessFlags dstAccessMask = 0;
+	uint8_t srcQueueFamilyIndex = 0;
+	uint8_t dstQueueFamilyIndex = 0;
 	union { MVKBuffer* mvkBuffer = nullptr; MVKImage* mvkImage; MVKResource* mvkResource; };
 	union {
 		struct {
@@ -86,12 +129,6 @@ typedef struct MVKPipelineBarrier {
 			uint8_t levelCount;
 		};
 	};
-	VkAccessFlags srcAccessMask = 0;
-	VkAccessFlags dstAccessMask = 0;
-	uint8_t srcQueueFamilyIndex = 0;
-	uint8_t dstQueueFamilyIndex = 0;
-
-	MVKPipelineBarrierType type = None;
 
 	bool isMemoryBarrier() { return type == Memory; }
 	bool isBufferBarrier() { return type == Buffer; }
@@ -118,15 +155,15 @@ typedef struct MVKPipelineBarrier {
 		type(Image),
 		srcAccessMask(vkBarrier.srcAccessMask),
 		dstAccessMask(vkBarrier.dstAccessMask),
-		newLayout(vkBarrier.newLayout),
 		srcQueueFamilyIndex(vkBarrier.srcQueueFamilyIndex),
 		dstQueueFamilyIndex(vkBarrier.dstQueueFamilyIndex),
 		mvkImage((MVKImage*)vkBarrier.image),
+		newLayout(vkBarrier.newLayout),
 		aspectMask(vkBarrier.subresourceRange.aspectMask),
-		baseMipLevel(vkBarrier.subresourceRange.baseMipLevel),
-		levelCount(vkBarrier.subresourceRange.levelCount),
 		baseArrayLayer(vkBarrier.subresourceRange.baseArrayLayer),
-		layerCount(vkBarrier.subresourceRange.layerCount)
+		layerCount(vkBarrier.subresourceRange.layerCount),
+		baseMipLevel(vkBarrier.subresourceRange.baseMipLevel),
+		levelCount(vkBarrier.subresourceRange.levelCount)
 		{}
 
 } MVKPipelineBarrier;

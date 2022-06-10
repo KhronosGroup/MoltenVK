@@ -373,7 +373,7 @@ protected:
     // Template function that marks both the vector and all binding elements in the vector as dirty.
     template<class T>
     void markDirty(T& bindings, bool& bindingsDirtyFlag) {
-        for (auto& b : bindings) { b.isDirty = true; }
+        for (auto& b : bindings) { b.markDirty(); }
         bindingsDirtyFlag = true;
     }
 
@@ -384,18 +384,18 @@ protected:
 
         if ( !b.mtlResource ) { return; }
 
-        T db = b;   // Copy that can be marked dirty
         MVKCommandEncoderState::markDirty();
         bindingsDirtyFlag = true;
-        db.isDirty = true;
 
         for (auto iter = bindings.begin(), end = bindings.end(); iter != end; ++iter) {
-            if( iter->index == db.index ) {
-                *iter = db;
+            if (iter->index == b.index) {
+                iter->update(b);
                 return;
             }
         }
-        bindings.push_back(db);
+
+        bindings.push_back(b);
+        bindings.back().markDirty();
     }
 
 	// For texture bindings, we also keep track of whether any bindings need a texture swizzle
