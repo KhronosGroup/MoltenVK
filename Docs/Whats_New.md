@@ -13,6 +13,17 @@ Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.1.11
+--------------
+
+Released TBD
+
+- Add support for extensions:
+	- `VK_EXT_metal_objects`
+- Reducing redundant state changes to improve commend encoding performance.
+
+
+
 MoltenVK 1.1.10
 --------------
 

@@ -3038,6 +3038,21 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateMetalSurfaceEXT(
 	return rslt;
 }
 
+
+#pragma mark -
+#pragma mark VK_EXT_metal_objects extension
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkExportMetalObjectsEXT(
+	VkDevice                                    device,
+	VkExportMetalObjectsInfoEXT*                pMetalObjectsInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKDevice* mvkDvc = MVKDevice::getMVKDevice(device);
+	mvkDvc->getMetalObjects(pMetalObjectsInfo);
+	MVKTraceVulkanCallEnd();
+}
+
+
 #pragma mark -
 #pragma mark VK_EXT_private_data extension
 
