@@ -712,6 +712,10 @@ id<MTLTexture> MVKImage::getMTLTexture(uint8_t planeIndex, MTLPixelFormat mtlPix
 VkResult MVKImage::setMTLTexture(uint8_t planeIndex, id<MTLTexture> mtlTexture) {
 	lock_guard<mutex> lock(_lock);
 
+	if (planeIndex >= _planes.size()) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "Plane index is out of bounds. Attempted to set MTLTexture at plane index %d in VkImage that has %zu planes.", planeIndex, _planes.size()); }
+
+	if (_planes[planeIndex]->_mtlTexture == mtlTexture) { return VK_SUCCESS; }
+
 	releaseIOSurface();
     _planes[planeIndex]->releaseMTLTexture();
 	_planes[planeIndex]->_mtlTexture = [mtlTexture retain];		// retained
@@ -746,6 +750,9 @@ IOSurfaceRef MVKImage::getIOSurface() { return _ioSurface; }
 
 VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 	lock_guard<mutex> lock(_lock);
+
+	// Don't recreate existing. But special case of incoming nil if already nil means create a new IOSurface.
+	if (ioSurface && _ioSurface == ioSurface) { return VK_SUCCESS; }
 
     if (!_device->_pMetalFeatures->ioSurfaces) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkUseIOSurfaceMVK() : IOSurfaces are not supported on this platform."); }
 
@@ -986,6 +993,35 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 
 	if (pExtMemInfo) { initExternalMemory(pExtMemInfo->handleTypes); }
 
+	// Setting Metal objects directly will override Vulkan settings.
+	// It is responsibility of app to ensure these are consistent. Not doing so results in undefined behavior.
+	const VkExportMetalObjectCreateInfoEXT* pExportInfo = nullptr;
+	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_IMPORT_METAL_TEXTURE_INFO_EXT: {
+				const auto* pMTLTexInfo = (VkImportMetalTextureInfoEXT*)next;
+				uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(pMTLTexInfo->plane);
+				setConfigurationResult(setMTLTexture(planeIndex, pMTLTexInfo->mtlTexture));
+				break;
+			}
+			case VK_STRUCTURE_TYPE_IMPORT_METAL_IO_SURFACE_INFO_EXT: {
+				const auto* pIOSurfInfo = (VkImportMetalIOSurfaceInfoEXT*)next;
+				setConfigurationResult(useIOSurface(pIOSurfInfo->ioSurface));
+				break;
+			}
+			case VK_STRUCTURE_TYPE_EXPORT_METAL_OBJECT_CREATE_INFO_EXT:
+				pExportInfo = (VkExportMetalObjectCreateInfoEXT*)next;
+				break;
+			default:
+				break;
+		}
+	}
+
+	// If we're expecting to export an IOSurface, and weren't give one,
+	// base this image on a new IOSurface that matches its configuration.
+	if (pExportInfo && pExportInfo->exportObjectType == VK_EXPORT_METAL_OBJECT_TYPE_METAL_IOSURFACE_BIT_EXT && !_ioSurface) {
+		setConfigurationResult(useIOSurface(nil));
+	}
 }
 
 VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
