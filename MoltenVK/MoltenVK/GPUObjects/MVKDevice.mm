@@ -292,6 +292,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                 barycentricProperties->fragmentShaderBarycentric = true;
                 break;
             }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES: {
+                auto* bufferDeviceAddressFeatures = (VkPhysicalDeviceBufferDeviceAddressFeatures*)next;
+                bufferDeviceAddressFeatures->bufferDeviceAddress = true;
+                bufferDeviceAddressFeatures->bufferDeviceAddressCaptureReplay = false;
+                bufferDeviceAddressFeatures->bufferDeviceAddressMultiDevice = false;
+            }
 			default:
 				break;
 		}
