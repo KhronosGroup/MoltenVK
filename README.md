@@ -158,6 +158,12 @@ Building **MoltenVK**
 During building, **MoltenVK** references the latest *Apple SDK* frameworks. To access these frameworks, 
 and to avoid build errors, be sure to use the latest publicly available version of *Xcode*.
 
+**MoltenVK** can be built to support at least *macOS 10.11*, *iOS 9*, or *tvOS 9*, but the default 
+_Xcode_ build settings in the included _Xcode_ projects are set to a minimum deployment target of  
+*macOS 10.13*, *iOS 11*, and *tvOS 11*, which are the oldest OS versions supported by the current 
+_Xcode_ version. If you require support for earlier OS versions, modify the `MACOSX_DEPLOYMENT_TARGET`, 
+`IPHONEOS_DEPLOYMENT_TARGET`, or `TVOS_DEPLOYMENT_TARGET` build settings in _Xcode_ before building **MoltenVK**.
+
 >***Note:*** To support `IOSurfaces` on *iOS* or *tvOS*, **MoltenVK**, and any app that uses 
 **MoltenVK**, must be built with a minimum **iOS Deployment Target** (aka `IPHONEOS_DEPLOYMENT_TARGET `) 
 build setting of `iOS 11.0` or greater, or a minimum **tvOS Deployment Target** (aka `TVOS_DEPLOYMENT_TARGET `) 

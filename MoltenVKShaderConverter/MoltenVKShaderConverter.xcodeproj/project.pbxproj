@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 52;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -398,6 +398,7 @@
 /* Begin PBXShellScriptBuildPhase section */
 		A93ED4E724F59E0900FEB018 /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -416,6 +417,7 @@
 		};
 		A93ED4E824F59E1100FEB018 /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -434,6 +436,7 @@
 		};
 		A93ED4E924F59E1800FEB018 /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -630,12 +633,12 @@
 					"\"$(SRCROOT)/glslang\"",
 					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				MACH_O_TYPE = staticlib;
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				PRODUCT_NAME = MoltenVKShaderConverter;
 				SKIP_INSTALL = YES;
-				TVOS_DEPLOYMENT_TARGET = 9.0;
+				TVOS_DEPLOYMENT_TARGET = 11.0;
 				WARNING_CFLAGS = "-Wreorder";
 			};
 			name = Debug;
@@ -690,12 +693,12 @@
 					"\"$(SRCROOT)/glslang\"",
 					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				MACH_O_TYPE = staticlib;
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				PRODUCT_NAME = MoltenVKShaderConverter;
 				SKIP_INSTALL = YES;
-				TVOS_DEPLOYMENT_TARGET = 9.0;
+				TVOS_DEPLOYMENT_TARGET = 11.0;
 				VALIDATE_PRODUCT = YES;
 				WARNING_CFLAGS = "-Wreorder";
 			};

@@ -218,8 +218,9 @@ MVKQueue::MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t inde
 
 void MVKQueue::initName() {
 	const char* fmt = "MoltenVKQueue-%d-%d-%.1f";
-	char name[256];
-	sprintf(name, fmt, _queueFamily->getIndex(), _index, _priority);
+	size_t nameLen = 256;
+	char name[nameLen];
+	snprintf(name, nameLen, fmt, _queueFamily->getIndex(), _index, _priority);
 	_name = name;
 }
 

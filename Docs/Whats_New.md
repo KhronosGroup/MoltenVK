@@ -20,8 +20,9 @@ Released TBD
 
 - Add support for extensions:
 	- `VK_EXT_metal_objects`
-- Reducing redundant state changes to improve commend encoding performance.
-
+- Reducing redundant state changes to improve command encoding performance.
+- Update minimum Xcode deployment targets to macOS 10.13, iOS 11, and tvOS 11,
+  to avoid Xcode build warnings in Xcode 14.
 
 
 MoltenVK 1.1.10

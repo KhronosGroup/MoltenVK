@@ -25,18 +25,25 @@
 #pragma mark -
 #pragma mark MVKGPUCaptureScope
 
+/** Old-style debug capture was deprecated in macOS 10.13 and iOS 11.0, and is not available on Mac Catalyst. */
 #if MVK_MACOS
-static MVKOSVersion kMinOSVersionMTLCaptureScope = 10.13;
+#	define MVK_NEED_OLD_DEBUG_CAPTURE    (__MAC_OS_X_VERSION_MIN_REQUIRED < __MAC_10_13) && !MVK_MACCAT
 #endif
-#if MVK_IOS_OR_TVOS
-static MVKOSVersion kMinOSVersionMTLCaptureScope = 11.0;
+
+#if MVK_IOS
+#	define MVK_NEED_OLD_DEBUG_CAPTURE	(__IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_11_0)
 #endif
+
+#if MVK_TVOS
+# define MVK_NEED_OLD_DEBUG_CAPTURE		(__TV_OS_VERSION_MIN_REQUIRED < __TVOS_11_0)
+#endif
+
 
 void MVKGPUCaptureScope::beginScope() {
 	if (_mtlCaptureScope) {
 		[_mtlCaptureScope beginScope];
 	} else if (_isDefault && _isFirstBoundary) {
-#if !MVK_MACCAT
+#if MVK_NEED_OLD_DEBUG_CAPTURE
 		[_mtlQueue insertDebugCaptureBoundary];
 #endif
 	}
@@ -47,7 +54,7 @@ void MVKGPUCaptureScope::endScope() {
 	if (_mtlCaptureScope) {
 		[_mtlCaptureScope endScope];
 	} else if (_isDefault) {
-#if !MVK_MACCAT
+#if MVK_NEED_OLD_DEBUG_CAPTURE
 		[_mtlQueue insertDebugCaptureBoundary];
 #endif
 	}
@@ -62,16 +69,20 @@ void MVKGPUCaptureScope::makeDefault() {
 
 MVKGPUCaptureScope::MVKGPUCaptureScope(MVKQueue* mvkQueue) {
 	_mtlQueue = [mvkQueue->getMTLCommandQueue() retain];	// retained
-	if (mvkOSVersionIsAtLeast(kMinOSVersionMTLCaptureScope)) {
+	if (mvkOSVersionIsAtLeast(10.13, 11.0)) {
 		_mtlCaptureScope = [[MTLCaptureManager sharedCaptureManager] newCaptureScopeWithCommandQueue: _mtlQueue];	// retained
 		_mtlCaptureScope.label = @(mvkQueue->getName().c_str());
-		// Due to a retain bug in Metal when the capture layer is installed, capture scopes
-		// can have too many references on them. Release the excess references so the scope--
-		// and the command queue--aren't leaked. This is a horrible kludge that depends on
-		// Apple not taking internal references to capture scopes, but without it, we could
-		// get hung up waiting for a new queue, because the old queues are still outstanding.
-		while (_mtlCaptureScope.retainCount > 1) {
-			[_mtlCaptureScope release];
+
+		// Due to an retain bug in Metal when the capture layer is installed, capture scopes
+		// on older OS versions can have too many references on them. If so, release the excess
+		// references so the scope, and command queue, aren't leaked. This is a horrible kludge
+		// that depends on Apple not taking internal references to capture scopes, but without it,
+		// we could get hung up waiting for a new queue, because the old queues are still outstanding.
+		// This bug was fixed by Apple in macOS 13 and iOS 16.
+		if ( !mvkOSVersionIsAtLeast(13.0, 16.0) ) {
+			while (_mtlCaptureScope.retainCount > 1) {
+				[_mtlCaptureScope release];
+			}
 		}
 	}
 }

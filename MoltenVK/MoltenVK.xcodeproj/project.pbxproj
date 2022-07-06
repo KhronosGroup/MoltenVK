@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 48;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -1148,9 +1148,11 @@
 			files = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
 			);
 			name = "Create Dynamic Library";
 			outputPaths = (
+				"${BUILT_PRODUCTS_DIR}/dynamic/lib${PRODUCT_NAME}.dylib",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1162,9 +1164,11 @@
 			files = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
 			);
 			name = "Create Dynamic Library";
 			outputPaths = (
+				"${BUILT_PRODUCTS_DIR}/dynamic/lib${PRODUCT_NAME}.dylib",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1175,10 +1179,14 @@
 			buildActionMask = 2147483647;
 			files = (
 			);
+			inputFileListPaths = (
+			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
 			);
 			name = "Create Dynamic Library";
 			outputPaths = (
+				"${BUILT_PRODUCTS_DIR}/dynamic/lib${PRODUCT_NAME}.dylib",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1197,6 +1205,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/mvkGitRevDerived.h",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1215,6 +1224,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/mvkGitRevDerived.h",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1233,6 +1243,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/mvkGitRevDerived.h",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1240,6 +1251,7 @@
 		};
 		A9CBBFEF24F89F5F006D41EF /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -1258,6 +1270,7 @@
 		};
 		A9CBBFF124F89F79006D41EF /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -1276,6 +1289,7 @@
 		};
 		A9CBBFF224F89F87006D41EF /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -1592,9 +1606,9 @@
 					"\"$(SRCROOT)/../External/cereal/include\"",
 					"\"${BUILT_PRODUCTS_DIR}\"",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				MACH_O_TYPE = staticlib;
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				MVK_HIDE_VULKAN_SYMBOLS = 0;
 				MVK_SKIP_DYLIB = "";
@@ -1603,7 +1617,7 @@
 				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKShaderConverter.a";
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
-				TVOS_DEPLOYMENT_TARGET = 9.0;
+				TVOS_DEPLOYMENT_TARGET = 11.0;
 				WARNING_CFLAGS = "-Wreorder";
 			};
 			name = Debug;
@@ -1665,9 +1679,9 @@
 					"\"$(SRCROOT)/../External/cereal/include\"",
 					"\"${BUILT_PRODUCTS_DIR}\"",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				MACH_O_TYPE = staticlib;
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MVK_HIDE_VULKAN_SYMBOLS = 0;
 				MVK_SKIP_DYLIB = "";
@@ -1676,7 +1690,7 @@
 				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKShaderConverter.a";
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
-				TVOS_DEPLOYMENT_TARGET = 9.0;
+				TVOS_DEPLOYMENT_TARGET = 11.0;
 				VALIDATE_PRODUCT = YES;
 				WARNING_CFLAGS = "-Wreorder";
 			};
