@@ -2329,26 +2329,13 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 		return;
 	}
 
-	// kIOMasterPortDefault was deprecated and replaced by kIOMainPortDefault in macOS 12,
-	// and was removed altogether from MacCatalyst in macOS 14 beta.
-	// Both are documented to resolve to MACH_PORT_NULL.
-#if MVK_XCODE_13
-#	if MVK_MACCAT
-	const mach_port_t kIOMainPortDefaultMVK = mvkOSVersionIsAtLeast(12.0) ? kIOMainPortDefault : MACH_PORT_NULL;
-#	else
-	const mach_port_t kIOMainPortDefaultMVK = mvkOSVersionIsAtLeast(12.0) ? kIOMainPortDefault : kIOMasterPortDefault;
-#	endif
-#else
-	const mach_port_t kIOMainPortDefaultMVK = kIOMasterPortDefault;
-#endif
-
 	// If the device has an associated registry ID, we can use that to get the associated IOKit node.
 	// The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released.
 	bool isFound = false;
 	io_registry_entry_t entry;
 	uint64_t regID = mvkGetRegistryID(_mtlDevice);
 	if (regID) {
-		entry = IOServiceGetMatchingService(kIOMainPortDefaultMVK, IORegistryEntryIDMatching(regID));
+		entry = IOServiceGetMatchingService(MACH_PORT_NULL, IORegistryEntryIDMatching(regID));
 		if (entry) {
 			// That returned the IOGraphicsAccelerator nub. Its parent, then, is the actual PCI device.
 			io_registry_entry_t parent;
@@ -2364,7 +2351,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 	// Iterate all GPU's, looking for a match.
 	// The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released.
 	io_iterator_t entryIterator;
-	if (!isFound && IOServiceGetMatchingServices(kIOMainPortDefaultMVK,
+	if (!isFound && IOServiceGetMatchingServices(MACH_PORT_NULL,
 												 IOServiceMatching("IOPCIDevice"),
 												 &entryIterator) == kIOReturnSuccess) {
 		while ( !isFound && (entry = IOIteratorNext(entryIterator)) ) {

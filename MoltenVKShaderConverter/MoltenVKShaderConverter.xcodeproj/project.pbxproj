@@ -404,6 +404,7 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
 			);
 			name = "Copy to Staging";
 			outputFileListPaths = (
@@ -423,6 +424,7 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
 			);
 			name = "Copy to Staging";
 			outputFileListPaths = (
@@ -442,6 +444,7 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
 			);
 			name = "Copy to Staging";
 			outputFileListPaths = (

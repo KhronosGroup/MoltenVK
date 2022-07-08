@@ -380,6 +380,7 @@
 			files = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/../XCFrameworkStaging",
 			);
 			name = "Package MoltenVK";
 			outputPaths = (
@@ -395,6 +396,7 @@
 			files = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/../XCFrameworkStaging",
 			);
 			name = "Package MoltenVK";
 			outputPaths = (
@@ -410,6 +412,7 @@
 			files = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/../XCFrameworkStaging",
 			);
 			name = "Package MoltenVK";
 			outputPaths = (
@@ -425,6 +428,7 @@
 			files = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/../XCFrameworkStaging",
 			);
 			name = "Package MoltenVK";
 			outputPaths = (
@@ -442,6 +446,7 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/../XCFrameworkStaging",
 			);
 			name = "Package MoltenVK";
 			outputFileListPaths = (

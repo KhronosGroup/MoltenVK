@@ -11,6 +11,7 @@
 			isa = PBXAggregateTarget;
 			buildConfigurationList = 2FEA0AE52490320500EEF3AD /* Build configuration list for PBXAggregateTarget "ExternalDependencies-tvOS" */;
 			buildPhases = (
+				A960EE4C2878D14B00C4C0ED /* Package Libraries */,
 			);
 			dependencies = (
 				2FEA0CF12490325400EEF3AD /* PBXTargetDependency */,
@@ -24,6 +25,7 @@
 			isa = PBXAggregateTarget;
 			buildConfigurationList = A972A7E721CEC72F0013AB25 /* Build configuration list for PBXAggregateTarget "ExternalDependencies-macOS" */;
 			buildPhases = (
+				A960EE4D2878D15600C4C0ED /* Package Libraries */,
 			);
 			dependencies = (
 				A972A7E921CEC76A0013AB25 /* PBXTargetDependency */,
@@ -37,6 +39,7 @@
 			isa = PBXAggregateTarget;
 			buildConfigurationList = A972A7ED21CEC8030013AB25 /* Build configuration list for PBXAggregateTarget "ExternalDependencies-iOS" */;
 			buildPhases = (
+				A960EE4B2878D14200C4C0ED /* Package Libraries */,
 			);
 			dependencies = (
 				A972A7F121CEC8140013AB25 /* PBXTargetDependency */,
@@ -50,8 +53,7 @@
 			isa = PBXAggregateTarget;
 			buildConfigurationList = A972A7F521CEC81B0013AB25 /* Build configuration list for PBXAggregateTarget "ExternalDependencies" */;
 			buildPhases = (
-				A9194DF624E8990C00FB127B /* Create XCFramework */,
-				A9FC5F8B249DB48D003CB086 /* Package Finish */,
+				A9194DF624E8990C00FB127B /* Package Libraries */,
 			);
 			dependencies = (
 				A972A7F921CEC8500013AB25 /* PBXTargetDependency */,
@@ -4101,6 +4103,7 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
 			);
 			name = "Copy to Staging";
 			outputFileListPaths = (
@@ -4120,6 +4123,7 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
 			);
 			name = "Copy to Staging";
 			outputFileListPaths = (
@@ -4139,6 +4143,7 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
 			);
 			name = "Copy to Staging";
 			outputFileListPaths = (
@@ -4158,6 +4163,7 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
 			);
 			name = "Copy to Staging";
 			outputFileListPaths = (
@@ -4177,6 +4183,7 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
 			);
 			name = "Copy to Staging";
 			outputFileListPaths = (
@@ -4196,6 +4203,7 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
 			);
 			name = "Copy to Staging";
 			outputFileListPaths = (
@@ -4215,6 +4223,7 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
 			);
 			name = "Copy to Staging";
 			outputFileListPaths = (
@@ -4234,6 +4243,7 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
 			);
 			name = "Copy to Staging";
 			outputFileListPaths = (
@@ -4253,6 +4263,7 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
 			);
 			name = "Copy to Staging";
 			outputFileListPaths = (
@@ -4264,7 +4275,7 @@
 			shellPath = /bin/sh;
 			shellScript = ". \"${SRCROOT}/Scripts/copy_ext_lib_to_staging.sh\"\n";
 		};
-		A9194DF624E8990C00FB127B /* Create XCFramework */ = {
+		A9194DF624E8990C00FB127B /* Package Libraries */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -4272,18 +4283,19 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"${PROJECT_DIR}/External/build/Intermediates/XCFrameworkStaging",
 			);
-			name = "Create XCFramework";
+			name = "Package Libraries";
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/XCFwkPhaseDummyOutputFile",
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/PackagePhaseDummyOutputFile",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/Scripts/create_ext_lib_xcframeworks.sh\"\n";
+			shellScript = ". \"${SRCROOT}/Scripts/create_ext_lib_xcframeworks.sh\"\n. \"${SRCROOT}/Scripts/package_ext_libs_finish.sh\"\n";
 		};
-		A9FC5F8B249DB48D003CB086 /* Package Finish */ = {
+		A960EE4B2878D14200C4C0ED /* Package Libraries */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -4291,16 +4303,57 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"${PROJECT_DIR}/External/build/Intermediates/XCFrameworkStaging",
 			);
-			name = "Package Finish";
+			name = "Package Libraries";
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/FinishPhaseDummyOutputFile",
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/PackagePhaseDummyOutputFile",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/Scripts/package_ext_libs_finish.sh\"\n";
+			shellScript = ". \"${SRCROOT}/Scripts/create_ext_lib_xcframeworks.sh\"\n. \"${SRCROOT}/Scripts/package_ext_libs_finish.sh\"\n";
+		};
+		A960EE4C2878D14B00C4C0ED /* Package Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PROJECT_DIR}/External/build/Intermediates/XCFrameworkStaging",
+			);
+			name = "Package Libraries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/PackagePhaseDummyOutputFile",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/Scripts/create_ext_lib_xcframeworks.sh\"\n. \"${SRCROOT}/Scripts/package_ext_libs_finish.sh\"\n";
+		};
+		A960EE4D2878D15600C4C0ED /* Package Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PROJECT_DIR}/External/build/Intermediates/XCFrameworkStaging",
+			);
+			name = "Package Libraries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/PackagePhaseDummyOutputFile",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/Scripts/create_ext_lib_xcframeworks.sh\"\n. \"${SRCROOT}/Scripts/package_ext_libs_finish.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
