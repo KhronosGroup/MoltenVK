@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 48;
 	objects = {
 
 /* Begin PBXAggregateTarget section */
@@ -376,7 +376,6 @@
 /* Begin PBXShellScriptBuildPhase section */
 		2FEA0A3424902F5E00EEF3AD /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -384,6 +383,7 @@
 			);
 			name = "Package MoltenVK";
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/PackagePhaseDummyOutputFile",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -391,7 +391,6 @@
 		};
 		A975D5872140585200D4834F /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -399,6 +398,7 @@
 			);
 			name = "Package MoltenVK";
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/PackagePhaseDummyOutputFile",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -406,7 +406,6 @@
 		};
 		A975D59A2140586700D4834F /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -414,6 +413,7 @@
 			);
 			name = "Package MoltenVK";
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/PackagePhaseDummyOutputFile",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -421,7 +421,6 @@
 		};
 		A9AD70122440ED3B00B9E254 /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -429,6 +428,7 @@
 			);
 			name = "Package MoltenVK";
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/PackagePhaseDummyOutputFile",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -436,7 +436,6 @@
 		};
 		A9B1008824F84BE400EADC6E /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -448,6 +447,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/PackagePhaseDummyOutputFile",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
