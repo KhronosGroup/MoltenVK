@@ -283,7 +283,7 @@
 		A90B2B1D1A9B6170008EE819 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1340;
+				LastUpgradeCheck = 1400;
 				TargetAttributes = {
 					A9FEADBC1F3517480010240E = {
 						DevelopmentTeam = VU3TCKU48B;
@@ -380,9 +380,11 @@
 			files = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/../XCFrameworkStaging",
 			);
 			name = "Package MoltenVK";
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/PackagePhaseDummyOutputFile",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -394,9 +396,11 @@
 			files = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/../XCFrameworkStaging",
 			);
 			name = "Package MoltenVK";
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/PackagePhaseDummyOutputFile",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -408,9 +412,11 @@
 			files = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/../XCFrameworkStaging",
 			);
 			name = "Package MoltenVK";
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/PackagePhaseDummyOutputFile",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -422,9 +428,11 @@
 			files = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/../XCFrameworkStaging",
 			);
 			name = "Package MoltenVK";
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/PackagePhaseDummyOutputFile",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -438,11 +446,13 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/../XCFrameworkStaging",
 			);
 			name = "Package MoltenVK";
 			outputFileListPaths = (
 			);
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/PackagePhaseDummyOutputFile",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;

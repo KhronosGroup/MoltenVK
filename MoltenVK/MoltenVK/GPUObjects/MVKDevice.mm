@@ -1354,6 +1354,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_4;
 	}
 #endif
+#if MVK_XCODE_14
+	if ( mvkOSVersionIsAtLeast(16.0) ) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_0;
+	}
+#endif
 
 #endif
 
@@ -1463,6 +1468,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_4;
 	}
 #endif
+#if MVK_XCODE_14
+	if ( mvkOSVersionIsAtLeast(16.0) ) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_0;
+	}
+#endif
 
 #endif
 
@@ -1541,6 +1551,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #if MVK_XCODE_13
 	if ( mvkOSVersionIsAtLeast(12.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_4;
+	}
+#endif
+#if MVK_XCODE_14
+	if ( mvkOSVersionIsAtLeast(13.0) ) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_0;
 	}
 #endif
 
@@ -1643,6 +1658,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(maj, min);
 
 	switch (_metalFeatures.mslVersionEnum) {
+#if MVK_XCODE_14
+		case MTLLanguageVersion3_0:
+			setMSLVersion(3, 0);
+			break;
+#endif
 #if MVK_XCODE_13
 		case MTLLanguageVersion2_4:
 			setMSLVersion(2, 4);
@@ -1668,7 +1688,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		case MTLLanguageVersion1_1:
 			setMSLVersion(1, 1);
 			break;
-#if MVK_IOS_OR_TVOS
+#if MVK_IOS_OR_TVOS || MVK_XCODE_14
 		case MTLLanguageVersion1_0:
 			setMSLVersion(1, 0);
 			break;
@@ -2315,7 +2335,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 	io_registry_entry_t entry;
 	uint64_t regID = mvkGetRegistryID(_mtlDevice);
 	if (regID) {
-		entry = IOServiceGetMatchingService(kIOMasterPortDefault, IORegistryEntryIDMatching(regID));
+		entry = IOServiceGetMatchingService(MACH_PORT_NULL, IORegistryEntryIDMatching(regID));
 		if (entry) {
 			// That returned the IOGraphicsAccelerator nub. Its parent, then, is the actual PCI device.
 			io_registry_entry_t parent;
@@ -2331,7 +2351,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 	// Iterate all GPU's, looking for a match.
 	// The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released.
 	io_iterator_t entryIterator;
-	if (!isFound && IOServiceGetMatchingServices(kIOMasterPortDefault,
+	if (!isFound && IOServiceGetMatchingServices(MACH_PORT_NULL,
 												 IOServiceMatching("IOPCIDevice"),
 												 &entryIterator) == kIOReturnSuccess) {
 		while ( !isFound && (entry = IOIteratorNext(entryIterator)) ) {

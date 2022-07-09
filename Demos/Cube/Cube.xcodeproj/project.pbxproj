@@ -246,7 +246,7 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1340;
+				LastUpgradeCheck = 1400;
 			};
 			buildConfigurationList = C01FCF4E08A954540054247B /* Build configuration list for PBXProject "Cube" */;
 			compatibilityVersion = "Xcode 8.0";
@@ -353,7 +353,7 @@
 				MARKETING_VERSION = 1;
 				PRODUCT_NAME = Cube;
 				SDKROOT = appletvos;
-				TVOS_DEPLOYMENT_TARGET = 9.0;
+				TVOS_DEPLOYMENT_TARGET = 12.0;
 			};
 			name = Debug;
 		};
@@ -372,7 +372,7 @@
 				MARKETING_VERSION = 1;
 				PRODUCT_NAME = Cube;
 				SDKROOT = appletvos;
-				TVOS_DEPLOYMENT_TARGET = 9.0;
+				TVOS_DEPLOYMENT_TARGET = 12.0;
 			};
 			name = Release;
 		};
@@ -387,7 +387,7 @@
 					MVK_SAMP_CUBE,
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/macOS/Info.plist";
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
 				PRODUCT_NAME = Cube;
 				SDKROOT = macosx;
 			};
@@ -404,7 +404,7 @@
 					MVK_SAMP_CUBE,
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/macOS/Info.plist";
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
 				PRODUCT_NAME = Cube;
 				SDKROOT = macosx;
 			};
@@ -423,7 +423,7 @@
 					MVK_SAMP_CUBE,
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				"IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]" = 14.2;
 				MARKETING_VERSION = 1;
 				PRODUCT_NAME = Cube;
@@ -446,7 +446,7 @@
 					MVK_SAMP_CUBE,
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				"IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]" = 14.2;
 				MARKETING_VERSION = 1;
 				PRODUCT_NAME = Cube;

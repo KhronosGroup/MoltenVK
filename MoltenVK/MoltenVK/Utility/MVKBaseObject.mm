@@ -129,9 +129,10 @@ VkResult MVKBaseObject::reportError(MVKBaseObject* mvkObj, VkResult vkErr, const
 
 	// Prepend the error code to the format string
 	const char* vkRsltName = mvkVkResultName(vkErr);
-	char fmtStr[strlen(vkRsltName) + strlen(format) + 4];
-	sprintf(fmtStr, "%s: %s", vkRsltName, format);
-    
+	size_t rsltLen = strlen(vkRsltName) + strlen(format) + 4;
+	char fmtStr[rsltLen];
+	snprintf(fmtStr, rsltLen, "%s: %s", vkRsltName, format);
+
 	// Report the error
 	va_list lclArgs;
 	va_copy(lclArgs, args);
