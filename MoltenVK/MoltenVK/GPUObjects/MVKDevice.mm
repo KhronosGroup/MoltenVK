@@ -922,54 +922,52 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 
 	MVKSmallVector<VkColorSpaceKHR, 16> colorSpaces;
 	colorSpaces.push_back(VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
-	if (getInstance()->_enabledExtensions.vk_EXT_swapchain_colorspace.enabled) {
 #if MVK_MACOS
-		// 10.11 supports some but not all of the color spaces specified by VK_EXT_swapchain_colorspace.
-		colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT);
-		colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT);
-		colorSpaces.push_back(VK_COLOR_SPACE_BT709_NONLINEAR_EXT);
-		colorSpaces.push_back(VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT);
-		colorSpaces.push_back(VK_COLOR_SPACE_PASS_THROUGH_EXT);
-		if (mvkOSVersionIsAtLeast(10.12)) {
-			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT);
-			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT);
-		}
-		if (mvkOSVersionIsAtLeast(10.14)) {
-			colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT);
-			colorSpaces.push_back(VK_COLOR_SPACE_BT2020_LINEAR_EXT);
-		}
+    // 10.11 supports some but not all of the color spaces specified by VK_EXT_swapchain_colorspace.
+    colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT);
+    colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT);
+    colorSpaces.push_back(VK_COLOR_SPACE_BT709_NONLINEAR_EXT);
+    colorSpaces.push_back(VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT);
+    colorSpaces.push_back(VK_COLOR_SPACE_PASS_THROUGH_EXT);
+    if (mvkOSVersionIsAtLeast(10.12)) {
+        colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT);
+        colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT);
+    }
+    if (mvkOSVersionIsAtLeast(10.14)) {
+        colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT);
+        colorSpaces.push_back(VK_COLOR_SPACE_BT2020_LINEAR_EXT);
+    }
 #if MVK_XCODE_12
-		if (mvkOSVersionIsAtLeast(11.0)) {
-			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_HLG_EXT);
-			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_ST2084_EXT);
-		}
+    if (mvkOSVersionIsAtLeast(11.0)) {
+        colorSpaces.push_back(VK_COLOR_SPACE_HDR10_HLG_EXT);
+        colorSpaces.push_back(VK_COLOR_SPACE_HDR10_ST2084_EXT);
+    }
 #endif
 #endif
 #if MVK_IOS_OR_TVOS
-		// iOS 8 doesn't support anything but sRGB.
-		if (mvkOSVersionIsAtLeast(9.0)) {
-			colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT);
-			colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT);
-			colorSpaces.push_back(VK_COLOR_SPACE_BT709_NONLINEAR_EXT);
-			colorSpaces.push_back(VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT);
-			colorSpaces.push_back(VK_COLOR_SPACE_PASS_THROUGH_EXT);
-		}
-		if (mvkOSVersionIsAtLeast(10.0)) {
-			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT);
-			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT);
-		}
-		if (mvkOSVersionIsAtLeast(12.3)) {
-			colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_LINEAR_EXT);
-			colorSpaces.push_back(VK_COLOR_SPACE_BT2020_LINEAR_EXT);
-		}
+    // iOS 8 doesn't support anything but sRGB.
+    if (mvkOSVersionIsAtLeast(9.0)) {
+        colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT);
+        colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT);
+        colorSpaces.push_back(VK_COLOR_SPACE_BT709_NONLINEAR_EXT);
+        colorSpaces.push_back(VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT);
+        colorSpaces.push_back(VK_COLOR_SPACE_PASS_THROUGH_EXT);
+    }
+    if (mvkOSVersionIsAtLeast(10.0)) {
+        colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT);
+        colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT);
+    }
+    if (mvkOSVersionIsAtLeast(12.3)) {
+        colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_LINEAR_EXT);
+        colorSpaces.push_back(VK_COLOR_SPACE_BT2020_LINEAR_EXT);
+    }
 #if MVK_XCODE_12
-		if (mvkOSVersionIsAtLeast(14.0)) {
-			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_HLG_EXT);
-			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_ST2084_EXT);
-		}
+    if (mvkOSVersionIsAtLeast(14.0)) {
+        colorSpaces.push_back(VK_COLOR_SPACE_HDR10_HLG_EXT);
+        colorSpaces.push_back(VK_COLOR_SPACE_HDR10_ST2084_EXT);
+    }
 #endif
 #endif
-	}
 
 	size_t vkFmtsCnt = vkFormats.size();
 	size_t vkColSpcFmtsCnt = vkFmtsCnt * colorSpaces.size();
