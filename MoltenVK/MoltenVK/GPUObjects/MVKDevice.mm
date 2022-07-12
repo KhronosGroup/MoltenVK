@@ -288,16 +288,23 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				break;
 			}
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR: {
-                auto* barycentricProperties = (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)next;
-                barycentricProperties->fragmentShaderBarycentric = true;
+                auto* barycentricFeatures = (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)next;
+				barycentricFeatures->fragmentShaderBarycentric = true;
                 break;
             }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES: {
                 auto* bufferDeviceAddressFeatures = (VkPhysicalDeviceBufferDeviceAddressFeatures*)next;
-                bufferDeviceAddressFeatures->bufferDeviceAddress = true;
+                bufferDeviceAddressFeatures->bufferDeviceAddress = mvkOSVersionIsAtLeast(12.05, 16.0);
                 bufferDeviceAddressFeatures->bufferDeviceAddressCaptureReplay = false;
                 bufferDeviceAddressFeatures->bufferDeviceAddressMultiDevice = false;
             }
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: {
+				auto* bufferDeviceAddressFeatures = (VkPhysicalDeviceBufferDeviceAddressFeaturesEXT*)next;
+				bufferDeviceAddressFeatures->bufferDeviceAddress = mvkOSVersionIsAtLeast(12.05, 16.0);
+				bufferDeviceAddressFeatures->bufferDeviceAddressCaptureReplay = false;
+				bufferDeviceAddressFeatures->bufferDeviceAddressMultiDevice = false;
+				break;
+			}
 			default:
 				break;
 		}
@@ -4115,7 +4122,10 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledPortabilityFeatures(),
 	_enabledImagelessFramebufferFeatures(),
 	_enabledDynamicRenderingFeatures(),
-	_enabledSeparateDepthStencilLayoutsFeatures() {
+	_enabledSeparateDepthStencilLayoutsFeatures(),
+	_enabledFragmentShaderBarycentricFeatures(),
+	_enabledBufferDeviceAddressFeatures(),
+	_enabledBufferDeviceAddressFeaturesEXT() {
 
 		// If the physical device is lost, bail.
 	if (physicalDevice->getConfigurationResult() != VK_SUCCESS) {
@@ -4244,10 +4254,25 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	mvkClear(&_enabledImagelessFramebufferFeatures);
 	mvkClear(&_enabledDynamicRenderingFeatures);
 	mvkClear(&_enabledSeparateDepthStencilLayoutsFeatures);
+	mvkClear(&_enabledFragmentShaderBarycentricFeatures);
+	mvkClear(&_enabledBufferDeviceAddressFeatures);
+	mvkClear(&_enabledBufferDeviceAddressFeaturesEXT);
+
+	VkPhysicalDeviceBufferDeviceAddressFeaturesEXT pdBufferDeviceAddressFeaturesEXT;
+	pdBufferDeviceAddressFeaturesEXT.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT;
+	pdBufferDeviceAddressFeaturesEXT.pNext = nullptr;
+
+	VkPhysicalDeviceBufferDeviceAddressFeatures pdBufferDeviceAddressFeatures;
+	pdBufferDeviceAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+	pdBufferDeviceAddressFeatures.pNext = &pdBufferDeviceAddressFeaturesEXT;
+
+	VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR pdFragmentShaderBarycentricFeatures;
+	pdFragmentShaderBarycentricFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR;
+	pdFragmentShaderBarycentricFeatures.pNext = &pdBufferDeviceAddressFeatures;
 
 	VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures pdSeparateDepthStencilLayoutsFeatures;
 	pdSeparateDepthStencilLayoutsFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES;
-	pdSeparateDepthStencilLayoutsFeatures.pNext = nullptr;
+	pdSeparateDepthStencilLayoutsFeatures.pNext = &pdFragmentShaderBarycentricFeatures;
 
 	VkPhysicalDeviceDynamicRenderingFeatures pdDynamicRenderingFeatures;
 	pdDynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
@@ -4464,6 +4489,27 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				enableFeatures(&_enabledSeparateDepthStencilLayoutsFeatures.separateDepthStencilLayouts,
 							   &requestedFeatures->separateDepthStencilLayouts,
 							   &pdSeparateDepthStencilLayoutsFeatures.separateDepthStencilLayouts, 1);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR: {
+				auto* requestedFeatures = (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)next;
+				enableFeatures(&_enabledFragmentShaderBarycentricFeatures.fragmentShaderBarycentric,
+							   &requestedFeatures->fragmentShaderBarycentric,
+							   &pdFragmentShaderBarycentricFeatures.fragmentShaderBarycentric, 1);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES: {
+				auto* requestedFeatures = (VkPhysicalDeviceBufferDeviceAddressFeatures*)next;
+				enableFeatures(&_enabledBufferDeviceAddressFeatures.bufferDeviceAddress,
+							   &requestedFeatures->bufferDeviceAddress,
+							   &pdBufferDeviceAddressFeatures.bufferDeviceAddress, 3);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: {
+				auto* requestedFeatures = (VkPhysicalDeviceBufferDeviceAddressFeaturesEXT*)next;
+				enableFeatures(&_enabledBufferDeviceAddressFeaturesEXT.bufferDeviceAddress,
+							   &requestedFeatures->bufferDeviceAddress,
+							   &pdBufferDeviceAddressFeaturesEXT.bufferDeviceAddress, 3);
 				break;
 			}
 			default:

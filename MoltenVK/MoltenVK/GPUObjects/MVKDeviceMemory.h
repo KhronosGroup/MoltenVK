@@ -165,7 +165,8 @@ protected:
 	id<MTLHeap> _mtlHeap = nil;
 	void* _pMemory = nullptr;
 	void* _pHostMemory = nullptr;
-	VkMemoryPropertyFlags _vkMemProps;
+	VkMemoryPropertyFlags _vkMemPropFlags;
+	VkMemoryAllocateFlags _vkMemAllocFlags;
 	MTLStorageMode _mtlStorageMode;
 	MTLCPUCacheMode _mtlCPUCacheMode;
 	bool _isDedicated = false;

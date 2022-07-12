@@ -2802,6 +2802,12 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkWaitSemaphoresKHR(
 
 
 #pragma mark -
+#pragma mark VK_EXT_buffer_device_address extension
+
+MVK_PUBLIC_VULKAN_ALIAS(vkGetBufferDeviceAddressEXT, vkGetBufferDeviceAddressKHR);
+
+
+#pragma mark -
 #pragma mark VK_EXT_debug_report extension
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateDebugReportCallbackEXT(

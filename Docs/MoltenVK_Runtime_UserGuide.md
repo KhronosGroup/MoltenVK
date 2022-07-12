@@ -263,6 +263,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_16bit_storage`
 - `VK_KHR_8bit_storage`
 - `VK_KHR_bind_memory2`
+- `VK_KHR_buffer_device_address` *(requires Metal 3.0)*
 - `VK_KHR_create_renderpass2`
 - `VK_KHR_dedicated_allocation`
 - `VK_KHR_depth_stencil_resolve`
@@ -297,6 +298,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_timeline_semaphore`
 - `VK_KHR_uniform_buffer_standard_layout`
 - `VK_KHR_variable_pointers`
+- `VK_EXT_buffer_device_address` *(requires Metal 3.0)*
 - `VK_EXT_debug_marker`
 - `VK_EXT_debug_report`
 - `VK_EXT_debug_utils`
