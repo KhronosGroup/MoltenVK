@@ -57,7 +57,7 @@ VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMa
 
 	// Coherent memory does not require flushing by app, so we must flush now
 	// to support Metal textures that actually reside in non-coherent memory.
-	if (mvkIsAnyFlagEnabled(_vkMemProps, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
+	if (mvkIsAnyFlagEnabled(_vkMemPropFlags, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
 		pullFromDevice(offset, size);
 	}
 
@@ -73,7 +73,7 @@ void MVKDeviceMemory::unmap() {
 
 	// Coherent memory does not require flushing by app, so we must flush now
 	// to support Metal textures that actually reside in non-coherent memory.
-	if (mvkIsAnyFlagEnabled(_vkMemProps, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
+	if (mvkIsAnyFlagEnabled(_vkMemPropFlags, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
 		flushToDevice(_mappedRange.offset, _mappedRange.size);
 	}
 
@@ -277,9 +277,9 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 								 const VkMemoryAllocateInfo* pAllocateInfo,
 								 const VkAllocationCallbacks* pAllocator) : MVKVulkanAPIDeviceObject(device) {
 	// Set Metal memory parameters
-	_vkMemProps = _device->_pMemoryProperties->memoryTypes[pAllocateInfo->memoryTypeIndex].propertyFlags;
-	_mtlStorageMode = mvkMTLStorageModeFromVkMemoryPropertyFlags(_vkMemProps);
-	_mtlCPUCacheMode = mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(_vkMemProps);
+	_vkMemPropFlags = _device->_pMemoryProperties->memoryTypes[pAllocateInfo->memoryTypeIndex].propertyFlags;
+	_mtlStorageMode = mvkMTLStorageModeFromVkMemoryPropertyFlags(_vkMemPropFlags);
+	_mtlCPUCacheMode = mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(_vkMemPropFlags);
 
 	_allocationSize = pAllocateInfo->allocationSize;
 
@@ -315,6 +315,10 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 			case VK_STRUCTURE_TYPE_EXPORT_METAL_OBJECT_CREATE_INFO_EXT: {
 				const auto* pExportInfo = (VkExportMetalObjectCreateInfoEXT*)next;
 				willExportMTLBuffer = pExportInfo->exportObjectType == VK_EXPORT_METAL_OBJECT_TYPE_METAL_BUFFER_BIT_EXT;
+			}
+			case VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO: {
+				auto* pMemAllocFlagsInfo = (VkMemoryAllocateFlagsInfo*)next;
+				_vkMemAllocFlags = pMemAllocFlagsInfo->flags;
 				break;
 			}
 			default:

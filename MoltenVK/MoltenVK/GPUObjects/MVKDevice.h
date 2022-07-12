@@ -794,6 +794,9 @@ public:
 	const VkPhysicalDeviceImagelessFramebufferFeaturesKHR _enabledImagelessFramebufferFeatures;
 	const VkPhysicalDeviceDynamicRenderingFeatures _enabledDynamicRenderingFeatures;
 	const VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures _enabledSeparateDepthStencilLayoutsFeatures;
+	const VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR _enabledFragmentShaderBarycentricFeatures;
+	const VkPhysicalDeviceBufferDeviceAddressFeatures _enabledBufferDeviceAddressFeatures;
+	const VkPhysicalDeviceBufferDeviceAddressFeaturesEXT _enabledBufferDeviceAddressFeaturesEXT;
 
 	/** Pointer to the Metal-specific features of the underlying physical device. */
 	const MVKPhysicalDeviceMetalFeatures* _pMetalFeatures;
