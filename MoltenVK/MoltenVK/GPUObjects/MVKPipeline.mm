@@ -1835,8 +1835,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 		MTLComputePipelineDescriptor* plDesc = [MTLComputePipelineDescriptor new];	// temp retain
 		plDesc.computeFunction = mtlFunc;
 		// Only available macOS 10.14+
-		if ([plDesc respondsToSelector:@selector(setMaxTotalThreadsPerThreadgroup:)])
-		{
+		if ([plDesc respondsToSelector:@selector(setMaxTotalThreadsPerThreadgroup:)]) {
 			plDesc.maxTotalThreadsPerThreadgroup = _mtlThreadgroupSize.width * _mtlThreadgroupSize.height * _mtlThreadgroupSize.depth;
 		}
 		plDesc.threadGroupSizeIsMultipleOfThreadExecutionWidth = mvkIsAnyFlagEnabled(pCreateInfo->stage.flags, VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT);
