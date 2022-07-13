@@ -707,10 +707,10 @@ static size_t getInlineBlockPoolSize(const VkDescriptorPoolCreateInfo* pCreateIn
 }
 
 // Although poolDescriptors is derived from MVKConfiguration, it is passed in here to ensure all components of this instance see a SVOT for this value.
-// Alternate might have been to force _hasPooledDescriptors to be set first by changing member declaration order in class declaration.
 MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo, bool poolDescriptors) :
 	MVKVulkanAPIDeviceObject(device),
-	_descriptorSets(pCreateInfo->maxSets, MVKDescriptorSet(this)),
+    _hasPooledDescriptors(poolDescriptors),
+	_descriptorSets(pCreateInfo->maxSets, MVKDescriptorSet(this)), // This will read _hasPooledDescriptors, technically producing undefined behavior if it's not set. Make sure it is!
 	_descriptorSetAvailablility(pCreateInfo->maxSets, true),
 	_inlineBlockMTLBufferAllocator(device, device->_pMetalFeatures->dynamicMTLBufferSize, true),
 	_uniformBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, poolDescriptors)),
@@ -724,8 +724,7 @@ MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCr
 	_samplerDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_SAMPLER, poolDescriptors)),
 	_combinedImageSamplerDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, poolDescriptors)),
 	_uniformTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, poolDescriptors)),
-	_storageTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, poolDescriptors)),
-	_hasPooledDescriptors(poolDescriptors) {
+    _storageTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, poolDescriptors)) {
 		initMetalArgumentBuffer(pCreateInfo);
 	}
 
