@@ -1695,7 +1695,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		case MTLLanguageVersion1_1:
 			setMSLVersion(1, 1);
 			break;
-#if MVK_IOS_OR_TVOS || MVK_XCODE_14
+#if MVK_IOS_OR_TVOS
 		case MTLLanguageVersion1_0:
 			setMSLVersion(1, 0);
 			break;
