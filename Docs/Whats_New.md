@@ -24,6 +24,7 @@ Released TBD
 - Reducing redundant state changes to improve command encoding performance.
 - Update minimum Xcode deployment targets to macOS 10.13, iOS 11, and tvOS 11,
   to avoid Xcode build warnings in Xcode 14.
+- Work around MTLCounterSet crash on additional Intel Iris Plus Graphics drivers.
 
 
 

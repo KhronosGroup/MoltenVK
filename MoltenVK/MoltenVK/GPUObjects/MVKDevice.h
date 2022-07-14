@@ -393,6 +393,7 @@ protected:
 	void initExternalMemoryProperties();
 	void initExtensions();
 	void initCounterSets();
+	bool needsCounterSetRetained();
 	MVKArrayRef<MVKQueueFamily*> getQueueFamilies();
 	void initPipelineCacheUUID();
 	uint32_t getHighestGPUCapability();
