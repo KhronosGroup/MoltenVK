@@ -2856,12 +2856,7 @@ void MVKPhysicalDevice::initCounterSets() {
 		if (_metalFeatures.counterSamplingPoints) {
 			NSArray<id<MTLCounterSet>>* counterSets = _mtlDevice.counterSets;
 
-			// Workaround for a bug in Intel Iris Plus Graphics driver where the counterSets
-			// array is not properly retained internally, and becomes a zombie when counterSets
-			// is called more than once, which occurs when an app creates more than one VkInstance.
-			// This workaround will cause a very small memory leak on systems that do not have this
-			// bug, so we apply the workaround only when absolutely needed for specific devices.
-			if (_properties.vendorID == kIntelVendorId && _properties.deviceID == 0x8a53) { [counterSets retain]; }
+			if (needsCounterSetRetained()) { [counterSets retain]; }
 
 			for (id<MTLCounterSet> cs in counterSets){
 				NSString* csName = cs.name;
@@ -2877,6 +2872,27 @@ void MVKPhysicalDevice::initCounterSets() {
 				}
 			}
 		}
+	}
+}
+
+// Workaround for a bug in Intel Iris Plus Graphics driver where the counterSets array is
+// not properly retained internally, and becomes a zombie when counterSets is called more
+// than once, which occurs when an app creates more than one VkInstance. This workaround
+// will cause a very small memory leak on systems that do not have this bug, so we apply
+// the workaround only when absolutely needed for specific devices. The list of deviceIDs
+// is sourced from the list of Intel Iris Plus Graphics Gen11 tier G7 devices found here:
+// https://en.wikipedia.org/wiki/List_of_Intel_graphics_processing_units#Gen11
+bool MVKPhysicalDevice::needsCounterSetRetained() {
+
+	if (_properties.vendorID != kIntelVendorId) { return false; }
+
+	switch (_properties.deviceID) {
+		case 0x8a51:
+		case 0x8a52:
+		case 0x8a53:
+			return true;
+		default:
+			return false;
 	}
 }
 
