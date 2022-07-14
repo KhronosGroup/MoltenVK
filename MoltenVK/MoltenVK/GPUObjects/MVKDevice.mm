@@ -3400,9 +3400,7 @@ MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInf
 		}
 	}
 
-	if ((pTypeCreateInfo && pTypeCreateInfo->semaphoreType == VK_SEMAPHORE_TYPE_TIMELINE) ||
-		(pExportInfo && pExportInfo->exportObjectType == VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT) ||
-		 pImportInfo) {
+	if (pTypeCreateInfo && pTypeCreateInfo->semaphoreType == VK_SEMAPHORE_TYPE_TIMELINE) {
 		if (_pMetalFeatures->events) {
 			return new MVKTimelineSemaphoreMTLEvent(this, pCreateInfo, pTypeCreateInfo, pExportInfo, pImportInfo);
 		} else {
@@ -3410,9 +3408,9 @@ MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInf
 		}
 	} else {
 		switch (_vkSemaphoreStyle) {
-			case MVKSemaphoreStyleUseMTLEvent:  return new MVKSemaphoreMTLEvent(this, pCreateInfo);
-			case MVKSemaphoreStyleUseMTLFence:  return new MVKSemaphoreMTLFence(this, pCreateInfo);
-			case MVKSemaphoreStyleUseEmulation: return new MVKSemaphoreEmulated(this, pCreateInfo);
+			case MVKSemaphoreStyleUseMTLEvent:  return new MVKSemaphoreMTLEvent(this, pCreateInfo, pExportInfo, pImportInfo);
+			case MVKSemaphoreStyleUseMTLFence:  return new MVKSemaphoreMTLFence(this, pCreateInfo, pExportInfo, pImportInfo);
+			case MVKSemaphoreStyleUseEmulation: return new MVKSemaphoreEmulated(this, pCreateInfo, pExportInfo, pImportInfo);
 		}
 	}
 }

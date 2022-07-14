@@ -213,7 +213,10 @@ public:
 	void encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
 	bool isUsingCommandEncoding() override { return true; }
 
-	MVKSemaphoreMTLFence(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo);
+	MVKSemaphoreMTLFence(MVKDevice* device,
+						 const VkSemaphoreCreateInfo* pCreateInfo,
+						 const VkExportMetalObjectCreateInfoEXT* pExportInfo,
+						 const VkImportMetalSharedEventInfoEXT* pImportInfo);
 
 	~MVKSemaphoreMTLFence() override;
 
@@ -235,7 +238,10 @@ public:
 	void encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t deferToken) override;
 	bool isUsingCommandEncoding() override { return true; }
 
-	MVKSemaphoreMTLEvent(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo);
+	MVKSemaphoreMTLEvent(MVKDevice* device,
+						 const VkSemaphoreCreateInfo* pCreateInfo,
+						 const VkExportMetalObjectCreateInfoEXT* pExportInfo,
+						 const VkImportMetalSharedEventInfoEXT* pImportInfo);
 
 	~MVKSemaphoreMTLEvent() override;
 
@@ -258,7 +264,10 @@ public:
 	void encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
 	bool isUsingCommandEncoding() override { return false; }
 
-	MVKSemaphoreEmulated(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo);
+	MVKSemaphoreEmulated(MVKDevice* device,
+						 const VkSemaphoreCreateInfo* pCreateInfo,
+						 const VkExportMetalObjectCreateInfoEXT* pExportInfo,
+						 const VkImportMetalSharedEventInfoEXT* pImportInfo);
 
 protected:
 	MVKSemaphoreImpl _blocker;
@@ -296,12 +305,7 @@ public:
 
 #pragma mark Construction
 
-	MVKTimelineSemaphore(MVKDevice* device,
-						 const VkSemaphoreCreateInfo* pCreateInfo,
-						 const VkSemaphoreTypeCreateInfo* pTypeCreateInfo,
-						 const VkExportMetalObjectCreateInfoEXT* pExportInfo,
-						 const VkImportMetalSharedEventInfoEXT* pImportInfo)
-        : MVKSemaphore(device, pCreateInfo) {}
+	MVKTimelineSemaphore(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo) : MVKSemaphore(device, pCreateInfo) {}
 
 };
 
