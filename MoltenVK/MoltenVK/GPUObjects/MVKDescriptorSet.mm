@@ -671,26 +671,15 @@ void MVKDescriptorPool::freeDescriptor(MVKDescriptor* mvkDesc) {
 // or zero if we are not preallocating descriptors in the pool.
 // There may be more than one poolSizeCount instance for the desired VkDescriptorType.
 // Accumulate the descriptor count for the desired VkDescriptorType accordingly.
-static size_t getPoolSize(const VkDescriptorPoolCreateInfo* pCreateInfo, VkDescriptorType descriptorType, bool poolDescriptors) {
-	uint32_t descCnt = 0;
-	if (poolDescriptors) {
-		uint32_t poolCnt = pCreateInfo->poolSizeCount;
-		for (uint32_t poolIdx = 0; poolIdx < poolCnt; poolIdx++) {
-			auto& poolSize = pCreateInfo->pPoolSizes[poolIdx];
-			if (poolSize.type == descriptorType) { descCnt += poolSize.descriptorCount; }
-		}
-	}
-	return descCnt;
-}
+// For descriptors of the VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT type,
+// we accumulate the count via the pNext chain.
+size_t MVKDescriptorPool::getPoolSize(const VkDescriptorPoolCreateInfo* pCreateInfo,
+									  VkDescriptorType descriptorType) {
 
-// Return the size of the preallocated pool for descriptors of the
-// VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT type, or zero if we
-// are not preallocating descriptors in the pool.
-// For consistency with getPoolSize() behavior, we support more than one pNext entry
-// for inline blocks. Accumulate the descriptor count for inline blocks accordingly.
-static size_t getInlineBlockPoolSize(const VkDescriptorPoolCreateInfo* pCreateInfo, bool poolDescriptors) {
+	if ( !_hasPooledDescriptors ) { return 0; }
+
 	uint32_t descCnt = 0;
-	if (poolDescriptors) {
+	if (descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
 		for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 			switch (next->sType) {
 				case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO_EXT: {
@@ -702,29 +691,33 @@ static size_t getInlineBlockPoolSize(const VkDescriptorPoolCreateInfo* pCreateIn
 					break;
 			}
 		}
+	} else {
+		for (uint32_t poolIdx = 0; poolIdx < pCreateInfo->poolSizeCount; poolIdx++) {
+			auto& poolSize = pCreateInfo->pPoolSizes[poolIdx];
+			if (poolSize.type == descriptorType) { descCnt += poolSize.descriptorCount; }
+		}
 	}
 	return descCnt;
 }
 
-// Although poolDescriptors is derived from MVKConfiguration, it is passed in here to ensure all components of this instance see a SVOT for this value.
-MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo, bool poolDescriptors) :
+MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo) :
 	MVKVulkanAPIDeviceObject(device),
-    _hasPooledDescriptors(poolDescriptors),
-	_descriptorSets(pCreateInfo->maxSets, MVKDescriptorSet(this)), // This will read _hasPooledDescriptors, technically producing undefined behavior if it's not set. Make sure it is!
+    _hasPooledDescriptors(mvkConfig().preallocateDescriptors),		// Set this first! Accessed by MVKDescriptorSet constructor and getPoolSize() in following lines.
+	_descriptorSets(pCreateInfo->maxSets, MVKDescriptorSet(this)),
 	_descriptorSetAvailablility(pCreateInfo->maxSets, true),
 	_inlineBlockMTLBufferAllocator(device, device->_pMetalFeatures->dynamicMTLBufferSize, true),
-	_uniformBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, poolDescriptors)),
-	_storageBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, poolDescriptors)),
-	_uniformBufferDynamicDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, poolDescriptors)),
-	_storageBufferDynamicDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, poolDescriptors)),
-	_inlineUniformBlockDescriptors(getInlineBlockPoolSize(pCreateInfo, poolDescriptors)),
-	_sampledImageDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, poolDescriptors)),
-	_storageImageDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, poolDescriptors)),
-	_inputAttachmentDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, poolDescriptors)),
-	_samplerDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_SAMPLER, poolDescriptors)),
-	_combinedImageSamplerDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, poolDescriptors)),
-	_uniformTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, poolDescriptors)),
-    _storageTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, poolDescriptors)) {
+	_uniformBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)),
+	_storageBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)),
+	_uniformBufferDynamicDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)),
+	_storageBufferDynamicDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)),
+	_inlineUniformBlockDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT)),
+	_sampledImageDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE)),
+	_storageImageDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)),
+	_inputAttachmentDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)),
+	_samplerDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_SAMPLER)),
+	_combinedImageSamplerDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)),
+	_uniformTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)),
+    _storageTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)) {
 		initMetalArgumentBuffer(pCreateInfo);
 	}
 
