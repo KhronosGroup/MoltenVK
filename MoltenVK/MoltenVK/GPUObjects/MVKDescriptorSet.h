@@ -274,7 +274,7 @@ public:
 	/** Destroys all currently allocated descriptor sets. */
 	VkResult reset(VkDescriptorPoolResetFlags flags);
 
-	MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo, bool poolDescriptors);
+	MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo);
 
 	~MVKDescriptorPool() override;
 
@@ -291,6 +291,7 @@ protected:
 	void initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo* pCreateInfo);
 	NSUInteger getMetalArgumentBufferResourceStorageSize(NSUInteger bufferCount, NSUInteger textureCount, NSUInteger samplerCount);
 	MTLArgumentDescriptor* getMTLArgumentDescriptor(MTLDataType resourceType, NSUInteger argIndex, NSUInteger count);
+	size_t getPoolSize(const VkDescriptorPoolCreateInfo* pCreateInfo, VkDescriptorType descriptorType);
 
     bool _hasPooledDescriptors;
 	MVKSmallVector<MVKDescriptorSet> _descriptorSets;
