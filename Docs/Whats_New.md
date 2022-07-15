@@ -25,6 +25,9 @@ Released TBD
 - Update minimum Xcode deployment targets to macOS 10.13, iOS 11, and tvOS 11,
   to avoid Xcode build warnings in Xcode 14.
 - Work around MTLCounterSet crash on additional Intel Iris Plus Graphics drivers.
+- Check `MTLDevice` to enable support for `VK_KHR_fragment_shader_barycentric` 
+  and `VK_NV_fragment_shader_barycentric` extensions.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `35`.
 
 
 
@@ -38,7 +41,7 @@ Released 2022/06/06
 	  updated to indicate the impact of the `VK_KHR_portability_enumeration` extension during 
 	  runtime loading on *macOS* via the *Vulkan Loader*.
 	- `VK_KHR_dynamic_rendering`
-	- `VK_KHR_fragment_shader_barycentric`
+	- `VK_KHR_fragment_shader_barycentric` and `VK_NV_fragment_shader_barycentric`
 	- `VK_KHR_separate_depth_stencil_layouts`
 	- `VK_EXT_separate_stencil_usage`
 - Implement `vkGetRefreshCycleDurationGOOGLE()` for _macOS_.
