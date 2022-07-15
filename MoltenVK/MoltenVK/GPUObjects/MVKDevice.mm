@@ -1609,6 +1609,13 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.pullModelInterpolation = _mtlDevice.supportsPullModelInterpolation;
 	}
 #endif
+
+#if (MVK_MACOS && !MVK_MACCAT) || (MVK_MACCAT && MVK_XCODE_14) || (MVK_IOS && MVK_XCODE_12)
+	if ( [_mtlDevice respondsToSelector: @selector(supportsShaderBarycentricCoordinates)] ) {
+		_metalFeatures.shaderBarycentricCoordinates = _mtlDevice.supportsShaderBarycentricCoordinates;
+	}
+#endif
+
     if ( [_mtlDevice respondsToSelector: @selector(maxBufferLength)] ) {
         _metalFeatures.maxMTLBufferSize = _mtlDevice.maxBufferLength;
     }
@@ -2841,6 +2848,10 @@ void MVKPhysicalDevice::initExtensions() {
 	}
 	if (!_metalFeatures.simdPermute && !_metalFeatures.quadPermute) {
 		pWritableExtns->vk_KHR_shader_subgroup_extended_types.enabled = false;
+	}
+	if (!_metalFeatures.shaderBarycentricCoordinates) {
+		pWritableExtns->vk_KHR_fragment_shader_barycentric.enabled = false;
+		pWritableExtns->vk_NV_fragment_shader_barycentric.enabled = false;
 	}
 #if MVK_MACOS
 	if (!supportsMTLGPUFamily(Apple5)) {
