@@ -33,6 +33,7 @@ extern "C" {
 #import <Metal/Metal.h>
 #else
 typedef unsigned long MTLLanguageVersion;
+typedef unsigned long MTLArgumentBuffersTier;
 #endif
 
 
@@ -931,6 +932,7 @@ typedef struct {
 	MVKCounterSamplingFlags counterSamplingPoints;	/**< Identifies the points where pipeline GPU counter sampling may occur. */
 	VkBool32 programmableSamplePositions;			/**< If true, programmable MSAA sample positions are supported. */
 	VkBool32 shaderBarycentricCoordinates;			/**< If true, fragment shader barycentric coordinates are supported. */
+	MTLArgumentBuffersTier argumentBuffersTier;		/**< The argument buffer tier available on this device, as a Metal enumeration. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */

@@ -415,7 +415,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 break;
             }
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT: {
-				bool isTier2 = isUsingMetalArgumentBuffers() && (_mtlDevice.argumentBuffersSupport >= MTLArgumentBuffersTier2);
+				bool isTier2 = isUsingMetalArgumentBuffers() && (_metalFeatures.argumentBuffersTier >= MTLArgumentBuffersTier2);
 				uint32_t maxSampCnt = getMaxSamplerCount();
 
 				auto* pDescIdxProps = (VkPhysicalDeviceDescriptorIndexingPropertiesEXT*)next;
@@ -1724,6 +1724,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	// Currently, if we don't support descriptor set argument buffers, we can't support argument buffers.
 	_metalFeatures.argumentBuffers = _metalFeatures.descriptorSetArgumentBuffers;
 
+	if ([_mtlDevice respondsToSelector: @selector(argumentBuffersSupport)]) {
+		_metalFeatures.argumentBuffersTier = _mtlDevice.argumentBuffersSupport;
+	}
+
 #define checkSupportsMTLCounterSamplingPoint(mtlSP, mvkSP)  \
 	if ([_mtlDevice respondsToSelector: @selector(supportsCounterSampling:)] &&  \
 		[_mtlDevice supportsCounterSampling: MTLCounterSamplingPointAt ##mtlSP ##Boundary]) {  \
@@ -2850,6 +2854,11 @@ void MVKPhysicalDevice::initExtensions() {
 	if (!_metalFeatures.shaderBarycentricCoordinates) {
 		pWritableExtns->vk_KHR_fragment_shader_barycentric.enabled = false;
 		pWritableExtns->vk_NV_fragment_shader_barycentric.enabled = false;
+	}
+	// gpuAddress requires Tier2 argument buffer support (per feedback from Apple engineers).
+	if (_metalFeatures.argumentBuffersTier < MTLArgumentBuffersTier2) {
+		pWritableExtns->vk_KHR_buffer_device_address.enabled = false;
+		pWritableExtns->vk_EXT_buffer_device_address.enabled = false;
 	}
 #if MVK_MACOS
 	if (!supportsMTLGPUFamily(Apple5)) {
