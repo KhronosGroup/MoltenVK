@@ -27,6 +27,7 @@ Released TBD
 - Work around MTLCounterSet crash on additional Intel Iris Plus Graphics drivers.
 - Check `MTLDevice` to enable support for `VK_KHR_fragment_shader_barycentric` 
   and `VK_NV_fragment_shader_barycentric` extensions.
+- Fix query pool wait block when query is not encoded to be written to.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `35`.
 
 

@@ -107,12 +107,16 @@ bool MVKQueryPool::areQueriesDeviceAvailable(uint32_t firstQuery, uint32_t endQu
     return true;
 }
 
-// Returns whether all the queries between the start (inclusive) and end (exclusive) queries are available.
+// Returns whether any queries between the start (inclusive) and end (exclusive) queries,
+// that were encoded to be written to by an earlier EndQuery or Timestamp command, are now available.
+// Queries that were not encoded to be written, will be in Initial state.
+// Queries that were encoded to be written, and are available, will be in Available state.
+// Queries that were encoded to be written, but are not available, will be in DeviceAvailable state.
 bool MVKQueryPool::areQueriesHostAvailable(uint32_t firstQuery, uint32_t endQuery) {
     // If we lost the device, stop waiting immediately.
     if (_device->getConfigurationResult() != VK_SUCCESS) { return true; }
     for (uint32_t query = firstQuery; query < endQuery; query++) {
-        if ( _availability[query] < Available ) { return false; }
+        if (_availability[query] == DeviceAvailable) { return false; }
     }
     return true;
 }
