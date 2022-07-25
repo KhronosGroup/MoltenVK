@@ -78,8 +78,8 @@ MVKGPUCaptureScope::MVKGPUCaptureScope(MVKQueue* mvkQueue) {
 		// references so the scope, and command queue, aren't leaked. This is a horrible kludge
 		// that depends on Apple not taking internal references to capture scopes, but without it,
 		// we could get hung up waiting for a new queue, because the old queues are still outstanding.
-		// This bug was fixed by Apple in macOS 13 and iOS 16.
-		if ( !mvkOSVersionIsAtLeast(13.0, 16.0) ) {
+		// This bug was fixed by Apple in macOS 12.5 and iOS 15.4.
+		if ( !mvkOSVersionIsAtLeast(12.05, 15.04) ) {
 			while (_mtlCaptureScope.retainCount > 1) {
 				[_mtlCaptureScope release];
 			}
