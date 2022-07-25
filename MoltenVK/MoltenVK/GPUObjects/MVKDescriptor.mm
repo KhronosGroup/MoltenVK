@@ -193,10 +193,6 @@ uint32_t MVKDescriptorSetLayoutBinding::getDescriptorCount(MVKDescriptorSet* des
 	return _info.descriptorCount;
 }
 
-MVKSampler* MVKDescriptorSetLayoutBinding::getImmutableSampler(uint32_t index) {
-	return (index < _immutableSamplers.size()) ? _immutableSamplers[index] : nullptr;
-}
-
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
 										 MVKDescriptorSet* descSet,
@@ -1107,6 +1103,9 @@ void MVKSamplerDescriptorMixin::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									  uint32_t srcIndex,
 									  size_t stride,
 									  const void* pData) {
+
+	if (mvkDSLBind->usesImmutableSamplers()) { return; }
+
 	auto* oldSamp = _mvkSampler;
 
 	const auto* pImgInfo = &get<VkDescriptorImageInfo>(pData, stride, srcIndex);

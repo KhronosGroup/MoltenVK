@@ -114,7 +114,9 @@ public:
 	bool usesImmutableSamplers() { return !_immutableSamplers.empty(); }
 
 	/** Returns the immutable sampler at the index, or nullptr if immutable samplers are not used. */
-	MVKSampler* getImmutableSampler(uint32_t index);
+	MVKSampler* getImmutableSampler(uint32_t index) {
+		return (index < _immutableSamplers.size()) ? _immutableSamplers[index] : nullptr;
+	}
 
 	/** Encodes the descriptors in the descriptor set that are specified by this layout, */
 	void bind(MVKCommandEncoder* cmdEncoder,
