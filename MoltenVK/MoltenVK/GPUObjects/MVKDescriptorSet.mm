@@ -924,6 +924,8 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 		// For inline block create a temp buffer of descCnt bytes to hold data during copy.
 		uint8_t dstBuffer[descCnt];
 		VkWriteDescriptorSetInlineUniformBlockEXT inlineUniformBlock;
+		inlineUniformBlock.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK;
+		inlineUniformBlock.pNext = nullptr;
 		inlineUniformBlock.pData = dstBuffer;
 		inlineUniformBlock.dataSize = descCnt;
 
@@ -953,6 +955,16 @@ void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet descriptorSet,
 	for (uint32_t i = 0; i < pTemplate->getNumberOfEntries(); i++) {
 		const VkDescriptorUpdateTemplateEntryKHR* pEntry = pTemplate->getEntry(i);
 		const void* pCurData = (const char*)pData + pEntry->offset;
+
+		// For inline block, wrap the raw data in in inline update struct.
+		VkWriteDescriptorSetInlineUniformBlockEXT inlineUniformBlock;
+		if (pEntry->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+			inlineUniformBlock.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK;
+			inlineUniformBlock.pNext = nullptr;
+			inlineUniformBlock.pData = pCurData;
+			inlineUniformBlock.dataSize = pEntry->descriptorCount;
+			pCurData = &inlineUniformBlock;
+		}
 		dstSet->write(pEntry, pEntry->stride, pCurData);
 	}
 }
