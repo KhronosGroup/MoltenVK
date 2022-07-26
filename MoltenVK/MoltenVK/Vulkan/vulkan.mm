@@ -2513,7 +2513,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSetKHR(
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSetWithTemplateKHR(
     VkCommandBuffer                            commandBuffer,
-    VkDescriptorUpdateTemplateKHR              descriptorUpdateTemplate,
+    VkDescriptorUpdateTemplate              descriptorUpdateTemplate,
     VkPipelineLayout                           layout,
     uint32_t                                   set,
     const void*                                pData) {

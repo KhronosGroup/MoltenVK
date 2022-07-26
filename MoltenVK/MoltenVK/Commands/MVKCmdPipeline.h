@@ -261,7 +261,7 @@ class MVKCmdPushDescriptorSetWithTemplate : public MVKCommand {
 
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkDescriptorUpdateTemplateKHR descUpdateTemplate,
+						VkDescriptorUpdateTemplate descUpdateTemplate,
 						VkPipelineLayout layout,
 						uint32_t set,
 						const void* pData);

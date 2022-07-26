@@ -596,7 +596,7 @@ public:
 	void destroyDescriptorPool(MVKDescriptorPool* mvkDP,
 							   const VkAllocationCallbacks* pAllocator);
 
-	MVKDescriptorUpdateTemplate* createDescriptorUpdateTemplate(const VkDescriptorUpdateTemplateCreateInfoKHR* pCreateInfo,
+	MVKDescriptorUpdateTemplate* createDescriptorUpdateTemplate(const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo,
 																const VkAllocationCallbacks* pAllocator);
 	void destroyDescriptorUpdateTemplate(MVKDescriptorUpdateTemplate* mvkDUT,
 										 const VkAllocationCallbacks* pAllocator);

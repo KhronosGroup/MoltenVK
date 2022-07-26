@@ -429,7 +429,7 @@ void MVKCmdPushDescriptorSet::clearDescriptorWrites() {
 #pragma mark MVKCmdPushDescriptorSetWithTemplate
 
 VkResult MVKCmdPushDescriptorSetWithTemplate::setContent(MVKCommandBuffer* cmdBuff,
-														 VkDescriptorUpdateTemplateKHR descUpdateTemplate,
+														 VkDescriptorUpdateTemplate descUpdateTemplate,
 														 VkPipelineLayout layout,
 														 uint32_t set,
 														 const void* pData) {
@@ -443,7 +443,7 @@ VkResult MVKCmdPushDescriptorSetWithTemplate::setContent(MVKCommandBuffer* cmdBu
 
 	if (_pData) delete[] (char*)_pData;
 	// Work out how big the memory block in pData is.
-	const VkDescriptorUpdateTemplateEntryKHR* pEntry =
+	const VkDescriptorUpdateTemplateEntry* pEntry =
 		_descUpdateTemplate->getEntry(_descUpdateTemplate->getNumberOfEntries()-1);
 	size_t size = pEntry->offset;
 	// If we were given a stride, use that; otherwise, assume only one info
