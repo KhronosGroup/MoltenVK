@@ -330,16 +330,16 @@ public:
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_EXT; }
 
 	/** Get the nth update template entry. */
-	const VkDescriptorUpdateTemplateEntryKHR* getEntry(uint32_t n) const;
+	const VkDescriptorUpdateTemplateEntry* getEntry(uint32_t n) const;
 
 	/** Get the total number of entries. */
 	uint32_t getNumberOfEntries() const;
 
 	/** Get the type of this template. */
-	VkDescriptorUpdateTemplateTypeKHR getType() const;
+	VkDescriptorUpdateTemplateType getType() const;
 
 	/** Constructs an instance for the specified device. */
-	MVKDescriptorUpdateTemplate(MVKDevice* device, const VkDescriptorUpdateTemplateCreateInfoKHR* pCreateInfo);
+	MVKDescriptorUpdateTemplate(MVKDevice* device, const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo);
 
 	/** Destructor. */
 	~MVKDescriptorUpdateTemplate() override = default;
@@ -347,8 +347,8 @@ public:
 protected:
 	void propagateDebugName() override {}
 
-	VkDescriptorUpdateTemplateTypeKHR _type;
-	MVKSmallVector<VkDescriptorUpdateTemplateEntryKHR, 1> _entries;
+	VkDescriptorUpdateTemplateType _type;
+	MVKSmallVector<VkDescriptorUpdateTemplateEntry, 1> _entries;
 };
 
 #pragma mark -
@@ -362,5 +362,5 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 
 /** Updates the resource bindings in the given descriptor set from the specified template. */
 void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet descriptorSet,
-										VkDescriptorUpdateTemplateKHR updateTemplate,
+										VkDescriptorUpdateTemplate updateTemplate,
 										const void* pData);

@@ -3617,7 +3617,7 @@ void MVKDevice::destroyDescriptorPool(MVKDescriptorPool* mvkDP,
 }
 
 MVKDescriptorUpdateTemplate* MVKDevice::createDescriptorUpdateTemplate(
-	const VkDescriptorUpdateTemplateCreateInfoKHR* pCreateInfo,
+	const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo,
 	const VkAllocationCallbacks* pAllocator) {
 	return new MVKDescriptorUpdateTemplate(this, pCreateInfo);
 }

@@ -149,7 +149,7 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
 
 	if (!cmdEncoder) { clearConfigurationResult(); }
     for (uint32_t i = 0; i < descUpdateTemplate->getNumberOfEntries(); i++) {
-        const VkDescriptorUpdateTemplateEntryKHR* pEntry = descUpdateTemplate->getEntry(i);
+        const VkDescriptorUpdateTemplateEntry* pEntry = descUpdateTemplate->getEntry(i);
         uint32_t dstBinding = pEntry->dstBinding;
         uint32_t dstArrayElement = pEntry->dstArrayElement;
         uint32_t descriptorCount = pEntry->descriptorCount;
@@ -856,7 +856,7 @@ MVKDescriptorPool::~MVKDescriptorPool() {
 #pragma mark -
 #pragma mark MVKDescriptorUpdateTemplate
 
-const VkDescriptorUpdateTemplateEntryKHR* MVKDescriptorUpdateTemplate::getEntry(uint32_t n) const {
+const VkDescriptorUpdateTemplateEntry* MVKDescriptorUpdateTemplate::getEntry(uint32_t n) const {
 	return &_entries[n];
 }
 
@@ -864,12 +864,12 @@ uint32_t MVKDescriptorUpdateTemplate::getNumberOfEntries() const {
 	return (uint32_t)_entries.size();
 }
 
-VkDescriptorUpdateTemplateTypeKHR MVKDescriptorUpdateTemplate::getType() const {
+VkDescriptorUpdateTemplateType MVKDescriptorUpdateTemplate::getType() const {
 	return _type;
 }
 
 MVKDescriptorUpdateTemplate::MVKDescriptorUpdateTemplate(MVKDevice* device,
-														 const VkDescriptorUpdateTemplateCreateInfoKHR* pCreateInfo) :
+														 const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo) :
 	MVKVulkanAPIDeviceObject(device), _type(pCreateInfo->templateType) {
 
 	for (uint32_t i = 0; i < pCreateInfo->descriptorUpdateEntryCount; i++)
@@ -924,6 +924,8 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 		// For inline block create a temp buffer of descCnt bytes to hold data during copy.
 		uint8_t dstBuffer[descCnt];
 		VkWriteDescriptorSetInlineUniformBlockEXT inlineUniformBlock;
+		inlineUniformBlock.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT;
+		inlineUniformBlock.pNext = nullptr;
 		inlineUniformBlock.pData = dstBuffer;
 		inlineUniformBlock.dataSize = descCnt;
 
@@ -940,19 +942,29 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 
 // Updates the resource bindings in the given descriptor set from the specified template.
 void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet descriptorSet,
-										VkDescriptorUpdateTemplateKHR updateTemplate,
+										VkDescriptorUpdateTemplate updateTemplate,
 										const void* pData) {
 
 	MVKDescriptorSet* dstSet = (MVKDescriptorSet*)descriptorSet;
 	MVKDescriptorUpdateTemplate* pTemplate = (MVKDescriptorUpdateTemplate*)updateTemplate;
 
-	if (pTemplate->getType() != VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET_KHR)
+	if (pTemplate->getType() != VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET)
 		return;
 
 	// Perform the updates
 	for (uint32_t i = 0; i < pTemplate->getNumberOfEntries(); i++) {
-		const VkDescriptorUpdateTemplateEntryKHR* pEntry = pTemplate->getEntry(i);
+		const VkDescriptorUpdateTemplateEntry* pEntry = pTemplate->getEntry(i);
 		const void* pCurData = (const char*)pData + pEntry->offset;
+
+		// For inline block, wrap the raw data in in inline update struct.
+		VkWriteDescriptorSetInlineUniformBlockEXT inlineUniformBlock;
+		if (pEntry->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+			inlineUniformBlock.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT;
+			inlineUniformBlock.pNext = nullptr;
+			inlineUniformBlock.pData = pCurData;
+			inlineUniformBlock.dataSize = pEntry->descriptorCount;
+			pCurData = &inlineUniformBlock;
+		}
 		dstSet->write(pEntry, pEntry->stride, pCurData);
 	}
 }
