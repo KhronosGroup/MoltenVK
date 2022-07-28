@@ -12,4 +12,4 @@ mkdir -p "${staging_dir}"
 cp -a "${MVK_BUILT_PROD_FILE}" "${staging_dir}/${MVK_PROD_FILENAME}"
 
 # Mark the XCFrameworkStaging directory as changed, to trigger packaging dependencies.
-touch ${MVK_XCFWK_STAGING_DIR}/..
+touch "${MVK_XCFWK_STAGING_DIR}/.."
