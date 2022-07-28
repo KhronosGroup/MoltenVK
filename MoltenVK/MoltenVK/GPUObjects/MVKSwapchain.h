@@ -73,15 +73,15 @@ public:
 								 uint32_t* pImageIndex);
 
 	/** Returns whether the parent surface is now lost and this swapchain must be recreated. */
-	inline bool getIsSurfaceLost() { return _surfaceLost; }
+	bool getIsSurfaceLost() { return _surfaceLost; }
 
-	/** Returns whether the surface size has changed since the last time this function was called. */
-	inline bool getHasSurfaceSizeChanged() {
+	/** Returns whether the surface size or resolution scale has changed since the last time this function was called. */
+	bool getHasSurfaceSizeChanged() {
 		return !CGSizeEqualToSize(_mtlLayer.naturalDrawableSizeMVK, _mtlLayer.drawableSize);
 	}
 
 	/** Returns the status of the surface. Surface loss takes precedence over out-of-date errors. */
-	inline VkResult getSurfaceStatus() {
+	VkResult getSurfaceStatus() {
 		if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 		if (getIsSurfaceLost()) { return VK_ERROR_SURFACE_LOST_KHR; }
 		if (getHasSurfaceSizeChanged()) { return VK_SUBOPTIMAL_KHR; }

@@ -409,7 +409,8 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 		_presentableImages.push_back(_device->createPresentableSwapchainImage(&imgInfo, this, imgIdx, NULL));
 	}
 
-    MVKLogInfo("Created %d swapchain images with initial size (%d, %d).", imgCnt, imgExtent.width, imgExtent.height);
+    MVKLogInfo("Created %d swapchain images with initial size (%d, %d) and contents scale %.1f.",
+			   imgCnt, imgExtent.width, imgExtent.height, _mtlLayer.contentsScale);
 }
 
 VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRefreshCycleDuration) {
