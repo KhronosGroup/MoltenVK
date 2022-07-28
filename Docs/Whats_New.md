@@ -30,6 +30,7 @@ Released TBD
 - Fix query pool wait block when query is not encoded to be written to.
 - Fix `vkUpdateDescriptorSetWithTemplate()` for inline block descriptors.
 - Ignore sampler update in descriptor set bindings that use immutable samplers.
+- Update _macOS Cube_ demo to demonstrate optimizing swapchain across multiple screens.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `35`.
 
 
