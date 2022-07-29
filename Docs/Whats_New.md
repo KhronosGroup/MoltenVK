@@ -27,10 +27,11 @@ Released TBD
 - Work around MTLCounterSet crash on additional Intel Iris Plus Graphics drivers.
 - Check `MTLDevice` to enable support for `VK_KHR_fragment_shader_barycentric` 
   and `VK_NV_fragment_shader_barycentric` extensions.
+- Ignore sampler update in descriptor set bindings that use immutable samplers.
 - Fix query pool wait block when query is not encoded to be written to.
 - Fix `vkUpdateDescriptorSetWithTemplate()` for inline block descriptors.
-- Ignore sampler update in descriptor set bindings that use immutable samplers.
-- Update _macOS Cube_ demo to demonstrate optimizing swapchain across multiple screens.
+- Fix retrieval of accurate `vkGetRefreshCycleDurationGOOGLE()` across multiple display screens.
+- Update _macOS Cube_ demo to demonstrate optimizing the swapchain across multiple display screens.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `35`.
 
 

@@ -18,7 +18,19 @@
 
 #pragma once
 
+#include "MVKCommonEnvironment.h"
+
 #import <QuartzCore/QuartzCore.h>
+
+#if MVK_IOS_OR_TVOS || MVK_MACCAT
+#	define PLATFORM_SCREEN_CLASS	UIScreen
+#	include <UIKit/UIScreen.h>
+#endif
+
+#if MVK_MACOS && !MVK_MACCAT
+#	define PLATFORM_SCREEN_CLASS	NSScreen
+#	include <AppKit/NSScreen.h>
+#endif
 
 /** Extensions to CAMetalLayer to support MoltenVK. */
 @interface CAMetalLayer (MoltenVK)
@@ -72,5 +84,8 @@
  * with that name, creating and releasing the CGColorSpaceRef object itself as needed.
  */
 @property(nonatomic, readwrite) CFStringRef colorspaceNameMVK;
+
+/** Returns the screen on which this layer is rendering. */
+@property(nonatomic, readonly) PLATFORM_SCREEN_CLASS* screenMVK;
 
 @end
