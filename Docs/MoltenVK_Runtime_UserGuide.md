@@ -143,7 +143,7 @@ To link **MoltenVK** to your application as a dynamic library (`.dylib`), follow
           - `MoltenVK/dylib/macOS` *(macOS)*
           - `MoltenVK/dylib/iOS` *(iOS)*
           - `MoltenVK/dylib/tvOS` *(tvOS)*
-          
+       
     3. In the **Runpath Search Paths** (aka `LD_RUNPATH_SEARCH_PATHS`) setting, 
        add an entry that matches where the dynamic library will be located in your runtime
        environment. If the dynamic library is to be embedded within your application, 
@@ -188,11 +188,11 @@ To link **MoltenVK** to your application as a dynamic library (`.dylib`), follow
    - To copy the `libMoltenVK.dylib` file into your application or component library:
    
 	   1. On the *Build Phases* tab, add a new *Copy Files* build phase.
-	    
+	   
 	   2. Set the *Destination* into which you want to place  the `libMoltenVK.dylib` file.
 	      Typically this will be *Frameworks* (and it should match the **Runpath Search Paths** 
 	      (aka `LD_RUNPATH_SEARCH_PATHS`) build setting you added above).
-	    
+	   
 	   3. Drag **_one_** of the following files to the *Copy Files* list in this new build phase:
 	     - `MoltenVK/dylib/macOS/libMoltenVK.dylib` *(macOS)* 
 	     - `MoltenVK/dylib/iOS/libMoltenVK.dylib` *(iOS)* 
@@ -229,7 +229,7 @@ devices that support *Metal*, or on the *Xcode* *iOS Simulator* or *tvOS Simulat
 
 When a *Metal* app is running from *Xcode*, the default ***Scheme*** settings may reduce performance. 
 To improve performance and gain the benefits of *Metal*, perform the following in *Xcode*:
-   
+
 1. Open the ***Scheme Editor*** for building your main application. You can do 
    this by selecting ***Edit Scheme...*** from the ***Scheme*** drop-down menu, or select 
    ***Product -> Scheme -> Edit Scheme...*** from the main menu.
@@ -337,8 +337,25 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 
 In order to visibly display your content on *macOS*, *iOS*, or *tvOS*, you must enable the
 `VK_EXT_metal_surface` extension, and use the function defined in that extension to create a 
-*Vulkan* rendering surface. You can enable the `VK_EXT_metal_surface` extension by defining the `VK_USE_PLATFORM_METAL_EXT` guard macro in your compiler build settings. See the description of 
-the `mvk_vulkan.h` file below for  a convenient way to enable this extension automatically.
+*Vulkan* rendering surface. You can enable the `VK_EXT_metal_surface` extension by defining 
+the `VK_USE_PLATFORM_METAL_EXT` guard macro in your compiler build settings. See the description 
+of the `mvk_vulkan.h` file below for  a convenient way to enable this extension automatically.
+
+When creating a `CAMetalLayer` to underpin the *Vulkan* surface to render to, it is strongly 
+recommended that you ensure the `delegate` of the `CAMetalLayer` is the `NSView/UIView` in 
+which the layer is contained, to ensure correct and optimized *Vulkan* swapchain and refresh 
+timing behavior across multiple display screens that might have different properties.
+
+The view will automatically be the `delegate` of the layer when the view creates the 
+`CAMetalLayer`, as per Apple's documentation:
+
+>If the layer object was created by a view, the view typically assigns itself as the layer’s 
+delegate automatically, and you should not change that relationship. For layers you create 
+yourself, you can assign a delegate object and use that object to provide the contents of 
+the layer dynamically and perform other tasks.
+
+But in the case where you create the `CAMetalLayer` yourself and assign it to the view, 
+you should also assign the view as the `delegate` of the layer. 
 
 Because **MoltenVK** supports the `VK_KHR_portability_subset` extension, when using the 
 *Vulkan Loader* from the *Vulkan SDK* to run **MoltenVK** on *macOS*, the *Vulkan Loader* 
