@@ -208,15 +208,11 @@ void MVKInstance::debugReportMessage(MVKVulkanAPIObject* mvkAPIObj, MVKConfigLog
 	}
 
 	if (_hasDebugUtilsMessengers) {
-		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity = getVkDebugUtilsMessageSeverityFlagBitsFromLogLevel(logLevel);
-		uint64_t objectHandle = (uint64_t)(mvkAPIObj ? mvkAPIObj->getVkHandle() : nullptr);
-		VkObjectType objectType = mvkAPIObj ? mvkAPIObj->getVkObjectType() : VK_OBJECT_TYPE_UNKNOWN;
-
 		VkDebugUtilsObjectNameInfoEXT duObjName = {
 			.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
 			.pNext = nullptr,
-			.objectType = objectType,
-			.objectHandle = objectHandle,
+			.objectType = mvkAPIObj ? mvkAPIObj->getVkObjectType() : VK_OBJECT_TYPE_UNKNOWN,
+			.objectHandle = (uint64_t)(mvkAPIObj ? mvkAPIObj->getVkHandle() : nullptr),
 			.pObjectName = mvkAPIObj ? mvkAPIObj->getDebugName().UTF8String : nullptr
 		};
 		VkDebugUtilsMessengerCallbackDataEXT dumcbd = {
@@ -233,7 +229,9 @@ void MVKInstance::debugReportMessage(MVKVulkanAPIObject* mvkAPIObj, MVKConfigLog
 			.objectCount = 1,
 			.pObjects = &duObjName
 		};
-		debugUtilsMessage(messageSeverity, VK_DEBUG_UTILS_MESSAGE_TYPE_FLAG_BITS_MAX_ENUM_EXT, &dumcbd);
+		debugUtilsMessage(getVkDebugUtilsMessageSeverityFlagBitsFromLogLevel(logLevel),
+						  getVkDebugUtilsMessageTypesFlagBitsFromLogLevel(logLevel),
+						  &dumcbd);
 	}
 }
 
@@ -262,6 +260,18 @@ VkDebugUtilsMessageSeverityFlagBitsEXT MVKInstance::getVkDebugUtilsMessageSeveri
 		case MVK_CONFIG_LOG_LEVEL_ERROR:
 		default:
 			return VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+	}
+}
+
+VkDebugUtilsMessageTypeFlagsEXT MVKInstance::getVkDebugUtilsMessageTypesFlagBitsFromLogLevel(MVKConfigLogLevel logLevel) {
+	switch (logLevel) {
+		case MVK_CONFIG_LOG_LEVEL_DEBUG:
+		case MVK_CONFIG_LOG_LEVEL_INFO:
+		case MVK_CONFIG_LOG_LEVEL_WARNING:
+			return VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_ERROR:
+		default:
+			return VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
 	}
 }
 

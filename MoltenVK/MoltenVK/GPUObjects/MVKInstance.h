@@ -183,6 +183,7 @@ protected:
 	NSArray<id<MTLDevice>>* getAvailableMTLDevicesArray();
 	VkDebugReportFlagsEXT getVkDebugReportFlagsFromLogLevel(MVKConfigLogLevel logLevel);
 	VkDebugUtilsMessageSeverityFlagBitsEXT getVkDebugUtilsMessageSeverityFlagBitsFromLogLevel(MVKConfigLogLevel logLevel);
+	VkDebugUtilsMessageTypeFlagsEXT getVkDebugUtilsMessageTypesFlagBitsFromLogLevel(MVKConfigLogLevel logLevel);
 	MVKEntryPoint* getEntryPoint(const char* pName);
     void logVersions();
 	VkResult verifyLayers(uint32_t count, const char* const* names);
