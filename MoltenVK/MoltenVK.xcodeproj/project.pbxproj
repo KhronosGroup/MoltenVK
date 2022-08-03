@@ -524,7 +524,6 @@
 		A9B51BD2225E986A00AC74D2 /* MVKOSExtensions.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKOSExtensions.mm; sourceTree = "<group>"; };
 		A9B51BD6225E986A00AC74D2 /* MVKOSExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKOSExtensions.h; sourceTree = "<group>"; };
 		A9B8EE0A1A98D796009C5A02 /* libMoltenVK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVK.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		A9C83DCD24533E22003E5261 /* MVKCommandTypePools.def */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = MVKCommandTypePools.def; sourceTree = "<group>"; };
 		A9C86CB61C55B8350096CAF2 /* MoltenVKShaderConverter.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = MoltenVKShaderConverter.xcodeproj; path = ../MoltenVKShaderConverter/MoltenVKShaderConverter.xcodeproj; sourceTree = "<group>"; };
 		A9C96DCE1DDC20C20053187F /* MVKMTLBufferAllocation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKMTLBufferAllocation.h; sourceTree = "<group>"; };
 		A9C96DCF1DDC20C20053187F /* MVKMTLBufferAllocation.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKMTLBufferAllocation.mm; sourceTree = "<group>"; };
@@ -605,7 +604,6 @@
 				A94FB77B1C7DFB4800632CA3 /* MVKCommandPool.mm */,
 				A95870F61C90D29F009EB096 /* MVKCommandResourceFactory.h */,
 				A95870F71C90D29F009EB096 /* MVKCommandResourceFactory.mm */,
-				A9C83DCD24533E22003E5261 /* MVKCommandTypePools.def */,
 				A9C96DCE1DDC20C20053187F /* MVKMTLBufferAllocation.h */,
 				A9C96DCF1DDC20C20053187F /* MVKMTLBufferAllocation.mm */,
 				A9E4B7881E1D8AF10046A4CE /* MVKMTLResourceBindings.h */,

@@ -20,6 +20,7 @@
 
 
 #include "MVKObjectPool.h"
+#include "MVKSmallVector.h"
 
 class MVKCommandBuffer;
 class MVKCommandEncoder;
@@ -69,10 +70,70 @@ public:
 
 protected:
 	friend MVKCommandBuffer;
-
-	// Returns the command type pool used by this command, from the command pool.
-	// This function is overridden in each concrete subclass declaration, but the implementation of
-	// this function in each subclass is automatically generated in the MVKCommandPool implementation.
-	virtual MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) = 0;
 };
 
+
+void *mvkPushCommandMemory(MVKCommandBuffer *cmdBuffer, size_t size);
+
+/**
+ * Allocator for MVKCommandVector below.
+ */
+template <typename T>
+class MVKCommandStorageAllocator {
+public:
+    typedef T value_type;
+    MVKCommandBuffer *cmdBuffer        = nullptr;
+    T                *ptr              = nullptr;
+    size_t           num_elements_used = 0;
+    size_t           capacity          = 0;
+
+public:
+    const T &operator[](const size_t i) const { return ptr[i]; }
+    T       &operator[](const size_t i)       { return ptr[i]; }
+
+    size_t size() const { return num_elements_used; }
+
+    void swap(MVKCommandStorageAllocator &a) {
+        auto copy = *this;
+        *this = a;
+        a = copy;
+    }
+
+    template<class S, class... Args> void construct(S *_ptr, Args&&... _args) {
+        *_ptr = S(std::forward<Args>(_args)...);
+    }
+
+    template<class S> void destruct(S *_ptr) {}
+
+    void allocate(const size_t num_elements_to_reserve) {
+        ptr = (T *)mvkPushCommandMemory(cmdBuffer, num_elements_to_reserve * sizeof(T));
+        num_elements_used = 0;
+        capacity = num_elements_to_reserve;
+    }
+
+    void re_allocate(const size_t num_elements_to_reserve) {
+        auto new_ptr = mvkPushCommandMemory(cmdBuffer, num_elements_to_reserve * sizeof(T));
+        memcpy(new_ptr, ptr, num_elements_used * sizeof(T));
+        ptr = (T *)new_ptr;
+        capacity = num_elements_to_reserve;
+    }
+
+    void shrink_to_fit() {}
+
+    void deallocate() {}
+
+    size_t get_capacity() const { return capacity; }
+
+    template<class S> void destruct_all() {
+        num_elements_used = 0;
+    }
+};
+
+#pragma mark -
+#pragma mark MVKCommandVector
+
+/**
+ * Array for storing dynamic amounts of data in the command buffer.
+ */
+template<typename Type>
+using MVKCommandVector = MVKSmallVectorImpl<Type, MVKCommandStorageAllocator<Type>>;

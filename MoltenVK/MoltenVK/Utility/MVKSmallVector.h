@@ -59,10 +59,11 @@ using MVKSmallVector = std::vector<T>;
 template<typename Type, typename Allocator = mvk_smallvector_allocator<Type, 0>>
 class MVKSmallVectorImpl
 {
-  Allocator  alc;
-  
+
 public:
   using value_type = Type;
+  Allocator  alc;
+
   class iterator
   {
     const MVKSmallVectorImpl *vector;
@@ -523,10 +524,10 @@ template<typename Type, typename Allocator>
 class MVKSmallVectorImpl<Type*, Allocator>
 {
 
-  Allocator  alc;
-
 public:
   using value_type = Type*;
+    Allocator  alc;
+
   class iterator
   {
     MVKSmallVectorImpl *vector;
