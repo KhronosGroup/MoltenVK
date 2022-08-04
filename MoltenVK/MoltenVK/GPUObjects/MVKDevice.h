@@ -773,31 +773,17 @@ public:
 #pragma mark Properties directly accessible
 
 	/** The list of Vulkan extensions, indicating whether each has been enabled by the app for this device. */
-	const MVKExtensionList _enabledExtensions;
+	MVKExtensionList _enabledExtensions;
 
 	/** Device features available and enabled. */
-	const VkPhysicalDeviceFeatures _enabledFeatures;
-	const VkPhysicalDevice16BitStorageFeatures _enabledStorage16Features;
-	const VkPhysicalDevice8BitStorageFeaturesKHR _enabledStorage8Features;
-	const VkPhysicalDeviceFloat16Int8FeaturesKHR _enabledF16I8Features;
-	const VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR _enabledUBOLayoutFeatures;
-	const VkPhysicalDeviceVariablePointerFeatures _enabledVarPtrFeatures;
-	const VkPhysicalDeviceDescriptorIndexingFeaturesEXT _enabledDescriptorIndexingFeatures;
-	const VkPhysicalDeviceInlineUniformBlockFeaturesEXT _enabledInlineUniformBlockFeatures;
-	const VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT _enabledInterlockFeatures;
-	const VkPhysicalDeviceHostQueryResetFeaturesEXT _enabledHostQryResetFeatures;
-	const VkPhysicalDeviceSamplerYcbcrConversionFeatures _enabledSamplerYcbcrConversionFeatures;
-	const VkPhysicalDevicePrivateDataFeaturesEXT _enabledPrivateDataFeatures;
-	const VkPhysicalDeviceScalarBlockLayoutFeaturesEXT _enabledScalarLayoutFeatures;
-	const VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT _enabledTexelBuffAlignFeatures;
-	const VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT _enabledVtxAttrDivFeatures;
-	const VkPhysicalDevicePortabilitySubsetFeaturesKHR _enabledPortabilityFeatures;
-	const VkPhysicalDeviceImagelessFramebufferFeaturesKHR _enabledImagelessFramebufferFeatures;
-	const VkPhysicalDeviceDynamicRenderingFeatures _enabledDynamicRenderingFeatures;
-	const VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures _enabledSeparateDepthStencilLayoutsFeatures;
-	const VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR _enabledFragmentShaderBarycentricFeatures;
-	const VkPhysicalDeviceBufferDeviceAddressFeatures _enabledBufferDeviceAddressFeatures;
-	const VkPhysicalDeviceBufferDeviceAddressFeaturesEXT _enabledBufferDeviceAddressFeaturesEXT;
+	VkPhysicalDeviceFeatures _enabledFeatures;
+
+	// List of extended device feature enabling structures, as public member variables.
+#define MVK_DEVICE_FEATURE(structName, enumName, flagCount) \
+	VkPhysicalDevice##structName##Features _enabled##structName##Features;
+#define MVK_DEVICE_FEATURE_EXTN(structName, enumName, extnSfx, flagCount) \
+	VkPhysicalDevice##structName##Features##extnSfx _enabled##structName##Features;
+#include "MVKDeviceFeatureStructs.def"
 
 	/** Pointer to the Metal-specific features of the underlying physical device. */
 	const MVKPhysicalDeviceMetalFeatures* _pMetalFeatures;
@@ -852,7 +838,8 @@ protected:
 	void initQueues(const VkDeviceCreateInfo* pCreateInfo);
 	void reservePrivateData(const VkDeviceCreateInfo* pCreateInfo);
 	void enableFeatures(const VkDeviceCreateInfo* pCreateInfo);
-	void enableFeatures(const VkBool32* pEnable, const VkBool32* pRequested, const VkBool32* pAvailable, uint32_t count);
+	void enableFeatures(VkBaseInStructure* pEnabled, const VkBaseInStructure* pRequested, const VkBaseInStructure* pAvailable, uint32_t count);
+	void enableFeatures(VkBool32* pEnabledBools, const VkBool32* pRequestedBools, const VkBool32* pAvailableBools, uint32_t count);
 	void enableExtensions(const VkDeviceCreateInfo* pCreateInfo);
     const char* getActivityPerformanceDescription(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats);
 	void logActivityPerformance(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);

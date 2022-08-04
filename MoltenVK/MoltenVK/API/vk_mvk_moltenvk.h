@@ -219,8 +219,8 @@ typedef struct {
 	 * it may cause unexpected visual artifacts and unnecessary GPU load.
 	 *
 	 * This feature is incompatible with updating descriptors after binding. If any of the
-	 * *UpdateAfterBind feature flags of VkPhysicalDeviceDescriptorIndexingFeaturesEXT or
-	 * VkPhysicalDeviceInlineUniformBlockFeaturesEXT have been enabled, the value of this
+	 * *UpdateAfterBind feature flags of VkPhysicalDeviceDescriptorIndexingFeatures or
+	 * VkPhysicalDeviceInlineUniformBlockFeatures have been enabled, the value of this
 	 * setting will be ignored and treated as if it is false.
 	 *
 	 * The value of this parameter may be changed at any time during application runtime,
