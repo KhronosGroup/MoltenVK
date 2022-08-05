@@ -201,7 +201,6 @@
 		A94FB7E21C7DFB4800632CA3 /* MVKDescriptorSet.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7821C7DFB4800632CA3 /* MVKDescriptorSet.mm */; };
 		A94FB7E31C7DFB4800632CA3 /* MVKDescriptorSet.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7821C7DFB4800632CA3 /* MVKDescriptorSet.mm */; };
 		A94FB7E41C7DFB4800632CA3 /* MVKDevice.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7831C7DFB4800632CA3 /* MVKDevice.h */; };
-		A94FB7E51C7DFB4800632CA3 /* MVKDevice.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7831C7DFB4800632CA3 /* MVKDevice.h */; };
 		A94FB7E61C7DFB4800632CA3 /* MVKDevice.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7841C7DFB4800632CA3 /* MVKDevice.mm */; };
 		A94FB7E71C7DFB4800632CA3 /* MVKDevice.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7841C7DFB4800632CA3 /* MVKDevice.mm */; };
 		A94FB7E81C7DFB4800632CA3 /* MVKDeviceMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7851C7DFB4800632CA3 /* MVKDeviceMemory.h */; };
@@ -304,6 +303,10 @@
 		A98149641FB6A3F7005F00B4 /* MVKWatermarkTextureContent.h in Headers */ = {isa = PBXBuildFile; fileRef = A981494C1FB6A3F7005F00B4 /* MVKWatermarkTextureContent.h */; };
 		A981496B1FB6A998005F00B4 /* MVKStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = A981496A1FB6A998005F00B4 /* MVKStrings.h */; };
 		A981496C1FB6A998005F00B4 /* MVKStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = A981496A1FB6A998005F00B4 /* MVKStrings.h */; };
+		A987B668289AFB6100F933C8 /* MVKDevice.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7831C7DFB4800632CA3 /* MVKDevice.h */; };
+		A987B669289AFB8A00F933C8 /* MVKDeviceFeatureStructs.def in Headers */ = {isa = PBXBuildFile; fileRef = A987B666289AFB2400F933C8 /* MVKDeviceFeatureStructs.def */; };
+		A987B66A289AFB8B00F933C8 /* MVKDeviceFeatureStructs.def in Headers */ = {isa = PBXBuildFile; fileRef = A987B666289AFB2400F933C8 /* MVKDeviceFeatureStructs.def */; };
+		A987B66B289AFB8C00F933C8 /* MVKDeviceFeatureStructs.def in Headers */ = {isa = PBXBuildFile; fileRef = A987B666289AFB2400F933C8 /* MVKDeviceFeatureStructs.def */; };
 		A99C90EE229455B300A061DA /* MVKCmdDebug.h in Headers */ = {isa = PBXBuildFile; fileRef = A99C90EC229455B200A061DA /* MVKCmdDebug.h */; };
 		A99C90EF229455B300A061DA /* MVKCmdDebug.h in Headers */ = {isa = PBXBuildFile; fileRef = A99C90EC229455B200A061DA /* MVKCmdDebug.h */; };
 		A99C90F0229455B300A061DA /* MVKCmdDebug.mm in Sources */ = {isa = PBXBuildFile; fileRef = A99C90ED229455B300A061DA /* MVKCmdDebug.mm */; };
@@ -511,6 +514,7 @@
 		A981494B1FB6A3F7005F00B4 /* MVKWatermarkShaderSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKWatermarkShaderSource.h; sourceTree = "<group>"; };
 		A981494C1FB6A3F7005F00B4 /* MVKWatermarkTextureContent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKWatermarkTextureContent.h; sourceTree = "<group>"; };
 		A981496A1FB6A998005F00B4 /* MVKStrings.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKStrings.h; sourceTree = "<group>"; };
+		A987B666289AFB2400F933C8 /* MVKDeviceFeatureStructs.def */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = MVKDeviceFeatureStructs.def; sourceTree = "<group>"; };
 		A99C90EC229455B200A061DA /* MVKCmdDebug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCmdDebug.h; sourceTree = "<group>"; };
 		A99C90ED229455B300A061DA /* MVKCmdDebug.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdDebug.mm; sourceTree = "<group>"; };
 		A99C91002295FAC500A061DA /* MVKVulkanAPIObject.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKVulkanAPIObject.mm; sourceTree = "<group>"; };
@@ -620,6 +624,7 @@
 				A94FB7821C7DFB4800632CA3 /* MVKDescriptorSet.mm */,
 				A94FB7831C7DFB4800632CA3 /* MVKDevice.h */,
 				A94FB7841C7DFB4800632CA3 /* MVKDevice.mm */,
+				A987B666289AFB2400F933C8 /* MVKDeviceFeatureStructs.def */,
 				A94FB7851C7DFB4800632CA3 /* MVKDeviceMemory.h */,
 				A94FB7861C7DFB4800632CA3 /* MVKDeviceMemory.mm */,
 				A94FB7871C7DFB4800632CA3 /* MVKFramebuffer.h */,
@@ -804,6 +809,7 @@
 				2FEA0A4C24902F9F00EEF3AD /* MVKCommandPipelineStateFactoryShaderSource.h in Headers */,
 				2FEA0A4D24902F9F00EEF3AD /* MVKDescriptorSet.h in Headers */,
 				2FEA0A4E24902F9F00EEF3AD /* NSString+MoltenVK.h in Headers */,
+				A987B66A289AFB8B00F933C8 /* MVKDeviceFeatureStructs.def in Headers */,
 				2FEA0A4F24902F9F00EEF3AD /* CAMetalLayer+MoltenVK.h in Headers */,
 				2FEA0A5024902F9F00EEF3AD /* MVKCodec.h in Headers */,
 				2FEA0A5124902F9F00EEF3AD /* MVKRenderPass.h in Headers */,
@@ -863,6 +869,7 @@
 			files = (
 				A909F65F213B190700FCD6BE /* MVKExtensions.h in Headers */,
 				A94FB7B41C7DFB4800632CA3 /* vk_mvk_moltenvk.h in Headers */,
+				A987B669289AFB8A00F933C8 /* MVKDeviceFeatureStructs.def in Headers */,
 				A94FB7B01C7DFB4800632CA3 /* mvk_datatypes.h in Headers */,
 				A948BB7F1E51642700DE59F2 /* mvk_vulkan.h in Headers */,
 				A98149511FB6A3F7005F00B4 /* MVKEnvironment.h in Headers */,
@@ -936,6 +943,7 @@
 			files = (
 				A909F660213B190700FCD6BE /* MVKExtensions.h in Headers */,
 				A94FB7B51C7DFB4800632CA3 /* vk_mvk_moltenvk.h in Headers */,
+				A987B66B289AFB8C00F933C8 /* MVKDeviceFeatureStructs.def in Headers */,
 				A94FB7B11C7DFB4800632CA3 /* mvk_datatypes.h in Headers */,
 				A948BB801E51642700DE59F2 /* mvk_vulkan.h in Headers */,
 				A98149521FB6A3F7005F00B4 /* MVKEnvironment.h in Headers */,
@@ -959,7 +967,6 @@
 				A98149621FB6A3F7005F00B4 /* MVKWatermarkShaderSource.h in Headers */,
 				A9E53DE42100B197002781DD /* MTLSamplerDescriptor+MoltenVK.h in Headers */,
 				A94FB8191C7DFB4800632CA3 /* MVKSync.h in Headers */,
-				A94FB7E51C7DFB4800632CA3 /* MVKDevice.h in Headers */,
 				A9F3D9DF24732A4D00745190 /* MVKSmallVector.h in Headers */,
 				A94FB7D51C7DFB4800632CA3 /* MVKCommandPool.h in Headers */,
 				A94FB80D1C7DFB4800632CA3 /* MVKShaderModule.h in Headers */,
@@ -982,6 +989,7 @@
 				A94FB7F11C7DFB4800632CA3 /* MVKImage.h in Headers */,
 				4553AEFE2251617100E8EBCD /* MVKBlockObserver.h in Headers */,
 				A94FB7B91C7DFB4800632CA3 /* MVKCmdTransfer.h in Headers */,
+				A987B668289AFB6100F933C8 /* MVKDevice.h in Headers */,
 				A966A5E023C535D000BBF9B4 /* MVKDescriptor.h in Headers */,
 				A94FB7C91C7DFB4800632CA3 /* MVKCmdDraw.h in Headers */,
 				A94FB7D11C7DFB4800632CA3 /* MVKCommandBuffer.h in Headers */,
