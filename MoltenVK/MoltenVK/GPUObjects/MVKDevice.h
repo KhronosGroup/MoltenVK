@@ -398,7 +398,8 @@ protected:
 	void initPipelineCacheUUID();
 	uint32_t getHighestGPUCapability();
 	uint32_t getMoltenVKGitRevision();
-	void populate(VkPhysicalDeviceIDProperties* pDevIdProps);
+	void populateDeviceIDProperties(VkPhysicalDeviceVulkan11Properties* pVk11Props);
+	void populateSubgroupProperties(VkPhysicalDeviceVulkan11Properties* pVk11Props);
 	void logGPUInfo();
 
 	id<MTLDevice> _mtlDevice;
