@@ -93,57 +93,143 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures* features) {
 }
 
 void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
+
+	// Create a SSOT for these Vulkan 1.1 features, which can be queried via two mechanisms here.
+	VkPhysicalDeviceVulkan11Features supportedFeats11 = {
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
+		.pNext = nullptr,
+		.storageBuffer16BitAccess = true,
+		.uniformAndStorageBuffer16BitAccess = true,
+		.storagePushConstant16 = true,
+		.storageInputOutput16 = true,
+		.multiview = true,
+		.multiviewGeometryShader = false,
+		.multiviewTessellationShader = false,		// FIXME
+		.variablePointersStorageBuffer = true,
+		.variablePointers = true,
+		.protectedMemory = false,
+		.samplerYcbcrConversion = true,
+		.shaderDrawParameters = true,
+	};
+
+	// Create a SSOT for these Vulkan 1.2 features, which can be queried via two mechanisms here.
+	VkPhysicalDeviceVulkan12Features supportedFeats12 = {
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+		.pNext = nullptr,
+		.samplerMirrorClampToEdge = _metalFeatures.samplerMirrorClampToEdge,
+		.drawIndirectCount = false,									// VK_KHR_draw_indirect_count
+		.storageBuffer8BitAccess = true,
+		.uniformAndStorageBuffer8BitAccess = true,
+		.storagePushConstant8 = true,
+		.shaderBufferInt64Atomics = false,							// VK_KHR_shader_atomic_int64
+		.shaderSharedInt64Atomics = false,							// VK_KHR_shader_atomic_int64
+		.shaderFloat16 = true,
+		.shaderInt8 = true,
+		.descriptorIndexing = false,		// Requires _metalFeatures.arrayOfTextures && _metalFeatures.arrayOfSamplers && shaderStorageBufferArrayNonUniformIndexing
+		.shaderInputAttachmentArrayDynamicIndexing = _metalFeatures.arrayOfTextures,
+		.shaderUniformTexelBufferArrayDynamicIndexing = _metalFeatures.arrayOfTextures,
+		.shaderStorageTexelBufferArrayDynamicIndexing = _metalFeatures.arrayOfTextures,
+		.shaderUniformBufferArrayNonUniformIndexing = false,
+		.shaderSampledImageArrayNonUniformIndexing = _metalFeatures.arrayOfTextures && _metalFeatures.arrayOfSamplers,
+		.shaderStorageBufferArrayNonUniformIndexing = false,
+		.shaderStorageImageArrayNonUniformIndexing = _metalFeatures.arrayOfTextures,
+		.shaderInputAttachmentArrayNonUniformIndexing = _metalFeatures.arrayOfTextures,
+		.shaderUniformTexelBufferArrayNonUniformIndexing = _metalFeatures.arrayOfTextures,
+		.shaderStorageTexelBufferArrayNonUniformIndexing = _metalFeatures.arrayOfTextures,
+		.descriptorBindingUniformBufferUpdateAfterBind = true,
+		.descriptorBindingSampledImageUpdateAfterBind = true,
+		.descriptorBindingStorageImageUpdateAfterBind = true,
+		.descriptorBindingStorageBufferUpdateAfterBind = true,
+		.descriptorBindingUniformTexelBufferUpdateAfterBind = true,
+		.descriptorBindingStorageTexelBufferUpdateAfterBind = true,
+		.descriptorBindingUpdateUnusedWhilePending = true,
+		.descriptorBindingPartiallyBound = true,
+		.descriptorBindingVariableDescriptorCount = true,
+		.runtimeDescriptorArray = true,
+		.samplerFilterMinmax = false,								// VK_EXT_sampler_filter_minmax
+		.scalarBlockLayout = true,
+		.imagelessFramebuffer = true,
+		.uniformBufferStandardLayout = true,
+		.shaderSubgroupExtendedTypes = _metalFeatures.simdPermute || _metalFeatures.quadPermute,
+		.separateDepthStencilLayouts = true,
+		.hostQueryReset = true,
+		.timelineSemaphore = true,
+		.bufferDeviceAddress = mvkOSVersionIsAtLeast(12.05, 16.0),
+		.bufferDeviceAddressCaptureReplay = false,
+		.bufferDeviceAddressMultiDevice = false,
+		.vulkanMemoryModel = false,									// VK_KHR_vulkan_memory_model
+		.vulkanMemoryModelDeviceScope = false,						// VK_KHR_vulkan_memory_model
+		.vulkanMemoryModelAvailabilityVisibilityChains = false,		// VK_KHR_vulkan_memory_model
+		.shaderOutputViewportIndex = true,
+		.shaderOutputLayer = true,
+		.subgroupBroadcastDynamicId = true,
+	};
+
 	features->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 	features->features = _features;
 	for (auto* next = (VkBaseOutStructure*)features->pNext; next; next = next->pNext) {
 		switch ((uint32_t)next->sType) {
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: {
+				// Copy from supportedFeats11, but keep pNext as is.
+				auto* pFeats11 = (VkPhysicalDeviceVulkan11Features*)next;
+				supportedFeats11.pNext = pFeats11->pNext;
+				*pFeats11 = supportedFeats11;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
+				// Copy from supportedFeats12, but keep pNext as is.
+				auto* pFeats12 = (VkPhysicalDeviceVulkan12Features*)next;
+				supportedFeats12.pNext = pFeats12->pNext;
+				*pFeats12 = supportedFeats12;
+				break;
+			}
 
 			// For consistency and ease of admin, keep the following list in the same order as in MVKDeviceFeatureStructs.def
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
 				auto* storageFeatures = (VkPhysicalDevice16BitStorageFeatures*)next;
-				storageFeatures->storageBuffer16BitAccess = true;
-				storageFeatures->uniformAndStorageBuffer16BitAccess = true;
-				storageFeatures->storagePushConstant16 = true;
-				storageFeatures->storageInputOutput16 = true;
+				storageFeatures->storageBuffer16BitAccess = supportedFeats11.storageBuffer16BitAccess;
+				storageFeatures->uniformAndStorageBuffer16BitAccess = supportedFeats11.uniformAndStorageBuffer16BitAccess;
+				storageFeatures->storagePushConstant16 = supportedFeats11.storagePushConstant16;
+				storageFeatures->storageInputOutput16 = supportedFeats11.storageInputOutput16;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES: {
 				auto* storageFeatures = (VkPhysicalDevice8BitStorageFeatures*)next;
-				storageFeatures->storageBuffer8BitAccess = true;
-				storageFeatures->uniformAndStorageBuffer8BitAccess = true;
-				storageFeatures->storagePushConstant8 = true;
+				storageFeatures->storageBuffer8BitAccess = supportedFeats12.storagePushConstant8;
+				storageFeatures->uniformAndStorageBuffer8BitAccess = supportedFeats12.storagePushConstant8;
+				storageFeatures->storagePushConstant8 = supportedFeats12.storagePushConstant8;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES:
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: {
 				auto* bufferDeviceAddressFeatures = (VkPhysicalDeviceBufferDeviceAddressFeatures*)next;
-				bufferDeviceAddressFeatures->bufferDeviceAddress = mvkOSVersionIsAtLeast(12.05, 16.0);
-				bufferDeviceAddressFeatures->bufferDeviceAddressCaptureReplay = false;
-				bufferDeviceAddressFeatures->bufferDeviceAddressMultiDevice = false;
+				bufferDeviceAddressFeatures->bufferDeviceAddress = supportedFeats12.bufferDeviceAddress;
+				bufferDeviceAddressFeatures->bufferDeviceAddressCaptureReplay = supportedFeats12.bufferDeviceAddressCaptureReplay;
+				bufferDeviceAddressFeatures->bufferDeviceAddressMultiDevice = supportedFeats12.bufferDeviceAddressMultiDevice;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES: {
 				auto* pDescIdxFeatures = (VkPhysicalDeviceDescriptorIndexingFeatures*)next;
-				pDescIdxFeatures->shaderInputAttachmentArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
-				pDescIdxFeatures->shaderUniformTexelBufferArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
-				pDescIdxFeatures->shaderStorageTexelBufferArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
-				pDescIdxFeatures->shaderUniformBufferArrayNonUniformIndexing = false;
-				pDescIdxFeatures->shaderSampledImageArrayNonUniformIndexing = _metalFeatures.arrayOfTextures && _metalFeatures.arrayOfSamplers;
-				pDescIdxFeatures->shaderStorageBufferArrayNonUniformIndexing = false;
-				pDescIdxFeatures->shaderStorageImageArrayNonUniformIndexing = _metalFeatures.arrayOfTextures;
-				pDescIdxFeatures->shaderInputAttachmentArrayNonUniformIndexing = _metalFeatures.arrayOfTextures;
-				pDescIdxFeatures->shaderUniformTexelBufferArrayNonUniformIndexing = _metalFeatures.arrayOfTextures;
-				pDescIdxFeatures->shaderStorageTexelBufferArrayNonUniformIndexing = _metalFeatures.arrayOfTextures;
-				pDescIdxFeatures->descriptorBindingUniformBufferUpdateAfterBind = true;
-				pDescIdxFeatures->descriptorBindingSampledImageUpdateAfterBind = true;
-				pDescIdxFeatures->descriptorBindingStorageImageUpdateAfterBind = true;
-				pDescIdxFeatures->descriptorBindingStorageBufferUpdateAfterBind = true;
-				pDescIdxFeatures->descriptorBindingUniformTexelBufferUpdateAfterBind = true;
-				pDescIdxFeatures->descriptorBindingStorageTexelBufferUpdateAfterBind = true;
-				pDescIdxFeatures->descriptorBindingUpdateUnusedWhilePending = true;
-				pDescIdxFeatures->descriptorBindingPartiallyBound = true;
-				pDescIdxFeatures->descriptorBindingVariableDescriptorCount = true;
-				pDescIdxFeatures->runtimeDescriptorArray = true;
+				pDescIdxFeatures->shaderInputAttachmentArrayDynamicIndexing = supportedFeats12.shaderInputAttachmentArrayDynamicIndexing;
+				pDescIdxFeatures->shaderUniformTexelBufferArrayDynamicIndexing = supportedFeats12.shaderUniformTexelBufferArrayDynamicIndexing;
+				pDescIdxFeatures->shaderStorageTexelBufferArrayDynamicIndexing = supportedFeats12.shaderStorageTexelBufferArrayDynamicIndexing;
+				pDescIdxFeatures->shaderUniformBufferArrayNonUniformIndexing = supportedFeats12.shaderUniformBufferArrayNonUniformIndexing;
+				pDescIdxFeatures->shaderSampledImageArrayNonUniformIndexing = supportedFeats12.shaderSampledImageArrayNonUniformIndexing;
+				pDescIdxFeatures->shaderStorageBufferArrayNonUniformIndexing = supportedFeats12.shaderStorageBufferArrayNonUniformIndexing;
+				pDescIdxFeatures->shaderStorageImageArrayNonUniformIndexing = supportedFeats12.shaderStorageImageArrayNonUniformIndexing;
+				pDescIdxFeatures->shaderInputAttachmentArrayNonUniformIndexing = supportedFeats12.shaderInputAttachmentArrayNonUniformIndexing;
+				pDescIdxFeatures->shaderUniformTexelBufferArrayNonUniformIndexing = supportedFeats12.shaderUniformTexelBufferArrayNonUniformIndexing;
+				pDescIdxFeatures->shaderStorageTexelBufferArrayNonUniformIndexing = supportedFeats12.shaderStorageTexelBufferArrayNonUniformIndexing;
+				pDescIdxFeatures->descriptorBindingUniformBufferUpdateAfterBind = supportedFeats12.descriptorBindingUniformBufferUpdateAfterBind;
+				pDescIdxFeatures->descriptorBindingSampledImageUpdateAfterBind = supportedFeats12.descriptorBindingSampledImageUpdateAfterBind;
+				pDescIdxFeatures->descriptorBindingStorageImageUpdateAfterBind = supportedFeats12.descriptorBindingStorageImageUpdateAfterBind;
+				pDescIdxFeatures->descriptorBindingStorageBufferUpdateAfterBind = supportedFeats12.descriptorBindingStorageBufferUpdateAfterBind;
+				pDescIdxFeatures->descriptorBindingUniformTexelBufferUpdateAfterBind = supportedFeats12.descriptorBindingUniformTexelBufferUpdateAfterBind;
+				pDescIdxFeatures->descriptorBindingStorageTexelBufferUpdateAfterBind = supportedFeats12.descriptorBindingStorageTexelBufferUpdateAfterBind;
+				pDescIdxFeatures->descriptorBindingUpdateUnusedWhilePending = supportedFeats12.descriptorBindingUpdateUnusedWhilePending;
+				pDescIdxFeatures->descriptorBindingPartiallyBound = supportedFeats12.descriptorBindingPartiallyBound;
+				pDescIdxFeatures->descriptorBindingVariableDescriptorCount = supportedFeats12.descriptorBindingVariableDescriptorCount;
+				pDescIdxFeatures->runtimeDescriptorArray = supportedFeats12.runtimeDescriptorArray;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES: {
@@ -153,12 +239,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES: {
 				auto* hostQueryResetFeatures = (VkPhysicalDeviceHostQueryResetFeatures*)next;
-				hostQueryResetFeatures->hostQueryReset = true;
+				hostQueryResetFeatures->hostQueryReset = supportedFeats12.hostQueryReset;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES: {
 				auto* imagelessFramebufferFeatures = (VkPhysicalDeviceImagelessFramebufferFeatures*)next;
-				imagelessFramebufferFeatures->imagelessFramebuffer = true;
+				imagelessFramebufferFeatures->imagelessFramebuffer = supportedFeats12.imagelessFramebuffer;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES: {
@@ -174,9 +260,9 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
 				auto* multiviewFeatures = (VkPhysicalDeviceMultiviewFeatures*)next;
-				multiviewFeatures->multiview = true;
-				multiviewFeatures->multiviewGeometryShader = false;
-				multiviewFeatures->multiviewTessellationShader = false;		// FIXME
+				multiviewFeatures->multiview = supportedFeats11.multiview;
+				multiviewFeatures->multiviewGeometryShader = supportedFeats11.multiviewGeometryShader;
+				multiviewFeatures->multiviewTessellationShader = supportedFeats11.multiviewTessellationShader;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES: {
@@ -186,38 +272,38 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
 				auto* protectedMemFeatures = (VkPhysicalDeviceProtectedMemoryFeatures*)next;
-				protectedMemFeatures->protectedMemory = false;
+				protectedMemFeatures->protectedMemory = supportedFeats11.protectedMemory;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
 				auto* samplerYcbcrConvFeatures = (VkPhysicalDeviceSamplerYcbcrConversionFeatures*)next;
-				samplerYcbcrConvFeatures->samplerYcbcrConversion = true;
+				samplerYcbcrConvFeatures->samplerYcbcrConversion = supportedFeats11.samplerYcbcrConversion;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES: {
 				auto* scalarLayoutFeatures = (VkPhysicalDeviceScalarBlockLayoutFeatures*)next;
-				scalarLayoutFeatures->scalarBlockLayout = true;
+				scalarLayoutFeatures->scalarBlockLayout = supportedFeats12.scalarBlockLayout;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES: {
 				auto* separateDepthStencilLayoutsFeatures = (VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures*)next;
-				separateDepthStencilLayoutsFeatures->separateDepthStencilLayouts = true;
+				separateDepthStencilLayoutsFeatures->separateDepthStencilLayouts = supportedFeats12.separateDepthStencilLayouts;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES: {
 				auto* shaderDrawParamsFeatures = (VkPhysicalDeviceShaderDrawParametersFeatures*)next;
-				shaderDrawParamsFeatures->shaderDrawParameters = true;
+				shaderDrawParamsFeatures->shaderDrawParameters = supportedFeats11.shaderDrawParameters;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES: {
 				auto* f16Features = (VkPhysicalDeviceShaderFloat16Int8Features*)next;
-				f16Features->shaderFloat16 = true;
-				f16Features->shaderInt8 = true;
+				f16Features->shaderFloat16 = supportedFeats12.shaderFloat16;
+				f16Features->shaderInt8 = supportedFeats12.shaderInt8;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES: {
 				auto* shaderSGTypesFeatures = (VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures*)next;
-				shaderSGTypesFeatures->shaderSubgroupExtendedTypes = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
+				shaderSGTypesFeatures->shaderSubgroupExtendedTypes = supportedFeats12.shaderSubgroupExtendedTypes;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES: {
@@ -233,18 +319,18 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
 				auto* timelineSem4Features = (VkPhysicalDeviceTimelineSemaphoreFeatures*)next;
-				timelineSem4Features->timelineSemaphore = true;
+				timelineSem4Features->timelineSemaphore = supportedFeats12.timelineSemaphore;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES: {
 				auto* uboLayoutFeatures = (VkPhysicalDeviceUniformBufferStandardLayoutFeatures*)next;
-				uboLayoutFeatures->uniformBufferStandardLayout = true;
+				uboLayoutFeatures->uniformBufferStandardLayout = supportedFeats12.uniformBufferStandardLayout;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
 				auto* varPtrFeatures = (VkPhysicalDeviceVariablePointerFeatures*)next;
-				varPtrFeatures->variablePointersStorageBuffer = true;
-				varPtrFeatures->variablePointers = true;
+				varPtrFeatures->variablePointersStorageBuffer = supportedFeats11.variablePointersStorageBuffer;
+				varPtrFeatures->variablePointers = supportedFeats11.variablePointers;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR: {
@@ -313,136 +399,195 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties* properties) {
 }
 
 void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
+	uint32_t uintMax = std::numeric_limits<uint32_t>::max();
+	uint32_t maxSamplerCnt = getMaxSamplerCount();
+	bool isTier2 = isUsingMetalArgumentBuffers() && (_metalFeatures.argumentBuffersTier >= MTLArgumentBuffersTier2);
+
+	// Create a SSOT for these Vulkan 1.1 properties, which can be queried via two mechanisms here.
+	VkPhysicalDeviceVulkan11Properties supportedProps11;
+	supportedProps11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
+	supportedProps11.pNext = nullptr;
+	populateDeviceIDProperties(&supportedProps11);
+	populateSubgroupProperties(&supportedProps11);
+	supportedProps11.pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
+	supportedProps11.maxMultiviewViewCount = 32;
+	supportedProps11.maxMultiviewInstanceIndex = canUseInstancingForMultiview() ? uintMax / 32 : uintMax;
+	supportedProps11.protectedNoFault = false;
+	supportedProps11.maxPerSetDescriptors = 4 * (_metalFeatures.maxPerStageBufferCount +
+												 _metalFeatures.maxPerStageTextureCount +
+												 _metalFeatures.maxPerStageSamplerCount);
+	supportedProps11.maxMemoryAllocationSize = _metalFeatures.maxMTLBufferSize;
+
+	// Create a SSOT for these Vulkan 1.2 properties, which can be queried via two mechanisms here.
+	VkPhysicalDeviceVulkan12Properties supportedProps12;
+	supportedProps12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
+	supportedProps12.pNext = nullptr;
+	supportedProps12.driverID = VK_DRIVER_ID_MOLTENVK;
+	strcpy(supportedProps12.driverName, "MoltenVK");
+	strcpy(supportedProps12.driverInfo, mvkGetMoltenVKVersionString(MVK_VERSION).c_str());
+	supportedProps12.conformanceVersion.major = 0;
+	supportedProps12.conformanceVersion.minor = 0;
+	supportedProps12.conformanceVersion.subminor = 0;
+	supportedProps12.conformanceVersion.patch = 0;
+	supportedProps12.denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY;	// VK_KHR_shader_float_controls
+	supportedProps12.roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY;		// VK_KHR_shader_float_controls
+	supportedProps12.shaderSignedZeroInfNanPreserveFloat16 = false;										// VK_KHR_shader_float_controls
+	supportedProps12.shaderSignedZeroInfNanPreserveFloat32 = false;										// VK_KHR_shader_float_controls
+	supportedProps12.shaderSignedZeroInfNanPreserveFloat64 = false;										// VK_KHR_shader_float_controls
+	supportedProps12.shaderDenormPreserveFloat16 = false;												// VK_KHR_shader_float_controls
+	supportedProps12.shaderDenormPreserveFloat32 = false;												// VK_KHR_shader_float_controls
+	supportedProps12.shaderDenormPreserveFloat64 = false;												// VK_KHR_shader_float_controls
+	supportedProps12.shaderDenormFlushToZeroFloat16 = false;											// VK_KHR_shader_float_controls
+	supportedProps12.shaderDenormFlushToZeroFloat32 = false;											// VK_KHR_shader_float_controls
+	supportedProps12.shaderDenormFlushToZeroFloat64 = false;											// VK_KHR_shader_float_controls
+	supportedProps12.shaderRoundingModeRTEFloat16 = false;												// VK_KHR_shader_float_controls
+	supportedProps12.shaderRoundingModeRTEFloat32 = false;												// VK_KHR_shader_float_controls
+	supportedProps12.shaderRoundingModeRTEFloat64 = false;												// VK_KHR_shader_float_controls
+	supportedProps12.shaderRoundingModeRTZFloat16 = false;												// VK_KHR_shader_float_controls
+	supportedProps12.shaderRoundingModeRTZFloat32 = false;												// VK_KHR_shader_float_controls
+	supportedProps12.shaderRoundingModeRTZFloat64 = false;												// VK_KHR_shader_float_controls
+	supportedProps12.maxUpdateAfterBindDescriptorsInAllPools				= kMVKUndefinedLargeUInt32;
+	supportedProps12.shaderUniformBufferArrayNonUniformIndexingNative		= false;
+	supportedProps12.shaderSampledImageArrayNonUniformIndexingNative		= _metalFeatures.arrayOfTextures && _metalFeatures.arrayOfSamplers;
+	supportedProps12.shaderStorageBufferArrayNonUniformIndexingNative		= false;
+	supportedProps12.shaderStorageImageArrayNonUniformIndexingNative		= _metalFeatures.arrayOfTextures;
+	supportedProps12.shaderInputAttachmentArrayNonUniformIndexingNative		= _metalFeatures.arrayOfTextures;
+	supportedProps12.robustBufferAccessUpdateAfterBind						= _features.robustBufferAccess;
+	supportedProps12.quadDivergentImplicitLod								= false;
+	supportedProps12.maxPerStageDescriptorUpdateAfterBindSamplers			= isTier2 ? maxSamplerCnt : _properties.limits.maxPerStageDescriptorSamplers;
+	supportedProps12.maxPerStageDescriptorUpdateAfterBindUniformBuffers		= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorUniformBuffers;
+	supportedProps12.maxPerStageDescriptorUpdateAfterBindStorageBuffers		= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorStorageBuffers;
+	supportedProps12.maxPerStageDescriptorUpdateAfterBindSampledImages		= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorSampledImages;
+	supportedProps12.maxPerStageDescriptorUpdateAfterBindStorageImages		= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorStorageImages;
+	supportedProps12.maxPerStageDescriptorUpdateAfterBindInputAttachments	= _properties.limits.maxPerStageDescriptorInputAttachments;
+	supportedProps12.maxPerStageUpdateAfterBindResources					= isTier2 ? 500000 : _properties.limits.maxPerStageResources;
+	supportedProps12.maxDescriptorSetUpdateAfterBindSamplers				= isTier2 ? maxSamplerCnt : _properties.limits.maxDescriptorSetSamplers;
+	supportedProps12.maxDescriptorSetUpdateAfterBindUniformBuffers			= isTier2 ? 500000 : _properties.limits.maxDescriptorSetUniformBuffers;
+	supportedProps12.maxDescriptorSetUpdateAfterBindUniformBuffersDynamic	= isTier2 ? 500000 : _properties.limits.maxDescriptorSetUniformBuffersDynamic;
+	supportedProps12.maxDescriptorSetUpdateAfterBindStorageBuffers			= isTier2 ? 500000 : _properties.limits.maxDescriptorSetStorageBuffers;
+	supportedProps12.maxDescriptorSetUpdateAfterBindStorageBuffersDynamic	= isTier2 ? 500000 : _properties.limits.maxDescriptorSetStorageBuffersDynamic;
+	supportedProps12.maxDescriptorSetUpdateAfterBindSampledImages			= isTier2 ? 500000 : _properties.limits.maxDescriptorSetSampledImages;
+	supportedProps12.maxDescriptorSetUpdateAfterBindStorageImages			= isTier2 ? 500000 : _properties.limits.maxDescriptorSetStorageImages;
+	supportedProps12.maxDescriptorSetUpdateAfterBindInputAttachments		= _properties.limits.maxDescriptorSetInputAttachments;
+	supportedProps12.supportedDepthResolveModes = (_metalFeatures.depthResolve
+												   ? VK_RESOLVE_MODE_SAMPLE_ZERO_BIT | VK_RESOLVE_MODE_MIN_BIT | VK_RESOLVE_MODE_MAX_BIT
+												   : VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
+	supportedProps12.supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;	// Metal allows you to set the stencil resolve filter to either Sample0 or the same sample used for depth resolve. This is impossible to express in Vulkan.
+	supportedProps12.independentResolveNone = true;
+	supportedProps12.independentResolve = true;
+	supportedProps12.filterMinmaxSingleComponentFormats = false;			// VK_EXT_sampler_filter_minmax;
+	supportedProps12.filterMinmaxImageComponentMapping = false;				// VK_EXT_sampler_filter_minmax;
+	supportedProps12.maxTimelineSemaphoreValueDifference = std::numeric_limits<uint64_t>::max();
+	supportedProps12.framebufferIntegerColorSampleCounts = _metalFeatures.supportedSampleCounts;
+
 	properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
 	properties->properties = _properties;
 	for (auto* next = (VkBaseOutStructure*)properties->pNext; next; next = next->pNext) {
 		switch ((uint32_t)next->sType) {
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
-				auto* depthStencilResolveProps = (VkPhysicalDeviceDepthStencilResolveProperties*)next;
-
-				// We can always support resolve from sample zero. Other modes require additional capabilities.
-				depthStencilResolveProps->supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
-				if (_metalFeatures.depthResolve) {
-					depthStencilResolveProps->supportedDepthResolveModes |= VK_RESOLVE_MODE_MIN_BIT | VK_RESOLVE_MODE_MAX_BIT;
-				}
-				// Metal allows you to set the stencil resolve filter to either
-				// Sample0 or DepthResolvedSample--in other words, you can always use sample 0,
-				// but you can also use the sample chosen for depth resolve. This is impossible
-				// to express in Vulkan.
-				depthStencilResolveProps->supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
-				depthStencilResolveProps->independentResolveNone = true;
-				depthStencilResolveProps->independentResolve = true;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES: {
+				// Copy from supportedProps11, but keep pNext as is.
+				auto* pProps11 = (VkPhysicalDeviceVulkan11Properties*)next;
+				supportedProps11.pNext = pProps11->pNext;
+				*pProps11 = supportedProps11;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES: {
-				auto* physicalDeviceDriverProps = (VkPhysicalDeviceDriverPropertiesKHR*)next;
-				strcpy(physicalDeviceDriverProps->driverName, "MoltenVK");
-				strcpy(physicalDeviceDriverProps->driverInfo, mvkGetMoltenVKVersionString(MVK_VERSION).c_str());
-				physicalDeviceDriverProps->driverID = VK_DRIVER_ID_MOLTENVK;
-				physicalDeviceDriverProps->conformanceVersion.major = 0;
-				physicalDeviceDriverProps->conformanceVersion.minor = 0;
-				physicalDeviceDriverProps->conformanceVersion.subminor = 0;
-				physicalDeviceDriverProps->conformanceVersion.patch = 0;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES: {
+				// Copy from supportedProps12, but keep pNext as is.
+				auto* pProps12 = (VkPhysicalDeviceVulkan12Properties*)next;
+				supportedProps12.pNext = pProps12->pNext;
+				*pProps12 = supportedProps12;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
-				populate((VkPhysicalDeviceIDProperties*)next);
+				auto* dvcIDProps = (VkPhysicalDeviceIDProperties*)next;
+				mvkCopy(dvcIDProps->deviceUUID, supportedProps11.deviceUUID, VK_UUID_SIZE);
+				mvkCopy(dvcIDProps->driverUUID, supportedProps11.driverUUID, VK_UUID_SIZE);
+				mvkCopy(dvcIDProps->deviceLUID, supportedProps11.deviceLUID, VK_LUID_SIZE);
+				dvcIDProps->deviceNodeMask = supportedProps11.deviceNodeMask;
+				dvcIDProps->deviceLUIDValid = supportedProps11.deviceLUIDValid;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
-				auto* maint3Props = (VkPhysicalDeviceMaintenance3Properties*)next;
-				maint3Props->maxPerSetDescriptors = (_metalFeatures.maxPerStageBufferCount + _metalFeatures.maxPerStageTextureCount + _metalFeatures.maxPerStageSamplerCount) * 4;
-				maint3Props->maxMemoryAllocationSize = _metalFeatures.maxMTLBufferSize;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
+				auto* subgroupProps = (VkPhysicalDeviceSubgroupProperties*)next;
+				subgroupProps->subgroupSize = supportedProps11.subgroupSize;
+				subgroupProps->supportedStages = supportedProps11.subgroupSupportedStages;
+				subgroupProps->supportedOperations = supportedProps11.subgroupSupportedOperations;
+				subgroupProps->quadOperationsInAllStages = supportedProps11.subgroupQuadOperationsInAllStages;
 				break;
 			}
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: {
-                auto* multiviewProps = (VkPhysicalDeviceMultiviewProperties*)next;
-                multiviewProps->maxMultiviewViewCount = 32;
-                if (canUseInstancingForMultiview()) {
-                    multiviewProps->maxMultiviewInstanceIndex = std::numeric_limits<uint32_t>::max() / 32;
-                } else {
-                    multiviewProps->maxMultiviewInstanceIndex = std::numeric_limits<uint32_t>::max();
-                }
-				break;
-            }
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
 				auto* pointClipProps = (VkPhysicalDevicePointClippingProperties*)next;
-				pointClipProps->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
+				pointClipProps->pointClippingBehavior = supportedProps11.pointClippingBehavior;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: {
+				auto* multiviewProps = (VkPhysicalDeviceMultiviewProperties*)next;
+				multiviewProps->maxMultiviewViewCount = supportedProps11.maxMultiviewViewCount;
+				multiviewProps->maxMultiviewInstanceIndex = supportedProps11.maxMultiviewInstanceIndex;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES: {
 				auto* protectedMemProps = (VkPhysicalDeviceProtectedMemoryProperties*)next;
-				protectedMemProps->protectedNoFault = false;
+				protectedMemProps->protectedNoFault = supportedProps11.protectedNoFault;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
-				auto* pushDescProps = (VkPhysicalDevicePushDescriptorPropertiesKHR*)next;
-				pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
+				auto* maint3Props = (VkPhysicalDeviceMaintenance3Properties*)next;
+				maint3Props->maxPerSetDescriptors = supportedProps11.maxPerSetDescriptors;
+				maint3Props->maxMemoryAllocationSize = supportedProps11.maxMemoryAllocationSize;
 				break;
 			}
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
-                auto* subgroupProps = (VkPhysicalDeviceSubgroupProperties*)next;
-                subgroupProps->subgroupSize = _metalFeatures.maxSubgroupSize;
-                subgroupProps->supportedStages = VK_SHADER_STAGE_COMPUTE_BIT;
-                if (_features.tessellationShader) {
-                    subgroupProps->supportedStages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-                }
-                if (mvkOSVersionIsAtLeast(10.15, 13.0)) {
-                    subgroupProps->supportedStages |= VK_SHADER_STAGE_FRAGMENT_BIT;
-                }
-                subgroupProps->supportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT;
-                if (_metalFeatures.simdPermute || _metalFeatures.quadPermute) {
-                    subgroupProps->supportedOperations |= VK_SUBGROUP_FEATURE_VOTE_BIT |
-                        VK_SUBGROUP_FEATURE_BALLOT_BIT |
-                        VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
-                        VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT;
-                }
-                if (_metalFeatures.simdReduction) {
-                    subgroupProps->supportedOperations |= VK_SUBGROUP_FEATURE_ARITHMETIC_BIT;
-                }
-                if (_metalFeatures.quadPermute) {
-                    subgroupProps->supportedOperations |= VK_SUBGROUP_FEATURE_QUAD_BIT;
-                }
-                subgroupProps->quadOperationsInAllStages = _metalFeatures.quadPermute;
+
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
+				auto* depthStencilResolveProps = (VkPhysicalDeviceDepthStencilResolveProperties*)next;
+				depthStencilResolveProps->supportedDepthResolveModes = supportedProps12.supportedDepthResolveModes;
+				depthStencilResolveProps->supportedStencilResolveModes = supportedProps12.supportedStencilResolveModes;
+				depthStencilResolveProps->independentResolveNone = supportedProps12.independentResolveNone;
+				depthStencilResolveProps->independentResolve = supportedProps12.independentResolve;
 				break;
-            }
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES: {
+				auto* physicalDeviceDriverProps = (VkPhysicalDeviceDriverProperties*)next;
+				physicalDeviceDriverProps->driverID = supportedProps12.driverID;
+				mvkCopy(physicalDeviceDriverProps->driverName, supportedProps12.driverName, VK_MAX_DRIVER_NAME_SIZE);
+				mvkCopy(physicalDeviceDriverProps->driverInfo, supportedProps12.driverInfo, VK_MAX_DRIVER_INFO_SIZE);
+				physicalDeviceDriverProps->conformanceVersion = supportedProps12.conformanceVersion;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
                 auto* timelineSem4Props = (VkPhysicalDeviceTimelineSemaphoreProperties*)next;
-                timelineSem4Props->maxTimelineSemaphoreValueDifference = std::numeric_limits<uint64_t>::max();
+                timelineSem4Props->maxTimelineSemaphoreValueDifference = supportedProps12.maxTimelineSemaphoreValueDifference;
                 break;
             }
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT: {
-				bool isTier2 = isUsingMetalArgumentBuffers() && (_metalFeatures.argumentBuffersTier >= MTLArgumentBuffersTier2);
-				uint32_t maxSampCnt = getMaxSamplerCount();
-
-				auto* pDescIdxProps = (VkPhysicalDeviceDescriptorIndexingPropertiesEXT*)next;
-				pDescIdxProps->maxUpdateAfterBindDescriptorsInAllPools				= kMVKUndefinedLargeUInt32;
-				pDescIdxProps->shaderUniformBufferArrayNonUniformIndexingNative		= false;
-				pDescIdxProps->shaderSampledImageArrayNonUniformIndexingNative		= _metalFeatures.arrayOfTextures && _metalFeatures.arrayOfSamplers;
-				pDescIdxProps->shaderStorageBufferArrayNonUniformIndexingNative		= false;
-				pDescIdxProps->shaderStorageImageArrayNonUniformIndexingNative		= _metalFeatures.arrayOfTextures;
-				pDescIdxProps->shaderInputAttachmentArrayNonUniformIndexingNative	= _metalFeatures.arrayOfTextures;
-				pDescIdxProps->robustBufferAccessUpdateAfterBind					= _features.robustBufferAccess;
-				pDescIdxProps->quadDivergentImplicitLod								= false;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSamplers			= isTier2 ? maxSampCnt : _properties.limits.maxPerStageDescriptorSamplers;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindUniformBuffers	= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorUniformBuffers;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageBuffers	= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorStorageBuffers;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSampledImages	= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorSampledImages;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageImages	= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorStorageImages;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindInputAttachments	= _properties.limits.maxPerStageDescriptorInputAttachments;
-				pDescIdxProps->maxPerStageUpdateAfterBindResources					= isTier2 ? 500000 : _properties.limits.maxPerStageResources;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindSamplers				= isTier2 ? maxSampCnt : _properties.limits.maxDescriptorSetSamplers;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffers		= isTier2 ? 500000 : _properties.limits.maxDescriptorSetUniformBuffers;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic	= isTier2 ? 500000 : _properties.limits.maxDescriptorSetUniformBuffersDynamic;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffers		= isTier2 ? 500000 : _properties.limits.maxDescriptorSetStorageBuffers;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic	= isTier2 ? 500000 : _properties.limits.maxDescriptorSetStorageBuffersDynamic;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindSampledImages			= isTier2 ? 500000 : _properties.limits.maxDescriptorSetSampledImages;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageImages			= isTier2 ? 500000 : _properties.limits.maxDescriptorSetStorageImages;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindInputAttachments		= _properties.limits.maxDescriptorSetInputAttachments;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES: {
+				auto* pDescIdxProps = (VkPhysicalDeviceDescriptorIndexingProperties*)next;
+				pDescIdxProps->maxUpdateAfterBindDescriptorsInAllPools				= supportedProps12.maxUpdateAfterBindDescriptorsInAllPools;
+				pDescIdxProps->shaderUniformBufferArrayNonUniformIndexingNative		= supportedProps12.shaderUniformBufferArrayNonUniformIndexingNative;
+				pDescIdxProps->shaderSampledImageArrayNonUniformIndexingNative		= supportedProps12.shaderSampledImageArrayNonUniformIndexingNative;
+				pDescIdxProps->shaderStorageBufferArrayNonUniformIndexingNative		= supportedProps12.shaderStorageBufferArrayNonUniformIndexingNative;
+				pDescIdxProps->shaderStorageImageArrayNonUniformIndexingNative		= supportedProps12.shaderStorageImageArrayNonUniformIndexingNative;
+				pDescIdxProps->shaderInputAttachmentArrayNonUniformIndexingNative	= supportedProps12.shaderInputAttachmentArrayNonUniformIndexingNative;
+				pDescIdxProps->robustBufferAccessUpdateAfterBind					= supportedProps12.robustBufferAccessUpdateAfterBind;
+				pDescIdxProps->quadDivergentImplicitLod								= supportedProps12.quadDivergentImplicitLod;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSamplers			= supportedProps12.maxPerStageDescriptorUpdateAfterBindSamplers;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindUniformBuffers	= supportedProps12.maxPerStageDescriptorUpdateAfterBindUniformBuffers;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageBuffers	= supportedProps12.maxPerStageDescriptorUpdateAfterBindStorageBuffers;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSampledImages	= supportedProps12.maxPerStageDescriptorUpdateAfterBindSampledImages;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageImages	= supportedProps12.maxPerStageDescriptorUpdateAfterBindStorageImages;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindInputAttachments	= supportedProps12.maxPerStageDescriptorUpdateAfterBindInputAttachments;
+				pDescIdxProps->maxPerStageUpdateAfterBindResources					= supportedProps12.maxPerStageUpdateAfterBindResources;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindSamplers				= supportedProps12.maxDescriptorSetUpdateAfterBindSamplers;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffers		= supportedProps12.maxDescriptorSetUpdateAfterBindUniformBuffers;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic	= supportedProps12.maxDescriptorSetUpdateAfterBindUniformBuffersDynamic;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffers		= supportedProps12.maxDescriptorSetUpdateAfterBindStorageBuffers;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic	= supportedProps12.maxDescriptorSetUpdateAfterBindStorageBuffersDynamic;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindSampledImages			= supportedProps12.maxDescriptorSetUpdateAfterBindSampledImages;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageImages			= supportedProps12.maxDescriptorSetUpdateAfterBindStorageImages;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindInputAttachments		= supportedProps12.maxDescriptorSetUpdateAfterBindInputAttachments;
 				break;
 			}
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT: {
-				auto* inlineUniformBlockProps = (VkPhysicalDeviceInlineUniformBlockPropertiesEXT*)next;
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES: {
+				auto* inlineUniformBlockProps = (VkPhysicalDeviceInlineUniformBlockProperties*)next;
 				inlineUniformBlockProps->maxInlineUniformBlockSize = _metalFeatures.dynamicMTLBufferSize;
                 inlineUniformBlockProps->maxPerStageDescriptorInlineUniformBlocks = _metalFeatures.dynamicMTLBufferSize ? _metalFeatures.maxPerStageDynamicMTLBufferCount - 1 : 0;    // Less one for push constants
                 inlineUniformBlockProps->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = inlineUniformBlockProps->maxPerStageDescriptorInlineUniformBlocks;
@@ -450,39 +595,41 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 inlineUniformBlockProps->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = (inlineUniformBlockProps->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks * 4);
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
-				auto* robustness2Props = (VkPhysicalDeviceRobustness2PropertiesEXT*)next;
-				// This isn't implemented yet, but when it is, I expect that we'll wind up
-				// doing it manually.
-				robustness2Props->robustStorageBufferAccessSizeAlignment = 1;
-				robustness2Props->robustUniformBufferAccessSizeAlignment = 1;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES_EXT: {
-				auto* subgroupSizeProps = (VkPhysicalDeviceSubgroupSizeControlPropertiesEXT*)next;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES: {
+				auto* subgroupSizeProps = (VkPhysicalDeviceSubgroupSizeControlProperties*)next;
 				subgroupSizeProps->minSubgroupSize = _metalFeatures.minSubgroupSize;
 				subgroupSizeProps->maxSubgroupSize = _metalFeatures.maxSubgroupSize;
 				subgroupSizeProps->maxComputeWorkgroupSubgroups = _properties.limits.maxComputeWorkGroupInvocations / _metalFeatures.minSubgroupSize;
 				subgroupSizeProps->requiredSubgroupSizeStages = 0;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
-				auto* texelBuffAlignProps = (VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT*)next;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES: {
 				// Save the 'next' pointer; we'll unintentionally overwrite it
 				// on the next line. Put it back when we're done.
-				void* savedNext = texelBuffAlignProps->pNext;
+				auto* texelBuffAlignProps = (VkPhysicalDeviceTexelBufferAlignmentProperties*)next;
+				void* pNext = texelBuffAlignProps->pNext;
 				*texelBuffAlignProps = _texelBuffAlignProperties;
-				texelBuffAlignProps->pNext = savedNext;
+				texelBuffAlignProps->pNext = pNext;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
-				auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)next;
-				divisorProps->maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_PROPERTIES_KHR: {
+                auto* barycentricProperties = (VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR*)next;
+                barycentricProperties->triStripVertexOrderIndependentOfProvokingVertex = false;
+                break;
+            }
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
+				auto* pushDescProps = (VkPhysicalDevicePushDescriptorPropertiesKHR*)next;
+				pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_KHR: {
 				auto* portabilityProps = (VkPhysicalDevicePortabilitySubsetPropertiesKHR*)next;
 				portabilityProps->minVertexInputBindingStrideAlignment = (uint32_t)_metalFeatures.vertexStrideAlignment;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
+				auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)next;
+				divisorProps->maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT: {
@@ -495,25 +642,25 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				sampLocnProps->variableSampleLocations = VK_FALSE;
 				break;
 			}
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_PROPERTIES_KHR: {
-                auto* barycentricProperties = (VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR*)next;
-                barycentricProperties->triStripVertexOrderIndependentOfProvokingVertex = false;
-                break;
-            }
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
+				// This isn't implemented yet, but when it is, it is expected that we'll wind up doing it manually.
+				auto* robustness2Props = (VkPhysicalDeviceRobustness2PropertiesEXT*)next;
+				robustness2Props->robustStorageBufferAccessSizeAlignment = 1;
+				robustness2Props->robustUniformBufferAccessSizeAlignment = 1;
+				break;
+			}
 			default:
 				break;
 		}
 	}
 }
 
-// Populates the device ID properties structure
-void MVKPhysicalDevice::populate(VkPhysicalDeviceIDProperties* pDevIdProps) {
-
+void MVKPhysicalDevice::populateDeviceIDProperties(VkPhysicalDeviceVulkan11Properties* pVk11Props) {
 	uint8_t* uuid;
 	size_t uuidComponentOffset;
 
 	//  ---- Device ID ----------------------------------------------
-	uuid = pDevIdProps->deviceUUID;
+	uuid = pVk11Props->deviceUUID;
 	uuidComponentOffset = 0;
 	mvkClear(uuid, VK_UUID_SIZE);
 
@@ -532,9 +679,8 @@ void MVKPhysicalDevice::populate(VkPhysicalDeviceIDProperties* pDevIdProps) {
 	*(uint64_t*)&uuid[uuidComponentOffset] = NSSwapHostLongLongToBig(regID);
 	uuidComponentOffset += sizeof(regID);
 
-
 	// ---- Driver ID ----------------------------------------------
-	uuid = pDevIdProps->driverUUID;
+	uuid = pVk11Props->driverUUID;
 	uuidComponentOffset = 0;
 	mvkClear(uuid, VK_UUID_SIZE);
 
@@ -555,9 +701,34 @@ void MVKPhysicalDevice::populate(VkPhysicalDeviceIDProperties* pDevIdProps) {
 	uuidComponentOffset += sizeof(gpuCap);
 
 	// ---- LUID ignored for Metal devices ------------------------
-	mvkClear(pDevIdProps->deviceLUID, VK_LUID_SIZE);
-	pDevIdProps->deviceNodeMask = 0;
-	pDevIdProps->deviceLUIDValid = VK_FALSE;
+	mvkClear(pVk11Props->deviceLUID, VK_LUID_SIZE);
+	pVk11Props->deviceNodeMask = 0;
+	pVk11Props->deviceLUIDValid = VK_FALSE;
+}
+
+void MVKPhysicalDevice::populateSubgroupProperties(VkPhysicalDeviceVulkan11Properties* pVk11Props) {
+	pVk11Props->subgroupSize = _metalFeatures.maxSubgroupSize;
+	pVk11Props->subgroupSupportedStages = VK_SHADER_STAGE_COMPUTE_BIT;
+	if (_features.tessellationShader) {
+		pVk11Props->subgroupSupportedStages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+	}
+	if (mvkOSVersionIsAtLeast(10.15, 13.0)) {
+		pVk11Props->subgroupSupportedStages |= VK_SHADER_STAGE_FRAGMENT_BIT;
+	}
+	pVk11Props->subgroupSupportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT;
+	if (_metalFeatures.simdPermute || _metalFeatures.quadPermute) {
+		pVk11Props->subgroupSupportedOperations |= (VK_SUBGROUP_FEATURE_VOTE_BIT |
+													VK_SUBGROUP_FEATURE_BALLOT_BIT |
+													VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
+													VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT);
+	}
+	if (_metalFeatures.simdReduction) {
+		pVk11Props->subgroupSupportedOperations |= VK_SUBGROUP_FEATURE_ARITHMETIC_BIT;
+	}
+	if (_metalFeatures.quadPermute) {
+		pVk11Props->subgroupSupportedOperations |= VK_SUBGROUP_FEATURE_QUAD_BIT;
+	}
+	pVk11Props->subgroupQuadOperationsInAllStages = _metalFeatures.quadPermute;
 }
 
 void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties) {
@@ -4288,6 +4459,71 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				enableFeatures(&_enabledFeatures.robustBufferAccess,
 							   &requestedFeatures->features.robustBufferAccess,
 							   &pdFeats2.features.robustBufferAccess, 55);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: {
+				auto* requestedFeatures = (VkPhysicalDeviceVulkan11Features*)next;
+				enableFeatures(&_enabled16BitStorageFeatures.storageBuffer16BitAccess,
+							   &requestedFeatures->storageBuffer16BitAccess,
+							   &pd16BitStorageFeatures.storageBuffer16BitAccess, 4);
+				enableFeatures(&_enabledMultiviewFeatures.multiview,
+							   &requestedFeatures->multiview,
+							   &pdMultiviewFeatures.multiview, 3);
+				enableFeatures(&_enabledVariablePointerFeatures.variablePointersStorageBuffer,
+							   &requestedFeatures->variablePointersStorageBuffer,
+							   &pdVariablePointerFeatures.variablePointersStorageBuffer, 2);
+				enableFeatures(&_enabledProtectedMemoryFeatures.protectedMemory,
+							   &requestedFeatures->protectedMemory,
+							   &pdProtectedMemoryFeatures.protectedMemory, 1);
+				enableFeatures(&_enabledSamplerYcbcrConversionFeatures.samplerYcbcrConversion,
+							   &requestedFeatures->samplerYcbcrConversion,
+							   &pdSamplerYcbcrConversionFeatures.samplerYcbcrConversion, 1);
+				enableFeatures(&_enabledShaderDrawParametersFeatures.shaderDrawParameters,
+							   &requestedFeatures->shaderDrawParameters,
+							   &pdShaderDrawParametersFeatures.shaderDrawParameters, 1);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
+				auto* requestedFeatures = (VkPhysicalDeviceVulkan12Features*)next;
+				enableFeatures(&_enabled8BitStorageFeatures.storageBuffer8BitAccess,
+							   &requestedFeatures->storageBuffer8BitAccess,
+							   &pd8BitStorageFeatures.storageBuffer8BitAccess, 3);
+//				enableFeatures(&_enabledShaderAtomicInt64Features.shaderBufferInt64Atomics,		//VK_KHR_shader_atomic_int64
+//							   &requestedFeatures->shaderBufferInt64Atomics,
+//							   &pdShaderAtomicInt64Features.shaderBufferInt64Atomics, 2);
+				enableFeatures(&_enabledShaderFloat16Int8Features.shaderFloat16,
+							   &requestedFeatures->shaderFloat16,
+							   &pdShaderFloat16Int8Features.shaderFloat16, 2);
+				enableFeatures(&_enabledDescriptorIndexingFeatures.shaderInputAttachmentArrayDynamicIndexing,
+							   &requestedFeatures->shaderInputAttachmentArrayDynamicIndexing,
+							   &pdDescriptorIndexingFeatures.shaderInputAttachmentArrayDynamicIndexing, 20);
+				enableFeatures(&_enabledScalarBlockLayoutFeatures.scalarBlockLayout,
+							   &requestedFeatures->scalarBlockLayout,
+							   &pdScalarBlockLayoutFeatures.scalarBlockLayout, 1);
+				enableFeatures(&_enabledImagelessFramebufferFeatures.imagelessFramebuffer,
+							   &requestedFeatures->imagelessFramebuffer,
+							   &pdImagelessFramebufferFeatures.imagelessFramebuffer, 1);
+				enableFeatures(&_enabledUniformBufferStandardLayoutFeatures.uniformBufferStandardLayout,
+							   &requestedFeatures->uniformBufferStandardLayout,
+							   &pdUniformBufferStandardLayoutFeatures.uniformBufferStandardLayout, 1);
+				enableFeatures(&_enabledShaderSubgroupExtendedTypesFeatures.shaderSubgroupExtendedTypes,
+							   &requestedFeatures->shaderSubgroupExtendedTypes,
+							   &pdShaderSubgroupExtendedTypesFeatures.shaderSubgroupExtendedTypes, 1);
+				enableFeatures(&_enabledSeparateDepthStencilLayoutsFeatures.separateDepthStencilLayouts,
+							   &requestedFeatures->separateDepthStencilLayouts,
+							   &pdSeparateDepthStencilLayoutsFeatures.separateDepthStencilLayouts, 1);
+				enableFeatures(&_enabledHostQueryResetFeatures.hostQueryReset,
+							   &requestedFeatures->hostQueryReset,
+							   &pdHostQueryResetFeatures.hostQueryReset, 1);
+				enableFeatures(&_enabledTimelineSemaphoreFeatures.timelineSemaphore,
+							   &requestedFeatures->timelineSemaphore,
+							   &pdTimelineSemaphoreFeatures.timelineSemaphore, 1);
+				enableFeatures(&_enabledBufferDeviceAddressFeatures.bufferDeviceAddress,
+							   &requestedFeatures->bufferDeviceAddress,
+							   &pdBufferDeviceAddressFeatures.bufferDeviceAddress, 3);
+//				enableFeatures(&_enabledVulkanMemoryModelFeatures.vulkanMemoryModel,		// VK_KHR_vulkan_memory_model
+//							   &requestedFeatures->vulkanMemoryModel,
+//							   &pdVulkanMemoryModelFeatures.vulkanMemoryModel, 3);
 				break;
 			}
 
