@@ -31,6 +31,7 @@ Released TBD
 - Fix query pool wait block when query is not encoded to be written to.
 - Fix `vkUpdateDescriptorSetWithTemplate()` for inline block descriptors.
 - Fix retrieval of accurate `vkGetRefreshCycleDurationGOOGLE()` across multiple display screens.
+- Improve performance of `vkResetDescriptorPool()`.
 - Report appropriate values of `VkDebugUtilsMessageTypeFlagsEXT` for debug util messages generated within MoltenVK.
 - Update _macOS Cube_ demo to demonstrate optimizing the swapchain across multiple display screens.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `35`.

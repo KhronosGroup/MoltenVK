@@ -377,7 +377,7 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 			// the physical device, always mark both the device and physical device as lost.
 			// If the error is local to this command buffer, optionally mark the device (but not the
 			// physical device) as lost, depending on the value of MVKConfiguration::resumeLostDevice.
-			getVulkanAPIObject()->reportError(VK_ERROR_DEVICE_LOST, "Command buffer %p \"%s\" execution failed (code %li): %s", mtlCB, mtlCB.label ? mtlCB.label.UTF8String : "", mtlCB.error.code, mtlCB.error.localizedDescription.UTF8String);
+			getVulkanAPIObject()->reportError(VK_ERROR_DEVICE_LOST, "MTLCommandBuffer \"%s\" execution failed (code %li): %s", mtlCB.label ? mtlCB.label.UTF8String : "", mtlCB.error.code, mtlCB.error.localizedDescription.UTF8String);
 			switch (mtlCB.error.code) {
 				case MTLCommandBufferErrorBlacklisted:
 				case MTLCommandBufferErrorNotPermitted:	// May also be used for command buffers executed in the background without the right entitlement.

@@ -525,8 +525,10 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 				*pVKDS = (VkDescriptorSet)mvkDS;
 			}
 			return false;
+		} else {
+			_descriptorSetAvailablility.setBit(dsIdx);	// We didn't consume this one after all, so it's still available
+			return true;
 		}
-		return true;
 	});
 	return rslt;
 }
@@ -555,9 +557,13 @@ void MVKDescriptorPool::freeDescriptorSet(MVKDescriptorSet* mvkDS, bool isPoolRe
 	}
 }
 
-// Free all descriptor sets and reset descriptor pools
+// Free allocated descriptor sets and reset descriptor pools.
+// Don't waste time freeing desc sets that were never allocated.
 VkResult MVKDescriptorPool::reset(VkDescriptorPoolResetFlags flags) {
-	for (auto& mvkDS : _descriptorSets) { freeDescriptorSet(&mvkDS, true); }
+	size_t dsCnt = _descriptorSetAvailablility.getLowestNeverClearedBitIndex();
+	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
+		freeDescriptorSet(&_descriptorSets[dsIdx], true);
+	}
 	_descriptorSetAvailablility.setAllBits();
 
 	_uniformBufferDescriptors.reset();

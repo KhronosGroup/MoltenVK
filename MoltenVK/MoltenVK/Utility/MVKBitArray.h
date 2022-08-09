@@ -47,13 +47,16 @@ public:
 
 	/** Sets the value of the bit to the val (or to 1 by default). */
 	void setBit(size_t bitIndex, bool val = true) {
+		if (bitIndex >= _bitCount) { return; }
+
 		size_t secIdx = getIndexOfSection(bitIndex);
 		if (val) {
 			mvkEnableFlags(getSection(secIdx), getSectionSetMask(bitIndex));
-			if (secIdx < _minUnclearedSectionIndex) { _minUnclearedSectionIndex = secIdx; }
+			if (secIdx < _clearedSectionCount) { _clearedSectionCount = secIdx; }
 		} else {
 			mvkDisableFlags(getSection(secIdx), getSectionSetMask(bitIndex));
-			if (secIdx == _minUnclearedSectionIndex && !getSection(secIdx)) { _minUnclearedSectionIndex++; }
+			if (secIdx == _clearedSectionCount && !getSection(secIdx)) { _clearedSectionCount++; }
+			_lowestNeverClearedBitIndex = std::max(_lowestNeverClearedBitIndex, bitIndex + 1);
 		}
 	}
 
@@ -61,26 +64,42 @@ public:
 	void clearBit(size_t bitIndex) { setBit(bitIndex, false); }
 
 	/** Sets all bits in the array to 1. */
-	void setAllBits() { setAllSections(~0); }
+	void setAllBits() {
+		// Nothing to do if no bits have been cleared (also ensure _lowestNeverClearedBitIndex doesn't go negative)
+		if (_lowestNeverClearedBitIndex) {
+			size_t endSecIdx = getIndexOfSection(_lowestNeverClearedBitIndex - 1);
+			for (size_t secIdx = 0; secIdx <= endSecIdx; secIdx++) {
+				getSection(secIdx) = ~0;
+			}
+		}
+		_clearedSectionCount = 0;
+		_lowestNeverClearedBitIndex = 0;
+	}
 
 	/** Clears all bits in the array to 0. */
-	void clearAllBits() { setAllSections(0); }
+	void clearAllBits() {
+		size_t secCnt = getSectionCount();
+		while (_clearedSectionCount < secCnt) {
+			getSection(_clearedSectionCount++) = 0;
+		}
+		_lowestNeverClearedBitIndex = _bitCount;
+	}
 
 	/**
 	 * Returns the index of the first bit that is set, at or after the specified index,
 	 * and optionally clears that bit. If no bits are set, returns the size() of this bit array.
 	 */
 	size_t getIndexOfFirstSetBit(size_t startIndex, bool shouldClear) {
-		size_t startSecIdx = std::max(getIndexOfSection(startIndex), _minUnclearedSectionIndex);
+		size_t startSecIdx = std::max(getIndexOfSection(startIndex), _clearedSectionCount);
 		size_t bitIdx = startSecIdx << SectionMaskSize;
 		size_t secCnt = getSectionCount();
 		for (size_t secIdx = startSecIdx; secIdx < secCnt; secIdx++) {
 			size_t lclBitIdx = getIndexOfFirstSetBitInSection(getSection(secIdx), getBitIndexInSection(startIndex));
 			bitIdx += lclBitIdx;
 			if (lclBitIdx < SectionBitCount) {
-				if (startSecIdx == _minUnclearedSectionIndex && !getSection(startSecIdx)) { _minUnclearedSectionIndex = secIdx; }
+				if (startSecIdx == _clearedSectionCount && !getSection(startSecIdx)) { _clearedSectionCount = secIdx; }
 				if (shouldClear) { clearBit(bitIdx); }
-				return bitIdx;
+				return std::min(bitIdx, _bitCount);
 			}
 		}
 		return std::min(bitIdx, _bitCount);
@@ -101,6 +120,12 @@ public:
 	size_t getIndexOfFirstSetBit(bool shouldClear) {
 		return getIndexOfFirstSetBit(0, shouldClear);
 	}
+
+	/**
+	 * Returns the index of the lowest bit that has never been cleared since the last time all the bits were set or cleared.
+	 * In other words, this bit, and all above it, have never been cleared since the last time they were all set or cleared.
+	 */
+	size_t getLowestNeverClearedBitIndex() { return _lowestNeverClearedBitIndex; }
 
 	/**
 	 * Returns the index of the first bit that is set.
@@ -149,6 +174,8 @@ public:
 	 * unless the size is set to zero.
 	 */
 	void resize(size_t size, bool val = false) {
+		if (size == _bitCount) { return; }
+
 		size_t oldBitCnt = _bitCount;
 		size_t oldSecCnt = getSectionCount();
 		size_t oldEndBitCnt = oldSecCnt << SectionMaskSize;
@@ -165,7 +192,8 @@ public:
 			// Clear out the existing data
 			if (oldSecCnt > 1) { free(pOldData); }
 			_data = 0;
-			_minUnclearedSectionIndex = 0;
+			_clearedSectionCount = 0;
+			_lowestNeverClearedBitIndex = 0;
 		} else if (newSecCnt == oldSecCnt) {
 			// Keep the existing data, but fill any bits in the last section
 			// that were beyond the old bit count with the new initial value.
@@ -185,10 +213,13 @@ public:
 			memcpy(pNewData, pOldData, oldByteCnt);
 			for (size_t bitIdx = oldBitCnt; bitIdx < oldEndBitCnt; bitIdx++) { setBit(bitIdx, val); }
 			if (oldSecCnt > 1) { free(pOldData); }
+			if (!val) { _lowestNeverClearedBitIndex = _bitCount; }	// Cover additional sections
 
 			// If the entire old array and the new array are cleared, move the uncleared indicator to the new end.
-			if (_minUnclearedSectionIndex == oldSecCnt && !val) { _minUnclearedSectionIndex = newSecCnt; }
+			if (_clearedSectionCount == oldSecCnt && !val) { _clearedSectionCount = newSecCnt; }
 		}
+		// If we shrank, ensure this value still fits
+		if (_lowestNeverClearedBitIndex > _bitCount) { _lowestNeverClearedBitIndex = _bitCount; }
 	}
 
 	/** Constructs an instance for the specified number of bits, and sets the initial value of all the bits. */
@@ -197,12 +228,16 @@ public:
 	MVKBitArray(const MVKBitArray& other) {
 		resize(other._bitCount);
 		memcpy(getData(), other.getData(), getSectionCount() * SectionByteCount);
+		_clearedSectionCount = other._clearedSectionCount;
+		_lowestNeverClearedBitIndex = other._lowestNeverClearedBitIndex;
 	}
 
 	MVKBitArray& operator=(const MVKBitArray& other) {
-		resize(0);
+		resize(0);		// Clear out the old memory
 		resize(other._bitCount);
 		memcpy(getData(), other.getData(), getSectionCount() * SectionByteCount);
+		_clearedSectionCount = other._clearedSectionCount;
+		_lowestNeverClearedBitIndex = other._lowestNeverClearedBitIndex;
 		return *this;
 	}
 
@@ -252,16 +287,8 @@ protected:
 		return section ? __builtin_clzll(section) : SectionBitCount;
 	}
 
-	// Sets the content of all sections to the value
-	void setAllSections(uint64_t sectionValue) {
-		size_t secCnt = getSectionCount();
-		for (size_t secIdx = 0; secIdx < secCnt; secIdx++) {
-			getSection(secIdx) = sectionValue;
-		}
-		_minUnclearedSectionIndex = sectionValue ? 0 : secCnt;
-	}
-
-	uint64_t* _data = 0;
+	uint64_t* _data = nullptr;
 	size_t _bitCount = 0;
-	size_t _minUnclearedSectionIndex = 0;	// Tracks where to start looking for bits that are set
+	size_t _clearedSectionCount = 0;			// Tracks where to start looking for bits that are set
+	size_t _lowestNeverClearedBitIndex = 0;		// Tracks the lowest bit that has never been cleared
 };
