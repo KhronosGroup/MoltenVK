@@ -200,8 +200,6 @@ public:
     /** Sets the index of the Metal buffer used to hold the push constants. */
     void setMTLBufferIndex(uint32_t mtlBufferIndex, bool pipelineStageUsesPushConstants);
 
-	void markDirty() override;
-
 	MVKPushConstantsCommandEncoderState(MVKCommandEncoder* cmdEncoder,
                                         VkShaderStageFlagBits shaderStage)
         : MVKCommandEncoderState(cmdEncoder), _shaderStage(shaderStage) {}
@@ -379,13 +377,14 @@ protected:
         bindingsDirtyFlag = true;
     }
 
-	// Find and mark dirty the binding that uses the index.
+	// Template function to find and mark dirty the binding that uses the index.
 	template<class T>
 	void markIndexDirty(T& bindings, bool& bindingsDirtyFlag, uint32_t index) {
 		for (auto& b : bindings) {
 			if (b.index == index) {
 				b.markDirty();
 				bindingsDirtyFlag = true;
+				MVKCommandEncoderState::markDirty();
 				return;
 			}
 		}
@@ -395,21 +394,23 @@ protected:
     // of bindings, and marks the binding, the vector, and this instance as dirty
     template<class T, class V>
     void bind(const T& b, V& bindings, bool& bindingsDirtyFlag) {
-
         if ( !b.mtlResource ) { return; }
-
-        MVKCommandEncoderState::markDirty();
-        bindingsDirtyFlag = true;
 
         for (auto& rb : bindings) {
 			if (rb.index == b.index) {
                 rb.update(b);
+				if (rb.isDirty) {
+					bindingsDirtyFlag = true;
+					MVKCommandEncoderState::markDirty();
+				}
                 return;
             }
         }
 
         bindings.push_back(b);
         bindings.back().markDirty();
+		bindingsDirtyFlag = true;
+		MVKCommandEncoderState::markDirty();
     }
 
 	// For texture bindings, we also keep track of whether any bindings need a texture swizzle
@@ -547,8 +548,8 @@ public:
 	/** Offset all buffers for vertex attribute bindings with zero divisors by the given number of strides. */
 	void offsetZeroDivisorVertexBuffers(MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);
 
-	/** Marks the use of the MTLBuffer binding index by a push constant. */
-	void markPushConstantBinding(MVKShaderStage stage, uint32_t mtlBufferIndex);
+	/** Marks dirty the buffer binding using the index. */
+	void markBufferIndexDirty(MVKShaderStage stage, uint32_t mtlBufferIndex);
 
 	void markDirty() override;
 
@@ -599,8 +600,8 @@ public:
 										   MTLResourceUsage mtlUsage,
 										   MTLRenderStages mtlStages) override;
 
-	/** Marks the use of the MTLBuffer binding index by a push constant. */
-	void markPushConstantBinding(uint32_t mtlBufferIndex);
+	/** Marks dirty the buffer binding using the index. */
+	void markBufferIndexDirty(uint32_t mtlBufferIndex);
 
     void markDirty() override;
 

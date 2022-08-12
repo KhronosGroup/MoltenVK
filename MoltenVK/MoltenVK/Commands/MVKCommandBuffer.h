@@ -354,14 +354,29 @@ public:
 	/** Returns the push constants associated with the specified shader stage. */
 	MVKPushConstantsCommandEncoderState* getPushConstants(VkShaderStageFlagBits shaderStage);
 
-    /** Copy bytes into the Metal encoder at a Metal vertex buffer index. */
-    void setVertexBytes(id<MTLRenderCommandEncoder> mtlEncoder, const void* bytes, NSUInteger length, uint32_t mtlBuffIndex);
+    /**
+	 * Copy bytes into the Metal encoder at a Metal vertex buffer index, and optionally indicate
+	 * that this binding might override a desriptor binding. If so, the descriptor binding will
+	 * be marked dirty so that it will rebind before the next usage.
+	 */
+    void setVertexBytes(id<MTLRenderCommandEncoder> mtlEncoder, const void* bytes,
+						NSUInteger length, uint32_t mtlBuffIndex, bool descOverride = false);
 
-    /** Copy bytes into the Metal encoder at a Metal fragment buffer index. */
-    void setFragmentBytes(id<MTLRenderCommandEncoder> mtlEncoder, const void* bytes, NSUInteger length, uint32_t mtlBuffIndex);
+	/**
+	 * Copy bytes into the Metal encoder at a Metal fragment buffer index, and optionally indicate
+	 * that this binding might override a desriptor binding. If so, the descriptor binding will
+	 * be marked dirty so that it will rebind before the next usage.
+	 */
+    void setFragmentBytes(id<MTLRenderCommandEncoder> mtlEncoder, const void* bytes,
+						  NSUInteger length, uint32_t mtlBuffIndex, bool descOverride = false);
 
-    /** Copy bytes into the Metal encoder at a Metal compute buffer index. */
-    void setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder, const void* bytes, NSUInteger length, uint32_t mtlBuffIndex);
+	/**
+	 * Copy bytes into the Metal encoder at a Metal compute buffer index, and optionally indicate
+	 * that this binding might override a desriptor binding. If so, the descriptor binding will
+	 * be marked dirty so that it will rebind before the next usage.
+	 */
+    void setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder, const void* bytes,
+						 NSUInteger length, uint32_t mtlBuffIndex, bool descOverride = false);
 
     /** Get a temporary MTLBuffer that will be returned to a pool after the command buffer is finished. */
     const MVKMTLBufferAllocation* getTempMTLBuffer(NSUInteger length, bool isPrivate = false, bool isDedicated = false);

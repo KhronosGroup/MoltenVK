@@ -180,27 +180,6 @@ void MVKPushConstantsCommandEncoderState::setMTLBufferIndex(uint32_t mtlBufferIn
 	}
 }
 
-void MVKPushConstantsCommandEncoderState::markDirty() {
-	MVKCommandEncoderState::markDirty();
-	if (_pipelineStageUsesPushConstants) {
-		switch (_shaderStage) {
-			case VK_SHADER_STAGE_VERTEX_BIT:
-			case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
-			case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
-			case VK_SHADER_STAGE_FRAGMENT_BIT:
-				_cmdEncoder->_graphicsResourcesState.markPushConstantBinding(mvkShaderStageFromVkShaderStageFlagBits(_shaderStage),
-																			 _mtlBufferIndex);
-				break;
-			case VK_SHADER_STAGE_COMPUTE_BIT:
-				_cmdEncoder->_computeResourcesState.markPushConstantBinding(_mtlBufferIndex);
-				break;
-			default:
-				MVKAssert(false, "Unsupported shader stage: %d", _shaderStage);
-				break;
-		}
-	}
-}
-
 // At this point, I have been marked not-dirty, under the assumption that I will make changes to the encoder.
 // However, some of the paths below decide not to actually make any changes to the encoder. In that case,
 // I should remain dirty until I actually do make encoder changes.
@@ -215,13 +194,13 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                 _cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
                                              _pushConstants.data(),
                                              _pushConstants.size(),
-                                             _mtlBufferIndex);
+                                             _mtlBufferIndex, true);
 				_isDirty = false;	// Okay, I changed the encoder
 			} else if (!isTessellating() && stage == kMVKGraphicsStageRasterization) {
                 _cmdEncoder->setVertexBytes(_cmdEncoder->_mtlRenderEncoder,
                                             _pushConstants.data(),
                                             _pushConstants.size(),
-                                            _mtlBufferIndex);
+                                            _mtlBufferIndex, true);
 				_isDirty = false;	// Okay, I changed the encoder
             }
             break;
@@ -230,7 +209,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                 _cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
                                              _pushConstants.data(),
                                              _pushConstants.size(),
-                                             _mtlBufferIndex);
+                                             _mtlBufferIndex, true);
 				_isDirty = false;	// Okay, I changed the encoder
             }
             break;
@@ -239,7 +218,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                 _cmdEncoder->setVertexBytes(_cmdEncoder->_mtlRenderEncoder,
                                             _pushConstants.data(),
                                             _pushConstants.size(),
-                                            _mtlBufferIndex);
+                                            _mtlBufferIndex, true);
 				_isDirty = false;	// Okay, I changed the encoder
             }
             break;
@@ -248,7 +227,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                 _cmdEncoder->setFragmentBytes(_cmdEncoder->_mtlRenderEncoder,
                                               _pushConstants.data(),
                                               _pushConstants.size(),
-                                              _mtlBufferIndex);
+                                              _mtlBufferIndex, true);
 				_isDirty = false;	// Okay, I changed the encoder
             }
             break;
@@ -256,7 +235,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
             _cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch),
                                          _pushConstants.data(),
                                          _pushConstants.size(),
-                                         _mtlBufferIndex);
+                                         _mtlBufferIndex, true);
 			_isDirty = false;	// Okay, I changed the encoder
             break;
         default:
@@ -1003,7 +982,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(
 	}
 }
 
-void MVKGraphicsResourcesCommandEncoderState::markPushConstantBinding(MVKShaderStage stage, uint32_t mtlBufferIndex) {
+void MVKGraphicsResourcesCommandEncoderState::markBufferIndexDirty(MVKShaderStage stage, uint32_t mtlBufferIndex) {
 	auto& stageRezBinds = _shaderStageResourceBindings[stage];
 	markIndexDirty(stageRezBinds.bufferBindings, stageRezBinds.areBufferBindingsDirty, mtlBufferIndex);
 }
@@ -1141,7 +1120,7 @@ void MVKComputeResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(M
 	}
 }
 
-void MVKComputeResourcesCommandEncoderState::markPushConstantBinding(uint32_t mtlBufferIndex) {
+void MVKComputeResourcesCommandEncoderState::markBufferIndexDirty(uint32_t mtlBufferIndex) {
 	markIndexDirty(_resourceBindings.bufferBindings, _resourceBindings.areBufferBindingsDirty, mtlBufferIndex);
 }
 
