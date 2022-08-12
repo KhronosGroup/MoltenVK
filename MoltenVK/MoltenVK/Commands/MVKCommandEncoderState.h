@@ -200,8 +200,7 @@ public:
     /** Sets the index of the Metal buffer used to hold the push constants. */
     void setMTLBufferIndex(uint32_t mtlBufferIndex, bool pipelineStageUsesPushConstants);
 
-    /** Constructs this instance for the specified command encoder. */
-    MVKPushConstantsCommandEncoderState(MVKCommandEncoder* cmdEncoder,
+	MVKPushConstantsCommandEncoderState(MVKCommandEncoder* cmdEncoder,
                                         VkShaderStageFlagBits shaderStage)
         : MVKCommandEncoderState(cmdEncoder), _shaderStage(shaderStage) {}
 
@@ -364,11 +363,12 @@ public:
 												   MTLResourceUsage mtlUsage,
 												   MTLRenderStages mtlStages) = 0;
 
+	void markDirty() override;
+
     MVKResourcesCommandEncoderState(MVKCommandEncoder* cmdEncoder) :
 		MVKCommandEncoderState(cmdEncoder), _boundDescriptorSets{} {}
 
 protected:
-	void markDirty() override;
 
     // Template function that marks both the vector and all binding elements in the vector as dirty.
     template<class T>
@@ -377,25 +377,40 @@ protected:
         bindingsDirtyFlag = true;
     }
 
+	// Template function to find and mark dirty the binding that uses the index.
+	template<class T>
+	void markIndexDirty(T& bindings, bool& bindingsDirtyFlag, uint32_t index) {
+		for (auto& b : bindings) {
+			if (b.index == index) {
+				b.markDirty();
+				bindingsDirtyFlag = true;
+				MVKCommandEncoderState::markDirty();
+				return;
+			}
+		}
+	}
+
     // Template function that updates an existing binding or adds a new binding to a vector
     // of bindings, and marks the binding, the vector, and this instance as dirty
     template<class T, class V>
     void bind(const T& b, V& bindings, bool& bindingsDirtyFlag) {
-
         if ( !b.mtlResource ) { return; }
 
-        MVKCommandEncoderState::markDirty();
-        bindingsDirtyFlag = true;
-
-        for (auto iter = bindings.begin(), end = bindings.end(); iter != end; ++iter) {
-            if (iter->index == b.index) {
-                iter->update(b);
+        for (auto& rb : bindings) {
+			if (rb.index == b.index) {
+                rb.update(b);
+				if (rb.isDirty) {
+					bindingsDirtyFlag = true;
+					MVKCommandEncoderState::markDirty();
+				}
                 return;
             }
         }
 
         bindings.push_back(b);
         bindings.back().markDirty();
+		bindingsDirtyFlag = true;
+		MVKCommandEncoderState::markDirty();
     }
 
 	// For texture bindings, we also keep track of whether any bindings need a texture swizzle
@@ -533,6 +548,11 @@ public:
 	/** Offset all buffers for vertex attribute bindings with zero divisors by the given number of strides. */
 	void offsetZeroDivisorVertexBuffers(MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);
 
+	/** Marks dirty the buffer binding using the index. */
+	void markBufferIndexDirty(MVKShaderStage stage, uint32_t mtlBufferIndex);
+
+	void markDirty() override;
+
 #pragma mark Construction
     
     /** Constructs this instance for the specified command encoder. */
@@ -540,7 +560,6 @@ public:
 
 protected:
     void encodeImpl(uint32_t stage) override;
-    void markDirty() override;
 	void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) override;
 
     ResourceBindings<8> _shaderStageResourceBindings[4];
@@ -580,6 +599,9 @@ public:
 										   id<MTLResource> mtlResource,
 										   MTLResourceUsage mtlUsage,
 										   MTLRenderStages mtlStages) override;
+
+	/** Marks dirty the buffer binding using the index. */
+	void markBufferIndexDirty(uint32_t mtlBufferIndex);
 
     void markDirty() override;
 

@@ -478,8 +478,6 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             bool isBlittingStencil = mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_STENCIL_BIT));
             id<MTLDepthStencilState> mtlDSS = cmdEncoder->getCommandEncodingPool()->getMTLDepthStencilState(isBlittingDepth, isBlittingStencil);
             
-            uint32_t vtxBuffIdx = cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex);
-            
             mtlColorAttDesc.level = mvkIBR.region.dstSubresource.mipLevel;
             mtlDepthAttDesc.level = mvkIBR.region.dstSubresource.mipLevel;
             mtlStencilAttDesc.level = mvkIBR.region.dstSubresource.mipLevel;
@@ -540,7 +538,8 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                 [mtlRendEnc pushDebugGroup: @"vkCmdBlitImage"];
                 [mtlRendEnc setRenderPipelineState: mtlRPS];
                 [mtlRendEnc setDepthStencilState: mtlDSS];
-                cmdEncoder->setVertexBytes(mtlRendEnc, mvkIBR.vertices, sizeof(mvkIBR.vertices), vtxBuffIdx);
+                cmdEncoder->setVertexBytes(mtlRendEnc, mvkIBR.vertices, sizeof(mvkIBR.vertices),
+										   cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex));
                 if (isLayeredBlit) {
                     cmdEncoder->setVertexBytes(mtlRendEnc, &zIncr, sizeof(zIncr), 0);
                 }
@@ -1250,7 +1249,6 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
 	MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();
     MVKRenderSubpass* subpass = cmdEncoder->getSubpass();
-    uint32_t vtxBuffIdx = cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex);
 
     // Populate the render pipeline state attachment key with info from the subpass and framebuffer.
 	_rpsKey.mtlSampleCount = mvkSampleCountFromVkSampleCountFlagBits(subpass->getSampleCount());
@@ -1304,9 +1302,10 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
     [mtlRendEnc setViewport: {0, 0, (double) fbExtent.width, (double) fbExtent.height, 0.0, 1.0}];
     [mtlRendEnc setScissorRect: {0, 0, fbExtent.width, fbExtent.height}];
 
-    cmdEncoder->setVertexBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0);
-    cmdEncoder->setFragmentBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0);
-    cmdEncoder->setVertexBytes(mtlRendEnc, vertices, vtxCnt * sizeof(vertices[0]), vtxBuffIdx);
+    cmdEncoder->setVertexBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0, true);
+    cmdEncoder->setFragmentBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0, true);
+    cmdEncoder->setVertexBytes(mtlRendEnc, vertices, vtxCnt * sizeof(vertices[0]),
+							   cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex), true);
     [mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangle vertexStart: 0 vertexCount: vtxCnt];
     [mtlRendEnc popDebugGroup];
 
@@ -1334,7 +1333,6 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->_depthBiasState.markDirty();
     cmdEncoder->_viewportState.markDirty();
     cmdEncoder->_scissorState.markDirty();
-	cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
 }
 
 template class MVKCmdClearAttachments<1>;

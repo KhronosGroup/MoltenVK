@@ -194,13 +194,13 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                 _cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
                                              _pushConstants.data(),
                                              _pushConstants.size(),
-                                             _mtlBufferIndex);
+                                             _mtlBufferIndex, true);
 				_isDirty = false;	// Okay, I changed the encoder
 			} else if (!isTessellating() && stage == kMVKGraphicsStageRasterization) {
                 _cmdEncoder->setVertexBytes(_cmdEncoder->_mtlRenderEncoder,
                                             _pushConstants.data(),
                                             _pushConstants.size(),
-                                            _mtlBufferIndex);
+                                            _mtlBufferIndex, true);
 				_isDirty = false;	// Okay, I changed the encoder
             }
             break;
@@ -209,7 +209,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                 _cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
                                              _pushConstants.data(),
                                              _pushConstants.size(),
-                                             _mtlBufferIndex);
+                                             _mtlBufferIndex, true);
 				_isDirty = false;	// Okay, I changed the encoder
             }
             break;
@@ -218,7 +218,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                 _cmdEncoder->setVertexBytes(_cmdEncoder->_mtlRenderEncoder,
                                             _pushConstants.data(),
                                             _pushConstants.size(),
-                                            _mtlBufferIndex);
+                                            _mtlBufferIndex, true);
 				_isDirty = false;	// Okay, I changed the encoder
             }
             break;
@@ -227,7 +227,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                 _cmdEncoder->setFragmentBytes(_cmdEncoder->_mtlRenderEncoder,
                                               _pushConstants.data(),
                                               _pushConstants.size(),
-                                              _mtlBufferIndex);
+                                              _mtlBufferIndex, true);
 				_isDirty = false;	// Okay, I changed the encoder
             }
             break;
@@ -235,7 +235,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
             _cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch),
                                          _pushConstants.data(),
                                          _pushConstants.size(),
-                                         _mtlBufferIndex);
+                                         _mtlBufferIndex, true);
 			_isDirty = false;	// Okay, I changed the encoder
             break;
         default:
@@ -982,6 +982,11 @@ void MVKGraphicsResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(
 	}
 }
 
+void MVKGraphicsResourcesCommandEncoderState::markBufferIndexDirty(MVKShaderStage stage, uint32_t mtlBufferIndex) {
+	auto& stageRezBinds = _shaderStageResourceBindings[stage];
+	markIndexDirty(stageRezBinds.bufferBindings, stageRezBinds.areBufferBindingsDirty, mtlBufferIndex);
+}
+
 
 #pragma mark -
 #pragma mark MVKComputeResourcesCommandEncoderState
@@ -1113,6 +1118,10 @@ void MVKComputeResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(M
 		auto* mtlCompEnc = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch);
 		[mtlCompEnc useResource: mtlResource usage: mtlUsage];
 	}
+}
+
+void MVKComputeResourcesCommandEncoderState::markBufferIndexDirty(uint32_t mtlBufferIndex) {
+	markIndexDirty(_resourceBindings.bufferBindings, _resourceBindings.areBufferBindingsDirty, mtlBufferIndex);
 }
 
 

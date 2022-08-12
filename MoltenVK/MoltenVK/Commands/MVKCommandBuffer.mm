@@ -836,37 +836,52 @@ MVKPushConstantsCommandEncoderState* MVKCommandEncoder::getPushConstants(VkShade
 void MVKCommandEncoder::setVertexBytes(id<MTLRenderCommandEncoder> mtlEncoder,
                                        const void* bytes,
                                        NSUInteger length,
-                                       uint32_t mtlBuffIndex) {
+									   uint32_t mtlBuffIndex,
+									   bool descOverride) {
     if (_pDeviceMetalFeatures->dynamicMTLBufferSize && length <= _pDeviceMetalFeatures->dynamicMTLBufferSize) {
         [mtlEncoder setVertexBytes: bytes length: length atIndex: mtlBuffIndex];
     } else {
         const MVKMTLBufferAllocation* mtlBuffAlloc = copyToTempMTLBufferAllocation(bytes, length);
         [mtlEncoder setVertexBuffer: mtlBuffAlloc->_mtlBuffer offset: mtlBuffAlloc->_offset atIndex: mtlBuffIndex];
     }
+
+	if (descOverride) {
+		_graphicsResourcesState.markBufferIndexDirty(kMVKShaderStageVertex, mtlBuffIndex);
+	}
 }
 
 void MVKCommandEncoder::setFragmentBytes(id<MTLRenderCommandEncoder> mtlEncoder,
                                          const void* bytes,
                                          NSUInteger length,
-                                         uint32_t mtlBuffIndex) {
+										 uint32_t mtlBuffIndex,
+										 bool descOverride) {
     if (_pDeviceMetalFeatures->dynamicMTLBufferSize && length <= _pDeviceMetalFeatures->dynamicMTLBufferSize) {
         [mtlEncoder setFragmentBytes: bytes length: length atIndex: mtlBuffIndex];
     } else {
         const MVKMTLBufferAllocation* mtlBuffAlloc = copyToTempMTLBufferAllocation(bytes, length);
         [mtlEncoder setFragmentBuffer: mtlBuffAlloc->_mtlBuffer offset: mtlBuffAlloc->_offset atIndex: mtlBuffIndex];
     }
+
+	if (descOverride) {
+		_graphicsResourcesState.markBufferIndexDirty(kMVKShaderStageFragment, mtlBuffIndex);
+	}
 }
 
 void MVKCommandEncoder::setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder,
                                         const void* bytes,
                                         NSUInteger length,
-                                        uint32_t mtlBuffIndex) {
+                                        uint32_t mtlBuffIndex,
+										bool descOverride) {
     if (_pDeviceMetalFeatures->dynamicMTLBufferSize && length <= _pDeviceMetalFeatures->dynamicMTLBufferSize) {
         [mtlEncoder setBytes: bytes length: length atIndex: mtlBuffIndex];
     } else {
         const MVKMTLBufferAllocation* mtlBuffAlloc = copyToTempMTLBufferAllocation(bytes, length);
         [mtlEncoder setBuffer: mtlBuffAlloc->_mtlBuffer offset: mtlBuffAlloc->_offset atIndex: mtlBuffIndex];
     }
+
+	if (descOverride) {
+		_computeResourcesState.markBufferIndexDirty(mtlBuffIndex);
+	}
 }
 
 // Return the MTLBuffer allocation to the pool once the command buffer is done with it
