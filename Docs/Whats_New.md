@@ -16,25 +16,39 @@ Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.1.11
 --------------
 
-Released TBD
+Released 2022/08/15
 
 - Add support for extensions:
 	- `VK_EXT_metal_objects`
-	- `VK_KHR_buffer_device_address` and `VK_EXT_buffer_device_address` *(requires GPU Tier 2 argument buffers support)*.
+	- `VK_KHR_buffer_device_address` and `VK_EXT_buffer_device_address` *(available on GPUs with Tier 2 argument buffers support)*.
 - Reducing redundant state changes to improve command encoding performance.
+- Improve performance of `vkResetDescriptorPool()`.
 - Update minimum Xcode deployment targets to macOS 10.13, iOS 11, and tvOS 11,
   to avoid Xcode build warnings in Xcode 14.
-- Work around MTLCounterSet crash on additional Intel Iris Plus Graphics drivers.
+- Work around `MTLCounterSet` crash on additional Intel Iris Plus Graphics drivers.
 - Check `MTLDevice` to enable support for `VK_KHR_fragment_shader_barycentric` 
   and `VK_NV_fragment_shader_barycentric` extensions.
 - Ignore sampler update in descriptor set bindings that use immutable samplers.
 - Fix query pool wait block when query is not encoded to be written to.
 - Fix `vkUpdateDescriptorSetWithTemplate()` for inline block descriptors.
 - Fix retrieval of accurate `vkGetRefreshCycleDurationGOOGLE()` across multiple display screens.
-- Improve performance of `vkResetDescriptorPool()`.
+- Fix occasional missing Metal buffer binding when only offset changes.
+- Fix crash creating compute pipelines on macOS versions < 10.14.
+- Apply Apple fix to `MTLCaptureScope` retention bug to macOS 12.4 and iOS 15.4 and later.
 - Report appropriate values of `VkDebugUtilsMessageTypeFlagsEXT` for debug util messages generated within MoltenVK.
 - Update _macOS Cube_ demo to demonstrate optimizing the swapchain across multiple display screens.
+- Support building in Xcode 14.
+- Allow building on removable volumes with a space in their name.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `35`.
+- Update to latest SPIRV-Cross:
+	- MSL: Add support for `SPV_KHR_physical_storage_buffer` extension.
+	- MSL: Use a wrapper type for matrices in workgroup storage.
+	- MSL: Fix various bugs with Ptr/U bitcasts.
+	- Fix control flow bug with missed continue statement.
+	- Handle PHI in collapsed switch constructs.
+	- Handle collapsed loops similar to collapsed selections.
+	- Handle multiple breaks out of switches.
+	- Do not optimize `OpCompositeInsert` for hoisted temporaries.
 
 
 
