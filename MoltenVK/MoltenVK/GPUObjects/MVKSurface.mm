@@ -77,18 +77,20 @@ void MVKSurface::initLayerObserver() {
 
 	_layerObserver = [MVKBlockObserver observerWithBlock: ^(NSString* path, id, NSDictionary*, void*) {
 		if ( ![path isEqualToString: @"layer"] ) { return; }
-		std::lock_guard<std::mutex> lock(this->_lock);
-		[this->_mtlCAMetalLayer release];
-		this->_mtlCAMetalLayer = nil;
-		this->setConfigurationResult(VK_ERROR_SURFACE_LOST_KHR);
-		[this->_layerObserver release];
-		this->_layerObserver = nil;
+		this->releaseLayer();
 	} forObject: _mtlCAMetalLayer.delegate atKeyPath: @"layer"];
 }
 
-MVKSurface::~MVKSurface() {
-	std::lock_guard<std::mutex> lock(_lock);
+void MVKSurface::releaseLayer() {
+	std::lock_guard<std::mutex> lock(_layerLock);
+	setConfigurationResult(VK_ERROR_SURFACE_LOST_KHR);
 	[_mtlCAMetalLayer release];
+	_mtlCAMetalLayer = nil;
 	[_layerObserver release];
+	_layerObserver = nil;
+}
+
+MVKSurface::~MVKSurface() {
+	releaseLayer();
 }
 

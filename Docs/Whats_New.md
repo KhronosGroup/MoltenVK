@@ -13,6 +13,16 @@ Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.1.12
+--------------
+
+Released TBD
+
+- Fix occassional crash from retention of `MVKSwapchain` for future drawable presentations.
+- Add `MVK_USE_CEREAL` build setting to avoid use of Cereal external library (for pipeline caching).
+
+
+
 MoltenVK 1.1.11
 --------------
 

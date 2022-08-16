@@ -393,20 +393,21 @@ public:
 
 #pragma mark Construction
 
-	/** Constructs an instance for the specified device and swapchain. */
 	MVKSwapchainImage(MVKDevice* device,
 					  const VkImageCreateInfo* pCreateInfo,
 					  MVKSwapchain* swapchain,
 					  uint32_t swapchainIndex);
 
-	~MVKSwapchainImage() override;
+	void destroy() override;
 
 protected:
 	friend class MVKPeerSwapchainImage;
 
 	virtual id<CAMetalDrawable> getCAMetalDrawable() = 0;
+	void detachSwapchain();
 
 	MVKSwapchain* _swapchain;
+	std::mutex _swapchainLock;
 	uint32_t _swapchainIndex;
 };
 
@@ -452,7 +453,6 @@ public:
 
 #pragma mark Construction
 
-	/** Constructs an instance for the specified device and swapchain. */
 	MVKPresentableSwapchainImage(MVKDevice* device,
 								 const VkImageCreateInfo* pCreateInfo,
 								 MVKSwapchain* swapchain,
@@ -464,7 +464,7 @@ protected:
 	friend MVKSwapchain;
 
 	id<CAMetalDrawable> getCAMetalDrawable() override;
-	void presentCAMetalDrawable(id<CAMetalDrawable> mtlDrawable, MVKPresentTimingInfo presentTimingInfo);
+	void addPresentedHandler(id<CAMetalDrawable> mtlDrawable, MVKPresentTimingInfo presentTimingInfo);
 	void releaseMetalDrawable();
 	MVKSwapchainImageAvailability getAvailability();
 	void makeAvailable(const MVKSwapchainSignaler& signaler);
@@ -498,7 +498,6 @@ public:
 
 #pragma mark Construction
 
-	/** Constructs an instance for the specified device and swapchain. */
 	MVKPeerSwapchainImage(MVKDevice* device,
 						  const VkImageCreateInfo* pCreateInfo,
 						  MVKSwapchain* swapchain,

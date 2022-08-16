@@ -255,13 +255,13 @@ MVKSwapchain::MVKSwapchain(MVKDevice* device,
 void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt) {
 
 	MVKSurface* mvkSrfc = (MVKSurface*)pCreateInfo->surface;
-	if ( !mvkSrfc->getCAMetalLayer() ) {
+	_mtlLayer = mvkSrfc->getCAMetalLayer();
+	if ( !_mtlLayer ) {
 		setConfigurationResult(mvkSrfc->getConfigurationResult());
 		_surfaceLost = true;
 		return;
 	}
 
-	_mtlLayer = mvkSrfc->getCAMetalLayer();
 	_mtlLayer.device = getMTLDevice();
 	_mtlLayer.pixelFormat = getPixelFormats()->getMTLPixelFormat(pCreateInfo->imageFormat);
 	_mtlLayer.maximumDrawableCountMVK = imgCnt;
@@ -341,11 +341,16 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 		// needs to recreate the swapchain, or no content will be displayed.
 		_layerObserver = [MVKBlockObserver observerWithBlock: ^(NSString* path, id, NSDictionary*, void*) {
 			if ( ![path isEqualToString: @"layer"] ) { return; }
-			this->_surfaceLost = true;
-			[this->_layerObserver release];
-			this->_layerObserver = nil;
+			this->releaseLayer();
 		} forObject: _mtlLayer.delegate atKeyPath: @"layer"];
 	}
+}
+
+void MVKSwapchain::releaseLayer() {
+	std::lock_guard<std::mutex> lock(_layerLock);
+	_surfaceLost = true;
+	[_layerObserver release];
+	_layerObserver = nil;
 }
 
 // Initializes the array of images used for the surface of this swapchain.
@@ -494,6 +499,6 @@ void MVKSwapchain::destroy() {
 
 MVKSwapchain::~MVKSwapchain() {
     if (_licenseWatermark) { _licenseWatermark->destroy(); }
-    [this->_layerObserver release];
+	releaseLayer();
 }
 
