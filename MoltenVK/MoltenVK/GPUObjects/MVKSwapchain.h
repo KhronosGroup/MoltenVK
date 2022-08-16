@@ -21,6 +21,7 @@
 #include "MVKDevice.h"
 #include "MVKImage.h"
 #include "MVKSmallVector.h"
+#include <mutex>
 
 #import "CAMetalLayer+MoltenVK.h"
 #import <Metal/Metal.h>
@@ -111,6 +112,7 @@ protected:
 	void propagateDebugName() override;
 	void initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
 	void initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
+	void releaseLayer();
 	void releaseUndisplayedSurfaces();
 	uint64_t getNextAcquisitionID();
     void willPresentSurface(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
@@ -126,6 +128,7 @@ protected:
     uint32_t _currentPerfLogFrameCount;
     std::atomic<bool> _surfaceLost;
     MVKBlockObserver* _layerObserver;
+	std::mutex _layerLock;
 	static const int kMaxPresentationHistory = 60;
 	VkPastPresentationTimingGOOGLE _presentTimingHistory[kMaxPresentationHistory];
 	uint32_t _presentHistoryCount;

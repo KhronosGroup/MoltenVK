@@ -58,7 +58,7 @@ public:
 
     /** Returns the CAMetalLayer underlying this surface.  */
     inline CAMetalLayer* getCAMetalLayer() {
-        std::lock_guard<std::mutex> lock(_lock);
+        std::lock_guard<std::mutex> lock(_layerLock);
         return _mtlCAMetalLayer;
     }
 
@@ -78,10 +78,11 @@ public:
 protected:
 	void propagateDebugName() override {}
 	void initLayerObserver();
+	void releaseLayer();
 
 	MVKInstance* _mvkInstance;
 	CAMetalLayer* _mtlCAMetalLayer;
-	std::mutex _lock;
 	MVKBlockObserver* _layerObserver;
+	std::mutex _layerLock;
 };
 
