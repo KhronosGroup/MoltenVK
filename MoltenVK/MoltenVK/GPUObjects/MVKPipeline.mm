@@ -25,9 +25,15 @@
 #include "MTLRenderPipelineDescriptor+MoltenVK.h"
 #include "mvk_datatypes.hpp"
 
+#ifndef MVK_USE_CEREAL
+#define MVK_USE_CEREAL (1)
+#endif
+
+#if MVK_USE_CEREAL
 #include <cereal/archives/binary.hpp>
 #include <cereal/types/string.hpp>
 #include <cereal/types/vector.hpp>
+#endif
 
 using namespace std;
 using namespace SPIRV_CROSS_NAMESPACE;
@@ -1971,7 +1977,9 @@ MVKShaderLibraryCache* MVKPipelineCache::getShaderLibraryCache(MVKShaderModuleKe
 
 #pragma mark Streaming pipeline cache to and from offline memory
 
+#if MVK_USE_CEREAL
 static uint32_t kDataHeaderSize = (sizeof(uint32_t) * 4) + VK_UUID_SIZE;
+#endif
 
 // Entry type markers to be inserted into data stream
 typedef enum {
@@ -2005,6 +2013,7 @@ protected:
 // returns the number of bytes required to serialize the contents of this pipeline cache.
 // This is the compliment of the readData() function. The two must be kept aligned.
 VkResult MVKPipelineCache::writeData(size_t* pDataSize, void* pData) {
+#if MVK_USE_CEREAL
 	lock_guard<mutex> lock(_shaderCacheLock);
 
 	try {
@@ -2037,11 +2046,15 @@ VkResult MVKPipelineCache::writeData(size_t* pDataSize, void* pData) {
 		*pDataSize = 0;
 		return reportError(VK_INCOMPLETE, "Error writing pipeline cache data: %s", ex.what());
 	}
+#else
+	*pDataSize = 0;
+	return reportError(VK_INCOMPLETE, "Pipeline cache serialization is unavailable. To enable pipeline cache serialization, build MoltenVK with MVK_USE_CEREAL=1 build setting.");
+#endif
 }
 
 // Serializes the data in this cache to a stream
 void MVKPipelineCache::writeData(ostream& outstream, bool isCounting) {
-
+#if MVK_USE_CEREAL
 	MVKPerformanceTracker& activityTracker = isCounting
 		? _device->_performanceStatistics.pipelineCache.sizePipelineCache
 		: _device->_performanceStatistics.pipelineCache.writePipelineCache;
@@ -2077,11 +2090,15 @@ void MVKPipelineCache::writeData(ostream& outstream, bool isCounting) {
 	// Mark the end of the archive
 	cacheEntryType = MVKPipelineCacheEntryTypeEOF;
 	writer(cacheEntryType);
+#else
+	MVKAssert(false, "Pipeline cache serialization is unavailable. To enable pipeline cache serialization, build MoltenVK with MVK_USE_CEREAL=1 build setting.");
+#endif
 }
 
 // Loads any data indicated by the creation info.
 // This is the compliment of the writeData() function. The two must be kept aligned.
 void MVKPipelineCache::readData(const VkPipelineCacheCreateInfo* pCreateInfo) {
+#if MVK_USE_CEREAL
 	try {
 
 		size_t byteCount = pCreateInfo->initialDataSize;
@@ -2149,8 +2166,11 @@ void MVKPipelineCache::readData(const VkPipelineCacheCreateInfo* pCreateInfo) {
 		}
 
 	} catch (cereal::Exception& ex) {
-		setConfigurationResult(reportError(VK_SUCCESS, "Error reading pipeline cache data: %s", ex.what()));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Error reading pipeline cache data: %s", ex.what()));
 	}
+#else
+	setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Pipeline cache serialization is unavailable. To enable pipeline cache serialization, build MoltenVK with MVK_USE_CEREAL=1 build setting."));
+#endif
 }
 
 // Mark the cache as dirty, so that existing streaming info is released
