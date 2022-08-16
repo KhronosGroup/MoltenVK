@@ -2330,6 +2330,32 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBeginRenderPass2(
 	MVKTraceVulkanCallEnd();
 }
 
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawIndexedIndirectCount(
+	VkCommandBuffer                             commandBuffer,
+    VkBuffer                                    buffer,
+    VkDeviceSize                                offset,
+    VkBuffer                                    countBuffer,
+    VkDeviceSize                                countBufferOffset,
+    uint32_t                                    maxDrawCount,
+    uint32_t                                    stride) {
+
+	MVKTraceVulkanCallStart();
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawIndirectCount(
+    VkCommandBuffer                             commandBuffer,
+    VkBuffer                                    buffer,
+    VkDeviceSize                                offset,
+    VkBuffer                                    countBuffer,
+    VkDeviceSize                                countBufferOffset,
+    uint32_t                                    maxDrawCount,
+    uint32_t                                    stride) {
+
+	MVKTraceVulkanCallStart();
+	MVKTraceVulkanCallEnd();
+}
+
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEndRenderPass2(
 	VkCommandBuffer								commandBuffer,
 	const VkSubpassEndInfo*						pSubpassEndInfo) {
@@ -2507,6 +2533,13 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDispatchBase, KHR);
 #pragma mark VK_KHR_device_group_creation extension
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkEnumeratePhysicalDeviceGroups, KHR);
+
+
+#pragma mark -
+#pragma mark VK_KHR_draw_indirect_count
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDrawIndexedIndirectCount, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDrawIndirectCount, KHR);
 
 
 #pragma mark -
@@ -3210,6 +3243,12 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPastPresentationTimingGOOGLE(
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
+
+#pragma mark -
+#pragma mark VK_AMD_draw_indirect_count
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDrawIndexedIndirectCount, AMD);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDrawIndirectCount, AMD);
 
 #pragma mark -
 #pragma mark iOS & macOS surface extensions
