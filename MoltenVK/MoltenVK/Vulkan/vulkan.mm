@@ -162,7 +162,7 @@ static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t star
 	}
 
 // Define an extension call as an alias of a core call
-#define MVK_PUBLIC_VULKAN_CORE_ALIAS(vkf)	MVK_PUBLIC_VULKAN_ALIAS(vkf##KHR, vkf)
+#define MVK_PUBLIC_VULKAN_CORE_ALIAS(vkf, ext)	MVK_PUBLIC_VULKAN_ALIAS(vkf##ext, vkf)
 
 
 #pragma mark -
@@ -2317,45 +2317,39 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDispatchBase(
 	MVKTraceVulkanCallEnd();
 }
 
-
 #pragma mark -
-#pragma mark VK_KHR_bind_memory2 extension
+#pragma mark Vulkan 1.2 calls
 
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkBindBufferMemory2);
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkBindImageMemory2);
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBeginRenderPass2(
+	VkCommandBuffer								commandBuffer,
+	const VkRenderPassBeginInfo*				pRenderPassBegin,
+	const VkSubpassBeginInfo*					pSubpassBeginInfo) {
 
-
-#pragma mark -
-#pragma mark VK_KHR_buffer_device_address
-
-MVK_PUBLIC_VULKAN_SYMBOL VkDeviceAddress vkGetBufferDeviceAddressKHR(
-	VkDevice                                    device,
-	const VkBufferDeviceAddressInfo*            pInfo) {
-	
 	MVKTraceVulkanCallStart();
-	uint64_t result = ((MVKBuffer*)pInfo->buffer)->getMTLBufferGPUAddress();
+	mvkCmdBeginRenderPass(commandBuffer, pRenderPassBegin, pSubpassBeginInfo);
 	MVKTraceVulkanCallEnd();
-	return (VkDeviceAddress)result;
 }
 
-MVK_PUBLIC_VULKAN_SYMBOL uint64_t vkGetBufferOpaqueCaptureAddressKHR(
-	VkDevice                                    device,
-	const VkBufferDeviceAddressInfo*            pInfo) {
-	
-	return 0;
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEndRenderPass2(
+	VkCommandBuffer								commandBuffer,
+	const VkSubpassEndInfo*						pSubpassEndInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(EndRenderPass, commandBuffer, pSubpassEndInfo);
+	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_VULKAN_SYMBOL uint64_t vkGetDeviceMemoryOpaqueCaptureAddressKHR(
-	VkDevice                                    device,
-	const VkDeviceMemoryOpaqueCaptureAddressInfo*            pInfo) {
-	
-	return 0;
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdNextSubpass2(
+	VkCommandBuffer								commandBuffer,
+	const VkSubpassBeginInfo*					pSubpassBeginInfo,
+	const VkSubpassEndInfo*						pSubpassEndInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(NextSubpass, commandBuffer, pSubpassBeginInfo, pSubpassEndInfo);
+	MVKTraceVulkanCallEnd();
 }
 
-#pragma mark -
-#pragma mark VK_KHR_create_renderpass2 extension
-
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateRenderPass2KHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateRenderPass2(
 	VkDevice									device,
 	const VkRenderPassCreateInfo2*				pCreateInfo,
 	const VkAllocationCallbacks*				pAllocator,
@@ -2371,34 +2365,104 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateRenderPass2KHR(
 	return rslt;
 }
 
-MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBeginRenderPass2KHR(
-	VkCommandBuffer								commandBuffer,
-	const VkRenderPassBeginInfo*				pRenderPassBegin,
-	const VkSubpassBeginInfo*					pSubpassBeginInfo) {
+MVK_PUBLIC_VULKAN_SYMBOL VkDeviceAddress vkGetBufferDeviceAddress(
+	VkDevice                                    device,
+	const VkBufferDeviceAddressInfo*            pInfo) {
+	
+	MVKTraceVulkanCallStart();
+	uint64_t result = ((MVKBuffer*)pInfo->buffer)->getMTLBufferGPUAddress();
+	MVKTraceVulkanCallEnd();
+	return (VkDeviceAddress)result;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL uint64_t vkGetBufferOpaqueCaptureAddress(
+	VkDevice                                    device,
+	const VkBufferDeviceAddressInfo*            pInfo) {
+	
+	return 0;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL uint64_t vkGetDeviceMemoryOpaqueCaptureAddress(
+	VkDevice                                    device,
+	const VkDeviceMemoryOpaqueCaptureAddressInfo*            pInfo) {
+	
+	return 0;
+}
+
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetSemaphoreCounterValue(
+	VkDevice									device,
+	VkSemaphore									semaphore,
+	uint64_t*									pValue) {
 
 	MVKTraceVulkanCallStart();
-	mvkCmdBeginRenderPass(commandBuffer, pRenderPassBegin, pSubpassBeginInfo);
+	VkResult rslt = MVKDevice::getMVKDevice(device)->getConfigurationResult();
+	if (rslt == VK_SUCCESS) {
+		auto* mvkSem4 = (MVKTimelineSemaphore*)semaphore;
+		*pValue = mvkSem4->getCounterValue();
+	}
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkResetQueryPool(
+    VkDevice                                    device,
+    VkQueryPool                                 queryPool,
+    uint32_t                                    firstQuery,
+    uint32_t                                    queryCount) {
+
+	MVKTraceVulkanCallStart();
+    auto* mvkQueryPool = (MVKQueryPool*)queryPool;
+    mvkQueryPool->resetResults(firstQuery, queryCount, nullptr);
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_VULKAN_SYMBOL void vkCmdNextSubpass2KHR(
-	VkCommandBuffer								commandBuffer,
-	const VkSubpassBeginInfo*					pSubpassBeginInfo,
-	const VkSubpassEndInfo*						pSubpassEndInfo) {
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSignalSemaphore(
+	VkDevice									device,
+	const VkSemaphoreSignalInfoKHR*				pSignalInfo) {
 
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(NextSubpass, commandBuffer, pSubpassBeginInfo, pSubpassEndInfo);
+	auto* mvkSem4 = (MVKTimelineSemaphore*)pSignalInfo->semaphore;
+	mvkSem4->signal(pSignalInfo);
 	MVKTraceVulkanCallEnd();
+	return VK_SUCCESS;
 }
 
-MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEndRenderPass2KHR(
-	VkCommandBuffer								commandBuffer,
-	const VkSubpassEndInfo*						pSubpassEndInfo) {
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkWaitSemaphores(
+	VkDevice									device,
+	const VkSemaphoreWaitInfoKHR*				pWaitInfo,
+	uint64_t									timeout) {
 
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(EndRenderPass, commandBuffer, pSubpassEndInfo);
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	VkResult rslt = mvkWaitSemaphores(mvkDev, pWaitInfo, timeout);
 	MVKTraceVulkanCallEnd();
+	return rslt;
 }
+
+
+#pragma mark -
+#pragma mark VK_KHR_bind_memory2 extension
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkBindBufferMemory2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkBindImageMemory2, KHR);
+
+
+#pragma mark -
+#pragma mark VK_KHR_buffer_device_address
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetBufferDeviceAddress, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetBufferOpaqueCaptureAddress, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetDeviceMemoryOpaqueCaptureAddress, KHR);
+
+
+#pragma mark -
+#pragma mark VK_KHR_create_renderpass2 extension
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCreateRenderPass2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdBeginRenderPass2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdNextSubpass2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdEndRenderPass2, KHR);
 
 
 #pragma mark -
@@ -2426,73 +2490,73 @@ void vkCmdEndRenderingKHR(
 #pragma mark -
 #pragma mark VK_KHR_descriptor_update_template extension
 
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCreateDescriptorUpdateTemplate);
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkDestroyDescriptorUpdateTemplate);
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkUpdateDescriptorSetWithTemplate);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCreateDescriptorUpdateTemplate, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkDestroyDescriptorUpdateTemplate, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkUpdateDescriptorSetWithTemplate, KHR);
 
 
 #pragma mark -
 #pragma mark VK_KHR_device_group extension
 
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetDeviceGroupPeerMemoryFeatures);
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetDeviceMask);
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDispatchBase);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetDeviceGroupPeerMemoryFeatures, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetDeviceMask, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDispatchBase, KHR);
 
 
 #pragma mark -
 #pragma mark VK_KHR_device_group_creation extension
 
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkEnumeratePhysicalDeviceGroups);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkEnumeratePhysicalDeviceGroups, KHR);
 
 
 #pragma mark -
 #pragma mark VK_KHR_external_fence_capabilities extension
 
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceExternalFenceProperties);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceExternalFenceProperties, KHR);
 
 
 #pragma mark -
 #pragma mark VK_KHR_external_memory_capabilities extension
 
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceExternalBufferProperties);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceExternalBufferProperties, KHR);
 
 
 #pragma mark -
 #pragma mark VK_KHR_external_semaphore_capabilities extension
 
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceExternalSemaphoreProperties);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceExternalSemaphoreProperties, KHR);
 
 
 #pragma mark -
 #pragma mark VK_KHR_get_memory_requirements2 extension
 
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetBufferMemoryRequirements2);
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetImageMemoryRequirements2);
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetImageSparseMemoryRequirements2);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetBufferMemoryRequirements2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetImageMemoryRequirements2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetImageSparseMemoryRequirements2, KHR);
 
 
 #pragma mark -
 #pragma mark VK_KHR_get_physical_device_properties2 extension
 
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceFeatures2);
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceProperties2);
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceFormatProperties2);
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceImageFormatProperties2);
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceQueueFamilyProperties2);
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceMemoryProperties2);
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceSparseImageFormatProperties2);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceFeatures2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceProperties2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceFormatProperties2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceImageFormatProperties2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceQueueFamilyProperties2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceMemoryProperties2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceSparseImageFormatProperties2, KHR);
 
 
 #pragma mark -
 #pragma mark VK_KHR_maintenance1 extension
 
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkTrimCommandPool);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkTrimCommandPool, KHR);
 
 
 #pragma mark -
 #pragma mark VK_KHR_maintenance3 extension
 
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetDescriptorSetLayoutSupport);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetDescriptorSetLayoutSupport, KHR);
 
 
 #pragma mark -
@@ -2527,8 +2591,8 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSetWithTemplateKHR(
 #pragma mark -
 #pragma mark VK_KHR_sampler_ycbcr_conversion extension
 
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCreateSamplerYcbcrConversion);
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkDestroySamplerYcbcrConversion);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCreateSamplerYcbcrConversion, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkDestroySamplerYcbcrConversion, KHR);
 
 
 #pragma mark -
@@ -2762,43 +2826,9 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceSurfaceFormats2KHR(
 #pragma mark -
 #pragma mark VK_KHR_timeline_semaphore
 
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetSemaphoreCounterValueKHR(
-	VkDevice									device,
-	VkSemaphore									semaphore,
-	uint64_t*									pValue) {
-
-	MVKTraceVulkanCallStart();
-	VkResult rslt = MVKDevice::getMVKDevice(device)->getConfigurationResult();
-	if (rslt == VK_SUCCESS) {
-		auto* mvkSem4 = (MVKTimelineSemaphore*)semaphore;
-		*pValue = mvkSem4->getCounterValue();
-	}
-	MVKTraceVulkanCallEnd();
-	return rslt;
-}
-
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSignalSemaphoreKHR(
-	VkDevice									device,
-	const VkSemaphoreSignalInfoKHR*				pSignalInfo) {
-
-	MVKTraceVulkanCallStart();
-	auto* mvkSem4 = (MVKTimelineSemaphore*)pSignalInfo->semaphore;
-	mvkSem4->signal(pSignalInfo);
-	MVKTraceVulkanCallEnd();
-	return VK_SUCCESS;
-}
-
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkWaitSemaphoresKHR(
-	VkDevice									device,
-	const VkSemaphoreWaitInfoKHR*				pWaitInfo,
-	uint64_t									timeout) {
-
-	MVKTraceVulkanCallStart();
-	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	VkResult rslt = mvkWaitSemaphores(mvkDev, pWaitInfo, timeout);
-	MVKTraceVulkanCallEnd();
-	return rslt;
-}
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetSemaphoreCounterValue, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkSignalSemaphore, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkWaitSemaphores, KHR);
 
 
 #pragma mark -
@@ -3039,17 +3069,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkSetHdrMetadataEXT(
 #pragma mark -
 #pragma mark VK_EXT_host_query_reset extension
 
-MVK_PUBLIC_VULKAN_SYMBOL void vkResetQueryPoolEXT(
-    VkDevice                                    device,
-    VkQueryPool                                 queryPool,
-    uint32_t                                    firstQuery,
-    uint32_t                                    queryCount) {
-
-	MVKTraceVulkanCallStart();
-    auto* mvkQueryPool = (MVKQueryPool*)queryPool;
-    mvkQueryPool->resetResults(firstQuery, queryCount, nullptr);
-	MVKTraceVulkanCallEnd();
-}
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkResetQueryPool, EXT);
 
 
 #pragma mark -
