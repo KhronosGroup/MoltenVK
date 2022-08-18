@@ -404,8 +404,7 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 
 	NSString* screenName = @"Main Screen";
 #if MVK_MACOS && !MVK_MACCAT
-	if ([_mtlLayer.screenMVK respondsToSelector:@selector(localizedName)])
-	{
+	if ([_mtlLayer.screenMVK respondsToSelector:@selector(localizedName)]) {
 		screenName = _mtlLayer.screenMVK.localizedName;
 	}
 #endif
