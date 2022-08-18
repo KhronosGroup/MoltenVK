@@ -105,7 +105,7 @@ export MVK_DEBUG=0
 # Additional MoltenVK configuration can be set here by 
 # editing below, or can be set before calling this script.
 export MVK_CONFIG_RESUME_LOST_DEVICE=1
-export MVK_CONFIG_FAST_MATH_ENABLED=0
+export MVK_CONFIG_FAST_MATH_ENABLED=1
 export MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0
 export MVK_CONFIG_FORCE_LOW_POWER_GPU=0
 
