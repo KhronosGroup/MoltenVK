@@ -18,6 +18,8 @@ MoltenVK 1.1.12
 
 Released TBD
 
+- Add support for extensions:
+	- `VK_KHR_shader_float_controls`
 - Fix occassional crash from retention of `MVKSwapchain` for future drawable presentations.
 - Add `MVK_USE_CEREAL` build setting to avoid use of Cereal external library (for pipeline caching).
 

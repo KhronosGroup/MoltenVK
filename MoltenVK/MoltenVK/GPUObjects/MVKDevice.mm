@@ -429,23 +429,23 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps12.conformanceVersion.minor = 0;
 	supportedProps12.conformanceVersion.subminor = 0;
 	supportedProps12.conformanceVersion.patch = 0;
-	supportedProps12.denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY;	// VK_KHR_shader_float_controls
-	supportedProps12.roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY;		// VK_KHR_shader_float_controls
-	supportedProps12.shaderSignedZeroInfNanPreserveFloat16 = false;										// VK_KHR_shader_float_controls
-	supportedProps12.shaderSignedZeroInfNanPreserveFloat32 = false;										// VK_KHR_shader_float_controls
-	supportedProps12.shaderSignedZeroInfNanPreserveFloat64 = false;										// VK_KHR_shader_float_controls
-	supportedProps12.shaderDenormPreserveFloat16 = false;												// VK_KHR_shader_float_controls
-	supportedProps12.shaderDenormPreserveFloat32 = false;												// VK_KHR_shader_float_controls
-	supportedProps12.shaderDenormPreserveFloat64 = false;												// VK_KHR_shader_float_controls
-	supportedProps12.shaderDenormFlushToZeroFloat16 = false;											// VK_KHR_shader_float_controls
-	supportedProps12.shaderDenormFlushToZeroFloat32 = false;											// VK_KHR_shader_float_controls
-	supportedProps12.shaderDenormFlushToZeroFloat64 = false;											// VK_KHR_shader_float_controls
-	supportedProps12.shaderRoundingModeRTEFloat16 = false;												// VK_KHR_shader_float_controls
-	supportedProps12.shaderRoundingModeRTEFloat32 = false;												// VK_KHR_shader_float_controls
-	supportedProps12.shaderRoundingModeRTEFloat64 = false;												// VK_KHR_shader_float_controls
-	supportedProps12.shaderRoundingModeRTZFloat16 = false;												// VK_KHR_shader_float_controls
-	supportedProps12.shaderRoundingModeRTZFloat32 = false;												// VK_KHR_shader_float_controls
-	supportedProps12.shaderRoundingModeRTZFloat64 = false;												// VK_KHR_shader_float_controls
+	supportedProps12.denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_NONE;
+	supportedProps12.roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_NONE;
+	supportedProps12.shaderSignedZeroInfNanPreserveFloat16 = true;
+	supportedProps12.shaderSignedZeroInfNanPreserveFloat32 = true;
+	supportedProps12.shaderSignedZeroInfNanPreserveFloat64 = false;
+	supportedProps12.shaderDenormPreserveFloat16 = false;
+	supportedProps12.shaderDenormPreserveFloat32 = false;
+	supportedProps12.shaderDenormPreserveFloat64 = false;
+	supportedProps12.shaderDenormFlushToZeroFloat16 = false;
+	supportedProps12.shaderDenormFlushToZeroFloat32 = false;
+	supportedProps12.shaderDenormFlushToZeroFloat64 = false;
+	supportedProps12.shaderRoundingModeRTEFloat16 = false;
+	supportedProps12.shaderRoundingModeRTEFloat32 = false;
+	supportedProps12.shaderRoundingModeRTEFloat64 = false;
+	supportedProps12.shaderRoundingModeRTZFloat16 = false;
+	supportedProps12.shaderRoundingModeRTZFloat32 = false;
+	supportedProps12.shaderRoundingModeRTZFloat64 = false;
 	supportedProps12.maxUpdateAfterBindDescriptorsInAllPools				= kMVKUndefinedLargeUInt32;
 	supportedProps12.shaderUniformBufferArrayNonUniformIndexingNative		= false;
 	supportedProps12.shaderSampledImageArrayNonUniformIndexingNative		= _metalFeatures.arrayOfTextures && _metalFeatures.arrayOfSamplers;
@@ -610,6 +610,27 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				void* pNext = texelBuffAlignProps->pNext;
 				*texelBuffAlignProps = _texelBuffAlignProperties;
 				texelBuffAlignProps->pNext = pNext;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES: {
+				auto* floatControlsProperties = (VkPhysicalDeviceFloatControlsProperties*)next;
+				floatControlsProperties->denormBehaviorIndependence = supportedProps12.denormBehaviorIndependence;
+				floatControlsProperties->roundingModeIndependence = supportedProps12.roundingModeIndependence;
+				floatControlsProperties->shaderSignedZeroInfNanPreserveFloat16 = supportedProps12.shaderSignedZeroInfNanPreserveFloat16;
+				floatControlsProperties->shaderSignedZeroInfNanPreserveFloat32 = supportedProps12.shaderSignedZeroInfNanPreserveFloat32;
+				floatControlsProperties->shaderSignedZeroInfNanPreserveFloat64 = supportedProps12.shaderSignedZeroInfNanPreserveFloat64;
+				floatControlsProperties->shaderDenormPreserveFloat16 = supportedProps12.shaderDenormPreserveFloat16;
+				floatControlsProperties->shaderDenormPreserveFloat32 = supportedProps12.shaderDenormPreserveFloat32;
+				floatControlsProperties->shaderDenormPreserveFloat64 = supportedProps12.shaderDenormPreserveFloat64;
+				floatControlsProperties->shaderDenormFlushToZeroFloat16 = supportedProps12.shaderDenormFlushToZeroFloat16;
+				floatControlsProperties->shaderDenormFlushToZeroFloat32 = supportedProps12.shaderDenormFlushToZeroFloat32;
+				floatControlsProperties->shaderDenormFlushToZeroFloat64 = supportedProps12.shaderDenormFlushToZeroFloat64;
+				floatControlsProperties->shaderRoundingModeRTEFloat16 = supportedProps12.shaderRoundingModeRTEFloat16;
+				floatControlsProperties->shaderRoundingModeRTEFloat32 = supportedProps12.shaderRoundingModeRTEFloat32;
+				floatControlsProperties->shaderRoundingModeRTEFloat64 = supportedProps12.shaderRoundingModeRTEFloat64;
+				floatControlsProperties->shaderRoundingModeRTZFloat16 = supportedProps12.shaderRoundingModeRTZFloat16;
+				floatControlsProperties->shaderRoundingModeRTZFloat32 = supportedProps12.shaderRoundingModeRTZFloat32;
+				floatControlsProperties->shaderRoundingModeRTZFloat64 = supportedProps12.shaderRoundingModeRTZFloat64;
 				break;
 			}
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_PROPERTIES_KHR: {
@@ -4568,10 +4589,9 @@ void MVKDevice::enableFeatures(VkBool32* pEnabledBools, const VkBool32* pRequest
 }
 
 void MVKDevice::enableExtensions(const VkDeviceCreateInfo* pCreateInfo) {
-	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_enabledExtensions;
-	setConfigurationResult(pWritableExtns->enable(pCreateInfo->enabledExtensionCount,
-												  pCreateInfo->ppEnabledExtensionNames,
-												  &_physicalDevice->_supportedExtensions));
+	setConfigurationResult(_enabledExtensions.enable(pCreateInfo->enabledExtensionCount,
+													 pCreateInfo->ppEnabledExtensionNames,
+													 &_physicalDevice->_supportedExtensions));
 }
 
 // Create the command queues
