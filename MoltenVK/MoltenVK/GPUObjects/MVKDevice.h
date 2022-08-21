@@ -433,7 +433,6 @@ typedef struct MVKMTLBlitEncoder {
 
 typedef enum {
 	MVKSemaphoreStyleUseMTLEvent,
-	MVKSemaphoreStyleUseMTLFence,
 	MVKSemaphoreStyleUseEmulation
 } MVKSemaphoreStyle;
 

@@ -201,31 +201,6 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKSemaphoreMTLFence
-
-/** An MVKSemaphore that uses MTLFence to provide synchronization. */
-class MVKSemaphoreMTLFence : public MVKSemaphore {
-
-public:
-	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
-	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
-	uint64_t deferSignal() override;
-	void encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
-	bool isUsingCommandEncoding() override { return true; }
-
-	MVKSemaphoreMTLFence(MVKDevice* device,
-						 const VkSemaphoreCreateInfo* pCreateInfo,
-						 const VkExportMetalObjectCreateInfoEXT* pExportInfo,
-						 const VkImportMetalSharedEventInfoEXT* pImportInfo);
-
-	~MVKSemaphoreMTLFence() override;
-
-protected:
-	id<MTLFence> _mtlFence;
-};
-
-
-#pragma mark -
 #pragma mark MVKSemaphoreMTLEvent
 
 /** An MVKSemaphore that uses MTLEvent to provide synchronization. */

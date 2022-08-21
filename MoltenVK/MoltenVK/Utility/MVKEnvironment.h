@@ -239,9 +239,6 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #ifndef MVK_ALLOW_METAL_EVENTS
 #   define MVK_ALLOW_METAL_EVENTS    1
 #endif
-#ifndef MVK_ALLOW_METAL_FENCES
-#   define MVK_ALLOW_METAL_FENCES    0
-#endif
 
 /** Substitute Metal 2D textures for Vulkan 1D images. Enabled by default. */
 #ifndef MVK_CONFIG_TEXTURE_1D_AS_2D

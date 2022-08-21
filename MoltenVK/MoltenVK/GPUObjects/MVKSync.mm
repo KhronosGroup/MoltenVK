@@ -77,50 +77,6 @@ MVKSemaphoreImpl::~MVKSemaphoreImpl() {
 
 
 #pragma mark -
-#pragma mark MVKSemaphoreMTLFence
-
-// Could use any encoder. Assume BLIT is fastest and lightest.
-// Nil mtlCmdBuff will do nothing.
-void MVKSemaphoreMTLFence::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
-	id<MTLBlitCommandEncoder> mtlCmdEnc = mtlCmdBuff.blitCommandEncoder;
-	[mtlCmdEnc waitForFence: _mtlFence];
-	[mtlCmdEnc endEncoding];
-}
-
-// Could use any encoder. Assume BLIT is fastest and lightest.
-// Nil mtlCmdBuff will do nothing.
-void MVKSemaphoreMTLFence::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
-	id<MTLBlitCommandEncoder> mtlCmdEnc = mtlCmdBuff.blitCommandEncoder;
-	[mtlCmdEnc updateFence: _mtlFence];
-	[mtlCmdEnc endEncoding];
-}
-
-uint64_t MVKSemaphoreMTLFence::deferSignal() {
-	return 0;
-}
-
-void MVKSemaphoreMTLFence::encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
-	encodeSignal(mtlCmdBuff, 0);
-}
-
-MVKSemaphoreMTLFence::MVKSemaphoreMTLFence(MVKDevice* device,
-										   const VkSemaphoreCreateInfo* pCreateInfo,
-										   const VkExportMetalObjectCreateInfoEXT* pExportInfo,
-										   const VkImportMetalSharedEventInfoEXT* pImportInfo) : MVKSemaphore(device, pCreateInfo) {
-
-	_mtlFence = [device->getMTLDevice() newFence];		//retained
-
-	if ((pImportInfo && pImportInfo->mtlSharedEvent) || (pExportInfo && pExportInfo->exportObjectType == VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT)) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkCreateEvent(): MTLSharedEvent is not available with VkSemaphores that use MTLFence."));
-	}
-}
-
-MVKSemaphoreMTLFence::~MVKSemaphoreMTLFence() {
-	[_mtlFence release];
-}
-
-
-#pragma mark -
 #pragma mark MVKSemaphoreMTLEvent
 
 void MVKSemaphoreMTLEvent::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {

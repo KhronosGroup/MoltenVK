@@ -558,29 +558,6 @@ typedef struct {
 	VkBool32 forceLowPowerGPU;
 
 	/**
-	 * Use MTLFence, if it is available on the device, for VkSemaphore synchronization behaviour.
-	 *
-	 * This parameter interacts with semaphoreUseMTLEvent. If both are enabled, on GPUs other than
-	 * NVIDIA, semaphoreUseMTLEvent takes priority and MTLEvent will be used if it is available,
-	 * otherwise MTLFence will be used if it is available. On NVIDIA GPUs, MTLEvent is disabled
-	 * for VkSemaphores, so CPU-based synchronization will be used unless semaphoreUseMTLFence
-	 * is enabled and MTLFence is available.
-	 *
-	 * In the special case of VK_SEMAPHORE_TYPE_TIMELINE semaphores, MoltenVK will always
-	 * use MTLSharedEvent if it is available on the platform, regardless of the values of
-	 * semaphoreUseMTLEvent or semaphoreUseMTLFence.
-	 *
-	 * The value of this parameter must be changed before creating a VkDevice,
-	 * for the change to take effect.
-	 *
-	 * The initial value or this parameter is set by the
-	 * MVK_ALLOW_METAL_FENCES
-	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, this setting is disabled by default, and VkSemaphore will not use MTLFence.
-	 */
-	VkBool32 semaphoreUseMTLFence;
-
-	/**
 	 * Use MTLEvent, if it is available on the device, for VkSemaphore synchronization behaviour.
 	 *
 	 * This parameter interacts with semaphoreUseMTLFence. If both are enabled, on GPUs other than

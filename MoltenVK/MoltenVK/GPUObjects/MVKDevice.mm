@@ -3616,7 +3616,6 @@ MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInf
 	} else {
 		switch (_vkSemaphoreStyle) {
 			case MVKSemaphoreStyleUseMTLEvent:  return new MVKSemaphoreMTLEvent(this, pCreateInfo, pExportInfo, pImportInfo);
-			case MVKSemaphoreStyleUseMTLFence:  return new MVKSemaphoreMTLFence(this, pCreateInfo, pExportInfo, pImportInfo);
 			case MVKSemaphoreStyleUseEmulation: return new MVKSemaphoreEmulated(this, pCreateInfo, pExportInfo, pImportInfo);
 		}
 	}
@@ -4415,14 +4414,10 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	bool isNVIDIA = _pProperties->vendorID == kNVVendorId;
 	bool isRosetta2 = _pProperties->vendorID == kAppleVendorId && !MVK_APPLE_SILICON;
 	bool canUseMTLEventForSem4 = _pMetalFeatures->events && mvkConfig().semaphoreUseMTLEvent && !(isRosetta2 || isNVIDIA);
-	bool canUseMTLFenceForSem4 = _pMetalFeatures->fences && mvkConfig().semaphoreUseMTLFence;
-	_vkSemaphoreStyle = canUseMTLEventForSem4 ? MVKSemaphoreStyleUseMTLEvent : (canUseMTLFenceForSem4 ? MVKSemaphoreStyleUseMTLFence : MVKSemaphoreStyleUseEmulation);
+	_vkSemaphoreStyle = canUseMTLEventForSem4 ? MVKSemaphoreStyleUseMTLEvent : MVKSemaphoreStyleUseEmulation;
 	switch (_vkSemaphoreStyle) {
 		case MVKSemaphoreStyleUseMTLEvent:
 			MVKLogInfo("Using MTLEvent for Vulkan semaphores.");
-			break;
-		case MVKSemaphoreStyleUseMTLFence:
-			MVKLogInfo("Using MTLFence for Vulkan semaphores.");
 			break;
 		case MVKSemaphoreStyleUseEmulation:
 			MVKLogInfo("Using emulation for Vulkan semaphores.");
