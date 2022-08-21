@@ -77,6 +77,37 @@ MVKSemaphoreImpl::~MVKSemaphoreImpl() {
 
 
 #pragma mark -
+#pragma mark MVKSemaphoreSingleQueue
+
+void MVKSemaphoreSingleQueue::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
+	// Metal will handle all synchronization for us automatically
+}
+
+void MVKSemaphoreSingleQueue::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
+	// Metal will handle all synchronization for us automatically
+}
+
+uint64_t MVKSemaphoreSingleQueue::deferSignal() {
+	return 0;
+}
+
+void MVKSemaphoreSingleQueue::encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
+	encodeSignal(mtlCmdBuff, 0);
+}
+
+MVKSemaphoreSingleQueue::MVKSemaphoreSingleQueue(MVKDevice* device,
+                                                 const VkSemaphoreCreateInfo* pCreateInfo,
+                                                 const VkExportMetalObjectCreateInfoEXT* pExportInfo,
+                                                 const VkImportMetalSharedEventInfoEXT* pImportInfo) : MVKSemaphore(device, pCreateInfo) {
+	if ((pImportInfo && pImportInfo->mtlSharedEvent) || (pExportInfo && pExportInfo->exportObjectType == VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT)) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkCreateEvent(): MTLSharedEvent is not available with VkSemaphores that use implicit synchronization."));
+	}
+}
+
+MVKSemaphoreSingleQueue::~MVKSemaphoreSingleQueue() = default;
+
+
+#pragma mark -
 #pragma mark MVKSemaphoreMTLEvent
 
 void MVKSemaphoreMTLEvent::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {

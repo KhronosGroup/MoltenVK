@@ -558,13 +558,34 @@ typedef struct {
 	VkBool32 forceLowPowerGPU;
 
 	/**
+	 * Use Metal's implicit guarantees that all operations submitted to a queue will give the same result as
+	 * if they had been run in submission order to implement VkSemaphore synchronization as no-ops.
+	 *
+	 * This requires all submissions be made to the same queue, and to guarantee that, MoltenVK will expose
+	 * only one queue to the application.
+	 *
+	 * In the special case of VK_SEMAPHORE_TYPE_TIMELINE semaphores, MoltenVK will always
+	 * use MTLSharedEvent if it is available on the platform, regardless of the values of
+	 * semaphoreUseMTLEvent or semaphoreUseMTLFence.
+	 *
+	 * The value of this parameter must be changed before creating a VkDevice for the change to take effect.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_ALLOW_SINGLE_QUEUE_SEMAPHORE
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, this setting is enabled by default, and VkSemaphore will force a single queue
+	 * on NVIDIA GPUs and whenever MVK_ALLOW_METAL_EVENTS is not also set.
+	 */
+	VkBool32 semaphoreUseSingleQueue;
+
+	/**
 	 * Use MTLEvent, if it is available on the device, for VkSemaphore synchronization behaviour.
 	 *
-	 * This parameter interacts with semaphoreUseMTLFence. If both are enabled, on GPUs other than
+	 * This parameter interacts with semaphoreUseSingleQueue. If both are enabled, on GPUs other than
 	 * NVIDIA, semaphoreUseMTLEvent takes priority and MTLEvent will be used if it is available,
 	 * otherwise MTLFence will be used if it is available. On NVIDIA GPUs, MTLEvent is disabled
-	 * for VkSemaphores, so CPU-based synchronization will be used unless semaphoreUseMTLFence
-	 * is enabled and MTLFence is available.
+	 * for VkSemaphores, so CPU-based synchronization will be used unless semaphoreUseSingleQueue
+	 * is enabled.
 	 *
 	 * In the special case of VK_SEMAPHORE_TYPE_TIMELINE semaphores, MoltenVK will always
 	 * use MTLSharedEvent if it is available on the platform, regardless of the values of

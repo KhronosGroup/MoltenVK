@@ -201,6 +201,33 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKSemaphoreSingleQueue
+
+/**
+ * An MVKSemaphore that uses Metal's built-in guarantees on single-queue submission to provide semaphore-like guarantees.
+ *
+ * Relies on Metal's enabled-by-default hazard tracking, and will need to start doing things with MTLFences
+ * if we start using things with MTLHazardTrackingModeUntracked
+ */
+class MVKSemaphoreSingleQueue : public MVKSemaphore {
+
+public:
+	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
+	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
+	uint64_t deferSignal() override;
+	void encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
+	bool isUsingCommandEncoding() override { return false; }
+
+	MVKSemaphoreSingleQueue(MVKDevice* device,
+	                        const VkSemaphoreCreateInfo* pCreateInfo,
+	                        const VkExportMetalObjectCreateInfoEXT* pExportInfo,
+	                        const VkImportMetalSharedEventInfoEXT* pImportInfo);
+
+	~MVKSemaphoreSingleQueue() override;
+};
+
+
+#pragma mark -
 #pragma mark MVKSemaphoreMTLEvent
 
 /** An MVKSemaphore that uses MTLEvent to provide synchronization. */

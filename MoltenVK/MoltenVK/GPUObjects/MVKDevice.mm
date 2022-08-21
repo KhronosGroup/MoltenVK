@@ -1290,17 +1290,22 @@ MVKArrayRef<MVKQueueFamily*> MVKPhysicalDevice::getQueueFamilies() {
 		qfProps.queueFlags = (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT);
 		_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
 
-		// Dedicated graphics queue family...or another general-purpose queue family.
-		if (specialize) { qfProps.queueFlags = (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT); }
-		_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
+		// Single queue semaphore requires using a single queue for everything
+		// So don't allow anyone to have more than one
+		if (getSemaphoreStyle() != MVKSemaphoreStyleSingleQueue)
+		{
+			// Dedicated graphics queue family...or another general-purpose queue family.
+			if (specialize) { qfProps.queueFlags = (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT); }
+			_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
 
-		// Dedicated compute queue family...or another general-purpose queue family.
-		if (specialize) { qfProps.queueFlags = (VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT); }
-		_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
+			// Dedicated compute queue family...or another general-purpose queue family.
+			if (specialize) { qfProps.queueFlags = (VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT); }
+			_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
 
-		// Dedicated transfer queue family...or another general-purpose queue family.
-		if (specialize) { qfProps.queueFlags = VK_QUEUE_TRANSFER_BIT; }
-		_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
+			// Dedicated transfer queue family...or another general-purpose queue family.
+			if (specialize) { qfProps.queueFlags = VK_QUEUE_TRANSFER_BIT; }
+			_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
+		}
 
 		MVKAssert(kMVKQueueFamilyCount >= _queueFamilies.size(), "Adjust value of kMVKQueueFamilyCount.");
 	}
@@ -3082,6 +3087,23 @@ void MVKPhysicalDevice::initCounterSets() {
 	}
 }
 
+MVKSemaphoreStyle MVKPhysicalDevice::getSemaphoreStyle() {
+	// Decide whether Vulkan semaphores should use a MTLEvent or forcing a single queue if they are available.
+	// Prefer MTLEvent, because MTLEvent handles sync across MTLCommandBuffers and MTLCommandQueues.
+	// However, do not allow use of MTLEvents on Rosetta2 (x86 build on M1 runtime) or NVIDIA GPUs,
+	// which have demonstrated trouble with MTLEvents. In that case, since a single queue will be used
+	// unless the option for it it has been disabled, in which case CPU emulation will be used
+	bool isNVIDIA = _properties.vendorID == kNVVendorId;
+	bool isRosetta2 = _properties.vendorID == kAppleVendorId && !MVK_APPLE_SILICON;
+	if (_metalFeatures.events && mvkConfig().semaphoreUseMTLEvent && !(isRosetta2 || isNVIDIA)) {
+		return MVKSemaphoreStyleUseMTLEvent;
+	}
+	if (mvkConfig().semaphoreUseSingleQueue) {
+		return MVKSemaphoreStyleSingleQueue;
+	}
+	return MVKSemaphoreStyleUseEmulation;
+}
+
 // Workaround for a bug in Intel Iris Plus Graphics driver where the counterSets array is
 // not properly retained internally, and becomes a zombie when counterSets is called more
 // than once, which occurs when an app creates more than one VkInstance. This workaround
@@ -3617,6 +3639,7 @@ MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInf
 		switch (_vkSemaphoreStyle) {
 			case MVKSemaphoreStyleUseMTLEvent:  return new MVKSemaphoreMTLEvent(this, pCreateInfo, pExportInfo, pImportInfo);
 			case MVKSemaphoreStyleUseEmulation: return new MVKSemaphoreEmulated(this, pCreateInfo, pExportInfo, pImportInfo);
+			case MVKSemaphoreStyleSingleQueue:  return new MVKSemaphoreSingleQueue(this, pCreateInfo, pExportInfo, pImportInfo);
 		}
 	}
 }
@@ -4406,21 +4429,16 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	_pProperties = &_physicalDevice->_properties;
 	_pMemoryProperties = &_physicalDevice->_memoryProperties;
 
-	// Decide whether Vulkan semaphores should use a MTLEvent or MTLFence if they are available.
-	// Prefer MTLEvent, because MTLEvent handles sync across MTLCommandBuffers and MTLCommandQueues.
-	// However, do not allow use of MTLEvents on Rosetta2 (x86 build on M1 runtime) or NVIDIA GPUs,
-	// which have demonstrated trouble with MTLEvents. In that case, since MTLFence use is disabled
-	// by default, unless MTLFence is deliberately enabled, CPU emulation will be used.
-	bool isNVIDIA = _pProperties->vendorID == kNVVendorId;
-	bool isRosetta2 = _pProperties->vendorID == kAppleVendorId && !MVK_APPLE_SILICON;
-	bool canUseMTLEventForSem4 = _pMetalFeatures->events && mvkConfig().semaphoreUseMTLEvent && !(isRosetta2 || isNVIDIA);
-	_vkSemaphoreStyle = canUseMTLEventForSem4 ? MVKSemaphoreStyleUseMTLEvent : MVKSemaphoreStyleUseEmulation;
+	_vkSemaphoreStyle = _physicalDevice->getSemaphoreStyle();
 	switch (_vkSemaphoreStyle) {
 		case MVKSemaphoreStyleUseMTLEvent:
 			MVKLogInfo("Using MTLEvent for Vulkan semaphores.");
 			break;
 		case MVKSemaphoreStyleUseEmulation:
 			MVKLogInfo("Using emulation for Vulkan semaphores.");
+			break;
+		case MVKSemaphoreStyleSingleQueue:
+			MVKLogInfo("Using Metal implicit guarantees within a single queue for Vulkan semaphores.");
 			break;
 	}
 }
