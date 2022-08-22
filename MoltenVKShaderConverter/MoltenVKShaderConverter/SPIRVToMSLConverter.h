@@ -61,30 +61,30 @@ namespace mvk {
 	} SPIRVToMSLConversionOptions;
 
 	/**
-	 * Defines MSL characteristics of a vertex attribute at a particular location.
+	 * Defines MSL characteristics of a shader interface variable at a particular location.
 	 *
 	 * The outIsUsedByShader flag is set to true during conversion of SPIR-V to MSL if the shader
-	 * makes use of this vertex attribute. This allows a pipeline to be optimized, and for two
+	 * makes use of this interface variable. This allows a pipeline to be optimized, and for two
 	 * shader conversion configurations to be compared only against the attributes that are
 	 * actually used by the shader.
 	 *
 	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIPELINE CACHE.
 	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
 	 */
-	typedef struct MSLShaderInput {
-		SPIRV_CROSS_NAMESPACE::MSLShaderInput shaderInput;
+	typedef struct MSLShaderInterfaceVariable {
+		SPIRV_CROSS_NAMESPACE::MSLShaderInterfaceVariable shaderVar;
 		uint32_t binding = 0;
 		bool outIsUsedByShader = false;
 
 		/**
-		 * Returns whether the specified vertex attribute match this one.
+		 * Returns whether the specified interface variable match this one.
 		 * It does if all corresponding elements except outIsUsedByShader are equal.
 		 */
-		bool matches(const MSLShaderInput& other) const;
+		bool matches(const MSLShaderInterfaceVariable& other) const;
 
-		MSLShaderInput();
+		MSLShaderInterfaceVariable();
 
-	} MSLShaderInput;
+	} MSLShaderInterfaceVariable, MSLShaderInput;
 
 	/**
 	 * Matches the binding index of a MSL resource for a binding within a descriptor set.
@@ -146,7 +146,8 @@ namespace mvk {
 	 */
 	typedef struct SPIRVToMSLConversionConfiguration {
 		SPIRVToMSLConversionOptions options;
-		std::vector<MSLShaderInput> shaderInputs;
+		std::vector<MSLShaderInterfaceVariable> shaderInputs;
+		std::vector<MSLShaderInterfaceVariable> shaderOutputs;
 		std::vector<MSLResourceBinding> resourceBindings;
 		std::vector<uint32_t> discreteDescriptorSets;
 		std::vector<DescriptorBinding> dynamicBufferDescriptors;
@@ -157,8 +158,14 @@ namespace mvk {
         /** Returns whether the shader input variable at the specified location is used by the shader. */
         bool isShaderInputLocationUsed(uint32_t location) const;
 
+		/** Returns whether the specified built-in shader input variable is used by the shader. */
+		bool isShaderInputBuiltInUsed(spv::BuiltIn builtin) const;
+
 		/** Returns the number of shader input variables bound to the specified Vulkan buffer binding, and used by the shader. */
 		uint32_t countShaderInputsAt(uint32_t binding) const;
+
+        /** Returns whether the shader output variable at the specified location is used by the shader. */
+        bool isShaderOutputLocationUsed(uint32_t location) const;
 
         /** Returns whether the vertex buffer at the specified Vulkan binding is used by the shader. */
 		bool isVertexBufferUsed(uint32_t binding) const { return countShaderInputsAt(binding) > 0; }
@@ -166,8 +173,8 @@ namespace mvk {
 		/** Returns whether the resource at the specified descriptor set binding is used by the shader. */
 		bool isResourceUsed(spv::ExecutionModel stage, uint32_t descSet, uint32_t binding) const;
 
-		/** Marks all input variables and resources as being used by the shader. */
-		void markAllInputsAndResourcesUsed();
+		/** Marks all interface variables and resources as being used by the shader. */
+		void markAllInterfaceVarsAndResourcesUsed();
 
         /**
          * Returns whether this configuration matches the other configuration. It does if

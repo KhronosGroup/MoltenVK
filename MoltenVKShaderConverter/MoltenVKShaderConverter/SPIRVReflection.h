@@ -54,41 +54,42 @@ namespace mvk {
 	};
 
 #pragma mark -
-#pragma mark SPIRVShaderOutputData
+#pragma mark SPIRVShaderInterfaceVariable
 
 	/**
-	 * Reflection data on a single output of a shader.
+	 * Reflection data on a single interface variable of a shader.
 	 * This contains the information needed to construct a
 	 * stage-input descriptor for the next stage of a pipeline.
 	 */
-	struct SPIRVShaderOutput {
-		/** The type of the output. */
+	struct SPIRVShaderInterfaceVariable {
+		/** The type of the variable. */
 		SPIRV_CROSS_NAMESPACE::SPIRType::BaseType baseType;
 
 		/** The vector size, if a vector. */
 		uint32_t vecWidth;
 
-		/** The location number of the output. */
+		/** The location number of the variable. */
 		uint32_t location;
 
-		/** The component index of the output. */
+		/** The component index of the variable. */
 		uint32_t component;
 
 		/**
 		 * If this is the first member of a struct, this will contain the alignment
-		 * of the struct containing this output, otherwise this will be zero.
+		 * of the struct containing this variable, otherwise this will be zero.
 		 */
 		uint32_t firstStructMemberAlignment;
 
 		/** If this is a builtin, the kind of builtin this is. */
 		spv::BuiltIn builtin;
 
-		/** Whether this is a per-patch or per-vertex output. Only meaningful for tessellation control shaders. */
+		/** Whether this is a per-patch or per-vertex variable. Only meaningful for tessellation shaders. */
 		bool perPatch;
 
-		/** Whether this output is actually used (populated) by the shader. */
+		/** Whether this variable is actually used (read or written) by the shader. */
 		bool isUsed;
 	};
+	typedef SPIRVShaderInterfaceVariable SPIRVShaderOutput;
 
 
 #pragma mark -
@@ -190,13 +191,13 @@ namespace mvk {
 #endif
 	}
 
-	/** Returns the size in bytes of the output. */
-	static inline uint32_t getShaderOutputSize(const SPIRVShaderOutput& output) {
-		if ( !output.isUsed ) { return 0; }		// Unused outputs consume no buffer space.
+	/** Returns the size in bytes of the interface variable. */
+	static inline uint32_t getShaderInterfaceVariableSize(const SPIRVShaderInterfaceVariable& var) {
+		if ( !var.isUsed ) { return 0; }		// Unused variables consume no buffer space.
 
-		uint32_t vecWidth = output.vecWidth;
+		uint32_t vecWidth = var.vecWidth;
 		if (vecWidth == 3) { vecWidth = 4; }	// Metal 3-vectors consume same as 4-vectors.
-		switch (output.baseType) {
+		switch (var.baseType) {
 			case SPIRV_CROSS_NAMESPACE::SPIRType::SByte:
 			case SPIRV_CROSS_NAMESPACE::SPIRType::UByte:
 				return 1 * vecWidth;
@@ -211,29 +212,35 @@ namespace mvk {
 				return 4 * vecWidth;
 		}
 	}
+	static inline uint32_t getShaderOutputSize(const SPIRVShaderOutput& output) {
+		return getShaderInterfaceVariableSize(output);
+	}
 
 	/**
-	 * Returns the alignment of the shader output, which typically matches the size of the output,
-	 * but the first member of a nested output struct may inherit special alignment from the struct.
+	 * Returns the alignment of the shader interface variable, which typically matches the size of the variable,
+	 * but the first member of a nested struct may inherit special alignment from the struct.
 	 */
-	static inline uint32_t getShaderOutputAlignment(const SPIRVShaderOutput& output) {
-		if(output.firstStructMemberAlignment && output.isUsed) {
-			return output.firstStructMemberAlignment;
+	static inline uint32_t getShaderInterfaceVariableAlignment(const SPIRVShaderInterfaceVariable& var) {
+		if(var.firstStructMemberAlignment && var.isUsed) {
+			return var.firstStructMemberAlignment;
 		} else {
-			return getShaderOutputSize(output);
+			return getShaderOutputSize(var);
 		}
+	}
+	static inline uint32_t getShaderOutputAlignment(const SPIRVShaderOutput& output) {
+		return getShaderInterfaceVariableAlignment(output);
 	}
 
 	auto addSat = [](uint32_t a, uint32_t b) { return a == uint32_t(-1) ? a : a + b; };
 
-	template<typename Vo>
-	static inline uint32_t getShaderOutputStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
-														Vo& outputs, SPIRVShaderOutput* pParentFirstMember,
-														const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
-														bool patch, uint32_t loc) {
+	template<typename Vi>
+	static inline uint32_t getShaderInterfaceStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
+														   Vi& vars, SPIRVShaderInterfaceVariable* pParentFirstMember,
+														   const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
+														   bool patch, uint32_t loc) {
 		bool isUsed = true;
 		auto biType = spv::BuiltInMax;
-		SPIRVShaderOutput* pFirstMember = nullptr;
+		SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
 		size_t mbrCnt = structType->member_types.size();
 		for (uint32_t mbrIdx = 0; mbrIdx < mbrCnt; mbrIdx++) {
 			// Each member may have a location decoration. If not, each member
@@ -252,12 +259,12 @@ namespace mvk {
 			uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
 			for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 				if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct)
-					loc = getShaderOutputStructMembers(reflect, outputs, pFirstMember, type, storage, patch, loc);
+					loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
 				else {
 					// The alignment of a structure is the same as the largest member of the structure.
 					// Consequently, the first flattened member of a structure should align with structure itself.
-					outputs.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
-					auto& currOutput = outputs.back();
+					vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
+					auto& currOutput = vars.back();
 					if ( !pFirstMember ) { pFirstMember = &currOutput; }
 					pFirstMember->firstStructMemberAlignment = std::max(pFirstMember->firstStructMemberAlignment, getShaderOutputSize(currOutput));
 					loc = addSat(loc, 1);
@@ -274,11 +281,18 @@ namespace mvk {
 
 		return loc;
 	}
+	template<typename Vo>
+	static inline uint32_t getShaderOutputStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
+														Vo& outputs, SPIRVShaderOutput* pParentFirstMember,
+														const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
+														bool patch, uint32_t loc) {
+		return getShaderInterfaceStructMembers(reflect, outputs, pParentFirstMember, structType, storage, patch, loc);
+	}
 
-	/** Given a shader in SPIR-V format, returns output reflection data. */
-	template<typename Vs, typename Vo>
-	static inline bool getShaderOutputs(const Vs& spirv, spv::ExecutionModel model, const std::string& entryName,
-										Vo& outputs, std::string& errorLog) {
+	/** Given a shader in SPIR-V format, returns interface reflection data. */
+	template<typename Vs, typename Vi>
+	static inline bool getShaderInterfaceVariables(const Vs& spirv, spv::StorageClass storage, spv::ExecutionModel model,
+												   const std::string& entryName, Vi& vars, std::string& errorLog) {
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 		try {
 #endif
@@ -291,11 +305,10 @@ namespace mvk {
 			reflect.compile();
 			reflect.update_active_builtins();
 
-			outputs.clear();
+			vars.clear();
 
 			for (auto varID : reflect.get_active_interface_variables()) {
-				spv::StorageClass storage = reflect.get_storage_class(varID);
-				if (storage != spv::StorageClassOutput) { continue; }
+				if (storage != reflect.get_storage_class(varID)) { continue; }
 
 				bool isUsed = true;
 				const auto* type = &reflect.get_type(reflect.get_type_from_variable(varID).parent_type);
@@ -313,29 +326,33 @@ namespace mvk {
 				if (reflect.has_decoration(varID, spv::DecorationComponent)) {
 					cmp = reflect.get_decoration(varID, spv::DecorationComponent);
 				}
-				if (model == spv::ExecutionModelTessellationControl && !patch)
+				// For tessellation shaders, peel away the initial array type. SPIRV-Cross adds the array back automatically.
+				// Only some builtins will be arrayed here.
+				if ((model == spv::ExecutionModelTessellationControl || (model == spv::ExecutionModelTessellationEvaluation && storage == spv::StorageClassInput)) && !patch &&
+					(biType == spv::BuiltInMax || biType == spv::BuiltInPosition || biType == spv::BuiltInPointSize ||
+					 biType == spv::BuiltInClipDistance || biType == spv::BuiltInCullDistance))
 					type = &reflect.get_type(type->parent_type);
 
 				uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
 				for (uint32_t i = 0; i < elemCnt; i++) {
 					if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct) {
-						SPIRVShaderOutput* pFirstMember = nullptr;
-						loc = getShaderOutputStructMembers(reflect, outputs, pFirstMember, type, storage, patch, loc);
+						SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
+						loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
 					} else {
-						outputs.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
+						vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
 						loc = addSat(loc, 1);
 					}
 				}
 			}
-			// Sort outputs by ascending location.
-			std::stable_sort(outputs.begin(), outputs.end(), [](const SPIRVShaderOutput& a, const SPIRVShaderOutput& b) {
+			// Sort variables by ascending location.
+			std::stable_sort(vars.begin(), vars.end(), [](const SPIRVShaderInterfaceVariable& a, const SPIRVShaderInterfaceVariable& b) {
 				return a.location < b.location;
 			});
-			// Assign locations to outputs that don't have one.
+			// Assign locations to variables that don't have one.
 			uint32_t loc = -1;
-			for (SPIRVShaderOutput& out : outputs) {
-				if (out.location == uint32_t(-1)) { out.location = loc + 1; }
-				loc = out.location;
+			for (SPIRVShaderInterfaceVariable& var : vars) {
+				if (var.location == uint32_t(-1)) { var.location = loc + 1; }
+				loc = var.location;
 			}
 			return true;
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
@@ -344,6 +361,16 @@ namespace mvk {
 			return false;
 		}
 #endif
+	}
+	template<typename Vs, typename Vo>
+	static inline bool getShaderOutputs(const Vs& spirv, spv::ExecutionModel model, const std::string& entryName,
+										Vo& outputs, std::string& errorLog) {
+		return getShaderInterfaceVariables(spirv, spv::StorageClassOutput, model, entryName, outputs, errorLog);
+	}
+	template<typename Vs, typename Vo>
+	static inline bool getShaderInputs(const Vs& spirv, spv::ExecutionModel model, const std::string& entryName,
+										Vo& outputs, std::string& errorLog) {
+		return getShaderInterfaceVariables(spirv, spv::StorageClassInput, model, entryName, outputs, errorLog);
 	}
 
 }
