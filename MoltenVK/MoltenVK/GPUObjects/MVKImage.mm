@@ -2076,11 +2076,16 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
 
 MVKSampler::MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
     _ycbcrConversion = NULL;
+	const VkSamplerReductionModeCreateInfo* pSampReductInfo = nullptr;
     for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO_KHR: {
 				const VkSamplerYcbcrConversionInfoKHR* sampConvInfo = (const VkSamplerYcbcrConversionInfoKHR*)next;
 				_ycbcrConversion = (MVKSamplerYcbcrConversion*)(sampConvInfo->conversion);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO: {
+				pSampReductInfo = (const VkSamplerReductionModeCreateInfo*)next;
 				break;
 			}
 			default:
