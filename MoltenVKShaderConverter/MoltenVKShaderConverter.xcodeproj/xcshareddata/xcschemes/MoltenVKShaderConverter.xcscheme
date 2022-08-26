@@ -109,12 +109,16 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-XS"
+            argument = "-mab"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-l"
             isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-XS"
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-p"

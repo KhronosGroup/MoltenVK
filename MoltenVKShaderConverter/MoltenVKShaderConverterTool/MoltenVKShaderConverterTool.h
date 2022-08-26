@@ -123,6 +123,7 @@ namespace mvk {
 		bool _shouldReportPerformance;
 		bool _shouldOutputAsHeaders;
 		bool _quietMode;
+		bool _useMetalArgumentBuffers;
 	};
 
 

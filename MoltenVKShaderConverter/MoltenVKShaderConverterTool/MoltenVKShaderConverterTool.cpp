@@ -219,6 +219,9 @@ bool MoltenVKShaderConverterTool::convertSPIRV(const vector<uint32_t>& spv,
 	mslContext.options.mslOptions.platform = _mslPlatform;
 	mslContext.options.mslOptions.set_msl_version(_mslVersionMajor, _mslVersionMinor, _mslVersionPatch);
 	mslContext.options.shouldFlipVertexY = _shouldFlipVertexY;
+	mslContext.options.mslOptions.argument_buffers = _useMetalArgumentBuffers;
+	mslContext.options.mslOptions.force_active_argument_buffer_resources = _useMetalArgumentBuffers;
+	mslContext.options.mslOptions.pad_argument_buffer_resources = _useMetalArgumentBuffers;
 
 	SPIRVToMSLConverter spvConverter;
 	spvConverter.setSPIRV(spv);
@@ -364,6 +367,7 @@ void MoltenVKShaderConverterTool::showUsage() {
     log("                       May be omitted for defaults (\"cp cmp comp compute kn kl krn kern kernel\").");
 	log("  -sx \"fileExtns\"    - List of SPIR-V shader file extensions.");
 	log("                       May be omitted for defaults (\"spv spirv\").");
+	log("  -mab               - Use Metal Argument Buffers to hold resources in the shaders.");
 	log("  -l                 - Log the conversion results to the console (to aid debugging).");
 	log("  -p                 - Log the performance of the shader conversions.");
 	log("  -q                 - Quiet mode. Stops logging of informational messages.");
@@ -419,18 +423,25 @@ MoltenVKShaderConverterTool::MoltenVKShaderConverterTool(int argc, const char* a
 	_shouldReportPerformance = false;
 	_shouldOutputAsHeaders = false;
 	_quietMode = false;
+	_useMetalArgumentBuffers = false;
 
-	_mslVersionMajor = 2;
-
-	if (mvkOSVersionIsAtLeast(12.0)) {
+	if (mvkOSVersionIsAtLeast(13.0)) {
+		_mslVersionMajor = 3;
+		_mslVersionMinor = 0;
+	} else if (mvkOSVersionIsAtLeast(12.0)) {
+		_mslVersionMajor = 2;
 		_mslVersionMinor = 4;
 	} else if (mvkOSVersionIsAtLeast(11.0)) {
+		_mslVersionMajor = 2;
 		_mslVersionMinor = 3;
 	} else if (mvkOSVersionIsAtLeast(10.15)) {
+		_mslVersionMajor = 2;
 		_mslVersionMinor = 2;
 	} else if (mvkOSVersionIsAtLeast(10.14)) {
+		_mslVersionMajor = 2;
 		_mslVersionMinor = 1;
 	} else if (mvkOSVersionIsAtLeast(10.13)) {
+		_mslVersionMajor = 2;
 		_mslVersionMinor = 0;
 	} else if (mvkOSVersionIsAtLeast(10.12)) {
 		_mslVersionMajor = 1;
@@ -630,6 +641,11 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 			argIdx = optionalParam(shdrExtnStr, argIdx, argc, argv);
 			if (argIdx == optIdx || shdrExtnStr.length() == 0) { return false; }
 			extractTokens(shdrExtnStr, _spvFileExtns);
+			continue;
+		}
+
+		if(equal(arg, "-mab", true)) {
+			_useMetalArgumentBuffers = true;
 			continue;
 		}
 
