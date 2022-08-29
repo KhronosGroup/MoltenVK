@@ -1988,15 +1988,6 @@ void MVKPhysicalDevice::initFeatures() {
 
 	_features.drawIndirectFirstInstance = _metalFeatures.indirectDrawing && _metalFeatures.baseVertexInstanceDrawing;
 
-	mvkClear(&_vulkan12FeaturesNoExt);	// Start with everything cleared
-	_vulkan12FeaturesNoExt.samplerMirrorClampToEdge = _metalFeatures.samplerMirrorClampToEdge;
-	_vulkan12FeaturesNoExt.drawIndirectCount = false;
-	_vulkan12FeaturesNoExt.descriptorIndexing = true;
-	_vulkan12FeaturesNoExt.samplerFilterMinmax = false;
-	_vulkan12FeaturesNoExt.shaderOutputViewportIndex = true;
-	_vulkan12FeaturesNoExt.shaderOutputLayer = true;
-	_vulkan12FeaturesNoExt.subgroupBroadcastDynamicId = true;
-
 #if MVK_TVOS
     _features.textureCompressionETC2 = true;
     _features.textureCompressionASTC_LDR = true;
@@ -2094,6 +2085,17 @@ void MVKPhysicalDevice::initFeatures() {
         _features.textureCompressionASTC_LDR = true;
     }
 #endif
+
+	// Additional non-extension Vulkan 1.2 features.
+	mvkClear(&_vulkan12FeaturesNoExt);		// Start with everything cleared
+	_vulkan12FeaturesNoExt.samplerMirrorClampToEdge = _metalFeatures.samplerMirrorClampToEdge;
+	_vulkan12FeaturesNoExt.drawIndirectCount = false;
+	_vulkan12FeaturesNoExt.descriptorIndexing = true;
+	_vulkan12FeaturesNoExt.samplerFilterMinmax = false;
+	_vulkan12FeaturesNoExt.shaderOutputViewportIndex = _features.multiViewport;
+	_vulkan12FeaturesNoExt.shaderOutputLayer = _metalFeatures.layeredRendering;
+	_vulkan12FeaturesNoExt.subgroupBroadcastDynamicId = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
+
 }
 
 

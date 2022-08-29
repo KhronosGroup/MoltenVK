@@ -90,7 +90,7 @@ typedef NSUInteger MTLTimestamp;
 #pragma mark -
 #pragma mark MVKPhysicalDevice
 
-/** VkPhysicalDeviceVulkan12Features entries that didn't originate in a prior extension. */
+/** VkPhysicalDeviceVulkan12Features entries that did not originate in a prior extension. */
 typedef struct MVKPhysicalDeviceVulkan12FeaturesNoExt {
 	VkBool32 samplerMirrorClampToEdge;
 	VkBool32 drawIndirectCount;
@@ -803,7 +803,7 @@ public:
 	VkPhysicalDevice##structName##Features##extnSfx _enabled##structName##Features;
 #include "MVKDeviceFeatureStructs.def"
 
-	/** Vulkan 1.2 features that did originate in a prior extension available and enabled. */
+	/** VkPhysicalDeviceVulkan12Features entries that did not originate in a prior extension available and enabled. */
 	MVKPhysicalDeviceVulkan12FeaturesNoExt _enabledVulkan12FeaturesNoExt;
 
 	/** Pointer to the Metal-specific features of the underlying physical device. */
