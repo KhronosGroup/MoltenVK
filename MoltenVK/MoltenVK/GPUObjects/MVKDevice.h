@@ -90,6 +90,12 @@ typedef NSUInteger MTLTimestamp;
 #pragma mark -
 #pragma mark MVKPhysicalDevice
 
+typedef enum {
+	MVKSemaphoreStyleUseMTLEvent,
+	MVKSemaphoreStyleUseEmulation,
+	MVKSemaphoreStyleSingleQueue,
+} MVKSemaphoreStyle;
+
 /** VkPhysicalDeviceVulkan12Features entries that did not originate in a prior extension. */
 typedef struct MVKPhysicalDeviceVulkan12FeaturesNoExt {
 	VkBool32 samplerMirrorClampToEdge;
@@ -407,6 +413,7 @@ protected:
 	void initExtensions();
 	void initCounterSets();
 	bool needsCounterSetRetained();
+	MVKSemaphoreStyle getSemaphoreStyle();
 	MVKArrayRef<MVKQueueFamily*> getQueueFamilies();
 	void initPipelineCacheUUID();
 	uint32_t getHighestGPUCapability();
@@ -444,12 +451,6 @@ typedef struct MVKMTLBlitEncoder {
 	id<MTLBlitCommandEncoder> mtlBlitEncoder = nil;
 	id<MTLCommandBuffer> mtlCmdBuffer = nil;
 } MVKMTLBlitEncoder;
-
-typedef enum {
-	MVKSemaphoreStyleUseMTLEvent,
-	MVKSemaphoreStyleUseMTLFence,
-	MVKSemaphoreStyleUseEmulation
-} MVKSemaphoreStyle;
 
 /** Represents a Vulkan logical GPU device, associated with a physical device. */
 class MVKDevice : public MVKDispatchableVulkanAPIObject {

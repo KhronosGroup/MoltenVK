@@ -231,16 +231,16 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #endif
 
 /**
- * Allow the use of MTLFence or MTLEvent for VkSemaphore synchronization behaviour.
+ * Allow the use of a single queue or MTLEvent for VkSemaphore synchronization behaviour.
  * By default:
  *   - MVK_ALLOW_METAL_EVENTS is enabled
- *   - MVK_ALLOW_METAL_FENCES is disabled
+ *   - MVK_ALLOW_SINGLE_QUEUE_SEMAPHORE is enabled
  * */
 #ifndef MVK_ALLOW_METAL_EVENTS
 #   define MVK_ALLOW_METAL_EVENTS    1
 #endif
-#ifndef MVK_ALLOW_METAL_FENCES
-#   define MVK_ALLOW_METAL_FENCES    0
+#ifndef MVK_ALLOW_SINGLE_QUEUE_SEMAPHORE
+#   define MVK_ALLOW_SINGLE_QUEUE_SEMAPHORE    1
 #endif
 
 /** Substitute Metal 2D textures for Vulkan 1D images. Enabled by default. */
