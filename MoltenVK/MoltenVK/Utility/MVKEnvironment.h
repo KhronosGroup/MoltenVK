@@ -280,5 +280,5 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 
 /** Support Metal argument buffers. Disabled by default. */
 #ifndef MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS
-#   define MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS    0
+#   define MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS    MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER
 #endif

@@ -56,7 +56,7 @@ typedef unsigned long MTLArgumentBuffersTier;
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            35
+#define VK_MVK_MOLTENVK_SPEC_VERSION            36
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /** Identifies the level of logging MoltenVK should be limited to outputting. */
@@ -95,6 +95,14 @@ typedef enum MVKConfigAdvertiseExtensionBits {
 	MVK_CONFIG_ADVERTISE_EXTENSIONS_MAX_ENUM    = 0x7FFFFFFF
 } MVKConfigAdvertiseExtensionBits;
 typedef VkFlags MVKConfigAdvertiseExtensions;
+
+/** Identifies the use of Metal Argument Buffers. */
+typedef enum MVKUseMetalArgumentBuffers {
+	MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER               = 0,	/**< Don't use Metal Argument Buffers. */
+	MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_ALWAYS              = 1,	/**< Use Metal Argument Buffers for all pipelines. */
+	MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_DESCRIPTOR_INDEXING = 2,	/**< Use Metal Argument Buffers only if VK_EXT_descriptor_indexing extension is enabled. */
+	MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_MAX_ENUM            = 0x7FFFFFFF
+} MVKUseMetalArgumentBuffers;
 
 /**
  * MoltenVK configuration settings.
@@ -807,25 +815,26 @@ typedef struct {
 	 * Controls whether MoltenVK should use Metal argument buffers for resources defined in
 	 * descriptor sets, if Metal argument buffers are supported on the platform. Using Metal
 	 * argument buffers dramatically increases the number of buffers, textures and samplers
-	 * that can be bound to a pipeline shader, and in most cases improves performance. If this
-	 * setting is enabled, MoltenVK will use Metal argument buffers to bind resources to the
-	 * shaders. If this setting is disabled, MoltenVK will bind resources to shaders discretely.
+	 * that can be bound to a pipeline shader, and in most cases improves performance.
+	 * This setting is an enumeration that specifies the conditions under which MoltenVK
+	 * will use Metal argument buffers.
 	 *
 	 * NOTE: Currently, Metal argument buffer support is in beta stage, and is only supported
 	 * on macOS 11.0 (Big Sur) or later, or on older versions of macOS using an Intel GPU.
 	 * Metal argument buffers support is not available on iOS. Development to support iOS
 	 * and a wider combination of GPU's on older macOS versions is under way.
 	 *
-	 * The value of this parameter must be changed before creating a VkInstance,
+	 * The value of this parameter must be changed before creating a VkDevice,
 	 * for the change to take effect.
 	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS
 	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, this setting is enabled by default, and MoltenVK will not
-	 * use Metal argument buffers, and will bind resources to shaders discretely.
+	 * If neither is set, this setting is set to
+	 * MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER by default,
+	 * and MoltenVK will not use Metal argument buffers.
 	 */
-	VkBool32 useMetalArgumentBuffers;
+	MVKUseMetalArgumentBuffers useMetalArgumentBuffers;
 
 } MVKConfiguration;
 
