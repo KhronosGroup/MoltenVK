@@ -403,6 +403,7 @@ protected:
 	void initLimits();
 	void initGPUInfoProperties();
 	void initMemoryProperties();
+	void initVkSemaphoreStyle();
 	void setMemoryHeap(uint32_t heapIndex, VkDeviceSize heapSize, VkMemoryHeapFlags heapFlags);
 	void setMemoryType(uint32_t typeIndex, uint32_t heapIndex, VkMemoryPropertyFlags propertyFlags);
 	uint64_t getVRAMSize();
@@ -413,7 +414,6 @@ protected:
 	void initExtensions();
 	void initCounterSets();
 	bool needsCounterSetRetained();
-	MVKSemaphoreStyle getSemaphoreStyle();
 	MVKArrayRef<MVKQueueFamily*> getQueueFamilies();
 	void initPipelineCacheUUID();
 	uint32_t getHighestGPUCapability();
@@ -434,6 +434,7 @@ protected:
 	MVKSmallVector<MVKQueueFamily*, kMVKQueueFamilyCount> _queueFamilies;
 	MVKPixelFormats _pixelFormats;
 	id<MTLCounterSet> _timestampMTLCounterSet;
+	MVKSemaphoreStyle _vkSemaphoreStyle;
 	uint32_t _allMemoryTypes;
 	uint32_t _hostVisibleMemoryTypes;
 	uint32_t _hostCoherentMemoryTypes;
@@ -885,7 +886,6 @@ protected:
     id<MTLBuffer> _globalVisibilityResultMTLBuffer = nil;
 	id<MTLSamplerState> _defaultMTLSamplerState = nil;
 	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
-	MVKSemaphoreStyle _vkSemaphoreStyle = MVKSemaphoreStyleUseEmulation;
     uint32_t _globalVisibilityQueryCount = 0;
 	bool _logActivityPerformanceInline = false;
 	bool _isPerformanceTracking = false;

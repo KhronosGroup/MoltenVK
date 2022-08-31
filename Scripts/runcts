@@ -108,6 +108,7 @@ export MVK_CONFIG_RESUME_LOST_DEVICE=1
 export MVK_CONFIG_FAST_MATH_ENABLED=1
 export MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0  #(2 = VK_EXT_descriptor_indexing enabled)
 export MVK_CONFIG_FORCE_LOW_POWER_GPU=0
+export MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE=2  #(2 = MTLEvents always)
 
 
 # -------------- Operation --------------------
