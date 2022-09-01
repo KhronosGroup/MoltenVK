@@ -20,6 +20,10 @@ Released TBD
 
 - Add support for extensions:
 	- `VK_KHR_shader_float_controls`
+- Vulkan semaphore functional improvements:
+	- Replace use of `MTLFence` with an option to limit to a single Vulkan queue and use Metal's implicit submisison order guarantees.
+	- Support option to force use of `MTLEvents` for Vulkan semaphores on NVIDIA and Rosetta2.
+	- `MVKConfiguration` replace booleans `semaphoreUseMTLEvent` and `semaphoreUseMTLFence` with enumerated `semaphoreSupportStyle`.
 - Support config option to automatically use Metal argument buffers when `VK_EXT_descriptor_indexing` 
   extension is enabled. `MVKConfiguration::useMetalArgumentBuffers` (`MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS`) 
   is now an enum field. The use of Metal argument buffers is still disabled by default (`MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER`).

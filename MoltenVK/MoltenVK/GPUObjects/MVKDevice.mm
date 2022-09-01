@@ -1311,8 +1311,7 @@ MVKArrayRef<MVKQueueFamily*> MVKPhysicalDevice::getQueueFamilies() {
 
 		// Single queue semaphore requires using a single queue for everything
 		// So don't allow anyone to have more than one
-		if (getSemaphoreStyle() != MVKSemaphoreStyleSingleQueue)
-		{
+		if (_vkSemaphoreStyle != MVKSemaphoreStyleSingleQueue) {
 			// Dedicated graphics queue family...or another general-purpose queue family.
 			if (specialize) { qfProps.queueFlags = (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT); }
 			_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
@@ -1445,6 +1444,7 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 	initMemoryProperties();
 	initExternalMemoryProperties();
 	initCounterSets();
+	initVkSemaphoreStyle();
 	logGPUInfo();
 }
 
@@ -3115,21 +3115,33 @@ void MVKPhysicalDevice::initCounterSets() {
 	}
 }
 
-MVKSemaphoreStyle MVKPhysicalDevice::getSemaphoreStyle() {
-	// Decide whether Vulkan semaphores should use a MTLEvent or forcing a single queue if they are available.
-	// Prefer MTLEvent, because MTLEvent handles sync across MTLCommandBuffers and MTLCommandQueues.
-	// However, do not allow use of MTLEvents on Rosetta2 (x86 build on M1 runtime) or NVIDIA GPUs,
-	// which have demonstrated trouble with MTLEvents. In that case, since a single queue will be used
-	// unless the option for it it has been disabled, in which case CPU emulation will be used
-	bool isNVIDIA = _properties.vendorID == kNVVendorId;
-	bool isRosetta2 = _properties.vendorID == kAppleVendorId && !MVK_APPLE_SILICON;
-	if (_metalFeatures.events && mvkConfig().semaphoreUseMTLEvent && !(isRosetta2 || isNVIDIA)) {
-		return MVKSemaphoreStyleUseMTLEvent;
+// Determine whether Vulkan semaphores should use a MTLEvent, CPU callbacks, or should limit
+// Vulkan to a single queue and use Metal's implicit guarantees that all operations submitted
+// to a queue will give the same result as if they had been run in submission order.
+// MTLEvents for semaphores can sometimes prove troublesome on some platforms,
+// and so may optionally be disabled on those platforms.
+void MVKPhysicalDevice::initVkSemaphoreStyle() {
+
+	// Default to CPU callback if other options unavailable.
+	_vkSemaphoreStyle = MVKSemaphoreStyleUseEmulation;
+
+	switch (mvkConfig().semaphoreSupportStyle) {
+		case MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE: {
+			bool isNVIDIA = _properties.vendorID == kNVVendorId;
+			bool isRosetta2 = _properties.vendorID == kAppleVendorId && !MVK_APPLE_SILICON;
+			if (_metalFeatures.events && !(isRosetta2 || isNVIDIA)) { _vkSemaphoreStyle = MVKSemaphoreStyleUseMTLEvent; }
+			break;
+		}
+		case MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS:
+			if (_metalFeatures.events) { _vkSemaphoreStyle = MVKSemaphoreStyleUseMTLEvent; }
+			break;
+		case MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE:
+			_vkSemaphoreStyle = MVKSemaphoreStyleSingleQueue;
+			break;
+		case MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK:
+		default:
+			break;
 	}
-	if (mvkConfig().semaphoreUseSingleQueue) {
-		return MVKSemaphoreStyleSingleQueue;
-	}
-	return MVKSemaphoreStyleUseEmulation;
 }
 
 // Workaround for a bug in Intel Iris Plus Graphics driver where the counterSets array is
@@ -3664,7 +3676,7 @@ MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInf
 			return new MVKTimelineSemaphoreEmulated(this, pCreateInfo, pTypeCreateInfo, pExportInfo, pImportInfo);
 		}
 	} else {
-		switch (_vkSemaphoreStyle) {
+		switch (_physicalDevice->_vkSemaphoreStyle) {
 			case MVKSemaphoreStyleUseMTLEvent:  return new MVKSemaphoreMTLEvent(this, pCreateInfo, pExportInfo, pImportInfo);
 			case MVKSemaphoreStyleUseEmulation: return new MVKSemaphoreEmulated(this, pCreateInfo, pExportInfo, pImportInfo);
 			case MVKSemaphoreStyleSingleQueue:  return new MVKSemaphoreSingleQueue(this, pCreateInfo, pExportInfo, pImportInfo);
@@ -4460,16 +4472,15 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	_pProperties = &_physicalDevice->_properties;
 	_pMemoryProperties = &_physicalDevice->_memoryProperties;
 
-	_vkSemaphoreStyle = _physicalDevice->getSemaphoreStyle();
-	switch (_vkSemaphoreStyle) {
+	switch (_physicalDevice->_vkSemaphoreStyle) {
 		case MVKSemaphoreStyleUseMTLEvent:
-			MVKLogInfo("Using MTLEvent for Vulkan semaphores.");
+			MVKLogInfo("Vulkan semaphores using MTLEvent.");
 			break;
 		case MVKSemaphoreStyleUseEmulation:
-			MVKLogInfo("Using emulation for Vulkan semaphores.");
+			MVKLogInfo("Vulkan semaphores using CPU callbacks upon GPU submission completion.");
 			break;
 		case MVKSemaphoreStyleSingleQueue:
-			MVKLogInfo("Using Metal implicit guarantees within a single queue for Vulkan semaphores.");
+			MVKLogInfo("Vulkan semaphores using Metal implicit guarantees within a single queue.");
 			break;
 	}
 }
