@@ -77,47 +77,34 @@ MVKSemaphoreImpl::~MVKSemaphoreImpl() {
 
 
 #pragma mark -
-#pragma mark MVKSemaphoreMTLFence
+#pragma mark MVKSemaphoreSingleQueue
 
-// Could use any encoder. Assume BLIT is fastest and lightest.
-// Nil mtlCmdBuff will do nothing.
-void MVKSemaphoreMTLFence::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
-	id<MTLBlitCommandEncoder> mtlCmdEnc = mtlCmdBuff.blitCommandEncoder;
-	[mtlCmdEnc waitForFence: _mtlFence];
-	[mtlCmdEnc endEncoding];
+void MVKSemaphoreSingleQueue::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
+	// Metal will handle all synchronization for us automatically
 }
 
-// Could use any encoder. Assume BLIT is fastest and lightest.
-// Nil mtlCmdBuff will do nothing.
-void MVKSemaphoreMTLFence::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
-	id<MTLBlitCommandEncoder> mtlCmdEnc = mtlCmdBuff.blitCommandEncoder;
-	[mtlCmdEnc updateFence: _mtlFence];
-	[mtlCmdEnc endEncoding];
+void MVKSemaphoreSingleQueue::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
+	// Metal will handle all synchronization for us automatically
 }
 
-uint64_t MVKSemaphoreMTLFence::deferSignal() {
+uint64_t MVKSemaphoreSingleQueue::deferSignal() {
 	return 0;
 }
 
-void MVKSemaphoreMTLFence::encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
+void MVKSemaphoreSingleQueue::encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
 	encodeSignal(mtlCmdBuff, 0);
 }
 
-MVKSemaphoreMTLFence::MVKSemaphoreMTLFence(MVKDevice* device,
-										   const VkSemaphoreCreateInfo* pCreateInfo,
-										   const VkExportMetalObjectCreateInfoEXT* pExportInfo,
-										   const VkImportMetalSharedEventInfoEXT* pImportInfo) : MVKSemaphore(device, pCreateInfo) {
-
-	_mtlFence = [device->getMTLDevice() newFence];		//retained
-
+MVKSemaphoreSingleQueue::MVKSemaphoreSingleQueue(MVKDevice* device,
+                                                 const VkSemaphoreCreateInfo* pCreateInfo,
+                                                 const VkExportMetalObjectCreateInfoEXT* pExportInfo,
+                                                 const VkImportMetalSharedEventInfoEXT* pImportInfo) : MVKSemaphore(device, pCreateInfo) {
 	if ((pImportInfo && pImportInfo->mtlSharedEvent) || (pExportInfo && pExportInfo->exportObjectType == VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT)) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkCreateEvent(): MTLSharedEvent is not available with VkSemaphores that use MTLFence."));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkCreateEvent(): MTLSharedEvent is not available with VkSemaphores that use implicit synchronization."));
 	}
 }
 
-MVKSemaphoreMTLFence::~MVKSemaphoreMTLFence() {
-	[_mtlFence release];
-}
+MVKSemaphoreSingleQueue::~MVKSemaphoreSingleQueue() = default;
 
 
 #pragma mark -

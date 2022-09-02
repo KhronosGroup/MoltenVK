@@ -104,6 +104,15 @@ typedef enum MVKUseMetalArgumentBuffers {
 	MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_MAX_ENUM            = 0x7FFFFFFF
 } MVKUseMetalArgumentBuffers;
 
+/** Identifies the Metal functionality used to support Vulkan semaphore functionality (VkSemaphore). */
+typedef enum MVKVkSemaphoreSupportStyle {
+	MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK                = 0,	/**< Use CPU callbacks upon GPU submission completion. This is the slowest technique. */
+	MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE = 1,	/**< Use Metal events (MTLEvent) when available on the platform, and where safe. This will revert to same as MVK_CONFIG_VK_SEMAPHORE_USE_SINGLE_QUEUE on some NVIDIA GPUs and Rosetta2, due to potential challenges with MTLEvents on those platforms. */
+	MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS            = 2,	/**< Always use Metal events (MTLEvent) when available on the platform. */
+	MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE            = 3,	/**< Limit Vulkan to a single queue, with no explicit semaphore synchronization, and use Metal's implicit guarantees that all operations submitted to a queue will give the same result as if they had been run in submission order. */
+	MVK_CONFIG_VK_SEMAPHORE_MAX_ENUM                              = 0x7FFFFFFF
+} MVKVkSemaphoreSupportStyle;
+
 /**
  * MoltenVK configuration settings.
  *
@@ -565,52 +574,37 @@ typedef struct {
 	 */
 	VkBool32 forceLowPowerGPU;
 
-	/**
-	 * Use MTLFence, if it is available on the device, for VkSemaphore synchronization behaviour.
-	 *
-	 * This parameter interacts with semaphoreUseMTLEvent. If both are enabled, on GPUs other than
-	 * NVIDIA, semaphoreUseMTLEvent takes priority and MTLEvent will be used if it is available,
-	 * otherwise MTLFence will be used if it is available. On NVIDIA GPUs, MTLEvent is disabled
-	 * for VkSemaphores, so CPU-based synchronization will be used unless semaphoreUseMTLFence
-	 * is enabled and MTLFence is available.
-	 *
-	 * In the special case of VK_SEMAPHORE_TYPE_TIMELINE semaphores, MoltenVK will always
-	 * use MTLSharedEvent if it is available on the platform, regardless of the values of
-	 * semaphoreUseMTLEvent or semaphoreUseMTLFence.
-	 *
-	 * The value of this parameter must be changed before creating a VkDevice,
-	 * for the change to take effect.
-	 *
-	 * The initial value or this parameter is set by the
-	 * MVK_ALLOW_METAL_FENCES
-	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, this setting is disabled by default, and VkSemaphore will not use MTLFence.
-	 */
+	/** Deprecated. Use semaphoreSupportStyle instead. */
 	VkBool32 semaphoreUseMTLFence;
 
 	/**
-	 * Use MTLEvent, if it is available on the device, for VkSemaphore synchronization behaviour.
+	 * Determines the style used to implement Vulkan semaphore (VkSemaphore) functionality in Metal.
+	 * See the documentation of the MVKVkSemaphoreSupportStyle for the options.
 	 *
-	 * This parameter interacts with semaphoreUseMTLFence. If both are enabled, on GPUs other than
-	 * NVIDIA, semaphoreUseMTLEvent takes priority and MTLEvent will be used if it is available,
-	 * otherwise MTLFence will be used if it is available. On NVIDIA GPUs, MTLEvent is disabled
-	 * for VkSemaphores, so CPU-based synchronization will be used unless semaphoreUseMTLFence
-	 * is enabled and MTLFence is available.
+	 * In the special case of VK_SEMAPHORE_TYPE_TIMELINE semaphores, MoltenVK will always use
+	 * MTLSharedEvent if it is available on the platform, regardless of the value of this parameter.
 	 *
-	 * In the special case of VK_SEMAPHORE_TYPE_TIMELINE semaphores, MoltenVK will always
-	 * use MTLSharedEvent if it is available on the platform, regardless of the values of
-	 * semaphoreUseMTLEvent or semaphoreUseMTLFence.
-	 *
-	 * The value of this parameter must be changed before creating a VkDevice,
+	 * The value of this parameter must be changed before creating a VkInstance,
 	 * for the change to take effect.
 	 *
 	 * The initial value or this parameter is set by the
-	 * MVK_ALLOW_METAL_EVENTS
+	 * MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE
 	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, this setting is enabled by default, and VkSemaphore will use MTLEvent,
-	 * if it is available, except on NVIDIA GPUs.
+	 * If neither is set, this setting is set to
+	 * MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE by default,
+	 * and MoltenVK will use MTLEvent, except on NVIDIA GPU, and Rosetta2 environments,
+	 * where it will use a single queue with implicit synchronization
+	 * (as if this parameter was set to MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE).
+	 *
+	 * This parameter interacts with the deprecated legacy parameters semaphoreUseMTLEvent
+	 * and semaphoreUseMTLFence. If semaphoreUseMTLEvent is enabled, this parameter
+	 * will be set to MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE.
+	 * If semaphoreUseMTLEvent is disabled, and semaphoreUseMTLFence is enabled,
+	 * this parameter will be set to MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE.
+	 * Structurally, this parameter replaces, and is aliased by, semaphoreUseMTLEvent.
 	 */
-	VkBool32 semaphoreUseMTLEvent;
+	MVKVkSemaphoreSupportStyle semaphoreSupportStyle;
+#define semaphoreUseMTLEvent semaphoreSupportStyle
 
 	/**
 	 * Controls whether Metal should run an automatic GPU capture without the user having to

@@ -90,6 +90,12 @@ typedef NSUInteger MTLTimestamp;
 #pragma mark -
 #pragma mark MVKPhysicalDevice
 
+typedef enum {
+	MVKSemaphoreStyleUseMTLEvent,
+	MVKSemaphoreStyleUseEmulation,
+	MVKSemaphoreStyleSingleQueue,
+} MVKSemaphoreStyle;
+
 /** VkPhysicalDeviceVulkan12Features entries that did not originate in a prior extension. */
 typedef struct MVKPhysicalDeviceVulkan12FeaturesNoExt {
 	VkBool32 samplerMirrorClampToEdge;
@@ -397,6 +403,7 @@ protected:
 	void initLimits();
 	void initGPUInfoProperties();
 	void initMemoryProperties();
+	void initVkSemaphoreStyle();
 	void setMemoryHeap(uint32_t heapIndex, VkDeviceSize heapSize, VkMemoryHeapFlags heapFlags);
 	void setMemoryType(uint32_t typeIndex, uint32_t heapIndex, VkMemoryPropertyFlags propertyFlags);
 	uint64_t getVRAMSize();
@@ -427,6 +434,7 @@ protected:
 	MVKSmallVector<MVKQueueFamily*, kMVKQueueFamilyCount> _queueFamilies;
 	MVKPixelFormats _pixelFormats;
 	id<MTLCounterSet> _timestampMTLCounterSet;
+	MVKSemaphoreStyle _vkSemaphoreStyle;
 	uint32_t _allMemoryTypes;
 	uint32_t _hostVisibleMemoryTypes;
 	uint32_t _hostCoherentMemoryTypes;
@@ -444,12 +452,6 @@ typedef struct MVKMTLBlitEncoder {
 	id<MTLBlitCommandEncoder> mtlBlitEncoder = nil;
 	id<MTLCommandBuffer> mtlCmdBuffer = nil;
 } MVKMTLBlitEncoder;
-
-typedef enum {
-	MVKSemaphoreStyleUseMTLEvent,
-	MVKSemaphoreStyleUseMTLFence,
-	MVKSemaphoreStyleUseEmulation
-} MVKSemaphoreStyle;
 
 /** Represents a Vulkan logical GPU device, associated with a physical device. */
 class MVKDevice : public MVKDispatchableVulkanAPIObject {
@@ -884,7 +886,6 @@ protected:
     id<MTLBuffer> _globalVisibilityResultMTLBuffer = nil;
 	id<MTLSamplerState> _defaultMTLSamplerState = nil;
 	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
-	MVKSemaphoreStyle _vkSemaphoreStyle = MVKSemaphoreStyleUseEmulation;
     uint32_t _globalVisibilityQueryCount = 0;
 	bool _logActivityPerformanceInline = false;
 	bool _isPerformanceTracking = false;

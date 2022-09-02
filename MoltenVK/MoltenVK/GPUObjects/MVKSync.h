@@ -201,27 +201,29 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKSemaphoreMTLFence
+#pragma mark MVKSemaphoreSingleQueue
 
-/** An MVKSemaphore that uses MTLFence to provide synchronization. */
-class MVKSemaphoreMTLFence : public MVKSemaphore {
+/**
+ * An MVKSemaphore that uses Metal's built-in guarantees on single-queue submission to provide semaphore-like guarantees.
+ *
+ * Relies on Metal's enabled-by-default hazard tracking, and will need to start doing things with MTLFences
+ * if we start using things with MTLHazardTrackingModeUntracked
+ */
+class MVKSemaphoreSingleQueue : public MVKSemaphore {
 
 public:
 	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
 	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
 	uint64_t deferSignal() override;
 	void encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
-	bool isUsingCommandEncoding() override { return true; }
+	bool isUsingCommandEncoding() override { return false; }
 
-	MVKSemaphoreMTLFence(MVKDevice* device,
-						 const VkSemaphoreCreateInfo* pCreateInfo,
-						 const VkExportMetalObjectCreateInfoEXT* pExportInfo,
-						 const VkImportMetalSharedEventInfoEXT* pImportInfo);
+	MVKSemaphoreSingleQueue(MVKDevice* device,
+	                        const VkSemaphoreCreateInfo* pCreateInfo,
+	                        const VkExportMetalObjectCreateInfoEXT* pExportInfo,
+	                        const VkImportMetalSharedEventInfoEXT* pImportInfo);
 
-	~MVKSemaphoreMTLFence() override;
-
-protected:
-	id<MTLFence> _mtlFence;
+	~MVKSemaphoreSingleQueue() override;
 };
 
 

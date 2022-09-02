@@ -231,15 +231,16 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #endif
 
 /**
- * Allow the use of MTLFence or MTLEvent for VkSemaphore synchronization behaviour.
- * By default:
- *   - MVK_ALLOW_METAL_EVENTS is enabled
- *   - MVK_ALLOW_METAL_FENCES is disabled
- * */
-#ifndef MVK_ALLOW_METAL_EVENTS
+ * Determines the style used to implement Vulkan semaphore (VkSemaphore) functionality in Metal.
+ * By default, use Metal events, if availalble, on most platforms.
+ */
+#ifndef MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE
+#   define MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE    MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE
+#endif
+#ifndef MVK_ALLOW_METAL_EVENTS		// Deprecated
 #   define MVK_ALLOW_METAL_EVENTS    1
 #endif
-#ifndef MVK_ALLOW_METAL_FENCES
+#ifndef MVK_ALLOW_METAL_FENCES		// Deprecated
 #   define MVK_ALLOW_METAL_FENCES    0
 #endif
 

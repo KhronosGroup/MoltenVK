@@ -46,12 +46,11 @@ static void mvkInitConfigFromEnvVars() {
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.defaultGPUCaptureScopeQueueFamilyIndex, MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_FAMILY_INDEX);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.defaultGPUCaptureScopeQueueIndex,       MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_INDEX);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.fastMathEnabled,                        MVK_CONFIG_FAST_MATH_ENABLED);
-
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.logLevel,                               MVK_CONFIG_LOG_LEVEL);
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.traceVulkanCalls,                       MVK_CONFIG_TRACE_VULKAN_CALLS);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.forceLowPowerGPU,                       MVK_CONFIG_FORCE_LOW_POWER_GPU);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.semaphoreUseMTLFence,                   MVK_ALLOW_METAL_FENCES);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.semaphoreUseMTLEvent,                   MVK_ALLOW_METAL_EVENTS);
+	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.semaphoreSupportStyle,                  MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE);
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.autoGPUCaptureScope,                    MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE);
 	MVK_SET_FROM_ENV_OR_BUILD_STRING(evCfg.autoGPUCaptureOutputFilepath,           MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE, evGPUCapFileStrObj);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.texture1DAs2D,                          MVK_CONFIG_TEXTURE_1D_AS_2D);
@@ -62,6 +61,18 @@ static void mvkInitConfigFromEnvVars() {
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.advertiseExtensions,                    MVK_CONFIG_ADVERTISE_EXTENSIONS);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.resumeLostDevice,                       MVK_CONFIG_RESUME_LOST_DEVICE);
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.useMetalArgumentBuffers,                MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS);
+
+	// Deprected legacy VkSemaphore MVK_ALLOW_METAL_FENCES and MVK_ALLOW_METAL_EVENTS config.
+	// Legacy MVK_ALLOW_METAL_EVENTS is covered by MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE,
+	// but for backwards compatibility, if legacy MVK_ALLOW_METAL_EVENTS is explicitly
+	// disabled, disable semaphoreUseMTLEvent (aliased as semaphoreSupportStyle value
+	// MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK), and let mvkSetConfig() further
+	// process legacy behavior based on the value of legacy semaphoreUseMTLFence).
+	bool sem4UseMTLEvent;
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL(sem4UseMTLEvent, MVK_ALLOW_METAL_EVENTS);
+	if ( !sem4UseMTLEvent ) {
+		evCfg.semaphoreUseMTLEvent = (MVKVkSemaphoreSupportStyle)false;		// Disabled. Also semaphoreSupportStyle MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK.
+	}
 
 	mvkSetConfig(evCfg);
 }
@@ -90,7 +101,14 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig) {
 	_mvkConfig.apiVersionToAdvertise = VK_MAKE_VERSION(VK_VERSION_MAJOR(_mvkConfig.apiVersionToAdvertise),
 													   VK_VERSION_MINOR(_mvkConfig.apiVersionToAdvertise),
 													   VK_HEADER_VERSION);
-	
+
+	// Deprecated legacy support for specific case where semaphoreUseMTLFence is enabled and legacy
+	// semaphoreUseMTLEvent (now aliased to semaphoreSupportStyle) is disabled. In this case the user
+	// had been using the legacy MTLFence, so use MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE now.
+	if (_mvkConfig.semaphoreUseMTLFence && !_mvkConfig.semaphoreUseMTLEvent) {
+		_mvkConfig.semaphoreSupportStyle = MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE;
+	}
+
 	// Set capture file path string
 	if (_mvkConfig.autoGPUCaptureOutputFilepath) {
 		_autoGPUCaptureOutputFile = _mvkConfig.autoGPUCaptureOutputFilepath;
