@@ -669,8 +669,21 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessVertexStageDescript
 																				  SPIRVToMSLConversionConfiguration& shaderConfig) {
 	MTLComputePipelineDescriptor* plDesc = [MTLComputePipelineDescriptor new];	// retained
 
+	SPIRVShaderInputs tcInputs;
+	std::string errorLog;
+	if (!getShaderInputs(((MVKShaderModule*)_pTessCtlSS->module)->getSPIRV(), spv::ExecutionModelTessellationControl, _pTessCtlSS->pName, tcInputs, errorLog) ) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation control inputs: %s", errorLog.c_str()));
+		return nil;
+	}
+
+	// Filter out anything but builtins. We couldn't do this before because we needed to make sure
+	// locations were assigned correctly.
+	tcInputs.erase(std::remove_if(tcInputs.begin(), tcInputs.end(), [](const SPIRVShaderInterfaceVariable& var) {
+		return var.builtin != spv::BuiltInPosition && var.builtin != spv::BuiltInPointSize && var.builtin != spv::BuiltInClipDistance && var.builtin != spv::BuiltInCullDistance;
+	}), tcInputs.end());
+
 	// Add shader stages.
-	if (!addVertexShaderToPipeline(plDesc, pCreateInfo, shaderConfig)) { return nil; }
+	if (!addVertexShaderToPipeline(plDesc, pCreateInfo, shaderConfig, tcInputs)) { return nil; }
 
 	// Vertex input
 	plDesc.stageInputDescriptor = [MTLStageInputOutputDescriptor stageInputOutputDescriptor];
@@ -794,14 +807,25 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessControlStageDescrip
 	MTLComputePipelineDescriptor* plDesc = [MTLComputePipelineDescriptor new];		// retained
 
 	SPIRVShaderOutputs vtxOutputs;
+	SPIRVShaderInputs teInputs;
 	std::string errorLog;
 	if (!getShaderOutputs(((MVKShaderModule*)_pVertexSS->module)->getSPIRV(), spv::ExecutionModelVertex, _pVertexSS->pName, vtxOutputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get vertex outputs: %s", errorLog.c_str()));
 		return nil;
 	}
+	if (!getShaderInputs(((MVKShaderModule*)_pTessEvalSS->module)->getSPIRV(), spv::ExecutionModelTessellationEvaluation, _pTessEvalSS->pName, teInputs, errorLog) ) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation evaluation inputs: %s", errorLog.c_str()));
+		return nil;
+	}
+
+	// Filter out anything but builtins. We couldn't do this before because we needed to make sure
+	// locations were assigned correctly.
+	teInputs.erase(std::remove_if(teInputs.begin(), teInputs.end(), [](const SPIRVShaderInterfaceVariable& var) {
+		return var.builtin != spv::BuiltInPosition && var.builtin != spv::BuiltInPointSize && var.builtin != spv::BuiltInClipDistance && var.builtin != spv::BuiltInCullDistance;
+	}), teInputs.end());
 
 	// Add shader stages.
-	if (!addTessCtlShaderToPipeline(plDesc, pCreateInfo, shaderConfig, vtxOutputs)) {
+	if (!addTessCtlShaderToPipeline(plDesc, pCreateInfo, shaderConfig, vtxOutputs, teInputs)) {
 		[plDesc release];
 		return nil;
 	}
@@ -822,9 +846,14 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 	MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];	// retained
 
 	SPIRVShaderOutputs tcOutputs, teOutputs;
+	SPIRVShaderInputs teInputs;
 	std::string errorLog;
 	if (!getShaderOutputs(((MVKShaderModule*)_pTessCtlSS->module)->getSPIRV(), spv::ExecutionModelTessellationControl, _pTessCtlSS->pName, tcOutputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation control outputs: %s", errorLog.c_str()));
+		return nil;
+	}
+	if (!getShaderInputs(((MVKShaderModule*)_pTessEvalSS->module)->getSPIRV(), spv::ExecutionModelTessellationEvaluation, _pTessEvalSS->pName, teInputs, errorLog) ) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation evaluation inputs: %s", errorLog.c_str()));
 		return nil;
 	}
 	if (!getShaderOutputs(((MVKShaderModule*)_pTessEvalSS->module)->getSPIRV(), spv::ExecutionModelTessellationEvaluation, _pTessEvalSS->pName, teOutputs, errorLog) ) {
@@ -840,13 +869,38 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 
 	// Tessellation evaluation stage input
 	// This needs to happen before compiling the fragment shader, or we'll lose information on shader inputs.
+	// First, add extra builtins that are in teInputs but not tcOutputs. They can be read
+	// even if not written.
+	teInputs.erase(std::remove_if(teInputs.begin(), teInputs.end(), [&tcOutputs](const SPIRVShaderInterfaceVariable& var) {
+		return var.builtin != spv::BuiltInPosition && var.builtin != spv::BuiltInPointSize && var.builtin != spv::BuiltInClipDistance && var.builtin != spv::BuiltInCullDistance;
+	}), teInputs.end());
+	std::remove_copy_if(teInputs.begin(), teInputs.end(), std::back_inserter(tcOutputs), [&tcOutputs](const SPIRVShaderInterfaceVariable& input) {
+		auto iter = std::find_if(tcOutputs.begin(), tcOutputs.end(), [input](const SPIRVShaderInterfaceVariable& oldVar) {
+			return oldVar.builtin == input.builtin;
+		});
+		if (iter != tcOutputs.end()) {
+			iter->isUsed = input.isUsed;
+		}
+		return iter != tcOutputs.end();
+	});
+
+	auto isBuiltInRead = [&teInputs](spv::BuiltIn builtin) {
+		for (const auto& input : teInputs) {
+			if (input.builtin == builtin) {
+				return input.isUsed;
+			}
+		}
+		return false;
+	};
+
 	plDesc.vertexDescriptor = [MTLVertexDescriptor vertexDescriptor];
 	uint32_t offset = 0, patchOffset = 0, outerLoc = -1, innerLoc = -1;
 	bool usedPerVertex = false, usedPerPatch = false;
 	const SPIRVShaderOutput* firstVertex = nullptr, * firstPatch = nullptr;
 	for (const SPIRVShaderOutput& output : tcOutputs) {
 		if (output.builtin == spv::BuiltInPointSize && !reflectData.pointMode) { continue; }
-		if (!shaderConfig.isShaderInputLocationUsed(output.location)) {
+		if ((output.builtin != spv::BuiltInMax && !isBuiltInRead(output.builtin)) &&
+			!shaderConfig.isShaderInputLocationUsed(output.location)) {
 			if (output.perPatch && !(output.builtin == spv::BuiltInTessLevelOuter || output.builtin == spv::BuiltInTessLevelInner) ) {
 				if (!firstPatch) { firstPatch = &output; }
 				patchOffset += getShaderOutputSize(output);
@@ -1014,7 +1068,8 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 // Adds a vertex shader compiled as a compute kernel to the pipeline description.
 bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor* plDesc,
 													const VkGraphicsPipelineCreateInfo* pCreateInfo,
-													SPIRVToMSLConversionConfiguration& shaderConfig) {
+													SPIRVToMSLConversionConfiguration& shaderConfig,
+													SPIRVShaderInputs& tcInputs) {
 	shaderConfig.options.entryPointStage = spv::ExecutionModelVertex;
 	shaderConfig.options.entryPointName = _pVertexSS->pName;
 	shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageVertex];
@@ -1026,6 +1081,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 	shaderConfig.options.mslOptions.vertex_for_tessellation = true;
 	shaderConfig.options.mslOptions.disable_rasterization = true;
     addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
+	addNextStageInputToShaderConversionConfig(shaderConfig, tcInputs);
 
 	static const CompilerMSL::Options::IndexType indexTypes[] = {
 		CompilerMSL::Options::IndexType::None,
@@ -1078,7 +1134,8 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescriptor* plDesc,
 													 const VkGraphicsPipelineCreateInfo* pCreateInfo,
 													 SPIRVToMSLConversionConfiguration& shaderConfig,
-													 SPIRVShaderOutputs& vtxOutputs) {
+													 SPIRVShaderOutputs& vtxOutputs,
+													 SPIRVShaderInputs& teInputs) {
 	shaderConfig.options.entryPointStage = spv::ExecutionModelTessellationControl;
 	shaderConfig.options.entryPointName = _pTessCtlSS->pName;
 	shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageTessCtl];
@@ -1093,6 +1150,7 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	shaderConfig.options.mslOptions.multi_patch_workgroup = true;
 	shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(_pTessCtlSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : _device->_pMetalFeatures->maxSubgroupSize;
 	addPrevStageOutputToShaderConversionConfig(shaderConfig, vtxOutputs);
+	addNextStageInputToShaderConversionConfig(shaderConfig, teInputs);
 
 	MVKMTLFunction func = ((MVKShaderModule*)_pTessCtlSS->module)->getMTLFunction(&shaderConfig, _pTessCtlSS->pSpecializationInfo, _pipelineCache);
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
@@ -1695,7 +1753,7 @@ void MVKGraphicsPipeline::addVertexInputToShaderConversionConfig(SPIRVToMSLConve
 
         // Set binding and offset from Vulkan vertex attribute
         mvk::MSLShaderInput si;
-        si.shaderInput.location = pVKVA->location;
+        si.shaderVar.location = pVKVA->location;
         si.binding = pVKVA->binding;
 
         // Metal can't do signedness conversions on vertex buffers (rdar://45922847). If the shader
@@ -1705,11 +1763,11 @@ void MVKGraphicsPipeline::addVertexInputToShaderConversionConfig(SPIRVToMSLConve
         // declared type. Programs that try to invoke undefined behavior are on their own.
         switch (getPixelFormats()->getFormatType(pVKVA->format) ) {
         case kMVKFormatColorUInt8:
-            si.shaderInput.format = MSL_VERTEX_FORMAT_UINT8;
+            si.shaderVar.format = MSL_VERTEX_FORMAT_UINT8;
             break;
 
         case kMVKFormatColorUInt16:
-            si.shaderInput.format = MSL_VERTEX_FORMAT_UINT16;
+            si.shaderVar.format = MSL_VERTEX_FORMAT_UINT16;
             break;
 
         case kMVKFormatDepthStencil:
@@ -1719,7 +1777,7 @@ void MVKGraphicsPipeline::addVertexInputToShaderConversionConfig(SPIRVToMSLConve
             case VK_FORMAT_D16_UNORM_S8_UINT:
             case VK_FORMAT_D24_UNORM_S8_UINT:
             case VK_FORMAT_D32_SFLOAT_S8_UINT:
-                si.shaderInput.format = MSL_VERTEX_FORMAT_UINT8;
+                si.shaderVar.format = MSL_VERTEX_FORMAT_UINT8;
                 break;
 
             default:
@@ -1736,6 +1794,49 @@ void MVKGraphicsPipeline::addVertexInputToShaderConversionConfig(SPIRVToMSLConve
     }
 }
 
+// Initializes the shader outputs in a shader conversion config from the next stage input.
+void MVKGraphicsPipeline::addNextStageInputToShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig,
+                                                                    SPIRVShaderInputs& shaderInputs) {
+    // Set the shader conversion configuration output variable information
+    shaderConfig.shaderOutputs.clear();
+    uint32_t soCnt = (uint32_t)shaderInputs.size();
+    for (uint32_t soIdx = 0; soIdx < soCnt; soIdx++) {
+		if (!shaderInputs[soIdx].isUsed) { continue; }
+
+        mvk::MSLShaderInterfaceVariable so;
+        so.shaderVar.location = shaderInputs[soIdx].location;
+		so.shaderVar.component = shaderInputs[soIdx].component;
+        so.shaderVar.builtin = shaderInputs[soIdx].builtin;
+        so.shaderVar.vecsize = shaderInputs[soIdx].vecWidth;
+
+        switch (getPixelFormats()->getFormatType(mvkFormatFromOutput(shaderInputs[soIdx]) ) ) {
+            case kMVKFormatColorUInt8:
+                so.shaderVar.format = MSL_SHADER_INPUT_FORMAT_UINT8;
+                break;
+
+            case kMVKFormatColorUInt16:
+                so.shaderVar.format = MSL_SHADER_INPUT_FORMAT_UINT16;
+                break;
+
+			case kMVKFormatColorHalf:
+			case kMVKFormatColorInt16:
+				so.shaderVar.format = MSL_SHADER_INPUT_FORMAT_ANY16;
+				break;
+
+			case kMVKFormatColorFloat:
+			case kMVKFormatColorInt32:
+			case kMVKFormatColorUInt32:
+				so.shaderVar.format = MSL_SHADER_INPUT_FORMAT_ANY32;
+				break;
+
+            default:
+                break;
+        }
+
+        shaderConfig.shaderOutputs.push_back(so);
+    }
+}
+
 // Initializes the shader inputs in a shader conversion config from the previous stage output.
 void MVKGraphicsPipeline::addPrevStageOutputToShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig,
                                                                      SPIRVShaderOutputs& shaderOutputs) {
@@ -1746,29 +1847,29 @@ void MVKGraphicsPipeline::addPrevStageOutputToShaderConversionConfig(SPIRVToMSLC
 		if (!shaderOutputs[siIdx].isUsed) { continue; }
 
         mvk::MSLShaderInput si;
-        si.shaderInput.location = shaderOutputs[siIdx].location;
-		si.shaderInput.component = shaderOutputs[siIdx].component;
-        si.shaderInput.builtin = shaderOutputs[siIdx].builtin;
-        si.shaderInput.vecsize = shaderOutputs[siIdx].vecWidth;
+        si.shaderVar.location = shaderOutputs[siIdx].location;
+		si.shaderVar.component = shaderOutputs[siIdx].component;
+        si.shaderVar.builtin = shaderOutputs[siIdx].builtin;
+        si.shaderVar.vecsize = shaderOutputs[siIdx].vecWidth;
 
         switch (getPixelFormats()->getFormatType(mvkFormatFromOutput(shaderOutputs[siIdx]) ) ) {
             case kMVKFormatColorUInt8:
-                si.shaderInput.format = MSL_SHADER_INPUT_FORMAT_UINT8;
+                si.shaderVar.format = MSL_SHADER_INPUT_FORMAT_UINT8;
                 break;
 
             case kMVKFormatColorUInt16:
-                si.shaderInput.format = MSL_SHADER_INPUT_FORMAT_UINT16;
+                si.shaderVar.format = MSL_SHADER_INPUT_FORMAT_UINT16;
                 break;
 
 			case kMVKFormatColorHalf:
 			case kMVKFormatColorInt16:
-				si.shaderInput.format = MSL_SHADER_INPUT_FORMAT_ANY16;
+				si.shaderVar.format = MSL_SHADER_INPUT_FORMAT_ANY16;
 				break;
 
 			case kMVKFormatColorFloat:
 			case kMVKFormatColorInt32:
 			case kMVKFormatColorUInt32:
-				si.shaderInput.format = MSL_SHADER_INPUT_FORMAT_ANY32;
+				si.shaderVar.format = MSL_SHADER_INPUT_FORMAT_ANY32;
 				break;
 
             default:
@@ -2251,7 +2352,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 	}
 
 	template<class Archive>
-	void serialize(Archive & archive, MSLShaderInput& si) {
+	void serialize(Archive & archive, MSLShaderInterfaceVariable& si) {
 		archive(si.location,
 				si.component,
 				si.format,
@@ -2331,8 +2432,8 @@ namespace mvk {
 	}
 
 	template<class Archive>
-	void serialize(Archive & archive, MSLShaderInput& si) {
-		archive(si.shaderInput,
+	void serialize(Archive & archive, MSLShaderInterfaceVariable& si) {
+		archive(si.shaderVar,
 				si.binding,
 				si.outIsUsedByShader);
 	}
@@ -2357,6 +2458,7 @@ namespace mvk {
 	void serialize(Archive & archive, SPIRVToMSLConversionConfiguration& ctx) {
 		archive(ctx.options,
 				ctx.shaderInputs,
+				ctx.shaderOutputs,
 				ctx.resourceBindings,
 				ctx.discreteDescriptorSets);
 	}

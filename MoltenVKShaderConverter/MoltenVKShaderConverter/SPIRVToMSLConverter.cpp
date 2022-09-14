@@ -94,17 +94,17 @@ MVK_PUBLIC_SYMBOL SPIRVToMSLConversionOptions::SPIRVToMSLConversionOptions() {
 	mslOptions.pad_fragment_output_components = true;
 }
 
-MVK_PUBLIC_SYMBOL bool mvk::MSLShaderInput::matches(const mvk::MSLShaderInput& other) const {
-	if (memcmp(&shaderInput, &other.shaderInput, sizeof(shaderInput)) != 0) { return false; }
+MVK_PUBLIC_SYMBOL bool mvk::MSLShaderInterfaceVariable::matches(const mvk::MSLShaderInterfaceVariable& other) const {
+	if (memcmp(&shaderVar, &other.shaderVar, sizeof(shaderVar)) != 0) { return false; }
 	if (binding != other.binding) { return false; }
 	return true;
 }
 
-MVK_PUBLIC_SYMBOL mvk::MSLShaderInput::MSLShaderInput() {
-	// Explicitly set shaderInput to defaults over cleared memory to ensure all instances
+MVK_PUBLIC_SYMBOL mvk::MSLShaderInterfaceVariable::MSLShaderInterfaceVariable() {
+	// Explicitly set shaderVar to defaults over cleared memory to ensure all instances
 	// have exactly the same memory layout when using memory comparison in matches().
-	memset(&shaderInput, 0, sizeof(shaderInput));
-	shaderInput = SPIRV_CROSS_NAMESPACE::MSLShaderInput();
+	memset(&shaderVar, 0, sizeof(shaderVar));
+	shaderVar = SPIRV_CROSS_NAMESPACE::MSLShaderInterfaceVariable();
 }
 
 // If requiresConstExprSampler is false, constExprSampler can be ignored
@@ -143,7 +143,21 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::stageSupportsVertexAtt
 // Check them all in case inactive VA's duplicate locations used by active VA's.
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::isShaderInputLocationUsed(uint32_t location) const {
     for (auto& si : shaderInputs) {
-        if ((si.shaderInput.location == location) && si.outIsUsedByShader) { return true; }
+        if ((si.shaderVar.location == location) && si.outIsUsedByShader) { return true; }
+    }
+    return false;
+}
+
+MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::isShaderInputBuiltInUsed(spv::BuiltIn builtin) const {
+    for (auto& si : shaderInputs) {
+        if ((si.shaderVar.builtin == builtin) && si.outIsUsedByShader) { return true; }
+    }
+    return false;
+}
+
+MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::isShaderOutputLocationUsed(uint32_t location) const {
+    for (auto& so : shaderOutputs) {
+        if ((so.shaderVar.location == location) && so.outIsUsedByShader) { return true; }
     }
     return false;
 }
@@ -166,8 +180,9 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::isResourceUsed(Executi
 	return false;
 }
 
-MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::markAllInputsAndResourcesUsed() {
+MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::markAllInterfaceVarsAndResourcesUsed() {
 	for (auto& si : shaderInputs) { si.outIsUsedByShader = true; }
+	for (auto& so : shaderOutputs) { so.outIsUsedByShader = true; }
 	for (auto& rb : resourceBindings) { rb.outIsUsedByShader = true; }
 }
 
@@ -175,13 +190,17 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::markAllInputsAndResour
 // and the resources can be spread across these shader stages. To improve cache hits when using
 // this function to find a cached shader for a particular shader stage, only consider the resources
 // that are used in that shader stage. By contrast, discreteDescriptorSet apply across all stages,
-// and shaderInputs are populated before each stage, so neither needs to be filtered by stage here.
+// and shaderInputs and shaderOutputs are populated before each stage, so neither needs to be filtered by stage here.
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToMSLConversionConfiguration& other) const {
 
     if ( !options.matches(other.options) ) { return false; }
 
 	for (const auto& si : shaderInputs) {
 		if (si.outIsUsedByShader && !containsMatching(other.shaderInputs, si)) { return false; }
+	}
+
+	for (const auto& so : shaderOutputs) {
+		if (so.outIsUsedByShader && !containsMatching(other.shaderOutputs, so)) { return false; }
 	}
 
     for (const auto& rb : resourceBindings) {
@@ -209,6 +228,13 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::alignWith(const SPIRVT
 		si.outIsUsedByShader = false;
 		for (auto& srcSI : srcContext.shaderInputs) {
 			if (si.matches(srcSI)) { si.outIsUsedByShader = srcSI.outIsUsedByShader; }
+		}
+	}
+
+	for (auto& so : shaderOutputs) {
+		so.outIsUsedByShader = false;
+		for (auto& srcSO : srcContext.shaderOutputs) {
+			if (so.matches(srcSO)) { so.outIsUsedByShader = srcSO.outIsUsedByShader; }
 		}
 	}
 
@@ -281,9 +307,13 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 		scOpts.vertex.flip_vert_y = shaderConfig.options.shouldFlipVertexY;
 		pMSLCompiler->set_common_options(scOpts);
 
-		// Add shader inputs
+		// Add shader inputs and outputs
 		for (auto& si : shaderConfig.shaderInputs) {
-			pMSLCompiler->add_msl_shader_input(si.shaderInput);
+			pMSLCompiler->add_msl_shader_input(si.shaderVar);
+		}
+
+		for (auto& so : shaderConfig.shaderOutputs) {
+			pMSLCompiler->add_msl_shader_output(so.shaderVar);
 		}
 
 		// Add resource bindings and hardcoded constexpr samplers
@@ -352,7 +382,18 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	}
 
 	for (auto& ctxSI : shaderConfig.shaderInputs) {
-		ctxSI.outIsUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxSI.shaderInput.location);
+		if (ctxSI.shaderVar.builtin != spv::BuiltInMax) {
+			ctxSI.outIsUsedByShader = pMSLCompiler->has_active_builtin(ctxSI.shaderVar.builtin, spv::StorageClassInput);
+		} else {
+			ctxSI.outIsUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxSI.shaderVar.location);
+		}
+	}
+	for (auto& ctxSO : shaderConfig.shaderOutputs) {
+		if (ctxSO.shaderVar.builtin != spv::BuiltInMax) {
+			ctxSO.outIsUsedByShader = pMSLCompiler->has_active_builtin(ctxSO.shaderVar.builtin, spv::StorageClassOutput);
+		} else {
+			ctxSO.outIsUsedByShader = pMSLCompiler->is_msl_shader_output_used(ctxSO.shaderVar.location);
+		}
 	}
 	for (auto& ctxRB : shaderConfig.resourceBindings) {
 		if (ctxRB.resourceBinding.stage == shaderConfig.options.entryPointStage) {

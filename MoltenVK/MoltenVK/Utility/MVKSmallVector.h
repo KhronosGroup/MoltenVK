@@ -62,6 +62,7 @@ class MVKSmallVectorImpl
   Allocator  alc;
   
 public:
+  using value_type = Type;
   class iterator
   {
     const MVKSmallVectorImpl *vector;
@@ -115,6 +116,7 @@ public:
     bool   is_valid()     const { return index < vector->alc.size(); }
     size_t get_position() const { return index; }
   };
+  using reverse_iterator = std::reverse_iterator<iterator>;
 
 private:
   // this is the growth strategy -> adjust to your needs
@@ -292,6 +294,9 @@ public:
 
   iterator begin() const { return iterator( 0, *this ); }
   iterator end()   const { return iterator( alc.num_elements_used, *this ); }
+
+  reverse_iterator rbegin() const { return reverse_iterator( end() ); }
+  reverse_iterator rend()   const { return reverse_iterator( begin() ); }
 
   const MVKArrayRef<Type> contents() const { return MVKArrayRef<Type>(data(), size()); }
         MVKArrayRef<Type> contents()       { return MVKArrayRef<Type>(data(), size()); }
@@ -521,6 +526,7 @@ class MVKSmallVectorImpl<Type*, Allocator>
   Allocator  alc;
 
 public:
+  using value_type = Type*;
   class iterator
   {
     MVKSmallVectorImpl *vector;
@@ -572,6 +578,7 @@ public:
     bool   is_valid()     const { return index < vector->alc.size(); }
     size_t get_position() const { return index; }
   };
+  using reverse_iterator = std::reverse_iterator<iterator>;
 
 private:
   // this is the growth strategy -> adjust to your needs
@@ -727,6 +734,9 @@ public:
 
   iterator begin()        { return iterator( 0, *this ); }
   iterator end()          { return iterator( alc.num_elements_used, *this ); }
+
+  reverse_iterator rbegin()       { return reverse_iterator( end() ); }
+  reverse_iterator rend()         { return reverse_iterator( rbegin() ); }
 
   const MVKArrayRef<Type*> contents() const { return MVKArrayRef<Type*>(data(), size()); }
         MVKArrayRef<Type*> contents()       { return MVKArrayRef<Type*>(data(), size()); }
