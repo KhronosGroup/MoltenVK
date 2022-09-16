@@ -69,7 +69,7 @@ document in the `Docs` directory.
 Introduction to MoltenVK
 ------------------------
 
-**MoltenVK** is a layered implementation of [*Vulkan 1.1*](https://www.khronos.org/vulkan) 
+**MoltenVK** is a layered implementation of [*Vulkan (1.2)*](https://www.khronos.org/vulkan) 
 graphics and compute functionality, that is built on Apple's [*Metal*](https://developer.apple.com/metal) 
 graphics and compute framework on *macOS*, *iOS*, and *tvOS*. **MoltenVK** allows you to use *Vulkan* 
 graphics and compute functionality to develop modern, cross-platform, high-performance graphical 
@@ -88,7 +88,7 @@ channels, including *Apple's App Store*.
 The **MoltenVK** runtime package contains two products:
 
 - **MoltenVK** is a implementation of an almost-complete subset of the 
-  [*Vulkan 1.1*](https://www.khronos.org/vulkan) graphics and compute API.
+  [*Vulkan (1.2)*](https://www.khronos.org/vulkan) graphics and compute API.
 
 - **MoltenVKShaderConverter** converts *SPIR-V* shader code to *Metal Shading Language (MSL)*
   shader code, and converts *GLSL* shader source code to *SPIR-V* shader code and/or
