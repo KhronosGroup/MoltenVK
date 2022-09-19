@@ -28,6 +28,7 @@ Released TBD
   extension is enabled. `MVKConfiguration::useMetalArgumentBuffers` (`MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS`) 
   is now an enum field. The use of Metal argument buffers is still disabled by default (`MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER`).
 - Fix occassional crash from retention of `MVKSwapchain` for future drawable presentations.
+- Fix undefined reference to `vkGetBufferDeviceAddressEXT` when building with `MVK_HIDE_VULKAN_SYMBOLS=1`.
 - Add `MVK_USE_CEREAL` build setting to avoid use of Cereal external library (for pipeline caching).
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `36`.
 
