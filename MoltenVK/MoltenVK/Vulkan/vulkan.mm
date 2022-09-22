@@ -164,6 +164,15 @@ static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t star
 // Define an extension call as an alias of a core call
 #define MVK_PUBLIC_VULKAN_CORE_ALIAS(vkf, ext)	MVK_PUBLIC_VULKAN_ALIAS(vkf##ext, vkf)
 
+#define MVK_PUBLIC_VULKAN_STUB(name, ret, ...) MVK_PUBLIC_VULKAN_SYMBOL ret name(__VA_ARGS__) { \
+	assert(false); \
+	return (ret)0; \
+}
+
+#define MVK_PUBLIC_VULKAN_STUB_VKRESULT(name, ...) MVK_PUBLIC_VULKAN_SYMBOL VkResult name(__VA_ARGS__) { \
+	assert(false); \
+	return VK_ERROR_FEATURE_NOT_PRESENT; \
+}
 
 #pragma mark -
 #pragma mark Vulkan 1.0 calls
@@ -2466,6 +2475,62 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkWaitSemaphores(
 	return rslt;
 }
 
+#pragma mark -
+#pragma mark Vulkan 1.3 calls
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBeginRendering(
+        VkCommandBuffer                             commandBuffer,
+        const VkRenderingInfo*                      pRenderingInfo) {
+
+    MVKTraceVulkanCallStart();
+    MVKAddCmdFrom3Thresholds(BeginRendering, pRenderingInfo->colorAttachmentCount,
+                             1, 2, 4, commandBuffer, pRenderingInfo);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEndRendering(
+        VkCommandBuffer                             commandBuffer) {
+
+    MVKTraceVulkanCallStart();
+    MVKAddCmd(EndRendering, commandBuffer);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_STUB(vkCmdBindVertexBuffers2, void, VkCommandBuffer, uint32_t, uint32_t, const VkBuffer*, const VkDeviceSize*, const VkDeviceSize*, const VkDeviceSize*)
+MVK_PUBLIC_VULKAN_STUB(vkCmdBlitImage2, void, VkCommandBuffer, const VkBlitImageInfo2*)
+MVK_PUBLIC_VULKAN_STUB(vkCmdCopyBuffer2, void, VkCommandBuffer, const VkCopyBufferInfo2*)
+MVK_PUBLIC_VULKAN_STUB(vkCmdCopyBufferToImage2, void, VkCommandBuffer, const VkCopyBufferToImageInfo2*)
+MVK_PUBLIC_VULKAN_STUB(vkCmdCopyImage2, void, VkCommandBuffer, const VkCopyImageInfo2*)
+MVK_PUBLIC_VULKAN_STUB(vkCmdCopyImageToBuffer2, void, VkCommandBuffer, const VkCopyImageToBufferInfo2*)
+MVK_PUBLIC_VULKAN_STUB(vkCmdPipelineBarrier2, void, VkCommandBuffer, const VkDependencyInfo*)
+MVK_PUBLIC_VULKAN_STUB(vkCmdResetEvent2, void, VkCommandBuffer, VkEvent, VkPipelineStageFlags2 stageMask)
+MVK_PUBLIC_VULKAN_STUB(vkCmdResolveImage2, void, VkCommandBuffer, const VkResolveImageInfo2*)
+MVK_PUBLIC_VULKAN_STUB(vkCmdSetCullMode, void, VkCommandBuffer, VkCullModeFlags)
+MVK_PUBLIC_VULKAN_STUB(vkCmdSetDepthBiasEnable, void, VkCommandBuffer, VkBool32)
+MVK_PUBLIC_VULKAN_STUB(vkCmdSetDepthBoundsTestEnable, void, VkCommandBuffer, VkBool32)
+MVK_PUBLIC_VULKAN_STUB(vkCmdSetDepthCompareOp, void, VkCommandBuffer, VkCompareOp)
+MVK_PUBLIC_VULKAN_STUB(vkCmdSetDepthTestEnable, void, VkCommandBuffer, VkBool32)
+MVK_PUBLIC_VULKAN_STUB(vkCmdSetDepthWriteEnable, void, VkCommandBuffer, VkBool32)
+MVK_PUBLIC_VULKAN_STUB(vkCmdSetEvent2, void, VkCommandBuffer, VkEvent, const VkDependencyInfo*)
+MVK_PUBLIC_VULKAN_STUB(vkCmdSetFrontFace, void, VkCommandBuffer, VkFrontFace)
+MVK_PUBLIC_VULKAN_STUB(vkCmdSetPrimitiveRestartEnable, void, VkCommandBuffer, VkBool32)
+MVK_PUBLIC_VULKAN_STUB(vkCmdSetPrimitiveTopology, void, VkCommandBuffer, VkPrimitiveTopology)
+MVK_PUBLIC_VULKAN_STUB(vkCmdSetRasterizerDiscardEnable, void, VkCommandBuffer, VkBool32)
+MVK_PUBLIC_VULKAN_STUB(vkCmdSetScissorWithCount, void, VkCommandBuffer, uint32_t, const VkRect2D*)
+MVK_PUBLIC_VULKAN_STUB(vkCmdSetStencilOp, void, VkCommandBuffer, VkStencilFaceFlags, VkStencilOp, VkStencilOp, VkStencilOp, VkCompareOp)
+MVK_PUBLIC_VULKAN_STUB(vkCmdSetStencilTestEnable, void, VkCommandBuffer, VkBool32)
+MVK_PUBLIC_VULKAN_STUB(vkCmdSetViewportWithCount, void, VkCommandBuffer, uint32_t, const VkViewport*)
+MVK_PUBLIC_VULKAN_STUB(vkCmdWaitEvents2, void, VkCommandBuffer, uint32_t, const VkEvent*, const VkDependencyInfo*)
+MVK_PUBLIC_VULKAN_STUB(vkCmdWriteTimestamp2, void, VkCommandBuffer, VkPipelineStageFlags2, VkQueryPool, uint32_t)
+MVK_PUBLIC_VULKAN_STUB_VKRESULT(vkCreatePrivateDataSlot, VkDevice, const VkPrivateDataSlotCreateInfo*, const VkAllocationCallbacks*, VkPrivateDataSlot*)
+MVK_PUBLIC_VULKAN_STUB(vkDestroyPrivateDataSlot, void, VkDevice, VkPrivateDataSlot, const VkAllocationCallbacks*)
+MVK_PUBLIC_VULKAN_STUB(vkGetDeviceBufferMemoryRequirements, void, VkDevice, const VkDeviceBufferMemoryRequirements*, VkMemoryRequirements2*)
+MVK_PUBLIC_VULKAN_STUB(vkGetDeviceImageMemoryRequirements, void, VkDevice, const VkDeviceImageMemoryRequirements*, VkMemoryRequirements2*)
+MVK_PUBLIC_VULKAN_STUB(vkGetDeviceImageSparseMemoryRequirements, void, VkDevice, const VkDeviceImageMemoryRequirements*, uint32_t*, VkSparseImageMemoryRequirements2*)
+MVK_PUBLIC_VULKAN_STUB_VKRESULT(vkGetPhysicalDeviceToolProperties, VkPhysicalDevice, uint32_t*, VkPhysicalDeviceToolProperties*)
+MVK_PUBLIC_VULKAN_STUB(vkGetPrivateData, void, VkDevice, VkObjectType, uint64_t, VkPrivateDataSlot, uint64_t*)
+MVK_PUBLIC_VULKAN_STUB_VKRESULT(vkQueueSubmit2, VkQueue, uint32_t, const VkSubmitInfo2*, VkFence)
+MVK_PUBLIC_VULKAN_STUB_VKRESULT(vkSetPrivateData, VkDevice, VkObjectType, uint64_t, VkPrivateDataSlot, uint64_t)
 
 #pragma mark -
 #pragma mark VK_KHR_bind_memory2 extension
@@ -2494,23 +2559,8 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdEndRenderPass2, KHR);
 #pragma mark -
 #pragma mark VK_KHR_dynamic_rendering extension
 
-void vkCmdBeginRenderingKHR(
-	VkCommandBuffer                             commandBuffer,
-	const VkRenderingInfo*                      pRenderingInfo) {
-
-	MVKTraceVulkanCallStart();
-	MVKAddCmdFrom3Thresholds(BeginRendering, pRenderingInfo->colorAttachmentCount,
-							 1, 2, 4, commandBuffer, pRenderingInfo);
-	MVKTraceVulkanCallEnd();
-}
-
-void vkCmdEndRenderingKHR(
-	VkCommandBuffer                             commandBuffer) {
-
-	MVKTraceVulkanCallStart();
-	MVKAddCmd(EndRendering, commandBuffer);
-	MVKTraceVulkanCallEnd();
-}
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdBeginRendering, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdEndRendering, KHR);
 
 
 #pragma mark -
