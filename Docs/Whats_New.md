@@ -20,6 +20,7 @@ Released TBD
 
 - Add support for extensions:
 	- `VK_KHR_shader_float_controls`
+	- `VK_KHR_spirv_1_4`
 - Vulkan semaphore functional improvements:
 	- Replace use of `MTLFence` with an option to limit to a single Vulkan queue and use Metal's implicit submisison order guarantees.
 	- Support option to force use of `MTLEvents` for Vulkan semaphores on NVIDIA and Rosetta2.
@@ -29,7 +30,9 @@ Released TBD
   is now an enum field. The use of Metal argument buffers is still disabled by default (`MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER`).
 - Fix occassional crash from retention of `MVKSwapchain` for future drawable presentations.
 - Fix undefined reference to `vkGetBufferDeviceAddressEXT` when building with `MVK_HIDE_VULKAN_SYMBOLS=1`.
+- Update `Makefile` to forward any build setting declared on the command line to Xcode.
 - Add `MVK_USE_CEREAL` build setting to avoid use of Cereal external library (for pipeline caching).
+- `MoltenVKShaderConverter` tool automatically map bindings when converting _GLSL_.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `36`.
 
 

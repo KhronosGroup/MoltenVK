@@ -81,6 +81,7 @@ MVK_EXTENSION(KHR_shader_draw_parameters,          KHR_SHADER_DRAW_PARAMETERS,  
 MVK_EXTENSION(KHR_shader_float_controls,           KHR_SHADER_FLOAT_CONTROLS,            DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_shader_float16_int8,             KHR_SHADER_FLOAT16_INT8,              DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_shader_subgroup_extended_types,  KHR_SHADER_SUBGROUP_EXTENDED_TYPES,   DEVICE,   10.14, 13.0)
+MVK_EXTENSION(KHR_spirv_1_4,                       KHR_SPIRV_1_4,                        DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_storage_buffer_storage_class,    KHR_STORAGE_BUFFER_STORAGE_CLASS,     DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_surface,                         KHR_SURFACE,                          INSTANCE, 10.11,  8.0)
 MVK_EXTENSION(KHR_swapchain,                       KHR_SWAPCHAIN,                        DEVICE,   10.11,  8.0)
