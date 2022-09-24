@@ -20,6 +20,7 @@
 #include "MVKStrings.h"
 #include <spirv.hpp>
 #include <ostream>
+#include <sstream>
 
 #import <CoreFoundation/CFByteOrder.h>
 
@@ -97,16 +98,25 @@ void mvk::logSPIRV(vector<uint32_t>& spirv, string& spvLog) {
 	uint32_t options = (SPV_BINARY_TO_TEXT_OPTION_INDENT);
 	spv_text text;
 	spv_diagnostic diagnostic = nullptr;
-	spv_context context = spvContextCreate(SPV_ENV_VULKAN_1_0);
+	spv_context context = spvContextCreate(SPV_ENV_VULKAN_1_2);
 	spv_result_t error = spvBinaryToText(context, spirv.data(), spirv.size(), options, &text, &diagnostic);
 	spvContextDestroy(context);
-	if (error) {
-		spvDiagnosticPrint(diagnostic);
+	if (diagnostic) {
+		// Cribbed from spvDiagnosticPrint()
+		stringstream diagMsgOut;
+		diagMsgOut << "\nSPIR-V error (" << error << ") at ";
+		if (diagnostic->isTextSource) {
+			diagMsgOut << "line: " << diagnostic->position.line + 1 << " col: " << diagnostic->position.column + 1 << ": ";
+		} else {
+			diagMsgOut << "index: "  << diagnostic->position.index << ": ";
+		}
+		diagMsgOut << diagnostic->error << "\n";
+		spvLog.append(diagMsgOut.str());
 		spvDiagnosticDestroy(diagnostic);
-		return;
+	} else {
+		spvLog.append(text->str, text->length);
+		spvTextDestroy(text);
 	}
-	spvLog.append(text->str, text->length);
-	spvTextDestroy(text);
 }
 
 #endif

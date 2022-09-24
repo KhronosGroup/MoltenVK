@@ -21,14 +21,14 @@ jobs:
         upload_artifacts: [ true ]
         # additional specific configurations
         include:
-          # "Legacy" Xcode 11.7 & 12.5.1 macOS builds
-          - xcode: "11.7"
-            platform: "macos"
-            os: "macos-10.15" 
-            upload_artifacts: false
+          # "Legacy" Xcode 12.5.1 & 11.7 macOS builds
           - xcode: "12.5.1"
             platform: "macos"
-            os: "macos-11" 
+            os: "macos-11"
+            upload_artifacts: false
+          - xcode: "11.7"
+            platform: "macos"
+            os: "macos-11"
             upload_artifacts: false
       fail-fast: false
 

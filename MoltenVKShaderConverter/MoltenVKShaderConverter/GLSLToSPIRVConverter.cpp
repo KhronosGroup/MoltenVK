@@ -76,6 +76,7 @@ MVK_PUBLIC_SYMBOL bool GLSLToSPIRVConverter::convert(MVKGLSLConversionShaderStag
 		// Create and compile a shader from the source code
 		glslShaders.emplace_back(new glslang::TShader(stage));
 		glslShaders.back()->setStrings(glslStrings, 1);
+		glslShaders.back()->setAutoMapBindings(true);
 		if (glslShaders.back()->parse(&glslCompilerResources, 100, false, messages)) {
 			if (shouldLogGLSL) {
 				logMsg(glslShaders.back()->getInfoLog());
