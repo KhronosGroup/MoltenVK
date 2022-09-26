@@ -2454,7 +2454,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkResetQueryPool(
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSignalSemaphore(
 	VkDevice									device,
-	const VkSemaphoreSignalInfoKHR*				pSignalInfo) {
+	const VkSemaphoreSignalInfo*				pSignalInfo) {
 
 	MVKTraceVulkanCallStart();
 	auto* mvkSem4 = (MVKTimelineSemaphore*)pSignalInfo->semaphore;
@@ -2465,7 +2465,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSignalSemaphore(
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkWaitSemaphores(
 	VkDevice									device,
-	const VkSemaphoreWaitInfoKHR*				pWaitInfo,
+	const VkSemaphoreWaitInfo*				    pWaitInfo,
 	uint64_t									timeout) {
 
 	MVKTraceVulkanCallStart();

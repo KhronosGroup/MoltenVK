@@ -94,7 +94,7 @@ public:
 
 	/** Returns whether this binding has a variable descriptor count. */
 	inline bool hasVariableDescriptorCount() const {
-		return mvkIsAnyFlagEnabled(_flags, VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT);
+		return mvkIsAnyFlagEnabled(_flags, VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT);
 	}
 
 	/**

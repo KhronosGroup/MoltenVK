@@ -809,7 +809,7 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 		if (metalArgBuffSize) {
 			NSUInteger maxMTLBuffSize = _device->_pMetalFeatures->maxMTLBufferSize;
 			if (metalArgBuffSize > maxMTLBuffSize) {
-				setConfigurationResult(reportError(VK_ERROR_FRAGMENTATION_EXT, "vkCreateDescriptorPool(): The requested descriptor storage of %d MB is larger than the maximum descriptor storage of %d MB per VkDescriptorPool.", (uint32_t)(metalArgBuffSize / MEBI), (uint32_t)(maxMTLBuffSize / MEBI)));
+				setConfigurationResult(reportError(VK_ERROR_FRAGMENTATION, "vkCreateDescriptorPool(): The requested descriptor storage of %d MB is larger than the maximum descriptor storage of %d MB per VkDescriptorPool.", (uint32_t)(metalArgBuffSize / MEBI), (uint32_t)(maxMTLBuffSize / MEBI)));
 				metalArgBuffSize = maxMTLBuffSize;
 			}
 			_metalArgumentBuffer = [getMTLDevice() newBufferWithLength: metalArgBuffSize options: MTLResourceStorageModeShared];	// retained
