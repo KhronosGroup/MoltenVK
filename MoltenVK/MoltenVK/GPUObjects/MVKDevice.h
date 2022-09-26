@@ -869,7 +869,7 @@ protected:
 	void updateActivityPerformance(MVKPerformanceTracker& activity, uint64_t startTime, uint64_t endTime);
 	void getDescriptorVariableDescriptorCountLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
 														   VkDescriptorSetLayoutSupport* pSupport,
-														   VkDescriptorSetVariableDescriptorCountLayoutSupportEXT* pVarDescSetCountSupport);
+														   VkDescriptorSetVariableDescriptorCountLayoutSupport* pVarDescSetCountSupport);
 
 	MVKPhysicalDevice* _physicalDevice = nullptr;
     MVKCommandResourceFactory* _commandResourceFactory = nullptr;

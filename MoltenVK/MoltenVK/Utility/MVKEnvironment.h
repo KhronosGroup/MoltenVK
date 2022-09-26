@@ -36,8 +36,8 @@
 #endif
 
 /** Macro to determine the Vulkan version supported by MoltenVK. */
-#define MVK_VULKAN_API_VERSION		VK_MAKE_VERSION(VK_VERSION_MAJOR(VK_API_VERSION_1_1),	\
-													VK_VERSION_MINOR(VK_API_VERSION_1_1),	\
+#define MVK_VULKAN_API_VERSION		VK_MAKE_VERSION(VK_VERSION_MAJOR(VK_API_VERSION_1_2),	\
+													VK_VERSION_MINOR(VK_API_VERSION_1_2),	\
 													VK_HEADER_VERSION)
 
 /** 

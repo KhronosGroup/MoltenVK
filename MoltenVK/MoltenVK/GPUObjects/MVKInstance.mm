@@ -402,18 +402,18 @@ void MVKInstance::initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo) {
 #define ADD_INST_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, VK_API_VERSION_1_0, nullptr, nullptr, false)
 #define ADD_DVC_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, VK_API_VERSION_1_0, nullptr, nullptr, true)
 
+// Add a core function.
 #define ADD_INST_1_1_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, VK_API_VERSION_1_1, nullptr, nullptr, false)
 #define ADD_INST_1_3_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, VK_API_VERSION_1_3, nullptr, nullptr, false)
 #define ADD_DVC_1_1_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, VK_API_VERSION_1_1, nullptr, nullptr, true)
 #define ADD_DVC_1_2_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, VK_API_VERSION_1_2, nullptr, nullptr, true)
 #define ADD_DVC_1_3_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, VK_API_VERSION_1_3, nullptr, nullptr, true)
 
-// Adds both the 1.1 function and the promoted extension function.
+// Add both the promoted core function and the extension function.
 #define ADD_INST_1_1_PROMOTED_ENTRY_POINT(func, EXT)	\
 	ADD_INST_1_1_ENTRY_POINT(func);	\
 	ADD_ENTRY_POINT_MAP(func##KHR, func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, false)
 
-// Adds both the 1.1 function and the promoted extension function.
 #define ADD_DVC_1_1_PROMOTED_ENTRY_POINT(func, EXT)	\
 	ADD_DVC_1_1_ENTRY_POINT(func);	\
 	ADD_ENTRY_POINT_MAP(func##KHR, func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, true)
@@ -430,6 +430,7 @@ void MVKInstance::initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo) {
 	ADD_DVC_1_3_ENTRY_POINT(func); \
 	ADD_ENTRY_POINT_MAP(func##suffix, func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, true)
 
+// Add an extension function.
 #define ADD_INST_EXT_ENTRY_POINT(func, EXT)				ADD_ENTRY_POINT(func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, false)
 #define ADD_DVC_EXT_ENTRY_POINT(func, EXT)				ADD_ENTRY_POINT(func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, true)
 
