@@ -13,11 +13,12 @@ Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
-MoltenVK 1.1.12
+MoltenVK 1.2.0
 --------------
 
 Released TBD
 
+- Add support for _Vulkan 1.2_.
 - Add support for extensions:
 	- `VK_KHR_shader_float_controls`
 	- `VK_KHR_spirv_1_4`
@@ -31,8 +32,10 @@ Released TBD
 - Fix occassional crash from retention of `MVKSwapchain` for future drawable presentations.
 - Fix undefined reference to `vkGetBufferDeviceAddressEXT` when building with `MVK_HIDE_VULKAN_SYMBOLS=1`.
 - Update `Makefile` to forward any build setting declared on the command line to Xcode.
+- Add _**non-functional** Vulkan 1.3_ core function **_stubs_**, to avoid link errors with some external 
+  libraries that assume _Vulkan 1.3_ linkages from the standard _Vulkan_ header files included with **MoltenVK**. 
 - Add `MVK_USE_CEREAL` build setting to avoid use of Cereal external library (for pipeline caching).
-- `MoltenVKShaderConverter` tool automatically map bindings when converting _GLSL_.
+- `MoltenVKShaderConverter` tool automatically maps bindings when converting _GLSL_.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `36`.
 
 

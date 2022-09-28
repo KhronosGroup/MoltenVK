@@ -3364,8 +3364,8 @@ void MVKDevice::getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateI
 	// Check whether the layout has a variable-count descriptor, and if so, whether we can support it.
 	for (auto* next = (VkBaseOutStructure*)pSupport->pNext; next; next = next->pNext) {
 		switch (next->sType) {
-			case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT_EXT: {
-				auto* pVarDescSetCountSupport = (VkDescriptorSetVariableDescriptorCountLayoutSupportEXT*)next;
+			case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT: {
+				auto* pVarDescSetCountSupport = (VkDescriptorSetVariableDescriptorCountLayoutSupport*)next;
 				getDescriptorVariableDescriptorCountLayoutSupport(pCreateInfo, pSupport, pVarDescSetCountSupport);
 				break;
 			}
@@ -3378,7 +3378,7 @@ void MVKDevice::getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateI
 // Check whether the layout has a variable-count descriptor, and if so, whether we can support it.
 void MVKDevice::getDescriptorVariableDescriptorCountLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
 																  VkDescriptorSetLayoutSupport* pSupport,
-																  VkDescriptorSetVariableDescriptorCountLayoutSupportEXT* pVarDescSetCountSupport) {
+																  VkDescriptorSetVariableDescriptorCountLayoutSupport* pVarDescSetCountSupport) {
 	// Assume we don't need this, then set appropriately if we do.
 	pVarDescSetCountSupport->maxVariableDescriptorCount = 0;
 
@@ -3386,8 +3386,8 @@ void MVKDevice::getDescriptorVariableDescriptorCountLayoutSupport(const VkDescri
 	int32_t varBindingIdx = -1;
 	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
-			case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT: {
-				auto* pDescSetLayoutBindingFlags = (VkDescriptorSetLayoutBindingFlagsCreateInfoEXT*)next;
+			case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO: {
+				auto* pDescSetLayoutBindingFlags = (VkDescriptorSetLayoutBindingFlagsCreateInfo*)next;
 				for (uint32_t bindIdx = 0; bindIdx < pDescSetLayoutBindingFlags->bindingCount; bindIdx++) {
 					if (mvkIsAnyFlagEnabled(pDescSetLayoutBindingFlags->pBindingFlags[bindIdx], VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT)) {
 						varBindingIdx = bindIdx;

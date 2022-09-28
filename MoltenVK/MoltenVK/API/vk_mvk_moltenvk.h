@@ -50,8 +50,8 @@ typedef unsigned long MTLArgumentBuffersTier;
  *   - 401215    (version 4.12.15)
  */
 #define MVK_VERSION_MAJOR   1
-#define MVK_VERSION_MINOR   1
-#define MVK_VERSION_PATCH   12
+#define MVK_VERSION_MINOR   2
+#define MVK_VERSION_PATCH   0
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
@@ -747,6 +747,7 @@ typedef struct {
 	 * When reading this value, it will be one of the VK_API_VERSION_1_* values, including the latest
 	 * VK_HEADER_VERSION component. When setting this value, it should be set to one of:
 	 *
+	 *   VK_API_VERSION_1_2  (equivalent decimal number 4202496)
 	 *   VK_API_VERSION_1_1  (equivalent decimal number 4198400)
 	 *   VK_API_VERSION_1_0  (equivalent decimal number 4194304)
 	 *

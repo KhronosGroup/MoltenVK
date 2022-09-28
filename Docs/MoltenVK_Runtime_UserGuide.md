@@ -53,7 +53,7 @@ distribution package, see the main [`README.md`](../README.md) document in the `
 About **MoltenVK**
 ------------------
 
-**MoltenVK** is a layered implementation of [*Vulkan 1.1*](https://www.khronos.org/vulkan) 
+**MoltenVK** is a layered implementation of [*Vulkan 1.2*](https://www.khronos.org/vulkan) 
 graphics and compute functionality, that is built on Apple's [*Metal*](https://developer.apple.com/metal) 
 graphics and compute framework on *macOS*, *iOS*, and *tvOS*. **MoltenVK** allows you to use *Vulkan* 
 graphics and compute functionality to develop modern, cross-platform, high-performance graphical games 
