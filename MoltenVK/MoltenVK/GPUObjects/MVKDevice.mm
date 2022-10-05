@@ -3130,6 +3130,7 @@ void MVKPhysicalDevice::initVkSemaphoreStyle() {
 			bool isNVIDIA = _properties.vendorID == kNVVendorId;
 			bool isRosetta2 = _properties.vendorID == kAppleVendorId && !MVK_APPLE_SILICON;
 			if (_metalFeatures.events && !(isRosetta2 || isNVIDIA)) { _vkSemaphoreStyle = MVKSemaphoreStyleUseMTLEvent; }
+			else { _vkSemaphoreStyle = MVKSemaphoreStyleSingleQueue; }
 			break;
 		}
 		case MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS:
