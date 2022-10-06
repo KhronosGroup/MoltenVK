@@ -29,38 +29,12 @@ class MVKFramebuffer;
 
 
 #pragma mark -
-#pragma mark MVKCmdBeginRenderPassBase
-
-/**
- * Abstract base class of MVKCmdBeginRenderPass.
- * Contains all pieces that are independent of the templated portions.
- */
-class MVKCmdBeginRenderPassBase : public MVKCommand {
-
-public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						const VkRenderPassBeginInfo* pRenderPassBegin,
-						const VkSubpassBeginInfo* pSubpassBeginInfo);
-
-	inline MVKRenderPass* getRenderPass() { return _renderPass; }
-
-protected:
-
-	MVKCommandVector<MVKCommandVector<MTLSamplePosition>> _subpassSamplePositions;
-	MVKRenderPass* _renderPass;
-	MVKFramebuffer* _framebuffer;
-	VkRect2D _renderArea;
-	VkSubpassContents _contents;
-};
-
-
-#pragma mark -
 #pragma mark MVKCmdBeginRenderPass
 
 /**
  * Vulkan command to begin a render pass.
  */
-class MVKCmdBeginRenderPass : public MVKCmdBeginRenderPassBase {
+class MVKCmdBeginRenderPass : public MVKCommand {
 
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
@@ -70,7 +44,15 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
+    inline MVKRenderPass* getRenderPass() { return _renderPass; }
+
 protected:
+    MVKCommandVector<MVKCommandVector<MTLSamplePosition>> _subpassSamplePositions;
+    MVKRenderPass* _renderPass;
+    MVKFramebuffer* _framebuffer;
+    VkRect2D _renderArea;
+    VkSubpassContents _contents;
+
     MVKCommandVector<VkClearValue> _clearValues;
     MVKCommandVector<MVKImageView*> _attachments;
 };

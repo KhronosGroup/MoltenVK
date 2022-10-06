@@ -32,7 +32,7 @@ class MVKCommandPool;
 class MVKQueueCommandBufferSubmission;
 class MVKCommandEncoder;
 class MVKCommandEncodingPool;
-class MVKCmdBeginRenderPassBase;
+class MVKCmdBeginRenderPass;
 class MVKCmdNextSubpass;
 class MVKRenderPass;
 class MVKFramebuffer;
@@ -134,7 +134,7 @@ public:
 #pragma mark Multiview render pass command management
 
 	/** Update the last recorded multiview render pass */
-	void recordBeginRenderPass(MVKCmdBeginRenderPassBase* mvkBeginRenderPass);
+	void recordBeginRenderPass(MVKCmdBeginRenderPass* mvkBeginRenderPass);
 
 	/** Update the last recorded multiview subpass */
 	void recordNextSubpass();

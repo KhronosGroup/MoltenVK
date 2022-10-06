@@ -27,53 +27,41 @@
 
 
 #pragma mark -
-#pragma mark MVKCmdBeginRenderPassBase
-
-VkResult MVKCmdBeginRenderPassBase::setContent(MVKCommandBuffer* cmdBuff,
-											   const VkRenderPassBeginInfo* pRenderPassBegin,
-											   const VkSubpassBeginInfo* pSubpassBeginInfo) {
-	_contents = pSubpassBeginInfo->contents;
-	_renderPass = (MVKRenderPass*)pRenderPassBegin->renderPass;
-	_framebuffer = (MVKFramebuffer*)pRenderPassBegin->framebuffer;
-	_renderArea = pRenderPassBegin->renderArea;
-    _subpassSamplePositions.alc.cmdBuffer = cmdBuff;
-
-	for (const auto* next = (VkBaseInStructure*)pRenderPassBegin->pNext; next; next = next->pNext) {
-		switch (next->sType) {
-			case VK_STRUCTURE_TYPE_RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT: {
-				// Build an array of arrays, one array of sample positions for each subpass index.
-				// For subpasses not included in VkRenderPassSampleLocationsBeginInfoEXT, the resulting array of samples will be empty.
-				_subpassSamplePositions.resize(_renderPass->getSubpassCount());
-				auto* pRPSampLocnsInfo = (VkRenderPassSampleLocationsBeginInfoEXT*)next;
-				for (uint32_t spSLIdx = 0; spSLIdx < pRPSampLocnsInfo->postSubpassSampleLocationsCount; spSLIdx++) {
-					auto& spsl = pRPSampLocnsInfo->pPostSubpassSampleLocations[spSLIdx];
-					uint32_t spIdx = spsl.subpassIndex;
-					auto& spSampPosns = _subpassSamplePositions[spIdx];
-                    spSampPosns.alc.cmdBuffer = cmdBuff;
-					for (uint32_t slIdx = 0; slIdx < spsl.sampleLocationsInfo.sampleLocationsCount; slIdx++) {
-						auto& sl = spsl.sampleLocationsInfo.pSampleLocations[slIdx];
-						spSampPosns.push_back(MTLSamplePositionMake(sl.x, sl.y));
-					}
-				}
-				break;
-			}
-			default:
-				break;
-		}
-	}
-
-	return VK_SUCCESS;
-}
-
-
-#pragma mark -
 #pragma mark MVKCmdBeginRenderPass
 
 VkResult MVKCmdBeginRenderPass::setContent(MVKCommandBuffer* cmdBuff,
                                            const VkRenderPassBeginInfo* pRenderPassBegin,
                                            const VkSubpassBeginInfo* pSubpassBeginInfo,
                                            MVKArrayRef<MVKImageView*> attachments) {
-	MVKCmdBeginRenderPassBase::setContent(cmdBuff, pRenderPassBegin, pSubpassBeginInfo);
+    _contents = pSubpassBeginInfo->contents;
+    _renderPass = (MVKRenderPass*)pRenderPassBegin->renderPass;
+    _framebuffer = (MVKFramebuffer*)pRenderPassBegin->framebuffer;
+    _renderArea = pRenderPassBegin->renderArea;
+    _subpassSamplePositions.alc.cmdBuffer = cmdBuff;
+
+    for (const auto* next = (VkBaseInStructure*)pRenderPassBegin->pNext; next; next = next->pNext) {
+        switch (next->sType) {
+            case VK_STRUCTURE_TYPE_RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT: {
+                // Build an array of arrays, one array of sample positions for each subpass index.
+                // For subpasses not included in VkRenderPassSampleLocationsBeginInfoEXT, the resulting array of samples will be empty.
+                _subpassSamplePositions.resize(_renderPass->getSubpassCount());
+                auto* pRPSampLocnsInfo = (VkRenderPassSampleLocationsBeginInfoEXT*)next;
+                for (uint32_t spSLIdx = 0; spSLIdx < pRPSampLocnsInfo->postSubpassSampleLocationsCount; spSLIdx++) {
+                    auto& spsl = pRPSampLocnsInfo->pPostSubpassSampleLocations[spSLIdx];
+                    uint32_t spIdx = spsl.subpassIndex;
+                    auto& spSampPosns = _subpassSamplePositions[spIdx];
+                    spSampPosns.alc.cmdBuffer = cmdBuff;
+                    for (uint32_t slIdx = 0; slIdx < spsl.sampleLocationsInfo.sampleLocationsCount; slIdx++) {
+                        auto& sl = spsl.sampleLocationsInfo.pSampleLocations[slIdx];
+                        spSampPosns.push_back(MTLSamplePositionMake(sl.x, sl.y));
+                    }
+                }
+                break;
+            }
+            default:
+                break;
+        }
+    }
 
     _attachments.alc.cmdBuffer = cmdBuff;
 	_attachments.assign(attachments.begin(), attachments.end());
