@@ -254,20 +254,33 @@ The `make` targets all require that *Xcode* is installed on your system.
 Building from the command line creates the same `Package` folder structure described above when 
 building from within *Xcode*.
 
+When building from the command line, you can set any of the build settings documented in 
+the `vk_mvk_moltenvk.h` file for `MVKConfiguration`, by passing them in the command line, 
+as in the following examples:
+
+	make MVK_CONFIG_LOG_LEVEL=0
+or
+
+	make macos MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS=1
+
+...etc.
+
 
 ### Hiding Vulkan API Symbols
 
 You can optionally build MoltenVK with the Vulkan API static call symbols (`vk*`) hidden,
 to avoid library linking conflicts when bound to a Vulkan Loader that also exports identical symbols.
 
-To do so, when building MoltenVK, set the build setting or environment varible `MVK_HIDE_VULKAN_SYMBOLS=1`.
-This build setting can be changed in the `MoltenVK.xcodeproj` *Xcode* project, or it can be included in
-any of the `make` build commands. For example:
+To do so, when building MoltenVK, set the build setting `MVK_HIDE_VULKAN_SYMBOLS=1`.
+This build setting can be set in the `MoltenVK.xcodeproj` *Xcode* project, 
+or it can be included in any of the `make` build commands. For example:
 
 	make MVK_HIDE_VULKAN_SYMBOLS=1
-	...
-	make macos-debug MVK_HIDE_VULKAN_SYMBOLS=1
-	...etc.
+or
+
+	make macos MVK_HIDE_VULKAN_SYMBOLS=1
+	
+...etc.
 
 
 <a name="demos"></a>
