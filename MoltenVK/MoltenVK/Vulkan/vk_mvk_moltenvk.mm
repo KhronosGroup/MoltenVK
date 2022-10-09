@@ -49,7 +49,7 @@ VkResult mvkCopy(S* pDst, const S* pSrc, size_t* pCopySize) {
 	}
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetMoltenVKConfigurationMVK(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMoltenVKConfigurationMVK(
 	VkInstance                                  ignored,
 	MVKConfiguration*                           pConfiguration,
 	size_t*                                     pConfigurationSize) {
@@ -57,7 +57,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetMoltenVKConfigurationMVK(
 	return mvkCopy(pConfiguration, &mvkConfig(), pConfigurationSize);
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
 	VkInstance                                  ignored,
 	const MVKConfiguration*                     pConfiguration,
 	size_t*                                     pConfigurationSize) {
@@ -88,7 +88,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPerformanceStatisticsMVK(
 	return mvkCopy(pPerf, &mvkPerf, pPerfSize);
 }
 
-MVK_PUBLIC_SYMBOL void vkGetVersionStringsMVK(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetVersionStringsMVK(
 	char*										pMoltenVersionStringBuffer,
 	uint32_t									moltenVersionStringBufferLength,
 	char*										pVulkanVersionStringBuffer,
