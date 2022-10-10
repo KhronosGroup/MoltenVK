@@ -3118,12 +3118,13 @@ void MVKPhysicalDevice::initCounterSets() {
 // Determine whether Vulkan semaphores should use a MTLEvent, CPU callbacks, or should limit
 // Vulkan to a single queue and use Metal's implicit guarantees that all operations submitted
 // to a queue will give the same result as if they had been run in submission order.
-// MTLEvents for semaphores can sometimes prove troublesome on some platforms,
-// and so may optionally be disabled on those platforms.
+// MTLEvents for semaphores are preferred, but can sometimes prove troublesome on some platforms,
+// and so may be disabled on those platforms, unless explicitly requested. If MTLEvents are
+// unusable, 
 void MVKPhysicalDevice::initVkSemaphoreStyle() {
 
-	// Default to CPU callback if other options unavailable.
-	_vkSemaphoreStyle = MVKSemaphoreStyleUseEmulation;
+	// Default to single queue if other options unavailable.
+	_vkSemaphoreStyle = MVKSemaphoreStyleSingleQueue;
 
 	switch (mvkConfig().semaphoreSupportStyle) {
 		case MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE: {
@@ -3135,10 +3136,10 @@ void MVKPhysicalDevice::initVkSemaphoreStyle() {
 		case MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS:
 			if (_metalFeatures.events) { _vkSemaphoreStyle = MVKSemaphoreStyleUseMTLEvent; }
 			break;
-		case MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE:
-			_vkSemaphoreStyle = MVKSemaphoreStyleSingleQueue;
-			break;
 		case MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK:
+			_vkSemaphoreStyle = MVKSemaphoreStyleUseEmulation;
+			break;
+		case MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE:
 		default:
 			break;
 	}
