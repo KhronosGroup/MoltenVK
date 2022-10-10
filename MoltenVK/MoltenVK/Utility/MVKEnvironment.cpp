@@ -66,12 +66,12 @@ static void mvkInitConfigFromEnvVars() {
 	// Legacy MVK_ALLOW_METAL_EVENTS is covered by MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE,
 	// but for backwards compatibility, if legacy MVK_ALLOW_METAL_EVENTS is explicitly
 	// disabled, disable semaphoreUseMTLEvent (aliased as semaphoreSupportStyle value
-	// MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK), and let mvkSetConfig() further
-	// process legacy behavior based on the value of legacy semaphoreUseMTLFence).
+	// MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE), and let mvkSetConfig()
+	// further process legacy behavior of MVK_ALLOW_METAL_FENCES.
 	bool sem4UseMTLEvent;
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL(sem4UseMTLEvent, MVK_ALLOW_METAL_EVENTS);
 	if ( !sem4UseMTLEvent ) {
-		evCfg.semaphoreUseMTLEvent = (MVKVkSemaphoreSupportStyle)false;		// Disabled. Also semaphoreSupportStyle MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK.
+		evCfg.semaphoreUseMTLEvent = (MVKVkSemaphoreSupportStyle)false;		// Disabled. Also semaphoreSupportStyle MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE.
 	}
 
 	mvkSetConfig(evCfg);
@@ -102,11 +102,12 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig) {
 													   VK_VERSION_MINOR(_mvkConfig.apiVersionToAdvertise),
 													   VK_HEADER_VERSION);
 
-	// Deprecated legacy support for specific case where semaphoreUseMTLFence is enabled and legacy
-	// semaphoreUseMTLEvent (now aliased to semaphoreSupportStyle) is disabled. In this case the user
-	// had been using the legacy MTLFence, so use MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE now.
-	if (_mvkConfig.semaphoreUseMTLFence && !_mvkConfig.semaphoreUseMTLEvent) {
-		_mvkConfig.semaphoreSupportStyle = MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE;
+	// Deprecated legacy support for specific case where both legacy semaphoreUseMTLEvent
+	// (now aliased to semaphoreSupportStyle) and legacy semaphoreUseMTLFence are explicitly
+	// disabled by the app. In this case the app had been using CPU emulation, so use
+	// MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK.
+	if ( !_mvkConfig.semaphoreUseMTLEvent && !_mvkConfig.semaphoreUseMTLFence ) {
+		_mvkConfig.semaphoreSupportStyle = MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK;
 	}
 
 	// Set capture file path string

@@ -106,10 +106,10 @@ typedef enum MVKUseMetalArgumentBuffers {
 
 /** Identifies the Metal functionality used to support Vulkan semaphore functionality (VkSemaphore). */
 typedef enum MVKVkSemaphoreSupportStyle {
-	MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK                = 0,	/**< Use CPU callbacks upon GPU submission completion. This is the slowest technique. */
-	MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE = 1,	/**< Use Metal events (MTLEvent) when available on the platform, and where safe. This will revert to same as MVK_CONFIG_VK_SEMAPHORE_USE_SINGLE_QUEUE on some NVIDIA GPUs and Rosetta2, due to potential challenges with MTLEvents on those platforms. */
-	MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS            = 2,	/**< Always use Metal events (MTLEvent) when available on the platform. */
-	MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE            = 3,	/**< Limit Vulkan to a single queue, with no explicit semaphore synchronization, and use Metal's implicit guarantees that all operations submitted to a queue will give the same result as if they had been run in submission order. */
+	MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE            = 0,	/**< Limit Vulkan to a single queue, with no explicit semaphore synchronization, and use Metal's implicit guarantees that all operations submitted to a queue will give the same result as if they had been run in submission order. */
+	MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE = 1,	/**< Use Metal events (MTLEvent) when available on the platform, and where safe. This will revert to same as MVK_CONFIG_VK_SEMAPHORE_USE_SINGLE_QUEUE on some NVIDIA GPUs and Rosetta2, due to potential challenges with MTLEvents on those platforms, or in older environments where MTLEvents are not supported. */
+	MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS            = 2,	/**< Always use Metal events (MTLEvent) when available on the platform. This will revert to same as MVK_CONFIG_VK_SEMAPHORE_USE_SINGLE_QUEUE in older environments where MTLEvents are not supported. */
+	MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK                = 3,	/**< Use CPU callbacks upon GPU submission completion. This is the slowest technique, but allows multiple queues, compared to MVK_CONFIG_VK_SEMAPHORE_USE_SINGLE_QUEUE. */
 	MVK_CONFIG_VK_SEMAPHORE_MAX_ENUM                              = 0x7FFFFFFF
 } MVKVkSemaphoreSupportStyle;
 
@@ -574,7 +574,7 @@ typedef struct {
 	 */
 	VkBool32 forceLowPowerGPU;
 
-	/** Deprecated. Use semaphoreSupportStyle instead. */
+	/** Deprecated. Vulkan sempphores using MTLFence are no longer supported. Use semaphoreSupportStyle instead. */
 	VkBool32 semaphoreUseMTLFence;
 
 	/**
@@ -592,15 +592,17 @@ typedef struct {
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * If neither is set, this setting is set to
 	 * MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE by default,
-	 * and MoltenVK will use MTLEvent, except on NVIDIA GPU, and Rosetta2 environments,
-	 * where it will use a single queue with implicit synchronization
-	 * (as if this parameter was set to MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE).
+	 * and MoltenVK will use MTLEvent, except on NVIDIA GPU and Rosetta2 environments,
+	 * or where MTLEvents are not supported, where it will use a single queue with
+	 * implicit synchronization (as if this parameter was set to
+	 * MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE).
 	 *
 	 * This parameter interacts with the deprecated legacy parameters semaphoreUseMTLEvent
-	 * and semaphoreUseMTLFence. If semaphoreUseMTLEvent is enabled, this parameter
-	 * will be set to MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE.
-	 * If semaphoreUseMTLEvent is disabled, and semaphoreUseMTLFence is enabled,
-	 * this parameter will be set to MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE.
+	 * and semaphoreUseMTLFence. If semaphoreUseMTLEvent is enabled, this parameter will be
+	 * set to MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE.
+	 * If semaphoreUseMTLEvent is disabled, this parameter will be set to
+	 * MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE if semaphoreUseMTLFence is enabled,
+	 * or MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK if semaphoreUseMTLFence is disabled.
 	 * Structurally, this parameter replaces, and is aliased by, semaphoreUseMTLEvent.
 	 */
 	MVKVkSemaphoreSupportStyle semaphoreSupportStyle;
