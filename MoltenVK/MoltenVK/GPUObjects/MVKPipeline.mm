@@ -852,10 +852,6 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation control outputs: %s", errorLog.c_str()));
 		return nil;
 	}
-	if (!getShaderInputs(((MVKShaderModule*)_pTessEvalSS->module)->getSPIRV(), spv::ExecutionModelTessellationEvaluation, _pTessEvalSS->pName, teInputs, errorLog) ) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation evaluation inputs: %s", errorLog.c_str()));
-		return nil;
-	}
 	if (!getShaderOutputs(((MVKShaderModule*)_pTessEvalSS->module)->getSPIRV(), spv::ExecutionModelTessellationEvaluation, _pTessEvalSS->pName, teOutputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation evaluation outputs: %s", errorLog.c_str()));
 		return nil;
@@ -865,112 +861,6 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 	if (!addTessEvalShaderToPipeline(plDesc, pCreateInfo, shaderConfig, tcOutputs)) {
 		[plDesc release];
 		return nil;
-	}
-
-	// Tessellation evaluation stage input
-	// This needs to happen before compiling the fragment shader, or we'll lose information on shader inputs.
-	// First, add extra builtins that are in teInputs but not tcOutputs. They can be read
-	// even if not written.
-	teInputs.erase(std::remove_if(teInputs.begin(), teInputs.end(), [&tcOutputs](const SPIRVShaderInterfaceVariable& var) {
-		return var.builtin != spv::BuiltInPosition && var.builtin != spv::BuiltInPointSize && var.builtin != spv::BuiltInClipDistance && var.builtin != spv::BuiltInCullDistance;
-	}), teInputs.end());
-	std::remove_copy_if(teInputs.begin(), teInputs.end(), std::back_inserter(tcOutputs), [&tcOutputs](const SPIRVShaderInterfaceVariable& input) {
-		auto iter = std::find_if(tcOutputs.begin(), tcOutputs.end(), [input](const SPIRVShaderInterfaceVariable& oldVar) {
-			return oldVar.builtin == input.builtin;
-		});
-		if (iter != tcOutputs.end()) {
-			iter->isUsed = input.isUsed;
-		}
-		return iter != tcOutputs.end();
-	});
-
-	auto isBuiltInRead = [&teInputs](spv::BuiltIn builtin) {
-		for (const auto& input : teInputs) {
-			if (input.builtin == builtin) {
-				return input.isUsed;
-			}
-		}
-		return false;
-	};
-
-	plDesc.vertexDescriptor = [MTLVertexDescriptor vertexDescriptor];
-	uint32_t offset = 0, patchOffset = 0, outerLoc = -1, innerLoc = -1;
-	bool usedPerVertex = false, usedPerPatch = false;
-	const SPIRVShaderOutput* firstVertex = nullptr, * firstPatch = nullptr;
-	for (const SPIRVShaderOutput& output : tcOutputs) {
-		if (output.builtin == spv::BuiltInPointSize && !reflectData.pointMode) { continue; }
-		if ((output.builtin != spv::BuiltInMax && !isBuiltInRead(output.builtin)) &&
-			!shaderConfig.isShaderInputLocationUsed(output.location)) {
-			if (output.perPatch && !(output.builtin == spv::BuiltInTessLevelOuter || output.builtin == spv::BuiltInTessLevelInner) ) {
-				if (!firstPatch) { firstPatch = &output; }
-				patchOffset += getShaderOutputSize(output);
-			} else if (!output.perPatch) {
-				if (!firstVertex) { firstVertex = &output; }
-				offset += getShaderOutputSize(output);
-			}
-			continue;
-		}
-		if (output.perPatch && (output.builtin == spv::BuiltInTessLevelOuter || output.builtin == spv::BuiltInTessLevelInner) ) {
-			uint32_t location = output.location;
-			if (output.builtin == spv::BuiltInTessLevelOuter) {
-				if (outerLoc != (uint32_t)(-1)) { continue; }
-				if (innerLoc != (uint32_t)(-1)) {
-					// For triangle tessellation, we use a single attribute. Don't add it more than once.
-					if (reflectData.patchKind == spv::ExecutionModeTriangles) { continue; }
-					// getShaderOutputs() assigned individual elements their own locations. Try to reduce the gap.
-					location = innerLoc + 1;
-				}
-				outerLoc = location;
-			} else {
-				if (innerLoc != (uint32_t)(-1)) { continue; }
-				if (outerLoc != (uint32_t)(-1)) {
-					if (reflectData.patchKind == spv::ExecutionModeTriangles) { continue; }
-					location = outerLoc + 1;
-				}
-				innerLoc = location;
-			}
-			plDesc.vertexDescriptor.attributes[location].bufferIndex = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalLevelBufferBinding);
-			if (reflectData.patchKind == spv::ExecutionModeTriangles || output.builtin == spv::BuiltInTessLevelOuter) {
-				plDesc.vertexDescriptor.attributes[location].offset = 0;
-				plDesc.vertexDescriptor.attributes[location].format = MTLVertexFormatHalf4;	// FIXME Should use Float4
-			} else {
-				plDesc.vertexDescriptor.attributes[location].offset = 8;
-				plDesc.vertexDescriptor.attributes[location].format = MTLVertexFormatHalf2;	// FIXME Should use Float2
-			}
-		} else if (output.perPatch) {
-			patchOffset = (uint32_t)mvkAlignByteCount(patchOffset, getShaderOutputAlignment(output));
-			plDesc.vertexDescriptor.attributes[output.location].bufferIndex = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalPatchInputBufferBinding);
-			plDesc.vertexDescriptor.attributes[output.location].format = getPixelFormats()->getMTLVertexFormat(mvkFormatFromOutput(output));
-			plDesc.vertexDescriptor.attributes[output.location].offset = patchOffset;
-			patchOffset += getShaderOutputSize(output);
-			if (!firstPatch) { firstPatch = &output; }
-			usedPerPatch = true;
-		} else {
-			offset = (uint32_t)mvkAlignByteCount(offset, getShaderOutputAlignment(output));
-			plDesc.vertexDescriptor.attributes[output.location].bufferIndex = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalInputBufferBinding);
-			plDesc.vertexDescriptor.attributes[output.location].format = getPixelFormats()->getMTLVertexFormat(mvkFormatFromOutput(output));
-			plDesc.vertexDescriptor.attributes[output.location].offset = offset;
-			offset += getShaderOutputSize(output);
-			if (!firstVertex) { firstVertex = &output; }
-			usedPerVertex = true;
-		}
-	}
-	if (usedPerVertex) {
-		uint32_t mtlVBIdx = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalInputBufferBinding);
-		plDesc.vertexDescriptor.layouts[mtlVBIdx].stepFunction = MTLVertexStepFunctionPerPatchControlPoint;
-		plDesc.vertexDescriptor.layouts[mtlVBIdx].stride = mvkAlignByteCount(offset, getShaderOutputAlignment(*firstVertex));
-	}
-	if (usedPerPatch) {
-		uint32_t mtlVBIdx = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalPatchInputBufferBinding);
-		plDesc.vertexDescriptor.layouts[mtlVBIdx].stepFunction = MTLVertexStepFunctionPerPatch;
-		plDesc.vertexDescriptor.layouts[mtlVBIdx].stride = mvkAlignByteCount(patchOffset, getShaderOutputAlignment(*firstPatch));
-	}
-	if (outerLoc != (uint32_t)(-1) || innerLoc != (uint32_t)(-1)) {
-		uint32_t mtlVBIdx = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalLevelBufferBinding);
-		plDesc.vertexDescriptor.layouts[mtlVBIdx].stepFunction = MTLVertexStepFunctionPerPatch;
-		plDesc.vertexDescriptor.layouts[mtlVBIdx].stride =
-			reflectData.patchKind == spv::ExecutionModeTriangles ? sizeof(MTLTriangleTessellationFactorsHalf) :
-																   sizeof(MTLQuadTessellationFactorsHalf);
 	}
 
 	// Fragment shader - only add if rasterization is enabled
@@ -1203,9 +1093,13 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	shaderConfig.options.entryPointStage = spv::ExecutionModelTessellationEvaluation;
 	shaderConfig.options.entryPointName = _pTessEvalSS->pName;
 	shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageTessEval];
+	shaderConfig.options.mslOptions.shader_input_buffer_index = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalInputBufferBinding);
+	shaderConfig.options.mslOptions.shader_patch_input_buffer_index = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalPatchInputBufferBinding);
+	shaderConfig.options.mslOptions.shader_tess_factor_buffer_index = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalLevelBufferBinding);
 	shaderConfig.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageTessEval];
 	shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageTessEval];
 	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
+	shaderConfig.options.mslOptions.raw_buffer_tese_input = true;
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
 	addPrevStageOutputToShaderConversionConfig(shaderConfig, tcOutputs);
 
@@ -1808,6 +1702,7 @@ void MVKGraphicsPipeline::addNextStageInputToShaderConversionConfig(SPIRVToMSLCo
 		so.shaderVar.component = shaderInputs[soIdx].component;
         so.shaderVar.builtin = shaderInputs[soIdx].builtin;
         so.shaderVar.vecsize = shaderInputs[soIdx].vecWidth;
+		so.shaderVar.rate = shaderInputs[soIdx].perPatch ? MSL_SHADER_VARIABLE_RATE_PER_PATCH : MSL_SHADER_VARIABLE_RATE_PER_VERTEX;
 
         switch (getPixelFormats()->getFormatType(mvkFormatFromOutput(shaderInputs[soIdx]) ) ) {
             case kMVKFormatColorUInt8:
@@ -1851,6 +1746,7 @@ void MVKGraphicsPipeline::addPrevStageOutputToShaderConversionConfig(SPIRVToMSLC
 		si.shaderVar.component = shaderOutputs[siIdx].component;
         si.shaderVar.builtin = shaderOutputs[siIdx].builtin;
         si.shaderVar.vecsize = shaderOutputs[siIdx].vecWidth;
+		si.shaderVar.rate = shaderOutputs[siIdx].perPatch ? MSL_SHADER_VARIABLE_RATE_PER_PATCH : MSL_SHADER_VARIABLE_RATE_PER_VERTEX;
 
         switch (getPixelFormats()->getFormatType(mvkFormatFromOutput(shaderOutputs[siIdx]) ) ) {
             case kMVKFormatColorUInt8:
@@ -2312,6 +2208,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.dynamic_offsets_buffer_index,
 				opt.shader_input_buffer_index,
 				opt.shader_index_buffer_index,
+				opt.shader_patch_input_buffer_index,
 				opt.shader_input_wg_index,
 				opt.device_index,
 				opt.enable_frag_output_mask,
@@ -2348,7 +2245,8 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.ios_use_simdgroup_functions,
 				opt.emulate_subgroups,
 				opt.vertex_index_type,
-				opt.force_sample_rate_shading);
+				opt.force_sample_rate_shading,
+				opt.raw_buffer_tese_input);
 	}
 
 	template<class Archive>
@@ -2357,7 +2255,8 @@ namespace SPIRV_CROSS_NAMESPACE {
 				si.component,
 				si.format,
 				si.builtin,
-				si.vecsize);
+				si.vecsize,
+				si.rate);
 	}
 
 	template<class Archive>
