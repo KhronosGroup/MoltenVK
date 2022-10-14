@@ -83,6 +83,7 @@ id<MTLCommandBuffer> MVKCommandPool::getMTLCommandBuffer(uint32_t queueIndex) {
 
 // Clear the command type pool member variables.
 void MVKCommandPool::trim() {
+    _commandBufferPool.clear();
 }
 
 
