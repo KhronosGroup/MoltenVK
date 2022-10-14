@@ -95,6 +95,29 @@ public:
 	/** Adds the specified execution command at the end of this command buffer. */
 	void addCommand(MVKCommand* command);
 
+    /** Destroy the specified execution command when the command buffer is reset. */
+    inline void destroyOnReset(MVKCommand* command) {
+        _destroyList.push_back(command);
+    }
+
+    /** Allocates memory for recorded commands, allocating new memory chunks, if needed.  */
+    inline void *pushCommandMemory(size_t size) {
+        size = (uint32_t)mvkAlignByteCount(size, 8);
+
+        if (size + _commandChunkOffset > _commandChunkSize) {
+            _commandChunkIndex++;
+            _commandChunkOffset = 0;
+        }
+
+        if (_commandChunkIndex >= _commandChunks.size()) {
+            _commandChunks.push_back(new uint8_t[_commandChunkSize]);
+        }
+
+        auto result = _commandChunks[_commandChunkIndex] + _commandChunkOffset;
+        _commandChunkOffset += size;
+        return result;
+    }
+
 	/** Returns the number of commands currently in this command buffer. */
 	uint32_t getCommandCount() { return _commandCount; }
 
@@ -169,25 +192,6 @@ public:
         return (MVKCommandBuffer*)getDispatchableObject(vkCommandBuffer);
     }
 
-    inline void *pushCommandMemory(size_t size) {
-        size = (uint32_t)mvkAlignByteCount(size, 8);
-
-        if (size + _commandChunkOffset > _commandChunkSize) {
-            _commandChunkIndex++;
-            _commandChunkOffset = 0;
-        }
-
-        if (_commandChunkIndex >= _commandChunks.size()) {
-            _commandChunks.push_back(new uint8_t[_commandChunkSize]);
-        }
-
-        auto result = _commandChunks[_commandChunkIndex] + _commandChunkOffset;
-        _commandChunkOffset += size;
-        return result;
-    }
-
-    MVKSmallVector<MVKCommand *> destroyList;
-
 protected:
 	friend class MVKCommandEncoder;
 	friend class MVKCommandPool;
@@ -208,6 +212,7 @@ protected:
     uint32_t _commandChunkSize = 64 * KIBI;
     uint32_t _commandChunkIndex = 0;
     uint32_t _commandChunkOffset = 0;
+    MVKSmallVector<MVKCommand *> _destroyList;
     MVKSmallVector<uint8_t *> _commandChunks;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
 	VkCommandBufferInheritanceRenderingInfo _inerhitanceRenderingInfo;
