@@ -110,8 +110,17 @@ typedef enum MVKVkSemaphoreSupportStyle {
 	MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE = 1,	/**< Use Metal events (MTLEvent) when available on the platform, and where safe. This will revert to same as MVK_CONFIG_VK_SEMAPHORE_USE_SINGLE_QUEUE on some NVIDIA GPUs and Rosetta2, due to potential challenges with MTLEvents on those platforms, or in older environments where MTLEvents are not supported. */
 	MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS            = 2,	/**< Always use Metal events (MTLEvent) when available on the platform. This will revert to same as MVK_CONFIG_VK_SEMAPHORE_USE_SINGLE_QUEUE in older environments where MTLEvents are not supported. */
 	MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK                = 3,	/**< Use CPU callbacks upon GPU submission completion. This is the slowest technique, but allows multiple queues, compared to MVK_CONFIG_VK_SEMAPHORE_USE_SINGLE_QUEUE. */
-	MVK_CONFIG_VK_SEMAPHORE_MAX_ENUM                              = 0x7FFFFFFF
+	MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_MAX_ENUM                = 0x7FFFFFFF
 } MVKVkSemaphoreSupportStyle;
+
+/** Identifies the style of Metal command buffer pre-filling to be used. */
+typedef enum MVKPrefillMetalCommandBuffersStyle {
+	MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_NO_PREFILL                = 0,	/**< Do not prefill a Metal command buffer during Vulkan command buffer filling. */
+	MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_SINGLE_THREAD_AUTORELEASE = 1,	/**< Fill a Metal command buffer during Vulkan command buffer filling, and even though multiple threads can be used to fill multiple Vulkan command buffers, assume for any particular Vulkan command buffer that vkBeginCommandBuffer(), vkEndCommandBuffer() and all commands will be filled from a single thread. MoltenVK creates a Metal object autorelease pool on vkBeginCommandBuffer() and drains it on vkEndCommandBuffer(). This is the typical prefilling scenarios. */
+	MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_MULTI_THREAD_AUTORELEASE  = 2,	/**< Fill a Metal command buffer during Vulkan command buffer filling, and assume for any particular Vulkan command buffer that commands will be filled from multiple threads. MoltenVK automatically creates and drains a Metal object autorelease pool for each and every command added to the Vulkan command buffer. This the most general, but slowest, option. */
+	MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_NO_AUTORELEASE            = 3,	/**< Fill a Metal command buffer during Vulkan command buffer filling, and assume the app will ensure that each thread that fills commands into a Vulkan command buffer has a Metal autorelease pool. MoltenVK will not create and drain any autorelease pools during prefilling. This is the fastest prefilling option. */
+	MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_MAX_ENUM                  = 0x7FFFFFFF
+} MVKPrefillMetalCommandBuffersStyle;
 
 /**
  * MoltenVK configuration settings.
@@ -206,16 +215,26 @@ typedef struct {
 	VkBool32 synchronousQueueSubmits;
 
 	/**
-	 * If enabled, where possible, a Metal command buffer will be created and filled when each
-	 * Vulkan command buffer is filled. For applications that parallelize the filling of Vulkan
+	 * If set to MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_NO_PREFILL, a single Metal
+	 * command buffer will be created and filled when the Vulkan command buffers are submitted
+	 * to the Vulkan queue. This allows a single Metal command buffer to be used for all of the
+	 * Vulkan command buffers in a queue submission. The Metal command buffer is filled on the
+	 * thread that processes the command queue submission.
+	 *
+	 * If set to any value other than MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_NO_PREFILL,
+	 * where possible, a Metal command buffer will be created and filled when each Vulkan
+	 * command buffer is filled. For applications that parallelize the filling of Vulkan
 	 * commmand buffers across multiple threads, this allows the Metal command buffers to also
 	 * be filled on the same parallel thread. Because each command buffer is filled separately,
 	 * this requires that each Vulkan command buffer requires a dedicated Metal command buffer.
 	 *
-	 * If disabled, a single Metal command buffer will be created and filled when the Vulkan
-	 * command buffers are submitted to the Vulkan queue. This allows a single Metal command
-	 * buffer to be used for all of the Vulkan command buffers in a queue submission. The
-	 * Metal command buffer is filled on the thread that processes the command queue submission.
+	 * See the definition of the MVKPrefillMetalCommandBuffersStyle enumeration above for
+	 * descriptions of the various values that can be used for this setting. The differences
+	 * are primarily distinguished by how memory recovery is handled for autoreleased Metal
+	 * objects that are created under the covers as the commands added to the Vulkan command
+	 * buffer are encoded into the corresponding Metal command buffer. You can decide whether
+	 * your app will recover all autoreleased Metal objects, or how agressively MoltenVK should
+	 * recover autoreleased Metal objects, based on your multi-threaded command buffer filling policy.
 	 *
 	 * Depending on the nature of your application, you may find performance is improved by filling
 	 * the Metal command buffers on parallel threads, or you may find that performance is improved by
@@ -243,14 +262,15 @@ typedef struct {
 	 * The value of this parameter may be changed at any time during application runtime,
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
 	 * Specifically, this parameter can be enabled when filling some command buffers,
-	 * and disabled when filling others.
+	 * and disabled when later filling others.
 	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS
 	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, the value of this parameter defaults to false.
+	 * If neither is set, the value of this parameter defaults to
+	 * MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_NO_PREFILL.
 	 */
-	VkBool32 prefillMetalCommandBuffers;
+	MVKPrefillMetalCommandBuffersStyle prefillMetalCommandBuffers;
 
 	/**
 	 * The maximum number of Metal command buffers that can be concurrently active per Vulkan queue.

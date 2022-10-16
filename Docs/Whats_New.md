@@ -29,6 +29,8 @@ Released TBD
 - Support config option to automatically use Metal argument buffers when `VK_EXT_descriptor_indexing` 
   extension is enabled. `MVKConfiguration::useMetalArgumentBuffers` (`MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS`) 
   is now an enum field. The use of Metal argument buffers is still disabled by default (`MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER`).
+- Fix memory leaks when configured for prefilling Metal command buffers.
+- `MVKConfiguration` replace boolean `prefillMetalCommandBuffers` with enumeration.
 - Fix occassional crash from retention of `MVKSwapchain` for future drawable presentations.
 - Fix undefined reference to `vkGetBufferDeviceAddressEXT` when building with `MVK_HIDE_VULKAN_SYMBOLS=1`.
 - Update `Makefile` to forward any build setting declared on the command line to Xcode.
