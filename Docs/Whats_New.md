@@ -29,6 +29,8 @@ Released 2022/10/17
 - Support config option to automatically use Metal argument buffers when `VK_EXT_descriptor_indexing` 
   extension is enabled. `MVKConfiguration::useMetalArgumentBuffers` (`MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS`) 
   is now an enum field. The use of Metal argument buffers is still disabled by default (`MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER`).
+- Fix memory leaks when configured for prefilling Metal command buffers.
+- `MVKConfiguration` replace boolean `prefillMetalCommandBuffers` with enumeration.
 - `MVKPipeline`: Add builtins that are read but not written to tessellation pipelines.
 - Fix occassional crash from retention of `MVKSwapchain` for future drawable presentations.
 - Fix crash in `vkCreateSwapchainKHR()` on macOS 10.14 and earlier

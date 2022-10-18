@@ -30,7 +30,7 @@ static void mvkInitConfigFromEnvVars() {
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.debugMode,                              MVK_DEBUG);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.shaderConversionFlipVertexY,            MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.synchronousQueueSubmits,                MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.prefillMetalCommandBuffers,             MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS);
+	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.prefillMetalCommandBuffers,             MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS);
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.maxActiveMetalCommandBuffersPerQueue,   MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_QUEUE);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.supportLargeQueryPools,                 MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.presentWithCommandBuffer,               MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER);

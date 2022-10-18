@@ -82,7 +82,7 @@ public:
 	 * Returns a retained MTLCommandBuffer created from the indexed queue
 	 * within the queue family for which this command pool was created.
 	 */
-	id<MTLCommandBuffer> newMTLCommandBuffer(uint32_t queueIndex);
+	id<MTLCommandBuffer> getMTLCommandBuffer(uint32_t queueIndex);
 
 	/** Release any held but unused memory back to the system. */
 	void trim();

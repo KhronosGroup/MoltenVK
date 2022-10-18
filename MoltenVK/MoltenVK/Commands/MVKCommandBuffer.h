@@ -96,16 +96,16 @@ public:
 	void addCommand(MVKCommand* command);
 
 	/** Returns the number of commands currently in this command buffer. */
-	inline uint32_t getCommandCount() { return _commandCount; }
+	uint32_t getCommandCount() { return _commandCount; }
 
 	/** Returns the command pool backing this command buffer. */
-	inline MVKCommandPool* getCommandPool() { return _commandPool; }
+	MVKCommandPool* getCommandPool() { return _commandPool; }
 
 	/** Submit the commands in this buffer as part of the queue submission. */
 	void submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit, MVKCommandEncodingContext* pEncodingContext);
 
     /** Returns whether this command buffer can be submitted to a queue more than once. */
-    inline bool getIsReusable() { return _isReusable; }
+    bool getIsReusable() { return _isReusable; }
 
     /**
      * Metal requires that a visibility buffer is established when a render pass is created, 
@@ -159,13 +159,13 @@ public:
      * Returns a reference to this object suitable for use as a Vulkan API handle.
      * This is the compliment of the getMVKCommandBuffer() method.
      */
-    inline VkCommandBuffer getVkCommandBuffer() { return (VkCommandBuffer)getVkHandle(); }
+	VkCommandBuffer getVkCommandBuffer() { return (VkCommandBuffer)getVkHandle(); }
 
     /**
      * Retrieves the MVKCommandBuffer instance referenced by the VkCommandBuffer handle.
      * This is the compliment of the getVkCommandBuffer() method.
      */
-    static inline MVKCommandBuffer* getMVKCommandBuffer(VkCommandBuffer vkCommandBuffer) {
+    static MVKCommandBuffer* getMVKCommandBuffer(VkCommandBuffer vkCommandBuffer) {
         return (MVKCommandBuffer*)getDispatchableObject(vkCommandBuffer);
     }
 
@@ -177,12 +177,11 @@ protected:
 	void propagateDebugName() override {}
 	void init(const VkCommandBufferAllocateInfo* pAllocateInfo);
 	bool canExecute();
-	bool canPrefill();
-	void prefill();
 	void clearPrefilledMTLCommandBuffer();
     void releaseCommands(MVKCommand* command);
 	void releaseRecordedCommands();
-    void flushImmediateCmdEncoder();
+	void flushImmediateCmdEncoder();
+	void checkDeferredEncoding();
 
 	MVKCommand* _head = nullptr;
 	MVKCommand* _tail = nullptr;
@@ -471,18 +470,24 @@ public:
 
 #pragma mark Construction
 
-	MVKCommandEncoder(MVKCommandBuffer* cmdBuffer);
+	MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
+					  MVKPrefillMetalCommandBuffersStyle prefillStyle = MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_NO_PREFILL);
+
+	~MVKCommandEncoder() override;
 
 protected:
     void addActivatedQueries(MVKQueryPool* pQueryPool, uint32_t query, uint32_t queryCount);
     void finishQueries();
 	void setSubpass(MVKCommand* passCmd, VkSubpassContents subpassContents, uint32_t subpassIndex);
 	void clearRenderArea();
-    NSString* getMTLRenderCommandEncoderName(MVKCommandUse cmdUse);
+	void encodeCommandsImpl(MVKCommand* command);
 	void encodeGPUCounterSample(MVKGPUCounterQueryPool* mvkQryPool, uint32_t sampleIndex, MVKCounterSamplingFlags samplingPoints);
 	void encodeTimestampStageCounterSamples();
 	id<MTLFence> getStageCountersMTLFence();
 	MVKArrayRef<MTLSamplePosition> getCustomSamplePositions();
+	NSString* getMTLRenderCommandEncoderName(MVKCommandUse cmdUse);
+	template<typename T> void retainIfImmediatelyEncoding(T& mtlEnc);
+	template<typename T> void endMetalEncoding(T& mtlEnc);
 
 	typedef struct GPUCounterQuery {
 		MVKGPUCounterQueryPool* queryPool = nullptr;
@@ -506,12 +511,13 @@ protected:
 	MVKPushConstantsCommandEncoderState _fragmentPushConstants;
 	MVKPushConstantsCommandEncoderState _computePushConstants;
     MVKOcclusionQueryCommandEncoderState _occlusionQueryState;
+	MVKPrefillMetalCommandBuffersStyle _prefillStyle;
 	VkSubpassContents _subpassContents;
-	MVKCommandUse _mtlComputeEncoderUse;
-	MVKCommandUse _mtlBlitEncoderUse;
 	uint32_t _renderSubpassIndex;
 	uint32_t _multiviewPassIndex;
-    uint32_t _flushCount = 0;
+    uint32_t _flushCount;
+	MVKCommandUse _mtlComputeEncoderUse;
+	MVKCommandUse _mtlBlitEncoderUse;
 	bool _isRenderingEntireAttachment;
 };
 
