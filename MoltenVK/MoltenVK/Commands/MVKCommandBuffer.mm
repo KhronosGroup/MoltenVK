@@ -96,10 +96,16 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 	}
 
     if(_device->shouldPrefillMTLCommandBuffers() && !(_isSecondary || _supportsConcurrentExecution)) {
-        _prefilledMTLCmdBuffer = _commandPool->newMTLCommandBuffer(0);    // retain
-		_immediateCmdEncodingContext = new MVKCommandEncodingContext;
-		_immediateCmdEncoder = new MVKCommandEncoder(this, mvkConfig().prefillMetalCommandBuffers);
-		_immediateCmdEncoder->beginEncoding(_prefilledMTLCmdBuffer, _immediateCmdEncodingContext);
+		@autoreleasepool {
+			_prefilledMTLCmdBuffer = [_commandPool->getMTLCommandBuffer(0) retain];    // retained
+			auto prefillStyle = mvkConfig().prefillMetalCommandBuffers;
+			if (prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING ||
+				prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING_NO_AUTORELEASE ) {
+				_immediateCmdEncodingContext = new MVKCommandEncodingContext;
+				_immediateCmdEncoder = new MVKCommandEncoder(this, prefillStyle);
+				_immediateCmdEncoder->beginEncoding(_prefilledMTLCmdBuffer, _immediateCmdEncodingContext);
+			}
+		}
     }
 
     return getConfigurationResult();
@@ -158,8 +164,23 @@ VkResult MVKCommandBuffer::end() {
 	_canAcceptCommands = false;
     
     flushImmediateCmdEncoder();
-    
+	checkDeferredEncoding();
+
 	return getConfigurationResult();
+}
+
+void MVKCommandBuffer::checkDeferredEncoding() {
+	if (mvkConfig().prefillMetalCommandBuffers == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_DEFERRED_ENCODING) {
+		@autoreleasepool {
+			MVKCommandEncodingContext encodingContext;
+			MVKCommandEncoder encoder(this);
+			encoder.encode(_prefilledMTLCmdBuffer, &encodingContext);
+
+			// Once encoded onto Metal, if this command buffer is not reusable, we don't need the
+			// MVKCommand instances anymore, so release them in order to reduce memory pressure.
+			if ( !_isReusable ) { releaseRecordedCommands(); }
+		}
+	}
 }
 
 void MVKCommandBuffer::addCommand(MVKCommand* command) {
@@ -324,7 +345,7 @@ void MVKCommandEncoder::beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKComman
 
 // Multithread autorelease prefill style uses a dedicated autorelease pool when encoding each command.
 void MVKCommandEncoder::encodeCommands(MVKCommand* command) {
-	if (_prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_MULTI_THREAD_AUTORELEASE) {
+	if (_prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING) {
 		@autoreleasepool {
 			encodeCommandsImpl(command);
 		}
@@ -467,13 +488,18 @@ void MVKCommandEncoder::setDynamicSamplePositions(MVKArrayRef<MTLSamplePosition>
 }
 
 // Retain encoders when prefilling, because prefilling may span multiple autorelease pools.
-#define retainIfPrefilling(mtlEncIVar)            \
-	if (_prefillStyle) { [mtlEncIVar retain]; }
+template<typename T>
+void MVKCommandEncoder::retainIfImmediatelyEncoding(T& mtlEnc) {
+	if (_cmdBuffer->_immediateCmdEncoder) { [mtlEnc retain]; }
+}
 
-#define endMetalEncoding(mtlEncIVar)              \
-	[mtlEncIVar endEncoding];                     \
-	if (_prefillStyle) { [mtlEncIVar release]; }  \
-	mtlEncIVar = nil
+// End Metal encoder and release retained encoders when immediately encoding.
+template<typename T>
+void MVKCommandEncoder::endMetalEncoding(T& mtlEnc) {
+	[mtlEnc endEncoding];
+	if (_cmdBuffer->_immediateCmdEncoder) { [mtlEnc release]; }
+	mtlEnc = nil;
+}
 
 
 // Creates _mtlRenderEncoder and marks cached render state as dirty so it will be set into the _mtlRenderEncoder.
@@ -536,7 +562,7 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 	}
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
-	retainIfPrefilling(_mtlRenderEncoder);
+	retainIfImmediatelyEncoding(_mtlRenderEncoder);
 	setLabelIfNotNil(_mtlRenderEncoder, getMTLRenderCommandEncoderName(cmdUse));
 
 	// We shouldn't clear the render area if we are restarting the Metal renderpass
@@ -800,7 +826,7 @@ id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandU
 	if ( !_mtlComputeEncoder ) {
 		endCurrentMetalEncoding();
 		_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoder];
-		retainIfPrefilling(_mtlComputeEncoder);
+		retainIfImmediatelyEncoding(_mtlComputeEncoder);
 		beginMetalComputeEncoding(cmdUse);
 	}
 	if (_mtlComputeEncoderUse != cmdUse) {
@@ -814,7 +840,7 @@ id<MTLBlitCommandEncoder> MVKCommandEncoder::getMTLBlitEncoder(MVKCommandUse cmd
 	if ( !_mtlBlitEncoder ) {
 		endCurrentMetalEncoding();
 		_mtlBlitEncoder = [_mtlCmdBuffer blitCommandEncoder];
-		retainIfPrefilling(_mtlBlitEncoder);
+		retainIfImmediatelyEncoding(_mtlBlitEncoder);
 	}
     if (_mtlBlitEncoderUse != cmdUse) {
         _mtlBlitEncoderUse = cmdUse;
@@ -1078,8 +1104,6 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
         _occlusionQueryState(this),
 		_prefillStyle(prefillStyle){
 
-			_prefillAutoreleasePool = (_prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_SINGLE_THREAD_AUTORELEASE
-									   ? [NSAutoreleasePool new] : nil);		// retained
             _pDeviceFeatures = &_device->_enabledFeatures;
             _pDeviceMetalFeatures = _device->_pMetalFeatures;
             _pDeviceProperties = _device->_pProperties;
@@ -1097,7 +1121,6 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
 }
 
 MVKCommandEncoder::~MVKCommandEncoder() {
-	[_prefillAutoreleasePool release];
 	[_mtlRenderEncoder release];
 	[_mtlComputeEncoder release];
 	[_mtlBlitEncoder release];

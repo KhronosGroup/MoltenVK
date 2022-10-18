@@ -16,7 +16,7 @@ Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.2.0
 --------------
 
-Released TBD
+Released 2022/10/17
 
 - Add support for _Vulkan 1.2_.
 - Add support for extensions:
@@ -31,7 +31,9 @@ Released TBD
   is now an enum field. The use of Metal argument buffers is still disabled by default (`MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER`).
 - Fix memory leaks when configured for prefilling Metal command buffers.
 - `MVKConfiguration` replace boolean `prefillMetalCommandBuffers` with enumeration.
+- `MVKPipeline`: Add builtins that are read but not written to tessellation pipelines.
 - Fix occassional crash from retention of `MVKSwapchain` for future drawable presentations.
+- Fix crash in `vkCreateSwapchainKHR()` on macOS 10.14 and earlier
 - Fix undefined reference to `vkGetBufferDeviceAddressEXT` when building with `MVK_HIDE_VULKAN_SYMBOLS=1`.
 - Update `Makefile` to forward any build setting declared on the command line to Xcode.
 - Add _**non-functional** Vulkan 1.3_ core function **_stubs_**, to avoid link errors with some external 
@@ -39,6 +41,16 @@ Released TBD
 - Add `MVK_USE_CEREAL` build setting to avoid use of Cereal external library (for pipeline caching).
 - `MoltenVKShaderConverter` tool automatically maps bindings when converting _GLSL_.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `36`.
+- Update to latest SPIRV-Cross:
+  - MSL: Support `OpPtrEqual`, `OpPtrNotEqual`, and `OpPtrDiff`.
+  - MSL: Emit correct address space when casting during `OpStore`.
+  - MSL: Add a mechanism to fix up shader outputs.
+  - MSL: Handle descriptor aliasing of raw buffer descriptors.
+  - MSL: Do not attempt to alias push constants.
+  - MSL: only fix up `gl_FragCoord` if really necessary.
+  - MSL: Expose way to query if a buffer needs array length.
+  - MSL: Report unsupported 64-bit atomics.
+  - Don't rename remapped variables like `gl_LastFragDepthARM`
 
 
 

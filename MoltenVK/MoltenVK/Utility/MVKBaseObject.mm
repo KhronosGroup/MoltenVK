@@ -100,7 +100,7 @@ void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, MVKConfigLogLevel logLe
 	va_end(origArgs);
 
 	// Log the message to the standard error stream
-	if (shouldLog) { fprintf(stdout, "[%s] %s\n", getReportingLevelString(logLevel), pMessage); }
+	if (shouldLog) { fprintf(stderr, "[%s] %s\n", getReportingLevelString(logLevel), pMessage); }
 
 	// Broadcast the message to any Vulkan debug report callbacks
 	if (hasDebugCallbacks) { mvkInst->debugReportMessage(mvkAPIObj, logLevel, pMessage); }

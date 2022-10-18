@@ -180,7 +180,8 @@ protected:
 	void clearPrefilledMTLCommandBuffer();
     void releaseCommands(MVKCommand* command);
 	void releaseRecordedCommands();
-    void flushImmediateCmdEncoder();
+	void flushImmediateCmdEncoder();
+	void checkDeferredEncoding();
 
 	MVKCommand* _head = nullptr;
 	MVKCommand* _tail = nullptr;
@@ -485,6 +486,8 @@ protected:
 	id<MTLFence> getStageCountersMTLFence();
 	MVKArrayRef<MTLSamplePosition> getCustomSamplePositions();
 	NSString* getMTLRenderCommandEncoderName(MVKCommandUse cmdUse);
+	template<typename T> void retainIfImmediatelyEncoding(T& mtlEnc);
+	template<typename T> void endMetalEncoding(T& mtlEnc);
 
 	typedef struct GPUCounterQuery {
 		MVKGPUCounterQueryPool* queryPool = nullptr;
@@ -508,7 +511,6 @@ protected:
 	MVKPushConstantsCommandEncoderState _fragmentPushConstants;
 	MVKPushConstantsCommandEncoderState _computePushConstants;
     MVKOcclusionQueryCommandEncoderState _occlusionQueryState;
-	NSAutoreleasePool* _prefillAutoreleasePool;
 	MVKPrefillMetalCommandBuffersStyle _prefillStyle;
 	VkSubpassContents _subpassContents;
 	uint32_t _renderSubpassIndex;
