@@ -305,7 +305,7 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
 		writeDescriptorAt(pDescriptorAction->dstArrayElement);
 	} else {
 		uint32_t descStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding, pDescriptorAction->dstArrayElement);
-		uint32_t elemCnt = pDescriptorAction->descriptorCount;
+		uint32_t elemCnt = std::min(pDescriptorAction->descriptorCount, (uint32_t)_descriptors.size() - descStartIdx);
 		for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 			uint32_t descIdx = descStartIdx + elemIdx;
 			writeDescriptorAt(elemIdx);
@@ -321,7 +321,6 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
 
 	MVKDescriptorSetLayoutBinding* mvkDSLBind = _layout->getBinding(pDescriptorCopy->srcBinding);
 	VkDescriptorType descType = mvkDSLBind->getDescriptorType();
-	uint32_t descCnt = pDescriptorCopy->descriptorCount;
     if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
 		// For inline buffers srcArrayElement is a byte offset
 		MVKDescriptor* mvkDesc = getDescriptor(pDescriptorCopy->srcBinding);
@@ -330,6 +329,7 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
 		}
     } else {
         uint32_t srcStartIdx = _layout->getDescriptorIndex(pDescriptorCopy->srcBinding, pDescriptorCopy->srcArrayElement);
+		uint32_t descCnt = std::min(pDescriptorCopy->descriptorCount, (uint32_t)_descriptors.size() - srcStartIdx);
         for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
 			MVKDescriptor* mvkDesc = _descriptors[srcStartIdx + descIdx];
 			if (mvkDesc->getDescriptorType() == descType) {
