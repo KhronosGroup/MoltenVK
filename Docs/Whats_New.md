@@ -13,6 +13,15 @@ Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.2.1
+--------------
+
+Released TBD
+
+- Fix crash on descriptor update with out-of-bounds descriptor count data.
+
+
+
 MoltenVK 1.2.0
 --------------
 
