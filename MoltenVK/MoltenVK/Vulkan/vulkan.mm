@@ -2497,14 +2497,63 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEndRendering(
 }
 
 MVK_PUBLIC_VULKAN_STUB(vkCmdBindVertexBuffers2, void, VkCommandBuffer, uint32_t, uint32_t, const VkBuffer*, const VkDeviceSize*, const VkDeviceSize*, const VkDeviceSize*)
-MVK_PUBLIC_VULKAN_STUB(vkCmdBlitImage2, void, VkCommandBuffer, const VkBlitImageInfo2*)
-MVK_PUBLIC_VULKAN_STUB(vkCmdCopyBuffer2, void, VkCommandBuffer, const VkCopyBufferInfo2*)
-MVK_PUBLIC_VULKAN_STUB(vkCmdCopyBufferToImage2, void, VkCommandBuffer, const VkCopyBufferToImageInfo2*)
-MVK_PUBLIC_VULKAN_STUB(vkCmdCopyImage2, void, VkCommandBuffer, const VkCopyImageInfo2*)
-MVK_PUBLIC_VULKAN_STUB(vkCmdCopyImageToBuffer2, void, VkCommandBuffer, const VkCopyImageToBufferInfo2*)
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBlitImage2(
+        VkCommandBuffer                             commandBuffer,
+        const VkBlitImageInfo2*                     pBlitImageInfo) {
+    MVKTraceVulkanCallStart();
+    MVKAddCmdFromThreshold(BlitImage, pBlitImageInfo->regionCount, 1, commandBuffer,
+                           pBlitImageInfo);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyBuffer2(
+        VkCommandBuffer commandBuffer,
+        const VkCopyBufferInfo2* pCopyBufferInfo) {
+    MVKTraceVulkanCallStart();
+    MVKAddCmdFromThreshold(CopyBuffer, pCopyBufferInfo->regionCount, 1, commandBuffer, pCopyBufferInfo);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyBufferToImage2(
+        VkCommandBuffer                             commandBuffer,
+        const VkCopyBufferToImageInfo2*             pCopyBufferToImageInfo) {
+    MVKTraceVulkanCallStart();
+    MVKAddCmdFrom3Thresholds(BufferImageCopy, pCopyBufferToImageInfo->regionCount, 1, 4, 8, commandBuffer,
+                             pCopyBufferToImageInfo);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyImage2(
+        VkCommandBuffer                             commandBuffer,
+        const VkCopyImageInfo2*                     pCopyImageInfo) {
+    MVKTraceVulkanCallStart();
+    MVKAddCmdFromThreshold(CopyImage, pCopyImageInfo->regionCount, 1, commandBuffer,
+                           pCopyImageInfo);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyImageToBuffer2(
+        VkCommandBuffer                             commandBuffer,
+        const VkCopyImageToBufferInfo2*             pCopyImageInfo) {
+    MVKTraceVulkanCallStart();
+    MVKAddCmdFrom3Thresholds(BufferImageCopy, pCopyImageInfo->regionCount, 1, 4, 8, commandBuffer,
+                             pCopyImageInfo);
+    MVKTraceVulkanCallEnd();
+}
+
 MVK_PUBLIC_VULKAN_STUB(vkCmdPipelineBarrier2, void, VkCommandBuffer, const VkDependencyInfo*)
 MVK_PUBLIC_VULKAN_STUB(vkCmdResetEvent2, void, VkCommandBuffer, VkEvent, VkPipelineStageFlags2 stageMask)
-MVK_PUBLIC_VULKAN_STUB(vkCmdResolveImage2, void, VkCommandBuffer, const VkResolveImageInfo2*)
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdResolveImage2(
+        VkCommandBuffer commandBuffer,
+        const VkResolveImageInfo2* pResolveImageInfo) {
+    MVKTraceVulkanCallStart();
+    MVKAddCmdFromThreshold(ResolveImage, pResolveImageInfo->regionCount, 1, commandBuffer,
+                           pResolveImageInfo);
+    MVKTraceVulkanCallEnd();
+}
+
 MVK_PUBLIC_VULKAN_STUB(vkCmdSetCullMode, void, VkCommandBuffer, VkCullModeFlags)
 MVK_PUBLIC_VULKAN_STUB(vkCmdSetDepthBiasEnable, void, VkCommandBuffer, VkBool32)
 MVK_PUBLIC_VULKAN_STUB(vkCmdSetDepthBoundsTestEnable, void, VkCommandBuffer, VkBool32)
@@ -2545,6 +2594,17 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkBindImageMemory2, KHR);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetBufferDeviceAddress, KHR);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetBufferOpaqueCaptureAddress, KHR);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetDeviceMemoryOpaqueCaptureAddress, KHR);
+
+
+#pragma mark -
+#pragma mark VK_KHR_copy_commands2 extension
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdBlitImage2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdCopyBuffer2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdCopyBufferToImage2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdCopyImage2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdCopyImageToBuffer2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdResolveImage2, KHR);
 
 
 #pragma mark -
