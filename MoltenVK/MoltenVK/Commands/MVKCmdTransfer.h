@@ -57,6 +57,7 @@ public:
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+    VkResult validate(MVKCommandBuffer* cmdBuff, const VkImageCopy2* region);
 
 	MVKSmallVector<VkImageCopy2, N> _vkImageCopies;
 	MVKImage* _srcImage;
@@ -110,6 +111,7 @@ protected:
 	bool canCopyFormats(const VkImageBlit2& region);
 	bool canCopy(const VkImageBlit2& region);
 	void populateVertices(MVKVertexPosTex* vertices, const VkImageBlit2& region);
+    VkResult validate(MVKCommandBuffer* cmdBuff, const VkImageBlit2* region, bool isDestUnwritableLinear);
 
 	MVKSmallVector<VkImageBlit2, N> _vkImageBlits;
 	MVKImage* _srcImage;
@@ -155,6 +157,7 @@ public:
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+    VkResult validate(MVKCommandBuffer* cmdBuff, const VkImageResolve2* region);
 
 	MVKSmallVector<VkImageResolve2, N> _vkImageResolves;
     MVKImage* _srcImage;
@@ -230,6 +233,8 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	bool isArrayTexture();
+    VkResult setContent(MVKCommandBuffer* cmdBuff, uint32_t regionCount, const VkBufferImageCopy2* regions);
+    VkResult validate(MVKCommandBuffer* cmdBuff, const VkBufferImageCopy2* region);
 
 	MVKSmallVector<VkBufferImageCopy2, N> _bufferImageCopyRegions;
     MVKBuffer* _buffer;
