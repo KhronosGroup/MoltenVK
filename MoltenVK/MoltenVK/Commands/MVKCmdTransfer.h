@@ -233,8 +233,7 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	bool isArrayTexture();
-    VkResult setContent(MVKCommandBuffer* cmdBuff, uint32_t regionCount, const VkBufferImageCopy2* regions);
-    VkResult validate(MVKCommandBuffer* cmdBuff, const VkBufferImageCopy2* region);
+    VkResult validate(MVKCommandBuffer* cmdBuff);
 
 	MVKSmallVector<VkBufferImageCopy2, N> _bufferImageCopyRegions;
     MVKBuffer* _buffer;

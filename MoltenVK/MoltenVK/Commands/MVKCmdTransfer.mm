@@ -1019,17 +1019,10 @@ VkResult MVKCmdBufferImageCopy<N>::setContent(MVKCommandBuffer* cmdBuff,
             region.bufferOffset, region.bufferRowLength, region.bufferImageHeight,
             region.imageSubresource, region.imageOffset, region.imageExtent,
         };
-        auto& vRegion =_bufferImageCopyRegions.emplace_back(std::move(region2));
-        
-        // Validate
-        if (!_image->hasExpectedTexelSize()) {
-            if (auto validation = validate(cmdBuff, &vRegion); validation != VK_SUCCESS) {
-                return validation;
-            }
-        }
+        _bufferImageCopyRegions.emplace_back(std::move(region2));
     }
 
-	return VK_SUCCESS;
+	return validate(cmdBuff);
 }
 
 template <size_t N>
@@ -1038,7 +1031,11 @@ VkResult MVKCmdBufferImageCopy<N>::setContent(MVKCommandBuffer* cmdBuff,
     _buffer = (MVKBuffer*)pCopyBufferToImageInfo->srcBuffer;
     _image = (MVKImage*)pCopyBufferToImageInfo->dstImage;
     _toImage = true;
-    return setContent(cmdBuff, pCopyBufferToImageInfo->regionCount, pCopyBufferToImageInfo->pRegions);
+    
+    _bufferImageCopyRegions.clear();     // Clear for reuse
+    _bufferImageCopyRegions.resize(pCopyBufferToImageInfo->regionCount);
+    std::memcpy(_bufferImageCopyRegions.data(), pCopyBufferToImageInfo->pRegions, pCopyBufferToImageInfo->regionCount * sizeof(VkBufferImageCopy2));
+    return validate(cmdBuff);
 }
 
 template <size_t N>
@@ -1047,37 +1044,25 @@ VkResult MVKCmdBufferImageCopy<N>::setContent(MVKCommandBuffer* cmdBuff,
     _buffer = (MVKBuffer*)pCopyImageToBufferInfo->dstBuffer;
     _image = (MVKImage*)pCopyImageToBufferInfo->srcImage;
     _toImage = false;
-    return setContent(cmdBuff, pCopyImageToBufferInfo->regionCount, pCopyImageToBufferInfo->pRegions);
+    
+    _bufferImageCopyRegions.clear();     // Clear for reuse
+    _bufferImageCopyRegions.resize(pCopyImageToBufferInfo->regionCount);
+    std::memcpy(_bufferImageCopyRegions.data(), pCopyImageToBufferInfo->pRegions, pCopyImageToBufferInfo->regionCount * sizeof(VkBufferImageCopy2));
+    return validate(cmdBuff);
 }
 
 template <size_t N>
-inline VkResult MVKCmdBufferImageCopy<N>::setContent(MVKCommandBuffer* cmdBuff,
-                                                     uint32_t regionCount,
-                                                     const VkBufferImageCopy2* regions) {
-    // Add buffer regions
-    _bufferImageCopyRegions.clear();     // Clear for reuse
-    _bufferImageCopyRegions.reserve(regionCount);
-    for (uint32_t i = 0; i < regionCount; i++) {
-        auto& region = _bufferImageCopyRegions.emplace_back(regions[i]);
-        
-        // Validate
+inline VkResult MVKCmdBufferImageCopy<N>::validate(MVKCommandBuffer *cmdBuff) {
+    for (auto& region : _bufferImageCopyRegions) {
         if (!_image->hasExpectedTexelSize()) {
-            if (auto validation = validate(cmdBuff, &region); validation != VK_SUCCESS) {
-                return validation;
-            }
+            MTLPixelFormat mtlPixFmt = _image->getMTLPixelFormat(MVKImage::getPlaneFromVkImageAspectFlags(region.imageSubresource.aspectMask));
+            const char* cmdName = _toImage ? "vkCmdCopyBufferToImage" : "vkCmdCopyImageToBuffer";
+            return cmdBuff->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "%s(): The image is using Metal format %s as a substitute for Vulkan format %s. Since the pixel size is different, content for the image cannot be copied to or from a buffer.", cmdName, cmdBuff->getPixelFormats()->getName(mtlPixFmt), cmdBuff->getPixelFormats()->getName(_image->getVkFormat()));
         }
     }
-
     return VK_SUCCESS;
 }
-
-template <size_t N>
-inline VkResult MVKCmdBufferImageCopy<N>::validate(MVKCommandBuffer *cmdBuff, const VkBufferImageCopy2 *region) {
-    MTLPixelFormat mtlPixFmt = _image->getMTLPixelFormat(MVKImage::getPlaneFromVkImageAspectFlags(region->imageSubresource.aspectMask));
-    const char* cmdName = _toImage ? "vkCmdCopyBufferToImage" : "vkCmdCopyImageToBuffer";
-    return cmdBuff->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "%s(): The image is using Metal format %s as a substitute for Vulkan format %s. Since the pixel size is different, content for the image cannot be copied to or from a buffer.", cmdName, cmdBuff->getPixelFormats()->getName(mtlPixFmt), cmdBuff->getPixelFormats()->getName(_image->getVkFormat()));
-}
-
+    
 template <size_t N>
 void MVKCmdBufferImageCopy<N>::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLBuffer> mtlBuffer = _buffer->getMTLBuffer();
