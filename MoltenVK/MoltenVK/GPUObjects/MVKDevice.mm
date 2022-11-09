@@ -3077,11 +3077,19 @@ void MVKPhysicalDevice::initExtensions() {
 		pWritableExtns->vk_KHR_fragment_shader_barycentric.enabled = false;
 		pWritableExtns->vk_NV_fragment_shader_barycentric.enabled = false;
 	}
-	// gpuAddress requires Tier2 argument buffer support (per feedback from Apple engineers).
-	if (_metalFeatures.argumentBuffersTier < MTLArgumentBuffersTier2) {
+    
+    // The relevant functions are not available if not built with Xcode 14.
+#if MVK_XCODE_14
+    // gpuAddress requires Tier2 argument buffer support (per feedback from Apple engineers).
+    if (_metalFeatures.argumentBuffersTier < MTLArgumentBuffersTier2) {
 		pWritableExtns->vk_KHR_buffer_device_address.enabled = false;
 		pWritableExtns->vk_EXT_buffer_device_address.enabled = false;
 	}
+#else
+    pWritableExtns->vk_KHR_buffer_device_address.enabled = false;
+    pWritableExtns->vk_EXT_buffer_device_address.enabled = false;
+#endif
+
 #if MVK_MACOS
 	if (!supportsMTLGPUFamily(Apple5)) {
 		pWritableExtns->vk_AMD_shader_image_load_store_lod.enabled = false;
