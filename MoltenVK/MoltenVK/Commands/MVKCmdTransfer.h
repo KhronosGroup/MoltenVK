@@ -48,6 +48,8 @@ public:
 						VkImageLayout dstImageLayout,
 						uint32_t regionCount,
 						const VkImageCopy* pRegions);
+    VkResult setContent(MVKCommandBuffer* cmdBuff,
+                        const VkCopyImageInfo2* pImageInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder, kMVKCommandUseCopyImage); }
 
@@ -55,8 +57,9 @@ public:
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+    VkResult validate(MVKCommandBuffer* cmdBuff, const VkImageCopy2* region);
 
-	MVKSmallVector<VkImageCopy, N> _vkImageCopies;
+	MVKSmallVector<VkImageCopy2, N> _vkImageCopies;
 	MVKImage* _srcImage;
 	MVKImage* _dstImage;
 	VkImageLayout _srcLayout;
@@ -76,7 +79,7 @@ typedef MVKCmdCopyImage<4> MVKCmdCopyImageMulti;
 
 /** Combines a VkImageBlit with vertices to render it. */
 typedef struct {
-	VkImageBlit region;
+	VkImageBlit2 region;
 	MVKVertexPosTex vertices[kMVKBlitVertexCount];
 } MVKImageBlitRender;
 
@@ -96,6 +99,8 @@ public:
 						uint32_t regionCount,
 						const VkImageBlit* pRegions,
 						VkFilter filter);
+    VkResult setContent(MVKCommandBuffer* cmdBuff,
+                        const VkBlitImageInfo2* pBlitImageInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder, kMVKCommandUseBlitImage); }
 
@@ -103,11 +108,12 @@ public:
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-	bool canCopyFormats(const VkImageBlit& region);
-	bool canCopy(const VkImageBlit& region);
-	void populateVertices(MVKVertexPosTex* vertices, const VkImageBlit& region);
+	bool canCopyFormats(const VkImageBlit2& region);
+	bool canCopy(const VkImageBlit2& region);
+	void populateVertices(MVKVertexPosTex* vertices, const VkImageBlit2& region);
+    VkResult validate(MVKCommandBuffer* cmdBuff, const VkImageBlit2* region, bool isDestUnwritableLinear);
 
-	MVKSmallVector<VkImageBlit, N> _vkImageBlits;
+	MVKSmallVector<VkImageBlit2, N> _vkImageBlits;
 	MVKImage* _srcImage;
 	MVKImage* _dstImage;
 	VkImageLayout _srcLayout;
@@ -144,13 +150,16 @@ public:
 						VkImageLayout dstImageLayout,
 						uint32_t regionCount,
 						const VkImageResolve* pRegions);
+    VkResult setContent(MVKCommandBuffer* cmdBuff,
+                        const VkResolveImageInfo2* pResolveImageInfo);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+    VkResult validate(MVKCommandBuffer* cmdBuff, const VkImageResolve2* region);
 
-	MVKSmallVector<VkImageResolve, N> _vkImageResolves;
+	MVKSmallVector<VkImageResolve2, N> _vkImageResolves;
     MVKImage* _srcImage;
 	MVKImage* _dstImage;
     VkImageLayout _srcLayout;
@@ -178,13 +187,15 @@ public:
 						VkBuffer destBuffer,
 						uint32_t regionCount,
 						const VkBufferCopy* pRegions);
+    VkResult setContent(MVKCommandBuffer* cmdBuff,
+                        const VkCopyBufferInfo2* pCopyBufferInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKSmallVector<VkBufferCopy, N> _bufferCopyRegions;
+	MVKSmallVector<VkBufferCopy2, N> _bufferCopyRegions;
 	MVKBuffer* _srcBuffer;
 	MVKBuffer* _dstBuffer;
 };
@@ -212,14 +223,19 @@ public:
 						uint32_t regionCount,
 						const VkBufferImageCopy* pRegions,
 						bool toImage);
+    VkResult setContent(MVKCommandBuffer* cmdBuff,
+                        const VkCopyBufferToImageInfo2* pBufferToImageInfo);
+    VkResult setContent(MVKCommandBuffer* cmdBuff,
+                        const VkCopyImageToBufferInfo2* pImageToBufferInfo);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	bool isArrayTexture();
+    VkResult validate(MVKCommandBuffer* cmdBuff);
 
-	MVKSmallVector<VkBufferImageCopy, N> _bufferImageCopyRegions;
+	MVKSmallVector<VkBufferImageCopy2, N> _bufferImageCopyRegions;
     MVKBuffer* _buffer;
     MVKImage* _image;
     bool _toImage = false;

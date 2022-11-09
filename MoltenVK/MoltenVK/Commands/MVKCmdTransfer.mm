@@ -64,21 +64,59 @@ VkResult MVKCmdCopyImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 	_vkImageCopies.clear();		// Clear for reuse
     for (uint32_t regionIdx = 0; regionIdx < regionCount; regionIdx++) {
         auto& vkIR = pRegions[regionIdx];
-        uint8_t srcPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(vkIR.srcSubresource.aspectMask);
-        uint8_t dstPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(vkIR.dstSubresource.aspectMask);
-    
-        // Validate
-        MVKPixelFormats* pixFmts = cmdBuff->getPixelFormats();
-        if ((_dstImage->getSampleCount() != _srcImage->getSampleCount()) ||
-            (pixFmts->getBytesPerBlock(_dstImage->getMTLPixelFormat(dstPlaneIndex)) != pixFmts->getBytesPerBlock(_srcImage->getMTLPixelFormat(srcPlaneIndex)))) {
-            return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Cannot copy between incompatible formats, such as formats of different pixel sizes, or between images with different sample counts.");
-        }
+        VkImageCopy2 vkIR2 = {
+            VK_STRUCTURE_TYPE_IMAGE_COPY_2, nullptr,
+            vkIR.srcSubresource, vkIR.srcOffset,
+            vkIR.dstSubresource, vkIR.dstOffset,
+            vkIR.extent
+        };
         
-		_vkImageCopies.push_back(vkIR);
+        if (auto validation = validate(cmdBuff, &vkIR2); validation != VK_SUCCESS)
+            return validation;
+        
+        _vkImageCopies.emplace_back(std::move(vkIR2));
 	}
     
 	return VK_SUCCESS;
 }
+
+template <size_t N>
+VkResult MVKCmdCopyImage<N>::setContent(MVKCommandBuffer* cmdBuff,
+                                        const VkCopyImageInfo2* pCopyImageInfo) {
+    _srcImage = (MVKImage*)pCopyImageInfo->srcImage;
+    _srcLayout = pCopyImageInfo->srcImageLayout;
+
+    _dstImage = (MVKImage*)pCopyImageInfo->dstImage;
+    _dstLayout = pCopyImageInfo->dstImageLayout;
+
+    _vkImageCopies.clear();        // Clear for reuse
+    _vkImageCopies.reserve(pCopyImageInfo->regionCount);
+    for (uint32_t regionIdx = 0; regionIdx < pCopyImageInfo->regionCount; regionIdx++) {
+        auto& vkIR = pCopyImageInfo->pRegions[regionIdx];
+        
+        if (auto validation = validate(cmdBuff, &vkIR); validation != VK_SUCCESS)
+            return validation;
+        
+        _vkImageCopies.push_back(vkIR);
+    }
+    
+    return VK_SUCCESS;
+}
+
+template <size_t N>
+inline VkResult MVKCmdCopyImage<N>::validate(MVKCommandBuffer* cmdBuff, const VkImageCopy2* region) {
+    uint8_t srcPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(region->srcSubresource.aspectMask);
+    uint8_t dstPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(region->dstSubresource.aspectMask);
+
+    // Validate
+    MVKPixelFormats* pixFmts = cmdBuff->getPixelFormats();
+    if ((_dstImage->getSampleCount() != _srcImage->getSampleCount()) ||
+        (pixFmts->getBytesPerBlock(_dstImage->getMTLPixelFormat(dstPlaneIndex)) != pixFmts->getBytesPerBlock(_srcImage->getMTLPixelFormat(srcPlaneIndex)))) {
+        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Cannot copy between incompatible formats, such as formats of different pixel sizes, or between images with different sample counts.");
+    }
+    return VK_SUCCESS;
+}
+
 
 template <size_t N>
 void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse commandUse) {
@@ -281,20 +319,59 @@ VkResult MVKCmdBlitImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 	_vkImageBlits.clear();		// Clear for reuse
 	for (uint32_t rIdx = 0; rIdx < regionCount; rIdx++) {
 		auto& vkIB = pRegions[rIdx];
-
-		// Validate - macOS linear images cannot be a scaling or inversion destination
-		if (isDestUnwritableLinear && !(canCopyFormats(vkIB) && canCopy(vkIB)) ) {
-			return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling or inverting to a linear destination image is not supported.");
-		}
-
-		_vkImageBlits.push_back(vkIB);
+        VkImageBlit2 vkIB2 = {
+            VK_STRUCTURE_TYPE_IMAGE_BLIT_2, nullptr,
+            vkIB.srcSubresource, vkIB.srcOffsets[0], vkIB.srcOffsets[1],
+            vkIB.dstSubresource, vkIB.dstOffsets[0], vkIB.srcOffsets[1],
+        };
+        
+        if (auto validation = validate(cmdBuff, &vkIB2, isDestUnwritableLinear); validation != VK_SUCCESS)
+            return validation;
+        
+		_vkImageBlits.push_back(vkIB2);
 	}
 
 	return VK_SUCCESS;
 }
 
 template <size_t N>
-bool MVKCmdBlitImage<N>::canCopyFormats(const VkImageBlit& region) {
+VkResult MVKCmdBlitImage<N>::setContent(MVKCommandBuffer* cmdBuff,
+                                        const VkBlitImageInfo2* pBlitImageInfo) {
+
+    _srcImage = (MVKImage*)pBlitImageInfo->srcImage;
+    _srcLayout = pBlitImageInfo->srcImageLayout;
+    _dstImage = (MVKImage*)pBlitImageInfo->dstImage;
+    _dstLayout = pBlitImageInfo->dstImageLayout;
+
+    _filter = pBlitImageInfo->filter;
+
+    bool isDestUnwritableLinear = MVK_MACOS && !cmdBuff->getDevice()->_pMetalFeatures->renderLinearTextures && _dstImage->getIsLinear();
+
+    _vkImageBlits.clear();        // Clear for reuse
+    _vkImageBlits.reserve(pBlitImageInfo->regionCount);
+    for (uint32_t rIdx = 0; rIdx < pBlitImageInfo->regionCount; rIdx++) {
+        auto& vkIB = pBlitImageInfo->pRegions[rIdx];
+        
+        if (auto validation = validate(cmdBuff, &vkIB, isDestUnwritableLinear); validation != VK_SUCCESS)
+            return validation;
+        
+        _vkImageBlits.emplace_back(vkIB);
+    }
+
+    return VK_SUCCESS;
+}
+
+template <size_t N>
+inline VkResult MVKCmdBlitImage<N>::validate(MVKCommandBuffer *cmdBuff, const VkImageBlit2 *region, bool isDestUnwritableLinear) {
+    // Validate - macOS linear images cannot be a scaling or inversion destination
+    if (isDestUnwritableLinear && !(canCopyFormats(*region) && canCopy(*region)) ) {
+        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling or inverting to a linear destination image is not supported.");
+    }
+    return VK_SUCCESS;
+}
+
+template <size_t N>
+bool MVKCmdBlitImage<N>::canCopyFormats(const VkImageBlit2& region) {
     uint8_t srcPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(region.srcSubresource.aspectMask);
     uint8_t dstPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(region.dstSubresource.aspectMask);
 	return ((_srcImage->getMTLPixelFormat(srcPlaneIndex) == _dstImage->getMTLPixelFormat(dstPlaneIndex)) &&
@@ -303,7 +380,7 @@ bool MVKCmdBlitImage<N>::canCopyFormats(const VkImageBlit& region) {
 
 // The source and destination sizes must be equal and not be negative in any direction
 template <size_t N>
-bool MVKCmdBlitImage<N>::canCopy(const VkImageBlit& region) {
+bool MVKCmdBlitImage<N>::canCopy(const VkImageBlit2& region) {
 	VkOffset3D srcSize = mvkVkOffset3DDifference(region.srcOffsets[1], region.srcOffsets[0]);
 	VkOffset3D dstSize = mvkVkOffset3DDifference(region.dstOffsets[1], region.dstOffsets[0]);
 	return (mvkVkOffset3DsAreEqual(srcSize, dstSize) &&
@@ -311,7 +388,7 @@ bool MVKCmdBlitImage<N>::canCopy(const VkImageBlit& region) {
 }
 
 template <size_t N>
-void MVKCmdBlitImage<N>::populateVertices(MVKVertexPosTex* vertices, const VkImageBlit& region) {
+void MVKCmdBlitImage<N>::populateVertices(MVKVertexPosTex* vertices, const VkImageBlit2& region) {
     const VkOffset3D& so0 = region.srcOffsets[0];
     const VkOffset3D& so1 = region.srcOffsets[1];
     const VkOffset3D& do0 = region.dstOffsets[0];
@@ -611,18 +688,54 @@ VkResult MVKCmdResolveImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 	_vkImageResolves.reserve(regionCount);
     for (uint32_t regionIdx = 0; regionIdx < regionCount; regionIdx++) {
         auto& vkIR = pRegions[regionIdx];
-        uint8_t dstPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(vkIR.dstSubresource.aspectMask);
+        VkImageResolve2 vkIR2 = {
+            VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2, nullptr,
+            vkIR.srcSubresource, vkIR.srcOffset,
+            vkIR.dstSubresource, vkIR.dstOffset,
+            vkIR.extent,
+        };
+        
+        if (auto validation = validate(cmdBuff, &vkIR2); validation != VK_SUCCESS)
+            return validation;
 
-        // Validate
-        MVKPixelFormats* pixFmts = cmdBuff->getPixelFormats();
-        if ( !mvkAreAllFlagsEnabled(pixFmts->getCapabilities(_dstImage->getMTLPixelFormat(dstPlaneIndex)), kMVKMTLFmtCapsResolve) ) {
-            return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdResolveImage(): %s cannot be used as a resolve destination on this device.", pixFmts->getName(_dstImage->getVkFormat()));
-        }
-
-		_vkImageResolves.push_back(vkIR);
+		_vkImageResolves.emplace_back(std::move(vkIR2));
     }
 
 	return VK_SUCCESS;
+}
+
+template <size_t N>
+VkResult MVKCmdResolveImage<N>::setContent(MVKCommandBuffer* cmdBuff,
+                                           const VkResolveImageInfo2* pResolveImageInfo) {
+    _srcImage = (MVKImage*)pResolveImageInfo->srcImage;
+    _srcLayout = pResolveImageInfo->srcImageLayout;
+    _dstImage = (MVKImage*)pResolveImageInfo->dstImage;
+    _dstLayout = pResolveImageInfo->dstImageLayout;
+
+    _vkImageResolves.clear();    // Clear for reuse
+    _vkImageResolves.reserve(pResolveImageInfo->regionCount);
+    for (uint32_t regionIdx = 0; regionIdx < pResolveImageInfo->regionCount; regionIdx++) {
+        auto& vkIR = pResolveImageInfo->pRegions[regionIdx];
+        
+        if (auto validation = validate(cmdBuff, &vkIR); validation != VK_SUCCESS)
+            return validation;
+        
+        _vkImageResolves.push_back(vkIR);
+    }
+
+    return VK_SUCCESS;
+}
+
+template <size_t N>
+inline VkResult MVKCmdResolveImage<N>::validate(MVKCommandBuffer* cmdBuff, const VkImageResolve2* region) {
+    uint8_t dstPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(region->dstSubresource.aspectMask);
+
+    // Validate
+    MVKPixelFormats* pixFmts = cmdBuff->getPixelFormats();
+    if ( !mvkAreAllFlagsEnabled(pixFmts->getCapabilities(_dstImage->getMTLPixelFormat(dstPlaneIndex)), kMVKMTLFmtCapsResolve) ) {
+        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdResolveImage(): %s cannot be used as a resolve destination on this device.", pixFmts->getName(_dstImage->getVkFormat()));
+    }
+    return VK_SUCCESS;
 }
 
 template <size_t N>
@@ -637,7 +750,7 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	if (cmdEncoder->getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
 		layerCnt = (uint32_t)_vkImageResolves.size();
 	} else {
-		for (VkImageResolve& vkIR : _vkImageResolves) { layerCnt += vkIR.dstSubresource.layerCount; }
+		for (VkImageResolve2& vkIR : _vkImageResolves) { layerCnt += vkIR.dstSubresource.layerCount; }
 	}
 	MVKMetalResolveSlice mtlResolveSlices[layerCnt];
 
@@ -645,7 +758,7 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	uint32_t copyCnt = 0;
 	uint32_t sliceCnt = 0;
 
-	for (VkImageResolve& vkIR : _vkImageResolves) {
+	for (const auto& vkIR : _vkImageResolves) {
         uint8_t srcPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(vkIR.srcSubresource.aspectMask);
         uint8_t dstPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(vkIR.dstSubresource.aspectMask);
 
@@ -793,10 +906,31 @@ VkResult MVKCmdCopyBuffer<N>::setContent(MVKCommandBuffer* cmdBuff,
 	_bufferCopyRegions.clear();	// Clear for reuse
 	_bufferCopyRegions.reserve(regionCount);
 	for (uint32_t i = 0; i < regionCount; i++) {
-		_bufferCopyRegions.push_back(pRegions[i]);
+        auto& region = pRegions[i];
+        VkBufferCopy2 region2 = {
+            VK_STRUCTURE_TYPE_BUFFER_COPY_2, nullptr,
+            region.srcOffset, region.dstOffset, region.size,
+        };
+		_bufferCopyRegions.emplace_back(std::move(region2));
 	}
 
 	return VK_SUCCESS;
+}
+
+template <size_t N>
+VkResult MVKCmdCopyBuffer<N>::setContent(MVKCommandBuffer* cmdBuff,
+                                         const VkCopyBufferInfo2* pCopyBufferInfo) {
+    _srcBuffer = (MVKBuffer*)pCopyBufferInfo->srcBuffer;
+    _dstBuffer = (MVKBuffer*)pCopyBufferInfo->dstBuffer;
+
+    // Add buffer regions
+    _bufferCopyRegions.clear();    // Clear for reuse
+    _bufferCopyRegions.reserve(pCopyBufferInfo->regionCount);
+    for (uint32_t i = 0; i < pCopyBufferInfo->regionCount; i++) {
+        _bufferCopyRegions.push_back(pCopyBufferInfo->pRegions[i]);
+    }
+
+    return VK_SUCCESS;
 }
 
 template <size_t N>
@@ -809,7 +943,7 @@ void MVKCmdCopyBuffer<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
 	VkDeviceSize buffAlign = cmdEncoder->getDevice()->_pMetalFeatures->mtlCopyBufferAlignment;
 
-	for (auto& cpyRgn : _bufferCopyRegions) {
+	for (const auto& cpyRgn : _bufferCopyRegions) {
 		const bool useComputeCopy = buffAlign > 1 && (cpyRgn.srcOffset % buffAlign != 0 ||
 													  cpyRgn.dstOffset % buffAlign != 0 ||
 													  cpyRgn.size      % buffAlign != 0);
@@ -879,19 +1013,56 @@ VkResult MVKCmdBufferImageCopy<N>::setContent(MVKCommandBuffer* cmdBuff,
     _bufferImageCopyRegions.clear();     // Clear for reuse
     _bufferImageCopyRegions.reserve(regionCount);
     for (uint32_t i = 0; i < regionCount; i++) {
-        _bufferImageCopyRegions.push_back(pRegions[i]);
-        
-        // Validate
-        if ( !_image->hasExpectedTexelSize() ) {
-            MTLPixelFormat mtlPixFmt = _image->getMTLPixelFormat(MVKImage::getPlaneFromVkImageAspectFlags(pRegions[i].imageSubresource.aspectMask));
+        const auto& region = pRegions[i];
+        VkBufferImageCopy2 region2 = {
+            VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2, nullptr,
+            region.bufferOffset, region.bufferRowLength, region.bufferImageHeight,
+            region.imageSubresource, region.imageOffset, region.imageExtent,
+        };
+        _bufferImageCopyRegions.emplace_back(std::move(region2));
+    }
+
+	return validate(cmdBuff);
+}
+
+template <size_t N>
+VkResult MVKCmdBufferImageCopy<N>::setContent(MVKCommandBuffer* cmdBuff,
+                                              const VkCopyBufferToImageInfo2* pCopyBufferToImageInfo) {
+    _buffer = (MVKBuffer*)pCopyBufferToImageInfo->srcBuffer;
+    _image = (MVKImage*)pCopyBufferToImageInfo->dstImage;
+    _toImage = true;
+    
+    _bufferImageCopyRegions.clear();     // Clear for reuse
+    _bufferImageCopyRegions.resize(pCopyBufferToImageInfo->regionCount);
+    std::memcpy(_bufferImageCopyRegions.data(), pCopyBufferToImageInfo->pRegions, pCopyBufferToImageInfo->regionCount * sizeof(VkBufferImageCopy2));
+    return validate(cmdBuff);
+}
+
+template <size_t N>
+VkResult MVKCmdBufferImageCopy<N>::setContent(MVKCommandBuffer* cmdBuff,
+                                              const VkCopyImageToBufferInfo2* pCopyImageToBufferInfo) {
+    _buffer = (MVKBuffer*)pCopyImageToBufferInfo->dstBuffer;
+    _image = (MVKImage*)pCopyImageToBufferInfo->srcImage;
+    _toImage = false;
+    
+    _bufferImageCopyRegions.clear();     // Clear for reuse
+    _bufferImageCopyRegions.resize(pCopyImageToBufferInfo->regionCount);
+    std::memcpy(_bufferImageCopyRegions.data(), pCopyImageToBufferInfo->pRegions, pCopyImageToBufferInfo->regionCount * sizeof(VkBufferImageCopy2));
+    return validate(cmdBuff);
+}
+
+template <size_t N>
+inline VkResult MVKCmdBufferImageCopy<N>::validate(MVKCommandBuffer *cmdBuff) {
+    for (auto& region : _bufferImageCopyRegions) {
+        if (!_image->hasExpectedTexelSize()) {
+            MTLPixelFormat mtlPixFmt = _image->getMTLPixelFormat(MVKImage::getPlaneFromVkImageAspectFlags(region.imageSubresource.aspectMask));
             const char* cmdName = _toImage ? "vkCmdCopyBufferToImage" : "vkCmdCopyImageToBuffer";
             return cmdBuff->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "%s(): The image is using Metal format %s as a substitute for Vulkan format %s. Since the pixel size is different, content for the image cannot be copied to or from a buffer.", cmdName, cmdBuff->getPixelFormats()->getName(mtlPixFmt), cmdBuff->getPixelFormats()->getName(_image->getVkFormat()));
         }
     }
-
-	return VK_SUCCESS;
+    return VK_SUCCESS;
 }
-
+    
 template <size_t N>
 void MVKCmdBufferImageCopy<N>::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLBuffer> mtlBuffer = _buffer->getMTLBuffer();
