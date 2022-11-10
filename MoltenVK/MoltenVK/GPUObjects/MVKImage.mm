@@ -144,7 +144,7 @@ void MVKImagePlane::initSubresources(const VkImageCreateInfo* pCreateInfo) {
 
     VkDeviceSize offset = 0;
     if (_planeIndex > 0 && _image->_memoryBindings.size() == 1) {
-        if (!_image->_isLinear && _image->getDevice()->_pMetalFeatures->placementHeaps) {
+        if (!_image->_isLinear && !_image->_isLinearForAtomics && _image->getDevice()->_pMetalFeatures->placementHeaps) {
             // For textures allocated directly on the heap, we need to obey the size and alignment
             // requirements reported by the device.
             MTLTextureDescriptor* mtlTexDesc = _image->_planes[_planeIndex-1]->newMTLTextureDescriptor();    // temp retain
@@ -856,7 +856,7 @@ MTLTextureUsage MVKImage::getMTLTextureUsage(MTLPixelFormat mtlPixFmt) {
 		needsReinterpretation = needsReinterpretation || !pixFmts->compatibleAsLinearOrSRGB(mtlPixFmt, viewFmt);
 	}
 
-	MTLTextureUsage mtlUsage = pixFmts->getMTLTextureUsage(getCombinedUsage(), mtlPixFmt, _samples, _isLinear, needsReinterpretation, _hasExtendedUsage);
+	MTLTextureUsage mtlUsage = pixFmts->getMTLTextureUsage(getCombinedUsage(), mtlPixFmt, _samples, _isLinear || _isLinearForAtomics, needsReinterpretation, _hasExtendedUsage);
 
 	// Metal before 3.0 doesn't support 3D compressed textures, so we'll
 	// decompress the texture ourselves, and we need to be able to write to it.
@@ -930,7 +930,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     // If this is a storage image of format R32_UINT or R32_SINT, or MUTABLE_FORMAT is set
     // and R32_UINT is in the set of possible view formats, then we must use a texel buffer,
     // or image atomics won't work.
-	_isLinearForAtomics = (_isLinear && mvkIsAnyFlagEnabled(getCombinedUsage(), VK_IMAGE_USAGE_STORAGE_BIT) &&
+	_isLinearForAtomics = (_arrayLayers == 1 && _mipLevels == 1 && getImageType() == VK_IMAGE_TYPE_2D && mvkIsAnyFlagEnabled(getCombinedUsage(), VK_IMAGE_USAGE_STORAGE_BIT) &&
 						   ((_vkFormat == VK_FORMAT_R32_UINT || _vkFormat == VK_FORMAT_R32_SINT) ||
 							(_hasMutableFormat && pixFmts->getViewClass(_vkFormat) == MVKMTLViewClass::Color32 &&
 							 (getIsValidViewFormat(VK_FORMAT_R32_UINT) || getIsValidViewFormat(VK_FORMAT_R32_SINT)))));
@@ -939,7 +939,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
 								 mvkAreAllFlagsEnabled(pixFmts->getVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
 	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
-	_rowByteAlignment = _isLinear ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(pixFmts->getBytesPerBlock(pCreateInfo->format));
+	_rowByteAlignment = _isLinear || _isLinearForAtomics ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(pixFmts->getBytesPerBlock(pCreateInfo->format));
 
     VkExtent2D blockTexelSizeOfPlane[3];
     uint32_t bytesPerBlockOfPlane[3];
@@ -964,7 +964,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
         }
         _planes[planeIndex]->initSubresources(pCreateInfo);
         MVKImageMemoryBinding* memoryBinding = _planes[planeIndex]->getMemoryBinding();
-        if (!_isLinear && _device->_pMetalFeatures->placementHeaps) {
+        if (!_isLinear && !_isLinearForAtomics && _device->_pMetalFeatures->placementHeaps) {
             MTLTextureDescriptor* mtlTexDesc = _planes[planeIndex]->newMTLTextureDescriptor();    // temp retain
             MTLSizeAndAlign sizeAndAlign = [_device->getMTLDevice() heapTextureSizeAndAlignWithDescriptor: mtlTexDesc];
             [mtlTexDesc release];
