@@ -313,6 +313,12 @@ namespace mvk {
 				bool isUsed = true;
 				const auto* type = &reflect.get_type(reflect.get_type_from_variable(varID).parent_type);
 				bool patch = reflect.has_decoration(varID, spv::DecorationPatch);
+				if (reflect.has_decoration(type->self, spv::DecorationBlock)) {
+					// In this case, the Patch decoration is on the members.
+					// FIXME It is theoretically possible for some members of a block to have
+					// the decoration and some not. What then?
+					patch = reflect.has_member_decoration(type->self, 0, spv::DecorationPatch);
+				}
 				auto biType = spv::BuiltInMax;
 				if (reflect.has_decoration(varID, spv::DecorationBuiltIn)) {
 					biType = (spv::BuiltIn)reflect.get_decoration(varID, spv::DecorationBuiltIn);
