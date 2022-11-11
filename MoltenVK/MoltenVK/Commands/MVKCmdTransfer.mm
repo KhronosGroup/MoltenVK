@@ -322,7 +322,7 @@ VkResult MVKCmdBlitImage<N>::setContent(MVKCommandBuffer* cmdBuff,
         VkImageBlit2 vkIB2 = {
             VK_STRUCTURE_TYPE_IMAGE_BLIT_2, nullptr,
             vkIB.srcSubresource, vkIB.srcOffsets[0], vkIB.srcOffsets[1],
-            vkIB.dstSubresource, vkIB.dstOffsets[0], vkIB.srcOffsets[1],
+            vkIB.dstSubresource, vkIB.dstOffsets[0], vkIB.dstOffsets[1],
         };
         
         if (auto validation = validate(cmdBuff, &vkIB2, isDestUnwritableLinear); validation != VK_SUCCESS)
