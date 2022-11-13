@@ -2305,12 +2305,12 @@ void MVKPhysicalDevice::initLimits() {
                 }
             }
             if (mvkAreAllFlagsEnabled(props.bufferFeatures, VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)) {
-                maxStorage = max(maxStorage, uint32_t(alignment));
-                if (alignment > texelSize) { singleTexelStorage = false; }
-            }
-            if (mvkAreAllFlagsEnabled(props.bufferFeatures, VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT)) {
                 maxUniform = max(maxUniform, uint32_t(alignment));
                 if (alignment > texelSize) { singleTexelUniform = false; }
+            }
+            if (mvkAreAllFlagsEnabled(props.bufferFeatures, VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT)) {
+                maxStorage = max(maxStorage, uint32_t(alignment));
+                if (alignment > texelSize) { singleTexelStorage = false; }
             }
             return true;
         });
