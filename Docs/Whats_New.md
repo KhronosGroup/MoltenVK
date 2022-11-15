@@ -19,6 +19,7 @@ MoltenVK 1.2.1
 Released TBD
 
 - Fix crash on descriptor update with out-of-bounds descriptor count data.
+- Work around `MTLCounterSet` crash on additional Intel Iris Plus Graphics devices.
 
 
 
