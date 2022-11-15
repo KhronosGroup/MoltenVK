@@ -3168,6 +3168,8 @@ bool MVKPhysicalDevice::needsCounterSetRetained() {
 		case 0x8a51:
 		case 0x8a52:
 		case 0x8a53:
+		case 0x8a5a:
+		case 0x8a5c:
 			return true;
 		default:
 			return false;
