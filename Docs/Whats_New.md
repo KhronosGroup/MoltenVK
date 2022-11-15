@@ -20,7 +20,8 @@ Released TBD
 
 - Fix crash on descriptor update with out-of-bounds descriptor count data.
 - Work around `MTLCounterSet` crash on additional Intel Iris Plus Graphics devices.
-
+- Document new linkage model used by *Xcode 14* and later, and how to link **MoltenVK**
+  to an app or game using *Xcode 13* or earlier.
 
 
 MoltenVK 1.2.0
