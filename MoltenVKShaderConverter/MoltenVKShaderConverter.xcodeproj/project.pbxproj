@@ -639,10 +639,14 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				MACH_O_TYPE = staticlib;
 				MACOSX_DEPLOYMENT_TARGET = 10.13;
+				OTHER_CFLAGS = "-fno-objc-msgsend-selector-stubs";
 				PRODUCT_NAME = MoltenVKShaderConverter;
 				SKIP_INSTALL = YES;
 				TVOS_DEPLOYMENT_TARGET = 11.0;
-				WARNING_CFLAGS = "-Wreorder";
+				WARNING_CFLAGS = (
+					"-Wreorder",
+					"-Wno-unused-command-line-argument",
+				);
 			};
 			name = Debug;
 		};
@@ -699,11 +703,15 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				MACH_O_TYPE = staticlib;
 				MACOSX_DEPLOYMENT_TARGET = 10.13;
+				OTHER_CFLAGS = "-fno-objc-msgsend-selector-stubs";
 				PRODUCT_NAME = MoltenVKShaderConverter;
 				SKIP_INSTALL = YES;
 				TVOS_DEPLOYMENT_TARGET = 11.0;
 				VALIDATE_PRODUCT = YES;
-				WARNING_CFLAGS = "-Wreorder";
+				WARNING_CFLAGS = (
+					"-Wreorder",
+					"-Wno-unused-command-line-argument",
+				);
 			};
 			name = Release;
 		};

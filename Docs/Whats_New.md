@@ -19,6 +19,7 @@ MoltenVK 1.2.1
 Released TBD
 
 - Fix crash on descriptor update with out-of-bounds descriptor count data.
+- Fix Obj-C linkage failures when linking to an app with Xcode 13 or earlier.
 
 
 

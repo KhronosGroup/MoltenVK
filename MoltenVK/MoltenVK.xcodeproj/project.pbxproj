@@ -1623,11 +1623,15 @@
 				MVK_SKIP_DYLIB = "";
 				"MVK_SKIP_DYLIB[sdk=appletvsimulator*]" = YES;
 				"MVK_SKIP_DYLIB[sdk=iphonesimulator*]" = YES;
+				OTHER_CFLAGS = "-fno-objc-msgsend-selector-stubs";
 				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKShaderConverter.a";
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
 				TVOS_DEPLOYMENT_TARGET = 11.0;
-				WARNING_CFLAGS = "-Wreorder";
+				WARNING_CFLAGS = (
+					"-Wreorder",
+					"-Wno-unused-command-line-argument",
+				);
 			};
 			name = Debug;
 		};
@@ -1694,12 +1698,16 @@
 				MVK_SKIP_DYLIB = "";
 				"MVK_SKIP_DYLIB[sdk=appletvsimulator*]" = YES;
 				"MVK_SKIP_DYLIB[sdk=iphonesimulator*]" = YES;
+				OTHER_CFLAGS = "-fno-objc-msgsend-selector-stubs";
 				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKShaderConverter.a";
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
 				TVOS_DEPLOYMENT_TARGET = 11.0;
 				VALIDATE_PRODUCT = YES;
-				WARNING_CFLAGS = "-Wreorder";
+				WARNING_CFLAGS = (
+					"-Wreorder",
+					"-Wno-unused-command-line-argument",
+				);
 			};
 			name = Release;
 		};
