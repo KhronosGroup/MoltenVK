@@ -87,6 +87,20 @@ as an `XCFramework`, as it is the simpler option, and encompasses the largest se
 <a name="install_xcfwk"></a>
 ### Install *MoltenVK* as a Universal `XCFramework`
 
+> ***Note:*** *Xcode 14* introduced a new static linkage model that is not compatible with previous 
+versions of *Xcode*. If you link to a `MoltenVK.xcframework` that was built with *Xcode 14* or later, 
+also use *Xcode 14* or later to link it to your app or game. 
+>
+> If you need to use *Xcode 13* or earlier to link `MoltenVK.xcframework` to your app or game, 
+first [build](../README.md#building) **MoltenVK** with *Xcode 13* or earlier. 
+>
+> Or, if you want to use *Xcode 14* or later to [build](../README.md#building) **MoltenVK**, in order to be able to use the latest 
+*Metal* capabilities, but need to use *Xcode 13* or earlier to link `MoltenVK.xcframework` to your 
+app or game, first add the value `-fno-objc-msgsend-selector-stubs` to the `OTHER_CFLAGS` 
+*Xcode* build setting in the `MoltenVK.xcodeproj` and `MoltenVKShaderConverter.xcodeproj` *Xcode* 
+projects, [build](../README.md#building) **MoltenVK** with *Xcode 14* or later, and then link `MoltenVK.xcframework` 
+to your app or game using *Xcode 13* or earlier.
+
 To link **MoltenVK** to your application as an `XCFramework`, follow these steps:
 
 1. Open your application in *Xcode* and select your application's target in the 
