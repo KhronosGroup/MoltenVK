@@ -220,6 +220,7 @@ protected:
 	MVKFence* _fence;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
 	MVKCommandUse _commandUse;
+	bool _emulatedWaitDone; //Used to track if we've already waited for emulated semaphores.
 };
 
 

@@ -359,7 +359,17 @@ static const char* mvkStringFromErrorState(MTLCommandEncoderErrorState errState)
 void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCompletion) {
 
 	// If using inline semaphore waiting, do so now.
-	for (auto& ws : _waitSemaphores) { ws.first->encodeWait(nil, ws.second); }
+	// When prefilled command buffers are used, multiple commits will happen because native semaphore
+	// waits need to be committed before the prefilled command buffer is committed. Since semaphores
+	// will reset their internal signal flag on wait, we need to make sure that we only wait once, otherwise we will freeze.
+	// Another option to wait on emulated semaphores once is to do it in the execute function, but doing it here
+	// should be more performant when prefilled command buffers aren't used, because we spend time encoding commands
+	// first, thus giving the command buffer signalling these semaphores more time to complete.
+	if (!_emulatedWaitDone)
+	{
+		for (auto& ws : _waitSemaphores) { ws.first->encodeWait(nil, ws.second); }
+		_emulatedWaitDone = true;
+	}
 
 	// If we need to signal completion, use getActiveMTLCommandBuffer() to ensure at least
 	// one MTLCommandBuffer is used, otherwise if this instance has no content, it will not
@@ -463,7 +473,8 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKQueue* queue
 	MVKQueueSubmission(queue,
 					   (pSubmit ? pSubmit->waitSemaphoreCount : 0),
 					   (pSubmit ? pSubmit->pWaitSemaphores : nullptr)),
-	_commandUse(cmdUse) {
+	_commandUse(cmdUse),
+	_emulatedWaitDone(false) {
 
     // pSubmit can be null if just tracking the fence alone
     if (pSubmit) {
