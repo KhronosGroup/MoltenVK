@@ -20,6 +20,7 @@ Released TBD
 
 - Fix crash on descriptor update with out-of-bounds descriptor count data.
 - Work around `MTLCounterSet` crash on additional Intel Iris Plus Graphics devices.
+- Fix mistaken YCBCR format support indication.
 - Document new linkage model used by *Xcode 14* and later, and how to link **MoltenVK**
   to an app or game using *Xcode 13* or earlier.
 - Support *Xcode 14.1* build settings.
