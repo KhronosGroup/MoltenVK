@@ -697,7 +697,7 @@ void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
         encodeStoreActions(true);
     }
     _graphicsPipelineState.encode(stage);    // Must do first..it sets others
-    _graphicsResourcesState.encode(stage);
+    _graphicsResourcesState.encode(stage);   // Before push constants, to allow them to override.
     _viewportState.encode(stage);
     _scissorState.encode(stage);
     _depthBiasState.encode(stage);
@@ -763,7 +763,7 @@ void MVKCommandEncoder::beginMetalComputeEncoding(MVKCommandUse cmdUse) {
 
 void MVKCommandEncoder::finalizeDispatchState() {
     _computePipelineState.encode();    // Must do first..it sets others
-    _computeResourcesState.encode();
+    _computeResourcesState.encode();   // Before push constants, to allow them to override.
     _computePushConstants.encode();
 }
 
@@ -882,7 +882,7 @@ void MVKCommandEncoder::setVertexBytes(id<MTLRenderCommandEncoder> mtlEncoder,
     }
 
 	if (descOverride) {
-		_graphicsResourcesState.markBufferIndexDirty(kMVKShaderStageVertex, mtlBuffIndex);
+		_graphicsResourcesState.markBufferIndexOverridden(kMVKShaderStageVertex, mtlBuffIndex);
 	}
 }
 
@@ -899,7 +899,7 @@ void MVKCommandEncoder::setFragmentBytes(id<MTLRenderCommandEncoder> mtlEncoder,
     }
 
 	if (descOverride) {
-		_graphicsResourcesState.markBufferIndexDirty(kMVKShaderStageFragment, mtlBuffIndex);
+		_graphicsResourcesState.markBufferIndexOverridden(kMVKShaderStageFragment, mtlBuffIndex);
 	}
 }
 
@@ -916,7 +916,7 @@ void MVKCommandEncoder::setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder,
     }
 
 	if (descOverride) {
-		_computeResourcesState.markBufferIndexDirty(mtlBuffIndex);
+		_computeResourcesState.markBufferIndexOverridden(mtlBuffIndex);
 	}
 }
 
