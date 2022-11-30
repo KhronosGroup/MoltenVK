@@ -71,20 +71,23 @@ typedef struct MVKMTLBufferBinding {
     bool justOffset = false;
     bool isDirty = true;
     bool isInline = false;
+	bool isOverridden = false;
 
-    inline void markDirty() { justOffset = false; isDirty = true; }
+	void markDirty() { justOffset = false; isOverridden = false; isDirty = true; }
 
-    inline void update(const MVKMTLBufferBinding &other) {
+    void update(const MVKMTLBufferBinding &other) {
         if (mtlBuffer != other.mtlBuffer || size != other.size || other.isInline) {
             mtlBuffer = other.mtlBuffer;
             size = other.size;
             isInline = other.isInline;
             offset = other.offset;
             justOffset = false;
-            isDirty = true;
+			isOverridden = false;
+			isDirty = true;
         } else if (offset != other.offset) {
             offset = other.offset;
             justOffset = !isDirty || justOffset;
+			isOverridden = false;
             isDirty = true;
         }
     }

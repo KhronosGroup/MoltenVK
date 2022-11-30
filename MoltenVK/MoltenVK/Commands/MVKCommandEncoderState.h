@@ -377,15 +377,25 @@ protected:
         bindingsDirtyFlag = true;
     }
 
-	// Template function to find and mark dirty the binding that uses the index.
+	// Template function to find and mark as overridden the binding that uses the index.
 	template<class T>
-	void markIndexDirty(T& bindings, bool& bindingsDirtyFlag, uint32_t index) {
-		for (auto& b : bindings) {
+	void markBufferIndexOverridden(T& bufferBindings, uint32_t index) {
+		for (auto& b : bufferBindings) {
 			if (b.index == index) {
+				b.isOverridden = true;
+				return;
+			}
+		}
+	}
+
+	// Template function to mark any overridden bindings as dirty.
+	template<class T>
+	void markOverriddenBufferIndexesDirty(T& bufferBindings, bool& bindingsDirtyFlag) {
+		for (auto& b : bufferBindings) {
+			if (b.isOverridden) {
 				b.markDirty();
 				bindingsDirtyFlag = true;
 				MVKCommandEncoderState::markDirty();
-				return;
 			}
 		}
 	}
@@ -548,8 +558,14 @@ public:
 	/** Offset all buffers for vertex attribute bindings with zero divisors by the given number of strides. */
 	void offsetZeroDivisorVertexBuffers(MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);
 
-	/** Marks dirty the buffer binding using the index. */
-	void markBufferIndexDirty(MVKShaderStage stage, uint32_t mtlBufferIndex);
+	/**
+	 * Marks the buffer binding using the index as having been overridden,
+	 * such as by push constants or internal rendering in some transfers.
+	 * */
+	void markBufferIndexOverridden(MVKShaderStage stage, uint32_t mtlBufferIndex);
+
+	/** Marks any overridden buffer indexes as dirty. */
+	void markOverriddenBufferIndexesDirty();
 
 	void markDirty() override;
 
@@ -562,7 +578,7 @@ protected:
     void encodeImpl(uint32_t stage) override;
 	void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) override;
 
-    ResourceBindings<8> _shaderStageResourceBindings[4];
+    ResourceBindings<8> _shaderStageResourceBindings[kMVKShaderStageFragment + 1];
 };
 
 
@@ -600,8 +616,14 @@ public:
 										   MTLResourceUsage mtlUsage,
 										   MTLRenderStages mtlStages) override;
 
-	/** Marks dirty the buffer binding using the index. */
-	void markBufferIndexDirty(uint32_t mtlBufferIndex);
+	/**
+	 * Marks the buffer binding using the index as having been overridden,
+	 * such as by push constants or internal rendering in some transfers.
+	 * */
+	void markBufferIndexOverridden(uint32_t mtlBufferIndex);
+
+	/** Marks any overridden buffer indexes as dirty. */
+	void markOverriddenBufferIndexesDirty();
 
     void markDirty() override;
 

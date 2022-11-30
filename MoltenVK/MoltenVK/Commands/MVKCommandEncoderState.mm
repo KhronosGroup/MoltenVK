@@ -982,9 +982,15 @@ void MVKGraphicsResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(
 	}
 }
 
-void MVKGraphicsResourcesCommandEncoderState::markBufferIndexDirty(MVKShaderStage stage, uint32_t mtlBufferIndex) {
+void MVKGraphicsResourcesCommandEncoderState::markBufferIndexOverridden(MVKShaderStage stage, uint32_t mtlBufferIndex) {
 	auto& stageRezBinds = _shaderStageResourceBindings[stage];
-	markIndexDirty(stageRezBinds.bufferBindings, stageRezBinds.areBufferBindingsDirty, mtlBufferIndex);
+	MVKResourcesCommandEncoderState::markBufferIndexOverridden(stageRezBinds.bufferBindings, mtlBufferIndex);
+}
+
+void MVKGraphicsResourcesCommandEncoderState::markOverriddenBufferIndexesDirty() {
+	for (auto& stageRezBinds : _shaderStageResourceBindings) {
+		MVKResourcesCommandEncoderState::markOverriddenBufferIndexesDirty(stageRezBinds.bufferBindings, stageRezBinds.areBufferBindingsDirty);
+	}
 }
 
 
@@ -1120,8 +1126,12 @@ void MVKComputeResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(M
 	}
 }
 
-void MVKComputeResourcesCommandEncoderState::markBufferIndexDirty(uint32_t mtlBufferIndex) {
-	markIndexDirty(_resourceBindings.bufferBindings, _resourceBindings.areBufferBindingsDirty, mtlBufferIndex);
+void MVKComputeResourcesCommandEncoderState::markBufferIndexOverridden(uint32_t mtlBufferIndex) {
+	MVKResourcesCommandEncoderState::markBufferIndexOverridden(_resourceBindings.bufferBindings, mtlBufferIndex);
+}
+
+void MVKComputeResourcesCommandEncoderState::markOverriddenBufferIndexesDirty() {
+	MVKResourcesCommandEncoderState::markOverriddenBufferIndexesDirty(_resourceBindings.bufferBindings, _resourceBindings.areBufferBindingsDirty);
 }
 
 
