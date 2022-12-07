@@ -45,7 +45,7 @@ static void mvkInitConfigFromEnvVars() {
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.fullImageViewSwizzle,                   MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.defaultGPUCaptureScopeQueueFamilyIndex, MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_FAMILY_INDEX);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.defaultGPUCaptureScopeQueueIndex,       MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_INDEX);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.fastMathEnabled,                        MVK_CONFIG_FAST_MATH_ENABLED);
+	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.fastMathEnabled,                        MVK_CONFIG_FAST_MATH_ENABLED);
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.logLevel,                               MVK_CONFIG_LOG_LEVEL);
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.traceVulkanCalls,                       MVK_CONFIG_TRACE_VULKAN_CALLS);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.forceLowPowerGPU,                       MVK_CONFIG_FORCE_LOW_POWER_GPU);

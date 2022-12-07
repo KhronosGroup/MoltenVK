@@ -122,6 +122,14 @@ typedef enum MVKPrefillMetalCommandBuffersStyle {
 	MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_MAX_ENUM                          = 0x7FFFFFFF
 } MVKPrefillMetalCommandBuffersStyle;
 
+/** Identifies when Metal shaders will be compiled with the fast math option. */
+typedef enum MVKConfigFastMath {
+	MVK_CONFIG_FAST_MATH_NEVER     = 0,  /**< Metal shaders will never be compiled with the fast math option. */
+	MVK_CONFIG_FAST_MATH_ALWAYS    = 1,  /**< Metal shaders will always be compiled with the fast math option. */
+	MVK_CONFIG_FAST_MATH_ON_DEMAND = 2,  /**< Metal shaders will be compiled with the fast math option, unless the shader includes execution modes that require it to be compiled without fast math. */
+	MVK_CONFIG_FAST_MATH_MAX_ENUM  = 0x7FFFFFFF
+} MVKConfigFastMath;
+
 /**
  * MoltenVK configuration settings.
  *
@@ -540,18 +548,30 @@ typedef struct {
 	uint32_t defaultGPUCaptureScopeQueueIndex;
 
 	/**
-	 * Corresponds to the fastMathEnabled property of MTLCompileOptions.
-	 * Setting it may cause the Metal Compiler to optimize floating point operations
-	 * in ways that may violate the IEEE 754 standard.
+	 * Identifies when Metal shaders will be compiled with the Metal fastMathEnabled property
+	 * enabled. For shaders compiled with the Metal fastMathEnabled property enabled, shader
+	 * floating point math is significantly faster, but it may cause the Metal Compiler to
+	 * optimize floating point operations in ways that may violate the IEEE 754 standard.
 	 *
-	 * Must be changed before creating a VkDevice, for the change to take effect.
+	 * Enabling Metal fast math can dramatically improve shader performance, and has little
+	 * practical effect on the numerical accuracy of most shaders. As such, disabling fast
+	 * math should be done carefully and deliberately. For most applications, always enabling
+	 * fast math, by setting the value of this property to MVK_CONFIG_FAST_MATH_ALWAYS,
+	 * is the preferred choice.
+	 *
+	 * Apps that have specific accuracy and handling needs for particular shaders, may elect to
+	 * set the value of this property to MVK_CONFIG_FAST_MATH_ON_DEMAND, so that fast math will
+	 * be disabled when compiling shaders that request capabilities such as SignedZeroInfNanPreserve.
+	 *
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will be applied to future Metal shader compilations.
 	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_FAST_MATH_ENABLED
 	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, the value of this parameter defaults to true.
+	 * If neither is set, the value of this parameter defaults to MVK_CONFIG_FAST_MATH_ALWAYS.
 	 */
-	VkBool32 fastMathEnabled;
+	MVKConfigFastMath fastMathEnabled;
 
 	/**
 	 * Controls the level of logging performned by MoltenVK.
