@@ -715,12 +715,12 @@ public:
 
 	/**
 	 * Returns an autoreleased options object to be used when compiling MSL shaders.
-	 * The useFastMath parameter is and-combined with MVKConfiguration::fastMathEnabled
+	 * The requestFastMath parameter is combined with the value of MVKConfiguration::fastMathEnabled
 	 * to determine whether to enable fast math optimizations in the compiled shader.
 	 * The preserveInvariance parameter indicates that the shader requires the position
 	 * output invariance across invocations (typically for the position output).
 	 */
-	MTLCompileOptions* getMTLCompileOptions(bool useFastMath = true, bool preserveInvariance = false);
+	MTLCompileOptions* getMTLCompileOptions(bool requestFastMath = true, bool preserveInvariance = false);
 
 	/** Returns the Metal vertex buffer index to use for the specified vertex attribute binding number.  */
 	uint32_t getMetalBufferIndexForVertexAttributeBinding(uint32_t binding);

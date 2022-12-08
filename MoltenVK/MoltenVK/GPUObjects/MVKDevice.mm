@@ -4255,10 +4255,11 @@ id<MTLBuffer> MVKDevice::getDummyBlitMTLBuffer() {
 	return _dummyBlitMTLBuffer;
 }
 
-MTLCompileOptions* MVKDevice::getMTLCompileOptions(bool useFastMath, bool preserveInvariance) {
+MTLCompileOptions* MVKDevice::getMTLCompileOptions(bool requestFastMath, bool preserveInvariance) {
 	MTLCompileOptions* mtlCompOpt = [MTLCompileOptions new];
 	mtlCompOpt.languageVersion = _pMetalFeatures->mslVersionEnum;
-	mtlCompOpt.fastMathEnabled = useFastMath && mvkConfig().fastMathEnabled;
+	mtlCompOpt.fastMathEnabled = (mvkConfig().fastMathEnabled == MVK_CONFIG_FAST_MATH_ALWAYS ||
+								  (mvkConfig().fastMathEnabled == MVK_CONFIG_FAST_MATH_ON_DEMAND && requestFastMath));
 #if MVK_XCODE_12
 	if ([mtlCompOpt respondsToSelector: @selector(setPreserveInvariance:)]) {
 		[mtlCompOpt setPreserveInvariance: preserveInvariance];

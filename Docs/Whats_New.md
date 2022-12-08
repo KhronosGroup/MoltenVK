@@ -20,6 +20,7 @@ Released TBD
 
 - Fix crash on descriptor update with out-of-bounds descriptor count data.
 - Fix Metal buffer index binding overrides for push constants and attachment clearing.
+- Fix app performance regression triggered by the previous introduction of `VK_KHR_shader_float_controls`.
 - Work around `MTLCounterSet` crash on additional Intel Iris Plus Graphics devices.
 - Fix mistaken YCBCR format support indication.
 - Document new linkage model used by *Xcode 14* and later, and how to link **MoltenVK**

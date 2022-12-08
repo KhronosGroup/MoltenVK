@@ -173,9 +173,9 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #   define MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE    0
 #endif
 
-/** Set the fastMathEnabled Metal Compiler option. Enabled by default. */
+/** Set the fastMathEnabled Metal Compiler option. Set to always use fast math by default. */
 #ifndef MVK_CONFIG_FAST_MATH_ENABLED
-#   define MVK_CONFIG_FAST_MATH_ENABLED 1
+#   define MVK_CONFIG_FAST_MATH_ENABLED    MVK_CONFIG_FAST_MATH_ALWAYS
 #endif
 
 /** Set the logging level: */
