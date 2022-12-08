@@ -22,6 +22,7 @@ Released 2022/12/08
 	- `VK_KHR_copy_commands2`
 - Fix crash on descriptor update with out-of-bounds descriptor count data.
 - Fix Metal buffer index binding overrides for push constants and attachment clearing.
+- Fix crash when buffer binding updates only offset while it is overridden.
 - Fix app performance regression triggered by the previous introduction of `VK_KHR_shader_float_controls`.
 - Work around `MTLCounterSet` crash on additional Intel Iris Plus Graphics devices.
 - Fix mistaken YCBCR format support indication.
