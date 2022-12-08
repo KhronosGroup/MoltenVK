@@ -16,16 +16,40 @@ Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.2.1
 --------------
 
-Released TBD
+Released 2022/12/08
 
+- Add support for extensions:
+	- `VK_KHR_copy_commands2`
 - Fix crash on descriptor update with out-of-bounds descriptor count data.
 - Fix Metal buffer index binding overrides for push constants and attachment clearing.
 - Fix app performance regression triggered by the previous introduction of `VK_KHR_shader_float_controls`.
 - Work around `MTLCounterSet` crash on additional Intel Iris Plus Graphics devices.
 - Fix mistaken YCBCR format support indication.
+- Fix invalid blit offsets.
+- Wait on emulated semaphores only once to prevent freezing when using prefilled command buffers.
+- `MVKPipeline`: Stop using vertex-style input for tessellation evaluation shaders.
+- `MVKPipeline`: Force extra checks for stores after fragment discard.
+- `MVKImage`: Always use a texel buffer for atomic storage images.
+- `MVKDevice`: Fix backwards attribution of storage/uniform texel buffer alignments.
 - Document new linkage model used by *Xcode 14* and later, and how to link **MoltenVK**
   to an app or game using *Xcode 13* or earlier.
 - Support *Xcode 14.1* build settings.
+- Upgrade GitHub CI to use *Xcode 14.1* on *macOS 12*.
+- Update dependency libraries to match _Vulkan SDK 1.3.236_.
+- Update to latest SPIRV-Cross:
+  - MSL: Implement `CompositeInsert` `OpSpecConstantOp`.
+  - MSL: Support "raw" buffer input in tessellation evaluation shaders.
+  - MSL: Don't flatten arrayed per-patch output blocks in tessellation shaders.
+  - MSL: Account for composite types when assigning locations.
+  - MSL: Handle partial access chains with array-of-UBO/SSBO.
+  - MSL: Fix restrict vs __restrict incompatibility.
+  - MSL: Handle implicit integer promotion rules.
+  - MSL: Manually update `BuiltInHelperInvocation` when a fragment is discarded.
+  - MSL: Add missing casts to `Op?MulExtended`.
+  - MSL: Prevent stores to storage resources in discarded fragments.
+  - MSL: Don't dereference forwarded copies of `OpVariable` pointers.
+  - MSL: Refactor member reference in terms of one boolean.
+  - Fix MSL Access Chain.
 
 
 MoltenVK 1.2.0
