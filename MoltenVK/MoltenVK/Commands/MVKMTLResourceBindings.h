@@ -86,7 +86,7 @@ typedef struct MVKMTLBufferBinding {
 			isDirty = true;
         } else if (offset != other.offset) {
             offset = other.offset;
-            justOffset = !isDirty || justOffset;
+            justOffset = !isOverridden && (!isDirty || justOffset);
 			isOverridden = false;
             isDirty = true;
         }
