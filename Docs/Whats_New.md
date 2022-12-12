@@ -13,6 +13,15 @@ Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.2.2
+--------------
+
+Released TBD
+
+- Fix excessive Metal tile memory preallocation when rendering without attachments.
+
+
+
 MoltenVK 1.2.1
 --------------
 
@@ -51,6 +60,7 @@ Released 2022/12/08
   - MSL: Don't dereference forwarded copies of `OpVariable` pointers.
   - MSL: Refactor member reference in terms of one boolean.
   - Fix MSL Access Chain.
+
 
 
 MoltenVK 1.2.0

@@ -523,9 +523,18 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 		mtlRPDesc.visibilityResultBuffer = _pEncodingContext->visibilityResultBuffer->_mtlBuffer;
 	}
 
-	VkExtent2D fbExtent = getFramebufferExtent();
-    mtlRPDesc.renderTargetWidthMVK = max(min(_renderArea.offset.x + _renderArea.extent.width, fbExtent.width), 1u);
-    mtlRPDesc.renderTargetHeightMVK = max(min(_renderArea.offset.y + _renderArea.extent.height, fbExtent.height), 1u);
+	// Metal uses MTLRenderPassDescriptor properties renderTargetWidth, renderTargetHeight,
+	// and renderTargetArrayLength to preallocate tile memory storage on machines using tiled
+	// rendering. This memory preallocation is not necessary if we are not rendering to
+	// attachments, and some apps actively define extremely oversized framebuffers when they
+	// know they are not rendering to actual attachments, making this internal tile memory
+	// allocation even more wasteful, occasionally to the point of triggering OOM crashes.
+	bool hasAttachments = _attachments.size() > 0;
+	if (hasAttachments) {
+		VkExtent2D fbExtent = getFramebufferExtent();
+		mtlRPDesc.renderTargetWidthMVK = max(min(_renderArea.offset.x + _renderArea.extent.width, fbExtent.width), 1u);
+		mtlRPDesc.renderTargetHeightMVK = max(min(_renderArea.offset.y + _renderArea.extent.height, fbExtent.height), 1u);
+	}
     if (_canUseLayeredRendering) {
         uint32_t renderTargetArrayLength;
         bool found3D = false, found2D = false;
@@ -548,7 +557,7 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 			renderTargetArrayLength = getFramebufferLayerCount();
         }
         // Metal does not allow layered render passes where some RTs are 3D and others are 2D.
-        if (!(found3D && found2D) || renderTargetArrayLength > 1) {
+        if (hasAttachments && (!(found3D && found2D) || renderTargetArrayLength > 1)) {
             mtlRPDesc.renderTargetArrayLengthMVK = renderTargetArrayLength;
         }
     }
