@@ -263,7 +263,8 @@ public:
 						uint32_t attachmentCount,
 						const VkClearAttachment* pAttachments,
 						uint32_t rectCount,
-						const VkClearRect* pRects);
+						const VkClearRect* pRects,
+						bool isSubpassRenderAreaClear = false);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -279,10 +280,11 @@ protected:
 
 	MVKSmallVector<VkClearRect, N> _clearRects;
     MVKRPSKeyClearAtt _rpsKey;
-	bool _isClearingDepth;
-	bool _isClearingStencil;
 	float _mtlDepthVal;
     uint32_t _mtlStencilValue;
+	bool _isClearingDepth;
+	bool _isClearingStencil;
+	bool _isSubpassRenderAreaClear;
 };
 
 

@@ -103,6 +103,19 @@ void MVKViewportCommandEncoderState::encodeImpl(uint32_t stage) {
     }
 }
 
+VkRect2D MVKViewportCommandEncoderState::getUnionVkRect() {
+	VkRect2D rslt = {};
+	auto& usingViewports = _viewports.size() > 0 ? _viewports : _dynamicViewports;
+	if ( !usingViewports.empty() ) {
+		rslt = mvkVkRectFromVkViewport(usingViewports[0]);
+		size_t vpCnt = usingViewports.size();
+		for (uint32_t vpIdx = 1; vpIdx < vpCnt; vpIdx++) {
+			rslt = mvkVkRect2DUnion(rslt, mvkVkRectFromVkViewport(usingViewports[vpIdx]));
+		}
+	}
+	return rslt;
+}
+
 
 #pragma mark -
 #pragma mark MVKScissorCommandEncoderState
@@ -154,6 +167,19 @@ void MVKScissorCommandEncoderState::encodeImpl(uint32_t stage) {
 	} else {
 		[_cmdEncoder->_mtlRenderEncoder setScissorRect: mvkMTLScissorRectFromVkRect2D(_cmdEncoder->clipToRenderArea(usingScissors[0]))];
 	}
+}
+
+VkRect2D MVKScissorCommandEncoderState::getUnionVkRect() {
+	VkRect2D rslt = {};
+	auto& usingScissors = _scissors.size() > 0 ? _scissors : _dynamicScissors;
+	if ( !usingScissors.empty() ) {
+		rslt = usingScissors[0];
+		size_t sCnt = usingScissors.size();
+		for (uint32_t sIdx = 1; sIdx < sCnt; sIdx++) {
+			rslt = mvkVkRect2DUnion(rslt, usingScissors[sIdx]);
+		}
+	}
+	return rslt;
 }
 
 

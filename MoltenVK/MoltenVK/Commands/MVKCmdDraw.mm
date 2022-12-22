@@ -213,7 +213,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 				}
                 // Running this stage prematurely ended the render pass, so we have to start it up again.
                 // TODO: On iOS, maybe we could use a tile shader to avoid this.
-                cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
+                cmdEncoder->enqueueNextMetalRenderPass(kMVKCommandUseRestartSubpass);
                 break;
 			}
             case kMVKGraphicsStageRasterization:
@@ -416,7 +416,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 				}
                 // Running this stage prematurely ended the render pass, so we have to start it up again.
                 // TODO: On iOS, maybe we could use a tile shader to avoid this.
-                cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
+                cmdEncoder->enqueueNextMetalRenderPass(kMVKCommandUseRestartSubpass);
                 break;
 			}
             case kMVKGraphicsStageRasterization:
@@ -686,7 +686,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                                       threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
                 }
                 // Switch back to rendering now, since we don't have compute stages to run anyway.
-                cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
+                cmdEncoder->enqueueNextMetalRenderPass(kMVKCommandUseRestartSubpass);
             }
 
             cmdEncoder->finalizeDrawState(stage);	// Ensure all updated state has been submitted to Metal
@@ -749,7 +749,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                     mtlIndBuffOfst += sizeof(MTLDispatchThreadgroupsIndirectArguments);
                     // Running this stage prematurely ended the render pass, so we have to start it up again.
                     // TODO: On iOS, maybe we could use a tile shader to avoid this.
-                    cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
+                    cmdEncoder->enqueueNextMetalRenderPass(kMVKCommandUseRestartSubpass);
                     break;
                 case kMVKGraphicsStageRasterization:
                     if (pipeline->isTessellationPipeline()) {
@@ -1019,7 +1019,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 									  threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
 				}
 				// Switch back to rendering now, since we don't have compute stages to run anyway.
-                cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
+                cmdEncoder->enqueueNextMetalRenderPass(kMVKCommandUseRestartSubpass);
             }
 
 	        cmdEncoder->finalizeDrawState(stage);	// Ensure all updated state has been submitted to Metal
@@ -1084,7 +1084,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                     mtlTempIndBuffOfst += sizeof(MTLDispatchThreadgroupsIndirectArguments);
                     // Running this stage prematurely ended the render pass, so we have to start it up again.
                     // TODO: On iOS, maybe we could use a tile shader to avoid this.
-                    cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
+                    cmdEncoder->enqueueNextMetalRenderPass(kMVKCommandUseRestartSubpass);
                     break;
                 case kMVKGraphicsStageRasterization:
                     if (pipeline->isTessellationPipeline()) {

@@ -472,13 +472,13 @@ void MVKCommandEncoder::setSubpass(MVKCommand* subpassCmd,
 							   (_device->_pMetalFeatures->multisampleLayeredRendering ||
 							    (getSubpass()->getSampleCount() == VK_SAMPLE_COUNT_1_BIT)));
 
-	beginMetalRenderPass(_renderSubpassIndex == 0 ? kMVKCommandUseBeginRenderPass : kMVKCommandUseNextSubpass);
+	enqueueNextMetalRenderPass(_renderSubpassIndex == 0 ? kMVKCommandUseBeginRenderPass : kMVKCommandUseNextSubpass);
 }
 
 void MVKCommandEncoder::beginNextMultiviewPass() {
 	encodeStoreActions();
 	_multiviewPassIndex++;
-	beginMetalRenderPass(kMVKCommandUseNextSubpass);
+	enqueueNextMetalRenderPass(kMVKCommandUseNextSubpass);
 }
 
 uint32_t MVKCommandEncoder::getMultiviewPassIndex() { return _multiviewPassIndex; }
@@ -501,13 +501,22 @@ void MVKCommandEncoder::endMetalEncoding(T& mtlEnc) {
 	mtlEnc = nil;
 }
 
+void MVKCommandEncoder::enqueueNextMetalRenderPass(MVKCommandUse cmdUse) {
+	endMetalRenderEncoding();
+	_mtlRenderEncoderUse = cmdUse;
+}
+
+id<MTLRenderCommandEncoder> MVKCommandEncoder::ensureMetalRenderPass() {
+	if (_mtlRenderEncoderUse && !_mtlRenderEncoder) { beginMetalRenderPass(); }
+	return _mtlRenderEncoder;
+}
 
 // Creates _mtlRenderEncoder and marks cached render state as dirty so it will be set into the _mtlRenderEncoder.
-void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
+void MVKCommandEncoder::beginMetalRenderPass() {
 
     endCurrentMetalEncoding();
 
-	bool isRestart = cmdUse == kMVKCommandUseRestartSubpass;
+	bool isRestart = _mtlRenderEncoderUse == kMVKCommandUseRestartSubpass;
     MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
 	getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc,
 												  _multiviewPassIndex,
@@ -523,43 +532,42 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 		mtlRPDesc.visibilityResultBuffer = _pEncodingContext->visibilityResultBuffer->_mtlBuffer;
 	}
 
-	// Metal uses MTLRenderPassDescriptor properties renderTargetWidth, renderTargetHeight,
-	// and renderTargetArrayLength to preallocate tile memory storage on machines using tiled
-	// rendering. This memory preallocation is not necessary if we are not rendering to
-	// attachments, and some apps actively define extremely oversized framebuffers when they
-	// know they are not rendering to actual attachments, making this internal tile memory
-	// allocation even more wasteful, occasionally to the point of triggering OOM crashes.
+	// Metal uses MTLRenderPassDescriptor properties renderTargetWidth, renderTargetHeight, and
+	// renderTargetArrayLength to preallocate tile memory storage on machines using tiled rendering.
+	// When rendering without attachments, some apps actively define hugely oversized framebuffers
+	// and render areas, making this internal tile memory allocation extremely wasteful, occasionally
+	// to the point of triggering OOM crashes. In this case, if we have a viewport, use it as a more
+	// accurate representation of what the tiled render area will actually be.
 	bool hasAttachments = _attachments.size() > 0;
-	if (hasAttachments) {
-		VkExtent2D fbExtent = getFramebufferExtent();
-		mtlRPDesc.renderTargetWidthMVK = max(min(_renderArea.offset.x + _renderArea.extent.width, fbExtent.width), 1u);
-		mtlRPDesc.renderTargetHeightMVK = max(min(_renderArea.offset.y + _renderArea.extent.height, fbExtent.height), 1u);
-	}
-    if (_canUseLayeredRendering) {
-        uint32_t renderTargetArrayLength;
+	VkRect2D rendArea = clipToRenderArea(!hasAttachments && _viewportState.hasViewport()
+										 ? _viewportState.getUnionVkRect()
+										 : mvkMakeVkRect({0,0}, getFramebufferExtent()));
+	mtlRPDesc.renderTargetWidthMVK = max(rendArea.offset.x + rendArea.extent.width, 1u);
+	mtlRPDesc.renderTargetHeightMVK = max(rendArea.offset.y + rendArea.extent.height, 1u);
+
+	if (_canUseLayeredRendering) {
         bool found3D = false, found2D = false;
         for (uint32_t i = 0; i < 8; i++) {
             id<MTLTexture> mtlTex = mtlRPDesc.colorAttachments[i].texture;
-            if (mtlTex == nil) { continue; }
-            switch (mtlTex.textureType) {
-                case MTLTextureType3D:
-                    found3D = true;
-                default:
-                    found2D = true;
-            }
+			if (mtlTex) {
+				switch (mtlTex.textureType) {
+					case MTLTextureType3D:
+						found3D = true;
+					default:
+						found2D = true;
+				}
+			}
         }
 
-        if (getSubpass()->isMultiview()) {
-            // In the case of a multiview pass, the framebuffer layer count will be one.
-            // We need to use the view count for this multiview pass.
-			renderTargetArrayLength = getSubpass()->getViewCountInMetalPass(_multiviewPassIndex);
-        } else {
-			renderTargetArrayLength = getFramebufferLayerCount();
-        }
-        // Metal does not allow layered render passes where some RTs are 3D and others are 2D.
-        if (hasAttachments && (!(found3D && found2D) || renderTargetArrayLength > 1)) {
-            mtlRPDesc.renderTargetArrayLengthMVK = renderTargetArrayLength;
-        }
+		// As above, to avoid overallocation, do not use layering if there are no attachments.
+		// And Metal does not support layered render passes with a mix of 2D & 3D targets.
+		// For a multiview pass, the framebuffer layer count will be 1, so we need to use
+		// the view count for this multiview pass. Otherwise, use the framebuffer layer count.
+		if (hasAttachments && !(found3D && found2D)) {
+			mtlRPDesc.renderTargetArrayLengthMVK = (getSubpass()->isMultiview()
+													? getSubpass()->getViewCountInMetalPass(_multiviewPassIndex)
+													: getFramebufferLayerCount());
+		}
     }
 
 	// If programmable sample positions are supported, set them into the render pass descriptor.
@@ -572,7 +580,7 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
 	retainIfImmediatelyEncoding(_mtlRenderEncoder);
-	setLabelIfNotNil(_mtlRenderEncoder, getMTLRenderCommandEncoderName(cmdUse));
+	setLabelIfNotNil(_mtlRenderEncoder, getMTLRenderCommandEncoderName(_mtlRenderEncoderUse));
 
 	// We shouldn't clear the render area if we are restarting the Metal renderpass
 	// separately from a Vulkan subpass, and we otherwise only need to clear render
@@ -607,6 +615,7 @@ MVKArrayRef<MTLSamplePosition> MVKCommandEncoder::getCustomSamplePositions() {
 }
 
 void MVKCommandEncoder::encodeStoreActions(bool storeOverride) {
+	ensureMetalRenderPass();
 	getSubpass()->encodeStoreActions(this,
 									 _isRenderingEntireAttachment,
 									 _attachments.contents(),
@@ -701,10 +710,18 @@ VkRect2D MVKCommandEncoder::clipToRenderArea(VkRect2D scissor) {
 }
 
 void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
-    if (stage == kMVKGraphicsStageVertex) {
-        // Must happen before switching encoders.
-        encodeStoreActions(true);
-    }
+	// Must happen before switching encoders.
+	switch (stage) {
+		case kMVKGraphicsStageVertex:
+			encodeStoreActions(true);
+			break;
+		case kMVKGraphicsStageRasterization:
+			ensureMetalRenderPass();
+			break;
+		default:
+			break;
+	}
+
     _graphicsPipelineState.encode(stage);    // Must do first..it sets others
     _graphicsResourcesState.encode(stage);   // Before push constants, to allow them to override.
     _viewportState.encode(stage);
@@ -739,7 +756,7 @@ void MVKCommandEncoder::clearRenderArea() {
 		// Create and execute a temporary clear attachments command.
 		// To be threadsafe...do NOT acquire and return the command from the pool.
 		MVKCmdClearMultiAttachments<1> cmd;
-		cmd.setContent(_cmdBuffer, clearAttCnt, clearAtts.data(), 1, &clearRect);
+		cmd.setContent(_cmdBuffer, clearAttCnt, clearAtts.data(), 1, &clearRect, true);
 		cmd.encode(this);
 	} else {
 		// For multiview, it is possible that some attachments need different layers cleared.
@@ -751,15 +768,19 @@ void MVKCommandEncoder::clearRenderArea() {
 			// To be threadsafe...do NOT acquire and return the command from the pool.
 			if (clearRects.size() == 1) {
 				MVKCmdClearSingleAttachment<1> cmd;
-				cmd.setContent(_cmdBuffer, 1, &clearAtt, (uint32_t)clearRects.size(), clearRects.data());
+				cmd.setContent(_cmdBuffer, 1, &clearAtt, (uint32_t)clearRects.size(), clearRects.data(), true);
 				cmd.encode(this);
 			} else {
 				MVKCmdClearSingleAttachment<4> cmd;
-				cmd.setContent(_cmdBuffer, 1, &clearAtt, (uint32_t)clearRects.size(), clearRects.data());
+				cmd.setContent(_cmdBuffer, 1, &clearAtt, (uint32_t)clearRects.size(), clearRects.data(), true);
 				cmd.encode(this);
 			}
 		}
 	}
+
+	// Clearing the render area might result in the subpass being restarted, which will end the Metal
+	// renderpass just created. If so, we need to ensure another is established before continuing.
+	ensureMetalRenderPass();
 }
 
 void MVKCommandEncoder::beginMetalComputeEncoding(MVKCommandUse cmdUse) {
@@ -795,6 +816,7 @@ void MVKCommandEncoder::endMetalRenderEncoding() {
 
 	if (_cmdBuffer->_hasStageCounterTimestampCommand) { [_mtlRenderEncoder updateFence: getStageCountersMTLFence() afterStages: MTLRenderStageFragment]; }
 	endMetalEncoding(_mtlRenderEncoder);
+	_mtlRenderEncoderUse = kMVKCommandUseNone;
 
 	getSubpass()->resolveUnresolvableAttachments(this, _attachments.contents());
 
@@ -1120,6 +1142,7 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
             _pActivatedQueries = nullptr;
             _mtlCmdBuffer = nil;
             _mtlRenderEncoder = nil;
+			_mtlRenderEncoderUse = kMVKCommandUseNone;
             _mtlComputeEncoder = nil;
 			_mtlComputeEncoderUse = kMVKCommandUseNone;
             _mtlBlitEncoder = nil;

@@ -147,6 +147,12 @@ public:
 					  uint32_t firstViewport,
 					  bool isSettingDynamically);
 
+	/** Returns whether at least one viewport has been set. */
+	bool hasViewport() { return !_viewports.empty() || !_dynamicViewports.empty(); }
+
+	/** Returns the smallest render area rect that contains all the viewports.*/
+	VkRect2D getUnionVkRect();
+
     /** Constructs this instance for the specified command encoder. */
     MVKViewportCommandEncoderState(MVKCommandEncoder* cmdEncoder)
         : MVKCommandEncoderState(cmdEncoder) {}
@@ -174,6 +180,12 @@ public:
 	void setScissors(const MVKArrayRef<VkRect2D> scissors,
 					 uint32_t firstScissor,
 					 bool isSettingDynamically);
+
+	/** Returns whether at least one scissor rectangle has been set. */
+	bool hasScissor() { return !_scissors.empty() || !_dynamicScissors.empty(); }
+
+	/** Returns the smallest render area rect that contains all the scissor rects.*/
+	VkRect2D getUnionVkRect();
 
     /** Constructs this instance for the specified command encoder. */
     MVKScissorCommandEncoderState(MVKCommandEncoder* cmdEncoder)

@@ -256,8 +256,14 @@ public:
 	/** Begins dynamic rendering. */
 	void beginRendering(MVKCommand* rendCmd, const VkRenderingInfo* pRenderingInfo);
 
-	/** Begins a Metal render pass for the current render subpass. */
-	void beginMetalRenderPass(MVKCommandUse cmdUse);
+	/** Enqueue the next Metal render pass for the current render subpass. */
+	void enqueueNextMetalRenderPass(MVKCommandUse cmdUse);
+
+	/**
+	 * If a Metal render encoder has been enqueued, ensure it has been created,
+	 * lazily doing so if necessary, and return the corresponding MTLRenderCommandEncoder.
+	 */
+	id<MTLRenderCommandEncoder> ensureMetalRenderPass();
 
 	/** If a render encoder is active, encodes store actions for all attachments to it. */
 	void encodeStoreActions(bool storeOverride = false);
@@ -485,6 +491,7 @@ protected:
 	void encodeTimestampStageCounterSamples();
 	id<MTLFence> getStageCountersMTLFence();
 	MVKArrayRef<MTLSamplePosition> getCustomSamplePositions();
+	void beginMetalRenderPass();
 	NSString* getMTLRenderCommandEncoderName(MVKCommandUse cmdUse);
 	template<typename T> void retainIfImmediatelyEncoding(T& mtlEnc);
 	template<typename T> void endMetalEncoding(T& mtlEnc);
@@ -516,6 +523,7 @@ protected:
 	uint32_t _renderSubpassIndex;
 	uint32_t _multiviewPassIndex;
     uint32_t _flushCount;
+	MVKCommandUse _mtlRenderEncoderUse;
 	MVKCommandUse _mtlComputeEncoderUse;
 	MVKCommandUse _mtlBlitEncoderUse;
 	bool _isRenderingEntireAttachment;
