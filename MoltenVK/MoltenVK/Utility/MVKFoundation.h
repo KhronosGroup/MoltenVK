@@ -285,6 +285,53 @@ static inline VkOffset3D mvkVkOffset3DDifference(VkOffset3D minuend, VkOffset3D 
 	return rslt;
 }
 
+/** Returns a VkRect constructed from an offset and extent.*/
+static inline VkRect2D mvkMakeVkRect(VkOffset2D offset, VkExtent2D extent) {
+	return {offset, extent};
+}
+
+/** Returns a VkRect constructed from an offset and extent.*/
+static inline VkRect2D mvkMakeVkRect(int32_t x, int32_t y, uint32_t width, uint32_t height) {
+	return { {x, y}, {width, height} };
+}
+
+/** Returns a VkRect2D from the 2D part of a VkViewport.*/
+static inline VkRect2D mvkVkRectFromVkViewport(VkViewport vkViewport) {
+	return mvkMakeVkRect(vkViewport.x, vkViewport.y, vkViewport.width, vkViewport.height);
+}
+
+/** Returns a rect that defines the intersection of both rects.*/
+static inline VkRect2D mvkVkRect2DIntersection(VkRect2D r1, VkRect2D r2) {
+	int32_t leftEdge   = std::max(r1.offset.x, r2.offset.x);
+	int32_t bottomEdge = std::max(r1.offset.y, r2.offset.y);
+	int32_t rightEdge  = std::min(r1.offset.x + (int32_t)r1.extent.width, r2.offset.x + (int32_t)r2.extent.width);
+	int32_t topEdge    = std::min(r1.offset.y + (int32_t)r1.extent.height, r2.offset.y + (int32_t)r2.extent.height);
+
+	VkRect2D rslt = {};
+	if (rightEdge > leftEdge && topEdge > bottomEdge) {
+		rslt.offset.x = leftEdge;
+		rslt.offset.y = bottomEdge;
+		rslt.extent.width = rightEdge - leftEdge;
+		rslt.extent.height = topEdge - bottomEdge;
+	}
+	return rslt;
+}
+
+/** Returns the smallest rect that contains both rects.*/
+static inline VkRect2D mvkVkRect2DUnion(VkRect2D r1, VkRect2D r2) {
+	int32_t leftEdge   = std::min(r1.offset.x, r2.offset.x);
+	int32_t bottomEdge = std::min(r1.offset.y, r2.offset.y);
+	int32_t rightEdge  = std::max(r1.offset.x + (int32_t)r1.extent.width, r2.offset.x + (int32_t)r2.extent.width);
+	int32_t topEdge    = std::max(r1.offset.y + (int32_t)r1.extent.height, r2.offset.y + (int32_t)r2.extent.height);
+
+	VkRect2D rslt = {};
+	rslt.offset.x = leftEdge;
+	rslt.offset.y = bottomEdge;
+	rslt.extent.width = rightEdge - leftEdge;
+	rslt.extent.height = topEdge - bottomEdge;
+	return rslt;
+}
+
 /** Packs the four swizzle components into a single 32-bit word. */
 static inline uint32_t mvkPackSwizzle(VkComponentMapping components) {
 	return ((components.r & 0xFF) << 0) | ((components.g & 0xFF) << 8) |

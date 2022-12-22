@@ -1254,12 +1254,14 @@ VkResult MVKCmdClearAttachments<N>::setContent(MVKCommandBuffer* cmdBuff,
 											   uint32_t attachmentCount,
 											   const VkClearAttachment* pAttachments,
 											   uint32_t rectCount,
-											   const VkClearRect* pRects) {
+											   const VkClearRect* pRects,
+											   bool isSubpassRenderAreaClear) {
 	_rpsKey.reset();
 	_mtlDepthVal = 0.0;
     _mtlStencilValue = 0;
     _isClearingDepth = false;
     _isClearingStencil = false;
+	_isSubpassRenderAreaClear = isSubpassRenderAreaClear;
 	MVKPixelFormats* pixFmts = cmdBuff->getPixelFormats();
 
     // For each attachment to be cleared, mark it so in the render pipeline state
@@ -1462,8 +1464,8 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
     // Render the clear colors to the attachments
 	MVKCommandEncodingPool* cmdEncPool = cmdEncoder->getCommandEncodingPool();
-    id<MTLRenderCommandEncoder> mtlRendEnc = cmdEncoder->_mtlRenderEncoder;
-    [mtlRendEnc pushDebugGroup: @"vkCmdClearAttachments"];
+    id<MTLRenderCommandEncoder> mtlRendEnc = cmdEncoder->ensureMetalRenderPass();
+    [mtlRendEnc pushDebugGroup: _isSubpassRenderAreaClear ?  @"SubpassRenderAreaClear" : @"vkCmdClearAttachments"];
     [mtlRendEnc setRenderPipelineState: cmdEncPool->getCmdClearMTLRenderPipelineState(_rpsKey)];
     [mtlRendEnc setDepthStencilState: cmdEncPool->getMTLDepthStencilState(isClearingDepth, isClearingStencil)];
     [mtlRendEnc setStencilReferenceValue: _mtlStencilValue];
@@ -1493,7 +1495,7 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		}
 		if (needsRenderpassRestart) {
 			cmdEncoder->encodeStoreActions(true);
-			cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
+			cmdEncoder->enqueueNextMetalRenderPass(kMVKCommandUseRestartSubpass);
 		}
 	}
 
