@@ -13,15 +13,6 @@ Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
-MoltenVK 1.2.2
---------------
-
-Released TBD
-
-- Fix excessive Metal tile memory preallocation when rendering without attachments.
-
-
-
 MoltenVK 1.2.1
 --------------
 
