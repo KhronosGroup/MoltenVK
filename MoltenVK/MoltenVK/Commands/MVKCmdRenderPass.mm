@@ -84,7 +84,6 @@ VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N_CV, size_t N_A>
 void MVKCmdBeginRenderPass<N_CV, N_A>::encode(MVKCommandEncoder* cmdEncoder) {
-//	MVKLogDebug("Encoding vkCmdBeginRenderPass(). Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
 
 	// Convert the sample position array of arrays to an array of array-references,
 	// so that it can be passed to the command encoder.
@@ -157,7 +156,6 @@ VkResult MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdEndRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
-//	MVKLogDebug("Encoding vkCmdEndRenderPass(). Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
 	if (cmdEncoder->getMultiviewPassIndex() + 1 < cmdEncoder->getSubpass()->getMultiviewMetalPassCount())
 		cmdEncoder->beginNextMultiviewPass();
 	else

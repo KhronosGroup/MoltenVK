@@ -304,8 +304,6 @@ MVKQueueSubmission::~MVKQueueSubmission() {
 
 void MVKQueueCommandBufferSubmission::execute() {
 
-//	MVKLogDebug("Executing submission %p.", this);
-
 	_queue->_submissionCaptureScope->beginScope();
 
 	// If using encoded semaphore waiting, do so now.
@@ -448,8 +446,6 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 // and the app immediately destroys objects. Rare, but it has been encountered.
 void MVKQueueCommandBufferSubmission::finish() {
 
-//	MVKLogDebug("Finishing submission %p. Submission count %u.", this, _subCount--);
-
 	// Performed here instead of as part of execute() for rare case where app destroys queue
 	// immediately after a waitIdle() is cleared by fence below, taking the capture scope with it.
 	_queue->_submissionCaptureScope->endScope();
@@ -509,9 +505,6 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKQueue* queue
 	if (_fence) { _fence->retain(); }
 
 	_activeMTLCommandBuffer = nil;
-
-//	static std::atomic<uint32_t> _subCount;
-//	MVKLogDebug("Creating submission %p. Submission count %u.", this, ++_subCount);
 }
 
 MVKQueueCommandBufferSubmission::~MVKQueueCommandBufferSubmission() {
