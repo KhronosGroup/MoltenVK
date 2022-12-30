@@ -32,7 +32,7 @@ class MVKCommandPool;
 class MVKQueueCommandBufferSubmission;
 class MVKCommandEncoder;
 class MVKCommandEncodingPool;
-class MVKCmdBeginRenderPassBase;
+class MVKCmdBeginRenderPass;
 class MVKCmdNextSubpass;
 class MVKRenderPass;
 class MVKFramebuffer;
@@ -95,6 +95,29 @@ public:
 	/** Adds the specified execution command at the end of this command buffer. */
 	void addCommand(MVKCommand* command);
 
+    /** Destroy the specified execution command when the command buffer is reset. */
+    inline void destroyOnReset(MVKCommand* command) {
+        _destroyList.push_back(command);
+    }
+
+    /** Allocates memory for recorded commands, allocating new memory chunks, if needed.  */
+    inline void *pushCommandMemory(size_t size) {
+        size = (uint32_t)mvkAlignByteCount(size, 8);
+
+        if (size + _commandChunkOffset > _commandChunkSize) {
+            _commandChunkIndex++;
+            _commandChunkOffset = 0;
+        }
+
+        if (_commandChunkIndex >= _commandChunks.size()) {
+            _commandChunks.push_back(new uint8_t[_commandChunkSize]);
+        }
+
+        auto result = _commandChunks[_commandChunkIndex] + _commandChunkOffset;
+        _commandChunkOffset += size;
+        return result;
+    }
+
 	/** Returns the number of commands currently in this command buffer. */
 	uint32_t getCommandCount() { return _commandCount; }
 
@@ -134,7 +157,7 @@ public:
 #pragma mark Multiview render pass command management
 
 	/** Update the last recorded multiview render pass */
-	void recordBeginRenderPass(MVKCmdBeginRenderPassBase* mvkBeginRenderPass);
+	void recordBeginRenderPass(MVKCmdBeginRenderPass* mvkBeginRenderPass);
 
 	/** Update the last recorded multiview subpass */
 	void recordNextSubpass();
@@ -178,7 +201,6 @@ protected:
 	void init(const VkCommandBufferAllocateInfo* pAllocateInfo);
 	bool canExecute();
 	void clearPrefilledMTLCommandBuffer();
-    void releaseCommands(MVKCommand* command);
 	void releaseRecordedCommands();
 	void flushImmediateCmdEncoder();
 	void checkDeferredEncoding();
@@ -187,6 +209,11 @@ protected:
 	MVKCommand* _tail = nullptr;
 	MVKSmallVector<VkFormat, kMVKDefaultAttachmentCount> _colorAttachmentFormats;
 	MVKCommandPool* _commandPool;
+    uint32_t _commandChunkSize = 64 * KIBI;
+    uint32_t _commandChunkIndex = 0;
+    uint32_t _commandChunkOffset = 0;
+    MVKSmallVector<MVKCommand *> _destroyList;
+    MVKSmallVector<uint8_t *> _commandChunks;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
 	VkCommandBufferInheritanceRenderingInfo _inerhitanceRenderingInfo;
 	id<MTLCommandBuffer> _prefilledMTLCmdBuffer = nil;

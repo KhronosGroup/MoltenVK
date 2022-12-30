@@ -28,7 +28,7 @@ VkResult MVKCmdDebugMarker::setContent(MVKCommandBuffer* cmdBuff,
 									   const float color[4]) {
 	[_markerName release];
 	_markerName = [[NSString alloc] initWithUTF8String: pMarkerName];	// retained
-
+    cmdBuff->destroyOnReset(this);
 	return VK_SUCCESS;
 }
 

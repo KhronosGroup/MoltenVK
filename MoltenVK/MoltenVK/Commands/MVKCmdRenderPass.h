@@ -29,40 +29,12 @@ class MVKFramebuffer;
 
 
 #pragma mark -
-#pragma mark MVKCmdBeginRenderPassBase
-
-/**
- * Abstract base class of MVKCmdBeginRenderPass.
- * Contains all pieces that are independent of the templated portions.
- */
-class MVKCmdBeginRenderPassBase : public MVKCommand {
-
-public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						const VkRenderPassBeginInfo* pRenderPassBegin,
-						const VkSubpassBeginInfo* pSubpassBeginInfo);
-
-	inline MVKRenderPass* getRenderPass() { return _renderPass; }
-
-protected:
-
-	MVKSmallVector<MVKSmallVector<MTLSamplePosition>> _subpassSamplePositions;
-	MVKRenderPass* _renderPass;
-	MVKFramebuffer* _framebuffer;
-	VkRect2D _renderArea;
-	VkSubpassContents _contents;
-};
-
-
-#pragma mark -
 #pragma mark MVKCmdBeginRenderPass
 
 /**
  * Vulkan command to begin a render pass.
- * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
  */
-template <size_t N_CV, size_t N_A>
-class MVKCmdBeginRenderPass : public MVKCmdBeginRenderPassBase {
+class MVKCmdBeginRenderPass : public MVKCommand {
 
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
@@ -72,29 +44,18 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
+    inline MVKRenderPass* getRenderPass() { return _renderPass; }
+
 protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+    MVKCommandVector<MVKCommandVector<MTLSamplePosition>> _subpassSamplePositions;
+    MVKRenderPass* _renderPass;
+    MVKFramebuffer* _framebuffer;
+    VkRect2D _renderArea;
+    VkSubpassContents _contents;
 
-	MVKSmallVector<VkClearValue, N_CV> _clearValues;
-    MVKSmallVector<MVKImageView*, N_A> _attachments;
+    MVKCommandVector<VkClearValue> _clearValues;
+    MVKCommandVector<MVKImageView*> _attachments;
 };
-
-// Concrete template class implementations.
-typedef MVKCmdBeginRenderPass<1, 0> MVKCmdBeginRenderPass10;
-typedef MVKCmdBeginRenderPass<2, 0> MVKCmdBeginRenderPass20;
-typedef MVKCmdBeginRenderPass<9, 0> MVKCmdBeginRenderPassMulti0;
-
-typedef MVKCmdBeginRenderPass<1, 1> MVKCmdBeginRenderPass11;
-typedef MVKCmdBeginRenderPass<2, 1> MVKCmdBeginRenderPass21;
-typedef MVKCmdBeginRenderPass<9, 1> MVKCmdBeginRenderPassMulti1;
-
-typedef MVKCmdBeginRenderPass<1, 2> MVKCmdBeginRenderPass12;
-typedef MVKCmdBeginRenderPass<2, 2> MVKCmdBeginRenderPass22;
-typedef MVKCmdBeginRenderPass<9, 2> MVKCmdBeginRenderPassMulti2;
-
-typedef MVKCmdBeginRenderPass<1, 9> MVKCmdBeginRenderPass1Multi;
-typedef MVKCmdBeginRenderPass<2, 9> MVKCmdBeginRenderPass2Multi;
-typedef MVKCmdBeginRenderPass<9, 9> MVKCmdBeginRenderPassMultiMulti;
 
 
 #pragma mark -
@@ -113,8 +74,6 @@ public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
 	VkSubpassContents _contents;
 };
 
@@ -131,10 +90,6 @@ public:
 						const VkSubpassEndInfo* pSubpassEndInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
-
-protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
 };
 
 
@@ -143,9 +98,7 @@ protected:
 
 /**
  * Vulkan command to begin rendering.
- * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
  */
-template <size_t N>
 class MVKCmdBeginRendering : public MVKCommand {
 
 public:
@@ -156,20 +109,11 @@ public:
 
 
 protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
 	VkRenderingInfo _renderingInfo;
-	MVKSmallVector<VkRenderingAttachmentInfo, N> _colorAttachments;
+	MVKCommandVector<VkRenderingAttachmentInfo> _colorAttachments;
 	VkRenderingAttachmentInfo _depthAttachment;
 	VkRenderingAttachmentInfo _stencilAttachment;
 };
-
-// Concrete template class implementations.
-typedef MVKCmdBeginRendering<1> MVKCmdBeginRendering1;
-typedef MVKCmdBeginRendering<2> MVKCmdBeginRendering2;
-typedef MVKCmdBeginRendering<4> MVKCmdBeginRendering4;
-typedef MVKCmdBeginRendering<8> MVKCmdBeginRenderingMulti;
-
 
 #pragma mark -
 #pragma mark MVKCmdEndRendering
@@ -181,10 +125,6 @@ public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
-
-protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
 };
 
 
@@ -201,9 +141,7 @@ public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	MVKSmallVector<MTLSamplePosition, 8> _samplePositions;
+	MVKCommandVector<MTLSamplePosition> _samplePositions;
 };
 
 
@@ -212,9 +150,7 @@ protected:
 
 /**
  * Vulkan command to execute secondary command buffers.
- * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
  */
-template <size_t N>
 class MVKCmdExecuteCommands : public MVKCommand {
 
 public:
@@ -225,14 +161,8 @@ public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	MVKSmallVector<MVKCommandBuffer*, N> _secondaryCommandBuffers;
+	MVKCommandVector<MVKCommandBuffer*> _secondaryCommandBuffers;
 };
-
-// Concrete template class implementations.
-typedef MVKCmdExecuteCommands<1> MVKCmdExecuteCommands1;
-typedef MVKCmdExecuteCommands<16> MVKCmdExecuteCommandsMulti;
 
 
 #pragma mark -
@@ -240,9 +170,7 @@ typedef MVKCmdExecuteCommands<16> MVKCmdExecuteCommandsMulti;
 
 /**
  * Vulkan command to set the viewports.
- * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
  */
-template <size_t N>
 class MVKCmdSetViewport : public MVKCommand {
 
 public:
@@ -254,25 +182,16 @@ public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	MVKSmallVector<VkViewport, N> _viewports;
+	MVKCommandVector<VkViewport> _viewports;
 	uint32_t _firstViewport;
 };
-
-// Concrete template class implementations.
-typedef MVKCmdSetViewport<1> MVKCmdSetViewport1;
-typedef MVKCmdSetViewport<kMVKCachedViewportScissorCount> MVKCmdSetViewportMulti;
-
 
 #pragma mark -
 #pragma mark MVKCmdSetScissor
 
 /**
  * Vulkan command to set the scissor rectangles.
- * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
  */
-template <size_t N>
 class MVKCmdSetScissor : public MVKCommand {
 
 public:
@@ -284,16 +203,9 @@ public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	MVKSmallVector<VkRect2D, N> _scissors;
+    MVKCommandVector<VkRect2D> _scissors;
 	uint32_t _firstScissor;
 };
-
-// Concrete template class implementations.
-typedef MVKCmdSetScissor<1> MVKCmdSetScissor1;
-typedef MVKCmdSetScissor<kMVKCachedViewportScissorCount> MVKCmdSetScissorMulti;
-
 
 #pragma mark -
 #pragma mark MVKCmdSetLineWidth
@@ -308,8 +220,6 @@ public:
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
     float _lineWidth;
 };
 
@@ -329,8 +239,6 @@ public:
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
     float _depthBiasConstantFactor;
     float _depthBiasClamp;
     float _depthBiasSlopeFactor;
@@ -350,8 +258,6 @@ public:
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
     float _red;
     float _green;
     float _blue;
@@ -373,8 +279,6 @@ public:
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
     float _minDepthBounds;
     float _maxDepthBounds;
 };
@@ -394,8 +298,6 @@ public:
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
     VkStencilFaceFlags _faceMask;
     uint32_t _stencilCompareMask;
 };
@@ -415,8 +317,6 @@ public:
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
     VkStencilFaceFlags _faceMask;
     uint32_t _stencilWriteMask;
 };
@@ -436,8 +336,6 @@ public:
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
     VkStencilFaceFlags _faceMask;
     uint32_t _stencilReference;
 };

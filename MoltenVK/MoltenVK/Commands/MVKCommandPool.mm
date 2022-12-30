@@ -83,8 +83,7 @@ id<MTLCommandBuffer> MVKCommandPool::getMTLCommandBuffer(uint32_t queueIndex) {
 
 // Clear the command type pool member variables.
 void MVKCommandPool::trim() {
-#	define MVK_CMD_TYPE_POOL(cmdType)  _cmd ##cmdType ##Pool.clear();
-#	include "MVKCommandTypePools.def"
+    _commandBufferPool.clear();
 }
 
 
@@ -94,12 +93,6 @@ MVKCommandPool::MVKCommandPool(MVKDevice* device,
 							   const VkCommandPoolCreateInfo* pCreateInfo,
 							   bool usePooling) :
 	MVKVulkanAPIDeviceObject(device),
-
-// Initialize the command type pool member variables.
-#	define MVK_CMD_TYPE_POOL_LAST(cmdType)  _cmd ##cmdType ##Pool(usePooling)
-#	define MVK_CMD_TYPE_POOL(cmdType)  MVK_CMD_TYPE_POOL_LAST(cmdType),
-#	include "MVKCommandTypePools.def"
-	,
 	_commandBufferPool(device, usePooling),
 	_commandEncodingPool(this),
 	_queueFamilyIndex(pCreateInfo->queueFamilyIndex)
@@ -110,16 +103,4 @@ MVKCommandPool::~MVKCommandPool() {
 		_commandBufferPool.returnObject(mvkCB);
 	}
 }
-
-#pragma mark -
-#pragma mark MVKCommand subclass getTypePool() functions
-
-// Implementations of the MVKCommand subclass getTypePool() functions.
-#define MVK_TMPLT_DECL  template<>
-#define MVK_CMD_TYPE_POOL(cmdType)					  										\
-MVKCommandTypePool<MVKCommand>* MVKCmd ##cmdType ::getTypePool(MVKCommandPool* cmdPool) {	\
-	return (MVKCommandTypePool<MVKCommand>*)&cmdPool->_cmd  ##cmdType ##Pool;				\
-}
-#include "MVKCommandTypePools.def"
-
 
