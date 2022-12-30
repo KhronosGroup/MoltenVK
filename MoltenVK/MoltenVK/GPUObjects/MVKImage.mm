@@ -1287,6 +1287,18 @@ void MVKPresentableSwapchainImage::unmarkAsTracked(const MVKSwapchainSignaler& s
 	if (signaler.fence) { signaler.fence->release(); }
 }
 
+// Untrack any signalers that are still tracking, releasing the fences and semaphores.
+void MVKPresentableSwapchainImage::untrackAllSignalers() {
+	lock_guard<mutex> lock(_availabilityLock);
+
+	if ( !_availability.isAvailable ) {
+		unmarkAsTracked(_preSignaler);
+		for (auto& sig : _availabilitySignalers) {
+			unmarkAsTracked(sig);
+		}
+	}
+}
+
 
 #pragma mark Metal
 
@@ -1345,9 +1357,12 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 		_availabilitySignalers.erase(sigIter);
 	}
 
-	// Ensure this image is not destroyed while awaiting MTLCommandBuffer completion
+	// Ensure this image and the drawable are not destroyed while awaiting MTLCommandBuffer completion.
+	// We retain the drawable separately because new drawable might be acquired by this image by then.
 	retain();
+	[mtlDrwbl retain];
 	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
+		[mtlDrwbl release];
 		makeAvailable(signaler);
 		release();
 	}];
@@ -1405,8 +1420,11 @@ MVKPresentableSwapchainImage::MVKPresentableSwapchainImage(MVKDevice* device,
 	_preSignaler = MVKSwapchainSignaler{nullptr, nullptr, 0};
 }
 
+// Unsignaled signalers will exist if this image is acquired more than it is presented.
+// Ensure they are untracked so the fences and semaphores will be released.
 MVKPresentableSwapchainImage::~MVKPresentableSwapchainImage() {
 	releaseMetalDrawable();
+	untrackAllSignalers();
 }
 
 
