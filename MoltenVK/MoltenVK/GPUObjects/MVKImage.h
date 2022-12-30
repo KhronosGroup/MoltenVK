@@ -473,6 +473,7 @@ protected:
 	void signalPresentationSemaphore(const MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff);
 	static void markAsTracked(const MVKSwapchainSignaler& signaler);
 	static void unmarkAsTracked(const MVKSwapchainSignaler& signaler);
+	void untrackAllSignalers();
 	void renderWatermark(id<MTLCommandBuffer> mtlCmdBuff);
 
 	id<CAMetalDrawable> _mtlDrawable;

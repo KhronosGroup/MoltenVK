@@ -13,6 +13,18 @@ Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.2.2
+--------------
+
+Released TBD
+
+- Fix Metal validation error caused by `CAMetalDrawable` released before 
+  `MTLCommandBuffer` is finished using it.
+- Fix memory leak of `MVKFences` and `MVKSemaphores` when 
+  a swapchain image is acquired more than it is presented.
+
+
+
 MoltenVK 1.2.1
 --------------
 
