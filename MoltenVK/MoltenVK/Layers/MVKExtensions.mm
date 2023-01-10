@@ -141,7 +141,7 @@ bool MVKExtensionList::isEnabled(const char* extnName) const {
 	const MVKExtension* extnAry = &extensionArray;
 	for (uint32_t extnIdx = 0; extnIdx < extnCnt; extnIdx++) {
 		const MVKExtension& extn = extnAry[extnIdx];
-		if ( strcmp(extn.pProperties->extensionName, extnName) == 0 ) {
+		if (mvkStringsAreEqual(extn.pProperties->extensionName, extnName)) {
 			return extn.enabled;
 		}
 	}
@@ -153,7 +153,7 @@ void MVKExtensionList::enable(const char* extnName) {
 	MVKExtension* extnAry = &extensionArray;
 	for (uint32_t extnIdx = 0; extnIdx < extnCnt; extnIdx++) {
 		MVKExtension& extn = extnAry[extnIdx];
-		if ( strcmp(extn.pProperties->extensionName, extnName) == 0 ) {
+		if (mvkStringsAreEqual(extn.pProperties->extensionName, extnName)) {
 			extn.enabled = true;
 			return;
 		}

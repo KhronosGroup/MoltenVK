@@ -284,17 +284,18 @@ MVK_PUBLIC_VULKAN_SYMBOL PFN_vkVoidFunction vkGetInstanceProcAddr(
     VkInstance                                  instance,
     const char*                                 pName) {
 
-	MVKTraceVulkanCallStart();
-
 	// Handle the special platform functions where the instance parameter may be NULL.
 	PFN_vkVoidFunction func = nullptr;
-	if (strcmp(pName, "vkCreateInstance") == 0) {
+	MVKTraceVulkanCallStart();
+	if (mvkStringsAreEqual(pName, "vkGetInstanceProcAddr")) {
+		func = (PFN_vkVoidFunction)vkGetInstanceProcAddr;
+	} else if (mvkStringsAreEqual(pName, "vkCreateInstance")) {
 		func = (PFN_vkVoidFunction)vkCreateInstance;
-	} else if (strcmp(pName, "vkEnumerateInstanceExtensionProperties") == 0) {
+	} else if (mvkStringsAreEqual(pName, "vkEnumerateInstanceExtensionProperties")) {
 		func = (PFN_vkVoidFunction)vkEnumerateInstanceExtensionProperties;
-	} else if (strcmp(pName, "vkEnumerateInstanceLayerProperties") == 0) {
+	} else if (mvkStringsAreEqual(pName, "vkEnumerateInstanceLayerProperties")) {
 		func = (PFN_vkVoidFunction)vkEnumerateInstanceLayerProperties;
-	} else if (strcmp(pName, "vkEnumerateInstanceVersion") == 0) {
+	} else if (mvkStringsAreEqual(pName, "vkEnumerateInstanceVersion")) {
 		func = (PFN_vkVoidFunction)vkEnumerateInstanceVersion;
 	} else if (instance) {
 		MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
@@ -3419,9 +3420,9 @@ MVK_PUBLIC_SYMBOL PFN_vkVoidFunction vk_icdGetInstanceProcAddr(
 	MVKTraceVulkanCallStart();
 
 	PFN_vkVoidFunction func = nullptr;
-	if (strcmp(pName, "vk_icdNegotiateLoaderICDInterfaceVersion") == 0) {
+	if (mvkStringsAreEqual(pName, "vk_icdNegotiateLoaderICDInterfaceVersion")) {
 		func = (PFN_vkVoidFunction)vk_icdNegotiateLoaderICDInterfaceVersion;
-	} else if (strcmp(pName, "vk_icdGetPhysicalDeviceProcAddr") == 0) {
+	} else if (mvkStringsAreEqual(pName, "vk_icdGetPhysicalDeviceProcAddr")) {
 		func = (PFN_vkVoidFunction)vk_icdGetPhysicalDeviceProcAddr;
 	} else {
 		func = vkGetInstanceProcAddr(instance, pName);

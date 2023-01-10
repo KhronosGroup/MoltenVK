@@ -65,7 +65,7 @@ MVKLayer* MVKLayerManager::getLayerNamed(const char* pLayerName) {
 	uint32_t layCnt = (uint32_t)_layers.size();
 	for (uint32_t layIdx = 0; layIdx < layCnt; layIdx++) {
 		MVKLayer* pLayer = &_layers[layIdx];
-		if ( strcmp(pLayer->getName(), pLayerName) == 0 ) { return pLayer; }
+		if (mvkStringsAreEqual(pLayer->getName(), pLayerName)) { return pLayer; }
 	}
 	return VK_NULL_HANDLE;
 }

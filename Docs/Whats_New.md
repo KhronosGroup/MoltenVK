@@ -22,6 +22,10 @@ Released TBD
   `MTLCommandBuffer` is finished using it.
 - Fix memory leak of `MVKFences` and `MVKSemaphores` when 
   a swapchain image is acquired more than it is presented.
+- Ensure Vulkan public symbols are not stripped from the library when 
+  statically linked to an app that calls all Vulkan functions dynamically.
+- Per Vulkan 1.2 spec, support calling `vkGetInstanceProcAddr()` with a 
+  null instance, when `vkGetInstanceProcAddr` itself is the function name.
 
 
 

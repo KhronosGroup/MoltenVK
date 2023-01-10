@@ -550,6 +550,15 @@ bool mvkAreEqual(const T* pV1, const T* pV2, size_t count = 1) {
 }
 
 /**
+ * If both pV1 and pV2 are not null, returns whether the contents of the two strings are equal,
+ * otherwise returns false. This functionality is different than the char version of mvkAreEqual(),
+ * which works on individual chars or char arrays, not strings.
+ */
+static inline bool mvkStringsAreEqual(const char* pV1, const char* pV2, size_t count = 1) {
+	return (pV1 && pV2) ? (strcmp(pV1, pV2) == 0) : false;
+}
+
+/**
  * Sets the value referenced by the destination pointer with the value referenced by
  * the source pointer, and returns whether the value was set.
  *
