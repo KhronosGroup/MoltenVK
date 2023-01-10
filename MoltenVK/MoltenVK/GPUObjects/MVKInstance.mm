@@ -449,7 +449,6 @@ void MVKInstance::initProcAddrs() {
 	ADD_INST_ENTRY_POINT(vkGetPhysicalDeviceProperties);
 	ADD_INST_ENTRY_POINT(vkGetPhysicalDeviceQueueFamilyProperties);
 	ADD_INST_ENTRY_POINT(vkGetPhysicalDeviceMemoryProperties);
-	ADD_INST_ENTRY_POINT(vkGetInstanceProcAddr);
 	ADD_INST_ENTRY_POINT(vkCreateDevice);
 	ADD_INST_ENTRY_POINT(vkEnumerateDeviceExtensionProperties);
 	ADD_INST_ENTRY_POINT(vkEnumerateDeviceLayerProperties);

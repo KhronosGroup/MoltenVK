@@ -102,8 +102,7 @@ extern "C" {
 #endif
 
 /** Directive to identify public symbols. */
-#define MVK_PUBLIC_SYMBOL        	__attribute__((visibility("default")))
-
+#define MVK_PUBLIC_SYMBOL    __attribute__((visibility("default"))) __attribute__((used))
 
 /** Directive to make a public alias of another symbol. */
 #define MVK_PUBLIC_ALIAS(ALIAS, TARGET)   asm(".globl _" #ALIAS "\n\t_" #ALIAS " = _" #TARGET)
