@@ -6,7 +6,7 @@
 
 # What's New in MoltenVK
 
-Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
+Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 [comment]: # "This document is written in Markdown (http://en.wikipedia.org/wiki/Markdown) format."
 [comment]: # "For best results, use a Markdown reader."
@@ -26,6 +26,7 @@ Released TBD
   statically linked to an app that calls all Vulkan functions dynamically.
 - Per Vulkan 1.2 spec, support calling `vkGetInstanceProcAddr()` with a 
   null instance, when `vkGetInstanceProcAddr` itself is the function name.
+- Update copyright notices to year 2023.
 
 
 
