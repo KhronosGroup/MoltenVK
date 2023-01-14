@@ -26,6 +26,10 @@ Released TBD
   statically linked to an app that calls all Vulkan functions dynamically.
 - Per Vulkan 1.2 spec, support calling `vkGetInstanceProcAddr()` with a 
   null instance, when `vkGetInstanceProcAddr` itself is the function name.
+- Update `VkPhysicalDeviceLimits` members `maxClipDistances` and 
+  `maxCombinedClipAndCullDistances` to more accurate values.
+- Update `VkPhysicalDeviceLimits::maxDrawIndexedIndexValue` to 
+  acknowledge automatic primitive restart.
 - Update copyright notices to year 2023.
 
 

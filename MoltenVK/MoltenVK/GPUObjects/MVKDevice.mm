@@ -2239,6 +2239,11 @@ void MVKPhysicalDevice::initLimits() {
 	_properties.limits.maxDescriptorSetStorageImages = (_properties.limits.maxPerStageDescriptorStorageImages * 5);
 	_properties.limits.maxDescriptorSetInputAttachments = (_properties.limits.maxPerStageDescriptorInputAttachments * 5);
 
+	_properties.limits.maxClipDistances = 8;	// Per Apple engineers.
+	_properties.limits.maxCullDistances = 0;	// unsupported
+	_properties.limits.maxCombinedClipAndCullDistances = max(_properties.limits.maxClipDistances,
+															 _properties.limits.maxCullDistances);  // If supported, these consume the same slots.
+
 	// Whether handled as a real texture buffer or a 2D texture, this value is likely nowhere near the size of a buffer,
 	// needs to fit in 32 bits, and some apps (I'm looking at you, CTS), assume it is low when doing 32-bit math.
 	_properties.limits.maxTexelBufferElements = _properties.limits.maxImageDimension2D * (4 * KIBI);
@@ -2486,7 +2491,8 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.minTexelGatherOffset = _properties.limits.minTexelOffset;
     _properties.limits.maxTexelGatherOffset = _properties.limits.maxTexelOffset;
 
-    // Features with no specific limits - default to unlimited int values
+
+    // Features with no specific limits - default to effectively unlimited int values
 
     _properties.limits.maxMemoryAllocationCount = kMVKUndefinedLargeUInt32;
 	_properties.limits.maxSamplerAllocationCount = getMaxSamplerCount();
@@ -2496,17 +2502,12 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.maxComputeWorkGroupCount[1] = kMVKUndefinedLargeUInt32;
     _properties.limits.maxComputeWorkGroupCount[2] = kMVKUndefinedLargeUInt32;
 
-    _properties.limits.maxDrawIndexedIndexValue = numeric_limits<uint32_t>::max();	// Must be (2^32 - 1) to support fullDrawIndexUint32
+    _properties.limits.maxDrawIndexedIndexValue = numeric_limits<uint32_t>::max() - 1;	// Support both fullDrawIndexUint32 and automatic primitive restart.
     _properties.limits.maxDrawIndirectCount = kMVKUndefinedLargeUInt32;
-
-    _properties.limits.maxClipDistances = kMVKUndefinedLargeUInt32;
-	_properties.limits.maxCullDistances = 0;	// unsupported
-    _properties.limits.maxCombinedClipAndCullDistances = _properties.limits.maxClipDistances +
-														 _properties.limits.maxCullDistances;
 
 
     // Features with unknown limits - default to Vulkan required limits
-    
+
     _properties.limits.subPixelPrecisionBits = 4;
     _properties.limits.subTexelPrecisionBits = 4;
     _properties.limits.mipmapPrecisionBits = 4;
