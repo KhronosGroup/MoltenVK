@@ -16,12 +16,13 @@ Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.2.2
 --------------
 
-Released TBD
+Released 2023/01/23
 
 - Fix Metal validation error caused by `CAMetalDrawable` released before 
   `MTLCommandBuffer` is finished using it.
 - Fix memory leak of `MVKFences` and `MVKSemaphores` when 
   a swapchain image is acquired more than it is presented.
+- Fix issue where fragment shader was not run when no render attachment is available.
 - Ensure Vulkan public symbols are not stripped from the library when 
   statically linked to an app that calls all Vulkan functions dynamically.
 - Per Vulkan 1.2 spec, support calling `vkGetInstanceProcAddr()` with a 
@@ -31,7 +32,9 @@ Released TBD
 - Update `VkPhysicalDeviceLimits::maxDrawIndexedIndexValue` to 
   acknowledge automatic primitive restart.
 - Update copyright notices to year 2023.
-
+- Update to latest SPIRV-Cross:
+  - MSL: Add support for writable images in iOS Tier2 argument buffers.
+  - MSL: Fix potentially uninitialized warnings.
 
 
 MoltenVK 1.2.1
