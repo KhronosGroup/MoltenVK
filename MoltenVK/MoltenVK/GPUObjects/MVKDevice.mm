@@ -1822,9 +1822,17 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #endif
 
 #if (MVK_MACOS && !MVK_MACCAT) || (MVK_MACCAT && MVK_XCODE_14) || (MVK_IOS && MVK_XCODE_12)
+	// Both current and deprecated properties are retrieved and OR'd together, due to a
+	// Metal bug that, in some environments, returned true for one and false for the other.
+	bool bcProp1 = false;
+	bool bcProp2 = false;
 	if ( [_mtlDevice respondsToSelector: @selector(supportsShaderBarycentricCoordinates)] ) {
-		_metalFeatures.shaderBarycentricCoordinates = _mtlDevice.supportsShaderBarycentricCoordinates;
+		bcProp1 = _mtlDevice.supportsShaderBarycentricCoordinates;
 	}
+	if ( [_mtlDevice respondsToSelector: @selector(areBarycentricCoordsSupported)] ) {
+		bcProp2 = _mtlDevice.areBarycentricCoordsSupported;
+	}
+	_metalFeatures.shaderBarycentricCoordinates = bcProp1 || bcProp2;
 #endif
 
     if ( [_mtlDevice respondsToSelector: @selector(maxBufferLength)] ) {

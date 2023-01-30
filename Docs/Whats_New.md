@@ -13,6 +13,16 @@ Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.2.3
+--------------
+
+Released TBA
+
+- Fix issue where extension `VK_KHR_fragment_shader_barycentric` 
+  was sometimes incorrectly disabled due to a Metal driver bug.
+
+
+
 MoltenVK 1.2.2
 --------------
 
