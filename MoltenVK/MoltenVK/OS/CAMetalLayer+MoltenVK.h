@@ -38,19 +38,10 @@
 /**
  * Returns the natural drawable size for this layer.
  *
- * The natural drawable size is the size of the bounds property of this layer, multiplied
- * by the contentsScale property of this layer, and is the value that the drawableSize
- * property will be set to when the updatedDrawableSizeMVK nethod is invoked.
+ * The natural drawable size is the size of the bounds property of this layer,
+ * multiplied by the contentsScale property of this layer.
  */
 @property(nonatomic, readonly) CGSize naturalDrawableSizeMVK;
-
-/**
- * Ensures the drawableSize property of this layer is up to date, by ensuring
- * it is set to the value returned by the naturalDrawableSizeMVK property.
- *
- * Returns the updated drawableSize value.
- */
--(CGSize) updatedDrawableSizeMVK;
 
 /**
  * Replacement for the displaySyncEnabled property.

@@ -538,8 +538,7 @@ void MVKQueuePresentSurfaceSubmission::execute() {
 	[mtlCmdBuff enqueue];
 	for (auto& ws : _waitSemaphores) { ws.first->encodeWait(mtlCmdBuff, 0); }
 	for (int i = 0; i < _presentInfo.size(); i++ ) {
-		MVKPresentableSwapchainImage *img = _presentInfo[i].presentableImage;
-		img->presentCAMetalDrawable(mtlCmdBuff, _presentInfo[i]);
+		_presentInfo[i].presentableImage->presentCAMetalDrawable(mtlCmdBuff, _presentInfo[i]);
 	}
 	for (auto& ws : _waitSemaphores) { ws.first->encodeWait(nil, 0); }
 	[mtlCmdBuff commit];
@@ -564,13 +563,19 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 																   const VkPresentInfoKHR* pPresentInfo)
 	: MVKQueueSubmission(queue, pPresentInfo->waitSemaphoreCount, pPresentInfo->pWaitSemaphores) {
 
-	const VkPresentTimesInfoGOOGLE *pPresentTimesInfoGOOGLE = nullptr;
-	for ( const auto *next = ( VkBaseInStructure* ) pPresentInfo->pNext; next; next = next->pNext )
-	{
-		switch ( next->sType )
-		{
+	const VkPresentTimesInfoGOOGLE* pPresentTimesInfo = nullptr;
+	const VkSwapchainPresentFenceInfoEXT* pPresentFenceInfo = nullptr;
+	const VkSwapchainPresentModeInfoEXT* pPresentModeInfo = nullptr;
+	for (auto* next = (const VkBaseInStructure*)pPresentInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT:
+				pPresentFenceInfo = (const VkSwapchainPresentFenceInfoEXT*) next;
+				break;
+			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_EXT:
+				pPresentModeInfo = (const VkSwapchainPresentModeInfoEXT*) next;
+				break;
 			case VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE:
-				pPresentTimesInfoGOOGLE = ( const VkPresentTimesInfoGOOGLE * ) next;
+				pPresentTimesInfo = (const VkPresentTimesInfoGOOGLE*) next;
 				break;
 			default:
 				break;
@@ -579,21 +584,34 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 
 	// Populate the array of swapchain images, testing each one for status
 	uint32_t scCnt = pPresentInfo->swapchainCount;
-	const VkPresentTimeGOOGLE *pPresentTimesGOOGLE = nullptr;
-	if ( pPresentTimesInfoGOOGLE && pPresentTimesInfoGOOGLE->pTimes ) {
-		pPresentTimesGOOGLE = pPresentTimesInfoGOOGLE->pTimes;
-		MVKAssert( pPresentTimesInfoGOOGLE->swapchainCount == pPresentInfo->swapchainCount, "VkPresentTimesInfoGOOGLE swapchainCount must match VkPresentInfo swapchainCount" );
+	const VkPresentTimeGOOGLE* pPresentTimes = nullptr;
+	if (pPresentTimesInfo && pPresentTimesInfo->pTimes) {
+		pPresentTimes = pPresentTimesInfo->pTimes;
+		MVKAssert(pPresentTimesInfo->swapchainCount == scCnt, "VkPresentTimesInfoGOOGLE swapchainCount must match VkPresentInfo swapchainCount.");
 	}
+	const VkPresentModeKHR* pPresentModes = nullptr;
+	if (pPresentModeInfo) {
+		pPresentModes = pPresentModeInfo->pPresentModes;
+		MVKAssert(pPresentModeInfo->swapchainCount == scCnt, "VkSwapchainPresentModeInfoEXT swapchainCount must match VkPresentInfo swapchainCount.");
+	}
+	const VkFence* pFences = nullptr;
+	if (pPresentFenceInfo) {
+		pFences = pPresentFenceInfo->pFences;
+		MVKAssert(pPresentFenceInfo->swapchainCount == scCnt, "VkSwapchainPresentFenceInfoEXT swapchainCount must match VkPresentInfo swapchainCount.");
+	}
+
 	VkResult* pSCRslts = pPresentInfo->pResults;
 	_presentInfo.reserve(scCnt);
 	for (uint32_t scIdx = 0; scIdx < scCnt; scIdx++) {
 		MVKSwapchain* mvkSC = (MVKSwapchain*)pPresentInfo->pSwapchains[scIdx];
-		MVKPresentTimingInfo presentInfo = {};
+		MVKImagePresentInfo presentInfo = {};
 		presentInfo.presentableImage = mvkSC->getPresentableImage(pPresentInfo->pImageIndices[scIdx]);
-		if ( pPresentTimesGOOGLE ) {
+		presentInfo.presentMode = pPresentModes ? pPresentModes[scIdx] : VK_PRESENT_MODE_MAX_ENUM_KHR;
+		presentInfo.fence = pFences ? (MVKFence*)pFences[scIdx] : nullptr;
+		if (pPresentTimes) {
 			presentInfo.hasPresentTime = true;
-			presentInfo.presentID = pPresentTimesGOOGLE[scIdx].presentID;
-			presentInfo.desiredPresentTime = pPresentTimesGOOGLE[scIdx].desiredPresentTime;
+			presentInfo.presentID = pPresentTimes[scIdx].presentID;
+			presentInfo.desiredPresentTime = pPresentTimes[scIdx].desiredPresentTime;
 		} else {
 			presentInfo.hasPresentTime = false;
 		}

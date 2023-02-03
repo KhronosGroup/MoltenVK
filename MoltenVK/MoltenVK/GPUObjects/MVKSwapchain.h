@@ -66,26 +66,38 @@ public:
 	 */
 	VkResult getImages(uint32_t* pCount, VkImage* pSwapchainImages);
 
-	/** Returns the index of the next swapchain image. */
-	VkResult acquireNextImageKHR(uint64_t timeout,
-								 VkSemaphore semaphore,
-								 VkFence fence,
-								 uint32_t deviceMask,
-								 uint32_t* pImageIndex);
+	/** Returns the index of the next acquireable image. */
+	VkResult acquireNextImage(uint64_t timeout,
+							  VkSemaphore semaphore,
+							  VkFence fence,
+							  uint32_t deviceMask,
+							  uint32_t* pImageIndex);
+
+	/** Releases swapchain images. */
+	VkResult releaseImages(const VkReleaseSwapchainImagesInfoEXT* pReleaseInfo);
 
 	/** Returns whether the parent surface is now lost and this swapchain must be recreated. */
 	bool getIsSurfaceLost() { return _surfaceLost; }
 
-	/** Returns whether the surface size or resolution scale has changed since the last time this function was called. */
-	bool getHasSurfaceSizeChanged() {
-		return !CGSizeEqualToSize(_mtlLayer.naturalDrawableSizeMVK, _mtlLayer.drawableSize);
+	/**
+	 * Returns whether this swapchain is optimally sized for the surface.
+	 * It is if the app has specified deliberate swapchain scaling, or the CAMetalLayer
+	 * drawableSize has not changed since the swapchain was created, and the CAMetalLayer
+	 * will not need to be scaled when composited.
+	 */
+	bool hasOptimalSurface() {
+		if (_isDeliberatelyScaled) { return true; }
+
+		auto drawSize = _mtlLayer.drawableSize;
+		return (CGSizeEqualToSize(drawSize, _mtlLayerDrawableSize) &&
+				CGSizeEqualToSize(drawSize, _mtlLayer.naturalDrawableSizeMVK));
 	}
 
-	/** Returns the status of the surface. Surface loss takes precedence over out-of-date errors. */
+	/** Returns the status of the surface. Surface loss takes precedence over sub-optimal errors. */
 	VkResult getSurfaceStatus() {
 		if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 		if (getIsSurfaceLost()) { return VK_ERROR_SURFACE_LOST_KHR; }
-		if (getHasSurfaceSizeChanged()) { return VK_SUBOPTIMAL_KHR; }
+		if ( !hasOptimalSurface() ) { return VK_SUBOPTIMAL_KHR; }
 		return VK_SUCCESS;
 	}
 
@@ -97,7 +109,7 @@ public:
 	
 	/** VK_GOOGLE_display_timing - returns past presentation times */
 	VkResult getPastPresentationTiming(uint32_t *pCount, VkPastPresentationTimingGOOGLE *pPresentationTimings);
-	
+
 	void destroy() override;
 
 #pragma mark Construction
@@ -110,7 +122,9 @@ protected:
 	friend class MVKPresentableSwapchainImage;
 
 	void propagateDebugName() override;
-	void initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
+	void initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
+						  VkSwapchainPresentScalingCreateInfoEXT* pScalingInfo,
+						  uint32_t imgCnt);
 	void initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
 	void releaseLayer();
 	void releaseUndisplayedSurfaces();
@@ -118,22 +132,25 @@ protected:
     void willPresentSurface(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void markFrameInterval();
-	void recordPresentTime(MVKPresentTimingInfo presentTimingInfo, uint64_t actualPresentTime = 0);
+	void recordPresentTime(MVKImagePresentInfo presentInfo, uint64_t actualPresentTime = 0);
 
-	CAMetalLayer* _mtlLayer;
-    MVKWatermark* _licenseWatermark;
+	CAMetalLayer* _mtlLayer = nil;
+    MVKWatermark* _licenseWatermark = nil;
 	MVKSmallVector<MVKPresentableSwapchainImage*, kMVKMaxSwapchainImageCount> _presentableImages;
-	std::atomic<uint64_t> _currentAcquisitionID;
-    uint64_t _lastFrameTime;
-    uint32_t _currentPerfLogFrameCount;
-    std::atomic<bool> _surfaceLost;
-    MVKBlockObserver* _layerObserver;
-	std::mutex _layerLock;
+	MVKSmallVector<VkPresentModeKHR, 2> _compatiblePresentModes;
 	static const int kMaxPresentationHistory = 60;
 	VkPastPresentationTimingGOOGLE _presentTimingHistory[kMaxPresentationHistory];
-	uint32_t _presentHistoryCount;
-	uint32_t _presentHistoryIndex;
-	uint32_t _presentHistoryHeadIndex;
+	std::atomic<uint64_t> _currentAcquisitionID = 0;
+    MVKBlockObserver* _layerObserver = nil;
 	std::mutex _presentHistoryLock;
+	std::mutex _layerLock;
+	uint64_t _lastFrameTime = 0;
+	CGSize _mtlLayerDrawableSize = {0.0, 0.0};
+	uint32_t _currentPerfLogFrameCount = 0;
+	uint32_t _presentHistoryCount = 0;
+	uint32_t _presentHistoryIndex = 0;
+	uint32_t _presentHistoryHeadIndex = 0;
+	std::atomic<bool> _surfaceLost = false;
+	bool _isDeliberatelyScaled = false;
 };
 

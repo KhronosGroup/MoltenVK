@@ -385,6 +385,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				robustness2Features->nullDescriptor = false;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT: {
+				auto* swapchainMaintenance1Features = (VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT*)next;
+				swapchainMaintenance1Features->swapchainMaintenance1 = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
 				auto* texelBuffAlignFeatures = (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)next;
 				texelBuffAlignFeatures->texelBufferAlignment = _metalFeatures.texelBuffers && [_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)];
@@ -1075,32 +1080,139 @@ VkResult MVKPhysicalDevice::getSurfaceSupport(uint32_t queueFamilyIndex,
 	return *pSupported ? VK_SUCCESS : surface->getConfigurationResult();
 }
 
-VkResult MVKPhysicalDevice::getSurfaceCapabilities(MVKSurface* surface,
+VkResult MVKPhysicalDevice::getSurfaceCapabilities(VkSurfaceKHR surface,
 												   VkSurfaceCapabilitiesKHR* pSurfaceCapabilities) {
+	VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo;
+	surfaceInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR;
+	surfaceInfo.pNext = nullptr;
+	surfaceInfo.surface = surface;
 
-	// The layer underlying the surface view must be a CAMetalLayer.
+	VkSurfaceCapabilities2KHR surfaceCaps;
+	surfaceCaps.sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR;
+	surfaceCaps.pNext = nullptr;
+	surfaceCaps.surfaceCapabilities = *pSurfaceCapabilities;
+
+	VkResult rslt = getSurfaceCapabilities(&surfaceInfo, &surfaceCaps);
+
+	*pSurfaceCapabilities = surfaceCaps.surfaceCapabilities;
+
+	return rslt;
+}
+
+VkResult MVKPhysicalDevice::getSurfaceCapabilities(	const VkPhysicalDeviceSurfaceInfo2KHR* pSurfaceInfo,
+												   VkSurfaceCapabilities2KHR* pSurfaceCapabilities) {
+
+	// Retrieve the present mode if it is supplied in this query.
+	VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAX_ENUM_KHR;
+	for (auto* next = (const VkBaseInStructure*)pSurfaceInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT: {
+				presentMode = ((VkSurfacePresentModeEXT*)next)->presentMode;
+				break;
+			}
+			default:
+				break;
+		}
+	}
+
+	// Retrieve the scaling and present mode compatibility structs if they are supplied in this query.
+	VkSurfacePresentScalingCapabilitiesEXT* pScalingCaps = nullptr;
+	VkSurfacePresentModeCompatibilityEXT* pCompatibility = nullptr;
+	for (auto* next = (VkBaseOutStructure*)pSurfaceCapabilities->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_EXT: {
+				pScalingCaps = (VkSurfacePresentScalingCapabilitiesEXT*)next;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_EXT: {
+				pCompatibility = (VkSurfacePresentModeCompatibilityEXT*)next;
+				break;
+			}
+			default:
+				break;
+		}
+	}
+
+	// The CAlayer underlying the surface must be a CAMetalLayer.
+	MVKSurface* surface = (MVKSurface*)pSurfaceInfo->surface;
 	CAMetalLayer* mtlLayer = surface->getCAMetalLayer();
 	if ( !mtlLayer ) { return surface->getConfigurationResult(); }
 
-    VkExtent2D surfExtnt = mvkVkExtent2DFromCGSize(mtlLayer.naturalDrawableSizeMVK);
+	VkSurfaceCapabilitiesKHR& surfCaps = pSurfaceCapabilities->surfaceCapabilities;
+	surfCaps.minImageCount = _metalFeatures.minSwapchainImageCount;
+	surfCaps.maxImageCount = _metalFeatures.maxSwapchainImageCount;
+	surfCaps.currentExtent = mvkVkExtent2DFromCGSize(mtlLayer.naturalDrawableSizeMVK);
+	surfCaps.minImageExtent = { 1, 1 };
+	surfCaps.maxImageExtent = { _properties.limits.maxImageDimension2D, _properties.limits.maxImageDimension2D };
+	surfCaps.maxImageArrayLayers = 1;
+	surfCaps.supportedTransforms = (VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR);
+	surfCaps.currentTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+	surfCaps.supportedCompositeAlpha = (VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR |
+										VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR |
+										VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR);
+	surfCaps.supportedUsageFlags = (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+									VK_IMAGE_USAGE_STORAGE_BIT |
+									VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+									VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+									VK_IMAGE_USAGE_SAMPLED_BIT);
 
-	pSurfaceCapabilities->minImageCount = _metalFeatures.minSwapchainImageCount;
-	pSurfaceCapabilities->maxImageCount = _metalFeatures.maxSwapchainImageCount;
+	// Swapchain-to-surface scaling capabilities.
+	if (pScalingCaps) {
+		pScalingCaps->supportedPresentScaling = (VK_PRESENT_SCALING_ONE_TO_ONE_BIT_EXT |
+												 VK_PRESENT_SCALING_ASPECT_RATIO_STRETCH_BIT_EXT |
+												 VK_PRESENT_SCALING_STRETCH_BIT_EXT);
+		pScalingCaps->supportedPresentGravityX = (VK_PRESENT_GRAVITY_MIN_BIT_EXT |
+												  VK_PRESENT_GRAVITY_MAX_BIT_EXT |
+												  VK_PRESENT_GRAVITY_CENTERED_BIT_EXT);
+		pScalingCaps->supportedPresentGravityY = (VK_PRESENT_GRAVITY_MIN_BIT_EXT |
+												  VK_PRESENT_GRAVITY_MAX_BIT_EXT |
+												  VK_PRESENT_GRAVITY_CENTERED_BIT_EXT);
+		pScalingCaps->minScaledImageExtent = surfCaps.minImageExtent;
+		pScalingCaps->maxScaledImageExtent = surfCaps.maxImageExtent;
+	}
 
-	pSurfaceCapabilities->currentExtent = surfExtnt;
-	pSurfaceCapabilities->minImageExtent = { 1, 1 };
-	pSurfaceCapabilities->maxImageExtent = { _properties.limits.maxImageDimension2D, _properties.limits.maxImageDimension2D };
-    pSurfaceCapabilities->maxImageArrayLayers = 1;
-	pSurfaceCapabilities->supportedTransforms = (VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR);
-	pSurfaceCapabilities->currentTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-    pSurfaceCapabilities->supportedCompositeAlpha = (VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR |
-                                                     VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR |
-                                                     VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR);
-	pSurfaceCapabilities->supportedUsageFlags = (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                                                 VK_IMAGE_USAGE_STORAGE_BIT |
-                                                 VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-												 VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-												 VK_IMAGE_USAGE_SAMPLED_BIT);
+
+	// Per spec, always include the queried present mode in returned compatibility results.
+	MVKSmallVector<VkPresentModeKHR> compatiblePresentModes;
+	if (presentMode != VK_PRESENT_MODE_MAX_ENUM_KHR) { compatiblePresentModes.push_back(presentMode); }
+
+	// Customize results based on the provided present mode.
+	switch (presentMode) {
+		case VK_PRESENT_MODE_FIFO_KHR:
+			// This could be dodgy, because Metal may not match the Vulkan spec's tight
+			// requirements for transitioning from FIFO to IMMEDIATE, because the change to
+			// IMMEDIATE may occur while some FIFO items are still on the GPU queue.
+			if (_metalFeatures.presentModeImmediate) {
+				compatiblePresentModes.push_back(VK_PRESENT_MODE_IMMEDIATE_KHR);
+			}
+			break;
+		case VK_PRESENT_MODE_IMMEDIATE_KHR:
+			compatiblePresentModes.push_back(VK_PRESENT_MODE_FIFO_KHR);
+			surfCaps.minImageCount = surfCaps.maxImageCount;	// Recommend always using max count to avoid visual tearing.
+			break;
+		case VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR:
+		case VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR:
+			// Although these are not advertised as supported, per spec, counts must be 1.
+			surfCaps.minImageCount = 1;
+			surfCaps.maxImageCount = 1;
+			break;
+
+		default:
+			break;
+	}
+
+	// If compatible present modes are requested, return them, otherwise return the count of them.
+	if (pCompatibility) {
+		if (pCompatibility->pPresentModes) {
+			pCompatibility->presentModeCount = min(pCompatibility->presentModeCount, (uint32_t)compatiblePresentModes.size());
+			for (uint32_t pmIdx = 0; pmIdx < pCompatibility->presentModeCount; pmIdx++) {
+				pCompatibility->pPresentModes[pmIdx] = compatiblePresentModes[pmIdx];
+			}
+		} else {
+			pCompatibility->presentModeCount = (uint32_t)compatiblePresentModes.size();
+		}
+	}
+
 	return VK_SUCCESS;
 }
 
@@ -3458,8 +3570,11 @@ void MVKDevice::destroySwapchain(MVKSwapchain* mvkSwpChn,
 MVKPresentableSwapchainImage* MVKDevice::createPresentableSwapchainImage(const VkImageCreateInfo* pCreateInfo,
 																		 MVKSwapchain* swapchain,
 																		 uint32_t swapchainIndex,
+																		 bool deferImgMemAlloc,
 																		 const VkAllocationCallbacks* pAllocator) {
-    MVKPresentableSwapchainImage* mvkImg = new MVKPresentableSwapchainImage(this, pCreateInfo, swapchain, swapchainIndex);
+	MVKPresentableSwapchainImage* mvkImg = new MVKPresentableSwapchainImage(this, pCreateInfo,
+																			swapchain, swapchainIndex,
+																			deferImgMemAlloc);
     for (auto& memoryBinding : mvkImg->_memoryBindings) {
         addResource(memoryBinding);
     }

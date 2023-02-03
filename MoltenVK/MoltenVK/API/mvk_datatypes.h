@@ -416,21 +416,14 @@ MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFlags vkAccess);
 #pragma mark -
 #pragma mark Geometry conversions
 
-/** Returns a VkExtent2D that corresponds to the specified CGSize. */
-static inline VkExtent2D mvkVkExtent2DFromCGSize(CGSize cgSize) {
-	VkExtent2D vkExt;
-	vkExt.width = cgSize.width;
-	vkExt.height = cgSize.height;
-	return vkExt;
-}
+/**
+ * Returns a VkExtent2D that corresponds to the specified CGSize.
+ * Rounds to nearest integer using half-to-even rounding.
+ */
+VkExtent2D mvkVkExtent2DFromCGSize(CGSize cgSize);
 
 /** Returns a CGSize that corresponds to the specified VkExtent2D. */
-static inline CGSize mvkCGSizeFromVkExtent2D(VkExtent2D vkExtent) {
-	CGSize cgSize;
-	cgSize.width = vkExtent.width;
-	cgSize.height = vkExtent.height;
-	return cgSize;
-}
+CGSize mvkCGSizeFromVkExtent2D(VkExtent2D vkExtent);
 
 /** Returns a Metal MTLOrigin constructed from a VkOffset3D. */
 static inline MTLOrigin mvkMTLOriginFromVkOffset3D(VkOffset3D vkOffset) {

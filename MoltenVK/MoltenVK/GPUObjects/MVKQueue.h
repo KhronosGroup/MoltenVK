@@ -272,6 +272,6 @@ public:
 protected:
 	void stopAutoGPUCapture();
 
-	MVKSmallVector<MVKPresentTimingInfo, 4> _presentInfo;
+	MVKSmallVector<MVKImagePresentInfo, 4> _presentInfo;
 };
 

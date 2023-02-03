@@ -339,10 +339,12 @@ static inline bool mvkVkComponentMappingsMatch(VkComponentMapping cm1, VkCompone
 #define mvkPrintSizeOf(type)    printf("Size of " #type " is %lu.\n", sizeof(type))
 
 
-#pragma mark -
-#pragma mark Template functions
-
 #pragma mark Math
+
+/** Rounds the value to nearest integer using half-to-even rounding. */
+static inline double mvkRoundHalfToEven(const double val) {
+	return val - std::remainder(val, 1.0);	// remainder() uses half-to-even rounding
+}
 
 /** Returns whether the value will fit inside the numeric type. */
 template<typename T, typename Tval>

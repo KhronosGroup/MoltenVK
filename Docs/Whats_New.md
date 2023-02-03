@@ -18,9 +18,13 @@ MoltenVK 1.2.3
 
 Released TBA
 
+- Add support for extensions:
+	- `VK_EXT_swapchain_maintenance1`
+	- `VK_EXT_surface_maintenance1`
 - Fix issue where extension `VK_KHR_fragment_shader_barycentric` 
   was sometimes incorrectly disabled due to a Metal driver bug.
-
+- Detect when size of surface has changed under the covers.
+- Change rounding of surface size provided by Metal from truncation to rounding-with-half-to-even.
 
 
 MoltenVK 1.2.2

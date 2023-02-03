@@ -128,9 +128,12 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #   define MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER    1
 #endif
 
-/** Use nearest sampling to magnify swapchain images. Enabled by default. */
+/** Use nearest sampling to minify or magnify swapchain images. Enabled by default. Second macro name is deprecated legacy. */
+#ifndef MVK_CONFIG_SWAPCHAIN_MIN_MAG_FILTER_USE_NEAREST
+#   define MVK_CONFIG_SWAPCHAIN_MIN_MAG_FILTER_USE_NEAREST    1
+#endif
 #ifndef MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST
-#   define MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST    1
+#   define MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST    MVK_CONFIG_SWAPCHAIN_MIN_MAG_FILTER_USE_NEAREST
 #endif
 
 /** The maximum amount of time, in nanoseconds, to wait for a Metal library. Default is infinite. */
