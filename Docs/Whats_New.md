@@ -20,6 +20,8 @@ Released TBA
 
 - Fix issue where extension `VK_KHR_fragment_shader_barycentric` 
   was sometimes incorrectly disabled due to a Metal driver bug.
+- Work around problems with using explicit LoD with arrayed depth images
+  on Apple Silicon.
 
 
 

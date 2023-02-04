@@ -1152,6 +1152,9 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 		shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(_pFragmentSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : _device->_pMetalFeatures->maxSubgroupSize;
 		shaderConfig.options.mslOptions.check_discarded_frag_stores = true;
+		if (_device->_pMetalFeatures->needsSampleDrefLodArrayWorkaround) {
+			shaderConfig.options.mslOptions.sample_dref_lod_array_as_grad = true;
+		}
 		if (_isRasterizing && pCreateInfo->pMultisampleState) {		// Must ignore allowed bad pMultisampleState pointer if rasterization disabled
 			if (pCreateInfo->pMultisampleState->pSampleMask && pCreateInfo->pMultisampleState->pSampleMask[0] != 0xffffffff) {
 				shaderConfig.options.mslOptions.additional_fixed_sample_mask = pCreateInfo->pMultisampleState->pSampleMask[0];
@@ -2253,7 +2256,8 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.vertex_index_type,
 				opt.force_sample_rate_shading,
 				opt.manual_helper_invocation_updates,
-				opt.check_discarded_frag_stores);
+				opt.check_discarded_frag_stores,
+				opt.sample_dref_lod_array_as_grad);
 	}
 
 	template<class Archive>
