@@ -1338,15 +1338,21 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 		_availabilitySignalers.erase(sigIter);
 	}
 
-	// Ensure this image and the drawable are not destroyed while awaiting MTLCommandBuffer completion.
-	// We retain the drawable separately because new drawable might be acquired by this image by then.
+	// Ensure this image, the drawable, and the present fence are not destroyed while
+	// awaiting MTLCommandBuffer completion. We retain the drawable separately because
+	// a new drawable might be acquired by this image by then.
 	retain();
 	[mtlDrwbl retain];
+	auto* fence = presentInfo.fence;
+	if (fence) { fence->retain(); }
 	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
 		[mtlDrwbl release];
 		makeAvailable(signaler);
 		release();
-		if (presentInfo.fence) { presentInfo.fence->signal(); }
+		if (fence) {
+			fence->signal();
+			fence->release();
+		}
 	}];
 
 	signalPresentationSemaphore(signaler, mtlCmdBuff);

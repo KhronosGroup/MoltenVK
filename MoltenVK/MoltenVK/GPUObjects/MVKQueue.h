@@ -189,6 +189,8 @@ public:
 protected:
 	friend class MVKQueue;
 
+	virtual void finish() = 0;
+
 	MVKQueue* _queue;
 	MVKSmallVector<std::pair<MVKSemaphore*, uint64_t>> _waitSemaphores;
 };
@@ -213,7 +215,7 @@ protected:
 	id<MTLCommandBuffer> getActiveMTLCommandBuffer();
 	void setActiveMTLCommandBuffer(id<MTLCommandBuffer> mtlCmdBuff);
 	void commitActiveMTLCommandBuffer(bool signalCompletion = false);
-	virtual void finish();
+	void finish() override;
 	virtual void submitCommandBuffers() {}
 
 	MVKSmallVector<std::pair<MVKSemaphore*, uint64_t>> _signalSemaphores;
@@ -270,7 +272,7 @@ public:
 									 const VkPresentInfoKHR* pPresentInfo);
 
 protected:
-	void stopAutoGPUCapture();
+	void finish() override;
 
 	MVKSmallVector<MVKImagePresentInfo, 4> _presentInfo;
 };

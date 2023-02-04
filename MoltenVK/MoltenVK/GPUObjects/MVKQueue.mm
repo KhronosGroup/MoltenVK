@@ -290,11 +290,15 @@ MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 
 	_waitSemaphores.reserve(waitSemaphoreCount);
 	for (uint32_t i = 0; i < waitSemaphoreCount; i++) {
-		_waitSemaphores.push_back(make_pair((MVKSemaphore*)pWaitSemaphores[i], (uint64_t)0));
+		auto* sem4 = (MVKSemaphore*)pWaitSemaphores[i];
+		sem4->retain();
+		uint64_t sem4Val = 0;
+		_waitSemaphores.emplace_back(sem4, sem4Val);
 	}
 }
 
 MVKQueueSubmission::~MVKQueueSubmission() {
+	for (auto s : _waitSemaphores) { s.first->release(); }
 	_queue->release();
 }
 
@@ -530,33 +534,42 @@ void MVKQueueFullCommandBufferSubmission<N>::finish() {
 #pragma mark -
 #pragma mark MVKQueuePresentSurfaceSubmission
 
+// If the semaphores are encodable, wait on them by encoding them on the MTLCommandBuffer before presenting.
+// If the semaphores are not encodable, wait on them inline after presenting.
+// The semaphores know what to do.
 void MVKQueuePresentSurfaceSubmission::execute() {
-	// If the semaphores are encodable, wait on them by encoding them on the MTLCommandBuffer before presenting.
-	// If the semaphores are not encodable, wait on them inline after presenting.
-	// The semaphores know what to do.
 	id<MTLCommandBuffer> mtlCmdBuff = _queue->getMTLCommandBuffer(kMVKCommandUseQueuePresent);
 	[mtlCmdBuff enqueue];
 	for (auto& ws : _waitSemaphores) { ws.first->encodeWait(mtlCmdBuff, 0); }
+
+	// Add completion handler that will destroy this submission only once the MTLCommandBuffer
+	// is finished with the resources retained here, including the wait semaphores.
+	// Completion handlers are also added in presentCAMetalDrawable() to retain the swapchain images.
+	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
+		this->finish();
+	}];
+
 	for (int i = 0; i < _presentInfo.size(); i++ ) {
 		_presentInfo[i].presentableImage->presentCAMetalDrawable(mtlCmdBuff, _presentInfo[i]);
 	}
+
 	for (auto& ws : _waitSemaphores) { ws.first->encodeWait(nil, 0); }
 	[mtlCmdBuff commit];
+}
 
-	// Let Xcode know the current frame is done, then start a new frame
+void MVKQueuePresentSurfaceSubmission::finish() {
+
+	// Let Xcode know the current frame is done, then start a new frame,
+	// and if auto GPU capture is active, and it's time to stop it, do so.
 	auto cs = _queue->_submissionCaptureScope;
 	cs->endScope();
 	cs->beginScope();
-	stopAutoGPUCapture();
-
-	this->destroy();
-}
-
-void MVKQueuePresentSurfaceSubmission::stopAutoGPUCapture() {
 	if (_queue->_queueFamily->getIndex() == mvkConfig().defaultGPUCaptureScopeQueueFamilyIndex &&
 		_queue->_index == mvkConfig().defaultGPUCaptureScopeQueueIndex) {
 		_queue->getDevice()->stopAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME);
 	}
+
+	this->destroy();
 }
 
 MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* queue,

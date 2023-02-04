@@ -25,6 +25,7 @@ Released TBA
   was sometimes incorrectly disabled due to a Metal driver bug.
 - Detect when size of surface has changed under the covers.
 - Change rounding of surface size provided by Metal from truncation to rounding-with-half-to-even.
+- Queue submissions retain wait semaphores until `MTLCommandBuffer` finishes.
 
 
 MoltenVK 1.2.2
