@@ -26,6 +26,9 @@ Released TBA
 - Detect when size of surface has changed under the covers.
 - Change rounding of surface size provided by Metal from truncation to rounding-with-half-to-even.
 - Queue submissions retain wait semaphores until `MTLCommandBuffer` finishes.
+- Work around problems with using explicit LoD with arrayed depth images on Apple Silicon.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `37`.
+
 
 
 MoltenVK 1.2.2
@@ -50,6 +53,7 @@ Released 2023/01/23
 - Update to latest SPIRV-Cross:
   - MSL: Add support for writable images in iOS Tier2 argument buffers.
   - MSL: Fix potentially uninitialized warnings.
+
 
 
 MoltenVK 1.2.1

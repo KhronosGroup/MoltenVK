@@ -1605,6 +1605,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			_metalFeatures.clearColorFloatRounding = MVK_FLOAT_ROUNDING_DOWN;
 			break;
 		case kAppleVendorId:
+			// TODO: Other GPUs?
+			_metalFeatures.needsSampleDrefLodArrayWorkaround = true;
+			// fallthrough
 		case kIntelVendorId:
 		case kNVVendorId:
 		default:
