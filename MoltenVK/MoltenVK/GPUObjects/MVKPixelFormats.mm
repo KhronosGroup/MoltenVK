@@ -23,27 +23,43 @@
 
 using namespace std;
 
+// Some Metal formats are not supported by the headers on certain platforms. However, formats have
+// been 'unlocked' on some platforms with newer versions of Xcode.
 
 // Add stub defs for unsupported MTLPixelFormats per platform
 #if MVK_MACOS
-#   if !MVK_MACOS_APPLE_SILICON
+#	if !MVK_XCODE_12_2 // macOS 11.0 / iOS 14.2
+#       define MTLPixelFormatR8Unorm_sRGB           MTLPixelFormatInvalid
+#       define MTLPixelFormatRG8Unorm_sRGB          MTLPixelFormatInvalid
 #       define MTLPixelFormatABGR4Unorm             MTLPixelFormatInvalid
 #       define MTLPixelFormatB5G6R5Unorm            MTLPixelFormatInvalid
 #       define MTLPixelFormatA1BGR5Unorm            MTLPixelFormatInvalid
 #       define MTLPixelFormatBGR5A1Unorm            MTLPixelFormatInvalid
-#       define MTLPixelFormatR8Unorm_sRGB           MTLPixelFormatInvalid
-#       define MTLPixelFormatRG8Unorm_sRGB          MTLPixelFormatInvalid
 
-#       define MTLPixelFormatETC2_RGB8              MTLPixelFormatInvalid
-#       define MTLPixelFormatETC2_RGB8_sRGB         MTLPixelFormatInvalid
-#       define MTLPixelFormatETC2_RGB8A1            MTLPixelFormatInvalid
-#       define MTLPixelFormatETC2_RGB8A1_sRGB       MTLPixelFormatInvalid
+#       define MTLPixelFormatBGR10_XR				MTLPixelFormatInvalid
+#       define MTLPixelFormatBGR10_XR_sRGB			MTLPixelFormatInvalid
+#       define MTLPixelFormatBGRA10_XR				MTLPixelFormatInvalid
+#       define MTLPixelFormatBGRA10_XR_sRGB			MTLPixelFormatInvalid
+
+#       define MTLPixelFormatPVRTC_RGB_2BPP         MTLPixelFormatInvalid
+#       define MTLPixelFormatPVRTC_RGB_2BPP_sRGB    MTLPixelFormatInvalid
+#       define MTLPixelFormatPVRTC_RGB_4BPP         MTLPixelFormatInvalid
+#       define MTLPixelFormatPVRTC_RGB_4BPP_sRGB    MTLPixelFormatInvalid
+#       define MTLPixelFormatPVRTC_RGBA_2BPP        MTLPixelFormatInvalid
+#       define MTLPixelFormatPVRTC_RGBA_2BPP_sRGB   MTLPixelFormatInvalid
+#       define MTLPixelFormatPVRTC_RGBA_4BPP        MTLPixelFormatInvalid
+#       define MTLPixelFormatPVRTC_RGBA_4BPP_sRGB   MTLPixelFormatInvalid
+
 #       define MTLPixelFormatEAC_RGBA8              MTLPixelFormatInvalid
 #       define MTLPixelFormatEAC_RGBA8_sRGB         MTLPixelFormatInvalid
 #       define MTLPixelFormatEAC_R11Unorm           MTLPixelFormatInvalid
 #       define MTLPixelFormatEAC_R11Snorm           MTLPixelFormatInvalid
 #       define MTLPixelFormatEAC_RG11Unorm          MTLPixelFormatInvalid
 #       define MTLPixelFormatEAC_RG11Snorm          MTLPixelFormatInvalid
+#       define MTLPixelFormatETC2_RGB8              MTLPixelFormatInvalid
+#       define MTLPixelFormatETC2_RGB8_sRGB         MTLPixelFormatInvalid
+#       define MTLPixelFormatETC2_RGB8A1            MTLPixelFormatInvalid
+#       define MTLPixelFormatETC2_RGB8A1_sRGB       MTLPixelFormatInvalid
 
 #       define MTLPixelFormatASTC_4x4_HDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_4x4_LDR           MTLPixelFormatInvalid
@@ -87,20 +103,6 @@ using namespace std;
 #       define MTLPixelFormatASTC_12x12_HDR         MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_12x12_LDR         MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_12x12_sRGB        MTLPixelFormatInvalid
-
-#       define MTLPixelFormatPVRTC_RGB_2BPP         MTLPixelFormatInvalid
-#       define MTLPixelFormatPVRTC_RGB_2BPP_sRGB    MTLPixelFormatInvalid
-#       define MTLPixelFormatPVRTC_RGB_4BPP         MTLPixelFormatInvalid
-#       define MTLPixelFormatPVRTC_RGB_4BPP_sRGB    MTLPixelFormatInvalid
-#       define MTLPixelFormatPVRTC_RGBA_2BPP        MTLPixelFormatInvalid
-#       define MTLPixelFormatPVRTC_RGBA_2BPP_sRGB   MTLPixelFormatInvalid
-#       define MTLPixelFormatPVRTC_RGBA_4BPP        MTLPixelFormatInvalid
-#       define MTLPixelFormatPVRTC_RGBA_4BPP_sRGB   MTLPixelFormatInvalid
-
-#       define MTLPixelFormatBGRA10_XR				MTLPixelFormatInvalid
-#       define MTLPixelFormatBGRA10_XR_sRGB			MTLPixelFormatInvalid
-#       define MTLPixelFormatBGR10_XR				MTLPixelFormatInvalid
-#       define MTLPixelFormatBGR10_XR_sRGB			MTLPixelFormatInvalid
 #   endif
 
 #   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatDepth24Unorm_Stencil8
@@ -1489,7 +1491,7 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 
 	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v3, BGR10A2Unorm, RFCMRB );
 
-#if MVK_MACOS_APPLE_SILICON
+#if MVK_XCODE_12_2
 	if ([mtlDevice respondsToSelector: @selector(supports32BitMSAA)] &&
 		!mtlDevice.supports32BitMSAA) {
 

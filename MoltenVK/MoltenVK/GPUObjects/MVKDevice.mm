@@ -2789,7 +2789,7 @@ uint32_t MVKPhysicalDevice::getHighestGPUCapability() {
 #if (MVK_IOS || MVK_MACOS) && MVK_XCODE_12
 	if (supportsMTLGPUFamily(Apple7)) { gpuFam = MTLGPUFamilyApple7; }
 #endif
-#if MVK_IOS && MVK_XCODE_13
+#if (MVK_IOS || MVK_MACOS) && MVK_XCODE_13
 	if (supportsMTLGPUFamily(Apple8)) { gpuFam = MTLGPUFamilyApple8; }
 #endif
 
@@ -3205,7 +3205,7 @@ void MVKPhysicalDevice::logGPUInfo() {
 	logMsg += "\n\tsupports the following Metal Versions, GPU's and Feature Sets:";
 	logMsg += "\n\t\tMetal Shading Language %s";
 
-#if MVK_IOS && MVK_XCODE_13
+#if (MVK_IOS || MVK_MACOS) && MVK_XCODE_13
 	if (supportsMTLGPUFamily(Apple8)) { logMsg += "\n\t\tGPU Family Apple 8"; }
 #endif
 #if (MVK_IOS || MVK_MACOS) && MVK_XCODE_12
@@ -4752,8 +4752,8 @@ uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice) {
 bool mvkSupportsBCTextureCompression(id<MTLDevice> mtlDevice) {
 #if MVK_IOS || MVK_TVOS || MVK_MACCAT
 	return false;
-#endif
-#if MVK_MACOS && !MVK_MACCAT
+ #endif
+ #if MVK_MACOS && !MVK_MACCAT
 #if MVK_XCODE_12
 	if ([mtlDevice respondsToSelector: @selector(supportsBCTextureCompression)]) {
 		return mtlDevice.supportsBCTextureCompression;

@@ -96,6 +96,10 @@ extern "C" {
 #	define MVK_XCODE_13 			((__MAC_OS_X_VERSION_MAX_ALLOWED >= 120000) || \
 									 (__IPHONE_OS_VERSION_MAX_ALLOWED >= 150000))	// Also covers tvOS
 #endif
+#ifndef MVK_XCODE_12_2
+#	define MVK_XCODE_12_2 			((__MAC_OS_X_VERSION_MAX_ALLOWED >= 110000) || \
+									 (__IPHONE_OS_VERSION_MAX_ALLOWED >= 140200))	// Also covers tvOS
+#endif
 #ifndef MVK_XCODE_12
 #	define MVK_XCODE_12 			((__MAC_OS_X_VERSION_MAX_ALLOWED >= 101600) || \
 									 (__IPHONE_OS_VERSION_MAX_ALLOWED >= 140000))	// Also covers tvOS
