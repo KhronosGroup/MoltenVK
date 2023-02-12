@@ -176,7 +176,7 @@ struct CIE1931XY {
 // According to D.3.28:
 //   "[x and y] specify the normalized x and y chromaticity coordinates, respectively...
 //    in normalized increments of 0.00002."
-static inline uint16_t FloatToCIE1931Unorm(float x) { return OSSwapHostToBigInt16((uint16_t)(x * 100000 / 2)); }
+constexpr uint16_t FloatToCIE1931Unorm(float x) { return OSSwapHostToBigInt16((uint16_t)(x * 100000 / 2)); }
 static inline CIE1931XY VkXYColorEXTToCIE1931XY(VkXYColorEXT xy) {
 	return { FloatToCIE1931Unorm(xy.x), FloatToCIE1931Unorm(xy.y) };
 }
