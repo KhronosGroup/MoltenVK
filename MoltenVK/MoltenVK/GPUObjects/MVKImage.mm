@@ -1296,7 +1296,7 @@ id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
 
 // Present the drawable and make myself available only once the command buffer has completed.
 void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff,
-														  MVKImagePresentInfo presentInfo) {
+														  MVKImagePresentInfo& presentInfo) {
 	lock_guard<mutex> lock(_availabilityLock);
 
 	_swapchain->willPresentSurface(getMTLTexture(0), mtlCmdBuff);
@@ -1359,7 +1359,7 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 }
 
 void MVKPresentableSwapchainImage::addPresentedHandler(id<CAMetalDrawable> mtlDrawable,
-													   MVKImagePresentInfo presentInfo) {
+													   MVKImagePresentInfo& presentInfo) {
 #if !MVK_OS_SIMULATOR
 	if ([mtlDrawable respondsToSelector: @selector(addPresentedHandler:)]) {
 		retain();	// Ensure this image is not destroyed while awaiting presentation
@@ -1418,13 +1418,10 @@ void MVKPresentableSwapchainImage::makeAvailable() {
 
 #pragma mark Construction
 
-// The deferImgMemAlloc parameter is ignored, because image memory allocation is provided by a MTLDrawable,
-// which is retrieved lazily, and hence is already as deferred (or as deferred as we can make it).
 MVKPresentableSwapchainImage::MVKPresentableSwapchainImage(MVKDevice* device,
 														   const VkImageCreateInfo* pCreateInfo,
 														   MVKSwapchain* swapchain,
-														   uint32_t swapchainIndex,
-														   bool deferImgMemAlloc) :
+														   uint32_t swapchainIndex) :
 	MVKSwapchainImage(device, pCreateInfo, swapchain, swapchainIndex) {
 
 	_mtlDrawable = nil;

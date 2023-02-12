@@ -544,7 +544,6 @@ public:
 	MVKPresentableSwapchainImage* createPresentableSwapchainImage(const VkImageCreateInfo* pCreateInfo,
 																  MVKSwapchain* swapchain,
 																  uint32_t swapchainIndex,
-																  bool deferImgMemAlloc,
 																  const VkAllocationCallbacks* pAllocator);
 	void destroyPresentableSwapchainImage(MVKPresentableSwapchainImage* mvkImg,
 										  const VkAllocationCallbacks* pAllocator);

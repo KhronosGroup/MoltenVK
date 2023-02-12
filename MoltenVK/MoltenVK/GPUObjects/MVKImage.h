@@ -449,16 +449,13 @@ public:
 #pragma mark Metal
 
 	/** Presents the contained drawable to the OS. */
-	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff, MVKImagePresentInfo presentInfo);
+	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff, MVKImagePresentInfo& presentInfo);
 
 
 #pragma mark Construction
 
-	MVKPresentableSwapchainImage(MVKDevice* device,
-								 const VkImageCreateInfo* pCreateInfo,
-								 MVKSwapchain* swapchain,
-								 uint32_t swapchainIndex,
-								 bool deferImgMemAlloc);
+	MVKPresentableSwapchainImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo,
+								 MVKSwapchain* swapchain, uint32_t swapchainIndex);
 
 	~MVKPresentableSwapchainImage() override;
 
@@ -466,7 +463,7 @@ protected:
 	friend MVKSwapchain;
 
 	id<CAMetalDrawable> getCAMetalDrawable() override;
-	void addPresentedHandler(id<CAMetalDrawable> mtlDrawable, MVKImagePresentInfo presentInfo);
+	void addPresentedHandler(id<CAMetalDrawable> mtlDrawable, MVKImagePresentInfo& presentInfo);
 	void releaseMetalDrawable();
 	MVKSwapchainImageAvailability getAvailability();
 	void makeAvailable(const MVKSwapchainSignaler& signaler);

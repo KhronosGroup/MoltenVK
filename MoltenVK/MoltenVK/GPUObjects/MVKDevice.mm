@@ -3573,11 +3573,9 @@ void MVKDevice::destroySwapchain(MVKSwapchain* mvkSwpChn,
 MVKPresentableSwapchainImage* MVKDevice::createPresentableSwapchainImage(const VkImageCreateInfo* pCreateInfo,
 																		 MVKSwapchain* swapchain,
 																		 uint32_t swapchainIndex,
-																		 bool deferImgMemAlloc,
 																		 const VkAllocationCallbacks* pAllocator) {
 	MVKPresentableSwapchainImage* mvkImg = new MVKPresentableSwapchainImage(this, pCreateInfo,
-																			swapchain, swapchainIndex,
-																			deferImgMemAlloc);
+																			swapchain, swapchainIndex);
     for (auto& memoryBinding : mvkImg->_memoryBindings) {
         addResource(memoryBinding);
     }

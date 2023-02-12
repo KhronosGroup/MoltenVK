@@ -132,10 +132,10 @@ protected:
     void willPresentSurface(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void markFrameInterval();
-	void recordPresentTime(MVKImagePresentInfo presentInfo, uint64_t actualPresentTime = 0);
+	void recordPresentTime(MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime = 0);
 
 	CAMetalLayer* _mtlLayer = nil;
-    MVKWatermark* _licenseWatermark = nil;
+    MVKWatermark* _licenseWatermark = nullptr;
 	MVKSmallVector<MVKPresentableSwapchainImage*, kMVKMaxSwapchainImageCount> _presentableImages;
 	MVKSmallVector<VkPresentModeKHR, 2> _compatiblePresentModes;
 	static const int kMaxPresentationHistory = 60;

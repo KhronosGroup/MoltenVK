@@ -469,11 +469,12 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 		mvkEnableFlags(imgInfo.flags, VK_IMAGE_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT);
 	}
 
-	bool deferImgMemAlloc = mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_SWAPCHAIN_CREATE_DEFERRED_MEMORY_ALLOCATION_BIT_EXT);
+	// The VK_SWAPCHAIN_CREATE_DEFERRED_MEMORY_ALLOCATION_BIT_EXT flag is ignored, because
+	// swapchain image memory allocation is provided by a MTLDrawable, which is retrieved
+	// lazily, and hence is already deferred (or as deferred as we can make it).
 
 	for (uint32_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
-		_presentableImages.push_back(_device->createPresentableSwapchainImage(&imgInfo, this, imgIdx,
-																			  deferImgMemAlloc, NULL));
+		_presentableImages.push_back(_device->createPresentableSwapchainImage(&imgInfo, this, imgIdx, nullptr));
 	}
 
 	NSString* screenName = @"Main Screen";
@@ -543,7 +544,7 @@ VkResult MVKSwapchain::getPastPresentationTiming(uint32_t *pCount, VkPastPresent
 	return res;
 }
 
-void MVKSwapchain::recordPresentTime(MVKImagePresentInfo presentInfo, uint64_t actualPresentTime) {
+void MVKSwapchain::recordPresentTime(MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime) {
 	std::lock_guard<std::mutex> lock(_presentHistoryLock);
 	if (_presentHistoryCount < kMaxPresentationHistory) {
 		_presentHistoryCount++;
