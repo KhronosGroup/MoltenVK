@@ -115,6 +115,18 @@ uint64_t MVKSwapchain::getNextAcquisitionID() { return ++_currentAcquisitionID; 
 void MVKSwapchain::releaseUndisplayedSurfaces() {}
 
 
+// This swapchain is optimally sized for the surface if the app has specified deliberate
+// swapchain scaling, or the CAMetalLayer drawableSize has not changed since the swapchain
+// was created, and the CAMetalLayer will not need to be scaled when composited.
+bool MVKSwapchain::hasOptimalSurface() {
+	if (_isDeliberatelyScaled) { return true; }
+
+	VkExtent2D drawExtent = mvkVkExtent2DFromCGSize(_mtlLayer.drawableSize);
+	return (mvkVkExtent2DsAreEqual(drawExtent, _mtlLayerDrawableExtent) &&
+			mvkVkExtent2DsAreEqual(drawExtent, mvkGetNaturalExtent(_mtlLayer)));
+}
+
+
 #pragma mark Rendering
 
 // Called automatically when a swapchain image is about to be presented to the surface by the queue.
@@ -339,9 +351,10 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 																			   VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 																			   VK_IMAGE_USAGE_SAMPLED_BIT |
 																			   VK_IMAGE_USAGE_STORAGE_BIT));
-	// Remember drawable size to later detect if it has changed under the covers.
-	_mtlLayerDrawableSize = mvkCGSizeFromVkExtent2D(pCreateInfo->imageExtent);
-	_mtlLayer.drawableSize = _mtlLayerDrawableSize;
+	// Remember the extent to later detect if it has changed under the covers,
+	// and set the drawable size of the CAMetalLayer from the extent.
+	_mtlLayerDrawableExtent = pCreateInfo->imageExtent;
+	_mtlLayer.drawableSize = mvkCGSizeFromVkExtent2D(_mtlLayerDrawableExtent);
 
 	if (pCreateInfo->compositeAlpha != VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) {
 		_mtlLayer.opaque = pCreateInfo->compositeAlpha == VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;

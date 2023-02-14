@@ -79,19 +79,8 @@ public:
 	/** Returns whether the parent surface is now lost and this swapchain must be recreated. */
 	bool getIsSurfaceLost() { return _surfaceLost; }
 
-	/**
-	 * Returns whether this swapchain is optimally sized for the surface.
-	 * It is if the app has specified deliberate swapchain scaling, or the CAMetalLayer
-	 * drawableSize has not changed since the swapchain was created, and the CAMetalLayer
-	 * will not need to be scaled when composited.
-	 */
-	bool hasOptimalSurface() {
-		if (_isDeliberatelyScaled) { return true; }
-
-		auto drawSize = _mtlLayer.drawableSize;
-		return (CGSizeEqualToSize(drawSize, _mtlLayerDrawableSize) &&
-				CGSizeEqualToSize(drawSize, _mtlLayer.naturalDrawableSizeMVK));
-	}
+	/** Returns whether this swapchain is optimally sized for the surface. */
+	bool hasOptimalSurface();
 
 	/** Returns the status of the surface. Surface loss takes precedence over sub-optimal errors. */
 	VkResult getSurfaceStatus() {
@@ -145,7 +134,7 @@ protected:
 	std::mutex _presentHistoryLock;
 	std::mutex _layerLock;
 	uint64_t _lastFrameTime = 0;
-	CGSize _mtlLayerDrawableSize = {0.0, 0.0};
+	VkExtent2D _mtlLayerDrawableExtent = {0, 0};
 	uint32_t _currentPerfLogFrameCount = 0;
 	uint32_t _presentHistoryCount = 0;
 	uint32_t _presentHistoryIndex = 0;
@@ -154,3 +143,17 @@ protected:
 	bool _isDeliberatelyScaled = false;
 };
 
+
+#pragma mark -
+#pragma mark Support functions
+
+/**
+ * Returns the natural extent of the CAMetalLayer.
+ *
+ * The natural extent is the size of the bounds property of the layer,
+ * multiplied by the contentsScale property of the layer, rounded
+ * to nearest integer using half-to-even rounding.
+ */
+static inline VkExtent2D mvkGetNaturalExtent(CAMetalLayer* mtlLayer) {
+	return mvkVkExtent2DFromCGSize(mtlLayer.naturalDrawableSizeMVK);
+}

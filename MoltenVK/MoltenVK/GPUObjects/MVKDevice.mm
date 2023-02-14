@@ -1141,7 +1141,7 @@ VkResult MVKPhysicalDevice::getSurfaceCapabilities(	const VkPhysicalDeviceSurfac
 	VkSurfaceCapabilitiesKHR& surfCaps = pSurfaceCapabilities->surfaceCapabilities;
 	surfCaps.minImageCount = _metalFeatures.minSwapchainImageCount;
 	surfCaps.maxImageCount = _metalFeatures.maxSwapchainImageCount;
-	surfCaps.currentExtent = mvkVkExtent2DFromCGSize(mtlLayer.naturalDrawableSizeMVK);
+	surfCaps.currentExtent = mvkGetNaturalExtent(mtlLayer);
 	surfCaps.minImageExtent = { 1, 1 };
 	surfCaps.maxImageExtent = { _properties.limits.maxImageDimension2D, _properties.limits.maxImageDimension2D };
 	surfCaps.maxImageArrayLayers = 1;
@@ -1389,7 +1389,7 @@ VkResult MVKPhysicalDevice::getPresentRectangles(MVKSurface* surface,
 	*pRectCount = 1;
 
 	pRects[0].offset = { 0, 0 };
-	pRects[0].extent = mvkVkExtent2DFromCGSize(mtlLayer.naturalDrawableSizeMVK);
+	pRects[0].extent = mvkGetNaturalExtent(mtlLayer);
 
 	return VK_SUCCESS;
 }

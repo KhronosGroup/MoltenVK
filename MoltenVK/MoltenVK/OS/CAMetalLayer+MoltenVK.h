@@ -38,8 +38,8 @@
 /**
  * Returns the natural drawable size for this layer.
  *
- * The natural drawable size is the size of the bounds property of this layer,
- * multiplied by the contentsScale property of this layer.
+ * The natural drawable size is the size of the bounds
+ * property multiplied by the contentsScale property.
  */
 @property(nonatomic, readonly) CGSize naturalDrawableSizeMVK;
 
