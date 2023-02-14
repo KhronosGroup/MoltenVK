@@ -207,9 +207,6 @@ do {											\
 #	define MVK_DEBUGGER() { kill( getpid(), SIGINT ) ; }
 #endif
 
-// Log the size of a type, struct, or class
-#define MVKLogSizeOf(T)		printf("sizeof(%s): %lu.\n", #T, sizeof(T))
-
 
 #ifdef __cplusplus
 }

@@ -181,8 +181,12 @@ public:
 	 */
 	VkResult getSurfaceSupport(uint32_t queueFamilyIndex, MVKSurface* surface, VkBool32* pSupported);
 
-	/** Returns the capabilities of the specified surface. */
-	VkResult getSurfaceCapabilities(MVKSurface* surface, VkSurfaceCapabilitiesKHR* pSurfaceCapabilities);
+	/** Returns the capabilities of the surface. */
+	VkResult getSurfaceCapabilities(VkSurfaceKHR surface, VkSurfaceCapabilitiesKHR* pSurfaceCapabilities);
+
+	/** Returns the capabilities of the surface. */
+	VkResult getSurfaceCapabilities(const VkPhysicalDeviceSurfaceInfo2KHR* pSurfaceInfo,
+									VkSurfaceCapabilities2KHR* pSurfaceCapabilities);
 
 	/**
 	 * Returns the pixel formats supported by the surface.

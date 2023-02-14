@@ -290,11 +290,15 @@ MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 
 	_waitSemaphores.reserve(waitSemaphoreCount);
 	for (uint32_t i = 0; i < waitSemaphoreCount; i++) {
-		_waitSemaphores.push_back(make_pair((MVKSemaphore*)pWaitSemaphores[i], (uint64_t)0));
+		auto* sem4 = (MVKSemaphore*)pWaitSemaphores[i];
+		sem4->retain();
+		uint64_t sem4Val = 0;
+		_waitSemaphores.emplace_back(sem4, sem4Val);
 	}
 }
 
 MVKQueueSubmission::~MVKQueueSubmission() {
+	for (auto s : _waitSemaphores) { s.first->release(); }
 	_queue->release();
 }
 
@@ -530,47 +534,61 @@ void MVKQueueFullCommandBufferSubmission<N>::finish() {
 #pragma mark -
 #pragma mark MVKQueuePresentSurfaceSubmission
 
+// If the semaphores are encodable, wait on them by encoding them on the MTLCommandBuffer before presenting.
+// If the semaphores are not encodable, wait on them inline after presenting.
+// The semaphores know what to do.
 void MVKQueuePresentSurfaceSubmission::execute() {
-	// If the semaphores are encodable, wait on them by encoding them on the MTLCommandBuffer before presenting.
-	// If the semaphores are not encodable, wait on them inline after presenting.
-	// The semaphores know what to do.
 	id<MTLCommandBuffer> mtlCmdBuff = _queue->getMTLCommandBuffer(kMVKCommandUseQueuePresent);
 	[mtlCmdBuff enqueue];
 	for (auto& ws : _waitSemaphores) { ws.first->encodeWait(mtlCmdBuff, 0); }
+
+	// Add completion handler that will destroy this submission only once the MTLCommandBuffer
+	// is finished with the resources retained here, including the wait semaphores.
+	// Completion handlers are also added in presentCAMetalDrawable() to retain the swapchain images.
+	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
+		this->finish();
+	}];
+
 	for (int i = 0; i < _presentInfo.size(); i++ ) {
-		MVKPresentableSwapchainImage *img = _presentInfo[i].presentableImage;
-		img->presentCAMetalDrawable(mtlCmdBuff, _presentInfo[i]);
+		_presentInfo[i].presentableImage->presentCAMetalDrawable(mtlCmdBuff, _presentInfo[i]);
 	}
+
 	for (auto& ws : _waitSemaphores) { ws.first->encodeWait(nil, 0); }
 	[mtlCmdBuff commit];
+}
 
-	// Let Xcode know the current frame is done, then start a new frame
+void MVKQueuePresentSurfaceSubmission::finish() {
+
+	// Let Xcode know the current frame is done, then start a new frame,
+	// and if auto GPU capture is active, and it's time to stop it, do so.
 	auto cs = _queue->_submissionCaptureScope;
 	cs->endScope();
 	cs->beginScope();
-	stopAutoGPUCapture();
-
-	this->destroy();
-}
-
-void MVKQueuePresentSurfaceSubmission::stopAutoGPUCapture() {
 	if (_queue->_queueFamily->getIndex() == mvkConfig().defaultGPUCaptureScopeQueueFamilyIndex &&
 		_queue->_index == mvkConfig().defaultGPUCaptureScopeQueueIndex) {
 		_queue->getDevice()->stopAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME);
 	}
+
+	this->destroy();
 }
 
 MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* queue,
 																   const VkPresentInfoKHR* pPresentInfo)
 	: MVKQueueSubmission(queue, pPresentInfo->waitSemaphoreCount, pPresentInfo->pWaitSemaphores) {
 
-	const VkPresentTimesInfoGOOGLE *pPresentTimesInfoGOOGLE = nullptr;
-	for ( const auto *next = ( VkBaseInStructure* ) pPresentInfo->pNext; next; next = next->pNext )
-	{
-		switch ( next->sType )
-		{
+	const VkPresentTimesInfoGOOGLE* pPresentTimesInfo = nullptr;
+	const VkSwapchainPresentFenceInfoEXT* pPresentFenceInfo = nullptr;
+	const VkSwapchainPresentModeInfoEXT* pPresentModeInfo = nullptr;
+	for (auto* next = (const VkBaseInStructure*)pPresentInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT:
+				pPresentFenceInfo = (const VkSwapchainPresentFenceInfoEXT*) next;
+				break;
+			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_EXT:
+				pPresentModeInfo = (const VkSwapchainPresentModeInfoEXT*) next;
+				break;
 			case VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE:
-				pPresentTimesInfoGOOGLE = ( const VkPresentTimesInfoGOOGLE * ) next;
+				pPresentTimesInfo = (const VkPresentTimesInfoGOOGLE*) next;
 				break;
 			default:
 				break;
@@ -579,21 +597,34 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 
 	// Populate the array of swapchain images, testing each one for status
 	uint32_t scCnt = pPresentInfo->swapchainCount;
-	const VkPresentTimeGOOGLE *pPresentTimesGOOGLE = nullptr;
-	if ( pPresentTimesInfoGOOGLE && pPresentTimesInfoGOOGLE->pTimes ) {
-		pPresentTimesGOOGLE = pPresentTimesInfoGOOGLE->pTimes;
-		MVKAssert( pPresentTimesInfoGOOGLE->swapchainCount == pPresentInfo->swapchainCount, "VkPresentTimesInfoGOOGLE swapchainCount must match VkPresentInfo swapchainCount" );
+	const VkPresentTimeGOOGLE* pPresentTimes = nullptr;
+	if (pPresentTimesInfo && pPresentTimesInfo->pTimes) {
+		pPresentTimes = pPresentTimesInfo->pTimes;
+		MVKAssert(pPresentTimesInfo->swapchainCount == scCnt, "VkPresentTimesInfoGOOGLE swapchainCount must match VkPresentInfo swapchainCount.");
 	}
+	const VkPresentModeKHR* pPresentModes = nullptr;
+	if (pPresentModeInfo) {
+		pPresentModes = pPresentModeInfo->pPresentModes;
+		MVKAssert(pPresentModeInfo->swapchainCount == scCnt, "VkSwapchainPresentModeInfoEXT swapchainCount must match VkPresentInfo swapchainCount.");
+	}
+	const VkFence* pFences = nullptr;
+	if (pPresentFenceInfo) {
+		pFences = pPresentFenceInfo->pFences;
+		MVKAssert(pPresentFenceInfo->swapchainCount == scCnt, "VkSwapchainPresentFenceInfoEXT swapchainCount must match VkPresentInfo swapchainCount.");
+	}
+
 	VkResult* pSCRslts = pPresentInfo->pResults;
 	_presentInfo.reserve(scCnt);
 	for (uint32_t scIdx = 0; scIdx < scCnt; scIdx++) {
 		MVKSwapchain* mvkSC = (MVKSwapchain*)pPresentInfo->pSwapchains[scIdx];
-		MVKPresentTimingInfo presentInfo = {};
+		MVKImagePresentInfo presentInfo = {};
 		presentInfo.presentableImage = mvkSC->getPresentableImage(pPresentInfo->pImageIndices[scIdx]);
-		if ( pPresentTimesGOOGLE ) {
+		presentInfo.presentMode = pPresentModes ? pPresentModes[scIdx] : VK_PRESENT_MODE_MAX_ENUM_KHR;
+		presentInfo.fence = pFences ? (MVKFence*)pFences[scIdx] : nullptr;
+		if (pPresentTimes) {
 			presentInfo.hasPresentTime = true;
-			presentInfo.presentID = pPresentTimesGOOGLE[scIdx].presentID;
-			presentInfo.desiredPresentTime = pPresentTimesGOOGLE[scIdx].desiredPresentTime;
+			presentInfo.presentID = pPresentTimes[scIdx].presentID;
+			presentInfo.desiredPresentTime = pPresentTimes[scIdx].desiredPresentTime;
 		} else {
 			presentInfo.hasPresentTime = false;
 		}

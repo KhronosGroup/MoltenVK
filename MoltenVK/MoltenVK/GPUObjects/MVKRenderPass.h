@@ -314,7 +314,7 @@ uint32_t mvkGetAttachments(const VkRenderingInfo* pRenderingInfo,
 						   VkClearValue clearValues[]);
 
 /** Returns whether the view mask uses multiview. */
-static inline bool mvkIsMultiview(uint32_t viewMask) { return viewMask != 0; }
+static constexpr bool mvkIsMultiview(uint32_t viewMask) { return viewMask != 0; }
 
 /** Returns whether the attachment is being used. */
 bool mvkIsColorAttachmentUsed(const VkPipelineRenderingCreateInfo* pRendInfo, uint32_t colorAttIdx);

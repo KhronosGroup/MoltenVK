@@ -34,7 +34,8 @@ static void mvkInitConfigFromEnvVars() {
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.maxActiveMetalCommandBuffersPerQueue,   MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_QUEUE);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.supportLargeQueryPools,                 MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.presentWithCommandBuffer,               MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.swapchainMagFilterUseNearest,           MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.swapchainMinMagFilterUseNearest,        MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST);	// Deprecated legacy env var
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.swapchainMinMagFilterUseNearest,        MVK_CONFIG_SWAPCHAIN_MIN_MAG_FILTER_USE_NEAREST);
 	MVK_SET_FROM_ENV_OR_BUILD_INT64 (evCfg.metalCompileTimeout,                    MVK_CONFIG_METAL_COMPILE_TIMEOUT);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.performanceTracking,                    MVK_CONFIG_PERFORMANCE_TRACKING);
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.performanceLoggingFrameCount,           MVK_CONFIG_PERFORMANCE_LOGGING_FRAME_COUNT);

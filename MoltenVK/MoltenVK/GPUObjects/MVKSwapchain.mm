@@ -70,11 +70,11 @@ VkResult MVKSwapchain::getImages(uint32_t* pCount, VkImage* pSwapchainImages) {
 	return result;
 }
 
-VkResult MVKSwapchain::acquireNextImageKHR(uint64_t timeout,
-										   VkSemaphore semaphore,
-										   VkFence fence,
-										   uint32_t deviceMask,
-										   uint32_t* pImageIndex) {
+VkResult MVKSwapchain::acquireNextImage(uint64_t timeout,
+										VkSemaphore semaphore,
+										VkFence fence,
+										uint32_t deviceMask,
+										uint32_t* pImageIndex) {
 
 	if ( _device->getConfigurationResult() != VK_SUCCESS ) { return _device->getConfigurationResult(); }
 	if ( getIsSurfaceLost() ) { return VK_ERROR_SURFACE_LOST_KHR; }
@@ -100,11 +100,31 @@ VkResult MVKSwapchain::acquireNextImageKHR(uint64_t timeout,
 	return getSurfaceStatus();
 }
 
+VkResult MVKSwapchain::releaseImages(const VkReleaseSwapchainImagesInfoEXT* pReleaseInfo) {
+	for (uint32_t imgIdxIdx = 0; imgIdxIdx < pReleaseInfo->imageIndexCount; imgIdxIdx++) {
+		getPresentableImage(pReleaseInfo->pImageIndices[imgIdxIdx])->makeAvailable();
+	}
+
+	return VK_SUCCESS;
+}
+
 uint64_t MVKSwapchain::getNextAcquisitionID() { return ++_currentAcquisitionID; }
 
 // Releases any surfaces that are not currently being displayed,
 // so they can be used by a different swapchain.
 void MVKSwapchain::releaseUndisplayedSurfaces() {}
+
+
+// This swapchain is optimally sized for the surface if the app has specified deliberate
+// swapchain scaling, or the CAMetalLayer drawableSize has not changed since the swapchain
+// was created, and the CAMetalLayer will not need to be scaled when composited.
+bool MVKSwapchain::hasOptimalSurface() {
+	if (_isDeliberatelyScaled) { return true; }
+
+	VkExtent2D drawExtent = mvkVkExtent2DFromCGSize(_mtlLayer.drawableSize);
+	return (mvkVkExtent2DsAreEqual(drawExtent, _mtlLayerDrawableExtent) &&
+			mvkVkExtent2DsAreEqual(drawExtent, mvkGetNaturalExtent(_mtlLayer)));
+}
 
 
 #pragma mark Rendering
@@ -168,7 +188,7 @@ struct CIE1931XY {
 // According to D.3.28:
 //   "[x and y] specify the normalized x and y chromaticity coordinates, respectively...
 //    in normalized increments of 0.00002."
-static inline uint16_t FloatToCIE1931Unorm(float x) { return OSSwapHostToBigInt16((uint16_t)(x * 100000 / 2)); }
+static constexpr uint16_t FloatToCIE1931Unorm(float x) { return OSSwapHostToBigInt16((uint16_t)(x * 100000 / 2)); }
 static inline CIE1931XY VkXYColorEXTToCIE1931XY(VkXYColorEXT xy) {
 	return { FloatToCIE1931Unorm(xy.x), FloatToCIE1931Unorm(xy.y) };
 }
@@ -227,19 +247,37 @@ void MVKSwapchain::setHDRMetadataEXT(const VkHdrMetadataEXT& metadata) {
 #pragma mark Construction
 
 MVKSwapchain::MVKSwapchain(MVKDevice* device,
-						   const VkSwapchainCreateInfoKHR* pCreateInfo) :
-	MVKVulkanAPIDeviceObject(device),
-	_licenseWatermark(nil),
-	_currentAcquisitionID(0),
-	_lastFrameTime(0),
-	_currentPerfLogFrameCount(0),
-	_surfaceLost(false),
-	_layerObserver(nil),
-	_presentHistoryCount(0),
-	_presentHistoryIndex(0),
-	_presentHistoryHeadIndex(0) {
-
+						   const VkSwapchainCreateInfoKHR* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 	memset(_presentTimingHistory, 0, sizeof(_presentTimingHistory));
+
+	// Retrieve the scaling and present mode structs if they are supplied.
+	VkSwapchainPresentScalingCreateInfoEXT* pScalingInfo = nullptr;
+	VkSwapchainPresentModesCreateInfoEXT* pPresentModesInfo = nullptr;
+	for (auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_EXT: {
+				pScalingInfo = (VkSwapchainPresentScalingCreateInfoEXT*)next;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_EXT: {
+				pPresentModesInfo = (VkSwapchainPresentModesCreateInfoEXT*)next;
+				break;
+			}
+			default:
+				break;
+		}
+	}
+
+	_isDeliberatelyScaled = pScalingInfo && pScalingInfo->scalingBehavior;
+
+	// Set the list of present modes that can be specified in a queue
+	// present submission without causing the swapchain to be rebuilt.
+	if (pPresentModesInfo) {
+		for (uint32_t pmIdx = 0; pmIdx < pPresentModesInfo->presentModeCount; pmIdx++) {
+			_compatiblePresentModes.push_back(pPresentModesInfo->pPresentModes[pmIdx]);
+		}
+	}
+
 	// If applicable, release any surfaces (not currently being displayed) from the old swapchain.
 	MVKSwapchain* oldSwapchain = (MVKSwapchain*)pCreateInfo->oldSwapchain;
 	if (oldSwapchain) { oldSwapchain->releaseUndisplayedSurfaces(); }
@@ -247,12 +285,51 @@ MVKSwapchain::MVKSwapchain(MVKDevice* device,
 	uint32_t imgCnt = mvkClamp(pCreateInfo->minImageCount,
 							   _device->_pMetalFeatures->minSwapchainImageCount,
 							   _device->_pMetalFeatures->maxSwapchainImageCount);
-	initCAMetalLayer(pCreateInfo, imgCnt);
+	initCAMetalLayer(pCreateInfo, pScalingInfo, imgCnt);
     initSurfaceImages(pCreateInfo, imgCnt);		// After initCAMetalLayer()
 }
 
+// kCAGravityResize is the Metal default
+static CALayerContentsGravity getCALayerContentsGravity(VkSwapchainPresentScalingCreateInfoEXT* pScalingInfo) {
+
+	if( !pScalingInfo ) {                                         return kCAGravityResize; }
+
+	switch (pScalingInfo->scalingBehavior) {
+		case VK_PRESENT_SCALING_STRETCH_BIT_EXT:                  return kCAGravityResize;
+		case VK_PRESENT_SCALING_ASPECT_RATIO_STRETCH_BIT_EXT:     return kCAGravityResizeAspect;
+		case VK_PRESENT_SCALING_ONE_TO_ONE_BIT_EXT:
+			switch (pScalingInfo->presentGravityY) {
+				case VK_PRESENT_GRAVITY_MIN_BIT_EXT:
+					switch (pScalingInfo->presentGravityX) {
+						case VK_PRESENT_GRAVITY_MIN_BIT_EXT:      return kCAGravityTopLeft;
+						case VK_PRESENT_GRAVITY_CENTERED_BIT_EXT: return kCAGravityTop;
+						case VK_PRESENT_GRAVITY_MAX_BIT_EXT:      return kCAGravityTopRight;
+						default:                                  return kCAGravityTop;
+					}
+				case VK_PRESENT_GRAVITY_CENTERED_BIT_EXT:
+					switch (pScalingInfo->presentGravityX) {
+						case VK_PRESENT_GRAVITY_MIN_BIT_EXT:      return kCAGravityLeft;
+						case VK_PRESENT_GRAVITY_CENTERED_BIT_EXT: return kCAGravityCenter;
+						case VK_PRESENT_GRAVITY_MAX_BIT_EXT:      return kCAGravityRight;
+						default:                                  return kCAGravityCenter;
+					}
+				case VK_PRESENT_GRAVITY_MAX_BIT_EXT:
+					switch (pScalingInfo->presentGravityX) {
+						case VK_PRESENT_GRAVITY_MIN_BIT_EXT:      return kCAGravityBottomLeft;
+						case VK_PRESENT_GRAVITY_CENTERED_BIT_EXT: return kCAGravityBottom;
+						case VK_PRESENT_GRAVITY_MAX_BIT_EXT:      return kCAGravityBottomRight;
+						default:                                  return kCAGravityBottom;
+					}
+				default:                                          return kCAGravityCenter;
+			}
+		default:                                                  return kCAGravityResize;
+	}
+}
+
 // Initializes the CAMetalLayer underlying the surface of this swapchain.
-void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt) {
+void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
+									VkSwapchainPresentScalingCreateInfoEXT* pScalingInfo,
+									uint32_t imgCnt) {
 
 	MVKSurface* mvkSrfc = (MVKSurface*)pCreateInfo->surface;
 	_mtlLayer = mvkSrfc->getCAMetalLayer();
@@ -262,15 +339,23 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 		return;
 	}
 
+	auto minMagFilter = mvkConfig().swapchainMinMagFilterUseNearest ? kCAFilterNearest : kCAFilterLinear;
 	_mtlLayer.device = getMTLDevice();
 	_mtlLayer.pixelFormat = getPixelFormats()->getMTLPixelFormat(pCreateInfo->imageFormat);
 	_mtlLayer.maximumDrawableCountMVK = imgCnt;
 	_mtlLayer.displaySyncEnabledMVK = (pCreateInfo->presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR);
-	_mtlLayer.magnificationFilter = mvkConfig().swapchainMagFilterUseNearest ? kCAFilterNearest : kCAFilterLinear;
+	_mtlLayer.minificationFilter = minMagFilter;
+	_mtlLayer.magnificationFilter = minMagFilter;
+	_mtlLayer.contentsGravity = getCALayerContentsGravity(pScalingInfo);
 	_mtlLayer.framebufferOnly = !mvkIsAnyFlagEnabled(pCreateInfo->imageUsage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
 																			   VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 																			   VK_IMAGE_USAGE_SAMPLED_BIT |
 																			   VK_IMAGE_USAGE_STORAGE_BIT));
+	// Remember the extent to later detect if it has changed under the covers,
+	// and set the drawable size of the CAMetalLayer from the extent.
+	_mtlLayerDrawableExtent = pCreateInfo->imageExtent;
+	_mtlLayer.drawableSize = mvkCGSizeFromVkExtent2D(_mtlLayerDrawableExtent);
+
 	if (pCreateInfo->compositeAlpha != VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) {
 		_mtlLayer.opaque = pCreateInfo->compositeAlpha == VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	}
@@ -330,7 +415,6 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 			setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateSwapchainKHR(): Metal does not support VkColorSpaceKHR value %d.", pCreateInfo->imageColorSpace));
 			break;
 	}
-	_mtlLayer.drawableSize = mvkCGSizeFromVkExtent2D(pCreateInfo->imageExtent);
 
 	// TODO: set additional CAMetalLayer properties before extracting drawables:
 	//	- presentsWithTransaction
@@ -398,8 +482,12 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 		mvkEnableFlags(imgInfo.flags, VK_IMAGE_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT);
 	}
 
+	// The VK_SWAPCHAIN_CREATE_DEFERRED_MEMORY_ALLOCATION_BIT_EXT flag is ignored, because
+	// swapchain image memory allocation is provided by a MTLDrawable, which is retrieved
+	// lazily, and hence is already deferred (or as deferred as we can make it).
+
 	for (uint32_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
-		_presentableImages.push_back(_device->createPresentableSwapchainImage(&imgInfo, this, imgIdx, NULL));
+		_presentableImages.push_back(_device->createPresentableSwapchainImage(&imgInfo, this, imgIdx, nullptr));
 	}
 
 	NSString* screenName = @"Main Screen";
@@ -469,7 +557,7 @@ VkResult MVKSwapchain::getPastPresentationTiming(uint32_t *pCount, VkPastPresent
 	return res;
 }
 
-void MVKSwapchain::recordPresentTime(MVKPresentTimingInfo presentTimingInfo, uint64_t actualPresentTime) {
+void MVKSwapchain::recordPresentTime(MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime) {
 	std::lock_guard<std::mutex> lock(_presentHistoryLock);
 	if (_presentHistoryCount < kMaxPresentationHistory) {
 		_presentHistoryCount++;
@@ -478,10 +566,10 @@ void MVKSwapchain::recordPresentTime(MVKPresentTimingInfo presentTimingInfo, uin
 	}
 
 	// If actual time not supplied, use desired time instead
-	if (actualPresentTime == 0) { actualPresentTime = presentTimingInfo.desiredPresentTime; }
+	if (actualPresentTime == 0) { actualPresentTime = presentInfo.desiredPresentTime; }
 
-	_presentTimingHistory[_presentHistoryIndex].presentID = presentTimingInfo.presentID;
-	_presentTimingHistory[_presentHistoryIndex].desiredPresentTime = presentTimingInfo.desiredPresentTime;
+	_presentTimingHistory[_presentHistoryIndex].presentID = presentInfo.presentID;
+	_presentTimingHistory[_presentHistoryIndex].desiredPresentTime = presentInfo.desiredPresentTime;
 	_presentTimingHistory[_presentHistoryIndex].actualPresentTime = actualPresentTime;
 	// These details are not available in Metal
 	_presentTimingHistory[_presentHistoryIndex].earliestPresentTime = actualPresentTime;

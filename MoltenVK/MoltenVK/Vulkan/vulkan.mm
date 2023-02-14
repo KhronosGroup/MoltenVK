@@ -2795,7 +2795,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkAcquireNextImageKHR(
 
 	MVKTraceVulkanCallStart();
     MVKSwapchain* mvkSwapchain = (MVKSwapchain*)swapchain;
-    VkResult rslt = mvkSwapchain->acquireNextImageKHR(timeout, semaphore, fence, ~0u, pImageIndex);
+    VkResult rslt = mvkSwapchain->acquireNextImage(timeout, semaphore, fence, ~0u, pImageIndex);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -2856,11 +2856,25 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkAcquireNextImage2KHR(
 
 	MVKTraceVulkanCallStart();
 	MVKSwapchain* mvkSwapchain = (MVKSwapchain*)pAcquireInfo->swapchain;
-	VkResult rslt = mvkSwapchain->acquireNextImageKHR(pAcquireInfo->timeout,
-													  pAcquireInfo->semaphore,
-													  pAcquireInfo->fence,
-													  pAcquireInfo->deviceMask,
-													  pImageIndex);
+	VkResult rslt = mvkSwapchain->acquireNextImage(pAcquireInfo->timeout,
+												   pAcquireInfo->semaphore,
+												   pAcquireInfo->fence,
+												   pAcquireInfo->deviceMask,
+												   pImageIndex);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+#pragma mark -
+#pragma mark VK_EXT_swapchain_maintenance1 extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkReleaseSwapchainImagesEXT(
+	VkDevice                                    device,
+	const VkReleaseSwapchainImagesInfoEXT*      pReleaseInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKSwapchain* mvkSwapchain = (MVKSwapchain*)pReleaseInfo->swapchain;
+	VkResult rslt = mvkSwapchain->releaseImages(pReleaseInfo);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -2901,8 +2915,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
 
 	MVKTraceVulkanCallStart();
     MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-    MVKSurface* mvkSrfc = (MVKSurface*)surface;
-    VkResult rslt = mvkPD->getSurfaceCapabilities(mvkSrfc, pSurfaceCapabilities);
+    VkResult rslt = mvkPD->getSurfaceCapabilities(surface, pSurfaceCapabilities);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -2946,8 +2959,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceSurfaceCapabilities2KHR(
 
 	MVKTraceVulkanCallStart();
 	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-	MVKSurface* mvkSrfc = (MVKSurface*)pSurfaceInfo->surface;
-	VkResult rslt = mvkPD->getSurfaceCapabilities(mvkSrfc, &pSurfaceCapabilities->surfaceCapabilities);
+	VkResult rslt = mvkPD->getSurfaceCapabilities(pSurfaceInfo, pSurfaceCapabilities);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }

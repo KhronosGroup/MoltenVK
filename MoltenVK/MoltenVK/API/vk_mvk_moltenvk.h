@@ -56,7 +56,7 @@ typedef unsigned long MTLArgumentBuffersTier;
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            36
+#define VK_MVK_MOLTENVK_SPEC_VERSION            37
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /** Identifies the level of logging MoltenVK should be limited to outputting. */
@@ -322,22 +322,23 @@ typedef struct {
 	VkBool32 presentWithCommandBuffer;
 
 	/**
-	 * If enabled, swapchain images will use simple Nearest sampling when magnifying the
-	 * swapchain image to fit a physical display surface. If disabled, swapchain images will
+	 * If enabled, swapchain images will use simple Nearest sampling when minifying or magnifying
+	 * the swapchain image to fit a physical display surface. If disabled, swapchain images will
 	 * use Linear sampling when magnifying the swapchain image to fit a physical display surface.
 	 * Enabling this setting avoids smearing effects when swapchain images are simple interger
 	 * multiples of display pixels (eg- macOS Retina, and typical of graphics apps and games),
 	 * but may cause aliasing effects when using non-integer display scaling.
 	 *
-	 * The value of this parameter may be changed before creating a VkSwapchain,
+	 * The value of this parameter must be changed before creating a VkSwapchain,
 	 * for the change to take effect.
 	 *
 	 * The initial value or this parameter is set by the
-	 * MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST
+	 * MVK_CONFIG_SWAPCHAIN_MIN_MAG_FILTER_USE_NEAREST
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * If neither is set, the value of this parameter defaults to true.
 	 */
-	VkBool32 swapchainMagFilterUseNearest;
+	VkBool32 swapchainMinMagFilterUseNearest;
+#define swapchainMagFilterUseNearest swapchainMinMagFilterUseNearest
 
 	/**
 	 * The maximum amount of time, in nanoseconds, to wait for a Metal library, function, or

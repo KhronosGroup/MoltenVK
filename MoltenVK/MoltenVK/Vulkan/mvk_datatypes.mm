@@ -731,6 +731,24 @@ MVK_PUBLIC_SYMBOL MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFl
 
 
 #pragma mark -
+#pragma mark Geometry conversions
+
+MVK_PUBLIC_SYMBOL VkExtent2D mvkVkExtent2DFromCGSize(CGSize cgSize) {
+	VkExtent2D vkExt;
+	vkExt.width = mvkRoundHalfToEven(cgSize.width);
+	vkExt.height = mvkRoundHalfToEven(cgSize.height);
+	return vkExt;
+}
+
+MVK_PUBLIC_SYMBOL CGSize mvkCGSizeFromVkExtent2D(VkExtent2D vkExtent) {
+	CGSize cgSize;
+	cgSize.width = vkExtent.width;
+	cgSize.height = vkExtent.height;
+	return cgSize;
+}
+
+
+#pragma mark -
 #pragma mark Memory options
 
 MVK_PUBLIC_SYMBOL MTLStorageMode mvkMTLStorageModeFromVkMemoryPropertyFlags(VkMemoryPropertyFlags vkFlags) {
