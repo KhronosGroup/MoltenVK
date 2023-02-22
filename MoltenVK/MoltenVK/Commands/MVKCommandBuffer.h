@@ -66,6 +66,24 @@ private:
 
 
 #pragma mark -
+#pragma mark MVKCurrentSubpassInfo
+
+/** Tracks current render subpass information. */
+typedef struct MVKCurrentSubpassInfo {
+	MVKRenderPass* renderpass;
+	uint32_t subpassIndex;
+	uint32_t subpassViewMask;
+
+	void beginRenderpass(MVKRenderPass* rp);
+	void nextSubpass();
+	void beginRendering(uint32_t viewMask);
+
+private:
+	void updateViewMask();
+} MVKCurrentSubpassInfo;
+
+
+#pragma mark -
 #pragma mark MVKCommandBuffer
 
 /** Represents a Vulkan command pool. */
@@ -112,6 +130,9 @@ public:
 	 * from the primary command buffer. If this is a primary command buffer, returns 1.
 	 */
 	uint32_t getViewCount() const;
+
+	/** Updated as renderpass commands are added. */
+	MVKCurrentSubpassInfo _currentSubpassInfo;
 
     /**
      * Metal requires that a visibility buffer is established when a render pass is created, 
@@ -176,7 +197,7 @@ protected:
 	MVKSmallVector<VkFormat, kMVKDefaultAttachmentCount> _colorAttachmentFormats;
 	MVKCommandPool* _commandPool;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
-	VkCommandBufferInheritanceRenderingInfo _secondaryInerhitanceRenderingInfo;
+	VkCommandBufferInheritanceRenderingInfo _secondaryInheritanceRenderingInfo;
 	id<MTLCommandBuffer> _prefilledMTLCmdBuffer = nil;
     MVKCommandEncodingContext* _immediateCmdEncodingContext = nullptr;
     MVKCommandEncoder* _immediateCmdEncoder = nullptr;

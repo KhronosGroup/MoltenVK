@@ -30,6 +30,7 @@
 
 using namespace std;
 
+
 #pragma mark -
 #pragma mark MVKCommandEncodingContext
 
@@ -58,6 +59,28 @@ MVKCommandEncodingContext::~MVKCommandEncodingContext() {
 
 
 #pragma mark -
+#pragma mark MVKCurrentSubpassInfo
+
+void MVKCurrentSubpassInfo::beginRenderpass(MVKRenderPass* rp) {
+	renderpass = rp;
+	subpassIndex = 0;
+	updateViewMask();
+}
+void MVKCurrentSubpassInfo::nextSubpass() {
+	subpassIndex++;
+	updateViewMask();
+}
+void MVKCurrentSubpassInfo::beginRendering(uint32_t viewMask) {
+	renderpass = nullptr;
+	subpassIndex = 0;
+	subpassViewMask = viewMask;
+}
+void MVKCurrentSubpassInfo::updateViewMask() {
+	subpassViewMask = renderpass ? renderpass->getSubpass(subpassIndex)->getViewMask() : 0;
+}
+
+
+#pragma mark -
 #pragma mark MVKCommandBuffer
 
 VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
@@ -80,11 +103,11 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 		for (const auto* next = (VkBaseInStructure*)_secondaryInheritanceInfo.pNext; next; next = next->pNext) {
 			switch (next->sType) {
 				case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO: {
-					if (mvkSetOrClear(&_secondaryInerhitanceRenderingInfo, (VkCommandBufferInheritanceRenderingInfo*)next)) {
-						for (uint32_t caIdx = 0; caIdx < _secondaryInerhitanceRenderingInfo.colorAttachmentCount; caIdx++) {
-							_colorAttachmentFormats.push_back(_secondaryInerhitanceRenderingInfo.pColorAttachmentFormats[caIdx]);
+					if (mvkSetOrClear(&_secondaryInheritanceRenderingInfo, (VkCommandBufferInheritanceRenderingInfo*)next)) {
+						for (uint32_t caIdx = 0; caIdx < _secondaryInheritanceRenderingInfo.colorAttachmentCount; caIdx++) {
+							_colorAttachmentFormats.push_back(_secondaryInheritanceRenderingInfo.pColorAttachmentFormats[caIdx]);
 						}
-						_secondaryInerhitanceRenderingInfo.pColorAttachmentFormats = _colorAttachmentFormats.data();
+						_secondaryInheritanceRenderingInfo.pColorAttachmentFormats = _colorAttachmentFormats.data();
 					}
 					break;
 				}
@@ -147,6 +170,7 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	_wasExecuted = false;
 	_isExecutingNonConcurrently.clear();
 	_commandCount = 0;
+	_currentSubpassInfo = {};
 	_needsVisibilityResultMTLBuffer = false;
 	_hasStageCounterTimestampCommand = false;
 	_lastTessellationPipeline = nullptr;
@@ -247,8 +271,10 @@ uint32_t MVKCommandBuffer::getViewCount() const {
 		if (inheritedRenderPass) {
 			viewMask = inheritedRenderPass->getSubpass(_secondaryInheritanceInfo.subpass)->getViewMask();
 		} else {
-			viewMask = _secondaryInerhitanceRenderingInfo.viewMask;
+			viewMask = _secondaryInheritanceRenderingInfo.viewMask;
 		}
+	} else {
+		viewMask = _currentSubpassInfo.subpassViewMask;
 	}
 	return max(__builtin_popcount(viewMask), 1);
 }
