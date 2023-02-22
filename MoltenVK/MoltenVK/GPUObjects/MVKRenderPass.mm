@@ -668,8 +668,9 @@ MTLStoreAction MVKRenderPassAttachment::getMTLStoreAction(MVKRenderSubpass* subp
 														  bool storeOverride) {
 
 	// If the renderpass is going to be suspended, and resumed later, store the contents to preserve them until then.
-	bool isSuspending = mvkIsAnyFlagEnabled(_renderPass->getRenderingFlags(), VK_RENDERING_SUSPENDING_BIT);
-	if (isSuspending) { return MTLStoreActionStore; }
+	if (mvkIsAnyFlagEnabled(_renderPass->getRenderingFlags(), VK_RENDERING_SUSPENDING_BIT)) {
+		return MTLStoreActionStore;
+	}
 
 	// If a resolve attachment exists, this attachment must resolve once complete.
     if (hasResolveAttachment && canResolveFormat && !_renderPass->getDevice()->_pMetalFeatures->combinedStoreResolveAction) {
@@ -689,9 +690,12 @@ MTLStoreAction MVKRenderPassAttachment::getMTLStoreAction(MVKRenderSubpass* subp
 	return mvkMTLStoreActionFromVkAttachmentStoreOp(storeOp, hasResolveAttachment, canResolveFormat);
 }
 
-// If the subpass is not the first subpass to use this attachment,
-// don't clear this attachment, otherwise, clear if requested.
 bool MVKRenderPassAttachment::shouldClearAttachment(MVKRenderSubpass* subpass, bool isStencil) {
+
+	// If the renderpass is being resumed after being suspended, don't clear this attachment.
+	if (mvkIsAnyFlagEnabled(_renderPass->getRenderingFlags(), VK_RENDERING_RESUMING_BIT_KHR)) { return false; }
+
+	// If the subpass is not the first subpass to use this attachment, don't clear this attachment.
 	if (subpass->isMultiview()) {
 		if (_firstUseViewMasks[subpass->_subpassIndex] == 0) { return false; }
 	} else {

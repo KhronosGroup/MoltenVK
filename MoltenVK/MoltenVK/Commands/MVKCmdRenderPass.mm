@@ -136,10 +136,7 @@ VkResult MVKCmdNextSubpass::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdNextSubpass::encode(MVKCommandEncoder* cmdEncoder) {
-	if (cmdEncoder->getMultiviewPassIndex() + 1 < cmdEncoder->getSubpass()->getMultiviewMetalPassCount())
-		cmdEncoder->beginNextMultiviewPass();
-	else
-		cmdEncoder->beginNextSubpass(this, _contents);
+	cmdEncoder->beginNextSubpass(this, _contents);
 }
 
 
@@ -156,10 +153,7 @@ VkResult MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdEndRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
-	if (cmdEncoder->getMultiviewPassIndex() + 1 < cmdEncoder->getSubpass()->getMultiviewMetalPassCount())
-		cmdEncoder->beginNextMultiviewPass();
-	else
-		cmdEncoder->endRenderpass();
+	cmdEncoder->endRenderpass();
 }
 
 

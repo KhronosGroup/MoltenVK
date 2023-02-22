@@ -21,8 +21,13 @@ Released TBA
 - Add support for extensions:
 	- `VK_EXT_swapchain_maintenance1`
 	- `VK_EXT_surface_maintenance1`
-- Fix issue where extension `VK_KHR_fragment_shader_barycentric` 
-  was sometimes incorrectly disabled due to a Metal driver bug.
+- Fix crash when `VkCommandBufferInheritanceInfo::renderPass` is `VK_NULL_HANDLE` during dynamic rendering.
+- Do not clear attachments when dynamic rendering is resumed.
+- Allow ending dynamic rendering to trigger next multiview pass if needed.
+- Fix premature caching of occlusion query results during tessellation rendering.
+- `vkCmdCopyQueryPoolResults()`: Fix loss of queries when query count is not a multiple of GPU threadgroup execution width.
+- Disable occlusion recording while clearing attachments or render area.
+- Fix issue where extension `VK_KHR_fragment_shader_barycentric` was sometimes incorrectly disabled due to a Metal driver bug.
 - Detect when size of surface has changed under the covers.
 - Change rounding of surface size provided by Metal from truncation to rounding-with-half-to-even.
 - Queue submissions retain wait semaphores until `MTLCommandBuffer` finishes.

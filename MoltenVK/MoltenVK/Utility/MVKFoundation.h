@@ -71,6 +71,7 @@ typedef enum : uint8_t {
     kMVKCommandUseQueueWaitIdle,                /**< vkQueueWaitIdle. */
     kMVKCommandUseDeviceWaitIdle,               /**< vkDeviceWaitIdle. */
 	kMVKCommandUseInvalidateMappedMemoryRanges, /**< vkInvalidateMappedMemoryRanges. */
+	kMVKCommandUseBeginRendering,               /**< vkCmdBeginRendering. */
     kMVKCommandUseBeginRenderPass,              /**< vkCmdBeginRenderPass. */
     kMVKCommandUseNextSubpass,                  /**< vkCmdNextSubpass. */
 	kMVKCommandUseRestartSubpass,               /**< Restart a subpass because of explicit or implicit barrier. */
@@ -85,6 +86,7 @@ typedef enum : uint8_t {
     kMVKCommandUseCopyImageToBuffer,            /**< vkCmdCopyImageToBuffer. */
     kMVKCommandUseFillBuffer,                   /**< vkCmdFillBuffer. */
     kMVKCommandUseUpdateBuffer,                 /**< vkCmdUpdateBuffer. */
+	kMVKCommandUseClearAttachments,             /**< vkCmdClearAttachments. */
     kMVKCommandUseClearColorImage,              /**< vkCmdClearColorImage. */
     kMVKCommandUseClearDepthStencilImage,       /**< vkCmdClearDepthStencilImage. */
     kMVKCommandUseResetQueryPool,               /**< vkCmdResetQueryPool. */

@@ -64,8 +64,7 @@ public:
     /**
      * Called automatically when a Metal render pass begins. If the contents have been
      * modified from the default values, this instance is marked as dirty, so the contents
-     * will be encoded to Metal, otherwise it is marked as clean, so the contents will NOT
-     * be encoded. Default state can be left unencoded on a new Metal encoder.
+     * will be encoded to Metal. Default state can be left unencoded on a new Metal encoder.
      */
 	virtual void beginMetalRenderPass() { if (_isModified) { markDirty(); } }
 
@@ -75,8 +74,7 @@ public:
 	/**
 	 * Called automatically when a Metal compute pass begins. If the contents have been
 	 * modified from the default values, this instance is marked as dirty, so the contents
-	 * will be encoded to Metal, otherwise it is marked as clean, so the contents will NOT
-	 * be encoded. Default state can be left unencoded on a new Metal encoder.
+	 * will be encoded to Metal. Default state can be left unencoded on a new Metal encoder.
 	 */
 	virtual void beginMetalComputeEncoding() { if (_isModified) { markDirty(); } }
 
@@ -673,6 +671,7 @@ protected:
 
 	MVKSmallVector<OcclusionQueryLocation> _mtlRenderPassQueries;
     MTLVisibilityResultMode _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	bool _hasRasterized = false;
 };
 
 
