@@ -1138,9 +1138,11 @@ void MVKComputeResourcesCommandEncoderState::markOverriddenBufferIndexesDirty() 
 #pragma mark -
 #pragma mark MVKOcclusionQueryCommandEncoderState
 
+// Metal resets the query counter at a render pass boundary, so copy results to the query pool's accumulation buffer.
+// Don't copy occlusion info until after rasterization, as Metal renderpasses can be ended prematurely during tessellation.
 void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
 	const MVKMTLBufferAllocation* vizBuff = _cmdEncoder->_pEncodingContext->visibilityResultBuffer;
-    if ( !vizBuff || _mtlRenderPassQueries.empty() ) { return; }  // Nothing to do.
+    if ( !_hasRasterized || !vizBuff || _mtlRenderPassQueries.empty() ) { return; }  // Nothing to do.
 
 	id<MTLComputePipelineState> mtlAccumState = _cmdEncoder->getCommandEncodingPool()->getAccumulateOcclusionQueryResultsMTLComputePipelineState();
     id<MTLComputeCommandEncoder> mtlAccumEncoder = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseAccumOcclusionQuery);
@@ -1158,6 +1160,7 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
     }
     _cmdEncoder->endCurrentMetalEncoding();
     _mtlRenderPassQueries.clear();
+	_hasRasterized = false;
 }
 
 // The Metal visibility buffer has a finite size, and on some Metal platforms (looking at you M1),
@@ -1176,18 +1179,21 @@ void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKOcclusionQuery
 		_mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
 		_cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset -= kMVKQuerySlotSizeInBytes;
 	}
+	_hasRasterized = false;
     markDirty();
 }
 
 void MVKOcclusionQueryCommandEncoderState::endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query) {
 	_mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
 	_cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset += kMVKQuerySlotSizeInBytes;
+	_hasRasterized = true;	// Handle begin and end query with no rasterizing before end of renderpass.
 	markDirty();
 }
 
 void MVKOcclusionQueryCommandEncoderState::encodeImpl(uint32_t stage) {
 	if (stage != kMVKGraphicsStageRasterization) { return; }
 
+	_hasRasterized = true;
 	[_cmdEncoder->_mtlRenderEncoder setVisibilityResultMode: _mtlVisibilityResultMode
 													 offset: _cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset];
 }

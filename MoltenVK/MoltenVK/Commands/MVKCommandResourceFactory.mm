@@ -116,7 +116,7 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipeli
 	id<MTLFunction> vtxFunc = newClearVertFunction(attKey);						// temp retain
 	id<MTLFunction> fragFunc = newClearFragFunction(attKey);					// temp retain
 	MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];	// temp retain
-    plDesc.label = @"vkCmdClearAttachments";
+    plDesc.label = @"ClearRenderAttachments";
 	plDesc.vertexFunction = vtxFunc;
     plDesc.fragmentFunction = fragFunc;
 	plDesc.sampleCount = attKey.mtlSampleCount;

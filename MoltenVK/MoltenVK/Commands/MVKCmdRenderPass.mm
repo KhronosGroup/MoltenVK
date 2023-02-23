@@ -61,6 +61,8 @@ VkResult MVKCmdBeginRenderPassBase::setContent(MVKCommandBuffer* cmdBuff,
 		}
 	}
 
+	cmdBuff->_currentSubpassInfo.beginRenderpass(_renderPass);
+
 	return VK_SUCCESS;
 }
 
@@ -126,6 +128,8 @@ VkResult MVKCmdNextSubpass::setContent(MVKCommandBuffer* cmdBuff,
 									   VkSubpassContents contents) {
 	_contents = contents;
 
+	cmdBuff->_currentSubpassInfo.nextSubpass();
+
 	return VK_SUCCESS;
 }
 
@@ -136,10 +140,7 @@ VkResult MVKCmdNextSubpass::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdNextSubpass::encode(MVKCommandEncoder* cmdEncoder) {
-	if (cmdEncoder->getMultiviewPassIndex() + 1 < cmdEncoder->getSubpass()->getMultiviewMetalPassCount())
-		cmdEncoder->beginNextMultiviewPass();
-	else
-		cmdEncoder->beginNextSubpass(this, _contents);
+	cmdEncoder->beginNextSubpass(this, _contents);
 }
 
 
@@ -147,19 +148,17 @@ void MVKCmdNextSubpass::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdEndRenderPass
 
 VkResult MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff) {
+	cmdBuff->_currentSubpassInfo = {};
 	return VK_SUCCESS;
 }
 
 VkResult MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff,
 										 const VkSubpassEndInfo* pEndSubpassInfo) {
-	return VK_SUCCESS;
+	return setContent(cmdBuff);
 }
 
 void MVKCmdEndRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
-	if (cmdEncoder->getMultiviewPassIndex() + 1 < cmdEncoder->getSubpass()->getMultiviewMetalPassCount())
-		cmdEncoder->beginNextMultiviewPass();
-	else
-		cmdEncoder->endRenderpass();
+	cmdEncoder->endRenderpass();
 }
 
 
@@ -184,6 +183,8 @@ VkResult MVKCmdBeginRendering<N>::setContent(MVKCommandBuffer* cmdBuff,
 		_renderingInfo.pStencilAttachment = &_stencilAttachment;
 	}
 
+	cmdBuff->_currentSubpassInfo.beginRendering(pRenderingInfo->viewMask);
+
 	return VK_SUCCESS;
 }
 
@@ -202,6 +203,7 @@ template class MVKCmdBeginRendering<8>;
 #pragma mark MVKCmdEndRendering
 
 VkResult MVKCmdEndRendering::setContent(MVKCommandBuffer* cmdBuff) {
+	cmdBuff->_currentSubpassInfo = {};
 	return VK_SUCCESS;
 }
 

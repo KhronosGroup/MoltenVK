@@ -84,8 +84,8 @@ public:
 	/** Returns whether or not this is a multiview subpass. */
 	bool isMultiview() const { return _pipelineRenderingCreateInfo.viewMask != 0; }
 
-	/** Returns the total number of views to be rendered. */
-	uint32_t getViewCount() const { return __builtin_popcount(_pipelineRenderingCreateInfo.viewMask); }
+	/** Returns the multiview view mask. */
+	uint32_t getViewMask() const { return _pipelineRenderingCreateInfo.viewMask; }
 
 	/** Returns the number of Metal render passes needed to render all views. */
 	uint32_t getMultiviewMetalPassCount() const;

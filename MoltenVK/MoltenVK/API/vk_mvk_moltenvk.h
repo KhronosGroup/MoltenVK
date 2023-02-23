@@ -299,12 +299,13 @@ typedef struct {
 	uint32_t maxActiveMetalCommandBuffersPerQueue;
 
 	/**
-	 * Metal allows only 8192 occlusion queries per MTLBuffer. If enabled, MoltenVK
-	 * allocates a MTLBuffer for each query pool, allowing each query pool to support
-	 * 8192 queries, which may slow performance or cause unexpected behaviour if the query
-	 * pool is not established prior to a Metal renderpass, or if the query pool is changed
-	 * within a renderpass. If disabled, one MTLBuffer will be shared by all query pools,
-	 * which improves performance, but limits the total device queries to 8192.
+	 * Depending on the GPU, Metal allows 8192 or 32768 occlusion queries per MTLBuffer.
+	 * If enabled, MoltenVK allocates a MTLBuffer for each query pool, allowing each query
+	 * pool to support that permitted number of queries. This may slow performance or cause
+	 * unexpected behaviour if the query pool is not established prior to a Metal renderpass,
+	 * or if the query pool is changed within a renderpass. If disabled, one MTLBuffer will
+	 * be shared by all query pools, which improves performance, but limits the total device
+	 * queries to the permitted number.
 	 *
 	 * The value of this parameter may be changed at any time during application runtime,
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
