@@ -367,11 +367,16 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 	// Another option to wait on emulated semaphores once is to do it in the execute function, but doing it here
 	// should be more performant when prefilled command buffers aren't used, because we spend time encoding commands
 	// first, thus giving the command buffer signalling these semaphores more time to complete.
-	if (!_emulatedWaitDone)
-	{
+	if ( !_emulatedWaitDone ) {
 		for (auto& ws : _waitSemaphores) { ws.first->encodeWait(nil, ws.second); }
 		_emulatedWaitDone = true;
 	}
+
+	// The visibility result buffer will be returned to its pool when the active MTLCommandBuffer
+	// finishes executing, and therefore cannot be used beyond the active MTLCommandBuffer.
+	// By now, it's been submitted to the MTLCommandBuffer, so remove it from the encoding context,
+	// to ensure a fresh one will be used by commands executing on any subsequent MTLCommandBuffers.
+	_encodingContext.visibilityResultBuffer = nullptr;
 
 	// If we need to signal completion, use getActiveMTLCommandBuffer() to ensure at least
 	// one MTLCommandBuffer is used, otherwise if this instance has no content, it will not
@@ -520,8 +525,7 @@ MVKQueueCommandBufferSubmission::~MVKQueueCommandBufferSubmission() {
 template <size_t N>
 void MVKQueueFullCommandBufferSubmission<N>::submitCommandBuffers() {
 	_queue->getPhysicalDevice()->startTimestampCorrelation(_cpuStart, _gpuStart);
-	MVKCommandEncodingContext encodingContext;
-	for (auto& cb : _cmdBuffers) { cb->submit(this, &encodingContext); }
+	for (auto& cb : _cmdBuffers) { cb->submit(this, &_encodingContext); }
 }
 
 template <size_t N>
