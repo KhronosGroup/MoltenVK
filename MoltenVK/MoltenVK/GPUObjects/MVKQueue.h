@@ -199,7 +199,10 @@ protected:
 #pragma mark -
 #pragma mark MVKQueueCommandBufferSubmission
 
-/** Submits the commands in a set of command buffers to the queue. */
+/**
+ * Submits an empty set of command buffers to the queue.
+ * Used for fence-only command submissions.
+ */
 class MVKQueueCommandBufferSubmission : public MVKQueueSubmission {
 
 public:
@@ -218,6 +221,7 @@ protected:
 	void finish() override;
 	virtual void submitCommandBuffers() {}
 
+	MVKCommandEncodingContext _encodingContext;
 	MVKSmallVector<std::pair<MVKSemaphore*, uint64_t>> _signalSemaphores;
 	MVKFence* _fence;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
