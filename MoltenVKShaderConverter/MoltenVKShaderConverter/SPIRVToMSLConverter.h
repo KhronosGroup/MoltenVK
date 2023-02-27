@@ -192,7 +192,7 @@ namespace mvk {
 
 
 #pragma mark -
-#pragma mark SPIRVToMSLConversionResults
+#pragma mark SPIRVToMSLConversionResult
 
     /**
      * Describes one dimension of the workgroup size of a SPIR-V entry point, including whether
@@ -227,12 +227,12 @@ namespace mvk {
 	} SPIRVEntryPoint;
 
 	/**
-	 * Contains the results of the shader conversion that can be used to populate a pipeline.
+	 * Contains information about a shader conversion that can be used to populate a pipeline.
 	 *
 	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
 	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
 	 */
-	typedef struct SPIRVToMSLConversionResults {
+	typedef struct SPIRVToMSLConversionResultInfo {
 		SPIRVEntryPoint entryPoint;
 		bool isRasterizationDisabled = false;
 		bool isPositionInvariant = false;
@@ -245,9 +245,14 @@ namespace mvk {
 		bool needsDispatchBaseBuffer = false;
 		bool needsViewRangeBuffer = false;
 
-		void reset() { *this = SPIRVToMSLConversionResults(); }
+	} SPIRVToMSLConversionResultInfo;
 
-	} SPIRVToMSLConversionResults;
+	/** The results of a SPIRV to MSL conversion. */
+	typedef struct SPIRVToMSLConversionResult {
+		SPIRVToMSLConversionResultInfo resultInfo = {};
+		std::string msl;
+		std::string resultLog;
+	} SPIRVToMSLConversionResult;
 
 
 #pragma mark -
@@ -281,61 +286,22 @@ namespace mvk {
          * to the result log of this converter. This can be useful during shader debugging.
 		 */
 		bool convert(SPIRVToMSLConversionConfiguration& shaderConfig,
-                     bool shouldLogSPIRV = false,
-                     bool shouldLogMSL = false,
-                     bool shouldLogGLSL = false);
-
-		/**
-		 * Returns whether the most recent conversion was successful.
-		 *
-		 * The initial value of this property is NO. It is set to YES upon successful conversion.
-		 */
-		bool wasConverted() { return _wasConverted; }
-
-		/**
-		 * Returns the Metal Shading Language source code most recently converted
-         * by the convert() function, or set directly using the setMSL() function.
-		 */
-		const std::string& getMSL() { return _msl; }
-
-		/** Returns information about the shader conversion. */
-		const SPIRVToMSLConversionResults& getConversionResults() { return _shaderConversionResults; }
-
-        /** Sets the number of threads in a single compute kernel workgroup, per dimension. */
-        void setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
-			auto& wgSize = _shaderConversionResults.entryPoint.workgroupSize;
-            wgSize.width.size = x;
-            wgSize.height.size = y;
-            wgSize.depth.size = z;
-        }
-        
-		/**
-		 * Returns a human-readable log of the most recent conversion activity.
-		 * This may be empty if the conversion was successful.
-		 */
-		const std::string& getResultLog() { return _resultLog; }
-
-        /** Sets MSL source code. This can be used when MSL is supplied directly. */
-		void setMSL(const std::string& msl, const SPIRVToMSLConversionResults* pShaderConversionResults) {
-			_msl = msl;
-			if (pShaderConversionResults) { _shaderConversionResults = *pShaderConversionResults; }
-		}
+					 SPIRVToMSLConversionResult& conversionResult,
+					 bool shouldLogSPIRV = false,
+					 bool shouldLogMSL = false,
+					 bool shouldLogGLSL = false);
 
 	protected:
-		void logMsg(const char* logMsg);
-		bool logError(const char* errMsg);
-		void logSPIRV(const char* opDesc);
+		void logMsg(std::string& log, const char* logMsg);
+		bool logError(std::string& log, const char* errMsg);
+		void logSPIRV(std::string& log, const char* opDesc);
+		void logSource(std::string& log, std::string& src, const char* srcLang, const char* opDesc);
 		bool validateSPIRV();
-		void writeSPIRVToFile(std::string spvFilepath);
-        void logSource(std::string& src, const char* srcLang, const char* opDesc);
+		void writeSPIRVToFile(std::string spvFilepath, std::string& log);
 		void populateWorkgroupDimension(SPIRVWorkgroupSizeDimension& wgDim, uint32_t size, SPIRV_CROSS_NAMESPACE::SpecializationConstant& spvSpecConst);
-		void populateEntryPoint(SPIRV_CROSS_NAMESPACE::Compiler* pCompiler, SPIRVToMSLConversionOptions& options);
+		void populateEntryPoint(SPIRV_CROSS_NAMESPACE::Compiler* pCompiler, SPIRVToMSLConversionOptions& options, SPIRVEntryPoint& entryPoint);
 
 		std::vector<uint32_t> _spirv;
-		std::string _msl;
-		std::string _resultLog;
-		SPIRVToMSLConversionResults _shaderConversionResults;
-		bool _wasConverted = false;
 	};
 
 }

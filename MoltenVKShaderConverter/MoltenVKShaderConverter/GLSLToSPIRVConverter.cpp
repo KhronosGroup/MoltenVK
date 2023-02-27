@@ -53,13 +53,12 @@ MVK_PUBLIC_SYMBOL void GLSLToSPIRVConverter::setGLSLs(const std::vector<std::str
 }
 
 MVK_PUBLIC_SYMBOL bool GLSLToSPIRVConverter::convert(MVKGLSLConversionShaderStage shaderStage,
+													 GLSLToSPIRVConversionResult& conversionResult,
 													 bool shouldLogGLSL,
 													 bool shouldLogSPIRV) {
-	_wasConverted = true;
-	_resultLog.clear();
-	_spirv.clear();
+	bool wasConverted = true;
 
-	if (shouldLogGLSL) { logGLSL("Converting"); }
+	if (shouldLogGLSL) { logGLSL(conversionResult.resultLog, "Converting"); }
 
 	EShMessages messages = (EShMessages)(EShMsgDefault | EShMsgSpvRules | EShMsgVulkanRules);
 
@@ -79,13 +78,13 @@ MVK_PUBLIC_SYMBOL bool GLSLToSPIRVConverter::convert(MVKGLSLConversionShaderStag
 		glslShaders.back()->setAutoMapBindings(true);
 		if (glslShaders.back()->parse(&glslCompilerResources, 100, false, messages)) {
 			if (shouldLogGLSL) {
-				logMsg(glslShaders.back()->getInfoLog());
-				logMsg(glslShaders.back()->getInfoDebugLog());
+				logMsg(conversionResult.resultLog, glslShaders.back()->getInfoLog());
+				logMsg(conversionResult.resultLog, glslShaders.back()->getInfoDebugLog());
 			}
 		} else {
-			logError(glslShaders.back()->getInfoLog());
-			logError(glslShaders.back()->getInfoDebugLog());
-			return logError("Error compiling GLSL when converting GLSL to SPIR-V.");
+			logError(conversionResult.resultLog, glslShaders.back()->getInfoLog());
+			logError(conversionResult.resultLog, glslShaders.back()->getInfoDebugLog());
+			return logError(conversionResult.resultLog, "Error compiling GLSL when converting GLSL to SPIR-V.");
 		}
 		// Add a shader to the program. Each shader added will be linked together.
 		glslProgram.addShader(glslShaders.back().get());
@@ -93,61 +92,57 @@ MVK_PUBLIC_SYMBOL bool GLSLToSPIRVConverter::convert(MVKGLSLConversionShaderStag
 
 	// Create and link a shader program
 	if ( !glslProgram.link(messages) ) {
-		logError(glslProgram.getInfoLog());
-		logError(glslProgram.getInfoDebugLog());
-		return logError("Error creating GLSL program when converting GLSL to SPIR-V.");
+		logError(conversionResult.resultLog, glslProgram.getInfoLog());
+		logError(conversionResult.resultLog, glslProgram.getInfoDebugLog());
+		return logError(conversionResult.resultLog, "Error creating GLSL program when converting GLSL to SPIR-V.");
 	}
 
 	// Output the SPIR-V code from the shader program
-	glslang::GlslangToSpv(*glslProgram.getIntermediate(stage), _spirv);
+	glslang::GlslangToSpv(*glslProgram.getIntermediate(stage), conversionResult.spirv);
 
-	if (shouldLogSPIRV) { logSPIRV("Converted"); }
+	if (shouldLogSPIRV) { logSPIRV(conversionResult, "Converted"); }
 
-	return _wasConverted;
+	return wasConverted;
 }
 
 /** Appends the message text to the result log. */
-void GLSLToSPIRVConverter::logMsg(const char* logMsg) {
+void GLSLToSPIRVConverter::logMsg(string& log, const char* logMsg) {
 	string trimMsg = trim(logMsg);
 	if ( !trimMsg.empty() ) {
-		_resultLog += trimMsg;
-		_resultLog += "\n\n";
+		log += trimMsg;
+		log += "\n\n";
 	}
 }
 
 /** Appends the error text to the result log, sets the wasConverted property to false, and returns it. */
-bool GLSLToSPIRVConverter::logError(const char* errMsg) {
-	logMsg(errMsg);
-	_wasConverted = false;
-	return _wasConverted;
+bool GLSLToSPIRVConverter::logError(string& log, const char* errMsg) {
+	logMsg(log, errMsg);
+	return false;
 }
 
 /** Appends the SPIR-V to the result log, indicating whether it is being converted or was converted. */
-void GLSLToSPIRVConverter::logSPIRV(const char* opDesc) {
+void GLSLToSPIRVConverter::logSPIRV(GLSLToSPIRVConversionResult& conversionResult, const char* opDesc) {
 
-	string spvLog;
-	mvk::logSPIRV(_spirv, spvLog);
-
-	_resultLog += opDesc;
-	_resultLog += " SPIR-V:\n";
-	_resultLog += spvLog;
-	_resultLog += "\nEnd SPIR-V\n\n";
+	conversionResult.resultLog += opDesc;
+	conversionResult.resultLog += " SPIR-V:\n";
+	mvk::logSPIRV(conversionResult.spirv, conversionResult.resultLog);
+	conversionResult.resultLog += "\nEnd SPIR-V\n\n";
 }
 
 /** Validates that the SPIR-V code will disassemble during logging. */
-bool GLSLToSPIRVConverter::validateSPIRV() {
-	if (_spirv.size() < 5) { return false; }
-	if (_spirv[0] != spv::MagicNumber) { return false; }
-	if (_spirv[4] != 0) { return false; }
+bool GLSLToSPIRVConverter::validateSPIRV(vector<uint32_t> spirv) {
+	if (spirv.size() < 5) { return false; }
+	if (spirv[0] != spv::MagicNumber) { return false; }
+	if (spirv[4] != 0) { return false; }
 	return true;
 }
 
 /** Appends the GLSL to the result log, indicating whether it is being converted or was converted. */
-void GLSLToSPIRVConverter::logGLSL(const char* opDesc) {
-	_resultLog += opDesc;
-	_resultLog += " GLSL:\n";
-	for (const auto& glsl : _glsls) { _resultLog += glsl + "\n"; }
-	_resultLog += "End GLSL\n\n";
+void GLSLToSPIRVConverter::logGLSL(string& log, const char* opDesc) {
+	log += opDesc;
+	log += " GLSL:\n";
+	for (const auto& glsl : _glsls) { log += glsl + "\n"; }
+	log += "End GLSL\n\n";
 }
 
 

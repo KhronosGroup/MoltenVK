@@ -1220,9 +1220,8 @@ VKAPI_ATTR void VKAPI_CALL vkGetVersionStringsMVK(
 /**
  * Sets the number of threads in a workgroup for a compute kernel.
  *
- * This needs to be called if you are creating compute shader modules from MSL
- * source code or MSL compiled code. Workgroup size is determined automatically
- * if you're using SPIR-V.
+ * This needs to be called if you are creating compute shader modules from MSL source code
+ * or MSL compiled code. If you are using SPIR-V, workgroup size is determined automatically.
  *
  * This function is not supported by the Vulkan SDK Loader and Layers framework
  * and is unavailable when using the Vulkan SDK Loader and Layers framework.

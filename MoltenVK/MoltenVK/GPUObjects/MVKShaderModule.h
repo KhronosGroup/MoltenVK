@@ -40,11 +40,11 @@ using namespace mvk;
 
 /** A MTLFunction and corresponding result information resulting from a shader conversion. */
 typedef struct MVKMTLFunction {
-	SPIRVToMSLConversionResults shaderConversionResults;
+	SPIRVToMSLConversionResultInfo shaderConversionResults;
 	MTLSize threadGroupSize;
 	inline id<MTLFunction> getMTLFunction() { return _mtlFunction; }
 
-	MVKMTLFunction(id<MTLFunction> mtlFunc, const SPIRVToMSLConversionResults scRslts, MTLSize tgSize);
+	MVKMTLFunction(id<MTLFunction> mtlFunc, const SPIRVToMSLConversionResultInfo scRslts, MTLSize tgSize);
 	MVKMTLFunction(const MVKMTLFunction& other);
 	MVKMTLFunction& operator=(const MVKMTLFunction& other);
 	MVKMTLFunction() {}
@@ -56,7 +56,7 @@ private:
 } MVKMTLFunction;
 
 /** A MVKMTLFunction indicating an invalid MTLFunction. The mtlFunction member is nil. */
-const MVKMTLFunction MVKMTLFunctionNull(nil, SPIRVToMSLConversionResults(), MTLSizeMake(1, 1, 1));
+const MVKMTLFunction MVKMTLFunctionNull(nil, SPIRVToMSLConversionResultInfo(), MTLSizeMake(1, 1, 1));
 
 /** Wraps a single MTLLibrary. */
 class MVKShaderLibrary : public MVKBaseObject {
@@ -85,9 +85,7 @@ public:
     void setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z);
     
 	/** Constructs an instance from the specified MSL source code. */
-	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
-					 const std::string& mslSourceCode,
-					 const SPIRVToMSLConversionResults& shaderConversionResults);
+	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner, const SPIRVToMSLConversionResult& conversionResult);
 
 	/** Constructs an instance from the specified compiled MSL code data. */
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
@@ -111,7 +109,7 @@ protected:
 
 	MVKVulkanAPIDeviceObject* _owner;
 	id<MTLLibrary> _mtlLibrary;
-	SPIRVToMSLConversionResults _shaderConversionResults;
+	SPIRVToMSLConversionResultInfo _shaderConversionResultInfo;
 	std::string _msl;
 };
 
@@ -149,8 +147,7 @@ protected:
 
 	MVKShaderLibrary* findShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig);
 	MVKShaderLibrary* addShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig,
-									   const std::string& mslSourceCode,
-									   const SPIRVToMSLConversionResults& shaderConversionResults);
+									   SPIRVToMSLConversionResult& conversionResult);
 	void merge(MVKShaderLibraryCache* other);
 
 	MVKVulkanAPIDeviceObject* _owner;
@@ -200,19 +197,11 @@ public:
 								  MVKPipelineCache* pipelineCache);
 
 	/** Convert the SPIR-V to MSL, using the specified shader conversion configuration. */
-	bool convert(SPIRVToMSLConversionConfiguration* pShaderConfig);
+	bool convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
+				 SPIRVToMSLConversionResult& conversionResult);
 
 	/** Returns the original SPIR-V code that was specified when this object was created. */
 	const std::vector<uint32_t>& getSPIRV() { return _spvConverter.getSPIRV(); }
-
-	/**
-	 * Returns the Metal Shading Language source code as converted by the most recent
-	 * call to convert() function, or set directly using the setMSL() function.
-	 */
-	const std::string& getMSL() { return _spvConverter.getMSL(); }
-
-	/** Returns information about the shader conversion results. */
-	const SPIRVToMSLConversionResults& getConversionResults() { return _spvConverter.getConversionResults(); }
 
     /** Sets the number of threads in a single compute kernel workgroup, per dimension. */
     void setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z);
@@ -258,7 +247,7 @@ public:
 	 * nanoseconds, an error will be generated and logged, and nil will be returned.
 	 */
 	id<MTLLibrary> newMTLLibrary(NSString* mslSourceCode,
-								 const SPIRVToMSLConversionResults& shaderConversionResults);
+								 const SPIRVToMSLConversionResultInfo& shaderConversionResults);
 
 
 #pragma mark Construction

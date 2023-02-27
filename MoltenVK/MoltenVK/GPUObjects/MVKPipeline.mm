@@ -2005,7 +2005,7 @@ protected:
 	bool next() { return (++_index < (_pSLCache ? _pSLCache->_shaderLibraries.size() : 0)); }
 	SPIRVToMSLConversionConfiguration& getShaderConversionConfig() { return _pSLCache->_shaderLibraries[_index].first; }
 	std::string& getMSL() { return _pSLCache->_shaderLibraries[_index].second->_msl; }
-	SPIRVToMSLConversionResults& getShaderConversionResults() { return _pSLCache->_shaderLibraries[_index].second->_shaderConversionResults; }
+	SPIRVToMSLConversionResultInfo& getShaderConversionResultInfo() { return _pSLCache->_shaderLibraries[_index].second->_shaderConversionResultInfo; }
 	MVKShaderCacheIterator(MVKShaderLibraryCache* pSLCache) : _pSLCache(pSLCache) {}
 
 	MVKShaderLibraryCache* _pSLCache;
@@ -2086,7 +2086,7 @@ void MVKPipelineCache::writeData(ostream& outstream, bool isCounting) {
 			writer(cacheEntryType);
 			writer(smKey);
 			writer(cacheIter.getShaderConversionConfig());
-			writer(cacheIter.getShaderConversionResults());
+			writer(cacheIter.getShaderConversionResultInfo());
 			writer(cacheIter.getMSL());
 			_device->addActivityPerformance(activityTracker, startTime);
 		}
@@ -2149,16 +2149,14 @@ void MVKPipelineCache::readData(const VkPipelineCacheCreateInfo* pCreateInfo) {
 					SPIRVToMSLConversionConfiguration shaderConversionConfig;
 					reader(shaderConversionConfig);
 
-					SPIRVToMSLConversionResults shaderConversionResults;
-					reader(shaderConversionResults);
-
-					string msl;
-					reader(msl);
+					SPIRVToMSLConversionResult shaderConversionResult;
+					reader(shaderConversionResult.resultInfo);
+					reader(shaderConversionResult.msl);
 
 					// Add the shader library to the staging cache.
 					MVKShaderLibraryCache* slCache = getShaderLibraryCache(smKey);
 					_device->addActivityPerformance(_device->_performanceStatistics.pipelineCache.readPipelineCache, startTime);
-					slCache->addShaderLibrary(&shaderConversionConfig, msl, shaderConversionResults);
+					slCache->addShaderLibrary(&shaderConversionConfig, shaderConversionResult);
 
 					break;
 				}
@@ -2374,7 +2372,7 @@ namespace mvk {
 	}
 
 	template<class Archive>
-	void serialize(Archive & archive, SPIRVToMSLConversionResults& scr) {
+	void serialize(Archive & archive, SPIRVToMSLConversionResultInfo& scr) {
 		archive(scr.entryPoint,
 				scr.isRasterizationDisabled,
 				scr.isPositionInvariant,

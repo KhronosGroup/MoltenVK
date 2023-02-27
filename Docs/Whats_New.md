@@ -32,6 +32,7 @@ Released TBA
 - Change rounding of surface size provided by Metal from truncation to rounding-with-half-to-even.
 - Queue submissions retain wait semaphores until `MTLCommandBuffer` finishes.
 - Use a different visibility buffer for each `MTLCommandBuffer` in a queue submit.
+- Reduce memory footprint of retained MSL source code.
 - Work around problems with using explicit LoD with arrayed depth images on Apple Silicon.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `37`.
 
