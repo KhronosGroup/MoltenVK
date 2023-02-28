@@ -28,7 +28,7 @@ using namespace std;
 
 // Add stub defs for unsupported MTLPixelFormats per platform
 #if MVK_MACOS
-#	if !MVK_XCODE_12_2 // macOS 11.0 / iOS 14.2
+#	if !MVK_XCODE_12 // macOS 11.0 / iOS 14.2
 #       define MTLPixelFormatR8Unorm_sRGB           MTLPixelFormatInvalid
 #       define MTLPixelFormatRG8Unorm_sRGB          MTLPixelFormatInvalid
 #       define MTLPixelFormatABGR4Unorm             MTLPixelFormatInvalid
@@ -1491,7 +1491,7 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 
 	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v3, BGR10A2Unorm, RFCMRB );
 
-#if MVK_XCODE_12_2
+#if MVK_XCODE_12
 	if ([mtlDevice respondsToSelector: @selector(supports32BitMSAA)] &&
 		!mtlDevice.supports32BitMSAA) {
 
