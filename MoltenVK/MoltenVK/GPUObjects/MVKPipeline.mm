@@ -2004,7 +2004,7 @@ protected:
 
 	bool next() { return (++_index < (_pSLCache ? _pSLCache->_shaderLibraries.size() : 0)); }
 	SPIRVToMSLConversionConfiguration& getShaderConversionConfig() { return _pSLCache->_shaderLibraries[_index].first; }
-	std::string& getMSL() { return _pSLCache->_shaderLibraries[_index].second->_msl; }
+	MVKCompressor<std::string>& getCompressedMSL() { return _pSLCache->_shaderLibraries[_index].second->getCompressedMSL(); }
 	SPIRVToMSLConversionResultInfo& getShaderConversionResultInfo() { return _pSLCache->_shaderLibraries[_index].second->_shaderConversionResultInfo; }
 	MVKShaderCacheIterator(MVKShaderLibraryCache* pSLCache) : _pSLCache(pSLCache) {}
 
@@ -2087,7 +2087,7 @@ void MVKPipelineCache::writeData(ostream& outstream, bool isCounting) {
 			writer(smKey);
 			writer(cacheIter.getShaderConversionConfig());
 			writer(cacheIter.getShaderConversionResultInfo());
-			writer(cacheIter.getMSL());
+			writer(cacheIter.getCompressedMSL());
 			_device->addActivityPerformance(activityTracker, startTime);
 		}
 	}
@@ -2149,14 +2149,16 @@ void MVKPipelineCache::readData(const VkPipelineCacheCreateInfo* pCreateInfo) {
 					SPIRVToMSLConversionConfiguration shaderConversionConfig;
 					reader(shaderConversionConfig);
 
-					SPIRVToMSLConversionResult shaderConversionResult;
-					reader(shaderConversionResult.resultInfo);
-					reader(shaderConversionResult.msl);
+					SPIRVToMSLConversionResultInfo resultInfo;
+					reader(resultInfo);
+
+					MVKCompressor<std::string> compressedMSL;
+					reader(compressedMSL);
 
 					// Add the shader library to the staging cache.
 					MVKShaderLibraryCache* slCache = getShaderLibraryCache(smKey);
 					_device->addActivityPerformance(_device->_performanceStatistics.pipelineCache.readPipelineCache, startTime);
-					slCache->addShaderLibrary(&shaderConversionConfig, shaderConversionResult);
+					slCache->addShaderLibrary(&shaderConversionConfig, resultInfo, compressedMSL);
 
 					break;
 				}
@@ -2392,6 +2394,13 @@ template<class Archive>
 void serialize(Archive & archive, MVKShaderModuleKey& k) {
 	archive(k.codeSize,
 			k.codeHash);
+}
+
+template<class Archive, class C>
+void serialize(Archive & archive, MVKCompressor<C>& comp) {
+	archive(comp._compressed,
+			comp._uncompressedSize,
+			comp._algorithm);
 }
 
 

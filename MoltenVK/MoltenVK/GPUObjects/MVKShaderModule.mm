@@ -19,7 +19,6 @@
 #include "MVKShaderModule.h"
 #include "MVKPipeline.h"
 #include "MVKFoundation.h"
-#include <string>
 
 using namespace std;
 
@@ -140,18 +139,45 @@ void MVKShaderLibrary::setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
 	wgSize.depth.size = z;
 }
 
+// Sets the cached MSL source code, after first compressing it.
+void MVKShaderLibrary::compressMSL(const string& msl) {
+	MVKDevice* mvkDev = _owner->getDevice();
+	uint64_t startTime = mvkDev->getPerformanceTimestamp();
+	_compressedMSL.compress(msl, mvkConfig().shaderSourceCompressionAlgorithm);
+	mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.shaderCompilation.mslCompress, startTime);
+}
+
+// Decompresses the cached MSL into the string.
+void MVKShaderLibrary::decompressMSL(string& msl) {
+	MVKDevice* mvkDev = _owner->getDevice();
+	uint64_t startTime = mvkDev->getPerformanceTimestamp();
+	_compressedMSL.decompress(msl);
+	mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.shaderCompilation.mslDecompress, startTime);
+}
+
 MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 								   const SPIRVToMSLConversionResult& conversionResult) : _owner(owner) {
-	MVKShaderLibraryCompiler* slc = new MVKShaderLibraryCompiler(_owner);
-
-	NSString* nsSrc = [[NSString alloc] initWithUTF8String: conversionResult.msl.c_str()];					// temp retained
-	_mtlLibrary = slc->newMTLLibrary(nsSrc, conversionResult.resultInfo);	// retained
-	[nsSrc release];	// release temp string
-
-	slc->destroy();
-
 	_shaderConversionResultInfo = conversionResult.resultInfo;
-	_msl = conversionResult.msl;
+	compressMSL(conversionResult.msl);
+	compileLibrary(conversionResult.msl);
+}
+
+MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
+								   const SPIRVToMSLConversionResultInfo& resultInfo,
+								   const MVKCompressor<std::string> compressedMSL) : _owner(owner) {
+	_shaderConversionResultInfo = resultInfo;
+	_compressedMSL = compressedMSL;
+	string msl;
+	decompressMSL(msl);
+	compileLibrary(msl);
+}
+
+void MVKShaderLibrary::compileLibrary(const string& msl) {
+	MVKShaderLibraryCompiler* slc = new MVKShaderLibraryCompiler(_owner);
+	NSString* nsSrc = [[NSString alloc] initWithUTF8String: msl.c_str()];	// temp retained
+	_mtlLibrary = slc->newMTLLibrary(nsSrc, _shaderConversionResultInfo);	// retained
+	[nsSrc release];														// release temp string
+	slc->destroy();
 }
 
 MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
@@ -176,7 +202,7 @@ MVKShaderLibrary::MVKShaderLibrary(const MVKShaderLibrary& other) {
 	_owner = other._owner;
 	_mtlLibrary = [other._mtlLibrary retain];
 	_shaderConversionResultInfo = other._shaderConversionResultInfo;
-	_msl = other._msl;
+	_compressedMSL = other._compressedMSL;
 }
 
 MVKShaderLibrary& MVKShaderLibrary::operator=(const MVKShaderLibrary& other) {
@@ -186,7 +212,7 @@ MVKShaderLibrary& MVKShaderLibrary::operator=(const MVKShaderLibrary& other) {
 	}
 	_owner = other._owner;
 	_shaderConversionResultInfo = other._shaderConversionResultInfo;
-	_msl = other._msl;
+	_compressedMSL = other._compressedMSL;
 	return *this;
 }
 
@@ -245,9 +271,18 @@ MVKShaderLibrary* MVKShaderLibraryCache::findShaderLibrary(SPIRVToMSLConversionC
 }
 
 // Adds and returns a new shader library configured from the specified conversion configuration.
-MVKShaderLibrary* MVKShaderLibraryCache::addShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig,
-														  SPIRVToMSLConversionResult& conversionResult) {
+MVKShaderLibrary* MVKShaderLibraryCache::addShaderLibrary(const SPIRVToMSLConversionConfiguration* pShaderConfig,
+														  const SPIRVToMSLConversionResult& conversionResult) {
 	MVKShaderLibrary* shLib = new MVKShaderLibrary(_owner, conversionResult);
+	_shaderLibraries.emplace_back(*pShaderConfig, shLib);
+	return shLib;
+}
+
+// Adds and returns a new shader library configured from contents read from a pipeline cache.
+MVKShaderLibrary* MVKShaderLibraryCache::addShaderLibrary(const SPIRVToMSLConversionConfiguration* pShaderConfig,
+														  const SPIRVToMSLConversionResultInfo& resultInfo,
+														  const MVKCompressor<std::string> compressedMSL) {
+	MVKShaderLibrary* shLib = new MVKShaderLibrary(_owner, resultInfo, compressedMSL);
 	_shaderLibraries.emplace_back(*pShaderConfig, shLib);
 	return shLib;
 }

@@ -4000,7 +4000,7 @@ void MVKDevice::logActivityPerformance(MVKPerformanceTracker& activity, MVKPerfo
 }
 
 void MVKDevice::logPerformanceSummary() {
-	if (_logActivityPerformanceInline) { return; }
+	if (_activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE) { return; }
 
 	// Get a copy to minimize time under lock
 	MVKPerformanceStatistics perfStats;
@@ -4014,6 +4014,8 @@ void MVKDevice::logPerformanceSummary() {
 	logActivityPerformance(perfStats.shaderCompilation.spirvToMSL, perfStats);
 	logActivityPerformance(perfStats.shaderCompilation.mslCompile, perfStats);
 	logActivityPerformance(perfStats.shaderCompilation.mslLoad, perfStats);
+	logActivityPerformance(perfStats.shaderCompilation.mslCompress, perfStats);
+	logActivityPerformance(perfStats.shaderCompilation.mslDecompress, perfStats);
 	logActivityPerformance(perfStats.shaderCompilation.shaderLibraryFromCache, perfStats);
 	logActivityPerformance(perfStats.shaderCompilation.functionRetrieval, perfStats);
 	logActivityPerformance(perfStats.shaderCompilation.functionSpecialization, perfStats);
@@ -4028,6 +4030,8 @@ const char* MVKDevice::getActivityPerformanceDescription(MVKPerformanceTracker& 
 	if (&activity == &perfStats.shaderCompilation.spirvToMSL) { return "Convert SPIR-V to MSL source code"; }
 	if (&activity == &perfStats.shaderCompilation.mslCompile) { return "Compile MSL source code into a MTLLibrary"; }
 	if (&activity == &perfStats.shaderCompilation.mslLoad) { return "Load pre-compiled MSL code into a MTLLibrary"; }
+	if (&activity == &perfStats.shaderCompilation.mslCompress) { return "Compress MSL source code after compiling a MTLLibrary"; }
+	if (&activity == &perfStats.shaderCompilation.mslDecompress) { return "Decompress MSL source code during pipeline cache write"; }
 	if (&activity == &perfStats.shaderCompilation.shaderLibraryFromCache) { return "Retrieve shader library from the cache"; }
 	if (&activity == &perfStats.shaderCompilation.functionRetrieval) { return "Retrieve a MTLFunction from a MTLLibrary"; }
 	if (&activity == &perfStats.shaderCompilation.functionSpecialization) { return "Specialize a retrieved MTLFunction"; }
@@ -4377,29 +4381,25 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 void MVKDevice::initPerformanceTracking() {
 
 	_isPerformanceTracking = mvkConfig().performanceTracking;
-	_logActivityPerformanceInline = mvkConfig().logActivityPerformanceInline;
+	_activityPerformanceLoggingStyle = mvkConfig().activityPerformanceLoggingStyle;
 
-	MVKPerformanceTracker initPerf;
-    initPerf.count = 0;
-    initPerf.averageDuration = 0.0;
-    initPerf.minimumDuration = 0.0;
-    initPerf.maximumDuration = 0.0;
-
-	_performanceStatistics.shaderCompilation.hashShaderCode = initPerf;
-    _performanceStatistics.shaderCompilation.spirvToMSL = initPerf;
-    _performanceStatistics.shaderCompilation.mslCompile = initPerf;
-    _performanceStatistics.shaderCompilation.mslLoad = initPerf;
-	_performanceStatistics.shaderCompilation.shaderLibraryFromCache = initPerf;
-    _performanceStatistics.shaderCompilation.functionRetrieval = initPerf;
-    _performanceStatistics.shaderCompilation.functionSpecialization = initPerf;
-    _performanceStatistics.shaderCompilation.pipelineCompile = initPerf;
-	_performanceStatistics.pipelineCache.sizePipelineCache = initPerf;
-	_performanceStatistics.pipelineCache.writePipelineCache = initPerf;
-	_performanceStatistics.pipelineCache.readPipelineCache = initPerf;
-	_performanceStatistics.queue.mtlQueueAccess = initPerf;
-	_performanceStatistics.queue.mtlCommandBufferCompletion = initPerf;
-	_performanceStatistics.queue.nextCAMetalDrawable = initPerf;
-	_performanceStatistics.queue.frameInterval = initPerf;
+	_performanceStatistics.shaderCompilation.hashShaderCode = {};
+    _performanceStatistics.shaderCompilation.spirvToMSL = {};
+    _performanceStatistics.shaderCompilation.mslCompile = {};
+    _performanceStatistics.shaderCompilation.mslLoad = {};
+	_performanceStatistics.shaderCompilation.mslCompress = {};
+	_performanceStatistics.shaderCompilation.mslDecompress = {};
+	_performanceStatistics.shaderCompilation.shaderLibraryFromCache = {};
+    _performanceStatistics.shaderCompilation.functionRetrieval = {};
+    _performanceStatistics.shaderCompilation.functionSpecialization = {};
+    _performanceStatistics.shaderCompilation.pipelineCompile = {};
+	_performanceStatistics.pipelineCache.sizePipelineCache = {};
+	_performanceStatistics.pipelineCache.writePipelineCache = {};
+	_performanceStatistics.pipelineCache.readPipelineCache = {};
+	_performanceStatistics.queue.mtlQueueAccess = {};
+	_performanceStatistics.queue.mtlCommandBufferCompletion = {};
+	_performanceStatistics.queue.nextCAMetalDrawable = {};
+	_performanceStatistics.queue.frameInterval = {};
 }
 
 void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {
@@ -4666,9 +4666,15 @@ void MVKDevice::reservePrivateData(const VkDeviceCreateInfo* pCreateInfo) {
 }
 
 MVKDevice::~MVKDevice() {
+	if (_activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_DEVICE_LIFETIME) {
+		MVKLogInfo("Device activity performance summary:");
+		logPerformanceSummary();
+	}
+
 	for (auto& queues : _queuesByQueueFamilyIndex) {
 		mvkDestroyContainerContents(queues);
 	}
+
 	if (_commandResourceFactory) { _commandResourceFactory->destroy(); }
 
     [_globalVisibilityResultMTLBuffer release];

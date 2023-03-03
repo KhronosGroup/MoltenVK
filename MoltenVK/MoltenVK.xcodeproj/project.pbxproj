@@ -112,7 +112,7 @@
 		2FEA0AAA24902F9F00EEF3AD /* MVKOSExtensions.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9B51BD2225E986A00AC74D2 /* MVKOSExtensions.mm */; };
 		2FEA0AAB24902F9F00EEF3AD /* MVKShaderModule.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7981C7DFB4800632CA3 /* MVKShaderModule.mm */; };
 		2FEA0AAC24902F9F00EEF3AD /* MVKSync.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB79E1C7DFB4800632CA3 /* MVKSync.mm */; };
-		2FEA0AAD24902F9F00EEF3AD /* MVKCodec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 45557A4D21C9EFF3008868BD /* MVKCodec.cpp */; };
+		2FEA0AAD24902F9F00EEF3AD /* MVKCodec.mm in Sources */ = {isa = PBXBuildFile; fileRef = 45557A4D21C9EFF3008868BD /* MVKCodec.mm */; };
 		2FEA0AAE24902F9F00EEF3AD /* MVKCmdPipeline.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB76F1C7DFB4800632CA3 /* MVKCmdPipeline.mm */; };
 		2FEA0AAF24902F9F00EEF3AD /* MVKLayers.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7A11C7DFB4800632CA3 /* MVKLayers.mm */; };
 		2FEA0AB024902F9F00EEF3AD /* MVKFramebuffer.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7881C7DFB4800632CA3 /* MVKFramebuffer.mm */; };
@@ -136,8 +136,8 @@
 		4553AEFC2251617100E8EBCD /* MVKBlockObserver.m in Sources */ = {isa = PBXBuildFile; fileRef = 4553AEF62251617100E8EBCD /* MVKBlockObserver.m */; };
 		4553AEFD2251617100E8EBCD /* MVKBlockObserver.h in Headers */ = {isa = PBXBuildFile; fileRef = 4553AEFA2251617100E8EBCD /* MVKBlockObserver.h */; };
 		4553AEFE2251617100E8EBCD /* MVKBlockObserver.h in Headers */ = {isa = PBXBuildFile; fileRef = 4553AEFA2251617100E8EBCD /* MVKBlockObserver.h */; };
-		45557A5221C9EFF3008868BD /* MVKCodec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 45557A4D21C9EFF3008868BD /* MVKCodec.cpp */; };
-		45557A5321C9EFF3008868BD /* MVKCodec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 45557A4D21C9EFF3008868BD /* MVKCodec.cpp */; };
+		45557A5221C9EFF3008868BD /* MVKCodec.mm in Sources */ = {isa = PBXBuildFile; fileRef = 45557A4D21C9EFF3008868BD /* MVKCodec.mm */; };
+		45557A5321C9EFF3008868BD /* MVKCodec.mm in Sources */ = {isa = PBXBuildFile; fileRef = 45557A4D21C9EFF3008868BD /* MVKCodec.mm */; };
 		45557A5421C9EFF3008868BD /* MVKCodec.h in Headers */ = {isa = PBXBuildFile; fileRef = 45557A5121C9EFF3008868BD /* MVKCodec.h */; };
 		45557A5521C9EFF3008868BD /* MVKCodec.h in Headers */ = {isa = PBXBuildFile; fileRef = 45557A5121C9EFF3008868BD /* MVKCodec.h */; };
 		A9096E5E1F81E16300DFBEA6 /* MVKCmdDispatch.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9096E5D1F81E16300DFBEA6 /* MVKCmdDispatch.mm */; };
@@ -428,7 +428,7 @@
 		453638312508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h"; sourceTree = "<group>"; };
 		4553AEF62251617100E8EBCD /* MVKBlockObserver.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MVKBlockObserver.m; sourceTree = "<group>"; };
 		4553AEFA2251617100E8EBCD /* MVKBlockObserver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKBlockObserver.h; sourceTree = "<group>"; };
-		45557A4D21C9EFF3008868BD /* MVKCodec.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MVKCodec.cpp; sourceTree = "<group>"; };
+		45557A4D21C9EFF3008868BD /* MVKCodec.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCodec.mm; sourceTree = "<group>"; };
 		45557A5121C9EFF3008868BD /* MVKCodec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCodec.h; sourceTree = "<group>"; };
 		45557A5721CD83C3008868BD /* MVKDXTnCodec.def */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = MVKDXTnCodec.def; sourceTree = "<group>"; };
 		A9096E5C1F81E16300DFBEA6 /* MVKCmdDispatch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MVKCmdDispatch.h; sourceTree = "<group>"; };
@@ -691,8 +691,8 @@
 				A9D7104E25CDE05E00E38106 /* MVKBitArray.h */,
 				4553AEFA2251617100E8EBCD /* MVKBlockObserver.h */,
 				4553AEF62251617100E8EBCD /* MVKBlockObserver.m */,
-				45557A4D21C9EFF3008868BD /* MVKCodec.cpp */,
 				45557A5121C9EFF3008868BD /* MVKCodec.h */,
+				45557A4D21C9EFF3008868BD /* MVKCodec.mm */,
 				45557A5721CD83C3008868BD /* MVKDXTnCodec.def */,
 				A9A5E9C525C0822700E9085E /* MVKEnvironment.cpp */,
 				A98149431FB6A3F7005F00B4 /* MVKEnvironment.h */,
@@ -1368,7 +1368,7 @@
 				2FEA0AAA24902F9F00EEF3AD /* MVKOSExtensions.mm in Sources */,
 				2FEA0AAB24902F9F00EEF3AD /* MVKShaderModule.mm in Sources */,
 				2FEA0AAC24902F9F00EEF3AD /* MVKSync.mm in Sources */,
-				2FEA0AAD24902F9F00EEF3AD /* MVKCodec.cpp in Sources */,
+				2FEA0AAD24902F9F00EEF3AD /* MVKCodec.mm in Sources */,
 				2FEA0AAE24902F9F00EEF3AD /* MVKCmdPipeline.mm in Sources */,
 				2FEA0AAF24902F9F00EEF3AD /* MVKLayers.mm in Sources */,
 				2FEA0AB024902F9F00EEF3AD /* MVKFramebuffer.mm in Sources */,
@@ -1427,7 +1427,7 @@
 				A9B51BD7225E986A00AC74D2 /* MVKOSExtensions.mm in Sources */,
 				A94FB80E1C7DFB4800632CA3 /* MVKShaderModule.mm in Sources */,
 				A94FB81A1C7DFB4800632CA3 /* MVKSync.mm in Sources */,
-				45557A5221C9EFF3008868BD /* MVKCodec.cpp in Sources */,
+				45557A5221C9EFF3008868BD /* MVKCodec.mm in Sources */,
 				A94FB7BE1C7DFB4800632CA3 /* MVKCmdPipeline.mm in Sources */,
 				A94FB81E1C7DFB4800632CA3 /* MVKLayers.mm in Sources */,
 				A94FB7EE1C7DFB4800632CA3 /* MVKFramebuffer.mm in Sources */,
@@ -1487,7 +1487,7 @@
 				A9B51BD8225E986A00AC74D2 /* MVKOSExtensions.mm in Sources */,
 				A94FB80F1C7DFB4800632CA3 /* MVKShaderModule.mm in Sources */,
 				A94FB81B1C7DFB4800632CA3 /* MVKSync.mm in Sources */,
-				45557A5321C9EFF3008868BD /* MVKCodec.cpp in Sources */,
+				45557A5321C9EFF3008868BD /* MVKCodec.mm in Sources */,
 				A94FB7BF1C7DFB4800632CA3 /* MVKCmdPipeline.mm in Sources */,
 				A94FB81F1C7DFB4800632CA3 /* MVKLayers.mm in Sources */,
 				A94FB7EF1C7DFB4800632CA3 /* MVKFramebuffer.mm in Sources */,

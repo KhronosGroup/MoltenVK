@@ -279,7 +279,7 @@ namespace mvk {
 		bool hasSPIRV() { return !_spirv.empty(); }
 
 		/**
-		 * Converts SPIR-V code, set using setSPIRV() to MSL code, which can be retrieved using getMSL().
+		 * Converts SPIR-V code, set using setSPIRV() to MSL code.
 		 *
 		 * The boolean flags indicate whether the original SPIR-V code, the resulting MSL code, 
          * and optionally, the original GLSL (as converted from the SPIR_V), should be logged 

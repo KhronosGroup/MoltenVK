@@ -20,6 +20,7 @@
 
 #include "MVKDevice.h"
 #include "MVKSync.h"
+#include "MVKCodec.h"
 #include "MVKSmallVector.h"
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 #include <MoltenVKShaderConverter/GLSLToSPIRVConverter.h>
@@ -84,10 +85,13 @@ public:
 	 */
     void setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z);
     
-	/** Constructs an instance from the specified MSL source code. */
-	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner, const SPIRVToMSLConversionResult& conversionResult);
+	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
+					 const SPIRVToMSLConversionResult& conversionResult);
 
-	/** Constructs an instance from the specified compiled MSL code data. */
+	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
+					 const SPIRVToMSLConversionResultInfo& resultInfo,
+					 const MVKCompressor<std::string> compressedMSL);
+
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 					 const void* mslCompiledCodeData,
 					 size_t mslCompiledCodeLength);
@@ -106,11 +110,15 @@ protected:
 	MVKMTLFunction getMTLFunction(const VkSpecializationInfo* pSpecializationInfo, MVKShaderModule* shaderModule);
 	void handleCompilationError(NSError* err, const char* opDesc);
     MTLFunctionConstant* getFunctionConstant(NSArray<MTLFunctionConstant*>* mtlFCs, NSUInteger mtlFCID);
+	void compileLibrary(const std::string& msl);
+	void compressMSL(const std::string& msl);
+	void decompressMSL(std::string& msl);
+	MVKCompressor<std::string>& getCompressedMSL() { return _compressedMSL; }
 
 	MVKVulkanAPIDeviceObject* _owner;
 	id<MTLLibrary> _mtlLibrary;
+	MVKCompressor<std::string> _compressedMSL;
 	SPIRVToMSLConversionResultInfo _shaderConversionResultInfo;
-	std::string _msl;
 };
 
 
@@ -146,8 +154,11 @@ protected:
 	friend MVKShaderModule;
 
 	MVKShaderLibrary* findShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig);
-	MVKShaderLibrary* addShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig,
-									   SPIRVToMSLConversionResult& conversionResult);
+	MVKShaderLibrary* addShaderLibrary(const SPIRVToMSLConversionConfiguration* pShaderConfig,
+									   const SPIRVToMSLConversionResult& conversionResult);
+	MVKShaderLibrary* addShaderLibrary(const SPIRVToMSLConversionConfiguration* pShaderConfig,
+									   const SPIRVToMSLConversionResultInfo& resultInfo,
+									   const MVKCompressor<std::string> compressedMSL);
 	void merge(MVKShaderLibraryCache* other);
 
 	MVKVulkanAPIDeviceObject* _owner;

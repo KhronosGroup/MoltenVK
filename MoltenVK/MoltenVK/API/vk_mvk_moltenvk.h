@@ -130,6 +130,24 @@ typedef enum MVKConfigFastMath {
 	MVK_CONFIG_FAST_MATH_MAX_ENUM  = 0x7FFFFFFF
 } MVKConfigFastMath;
 
+/** Identifies available system data compression algorithms. */
+typedef enum MVKConfigCompressionAlgorithm {
+	MVK_CONFIG_COMPRESSION_ALGORITHM_NONE     = 0,	/**< No compression. */
+	MVK_CONFIG_COMPRESSION_ALGORITHM_LZFSE    = 1,	/**< Apple proprietary. Good balance of high performance and small compression size, particularly for larger data content. */
+	MVK_CONFIG_COMPRESSION_ALGORITHM_ZLIB     = 2,	/**< Open cross-platform ZLib format. For smaller data content, has better performance and smaller size than LZFSE. */
+	MVK_CONFIG_COMPRESSION_ALGORITHM_LZ4      = 3,	/**< Fastest performance. Largest compression size. */
+	MVK_CONFIG_COMPRESSION_ALGORITHM_LZMA     = 4,	/**< Slowest performance. Smallest compression size, particular with larger content. */
+	MVK_CONFIG_COMPRESSION_ALGORITHM_MAX_ENUM = 0x7FFFFFFF,
+} MVKConfigCompressionAlgorithm;
+
+/** Identifies the style of activity performance logging to use. */
+typedef enum MVKConfigActivityPerformanceLoggingStyle {
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT     = 0,	/**< Repeatedly log performance after a configured number of frames. */
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE       = 1,	/**< Log immediately after each performance measurement. */
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_DEVICE_LIFETIME = 2,	/**< Log at the end of the VkDevice lifetime. This is useful for one-shot apps such as testing frameworks. */
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_MAX_ENUM        = 0x7FFFFFFF,
+} MVKConfigActivityPerformanceLoggingStyle;
+
 /**
  * MoltenVK configuration settings.
  *
@@ -361,8 +379,8 @@ typedef struct {
 	 * If enabled, performance statistics, as defined by the MVKPerformanceStatistics structure,
 	 * are collected, and can be retrieved via the vkGetPerformanceStatisticsMVK() function.
 	 *
-	 * You can also use the performanceLoggingFrameCount or logActivityPerformanceInline
-	 * parameters to automatically log the performance statistics collected by this parameter.
+	 * You can also use the activityPerformanceLoggingStyle and performanceLoggingFrameCount
+	 * parameters to configure when to log the performance statistics collected by this parameter.
 	 *
 	 * The value of this parameter must be changed before creating a VkDevice,
 	 * for the change to take effect.
@@ -770,21 +788,20 @@ typedef struct {
 	VkBool32 useMTLHeap;
 
 	/**
-	 * Controls whether MoltenVK should log the performance of individual activities as they happen.
-	 * If this setting is enabled, activity performance will be logged when each activity happens.
-	 * If this setting is disabled, activity performance will be logged when frame peformance is
-	 * logged as determined by the performanceLoggingFrameCount value.
+	 * Controls when MoltenVK should log activity performance events.
 	 *
 	 * The value of this parameter must be changed before creating a VkDevice,
 	 * for the change to take effect.
 	 *
 	 * The initial value or this parameter is set by the
-	 * MVK_CONFIG_PERFORMANCE_LOGGING_INLINE
+	 * MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE
 	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, this setting is disabled by default, and activity
-	 * performance will be logged only when frame activity is logged.
+	 * If neither is set, this setting is set to
+	 * MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT by default,
+	 * and activity performance will be logged when frame activity is logged.
 	 */
-	VkBool32 logActivityPerformanceInline;
+	MVKConfigActivityPerformanceLoggingStyle activityPerformanceLoggingStyle;
+#define logActivityPerformanceInline activityPerformanceLoggingStyle
 
 	/**
 	 * Controls the Vulkan API version that MoltenVK should advertise in vkEnumerateInstanceVersion().
@@ -876,6 +893,27 @@ typedef struct {
 	 * and MoltenVK will not use Metal argument buffers.
 	 */
 	MVKUseMetalArgumentBuffers useMetalArgumentBuffers;
+
+	/**
+	 * Controls the type of compression to use on the MSL source code that is stored in memory
+	 * for use in a pipeline cache. After being converted from SPIR-V, or loaded directly into
+	 * a VkShaderModule, and then compiled into a MTLLibrary, the MSL source code is no longer
+	 * needed for operation, but it is retained so it can be written out as part of a pipeline
+	 * cache export. When a large number of shaders are loaded, this can consume significant
+	 * memory. In such a case, this parameter can be used to compress the MSL source code that
+	 * is awaiting export as part of a pipeline cache.
+	 *
+	 * The value of this parameter can be changed at any time, and will affect the size of
+	 * the cached MSL from subsequent shader compilations.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, this setting is set to
+	 * MVK_CONFIG_COMPRESSION_ALGORITHM_NONE by default,
+	 * and MoltenVK will not compress the MSL source code after compilation into a MTLLibrary.
+	 */
+	MVKConfigCompressionAlgorithm shaderSourceCompressionAlgorithm;
 
 } MVKConfiguration;
 
@@ -999,6 +1037,8 @@ typedef struct {
     MVKPerformanceTracker spirvToMSL;					/** Convert SPIR-V to MSL source code. */
     MVKPerformanceTracker mslCompile;					/** Compile MSL source code into a MTLLibrary. */
     MVKPerformanceTracker mslLoad;						/** Load pre-compiled MSL code into a MTLLibrary. */
+	MVKPerformanceTracker mslCompress;					/** Compress MSL source code after compiling a MTLLibrary, to hold it in a pipeline cache. */
+	MVKPerformanceTracker mslDecompress;				/** Decompress MSL source code to write the MSL when serializing a pipeline cache. */
 	MVKPerformanceTracker shaderLibraryFromCache;		/** Retrieve a shader library from the cache, lazily creating it if needed. */
     MVKPerformanceTracker functionRetrieval;			/** Retrieve a MTLFunction from a MTLLibrary. */
     MVKPerformanceTracker functionSpecialization;		/** Specialize a retrieved MTLFunction. */

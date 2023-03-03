@@ -686,7 +686,9 @@ public:
 
 			// Log call not locked. Very minor chance that the tracker data will be updated during log call,
 			// resulting in an inconsistent report. Not worth taking lock perf hit for rare inline reporting.
-			if (_logActivityPerformanceInline) { logActivityPerformance(activityTracker, _performanceStatistics, true); }
+			if (_activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE) {
+				logActivityPerformance(activityTracker, _performanceStatistics, true);
+			}
 		}
 	};
 
@@ -891,7 +893,7 @@ protected:
 	id<MTLSamplerState> _defaultMTLSamplerState = nil;
 	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
     uint32_t _globalVisibilityQueryCount = 0;
-	bool _logActivityPerformanceInline = false;
+	MVKConfigActivityPerformanceLoggingStyle _activityPerformanceLoggingStyle = MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT;
 	bool _isPerformanceTracking = false;
 	bool _isCurrentlyAutoGPUCapturing = false;
 	bool _isUsingMetalArgumentBuffers = false;
