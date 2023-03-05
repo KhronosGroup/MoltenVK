@@ -1172,7 +1172,11 @@ void MVKCmdDrawMeshTasks::encode(MVKCommandEncoder* cmdEncoder) {
         id <MTLComputeCommandEncoder> mtlTessCtlEncoder = nil;
     }
 
-    [cmdEncoder->_mtlRenderEncoder drawMeshThreadgroups:MTLSizeMake(1, 1, 1) threadsPerObjectThreadgroup:MTLSizeMake(1, 1, 1) threadsPerMeshThreadgroup:MTLSizeMake(1, 1, 1)];
+    const auto groupSize = MTLSizeMake(_groupCountX, _groupCountY, _groupCountZ);
+
+    [cmdEncoder->_mtlRenderEncoder drawMeshThreadgroups:groupSize
+                                   threadsPerObjectThreadgroup:cmdEncoder->_mtlObjectThreadgroupSize
+                                   threadsPerMeshThreadgroup:cmdEncoder->_mtlThreadgroupSize];
 }
 
 #pragma mark -

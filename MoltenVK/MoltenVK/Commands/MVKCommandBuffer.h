@@ -482,7 +482,10 @@ public:
 	/** The type of primitive that will be rendered. */
 	MTLPrimitiveType _mtlPrimitiveType;
 
-    /** The size of the threadgroup for the compute shader. */
+	/** The size of the threadgroup for the object shader */
+	MTLSize _mtlObjectThreadgroupSize;
+
+    /** The size of the threadgroup for the compute/mesh shader. */
     MTLSize _mtlThreadgroupSize;
 
 	/** Indicates whether the current render subpass is able to render to an array (layered) framebuffer. */

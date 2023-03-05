@@ -280,11 +280,17 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 			// Stage 3 of a tessellated draw:
 
 			if ( !_mtlPipelineState ) { return; }		// Abort if pipeline could not be created.
+
             // Render pipeline state
 			if (cmdEncoder->getSubpass()->isMultiview() && !isTessellationPipeline() && !_multiviewMTLPipelineStates.empty()) {
 				[mtlCmdEnc setRenderPipelineState: _multiviewMTLPipelineStates[cmdEncoder->getSubpass()->getViewCountInMetalPass(cmdEncoder->getMultiviewPassIndex())]];
 			} else {
 				[mtlCmdEnc setRenderPipelineState: _mtlPipelineState];
+			}
+
+			if (isMeshPipeline()) {
+				cmdEncoder->_mtlObjectThreadgroupSize = _mtlObjectThreadgroupSize;
+				cmdEncoder->_mtlThreadgroupSize = _mtlMeshThreadgroupSize;
 			}
 
             // Depth stencil state - Cleared _depthStencilInfo values will disable depth testing
@@ -702,6 +708,8 @@ MTLMeshRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLMeshRenderPipelineDe
 		}
 
 		if(!addTaskShaderToPipeline(plDesc, pCreateInfo, shaderConfig)) { return nil; }
+	} else {
+		_mtlObjectThreadgroupSize = MTLSizeMake(1, 1, 1);
 	}
 
 	SPIRVShaderOutputs meshOutputs;
@@ -1262,7 +1270,8 @@ bool MVKGraphicsPipeline::addTaskShaderToPipeline(MTLMeshRenderPipelineDescripto
 		const VkGraphicsPipelineCreateInfo* pCreateInfo,
 		SPIRVToMSLConversionConfiguration& shaderConfig) {
 
-	return true; //
+	//TODO: 	_mtlObjectThreadgroupSize = func.threadGroupSize;
+	return false; //TODO:
 }
 
 bool MVKGraphicsPipeline::addMeshShaderToPipeline(MTLMeshRenderPipelineDescriptor* plDesc,
@@ -1286,6 +1295,7 @@ bool MVKGraphicsPipeline::addMeshShaderToPipeline(MTLMeshRenderPipelineDescripto
 		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Mesh shader function could not be compiled into pipeline. See previous logged error."));
 		return false;
 	}
+	_mtlMeshThreadgroupSize = func.threadGroupSize;
 	plDesc.meshFunction = mtlFunc;
 
 	auto& funcRslts = func.shaderConversionResults;
