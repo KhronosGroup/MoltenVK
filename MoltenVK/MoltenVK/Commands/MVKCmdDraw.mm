@@ -195,7 +195,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                                           offset: vtxOutBuff->_offset
                                          atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessCtlInputBufferBinding)];
                 }
-				
+
 				NSUInteger sgSize = pipeline->getTessControlStageState().threadExecutionWidth;
 				NSUInteger wgSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
 				while (wgSize > cmdEncoder->getDevice()->_pProperties->limits.maxComputeWorkGroupSize[0]) {
@@ -1135,3 +1135,69 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
     }
 }
 
+#pragma mark -
+#pragma mark MVKCmdDrawMeshTasks
+
+VkResult MVKCmdDrawMeshTasks::setContent(MVKCommandBuffer* cmdBuff,
+        uint32_t groupCountX,
+        uint32_t groupCountY,
+        uint32_t groupCountZ) {
+    _groupCountX = groupCountX;
+    _groupCountY = groupCountY;
+    _groupCountZ = groupCountZ;
+
+    // Validate
+    MVKDevice* mvkDvc = cmdBuff->getDevice();
+    if ( ![mvkDvc->getMTLDevice() supportsFamily: MTLGPUFamilyMetal3] ) {
+        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawMeshTasksEXT(): The current device does not support mesh shaders.");
+    }
+
+    return VK_SUCCESS;
+}
+
+void MVKCmdDrawMeshTasks::encode(MVKCommandEncoder* cmdEncoder) {
+    printf("Encoding Draw Mesh Tasks\n");
+
+    auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
+
+    MVKPiplineStages stages;
+    pipeline->getStages(stages);
+
+    for (uint32_t s : stages) {
+        auto stage = MVKGraphicsStage(s);
+        cmdEncoder->finalizeDrawState(stage);    // Ensure all updated state has been submitted to Metal
+
+        if ( !pipeline->hasValidMTLPipelineStates() ) { return; }    // Abort if this pipeline stage could not be compiled.
+
+        id <MTLComputeCommandEncoder> mtlTessCtlEncoder = nil;
+    }
+
+    [cmdEncoder->_mtlRenderEncoder drawMeshThreadgroups:MTLSizeMake(1, 1, 1) threadsPerObjectThreadgroup:MTLSizeMake(1, 1, 1) threadsPerMeshThreadgroup:MTLSizeMake(1, 1, 1)];
+}
+
+#pragma mark -
+#pragma mark MVKCmdDrawMeshTasksIndirect
+
+VkResult MVKCmdDrawMeshTasksIndirect::setContent(MVKCommandBuffer* cmdBuff, VkBuffer buffer,
+        VkDeviceSize offset,
+        uint32_t drawCount,
+        uint32_t stride) {
+    MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
+    _mtlIndirectBuffer = mvkBuffer->getMTLBuffer();
+    _mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
+    _mtlIndirectBufferStride = stride;
+    _drawCount = drawCount;
+
+    // Validate
+    MVKDevice* mvkDvc = cmdBuff->getDevice();
+    if ( ![mvkDvc->getMTLDevice() supportsFamily: MTLGPUFamilyMetal3] ) {
+        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawMeshTasksEXT(): The current device does not support mesh shaders.");
+    }
+
+    return VK_SUCCESS;
+}
+
+void MVKCmdDrawMeshTasksIndirect::encode(MVKCommandEncoder* cmdEncoder) {
+    printf("Encoding Draw Mesh Tasks Indirect\n");
+    //TODO:
+}

@@ -406,6 +406,16 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
 				break;
 			}
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT: {
+                const auto supported = [_mtlDevice supportsFamily: MTLGPUFamilyMetal3];
+
+                auto* meshShaderFeatures = (VkPhysicalDeviceMeshShaderFeaturesEXT*)next;
+                meshShaderFeatures->taskShader = supported;
+                meshShaderFeatures->meshShader = supported;
+                meshShaderFeatures->multiviewMeshShader = false; //TODO:
+                meshShaderFeatures->primitiveFragmentShadingRateMeshShader = false; //TODO:
+                meshShaderFeatures->meshShaderQueries = false; //TODO:
+            }
 			default:
 				break;
 		}
@@ -694,6 +704,48 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				robustness2Props->robustUniformBufferAccessSizeAlignment = 1;
 				break;
 			}
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT: {
+                auto* meshShaderProps = (VkPhysicalDeviceMeshShaderPropertiesEXT*)next;
+
+                meshShaderProps->maxTaskWorkGroupTotalCount = 0; //TODO;
+                meshShaderProps->maxTaskWorkGroupCount[0] = 0; //TODO:
+                meshShaderProps->maxTaskWorkGroupCount[1] = 0; //TODO:
+                meshShaderProps->maxTaskWorkGroupCount[2] = 0; //TODO:
+                meshShaderProps->maxTaskWorkGroupInvocations = 0; //TODO:
+                meshShaderProps->maxTaskWorkGroupSize[0] = 0; //TODO:
+                meshShaderProps->maxTaskWorkGroupSize[1] = 0; //TODO:
+                meshShaderProps->maxTaskWorkGroupSize[2] = 0; //TODO:
+                meshShaderProps->maxTaskPayloadSize = 0; //TODO:
+                meshShaderProps->maxTaskSharedMemorySize = 0;
+                meshShaderProps->maxTaskPayloadAndSharedMemorySize = 0; //TODO:
+                meshShaderProps->maxMeshWorkGroupTotalCount = 0; //TODO:
+                meshShaderProps->maxMeshWorkGroupCount[0] = 0; //TODO:
+                meshShaderProps->maxMeshWorkGroupCount[1] = 0; //TODO:
+                meshShaderProps->maxMeshWorkGroupCount[2] = 0; //TODO:
+                meshShaderProps->maxMeshWorkGroupInvocations = 0; //TODO:
+                meshShaderProps->maxMeshWorkGroupSize[0] = 0; //TODO:
+                meshShaderProps->maxMeshWorkGroupSize[1] = 0; //TODO:
+                meshShaderProps->maxMeshWorkGroupSize[2] = 0; //TODO:
+                meshShaderProps->maxMeshSharedMemorySize = 0; //TODO:
+                meshShaderProps->maxMeshPayloadAndSharedMemorySize = 0; //TODO:
+                meshShaderProps->maxMeshOutputMemorySize = 0; //TODO:
+                meshShaderProps->maxMeshPayloadAndOutputMemorySize = 0; //TODO:
+                meshShaderProps->maxMeshOutputComponents = 0; //TODO:
+                meshShaderProps->maxMeshOutputVertices = 0; //TODO:
+                meshShaderProps->maxMeshOutputPrimitives = 0; //TODO:
+                meshShaderProps->maxMeshOutputLayers = 0; //TODO:
+                meshShaderProps->maxMeshMultiviewViewCount = 0; //TODO:
+                meshShaderProps->meshOutputPerVertexGranularity = 0; //TODO:
+                meshShaderProps->meshOutputPerPrimitiveGranularity = 0; //TODO:
+                meshShaderProps->maxPreferredTaskWorkGroupInvocations = 0; //TODO:
+                meshShaderProps->maxPreferredMeshWorkGroupInvocations = 0; //TODO:
+                meshShaderProps->prefersLocalInvocationVertexOutput = false; //TODO:
+                meshShaderProps->prefersLocalInvocationPrimitiveOutput = false; //TODO:
+                meshShaderProps->prefersCompactVertexOutput = false; //TODO:
+                meshShaderProps->prefersCompactPrimitiveOutput = false; //TODO:
+
+                break;
+            }
 			default:
 				break;
 		}
@@ -1605,9 +1657,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			_metalFeatures.clearColorFloatRounding = MVK_FLOAT_ROUNDING_DOWN;
 			break;
 		case kAppleVendorId:
-			// TODO: Other GPUs?
-			_metalFeatures.needsSampleDrefLodArrayWorkaround = true;
-			// fallthrough
 		case kIntelVendorId:
 		case kNVVendorId:
 		default:

@@ -598,6 +598,8 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
     _vertexPushConstants.beginMetalRenderPass();
     _tessCtlPushConstants.beginMetalRenderPass();
     _tessEvalPushConstants.beginMetalRenderPass();
+	_taskPushConstants.beginMetalRenderPass();
+	_meshPushConstants.beginMetalRenderPass();
     _fragmentPushConstants.beginMetalRenderPass();
     _depthStencilState.beginMetalRenderPass();
     _stencilReferenceValueState.beginMetalRenderPass();
@@ -724,6 +726,8 @@ void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
     _vertexPushConstants.encode(stage);
     _tessCtlPushConstants.encode(stage);
     _tessEvalPushConstants.encode(stage);
+	_taskPushConstants.encode(stage);
+	_meshPushConstants.encode(stage);
     _fragmentPushConstants.encode(stage);
     _depthStencilState.encode(stage);
     _stencilReferenceValueState.encode(stage);
@@ -822,6 +826,8 @@ void MVKCommandEncoder::endMetalRenderEncoding() {
     _vertexPushConstants.endMetalRenderPass();
     _tessCtlPushConstants.endMetalRenderPass();
     _tessEvalPushConstants.endMetalRenderPass();
+	_taskPushConstants.endMetalRenderPass();
+	_meshPushConstants.endMetalRenderPass();
     _fragmentPushConstants.endMetalRenderPass();
     _depthStencilState.endMetalRenderPass();
     _stencilReferenceValueState.endMetalRenderPass();
@@ -885,6 +891,8 @@ MVKPushConstantsCommandEncoderState* MVKCommandEncoder::getPushConstants(VkShade
 		case VK_SHADER_STAGE_VERTEX_BIT:					return &_vertexPushConstants;
 		case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:		return &_tessCtlPushConstants;
 		case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:	return &_tessEvalPushConstants;
+		case VK_SHADER_STAGE_TASK_BIT_EXT:					return &_taskPushConstants;
+		case VK_SHADER_STAGE_MESH_BIT_EXT:					return &_meshPushConstants;
 		case VK_SHADER_STAGE_FRAGMENT_BIT:					return &_fragmentPushConstants;
 		case VK_SHADER_STAGE_COMPUTE_BIT:					return &_computePushConstants;
 		default:
@@ -907,6 +915,40 @@ void MVKCommandEncoder::setVertexBytes(id<MTLRenderCommandEncoder> mtlEncoder,
 
 	if (descOverride) {
 		_graphicsResourcesState.markBufferIndexOverridden(kMVKShaderStageVertex, mtlBuffIndex);
+	}
+}
+
+void MVKCommandEncoder::setObjectBytes(id<MTLRenderCommandEncoder> mtlEncoder,
+		const void* bytes,
+		NSUInteger length,
+		uint32_t mtlBuffIndex,
+		bool descOverride) {
+	if (_pDeviceMetalFeatures->dynamicMTLBufferSize && length <= _pDeviceMetalFeatures->dynamicMTLBufferSize) {
+		[mtlEncoder setObjectBytes: bytes length: length atIndex: mtlBuffIndex];
+	} else {
+		const MVKMTLBufferAllocation* mtlBuffAlloc = copyToTempMTLBufferAllocation(bytes, length);
+		[mtlEncoder setObjectBuffer: mtlBuffAlloc->_mtlBuffer offset: mtlBuffAlloc->_offset atIndex: mtlBuffIndex];
+	}
+
+	if (descOverride) {
+		_graphicsResourcesState.markBufferIndexOverridden(kMVKShaderStageTask, mtlBuffIndex);
+	}
+}
+
+void MVKCommandEncoder::setMeshBytes(id<MTLRenderCommandEncoder> mtlEncoder,
+		const void* bytes,
+		NSUInteger length,
+		uint32_t mtlBuffIndex,
+		bool descOverride) {
+	if (_pDeviceMetalFeatures->dynamicMTLBufferSize && length <= _pDeviceMetalFeatures->dynamicMTLBufferSize) {
+		[mtlEncoder setMeshBytes: bytes length: length atIndex: mtlBuffIndex];
+	} else {
+		const MVKMTLBufferAllocation* mtlBuffAlloc = copyToTempMTLBufferAllocation(bytes, length);
+		[mtlEncoder setMeshBuffer: mtlBuffAlloc->_mtlBuffer offset: mtlBuffAlloc->_offset atIndex: mtlBuffIndex];
+	}
+
+	if (descOverride) {
+		_graphicsResourcesState.markBufferIndexOverridden(kMVKShaderStageMesh, mtlBuffIndex);
 	}
 }
 
@@ -1123,6 +1165,8 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
         _vertexPushConstants(this, VK_SHADER_STAGE_VERTEX_BIT),
         _tessCtlPushConstants(this, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT),
         _tessEvalPushConstants(this, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT),
+		_taskPushConstants(this, VK_SHADER_STAGE_TASK_BIT_EXT),
+		_meshPushConstants(this, VK_SHADER_STAGE_MESH_BIT_EXT),
         _fragmentPushConstants(this, VK_SHADER_STAGE_FRAGMENT_BIT),
         _computePushConstants(this, VK_SHADER_STAGE_COMPUTE_BIT),
         _occlusionQueryState(this),

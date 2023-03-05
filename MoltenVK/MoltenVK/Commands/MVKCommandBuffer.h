@@ -369,6 +369,22 @@ public:
 						NSUInteger length, uint32_t mtlBuffIndex, bool descOverride = false);
 
 	/**
+	 * Copy bytes into the Metal encoder at a Metal object buffer index, and optionally indicate
+	 * that this binding might override a desriptor binding. If so, the descriptor binding will
+	 * be marked dirty so that it will rebind before the next usage.
+	 */
+	void setObjectBytes(id<MTLRenderCommandEncoder> mtlEncoder, const void* bytes,
+						NSUInteger length, uint32_t mtlBuffIndex, bool descOverride = false);
+
+	/**
+ 	 * Copy bytes into the Metal encoder at a Metal mesh buffer index, and optionally indicate
+ 	 * that this binding might override a desriptor binding. If so, the descriptor binding will
+ 	 * be marked dirty so that it will rebind before the next usage.
+ 	*/
+	void setMeshBytes(id<MTLRenderCommandEncoder> mtlEncoder, const void* bytes,
+						NSUInteger length, uint32_t mtlBuffIndex, bool descOverride = false);
+
+	/**
 	 * Copy bytes into the Metal encoder at a Metal fragment buffer index, and optionally indicate
 	 * that this binding might override a desriptor binding. If so, the descriptor binding will
 	 * be marked dirty so that it will rebind before the next usage.
@@ -517,6 +533,8 @@ protected:
 	MVKPushConstantsCommandEncoderState _vertexPushConstants;
 	MVKPushConstantsCommandEncoderState _tessCtlPushConstants;
 	MVKPushConstantsCommandEncoderState _tessEvalPushConstants;
+	MVKPushConstantsCommandEncoderState _taskPushConstants;
+	MVKPushConstantsCommandEncoderState _meshPushConstants;
 	MVKPushConstantsCommandEncoderState _fragmentPushConstants;
 	MVKPushConstantsCommandEncoderState _computePushConstants;
     MVKOcclusionQueryCommandEncoderState _occlusionQueryState;

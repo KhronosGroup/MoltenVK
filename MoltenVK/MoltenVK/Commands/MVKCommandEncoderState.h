@@ -519,26 +519,33 @@ public:
                            bool needVertexSwizzleBuffer,
                            bool needTessCtlSwizzleBuffer,
                            bool needTessEvalSwizzleBuffer,
-                           bool needFragmentSwizzleBuffer);
+                           bool needTaskSwizzleBuffer,
+						   bool needMeshSwizzleBuffer,
+						   bool needFragmentSwizzleBuffer);
 
     /** Sets the current buffer size buffer state. */
     void bindBufferSizeBuffer(const MVKShaderImplicitRezBinding& binding,
                               bool needVertexSizeBuffer,
                               bool needTessCtlSizeBuffer,
                               bool needTessEvalSizeBuffer,
-                              bool needFragmentSizeBuffer);
+                              bool needTaskSizeBuffer,
+							  bool needMeshSizeBuffer,
+							  bool needFragmentSizeBuffer);
 
 	/** Sets the current dynamic offset buffer state. */
 	void bindDynamicOffsetBuffer(const MVKShaderImplicitRezBinding& binding,
 								 bool needVertexDynanicOffsetBuffer,
 								 bool needTessCtlDynanicOffsetBuffer,
 								 bool needTessEvalDynanicOffsetBuffer,
+								 bool needTaskDynamicOffsetBuffer,
+								 bool needMeshDynamicOffsetBuffer,
 								 bool needFragmentDynanicOffsetBuffer);
 
     /** Sets the current view range buffer state. */
     void bindViewRangeBuffer(const MVKShaderImplicitRezBinding& binding,
                              bool needVertexViewBuffer,
-                             bool needFragmentViewBuffer);
+                             bool needMeshViewBuffer,
+							 bool needFragmentViewBuffer);
 
     void encodeBindings(MVKShaderStage stage,
                         const char* pStageName,

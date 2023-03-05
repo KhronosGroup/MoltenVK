@@ -222,6 +222,24 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
 				_isDirty = false;	// Okay, I changed the encoder
             }
             break;
+		case VK_SHADER_STAGE_TASK_BIT_EXT:
+			if(stage == kMVKGraphicsStageRasterization) {
+				_cmdEncoder->setObjectBytes(_cmdEncoder->_mtlRenderEncoder,
+											   _pushConstants.data(),
+											   _pushConstants.size(),
+											   _mtlBufferIndex, true);
+				_isDirty = false;	// Okay, I changed the encoder
+			}
+			break;
+		case VK_SHADER_STAGE_MESH_BIT_EXT:
+			if(stage == kMVKGraphicsStageRasterization) {
+				_cmdEncoder->setMeshBytes(_cmdEncoder->_mtlRenderEncoder,
+											  _pushConstants.data(),
+											  _pushConstants.size(),
+											  _mtlBufferIndex, true);
+				_isDirty = false;	// Okay, I changed the encoder
+			}
+			break;
         case VK_SHADER_STAGE_FRAGMENT_BIT:
             if (stage == kMVKGraphicsStageRasterization) {
                 _cmdEncoder->setFragmentBytes(_cmdEncoder->_mtlRenderEncoder,
@@ -633,6 +651,8 @@ void MVKGraphicsResourcesCommandEncoderState::bindSwizzleBuffer(const MVKShaderI
 																bool needVertexSwizzleBuffer,
 																bool needTessCtlSwizzleBuffer,
 																bool needTessEvalSwizzleBuffer,
+																bool needTaskSwizzleBuffer,
+																bool needMeshSwizzleBuffer,
 																bool needFragmentSwizzleBuffer) {
     for (uint32_t i = kMVKShaderStageVertex; i <= kMVKShaderStageFragment; i++) {
         _shaderStageResourceBindings[i].swizzleBufferBinding.index = binding.stages[i];
@@ -640,6 +660,8 @@ void MVKGraphicsResourcesCommandEncoderState::bindSwizzleBuffer(const MVKShaderI
     _shaderStageResourceBindings[kMVKShaderStageVertex].swizzleBufferBinding.isDirty = needVertexSwizzleBuffer;
     _shaderStageResourceBindings[kMVKShaderStageTessCtl].swizzleBufferBinding.isDirty = needTessCtlSwizzleBuffer;
     _shaderStageResourceBindings[kMVKShaderStageTessEval].swizzleBufferBinding.isDirty = needTessEvalSwizzleBuffer;
+	_shaderStageResourceBindings[kMVKShaderStageTask].swizzleBufferBinding.isDirty = needTaskSwizzleBuffer;
+	_shaderStageResourceBindings[kMVKShaderStageMesh].swizzleBufferBinding.isDirty = needMeshSwizzleBuffer;
     _shaderStageResourceBindings[kMVKShaderStageFragment].swizzleBufferBinding.isDirty = needFragmentSwizzleBuffer;
 }
 
@@ -647,6 +669,8 @@ void MVKGraphicsResourcesCommandEncoderState::bindBufferSizeBuffer(const MVKShad
 																   bool needVertexSizeBuffer,
 																   bool needTessCtlSizeBuffer,
 																   bool needTessEvalSizeBuffer,
+																   bool needTaskSizeBuffer,
+																   bool needMeshSizeBuffer,
 																   bool needFragmentSizeBuffer) {
     for (uint32_t i = kMVKShaderStageVertex; i <= kMVKShaderStageFragment; i++) {
         _shaderStageResourceBindings[i].bufferSizeBufferBinding.index = binding.stages[i];
@@ -654,13 +678,17 @@ void MVKGraphicsResourcesCommandEncoderState::bindBufferSizeBuffer(const MVKShad
     _shaderStageResourceBindings[kMVKShaderStageVertex].bufferSizeBufferBinding.isDirty = needVertexSizeBuffer;
     _shaderStageResourceBindings[kMVKShaderStageTessCtl].bufferSizeBufferBinding.isDirty = needTessCtlSizeBuffer;
     _shaderStageResourceBindings[kMVKShaderStageTessEval].bufferSizeBufferBinding.isDirty = needTessEvalSizeBuffer;
-    _shaderStageResourceBindings[kMVKShaderStageFragment].bufferSizeBufferBinding.isDirty = needFragmentSizeBuffer;
+    _shaderStageResourceBindings[kMVKShaderStageTask].bufferSizeBufferBinding.isDirty = needTaskSizeBuffer;
+	_shaderStageResourceBindings[kMVKShaderStageMesh].bufferSizeBufferBinding.isDirty = needMeshSizeBuffer;
+	_shaderStageResourceBindings[kMVKShaderStageFragment].bufferSizeBufferBinding.isDirty = needFragmentSizeBuffer;
 }
 
 void MVKGraphicsResourcesCommandEncoderState::bindDynamicOffsetBuffer(const MVKShaderImplicitRezBinding& binding,
 																	  bool needVertexDynamicOffsetBuffer,
 																	  bool needTessCtlDynamicOffsetBuffer,
 																	  bool needTessEvalDynamicOffsetBuffer,
+																	  bool needTaskDynamicOffsetBuffer,
+																	  bool needMeshDynamicOffsetBuffer,
 																	  bool needFragmentDynamicOffsetBuffer) {
 	for (uint32_t i = kMVKShaderStageVertex; i <= kMVKShaderStageFragment; i++) {
 		_shaderStageResourceBindings[i].dynamicOffsetBufferBinding.index = binding.stages[i];
@@ -668,11 +696,14 @@ void MVKGraphicsResourcesCommandEncoderState::bindDynamicOffsetBuffer(const MVKS
 	_shaderStageResourceBindings[kMVKShaderStageVertex].dynamicOffsetBufferBinding.isDirty = needVertexDynamicOffsetBuffer;
 	_shaderStageResourceBindings[kMVKShaderStageTessCtl].dynamicOffsetBufferBinding.isDirty = needTessCtlDynamicOffsetBuffer;
 	_shaderStageResourceBindings[kMVKShaderStageTessEval].dynamicOffsetBufferBinding.isDirty = needTessEvalDynamicOffsetBuffer;
+	_shaderStageResourceBindings[kMVKShaderStageTask].dynamicOffsetBufferBinding.isDirty = needTaskDynamicOffsetBuffer;
+	_shaderStageResourceBindings[kMVKShaderStageMesh].dynamicOffsetBufferBinding.isDirty = needMeshDynamicOffsetBuffer;
 	_shaderStageResourceBindings[kMVKShaderStageFragment].dynamicOffsetBufferBinding.isDirty = needFragmentDynamicOffsetBuffer;
 }
 
 void MVKGraphicsResourcesCommandEncoderState::bindViewRangeBuffer(const MVKShaderImplicitRezBinding& binding,
 																  bool needVertexViewBuffer,
+																  bool needMeshViewBuffer,
 																  bool needFragmentViewBuffer) {
     for (uint32_t i = kMVKShaderStageVertex; i <= kMVKShaderStageFragment; i++) {
         _shaderStageResourceBindings[i].viewRangeBufferBinding.index = binding.stages[i];
@@ -680,6 +711,8 @@ void MVKGraphicsResourcesCommandEncoderState::bindViewRangeBuffer(const MVKShade
     _shaderStageResourceBindings[kMVKShaderStageVertex].viewRangeBufferBinding.isDirty = needVertexViewBuffer;
     _shaderStageResourceBindings[kMVKShaderStageTessCtl].viewRangeBufferBinding.isDirty = false;
     _shaderStageResourceBindings[kMVKShaderStageTessEval].viewRangeBufferBinding.isDirty = false;
+	_shaderStageResourceBindings[kMVKShaderStageTask].viewRangeBufferBinding.isDirty = false;
+	_shaderStageResourceBindings[kMVKShaderStageMesh].viewRangeBufferBinding.isDirty = needMeshViewBuffer;
     _shaderStageResourceBindings[kMVKShaderStageFragment].viewRangeBufferBinding.isDirty = needFragmentViewBuffer;
 }
 
