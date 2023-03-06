@@ -241,11 +241,11 @@ MVKShaderLibrary::~MVKShaderLibrary() {
 #pragma mark MVKShaderLibraryCache
 
 MVKShaderLibrary* MVKShaderLibraryCache::getShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig,
-														  MVKShaderModule* shaderModule,
-														  bool* pWasAdded) {
+														  MVKShaderModule* shaderModule, MVKPipeline* pipeline,
+														  bool* pWasAdded, uint64_t startTime) {
 	bool wasAdded = false;
-	MVKShaderLibrary* shLib = findShaderLibrary(pShaderConfig);
-	if ( !shLib ) {
+	MVKShaderLibrary* shLib = findShaderLibrary(pShaderConfig, startTime);
+	if ( !shLib && !pipeline->shouldFailOnPipelineCompileRequired() ) {
 		SPIRVToMSLConversionResult conversionResult;
 		if (shaderModule->convert(pShaderConfig, conversionResult)) {
 			shLib = addShaderLibrary(pShaderConfig, conversionResult);
@@ -260,10 +260,13 @@ MVKShaderLibrary* MVKShaderLibraryCache::getShaderLibrary(SPIRVToMSLConversionCo
 
 // Finds and returns a shader library matching the shader config, or returns nullptr if it doesn't exist.
 // If a match is found, the shader config is aligned with the shader config of the matching library.
-MVKShaderLibrary* MVKShaderLibraryCache::findShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig) {
+MVKShaderLibrary* MVKShaderLibraryCache::findShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig,
+														   uint64_t startTime) {
 	for (auto& slPair : _shaderLibraries) {
 		if (slPair.first.matches(*pShaderConfig)) {
 			pShaderConfig->alignWith(slPair.first);
+			MVKDevice* mkvDev = _owner->getDevice();
+			mkvDev->addActivityPerformance(mkvDev->_performanceStatistics.shaderCompilation.shaderLibraryFromCache, startTime);
 			return slPair.second;
 		}
 	}
@@ -308,18 +311,17 @@ MVKShaderLibraryCache::~MVKShaderLibraryCache() {
 
 MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration* pShaderConfig,
 											   const VkSpecializationInfo* pSpecializationInfo,
-											   MVKPipelineCache* pipelineCache) {
-	lock_guard<mutex> lock(_accessLock);
-	
+											   MVKPipeline* pipeline) {
 	MVKShaderLibrary* mvkLib = _directMSLLibrary;
 	if ( !mvkLib ) {
 		uint64_t startTime = _device->getPerformanceTimestamp();
+		MVKPipelineCache* pipelineCache = pipeline->getPipelineCache();
 		if (pipelineCache) {
-			mvkLib = pipelineCache->getShaderLibrary(pShaderConfig, this);
+			mvkLib = pipelineCache->getShaderLibrary(pShaderConfig, this, pipeline, startTime);
 		} else {
-			mvkLib = _shaderLibraryCache.getShaderLibrary(pShaderConfig, this);
+			lock_guard<mutex> lock(_accessLock);
+			mvkLib = _shaderLibraryCache.getShaderLibrary(pShaderConfig, this, pipeline, nullptr, startTime);
 		}
-		_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.shaderLibraryFromCache, startTime);
 	} else {
 		mvkLib->setEntryPointName(pShaderConfig->options.entryPointName);
 		pShaderConfig->markAllInterfaceVarsAndResourcesUsed();

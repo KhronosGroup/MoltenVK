@@ -390,6 +390,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				swapchainMaintenance1Features->swapchainMaintenance1 = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT: {
+				auto* pipelineCreationCacheControlFeatures = (VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT*)next;
+				pipelineCreationCacheControlFeatures->pipelineCreationCacheControl = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
 				auto* texelBuffAlignFeatures = (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)next;
 				texelBuffAlignFeatures->texelBufferAlignment = _metalFeatures.texelBuffers && [_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)];
@@ -3726,10 +3731,16 @@ VkResult MVKDevice::createPipelines(VkPipelineCache pipelineCache,
                                     const PipelineInfoType* pCreateInfos,
                                     const VkAllocationCallbacks* pAllocator,
                                     VkPipeline* pPipelines) {
+	bool ignoreFurtherPipelines = false;
     VkResult rslt = VK_SUCCESS;
     MVKPipelineCache* mvkPLC = (MVKPipelineCache*)pipelineCache;
 
     for (uint32_t plIdx = 0; plIdx < count; plIdx++) {
+
+		// Ensure all slots are purposefully set.
+		pPipelines[plIdx] = VK_NULL_HANDLE;
+		if (ignoreFurtherPipelines) { continue; }
+
         const PipelineInfoType* pCreateInfo = &pCreateInfos[plIdx];
 
         // See if this pipeline has a parent. This can come either directly
@@ -3742,18 +3753,19 @@ VkResult MVKDevice::createPipelines(VkPipelineCache pipelineCache,
             parentPL = vkParentPL ? (MVKPipeline*)vkParentPL : VK_NULL_HANDLE;
         }
 
-        // Create the pipeline and if creation was successful, insert the new pipeline
-        // in the return array and add it to the pipeline cache (if the cache was specified).
-        // If creation was unsuccessful, insert NULL into the return array, change the
-        // result code of this function, and destroy the broken pipeline.
+        // Create the pipeline and if creation was successful, insert the new pipeline in the return array.
         MVKPipeline* mvkPL = new PipelineType(this, mvkPLC, parentPL, pCreateInfo);
         VkResult plRslt = mvkPL->getConfigurationResult();
         if (plRslt == VK_SUCCESS) {
             pPipelines[plIdx] = (VkPipeline)mvkPL;
         } else {
-            rslt = plRslt;
-            pPipelines[plIdx] = VK_NULL_HANDLE;
-            mvkPL->destroy();
+			// If creation was unsuccessful, destroy the broken pipeline, change the result
+			// code of this function, and if the VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT
+			// flag is set, don't build any further pipelines.
+			mvkPL->destroy();
+			if (rslt == VK_SUCCESS) { rslt = plRslt; }
+			ignoreFurtherPipelines = (_enabledPipelineCreationCacheControlFeatures.pipelineCreationCacheControl &&
+									  mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT));
         }
     }
 

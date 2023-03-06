@@ -134,15 +134,17 @@ public:
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return _owner->getVulkanAPIObject(); };
 
 	/**
-	 * Returns a shader library from the shader conversion configuration sourced from the shader module,
-	 * lazily creating the shader library from source code in the shader module, if needed.
+	 * Returns a shader library from the shader conversion configuration sourced from the
+	 * shader module, lazily creating the shader library from source code in the shader
+	 * module, if needed, and if the pipeline is not configured to fail if a pipeline compile
+	 * is required. In that case, the new shader library is not created, and nil is returned.
 	 *
 	 * If pWasAdded is not nil, this function will set it to true if a new shader library was created,
 	 * and to false if an existing shader library was found and returned.
 	 */
 	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig,
-									   MVKShaderModule* shaderModule,
-									   bool* pWasAdded = nullptr);
+									   MVKShaderModule* shaderModule, MVKPipeline* pipeline,
+									   bool* pWasAdded, uint64_t startTime = 0);
 
 	MVKShaderLibraryCache(MVKVulkanAPIDeviceObject* owner) : _owner(owner) {};
 
@@ -153,7 +155,7 @@ protected:
 	friend MVKPipelineCache;
 	friend MVKShaderModule;
 
-	MVKShaderLibrary* findShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig);
+	MVKShaderLibrary* findShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig, uint64_t startTime = 0);
 	MVKShaderLibrary* addShaderLibrary(const SPIRVToMSLConversionConfiguration* pShaderConfig,
 									   const SPIRVToMSLConversionResult& conversionResult);
 	MVKShaderLibrary* addShaderLibrary(const SPIRVToMSLConversionConfiguration* pShaderConfig,
@@ -205,7 +207,7 @@ public:
 	/** Returns the Metal shader function, possibly specialized. */
 	MVKMTLFunction getMTLFunction(SPIRVToMSLConversionConfiguration* pShaderConfig,
 								  const VkSpecializationInfo* pSpecializationInfo,
-								  MVKPipelineCache* pipelineCache);
+								  MVKPipeline* pipeline);
 
 	/** Convert the SPIR-V to MSL, using the specified shader conversion configuration. */
 	bool convert(SPIRVToMSLConversionConfiguration* pShaderConfig,

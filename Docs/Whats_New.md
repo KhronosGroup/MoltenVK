@@ -19,6 +19,7 @@ MoltenVK 1.2.3
 Released TBA
 
 - Add support for extensions:
+	- `VK_EXT_pipeline_creation_cache_control`
 	- `VK_EXT_swapchain_maintenance1`
 	- `VK_EXT_surface_maintenance1`
 - Fix crash when `VkCommandBufferInheritanceInfo::renderPass` is `VK_NULL_HANDLE` during dynamic rendering.
