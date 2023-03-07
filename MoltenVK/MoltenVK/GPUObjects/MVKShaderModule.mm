@@ -265,8 +265,8 @@ MVKShaderLibrary* MVKShaderLibraryCache::findShaderLibrary(SPIRVToMSLConversionC
 	for (auto& slPair : _shaderLibraries) {
 		if (slPair.first.matches(*pShaderConfig)) {
 			pShaderConfig->alignWith(slPair.first);
-			MVKDevice* mkvDev = _owner->getDevice();
-			mkvDev->addActivityPerformance(mkvDev->_performanceStatistics.shaderCompilation.shaderLibraryFromCache, startTime);
+			MVKDevice* mvkDev = _owner->getDevice();
+			mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.shaderCompilation.shaderLibraryFromCache, startTime);
 			return slPair.second;
 		}
 	}
