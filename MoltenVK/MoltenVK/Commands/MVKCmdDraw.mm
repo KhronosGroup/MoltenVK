@@ -1168,8 +1168,6 @@ void MVKCmdDrawMeshTasks::encode(MVKCommandEncoder* cmdEncoder) {
         cmdEncoder->finalizeDrawState(stage);    // Ensure all updated state has been submitted to Metal
 
         if ( !pipeline->hasValidMTLPipelineStates() ) { return; }    // Abort if this pipeline stage could not be compiled.
-
-        id <MTLComputeCommandEncoder> mtlTessCtlEncoder = nil;
     }
 
     const auto groupSize = MTLSizeMake(_groupCountX, _groupCountY, _groupCountZ);

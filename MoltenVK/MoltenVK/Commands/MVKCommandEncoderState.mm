@@ -956,6 +956,66 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
     }
 
     if (stage == kMVKGraphicsStageRasterization) {
+		encodeBindings(kMVKShaderStageTask, "task", fullImageViewSwizzle,
+					   [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
+						   if (b.isInline)
+							   cmdEncoder->setObjectBytes(cmdEncoder->_mtlRenderEncoder,
+									   b.mtlBytes,
+									   b.size,
+									   b.index);
+						   else if (b.justOffset)
+							   [cmdEncoder->_mtlRenderEncoder setObjectBufferOffset: b.offset
+																		  atIndex: b.index];
+						   else
+							   [cmdEncoder->_mtlRenderEncoder setObjectBuffer: b.mtlBuffer
+																	 offset: b.offset
+																	atIndex: b.index];
+					   },
+					   [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, const MVKArrayRef<uint32_t> s)->void {
+						   cmdEncoder->setObjectBytes(cmdEncoder->_mtlRenderEncoder,
+								   s.data,
+								   s.size * sizeof(uint32_t),
+								   b.index);
+					   },
+					   [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {
+						   [cmdEncoder->_mtlRenderEncoder setObjectTexture: b.mtlTexture
+																 atIndex: b.index];
+					   },
+					   [](MVKCommandEncoder* cmdEncoder, MVKMTLSamplerStateBinding& b)->void {
+						   [cmdEncoder->_mtlRenderEncoder setObjectSamplerState: b.mtlSamplerState
+																	  atIndex: b.index];
+					   });
+
+		encodeBindings(kMVKShaderStageMesh, "mesh", fullImageViewSwizzle,
+					   [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
+						   if (b.isInline)
+							   cmdEncoder->setMeshBytes(cmdEncoder->_mtlRenderEncoder,
+									   b.mtlBytes,
+									   b.size,
+									   b.index);
+						   else if (b.justOffset)
+							   [cmdEncoder->_mtlRenderEncoder setMeshBufferOffset: b.offset
+																			  atIndex: b.index];
+						   else
+							   [cmdEncoder->_mtlRenderEncoder setMeshBuffer: b.mtlBuffer
+																		 offset: b.offset
+																		atIndex: b.index];
+					   },
+					   [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, const MVKArrayRef<uint32_t> s)->void {
+						   cmdEncoder->setMeshBytes(cmdEncoder->_mtlRenderEncoder,
+								   s.data,
+								   s.size * sizeof(uint32_t),
+								   b.index);
+					   },
+					   [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {
+						   [cmdEncoder->_mtlRenderEncoder setMeshTexture: b.mtlTexture
+																 atIndex: b.index];
+					   },
+					   [](MVKCommandEncoder* cmdEncoder, MVKMTLSamplerStateBinding& b)->void {
+						   [cmdEncoder->_mtlRenderEncoder setMeshSamplerState: b.mtlSamplerState
+																	  atIndex: b.index];
+					   });
+
         encodeBindings(kMVKShaderStageFragment, "fragment", fullImageViewSwizzle,
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
                            if (b.isInline)

@@ -1269,9 +1269,53 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(T* plDesc,
 bool MVKGraphicsPipeline::addTaskShaderToPipeline(MTLMeshRenderPipelineDescriptor* plDesc,
 		const VkGraphicsPipelineCreateInfo* pCreateInfo,
 		SPIRVToMSLConversionConfiguration& shaderConfig) {
+	shaderConfig.options.entryPointStage = spv::ExecutionModelTaskEXT;
+	shaderConfig.options.entryPointName = _pTaskSS->pName;
+	shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageTask];
+	shaderConfig.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageTask];
+	shaderConfig.options.mslOptions.shader_output_buffer_index = _outputBufferIndex.stages[kMVKShaderStageTask];
+	shaderConfig.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageTask];
+	shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageTask];
+	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 
-	//TODO: 	_mtlObjectThreadgroupSize = func.threadGroupSize;
-	return false; //TODO:
+	MVKMTLFunction func = ((MVKShaderModule*)_pTaskSS->module)->getMTLFunction(&shaderConfig, _pTaskSS->pSpecializationInfo, _pipelineCache);
+	id<MTLFunction> mtlFunc = func.getMTLFunction();
+	if ( !mtlFunc ) {
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Task shader function could not be compiled into pipeline. See previous logged error."));
+		return false;
+	}
+	_mtlObjectThreadgroupSize = func.threadGroupSize;
+	plDesc.objectFunction = mtlFunc;
+
+	auto& funcRslts = func.shaderConversionResults;
+	plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled;
+	_needsMeshSwizzleBuffer = funcRslts.needsSwizzleBuffer;
+	_needsMeshBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
+	_needsMeshDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
+
+	addMTLArgumentEncoders(func, pCreateInfo, shaderConfig, kMVKShaderStageTask);
+
+	// If we need the swizzle buffer and there's no place to put it, we're in serious trouble.
+	if (!verifyImplicitBuffer(_needsTaskSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageTask, "swizzle")) {
+		return false;
+	}
+	// Ditto buffer size buffer.
+	if (!verifyImplicitBuffer(_needsTaskBufferSizeBuffer, _bufferSizeBufferIndex, kMVKShaderStageTask, "buffer size")) {
+		return false;
+	}
+	// Ditto dynamic offset buffer.
+	if (!verifyImplicitBuffer(_needsTaskDynamicOffsetBuffer, _dynamicOffsetBufferIndex, kMVKShaderStageTask, "dynamic offset")) {
+		return false;
+	}
+	// Ditto captured output buffer.
+	if (!verifyImplicitBuffer(_needsTaskOutputBuffer, _outputBufferIndex, kMVKShaderStageTask, "output")) {
+		return false;
+	}
+	if (!verifyImplicitBuffer(_needsTaskOutputBuffer, _indirectParamsIndex, kMVKShaderStageTask, "indirect parameters")) {
+		return false;
+	}
+
+	return true;
 }
 
 bool MVKGraphicsPipeline::addMeshShaderToPipeline(MTLMeshRenderPipelineDescriptor* plDesc,
@@ -1300,11 +1344,11 @@ bool MVKGraphicsPipeline::addMeshShaderToPipeline(MTLMeshRenderPipelineDescripto
 
 	auto& funcRslts = func.shaderConversionResults;
 	plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled;
-	_needsVertexSwizzleBuffer = funcRslts.needsSwizzleBuffer;
-	_needsVertexBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
-	_needsVertexDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
-	_needsVertexViewRangeBuffer = funcRslts.needsViewRangeBuffer;
-	_needsVertexOutputBuffer = funcRslts.needsOutputBuffer;
+	_needsMeshSwizzleBuffer = funcRslts.needsSwizzleBuffer;
+	_needsMeshBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
+	_needsMeshDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
+	_needsMeshViewRangeBuffer = funcRslts.needsViewRangeBuffer;
+	_needsMeshOutputBuffer = funcRslts.needsOutputBuffer;
 
 	addMTLArgumentEncoders(func, pCreateInfo, shaderConfig, kMVKShaderStageMesh);
 
@@ -1313,25 +1357,25 @@ bool MVKGraphicsPipeline::addMeshShaderToPipeline(MTLMeshRenderPipelineDescripto
 	}
 
 	// If we need the swizzle buffer and there's no place to put it, we're in serious trouble.
-	if (!verifyImplicitBuffer(_needsVertexSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageMesh, "swizzle")) {
+	if (!verifyImplicitBuffer(_needsMeshSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageMesh, "swizzle")) {
 		return false;
 	}
 	// Ditto buffer size buffer.
-	if (!verifyImplicitBuffer(_needsVertexBufferSizeBuffer, _bufferSizeBufferIndex, kMVKShaderStageMesh, "buffer size")) {
+	if (!verifyImplicitBuffer(_needsMeshBufferSizeBuffer, _bufferSizeBufferIndex, kMVKShaderStageMesh, "buffer size")) {
 		return false;
 	}
 	// Ditto dynamic offset buffer.
-	if (!verifyImplicitBuffer(_needsVertexDynamicOffsetBuffer, _dynamicOffsetBufferIndex, kMVKShaderStageMesh, "dynamic offset")) {
+	if (!verifyImplicitBuffer(_needsMeshDynamicOffsetBuffer, _dynamicOffsetBufferIndex, kMVKShaderStageMesh, "dynamic offset")) {
 		return false;
 	}
 	// Ditto captured output buffer.
-	if (!verifyImplicitBuffer(_needsVertexOutputBuffer, _outputBufferIndex, kMVKShaderStageMesh, "output")) {
+	if (!verifyImplicitBuffer(_needsMeshOutputBuffer, _outputBufferIndex, kMVKShaderStageMesh, "output")) {
 		return false;
 	}
-	if (!verifyImplicitBuffer(_needsVertexOutputBuffer, _indirectParamsIndex, kMVKShaderStageMesh, "indirect parameters")) {
+	if (!verifyImplicitBuffer(_needsMeshOutputBuffer, _indirectParamsIndex, kMVKShaderStageMesh, "indirect parameters")) {
 		return false;
 	}
-	if (!verifyImplicitBuffer(_needsVertexViewRangeBuffer, _viewRangeBufferIndex, kMVKShaderStageMesh, "view range")) {
+	if (!verifyImplicitBuffer(_needsMeshViewRangeBuffer, _viewRangeBufferIndex, kMVKShaderStageMesh, "view range")) {
 		return false;
 	}
 	return true;

@@ -196,11 +196,11 @@ typedef std::pair<uint32_t, uint32_t> MVKZeroDivisorVertexBinding;
 typedef MVKSmallVector<MVKGraphicsStage, 4> MVKPiplineStages;
 
 struct MVKStagedMTLArgumentEncoders {
-	MVKMTLArgumentEncoder stages[4] = {};
+	MVKMTLArgumentEncoder stages[kMVKShaderStageFragment + 1] = {};
 };
 
 struct MVKStagedDescriptorBindingUse {
-	MVKBitArray stages[4] = {};
+	MVKBitArray stages[kMVKShaderStageFragment + 1] = {};
 };
 
 /** Represents an Vulkan graphics pipeline. */
