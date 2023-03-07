@@ -19,7 +19,6 @@
 #include "MVKLayers.h"
 #include "MVKEnvironment.h"
 #include "MVKFoundation.h"
-#include "vk_mvk_moltenvk.h"
 #include <mutex>
 
 using namespace std;

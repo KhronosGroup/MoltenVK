@@ -19,6 +19,7 @@ MoltenVK 1.2.3
 Released TBA
 
 - Add support for extensions:
+	- `VK_EXT_pipeline_creation_cache_control`
 	- `VK_EXT_swapchain_maintenance1`
 	- `VK_EXT_surface_maintenance1`
 - Fix crash when `VkCommandBufferInheritanceInfo::renderPass` is `VK_NULL_HANDLE` during dynamic rendering.
@@ -33,6 +34,16 @@ Released TBA
 - Queue submissions retain wait semaphores until `MTLCommandBuffer` finishes.
 - Use a different visibility buffer for each `MTLCommandBuffer` in a queue submit.
 - Work around problems with using explicit LoD with arrayed depth images on Apple Silicon.
+- Reduce memory footprint of MSL source code retained in pipeline cache.
+- Add `MVKConfiguration::shaderSourceCompressionAlgorithm` and 
+  env var `MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM` to support 
+  compressing MSL shader source code held in a pipeline cache.
+- Add `MVKShaderCompilationPerformance::mslCompress` and `mslDecompress`
+  to allow performance of MSL compression to be tracked and queried.
+- Add support for logging performance stats accumulated in a `VkDevice`, when it is destroyed.
+- Change `MVKConfiguration::logActivityPerformanceInline` boolean to `activityPerformanceLoggingStyle` enumeration value.
+- Add `MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE` environment variable and 
+  build setting to set `MVKConfiguration::activityPerformanceLoggingStyle` value.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `37`.
 
 

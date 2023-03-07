@@ -151,8 +151,11 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #   define MVK_CONFIG_PERFORMANCE_LOGGING_FRAME_COUNT    0
 #endif
 
-/** Log activity performance every time an activity occurs. Disabled by default. */
-#	ifndef MVK_CONFIG_PERFORMANCE_LOGGING_INLINE
+/** Activity performance logging style. Default is to log after a configured number of frames. */
+#	ifndef MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE
+#   	define MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE    MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT
+#	endif
+#	ifndef MVK_CONFIG_PERFORMANCE_LOGGING_INLINE	// Deprecated
 #   	define MVK_CONFIG_PERFORMANCE_LOGGING_INLINE    0
 #	endif
 
@@ -285,4 +288,9 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 /** Support Metal argument buffers. Disabled by default. */
 #ifndef MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS
 #   define MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS    MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER
+#endif
+
+/** Compress MSL shader source code in a pipeline cache. Defaults to no compression. */
+#ifndef MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM
+#  	define MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM    MVK_CONFIG_COMPRESSION_ALGORITHM_NONE
 #endif

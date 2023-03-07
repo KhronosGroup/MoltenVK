@@ -208,9 +208,11 @@ void MVKPipeline::addMTLArgumentEncoders(MVKMTLFunction& mvkMTLFunc,
 	}
 }
 
-MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout, MVKPipeline* parent) :
+MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout,
+						 VkPipelineCreateFlags flags, MVKPipeline* parent) :
 	MVKVulkanAPIDeviceObject(device),
 	_pipelineCache(pipelineCache),
+	_flags(flags),
 	_descriptorSetCount(layout->getDescriptorSetCount()),
 	_fullImageViewSwizzle(mvkConfig().fullImageViewSwizzle) {
 
@@ -393,7 +395,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 										 MVKPipelineCache* pipelineCache,
 										 MVKPipeline* parent,
 										 const VkGraphicsPipelineCreateInfo* pCreateInfo) :
-	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, parent) {
+	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, pCreateInfo->flags, parent) {
 
 	// Determine rasterization early, as various other structs are validated and interpreted in this context.
 	const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
@@ -431,6 +433,14 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 		}
 	}
 
+	// Tessellation - must ignore allowed bad pTessellationState pointer if not tess pipeline
+	_outputControlPointCount = reflectData.numControlPoints;
+	mvkSetOrClear(&_tessInfo, (_pTessCtlSS && _pTessEvalSS) ? pCreateInfo->pTessellationState : nullptr);
+
+	// Render pipeline state. Do this as early as possible, to fail fast if pipeline requires a fail on cache-miss.
+	initMTLRenderPipelineState(pCreateInfo, reflectData);
+	if ( !_hasValidMTLPipelineStates ) { return; }
+
 	// Track dynamic state
 	const VkPipelineDynamicStateCreateInfo* pDS = pCreateInfo->pDynamicState;
 	if (pDS) {
@@ -455,10 +465,6 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 		}
 	}
 
-	// Tessellation - must ignore allowed bad pTessellationState pointer if not tess pipeline
-	_outputControlPointCount = reflectData.numControlPoints;
-	mvkSetOrClear(&_tessInfo, (_pTessCtlSS && _pTessEvalSS) ? pCreateInfo->pTessellationState : nullptr);
-
 	// Rasterization
 	_mtlCullMode = MTLCullModeNone;
 	_mtlFrontWinding = MTLWindingCounterClockwise;
@@ -480,9 +486,6 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 
 	// Must run after _isRasterizing and _dynamicState are populated
 	initCustomSamplePositions(pCreateInfo);
-
-	// Render pipeline state
-	initMTLRenderPipelineState(pCreateInfo, reflectData);
 
 	// Depth stencil content - clearing will disable depth and stencil testing
 	// Must ignore allowed bad pDepthStencilState pointer if rasterization disabled or no depth attachment
@@ -605,8 +608,10 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 			} else {
 				getOrCompilePipeline(plDesc, _mtlPipelineState);
 			}
+			[plDesc release];																				// temp release
+		} else {
+			_hasValidMTLPipelineStates = false;
 		}
-		[plDesc release];																				// temp release
 	} else {
 		// In this case, we need to create three render pipelines. But, the way Metal handles
 		// index buffers for compute stage-in means we have to defer creation of stage 1 until
@@ -621,6 +626,8 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 			if (getOrCompilePipeline(tcPLDesc, _mtlTessControlStageState, "Tessellation control")) {
 				getOrCompilePipeline(rastPLDesc, _mtlPipelineState);
 			}
+		} else {
+			_hasValidMTLPipelineStates = false;
 		}
 		[tcPLDesc release];		// temp release
 		[rastPLDesc release];	// temp release
@@ -910,13 +917,10 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
     addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
 
-	MVKMTLFunction func = ((MVKShaderModule*)_pVertexSS->module)->getMTLFunction(&shaderConfig, _pVertexSS->pSpecializationInfo, _pipelineCache);
+	MVKMTLFunction func = getMTLFunction(shaderConfig, _pVertexSS, "Vertex");
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
-	if ( !mtlFunc ) {
-		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Vertex shader function could not be compiled into pipeline. See previous logged error."));
-		return false;
-	}
 	plDesc.vertexFunction = mtlFunc;
+	if ( !mtlFunc ) { return false; }
 
 	auto& funcRslts = func.shaderConversionResults;
 	plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled;
@@ -975,22 +979,19 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
     addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
 	addNextStageInputToShaderConversionConfig(shaderConfig, tcInputs);
 
+	// We need to compile this function three times, with no indexing, 16-bit indices, and 32-bit indices.
 	static const CompilerMSL::Options::IndexType indexTypes[] = {
 		CompilerMSL::Options::IndexType::None,
 		CompilerMSL::Options::IndexType::UInt16,
 		CompilerMSL::Options::IndexType::UInt32,
 	};
-	// We need to compile this function three times, with no indexing, 16-bit indices, and 32-bit indices.
 	MVKMTLFunction func;
 	for (uint32_t i = 0; i < sizeof(indexTypes)/sizeof(indexTypes[0]); i++) {
 		shaderConfig.options.mslOptions.vertex_index_type = indexTypes[i];
-		func = ((MVKShaderModule*)_pVertexSS->module)->getMTLFunction(&shaderConfig, _pVertexSS->pSpecializationInfo, _pipelineCache);
+		func = getMTLFunction(shaderConfig, _pVertexSS, "Vertex");
 		id<MTLFunction> mtlFunc = func.getMTLFunction();
-		if ( !mtlFunc ) {
-			setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Vertex shader function could not be compiled into pipeline. See previous logged error."));
-			return false;
-		}
 		_mtlTessVertexFunctions[i] = [mtlFunc retain];
+		if ( !mtlFunc ) { return false; }
 
 		auto& funcRslts = func.shaderConversionResults;
 		_needsVertexSwizzleBuffer = funcRslts.needsSwizzleBuffer;
@@ -1044,13 +1045,10 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	addPrevStageOutputToShaderConversionConfig(shaderConfig, vtxOutputs);
 	addNextStageInputToShaderConversionConfig(shaderConfig, teInputs);
 
-	MVKMTLFunction func = ((MVKShaderModule*)_pTessCtlSS->module)->getMTLFunction(&shaderConfig, _pTessCtlSS->pSpecializationInfo, _pipelineCache);
+	MVKMTLFunction func = getMTLFunction(shaderConfig, _pTessCtlSS, "Tessellation control");
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
-	if ( !mtlFunc ) {
-		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Tessellation control shader function could not be compiled into pipeline. See previous logged error."));
-		return false;
-	}
 	plDesc.computeFunction = mtlFunc;
+	if ( !mtlFunc ) { return false; }
 
 	auto& funcRslts = func.shaderConversionResults;
 	_needsTessCtlSwizzleBuffer = funcRslts.needsSwizzleBuffer;
@@ -1105,14 +1103,10 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
 	addPrevStageOutputToShaderConversionConfig(shaderConfig, tcOutputs);
 
-	MVKMTLFunction func = ((MVKShaderModule*)_pTessEvalSS->module)->getMTLFunction(&shaderConfig, _pTessEvalSS->pSpecializationInfo, _pipelineCache);
+	MVKMTLFunction func = getMTLFunction(shaderConfig, _pTessEvalSS, "Tessellation evaluation");
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
-	if ( !mtlFunc ) {
-		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Tessellation evaluation shader function could not be compiled into pipeline. See previous logged error."));
-		return false;
-	}
-	// Yeah, you read that right. Tess. eval functions are a kind of vertex function in Metal.
-	plDesc.vertexFunction = mtlFunc;
+	plDesc.vertexFunction = mtlFunc;	// Yeah, you read that right. Tess. eval functions are a kind of vertex function in Metal.
+	if ( !mtlFunc ) { return false; }
 
 	auto& funcRslts = func.shaderConversionResults;
 	plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled;
@@ -1166,13 +1160,10 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		}
 		addPrevStageOutputToShaderConversionConfig(shaderConfig, shaderOutputs);
 
-		MVKMTLFunction func = ((MVKShaderModule*)_pFragmentSS->module)->getMTLFunction(&shaderConfig, _pFragmentSS->pSpecializationInfo, _pipelineCache);
+		MVKMTLFunction func = getMTLFunction(shaderConfig, _pFragmentSS, "Fragment");
 		id<MTLFunction> mtlFunc = func.getMTLFunction();
-		if ( !mtlFunc ) {
-			setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Fragment shader function could not be compiled into pipeline. See previous logged error."));
-			return false;
-		}
 		plDesc.fragmentFunction = mtlFunc;
+		if ( !mtlFunc ) { return false; }
 
 		auto& funcRslts = func.shaderConversionResults;
 		_needsFragmentSwizzleBuffer = funcRslts.needsSwizzleBuffer;
@@ -1796,6 +1787,23 @@ bool MVKGraphicsPipeline::isRasterizationDisabled(const VkGraphicsPipelineCreate
 			  (mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology) == MTLPrimitiveTopologyClassTriangle))));
 }
 
+MVKMTLFunction MVKGraphicsPipeline::getMTLFunction(SPIRVToMSLConversionConfiguration& shaderConfig,
+												   const VkPipelineShaderStageCreateInfo* pShaderStage,
+												   const char* pStageName) {
+	MVKShaderModule* shaderModule = (MVKShaderModule*)pShaderStage->module;
+	MVKMTLFunction func = shaderModule->getMTLFunction(&shaderConfig,
+													   pShaderStage->pSpecializationInfo,
+													   this);
+	if ( !func.getMTLFunction() ) {
+		if (shouldFailOnPipelineCompileRequired()) {
+			setConfigurationResult(VK_PIPELINE_COMPILE_REQUIRED);
+		} else {
+			setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "%s shader function could not be compiled into pipeline. See previous logged error.", pStageName));
+		}
+	}
+	return func;
+}
+
 MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 	@synchronized (getMTLDevice()) {
 		[_mtlTessVertexStageDesc release];
@@ -1830,7 +1838,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 									   MVKPipelineCache* pipelineCache,
 									   MVKPipeline* parent,
 									   const VkComputePipelineCreateInfo* pCreateInfo) :
-	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, parent) {
+	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, pCreateInfo->flags, parent) {
 
 	_allowsDispatchBase = mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DISPATCH_BASE_BIT);
 
@@ -1863,7 +1871,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 
 		if ( !_mtlPipelineState ) { _hasValidMTLPipelineStates = false; }
 	} else {
-		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Compute shader function could not be compiled into pipeline. See previous logged error."));
+		_hasValidMTLPipelineStates = false;
 	}
 
 	if (_needsSwizzleBuffer && _swizzleBufferIndex.stages[kMVKShaderStageCompute] > _device->_pMetalFeatures->maxPerStageBufferCount) {
@@ -1931,8 +1939,14 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageCompute];
     shaderConfig.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageCompute];
 
-    MVKMTLFunction func = ((MVKShaderModule*)pSS->module)->getMTLFunction(&shaderConfig, pSS->pSpecializationInfo, _pipelineCache);
-
+    MVKMTLFunction func = ((MVKShaderModule*)pSS->module)->getMTLFunction(&shaderConfig, pSS->pSpecializationInfo, this);
+	if ( !func.getMTLFunction() ) {
+		if (shouldFailOnPipelineCompileRequired()) {
+			setConfigurationResult(VK_PIPELINE_COMPILE_REQUIRED);
+		} else {
+			setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Compute shader function could not be compiled into pipeline. See previous logged error."));
+		}
+	}
 	auto& funcRslts = func.shaderConversionResults;
 	_needsSwizzleBuffer = funcRslts.needsSwizzleBuffer;
     _needsBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
@@ -1959,12 +1973,25 @@ MVKComputePipeline::~MVKComputePipeline() {
 #pragma mark MVKPipelineCache
 
 // Return a shader library from the specified shader conversion configuration sourced from the specified shader module.
-MVKShaderLibrary* MVKPipelineCache::getShaderLibrary(SPIRVToMSLConversionConfiguration* pContext, MVKShaderModule* shaderModule) {
-	lock_guard<mutex> lock(_shaderCacheLock);
+MVKShaderLibrary* MVKPipelineCache::getShaderLibrary(SPIRVToMSLConversionConfiguration* pContext,
+													 MVKShaderModule* shaderModule,
+													 MVKPipeline* pipeline,
+													 uint64_t startTime) {
+	if (_isExternallySynchronized) {
+		return getShaderLibraryImpl(pContext, shaderModule, pipeline, startTime);
+	} else {
+		lock_guard<mutex> lock(_shaderCacheLock);
+		return getShaderLibraryImpl(pContext, shaderModule, pipeline, startTime);
+	}
+}
 
+MVKShaderLibrary* MVKPipelineCache::getShaderLibraryImpl(SPIRVToMSLConversionConfiguration* pContext,
+														 MVKShaderModule* shaderModule,
+														 MVKPipeline* pipeline,
+														 uint64_t startTime) {
 	bool wasAdded = false;
 	MVKShaderLibraryCache* slCache = getShaderLibraryCache(shaderModule->getKey());
-	MVKShaderLibrary* shLib = slCache->getShaderLibrary(pContext, shaderModule, &wasAdded);
+	MVKShaderLibrary* shLib = slCache->getShaderLibrary(pContext, shaderModule, pipeline, &wasAdded, startTime);
 	if (wasAdded) { markDirty(); }
 	return shLib;
 }
@@ -2004,8 +2031,8 @@ protected:
 
 	bool next() { return (++_index < (_pSLCache ? _pSLCache->_shaderLibraries.size() : 0)); }
 	SPIRVToMSLConversionConfiguration& getShaderConversionConfig() { return _pSLCache->_shaderLibraries[_index].first; }
-	std::string& getMSL() { return _pSLCache->_shaderLibraries[_index].second->_msl; }
-	SPIRVToMSLConversionResults& getShaderConversionResults() { return _pSLCache->_shaderLibraries[_index].second->_shaderConversionResults; }
+	MVKCompressor<std::string>& getCompressedMSL() { return _pSLCache->_shaderLibraries[_index].second->getCompressedMSL(); }
+	SPIRVToMSLConversionResultInfo& getShaderConversionResultInfo() { return _pSLCache->_shaderLibraries[_index].second->_shaderConversionResultInfo; }
 	MVKShaderCacheIterator(MVKShaderLibraryCache* pSLCache) : _pSLCache(pSLCache) {}
 
 	MVKShaderLibraryCache* _pSLCache;
@@ -2013,14 +2040,21 @@ protected:
 	int32_t _index = -1;
 };
 
+VkResult MVKPipelineCache::writeData(size_t* pDataSize, void* pData) {
+	if (_isExternallySynchronized) {
+		return writeDataImpl(pDataSize, pData);
+	} else {
+		lock_guard<mutex> lock(_shaderCacheLock);
+		return writeDataImpl(pDataSize, pData);
+	}
+}
+
 // If pData is not null, serializes at most pDataSize bytes of the contents of the cache into that
 // memory location, and returns the number of bytes serialized in pDataSize. If pData is null,
 // returns the number of bytes required to serialize the contents of this pipeline cache.
 // This is the compliment of the readData() function. The two must be kept aligned.
-VkResult MVKPipelineCache::writeData(size_t* pDataSize, void* pData) {
+VkResult MVKPipelineCache::writeDataImpl(size_t* pDataSize, void* pData) {
 #if MVK_USE_CEREAL
-	lock_guard<mutex> lock(_shaderCacheLock);
-
 	try {
 
 		if ( !pDataSize ) { return VK_SUCCESS; }
@@ -2086,8 +2120,8 @@ void MVKPipelineCache::writeData(ostream& outstream, bool isCounting) {
 			writer(cacheEntryType);
 			writer(smKey);
 			writer(cacheIter.getShaderConversionConfig());
-			writer(cacheIter.getShaderConversionResults());
-			writer(cacheIter.getMSL());
+			writer(cacheIter.getShaderConversionResultInfo());
+			writer(cacheIter.getCompressedMSL());
 			_device->addActivityPerformance(activityTracker, startTime);
 		}
 	}
@@ -2149,16 +2183,16 @@ void MVKPipelineCache::readData(const VkPipelineCacheCreateInfo* pCreateInfo) {
 					SPIRVToMSLConversionConfiguration shaderConversionConfig;
 					reader(shaderConversionConfig);
 
-					SPIRVToMSLConversionResults shaderConversionResults;
-					reader(shaderConversionResults);
+					SPIRVToMSLConversionResultInfo resultInfo;
+					reader(resultInfo);
 
-					string msl;
-					reader(msl);
+					MVKCompressor<std::string> compressedMSL;
+					reader(compressedMSL);
 
 					// Add the shader library to the staging cache.
 					MVKShaderLibraryCache* slCache = getShaderLibraryCache(smKey);
 					_device->addActivityPerformance(_device->_performanceStatistics.pipelineCache.readPipelineCache, startTime);
-					slCache->addShaderLibrary(&shaderConversionConfig, msl, shaderConversionResults);
+					slCache->addShaderLibrary(&shaderConversionConfig, resultInfo, compressedMSL);
 
 					break;
 				}
@@ -2184,6 +2218,15 @@ void MVKPipelineCache::markDirty() {
 }
 
 VkResult MVKPipelineCache::mergePipelineCaches(uint32_t srcCacheCount, const VkPipelineCache* pSrcCaches) {
+	if (_isExternallySynchronized) {
+		return mergePipelineCachesImpl(srcCacheCount, pSrcCaches);
+	} else {
+		lock_guard<mutex> lock(_shaderCacheLock);
+		return mergePipelineCachesImpl(srcCacheCount, pSrcCaches);
+	}
+}
+
+VkResult MVKPipelineCache::mergePipelineCachesImpl(uint32_t srcCacheCount, const VkPipelineCache* pSrcCaches) {
 	for (uint32_t srcIdx = 0; srcIdx < srcCacheCount; srcIdx++) {
 		MVKPipelineCache* srcPLC = (MVKPipelineCache*)pSrcCaches[srcIdx];
 		for (auto& srcPair : srcPLC->_shaderCache) {
@@ -2374,7 +2417,7 @@ namespace mvk {
 	}
 
 	template<class Archive>
-	void serialize(Archive & archive, SPIRVToMSLConversionResults& scr) {
+	void serialize(Archive & archive, SPIRVToMSLConversionResultInfo& scr) {
 		archive(scr.entryPoint,
 				scr.isRasterizationDisabled,
 				scr.isPositionInvariant,
@@ -2396,10 +2439,21 @@ void serialize(Archive & archive, MVKShaderModuleKey& k) {
 			k.codeHash);
 }
 
+template<class Archive, class C>
+void serialize(Archive & archive, MVKCompressor<C>& comp) {
+	archive(comp._compressed,
+			comp._uncompressedSize,
+			comp._algorithm);
+}
+
 
 #pragma mark Construction
 
-MVKPipelineCache::MVKPipelineCache(MVKDevice* device, const VkPipelineCacheCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
+MVKPipelineCache::MVKPipelineCache(MVKDevice* device, const VkPipelineCacheCreateInfo* pCreateInfo) :
+	MVKVulkanAPIDeviceObject(device),
+	_isExternallySynchronized(device->_enabledPipelineCreationCacheControlFeatures.pipelineCreationCacheControl &&
+							  mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT)) {
+
 	readData(pCreateInfo);
 }
 
