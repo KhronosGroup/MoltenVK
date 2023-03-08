@@ -403,7 +403,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT: {
 				auto* atomicFloatFeatures = (VkPhysicalDeviceShaderAtomicFloatFeaturesEXT*)next;
-				atomicFloatFeatures->shaderBufferFloat32AtomicAdd = _metalFeatures.mslVersion >= 030000;
+				mvkClear(atomicFloatFeatures);
+				bool atomicFloatEnabled = _metalFeatures.mslVersion >= 030000;
+				atomicFloatFeatures->shaderBufferFloat32Atomics = atomicFloatEnabled;
+				atomicFloatFeatures->shaderBufferFloat32AtomicAdd = atomicFloatEnabled;
+				atomicFloatFeatures->shaderSharedFloat32Atomics = atomicFloatEnabled;
+				atomicFloatFeatures->shaderSharedFloat32AtomicAdd = atomicFloatEnabled;
 				break;
 			}
 			default:

@@ -22,7 +22,7 @@ Released TBA
   was sometimes incorrectly disabled due to a Metal driver bug.
 - Work around problems with using explicit LoD with arrayed depth images
   on Apple Silicon.
-
+- Added support for `VK_EXT_shader_atomic_float` *(requires Metal 3.0)*.
 
 
 MoltenVK 1.2.2

@@ -223,20 +223,32 @@ To link **MoltenVK** to your application as a dynamic library (`.dylib`), follow
 <a name="install_vksdk"></a>
 ### Install *MoltenVK* replacing the Vulkan SDK .dylib
 
-There are a few potential issues when building **MoltenVK** to replace the version installed via the *[Vulkan SDK](https://vulkan.lunarg.com/sdk/home)* standard install process, which lives in `/usr/local/lib/libMoltenVK.dylib`.
+There are a few potential issues when building **MoltenVK** to replace the version installed via
+the *[Vulkan SDK](https://vulkan.lunarg.com/sdk/home)* standard install process, which lives in
+`/usr/local/lib/libMoltenVK.dylib`.
 
-1. You must *remove* the existing `.dylib` file before copying the new one, because of the way that the gatekeeper system works to prevent malicious overwriting of files in standard locations such as `/usr/local`:
+1. You must *remove* the existing `.dylib` file before copying the new one, because of the way
+that the gatekeeper system works to prevent malicious overwriting of files in standard locations
+such as `/usr/local`:
 
 ```bash
 $ sudo rm /usr/local/lib/libMoltenVK.dylib
 $ sudo cp Package/Release/MoltenVK/dylib/macOS/libMoltenVK.dylib /usr/local/lib
 ```
 
-If you do not do the remove first, your application will terminate immediately with a singularly unhelpful `Killed: 9` message.
+If you do not do the remove first, your application will terminate immediately with a
+singularly unhelpful `Killed: 9` message.  Alternatively, moving the existing `.dylib` to a
+backup name and making a symbolic link to the Package location above is particularly useful
+for repeated building and testing.
 
-2. Do *not* copy the `MoltenVK_icd.json` file from the newly-built package to `/usr/local/share/vulkan/icd.d` -- it will not work and will result in errors about not being able to initialize the instance.  The one installed by Vulkan SDK uses a relative path to specify the location of the `.dylib`, whereas the one in the package specifies it in the same directory.
+2. Do *not* copy the `MoltenVK_icd.json` file from the newly-built package to
+`/usr/local/share/vulkan/icd.d` -- it will not work and will result in errors about not being
+able to initialize the instance.  The one installed by Vulkan SDK uses a relative path to
+specify the location of the `.dylib`, whereas the one in the package specifies it in the same
+directory.
 
-3. The default config for command-line build has verbose logging info turned on -- if you want it to be like the original, use this command for building:
+3. The default config for command-line build has verbose logging info turned on -- if you want
+it to be like the original, use this command for building:
 
 ```bash
 $ make macos MVK_CONFIG_LOG_LEVEL=1
@@ -325,6 +337,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_sampler_mirror_clamp_to_edge` *(requires a Mac GPU or Apple family 7 GPU)*
 - `VK_KHR_sampler_ycbcr_conversion`
 - `VK_KHR_separate_depth_stencil_layouts`
+- `VK_EXT_shader_atomic_float` *(requires Metal 3.0)*
 - `VK_KHR_shader_draw_parameters`
 - `VK_KHR_shader_float_controls`
 - `VK_KHR_shader_float16_int8`
