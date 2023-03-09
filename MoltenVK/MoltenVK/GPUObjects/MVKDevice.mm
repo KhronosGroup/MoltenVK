@@ -378,6 +378,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				interlockFeatures->fragmentShaderShadingRateInterlock = false;    // Requires variable rate shading; not supported yet in Metal
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT: {
+				auto* pipelineCreationCacheControlFeatures = (VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT*)next;
+				pipelineCreationCacheControlFeatures->pipelineCreationCacheControl = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
 				auto* robustness2Features = (VkPhysicalDeviceRobustness2FeaturesEXT*)next;
 				robustness2Features->robustBufferAccess2 = false;
@@ -385,14 +390,26 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				robustness2Features->nullDescriptor = false;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT: {
+				auto* atomicFloatFeatures = (VkPhysicalDeviceShaderAtomicFloatFeaturesEXT*)next;
+				bool atomicFloatEnabled = _metalFeatures.mslVersion >= 030000;
+				atomicFloatFeatures->shaderBufferFloat32Atomics = atomicFloatEnabled;
+				atomicFloatFeatures->shaderBufferFloat32AtomicAdd = atomicFloatEnabled;
+				atomicFloatFeatures->shaderBufferFloat64Atomics = false;
+				atomicFloatFeatures->shaderBufferFloat64AtomicAdd = false;
+				atomicFloatFeatures->shaderSharedFloat32Atomics = atomicFloatEnabled;
+				atomicFloatFeatures->shaderSharedFloat32AtomicAdd = atomicFloatEnabled;
+				atomicFloatFeatures->shaderSharedFloat64Atomics = false;
+				atomicFloatFeatures->shaderSharedFloat64AtomicAdd = false;
+				atomicFloatFeatures->shaderImageFloat32Atomics = false;
+				atomicFloatFeatures->shaderImageFloat32AtomicAdd = false;
+				atomicFloatFeatures->sparseImageFloat32Atomics = false;
+				atomicFloatFeatures->sparseImageFloat32AtomicAdd = false;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT: {
 				auto* swapchainMaintenance1Features = (VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT*)next;
 				swapchainMaintenance1Features->swapchainMaintenance1 = true;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT: {
-				auto* pipelineCreationCacheControlFeatures = (VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT*)next;
-				pipelineCreationCacheControlFeatures->pipelineCreationCacheControl = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
@@ -409,16 +426,6 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
 				auto* shaderIntFuncsFeatures = (VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL*)next;
 				shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT: {
-				auto* atomicFloatFeatures = (VkPhysicalDeviceShaderAtomicFloatFeaturesEXT*)next;
-				mvkClear(atomicFloatFeatures);
-				bool atomicFloatEnabled = _metalFeatures.mslVersion >= 030000;
-				atomicFloatFeatures->shaderBufferFloat32Atomics = atomicFloatEnabled;
-				atomicFloatFeatures->shaderBufferFloat32AtomicAdd = atomicFloatEnabled;
-				atomicFloatFeatures->shaderSharedFloat32Atomics = atomicFloatEnabled;
-				atomicFloatFeatures->shaderSharedFloat32AtomicAdd = atomicFloatEnabled;
 				break;
 			}
 			default:

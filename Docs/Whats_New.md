@@ -20,8 +20,9 @@ Released TBA
 
 - Add support for extensions:
 	- `VK_EXT_pipeline_creation_cache_control`
-	- `VK_EXT_swapchain_maintenance1`
+	- `VK_EXT_shader_atomic_float`
 	- `VK_EXT_surface_maintenance1`
+	- `VK_EXT_swapchain_maintenance1`
 - Fix crash when `VkCommandBufferInheritanceInfo::renderPass` is `VK_NULL_HANDLE` during dynamic rendering.
 - Do not clear attachments when dynamic rendering is resumed.
 - Allow ending dynamic rendering to trigger next multiview pass if needed.
@@ -44,6 +45,7 @@ Released TBA
 - Change `MVKConfiguration::logActivityPerformanceInline` boolean to `activityPerformanceLoggingStyle` enumeration value.
 - Add `MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE` environment variable and 
   build setting to set `MVKConfiguration::activityPerformanceLoggingStyle` value.
+- Expand `MVK_CONFIG_TRACE_VULKAN_CALLS` to log thread ID only if requested.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `37`.
 
 

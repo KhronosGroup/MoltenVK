@@ -71,11 +71,14 @@ typedef enum MVKConfigLogLevel {
 
 /** Identifies the level of Vulkan call trace logging MoltenVK should perform. */
 typedef enum MVKConfigTraceVulkanCalls {
-	MVK_CONFIG_TRACE_VULKAN_CALLS_NONE       = 0,	/**< No Vulkan call logging. */
-	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER      = 1,	/**< Log the name of each Vulkan call when the call is entered. */
-	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT = 2,	/**< Log the name of each Vulkan call when the call is entered and exited. This effectively brackets any other logging activity within the scope of the Vulkan call. */
-	MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION   = 3,	/**< Same as MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT, plus logs the time spent inside the Vulkan function. */
-	MVK_CONFIG_TRACE_VULKAN_CALLS_MAX_ENUM   = 0x7FFFFFFF
+	MVK_CONFIG_TRACE_VULKAN_CALLS_NONE                 = 0,	/**< No Vulkan call logging. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER                = 1,	/**< Log the name of each Vulkan call when the call is entered. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_THREAD_ID      = 2,	/**< Log the name and thread ID of each Vulkan call when the call is entered. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT           = 3,	/**< Log the name of each Vulkan call when the call is entered and exited. This effectively brackets any other logging activity within the scope of the Vulkan call. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT_THREAD_ID = 4,	/**< Log the name and thread ID of each Vulkan call when the call is entered and name when exited. This effectively brackets any other logging activity within the scope of the Vulkan call. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION             = 5,	/**< Same as MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT, plus logs the time spent inside the Vulkan function. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION_THREAD_ID   = 6,	/**< Same as MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT_THREAD_ID, plus logs the time spent inside the Vulkan function. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_MAX_ENUM             = 0x7FFFFFFF
 } MVKConfigTraceVulkanCalls;
 
 /** Identifies the scope for Metal to run an automatic GPU capture for diagnostic debugging purposes. */
