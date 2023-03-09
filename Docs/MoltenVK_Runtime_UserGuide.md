@@ -22,7 +22,7 @@ Table of Contents
 - [Installing **MoltenVK** in Your *Vulkan* Application](#install)
 	- [Install *MoltenVK* as a Universal `XCFramework`](#install_xcfwk)
 	- [Install *MoltenVK* as a Dynamic Library](#install_dylib)
-	- [Install *MoltenVK* replacing the Vulkan SDK .dylib](#install_vksdk)
+	- [Install *MoltenVK* replacing the Vulkan SDK `libMoltenVK.dylib`](#install_vksdk)
 	- [Build and Runtime Requirements](#requirements)
 - [Interacting with the **MoltenVK** Runtime](#interaction)
 	- [MoltenVK `VK_MVK_moltenvk` Extension](#moltenvk_extension)
@@ -221,7 +221,7 @@ To link **MoltenVK** to your application as a dynamic library (`.dylib`), follow
      
 
 <a name="install_vksdk"></a>
-### Install *MoltenVK* replacing the Vulkan SDK .dylib
+### Install *MoltenVK* replacing the Vulkan SDK `libMoltenVK.dylib`
 
 There are a few potential issues when building **MoltenVK** to replace the version installed via
 the *[Vulkan SDK](https://vulkan.lunarg.com/sdk/home)* standard install process, which lives in
@@ -337,7 +337,6 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_sampler_mirror_clamp_to_edge` *(requires a Mac GPU or Apple family 7 GPU)*
 - `VK_KHR_sampler_ycbcr_conversion`
 - `VK_KHR_separate_depth_stencil_layouts`
-- `VK_EXT_shader_atomic_float` *(requires Metal 3.0)*
 - `VK_KHR_shader_draw_parameters`
 - `VK_KHR_shader_float_controls`
 - `VK_KHR_shader_float16_int8`
@@ -371,6 +370,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_sample_locations`
 - `VK_EXT_scalar_block_layout`
 - `VK_EXT_separate_stencil_usage`
+- `VK_EXT_shader_atomic_float` *(requires Metal 3.0)*
 - `VK_EXT_shader_stencil_export` *(requires Mac GPU family 2 or iOS GPU family 5)*
 - `VK_EXT_shader_viewport_index_layer`
 - `VK_EXT_subgroup_size_control` *(requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS)*

@@ -50,34 +50,58 @@
 
 // Optionally log start of function calls to stderr
 static inline uint64_t MVKTraceVulkanCallStartImpl(const char* funcName) {
-	MVKConfigTraceVulkanCalls traceLvl = mvkConfig().traceVulkanCalls;
 
-	if (traceLvl == MVK_CONFIG_TRACE_VULKAN_CALLS_NONE ||
-		traceLvl > MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION) { return 0; }
+	bool includeThread = false;
+	bool includeExit = false;
+	bool includeDuration = false;
 
-	uint64_t gtid, mtid;
-	const uint32_t kThreadNameBuffSize = 256;
-	char threadName[kThreadNameBuffSize];
-	pthread_t tid = pthread_self();
-	mtid = pthread_mach_thread_np(tid);		// Mach thread ID
-	pthread_threadid_np(tid, &gtid);		// Global system-wide thead ID
-	pthread_getname_np(tid, threadName, kThreadNameBuffSize);
+	switch (mvkConfig().traceVulkanCalls) {
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION:
+			includeDuration = true;		// fallthrough
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT:
+			includeExit = true;			// fallthrough
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER:
+			break;
 
-	fprintf(stderr, "[mvk-trace] %s()%s [%llu/%llu/%s]\n",
-			funcName, (traceLvl >= MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT) ? " {" : "",
-			mtid, gtid, threadName);
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION_THREAD_ID:
+			includeDuration = true;		// fallthrough
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT_THREAD_ID:
+			includeExit = true;			// fallthrough
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_THREAD_ID:
+			includeThread = true;		// fallthrough
+			break;
 
-	return (traceLvl == MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION) ? mvkGetTimestamp() : 0;
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_NONE:
+		default:
+			return 0;
+	}
+
+	if (includeThread) {
+		uint64_t gtid, mtid;
+		const uint32_t kThreadNameBuffSize = 256;
+		char threadName[kThreadNameBuffSize];
+		pthread_t tid = pthread_self();
+		mtid = pthread_mach_thread_np(tid);		// Mach thread ID
+		pthread_threadid_np(tid, &gtid);		// Global system-wide thead ID
+		pthread_getname_np(tid, threadName, kThreadNameBuffSize);
+		fprintf(stderr, "[mvk-trace] %s()%s [%llu/%llu/%s]\n", funcName, includeExit ? " {" : "", mtid, gtid, threadName);
+	} else {
+		fprintf(stderr, "[mvk-trace] %s()%s\n", funcName, includeExit ? " {" : "");
+	}
+
+	return includeDuration ? mvkGetTimestamp() : 0;
 }
 
 // Optionally log end of function calls and timings to stderr
 static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t startTime) {
 	switch(mvkConfig().traceVulkanCalls) {
-		case MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION:
-			fprintf(stderr, "[mvk-trace] } %s [%.4f ms]\n", funcName, mvkGetElapsedMilliseconds(startTime));
-			break;
 		case MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT:
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT_THREAD_ID:
 			fprintf(stderr, "[mvk-trace] } %s\n", funcName);
+			break;
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION:
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION_THREAD_ID:
+			fprintf(stderr, "[mvk-trace] } %s [%.4f ms]\n", funcName, mvkGetElapsedMilliseconds(startTime));
 			break;
 		default:
 			break;
