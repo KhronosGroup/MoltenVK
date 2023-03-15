@@ -3376,6 +3376,7 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDrawIndirectCount, AMD);
 #pragma mark -
 #pragma mark VK_EXT_mesh_shader
 
+#if MVK_XCODE_14
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMeshTasksEXT(
 		VkCommandBuffer                             commandBuffer,
 		uint32_t                                    groupCountX,
@@ -3410,6 +3411,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMeshTasksIndirectCountEXT(
     
 	//TODO: Not supported
 }
+#endif
 
 #pragma mark -
 #pragma mark iOS & macOS surface extensions

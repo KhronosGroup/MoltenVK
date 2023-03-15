@@ -178,6 +178,8 @@ protected:
 	uint32_t _drawCount;
 };
 
+#if MVK_XCODE_14
+
 #pragma mark -
 #pragma mark MVKCmdDrawMeshTasks
 
@@ -219,3 +221,5 @@ protected:
 	uint32_t _mtlIndirectBufferStride;
 	uint32_t _drawCount;
 };
+
+#endif

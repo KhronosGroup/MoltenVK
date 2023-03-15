@@ -220,8 +220,12 @@ public:
     /** Returns whether this pipeline has tessellation shaders. */
     bool isTessellationPipeline() { return _pTessCtlSS && _pTessEvalSS && _tessInfo.patchControlPoints > 0; }
 
+#if MVK_XCODE_14
     /** Returns whether this pipeline uses mesh shaders */
     bool isMeshPipeline() { return _pMeshSS; }
+#else
+	bool isMeshPipeline() { return false; }
+#endif
 
     /** Returns the number of input tessellation patch control points. */
     uint32_t getInputControlPointCount() { return _tessInfo.patchControlPoints; }
@@ -310,8 +314,10 @@ protected:
     void addNextStageInputToShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig, SPIRVShaderInputs& inputs);
     void addPrevStageOutputToShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig, SPIRVShaderOutputs& outputs);
     MTLRenderPipelineDescriptor* newMTLRenderPipelineDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
+#if MVK_XCODE_14
 	MTLMeshRenderPipelineDescriptor* newMTLMeshRenderPipelineDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
-    MTLComputePipelineDescriptor* newMTLTessVertexStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderConfig);
+#endif
+	MTLComputePipelineDescriptor* newMTLTessVertexStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderConfig);
 	MTLComputePipelineDescriptor* newMTLTessControlStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderConfig);
 	MTLRenderPipelineDescriptor* newMTLTessRasterStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderConfig);
 	bool addVertexShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderConfig);
@@ -320,8 +326,10 @@ protected:
 	bool addTessEvalShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderConfig, SPIRVShaderOutputs& prevOutput);
     template<typename T>
 	bool addFragmentShaderToPipeline(T* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderConfig, SPIRVShaderOutputs& prevOutput);
+#if MVK_XCODE_14
 	bool addTaskShaderToPipeline(MTLMeshRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderConfig);
 	bool addMeshShaderToPipeline(MTLMeshRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderConfig, SPIRVShaderInputs& nextInputs);
+#endif
 	template<class T>
 	bool addVertexInputToPipeline(T* inputDesc, const VkPipelineVertexInputStateCreateInfo* pVI, const SPIRVToMSLConversionConfiguration& shaderConfig);
 	void adjustVertexInputForMultiview(MTLVertexDescriptor* inputDesc, const VkPipelineVertexInputStateCreateInfo* pVI, uint32_t viewCount, uint32_t oldViewCount = 1);
@@ -339,8 +347,10 @@ protected:
 	const VkPipelineShaderStageCreateInfo* _pTessEvalSS = nullptr;
 	const VkPipelineShaderStageCreateInfo* _pFragmentSS = nullptr;
 
+#if MVK_XCODE_14
     const VkPipelineShaderStageCreateInfo* _pTaskSS = nullptr;
     const VkPipelineShaderStageCreateInfo* _pMeshSS = nullptr;
+#endif
 
 	VkPipelineTessellationStateCreateInfo _tessInfo;
 	VkPipelineRasterizationStateCreateInfo _rasterInfo;
@@ -378,8 +388,11 @@ protected:
 	uint32_t _tessCtlPatchOutputBufferIndex = 0;
 	uint32_t _tessCtlLevelBufferIndex = 0;
 
+#if MVK_XCODE_14
     MTLSize _mtlObjectThreadgroupSize;
     MTLSize _mtlMeshThreadgroupSize;
+#endif
+
 	bool _needsVertexSwizzleBuffer = false;
 	bool _needsVertexBufferSizeBuffer = false;
 	bool _needsVertexDynamicOffsetBuffer = false;
@@ -398,6 +411,7 @@ protected:
 	bool _needsFragmentBufferSizeBuffer = false;
 	bool _needsFragmentDynamicOffsetBuffer = false;
 	bool _needsFragmentViewRangeBuffer = false;
+#if MVK_XCODE_14
 	bool _needsTaskSwizzleBuffer = false;
 	bool _needsTaskBufferSizeBuffer = false;
 	bool _needsTaskDynamicOffsetBuffer = false;
@@ -408,6 +422,7 @@ protected:
 	bool _needsMeshDynamicOffsetBuffer = false;
 	bool _needsMeshViewRangeBuffer = false;
 	bool _needsMeshOutputBuffer = false;
+#endif
 	bool _isRasterizing = false;
 	bool _isRasterizingColor = false;
 	bool _isRasterizingDepthStencil = false;

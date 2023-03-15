@@ -368,6 +368,8 @@ public:
     void setVertexBytes(id<MTLRenderCommandEncoder> mtlEncoder, const void* bytes,
 						NSUInteger length, uint32_t mtlBuffIndex, bool descOverride = false);
 
+#if MVK_XCODE_14
+
 	/**
 	 * Copy bytes into the Metal encoder at a Metal object buffer index, and optionally indicate
 	 * that this binding might override a desriptor binding. If so, the descriptor binding will
@@ -383,6 +385,8 @@ public:
  	*/
 	void setMeshBytes(id<MTLRenderCommandEncoder> mtlEncoder, const void* bytes,
 						NSUInteger length, uint32_t mtlBuffIndex, bool descOverride = false);
+
+#endif
 
 	/**
 	 * Copy bytes into the Metal encoder at a Metal fragment buffer index, and optionally indicate
@@ -482,8 +486,10 @@ public:
 	/** The type of primitive that will be rendered. */
 	MTLPrimitiveType _mtlPrimitiveType;
 
+#if MVK_XCODE_14
 	/** The size of the threadgroup for the object shader */
 	MTLSize _mtlObjectThreadgroupSize;
+#endif
 
     /** The size of the threadgroup for the compute/mesh shader. */
     MTLSize _mtlThreadgroupSize;
@@ -536,8 +542,10 @@ protected:
 	MVKPushConstantsCommandEncoderState _vertexPushConstants;
 	MVKPushConstantsCommandEncoderState _tessCtlPushConstants;
 	MVKPushConstantsCommandEncoderState _tessEvalPushConstants;
+#if MVK_XCODE_14
 	MVKPushConstantsCommandEncoderState _taskPushConstants;
 	MVKPushConstantsCommandEncoderState _meshPushConstants;
+#endif
 	MVKPushConstantsCommandEncoderState _fragmentPushConstants;
 	MVKPushConstantsCommandEncoderState _computePushConstants;
     MVKOcclusionQueryCommandEncoderState _occlusionQueryState;

@@ -406,6 +406,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
 				break;
 			}
+#if MVK_XCODE_14
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT: {
                 const auto supported = [_mtlDevice supportsFamily: MTLGPUFamilyMetal3];
 
@@ -415,7 +416,9 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                 meshShaderFeatures->multiviewMeshShader = false; //TODO:
                 meshShaderFeatures->primitiveFragmentShadingRateMeshShader = false; //TODO:
                 meshShaderFeatures->meshShaderQueries = false; //TODO:
+				break;
             }
+#endif
 			default:
 				break;
 		}
@@ -704,6 +707,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				robustness2Props->robustUniformBufferAccessSizeAlignment = 1;
 				break;
 			}
+#if MVK_XCODE_14
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT: {
                 auto* meshShaderProps = (VkPhysicalDeviceMeshShaderPropertiesEXT*)next;
 
@@ -746,6 +750,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 
                 break;
             }
+#endif
 			default:
 				break;
 		}

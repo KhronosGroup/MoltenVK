@@ -288,10 +288,12 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 				[mtlCmdEnc setRenderPipelineState: _mtlPipelineState];
 			}
 
+#if MVK_XCODE_14
 			if (isMeshPipeline()) {
 				cmdEncoder->_mtlObjectThreadgroupSize = _mtlObjectThreadgroupSize;
 				cmdEncoder->_mtlThreadgroupSize = _mtlMeshThreadgroupSize;
 			}
+#endif
 
             // Depth stencil state - Cleared _depthStencilInfo values will disable depth testing
 			cmdEncoder->_depthStencilState.setDepthStencilState(_depthStencilInfo);
@@ -304,9 +306,13 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
             cmdEncoder->_viewportState.setViewports(_viewports.contents(), 0, false);
             cmdEncoder->_scissorState.setScissors(_scissors.contents(), 0, false);
 
+#if MVK_XCODE_14
 			if(!isMeshPipeline()) {
 				cmdEncoder->_mtlPrimitiveType = _mtlPrimitiveType;
 			}
+#else
+			cmdEncoder->_mtlPrimitiveType = _mtlPrimitiveType;
+#endif
 
             [mtlCmdEnc setCullMode: _mtlCullMode];
             [mtlCmdEnc setFrontFacingWinding: _mtlFrontWinding];
@@ -320,10 +326,26 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
     }
 
 	cmdEncoder->_graphicsResourcesState.markOverriddenBufferIndexesDirty();
-    cmdEncoder->_graphicsResourcesState.bindSwizzleBuffer(_swizzleBufferIndex, _needsVertexSwizzleBuffer, _needsTessCtlSwizzleBuffer, _needsTessEvalSwizzleBuffer, _needsTaskSwizzleBuffer, _needsMeshSwizzleBuffer, _needsFragmentSwizzleBuffer);
-    cmdEncoder->_graphicsResourcesState.bindBufferSizeBuffer(_bufferSizeBufferIndex, _needsVertexBufferSizeBuffer, _needsTessCtlBufferSizeBuffer, _needsTessEvalBufferSizeBuffer, _needsTaskBufferSizeBuffer, _needsMeshBufferSizeBuffer, _needsFragmentBufferSizeBuffer);
-	cmdEncoder->_graphicsResourcesState.bindDynamicOffsetBuffer(_dynamicOffsetBufferIndex, _needsVertexDynamicOffsetBuffer, _needsTessCtlDynamicOffsetBuffer, _needsTessEvalDynamicOffsetBuffer, _needsTaskDynamicOffsetBuffer, _needsMeshDynamicOffsetBuffer, _needsFragmentDynamicOffsetBuffer);
-    cmdEncoder->_graphicsResourcesState.bindViewRangeBuffer(_viewRangeBufferIndex, _needsVertexViewRangeBuffer, _needsMeshViewRangeBuffer, _needsFragmentViewRangeBuffer);
+    cmdEncoder->_graphicsResourcesState.bindSwizzleBuffer(_swizzleBufferIndex, _needsVertexSwizzleBuffer, _needsTessCtlSwizzleBuffer, _needsTessEvalSwizzleBuffer,
+#if MVK_XCODE_14
+			_needsTaskSwizzleBuffer, _needsMeshSwizzleBuffer,
+#endif
+			_needsFragmentSwizzleBuffer);
+    cmdEncoder->_graphicsResourcesState.bindBufferSizeBuffer(_bufferSizeBufferIndex, _needsVertexBufferSizeBuffer, _needsTessCtlBufferSizeBuffer, _needsTessEvalBufferSizeBuffer,
+#if MVK_XCODE_14
+			_needsTaskBufferSizeBuffer, _needsMeshBufferSizeBuffer,
+#endif
+			_needsFragmentBufferSizeBuffer);
+	cmdEncoder->_graphicsResourcesState.bindDynamicOffsetBuffer(_dynamicOffsetBufferIndex, _needsVertexDynamicOffsetBuffer, _needsTessCtlDynamicOffsetBuffer, _needsTessEvalDynamicOffsetBuffer,
+#if MVK_XCODE_14
+			_needsTaskDynamicOffsetBuffer, _needsMeshDynamicOffsetBuffer,
+#endif
+			_needsFragmentDynamicOffsetBuffer);
+    cmdEncoder->_graphicsResourcesState.bindViewRangeBuffer(_viewRangeBufferIndex, _needsVertexViewRangeBuffer,
+#if MVK_XCODE_14
+			_needsMeshViewRangeBuffer,
+#endif
+			_needsFragmentViewRangeBuffer);
 }
 
 bool MVKGraphicsPipeline::supportsDynamicState(VkDynamicState state) {
@@ -420,11 +442,15 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 			_pTessCtlSS = pSS;
 		} else if (pSS->stage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) {
 			_pTessEvalSS = pSS;
-		} else if (pSS->stage == VK_SHADER_STAGE_TASK_BIT_EXT) {
+		}
+#if MVK_XCODE_14
+		else if (pSS->stage == VK_SHADER_STAGE_TASK_BIT_EXT) {
             _pTaskSS = pSS;
         } else if (pSS->stage == VK_SHADER_STAGE_MESH_BIT_EXT) {
             _pMeshSS = pSS;
-        } else if (pSS->stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
+        }
+#endif
+		else if (pSS->stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
             _pFragmentSS = pSS;
         }
     }
@@ -591,6 +617,7 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 	if (isUsingPipelineStageMetalArgumentBuffers()) { _mtlArgumentEncoders.resize(_descriptorSetCount); }
 
     if (isMeshPipeline()) {
+#if MVK_XCODE_14
         MTLMeshRenderPipelineDescriptor* plDesc = newMTLMeshRenderPipelineDescriptor(pCreateInfo, reflectData);	// temp retain
         if(plDesc) {
 			const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
@@ -601,7 +628,8 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
             }
         }
         [plDesc release];																				// temp release
-    }
+#endif
+	}
 	else if (!isTessellationPipeline()) {
 		MTLRenderPipelineDescriptor* plDesc = newMTLRenderPipelineDescriptor(pCreateInfo, reflectData);	// temp retain
 		if (plDesc) {
@@ -692,6 +720,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLRenderPipelineDescriptor
 	return plDesc;
 }
 
+#if MVK_XCODE_14
 MTLMeshRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLMeshRenderPipelineDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo,
 																						 const SPIRVTessReflectionData& reflectData) {
 	SPIRVToMSLConversionConfiguration shaderConfig;
@@ -733,6 +762,7 @@ MTLMeshRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLMeshRenderPipelineDe
 
 	return plDesc;
 }
+#endif
 
 // Returns a retained MTLComputePipelineDescriptor for the vertex stage of a tessellated draw constructed from this instance, or nil if an error occurs.
 // It is the responsibility of the caller to release the returned descriptor.
@@ -1266,6 +1296,7 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(T* plDesc,
 	return true;
 }
 
+#if MVK_XCODE_14
 bool MVKGraphicsPipeline::addTaskShaderToPipeline(MTLMeshRenderPipelineDescriptor* plDesc,
 		const VkGraphicsPipelineCreateInfo* pCreateInfo,
 		SPIRVToMSLConversionConfiguration& shaderConfig) {
@@ -1380,6 +1411,7 @@ bool MVKGraphicsPipeline::addMeshShaderToPipeline(MTLMeshRenderPipelineDescripto
 	}
 	return true;
 }
+#endif
 
 template<class T>
 bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
@@ -1681,7 +1713,9 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(T* plDesc,
 		if constexpr (std::is_same_v<T, MTLRenderPipelineDescriptor>) {
 			plDesc.sampleCount = sampleCount;
 		} else {
+#if MVK_XCODE_14
 			plDesc.rasterSampleCount = sampleCount;
+#endif
 		}
 
         plDesc.alphaToCoverageEnabled = pCreateInfo->pMultisampleState->alphaToCoverageEnable;
@@ -2623,12 +2657,14 @@ id<MTLRenderPipelineState> MVKRenderPipelineCompiler::newMTLRenderPipelineState(
 											   if (isLate) { destroy(); }
 										   }];
 			} else {
+#if MVK_XCODE_14
 				[mtlDev newRenderPipelineStateWithMeshDescriptor: mtlRPLDesc
 										   options: MTLPipelineOptionNone
                                    		   completionHandler: ^(id <MTLRenderPipelineState> ps, MTLRenderPipelineReflection* reflection, NSError* error) {
 										   bool isLate = compileComplete(ps, error);
 											   if (isLate) { destroy(); }
 										   }];
+#endif
 			}
 		}
 	});

@@ -1135,6 +1135,8 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
     }
 }
 
+#if MVK_XCODE_14
+
 #pragma mark -
 #pragma mark MVKCmdDrawMeshTasks
 
@@ -1203,3 +1205,5 @@ void MVKCmdDrawMeshTasksIndirect::encode(MVKCommandEncoder* cmdEncoder) {
     printf("Encoding Draw Mesh Tasks Indirect\n");
     //TODO:
 }
+
+#endif
