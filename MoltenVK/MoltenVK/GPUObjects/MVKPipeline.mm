@@ -1240,8 +1240,8 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
     // Vertex buffer divisors (step rates)
     std::unordered_set<uint32_t> zeroDivisorBindings;
     if (pVertexInputDivisorState) {
-        vbCnt = pVertexInputDivisorState->vertexBindingDivisorCount;
-        for (uint32_t i = 0; i < vbCnt; i++) {
+        uint32_t vbdCnt = pVertexInputDivisorState->vertexBindingDivisorCount;
+        for (uint32_t i = 0; i < vbdCnt; i++) {
             const VkVertexInputBindingDivisorDescriptionEXT* pVKVB = &pVertexInputDivisorState->pVertexBindingDivisors[i];
             if (shaderConfig.isVertexBufferUsed(pVKVB->binding)) {
                 uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
