@@ -177,12 +177,12 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 
 /** Support full ImageView swizzles. Disabled by default. */
 #ifndef MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE
-#   define MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE    0
+#   define MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE    1
 #endif
 
 /** Set the fastMathEnabled Metal Compiler option. Set to always use fast math by default. */
 #ifndef MVK_CONFIG_FAST_MATH_ENABLED
-#   define MVK_CONFIG_FAST_MATH_ENABLED    MVK_CONFIG_FAST_MATH_ALWAYS
+#   define MVK_CONFIG_FAST_MATH_ENABLED    MVK_CONFIG_FAST_MATH_NEVER
 #endif
 
 /** Set the logging level: */
@@ -242,7 +242,7 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
  * By default, use Metal events, if availalble, on most platforms.
  */
 #ifndef MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE
-#   define MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE    MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE
+#   define MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE    MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE
 #endif
 #ifndef MVK_ALLOW_METAL_EVENTS		// Deprecated
 #   define MVK_ALLOW_METAL_EVENTS    1
@@ -283,7 +283,7 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 
 /** Resume MVKDevice VK_ERROR_DEVICE_LOST errors that do not cause MVKPhysicalDevice errors. Disabled by default. */
 #ifndef MVK_CONFIG_RESUME_LOST_DEVICE
-#   define MVK_CONFIG_RESUME_LOST_DEVICE    0
+#   define MVK_CONFIG_RESUME_LOST_DEVICE    1
 #endif
 
 /** Support Metal argument buffers. Disabled by default. */

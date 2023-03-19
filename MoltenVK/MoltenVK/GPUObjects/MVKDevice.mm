@@ -2224,6 +2224,8 @@ void MVKPhysicalDevice::initFeatures() {
     _features.depthClamp = true;
     _features.vertexPipelineStoresAndAtomics = true;
     _features.fragmentStoresAndAtomics = true;
+	_features.geometryShader = true;
+	_features.shaderCullDistance = true;
 #if MVK_XCODE_12
 	_features.shaderInt64 = mslVersionIsAtLeast(MTLLanguageVersion2_3);
 #else
