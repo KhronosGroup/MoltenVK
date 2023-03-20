@@ -309,13 +309,9 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 				if (mvkIsAnyFlagEnabled(_vkMemPropFlags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
 					switch (pMemHostPtrInfo->handleType) {
 						case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
+						case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT:
 							_pHostMemory = pMemHostPtrInfo->pHostPointer;
 							_isHostMemImported = true;
-							break;
-						case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT:
-							// Vulkan requires only host-visible memory types here, but Metal
-							// only supports Private storage for cross-device buffer sharing.
-							setConfigurationResult(reportError(VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR, "vkAllocateMemory(): Metal does not support host-visible memory for cross-device memory sharing."));
 							break;
 						default:
 							break;

@@ -1060,17 +1060,25 @@ static VkExternalMemoryProperties _emptyExtMemProps = {};
 
 VkExternalMemoryProperties& MVKPhysicalDevice::getExternalBufferProperties(VkExternalMemoryHandleTypeFlagBits handleType) {
 	switch (handleType) {
-		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:	return _hostPointerExternalMemoryProperties;
-		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR:			return _mtlBufferExternalMemoryProperties;
-		default: 														return _emptyExtMemProps;
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT:
+			return _hostPointerExternalMemoryProperties;
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR:
+			return _mtlBufferExternalMemoryProperties;
+		default:
+			return _emptyExtMemProps;
 	}
 }
 
 VkExternalMemoryProperties& MVKPhysicalDevice::getExternalImageProperties(VkExternalMemoryHandleTypeFlagBits handleType) {
 	switch (handleType) {
-		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:	return _hostPointerExternalMemoryProperties;
-		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR:			return _mtlTextureExternalMemoryProperties;
-		default: 														return _emptyExtMemProps;
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT:
+			return _hostPointerExternalMemoryProperties;
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR:
+			return _mtlTextureExternalMemoryProperties;
+		default:
+			return _emptyExtMemProps;
 	}
 }
 
@@ -3005,7 +3013,8 @@ void MVKPhysicalDevice::initExternalMemoryProperties() {
 	// Common
 	_hostPointerExternalMemoryProperties.externalMemoryFeatures = VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
 	_hostPointerExternalMemoryProperties.exportFromImportedHandleTypes = 0;
-	_hostPointerExternalMemoryProperties.compatibleHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT;
+	_hostPointerExternalMemoryProperties.compatibleHandleTypes = (VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT |
+																  VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT);
 
 	// Buffers
 	_mtlBufferExternalMemoryProperties.externalMemoryFeatures = (VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
@@ -3489,12 +3498,8 @@ VkResult MVKDevice::getMemoryHostPointerProperties(VkExternalMemoryHandleTypeFla
 	if (pMemHostPtrProps) {
 		switch (handleType) {
 			case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
-				pMemHostPtrProps->memoryTypeBits = _physicalDevice->getHostVisibleMemoryTypes();
-				break;
 			case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT:
-				// Vulkan requires only host-visible memory types here, but Metal
-				// only supports Private storage for cross-device buffer sharing.
-				pMemHostPtrProps->memoryTypeBits = 0;
+				pMemHostPtrProps->memoryTypeBits = _physicalDevice->getHostVisibleMemoryTypes();
 				break;
 			default:
 				pMemHostPtrProps->memoryTypeBits = 0;
