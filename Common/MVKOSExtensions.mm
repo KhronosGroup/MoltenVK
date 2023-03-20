@@ -136,3 +136,5 @@ uint64_t mvkGetUsedMemorySize() {
 	return 0;
 }
 
+uint64_t mvkGetHostMemoryPageSize() { return sysconf(_SC_PAGESIZE); }
+
