@@ -444,6 +444,7 @@ protected:
 	uint32_t _hostCoherentMemoryTypes;
 	uint32_t _privateMemoryTypes;
 	uint32_t _lazilyAllocatedMemoryTypes;
+	VkExternalMemoryProperties _hostPointerExternalMemoryProperties;
 	VkExternalMemoryProperties _mtlBufferExternalMemoryProperties;
 	VkExternalMemoryProperties _mtlTextureExternalMemoryProperties;
 };
@@ -513,6 +514,11 @@ public:
 
 	/** Populates the device group peer memory features. */
 	void getPeerMemoryFeatures(uint32_t heapIndex, uint32_t localDevice, uint32_t remoteDevice, VkPeerMemoryFeatureFlags* pPeerMemoryFeatures);
+
+	/** Returns the properties of the host memory pointer. */
+	VkResult getMemoryHostPointerProperties(VkExternalMemoryHandleTypeFlagBits handleType,
+											const void* pHostPointer,
+											VkMemoryHostPointerPropertiesEXT* pMemHostPtrProps);
 
 
 #pragma mark Object lifecycle

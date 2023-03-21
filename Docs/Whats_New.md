@@ -19,6 +19,7 @@ MoltenVK 1.2.3
 Released TBA
 
 - Add support for extensions:
+	- `VK_EXT_external_memory_host`
 	- `VK_EXT_pipeline_creation_cache_control`
 	- `VK_EXT_shader_atomic_float`
 	- `VK_EXT_surface_maintenance1`

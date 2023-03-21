@@ -356,6 +356,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_descriptor_indexing` *(initial release limited to Metal Tier 1: 96/128 textures, 
   16 samplers, except macOS 11.0 (Big Sur) or later, or on older versions of macOS using 
   an Intel GPU, and if Metal argument buffers enabled in config)*
+- `VK_EXT_external_memory_host`
 - `VK_EXT_fragment_shader_interlock` *(requires Metal 2.0 and Raster Order Groups)*
 - `VK_EXT_host_query_reset`
 - `VK_EXT_image_robustness`
