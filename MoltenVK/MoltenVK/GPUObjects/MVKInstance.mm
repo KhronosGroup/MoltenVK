@@ -732,6 +732,11 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_EXT_ENTRY_POINT(vkReleaseSwapchainImagesEXT, EXT_SWAPCHAIN_MAINTENANCE_1);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetRefreshCycleDurationGOOGLE, GOOGLE_DISPLAY_TIMING);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetPastPresentationTimingGOOGLE, GOOGLE_DISPLAY_TIMING);
+#if MVK_XCODE_14
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdDrawMeshTasksEXT, EXT_MESH_SHADER);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdDrawMeshTasksIndirectEXT, EXT_MESH_SHADER);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdDrawMeshTasksIndirectCountEXT, EXT_MESH_SHADER);
+#endif
 }
 
 void MVKInstance::logVersions() {

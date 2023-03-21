@@ -191,6 +191,8 @@ bool MVKDescriptorSetLayout::populateBindingUse(MVKBitArray& bindingUse,
 		spv::ExecutionModelVertex,
 		spv::ExecutionModelTessellationControl,
 		spv::ExecutionModelTessellationEvaluation,
+		spv::ExecutionModelTaskEXT,
+		spv::ExecutionModelMeshEXT,
 		spv::ExecutionModelFragment,
 		spv::ExecutionModelGLCompute
 	};

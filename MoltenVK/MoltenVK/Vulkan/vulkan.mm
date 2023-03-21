@@ -1385,7 +1385,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindPipeline(
     VkCommandBuffer                             commandBuffer,
     VkPipelineBindPoint                         pipelineBindPoint,
     VkPipeline                                  pipeline) {
-	
+
 	MVKTraceVulkanCallStart();
 	switch (pipelineBindPoint) {
 		case VK_PIPELINE_BIND_POINT_GRAPHICS: {
@@ -1502,7 +1502,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindDescriptorSets(
     const VkDescriptorSet*                      pDescriptorSets,
     uint32_t                                    dynamicOffsetCount,
     const uint32_t*                             pDynamicOffsets) {
-	
+
 	MVKTraceVulkanCallStart();
 	if (dynamicOffsetCount) {
 		MVKAddCmdFromThreshold(BindDescriptorSetsDynamic, setCount, 4, commandBuffer, pipelineBindPoint, layout,
@@ -3372,6 +3372,46 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPastPresentationTimingGOOGLE(
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDrawIndexedIndirectCount, AMD);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDrawIndirectCount, AMD);
+
+#pragma mark -
+#pragma mark VK_EXT_mesh_shader
+
+#if MVK_XCODE_14
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMeshTasksEXT(
+		VkCommandBuffer                             commandBuffer,
+		uint32_t                                    groupCountX,
+		uint32_t                                    groupCountY,
+		uint32_t                                    groupCountZ) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(DrawMeshTasks, commandBuffer, groupCountX, groupCountY, groupCountZ);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMeshTasksIndirectEXT(
+		VkCommandBuffer                             commandBuffer,
+		VkBuffer                                    buffer,
+		VkDeviceSize                                offset,
+		uint32_t                                    drawCount,
+		uint32_t                                    stride) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(DrawMeshTasksIndirect, commandBuffer, buffer, offset, drawCount, stride);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMeshTasksIndirectCountEXT(
+		VkCommandBuffer                             commandBuffer,
+		VkBuffer                                    buffer,
+		VkDeviceSize                                offset,
+		VkBuffer                                    countBuffer,
+		VkDeviceSize                                countBufferOffset,
+		uint32_t                                    maxDrawCount,
+		uint32_t                                    stride) {
+    
+	//TODO: Not supported
+}
+#endif
 
 #pragma mark -
 #pragma mark iOS & macOS surface extensions
