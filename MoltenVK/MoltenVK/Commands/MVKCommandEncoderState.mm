@@ -1016,7 +1016,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 							   [cmdEncoder->_mtlRenderEncoder setMeshBufferOffset: b.offset
 																			  atIndex: b.index];
 						   else
-							   [cmdEncoder->_mtlRenderEncoder setMeshBuffer: b.mtlBuffer
+                               [cmdEncoder->_mtlRenderEncoder setMeshBuffer: b.mtlBuffer
 																		 offset: b.offset
 																		atIndex: b.index];
 					   },

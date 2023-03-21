@@ -52,19 +52,43 @@ void MVKShaderStageResourceBinding::clearArgumentBufferResources() {
 #pragma mark MVKShaderResourceBinding
 
 uint16_t MVKShaderResourceBinding::getMaxResourceIndex() {
-	return std::max({stages[kMVKShaderStageVertex].resourceIndex, stages[kMVKShaderStageTessCtl].resourceIndex, stages[kMVKShaderStageTessEval].resourceIndex, stages[kMVKShaderStageFragment].resourceIndex, stages[kMVKShaderStageCompute].resourceIndex});
+	return std::max({stages[kMVKShaderStageVertex].resourceIndex,
+			stages[kMVKShaderStageTessCtl].resourceIndex,
+			stages[kMVKShaderStageTessEval].resourceIndex,
+			stages[kMVKShaderStageTask].resourceIndex,
+			stages[kMVKShaderStageMesh].resourceIndex,
+			stages[kMVKShaderStageFragment].resourceIndex,
+			stages[kMVKShaderStageCompute].resourceIndex});
 }
 
 uint16_t MVKShaderResourceBinding::getMaxBufferIndex() {
-	return std::max({stages[kMVKShaderStageVertex].bufferIndex, stages[kMVKShaderStageTessCtl].bufferIndex, stages[kMVKShaderStageTessEval].bufferIndex, stages[kMVKShaderStageFragment].bufferIndex, stages[kMVKShaderStageCompute].bufferIndex});
+	return std::max({stages[kMVKShaderStageVertex].bufferIndex,
+			stages[kMVKShaderStageTessCtl].bufferIndex,
+			stages[kMVKShaderStageTessEval].bufferIndex,
+			stages[kMVKShaderStageTask].bufferIndex,
+			stages[kMVKShaderStageMesh].bufferIndex,
+			stages[kMVKShaderStageFragment].bufferIndex,
+			stages[kMVKShaderStageCompute].bufferIndex});
 }
 
 uint16_t MVKShaderResourceBinding::getMaxTextureIndex() {
-	return std::max({stages[kMVKShaderStageVertex].textureIndex, stages[kMVKShaderStageTessCtl].textureIndex, stages[kMVKShaderStageTessEval].textureIndex, stages[kMVKShaderStageFragment].textureIndex, stages[kMVKShaderStageCompute].textureIndex});
+	return std::max({stages[kMVKShaderStageVertex].textureIndex,
+			stages[kMVKShaderStageTessCtl].textureIndex,
+			stages[kMVKShaderStageTessEval].textureIndex,
+			stages[kMVKShaderStageTask].textureIndex,
+			stages[kMVKShaderStageMesh].textureIndex,
+			stages[kMVKShaderStageFragment].textureIndex,
+			stages[kMVKShaderStageCompute].textureIndex});
 }
 
 uint16_t MVKShaderResourceBinding::getMaxSamplerIndex() {
-	return std::max({stages[kMVKShaderStageVertex].samplerIndex, stages[kMVKShaderStageTessCtl].samplerIndex, stages[kMVKShaderStageTessEval].samplerIndex, stages[kMVKShaderStageFragment].samplerIndex, stages[kMVKShaderStageCompute].samplerIndex});
+	return std::max({stages[kMVKShaderStageVertex].samplerIndex,
+			stages[kMVKShaderStageTessCtl].samplerIndex,
+			stages[kMVKShaderStageTessEval].samplerIndex,
+			stages[kMVKShaderStageTask].samplerIndex,
+			stages[kMVKShaderStageMesh].samplerIndex,
+			stages[kMVKShaderStageFragment].samplerIndex,
+			stages[kMVKShaderStageCompute].samplerIndex});
 }
 
 MVKShaderResourceBinding MVKShaderResourceBinding::operator+ (const MVKShaderResourceBinding& rhs) {
@@ -124,6 +148,8 @@ void mvkPopulateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& s
 		spv::ExecutionModelVertex,
 		spv::ExecutionModelTessellationControl,
 		spv::ExecutionModelTessellationEvaluation,
+		spv::ExecutionModelTaskEXT,
+		spv::ExecutionModelMeshEXT,
 		spv::ExecutionModelFragment,
 		spv::ExecutionModelGLCompute
 	};
@@ -547,6 +573,14 @@ MTLRenderStages MVKDescriptorSetLayoutBinding::getMTLRenderStages() {
 				case kMVKShaderStageTessCtl:
 				case kMVKShaderStageTessEval:
 					mtlStages |= MTLRenderStageVertex;
+					break;
+
+				case kMVKShaderStageTask:
+					mtlStages |= MTLRenderStageObject;
+					break;
+
+				case kMVKShaderStageMesh:
+					mtlStages |= MTLRenderStageMesh;
 					break;
 
 				case kMVKShaderStageFragment:

@@ -1158,8 +1158,6 @@ VkResult MVKCmdDrawMeshTasks::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdDrawMeshTasks::encode(MVKCommandEncoder* cmdEncoder) {
-    printf("Encoding Draw Mesh Tasks\n");
-
     auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
 
     MVKPiplineStages stages;
