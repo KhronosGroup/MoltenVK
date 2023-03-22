@@ -16,7 +16,7 @@ Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.2.3
 --------------
 
-Released TBA
+Released 2023/03/22
 
 - Add support for extensions:
 	- `VK_EXT_external_memory_host`
@@ -36,6 +36,9 @@ Released TBA
 - Queue submissions retain wait semaphores until `MTLCommandBuffer` finishes.
 - Use a different visibility buffer for each `MTLCommandBuffer` in a queue submit.
 - Work around problems with using explicit LoD with arrayed depth images on Apple Silicon.
+- Fix issue when `VkPipelineVertexInputDivisorStateCreateInfoEXT::vertexBindingDivisorCount` 
+  doesn't match `VkPipelineVertexInputStateCreateInfo::vertexBindingDescriptionCount`.
+- Support Apple Silicon pixel formats on a MoltenVK `x86_64` build that is running on Apple Silicon using Rosetta2.
 - Reduce memory footprint of MSL source code retained in pipeline cache.
 - Add `MVKConfiguration::shaderSourceCompressionAlgorithm` and 
   env var `MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM` to support 
@@ -48,6 +51,11 @@ Released TBA
   build setting to set `MVKConfiguration::activityPerformanceLoggingStyle` value.
 - Expand `MVK_CONFIG_TRACE_VULKAN_CALLS` to log thread ID only if requested.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `37`.
+- Update dependency libraries to match _Vulkan SDK 1.3.243_.
+- Update to latest SPIRV-Cross:
+  - MSL: Add support for `OpAtomicFAddEXT` atomic add on float types
+  - MSL: Add a workaround for broken `level()` arguments.
+  - MSL: Deduplicate function constants.
 
 
 
@@ -70,6 +78,7 @@ Released 2023/01/23
 - Update `VkPhysicalDeviceLimits::maxDrawIndexedIndexValue` to 
   acknowledge automatic primitive restart.
 - Update copyright notices to year 2023.
+- Update dependency libraries to match _Vulkan SDK 1.3.239_.
 - Update to latest SPIRV-Cross:
   - MSL: Add support for writable images in iOS Tier2 argument buffers.
   - MSL: Fix potentially uninitialized warnings.
