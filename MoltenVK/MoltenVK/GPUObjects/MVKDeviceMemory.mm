@@ -36,8 +36,7 @@ void MVKDeviceMemory::propagateDebugName() {
 	setLabelIfNotNil(_mtlBuffer, _debugName);
 }
 
-VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData) {
-
+VkResult MVKDeviceMemory::map(const VkMemoryMapInfoKHR* pMemoryMapInfo, void** ppData) {
 	if ( !isMemoryHostAccessible() ) {
 		return reportError(VK_ERROR_MEMORY_MAP_FAILED, "Private GPU-only memory cannot be mapped to host memory.");
 	}
@@ -50,25 +49,23 @@ VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMa
 		return reportError(VK_ERROR_OUT_OF_HOST_MEMORY, "Could not allocate %llu bytes of host-accessible device memory.", _allocationSize);
 	}
 
-	_mappedRange.offset = offset;
-	_mappedRange.size = adjustMemorySize(size, offset);
+	_mappedRange.offset = pMemoryMapInfo->offset;
+	_mappedRange.size = adjustMemorySize(pMemoryMapInfo->size, pMemoryMapInfo->offset);
 
-	*ppData = (void*)((uintptr_t)_pMemory + offset);
+	*ppData = (void*)((uintptr_t)_pMemory + pMemoryMapInfo->offset);
 
 	// Coherent memory does not require flushing by app, so we must flush now
 	// to support Metal textures that actually reside in non-coherent memory.
 	if (mvkIsAnyFlagEnabled(_vkMemPropFlags, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
-		pullFromDevice(offset, size);
+		pullFromDevice(pMemoryMapInfo->offset, pMemoryMapInfo->size);
 	}
 
 	return VK_SUCCESS;
 }
 
-void MVKDeviceMemory::unmap() {
-
+VkResult MVKDeviceMemory::unmap(const VkMemoryUnmapInfoKHR* pUnmapMemoryInfo) {
 	if ( !isMapped() ) {
-		reportError(VK_ERROR_MEMORY_MAP_FAILED, "Memory is not mapped. Call vkMapMemory() first.");
-		return;
+		return reportError(VK_ERROR_MEMORY_MAP_FAILED, "Memory is not mapped. Call vkMapMemory() first.");
 	}
 
 	// Coherent memory does not require flushing by app, so we must flush now
@@ -79,6 +76,8 @@ void MVKDeviceMemory::unmap() {
 
 	_mappedRange.offset = 0;
 	_mappedRange.size = 0;
+
+	return VK_SUCCESS;
 }
 
 VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
