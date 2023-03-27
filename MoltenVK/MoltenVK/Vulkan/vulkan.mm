@@ -492,8 +492,16 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkMapMemory(
    void**                                      ppData) {
 
 	MVKTraceVulkanCallStart();
+	VkMemoryMapInfoKHR mapInfo = {};
+	mapInfo.sType = VK_STRUCTURE_TYPE_MEMORY_MAP_INFO_KHR;
+	mapInfo.pNext = nullptr;
+	mapInfo.flags = flags;
+	mapInfo.memory = mem;
+	mapInfo.offset = offset;
+	mapInfo.size = size;
+
 	MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)mem;
-	VkResult rslt = mvkMem->map(offset, size, flags, ppData);
+	VkResult rslt = mvkMem->map(&mapInfo, ppData);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -503,8 +511,13 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkUnmapMemory(
     VkDeviceMemory                              mem) {
 	
 	MVKTraceVulkanCallStart();
+	VkMemoryUnmapInfoKHR unmapInfo = {};
+	unmapInfo.sType = VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO_KHR;
+	unmapInfo.pNext = nullptr;
+	unmapInfo.flags = 0;
+	unmapInfo.memory = mem;
 	MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)mem;
-	mvkMem->unmap();
+	mvkMem->unmap(&unmapInfo);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2725,6 +2738,33 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkTrimCommandPool, KHR);
 #pragma mark VK_KHR_maintenance3 extension
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetDescriptorSetLayoutSupport, KHR);
+
+
+#pragma mark -
+#pragma mark VK_KHR_map_memory2 extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkMapMemory2KHR(
+    VkDevice device,
+    const VkMemoryMapInfoKHR* pMemoryMapInfo,
+    void** ppData) {
+	
+    MVKTraceVulkanCallStart();
+    MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMemoryMapInfo->memory;
+    VkResult rslt = mvkMem->map(pMemoryMapInfo, ppData);
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkUnmapMemory2KHR(
+    VkDevice device,
+    const VkMemoryUnmapInfoKHR* pMemoryUnmapInfo) {
+
+    MVKTraceVulkanCallStart();
+    MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMemoryUnmapInfo->memory;
+    VkResult rslt = mvkMem->unmap(pMemoryUnmapInfo);
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
 
 
 #pragma mark -

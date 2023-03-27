@@ -330,6 +330,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_maintenance1`
 - `VK_KHR_maintenance2`
 - `VK_KHR_maintenance3`
+- `VK_KHR_map_memory2`
 - `VK_KHR_multiview`
 - `VK_KHR_portability_subset`
 - `VK_KHR_push_descriptor`
