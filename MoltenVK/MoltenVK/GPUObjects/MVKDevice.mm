@@ -1645,7 +1645,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			break;
 		case kAppleVendorId:
 			// TODO: Other GPUs?
-			_metalFeatures.needsSampleDrefLodArrayWorkaround = true;
+            MVK_SET_FROM_ENV_OR_BUILD_BOOL(_metalFeatures.needsSampleDrefLodArrayWorkaround, MVK_ENABLE_EXPLICIT_LOD_WORKAROUND);
 			// fallthrough
 		case kIntelVendorId:
 		case kNVVendorId:
