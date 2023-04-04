@@ -294,3 +294,8 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #ifndef MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM
 #  	define MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM    MVK_CONFIG_COMPRESSION_ALGORITHM_NONE
 #endif
+
+/** Enables Explicit LOD workaround defaults to true. */
+#ifndef MVK_ENABLE_EXPLICIT_LOD_WORKAROUND
+#   define MVK_ENABLE_EXPLICIT_LOD_WORKAROUND    1
+#endif
