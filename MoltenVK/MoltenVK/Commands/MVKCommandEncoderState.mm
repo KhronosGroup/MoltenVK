@@ -1,7 +1,7 @@
 /*
  * MVKCommandEncoderState.mm
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -982,9 +982,15 @@ void MVKGraphicsResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(
 	}
 }
 
-void MVKGraphicsResourcesCommandEncoderState::markBufferIndexDirty(MVKShaderStage stage, uint32_t mtlBufferIndex) {
+void MVKGraphicsResourcesCommandEncoderState::markBufferIndexOverridden(MVKShaderStage stage, uint32_t mtlBufferIndex) {
 	auto& stageRezBinds = _shaderStageResourceBindings[stage];
-	markIndexDirty(stageRezBinds.bufferBindings, stageRezBinds.areBufferBindingsDirty, mtlBufferIndex);
+	MVKResourcesCommandEncoderState::markBufferIndexOverridden(stageRezBinds.bufferBindings, mtlBufferIndex);
+}
+
+void MVKGraphicsResourcesCommandEncoderState::markOverriddenBufferIndexesDirty() {
+	for (auto& stageRezBinds : _shaderStageResourceBindings) {
+		MVKResourcesCommandEncoderState::markOverriddenBufferIndexesDirty(stageRezBinds.bufferBindings, stageRezBinds.areBufferBindingsDirty);
+	}
 }
 
 
@@ -1120,17 +1126,23 @@ void MVKComputeResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(M
 	}
 }
 
-void MVKComputeResourcesCommandEncoderState::markBufferIndexDirty(uint32_t mtlBufferIndex) {
-	markIndexDirty(_resourceBindings.bufferBindings, _resourceBindings.areBufferBindingsDirty, mtlBufferIndex);
+void MVKComputeResourcesCommandEncoderState::markBufferIndexOverridden(uint32_t mtlBufferIndex) {
+	MVKResourcesCommandEncoderState::markBufferIndexOverridden(_resourceBindings.bufferBindings, mtlBufferIndex);
+}
+
+void MVKComputeResourcesCommandEncoderState::markOverriddenBufferIndexesDirty() {
+	MVKResourcesCommandEncoderState::markOverriddenBufferIndexesDirty(_resourceBindings.bufferBindings, _resourceBindings.areBufferBindingsDirty);
 }
 
 
 #pragma mark -
 #pragma mark MVKOcclusionQueryCommandEncoderState
 
+// Metal resets the query counter at a render pass boundary, so copy results to the query pool's accumulation buffer.
+// Don't copy occlusion info until after rasterization, as Metal renderpasses can be ended prematurely during tessellation.
 void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
 	const MVKMTLBufferAllocation* vizBuff = _cmdEncoder->_pEncodingContext->visibilityResultBuffer;
-    if ( !vizBuff || _mtlRenderPassQueries.empty() ) { return; }  // Nothing to do.
+    if ( !_hasRasterized || !vizBuff || _mtlRenderPassQueries.empty() ) { return; }  // Nothing to do.
 
 	id<MTLComputePipelineState> mtlAccumState = _cmdEncoder->getCommandEncodingPool()->getAccumulateOcclusionQueryResultsMTLComputePipelineState();
     id<MTLComputeCommandEncoder> mtlAccumEncoder = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseAccumOcclusionQuery);
@@ -1148,6 +1160,7 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
     }
     _cmdEncoder->endCurrentMetalEncoding();
     _mtlRenderPassQueries.clear();
+	_hasRasterized = false;
 }
 
 // The Metal visibility buffer has a finite size, and on some Metal platforms (looking at you M1),
@@ -1166,18 +1179,21 @@ void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKOcclusionQuery
 		_mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
 		_cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset -= kMVKQuerySlotSizeInBytes;
 	}
+	_hasRasterized = false;
     markDirty();
 }
 
 void MVKOcclusionQueryCommandEncoderState::endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query) {
 	_mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
 	_cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset += kMVKQuerySlotSizeInBytes;
+	_hasRasterized = true;	// Handle begin and end query with no rasterizing before end of renderpass.
 	markDirty();
 }
 
 void MVKOcclusionQueryCommandEncoderState::encodeImpl(uint32_t stage) {
 	if (stage != kMVKGraphicsStageRasterization) { return; }
 
+	_hasRasterized = true;
 	[_cmdEncoder->_mtlRenderEncoder setVisibilityResultMode: _mtlVisibilityResultMode
 													 offset: _cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset];
 }

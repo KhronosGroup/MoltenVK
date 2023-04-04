@@ -1,7 +1,7 @@
 /*
  * GLSLConversion.mm
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,27 +32,27 @@ MVK_PUBLIC_SYMBOL bool mvkConvertGLSLToSPIRV(const char* glslSource,
                                              char** pResultLog,
                                              bool shouldLogGLSL,
                                              bool shouldLogSPIRV) {
-    GLSLToSPIRVConverter glslConverter;
+
+	GLSLToSPIRVConversionResult conversionResult;
+	GLSLToSPIRVConverter glslConverter;
     glslConverter.setGLSL(glslSource);
-    bool wasConverted = glslConverter.convert(shaderStage, shouldLogGLSL, shouldLogSPIRV);
+    bool wasConverted = glslConverter.convert(shaderStage, conversionResult, shouldLogGLSL, shouldLogSPIRV);
 
     size_t spvLen = 0;
     if (pSPIRVCode) {
         uint32_t* spvCode = NULL;
         if (wasConverted) {
-            auto spv = glslConverter.getSPIRV();
-            spvLen = spv.size() * sizeof(uint32_t);
+            spvLen = conversionResult.spirv.size() * sizeof(uint32_t);
             spvCode = (uint32_t*)malloc(spvLen);
-            memcpy(spvCode, spv.data(), spvLen);
+            memcpy(spvCode, conversionResult.spirv.data(), spvLen);
         }
         *pSPIRVCode = spvCode;
     }
     if (pSPIRVLength) { *pSPIRVLength = spvLen; }
 
     if (pResultLog) {
-        auto log = glslConverter.getResultLog();
-        *pResultLog = (char*)malloc(log.size() + 1);
-        strcpy(*pResultLog, log.data());
+        *pResultLog = (char*)malloc(conversionResult.resultLog.size() + 1);
+        strcpy(*pResultLog, conversionResult.resultLog.data());
     }
 
     return wasConverted;

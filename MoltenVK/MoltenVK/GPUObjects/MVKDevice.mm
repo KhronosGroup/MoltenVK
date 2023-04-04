@@ -1,7 +1,7 @@
 /*
  * MVKDevice.mm
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -378,11 +378,38 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				interlockFeatures->fragmentShaderShadingRateInterlock = false;    // Requires variable rate shading; not supported yet in Metal
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT: {
+				auto* pipelineCreationCacheControlFeatures = (VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT*)next;
+				pipelineCreationCacheControlFeatures->pipelineCreationCacheControl = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
 				auto* robustness2Features = (VkPhysicalDeviceRobustness2FeaturesEXT*)next;
 				robustness2Features->robustBufferAccess2 = false;
 				robustness2Features->robustImageAccess2 = true;
 				robustness2Features->nullDescriptor = false;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT: {
+				auto* atomicFloatFeatures = (VkPhysicalDeviceShaderAtomicFloatFeaturesEXT*)next;
+				bool atomicFloatEnabled = _metalFeatures.mslVersion >= 030000;
+				atomicFloatFeatures->shaderBufferFloat32Atomics = atomicFloatEnabled;
+				atomicFloatFeatures->shaderBufferFloat32AtomicAdd = atomicFloatEnabled;
+				atomicFloatFeatures->shaderBufferFloat64Atomics = false;
+				atomicFloatFeatures->shaderBufferFloat64AtomicAdd = false;
+				atomicFloatFeatures->shaderSharedFloat32Atomics = atomicFloatEnabled;
+				atomicFloatFeatures->shaderSharedFloat32AtomicAdd = atomicFloatEnabled;
+				atomicFloatFeatures->shaderSharedFloat64Atomics = false;
+				atomicFloatFeatures->shaderSharedFloat64AtomicAdd = false;
+				atomicFloatFeatures->shaderImageFloat32Atomics = false;
+				atomicFloatFeatures->shaderImageFloat32AtomicAdd = false;
+				atomicFloatFeatures->sparseImageFloat32Atomics = false;
+				atomicFloatFeatures->sparseImageFloat32AtomicAdd = false;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT: {
+				auto* swapchainMaintenance1Features = (VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT*)next;
+				swapchainMaintenance1Features->swapchainMaintenance1 = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
@@ -667,9 +694,16 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				portabilityProps->minVertexInputBindingStrideAlignment = (uint32_t)_metalFeatures.vertexStrideAlignment;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
-				auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)next;
-				divisorProps->maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT: {
+				auto* extMemHostProps = (VkPhysicalDeviceExternalMemoryHostPropertiesEXT*)next;
+				extMemHostProps->minImportedHostPointerAlignment = _metalFeatures.hostMemoryPageSize;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
+				// This isn't implemented yet, but when it is, it is expected that we'll wind up doing it manually.
+				auto* robustness2Props = (VkPhysicalDeviceRobustness2PropertiesEXT*)next;
+				robustness2Props->robustStorageBufferAccessSizeAlignment = 1;
+				robustness2Props->robustUniformBufferAccessSizeAlignment = 1;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT: {
@@ -682,11 +716,9 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				sampLocnProps->variableSampleLocations = VK_FALSE;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
-				// This isn't implemented yet, but when it is, it is expected that we'll wind up doing it manually.
-				auto* robustness2Props = (VkPhysicalDeviceRobustness2PropertiesEXT*)next;
-				robustness2Props->robustStorageBufferAccessSizeAlignment = 1;
-				robustness2Props->robustUniformBufferAccessSizeAlignment = 1;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
+				auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)next;
+				divisorProps->maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
 				break;
 			}
 			default:
@@ -1028,15 +1060,25 @@ static VkExternalMemoryProperties _emptyExtMemProps = {};
 
 VkExternalMemoryProperties& MVKPhysicalDevice::getExternalBufferProperties(VkExternalMemoryHandleTypeFlagBits handleType) {
 	switch (handleType) {
-		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR:		return _mtlBufferExternalMemoryProperties;
-		default: 													return _emptyExtMemProps;
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT:
+			return _hostPointerExternalMemoryProperties;
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR:
+			return _mtlBufferExternalMemoryProperties;
+		default:
+			return _emptyExtMemProps;
 	}
 }
 
 VkExternalMemoryProperties& MVKPhysicalDevice::getExternalImageProperties(VkExternalMemoryHandleTypeFlagBits handleType) {
 	switch (handleType) {
-		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR:		return _mtlTextureExternalMemoryProperties;
-		default: 													return _emptyExtMemProps;
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT:
+			return _hostPointerExternalMemoryProperties;
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR:
+			return _mtlTextureExternalMemoryProperties;
+		default:
+			return _emptyExtMemProps;
 	}
 }
 
@@ -1075,32 +1117,139 @@ VkResult MVKPhysicalDevice::getSurfaceSupport(uint32_t queueFamilyIndex,
 	return *pSupported ? VK_SUCCESS : surface->getConfigurationResult();
 }
 
-VkResult MVKPhysicalDevice::getSurfaceCapabilities(MVKSurface* surface,
+VkResult MVKPhysicalDevice::getSurfaceCapabilities(VkSurfaceKHR surface,
 												   VkSurfaceCapabilitiesKHR* pSurfaceCapabilities) {
+	VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo;
+	surfaceInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR;
+	surfaceInfo.pNext = nullptr;
+	surfaceInfo.surface = surface;
 
-	// The layer underlying the surface view must be a CAMetalLayer.
+	VkSurfaceCapabilities2KHR surfaceCaps;
+	surfaceCaps.sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR;
+	surfaceCaps.pNext = nullptr;
+	surfaceCaps.surfaceCapabilities = *pSurfaceCapabilities;
+
+	VkResult rslt = getSurfaceCapabilities(&surfaceInfo, &surfaceCaps);
+
+	*pSurfaceCapabilities = surfaceCaps.surfaceCapabilities;
+
+	return rslt;
+}
+
+VkResult MVKPhysicalDevice::getSurfaceCapabilities(	const VkPhysicalDeviceSurfaceInfo2KHR* pSurfaceInfo,
+												   VkSurfaceCapabilities2KHR* pSurfaceCapabilities) {
+
+	// Retrieve the present mode if it is supplied in this query.
+	VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAX_ENUM_KHR;
+	for (auto* next = (const VkBaseInStructure*)pSurfaceInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT: {
+				presentMode = ((VkSurfacePresentModeEXT*)next)->presentMode;
+				break;
+			}
+			default:
+				break;
+		}
+	}
+
+	// Retrieve the scaling and present mode compatibility structs if they are supplied in this query.
+	VkSurfacePresentScalingCapabilitiesEXT* pScalingCaps = nullptr;
+	VkSurfacePresentModeCompatibilityEXT* pCompatibility = nullptr;
+	for (auto* next = (VkBaseOutStructure*)pSurfaceCapabilities->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_EXT: {
+				pScalingCaps = (VkSurfacePresentScalingCapabilitiesEXT*)next;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_EXT: {
+				pCompatibility = (VkSurfacePresentModeCompatibilityEXT*)next;
+				break;
+			}
+			default:
+				break;
+		}
+	}
+
+	// The CAlayer underlying the surface must be a CAMetalLayer.
+	MVKSurface* surface = (MVKSurface*)pSurfaceInfo->surface;
 	CAMetalLayer* mtlLayer = surface->getCAMetalLayer();
 	if ( !mtlLayer ) { return surface->getConfigurationResult(); }
 
-    VkExtent2D surfExtnt = mvkVkExtent2DFromCGSize(mtlLayer.naturalDrawableSizeMVK);
+	VkSurfaceCapabilitiesKHR& surfCaps = pSurfaceCapabilities->surfaceCapabilities;
+	surfCaps.minImageCount = _metalFeatures.minSwapchainImageCount;
+	surfCaps.maxImageCount = _metalFeatures.maxSwapchainImageCount;
+	surfCaps.currentExtent = mvkGetNaturalExtent(mtlLayer);
+	surfCaps.minImageExtent = { 1, 1 };
+	surfCaps.maxImageExtent = { _properties.limits.maxImageDimension2D, _properties.limits.maxImageDimension2D };
+	surfCaps.maxImageArrayLayers = 1;
+	surfCaps.supportedTransforms = (VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR);
+	surfCaps.currentTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+	surfCaps.supportedCompositeAlpha = (VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR |
+										VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR |
+										VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR);
+	surfCaps.supportedUsageFlags = (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+									VK_IMAGE_USAGE_STORAGE_BIT |
+									VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+									VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+									VK_IMAGE_USAGE_SAMPLED_BIT);
 
-	pSurfaceCapabilities->minImageCount = _metalFeatures.minSwapchainImageCount;
-	pSurfaceCapabilities->maxImageCount = _metalFeatures.maxSwapchainImageCount;
+	// Swapchain-to-surface scaling capabilities.
+	if (pScalingCaps) {
+		pScalingCaps->supportedPresentScaling = (VK_PRESENT_SCALING_ONE_TO_ONE_BIT_EXT |
+												 VK_PRESENT_SCALING_ASPECT_RATIO_STRETCH_BIT_EXT |
+												 VK_PRESENT_SCALING_STRETCH_BIT_EXT);
+		pScalingCaps->supportedPresentGravityX = (VK_PRESENT_GRAVITY_MIN_BIT_EXT |
+												  VK_PRESENT_GRAVITY_MAX_BIT_EXT |
+												  VK_PRESENT_GRAVITY_CENTERED_BIT_EXT);
+		pScalingCaps->supportedPresentGravityY = (VK_PRESENT_GRAVITY_MIN_BIT_EXT |
+												  VK_PRESENT_GRAVITY_MAX_BIT_EXT |
+												  VK_PRESENT_GRAVITY_CENTERED_BIT_EXT);
+		pScalingCaps->minScaledImageExtent = surfCaps.minImageExtent;
+		pScalingCaps->maxScaledImageExtent = surfCaps.maxImageExtent;
+	}
 
-	pSurfaceCapabilities->currentExtent = surfExtnt;
-	pSurfaceCapabilities->minImageExtent = { 1, 1 };
-	pSurfaceCapabilities->maxImageExtent = { _properties.limits.maxImageDimension2D, _properties.limits.maxImageDimension2D };
-    pSurfaceCapabilities->maxImageArrayLayers = 1;
-	pSurfaceCapabilities->supportedTransforms = (VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR);
-	pSurfaceCapabilities->currentTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-    pSurfaceCapabilities->supportedCompositeAlpha = (VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR |
-                                                     VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR |
-                                                     VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR);
-	pSurfaceCapabilities->supportedUsageFlags = (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                                                 VK_IMAGE_USAGE_STORAGE_BIT |
-                                                 VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-												 VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-												 VK_IMAGE_USAGE_SAMPLED_BIT);
+
+	// Per spec, always include the queried present mode in returned compatibility results.
+	MVKSmallVector<VkPresentModeKHR> compatiblePresentModes;
+	if (presentMode != VK_PRESENT_MODE_MAX_ENUM_KHR) { compatiblePresentModes.push_back(presentMode); }
+
+	// Customize results based on the provided present mode.
+	switch (presentMode) {
+		case VK_PRESENT_MODE_FIFO_KHR:
+			// This could be dodgy, because Metal may not match the Vulkan spec's tight
+			// requirements for transitioning from FIFO to IMMEDIATE, because the change to
+			// IMMEDIATE may occur while some FIFO items are still on the GPU queue.
+			if (_metalFeatures.presentModeImmediate) {
+				compatiblePresentModes.push_back(VK_PRESENT_MODE_IMMEDIATE_KHR);
+			}
+			break;
+		case VK_PRESENT_MODE_IMMEDIATE_KHR:
+			compatiblePresentModes.push_back(VK_PRESENT_MODE_FIFO_KHR);
+			surfCaps.minImageCount = surfCaps.maxImageCount;	// Recommend always using max count to avoid visual tearing.
+			break;
+		case VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR:
+		case VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR:
+			// Although these are not advertised as supported, per spec, counts must be 1.
+			surfCaps.minImageCount = 1;
+			surfCaps.maxImageCount = 1;
+			break;
+
+		default:
+			break;
+	}
+
+	// If compatible present modes are requested, return them, otherwise return the count of them.
+	if (pCompatibility) {
+		if (pCompatibility->pPresentModes) {
+			pCompatibility->presentModeCount = min(pCompatibility->presentModeCount, (uint32_t)compatiblePresentModes.size());
+			for (uint32_t pmIdx = 0; pmIdx < pCompatibility->presentModeCount; pmIdx++) {
+				pCompatibility->pPresentModes[pmIdx] = compatiblePresentModes[pmIdx];
+			}
+		} else {
+			pCompatibility->presentModeCount = (uint32_t)compatiblePresentModes.size();
+		}
+	}
+
 	return VK_SUCCESS;
 }
 
@@ -1277,7 +1426,7 @@ VkResult MVKPhysicalDevice::getPresentRectangles(MVKSurface* surface,
 	*pRectCount = 1;
 
 	pRects[0].offset = { 0, 0 };
-	pRects[0].extent = mvkVkExtent2DFromCGSize(mtlLayer.naturalDrawableSizeMVK);
+	pRects[0].extent = mvkGetNaturalExtent(mtlLayer);
 
 	return VK_SUCCESS;
 }
@@ -1465,6 +1614,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	// Start with all Metal features cleared
 	mvkClear(&_metalFeatures);
 
+	_metalFeatures.hostMemoryPageSize = mvkGetHostMemoryPageSize();
+
 	_metalFeatures.maxPerStageBufferCount = 31;
     _metalFeatures.maxMTLBufferSize = (256 * MEBI);
     _metalFeatures.dynamicMTLBufferSize = 0;
@@ -1493,6 +1644,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			_metalFeatures.clearColorFloatRounding = MVK_FLOAT_ROUNDING_DOWN;
 			break;
 		case kAppleVendorId:
+			// TODO: Other GPUs?
+			_metalFeatures.needsSampleDrefLodArrayWorkaround = true;
+			// fallthrough
 		case kIntelVendorId:
 		case kNVVendorId:
 		default:
@@ -1822,9 +1976,17 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #endif
 
 #if (MVK_MACOS && !MVK_MACCAT) || (MVK_MACCAT && MVK_XCODE_14) || (MVK_IOS && MVK_XCODE_12)
+	// Both current and deprecated properties are retrieved and OR'd together, due to a
+	// Metal bug that, in some environments, returned true for one and false for the other.
+	bool bcProp1 = false;
+	bool bcProp2 = false;
 	if ( [_mtlDevice respondsToSelector: @selector(supportsShaderBarycentricCoordinates)] ) {
-		_metalFeatures.shaderBarycentricCoordinates = _mtlDevice.supportsShaderBarycentricCoordinates;
+		bcProp1 = _mtlDevice.supportsShaderBarycentricCoordinates;
 	}
+	if ( [_mtlDevice respondsToSelector: @selector(areBarycentricCoordsSupported)] ) {
+		bcProp2 = _mtlDevice.areBarycentricCoordsSupported;
+	}
+	_metalFeatures.shaderBarycentricCoordinates = bcProp1 || bcProp2;
 #endif
 
     if ( [_mtlDevice respondsToSelector: @selector(maxBufferLength)] ) {
@@ -2103,67 +2265,6 @@ void MVKPhysicalDevice::initFeatures() {
 
 }
 
-
-#pragma mark VkPhysicalDeviceFeatures - List of features available on the device
-
-//typedef struct VkPhysicalDeviceFeatures {
-//    VkBool32    robustBufferAccess;                           // done
-//    VkBool32    fullDrawIndexUint32;                          // done
-//    VkBool32    imageCubeArray;                               // done
-//    VkBool32    independentBlend;                             // done
-//    VkBool32    geometryShader;
-//    VkBool32    tessellationShader;                           // done
-//    VkBool32    sampleRateShading;                            // done
-//    VkBool32    dualSrcBlend;                                 // done
-//    VkBool32    logicOp;
-//    VkBool32    multiDrawIndirect;                            // done
-//    VkBool32    drawIndirectFirstInstance;                    // done
-//    VkBool32    depthClamp;                                   // done
-//    VkBool32    depthBiasClamp;                               // done
-//    VkBool32    fillModeNonSolid;                             // done
-//    VkBool32    depthBounds;
-//    VkBool32    wideLines;
-//    VkBool32    largePoints;                                  // done
-//    VkBool32    alphaToOne;                                   // done
-//    VkBool32    multiViewport;                                // done
-//    VkBool32    samplerAnisotropy;                            // done
-//    VkBool32    textureCompressionETC2;                       // done
-//    VkBool32    textureCompressionASTC_LDR;                   // done
-//    VkBool32    textureCompressionBC;                         // done
-//    VkBool32    occlusionQueryPrecise;                        // done
-//    VkBool32    pipelineStatisticsQuery;
-//    VkBool32    vertexPipelineStoresAndAtomics;               // done
-//    VkBool32    fragmentStoresAndAtomics;                     // done
-//    VkBool32    shaderTessellationAndGeometryPointSize;       // done
-//    VkBool32    shaderImageGatherExtended;                    // done
-//    VkBool32    shaderStorageImageExtendedFormats;            // done
-//    VkBool32    shaderStorageImageMultisample;
-//    VkBool32    shaderStorageImageReadWithoutFormat;          // done
-//    VkBool32    shaderStorageImageWriteWithoutFormat;         // done
-//    VkBool32    shaderUniformBufferArrayDynamicIndexing;      // done
-//    VkBool32    shaderSampledImageArrayDynamicIndexing;       // done
-//    VkBool32    shaderStorageBufferArrayDynamicIndexing;      // done
-//    VkBool32    shaderStorageImageArrayDynamicIndexing;       // done
-//    VkBool32    shaderClipDistance;                           // done
-//    VkBool32    shaderCullDistance;
-//    VkBool32    shaderFloat64;
-//    VkBool32    shaderInt64;                                  // done
-//    VkBool32    shaderInt16;                                  // done
-//    VkBool32    shaderResourceResidency;
-//    VkBool32    shaderResourceMinLod;                         // done
-//    VkBool32    sparseBinding;
-//    VkBool32    sparseResidencyBuffer;
-//    VkBool32    sparseResidencyImage2D;
-//    VkBool32    sparseResidencyImage3D;
-//    VkBool32    sparseResidency2Samples;
-//    VkBool32    sparseResidency4Samples;
-//    VkBool32    sparseResidency8Samples;
-//    VkBool32    sparseResidency16Samples;
-//    VkBool32    sparseResidencyAliased;
-//    VkBool32    variableMultisampleRate;
-//    VkBool32    inheritedQueries;                             // done
-//} VkPhysicalDeviceFeatures;
-
 // Initializes the physical device property limits.
 void MVKPhysicalDevice::initLimits() {
 
@@ -2238,6 +2339,11 @@ void MVKPhysicalDevice::initLimits() {
 	_properties.limits.maxDescriptorSetSampledImages = (_properties.limits.maxPerStageDescriptorSampledImages * 5);
 	_properties.limits.maxDescriptorSetStorageImages = (_properties.limits.maxPerStageDescriptorStorageImages * 5);
 	_properties.limits.maxDescriptorSetInputAttachments = (_properties.limits.maxPerStageDescriptorInputAttachments * 5);
+
+	_properties.limits.maxClipDistances = 8;	// Per Apple engineers.
+	_properties.limits.maxCullDistances = 0;	// unsupported
+	_properties.limits.maxCombinedClipAndCullDistances = max(_properties.limits.maxClipDistances,
+															 _properties.limits.maxCullDistances);  // If supported, these consume the same slots.
 
 	// Whether handled as a real texture buffer or a 2D texture, this value is likely nowhere near the size of a buffer,
 	// needs to fit in 32 bits, and some apps (I'm looking at you, CTS), assume it is low when doing 32-bit math.
@@ -2486,7 +2592,8 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.minTexelGatherOffset = _properties.limits.minTexelOffset;
     _properties.limits.maxTexelGatherOffset = _properties.limits.maxTexelOffset;
 
-    // Features with no specific limits - default to unlimited int values
+
+    // Features with no specific limits - default to effectively unlimited int values
 
     _properties.limits.maxMemoryAllocationCount = kMVKUndefinedLargeUInt32;
 	_properties.limits.maxSamplerAllocationCount = getMaxSamplerCount();
@@ -2496,17 +2603,12 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.maxComputeWorkGroupCount[1] = kMVKUndefinedLargeUInt32;
     _properties.limits.maxComputeWorkGroupCount[2] = kMVKUndefinedLargeUInt32;
 
-    _properties.limits.maxDrawIndexedIndexValue = numeric_limits<uint32_t>::max();	// Must be (2^32 - 1) to support fullDrawIndexUint32
+    _properties.limits.maxDrawIndexedIndexValue = numeric_limits<uint32_t>::max() - 1;	// Support both fullDrawIndexUint32 and automatic primitive restart.
     _properties.limits.maxDrawIndirectCount = kMVKUndefinedLargeUInt32;
-
-    _properties.limits.maxClipDistances = kMVKUndefinedLargeUInt32;
-	_properties.limits.maxCullDistances = 0;	// unsupported
-    _properties.limits.maxCombinedClipAndCullDistances = _properties.limits.maxClipDistances +
-														 _properties.limits.maxCullDistances;
 
 
     // Features with unknown limits - default to Vulkan required limits
-    
+
     _properties.limits.subPixelPrecisionBits = 4;
     _properties.limits.subTexelPrecisionBits = 4;
     _properties.limits.mipmapPrecisionBits = 4;
@@ -2622,127 +2724,6 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 }
 #endif	//MVK_IOS_OR_TVOS
 
-#pragma mark VkPhysicalDeviceLimits - List of feature limits available on the device
-
-//typedef struct VkPhysicalDeviceLimits {
-//	uint32_t                                    maxImageDimension1D;                                // done
-//	uint32_t                                    maxImageDimension2D;                                // done
-//	uint32_t                                    maxImageDimension3D;                                // done
-//	uint32_t                                    maxImageDimensionCube;                              // done
-//	uint32_t                                    maxImageArrayLayers;                                // done
-//	uint32_t                                    maxTexelBufferElements;                             // done
-//	uint32_t                                    maxUniformBufferRange;                              // done
-//	uint32_t                                    maxStorageBufferRange;                              // done
-//	uint32_t                                    maxPushConstantsSize;                               // done
-//	uint32_t                                    maxMemoryAllocationCount;                           // done
-//	uint32_t                                    maxSamplerAllocationCount;                          // done
-//	VkDeviceSize                                bufferImageGranularity;                             // done
-//	VkDeviceSize                                sparseAddressSpaceSize;                             // done
-//	uint32_t                                    maxBoundDescriptorSets;                             // done
-//	uint32_t                                    maxPerStageDescriptorSamplers;				        // done
-//	uint32_t                                    maxPerStageDescriptorUniformBuffers;		        // done
-//	uint32_t                                    maxPerStageDescriptorStorageBuffers;		        // done
-//	uint32_t                                    maxPerStageDescriptorSampledImages;			        // done
-//	uint32_t                                    maxPerStageDescriptorStorageImages;			        // done
-//	uint32_t                                    maxPerStageDescriptorInputAttachments;		        // done
-//	uint32_t                                    maxPerStageResources;                               // done
-//	uint32_t                                    maxDescriptorSetSamplers;					        // done
-//	uint32_t                                    maxDescriptorSetUniformBuffers;				        // done
-//	uint32_t                                    maxDescriptorSetUniformBuffersDynamic;		        // done
-//	uint32_t                                    maxDescriptorSetStorageBuffers;				        // done
-//	uint32_t                                    maxDescriptorSetStorageBuffersDynamic;		        // done
-//	uint32_t                                    maxDescriptorSetSampledImages;				        // done
-//	uint32_t                                    maxDescriptorSetStorageImages;				        // done
-//	uint32_t                                    maxDescriptorSetInputAttachments;                   // done
-//	uint32_t                                    maxVertexInputAttributes;                           // done
-//	uint32_t                                    maxVertexInputBindings;                             // done
-//	uint32_t                                    maxVertexInputAttributeOffset;                      // done
-//	uint32_t                                    maxVertexInputBindingStride;                        // done
-//	uint32_t                                    maxVertexOutputComponents;                          // done
-//	uint32_t                                    maxTessellationGenerationLevel;                     // done
-//	uint32_t                                    maxTessellationPatchSize;                           // done
-//	uint32_t                                    maxTessellationControlPerVertexInputComponents;     // done
-//	uint32_t                                    maxTessellationControlPerVertexOutputComponents;    // done
-//	uint32_t                                    maxTessellationControlPerPatchOutputComponents;     // done
-//	uint32_t                                    maxTessellationControlTotalOutputComponents;        // done
-//	uint32_t                                    maxTessellationEvaluationInputComponents;           // done
-//	uint32_t                                    maxTessellationEvaluationOutputComponents;          // done
-//	uint32_t                                    maxGeometryShaderInvocations;                       // done
-//	uint32_t                                    maxGeometryInputComponents;                         // done
-//	uint32_t                                    maxGeometryOutputComponents;                        // done
-//	uint32_t                                    maxGeometryOutputVertices;                          // done
-//	uint32_t                                    maxGeometryTotalOutputComponents;                   // done
-//	uint32_t                                    maxFragmentInputComponents;                         // done
-//	uint32_t                                    maxFragmentOutputAttachments;                       // done
-//	uint32_t                                    maxFragmentDualSrcAttachments;                      // done
-//	uint32_t                                    maxFragmentCombinedOutputResources;                 // done
-//	uint32_t                                    maxComputeSharedMemorySize;                         // done
-//	uint32_t                                    maxComputeWorkGroupCount[3];                        // done
-//	uint32_t                                    maxComputeWorkGroupInvocations;                     // done
-//	uint32_t                                    maxComputeWorkGroupSize[3];                         // done
-//	uint32_t                                    subPixelPrecisionBits;                              // done
-//	uint32_t                                    subTexelPrecisionBits;                              // done
-//	uint32_t                                    mipmapPrecisionBits;                                // done
-//	uint32_t                                    maxDrawIndexedIndexValue;                           // done
-//	uint32_t                                    maxDrawIndirectCount;                               // done
-//	float                                       maxSamplerLodBias;                                  // done
-//	float                                       maxSamplerAnisotropy;						        // done
-//	uint32_t                                    maxViewports;								        // done
-//	uint32_t                                    maxViewportDimensions[2];					        // done
-//	float                                       viewportBoundsRange[2];                             // done
-//	uint32_t                                    viewportSubPixelBits;                               // done
-//	size_t                                      minMemoryMapAlignment;						        // done
-//	VkDeviceSize                                minTexelBufferOffsetAlignment;				        // done
-//	VkDeviceSize                                minUniformBufferOffsetAlignment;			        // done
-//	VkDeviceSize                                minStorageBufferOffsetAlignment;			        // done
-//	int32_t                                     minTexelOffset;                                     // done
-//	uint32_t                                    maxTexelOffset;                                     // done
-//	int32_t                                     minTexelGatherOffset;                               // done
-//	uint32_t                                    maxTexelGatherOffset;                               // done
-//	float                                       minInterpolationOffset;                             // done
-//	float                                       maxInterpolationOffset;                             // done
-//	uint32_t                                    subPixelInterpolationOffsetBits;			        // done
-//	uint32_t                                    maxFramebufferWidth;						        // done
-//	uint32_t                                    maxFramebufferHeight;						        // done
-//	uint32_t                                    maxFramebufferLayers;						        // done
-//	VkSampleCountFlags                          framebufferColorSampleCounts;				        // done
-//	VkSampleCountFlags                          framebufferDepthSampleCounts;				        // done
-//	VkSampleCountFlags                          framebufferStencilSampleCounts;				        // done
-//	VkSampleCountFlags                          framebufferNoAttachmentsSampleCounts;		        // done
-//	uint32_t                                    maxColorAttachments;						        // done
-//	VkSampleCountFlags                          sampledImageColorSampleCounts;				        // done
-//	VkSampleCountFlags                          sampledImageIntegerSampleCounts;			        // done
-//	VkSampleCountFlags                          sampledImageDepthSampleCounts;				        // done
-//	VkSampleCountFlags                          sampledImageStencilSampleCounts;			        // done
-//	VkSampleCountFlags                          storageImageSampleCounts;					        // done
-//	uint32_t                                    maxSampleMaskWords;                                 // done
-//	VkBool32                                    timestampComputeAndGraphics;                        // done
-//	float                                       timestampPeriod;							        // done
-//	uint32_t                                    maxClipDistances;                                   // done
-//	uint32_t                                    maxCullDistances;                                   // done
-//	uint32_t                                    maxCombinedClipAndCullDistances;                    // done
-//	uint32_t                                    discreteQueuePriorities;                            // done
-//	float                                       pointSizeRange[2];                                  // done
-//	float                                       lineWidthRange[2];                                  // done
-//	float                                       pointSizeGranularity;                               // done
-//	float                                       lineWidthGranularity;                               // done
-//	VkBool32                                    strictLines;                                        // done
-//	VkBool32                                    standardSampleLocations;                            // done
-//	VkDeviceSize                                optimalBufferCopyOffsetAlignment;			        // done
-//	VkDeviceSize                                optimalBufferCopyRowPitchAlignment;			        // done
-//	VkDeviceSize                                nonCoherentAtomSize;                                // done
-//} VkPhysicalDeviceLimits;
-
-//typedef struct {
-//	VkBool32                                    residencyStandard2DBlockShape;
-//	VkBool32                                    residencyStandard2DMSBlockShape;
-//	VkBool32                                    residencyStandard3DBlockShape;
-//	VkBool32                                    residencyAlignedMipSize;
-//	VkBool32                                    residencyNonResident;
-//	VkBool32                                    residencyNonResidentStrict;
-//} VkPhysicalDeviceSparseProperties;
-
-
 void MVKPhysicalDevice::initPipelineCacheUUID() {
 
 	// Clear the UUID
@@ -2789,7 +2770,7 @@ uint32_t MVKPhysicalDevice::getHighestGPUCapability() {
 #if (MVK_IOS || MVK_MACOS) && MVK_XCODE_12
 	if (supportsMTLGPUFamily(Apple7)) { gpuFam = MTLGPUFamilyApple7; }
 #endif
-#if MVK_IOS && MVK_XCODE_13
+#if MVK_XCODE_14 || (MVK_IOS && MVK_XCODE_13)
 	if (supportsMTLGPUFamily(Apple8)) { gpuFam = MTLGPUFamilyApple8; }
 #endif
 
@@ -3029,6 +3010,12 @@ uint32_t MVKPhysicalDevice::getMaxSamplerCount() {
 
 void MVKPhysicalDevice::initExternalMemoryProperties() {
 
+	// Common
+	_hostPointerExternalMemoryProperties.externalMemoryFeatures = VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
+	_hostPointerExternalMemoryProperties.exportFromImportedHandleTypes = 0;
+	_hostPointerExternalMemoryProperties.compatibleHandleTypes = (VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT |
+																  VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT);
+
 	// Buffers
 	_mtlBufferExternalMemoryProperties.externalMemoryFeatures = (VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
 																 VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT);
@@ -3205,7 +3192,7 @@ void MVKPhysicalDevice::logGPUInfo() {
 	logMsg += "\n\tsupports the following Metal Versions, GPU's and Feature Sets:";
 	logMsg += "\n\t\tMetal Shading Language %s";
 
-#if MVK_IOS && MVK_XCODE_13
+#if MVK_XCODE_14 || (MVK_IOS && MVK_XCODE_13)
 	if (supportsMTLGPUFamily(Apple8)) { logMsg += "\n\t\tGPU Family Apple 8"; }
 #endif
 #if (MVK_IOS || MVK_MACOS) && MVK_XCODE_12
@@ -3505,6 +3492,23 @@ void MVKDevice::getPeerMemoryFeatures(uint32_t heapIndex, uint32_t localDevice, 
 	*pPeerMemoryFeatures = VK_PEER_MEMORY_FEATURE_COPY_SRC_BIT | VK_PEER_MEMORY_FEATURE_COPY_DST_BIT;
 }
 
+VkResult MVKDevice::getMemoryHostPointerProperties(VkExternalMemoryHandleTypeFlagBits handleType,
+												   const void* pHostPointer,
+												   VkMemoryHostPointerPropertiesEXT* pMemHostPtrProps) {
+	if (pMemHostPtrProps) {
+		switch (handleType) {
+			case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
+			case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT:
+				pMemHostPtrProps->memoryTypeBits = _physicalDevice->getHostVisibleMemoryTypes();
+				break;
+			default:
+				pMemHostPtrProps->memoryTypeBits = 0;
+				break;
+		}
+	}
+	return VK_SUCCESS;
+}
+
 
 #pragma mark Object lifecycle
 
@@ -3632,7 +3636,8 @@ MVKPresentableSwapchainImage* MVKDevice::createPresentableSwapchainImage(const V
 																		 MVKSwapchain* swapchain,
 																		 uint32_t swapchainIndex,
 																		 const VkAllocationCallbacks* pAllocator) {
-    MVKPresentableSwapchainImage* mvkImg = new MVKPresentableSwapchainImage(this, pCreateInfo, swapchain, swapchainIndex);
+	MVKPresentableSwapchainImage* mvkImg = new MVKPresentableSwapchainImage(this, pCreateInfo,
+																			swapchain, swapchainIndex);
     for (auto& memoryBinding : mvkImg->_memoryBindings) {
         addResource(memoryBinding);
     }
@@ -3783,10 +3788,16 @@ VkResult MVKDevice::createPipelines(VkPipelineCache pipelineCache,
                                     const PipelineInfoType* pCreateInfos,
                                     const VkAllocationCallbacks* pAllocator,
                                     VkPipeline* pPipelines) {
+	bool ignoreFurtherPipelines = false;
     VkResult rslt = VK_SUCCESS;
     MVKPipelineCache* mvkPLC = (MVKPipelineCache*)pipelineCache;
 
     for (uint32_t plIdx = 0; plIdx < count; plIdx++) {
+
+		// Ensure all slots are purposefully set.
+		pPipelines[plIdx] = VK_NULL_HANDLE;
+		if (ignoreFurtherPipelines) { continue; }
+
         const PipelineInfoType* pCreateInfo = &pCreateInfos[plIdx];
 
         // See if this pipeline has a parent. This can come either directly
@@ -3799,18 +3810,19 @@ VkResult MVKDevice::createPipelines(VkPipelineCache pipelineCache,
             parentPL = vkParentPL ? (MVKPipeline*)vkParentPL : VK_NULL_HANDLE;
         }
 
-        // Create the pipeline and if creation was successful, insert the new pipeline
-        // in the return array and add it to the pipeline cache (if the cache was specified).
-        // If creation was unsuccessful, insert NULL into the return array, change the
-        // result code of this function, and destroy the broken pipeline.
+        // Create the pipeline and if creation was successful, insert the new pipeline in the return array.
         MVKPipeline* mvkPL = new PipelineType(this, mvkPLC, parentPL, pCreateInfo);
         VkResult plRslt = mvkPL->getConfigurationResult();
         if (plRslt == VK_SUCCESS) {
             pPipelines[plIdx] = (VkPipeline)mvkPL;
         } else {
-            rslt = plRslt;
-            pPipelines[plIdx] = VK_NULL_HANDLE;
-            mvkPL->destroy();
+			// If creation was unsuccessful, destroy the broken pipeline, change the result
+			// code of this function, and if the VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT
+			// flag is set, don't build any further pipelines.
+			mvkPL->destroy();
+			if (rslt == VK_SUCCESS) { rslt = plRslt; }
+			ignoreFurtherPipelines = (_enabledPipelineCreationCacheControlFeatures.pipelineCreationCacheControl &&
+									  mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT));
         }
     }
 
@@ -4057,7 +4069,7 @@ void MVKDevice::logActivityPerformance(MVKPerformanceTracker& activity, MVKPerfo
 }
 
 void MVKDevice::logPerformanceSummary() {
-	if (_logActivityPerformanceInline) { return; }
+	if (_activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE) { return; }
 
 	// Get a copy to minimize time under lock
 	MVKPerformanceStatistics perfStats;
@@ -4071,6 +4083,8 @@ void MVKDevice::logPerformanceSummary() {
 	logActivityPerformance(perfStats.shaderCompilation.spirvToMSL, perfStats);
 	logActivityPerformance(perfStats.shaderCompilation.mslCompile, perfStats);
 	logActivityPerformance(perfStats.shaderCompilation.mslLoad, perfStats);
+	logActivityPerformance(perfStats.shaderCompilation.mslCompress, perfStats);
+	logActivityPerformance(perfStats.shaderCompilation.mslDecompress, perfStats);
 	logActivityPerformance(perfStats.shaderCompilation.shaderLibraryFromCache, perfStats);
 	logActivityPerformance(perfStats.shaderCompilation.functionRetrieval, perfStats);
 	logActivityPerformance(perfStats.shaderCompilation.functionSpecialization, perfStats);
@@ -4085,6 +4099,8 @@ const char* MVKDevice::getActivityPerformanceDescription(MVKPerformanceTracker& 
 	if (&activity == &perfStats.shaderCompilation.spirvToMSL) { return "Convert SPIR-V to MSL source code"; }
 	if (&activity == &perfStats.shaderCompilation.mslCompile) { return "Compile MSL source code into a MTLLibrary"; }
 	if (&activity == &perfStats.shaderCompilation.mslLoad) { return "Load pre-compiled MSL code into a MTLLibrary"; }
+	if (&activity == &perfStats.shaderCompilation.mslCompress) { return "Compress MSL source code after compiling a MTLLibrary"; }
+	if (&activity == &perfStats.shaderCompilation.mslDecompress) { return "Decompress MSL source code during pipeline cache write"; }
 	if (&activity == &perfStats.shaderCompilation.shaderLibraryFromCache) { return "Retrieve shader library from the cache"; }
 	if (&activity == &perfStats.shaderCompilation.functionRetrieval) { return "Retrieve a MTLFunction from a MTLLibrary"; }
 	if (&activity == &perfStats.shaderCompilation.functionSpecialization) { return "Specialize a retrieved MTLFunction"; }
@@ -4255,10 +4271,11 @@ id<MTLBuffer> MVKDevice::getDummyBlitMTLBuffer() {
 	return _dummyBlitMTLBuffer;
 }
 
-MTLCompileOptions* MVKDevice::getMTLCompileOptions(bool useFastMath, bool preserveInvariance) {
+MTLCompileOptions* MVKDevice::getMTLCompileOptions(bool requestFastMath, bool preserveInvariance) {
 	MTLCompileOptions* mtlCompOpt = [MTLCompileOptions new];
 	mtlCompOpt.languageVersion = _pMetalFeatures->mslVersionEnum;
-	mtlCompOpt.fastMathEnabled = useFastMath && mvkConfig().fastMathEnabled;
+	mtlCompOpt.fastMathEnabled = (mvkConfig().fastMathEnabled == MVK_CONFIG_FAST_MATH_ALWAYS ||
+								  (mvkConfig().fastMathEnabled == MVK_CONFIG_FAST_MATH_ON_DEMAND && requestFastMath));
 #if MVK_XCODE_12
 	if ([mtlCompOpt respondsToSelector: @selector(setPreserveInvariance:)]) {
 		[mtlCompOpt setPreserveInvariance: preserveInvariance];
@@ -4433,29 +4450,25 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 void MVKDevice::initPerformanceTracking() {
 
 	_isPerformanceTracking = mvkConfig().performanceTracking;
-	_logActivityPerformanceInline = mvkConfig().logActivityPerformanceInline;
+	_activityPerformanceLoggingStyle = mvkConfig().activityPerformanceLoggingStyle;
 
-	MVKPerformanceTracker initPerf;
-    initPerf.count = 0;
-    initPerf.averageDuration = 0.0;
-    initPerf.minimumDuration = 0.0;
-    initPerf.maximumDuration = 0.0;
-
-	_performanceStatistics.shaderCompilation.hashShaderCode = initPerf;
-    _performanceStatistics.shaderCompilation.spirvToMSL = initPerf;
-    _performanceStatistics.shaderCompilation.mslCompile = initPerf;
-    _performanceStatistics.shaderCompilation.mslLoad = initPerf;
-	_performanceStatistics.shaderCompilation.shaderLibraryFromCache = initPerf;
-    _performanceStatistics.shaderCompilation.functionRetrieval = initPerf;
-    _performanceStatistics.shaderCompilation.functionSpecialization = initPerf;
-    _performanceStatistics.shaderCompilation.pipelineCompile = initPerf;
-	_performanceStatistics.pipelineCache.sizePipelineCache = initPerf;
-	_performanceStatistics.pipelineCache.writePipelineCache = initPerf;
-	_performanceStatistics.pipelineCache.readPipelineCache = initPerf;
-	_performanceStatistics.queue.mtlQueueAccess = initPerf;
-	_performanceStatistics.queue.mtlCommandBufferCompletion = initPerf;
-	_performanceStatistics.queue.nextCAMetalDrawable = initPerf;
-	_performanceStatistics.queue.frameInterval = initPerf;
+	_performanceStatistics.shaderCompilation.hashShaderCode = {};
+    _performanceStatistics.shaderCompilation.spirvToMSL = {};
+    _performanceStatistics.shaderCompilation.mslCompile = {};
+    _performanceStatistics.shaderCompilation.mslLoad = {};
+	_performanceStatistics.shaderCompilation.mslCompress = {};
+	_performanceStatistics.shaderCompilation.mslDecompress = {};
+	_performanceStatistics.shaderCompilation.shaderLibraryFromCache = {};
+    _performanceStatistics.shaderCompilation.functionRetrieval = {};
+    _performanceStatistics.shaderCompilation.functionSpecialization = {};
+    _performanceStatistics.shaderCompilation.pipelineCompile = {};
+	_performanceStatistics.pipelineCache.sizePipelineCache = {};
+	_performanceStatistics.pipelineCache.writePipelineCache = {};
+	_performanceStatistics.pipelineCache.readPipelineCache = {};
+	_performanceStatistics.queue.mtlQueueAccess = {};
+	_performanceStatistics.queue.mtlCommandBufferCompletion = {};
+	_performanceStatistics.queue.nextCAMetalDrawable = {};
+	_performanceStatistics.queue.frameInterval = {};
 }
 
 void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {
@@ -4722,9 +4735,15 @@ void MVKDevice::reservePrivateData(const VkDeviceCreateInfo* pCreateInfo) {
 }
 
 MVKDevice::~MVKDevice() {
+	if (_activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_DEVICE_LIFETIME) {
+		MVKLogInfo("Device activity performance summary:");
+		logPerformanceSummary();
+	}
+
 	for (auto& queues : _queuesByQueueFamilyIndex) {
 		mvkDestroyContainerContents(queues);
 	}
+
 	if (_commandResourceFactory) { _commandResourceFactory->destroy(); }
 
     [_globalVisibilityResultMTLBuffer release];

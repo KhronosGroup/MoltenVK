@@ -1,7 +1,7 @@
 /*
  * mvk_datatypes.h
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -416,21 +416,14 @@ MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFlags vkAccess);
 #pragma mark -
 #pragma mark Geometry conversions
 
-/** Returns a VkExtent2D that corresponds to the specified CGSize. */
-static inline VkExtent2D mvkVkExtent2DFromCGSize(CGSize cgSize) {
-	VkExtent2D vkExt;
-	vkExt.width = cgSize.width;
-	vkExt.height = cgSize.height;
-	return vkExt;
-}
+/**
+ * Returns a VkExtent2D that corresponds to the specified CGSize.
+ * Rounds to nearest integer using half-to-even rounding.
+ */
+VkExtent2D mvkVkExtent2DFromCGSize(CGSize cgSize);
 
 /** Returns a CGSize that corresponds to the specified VkExtent2D. */
-static inline CGSize mvkCGSizeFromVkExtent2D(VkExtent2D vkExtent) {
-	CGSize cgSize;
-	cgSize.width = vkExtent.width;
-	cgSize.height = vkExtent.height;
-	return cgSize;
-}
+CGSize mvkCGSizeFromVkExtent2D(VkExtent2D vkExtent);
 
 /** Returns a Metal MTLOrigin constructed from a VkOffset3D. */
 static inline MTLOrigin mvkMTLOriginFromVkOffset3D(VkOffset3D vkOffset) {

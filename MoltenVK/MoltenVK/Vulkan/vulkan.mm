@@ -1,7 +1,7 @@
 /*
  * vulkan.mm
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,34 +50,58 @@
 
 // Optionally log start of function calls to stderr
 static inline uint64_t MVKTraceVulkanCallStartImpl(const char* funcName) {
-	MVKConfigTraceVulkanCalls traceLvl = mvkConfig().traceVulkanCalls;
 
-	if (traceLvl == MVK_CONFIG_TRACE_VULKAN_CALLS_NONE ||
-		traceLvl > MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION) { return 0; }
+	bool includeThread = false;
+	bool includeExit = false;
+	bool includeDuration = false;
 
-	uint64_t gtid, mtid;
-	const uint32_t kThreadNameBuffSize = 256;
-	char threadName[kThreadNameBuffSize];
-	pthread_t tid = pthread_self();
-	mtid = pthread_mach_thread_np(tid);		// Mach thread ID
-	pthread_threadid_np(tid, &gtid);		// Global system-wide thead ID
-	pthread_getname_np(tid, threadName, kThreadNameBuffSize);
+	switch (mvkConfig().traceVulkanCalls) {
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION:
+			includeDuration = true;		// fallthrough
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT:
+			includeExit = true;			// fallthrough
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER:
+			break;
 
-	fprintf(stderr, "[mvk-trace] %s()%s [%llu/%llu/%s]\n",
-			funcName, (traceLvl >= MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT) ? " {" : "",
-			mtid, gtid, threadName);
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION_THREAD_ID:
+			includeDuration = true;		// fallthrough
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT_THREAD_ID:
+			includeExit = true;			// fallthrough
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_THREAD_ID:
+			includeThread = true;		// fallthrough
+			break;
 
-	return (traceLvl == MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION) ? mvkGetTimestamp() : 0;
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_NONE:
+		default:
+			return 0;
+	}
+
+	if (includeThread) {
+		uint64_t gtid, mtid;
+		const uint32_t kThreadNameBuffSize = 256;
+		char threadName[kThreadNameBuffSize];
+		pthread_t tid = pthread_self();
+		mtid = pthread_mach_thread_np(tid);		// Mach thread ID
+		pthread_threadid_np(tid, &gtid);		// Global system-wide thead ID
+		pthread_getname_np(tid, threadName, kThreadNameBuffSize);
+		fprintf(stderr, "[mvk-trace] %s()%s [%llu/%llu/%s]\n", funcName, includeExit ? " {" : "", mtid, gtid, threadName);
+	} else {
+		fprintf(stderr, "[mvk-trace] %s()%s\n", funcName, includeExit ? " {" : "");
+	}
+
+	return includeDuration ? mvkGetTimestamp() : 0;
 }
 
 // Optionally log end of function calls and timings to stderr
 static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t startTime) {
 	switch(mvkConfig().traceVulkanCalls) {
-		case MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION:
-			fprintf(stderr, "[mvk-trace] } %s [%.4f ms]\n", funcName, mvkGetElapsedMilliseconds(startTime));
-			break;
 		case MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT:
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT_THREAD_ID:
 			fprintf(stderr, "[mvk-trace] } %s\n", funcName);
+			break;
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION:
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION_THREAD_ID:
+			fprintf(stderr, "[mvk-trace] } %s [%.4f ms]\n", funcName, mvkGetElapsedMilliseconds(startTime));
 			break;
 		default:
 			break;
@@ -284,17 +308,18 @@ MVK_PUBLIC_VULKAN_SYMBOL PFN_vkVoidFunction vkGetInstanceProcAddr(
     VkInstance                                  instance,
     const char*                                 pName) {
 
-	MVKTraceVulkanCallStart();
-
 	// Handle the special platform functions where the instance parameter may be NULL.
 	PFN_vkVoidFunction func = nullptr;
-	if (strcmp(pName, "vkCreateInstance") == 0) {
+	MVKTraceVulkanCallStart();
+	if (mvkStringsAreEqual(pName, "vkGetInstanceProcAddr")) {
+		func = (PFN_vkVoidFunction)vkGetInstanceProcAddr;
+	} else if (mvkStringsAreEqual(pName, "vkCreateInstance")) {
 		func = (PFN_vkVoidFunction)vkCreateInstance;
-	} else if (strcmp(pName, "vkEnumerateInstanceExtensionProperties") == 0) {
+	} else if (mvkStringsAreEqual(pName, "vkEnumerateInstanceExtensionProperties")) {
 		func = (PFN_vkVoidFunction)vkEnumerateInstanceExtensionProperties;
-	} else if (strcmp(pName, "vkEnumerateInstanceLayerProperties") == 0) {
+	} else if (mvkStringsAreEqual(pName, "vkEnumerateInstanceLayerProperties")) {
 		func = (PFN_vkVoidFunction)vkEnumerateInstanceLayerProperties;
-	} else if (strcmp(pName, "vkEnumerateInstanceVersion") == 0) {
+	} else if (mvkStringsAreEqual(pName, "vkEnumerateInstanceVersion")) {
 		func = (PFN_vkVoidFunction)vkEnumerateInstanceVersion;
 	} else if (instance) {
 		MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
@@ -467,8 +492,16 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkMapMemory(
    void**                                      ppData) {
 
 	MVKTraceVulkanCallStart();
+	VkMemoryMapInfoKHR mapInfo = {};
+	mapInfo.sType = VK_STRUCTURE_TYPE_MEMORY_MAP_INFO_KHR;
+	mapInfo.pNext = nullptr;
+	mapInfo.flags = flags;
+	mapInfo.memory = mem;
+	mapInfo.offset = offset;
+	mapInfo.size = size;
+
 	MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)mem;
-	VkResult rslt = mvkMem->map(offset, size, flags, ppData);
+	VkResult rslt = mvkMem->map(&mapInfo, ppData);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -478,8 +511,13 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkUnmapMemory(
     VkDeviceMemory                              mem) {
 	
 	MVKTraceVulkanCallStart();
+	VkMemoryUnmapInfoKHR unmapInfo = {};
+	unmapInfo.sType = VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO_KHR;
+	unmapInfo.pNext = nullptr;
+	unmapInfo.flags = 0;
+	unmapInfo.memory = mem;
 	MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)mem;
-	mvkMem->unmap();
+	mvkMem->unmap(&unmapInfo);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2703,6 +2741,33 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetDescriptorSetLayoutSupport, KHR);
 
 
 #pragma mark -
+#pragma mark VK_KHR_map_memory2 extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkMapMemory2KHR(
+    VkDevice device,
+    const VkMemoryMapInfoKHR* pMemoryMapInfo,
+    void** ppData) {
+	
+    MVKTraceVulkanCallStart();
+    MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMemoryMapInfo->memory;
+    VkResult rslt = mvkMem->map(pMemoryMapInfo, ppData);
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkUnmapMemory2KHR(
+    VkDevice device,
+    const VkMemoryUnmapInfoKHR* pMemoryUnmapInfo) {
+
+    MVKTraceVulkanCallStart();
+    MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMemoryUnmapInfo->memory;
+    VkResult rslt = mvkMem->unmap(pMemoryUnmapInfo);
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
+
+
+#pragma mark -
 #pragma mark VK_KHR_push_descriptor extension
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSetKHR(
@@ -2794,7 +2859,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkAcquireNextImageKHR(
 
 	MVKTraceVulkanCallStart();
     MVKSwapchain* mvkSwapchain = (MVKSwapchain*)swapchain;
-    VkResult rslt = mvkSwapchain->acquireNextImageKHR(timeout, semaphore, fence, ~0u, pImageIndex);
+    VkResult rslt = mvkSwapchain->acquireNextImage(timeout, semaphore, fence, ~0u, pImageIndex);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -2855,11 +2920,25 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkAcquireNextImage2KHR(
 
 	MVKTraceVulkanCallStart();
 	MVKSwapchain* mvkSwapchain = (MVKSwapchain*)pAcquireInfo->swapchain;
-	VkResult rslt = mvkSwapchain->acquireNextImageKHR(pAcquireInfo->timeout,
-													  pAcquireInfo->semaphore,
-													  pAcquireInfo->fence,
-													  pAcquireInfo->deviceMask,
-													  pImageIndex);
+	VkResult rslt = mvkSwapchain->acquireNextImage(pAcquireInfo->timeout,
+												   pAcquireInfo->semaphore,
+												   pAcquireInfo->fence,
+												   pAcquireInfo->deviceMask,
+												   pImageIndex);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+#pragma mark -
+#pragma mark VK_EXT_swapchain_maintenance1 extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkReleaseSwapchainImagesEXT(
+	VkDevice                                    device,
+	const VkReleaseSwapchainImagesInfoEXT*      pReleaseInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKSwapchain* mvkSwapchain = (MVKSwapchain*)pReleaseInfo->swapchain;
+	VkResult rslt = mvkSwapchain->releaseImages(pReleaseInfo);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -2900,8 +2979,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
 
 	MVKTraceVulkanCallStart();
     MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-    MVKSurface* mvkSrfc = (MVKSurface*)surface;
-    VkResult rslt = mvkPD->getSurfaceCapabilities(mvkSrfc, pSurfaceCapabilities);
+    VkResult rslt = mvkPD->getSurfaceCapabilities(surface, pSurfaceCapabilities);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -2945,8 +3023,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceSurfaceCapabilities2KHR(
 
 	MVKTraceVulkanCallStart();
 	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-	MVKSurface* mvkSrfc = (MVKSurface*)pSurfaceInfo->surface;
-	VkResult rslt = mvkPD->getSurfaceCapabilities(mvkSrfc, &pSurfaceCapabilities->surfaceCapabilities);
+	VkResult rslt = mvkPD->getSurfaceCapabilities(pSurfaceInfo, pSurfaceCapabilities);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -3192,6 +3269,23 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkSubmitDebugUtilsMessageEXT(
 
 
 #pragma mark -
+#pragma mark VK_EXT_external_memory_host extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMemoryHostPointerPropertiesEXT(
+	VkDevice                                    device,
+	VkExternalMemoryHandleTypeFlagBits          handleType,
+	const void*                                 pHostPointer,
+	VkMemoryHostPointerPropertiesEXT*           pMemoryHostPointerProperties) {
+
+	MVKTraceVulkanCallStart();
+	MVKDevice* mvkDvc = MVKDevice::getMVKDevice(device);
+	VkResult rslt = mvkDvc->getMemoryHostPointerProperties(handleType, pHostPointer, pMemoryHostPointerProperties);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+
+#pragma mark -
 #pragma mark VK_EXT_hdr_metadata extension
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkSetHdrMetadataEXT(
@@ -3419,9 +3513,9 @@ MVK_PUBLIC_SYMBOL PFN_vkVoidFunction vk_icdGetInstanceProcAddr(
 	MVKTraceVulkanCallStart();
 
 	PFN_vkVoidFunction func = nullptr;
-	if (strcmp(pName, "vk_icdNegotiateLoaderICDInterfaceVersion") == 0) {
+	if (mvkStringsAreEqual(pName, "vk_icdNegotiateLoaderICDInterfaceVersion")) {
 		func = (PFN_vkVoidFunction)vk_icdNegotiateLoaderICDInterfaceVersion;
-	} else if (strcmp(pName, "vk_icdGetPhysicalDeviceProcAddr") == 0) {
+	} else if (mvkStringsAreEqual(pName, "vk_icdGetPhysicalDeviceProcAddr")) {
 		func = (PFN_vkVoidFunction)vk_icdGetPhysicalDeviceProcAddr;
 	} else {
 		func = vkGetInstanceProcAddr(instance, pName);

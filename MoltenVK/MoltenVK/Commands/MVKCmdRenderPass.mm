@@ -1,7 +1,7 @@
 /*
  * MVKCmdRenderPass.mm
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,6 +61,8 @@ VkResult MVKCmdBeginRenderPassBase::setContent(MVKCommandBuffer* cmdBuff,
 		}
 	}
 
+	cmdBuff->_currentSubpassInfo.beginRenderpass(_renderPass);
+
 	return VK_SUCCESS;
 }
 
@@ -84,7 +86,6 @@ VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N_CV, size_t N_A>
 void MVKCmdBeginRenderPass<N_CV, N_A>::encode(MVKCommandEncoder* cmdEncoder) {
-//	MVKLogDebug("Encoding vkCmdBeginRenderPass(). Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
 
 	// Convert the sample position array of arrays to an array of array-references,
 	// so that it can be passed to the command encoder.
@@ -127,6 +128,8 @@ VkResult MVKCmdNextSubpass::setContent(MVKCommandBuffer* cmdBuff,
 									   VkSubpassContents contents) {
 	_contents = contents;
 
+	cmdBuff->_currentSubpassInfo.nextSubpass();
+
 	return VK_SUCCESS;
 }
 
@@ -137,10 +140,7 @@ VkResult MVKCmdNextSubpass::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdNextSubpass::encode(MVKCommandEncoder* cmdEncoder) {
-	if (cmdEncoder->getMultiviewPassIndex() + 1 < cmdEncoder->getSubpass()->getMultiviewMetalPassCount())
-		cmdEncoder->beginNextMultiviewPass();
-	else
-		cmdEncoder->beginNextSubpass(this, _contents);
+	cmdEncoder->beginNextSubpass(this, _contents);
 }
 
 
@@ -148,20 +148,17 @@ void MVKCmdNextSubpass::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdEndRenderPass
 
 VkResult MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff) {
+	cmdBuff->_currentSubpassInfo = {};
 	return VK_SUCCESS;
 }
 
 VkResult MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff,
 										 const VkSubpassEndInfo* pEndSubpassInfo) {
-	return VK_SUCCESS;
+	return setContent(cmdBuff);
 }
 
 void MVKCmdEndRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
-//	MVKLogDebug("Encoding vkCmdEndRenderPass(). Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
-	if (cmdEncoder->getMultiviewPassIndex() + 1 < cmdEncoder->getSubpass()->getMultiviewMetalPassCount())
-		cmdEncoder->beginNextMultiviewPass();
-	else
-		cmdEncoder->endRenderpass();
+	cmdEncoder->endRenderpass();
 }
 
 
@@ -186,6 +183,8 @@ VkResult MVKCmdBeginRendering<N>::setContent(MVKCommandBuffer* cmdBuff,
 		_renderingInfo.pStencilAttachment = &_stencilAttachment;
 	}
 
+	cmdBuff->_currentSubpassInfo.beginRendering(pRenderingInfo->viewMask);
+
 	return VK_SUCCESS;
 }
 
@@ -204,6 +203,7 @@ template class MVKCmdBeginRendering<8>;
 #pragma mark MVKCmdEndRendering
 
 VkResult MVKCmdEndRendering::setContent(MVKCommandBuffer* cmdBuff) {
+	cmdBuff->_currentSubpassInfo = {};
 	return VK_SUCCESS;
 }
 

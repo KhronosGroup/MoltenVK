@@ -1,7 +1,7 @@
 /*
  * MVKQueue.h
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -189,6 +189,8 @@ public:
 protected:
 	friend class MVKQueue;
 
+	virtual void finish() = 0;
+
 	MVKQueue* _queue;
 	MVKSmallVector<std::pair<MVKSemaphore*, uint64_t>> _waitSemaphores;
 };
@@ -197,7 +199,10 @@ protected:
 #pragma mark -
 #pragma mark MVKQueueCommandBufferSubmission
 
-/** Submits the commands in a set of command buffers to the queue. */
+/**
+ * Submits an empty set of command buffers to the queue.
+ * Used for fence-only command submissions.
+ */
 class MVKQueueCommandBufferSubmission : public MVKQueueSubmission {
 
 public:
@@ -213,9 +218,10 @@ protected:
 	id<MTLCommandBuffer> getActiveMTLCommandBuffer();
 	void setActiveMTLCommandBuffer(id<MTLCommandBuffer> mtlCmdBuff);
 	void commitActiveMTLCommandBuffer(bool signalCompletion = false);
-	virtual void finish();
+	void finish() override;
 	virtual void submitCommandBuffers() {}
 
+	MVKCommandEncodingContext _encodingContext;
 	MVKSmallVector<std::pair<MVKSemaphore*, uint64_t>> _signalSemaphores;
 	MVKFence* _fence;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
@@ -270,8 +276,8 @@ public:
 									 const VkPresentInfoKHR* pPresentInfo);
 
 protected:
-	void stopAutoGPUCapture();
+	void finish() override;
 
-	MVKSmallVector<MVKPresentTimingInfo, 4> _presentInfo;
+	MVKSmallVector<MVKImagePresentInfo, 4> _presentInfo;
 };
 

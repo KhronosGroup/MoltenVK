@@ -6,24 +6,124 @@
 
 # What's New in MoltenVK
 
-Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
+Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 [comment]: # "This document is written in Markdown (http://en.wikipedia.org/wiki/Markdown) format."
 [comment]: # "For best results, use a Markdown reader."
 
 
 
+MoltenVK 1.2.3
+--------------
+
+Released 2023/03/22
+
+- Add support for extensions:
+	- `VK_EXT_external_memory_host`
+	- `VK_EXT_pipeline_creation_cache_control`
+	- `VK_EXT_shader_atomic_float`
+	- `VK_EXT_surface_maintenance1`
+	- `VK_EXT_swapchain_maintenance1`
+- Fix crash when `VkCommandBufferInheritanceInfo::renderPass` is `VK_NULL_HANDLE` during dynamic rendering.
+- Do not clear attachments when dynamic rendering is resumed.
+- Allow ending dynamic rendering to trigger next multiview pass if needed.
+- Fix premature caching of occlusion query results during tessellation rendering.
+- `vkCmdCopyQueryPoolResults()`: Fix loss of queries when query count is not a multiple of GPU threadgroup execution width.
+- Disable occlusion recording while clearing attachments or render area.
+- Fix issue where extension `VK_KHR_fragment_shader_barycentric` was sometimes incorrectly disabled due to a Metal driver bug.
+- Detect when size of surface has changed under the covers.
+- Change rounding of surface size provided by Metal from truncation to rounding-with-half-to-even.
+- Queue submissions retain wait semaphores until `MTLCommandBuffer` finishes.
+- Use a different visibility buffer for each `MTLCommandBuffer` in a queue submit.
+- Work around problems with using explicit LoD with arrayed depth images on Apple Silicon.
+- Fix issue when `VkPipelineVertexInputDivisorStateCreateInfoEXT::vertexBindingDivisorCount` 
+  doesn't match `VkPipelineVertexInputStateCreateInfo::vertexBindingDescriptionCount`.
+- Support Apple Silicon pixel formats on a MoltenVK `x86_64` build that is running on Apple Silicon using Rosetta2.
+- Reduce memory footprint of MSL source code retained in pipeline cache.
+- Add `MVKConfiguration::shaderSourceCompressionAlgorithm` and 
+  env var `MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM` to support 
+  compressing MSL shader source code held in a pipeline cache.
+- Add `MVKShaderCompilationPerformance::mslCompress` and `mslDecompress`
+  to allow performance of MSL compression to be tracked and queried.
+- Add support for logging performance stats accumulated in a `VkDevice`, when it is destroyed.
+- Change `MVKConfiguration::logActivityPerformanceInline` boolean to `activityPerformanceLoggingStyle` enumeration value.
+- Add `MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE` environment variable and 
+  build setting to set `MVKConfiguration::activityPerformanceLoggingStyle` value.
+- Expand `MVK_CONFIG_TRACE_VULKAN_CALLS` to log thread ID only if requested.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version `37`.
+- Update dependency libraries to match _Vulkan SDK 1.3.243_.
+- Update to latest SPIRV-Cross:
+  - MSL: Add support for `OpAtomicFAddEXT` atomic add on float types
+  - MSL: Add a workaround for broken `level()` arguments.
+  - MSL: Deduplicate function constants.
+
+
+
+MoltenVK 1.2.2
+--------------
+
+Released 2023/01/23
+
+- Fix Metal validation error caused by `CAMetalDrawable` released before 
+  `MTLCommandBuffer` is finished using it.
+- Fix memory leak of `MVKFences` and `MVKSemaphores` when 
+  a swapchain image is acquired more than it is presented.
+- Fix issue where fragment shader was not run when no render attachment is available.
+- Ensure Vulkan public symbols are not stripped from the library when 
+  statically linked to an app that calls all Vulkan functions dynamically.
+- Per Vulkan 1.2 spec, support calling `vkGetInstanceProcAddr()` with a 
+  null instance, when `vkGetInstanceProcAddr` itself is the function name.
+- Update `VkPhysicalDeviceLimits` members `maxClipDistances` and 
+  `maxCombinedClipAndCullDistances` to more accurate values.
+- Update `VkPhysicalDeviceLimits::maxDrawIndexedIndexValue` to 
+  acknowledge automatic primitive restart.
+- Update copyright notices to year 2023.
+- Update dependency libraries to match _Vulkan SDK 1.3.239_.
+- Update to latest SPIRV-Cross:
+  - MSL: Add support for writable images in iOS Tier2 argument buffers.
+  - MSL: Fix potentially uninitialized warnings.
+
+
+
 MoltenVK 1.2.1
 --------------
 
-Released TBD
+Released 2022/12/08
 
+- Add support for extensions:
+	- `VK_KHR_copy_commands2`
 - Fix crash on descriptor update with out-of-bounds descriptor count data.
+- Fix Metal buffer index binding overrides for push constants and attachment clearing.
+- Fix crash when buffer binding updates only offset while it is overridden.
+- Fix app performance regression triggered by the previous introduction of `VK_KHR_shader_float_controls`.
 - Work around `MTLCounterSet` crash on additional Intel Iris Plus Graphics devices.
 - Fix mistaken YCBCR format support indication.
+- Fix invalid blit offsets.
+- Wait on emulated semaphores only once to prevent freezing when using prefilled command buffers.
+- `MVKPipeline`: Stop using vertex-style input for tessellation evaluation shaders.
+- `MVKPipeline`: Force extra checks for stores after fragment discard.
+- `MVKImage`: Always use a texel buffer for atomic storage images.
+- `MVKDevice`: Fix backwards attribution of storage/uniform texel buffer alignments.
 - Document new linkage model used by *Xcode 14* and later, and how to link **MoltenVK**
   to an app or game using *Xcode 13* or earlier.
 - Support *Xcode 14.1* build settings.
+- Upgrade GitHub CI to use *Xcode 14.1* on *macOS 12*.
+- Update dependency libraries to match _Vulkan SDK 1.3.236_.
+- Update to latest SPIRV-Cross:
+  - MSL: Implement `CompositeInsert` `OpSpecConstantOp`.
+  - MSL: Support "raw" buffer input in tessellation evaluation shaders.
+  - MSL: Don't flatten arrayed per-patch output blocks in tessellation shaders.
+  - MSL: Account for composite types when assigning locations.
+  - MSL: Handle partial access chains with array-of-UBO/SSBO.
+  - MSL: Fix restrict vs __restrict incompatibility.
+  - MSL: Handle implicit integer promotion rules.
+  - MSL: Manually update `BuiltInHelperInvocation` when a fragment is discarded.
+  - MSL: Add missing casts to `Op?MulExtended`.
+  - MSL: Prevent stores to storage resources in discarded fragments.
+  - MSL: Don't dereference forwarded copies of `OpVariable` pointers.
+  - MSL: Refactor member reference in terms of one boolean.
+  - Fix MSL Access Chain.
+
 
 
 MoltenVK 1.2.0

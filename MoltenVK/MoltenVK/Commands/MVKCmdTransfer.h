@@ -1,7 +1,7 @@
 /*
  * MVKCmdTransfer.h
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -263,7 +263,8 @@ public:
 						uint32_t attachmentCount,
 						const VkClearAttachment* pAttachments,
 						uint32_t rectCount,
-						const VkClearRect* pRects);
+						const VkClearRect* pRects,
+						MVKCommandUse cmdUse = kMVKCommandUseClearAttachments);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -276,13 +277,15 @@ protected:
 							  float attWidth, float attHeight);
 	virtual VkClearValue& getClearValue(uint32_t attIdx) = 0;
 	virtual void setClearValue(uint32_t attIdx, const VkClearValue& clearValue) = 0;
+	NSString* getMTLDebugGroupLabel();
 
 	MVKSmallVector<VkClearRect, N> _clearRects;
     MVKRPSKeyClearAtt _rpsKey;
+	float _mtlDepthVal;
+	uint32_t _mtlStencilValue;
+	MVKCommandUse _commandUse;
 	bool _isClearingDepth;
 	bool _isClearingStencil;
-	float _mtlDepthVal;
-    uint32_t _mtlStencilValue;
 };
 
 

@@ -1,7 +1,7 @@
 /*
  * MVKCommandBuffer.h
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,6 +66,24 @@ private:
 
 
 #pragma mark -
+#pragma mark MVKCurrentSubpassInfo
+
+/** Tracks current render subpass information. */
+typedef struct MVKCurrentSubpassInfo {
+	MVKRenderPass* renderpass;
+	uint32_t subpassIndex;
+	uint32_t subpassViewMask;
+
+	void beginRenderpass(MVKRenderPass* rp);
+	void nextSubpass();
+	void beginRendering(uint32_t viewMask);
+
+private:
+	void updateViewMask();
+} MVKCurrentSubpassInfo;
+
+
+#pragma mark -
 #pragma mark MVKCommandBuffer
 
 /** Represents a Vulkan command pool. */
@@ -107,6 +125,15 @@ public:
     /** Returns whether this command buffer can be submitted to a queue more than once. */
     bool getIsReusable() { return _isReusable; }
 
+	/**
+	 * If this is a secondary command buffer, returns the number of views inherited
+	 * from the primary command buffer. If this is a primary command buffer, returns 1.
+	 */
+	uint32_t getViewCount() const;
+
+	/** Updated as renderpass commands are added. */
+	MVKCurrentSubpassInfo _currentSubpassInfo;
+
     /**
      * Metal requires that a visibility buffer is established when a render pass is created, 
      * but Vulkan permits it to be set during a render pass. When the first occlusion query
@@ -129,24 +156,6 @@ public:
 
 	/** The most recent recorded tessellation pipeline */
 	MVKCmdBindPipeline* _lastTessellationPipeline;
-
-
-#pragma mark Multiview render pass command management
-
-	/** Update the last recorded multiview render pass */
-	void recordBeginRenderPass(MVKCmdBeginRenderPassBase* mvkBeginRenderPass);
-
-	/** Update the last recorded multiview subpass */
-	void recordNextSubpass();
-
-	/** Forget the last recorded multiview render pass */
-	void recordEndRenderPass();
-
-	/** The most recent recorded multiview render subpass */
-	MVKRenderSubpass* _lastMultiviewSubpass;
-
-	/** Returns the currently active multiview render subpass, even for secondary command buffers */
-	MVKRenderSubpass* getLastMultiviewSubpass();
 
 
 #pragma mark Construction
@@ -188,7 +197,7 @@ protected:
 	MVKSmallVector<VkFormat, kMVKDefaultAttachmentCount> _colorAttachmentFormats;
 	MVKCommandPool* _commandPool;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
-	VkCommandBufferInheritanceRenderingInfo _inerhitanceRenderingInfo;
+	VkCommandBufferInheritanceRenderingInfo _secondaryInheritanceRenderingInfo;
 	id<MTLCommandBuffer> _prefilledMTLCmdBuffer = nil;
     MVKCommandEncodingContext* _immediateCmdEncodingContext = nullptr;
     MVKCommandEncoder* _immediateCmdEncoder = nullptr;
@@ -242,13 +251,11 @@ public:
 						 const VkRect2D& renderArea,
 						 MVKArrayRef<VkClearValue> clearValues,
 						 MVKArrayRef<MVKImageView*> attachments,
-						 MVKArrayRef<MVKArrayRef<MTLSamplePosition>> subpassSamplePositions);
+						 MVKArrayRef<MVKArrayRef<MTLSamplePosition>> subpassSamplePositions,
+						 MVKCommandUse cmdUse = kMVKCommandUseBeginRenderPass);
 
 	/** Begins the next render subpass. */
 	void beginNextSubpass(MVKCommand* subpassCmd, VkSubpassContents renderpassContents);
-
-	/** Begins the next multiview Metal render pass. */
-	void beginNextMultiviewPass();
 
 	/** Sets the dynamic custom sample positions to use when rendering. */
 	void setDynamicSamplePositions(MVKArrayRef<MTLSamplePosition> dynamicSamplePositions);
@@ -275,7 +282,7 @@ public:
 	uint32_t getFramebufferLayerCount();
 
 	/** Returns the index of the currently active multiview subpass, or zero if the current render pass is not multiview. */
-	uint32_t getMultiviewPassIndex();
+	uint32_t getMultiviewPassIndex() { return _multiviewPassIndex; }
 
 	/** Begins a Metal compute encoding. */
 	void beginMetalComputeEncoding(MVKCommandUse cmdUse);
@@ -478,8 +485,10 @@ public:
 protected:
     void addActivatedQueries(MVKQueryPool* pQueryPool, uint32_t query, uint32_t queryCount);
     void finishQueries();
-	void setSubpass(MVKCommand* passCmd, VkSubpassContents subpassContents, uint32_t subpassIndex);
-	void clearRenderArea();
+	void setSubpass(MVKCommand* passCmd, VkSubpassContents subpassContents, uint32_t subpassIndex, MVKCommandUse cmdUse);
+	void clearRenderArea(MVKCommandUse cmdUse);
+	bool hasMoreMultiviewPasses();
+	void beginNextMultiviewPass();
 	void encodeCommandsImpl(MVKCommand* command);
 	void encodeGPUCounterSample(MVKGPUCounterQueryPool* mvkQryPool, uint32_t sampleIndex, MVKCounterSamplingFlags samplingPoints);
 	void encodeTimestampStageCounterSamples();

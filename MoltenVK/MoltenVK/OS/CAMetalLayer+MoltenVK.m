@@ -1,7 +1,7 @@
 /*
  * CAMetalLayer+MoltenVK.m
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,18 +31,8 @@
 -(CGSize) naturalDrawableSizeMVK {
     CGSize drawSize = self.bounds.size;
     CGFloat scaleFactor = self.contentsScale;
-    drawSize.width = trunc(drawSize.width * scaleFactor);
-    drawSize.height = trunc(drawSize.height * scaleFactor);
-    return drawSize;
-}
-
-// Only update drawableSize property value if it needs to be,
-// in case updating to same value causes internal reconfigurations.
--(CGSize) updatedDrawableSizeMVK {
-	CGSize drawSize = self.naturalDrawableSizeMVK;
-    if ( !CGSizeEqualToSize(drawSize, self.drawableSize) ) {
-        self.drawableSize = drawSize;
-    }
+    drawSize.width *= scaleFactor;
+    drawSize.height *= scaleFactor;
     return drawSize;
 }
 

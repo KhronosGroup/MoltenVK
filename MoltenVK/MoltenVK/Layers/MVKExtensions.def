@@ -1,7 +1,7 @@
 /*
  * MVKExtensions.def
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@
 MVK_EXTENSION(KHR_16bit_storage,                   KHR_16BIT_STORAGE,                    DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_8bit_storage,                    KHR_8BIT_STORAGE,                     DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_bind_memory2,                    KHR_BIND_MEMORY_2,                    DEVICE,   10.11,  8.0)
-MVK_EXTENSION(KHR_buffer_device_address,           KHR_BUFFER_DEVICE_ADDRESS,            DEVICE,    13.0, 16.0)
+MVK_EXTENSION(KHR_buffer_device_address,           KHR_BUFFER_DEVICE_ADDRESS,            DEVICE,   13.0,  16.0)
 MVK_EXTENSION(KHR_copy_commands2,                  KHR_COPY_COMMANDS_2,                  DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_create_renderpass2,              KHR_CREATE_RENDERPASS_2,              DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_dedicated_allocation,            KHR_DEDICATED_ALLOCATION,             DEVICE,   10.11,  8.0)
@@ -70,6 +70,7 @@ MVK_EXTENSION(KHR_image_format_list,               KHR_IMAGE_FORMAT_LIST,       
 MVK_EXTENSION(KHR_maintenance1,                    KHR_MAINTENANCE1,                     DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_maintenance2,                    KHR_MAINTENANCE2,                     DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_maintenance3,                    KHR_MAINTENANCE3,                     DEVICE,   10.11,  8.0)
+MVK_EXTENSION(KHR_map_memory2,                     KHR_MAP_MEMORY_2,                        DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_multiview,                       KHR_MULTIVIEW,                        DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_portability_subset,              KHR_PORTABILITY_SUBSET,               DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_push_descriptor,                 KHR_PUSH_DESCRIPTOR,                  DEVICE,   10.11,  8.0)
@@ -91,11 +92,12 @@ MVK_EXTENSION(KHR_timeline_semaphore,              KHR_TIMELINE_SEMAPHORE,      
 MVK_EXTENSION(KHR_uniform_buffer_standard_layout,  KHR_UNIFORM_BUFFER_STANDARD_LAYOUT,   DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_variable_pointers,               KHR_VARIABLE_POINTERS,                DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_vulkan_memory_model,             KHR_VULKAN_MEMORY_MODEL,              DEVICE,   MVK_NA, MVK_NA)
-MVK_EXTENSION(EXT_buffer_device_address,           EXT_BUFFER_DEVICE_ADDRESS,            DEVICE,    13.0, 16.0)
+MVK_EXTENSION(EXT_buffer_device_address,           EXT_BUFFER_DEVICE_ADDRESS,            DEVICE,   13.0,  16.0)
 MVK_EXTENSION(EXT_debug_marker,                    EXT_DEBUG_MARKER,                     DEVICE,   10.11,  8.0)
 MVK_EXTENSION(EXT_debug_report,                    EXT_DEBUG_REPORT,                     INSTANCE, 10.11,  8.0)
 MVK_EXTENSION(EXT_debug_utils,                     EXT_DEBUG_UTILS,                      INSTANCE, 10.11,  8.0)
 MVK_EXTENSION(EXT_descriptor_indexing,             EXT_DESCRIPTOR_INDEXING,              DEVICE,   10.11,  8.0)
+MVK_EXTENSION(EXT_external_memory_host,            EXT_EXTERNAL_MEMORY_HOST,             DEVICE,   10.11,  8.0)
 MVK_EXTENSION(EXT_fragment_shader_interlock,       EXT_FRAGMENT_SHADER_INTERLOCK,        DEVICE,   10.13, 11.0)
 MVK_EXTENSION(EXT_hdr_metadata,                    EXT_HDR_METADATA,                     DEVICE,   10.15, MVK_NA)
 MVK_EXTENSION(EXT_host_query_reset,                EXT_HOST_QUERY_RESET,                 DEVICE,   10.11,  8.0)
@@ -104,6 +106,7 @@ MVK_EXTENSION(EXT_inline_uniform_block,            EXT_INLINE_UNIFORM_BLOCK,    
 MVK_EXTENSION(EXT_memory_budget,                   EXT_MEMORY_BUDGET,                    DEVICE,   10.13, 11.0)
 MVK_EXTENSION(EXT_metal_objects,                   EXT_METAL_OBJECTS,                    DEVICE,   10.11,  8.0)
 MVK_EXTENSION(EXT_metal_surface,                   EXT_METAL_SURFACE,                    INSTANCE, 10.11,  8.0)
+MVK_EXTENSION(EXT_pipeline_creation_cache_control, EXT_PIPELINE_CREATION_CACHE_CONTROL,  DEVICE,   10.11,  8.0)
 MVK_EXTENSION(EXT_post_depth_coverage,             EXT_POST_DEPTH_COVERAGE,              DEVICE,   11.0,  11.0)
 MVK_EXTENSION(EXT_private_data,                    EXT_PRIVATE_DATA,                     DEVICE,   10.11,  8.0)
 MVK_EXTENSION(EXT_robustness2,                     EXT_ROBUSTNESS_2,                     DEVICE,   10.11,  8.0)
@@ -111,10 +114,13 @@ MVK_EXTENSION(EXT_sample_locations,                EXT_SAMPLE_LOCATIONS,        
 MVK_EXTENSION(EXT_sampler_filter_minmax,           EXT_SAMPLER_FILTER_MINMAX,            DEVICE,   MVK_NA, MVK_NA)
 MVK_EXTENSION(EXT_scalar_block_layout,             EXT_SCALAR_BLOCK_LAYOUT,              DEVICE,   10.11,  8.0)
 MVK_EXTENSION(EXT_separate_stencil_usage,          EXT_SEPARATE_STENCIL_USAGE,           DEVICE,   10.11,  8.0)
+MVK_EXTENSION(EXT_shader_atomic_float,             EXT_SHADER_ATOMIC_FLOAT,              DEVICE,   13.0,  16.0)
 MVK_EXTENSION(EXT_shader_stencil_export,           EXT_SHADER_STENCIL_EXPORT,            DEVICE,   10.14, 12.0)
 MVK_EXTENSION(EXT_shader_viewport_index_layer,     EXT_SHADER_VIEWPORT_INDEX_LAYER,      DEVICE,   10.11,  8.0)
 MVK_EXTENSION(EXT_subgroup_size_control,           EXT_SUBGROUP_SIZE_CONTROL,            DEVICE,   10.14, 13.0)
+MVK_EXTENSION(EXT_surface_maintenance1,            EXT_SURFACE_MAINTENANCE_1,            INSTANCE, 10.11,  8.0)
 MVK_EXTENSION(EXT_swapchain_colorspace,            EXT_SWAPCHAIN_COLOR_SPACE,            INSTANCE, 10.11,  9.0)
+MVK_EXTENSION(EXT_swapchain_maintenance1,          EXT_SWAPCHAIN_MAINTENANCE_1,          DEVICE,   10.11,  8.0)
 MVK_EXTENSION(EXT_texel_buffer_alignment,          EXT_TEXEL_BUFFER_ALIGNMENT,           DEVICE,   10.13, 11.0)
 MVK_EXTENSION(EXT_texture_compression_astc_hdr,    EXT_TEXTURE_COMPRESSION_ASTC_HDR,     DEVICE,   11.0,  13.0)
 MVK_EXTENSION(EXT_vertex_attribute_divisor,        EXT_VERTEX_ATTRIBUTE_DIVISOR,         DEVICE,   10.11,  8.0)

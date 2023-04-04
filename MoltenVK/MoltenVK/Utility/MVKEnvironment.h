@@ -1,7 +1,7 @@
 /*
  * MVKEnvironment.h
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -118,7 +118,7 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #   define MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_QUEUE    64
 #endif
 
-/** Support more than 8192 occlusion queries per buffer. Enabled by default. */
+/** Support more than 8192 or 32768 occlusion queries per device. Enabled by default. */
 #ifndef MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS
 #   define MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS    1
 #endif
@@ -128,9 +128,12 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #   define MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER    1
 #endif
 
-/** Use nearest sampling to magnify swapchain images. Enabled by default. */
+/** Use nearest sampling to minify or magnify swapchain images. Enabled by default. Second macro name is deprecated legacy. */
+#ifndef MVK_CONFIG_SWAPCHAIN_MIN_MAG_FILTER_USE_NEAREST
+#   define MVK_CONFIG_SWAPCHAIN_MIN_MAG_FILTER_USE_NEAREST    1
+#endif
 #ifndef MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST
-#   define MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST    1
+#   define MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST    MVK_CONFIG_SWAPCHAIN_MIN_MAG_FILTER_USE_NEAREST
 #endif
 
 /** The maximum amount of time, in nanoseconds, to wait for a Metal library. Default is infinite. */
@@ -148,8 +151,11 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #   define MVK_CONFIG_PERFORMANCE_LOGGING_FRAME_COUNT    0
 #endif
 
-/** Log activity performance every time an activity occurs. Disabled by default. */
-#	ifndef MVK_CONFIG_PERFORMANCE_LOGGING_INLINE
+/** Activity performance logging style. Default is to log after a configured number of frames. */
+#	ifndef MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE
+#   	define MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE    MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT
+#	endif
+#	ifndef MVK_CONFIG_PERFORMANCE_LOGGING_INLINE	// Deprecated
 #   	define MVK_CONFIG_PERFORMANCE_LOGGING_INLINE    0
 #	endif
 
@@ -173,9 +179,9 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #   define MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE    0
 #endif
 
-/** Set the fastMathEnabled Metal Compiler option. Enabled by default. */
+/** Set the fastMathEnabled Metal Compiler option. Set to always use fast math by default. */
 #ifndef MVK_CONFIG_FAST_MATH_ENABLED
-#   define MVK_CONFIG_FAST_MATH_ENABLED 1
+#   define MVK_CONFIG_FAST_MATH_ENABLED    MVK_CONFIG_FAST_MATH_ALWAYS
 #endif
 
 /** Set the logging level: */
@@ -282,4 +288,9 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 /** Support Metal argument buffers. Disabled by default. */
 #ifndef MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS
 #   define MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS    MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER
+#endif
+
+/** Compress MSL shader source code in a pipeline cache. Defaults to no compression. */
+#ifndef MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM
+#  	define MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM    MVK_CONFIG_COMPRESSION_ALGORITHM_NONE
 #endif

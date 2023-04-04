@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2016-2022 The Brenwill Workshop Ltd.
+# Copyright (c) 2016-2023 The Brenwill Workshop Ltd.
 #
 # runcts - This script simplifies running Vulkan CTS tests on MoltenVK.
 #
@@ -94,22 +94,24 @@ if [ "${is_portability}" != "" ]; then
 	export MVK_CONFIG_ADVERTISE_EXTENSIONS=0xA
 fi
 
+# ----- Metal validation settings ------
 export METAL_DEVICE_WRAPPER_TYPE=1
 export METAL_ERROR_MODE=3
 export METAL_DEBUG_ERROR_MODE=3
 
 # ----- MoltenVK config settings ------
-export MVK_CONFIG_LOG_LEVEL=1
+export MVK_CONFIG_LOG_LEVEL=1	#(1 = Errors only, 3 = Info)
 export MVK_DEBUG=0
 
-# Additional MoltenVK configuration can be set here by 
-# editing below, or can be set before calling this script.
+# Additional MoltenVK configuration can be set here by editing below.
 export MVK_CONFIG_RESUME_LOST_DEVICE=1
 export MVK_CONFIG_FAST_MATH_ENABLED=1
-export MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0  #(2 = VK_EXT_descriptor_indexing enabled)
 export MVK_CONFIG_FORCE_LOW_POWER_GPU=0
-export MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE=2  #(2 = MTLEvents always)
-
+export MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0          #(2 = VK_EXT_descriptor_indexing enabled)
+export MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE=2          #(2 = MTLEvents always)
+export MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM=0        #(2 = ZLIB, 3 = LZ4)
+export MVK_CONFIG_PERFORMANCE_TRACKING=0
+export MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE=2  #(2 = Device lifetime)
 
 # -------------- Operation --------------------
 

@@ -1,7 +1,7 @@
 /*
  * MVKPipeline.h
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -155,8 +155,18 @@ public:
 	/** Returns the number of descriptor sets in this pipeline layout. */
 	uint32_t getDescriptorSetCount() { return _descriptorSetCount; }
 
+	/** Returns the pipeline cache used by this pipeline. */
+	MVKPipelineCache* getPipelineCache() { return _pipelineCache; }
+
+	/** Returns whether the pipeline creation fail if a pipeline compile is required. */
+	bool shouldFailOnPipelineCompileRequired() {
+		return (_device->_enabledPipelineCreationCacheControlFeatures.pipelineCreationCacheControl &&
+				mvkIsAnyFlagEnabled(_flags, VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT));
+	}
+
 	/** Constructs an instance for the device. layout, and parent (which may be NULL). */
-	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout, MVKPipeline* parent);
+	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout,
+				VkPipelineCreateFlags flags, MVKPipeline* parent);
 
 protected:
 	void propagateDebugName() override {}
@@ -172,6 +182,7 @@ protected:
 	MVKShaderImplicitRezBinding _dynamicOffsetBufferIndex;
 	MVKShaderImplicitRezBinding _indirectParamsIndex;
 	MVKShaderImplicitRezBinding _pushConstantsBufferIndex;
+	VkPipelineCreateFlags _flags;
 	uint32_t _descriptorSetCount;
 	bool _stageUsesPushConstants[kMVKShaderStageCount];
 	bool _fullImageViewSwizzle;
@@ -324,6 +335,9 @@ protected:
 	bool verifyImplicitBuffer(bool needsBuffer, MVKShaderImplicitRezBinding& index, MVKShaderStage stage, const char* name);
 	uint32_t getTranslatedVertexBinding(uint32_t binding, uint32_t translationOffset, uint32_t maxBinding);
 	uint32_t getImplicitBufferIndex(MVKShaderStage stage, uint32_t bufferIndexOffset);
+	MVKMTLFunction getMTLFunction(SPIRVToMSLConversionConfiguration& shaderConfig,
+								  const VkPipelineShaderStageCreateInfo* pShaderStage,
+								  const char* pStageName);
 
 	const VkPipelineShaderStageCreateInfo* _pVertexSS = nullptr;
 	const VkPipelineShaderStageCreateInfo* _pTessCtlSS = nullptr;
@@ -456,8 +470,14 @@ public:
 	 */
 	VkResult writeData(size_t* pDataSize, void* pData);
 
-	/** Return a shader library from the shader conversion configuration and sourced from the specified shader module. */
-	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConversionConfiguration* pContext, MVKShaderModule* shaderModule);
+	/**
+	 * Return a shader library for the shader conversion configuration, from the
+	 * pipeline's pipeline cache, or compiled from source in the shader module.
+	 */
+	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConversionConfiguration* pContext,
+									   MVKShaderModule* shaderModule,
+									   MVKPipeline* pipeline,
+									   uint64_t startTime = 0);
 
 	/** Merges the contents of the specified number of pipeline caches into this cache. */
 	VkResult mergePipelineCaches(uint32_t srcCacheCount, const VkPipelineCache* pSrcCaches);
@@ -474,11 +494,18 @@ protected:
 	MVKShaderLibraryCache* getShaderLibraryCache(MVKShaderModuleKey smKey);
 	void readData(const VkPipelineCacheCreateInfo* pCreateInfo);
 	void writeData(std::ostream& outstream, bool isCounting = false);
+	MVKShaderLibrary* getShaderLibraryImpl(SPIRVToMSLConversionConfiguration* pContext,
+										   MVKShaderModule* shaderModule,
+										   MVKPipeline* pipeline,
+										   uint64_t startTime);
+	VkResult writeDataImpl(size_t* pDataSize, void* pData);
+	VkResult mergePipelineCachesImpl(uint32_t srcCacheCount, const VkPipelineCache* pSrcCaches);
 	void markDirty();
 
 	std::unordered_map<MVKShaderModuleKey, MVKShaderLibraryCache*> _shaderCache;
 	size_t _dataSize = 0;
 	std::mutex _shaderCacheLock;
+	bool _isExternallySynchronized = false;
 };
 
 

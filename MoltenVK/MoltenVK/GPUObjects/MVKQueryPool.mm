@@ -1,7 +1,7 @@
 /*
  * MVKQueryPool.mm
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -161,6 +161,8 @@ void MVKQueryPool::encodeCopyResults(MVKCommandEncoder* cmdEncoder,
 									 VkDeviceSize stride,
 									 VkQueryResultFlags flags) {
 
+	if (queryCount == 0) { return; }
+
 	// If this asked for 64-bit results with no availability and packed stride, then we can do
 	// a straight copy. Otherwise, we need a shader.
 	if (mvkIsAnyFlagEnabled(flags, VK_QUERY_RESULT_64_BIT) &&
@@ -183,9 +185,16 @@ void MVKQueryPool::encodeCopyResults(MVKCommandEncoder* cmdEncoder,
 		_availabilityLock.lock();
 		cmdEncoder->setComputeBytes(mtlComputeCmdEnc, _availability.data(), _availability.size() * sizeof(Status), 5);
 		_availabilityLock.unlock();
+
 		// Run one thread per query. Try to fill up a subgroup.
-		[mtlComputeCmdEnc dispatchThreadgroups: MTLSizeMake(max(queryCount / mtlCopyResultsState.threadExecutionWidth, NSUInteger(1)), 1, 1)
-						  threadsPerThreadgroup: MTLSizeMake(min(NSUInteger(queryCount), mtlCopyResultsState.threadExecutionWidth), 1, 1)];
+		NSUInteger threadCount = NSUInteger(queryCount);
+		NSUInteger threadExecutionWidth = mtlCopyResultsState.threadExecutionWidth;
+		NSUInteger tgWidth = min(threadCount, threadExecutionWidth);
+		NSUInteger tgCount = threadCount / threadExecutionWidth;
+		if(threadCount > (tgCount * threadExecutionWidth)) tgCount++;	// Round up
+
+		[mtlComputeCmdEnc dispatchThreadgroups: MTLSizeMake(tgCount, 1, 1)
+						 threadsPerThreadgroup: MTLSizeMake(tgWidth, 1, 1)];
 	}
 }
 
@@ -281,12 +290,9 @@ id<MTLComputeCommandEncoder> MVKOcclusionQueryPool::encodeComputeCopyResults(MVK
 }
 
 void MVKOcclusionQueryPool::beginQueryAddedTo(uint32_t query, MVKCommandBuffer* cmdBuffer) {
+	// In multiview passes, one query is used for each view.
+	NSUInteger queryCount = cmdBuffer->getViewCount();
     NSUInteger offset = getVisibilityResultOffset(query);
-    NSUInteger queryCount = 1;
-    if (cmdBuffer->getLastMultiviewSubpass()) {
-        // In multiview passes, one query is used for each view.
-        queryCount = cmdBuffer->getLastMultiviewSubpass()->getViewCount();
-    }
     NSUInteger maxOffset = getDevice()->_pMetalFeatures->maxQueryBufferSize - kMVKQuerySlotSizeInBytes * queryCount;
     if (offset > maxOffset) {
         cmdBuffer->setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCmdBeginQuery(): The query offset value %lu is larger than the maximum offset value %lu available on this device.", offset, maxOffset));

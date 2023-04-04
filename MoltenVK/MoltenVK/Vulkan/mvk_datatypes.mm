@@ -1,7 +1,7 @@
 /*
  * mvk_datatypes.mm
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -727,6 +727,24 @@ MVK_PUBLIC_SYMBOL MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFl
 	}
 #endif
 	return mtlScope;
+}
+
+
+#pragma mark -
+#pragma mark Geometry conversions
+
+MVK_PUBLIC_SYMBOL VkExtent2D mvkVkExtent2DFromCGSize(CGSize cgSize) {
+	VkExtent2D vkExt;
+	vkExt.width = mvkRoundHalfToEven(cgSize.width);
+	vkExt.height = mvkRoundHalfToEven(cgSize.height);
+	return vkExt;
+}
+
+MVK_PUBLIC_SYMBOL CGSize mvkCGSizeFromVkExtent2D(VkExtent2D vkExtent) {
+	CGSize cgSize;
+	cgSize.width = vkExtent.width;
+	cgSize.height = vkExtent.height;
+	return cgSize;
 }
 
 

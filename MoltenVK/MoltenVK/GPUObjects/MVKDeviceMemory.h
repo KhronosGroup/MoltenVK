@@ -1,7 +1,7 @@
 /*
  * MVKDeviceMemory.h
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,10 +78,10 @@ public:
 	 * Maps the memory address at the specified offset from the start of this memory allocation,
 	 * and returns the address in the specified data reference.
 	 */
-	VkResult map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData);
-
+	VkResult map(const VkMemoryMapInfoKHR* mapInfo, void** ppData);
+	
 	/** Unmaps a previously mapped memory range. */
-	void unmap();
+	VkResult unmap(const VkMemoryUnmapInfoKHR* unmapInfo);
 
 	/**
 	 * If this device memory is currently mapped to host memory, returns the range within
@@ -170,6 +170,7 @@ protected:
 	MTLStorageMode _mtlStorageMode;
 	MTLCPUCacheMode _mtlCPUCacheMode;
 	bool _isDedicated = false;
+	bool _isHostMemImported = false;
 
 };
 

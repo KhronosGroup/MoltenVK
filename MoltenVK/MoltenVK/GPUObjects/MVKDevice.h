@@ -1,7 +1,7 @@
 /*
  * MVKDevice.h
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -181,8 +181,12 @@ public:
 	 */
 	VkResult getSurfaceSupport(uint32_t queueFamilyIndex, MVKSurface* surface, VkBool32* pSupported);
 
-	/** Returns the capabilities of the specified surface. */
-	VkResult getSurfaceCapabilities(MVKSurface* surface, VkSurfaceCapabilitiesKHR* pSurfaceCapabilities);
+	/** Returns the capabilities of the surface. */
+	VkResult getSurfaceCapabilities(VkSurfaceKHR surface, VkSurfaceCapabilitiesKHR* pSurfaceCapabilities);
+
+	/** Returns the capabilities of the surface. */
+	VkResult getSurfaceCapabilities(const VkPhysicalDeviceSurfaceInfo2KHR* pSurfaceInfo,
+									VkSurfaceCapabilities2KHR* pSurfaceCapabilities);
 
 	/**
 	 * Returns the pixel formats supported by the surface.
@@ -440,6 +444,7 @@ protected:
 	uint32_t _hostCoherentMemoryTypes;
 	uint32_t _privateMemoryTypes;
 	uint32_t _lazilyAllocatedMemoryTypes;
+	VkExternalMemoryProperties _hostPointerExternalMemoryProperties;
 	VkExternalMemoryProperties _mtlBufferExternalMemoryProperties;
 	VkExternalMemoryProperties _mtlTextureExternalMemoryProperties;
 };
@@ -509,6 +514,11 @@ public:
 
 	/** Populates the device group peer memory features. */
 	void getPeerMemoryFeatures(uint32_t heapIndex, uint32_t localDevice, uint32_t remoteDevice, VkPeerMemoryFeatureFlags* pPeerMemoryFeatures);
+
+	/** Returns the properties of the host memory pointer. */
+	VkResult getMemoryHostPointerProperties(VkExternalMemoryHandleTypeFlagBits handleType,
+											const void* pHostPointer,
+											VkMemoryHostPointerPropertiesEXT* pMemHostPtrProps);
 
 
 #pragma mark Object lifecycle
@@ -682,7 +692,9 @@ public:
 
 			// Log call not locked. Very minor chance that the tracker data will be updated during log call,
 			// resulting in an inconsistent report. Not worth taking lock perf hit for rare inline reporting.
-			if (_logActivityPerformanceInline) { logActivityPerformance(activityTracker, _performanceStatistics, true); }
+			if (_activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE) {
+				logActivityPerformance(activityTracker, _performanceStatistics, true);
+			}
 		}
 	};
 
@@ -715,12 +727,12 @@ public:
 
 	/**
 	 * Returns an autoreleased options object to be used when compiling MSL shaders.
-	 * The useFastMath parameter is and-combined with MVKConfiguration::fastMathEnabled
+	 * The requestFastMath parameter is combined with the value of MVKConfiguration::fastMathEnabled
 	 * to determine whether to enable fast math optimizations in the compiled shader.
 	 * The preserveInvariance parameter indicates that the shader requires the position
 	 * output invariance across invocations (typically for the position output).
 	 */
-	MTLCompileOptions* getMTLCompileOptions(bool useFastMath = true, bool preserveInvariance = false);
+	MTLCompileOptions* getMTLCompileOptions(bool requestFastMath = true, bool preserveInvariance = false);
 
 	/** Returns the Metal vertex buffer index to use for the specified vertex attribute binding number.  */
 	uint32_t getMetalBufferIndexForVertexAttributeBinding(uint32_t binding);
@@ -887,7 +899,7 @@ protected:
 	id<MTLSamplerState> _defaultMTLSamplerState = nil;
 	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
     uint32_t _globalVisibilityQueryCount = 0;
-	bool _logActivityPerformanceInline = false;
+	MVKConfigActivityPerformanceLoggingStyle _activityPerformanceLoggingStyle = MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT;
 	bool _isPerformanceTracking = false;
 	bool _isCurrentlyAutoGPUCapturing = false;
 	bool _isUsingMetalArgumentBuffers = false;

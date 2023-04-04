@@ -1,7 +1,7 @@
 /*
  * MVKLayers.mm
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 #include "MVKLayers.h"
 #include "MVKEnvironment.h"
 #include "MVKFoundation.h"
-#include "vk_mvk_moltenvk.h"
 #include <mutex>
 
 using namespace std;
@@ -65,7 +64,7 @@ MVKLayer* MVKLayerManager::getLayerNamed(const char* pLayerName) {
 	uint32_t layCnt = (uint32_t)_layers.size();
 	for (uint32_t layIdx = 0; layIdx < layCnt; layIdx++) {
 		MVKLayer* pLayer = &_layers[layIdx];
-		if ( strcmp(pLayer->getName(), pLayerName) == 0 ) { return pLayer; }
+		if (mvkStringsAreEqual(pLayer->getName(), pLayerName)) { return pLayer; }
 	}
 	return VK_NULL_HANDLE;
 }

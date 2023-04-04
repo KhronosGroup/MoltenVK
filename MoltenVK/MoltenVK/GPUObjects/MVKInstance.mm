@@ -1,7 +1,7 @@
 /*
  * MVKInstance.mm
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -449,7 +449,6 @@ void MVKInstance::initProcAddrs() {
 	ADD_INST_ENTRY_POINT(vkGetPhysicalDeviceProperties);
 	ADD_INST_ENTRY_POINT(vkGetPhysicalDeviceQueueFamilyProperties);
 	ADD_INST_ENTRY_POINT(vkGetPhysicalDeviceMemoryProperties);
-	ADD_INST_ENTRY_POINT(vkGetInstanceProcAddr);
 	ADD_INST_ENTRY_POINT(vkCreateDevice);
 	ADD_INST_ENTRY_POINT(vkEnumerateDeviceExtensionProperties);
 	ADD_INST_ENTRY_POINT(vkEnumerateDeviceLayerProperties);
@@ -706,6 +705,8 @@ void MVKInstance::initProcAddrs() {
     ADD_INST_EXT_ENTRY_POINT(vkGetMTLCommandQueueMVK, MVK_MOLTENVK);
 
 	// Device extension functions:
+	ADD_DVC_EXT_ENTRY_POINT(vkMapMemory2KHR, KHR_MAP_MEMORY_2);
+	ADD_DVC_EXT_ENTRY_POINT(vkUnmapMemory2KHR, KHR_MAP_MEMORY_2);
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdPushDescriptorSetKHR, KHR_PUSH_DESCRIPTOR);
 	ADD_DVC_EXT2_ENTRY_POINT(vkCmdPushDescriptorSetWithTemplateKHR, KHR_PUSH_DESCRIPTOR, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
 	ADD_DVC_EXT_ENTRY_POINT(vkCreateSwapchainKHR, KHR_SWAPCHAIN);
@@ -722,6 +723,7 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdDebugMarkerBeginEXT, EXT_DEBUG_MARKER);
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdDebugMarkerEndEXT, EXT_DEBUG_MARKER);
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdDebugMarkerInsertEXT, EXT_DEBUG_MARKER);
+	ADD_DVC_EXT_ENTRY_POINT(vkGetMemoryHostPointerPropertiesEXT, EXT_EXTERNAL_MEMORY_HOST);
 	ADD_DVC_EXT_ENTRY_POINT(vkSetHdrMetadataEXT, EXT_HDR_METADATA);
 	ADD_DVC_EXT_ENTRY_POINT(vkExportMetalObjectsEXT, EXT_METAL_OBJECTS);
 	ADD_DVC_EXT_ENTRY_POINT(vkCreatePrivateDataSlotEXT, EXT_PRIVATE_DATA);
@@ -730,9 +732,9 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_EXT_ENTRY_POINT(vkSetPrivateDataEXT, EXT_PRIVATE_DATA);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetPhysicalDeviceMultisamplePropertiesEXT, EXT_SAMPLE_LOCATIONS);
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetSampleLocationsEXT, EXT_SAMPLE_LOCATIONS);
+	ADD_DVC_EXT_ENTRY_POINT(vkReleaseSwapchainImagesEXT, EXT_SWAPCHAIN_MAINTENANCE_1);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetRefreshCycleDurationGOOGLE, GOOGLE_DISPLAY_TIMING);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetPastPresentationTimingGOOGLE, GOOGLE_DISPLAY_TIMING);
-
 }
 
 void MVKInstance::logVersions() {

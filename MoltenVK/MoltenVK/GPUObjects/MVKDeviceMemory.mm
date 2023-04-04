@@ -1,7 +1,7 @@
 /*
  * MVKDeviceMemory.mm
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,8 +36,7 @@ void MVKDeviceMemory::propagateDebugName() {
 	setLabelIfNotNil(_mtlBuffer, _debugName);
 }
 
-VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData) {
-
+VkResult MVKDeviceMemory::map(const VkMemoryMapInfoKHR* pMemoryMapInfo, void** ppData) {
 	if ( !isMemoryHostAccessible() ) {
 		return reportError(VK_ERROR_MEMORY_MAP_FAILED, "Private GPU-only memory cannot be mapped to host memory.");
 	}
@@ -50,25 +49,23 @@ VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMa
 		return reportError(VK_ERROR_OUT_OF_HOST_MEMORY, "Could not allocate %llu bytes of host-accessible device memory.", _allocationSize);
 	}
 
-	_mappedRange.offset = offset;
-	_mappedRange.size = adjustMemorySize(size, offset);
+	_mappedRange.offset = pMemoryMapInfo->offset;
+	_mappedRange.size = adjustMemorySize(pMemoryMapInfo->size, pMemoryMapInfo->offset);
 
-	*ppData = (void*)((uintptr_t)_pMemory + offset);
+	*ppData = (void*)((uintptr_t)_pMemory + pMemoryMapInfo->offset);
 
 	// Coherent memory does not require flushing by app, so we must flush now
 	// to support Metal textures that actually reside in non-coherent memory.
 	if (mvkIsAnyFlagEnabled(_vkMemPropFlags, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
-		pullFromDevice(offset, size);
+		pullFromDevice(pMemoryMapInfo->offset, pMemoryMapInfo->size);
 	}
 
 	return VK_SUCCESS;
 }
 
-void MVKDeviceMemory::unmap() {
-
+VkResult MVKDeviceMemory::unmap(const VkMemoryUnmapInfoKHR* pUnmapMemoryInfo) {
 	if ( !isMapped() ) {
-		reportError(VK_ERROR_MEMORY_MAP_FAILED, "Memory is not mapped. Call vkMapMemory() first.");
-		return;
+		return reportError(VK_ERROR_MEMORY_MAP_FAILED, "Memory is not mapped. Call vkMapMemory() first.");
 	}
 
 	// Coherent memory does not require flushing by app, so we must flush now
@@ -79,6 +76,8 @@ void MVKDeviceMemory::unmap() {
 
 	_mappedRange.offset = 0;
 	_mappedRange.size = 0;
+
+	return VK_SUCCESS;
 }
 
 VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
@@ -181,6 +180,9 @@ bool MVKDeviceMemory::ensureMTLHeap() {
 
 	if (_mtlHeap) { return true; }
 
+	// Can't create a MTLHeap on a imported memory
+	if (_isHostMemImported) { return true; }
+
 	// Don't bother if we don't have placement heaps.
 	if (!getDevice()->_pMetalFeatures->placementHeaps) { return true; }
 
@@ -233,7 +235,12 @@ bool MVKDeviceMemory::ensureMTLBuffer() {
 		}
 		[_mtlBuffer makeAliasable];
 	} else if (_pHostMemory) {
-		_mtlBuffer = [getMTLDevice() newBufferWithBytes: _pHostMemory length: memLen options: getMTLResourceOptions()];     // retained
+		auto rezOpts = getMTLResourceOptions();
+		if (_isHostMemImported) {
+			_mtlBuffer = [getMTLDevice() newBufferWithBytesNoCopy: _pHostMemory length: memLen options: rezOpts deallocator: nil];	// retained
+		} else {
+			_mtlBuffer = [getMTLDevice() newBufferWithBytes: _pHostMemory length: memLen options: rezOpts];     // retained
+		}
 		freeHostMemory();
 	} else {
 		_mtlBuffer = [getMTLDevice() newBufferWithLength: memLen options: getMTLResourceOptions()];     // retained
@@ -264,7 +271,7 @@ bool MVKDeviceMemory::ensureHostMemory() {
 }
 
 void MVKDeviceMemory::freeHostMemory() {
-	free(_pHostMemory);
+	if ( !_isHostMemImported ) { free(_pHostMemory); }
 	_pHostMemory = nullptr;
 }
 
@@ -294,6 +301,23 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 				dedicatedImage = pDedicatedInfo->image;
 				dedicatedBuffer = pDedicatedInfo->buffer;
 				_isDedicated = dedicatedImage || dedicatedBuffer;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT: {
+				auto* pMemHostPtrInfo = (VkImportMemoryHostPointerInfoEXT*)next;
+				if (mvkIsAnyFlagEnabled(_vkMemPropFlags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
+					switch (pMemHostPtrInfo->handleType) {
+						case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
+						case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT:
+							_pHostMemory = pMemHostPtrInfo->pHostPointer;
+							_isHostMemImported = true;
+							break;
+						default:
+							break;
+					}
+				} else {
+					setConfigurationResult(reportError(VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR, "vkAllocateMemory(): Imported memory must be host-visible."));
+				}
 				break;
 			}
 			case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO: {
@@ -333,7 +357,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 #if MVK_MACOS
 		if (isMemoryHostCoherent() ) {
 			if (!((MVKImage*)dedicatedImage)->_isLinear) {
-				setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Host-coherent VkDeviceMemory objects cannot be associated with optimal-tiling images."));
+				setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkAllocateMemory(): Host-coherent VkDeviceMemory objects cannot be associated with optimal-tiling images."));
 			} else {
 				if (!_device->_pMetalFeatures->sharedLinearTextures) {
 					// Need to use the managed mode for images.
@@ -341,7 +365,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 				}
 				// Nonetheless, we need a buffer to be able to map the memory at will.
 				if (!ensureMTLBuffer() ) {
-					setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate a host-coherent VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize));
+					setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkAllocateMemory(): Could not allocate a host-coherent VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize));
 				}
 			}
 		}
@@ -359,15 +383,16 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 	// If we can, create a MTLHeap. This should happen before creating the buffer, allowing us to map its contents.
 	if ( !_isDedicated ) {
 		if (!ensureMTLHeap()) {
-			setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate VkDeviceMemory of size %llu bytes.", _allocationSize));
+			setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkAllocateMemory(): Could not allocate VkDeviceMemory of size %llu bytes.", _allocationSize));
 			return;
 		}
 	}
 
-	// If memory needs to be coherent it must reside in an MTLBuffer, since an open-ended map() must work.
+	// If memory needs to be coherent it must reside in a MTLBuffer, since an open-ended map() must work.
+	// If memory was imported, a MTLBuffer must be created on it.
 	// Or if a MTLBuffer will be exported, ensure it exists.
-	if ((isMemoryHostCoherent() || willExportMTLBuffer) && !ensureMTLBuffer() ) {
-		setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate a host-coherent or exportable VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize));
+	if ((isMemoryHostCoherent() || _isHostMemImported || willExportMTLBuffer) && !ensureMTLBuffer() ) {
+		setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkAllocateMemory(): Could not allocate a host-coherent or exportable VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize));
 	}
 }
 

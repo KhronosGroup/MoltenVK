@@ -7,7 +7,7 @@
 MoltenVK Runtime User Guide
 ===========================
 
-Copyright (c) 2015-2022 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
+Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 [comment]: # "This document is written in Markdown (http://en.wikipedia.org/wiki/Markdown) format."
 [comment]: # "For best results, use a Markdown reader."
@@ -22,6 +22,7 @@ Table of Contents
 - [Installing **MoltenVK** in Your *Vulkan* Application](#install)
 	- [Install *MoltenVK* as a Universal `XCFramework`](#install_xcfwk)
 	- [Install *MoltenVK* as a Dynamic Library](#install_dylib)
+	- [Install *MoltenVK* replacing the Vulkan SDK `libMoltenVK.dylib`](#install_vksdk)
 	- [Build and Runtime Requirements](#requirements)
 - [Interacting with the **MoltenVK** Runtime](#interaction)
 	- [MoltenVK `VK_MVK_moltenvk` Extension](#moltenvk_extension)
@@ -219,6 +220,39 @@ To link **MoltenVK** to your application as a dynamic library (`.dylib`), follow
       - `MoltenVK/dylib/tvOS/libMoltenVK.dylib` *(tvOS)* 
      
 
+<a name="install_vksdk"></a>
+### Install *MoltenVK* replacing the Vulkan SDK `libMoltenVK.dylib`
+
+There are a few potential issues when building **MoltenVK** to replace the version installed via
+the *[Vulkan SDK](https://vulkan.lunarg.com/sdk/home)* standard install process, which lives in
+`/usr/local/lib/libMoltenVK.dylib`.
+
+1. You must *remove* the existing `.dylib` file before copying the new one, because of the way
+that the gatekeeper system works to prevent malicious overwriting of files in standard locations
+such as `/usr/local`:
+
+```bash
+$ sudo rm /usr/local/lib/libMoltenVK.dylib
+$ sudo cp Package/Release/MoltenVK/dylib/macOS/libMoltenVK.dylib /usr/local/lib
+```
+
+If you do not do the remove first, your application will terminate immediately with a
+singularly unhelpful `Killed: 9` message.  Alternatively, moving the existing `.dylib` to a
+backup name and making a symbolic link to the Package location above is particularly useful
+for repeated building and testing.
+
+2. Do *not* copy the `MoltenVK_icd.json` file from the newly-built package to
+`/usr/local/share/vulkan/icd.d` -- it will not work and will result in errors about not being
+able to initialize the instance.  The one installed by Vulkan SDK uses a relative path to
+specify the location of the `.dylib`, whereas the one in the package specifies it in the same
+directory.
+
+3. The default config for command-line build has verbose logging info turned on -- if you want
+it to be like the original, use this command for building:
+
+```bash
+$ make macos MVK_CONFIG_LOG_LEVEL=1
+```
 
 <a name="requirements"></a>
 ### Build and Runtime Requirements
@@ -278,6 +312,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_8bit_storage`
 - `VK_KHR_bind_memory2`
 - `VK_KHR_buffer_device_address` *(requires GPU Tier 2 argument buffers support)*
+- `VK_KHR_copy_commands2`
 - `VK_KHR_create_renderpass2`
 - `VK_KHR_dedicated_allocation`
 - `VK_KHR_depth_stencil_resolve`
@@ -295,6 +330,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_maintenance1`
 - `VK_KHR_maintenance2`
 - `VK_KHR_maintenance3`
+- `VK_KHR_map_memory2`
 - `VK_KHR_multiview`
 - `VK_KHR_portability_subset`
 - `VK_KHR_push_descriptor`
@@ -321,6 +357,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_descriptor_indexing` *(initial release limited to Metal Tier 1: 96/128 textures, 
   16 samplers, except macOS 11.0 (Big Sur) or later, or on older versions of macOS using 
   an Intel GPU, and if Metal argument buffers enabled in config)*
+- `VK_EXT_external_memory_host`
 - `VK_EXT_fragment_shader_interlock` *(requires Metal 2.0 and Raster Order Groups)*
 - `VK_EXT_host_query_reset`
 - `VK_EXT_image_robustness`
@@ -328,16 +365,20 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_memory_budget` *(requires Metal 2.0)*
 - `VK_EXT_metal_objects`
 - `VK_EXT_metal_surface`
+- `VK_EXT_pipeline_creation_cache_control`
 - `VK_EXT_post_depth_coverage` *(iOS and macOS, requires family 4 (A11) or better Apple GPU)*
 - `VK_EXT_private_data `
 - `VK_EXT_robustness2`
 - `VK_EXT_sample_locations`
 - `VK_EXT_scalar_block_layout`
 - `VK_EXT_separate_stencil_usage`
+- `VK_EXT_shader_atomic_float` *(requires Metal 3.0)*
 - `VK_EXT_shader_stencil_export` *(requires Mac GPU family 2 or iOS GPU family 5)*
 - `VK_EXT_shader_viewport_index_layer`
 - `VK_EXT_subgroup_size_control` *(requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS)*
+- `VK_EXT_surface_maintenance1`
 - `VK_EXT_swapchain_colorspace`
+- `VK_EXT_swapchain_maintenance1`
 - `VK_EXT_vertex_attribute_divisor`
 - `VK_EXT_texel_buffer_alignment` *(requires Metal 2.0)*
 - `VK_EXT_texture_compression_astc_hdr` *(iOS and macOS, requires family 6 (A13) or better Apple GPU)*

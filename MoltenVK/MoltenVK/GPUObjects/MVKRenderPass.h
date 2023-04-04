@@ -1,7 +1,7 @@
 /*
  * MVKRenderPass.h
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,8 +84,8 @@ public:
 	/** Returns whether or not this is a multiview subpass. */
 	bool isMultiview() const { return _pipelineRenderingCreateInfo.viewMask != 0; }
 
-	/** Returns the total number of views to be rendered. */
-	uint32_t getViewCount() const { return __builtin_popcount(_pipelineRenderingCreateInfo.viewMask); }
+	/** Returns the multiview view mask. */
+	uint32_t getViewMask() const { return _pipelineRenderingCreateInfo.viewMask; }
 
 	/** Returns the number of Metal render passes needed to render all views. */
 	uint32_t getMultiviewMetalPassCount() const;
@@ -314,7 +314,7 @@ uint32_t mvkGetAttachments(const VkRenderingInfo* pRenderingInfo,
 						   VkClearValue clearValues[]);
 
 /** Returns whether the view mask uses multiview. */
-static inline bool mvkIsMultiview(uint32_t viewMask) { return viewMask != 0; }
+static constexpr bool mvkIsMultiview(uint32_t viewMask) { return viewMask != 0; }
 
 /** Returns whether the attachment is being used. */
 bool mvkIsColorAttachmentUsed(const VkPipelineRenderingCreateInfo* pRendInfo, uint32_t colorAttIdx);

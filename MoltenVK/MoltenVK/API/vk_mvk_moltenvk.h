@@ -1,7 +1,7 @@
 /*
  * vk_mvk_moltenvk.h
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,12 +51,12 @@ typedef unsigned long MTLArgumentBuffersTier;
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   2
-#define MVK_VERSION_PATCH   1
+#define MVK_VERSION_PATCH   3
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            36
+#define VK_MVK_MOLTENVK_SPEC_VERSION            37
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /** Identifies the level of logging MoltenVK should be limited to outputting. */
@@ -71,11 +71,14 @@ typedef enum MVKConfigLogLevel {
 
 /** Identifies the level of Vulkan call trace logging MoltenVK should perform. */
 typedef enum MVKConfigTraceVulkanCalls {
-	MVK_CONFIG_TRACE_VULKAN_CALLS_NONE       = 0,	/**< No Vulkan call logging. */
-	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER      = 1,	/**< Log the name of each Vulkan call when the call is entered. */
-	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT = 2,	/**< Log the name of each Vulkan call when the call is entered and exited. This effectively brackets any other logging activity within the scope of the Vulkan call. */
-	MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION   = 3,	/**< Same as MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT, plus logs the time spent inside the Vulkan function. */
-	MVK_CONFIG_TRACE_VULKAN_CALLS_MAX_ENUM   = 0x7FFFFFFF
+	MVK_CONFIG_TRACE_VULKAN_CALLS_NONE                 = 0,	/**< No Vulkan call logging. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER                = 1,	/**< Log the name of each Vulkan call when the call is entered. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_THREAD_ID      = 2,	/**< Log the name and thread ID of each Vulkan call when the call is entered. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT           = 3,	/**< Log the name of each Vulkan call when the call is entered and exited. This effectively brackets any other logging activity within the scope of the Vulkan call. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT_THREAD_ID = 4,	/**< Log the name and thread ID of each Vulkan call when the call is entered and name when exited. This effectively brackets any other logging activity within the scope of the Vulkan call. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION             = 5,	/**< Same as MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT, plus logs the time spent inside the Vulkan function. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION_THREAD_ID   = 6,	/**< Same as MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT_THREAD_ID, plus logs the time spent inside the Vulkan function. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_MAX_ENUM             = 0x7FFFFFFF
 } MVKConfigTraceVulkanCalls;
 
 /** Identifies the scope for Metal to run an automatic GPU capture for diagnostic debugging purposes. */
@@ -121,6 +124,32 @@ typedef enum MVKPrefillMetalCommandBuffersStyle {
 	MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING_NO_AUTORELEASE = 3,	/**< During Vulkan command buffer filling, immediately encode to the Metal command buffer, as each command is submitted to the Vulkan command buffer, do not retain any command content in the Vulkan command buffer, and assume the app will ensure that each thread that fills commands into a Vulkan command buffer has a Metal autorelease pool. MoltenVK will not create and drain any autorelease pools during encoding. This is the fastest prefilling option, and generally has a small memory footprint, depending on when the app-provided autorelease pool drains. */
 	MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_MAX_ENUM                          = 0x7FFFFFFF
 } MVKPrefillMetalCommandBuffersStyle;
+
+/** Identifies when Metal shaders will be compiled with the fast math option. */
+typedef enum MVKConfigFastMath {
+	MVK_CONFIG_FAST_MATH_NEVER     = 0,  /**< Metal shaders will never be compiled with the fast math option. */
+	MVK_CONFIG_FAST_MATH_ALWAYS    = 1,  /**< Metal shaders will always be compiled with the fast math option. */
+	MVK_CONFIG_FAST_MATH_ON_DEMAND = 2,  /**< Metal shaders will be compiled with the fast math option, unless the shader includes execution modes that require it to be compiled without fast math. */
+	MVK_CONFIG_FAST_MATH_MAX_ENUM  = 0x7FFFFFFF
+} MVKConfigFastMath;
+
+/** Identifies available system data compression algorithms. */
+typedef enum MVKConfigCompressionAlgorithm {
+	MVK_CONFIG_COMPRESSION_ALGORITHM_NONE     = 0,	/**< No compression. */
+	MVK_CONFIG_COMPRESSION_ALGORITHM_LZFSE    = 1,	/**< Apple proprietary. Good balance of high performance and small compression size, particularly for larger data content. */
+	MVK_CONFIG_COMPRESSION_ALGORITHM_ZLIB     = 2,	/**< Open cross-platform ZLib format. For smaller data content, has better performance and smaller size than LZFSE. */
+	MVK_CONFIG_COMPRESSION_ALGORITHM_LZ4      = 3,	/**< Fastest performance. Largest compression size. */
+	MVK_CONFIG_COMPRESSION_ALGORITHM_LZMA     = 4,	/**< Slowest performance. Smallest compression size, particular with larger content. */
+	MVK_CONFIG_COMPRESSION_ALGORITHM_MAX_ENUM = 0x7FFFFFFF,
+} MVKConfigCompressionAlgorithm;
+
+/** Identifies the style of activity performance logging to use. */
+typedef enum MVKConfigActivityPerformanceLoggingStyle {
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT     = 0,	/**< Repeatedly log performance after a configured number of frames. */
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE       = 1,	/**< Log immediately after each performance measurement. */
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_DEVICE_LIFETIME = 2,	/**< Log at the end of the VkDevice lifetime. This is useful for one-shot apps such as testing frameworks. */
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_MAX_ENUM        = 0x7FFFFFFF,
+} MVKConfigActivityPerformanceLoggingStyle;
 
 /**
  * MoltenVK configuration settings.
@@ -291,12 +320,13 @@ typedef struct {
 	uint32_t maxActiveMetalCommandBuffersPerQueue;
 
 	/**
-	 * Metal allows only 8192 occlusion queries per MTLBuffer. If enabled, MoltenVK
-	 * allocates a MTLBuffer for each query pool, allowing each query pool to support
-	 * 8192 queries, which may slow performance or cause unexpected behaviour if the query
-	 * pool is not established prior to a Metal renderpass, or if the query pool is changed
-	 * within a renderpass. If disabled, one MTLBuffer will be shared by all query pools,
-	 * which improves performance, but limits the total device queries to 8192.
+	 * Depending on the GPU, Metal allows 8192 or 32768 occlusion queries per MTLBuffer.
+	 * If enabled, MoltenVK allocates a MTLBuffer for each query pool, allowing each query
+	 * pool to support that permitted number of queries. This may slow performance or cause
+	 * unexpected behaviour if the query pool is not established prior to a Metal renderpass,
+	 * or if the query pool is changed within a renderpass. If disabled, one MTLBuffer will
+	 * be shared by all query pools, which improves performance, but limits the total device
+	 * queries to the permitted number.
 	 *
 	 * The value of this parameter may be changed at any time during application runtime,
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
@@ -314,22 +344,23 @@ typedef struct {
 	VkBool32 presentWithCommandBuffer;
 
 	/**
-	 * If enabled, swapchain images will use simple Nearest sampling when magnifying the
-	 * swapchain image to fit a physical display surface. If disabled, swapchain images will
+	 * If enabled, swapchain images will use simple Nearest sampling when minifying or magnifying
+	 * the swapchain image to fit a physical display surface. If disabled, swapchain images will
 	 * use Linear sampling when magnifying the swapchain image to fit a physical display surface.
 	 * Enabling this setting avoids smearing effects when swapchain images are simple interger
 	 * multiples of display pixels (eg- macOS Retina, and typical of graphics apps and games),
 	 * but may cause aliasing effects when using non-integer display scaling.
 	 *
-	 * The value of this parameter may be changed before creating a VkSwapchain,
+	 * The value of this parameter must be changed before creating a VkSwapchain,
 	 * for the change to take effect.
 	 *
 	 * The initial value or this parameter is set by the
-	 * MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST
+	 * MVK_CONFIG_SWAPCHAIN_MIN_MAG_FILTER_USE_NEAREST
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * If neither is set, the value of this parameter defaults to true.
 	 */
-	VkBool32 swapchainMagFilterUseNearest;
+	VkBool32 swapchainMinMagFilterUseNearest;
+#define swapchainMagFilterUseNearest swapchainMinMagFilterUseNearest
 
 	/**
 	 * The maximum amount of time, in nanoseconds, to wait for a Metal library, function, or
@@ -351,8 +382,8 @@ typedef struct {
 	 * If enabled, performance statistics, as defined by the MVKPerformanceStatistics structure,
 	 * are collected, and can be retrieved via the vkGetPerformanceStatisticsMVK() function.
 	 *
-	 * You can also use the performanceLoggingFrameCount or logActivityPerformanceInline
-	 * parameters to automatically log the performance statistics collected by this parameter.
+	 * You can also use the activityPerformanceLoggingStyle and performanceLoggingFrameCount
+	 * parameters to configure when to log the performance statistics collected by this parameter.
 	 *
 	 * The value of this parameter must be changed before creating a VkDevice,
 	 * for the change to take effect.
@@ -540,18 +571,30 @@ typedef struct {
 	uint32_t defaultGPUCaptureScopeQueueIndex;
 
 	/**
-	 * Corresponds to the fastMathEnabled property of MTLCompileOptions.
-	 * Setting it may cause the Metal Compiler to optimize floating point operations
-	 * in ways that may violate the IEEE 754 standard.
+	 * Identifies when Metal shaders will be compiled with the Metal fastMathEnabled property
+	 * enabled. For shaders compiled with the Metal fastMathEnabled property enabled, shader
+	 * floating point math is significantly faster, but it may cause the Metal Compiler to
+	 * optimize floating point operations in ways that may violate the IEEE 754 standard.
 	 *
-	 * Must be changed before creating a VkDevice, for the change to take effect.
+	 * Enabling Metal fast math can dramatically improve shader performance, and has little
+	 * practical effect on the numerical accuracy of most shaders. As such, disabling fast
+	 * math should be done carefully and deliberately. For most applications, always enabling
+	 * fast math, by setting the value of this property to MVK_CONFIG_FAST_MATH_ALWAYS,
+	 * is the preferred choice.
+	 *
+	 * Apps that have specific accuracy and handling needs for particular shaders, may elect to
+	 * set the value of this property to MVK_CONFIG_FAST_MATH_ON_DEMAND, so that fast math will
+	 * be disabled when compiling shaders that request capabilities such as SignedZeroInfNanPreserve.
+	 *
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will be applied to future Metal shader compilations.
 	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_FAST_MATH_ENABLED
 	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, the value of this parameter defaults to true.
+	 * If neither is set, the value of this parameter defaults to MVK_CONFIG_FAST_MATH_ALWAYS.
 	 */
-	VkBool32 fastMathEnabled;
+	MVKConfigFastMath fastMathEnabled;
 
 	/**
 	 * Controls the level of logging performned by MoltenVK.
@@ -748,21 +791,20 @@ typedef struct {
 	VkBool32 useMTLHeap;
 
 	/**
-	 * Controls whether MoltenVK should log the performance of individual activities as they happen.
-	 * If this setting is enabled, activity performance will be logged when each activity happens.
-	 * If this setting is disabled, activity performance will be logged when frame peformance is
-	 * logged as determined by the performanceLoggingFrameCount value.
+	 * Controls when MoltenVK should log activity performance events.
 	 *
 	 * The value of this parameter must be changed before creating a VkDevice,
 	 * for the change to take effect.
 	 *
 	 * The initial value or this parameter is set by the
-	 * MVK_CONFIG_PERFORMANCE_LOGGING_INLINE
+	 * MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE
 	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, this setting is disabled by default, and activity
-	 * performance will be logged only when frame activity is logged.
+	 * If neither is set, this setting is set to
+	 * MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT by default,
+	 * and activity performance will be logged when frame activity is logged.
 	 */
-	VkBool32 logActivityPerformanceInline;
+	MVKConfigActivityPerformanceLoggingStyle activityPerformanceLoggingStyle;
+#define logActivityPerformanceInline activityPerformanceLoggingStyle
 
 	/**
 	 * Controls the Vulkan API version that MoltenVK should advertise in vkEnumerateInstanceVersion().
@@ -854,6 +896,27 @@ typedef struct {
 	 * and MoltenVK will not use Metal argument buffers.
 	 */
 	MVKUseMetalArgumentBuffers useMetalArgumentBuffers;
+
+	/**
+	 * Controls the type of compression to use on the MSL source code that is stored in memory
+	 * for use in a pipeline cache. After being converted from SPIR-V, or loaded directly into
+	 * a VkShaderModule, and then compiled into a MTLLibrary, the MSL source code is no longer
+	 * needed for operation, but it is retained so it can be written out as part of a pipeline
+	 * cache export. When a large number of shaders are loaded, this can consume significant
+	 * memory. In such a case, this parameter can be used to compress the MSL source code that
+	 * is awaiting export as part of a pipeline cache.
+	 *
+	 * The value of this parameter can be changed at any time, and will affect the size of
+	 * the cached MSL from subsequent shader compilations.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, this setting is set to
+	 * MVK_CONFIG_COMPRESSION_ALGORITHM_NONE by default,
+	 * and MoltenVK will not compress the MSL source code after compilation into a MTLLibrary.
+	 */
+	MVKConfigCompressionAlgorithm shaderSourceCompressionAlgorithm;
 
 } MVKConfiguration;
 
@@ -959,6 +1022,8 @@ typedef struct {
 	VkBool32 programmableSamplePositions;			/**< If true, programmable MSAA sample positions are supported. */
 	VkBool32 shaderBarycentricCoordinates;			/**< If true, fragment shader barycentric coordinates are supported. */
 	MTLArgumentBuffersTier argumentBuffersTier;		/**< The argument buffer tier available on this device, as a Metal enumeration. */
+	VkBool32 needsSampleDrefLodArrayWorkaround;		/**< If true, sampling from arrayed depth images with explicit LoD is broken and needs a workaround. */
+	VkDeviceSize hostMemoryPageSize;				/**< The size of a page of host memory on this platform. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */
@@ -976,6 +1041,8 @@ typedef struct {
     MVKPerformanceTracker spirvToMSL;					/** Convert SPIR-V to MSL source code. */
     MVKPerformanceTracker mslCompile;					/** Compile MSL source code into a MTLLibrary. */
     MVKPerformanceTracker mslLoad;						/** Load pre-compiled MSL code into a MTLLibrary. */
+	MVKPerformanceTracker mslCompress;					/** Compress MSL source code after compiling a MTLLibrary, to hold it in a pipeline cache. */
+	MVKPerformanceTracker mslDecompress;				/** Decompress MSL source code to write the MSL when serializing a pipeline cache. */
 	MVKPerformanceTracker shaderLibraryFromCache;		/** Retrieve a shader library from the cache, lazily creating it if needed. */
     MVKPerformanceTracker functionRetrieval;			/** Retrieve a MTLFunction from a MTLLibrary. */
     MVKPerformanceTracker functionSpecialization;		/** Specialize a retrieved MTLFunction. */
@@ -1197,9 +1264,8 @@ VKAPI_ATTR void VKAPI_CALL vkGetVersionStringsMVK(
 /**
  * Sets the number of threads in a workgroup for a compute kernel.
  *
- * This needs to be called if you are creating compute shader modules from MSL
- * source code or MSL compiled code. Workgroup size is determined automatically
- * if you're using SPIR-V.
+ * This needs to be called if you are creating compute shader modules from MSL source code
+ * or MSL compiled code. If you are using SPIR-V, workgroup size is determined automatically.
  *
  * This function is not supported by the Vulkan SDK Loader and Layers framework
  * and is unavailable when using the Vulkan SDK Loader and Layers framework.

@@ -1,7 +1,7 @@
 /*
  * MVKExtensions.mm
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -141,7 +141,7 @@ bool MVKExtensionList::isEnabled(const char* extnName) const {
 	const MVKExtension* extnAry = &extensionArray;
 	for (uint32_t extnIdx = 0; extnIdx < extnCnt; extnIdx++) {
 		const MVKExtension& extn = extnAry[extnIdx];
-		if ( strcmp(extn.pProperties->extensionName, extnName) == 0 ) {
+		if (mvkStringsAreEqual(extn.pProperties->extensionName, extnName)) {
 			return extn.enabled;
 		}
 	}
@@ -153,7 +153,7 @@ void MVKExtensionList::enable(const char* extnName) {
 	MVKExtension* extnAry = &extensionArray;
 	for (uint32_t extnIdx = 0; extnIdx < extnCnt; extnIdx++) {
 		MVKExtension& extn = extnAry[extnIdx];
-		if ( strcmp(extn.pProperties->extensionName, extnName) == 0 ) {
+		if (mvkStringsAreEqual(extn.pProperties->extensionName, extnName)) {
 			extn.enabled = true;
 			return;
 		}

@@ -1,7 +1,7 @@
 /*
  * MVKCommandEncoderState.h
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,8 +64,7 @@ public:
     /**
      * Called automatically when a Metal render pass begins. If the contents have been
      * modified from the default values, this instance is marked as dirty, so the contents
-     * will be encoded to Metal, otherwise it is marked as clean, so the contents will NOT
-     * be encoded. Default state can be left unencoded on a new Metal encoder.
+     * will be encoded to Metal. Default state can be left unencoded on a new Metal encoder.
      */
 	virtual void beginMetalRenderPass() { if (_isModified) { markDirty(); } }
 
@@ -75,8 +74,7 @@ public:
 	/**
 	 * Called automatically when a Metal compute pass begins. If the contents have been
 	 * modified from the default values, this instance is marked as dirty, so the contents
-	 * will be encoded to Metal, otherwise it is marked as clean, so the contents will NOT
-	 * be encoded. Default state can be left unencoded on a new Metal encoder.
+	 * will be encoded to Metal. Default state can be left unencoded on a new Metal encoder.
 	 */
 	virtual void beginMetalComputeEncoding() { if (_isModified) { markDirty(); } }
 
@@ -377,15 +375,25 @@ protected:
         bindingsDirtyFlag = true;
     }
 
-	// Template function to find and mark dirty the binding that uses the index.
+	// Template function to find and mark as overridden the binding that uses the index.
 	template<class T>
-	void markIndexDirty(T& bindings, bool& bindingsDirtyFlag, uint32_t index) {
-		for (auto& b : bindings) {
+	void markBufferIndexOverridden(T& bufferBindings, uint32_t index) {
+		for (auto& b : bufferBindings) {
 			if (b.index == index) {
+				b.isOverridden = true;
+				return;
+			}
+		}
+	}
+
+	// Template function to mark any overridden bindings as dirty.
+	template<class T>
+	void markOverriddenBufferIndexesDirty(T& bufferBindings, bool& bindingsDirtyFlag) {
+		for (auto& b : bufferBindings) {
+			if (b.isOverridden) {
 				b.markDirty();
 				bindingsDirtyFlag = true;
 				MVKCommandEncoderState::markDirty();
-				return;
 			}
 		}
 	}
@@ -548,8 +556,14 @@ public:
 	/** Offset all buffers for vertex attribute bindings with zero divisors by the given number of strides. */
 	void offsetZeroDivisorVertexBuffers(MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);
 
-	/** Marks dirty the buffer binding using the index. */
-	void markBufferIndexDirty(MVKShaderStage stage, uint32_t mtlBufferIndex);
+	/**
+	 * Marks the buffer binding using the index as having been overridden,
+	 * such as by push constants or internal rendering in some transfers.
+	 * */
+	void markBufferIndexOverridden(MVKShaderStage stage, uint32_t mtlBufferIndex);
+
+	/** Marks any overridden buffer indexes as dirty. */
+	void markOverriddenBufferIndexesDirty();
 
 	void markDirty() override;
 
@@ -562,7 +576,7 @@ protected:
     void encodeImpl(uint32_t stage) override;
 	void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) override;
 
-    ResourceBindings<8> _shaderStageResourceBindings[4];
+    ResourceBindings<8> _shaderStageResourceBindings[kMVKShaderStageFragment + 1];
 };
 
 
@@ -600,8 +614,14 @@ public:
 										   MTLResourceUsage mtlUsage,
 										   MTLRenderStages mtlStages) override;
 
-	/** Marks dirty the buffer binding using the index. */
-	void markBufferIndexDirty(uint32_t mtlBufferIndex);
+	/**
+	 * Marks the buffer binding using the index as having been overridden,
+	 * such as by push constants or internal rendering in some transfers.
+	 * */
+	void markBufferIndexOverridden(uint32_t mtlBufferIndex);
+
+	/** Marks any overridden buffer indexes as dirty. */
+	void markOverriddenBufferIndexesDirty();
 
     void markDirty() override;
 
@@ -651,6 +671,7 @@ protected:
 
 	MVKSmallVector<OcclusionQueryLocation> _mtlRenderPassQueries;
     MTLVisibilityResultMode _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	bool _hasRasterized = false;
 };
 
 

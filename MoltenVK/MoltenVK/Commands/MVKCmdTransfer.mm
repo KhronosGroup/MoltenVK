@@ -1,7 +1,7 @@
 /*
  * MVKCmdTransfer.mm
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1254,8 +1254,10 @@ VkResult MVKCmdClearAttachments<N>::setContent(MVKCommandBuffer* cmdBuff,
 											   uint32_t attachmentCount,
 											   const VkClearAttachment* pAttachments,
 											   uint32_t rectCount,
-											   const VkClearRect* pRects) {
+											   const VkClearRect* pRects,
+											   MVKCommandUse cmdUse) {
 	_rpsKey.reset();
+	_commandUse = cmdUse;
 	_mtlDepthVal = 0.0;
     _mtlStencilValue = 0;
     _isClearingDepth = false;
@@ -1463,7 +1465,7 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
     // Render the clear colors to the attachments
 	MVKCommandEncodingPool* cmdEncPool = cmdEncoder->getCommandEncodingPool();
     id<MTLRenderCommandEncoder> mtlRendEnc = cmdEncoder->_mtlRenderEncoder;
-    [mtlRendEnc pushDebugGroup: @"vkCmdClearAttachments"];
+    [mtlRendEnc pushDebugGroup: getMTLDebugGroupLabel()];
     [mtlRendEnc setRenderPipelineState: cmdEncPool->getCmdClearMTLRenderPipelineState(_rpsKey)];
     [mtlRendEnc setDepthStencilState: cmdEncPool->getMTLDepthStencilState(isClearingDepth, isClearingStencil)];
     [mtlRendEnc setStencilReferenceValue: _mtlStencilValue];
@@ -1472,6 +1474,8 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
     [mtlRendEnc setDepthBias: 0 slopeScale: 0 clamp: 0];
     [mtlRendEnc setViewport: {0, 0, (double) fbExtent.width, (double) fbExtent.height, 0.0, 1.0}];
     [mtlRendEnc setScissorRect: {0, 0, fbExtent.width, fbExtent.height}];
+	[mtlRendEnc setVisibilityResultMode: MTLVisibilityResultModeDisabled
+								 offset: cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset];
 
     cmdEncoder->setVertexBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0, true);
     cmdEncoder->setFragmentBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0, true);
@@ -1504,6 +1508,17 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->_depthBiasState.markDirty();
     cmdEncoder->_viewportState.markDirty();
     cmdEncoder->_scissorState.markDirty();
+}
+
+template <size_t N>
+NSString* MVKCmdClearAttachments<N>::getMTLDebugGroupLabel() {
+	switch (_commandUse) {
+		case kMVKCommandUseClearAttachments:    return @"vkCmdClearAttachments";
+		case kMVKCommandUseBeginRenderPass:     return @"Clear Render Area on Begin Renderpass";
+		case kMVKCommandUseBeginRendering:      return @"Clear Render Area on Begin Rendering";
+		case kMVKCommandUseNextSubpass:         return @"Clear Render Area on Next Subpass";
+		default:                                return @"Unknown Use Clear Attachments";
+	}
 }
 
 template class MVKCmdClearAttachments<1>;

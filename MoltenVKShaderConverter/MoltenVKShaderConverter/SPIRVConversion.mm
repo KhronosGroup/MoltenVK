@@ -1,7 +1,7 @@
 /*
  * SPIRVConversion.mm
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,20 +32,19 @@ MVK_PUBLIC_SYMBOL bool mvkConvertSPIRVToMSL(uint32_t* spvCode,
                                             bool shouldLogSPIRV,
                                             bool shouldLogMSL) {
     SPIRVToMSLConversionConfiguration spvCtx;
+	SPIRVToMSLConversionResult conversionResult;
     SPIRVToMSLConverter spvConverter;
     spvConverter.setSPIRV(spvCode, spvLength);
-    bool wasConverted = spvConverter.convert(spvCtx, shouldLogSPIRV, shouldLogMSL);
+    bool wasConverted = spvConverter.convert(spvCtx, conversionResult, shouldLogSPIRV, shouldLogMSL);
 
     if (pMSL) {
-        auto& msl = spvConverter.getMSL();
-        *pMSL = (char*)malloc(msl.size() + 1);
-        strcpy(*pMSL, msl.data());
+        *pMSL = (char*)malloc(conversionResult.msl.size() + 1);
+        strcpy(*pMSL, conversionResult.msl.data());
     }
 
     if (pResultLog) {
-        auto log = spvConverter.getResultLog();
-        *pResultLog = (char*)malloc(log.size() + 1);
-        strcpy(*pResultLog, log.data());
+        *pResultLog = (char*)malloc(conversionResult.resultLog.size() + 1);
+        strcpy(*pResultLog, conversionResult.resultLog.data());
     }
 
     return wasConverted;

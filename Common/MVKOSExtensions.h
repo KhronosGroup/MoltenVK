@@ -1,7 +1,7 @@
 /*
  * MVKOSExtensions.h
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -162,3 +162,5 @@ uint64_t mvkGetAvailableMemorySize();
 /** Returns the amount of memory currently used by this process. */
 uint64_t mvkGetUsedMemorySize();
 
+/** Returns the size of a page of host memory on this platform. */
+uint64_t mvkGetHostMemoryPageSize();

@@ -1,7 +1,7 @@
 /*
  * MVKCommonEnvironment.h
  *
- * Copyright (c) 2015-2022 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -102,8 +102,7 @@ extern "C" {
 #endif
 
 /** Directive to identify public symbols. */
-#define MVK_PUBLIC_SYMBOL        	__attribute__((visibility("default")))
-
+#define MVK_PUBLIC_SYMBOL    __attribute__((visibility("default"))) __attribute__((used))
 
 /** Directive to make a public alias of another symbol. */
 #define MVK_PUBLIC_ALIAS(ALIAS, TARGET)   asm(".globl _" #ALIAS "\n\t_" #ALIAS " = _" #TARGET)
