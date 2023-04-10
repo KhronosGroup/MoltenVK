@@ -402,5 +402,20 @@ kernel void accumulateOcclusionQueryResults(device VisibilityBuffer& dest [[buff
     if (dest.count < max(oldDestCount, src.count)) { dest.countHigh++; }                                        \n\
 }                                                                                                               \n\
                                                                                                                 \n\
+kernel void remapVertices(device const uint* vertexIndices [[ buffer(0) ]],                                     \n\
+                          device uint* remappedVertices [[ buffer(1) ]],                                        \n\
+                          uint numVertices [[ thread_position_in_grid ]]) {                                     \n\
+    uint vertexCount = numVertices;                                                                             \n\
+    for (uint vertexIndex = 0; vertexIndex < vertexCount; ++vertexIndex) {                                      \n\
+        uint index = vertexIndices[vertexIndex];                                                                \n\
+        if (index % 2 == 0) {                                                                                   \n\
+            index = index / 2;                                                                                  \n\
+        } else {                                                                                                \n\
+            index = vertexCount - 1 - index / 2;                                                                \n\
+        }                                                                                                       \n\
+                                                                                                                \n\
+        remappedVerticies[vertexIndex] = index;                                                                 \n\
+    }                                                                                                           \n\
+}                                                                                                               \n\
 ";
 

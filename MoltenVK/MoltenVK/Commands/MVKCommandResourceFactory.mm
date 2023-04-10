@@ -581,6 +581,10 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newAccumulateOcclusionQue
 	return newMTLComputePipelineState("accumulateOcclusionQueryResults", owner);
 }
 
+id<MTLComputePipelineState> MVKCommandResourceFactory::newVertexRemapMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+    return newMTLComputePipelineState("remapVertices", owner);
+}
+
 
 #pragma mark Support methods
 
