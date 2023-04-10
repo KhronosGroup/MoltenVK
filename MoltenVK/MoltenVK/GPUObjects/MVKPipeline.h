@@ -231,6 +231,9 @@ public:
     /** Returns whether this pipeline has tessellation shaders. */
     bool isTessellationPipeline() { return _pTessCtlSS && _pTessEvalSS && _tessInfo.patchControlPoints > 0; }
 
+    /** Returns whether this pipeline uses triangle fans */
+    bool isUsingTriangleFans() { return _isUsingTriangleFans; }
+
     /** Returns the number of input tessellation patch control points. */
     uint32_t getInputControlPointCount() { return _tessInfo.patchControlPoints; }
 
@@ -402,6 +405,7 @@ protected:
 	bool _isRasterizingColor = false;
 	bool _isRasterizingDepthStencil = false;
 	bool _isUsingCustomSamplePositions = false;
+    bool _isUsingTriangleFans = false;
 };
 
 

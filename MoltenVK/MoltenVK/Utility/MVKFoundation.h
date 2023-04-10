@@ -102,7 +102,8 @@ typedef enum : uint8_t {
 enum MVKGraphicsStage {
 	kMVKGraphicsStageVertex = 0,	/**< The vertex shader stage. */
 	kMVKGraphicsStageTessControl,	/**< The tessellation control shader stage. */
-	kMVKGraphicsStageRasterization	/**< The rest of the pipeline. */
+	kMVKGraphicsStageRasterization,	/**< The rest of the pipeline. */
+    kMVKGraphicsStageVertexRemap    /**< The vertex remapping stage. */
 };
 
 /** Returns the name of the result value. */
