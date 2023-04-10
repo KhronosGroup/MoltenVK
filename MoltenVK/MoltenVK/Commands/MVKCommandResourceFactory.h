@@ -457,9 +457,8 @@ public:
 	/** Returns a new MTLComputePipelineState for accumulating occlusion query results to a buffer. */
 	id<MTLComputePipelineState> newAccumulateOcclusionQueryResultsMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
     
-    /** Returns a new MTLComputePipelineState for converting triangle fan verts to triangle strip. */
-    id<MTLComputePipelineState>
-    newVertexRemapMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+    /** Returns a new MTLComputePipelineState for remapping triangle fan verts to triangle strip. */
+    id<MTLComputePipelineState> newVertexRemapMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 
 
 #pragma mark Construction
