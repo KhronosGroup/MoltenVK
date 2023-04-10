@@ -414,7 +414,7 @@ kernel void remapVertices(device const uint* vertexIndices [[ buffer(0) ]],     
             index = vertexCount - 1 - index / 2;                                                                \n\
         }                                                                                                       \n\
                                                                                                                 \n\
-        remappedVerticies[vertexIndex] = index;                                                                 \n\
+        remappedVertices[vertexIndex] = index;                                                                  \n\
     }                                                                                                           \n\
 }                                                                                                               \n\
 ";
