@@ -416,9 +416,9 @@ MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopologyInObj(VkPrimitiveTopo
 
 		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:
 		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
+        case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
 			return MTLPrimitiveTypeTriangleStrip;
 
-		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
 		default:
 			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "VkPrimitiveTopology value %d is not supported for rendering.", vkTopology);
 			return MTLPrimitiveTypePoint;
