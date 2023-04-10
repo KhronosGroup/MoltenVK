@@ -138,6 +138,9 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 		id<MTLComputeCommandEncoder> mtlTessCtlEncoder = nil;
 
 		switch (stage) {
+            case kMVKGraphicsStageVertexRemap: {
+                
+            }
             case kMVKGraphicsStageVertex: {
                 mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                 if (pipeline->needsVertexOutputBuffer()) {
@@ -337,6 +340,9 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 		if ( !pipeline->hasValidMTLPipelineStates() ) { return; }	// Abort if this pipeline stage could not be compiled.
 
         switch (stage) {
+            case kMVKGraphicsStageVertexRemap: {
+                
+            }
             case kMVKGraphicsStageVertex: {
                 mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                 if (pipeline->needsVertexOutputBuffer()) {
@@ -694,6 +700,9 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 			if ( !pipeline->hasValidMTLPipelineStates() ) { return; }	// Abort if this pipeline stage could not be compiled.
 
             switch (stage) {
+                case kMVKGraphicsStageVertexRemap: {
+                    
+                }
                 case kMVKGraphicsStageVertex:
                     mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                     if (pipeline->needsVertexOutputBuffer()) {
@@ -1027,6 +1036,9 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 			if ( !pipeline->hasValidMTLPipelineStates() ) { return; }	// Abort if this pipeline stage could not be compiled.
 
             switch (stage) {
+                case kMVKGraphicsStageVertexRemap: {
+                    
+                }
                 case kMVKGraphicsStageVertex:
                     mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                     if (pipeline->needsVertexOutputBuffer()) {
