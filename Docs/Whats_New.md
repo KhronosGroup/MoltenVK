@@ -13,6 +13,21 @@ Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.2.4
+--------------
+
+Released TBD
+
+- Add support for extensions:
+	- `VK_KHR_map_memory2`
+- Fix memory leak when waiting on timeline semaphores.
+- Add `MVK_ENABLE_EXPLICIT_LOD_WORKAROUND` environment variable to selectively 
+  disable recent fixes to handling LOD for arrayed depth images in shaders, 
+  on Apple Silicon, when those fixes cause regression in rendering behavior.
+- For correctness, set `VkPhysicalDeviceLimits::lineWidthGranularity` to `1`.
+
+
+
 MoltenVK 1.2.3
 --------------
 
