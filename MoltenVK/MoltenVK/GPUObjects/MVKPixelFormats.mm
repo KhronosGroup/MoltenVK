@@ -109,24 +109,26 @@ using namespace std;
 #endif
 
 #if MVK_IOS_OR_TVOS
-#   define MTLPixelFormatDepth24Unorm_Stencil8      MTLPixelFormatInvalid
-#   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
-#   define MTLPixelFormatBC1_RGBA                   MTLPixelFormatInvalid
-#   define MTLPixelFormatBC1_RGBA_sRGB              MTLPixelFormatInvalid
-#   define MTLPixelFormatBC2_RGBA                   MTLPixelFormatInvalid
-#   define MTLPixelFormatBC2_RGBA_sRGB              MTLPixelFormatInvalid
-#   define MTLPixelFormatBC3_RGBA                   MTLPixelFormatInvalid
-#   define MTLPixelFormatBC3_RGBA_sRGB              MTLPixelFormatInvalid
-#   define MTLPixelFormatBC4_RUnorm                 MTLPixelFormatInvalid
-#   define MTLPixelFormatBC4_RSnorm                 MTLPixelFormatInvalid
-#   define MTLPixelFormatBC5_RGUnorm                MTLPixelFormatInvalid
-#   define MTLPixelFormatBC5_RGSnorm                MTLPixelFormatInvalid
-#   define MTLPixelFormatBC6H_RGBUfloat             MTLPixelFormatInvalid
-#   define MTLPixelFormatBC6H_RGBFloat              MTLPixelFormatInvalid
-#   define MTLPixelFormatBC7_RGBAUnorm              MTLPixelFormatInvalid
-#   define MTLPixelFormatBC7_RGBAUnorm_sRGB         MTLPixelFormatInvalid
+#	if !MVK_XCODE_14_3   // iOS/tvOS 16.4
+#       define MTLPixelFormatBC1_RGBA               MTLPixelFormatInvalid
+#       define MTLPixelFormatBC1_RGBA_sRGB          MTLPixelFormatInvalid
+#       define MTLPixelFormatBC2_RGBA               MTLPixelFormatInvalid
+#       define MTLPixelFormatBC2_RGBA_sRGB          MTLPixelFormatInvalid
+#       define MTLPixelFormatBC3_RGBA               MTLPixelFormatInvalid
+#       define MTLPixelFormatBC3_RGBA_sRGB          MTLPixelFormatInvalid
+#       define MTLPixelFormatBC4_RUnorm             MTLPixelFormatInvalid
+#       define MTLPixelFormatBC4_RSnorm             MTLPixelFormatInvalid
+#       define MTLPixelFormatBC5_RGUnorm            MTLPixelFormatInvalid
+#       define MTLPixelFormatBC5_RGSnorm            MTLPixelFormatInvalid
+#       define MTLPixelFormatBC6H_RGBUfloat         MTLPixelFormatInvalid
+#       define MTLPixelFormatBC6H_RGBFloat          MTLPixelFormatInvalid
+#       define MTLPixelFormatBC7_RGBAUnorm          MTLPixelFormatInvalid
+#       define MTLPixelFormatBC7_RGBAUnorm_sRGB     MTLPixelFormatInvalid
+#   endif
 
 #   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatDepth32Float_Stencil8
+#   define MTLPixelFormatDepth24Unorm_Stencil8      MTLPixelFormatInvalid
+#   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
 #endif
 
 #if MVK_TVOS
@@ -1217,20 +1219,20 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDescSRGB( ASTC_12x12_sRGB, ASTC_12x12, None, None, ASTC_12x12_LDR );
 	addMTLPixelFormatDesc    ( ASTC_12x12_HDR, ASTC_12x12, None, None );
 
-	addMTLPixelFormatDesc    ( BC1_RGBA, BC1_RGBA, None, RF );
-	addMTLPixelFormatDescSRGB( BC1_RGBA_sRGB, BC1_RGBA, None, RF, BC1_RGBA );
-	addMTLPixelFormatDesc    ( BC2_RGBA, BC2_RGBA, None, RF );
-	addMTLPixelFormatDescSRGB( BC2_RGBA_sRGB, BC2_RGBA, None, RF, BC2_RGBA );
-	addMTLPixelFormatDesc    ( BC3_RGBA, BC3_RGBA, None, RF );
-	addMTLPixelFormatDescSRGB( BC3_RGBA_sRGB, BC3_RGBA, None, RF, BC3_RGBA );
-	addMTLPixelFormatDesc    ( BC4_RUnorm, BC4_R, None, RF );
-	addMTLPixelFormatDesc    ( BC4_RSnorm, BC4_R, None, RF );
-	addMTLPixelFormatDesc    ( BC5_RGUnorm, BC5_RG, None, RF );
-	addMTLPixelFormatDesc    ( BC5_RGSnorm, BC5_RG, None, RF );
-	addMTLPixelFormatDesc    ( BC6H_RGBUfloat, BC6H_RGB, None, RF );
-	addMTLPixelFormatDesc    ( BC6H_RGBFloat, BC6H_RGB, None, RF );
-	addMTLPixelFormatDesc    ( BC7_RGBAUnorm, BC7_RGBA, None, RF );
-	addMTLPixelFormatDescSRGB( BC7_RGBAUnorm_sRGB, BC7_RGBA, None, RF, BC7_RGBAUnorm );
+	addMTLPixelFormatDesc    ( BC1_RGBA, BC1_RGBA, RF, RF );
+	addMTLPixelFormatDescSRGB( BC1_RGBA_sRGB, BC1_RGBA, RF, RF, BC1_RGBA );
+	addMTLPixelFormatDesc    ( BC2_RGBA, BC2_RGBA, RF, RF );
+	addMTLPixelFormatDescSRGB( BC2_RGBA_sRGB, BC2_RGBA, RF, RF, BC2_RGBA );
+	addMTLPixelFormatDesc    ( BC3_RGBA, BC3_RGBA, RF, RF );
+	addMTLPixelFormatDescSRGB( BC3_RGBA_sRGB, BC3_RGBA, RF, RF, BC3_RGBA );
+	addMTLPixelFormatDesc    ( BC4_RUnorm, BC4_R, RF, RF );
+	addMTLPixelFormatDesc    ( BC4_RSnorm, BC4_R, RF, RF );
+	addMTLPixelFormatDesc    ( BC5_RGUnorm, BC5_RG, RF, RF );
+	addMTLPixelFormatDesc    ( BC5_RGSnorm, BC5_RG, RF, RF );
+	addMTLPixelFormatDesc    ( BC6H_RGBUfloat, BC6H_RGB, RF, RF );
+	addMTLPixelFormatDesc    ( BC6H_RGBFloat, BC6H_RGB, RF, RF );
+	addMTLPixelFormatDesc    ( BC7_RGBAUnorm, BC7_RGBA, RF, RF );
+	addMTLPixelFormatDescSRGB( BC7_RGBAUnorm_sRGB, BC7_RGBA, RF, RF, BC7_RGBAUnorm );
 
 	// YUV pixel formats
 	addMTLPixelFormatDesc    ( GBGR422, None, RF, RF );
@@ -1477,20 +1479,23 @@ void MVKPixelFormats::modifyMTLFormatCapabilities() {
 	addMTLVertexFormatCapabilities(mtlDevice, MTLGPUFamily ##GPU_FAM, OS_VER, MTLVertexFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
 
 // Modifies the format capability tables based on the capabilities of the specific MTLDevice
-#if MVK_MACOS
 void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
-
-	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v1, R32Uint, Atomic );
-	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v1, R32Sint, Atomic );
-
-	if (mtlDevice.isDepth24Stencil8PixelFormatSupported) {
-		addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v1, Depth24Unorm_Stencil8, DRFMR );
+	if ( !mvkSupportsBCTextureCompression(mtlDevice) ) {
+		disableAllMTLPixFmtCaps( BC1_RGBA );
+		disableAllMTLPixFmtCaps( BC1_RGBA_sRGB );
+		disableAllMTLPixFmtCaps( BC2_RGBA );
+		disableAllMTLPixFmtCaps( BC2_RGBA_sRGB );
+		disableAllMTLPixFmtCaps( BC3_RGBA );
+		disableAllMTLPixFmtCaps( BC3_RGBA_sRGB );
+		disableAllMTLPixFmtCaps( BC4_RUnorm );
+		disableAllMTLPixFmtCaps( BC4_RSnorm );
+		disableAllMTLPixFmtCaps( BC5_RGUnorm );
+		disableAllMTLPixFmtCaps( BC5_RGSnorm );
+		disableAllMTLPixFmtCaps( BC6H_RGBUfloat );
+		disableAllMTLPixFmtCaps( BC6H_RGBFloat );
+		disableAllMTLPixFmtCaps( BC7_RGBAUnorm );
+		disableAllMTLPixFmtCaps( BC7_RGBAUnorm_sRGB );
 	}
-
-	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v2, Depth16Unorm, DRFMR );
-
-	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v3, BGR10A2Unorm, RFCMRB );
-
 #if MVK_XCODE_12
 	if ([mtlDevice respondsToSelector: @selector(supports32BitMSAA)] &&
 		!mtlDevice.supports32BitMSAA) {
@@ -1522,24 +1527,21 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 		disableMTLPixFmtCaps( RG32Float, Filter );
 		disableMTLPixFmtCaps( RGBA32Float, Filter );
 	}
+#endif
 
-	if ( !mvkSupportsBCTextureCompression(mtlDevice) ) {
-		disableAllMTLPixFmtCaps( BC1_RGBA );
-		disableAllMTLPixFmtCaps( BC1_RGBA_sRGB );
-		disableAllMTLPixFmtCaps( BC2_RGBA );
-		disableAllMTLPixFmtCaps( BC2_RGBA_sRGB );
-		disableAllMTLPixFmtCaps( BC3_RGBA );
-		disableAllMTLPixFmtCaps( BC3_RGBA_sRGB );
-		disableAllMTLPixFmtCaps( BC4_RUnorm );
-		disableAllMTLPixFmtCaps( BC4_RSnorm );
-		disableAllMTLPixFmtCaps( BC5_RGUnorm );
-		disableAllMTLPixFmtCaps( BC5_RGSnorm );
-		disableAllMTLPixFmtCaps( BC6H_RGBUfloat );
-		disableAllMTLPixFmtCaps( BC6H_RGBFloat );
-		disableAllMTLPixFmtCaps( BC7_RGBAUnorm );
-		disableAllMTLPixFmtCaps( BC7_RGBAUnorm_sRGB );
+#if MVK_MACOS
+	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v1, R32Uint, Atomic );
+	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v1, R32Sint, Atomic );
+
+	if (mtlDevice.isDepth24Stencil8PixelFormatSupported) {
+		addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v1, Depth24Unorm_Stencil8, DRFMR );
 	}
 
+	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v2, Depth16Unorm, DRFMR );
+
+	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v3, BGR10A2Unorm, RFCMRB );
+
+#if MVK_XCODE_12
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, R8Unorm_sRGB, All );
 
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, RG8Unorm_sRGB, All );
@@ -1632,11 +1634,9 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addFeatSetMTLVtxFmtCaps( macOS_GPUFamily1_v3, Short, Vertex );
 	addFeatSetMTLVtxFmtCaps( macOS_GPUFamily1_v3, Half, Vertex );
 	addFeatSetMTLVtxFmtCaps( macOS_GPUFamily1_v3, UChar4Normalized_BGRA, Vertex );
-}
 #endif
 
 #if MVK_TVOS
-void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v2, R8Unorm_sRGB, All );
 	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily2_v1, R8Unorm_sRGB, All );
 
@@ -1774,11 +1774,9 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 		disableMTLPixFmtCaps(ASTC_12x12_sRGB, Write);
 	}
 #endif
-}
 #endif
 
 #if MVK_IOS
-void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addFeatSetMTLPixFmtCaps( iOS_GPUFamily2_v3, R8Unorm_sRGB, All );
 	addFeatSetMTLPixFmtCaps( iOS_GPUFamily3_v1, R8Unorm_sRGB, All );
 
@@ -1933,8 +1931,8 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 		disableMTLPixFmtCaps(ASTC_12x12_sRGB, Write);
 	}
 #endif
-}
 #endif
+}
 
 #undef addFeatSetMTLPixFmtCaps
 #undef addGPUOSMTLPixFmtCaps
