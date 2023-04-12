@@ -2093,7 +2093,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	// and a wider combination of GPU's on older macOS versions is under way.
 #if MVK_MACOS
 	_metalFeatures.descriptorSetArgumentBuffers = (_metalFeatures.argumentBuffers &&
-												   (mvkOSVersionIsAtLeast(10.16) ||
+												   (mvkOSVersionIsAtLeast(11.0) ||
 													_properties.vendorID == kIntelVendorId));
 #endif
 	// Currently, if we don't support descriptor set argument buffers, we can't support argument buffers.
