@@ -929,6 +929,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	_needsVertexDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
 	_needsVertexViewRangeBuffer = funcRslts.needsViewRangeBuffer;
 	_needsVertexOutputBuffer = funcRslts.needsOutputBuffer;
+	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageVertex);
 
 	addMTLArgumentEncoders(func, pCreateInfo, shaderConfig, kMVKShaderStageVertex);
 
@@ -998,6 +999,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 		_needsVertexBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
 		_needsVertexDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
 		_needsVertexOutputBuffer = funcRslts.needsOutputBuffer;
+		markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageVertex);
 	}
 
 	addMTLArgumentEncoders(func, pCreateInfo, shaderConfig, kMVKShaderStageVertex);
@@ -1057,6 +1059,7 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	_needsTessCtlOutputBuffer = funcRslts.needsOutputBuffer;
 	_needsTessCtlPatchOutputBuffer = funcRslts.needsPatchOutputBuffer;
 	_needsTessCtlInputBuffer = funcRslts.needsInputThreadgroupMem;
+	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageTessCtl);
 
 	addMTLArgumentEncoders(func, pCreateInfo, shaderConfig, kMVKShaderStageTessCtl);
 
@@ -1113,6 +1116,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	_needsTessEvalSwizzleBuffer = funcRslts.needsSwizzleBuffer;
 	_needsTessEvalBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
 	_needsTessEvalDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
+	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageTessEval);
 
 	addMTLArgumentEncoders(func, pCreateInfo, shaderConfig, kMVKShaderStageTessEval);
 
@@ -1170,6 +1174,7 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		_needsFragmentBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
 		_needsFragmentDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
 		_needsFragmentViewRangeBuffer = funcRslts.needsViewRangeBuffer;
+		markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageFragment);
 
 		addMTLArgumentEncoders(func, pCreateInfo, shaderConfig, kMVKShaderStageFragment);
 
@@ -1804,6 +1809,17 @@ MVKMTLFunction MVKGraphicsPipeline::getMTLFunction(SPIRVToMSLConversionConfigura
 	return func;
 }
 
+void MVKGraphicsPipeline::markIfUsingPhysicalStorageBufferAddressesCapability(SPIRVToMSLConversionResultInfo& resultsInfo,
+																			  MVKShaderStage stage) {
+	if (resultsInfo.usesPhysicalStorageBufferAddressesCapability) {
+		_stagesUsingPhysicalStorageBufferAddressesCapability.push_back(stage);
+	}
+}
+
+bool MVKGraphicsPipeline::usesPhysicalStorageBufferAddressesCapability(MVKShaderStage stage) {
+	return mvkContains(_stagesUsingPhysicalStorageBufferAddressesCapability, stage);
+}
+
 MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 	@synchronized (getMTLDevice()) {
 		[_mtlTessVertexStageDesc release];
@@ -1952,6 +1968,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     _needsBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
 	_needsDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
     _needsDispatchBaseBuffer = funcRslts.needsDispatchBaseBuffer;
+	_usesPhysicalStorageBufferAddressesCapability = funcRslts.usesPhysicalStorageBufferAddressesCapability;
 
 	addMTLArgumentEncoders(func, pCreateInfo, shaderConfig, kMVKShaderStageCompute);
 
@@ -1960,6 +1977,10 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 
 uint32_t MVKComputePipeline::getImplicitBufferIndex(uint32_t bufferIndexOffset) {
 	return _device->_pMetalFeatures->maxPerStageBufferCount - (bufferIndexOffset + 1);
+}
+
+bool MVKComputePipeline::usesPhysicalStorageBufferAddressesCapability(MVKShaderStage stage) {
+	return _usesPhysicalStorageBufferAddressesCapability;
 }
 
 MVKComputePipeline::~MVKComputePipeline() {
@@ -2428,7 +2449,8 @@ namespace mvk {
 				scr.needsDynamicOffsetBuffer,
 				scr.needsInputThreadgroupMem,
 				scr.needsDispatchBaseBuffer,
-				scr.needsViewRangeBuffer);
+				scr.needsViewRangeBuffer,
+				scr.usesPhysicalStorageBufferAddressesCapability);
 	}
 
 }

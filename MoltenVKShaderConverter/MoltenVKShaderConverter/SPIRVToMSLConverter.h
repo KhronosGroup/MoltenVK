@@ -244,6 +244,7 @@ namespace mvk {
 		bool needsInputThreadgroupMem = false;
 		bool needsDispatchBaseBuffer = false;
 		bool needsViewRangeBuffer = false;
+		bool usesPhysicalStorageBufferAddressesCapability = false;
 
 	} SPIRVToMSLConversionResultInfo;
 
@@ -300,6 +301,7 @@ namespace mvk {
 		void writeSPIRVToFile(std::string spvFilepath, std::string& log);
 		void populateWorkgroupDimension(SPIRVWorkgroupSizeDimension& wgDim, uint32_t size, SPIRV_CROSS_NAMESPACE::SpecializationConstant& spvSpecConst);
 		void populateEntryPoint(SPIRV_CROSS_NAMESPACE::Compiler* pCompiler, SPIRVToMSLConversionOptions& options, SPIRVEntryPoint& entryPoint);
+		bool usesPhysicalStorageBufferAddressesCapability(SPIRV_CROSS_NAMESPACE::Compiler* pCompiler);
 
 		std::vector<uint32_t> _spirv;
 	};
