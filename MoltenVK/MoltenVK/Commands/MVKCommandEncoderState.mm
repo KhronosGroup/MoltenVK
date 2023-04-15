@@ -693,6 +693,11 @@ void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stag
 
 	encodeMetalArgumentBuffer(stage);
 
+	MVKPipeline* pipeline = getPipeline();
+	if (pipeline && pipeline->usesPhysicalStorageBufferAddressesCapability(stage)) {
+		getDevice()->encodeGPUAddressableBuffers(this, stage);
+	}
+
     auto& shaderStage = _shaderStageResourceBindings[stage];
 
     if (shaderStage.swizzleBufferBinding.isDirty) {
@@ -963,10 +968,10 @@ void MVKGraphicsResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderS
 	bindBuffer(stage, buffBind);
 }
 
-void MVKGraphicsResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(MVKShaderStage stage,
-																				id<MTLResource> mtlResource,
-																				MTLResourceUsage mtlUsage,
-																				MTLRenderStages mtlStages) {
+void MVKGraphicsResourcesCommandEncoderState::encodeResourceUsage(MVKShaderStage stage,
+																  id<MTLResource> mtlResource,
+																  MTLResourceUsage mtlUsage,
+																  MTLRenderStages mtlStages) {
 	if (mtlResource && mtlStages) {
 		if (stage == kMVKShaderStageTessCtl) {
 			auto* mtlCompEnc = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
@@ -1039,8 +1044,10 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
 
 	encodeMetalArgumentBuffer(kMVKShaderStageCompute);
 
-    MVKPipeline* pipeline = getPipeline();
-	bool fullImageViewSwizzle = pipeline ? pipeline->fullImageViewSwizzle() : false;
+	MVKPipeline* pipeline = getPipeline();
+	if (pipeline && pipeline->usesPhysicalStorageBufferAddressesCapability(kMVKShaderStageCompute)) {
+		getDevice()->encodeGPUAddressableBuffers(this, kMVKShaderStageCompute);
+	}
 
     if (_resourceBindings.swizzleBufferBinding.isDirty) {
 		for (auto& b : _resourceBindings.textureBindings) {
@@ -1053,6 +1060,7 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
                                      _resourceBindings.swizzleBufferBinding.index);
 
 	} else {
+		bool fullImageViewSwizzle = pipeline ? pipeline->fullImageViewSwizzle() : false;
 		assertMissingSwizzles(_resourceBindings.needsSwizzle && !fullImageViewSwizzle, "compute", _resourceBindings.textureBindings.contents());
     }
 
@@ -1116,10 +1124,10 @@ void MVKComputeResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderSt
 	bindBuffer(buffBind);
 }
 
-void MVKComputeResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(MVKShaderStage stage,
-																			   id<MTLResource> mtlResource,
-																			   MTLResourceUsage mtlUsage,
-																			   MTLRenderStages mtlStages) {
+void MVKComputeResourcesCommandEncoderState::encodeResourceUsage(MVKShaderStage stage,
+																 id<MTLResource> mtlResource,
+																 MTLResourceUsage mtlUsage,
+																 MTLRenderStages mtlStages) {
 	if (mtlResource) {
 		auto* mtlCompEnc = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch);
 		[mtlCompEnc useResource: mtlResource usage: mtlUsage];

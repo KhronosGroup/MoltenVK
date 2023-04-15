@@ -786,10 +786,8 @@ void MVKBufferDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoder
 						 atIndex: argIdx];
 	}
 	if (encodeUsage) {
-		rezEncState->encodeArgumentBufferResourceUsage(stage,
-													   _mvkBuffer ? _mvkBuffer->getMTLBuffer() : nil,
-													   getMTLResourceUsage(),
-													   mvkDSLBind->getMTLRenderStages());
+		id<MTLBuffer> mtlBuffer = _mvkBuffer ? _mvkBuffer->getMTLBuffer() : nil;
+		rezEncState->encodeResourceUsage(stage, mtlBuffer, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 	}
 }
 
@@ -876,10 +874,8 @@ void MVKInlineUniformBlockDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCo
 						 atIndex: argIdx];
 	}
 	if (encodeUsage) {
-		rezEncState->encodeArgumentBufferResourceUsage(stage,
-													   _mvkMTLBufferAllocation ? _mvkMTLBufferAllocation->_mtlBuffer : nil,
-													   getMTLResourceUsage(),
-													   mvkDSLBind->getMTLRenderStages());
+		id<MTLBuffer> mtlBuffer = _mvkMTLBufferAllocation ? _mvkMTLBufferAllocation->_mtlBuffer : nil;
+		rezEncState->encodeResourceUsage(stage, mtlBuffer, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 	}
 }
 
@@ -994,7 +990,7 @@ void MVKImageDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderS
 			[mtlArgEncoder setTexture: mtlTexture atIndex: argIdx];
 		}
 		if (encodeUsage) {
-			rezEncState->encodeArgumentBufferResourceUsage(stage, mtlTexture, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
+			rezEncState->encodeResourceUsage(stage, mtlTexture, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 		}
 		if (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
 			id<MTLTexture> mtlTex = mtlTexture.parentTexture ? mtlTexture.parentTexture : mtlTexture;
@@ -1005,7 +1001,7 @@ void MVKImageDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderS
 					[mtlArgEncoder setBuffer: mtlBuff offset: mtlTex.bufferOffset atIndex: argIdx];
 				}
 				if (encodeUsage) {
-					rezEncState->encodeArgumentBufferResourceUsage(stage, mtlBuff, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
+					rezEncState->encodeResourceUsage(stage, mtlBuff, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 				}
 			}
 		}
@@ -1294,7 +1290,7 @@ void MVKTexelBufferDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEn
 		[mtlArgEncoder setTexture: mtlTexture atIndex: argIdx];
 	}
 	if (encodeUsage) {
-		rezEncState->encodeArgumentBufferResourceUsage(stage, mtlTexture, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
+		rezEncState->encodeResourceUsage(stage, mtlTexture, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 	}
 
 	if (descType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
@@ -1305,7 +1301,7 @@ void MVKTexelBufferDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEn
 				[mtlArgEncoder setBuffer: mtlBuff offset: mtlTexture.bufferOffset atIndex: argIdx];
 			}
 			if (encodeUsage) {
-				rezEncState->encodeArgumentBufferResourceUsage(stage, mtlBuff, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
+				rezEncState->encodeResourceUsage(stage, mtlBuff, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 			}
 		}
 	}

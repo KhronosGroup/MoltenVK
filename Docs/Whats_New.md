@@ -22,6 +22,7 @@ Released TBD
 	- `VK_KHR_map_memory2`
 - Support BC compression on iOS/tvOS where available (iOS/tvOS 16.4 and above and supported by the GPU).
 - Fix memory leak when waiting on timeline semaphores.
+- Ensure shaders that use `PhysicalStorageBufferAddresses` encode the use of the associated `MTLBuffer`.
 - Add `MVK_ENABLE_EXPLICIT_LOD_WORKAROUND` environment variable to selectively 
   disable recent fixes to handling LOD for arrayed depth images in shaders, 
   on Apple Silicon, when those fixes cause regression in rendering behavior.

@@ -3545,15 +3545,14 @@ uint32_t MVKDevice::getVulkanMemoryTypeIndex(MTLStorageMode mtlStorageMode) {
 
 MVKBuffer* MVKDevice::createBuffer(const VkBufferCreateInfo* pCreateInfo,
 								   const VkAllocationCallbacks* pAllocator) {
-    return (MVKBuffer*)addResource(new MVKBuffer(this, pCreateInfo));
+    return addBuffer(new MVKBuffer(this, pCreateInfo));
 }
 
 void MVKDevice::destroyBuffer(MVKBuffer* mvkBuff,
 							  const VkAllocationCallbacks* pAllocator) {
-	if (mvkBuff) {
-		removeResource(mvkBuff);
-		mvkBuff->destroy();
-	}
+	if ( !mvkBuff ) { return; }
+	removeBuffer(mvkBuff);
+	mvkBuff->destroy();
 }
 
 MVKBufferView* MVKDevice::createBufferView(const VkBufferViewCreateInfo* pCreateInfo,
@@ -3582,20 +3581,14 @@ MVKImage* MVKDevice::createImage(const VkImageCreateInfo* pCreateInfo,
     MVKImage* mvkImg = (swapchainInfo)
         ? new MVKPeerSwapchainImage(this, pCreateInfo, (MVKSwapchain*)swapchainInfo->swapchain, uint32_t(-1))
         : new MVKImage(this, pCreateInfo);
-    for (auto& memoryBinding : mvkImg->_memoryBindings) {
-        addResource(memoryBinding);
-    }
-	return mvkImg;
+	return addImage(mvkImg);
 }
 
 void MVKDevice::destroyImage(MVKImage* mvkImg,
 							 const VkAllocationCallbacks* pAllocator) {
-	if (mvkImg) {
-		for (auto& memoryBinding : mvkImg->_memoryBindings) {
-            removeResource(memoryBinding);
-        }
-		mvkImg->destroy();
-	}
+	if ( !mvkImg ) { return; }
+	removeImage(mvkImg);
+	mvkImg->destroy();
 }
 
 MVKImageView* MVKDevice::createImageView(const VkImageViewCreateInfo* pCreateInfo,
@@ -3636,22 +3629,16 @@ MVKPresentableSwapchainImage* MVKDevice::createPresentableSwapchainImage(const V
 																		 MVKSwapchain* swapchain,
 																		 uint32_t swapchainIndex,
 																		 const VkAllocationCallbacks* pAllocator) {
-	MVKPresentableSwapchainImage* mvkImg = new MVKPresentableSwapchainImage(this, pCreateInfo,
-																			swapchain, swapchainIndex);
-    for (auto& memoryBinding : mvkImg->_memoryBindings) {
-        addResource(memoryBinding);
-    }
-    return mvkImg;
+	auto* pImg = new MVKPresentableSwapchainImage(this, pCreateInfo, swapchain, swapchainIndex);
+	addImage(pImg);
+	return pImg;
 }
 
 void MVKDevice::destroyPresentableSwapchainImage(MVKPresentableSwapchainImage* mvkImg,
 												 const VkAllocationCallbacks* pAllocator) {
-	if (mvkImg) {
-		for (auto& memoryBinding : mvkImg->_memoryBindings) {
-            removeResource(memoryBinding);
-        }
-		mvkImg->destroy();
-	}
+	if ( !mvkImg ) { return; }
+	removeImage(mvkImg);
+	mvkImg->destroy();
 }
 
 MVKFence* MVKDevice::createFence(const VkFenceCreateInfo* pCreateInfo,
@@ -3987,42 +3974,79 @@ void MVKDevice::destroyPrivateDataSlot(VkPrivateDataSlotEXT privateDataSlot,
 	mvkPDS->destroy();
 }
 
-
 #pragma mark Operations
 
-// Adds the specified resource for tracking, and returns the added resource.
-MVKResource* MVKDevice::addResource(MVKResource* rez) {
+// If the underlying MTLBuffer is referenced in a shader only via its gpuAddress,
+// the GPU might not be aware that the MTLBuffer needs to be made resident.
+// Track the buffer as needing to be made resident if a shader is bound that uses
+// PhysicalStorageBufferAddresses to access the contents of the underlying MTLBuffer.
+MVKBuffer* MVKDevice::addBuffer(MVKBuffer* mvkBuff) {
+	if ( !mvkBuff ) { return mvkBuff; }
+
 	lock_guard<mutex> lock(_rezLock);
-	_resources.push_back(rez);
-	return rez;
+	_resources.push_back(mvkBuff);
+	if (mvkIsAnyFlagEnabled(mvkBuff->getUsage(), VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)) {
+		_gpuAddressableBuffers.push_back(mvkBuff);
+	}
+	return mvkBuff;
 }
 
-// Removes the specified resource for tracking and returns the removed resource.
-MVKResource* MVKDevice::removeResource(MVKResource* rez) {
+MVKBuffer* MVKDevice::removeBuffer(MVKBuffer* mvkBuff) {
+	if ( !mvkBuff ) { return mvkBuff; }
+
 	lock_guard<mutex> lock(_rezLock);
-	mvkRemoveFirstOccurance(_resources, rez);
-	return rez;
+	mvkRemoveFirstOccurance(_resources, mvkBuff);
+	if (mvkIsAnyFlagEnabled(mvkBuff->getUsage(), VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)) {
+		mvkRemoveFirstOccurance(_gpuAddressableBuffers, mvkBuff);
+	}
+	return mvkBuff;
 }
 
-// Adds the specified host semaphore to be woken upon device loss.
+void MVKDevice::encodeGPUAddressableBuffers(MVKResourcesCommandEncoderState* rezEncState, MVKShaderStage stage) {
+	MTLResourceUsage mtlUsage = MTLResourceUsageRead | MTLResourceUsageWrite;
+	MTLRenderStages mtlRendStage = (stage == kMVKShaderStageFragment) ? MTLRenderStageFragment : MTLRenderStageVertex;
+
+	lock_guard<mutex> lock(_rezLock);
+	for (auto& buff : _gpuAddressableBuffers) {
+		rezEncState->encodeResourceUsage(stage, buff->getMTLBuffer(), mtlUsage, mtlRendStage);
+	}
+}
+
+MVKImage* MVKDevice::addImage(MVKImage* mvkImg) {
+	if ( !mvkImg ) { return mvkImg; }
+
+	lock_guard<mutex> lock(_rezLock);
+	for (auto& mb : mvkImg->_memoryBindings) {
+		_resources.push_back(mb);
+	}
+	return mvkImg;
+}
+
+MVKImage* MVKDevice::removeImage(MVKImage* mvkImg) {
+	if ( !mvkImg ) { return mvkImg; }
+
+	lock_guard<mutex> lock(_rezLock);
+	for (auto& mb : mvkImg->_memoryBindings) {
+		mvkRemoveFirstOccurance(_resources, mb);
+	}
+	return mvkImg;
+}
+
 void MVKDevice::addSemaphore(MVKSemaphoreImpl* sem4) {
 	lock_guard<mutex> lock(_sem4Lock);
 	_awaitingSemaphores.push_back(sem4);
 }
 
-// Removes the specified host semaphore.
 void MVKDevice::removeSemaphore(MVKSemaphoreImpl* sem4) {
 	lock_guard<mutex> lock(_sem4Lock);
 	mvkRemoveFirstOccurance(_awaitingSemaphores, sem4);
 }
 
-// Adds the specified timeline semaphore to be woken at the specified value upon device loss.
 void MVKDevice::addTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value) {
 	lock_guard<mutex> lock(_sem4Lock);
 	_awaitingTimelineSem4s.emplace_back(sem4, value);
 }
 
-// Removes the specified timeline semaphore.
 void MVKDevice::removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value) {
 	lock_guard<mutex> lock(_sem4Lock);
 	mvkRemoveFirstOccurance(_awaitingTimelineSem4s, make_pair(sem4, value));

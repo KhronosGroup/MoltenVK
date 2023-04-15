@@ -164,6 +164,9 @@ public:
 				mvkIsAnyFlagEnabled(_flags, VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT));
 	}
 
+	/** Returns whether the shader for the stage uses physical storage buffer addresses. */
+	virtual bool usesPhysicalStorageBufferAddressesCapability(MVKShaderStage stage) = 0;
+
 	/** Constructs an instance for the device. layout, and parent (which may be NULL). */
 	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout,
 				VkPipelineCreateFlags flags, MVKPipeline* parent);
@@ -270,6 +273,8 @@ public:
 	/** Returns whether this pipeline has custom sample positions enabled. */
 	bool isUsingCustomSamplePositions() { return _isUsingCustomSamplePositions; }
 
+	bool usesPhysicalStorageBufferAddressesCapability(MVKShaderStage stage) override;
+
 	/**
 	 * Returns whether the MTLBuffer vertex shader buffer index is valid for a stage of this pipeline.
 	 * It is if it is a descriptor binding within the descriptor binding range,
@@ -338,6 +343,8 @@ protected:
 	MVKMTLFunction getMTLFunction(SPIRVToMSLConversionConfiguration& shaderConfig,
 								  const VkPipelineShaderStageCreateInfo* pShaderStage,
 								  const char* pStageName);
+	void markIfUsingPhysicalStorageBufferAddressesCapability(SPIRVToMSLConversionResultInfo& resultsInfo,
+															 MVKShaderStage stage);
 
 	const VkPipelineShaderStageCreateInfo* _pVertexSS = nullptr;
 	const VkPipelineShaderStageCreateInfo* _pTessCtlSS = nullptr;
@@ -356,6 +363,7 @@ protected:
 	MVKSmallVector<MVKZeroDivisorVertexBinding> _zeroDivisorVertexBindings;
 	MVKSmallVector<MVKStagedMTLArgumentEncoders> _mtlArgumentEncoders;
 	MVKSmallVector<MVKStagedDescriptorBindingUse> _descriptorBindingUse;
+	MVKSmallVector<MVKShaderStage> _stagesUsingPhysicalStorageBufferAddressesCapability;
 
 	MTLComputePipelineDescriptor* _mtlTessVertexStageDesc = nil;
 	id<MTLFunction> _mtlTessVertexFunctions[3] = {nil, nil, nil};
@@ -425,6 +433,8 @@ public:
 	/** Returns the array of descriptor binding use for the descriptor set. */
 	MVKBitArray& getDescriptorBindingUse(uint32_t descSetIndex, MVKShaderStage stage) override { return _descriptorBindingUse[descSetIndex]; }
 
+	bool usesPhysicalStorageBufferAddressesCapability(MVKShaderStage stage) override;
+
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKComputePipeline(MVKDevice* device,
 					   MVKPipelineCache* pipelineCache,
@@ -446,6 +456,7 @@ protected:
 	bool _needsDynamicOffsetBuffer = false;
     bool _needsDispatchBaseBuffer = false;
     bool _allowsDispatchBase = false;
+	bool _usesPhysicalStorageBufferAddressesCapability = false;
 };
 
 

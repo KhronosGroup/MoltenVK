@@ -355,11 +355,11 @@ public:
 						   MVKArrayRef<uint32_t> dynamicOffsets,
 						   uint32_t& dynamicOffsetIndex);
 
-	/** Encodes the Metal resource to the Metal command encoder. */
-	virtual void encodeArgumentBufferResourceUsage(MVKShaderStage stage,
-												   id<MTLResource> mtlResource,
-												   MTLResourceUsage mtlUsage,
-												   MTLRenderStages mtlStages) = 0;
+	/** Encodes the indirect use of the Metal resource to the Metal command encoder. */
+	virtual void encodeResourceUsage(MVKShaderStage stage,
+									 id<MTLResource> mtlResource,
+									 MTLResourceUsage mtlUsage,
+									 MTLRenderStages mtlStages) = 0;
 
 	void markDirty() override;
 
@@ -548,10 +548,10 @@ public:
                         std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
                         std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler);
 
-	void encodeArgumentBufferResourceUsage(MVKShaderStage stage,
-										   id<MTLResource> mtlResource,
-										   MTLResourceUsage mtlUsage,
-										   MTLRenderStages mtlStages) override;
+	void encodeResourceUsage(MVKShaderStage stage,
+							 id<MTLResource> mtlResource,
+							 MTLResourceUsage mtlUsage,
+							 MTLRenderStages mtlStages) override;
 
 	/** Offset all buffers for vertex attribute bindings with zero divisors by the given number of strides. */
 	void offsetZeroDivisorVertexBuffers(MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);
@@ -609,10 +609,10 @@ public:
 	/** Sets the current dynamic offset buffer state. */
 	void bindDynamicOffsetBuffer(const MVKShaderImplicitRezBinding& binding, bool needDynamicOffsetBuffer);
 
-	void encodeArgumentBufferResourceUsage(MVKShaderStage stage,
-										   id<MTLResource> mtlResource,
-										   MTLResourceUsage mtlUsage,
-										   MTLRenderStages mtlStages) override;
+	void encodeResourceUsage(MVKShaderStage stage,
+							 id<MTLResource> mtlResource,
+							 MTLResourceUsage mtlUsage,
+							 MTLRenderStages mtlStages) override;
 
 	/**
 	 * Marks the buffer binding using the index as having been overridden,

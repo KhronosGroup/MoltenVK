@@ -63,6 +63,7 @@ class MVKSamplerYcbcrConversion;
 class MVKDescriptorSetLayout;
 class MVKDescriptorPool;
 class MVKDescriptorUpdateTemplate;
+class MVKResourcesCommandEncoderState;
 class MVKFramebuffer;
 class MVKRenderPass;
 class MVKCommandPool;
@@ -660,6 +661,22 @@ public:
 
 #pragma mark Operations
 
+	/** Tell the GPU to be ready to use any of the GPU-addressable buffers. */
+	void encodeGPUAddressableBuffers(MVKResourcesCommandEncoderState* rezEncState,
+										 MVKShaderStage stage);
+
+	/** Adds the specified host semaphore to be woken upon device loss. */
+	void addSemaphore(MVKSemaphoreImpl* sem4);
+
+	/** Removes the specified host semaphore. */
+	void removeSemaphore(MVKSemaphoreImpl* sem4);
+
+	/** Adds the specified timeline semaphore to be woken at the specified value upon device loss. */
+	void addTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value);
+
+	/** Removes the specified timeline semaphore. */
+	void removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value);
+
 	/** Applies the specified global memory barrier to all resource issued by this device. */
 	void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 							VkPipelineStageFlags dstStageMask,
@@ -855,19 +872,11 @@ public:
     }
 
 protected:
-	friend class MVKSemaphoreEmulated;
-	friend class MVKTimelineSemaphoreMTLEvent;
-	friend class MVKTimelineSemaphoreEmulated;
-	friend class MVKFence;
-	friend class MVKEventEmulated;
-
 	void propagateDebugName() override  {}
-	MVKResource* addResource(MVKResource* rez);
-	MVKResource* removeResource(MVKResource* rez);
-	void addSemaphore(MVKSemaphoreImpl* sem4);
-	void removeSemaphore(MVKSemaphoreImpl* sem4);
-	void addTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value);
-	void removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value);
+	MVKBuffer* addBuffer(MVKBuffer* mvkBuff);
+	MVKBuffer* removeBuffer(MVKBuffer* mvkBuff);
+	MVKImage* addImage(MVKImage* mvkImg);
+	MVKImage* removeImage(MVKImage* mvkImg);
     void initPerformanceTracking();
 	void initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo);
 	void initQueues(const VkDeviceCreateInfo* pCreateInfo);
@@ -887,6 +896,7 @@ protected:
     MVKCommandResourceFactory* _commandResourceFactory = nullptr;
 	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
 	MVKSmallVector<MVKResource*, 256> _resources;
+	MVKSmallVector<MVKBuffer*, 8> _gpuAddressableBuffers;
 	MVKSmallVector<MVKPrivateDataSlot*> _privateDataSlots;
 	MVKSmallVector<bool> _privateDataSlotsAvailability;
 	MVKSmallVector<MVKSemaphoreImpl*> _awaitingSemaphores;
