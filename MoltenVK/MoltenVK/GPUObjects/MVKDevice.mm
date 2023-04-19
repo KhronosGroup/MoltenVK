@@ -4575,7 +4575,8 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	if (pCreateInfo->pEnabledFeatures) {
 		enableFeatures(&_enabledFeatures.robustBufferAccess,
 					   &pCreateInfo->pEnabledFeatures->robustBufferAccess,
-					   &pdFeats2.features.robustBufferAccess, 55);
+					   &pdFeats2.features.robustBufferAccess, 55,
+                       (char*)"Robust Buffer Access");
 	}
 
 	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
@@ -4584,29 +4585,36 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				auto* requestedFeatures = (VkPhysicalDeviceFeatures2*)next;
 				enableFeatures(&_enabledFeatures.robustBufferAccess,
 							   &requestedFeatures->features.robustBufferAccess,
-							   &pdFeats2.features.robustBufferAccess, 55);
+							   &pdFeats2.features.robustBufferAccess, 55,
+                               (char*)"Robust Buffer Access");
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: {
 				auto* requestedFeatures = (VkPhysicalDeviceVulkan11Features*)next;
 				enableFeatures(&_enabled16BitStorageFeatures.storageBuffer16BitAccess,
 							   &requestedFeatures->storageBuffer16BitAccess,
-							   &pd16BitStorageFeatures.storageBuffer16BitAccess, 4);
+							   &pd16BitStorageFeatures.storageBuffer16BitAccess, 4,
+                               (char*)"Storage Buffer 16 Bit Access");
 				enableFeatures(&_enabledMultiviewFeatures.multiview,
 							   &requestedFeatures->multiview,
-							   &pdMultiviewFeatures.multiview, 3);
+							   &pdMultiviewFeatures.multiview, 3,
+                               (char*)"Multiview");
 				enableFeatures(&_enabledVariablePointerFeatures.variablePointersStorageBuffer,
 							   &requestedFeatures->variablePointersStorageBuffer,
-							   &pdVariablePointerFeatures.variablePointersStorageBuffer, 2);
+							   &pdVariablePointerFeatures.variablePointersStorageBuffer, 2,
+                               (char*)"Variable Pointers Storage Buffer");
 				enableFeatures(&_enabledProtectedMemoryFeatures.protectedMemory,
 							   &requestedFeatures->protectedMemory,
-							   &pdProtectedMemoryFeatures.protectedMemory, 1);
+							   &pdProtectedMemoryFeatures.protectedMemory, 1,
+                               (char*)"Protected Memory");
 				enableFeatures(&_enabledSamplerYcbcrConversionFeatures.samplerYcbcrConversion,
 							   &requestedFeatures->samplerYcbcrConversion,
-							   &pdSamplerYcbcrConversionFeatures.samplerYcbcrConversion, 1);
+							   &pdSamplerYcbcrConversionFeatures.samplerYcbcrConversion, 1,
+                               (char*)"Sampler Ycbr Conversion");
 				enableFeatures(&_enabledShaderDrawParametersFeatures.shaderDrawParameters,
 							   &requestedFeatures->shaderDrawParameters,
-							   &pdShaderDrawParametersFeatures.shaderDrawParameters, 1);
+							   &pdShaderDrawParametersFeatures.shaderDrawParameters, 1,
+                               (char*)"Shader Draw Parameter");
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
@@ -4614,55 +4622,72 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				auto* requestedFeatures = (VkPhysicalDeviceVulkan12Features*)next;
 				enableFeatures(&_enabledVulkan12FeaturesNoExt.samplerMirrorClampToEdge,
 							   &requestedFeatures->samplerMirrorClampToEdge,
-							   &pdvulkan12FeaturesNoExt.samplerMirrorClampToEdge, 2);
+							   &pdvulkan12FeaturesNoExt.samplerMirrorClampToEdge, 2,
+                               (char*)"Sampler Mirror Clamp To Edge");
 				enableFeatures(&_enabled8BitStorageFeatures.storageBuffer8BitAccess,
 							   &requestedFeatures->storageBuffer8BitAccess,
-							   &pd8BitStorageFeatures.storageBuffer8BitAccess, 3);
+							   &pd8BitStorageFeatures.storageBuffer8BitAccess, 3,
+                               (char*)"Storage Buffer 8 Bit Access");
 				enableFeatures(&_enabledShaderAtomicInt64Features.shaderBufferInt64Atomics,
 							   &requestedFeatures->shaderBufferInt64Atomics,
-							   &pdShaderAtomicInt64Features.shaderBufferInt64Atomics, 2);
+							   &pdShaderAtomicInt64Features.shaderBufferInt64Atomics, 2,
+                               (char*)"Shader Buffer Int 64 Atomics");
 				enableFeatures(&_enabledShaderFloat16Int8Features.shaderFloat16,
 							   &requestedFeatures->shaderFloat16,
-							   &pdShaderFloat16Int8Features.shaderFloat16, 2);
+							   &pdShaderFloat16Int8Features.shaderFloat16, 2,
+                               (char*)"Shader Float 16");
 				enableFeatures(&_enabledVulkan12FeaturesNoExt.descriptorIndexing,
 							   &requestedFeatures->descriptorIndexing,
-							   &pdvulkan12FeaturesNoExt.descriptorIndexing, 1);
+							   &pdvulkan12FeaturesNoExt.descriptorIndexing, 1,
+                               (char*)"Descriptor Indexing");
 				enableFeatures(&_enabledDescriptorIndexingFeatures.shaderInputAttachmentArrayDynamicIndexing,
 							   &requestedFeatures->shaderInputAttachmentArrayDynamicIndexing,
-							   &pdDescriptorIndexingFeatures.shaderInputAttachmentArrayDynamicIndexing, 20);
+							   &pdDescriptorIndexingFeatures.shaderInputAttachmentArrayDynamicIndexing, 20,
+                               (char*)"Shader Input Attachment Array Dynamic Indexing");
 				enableFeatures(&_enabledVulkan12FeaturesNoExt.samplerFilterMinmax,
 							   &requestedFeatures->samplerFilterMinmax,
-							   &pdvulkan12FeaturesNoExt.samplerFilterMinmax, 1);
+							   &pdvulkan12FeaturesNoExt.samplerFilterMinmax, 1,
+                               (char*)"Sampler Filter Minmax");
 				enableFeatures(&_enabledScalarBlockLayoutFeatures.scalarBlockLayout,
 							   &requestedFeatures->scalarBlockLayout,
-							   &pdScalarBlockLayoutFeatures.scalarBlockLayout, 1);
+							   &pdScalarBlockLayoutFeatures.scalarBlockLayout, 1,
+                               (char*)"Scalar Block Layout");
 				enableFeatures(&_enabledImagelessFramebufferFeatures.imagelessFramebuffer,
 							   &requestedFeatures->imagelessFramebuffer,
-							   &pdImagelessFramebufferFeatures.imagelessFramebuffer, 1);
+							   &pdImagelessFramebufferFeatures.imagelessFramebuffer, 1,
+                               (char*)"Imageless Framebuffer");
 				enableFeatures(&_enabledUniformBufferStandardLayoutFeatures.uniformBufferStandardLayout,
 							   &requestedFeatures->uniformBufferStandardLayout,
-							   &pdUniformBufferStandardLayoutFeatures.uniformBufferStandardLayout, 1);
+							   &pdUniformBufferStandardLayoutFeatures.uniformBufferStandardLayout, 1,
+                               (char*)"Uniform Buffer Standard Layout");
 				enableFeatures(&_enabledShaderSubgroupExtendedTypesFeatures.shaderSubgroupExtendedTypes,
 							   &requestedFeatures->shaderSubgroupExtendedTypes,
-							   &pdShaderSubgroupExtendedTypesFeatures.shaderSubgroupExtendedTypes, 1);
+							   &pdShaderSubgroupExtendedTypesFeatures.shaderSubgroupExtendedTypes, 1,
+                               (char*)"Shader Subgroup Extended Types");
 				enableFeatures(&_enabledSeparateDepthStencilLayoutsFeatures.separateDepthStencilLayouts,
 							   &requestedFeatures->separateDepthStencilLayouts,
-							   &pdSeparateDepthStencilLayoutsFeatures.separateDepthStencilLayouts, 1);
+							   &pdSeparateDepthStencilLayoutsFeatures.separateDepthStencilLayouts, 1,
+                               (char*)"Separate Depth Stencil Layouts");
 				enableFeatures(&_enabledHostQueryResetFeatures.hostQueryReset,
 							   &requestedFeatures->hostQueryReset,
-							   &pdHostQueryResetFeatures.hostQueryReset, 1);
+							   &pdHostQueryResetFeatures.hostQueryReset, 1,
+                               (char*)"Host Query Reset");
 				enableFeatures(&_enabledTimelineSemaphoreFeatures.timelineSemaphore,
 							   &requestedFeatures->timelineSemaphore,
-							   &pdTimelineSemaphoreFeatures.timelineSemaphore, 1);
+							   &pdTimelineSemaphoreFeatures.timelineSemaphore, 1,
+                               (char*)"Timeline Semaphore");
 				enableFeatures(&_enabledBufferDeviceAddressFeatures.bufferDeviceAddress,
 							   &requestedFeatures->bufferDeviceAddress,
-							   &pdBufferDeviceAddressFeatures.bufferDeviceAddress, 3);
+							   &pdBufferDeviceAddressFeatures.bufferDeviceAddress, 3,
+                               (char*)"Buffer Device Address");
 				enableFeatures(&_enabledVulkanMemoryModelFeatures.vulkanMemoryModel,
 							   &requestedFeatures->vulkanMemoryModel,
-							   &pdVulkanMemoryModelFeatures.vulkanMemoryModel, 3);
+							   &pdVulkanMemoryModelFeatures.vulkanMemoryModel, 3,
+                               (char*)"Vulkan Memory Model");
 				enableFeatures(&_enabledVulkan12FeaturesNoExt.shaderOutputViewportIndex,
 							   &requestedFeatures->shaderOutputViewportIndex,
-							   &pdvulkan12FeaturesNoExt.shaderOutputViewportIndex, 3);
+							   &pdvulkan12FeaturesNoExt.shaderOutputViewportIndex, 3,
+                               (char*)"Shader Output Viewport Index");
 				break;
 			}
 
@@ -4694,14 +4719,14 @@ void MVKDevice::enableFeatures(VkBaseInStructure* pEnabled, const VkBaseInStruct
 	enableFeatures((VkBool32*)(&(pEnabled->pNext) + 1),
 				   (VkBool32*)(&(pRequested->pNext) + 1),
 				   (VkBool32*)(&(pAvailable->pNext) + 1),
-				   count);
+				   count, (char*)"");
 }
 
-void MVKDevice::enableFeatures(VkBool32* pEnabledBools, const VkBool32* pRequestedBools, const VkBool32* pAvailableBools, uint32_t count) {
+void MVKDevice::enableFeatures(VkBool32* pEnabledBools, const VkBool32* pRequestedBools, const VkBool32* pAvailableBools, uint32_t count, char* name) {
 	for (uint32_t i = 0; i < count; i++) {
 		pEnabledBools[i] = pRequestedBools[i] && pAvailableBools[i];
 		if (pRequestedBools[i] && !pAvailableBools[i]) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateDevice(): Requested feature is not available on this device."));
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateDevice(): %s is not available on this device.", name));
 		}
 	}
 }
