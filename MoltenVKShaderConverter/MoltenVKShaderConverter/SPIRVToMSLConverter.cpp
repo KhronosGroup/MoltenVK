@@ -347,11 +347,11 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 		};
 
 		Patch workaround_patches[] = { 
-            { std::string("t3.sample(s3, r0.yzwy.xyz).xyz"), std::string("r0.yzw") },
-            { std::string("t3.sample(s3, r0.xyzx.xyz).xyz"), std::string("r0.xyz") },
-            { std::string("t3.sample(s3, r1.xyzx.xyz).xyz"), std::string("r1.xyz") },
-            { std::string("t5.sample(s5, r2.xyzx.xyz).xyz"), std::string("r2.xyz") },
-            { std::string("t4.sample(s3, r0.xyzx.xyz).xyz"), std::string("r0.xyz") },
+            { std::string("t3.sample(s3, r0.yzwy.xyz).xyz"), std::string("(r0.yzw * 2 - 0.35)") },
+            { std::string("t3.sample(s3, r0.xyzx.xyz).xyz"), std::string("(r0.xyz * 2 - 0.35)") },
+            { std::string("t3.sample(s3, r1.xyzx.xyz).xyz"), std::string("(r1.xyz * 2 - 0.35)") },
+            { std::string("t5.sample(s5, r2.xyzx.xyz).xyz"), std::string("(r2.xyz * 2 - 0.35)") },
+            { std::string("t4.sample(s3, r0.xyzx.xyz).xyz"), std::string("(r0.xyz * 2 - 0.35)") },
         };
 
 		for (Patch workaround_patch : workaround_patches)
