@@ -1446,21 +1446,17 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
     // The depth value (including vertex position Z value) is held in the last index.
     clearColors[kMVKClearAttachmentDepthStencilIndex] = { _mtlDepthVal, _mtlDepthVal, _mtlDepthVal, _mtlDepthVal };
 
-    VkFormat vkAttFmt = subpass->getDepthStencilFormat();
-	MTLPixelFormat mtlAttFmt = pixFmts->getMTLPixelFormat(vkAttFmt);
-    _rpsKey.attachmentMTLPixelFormats[kMVKClearAttachmentDepthStencilIndex] = mtlAttFmt;
-
-	bool isClearingDepth = _isClearingDepth && pixFmts->isDepthFormat(mtlAttFmt);
-	bool isClearingStencil = _isClearingStencil && pixFmts->isStencilFormat(mtlAttFmt);
-    if (!isClearingDepth && !isClearingStencil) {
-        // If the subpass attachment isn't actually used, don't try to clear it.
+	bool isClearingDepth = _isClearingDepth && subpass->isDepthAttachmentUsed();
+	bool isClearingStencil = _isClearingStencil && subpass->isStencilAttachmentUsed();
+	if (isClearingDepth) {
+		_rpsKey.attachmentMTLPixelFormats[kMVKClearAttachmentDepthStencilIndex] = pixFmts->getMTLPixelFormat(subpass->getDepthFormat());
+	} else if (isClearingStencil) {
+		_rpsKey.attachmentMTLPixelFormats[kMVKClearAttachmentDepthStencilIndex] = pixFmts->getMTLPixelFormat(subpass->getStencilFormat());
+	} else {
         _rpsKey.disableAttachment(kMVKClearAttachmentDepthStencilIndex);
     }
 
-	if (!_rpsKey.isAnyAttachmentEnabled()) {
-		// Nothing to do.
-		return;
-	}
+	if ( !_rpsKey.isAnyAttachmentEnabled() ) { return; }
 
     // Render the clear colors to the attachments
 	MVKCommandEncodingPool* cmdEncPool = cmdEncoder->getCommandEncodingPool();

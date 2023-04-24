@@ -82,8 +82,8 @@ id<MTLTexture> MVKFramebuffer::getDummyAttachmentMTLTexture(MVKRenderSubpass* su
 
 MVKFramebuffer::MVKFramebuffer(MVKDevice* device,
 							   const VkFramebufferCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
-    _extent = { .width = pCreateInfo->width, .height = pCreateInfo->height };
 	_layerCount = pCreateInfo->layers;
+    _extent = { .width = pCreateInfo->width, .height = pCreateInfo->height };
 
 	// If this is not an image-less framebuffer, add the attachments
 	if ( !mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT) ) {
@@ -94,51 +94,25 @@ MVKFramebuffer::MVKFramebuffer(MVKDevice* device,
 	}
 }
 
-MVKFramebuffer::~MVKFramebuffer() {
-	[_mtlDummyTex release];
-}
+MVKFramebuffer::MVKFramebuffer(MVKDevice* device,
+							   const VkRenderingInfo* pRenderingInfo) : MVKVulkanAPIDeviceObject(device) {
+	_layerCount = pRenderingInfo->layerCount;
 
-
-#pragma mark -
-#pragma mark Support functions
-
-MVKFramebuffer* mvkCreateFramebuffer(MVKDevice* device,
-									 const VkRenderingInfo* pRenderingInfo,
-									 MVKRenderPass* mvkRenderPass) {
-	uint32_t attCnt = 0;
-	VkExtent3D fbExtent = {};
+	_extent = {};
 	for (uint32_t caIdx = 0; caIdx < pRenderingInfo->colorAttachmentCount; caIdx++) {
 		auto& clrAtt = pRenderingInfo->pColorAttachments[caIdx];
 		if (clrAtt.imageView) {
-			fbExtent = ((MVKImageView*)clrAtt.imageView)->getExtent3D();
-			attCnt++;
-			if (clrAtt.resolveImageView && clrAtt.resolveMode != VK_RESOLVE_MODE_NONE) {
-				attCnt++;
-			}
+			_extent = mvkVkExtent2DFromVkExtent3D(((MVKImageView*)clrAtt.imageView)->getExtent3D());
 		}
 	}
-	auto* pDSAtt = pRenderingInfo->pDepthAttachment ? pRenderingInfo->pDepthAttachment : pRenderingInfo->pStencilAttachment;
-	if (pDSAtt) {
-		if (pDSAtt->imageView) {
-			fbExtent = ((MVKImageView*)pDSAtt->imageView)->getExtent3D();
-			attCnt++;
-		}
-		if (pDSAtt->resolveImageView && pDSAtt->resolveMode != VK_RESOLVE_MODE_NONE) {
-			attCnt++;
-		}
+	if (pRenderingInfo->pDepthAttachment && pRenderingInfo->pDepthAttachment->imageView) {
+		_extent = mvkVkExtent2DFromVkExtent3D(((MVKImageView*)pRenderingInfo->pDepthAttachment->imageView)->getExtent3D());
 	}
-
-	VkFramebufferCreateInfo fbCreateInfo;
-	fbCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	fbCreateInfo.pNext = nullptr;
-	fbCreateInfo.flags = VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT;
-	fbCreateInfo.renderPass = (VkRenderPass)mvkRenderPass;
-	fbCreateInfo.attachmentCount = attCnt;
-	fbCreateInfo.pAttachments = nullptr;
-	fbCreateInfo.width = fbExtent.width;
-	fbCreateInfo.height = fbExtent.height;
-	fbCreateInfo.layers = pRenderingInfo->layerCount;
-
-	return device->createFramebuffer(&fbCreateInfo, nullptr);
+	if (pRenderingInfo->pStencilAttachment && pRenderingInfo->pStencilAttachment->imageView) {
+		_extent = mvkVkExtent2DFromVkExtent3D(((MVKImageView*)pRenderingInfo->pStencilAttachment->imageView)->getExtent3D());
+	}
 }
 
+MVKFramebuffer::~MVKFramebuffer() {
+	[_mtlDummyTex release];
+}

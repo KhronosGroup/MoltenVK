@@ -3893,6 +3893,11 @@ MVKFramebuffer* MVKDevice::createFramebuffer(const VkFramebufferCreateInfo* pCre
 	return new MVKFramebuffer(this, pCreateInfo);
 }
 
+MVKFramebuffer* MVKDevice::createFramebuffer(const VkRenderingInfo* pRenderingInfo,
+											 const VkAllocationCallbacks* pAllocator) {
+	return new MVKFramebuffer(this, pRenderingInfo);
+}
+
 void MVKDevice::destroyFramebuffer(MVKFramebuffer* mvkFB,
 								   const VkAllocationCallbacks* pAllocator) {
 	if (mvkFB) { mvkFB->destroy(); }
@@ -3906,6 +3911,11 @@ MVKRenderPass* MVKDevice::createRenderPass(const VkRenderPassCreateInfo* pCreate
 MVKRenderPass* MVKDevice::createRenderPass(const VkRenderPassCreateInfo2* pCreateInfo,
 										   const VkAllocationCallbacks* pAllocator) {
 	return new MVKRenderPass(this, pCreateInfo);
+}
+
+MVKRenderPass* MVKDevice::createRenderPass(const VkRenderingInfo* pRenderingInfo,
+										   const VkAllocationCallbacks* pAllocator) {
+	return new MVKRenderPass(this, pRenderingInfo);
 }
 
 void MVKDevice::destroyRenderPass(MVKRenderPass* mvkRP,

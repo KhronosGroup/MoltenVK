@@ -54,9 +54,6 @@ public:
 	/** Returns whether this subpass has any color attachments. */
 	bool hasColorAttachments();
 
-	/** Returns whether this subpass has a depth/stencil attachment. */
-	bool hasDepthStencilAttachment() { return _depthStencilAttachment.attachment != VK_ATTACHMENT_UNUSED; }
-
 	/** Returns the number of color attachments, which may be zero for depth-only rendering. */
 	uint32_t getColorAttachmentCount() { return uint32_t(_colorAttachments.size()); }
 
@@ -69,8 +66,17 @@ public:
 	/** Returns whether or not the color attachment is used as both a color attachment and an input attachment. */
 	bool isColorAttachmentAlsoInputAttachment(uint32_t colorAttIdx);
 
-	/** Returns the format of the depth/stencil attachment. */
-	VkFormat getDepthStencilFormat();
+	/** Returns whether or not the depth attachment is being used. */
+	bool isDepthAttachmentUsed() { return _depthAttachment.attachment != VK_ATTACHMENT_UNUSED; }
+
+	/** Returns whether or not the stencil attachment is being used. */
+	bool isStencilAttachmentUsed() { return _stencilAttachment.attachment != VK_ATTACHMENT_UNUSED; }
+
+	/** Return the depth attachment format. */
+	VkFormat getDepthFormat();
+
+	/** Return the stencil attachment format. */
+	VkFormat getStencilFormat();
 
 	/** Returns the Vulkan sample count of the attachments used in this subpass. */
 	VkSampleCountFlagBits getSampleCount();
@@ -146,10 +152,11 @@ public:
 
 	MVKRenderSubpass(MVKRenderPass* renderPass, const VkSubpassDescription2* pCreateInfo);
 
-private:
+	MVKRenderSubpass(MVKRenderPass* renderPass, const VkRenderingInfo* pRenderingInfo);
 
+protected:
 	friend class MVKRenderPass;
-	friend class MVKRenderPassAttachment;
+	friend class MVKAttachmentDescription;
 
 	uint32_t getViewMaskGroupForMetalPass(uint32_t passIdx);
 	MVKMTLFmtCaps getRequiredFormatCapabilitiesForAttachmentAt(uint32_t rpAttIdx);
@@ -162,8 +169,10 @@ private:
 	MVKSmallVector<uint32_t, kMVKDefaultAttachmentCount> _preserveAttachments;
 	MVKSmallVector<VkFormat, kMVKDefaultAttachmentCount> _colorAttachmentFormats;
 	VkPipelineRenderingCreateInfo _pipelineRenderingCreateInfo;
-	VkAttachmentReference2 _depthStencilAttachment;
-	VkAttachmentReference2 _depthStencilResolveAttachment;
+	VkAttachmentReference2 _depthAttachment;
+	VkAttachmentReference2 _stencilAttachment;
+	VkAttachmentReference2 _depthResolveAttachment;
+	VkAttachmentReference2 _stencilResolveAttachment;
 	VkResolveModeFlagBits _depthResolveMode = VK_RESOLVE_MODE_NONE;
 	VkResolveModeFlagBits _stencilResolveMode = VK_RESOLVE_MODE_NONE;
 	VkSampleCountFlagBits _defaultSampleCount = VK_SAMPLE_COUNT_1_BIT;
@@ -172,10 +181,10 @@ private:
 
 
 #pragma mark -
-#pragma mark MVKRenderPassAttachment
+#pragma mark MVKAttachmentDescription
 
 /** Represents an attachment within a Vulkan render pass. */
-class MVKRenderPassAttachment : public MVKBaseObject {
+class MVKAttachmentDescription : public MVKBaseObject {
 
 public:
 
@@ -218,13 +227,20 @@ public:
     /** Returns whether this attachment should be cleared in the subpass. */
     bool shouldClearAttachment(MVKRenderSubpass* subpass, bool isStencil);
 
-	MVKRenderPassAttachment(MVKRenderPass* renderPass,
+	MVKAttachmentDescription(MVKRenderPass* renderPass,
 							const VkAttachmentDescription* pCreateInfo);
 
-	MVKRenderPassAttachment(MVKRenderPass* renderPass,
+	MVKAttachmentDescription(MVKRenderPass* renderPass,
 							const VkAttachmentDescription2* pCreateInfo);
 
+	MVKAttachmentDescription(MVKRenderPass* renderPass,
+							const VkRenderingAttachmentInfo* pAttInfo,
+							bool isResolveAttachment);
+
 protected:
+	friend class MVKRenderPass;
+	friend class MVKRenderSubpass;
+
 	bool isFirstUseOfAttachment(MVKRenderSubpass* subpass);
 	bool isLastUseOfAttachment(MVKRenderSubpass* subpass);
 	MTLStoreAction getMTLStoreAction(MVKRenderSubpass* subpass,
@@ -234,7 +250,7 @@ protected:
 									 bool canResolveFormat,
 									 bool isStencil,
 									 bool storeOverride);
-	void validateFormat();
+	void linkToSubpasses();
 
 	VkAttachmentDescription2 _info;
 	MVKRenderPass* _renderPass;
@@ -282,13 +298,15 @@ public:
 
 	MVKRenderPass(MVKDevice* device, const VkRenderPassCreateInfo2* pCreateInfo);
 
+	MVKRenderPass(MVKDevice* device, const VkRenderingInfo* pRenderingInfo);
+
 protected:
 	friend class MVKRenderSubpass;
-	friend class MVKRenderPassAttachment;
+	friend class MVKAttachmentDescription;
 
 	void propagateDebugName() override {}
 
-	MVKSmallVector<MVKRenderPassAttachment> _attachments;
+	MVKSmallVector<MVKAttachmentDescription> _attachments;
 	MVKSmallVector<MVKRenderSubpass> _subpasses;
 	MVKSmallVector<VkSubpassDependency2> _subpassDependencies;
 	VkRenderingFlags _renderingFlags = 0;
@@ -297,21 +315,44 @@ protected:
 
 
 #pragma mark -
-#pragma mark Support functions
+#pragma mark MVKRenderingAttachmentIterator
 
-/** Returns a MVKRenderPass object created from the rendering info. */
-MVKRenderPass* mvkCreateRenderPass(MVKDevice* device, const VkRenderingInfo* pRenderingInfo);
+typedef std::function<void(const VkRenderingAttachmentInfo* pAttInfo,
+						   VkImageAspectFlagBits aspect,
+						   bool isResolveAttachment)> MVKRenderingAttachmentInfoOperation;
 
 /**
- * Extracts the usable attachments and their clear values from the rendering info,
- * and sets them in the corresponding arrays, which must be large enough to hold
- * all of the extracted values, and returns the number of attachments extracted.
- * For consistency, the clear value of any resolve attachments are populated,
- * even though they are ignored.
+ * Iterates the attachments in a VkRenderingInfo, and processes an operation
+ * on each attachment, once for the imageView, and once for the resolveImageView.
+ *
+ * Attachments are sequentially processed in this order:
+ *     [color, color-resolve], ...,
+ *     depth, depth-resolve,
+ *     stencil, stencil-resolve
+ * skipping any attachments that do not have a VkImageView
  */
-uint32_t mvkGetAttachments(const VkRenderingInfo* pRenderingInfo,
-						   MVKImageView* attachments[],
-						   VkClearValue clearValues[]);
+class MVKRenderingAttachmentIterator : public MVKBaseObject {
+
+public:
+
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; }
+
+	/** Iterates the attachments with the specified lambda function. */
+	void iterate(MVKRenderingAttachmentInfoOperation attOperation);
+
+	MVKRenderingAttachmentIterator(const VkRenderingInfo* pRenderingInfo) : _pRenderingInfo(pRenderingInfo) {}
+
+protected:
+	void handleAttachment(const VkRenderingAttachmentInfo* pAttInfo,
+						  VkImageAspectFlagBits aspect,
+						  MVKRenderingAttachmentInfoOperation attOperation);
+
+	const VkRenderingInfo* _pRenderingInfo;
+};
+
+
+#pragma mark -
+#pragma mark Support functions
 
 /** Returns whether the view mask uses multiview. */
 static constexpr bool mvkIsMultiview(uint32_t viewMask) { return viewMask != 0; }
@@ -321,9 +362,6 @@ bool mvkIsColorAttachmentUsed(const VkPipelineRenderingCreateInfo* pRendInfo, ui
 
 /** Returns whether any attachment is being used. */
 bool mvkHasColorAttachments(const VkPipelineRenderingCreateInfo* pRendInfo);
-
-/** Extracts and returns the combined depth/stencil format . */
-VkFormat mvkGetDepthStencilFormat(const VkPipelineRenderingCreateInfo* pRendInfo);
 
 /**
  * Extracts the first view, number of views, and the portion of the mask

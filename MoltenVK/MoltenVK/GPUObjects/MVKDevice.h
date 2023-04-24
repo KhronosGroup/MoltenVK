@@ -631,12 +631,16 @@ public:
 
 	MVKFramebuffer* createFramebuffer(const VkFramebufferCreateInfo* pCreateInfo,
 									  const VkAllocationCallbacks* pAllocator);
+	MVKFramebuffer* createFramebuffer(const VkRenderingInfo* pRenderingInfo,
+									  const VkAllocationCallbacks* pAllocator);
 	void destroyFramebuffer(MVKFramebuffer* mvkFB,
 							const VkAllocationCallbacks* pAllocator);
 
 	MVKRenderPass* createRenderPass(const VkRenderPassCreateInfo* pCreateInfo,
 									const VkAllocationCallbacks* pAllocator);
 	MVKRenderPass* createRenderPass(const VkRenderPassCreateInfo2* pCreateInfo,
+									const VkAllocationCallbacks* pAllocator);
+	MVKRenderPass* createRenderPass(const VkRenderingInfo* pRenderingInfo,
 									const VkAllocationCallbacks* pAllocator);
 	void destroyRenderPass(MVKRenderPass* mvkRP,
 						   const VkAllocationCallbacks* pAllocator);
