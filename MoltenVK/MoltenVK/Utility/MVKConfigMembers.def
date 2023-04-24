@@ -83,6 +83,7 @@ MVK_CONFIG_MEMBER(shaderSourceCompressionAlgorithm,       MVKConfigCompressionAl
 MVK_CONFIG_MEMBER(shouldMaximizeConcurrentCompilation,    VkBool32,                                 SHOULD_MAXIMIZE_CONCURRENT_COMPILATION)
 MVK_CONFIG_MEMBER(timestampPeriodLowPassAlpha,            float,                                    TIMESTAMP_PERIOD_LOWPASS_ALPHA)
 MVK_CONFIG_MEMBER(useMetalPrivateAPI,                     VkBool32,                                 USE_METAL_PRIVATE_API)
+MVK_CONFIG_MEMBER_STRING(shaderDumpDir,                   char*,                                    SHADER_DUMP_DIR)
 
 #undef MVK_CONFIG_MEMBER
 #undef MVK_CONFIG_MEMBER_STRING

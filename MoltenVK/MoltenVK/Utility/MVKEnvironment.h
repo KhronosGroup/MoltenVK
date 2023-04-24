@@ -86,7 +86,7 @@
 #ifdef __cplusplus
 
 /** The number of members of MVKConfiguration that are strings. */
-static constexpr uint32_t kMVKConfigurationStringCount = 1;
+static constexpr uint32_t kMVKConfigurationStringCount = 2;
 
 /** Global function to access MoltenVK configuration info. */
 const MVKConfiguration& getGlobalMVKConfig();
@@ -355,6 +355,13 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
  */
 #ifndef MVK_CONFIG_USE_METAL_PRIVATE_API
 #	define MVK_CONFIG_USE_METAL_PRIVATE_API MVK_USE_METAL_PRIVATE_API
+#endif
+
+/**
+ * If set, MVK will dump spirv input, translated msl, and pipelines into the given directory.
+ */
+#ifndef MVK_CONFIG_SHADER_DUMP_DIR
+#   define MVK_CONFIG_SHADER_DUMP_DIR ""
 #endif
 
 #undef MVK_CONFIG__UNUSED_STRUCT_PADDING
