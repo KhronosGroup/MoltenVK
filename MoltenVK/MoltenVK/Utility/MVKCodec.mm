@@ -148,7 +148,9 @@ static size_t mvkCompressDecompress(const uint8_t* srcBytes, size_t srcSize,
 									MVKConfigCompressionAlgorithm compAlgo,
 									bool isCompressing) {
 	size_t dstByteCount = 0;
-	if (compAlgo != MVK_CONFIG_COMPRESSION_ALGORITHM_NONE) {
+	bool compressionSupported = ([NSData instancesRespondToSelector: @selector(compressedDataUsingAlgorithm:error:)] &&
+								 [NSData instancesRespondToSelector: @selector(decompressedDataUsingAlgorithm:error:)]);
+	if (compressionSupported && compAlgo != MVK_CONFIG_COMPRESSION_ALGORITHM_NONE) {
 		@autoreleasepool {
 			NSDataCompressionAlgorithm sysCompAlgo = getSystemCompressionAlgo(compAlgo);
 			NSData* srcData = [NSData dataWithBytesNoCopy: (void*)srcBytes length: srcSize freeWhenDone: NO];

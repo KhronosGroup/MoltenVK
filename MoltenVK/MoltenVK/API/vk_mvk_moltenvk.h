@@ -906,6 +906,8 @@ typedef struct {
 	 * memory. In such a case, this parameter can be used to compress the MSL source code that
 	 * is awaiting export as part of a pipeline cache.
 	 *
+	 * Pipeline cache compression is available for macOS 10.15 and above, and iOS/tvOS 13.0 and above.
+	 *
 	 * The value of this parameter can be changed at any time, and will affect the size of
 	 * the cached MSL from subsequent shader compilations.
 	 *
