@@ -560,6 +560,9 @@ public:
 	/**  Returns the 3D extent of this image at the specified mipmap level. */
 	VkExtent3D getExtent3D(uint8_t planeIndex = 0, uint32_t mipLevel = 0) { return _image->getExtent3D(planeIndex, mipLevel); }
 
+	/** Return the underlying image. */
+	MVKImage* getImage() { return _image; }
+
 #pragma mark Metal
 
 	/** Returns the Metal texture underlying this image view.  */

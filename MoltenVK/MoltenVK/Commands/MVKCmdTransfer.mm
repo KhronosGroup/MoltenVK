@@ -1446,15 +1446,17 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
     // The depth value (including vertex position Z value) is held in the last index.
     clearColors[kMVKClearAttachmentDepthStencilIndex] = { _mtlDepthVal, _mtlDepthVal, _mtlDepthVal, _mtlDepthVal };
 
+	MTLPixelFormat mtlDSFmt = pixFmts->getMTLPixelFormat(subpass->isStencilAttachmentUsed()
+														 ? subpass->getStencilFormat()
+														 : subpass->getDepthFormat());
+	_rpsKey.attachmentMTLPixelFormats[kMVKClearAttachmentDepthStencilIndex] = mtlDSFmt;
+
+	// If neither the depth or stencil attachments are being cleared, nor being used, don't try to clear them.
 	bool isClearingDepth = _isClearingDepth && subpass->isDepthAttachmentUsed();
 	bool isClearingStencil = _isClearingStencil && subpass->isStencilAttachmentUsed();
-	if (isClearingDepth) {
-		_rpsKey.attachmentMTLPixelFormats[kMVKClearAttachmentDepthStencilIndex] = pixFmts->getMTLPixelFormat(subpass->getDepthFormat());
-	} else if (isClearingStencil) {
-		_rpsKey.attachmentMTLPixelFormats[kMVKClearAttachmentDepthStencilIndex] = pixFmts->getMTLPixelFormat(subpass->getStencilFormat());
-	} else {
-        _rpsKey.disableAttachment(kMVKClearAttachmentDepthStencilIndex);
-    }
+	if ( !isClearingDepth && !isClearingStencil ) {
+		_rpsKey.disableAttachment(kMVKClearAttachmentDepthStencilIndex);
+	}
 
 	if ( !_rpsKey.isAnyAttachmentEnabled() ) { return; }
 

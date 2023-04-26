@@ -340,14 +340,17 @@ public:
 	/** Iterates the attachments with the specified lambda function. */
 	void iterate(MVKRenderingAttachmentInfoOperation attOperation);
 
-	MVKRenderingAttachmentIterator(const VkRenderingInfo* pRenderingInfo) : _pRenderingInfo(pRenderingInfo) {}
+	MVKRenderingAttachmentIterator(const VkRenderingInfo* pRenderingInfo);
 
 protected:
 	void handleAttachment(const VkRenderingAttachmentInfo* pAttInfo,
 						  VkImageAspectFlagBits aspect,
 						  MVKRenderingAttachmentInfoOperation attOperation);
+	const VkRenderingAttachmentInfo* getAttachmentInfo(const VkRenderingAttachmentInfo* pAtt,
+													   const VkRenderingAttachmentInfo* pAltAtt,
+													   bool isStencil);
 
-	const VkRenderingInfo* _pRenderingInfo;
+	VkRenderingInfo _renderingInfo;
 };
 
 

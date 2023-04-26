@@ -1471,8 +1471,12 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
 
     // Depth & stencil attachment formats
 	MVKPixelFormats* pixFmts = getPixelFormats();
-	plDesc.depthAttachmentPixelFormat = pixFmts->getMTLPixelFormat(pRendInfo->depthAttachmentFormat);
-	plDesc.stencilAttachmentPixelFormat = pixFmts->getMTLPixelFormat(pRendInfo->stencilAttachmentFormat);
+
+	MTLPixelFormat mtlDepthPixFmt = pixFmts->getMTLPixelFormat(pRendInfo->depthAttachmentFormat);
+	if (pixFmts->isDepthFormat(mtlDepthPixFmt)) { plDesc.depthAttachmentPixelFormat = mtlDepthPixFmt; }
+
+	MTLPixelFormat mtlStencilPixFmt = pixFmts->getMTLPixelFormat(pRendInfo->stencilAttachmentFormat);
+	if (pixFmts->isStencilFormat(mtlStencilPixFmt)) { plDesc.stencilAttachmentPixelFormat = mtlStencilPixFmt; }
 
 	// In Vulkan, it's perfectly valid to render without any attachments. In Metal, if that
 	// isn't supported, and we have no attachments, then we have to add a dummy attachment.
@@ -1552,6 +1556,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	_viewRangeBufferIndex = _indirectParamsIndex;
 
 	const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
+	MVKPixelFormats* pixFmts = getPixelFormats();
 
 	// Disable any unused color attachments, because Metal validation can complain if the
 	// fragment shader outputs a color value without a corresponding color attachment.
@@ -1571,8 +1576,8 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	shaderConfig.options.mslOptions.ios_support_base_vertex_instance = getDevice()->_pMetalFeatures->baseVertexInstanceDrawing;
 	shaderConfig.options.mslOptions.texture_1D_as_2D = mvkConfig().texture1DAs2D;
     shaderConfig.options.mslOptions.enable_point_size_builtin = isRenderingPoints(pCreateInfo) || reflectData.pointMode;
-	shaderConfig.options.mslOptions.enable_frag_depth_builtin = (pRendInfo->depthAttachmentFormat != VK_FORMAT_UNDEFINED);
-	shaderConfig.options.mslOptions.enable_frag_stencil_ref_builtin = (pRendInfo->stencilAttachmentFormat != VK_FORMAT_UNDEFINED);
+	shaderConfig.options.mslOptions.enable_frag_depth_builtin = pixFmts->isDepthFormat(pixFmts->getMTLPixelFormat(pRendInfo->depthAttachmentFormat));
+	shaderConfig.options.mslOptions.enable_frag_stencil_ref_builtin = pixFmts->isStencilFormat(pixFmts->getMTLPixelFormat(pRendInfo->stencilAttachmentFormat));
     shaderConfig.options.shouldFlipVertexY = mvkConfig().shaderConversionFlipVertexY;
     shaderConfig.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     shaderConfig.options.mslOptions.tess_domain_origin_lower_left = pTessDomainOriginState && pTessDomainOriginState->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
