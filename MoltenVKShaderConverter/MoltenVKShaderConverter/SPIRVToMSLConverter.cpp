@@ -61,6 +61,9 @@ static std::string getEnvVariable(const std::string& name) {
 static std::string withOverride(const std::string& patch) {
     std::string defaultOverride = " * 1.9 - 0.37";
     std::string override = getEnvVariable("NAS_TONEMAP_C");
+    if(override == "0") {
+        return patch;
+    }
     if (override == "") {
         return patch + defaultOverride; // Environment variable not found
     } else {
