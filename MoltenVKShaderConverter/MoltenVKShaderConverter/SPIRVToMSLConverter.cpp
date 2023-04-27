@@ -22,6 +22,9 @@
 #include "FileSupport.h"
 #include "SPIRVSupport.h"
 #include <fstream>
+#include <cstdlib>
+#include <string>
+#include <iostream>
 
 using namespace mvk;
 using namespace std;
@@ -44,6 +47,25 @@ template<class T>
 bool containsMatching(const vector<T>& vec, const T& val) {
     for (const T& vecVal : vec) { if (vecVal.matches(val)) { return true; } }
     return false;
+}
+
+static std::string getEnvVariable(const std::string& name) {
+    char* value = std::getenv(name.c_str());
+    if (value == nullptr) {
+        return ""; // Environment variable not found
+    } else {
+        return std::string(value);
+    }
+}
+
+static std::string withOverride(const std::string& patch) {
+    std::string defaultOverride = " * 1.9 - 0.37";
+    std::string override = getEnvVariable("NAS_TONEMAP_C");
+    if (override == "") {
+        return patch + defaultOverride; // Environment variable not found
+    } else {
+        return patch + override;
+    }
 }
 
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionOptions::matches(const SPIRVToMSLConversionOptions& other) const {
@@ -345,25 +367,27 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 			std::string find;
 			std::string replace;
 		};
-
-		Patch workaround_patches[] = { 
-            { std::string("t3.sample(s3, r0.yzwy.xyz).xyz"), std::string("(r0.yzw * 1.9 - 0.37)") },
-            { std::string("t3.sample(s3, r0.xyzx.xyz).xyz"), std::string("(r0.xyz * 1.9 - 0.37)") },
-            { std::string("t3.sample(s3, r1.xyzx.xyz).xyz"), std::string("(r1.xyz * 1.9 - 0.37)") },
-            { std::string("t5.sample(s5, r2.xyzx.xyz).xyz"), std::string("(r2.xyz * 1.9 - 0.37)") },
-            { std::string("t4.sample(s3, r0.xyzx.xyz).xyz"), std::string("(r0.xyz * 1.9 - 0.37)") },
-        };
-
-		for (Patch workaround_patch : workaround_patches)
-		{
-			std::string::size_type pos = 0u;
-			while((pos = conversionResult.msl.find(workaround_patch.find, pos)) != std::string::npos)
-			{
-				conversionResult.msl.replace(pos, workaround_patch.find.length(), workaround_patch.replace);
-				pos += workaround_patch.replace.length();
-			}
-		}
-
+        
+        if (getEnvVariable("NAS_DISABLE_UE4_HACK") != "1") {
+            Patch workaround_patches[] = {
+                { std::string("t3.sample(s3, r0.yzwy.xyz).xyz"), std::string("r0.yzw") },
+                { std::string("t3.sample(s3, r0.xyzx.xyz).xyz"), std::string("r0.xyz") },
+                { std::string("t3.sample(s3, r1.xyzx.xyz).xyz"), std::string("r1.xyz") },
+                { std::string("t5.sample(s5, r2.xyzx.xyz).xyz"), std::string("r2.xyz") },
+                { std::string("t4.sample(s3, r0.xyzx.xyz).xyz"), std::string("r0.xyz") },
+            };
+            
+            for (Patch workaround_patch : workaround_patches)
+            {
+                std::string::size_type pos = 0u;
+                while((pos = conversionResult.msl.find(workaround_patch.find, pos)) != std::string::npos)
+                {
+                    conversionResult.msl.replace(pos, workaround_patch.find.length(), withOverride(workaround_patch.replace));
+                    pos += workaround_patch.replace.length();
+                }
+            }
+        }
+        
         if (shouldLogMSL) { logSource(conversionResult.resultLog, conversionResult.msl, "MSL", "Converted"); }
 
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
