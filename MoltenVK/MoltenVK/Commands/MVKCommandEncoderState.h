@@ -152,7 +152,7 @@ public:
 protected:
     void encodeImpl(uint32_t stage) override;
 
-    MVKSmallVector<VkViewport, kMVKCachedViewportScissorCount> _viewports, _dynamicViewports;
+    MVKSmallVector<VkViewport, kMVKMaxViewportScissorCount> _viewports, _dynamicViewports;
 };
 
 
@@ -180,7 +180,7 @@ public:
 protected:
     void encodeImpl(uint32_t stage) override;
 
-    MVKSmallVector<VkRect2D, kMVKCachedViewportScissorCount> _scissors, _dynamicScissors;
+    MVKSmallVector<VkRect2D, kMVKMaxViewportScissorCount> _scissors, _dynamicScissors;
 };
 
 

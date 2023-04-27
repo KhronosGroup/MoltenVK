@@ -350,8 +350,8 @@ protected:
 	VkPipelineRasterizationStateCreateInfo _rasterInfo;
 	VkPipelineDepthStencilStateCreateInfo _depthStencilInfo;
 
-	MVKSmallVector<VkViewport, kMVKCachedViewportScissorCount> _viewports;
-	MVKSmallVector<VkRect2D, kMVKCachedViewportScissorCount> _scissors;
+	MVKSmallVector<VkViewport, kMVKMaxViewportScissorCount> _viewports;
+	MVKSmallVector<VkRect2D, kMVKMaxViewportScissorCount> _scissors;
 	MVKSmallVector<VkDynamicState> _dynamicState;
 	MVKSmallVector<MTLSamplePosition> _customSamplePositions;
 	MVKSmallVector<MVKTranslatedVertexBinding> _translatedVertexBindings;

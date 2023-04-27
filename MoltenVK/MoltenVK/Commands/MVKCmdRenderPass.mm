@@ -282,7 +282,7 @@ void MVKCmdSetViewport<N>::encode(MVKCommandEncoder* cmdEncoder) {
 }
 
 template class MVKCmdSetViewport<1>;
-template class MVKCmdSetViewport<kMVKCachedViewportScissorCount>;
+template class MVKCmdSetViewport<kMVKMaxViewportScissorCount>;
 
 
 #pragma mark -
@@ -309,7 +309,7 @@ void MVKCmdSetScissor<N>::encode(MVKCommandEncoder* cmdEncoder) {
 }
 
 template class MVKCmdSetScissor<1>;
-template class MVKCmdSetScissor<kMVKCachedViewportScissorCount>;
+template class MVKCmdSetScissor<kMVKMaxViewportScissorCount>;
 
 
 #pragma mark -
