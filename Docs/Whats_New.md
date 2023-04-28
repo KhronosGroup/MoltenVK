@@ -21,6 +21,7 @@ Released TBD
 - Add support for extensions:
 	- `VK_KHR_map_memory2`
 - Support BC compression on iOS/tvOS where available (iOS/tvOS 16.4 and above and supported by the GPU).
+- Support separate depth and stencil attachments during dynamic rendering.
 - Fix memory leak when waiting on timeline semaphores.
 - Ensure shaders that use `PhysicalStorageBufferAddresses` encode the use of the associated `MTLBuffer`.
 - Disable pipeline cache compression prior to macOS 10.15 and iOS/tvOS 13.0.

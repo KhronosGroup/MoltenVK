@@ -70,7 +70,7 @@ MVK_EXTENSION(KHR_image_format_list,               KHR_IMAGE_FORMAT_LIST,       
 MVK_EXTENSION(KHR_maintenance1,                    KHR_MAINTENANCE1,                     DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_maintenance2,                    KHR_MAINTENANCE2,                     DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_maintenance3,                    KHR_MAINTENANCE3,                     DEVICE,   10.11,  8.0)
-MVK_EXTENSION(KHR_map_memory2,                     KHR_MAP_MEMORY_2,                        DEVICE,   10.11,  8.0)
+MVK_EXTENSION(KHR_map_memory2,                     KHR_MAP_MEMORY_2,                     DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_multiview,                       KHR_MULTIVIEW,                        DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_portability_subset,              KHR_PORTABILITY_SUBSET,               DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_push_descriptor,                 KHR_PUSH_DESCRIPTOR,                  DEVICE,   10.11,  8.0)

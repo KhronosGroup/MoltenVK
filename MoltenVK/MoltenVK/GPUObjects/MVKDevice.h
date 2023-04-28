@@ -80,8 +80,8 @@ const static uint32_t kMVKQueueFamilyCount = 4;
 const static uint32_t kMVKQueueCountPerQueueFamily = 1;		// Must be 1. See comments in MVKPhysicalDevice::getQueueFamilies()
 const static uint32_t kMVKMinSwapchainImageCount = 2;
 const static uint32_t kMVKMaxSwapchainImageCount = 3;
-const static uint32_t kMVKCachedViewportScissorCount = 16;
-const static uint32_t kMVKCachedColorAttachmentCount = 8;
+const static uint32_t kMVKMaxColorAttachmentCount = 8;
+const static uint32_t kMVKMaxViewportScissorCount = 16;
 const static uint32_t kMVKMaxDescriptorSetCount = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
 
 #if !MVK_XCODE_12
@@ -631,12 +631,16 @@ public:
 
 	MVKFramebuffer* createFramebuffer(const VkFramebufferCreateInfo* pCreateInfo,
 									  const VkAllocationCallbacks* pAllocator);
+	MVKFramebuffer* createFramebuffer(const VkRenderingInfo* pRenderingInfo,
+									  const VkAllocationCallbacks* pAllocator);
 	void destroyFramebuffer(MVKFramebuffer* mvkFB,
 							const VkAllocationCallbacks* pAllocator);
 
 	MVKRenderPass* createRenderPass(const VkRenderPassCreateInfo* pCreateInfo,
 									const VkAllocationCallbacks* pAllocator);
 	MVKRenderPass* createRenderPass(const VkRenderPassCreateInfo2* pCreateInfo,
+									const VkAllocationCallbacks* pAllocator);
+	MVKRenderPass* createRenderPass(const VkRenderingInfo* pRenderingInfo,
 									const VkAllocationCallbacks* pAllocator);
 	void destroyRenderPass(MVKRenderPass* mvkRP,
 						   const VkAllocationCallbacks* pAllocator);

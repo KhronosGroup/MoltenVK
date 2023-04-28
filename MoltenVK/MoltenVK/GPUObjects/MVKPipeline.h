@@ -346,17 +346,12 @@ protected:
 	void markIfUsingPhysicalStorageBufferAddressesCapability(SPIRVToMSLConversionResultInfo& resultsInfo,
 															 MVKShaderStage stage);
 
-	const VkPipelineShaderStageCreateInfo* _pVertexSS = nullptr;
-	const VkPipelineShaderStageCreateInfo* _pTessCtlSS = nullptr;
-	const VkPipelineShaderStageCreateInfo* _pTessEvalSS = nullptr;
-	const VkPipelineShaderStageCreateInfo* _pFragmentSS = nullptr;
-
 	VkPipelineTessellationStateCreateInfo _tessInfo;
 	VkPipelineRasterizationStateCreateInfo _rasterInfo;
 	VkPipelineDepthStencilStateCreateInfo _depthStencilInfo;
 
-	MVKSmallVector<VkViewport, kMVKCachedViewportScissorCount> _viewports;
-	MVKSmallVector<VkRect2D, kMVKCachedViewportScissorCount> _scissors;
+	MVKSmallVector<VkViewport, kMVKMaxViewportScissorCount> _viewports;
+	MVKSmallVector<VkRect2D, kMVKMaxViewportScissorCount> _scissors;
 	MVKSmallVector<VkDynamicState> _dynamicState;
 	MVKSmallVector<MTLSamplePosition> _customSamplePositions;
 	MVKSmallVector<MVKTranslatedVertexBinding> _translatedVertexBindings;
@@ -364,7 +359,12 @@ protected:
 	MVKSmallVector<MVKStagedMTLArgumentEncoders> _mtlArgumentEncoders;
 	MVKSmallVector<MVKStagedDescriptorBindingUse> _descriptorBindingUse;
 	MVKSmallVector<MVKShaderStage> _stagesUsingPhysicalStorageBufferAddressesCapability;
+	std::unordered_map<uint32_t, id<MTLRenderPipelineState>> _multiviewMTLPipelineStates;
 
+	const VkPipelineShaderStageCreateInfo* _pVertexSS = nullptr;
+	const VkPipelineShaderStageCreateInfo* _pTessCtlSS = nullptr;
+	const VkPipelineShaderStageCreateInfo* _pTessEvalSS = nullptr;
+	const VkPipelineShaderStageCreateInfo* _pFragmentSS = nullptr;
 	MTLComputePipelineDescriptor* _mtlTessVertexStageDesc = nil;
 	id<MTLFunction> _mtlTessVertexFunctions[3] = {nil, nil, nil};
 
@@ -373,18 +373,17 @@ protected:
 	id<MTLComputePipelineState> _mtlTessVertexStageIndex32State = nil;
 	id<MTLComputePipelineState> _mtlTessControlStageState = nil;
 	id<MTLRenderPipelineState> _mtlPipelineState = nil;
-	std::unordered_map<uint32_t, id<MTLRenderPipelineState>> _multiviewMTLPipelineStates;
+
+    float _blendConstants[4] = { 0.0, 0.0, 0.0, 1.0 };
 	MTLCullMode _mtlCullMode;
 	MTLWinding _mtlFrontWinding;
 	MTLTriangleFillMode _mtlFillMode;
 	MTLDepthClipMode _mtlDepthClipMode;
 	MTLPrimitiveType _mtlPrimitiveType;
-
-    float _blendConstants[4] = { 0.0, 0.0, 0.0, 1.0 };
-    uint32_t _outputControlPointCount;
 	MVKShaderImplicitRezBinding _reservedVertexAttributeBufferCount;
 	MVKShaderImplicitRezBinding _viewRangeBufferIndex;
 	MVKShaderImplicitRezBinding _outputBufferIndex;
+	uint32_t _outputControlPointCount;
 	uint32_t _tessCtlPatchOutputBufferIndex = 0;
 	uint32_t _tessCtlLevelBufferIndex = 0;
 
@@ -408,7 +407,6 @@ protected:
 	bool _needsFragmentViewRangeBuffer = false;
 	bool _isRasterizing = false;
 	bool _isRasterizingColor = false;
-	bool _isRasterizingDepthStencil = false;
 	bool _isUsingCustomSamplePositions = false;
 };
 

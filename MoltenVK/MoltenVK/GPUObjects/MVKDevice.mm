@@ -2269,17 +2269,17 @@ void MVKPhysicalDevice::initFeatures() {
 void MVKPhysicalDevice::initLimits() {
 
 #if MVK_TVOS
-    _properties.limits.maxColorAttachments = kMVKCachedColorAttachmentCount;
+    _properties.limits.maxColorAttachments = kMVKMaxColorAttachmentCount;
 #endif
 #if MVK_IOS
     if (supportsMTLFeatureSet(iOS_GPUFamily2_v1)) {
-        _properties.limits.maxColorAttachments = kMVKCachedColorAttachmentCount;
+        _properties.limits.maxColorAttachments = kMVKMaxColorAttachmentCount;
     } else {
-        _properties.limits.maxColorAttachments = 4;		// < kMVKCachedColorAttachmentCount
+        _properties.limits.maxColorAttachments = 4;		// < kMVKMaxColorAttachmentCount
     }
 #endif
 #if MVK_MACOS
-    _properties.limits.maxColorAttachments = kMVKCachedColorAttachmentCount;
+    _properties.limits.maxColorAttachments = kMVKMaxColorAttachmentCount;
 #endif
 
     _properties.limits.maxFragmentOutputAttachments = _properties.limits.maxColorAttachments;
@@ -2309,7 +2309,7 @@ void MVKPhysicalDevice::initLimits() {
     float maxVPDim = max(_properties.limits.maxViewportDimensions[0], _properties.limits.maxViewportDimensions[1]);
     _properties.limits.viewportBoundsRange[0] = (-2.0 * maxVPDim);
     _properties.limits.viewportBoundsRange[1] = (2.0 * maxVPDim) - 1;
-    _properties.limits.maxViewports = _features.multiViewport ? kMVKCachedViewportScissorCount : 1;
+    _properties.limits.maxViewports = _features.multiViewport ? kMVKMaxViewportScissorCount : 1;
 
 	_properties.limits.maxImageDimension3D = _metalFeatures.maxTextureLayers;
 	_properties.limits.maxImageArrayLayers = _metalFeatures.maxTextureLayers;
@@ -3893,6 +3893,11 @@ MVKFramebuffer* MVKDevice::createFramebuffer(const VkFramebufferCreateInfo* pCre
 	return new MVKFramebuffer(this, pCreateInfo);
 }
 
+MVKFramebuffer* MVKDevice::createFramebuffer(const VkRenderingInfo* pRenderingInfo,
+											 const VkAllocationCallbacks* pAllocator) {
+	return new MVKFramebuffer(this, pRenderingInfo);
+}
+
 void MVKDevice::destroyFramebuffer(MVKFramebuffer* mvkFB,
 								   const VkAllocationCallbacks* pAllocator) {
 	if (mvkFB) { mvkFB->destroy(); }
@@ -3906,6 +3911,11 @@ MVKRenderPass* MVKDevice::createRenderPass(const VkRenderPassCreateInfo* pCreate
 MVKRenderPass* MVKDevice::createRenderPass(const VkRenderPassCreateInfo2* pCreateInfo,
 										   const VkAllocationCallbacks* pAllocator) {
 	return new MVKRenderPass(this, pCreateInfo);
+}
+
+MVKRenderPass* MVKDevice::createRenderPass(const VkRenderingInfo* pRenderingInfo,
+										   const VkAllocationCallbacks* pAllocator) {
+	return new MVKRenderPass(this, pRenderingInfo);
 }
 
 void MVKDevice::destroyRenderPass(MVKRenderPass* mvkRP,
