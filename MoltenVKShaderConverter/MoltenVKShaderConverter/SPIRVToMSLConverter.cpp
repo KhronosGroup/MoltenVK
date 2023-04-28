@@ -60,7 +60,7 @@ static std::string getEnvVariable(const std::string& name) {
 
 static std::string withOverride(const std::string& patch) {
     std::string variable = "{inputColor}";
-    std::string defaultOverride = variable + " * 1.9 - 0.37";
+    std::string defaultOverride = "clamp(" + variable + " * float3x3( 0.2126 + 0.7874 * 1.2, 0.7152 - 0.7152 * 1.2, 0.0722 - 0.0722 * 1.2, 0.2126 - 0.2126 * 1.2, 0.7152 + 0.2848 * 1.2, 0.0722 - 0.0722 * 1.2, 0.2126 - 0.2126 * 1.2, 0.7152 - 0.7152 * 1.2, 0.0722 + 0.9278 * 1.2 ) * 2 - float3(0.45, 0.45, 0.45), 0.0, 1.0)";
     std::string override = getEnvVariable("NAS_TONEMAP_C");
     if(override == "0") {
         return patch;
