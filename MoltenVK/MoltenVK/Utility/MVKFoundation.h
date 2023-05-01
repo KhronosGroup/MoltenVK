@@ -20,8 +20,7 @@
 #pragma once
 
 
-#include "MVKCommonEnvironment.h"
-#include "mvk_vulkan.h"
+#include "MVKEnvironment.h"
 #include <algorithm>
 #include <cassert>
 #include <limits>

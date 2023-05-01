@@ -24,6 +24,8 @@
 #include <algorithm>
 #include <simd/simd.h>
 
+#import <Foundation/Foundation.h>
+
 using namespace std;
 
 using simd::float3;

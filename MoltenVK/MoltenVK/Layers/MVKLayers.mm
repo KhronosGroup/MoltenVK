@@ -17,7 +17,6 @@
  */
 
 #include "MVKLayers.h"
-#include "MVKEnvironment.h"
 #include "MVKFoundation.h"
 #include <mutex>
 

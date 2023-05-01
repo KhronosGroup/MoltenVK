@@ -19,7 +19,6 @@
 #include "MVKExtensions.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
-#include "MVKEnvironment.h"
 #include <vulkan/vulkan_ios.h>
 #include <vulkan/vulkan_macos.h>
 
@@ -53,9 +52,6 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 	auto advExtns = mvkConfig().advertiseExtensions;
 	if ( !mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL) ) {
 #define MVK_NA  kMVKOSVersionUnsupported
-		if (mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_MOLTENVK)) {
-			MVK_EXTENSION_MIN_OS(MVK_MOLTENVK,                         10.11,  8.0)
-		}
 		if (mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_WSI)) {
 			MVK_EXTENSION_MIN_OS(EXT_METAL_SURFACE,                    10.11,  8.0)
 			MVK_EXTENSION_MIN_OS(MVK_IOS_SURFACE,                      MVK_NA, 8.0)

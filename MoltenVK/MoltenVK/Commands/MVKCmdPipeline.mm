@@ -23,7 +23,6 @@
 #include "MVKBuffer.h"
 #include "MVKPipeline.h"
 #include "MVKFoundation.h"
-#include "MVKEnvironment.h"
 #include "mvk_datatypes.hpp"
 
 

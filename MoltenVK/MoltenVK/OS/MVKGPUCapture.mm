@@ -17,9 +17,7 @@
  */
 
 #include "MVKGPUCapture.h"
-#include "MVKQueue.h"
 #include "MVKOSExtensions.h"
-#include "MVKEnvironment.h"
 
 
 #pragma mark -

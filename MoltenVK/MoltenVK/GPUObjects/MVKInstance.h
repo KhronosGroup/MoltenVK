@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include "MVKEnvironment.h"
 #include "MVKLayers.h"
 #include "MVKVulkanAPIObject.h"
 #include "MVKSmallVector.h"

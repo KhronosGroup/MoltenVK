@@ -32,7 +32,6 @@
 #include "MVKCommandPool.h"
 #include "MVKFoundation.h"
 #include "MVKCodec.h"
-#include "MVKEnvironment.h"
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 
 #import "CAMetalLayer+MoltenVK.h"

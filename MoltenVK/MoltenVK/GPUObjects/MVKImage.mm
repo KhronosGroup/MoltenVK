@@ -21,7 +21,6 @@
 #include "MVKSwapchain.h"
 #include "MVKCommandBuffer.h"
 #include "MVKCmdDebug.h"
-#include "MVKEnvironment.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
 #include "MVKCodec.h"
