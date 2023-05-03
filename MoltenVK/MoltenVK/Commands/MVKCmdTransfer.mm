@@ -25,7 +25,6 @@
 #include "MVKFramebuffer.h"
 #include "MVKRenderPass.h"
 #include "MTLRenderPassDescriptor+MoltenVK.h"
-#include "MVKEnvironment.h"
 #include "mvk_datatypes.hpp"
 #include <algorithm>
 #include <sys/mman.h>

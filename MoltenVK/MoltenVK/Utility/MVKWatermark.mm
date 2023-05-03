@@ -17,10 +17,10 @@
  */
 
 
+#include "MVKEnvironment.h"
 #include "MVKWatermark.h"
 #include "MVKOSExtensions.h"
 #include "MTLTextureDescriptor+MoltenVK.h"
-#include "MVKEnvironment.h"
 
 
 /** The structure to hold shader uniforms. */

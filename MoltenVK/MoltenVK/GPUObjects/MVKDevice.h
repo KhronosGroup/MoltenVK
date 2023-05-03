@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include "MVKEnvironment.h"
 #include "MVKFoundation.h"
 #include "MVKVulkanAPIObject.h"
 #include "MVKMTLResourceBindings.h"
@@ -27,6 +26,7 @@
 #include "MVKSmallVector.h"
 #include "MVKPixelFormats.h"
 #include "MVKOSExtensions.h"
+#include "mvk_private_api.h"
 #include "mvk_datatypes.hpp"
 #include <string>
 #include <mutex>

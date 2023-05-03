@@ -268,14 +268,14 @@ The `make` targets all require that *Xcode* is installed on your system.
 Building from the command line creates the same `Package` folder structure described above when 
 building from within *Xcode*.
 
-When building from the command line, you can set any of the build settings documented in 
-the `vk_mvk_moltenvk.h` file for `MVKConfiguration`, by passing them in the command line, 
+When building from the command line, you can set any of the build settings documented 
+in the `mvk_config.h` file for `MVKConfiguration`, by passing them in the command line, 
 as in the following examples:
 
 	make MVK_CONFIG_LOG_LEVEL=0
 or
 
-	make macos MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS=1
+	make macos MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=2
 
 ...etc.
 

@@ -20,8 +20,9 @@
 #pragma once
 
 #include "MVKCommonEnvironment.h"
+#include "mvk_vulkan.h"
+#include "mvk_config.h"
 #include "MVKLogging.h"
-#include "vk_mvk_moltenvk.h"
 
 
 // Expose MoltenVK Apple surface extension functionality

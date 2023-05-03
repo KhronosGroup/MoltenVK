@@ -16,14 +16,6 @@
  * limitations under the License.
  */
 
-
-/* 
- * This file contains functions for converting between Vulkan and Metal data types.
- *
- * The functions here are used internally by MoltenVK, and are exposed here 
- * as a convenience for use elsewhere within applications using MoltenVK.
- */
-
 #ifndef __mvkDataTypes_h_
 #define __mvkDataTypes_h_ 1
 
@@ -35,6 +27,14 @@ extern "C" {
 
 #import <Metal/Metal.h>
 #import <CoreGraphics/CoreGraphics.h>
+
+
+/*
+ * This file contains functions for converting between Vulkan and Metal data types.
+ *
+ * The functions here are used internally by MoltenVK, and are exposed here
+ * as a convenience for use elsewhere within applications using MoltenVK.
+ */
 
 
 #pragma mark -

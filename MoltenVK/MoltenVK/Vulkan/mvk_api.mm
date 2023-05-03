@@ -1,5 +1,5 @@
 /*
- * vk_mvk_moltenvk.mm
+ * mvk_api.mm
  *
  * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
@@ -17,9 +17,10 @@
  */
 
 
-#include "MVKInstance.h"
-#include "vk_mvk_moltenvk.h"
 #include "MVKEnvironment.h"
+#include "mvk_private_api.h"
+#include "mvk_deprecated_api.h"
+#include "MVKInstance.h"
 #include "MVKSwapchain.h"
 #include "MVKImage.h"
 #include "MVKBuffer.h"
@@ -49,6 +50,10 @@ VkResult mvkCopy(S* pDst, const S* pSrc, size_t* pCopySize) {
 	}
 }
 
+
+#pragma mark -
+#pragma mark mvk_config.h
+
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMoltenVKConfigurationMVK(
 	VkInstance                                  ignored,
 	MVKConfiguration*                           pConfiguration,
@@ -69,6 +74,10 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
 	return rslt;
 }
 
+
+#pragma mark -
+#pragma mark mvk_private_api.h
+
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceMetalFeaturesMVK(
 	VkPhysicalDevice                            physicalDevice,
 	MVKPhysicalDeviceMetalFeatures*             pMetalFeatures,
@@ -87,6 +96,10 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPerformanceStatisticsMVK(
 	MVKDevice::getMVKDevice(device)->getPerformanceStatistics(&mvkPerf);
 	return mvkCopy(pPerf, &mvkPerf, pPerfSize);
 }
+
+
+#pragma mark -
+#pragma mark mvk_deprecated_api.h
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkGetVersionStringsMVK(
 	char*										pMoltenVersionStringBuffer,

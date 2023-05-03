@@ -20,7 +20,6 @@
 #include "MVKBuffer.h"
 #include "MVKImage.h"
 #include "MVKQueue.h"
-#include "MVKEnvironment.h"
 #include "mvk_datatypes.hpp"
 #include "MVKFoundation.h"
 #include <cstdlib>
