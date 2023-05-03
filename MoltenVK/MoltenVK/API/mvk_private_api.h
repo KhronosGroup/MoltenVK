@@ -70,7 +70,7 @@ typedef VkFlags MVKCounterSamplingFlags;
  * retrieve a copy of this structure using the vkGetPhysicalDeviceMetalFeaturesMVK() function.
  *
  * This structure may be extended as new features are added to MoltenVK. If you are linking to
- * an implementation of MoltenVK that was compiled from a different VK_MVK_MOLTENVK_SPEC_VERSION
+ * an implementation of MoltenVK that was compiled from a different MVK_PRIVATE_API_VERSION
  * than your app was, the size of this structure in your app may be larger or smaller than the
  * struct in MoltenVK. See the description of the vkGetPhysicalDeviceMetalFeaturesMVK() function
  * for information about how to handle this.
@@ -196,7 +196,7 @@ typedef struct {
  * MoltenVK performance. You can retrieve a copy of this structure using the vkGetPerformanceStatisticsMVK() function.
  *
  * This structure may be extended as new features are added to MoltenVK. If you are linking to
- * an implementation of MoltenVK that was compiled from a different VK_MVK_MOLTENVK_SPEC_VERSION
+ * an implementation of MoltenVK that was compiled from a different MVK_PRIVATE_API_VERSION
  * than your app was, the size of this structure in your app may be larger or smaller than the
  * struct in MoltenVK. See the description of the vkGetPerformanceStatisticsMVK() function for
  * information about how to handle this.
@@ -229,7 +229,7 @@ typedef VkResult (VKAPI_PTR *PFN_vkGetPerformanceStatisticsMVK)(VkDevice device,
  * supported by the specified physical device. 
  *
  * If you are linking to an implementation of MoltenVK that was compiled from a different
- * VK_MVK_MOLTENVK_SPEC_VERSION than your app was, the size of the MVKPhysicalDeviceMetalFeatures
+ * MVK_PRIVATE_API_VERSION than your app was, the size of the MVKPhysicalDeviceMetalFeatures
  * structure in your app may be larger or smaller than the same struct as expected by MoltenVK.
  *
  * When calling this function, set the value of *pMetalFeaturesSize to sizeof(MVKPhysicalDeviceMetalFeatures),
@@ -259,7 +259,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceMetalFeaturesMVK(
  * Populates the pPerf structure with the current performance statistics for the device.
  *
  * If you are linking to an implementation of MoltenVK that was compiled from a different
- * VK_MVK_MOLTENVK_SPEC_VERSION than your app was, the size of the MVKPerformanceStatistics
+ * MVK_PRIVATE_API_VERSION than your app was, the size of the MVKPerformanceStatistics
  * structure in your app may be larger or smaller than the same struct as expected by MoltenVK.
  *
  * When calling this function, set the value of *pPerfSize to sizeof(MVKPerformanceStatistics),

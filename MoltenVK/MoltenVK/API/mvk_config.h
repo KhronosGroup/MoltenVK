@@ -171,7 +171,7 @@ typedef enum MVKConfigActivityPerformanceLoggingStyle {
  * MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y build setting when MoltenVK is compiled.
  *
  * This structure may be extended as new features are added to MoltenVK. If you are linking to
- * an implementation of MoltenVK that was compiled from a different VK_MVK_MOLTENVK_SPEC_VERSION
+ * an implementation of MoltenVK that was compiled from a different MVK_CONFIGURATION_API_VERSION
  * than your app was, the size of this structure in your app may be larger or smaller than the
  * struct in MoltenVK. See the description of the vkGetMoltenVKConfigurationMVK() and
  * vkSetMoltenVKConfigurationMVK() functions for information about how to handle this.
@@ -944,7 +944,7 @@ typedef struct {
  * is created. See the description of the MVKConfiguration members for more information.
  *
  * If you are linking to an implementation of MoltenVK that was compiled from a different
- * VK_MVK_MOLTENVK_SPEC_VERSION than your app was, the size of the MVKConfiguration structure
+ * MVK_CONFIGURATION_API_VERSION than your app was, the size of the MVKConfiguration structure
  * in your app may be larger or smaller than the same struct as expected by MoltenVK.
  *
  * When calling this function, set the value of *pConfigurationSize to sizeof(MVKConfiguration),
@@ -982,7 +982,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetMoltenVKConfigurationMVK(
  * is created. See the description of the MVKConfiguration members for more information.
  *
  * If you are linking to an implementation of MoltenVK that was compiled from a different
- * VK_MVK_MOLTENVK_SPEC_VERSION than your app was, the size of the MVKConfiguration structure
+ * MVK_CONFIGURATION_API_VERSION than your app was, the size of the MVKConfiguration structure
  * in your app may be larger or smaller than the same struct as expected by MoltenVK.
  *
  * When calling this function, set the value of *pConfigurationSize to sizeof(MVKConfiguration),
