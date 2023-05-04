@@ -920,8 +920,8 @@ typedef struct {
 #pragma mark -
 #pragma mark Function types
 
-	typedef VkResult (VKAPI_PTR *PFN_vkGetMoltenVKConfigurationMVK)(VkInstance ignored, MVKConfiguration* pConfiguration, size_t* pConfigurationSize);
-	typedef VkResult (VKAPI_PTR *PFN_vkSetMoltenVKConfigurationMVK)(VkInstance ignored, const MVKConfiguration* pConfiguration, size_t* pConfigurationSize);
+	typedef VkResult (VKAPI_PTR *PFN_vkGetMoltenVKConfiguration2MVK)(MVKConfiguration* pConfiguration, size_t* pConfigurationSize);
+	typedef VkResult (VKAPI_PTR *PFN_vkSetMoltenVKConfiguration2MVK)(const MVKConfiguration* pConfiguration, size_t* pConfigurationSize);
 
 
 #pragma mark -
@@ -935,10 +935,6 @@ typedef struct {
  * To change a specific configuration value, call vkGetMoltenVKConfigurationMVK() to retrieve
  * the current configuration, make changes, and call  vkSetMoltenVKConfigurationMVK() to
  * update all of the values.
- *
- * The VkInstance object you provide here is ignored, and a VK_NULL_HANDLE value can be provided.
- * This function can be called before the VkInstance has been created. It is safe to call this function
- * with a VkInstance retrieved from a different layer in the Vulkan SDK Loader and Layers framework.
  *
  * To be active, some configuration settings must be set before a VkInstance or VkDevice
  * is created. See the description of the MVKConfiguration members for more information.
@@ -962,8 +958,7 @@ typedef struct {
  * to NULL. In that case, this function will set *pConfigurationSize to the size that MoltenVK
  * expects MVKConfiguration to be.
  */
-VKAPI_ATTR VkResult VKAPI_CALL vkGetMoltenVKConfigurationMVK(
-	VkInstance                                  ignored,
+VKAPI_ATTR VkResult VKAPI_CALL vkGetMoltenVKConfiguration2MVK(
 	MVKConfiguration*                           pConfiguration,
 	size_t*                                     pConfigurationSize);
 
@@ -973,10 +968,6 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetMoltenVKConfigurationMVK(
  * To change a specific configuration value, call vkGetMoltenVKConfigurationMVK()
  * to retrieve the current configuration, make changes, and call
  * vkSetMoltenVKConfigurationMVK() to update all of the values.
- *
- * The VkInstance object you provide here is ignored, and a VK_NULL_HANDLE value can be provided.
- * This function can be called before the VkInstance has been created. It is safe to call this function
- * with a VkInstance retrieved from a different layer in the Vulkan SDK Loader and Layers framework.
  *
  * To be active, some configuration settings must be set before a VkInstance or VkDevice
  * is created. See the description of the MVKConfiguration members for more information.
@@ -1000,8 +991,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetMoltenVKConfigurationMVK(
  * to NULL. In that case, this function will set *pConfigurationSize to the size that MoltenVK
  * expects MVKConfiguration to be.
  */
-VKAPI_ATTR VkResult VKAPI_CALL vkSetMoltenVKConfigurationMVK(
-	VkInstance                                  ignored,
+VKAPI_ATTR VkResult VKAPI_CALL vkSetMoltenVKConfiguration2MVK(
 	const MVKConfiguration*                     pConfiguration,
 	size_t*                                     pConfigurationSize);
 

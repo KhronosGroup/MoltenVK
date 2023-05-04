@@ -18,8 +18,9 @@
 
 /**
  * This header is provided for legacy compatibility only. This header contains obsolete and
- * deprecated MoltenVK functions, that were origionally part of the obsolete and deprecated
- * private VK_MVK_moltenvk extension, and use of this header is not recommended.
+ * deprecated MoltenVK functions, that were originally part of the obsolete and deprecated
+ * non-standard VK_MVK_moltenvk extension, and use of this header is not recommended.
+ *
  * Instead, in your application, use the following header file:
  *
  *     #include <MoltenVK/mvk_vulkan.h>
@@ -27,6 +28,9 @@
  * And if you require the MoltenVK Configuration API, also include the following header file:
  *
  *     #include <MoltenVK/mvk_config.h>
+ *
+ * If you require access to Metal objects underlying equivalent Vulkan objects,
+ * use the standard Vulkan VK_EXT_metal_objects extension.
  */
 
 #include "mvk_vulkan.h"

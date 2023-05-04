@@ -19,6 +19,7 @@
 #include "MVKExtensions.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
+#include "mvk_deprecated_api.h"
 #include <vulkan/vulkan_ios.h>
 #include <vulkan/vulkan_macos.h>
 
@@ -164,6 +165,11 @@ VkResult MVKExtensionList::enable(uint32_t count, const char* const* names, cons
 			result = reportError(VK_ERROR_EXTENSION_NOT_PRESENT, "Vulkan extension %s is not supported.", extnName);
 		} else {
 			enable(extnName);
+			if (mvkStringsAreEqual(extnName, VK_MVK_MOLTENVK_EXTENSION_NAME)) {
+				reportMessage(MVK_CONFIG_LOG_LEVEL_WARNING, "Extension %s is deprecated. For access to Metal objects, use extension %s. "
+							  "For MoltenVK configuration, use the global vkGetMoltenVKConfiguration2MVK() and vkSetMoltenVKConfiguration2MVK() functions.",
+							  VK_MVK_MOLTENVK_EXTENSION_NAME, VK_EXT_METAL_OBJECTS_EXTENSION_NAME);
+			}
 		}
 	}
 	return result;
