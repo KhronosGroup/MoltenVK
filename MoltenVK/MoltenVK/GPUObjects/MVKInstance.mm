@@ -341,11 +341,6 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
     
 	initProcAddrs();		// Init function pointers
 
-	setConfigurationResult(verifyLayers(pCreateInfo->enabledLayerCount, pCreateInfo->ppEnabledLayerNames));
-	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_enabledExtensions;
-	setConfigurationResult(pWritableExtns->enable(pCreateInfo->enabledExtensionCount,
-												  pCreateInfo->ppEnabledExtensionNames,
-												  getDriverLayer()->getSupportedInstanceExtensions()));
 	logVersions();	// Log the MoltenVK and Vulkan versions
 
 	// Populate the array of physical GPU devices.
@@ -366,6 +361,13 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 	if (MVK_MACCAT && !mvkOSVersionIsAtLeast(11.0)) {
 		setConfigurationResult(reportError(VK_ERROR_INCOMPATIBLE_DRIVER, "To support Mac Catalyst, MoltenVK requires macOS 11.0 or above."));
 	}
+
+	// Enable extensions after logging the system and GPU info, for any logging done during extension enablement.
+	setConfigurationResult(verifyLayers(pCreateInfo->enabledLayerCount, pCreateInfo->ppEnabledLayerNames));
+	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_enabledExtensions;
+	setConfigurationResult(pWritableExtns->enable(pCreateInfo->enabledExtensionCount,
+												  pCreateInfo->ppEnabledExtensionNames,
+												  getDriverLayer()->getSupportedInstanceExtensions()));
 
 	MVKLogInfo("Created VkInstance for Vulkan version %s, as requested by app, with the following %d Vulkan extensions enabled:%s",
 			   mvkGetVulkanVersionString(_appInfo.apiVersion).c_str(),
@@ -505,22 +507,24 @@ void MVKInstance::initProcAddrs() {
 #endif
 
 	// MoltenVK-specific instannce functions, not tied to a Vulkan API version or an extension.
-	ADD_INST_OPEN_ENTRY_POINT(vkGetMoltenVKConfigurationMVK);
-	ADD_INST_OPEN_ENTRY_POINT(vkSetMoltenVKConfigurationMVK);
+	ADD_INST_OPEN_ENTRY_POINT(vkGetMoltenVKConfiguration2MVK);
+	ADD_INST_OPEN_ENTRY_POINT(vkSetMoltenVKConfiguration2MVK);
 	ADD_INST_OPEN_ENTRY_POINT(vkGetPhysicalDeviceMetalFeaturesMVK);
 	ADD_INST_OPEN_ENTRY_POINT(vkGetPerformanceStatisticsMVK);
 
 	// For deprecated MoltenVK-specific functions, suppress compiler deprecation warning.
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-	ADD_INST_OPEN_ENTRY_POINT(vkGetVersionStringsMVK);
-	ADD_INST_OPEN_ENTRY_POINT(vkGetMTLDeviceMVK);
-	ADD_INST_OPEN_ENTRY_POINT(vkSetMTLTextureMVK);
-	ADD_INST_OPEN_ENTRY_POINT(vkGetMTLTextureMVK);
-	ADD_INST_OPEN_ENTRY_POINT(vkGetMTLBufferMVK);
-	ADD_INST_OPEN_ENTRY_POINT(vkUseIOSurfaceMVK);
-	ADD_INST_OPEN_ENTRY_POINT(vkGetIOSurfaceMVK);
-	ADD_INST_OPEN_ENTRY_POINT(vkGetMTLCommandQueueMVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetMoltenVKConfigurationMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkSetMoltenVKConfigurationMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetVersionStringsMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetMTLDeviceMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkSetMTLTextureMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetMTLTextureMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetMTLBufferMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkUseIOSurfaceMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetIOSurfaceMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetMTLCommandQueueMVK, MVK_MOLTENVK);
 #pragma clang diagnostic pop
 
 	// Device functions.

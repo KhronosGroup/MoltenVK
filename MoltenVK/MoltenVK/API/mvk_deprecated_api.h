@@ -23,21 +23,17 @@
 #ifdef __cplusplus
 extern "C" {
 #endif	//  __cplusplus
-	
-#include <vulkan/vulkan.h>
+
+#include <MoltenVK/mvk_config.h>
 #include <IOSurface/IOSurfaceRef.h>
 
-	
+
 #define VK_MVK_MOLTENVK_SPEC_VERSION            37
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
-#define MVK_DEPRECATED   VKAPI_ATTR [[deprecated]]
-#define MVK_DEPRECATED_USE_MTL_OBJS   VKAPI_ATTR [[deprecated("Use the VK_EXT_metal_objects extension instead.")]]
-
-
 /**
- * This header contains obsolete and deprecated MoltenVK functions, that were origionally
- * part of the obsolete and deprecated private VK_MVK_moltenvk extension.
+ * This header contains obsolete and deprecated MoltenVK functions, that were originally
+ * part of the obsolete and deprecated non-standard VK_MVK_moltenvk extension.
  *
  * NOTE: USE OF THE FUNCTIONS BELOW IS NOT RECOMMENDED. THE VK_MVK_moltenvk EXTENSION,
  * AND THE FUNCTIONS BELOW ARE NOT SUPPORTED BY THE VULKAN LOADER AND LAYERS.
@@ -53,6 +49,8 @@ extern "C" {
 #pragma mark -
 #pragma mark Function types
 
+typedef VkResult (VKAPI_PTR *PFN_vkGetMoltenVKConfigurationMVK)(VkInstance ignored, MVKConfiguration* pConfiguration, size_t* pConfigurationSize);
+typedef VkResult (VKAPI_PTR *PFN_vkSetMoltenVKConfigurationMVK)(VkInstance ignored, const MVKConfiguration* pConfiguration, size_t* pConfigurationSize);
 typedef void (VKAPI_PTR *PFN_vkGetVersionStringsMVK)(char* pMoltenVersionStringBuffer, uint32_t moltenVersionStringBufferLength, char* pVulkanVersionStringBuffer, uint32_t vulkanVersionStringBufferLength);
 typedef void (VKAPI_PTR *PFN_vkSetWorkgroupSizeMVK)(VkShaderModule shaderModule, uint32_t x, uint32_t y, uint32_t z);
 typedef VkResult (VKAPI_PTR *PFN_vkUseIOSurfaceMVK)(VkImage image, IOSurfaceRef ioSurface);
@@ -72,20 +70,41 @@ typedef void (VKAPI_PTR *PFN_vkGetMTLCommandQueueMVK)(VkQueue queue, id<MTLComma
 
 #ifndef VK_NO_PROTOTYPES
 
+#define MVK_DEPRECATED   VKAPI_ATTR [[deprecated]]
+#define MVK_DEPRECATED_USE_MTL_OBJS   VKAPI_ATTR [[deprecated("Use the VK_EXT_metal_objects extension instead.")]]
+
+
+/** DEPRECATED. Identical functionality to vkGetMoltenVKConfiguration2MVK(). */
+VKAPI_ATTR [[deprecated("Use vkGetMoltenVKConfiguration2MVK() instead.")]]
+VkResult VKAPI_CALL vkGetMoltenVKConfigurationMVK(
+	VkInstance                                  ignored,
+	MVKConfiguration*                           pConfiguration,
+	size_t*                                     pConfigurationSize);
+
+/** DEPRECATED. Identical functionality to vkSetMoltenVKConfiguration2MVK(). */
+VKAPI_ATTR [[deprecated("Use vkSetMoltenVKConfiguration2MVK() instead.")]]
+VkResult VKAPI_CALL vkSetMoltenVKConfigurationMVK(
+	VkInstance                                  ignored,
+	const MVKConfiguration*                     pConfiguration,
+	size_t*                                     pConfigurationSize);
+
 /**
+ * DEPRECATED.
  * Returns a human readable version of the MoltenVK and Vulkan versions.
  *
  * This function is provided as a convenience for reporting. Use the MVK_VERSION, 
  * VK_API_VERSION_1_0, and VK_HEADER_VERSION macros for programmatically accessing
  * the corresponding version numbers.
  */
-	MVK_DEPRECATED void VKAPI_CALL vkGetVersionStringsMVK(
+MVK_DEPRECATED
+void VKAPI_CALL vkGetVersionStringsMVK(
     char*                                       pMoltenVersionStringBuffer,
     uint32_t                                    moltenVersionStringBufferLength,
     char*                                       pVulkanVersionStringBuffer,
     uint32_t                                    vulkanVersionStringBufferLength);
 
 /**
+ * DEPRECATED.
  * Sets the number of threads in a workgroup for a compute kernel.
  *
  * This needs to be called if you are creating compute shader modules from MSL source code
@@ -94,7 +113,8 @@ typedef void (VKAPI_PTR *PFN_vkGetMTLCommandQueueMVK)(VkQueue queue, id<MTLComma
  * This function is not supported by the Vulkan SDK Loader and Layers framework
  * and is unavailable when using the Vulkan SDK Loader and Layers framework.
  */
-	MVK_DEPRECATED void VKAPI_CALL vkSetWorkgroupSizeMVK(
+MVK_DEPRECATED
+void VKAPI_CALL vkSetWorkgroupSizeMVK(
     VkShaderModule                              shaderModule,
     uint32_t                                    x,
     uint32_t                                    y,
@@ -103,16 +123,19 @@ typedef void (VKAPI_PTR *PFN_vkGetMTLCommandQueueMVK)(VkQueue queue, id<MTLComma
 #ifdef __OBJC__
 
 /**
+ * DEPRECATED. Use the VK_EXT_metal_objects extension instead.
  * Returns, in the pMTLDevice pointer, the MTLDevice used by the VkPhysicalDevice.
  *
  * This function is not supported by the Vulkan SDK Loader and Layers framework
  * and is unavailable when using the Vulkan SDK Loader and Layers framework.
  */
-MVK_DEPRECATED_USE_MTL_OBJS void VKAPI_CALL vkGetMTLDeviceMVK(
+MVK_DEPRECATED_USE_MTL_OBJS
+void VKAPI_CALL vkGetMTLDeviceMVK(
     VkPhysicalDevice                           physicalDevice,
     id<MTLDevice>*                             pMTLDevice);
 
 /**
+ * DEPRECATED. Use the VK_EXT_metal_objects extension instead.
  * Sets the VkImage to use the specified MTLTexture.
  *
  * Any differences in the properties of mtlTexture and this image will modify the
@@ -125,43 +148,51 @@ MVK_DEPRECATED_USE_MTL_OBJS void VKAPI_CALL vkGetMTLDeviceMVK(
  * This function is not supported by the Vulkan SDK Loader and Layers framework
  * and is unavailable when using the Vulkan SDK Loader and Layers framework.
  */
-MVK_DEPRECATED_USE_MTL_OBJS VkResult VKAPI_CALL vkSetMTLTextureMVK(
+MVK_DEPRECATED_USE_MTL_OBJS
+VkResult VKAPI_CALL vkSetMTLTextureMVK(
     VkImage                                     image,
     id<MTLTexture>                              mtlTexture);
 
 /**
+ * DEPRECATED. Use the VK_EXT_metal_objects extension instead.
  * Returns, in the pMTLTexture pointer, the MTLTexture currently underlaying the VkImage.
  *
  * This function is not supported by the Vulkan SDK Loader and Layers framework
  * and is unavailable when using the Vulkan SDK Loader and Layers framework.
  */
-MVK_DEPRECATED_USE_MTL_OBJS void VKAPI_CALL vkGetMTLTextureMVK(
+MVK_DEPRECATED_USE_MTL_OBJS
+void VKAPI_CALL vkGetMTLTextureMVK(
     VkImage                                     image,
     id<MTLTexture>*                             pMTLTexture);
 
 /**
+ * DEPRECATED. Use the VK_EXT_metal_objects extension instead.
 * Returns, in the pMTLBuffer pointer, the MTLBuffer currently underlaying the VkBuffer.
 *
  * This function is not supported by the Vulkan SDK Loader and Layers framework
  * and is unavailable when using the Vulkan SDK Loader and Layers framework.
 */
-MVK_DEPRECATED_USE_MTL_OBJS void VKAPI_CALL vkGetMTLBufferMVK(
+MVK_DEPRECATED_USE_MTL_OBJS
+void VKAPI_CALL vkGetMTLBufferMVK(
     VkBuffer                                    buffer,
     id<MTLBuffer>*                              pMTLBuffer);
 
 /**
+ * DEPRECATED. Use the VK_EXT_metal_objects extension instead.
 * Returns, in the pMTLCommandQueue pointer, the MTLCommandQueue currently underlaying the VkQueue.
 *
  * This function is not supported by the Vulkan SDK Loader and Layers framework
  * and is unavailable when using the Vulkan SDK Loader and Layers framework.
 */
-MVK_DEPRECATED_USE_MTL_OBJS void VKAPI_CALL vkGetMTLCommandQueueMVK(
+MVK_DEPRECATED_USE_MTL_OBJS
+void VKAPI_CALL vkGetMTLCommandQueueMVK(
     VkQueue                                     queue,
     id<MTLCommandQueue>*                        pMTLCommandQueue);
 
 #endif // __OBJC__
 
 /**
+ * DEPRECATED. Use the VK_EXT_metal_objects extension instead.
  * Indicates that a VkImage should use an IOSurface to underlay the Metal texture.
  *
  * If ioSurface is not null, it will be used as the IOSurface, and any differences
@@ -188,11 +219,13 @@ MVK_DEPRECATED_USE_MTL_OBJS void VKAPI_CALL vkGetMTLCommandQueueMVK(
  * This function is not supported by the Vulkan SDK Loader and Layers framework
  * and is unavailable when using the Vulkan SDK Loader and Layers framework.
  */
-MVK_DEPRECATED_USE_MTL_OBJS VkResult VKAPI_CALL vkUseIOSurfaceMVK(
+MVK_DEPRECATED_USE_MTL_OBJS
+VkResult VKAPI_CALL vkUseIOSurfaceMVK(
     VkImage                                     image,
     IOSurfaceRef                                ioSurface);
 
 /**
+ * DEPRECATED. Use the VK_EXT_metal_objects extension instead.
  * Returns, in the pIOSurface pointer, the IOSurface currently underlaying the VkImage,
  * as set by the useIOSurfaceMVK() function, or returns null if the VkImage is not using
  * an IOSurface, or if the platform does not support IOSurfaces.
@@ -200,7 +233,8 @@ MVK_DEPRECATED_USE_MTL_OBJS VkResult VKAPI_CALL vkUseIOSurfaceMVK(
  * This function is not supported by the Vulkan SDK Loader and Layers framework
  * and is unavailable when using the Vulkan SDK Loader and Layers framework.
  */
-MVK_DEPRECATED_USE_MTL_OBJS void VKAPI_CALL vkGetIOSurfaceMVK(
+MVK_DEPRECATED_USE_MTL_OBJS
+void VKAPI_CALL vkGetIOSurfaceMVK(
     VkImage                                     image,
     IOSurfaceRef*                               pIOSurface);
 
