@@ -705,23 +705,29 @@ void MVKAttachmentDescription::encodeStoreAction(MVKCommandEncoder* cmdEncoder,
 												 bool storeOverride) {
 	// For a combined depth-stencil format in an attachment with VK_IMAGE_ASPECT_STENCIL_BIT,
 	// the attachment format may have been swizzled to a stencil-only format. In this case,
-	// we want to guard against an attempt to store the non-existent depth component.
+	// we must avoid either storing, or leaving unknown, the non-existent depth component.
+	// We check for depth swizzling by looking at the original image format as well.
 	MTLPixelFormat mtlFmt = attachment->getMTLPixelFormat();
 	MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
-	bool isDepthFormat = pixFmts->isDepthFormat(mtlFmt);
 	bool isStencilFormat = pixFmts->isStencilFormat(mtlFmt);
+	bool isDepthFormat = pixFmts->isDepthFormat(mtlFmt);
+	bool isDepthSwizzled = false;
+	if (isStencilFormat && !isDepthFormat) {
+		isDepthFormat = pixFmts->isDepthFormat(attachment->getImage()->getMTLPixelFormat());
+		isDepthSwizzled = isDepthFormat;
+	}
 	bool isColorFormat = !(isDepthFormat || isStencilFormat);
 
 	bool isMemorylessAttachment = false;
 #if MVK_APPLE_SILICON
 	isMemorylessAttachment = attachment->getMTLTexture().storageMode == MTLStorageModeMemoryless;
 #endif
-	MTLStoreAction storeAction = getMTLStoreAction(subpass, isRenderingEntireAttachment, isMemorylessAttachment, hasResolveAttachment, canResolveFormat, isStencil, storeOverride);
-
+	MTLStoreAction storeAction = getMTLStoreAction(subpass, isRenderingEntireAttachment, isMemorylessAttachment,
+												   hasResolveAttachment, canResolveFormat, isStencil, storeOverride);
 	if (isColorFormat) {
 		[cmdEncoder->_mtlRenderEncoder setColorStoreAction: storeAction atIndex: caIdx];
 	} else if (isDepthFormat && !isStencil) {
-		[cmdEncoder->_mtlRenderEncoder setDepthStoreAction: storeAction];
+		[cmdEncoder->_mtlRenderEncoder setDepthStoreAction: (isDepthSwizzled ? MTLStoreActionDontCare : storeAction)];
 	} else if (isStencilFormat && isStencil) {
 		[cmdEncoder->_mtlRenderEncoder setStencilStoreAction: storeAction];
 	}
