@@ -49,8 +49,6 @@ extern "C" {
 #pragma mark -
 #pragma mark Function types
 
-typedef VkResult (VKAPI_PTR *PFN_vkGetMoltenVKConfigurationMVK)(VkInstance ignored, MVKConfiguration* pConfiguration, size_t* pConfigurationSize);
-typedef VkResult (VKAPI_PTR *PFN_vkSetMoltenVKConfigurationMVK)(VkInstance ignored, const MVKConfiguration* pConfiguration, size_t* pConfigurationSize);
 typedef void (VKAPI_PTR *PFN_vkGetVersionStringsMVK)(char* pMoltenVersionStringBuffer, uint32_t moltenVersionStringBufferLength, char* pVulkanVersionStringBuffer, uint32_t vulkanVersionStringBufferLength);
 typedef void (VKAPI_PTR *PFN_vkSetWorkgroupSizeMVK)(VkShaderModule shaderModule, uint32_t x, uint32_t y, uint32_t z);
 typedef VkResult (VKAPI_PTR *PFN_vkUseIOSurfaceMVK)(VkImage image, IOSurfaceRef ioSurface);
@@ -73,20 +71,6 @@ typedef void (VKAPI_PTR *PFN_vkGetMTLCommandQueueMVK)(VkQueue queue, id<MTLComma
 #define MVK_DEPRECATED   VKAPI_ATTR [[deprecated]]
 #define MVK_DEPRECATED_USE_MTL_OBJS   VKAPI_ATTR [[deprecated("Use the VK_EXT_metal_objects extension instead.")]]
 
-
-/** DEPRECATED. Identical functionality to vkGetMoltenVKConfiguration2MVK(). */
-VKAPI_ATTR [[deprecated("Use vkGetMoltenVKConfiguration2MVK() instead.")]]
-VkResult VKAPI_CALL vkGetMoltenVKConfigurationMVK(
-	VkInstance                                  ignored,
-	MVKConfiguration*                           pConfiguration,
-	size_t*                                     pConfigurationSize);
-
-/** DEPRECATED. Identical functionality to vkSetMoltenVKConfiguration2MVK(). */
-VKAPI_ATTR [[deprecated("Use vkSetMoltenVKConfiguration2MVK() instead.")]]
-VkResult VKAPI_CALL vkSetMoltenVKConfigurationMVK(
-	VkInstance                                  ignored,
-	const MVKConfiguration*                     pConfiguration,
-	size_t*                                     pConfigurationSize);
 
 /**
  * DEPRECATED.

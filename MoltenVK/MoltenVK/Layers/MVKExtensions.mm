@@ -167,7 +167,7 @@ VkResult MVKExtensionList::enable(uint32_t count, const char* const* names, cons
 			enable(extnName);
 			if (mvkStringsAreEqual(extnName, VK_MVK_MOLTENVK_EXTENSION_NAME)) {
 				reportMessage(MVK_CONFIG_LOG_LEVEL_WARNING, "Extension %s is deprecated. For access to Metal objects, use extension %s. "
-							  "For MoltenVK configuration, use the global vkGetMoltenVKConfiguration2MVK() and vkSetMoltenVKConfiguration2MVK() functions.",
+							  "For MoltenVK configuration, use the global vkGetMoltenVKConfigurationMVK() and vkSetMoltenVKConfigurationMVK() functions.",
 							  VK_MVK_MOLTENVK_EXTENSION_NAME, VK_EXT_METAL_OBJECTS_EXTENSION_NAME);
 			}
 		}

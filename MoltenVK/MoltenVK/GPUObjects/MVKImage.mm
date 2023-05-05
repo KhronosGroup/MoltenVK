@@ -1294,8 +1294,9 @@ id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
 }
 
 // Present the drawable and make myself available only once the command buffer has completed.
+// Pass MVKImagePresentInfo by value because it may not exist when the callback runs.
 void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff,
-														  MVKImagePresentInfo& presentInfo) {
+														  MVKImagePresentInfo presentInfo) {
 	lock_guard<mutex> lock(_availabilityLock);
 
 	_swapchain->willPresentSurface(getMTLTexture(0), mtlCmdBuff);
@@ -1357,8 +1358,9 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 	signalPresentationSemaphore(signaler, mtlCmdBuff);
 }
 
+// Pass MVKImagePresentInfo by value because it may not exist when the callback runs.
 void MVKPresentableSwapchainImage::addPresentedHandler(id<CAMetalDrawable> mtlDrawable,
-													   MVKImagePresentInfo& presentInfo) {
+													   MVKImagePresentInfo presentInfo) {
 #if !MVK_OS_SIMULATOR
 	if ([mtlDrawable respondsToSelector: @selector(addPresentedHandler:)]) {
 		retain();	// Ensure this image is not destroyed while awaiting presentation
