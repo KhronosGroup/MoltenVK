@@ -557,7 +557,7 @@ VkResult MVKSwapchain::getPastPresentationTiming(uint32_t *pCount, VkPastPresent
 	return res;
 }
 
-void MVKSwapchain::recordPresentTime(MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime) {
+void MVKSwapchain::recordPresentTime(const MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime) {
 	std::lock_guard<std::mutex> lock(_presentHistoryLock);
 	if (_presentHistoryCount < kMaxPresentationHistory) {
 		_presentHistoryCount++;
