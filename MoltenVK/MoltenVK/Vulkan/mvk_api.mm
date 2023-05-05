@@ -55,14 +55,16 @@ VkResult mvkCopyGrowingStruct(S* pDst, const S* pSrc, size_t* pCopySize) {
 #pragma mark -
 #pragma mark mvk_config.h
 
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMoltenVKConfiguration2MVK(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMoltenVKConfigurationMVK(
+	VkInstance                                  ignored,
 	MVKConfiguration*                           pConfiguration,
 	size_t*                                     pConfigurationSize) {
 
 	return mvkCopyGrowingStruct(pConfiguration, &mvkConfig(), pConfigurationSize);
 }
 
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetMoltenVKConfiguration2MVK(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
+	VkInstance                                  ignored,
 	const MVKConfiguration*                     pConfiguration,
 	size_t*                                     pConfigurationSize) {
 
@@ -99,22 +101,6 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPerformanceStatisticsMVK(
 
 #pragma mark -
 #pragma mark mvk_deprecated_api.h
-
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMoltenVKConfigurationMVK(
-	VkInstance                                  ignored,
-	MVKConfiguration*                           pConfiguration,
-	size_t*                                     pConfigurationSize) {
-
-	return vkGetMoltenVKConfiguration2MVK(pConfiguration, pConfigurationSize);
-}
-
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
-	VkInstance                                  ignored,
-	const MVKConfiguration*                     pConfiguration,
-	size_t*                                     pConfigurationSize) {
-
-	return vkSetMoltenVKConfiguration2MVK(pConfiguration, pConfigurationSize);
-}
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkGetVersionStringsMVK(
 	char*										pMoltenVersionStringBuffer,

@@ -507,16 +507,14 @@ void MVKInstance::initProcAddrs() {
 #endif
 
 	// MoltenVK-specific instannce functions, not tied to a Vulkan API version or an extension.
-	ADD_INST_OPEN_ENTRY_POINT(vkGetMoltenVKConfiguration2MVK);
-	ADD_INST_OPEN_ENTRY_POINT(vkSetMoltenVKConfiguration2MVK);
+	ADD_INST_OPEN_ENTRY_POINT(vkGetMoltenVKConfigurationMVK);
+	ADD_INST_OPEN_ENTRY_POINT(vkSetMoltenVKConfigurationMVK);
 	ADD_INST_OPEN_ENTRY_POINT(vkGetPhysicalDeviceMetalFeaturesMVK);
 	ADD_INST_OPEN_ENTRY_POINT(vkGetPerformanceStatisticsMVK);
 
 	// For deprecated MoltenVK-specific functions, suppress compiler deprecation warning.
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-	ADD_INST_EXT_ENTRY_POINT(vkGetMoltenVKConfigurationMVK, MVK_MOLTENVK);
-	ADD_INST_EXT_ENTRY_POINT(vkSetMoltenVKConfigurationMVK, MVK_MOLTENVK);
 	ADD_INST_EXT_ENTRY_POINT(vkGetVersionStringsMVK, MVK_MOLTENVK);
 	ADD_INST_EXT_ENTRY_POINT(vkGetMTLDeviceMVK, MVK_MOLTENVK);
 	ADD_INST_EXT_ENTRY_POINT(vkSetMTLTextureMVK, MVK_MOLTENVK);
