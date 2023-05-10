@@ -102,3 +102,25 @@ jobs:
         with:
           name: "MoltenVK"
           path: "MoltenVK.tar"
+
+  release:
+    name: 'Release'
+
+    needs: [build]
+
+    runs-on: ubuntu-latest
+
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "MoltenVK/*"
+          artifactErrorsFailBuild: true
