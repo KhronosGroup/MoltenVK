@@ -550,6 +550,7 @@
 		A9092A921A81717C00051823 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				GCC_OPTIMIZATION_LEVEL = 3;
 				MACH_O_TYPE = mh_execute;
 				OTHER_LDFLAGS = (
 					"-ObjC",
