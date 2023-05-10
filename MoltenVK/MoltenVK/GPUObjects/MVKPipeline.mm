@@ -64,11 +64,12 @@ void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
 
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
+                                          VkPipelineBindPoint pipelineBindPoint,
                                           MVKArrayRef<VkWriteDescriptorSet> descriptorWrites,
                                           uint32_t set) {
 	if (!cmdEncoder) { clearConfigurationResult(); }
 	MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[set];
-	dsl->pushDescriptorSet(cmdEncoder, descriptorWrites, _dslMTLResourceIndexOffsets[set]);
+	dsl->pushDescriptorSet(cmdEncoder, pipelineBindPoint, descriptorWrites, _dslMTLResourceIndexOffsets[set]);
 	if (!cmdEncoder) { setConfigurationResult(dsl->getConfigurationResult()); }
 }
 
