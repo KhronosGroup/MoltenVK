@@ -31,7 +31,7 @@ Released TBD
   disable recent fixes to handling LOD for arrayed depth images in shaders, 
   on Apple Silicon, when those fixes cause regression in rendering behavior.
 - For correctness, set `VkPhysicalDeviceLimits::lineWidthGranularity` to `1`.
-- Modify GitHub CI to build and create a single universal binary artifact.
+- Improve GitHub CI production of binary artifacts on submission and release.
 
 
 

@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         xcode: [ "14.3" ]
-        platform: [ "all" ]
+        platform: [ "all", "macos", "ios" ]
         os: [ "macos-13" ]
         upload_artifacts: [ true ]
         # additional specific configurations
@@ -94,14 +94,17 @@ jobs:
       - name: Tar Artifacts
         if: success() && matrix.upload_artifacts == true
         # See: https://github.com/actions/upload-artifact#maintaining-file-permissions-and-case-sensitive-files
-        run: tar -C Package -s/Release/MoltenVK/ -cvf "MoltenVK.tar" Release/
+        # To reduce artifact size, don't include any stand-alone shader converter binaries.
+        run: |
+          rm -rf Package/Release/MoltenVKShaderConverter
+          tar -C Package -s/Release/MoltenVK/ -cvf "MoltenVK-${{ matrix.platform }}.tar" Release/
 
       - name: Upload Artifacts
         if: success() && matrix.upload_artifacts == true
         uses: actions/upload-artifact@v3
         with:
-          name: "MoltenVK"
-          path: "MoltenVK.tar"
+          name: "MoltenVK-${{ matrix.platform }}"
+          path: "MoltenVK-${{ matrix.platform }}.tar"
 
   release:
     name: 'Release'
