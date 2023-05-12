@@ -125,5 +125,15 @@ jobs:
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
+          # Allow updating existing releases if the workflow is triggered by release creation or re-run.
+          allowUpdates: true
+          # When the release is updated, delete the existing artifacts for replacement.
+          removeArtifacts: true
+          # If a release is being replaced, omit updating the name and body.
+          # Allows for creating a release and filling these in before the workflow runs.
+          # Then, the workflow will populate the release with the artifacts.
+          omitNameDuringUpdate: true
+          omitBodyDuringUpdate: true
+          # Upload all MoltenVK CI artifacts as release assets.
           artifacts: "MoltenVK*/*"
           artifactErrorsFailBuild: true
