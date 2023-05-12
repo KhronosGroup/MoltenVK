@@ -878,7 +878,7 @@ VkDescriptorUpdateTemplateType MVKDescriptorUpdateTemplate::getType() const {
 
 MVKDescriptorUpdateTemplate::MVKDescriptorUpdateTemplate(MVKDevice* device,
 														 const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo) :
-	MVKVulkanAPIDeviceObject(device), _type(pCreateInfo->templateType), _pipelineBindPoint(pCreateInfo->pipelineBindPoint) {
+	MVKVulkanAPIDeviceObject(device), _pipelineBindPoint(pCreateInfo->pipelineBindPoint), _type(pCreateInfo->templateType) {
 
 	for (uint32_t i = 0; i < pCreateInfo->descriptorUpdateEntryCount; i++)
 		_entries.push_back(pCreateInfo->pDescriptorUpdateEntries[i]);
