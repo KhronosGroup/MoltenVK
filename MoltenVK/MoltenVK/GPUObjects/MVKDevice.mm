@@ -1802,7 +1802,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.placementHeaps = mvkConfig().useMTLHeap;
+#if MVK_OS_SIMULATOR
+		_metalFeatures.nativeTextureSwizzle = false;
+#else
 		_metalFeatures.nativeTextureSwizzle = true;
+#endif
 		if (supportsMTLGPUFamily(Apple3)) {
 			_metalFeatures.native3DCompressedTextures = true;
 		}
@@ -2196,9 +2200,13 @@ void MVKPhysicalDevice::initFeatures() {
 		_features.dualSrcBlend = true;
 	}
 
+#if MVK_OS_SIMULATOR
+	_features.depthClamp = false;
+#else
 	if (supportsMTLFeatureSet(iOS_GPUFamily2_v4)) {
 		_features.depthClamp = true;
 	}
+#endif
 
 	if (supportsMTLFeatureSet(iOS_GPUFamily3_v2)) {
 		_features.tessellationShader = true;
