@@ -30,6 +30,7 @@ Released TBD
 - Add `MVK_ENABLE_EXPLICIT_LOD_WORKAROUND` environment variable to selectively 
   disable recent fixes to handling LOD for arrayed depth images in shaders, 
   on Apple Silicon, when those fixes cause regression in rendering behavior.
+- Identify each unsupported device feature flag that the app attempts to be enable.
 - For correctness, set `VkPhysicalDeviceLimits::lineWidthGranularity` to `1`.
 - Improve GitHub CI production of binary artifacts on submission and release.
 
