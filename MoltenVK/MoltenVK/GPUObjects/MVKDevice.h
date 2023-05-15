@@ -886,8 +886,8 @@ protected:
 	void initQueues(const VkDeviceCreateInfo* pCreateInfo);
 	void reservePrivateData(const VkDeviceCreateInfo* pCreateInfo);
 	void enableFeatures(const VkDeviceCreateInfo* pCreateInfo);
-	void enableFeatures(VkBaseInStructure* pEnabled, const VkBaseInStructure* pRequested, const VkBaseInStructure* pAvailable, uint32_t count);
-	void enableFeatures(VkBool32* pEnabledBools, const VkBool32* pRequestedBools, const VkBool32* pAvailableBools, uint32_t count);
+	template<typename S> void enableFeatures(S* pEnabled, const S* pRequested, const S* pAvailable, uint32_t count);
+	template<typename S> void enableFeatures(S* pRequested, VkBool32* pEnabledBools, const VkBool32* pRequestedBools, const VkBool32* pAvailableBools, uint32_t count);
 	void enableExtensions(const VkDeviceCreateInfo* pCreateInfo);
     const char* getActivityPerformanceDescription(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats);
 	void logActivityPerformance(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);

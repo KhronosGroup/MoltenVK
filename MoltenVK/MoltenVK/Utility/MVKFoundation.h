@@ -218,6 +218,44 @@ static constexpr uint64_t mvkAlignByteCount(uint64_t byteCount, uint64_t byteAli
 }
 
 /**
+ * Compile time indication if the struct contains a specific member.
+ *
+ * If S::mbr is well-formed because the struct contains that member, the decltype() and
+ * comma operator together trigger a true_type, otherwise it falls back to a false_type.
+ *
+ * Credit to: https://fekir.info/post/detect-member-variables/
+ */
+#define mvk_define_has_member(mbr) \
+	template <typename T, typename = void> struct mvk_has_##mbr : std::false_type {}; \
+	template <typename T> struct mvk_has_##mbr<T, decltype((void)T::mbr, void())> : std::true_type {};
+
+mvk_define_has_member(pNext);	// Defines the mvk_has_pNext() function.
+
+/** Returns the address of the first member of a structure, which is just the address of the structure. */
+template <typename S>
+void* mvkGetAddressOfFirstMember(const S* pStruct, std::false_type){
+	return (void*)pStruct;
+}
+
+/**
+ * Returns the address of the first member of a Vulkan structure containing a pNext member.
+ * The first member is the one after the pNext member.
+ */
+template <class S>
+void* mvkGetAddressOfFirstMember(const S* pStruct, std::true_type){
+	return (void*)(&(pStruct->pNext) + 1);
+}
+
+/**
+ * Returns the address of the first member of a structure. If the structure is a Vulkan
+ * structure containing a pNext member, the first member is the one after the pNext member.
+ */
+template <class S>
+void* mvkGetAddressOfFirstMember(const S* pStruct){
+	return mvkGetAddressOfFirstMember(pStruct, mvk_has_pNext<S>{});
+}
+
+/**
  * Reverses the order of the rows in the specified data block.
  * The transformation is performed in-place.
  *
