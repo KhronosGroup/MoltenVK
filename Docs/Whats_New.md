@@ -26,6 +26,7 @@ Released TBD
 - Fix memory leak when waiting on timeline semaphores.
 - Fix race condition when updating values in `VkPastPresentationTimingGOOGLE`,
   and ensure swapchain image presented time is always populated when requested.
+- Report error, but do not fail on request for timestamp query pool that is too large for `MTLCounterSampleBuffer`.
 - Ensure shaders that use `PhysicalStorageBufferAddresses` encode the use of the associated `MTLBuffer`.
 - Disable pipeline cache compression prior to macOS 10.15 and iOS/tvOS 13.0.
 - Add `MVK_ENABLE_EXPLICIT_LOD_WORKAROUND` environment variable to selectively 
