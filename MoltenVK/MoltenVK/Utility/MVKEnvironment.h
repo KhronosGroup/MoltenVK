@@ -232,6 +232,17 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #	define MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE	""
 #endif
 
+/**
+ * The file to capture manual GPU traces to. This is
+ * useful when trying to capture a one-shot trace, but the program cannot be run under
+ * Xcode's control. Tilde paths may be used to place the trace document in a user's home
+ * directory. This functionality requires macOS 10.15.
+ */
+#ifndef MVK_CONFIG_GPU_CAPTURE_OUTPUT_FILE
+#    define MVK_CONFIG_GPU_CAPTURE_OUTPUT_FILE    ""
+#endif
+
+
 /** Force the use of a low-power GPU if it exists. Disabled by default. */
 #ifndef MVK_CONFIG_FORCE_LOW_POWER_GPU
 #   define MVK_CONFIG_FORCE_LOW_POWER_GPU    0

@@ -4398,7 +4398,7 @@ void MVKDevice::stopGPUCapture() {
     if (_isCurrentlyGPUCapturing) {
         [[MTLCaptureManager sharedCaptureManager] stopCapture];
         _isCurrentlyGPUCapturing = false;
-        MVKLogInfo("Stopping external capture");
+        MVKLogInfo("Stopping manual capture.");
     }
 }
 
@@ -4424,17 +4424,17 @@ void MVKDevice::startGPUCapture(id mtlCaptureObject) {
                 captureDesc.destination = MTLCaptureDestinationGPUTraceDocument;
                 captureDesc.outputURL = [NSURL fileURLWithPath: expandedFilePath];
             } else {
-                reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Capturing GPU traces to a file requires macOS 10.15 or iOS 13.0 and GPU capturing to be enabled. Falling back to Xcode GPU capture.");
+                reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Capturing GPU traces to a file requires macOS 10.15 or iOS 13.0 and GPU capturing to be enabled.");
+            }
+
+            if ([captureMgr respondsToSelector: @selector(startCaptureWithDescriptor:error:)] ) {
+                NSError *err = nil;
+                if ( ![captureMgr startCaptureWithDescriptor: captureDesc error: &err] ) {
+                    reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to automatically start GPU capture session (Error code %li): %s", (long)err.code, err.localizedDescription.UTF8String);
+                }
             }
         } else {
-            MVKLogInfo("No file path set.");
-        }
-        
-        if ([captureMgr respondsToSelector: @selector(startCaptureWithDescriptor:error:)] ) {
-            NSError *err = nil;
-            if ( ![captureMgr startCaptureWithDescriptor: captureDesc error: &err] ) {
-                reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to automatically start GPU capture session (Error code %li): %s", (long)err.code, err.localizedDescription.UTF8String);
-            }
+            MVKLogWarning("No file path set for manual GPU capture.");
         }
     }
 }
@@ -4527,13 +4527,36 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_commandResourceFactory = new MVKCommandResourceFactory(this);
 
 	startAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE, getMTLDevice());
+    initManualGPUCapture();
 
 	MVKLogInfo("Created VkDevice to run on GPU %s with the following %d Vulkan extensions enabled:%s",
 			   _pProperties->deviceName,
 			   _enabledExtensions.getEnabledCount(),
 			   _enabledExtensions.enabledNamesString("\n\t\t", true).c_str());
-    
-    [[MVKDebug alloc] initWithDevice:this];
+}
+
+void MVKDevice::initManualGPUCapture() {
+#if MVK_MACOS
+    const char* filePath = mvkConfig().gpuCaptureOutputFilepath;
+    if (strlen(filePath)) {
+        NSEventModifierFlags shortcutModifierFlags = NSEventModifierFlagCommand | NSEventModifierFlagShift;
+        NSString *shortcutKey = @"C";
+
+        NSEvent* (^keyDownEventBlock)(NSEvent *) = ^(NSEvent *event) {
+            NSEventModifierFlags modifiers = [event modifierFlags] & shortcutModifierFlags;
+            NSString *charactersIgnoringModifiers = [[event charactersIgnoringModifiers] uppercaseString];
+            
+            if (modifiers == shortcutModifierFlags && [charactersIgnoringModifiers isEqualToString:shortcutKey]) {
+                handleKeyboardShortcut();
+                return event;
+            }
+            
+            return event;
+        };
+
+        [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown handler:keyDownEventBlock];
+    }
+#endif
 }
 
 void MVKDevice::initPerformanceTracking() {
@@ -4853,6 +4876,14 @@ void MVKDevice::reservePrivateData(const VkDeviceCreateInfo* pCreateInfo) {
 	}
 }
 
+void MVKDevice::handleKeyboardShortcut() {
+    if (_isCurrentlyGPUCapturing) {
+        stopGPUCapture();
+    } else {
+        startGPUCapture(getMTLDevice());
+    }
+}
+
 MVKDevice::~MVKDevice() {
 	if (_activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_DEVICE_LIFETIME) {
 		MVKLogInfo("Device activity performance summary:");
@@ -4892,45 +4923,3 @@ bool mvkSupportsBCTextureCompression(id<MTLDevice> mtlDevice) {
 #endif
 	return MVK_MACOS && !MVK_MACCAT;
 }
-
-@implementation MVKDebug
-
-- (instancetype)initWithDevice:(MVKDevice *)device {
-    self = [super init];
-    if (self) {
-        _device = device;
-        [self registerKeyboardShortcut];
-    }
-    return self;
-}
-
-- (void)handleKeyboardShortcut {
-    if (self.device->isCurrentGPUCapturing()) {
-        self.device->stopGPUCapture();
-    } else {
-        self.device->startGPUCapture(self.device->getMTLDevice());
-    }
-}
-
-- (void)registerKeyboardShortcut {
-    NSEventModifierFlags shortcutModifierFlags = NSEventModifierFlagCommand | NSEventModifierFlagShift;
-    NSString *shortcutKey = @"C";
-
-    NSEvent* (^keyDownEventBlock)(NSEvent *) = ^(NSEvent *event) {
-        NSEventModifierFlags modifiers = [event modifierFlags] & shortcutModifierFlags;
-        NSString *charactersIgnoringModifiers = [[event charactersIgnoringModifiers] uppercaseString];
-        
-        if (modifiers == shortcutModifierFlags && [charactersIgnoringModifiers isEqualToString:shortcutKey]) {
-            // Handle the keyboard shortcut
-            [self handleKeyboardShortcut];
-            return event;
-        }
-        
-        return event;
-    };
-    
-    // Register the key down event handler
-    [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown handler:keyDownEventBlock];
-}
-
-@end

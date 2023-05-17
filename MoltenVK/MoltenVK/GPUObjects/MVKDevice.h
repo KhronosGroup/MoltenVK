@@ -894,6 +894,7 @@ protected:
 	MVKBuffer* removeBuffer(MVKBuffer* mvkBuff);
 	MVKImage* addImage(MVKImage* mvkImg);
 	MVKImage* removeImage(MVKImage* mvkImg);
+    void initManualGPUCapture();
     void initPerformanceTracking();
 	void initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo);
 	void initQueues(const VkDeviceCreateInfo* pCreateInfo);
@@ -908,6 +909,7 @@ protected:
 	void getDescriptorVariableDescriptorCountLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
 														   VkDescriptorSetLayoutSupport* pSupport,
 														   VkDescriptorSetVariableDescriptorCountLayoutSupport* pVarDescSetCountSupport);
+    void handleKeyboardShortcut();
 
 	MVKPhysicalDevice* _physicalDevice = nullptr;
     MVKCommandResourceFactory* _commandResourceFactory = nullptr;
@@ -1090,7 +1092,3 @@ bool mvkSupportsBCTextureCompression(id<MTLDevice> mtlDevice);
 
 #define MTLFeatureSet_macOS_GPUFamily2_v1		MTLGPUFamilyMacCatalyst2
 #endif
-
-@interface MVKDebug : NSObject
-@property MVKDevice *device;
-@end

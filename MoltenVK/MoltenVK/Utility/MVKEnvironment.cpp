@@ -25,7 +25,8 @@ static void mvkInitConfigFromEnvVars() {
 	_mvkConfigInitialized = true;
 
 	MVKConfiguration evCfg;
-	std::string evGPUCapFileStrObj;
+	std::string evAutoGPUCapFileStrObj;
+    std::string evGPUCapFileStrObj;
 
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.debugMode,                              MVK_DEBUG);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.shaderConversionFlipVertexY,            MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y);
@@ -53,7 +54,8 @@ static void mvkInitConfigFromEnvVars() {
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.semaphoreUseMTLFence,                   MVK_ALLOW_METAL_FENCES);
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.semaphoreSupportStyle,                  MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE);
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.autoGPUCaptureScope,                    MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE);
-	MVK_SET_FROM_ENV_OR_BUILD_STRING(evCfg.autoGPUCaptureOutputFilepath,           MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE, evGPUCapFileStrObj);
+	MVK_SET_FROM_ENV_OR_BUILD_STRING(evCfg.autoGPUCaptureOutputFilepath,           MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE, evAutoGPUCapFileStrObj);
+    MVK_SET_FROM_ENV_OR_BUILD_STRING(evCfg.gpuCaptureOutputFilepath,               MVK_CONFIG_GPU_CAPTURE_OUTPUT_FILE, evGPUCapFileStrObj);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.texture1DAs2D,                          MVK_CONFIG_TEXTURE_1D_AS_2D);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.preallocateDescriptors,                 MVK_CONFIG_PREALLOCATE_DESCRIPTORS);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.useCommandPooling,                      MVK_CONFIG_USE_COMMAND_POOLING);

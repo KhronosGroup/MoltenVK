@@ -707,6 +707,27 @@ typedef struct {
 	 */
 	const char* autoGPUCaptureOutputFilepath;
 
+    /**
+     * The path to a file where the manual GPU capture should be saved.
+     * In this case, the Xcode scheme must have Metal GPU capture enabled, but does
+     * not need not be run under Xcode's control at all. This is useful in case the app
+     * cannot be run under Xcode's control. A path starting with '~' can be used to place it in a
+     * user's home directory, as in the shell. This feature requires Metal 3.0 (macOS 10.15).
+     *
+     * If this parameter is NULL or an empty string, the capture will not be started.
+     *
+     * Capture will commence with the shortcut CMD + Shift + C, and will stop
+     * when the shortcut is entered a second time.
+     *
+     * The value of this parameter must be changed before creating a VkDevice,
+     * for the change to take effect.
+     *
+     * The initial value or this parameter is set by the
+     * MVK_CONFIG_GPU_CAPTURE_OUTPUT_FILE
+     * runtime environment variable or MoltenVK compile-time build setting.
+     */
+    const char* gpuCaptureOutputFilepath;
+
 	/**
 	 * Controls whether MoltenVK should use a Metal 2D texture with a height of 1 for a
 	 * Vulkan 1D image, or use a native Metal 1D texture. Metal imposes significant restrictions
