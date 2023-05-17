@@ -1050,8 +1050,8 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 
 	MVKMTLFunction func = getMTLFunction(shaderConfig, _pTessCtlSS, "Tessellation control");
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
-	plDesc.computeFunction = mtlFunc;
 	if ( !mtlFunc ) { return false; }
+	plDesc.computeFunction = mtlFunc;
 
 	auto& funcRslts = func.shaderConversionResults;
 	_needsTessCtlSwizzleBuffer = funcRslts.needsSwizzleBuffer;
