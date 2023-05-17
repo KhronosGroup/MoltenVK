@@ -4536,7 +4536,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 }
 
 void MVKDevice::initManualGPUCapture() {
-#if MVK_MACOS
+#if MVK_MACOS && !MVK_MACCAT
     const char* filePath = mvkConfig().gpuCaptureOutputFilepath;
     if (strlen(filePath)) {
         NSEventModifierFlags shortcutModifierFlags = NSEventModifierFlagCommand | NSEventModifierFlagShift;
