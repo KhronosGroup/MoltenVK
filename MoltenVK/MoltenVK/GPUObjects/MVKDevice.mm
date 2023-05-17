@@ -4394,6 +4394,51 @@ void MVKDevice::stopAutoGPUCapture(MVKConfigAutoGPUCaptureScope autoGPUCaptureSc
 	}
 }
 
+void MVKDevice::stopGPUCapture() {
+    if (_isCurrentlyGPUCapturing) {
+        [[MTLCaptureManager sharedCaptureManager] stopCapture];
+        _isCurrentlyGPUCapturing = false;
+        MVKLogInfo("Stopping external capture");
+    }
+}
+
+void MVKDevice::startGPUCapture(id mtlCaptureObject) {
+    _isCurrentlyGPUCapturing = true;
+
+    @autoreleasepool {
+        MTLCaptureManager *captureMgr = [MTLCaptureManager sharedCaptureManager];
+
+        // Before macOS 10.15 and iOS 13.0, captureDesc will just be nil
+        MTLCaptureDescriptor *captureDesc = [[MTLCaptureDescriptor new] autorelease];
+        captureDesc.captureObject = mtlCaptureObject;
+        captureDesc.destination = MTLCaptureDestinationDeveloperTools;
+
+        const char* filePath = mvkConfig().autoGPUCaptureOutputFilepath;
+        if (strlen(filePath)) {
+            if ([captureMgr respondsToSelector: @selector(supportsDestination:)] &&
+                [captureMgr supportsDestination: MTLCaptureDestinationGPUTraceDocument] ) {
+
+                NSString* expandedFilePath = [[NSString stringWithUTF8String: filePath] stringByExpandingTildeInPath];
+                MVKLogInfo("Capturing GPU trace to file %s.", expandedFilePath.UTF8String);
+
+                captureDesc.destination = MTLCaptureDestinationGPUTraceDocument;
+                captureDesc.outputURL = [NSURL fileURLWithPath: expandedFilePath];
+            } else {
+                reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Capturing GPU traces to a file requires macOS 10.15 or iOS 13.0 and GPU capturing to be enabled. Falling back to Xcode GPU capture.");
+            }
+        } else {
+            MVKLogInfo("No file path set.");
+        }
+        
+        if ([captureMgr respondsToSelector: @selector(startCaptureWithDescriptor:error:)] ) {
+            NSError *err = nil;
+            if ( ![captureMgr startCaptureWithDescriptor: captureDesc error: &err] ) {
+                reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to automatically start GPU capture session (Error code %li): %s", (long)err.code, err.localizedDescription.UTF8String);
+            }
+        }
+    }
+}
+
 void MVKDevice::getMetalObjects(VkExportMetalObjectsInfoEXT* pMetalObjectsInfo) {
 	for (auto* next = (VkBaseOutStructure*)pMetalObjectsInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
@@ -4487,6 +4532,8 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 			   _pProperties->deviceName,
 			   _enabledExtensions.getEnabledCount(),
 			   _enabledExtensions.enabledNamesString("\n\t\t", true).c_str());
+    
+    [[MVKDebug alloc] initWithDevice:this];
 }
 
 void MVKDevice::initPerformanceTracking() {
@@ -4845,3 +4892,45 @@ bool mvkSupportsBCTextureCompression(id<MTLDevice> mtlDevice) {
 #endif
 	return MVK_MACOS && !MVK_MACCAT;
 }
+
+@implementation MVKDebug
+
+- (instancetype)initWithDevice:(MVKDevice *)device {
+    self = [super init];
+    if (self) {
+        _device = device;
+        [self registerKeyboardShortcut];
+    }
+    return self;
+}
+
+- (void)handleKeyboardShortcut {
+    if (self.device->isCurrentGPUCapturing()) {
+        self.device->stopGPUCapture();
+    } else {
+        self.device->startGPUCapture(self.device->getMTLDevice());
+    }
+}
+
+- (void)registerKeyboardShortcut {
+    NSEventModifierFlags shortcutModifierFlags = NSEventModifierFlagCommand | NSEventModifierFlagShift;
+    NSString *shortcutKey = @"C";
+
+    NSEvent* (^keyDownEventBlock)(NSEvent *) = ^(NSEvent *event) {
+        NSEventModifierFlags modifiers = [event modifierFlags] & shortcutModifierFlags;
+        NSString *charactersIgnoringModifiers = [[event charactersIgnoringModifiers] uppercaseString];
+        
+        if (modifiers == shortcutModifierFlags && [charactersIgnoringModifiers isEqualToString:shortcutKey]) {
+            // Handle the keyboard shortcut
+            [self handleKeyboardShortcut];
+            return event;
+        }
+        
+        return event;
+    };
+    
+    // Register the key down event handler
+    [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown handler:keyDownEventBlock];
+}
+
+@end

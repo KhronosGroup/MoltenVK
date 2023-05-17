@@ -815,9 +815,22 @@ public:
 	 * auto capture scope, and if so, stops capturing.
 	 */
 	void stopAutoGPUCapture(MVKConfigAutoGPUCaptureScope autoGPUCaptureScope);
+    
+    /**
+     * Start a single-frame GPU capture triggered by keyboard shortcut
+     */
+    void startGPUCapture(id mtlCaptureObject);
+    
+    /**
+     * Start a single-frame GPU capture triggered by keyboard shortcut
+     */
+    void stopGPUCapture();
 
 	/** Returns whether this instance is currently automatically capturing a GPU trace. */
 	inline bool isCurrentlyAutoGPUCapturing() { return _isCurrentlyAutoGPUCapturing; }
+    
+    /** Returns whether this instance is currently automatically capturing an external GPU trace. */
+    inline bool isCurrentGPUCapturing() { return _isCurrentlyGPUCapturing; }
 
 	/** Returns the Metal objects underpinning the Vulkan objects indicated in the pNext chain of pMetalObjectsInfo. */
 	void getMetalObjects(VkExportMetalObjectsInfoEXT* pMetalObjectsInfo);
@@ -916,6 +929,7 @@ protected:
 	MVKConfigActivityPerformanceLoggingStyle _activityPerformanceLoggingStyle = MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT;
 	bool _isPerformanceTracking = false;
 	bool _isCurrentlyAutoGPUCapturing = false;
+    bool _isCurrentlyGPUCapturing = false;
 	bool _isUsingMetalArgumentBuffers = false;
 
 };
@@ -1076,3 +1090,7 @@ bool mvkSupportsBCTextureCompression(id<MTLDevice> mtlDevice);
 
 #define MTLFeatureSet_macOS_GPUFamily2_v1		MTLGPUFamilyMacCatalyst2
 #endif
+
+@interface MVKDebug : NSObject
+@property MVKDevice *device;
+@end
