@@ -727,14 +727,20 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	}
 }
 
+// Since these are uint8_t arrays, use Big-Endian byte ordering,
+// so a hex dump of the array is human readable in its parts.
 void MVKPhysicalDevice::populateDeviceIDProperties(VkPhysicalDeviceVulkan11Properties* pVk11Props) {
 	uint8_t* uuid;
 	size_t uuidComponentOffset;
 
-	//  ---- Device ID ----------------------------------------------
+	//  ---- Device UUID ----------------------------------------------
 	uuid = pVk11Props->deviceUUID;
 	uuidComponentOffset = 0;
 	mvkClear(uuid, VK_UUID_SIZE);
+
+	// From Vulkan spec: deviceUUID must be universally unique for the device,
+	// AND must be immutable for a given device across instances, processes,
+	// driver APIs, driver versions, and system reboots.
 
 	// First 4 bytes contains GPU vendor ID
 	uint32_t vendorID = _properties.vendorID;
@@ -746,10 +752,10 @@ void MVKPhysicalDevice::populateDeviceIDProperties(VkPhysicalDeviceVulkan11Prope
 	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(deviceID);
 	uuidComponentOffset += sizeof(deviceID);
 
-	// Last 8 bytes contain the GPU registry ID
-	uint64_t regID = mvkGetRegistryID(_mtlDevice);
-	*(uint64_t*)&uuid[uuidComponentOffset] = NSSwapHostLongLongToBig(regID);
-	uuidComponentOffset += sizeof(regID);
+	// Last 8 bytes contain the GPU location identifier
+	uint64_t locID = mvkGetLocationID(_mtlDevice);
+	*(uint64_t*)&uuid[uuidComponentOffset] = NSSwapHostLongLongToBig(locID);
+	uuidComponentOffset += sizeof(locID);
 
 	// ---- Driver ID ----------------------------------------------
 	uuid = pVk11Props->driverUUID;
@@ -772,10 +778,10 @@ void MVKPhysicalDevice::populateDeviceIDProperties(VkPhysicalDeviceVulkan11Prope
 	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(gpuCap);
 	uuidComponentOffset += sizeof(gpuCap);
 
-	// ---- LUID ignored for Metal devices ------------------------
-	mvkClear(pVk11Props->deviceLUID, VK_LUID_SIZE);
-	pVk11Props->deviceNodeMask = 0;
-	pVk11Props->deviceLUIDValid = VK_FALSE;
+	// ---- Device LUID ------------------------
+	*(uint64_t*)pVk11Props->deviceLUID = NSSwapHostLongLongToBig(mvkGetRegistryID(_mtlDevice));
+	pVk11Props->deviceNodeMask = 1;		// Per Vulkan spec
+	pVk11Props->deviceLUIDValid = VK_TRUE;
 }
 
 void MVKPhysicalDevice::populateSubgroupProperties(VkPhysicalDeviceVulkan11Properties* pVk11Props) {
@@ -2732,6 +2738,8 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 }
 #endif	//MVK_IOS_OR_TVOS
 
+// Since this is a uint8_t array, use Big-Endian byte ordering,
+// so a hex dump of the array is human readable in its parts.
 void MVKPhysicalDevice::initPipelineCacheUUID() {
 
 	// Clear the UUID
@@ -4833,6 +4841,32 @@ MVKDevice::~MVKDevice() {
 
 uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice) {
 	return [mtlDevice respondsToSelector: @selector(registryID)] ? mtlDevice.registryID : 0;
+}
+
+uint64_t mvkGetLocationID(id<MTLDevice> mtlDevice) {
+	uint64_t hash = 0;
+
+#if MVK_MACOS && !MVK_MACCAT
+	// All of these device properties were added at the same time,
+	// so only need to check for the presence of one of them.
+	if ([mtlDevice respondsToSelector: @selector(location)]) {
+		uint64_t val;
+
+		val = mtlDevice.location;
+		hash = mvkHash(&val, 1, hash);
+
+		val = mtlDevice.locationNumber;
+		hash = mvkHash(&val, 1, hash);
+
+		val = mtlDevice.peerGroupID;
+		hash = mvkHash(&val, 1, hash);
+
+		val = mtlDevice.peerIndex;
+		hash = mvkHash(&val, 1, hash);
+	}
+#endif
+
+	return hash;
 }
 
 // If the supportsBCTextureCompression query is available, use it.
