@@ -94,6 +94,7 @@ static void mvkInitConfigFromEnvVars() {
 
 static MVKConfiguration _mvkConfig;
 static std::string _autoGPUCaptureOutputFile;
+static std::string _gpuCaptureOutputFile;
 
 // Returns the MoltenVK config, lazily initializing it if necessary.
 // We initialize lazily instead of in a library constructor function to
@@ -130,4 +131,10 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig) {
 		_autoGPUCaptureOutputFile = _mvkConfig.autoGPUCaptureOutputFilepath;
 	}
 	_mvkConfig.autoGPUCaptureOutputFilepath = (char*)_autoGPUCaptureOutputFile.c_str();
+    
+    // Set capture file path string
+    if (_mvkConfig.gpuCaptureOutputFilepath) {
+        _gpuCaptureOutputFile = _mvkConfig.gpuCaptureOutputFilepath;
+    }
+    _mvkConfig.gpuCaptureOutputFilepath = (char*)_gpuCaptureOutputFile.c_str();
 }
