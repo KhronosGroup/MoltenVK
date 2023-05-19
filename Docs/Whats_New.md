@@ -24,13 +24,20 @@ Released TBD
 - Support separate depth and stencil attachments during dynamic rendering.
 - Deprecate the obsolete and non-standard `VK_MVK_moltenvk` extension.
 - Fix memory leak when waiting on timeline semaphores.
-- Fix race condition when updating values in `VkPastPresentationTimingGOOGLE`.
+- Fix race condition when updating values in `VkPastPresentationTimingGOOGLE`,
+  and ensure swapchain image presented time is always populated when requested.
+- Report error, but do not fail on request for timestamp query pool that is too large for `MTLCounterSampleBuffer`.
 - Ensure shaders that use `PhysicalStorageBufferAddresses` encode the use of the associated `MTLBuffer`.
 - Disable pipeline cache compression prior to macOS 10.15 and iOS/tvOS 13.0.
 - Add `MVK_ENABLE_EXPLICIT_LOD_WORKAROUND` environment variable to selectively 
   disable recent fixes to handling LOD for arrayed depth images in shaders, 
   on Apple Silicon, when those fixes cause regression in rendering behavior.
+- Identify each unsupported device feature flag that the app attempts to be enable.
+- Populate `deviceUUID` from `MTLDevice` location and peer group info, 
+  which should be unique, and constant across OS reboots.
+- Populate `deviceLUID` from `MTLDevice.registryID`. 
 - For correctness, set `VkPhysicalDeviceLimits::lineWidthGranularity` to `1`.
+- Improve GitHub CI production of binary artifacts on submission and release.
 
 
 

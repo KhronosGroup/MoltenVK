@@ -565,8 +565,11 @@ void MVKSwapchain::recordPresentTime(const MVKImagePresentInfo& presentInfo, uin
 		_presentHistoryHeadIndex = (_presentHistoryHeadIndex + 1) % kMaxPresentationHistory;
 	}
 
-	// If actual time not supplied, use desired time instead
+	// If actual present time is not available, use desired time instead, and if that
+	// hasn't been set, use the current time, which should be reasonably accurate (sub-ms),
+	// since we are here as part of the addPresentedHandler: callback.
 	if (actualPresentTime == 0) { actualPresentTime = presentInfo.desiredPresentTime; }
+	if (actualPresentTime == 0) { actualPresentTime = CACurrentMediaTime() * 1.0e9; }
 
 	_presentTimingHistory[_presentHistoryIndex].presentID = presentInfo.presentID;
 	_presentTimingHistory[_presentHistoryIndex].desiredPresentTime = presentInfo.desiredPresentTime;

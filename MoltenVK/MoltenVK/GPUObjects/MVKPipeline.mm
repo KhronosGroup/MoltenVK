@@ -64,11 +64,12 @@ void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
 
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
+                                          VkPipelineBindPoint pipelineBindPoint,
                                           MVKArrayRef<VkWriteDescriptorSet> descriptorWrites,
                                           uint32_t set) {
 	if (!cmdEncoder) { clearConfigurationResult(); }
 	MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[set];
-	dsl->pushDescriptorSet(cmdEncoder, descriptorWrites, _dslMTLResourceIndexOffsets[set]);
+	dsl->pushDescriptorSet(cmdEncoder, pipelineBindPoint, descriptorWrites, _dslMTLResourceIndexOffsets[set]);
 	if (!cmdEncoder) { setConfigurationResult(dsl->getConfigurationResult()); }
 }
 
@@ -1049,8 +1050,8 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 
 	MVKMTLFunction func = getMTLFunction(shaderConfig, _pTessCtlSS, "Tessellation control");
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
-	plDesc.computeFunction = mtlFunc;
 	if ( !mtlFunc ) { return false; }
+	plDesc.computeFunction = mtlFunc;
 
 	auto& funcRslts = func.shaderConversionResults;
 	_needsTessCtlSwizzleBuffer = funcRslts.needsSwizzleBuffer;

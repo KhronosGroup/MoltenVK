@@ -63,6 +63,7 @@ public:
 
 	/** Updates a descriptor set in a command encoder. */
 	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
+						   VkPipelineBindPoint pipelineBindPoint,
 						   MVKArrayRef<VkWriteDescriptorSet> descriptorWrites,
 						   uint32_t set);
 

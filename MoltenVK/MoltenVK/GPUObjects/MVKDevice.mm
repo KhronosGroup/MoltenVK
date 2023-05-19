@@ -32,6 +32,7 @@
 #include "MVKCommandPool.h"
 #include "MVKFoundation.h"
 #include "MVKCodec.h"
+#include "MVKStrings.h"
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 
 #import "CAMetalLayer+MoltenVK.h"
@@ -726,14 +727,20 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	}
 }
 
+// Since these are uint8_t arrays, use Big-Endian byte ordering,
+// so a hex dump of the array is human readable in its parts.
 void MVKPhysicalDevice::populateDeviceIDProperties(VkPhysicalDeviceVulkan11Properties* pVk11Props) {
 	uint8_t* uuid;
 	size_t uuidComponentOffset;
 
-	//  ---- Device ID ----------------------------------------------
+	//  ---- Device UUID ----------------------------------------------
 	uuid = pVk11Props->deviceUUID;
 	uuidComponentOffset = 0;
 	mvkClear(uuid, VK_UUID_SIZE);
+
+	// From Vulkan spec: deviceUUID must be universally unique for the device,
+	// AND must be immutable for a given device across instances, processes,
+	// driver APIs, driver versions, and system reboots.
 
 	// First 4 bytes contains GPU vendor ID
 	uint32_t vendorID = _properties.vendorID;
@@ -745,10 +752,10 @@ void MVKPhysicalDevice::populateDeviceIDProperties(VkPhysicalDeviceVulkan11Prope
 	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(deviceID);
 	uuidComponentOffset += sizeof(deviceID);
 
-	// Last 8 bytes contain the GPU registry ID
-	uint64_t regID = mvkGetRegistryID(_mtlDevice);
-	*(uint64_t*)&uuid[uuidComponentOffset] = NSSwapHostLongLongToBig(regID);
-	uuidComponentOffset += sizeof(regID);
+	// Last 8 bytes contain the GPU location identifier
+	uint64_t locID = mvkGetLocationID(_mtlDevice);
+	*(uint64_t*)&uuid[uuidComponentOffset] = NSSwapHostLongLongToBig(locID);
+	uuidComponentOffset += sizeof(locID);
 
 	// ---- Driver ID ----------------------------------------------
 	uuid = pVk11Props->driverUUID;
@@ -771,10 +778,10 @@ void MVKPhysicalDevice::populateDeviceIDProperties(VkPhysicalDeviceVulkan11Prope
 	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(gpuCap);
 	uuidComponentOffset += sizeof(gpuCap);
 
-	// ---- LUID ignored for Metal devices ------------------------
-	mvkClear(pVk11Props->deviceLUID, VK_LUID_SIZE);
-	pVk11Props->deviceNodeMask = 0;
-	pVk11Props->deviceLUIDValid = VK_FALSE;
+	// ---- Device LUID ------------------------
+	*(uint64_t*)pVk11Props->deviceLUID = NSSwapHostLongLongToBig(mvkGetRegistryID(_mtlDevice));
+	pVk11Props->deviceNodeMask = 1;		// Per Vulkan spec
+	pVk11Props->deviceLUIDValid = VK_TRUE;
 }
 
 void MVKPhysicalDevice::populateSubgroupProperties(VkPhysicalDeviceVulkan11Properties* pVk11Props) {
@@ -1802,7 +1809,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.placementHeaps = mvkConfig().useMTLHeap;
+#if MVK_OS_SIMULATOR
+		_metalFeatures.nativeTextureSwizzle = false;
+#else
 		_metalFeatures.nativeTextureSwizzle = true;
+#endif
 		if (supportsMTLGPUFamily(Apple3)) {
 			_metalFeatures.native3DCompressedTextures = true;
 		}
@@ -2196,9 +2207,13 @@ void MVKPhysicalDevice::initFeatures() {
 		_features.dualSrcBlend = true;
 	}
 
+#if MVK_OS_SIMULATOR
+	_features.depthClamp = false;
+#else
 	if (supportsMTLFeatureSet(iOS_GPUFamily2_v4)) {
 		_features.depthClamp = true;
 	}
+#endif
 
 	if (supportsMTLFeatureSet(iOS_GPUFamily3_v2)) {
 		_features.tessellationShader = true;
@@ -2725,6 +2740,8 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 }
 #endif	//MVK_IOS_OR_TVOS
 
+// Since this is a uint8_t array, use Big-Endian byte ordering,
+// so a hex dump of the array is human readable in its parts.
 void MVKPhysicalDevice::initPipelineCacheUUID() {
 
 	// Clear the UUID
@@ -4584,7 +4601,8 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	//Enable device features based on requested and available features,
 	// including extended features that are requested in the pNext chain.
 	if (pCreateInfo->pEnabledFeatures) {
-		enableFeatures(&_enabledFeatures.robustBufferAccess,
+		enableFeatures(pCreateInfo->pEnabledFeatures,
+					   &_enabledFeatures.robustBufferAccess,
 					   &pCreateInfo->pEnabledFeatures->robustBufferAccess,
 					   &pdFeats2.features.robustBufferAccess, 55);
 	}
@@ -4593,29 +4611,36 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 		switch ((uint32_t)next->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: {
 				auto* requestedFeatures = (VkPhysicalDeviceFeatures2*)next;
-				enableFeatures(&_enabledFeatures.robustBufferAccess,
+				enableFeatures(requestedFeatures,
+							   &_enabledFeatures.robustBufferAccess,
 							   &requestedFeatures->features.robustBufferAccess,
 							   &pdFeats2.features.robustBufferAccess, 55);
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: {
 				auto* requestedFeatures = (VkPhysicalDeviceVulkan11Features*)next;
-				enableFeatures(&_enabled16BitStorageFeatures.storageBuffer16BitAccess,
+				enableFeatures(requestedFeatures,
+							   &_enabled16BitStorageFeatures.storageBuffer16BitAccess,
 							   &requestedFeatures->storageBuffer16BitAccess,
 							   &pd16BitStorageFeatures.storageBuffer16BitAccess, 4);
-				enableFeatures(&_enabledMultiviewFeatures.multiview,
+				enableFeatures(requestedFeatures,
+							   &_enabledMultiviewFeatures.multiview,
 							   &requestedFeatures->multiview,
 							   &pdMultiviewFeatures.multiview, 3);
-				enableFeatures(&_enabledVariablePointerFeatures.variablePointersStorageBuffer,
+				enableFeatures(requestedFeatures,
+							   &_enabledVariablePointerFeatures.variablePointersStorageBuffer,
 							   &requestedFeatures->variablePointersStorageBuffer,
 							   &pdVariablePointerFeatures.variablePointersStorageBuffer, 2);
-				enableFeatures(&_enabledProtectedMemoryFeatures.protectedMemory,
+				enableFeatures(requestedFeatures,
+							   &_enabledProtectedMemoryFeatures.protectedMemory,
 							   &requestedFeatures->protectedMemory,
 							   &pdProtectedMemoryFeatures.protectedMemory, 1);
-				enableFeatures(&_enabledSamplerYcbcrConversionFeatures.samplerYcbcrConversion,
+				enableFeatures(requestedFeatures,
+							   &_enabledSamplerYcbcrConversionFeatures.samplerYcbcrConversion,
 							   &requestedFeatures->samplerYcbcrConversion,
 							   &pdSamplerYcbcrConversionFeatures.samplerYcbcrConversion, 1);
-				enableFeatures(&_enabledShaderDrawParametersFeatures.shaderDrawParameters,
+				enableFeatures(requestedFeatures,
+							   &_enabledShaderDrawParametersFeatures.shaderDrawParameters,
 							   &requestedFeatures->shaderDrawParameters,
 							   &pdShaderDrawParametersFeatures.shaderDrawParameters, 1);
 				break;
@@ -4623,55 +4648,72 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
 				auto& pdvulkan12FeaturesNoExt = _physicalDevice->_vulkan12FeaturesNoExt;
 				auto* requestedFeatures = (VkPhysicalDeviceVulkan12Features*)next;
-				enableFeatures(&_enabledVulkan12FeaturesNoExt.samplerMirrorClampToEdge,
+				enableFeatures(requestedFeatures,
+							   &_enabledVulkan12FeaturesNoExt.samplerMirrorClampToEdge,
 							   &requestedFeatures->samplerMirrorClampToEdge,
 							   &pdvulkan12FeaturesNoExt.samplerMirrorClampToEdge, 2);
-				enableFeatures(&_enabled8BitStorageFeatures.storageBuffer8BitAccess,
+				enableFeatures(requestedFeatures,
+							   &_enabled8BitStorageFeatures.storageBuffer8BitAccess,
 							   &requestedFeatures->storageBuffer8BitAccess,
 							   &pd8BitStorageFeatures.storageBuffer8BitAccess, 3);
-				enableFeatures(&_enabledShaderAtomicInt64Features.shaderBufferInt64Atomics,
+				enableFeatures(requestedFeatures,
+							   &_enabledShaderAtomicInt64Features.shaderBufferInt64Atomics,
 							   &requestedFeatures->shaderBufferInt64Atomics,
 							   &pdShaderAtomicInt64Features.shaderBufferInt64Atomics, 2);
-				enableFeatures(&_enabledShaderFloat16Int8Features.shaderFloat16,
+				enableFeatures(requestedFeatures,
+							   &_enabledShaderFloat16Int8Features.shaderFloat16,
 							   &requestedFeatures->shaderFloat16,
 							   &pdShaderFloat16Int8Features.shaderFloat16, 2);
-				enableFeatures(&_enabledVulkan12FeaturesNoExt.descriptorIndexing,
+				enableFeatures(requestedFeatures,
+							   &_enabledVulkan12FeaturesNoExt.descriptorIndexing,
 							   &requestedFeatures->descriptorIndexing,
 							   &pdvulkan12FeaturesNoExt.descriptorIndexing, 1);
-				enableFeatures(&_enabledDescriptorIndexingFeatures.shaderInputAttachmentArrayDynamicIndexing,
+				enableFeatures(requestedFeatures,
+							   &_enabledDescriptorIndexingFeatures.shaderInputAttachmentArrayDynamicIndexing,
 							   &requestedFeatures->shaderInputAttachmentArrayDynamicIndexing,
 							   &pdDescriptorIndexingFeatures.shaderInputAttachmentArrayDynamicIndexing, 20);
-				enableFeatures(&_enabledVulkan12FeaturesNoExt.samplerFilterMinmax,
+				enableFeatures(requestedFeatures,
+							   &_enabledVulkan12FeaturesNoExt.samplerFilterMinmax,
 							   &requestedFeatures->samplerFilterMinmax,
 							   &pdvulkan12FeaturesNoExt.samplerFilterMinmax, 1);
-				enableFeatures(&_enabledScalarBlockLayoutFeatures.scalarBlockLayout,
+				enableFeatures(requestedFeatures,
+							   &_enabledScalarBlockLayoutFeatures.scalarBlockLayout,
 							   &requestedFeatures->scalarBlockLayout,
 							   &pdScalarBlockLayoutFeatures.scalarBlockLayout, 1);
-				enableFeatures(&_enabledImagelessFramebufferFeatures.imagelessFramebuffer,
+				enableFeatures(requestedFeatures,
+							   &_enabledImagelessFramebufferFeatures.imagelessFramebuffer,
 							   &requestedFeatures->imagelessFramebuffer,
 							   &pdImagelessFramebufferFeatures.imagelessFramebuffer, 1);
-				enableFeatures(&_enabledUniformBufferStandardLayoutFeatures.uniformBufferStandardLayout,
+				enableFeatures(requestedFeatures,
+							   &_enabledUniformBufferStandardLayoutFeatures.uniformBufferStandardLayout,
 							   &requestedFeatures->uniformBufferStandardLayout,
 							   &pdUniformBufferStandardLayoutFeatures.uniformBufferStandardLayout, 1);
-				enableFeatures(&_enabledShaderSubgroupExtendedTypesFeatures.shaderSubgroupExtendedTypes,
+				enableFeatures(requestedFeatures,
+							   &_enabledShaderSubgroupExtendedTypesFeatures.shaderSubgroupExtendedTypes,
 							   &requestedFeatures->shaderSubgroupExtendedTypes,
 							   &pdShaderSubgroupExtendedTypesFeatures.shaderSubgroupExtendedTypes, 1);
-				enableFeatures(&_enabledSeparateDepthStencilLayoutsFeatures.separateDepthStencilLayouts,
+				enableFeatures(requestedFeatures,
+							   &_enabledSeparateDepthStencilLayoutsFeatures.separateDepthStencilLayouts,
 							   &requestedFeatures->separateDepthStencilLayouts,
 							   &pdSeparateDepthStencilLayoutsFeatures.separateDepthStencilLayouts, 1);
-				enableFeatures(&_enabledHostQueryResetFeatures.hostQueryReset,
+				enableFeatures(requestedFeatures,
+							   &_enabledHostQueryResetFeatures.hostQueryReset,
 							   &requestedFeatures->hostQueryReset,
 							   &pdHostQueryResetFeatures.hostQueryReset, 1);
-				enableFeatures(&_enabledTimelineSemaphoreFeatures.timelineSemaphore,
+				enableFeatures(requestedFeatures,
+							   &_enabledTimelineSemaphoreFeatures.timelineSemaphore,
 							   &requestedFeatures->timelineSemaphore,
 							   &pdTimelineSemaphoreFeatures.timelineSemaphore, 1);
-				enableFeatures(&_enabledBufferDeviceAddressFeatures.bufferDeviceAddress,
+				enableFeatures(requestedFeatures,
+							   &_enabledBufferDeviceAddressFeatures.bufferDeviceAddress,
 							   &requestedFeatures->bufferDeviceAddress,
 							   &pdBufferDeviceAddressFeatures.bufferDeviceAddress, 3);
-				enableFeatures(&_enabledVulkanMemoryModelFeatures.vulkanMemoryModel,
+				enableFeatures(requestedFeatures,
+							   &_enabledVulkanMemoryModelFeatures.vulkanMemoryModel,
 							   &requestedFeatures->vulkanMemoryModel,
 							   &pdVulkanMemoryModelFeatures.vulkanMemoryModel, 3);
-				enableFeatures(&_enabledVulkan12FeaturesNoExt.shaderOutputViewportIndex,
+				enableFeatures(requestedFeatures,
+							   &_enabledVulkan12FeaturesNoExt.shaderOutputViewportIndex,
 							   &requestedFeatures->shaderOutputViewportIndex,
 							   &pdvulkan12FeaturesNoExt.shaderOutputViewportIndex, 3);
 				break;
@@ -4679,17 +4721,17 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 
 #define MVK_DEVICE_FEATURE(structName, enumName, flagCount) \
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_##enumName##_FEATURES: { \
-				enableFeatures((VkBaseInStructure*)&_enabled##structName##Features, \
-							   next, \
-							   (VkBaseInStructure*)&pd##structName##Features, \
+				enableFeatures(&_enabled##structName##Features, \
+							   (VkPhysicalDevice##structName##Features*)next, \
+							   &pd##structName##Features, \
 							   flagCount); \
 				break; \
 			}
 #define MVK_DEVICE_FEATURE_EXTN(structName, enumName, extnSfx, flagCount) \
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_##enumName##_FEATURES_##extnSfx: { \
-				enableFeatures((VkBaseInStructure*)&_enabled##structName##Features, \
-							   next, \
-							   (VkBaseInStructure*)&pd##structName##Features, \
+				enableFeatures(&_enabled##structName##Features, \
+							   (VkPhysicalDevice##structName##Features##extnSfx*)next, \
+							   &pd##structName##Features, \
 							   flagCount); \
 				break; \
 			}
@@ -4701,18 +4743,23 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	}
 }
 
-void MVKDevice::enableFeatures(VkBaseInStructure* pEnabled, const VkBaseInStructure* pRequested, const VkBaseInStructure* pAvailable, uint32_t count) {
-	enableFeatures((VkBool32*)(&(pEnabled->pNext) + 1),
-				   (VkBool32*)(&(pRequested->pNext) + 1),
-				   (VkBool32*)(&(pAvailable->pNext) + 1),
+template<typename S>
+void MVKDevice::enableFeatures(S* pEnabled, const S* pRequested, const S* pAvailable, uint32_t count) {
+	enableFeatures(pRequested,
+				   (VkBool32*)mvkGetAddressOfFirstMember(pEnabled),
+				   (VkBool32*)mvkGetAddressOfFirstMember(pRequested),
+				   (VkBool32*)mvkGetAddressOfFirstMember(pAvailable),
 				   count);
 }
 
-void MVKDevice::enableFeatures(VkBool32* pEnabledBools, const VkBool32* pRequestedBools, const VkBool32* pAvailableBools, uint32_t count) {
+template<typename S>
+void MVKDevice::enableFeatures(S* pRequested, VkBool32* pEnabledBools, const VkBool32* pRequestedBools, const VkBool32* pAvailableBools, uint32_t count) {
 	for (uint32_t i = 0; i < count; i++) {
 		pEnabledBools[i] = pRequestedBools[i] && pAvailableBools[i];
 		if (pRequestedBools[i] && !pAvailableBools[i]) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateDevice(): Requested feature is not available on this device."));
+			uintptr_t mbrOffset = (uintptr_t)&pRequestedBools[i] - (uintptr_t)mvkGetAddressOfFirstMember(pRequested);
+			size_t mbrIdxOrd = (mbrOffset / sizeof(VkBool32)) + 1;
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateDevice(): Requested physical device feature specified by the %zu%s flag in %s is not available on this device.", mbrIdxOrd, mvk::getOrdinalSuffix(mbrIdxOrd), mvk::getTypeName(pRequested).c_str()));
 		}
 	}
 }
@@ -4796,6 +4843,32 @@ MVKDevice::~MVKDevice() {
 
 uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice) {
 	return [mtlDevice respondsToSelector: @selector(registryID)] ? mtlDevice.registryID : 0;
+}
+
+uint64_t mvkGetLocationID(id<MTLDevice> mtlDevice) {
+	uint64_t hash = 0;
+
+#if MVK_MACOS && !MVK_MACCAT
+	// All of these device properties were added at the same time,
+	// so only need to check for the presence of one of them.
+	if ([mtlDevice respondsToSelector: @selector(location)]) {
+		uint64_t val;
+
+		val = mtlDevice.location;
+		hash = mvkHash(&val, 1, hash);
+
+		val = mtlDevice.locationNumber;
+		hash = mvkHash(&val, 1, hash);
+
+		val = mtlDevice.peerGroupID;
+		hash = mvkHash(&val, 1, hash);
+
+		val = mtlDevice.peerIndex;
+		hash = mvkHash(&val, 1, hash);
+	}
+#endif
+
+	return hash;
 }
 
 // If the supportsBCTextureCompression query is available, use it.
