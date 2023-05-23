@@ -565,6 +565,8 @@ public:
 	/** Marks any overridden buffer indexes as dirty. */
 	void markOverriddenBufferIndexesDirty();
 
+	void endMetalRenderPass() override;
+
 	void markDirty() override;
 
 #pragma mark Construction
@@ -577,6 +579,7 @@ protected:
 	void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) override;
 
     ResourceBindings<8> _shaderStageResourceBindings[kMVKShaderStageFragment + 1];
+	std::unordered_map<id<MTLResource>, MTLRenderStages> _renderUsageStages;
 };
 
 
