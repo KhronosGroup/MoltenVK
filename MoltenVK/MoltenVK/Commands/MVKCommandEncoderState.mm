@@ -757,6 +757,11 @@ void MVKGraphicsResourcesCommandEncoderState::offsetZeroDivisorVertexBuffers(MVK
     }
 }
 
+void MVKGraphicsResourcesCommandEncoderState::endMetalRenderPass() {
+	MVKResourcesCommandEncoderState::endMetalRenderPass();
+	_renderUsageStages.clear();
+}
+
 // Mark everything as dirty
 void MVKGraphicsResourcesCommandEncoderState::markDirty() {
 	MVKResourcesCommandEncoderState::markDirty();
@@ -976,7 +981,12 @@ void MVKGraphicsResourcesCommandEncoderState::encodeResourceUsage(MVKShaderStage
 		} else {
 			auto* mtlRendEnc = _cmdEncoder->_mtlRenderEncoder;
 			if ([mtlRendEnc respondsToSelector: @selector(useResource:usage:stages:)]) {
-				[mtlRendEnc useResource: mtlResource usage: mtlUsage stages: mtlStages];
+				// Within a renderpass, a resource may be used by multiple descriptor bindings,
+				// each of which may assign a different usage stage. Dynamically accumulate
+				// usage stages across all descriptor bindings using the resource.
+				auto& accumStages = _renderUsageStages[mtlResource];
+				accumStages |= mtlStages;
+				[mtlRendEnc useResource: mtlResource usage: mtlUsage stages: accumStages];
 			} else {
 				[mtlRendEnc useResource: mtlResource usage: mtlUsage];
 			}

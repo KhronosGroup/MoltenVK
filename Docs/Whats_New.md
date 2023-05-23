@@ -31,6 +31,7 @@ Released 2023/05/23
   large for `MTLCounterSampleBuffer`, and fall back to emulation via CPU timestamps.
 - Ensure shaders that use `PhysicalStorageBufferAddresses` encode the use of the associated `MTLBuffer`.
 - Disable pipeline cache compression prior to macOS 10.15 and iOS/tvOS 13.0.
+- Accumulate render stages when a resource is used by multiple descriptor bindings.
 - Respect the bind point supplied to `vkCmdBindDescriptorSets()` / `vkCmdPushDescriptorSets()`.
 - Check if shader compiled before adding it to a pipeline, to avoid Metal validation error.
 - Identify each unsupported device feature flag that the app attempts to enable.
