@@ -16,28 +16,39 @@ Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.2.4
 --------------
 
-Released TBD
+Released 2023/05/23
 
 - Add support for extensions:
 	- `VK_KHR_map_memory2`
+- Deprecate the obsolete and non-standard `VK_MVK_moltenvk` extension.
+  - Add `mvk_config.h`, `mvk_private_api.h`, and `mvk_deprecated_api.h`, and deprecate `vk_mvk_moltenvk.h`.
 - Support BC compression on iOS/tvOS where available (iOS/tvOS 16.4 and above and supported by the GPU).
 - Support separate depth and stencil attachments during dynamic rendering.
-- Deprecate the obsolete and non-standard `VK_MVK_moltenvk` extension.
 - Fix memory leak when waiting on timeline semaphores.
 - Fix race condition when updating values in `VkPastPresentationTimingGOOGLE`,
   and ensure swapchain image presented time is always populated when requested.
-- Report error, but do not fail on request for timestamp query pool that is too large for `MTLCounterSampleBuffer`.
+- Report error, but do not fail on request for timestamp query pool that is too 
+  large for `MTLCounterSampleBuffer`, and fall back to emulation via CPU timestamps.
 - Ensure shaders that use `PhysicalStorageBufferAddresses` encode the use of the associated `MTLBuffer`.
 - Disable pipeline cache compression prior to macOS 10.15 and iOS/tvOS 13.0.
-- Add `MVK_ENABLE_EXPLICIT_LOD_WORKAROUND` environment variable to selectively 
-  disable recent fixes to handling LOD for arrayed depth images in shaders, 
-  on Apple Silicon, when those fixes cause regression in rendering behavior.
-- Identify each unsupported device feature flag that the app attempts to be enable.
+- Respect the bind point supplied to `vkCmdBindDescriptorSets()` / `vkCmdPushDescriptorSets()`.
+- Check if shader compiled before adding it to a pipeline, to avoid Metal validation error.
+- Identify each unsupported device feature flag that the app attempts to enable.
 - Populate `deviceUUID` from `MTLDevice` location and peer group info, 
   which should be unique, and constant across OS reboots.
 - Populate `deviceLUID` from `MTLDevice.registryID`. 
+- Avoid Metal validation warning when depth component swizzled away.
+- Fix depth clamp and texture swizzle feature discovery on simulator builds.
 - For correctness, set `VkPhysicalDeviceLimits::lineWidthGranularity` to `1`.
 - Improve GitHub CI production of binary artifacts on submission and release.
+- Update dependency libraries to match _Vulkan SDK 1.3.250_.
+- Update to latest SPIRV-Cross:
+  - MSL: Fix for argument buffer index compare when invalid.
+  - MSL: Fix dref lod workaround on combined texture/samplers.
+  - MSL: Do not override variable name with v_ identifier.
+  - MSL: Use name_id consistently in argument declaration.
+  - MSL: Don't hit array copy path for pointer to array.
+  - MSL: Use templated array type when emitting BDA to arrays.
 
 
 
