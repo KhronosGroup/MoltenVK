@@ -40,6 +40,7 @@ Released 2023/05/23
 - Populate `deviceLUID` from `MTLDevice.registryID`. 
 - Avoid Metal validation warning when depth component swizzled away.
 - Fix depth clamp and texture swizzle feature discovery on simulator builds.
+- Advertise `VK_KHR_depth_stencil_resolve` extension on all devices.
 - For correctness, set `VkPhysicalDeviceLimits::lineWidthGranularity` to `1`.
 - Improve GitHub CI production of binary artifacts on submission and release.
 - Update dependency libraries to match _Vulkan SDK 1.3.250_.
