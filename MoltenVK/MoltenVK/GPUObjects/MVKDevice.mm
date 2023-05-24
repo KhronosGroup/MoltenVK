@@ -3052,11 +3052,6 @@ void MVKPhysicalDevice::initExtensions() {
 	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_supportedExtensions;
 	pWritableExtns->disableAllButEnabledDeviceExtensions();
 
-#if MVK_IOS_OR_TVOS
-	if (!_metalFeatures.depthResolve) {
-		pWritableExtns->vk_KHR_depth_stencil_resolve.enabled = false;
-	}
-#endif
 	if (!_metalFeatures.samplerMirrorClampToEdge) {
 		pWritableExtns->vk_KHR_sampler_mirror_clamp_to_edge.enabled = false;
 	}
