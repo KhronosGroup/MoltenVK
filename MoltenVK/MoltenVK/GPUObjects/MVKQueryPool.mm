@@ -284,7 +284,7 @@ id<MTLBuffer> MVKOcclusionQueryPool::getResultBuffer(MVKCommandEncoder*, uint32_
 }
 
 id<MTLComputeCommandEncoder> MVKOcclusionQueryPool::encodeComputeCopyResults(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t, uint32_t index) {
-	id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults);
+	id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults, true);
 	[mtlCmdEnc setBuffer: getVisibilityResultMTLBuffer() offset: getVisibilityResultOffset(firstQuery) atIndex: index];
 	return mtlCmdEnc;
 }
@@ -434,12 +434,12 @@ id<MTLComputeCommandEncoder> MVKTimestampQueryPool::encodeComputeCopyResults(MVK
 					 destinationBuffer: tempBuff->_mtlBuffer
 					 destinationOffset: tempBuff->_offset];
 
-		id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults);
+		id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults, true);
 		[mtlCmdEnc setBuffer: tempBuff->_mtlBuffer offset: tempBuff->_offset atIndex: index];
 		return mtlCmdEnc;
 	} else {
 		// We can set the timestamp bytes into the compute encoder.
-		id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults);
+		id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults, true);
 		cmdEncoder->setComputeBytes(mtlCmdEnc, &_timestamps[firstQuery], queryCount * _queryElementCount * sizeof(uint64_t), index);
 		return mtlCmdEnc;
 	}
