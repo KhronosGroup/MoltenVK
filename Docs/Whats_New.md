@@ -13,6 +13,15 @@ Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.2.5
+--------------
+
+Released TBD
+
+- Ensure non-dispatch compute commands don't interfere with compute encoding state used by dispatch commands.
+
+
+
 MoltenVK 1.2.4
 --------------
 

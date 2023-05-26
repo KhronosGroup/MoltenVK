@@ -1160,7 +1160,7 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
     if ( !_hasRasterized || !vizBuff || _mtlRenderPassQueries.empty() ) { return; }  // Nothing to do.
 
 	id<MTLComputePipelineState> mtlAccumState = _cmdEncoder->getCommandEncodingPool()->getAccumulateOcclusionQueryResultsMTLComputePipelineState();
-    id<MTLComputeCommandEncoder> mtlAccumEncoder = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseAccumOcclusionQuery);
+    id<MTLComputeCommandEncoder> mtlAccumEncoder = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseAccumOcclusionQuery, true);
     [mtlAccumEncoder setComputePipelineState: mtlAccumState];
     for (auto& qryLoc : _mtlRenderPassQueries) {
         // Accumulate the current results to the query pool's buffer.
@@ -1173,7 +1173,6 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
         [mtlAccumEncoder dispatchThreadgroups: MTLSizeMake(1, 1, 1)
                         threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
     }
-    _cmdEncoder->endCurrentMetalEncoding();
     _mtlRenderPassQueries.clear();
 	_hasRasterized = false;
 }
