@@ -25,6 +25,7 @@
 #include <cstdlib>
 #include <string>
 #include <iostream>
+#include <regex>
 
 using namespace mvk;
 using namespace std;
@@ -73,6 +74,20 @@ static std::string withOverride(const std::string& patch) {
         return override.replace(pos, variable.length(), patch);
     }
 }
+
+//static void dumpMatchingShaders(std::string shader) {
+//    std::regex regex("t[0-9]+\\.sample\\(s[0-9]+, r[0-9]+\\.[a-z]{4}\\.[a-z]{3}\\)\\.[a-z]{3}");
+//
+//    if (std::regex_search(shader, regex)) {
+//        std::cout << "Found possible match:" << std::endl;
+//        std::cout << shader << std::endl;
+//        std::cout << "---------------------" << std::endl;
+//    } else {
+//        std::cout << " " << std::endl;
+//    }
+//
+//    return;
+//}
 
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionOptions::matches(const SPIRVToMSLConversionOptions& other) const {
 	if (memcmp(&mslOptions, &other.mslOptions, sizeof(mslOptions)) != 0) { return false; }
@@ -373,7 +388,10 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 			std::string find;
 			std::string replace;
 		};
-        
+//        std::string dumpShaders = getEnvVariable("NAS_DUMP_SHADERS");
+//        if (dumpShaders == "1") {
+//            dumpMatchingShaders(conversionResult.msl);
+//        }
         if (getEnvVariable("NAS_DISABLE_UE4_HACK") != "1") {
             Patch workaround_patches[] = {
                 { std::string("t3.sample(s3, r0.yzwy.xyz).xyz"), std::string("r0.yzw") },
@@ -381,6 +399,10 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
                 { std::string("t3.sample(s3, r1.xyzx.xyz).xyz"), std::string("r1.xyz") },
                 { std::string("t5.sample(s5, r2.xyzx.xyz).xyz"), std::string("r2.xyz") },
                 { std::string("t4.sample(s3, r0.xyzx.xyz).xyz"), std::string("r0.xyz") },
+//                { std::string("t4.sample(s4, r9.xyzx.xyz).xyz"), std::string("r9.xyz") },
+//                { std::string("t5.sample(s5, r9.xyzx.xyz).xyz"), std::string("r9.xyz") },
+//                { std::string("t6.sample(s6, r9.xyzx.xyz).xyz"), std::string("r9.xyz") },
+//                { std::string("t7.sample(s7, r9.xyzx.xyz).xyz"), std::string("r9.xyz") },
             };
             
             for (Patch workaround_patch : workaround_patches)
