@@ -337,10 +337,12 @@ public:
 	 * Returns the current Metal compute encoder for the specified use,
 	 * which determines the label assigned to the returned encoder.
 	 *
-	 * If the current encoder is not a compute encoder, this function ends current before 
-	 * beginning compute encoding.
+	 * If the current encoder is a compute encoder, the compute state being tracked can
+	 * optionally be marked dirty. Otherwise, if the current encoder is not a compute
+	 * encoder, this function ends the current encoder before beginning compute encoding.
 	 */
-	id<MTLComputeCommandEncoder> getMTLComputeEncoder(MVKCommandUse cmdUse);
+	id<MTLComputeCommandEncoder> getMTLComputeEncoder(MVKCommandUse cmdUse,
+													  bool markCurrentComputeStateDirty = false);
 
 	/**
 	 * Returns the current Metal BLIT encoder for the specified use,
