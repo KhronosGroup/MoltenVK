@@ -4116,7 +4116,6 @@ void MVKDevice::logActivityPerformance(MVKPerformanceTracker& activity, MVKPerfo
 }
 
 void MVKDevice::logPerformanceSummary() {
-	if (_activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE) { return; }
 
 	// Get a copy to minimize time under lock
 	MVKPerformanceStatistics perfStats;
