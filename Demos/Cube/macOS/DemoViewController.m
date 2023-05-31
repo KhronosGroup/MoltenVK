@@ -43,13 +43,29 @@
 
 	self.view.wantsLayer = YES;		// Back the view with a layer created by the makeBackingLayer method.
 
-	const char* argv[] = { "cube" };
+	// Enabling this will sync the rendering loop with the natural display link (60 fps).
+	// Disabling this will allow the rendering loop to run flat out, limited only by the rendering speed.
+	bool useDisplayLink = true;
+
+	VkPresentModeKHR vkPresentMode = useDisplayLink ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
+	char vkPresentModeStr[64];
+	sprintf(vkPresentModeStr, "%d", vkPresentMode);
+
+	const char* argv[] = { "cube", "--present_mode", vkPresentModeStr };
 	int argc = sizeof(argv)/sizeof(char*);
 	demo_main(&demo, self.view.layer, argc, argv);
 
-	CVDisplayLinkCreateWithActiveCGDisplays(&_displayLink);
-	CVDisplayLinkSetOutputCallback(_displayLink, &DisplayLinkCallback, &demo);
-	CVDisplayLinkStart(_displayLink);
+	if (useDisplayLink) {
+		CVDisplayLinkCreateWithActiveCGDisplays(&_displayLink);
+		CVDisplayLinkSetOutputCallback(_displayLink, &DisplayLinkCallback, &demo);
+		CVDisplayLinkStart(_displayLink);
+	} else {
+		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+			while(true) {
+				demo_draw(&demo);
+			}
+		});
+	}
 }
 
 
