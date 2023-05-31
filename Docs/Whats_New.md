@@ -19,6 +19,7 @@ MoltenVK 1.2.5
 Released TBD
 
 - Ensure non-dispatch compute commands don't interfere with compute encoding state used by dispatch commands.
+- Add support for `VK_PRESENT_MODE_IMMEDIATE_KHR` to macOS Cube demo.
 
 
 

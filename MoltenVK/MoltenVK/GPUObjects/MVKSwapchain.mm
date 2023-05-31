@@ -175,7 +175,9 @@ void MVKSwapchain::markFrameInterval() {
 				   perfLogCntLimit,
 				   (1000.0 / _device->_performanceStatistics.queue.frameInterval.averageDuration),
 				   mvkGetElapsedMilliseconds() / 1000.0);
-		_device->logPerformanceSummary();
+		if (mvkConfig().activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT) {
+			_device->logPerformanceSummary();
+		}
 	}
 }
 
