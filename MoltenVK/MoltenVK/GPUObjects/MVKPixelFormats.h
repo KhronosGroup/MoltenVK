@@ -34,7 +34,7 @@ static const uint32_t _vkFormatCount = 256;
 static const uint32_t _vkFormatCoreCount = VK_FORMAT_ASTC_12x12_SRGB_BLOCK + 1;
 static const uint32_t _mtlPixelFormatCount = 256;
 static const uint32_t _mtlPixelFormatCoreCount = MTLPixelFormatX32_Stencil8 + 2;     // The actual last enum value is not available on iOS
-static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 1;
+static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 3;     // The actual last enum value is not available before Xcode 15
 
 
 #pragma mark -
