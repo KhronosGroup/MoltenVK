@@ -407,6 +407,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				atomicFloatFeatures->sparseImageFloat32AtomicAdd = false;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT: {
+				auto* demoteFeatures = (VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT*)next;
+				demoteFeatures->shaderDemoteToHelperInvocation = mvkOSVersionIsAtLeast(10.16, 14.0);
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT: {
 				auto* swapchainMaintenance1Features = (VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT*)next;
 				swapchainMaintenance1Features->swapchainMaintenance1 = true;

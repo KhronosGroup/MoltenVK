@@ -644,6 +644,7 @@ Released 2020/12/09
 	- `VK_EXT_descriptor_indexing` (initial release limited to Metal Tier 1: 96/128 textures, 16 samplers)
 	- `VK_EXT_post_depth_coverage` (macOS)
 	- `VK_EXT_private_data`
+	- `VK_EXT_shader_demote_to_helper_invocation`
 	- `VK_EXT_subgroup_size_control`
 	- `VK_EXT_texture_compression_astc_hdr`
 	- `VK_AMD_shader_image_load_store` (macOS)
