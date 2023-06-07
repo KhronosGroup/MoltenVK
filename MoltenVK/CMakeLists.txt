@@ -121,12 +121,12 @@ set(MOLTEN_VK_SOURCES
         ${CMAKE_CURRENT_LIST_DIR}/MoltenVK/OS/NSString+MoltenVK.mm
         ${CMAKE_CURRENT_LIST_DIR}/MoltenVK/Utility/MVKBaseObject.mm
         ${CMAKE_CURRENT_LIST_DIR}/MoltenVK/Utility/MVKBlockObserver.m
-        ${CMAKE_CURRENT_LIST_DIR}/MoltenVK/Utility/MVKCodec.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/MoltenVK/Utility/MVKCodec.mm
         ${CMAKE_CURRENT_LIST_DIR}/MoltenVK/Utility/MVKEnvironment.cpp
         ${CMAKE_CURRENT_LIST_DIR}/MoltenVK/Utility/MVKFoundation.cpp
         ${CMAKE_CURRENT_LIST_DIR}/MoltenVK/Utility/MVKWatermark.mm
         ${CMAKE_CURRENT_LIST_DIR}/MoltenVK/Vulkan/mvk_datatypes.mm
-        ${CMAKE_CURRENT_LIST_DIR}/MoltenVK/Vulkan/vk_mvk_moltenvk.mm
+        ${CMAKE_CURRENT_LIST_DIR}/MoltenVK/Vulkan/mvk_api.mm
         ${CMAKE_CURRENT_LIST_DIR}/MoltenVK/Vulkan/vulkan.mm
         )
 
