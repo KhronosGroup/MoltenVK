@@ -477,6 +477,10 @@ public:
 	/** Indicates whether the current draw is an indexed draw. */
 	bool _isIndexedDraw;
 
+    VkBool32 transformFeedbackRunning;              /**< If true, transform feedback is currently running */
+    VkBool32 transformFeedbackEnabled;              /**< If true, transform feedback is enabled */
+
+
 #pragma mark Construction
 
 	MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,

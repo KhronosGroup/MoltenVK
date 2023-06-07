@@ -34,7 +34,7 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKRenderSubpass
 
-MVKVulkanAPIObject* MVKRenderSubpass::getVulkanAPIObject() { return _renderPass->getVulkanAPIObject(); };
+MVKVulkanAPIObject* MVKRenderSubpass::getVulkanAPIObject() { return _renderPass->getVulkanAPIObject(); }
 
 bool MVKRenderSubpass::hasColorAttachments() {
 	for (auto& ca : _colorAttachments) {
@@ -633,7 +633,7 @@ MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass, const VkRenderingI
 #pragma mark -
 #pragma mark MVKAttachmentDescription
 
-MVKVulkanAPIObject* MVKAttachmentDescription::getVulkanAPIObject() { return _renderPass->getVulkanAPIObject(); };
+MVKVulkanAPIObject* MVKAttachmentDescription::getVulkanAPIObject() { return _renderPass->getVulkanAPIObject(); }
 
 VkFormat MVKAttachmentDescription::getFormat() { return _info.format; }
 
@@ -1068,6 +1068,79 @@ const VkRenderingAttachmentInfo* MVKRenderingAttachmentIterator::getAttachmentIn
 				  : mvkImg->getPixelFormats()->isDepthFormat(mvkImg->getMTLPixelFormat()));
 	}
 	return useAlt ? pAltAtt : pAtt;
+}
+
+
+	// Define the subpass
+	VkSubpassDescription2 spDesc;
+	spDesc.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2;
+	spDesc.pNext = hasDSRslvAtt ? &dsRslv : nullptr;
+	spDesc.flags = 0;
+	spDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	spDesc.viewMask = pRenderingInfo->viewMask;
+	spDesc.inputAttachmentCount = 0;
+	spDesc.pInputAttachments = nullptr;
+	spDesc.colorAttachmentCount = caRefIdx;
+	spDesc.pColorAttachments = colorAttachmentRefs;
+	spDesc.pResolveAttachments = hasClrRslvAtt ? resolveAttachmentRefs : nullptr;
+	spDesc.pDepthStencilAttachment = &dsAttRef;
+	spDesc.preserveAttachmentCount = 0;
+	spDesc.pPreserveAttachments = nullptr;
+
+	// Define the renderpass
+	VkRenderPassCreateInfo2 rpCreateInfo;
+	rpCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2;
+	rpCreateInfo.pNext = nullptr;
+	rpCreateInfo.flags = 0;
+	rpCreateInfo.attachmentCount = attDescIdx;
+	rpCreateInfo.pAttachments = attachmentDescriptors;
+	rpCreateInfo.subpassCount = 1;
+	rpCreateInfo.pSubpasses = &spDesc;
+	rpCreateInfo.dependencyCount = 0;
+	rpCreateInfo.pDependencies = nullptr;
+	rpCreateInfo.correlatedViewMaskCount = 0;
+	rpCreateInfo.pCorrelatedViewMasks = nullptr;
+
+	auto* mvkRP = device->createRenderPass(&rpCreateInfo, nullptr);
+	mvkRP->setRenderingFlags(pRenderingInfo->flags);
+	return mvkRP;
+}
+
+uint32_t mvkGetAttachments(const VkRenderingInfo* pRenderingInfo,
+						   MVKImageView* attachments[],
+						   VkClearValue clearValues[]) {
+
+	// Renderpass attachments are sequentially indexed in this order:
+	//     [color, color-resolve], ..., ds, ds-resolve
+	// skipping any attachments that do not have a VkImageView
+	// For consistency, we populate the clear value of any resolve attachments, even though they are ignored.
+	uint32_t attIdx = 0;
+	for (uint32_t caIdx = 0; caIdx < pRenderingInfo->colorAttachmentCount; caIdx++) {
+		auto& clrAtt = pRenderingInfo->pColorAttachments[caIdx];
+		if (clrAtt.imageView) {
+			clearValues[attIdx] = clrAtt.clearValue;
+			attachments[attIdx++] = (MVKImageView*)clrAtt.imageView;
+			if (clrAtt.resolveImageView && clrAtt.resolveMode != VK_RESOLVE_MODE_NONE) {
+				clearValues[attIdx] = clrAtt.clearValue;
+				attachments[attIdx++] = (MVKImageView*)clrAtt.resolveImageView;
+			}
+		}
+	}
+
+	// We need to combine the DS attachments into one
+	auto* pDSAtt = pRenderingInfo->pDepthAttachment ? pRenderingInfo->pDepthAttachment : pRenderingInfo->pStencilAttachment;
+	if (pDSAtt) {
+		if (pDSAtt->imageView) {
+			clearValues[attIdx] = pDSAtt->clearValue;
+			attachments[attIdx++] = (MVKImageView*)pDSAtt->imageView;
+		}
+		if (pDSAtt->resolveImageView && pDSAtt->resolveMode != VK_RESOLVE_MODE_NONE) {
+			clearValues[attIdx] = pDSAtt->clearValue;
+			attachments[attIdx++] = (MVKImageView*)pDSAtt->resolveImageView;
+		}
+	}
+
+	return attIdx;
 }
 
 
