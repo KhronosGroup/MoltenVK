@@ -21,6 +21,7 @@ Released TBD
 - Add support for extensions:
 	- `VK_EXT_shader_demote_to_helper_invocation`
 - Ensure non-dispatch compute commands don't interfere with compute encoding state used by dispatch commands.
+- Support `VK_PRESENT_MODE_IMMEDIATE_KHR` if `VkPresentTimeGOOGLE::desiredPresentTime` is zero.
 - Add support for `VK_PRESENT_MODE_IMMEDIATE_KHR` to macOS Cube demo.
 
 
