@@ -371,6 +371,15 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->vertexAttributeAccessBeyondStride = true;	// Costs additional buffers. Should make configuration switch.
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
+				auto* formatFeatures = (VkPhysicalDevice4444FormatsFeaturesEXT*)next;
+				bool canSupport4444 = _metalFeatures.tileBasedDeferredRendering &&
+									  (_metalFeatures.nativeTextureSwizzle ||
+									   mvkConfig().fullImageViewSwizzle);
+				formatFeatures->formatA4R4G4B4 = canSupport4444;
+				formatFeatures->formatA4B4G4R4 = canSupport4444;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: {
 				auto* interlockFeatures = (VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT*)next;
 				interlockFeatures->fragmentShaderSampleInterlock = _metalFeatures.rasterOrderGroups;
