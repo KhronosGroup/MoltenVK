@@ -34,7 +34,7 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKRenderSubpass
 
-MVKVulkanAPIObject* MVKRenderSubpass::getVulkanAPIObject() { return _renderPass->getVulkanAPIObject(); };
+MVKVulkanAPIObject* MVKRenderSubpass::getVulkanAPIObject() { return _renderPass->getVulkanAPIObject(); }
 
 bool MVKRenderSubpass::hasColorAttachments() {
 	for (auto& ca : _colorAttachments) {
@@ -536,7 +536,7 @@ MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass,
 #pragma mark -
 #pragma mark MVKRenderPassAttachment
 
-MVKVulkanAPIObject* MVKRenderPassAttachment::getVulkanAPIObject() { return _renderPass->getVulkanAPIObject(); };
+MVKVulkanAPIObject* MVKRenderPassAttachment::getVulkanAPIObject() { return _renderPass->getVulkanAPIObject(); }
 
 VkFormat MVKRenderPassAttachment::getFormat() { return _info.format; }
 
@@ -1007,7 +1007,7 @@ MVKRenderPass* mvkCreateRenderPass(MVKDevice* device, const VkRenderingInfo* pRe
 	spDesc.pInputAttachments = nullptr;
 	spDesc.colorAttachmentCount = caRefIdx;
 	spDesc.pColorAttachments = colorAttachmentRefs;
-	spDesc.pResolveAttachments = hasClrRslvAtt ? resolveAttachmentRefs : nullptr;;
+	spDesc.pResolveAttachments = hasClrRslvAtt ? resolveAttachmentRefs : nullptr;
 	spDesc.pDepthStencilAttachment = &dsAttRef;
 	spDesc.preserveAttachmentCount = 0;
 	spDesc.pPreserveAttachments = nullptr;

@@ -20,7 +20,6 @@
 #include "MVKRenderPass.h"
 #include "MVKCommandBuffer.h"
 #include "MVKFoundation.h"
-#include "MVKOSExtensions.h"
 #include "MVKStrings.h"
 #include "MTLRenderPipelineDescriptor+MoltenVK.h"
 #include "mvk_datatypes.hpp"
