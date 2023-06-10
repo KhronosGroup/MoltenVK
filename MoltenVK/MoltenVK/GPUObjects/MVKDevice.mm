@@ -1596,6 +1596,7 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 	_supportedExtensions(this, true),
 	_pixelFormats(this) {				// Set after _mtlDevice
 
+	initMTLDevice();
 	initProperties();           		// Call first.
 	initMetalFeatures();        		// Call second.
 	initFeatures();             		// Call third.
@@ -1606,6 +1607,15 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 	initCounterSets();
 	initVkSemaphoreStyle();
 	logGPUInfo();
+}
+
+void MVKPhysicalDevice::initMTLDevice() {
+#if MVK_XCODE_14_3 && MVK_MACOS && !MVK_MACCAT
+	if ([_mtlDevice respondsToSelector: @selector(setShouldMaximizeConcurrentCompilation:)]) {
+		[_mtlDevice setShouldMaximizeConcurrentCompilation: mvkConfig().shouldMaximizeConcurrentCompilation];
+		MVKLogInfoIf(mvkConfig().debugMode, "maximumConcurrentCompilationTaskCount %lu", _mtlDevice.maximumConcurrentCompilationTaskCount);
+	}
+#endif
 }
 
 // Initializes the physical device properties (except limits).
