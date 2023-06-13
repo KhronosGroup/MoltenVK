@@ -135,7 +135,6 @@ protected:
 	friend class MVKQueueCommandBufferSubmission;
 	friend class MVKQueuePresentSurfaceSubmission;
 
-	MVKBaseObject* getBaseObject() override { return this; };
 	void propagateDebugName() override;
 	void initName();
 	void initExecQueue();

@@ -182,7 +182,6 @@ protected:
 	friend class MVKCommandEncoder;
 	friend class MVKCommandPool;
 
-	MVKBaseObject* getBaseObject() override { return this; };
 	void propagateDebugName() override {}
 	void init(const VkCommandBufferAllocateInfo* pAllocateInfo);
 	bool canExecute();

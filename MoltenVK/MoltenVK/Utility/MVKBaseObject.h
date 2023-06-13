@@ -105,7 +105,7 @@ public:
 	/** Destroys this object. Default behaviour simply deletes it. Subclasses may override to delay deletion. */
 	virtual void destroy() { delete this; }
 
-    virtual ~MVKBaseObject() {}
+	virtual ~MVKBaseObject() {}
 
 protected:
 	static VkResult reportResult(MVKBaseObject* mvkObj, VkResult vkRslt, MVKConfigLogLevel logLevel, const char* format, va_list args) __printflike(4, 0);
