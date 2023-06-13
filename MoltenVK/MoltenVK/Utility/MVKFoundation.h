@@ -598,7 +598,7 @@ bool mvkAreEqual(const T* pV1, const T* pV2, size_t count = 1) {
  * which works on individual chars or char arrays, not strings.
  * Returns false if either string is null.
  */
-static constexpr bool mvkStringsAreEqual(const char* pV1, const char* pV2, size_t count = 1) {
+static constexpr bool mvkStringsAreEqual(const char* pV1, const char* pV2) {
 	return pV1 && pV2 && (pV1 == pV2 || strcmp(pV1, pV2) == 0);
 }
 
