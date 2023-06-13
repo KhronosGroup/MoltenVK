@@ -472,8 +472,8 @@ void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
 	_attachments.assign(attachments.begin(), attachments.end());
 
 	// Copy the sample positions array of arrays, one array of sample positions for each subpass index.
-	_subpassSamplePositions.resize(subpassSamplePositions.size);
-	for (uint32_t spSPIdx = 0; spSPIdx < subpassSamplePositions.size; spSPIdx++) {
+	_subpassSamplePositions.resize(subpassSamplePositions.size());
+	for (uint32_t spSPIdx = 0; spSPIdx < subpassSamplePositions.size(); spSPIdx++) {
 		_subpassSamplePositions[spSPIdx].assign(subpassSamplePositions[spSPIdx].begin(),
 												subpassSamplePositions[spSPIdx].end());
 	}
@@ -593,7 +593,7 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 	// and Metal will default to using default sample postions.
 	if (_pDeviceMetalFeatures->programmableSamplePositions) {
 		auto cstmSampPosns = getCustomSamplePositions();
-		[mtlRPDesc setSamplePositions: cstmSampPosns.data count: cstmSampPosns.size];
+		[mtlRPDesc setSamplePositions: cstmSampPosns.data() count: cstmSampPosns.size()];
 	}
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
