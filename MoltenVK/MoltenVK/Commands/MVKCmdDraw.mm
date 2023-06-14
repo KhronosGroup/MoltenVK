@@ -1143,23 +1143,6 @@ VkResult MVKCmdBeginTransformFeedback::setContent(MVKCommandBuffer *cmdBuff, uin
     this->counterBuffers = _counterBuffers;
     this->counterBufferOffsets = _counterBufferOffsets;
 
-    // Validate
-    MVKDevice* mvkDvc = cmdBuff->getDevice();
-    if(firstCounterBuffer >= mvkDvc->_pMetalFeatures->maxTransformFeedbackBuffers) {
-        return cmdBuff->reportError(VK_ERROR_INVALID_EXTERNAL_HANDLE, "vkCmdBeginTransformFeedback(): first Counter "
-                                                                      "buffer must not exceed "
-                                                                      "maxTransformFeedbackBuffers of the device.");
-    }
-    if(counterBuffers == nullptr && counterBufferOffsets != nullptr) {
-        return cmdBuff->reportError(VK_ERROR_NOT_PERMITTED_KHR, "vkCmdBeginTransformFeedback(): if counterbuffers is "
-                                                                "null then counterBufferOffsets must also be null");
-    }
-    if ( mvkDvc->_enabledFeatures.multiViewport ) {
-        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT,
-                                    "vkCmdBeginTransformFeedback(): The current device has multiview enabled which is"
-                                    " incompatible with transform feedback.");
-    }
-
     return VK_SUCCESS;
 }
 
@@ -1173,7 +1156,7 @@ void MVKCmdBeginTransformFeedback::encode(MVKCommandEncoder *cmdEncoder) {
     if (cmdEncoder->transformFeedbackRunning ) {
         cmdEncoder->reportError(VK_ERROR_NOT_PERMITTED_KHR, "vkCmdBeginTransformFeedback(): "
                                                                               "transform feedback is"
-                                                                " already began.  Can not be called multiple times.");
+                                                                " already begun.  Can not be called multiple times.");
         return;
     }
 
@@ -1250,23 +1233,6 @@ VkResult MVKCmdEndTransformFeedback::setContent(MVKCommandBuffer *cmdBuffer,
     firstCounterBuffer = _firstCounterBuffer;
     pCounterBuffers = _counterBuffers;
     pCounterBufferOffsets = _counterBufferOffsets;
-
-    // Validate
-    MVKDevice* mvkDvc = cmdBuffer->getDevice();
-    if(firstCounterBuffer >= mvkDvc->_pMetalFeatures->maxTransformFeedbackBuffers) {
-        return cmdBuffer->reportError(VK_ERROR_INVALID_EXTERNAL_HANDLE, "vkCmdEndTransformFeedback(): first Counter "
-                                                                      "buffer must not exceed "
-                                                                      "maxTransformFeedbackBuffers of the device.");
-    }
-    if(pCounterBuffers == nullptr && pCounterBufferOffsets != nullptr) {
-        return cmdBuffer->reportError(VK_ERROR_NOT_PERMITTED_KHR, "vkCmdEndTransformFeedback(): if counterbuffers is "
-                                                                "null then counterBufferOffsets must also be null");
-    }
-    if ( mvkDvc->_enabledFeatures.multiViewport ) {
-        return cmdBuffer->reportError(VK_ERROR_FEATURE_NOT_PRESENT,
-                                    "vkCmdEndTransformFeedback(): The current device has multiview enabled which is"
-                                    " incompatible with transform feedback.");
-    }
 
     return VK_SUCCESS;
 }
