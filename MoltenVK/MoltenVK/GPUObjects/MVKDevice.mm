@@ -3638,7 +3638,7 @@ MVKSwapchain* MVKDevice::createSwapchain(const VkSwapchainCreateInfoKHR* pCreate
 	if (mvkConfig().switchSystemGPU && !(mtlDevice.isLowPower || mtlDevice.isHeadless) ) {
 		id<MTLDevice> sysMTLDevice = MTLCreateSystemDefaultDevice();
 		if (mvkGetRegistryID(sysMTLDevice) == mvkGetRegistryID(mtlDevice)) {
-			_physicalDevice->replaceMTLDevice(sysMTLDevice);
+			MTLCreateSystemDefaultDevice();
 		}
 	}
 #endif
