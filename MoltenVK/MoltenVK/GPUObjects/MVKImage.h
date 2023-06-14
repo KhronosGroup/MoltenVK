@@ -423,13 +423,15 @@ typedef struct MVKSwapchainImageAvailability {
 	bool operator< (const MVKSwapchainImageAvailability& rhs) const;
 } MVKSwapchainImageAvailability;
 
-/** VK_GOOGLE_display_timing extension info */
+/** Presentation info. */
 typedef struct  {
 	MVKPresentableSwapchainImage* presentableImage;
-	bool hasPresentTime;      		// Keep track of whether presentation included VK_GOOGLE_display_timing
-	uint32_t presentID;           	// VK_GOOGLE_display_timing presentID
+	MVKFence* fence;				// VK_EXT_swapchain_maintenance1 fence signaled when resources can be destroyed
 	uint64_t desiredPresentTime;  	// VK_GOOGLE_display_timing desired presentation time in nanoseconds
-} MVKPresentTimingInfo;
+	uint32_t presentID;           	// VK_GOOGLE_display_timing presentID
+	VkPresentModeKHR presentMode;	// VK_EXT_swapchain_maintenance1 present mode specialization
+	bool hasPresentTime;      		// Keep track of whether presentation included VK_GOOGLE_display_timing
+} MVKImagePresentInfo;
 
 /** Tracks a semaphore and fence for later signaling. */
 struct MVKSwapchainSignaler {
@@ -447,16 +449,13 @@ public:
 #pragma mark Metal
 
 	/** Presents the contained drawable to the OS. */
-	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff,
-								MVKPresentTimingInfo presentTimingInfo);
+	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff, MVKImagePresentInfo presentInfo);
 
 
 #pragma mark Construction
 
-	MVKPresentableSwapchainImage(MVKDevice* device,
-								 const VkImageCreateInfo* pCreateInfo,
-								 MVKSwapchain* swapchain,
-								 uint32_t swapchainIndex);
+	MVKPresentableSwapchainImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo,
+								 MVKSwapchain* swapchain, uint32_t swapchainIndex);
 
 	~MVKPresentableSwapchainImage() override;
 
@@ -464,16 +463,12 @@ protected:
 	friend MVKSwapchain;
 
 	id<CAMetalDrawable> getCAMetalDrawable() override;
-	void addPresentedHandler(id<CAMetalDrawable> mtlDrawable, MVKPresentTimingInfo presentTimingInfo);
+	void addPresentedHandler(id<CAMetalDrawable> mtlDrawable, MVKImagePresentInfo presentInfo);
 	void releaseMetalDrawable();
 	MVKSwapchainImageAvailability getAvailability();
 	void makeAvailable(const MVKSwapchainSignaler& signaler);
+	void makeAvailable();
 	void acquireAndSignalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence);
-	void signal(const MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff);
-	void signalPresentationSemaphore(const MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff);
-	static void markAsTracked(const MVKSwapchainSignaler& signaler);
-	static void unmarkAsTracked(const MVKSwapchainSignaler& signaler);
-	void untrackAllSignalers();
 	void renderWatermark(id<MTLCommandBuffer> mtlCmdBuff);
 
 	id<CAMetalDrawable> _mtlDrawable;
@@ -564,6 +559,9 @@ public:
 
 	/**  Returns the 3D extent of this image at the specified mipmap level. */
 	VkExtent3D getExtent3D(uint8_t planeIndex = 0, uint32_t mipLevel = 0) { return _image->getExtent3D(planeIndex, mipLevel); }
+
+	/** Return the underlying image. */
+	MVKImage* getImage() { return _image; }
 
 #pragma mark Metal
 

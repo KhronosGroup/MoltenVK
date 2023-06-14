@@ -109,7 +109,7 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdFillBufferMTLComputePi
 	MVK_ENC_REZ_ACCESS(_mtlFillBufferComputePipelineState, newCmdFillBufferMTLComputePipelineState(_commandPool));
 }
 
-static inline uint32_t getRenderpassLoadStoreStateIndex(MVKFormatType type) {
+static constexpr uint32_t getRenderpassLoadStoreStateIndex(MVKFormatType type) {
 	switch (type) {
 		case kMVKFormatColorHalf:
 		case kMVKFormatColorFloat:

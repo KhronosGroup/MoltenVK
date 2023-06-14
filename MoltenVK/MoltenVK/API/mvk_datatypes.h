@@ -16,14 +16,6 @@
  * limitations under the License.
  */
 
-
-/* 
- * This file contains functions for converting between Vulkan and Metal data types.
- *
- * The functions here are used internally by MoltenVK, and are exposed here 
- * as a convenience for use elsewhere within applications using MoltenVK.
- */
-
 #ifndef __mvkDataTypes_h_
 #define __mvkDataTypes_h_ 1
 
@@ -35,6 +27,14 @@ extern "C" {
 
 #import <Metal/Metal.h>
 #import <CoreGraphics/CoreGraphics.h>
+
+
+/*
+ * This file contains functions for converting between Vulkan and Metal data types.
+ *
+ * The functions here are used internally by MoltenVK, and are exposed here
+ * as a convenience for use elsewhere within applications using MoltenVK.
+ */
 
 
 #pragma mark -
@@ -416,21 +416,14 @@ MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFlags vkAccess);
 #pragma mark -
 #pragma mark Geometry conversions
 
-/** Returns a VkExtent2D that corresponds to the specified CGSize. */
-static inline VkExtent2D mvkVkExtent2DFromCGSize(CGSize cgSize) {
-	VkExtent2D vkExt;
-	vkExt.width = cgSize.width;
-	vkExt.height = cgSize.height;
-	return vkExt;
-}
+/**
+ * Returns a VkExtent2D that corresponds to the specified CGSize.
+ * Rounds to nearest integer using half-to-even rounding.
+ */
+VkExtent2D mvkVkExtent2DFromCGSize(CGSize cgSize);
 
 /** Returns a CGSize that corresponds to the specified VkExtent2D. */
-static inline CGSize mvkCGSizeFromVkExtent2D(VkExtent2D vkExtent) {
-	CGSize cgSize;
-	cgSize.width = vkExtent.width;
-	cgSize.height = vkExtent.height;
-	return cgSize;
-}
+CGSize mvkCGSizeFromVkExtent2D(VkExtent2D vkExtent);
 
 /** Returns a Metal MTLOrigin constructed from a VkOffset3D. */
 static inline MTLOrigin mvkMTLOriginFromVkOffset3D(VkOffset3D vkOffset) {

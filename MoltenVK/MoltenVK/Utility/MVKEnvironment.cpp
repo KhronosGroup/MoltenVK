@@ -34,11 +34,12 @@ static void mvkInitConfigFromEnvVars() {
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.maxActiveMetalCommandBuffersPerQueue,   MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_QUEUE);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.supportLargeQueryPools,                 MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.presentWithCommandBuffer,               MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.swapchainMagFilterUseNearest,           MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.swapchainMinMagFilterUseNearest,        MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST);	// Deprecated legacy env var
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.swapchainMinMagFilterUseNearest,        MVK_CONFIG_SWAPCHAIN_MIN_MAG_FILTER_USE_NEAREST);
 	MVK_SET_FROM_ENV_OR_BUILD_INT64 (evCfg.metalCompileTimeout,                    MVK_CONFIG_METAL_COMPILE_TIMEOUT);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.performanceTracking,                    MVK_CONFIG_PERFORMANCE_TRACKING);
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.performanceLoggingFrameCount,           MVK_CONFIG_PERFORMANCE_LOGGING_FRAME_COUNT);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.logActivityPerformanceInline,           MVK_CONFIG_PERFORMANCE_LOGGING_INLINE);
+	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.activityPerformanceLoggingStyle,        MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.displayWatermark,                       MVK_CONFIG_DISPLAY_WATERMARK);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.specializedQueueFamilies,               MVK_CONFIG_SPECIALIZED_QUEUE_FAMILIES);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.switchSystemGPU,                        MVK_CONFIG_SWITCH_SYSTEM_GPU);
@@ -61,6 +62,7 @@ static void mvkInitConfigFromEnvVars() {
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.advertiseExtensions,                    MVK_CONFIG_ADVERTISE_EXTENSIONS);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.resumeLostDevice,                       MVK_CONFIG_RESUME_LOST_DEVICE);
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.useMetalArgumentBuffers,                MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS);
+	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.shaderSourceCompressionAlgorithm,       MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM);
 
 	// Deprected legacy VkSemaphore MVK_ALLOW_METAL_FENCES and MVK_ALLOW_METAL_EVENTS config.
 	// Legacy MVK_ALLOW_METAL_EVENTS is covered by MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE,
@@ -73,6 +75,17 @@ static void mvkInitConfigFromEnvVars() {
 	if ( !sem4UseMTLEvent ) {
 		evCfg.semaphoreUseMTLEvent = (MVKVkSemaphoreSupportStyle)false;		// Disabled. Also semaphoreSupportStyle MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE.
 	}
+
+	// Deprecated legacy env var MVK_CONFIG_PERFORMANCE_LOGGING_INLINE config. If legacy
+	// MVK_CONFIG_PERFORMANCE_LOGGING_INLINE env var was used, and activityPerformanceLoggingStyle
+	// was not already set by MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE, set
+	// activityPerformanceLoggingStyle to MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE.
+	bool logPerfInline;
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL(logPerfInline, MVK_CONFIG_PERFORMANCE_LOGGING_INLINE);
+	if (logPerfInline && evCfg.activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT) {
+		evCfg.activityPerformanceLoggingStyle = MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE;
+	}
+
 
 	mvkSetConfig(evCfg);
 }

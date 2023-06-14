@@ -81,6 +81,7 @@ public:
 
 	/** Encodes this descriptor set layout and the specified descriptor updates on the specified command encoder immediately. */
 	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
+						   VkPipelineBindPoint pipelineBindPoint,
 						   MVKArrayRef<VkWriteDescriptorSet> descriptorWrites,
 						   MVKShaderResourceBinding& dslMTLRezIdxOffsets);
 
@@ -338,6 +339,9 @@ public:
 	/** Get the type of this template. */
 	VkDescriptorUpdateTemplateType getType() const;
 
+	/** Get the bind point of this template */
+	VkPipelineBindPoint getBindPoint() const { return _pipelineBindPoint; }
+
 	/** Constructs an instance for the specified device. */
 	MVKDescriptorUpdateTemplate(MVKDevice* device, const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo);
 
@@ -347,6 +351,7 @@ public:
 protected:
 	void propagateDebugName() override {}
 
+	VkPipelineBindPoint _pipelineBindPoint;
 	VkDescriptorUpdateTemplateType _type;
 	MVKSmallVector<VkDescriptorUpdateTemplateEntry, 1> _entries;
 };

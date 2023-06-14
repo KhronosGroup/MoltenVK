@@ -19,7 +19,6 @@
 #include "MVKBuffer.h"
 #include "MVKCommandBuffer.h"
 #include "MVKFoundation.h"
-#include "MVKEnvironment.h"
 #include "mvk_datatypes.hpp"
 
 using namespace std;

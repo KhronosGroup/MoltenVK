@@ -39,7 +39,6 @@
 #         only Vulkan 1.0, and only the following extensions:
 #             VK_KHR_get_physical_device_properties2
 #             VK_KHR_portability_subset
-#             VK_MVK_moltenvk
 #
 
 cts_vk_dir="../../VK-GL-CTS/build/external/vulkancts/modules/vulkan/Debug"
@@ -85,7 +84,7 @@ fi
 # -------------- MoltenVK configuration --------------------
 
 # As documented above, the portability option restricts to Vulkan 1.0 and a very limited set of extensions.
-# The values used here are documented in vk_mvk_moltenvk.h.
+# The values used here are documented in mvk_config.h.
 # - MVK_CONFIG_API_VERSION_TO_ADVERTISE = VK_API_VERSION_1_0 (4194304)
 # - MVK_CONFIG_ADVERTISE_EXTENSIONS selects support for a very limited set of extensions,
 #   using a bit-or of values in MVKConfigAdvertiseExtensions (extension list documented above).
@@ -94,22 +93,24 @@ if [ "${is_portability}" != "" ]; then
 	export MVK_CONFIG_ADVERTISE_EXTENSIONS=0xA
 fi
 
+# ----- Metal validation settings ------
 export METAL_DEVICE_WRAPPER_TYPE=1
 export METAL_ERROR_MODE=3
 export METAL_DEBUG_ERROR_MODE=3
 
 # ----- MoltenVK config settings ------
-export MVK_CONFIG_LOG_LEVEL=1
+export MVK_CONFIG_LOG_LEVEL=1	#(1 = Errors only, 3 = Info)
 export MVK_DEBUG=0
 
-# Additional MoltenVK configuration can be set here by 
-# editing below, or can be set before calling this script.
+# Additional MoltenVK configuration can be set here by editing below.
 export MVK_CONFIG_RESUME_LOST_DEVICE=1
 export MVK_CONFIG_FAST_MATH_ENABLED=1
-export MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0  #(2 = VK_EXT_descriptor_indexing enabled)
 export MVK_CONFIG_FORCE_LOW_POWER_GPU=0
-export MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE=2  #(2 = MTLEvents always)
-
+export MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0          #(2 = VK_EXT_descriptor_indexing enabled)
+export MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE=2          #(2 = MTLEvents always)
+export MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM=0        #(2 = ZLIB, 3 = LZ4)
+export MVK_CONFIG_PERFORMANCE_TRACKING=0
+export MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE=2  #(2 = Device lifetime)
 
 # -------------- Operation --------------------
 

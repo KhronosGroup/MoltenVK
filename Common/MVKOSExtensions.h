@@ -162,3 +162,5 @@ uint64_t mvkGetAvailableMemorySize();
 /** Returns the amount of memory currently used by this process. */
 uint64_t mvkGetUsedMemorySize();
 
+/** Returns the size of a page of host memory on this platform. */
+uint64_t mvkGetHostMemoryPageSize();

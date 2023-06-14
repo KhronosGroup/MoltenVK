@@ -263,7 +263,8 @@ public:
 						uint32_t attachmentCount,
 						const VkClearAttachment* pAttachments,
 						uint32_t rectCount,
-						const VkClearRect* pRects);
+						const VkClearRect* pRects,
+						MVKCommandUse cmdUse = kMVKCommandUseClearAttachments);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -276,13 +277,13 @@ protected:
 							  float attWidth, float attHeight);
 	virtual VkClearValue& getClearValue(uint32_t attIdx) = 0;
 	virtual void setClearValue(uint32_t attIdx, const VkClearValue& clearValue) = 0;
+	NSString* getMTLDebugGroupLabel();
 
 	MVKSmallVector<VkClearRect, N> _clearRects;
     MVKRPSKeyClearAtt _rpsKey;
-	bool _isClearingDepth;
-	bool _isClearingStencil;
 	float _mtlDepthVal;
-    uint32_t _mtlStencilValue;
+	uint32_t _mtlStencilValue;
+	MVKCommandUse _commandUse;
 };
 
 
@@ -323,7 +324,7 @@ protected:
 	VkClearValue& getClearValue(uint32_t attIdx) override { return _vkClearValues[attIdx]; }
 	void setClearValue(uint32_t attIdx, const VkClearValue& clearValue) override { _vkClearValues[attIdx] = clearValue; }
 
-	VkClearValue _vkClearValues[kMVKCachedColorAttachmentCount];
+	VkClearValue _vkClearValues[kMVKMaxColorAttachmentCount];
 };
 
 typedef MVKCmdClearMultiAttachments<1> MVKCmdClearMultiAttachments1;
