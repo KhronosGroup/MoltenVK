@@ -78,10 +78,10 @@ public:
 	 * Maps the memory address at the specified offset from the start of this memory allocation,
 	 * and returns the address in the specified data reference.
 	 */
-	VkResult map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData);
-
+	VkResult map(const VkMemoryMapInfoKHR* mapInfo, void** ppData);
+	
 	/** Unmaps a previously mapped memory range. */
-	void unmap();
+	VkResult unmap(const VkMemoryUnmapInfoKHR* unmapInfo);
 
 	/**
 	 * If this device memory is currently mapped to host memory, returns the range within
@@ -170,6 +170,7 @@ protected:
 	MTLStorageMode _mtlStorageMode;
 	MTLCPUCacheMode _mtlCPUCacheMode;
 	bool _isDedicated = false;
+	bool _isHostMemImported = false;
 
 };
 

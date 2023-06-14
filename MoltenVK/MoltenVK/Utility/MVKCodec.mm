@@ -18,10 +18,15 @@
 
 
 #include "MVKCodec.h"
+#include "MVKBaseObject.h"
+#include "MVKFoundation.h"
 
 #include <algorithm>
 #include <simd/simd.h>
 
+#import <Foundation/Foundation.h>
+
+using namespace std;
 
 using simd::float3;
 using simd::float4;
@@ -62,8 +67,8 @@ public:
 			for (uint32_t y = 0; y < extent.height; y += 4) {
 				for (uint32_t x = 0; x < extent.width; x += 4) {
 					VkExtent2D blockExtent;
-					blockExtent.width = std::min(extent.width - x, 4u);
-					blockExtent.height = std::min(extent.height - y, 4u);
+					blockExtent.width = min(extent.width - x, 4u);
+					blockExtent.height = min(extent.height - y, 4u);
 					decompressDXTnBlock(pSrcRow + x * (blockByteCount / 4),
 						pDestRow + x * 4, blockExtent, destLayout.rowPitch, _format);
 				}
@@ -90,7 +95,11 @@ private:
 	VkFormat _format;
 };
 
-std::unique_ptr<MVKCodec> mvkCreateCodec(VkFormat format) {
+
+#pragma mark -
+#pragma mark Support functions
+
+unique_ptr<MVKCodec> mvkCreateCodec(VkFormat format) {
 	switch (format) {
 	case VK_FORMAT_BC1_RGB_UNORM_BLOCK:
 	case VK_FORMAT_BC1_RGB_SRGB_BLOCK:
@@ -100,7 +109,7 @@ std::unique_ptr<MVKCodec> mvkCreateCodec(VkFormat format) {
 	case VK_FORMAT_BC2_SRGB_BLOCK:
 	case VK_FORMAT_BC3_UNORM_BLOCK:
 	case VK_FORMAT_BC3_SRGB_BLOCK:
-		return std::unique_ptr<MVKCodec>(new MVKDXTnCodec(format));
+		return unique_ptr<MVKCodec>(new MVKDXTnCodec(format));
 
 	default:
 		return nullptr;
@@ -122,4 +131,66 @@ bool mvkCanDecodeFormat(VkFormat format) {
 	default:
 		return false;
 	}
+}
+
+static NSDataCompressionAlgorithm getSystemCompressionAlgo(MVKConfigCompressionAlgorithm compAlgo) {
+	switch (compAlgo) {
+		case MVK_CONFIG_COMPRESSION_ALGORITHM_NONE:     return NSDataCompressionAlgorithmLZFSE;
+		case MVK_CONFIG_COMPRESSION_ALGORITHM_LZFSE:    return NSDataCompressionAlgorithmLZFSE;
+		case MVK_CONFIG_COMPRESSION_ALGORITHM_LZ4:      return NSDataCompressionAlgorithmLZ4;
+		case MVK_CONFIG_COMPRESSION_ALGORITHM_LZMA:     return NSDataCompressionAlgorithmLZMA;
+		case MVK_CONFIG_COMPRESSION_ALGORITHM_ZLIB:     return NSDataCompressionAlgorithmZlib;
+		default:                                        return NSDataCompressionAlgorithmLZFSE;
+	}
+}
+
+// Only copy into the dstBytes if it can fit, otherwise the data will be corrupted
+static size_t mvkCompressDecompress(const uint8_t* srcBytes, size_t srcSize,
+									uint8_t* dstBytes, size_t dstSize,
+									MVKConfigCompressionAlgorithm compAlgo,
+									bool isCompressing) {
+	size_t dstByteCount = 0;
+	bool compressionSupported = ([NSData instancesRespondToSelector: @selector(compressedDataUsingAlgorithm:error:)] &&
+								 [NSData instancesRespondToSelector: @selector(decompressedDataUsingAlgorithm:error:)]);
+	if (compressionSupported && compAlgo != MVK_CONFIG_COMPRESSION_ALGORITHM_NONE) {
+		@autoreleasepool {
+			NSDataCompressionAlgorithm sysCompAlgo = getSystemCompressionAlgo(compAlgo);
+			NSData* srcData = [NSData dataWithBytesNoCopy: (void*)srcBytes length: srcSize freeWhenDone: NO];
+
+			NSError* err = nil;
+			NSData* dstData = (isCompressing
+							   ? [srcData compressedDataUsingAlgorithm: sysCompAlgo error: &err]
+							   : [srcData decompressedDataUsingAlgorithm: sysCompAlgo error: &err]);
+			if ( !err ) {
+				size_t dataLen = dstData.length;
+				if (dstSize >= dataLen) {
+					[dstData getBytes: dstBytes length: dstSize];
+					dstByteCount = dataLen;
+				}
+			} else {
+				MVKBaseObject::reportError(nullptr, VK_ERROR_FORMAT_NOT_SUPPORTED,
+										   "Could not %scompress data (Error code %li):\n%s",
+										   (isCompressing ? "" : "de"),
+										   (long)err.code, err.localizedDescription.UTF8String);
+			}
+		}
+	} else if (dstSize >= srcSize) {
+		mvkCopy(dstBytes, srcBytes, srcSize);
+		dstByteCount = srcSize;
+	}
+	return dstByteCount;
+}
+
+size_t mvkCompress(const uint8_t* srcBytes, size_t srcSize,
+				   uint8_t* dstBytes, size_t dstSize,
+				   MVKConfigCompressionAlgorithm compAlgo) {
+
+	return mvkCompressDecompress(srcBytes, srcSize, dstBytes, dstSize, compAlgo, true);
+}
+
+size_t mvkDecompress(const uint8_t* srcBytes, size_t srcSize,
+					 uint8_t* dstBytes, size_t dstSize,
+					 MVKConfigCompressionAlgorithm compAlgo) {
+
+	return mvkCompressDecompress(srcBytes, srcSize, dstBytes, dstSize, compAlgo, false);
 }

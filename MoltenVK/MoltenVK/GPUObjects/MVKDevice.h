@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include "MVKEnvironment.h"
 #include "MVKFoundation.h"
 #include "MVKVulkanAPIObject.h"
 #include "MVKMTLResourceBindings.h"
@@ -27,6 +26,7 @@
 #include "MVKSmallVector.h"
 #include "MVKPixelFormats.h"
 #include "MVKOSExtensions.h"
+#include "mvk_private_api.h"
 #include "mvk_datatypes.hpp"
 #include <string>
 #include <mutex>
@@ -63,6 +63,7 @@ class MVKSamplerYcbcrConversion;
 class MVKDescriptorSetLayout;
 class MVKDescriptorPool;
 class MVKDescriptorUpdateTemplate;
+class MVKResourcesCommandEncoderState;
 class MVKFramebuffer;
 class MVKRenderPass;
 class MVKCommandPool;
@@ -79,8 +80,8 @@ const static uint32_t kMVKQueueFamilyCount = 4;
 const static uint32_t kMVKQueueCountPerQueueFamily = 1;		// Must be 1. See comments in MVKPhysicalDevice::getQueueFamilies()
 const static uint32_t kMVKMinSwapchainImageCount = 2;
 const static uint32_t kMVKMaxSwapchainImageCount = 3;
-const static uint32_t kMVKCachedViewportScissorCount = 16;
-const static uint32_t kMVKCachedColorAttachmentCount = 8;
+const static uint32_t kMVKMaxColorAttachmentCount = 8;
+const static uint32_t kMVKMaxViewportScissorCount = 16;
 const static uint32_t kMVKMaxDescriptorSetCount = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
 
 #if !MVK_XCODE_12
@@ -181,8 +182,12 @@ public:
 	 */
 	VkResult getSurfaceSupport(uint32_t queueFamilyIndex, MVKSurface* surface, VkBool32* pSupported);
 
-	/** Returns the capabilities of the specified surface. */
-	VkResult getSurfaceCapabilities(MVKSurface* surface, VkSurfaceCapabilitiesKHR* pSurfaceCapabilities);
+	/** Returns the capabilities of the surface. */
+	VkResult getSurfaceCapabilities(VkSurfaceKHR surface, VkSurfaceCapabilitiesKHR* pSurfaceCapabilities);
+
+	/** Returns the capabilities of the surface. */
+	VkResult getSurfaceCapabilities(const VkPhysicalDeviceSurfaceInfo2KHR* pSurfaceInfo,
+									VkSurfaceCapabilities2KHR* pSurfaceCapabilities);
 
 	/**
 	 * Returns the pixel formats supported by the surface.
@@ -440,6 +445,7 @@ protected:
 	uint32_t _hostCoherentMemoryTypes;
 	uint32_t _privateMemoryTypes;
 	uint32_t _lazilyAllocatedMemoryTypes;
+	VkExternalMemoryProperties _hostPointerExternalMemoryProperties;
 	VkExternalMemoryProperties _mtlBufferExternalMemoryProperties;
 	VkExternalMemoryProperties _mtlTextureExternalMemoryProperties;
 };
@@ -509,6 +515,11 @@ public:
 
 	/** Populates the device group peer memory features. */
 	void getPeerMemoryFeatures(uint32_t heapIndex, uint32_t localDevice, uint32_t remoteDevice, VkPeerMemoryFeatureFlags* pPeerMemoryFeatures);
+
+	/** Returns the properties of the host memory pointer. */
+	VkResult getMemoryHostPointerProperties(VkExternalMemoryHandleTypeFlagBits handleType,
+											const void* pHostPointer,
+											VkMemoryHostPointerPropertiesEXT* pMemHostPtrProps);
 
 
 #pragma mark Object lifecycle
@@ -620,12 +631,16 @@ public:
 
 	MVKFramebuffer* createFramebuffer(const VkFramebufferCreateInfo* pCreateInfo,
 									  const VkAllocationCallbacks* pAllocator);
+	MVKFramebuffer* createFramebuffer(const VkRenderingInfo* pRenderingInfo,
+									  const VkAllocationCallbacks* pAllocator);
 	void destroyFramebuffer(MVKFramebuffer* mvkFB,
 							const VkAllocationCallbacks* pAllocator);
 
 	MVKRenderPass* createRenderPass(const VkRenderPassCreateInfo* pCreateInfo,
 									const VkAllocationCallbacks* pAllocator);
 	MVKRenderPass* createRenderPass(const VkRenderPassCreateInfo2* pCreateInfo,
+									const VkAllocationCallbacks* pAllocator);
+	MVKRenderPass* createRenderPass(const VkRenderingInfo* pRenderingInfo,
 									const VkAllocationCallbacks* pAllocator);
 	void destroyRenderPass(MVKRenderPass* mvkRP,
 						   const VkAllocationCallbacks* pAllocator);
@@ -649,6 +664,22 @@ public:
 
 
 #pragma mark Operations
+
+	/** Tell the GPU to be ready to use any of the GPU-addressable buffers. */
+	void encodeGPUAddressableBuffers(MVKResourcesCommandEncoderState* rezEncState,
+										 MVKShaderStage stage);
+
+	/** Adds the specified host semaphore to be woken upon device loss. */
+	void addSemaphore(MVKSemaphoreImpl* sem4);
+
+	/** Removes the specified host semaphore. */
+	void removeSemaphore(MVKSemaphoreImpl* sem4);
+
+	/** Adds the specified timeline semaphore to be woken at the specified value upon device loss. */
+	void addTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value);
+
+	/** Removes the specified timeline semaphore. */
+	void removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value);
 
 	/** Applies the specified global memory barrier to all resource issued by this device. */
 	void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
@@ -682,7 +713,9 @@ public:
 
 			// Log call not locked. Very minor chance that the tracker data will be updated during log call,
 			// resulting in an inconsistent report. Not worth taking lock perf hit for rare inline reporting.
-			if (_logActivityPerformanceInline) { logActivityPerformance(activityTracker, _performanceStatistics, true); }
+			if (_activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE) {
+				logActivityPerformance(activityTracker, _performanceStatistics, true);
+			}
 		}
 	};
 
@@ -843,26 +876,18 @@ public:
     }
 
 protected:
-	friend class MVKSemaphoreEmulated;
-	friend class MVKTimelineSemaphoreMTLEvent;
-	friend class MVKTimelineSemaphoreEmulated;
-	friend class MVKFence;
-	friend class MVKEventEmulated;
-
 	void propagateDebugName() override  {}
-	MVKResource* addResource(MVKResource* rez);
-	MVKResource* removeResource(MVKResource* rez);
-	void addSemaphore(MVKSemaphoreImpl* sem4);
-	void removeSemaphore(MVKSemaphoreImpl* sem4);
-	void addTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value);
-	void removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value);
+	MVKBuffer* addBuffer(MVKBuffer* mvkBuff);
+	MVKBuffer* removeBuffer(MVKBuffer* mvkBuff);
+	MVKImage* addImage(MVKImage* mvkImg);
+	MVKImage* removeImage(MVKImage* mvkImg);
     void initPerformanceTracking();
 	void initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo);
 	void initQueues(const VkDeviceCreateInfo* pCreateInfo);
 	void reservePrivateData(const VkDeviceCreateInfo* pCreateInfo);
 	void enableFeatures(const VkDeviceCreateInfo* pCreateInfo);
-	void enableFeatures(VkBaseInStructure* pEnabled, const VkBaseInStructure* pRequested, const VkBaseInStructure* pAvailable, uint32_t count);
-	void enableFeatures(VkBool32* pEnabledBools, const VkBool32* pRequestedBools, const VkBool32* pAvailableBools, uint32_t count);
+	template<typename S> void enableFeatures(S* pEnabled, const S* pRequested, const S* pAvailable, uint32_t count);
+	template<typename S> void enableFeatures(S* pRequested, VkBool32* pEnabledBools, const VkBool32* pRequestedBools, const VkBool32* pAvailableBools, uint32_t count);
 	void enableExtensions(const VkDeviceCreateInfo* pCreateInfo);
     const char* getActivityPerformanceDescription(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats);
 	void logActivityPerformance(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);
@@ -875,6 +900,7 @@ protected:
     MVKCommandResourceFactory* _commandResourceFactory = nullptr;
 	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
 	MVKSmallVector<MVKResource*, 256> _resources;
+	MVKSmallVector<MVKBuffer*, 8> _gpuAddressableBuffers;
 	MVKSmallVector<MVKPrivateDataSlot*> _privateDataSlots;
 	MVKSmallVector<bool> _privateDataSlotsAvailability;
 	MVKSmallVector<MVKSemaphoreImpl*> _awaitingSemaphores;
@@ -887,7 +913,7 @@ protected:
 	id<MTLSamplerState> _defaultMTLSamplerState = nil;
 	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
     uint32_t _globalVisibilityQueryCount = 0;
-	bool _logActivityPerformanceInline = false;
+	MVKConfigActivityPerformanceLoggingStyle _activityPerformanceLoggingStyle = MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT;
 	bool _isPerformanceTracking = false;
 	bool _isCurrentlyAutoGPUCapturing = false;
 	bool _isUsingMetalArgumentBuffers = false;
@@ -1037,6 +1063,14 @@ protected:
 
 /** Returns the registry ID of the specified device, or zero if the device does not have a registry ID. */
 uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice);
+
+/**
+ * Returns a value identifying the physical location of the specified device.
+ * The returned value is a hash of the location, locationNumber, peerGroupID,
+ * and peerIndex properties of the device. On devices with only one built-in GPU,
+ * the returned value will be zero.
+ */
+uint64_t mvkGetLocationID(id<MTLDevice> mtlDevice);
 
 /** Returns whether the MTLDevice supports BC texture compression. */
 bool mvkSupportsBCTextureCompression(id<MTLDevice> mtlDevice);

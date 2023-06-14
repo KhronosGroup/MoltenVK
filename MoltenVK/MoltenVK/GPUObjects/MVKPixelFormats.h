@@ -18,10 +18,9 @@
 
 #pragma once
 
-#include "mvk_datatypes.h"
-#include "MVKEnvironment.h"
-#include "MVKOSExtensions.h"
 #include "MVKBaseObject.h"
+#include "MVKOSExtensions.h"
+#include "mvk_datatypes.h"
 #include <spirv_msl.hpp>
 #include <unordered_map>
 

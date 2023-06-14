@@ -261,6 +261,7 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConverter::setSPIRV(const uint32_t* spirvCode, 
 }
 
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfiguration& shaderConfig,
+													SPIRVToMSLConversionResult& conversionResult,
 													bool shouldLogSPIRV,
 													bool shouldLogMSL,
                                                     bool shouldLogGLSL) {
@@ -270,14 +271,10 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 //	spvFile.write((char*)_spirv.data(), _spirv.size() << 2);
 //	spvFile.close();
 
-	_wasConverted = true;
-	_resultLog.clear();
-	_msl.clear();
-	_shaderConversionResults.reset();
-
-	if (shouldLogSPIRV) { logSPIRV("Converting"); }
+	if (shouldLogSPIRV) { logSPIRV(conversionResult.resultLog, "Converting"); }
 
 	CompilerMSL* pMSLCompiler = nullptr;
+	bool wasConverted = true;
 
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 	try {
@@ -341,42 +338,43 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 				}
 			}
 		}
-		_msl = pMSLCompiler->compile();
+		conversionResult.msl = pMSLCompiler->compile();
 
-        if (shouldLogMSL) { logSource(_msl, "MSL", "Converted"); }
+        if (shouldLogMSL) { logSource(conversionResult.resultLog, conversionResult.msl, "MSL", "Converted"); }
 
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 	} catch (CompilerError& ex) {
 		string errMsg("MSL conversion error: ");
 		errMsg += ex.what();
-		logError(errMsg.data());
+		logError(conversionResult.resultLog, errMsg.data());
         if (shouldLogMSL && pMSLCompiler) {
-            _msl = pMSLCompiler->get_partial_source();
-            logSource(_msl, "MSL", "Partially converted");
+			auto partialMSL = pMSLCompiler->get_partial_source();
+            logSource(conversionResult.resultLog, partialMSL, "MSL", "Partially converted");
         }
 	}
 #endif
 
 	// Populate the shader conversion results with info from the compilation run,
 	// and mark which vertex attributes and resource bindings are used by the shader
-	populateEntryPoint(pMSLCompiler, shaderConfig.options);
-	_shaderConversionResults.isRasterizationDisabled = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
-	_shaderConversionResults.isPositionInvariant = pMSLCompiler && pMSLCompiler->is_position_invariant();
-	_shaderConversionResults.needsSwizzleBuffer = pMSLCompiler && pMSLCompiler->needs_swizzle_buffer();
-	_shaderConversionResults.needsOutputBuffer = pMSLCompiler && pMSLCompiler->needs_output_buffer();
-	_shaderConversionResults.needsPatchOutputBuffer = pMSLCompiler && pMSLCompiler->needs_patch_output_buffer();
-	_shaderConversionResults.needsBufferSizeBuffer = pMSLCompiler && pMSLCompiler->needs_buffer_size_buffer();
-	_shaderConversionResults.needsInputThreadgroupMem = pMSLCompiler && pMSLCompiler->needs_input_threadgroup_mem();
-	_shaderConversionResults.needsDispatchBaseBuffer = pMSLCompiler && pMSLCompiler->needs_dispatch_base_buffer();
-	_shaderConversionResults.needsViewRangeBuffer = pMSLCompiler && pMSLCompiler->needs_view_mask_buffer();
+	populateEntryPoint(pMSLCompiler, shaderConfig.options, conversionResult.resultInfo.entryPoint);
+	conversionResult.resultInfo.isRasterizationDisabled = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
+	conversionResult.resultInfo.isPositionInvariant = pMSLCompiler && pMSLCompiler->is_position_invariant();
+	conversionResult.resultInfo.needsSwizzleBuffer = pMSLCompiler && pMSLCompiler->needs_swizzle_buffer();
+	conversionResult.resultInfo.needsOutputBuffer = pMSLCompiler && pMSLCompiler->needs_output_buffer();
+	conversionResult.resultInfo.needsPatchOutputBuffer = pMSLCompiler && pMSLCompiler->needs_patch_output_buffer();
+	conversionResult.resultInfo.needsBufferSizeBuffer = pMSLCompiler && pMSLCompiler->needs_buffer_size_buffer();
+	conversionResult.resultInfo.needsInputThreadgroupMem = pMSLCompiler && pMSLCompiler->needs_input_threadgroup_mem();
+	conversionResult.resultInfo.needsDispatchBaseBuffer = pMSLCompiler && pMSLCompiler->needs_dispatch_base_buffer();
+	conversionResult.resultInfo.needsViewRangeBuffer = pMSLCompiler && pMSLCompiler->needs_view_mask_buffer();
+	conversionResult.resultInfo.usesPhysicalStorageBufferAddressesCapability = usesPhysicalStorageBufferAddressesCapability(pMSLCompiler);
 
 	// When using Metal argument buffers, if the shader is provided with dynamic buffer offsets,
 	// then it needs a buffer to hold these dynamic offsets.
-	_shaderConversionResults.needsDynamicOffsetBuffer = false;
+	conversionResult.resultInfo.needsDynamicOffsetBuffer = false;
 	if (shaderConfig.options.mslOptions.argument_buffers) {
 		for (auto& db : shaderConfig.dynamicBufferDescriptors) {
 			if (db.stage == shaderConfig.options.entryPointStage) {
-				_shaderConversionResults.needsDynamicOffsetBuffer = true;
+				conversionResult.resultInfo.needsDynamicOffsetBuffer = true;
 			}
 		}
 	}
@@ -418,68 +416,64 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 			options.separate_shader_objects = true;
 			pGLSLCompiler->set_common_options(options);
 			string glsl = pGLSLCompiler->compile();
-            logSource(glsl, "GLSL", "Estimated original");
+            logSource(conversionResult.resultLog, glsl, "GLSL", "Estimated original");
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
         } catch (CompilerError& ex) {
             string errMsg("Original GLSL extraction error: ");
             errMsg += ex.what();
-            logMsg(errMsg.data());
+            logMsg(conversionResult.resultLog, errMsg.data());
 			if (pGLSLCompiler) {
 				string glsl = pGLSLCompiler->get_partial_source();
-				logSource(glsl, "GLSL", "Partially converted");
+				logSource(conversionResult.resultLog, glsl, "GLSL", "Partially converted");
 			}
         }
 #endif
 		delete pGLSLCompiler;
 	}
 
-	return _wasConverted;
+	return wasConverted;
 }
 
 // Appends the message text to the result log.
-void SPIRVToMSLConverter::logMsg(const char* logMsg) {
+void SPIRVToMSLConverter::logMsg(string& log, const char* logMsg) {
 	string trimMsg = trim(logMsg);
 	if ( !trimMsg.empty() ) {
-		_resultLog += trimMsg;
-		_resultLog += "\n\n";
+		log += trimMsg;
+		log += "\n\n";
 	}
 }
 
-// Appends the error text to the result log, sets the wasConverted property to false, and returns it.
-bool SPIRVToMSLConverter::logError(const char* errMsg) {
-	logMsg(errMsg);
-	_wasConverted = false;
-	return _wasConverted;
+// Appends the error text to the result log, and returns false to indicate an error.
+bool SPIRVToMSLConverter::logError(string& log, const char* errMsg) {
+	logMsg(log, errMsg);
+	return false;
 }
 
 // Appends the SPIR-V to the result log, indicating whether it is being converted or was converted.
-void SPIRVToMSLConverter::logSPIRV(const char* opDesc) {
+void SPIRVToMSLConverter::logSPIRV(string& log, const char* opDesc) {
 
-	string spvLog;
-	mvk::logSPIRV(_spirv, spvLog);
-
-	_resultLog += opDesc;
-	_resultLog += " SPIR-V:\n";
-	_resultLog += spvLog;
-	_resultLog += "\nEnd SPIR-V\n\n";
+	log += opDesc;
+	log += " SPIR-V:\n";
+	mvk::logSPIRV(_spirv, log);
+	log += "\nEnd SPIR-V\n\n";
 
 	// Uncomment one or both of the following lines to get additional debugging and tracability capabilities.
 	// The SPIR-V can be written in binary form to a file, and/or logged in human readable form to the console.
 	// These can be helpful if errors occur during conversion of SPIR-V to MSL.
-//	writeSPIRVToFile("spvout.spv");
-//	printf("\n%s\n", getResultLog().c_str());
+//	writeSPIRVToFile("spvout.spv", log);
+//	printf("\n%s\n", log.c_str());
 }
 
 // Writes the SPIR-V code to a file. This can be useful for debugging
 // when the SPRIR-V did not originally come from a known file
-void SPIRVToMSLConverter::writeSPIRVToFile(string spvFilepath) {
+void SPIRVToMSLConverter::writeSPIRVToFile(string spvFilepath, string& log) {
 	vector<char> fileContents;
 	spirvToBytes(_spirv, fileContents);
 	string errMsg;
 	if (writeFile(spvFilepath, fileContents, errMsg)) {
-		_resultLog += "Saved SPIR-V to file: " + absolutePath(spvFilepath) + "\n\n";
+		log += "Saved SPIR-V to file: " + absolutePath(spvFilepath) + "\n\n";
 	} else {
-		_resultLog += "Could not write SPIR-V file. " + errMsg + "\n\n";
+		log += "Could not write SPIR-V file. " + errMsg + "\n\n";
 	}
 }
 
@@ -492,15 +486,15 @@ bool SPIRVToMSLConverter::validateSPIRV() {
 }
 
 // Appends the source to the result log, prepending with the operation.
-void SPIRVToMSLConverter::logSource(string& src, const char* srcLang, const char* opDesc) {
-    _resultLog += opDesc;
-    _resultLog += " ";
-    _resultLog += srcLang;
-    _resultLog += ":\n";
-    _resultLog += src;
-    _resultLog += "\nEnd ";
-    _resultLog += srcLang;
-    _resultLog += "\n\n";
+void SPIRVToMSLConverter::logSource(string& log, string& src, const char* srcLang, const char* opDesc) {
+    log += opDesc;
+    log += " ";
+    log += srcLang;
+    log += ":\n";
+    log += src;
+    log += "\nEnd ";
+    log += srcLang;
+    log += "\n\n";
 }
 
 void SPIRVToMSLConverter::populateWorkgroupDimension(SPIRVWorkgroupSizeDimension& wgDim,
@@ -513,7 +507,8 @@ void SPIRVToMSLConverter::populateWorkgroupDimension(SPIRVWorkgroupSizeDimension
 
 // Populates the entry point with info extracted from the SPRI-V compiler.
 void SPIRVToMSLConverter::populateEntryPoint(Compiler* pCompiler,
-											 SPIRVToMSLConversionOptions& options) {
+											 SPIRVToMSLConversionOptions& options,
+											 SPIRVEntryPoint& entryPoint) {
 
 	if ( !pCompiler ) { return; }
 
@@ -528,15 +523,26 @@ void SPIRVToMSLConverter::populateEntryPoint(Compiler* pCompiler,
 		}
 	}
 
-	auto& ep = _shaderConversionResults.entryPoint;
-	ep.mtlFunctionName = spvEP.name;
-	ep.supportsFastMath = !spvEP.flags.get(ExecutionModeSignedZeroInfNanPreserve);
+	entryPoint.mtlFunctionName = spvEP.name;
+	entryPoint.supportsFastMath = !spvEP.flags.get(ExecutionModeSignedZeroInfNanPreserve);
 
 	SpecializationConstant widthSC, heightSC, depthSC;
 	pCompiler->get_work_group_size_specialization_constants(widthSC, heightSC, depthSC);
 
-	auto& wgSize = ep.workgroupSize;
+	auto& wgSize = entryPoint.workgroupSize;
 	populateWorkgroupDimension(wgSize.width, spvEP.workgroup_size.x, widthSC);
 	populateWorkgroupDimension(wgSize.height, spvEP.workgroup_size.y, heightSC);
 	populateWorkgroupDimension(wgSize.depth, spvEP.workgroup_size.z, depthSC);
+}
+
+bool SPIRVToMSLConverter::usesPhysicalStorageBufferAddressesCapability(Compiler* pCompiler) {
+	if (pCompiler) {
+		auto& declaredCapabilities = pCompiler->get_declared_capabilities();
+		for(auto dc: declaredCapabilities) {
+			if (dc == CapabilityPhysicalStorageBufferAddresses) {
+				return true;
+			}
+		}
+	}
+	return false;
 }

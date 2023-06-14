@@ -328,15 +328,12 @@ void MVKDepthStencilCommandEncoderState::beginMetalRenderPass() {
     MVKCommandEncoderState::beginMetalRenderPass();
 
 	MVKRenderSubpass* mvkSubpass = _cmdEncoder->getSubpass();
-	MVKPixelFormats* pixFmts = _cmdEncoder->getPixelFormats();
-	MTLPixelFormat mtlDSFormat = pixFmts->getMTLPixelFormat(mvkSubpass->getDepthStencilFormat());
-
 	bool prevHasDepthAttachment = _hasDepthAttachment;
-	_hasDepthAttachment = pixFmts->isDepthFormat(mtlDSFormat);
+	_hasDepthAttachment = mvkSubpass->isDepthAttachmentUsed();
 	if (_hasDepthAttachment != prevHasDepthAttachment) { markDirty(); }
 
 	bool prevHasStencilAttachment = _hasStencilAttachment;
-	_hasStencilAttachment = pixFmts->isStencilFormat(mtlDSFormat);
+	_hasStencilAttachment = mvkSubpass->isStencilAttachmentUsed();
 	if (_hasStencilAttachment != prevHasStencilAttachment) { markDirty(); }
 }
 
@@ -693,6 +690,11 @@ void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stag
 
 	encodeMetalArgumentBuffer(stage);
 
+	MVKPipeline* pipeline = getPipeline();
+	if (pipeline && pipeline->usesPhysicalStorageBufferAddressesCapability(stage)) {
+		getDevice()->encodeGPUAddressableBuffers(this, stage);
+	}
+
     auto& shaderStage = _shaderStageResourceBindings[stage];
 
     if (shaderStage.swizzleBufferBinding.isDirty) {
@@ -753,6 +755,11 @@ void MVKGraphicsResourcesCommandEncoderState::offsetZeroDivisorVertexBuffers(MVK
                 break;
         }
     }
+}
+
+void MVKGraphicsResourcesCommandEncoderState::endMetalRenderPass() {
+	MVKResourcesCommandEncoderState::endMetalRenderPass();
+	_renderUsageStages.clear();
 }
 
 // Mark everything as dirty
@@ -963,10 +970,10 @@ void MVKGraphicsResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderS
 	bindBuffer(stage, buffBind);
 }
 
-void MVKGraphicsResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(MVKShaderStage stage,
-																				id<MTLResource> mtlResource,
-																				MTLResourceUsage mtlUsage,
-																				MTLRenderStages mtlStages) {
+void MVKGraphicsResourcesCommandEncoderState::encodeResourceUsage(MVKShaderStage stage,
+																  id<MTLResource> mtlResource,
+																  MTLResourceUsage mtlUsage,
+																  MTLRenderStages mtlStages) {
 	if (mtlResource && mtlStages) {
 		if (stage == kMVKShaderStageTessCtl) {
 			auto* mtlCompEnc = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
@@ -974,7 +981,12 @@ void MVKGraphicsResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(
 		} else {
 			auto* mtlRendEnc = _cmdEncoder->_mtlRenderEncoder;
 			if ([mtlRendEnc respondsToSelector: @selector(useResource:usage:stages:)]) {
-				[mtlRendEnc useResource: mtlResource usage: mtlUsage stages: mtlStages];
+				// Within a renderpass, a resource may be used by multiple descriptor bindings,
+				// each of which may assign a different usage stage. Dynamically accumulate
+				// usage stages across all descriptor bindings using the resource.
+				auto& accumStages = _renderUsageStages[mtlResource];
+				accumStages |= mtlStages;
+				[mtlRendEnc useResource: mtlResource usage: mtlUsage stages: accumStages];
 			} else {
 				[mtlRendEnc useResource: mtlResource usage: mtlUsage];
 			}
@@ -1039,8 +1051,10 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
 
 	encodeMetalArgumentBuffer(kMVKShaderStageCompute);
 
-    MVKPipeline* pipeline = getPipeline();
-	bool fullImageViewSwizzle = pipeline ? pipeline->fullImageViewSwizzle() : false;
+	MVKPipeline* pipeline = getPipeline();
+	if (pipeline && pipeline->usesPhysicalStorageBufferAddressesCapability(kMVKShaderStageCompute)) {
+		getDevice()->encodeGPUAddressableBuffers(this, kMVKShaderStageCompute);
+	}
 
     if (_resourceBindings.swizzleBufferBinding.isDirty) {
 		for (auto& b : _resourceBindings.textureBindings) {
@@ -1053,6 +1067,7 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
                                      _resourceBindings.swizzleBufferBinding.index);
 
 	} else {
+		bool fullImageViewSwizzle = pipeline ? pipeline->fullImageViewSwizzle() : false;
 		assertMissingSwizzles(_resourceBindings.needsSwizzle && !fullImageViewSwizzle, "compute", _resourceBindings.textureBindings.contents());
     }
 
@@ -1116,10 +1131,10 @@ void MVKComputeResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderSt
 	bindBuffer(buffBind);
 }
 
-void MVKComputeResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(MVKShaderStage stage,
-																			   id<MTLResource> mtlResource,
-																			   MTLResourceUsage mtlUsage,
-																			   MTLRenderStages mtlStages) {
+void MVKComputeResourcesCommandEncoderState::encodeResourceUsage(MVKShaderStage stage,
+																 id<MTLResource> mtlResource,
+																 MTLResourceUsage mtlUsage,
+																 MTLRenderStages mtlStages) {
 	if (mtlResource) {
 		auto* mtlCompEnc = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch);
 		[mtlCompEnc useResource: mtlResource usage: mtlUsage];
@@ -1138,12 +1153,14 @@ void MVKComputeResourcesCommandEncoderState::markOverriddenBufferIndexesDirty() 
 #pragma mark -
 #pragma mark MVKOcclusionQueryCommandEncoderState
 
+// Metal resets the query counter at a render pass boundary, so copy results to the query pool's accumulation buffer.
+// Don't copy occlusion info until after rasterization, as Metal renderpasses can be ended prematurely during tessellation.
 void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
 	const MVKMTLBufferAllocation* vizBuff = _cmdEncoder->_pEncodingContext->visibilityResultBuffer;
-    if ( !vizBuff || _mtlRenderPassQueries.empty() ) { return; }  // Nothing to do.
+    if ( !_hasRasterized || !vizBuff || _mtlRenderPassQueries.empty() ) { return; }  // Nothing to do.
 
 	id<MTLComputePipelineState> mtlAccumState = _cmdEncoder->getCommandEncodingPool()->getAccumulateOcclusionQueryResultsMTLComputePipelineState();
-    id<MTLComputeCommandEncoder> mtlAccumEncoder = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseAccumOcclusionQuery);
+    id<MTLComputeCommandEncoder> mtlAccumEncoder = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseAccumOcclusionQuery, true);
     [mtlAccumEncoder setComputePipelineState: mtlAccumState];
     for (auto& qryLoc : _mtlRenderPassQueries) {
         // Accumulate the current results to the query pool's buffer.
@@ -1156,8 +1173,8 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
         [mtlAccumEncoder dispatchThreadgroups: MTLSizeMake(1, 1, 1)
                         threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
     }
-    _cmdEncoder->endCurrentMetalEncoding();
     _mtlRenderPassQueries.clear();
+	_hasRasterized = false;
 }
 
 // The Metal visibility buffer has a finite size, and on some Metal platforms (looking at you M1),
@@ -1176,18 +1193,21 @@ void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKOcclusionQuery
 		_mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
 		_cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset -= kMVKQuerySlotSizeInBytes;
 	}
+	_hasRasterized = false;
     markDirty();
 }
 
 void MVKOcclusionQueryCommandEncoderState::endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query) {
 	_mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
 	_cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset += kMVKQuerySlotSizeInBytes;
+	_hasRasterized = true;	// Handle begin and end query with no rasterizing before end of renderpass.
 	markDirty();
 }
 
 void MVKOcclusionQueryCommandEncoderState::encodeImpl(uint32_t stage) {
 	if (stage != kMVKGraphicsStageRasterization) { return; }
 
+	_hasRasterized = true;
 	[_cmdEncoder->_mtlRenderEncoder setVisibilityResultMode: _mtlVisibilityResultMode
 													 offset: _cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset];
 }

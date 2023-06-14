@@ -262,7 +262,7 @@ protected:
 
 // Concrete template class implementations.
 typedef MVKCmdSetViewport<1> MVKCmdSetViewport1;
-typedef MVKCmdSetViewport<kMVKCachedViewportScissorCount> MVKCmdSetViewportMulti;
+typedef MVKCmdSetViewport<kMVKMaxViewportScissorCount> MVKCmdSetViewportMulti;
 
 
 #pragma mark -
@@ -292,7 +292,7 @@ protected:
 
 // Concrete template class implementations.
 typedef MVKCmdSetScissor<1> MVKCmdSetScissor1;
-typedef MVKCmdSetScissor<kMVKCachedViewportScissorCount> MVKCmdSetScissorMulti;
+typedef MVKCmdSetScissor<kMVKMaxViewportScissorCount> MVKCmdSetScissorMulti;
 
 
 #pragma mark -

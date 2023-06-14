@@ -25,7 +25,6 @@
 #include "MVKFramebuffer.h"
 #include "MVKRenderPass.h"
 #include "MTLRenderPassDescriptor+MoltenVK.h"
-#include "MVKEnvironment.h"
 #include "mvk_datatypes.hpp"
 #include <algorithm>
 #include <sys/mman.h>
@@ -956,7 +955,7 @@ void MVKCmdCopyBuffer<N>::encode(MVKCommandEncoder* cmdEncoder) {
 			copyInfo.dstOffset = (uint32_t)cpyRgn.dstOffset;
 			copyInfo.size = (uint32_t)cpyRgn.size;
 
-			id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyBuffer);
+			id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyBuffer, true);
 			[mtlComputeEnc pushDebugGroup: @"vkCmdCopyBuffer"];
 			[mtlComputeEnc setComputePipelineState: cmdEncoder->getCommandEncodingPool()->getCmdCopyBufferBytesMTLComputePipelineState()];
 			[mtlComputeEnc setBuffer:srcMTLBuff offset: srcMTLBuffOffset atIndex: 0];
@@ -1142,7 +1141,7 @@ void MVKCmdBufferImageCopy<N>::encode(MVKCommandEncoder* cmdEncoder) {
             info.offset = cpyRgn.imageOffset;
             info.extent = cpyRgn.imageExtent;
             bool needsTempBuff = mipLevel != 0;
-            id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(cmdUse);
+			id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(cmdUse, false);  // Compute state will be marked dirty on next compute encoder after Blit encoder below.
             id<MTLComputePipelineState> mtlComputeState = cmdEncoder->getCommandEncodingPool()->getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(needsTempBuff);
             [mtlComputeEnc pushDebugGroup: @"vkCmdCopyBufferToImage"];
             [mtlComputeEnc setComputePipelineState: mtlComputeState];
@@ -1254,12 +1253,12 @@ VkResult MVKCmdClearAttachments<N>::setContent(MVKCommandBuffer* cmdBuff,
 											   uint32_t attachmentCount,
 											   const VkClearAttachment* pAttachments,
 											   uint32_t rectCount,
-											   const VkClearRect* pRects) {
+											   const VkClearRect* pRects,
+											   MVKCommandUse cmdUse) {
 	_rpsKey.reset();
+	_commandUse = cmdUse;
 	_mtlDepthVal = 0.0;
     _mtlStencilValue = 0;
-    _isClearingDepth = false;
-    _isClearingStencil = false;
 	MVKPixelFormats* pixFmts = cmdBuff->getPixelFormats();
 
     // For each attachment to be cleared, mark it so in the render pipeline state
@@ -1277,14 +1276,12 @@ VkResult MVKCmdClearAttachments<N>::setContent(MVKCommandBuffer* cmdBuff,
         }
 
         if (mvkIsAnyFlagEnabled(clrAtt.aspectMask, VK_IMAGE_ASPECT_DEPTH_BIT)) {
-            _isClearingDepth = true;
-            _rpsKey.enableAttachment(kMVKClearAttachmentDepthStencilIndex);
+            _rpsKey.enableAttachment(kMVKClearAttachmentDepthIndex);
             _mtlDepthVal = pixFmts->getMTLClearDepthValue(clrAtt.clearValue);
         }
 
         if (mvkIsAnyFlagEnabled(clrAtt.aspectMask, VK_IMAGE_ASPECT_STENCIL_BIT)) {
-            _isClearingStencil = true;
-            _rpsKey.enableAttachment(kMVKClearAttachmentDepthStencilIndex);
+            _rpsKey.enableAttachment(kMVKClearAttachmentStencilIndex);
             _mtlStencilValue = pixFmts->getMTLClearStencilValue(clrAtt.clearValue);
         }
     }
@@ -1441,37 +1438,32 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		clearColors[caIdx] = { (float)mtlCC.red, (float)mtlCC.green, (float)mtlCC.blue, (float)mtlCC.alpha};
     }
 
-    // The depth value (including vertex position Z value) is held in the last index.
-    clearColors[kMVKClearAttachmentDepthStencilIndex] = { _mtlDepthVal, _mtlDepthVal, _mtlDepthVal, _mtlDepthVal };
+    // The depth value is the vertex position Z value.
+    clearColors[kMVKClearAttachmentDepthIndex] = { _mtlDepthVal, _mtlDepthVal, _mtlDepthVal, _mtlDepthVal };
 
-    VkFormat vkAttFmt = subpass->getDepthStencilFormat();
-	MTLPixelFormat mtlAttFmt = pixFmts->getMTLPixelFormat(vkAttFmt);
-    _rpsKey.attachmentMTLPixelFormats[kMVKClearAttachmentDepthStencilIndex] = mtlAttFmt;
+	_rpsKey.attachmentMTLPixelFormats[kMVKClearAttachmentDepthIndex] = pixFmts->getMTLPixelFormat(subpass->getDepthFormat());
+	if ( !subpass->isDepthAttachmentUsed() ) { _rpsKey.disableAttachment(kMVKClearAttachmentDepthIndex); }
 
-	bool isClearingDepth = _isClearingDepth && pixFmts->isDepthFormat(mtlAttFmt);
-	bool isClearingStencil = _isClearingStencil && pixFmts->isStencilFormat(mtlAttFmt);
-    if (!isClearingDepth && !isClearingStencil) {
-        // If the subpass attachment isn't actually used, don't try to clear it.
-        _rpsKey.disableAttachment(kMVKClearAttachmentDepthStencilIndex);
-    }
+	_rpsKey.attachmentMTLPixelFormats[kMVKClearAttachmentStencilIndex] = pixFmts->getMTLPixelFormat(subpass->getStencilFormat());
+	if ( !subpass->isStencilAttachmentUsed() ) { _rpsKey.disableAttachment(kMVKClearAttachmentStencilIndex); }
 
-	if (!_rpsKey.isAnyAttachmentEnabled()) {
-		// Nothing to do.
-		return;
-	}
+	if ( !_rpsKey.isAnyAttachmentEnabled() ) { return; }
 
     // Render the clear colors to the attachments
 	MVKCommandEncodingPool* cmdEncPool = cmdEncoder->getCommandEncodingPool();
     id<MTLRenderCommandEncoder> mtlRendEnc = cmdEncoder->_mtlRenderEncoder;
-    [mtlRendEnc pushDebugGroup: @"vkCmdClearAttachments"];
+    [mtlRendEnc pushDebugGroup: getMTLDebugGroupLabel()];
     [mtlRendEnc setRenderPipelineState: cmdEncPool->getCmdClearMTLRenderPipelineState(_rpsKey)];
-    [mtlRendEnc setDepthStencilState: cmdEncPool->getMTLDepthStencilState(isClearingDepth, isClearingStencil)];
+    [mtlRendEnc setDepthStencilState: cmdEncPool->getMTLDepthStencilState(_rpsKey.isAttachmentUsed(kMVKClearAttachmentDepthIndex),
+																		  _rpsKey.isAttachmentUsed(kMVKClearAttachmentStencilIndex))];
     [mtlRendEnc setStencilReferenceValue: _mtlStencilValue];
     [mtlRendEnc setCullMode: MTLCullModeNone];
     [mtlRendEnc setTriangleFillMode: MTLTriangleFillModeFill];
     [mtlRendEnc setDepthBias: 0 slopeScale: 0 clamp: 0];
     [mtlRendEnc setViewport: {0, 0, (double) fbExtent.width, (double) fbExtent.height, 0.0, 1.0}];
     [mtlRendEnc setScissorRect: {0, 0, fbExtent.width, fbExtent.height}];
+	[mtlRendEnc setVisibilityResultMode: MTLVisibilityResultModeDisabled
+								 offset: cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset];
 
     cmdEncoder->setVertexBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0, true);
     cmdEncoder->setFragmentBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0, true);
@@ -1504,6 +1496,17 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->_depthBiasState.markDirty();
     cmdEncoder->_viewportState.markDirty();
     cmdEncoder->_scissorState.markDirty();
+}
+
+template <size_t N>
+NSString* MVKCmdClearAttachments<N>::getMTLDebugGroupLabel() {
+	switch (_commandUse) {
+		case kMVKCommandUseClearAttachments:    return @"vkCmdClearAttachments";
+		case kMVKCommandUseBeginRenderPass:     return @"Clear Render Area on Begin Renderpass";
+		case kMVKCommandUseBeginRendering:      return @"Clear Render Area on Begin Rendering";
+		case kMVKCommandUseNextSubpass:         return @"Clear Render Area on Next Subpass";
+		default:                                return @"Unknown Use Clear Attachments";
+	}
 }
 
 template class MVKCmdClearAttachments<1>;
@@ -1577,7 +1580,7 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
             // Luckily for us, linear images only have one mip and one array layer under Metal.
             assert( !isDS );
             id<MTLComputePipelineState> mtlClearState = cmdEncoder->getCommandEncodingPool()->getCmdClearColorImageMTLComputePipelineState(pixFmts->getFormatType(_image->getVkFormat()));
-            id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseClearColorImage);
+            id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseClearColorImage, true);
             [mtlComputeEnc pushDebugGroup: @"vkCmdClearColorImage"];
             [mtlComputeEnc setComputePipelineState: mtlClearState];
             [mtlComputeEnc setTexture: imgMTLTex atIndex: 0];
@@ -1744,7 +1747,7 @@ void MVKCmdFillBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 	NSUInteger tgWidth = std::min(cps.maxTotalThreadsPerThreadgroup, cmdEncoder->getMTLDevice().maxThreadsPerThreadgroup.width);
 	NSUInteger tgCount = _wordCount / tgWidth;
 
-	id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseFillBuffer);
+	id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseFillBuffer, true);
 	[mtlComputeEnc pushDebugGroup: @"vkCmdFillBuffer"];
 	[mtlComputeEnc setComputePipelineState: cps];
 	[mtlComputeEnc setBytes: &_dataValue length: sizeof(_dataValue) atIndex: 1];

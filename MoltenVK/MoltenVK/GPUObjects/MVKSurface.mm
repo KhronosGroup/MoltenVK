@@ -42,8 +42,6 @@ MVKSurface::MVKSurface(MVKInstance* mvkInstance,
 					   const Vk_PLATFORM_SurfaceCreateInfoMVK* pCreateInfo,
 					   const VkAllocationCallbacks* pAllocator) : _mvkInstance(mvkInstance) {
 
-//	MVKLogInfo("%s(): This function is obsolete. Consider using the vkCreateMetalSurfaceEXT() function from the VK_EXT_metal_surface extension instead.", STR(vkCreate_PLATFORM_SurfaceMVK));
-
 	// Get the platform object contained in pView
 	id<NSObject> obj = (id<NSObject>)pCreateInfo->pView;
 

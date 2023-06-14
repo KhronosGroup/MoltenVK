@@ -20,8 +20,7 @@
 #pragma once
 
 
-#include "MVKCommonEnvironment.h"
-#include "mvk_vulkan.h"
+#include "MVKEnvironment.h"
 #include <algorithm>
 #include <cassert>
 #include <limits>
@@ -71,6 +70,7 @@ typedef enum : uint8_t {
     kMVKCommandUseQueueWaitIdle,                /**< vkQueueWaitIdle. */
     kMVKCommandUseDeviceWaitIdle,               /**< vkDeviceWaitIdle. */
 	kMVKCommandUseInvalidateMappedMemoryRanges, /**< vkInvalidateMappedMemoryRanges. */
+	kMVKCommandUseBeginRendering,               /**< vkCmdBeginRendering. */
     kMVKCommandUseBeginRenderPass,              /**< vkCmdBeginRenderPass. */
     kMVKCommandUseNextSubpass,                  /**< vkCmdNextSubpass. */
 	kMVKCommandUseRestartSubpass,               /**< Restart a subpass because of explicit or implicit barrier. */
@@ -85,6 +85,7 @@ typedef enum : uint8_t {
     kMVKCommandUseCopyImageToBuffer,            /**< vkCmdCopyImageToBuffer. */
     kMVKCommandUseFillBuffer,                   /**< vkCmdFillBuffer. */
     kMVKCommandUseUpdateBuffer,                 /**< vkCmdUpdateBuffer. */
+	kMVKCommandUseClearAttachments,             /**< vkCmdClearAttachments. */
     kMVKCommandUseClearColorImage,              /**< vkCmdClearColorImage. */
     kMVKCommandUseClearDepthStencilImage,       /**< vkCmdClearDepthStencilImage. */
     kMVKCommandUseResetQueryPool,               /**< vkCmdResetQueryPool. */
@@ -137,8 +138,7 @@ static inline std::string mvkGetMoltenVKVersionString(uint32_t mvkVersion) {
 
 /** Returns whether the specified positive value is a power-of-two. */
 template<typename T>
-static inline bool mvkIsPowerOfTwo(T value) {
-	// Test POT:  (x != 0) && ((x & (x - 1)) == 0)
+static constexpr bool mvkIsPowerOfTwo(T value) {
 	return value && ((value & (value - 1)) == 0);
 }
 
@@ -148,7 +148,7 @@ static inline bool mvkIsPowerOfTwo(T value) {
  * that is larger than the specified value is returned.
  */
 template<typename T>
-static inline T mvkEnsurePowerOfTwo(T value) {
+static constexpr T mvkEnsurePowerOfTwo(T value) {
 	if (mvkIsPowerOfTwo(value)) { return value; }
 
 	T pot = 1;
@@ -163,7 +163,7 @@ static inline T mvkEnsurePowerOfTwo(T value) {
  * This implementation returns zero for both zero and one as inputs.
  */
 template<typename T>
-static inline T mvkPowerOfTwoExponent(T value) {
+static constexpr T mvkPowerOfTwoExponent(T value) {
     T p2Value = mvkEnsurePowerOfTwo(value);
 
     // Count the trailing zeros
@@ -184,7 +184,7 @@ static inline T mvkPowerOfTwoExponent(T value) {
  * This is a low level utility method. Usually you will use the convenience functions
  * mvkAlignAddress() and mvkAlignByteCount() to align addresses and offsets respectively.
  */
-static inline uintptr_t mvkAlignByteRef(uintptr_t byteRef, uintptr_t byteAlignment, bool alignDown = false) {
+static constexpr uintptr_t mvkAlignByteRef(uintptr_t byteRef, uintptr_t byteAlignment, bool alignDown = false) {
 	if (byteAlignment == 0) { return byteRef; }
 
 	assert(mvkIsPowerOfTwo(byteAlignment));
@@ -213,8 +213,46 @@ static inline void* mvkAlignAddress(void* address, uintptr_t byteAlignment, bool
  * which will be greater than or equal to the original offset if alignDown is false, or less
  * than or equal to the original offset if alignDown is true.
  */
-static inline uintptr_t mvkAlignByteCount(uintptr_t byteCount, uintptr_t byteAlignment, bool alignDown = false) {
+static constexpr uint64_t mvkAlignByteCount(uint64_t byteCount, uint64_t byteAlignment, bool alignDown = false) {
 	return mvkAlignByteRef(byteCount, byteAlignment, alignDown);
+}
+
+/**
+ * Compile time indication if the struct contains a specific member.
+ *
+ * If S::mbr is well-formed because the struct contains that member, the decltype() and
+ * comma operator together trigger a true_type, otherwise it falls back to a false_type.
+ *
+ * Credit to: https://fekir.info/post/detect-member-variables/
+ */
+#define mvk_define_has_member(mbr) \
+	template <typename T, typename = void> struct mvk_has_##mbr : std::false_type {}; \
+	template <typename T> struct mvk_has_##mbr<T, decltype((void)T::mbr, void())> : std::true_type {};
+
+mvk_define_has_member(pNext);	// Defines the mvk_has_pNext() function.
+
+/** Returns the address of the first member of a structure, which is just the address of the structure. */
+template <typename S>
+void* mvkGetAddressOfFirstMember(const S* pStruct, std::false_type){
+	return (void*)pStruct;
+}
+
+/**
+ * Returns the address of the first member of a Vulkan structure containing a pNext member.
+ * The first member is the one after the pNext member.
+ */
+template <class S>
+void* mvkGetAddressOfFirstMember(const S* pStruct, std::true_type){
+	return (void*)(&(pStruct->pNext) + 1);
+}
+
+/**
+ * Returns the address of the first member of a structure. If the structure is a Vulkan
+ * structure containing a pNext member, the first member is the one after the pNext member.
+ */
+template <class S>
+void* mvkGetAddressOfFirstMember(const S* pStruct){
+	return mvkGetAddressOfFirstMember(pStruct, mvk_has_pNext<S>{});
 }
 
 /**
@@ -254,22 +292,22 @@ static inline VkExtent2D mvkVkExtent2DFromVkExtent3D(VkExtent3D e) { return {e.w
 static inline VkExtent3D mvkVkExtent3DFromVkExtent2D(VkExtent2D e) { return {e.width, e.height, 1U }; }
 
 /** Returns whether the two Vulkan extents are equal by comparing their respective components. */
-static inline bool mvkVkExtent2DsAreEqual(VkExtent2D e1, VkExtent2D e2) {
+static constexpr bool mvkVkExtent2DsAreEqual(VkExtent2D e1, VkExtent2D e2) {
 	return (e1.width == e2.width) && (e1.height == e2.height);
 }
 
 /** Returns whether the two Vulkan extents are equal by comparing their respective components. */
-static inline bool mvkVkExtent3DsAreEqual(VkExtent3D e1, VkExtent3D e2) {
+static constexpr bool mvkVkExtent3DsAreEqual(VkExtent3D e1, VkExtent3D e2) {
 	return (e1.width == e2.width) && (e1.height == e2.height) && (e1.depth == e2.depth);
 }
 
 /** Returns whether the two Vulkan offsets are equal by comparing their respective components. */
-static inline bool mvkVkOffset2DsAreEqual(VkOffset2D os1, VkOffset2D os2) {
+static constexpr bool mvkVkOffset2DsAreEqual(VkOffset2D os1, VkOffset2D os2) {
 	return (os1.x == os2.x) && (os1.y == os2.y);
 }
 
 /** Returns whether the two Vulkan offsets are equal by comparing their respective components. */
-static inline bool mvkVkOffset3DsAreEqual(VkOffset3D os1, VkOffset3D os2) {
+static constexpr bool mvkVkOffset3DsAreEqual(VkOffset3D os1, VkOffset3D os2) {
 	return (os1.x == os2.x) && (os1.y == os2.y) && (os1.z == os2.z);
 }
 
@@ -286,9 +324,9 @@ static inline VkOffset3D mvkVkOffset3DDifference(VkOffset3D minuend, VkOffset3D 
 }
 
 /** Packs the four swizzle components into a single 32-bit word. */
-static inline uint32_t mvkPackSwizzle(VkComponentMapping components) {
-	return ((components.r & 0xFF) << 0) | ((components.g & 0xFF) << 8) |
-	((components.b & 0xFF) << 16) | ((components.a & 0xFF) << 24);
+static constexpr uint32_t mvkPackSwizzle(VkComponentMapping components) {
+	return (((components.r & 0xFF) << 0) | ((components.g & 0xFF) << 8) |
+			((components.b & 0xFF) << 16) | ((components.a & 0xFF) << 24));
 }
 
 /** Unpacks a single 32-bit word containing four swizzle components. */
@@ -311,9 +349,9 @@ static inline VkComponentMapping mvkUnpackSwizzle(uint32_t packed) {
  *   3) Either cs1 or cs2 is VK_COMPONENT_SWIZZLE_MAX_ENUM, which is considered a wildcard,
  *      and matches any value.
  */
-static inline bool mvkVKComponentSwizzlesMatch(VkComponentSwizzle cs1,
-											   VkComponentSwizzle cs2,
-											   VkComponentSwizzle csPos) {
+static constexpr bool mvkVKComponentSwizzlesMatch(VkComponentSwizzle cs1,
+										   VkComponentSwizzle cs2,
+										   VkComponentSwizzle csPos) {
 	return ((cs1 == cs2) ||
 			((cs1 == VK_COMPONENT_SWIZZLE_IDENTITY) && (cs2 == csPos)) ||
 			((cs2 == VK_COMPONENT_SWIZZLE_IDENTITY) && (cs1 == csPos)) ||
@@ -328,7 +366,7 @@ static inline bool mvkVKComponentSwizzlesMatch(VkComponentSwizzle cs1,
  * A component value of VK_COMPONENT_SWIZZLE_MAX_ENUM is considered a wildcard and matches
  * any value in the corresponding component in the other mapping.
  */
-static inline bool mvkVkComponentMappingsMatch(VkComponentMapping cm1, VkComponentMapping cm2) {
+static constexpr bool mvkVkComponentMappingsMatch(VkComponentMapping cm1, VkComponentMapping cm2) {
 	return (mvkVKComponentSwizzlesMatch(cm1.r, cm2.r, VK_COMPONENT_SWIZZLE_R) &&
 			mvkVKComponentSwizzlesMatch(cm1.g, cm2.g, VK_COMPONENT_SWIZZLE_G) &&
 			mvkVKComponentSwizzlesMatch(cm1.b, cm2.b, VK_COMPONENT_SWIZZLE_B) &&
@@ -339,10 +377,12 @@ static inline bool mvkVkComponentMappingsMatch(VkComponentMapping cm1, VkCompone
 #define mvkPrintSizeOf(type)    printf("Size of " #type " is %lu.\n", sizeof(type))
 
 
-#pragma mark -
-#pragma mark Template functions
-
 #pragma mark Math
+
+/** Rounds the value to nearest integer using half-to-even rounding. */
+static inline double mvkRoundHalfToEven(const double val) {
+	return val - std::remainder(val, 1.0);	// remainder() uses half-to-even rounding, and unfortunately isn't constexpr until C++23.
+}
 
 /** Returns whether the value will fit inside the numeric type. */
 template<typename T, typename Tval>
@@ -481,7 +521,7 @@ void mvkReleaseContainerContents(C& container) {
 
 /** Returns whether the container contains an item equal to the value. */
 template<class C, class T>
-bool contains(C& container, const T& val) {
+bool mvkContains(C& container, const T& val) {
 	for (const T& cVal : container) { if (cVal == val) { return true; } }
 	return false;
 }
@@ -550,12 +590,13 @@ bool mvkAreEqual(const T* pV1, const T* pV2, size_t count = 1) {
 }
 
 /**
- * If both pV1 and pV2 are not null, returns whether the contents of the two strings are equal,
- * otherwise returns false. This functionality is different than the char version of mvkAreEqual(),
+ * Returns whether the contents of the two strings are equal, otherwise returns false.
+ * This functionality is different than the char version of mvkAreEqual(),
  * which works on individual chars or char arrays, not strings.
+ * Returns false if either string is null.
  */
-static inline bool mvkStringsAreEqual(const char* pV1, const char* pV2, size_t count = 1) {
-	return (pV1 && pV2) ? (strcmp(pV1, pV2) == 0) : false;
+static constexpr bool mvkStringsAreEqual(const char* pV1, const char* pV2, size_t count = 1) {
+	return pV1 && pV2 && (pV1 == pV2 || strcmp(pV1, pV2) == 0);
 }
 
 /**
@@ -571,7 +612,7 @@ static inline bool mvkStringsAreEqual(const char* pV1, const char* pV2, size_t c
  * If the destination pointer is NULL, does nothing, and returns false.
  */
 template<typename T>
-bool mvkSetOrClear(T* pDest, const T* pSrc) {
+static constexpr bool mvkSetOrClear(T* pDest, const T* pSrc) {
     if (pDest && pSrc) {
         *pDest = *pSrc;
         return true;
@@ -593,17 +634,17 @@ void mvkDisableFlags(Tv& value, const Tm bitMask) { value = (Tv)(value & ~(Tv)bi
 
 /** Returns whether the specified value has ANY of the flags specified in bitMask enabled (set to 1). */
 template<typename Tv, typename Tm>
-bool mvkIsAnyFlagEnabled(Tv value, const Tm bitMask) { return ((value & bitMask) != 0); }
+static constexpr bool mvkIsAnyFlagEnabled(Tv value, const Tm bitMask) { return ((value & bitMask) != 0); }
 
 /** Returns whether the specified value has ALL of the flags specified in bitMask enabled (set to 1). */
 template<typename Tv, typename Tm>
-bool mvkAreAllFlagsEnabled(Tv value, const Tm bitMask) { return ((value & bitMask) == bitMask); }
+static constexpr bool mvkAreAllFlagsEnabled(Tv value, const Tm bitMask) { return ((value & bitMask) == bitMask); }
 
 /** Returns whether the specified value has ONLY one or more of the flags specified in bitMask enabled (set to 1), and none others. */
 template<typename Tv, typename Tm>
-bool mvkIsOnlyAnyFlagEnabled(Tv value, const Tm bitMask) { return (mvkIsAnyFlagEnabled(value, bitMask) && ((value | bitMask) == bitMask)); }
+static constexpr bool mvkIsOnlyAnyFlagEnabled(Tv value, const Tm bitMask) { return (mvkIsAnyFlagEnabled(value, bitMask) && ((value | bitMask) == bitMask)); }
 
 /** Returns whether the specified value has ONLY ALL of the flags specified in bitMask enabled (set to 1), and none others. */
 template<typename Tv, typename Tm>
-bool mvkAreOnlyAllFlagsEnabled(Tv value, const Tm bitMask) { return (value == bitMask); }
+static constexpr bool mvkAreOnlyAllFlagsEnabled(Tv value, const Tm bitMask) { return (value == bitMask); }
 

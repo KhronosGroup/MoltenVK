@@ -27,6 +27,17 @@
 
 namespace mvk {
 
+
+#pragma mark -
+#pragma mark SPIRVToMSLConversionResult
+
+	/** The results of a GLSL to SPIRV conversion. */
+	typedef struct GLSLToSPIRVConversionResult {
+		std::vector<uint32_t> spirv;
+		std::string resultLog;
+	} GLSLToSPIRVConversionResult;
+
+
 #pragma mark -
 #pragma mark GLSLToSPIRVConverter
 
@@ -50,8 +61,7 @@ namespace mvk {
 		/**
 		 * Sets the GLSL source code that is to be converted to the specified strings.
 		 * 
-		 * A separate shader will be compiled for each source and linked together into a single
-		 * program.
+		 * A separate shader will be compiled for each source and linked together into a single program.
 		 */
 		void setGLSLs(const std::vector<std::string>& glslSrcs);
 
@@ -67,36 +77,20 @@ namespace mvk {
 		 * The boolean flags indicate whether the original GLSL code and resulting SPIR-V code should
 		 * be logged to the result log of this converter. This can be useful during shader debugging.
 		 */
-		bool convert(MVKGLSLConversionShaderStage shaderStage, bool shouldLogGLSL, bool shouldLogSPIRV);
-
-		/**
-		 * Returns whether the most recent conversion was successful.
-		 *
-		 * The initial value of this property is NO. It is set to YES upon successful conversion.
-		 */
-		bool wasConverted() { return _wasConverted; }
-
-		/** Returns the SPIRV code most recently converted by the convert() function. */
-		const std::vector<uint32_t>& getSPIRV() { return _spirv; }
-
-		/**
-		 * Returns a human-readable log of the most recent conversion activity.
-		 * This may be empty if the conversion was successful.
-		 */
-		const std::string& getResultLog() { return _resultLog; }
+		bool convert(MVKGLSLConversionShaderStage shaderStage,
+					 GLSLToSPIRVConversionResult& conversionResult,
+					 bool shouldLogGLSL,
+					 bool shouldLogSPIRV);
 
 	protected:
-		void logMsg(const char* logMsg);
-		bool logError(const char* errMsg);
-		void logGLSL(const char* opDesc);
-		void logSPIRV(const char* opDesc);
-		bool validateSPIRV();
+		void logMsg(std::string& log, const char* logMsg);
+		bool logError(std::string& log, const char* errMsg);
+		void logGLSL(std::string& log, const char* opDesc);
+		void logSPIRV(GLSLToSPIRVConversionResult& conversionResult, const char* opDesc);
+		bool validateSPIRV(std::vector<uint32_t> spirv);
 		void initGLSLCompilerResources();
 
 		std::vector<std::string> _glsls;
-		std::vector<uint32_t> _spirv;
-		std::string _resultLog;
-		bool _wasConverted = false;
 	};
 
 }

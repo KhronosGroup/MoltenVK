@@ -459,6 +459,8 @@ public:
 
 	MVKFenceSitter(bool waitAll) : _blocker(waitAll, 0) {}
 
+	~MVKFenceSitter() override { [_listener release]; }
+
 private:
 	friend class MVKFence;
 	friend class MVKTimelineSemaphoreMTLEvent;

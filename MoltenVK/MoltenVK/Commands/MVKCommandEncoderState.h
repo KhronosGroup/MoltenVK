@@ -64,8 +64,7 @@ public:
     /**
      * Called automatically when a Metal render pass begins. If the contents have been
      * modified from the default values, this instance is marked as dirty, so the contents
-     * will be encoded to Metal, otherwise it is marked as clean, so the contents will NOT
-     * be encoded. Default state can be left unencoded on a new Metal encoder.
+     * will be encoded to Metal. Default state can be left unencoded on a new Metal encoder.
      */
 	virtual void beginMetalRenderPass() { if (_isModified) { markDirty(); } }
 
@@ -75,8 +74,7 @@ public:
 	/**
 	 * Called automatically when a Metal compute pass begins. If the contents have been
 	 * modified from the default values, this instance is marked as dirty, so the contents
-	 * will be encoded to Metal, otherwise it is marked as clean, so the contents will NOT
-	 * be encoded. Default state can be left unencoded on a new Metal encoder.
+	 * will be encoded to Metal. Default state can be left unencoded on a new Metal encoder.
 	 */
 	virtual void beginMetalComputeEncoding() { if (_isModified) { markDirty(); } }
 
@@ -154,7 +152,7 @@ public:
 protected:
     void encodeImpl(uint32_t stage) override;
 
-    MVKSmallVector<VkViewport, kMVKCachedViewportScissorCount> _viewports, _dynamicViewports;
+    MVKSmallVector<VkViewport, kMVKMaxViewportScissorCount> _viewports, _dynamicViewports;
 };
 
 
@@ -182,7 +180,7 @@ public:
 protected:
     void encodeImpl(uint32_t stage) override;
 
-    MVKSmallVector<VkRect2D, kMVKCachedViewportScissorCount> _scissors, _dynamicScissors;
+    MVKSmallVector<VkRect2D, kMVKMaxViewportScissorCount> _scissors, _dynamicScissors;
 };
 
 
@@ -357,11 +355,11 @@ public:
 						   MVKArrayRef<uint32_t> dynamicOffsets,
 						   uint32_t& dynamicOffsetIndex);
 
-	/** Encodes the Metal resource to the Metal command encoder. */
-	virtual void encodeArgumentBufferResourceUsage(MVKShaderStage stage,
-												   id<MTLResource> mtlResource,
-												   MTLResourceUsage mtlUsage,
-												   MTLRenderStages mtlStages) = 0;
+	/** Encodes the indirect use of the Metal resource to the Metal command encoder. */
+	virtual void encodeResourceUsage(MVKShaderStage stage,
+									 id<MTLResource> mtlResource,
+									 MTLResourceUsage mtlUsage,
+									 MTLRenderStages mtlStages) = 0;
 
 	void markDirty() override;
 
@@ -550,10 +548,10 @@ public:
                         std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
                         std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler);
 
-	void encodeArgumentBufferResourceUsage(MVKShaderStage stage,
-										   id<MTLResource> mtlResource,
-										   MTLResourceUsage mtlUsage,
-										   MTLRenderStages mtlStages) override;
+	void encodeResourceUsage(MVKShaderStage stage,
+							 id<MTLResource> mtlResource,
+							 MTLResourceUsage mtlUsage,
+							 MTLRenderStages mtlStages) override;
 
 	/** Offset all buffers for vertex attribute bindings with zero divisors by the given number of strides. */
 	void offsetZeroDivisorVertexBuffers(MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);
@@ -567,6 +565,8 @@ public:
 	/** Marks any overridden buffer indexes as dirty. */
 	void markOverriddenBufferIndexesDirty();
 
+	void endMetalRenderPass() override;
+
 	void markDirty() override;
 
 #pragma mark Construction
@@ -579,6 +579,7 @@ protected:
 	void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) override;
 
     ResourceBindings<8> _shaderStageResourceBindings[kMVKShaderStageFragment + 1];
+	std::unordered_map<id<MTLResource>, MTLRenderStages> _renderUsageStages;
 };
 
 
@@ -611,10 +612,10 @@ public:
 	/** Sets the current dynamic offset buffer state. */
 	void bindDynamicOffsetBuffer(const MVKShaderImplicitRezBinding& binding, bool needDynamicOffsetBuffer);
 
-	void encodeArgumentBufferResourceUsage(MVKShaderStage stage,
-										   id<MTLResource> mtlResource,
-										   MTLResourceUsage mtlUsage,
-										   MTLRenderStages mtlStages) override;
+	void encodeResourceUsage(MVKShaderStage stage,
+							 id<MTLResource> mtlResource,
+							 MTLResourceUsage mtlUsage,
+							 MTLRenderStages mtlStages) override;
 
 	/**
 	 * Marks the buffer binding using the index as having been overridden,
@@ -673,6 +674,7 @@ protected:
 
 	MVKSmallVector<OcclusionQueryLocation> _mtlRenderPassQueries;
     MTLVisibilityResultMode _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	bool _hasRasterized = false;
 };
 
 
