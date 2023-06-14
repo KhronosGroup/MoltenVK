@@ -404,6 +404,7 @@ protected:
 	MTLFeatureSet getMaximalMTLFeatureSet();
     void initMetalFeatures();
 	void initFeatures();
+	void initMTLDevice();
 	void initProperties();
 	void initLimits();
 	void initGPUInfoProperties();
