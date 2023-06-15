@@ -4411,6 +4411,51 @@ void MVKDevice::stopAutoGPUCapture(MVKConfigAutoGPUCaptureScope autoGPUCaptureSc
 	}
 }
 
+void MVKDevice::stopGPUCapture() {
+    if (_isCurrentlyGPUCapturing) {
+        [[MTLCaptureManager sharedCaptureManager] stopCapture];
+        _isCurrentlyGPUCapturing = false;
+        MVKLogInfo("Stopping manual capture.");
+    }
+}
+
+void MVKDevice::startGPUCapture(id mtlCaptureObject) {
+    _isCurrentlyGPUCapturing = true;
+
+    @autoreleasepool {
+        MTLCaptureManager *captureMgr = [MTLCaptureManager sharedCaptureManager];
+
+        // Before macOS 10.15 and iOS 13.0, captureDesc will just be nil
+        MTLCaptureDescriptor *captureDesc = [[MTLCaptureDescriptor new] autorelease];
+        captureDesc.captureObject = mtlCaptureObject;
+        captureDesc.destination = MTLCaptureDestinationDeveloperTools;
+
+        const char* filePath = mvkConfig().autoGPUCaptureOutputFilepath;
+        if (strlen(filePath)) {
+            if ([captureMgr respondsToSelector: @selector(supportsDestination:)] &&
+                [captureMgr supportsDestination: MTLCaptureDestinationGPUTraceDocument] ) {
+
+                NSString* expandedFilePath = [[NSString stringWithUTF8String: filePath] stringByExpandingTildeInPath];
+                MVKLogInfo("Capturing GPU trace to file %s.", expandedFilePath.UTF8String);
+
+                captureDesc.destination = MTLCaptureDestinationGPUTraceDocument;
+                captureDesc.outputURL = [NSURL fileURLWithPath: expandedFilePath];
+            } else {
+                reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Capturing GPU traces to a file requires macOS 10.15 or iOS 13.0 and GPU capturing to be enabled.");
+            }
+
+            if ([captureMgr respondsToSelector: @selector(startCaptureWithDescriptor:error:)] ) {
+                NSError *err = nil;
+                if ( ![captureMgr startCaptureWithDescriptor: captureDesc error: &err] ) {
+                    reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to automatically start GPU capture session (Error code %li): %s", (long)err.code, err.localizedDescription.UTF8String);
+                }
+            }
+        } else {
+            MVKLogWarning("No file path set for manual GPU capture.");
+        }
+    }
+}
+
 void MVKDevice::getMetalObjects(VkExportMetalObjectsInfoEXT* pMetalObjectsInfo) {
 	for (auto* next = (VkBaseOutStructure*)pMetalObjectsInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
@@ -4499,11 +4544,36 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_commandResourceFactory = new MVKCommandResourceFactory(this);
 
 	startAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE, getMTLDevice());
+    initManualGPUCapture();
 
 	MVKLogInfo("Created VkDevice to run on GPU %s with the following %d Vulkan extensions enabled:%s",
 			   _pProperties->deviceName,
 			   _enabledExtensions.getEnabledCount(),
 			   _enabledExtensions.enabledNamesString("\n\t\t", true).c_str());
+}
+
+void MVKDevice::initManualGPUCapture() {
+#if MVK_MACOS && !MVK_MACCAT
+    const char* filePath = mvkConfig().gpuCaptureOutputFilepath;
+    if (strlen(filePath)) {
+        NSEventModifierFlags shortcutModifierFlags = NSEventModifierFlagCommand | NSEventModifierFlagShift;
+        NSString *shortcutKey = @"C";
+
+        NSEvent* (^keyDownEventBlock)(NSEvent *) = ^(NSEvent *event) {
+            NSEventModifierFlags modifiers = [event modifierFlags] & shortcutModifierFlags;
+            NSString *charactersIgnoringModifiers = [[event charactersIgnoringModifiers] uppercaseString];
+            
+            if (modifiers == shortcutModifierFlags && [charactersIgnoringModifiers isEqualToString:shortcutKey]) {
+                handleKeyboardShortcut();
+                return event;
+            }
+            
+            return event;
+        };
+
+        [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown handler:keyDownEventBlock];
+    }
+#endif
 }
 
 void MVKDevice::initPerformanceTracking() {
@@ -4821,6 +4891,14 @@ void MVKDevice::reservePrivateData(const VkDeviceCreateInfo* pCreateInfo) {
 		_privateDataSlots.push_back(new MVKPrivateDataSlot(this));
 		_privateDataSlotsAvailability.push_back(true);
 	}
+}
+
+void MVKDevice::handleKeyboardShortcut() {
+    if (_isCurrentlyGPUCapturing) {
+        stopGPUCapture();
+    } else {
+        startGPUCapture(getMTLDevice());
+    }
 }
 
 MVKDevice::~MVKDevice() {
