@@ -56,7 +56,7 @@ public:
     virtual void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder);
 
     /** Finishes the specified queries and marks them as available. */
-    virtual void finishQueries(const MVKArrayRef<uint32_t> queries);
+    virtual void finishQueries(MVKArrayRef<const uint32_t> queries);
 
 	/** Resets the results and availability status of the specified queries. */
 	virtual void resetResults(uint32_t firstQuery, uint32_t queryCount, MVKCommandEncoder* cmdEncoder);
@@ -212,7 +212,7 @@ class MVKTimestampQueryPool : public MVKGPUCounterQueryPool {
 
 public:
 	void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) override;
-	void finishQueries(const MVKArrayRef<uint32_t> queries) override;
+	void finishQueries(MVKArrayRef<const uint32_t> queries) override;
 
 #pragma mark Construction
 

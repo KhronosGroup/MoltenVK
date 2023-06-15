@@ -479,18 +479,16 @@ std::size_t mvkHash(const N* pVals, std::size_t count = 1, std::size_t seed = 53
 template<typename Type>
 struct MVKArrayRef {
 public:
-	constexpr const Type* begin() const { return _data; }
-	constexpr const Type* end() const { return &_data[_size]; }
-	constexpr const Type* data() const { return _data; }
-	constexpr Type* begin() { return _data; }
-	constexpr Type* end() { return &_data[_size]; }
-	constexpr Type* data() { return _data; }
-	constexpr const size_t size() const { return _size; }
-	constexpr const size_t byteSize() const { return _size * sizeof(Type); }
-	constexpr const Type& operator[]( const size_t i ) const { return _data[i]; }
-	constexpr Type& operator[]( const size_t i ) { return _data[i]; }
+	constexpr Type* begin() const { return _data; }
+	constexpr Type* end() const { return &_data[_size]; }
+	constexpr Type* data() const { return _data; }
+	constexpr size_t size() const { return _size; }
+	constexpr size_t byteSize() const { return _size * sizeof(Type); }
+	constexpr Type& operator[]( const size_t i ) const { return _data[i]; }
 	constexpr MVKArrayRef() : MVKArrayRef(nullptr, 0) {}
 	constexpr MVKArrayRef(Type* d, size_t s) : _data(d), _size(s) {}
+	template <typename Other, std::enable_if_t<std::is_convertible_v<Other(*)[], Type(*)[]>, bool> = true>
+	constexpr MVKArrayRef(MVKArrayRef<Other> other) : _data(other.data()), _size(other.size()) {}
 
 protected:
 	Type* _data;

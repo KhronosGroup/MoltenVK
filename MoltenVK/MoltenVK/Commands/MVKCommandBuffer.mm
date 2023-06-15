@@ -310,7 +310,7 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 }
 
 // Promote the initial visibility buffer and indication of timestamp use from the secondary buffers.
-void MVKCommandBuffer::recordExecuteCommands(const MVKArrayRef<MVKCommandBuffer*> secondaryCommandBuffers) {
+void MVKCommandBuffer::recordExecuteCommands(MVKArrayRef<MVKCommandBuffer*const> secondaryCommandBuffers) {
 	for (MVKCommandBuffer* cmdBuff : secondaryCommandBuffers) {
 		if (cmdBuff->_needsVisibilityResultMTLBuffer) { _needsVisibilityResultMTLBuffer = true; }
 		if (cmdBuff->_hasStageCounterTimestampCommand) { _hasStageCounterTimestampCommand = true; }

@@ -54,7 +54,7 @@ void MVKPipelineCommandEncoderState::encodeImpl(uint32_t stage) {
 #pragma mark -
 #pragma mark MVKViewportCommandEncoderState
 
-void MVKViewportCommandEncoderState::setViewports(const MVKArrayRef<VkViewport> viewports,
+void MVKViewportCommandEncoderState::setViewports(MVKArrayRef<const VkViewport> viewports,
 												  uint32_t firstViewport,
 												  bool isSettingDynamically) {
 
@@ -107,7 +107,7 @@ void MVKViewportCommandEncoderState::encodeImpl(uint32_t stage) {
 #pragma mark -
 #pragma mark MVKScissorCommandEncoderState
 
-void MVKScissorCommandEncoderState::setScissors(const MVKArrayRef<VkRect2D> scissors,
+void MVKScissorCommandEncoderState::setScissors(MVKArrayRef<const VkRect2D> scissors,
                                                 uint32_t firstScissor,
 												bool isSettingDynamically) {
 
@@ -594,7 +594,7 @@ void MVKResourcesCommandEncoderState::markDirty() {
 }
 
 // If a swizzle is needed for this stage, iterates all the bindings and logs errors for those that need texture swizzling.
-void MVKResourcesCommandEncoderState::assertMissingSwizzles(bool needsSwizzle, const char* stageName, const MVKArrayRef<MVKMTLTextureBinding> texBindings) {
+void MVKResourcesCommandEncoderState::assertMissingSwizzles(bool needsSwizzle, const char* stageName, MVKArrayRef<const MVKMTLTextureBinding> texBindings) {
 	if (needsSwizzle) {
 		for (auto& tb : texBindings) {
 			VkComponentMapping vkcm = mvkUnpackSwizzle(tb.swizzle);
@@ -684,7 +684,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stag
                                                              const char* pStageName,
                                                              bool fullImageViewSwizzle,
                                                              std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&)> bindBuffer,
-                                                             std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, const MVKArrayRef<uint32_t>)> bindImplicitBuffer,
+                                                             std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, MVKArrayRef<const uint32_t>)> bindImplicitBuffer,
                                                              std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
                                                              std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler) {
 
@@ -795,7 +795,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                                                                                              offset: b.offset
                                                                                                             atIndex: b.index];
                        },
-                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, const MVKArrayRef<uint32_t> s)->void {
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKArrayRef<const uint32_t> s)->void {
                            cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
                                                        s.data(),
                                                        s.byteSize(),
@@ -846,7 +846,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                b.isDirty = true;	// We haven't written it out, so leave dirty until next time.
 						   }
                        },
-                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, const MVKArrayRef<uint32_t> s)->void {
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKArrayRef<const uint32_t> s)->void {
                            cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
                                                       s.data(),
                                                       s.byteSize(),
@@ -879,7 +879,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                                                                                              offset: b.offset
                                                                                                             atIndex: b.index];
                        },
-                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, const MVKArrayRef<uint32_t> s)->void {
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKArrayRef<const uint32_t> s)->void {
                            cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
                                                        s.data(),
                                                        s.byteSize(),
@@ -912,7 +912,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                                                        offset: b.offset
                                                                       atIndex: b.index];
                        },
-                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, const MVKArrayRef<uint32_t> s)->void {
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKArrayRef<const uint32_t> s)->void {
                            cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
                                                       s.data(),
                                                       s.byteSize(),
@@ -945,7 +945,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                                                          offset: b.offset
                                                                         atIndex: b.index];
                        },
-                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, const MVKArrayRef<uint32_t> s)->void {
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKArrayRef<const uint32_t> s)->void {
                            cmdEncoder->setFragmentBytes(cmdEncoder->_mtlRenderEncoder,
                                                         s.data(),
                                                         s.byteSize(),
