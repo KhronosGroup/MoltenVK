@@ -11,6 +11,14 @@
 		16089AF62C924621003CF426 /* MVKStateTracking.h in Headers */ = {isa = PBXBuildFile; fileRef = 16089AF22C924621003CF426 /* MVKStateTracking.h */; };
 		16089AF82C924621003CF426 /* MVKStateTracking.h in Headers */ = {isa = PBXBuildFile; fileRef = 16089AF22C924621003CF426 /* MVKStateTracking.h */; };
 		16089AFA2C924621003CF426 /* MVKStateTracking.h in Headers */ = {isa = PBXBuildFile; fileRef = 16089AF22C924621003CF426 /* MVKStateTracking.h */; };
+		1667EB832D5BDEF500ECF248 /* MVKInlineArray.h in Headers */ = {isa = PBXBuildFile; fileRef = 1667EB802D5BDEF500ECF248 /* MVKInlineArray.h */; };
+		1667EB842D5BDEF500ECF248 /* MVKInlineArray.h in Headers */ = {isa = PBXBuildFile; fileRef = 1667EB802D5BDEF500ECF248 /* MVKInlineArray.h */; };
+		1667EB852D5BDEF500ECF248 /* MVKInlineArray.h in Headers */ = {isa = PBXBuildFile; fileRef = 1667EB802D5BDEF500ECF248 /* MVKInlineArray.h */; };
+		1667EB862D5BDEF500ECF248 /* MVKInlineArray.h in Headers */ = {isa = PBXBuildFile; fileRef = 1667EB802D5BDEF500ECF248 /* MVKInlineArray.h */; };
+		1667EB872D5BDEF500ECF248 /* MVKInlineObjectConstructor.h in Headers */ = {isa = PBXBuildFile; fileRef = 1667EB822D5BDEF500ECF248 /* MVKInlineObjectConstructor.h */; };
+		1667EB882D5BDEF500ECF248 /* MVKInlineObjectConstructor.h in Headers */ = {isa = PBXBuildFile; fileRef = 1667EB822D5BDEF500ECF248 /* MVKInlineObjectConstructor.h */; };
+		1667EB892D5BDEF500ECF248 /* MVKInlineObjectConstructor.h in Headers */ = {isa = PBXBuildFile; fileRef = 1667EB822D5BDEF500ECF248 /* MVKInlineObjectConstructor.h */; };
+		1667EB8A2D5BDEF500ECF248 /* MVKInlineObjectConstructor.h in Headers */ = {isa = PBXBuildFile; fileRef = 1667EB822D5BDEF500ECF248 /* MVKInlineObjectConstructor.h */; };
 		2FEA0A4124902F9F00EEF3AD /* MVKExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = A909F65A213B190600FCD6BE /* MVKExtensions.h */; };
 		2FEA0A4224902F9F00EEF3AD /* vk_mvk_moltenvk.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7691C7DFB4800632CA3 /* vk_mvk_moltenvk.h */; };
 		2FEA0A4324902F9F00EEF3AD /* mvk_datatypes.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7671C7DFB4800632CA3 /* mvk_datatypes.h */; };
@@ -659,6 +667,8 @@
 
 /* Begin PBXFileReference section */
 		16089AF22C924621003CF426 /* MVKStateTracking.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MVKStateTracking.h; sourceTree = "<group>"; };
+		1667EB802D5BDEF500ECF248 /* MVKInlineArray.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKInlineArray.h; sourceTree = "<group>"; };
+		1667EB822D5BDEF500ECF248 /* MVKInlineObjectConstructor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKInlineObjectConstructor.h; sourceTree = "<group>"; };
 		2FEA0ABA24902F9F00EEF3AD /* libMoltenVK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVK.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		45003E6F214AD4C900E989CB /* MVKExtensions.def */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = MVKExtensions.def; sourceTree = "<group>"; };
 		4536382D2508A4C6000EFFD3 /* MTLRenderPassStencilAttachmentDescriptor+MoltenVK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "MTLRenderPassStencilAttachmentDescriptor+MoltenVK.h"; sourceTree = "<group>"; };
@@ -1045,6 +1055,8 @@
 				A98149451FB6A3F7005F00B4 /* MVKFoundation.cpp */,
 				A98149441FB6A3F7005F00B4 /* MVKFoundation.h */,
 				A9AB95292B3EDFCC00C4E967 /* MVKInflectionMap.h */,
+				1667EB802D5BDEF500ECF248 /* MVKInlineArray.h */,
+				1667EB822D5BDEF500ECF248 /* MVKInlineObjectConstructor.h */,
 				A9F0429E1FB4CF82009FCCB8 /* MVKLogging.h */,
 				A98149461FB6A3F7005F00B4 /* MVKObjectPool.h */,
 				A9F3D9DB24732A4D00745190 /* MVKSmallVector.h */,
@@ -1173,6 +1185,7 @@
 				2FEA0A4224902F9F00EEF3AD /* vk_mvk_moltenvk.h in Headers */,
 				2FEA0A4324902F9F00EEF3AD /* mvk_datatypes.h in Headers */,
 				2FEA0A4424902F9F00EEF3AD /* mvk_vulkan.h in Headers */,
+				1667EB852D5BDEF500ECF248 /* MVKInlineArray.h in Headers */,
 				2FEA0A4524902F9F00EEF3AD /* MVKEnvironment.h in Headers */,
 				2FEA0A4624902F9F00EEF3AD /* MVKSurface.h in Headers */,
 				2FEA0A4724902F9F00EEF3AD /* MTLRenderPipelineDescriptor+MoltenVK.h in Headers */,
@@ -1206,6 +1219,7 @@
 				2FEA0A5F24902F9F00EEF3AD /* MVKCmdQueries.h in Headers */,
 				2FEA0A6024902F9F00EEF3AD /* MVKCommand.h in Headers */,
 				2FEA0A6124902F9F00EEF3AD /* MVKBaseObject.h in Headers */,
+				1667EB892D5BDEF500ECF248 /* MVKInlineObjectConstructor.h in Headers */,
 				2FEA0A6224902F9F00EEF3AD /* MVKMTLBufferAllocation.h in Headers */,
 				2FEA0A6324902F9F00EEF3AD /* MVKObjectPool.h in Headers */,
 				2FEA0A6424902F9F00EEF3AD /* MVKSwapchain.h in Headers */,
@@ -1307,6 +1321,7 @@
 				A9F3D9DC24732A4D00745190 /* MVKSmallVectorAllocator.h in Headers */,
 				A9C327562AAFBD390025EE79 /* MVKConfigMembers.def in Headers */,
 				45E3A40B2166B923005E3E38 /* MTLRenderPipelineColorAttachmentDescriptor+MoltenVK.h in Headers */,
+				1667EB882D5BDEF500ECF248 /* MVKInlineObjectConstructor.h in Headers */,
 				A94FB7F81C7DFB4800632CA3 /* MVKPipeline.h in Headers */,
 				A94FB7F01C7DFB4800632CA3 /* MVKImage.h in Headers */,
 				4553AEFD2251617100E8EBCD /* MVKBlockObserver.h in Headers */,
@@ -1323,6 +1338,7 @@
 				45003E73214AD4E500E989CB /* MVKExtensions.def in Headers */,
 				A9CEAAD5227378D400FAF779 /* mvk_datatypes.hpp in Headers */,
 				A90C8DEA1F45354D009CB32C /* MVKCommandEncodingPool.h in Headers */,
+				1667EB842D5BDEF500ECF248 /* MVKInlineArray.h in Headers */,
 				A94FB8081C7DFB4800632CA3 /* MVKResource.h in Headers */,
 				4536383B2508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h in Headers */,
 				A9E53DDD2100B197002781DD /* MTLTextureDescriptor+MoltenVK.h in Headers */,
@@ -1388,6 +1404,7 @@
 				45E3A40C2166B923005E3E38 /* MTLRenderPipelineColorAttachmentDescriptor+MoltenVK.h in Headers */,
 				A94FB7F91C7DFB4800632CA3 /* MVKPipeline.h in Headers */,
 				A9C327582AAFBD3A0025EE79 /* MVKConfigMembers.def in Headers */,
+				1667EB872D5BDEF500ECF248 /* MVKInlineObjectConstructor.h in Headers */,
 				A94FB7F11C7DFB4800632CA3 /* MVKImage.h in Headers */,
 				4553AEFE2251617100E8EBCD /* MVKBlockObserver.h in Headers */,
 				A94FB7B91C7DFB4800632CA3 /* MVKCmdTransfer.h in Headers */,
@@ -1404,6 +1421,7 @@
 				45003E74214AD4E600E989CB /* MVKExtensions.def in Headers */,
 				A9CEAAD6227378D400FAF779 /* mvk_datatypes.hpp in Headers */,
 				A90C8DEB1F45354D009CB32C /* MVKCommandEncodingPool.h in Headers */,
+				1667EB832D5BDEF500ECF248 /* MVKInlineArray.h in Headers */,
 				A94FB8091C7DFB4800632CA3 /* MVKResource.h in Headers */,
 				4536383D2508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h in Headers */,
 				A9E53DDE2100B197002781DD /* MTLTextureDescriptor+MoltenVK.h in Headers */,
@@ -1476,6 +1494,7 @@
 				A9C327592AAFBD3B0025EE79 /* MVKConfigMembers.def in Headers */,
 				DCFD7F002A45BC6E007BBBF7 /* MVKCommandPool.h in Headers */,
 				DCFD7F012A45BC6E007BBBF7 /* MVKShaderModule.h in Headers */,
+				1667EB862D5BDEF500ECF248 /* MVKInlineArray.h in Headers */,
 				DCFD7F022A45BC6E007BBBF7 /* MVKVulkanAPIObject.h in Headers */,
 				DCFD7F032A45BC6E007BBBF7 /* MVKCmdQueries.h in Headers */,
 				DCFD7F042A45BC6E007BBBF7 /* MVKCommand.h in Headers */,
@@ -1488,6 +1507,7 @@
 				DCFD7F0B2A45BC6E007BBBF7 /* MVKCommonEnvironment.h in Headers */,
 				DCFD7F0C2A45BC6E007BBBF7 /* MVKWatermark.h in Headers */,
 				DCFD7F0D2A45BC6E007BBBF7 /* MVKOSExtensions.h in Headers */,
+				1667EB8A2D5BDEF500ECF248 /* MVKInlineObjectConstructor.h in Headers */,
 				DCFD7F0E2A45BC6E007BBBF7 /* MVKCmdRendering.h in Headers */,
 				DCFD7F0F2A45BC6E007BBBF7 /* MVKCmdPipeline.h in Headers */,
 				DCFD7F102A45BC6E007BBBF7 /* MVKSmallVectorAllocator.h in Headers */,
