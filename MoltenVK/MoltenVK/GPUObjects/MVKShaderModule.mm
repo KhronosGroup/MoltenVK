@@ -111,8 +111,6 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 						mtlFunc = [fs.newMTLFunction(_mtlLibrary, mtlFuncName, mtlFCVals) autorelease];
 					}
 				}
-			} else {
-				reportError(VK_ERROR_INVALID_SHADER_NV, "Shader module does not contain an entry point named '%s'.", mtlFuncName.UTF8String);
 			}
 
 			// Set the debug name. First try name of shader module, otherwise try name of owner.

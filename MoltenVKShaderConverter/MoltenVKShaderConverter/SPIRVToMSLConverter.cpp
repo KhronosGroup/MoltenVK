@@ -344,7 +344,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 	} catch (CompilerError& ex) {
-		string errMsg("MSL conversion error: ");
+		string errMsg("SPIR-V to MSL conversion error: ");
 		errMsg += ex.what();
 		logError(conversionResult.resultLog, errMsg.data());
         if (shouldLogMSL && pMSLCompiler) {
@@ -446,6 +446,7 @@ void SPIRVToMSLConverter::logMsg(string& log, const char* logMsg) {
 // Appends the error text to the result log, and returns false to indicate an error.
 bool SPIRVToMSLConverter::logError(string& log, const char* errMsg) {
 	logMsg(log, errMsg);
+	fprintf(stderr, "[mvk-error] %s\n", errMsg);
 	return false;
 }
 
