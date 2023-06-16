@@ -3629,20 +3629,6 @@ void MVKDevice::destroyImageView(MVKImageView* mvkImgView,
 
 MVKSwapchain* MVKDevice::createSwapchain(const VkSwapchainCreateInfoKHR* pCreateInfo,
 										 const VkAllocationCallbacks* pAllocator) {
-#if MVK_MACOS
-	// If we have selected a high-power GPU and want to force the window system
-	// to use it, force the window system to use a high-power GPU by calling the
-	// MTLCreateSystemDefaultDevice function, and if that GPU is the same as the
-	// selected GPU, update the MTLDevice instance used by the MVKPhysicalDevice.
-	id<MTLDevice> mtlDevice = _physicalDevice->getMTLDevice();
-	if (mvkConfig().switchSystemGPU && !(mtlDevice.isLowPower || mtlDevice.isHeadless) ) {
-		id<MTLDevice> sysMTLDevice = MTLCreateSystemDefaultDevice();
-		if (mvkGetRegistryID(sysMTLDevice) == mvkGetRegistryID(mtlDevice)) {
-			_physicalDevice->replaceMTLDevice(sysMTLDevice);
-		}
-	}
-#endif
-
 	return new MVKSwapchain(this, pCreateInfo);
 }
 
@@ -4487,6 +4473,18 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	enableFeatures(pCreateInfo);
 	initQueues(pCreateInfo);
 	reservePrivateData(pCreateInfo);
+
+#if MVK_MACOS
+	// After enableExtensions
+	// If the VK_KHR_swapchain extension is enabled, we expect to render to the screen.
+	// In a multi-GPU system, if we are using the high-power GPU and want the window system
+	// to also use that GPU to avoid copying content between GPUs, force the window system
+	// to use the high-power GPU by calling the MTLCreateSystemDefaultDevice() function.
+	if (_enabledExtensions.vk_KHR_swapchain.enabled && mvkConfig().switchSystemGPU &&
+		!(_physicalDevice->_mtlDevice.isLowPower || _physicalDevice->_mtlDevice.isHeadless) ) {
+			MTLCreateSystemDefaultDevice();
+	}
+#endif
 
 	// After enableExtensions && enableFeatures
 	// Use Metal arg buffs if available, and either config wants them always,
