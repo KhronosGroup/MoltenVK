@@ -378,7 +378,10 @@ id<MTLComputePipelineState> MVKGraphicsPipeline::getTessVertexStageIndex32State(
 
 #pragma mark Construction
 
-// Extracts and returns a VkPipelineRenderingCreateInfo from the renderPass or pNext chain of pCreateInfo, or returns null if not found
+// Extracts and returns a VkPipelineRenderingCreateInfo from the renderPass or pNext
+// chain of pCreateInfo, or returns an empty struct if neither of those are found.
+// Although the Vulkan spec is vague and unclear, there are CTS that set both renderPass
+// and VkPipelineRenderingCreateInfo to null in VkGraphicsPipelineCreateInfo.
 static const VkPipelineRenderingCreateInfo* getRenderingCreateInfo(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
 	if (pCreateInfo->renderPass) {
 		return ((MVKRenderPass*)pCreateInfo->renderPass)->getSubpass(pCreateInfo->subpass)->getPipelineRenderingCreateInfo();
@@ -389,7 +392,8 @@ static const VkPipelineRenderingCreateInfo* getRenderingCreateInfo(const VkGraph
 			default: break;
 		}
 	}
-	return nullptr;
+	static VkPipelineRenderingCreateInfo emptyRendInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
+	return &emptyRendInfo;
 }
 
 MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
