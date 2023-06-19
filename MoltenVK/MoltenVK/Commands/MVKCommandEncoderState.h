@@ -470,6 +470,7 @@ protected:
 		MVKMTLBufferBinding bufferSizeBufferBinding;
 		MVKMTLBufferBinding dynamicOffsetBufferBinding;
 		MVKMTLBufferBinding viewRangeBufferBinding;
+        MVKMTLBufferBinding transformFeedbackBufferBinding;
 
 		bool areBufferBindingsDirty = false;
 		bool areTextureBindingsDirty = false;
@@ -539,6 +540,8 @@ public:
     void bindViewRangeBuffer(const MVKShaderImplicitRezBinding& binding,
                              bool needVertexViewBuffer,
                              bool needFragmentViewBuffer);
+
+    void bindTransformFeedbackBuffer(MVKMTLBufferBinding binding);
 
     void encodeBindings(MVKShaderStage stage,
                         const char* pStageName,

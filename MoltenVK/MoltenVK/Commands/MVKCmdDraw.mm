@@ -1160,6 +1160,11 @@ void MVKCmdBeginTransformFeedback::encode(MVKCommandEncoder *cmdEncoder) {
         return;
     }
 
+    MVKMTLBufferBinding b;
+    b.index = firstCounterBuffer;
+    b.offset = counterBuffers->getMTLBufferOffset();
+    b.mtlBuffer = counterBuffers->getMTLBuffer();
+    cmdEncoder->_graphicsResourcesState.bindBuffer(kMVKShaderStageVertex, b);
     cmdEncoder->transformFeedbackRunning = true;
 }
 
