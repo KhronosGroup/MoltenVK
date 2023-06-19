@@ -140,6 +140,16 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                 if (pipeline->needsVertexOutputBuffer()) {
                     ///@TODO: SW: It looks like this is where we write out the vertex data, important for XFB
                     vtxOutBuff = cmdEncoder->getTempMTLBuffer(_vertexCount * _instanceCount * 4 * cmdEncoder->_pDeviceProperties->limits.maxVertexOutputComponents, true);
+                    if(cmdEncoder->getDevice()->_enabledTransformFeedbackFeatures &&
+                       cmdEncoder->transformFeedbackRunning) {
+                        for (auto& xfbBufferBinding : cmdEncoder->_graphicsResourcesState
+                                ._transformFeedbackBufferBindings)
+                        {
+                            [mtlTessCtlEncoder setBuffer:xfbBufferBinding.mtlBuffer
+                                                  offset:xfbBufferBinding.offset
+                                                 atIndex:xfbBufferBinding:index];
+                        }
+                    }
                     [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                           offset: vtxOutBuff->_offset
                                          atIndex: pipeline->getOutputBufferIndex().stages[kMVKShaderStageVertex]];
@@ -1160,11 +1170,10 @@ void MVKCmdBeginTransformFeedback::encode(MVKCommandEncoder *cmdEncoder) {
         return;
     }
 
-    MVKMTLBufferBinding b;
-    b.index = firstCounterBuffer;
-    b.offset = counterBuffers->getMTLBufferOffset();
-    b.mtlBuffer = counterBuffers->getMTLBuffer();
-    cmdEncoder->_graphicsResourcesState.bindBuffer(kMVKShaderStageVertex, b);
+
+    cmdEncoder->_graphicsResourcesState._transformFeedbackCounterBufferBinding.index = firstCounterBuffer;
+    cmdEncoder->_graphicsResourcesState._transformFeedbackCounterBufferBinding.offset = counterBuffers->getMTLBufferOffset();
+    cmdEncoder->_graphicsResourcesState._transformFeedbackCounterBufferBinding.mtlBuffer = counterBuffers->getMTLBuffer();
     cmdEncoder->transformFeedbackRunning = true;
 }
 
@@ -1201,7 +1210,8 @@ VkResult MVKCmdBindTransformFeedbackBuffers<N>::setContent(MVKCommandBuffer *cmd
 
 template <size_t N>
 void MVKCmdBindTransformFeedbackBuffers<N>::encode(MVKCommandEncoder *cmdEncoder) {
-    for (auto& b : _bindings) { cmdEncoder->_graphicsResourcesState.bindBuffer(kMVKShaderStageVertex, b); }
+    cmdEncoder->_graphicsResourcesState._transformFeedbackBufferBindings.clear();
+    for (auto& b : _bindings) { cmdEncoder->_graphicsResourcesState._transformFeedbackBufferBindings.push_back(b); }
 }
 
 template class MVKCmdBindTransformFeedbackBuffers<1>;

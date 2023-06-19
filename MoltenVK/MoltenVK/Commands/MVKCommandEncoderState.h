@@ -470,7 +470,6 @@ protected:
 		MVKMTLBufferBinding bufferSizeBufferBinding;
 		MVKMTLBufferBinding dynamicOffsetBufferBinding;
 		MVKMTLBufferBinding viewRangeBufferBinding;
-        MVKMTLBufferBinding transformFeedbackBufferBinding;
 
 		bool areBufferBindingsDirty = false;
 		bool areTextureBindingsDirty = false;
@@ -509,6 +508,8 @@ public:
 
     /** The type of index that will be used to render primitives. Exposed directly. */
     MVKIndexMTLBufferBinding _mtlIndexBufferBinding;
+    MVKMTLBufferBinding _transformFeedbackCounterBufferBinding;
+    MVKSmallVector<MVKMTLBufferBinding, 4> _transformFeedbackBufferBindings;
 
     /** Binds the specified index buffer. */
     void bindIndexBuffer(const MVKIndexMTLBufferBinding& binding) {
