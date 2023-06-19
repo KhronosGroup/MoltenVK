@@ -620,5 +620,23 @@ MVKMetalCompiler::~MVKMetalCompiler() {
 	[_compileError release];
 }
 
+#pragma mark -
+#pragma mark MVKDeferredOperation
 
+VkResult MVKDeferredOperation::join() {
+    VkResult opResult;
+    switch(functionType)
+    {
+        // Set operation result here by calling operation
+        default: return VK_THREAD_DONE_KHR;
+    };
+    operationResult = opResult;
+    return VK_SUCCESS;
+}
 
+void MVKDeferredOperation::deferOperation(MVKDeferredOperationFunctionPointer pointer, MVKDeferredOperationFunctionType type, std::vector<void*> parameters)
+{
+    functionPointer = pointer;
+    functionType = type;
+    functionParameters = parameters;
+}

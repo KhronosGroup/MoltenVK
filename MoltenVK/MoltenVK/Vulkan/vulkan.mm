@@ -2653,6 +2653,67 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdBeginRenderPass2, KHR);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdNextSubpass2, KHR);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdEndRenderPass2, KHR);
 
+#pragma mark -
+#pragma mark VK_KHR_deferred_host_operations extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateDeferredOperationKHR(
+    VkDevice device,
+    const VkAllocationCallbacks* pAllocator,
+    VkDeferredOperationKHR* pDeferredOperation) {
+    
+    MVKTraceVulkanCallStart();
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    MVKDeferredOperation* mvkDeferredOperation = mvkDev->createDeferredOperation(pAllocator);
+    *pDeferredOperation = (VkDeferredOperationKHR)mvkDeferredOperation;
+    VkResult rslt = mvkDeferredOperation->getConfigurationResult();
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetDeferredOperationResultKHR(
+    VkDevice device,
+    VkDeferredOperationKHR operation) {
+    
+    MVKTraceVulkanCallStart();
+    MVKDeferredOperation* mvkDeferredOperation = (MVKDeferredOperation*)operation;
+    VkResult rslt = mvkDeferredOperation->getResult();
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkDeferredOperationJoinKHR(
+    VkDevice device,
+    VkDeferredOperationKHR operation) {
+    
+    MVKTraceVulkanCallStart();
+    MVKDeferredOperation* mvkDeferredOperation = (MVKDeferredOperation*)operation;
+    VkResult rslt = mvkDeferredOperation->join();
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL uint32_t vkGetDeferredOperationMaxConcurrencyKHR(
+    VkDevice device,
+    VkDeferredOperationKHR operation) {
+    
+    MVKTraceVulkanCallStart();
+    MVKDeferredOperation* mvkDeferredOperation = (MVKDeferredOperation*)operation;
+    uint32_t getMaxConcurrencyKHR = mvkDeferredOperation->getMaxConcurrency();
+    MVKTraceVulkanCallEnd();
+    return getMaxConcurrencyKHR;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyDeferredOperationKHR(
+    VkDevice device,
+    VkDeferredOperationKHR operation,
+    const VkAllocationCallbacks* pAllocator) {
+    
+    MVKTraceVulkanCallStart();
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    MVKDeferredOperation* mvkDeferredOperation = (MVKDeferredOperation*)operation;
+    mvkDev->destroyDeferredOperation(mvkDeferredOperation, pAllocator);
+    MVKTraceVulkanCallEnd();
+}
 
 #pragma mark -
 #pragma mark VK_KHR_dynamic_rendering extension

@@ -636,3 +636,56 @@ protected:
 	std::string _compilerType = "Unknown";
 	MVKPerformanceTracker* _pPerformanceTracker = nullptr;
 };
+
+#pragma mark -
+#pragma mark MVKDeferredOperation
+
+/** Defines the function pointer for each dependent function*/
+union MVKDeferredOperationFunctionPointer
+{
+    // Empty until deferred functions from other extensions have been defined
+    // Planning to use std::functions
+};
+
+/** Manages what function is being deferred*/
+enum MVKDeferredOperationFunctionType
+{
+    // Empty until deferred functions from other extensions have been defined
+};
+
+class MVKDeferredOperation : public MVKVulkanAPIDeviceObject {
+public:
+    /** Returns the Vulkan type of this object. */
+    VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_DEFERRED_OPERATION_KHR; }
+    
+    /** Returns the debug report object type of this object. */
+    VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT; }
+    
+    /** Joins the deferred operation */
+    VkResult join();
+    
+    /** Gets the max number of threads that can execute the deferred operation concurrently*/
+    uint32_t getMaxConcurrency() { return 1; } // Perhaps the number of CPU cores
+    
+    /** Gets the result of the execution of the deferred operation */
+    VkResult getResult() { return operationResult; }
+    
+    /** Sets all the variables needed for a deferred operation, however should never be called manually and only from other functions that take deferred operations*/
+    void deferOperation(MVKDeferredOperationFunctionPointer pointer, MVKDeferredOperationFunctionType type, std::vector<void*> parameters);
+#pragma mark Construction
+    MVKDeferredOperation(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
+protected:
+    /** Stores the result of the operation*/
+    VkResult operationResult = VK_SUCCESS;
+    
+    /** Stores a pointer to the function*/
+    MVKDeferredOperationFunctionPointer functionPointer;
+    
+    /** Stores what functions is being deferred*/
+    MVKDeferredOperationFunctionType functionType;
+    
+    /** The parameters in the operation being deferred*/
+    std::vector<void*> functionParameters = {};
+    
+    void propagateDebugName() override {}
+};

@@ -48,6 +48,7 @@ MVK_EXTENSION(KHR_buffer_device_address,              KHR_BUFFER_DEVICE_ADDRESS,
 MVK_EXTENSION(KHR_copy_commands2,                     KHR_COPY_COMMANDS_2,                    DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_create_renderpass2,                 KHR_CREATE_RENDERPASS_2,                DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_dedicated_allocation,               KHR_DEDICATED_ALLOCATION,               DEVICE,   10.11,  8.0)
+MVK_EXTENSION(KHR_deferred_host_operations,           KHR_DEFERRED_HOST_OPERATIONS,           DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_depth_stencil_resolve,              KHR_DEPTH_STENCIL_RESOLVE,              DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_descriptor_update_template,         KHR_DESCRIPTOR_UPDATE_TEMPLATE,         DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_device_group,                       KHR_DEVICE_GROUP,                       DEVICE,   10.11,  8.0)
