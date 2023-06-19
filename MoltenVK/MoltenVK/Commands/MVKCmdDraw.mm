@@ -138,7 +138,6 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
             case kMVKGraphicsStageVertex: {
                 mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                 if (pipeline->needsVertexOutputBuffer()) {
-                    ///@TODO: SW: It looks like this is where we write out the vertex data, important for XFB
                     vtxOutBuff = cmdEncoder->getTempMTLBuffer(_vertexCount * _instanceCount * 4 * cmdEncoder->_pDeviceProperties->limits.maxVertexOutputComponents, true);
                     if(cmdEncoder->getDevice()->_enabledTransformFeedbackFeatures &&
                        cmdEncoder->transformFeedbackRunning) {
@@ -147,7 +146,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                         {
                             [mtlTessCtlEncoder setBuffer:xfbBufferBinding.mtlBuffer
                                                   offset:xfbBufferBinding.offset
-                                                 atIndex:xfbBufferBinding:index];
+                                                 atIndex:xfbBufferBinding.index];
                         }
                     }
                     [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
@@ -1171,7 +1170,9 @@ void MVKCmdBeginTransformFeedback::encode(MVKCommandEncoder *cmdEncoder) {
     }
 
 
-    cmdEncoder->_graphicsResourcesState._transformFeedbackCounterBufferBinding.index = firstCounterBuffer;
+    cmdEncoder->_graphicsResourcesState._transformFeedbackCounterBufferBinding.index =
+            cmdEncoder->getDevice()->getMetalBufferIndexForTransformFeedbackCounterBinding(kMVKShaderStageVertex,
+                                                                              firstCounterBuffer);
     cmdEncoder->_graphicsResourcesState._transformFeedbackCounterBufferBinding.offset = counterBuffers->getMTLBufferOffset();
     cmdEncoder->_graphicsResourcesState._transformFeedbackCounterBufferBinding.mtlBuffer = counterBuffers->getMTLBuffer();
     cmdEncoder->transformFeedbackRunning = true;
@@ -1191,7 +1192,7 @@ VkResult MVKCmdBindTransformFeedbackBuffers<N>::setContent(MVKCommandBuffer *cmd
     MVKMTLBufferBinding b;
     for (uint32_t bindIdx = 0; bindIdx < bindingCount; bindIdx++) {
         auto* mvkBuffer = (MVKBuffer*)pBuffers[bindIdx];
-        b.index = mvkDvc->getMetalBufferIndexForVertexAttributeBinding(firstBinding + bindIdx);
+        b.index = mvkDvc->getMetalBufferIndexForTransformFeedbackBinding(kMVKShaderStageVertex, firstBinding + bindIdx);
         b.mtlBuffer = mvkBuffer->getMTLBuffer();
         b.offset = mvkBuffer->getMTLBufferOffset() + pOffsets[bindIdx];
         if(pSizes != nullptr) {

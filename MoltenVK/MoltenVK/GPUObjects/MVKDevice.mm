@@ -4248,7 +4248,7 @@ uint32_t MVKDevice::getMetalBufferIndexForVertexAttributeBinding(uint32_t bindin
 }
 
 uint32_t MVKDevice::getMetalBufferIndexForTransformFeedbackBinding(MVKShaderStage stage, uint32_t binding) {
-	uint32_t binding = ((_pMetalFeatures->maxPerStageBufferCount - 1) - binding);
+    binding = ((_pMetalFeatures->maxPerStageBufferCount - 1) - binding);
 	switch (stage) {
 		case kMVKShaderStageVertex:
 			binding -= _pProperties->limits.maxVertexInputBindings;
