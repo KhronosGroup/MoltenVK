@@ -2335,7 +2335,7 @@ void MVKPhysicalDevice::initLimits() {
 	_properties.limits.maxSamplerAnisotropy = 16;
 
     _properties.limits.maxVertexInputAttributes = 31;
-    _properties.limits.maxVertexInputBindings = 31;
+    _properties.limits.maxVertexInputBindings = 16;
 
     _properties.limits.maxVertexInputBindingStride = (2 * KIBI);
 	_properties.limits.maxVertexInputAttributeOffset = _properties.limits.maxVertexInputBindingStride - 1;
@@ -4245,6 +4245,22 @@ uint32_t MVKDevice::getViewCountInMetalPass(uint32_t viewMask, uint32_t passIdx)
 
 uint32_t MVKDevice::getMetalBufferIndexForVertexAttributeBinding(uint32_t binding) {
 	return ((_pMetalFeatures->maxPerStageBufferCount - 1) - binding);
+}
+
+uint32_t MVKDevice::getMetalBufferIndexForTransformFeedbackBinding(MVKShaderStage stage, uint32_t binding) {
+	uint32_t binding = ((_pMetalFeatures->maxPerStageBufferCount - 1) - binding);
+	switch (stage) {
+		case kMVKShaderStageVertex:
+			binding -= _pProperties->limits.maxVertexInputBindings;
+			break;
+		default:
+			break;
+	}
+	return binding;
+}
+
+uint32_t MVKDevice::getMetalBufferIndexForTransformFeedbackCounterBinding(MVKShaderStage stage, uint32_t binding) {
+	return (getMetalBufferIndexForTransformFeedbackBinding(stage, binding) - _pMetalFeatures->maxTransformFeedbackBuffers);
 }
 
 VkDeviceSize MVKDevice::getVkFormatTexelBufferAlignment(VkFormat format, MVKBaseObject* mvkObj) {

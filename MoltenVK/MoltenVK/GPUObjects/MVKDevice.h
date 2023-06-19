@@ -758,6 +758,12 @@ public:
 	/** Returns the Metal vertex buffer index to use for the specified vertex attribute binding number.  */
 	uint32_t getMetalBufferIndexForVertexAttributeBinding(uint32_t binding);
 
+	/** Returns the Metal vertex buffer index to use for the specified transform feedback binding number.  */
+	uint32_t getMetalBufferIndexForTransformFeedbackBinding(MVKShaderStage stage, uint32_t binding);
+
+	/** Returns the Metal vertex buffer index to use for the specified transform feedback counter binding number.  */
+	uint32_t getMetalBufferIndexForTransformFeedbackCounterBinding(MVKShaderStage stage, uint32_t binding);
+
 	/** Returns the memory alignment required for the format when used in a texel buffer. */
 	VkDeviceSize getVkFormatTexelBufferAlignment(VkFormat format, MVKBaseObject* mvkObj);
 
