@@ -508,6 +508,8 @@ public:
 
     /** The type of index that will be used to render primitives. Exposed directly. */
     MVKIndexMTLBufferBinding _mtlIndexBufferBinding;
+    MVKMTLBufferBinding _transformFeedbackCounterBufferBinding;
+    MVKSmallVector<MVKMTLBufferBinding, 4> _transformFeedbackBufferBindings;
 
     /** Binds the specified index buffer. */
     void bindIndexBuffer(const MVKIndexMTLBufferBinding& binding) {
@@ -539,6 +541,8 @@ public:
     void bindViewRangeBuffer(const MVKShaderImplicitRezBinding& binding,
                              bool needVertexViewBuffer,
                              bool needFragmentViewBuffer);
+
+    void bindTransformFeedbackBuffer(MVKMTLBufferBinding binding);
 
     void encodeBindings(MVKShaderStage stage,
                         const char* pStageName,

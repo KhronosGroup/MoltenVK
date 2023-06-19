@@ -379,5 +379,31 @@ namespace mvk {
 		return getShaderInterfaceVariables(spirv, spv::StorageClassInput, model, entryName, outputs, errorLog);
 	}
 
+    template<typename Vs>
+    static inline bool getUsesTransformFeedback(const Vs& spirv, spv::ExecutionModel model, const std::string&
+    entryName, std::string& errorLog) {
+#ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+        try {
+#endif
+            SPIRV_CROSS_NAMESPACE::CompilerReflection transFeedbackReflect(spirv);
+
+            if (!entryName.empty()) {
+                transFeedbackReflect.set_entry_point(entryName, model);
+            }
+
+            transFeedbackReflect.compile();
+
+            const SPIRV_CROSS_NAMESPACE::Bitset& txbModes = transFeedbackReflect.get_execution_mode_bitset();
+
+            return txbModes.get(spv::ExecutionModeXfb);
+
+#ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+        } catch (SPIRV_CROSS_NAMESPACE::CompilerError& ex) {
+            errorLog = ex.what();
+            return false;
+        }
+#endif
+    }
+
 }
 #endif

@@ -232,6 +232,8 @@ void MVKGraphicsPipeline::getStages(MVKPiplineStages& stages) {
     if (isTessellationPipeline()) {
         stages.push_back(kMVKGraphicsStageVertex);
         stages.push_back(kMVKGraphicsStageTessControl);
+    } else if(isTransformFeedbackPipeline()) {
+        stages.push_back(kMVKGraphicsStageVertex);
     }
     stages.push_back(kMVKGraphicsStageRasterization);
 }
@@ -1834,6 +1836,18 @@ MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 
 		for (id<MTLFunction> func : _mtlTessVertexFunctions) { [func release]; }
 	}
+}
+
+bool MVKGraphicsPipeline::isTransformFeedbackPipeline() {
+    std::string reflectErrorLog;
+    bool isTransFeedback = getUsesTransformFeedback(((MVKShaderModule*)_pVertexSS->module)
+                                            ->getSPIRV(), spv::ExecutionModel::ExecutionModelVertex,
+                                    _pVertexSS->pName,
+                                    reflectErrorLog);
+    if(!reflectErrorLog.empty()) {
+        setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to reflect shaders: %s", reflectErrorLog.c_str()));
+    }
+    return isTransFeedback;
 }
 
 

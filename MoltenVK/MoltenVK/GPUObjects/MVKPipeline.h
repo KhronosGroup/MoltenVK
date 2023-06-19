@@ -235,6 +235,8 @@ public:
     /** Returns whether this pipeline has tessellation shaders. */
     bool isTessellationPipeline() { return _pTessCtlSS && _pTessEvalSS && _tessInfo.patchControlPoints > 0; }
 
+    bool isTransformFeedbackPipeline();
+
     /** Returns the number of input tessellation patch control points. */
     uint32_t getInputControlPointCount() { return _tessInfo.patchControlPoints; }
 

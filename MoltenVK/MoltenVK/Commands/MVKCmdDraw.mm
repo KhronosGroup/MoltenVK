@@ -138,8 +138,17 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
             case kMVKGraphicsStageVertex: {
                 mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                 if (pipeline->needsVertexOutputBuffer()) {
-                    ///@TODO: SW: It looks like this is where we write out the vertex data, important for XFB
                     vtxOutBuff = cmdEncoder->getTempMTLBuffer(_vertexCount * _instanceCount * 4 * cmdEncoder->_pDeviceProperties->limits.maxVertexOutputComponents, true);
+                    if(cmdEncoder->getDevice()->_enabledTransformFeedbackFeatures &&
+                       cmdEncoder->transformFeedbackRunning) {
+                        for (auto& xfbBufferBinding : cmdEncoder->_graphicsResourcesState
+                                ._transformFeedbackBufferBindings)
+                        {
+                            [mtlTessCtlEncoder setBuffer:xfbBufferBinding.mtlBuffer
+                                                  offset:xfbBufferBinding.offset
+                                                 atIndex:xfbBufferBinding.index];
+                        }
+                    }
                     [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                           offset: vtxOutBuff->_offset
                                          atIndex: pipeline->getOutputBufferIndex().stages[kMVKShaderStageVertex]];
@@ -1143,28 +1152,11 @@ VkResult MVKCmdBeginTransformFeedback::setContent(MVKCommandBuffer *cmdBuff, uin
     this->counterBuffers = _counterBuffers;
     this->counterBufferOffsets = _counterBufferOffsets;
 
-    // Validate
-    MVKDevice* mvkDvc = cmdBuff->getDevice();
-    if(firstCounterBuffer >= mvkDvc->_pMetalFeatures->maxTransformFeedbackBuffers) {
-        return cmdBuff->reportError(VK_ERROR_INVALID_EXTERNAL_HANDLE, "vkCmdBeginTransformFeedback(): first Counter "
-                                                                      "buffer must not exceed "
-                                                                      "maxTransformFeedbackBuffers of the device.");
-    }
-    if(counterBuffers == nullptr && counterBufferOffsets != nullptr) {
-        return cmdBuff->reportError(VK_ERROR_NOT_PERMITTED_KHR, "vkCmdBeginTransformFeedback(): if counterbuffers is "
-                                                                "null then counterBufferOffsets must also be null");
-    }
-    if ( mvkDvc->_enabledFeatures.multiViewport ) {
-        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT,
-                                    "vkCmdBeginTransformFeedback(): The current device has multiview enabled which is"
-                                    " incompatible with transform feedback.");
-    }
-
     return VK_SUCCESS;
 }
 
 void MVKCmdBeginTransformFeedback::encode(MVKCommandEncoder *cmdEncoder) {
-    if ( !cmdEncoder->transformFeedbackEnabled ) {
+    if ( !cmdEncoder->getDevice()->_enabledTransformFeedbackFeatures ) {
         cmdEncoder->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCmdBeginTransformFeedback(): transform feedback"
                                                                    " must be enabled on the device.");
         return;
@@ -1173,10 +1165,16 @@ void MVKCmdBeginTransformFeedback::encode(MVKCommandEncoder *cmdEncoder) {
     if (cmdEncoder->transformFeedbackRunning ) {
         cmdEncoder->reportError(VK_ERROR_NOT_PERMITTED_KHR, "vkCmdBeginTransformFeedback(): "
                                                                               "transform feedback is"
-                                                                " already began.  Can not be called multiple times.");
+                                                                " already begun.  Can not be called multiple times.");
         return;
     }
 
+
+    cmdEncoder->_graphicsResourcesState._transformFeedbackCounterBufferBinding.index =
+            cmdEncoder->getDevice()->getMetalBufferIndexForTransformFeedbackCounterBinding(kMVKShaderStageVertex,
+                                                                              firstCounterBuffer);
+    cmdEncoder->_graphicsResourcesState._transformFeedbackCounterBufferBinding.offset = counterBuffers->getMTLBufferOffset();
+    cmdEncoder->_graphicsResourcesState._transformFeedbackCounterBufferBinding.mtlBuffer = counterBuffers->getMTLBuffer();
     cmdEncoder->transformFeedbackRunning = true;
 }
 
@@ -1194,7 +1192,7 @@ VkResult MVKCmdBindTransformFeedbackBuffers<N>::setContent(MVKCommandBuffer *cmd
     MVKMTLBufferBinding b;
     for (uint32_t bindIdx = 0; bindIdx < bindingCount; bindIdx++) {
         auto* mvkBuffer = (MVKBuffer*)pBuffers[bindIdx];
-        b.index = mvkDvc->getMetalBufferIndexForVertexAttributeBinding(firstBinding + bindIdx);
+        b.index = mvkDvc->getMetalBufferIndexForTransformFeedbackBinding(kMVKShaderStageVertex, firstBinding + bindIdx);
         b.mtlBuffer = mvkBuffer->getMTLBuffer();
         b.offset = mvkBuffer->getMTLBufferOffset() + pOffsets[bindIdx];
         if(pSizes != nullptr) {
@@ -1213,7 +1211,8 @@ VkResult MVKCmdBindTransformFeedbackBuffers<N>::setContent(MVKCommandBuffer *cmd
 
 template <size_t N>
 void MVKCmdBindTransformFeedbackBuffers<N>::encode(MVKCommandEncoder *cmdEncoder) {
-    for (auto& b : _bindings) { cmdEncoder->_graphicsResourcesState.bindBuffer(kMVKShaderStageVertex, b); }
+    cmdEncoder->_graphicsResourcesState._transformFeedbackBufferBindings.clear();
+    for (auto& b : _bindings) { cmdEncoder->_graphicsResourcesState._transformFeedbackBufferBindings.push_back(b); }
 }
 
 template class MVKCmdBindTransformFeedbackBuffers<1>;
@@ -1251,39 +1250,9 @@ VkResult MVKCmdEndTransformFeedback::setContent(MVKCommandBuffer *cmdBuffer,
     pCounterBuffers = _counterBuffers;
     pCounterBufferOffsets = _counterBufferOffsets;
 
-    // Validate
-    MVKDevice* mvkDvc = cmdBuffer->getDevice();
-    if(firstCounterBuffer >= mvkDvc->_pMetalFeatures->maxTransformFeedbackBuffers) {
-        return cmdBuffer->reportError(VK_ERROR_INVALID_EXTERNAL_HANDLE, "vkCmdEndTransformFeedback(): first Counter "
-                                                                      "buffer must not exceed "
-                                                                      "maxTransformFeedbackBuffers of the device.");
-    }
-    if(pCounterBuffers == nullptr && pCounterBufferOffsets != nullptr) {
-        return cmdBuffer->reportError(VK_ERROR_NOT_PERMITTED_KHR, "vkCmdEndTransformFeedback(): if counterbuffers is "
-                                                                "null then counterBufferOffsets must also be null");
-    }
-    if ( mvkDvc->_enabledFeatures.multiViewport ) {
-        return cmdBuffer->reportError(VK_ERROR_FEATURE_NOT_PRESENT,
-                                    "vkCmdEndTransformFeedback(): The current device has multiview enabled which is"
-                                    " incompatible with transform feedback.");
-    }
-
     return VK_SUCCESS;
 }
 
 void MVKCmdEndTransformFeedback::encode(MVKCommandEncoder *cmdEncoder) {
-    if ( !cmdEncoder->transformFeedbackEnabled ) {
-        cmdEncoder->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCmdEndTransformFeedback(): transform feedback"
-                                                               " must be enabled on the device.");
-        return;
-    }
-
-    if ( !cmdEncoder->transformFeedbackRunning ) {
-        cmdEncoder->reportError(VK_ERROR_NOT_PERMITTED_KHR, "vkCmdEndTransformFeedback(): "
-                                                            "transform feedback is"
-                                                            " already began.  Can not be called multiple times.");
-        return;
-    }
-
     cmdEncoder->transformFeedbackRunning = false;
 }
