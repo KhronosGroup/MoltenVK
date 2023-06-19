@@ -76,33 +76,6 @@ protected:
 
 };
 
-#pragma mark -
-#pragma mark MVKCmdBeginQueryIndexed
-
-/* Vulkan Command The cmdBeginQueryIndexedEXT command operates the same as the cmdBeginQuery command,
- * except that it also accepts a query type specific index parameter.
- */
-class MVKCmdBeginQueryIndexed : public MVKCmdQuery {
-public:
-    MVKCmdBeginQueryIndexed() :
-            _mtlIndexedQueryPool(), _mtlQueryIndexedFlags(), _mtlQueryIndexedIndex() {}
-    VkResult setContent(MVKCommandBuffer *cmdBuff,
-                        VkQueryPool queryPool,
-                        uint32_t query,
-                        uint32_t flags,
-                        uint32_t index);
-
-    void encode(MVKCommandEncoder* cmdEncoder) override;
-
-protected:
-    MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-    uint32_t _query;
-    MVKQueryPool* _mtlIndexedQueryPool;
-    uint32_t _mtlQueryIndexedFlags;
-    uint32_t _mtlQueryIndexedIndex;
-};
-
 
 #pragma mark -
 #pragma mark MVKCmdWriteTimestamp
@@ -122,4 +95,54 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
     VkPipelineStageFlagBits _pipelineStage;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdResetQueryPool
+
+/** Vulkan command to reset the results in a query pool. */
+class MVKCmdResetQueryPool : public MVKCmdQuery {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkQueryPool queryPool,
+						uint32_t firstQuery,
+						uint32_t queryCount);
+
+    void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+    uint32_t _queryCount;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdCopyQueryPoolResults
+
+/** Vulkan command to reset the results in a query pool. */
+class MVKCmdCopyQueryPoolResults : public MVKCmdQuery {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkQueryPool queryPool,
+						uint32_t firstQuery,
+						uint32_t queryCount,
+						VkBuffer destBuffer,
+						VkDeviceSize destOffset,
+						VkDeviceSize destStride,
+						VkQueryResultFlags flags);
+
+    void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+    MVKBuffer* _destBuffer;
+    VkDeviceSize _destOffset;
+    VkDeviceSize _destStride;
+    VkQueryResultFlags _flags;
+	uint32_t _queryCount;
 };

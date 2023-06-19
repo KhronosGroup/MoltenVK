@@ -151,3 +151,4 @@ void MVKCmdCopyQueryPoolResults::encode(MVKCommandEncoder* cmdEncoder) {
         _queryPool->encodeCopyResults(cmdEncoder, _query, _queryCount, _destBuffer, _destOffset, _destStride, _flags);
     }
 }
+
