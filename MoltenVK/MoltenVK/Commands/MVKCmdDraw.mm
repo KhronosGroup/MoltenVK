@@ -1147,7 +1147,7 @@ VkResult MVKCmdBeginTransformFeedback::setContent(MVKCommandBuffer *cmdBuff, uin
 }
 
 void MVKCmdBeginTransformFeedback::encode(MVKCommandEncoder *cmdEncoder) {
-    if ( !cmdEncoder->transformFeedbackEnabled ) {
+    if ( !cmdEncoder->getDevice()->_enabledTransformFeedbackFeatures ) {
         cmdEncoder->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCmdBeginTransformFeedback(): transform feedback"
                                                                    " must be enabled on the device.");
         return;
@@ -1243,18 +1243,5 @@ VkResult MVKCmdEndTransformFeedback::setContent(MVKCommandBuffer *cmdBuffer,
 }
 
 void MVKCmdEndTransformFeedback::encode(MVKCommandEncoder *cmdEncoder) {
-    if ( !cmdEncoder->transformFeedbackEnabled ) {
-        cmdEncoder->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCmdEndTransformFeedback(): transform feedback"
-                                                               " must be enabled on the device.");
-        return;
-    }
-
-    if ( !cmdEncoder->transformFeedbackRunning ) {
-        cmdEncoder->reportError(VK_ERROR_NOT_PERMITTED_KHR, "vkCmdEndTransformFeedback(): "
-                                                            "transform feedback is"
-                                                            " already began.  Can not be called multiple times.");
-        return;
-    }
-
     cmdEncoder->transformFeedbackRunning = false;
 }

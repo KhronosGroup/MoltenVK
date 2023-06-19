@@ -103,29 +103,6 @@ protected:
     uint32_t _mtlQueryIndexedIndex;
 };
 
-#pragma mark -
-#pragma mark EndQueryIndexed
-
-/*
- * Ends a query, also accepts a query type specific index parameter.
- */
-
-class MVKCmdEndQueryIndexed : public MVKCmdQuery {
-public:
-    MVKCmdEndQueryIndexed() : index() {}
-    VkResult setContent(MVKCommandBuffer* cmdBuffer,
-                        VkQueryPool queryPool,
-                        uint32_t query,
-                        uint32_t index);
-    void encode(MVKCommandEncoder* cmdEncoder) override;
-
-protected:
-    MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-    uint32_t index;
-};
-
-
 
 #pragma mark -
 #pragma mark MVKCmdWriteTimestamp

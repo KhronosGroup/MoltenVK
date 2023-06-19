@@ -831,6 +831,8 @@ public:
 	/** Device features available and enabled. */
 	VkPhysicalDeviceFeatures _enabledFeatures;
 
+    VkBool32 _enabledTransformFeedbackFeatures; /**< If true, transform feedback is enabled */
+
 	// List of extended device feature enabling structures, as public member variables.
 #define MVK_DEVICE_FEATURE(structName, enumName, flagCount) \
 	VkPhysicalDevice##structName##Features _enabled##structName##Features;
