@@ -3699,6 +3699,11 @@ MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInf
 	}
 }
 
+void MVKDevice::destroySemaphore(MVKSemaphore* mvkSem4,
+								 const VkAllocationCallbacks* pAllocator) {
+	if (mvkSem4) { mvkSem4->destroy(); }
+}
+
 MVKDeferredOperation* MVKDevice::createDeferredOperation(const VkAllocationCallbacks* pAllocator) {
     return new MVKDeferredOperation(this);
 }
@@ -3706,11 +3711,6 @@ MVKDeferredOperation* MVKDevice::createDeferredOperation(const VkAllocationCallb
 void MVKDevice::destroyDeferredOperation(MVKDeferredOperation* mvkDeferredOperation,
                                          const VkAllocationCallbacks* pAllocator) {
     if(mvkDeferredOperation) { mvkDeferredOperation->destroy(); }
-}
-
-void MVKDevice::destroySemaphore(MVKSemaphore* mvkSem4,
-								 const VkAllocationCallbacks* pAllocator) {
-	if (mvkSem4) { mvkSem4->destroy(); }
 }
 
 MVKEvent* MVKDevice::createEvent(const VkEventCreateInfo* pCreateInfo,

@@ -2716,13 +2716,6 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyDeferredOperationKHR(
 }
 
 #pragma mark -
-#pragma mark VK_KHR_dynamic_rendering extension
-
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdBeginRendering, KHR);
-MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdEndRendering, KHR);
-
-
-#pragma mark -
 #pragma mark VK_KHR_descriptor_update_template extension
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCreateDescriptorUpdateTemplate, KHR);
@@ -2750,6 +2743,11 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkEnumeratePhysicalDeviceGroups, KHR);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDrawIndexedIndirectCount, KHR);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDrawIndirectCount, KHR);
 
+#pragma mark -
+#pragma mark VK_KHR_dynamic_rendering extension
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdBeginRendering, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdEndRendering, KHR);
 
 #pragma mark -
 #pragma mark VK_KHR_external_fence_capabilities extension

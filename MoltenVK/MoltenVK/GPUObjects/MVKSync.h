@@ -665,27 +665,40 @@ public:
     VkResult join();
     
     /** Gets the max number of threads that can execute the deferred operation concurrently*/
-    uint32_t getMaxConcurrency() { return 1; } // Perhaps the number of CPU cores
+    uint32_t getMaxConcurrency() {
+        std::lock_guard<std::mutex> lock(_maxConcurrencyLock);
+        return _maxConcurrency;
+    }
     
     /** Gets the result of the execution of the deferred operation */
-    VkResult getResult() { return operationResult; }
+    VkResult getResult() {
+        std::lock_guard<std::mutex> lock(_resultLock);
+        return _operationResult;
+    }
     
     /** Sets all the variables needed for a deferred operation, however should never be called manually and only from other functions that take deferred operations*/
-    void deferOperation(MVKDeferredOperationFunctionPointer pointer, MVKDeferredOperationFunctionType type, std::vector<void*> parameters);
+    void deferOperation(MVKDeferredOperationFunctionPointer pointer, MVKDeferredOperationFunctionType type, std::vector<void*>&& parameters);
 #pragma mark Construction
     MVKDeferredOperation(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
 protected:
     /** Stores the result of the operation*/
-    VkResult operationResult = VK_SUCCESS;
+    VkResult _operationResult = VK_SUCCESS;
+    /** The mutex for the operation result being used to ensure thread safety. */
+    std::mutex _resultLock;
     
     /** Stores a pointer to the function*/
-    MVKDeferredOperationFunctionPointer functionPointer;
+    MVKDeferredOperationFunctionPointer _functionPointer;
     
     /** Stores what functions is being deferred*/
-    MVKDeferredOperationFunctionType functionType;
+    MVKDeferredOperationFunctionType _functionType;
     
     /** The parameters in the operation being deferred*/
-    std::vector<void*> functionParameters = {};
+    std::vector<void*> _functionParameters = {};
+    
+    /** Stores the max amount of threads that should be used.. */
+    uint32_t _maxConcurrency = 0;
+    /** The mutex for the max concurrency being used to ensure thread safety. */
+    std::mutex _maxConcurrencyLock;
     
     void propagateDebugName() override {}
 };
