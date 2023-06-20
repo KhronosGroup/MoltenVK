@@ -640,14 +640,14 @@ protected:
 #pragma mark -
 #pragma mark MVKDeferredOperation
 
-/** Defines the function pointer for each dependent function*/
+/** Defines the function pointer for each dependent function. */
 union MVKDeferredOperationFunctionPointer
 {
     // Empty until deferred functions from other extensions have been defined
     // Planning to use std::functions
 };
 
-/** Manages what function is being deferred*/
+/** Indicates what kind of function is being deferred. */
 enum MVKDeferredOperationFunctionType
 {
     // Empty until deferred functions from other extensions have been defined
@@ -661,7 +661,7 @@ public:
     /** Returns the debug report object type of this object. */
     VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT; }
     
-    /** Joins the deferred operation */
+    /** Begins executing the deferred operation on the current thread. */
     VkResult join();
     
     /** Gets the max number of threads that can execute the deferred operation concurrently*/
