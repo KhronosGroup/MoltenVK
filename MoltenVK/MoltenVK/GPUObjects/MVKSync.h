@@ -677,7 +677,7 @@ public:
     }
     
     /** Sets all the variables needed for a deferred operation, however should never be called manually and only from other functions that take deferred operations*/
-    void deferOperation(MVKDeferredOperationFunctionPointer pointer, MVKDeferredOperationFunctionType type, std::vector<void*>&& parameters);
+    void deferOperation(MVKDeferredOperationFunctionPointer pointer, MVKDeferredOperationFunctionType type, MVKSmallVector<void  *>&& parameters);
 #pragma mark Construction
     MVKDeferredOperation(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
 protected:
@@ -693,7 +693,7 @@ protected:
     MVKDeferredOperationFunctionType _functionType;
     
     /** The parameters in the operation being deferred*/
-    std::vector<void*> _functionParameters = {};
+    MVKSmallVector<void  *, 4> _functionParameters = {};
     
     /** Stores the max amount of threads that should be used.. */
     uint32_t _maxConcurrency = 0;

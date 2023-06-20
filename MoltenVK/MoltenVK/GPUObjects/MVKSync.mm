@@ -642,7 +642,7 @@ VkResult MVKDeferredOperation::join() {
     return VK_SUCCESS;
 }
 
-void MVKDeferredOperation::deferOperation(MVKDeferredOperationFunctionPointer pointer, MVKDeferredOperationFunctionType type, std::vector<void*>&& parameters)
+void MVKDeferredOperation::deferOperation(MVKDeferredOperationFunctionPointer pointer, MVKDeferredOperationFunctionType type, MVKSmallVector<void  *>&& parameters)
 {
     _functionPointer = pointer;
     _functionType = type;
