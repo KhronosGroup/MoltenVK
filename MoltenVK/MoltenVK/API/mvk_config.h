@@ -913,6 +913,16 @@ typedef struct {
 	 */
 	MVKConfigCompressionAlgorithm shaderSourceCompressionAlgorithm;
 
+	/**
+	 * Maximize the concurrent executing compilation tasks.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * This setting requires macOS 13.3 & is disabled by default.
+	 */
+	VkBool32 shouldMaximizeConcurrentCompilation;
+
 } MVKConfiguration;
 
 

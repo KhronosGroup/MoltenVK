@@ -1313,8 +1313,9 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 			mtlDrwbl.layer.displaySyncEnabledMVK = (presentInfo.presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR);
 		}
 		if (presentInfo.hasPresentTime) {
-			// Convert from nsecs to seconds for Metal
 			addPresentedHandler(mtlDrwbl, presentInfo);
+		}
+		if (presentInfo.desiredPresentTime) {
 			[mtlDrwbl presentAtTime: (double)presentInfo.desiredPresentTime * 1.0e-9];
 		} else {
 			[mtlDrwbl present];
