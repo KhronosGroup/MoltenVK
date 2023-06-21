@@ -642,11 +642,14 @@ VkResult MVKDeferredOperation::join() {
     return VK_SUCCESS;
 }
 
-void MVKDeferredOperation::deferOperation(MVKDeferredOperationFunctionPointer pointer, MVKDeferredOperationFunctionType type, MVKSmallVector<void  *>&& parameters)
+void MVKDeferredOperation::deferOperation(MVKDeferredOperationFunctionPointer pointer, MVKDeferredOperationFunctionType type, void* parameters[kMVKMaxDeferredFunctionParameters])
 {
     _functionPointer = pointer;
     _functionType = type;
-    _functionParameters = parameters;
+    
+    for(int i = 0; i < kMVKMaxDeferredFunctionParameters; i++) {
+        _functionParameters[i] = parameters[i];
+    }
     
     _maxConcurrencyLock.lock();
     _maxConcurrency = mvkGetAvaliableCPUCores();
