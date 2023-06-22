@@ -51,6 +51,7 @@ class MVKDeviceMemory;
 class MVKFence;
 class MVKSemaphore;
 class MVKTimelineSemaphore;
+class MVKDeferredOperation;
 class MVKEvent;
 class MVKSemaphoreImpl;
 class MVKQueryPool;
@@ -557,6 +558,10 @@ public:
 								  const VkAllocationCallbacks* pAllocator);
 	void destroySemaphore(MVKSemaphore* mvkSem4,
 						  const VkAllocationCallbacks* pAllocator);
+    
+    MVKDeferredOperation* createDeferredOperation(const VkAllocationCallbacks* pAllocator);
+    void destroyDeferredOperation(MVKDeferredOperation* mvkDeferredOperation,
+                                  const VkAllocationCallbacks* pAllocator);
 
 	MVKEvent* createEvent(const VkEventCreateInfo* pCreateInfo,
 						  const VkAllocationCallbacks* pAllocator);

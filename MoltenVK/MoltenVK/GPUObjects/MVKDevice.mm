@@ -3704,6 +3704,15 @@ void MVKDevice::destroySemaphore(MVKSemaphore* mvkSem4,
 	if (mvkSem4) { mvkSem4->destroy(); }
 }
 
+MVKDeferredOperation* MVKDevice::createDeferredOperation(const VkAllocationCallbacks* pAllocator) {
+    return new MVKDeferredOperation(this);
+}
+
+void MVKDevice::destroyDeferredOperation(MVKDeferredOperation* mvkDeferredOperation,
+                                         const VkAllocationCallbacks* pAllocator) {
+    if(mvkDeferredOperation) { mvkDeferredOperation->destroy(); }
+}
+
 MVKEvent* MVKDevice::createEvent(const VkEventCreateInfo* pCreateInfo,
 								 const VkAllocationCallbacks* pAllocator) {
 	const VkExportMetalObjectCreateInfoEXT* pExportInfo = nullptr;
