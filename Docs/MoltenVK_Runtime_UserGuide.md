@@ -352,6 +352,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_variable_pointers`
 - `VK_EXT_4444_formats` *(requires 16-bit formats and either native texture swizzling or manual swizzling to be enabled)*
 - `VK_EXT_buffer_device_address` *(requires GPU Tier 2 argument buffers support)*
+- `VK_EXT_calibrated_timestamps` *(requires Metal 2.2)*
 - `VK_EXT_debug_marker`
 - `VK_EXT_debug_report`
 - `VK_EXT_debug_utils`

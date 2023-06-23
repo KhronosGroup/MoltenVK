@@ -175,6 +175,9 @@ public:
 	void getExternalSemaphoreProperties(const VkPhysicalDeviceExternalSemaphoreInfo* pExternalSemaphoreInfo,
 										VkExternalSemaphoreProperties* pExternalSemaphoreProperties);
 
+	/** Returns the supported time domains for calibration on this device. */
+	VkResult getCalibrateableTimeDomains(uint32_t* pTimeDomainCount, VkTimeDomainEXT* pTimeDomains);
+
 #pragma mark Surfaces
 
 	/**
@@ -515,6 +518,11 @@ public:
 											const void* pHostPointer,
 											VkMemoryHostPointerPropertiesEXT* pMemHostPtrProps);
 
+	/** Samples timestamps from the specified domains and returns the sampled values. */
+	void getCalibratedTimestamps(uint32_t timestampCount,
+								 const VkCalibratedTimestampInfoEXT* pTimestampInfos,
+								 uint64_t* pTimestamps,
+								 uint64_t* pMaxDeviation);
 
 #pragma mark Object lifecycle
 

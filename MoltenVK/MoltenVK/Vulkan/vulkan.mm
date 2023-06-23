@@ -3117,6 +3117,34 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetBufferDeviceAddress, EXT);
 
 
 #pragma mark -
+#pragma mark VK_EXT_calibrated_timestamps extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceCalibrateableTimeDomainsEXT(
+	VkPhysicalDevice							physicalDevice,
+	uint32_t*									pTimeDomainCount,
+	VkTimeDomainEXT*							pTimeDomains) {
+	MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	mvkPD->getCalibrateableTimeDomains(pTimeDomainCount, pTimeDomains);
+	MVKTraceVulkanCallEnd();
+	return VK_SUCCESS;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetCalibratedTimestampsEXT(
+	VkDevice									device,
+	uint32_t									timestampCount,
+	const VkCalibratedTimestampInfoEXT*			pTimestampInfos,
+	uint64_t*									pTimestamps,
+	uint64_t*									pMaxDeviation) {
+	MVKTraceVulkanCallStart();
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	mvkDev->getCalibratedTimestamps(timestampCount, pTimestampInfos, pTimestamps, pMaxDeviation);
+	MVKTraceVulkanCallEnd();
+	return VK_SUCCESS;
+}
+
+
+#pragma mark -
 #pragma mark VK_EXT_debug_report extension
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateDebugReportCallbackEXT(
