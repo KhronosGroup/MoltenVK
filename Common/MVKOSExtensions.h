@@ -56,11 +56,10 @@ inline bool mvkOSVersionIsAtLeast(MVKOSVersion macOSMinVer, MVKOSVersion iOSMinV
 #if MVK_MACOS
 	return mvkOSVersionIsAtLeast(macOSMinVer);
 #endif
-#if MVK_IOS_OR_TVOS
-	return mvkOSVersionIsAtLeast(iOSMinVer);
-#endif
 #if MVK_VISIONOS
 	return mvkOSVersionIsAtLeast(visionOSMinVer);
+#elif MVK_IOS_OR_TVOS
+	return mvkOSVersionIsAtLeast(iOSMinVer);
 #endif
 }
 
