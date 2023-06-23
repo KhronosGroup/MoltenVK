@@ -26,8 +26,14 @@
 #      --tvossim
 #              Build the external libraries for the tvOS Simulator platform.
 #
+#      --visionos
+#              Build the external libraries for the visionOS platform.
+#
+#      --visionossim
+#              Build the external libraries for the visionOS Simulator platform.
+#
 #      --all
-#              Equivalent to specifying [--macos --ios --iossim --maccat --tvos --tvossim].
+#              Equivalent to specifying [--macos --ios --iossim --maccat --tvos --tvossim --visionos --visionossim].
 #              Results in one XCFramework for each external library, each containing
 #              binaries for all supported platforms.
 #
@@ -94,6 +100,8 @@ BLD_IOS_SIM=""
 BLD_MAC_CAT=""
 BLD_TVOS=""
 BLD_TVOS_SIM=""
+BLD_VISIONOS=""
+BLD_VISIONOS_SIM=""
 BLD_MACOS=""
 BLD_SPECIFIED=""
 XC_CONFIG="Release"
@@ -129,6 +137,14 @@ while (( "$#" )); do
          BLD_TVOS_SIM="Y"
          shift 1
          ;;
+       --visionos)
+         BLD_VISIONOS="Y"
+         shift 1
+         ;;
+       --visionossim)
+         BLD_VISIONOS_SIM="Y"
+         shift 1
+         ;;
        --macos)
          BLD_MACOS="Y"
          shift 1
@@ -139,6 +155,8 @@ while (( "$#" )); do
          BLD_MAC_CAT="Y"
          BLD_TVOS="Y"
          BLD_TVOS_SIM="Y"
+         BLD_VISIONOS="Y"
+         BLD_VISIONOS_SIM="Y"
          BLD_MACOS="Y"
          shift 1
          ;;
@@ -477,6 +495,14 @@ if [ "$BLD_TVOS_SIM" != "" ]; then
 	build "tvOS" "tvOS Simulator"
 fi
 
+if [ "$BLD_VISIONOS" != "" ]; then
+	build "xrOS" "xrOS"
+fi
+
+if [ "$BLD_VISIONOS_SIM" != "" ]; then
+	build "xrOS" "xrOS Simulator"
+fi
+
 # Wait for any background process (if selected) to finish
 if [ "$XC_USE_BCKGND" != "" ]; then
 	wait
@@ -495,7 +521,7 @@ else
 		echo "WARNING: You did not specify a platform to build."
 		echo "To build the external libraries, include one or"
 		echo "more of the following platform options:"
-		echo "    --macos --ios --iossim --maccat --tvos --tvossim --all"
+		echo "    --macos --ios --iossim --maccat --tvos --tvossim --visionos --visionossim --all"
 		echo "See the instructions in the fetchDependencies script for more info."
 	fi
 fi
