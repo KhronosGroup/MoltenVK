@@ -228,6 +228,45 @@ MVK_PUBLIC_SYMBOL MTLTextureSwizzleChannels mvkMTLTextureSwizzleChannelsFromVkCo
 #undef convert
 }
 
+MVK_PUBLIC_SYMBOL float mvkVkClearColorFloatValueFromVkComponentSwizzle(float *colors, uint32_t index, VkComponentSwizzle vkSwizzle) {
+	switch (vkSwizzle) {
+		case VK_COMPONENT_SWIZZLE_IDENTITY:	return colors[index];
+		case VK_COMPONENT_SWIZZLE_ZERO:		return 0.f;
+		case VK_COMPONENT_SWIZZLE_ONE:		return 1.f;
+		case VK_COMPONENT_SWIZZLE_R:		return colors[0];
+		case VK_COMPONENT_SWIZZLE_G:		return colors[1];
+		case VK_COMPONENT_SWIZZLE_B:		return colors[2];
+		case VK_COMPONENT_SWIZZLE_A:		return colors[3];
+		default:							return colors[index];
+	}
+}
+
+MVK_PUBLIC_SYMBOL uint32_t mvkVkClearColorUIntValueFromVkComponentSwizzle(uint32_t *colors, uint32_t index, VkComponentSwizzle vkSwizzle) {
+	switch (vkSwizzle) {
+		case VK_COMPONENT_SWIZZLE_IDENTITY:	return colors[index];
+		case VK_COMPONENT_SWIZZLE_ZERO:		return 0U;
+		case VK_COMPONENT_SWIZZLE_ONE:		return 1U;
+		case VK_COMPONENT_SWIZZLE_R:		return colors[0];
+		case VK_COMPONENT_SWIZZLE_G:		return colors[1];
+		case VK_COMPONENT_SWIZZLE_B:		return colors[2];
+		case VK_COMPONENT_SWIZZLE_A:		return colors[3];
+		default:							return colors[index];
+	}
+}
+
+MVK_PUBLIC_SYMBOL int32_t mvkVkClearColorIntValueFromVkComponentSwizzle(int32_t *colors, uint32_t index, VkComponentSwizzle vkSwizzle) {
+	switch (vkSwizzle) {
+		case VK_COMPONENT_SWIZZLE_IDENTITY:	return colors[index];
+		case VK_COMPONENT_SWIZZLE_ZERO:		return 0;
+		case VK_COMPONENT_SWIZZLE_ONE:		return 1;
+		case VK_COMPONENT_SWIZZLE_R:		return colors[0];
+		case VK_COMPONENT_SWIZZLE_G:		return colors[1];
+		case VK_COMPONENT_SWIZZLE_B:		return colors[2];
+		case VK_COMPONENT_SWIZZLE_A:		return colors[3];
+		default:							return colors[index];
+	}
+}
+
 
 #pragma mark Mipmaps
 

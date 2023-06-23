@@ -224,6 +224,9 @@ public:
     /** Returns the number of planes of this image view. */
     uint8_t getPlaneCount() { return _planes.size(); }
 
+	/** Returns whether or not the image format requires swizzling. */
+	bool needsSwizzle() { return getPixelFormats()->needsSwizzle(_vkFormat); }
+
 	/** Populates the specified layout for the specified sub-resource. */
 	VkResult getSubresourceLayout(const VkImageSubresource* pSubresource,
 								  VkSubresourceLayout* pLayout);

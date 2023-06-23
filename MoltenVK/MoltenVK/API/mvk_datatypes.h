@@ -227,6 +227,15 @@ MTLTextureSwizzle mvkMTLTextureSwizzleFromVkComponentSwizzle(VkComponentSwizzle 
 /** Returns all four Metal texture swizzles from the Vulkan component mapping. */
 MTLTextureSwizzleChannels mvkMTLTextureSwizzleChannelsFromVkComponentMapping(VkComponentMapping vkMapping);
 
+/** Maps a clear color according to the specified VkComponentSwizzle. */
+float mvkVkClearColorFloatValueFromVkComponentSwizzle(float *colors, uint32_t index, VkComponentSwizzle vkSwizzle);
+
+/** Maps a clear color according to the specified VkComponentSwizzle. */
+uint32_t mvkVkClearColorUIntValueFromVkComponentSwizzle(uint32_t *colors, uint32_t index, VkComponentSwizzle vkSwizzle);
+
+/** Maps a clear color according to the specified VkComponentSwizzle. */
+int32_t mvkVkClearColorIntValueFromVkComponentSwizzle(int32_t *colors, uint32_t index, VkComponentSwizzle vkSwizzle);
+
 
 #pragma mark Mipmaps
 
