@@ -284,8 +284,6 @@ protected:
 	float _mtlDepthVal;
 	uint32_t _mtlStencilValue;
 	MVKCommandUse _commandUse;
-	bool _isClearingDepth;
-	bool _isClearingStencil;
 };
 
 
@@ -326,7 +324,7 @@ protected:
 	VkClearValue& getClearValue(uint32_t attIdx) override { return _vkClearValues[attIdx]; }
 	void setClearValue(uint32_t attIdx, const VkClearValue& clearValue) override { _vkClearValues[attIdx] = clearValue; }
 
-	VkClearValue _vkClearValues[kMVKCachedColorAttachmentCount];
+	VkClearValue _vkClearValues[kMVKMaxColorAttachmentCount];
 };
 
 typedef MVKCmdClearMultiAttachments<1> MVKCmdClearMultiAttachments1;

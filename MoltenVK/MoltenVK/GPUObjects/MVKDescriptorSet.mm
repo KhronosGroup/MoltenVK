@@ -43,7 +43,7 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
 													dynamicOffsets, dynamicOffsetIndex); }
 	if ( !isUsingMetalArgumentBuffers() ) {
 		for (auto& dslBind : _bindings) {
-			dslBind.bind(cmdEncoder, descSet, dslMTLRezIdxOffsets, dynamicOffsets, dynamicOffsetIndex);
+			dslBind.bind(cmdEncoder, pipelineBindPoint, descSet, dslMTLRezIdxOffsets, dynamicOffsets, dynamicOffsetIndex);
 		}
 	}
 }
@@ -91,6 +91,7 @@ static const void* getWriteParameters(VkDescriptorType type, const VkDescriptorI
 
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
+                                               VkPipelineBindPoint pipelineBindPoint,
                                                MVKArrayRef<VkWriteDescriptorSet> descriptorWrites,
                                                MVKShaderResourceBinding& dslMTLRezIdxOffsets) {
 
@@ -127,7 +128,7 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                                    pBufferInfo, pTexelBufferView, pInlineUniformBlock, stride);
             uint32_t descriptorsPushed = 0;
             uint32_t bindIdx = _bindingToIndex[dstBinding];
-            _bindings[bindIdx].push(cmdEncoder, dstArrayElement, descriptorCount,
+            _bindings[bindIdx].push(cmdEncoder, pipelineBindPoint, dstArrayElement, descriptorCount,
                                     descriptorsPushed, descWrite.descriptorType,
                                     stride, pData, dslMTLRezIdxOffsets);
             pBufferInfo += descriptorsPushed;
@@ -148,6 +149,7 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
         return;
 
 	if (!cmdEncoder) { clearConfigurationResult(); }
+	VkPipelineBindPoint bindPoint = descUpdateTemplate->getBindPoint();
     for (uint32_t i = 0; i < descUpdateTemplate->getNumberOfEntries(); i++) {
         const VkDescriptorUpdateTemplateEntry* pEntry = descUpdateTemplate->getEntry(i);
         uint32_t dstBinding = pEntry->dstBinding;
@@ -161,7 +163,7 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
             if (!_bindingToIndex.count(dstBinding)) continue;
             uint32_t descriptorsPushed = 0;
             uint32_t bindIdx = _bindingToIndex[dstBinding];
-            _bindings[bindIdx].push(cmdEncoder, dstArrayElement, descriptorCount,
+            _bindings[bindIdx].push(cmdEncoder, bindPoint, dstArrayElement, descriptorCount,
                                     descriptorsPushed, pEntry->descriptorType,
                                     pEntry->stride, pCurData, dslMTLRezIdxOffsets);
             pCurData = (const char*)pCurData + pEntry->stride * descriptorsPushed;
@@ -876,7 +878,7 @@ VkDescriptorUpdateTemplateType MVKDescriptorUpdateTemplate::getType() const {
 
 MVKDescriptorUpdateTemplate::MVKDescriptorUpdateTemplate(MVKDevice* device,
 														 const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo) :
-	MVKVulkanAPIDeviceObject(device), _type(pCreateInfo->templateType) {
+	MVKVulkanAPIDeviceObject(device), _pipelineBindPoint(pCreateInfo->pipelineBindPoint), _type(pCreateInfo->templateType) {
 
 	for (uint32_t i = 0; i < pCreateInfo->descriptorUpdateEntryCount; i++)
 		_entries.push_back(pCreateInfo->pDescriptorUpdateEntries[i]);

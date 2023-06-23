@@ -21,7 +21,6 @@
 #include "MVKSwapchain.h"
 #include "MVKCommandBuffer.h"
 #include "MVKCmdDebug.h"
-#include "MVKEnvironment.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
 #include "MVKCodec.h"
@@ -63,7 +62,7 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
                            offset: memoryBinding->getDeviceMemoryOffset() + _subresources[0].layout.offset];
             if (_image->_isAliasable) { [_mtlTexture makeAliasable]; }
         } else if (_image->_isAliasable && dvcMem && dvcMem->isDedicatedAllocation() &&
-            !contains(dvcMem->_imageMemoryBindings, memoryBinding)) {
+            !mvkContains(dvcMem->_imageMemoryBindings, memoryBinding)) {
             // This is a dedicated allocation, but it belongs to another aliasable image.
             // In this case, use the MTLTexture from the memory's dedicated image.
             // We know the other image must be aliasable, or I couldn't have been bound
@@ -1295,8 +1294,9 @@ id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
 }
 
 // Present the drawable and make myself available only once the command buffer has completed.
+// Pass MVKImagePresentInfo by value because it may not exist when the callback runs.
 void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff,
-														  MVKImagePresentInfo& presentInfo) {
+														  MVKImagePresentInfo presentInfo) {
 	lock_guard<mutex> lock(_availabilityLock);
 
 	_swapchain->willPresentSurface(getMTLTexture(0), mtlCmdBuff);
@@ -1313,8 +1313,9 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 			mtlDrwbl.layer.displaySyncEnabledMVK = (presentInfo.presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR);
 		}
 		if (presentInfo.hasPresentTime) {
-			// Convert from nsecs to seconds for Metal
 			addPresentedHandler(mtlDrwbl, presentInfo);
+		}
+		if (presentInfo.desiredPresentTime) {
 			[mtlDrwbl presentAtTime: (double)presentInfo.desiredPresentTime * 1.0e-9];
 		} else {
 			[mtlDrwbl present];
@@ -1358,8 +1359,9 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 	signalPresentationSemaphore(signaler, mtlCmdBuff);
 }
 
+// Pass MVKImagePresentInfo by value because it may not exist when the callback runs.
 void MVKPresentableSwapchainImage::addPresentedHandler(id<CAMetalDrawable> mtlDrawable,
-													   MVKImagePresentInfo& presentInfo) {
+													   MVKImagePresentInfo presentInfo) {
 #if !MVK_OS_SIMULATOR
 	if ([mtlDrawable respondsToSelector: @selector(addPresentedHandler:)]) {
 		retain();	// Ensure this image is not destroyed while awaiting presentation

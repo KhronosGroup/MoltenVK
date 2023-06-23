@@ -20,7 +20,6 @@
 #include "MVKBuffer.h"
 #include "MVKImage.h"
 #include "MVKQueue.h"
-#include "MVKEnvironment.h"
 #include "mvk_datatypes.hpp"
 #include "MVKFoundation.h"
 #include <cstdlib>
@@ -36,8 +35,7 @@ void MVKDeviceMemory::propagateDebugName() {
 	setLabelIfNotNil(_mtlBuffer, _debugName);
 }
 
-VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData) {
-
+VkResult MVKDeviceMemory::map(const VkMemoryMapInfoKHR* pMemoryMapInfo, void** ppData) {
 	if ( !isMemoryHostAccessible() ) {
 		return reportError(VK_ERROR_MEMORY_MAP_FAILED, "Private GPU-only memory cannot be mapped to host memory.");
 	}
@@ -50,25 +48,23 @@ VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMa
 		return reportError(VK_ERROR_OUT_OF_HOST_MEMORY, "Could not allocate %llu bytes of host-accessible device memory.", _allocationSize);
 	}
 
-	_mappedRange.offset = offset;
-	_mappedRange.size = adjustMemorySize(size, offset);
+	_mappedRange.offset = pMemoryMapInfo->offset;
+	_mappedRange.size = adjustMemorySize(pMemoryMapInfo->size, pMemoryMapInfo->offset);
 
-	*ppData = (void*)((uintptr_t)_pMemory + offset);
+	*ppData = (void*)((uintptr_t)_pMemory + pMemoryMapInfo->offset);
 
 	// Coherent memory does not require flushing by app, so we must flush now
 	// to support Metal textures that actually reside in non-coherent memory.
 	if (mvkIsAnyFlagEnabled(_vkMemPropFlags, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
-		pullFromDevice(offset, size);
+		pullFromDevice(pMemoryMapInfo->offset, pMemoryMapInfo->size);
 	}
 
 	return VK_SUCCESS;
 }
 
-void MVKDeviceMemory::unmap() {
-
+VkResult MVKDeviceMemory::unmap(const VkMemoryUnmapInfoKHR* pUnmapMemoryInfo) {
 	if ( !isMapped() ) {
-		reportError(VK_ERROR_MEMORY_MAP_FAILED, "Memory is not mapped. Call vkMapMemory() first.");
-		return;
+		return reportError(VK_ERROR_MEMORY_MAP_FAILED, "Memory is not mapped. Call vkMapMemory() first.");
 	}
 
 	// Coherent memory does not require flushing by app, so we must flush now
@@ -79,6 +75,8 @@ void MVKDeviceMemory::unmap() {
 
 	_mappedRange.offset = 0;
 	_mappedRange.size = 0;
+
+	return VK_SUCCESS;
 }
 
 VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
@@ -161,7 +159,7 @@ VkResult MVKDeviceMemory::addImageMemoryBinding(MVKImageMemoryBinding* mvkImg) {
 	// If a dedicated alloc, ensure this image is the one and only image
 	// I am dedicated to. If my image is aliasable, though, allow other aliasable
 	// images to bind to me.
-	if (_isDedicated && (_imageMemoryBindings.empty() || !(contains(_imageMemoryBindings, mvkImg) || (_imageMemoryBindings[0]->_image->getIsAliasable() && mvkImg->_image->getIsAliasable()))) ) {
+	if (_isDedicated && (_imageMemoryBindings.empty() || !(mvkContains(_imageMemoryBindings, mvkImg) || (_imageMemoryBindings[0]->_image->getIsAliasable() && mvkImg->_image->getIsAliasable()))) ) {
 		return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind VkImage %p to a VkDeviceMemory dedicated to resource %p. A dedicated allocation may only be used with the resource it was dedicated to.", mvkImg, getDedicatedResource() );
 	}
 
@@ -181,7 +179,7 @@ bool MVKDeviceMemory::ensureMTLHeap() {
 
 	if (_mtlHeap) { return true; }
 
-	// Can't create a MTLHeap on a imported memory
+	// Can't create a MTLHeap on imported memory
 	if (_isHostMemImported) { return true; }
 
 	// Don't bother if we don't have placement heaps.
@@ -285,6 +283,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 								 const VkMemoryAllocateInfo* pAllocateInfo,
 								 const VkAllocationCallbacks* pAllocator) : MVKVulkanAPIDeviceObject(device) {
 	// Set Metal memory parameters
+	_vkMemAllocFlags = 0;
 	_vkMemPropFlags = _device->_pMemoryProperties->memoryTypes[pAllocateInfo->memoryTypeIndex].propertyFlags;
 	_mtlStorageMode = mvkMTLStorageModeFromVkMemoryPropertyFlags(_vkMemPropFlags);
 	_mtlCPUCacheMode = mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(_vkMemPropFlags);

@@ -328,15 +328,12 @@ void MVKDepthStencilCommandEncoderState::beginMetalRenderPass() {
     MVKCommandEncoderState::beginMetalRenderPass();
 
 	MVKRenderSubpass* mvkSubpass = _cmdEncoder->getSubpass();
-	MVKPixelFormats* pixFmts = _cmdEncoder->getPixelFormats();
-	MTLPixelFormat mtlDSFormat = pixFmts->getMTLPixelFormat(mvkSubpass->getDepthStencilFormat());
-
 	bool prevHasDepthAttachment = _hasDepthAttachment;
-	_hasDepthAttachment = pixFmts->isDepthFormat(mtlDSFormat);
+	_hasDepthAttachment = mvkSubpass->isDepthAttachmentUsed();
 	if (_hasDepthAttachment != prevHasDepthAttachment) { markDirty(); }
 
 	bool prevHasStencilAttachment = _hasStencilAttachment;
-	_hasStencilAttachment = pixFmts->isStencilFormat(mtlDSFormat);
+	_hasStencilAttachment = mvkSubpass->isStencilAttachmentUsed();
 	if (_hasStencilAttachment != prevHasStencilAttachment) { markDirty(); }
 }
 
@@ -693,6 +690,11 @@ void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stag
 
 	encodeMetalArgumentBuffer(stage);
 
+	MVKPipeline* pipeline = getPipeline();
+	if (pipeline && pipeline->usesPhysicalStorageBufferAddressesCapability(stage)) {
+		getDevice()->encodeGPUAddressableBuffers(this, stage);
+	}
+
     auto& shaderStage = _shaderStageResourceBindings[stage];
 
     if (shaderStage.swizzleBufferBinding.isDirty) {
@@ -753,6 +755,11 @@ void MVKGraphicsResourcesCommandEncoderState::offsetZeroDivisorVertexBuffers(MVK
                 break;
         }
     }
+}
+
+void MVKGraphicsResourcesCommandEncoderState::endMetalRenderPass() {
+	MVKResourcesCommandEncoderState::endMetalRenderPass();
+	_renderUsageStages.clear();
 }
 
 // Mark everything as dirty
@@ -963,10 +970,10 @@ void MVKGraphicsResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderS
 	bindBuffer(stage, buffBind);
 }
 
-void MVKGraphicsResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(MVKShaderStage stage,
-																				id<MTLResource> mtlResource,
-																				MTLResourceUsage mtlUsage,
-																				MTLRenderStages mtlStages) {
+void MVKGraphicsResourcesCommandEncoderState::encodeResourceUsage(MVKShaderStage stage,
+																  id<MTLResource> mtlResource,
+																  MTLResourceUsage mtlUsage,
+																  MTLRenderStages mtlStages) {
 	if (mtlResource && mtlStages) {
 		if (stage == kMVKShaderStageTessCtl) {
 			auto* mtlCompEnc = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
@@ -974,7 +981,12 @@ void MVKGraphicsResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(
 		} else {
 			auto* mtlRendEnc = _cmdEncoder->_mtlRenderEncoder;
 			if ([mtlRendEnc respondsToSelector: @selector(useResource:usage:stages:)]) {
-				[mtlRendEnc useResource: mtlResource usage: mtlUsage stages: mtlStages];
+				// Within a renderpass, a resource may be used by multiple descriptor bindings,
+				// each of which may assign a different usage stage. Dynamically accumulate
+				// usage stages across all descriptor bindings using the resource.
+				auto& accumStages = _renderUsageStages[mtlResource];
+				accumStages |= mtlStages;
+				[mtlRendEnc useResource: mtlResource usage: mtlUsage stages: accumStages];
 			} else {
 				[mtlRendEnc useResource: mtlResource usage: mtlUsage];
 			}
@@ -1039,8 +1051,10 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
 
 	encodeMetalArgumentBuffer(kMVKShaderStageCompute);
 
-    MVKPipeline* pipeline = getPipeline();
-	bool fullImageViewSwizzle = pipeline ? pipeline->fullImageViewSwizzle() : false;
+	MVKPipeline* pipeline = getPipeline();
+	if (pipeline && pipeline->usesPhysicalStorageBufferAddressesCapability(kMVKShaderStageCompute)) {
+		getDevice()->encodeGPUAddressableBuffers(this, kMVKShaderStageCompute);
+	}
 
     if (_resourceBindings.swizzleBufferBinding.isDirty) {
 		for (auto& b : _resourceBindings.textureBindings) {
@@ -1053,6 +1067,7 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
                                      _resourceBindings.swizzleBufferBinding.index);
 
 	} else {
+		bool fullImageViewSwizzle = pipeline ? pipeline->fullImageViewSwizzle() : false;
 		assertMissingSwizzles(_resourceBindings.needsSwizzle && !fullImageViewSwizzle, "compute", _resourceBindings.textureBindings.contents());
     }
 
@@ -1116,10 +1131,10 @@ void MVKComputeResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderSt
 	bindBuffer(buffBind);
 }
 
-void MVKComputeResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(MVKShaderStage stage,
-																			   id<MTLResource> mtlResource,
-																			   MTLResourceUsage mtlUsage,
-																			   MTLRenderStages mtlStages) {
+void MVKComputeResourcesCommandEncoderState::encodeResourceUsage(MVKShaderStage stage,
+																 id<MTLResource> mtlResource,
+																 MTLResourceUsage mtlUsage,
+																 MTLRenderStages mtlStages) {
 	if (mtlResource) {
 		auto* mtlCompEnc = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch);
 		[mtlCompEnc useResource: mtlResource usage: mtlUsage];
@@ -1145,7 +1160,7 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
     if ( !_hasRasterized || !vizBuff || _mtlRenderPassQueries.empty() ) { return; }  // Nothing to do.
 
 	id<MTLComputePipelineState> mtlAccumState = _cmdEncoder->getCommandEncodingPool()->getAccumulateOcclusionQueryResultsMTLComputePipelineState();
-    id<MTLComputeCommandEncoder> mtlAccumEncoder = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseAccumOcclusionQuery);
+    id<MTLComputeCommandEncoder> mtlAccumEncoder = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseAccumOcclusionQuery, true);
     [mtlAccumEncoder setComputePipelineState: mtlAccumState];
     for (auto& qryLoc : _mtlRenderPassQueries) {
         // Accumulate the current results to the query pool's buffer.
@@ -1158,7 +1173,6 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
         [mtlAccumEncoder dispatchThreadgroups: MTLSizeMake(1, 1, 1)
                         threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
     }
-    _cmdEncoder->endCurrentMetalEncoding();
     _mtlRenderPassQueries.clear();
 	_hasRasterized = false;
 }

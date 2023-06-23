@@ -620,5 +620,38 @@ MVKMetalCompiler::~MVKMetalCompiler() {
 	[_compileError release];
 }
 
+#pragma mark -
+#pragma mark MVKDeferredOperation
 
+VkResult MVKDeferredOperation::join() {
+    VkResult opResult;
+    switch(_functionType)
+    {
+        // Set operation result here by calling operation
+        default: return VK_THREAD_DONE_KHR;
+    };
+    
+    _resultLock.lock();
+    _operationResult = opResult;
+    _resultLock.unlock();
+    
+    _maxConcurrencyLock.lock();
+    _maxConcurrency = 0;
+    _maxConcurrencyLock.unlock();
+    
+    return VK_SUCCESS;
+}
 
+void MVKDeferredOperation::deferOperation(MVKDeferredOperationFunctionPointer pointer, MVKDeferredOperationFunctionType type, void* parameters[kMVKMaxDeferredFunctionParameters])
+{
+    _functionPointer = pointer;
+    _functionType = type;
+    
+    for(int i = 0; i < kMVKMaxDeferredFunctionParameters; i++) {
+        _functionParameters[i] = parameters[i];
+    }
+    
+    _maxConcurrencyLock.lock();
+    _maxConcurrency = mvkGetAvaliableCPUCores();
+    _maxConcurrencyLock.unlock();
+}

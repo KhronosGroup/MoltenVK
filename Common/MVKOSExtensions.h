@@ -167,3 +167,9 @@ uint64_t mvkGetUsedMemorySize();
 
 /** Returns the size of a page of host memory on this platform. */
 uint64_t mvkGetHostMemoryPageSize();
+
+#pragma mark -
+#pragma mark Threading
+
+/** Returns the amount of avaliable CPU cores. */
+uint32_t mvkGetAvaliableCPUCores();

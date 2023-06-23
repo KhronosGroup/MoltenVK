@@ -13,6 +13,62 @@ Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.2.5
+--------------
+
+Released TBD
+
+- Add support for extensions:
+	- `VK_EXT_shader_demote_to_helper_invocation`
+- Ensure non-dispatch compute commands don't interfere with compute encoding state used by dispatch commands.
+- Support `VK_PRESENT_MODE_IMMEDIATE_KHR` if `VkPresentTimeGOOGLE::desiredPresentTime` is zero.
+- Support maximizing the concurrent executing compilation tasks via `MVKConfiguration::shouldMaximizeConcurrentCompilation`
+- Add support for `VK_PRESENT_MODE_IMMEDIATE_KHR` to macOS Cube demo.
+- Log more info about SPIR-V to MSL conversion errors.
+
+
+
+MoltenVK 1.2.4
+--------------
+
+Released 2023/05/23
+
+- Add support for extensions:
+	- `VK_KHR_map_memory2`
+- Deprecate the obsolete and non-standard `VK_MVK_moltenvk` extension.
+  - Add `mvk_config.h`, `mvk_private_api.h`, and `mvk_deprecated_api.h`, and deprecate `vk_mvk_moltenvk.h`.
+- Support BC compression on iOS/tvOS where available (iOS/tvOS 16.4 and above and supported by the GPU).
+- Support separate depth and stencil attachments during dynamic rendering.
+- Fix memory leak when waiting on timeline semaphores.
+- Fix race condition when updating values in `VkPastPresentationTimingGOOGLE`,
+  and ensure swapchain image presented time is always populated when requested.
+- Report error, but do not fail on request for timestamp query pool that is too 
+  large for `MTLCounterSampleBuffer`, and fall back to emulation via CPU timestamps.
+- Ensure shaders that use `PhysicalStorageBufferAddresses` encode the use of the associated `MTLBuffer`.
+- Disable pipeline cache compression prior to macOS 10.15 and iOS/tvOS 13.0.
+- Accumulate render stages when a resource is used by multiple descriptor bindings.
+- Respect the bind point supplied to `vkCmdBindDescriptorSets()` / `vkCmdPushDescriptorSets()`.
+- Check if shader compiled before adding it to a pipeline, to avoid Metal validation error.
+- Identify each unsupported device feature flag that the app attempts to enable.
+- Populate `deviceUUID` from `MTLDevice` location and peer group info, 
+  which should be unique, and constant across OS reboots.
+- Populate `deviceLUID` from `MTLDevice.registryID`. 
+- Avoid Metal validation warning when depth component swizzled away.
+- Fix depth clamp and texture swizzle feature discovery on simulator builds.
+- Advertise `VK_KHR_depth_stencil_resolve` extension on all devices.
+- For correctness, set `VkPhysicalDeviceLimits::lineWidthGranularity` to `1`.
+- Improve GitHub CI production of binary artifacts on submission and release.
+- Update dependency libraries to match _Vulkan SDK 1.3.250_.
+- Update to latest SPIRV-Cross:
+  - MSL: Fix for argument buffer index compare when invalid.
+  - MSL: Fix dref lod workaround on combined texture/samplers.
+  - MSL: Do not override variable name with v_ identifier.
+  - MSL: Use name_id consistently in argument declaration.
+  - MSL: Don't hit array copy path for pointer to array.
+  - MSL: Use templated array type when emitting BDA to arrays.
+
+
+
 MoltenVK 1.2.3
 --------------
 

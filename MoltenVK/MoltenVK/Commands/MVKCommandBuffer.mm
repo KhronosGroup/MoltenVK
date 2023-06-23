@@ -401,10 +401,17 @@ void MVKCommandEncoder::beginRendering(MVKCommand* rendCmd, const VkRenderingInf
 								  ? VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
 								  : VK_SUBPASS_CONTENTS_INLINE);
 
-	uint32_t maxAttCnt = (pRenderingInfo->colorAttachmentCount + 1) * 2;
-	MVKImageView* attachments[maxAttCnt];
+	uint32_t maxAttCnt = (pRenderingInfo->colorAttachmentCount + 2) * 2;
+	MVKImageView* imageViews[maxAttCnt];
 	VkClearValue clearValues[maxAttCnt];
-	uint32_t attCnt = mvkGetAttachments(pRenderingInfo, attachments, clearValues);
+
+	uint32_t attCnt = 0;
+	MVKRenderingAttachmentIterator attIter(pRenderingInfo);
+	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, bool isResolveAttachment)->void {
+		imageViews[attCnt] = (MVKImageView*)(isResolveAttachment ? pAttInfo->resolveImageView : pAttInfo->imageView);
+		clearValues[attCnt] = pAttInfo->clearValue;
+		attCnt++;
+	});
 
 	// If we're resuming a suspended renderpass, continue to use the existing renderpass
 	// (with updated rendering flags) and framebuffer. Otherwise, create new transient
@@ -419,13 +426,14 @@ void MVKCommandEncoder::beginRendering(MVKCommand* rendCmd, const VkRenderingInf
 		mvkRP->setRenderingFlags(pRenderingInfo->flags);
 		mvkFB = _pEncodingContext->getFramebuffer();
 	} else {
-		mvkRP = mvkCreateRenderPass(getDevice(), pRenderingInfo);
-		mvkFB = mvkCreateFramebuffer(getDevice(), pRenderingInfo, mvkRP);
+		auto* mvkDev = getDevice();
+		mvkRP = mvkDev->createRenderPass(pRenderingInfo, nullptr);
+		mvkFB = mvkDev->createFramebuffer(pRenderingInfo, nullptr);
 	}
 	beginRenderpass(rendCmd, contents, mvkRP, mvkFB,
 					pRenderingInfo->renderArea,
 					MVKArrayRef(clearValues, attCnt),
-					MVKArrayRef(attachments, attCnt),
+					MVKArrayRef(imageViews, attCnt),
 					MVKArrayRef<MVKArrayRef<MTLSamplePosition>>(),
 					kMVKCommandUseBeginRendering);
 
@@ -831,10 +839,6 @@ void MVKCommandEncoder::endMetalRenderEncoding() {
 void MVKCommandEncoder::endCurrentMetalEncoding() {
 	endMetalRenderEncoding();
 
-	_computePipelineState.markDirty();
-	_computeResourcesState.markDirty();
-	_computePushConstants.markDirty();
-
 	if (_mtlComputeEncoder && _cmdBuffer->_hasStageCounterTimestampCommand) { [_mtlComputeEncoder updateFence: getStageCountersMTLFence()]; }
 	endMetalEncoding(_mtlComputeEncoder);
 	_mtlComputeEncoderUse = kMVKCommandUseNone;
@@ -846,12 +850,18 @@ void MVKCommandEncoder::endCurrentMetalEncoding() {
 	encodeTimestampStageCounterSamples();
 }
 
-id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandUse cmdUse) {
+id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandUse cmdUse, bool markCurrentComputeStateDirty) {
 	if ( !_mtlComputeEncoder ) {
 		endCurrentMetalEncoding();
 		_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoder];
 		retainIfImmediatelyEncoding(_mtlComputeEncoder);
 		beginMetalComputeEncoding(cmdUse);
+		markCurrentComputeStateDirty = true;	// Always mark current compute state dirty for new encoder
+	}
+	if(markCurrentComputeStateDirty) {
+		_computePipelineState.markDirty();
+		_computePushConstants.markDirty();
+		_computeResourcesState.markDirty();
 	}
 	if (_mtlComputeEncoderUse != cmdUse) {
 		_mtlComputeEncoderUse = cmdUse;

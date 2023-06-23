@@ -19,7 +19,7 @@
 #include "MVKExtensions.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
-#include "MVKEnvironment.h"
+#include "mvk_deprecated_api.h"
 #include <vulkan/vulkan_ios.h>
 #include <vulkan/vulkan_macos.h>
 
@@ -53,9 +53,6 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 	auto advExtns = mvkConfig().advertiseExtensions;
 	if ( !mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL) ) {
 #define MVK_NA  kMVKOSVersionUnsupported
-		if (mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_MOLTENVK)) {
-			MVK_EXTENSION_MIN_OS(MVK_MOLTENVK,                         10.11,  8.0,  1.0)
-		}
 		if (mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_WSI)) {
 			MVK_EXTENSION_MIN_OS(EXT_METAL_SURFACE,                    10.11,  8.0,  1.0)
 			MVK_EXTENSION_MIN_OS(MVK_IOS_SURFACE,                      MVK_NA, 8.0,  1.0)
@@ -168,6 +165,11 @@ VkResult MVKExtensionList::enable(uint32_t count, const char* const* names, cons
 			result = reportError(VK_ERROR_EXTENSION_NOT_PRESENT, "Vulkan extension %s is not supported.", extnName);
 		} else {
 			enable(extnName);
+			if (mvkStringsAreEqual(extnName, VK_MVK_MOLTENVK_EXTENSION_NAME)) {
+				reportMessage(MVK_CONFIG_LOG_LEVEL_WARNING, "Extension %s is deprecated. For access to Metal objects, use extension %s. "
+							  "For MoltenVK configuration, use the global vkGetMoltenVKConfigurationMVK() and vkSetMoltenVKConfigurationMVK() functions.",
+							  VK_MVK_MOLTENVK_EXTENSION_NAME, VK_EXT_METAL_OBJECTS_EXTENSION_NAME);
+			}
 		}
 	}
 	return result;

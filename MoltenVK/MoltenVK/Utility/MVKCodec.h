@@ -20,7 +20,6 @@
 #pragma once
 
 #include "MVKEnvironment.h"
-
 #include <vector>
 #include <string>
 

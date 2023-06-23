@@ -138,3 +138,10 @@ uint64_t mvkGetUsedMemorySize() {
 
 uint64_t mvkGetHostMemoryPageSize() { return sysconf(_SC_PAGESIZE); }
 
+#pragma mark -
+#pragma mark Threading
+
+/** Returns the amount of avaliable CPU cores. */
+uint32_t mvkGetAvaliableCPUCores() {
+    return (uint32_t)[[NSProcessInfo processInfo] activeProcessorCount];
+}

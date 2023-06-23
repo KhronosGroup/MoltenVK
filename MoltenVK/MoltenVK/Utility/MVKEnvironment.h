@@ -20,8 +20,9 @@
 #pragma once
 
 #include "MVKCommonEnvironment.h"
+#include "mvk_vulkan.h"
+#include "mvk_config.h"
 #include "MVKLogging.h"
-#include "vk_mvk_moltenvk.h"
 
 
 // Expose MoltenVK Apple surface extension functionality
@@ -293,4 +294,12 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 /** Compress MSL shader source code in a pipeline cache. Defaults to no compression. */
 #ifndef MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM
 #  	define MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM    MVK_CONFIG_COMPRESSION_ALGORITHM_NONE
+#endif
+
+/**
+ * Maximize the concurrent executing compilation tasks.
+ * This functionality requires macOS 13.3. Disabled by default.
+ */
+#ifndef MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION
+#  	define MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION    0
 #endif

@@ -175,7 +175,9 @@ void MVKSwapchain::markFrameInterval() {
 				   perfLogCntLimit,
 				   (1000.0 / _device->_performanceStatistics.queue.frameInterval.averageDuration),
 				   mvkGetElapsedMilliseconds() / 1000.0);
-		_device->logPerformanceSummary();
+		if (mvkConfig().activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT) {
+			_device->logPerformanceSummary();
+		}
 	}
 }
 
@@ -559,7 +561,7 @@ VkResult MVKSwapchain::getPastPresentationTiming(uint32_t *pCount, VkPastPresent
 	return res;
 }
 
-void MVKSwapchain::recordPresentTime(MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime) {
+void MVKSwapchain::recordPresentTime(const MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime) {
 	std::lock_guard<std::mutex> lock(_presentHistoryLock);
 	if (_presentHistoryCount < kMaxPresentationHistory) {
 		_presentHistoryCount++;
@@ -567,8 +569,11 @@ void MVKSwapchain::recordPresentTime(MVKImagePresentInfo& presentInfo, uint64_t 
 		_presentHistoryHeadIndex = (_presentHistoryHeadIndex + 1) % kMaxPresentationHistory;
 	}
 
-	// If actual time not supplied, use desired time instead
+	// If actual present time is not available, use desired time instead, and if that
+	// hasn't been set, use the current time, which should be reasonably accurate (sub-ms),
+	// since we are here as part of the addPresentedHandler: callback.
 	if (actualPresentTime == 0) { actualPresentTime = presentInfo.desiredPresentTime; }
+	if (actualPresentTime == 0) { actualPresentTime = CACurrentMediaTime() * 1.0e9; }
 
 	_presentTimingHistory[_presentHistoryIndex].presentID = presentInfo.presentID;
 	_presentTimingHistory[_presentHistoryIndex].desiredPresentTime = presentInfo.desiredPresentTime;

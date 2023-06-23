@@ -107,9 +107,11 @@ namespace std {
 #pragma mark -
 #pragma mark MVKRPSKeyClearAtt
 
-#define kMVKClearAttachmentCount						(kMVKCachedColorAttachmentCount + 1)
-#define kMVKClearAttachmentDepthStencilIndex			(kMVKClearAttachmentCount - 1)
-#define kMVKClearAttachmentLayeredRenderingBitIndex		kMVKClearAttachmentCount
+const static uint32_t kMVKClearColorAttachmentCount = kMVKMaxColorAttachmentCount;
+const static uint32_t kMVKClearAttachmentDepthIndex = kMVKClearColorAttachmentCount;
+const static uint32_t kMVKClearAttachmentStencilIndex = kMVKClearAttachmentDepthIndex + 1;
+const static uint32_t kMVKClearAttachmentCount = kMVKClearAttachmentStencilIndex + 1;
+const static uint32_t kMVKClearAttachmentLayeredRenderingBitIndex = kMVKClearAttachmentStencilIndex + 1;
 
 /**
  * Key to use for looking up cached MTLRenderPipelineState instances.

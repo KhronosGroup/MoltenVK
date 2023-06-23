@@ -19,7 +19,6 @@
 #pragma once
 
 #include "MVKVulkanAPIObject.h"
-#include "MVKEnvironment.h"
 #include <mutex>
 
 #import <Metal/Metal.h>

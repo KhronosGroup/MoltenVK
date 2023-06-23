@@ -18,8 +18,10 @@ Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 Table of Contents
 -----------------
 
-- [Developing Vulkan Applications on *macOS, iOS, and tvOS*](#developing_vulkan)
 - [Introduction to **MoltenVK**](#intro)
+- [Developing Vulkan Applications on *macOS, iOS, and tvOS*](#developing_vulkan)
+	- [Using the *Vulkan SDK*](#sdk)
+	- [Using MoltenVK Directly](#download)
 - [Fetching **MoltenVK** Source Code](#install)
 - [Building **MoltenVK**](#building)
 - [Running **MoltenVK** Demo Applications](#demos)
@@ -27,41 +29,6 @@ Table of Contents
 - [**MoltenVK** and *Vulkan* Compliance](#compliance)
 - [Getting Support](#support)
 - [Contributing to **MoltenVK** Development](#contributing)
-
-
-
-<a name="developing_vulkan"></a>
-Developing Vulkan Applications for *macOS, iOS, and tvOS*
----------------------------------------------------------
-
-The recommended method for developing a *Vulkan* application for *macOS* is to use the 
-[*Vulkan SDK*](https://vulkan.lunarg.com/sdk/home).
-
-The *Vulkan SDK* includes a **MoltenVK** runtime library for *macOS*. *Vulkan* is a layered 
-architecture that allows applications to add additional functionality without modifying the 
-application itself. The *Validation Layers* included in the *Vulkan SDK* are an essential debugging
-tool for application developers because they identify inappropriate use of the *Vulkan API*. 
-If you are developing a *Vulkan* application for *macOS*, it is highly recommended that you use the
-[*Vulkan SDK*](https://vulkan.lunarg.com/sdk/home) and the **MoltenVK** library included in it.
-Refer to the *Vulkan SDK [Getting Started](https://vulkan.lunarg.com/doc/sdk/latest/mac/getting_started.html)* 
-document for more info.
-
-Because **MoltenVK** supports the `VK_KHR_portability_subset` extension, when using the 
-*Vulkan Loader* from the *Vulkan SDK* to run **MoltenVK** on *macOS*, the *Vulkan Loader* 
-will only include **MoltenVK** `VkPhysicalDevices` in the list returned by 
-`vkEnumeratePhysicalDevices()` if the `VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR` 
-flag is enabled in `vkCreateInstance()`. See the description of the `VK_KHR_portability_enumeration` 
-extension in the *Vulkan* specification for more information about the use of the 
-`VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR` flag.
-
-If you are developing a *Vulkan* application for *iOS* or *tvOS*, or are developing a *Vulkan* 
-application for *macOS* and want to use a different version of the **MoltenVK** runtime library 
-provided in the *macOS Vulkan SDK*, you can use this document to learn how to build a **MoltenVK** 
-runtime library from source code.
-
-To learn how to integrate the **MoltenVK** runtime library into a game or application, 
-see the [`MoltenVK_Runtime_UserGuide.md `](Docs/MoltenVK_Runtime_UserGuide.md) 
-document in the `Docs` directory. 
 
 
 
@@ -96,6 +63,52 @@ The **MoltenVK** runtime package contains two products:
   runtime to automatically convert *SPIR-V* shaders to their *MSL* equivalents. In addition, 
   both the *SPIR-V* and *GLSL* converters are packaged into a stand-alone command-line 
   `MoltenVKShaderConverter` *macOS* tool for converting shaders at development time from the command line.
+
+
+
+<a name="developing_vulkan"></a>
+Developing *Vulkan* Applications for *macOS, iOS, and tvOS*
+---------------------------------------------------------
+
+<a name="sdk"></a>
+### Using the *Vulkan SDK*
+
+The recommended method for developing a *Vulkan* application for *macOS* is to use the 
+[*Vulkan SDK*](https://vulkan.lunarg.com/sdk/home).
+
+The *Vulkan SDK* includes a **MoltenVK** runtime library for *macOS*. *Vulkan* is a layered 
+architecture that allows applications to add additional functionality without modifying the 
+application itself. The *Validation Layers* included in the *Vulkan SDK* are an essential debugging
+tool for application developers because they identify inappropriate use of the *Vulkan API*. 
+If you are developing a *Vulkan* application for *macOS*, it is highly recommended that you use the
+[*Vulkan SDK*](https://vulkan.lunarg.com/sdk/home) and the **MoltenVK** library included in it.
+Refer to the *Vulkan SDK [Getting Started](https://vulkan.lunarg.com/doc/sdk/latest/mac/getting_started.html)* 
+document for more info.
+
+Because **MoltenVK** supports the `VK_KHR_portability_subset` extension, when using the 
+*Vulkan Loader* from the *Vulkan SDK* to run **MoltenVK** on *macOS*, the *Vulkan Loader* 
+will only include **MoltenVK** `VkPhysicalDevices` in the list returned by 
+`vkEnumeratePhysicalDevices()` if the `VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR` 
+flag is enabled in `vkCreateInstance()`. See the description of the `VK_KHR_portability_enumeration` 
+extension in the *Vulkan* specification for more information about the use of the 
+`VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR` flag.
+
+<a name="download"></a>
+### Using MoltenVK Directly
+
+If you are developing a *Vulkan* application for *iOS* or *tvOS*, or are developing a
+*Vulkan* application for *macOS* and want to use a different version or build of the
+**MoltenVK** runtime library than provided in the *macOS Vulkan SDK*, you can access
+a pre-built MoltenVK binary library from the **MoltenVK** repository, by
+[selecting a repository commit from the list](https://github.com/KhronosGroup/MoltenVK/actions),
+and downloading the associated **MoltenVK** runtime library artifact.
+
+Finally, if you want a customized build of **MoltenVK**, you can follow the [instructions below](#install)
+to create a **MoltenVK** runtime library by fetching and building the **MoltenVK** source code.
+
+To learn how to integrate the **MoltenVK** runtime library into a game or application,
+see the [`MoltenVK_Runtime_UserGuide.md `](Docs/MoltenVK_Runtime_UserGuide.md) 
+document in the `Docs` directory. 
 
 
 
@@ -268,14 +281,14 @@ The `make` targets all require that *Xcode* is installed on your system.
 Building from the command line creates the same `Package` folder structure described above when 
 building from within *Xcode*.
 
-When building from the command line, you can set any of the build settings documented in 
-the `vk_mvk_moltenvk.h` file for `MVKConfiguration`, by passing them in the command line, 
+When building from the command line, you can set any of the build settings documented 
+in the `mvk_config.h` file for `MVKConfiguration`, by passing them in the command line, 
 as in the following examples:
 
 	make MVK_CONFIG_LOG_LEVEL=0
 or
 
-	make macos MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS=1
+	make macos MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=2
 
 ...etc.
 
@@ -293,7 +306,7 @@ or it can be included in any of the `make` build commands. For example:
 or
 
 	make macos MVK_HIDE_VULKAN_SYMBOLS=1
-	
+
 ...etc.
 
 
