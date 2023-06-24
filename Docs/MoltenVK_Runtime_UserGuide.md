@@ -377,6 +377,8 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_shader_atomic_float` *(requires Metal 3.0)*
 - `VK_EXT_shader_demote_to_helper_invocation` *(requires Metal Shading Language 2.3)*
 - `VK_EXT_shader_stencil_export` *(requires Mac GPU family 2 or iOS GPU family 5)*
+- `VK_EXT_shader_subgroup_ballot` *(requires Mac GPU family 2 or Apple GPU family 4)*
+- `VK_EXT_shader_subgroup_vote` *(requires Mac GPU family 2 or Apple GPU family 4)*
 - `VK_EXT_shader_viewport_index_layer`
 - `VK_EXT_subgroup_size_control` *(requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS)*
 - `VK_EXT_surface_maintenance1`

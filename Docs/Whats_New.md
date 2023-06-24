@@ -22,6 +22,8 @@ Released TBD
 	- `VK_EXT_4444_formats`
 	- `VK_EXT_calibrated_timestamps`
 	- `VK_EXT_shader_demote_to_helper_invocation`
+	- `VK_EXT_shader_subgroup_ballot`
+	- `VK_EXT_shader_subgroup_vote`
 - Ensure non-dispatch compute commands don't interfere with compute encoding state used by dispatch commands.
 - Support `VK_PRESENT_MODE_IMMEDIATE_KHR` if `VkPresentTimeGOOGLE::desiredPresentTime` is zero.
 - Support maximizing the concurrent executing compilation tasks via `MVKConfiguration::shouldMaximizeConcurrentCompilation`
