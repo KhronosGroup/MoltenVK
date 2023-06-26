@@ -78,6 +78,8 @@ static const uint32_t kAMDRadeonRX6700DeviceId = 0x73df;
 static const VkExtent2D kMetalSamplePositionGridSize = { 1, 1 };
 static const VkExtent2D kMetalSamplePositionGridSizeNotSupported = { 0, 0 };
 
+static const uint32_t kMaxTimeDomains = 2;
+
 #pragma clang diagnostic pop
 
 
@@ -1118,6 +1120,22 @@ void MVKPhysicalDevice::getExternalSemaphoreProperties(const VkPhysicalDeviceExt
 	void* next = pExternalSemaphoreProperties->pNext;
 	*pExternalSemaphoreProperties = _emptyExtSemProps;
 	pExternalSemaphoreProperties->pNext = next;
+}
+
+VkResult MVKPhysicalDevice::getCalibrateableTimeDomains(uint32_t* pTimeDomainCount, VkTimeDomainEXT* pTimeDomains) {
+	if (!pTimeDomains) {
+		*pTimeDomainCount = kMaxTimeDomains;
+		return VK_SUCCESS;
+	}
+	// XXX CLOCK_MONOTONIC_RAW is mach_continuous_time(), but
+	// -[MTLDevice sampleTimestamps:gpuTimestamp:] returns the CPU
+	// timestamp in the mach_absolute_time() domain, which is CLOCK_UPTIME_RAW
+	// (cf. Libc/gen/clock_gettime.c).
+	static const VkTimeDomainEXT domains[] = { VK_TIME_DOMAIN_DEVICE_EXT, VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_EXT };
+	std::copy_n(domains, min(*pTimeDomainCount, kMaxTimeDomains), pTimeDomains);
+	if (*pTimeDomainCount < kMaxTimeDomains) { return VK_INCOMPLETE; }
+	*pTimeDomainCount = kMaxTimeDomains;
+	return VK_SUCCESS;
 }
 
 
@@ -3544,6 +3562,36 @@ VkResult MVKDevice::getMemoryHostPointerProperties(VkExternalMemoryHandleTypeFla
 	return VK_SUCCESS;
 }
 
+void MVKDevice::getCalibratedTimestamps(uint32_t timestampCount,
+										const VkCalibratedTimestampInfoEXT* pTimestampInfos,
+										uint64_t* pTimestamps,
+										uint64_t* pMaxDeviation) {
+	MTLTimestamp cpuStamp, gpuStamp;
+	uint64_t cpuStart, cpuEnd;
+
+	cpuStart = mvkGetAbsoluteTime();
+	[getMTLDevice() sampleTimestamps: &cpuStamp gpuTimestamp: &gpuStamp];
+	// Sample again to calculate the maximum deviation. Note that the
+	// -[MTLDevice sampleTimestamps:gpuTimestamp:] method guarantees that CPU
+	// timestamps are in nanoseconds. We don't want to call the method again,
+	// because that could result in an expensive syscall to query the GPU time-
+	// stamp.
+	cpuEnd = mvkGetAbsoluteTime();
+	for (uint32_t tsIdx = 0; tsIdx < timestampCount; ++tsIdx) {
+		switch (pTimestampInfos[tsIdx].timeDomain) {
+			case VK_TIME_DOMAIN_DEVICE_EXT:
+				pTimestamps[tsIdx] = gpuStamp;
+				break;
+			// XXX Should be VK_TIME_DOMAIN_CLOCK_UPTIME_RAW_EXT
+			case VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_EXT:
+				pTimestamps[tsIdx] = cpuStart;
+				break;
+			default:
+				continue;
+		}
+	}
+	*pMaxDeviation = cpuEnd - cpuStart;
+}
 
 #pragma mark Object lifecycle
 

@@ -84,6 +84,9 @@ double mvkGetTimestampPeriod();
  */
 double mvkGetElapsedMilliseconds(uint64_t startTimestamp = 0, uint64_t endTimestamp = 0);
 
+/** Returns the current absolute time in nanoseconds. */
+uint64_t mvkGetAbsoluteTime();
+
 /** Ensures the block is executed on the main thread. */
 void mvkDispatchToMainAndWait(dispatch_block_t block);
 
