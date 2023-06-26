@@ -19,6 +19,7 @@ MoltenVK 1.2.5
 Released TBD
 
 - Add support for extensions:
+	- `VK_KHR_shader_non_semantic_info`
 	- `VK_EXT_4444_formats`
 	- `VK_EXT_calibrated_timestamps`
 	- `VK_EXT_shader_demote_to_helper_invocation`
