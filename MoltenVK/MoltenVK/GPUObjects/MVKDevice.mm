@@ -3112,6 +3112,8 @@ void MVKPhysicalDevice::initExtensions() {
 	}
 	if (!_metalFeatures.simdPermute && !_metalFeatures.quadPermute) {
 		pWritableExtns->vk_KHR_shader_subgroup_extended_types.enabled = false;
+		pWritableExtns->vk_EXT_shader_subgroup_ballot.enabled = false;
+		pWritableExtns->vk_EXT_shader_subgroup_vote.enabled = false;
 	}
 	if (!_metalFeatures.shaderBarycentricCoordinates) {
 		pWritableExtns->vk_KHR_fragment_shader_barycentric.enabled = false;

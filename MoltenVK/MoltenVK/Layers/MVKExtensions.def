@@ -121,6 +121,8 @@ MVK_EXTENSION(EXT_separate_stencil_usage,             EXT_SEPARATE_STENCIL_USAGE
 MVK_EXTENSION(EXT_shader_atomic_float,                EXT_SHADER_ATOMIC_FLOAT,                DEVICE,   13.0,  16.0)
 MVK_EXTENSION(EXT_shader_demote_to_helper_invocation, EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION, DEVICE,   11.0,  14.0)
 MVK_EXTENSION(EXT_shader_stencil_export,              EXT_SHADER_STENCIL_EXPORT,              DEVICE,   10.14, 12.0)
+MVK_EXTENSION(EXT_shader_subgroup_ballot,             EXT_SHADER_SUBGROUP_BALLOT,             DEVICE,   10.14, 13.0)
+MVK_EXTENSION(EXT_shader_subgroup_vote,               EXT_SHADER_SUBGROUP_VOTE,               DEVICE,   10.14, 13.0)
 MVK_EXTENSION(EXT_shader_viewport_index_layer,        EXT_SHADER_VIEWPORT_INDEX_LAYER,        DEVICE,   10.11,  8.0)
 MVK_EXTENSION(EXT_subgroup_size_control,              EXT_SUBGROUP_SIZE_CONTROL,              DEVICE,   10.14, 13.0)
 MVK_EXTENSION(EXT_surface_maintenance1,               EXT_SURFACE_MAINTENANCE_1,              INSTANCE, 10.11,  8.0)
