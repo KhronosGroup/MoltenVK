@@ -469,9 +469,12 @@ public:
 	id<MTLComputePipelineState> newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needTempBuf,
 																						   MVKVulkanAPIDeviceObject* owner);
 
-	/** Returns a new MTLComputePipelineState for converting an indirect buffer for use in a multiview draw. */
-	id<MTLComputePipelineState> newCmdDrawIndirectMultiviewConvertBuffersMTLComputePipelineState(bool indexed,
-																								 MVKVulkanAPIDeviceObject* owner);
+	/** Returns a new MTLComputePipelineState for populating an indirect index buffer from a non-indexed indirect buffer. */
+	id<MTLComputePipelineState> newCmdDrawIndirectPopulateIndexesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+
+	/** Returns a new MTLComputePipelineState for converting the contents of an indirect buffer. */
+	id<MTLComputePipelineState> newCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed,
+																						MVKVulkanAPIDeviceObject* owner);
 
 	/** Returns a new MTLComputePipelineState for converting an indirect buffer for use in a tessellated draw. */
 	id<MTLComputePipelineState> newCmdDrawIndirectTessConvertBuffersMTLComputePipelineState(bool indexed,
