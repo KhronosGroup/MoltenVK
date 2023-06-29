@@ -623,35 +623,54 @@ MVKMetalCompiler::~MVKMetalCompiler() {
 #pragma mark -
 #pragma mark MVKDeferredOperation
 
+// Call appropriate function from MVKDeferredOperationFunctionPointer with parameters.
+// While executing, the function can call setOperationResult() and setMaxConcurrency()
+// to update status of the operation, and should return a VkResult that is returned here.
 VkResult MVKDeferredOperation::join() {
-    VkResult opResult;
-    switch(_functionType)
-    {
-        // Set operation result here by calling operation
-        default: return VK_THREAD_DONE_KHR;
+	switch(_functionType) {
+		// .....
+        default: return VK_SUCCESS;
     };
-    
-    _resultLock.lock();
-    _operationResult = opResult;
-    _resultLock.unlock();
-    
-    _maxConcurrencyLock.lock();
-    _maxConcurrency = 0;
-    _maxConcurrencyLock.unlock();
-    
-    return VK_SUCCESS;
 }
 
-void MVKDeferredOperation::deferOperation(MVKDeferredOperationFunctionPointer pointer, MVKDeferredOperationFunctionType type, void* parameters[kMVKMaxDeferredFunctionParameters])
-{
+void MVKDeferredOperation::deferOperation(const MVKDeferredOperationFunctionPointer& pointer,
+										  MVKDeferredOperationFunctionType type,
+										  void** parameters,
+										  uint32_t paramCount) {
     _functionPointer = pointer;
     _functionType = type;
-    
-    for(int i = 0; i < kMVKMaxDeferredFunctionParameters; i++) {
-        _functionParameters[i] = parameters[i];
+
+	_functionParameters.reserve(paramCount);
+	for(int i = 0; i < paramCount; i++) {
+        _functionParameters.push_back(parameters[i]);
     }
-    
-    _maxConcurrencyLock.lock();
-    _maxConcurrency = mvkGetAvaliableCPUCores();
-    _maxConcurrencyLock.unlock();
+
+	updateResults(VK_SUCCESS, mvkGetAvaliableCPUCores());
 }
+
+VkResult MVKDeferredOperation::getOperationResult() {
+	lock_guard<mutex> lock(_lock);
+	return _operationResult;
+}
+
+void MVKDeferredOperation::setOperationResult(VkResult opResult) {
+	lock_guard<mutex> lock(_lock);
+	_operationResult = opResult;
+}
+
+uint32_t MVKDeferredOperation::getMaxConcurrency() {
+	lock_guard<mutex> lock(_lock);
+	return _maxConcurrency;
+}
+
+void MVKDeferredOperation::setMaxConcurrency(uint32_t maxConCurr) {
+	lock_guard<mutex> lock(_lock);
+	_maxConcurrency = maxConCurr;
+}
+
+void MVKDeferredOperation::updateResults(VkResult opResult, uint32_t maxConCurr) {
+	lock_guard<mutex> lock(_lock);
+	_operationResult = opResult;
+	_maxConcurrency = maxConCurr;
+}
+

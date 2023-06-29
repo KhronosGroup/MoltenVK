@@ -2676,7 +2676,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetDeferredOperationResultKHR(
     
     MVKTraceVulkanCallStart();
     MVKDeferredOperation* mvkDeferredOperation = (MVKDeferredOperation*)operation;
-    VkResult rslt = mvkDeferredOperation->getResult();
+    VkResult rslt = mvkDeferredOperation->getOperationResult();
     MVKTraceVulkanCallEnd();
     return rslt;
 }

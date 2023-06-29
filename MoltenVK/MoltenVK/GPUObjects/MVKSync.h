@@ -640,67 +640,85 @@ protected:
 #pragma mark -
 #pragma mark MVKDeferredOperation
 
+/** The maximum number of function parameters for all functions added to MVKDeferredOperationFunctionPointer. */
+static const int kMVKMaxDeferredFunctionParameters = 3;
+
 /** Defines the function pointer for each dependent function. */
-union MVKDeferredOperationFunctionPointer
-{
-    // Empty until deferred functions from other extensions have been defined
-    // Planning to use std::functions
+union MVKDeferredOperationFunctionPointer {
+    // Empty until deferred functions from other extensions have been defined.
+	// Planning to use std::functions
+	// Each function should take a pointer to a MVKDeferredOperation instance, to allow
+	// the function to call setMaxConcurrency() and setOperationResult(), and should
+	// return a VkResult representing the value returned by vkDeferredOperationJoinKHR().
 };
 
 /** Indicates what kind of function is being deferred. */
-enum MVKDeferredOperationFunctionType
-{
+enum MVKDeferredOperationFunctionType {
     // Empty until deferred functions from other extensions have been defined
 };
 
+/**
+ * Holds and invokes a deferred operation.
+ *
+ * Deferred operations are added by as required by future extensions that require them,
+ * and are implemented by each of those extensions as a function pointer added to
+ * MVKDeferredOperationFunctionPointer, plus a corresponding type identifier added
+ * to MVKDeferredOperationFunctionType.
+ */
 class MVKDeferredOperation : public MVKVulkanAPIDeviceObject {
 public:
-    /** Returns the Vulkan type of this object. */
     VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_DEFERRED_OPERATION_KHR; }
     
-    /** Returns the debug report object type of this object. */
     VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT; }
     
     /** Begins executing the deferred operation on the current thread. */
     VkResult join();
-    
-    /** Gets the max number of threads that can execute the deferred operation concurrently*/
-    uint32_t getMaxConcurrency() {
-        std::lock_guard<std::mutex> lock(_maxConcurrencyLock);
-        return _maxConcurrency;
-    }
-    
-    /** Gets the result of the execution of the deferred operation */
-    VkResult getResult() {
-        std::lock_guard<std::mutex> lock(_resultLock);
-        return _operationResult;
-    }
-    
-    static const int kMVKMaxDeferredFunctionParameters = 3;
-    
-    /** Sets all the variables needed for a deferred operation, however should never be called manually and only from other functions that take deferred operations*/
-    void deferOperation(MVKDeferredOperationFunctionPointer pointer, MVKDeferredOperationFunctionType type, void* parameters[kMVKMaxDeferredFunctionParameters]);
+
+	/** Gets the result of the execution of the deferred operation */
+	VkResult getOperationResult();
+
+	/**
+	 * Sets the result of the execution of the deferred operation.
+	 * Called from the function that is implementing the deferred operation.
+	 */
+	void setOperationResult(VkResult opResult);
+
+    /** Gets the max number of threads that can execute the deferred operation concurrently. */
+	uint32_t getMaxConcurrency();
+
+	/**
+	 * Sets the max number of threads that can execute the deferred operation concurrently.
+	 * Called from the function that is implementing the deferred operation.
+	 */
+	void setMaxConcurrency(uint32_t maxConCurr);
+
+	/**
+	 * Sets the result of the execution of the deferred operation, and updates the max concurrently.
+	 * Equivalent to calling setOperationResult() and setMaxConcurrency(), but with a single concurrency mutex lock.
+	 * Called from the function that is implementing the deferred operation.
+	 */
+	void updateResults(VkResult opResult, uint32_t maxConCurr);
+
+    /**
+	 * Sets all the variables needed for a deferred operation.
+	 * Called from the code that implements a deferred operation.
+	 */
+    void deferOperation(const MVKDeferredOperationFunctionPointer& pointer,
+						MVKDeferredOperationFunctionType type,
+						void** parameters,
+						uint32_t paramCount);
+
 #pragma mark Construction
     MVKDeferredOperation(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
+
 protected:
-    /** Stores the result of the operation*/
-    VkResult _operationResult = VK_SUCCESS;
-    /** The mutex for the operation result being used to ensure thread safety. */
-    std::mutex _resultLock;
-    
-    /** Stores a pointer to the function*/
-    MVKDeferredOperationFunctionPointer _functionPointer;
-    
-    /** Stores what functions is being deferred*/
-    MVKDeferredOperationFunctionType _functionType;
-    
-    /** The parameters in the operation being deferred*/
-    void* _functionParameters[kMVKMaxDeferredFunctionParameters] = {};
-    
-    /** Stores the max amount of threads that should be used.. */
+	void propagateDebugName() override {}
+
+	std::mutex _lock;
+	MVKSmallVector<void*, kMVKMaxDeferredFunctionParameters>  _functionParameters;
+	MVKDeferredOperationFunctionPointer _functionPointer = {};
+	MVKDeferredOperationFunctionType _functionType;
+	VkResult _operationResult = VK_SUCCESS;
     uint32_t _maxConcurrency = 0;
-    /** The mutex for the max concurrency being used to ensure thread safety. */
-    std::mutex _maxConcurrencyLock;
-    
-    void propagateDebugName() override {}
+
 };
