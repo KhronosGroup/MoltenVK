@@ -274,6 +274,9 @@ public:
 	/** Returns whether this pipeline has custom sample positions enabled. */
 	bool isUsingCustomSamplePositions() { return _isUsingCustomSamplePositions; }
 
+	/** Returns the Vulkan primitive topology. */
+	VkPrimitiveTopology getVkPrimitiveTopology() { return _vkPrimitiveTopology; }
+
 	bool usesPhysicalStorageBufferAddressesCapability(MVKShaderStage stage) override;
 
 	/**
@@ -380,10 +383,10 @@ protected:
 	MTLWinding _mtlFrontWinding;
 	MTLTriangleFillMode _mtlFillMode;
 	MTLDepthClipMode _mtlDepthClipMode;
-	MTLPrimitiveType _mtlPrimitiveType;
 	MVKShaderImplicitRezBinding _reservedVertexAttributeBufferCount;
 	MVKShaderImplicitRezBinding _viewRangeBufferIndex;
 	MVKShaderImplicitRezBinding _outputBufferIndex;
+	VkPrimitiveTopology _vkPrimitiveTopology;
 	uint32_t _outputControlPointCount;
 	uint32_t _tessCtlPatchOutputBufferIndex = 0;
 	uint32_t _tessCtlLevelBufferIndex = 0;

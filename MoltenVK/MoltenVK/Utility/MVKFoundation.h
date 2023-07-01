@@ -91,7 +91,7 @@ typedef enum : uint8_t {
     kMVKCommandUseResetQueryPool,               /**< vkCmdResetQueryPool. */
     kMVKCommandUseDispatch,                     /**< vkCmdDispatch. */
     kMVKCommandUseTessellationVertexTessCtl,    /**< vkCmdDraw* - vertex and tessellation control stages. */
-	kMVKCommandUseMultiviewInstanceCountAdjust, /**< vkCmdDrawIndirect* - adjust instance count for multiview. */
+	kMVKCommandUseDrawIndirectConvertBuffers,   /**< vkCmdDrawIndirect* convert indirect buffers. */
     kMVKCommandUseCopyQueryPoolResults,         /**< vkCmdCopyQueryPoolResults. */
     kMVKCommandUseAccumOcclusionQuery,          /**< Any command terminating a Metal render pass with active visibility buffer. */
 	kMVKCommandUseRecordGPUCounterSample        /**< Any command triggering the recording of a GPU counter sample. */

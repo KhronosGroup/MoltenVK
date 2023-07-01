@@ -300,7 +300,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
             cmdEncoder->_depthBiasState.setDepthBias(_rasterInfo);
             cmdEncoder->_viewportState.setViewports(_viewports.contents(), 0, false);
             cmdEncoder->_scissorState.setScissors(_scissors.contents(), 0, false);
-            cmdEncoder->_mtlPrimitiveType = _mtlPrimitiveType;
+            cmdEncoder->_mtlPrimitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(_vkPrimitiveTopology);
 
             [mtlCmdEnc setCullMode: _mtlCullMode];
             [mtlCmdEnc setFrontFacingWinding: _mtlFrontWinding];
@@ -459,15 +459,9 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	}
 
 	// Topology
-	_mtlPrimitiveType = MTLPrimitiveTypePoint;
-	if (pCreateInfo->pInputAssemblyState && !isRenderingPoints(pCreateInfo)) {
-		_mtlPrimitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
-		// Explicitly fail creation with triangle fan topology.
-		if (pCreateInfo->pInputAssemblyState->topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support triangle fans."));
-			return;
-		}
-	}
+	_vkPrimitiveTopology = (pCreateInfo->pInputAssemblyState && !isRenderingPoints(pCreateInfo)
+				   ? pCreateInfo->pInputAssemblyState->topology
+				   : VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
 
 	// Rasterization
 	_mtlCullMode = MTLCullModeNone;

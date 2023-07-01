@@ -580,11 +580,15 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyBufferToImage3D
 									  : "cmdCopyBufferToImage3DDecompressDXTn", owner);
 }
 
-id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectMultiviewConvertBuffersMTLComputePipelineState(bool indexed,
-																														MVKVulkanAPIDeviceObject* owner) {
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed,
+																											   MVKVulkanAPIDeviceObject* owner) {
 	return newMTLComputePipelineState(indexed
-									  ? "cmdDrawIndexedIndirectMultiviewConvertBuffers"
-									  : "cmdDrawIndirectMultiviewConvertBuffers", owner);
+									  ? "cmdDrawIndexedIndirectConvertBuffers"
+									  : "cmdDrawIndirectConvertBuffers", owner);
+}
+
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectPopulateIndexesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("cmdDrawIndirectPopulateIndexes", owner);
 }
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectTessConvertBuffersMTLComputePipelineState(bool indexed,
