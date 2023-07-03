@@ -133,12 +133,14 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
         
         MTLPixelFormat srcMTLPixFmt = _srcImage->getMTLPixelFormat(srcPlaneIndex);
         bool isSrcCompressed = _srcImage->getIsCompressed();
+        bool isSrcDepth = _srcImage->getIsDepthStencil();
 
         MTLPixelFormat dstMTLPixFmt = _dstImage->getMTLPixelFormat(dstPlaneIndex);
         bool isDstCompressed = _dstImage->getIsCompressed();
+        bool isDstDepth = _dstImage->getIsDepthStencil();
 
         // If source and destination have different formats and at least one is compressed, use a temporary intermediary buffer
-        bool useTempBuffer = (srcMTLPixFmt != dstMTLPixFmt) && (isSrcCompressed || isDstCompressed);
+        bool useTempBuffer = (srcMTLPixFmt != dstMTLPixFmt) && (isSrcCompressed || isDstCompressed || isSrcDepth != isDstDepth);
 
         if (useTempBuffer) {
             // Add copy from source image to temp buffer.
