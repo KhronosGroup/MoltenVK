@@ -139,7 +139,7 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
         bool isDstCompressed = _dstImage->getIsCompressed();
         bool isDstDepth = _dstImage->getIsDepthStencil();
 
-        // If source and destination have different formats and at least one is compressed, use a temporary intermediary buffer
+        // If source and destination have different formats and at least one is compressed, or one is color and the other is depth/stencil, use a temporary intermediary buffer.
         bool useTempBuffer = (srcMTLPixFmt != dstMTLPixFmt) && (isSrcCompressed || isDstCompressed || isSrcDepth != isDstDepth);
 
         if (useTempBuffer) {
