@@ -745,6 +745,8 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_EXT_ENTRY_POINT_ALIAS(vkCmdSetLineStippleEXT, vkCmdSetLineStipple, EXT_LINE_RASTERIZATION);
 
 	// Device extension functions.
+    ADD_DVC_EXT_ENTRY_POINT(vkCreateAccelerationStructureKHR, KHR_ACCELERATION_STRUCTURE);
+    ADD_DVC_EXT_ENTRY_POINT(vkDestroyAccelerationStructureKHR, KHR_ACCELERATION_STRUCTURE);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetCalibratedTimestampsKHR, KHR_CALIBRATED_TIMESTAMPS);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetPhysicalDeviceCalibrateableTimeDomainsKHR, KHR_CALIBRATED_TIMESTAMPS);
     ADD_DVC_EXT_ENTRY_POINT(vkCreateDeferredOperationKHR, KHR_DEFERRED_HOST_OPERATIONS);

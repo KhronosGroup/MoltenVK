@@ -654,6 +654,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		019795132A5304D600C6CAD0 /* MVKAccelerationStructure.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MVKAccelerationStructure.h; sourceTree = "<group>"; };
 		2FEA0ABA24902F9F00EEF3AD /* libMoltenVK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVK.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		45003E6F214AD4C900E989CB /* MVKExtensions.def */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = MVKExtensions.def; sourceTree = "<group>"; };
 		4536382D2508A4C6000EFFD3 /* MTLRenderPassStencilAttachmentDescriptor+MoltenVK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "MTLRenderPassStencilAttachmentDescriptor+MoltenVK.h"; sourceTree = "<group>"; };
@@ -957,6 +958,7 @@
 		A94FB77E1C7DFB4800632CA3 /* GPUObjects */ = {
 			isa = PBXGroup;
 			children = (
+				019795132A5304D600C6CAD0 /* MVKAccelerationStructure.h */,
 				A94FB77F1C7DFB4800632CA3 /* MVKBuffer.h */,
 				A94FB7801C7DFB4800632CA3 /* MVKBuffer.mm */,
 				A966A5DC23C535D000BBF9B4 /* MVKDescriptor.h */,

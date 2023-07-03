@@ -33,6 +33,7 @@
 #include "MVKFoundation.h"
 #include "MVKCodec.h"
 #include "MVKStrings.h"
+#include "MVKAccelerationStructure.h"
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 
 #import "CAMetalLayer+MoltenVK.h"
@@ -335,6 +336,17 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				storageFeatures->storagePushConstant8 = supportedFeats12.storagePushConstant8;
 				break;
 			}
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR: {
+                // In the future we should update this to allow for more advanced features if they can be supported.
+                auto* storageFeatures = (VkPhysicalDeviceAccelerationStructureFeaturesKHR*)next;
+                storageFeatures->accelerationStructure = true;
+                storageFeatures->accelerationStructure = false;
+                storageFeatures->accelerationStructureCaptureReplay = false;
+                storageFeatures->accelerationStructureIndirectBuild = false;
+                storageFeatures->accelerationStructureHostCommands = false;
+                storageFeatures->descriptorBindingAccelerationStructureUpdateAfterBind = false;
+                break;
+            }
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES:
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: {
 				auto* bufferDeviceAddressFeatures = (VkPhysicalDeviceBufferDeviceAddressFeatures*)next;
@@ -961,6 +973,18 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				populateHostImageCopyProperties((VkPhysicalDeviceHostImageCopyProperties*)next);
 				break;
 			}
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR: {
+                /*
+                    These are all magic numbers at the moment and should be probaly defined as constants, as well as that, there is an extended mode which allows for more geometry in the acceleration structures. If you're looking for a source here it is. https://developer.apple.com/documentation/metal/mtlaccelerationstructureusage/3750490-extendedlimits
+                */
+        
+                auto* accelerationStructureProps = (VkPhysicalDeviceAccelerationStructurePropertiesKHR*)next;
+                accelerationStructureProps->maxGeometryCount = pow(2, 24);
+                accelerationStructureProps->maxInstanceCount = pow(2, 24);
+                accelerationStructureProps->maxPrimitiveCount = pow(2, 28);
+                // Other properties have not been figured out quite yet
+                break;
+            }
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
 				auto* dvcIDProps = (VkPhysicalDeviceIDProperties*)next;
 				mvkCopy(dvcIDProps->deviceUUID, supportedProps11.deviceUUID, VK_UUID_SIZE);
@@ -4540,6 +4564,19 @@ MVKPipelineLayout* MVKDevice::createPipelineLayout(const VkPipelineLayoutCreateI
 void MVKDevice::destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
 									  const VkAllocationCallbacks* pAllocator) {
 	if (mvkPLL) { mvkPLL->destroy(); }
+}
+
+MVKAccelerationStructure* MVKDevice::createAccelerationStructure(VkDevice                                    device,
+                                                                 const VkAccelerationStructureCreateInfoKHR* pCreateInfo,
+                                                                 const VkAllocationCallbacks*                pAllocator,
+                                                                 VkAccelerationStructureKHR*                 pAccelerationStructure) {
+    return new MVKAccelerationStructure(this);
+}
+
+void MVKDevice::destroyAccelerationStructure(VkDevice                      device,
+                                             MVKAccelerationStructure*     mvkAccStruct,
+                                             const VkAllocationCallbacks*  pAllocator) {
+    if(mvkAccStruct) { mvkAccStruct->destroy(); }
 }
 
 template<typename PipelineType, typename PipelineInfoType>

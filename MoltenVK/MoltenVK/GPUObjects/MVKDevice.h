@@ -69,6 +69,7 @@ class MVKCommandPool;
 class MVKCommandEncoder;
 class MVKCommandResourceFactory;
 class MVKPrivateDataSlot;
+class MVKAccelerationStructure; // Not sure where to place, I'll move it there later
 
 
 /** The buffer index to use for vertex content. */
@@ -645,6 +646,14 @@ public:
 											const VkAllocationCallbacks* pAllocator);
 	void destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
 							   const VkAllocationCallbacks* pAllocator);
+    
+    MVKAccelerationStructure* createAccelerationStructure(VkDevice                                    device,
+                                                          const VkAccelerationStructureCreateInfoKHR* pCreateInfo,
+                                                          const VkAllocationCallbacks*                pAllocator,
+                                                          VkAccelerationStructureKHR*                 pAccelerationStructure);
+    void destroyAccelerationStructure(VkDevice                      device,
+                                      MVKAccelerationStructure*     mvkAccStruct,
+                                      const VkAllocationCallbacks*  pAllocator);
 
     /**
      * Template function that creates count number of pipelines of type PipelineType,
