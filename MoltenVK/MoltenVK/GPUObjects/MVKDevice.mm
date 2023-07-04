@@ -2388,21 +2388,24 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.mtlBufferAlignment = 256;	// Even on Apple Silicon
 #endif
 
-	// Currently, Metal argument buffer support is in beta stage, and is only supported
-	// on macOS 11.0 (Big Sur) or later, or on older versions of macOS using an Intel GPU.
-	// Metal argument buffers support is not available on iOS. Development to support iOS
-	// and a wider combination of GPU's on older macOS versions is under way.
-#if MVK_MACOS
-	_metalFeatures.descriptorSetArgumentBuffers = (_metalFeatures.argumentBuffers &&
-												   (mvkOSVersionIsAtLeast(11.0) ||
-													_properties.vendorID == kIntelVendorId));
-#endif
-
+	// Argument buffers
 	if ([_mtlDevice respondsToSelector: @selector(argumentBuffersSupport)]) {
 		_metalFeatures.argumentBuffersTier = _mtlDevice.argumentBuffersSupport;
 	} else {
 		_metalFeatures.argumentBuffersTier = MTLArgumentBuffersTier1;
 	}
+
+	// Metal argument buffer support for descriptor sets is supported on macOS 11.0 or later,
+	// or on older versions of macOS using an Intel GPU, or on iOS & tvOS 16.0 or later (Metal 3).
+	_metalFeatures.descriptorSetArgumentBuffers = (_metalFeatures.argumentBuffers &&
+												   (mvkOSVersionIsAtLeast(11.0, 16.0, 1.0) ||
+													_properties.vendorID == kIntelVendorId));
+
+	// Argument encoders are not needed if Metal 3 plus Tier 2 argument buffers.
+	_metalFeatures.needsArgumentBufferEncoders = (_metalFeatures.argumentBuffers &&
+												  !(mvkOSVersionIsAtLeast(13.0, 16.0, 1.0) &&
+													supportsMTLGPUFamily(Metal3) &&
+													_metalFeatures.argumentBuffersTier >= MTLArgumentBuffersTier2));
 
 #define checkSupportsMTLCounterSamplingPoint(mtlSP, mvkSP)  \
 	if ([_mtlDevice respondsToSelector: @selector(supportsCounterSampling:)] &&  \
@@ -4872,7 +4875,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 
 	// After enableExtensions && enableFeatures
 	// Use Metal arg buffs if available, and config wants them either always,
-	// or with descriptor indexing and descriptor indexing has been enabled.
+	// or with descriptor indexing, and descriptor indexing has been enabled.
 	_isUsingDescriptorSetMetalArgumentBuffers = (_physicalDevice->supportsDescriptorSetMetalArgumentBuffers() &&
 												 (getMVKConfig().useMetalArgumentBuffers == MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_ALWAYS ||
 												  (getMVKConfig().useMetalArgumentBuffers == MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_DESCRIPTOR_INDEXING &&

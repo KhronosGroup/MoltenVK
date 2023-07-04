@@ -903,11 +903,14 @@ public:
 	/** Returns whether the GPU is Apple Silicon. */
 	bool isAppleGPU() { return _device->_physicalDevice->_isAppleGPU; }
 
-	/** Returns info about the pixel format supported by the physical device. */
-	MVKPixelFormats* getPixelFormats() { return &_device->_physicalDevice->_pixelFormats; }
-
 	/** Returns whether this device is using one Metal argument buffer for each descriptor set, on multiple pipeline and pipeline stages. */
 	bool isUsingDescriptorSetMetalArgumentBuffers() { return _device->_isUsingDescriptorSetMetalArgumentBuffers && getMetalFeatures().descriptorSetArgumentBuffers; };
+
+	/** Returns whether this device needs Metal argument buffer encoders to populate argument buffer content. */
+	bool needsMetalArgumentBufferEncoders() { return _device->_physicalDevice->_metalFeatures.needsArgumentBufferEncoders; };
+
+	/** Returns info about the pixel format supported by the physical device. */
+	MVKPixelFormats* getPixelFormats() { return &_device->_physicalDevice->_pixelFormats; }
 
 	/** The list of Vulkan extensions, indicating whether each has been enabled by the app for this device. */
 	MVKExtensionList& getEnabledExtensions() { return _device->_enabledExtensions; }

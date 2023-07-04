@@ -29,25 +29,27 @@ class MVKDescriptorPool;
 class MVKPipelineLayout;
 class MVKCommandEncoder;
 class MVKResourcesCommandEncoderState;
+struct MVKArgumentBufferEncoder;
 
 
 #pragma mark -
 #pragma mark MVKDescriptorSetLayout
 
 /**
- * Holds and manages the lifecycle of a MTLArgumentEncoder. The encoder can
- * only be set once, and copying this object results in an uninitialized
- * empty object, since mutex and MTLArgumentEncoder can/should not be copied.
+ * Holds and manages the lifecycle of a MTLArgumentEncoder, including locking access to the encoder,
+ * since it can only be used to encode to one argument buffer at a time. The internal MTLArgumentEncoder
+ * will be nil if the platform supports populating Metal argument buffers without a MTLArgumentEncoder.
+ *
+ * Because of the internal mutex, this encoder can only be initialized once, and because
+ * mutexes cannot be copied, copying this object results in an uninitialized empty object.
  */
 struct MVKMTLArgumentEncoder {
-	std::mutex mtlArgumentEncodingLock;
-	NSUInteger mtlArgumentEncoderSize = 0;
-
-	id<MTLArgumentEncoder> getMTLArgumentEncoder() { return _mtlArgumentEncoder; }
+	NSUInteger getEncodedLength() { return _mtlArgumentEncoder.encodedLength; }
+	void lock() { if (_mtlArgumentEncoder) { _mtlArgumentEncodingLock.lock(); } }
+	void unlock() { if (_mtlArgumentEncoder) { _mtlArgumentEncodingLock.unlock(); } }
 	void init(id<MTLArgumentEncoder> mtlArgEnc) {
-		if (_mtlArgumentEncoder) { return; }
-		_mtlArgumentEncoder = mtlArgEnc;		// takes ownership
-		mtlArgumentEncoderSize = mtlArgEnc.encodedLength;
+		assert( !_mtlArgumentEncoder );
+		_mtlArgumentEncoder = mtlArgEnc;
 	}
 
 	MVKMTLArgumentEncoder(const MVKMTLArgumentEncoder& other) {}
@@ -55,8 +57,11 @@ struct MVKMTLArgumentEncoder {
 	MVKMTLArgumentEncoder() {}
 	~MVKMTLArgumentEncoder() { [_mtlArgumentEncoder release]; }
 
-private:
+protected:
+	friend MVKArgumentBufferEncoder;
+
 	id<MTLArgumentEncoder> _mtlArgumentEncoder = nil;
+	std::mutex _mtlArgumentEncodingLock;
 };
 
 /** Represents a Vulkan descriptor set layout. */
@@ -120,7 +125,7 @@ public:
 	bool isUsingMetalArgumentBuffer()  { return isUsingDescriptorSetMetalArgumentBuffers() && !isPushDescriptorLayout(); };
 
 	/** Returns the MTLArgumentEncoder for the descriptor set. */
-	MVKMTLArgumentEncoder& getMTLArgumentEncoder() { return _mtlArgumentEncoder; }
+	MVKMTLArgumentEncoder& getMVKMTLArgumentEncoder() { return _mvkMTLArgumentEncoder; }
 
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
@@ -139,7 +144,7 @@ protected:
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
-	MVKMTLArgumentEncoder _mtlArgumentEncoder;
+	MVKMTLArgumentEncoder _mvkMTLArgumentEncoder;
 	MVKShaderResourceBinding _mtlResourceCounts;
 	uint32_t _descriptorCount;
 	bool _isPushDescriptorLayout;
@@ -293,7 +298,7 @@ protected:
 	VkResult allocateDescriptor(VkDescriptorType descriptorType, MVKDescriptor** pMVKDesc);
 	void freeDescriptor(MVKDescriptor* mvkDesc);
 	void initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo* pCreateInfo);
-	NSUInteger getMetalArgumentBufferResourceStorageSize(NSUInteger bufferCount, NSUInteger textureCount, NSUInteger samplerCount);
+	NSUInteger getMetalArgumentBufferEncodedResourceStorageSize(NSUInteger bufferCount, NSUInteger textureCount, NSUInteger samplerCount);
 	MTLArgumentDescriptor* getMTLArgumentDescriptor(MTLDataType resourceType, NSUInteger argIndex, NSUInteger count);
 	size_t getPoolSize(const VkDescriptorPoolCreateInfo* pCreateInfo, VkDescriptorType descriptorType);
 

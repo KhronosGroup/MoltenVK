@@ -196,10 +196,10 @@ void MVKPipeline::bindPushConstants(MVKCommandEncoder* cmdEncoder) {
 
 // For each descriptor set, populate the descriptor bindings used by the shader for this stage.
 template<typename CreateInfo>
-void MVKPipeline::addMTLArgumentEncoders(MVKMTLFunction& mvkMTLFunc,
-										 const CreateInfo* pCreateInfo,
-										 SPIRVToMSLConversionConfiguration& shaderConfig,
-										 MVKShaderStage stage) {
+void MVKPipeline::populateDescriptorSetBindingUse(MVKMTLFunction& mvkMTLFunc,
+												  const CreateInfo* pCreateInfo,
+												  SPIRVToMSLConversionConfiguration& shaderConfig,
+												  MVKShaderStage stage) {
 	if (isUsingDescriptorSetMetalArgumentBuffers()) {
 		for (uint32_t dsIdx = 0; dsIdx < _descriptorSetCount; dsIdx++) {
 			auto* dsLayout = ((MVKPipelineLayout*)pCreateInfo->layout)->getDescriptorSetLayout(dsIdx);
@@ -1105,7 +1105,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	_needsVertexOutputBuffer = funcRslts.needsOutputBuffer;
 	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageVertex);
 
-	addMTLArgumentEncoders(func, pCreateInfo, shaderConfig, kMVKShaderStageVertex);
+	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageVertex);
 
 	if (funcRslts.isRasterizationDisabled) {
 		pFragmentSS = nullptr;
@@ -1179,7 +1179,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 		markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageVertex);
 	}
 
-	addMTLArgumentEncoders(func, pCreateInfo, shaderConfig, kMVKShaderStageVertex);
+	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageVertex);
 
 	// If we need the swizzle buffer and there's no place to put it, we're in serious trouble.
 	if (!verifyImplicitBuffer(_needsVertexSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageVertex, "swizzle")) {
@@ -1240,7 +1240,7 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	_needsTessCtlInputBuffer = funcRslts.needsInputThreadgroupMem;
 	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageTessCtl);
 
-	addMTLArgumentEncoders(func, pCreateInfo, shaderConfig, kMVKShaderStageTessCtl);
+	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageTessCtl);
 
 	if (!verifyImplicitBuffer(_needsTessCtlSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageTessCtl, "swizzle")) {
 		return false;
@@ -1300,7 +1300,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	_needsTessEvalDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
 	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageTessEval);
 
-	addMTLArgumentEncoders(func, pCreateInfo, shaderConfig, kMVKShaderStageTessEval);
+	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageTessEval);
 
 	if (funcRslts.isRasterizationDisabled) {
 		pFragmentSS = nullptr;
@@ -1369,7 +1369,7 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		_needsFragmentViewRangeBuffer = funcRslts.needsViewRangeBuffer;
 		markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageFragment);
 
-		addMTLArgumentEncoders(func, pCreateInfo, shaderConfig, kMVKShaderStageFragment);
+		populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageFragment);
 
 		if (!verifyImplicitBuffer(_needsFragmentSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageFragment, "swizzle")) {
 			return false;
@@ -2230,7 +2230,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     _needsDispatchBaseBuffer = funcRslts.needsDispatchBaseBuffer;
 	_usesPhysicalStorageBufferAddressesCapability = funcRslts.usesPhysicalStorageBufferAddressesCapability;
 
-	addMTLArgumentEncoders(func, pCreateInfo, shaderConfig, kMVKShaderStageCompute);
+	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageCompute);
 
 	return func;
 }

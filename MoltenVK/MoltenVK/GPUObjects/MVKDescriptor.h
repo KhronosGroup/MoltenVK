@@ -26,6 +26,7 @@ class MVKDescriptorSet;
 class MVKDescriptorSetLayout;
 class MVKCommandEncoder;
 class MVKResourcesCommandEncoderState;
+struct MVKMTLArgumentEncoder;
 
 
 #pragma mark MVKShaderStageResourceBinding
@@ -195,6 +196,23 @@ protected:
 #pragma mark -
 #pragma mark MVKDescriptor
 
+/**
+ * Helper object to handle the placement of resources into a Metal Argument Buffer
+ * in a consistent manner, whether or not a MTLArgumentEncoder is required.
+ */
+typedef struct MVKArgumentBufferEncoder {
+	void setArgumentBuffer(id<MTLBuffer> mtlArgBuff, NSUInteger mtlArgBuffOfst);
+	void setBuffer(id<MTLBuffer> mtlBuff, NSUInteger offset, uint32_t index);
+	void setTexture(id<MTLTexture> mtlTex, uint32_t index);
+	void setSamplerState(id<MTLSamplerState> mtlSamp, uint32_t index);
+	MVKArgumentBufferEncoder(MVKMTLArgumentEncoder& mvkMTLArgEnc);
+protected:
+	void* getArgumentPointer(uint32_t index) const;
+	id<MTLArgumentEncoder> _mtlArgumentEncoder = nil;
+	id<MTLBuffer> _mtlArgumentBuffer = nil;
+	NSUInteger _mtlArgumentBufferOffset = 0;
+} MVKArgumentBufferEncoder;
+
 /** Represents a Vulkan descriptor. */
 class MVKDescriptor : public MVKBaseObject {
 
@@ -220,7 +238,7 @@ public:
 
 	/** Encodes this descriptor to the Metal argument buffer. */
 	virtual void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-											 id<MTLArgumentEncoder> mtlArgEncoder,
+											 MVKArgumentBufferEncoder& mvkArgBuffEnc,
 											 uint32_t descSetIndex,
 											 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 											 uint32_t elementIndex,
@@ -286,7 +304,7 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-									 id<MTLArgumentEncoder> mtlArgEncoder,
+									 MVKArgumentBufferEncoder& mvkArgBuffEnc,
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
@@ -376,7 +394,7 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-									 id<MTLArgumentEncoder> mtlArgEncoder,
+									 MVKArgumentBufferEncoder& mvkArgBuffEnc,
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
@@ -426,7 +444,7 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-									 id<MTLArgumentEncoder> mtlArgEncoder,
+									 MVKArgumentBufferEncoder& mvkArgBuffEnc,
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
@@ -507,7 +525,7 @@ protected:
 			  uint32_t& dynamicOffsetIndex);
 
 	void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-									 id<MTLArgumentEncoder> mtlArgEncoder,
+									 MVKArgumentBufferEncoder& mvkArgBuffEnc,
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
@@ -555,7 +573,7 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-									 id<MTLArgumentEncoder> mtlArgEncoder,
+									 MVKArgumentBufferEncoder& mvkArgBuffEnc,
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
@@ -603,7 +621,7 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-									 id<MTLArgumentEncoder> mtlArgEncoder,
+									 MVKArgumentBufferEncoder& mvkArgBuffEnc,
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
@@ -649,7 +667,7 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-									 id<MTLArgumentEncoder> mtlArgEncoder,
+									 MVKArgumentBufferEncoder& mvkArgBuffEnc,
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,

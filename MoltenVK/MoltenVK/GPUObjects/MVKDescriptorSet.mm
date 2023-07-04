@@ -265,11 +265,15 @@ const VkDescriptorBindingFlags* MVKDescriptorSetLayout::getBindingFlags(const Vk
 }
 
 void MVKDescriptorSetLayout::initMTLArgumentEncoder() {
-	if (isUsingMetalArgumentBuffer()) {
+	if (isUsingMetalArgumentBuffer() && needsMetalArgumentBufferEncoders()) {
 		@autoreleasepool {
 			NSMutableArray<MTLArgumentDescriptor*>* args = [NSMutableArray arrayWithCapacity: _bindings.size()];
-			for (auto& dslBind : _bindings) { dslBind.addMTLArgumentDescriptors(args); }
-			_mtlArgumentEncoder.init(args.count ? [getMTLDevice() newArgumentEncoderWithArguments: args] : nil);
+			for (auto& dslBind : _bindings) {
+				dslBind.addMTLArgumentDescriptors(args);
+			}
+			if (args.count) {
+				_mvkMTLArgumentEncoder.init([getMTLDevice() newArgumentEncoderWithArguments: args]);
+			}
 		}
 	}
 }
@@ -483,13 +487,13 @@ const uint32_t* MVKDescriptorPool::getVariableDecriptorCounts(const VkDescriptor
 	return nullptr;
 }
 
-// Retieves the first available descriptor set from the pool, and configures it.
+// Retrieves the first available descriptor set from the pool, and configures it.
 // If none are available, returns an error.
 VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL,
 												  uint32_t variableDescriptorCount,
 												  VkDescriptorSet* pVKDS) {
 	VkResult rslt = VK_ERROR_OUT_OF_POOL_MEMORY;
-	NSUInteger mtlArgBuffAllocSize = mvkDSL->getMTLArgumentEncoder().mtlArgumentEncoderSize;
+	NSUInteger mtlArgBuffAllocSize = mvkDSL->getMVKMTLArgumentEncoder().getEncodedLength();
 	NSUInteger mtlArgBuffAlignedSize = mvkAlignByteCount(mtlArgBuffAllocSize,
 														 getMetalFeatures().mtlBufferAlignment);
 
@@ -796,22 +800,30 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 		}
 
 		// Each descriptor set uses a separate Metal argument buffer, but all of these descriptor set
-		// Metal argument buffers share a single MTLBuffer. This single MTLBuffer needs to be large enough
-		// to hold all of the Metal resources for the descriptors. In addition, depending on the platform,
-		// a Metal argument buffer may have a fixed overhead storage, in addition to the storage required
-		// to hold the resources. This overhead per descriptor set is conservatively calculated by measuring
-		// the size of a Metal argument buffer containing one of each type of resource (S1), and the size
-		// of a Metal argument buffer containing two of each type of resource (S2), and then calculating
-		// the fixed overhead per argument buffer as (2 * S1 - S2). To this is added the overhead due to
-		// the alignment of each descriptor set Metal argument buffer offset.
-		NSUInteger overheadPerDescSet = (2 * getMetalArgumentBufferResourceStorageSize(1, 1, 1) -
-										 getMetalArgumentBufferResourceStorageSize(2, 2, 2) +
-										 mtlFeats.mtlBufferAlignment);
+		// Metal argument buffers share a single MTLBuffer. This single MTLBuffer needs to be large
+		// enough to hold all of the encoded resources for the descriptors.
+		NSUInteger metalArgBuffSize = 0;
+		if (needsMetalArgumentBufferEncoders()) {
+			// If argument buffer encoders are required, depending on the platform, a Metal argument
+			// buffer may have a fixed overhead storage, in addition to the storage required to hold
+			// the resources. This overhead per descriptor set is conservatively calculated by measuring
+			// the size of a Metal argument buffer containing one of each type of resource (S1), and
+			// the size of a Metal argument buffer containing two of each type of resource (S2), and
+			// then calculating the fixed overhead per argument buffer as (2 * S1 - S2). To this is
+			// added the overhead due to the alignment of each descriptor set Metal argument buffer offset.
+			NSUInteger overheadPerDescSet = (2 * getMetalArgumentBufferEncodedResourceStorageSize(1, 1, 1) -
+											 getMetalArgumentBufferEncodedResourceStorageSize(2, 2, 2) +
+											 mtlFeats.mtlBufferAlignment);
 
-		// Measure the size of an argument buffer that would hold all of the resources
-		// managed in this pool, then add any overhead for all the descriptor sets.
-		NSUInteger metalArgBuffSize = getMetalArgumentBufferResourceStorageSize(mtlBuffCnt, mtlTexCnt, mtlSampCnt);
-		metalArgBuffSize += (overheadPerDescSet * (pCreateInfo->maxSets - 1));	// metalArgBuffSize already includes overhead for one descriptor set
+			// Measure the size of an argument buffer that would hold all of the encoded resources
+			// managed in this pool, then add any overhead for all the descriptor sets.
+			metalArgBuffSize = getMetalArgumentBufferEncodedResourceStorageSize(mtlBuffCnt, mtlTexCnt, mtlSampCnt);
+			metalArgBuffSize += (overheadPerDescSet * (pCreateInfo->maxSets - 1));	// metalArgBuffSize already includes overhead for one descriptor set
+		} else {
+			// For Metal 3, encoders are not required, and each arg buffer entry fits into 64 bits.
+			metalArgBuffSize = (mtlBuffCnt + mtlTexCnt + mtlSampCnt) * sizeof(uint64_t);
+		}
+
 		if (metalArgBuffSize) {
 			NSUInteger maxMTLBuffSize = mtlFeats.maxMTLBufferSize;
 			if (metalArgBuffSize > maxMTLBuffSize) {
@@ -824,11 +836,12 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 	}
 }
 
-// Returns the size of a Metal argument buffer containing the number of various types.
+// Returns the size of a Metal argument buffer containing the number of various types
+// of encoded resources. This is only required if argument buffers are required.
 // Make sure any call to this function is wrapped in @autoreleasepool.
-NSUInteger MVKDescriptorPool::getMetalArgumentBufferResourceStorageSize(NSUInteger bufferCount,
-																		NSUInteger textureCount,
-																		NSUInteger samplerCount) {
+NSUInteger MVKDescriptorPool::getMetalArgumentBufferEncodedResourceStorageSize(NSUInteger bufferCount,
+																			   NSUInteger textureCount,
+																			   NSUInteger samplerCount) {
 	NSMutableArray<MTLArgumentDescriptor*>* args = [NSMutableArray arrayWithCapacity: 3];
 
 	NSUInteger argIdx = 0;

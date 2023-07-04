@@ -174,10 +174,10 @@ public:
 
 protected:
 	void propagateDebugName() override {}
-	template<typename CreateInfo> void addMTLArgumentEncoders(MVKMTLFunction& mvkMTLFunc,
-															  const CreateInfo* pCreateInfo,
-															  SPIRVToMSLConversionConfiguration& shaderConfig,
-															  MVKShaderStage stage);
+	template<typename CreateInfo> void populateDescriptorSetBindingUse(MVKMTLFunction& mvkMTLFunc,
+																	   const CreateInfo* pCreateInfo,
+																	   SPIRVToMSLConversionConfiguration& shaderConfig,
+																	   MVKShaderStage stage);
 
 	MVKPipelineCache* _pipelineCache;
 	MVKShaderImplicitRezBinding _descriptorBufferCounts;

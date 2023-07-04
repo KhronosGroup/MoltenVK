@@ -703,6 +703,46 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(const VkDescri
 #pragma mark -
 #pragma mark MVKDescriptor
 
+void MVKArgumentBufferEncoder::setArgumentBuffer(id<MTLBuffer> mtlArgBuff, NSUInteger mtlArgBuffOfst) {
+	if (_mtlArgumentEncoder && mtlArgBuff != _mtlArgumentBuffer) {
+		[_mtlArgumentEncoder setArgumentBuffer: mtlArgBuff offset: mtlArgBuffOfst];
+	}
+	_mtlArgumentBuffer = mtlArgBuff;
+	_mtlArgumentBufferOffset = mtlArgBuffOfst;
+}
+
+void MVKArgumentBufferEncoder::setBuffer(id<MTLBuffer> mtlBuff, NSUInteger offset, uint32_t index) {
+	if (_mtlArgumentEncoder) {
+		[_mtlArgumentEncoder setBuffer: mtlBuff offset: offset atIndex: index];
+	} else {
+		*(uint64_t*)getArgumentPointer(index) = mtlBuff.gpuAddress + offset;
+	}
+}
+
+void MVKArgumentBufferEncoder::setTexture(id<MTLTexture> mtlTex, uint32_t index) {
+	if (_mtlArgumentEncoder) {
+		[_mtlArgumentEncoder setTexture: mtlTex atIndex: index];
+	} else {
+		*(MTLResourceID*)getArgumentPointer(index) = mtlTex.gpuResourceID;
+	}
+}
+
+void MVKArgumentBufferEncoder::setSamplerState(id<MTLSamplerState> mtlSamp, uint32_t index) {
+	if (_mtlArgumentEncoder) {
+		[_mtlArgumentEncoder setSamplerState: mtlSamp atIndex: index];
+	} else {
+		*(MTLResourceID*)getArgumentPointer(index) = mtlSamp.gpuResourceID;
+	}
+}
+
+// Returns the address of the slot at the index within the Metal argument buffer.
+// This is based on the Metal 3 design that all arg buffer slots are 64 bits.
+void* MVKArgumentBufferEncoder::getArgumentPointer(uint32_t index) const {
+	return (void*)((uintptr_t)_mtlArgumentBuffer.contents + _mtlArgumentBufferOffset + (index * sizeof(uint64_t)));
+}
+
+MVKArgumentBufferEncoder::MVKArgumentBufferEncoder(MVKMTLArgumentEncoder& mvkMTLArgEnc) : _mtlArgumentEncoder(mvkMTLArgEnc._mtlArgumentEncoder) {}
+
 MTLResourceUsage MVKDescriptor::getMTLResourceUsage() {
 	MTLResourceUsage mtlUsage = MTLResourceUsageRead;
 	switch (getDescriptorType()) {
@@ -757,7 +797,7 @@ void MVKBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 }
 
 void MVKBufferDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-													  id<MTLArgumentEncoder> mtlArgEncoder,
+													  MVKArgumentBufferEncoder& mvkArgBuffEnc,
 													  uint32_t descSetIndex,
 													  MVKDescriptorSetLayoutBinding* mvkDSLBind,
 													  uint32_t elementIndex,
@@ -766,9 +806,9 @@ void MVKBufferDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoder
 													  bool encodeUsage) {
 	if (encodeToArgBuffer) {
 		uint32_t argIdx = mvkDSLBind->getMetalResourceIndexOffsets().bufferIndex + elementIndex;
-		[mtlArgEncoder setBuffer: _mvkBuffer ? _mvkBuffer->getMTLBuffer() : nil
-						  offset: _mvkBuffer ? _mvkBuffer->getMTLBufferOffset() + _buffOffset : 0
-						 atIndex: argIdx];
+		mvkArgBuffEnc.setBuffer(_mvkBuffer ? _mvkBuffer->getMTLBuffer() : nil,
+								_mvkBuffer ? _mvkBuffer->getMTLBufferOffset() + _buffOffset : 0,
+								argIdx);
 	}
 	if (encodeUsage) {
 		id<MTLBuffer> mtlBuffer = _mvkBuffer ? _mvkBuffer->getMTLBuffer() : nil;
@@ -842,7 +882,7 @@ void MVKInlineUniformBlockDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 }
 
 void MVKInlineUniformBlockDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-																  id<MTLArgumentEncoder> mtlArgEncoder,
+																  MVKArgumentBufferEncoder& mvkArgBuffEnc,
 																  uint32_t descSetIndex,
 																  MVKDescriptorSetLayoutBinding* mvkDSLBind,
 																  uint32_t elementIndex,
@@ -851,9 +891,9 @@ void MVKInlineUniformBlockDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCo
 																  bool encodeUsage) {
 	if (encodeToArgBuffer) {
 		uint32_t argIdx = mvkDSLBind->getMetalResourceIndexOffsets().bufferIndex;
-		[mtlArgEncoder setBuffer: _mvkMTLBufferAllocation ? _mvkMTLBufferAllocation->_mtlBuffer : nil
-						  offset: _mvkMTLBufferAllocation ? _mvkMTLBufferAllocation->_offset : 0
-						 atIndex: argIdx];
+		mvkArgBuffEnc.setBuffer(_mvkMTLBufferAllocation ? _mvkMTLBufferAllocation->_mtlBuffer : nil,
+								_mvkMTLBufferAllocation ? _mvkMTLBufferAllocation->_offset : 0,
+								argIdx);
 	}
 	if (encodeUsage) {
 		id<MTLBuffer> mtlBuffer = _mvkMTLBufferAllocation ? _mvkMTLBufferAllocation->_mtlBuffer : nil;
@@ -946,7 +986,7 @@ void MVKImageDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 }
 
 void MVKImageDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-													 id<MTLArgumentEncoder> mtlArgEncoder,
+													 MVKArgumentBufferEncoder& mvkArgBuffEnc,
 													 uint32_t descSetIndex,
 													 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 													 uint32_t elementIndex,
@@ -962,7 +1002,7 @@ void MVKImageDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderS
 		id<MTLTexture> mtlTexture = _mvkImageView ? _mvkImageView->getMTLTexture(planeIndex) : nil;
 		if (encodeToArgBuffer) {
 			uint32_t argIdx = mvkDSLBind->getMetalResourceIndexOffsets().textureIndex + planeDescIdx;
-			[mtlArgEncoder setTexture: mtlTexture atIndex: argIdx];
+			mvkArgBuffEnc.setTexture(mtlTexture, argIdx);
 		}
 		if (encodeUsage) {
 			rezEncState->encodeResourceUsage(stage, mtlTexture, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
@@ -973,7 +1013,7 @@ void MVKImageDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderS
 			if (mtlBuff) {
 				if (encodeToArgBuffer) {
 					uint32_t argIdx = mvkDSLBind->getMetalResourceIndexOffsets().bufferIndex + planeDescIdx;
-					[mtlArgEncoder setBuffer: mtlBuff offset: mtlTex.bufferOffset atIndex: argIdx];
+					mvkArgBuffEnc.setBuffer(mtlBuff, mtlTex.bufferOffset, argIdx);
 				}
 				if (encodeUsage) {
 					rezEncState->encodeResourceUsage(stage, mtlBuff, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
@@ -1049,7 +1089,7 @@ void MVKSamplerDescriptorMixin::bind(MVKCommandEncoder* cmdEncoder,
 // Metal validation requires each sampler in an array of samplers to be populated,
 // even if not used, so populate a default if one hasn't been set.
 void MVKSamplerDescriptorMixin::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-															id<MTLArgumentEncoder> mtlArgEncoder,
+															MVKArgumentBufferEncoder& mvkArgBuffEnc,
 															uint32_t descSetIndex,
 															MVKDescriptorSetLayoutBinding* mvkDSLBind,
 															uint32_t elementIndex,
@@ -1062,7 +1102,7 @@ void MVKSamplerDescriptorMixin::encodeToMetalArgumentBuffer(MVKResourcesCommandE
 									   ? mvkSamp->getMTLSamplerState()
 									   : mvkDSLBind->getDevice()->getDefaultMTLSamplerState());
 		uint32_t argIdx = mvkDSLBind->getMetalResourceIndexOffsets().samplerIndex + elementIndex;
-		[mtlArgEncoder setSamplerState: mtlSamp atIndex: argIdx];
+		mvkArgBuffEnc.setSamplerState(mtlSamp, argIdx);
 	}
 }
 
@@ -1119,14 +1159,14 @@ void MVKSamplerDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 }
 
 void MVKSamplerDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-													   id<MTLArgumentEncoder> mtlArgEncoder,
+													   MVKArgumentBufferEncoder& mvkArgBuffEnc,
 													   uint32_t descSetIndex,
 													   MVKDescriptorSetLayoutBinding* mvkDSLBind,
 													   uint32_t elementIndex,
 													   MVKShaderStage stage,
 													   bool encodeToArgBuffer,
 													   bool encodeUsage) {
-	MVKSamplerDescriptorMixin::encodeToMetalArgumentBuffer(rezEncState, mtlArgEncoder, descSetIndex, mvkDSLBind, elementIndex, stage, encodeToArgBuffer);
+	MVKSamplerDescriptorMixin::encodeToMetalArgumentBuffer(rezEncState, mvkArgBuffEnc, descSetIndex, mvkDSLBind, elementIndex, stage, encodeToArgBuffer);
 }
 
 void MVKSamplerDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -1170,15 +1210,15 @@ void MVKCombinedImageSamplerDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 }
 
 void MVKCombinedImageSamplerDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-																	id<MTLArgumentEncoder> mtlArgEncoder,
+																	MVKArgumentBufferEncoder& mvkArgBuffEnc,
 																	uint32_t descSetIndex,
 																	MVKDescriptorSetLayoutBinding* mvkDSLBind,
 																	uint32_t elementIndex,
 																	MVKShaderStage stage,
 																	bool encodeToArgBuffer,
 																	bool encodeUsage) {
-	MVKImageDescriptor::encodeToMetalArgumentBuffer(rezEncState, mtlArgEncoder, descSetIndex, mvkDSLBind, elementIndex, stage, encodeToArgBuffer, encodeUsage);
-	MVKSamplerDescriptorMixin::encodeToMetalArgumentBuffer(rezEncState, mtlArgEncoder, descSetIndex, mvkDSLBind, elementIndex, stage, encodeToArgBuffer);
+	MVKImageDescriptor::encodeToMetalArgumentBuffer(rezEncState, mvkArgBuffEnc, descSetIndex, mvkDSLBind, elementIndex, stage, encodeToArgBuffer, encodeUsage);
+	MVKSamplerDescriptorMixin::encodeToMetalArgumentBuffer(rezEncState, mvkArgBuffEnc, descSetIndex, mvkDSLBind, elementIndex, stage, encodeToArgBuffer);
 }
 
 void MVKCombinedImageSamplerDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -1243,7 +1283,7 @@ void MVKTexelBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 	}
 }
 void MVKTexelBufferDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-														   id<MTLArgumentEncoder> mtlArgEncoder,
+														   MVKArgumentBufferEncoder& mvkArgBuffEnc,
 														   uint32_t descSetIndex,
 														   MVKDescriptorSetLayoutBinding* mvkDSLBind,
 														   uint32_t elementIndex,
@@ -1254,7 +1294,7 @@ void MVKTexelBufferDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEn
 	id<MTLTexture> mtlTexture = _mvkBufferView ? _mvkBufferView->getMTLTexture() : nil;
 	if (encodeToArgBuffer) {
 		uint32_t argIdx = mvkDSLBind->getMetalResourceIndexOffsets().textureIndex + elementIndex;
-		[mtlArgEncoder setTexture: mtlTexture atIndex: argIdx];
+		mvkArgBuffEnc.setTexture(mtlTexture, argIdx);
 	}
 	if (encodeUsage) {
 		rezEncState->encodeResourceUsage(stage, mtlTexture, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
@@ -1265,7 +1305,7 @@ void MVKTexelBufferDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEn
 		if (mtlBuff) {
 			if (encodeToArgBuffer) {
 				uint32_t argIdx = mvkDSLBind->getMetalResourceIndexOffsets().bufferIndex + elementIndex;
-				[mtlArgEncoder setBuffer: mtlBuff offset: mtlTexture.bufferOffset atIndex: argIdx];
+				mvkArgBuffEnc.setBuffer(mtlBuff, mtlTexture.bufferOffset, argIdx);
 			}
 			if (encodeUsage) {
 				rezEncState->encodeResourceUsage(stage, mtlBuff, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
