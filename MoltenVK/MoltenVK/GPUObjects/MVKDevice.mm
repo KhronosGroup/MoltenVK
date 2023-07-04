@@ -524,7 +524,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 
 	uint32_t uintMax = std::numeric_limits<uint32_t>::max();
 	uint32_t maxSamplerCnt = getMaxSamplerCount();
-	bool isTier2 = supportsMetalArgumentBuffers() && (_metalFeatures.argumentBuffersTier >= MTLArgumentBuffersTier2);
+	bool isTier2 = supportsDescriptorSetMetalArgumentBuffers() && (_metalFeatures.argumentBuffersTier >= MTLArgumentBuffersTier2);
 
 	// Create a SSOT for these Vulkan 1.1 properties, which can be queried via two mechanisms here.
 	VkPhysicalDeviceVulkan11Properties supportedProps11;
@@ -2397,8 +2397,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 												   (mvkOSVersionIsAtLeast(11.0) ||
 													_properties.vendorID == kIntelVendorId));
 #endif
-	// Currently, if we don't support descriptor set argument buffers, we can't support argument buffers.
-	_metalFeatures.argumentBuffers = _metalFeatures.descriptorSetArgumentBuffers;
 
 	if ([_mtlDevice respondsToSelector: @selector(argumentBuffersSupport)]) {
 		_metalFeatures.argumentBuffersTier = _mtlDevice.argumentBuffersSupport;
@@ -3068,7 +3066,7 @@ void MVKPhysicalDevice::initPipelineCacheUUID() {
 	// Next 4 bytes contains flags based on enabled Metal features that
 	// might affect the contents of the pipeline cache (mostly MSL content).
 	uint32_t mtlFeatures = 0;
-	mtlFeatures |= supportsMetalArgumentBuffers() << 0;
+	mtlFeatures |= supportsDescriptorSetMetalArgumentBuffers() << 0;
 	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatures);
 	uuidComponentOffset += sizeof(mtlFeatures);
 }
@@ -3301,7 +3299,7 @@ uint64_t MVKPhysicalDevice::getCurrentAllocatedSize() {
 // objects that can be created within the app. When not using argument buffers, no such
 // limit is imposed. This has been verified with testing up to 1M MTLSamplerStates.
 uint32_t MVKPhysicalDevice::getMaxSamplerCount() {
-	if (supportsMetalArgumentBuffers()) {
+	if (supportsDescriptorSetMetalArgumentBuffers()) {
 		return ([_mtlDevice respondsToSelector: @selector(maxArgumentBufferSamplerCount)]
 				? (uint32_t)_mtlDevice.maxArgumentBufferSamplerCount : 1024);
 	} else {
@@ -4676,7 +4674,7 @@ id<MTLSamplerState> MVKDevice::getDefaultMTLSamplerState() {
 		if ( !_defaultMTLSamplerState ) {
 			@autoreleasepool {
 				MTLSamplerDescriptor* mtlSampDesc = [[MTLSamplerDescriptor new] autorelease];
-				mtlSampDesc.supportArgumentBuffers = isUsingMetalArgumentBuffers();
+				mtlSampDesc.supportArgumentBuffers = _isUsingDescriptorSetMetalArgumentBuffers;
 				_defaultMTLSamplerState = [_physicalDevice->_mtlDevice newSamplerStateWithDescriptor: mtlSampDesc];	// retained
 			}
 		}
@@ -4873,12 +4871,12 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 #endif
 
 	// After enableExtensions && enableFeatures
-	// Use Metal arg buffs if available, and either config wants them always,
-	// or config wants them with descriptor indexing and descriptor indexing has been enabled.
-	_isUsingMetalArgumentBuffers = (_physicalDevice->supportsMetalArgumentBuffers() &&
-									(getMVKConfig().useMetalArgumentBuffers == MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_ALWAYS ||
-									 (getMVKConfig().useMetalArgumentBuffers == MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_DESCRIPTOR_INDEXING &&
-									  (_enabledVulkan12FeaturesNoExt.descriptorIndexing || _enabledExtensions.vk_EXT_descriptor_indexing.enabled))));
+	// Use Metal arg buffs if available, and config wants them either always,
+	// or with descriptor indexing and descriptor indexing has been enabled.
+	_isUsingDescriptorSetMetalArgumentBuffers = (_physicalDevice->supportsDescriptorSetMetalArgumentBuffers() &&
+												 (getMVKConfig().useMetalArgumentBuffers == MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_ALWAYS ||
+												  (getMVKConfig().useMetalArgumentBuffers == MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_DESCRIPTOR_INDEXING &&
+												   (_enabledVulkan12FeaturesNoExt.descriptorIndexing || _enabledExtensions.vk_EXT_descriptor_indexing.enabled))));
 
 	_commandResourceFactory = new MVKCommandResourceFactory(this);
 

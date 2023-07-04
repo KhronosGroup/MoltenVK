@@ -352,9 +352,9 @@ public:
 	/** Returns whether the MSL version is supported on this device. */
 	bool mslVersionIsAtLeast(MTLLanguageVersion minVer) { return _metalFeatures.mslVersionEnum >= minVer; }
 
-	/** Returns whether this physical device supports Metal argument buffers. */
-	bool supportsMetalArgumentBuffers()  {
-		return _metalFeatures.argumentBuffers && getMVKConfig().useMetalArgumentBuffers != MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER;
+	/** Returns whether this physical device supports using Metal argument buffers for descriptor sets. */
+	bool supportsDescriptorSetMetalArgumentBuffers()  {
+		return _metalFeatures.descriptorSetArgumentBuffers && getMVKConfig().useMetalArgumentBuffers != MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER;
 	};
 
 	/** Returns the MTLStorageMode that matches the Vulkan memory property flags. */
@@ -710,9 +710,6 @@ public:
 
 #pragma mark Metal
 
-	/** Returns whether this device is using Metal argument buffers. */
-	bool isUsingMetalArgumentBuffers() { return _isUsingMetalArgumentBuffers; };
-
 	/**
 	 * Returns an autoreleased options object to be used when compiling MSL shaders.
 	 * The requestFastMath parameter is combined with the value of MVKConfiguration::fastMathEnabled
@@ -872,7 +869,7 @@ protected:
 	int _capturePipeFileDesc = -1;
 	bool _isPerformanceTracking = false;
 	bool _isCurrentlyAutoGPUCapturing = false;
-	bool _isUsingMetalArgumentBuffers = false;
+	bool _isUsingDescriptorSetMetalArgumentBuffers = false;
 
 };
 
@@ -909,14 +906,8 @@ public:
 	/** Returns info about the pixel format supported by the physical device. */
 	MVKPixelFormats* getPixelFormats() { return &_device->_physicalDevice->_pixelFormats; }
 
-	/** Returns whether this device is using Metal argument buffers. */
-	bool isUsingMetalArgumentBuffers() { return _device->_isUsingMetalArgumentBuffers; };
-
 	/** Returns whether this device is using one Metal argument buffer for each descriptor set, on multiple pipeline and pipeline stages. */
-	bool isUsingDescriptorSetMetalArgumentBuffers() { return _device->_isUsingMetalArgumentBuffers && getMetalFeatures().descriptorSetArgumentBuffers; };
-
-	/** Returns whether this device is using one Metal argument buffer for each descriptor set-pipeline-stage combination. */
-	bool isUsingPipelineStageMetalArgumentBuffers() { return _device->_isUsingMetalArgumentBuffers && !getMetalFeatures().descriptorSetArgumentBuffers; };
+	bool isUsingDescriptorSetMetalArgumentBuffers() { return _device->_isUsingDescriptorSetMetalArgumentBuffers && getMetalFeatures().descriptorSetArgumentBuffers; };
 
 	/** The list of Vulkan extensions, indicating whether each has been enabled by the app for this device. */
 	MVKExtensionList& getEnabledExtensions() { return _device->_enabledExtensions; }

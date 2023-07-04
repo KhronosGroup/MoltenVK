@@ -41,7 +41,7 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
 	if (cmdEncoder) { cmdEncoder->bindDescriptorSet(pipelineBindPoint, descSetIndex,
 													descSet, dslMTLRezIdxOffsets,
 													dynamicOffsets, dynamicOffsetIndex); }
-	if ( !isUsingMetalArgumentBuffers() ) {
+	if ( !isUsingMetalArgumentBuffer() ) {
 		for (auto& dslBind : _bindings) {
 			dslBind.bind(cmdEncoder, pipelineBindPoint, descSet, dslMTLRezIdxOffsets, dynamicOffsets, dynamicOffsetIndex);
 		}
@@ -182,7 +182,7 @@ void MVKDescriptorSetLayout::populateShaderConversionConfig(mvk::SPIRVToMSLConve
 	}
 
 	// Mark if Metal argument buffers are in use, but this descriptor set layout is not using them.
-	if (isUsingMetalArgumentBuffers() && !isUsingMetalArgumentBuffer()) {
+	if (isUsingDescriptorSetMetalArgumentBuffers() && !isUsingMetalArgumentBuffer()) {
 		shaderConfig.discreteDescriptorSets.push_back(descSetIndex);
 	}
 }
@@ -265,7 +265,7 @@ const VkDescriptorBindingFlags* MVKDescriptorSetLayout::getBindingFlags(const Vk
 }
 
 void MVKDescriptorSetLayout::initMTLArgumentEncoder() {
-	if (isUsingDescriptorSetMetalArgumentBuffers() && isUsingMetalArgumentBuffer()) {
+	if (isUsingMetalArgumentBuffer()) {
 		@autoreleasepool {
 			NSMutableArray<MTLArgumentDescriptor*>* args = [NSMutableArray arrayWithCapacity: _bindings.size()];
 			for (auto& dslBind : _bindings) { dslBind.addMTLArgumentDescriptors(args); }
@@ -503,7 +503,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 		// will fit in the slot that might already have been allocated for it in the Metal argument
 		// buffer from a previous allocation that was returned. If this pool has been reset recently,
 		// then the desc sets will not have had a Metal argument buffer allocation assigned yet.
-		if (isUsingDescriptorSetMetalArgumentBuffers() && mvkDSL->isUsingMetalArgumentBuffer()) {
+		if (mvkDSL->isUsingMetalArgumentBuffer()) {
 
 			// If the offset has not been set (and it's not the first desc set except
 			// on a reset pool), set the offset and update the next available offset value.
@@ -819,7 +819,7 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 				metalArgBuffSize = maxMTLBuffSize;
 			}
 			_metalArgumentBuffer = [getMTLDevice() newBufferWithLength: metalArgBuffSize options: MTLResourceStorageModeShared];	// retained
-			_metalArgumentBuffer.label = @"Argument buffer";
+			_metalArgumentBuffer.label = @"Descriptor pool argument buffer";
 		}
 	}
 }

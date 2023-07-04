@@ -651,7 +651,7 @@ void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 
 	_boundDescriptorSets[descSetIndex] = descSet;
 
-	if (descSet->isUsingMetalArgumentBuffers()) {
+	if (descSet->isUsingMetalArgumentBuffer()) {
 		// If the descriptor set has changed, track new resource usage.
 		if (dsChanged) {
 			auto& usageDirty = _metalUsageDirtyDescriptors[descSetIndex];
@@ -674,9 +674,7 @@ void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 // Encode the dirty descriptors to the Metal argument buffer, set the Metal command encoder
 // usage for each resource, and bind the Metal argument buffer to the command encoder.
 void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage stage) {
-	if ( !_cmdEncoder->isUsingMetalArgumentBuffers() ) { return; }
-
-	bool useDescSetArgBuff = _cmdEncoder->isUsingDescriptorSetMetalArgumentBuffers();
+	if ( !_cmdEncoder->isUsingDescriptorSetMetalArgumentBuffers() ) { return; }
 
 	MVKPipeline* pipeline = getPipeline();
 	uint32_t dsCnt = pipeline->getDescriptorSetCount();
@@ -688,20 +686,12 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 
 		// The Metal arg encoder can only write to one arg buffer at a time (it holds the arg buffer),
 		// so we need to lock out other access to it while we are writing to it.
-		auto& mvkArgEnc = useDescSetArgBuff ? dsLayout->getMTLArgumentEncoder() : pipeline->getMTLArgumentEncoder(dsIdx, stage);
+		auto& mvkArgEnc = dsLayout->getMTLArgumentEncoder();
 		lock_guard<mutex> lock(mvkArgEnc.mtlArgumentEncodingLock);
 
-		id<MTLBuffer> mtlArgBuffer = nil;
-		NSUInteger metalArgBufferOffset = 0;
+		id<MTLBuffer> mtlArgBuffer = descSet->getMetalArgumentBuffer();
+		NSUInteger metalArgBufferOffset = descSet->getMetalArgumentBufferOffset();
 		id<MTLArgumentEncoder> mtlArgEncoder = mvkArgEnc.getMTLArgumentEncoder();
-		if (useDescSetArgBuff) {
-			mtlArgBuffer = descSet->getMetalArgumentBuffer();
-			metalArgBufferOffset = descSet->getMetalArgumentBufferOffset();
-		} else {
-			// TODO: Source a different arg buffer & offset for each pipeline-stage/desccriptors set
-			// Also need to only encode the descriptors that are referenced in the shader.
-			// MVKMTLArgumentEncoder could include an MVKBitArray to track that and have it checked below.
-		}
 
 		if ( !(mtlArgEncoder && mtlArgBuffer) ) { continue; }
 
@@ -760,7 +750,7 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 // Mark the resource usage as needing an update for each Metal render encoder.
 void MVKResourcesCommandEncoderState::markDirty() {
 	MVKCommandEncoderState::markDirty();
-	if (_cmdEncoder->isUsingMetalArgumentBuffers()) {
+	if (_cmdEncoder->isUsingDescriptorSetMetalArgumentBuffers()) {
 		for (uint32_t dsIdx = 0; dsIdx < kMVKMaxDescriptorSetCount; dsIdx++) {
 			_metalUsageDirtyDescriptors[dsIdx].setAllBits();
 		}

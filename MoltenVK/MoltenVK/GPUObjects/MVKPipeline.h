@@ -150,9 +150,6 @@ public:
 	/** Returns whether all internal Metal pipeline states are valid. */
 	bool hasValidMTLPipelineStates() { return _hasValidMTLPipelineStates; }
 
-	/** Returns the MTLArgumentEncoder for the descriptor set. */
-	virtual MVKMTLArgumentEncoder& getMTLArgumentEncoder(uint32_t descSetIndex, MVKShaderStage stage) = 0;
-
 	/** Returns the array of descriptor binding use for the descriptor set. */
 	virtual MVKBitArray& getDescriptorBindingUse(uint32_t descSetIndex, MVKShaderStage stage) = 0;
 
@@ -213,10 +210,6 @@ struct MVKTranslatedVertexBinding {
 typedef std::pair<uint32_t, uint32_t> MVKZeroDivisorVertexBinding;
 
 typedef MVKSmallVector<MVKGraphicsStage, 4> MVKPiplineStages;
-
-struct MVKStagedMTLArgumentEncoders {
-	MVKMTLArgumentEncoder stages[4] = {};
-};
 
 struct MVKStagedDescriptorBindingUse {
 	MVKBitArray stages[4] = {};
@@ -344,9 +337,6 @@ public:
 	/** Returns the collection of instance-rate vertex bindings whose divisor is zero, along with their strides. */
 	MVKArrayRef<MVKZeroDivisorVertexBinding> getZeroDivisorVertexBindings() { return _zeroDivisorVertexBindings.contents(); }
 
-	/** Returns the MTLArgumentEncoder for the descriptor set. */
-	MVKMTLArgumentEncoder& getMTLArgumentEncoder(uint32_t descSetIndex, MVKShaderStage stage) override { return _mtlArgumentEncoders[descSetIndex].stages[stage]; }
-
 	/** Returns the array of descriptor binding use for the descriptor set. */
 	MVKBitArray& getDescriptorBindingUse(uint32_t descSetIndex, MVKShaderStage stage) override { return _descriptorBindingUse[descSetIndex].stages[stage]; }
 
@@ -410,7 +400,6 @@ protected:
 	MVKSmallVector<VkSampleLocationEXT> _sampleLocations;
 	MVKSmallVector<MVKTranslatedVertexBinding> _translatedVertexBindings;
 	MVKSmallVector<MVKZeroDivisorVertexBinding> _zeroDivisorVertexBindings;
-	MVKSmallVector<MVKStagedMTLArgumentEncoders> _mtlArgumentEncoders;
 	MVKSmallVector<MVKStagedDescriptorBindingUse> _descriptorBindingUse;
 	MVKSmallVector<MVKShaderStage> _stagesUsingPhysicalStorageBufferAddressesCapability;
 	std::unordered_map<uint32_t, id<MTLRenderPipelineState>> _multiviewMTLPipelineStates;
@@ -473,9 +462,6 @@ public:
 	/** Returns if this pipeline allows non-zero dispatch bases in vkCmdDispatchBase(). */
 	bool allowsDispatchBase() { return _allowsDispatchBase; }
 
-	/** Returns the MTLArgumentEncoder for the descriptor set. */
-	MVKMTLArgumentEncoder& getMTLArgumentEncoder(uint32_t descSetIndex, MVKShaderStage stage) override { return _mtlArgumentEncoders[descSetIndex]; }
-
 	/** Returns the array of descriptor binding use for the descriptor set. */
 	MVKBitArray& getDescriptorBindingUse(uint32_t descSetIndex, MVKShaderStage stage) override { return _descriptorBindingUse[descSetIndex]; }
 
@@ -495,7 +481,6 @@ protected:
 	uint32_t getImplicitBufferIndex(uint32_t bufferIndexOffset);
 
     id<MTLComputePipelineState> _mtlPipelineState;
-	MVKSmallVector<MVKMTLArgumentEncoder> _mtlArgumentEncoders;
 	MVKSmallVector<MVKBitArray> _descriptorBindingUse;
     MTLSize _mtlThreadgroupSize;
     bool _needsSwizzleBuffer = false;

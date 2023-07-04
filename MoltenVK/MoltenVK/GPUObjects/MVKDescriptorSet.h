@@ -117,7 +117,7 @@ public:
 	bool isPushDescriptorLayout() const { return _isPushDescriptorLayout; }
 
 	/** Returns true if this layout is using a Metal argument buffer. */
-	bool isUsingMetalArgumentBuffer()  { return isUsingMetalArgumentBuffers() && !isPushDescriptorLayout(); };
+	bool isUsingMetalArgumentBuffer()  { return isUsingDescriptorSetMetalArgumentBuffers() && !isPushDescriptorLayout(); };
 
 	/** Returns the MTLArgumentEncoder for the descriptor set. */
 	MVKMTLArgumentEncoder& getMTLArgumentEncoder() { return _mtlArgumentEncoder; }
@@ -202,6 +202,9 @@ public:
 
 	/** Returns the number of descriptors in this descriptor set that use dynamic offsets. */
 	uint32_t getDynamicOffsetDescriptorCount() { return _dynamicOffsetDescriptorCount; }
+
+	/** Returns true if this descriptor set is using a Metal argument buffer. */
+	bool isUsingMetalArgumentBuffer() { return _layout->isUsingMetalArgumentBuffer(); };
 
 	MVKDescriptorSet(MVKDescriptorPool* pool);
 

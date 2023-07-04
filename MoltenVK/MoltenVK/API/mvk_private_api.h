@@ -352,8 +352,8 @@ typedef struct {
     uint32_t minSubgroupSize;			        	/**< The minimum number of threads in a SIMD-group. */
     VkBool32 textureBarriers;                   	/**< If true, texture barriers are supported within Metal render passes. Deprecated. Will always be false on all platforms. */
     VkBool32 tileBasedDeferredRendering;        	/**< If true, this device uses tile-based deferred rendering. */
-	VkBool32 argumentBuffers;						/**< If true, Metal argument buffers are supported. */
-	VkBool32 descriptorSetArgumentBuffers;			/**< If true, a Metal argument buffer can be assigned to a descriptor set, and used on any pipeline and pipeline stage. If false, a different Metal argument buffer must be used for each pipeline-stage/descriptor-set combination. */
+	VkBool32 argumentBuffers;						/**< If true, Metal argument buffers are supported on the platform. */
+	VkBool32 descriptorSetArgumentBuffers;			/**< If true, a Metal argument buffers can be used for descriptor sets. */
 	MVKFloatRounding clearColorFloatRounding;		/**< Identifies the type of rounding Metal uses for MTLClearColor float to integer conversions. */
 	MVKCounterSamplingFlags counterSamplingPoints;	/**< Identifies the points where pipeline GPU counter sampling may occur. */
 	VkBool32 programmableSamplePositions;			/**< If true, programmable MSAA sample positions are supported. */
