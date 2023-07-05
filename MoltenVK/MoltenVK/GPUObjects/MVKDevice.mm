@@ -1780,6 +1780,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	}
 #endif
 
+#if MVK_XCODE_15
+    if ( mvkOSVersionIsAtLeast(17.0) ) {
+        _metalFeatures.mslVersionEnum = MTLLanguageVersion3_1;
+    }
+#endif
+
 #endif
 
 #if MVK_IOS
@@ -1897,6 +1903,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_0;
 	}
 #endif
+#if MVK_XCODE_15
+    if ( mvkOSVersionIsAtLeast(17.0) ) {
+        _metalFeatures.mslVersionEnum = MTLLanguageVersion3_1;
+    }
+#endif
 
 #endif
 
@@ -1981,6 +1992,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_0;
 	}
+#endif
+#if MVK_XCODE_15
+    if ( mvkOSVersionIsAtLeast(14.0) ) {
+        _metalFeatures.mslVersionEnum = MTLLanguageVersion3_1;
+    }
 #endif
 
 	// This is an Apple GPU--treat it accordingly.
