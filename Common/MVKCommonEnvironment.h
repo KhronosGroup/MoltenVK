@@ -88,6 +88,10 @@ extern "C" {
 #endif
 
 /** Building with Xcode versions. iOS version also covers tvOS. */
+#ifndef MVK_XCODE_15
+#   define MVK_XCODE_15             ((__MAC_OS_X_VERSION_MAX_ALLOWED >= 140000) || \
+                                    (__IPHONE_OS_VERSION_MAX_ALLOWED >= 170000))
+#endif
 #ifndef MVK_XCODE_14_3
 #	define MVK_XCODE_14_3			((__MAC_OS_X_VERSION_MAX_ALLOWED >= 130300) || \
 									(__IPHONE_OS_VERSION_MAX_ALLOWED >= 160400))
