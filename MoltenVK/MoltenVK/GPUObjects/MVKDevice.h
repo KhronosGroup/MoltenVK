@@ -647,12 +647,9 @@ public:
 	void destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
 							   const VkAllocationCallbacks* pAllocator);
     
-    MVKAccelerationStructure* createAccelerationStructure(VkDevice                                    device,
-                                                          const VkAccelerationStructureCreateInfoKHR* pCreateInfo,
-                                                          const VkAllocationCallbacks*                pAllocator,
-                                                          VkAccelerationStructureKHR*                 pAccelerationStructure);
-    void destroyAccelerationStructure(VkDevice                      device,
-                                      MVKAccelerationStructure*     mvkAccStruct,
+    MVKAccelerationStructure* createAccelerationStructure(const VkAccelerationStructureCreateInfoKHR* pCreateInfo,
+                                                          const VkAllocationCallbacks*                pAllocator);
+    void destroyAccelerationStructure(MVKAccelerationStructure*     mvkAccStruct,
                                       const VkAllocationCallbacks*  pAllocator);
 
     /**

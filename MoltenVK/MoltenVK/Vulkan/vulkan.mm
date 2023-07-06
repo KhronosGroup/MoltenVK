@@ -41,6 +41,7 @@
 #include "MVKSurface.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
+#include "MVKAccelerationStructure.h" // I'll reposition this as well if it's needed
 
 #include <pthread.h>
 
@@ -3150,7 +3151,14 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateAccelerationStructureKHR(
     const VkAllocationCallbacks*                pAllocator,
     VkAccelerationStructureKHR*                 pAccelerationStructure) {
     
-    return VK_SUCCESS;
+    MVKTraceVulkanCallStart();
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    MVKAccelerationStructure* mvkAccelerationStructure = mvkDev->createAccelerationStructure(pCreateInfo, pAllocator);
+    *pAccelerationStructure = (VkAccelerationStructureKHR)mvkAccelerationStructure;
+    VkResult rslt = VK_SUCCESS;
+    MVKTraceVulkanCallEnd();
+    
+    return rslt;
 }
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyAccelerationStructureKHR(
@@ -3158,7 +3166,24 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyAccelerationStructureKHR(
     VkAccelerationStructureKHR   accelerationStructure,
     const VkAllocationCallbacks* pAllocator) {
     
-    return;
+    MVKTraceVulkanCallStart();
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    MVKAccelerationStructure* mvkAccelerationStructure = (MVKAccelerationStructure*)accelerationStructure;
+    mvkDev->destroyAccelerationStructure(mvkAccelerationStructure, pAllocator);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetAccelerationStructureBuildSizesKHR(
+    VkDevice                                              device,
+    VkAccelerationStructureBuildTypeKHR                   buildType,
+    const VkAccelerationStructureBuildGeometryInfoKHR*    pBuildInfo,
+    const uint32_t*                                       pMaxPrimitiveCounts,
+    VkAccelerationStructureBuildSizesInfoKHR*             pSizeInfo) {
+    
+    MVKTraceVulkanCallStart();
+    VkAccelerationStructureBuildSizesInfoKHR buildSizes = MVKAccelerationStructure::getBuildSizes();
+    pSizeInfo = &buildSizes;
+    MVKTraceVulkanCallEnd();
 }
 
 #pragma mark -

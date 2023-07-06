@@ -4566,15 +4566,12 @@ void MVKDevice::destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
 	if (mvkPLL) { mvkPLL->destroy(); }
 }
 
-MVKAccelerationStructure* MVKDevice::createAccelerationStructure(VkDevice                                    device,
-                                                                 const VkAccelerationStructureCreateInfoKHR* pCreateInfo,
-                                                                 const VkAllocationCallbacks*                pAllocator,
-                                                                 VkAccelerationStructureKHR*                 pAccelerationStructure) {
+MVKAccelerationStructure* MVKDevice::createAccelerationStructure(const VkAccelerationStructureCreateInfoKHR* pCreateInfo,
+                                                                 const VkAllocationCallbacks*                pAllocator) {
     return new MVKAccelerationStructure(this);
 }
 
-void MVKDevice::destroyAccelerationStructure(VkDevice                      device,
-                                             MVKAccelerationStructure*     mvkAccStruct,
+void MVKDevice::destroyAccelerationStructure(MVKAccelerationStructure*     mvkAccStruct,
                                              const VkAllocationCallbacks*  pAllocator) {
     if(mvkAccStruct) { mvkAccStruct->destroy(); }
 }

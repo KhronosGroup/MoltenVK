@@ -16,6 +16,23 @@
  * limitations under the License.
  */
 
+/*
+ Commands that need to be implemented
+ 
+ vkCmdBuildAccelerationStructuresIndirectKHR
+ vkCmdBuildAccelerationStructuresKHR
+ vkCmdCopyAccelerationStructureKHR
+ vkCmdCopyAccelerationStructureToMemoryKHR
+ vkCmdCopyMemoryToAccelerationStructureKHR
+ vkCmdWriteAccelerationStructuresPropertiesKHR
+ vkCreateAccelerationStructureKHR
+ vkDestroyAccelerationStructureKHR
+ vkGetAccelerationStructureBuildSizesKHR - DONE
+ vkGetAccelerationStructureDeviceAddressKHR
+ vkGetDeviceAccelerationStructureCompatibilityKHR
+ vkWriteAccelerationStructuresPropertiesKHR
+*/
+
 #pragma once
 
 #include "MVKVulkanAPIObject.h"
@@ -31,8 +48,12 @@ public:
         return VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT;
     }
     
+    /** Gets the required build sizes for acceleration structure and scratch buffer*/
+    static VkAccelerationStructureBuildSizesInfoKHR getBuildSizes();
+    
+    
+#pragma mark Construction
     MVKAccelerationStructure(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
-    ~MVKAccelerationStructure() {}
 protected:
     void propagateDebugName() override {}
 };
