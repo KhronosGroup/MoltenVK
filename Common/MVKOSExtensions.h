@@ -77,6 +77,14 @@ uint64_t mvkGetTimestamp();
 double mvkGetTimestampPeriod();
 
 /**
+ * Returns the number of nanoseconds elapsed between startTimestamp and endTimestamp,
+ * each of which should be a value returned by mvkGetTimestamp().
+ * If endTimestamp is zero or not supplied, it is taken to be the current time.
+ * If startTimestamp is zero or not supplied, it is taken to be the time the app was initialized.
+ */
+uint64_t mvkGetElapsedNanoseconds(uint64_t startTimestamp = 0, uint64_t endTimestamp = 0);
+
+/**
  * Returns the number of milliseconds elapsed between startTimestamp and endTimestamp,
  * each of which should be a value returned by mvkGetTimestamp().
  * If endTimestamp is zero or not supplied, it is taken to be the current time.
