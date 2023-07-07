@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		014702732A5857600040D02D /* MVKCmdAccelerationStructure.mm in Sources */ = {isa = PBXBuildFile; fileRef = 014702722A5857600040D02D /* MVKCmdAccelerationStructure.mm */; };
+		014702742A5857600040D02D /* MVKCmdAccelerationStructure.mm in Sources */ = {isa = PBXBuildFile; fileRef = 014702722A5857600040D02D /* MVKCmdAccelerationStructure.mm */; };
+		014702752A5857600040D02D /* MVKCmdAccelerationStructure.mm in Sources */ = {isa = PBXBuildFile; fileRef = 014702722A5857600040D02D /* MVKCmdAccelerationStructure.mm */; };
 		0197951B2A56F8AF00C6CAD0 /* MVKAccelerationStructure.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0197951A2A56F8AF00C6CAD0 /* MVKAccelerationStructure.mm */; };
 		0197951C2A56F8AF00C6CAD0 /* MVKAccelerationStructure.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0197951A2A56F8AF00C6CAD0 /* MVKAccelerationStructure.mm */; };
 		0197951D2A56F8AF00C6CAD0 /* MVKAccelerationStructure.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0197951A2A56F8AF00C6CAD0 /* MVKAccelerationStructure.mm */; };
@@ -657,6 +660,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		014702702A5855F70040D02D /* MVKCmdAccelerationStructure.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MVKCmdAccelerationStructure.h; sourceTree = "<group>"; };
+		014702722A5857600040D02D /* MVKCmdAccelerationStructure.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdAccelerationStructure.mm; sourceTree = "<group>"; };
 		019795132A5304D600C6CAD0 /* MVKAccelerationStructure.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MVKAccelerationStructure.h; sourceTree = "<group>"; };
 		0197951A2A56F8AF00C6CAD0 /* MVKAccelerationStructure.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKAccelerationStructure.mm; sourceTree = "<group>"; };
 		2FEA0ABA24902F9F00EEF3AD /* libMoltenVK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVK.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -925,6 +930,8 @@
 		A94FB76B1C7DFB4800632CA3 /* Commands */ = {
 			isa = PBXGroup;
 			children = (
+				014702702A5855F70040D02D /* MVKCmdAccelerationStructure.h */,
+				014702722A5857600040D02D /* MVKCmdAccelerationStructure.mm */,
 				A99C90EC229455B200A061DA /* MVKCmdDebug.h */,
 				A99C90ED229455B300A061DA /* MVKCmdDebug.mm */,
 				A9096E5C1F81E16300DFBEA6 /* MVKCmdDispatch.h */,
@@ -2196,6 +2203,7 @@
 				2FEA0AB024902F9F00EEF3AD /* MVKFramebuffer.mm in Sources */,
 				2FEA0AB124902F9F00EEF3AD /* MVKMTLBufferAllocation.mm in Sources */,
 				2FEA0AB224902F9F00EEF3AD /* CAMetalLayer+MoltenVK.mm in Sources */,
+				014702742A5857600040D02D /* MVKCmdAccelerationStructure.mm in Sources */,
 				2FEA0AB324902F9F00EEF3AD /* MVKCmdDispatch.mm in Sources */,
 				2FEA0AB424902F9F00EEF3AD /* MVKCmdDebug.mm in Sources */,
 			);
@@ -2241,6 +2249,7 @@
 				A98149551FB6A3F7005F00B4 /* MVKFoundation.cpp in Sources */,
 				A9653FBC24129C84005999D7 /* MVKPixelFormats.mm in Sources */,
 				A94FB7E61C7DFB4800632CA3 /* MVKDevice.mm in Sources */,
+				014702732A5857600040D02D /* MVKCmdAccelerationStructure.mm in Sources */,
 				A9E53DF52100B302002781DD /* MTLRenderPassDescriptor+MoltenVK.m in Sources */,
 				0197951B2A56F8AF00C6CAD0 /* MVKAccelerationStructure.mm in Sources */,
 				A966A5E123C535D000BBF9B4 /* MVKDescriptor.mm in Sources */,
@@ -2303,6 +2312,7 @@
 				A98149561FB6A3F7005F00B4 /* MVKFoundation.cpp in Sources */,
 				A9653FBD24129C84005999D7 /* MVKPixelFormats.mm in Sources */,
 				A94FB7E71C7DFB4800632CA3 /* MVKDevice.mm in Sources */,
+				014702752A5857600040D02D /* MVKCmdAccelerationStructure.mm in Sources */,
 				A9E53DF62100B302002781DD /* MTLRenderPassDescriptor+MoltenVK.m in Sources */,
 				0197951D2A56F8AF00C6CAD0 /* MVKAccelerationStructure.mm in Sources */,
 				A966A5E223C535D000BBF9B4 /* MVKDescriptor.mm in Sources */,

@@ -26,10 +26,17 @@ VkAccelerationStructureBuildSizesInfoKHR MVKAccelerationStructure::getBuildSizes
 {
     VkAccelerationStructureBuildSizesInfoKHR vkBuildSizes{};
         
-    MTLAccelerationStructureSizes mtlBuildSizes;
-    vkBuildSizes.accelerationStructureSize = mtlBuildSizes.accelerationStructureSize;
-    vkBuildSizes.buildScratchSize = mtlBuildSizes.buildScratchBufferSize;
-    vkBuildSizes.updateScratchSize = mtlBuildSizes.refitScratchBufferSize;
+    #if MVK_XCODE_12
+        MTLAccelerationStructureSizes mtlBuildSizes;
+        vkBuildSizes.accelerationStructureSize = mtlBuildSizes.accelerationStructureSize;
+        vkBuildSizes.buildScratchSize = mtlBuildSizes.buildScratchBufferSize;
+        vkBuildSizes.updateScratchSize = mtlBuildSizes.refitScratchBufferSize;
+    #endif
     
     return vkBuildSizes;
+}
+
+void MVKAccelerationStructure::getDeviceAddress()
+{
+    
 }

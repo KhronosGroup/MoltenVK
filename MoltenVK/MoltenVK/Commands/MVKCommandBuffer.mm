@@ -1015,6 +1015,10 @@ void MVKCommandEncoder::endCurrentMetalEncoding() {
 	if (_mtlBlitEncoder && _cmdBuffer->_hasStageCounterTimestampCommand) { [_mtlBlitEncoder updateFence: getStageCountersMTLFence()]; }
 	endMetalEncoding(_mtlBlitEncoder);
     _mtlBlitEncoderUse = kMVKCommandUseNone;
+    
+    if (_mtlAccelerationStructureEncoder && _cmdBuffer->_hasStageCounterTimestampCommand) { [_mtlAccelerationStructureEncoder updateFence: getStageCountersMTLFence()]; }
+    endMetalEncoding(_mtlAccelerationStructureEncoder);
+    _mtlAccelerationStructureUse = kMVKCommandUseNone;
 
 	encodeTimestampStageCounterSamples();
 }
@@ -1064,10 +1068,24 @@ id<MTLBlitCommandEncoder> MVKCommandEncoder::getMTLBlitEncoder(MVKCommandUse cmd
 	return _mtlBlitEncoder;
 }
 
+id<MTLAccelerationStructureCommandEncoder> MVKCommandEncoder::getMTLAccelerationStructureEncoder(MVKCommandUse cmdUse) {
+    if ( !_mtlAccelerationStructureEncoder ) {
+        endCurrentMetalEncoding();
+        _mtlAccelerationStructureEncoder = [_mtlCmdBuffer accelerationStructureCommandEncoder];
+        retainIfImmediatelyEncoding(_mtlAccelerationStructureEncoder);
+    }
+    if (_mtlAccelerationStructureUse != cmdUse) {
+        _mtlAccelerationStructureUse = cmdUse;
+        setLabelIfNotNil(_mtlAccelerationStructureEncoder, mvkMTLBlitCommandEncoderLabel(cmdUse));
+    }
+    return _mtlAccelerationStructureEncoder;
+}
+
 id<MTLCommandEncoder> MVKCommandEncoder::getMTLEncoder(){
 	if (_mtlRenderEncoder) { return _mtlRenderEncoder; }
 	if (_mtlComputeEncoder) { return _mtlComputeEncoder; }
 	if (_mtlBlitEncoder) { return _mtlBlitEncoder; }
+    if (_mtlAccelerationStructureEncoder) { return _mtlAccelerationStructureEncoder; }
 	return nil;
 }
 
@@ -1384,6 +1402,8 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
 	_mtlComputeEncoderUse = kMVKCommandUseNone;
 	_mtlBlitEncoder = nil;
 	_mtlBlitEncoderUse = kMVKCommandUseNone;
+    _mtlAccelerationStructureEncoder = nil;
+    _mtlAccelerationStructureUse = kMVKCommandUseNone;
 	_pEncodingContext = nullptr;
 	_stageCountersMTLFence = nil;
 	_flushCount = 0;
@@ -1393,6 +1413,7 @@ MVKCommandEncoder::~MVKCommandEncoder() {
 	[_mtlRenderEncoder release];
 	[_mtlComputeEncoder release];
 	[_mtlBlitEncoder release];
+    [_mtlAccelerationStructureEncoder release];
 	// _stageCountersMTLFence is released after Metal command buffer completion
 }
 

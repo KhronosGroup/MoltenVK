@@ -25,8 +25,8 @@
  vkCmdCopyAccelerationStructureToMemoryKHR
  vkCmdCopyMemoryToAccelerationStructureKHR
  vkCmdWriteAccelerationStructuresPropertiesKHR
- vkCreateAccelerationStructureKHR
- vkDestroyAccelerationStructureKHR
+ vkCreateAccelerationStructureKHR - DONE
+ vkDestroyAccelerationStructureKHR - DONE
  vkGetAccelerationStructureBuildSizesKHR - DONE
  vkGetAccelerationStructureDeviceAddressKHR
  vkGetDeviceAccelerationStructureCompatibilityKHR
@@ -36,6 +36,9 @@
 #pragma once
 
 #include "MVKVulkanAPIObject.h"
+
+#import <Metal/MTLAccelerationStructure.h>
+#import <Metal/MTLAccelerationStructureTypes.h>
 
 #pragma mark MVKAccelerationStructure
 
@@ -51,9 +54,17 @@ public:
     /** Gets the required build sizes for acceleration structure and scratch buffer*/
     static VkAccelerationStructureBuildSizesInfoKHR getBuildSizes();
     
+    /** Gets the device address of the acceleration structure*/
+    void getDeviceAddress();
     
+    /** Builds the acceleration structure as a device command*/
+    void build();
 #pragma mark Construction
     MVKAccelerationStructure(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
 protected:
     void propagateDebugName() override {}
+    
+    #if MVK_XCODE_12
+        id<MTLAccelerationStructure> _accelerationStructure;
+    #endif
 };
