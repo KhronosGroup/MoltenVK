@@ -22,6 +22,7 @@
 #include "MVKCommandBuffer.h"
 #include "MVKCommandEncodingPool.h"
 #include "MVKCommand.h"
+#include "MVKCmdAccelerationStructure.h"
 #include "MVKCmdPipeline.h"
 #include "MVKCmdRendering.h"
 #include "MVKCmdDispatch.h"
