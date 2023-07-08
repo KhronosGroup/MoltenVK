@@ -25,6 +25,33 @@
 #import <Metal/MTLAccelerationStructure.h>
 #import <Metal/MTLAccelerationStructureTypes.h>
 
+VkResult MVKCmdBuildAccelerationStructure::setContent(MVKCommandBuffer*                                       cmdBuff,
+                                                      uint32_t                                                infoCount,
+                                                      const VkAccelerationStructureBuildGeometryInfoKHR*      pInfos,
+                                                      const VkAccelerationStructureBuildRangeInfoKHR* const*         ppBuildRangeInfos) {
+    _infoCount = infoCount;
+    _geometryInfos = *pInfos;
+    _buildRangeInfos = *ppBuildRangeInfos;
+    
+    return VK_SUCCESS;
+}
+
 void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseNone);
+    id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseNone);
+    id<MTLAccelerationStructure> srcAccelerationStructure = (id<MTLAccelerationStructure>)_geometryInfos.srcAccelerationStructure;
+    id<MTLAccelerationStructure> dstAccelerationStructure = (id<MTLAccelerationStructure>)_geometryInfos.dstAccelerationStructure; // Target acceleration Structure
+    
+    MTLAccelerationStructureDescriptor* accStructDescriptor = [MTLAccelerationStructureDescriptor new];
+    accStructDescriptor.usage = MTLAccelerationStructureUsageNone;
+    /*
+      * The NVIDIA extension seemed to use to provide the scratch buffer offset, but not the KHR version
+      * However the KHR extension does not seem to have anything similar, for now I'll leave it 0, but
+      * it should be changed.
+    */
+    int scratchBufferOffset = 0;
+    
+//    [accStructEncoder buildAccelerationStructure:dstAccelerationStructure
+//                                    descriptor:accStructDescriptor
+//                                    scratchBuffer:scratchBuffer
+//                                    scratchBufferOffset:scratchBufferOffset];
 }

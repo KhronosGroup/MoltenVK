@@ -26,7 +26,16 @@
 class MVKCmdBuildAccelerationStructure : public MVKCommand {
     
 public:
+    VkResult setContent(MVKCommandBuffer*                                       cmdBuff,
+                        uint32_t                                                infoCount,
+                        const VkAccelerationStructureBuildGeometryInfoKHR*      pInfos,
+                        const VkAccelerationStructureBuildRangeInfoKHR* const*         ppBuildRangeInfos);
+    
     void encode(MVKCommandEncoder* cmdEncoder) override;
 protected:
     MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+    
+    uint32_t _infoCount;
+    VkAccelerationStructureBuildGeometryInfoKHR _geometryInfos;
+    VkAccelerationStructureBuildRangeInfoKHR const* _buildRangeInfos;
 };

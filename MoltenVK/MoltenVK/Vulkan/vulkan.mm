@@ -3186,6 +3186,17 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkGetAccelerationStructureBuildSizesKHR(
     MVKTraceVulkanCallEnd();
 }
 
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBuildAccelerationStructuresKHR(
+    VkCommandBuffer                                         commandBuffer,
+    uint32_t                                                infoCount,
+    const VkAccelerationStructureBuildGeometryInfoKHR*      pInfos,
+    const VkAccelerationStructureBuildRangeInfoKHR* const*  ppBuildRangeInfos) {
+    
+    MVKTraceVulkanCallStart();
+    MVKAddCmd(BuildAccelerationStructure, commandBuffer, infoCount, pInfos, ppBuildRangeInfos);
+    MVKTraceVulkanCallEnd();
+}
+
 #pragma mark -
 #pragma mark VK_KHR_bind_memory2 extension
 
