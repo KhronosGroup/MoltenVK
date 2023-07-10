@@ -21,6 +21,8 @@
 #include "MVKResource.h"
 #include "MVKCommandBuffer.h"
 
+#include "MVKMap.h"
+
 class MVKCommandEncoder;
 
 
