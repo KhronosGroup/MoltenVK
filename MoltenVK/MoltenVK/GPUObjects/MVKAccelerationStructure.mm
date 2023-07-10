@@ -22,6 +22,11 @@
 #pragma mark -
 #pragma mark MVKAcceleration Structure
 
+id<MTLAccelerationStructure> MVKAccelerationStructure::getMTLAccelerationStructure()
+{
+    return _accelerationStructure;
+}
+
 VkAccelerationStructureBuildSizesInfoKHR MVKAccelerationStructure::getBuildSizes()
 {
     VkAccelerationStructureBuildSizesInfoKHR vkBuildSizes{};

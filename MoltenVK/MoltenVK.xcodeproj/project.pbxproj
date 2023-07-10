@@ -10,6 +10,9 @@
 		014702732A5857600040D02D /* MVKCmdAccelerationStructure.mm in Sources */ = {isa = PBXBuildFile; fileRef = 014702722A5857600040D02D /* MVKCmdAccelerationStructure.mm */; };
 		014702742A5857600040D02D /* MVKCmdAccelerationStructure.mm in Sources */ = {isa = PBXBuildFile; fileRef = 014702722A5857600040D02D /* MVKCmdAccelerationStructure.mm */; };
 		014702752A5857600040D02D /* MVKCmdAccelerationStructure.mm in Sources */ = {isa = PBXBuildFile; fileRef = 014702722A5857600040D02D /* MVKCmdAccelerationStructure.mm */; };
+		0147027B2A5B0C010040D02D /* MVKMap.h in Headers */ = {isa = PBXBuildFile; fileRef = 0147027A2A5AF1310040D02D /* MVKMap.h */; };
+		0147027C2A5B0C010040D02D /* MVKMap.h in Headers */ = {isa = PBXBuildFile; fileRef = 0147027A2A5AF1310040D02D /* MVKMap.h */; };
+		0147027D2A5B0C020040D02D /* MVKMap.h in Headers */ = {isa = PBXBuildFile; fileRef = 0147027A2A5AF1310040D02D /* MVKMap.h */; };
 		0197951B2A56F8AF00C6CAD0 /* MVKAccelerationStructure.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0197951A2A56F8AF00C6CAD0 /* MVKAccelerationStructure.mm */; };
 		0197951C2A56F8AF00C6CAD0 /* MVKAccelerationStructure.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0197951A2A56F8AF00C6CAD0 /* MVKAccelerationStructure.mm */; };
 		0197951D2A56F8AF00C6CAD0 /* MVKAccelerationStructure.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0197951A2A56F8AF00C6CAD0 /* MVKAccelerationStructure.mm */; };
@@ -662,6 +665,8 @@
 /* Begin PBXFileReference section */
 		014702702A5855F70040D02D /* MVKCmdAccelerationStructure.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MVKCmdAccelerationStructure.h; sourceTree = "<group>"; };
 		014702722A5857600040D02D /* MVKCmdAccelerationStructure.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdAccelerationStructure.mm; sourceTree = "<group>"; };
+		0147027A2A5AF1310040D02D /* MVKMap.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MVKMap.h; sourceTree = "<group>"; };
+		0147027E2A5B0C9A0040D02D /* MVKMapAllocator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MVKMapAllocator.h; sourceTree = "<group>"; };
 		019795132A5304D600C6CAD0 /* MVKAccelerationStructure.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MVKAccelerationStructure.h; sourceTree = "<group>"; };
 		0197951A2A56F8AF00C6CAD0 /* MVKAccelerationStructure.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKAccelerationStructure.mm; sourceTree = "<group>"; };
 		2FEA0ABA24902F9F00EEF3AD /* libMoltenVK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVK.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -1055,13 +1060,15 @@
 				A98149441FB6A3F7005F00B4 /* MVKFoundation.h */,
 				A9AB95292B3EDFCC00C4E967 /* MVKInflectionMap.h */,
 				A9F0429E1FB4CF82009FCCB8 /* MVKLogging.h */,
+				0147027A2A5AF1310040D02D /* MVKMap.h */,
+				0147027E2A5B0C9A0040D02D /* MVKMapAllocator.h */,
 				A98149461FB6A3F7005F00B4 /* MVKObjectPool.h */,
 				A9F3D9DB24732A4D00745190 /* MVKSmallVector.h */,
 				A9F3D9D924732A4C00745190 /* MVKSmallVectorAllocator.h */,
 				A98149491FB6A3F7005F00B4 /* MVKWatermark.h */,
 				A981494A1FB6A3F7005F00B4 /* MVKWatermark.mm */,
-				A981494B1FB6A3F7005F00B4 /* MVKWatermarkShaderSource.h */,
 				A981494C1FB6A3F7005F00B4 /* MVKWatermarkTextureContent.h */,
+				A981494B1FB6A3F7005F00B4 /* MVKWatermarkShaderSource.h */,
 			);
 			path = Utility;
 			sourceTree = "<group>";
@@ -1232,6 +1239,7 @@
 				2FEA0A7224902F9F00EEF3AD /* MVKCmdDraw.h in Headers */,
 				A9B3D73C29F9B3B100745CD4 /* mvk_deprecated_api.h in Headers */,
 				2FEA0A7324902F9F00EEF3AD /* MVKCommandBuffer.h in Headers */,
+				0147027C2A5B0C010040D02D /* MVKMap.h in Headers */,
 				2FEA0A7424902F9F00EEF3AD /* MTLRenderPassDescriptor+MoltenVK.h in Headers */,
 				2FEA0A7524902F9F00EEF3AD /* MVKCmdDebug.h in Headers */,
 				2FEA0A7624902F9F00EEF3AD /* MVKWatermarkTextureContent.h in Headers */,
@@ -1295,6 +1303,7 @@
 				A94FB80C1C7DFB4800632CA3 /* MVKShaderModule.h in Headers */,
 				A9AB952B2B3EDFCC00C4E967 /* MVKInflectionMap.h in Headers */,
 				A99C91042295FAC600A061DA /* MVKVulkanAPIObject.h in Headers */,
+				0147027B2A5B0C010040D02D /* MVKMap.h in Headers */,
 				A94FB7C01C7DFB4800632CA3 /* MVKCmdQueries.h in Headers */,
 				A9B3D73B29F9B3B100745CD4 /* mvk_deprecated_api.h in Headers */,
 				A94FB7CC1C7DFB4800632CA3 /* MVKCommand.h in Headers */,
@@ -1375,6 +1384,7 @@
 				A99C91052295FAC600A061DA /* MVKVulkanAPIObject.h in Headers */,
 				A9AB952D2B3EDFCC00C4E967 /* MVKInflectionMap.h in Headers */,
 				A94FB7C11C7DFB4800632CA3 /* MVKCmdQueries.h in Headers */,
+				0147027D2A5B0C020040D02D /* MVKMap.h in Headers */,
 				A94FB7CD1C7DFB4800632CA3 /* MVKCommand.h in Headers */,
 				A9B3D73D29F9B3B100745CD4 /* mvk_deprecated_api.h in Headers */,
 				A98149501FB6A3F7005F00B4 /* MVKBaseObject.h in Headers */,

@@ -20,6 +20,10 @@
 
 #include "MVKCommand.h"
 
+#import <Metal/Metal.h>
+#import <Metal/MTLAccelerationStructure.h>
+#import <Metal/MTLAccelerationStructureTypes.h>
+
 #pragma mark -
 #pragma mark MVKCmdBuildAccelerationStructure
 
@@ -29,7 +33,7 @@ public:
     VkResult setContent(MVKCommandBuffer*                                       cmdBuff,
                         uint32_t                                                infoCount,
                         const VkAccelerationStructureBuildGeometryInfoKHR*      pInfos,
-                        const VkAccelerationStructureBuildRangeInfoKHR* const*         ppBuildRangeInfos);
+                        const VkAccelerationStructureBuildRangeInfoKHR* const*  ppBuildRangeInfos);
     
     void encode(MVKCommandEncoder* cmdEncoder) override;
 protected:
@@ -38,4 +42,19 @@ protected:
     uint32_t _infoCount;
     VkAccelerationStructureBuildGeometryInfoKHR _geometryInfos;
     VkAccelerationStructureBuildRangeInfoKHR const* _buildRangeInfos;
+};
+
+class MVKCmdCopyAccelerationStructure : public MVKCommand {
+    
+public:
+    VkResult setContent(MVKCommandBuffer* cmdBuff,
+                        VkAccelerationStructureKHR srcAccelerationStructure,
+                        VkAccelerationStructureKHR dstAccelerationStructure);
+    
+    void encode(MVKCommandEncoder* cmdEncoder) override;
+protected:
+    MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+    
+    id<MTLAccelerationStructure> _srcAccelerationStructure;
+    id<MTLAccelerationStructure> _dstAccelerationStructure;
 };

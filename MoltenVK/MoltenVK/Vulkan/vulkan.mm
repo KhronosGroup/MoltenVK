@@ -3197,6 +3197,16 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBuildAccelerationStructuresKHR(
     MVKTraceVulkanCallEnd();
 }
 
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyAccelerationStructureKHR(
+    VkCommandBuffer                             commandBuffer,
+    const VkCopyAccelerationStructureInfoKHR*   pInfo) {
+    
+    MVKTraceVulkanCallStart();
+    // Currently were ignoring the copy mode
+    MVKAddCmd(CopyAccelerationStructure, commandBuffer, pInfo->src, pInfo->dst);
+    MVKTraceVulkanCallEnd();
+}
+
 #pragma mark -
 #pragma mark VK_KHR_bind_memory2 extension
 

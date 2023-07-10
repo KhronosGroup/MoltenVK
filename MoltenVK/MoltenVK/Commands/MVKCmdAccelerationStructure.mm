@@ -21,14 +21,12 @@
 #include "MVKCommandBuffer.h"
 #include "MVKCommandPool.h"
 
-#import <Metal/Metal.h>
-#import <Metal/MTLAccelerationStructure.h>
-#import <Metal/MTLAccelerationStructureTypes.h>
+#include "MVKAccelerationStructure.h"
 
 VkResult MVKCmdBuildAccelerationStructure::setContent(MVKCommandBuffer*                                       cmdBuff,
                                                       uint32_t                                                infoCount,
                                                       const VkAccelerationStructureBuildGeometryInfoKHR*      pInfos,
-                                                      const VkAccelerationStructureBuildRangeInfoKHR* const*         ppBuildRangeInfos) {
+                                                      const VkAccelerationStructureBuildRangeInfoKHR* const*  ppBuildRangeInfos) {
     _infoCount = infoCount;
     _geometryInfos = *pInfos;
     _buildRangeInfos = *ppBuildRangeInfos;
@@ -52,6 +50,26 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
     
 //    [accStructEncoder buildAccelerationStructure:dstAccelerationStructure
 //                                    descriptor:accStructDescriptor
-//                                    scratchBuffer:scratchBuffer
+//                                    scratchBuffer:nil
 //                                    scratchBufferOffset:scratchBufferOffset];
+}
+
+VkResult MVKCmdCopyAccelerationStructure::setContent(MVKCommandBuffer* cmdBuff,
+                    VkAccelerationStructureKHR srcAccelerationStructure,
+                    VkAccelerationStructureKHR dstAccelerationStructure) {
+    
+    MVKAccelerationStructure* mvkSrcAccStruct = (MVKAccelerationStructure*)srcAccelerationStructure;
+    MVKAccelerationStructure* mvkDstAccStruct = (MVKAccelerationStructure*)dstAccelerationStructure;
+    
+    _srcAccelerationStructure = mvkSrcAccStruct->getMTLAccelerationStructure();
+    _dstAccelerationStructure = mvkSrcAccStruct->getMTLAccelerationStructure();
+    return VK_SUCCESS;
+}
+
+void MVKCmdCopyAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
+    id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseNone);
+    
+    [accStructEncoder
+     copyAccelerationStructure:_srcAccelerationStructure
+     toAccelerationStructure:_dstAccelerationStructure];
 }

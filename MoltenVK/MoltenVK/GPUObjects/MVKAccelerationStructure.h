@@ -20,8 +20,8 @@
  Commands that need to be implemented
  
  vkCmdBuildAccelerationStructuresIndirectKHR
- vkCmdBuildAccelerationStructuresKHR
- vkCmdCopyAccelerationStructureKHR
+ vkCmdBuildAccelerationStructuresKHR - IN PROGRESS
+ vkCmdCopyAccelerationStructureKHR - DONE
  vkCmdCopyAccelerationStructureToMemoryKHR
  vkCmdCopyMemoryToAccelerationStructureKHR
  vkCmdWriteAccelerationStructuresPropertiesKHR
@@ -51,6 +51,8 @@ public:
         return VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT;
     }
     
+    id<MTLAccelerationStructure> getMTLAccelerationStructure();
+    
     /** Gets the required build sizes for acceleration structure and scratch buffer*/
     static VkAccelerationStructureBuildSizesInfoKHR getBuildSizes();
     
@@ -59,12 +61,11 @@ public:
     
     /** Builds the acceleration structure as a device command*/
     void build();
+
 #pragma mark Construction
     MVKAccelerationStructure(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
 protected:
     void propagateDebugName() override {}
     
-    #if MVK_XCODE_12
-        id<MTLAccelerationStructure> _accelerationStructure;
-    #endif
+    id<MTLAccelerationStructure> _accelerationStructure;
 };
