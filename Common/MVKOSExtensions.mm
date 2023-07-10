@@ -40,6 +40,7 @@ MVKOSVersion mvkOSVersion() {
 
 static uint64_t _mvkTimestampBase;
 static double _mvkTimestampPeriod;
+static mach_timebase_info_data_t _mvkMachTimebase;
 
 uint64_t mvkGetTimestamp() { return mach_absolute_time() - _mvkTimestampBase; }
 
@@ -50,6 +51,8 @@ double mvkGetElapsedMilliseconds(uint64_t startTimestamp, uint64_t endTimestamp)
 	return (double)(endTimestamp - startTimestamp) * _mvkTimestampPeriod / 1e6;
 }
 
+uint64_t mvkGetAbsoluteTime() { return mach_continuous_time() * _mvkMachTimebase.numer / _mvkMachTimebase.denom; }
+
 // Initialize timestamping capabilities on app startup.
 //Called automatically when the framework is loaded and initialized.
 static bool _mvkTimestampsInitialized = false;
@@ -58,9 +61,8 @@ __attribute__((constructor)) static void MVKInitTimestamps() {
 	_mvkTimestampsInitialized = true;
 
 	_mvkTimestampBase = mach_absolute_time();
-	mach_timebase_info_data_t timebase;
-	mach_timebase_info(&timebase);
-	_mvkTimestampPeriod = (double)timebase.numer / (double)timebase.denom;
+	mach_timebase_info(&_mvkMachTimebase);
+	_mvkTimestampPeriod = (double)_mvkMachTimebase.numer / (double)_mvkMachTimebase.denom;
 }
 
 void mvkDispatchToMainAndWait(dispatch_block_t block) {
@@ -138,3 +140,10 @@ uint64_t mvkGetUsedMemorySize() {
 
 uint64_t mvkGetHostMemoryPageSize() { return sysconf(_SC_PAGESIZE); }
 
+#pragma mark -
+#pragma mark Threading
+
+/** Returns the amount of avaliable CPU cores. */
+uint32_t mvkGetAvaliableCPUCores() {
+    return (uint32_t)[[NSProcessInfo processInfo] activeProcessorCount];
+}

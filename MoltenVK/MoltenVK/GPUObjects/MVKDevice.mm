@@ -78,6 +78,8 @@ static const uint32_t kAMDRadeonRX6700DeviceId = 0x73df;
 static const VkExtent2D kMetalSamplePositionGridSize = { 1, 1 };
 static const VkExtent2D kMetalSamplePositionGridSizeNotSupported = { 0, 0 };
 
+static const uint32_t kMaxTimeDomains = 2;
+
 #pragma clang diagnostic pop
 
 
@@ -367,8 +369,17 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->shaderSampleRateInterpolationFunctions = _metalFeatures.pullModelInterpolation;
 				portabilityFeatures->tessellationIsolines = false;
 				portabilityFeatures->tessellationPointMode = false;
-				portabilityFeatures->triangleFans = false;
+				portabilityFeatures->triangleFans = true;
 				portabilityFeatures->vertexAttributeAccessBeyondStride = true;	// Costs additional buffers. Should make configuration switch.
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
+				auto* formatFeatures = (VkPhysicalDevice4444FormatsFeaturesEXT*)next;
+				bool canSupport4444 = _metalFeatures.tileBasedDeferredRendering &&
+									  (_metalFeatures.nativeTextureSwizzle ||
+									   mvkConfig().fullImageViewSwizzle);
+				formatFeatures->formatA4R4G4B4 = canSupport4444;
+				formatFeatures->formatA4B4G4R4 = canSupport4444;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: {
@@ -1111,6 +1122,22 @@ void MVKPhysicalDevice::getExternalSemaphoreProperties(const VkPhysicalDeviceExt
 	pExternalSemaphoreProperties->pNext = next;
 }
 
+VkResult MVKPhysicalDevice::getCalibrateableTimeDomains(uint32_t* pTimeDomainCount, VkTimeDomainEXT* pTimeDomains) {
+	if (!pTimeDomains) {
+		*pTimeDomainCount = kMaxTimeDomains;
+		return VK_SUCCESS;
+	}
+	// XXX CLOCK_MONOTONIC_RAW is mach_continuous_time(), but
+	// -[MTLDevice sampleTimestamps:gpuTimestamp:] returns the CPU
+	// timestamp in the mach_absolute_time() domain, which is CLOCK_UPTIME_RAW
+	// (cf. Libc/gen/clock_gettime.c).
+	static const VkTimeDomainEXT domains[] = { VK_TIME_DOMAIN_DEVICE_EXT, VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_EXT };
+	std::copy_n(domains, min(*pTimeDomainCount, kMaxTimeDomains), pTimeDomains);
+	if (*pTimeDomainCount < kMaxTimeDomains) { return VK_INCOMPLETE; }
+	*pTimeDomainCount = kMaxTimeDomains;
+	return VK_SUCCESS;
+}
+
 
 #pragma mark Surfaces
 
@@ -1753,6 +1780,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	}
 #endif
 
+#if MVK_XCODE_15
+    if ( mvkOSVersionIsAtLeast(17.0) ) {
+        _metalFeatures.mslVersionEnum = MTLLanguageVersion3_1;
+    }
+#endif
+
 #endif
 
 #if MVK_IOS
@@ -1870,6 +1903,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_0;
 	}
 #endif
+#if MVK_XCODE_15
+    if ( mvkOSVersionIsAtLeast(17.0) ) {
+        _metalFeatures.mslVersionEnum = MTLLanguageVersion3_1;
+    }
+#endif
 
 #endif
 
@@ -1954,6 +1992,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_0;
 	}
+#endif
+#if MVK_XCODE_15
+    if ( mvkOSVersionIsAtLeast(14.0) ) {
+        _metalFeatures.mslVersionEnum = MTLLanguageVersion3_1;
+    }
 #endif
 
 	// This is an Apple GPU--treat it accordingly.
@@ -2070,6 +2113,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(maj, min);
 
 	switch (_metalFeatures.mslVersionEnum) {
+#if MVK_XCODE_15
+        case MTLLanguageVersion3_1:
+            setMSLVersion(3, 1);
+            break;
+#endif
 #if MVK_XCODE_14
 		case MTLLanguageVersion3_0:
 			setMSLVersion(3, 0);
@@ -3087,6 +3135,8 @@ void MVKPhysicalDevice::initExtensions() {
 	}
 	if (!_metalFeatures.simdPermute && !_metalFeatures.quadPermute) {
 		pWritableExtns->vk_KHR_shader_subgroup_extended_types.enabled = false;
+		pWritableExtns->vk_EXT_shader_subgroup_ballot.enabled = false;
+		pWritableExtns->vk_EXT_shader_subgroup_vote.enabled = false;
 	}
 	if (!_metalFeatures.shaderBarycentricCoordinates) {
 		pWritableExtns->vk_KHR_fragment_shader_barycentric.enabled = false;
@@ -3537,6 +3587,36 @@ VkResult MVKDevice::getMemoryHostPointerProperties(VkExternalMemoryHandleTypeFla
 	return VK_SUCCESS;
 }
 
+void MVKDevice::getCalibratedTimestamps(uint32_t timestampCount,
+										const VkCalibratedTimestampInfoEXT* pTimestampInfos,
+										uint64_t* pTimestamps,
+										uint64_t* pMaxDeviation) {
+	MTLTimestamp cpuStamp, gpuStamp;
+	uint64_t cpuStart, cpuEnd;
+
+	cpuStart = mvkGetAbsoluteTime();
+	[getMTLDevice() sampleTimestamps: &cpuStamp gpuTimestamp: &gpuStamp];
+	// Sample again to calculate the maximum deviation. Note that the
+	// -[MTLDevice sampleTimestamps:gpuTimestamp:] method guarantees that CPU
+	// timestamps are in nanoseconds. We don't want to call the method again,
+	// because that could result in an expensive syscall to query the GPU time-
+	// stamp.
+	cpuEnd = mvkGetAbsoluteTime();
+	for (uint32_t tsIdx = 0; tsIdx < timestampCount; ++tsIdx) {
+		switch (pTimestampInfos[tsIdx].timeDomain) {
+			case VK_TIME_DOMAIN_DEVICE_EXT:
+				pTimestamps[tsIdx] = gpuStamp;
+				break;
+			// XXX Should be VK_TIME_DOMAIN_CLOCK_UPTIME_RAW_EXT
+			case VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_EXT:
+				pTimestamps[tsIdx] = cpuStart;
+				break;
+			default:
+				continue;
+		}
+	}
+	*pMaxDeviation = cpuEnd - cpuStart;
+}
 
 #pragma mark Object lifecycle
 
@@ -3704,6 +3784,15 @@ MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInf
 void MVKDevice::destroySemaphore(MVKSemaphore* mvkSem4,
 								 const VkAllocationCallbacks* pAllocator) {
 	if (mvkSem4) { mvkSem4->destroy(); }
+}
+
+MVKDeferredOperation* MVKDevice::createDeferredOperation(const VkAllocationCallbacks* pAllocator) {
+    return new MVKDeferredOperation(this);
+}
+
+void MVKDevice::destroyDeferredOperation(MVKDeferredOperation* mvkDeferredOperation,
+                                         const VkAllocationCallbacks* pAllocator) {
+    if(mvkDeferredOperation) { mvkDeferredOperation->destroy(); }
 }
 
 MVKEvent* MVKDevice::createEvent(const VkEventCreateInfo* pCreateInfo,

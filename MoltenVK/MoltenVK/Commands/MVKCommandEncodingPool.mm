@@ -139,8 +139,12 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdCopyBufferToImage3DDec
 	MVK_ENC_REZ_ACCESS(_mtlCopyBufferToImage3DDecompressComputePipelineState[needsTempBuff ? 1 : 0], newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(needsTempBuff, _commandPool));
 }
 
-id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndirectMultiviewConvertBuffersMTLComputePipelineState(bool indexed) {
-	MVK_ENC_REZ_ACCESS(_mtlDrawIndirectMultiviewConvertBuffersComputePipelineState[indexed ? 1 : 0], newCmdDrawIndirectMultiviewConvertBuffersMTLComputePipelineState(indexed, _commandPool));
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndirectPopulateIndexesMTLComputePipelineState() {
+	MVK_ENC_REZ_ACCESS(_mtlDrawIndirectPopulateIndexesComputePipelineState, newCmdDrawIndirectPopulateIndexesMTLComputePipelineState(_commandPool));
+}
+
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed) {
+	MVK_ENC_REZ_ACCESS(_mtlDrawIndirectConvertBuffersComputePipelineState[indexed ? 1 : 0], newCmdDrawIndirectConvertBuffersMTLComputePipelineState(indexed, _commandPool));
 }
 
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndirectTessConvertBuffersMTLComputePipelineState(bool indexed) {
@@ -217,6 +221,9 @@ void MVKCommandEncodingPool::destroyMetalResources() {
     [_mtlFillBufferComputePipelineState release];
     _mtlFillBufferComputePipelineState = nil;
 
+	[_mtlDrawIndirectPopulateIndexesComputePipelineState release];
+	_mtlDrawIndirectPopulateIndexesComputePipelineState = nil;
+
     [_mtlClearColorImageComputePipelineState[0] release];
     [_mtlClearColorImageComputePipelineState[1] release];
     [_mtlClearColorImageComputePipelineState[2] release];
@@ -236,10 +243,10 @@ void MVKCommandEncodingPool::destroyMetalResources() {
     _mtlCopyBufferToImage3DDecompressComputePipelineState[0] = nil;
     _mtlCopyBufferToImage3DDecompressComputePipelineState[1] = nil;
 
-    [_mtlDrawIndirectMultiviewConvertBuffersComputePipelineState[0] release];
-    [_mtlDrawIndirectMultiviewConvertBuffersComputePipelineState[1] release];
-    _mtlDrawIndirectMultiviewConvertBuffersComputePipelineState[0] = nil;
-    _mtlDrawIndirectMultiviewConvertBuffersComputePipelineState[1] = nil;
+    [_mtlDrawIndirectConvertBuffersComputePipelineState[0] release];
+    [_mtlDrawIndirectConvertBuffersComputePipelineState[1] release];
+    _mtlDrawIndirectConvertBuffersComputePipelineState[0] = nil;
+    _mtlDrawIndirectConvertBuffersComputePipelineState[1] = nil;
 
     [_mtlDrawIndirectTessConvertBuffersComputePipelineState[0] release];
     [_mtlDrawIndirectTessConvertBuffersComputePipelineState[1] release];

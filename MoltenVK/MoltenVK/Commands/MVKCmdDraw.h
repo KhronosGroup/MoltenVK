@@ -91,6 +91,7 @@ public:
 						uint32_t firstInstance);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
+	void encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -120,6 +121,7 @@ public:
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+	void encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder);
 
 	uint32_t _firstIndex;
 	uint32_t _indexCount;
@@ -146,6 +148,7 @@ public:
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+	void encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder);
 
 	id<MTLBuffer> _mtlIndirectBuffer;
 	VkDeviceSize _mtlIndirectBufferOffset;
@@ -167,7 +170,15 @@ public:
 						uint32_t count,
 						uint32_t stride);
 
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						id<MTLBuffer> indirectMTLBuff,
+						VkDeviceSize indirectMTLBuffOffset,
+						uint32_t drawCount,
+						uint32_t stride,
+						uint32_t directCmdFirstInstance);
+
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	void encode(MVKCommandEncoder* cmdEncoder, const MVKIndexMTLBufferBinding& ibbOrig);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -176,4 +187,5 @@ protected:
 	VkDeviceSize _mtlIndirectBufferOffset;
 	uint32_t _mtlIndirectBufferStride;
 	uint32_t _drawCount;
+	uint32_t _directCmdFirstInstance;
 };

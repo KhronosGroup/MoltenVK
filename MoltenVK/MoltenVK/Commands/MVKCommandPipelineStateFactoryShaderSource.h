@@ -222,28 +222,119 @@ struct MTLStageInRegionIndirectArguments {                                      
 };                                                                                                              \n\
 #endif                                                                                                          \n\
                                                                                                                 \n\
-kernel void cmdDrawIndirectMultiviewConvertBuffers(const device char* srcBuff [[buffer(0)]],                    \n\
-                                                   device MTLDrawPrimitivesIndirectArguments* destBuff [[buffer(1)]],\n\
-                                                   constant uint32_t& srcStride [[buffer(2)]],                  \n\
-                                                   constant uint32_t& drawCount [[buffer(3)]],                  \n\
-                                                   constant uint32_t& viewCount [[buffer(4)]],                  \n\
-                                                   uint idx [[thread_position_in_grid]]) {                      \n\
+typedef enum : uint8_t {                                                                                        \n\
+    MTLIndexTypeUInt16 = 0,                                                                                     \n\
+    MTLIndexTypeUInt32 = 1,                                                                                     \n\
+} MTLIndexType;                                                                                                 \n\
+																												\n\
+typedef struct MVKVtxAdj {                                                                                      \n\
+    MTLIndexType idxType;                                                                                       \n\
+    bool isMultiView;                                                                                           \n\
+    bool isTriFan;                                                                                              \n\
+} MVKVtxAdj;                                                                                                    \n\
+                                                                                                                \n\
+// Populates triangle vertex indexes for a triangle fan.                                                        \n\
+template<typename T>                                                                                            \n\
+static inline void populateTriIndxsFromTriFan(device T* triIdxs,                                                \n\
+                                              constant T* triFanIdxs,                                           \n\
+                                              uint32_t triFanIdxCnt) {                                          \n\
+    T primRestartSentinel = (T)0xFFFFFFFF;                                                                      \n\
+    uint32_t triIdxIdx = 0;                                                                                     \n\
+    uint32_t triFanBaseIdx = 0;                                                                                 \n\
+    uint32_t triFanIdxIdx = triFanBaseIdx + 2;                                                                  \n\
+    while (triFanIdxIdx < triFanIdxCnt) {                                                                       \n\
+        uint32_t triFanBaseIdxCurr = triFanBaseIdx;                                                             \n\
+                                                                                                                \n\
+        // Detect primitive restart on any index, to catch possible consecutive restarts                        \n\
+        T triIdx0 = triFanIdxs[triFanBaseIdx];                                                                  \n\
+        if (triIdx0 == primRestartSentinel)                                                                     \n\
+            triFanBaseIdx++;                                                                                    \n\
+                                                                                                                \n\
+        T triIdx1 = triFanIdxs[triFanIdxIdx - 1];                                                               \n\
+        if (triIdx1 == primRestartSentinel)                                                                     \n\
+            triFanBaseIdx = triFanIdxIdx;                                                                       \n\
+                                                                                                                \n\
+        T triIdx2 = triFanIdxs[triFanIdxIdx];                                                                   \n\
+        if (triIdx2 == primRestartSentinel)                                                                     \n\
+            triFanBaseIdx = triFanIdxIdx + 1;                                                                   \n\
+                                                                                                                \n\
+        if (triFanBaseIdx != triFanBaseIdxCurr) {    // Restart the triangle fan                                \n\
+            triFanIdxIdx = triFanBaseIdx + 2;                                                                   \n\
+        } else {                                                                                                \n\
+            // Provoking vertex is 1 in triangle fan but 0 in triangle list                                     \n\
+            triIdxs[triIdxIdx++] = triIdx1;                                                                     \n\
+            triIdxs[triIdxIdx++] = triIdx2;                                                                     \n\
+            triIdxs[triIdxIdx++] = triIdx0;                                                                     \n\
+            triFanIdxIdx++;                                                                                     \n\
+        }                                                                                                       \n\
+    }                                                                                                           \n\
+}                                                                                                               \n\
+																												\n\
+kernel void cmdDrawIndirectPopulateIndexes(const device char* srcBuff [[buffer(0)]],                            \n\
+                                           device MTLDrawIndexedPrimitivesIndirectArguments* destBuff [[buffer(1)]],\n\
+                                           constant uint32_t& srcStride [[buffer(2)]],                          \n\
+                                           constant uint32_t& drawCount [[buffer(3)]],                          \n\
+										   device uint32_t* idxBuff [[buffer(4)]],                              \n\
+                                           uint idx [[thread_position_in_grid]]) {                              \n\
+    if (idx >= drawCount) { return; }                                                                           \n\
+    const device auto& src = *reinterpret_cast<const device MTLDrawPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);\n\
+	device auto& dst = destBuff[idx];                                                                           \n\
+    dst.indexCount = src.vertexCount;                                                                           \n\
+	dst.indexStart = src.vertexStart;                                                                           \n\
+	dst.baseVertex = 0;                                                                                         \n\
+	dst.instanceCount = src.instanceCount;                                                                      \n\
+	dst.baseInstance = src.baseInstance;                                                                        \n\
+																												\n\
+    for (uint32_t idxIdx = 0; idxIdx < dst.indexCount; idxIdx++) {                                              \n\
+		uint32_t idxBuffIdx = dst.indexStart + idxIdx;															\n\
+		idxBuff[idxBuffIdx] = idxBuffIdx;                                                                       \n\
+    }                                                                                                           \n\
+}                                                                                                               \n\
+																												\n\
+kernel void cmdDrawIndirectConvertBuffers(const device char* srcBuff [[buffer(0)]],                             \n\
+                                          device MTLDrawPrimitivesIndirectArguments* destBuff [[buffer(1)]],    \n\
+                                          constant uint32_t& srcStride [[buffer(2)]],                           \n\
+                                          constant uint32_t& drawCount [[buffer(3)]],                           \n\
+                                          constant uint32_t& viewCount [[buffer(4)]],                           \n\
+                                          uint idx [[thread_position_in_grid]]) {                               \n\
     if (idx >= drawCount) { return; }                                                                           \n\
     const device auto& src = *reinterpret_cast<const device MTLDrawPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);\n\
     destBuff[idx] = src;                                                                                        \n\
     destBuff[idx].instanceCount *= viewCount;                                                                   \n\
 }                                                                                                               \n\
                                                                                                                 \n\
-kernel void cmdDrawIndexedIndirectMultiviewConvertBuffers(const device char* srcBuff [[buffer(0)]],             \n\
-                                                          device MTLDrawIndexedPrimitivesIndirectArguments* destBuff [[buffer(1)]],\n\
-                                                          constant uint32_t& srcStride [[buffer(2)]],           \n\
-                                                          constant uint32_t& drawCount [[buffer(3)]],           \n\
-                                                          constant uint32_t& viewCount [[buffer(4)]],           \n\
-                                                          uint idx [[thread_position_in_grid]]) {               \n\
+kernel void cmdDrawIndexedIndirectConvertBuffers(const device char* srcBuff [[buffer(0)]],                      \n\
+                                                 device MTLDrawIndexedPrimitivesIndirectArguments* destBuff [[buffer(1)]],\n\
+                                                 constant uint32_t& srcStride [[buffer(2)]],                    \n\
+                                                 constant uint32_t& drawCount [[buffer(3)]],                    \n\
+                                                 constant uint32_t& viewCount [[buffer(4)]],                    \n\
+                                                 constant MVKVtxAdj& vtxAdj [[buffer(5)]],                      \n\
+                                                 device void* triIdxs [[buffer(6)]],                            \n\
+                                                 constant void* triFanIdxs [[buffer(7)]],                       \n\
+                                                 uint idx [[thread_position_in_grid]]) {                        \n\
     if (idx >= drawCount) { return; }                                                                           \n\
     const device auto& src = *reinterpret_cast<const device MTLDrawIndexedPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);\n\
     destBuff[idx] = src;                                                                                        \n\
-    destBuff[idx].instanceCount *= viewCount;                                                                   \n\
+																												\n\
+    device auto& dst = destBuff[idx];                                                                           \n\
+	if (vtxAdj.isMultiView) {                                                                                   \n\
+		dst.instanceCount *= viewCount;                                                                         \n\
+	}                                                                                                           \n\
+    if (vtxAdj.isTriFan) {                                                                                      \n\
+	    dst.indexCount = (src.indexCount - 2) * 3;                                                              \n\
+        switch (vtxAdj.idxType) {                                                                               \n\
+            case MTLIndexTypeUInt16:                                                                            \n\
+                populateTriIndxsFromTriFan(&((device uint16_t*)triIdxs)[dst.indexStart],                        \n\
+                                           &((constant uint16_t*)triFanIdxs)[src.indexStart],                   \n\
+                                           src.indexCount);                                                     \n\
+                break;                                                                                          \n\
+            case MTLIndexTypeUInt32:                                                                            \n\
+                populateTriIndxsFromTriFan(&((device uint32_t*)triIdxs)[dst.indexStart],                        \n\
+                                           &((constant uint32_t*)triFanIdxs)[src.indexStart],                   \n\
+                                           src.indexCount);                                                     \n\
+                break;                                                                                          \n\
+        }                                                                                                       \n\
+    }                                                                                                           \n\
 }                                                                                                               \n\
                                                                                                                 \n\
 #if __METAL_VERSION__ >= 120                                                                                    \n\
@@ -292,16 +383,16 @@ kernel void cmdDrawIndirectTessConvertBuffers(const device char* srcBuff [[buffe
 #endif                                                                                                          \n\
 }                                                                                                               \n\
                                                                                                                 \n\
-kernel void cmdDrawIndexedIndirectConvertBuffers(const device char* srcBuff [[buffer(0)]],                      \n\
-                                                 device char* destBuff [[buffer(1)]],                           \n\
-                                                 device char* paramsBuff [[buffer(2)]],                         \n\
-                                                 constant uint32_t& srcStride [[buffer(3)]],                    \n\
-                                                 constant uint32_t& inControlPointCount [[buffer(4)]],          \n\
-                                                 constant uint32_t& outControlPointCount [[buffer(5)]],         \n\
-                                                 constant uint32_t& drawCount [[buffer(6)]],                    \n\
-                                                 constant uint32_t& vtxThreadExecWidth [[buffer(7)]],           \n\
-                                                 constant uint32_t& tcWorkgroupSize [[buffer(8)]],              \n\
-                                                 uint idx [[thread_position_in_grid]]) {                        \n\
+kernel void cmdDrawIndexedIndirectTessConvertBuffers(const device char* srcBuff [[buffer(0)]],                  \n\
+                                                     device char* destBuff [[buffer(1)]],                       \n\
+                                                     device char* paramsBuff [[buffer(2)]],                     \n\
+                                                     constant uint32_t& srcStride [[buffer(3)]],                \n\
+                                                     constant uint32_t& inControlPointCount [[buffer(4)]],      \n\
+                                                     constant uint32_t& outControlPointCount [[buffer(5)]],     \n\
+                                                     constant uint32_t& drawCount [[buffer(6)]],                \n\
+                                                     constant uint32_t& vtxThreadExecWidth [[buffer(7)]],       \n\
+                                                     constant uint32_t& tcWorkgroupSize [[buffer(8)]],          \n\
+                                                     uint idx [[thread_position_in_grid]]) {                    \n\
     if (idx >= drawCount) { return; }                                                                           \n\
     const device auto& src = *reinterpret_cast<const device MTLDrawIndexedPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);\n\
     device char* dest;                                                                                          \n\

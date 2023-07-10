@@ -118,8 +118,11 @@ public:
 	/** Returns a MTLComputePipelineState for decompressing a buffer into a 3D image. */
 	id<MTLComputePipelineState> getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needsTempBuff);
 
-	/** Returns a MTLComputePipelineState for converting an indirect buffer for use in a multiview draw. */
-	id<MTLComputePipelineState> getCmdDrawIndirectMultiviewConvertBuffersMTLComputePipelineState(bool indexed);
+	/** Returns a MTLComputePipelineState for populating an indirect index buffer from a non-indexed indirect buffer. */
+	id<MTLComputePipelineState> getCmdDrawIndirectPopulateIndexesMTLComputePipelineState();
+
+	/** Returns a MTLComputePipelineState for converting the contents of an indirect buffer. */
+	id<MTLComputePipelineState> getCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed);
 
 	/** Returns a MTLComputePipelineState for converting an indirect buffer for use in a tessellated draw. */
 	id<MTLComputePipelineState> getCmdDrawIndirectTessConvertBuffersMTLComputePipelineState(bool indexed);
@@ -162,10 +165,11 @@ protected:
     id<MTLDepthStencilState> _cmdClearDefaultDepthStencilState = nil;
     id<MTLComputePipelineState> _mtlCopyBufferBytesComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlFillBufferComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlDrawIndirectPopulateIndexesComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlClearColorImageComputePipelineState[3] = {nil, nil, nil};
 	id<MTLComputePipelineState> _mtlResolveColorImageComputePipelineState[3] = {nil, nil, nil};
 	id<MTLComputePipelineState> _mtlCopyBufferToImage3DDecompressComputePipelineState[2] = {nil, nil};
-	id<MTLComputePipelineState> _mtlDrawIndirectMultiviewConvertBuffersComputePipelineState[2] = {nil, nil};
+	id<MTLComputePipelineState> _mtlDrawIndirectConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndirectTessConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndexedCopyIndexBufferComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlCopyQueryPoolResultsComputePipelineState = nil;

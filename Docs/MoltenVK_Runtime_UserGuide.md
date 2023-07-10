@@ -341,6 +341,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_shader_draw_parameters`
 - `VK_KHR_shader_float_controls`
 - `VK_KHR_shader_float16_int8`
+- `VK_KHR_shader_non_semantic_info`
 - `VK_KHR_shader_subgroup_extended_types` *(requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS)*
 - `VK_KHR_spirv_1_4`
 - `VK_KHR_storage_buffer_storage_class`
@@ -350,7 +351,9 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_timeline_semaphore`
 - `VK_KHR_uniform_buffer_standard_layout`
 - `VK_KHR_variable_pointers`
+- `VK_EXT_4444_formats` *(requires 16-bit formats and either native texture swizzling or manual swizzling to be enabled)*
 - `VK_EXT_buffer_device_address` *(requires GPU Tier 2 argument buffers support)*
+- `VK_EXT_calibrated_timestamps` *(requires Metal 2.2)*
 - `VK_EXT_debug_marker`
 - `VK_EXT_debug_report`
 - `VK_EXT_debug_utils`
@@ -375,6 +378,8 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_shader_atomic_float` *(requires Metal 3.0)*
 - `VK_EXT_shader_demote_to_helper_invocation` *(requires Metal Shading Language 2.3)*
 - `VK_EXT_shader_stencil_export` *(requires Mac GPU family 2 or iOS GPU family 5)*
+- `VK_EXT_shader_subgroup_ballot` *(requires Mac GPU family 2 or Apple GPU family 4)*
+- `VK_EXT_shader_subgroup_vote` *(requires Mac GPU family 2 or Apple GPU family 4)*
 - `VK_EXT_shader_viewport_index_layer`
 - `VK_EXT_subgroup_size_control` *(requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS)*
 - `VK_EXT_surface_maintenance1`
