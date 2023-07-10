@@ -582,6 +582,30 @@ void MVKSwapchain::recordPresentTime(const MVKImagePresentInfo& presentInfo, uin
 	_presentHistoryIndex = (_presentHistoryIndex + 1) % kMaxPresentationHistory;
 }
 
+void MVKSwapchain::setLayerNeedsDisplay(const VkPresentRegionKHR* pRegion) {
+	if (!pRegion || pRegion->rectangleCount == 0) {
+		[_mtlLayer setNeedsDisplay];
+		return;
+	}
+
+	for (uint32_t i = 0; i < pRegion->rectangleCount; ++i) {
+		CGRect cgRect = mvkCGRectFromVkRectLayerKHR(pRegion->pRectangles[i]);
+#if MVK_MACOS
+		// VK_KHR_incremental_present specifies an upper-left origin, but macOS by default
+		// uses a lower-left origin.
+		cgRect.origin.y = _mtlLayer.bounds.size.height - cgRect.origin.y;
+#endif
+		// We were given rectangles in pixels, but -[CALayer setNeedsDisplayInRect:] wants them
+		// in points, which is pixels / contentsScale.
+		CGFloat scaleFactor = _mtlLayer.contentsScale;
+		cgRect.origin.x /= scaleFactor;
+		cgRect.origin.y /= scaleFactor;
+		cgRect.size.width /= scaleFactor;
+		cgRect.size.height /= scaleFactor;
+		[_mtlLayer setNeedsDisplayInRect:cgRect];
+	}
+}
+
 // A retention loop exists between the swapchain and its images. The swapchain images
 // retain the swapchain because they can be in flight when the app destroys the swapchain.
 // Release the images now, when the app destroys the swapchain, so they will be destroyed when

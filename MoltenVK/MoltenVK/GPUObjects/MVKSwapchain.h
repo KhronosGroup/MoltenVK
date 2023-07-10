@@ -99,6 +99,9 @@ public:
 	/** VK_GOOGLE_display_timing - returns past presentation times */
 	VkResult getPastPresentationTiming(uint32_t *pCount, VkPastPresentationTimingGOOGLE *pPresentationTimings);
 
+	/** Marks parts of the underlying CAMetalLayer as needing update. */
+	void setLayerNeedsDisplay(const VkPresentRegionKHR* pRegion);
+
 	void destroy() override;
 
 #pragma mark Construction
