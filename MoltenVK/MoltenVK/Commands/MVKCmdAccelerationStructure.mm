@@ -37,21 +37,21 @@ VkResult MVKCmdBuildAccelerationStructure::setContent(MVKCommandBuffer*         
 void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseNone);
     id<MTLAccelerationStructure> srcAccelerationStructure = (id<MTLAccelerationStructure>)_geometryInfos.srcAccelerationStructure;
-    id<MTLAccelerationStructure> dstAccelerationStructure = (id<MTLAccelerationStructure>)_geometryInfos.dstAccelerationStructure; // Target acceleration Structure
+    id<MTLAccelerationStructure> dstAccelerationStructure = (id<MTLAccelerationStructure>)_geometryInfos.dstAccelerationStructure;
     
     MTLAccelerationStructureDescriptor* accStructDescriptor = [MTLAccelerationStructureDescriptor new];
     accStructDescriptor.usage = MTLAccelerationStructureUsageNone;
-    /*
-      * The NVIDIA extension seemed to use to provide the scratch buffer offset, but not the KHR version
-      * However the KHR extension does not seem to have anything similar, for now I'll leave it 0, but
-      * it should be changed.
-    */
+    
+    MVKDevice* mvkDvc = cmdEncoder->getDevice();
+    MVKBuffer* mvkBuffer = mvkDvc->getBufferAtAddress(_geometryInfos.scratchData.deviceAddress);
+    
+    id<MTLBuffer> scratchBuffer = mvkBuffer->getMTLBuffer();
     int scratchBufferOffset = 0;
     
-//    [accStructEncoder buildAccelerationStructure:dstAccelerationStructure
-//                                    descriptor:accStructDescriptor
-//                                    scratchBuffer:nil
-//                                    scratchBufferOffset:scratchBufferOffset];
+    [accStructEncoder buildAccelerationStructure:dstAccelerationStructure
+                                    descriptor:accStructDescriptor
+                                    scratchBuffer:scratchBuffer
+                                    scratchBufferOffset:scratchBufferOffset];
 }
 
 VkResult MVKCmdCopyAccelerationStructure::setContent(MVKCommandBuffer* cmdBuff,
@@ -62,7 +62,7 @@ VkResult MVKCmdCopyAccelerationStructure::setContent(MVKCommandBuffer* cmdBuff,
     MVKAccelerationStructure* mvkDstAccStruct = (MVKAccelerationStructure*)dstAccelerationStructure;
     
     _srcAccelerationStructure = mvkSrcAccStruct->getMTLAccelerationStructure();
-    _dstAccelerationStructure = mvkSrcAccStruct->getMTLAccelerationStructure();
+    _dstAccelerationStructure = mvkDstAccStruct->getMTLAccelerationStructure();
     return VK_SUCCESS;
 }
 

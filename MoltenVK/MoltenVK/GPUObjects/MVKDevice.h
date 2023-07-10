@@ -571,6 +571,9 @@ public:
 								 const VkCalibratedTimestampInfoEXT* pTimestampInfos,
 								 uint64_t* pTimestamps,
 								 uint64_t* pMaxDeviation);
+    
+    /** Returns a pointer to the buffer at the provided address*/
+    MVKBuffer* getBufferAtAddress(uint64_t address);
 
     /** Returns the granularity of the dynamic rendering optimal render area.  */
     VkExtent2D getDynamicRenderAreaGranularity();
@@ -968,6 +971,7 @@ protected:
 	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
 	MVKSmallVector<MVKResource*> _resources;
 	MVKSmallVector<MVKBuffer*> _gpuAddressableBuffers;
+    std::unordered_map<uint64_t, MVKBuffer*> _gpuBufferAddressMap;
 	MVKSmallVector<MVKPrivateDataSlot*> _privateDataSlots;
 	MVKSmallVector<bool> _privateDataSlotsAvailability;
 	MVKSmallVector<MVKSemaphoreImpl*> _awaitingSemaphores;
