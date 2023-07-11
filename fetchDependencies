@@ -4,7 +4,8 @@
 #
 # fetchDependencies - Retrieves the correct versions of all dependencies
 #
-# macOS usage: ./fetchDependencies [--macos] [--ios] [--iossim] [--tvos] [--tvossim] [--all] [--none]
+# macOS usage: ./fetchDependencies [--macos] [--ios] [--iossim] [--tvos] [--tvossim]
+#                                  [--visionos] [--visionossim] [--all] [--none]
 #                                  [-v] [--debug] [--build-spirv-tools]
 #                                  [--v-headers-root path] [--spirv-cross-root path] [--glslang-root path]
 #
@@ -33,9 +34,11 @@
 #              Build the external libraries for the visionOS Simulator platform.
 #
 #      --all
-#              Equivalent to specifying [--macos --ios --iossim --maccat --tvos --tvossim --visionos --visionossim].
+#              Equivalent to specifying [--macos --ios --iossim --maccat --tvos --tvossim].
 #              Results in one XCFramework for each external library, each containing
 #              binaries for all supported platforms.
+#              Currently excludes --visionos and --visionossim targets because those
+#              require Xcode 15+ and will abort a multi-platform build.
 #
 #      --none
 #              Don't build the external libraries for any platform (this is the default).
@@ -150,14 +153,14 @@ while (( "$#" )); do
          shift 1
          ;;
        --all)
+         BLD_MACOS="Y"
          BLD_IOS="Y"
          BLD_IOS_SIM="Y"
          BLD_MAC_CAT="Y"
          BLD_TVOS="Y"
          BLD_TVOS_SIM="Y"
-         BLD_VISIONOS="Y"
-         BLD_VISIONOS_SIM="Y"
-         BLD_MACOS="Y"
+#         BLD_VISIONOS="Y"              # Requires Xcode 15+
+#         BLD_VISIONOS_SIM="Y"          # Requires Xcode 15+
          shift 1
          ;;
        --none)
