@@ -20,7 +20,7 @@
  Commands that need to be implemented
  
  vkCmdBuildAccelerationStructuresIndirectKHR
- vkCmdBuildAccelerationStructuresKHR - IN PROGRESS
+ vkCmdBuildAccelerationStructuresKHR - DONE
  vkCmdCopyAccelerationStructureKHR - DONE
  vkCmdCopyAccelerationStructureToMemoryKHR
  vkCmdCopyMemoryToAccelerationStructureKHR
@@ -29,7 +29,7 @@
  vkDestroyAccelerationStructureKHR - DONE
  vkGetAccelerationStructureBuildSizesKHR - DONE
  vkGetAccelerationStructureDeviceAddressKHR
- vkGetDeviceAccelerationStructureCompatibilityKHR
+ vkGetDeviceAccelerationStructureCompatibilityKHR - DONE
  vkWriteAccelerationStructuresPropertiesKHR
 */
 
@@ -57,10 +57,7 @@ public:
     static VkAccelerationStructureBuildSizesInfoKHR getBuildSizes();
     
     /** Gets the device address of the acceleration structure*/
-    void getDeviceAddress();
-    
-    /** Builds the acceleration structure as a device command*/
-    void build();
+    uint64_t getDeviceAddress();
 
 #pragma mark Construction
     MVKAccelerationStructure(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}

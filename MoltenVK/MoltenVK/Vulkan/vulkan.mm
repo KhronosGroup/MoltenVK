@@ -3207,6 +3207,17 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyAccelerationStructureKHR(
     MVKTraceVulkanCallEnd();
 }
 
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetDeviceAccelerationStructureCompatibilityKHR(
+    VkDevice                                        device,
+    const VkAccelerationStructureVersionInfoKHR*    pVersionInfo,
+    VkAccelerationStructureCompatibilityKHR*        pCompatibility) {
+    
+    MVKTraceVulkanCallStart();
+    MVKDevice* mvkDev = (MVKDevice*)device;
+    *pCompatibility = mvkDev->getAccelerationStructureCompatibility(pVersionInfo);
+    MVKTraceVulkanCallEnd();
+}
+
 #pragma mark -
 #pragma mark VK_KHR_bind_memory2 extension
 

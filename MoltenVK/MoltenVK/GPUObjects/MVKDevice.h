@@ -573,7 +573,10 @@ public:
 								 uint64_t* pMaxDeviation);
     
     /** Returns a pointer to the buffer at the provided address*/
-    MVKBuffer* getBufferAtAddress(uint64_t address);
+    MVKBuffer* getBufferAtAddress(uint64_t address); // Unsure where to place
+    
+    /** Returns whether or not the device supports acceleration structures*/
+    VkAccelerationStructureCompatibilityKHR getAccelerationStructureCompatibility(const VkAccelerationStructureVersionInfoKHR* pVersionInfo);
 
     /** Returns the granularity of the dynamic rendering optimal render area.  */
     VkExtent2D getDynamicRenderAreaGranularity();

@@ -339,8 +339,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR: {
                 // In the future we should update this to allow for more advanced features if they can be supported.
                 auto* storageFeatures = (VkPhysicalDeviceAccelerationStructureFeaturesKHR*)next;
-                storageFeatures->accelerationStructure = true;
-                storageFeatures->accelerationStructure = false;
+                storageFeatures->accelerationStructure = mvkOSVersionIsAtLeast(11.0, 14.0);
                 storageFeatures->accelerationStructureCaptureReplay = false;
                 storageFeatures->accelerationStructureIndirectBuild = false;
                 storageFeatures->accelerationStructureHostCommands = false;
@@ -4324,6 +4323,19 @@ MVKBuffer* MVKDevice::getBufferAtAddress(uint64_t address)
         return nullptr;
     }
 }
+
+VkAccelerationStructureCompatibilityKHR MVKDevice::getAccelerationStructureCompatibility(const VkAccelerationStructureVersionInfoKHR* pVersionInfo)
+{
+    VkAccelerationStructureCompatibilityKHR compat = VK_ACCELERATION_STRUCTURE_COMPATIBILITY_INCOMPATIBLE_KHR;
+
+    if(_enabledAccelerationStructureFeatures.accelerationStructure)
+    {
+        compat = VK_ACCELERATION_STRUCTURE_COMPATIBILITY_COMPATIBLE_KHR;
+    }
+    
+    return compat;
+}
+
 
 #pragma mark Object lifecycle
 
