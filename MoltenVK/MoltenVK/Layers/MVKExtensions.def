@@ -68,6 +68,7 @@ MVK_EXTENSION(KHR_get_physical_device_properties2,    KHR_GET_PHYSICAL_DEVICE_PR
 MVK_EXTENSION(KHR_get_surface_capabilities2,          KHR_GET_SURFACE_CAPABILITIES_2,         INSTANCE, 10.11,  8.0)
 MVK_EXTENSION(KHR_imageless_framebuffer,              KHR_IMAGELESS_FRAMEBUFFER,              DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_image_format_list,                  KHR_IMAGE_FORMAT_LIST,                  DEVICE,   10.11,  8.0)
+MVK_EXTENSION(KHR_incremental_present,                KHR_INCREMENTAL_PRESENT,                DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_maintenance1,                       KHR_MAINTENANCE1,                       DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_maintenance2,                       KHR_MAINTENANCE2,                       DEVICE,   10.11,  8.0)
 MVK_EXTENSION(KHR_maintenance3,                       KHR_MAINTENANCE3,                       DEVICE,   10.11,  8.0)

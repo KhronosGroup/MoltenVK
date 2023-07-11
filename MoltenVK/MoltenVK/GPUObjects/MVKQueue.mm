@@ -583,8 +583,12 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 	const VkPresentTimesInfoGOOGLE* pPresentTimesInfo = nullptr;
 	const VkSwapchainPresentFenceInfoEXT* pPresentFenceInfo = nullptr;
 	const VkSwapchainPresentModeInfoEXT* pPresentModeInfo = nullptr;
+	const VkPresentRegionsKHR* pPresentRegions = nullptr;
 	for (auto* next = (const VkBaseInStructure*)pPresentInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_PRESENT_REGIONS_KHR:
+				pPresentRegions = (const VkPresentRegionsKHR*) next;
+				break;
 			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT:
 				pPresentFenceInfo = (const VkSwapchainPresentFenceInfoEXT*) next;
 				break;
@@ -616,6 +620,10 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 		pFences = pPresentFenceInfo->pFences;
 		MVKAssert(pPresentFenceInfo->swapchainCount == scCnt, "VkSwapchainPresentFenceInfoEXT swapchainCount must match VkPresentInfo swapchainCount.");
 	}
+	const VkPresentRegionKHR* pRegions = nullptr;
+	if (pPresentRegions) {
+		pRegions = pPresentRegions->pRegions;
+	}
 
 	VkResult* pSCRslts = pPresentInfo->pResults;
 	_presentInfo.reserve(scCnt);
@@ -630,6 +638,7 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 			presentInfo.presentID = pPresentTimes[scIdx].presentID;
 			presentInfo.desiredPresentTime = pPresentTimes[scIdx].desiredPresentTime;
 		}
+		mvkSC->setLayerNeedsDisplay(pRegions ? &pRegions[scIdx] : nullptr);
 		_presentInfo.push_back(presentInfo);
 		VkResult scRslt = mvkSC->getSurfaceStatus();
 		if (pSCRslts) { pSCRslts[scIdx] = scRslt; }
