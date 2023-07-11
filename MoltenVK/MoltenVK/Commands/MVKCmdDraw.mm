@@ -98,6 +98,44 @@ VkResult MVKCmdDraw::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
+// Populates and encodes a MVKCmdDrawIndexedIndirect command, after populating indexed indirect buffers.
+void MVKCmdDraw::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
+
+	// Create an indexed indirect buffer and populate it from the draw arguments.
+	uint32_t indirectIdxBuffStride = sizeof(MTLDrawIndexedPrimitivesIndirectArguments);
+	auto* indirectIdxBuff = cmdEncoder->getTempMTLBuffer(indirectIdxBuffStride);
+	auto* pIndArg = (MTLDrawIndexedPrimitivesIndirectArguments*)indirectIdxBuff->getContents();
+	pIndArg->indexCount = _vertexCount;
+	pIndArg->indexStart = _firstVertex;
+	pIndArg->baseVertex = 0;
+	pIndArg->instanceCount = _instanceCount;
+	pIndArg->baseInstance = _firstInstance;
+
+	// Create an index buffer populated with synthetic indexes.
+	// Start populating indexes below _firstVertex so that indexes align with their corresponding vertexes
+	MTLIndexType mtlIdxType = MTLIndexTypeUInt32;
+	auto* vtxIdxBuff = cmdEncoder->getTempMTLBuffer(mvkMTLIndexTypeSizeInBytes(mtlIdxType) * _vertexCount);
+	auto* pIdxBuff = (uint32_t*)vtxIdxBuff->getContents();
+	uint32_t idxCnt = _firstVertex + _vertexCount;
+	for (uint32_t idx = 0; idx < idxCnt; idx++) {
+		pIdxBuff[idx] = idx;
+	}
+
+	MVKIndexMTLBufferBinding ibb;
+	ibb.mtlIndexType = mtlIdxType;
+	ibb.mtlBuffer = vtxIdxBuff->_mtlBuffer;
+	ibb.offset = vtxIdxBuff->_offset;
+
+	MVKCmdDrawIndexedIndirect diiCmd;
+	diiCmd.setContent(cmdEncoder->_cmdBuffer,
+					  indirectIdxBuff->_mtlBuffer,
+					  indirectIdxBuff->_offset,
+					  1,
+					  indirectIdxBuffStride,
+					  _firstInstance);
+	diiCmd.encode(cmdEncoder, ibb);
+}
+
 void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 
     if (_vertexCount == 0 || _instanceCount == 0) {
@@ -105,9 +143,15 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
         return;
     }
 
-    cmdEncoder->_isIndexedDraw = false;
+	auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
 
-    auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
+	// Metal doesn't support triangle fans, so encode it as triangles via an indexed indirect triangles command instead.
+	if (pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
+		encodeIndexedIndirect(cmdEncoder);
+		return;
+	}
+
+    cmdEncoder->_isIndexedDraw = false;
 
 	MVKPiplineStages stages;
     pipeline->getStages(stages);
@@ -304,6 +348,29 @@ VkResult MVKCmdDrawIndexed::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
+// Populates and encodes a MVKCmdDrawIndexedIndirect command, after populating an indexed indirect buffer.
+void MVKCmdDrawIndexed::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
+
+	// Create an indexed indirect buffer and populate it from the draw arguments.
+	uint32_t indirectIdxBuffStride = sizeof(MTLDrawIndexedPrimitivesIndirectArguments);
+	auto* indirectIdxBuff = cmdEncoder->getTempMTLBuffer(indirectIdxBuffStride);
+	auto* pIndArg = (MTLDrawIndexedPrimitivesIndirectArguments*)indirectIdxBuff->getContents();
+	pIndArg->indexCount = _indexCount;
+	pIndArg->indexStart = _firstIndex;
+	pIndArg->baseVertex = _vertexOffset;
+	pIndArg->instanceCount = _instanceCount;
+	pIndArg->baseInstance = _firstInstance;
+
+	MVKCmdDrawIndexedIndirect diiCmd;
+	diiCmd.setContent(cmdEncoder->_cmdBuffer,
+					  indirectIdxBuff->_mtlBuffer,
+					  indirectIdxBuff->_offset,
+					  1,
+					  indirectIdxBuffStride,
+					  _firstInstance);
+	diiCmd.encode(cmdEncoder);
+}
+
 void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 
     if (_indexCount == 0 || _instanceCount == 0) {
@@ -311,9 +378,15 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
         return;
     }
 
-    cmdEncoder->_isIndexedDraw = true;
+	auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
 
-    auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
+	// Metal doesn't support triangle fans, so encode it as triangles via an indexed indirect triangles command instead.
+	if (pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
+		encodeIndexedIndirect(cmdEncoder);
+		return;
+	}
+
+    cmdEncoder->_isIndexedDraw = true;
 
 	MVKPiplineStages stages;
     pipeline->getStages(stages);
@@ -487,6 +560,12 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 }
 
 
+// This is totally arbitrary, but we're forced to do this because we don't know how many vertices
+// there are at encoding time. And this will probably be inadequate for large instanced draws.
+// TODO: Consider breaking up such draws using different base instance values. But this will
+// require yet more munging of the indirect buffers...
+static const uint32_t kMVKMaxDrawIndirectVertexCount = 128 * KIBI;
+
 #pragma mark -
 #pragma mark MVKCmdDrawIndirect
 
@@ -513,17 +592,77 @@ VkResult MVKCmdDrawIndirect::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-// This is totally arbitrary, but we're forced to do this because we don't know how many vertices
-// there are at encoding time. And this will probably be inadequate for large instanced draws.
-// TODO: Consider breaking up such draws using different base instance values. But this will
-// require yet more munging of the indirect buffers...
-static const uint32_t kMVKDrawIndirectVertexCountUpperBound = 131072;
+// Populates and encodes a MVKCmdDrawIndexedIndirect command, after populating indexed indirect buffers.
+void MVKCmdDrawIndirect::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
+
+	// Create an indexed indirect buffer to be populated from the non-indexed indirect buffer.
+	uint32_t indirectIdxBuffStride = sizeof(MTLDrawIndexedPrimitivesIndirectArguments);
+	auto* indirectIdxBuff = cmdEncoder->getTempMTLBuffer(indirectIdxBuffStride * _drawCount, true);
+
+	// Create an index buffer to be populated with synthetic indexes.
+	MTLIndexType mtlIdxType = MTLIndexTypeUInt32;
+	auto* vtxIdxBuff = cmdEncoder->getTempMTLBuffer(mvkMTLIndexTypeSizeInBytes(mtlIdxType) * kMVKMaxDrawIndirectVertexCount, true);
+	MVKIndexMTLBufferBinding ibb;
+	ibb.mtlIndexType = mtlIdxType;
+	ibb.mtlBuffer = vtxIdxBuff->_mtlBuffer;
+	ibb.offset = vtxIdxBuff->_offset;
+
+	// Schedule a compute action to populate indexed buffers from non-indexed buffers.
+	cmdEncoder->encodeStoreActions(true);
+	id<MTLComputeCommandEncoder> mtlConvertEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDrawIndirectConvertBuffers);
+	id<MTLComputePipelineState> mtlConvertState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndirectPopulateIndexesMTLComputePipelineState();
+	[mtlConvertEncoder setComputePipelineState: mtlConvertState];
+	[mtlConvertEncoder setBuffer: _mtlIndirectBuffer
+						  offset: _mtlIndirectBufferOffset
+						 atIndex: 0];
+	[mtlConvertEncoder setBuffer: indirectIdxBuff->_mtlBuffer
+						  offset: indirectIdxBuff->_offset
+						 atIndex: 1];
+	cmdEncoder->setComputeBytes(mtlConvertEncoder,
+								&_mtlIndirectBufferStride,
+								sizeof(_mtlIndirectBufferStride),
+								2);
+	cmdEncoder->setComputeBytes(mtlConvertEncoder,
+								&_drawCount,
+								sizeof(_drawCount),
+								3);
+	[mtlConvertEncoder setBuffer: ibb.mtlBuffer
+						  offset: ibb.offset
+						 atIndex: 4];
+	if (cmdEncoder->getDevice()->_pMetalFeatures->nonUniformThreadgroups) {
+#if MVK_MACOS_OR_IOS
+		[mtlConvertEncoder dispatchThreads: MTLSizeMake(_drawCount, 1, 1)
+					 threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
+#endif
+	} else {
+		[mtlConvertEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(_drawCount, mtlConvertState.threadExecutionWidth), 1, 1)
+						  threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
+	}
+	// Switch back to rendering now.
+	cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
+
+	MVKCmdDrawIndexedIndirect diiCmd;
+	diiCmd.setContent(cmdEncoder->_cmdBuffer,
+					  indirectIdxBuff->_mtlBuffer,
+					  indirectIdxBuff->_offset,
+					  _drawCount,
+					  indirectIdxBuffStride,
+					  0);
+	diiCmd.encode(cmdEncoder, ibb);
+}
 
 void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 
+	auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
+
+	// Metal doesn't support triangle fans, so encode it as indexed indirect triangles instead.
+	if (pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
+		encodeIndexedIndirect(cmdEncoder);
+		return;
+	}
+
     cmdEncoder->_isIndexedDraw = false;
 
-    auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
     bool needsInstanceAdjustment = cmdEncoder->getSubpass()->isMultiview() &&
                                    cmdEncoder->getPhysicalDevice()->canUseInstancingForMultiview();
     // The indirect calls for dispatchThreadgroups:... and drawPatches:... have different formats.
@@ -553,7 +692,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         // But not too many, or we'll exhaust available VRAM.
         inControlPointCount = pipeline->getInputControlPointCount();
         outControlPointCount = pipeline->getOutputControlPointCount();
-        vertexCount = kMVKDrawIndirectVertexCountUpperBound;
+        vertexCount = kMVKMaxDrawIndirectVertexCount;
         patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
         VkDeviceSize indirectSize = (2 * sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments)) * _drawCount;
         if (cmdEncoder->_pDeviceMetalFeatures->mslVersion >= 20100) {
@@ -660,8 +799,8 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                 // Unfortunately, this requires switching to compute.
                 // TODO: Consider using tile shaders to avoid this cost.
 				cmdEncoder->encodeStoreActions(true);
-                id<MTLComputeCommandEncoder> mtlConvertEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseMultiviewInstanceCountAdjust);
-                id<MTLComputePipelineState> mtlConvertState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndirectMultiviewConvertBuffersMTLComputePipelineState(false);
+                id<MTLComputeCommandEncoder> mtlConvertEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDrawIndirectConvertBuffers);
+                id<MTLComputePipelineState> mtlConvertState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndirectConvertBuffersMTLComputePipelineState(false);
                 uint32_t viewCount;
                 [mtlConvertEncoder setComputePipelineState: mtlConvertState];
                 [mtlConvertEncoder setBuffer: _mtlIndirectBuffer
@@ -809,22 +948,45 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdDrawIndexedIndirect
 
+typedef struct MVKVertexAdjustments {
+	uint8_t mtlIndexType = MTLIndexTypeUInt16;	// Enum must match enum in shader
+	bool isMultiView = false;
+	bool isTriangleFan = false;
+
+	bool needsAdjustment() { return isMultiView || isTriangleFan; }
+} MVKVertexAdjustments;
+
 VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
 											   VkBuffer buffer,
 											   VkDeviceSize offset,
 											   uint32_t drawCount,
 											   uint32_t stride) {
-	auto* mvkBuffer = (MVKBuffer*)buffer;
-	_mtlIndirectBuffer = mvkBuffer->getMTLBuffer();
-	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
+	auto* mvkBuff = (MVKBuffer*)buffer;
+	return setContent(cmdBuff,
+					  mvkBuff->getMTLBuffer(),
+					  mvkBuff->getMTLBufferOffset() + offset,
+					  drawCount,
+					  stride,
+					  0);
+}
+
+VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
+											   id<MTLBuffer> indirectMTLBuff,
+											   VkDeviceSize indirectMTLBuffOffset,
+											   uint32_t drawCount,
+											   uint32_t stride,
+											   uint32_t directCmdFirstInstance) {
+	_mtlIndirectBuffer = indirectMTLBuff;
+	_mtlIndirectBufferOffset = indirectMTLBuffOffset;
 	_mtlIndirectBufferStride = stride;
 	_drawCount = drawCount;
+	_directCmdFirstInstance = directCmdFirstInstance;
 
-    // Validate
+	// Validate
 	MVKDevice* mvkDvc = cmdBuff->getDevice();
-    if ( !mvkDvc->_pMetalFeatures->indirectDrawing ) {
-        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect drawing.");
-    }
+	if ( !mvkDvc->_pMetalFeatures->indirectDrawing ) {
+		return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect drawing.");
+	}
 	if (cmdBuff->_lastTessellationPipeline && !mvkDvc->_pMetalFeatures->indirectTessellationDrawing) {
 		return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect tessellated drawing.");
 	}
@@ -833,14 +995,24 @@ VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
+	encode(cmdEncoder, cmdEncoder->_graphicsResourcesState._mtlIndexBufferBinding);
+}
+
+void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKIndexMTLBufferBinding& ibbOrig) {
 
     cmdEncoder->_isIndexedDraw = true;
 
-    MVKIndexMTLBufferBinding& ibb = cmdEncoder->_graphicsResourcesState._mtlIndexBufferBinding;
+    MVKIndexMTLBufferBinding ibb = ibbOrig;
+	MVKIndexMTLBufferBinding ibbTriFan = ibb;
     auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
-    bool needsInstanceAdjustment = cmdEncoder->getSubpass()->isMultiview() &&
-                                   cmdEncoder->getPhysicalDevice()->canUseInstancingForMultiview();
-    // The indirect calls for dispatchThreadgroups:... and drawPatches:... have different formats.
+
+	MVKVertexAdjustments vtxAdjmts;
+	vtxAdjmts.mtlIndexType = ibb.mtlIndexType;
+	vtxAdjmts.isMultiView = (cmdEncoder->getSubpass()->isMultiview() &&
+							 cmdEncoder->getPhysicalDevice()->canUseInstancingForMultiview());
+	vtxAdjmts.isTriangleFan = pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+
+	// The indirect calls for dispatchThreadgroups:... and drawPatches:... have different formats.
     // We have to convert from the drawIndexedPrimitives:... format to them.
     // While we're at it, we can create the temporary output buffers once and reuse them
     // for each draw.
@@ -869,7 +1041,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         // But not too many, or we'll exhaust available VRAM.
         inControlPointCount = pipeline->getInputControlPointCount();
         outControlPointCount = pipeline->getOutputControlPointCount();
-        vertexCount = kMVKDrawIndirectVertexCountUpperBound;
+        vertexCount = kMVKMaxDrawIndirectVertexCount;
         patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
         VkDeviceSize indirectSize = (sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments)) * _drawCount;
         if (cmdEncoder->_pDeviceMetalFeatures->mslVersion >= 20100) {
@@ -904,12 +1076,17 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
             sgSize >>= 1;
             tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
         }
-    } else if (needsInstanceAdjustment) {
+    } else if (vtxAdjmts.needsAdjustment()) {
         // In this case, we need to adjust the instance count for the views being drawn.
         VkDeviceSize indirectSize = sizeof(MTLDrawIndexedPrimitivesIndirectArguments) * _drawCount;
         tempIndirectBuff = cmdEncoder->getTempMTLBuffer(indirectSize, true);
         mtlIndBuff = tempIndirectBuff->_mtlBuffer;
         mtlTempIndBuffOfst = tempIndirectBuff->_offset;
+		if (vtxAdjmts.isTriangleFan) {
+			auto* triVtxBuff = cmdEncoder->getTempMTLBuffer(mvkMTLIndexTypeSizeInBytes((MTLIndexType)ibb.mtlIndexType) * kMVKMaxDrawIndirectVertexCount, true);
+			ibb.mtlBuffer = triVtxBuff->_mtlBuffer;
+			ibb.offset = triVtxBuff->_offset;
+		}
     }
 
 	MVKPiplineStages stages;
@@ -988,14 +1165,14 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                 cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
                 cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
                 cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->beginMetalRenderPass();
-            } else if (drawIdx == 0 && needsInstanceAdjustment) {
+            } else if (drawIdx == 0 && vtxAdjmts.needsAdjustment()) {
                 // Similarly, for multiview, we need to adjust the instance count now.
                 // Unfortunately, this requires switching to compute. Luckily, we don't also
                 // have to copy the index buffer.
                 // TODO: Consider using tile shaders to avoid this cost.
 				cmdEncoder->encodeStoreActions(true);
-                id<MTLComputeCommandEncoder> mtlConvertEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseMultiviewInstanceCountAdjust);
-                id<MTLComputePipelineState> mtlConvertState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndirectMultiviewConvertBuffersMTLComputePipelineState(true);
+                id<MTLComputeCommandEncoder> mtlConvertEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDrawIndirectConvertBuffers);
+                id<MTLComputePipelineState> mtlConvertState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndirectConvertBuffersMTLComputePipelineState(true);
                 uint32_t viewCount;
                 [mtlConvertEncoder setComputePipelineState: mtlConvertState];
                 [mtlConvertEncoder setBuffer: _mtlIndirectBuffer
@@ -1017,6 +1194,16 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                                             &viewCount,
                                             sizeof(viewCount),
                                             4);
+				cmdEncoder->setComputeBytes(mtlConvertEncoder,
+											&vtxAdjmts,
+											sizeof(vtxAdjmts),
+											5);
+				[mtlConvertEncoder setBuffer: ibb.mtlBuffer
+									  offset: ibb.offset
+									 atIndex: 6];
+				[mtlConvertEncoder setBuffer: ibbTriFan.mtlBuffer
+									  offset: ibbTriFan.offset
+									 atIndex: 7];
 				if (cmdEncoder->getDevice()->_pMetalFeatures->nonUniformThreadgroups) {
 #if MVK_MACOS_OR_IOS
 					[mtlConvertEncoder dispatchThreads: MTLSizeMake(_drawCount, 1, 1)
@@ -1051,6 +1238,9 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 						                                 indirectBufferOffset: mtlTempIndBuffOfst];
 						mtlTempIndBuffOfst += sizeof(MTLStageInRegionIndirectArguments);
 					}
+					// If this is a synthetic command that originated in a direct call, and there are vertex bindings with a zero vertex
+					// divisor, I need to offset them by _firstInstance * stride, since that is the expected behaviour for a divisor of 0.
+					cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _directCmdFirstInstance);
 					[mtlTessCtlEncoder dispatchThreadgroupsWithIndirectBuffer: mtlIndBuff
 														 indirectBufferOffset: mtlTempIndBuffOfst
 														threadsPerThreadgroup: MTLSizeMake(vtxThreadExecWidth, 1, 1)];
@@ -1129,13 +1319,14 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                         cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
                         cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->beginMetalRenderPass();
                     } else {
+						cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _directCmdFirstInstance);
                         [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_mtlPrimitiveType
                                                                    indexType: (MTLIndexType)ibb.mtlIndexType
                                                                  indexBuffer: ibb.mtlBuffer
                                                            indexBufferOffset: ibb.offset
                                                               indirectBuffer: mtlIndBuff
                                                         indirectBufferOffset: mtlTempIndBuffOfst];
-                        mtlTempIndBuffOfst += needsInstanceAdjustment ? sizeof(MTLDrawIndexedPrimitivesIndirectArguments) : _mtlIndirectBufferStride;
+                        mtlTempIndBuffOfst += vtxAdjmts.needsAdjustment() ? sizeof(MTLDrawIndexedPrimitivesIndirectArguments) : _mtlIndirectBufferStride;
                     }
                     break;
             }

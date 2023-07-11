@@ -377,6 +377,44 @@ size_t MVKPixelFormats::getBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesP
     return mvkCeilingDivide(texelRowsPerLayer, getVkFormatDesc(mtlFormat).blockTexelSize.height) * bytesPerRow;
 }
 
+bool MVKPixelFormats::needsSwizzle(VkFormat vkFormat) {
+    return getVkFormatDesc(vkFormat).needsSwizzle();
+}
+
+VkComponentMapping MVKPixelFormats::getVkComponentMapping(VkFormat vkFormat) {
+    return getVkFormatDesc(vkFormat).componentMapping;
+}
+
+VkComponentMapping MVKPixelFormats::getInverseComponentMapping(VkFormat vkFormat) {
+#define INVERT_SWIZZLE(x, X, Y) \
+			case VK_COMPONENT_SWIZZLE_##X: \
+				inverse.x = VK_COMPONENT_SWIZZLE_##Y; \
+				break
+#define INVERT_MAPPING(y, Y) \
+		switch (mapping.y) { \
+			case VK_COMPONENT_SWIZZLE_IDENTITY: \
+				inverse.y = VK_COMPONENT_SWIZZLE_IDENTITY; \
+				break; \
+			INVERT_SWIZZLE(r, R, Y); \
+			INVERT_SWIZZLE(g, G, Y); \
+			INVERT_SWIZZLE(b, B, Y); \
+			INVERT_SWIZZLE(a, A, Y); \
+			default: break; \
+		}
+	VkComponentMapping mapping = getVkComponentMapping(vkFormat), inverse;
+	INVERT_MAPPING(r, R)
+	INVERT_MAPPING(g, G)
+	INVERT_MAPPING(b, B)
+	INVERT_MAPPING(a, A)
+	return inverse;
+#undef INVERT_MAPPING
+#undef INVERT_SWIZZLE
+}
+
+MTLTextureSwizzleChannels MVKPixelFormats::getMTLTextureSwizzleChannels(VkFormat vkFormat) {
+	return mvkMTLTextureSwizzleChannelsFromVkComponentMapping(getVkComponentMapping(vkFormat));
+}
+
 VkFormatProperties& MVKPixelFormats::getVkFormatProperties(VkFormat vkFormat) {
 	return getVkFormatDesc(vkFormat).properties;
 }
@@ -464,13 +502,18 @@ MTLVertexFormat MVKPixelFormats::getMTLVertexFormat(VkFormat vkFormat) {
 
 MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFormat vkFormat) {
 	MTLClearColor mtlClr;
+	// The VkComponentMapping (and its MTLTextureSwizzleChannels equivalent) define the *sources*
+	// for the texture color components for reading. Since we're *writing* to the texture,
+	// we need to *invert* the mapping.
+	// n.b. Bad things might happen if the original swizzle isn't one-to-one!
+	VkComponentMapping inverseMap = getInverseComponentMapping(vkFormat);
 	switch (getFormatType(vkFormat)) {
 		case kMVKFormatColorHalf:
-		case kMVKFormatColorFloat:
-			mtlClr.red		= vkClearValue.color.float32[0];
-			mtlClr.green	= vkClearValue.color.float32[1];
-			mtlClr.blue		= vkClearValue.color.float32[2];
-			mtlClr.alpha	= vkClearValue.color.float32[3];
+		case kMVKFormatColorFloat: {
+			mtlClr.red		= mvkVkClearColorFloatValueFromVkComponentSwizzle(vkClearValue.color.float32, 0, inverseMap.r);
+			mtlClr.green	= mvkVkClearColorFloatValueFromVkComponentSwizzle(vkClearValue.color.float32, 1, inverseMap.g);
+			mtlClr.blue		= mvkVkClearColorFloatValueFromVkComponentSwizzle(vkClearValue.color.float32, 2, inverseMap.b);
+			mtlClr.alpha	= mvkVkClearColorFloatValueFromVkComponentSwizzle(vkClearValue.color.float32, 3, inverseMap.a);
 
 			if (_physicalDevice && _physicalDevice->getMetalFeatures()->clearColorFloatRounding == MVK_FLOAT_ROUNDING_DOWN) {
 				// For normalized formats, increment the clear value by half the ULP
@@ -486,6 +529,8 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 #define OFFSET_SNORM(COLOR, BIT_WIDTH)    OFFSET_NORM(-1.0, COLOR, BIT_WIDTH - 1)
 				switch (vkFormat) {
 					case VK_FORMAT_R4G4B4A4_UNORM_PACK16:
+					case VK_FORMAT_A4R4G4B4_UNORM_PACK16:
+					case VK_FORMAT_A4B4G4R4_UNORM_PACK16:
 						OFFSET_UNORM(red, 4)
 						OFFSET_UNORM(green, 4)
 						OFFSET_UNORM(blue, 4)
@@ -571,21 +616,22 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 #undef OFFSET_NORM
 			}
 			break;
+		}
 		case kMVKFormatColorUInt8:
 		case kMVKFormatColorUInt16:
 		case kMVKFormatColorUInt32:
-			mtlClr.red		= vkClearValue.color.uint32[0];
-			mtlClr.green	= vkClearValue.color.uint32[1];
-			mtlClr.blue		= vkClearValue.color.uint32[2];
-			mtlClr.alpha	= vkClearValue.color.uint32[3];
+			mtlClr.red		= mvkVkClearColorUIntValueFromVkComponentSwizzle(vkClearValue.color.uint32, 0, inverseMap.r);
+			mtlClr.green	= mvkVkClearColorUIntValueFromVkComponentSwizzle(vkClearValue.color.uint32, 1, inverseMap.g);
+			mtlClr.blue		= mvkVkClearColorUIntValueFromVkComponentSwizzle(vkClearValue.color.uint32, 2, inverseMap.b);
+			mtlClr.alpha	= mvkVkClearColorUIntValueFromVkComponentSwizzle(vkClearValue.color.uint32, 3, inverseMap.a);
 			break;
 		case kMVKFormatColorInt8:
 		case kMVKFormatColorInt16:
 		case kMVKFormatColorInt32:
-			mtlClr.red		= vkClearValue.color.int32[0];
-			mtlClr.green	= vkClearValue.color.int32[1];
-			mtlClr.blue		= vkClearValue.color.int32[2];
-			mtlClr.alpha	= vkClearValue.color.int32[3];
+			mtlClr.red		= mvkVkClearColorIntValueFromVkComponentSwizzle(vkClearValue.color.int32, 0, inverseMap.r);
+			mtlClr.green	= mvkVkClearColorIntValueFromVkComponentSwizzle(vkClearValue.color.int32, 1, inverseMap.g);
+			mtlClr.blue		= mvkVkClearColorIntValueFromVkComponentSwizzle(vkClearValue.color.int32, 2, inverseMap.b);
+			mtlClr.alpha	= mvkVkClearColorIntValueFromVkComponentSwizzle(vkClearValue.color.int32, 3, inverseMap.a);
 			break;
 		default:
 			mtlClr.red		= 0.0;
@@ -756,16 +802,21 @@ MVKPixelFormats::MVKPixelFormats(MVKPhysicalDevice* physicalDevice) : _physicalD
 	buildVkFormatMaps();
 }
 
-#define addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE)  \
+#define addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A)  \
 	MVKAssert(fmtIdx < _vkFormatCount, "Attempting to describe %d VkFormats, but only have space for %d. Increase the value of _vkFormatCount", fmtIdx + 1, _vkFormatCount);  \
 	_vkFormatDescriptions[fmtIdx++] = { VK_FORMAT_ ##VK_FMT, MTLPixelFormat ##MTL_FMT, MTLPixelFormat ##MTL_FMT_ALT, MTLVertexFormat ##MTL_VTX_FMT, MTLVertexFormat ##MTL_VTX_FMT_ALT,  \
-										CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, kMVKFormat ##MVK_FMT_TYPE, { 0, 0, 0 }, "VK_FORMAT_" #VK_FMT, false }
+										CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, kMVKFormat ##MVK_FMT_TYPE, { 0, 0, 0 }, \
+										{ VK_COMPONENT_SWIZZLE_ ##SWIZ_R, VK_COMPONENT_SWIZZLE_ ##SWIZ_G, VK_COMPONENT_SWIZZLE_ ##SWIZ_B, VK_COMPONENT_SWIZZLE_ ##SWIZ_A }, \
+										"VK_FORMAT_" #VK_FMT, false }
 
 #define addVkFormatDesc(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE)  \
-    addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, 0, 0, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE)
+    addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, 0, 0, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, IDENTITY, IDENTITY, IDENTITY, IDENTITY)
+
+#define addVkFormatDescSwizzled(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A)  \
+    addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, 0, 0, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A)
 
 #define addVkFormatDescChromaSubsampling(VK_FMT, MTL_FMT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT)  \
-	addVkFormatDescFull(VK_FMT, MTL_FMT, Invalid, Invalid, Invalid, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, ColorFloat)
+	addVkFormatDescFull(VK_FMT, MTL_FMT, Invalid, Invalid, Invalid, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, ColorFloat, IDENTITY, IDENTITY, IDENTITY, IDENTITY)
 
 void MVKPixelFormats::initVkFormatCapabilities() {
 
@@ -781,6 +832,8 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	addVkFormatDesc( R4G4_UNORM_PACK8, Invalid, Invalid, Invalid, Invalid, 1, 1, 1, ColorFloat );
 	addVkFormatDesc( R4G4B4A4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
 	addVkFormatDesc( B4G4R4A4_UNORM_PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDescSwizzled( A4R4G4B4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, G, B, A, R );
+	addVkFormatDescSwizzled( A4B4G4R4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, A, B, G, R );
 
 	addVkFormatDesc( R5G6B5_UNORM_PACK16, B5G6R5Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
 	addVkFormatDesc( B5G6R5_UNORM_PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
@@ -1962,6 +2015,23 @@ void MVKPixelFormats::buildVkFormatMaps() {
 				_vkFormatDescIndicesByVkFormatsExt[vkFmt] = fmtIdx;
 			}
 
+			if (vkDesc.needsSwizzle()) {
+				if (_physicalDevice) {
+					id<MTLDevice> mtlDev = _physicalDevice->getMTLDevice();
+#if MVK_MACCAT
+					bool supportsNativeTextureSwizzle = [mtlDev supportsFamily: MTLGPUFamilyMacCatalyst2];
+#elif MVK_MACOS
+					bool supportsNativeTextureSwizzle = mvkOSVersionIsAtLeast(10.15) && [mtlDev supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily2_v1];
+#endif
+#if MVK_IOS || MVK_TVOS
+					bool supportsNativeTextureSwizzle = mtlDev && mvkOSVersionIsAtLeast(13.0);
+#endif
+					if (!supportsNativeTextureSwizzle && !mvkConfig().fullImageViewSwizzle) {
+						vkDesc.mtlPixelFormat = vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid;
+					}
+				}
+			}
+
 			// Populate the back reference from the Metal formats to the Vulkan format.
 			// Validate the corresponding Metal formats for the platform, and clear them
 			// in the Vulkan format if not supported.
@@ -2076,6 +2146,13 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 	// If we can't write the stencil reference from the shader, we can't blit stencil.
 	if (chromaSubsamplingComponentBits > 0 || (isStencilFormat(vkDesc.mtlPixelFormat) && !supportsStencilFeedback)) {
 		mvkDisableFlags(vkProps.optimalTilingFeatures, (VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT));
+	}
+
+	// These formats require swizzling. In order to support rendering, we'll have to swizzle
+	// in the fragment shader, but that hasn't been implemented yet.
+	if (vkDesc.needsSwizzle()) {
+		mvkDisableFlags(vkProps.optimalTilingFeatures, (kMVKVkFormatFeatureFlagsTexColorAtt |
+														kMVKVkFormatFeatureFlagsTexBlend));
 	}
 
 	// Linear tiling is not available to depth/stencil or compressed formats.

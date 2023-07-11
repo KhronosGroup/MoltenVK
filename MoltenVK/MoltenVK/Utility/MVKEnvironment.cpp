@@ -63,6 +63,7 @@ static void mvkInitConfigFromEnvVars() {
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.resumeLostDevice,                       MVK_CONFIG_RESUME_LOST_DEVICE);
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.useMetalArgumentBuffers,                MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS);
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.shaderSourceCompressionAlgorithm,       MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.shouldMaximizeConcurrentCompilation,    MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION);
 
 	// Deprected legacy VkSemaphore MVK_ALLOW_METAL_FENCES and MVK_ALLOW_METAL_EVENTS config.
 	// Legacy MVK_ALLOW_METAL_EVENTS is covered by MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE,

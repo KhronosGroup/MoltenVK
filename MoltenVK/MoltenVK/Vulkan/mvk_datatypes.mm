@@ -228,6 +228,45 @@ MVK_PUBLIC_SYMBOL MTLTextureSwizzleChannels mvkMTLTextureSwizzleChannelsFromVkCo
 #undef convert
 }
 
+MVK_PUBLIC_SYMBOL float mvkVkClearColorFloatValueFromVkComponentSwizzle(float *colors, uint32_t index, VkComponentSwizzle vkSwizzle) {
+	switch (vkSwizzle) {
+		case VK_COMPONENT_SWIZZLE_IDENTITY:	return colors[index];
+		case VK_COMPONENT_SWIZZLE_ZERO:		return 0.f;
+		case VK_COMPONENT_SWIZZLE_ONE:		return 1.f;
+		case VK_COMPONENT_SWIZZLE_R:		return colors[0];
+		case VK_COMPONENT_SWIZZLE_G:		return colors[1];
+		case VK_COMPONENT_SWIZZLE_B:		return colors[2];
+		case VK_COMPONENT_SWIZZLE_A:		return colors[3];
+		default:							return colors[index];
+	}
+}
+
+MVK_PUBLIC_SYMBOL uint32_t mvkVkClearColorUIntValueFromVkComponentSwizzle(uint32_t *colors, uint32_t index, VkComponentSwizzle vkSwizzle) {
+	switch (vkSwizzle) {
+		case VK_COMPONENT_SWIZZLE_IDENTITY:	return colors[index];
+		case VK_COMPONENT_SWIZZLE_ZERO:		return 0U;
+		case VK_COMPONENT_SWIZZLE_ONE:		return 1U;
+		case VK_COMPONENT_SWIZZLE_R:		return colors[0];
+		case VK_COMPONENT_SWIZZLE_G:		return colors[1];
+		case VK_COMPONENT_SWIZZLE_B:		return colors[2];
+		case VK_COMPONENT_SWIZZLE_A:		return colors[3];
+		default:							return colors[index];
+	}
+}
+
+MVK_PUBLIC_SYMBOL int32_t mvkVkClearColorIntValueFromVkComponentSwizzle(int32_t *colors, uint32_t index, VkComponentSwizzle vkSwizzle) {
+	switch (vkSwizzle) {
+		case VK_COMPONENT_SWIZZLE_IDENTITY:	return colors[index];
+		case VK_COMPONENT_SWIZZLE_ZERO:		return 0;
+		case VK_COMPONENT_SWIZZLE_ONE:		return 1;
+		case VK_COMPONENT_SWIZZLE_R:		return colors[0];
+		case VK_COMPONENT_SWIZZLE_G:		return colors[1];
+		case VK_COMPONENT_SWIZZLE_B:		return colors[2];
+		case VK_COMPONENT_SWIZZLE_A:		return colors[3];
+		default:							return colors[index];
+	}
+}
+
 
 #pragma mark Mipmaps
 
@@ -412,13 +451,13 @@ MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopologyInObj(VkPrimitiveTopo
 		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
 		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
 		case VK_PRIMITIVE_TOPOLOGY_PATCH_LIST:
+		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
 			return MTLPrimitiveTypeTriangle;
 
 		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:
 		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
 			return MTLPrimitiveTypeTriangleStrip;
 
-		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
 		default:
 			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "VkPrimitiveTopology value %d is not supported for rendering.", vkTopology);
 			return MTLPrimitiveTypePoint;
@@ -741,10 +780,15 @@ MVK_PUBLIC_SYMBOL VkExtent2D mvkVkExtent2DFromCGSize(CGSize cgSize) {
 }
 
 MVK_PUBLIC_SYMBOL CGSize mvkCGSizeFromVkExtent2D(VkExtent2D vkExtent) {
-	CGSize cgSize;
-	cgSize.width = vkExtent.width;
-	cgSize.height = vkExtent.height;
-	return cgSize;
+	return CGSizeMake(vkExtent.width, vkExtent.height);
+}
+
+MVK_PUBLIC_SYMBOL CGPoint mvkCGPointFromVkOffset2D(VkOffset2D vkOffset) {
+	return CGPointMake(vkOffset.x, vkOffset.y);
+}
+
+MVK_PUBLIC_SYMBOL CGRect mvkCGRectFromVkRectLayerKHR(VkRectLayerKHR vkRect) {
+	return { mvkCGPointFromVkOffset2D(vkRect.offset), mvkCGSizeFromVkExtent2D(vkRect.extent) };
 }
 
 

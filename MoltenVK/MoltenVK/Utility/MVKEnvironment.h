@@ -295,3 +295,11 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #ifndef MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM
 #  	define MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM    MVK_CONFIG_COMPRESSION_ALGORITHM_NONE
 #endif
+
+/**
+ * Maximize the concurrent executing compilation tasks.
+ * This functionality requires macOS 13.3. Disabled by default.
+ */
+#ifndef MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION
+#  	define MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION    0
+#endif

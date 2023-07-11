@@ -167,6 +167,25 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipeli
 	return rps;
 }
 
+static char getSwizzleChar(char defaultChar, VkComponentSwizzle vkSwizzle) {
+	switch (vkSwizzle) {
+		case VK_COMPONENT_SWIZZLE_IDENTITY: return defaultChar;
+		// FIXME: 0 and 1 (currently not used in any default swizzles)
+		case VK_COMPONENT_SWIZZLE_R:		return 'x';
+		case VK_COMPONENT_SWIZZLE_G:		return 'y';
+		case VK_COMPONENT_SWIZZLE_B:		return 'z';
+		case VK_COMPONENT_SWIZZLE_A:		return 'w';
+		default:							return defaultChar;
+	}
+}
+
+static void getSwizzleString(char swizzleStr[4], VkComponentMapping vkMapping) {
+	swizzleStr[0] = getSwizzleChar('x', vkMapping.r);
+	swizzleStr[1] = getSwizzleChar('y', vkMapping.g);
+	swizzleStr[2] = getSwizzleChar('z', vkMapping.b);
+	swizzleStr[3] = getSwizzleChar('w', vkMapping.a);
+}
+
 id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg& blitKey) {
 	@autoreleasepool {
 		bool isLayeredBlit = blitKey.dstSampleCount > 1 ? _device->_pMetalFeatures->multisampleLayeredRendering : _device->_pMetalFeatures->layeredRendering;
@@ -177,6 +196,7 @@ id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg&
 		NSString* typePrefix = @"texture";
 		NSString* typeSuffix;
 		NSString* coordArg;
+		char swizzleArg[4] = { 'x', 'y', 'z', 'w' };
 		if (mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_DEPTH_BIT))) {
 			typePrefix = @"depth";
 		}
@@ -208,6 +228,9 @@ id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg&
 		}
 		NSString* sliceArg = isArrayType ? (isLayeredBlit ? @", subRez.slice + varyings.v_layer" : @", subRez.slice") : @"";
 		NSString* srcFilter = isLinearFilter ? @"linear" : @"nearest";
+		if (!getDevice()->_pMetalFeatures->nativeTextureSwizzle) {
+			getSwizzleString(swizzleArg, blitKey.getSrcSwizzle());
+		}
 
 		NSMutableString* msl = [NSMutableString stringWithCapacity: (2 * KIBI) ];
 		[msl appendLineMVK: @"#include <metal_stdlib>"];
@@ -263,15 +286,15 @@ id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg&
 		[msl appendLineMVK: @"                         constant TexSubrez& subRez [[buffer(0)]]) {"];
 		[msl appendLineMVK: @"    FragmentOutputs out;"];
 		if (mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_DEPTH_BIT))) {
-			[msl appendFormat: @"    out.depth = tex.sample(ce_sampler, varyings.v_texCoord%@%@, level(subRez.lod));", coordArg, sliceArg];
+			[msl appendFormat: @"    out.depth = tex.sample(ce_sampler, varyings.v_texCoord%@%@, level(subRez.lod)).%c;", coordArg, sliceArg, swizzleArg[0]];
 			[msl appendLineMVK];
 		}
 		if (mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_STENCIL_BIT))) {
-			[msl appendFormat: @"    out.stencil = stencilTex.sample(ce_stencil_sampler, varyings.v_texCoord%@%@, level(subRez.lod)).x;", coordArg, sliceArg];
+			[msl appendFormat: @"    out.stencil = stencilTex.sample(ce_stencil_sampler, varyings.v_texCoord%@%@, level(subRez.lod)).%c;", coordArg, sliceArg, swizzleArg[0]];
 			[msl appendLineMVK];
 		}
 		if (!mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))) {
-			[msl appendFormat: @"    out.color = tex.sample(ce_sampler, varyings.v_texCoord%@%@, level(subRez.lod));", coordArg, sliceArg];
+			[msl appendFormat: @"    out.color = tex.sample(ce_sampler, varyings.v_texCoord%@%@, level(subRez.lod)).%.4s;", coordArg, sliceArg, swizzleArg];
 			[msl appendLineMVK];
 		}
 		[msl appendLineMVK: @"    return out;"];
@@ -557,11 +580,15 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyBufferToImage3D
 									  : "cmdCopyBufferToImage3DDecompressDXTn", owner);
 }
 
-id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectMultiviewConvertBuffersMTLComputePipelineState(bool indexed,
-																														MVKVulkanAPIDeviceObject* owner) {
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed,
+																											   MVKVulkanAPIDeviceObject* owner) {
 	return newMTLComputePipelineState(indexed
-									  ? "cmdDrawIndexedIndirectMultiviewConvertBuffers"
-									  : "cmdDrawIndirectMultiviewConvertBuffers", owner);
+									  ? "cmdDrawIndexedIndirectConvertBuffers"
+									  : "cmdDrawIndirectConvertBuffers", owner);
+}
+
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectPopulateIndexesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("cmdDrawIndirectPopulateIndexes", owner);
 }
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectTessConvertBuffersMTLComputePipelineState(bool indexed,

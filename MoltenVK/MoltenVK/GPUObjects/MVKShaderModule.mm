@@ -67,7 +67,9 @@ static uint32_t getWorkgroupDimensionSize(const SPIRVWorkgroupSizeDimension& wgD
 	return wgDim.size;
 }
 
-MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpecializationInfo, MVKShaderModule* shaderModule) {
+MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpecializationInfo,
+												VkPipelineCreationFeedback* pShaderFeedback,
+												MVKShaderModule* shaderModule) {
 
 	if ( !_mtlLibrary ) { return MVKMTLFunctionNull; }
 
@@ -76,9 +78,15 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 			NSString* mtlFuncName = @(_shaderConversionResultInfo.entryPoint.mtlFunctionName.c_str());
 			MVKDevice* mvkDev = _owner->getDevice();
 
-			uint64_t startTime = mvkDev->getPerformanceTimestamp();
+			uint64_t startTime = pShaderFeedback ? mvkGetTimestamp() : mvkDev->getPerformanceTimestamp();
 			id<MTLFunction> mtlFunc = [[_mtlLibrary newFunctionWithName: mtlFuncName] autorelease];
 			mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
+			if (pShaderFeedback) {
+				if (mtlFunc) {
+					mvkEnableFlags(pShaderFeedback->flags, VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT);
+				}
+				pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime);
+			}
 
 			if (mtlFunc) {
 				// If the Metal device supports shader specialization, and the Metal function expects to be specialized,
@@ -108,11 +116,15 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 
 						// Compile the specialized Metal function, and use it instead of the unspecialized Metal function.
 						MVKFunctionSpecializer fs(_owner);
+						if (pShaderFeedback) {
+							startTime = mvkGetTimestamp();
+						}
 						mtlFunc = [fs.newMTLFunction(_mtlLibrary, mtlFuncName, mtlFCVals) autorelease];
+						if (pShaderFeedback) {
+							pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime);
+						}
 					}
 				}
-			} else {
-				reportError(VK_ERROR_INVALID_SHADER_NV, "Shader module does not contain an entry point named '%s'.", mtlFuncName.UTF8String);
 			}
 
 			// Set the debug name. First try name of shader module, otherwise try name of owner.
@@ -242,13 +254,17 @@ MVKShaderLibrary::~MVKShaderLibrary() {
 
 MVKShaderLibrary* MVKShaderLibraryCache::getShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig,
 														  MVKShaderModule* shaderModule, MVKPipeline* pipeline,
-														  bool* pWasAdded, uint64_t startTime) {
+														  bool* pWasAdded, VkPipelineCreationFeedback* pShaderFeedback,
+														  uint64_t startTime) {
 	bool wasAdded = false;
-	MVKShaderLibrary* shLib = findShaderLibrary(pShaderConfig, startTime);
+	MVKShaderLibrary* shLib = findShaderLibrary(pShaderConfig, pShaderFeedback, startTime);
 	if ( !shLib && !pipeline->shouldFailOnPipelineCompileRequired() ) {
 		SPIRVToMSLConversionResult conversionResult;
 		if (shaderModule->convert(pShaderConfig, conversionResult)) {
 			shLib = addShaderLibrary(pShaderConfig, conversionResult);
+			if (pShaderFeedback) {
+				pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime);
+			}
 			wasAdded = true;
 		}
 	}
@@ -261,12 +277,16 @@ MVKShaderLibrary* MVKShaderLibraryCache::getShaderLibrary(SPIRVToMSLConversionCo
 // Finds and returns a shader library matching the shader config, or returns nullptr if it doesn't exist.
 // If a match is found, the shader config is aligned with the shader config of the matching library.
 MVKShaderLibrary* MVKShaderLibraryCache::findShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig,
+														   VkPipelineCreationFeedback* pShaderFeedback,
 														   uint64_t startTime) {
 	for (auto& slPair : _shaderLibraries) {
 		if (slPair.first.matches(*pShaderConfig)) {
 			pShaderConfig->alignWith(slPair.first);
 			MVKDevice* mvkDev = _owner->getDevice();
 			mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.shaderCompilation.shaderLibraryFromCache, startTime);
+			if (pShaderFeedback) {
+				pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime);
+			}
 			return slPair.second;
 		}
 	}
@@ -311,23 +331,24 @@ MVKShaderLibraryCache::~MVKShaderLibraryCache() {
 
 MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration* pShaderConfig,
 											   const VkSpecializationInfo* pSpecializationInfo,
-											   MVKPipeline* pipeline) {
+											   MVKPipeline* pipeline,
+											   VkPipelineCreationFeedback* pShaderFeedback) {
 	MVKShaderLibrary* mvkLib = _directMSLLibrary;
 	if ( !mvkLib ) {
-		uint64_t startTime = _device->getPerformanceTimestamp();
+		uint64_t startTime = pShaderFeedback ? mvkGetTimestamp() : _device->getPerformanceTimestamp();
 		MVKPipelineCache* pipelineCache = pipeline->getPipelineCache();
 		if (pipelineCache) {
-			mvkLib = pipelineCache->getShaderLibrary(pShaderConfig, this, pipeline, startTime);
+			mvkLib = pipelineCache->getShaderLibrary(pShaderConfig, this, pipeline, pShaderFeedback, startTime);
 		} else {
 			lock_guard<mutex> lock(_accessLock);
-			mvkLib = _shaderLibraryCache.getShaderLibrary(pShaderConfig, this, pipeline, nullptr, startTime);
+			mvkLib = _shaderLibraryCache.getShaderLibrary(pShaderConfig, this, pipeline, nullptr, pShaderFeedback, startTime);
 		}
 	} else {
 		mvkLib->setEntryPointName(pShaderConfig->options.entryPointName);
 		pShaderConfig->markAllInterfaceVarsAndResourcesUsed();
 	}
 
-	return mvkLib ? mvkLib->getMTLFunction(pSpecializationInfo, this) : MVKMTLFunctionNull;
+	return mvkLib ? mvkLib->getMTLFunction(pSpecializationInfo, pShaderFeedback, this) : MVKMTLFunctionNull;
 }
 
 bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,

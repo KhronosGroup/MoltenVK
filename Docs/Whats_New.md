@@ -18,8 +18,19 @@ MoltenVK 1.2.5
 
 Released TBD
 
+- Add support for extensions:
+	- `VK_KHR_shader_non_semantic_info`
+	- `VK_EXT_4444_formats`
+	- `VK_EXT_calibrated_timestamps`
+	- `VK_EXT_shader_demote_to_helper_invocation`
+	- `VK_EXT_shader_subgroup_ballot`
+	- `VK_EXT_shader_subgroup_vote`
+- Add support for `VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN`.
 - Ensure non-dispatch compute commands don't interfere with compute encoding state used by dispatch commands.
+- Support `VK_PRESENT_MODE_IMMEDIATE_KHR` if `VkPresentTimeGOOGLE::desiredPresentTime` is zero.
+- Support maximizing the concurrent executing compilation tasks via `MVKConfiguration::shouldMaximizeConcurrentCompilation`
 - Add support for `VK_PRESENT_MODE_IMMEDIATE_KHR` to macOS Cube demo.
+- Log more info about SPIR-V to MSL conversion errors.
 
 
 

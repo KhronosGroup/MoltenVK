@@ -51,6 +51,7 @@ class MVKDeviceMemory;
 class MVKFence;
 class MVKSemaphore;
 class MVKTimelineSemaphore;
+class MVKDeferredOperation;
 class MVKEvent;
 class MVKSemaphoreImpl;
 class MVKQueryPool;
@@ -138,7 +139,7 @@ public:
 	void getProperties(VkPhysicalDeviceProperties2* properties);
 
 	/** Returns the name of this device. */
-	inline const char* getName() { return _properties.deviceName; }
+	const char* getName() { return _properties.deviceName; }
 
 	/** Populates the specified structure with the format properties of this device. */
 	void getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties);
@@ -173,6 +174,9 @@ public:
 	/** Populates the external semaphore properties supported on this device. */
 	void getExternalSemaphoreProperties(const VkPhysicalDeviceExternalSemaphoreInfo* pExternalSemaphoreInfo,
 										VkExternalSemaphoreProperties* pExternalSemaphoreProperties);
+
+	/** Returns the supported time domains for calibration on this device. */
+	VkResult getCalibrateableTimeDomains(uint32_t* pTimeDomainCount, VkTimeDomainEXT* pTimeDomains);
 
 #pragma mark Surfaces
 
@@ -285,7 +289,7 @@ public:
 #pragma mark Memory models
 
 	/** Returns a pointer to the memory characteristics of this device. */
-    inline const VkPhysicalDeviceMemoryProperties* getMemoryProperties() { return &_memoryProperties; }
+    const VkPhysicalDeviceMemoryProperties* getMemoryProperties() { return &_memoryProperties; }
 
 	/** Populates the specified memory properties with the memory characteristics of this device. */
 	VkResult getMemoryProperties(VkPhysicalDeviceMemoryProperties* pMemoryProperties);
@@ -297,31 +301,31 @@ public:
 	 * Returns a bit mask of all memory type indices. 
 	 * Each bit [0..31] in the returned bit mask indicates a distinct memory type.
 	 */
-	inline uint32_t getAllMemoryTypes() { return _allMemoryTypes; }
+	uint32_t getAllMemoryTypes() { return _allMemoryTypes; }
 
 	/**
 	 * Returns a bit mask of all memory type indices that allow host visibility to the memory. 
 	 * Each bit [0..31] in the returned bit mask indicates a distinct memory type.
 	 */
-	inline uint32_t getHostVisibleMemoryTypes() { return _hostVisibleMemoryTypes; }
+	uint32_t getHostVisibleMemoryTypes() { return _hostVisibleMemoryTypes; }
 
 	/**
 	 * Returns a bit mask of all memory type indices that are coherent between host and device.
 	 * Each bit [0..31] in the returned bit mask indicates a distinct memory type.
 	 */
-	inline uint32_t getHostCoherentMemoryTypes() { return _hostCoherentMemoryTypes; }
+	uint32_t getHostCoherentMemoryTypes() { return _hostCoherentMemoryTypes; }
 
 	/**
 	 * Returns a bit mask of all memory type indices that do NOT allow host visibility to the memory.
 	 * Each bit [0..31] in the returned bit mask indicates a distinct memory type.
 	 */
-	inline uint32_t getPrivateMemoryTypes() { return _privateMemoryTypes; }
+	uint32_t getPrivateMemoryTypes() { return _privateMemoryTypes; }
 
 	/**
 	 * Returns a bit mask of all memory type indices that are lazily allocated.
 	 * Each bit [0..31] in the returned bit mask indicates a distinct memory type.
 	 */
-	inline uint32_t getLazilyAllocatedMemoryTypes() { return _lazilyAllocatedMemoryTypes; }
+	uint32_t getLazilyAllocatedMemoryTypes() { return _lazilyAllocatedMemoryTypes; }
 
 	/** Returns whether this is a unified memory device. */
 	bool getHasUnifiedMemory();
@@ -336,21 +340,13 @@ public:
 #pragma mark Metal
 
 	/** Populates the specified structure with the Metal-specific features of this device. */
-	inline const MVKPhysicalDeviceMetalFeatures* getMetalFeatures() { return &_metalFeatures; }
+	const MVKPhysicalDeviceMetalFeatures* getMetalFeatures() { return &_metalFeatures; }
 
 	/** Returns whether or not vertex instancing can be used to implement multiview. */
-	inline bool canUseInstancingForMultiview() { return _metalFeatures.layeredRendering && _metalFeatures.deferredStoreActions; }
+	bool canUseInstancingForMultiview() { return _metalFeatures.layeredRendering && _metalFeatures.deferredStoreActions; }
 
 	/** Returns the underlying Metal device. */
-	inline id<MTLDevice> getMTLDevice() { return _mtlDevice; }
-    
-    /*** Replaces the underlying Metal device .*/
-    inline void replaceMTLDevice(id<MTLDevice> mtlDevice) {
-		if (mtlDevice != _mtlDevice) {
-			[_mtlDevice release];
-			_mtlDevice = [mtlDevice retain];
-		}
-	}
+	id<MTLDevice> getMTLDevice() { return _mtlDevice; }
 
 	/** Returns whether the MSL version is supported on this device. */
 	bool mslVersionIsAtLeast(MTLLanguageVersion minVer) { return _metalFeatures.mslVersionEnum >= minVer; }
@@ -387,7 +383,7 @@ public:
      * Returns a reference to this object suitable for use as a Vulkan API handle.
      * This is the compliment of the getMVKPhysicalDevice() method.
      */
-    inline VkPhysicalDevice getVkPhysicalDevice() { return (VkPhysicalDevice)getVkHandle(); }
+    VkPhysicalDevice getVkPhysicalDevice() { return (VkPhysicalDevice)getVkHandle(); }
 
     /**
      * Retrieves the MVKPhysicalDevice instance referenced by the VkPhysicalDevice handle.
@@ -404,6 +400,7 @@ protected:
 	MTLFeatureSet getMaximalMTLFeatureSet();
     void initMetalFeatures();
 	void initFeatures();
+	void initMTLDevice();
 	void initProperties();
 	void initLimits();
 	void initGPUInfoProperties();
@@ -474,16 +471,16 @@ public:
 	MVKInstance* getInstance() override { return _physicalDevice->getInstance(); }
 
 	/** Returns the physical device underlying this logical device. */
-	inline MVKPhysicalDevice* getPhysicalDevice() { return _physicalDevice; }
+	MVKPhysicalDevice* getPhysicalDevice() { return _physicalDevice; }
 
 	/** Returns info about the pixel format supported by the physical device. */
-	inline MVKPixelFormats* getPixelFormats() { return &_physicalDevice->_pixelFormats; }
+	MVKPixelFormats* getPixelFormats() { return &_physicalDevice->_pixelFormats; }
 
 	/** Returns the name of this device. */
-	inline const char* getName() { return _pProperties->deviceName; }
+	const char* getName() { return _pProperties->deviceName; }
 
     /** Returns the common resource factory for creating command resources. */
-    inline MVKCommandResourceFactory* getCommandResourceFactory() { return _commandResourceFactory; }
+    MVKCommandResourceFactory* getCommandResourceFactory() { return _commandResourceFactory; }
 
 	/** Returns the function pointer corresponding to the specified named entry point. */
 	PFN_vkVoidFunction getProcAddr(const char* pName);
@@ -521,6 +518,11 @@ public:
 											const void* pHostPointer,
 											VkMemoryHostPointerPropertiesEXT* pMemHostPtrProps);
 
+	/** Samples timestamps from the specified domains and returns the sampled values. */
+	void getCalibratedTimestamps(uint32_t timestampCount,
+								 const VkCalibratedTimestampInfoEXT* pTimestampInfos,
+								 uint64_t* pTimestamps,
+								 uint64_t* pMaxDeviation);
 
 #pragma mark Object lifecycle
 
@@ -564,6 +566,10 @@ public:
 								  const VkAllocationCallbacks* pAllocator);
 	void destroySemaphore(MVKSemaphore* mvkSem4,
 						  const VkAllocationCallbacks* pAllocator);
+    
+    MVKDeferredOperation* createDeferredOperation(const VkAllocationCallbacks* pAllocator);
+    void destroyDeferredOperation(MVKDeferredOperation* mvkDeferredOperation,
+                                  const VkAllocationCallbacks* pAllocator);
 
 	MVKEvent* createEvent(const VkEventCreateInfo* pCreateInfo,
 						  const VkAllocationCallbacks* pAllocator);
@@ -698,7 +704,7 @@ public:
 	 * number of nanoseconds between the two calls. The convenience function mvkGetElapsedMilliseconds()
 	 * can be used to perform this calculation.
      */
-    inline uint64_t getPerformanceTimestamp() { return _isPerformanceTracking ? mvkGetTimestamp() : 0; }
+    uint64_t getPerformanceTimestamp() { return _isPerformanceTracking ? mvkGetTimestamp() : 0; }
 
     /**
      * If performance is being tracked, adds the performance for an activity with a duration
@@ -706,8 +712,8 @@ public:
      *
      * If endTime is zero or not supplied, the current time is used.
      */
-    inline void addActivityPerformance(MVKPerformanceTracker& activityTracker,
-									   uint64_t startTime, uint64_t endTime = 0) {
+	void addActivityPerformance(MVKPerformanceTracker& activityTracker,
+								uint64_t startTime, uint64_t endTime = 0) {
 		if (_isPerformanceTracking) {
 			updateActivityPerformance(activityTracker, startTime, endTime);
 
@@ -741,7 +747,7 @@ public:
 #pragma mark Metal
 
 	/** Returns the underlying Metal device. */
-	inline id<MTLDevice> getMTLDevice() { return _physicalDevice->getMTLDevice(); }
+	id<MTLDevice> getMTLDevice() { return _physicalDevice->getMTLDevice(); }
 
 	/** Returns whether this device is using Metal argument buffers. */
 	bool isUsingMetalArgumentBuffers() { return _isUsingMetalArgumentBuffers; };
@@ -823,7 +829,7 @@ public:
 	void stopAutoGPUCapture(MVKConfigAutoGPUCaptureScope autoGPUCaptureScope);
 
 	/** Returns whether this instance is currently automatically capturing a GPU trace. */
-	inline bool isCurrentlyAutoGPUCapturing() { return _isCurrentlyAutoGPUCapturing; }
+	bool isCurrentlyAutoGPUCapturing() { return _isCurrentlyAutoGPUCapturing; }
 
 	/** Returns the Metal objects underpinning the Vulkan objects indicated in the pNext chain of pMetalObjectsInfo. */
 	void getMetalObjects(VkExportMetalObjectsInfoEXT* pMetalObjectsInfo);
@@ -873,7 +879,7 @@ public:
      * Returns a reference to this object suitable for use as a Vulkan API handle.
      * This is the compliment of the getMVKDevice() method.
      */
-    inline VkDevice getVkDevice() { return (VkDevice)getVkHandle(); }
+    VkDevice getVkDevice() { return (VkDevice)getVkHandle(); }
 
     /**
      * Retrieves the MVKDevice instance referenced by the VkDevice handle.

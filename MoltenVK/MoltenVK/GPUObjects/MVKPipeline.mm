@@ -301,7 +301,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
             cmdEncoder->_depthBiasState.setDepthBias(_rasterInfo);
             cmdEncoder->_viewportState.setViewports(_viewports.contents(), 0, false);
             cmdEncoder->_scissorState.setScissors(_scissors.contents(), 0, false);
-            cmdEncoder->_mtlPrimitiveType = _mtlPrimitiveType;
+            cmdEncoder->_mtlPrimitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(_vkPrimitiveTopology);
 
             [mtlCmdEnc setCullMode: _mtlCullMode];
             [mtlCmdEnc setFrontFacingWinding: _mtlFrontWinding];
@@ -338,48 +338,63 @@ bool MVKGraphicsPipeline::supportsDynamicState(VkDynamicState state) {
 
 static const char vtxCompilerType[] = "Vertex stage pipeline for tessellation";
 
-id<MTLComputePipelineState> MVKGraphicsPipeline::getTessVertexStageState() {
-    MTLComputePipelineDescriptor* plDesc = [_mtlTessVertexStageDesc copy];  // temp retain a copy to be thread-safe.
-    plDesc.computeFunction = _mtlTessVertexFunctions[0];
-    id<MTLComputePipelineState> plState = getOrCompilePipeline(plDesc, _mtlTessVertexStageState, vtxCompilerType);
-    [plDesc release];                                                       // temp release
-    return plState;
-}
+bool MVKGraphicsPipeline::compileTessVertexStageState(MTLComputePipelineDescriptor* vtxPLDesc,
+													  id<MTLFunction>* vtxFunctions,
+													  VkPipelineCreationFeedback* pVertexFB) {
+	uint64_t startTime = 0;
+    if (pVertexFB) {
+		startTime = mvkGetTimestamp();
+	}
+    vtxPLDesc.computeFunction = vtxFunctions[0];
+    bool res = !!getOrCompilePipeline(vtxPLDesc, _mtlTessVertexStageState, vtxCompilerType);
 
-id<MTLComputePipelineState> MVKGraphicsPipeline::getTessVertexStageIndex16State() {
-    MTLComputePipelineDescriptor* plDesc = [_mtlTessVertexStageDesc copy];  // temp retain a copy to be thread-safe.
-    plDesc.computeFunction = _mtlTessVertexFunctions[1];
-    plDesc.stageInputDescriptor.indexType = MTLIndexTypeUInt16;
+    vtxPLDesc.computeFunction = vtxFunctions[1];
+    vtxPLDesc.stageInputDescriptor.indexType = MTLIndexTypeUInt16;
     for (uint32_t i = 0; i < 31; i++) {
-		MTLBufferLayoutDescriptor* blDesc = plDesc.stageInputDescriptor.layouts[i];
+		MTLBufferLayoutDescriptor* blDesc = vtxPLDesc.stageInputDescriptor.layouts[i];
         if (blDesc.stepFunction == MTLStepFunctionThreadPositionInGridX) {
                 blDesc.stepFunction = MTLStepFunctionThreadPositionInGridXIndexed;
         }
     }
-    id<MTLComputePipelineState> plState = getOrCompilePipeline(plDesc, _mtlTessVertexStageIndex16State, vtxCompilerType);
-    [plDesc release];                                                       // temp release
-    return plState;
+    res |= !!getOrCompilePipeline(vtxPLDesc, _mtlTessVertexStageIndex16State, vtxCompilerType);
+
+    vtxPLDesc.computeFunction = vtxFunctions[2];
+    vtxPLDesc.stageInputDescriptor.indexType = MTLIndexTypeUInt32;
+    res |= !!getOrCompilePipeline(vtxPLDesc, _mtlTessVertexStageIndex32State, vtxCompilerType);
+
+	if (pVertexFB) {
+		if (!res) {
+			// Compilation of the shader will have enabled the flag, so I need to turn it off.
+			mvkDisableFlags(pVertexFB->flags, VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT);
+		}
+		pVertexFB->duration += mvkGetElapsedNanoseconds(startTime);
+	}
+	return res;
 }
 
-id<MTLComputePipelineState> MVKGraphicsPipeline::getTessVertexStageIndex32State() {
-    MTLComputePipelineDescriptor* plDesc = [_mtlTessVertexStageDesc copy];  // temp retain a copy to be thread-safe.
-    plDesc.computeFunction = _mtlTessVertexFunctions[2];
-    plDesc.stageInputDescriptor.indexType = MTLIndexTypeUInt32;
-    for (uint32_t i = 0; i < 31; i++) {
-		MTLBufferLayoutDescriptor* blDesc = plDesc.stageInputDescriptor.layouts[i];
-        if (blDesc.stepFunction == MTLStepFunctionThreadPositionInGridX) {
-                blDesc.stepFunction = MTLStepFunctionThreadPositionInGridXIndexed;
-        }
-    }
-    id<MTLComputePipelineState> plState = getOrCompilePipeline(plDesc, _mtlTessVertexStageIndex32State, vtxCompilerType);
-    [plDesc release];                                                       // temp release
-    return plState;
+bool MVKGraphicsPipeline::compileTessControlStageState(MTLComputePipelineDescriptor* tcPLDesc,
+													   VkPipelineCreationFeedback* pTessCtlFB) {
+	uint64_t startTime = 0;
+    if (pTessCtlFB) {
+		startTime = mvkGetTimestamp();
+	}
+    bool res = !!getOrCompilePipeline(tcPLDesc, _mtlTessControlStageState, "Tessellation control");
+	if (pTessCtlFB) {
+		if (!res) {
+			mvkDisableFlags(pTessCtlFB->flags, VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT);
+		}
+		pTessCtlFB->duration += mvkGetElapsedNanoseconds(startTime);
+	}
+	return res;
 }
 
 
 #pragma mark Construction
 
-// Extracts and returns a VkPipelineRenderingCreateInfo from the renderPass or pNext chain of pCreateInfo, or returns null if not found
+// Extracts and returns a VkPipelineRenderingCreateInfo from the renderPass or pNext
+// chain of pCreateInfo, or returns an empty struct if neither of those are found.
+// Although the Vulkan spec is vague and unclear, there are CTS that set both renderPass
+// and VkPipelineRenderingCreateInfo to null in VkGraphicsPipelineCreateInfo.
 static const VkPipelineRenderingCreateInfo* getRenderingCreateInfo(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
 	if (pCreateInfo->renderPass) {
 		return ((MVKRenderPass*)pCreateInfo->renderPass)->getSubpass(pCreateInfo->subpass)->getPipelineRenderingCreateInfo();
@@ -390,7 +405,8 @@ static const VkPipelineRenderingCreateInfo* getRenderingCreateInfo(const VkGraph
 			default: break;
 		}
 	}
-	return nullptr;
+	static VkPipelineRenderingCreateInfo emptyRendInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
+	return &emptyRendInfo;
 }
 
 MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
@@ -404,26 +420,78 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	_isRasterizing = !isRasterizationDisabled(pCreateInfo);
 	_isRasterizingColor = _isRasterizing && mvkHasColorAttachments(pRendInfo);
 
-	// Get the tessellation shaders, if present. Do this now, because we need to extract
+	const VkPipelineCreationFeedbackCreateInfo* pFeedbackInfo = nullptr;
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO:
+				pFeedbackInfo = (VkPipelineCreationFeedbackCreateInfo*)next;
+				break;
+			default:
+				break;
+		}
+	}
+
+	// Initialize feedback. The VALID bit must be initialized, either set or cleared.
+	// We'll set the VALID bits later, after successful compilation.
+	VkPipelineCreationFeedback* pPipelineFB = nullptr;
+	if (pFeedbackInfo) {
+		pPipelineFB = pFeedbackInfo->pPipelineCreationFeedback;
+		// n.b. Do *NOT* use mvkClear(). That would also clear the sType and pNext fields.
+		pPipelineFB->flags = 0;
+		pPipelineFB->duration = 0;
+		for (uint32_t i = 0; i < pFeedbackInfo->pipelineStageCreationFeedbackCount; ++i) {
+			pFeedbackInfo->pPipelineStageCreationFeedbacks[i].flags = 0;
+			pFeedbackInfo->pPipelineStageCreationFeedbacks[i].duration = 0;
+		}
+	}
+
+	// Get the shader stages. Do this now, because we need to extract
 	// reflection data from them that informs everything else.
+	const VkPipelineShaderStageCreateInfo* pVertexSS = nullptr;
+	const VkPipelineShaderStageCreateInfo* pTessCtlSS = nullptr;
+	const VkPipelineShaderStageCreateInfo* pTessEvalSS = nullptr;
+	const VkPipelineShaderStageCreateInfo* pFragmentSS = nullptr;
+	VkPipelineCreationFeedback* pVertexFB = nullptr;
+	VkPipelineCreationFeedback* pTessCtlFB = nullptr;
+	VkPipelineCreationFeedback* pTessEvalFB = nullptr;
+	VkPipelineCreationFeedback* pFragmentFB = nullptr;
 	for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
 		const auto* pSS = &pCreateInfo->pStages[i];
-		if (pSS->stage == VK_SHADER_STAGE_VERTEX_BIT) {
-			_pVertexSS = pSS;
-		} else if (pSS->stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) {
-			_pTessCtlSS = pSS;
-		} else if (pSS->stage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) {
-			_pTessEvalSS = pSS;
-		} else if (pSS->stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
-			_pFragmentSS = pSS;
+		switch (pSS->stage) {
+			case VK_SHADER_STAGE_VERTEX_BIT:
+				pVertexSS = pSS;
+				if (pFeedbackInfo && pFeedbackInfo->pPipelineStageCreationFeedbacks) {
+					pVertexFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[i];
+				}
+				break;
+			case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+				pTessCtlSS = pSS;
+				if (pFeedbackInfo && pFeedbackInfo->pPipelineStageCreationFeedbacks) {
+					pTessCtlFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[i];
+				}
+				break;
+			case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+				pTessEvalSS = pSS;
+				if (pFeedbackInfo && pFeedbackInfo->pPipelineStageCreationFeedbacks) {
+					pTessEvalFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[i];
+				}
+				break;
+			case VK_SHADER_STAGE_FRAGMENT_BIT:
+				pFragmentSS = pSS;
+				if (pFeedbackInfo && pFeedbackInfo->pPipelineStageCreationFeedbacks) {
+					pFragmentFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[i];
+				}
+				break;
+			default:
+				break;
 		}
 	}
 
 	// Get the tessellation parameters from the shaders.
 	SPIRVTessReflectionData reflectData;
 	std::string reflectErrorLog;
-	if (_pTessCtlSS && _pTessEvalSS) {
-		if (!getTessReflectionData(((MVKShaderModule*)_pTessCtlSS->module)->getSPIRV(), _pTessCtlSS->pName, ((MVKShaderModule*)_pTessEvalSS->module)->getSPIRV(), _pTessEvalSS->pName, reflectData, reflectErrorLog) ) {
+	if (pTessCtlSS && pTessEvalSS) {
+		if (!getTessReflectionData(((MVKShaderModule*)pTessCtlSS->module)->getSPIRV(), pTessCtlSS->pName, ((MVKShaderModule*)pTessEvalSS->module)->getSPIRV(), pTessEvalSS->pName, reflectData, reflectErrorLog) ) {
 			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to reflect tessellation shaders: %s", reflectErrorLog.c_str()));
 			return;
 		}
@@ -434,12 +502,20 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 		}
 	}
 
+	_isTransformFeedback = getUsesTransformFeedback(((MVKShaderModule*)pVertexSS->module)->getSPIRV(),
+													spv::ExecutionModel::ExecutionModelVertex,
+													pVertexSS->pName,
+													reflectErrorLog);
+    if (!reflectErrorLog.empty()) {
+        setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to reflect vertex shader: %s", reflectErrorLog.c_str()));
+    }
+
 	// Tessellation - must ignore allowed bad pTessellationState pointer if not tess pipeline
 	_outputControlPointCount = reflectData.numControlPoints;
-	mvkSetOrClear(&_tessInfo, (_pTessCtlSS && _pTessEvalSS) ? pCreateInfo->pTessellationState : nullptr);
+	mvkSetOrClear(&_tessInfo, (pTessCtlSS && pTessEvalSS) ? pCreateInfo->pTessellationState : nullptr);
 
 	// Render pipeline state. Do this as early as possible, to fail fast if pipeline requires a fail on cache-miss.
-	initMTLRenderPipelineState(pCreateInfo, reflectData);
+	initMTLRenderPipelineState(pCreateInfo, reflectData, pPipelineFB, pVertexSS, pVertexFB, pTessCtlSS, pTessCtlFB, pTessEvalSS, pTessEvalFB, pFragmentSS, pFragmentFB);
 	if ( !_hasValidMTLPipelineStates ) { return; }
 
 	// Track dynamic state
@@ -456,15 +532,9 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	}
 
 	// Topology
-	_mtlPrimitiveType = MTLPrimitiveTypePoint;
-	if (pCreateInfo->pInputAssemblyState && !isRenderingPoints(pCreateInfo)) {
-		_mtlPrimitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
-		// Explicitly fail creation with triangle fan topology.
-		if (pCreateInfo->pInputAssemblyState->topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support triangle fans."));
-			return;
-		}
-	}
+	_vkPrimitiveTopology = (pCreateInfo->pInputAssemblyState && !isRenderingPoints(pCreateInfo)
+				   ? pCreateInfo->pInputAssemblyState->topology
+				   : VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
 
 	// Rasterization
 	_mtlCullMode = MTLCullModeNone;
@@ -567,20 +637,33 @@ void MVKGraphicsPipeline::initCustomSamplePositions(const VkGraphicsPipelineCrea
 }
 
 // Constructs the underlying Metal render pipeline.
-void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData) {
+void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo,
+													 const SPIRVTessReflectionData& reflectData,
+													 VkPipelineCreationFeedback* pPipelineFB,
+													 const VkPipelineShaderStageCreateInfo* pVertexSS,
+													 VkPipelineCreationFeedback* pVertexFB,
+													 const VkPipelineShaderStageCreateInfo* pTessCtlSS,
+													 VkPipelineCreationFeedback* pTessCtlFB,
+													 const VkPipelineShaderStageCreateInfo* pTessEvalSS,
+													 VkPipelineCreationFeedback* pTessEvalFB,
+													 const VkPipelineShaderStageCreateInfo* pFragmentSS,
+													 VkPipelineCreationFeedback* pFragmentFB) {
 	_mtlTessVertexStageState = nil;
 	_mtlTessVertexStageIndex16State = nil;
 	_mtlTessVertexStageIndex32State = nil;
 	_mtlTessControlStageState = nil;
 	_mtlPipelineState = nil;
-	_mtlTessVertexStageDesc = nil;
-	for (uint32_t i = 0; i < 3; i++) { _mtlTessVertexFunctions[i] = nil; }
+
+	uint64_t pipelineStart = 0;
+	if (pPipelineFB) {
+		pipelineStart = mvkGetTimestamp();
+	}
 
 	if (isUsingMetalArgumentBuffers()) { _descriptorBindingUse.resize(_descriptorSetCount); }
 	if (isUsingPipelineStageMetalArgumentBuffers()) { _mtlArgumentEncoders.resize(_descriptorSetCount); }
 
 	if (!isTessellationPipeline()) {
-		MTLRenderPipelineDescriptor* plDesc = newMTLRenderPipelineDescriptor(pCreateInfo, reflectData);	// temp retain
+		MTLRenderPipelineDescriptor* plDesc = newMTLRenderPipelineDescriptor(pCreateInfo, reflectData, pVertexSS, pVertexFB, pFragmentSS, pFragmentFB);	// temp retain
 		if (plDesc) {
 			const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
 			if (pRendInfo && mvkIsMultiview(pRendInfo->viewMask)) {
@@ -616,30 +699,45 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 		}
 	} else {
 		// In this case, we need to create three render pipelines. But, the way Metal handles
-		// index buffers for compute stage-in means we have to defer creation of stage 1 until
-		// draw time. In the meantime, we'll create and retain a descriptor for it.
+		// index buffers for compute stage-in means we have to create three pipelines for
+		// stage 1 (five pipelines in total).
 		SPIRVToMSLConversionConfiguration shaderConfig;
 		initShaderConversionConfig(shaderConfig, pCreateInfo, reflectData);
 
-		_mtlTessVertexStageDesc = newMTLTessVertexStageDescriptor(pCreateInfo, reflectData, shaderConfig);					// retained
-		MTLComputePipelineDescriptor* tcPLDesc = newMTLTessControlStageDescriptor(pCreateInfo, reflectData, shaderConfig);	// temp retained
-		MTLRenderPipelineDescriptor* rastPLDesc = newMTLTessRasterStageDescriptor(pCreateInfo, reflectData, shaderConfig);	// temp retained
-		if (_mtlTessVertexStageDesc && tcPLDesc && rastPLDesc) {
-			if (getOrCompilePipeline(tcPLDesc, _mtlTessControlStageState, "Tessellation control")) {
-				getOrCompilePipeline(rastPLDesc, _mtlPipelineState);
+		id<MTLFunction> vtxFunctions[3] = { nil };
+		MTLComputePipelineDescriptor* vtxPLDesc = newMTLTessVertexStageDescriptor(pCreateInfo, reflectData, shaderConfig, pVertexSS, pVertexFB, pTessCtlSS, vtxFunctions);					// temp retained
+		MTLComputePipelineDescriptor* tcPLDesc = newMTLTessControlStageDescriptor(pCreateInfo, reflectData, shaderConfig, pTessCtlSS, pTessCtlFB, pVertexSS, pTessEvalSS);					// temp retained
+		MTLRenderPipelineDescriptor* rastPLDesc = newMTLTessRasterStageDescriptor(pCreateInfo, reflectData, shaderConfig, pTessEvalSS, pTessEvalFB, pFragmentSS, pFragmentFB, pTessCtlSS);	// temp retained
+		if (vtxPLDesc && tcPLDesc && rastPLDesc) {
+			if (compileTessVertexStageState(vtxPLDesc, vtxFunctions, pVertexFB)) {
+				if (compileTessControlStageState(tcPLDesc, pTessCtlFB)) {
+					getOrCompilePipeline(rastPLDesc, _mtlPipelineState);
+				}
 			}
 		} else {
 			_hasValidMTLPipelineStates = false;
 		}
+		[vtxPLDesc release];	// temp release
 		[tcPLDesc release];		// temp release
 		[rastPLDesc release];	// temp release
+	}
+
+	if (pPipelineFB) {
+		if ( _hasValidMTLPipelineStates ) {
+			mvkEnableFlags(pPipelineFB->flags, VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT);
+		}
+		pPipelineFB->duration = mvkGetElapsedNanoseconds(pipelineStart);
 	}
 }
 
 // Returns a retained MTLRenderPipelineDescriptor constructed from this instance, or nil if an error occurs.
 // It is the responsibility of the caller to release the returned descriptor.
 MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLRenderPipelineDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo,
-																				 const SPIRVTessReflectionData& reflectData) {
+																				 const SPIRVTessReflectionData& reflectData,
+																				 const VkPipelineShaderStageCreateInfo* pVertexSS,
+																				 VkPipelineCreationFeedback* pVertexFB,
+																				 const VkPipelineShaderStageCreateInfo* pFragmentSS,
+																				 VkPipelineCreationFeedback* pFragmentFB) {
 	SPIRVToMSLConversionConfiguration shaderConfig;
 	initShaderConversionConfig(shaderConfig, pCreateInfo, reflectData);
 
@@ -647,20 +745,20 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLRenderPipelineDescriptor
 
 	SPIRVShaderOutputs vtxOutputs;
 	std::string errorLog;
-	if (!getShaderOutputs(((MVKShaderModule*)_pVertexSS->module)->getSPIRV(), spv::ExecutionModelVertex, _pVertexSS->pName, vtxOutputs, errorLog) ) {
+	if (!getShaderOutputs(((MVKShaderModule*)pVertexSS->module)->getSPIRV(), spv::ExecutionModelVertex, pVertexSS->pName, vtxOutputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get vertex outputs: %s", errorLog.c_str()));
 		return nil;
 	}
 
 	// Add shader stages. Compile vertex shader before others just in case conversion changes anything...like rasterizaion disable.
-	if (!addVertexShaderToPipeline(plDesc, pCreateInfo, shaderConfig)) { return nil; }
+	if (!addVertexShaderToPipeline(plDesc, pCreateInfo, shaderConfig, pVertexSS, pVertexFB, pFragmentSS)) { return nil; }
 
 	// Vertex input
 	// This needs to happen before compiling the fragment shader, or we'll lose information on vertex attributes.
 	if (!addVertexInputToPipeline(plDesc.vertexDescriptor, pCreateInfo->pVertexInputState, shaderConfig)) { return nil; }
 
 	// Fragment shader - only add if rasterization is enabled
-	if (!addFragmentShaderToPipeline(plDesc, pCreateInfo, shaderConfig, vtxOutputs)) { return nil; }
+	if (!addFragmentShaderToPipeline(plDesc, pCreateInfo, shaderConfig, vtxOutputs, pFragmentSS, pFragmentFB)) { return nil; }
 
 	// Output
 	addFragmentOutputToPipeline(plDesc, pCreateInfo);
@@ -676,13 +774,17 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLRenderPipelineDescriptor
 // Returns a retained MTLComputePipelineDescriptor for the vertex stage of a tessellated draw constructed from this instance, or nil if an error occurs.
 // It is the responsibility of the caller to release the returned descriptor.
 MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessVertexStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo,
-																				  const SPIRVTessReflectionData& reflectData,
-																				  SPIRVToMSLConversionConfiguration& shaderConfig) {
+																				   const SPIRVTessReflectionData& reflectData,
+																				   SPIRVToMSLConversionConfiguration& shaderConfig,
+																				   const VkPipelineShaderStageCreateInfo* pVertexSS,
+																				   VkPipelineCreationFeedback* pVertexFB,
+																				   const VkPipelineShaderStageCreateInfo* pTessCtlSS,
+																				   id<MTLFunction>* vtxFunctions) {
 	MTLComputePipelineDescriptor* plDesc = [MTLComputePipelineDescriptor new];	// retained
 
 	SPIRVShaderInputs tcInputs;
 	std::string errorLog;
-	if (!getShaderInputs(((MVKShaderModule*)_pTessCtlSS->module)->getSPIRV(), spv::ExecutionModelTessellationControl, _pTessCtlSS->pName, tcInputs, errorLog) ) {
+	if (!getShaderInputs(((MVKShaderModule*)pTessCtlSS->module)->getSPIRV(), spv::ExecutionModelTessellationControl, pTessCtlSS->pName, tcInputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation control inputs: %s", errorLog.c_str()));
 		return nil;
 	}
@@ -694,7 +796,7 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessVertexStageDescript
 	}), tcInputs.end());
 
 	// Add shader stages.
-	if (!addVertexShaderToPipeline(plDesc, pCreateInfo, shaderConfig, tcInputs)) { return nil; }
+	if (!addVertexShaderToPipeline(plDesc, pCreateInfo, shaderConfig, tcInputs, pVertexSS, pVertexFB, vtxFunctions)) { return nil; }
 
 	// Vertex input
 	plDesc.stageInputDescriptor = [MTLStageInputOutputDescriptor stageInputOutputDescriptor];
@@ -814,17 +916,21 @@ static MTLVertexFormat mvkAdjustFormatVectorToSize(MTLVertexFormat format, uint3
 // It is the responsibility of the caller to release the returned descriptor.
 MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessControlStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo,
 																					const SPIRVTessReflectionData& reflectData,
-																					SPIRVToMSLConversionConfiguration& shaderConfig) {
+																					SPIRVToMSLConversionConfiguration& shaderConfig,
+																					const VkPipelineShaderStageCreateInfo* pTessCtlSS,
+																					VkPipelineCreationFeedback* pTessCtlFB,
+																					const VkPipelineShaderStageCreateInfo* pVertexSS,
+																					const VkPipelineShaderStageCreateInfo* pTessEvalSS) {
 	MTLComputePipelineDescriptor* plDesc = [MTLComputePipelineDescriptor new];		// retained
 
 	SPIRVShaderOutputs vtxOutputs;
 	SPIRVShaderInputs teInputs;
 	std::string errorLog;
-	if (!getShaderOutputs(((MVKShaderModule*)_pVertexSS->module)->getSPIRV(), spv::ExecutionModelVertex, _pVertexSS->pName, vtxOutputs, errorLog) ) {
+	if (!getShaderOutputs(((MVKShaderModule*)pVertexSS->module)->getSPIRV(), spv::ExecutionModelVertex, pVertexSS->pName, vtxOutputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get vertex outputs: %s", errorLog.c_str()));
 		return nil;
 	}
-	if (!getShaderInputs(((MVKShaderModule*)_pTessEvalSS->module)->getSPIRV(), spv::ExecutionModelTessellationEvaluation, _pTessEvalSS->pName, teInputs, errorLog) ) {
+	if (!getShaderInputs(((MVKShaderModule*)pTessEvalSS->module)->getSPIRV(), spv::ExecutionModelTessellationEvaluation, pTessEvalSS->pName, teInputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation evaluation inputs: %s", errorLog.c_str()));
 		return nil;
 	}
@@ -836,7 +942,7 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessControlStageDescrip
 	}), teInputs.end());
 
 	// Add shader stages.
-	if (!addTessCtlShaderToPipeline(plDesc, pCreateInfo, shaderConfig, vtxOutputs, teInputs)) {
+	if (!addTessCtlShaderToPipeline(plDesc, pCreateInfo, shaderConfig, vtxOutputs, teInputs, pTessCtlSS, pTessCtlFB)) {
 		[plDesc release];
 		return nil;
 	}
@@ -853,29 +959,34 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessControlStageDescrip
 // It is the responsibility of the caller to release the returned descriptor.
 MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo,
 																				  const SPIRVTessReflectionData& reflectData,
-																				  SPIRVToMSLConversionConfiguration& shaderConfig) {
+																				  SPIRVToMSLConversionConfiguration& shaderConfig,
+																				  const VkPipelineShaderStageCreateInfo* pTessEvalSS,
+																				  VkPipelineCreationFeedback* pTessEvalFB,
+																				  const VkPipelineShaderStageCreateInfo* pFragmentSS,
+																				  VkPipelineCreationFeedback* pFragmentFB,
+																				  const VkPipelineShaderStageCreateInfo* pTessCtlSS) {
 	MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];	// retained
 
 	SPIRVShaderOutputs tcOutputs, teOutputs;
 	SPIRVShaderInputs teInputs;
 	std::string errorLog;
-	if (!getShaderOutputs(((MVKShaderModule*)_pTessCtlSS->module)->getSPIRV(), spv::ExecutionModelTessellationControl, _pTessCtlSS->pName, tcOutputs, errorLog) ) {
+	if (!getShaderOutputs(((MVKShaderModule*)pTessCtlSS->module)->getSPIRV(), spv::ExecutionModelTessellationControl, pTessCtlSS->pName, tcOutputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation control outputs: %s", errorLog.c_str()));
 		return nil;
 	}
-	if (!getShaderOutputs(((MVKShaderModule*)_pTessEvalSS->module)->getSPIRV(), spv::ExecutionModelTessellationEvaluation, _pTessEvalSS->pName, teOutputs, errorLog) ) {
+	if (!getShaderOutputs(((MVKShaderModule*)pTessEvalSS->module)->getSPIRV(), spv::ExecutionModelTessellationEvaluation, pTessEvalSS->pName, teOutputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation evaluation outputs: %s", errorLog.c_str()));
 		return nil;
 	}
 
 	// Add shader stages. Compile tessellation evaluation shader before others just in case conversion changes anything...like rasterizaion disable.
-	if (!addTessEvalShaderToPipeline(plDesc, pCreateInfo, shaderConfig, tcOutputs)) {
+	if (!addTessEvalShaderToPipeline(plDesc, pCreateInfo, shaderConfig, tcOutputs, pTessEvalSS, pTessEvalFB, pFragmentSS)) {
 		[plDesc release];
 		return nil;
 	}
 
 	// Fragment shader - only add if rasterization is enabled
-	if (!addFragmentShaderToPipeline(plDesc, pCreateInfo, shaderConfig, teOutputs)) {
+	if (!addFragmentShaderToPipeline(plDesc, pCreateInfo, shaderConfig, teOutputs, pFragmentSS, pFragmentFB)) {
 		[plDesc release];
 		return nil;
 	}
@@ -906,9 +1017,12 @@ bool MVKGraphicsPipeline::verifyImplicitBuffer(bool needsBuffer, MVKShaderImplic
 // Adds a vertex shader to the pipeline description.
 bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor* plDesc,
 													const VkGraphicsPipelineCreateInfo* pCreateInfo,
-													SPIRVToMSLConversionConfiguration& shaderConfig) {
+													SPIRVToMSLConversionConfiguration& shaderConfig,
+													const VkPipelineShaderStageCreateInfo* pVertexSS,
+													VkPipelineCreationFeedback* pVertexFB,
+													const VkPipelineShaderStageCreateInfo*& pFragmentSS) {
 	shaderConfig.options.entryPointStage = spv::ExecutionModelVertex;
-	shaderConfig.options.entryPointName = _pVertexSS->pName;
+	shaderConfig.options.entryPointName = pVertexSS->pName;
 	shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageVertex];
 	shaderConfig.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageVertex];
 	shaderConfig.options.mslOptions.shader_output_buffer_index = _outputBufferIndex.stages[kMVKShaderStageVertex];
@@ -919,7 +1033,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
     addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
 
-	MVKMTLFunction func = getMTLFunction(shaderConfig, _pVertexSS, "Vertex");
+	MVKMTLFunction func = getMTLFunction(shaderConfig, pVertexSS, pVertexFB, "Vertex");
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
 	plDesc.vertexFunction = mtlFunc;
 	if ( !mtlFunc ) { return false; }
@@ -936,7 +1050,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	addMTLArgumentEncoders(func, pCreateInfo, shaderConfig, kMVKShaderStageVertex);
 
 	if (funcRslts.isRasterizationDisabled) {
-		_pFragmentSS = nullptr;
+		pFragmentSS = nullptr;
 	}
 
 	// If we need the swizzle buffer and there's no place to put it, we're in serious trouble.
@@ -968,9 +1082,12 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor* plDesc,
 													const VkGraphicsPipelineCreateInfo* pCreateInfo,
 													SPIRVToMSLConversionConfiguration& shaderConfig,
-													SPIRVShaderInputs& tcInputs) {
+													SPIRVShaderInputs& tcInputs,
+													const VkPipelineShaderStageCreateInfo* pVertexSS,
+													VkPipelineCreationFeedback* pVertexFB,
+													id<MTLFunction>* vtxFunctions) {
 	shaderConfig.options.entryPointStage = spv::ExecutionModelVertex;
-	shaderConfig.options.entryPointName = _pVertexSS->pName;
+	shaderConfig.options.entryPointName = pVertexSS->pName;
 	shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageVertex];
 	shaderConfig.options.mslOptions.shader_index_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageVertex];
 	shaderConfig.options.mslOptions.shader_output_buffer_index = _outputBufferIndex.stages[kMVKShaderStageVertex];
@@ -991,9 +1108,9 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 	MVKMTLFunction func;
 	for (uint32_t i = 0; i < sizeof(indexTypes)/sizeof(indexTypes[0]); i++) {
 		shaderConfig.options.mslOptions.vertex_index_type = indexTypes[i];
-		func = getMTLFunction(shaderConfig, _pVertexSS, "Vertex");
+		func = getMTLFunction(shaderConfig, pVertexSS, pVertexFB, "Vertex");
 		id<MTLFunction> mtlFunc = func.getMTLFunction();
-		_mtlTessVertexFunctions[i] = [mtlFunc retain];
+		vtxFunctions[i] = mtlFunc;			// not retained
 		if ( !mtlFunc ) { return false; }
 
 		auto& funcRslts = func.shaderConversionResults;
@@ -1032,9 +1149,11 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 													 const VkGraphicsPipelineCreateInfo* pCreateInfo,
 													 SPIRVToMSLConversionConfiguration& shaderConfig,
 													 SPIRVShaderOutputs& vtxOutputs,
-													 SPIRVShaderInputs& teInputs) {
+													 SPIRVShaderInputs& teInputs,
+													 const VkPipelineShaderStageCreateInfo* pTessCtlSS,
+													 VkPipelineCreationFeedback* pTessCtlFB) {
 	shaderConfig.options.entryPointStage = spv::ExecutionModelTessellationControl;
-	shaderConfig.options.entryPointName = _pTessCtlSS->pName;
+	shaderConfig.options.entryPointName = pTessCtlSS->pName;
 	shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageTessCtl];
 	shaderConfig.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageTessCtl];
 	shaderConfig.options.mslOptions.shader_input_buffer_index = getMetalBufferIndexForVertexAttributeBinding(kMVKTessCtlInputBufferBinding);
@@ -1045,11 +1164,11 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageTessCtl];
 	shaderConfig.options.mslOptions.capture_output_to_buffer = true;
 	shaderConfig.options.mslOptions.multi_patch_workgroup = true;
-	shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(_pTessCtlSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : _device->_pMetalFeatures->maxSubgroupSize;
+	shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pTessCtlSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : _device->_pMetalFeatures->maxSubgroupSize;
 	addPrevStageOutputToShaderConversionConfig(shaderConfig, vtxOutputs);
 	addNextStageInputToShaderConversionConfig(shaderConfig, teInputs);
 
-	MVKMTLFunction func = getMTLFunction(shaderConfig, _pTessCtlSS, "Tessellation control");
+	MVKMTLFunction func = getMTLFunction(shaderConfig, pTessCtlSS, pTessCtlFB, "Tessellation control");
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
 	if ( !mtlFunc ) { return false; }
 	plDesc.computeFunction = mtlFunc;
@@ -1094,9 +1213,12 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescriptor* plDesc,
 													  const VkGraphicsPipelineCreateInfo* pCreateInfo,
 													  SPIRVToMSLConversionConfiguration& shaderConfig,
-													  SPIRVShaderOutputs& tcOutputs) {
+													  SPIRVShaderOutputs& tcOutputs,
+													  const VkPipelineShaderStageCreateInfo* pTessEvalSS,
+													  VkPipelineCreationFeedback* pTessEvalFB,
+													  const VkPipelineShaderStageCreateInfo*& pFragmentSS) {
 	shaderConfig.options.entryPointStage = spv::ExecutionModelTessellationEvaluation;
-	shaderConfig.options.entryPointName = _pTessEvalSS->pName;
+	shaderConfig.options.entryPointName = pTessEvalSS->pName;
 	shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageTessEval];
 	shaderConfig.options.mslOptions.shader_input_buffer_index = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalInputBufferBinding);
 	shaderConfig.options.mslOptions.shader_patch_input_buffer_index = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalPatchInputBufferBinding);
@@ -1108,7 +1230,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
 	addPrevStageOutputToShaderConversionConfig(shaderConfig, tcOutputs);
 
-	MVKMTLFunction func = getMTLFunction(shaderConfig, _pTessEvalSS, "Tessellation evaluation");
+	MVKMTLFunction func = getMTLFunction(shaderConfig, pTessEvalSS, pTessEvalFB, "Tessellation evaluation");
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
 	plDesc.vertexFunction = mtlFunc;	// Yeah, you read that right. Tess. eval functions are a kind of vertex function in Metal.
 	if ( !mtlFunc ) { return false; }
@@ -1123,7 +1245,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	addMTLArgumentEncoders(func, pCreateInfo, shaderConfig, kMVKShaderStageTessEval);
 
 	if (funcRslts.isRasterizationDisabled) {
-		_pFragmentSS = nullptr;
+		pFragmentSS = nullptr;
 	}
 
 	if (!verifyImplicitBuffer(_needsTessEvalSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageTessEval, "swizzle")) {
@@ -1141,16 +1263,18 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescriptor* plDesc,
 													  const VkGraphicsPipelineCreateInfo* pCreateInfo,
 													  SPIRVToMSLConversionConfiguration& shaderConfig,
-													  SPIRVShaderOutputs& shaderOutputs) {
-	if (_pFragmentSS) {
+													  SPIRVShaderOutputs& shaderOutputs,
+													  const VkPipelineShaderStageCreateInfo* pFragmentSS,
+													  VkPipelineCreationFeedback* pFragmentFB) {
+	if (pFragmentSS) {
 		shaderConfig.options.entryPointStage = spv::ExecutionModelFragment;
 		shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageFragment];
 		shaderConfig.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageFragment];
 		shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageFragment];
 		shaderConfig.options.mslOptions.view_mask_buffer_index = _viewRangeBufferIndex.stages[kMVKShaderStageFragment];
-		shaderConfig.options.entryPointName = _pFragmentSS->pName;
+		shaderConfig.options.entryPointName = pFragmentSS->pName;
 		shaderConfig.options.mslOptions.capture_output_to_buffer = false;
-		shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(_pFragmentSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : _device->_pMetalFeatures->maxSubgroupSize;
+		shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pFragmentSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : _device->_pMetalFeatures->maxSubgroupSize;
 		shaderConfig.options.mslOptions.check_discarded_frag_stores = true;
 		if (_device->_pMetalFeatures->needsSampleDrefLodArrayWorkaround) {
 			shaderConfig.options.mslOptions.sample_dref_lod_array_as_grad = true;
@@ -1166,7 +1290,7 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		}
 		addPrevStageOutputToShaderConversionConfig(shaderConfig, shaderOutputs);
 
-		MVKMTLFunction func = getMTLFunction(shaderConfig, _pFragmentSS, "Fragment");
+		MVKMTLFunction func = getMTLFunction(shaderConfig, pFragmentSS, pFragmentFB, "Fragment");
 		id<MTLFunction> mtlFunc = func.getMTLFunction();
 		plDesc.fragmentFunction = mtlFunc;
 		if ( !mtlFunc ) { return false; }
@@ -1798,11 +1922,13 @@ bool MVKGraphicsPipeline::isRasterizationDisabled(const VkGraphicsPipelineCreate
 
 MVKMTLFunction MVKGraphicsPipeline::getMTLFunction(SPIRVToMSLConversionConfiguration& shaderConfig,
 												   const VkPipelineShaderStageCreateInfo* pShaderStage,
+												   VkPipelineCreationFeedback* pStageFB,
 												   const char* pStageName) {
 	MVKShaderModule* shaderModule = (MVKShaderModule*)pShaderStage->module;
 	MVKMTLFunction func = shaderModule->getMTLFunction(&shaderConfig,
 													   pShaderStage->pSpecializationInfo,
-													   this);
+													   this,
+													   pStageFB);
 	if ( !func.getMTLFunction() ) {
 		if (shouldFailOnPipelineCompileRequired()) {
 			setConfigurationResult(VK_PIPELINE_COMPILE_REQUIRED);
@@ -1826,28 +1952,12 @@ bool MVKGraphicsPipeline::usesPhysicalStorageBufferAddressesCapability(MVKShader
 
 MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 	@synchronized (getMTLDevice()) {
-		[_mtlTessVertexStageDesc release];
-
 		[_mtlTessVertexStageState release];
 		[_mtlTessVertexStageIndex16State release];
 		[_mtlTessVertexStageIndex32State release];
 		[_mtlTessControlStageState release];
 		[_mtlPipelineState release];
-
-		for (id<MTLFunction> func : _mtlTessVertexFunctions) { [func release]; }
 	}
-}
-
-bool MVKGraphicsPipeline::isTransformFeedbackPipeline() {
-    std::string reflectErrorLog;
-    bool isTransFeedback = getUsesTransformFeedback(((MVKShaderModule*)_pVertexSS->module)
-                                            ->getSPIRV(), spv::ExecutionModel::ExecutionModelVertex,
-                                    _pVertexSS->pName,
-                                    reflectErrorLog);
-    if(!reflectErrorLog.empty()) {
-        setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to reflect shaders: %s", reflectErrorLog.c_str()));
-    }
-    return isTransFeedback;
 }
 
 
@@ -1877,7 +1987,36 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 	if (isUsingMetalArgumentBuffers()) { _descriptorBindingUse.resize(_descriptorSetCount); }
 	if (isUsingPipelineStageMetalArgumentBuffers()) { _mtlArgumentEncoders.resize(_descriptorSetCount); }
 
-	MVKMTLFunction func = getMTLFunction(pCreateInfo);
+	const VkPipelineCreationFeedbackCreateInfo* pFeedbackInfo = nullptr;
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO:
+				pFeedbackInfo = (VkPipelineCreationFeedbackCreateInfo*)next;
+				break;
+			default:
+				break;
+		}
+	}
+
+	// Initialize feedback. The VALID bit must be initialized, either set or cleared.
+	// We'll set the VALID bit on the stage feedback when we compile it.
+	VkPipelineCreationFeedback* pPipelineFB = nullptr;
+	VkPipelineCreationFeedback* pStageFB = nullptr;
+	uint64_t pipelineStart;
+	if (pFeedbackInfo) {
+		pPipelineFB = pFeedbackInfo->pPipelineCreationFeedback;
+		// n.b. Do *NOT* use mvkClear().
+		pPipelineFB->flags = 0;
+		pPipelineFB->duration = 0;
+		for (uint32_t i = 0; i < pFeedbackInfo->pipelineStageCreationFeedbackCount; ++i) {
+			pFeedbackInfo->pPipelineStageCreationFeedbacks[i].flags = 0;
+			pFeedbackInfo->pPipelineStageCreationFeedbacks[i].duration = 0;
+		}
+		pStageFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[0];
+		pipelineStart = mvkGetTimestamp();
+	}
+
+	MVKMTLFunction func = getMTLFunction(pCreateInfo, pStageFB);
 	_mtlThreadgroupSize = func.threadGroupSize;
 	_mtlPipelineState = nil;
 
@@ -1905,6 +2044,10 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 	} else {
 		_hasValidMTLPipelineStates = false;
 	}
+	if (pPipelineFB) {
+		if (_hasValidMTLPipelineStates) { mvkEnableFlags(pPipelineFB->flags, VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT); }
+		pPipelineFB->duration = mvkGetElapsedNanoseconds(pipelineStart);
+	}
 
 	if (_needsSwizzleBuffer && _swizzleBufferIndex.stages[kMVKShaderStageCompute] > _device->_pMetalFeatures->maxPerStageBufferCount) {
 		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Compute shader requires swizzle buffer, but there is no free slot to pass it."));
@@ -1921,7 +2064,8 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 }
 
 // Returns a MTLFunction to use when creating the MTLComputePipelineState.
-MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateInfo* pCreateInfo) {
+MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateInfo* pCreateInfo,
+												  VkPipelineCreationFeedback* pStageFB) {
 
     const VkPipelineShaderStageCreateInfo* pSS = &pCreateInfo->stage;
     if ( !mvkAreAllFlagsEnabled(pSS->stage, VK_SHADER_STAGE_COMPUTE_BIT) ) { return MVKMTLFunctionNull; }
@@ -1971,7 +2115,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageCompute];
     shaderConfig.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageCompute];
 
-    MVKMTLFunction func = ((MVKShaderModule*)pSS->module)->getMTLFunction(&shaderConfig, pSS->pSpecializationInfo, this);
+    MVKMTLFunction func = ((MVKShaderModule*)pSS->module)->getMTLFunction(&shaderConfig, pSS->pSpecializationInfo, this, pStageFB);
 	if ( !func.getMTLFunction() ) {
 		if (shouldFailOnPipelineCompileRequired()) {
 			setConfigurationResult(VK_PIPELINE_COMPILE_REQUIRED);
@@ -2013,23 +2157,26 @@ MVKComputePipeline::~MVKComputePipeline() {
 MVKShaderLibrary* MVKPipelineCache::getShaderLibrary(SPIRVToMSLConversionConfiguration* pContext,
 													 MVKShaderModule* shaderModule,
 													 MVKPipeline* pipeline,
+													 VkPipelineCreationFeedback* pShaderFeedback,
 													 uint64_t startTime) {
 	if (_isExternallySynchronized) {
-		return getShaderLibraryImpl(pContext, shaderModule, pipeline, startTime);
+		return getShaderLibraryImpl(pContext, shaderModule, pipeline, pShaderFeedback, startTime);
 	} else {
 		lock_guard<mutex> lock(_shaderCacheLock);
-		return getShaderLibraryImpl(pContext, shaderModule, pipeline, startTime);
+		return getShaderLibraryImpl(pContext, shaderModule, pipeline, pShaderFeedback, startTime);
 	}
 }
 
 MVKShaderLibrary* MVKPipelineCache::getShaderLibraryImpl(SPIRVToMSLConversionConfiguration* pContext,
 														 MVKShaderModule* shaderModule,
 														 MVKPipeline* pipeline,
+														 VkPipelineCreationFeedback* pShaderFeedback,
 														 uint64_t startTime) {
 	bool wasAdded = false;
 	MVKShaderLibraryCache* slCache = getShaderLibraryCache(shaderModule->getKey());
-	MVKShaderLibrary* shLib = slCache->getShaderLibrary(pContext, shaderModule, pipeline, &wasAdded, startTime);
+	MVKShaderLibrary* shLib = slCache->getShaderLibrary(pContext, shaderModule, pipeline, &wasAdded, pShaderFeedback, startTime);
 	if (wasAdded) { markDirty(); }
+	else if (pShaderFeedback) { mvkEnableFlags(pShaderFeedback->flags, VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT); }
 	return shLib;
 }
 

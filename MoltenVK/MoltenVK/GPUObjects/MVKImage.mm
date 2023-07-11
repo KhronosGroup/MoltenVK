@@ -1313,8 +1313,9 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 			mtlDrwbl.layer.displaySyncEnabledMVK = (presentInfo.presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR);
 		}
 		if (presentInfo.hasPresentTime) {
-			// Convert from nsecs to seconds for Metal
 			addPresentedHandler(mtlDrwbl, presentInfo);
+		}
+		if (presentInfo.desiredPresentTime) {
 			[mtlDrwbl presentAtTime: (double)presentInfo.desiredPresentTime * 1.0e-9];
 		} else {
 			[mtlDrwbl present];
@@ -1574,6 +1575,26 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 	VkImageAspectFlags aspectMask = pCreateInfo->subresourceRange.aspectMask;
 
 #define adjustComponentSwizzleValue(comp, currVal, newVal)    if (_componentSwizzle.comp == VK_COMPONENT_SWIZZLE_ ##currVal) { _componentSwizzle.comp = VK_COMPONENT_SWIZZLE_ ##newVal; }
+#define adjustAnyComponentSwizzleValue(comp, I, R, G, B, A) \
+	switch (_componentSwizzle.comp) { \
+		case VK_COMPONENT_SWIZZLE_IDENTITY: \
+			_componentSwizzle.comp = VK_COMPONENT_SWIZZLE_##I; \
+			break; \
+		case VK_COMPONENT_SWIZZLE_R: \
+			_componentSwizzle.comp = VK_COMPONENT_SWIZZLE_##R; \
+			break; \
+		case VK_COMPONENT_SWIZZLE_G: \
+			_componentSwizzle.comp = VK_COMPONENT_SWIZZLE_##G; \
+			break; \
+		case VK_COMPONENT_SWIZZLE_B: \
+			_componentSwizzle.comp = VK_COMPONENT_SWIZZLE_##B; \
+			break; \
+		case VK_COMPONENT_SWIZZLE_A: \
+			_componentSwizzle.comp = VK_COMPONENT_SWIZZLE_##A; \
+			break; \
+		default: \
+			break; \
+	}
 
 	// Use swizzle adjustment to bridge some differences between Vulkan and Metal pixel formats.
 	// Do this ahead of other tests and adjustments so that swizzling will be enabled by tests below.
@@ -1586,6 +1607,24 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 			adjustComponentSwizzleValue(b, A, ONE);
 			adjustComponentSwizzleValue(a, A, ONE);
 			adjustComponentSwizzleValue(a, IDENTITY, ONE);
+			break;
+
+		case VK_FORMAT_A4R4G4B4_UNORM_PACK16:
+			// Metal doesn't (publicly) support this directly, so use a swizzle to get the ordering right.
+			// n.b. **Do NOT use adjustComponentSwizzleValue if multiple values need substitution,
+			// and some of the substitutes are keys for other substitutions!**
+			adjustAnyComponentSwizzleValue(r, G, G, B, A, R);
+			adjustAnyComponentSwizzleValue(g, B, G, B, A, R);
+			adjustAnyComponentSwizzleValue(b, A, G, B, A, R);
+			adjustAnyComponentSwizzleValue(a, R, G, B, A, R);
+			break;
+
+		case VK_FORMAT_A4B4G4R4_UNORM_PACK16:
+			// Metal doesn't support this directly, so use a swizzle to get the ordering right.
+			adjustAnyComponentSwizzleValue(r, A, A, B, G, R);
+			adjustAnyComponentSwizzleValue(g, B, A, B, G, R);
+			adjustAnyComponentSwizzleValue(b, G, A, B, G, R);
+			adjustAnyComponentSwizzleValue(a, R, A, B, G, R);
 			break;
 
 		default:
