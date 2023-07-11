@@ -52,11 +52,13 @@ inline bool mvkOSVersionIsAtLeast(MVKOSVersion minVer) { return mvkOSVersion() >
  * to always fail on that OS, which is useful for indidicating functionalty guarded by
  * this test is not supported on that OS.
  */
-inline bool mvkOSVersionIsAtLeast(MVKOSVersion macOSMinVer, MVKOSVersion iOSMinVer) {
+inline bool mvkOSVersionIsAtLeast(MVKOSVersion macOSMinVer, MVKOSVersion iOSMinVer, MVKOSVersion visionOSMinVer) {
 #if MVK_MACOS
 	return mvkOSVersionIsAtLeast(macOSMinVer);
 #endif
-#if MVK_IOS_OR_TVOS
+#if MVK_VISIONOS
+	return mvkOSVersionIsAtLeast(visionOSMinVer);
+#elif MVK_IOS_OR_TVOS
 	return mvkOSVersionIsAtLeast(iOSMinVer);
 #endif
 }
