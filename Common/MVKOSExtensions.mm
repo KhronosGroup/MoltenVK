@@ -46,9 +46,13 @@ uint64_t mvkGetTimestamp() { return mach_absolute_time() - _mvkTimestampBase; }
 
 double mvkGetTimestampPeriod() { return _mvkTimestampPeriod; }
 
-double mvkGetElapsedMilliseconds(uint64_t startTimestamp, uint64_t endTimestamp) {
+uint64_t mvkGetElapsedNanoseconds(uint64_t startTimestamp, uint64_t endTimestamp) {
 	if (endTimestamp == 0) { endTimestamp = mvkGetTimestamp(); }
-	return (double)(endTimestamp - startTimestamp) * _mvkTimestampPeriod / 1e6;
+	return (endTimestamp - startTimestamp) * _mvkTimestampPeriod;
+}
+
+double mvkGetElapsedMilliseconds(uint64_t startTimestamp, uint64_t endTimestamp) {
+	return mvkGetElapsedNanoseconds(startTimestamp, endTimestamp) / 1e6;
 }
 
 uint64_t mvkGetAbsoluteTime() { return mach_continuous_time() * _mvkMachTimebase.numer / _mvkMachTimebase.denom; }

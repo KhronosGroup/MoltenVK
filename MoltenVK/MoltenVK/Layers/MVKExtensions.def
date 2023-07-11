@@ -111,6 +111,7 @@ MVK_EXTENSION(EXT_memory_budget,                      EXT_MEMORY_BUDGET,        
 MVK_EXTENSION(EXT_metal_objects,                      EXT_METAL_OBJECTS,                      DEVICE,   10.11,  8.0)
 MVK_EXTENSION(EXT_metal_surface,                      EXT_METAL_SURFACE,                      INSTANCE, 10.11,  8.0)
 MVK_EXTENSION(EXT_pipeline_creation_cache_control,    EXT_PIPELINE_CREATION_CACHE_CONTROL,    DEVICE,   10.11,  8.0)
+MVK_EXTENSION(EXT_pipeline_creation_feedback,         EXT_PIPELINE_CREATION_FEEDBACK,         DEVICE,   10.11,  8.0)
 MVK_EXTENSION(EXT_post_depth_coverage,                EXT_POST_DEPTH_COVERAGE,                DEVICE,   11.0,  11.0)
 MVK_EXTENSION(EXT_private_data,                       EXT_PRIVATE_DATA,                       DEVICE,   10.11,  8.0)
 MVK_EXTENSION(EXT_robustness2,                        EXT_ROBUSTNESS_2,                       DEVICE,   10.11,  8.0)
