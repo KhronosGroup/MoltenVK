@@ -505,14 +505,16 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRefreshCycleDuration) {
 	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 
-#if MVK_IOS_OR_TVOS || MVK_MACCAT
+#if MVK_VISIONOS
+    // TODO: See if this can be obtained from OS instead
+    NSInteger framesPerSecond = 90;
+#elif MVK_IOS_OR_TVOS || MVK_MACCAT
 	NSInteger framesPerSecond = 60;
 	UIScreen* screen = _mtlLayer.screenMVK;
 	if ([screen respondsToSelector: @selector(maximumFramesPerSecond)]) {
 		framesPerSecond = screen.maximumFramesPerSecond;
 	}
-#endif
-#if MVK_MACOS && !MVK_MACCAT
+#elif MVK_MACOS && !MVK_MACCAT
 	NSScreen* screen = _mtlLayer.screenMVK;
 	CGDirectDisplayID displayId = [[[screen deviceDescription] objectForKey:@"NSScreenNumber"] unsignedIntValue];
 	CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayId);

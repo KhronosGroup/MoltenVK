@@ -21,6 +21,8 @@ MAKEARGS := $(strip \
       $(v)=$(value $(v)) ,)))
 
 # Specify individually (not as dependencies) so the sub-targets don't run in parallel
+# visionos and visionossim are currently excluded from `all` because they require
+# Xcode 15+ and will abort a multi-platform build on earlier Xcode versions.
 .PHONY: all
 all:
 	@$(MAKE) macos
@@ -29,6 +31,8 @@ all:
 	@$(MAKE) maccat
 	@$(MAKE) tvos
 	@$(MAKE) tvossim
+#	@$(MAKE) visionos       # Requires Xcode 15+
+#	@$(MAKE) visionossim    # Requires Xcode 15+
 
 .PHONY: all-debug
 all-debug:
@@ -38,6 +42,8 @@ all-debug:
 	@$(MAKE) maccat-debug
 	@$(MAKE) tvos-debug
 	@$(MAKE) tvossim-debug
+#	@$(MAKE) visionos-debug       # Requires Xcode 15+
+#	@$(MAKE) visionossim-debug    # Requires Xcode 15+
 
 .PHONY: macos
 macos:
@@ -86,6 +92,22 @@ tvossim:
 .PHONY: tvossim-debug
 tvossim-debug:
 	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -destination "generic/platform=tvOS Simulator" -configuration "Debug" GCC_PREPROCESSOR_DEFINITIONS='$${inherited} $(MAKEARGS)' $(OUTPUT_FMT_CMD)
+
+.PHONY: visionos
+visionos:
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (visionOS only)" -destination "generic/platform=xrOS" GCC_PREPROCESSOR_DEFINITIONS='$${inherited} $(MAKEARGS)' $(OUTPUT_FMT_CMD)
+
+.PHONY: visionos-debug
+visionos-debug:
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (visionOS only)" -destination "generic/platform=xrOS" -configuration "Debug" GCC_PREPROCESSOR_DEFINITIONS='$${inherited} $(MAKEARGS)' $(OUTPUT_FMT_CMD)
+
+.PHONY: visionossim
+visionossim:
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (visionOS only)" -destination "generic/platform=xrOS Simulator" GCC_PREPROCESSOR_DEFINITIONS='$${inherited} $(MAKEARGS)' $(OUTPUT_FMT_CMD)
+
+.PHONY: visionossim-debug
+visionossim-debug:
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (visionOS only)" -destination "generic/platform=xrOS Simulator" -configuration "Debug" GCC_PREPROCESSOR_DEFINITIONS='$${inherited} $(MAKEARGS)' $(OUTPUT_FMT_CMD)
 
 .PHONY: clean
 clean:

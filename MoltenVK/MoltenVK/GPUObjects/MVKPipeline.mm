@@ -1993,7 +1993,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 	// We'll set the VALID bit on the stage feedback when we compile it.
 	VkPipelineCreationFeedback* pPipelineFB = nullptr;
 	VkPipelineCreationFeedback* pStageFB = nullptr;
-	uint64_t pipelineStart;
+	uint64_t pipelineStart = 0;
 	if (pFeedbackInfo) {
 		pPipelineFB = pFeedbackInfo->pPipelineCreationFeedback;
 		// n.b. Do *NOT* use mvkClear().

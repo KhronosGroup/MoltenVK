@@ -26,6 +26,7 @@ Released TBD
 	- `VK_EXT_shader_subgroup_ballot`
 	- `VK_EXT_shader_subgroup_vote`
 - Add support for `VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN`.
+- Support building MoltenVK for visionOS.
 - Ensure non-dispatch compute commands don't interfere with compute encoding state used by dispatch commands.
 - Support `VK_PRESENT_MODE_IMMEDIATE_KHR` if `VkPresentTimeGOOGLE::desiredPresentTime` is zero.
 - Support maximizing the concurrent executing compilation tasks via `MVKConfiguration::shouldMaximizeConcurrentCompilation`
