@@ -32,6 +32,7 @@ Released TBD
 - Support maximizing the concurrent executing compilation tasks via `MVKConfiguration::shouldMaximizeConcurrentCompilation`
 - Add support for `VK_PRESENT_MODE_IMMEDIATE_KHR` to macOS Cube demo.
 - Log more info about SPIR-V to MSL conversion errors.
+- Drop official support for using *Xcode 11* to build MoltenVK.
 
 
 
