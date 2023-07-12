@@ -58,6 +58,12 @@ public:
     
     /** Gets the device address of the acceleration structure*/
     uint64_t getDeviceAddress();
+    
+    /** Used when building the acceleration structure, to mark whether or not an acceleration structure can be updated*/
+    void setAllowUpdate(bool value) { _allowUpdate = value; }
+    
+    /** Checks if this acceleration structure is allowed to be updated*/
+    bool getAllowUpdate() { return _allowUpdate; }
 
 #pragma mark Construction
     MVKAccelerationStructure(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
@@ -65,4 +71,5 @@ protected:
     void propagateDebugName() override {}
     
     id<MTLAccelerationStructure> _accelerationStructure;
+    bool _allowUpdate = false;
 };
