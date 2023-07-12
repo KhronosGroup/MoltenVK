@@ -21,6 +21,13 @@
 #include "MVKFoundation.h"
 #include "MVKMapAllocator.h"
 
+
+struct MVKHash_uint64_t_pair { // Change the naming style?
+    size_t operator()(std::pair<uint64_t, uint64_t> p) const noexcept {
+        return size_t(p.first) << 32 | p.second; // Hopefully this is unique enough of a hash, anyway only 1 buffer can ocupy between these 2 memory addreses
+    }
+};
+
 template<typename Key,
          typename T,
          typename Allocator = mvk_map_allocator<Key, T, 0>,

@@ -23,6 +23,9 @@
 
 #include "MVKAccelerationStructure.h"
 
+#pragma mark -
+#pragma mark MVKCmdBuildAccelerationStructure
+
 VkResult MVKCmdBuildAccelerationStructure::setContent(MVKCommandBuffer*                                       cmdBuff,
                                                       uint32_t                                                infoCount,
                                                       const VkAccelerationStructureBuildGeometryInfoKHR*      pInfos,
@@ -53,6 +56,9 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
                                     scratchBuffer:scratchBuffer
                                     scratchBufferOffset:scratchBufferOffset];
 }
+
+#pragma mark -
+#pragma mark MVKCmdCopyAccelerationStructure
 
 VkResult MVKCmdCopyAccelerationStructure::setContent(MVKCommandBuffer* cmdBuff,
                     VkAccelerationStructureKHR srcAccelerationStructure,

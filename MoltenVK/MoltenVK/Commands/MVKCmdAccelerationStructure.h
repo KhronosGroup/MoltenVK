@@ -44,6 +44,9 @@ protected:
     VkAccelerationStructureBuildRangeInfoKHR const* _buildRangeInfos;
 };
 
+#pragma mark -
+#pragma mark MVKCmdCopyAccelerationStructure
+
 class MVKCmdCopyAccelerationStructure : public MVKCommand {
     
 public:

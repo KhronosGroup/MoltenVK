@@ -27,6 +27,7 @@
 #include "MVKPixelFormats.h"
 #include "MVKOSExtensions.h"
 #include "mvk_datatypes.hpp"
+#include "MVKMap.h"
 #include <string>
 #include <mutex>
 
@@ -974,7 +975,7 @@ protected:
 	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
 	MVKSmallVector<MVKResource*> _resources;
 	MVKSmallVector<MVKBuffer*> _gpuAddressableBuffers;
-    std::unordered_map<uint64_t, MVKBuffer*> _gpuBufferAddressMap;
+    std::unordered_map<std::pair<uint64_t, uint64_t>, MVKBuffer*, MVKHash_uint64_t_pair> _gpuBufferAddressMap;
 	MVKSmallVector<MVKPrivateDataSlot*> _privateDataSlots;
 	MVKSmallVector<bool> _privateDataSlotsAvailability;
 	MVKSmallVector<MVKSemaphoreImpl*> _awaitingSemaphores;
