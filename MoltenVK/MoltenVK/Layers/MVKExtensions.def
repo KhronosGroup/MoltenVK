@@ -43,7 +43,7 @@
 
 MVK_EXTENSION(KHR_16bit_storage,                        KHR_16BIT_STORAGE,                        DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_8bit_storage,                         KHR_8BIT_STORAGE,                         DEVICE,   10.11,  8.0,  1.0)
-MVK_EXTENSION(KHR_acceleration_structure,             KHR_ACCELERATION_STRUCTURE,             DEVICE,   11.0,  14.0)
+MVK_EXTENSION(KHR_acceleration_structure,               KHR_ACCELERATION_STRUCTURE,               DEVICE,   11.0,  14.0,  1.0)
 MVK_EXTENSION(KHR_bind_memory2,                         KHR_BIND_MEMORY_2,                        DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_buffer_device_address,                KHR_BUFFER_DEVICE_ADDRESS,                DEVICE,   13.0,  16.0,  1.0)
 MVK_EXTENSION(KHR_calibrated_timestamps,                KHR_CALIBRATED_TIMESTAMPS,                DEVICE,   10.15, 14.0,  1.0)
