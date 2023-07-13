@@ -4880,6 +4880,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 												 (getMVKConfig().useMetalArgumentBuffers == MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_ALWAYS ||
 												  (getMVKConfig().useMetalArgumentBuffers == MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_DESCRIPTOR_INDEXING &&
 												   (_enabledVulkan12FeaturesNoExt.descriptorIndexing || _enabledExtensions.vk_EXT_descriptor_indexing.enabled))));
+	MVKLogInfoIf(getMVKConfig().debugMode, "Descriptor sets binding resources using %s.", _isUsingDescriptorSetMetalArgumentBuffers ? "Metal argument buffers" : "discrete resource indexes");
 
 	_commandResourceFactory = new MVKCommandResourceFactory(this);
 

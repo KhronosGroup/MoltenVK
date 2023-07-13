@@ -671,8 +671,8 @@ void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 	}
 }
 
-// Encode the dirty descriptors to the Metal argument buffer, set the Metal command encoder
-// usage for each resource, and bind the Metal argument buffer to the command encoder.
+// Encode the Metal command encoder usage for each resource,
+// and bind the Metal argument buffer to the command encoder.
 void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage stage) {
 	if ( !_cmdEncoder->isUsingDescriptorSetMetalArgumentBuffers() ) { return; }
 
@@ -682,17 +682,11 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 		auto* descSet = _boundDescriptorSets[dsIdx];
 		if ( !(descSet && descSet->isUsingMetalArgumentBuffer()) ) { continue; }
 
-		// The Metal arg encoder can only write to one arg buffer at a time (it holds the arg buffer),
-		// so we need to lock out other access to it while we are writing to it.
 		auto* dsLayout = descSet->getLayout();
-		auto& mvkArgEnc = dsLayout->getMVKMTLArgumentEncoder();
-		mvkArgEnc.lock();
-		MVKArgumentBufferEncoder mvkArgBuffEnc(mvkArgEnc);
-
-		auto& argBuffDirtyDescs = descSet->getMetalArgumentBufferDirtyDescriptors();
 		auto& resourceUsageDirtyDescs = _metalUsageDirtyDescriptors[dsIdx];
 		auto& shaderBindingUsage = pipeline->getDescriptorBindingUse(dsIdx, stage);
 		bool shouldBindArgBuffToStage = false;
+		
 		uint32_t dslBindCnt = dsLayout->getBindingCount();
 		for (uint32_t dslBindIdx = 0; dslBindIdx < dslBindCnt; dslBindIdx++) {
 			auto* dslBind = dsLayout->getBindingAt(dslBindIdx);
@@ -701,31 +695,20 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 				uint32_t elemCnt = dslBind->getDescriptorCount(descSet);
 				for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 					uint32_t descIdx = dslBind->getDescriptorIndex(elemIdx);
-					bool argBuffDirty = argBuffDirtyDescs.getBit(descIdx, true);
-					bool resourceUsageDirty = resourceUsageDirtyDescs.getBit(descIdx, true);
-					if (argBuffDirty || resourceUsageDirty) {
-						// Don't attach the arg buffer to the arg encoder unless something actually needs
-						// to be written to it. We often might only be updating command encoder resource usage.
-						if (argBuffDirty) {
-							mvkArgBuffEnc.setArgumentBuffer(descSet->getMetalArgumentBuffer(),
-															descSet->getMetalArgumentBufferOffset());
-						}
+					if (resourceUsageDirtyDescs.getBit(descIdx, true)) {
 						auto* mvkDesc = descSet->getDescriptorAt(descIdx);
-						mvkDesc->encodeToMetalArgumentBuffer(this, mvkArgBuffEnc,
-															 dsIdx, dslBind, elemIdx,
-															 stage, argBuffDirty, true);
+						mvkDesc->encodeResourceUsage(this, dslBind, stage);
 					}
 				}
 			}
 		}
-		mvkArgBuffEnc.setArgumentBuffer(nil, 0);
-		mvkArgEnc.unlock();
 
 		// If it is needed, bind the Metal argument buffer itself to the command encoder,
 		if (shouldBindArgBuffToStage) {
+			auto& mvkArgBuff = descSet->getMetalArgumentBuffer();
 			MVKMTLBufferBinding bb;
-			bb.mtlBuffer = descSet->getMetalArgumentBuffer();
-			bb.offset = descSet->getMetalArgumentBufferOffset();
+			bb.mtlBuffer = mvkArgBuff.getMetalArgumentBuffer();
+			bb.offset = mvkArgBuff.getMetalArgumentBufferOffset();
 			bb.index = dsIdx;
 			bindMetalArgumentBuffer(stage, bb);
 		}
@@ -734,7 +717,7 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 		// the contents of Metal argument buffers. Triggering an extraction of the arg buffer
 		// contents here, after filling it, seems to correct that.
 		// Sigh. A bug report has been filed with Apple.
-		if (getDevice()->isCurrentlyAutoGPUCapturing()) { [descSet->getMetalArgumentBuffer() contents]; }
+		if (getDevice()->isCurrentlyAutoGPUCapturing()) { [descSet->getMetalArgumentBuffer().getMetalArgumentBuffer() contents]; }
 	}
 }
 
