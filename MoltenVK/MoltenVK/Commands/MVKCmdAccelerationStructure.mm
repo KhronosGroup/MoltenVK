@@ -102,36 +102,49 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdCopyAccelerationStructure
 
-VkResult MVKCmdCopyAccelerationStructure::setContent(MVKCommandBuffer* cmdBuff,
-                                                     VkAccelerationStructureKHR srcAccelerationStructure,
-                                                     VkAccelerationStructureKHR dstAccelerationStructure) {
+VkResult MVKCmdCopyAccelerationStructure::setContent(MVKCommandBuffer*                  cmdBuff,
+                                                     VkAccelerationStructureKHR         srcAccelerationStructure,
+                                                     VkAccelerationStructureKHR         dstAccelerationStructure,
+                                                     VkCopyAccelerationStructureModeKHR copyMode) {
     
     MVKAccelerationStructure* mvkSrcAccStruct = (MVKAccelerationStructure*)srcAccelerationStructure;
     MVKAccelerationStructure* mvkDstAccStruct = (MVKAccelerationStructure*)dstAccelerationStructure;
     
     _srcAccelerationStructure = mvkSrcAccStruct->getMTLAccelerationStructure();
     _dstAccelerationStructure = mvkDstAccStruct->getMTLAccelerationStructure();
+    _copyMode = copyMode;
     return VK_SUCCESS;
 }
 
 void MVKCmdCopyAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseNone);
     
+    if(_copyMode == VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR)
+    {
+        [accStructEncoder
+         copyAndCompactAccelerationStructure:_srcAccelerationStructure
+         toAccelerationStructure:_dstAccelerationStructure];
+        
+        return;
+    }
+    
     [accStructEncoder
-     copyAccelerationStructure:_srcAccelerationStructure
-     toAccelerationStructure:_dstAccelerationStructure];
+         copyAccelerationStructure:_srcAccelerationStructure
+         toAccelerationStructure:_dstAccelerationStructure];
 }
 
 #pragma mark -
 #pragma mark MVKCmdCopyAccelerationStructureToMemory
 
-VkResult MVKCmdCopyAccelerationStructureToMemory::setContent(MVKCommandBuffer* cmdBuff,
-                                                             VkAccelerationStructureKHR srcAccelerationStructure,
-                                                             uint64_t dstAddress) {
+VkResult MVKCmdCopyAccelerationStructureToMemory::setContent(MVKCommandBuffer*                  cmdBuff,
+                                                             VkAccelerationStructureKHR         srcAccelerationStructure,
+                                                             uint64_t                           dstAddress,
+                                                             VkCopyAccelerationStructureModeKHR copyMode) {
     
     MVKAccelerationStructure* mvkSrcAccStruct = (MVKAccelerationStructure*)srcAccelerationStructure;
     _mvkDevice = mvkSrcAccStruct->getDevice();
     _dstAddress = dstAddress;
+    _copyMode = copyMode;
     
     MVKAccelerationStructure* mvkDstAccStruct = (MVKAccelerationStructure*)_mvkDevice->getAccelerationStructureAtAddress(_dstAddress);
     
@@ -143,7 +156,16 @@ VkResult MVKCmdCopyAccelerationStructureToMemory::setContent(MVKCommandBuffer* c
 void MVKCmdCopyAccelerationStructureToMemory::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseNone);
     
+    if(_copyMode == VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR)
+    {
+        [accStructEncoder
+         copyAndCompactAccelerationStructure:_srcAccelerationStructure
+         toAccelerationStructure:_dstAccelerationStructure];
+        
+        return;
+    }
+    
     [accStructEncoder
-     copyAccelerationStructure:_srcAccelerationStructure
-     toAccelerationStructure:_dstAccelerationStructure];
+         copyAccelerationStructure:_srcAccelerationStructure
+         toAccelerationStructure:_dstAccelerationStructure];
 }

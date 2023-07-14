@@ -53,7 +53,8 @@ class MVKCmdCopyAccelerationStructure : public MVKCommand {
 public:
     VkResult setContent(MVKCommandBuffer* cmdBuff,
                         VkAccelerationStructureKHR srcAccelerationStructure,
-                        VkAccelerationStructureKHR dstAccelerationStructure);
+                        VkAccelerationStructureKHR dstAccelerationStructure,
+                        VkCopyAccelerationStructureModeKHR copyMode);
     
     void encode(MVKCommandEncoder* cmdEncoder) override;
 protected:
@@ -61,6 +62,7 @@ protected:
     
     id<MTLAccelerationStructure> _srcAccelerationStructure;
     id<MTLAccelerationStructure> _dstAccelerationStructure;
+    VkCopyAccelerationStructureModeKHR _copyMode;
 };
 
 #pragma mark -
@@ -71,14 +73,16 @@ class MVKCmdCopyAccelerationStructureToMemory : public MVKCommand {
 public:
     VkResult setContent(MVKCommandBuffer* cmdBuff,
                         VkAccelerationStructureKHR srcAccelerationStructure,
-                        uint64_t dstAddress);
+                        uint64_t dstAddress,
+                        VkCopyAccelerationStructureModeKHR copyMode);
     
     void encode(MVKCommandEncoder* cmdEncoder) override;
 protected:
     MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
     
-    uint64_t _dstAddress;
-    MVKDevice* _mvkDevice;
     id<MTLAccelerationStructure> _srcAccelerationStructure;
     id<MTLAccelerationStructure> _dstAccelerationStructure;
+    uint64_t _dstAddress;
+    MVKDevice* _mvkDevice;
+    VkCopyAccelerationStructureModeKHR _copyMode;
 };

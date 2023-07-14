@@ -576,8 +576,9 @@ public:
 								 uint64_t* pMaxDeviation);
     
     /** Returns a pointer to the buffer at the provided address*/
-    MVKBuffer* getBufferAtAddress(uint64_t address); // Unsure where to place
+    MVKBuffer* getBufferAtAddress(uint64_t address); // Unsure where to place within the file
     
+    /** Returns a pointer to the acceleration structure at the provided address*/
     MVKAccelerationStructure* getAccelerationStructureAtAddress(uint64_t address);
     
     /** Returns whether or not the device supports acceleration structures*/
