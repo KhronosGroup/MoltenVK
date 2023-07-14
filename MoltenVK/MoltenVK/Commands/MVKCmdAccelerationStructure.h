@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "MVKDevice.h"
 #include "MVKCommand.h"
 
 #import <Metal/Metal.h>
@@ -58,6 +59,26 @@ public:
 protected:
     MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
     
+    id<MTLAccelerationStructure> _srcAccelerationStructure;
+    id<MTLAccelerationStructure> _dstAccelerationStructure;
+};
+
+#pragma mark -
+#pragma mark MVKCmdCopyAccelerationStructureToMemory
+
+class MVKCmdCopyAccelerationStructureToMemory : public MVKCommand {
+    
+public:
+    VkResult setContent(MVKCommandBuffer* cmdBuff,
+                        VkAccelerationStructureKHR srcAccelerationStructure,
+                        uint64_t dstAddress);
+    
+    void encode(MVKCommandEncoder* cmdEncoder) override;
+protected:
+    MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+    
+    uint64_t _dstAddress;
+    MVKDevice* _mvkDevice;
     id<MTLAccelerationStructure> _srcAccelerationStructure;
     id<MTLAccelerationStructure> _dstAccelerationStructure;
 };

@@ -4332,6 +4332,14 @@ MVKBuffer* MVKDevice::getBufferAtAddress(uint64_t address)
     return it->second;
 }
 
+MVKAccelerationStructure* MVKDevice::getAccelerationStructureAtAddress(uint64_t address)
+{
+    std::unordered_map<uint64_t, MVKAccelerationStructure*>::iterator accStructIt = _gpuAccStructAddressMap.find(address);
+    if(accStructIt == _gpuAccStructAddressMap.end()) { return nullptr; }
+    
+    return accStructIt->second;
+}
+
 VkAccelerationStructureCompatibilityKHR MVKDevice::getAccelerationStructureCompatibility(const VkAccelerationStructureVersionInfoKHR* pVersionInfo)
 {
     VkAccelerationStructureCompatibilityKHR compat = VK_ACCELERATION_STRUCTURE_COMPATIBILITY_INCOMPATIBLE_KHR;

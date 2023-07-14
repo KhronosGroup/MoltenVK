@@ -3161,12 +3161,24 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateAccelerationStructureKHR(
     return rslt;
 }
 
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyAccelerationStructureKHR(
+    VkDevice                                    device,
+    VkAccelerationStructureKHR                  accelerationStructure,
+    const VkAllocationCallbacks*                pAllocator) {
+    
+    MVKTraceVulkanCallStart();
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    MVKAccelerationStructure* mvkAccelerationStructure = (MVKAccelerationStructure*)accelerationStructure;
+    mvkDev->destroyAccelerationStructure(mvkAccelerationStructure, pAllocator);
+    MVKTraceVulkanCallEnd();
+}
+
+
 MVK_PUBLIC_VULKAN_SYMBOL VkDeviceAddress vkGetAccelerationStructureDeviceAddressKHR(
     VkDevice                                            device,
     const VkAccelerationStructureDeviceAddressInfoKHR*  pInfo) {
     
     MVKTraceVulkanCallStart();
-    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     MVKAccelerationStructure* mvkAccelerationStructure = (MVKAccelerationStructure*)pInfo->accelerationStructure;
     uint64_t result = mvkAccelerationStructure->getDeviceAddress();
     MVKTraceVulkanCallEnd();
@@ -3184,6 +3196,17 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkGetAccelerationStructureBuildSizesKHR(
     MVKTraceVulkanCallStart();
     VkAccelerationStructureBuildSizesInfoKHR buildSizes = MVKAccelerationStructure::getBuildSizes();
     pSizeInfo = &buildSizes;
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetDeviceAccelerationStructureCompatibilityKHR(
+    VkDevice                                        device,
+    const VkAccelerationStructureVersionInfoKHR*    pVersionInfo,
+    VkAccelerationStructureCompatibilityKHR*        pCompatibility) {
+    
+    MVKTraceVulkanCallStart();
+    MVKDevice* mvkDev = (MVKDevice*)device;
+    *pCompatibility = mvkDev->getAccelerationStructureCompatibility(pVersionInfo);
     MVKTraceVulkanCallEnd();
 }
 
@@ -3208,16 +3231,16 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyAccelerationStructureKHR(
     MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_VULKAN_SYMBOL void vkGetDeviceAccelerationStructureCompatibilityKHR(
-    VkDevice                                        device,
-    const VkAccelerationStructureVersionInfoKHR*    pVersionInfo,
-    VkAccelerationStructureCompatibilityKHR*        pCompatibility) {
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyAccelerationStructureToMemoryKHR(
+    VkCommandBuffer                                     commandBuffer,
+    const VkCopyAccelerationStructureToMemoryInfoKHR*   pInfo) {
     
     MVKTraceVulkanCallStart();
-    MVKDevice* mvkDev = (MVKDevice*)device;
-    *pCompatibility = mvkDev->getAccelerationStructureCompatibility(pVersionInfo);
+    // Currently were ignoring the copy mode
+    MVKAddCmd(CopyAccelerationStructureToMemory, commandBuffer, pInfo->src, pInfo->dst.deviceAddress);
     MVKTraceVulkanCallEnd();
 }
+
 
 #pragma mark -
 #pragma mark VK_KHR_bind_memory2 extension

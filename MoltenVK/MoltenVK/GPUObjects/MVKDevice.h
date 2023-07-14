@@ -578,6 +578,8 @@ public:
     /** Returns a pointer to the buffer at the provided address*/
     MVKBuffer* getBufferAtAddress(uint64_t address); // Unsure where to place
     
+    MVKAccelerationStructure* getAccelerationStructureAtAddress(uint64_t address);
+    
     /** Returns whether or not the device supports acceleration structures*/
     VkAccelerationStructureCompatibilityKHR getAccelerationStructureCompatibility(const VkAccelerationStructureVersionInfoKHR* pVersionInfo);
 
@@ -757,7 +759,7 @@ public:
     
     /** Removes the specified accelerations from the address map */
     void removeAccelerationStructure(MVKAccelerationStructure* accStruct);
-
+    
 	/** Applies the specified global memory barrier to all resource issued by this device. */
 	void applyMemoryBarrier(MVKPipelineBarrier& barrier,
 							MVKCommandEncoder* cmdEncoder,

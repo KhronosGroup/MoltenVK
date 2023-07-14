@@ -144,7 +144,8 @@ MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(WaitEvents, 1)
 MVK_CMD_TYPE_POOL(SetEvent)
 MVK_CMD_TYPE_POOL(ResetEvent)
 MVK_CMD_TYPE_POOL(BuildAccelerationStructure)
-MVK_CMD_TYPE_POOL_LAST(CopyAccelerationStructure)
+MVK_CMD_TYPE_POOL(CopyAccelerationStructure)
+MVK_CMD_TYPE_POOL_LAST(CopyAccelerationStructureToMemory)
 
 #undef MVK_CMD_TYPE_POOL
 #undef MVK_CMD_TYPE_POOL_LAST
