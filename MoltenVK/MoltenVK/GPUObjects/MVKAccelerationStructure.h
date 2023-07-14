@@ -28,7 +28,7 @@
  vkCreateAccelerationStructureKHR - DONE
  vkDestroyAccelerationStructureKHR - DONE
  vkGetAccelerationStructureBuildSizesKHR - DONE
- vkGetAccelerationStructureDeviceAddressKHR
+ vkGetAccelerationStructureDeviceAddressKHR - DONE
  vkGetDeviceAccelerationStructureCompatibilityKHR - DONE
  vkWriteAccelerationStructuresPropertiesKHR
 */
@@ -40,6 +40,7 @@
 #import <Metal/MTLAccelerationStructure.h>
 #import <Metal/MTLAccelerationStructureTypes.h>
 
+#pragma mark -
 #pragma mark MVKAccelerationStructure
 
 class MVKAccelerationStructure : public MVKVulkanAPIDeviceObject {
@@ -58,7 +59,9 @@ public:
     
     /** Gets the actual size of the acceleration structure*/
     uint64_t getMTLSize();
-    
+
+#pragma mark -
+#pragma mark Getters and Setters
     /** Used when building the acceleration structure, to mark whether or not an acceleration structure can be updated*/
     void setAllowUpdate(bool value) { _allowUpdate = value; }
     
@@ -76,6 +79,7 @@ public:
     
     /** Gets the address of the acceleration structure*/
     uint64_t getDeviceAddress() { return _address; }
+#pragma mark -
 #pragma mark Construction
     MVKAccelerationStructure(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
     
@@ -86,5 +90,5 @@ protected:
     id<MTLAccelerationStructure> _accelerationStructure;
     bool _allowUpdate = false;
     bool _built = false;
-    uint64_t _address;
+    uint64_t _address = 0;
 };

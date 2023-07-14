@@ -4609,7 +4609,7 @@ void MVKDevice::destroyAccelerationStructure(MVKAccelerationStructure*     mvkAc
                                              const VkAllocationCallbacks*  pAllocator) {
     if(!mvkAccStruct) { return; }
     removeAccelerationStructure(mvkAccStruct);
-    mvkAccStruct->destroy();k
+    mvkAccStruct->destroy();
 }
 
 template<typename PipelineType, typename PipelineInfoType>

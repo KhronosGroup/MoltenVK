@@ -3161,16 +3161,17 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateAccelerationStructureKHR(
     return rslt;
 }
 
-MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyAccelerationStructureKHR(
-    VkDevice                     device,
-    VkAccelerationStructureKHR   accelerationStructure,
-    const VkAllocationCallbacks* pAllocator) {
+MVK_PUBLIC_VULKAN_SYMBOL VkDeviceAddress vkGetAccelerationStructureDeviceAddressKHR(
+    VkDevice                                            device,
+    const VkAccelerationStructureDeviceAddressInfoKHR*  pInfo) {
     
     MVKTraceVulkanCallStart();
     MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-    MVKAccelerationStructure* mvkAccelerationStructure = (MVKAccelerationStructure*)accelerationStructure;
-    mvkDev->destroyAccelerationStructure(mvkAccelerationStructure, pAllocator);
+    MVKAccelerationStructure* mvkAccelerationStructure = (MVKAccelerationStructure*)pInfo->accelerationStructure;
+    uint64_t result = mvkAccelerationStructure->getDeviceAddress();
     MVKTraceVulkanCallEnd();
+    
+    return (VkDeviceAddress)result;
 }
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkGetAccelerationStructureBuildSizesKHR(
