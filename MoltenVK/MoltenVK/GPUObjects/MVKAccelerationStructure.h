@@ -56,20 +56,35 @@ public:
     /** Gets the required build sizes for acceleration structure and scratch buffer*/
     static VkAccelerationStructureBuildSizesInfoKHR getBuildSizes();
     
-    /** Gets the device address of the acceleration structure*/
-    uint64_t getDeviceAddress();
+    /** Gets the actual size of the acceleration structure*/
+    uint64_t getMTLSize();
     
     /** Used when building the acceleration structure, to mark whether or not an acceleration structure can be updated*/
     void setAllowUpdate(bool value) { _allowUpdate = value; }
     
     /** Checks if this acceleration structure is allowed to be updated*/
     bool getAllowUpdate() { return _allowUpdate; }
-
+    
+    /** Only to be called by the MVKCmdBuildAccelerationStructure, and sets the build status*/
+    void setBuildStatus(bool value) { _built = value; }
+    
+    /** Checks if this acceleration structure has been built*/
+    bool getBuildStatus() { return _built; }
+    
+    /** Sets the address of the acceleration structure, only to be used by MVKDevice*/
+    void setDeviceAddress(uint64_t address) { _address = address; }
+    
+    /** Gets the address of the acceleration structure*/
+    uint64_t getDeviceAddress() { return _address; }
 #pragma mark Construction
     MVKAccelerationStructure(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
+    
+    void destroy() override;
 protected:
     void propagateDebugName() override {}
     
     id<MTLAccelerationStructure> _accelerationStructure;
     bool _allowUpdate = false;
+    bool _built = false;
+    uint64_t _address;
 };

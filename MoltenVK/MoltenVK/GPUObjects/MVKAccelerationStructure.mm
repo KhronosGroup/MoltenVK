@@ -43,3 +43,9 @@ uint64_t MVKAccelerationStructure::getDeviceAddress()
 {
     return 0;
 }
+
+uint64_t MVKAccelerationStructure::getMTLSize()
+{
+    if(!_built) { return 0; }
+    return _accelerationStructure.size;
+}

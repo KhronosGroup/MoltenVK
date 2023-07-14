@@ -505,6 +505,8 @@ typedef struct MVKMTLBlitEncoder {
 	id<MTLCommandBuffer> mtlCmdBuffer = nil;
 } MVKMTLBlitEncoder;
 
+typedef std::pair<uint64_t, uint64_t> MVKBufferAddressRange;
+
 // Arbitrary, after that many barriers with a given source pipeline stage we will wrap around
 // and potentially introduce extra synchronization on previous invocations of the same stage.
 static const uint32_t kMVKBarrierFenceCount = 64;
@@ -749,6 +751,12 @@ public:
 
 	/** Removes the specified timeline semaphore. */
 	void removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value);
+    
+    /** Adds the specified acceleration structure to the address map, so it can be referenced else where*/
+    MVKAccelerationStructure* addAccelerationStructure(MVKAccelerationStructure* accStruct);
+    
+    /** Removes the specified accelerations from the address map */
+    void removeAccelerationStructure(MVKAccelerationStructure* accStruct);
 
 	/** Applies the specified global memory barrier to all resource issued by this device. */
 	void applyMemoryBarrier(MVKPipelineBarrier& barrier,
@@ -975,7 +983,9 @@ protected:
 	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
 	MVKSmallVector<MVKResource*> _resources;
 	MVKSmallVector<MVKBuffer*> _gpuAddressableBuffers;
-    std::unordered_map<std::pair<uint64_t, uint64_t>, MVKBuffer*, MVKHash_uint64_t_pair> _gpuBufferAddressMap;
+    std::unordered_map<MVKBufferAddressRange, MVKBuffer*, MVKHash_uint64_t_pair> _gpuBufferAddressMap;
+    std::unordered_map<uint64_t, MVKAccelerationStructure*> _gpuAccStructAddressMap;
+    uint64_t _nextValidAccStructureAddress;
 	MVKSmallVector<MVKPrivateDataSlot*> _privateDataSlots;
 	MVKSmallVector<bool> _privateDataSlotsAvailability;
 	MVKSmallVector<MVKSemaphoreImpl*> _awaitingSemaphores;

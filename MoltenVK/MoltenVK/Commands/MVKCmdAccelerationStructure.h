@@ -40,7 +40,7 @@ protected:
     MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
     
     uint32_t _infoCount;
-    VkAccelerationStructureBuildGeometryInfoKHR _geometryInfos;
+    VkAccelerationStructureBuildGeometryInfoKHR* _geometryInfos;
     VkAccelerationStructureBuildRangeInfoKHR const* _buildRangeInfos;
 };
 

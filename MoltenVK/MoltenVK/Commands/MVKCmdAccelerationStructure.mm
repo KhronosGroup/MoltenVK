@@ -30,8 +30,10 @@ VkResult MVKCmdBuildAccelerationStructure::setContent(MVKCommandBuffer*         
                                                       uint32_t                                                infoCount,
                                                       const VkAccelerationStructureBuildGeometryInfoKHR*      pInfos,
                                                       const VkAccelerationStructureBuildRangeInfoKHR* const*  ppBuildRangeInfos) {
+    VkAccelerationStructureBuildGeometryInfoKHR geoInfo = *pInfos;
+    
     _infoCount = infoCount;
-    _geometryInfos = *pInfos;
+    _geometryInfos = &geoInfo;
     _buildRangeInfos = *ppBuildRangeInfos;
     
     return VK_SUCCESS;
@@ -40,58 +42,58 @@ VkResult MVKCmdBuildAccelerationStructure::setContent(MVKCommandBuffer*         
 void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseNone);
     
-    MVKAccelerationStructure* mvkSrcAccelerationStructure = (MVKAccelerationStructure*)_geometryInfos.srcAccelerationStructure;
-    MVKAccelerationStructure* mvkDstAccelerationStructure =    (MVKAccelerationStructure*)_geometryInfos.dstAccelerationStructure;
-    
-    id<MTLAccelerationStructure> srcAccelerationStructure = (id<MTLAccelerationStructure>)mvkSrcAccelerationStructure->getMTLAccelerationStructure();
-    id<MTLAccelerationStructure> dstAccelerationStructure = (id<MTLAccelerationStructure>)mvkDstAccelerationStructure->getMTLAccelerationStructure();
-    
-    if(_geometryInfos.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR && !mvkDstAccelerationStructure->getAllowUpdate())
+    for(int i = 0; i < _infoCount; i++)
     {
-        return;
-    }
-    
-    MVKDevice* mvkDvc = cmdEncoder->getDevice();
-    MVKBuffer* mvkBuffer = mvkDvc->getBufferAtAddress(_geometryInfos.scratchData.deviceAddress);
-    
-    id<MTLBuffer> scratchBuffer = mvkBuffer->getMTLBuffer();
-    NSInteger scratchBufferOffset = mvkBuffer->getMTLBufferOffset();
-    
-    if(_geometryInfos.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR)
-    {
-        MTLAccelerationStructureDescriptor* accStructBuildDescriptor = [MTLAccelerationStructureDescriptor new];
+        MVKAccelerationStructure* mvkSrcAccelerationStructure = (MVKAccelerationStructure*)_geometryInfos[i].srcAccelerationStructure;
+        MVKAccelerationStructure* mvkDstAccelerationStructure = (MVKAccelerationStructure*)_geometryInfos[i].dstAccelerationStructure;
         
-        if(mvkIsAnyFlagEnabled(_geometryInfos.flags, VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)){
-            accStructBuildDescriptor.usage += MTLAccelerationStructureUsageRefit;
-            mvkDstAccelerationStructure->setAllowUpdate(true);
-        }else if(mvkIsAnyFlagEnabled(_geometryInfos.flags, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR)){
-            accStructBuildDescriptor.usage += MTLAccelerationStructureUsagePreferFastBuild;
-        }else{
-            accStructBuildDescriptor.usage = MTLAccelerationStructureUsageNone;
+        id<MTLAccelerationStructure> srcAccelerationStructure = (id<MTLAccelerationStructure>)mvkSrcAccelerationStructure->getMTLAccelerationStructure();
+        id<MTLAccelerationStructure> dstAccelerationStructure = (id<MTLAccelerationStructure>)mvkDstAccelerationStructure->getMTLAccelerationStructure();
+        
+        if(_geometryInfos[i].mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR && !mvkDstAccelerationStructure->getAllowUpdate())
+        {
+            continue;
         }
         
-        [accStructEncoder buildAccelerationStructure:dstAccelerationStructure
-                                descriptor:accStructBuildDescriptor
-                                scratchBuffer:scratchBuffer
-                                scratchBufferOffset:scratchBufferOffset];
-        return;
-    }
-    
-    if(_geometryInfos.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR)
-    {
-        MTLAccelerationStructureDescriptor* accStructRefitDescriptor = [MTLAccelerationStructureDescriptor new];
+        MVKDevice* mvkDvc = cmdEncoder->getDevice();
+        MVKBuffer* mvkBuffer = mvkDvc->getBufferAtAddress(_geometryInfos[i].scratchData.deviceAddress);
         
-        if(mvkIsAnyFlagEnabled(_geometryInfos.flags, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR)){
-            accStructRefitDescriptor.usage += MTLAccelerationStructureUsagePreferFastBuild;
+        id<MTLBuffer> scratchBuffer = mvkBuffer->getMTLBuffer();
+        NSInteger scratchBufferOffset = mvkBuffer->getMTLBufferOffset();
+        
+        if(_geometryInfos[i].mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR)
+        {
+            MTLAccelerationStructureDescriptor* accStructBuildDescriptor = [MTLAccelerationStructureDescriptor new];
+            
+            if(mvkIsAnyFlagEnabled(_geometryInfos[i].flags, VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)){
+                accStructBuildDescriptor.usage += MTLAccelerationStructureUsageRefit;
+                mvkDstAccelerationStructure->setAllowUpdate(true);
+            }else if(mvkIsAnyFlagEnabled(_geometryInfos[i].flags, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR)){
+                accStructBuildDescriptor.usage += MTLAccelerationStructureUsagePreferFastBuild;
+            }else{
+                accStructBuildDescriptor.usage = MTLAccelerationStructureUsageNone;
+            }
+            
+            [accStructEncoder buildAccelerationStructure:dstAccelerationStructure
+                                              descriptor:accStructBuildDescriptor
+                                           scratchBuffer:scratchBuffer
+                                     scratchBufferOffset:scratchBufferOffset];
         }
         
-        [accStructEncoder refitAccelerationStructure:srcAccelerationStructure
-                            descriptor:accStructRefitDescriptor
-                            destination:dstAccelerationStructure
-                            scratchBuffer:scratchBuffer
-                            scratchBufferOffset:scratchBufferOffset];
-        
-        return;
+        if(_geometryInfos[i].mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR)
+        {
+            MTLAccelerationStructureDescriptor* accStructRefitDescriptor = [MTLAccelerationStructureDescriptor new];
+            
+            if(mvkIsAnyFlagEnabled(_geometryInfos[i].flags, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR)){
+                accStructRefitDescriptor.usage += MTLAccelerationStructureUsagePreferFastBuild;
+            }
+            
+            [accStructEncoder refitAccelerationStructure:srcAccelerationStructure
+                                              descriptor:accStructRefitDescriptor
+                                             destination:dstAccelerationStructure
+                                           scratchBuffer:scratchBuffer
+                                     scratchBufferOffset:scratchBufferOffset];
+        }
     }
     
     return;

@@ -4314,7 +4314,7 @@ MVKBuffer* MVKDevice::getBufferAtAddress(uint64_t address)
 {
     lock_guard<mutex> lock(_rezLock);
     
-    std::unordered_map<std::pair<uint64_t, uint64_t>, MVKBuffer*>::iterator it;
+    std::unordered_map<MVKBufferAddressRange, MVKBuffer*>::iterator it;
     // Super inefficent but this can be fixed in the future
     for(it = _gpuBufferAddressMap.begin(); it != _gpuBufferAddressMap.end(); it++)
     {
@@ -4602,12 +4602,14 @@ void MVKDevice::destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
 
 MVKAccelerationStructure* MVKDevice::createAccelerationStructure(const VkAccelerationStructureCreateInfoKHR* pCreateInfo,
                                                                  const VkAllocationCallbacks*                pAllocator) {
-    return new MVKAccelerationStructure(this);
+    return addAccelerationStructure(new MVKAccelerationStructure(this));
 }
 
 void MVKDevice::destroyAccelerationStructure(MVKAccelerationStructure*     mvkAccStruct,
                                              const VkAllocationCallbacks*  pAllocator) {
-    if(mvkAccStruct) { mvkAccStruct->destroy(); }
+    if(!mvkAccStruct) { return; }
+    removeAccelerationStructure(mvkAccStruct);
+    mvkAccStruct->destroy();k
 }
 
 template<typename PipelineType, typename PipelineInfoType>
@@ -4842,8 +4844,8 @@ MVKBuffer* MVKDevice::addBuffer(MVKBuffer* mvkBuff) {
 	if (mvkIsAnyFlagEnabled(mvkBuff->getUsage(), VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT)) {
 		_gpuAddressableBuffers.push_back(mvkBuff);
         
-        std::pair<uint64_t, uint64_t> bdaRange = std::make_pair<uint64_t, uint64_t>(mvkBuff->getMTLBufferGPUAddress(), mvkBuff->getMTLBufferGPUAddress() + (uint64_t)mvkBuff->getByteCount());
-        std::pair<std::pair<uint64_t, uint64_t>, MVKBuffer*> _bufferAddressPair = std::make_pair(bdaRange, mvkBuff);
+        MVKBufferAddressRange bdaRange = std::make_pair<uint64_t, uint64_t>(mvkBuff->getMTLBufferGPUAddress(), mvkBuff->getMTLBufferGPUAddress() + (uint64_t)mvkBuff->getByteCount());
+        std::pair<MVKBufferAddressRange, MVKBuffer*> _bufferAddressPair = std::make_pair(bdaRange, mvkBuff);
         _gpuBufferAddressMap.insert(_bufferAddressPair);
     }
 	return mvkBuff;
@@ -4856,7 +4858,7 @@ MVKBuffer* MVKDevice::removeBuffer(MVKBuffer* mvkBuff) {
 	mvkRemoveFirstOccurance(_resources, mvkBuff);
 	if (mvkIsAnyFlagEnabled(mvkBuff->getUsage(), VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT)) {
 		mvkRemoveFirstOccurance(_gpuAddressableBuffers, mvkBuff);
-        std::pair<uint64_t, uint64_t> bdaRange = std::make_pair<uint64_t, uint64_t>(mvkBuff->getMTLBufferGPUAddress(), mvkBuff->getMTLBufferGPUAddress() + (uint64_t)mvkBuff->getByteCount());
+        MVKBufferAddressRange bdaRange = std::make_pair<uint64_t, uint64_t>(mvkBuff->getMTLBufferGPUAddress(), mvkBuff->getMTLBufferGPUAddress() + (uint64_t)mvkBuff->getByteCount());
         auto bufferAddressIt = _gpuBufferAddressMap.find(bdaRange);
         _gpuBufferAddressMap.erase(bufferAddressIt);
 	}
@@ -4911,6 +4913,28 @@ void MVKDevice::addTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value)
 void MVKDevice::removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value) {
 	lock_guard<mutex> lock(_sem4Lock);
 	mvkRemoveFirstOccurance(_awaitingTimelineSem4s, make_pair(sem4, value));
+}
+
+MVKAccelerationStructure* MVKDevice::addAccelerationStructure(MVKAccelerationStructure* accStruct) {
+    std::pair<uint64_t, MVKAccelerationStructure*> accStructMemoryPair = std::make_pair(_nextValidAccStructureAddress, accStruct);
+    _gpuAccStructAddressMap.insert(accStructMemoryPair);
+    accStruct->setDeviceAddress(_nextValidAccStructureAddress);
+    _nextValidAccStructureAddress += accStruct->getMTLSize();
+    return accStruct;
+}
+
+void MVKDevice::removeAccelerationStructure(MVKAccelerationStructure* accStruct) {
+    std::unordered_map<uint64_t, MVKAccelerationStructure*>::iterator accStructIt = _gpuAccStructAddressMap.find(accStruct->getDeviceAddress());
+    uint64_t addressOffset = accStructIt->second->getMTLSize();
+    _gpuAccStructAddressMap.erase(accStructIt);
+    
+    // This can lead to fragmentation over time, so I'll just push all keys after this back
+    for(auto it = accStructIt; it != _gpuAccStructAddressMap.end(); it++)
+    {
+        auto extractedAccStruct = _gpuAccStructAddressMap.extract(it->first);
+        extractedAccStruct.key() = it->first - addressOffset;
+        _gpuAccStructAddressMap.insert(std::move(extractedAccStruct));
+    }
 }
 
 void MVKDevice::applyMemoryBarrier(MVKPipelineBarrier& barrier,
