@@ -981,7 +981,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 accelerationStructureProps->maxGeometryCount = pow(2, 24);
                 accelerationStructureProps->maxInstanceCount = pow(2, 24);
                 accelerationStructureProps->maxPrimitiveCount = pow(2, 28);
-                accelerationStructureProps->minAccelerationStructureScratchOffsetAlignment = _metalFeatures.mtlBufferAlignment;
+                accelerationStructureProps->minAccelerationStructureScratchOffsetAlignment = (uint32_t)_metalFeatures.mtlBufferAlignment;
                 // Other properties have not been figured out quite yet
                 break;
             }

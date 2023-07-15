@@ -22,8 +22,8 @@
  vkCmdBuildAccelerationStructuresIndirectKHR
  vkCmdBuildAccelerationStructuresKHR - DONE
  vkCmdCopyAccelerationStructureKHR - DONE
- vkCmdCopyAccelerationStructureToMemoryKHR
- vkCmdCopyMemoryToAccelerationStructureKHR
+ vkCmdCopyAccelerationStructureToMemoryKHR - DONE
+ vkCmdCopyMemoryToAccelerationStructureKHR - DONE
  vkCmdWriteAccelerationStructuresPropertiesKHR
  vkCreateAccelerationStructureKHR - DONE
  vkDestroyAccelerationStructureKHR - DONE

@@ -145,7 +145,8 @@ MVK_CMD_TYPE_POOL(SetEvent)
 MVK_CMD_TYPE_POOL(ResetEvent)
 MVK_CMD_TYPE_POOL(BuildAccelerationStructure)
 MVK_CMD_TYPE_POOL(CopyAccelerationStructure)
-MVK_CMD_TYPE_POOL_LAST(CopyAccelerationStructureToMemory)
+MVK_CMD_TYPE_POOL(CopyAccelerationStructureToMemory)
+MVK_CMD_TYPE_POOL_LAST(CopyMemoryToAccelerationStructure)
 
 #undef MVK_CMD_TYPE_POOL
 #undef MVK_CMD_TYPE_POOL_LAST

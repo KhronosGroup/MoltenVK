@@ -3239,6 +3239,15 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyAccelerationStructureToMemoryKHR(
     MVKTraceVulkanCallEnd();
 }
 
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyMemoryToAccelerationStructureKHR(
+    VkCommandBuffer                                     commandBuffer,
+    const VkCopyMemoryToAccelerationStructureInfoKHR* pInfo) {
+    
+    MVKTraceVulkanCallStart();
+    MVKAddCmd(CopyMemoryToAccelerationStructure, commandBuffer, pInfo->src.deviceAddress, pInfo->dst, pInfo->mode);
+    MVKTraceVulkanCallEnd();
+}
+
 
 #pragma mark -
 #pragma mark VK_KHR_bind_memory2 extension
