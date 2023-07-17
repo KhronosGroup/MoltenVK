@@ -62,6 +62,7 @@ protected:
     
     id<MTLAccelerationStructure> _srcAccelerationStructure;
     id<MTLAccelerationStructure> _dstAccelerationStructure;
+    
     VkCopyAccelerationStructureModeKHR _copyMode;
 };
 
@@ -81,7 +82,8 @@ protected:
     MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
     
     id<MTLAccelerationStructure> _srcAccelerationStructure;
-    id<MTLAccelerationStructure> _dstAccelerationStructure;
+    MVKBuffer* _dstBuffer;
+    
     uint64_t _dstAddress;
     MVKDevice* _mvkDevice;
     VkCopyAccelerationStructureModeKHR _copyMode;
@@ -102,8 +104,9 @@ public:
 protected:
     MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
     
-    id<MTLAccelerationStructure> _srcAccelerationStructure;
+    MVKBuffer* _srcBuffer;
     id<MTLAccelerationStructure> _dstAccelerationStructure;
+    
     uint64_t _srcAddress;
     MVKDevice* _mvkDevice;
     VkCopyAccelerationStructureModeKHR _copyMode;

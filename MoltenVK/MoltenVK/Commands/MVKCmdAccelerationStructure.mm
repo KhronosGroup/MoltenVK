@@ -140,34 +140,23 @@ VkResult MVKCmdCopyAccelerationStructureToMemory::setContent(MVKCommandBuffer*  
                                                              VkAccelerationStructureKHR         srcAccelerationStructure,
                                                              uint64_t                           dstAddress,
                                                              VkCopyAccelerationStructureModeKHR copyMode) {
-    
-    MVKAccelerationStructure* mvkSrcAccStruct = (MVKAccelerationStructure*)srcAccelerationStructure;
-    _mvkDevice = mvkSrcAccStruct->getDevice();
     _dstAddress = dstAddress;
     _copyMode = copyMode;
     
-    MVKAccelerationStructure* mvkDstAccStruct = (MVKAccelerationStructure*)_mvkDevice->getAccelerationStructureAtAddress(_dstAddress);
-    
+    MVKAccelerationStructure* mvkSrcAccStruct = (MVKAccelerationStructure*)srcAccelerationStructure;
     _srcAccelerationStructure = mvkSrcAccStruct->getMTLAccelerationStructure();
-    _dstAccelerationStructure = mvkDstAccStruct->getMTLAccelerationStructure();
+    
+    _dstBuffer = _mvkDevice->getBufferAtAddress(_dstAddress);
     return VK_SUCCESS;
 }
                                         
 void MVKCmdCopyAccelerationStructureToMemory::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseNone);
+    _mvkDevice = cmdEncoder->getDevice();
     
-    if(_copyMode == VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR)
-    {
-        [accStructEncoder
-         copyAndCompactAccelerationStructure:_srcAccelerationStructure
-         toAccelerationStructure:_dstAccelerationStructure];
-        
+    if(_copyMode != VK_COPY_ACCELERATION_STRUCTURE_MODE_SERIALIZE_KHR){
         return;
     }
-    
-    [accStructEncoder
-         copyAccelerationStructure:_srcAccelerationStructure
-         toAccelerationStructure:_dstAccelerationStructure];
 }
 
 #pragma mark -
@@ -177,31 +166,33 @@ VkResult MVKCmdCopyMemoryToAccelerationStructure::setContent(MVKCommandBuffer* c
                                                                 uint64_t srcAddress,
                                                                 VkAccelerationStructureKHR dstAccelerationStructure,
                                                                 VkCopyAccelerationStructureModeKHR copyMode) {
-    MVKAccelerationStructure* mvkDstAccStruct = (MVKAccelerationStructure*)dstAccelerationStructure;
-    _mvkDevice = mvkDstAccStruct->getDevice();
     _srcAddress = srcAddress;
     _copyMode = copyMode;
     
-    MVKAccelerationStructure* mvkSrcAccStruct = (MVKAccelerationStructure*)_mvkDevice->getAccelerationStructureAtAddress(_srcAddress);
+    _srcBuffer = _mvkDevice->getBufferAtAddress(_srcAddress);
     
-    _srcAccelerationStructure = mvkSrcAccStruct->getMTLAccelerationStructure();
+    MVKAccelerationStructure* mvkDstAccStruct = (MVKAccelerationStructure*)dstAccelerationStructure;
     _dstAccelerationStructure = mvkDstAccStruct->getMTLAccelerationStructure();
     return VK_SUCCESS;
 }
 
 void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseNone);
+    _mvkDevice = cmdEncoder->getDevice();
     
-    if(_copyMode == VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR)
-    {
-        [accStructEncoder
-         copyAndCompactAccelerationStructure:_srcAccelerationStructure
-         toAccelerationStructure:_dstAccelerationStructure];
-        
+    if(_copyMode != VK_COPY_ACCELERATION_STRUCTURE_MODE_DESERIALIZE_KHR){
         return;
     }
     
+    void* serializedAccStruct = _srcBuffer->getHostMemoryAddress();
+    if(!serializedAccStruct){
+        return; // Should I remove this? For this to work, the memory can't be device only, but the spec does not seem to restrict this
+    }
+
+    MVKAccelerationStructure* mvkSrcAccStruct = (MVKAccelerationStructure*)serializedAccStruct;
+    id<MTLAccelerationStructure> srcAccelerationStructure = mvkSrcAccStruct->getMTLAccelerationStructure();
+    
     [accStructEncoder
-         copyAccelerationStructure:_srcAccelerationStructure
+         copyAccelerationStructure:srcAccelerationStructure
          toAccelerationStructure:_dstAccelerationStructure];
 }
