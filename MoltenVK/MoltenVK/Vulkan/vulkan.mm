@@ -3487,7 +3487,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkGetPrivateDataEXT(
 #pragma mark -
 #pragma mark VK_EXT_sample_locations extension
 
-void vkGetPhysicalDeviceMultisamplePropertiesEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPhysicalDeviceMultisamplePropertiesEXT(
 	VkPhysicalDevice                            physicalDevice,
 	VkSampleCountFlagBits                       samples,
 	VkMultisamplePropertiesEXT*                 pMultisampleProperties) {
@@ -3498,12 +3498,56 @@ void vkGetPhysicalDeviceMultisamplePropertiesEXT(
 	MVKTraceVulkanCallEnd();
 }
 
-void vkCmdSetSampleLocationsEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetSampleLocationsEXT(
 	VkCommandBuffer                             commandBuffer,
 	const VkSampleLocationsInfoEXT*             pSampleLocationsInfo) {
 
 	MVKTraceVulkanCallStart();
 	MVKAddCmd(SetSampleLocations, commandBuffer, pSampleLocationsInfo);
+	MVKTraceVulkanCallEnd();
+}
+
+#pragma mark -
+#pragma mark VK_EXT_transform_feedback extension
+
+MVK_PUBLIC_VULKAN_STUB(vkCmdBeginQueryIndexedEXT, void, VkCommandBuffer, VkQueryPool, uint32_t, VkQueryControlFlags, uint32_t)
+MVK_PUBLIC_VULKAN_STUB(vkCmdDrawIndirectByteCountEXT, void, VkCommandBuffer, uint32_t, uint32_t, VkBuffer, VkDeviceSize, uint32_t, uint32_t)
+MVK_PUBLIC_VULKAN_STUB(vkCmdEndQueryIndexedEXT, void, VkCommandBuffer, VkQueryPool, uint32_t, uint32_t)
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBeginTransformFeedbackEXT(
+	VkCommandBuffer                             commandBuffer,
+	uint32_t                                    firstCounterBuffer,
+	uint32_t                                    counterBufferCount,
+	const VkBuffer*                             pCounterBuffers,
+	const VkDeviceSize*                         pCounterBufferOffsets) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmdFrom2Thresholds(BeginTransformFeedback, counterBufferCount, 1, 2, commandBuffer, firstCounterBuffer, counterBufferCount, pCounterBuffers, pCounterBufferOffsets);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindTransformFeedbackBuffersEXT(
+	VkCommandBuffer                             commandBuffer,
+	uint32_t                                    firstBinding,
+	uint32_t                                    bindingCount,
+	const VkBuffer*                             pBuffers,
+	const VkDeviceSize*                         pOffsets,
+	const VkDeviceSize*                         pSizes) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmdFrom2Thresholds(BindTransformFeedbackBuffers, bindingCount, 1, 2, commandBuffer, firstBinding, bindingCount, pBuffers, pOffsets, pSizes);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEndTransformFeedbackEXT(
+	VkCommandBuffer                             commandBuffer,
+	uint32_t,
+	uint32_t,
+	const VkBuffer*,
+	const VkDeviceSize*) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(EndTransformFeedback, commandBuffer);
 	MVKTraceVulkanCallEnd();
 }
 

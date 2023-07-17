@@ -910,7 +910,7 @@ void MVKCommandEncoder::setVertexBytes(id<MTLRenderCommandEncoder> mtlEncoder,
 									   bool descOverride) {
     if (_pDeviceMetalFeatures->dynamicMTLBufferSize && length <= _pDeviceMetalFeatures->dynamicMTLBufferSize) {
         [mtlEncoder setVertexBytes: bytes length: length atIndex: mtlBuffIndex];
-        if(transformFeedbackRunning) {
+        if (_transformFeedbackRunning) {
             //@todo: SW copy out the buffer from here.
         }
     } else {

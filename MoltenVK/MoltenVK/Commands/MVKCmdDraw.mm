@@ -183,8 +183,8 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                 mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                 if (pipeline->needsVertexOutputBuffer()) {
                     vtxOutBuff = cmdEncoder->getTempMTLBuffer(_vertexCount * _instanceCount * 4 * cmdEncoder->_pDeviceProperties->limits.maxVertexOutputComponents, true);
-                    if(cmdEncoder->getDevice()->_enabledTransformFeedbackFeatures &&
-                       cmdEncoder->transformFeedbackRunning) {
+                    if (cmdEncoder->getDevice()->_enabledTransformFeedbackFeatures.transformFeedback &&
+                        cmdEncoder->_transformFeedbackRunning) {
                         for (auto& xfbBufferBinding : cmdEncoder->_graphicsResourcesState
                                 ._transformFeedbackBufferBindings)
                         {
@@ -1337,40 +1337,45 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 #pragma mark -
 #pragma mark MVKCmdBeginTransformFeedback
 
-VkResult MVKCmdBeginTransformFeedback::setContent(MVKCommandBuffer *cmdBuff, uint32_t _firstCounterBuffer,
-                                                  MVKBuffer *_counterBuffers, uint32_t *_counterBufferOffsets) {
-    this->firstCounterBuffer = _firstCounterBuffer;
-    this->counterBuffers = _counterBuffers;
-    this->counterBufferOffsets = _counterBufferOffsets;
+template <size_t N>
+VkResult MVKCmdBeginTransformFeedback<N>::setContent(MVKCommandBuffer* cmdBuff,
+                                                     uint32_t firstCounterBuffer,
+                                                     uint32_t counterBufferCount,
+                                                     const VkBuffer* pCounterBuffers,
+                                                     const VkDeviceSize* pCounterBufferOffsets) {
+    MVKDevice* mvkDvc = cmdBuff->getDevice();
+    _counterBuffers.clear();    // Clear for reuse
+    _counterBuffers.reserve(counterBufferCount);
+    MVKMTLBufferBinding b;
+    for (uint32_t bindIdx = 0; bindIdx < counterBufferCount; bindIdx++) {
+        auto* mvkBuffer = (MVKBuffer*)pCounterBuffers[bindIdx];
+        b.index = mvkDvc->getMetalBufferIndexForTransformFeedbackCounterBinding(kMVKShaderStageVertex, firstCounterBuffer + bindIdx);
+        b.mtlBuffer = mvkBuffer->getMTLBuffer();
+        b.offset = mvkBuffer->getMTLBufferOffset() + pCounterBufferOffsets[bindIdx];
+        _counterBuffers.push_back(b);
+    }
 
     return VK_SUCCESS;
 }
 
-void MVKCmdBeginTransformFeedback::encode(MVKCommandEncoder *cmdEncoder) {
-    if ( !cmdEncoder->getDevice()->_enabledTransformFeedbackFeatures ) {
-        cmdEncoder->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCmdBeginTransformFeedback(): transform feedback"
-                                                                   " must be enabled on the device.");
+template <size_t N>
+void MVKCmdBeginTransformFeedback<N>::encode(MVKCommandEncoder* cmdEncoder) {
+    if (cmdEncoder->_transformFeedbackRunning) {
         return;
     }
 
-    if (cmdEncoder->transformFeedbackRunning ) {
-        cmdEncoder->reportError(VK_ERROR_NOT_PERMITTED_KHR, "vkCmdBeginTransformFeedback(): "
-                                                                              "transform feedback is"
-                                                                " already begun.  Can not be called multiple times.");
-        return;
-    }
-
-
-    cmdEncoder->_graphicsResourcesState._transformFeedbackCounterBufferBinding.index =
-            cmdEncoder->getDevice()->getMetalBufferIndexForTransformFeedbackCounterBinding(kMVKShaderStageVertex,
-                                                                              firstCounterBuffer);
-    cmdEncoder->_graphicsResourcesState._transformFeedbackCounterBufferBinding.offset = counterBuffers->getMTLBufferOffset();
-    cmdEncoder->_graphicsResourcesState._transformFeedbackCounterBufferBinding.mtlBuffer = counterBuffers->getMTLBuffer();
-    cmdEncoder->transformFeedbackRunning = true;
+    cmdEncoder->_graphicsResourcesState._transformFeedbackCounterBufferBinding = _counterBuffers[0];
+    cmdEncoder->_transformFeedbackRunning = true;
 }
 
+template class MVKCmdBeginTransformFeedback<1>;
+template class MVKCmdBeginTransformFeedback<2>;
+template class MVKCmdBeginTransformFeedback<4>;
+
+
 #pragma mark -
-#pragma mark MVKCMDBindTransformFeedbackBuffers
+#pragma mark MVKCmdBindTransformFeedbackBuffers
+
 template <size_t N>
 VkResult MVKCmdBindTransformFeedbackBuffers<N>::setContent(MVKCommandBuffer *cmdBuffer,
                                                         uint32_t firstBinding, uint32_t bindingCount,
@@ -1386,11 +1391,12 @@ VkResult MVKCmdBindTransformFeedbackBuffers<N>::setContent(MVKCommandBuffer *cmd
         b.index = mvkDvc->getMetalBufferIndexForTransformFeedbackBinding(kMVKShaderStageVertex, firstBinding + bindIdx);
         b.mtlBuffer = mvkBuffer->getMTLBuffer();
         b.offset = mvkBuffer->getMTLBufferOffset() + pOffsets[bindIdx];
-        if(pSizes != nullptr) {
-            if(pSizes[bindIdx] == VK_WHOLE_SIZE)
+        if (pSizes != nullptr) {
+            if (pSizes[bindIdx] == VK_WHOLE_SIZE) {
                 b.size = b.mtlBuffer.allocatedSize - b.offset;
-            else
+            } else {
                 b.size = pSizes[bindIdx];
+            }
         } else {
             b.size = b.mtlBuffer.allocatedSize - b.offset;
         }
@@ -1408,11 +1414,11 @@ void MVKCmdBindTransformFeedbackBuffers<N>::encode(MVKCommandEncoder *cmdEncoder
 
 template class MVKCmdBindTransformFeedbackBuffers<1>;
 template class MVKCmdBindTransformFeedbackBuffers<2>;
-template class MVKCmdBindTransformFeedbackBuffers<8>;
+template class MVKCmdBindTransformFeedbackBuffers<4>;
 
 
 #pragma mark -
-#pragma mark MVKDrawIndirectByteCount
+#pragma mark MVKCmdDrawIndirectByteCount
 
 VkResult MVKCmdDrawIndirectByteCount::setContent(MVKCommandBuffer *cmdBuffer,
                                               uint32_t _instanceCount, uint32_t _firstInstance,
@@ -1434,16 +1440,10 @@ void MVKCmdDrawIndirectByteCount::encode(MVKCommandEncoder *cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdEndTransformFeedback
 
-VkResult MVKCmdEndTransformFeedback::setContent(MVKCommandBuffer *cmdBuffer,
-                                                uint32_t _firstCounterBuffer, VkBuffer *_counterBuffers,
-                                                uint32_t *_counterBufferOffsets) {
-    firstCounterBuffer = _firstCounterBuffer;
-    pCounterBuffers = _counterBuffers;
-    pCounterBufferOffsets = _counterBufferOffsets;
-
+VkResult MVKCmdEndTransformFeedback::setContent(MVKCommandBuffer *) {
     return VK_SUCCESS;
 }
 
 void MVKCmdEndTransformFeedback::encode(MVKCommandEncoder *cmdEncoder) {
-    cmdEncoder->transformFeedbackRunning = false;
+    cmdEncoder->_transformFeedbackRunning = false;
 }

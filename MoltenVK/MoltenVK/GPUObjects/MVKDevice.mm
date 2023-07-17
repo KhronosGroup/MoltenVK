@@ -433,6 +433,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				texelBuffAlignFeatures->texelBufferAlignment = _metalFeatures.texelBuffers && [_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)];
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
+				auto* xfbFeatures = (VkPhysicalDeviceTransformFeedbackFeaturesEXT*)next;
+				xfbFeatures->transformFeedback = true;
+				xfbFeatures->geometryStreams = false;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
 				auto* divisorFeatures = (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)next;
 				divisorFeatures->vertexAttributeInstanceRateDivisor = true;
@@ -731,6 +737,19 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				sampLocnProps->sampleLocationSubPixelBits = 4;
 				sampLocnProps->variableSampleLocations = VK_FALSE;
 				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: {
+				auto* xfbProps = (VkPhysicalDeviceTransformFeedbackPropertiesEXT*)next;
+				xfbProps->maxTransformFeedbackStreams = 1;																			// Must be 1 if geometryStreams isn't supported.
+				xfbProps->maxTransformFeedbackBuffers = 1;
+				xfbProps->maxTransformFeedbackBufferSize = _metalFeatures.maxMTLBufferSize;
+				xfbProps->maxTransformFeedbackStreamDataSize = (_properties.limits.maxFragmentInputComponents + 4) * sizeof(float);	// +4 more for the position.
+				xfbProps->maxTransformFeedbackBufferDataSize = xfbProps->maxTransformFeedbackStreamDataSize;
+				xfbProps->maxTransformFeedbackBufferDataStride = _metalFeatures.maxMTLBufferSize - xfbProps->maxTransformFeedbackBufferDataSize;
+				xfbProps->transformFeedbackQueries = VK_FALSE;
+				xfbProps->transformFeedbackStreamsLinesTriangles = VK_FALSE;
+				xfbProps->transformFeedbackRasterizationStreamSelect = VK_FALSE;
+				xfbProps->transformFeedbackDraw = VK_FALSE;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
 				auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)next;

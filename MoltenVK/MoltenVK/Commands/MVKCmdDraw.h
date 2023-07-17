@@ -200,23 +200,26 @@ protected:
  * captured.
  */
 
+template <size_t N>
 class MVKCmdBeginTransformFeedback : public MVKCommand {
 public:
-    MVKCmdBeginTransformFeedback() :
-            firstCounterBuffer(0), counterBuffers(nullptr), counterBufferOffsets(nullptr){}
     VkResult setContent(MVKCommandBuffer* cmdBuffer,
                         uint32_t firstCounterBuffer,
-                        MVKBuffer* counterBuffers,
-                        uint32_t* counterBufferOffsets);
+                        uint32_t counterBufferCount,
+                        const VkBuffer* counterBuffers,
+                        const VkDeviceSize* counterBufferOffsets);
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
     MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-    uint32_t firstCounterBuffer;
-    MVKBuffer* counterBuffers;
-    uint32_t* counterBufferOffsets;
+    MVKSmallVector<MVKMTLBufferBinding, N> _counterBuffers;
 };
+
+// Concrete template class implementations.
+typedef MVKCmdBeginTransformFeedback<1> MVKCmdBeginTransformFeedback1;
+typedef MVKCmdBeginTransformFeedback<2> MVKCmdBeginTransformFeedback2;
+typedef MVKCmdBeginTransformFeedback<4> MVKCmdBeginTransformFeedbackMulti;
 
 #pragma mark -
 #pragma mark MVKCmdBindTransformFeedbackBuffers
@@ -246,7 +249,7 @@ protected:
 // Concrete template class implementations.
 typedef MVKCmdBindTransformFeedbackBuffers<1> MVKCmdBindTransformFeedbackBuffers1;
 typedef MVKCmdBindTransformFeedbackBuffers<2> MVKCmdBindTransformFeedbackBuffers2;
-typedef MVKCmdBindTransformFeedbackBuffers<8> MVKCmdBindTransformFeedbackBuffersMulti;
+typedef MVKCmdBindTransformFeedbackBuffers<4> MVKCmdBindTransformFeedbackBuffersMulti;
 
 #pragma mark -
 #pragma mark MVKCmdDrawIndirectByteCount
@@ -282,17 +285,9 @@ protected:
 
 class MVKCmdEndTransformFeedback : public MVKCommand {
 public:
-    MVKCmdEndTransformFeedback() : firstCounterBuffer(), pCounterBuffers(nullptr), pCounterBufferOffsets(nullptr) {}
-    VkResult setContent(MVKCommandBuffer* cmdBuffer,
-                        uint32_t firstCounterBuffer,
-                        VkBuffer* pCounterBuffers,
-                        uint32_t* pCounterBufferOffsets);
+    VkResult setContent(MVKCommandBuffer* cmdBuffer);
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
     MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-    uint32_t firstCounterBuffer;
-    VkBuffer* pCounterBuffers;
-    uint32_t* pCounterBufferOffsets;
 };
