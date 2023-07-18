@@ -30,7 +30,6 @@
  vkGetAccelerationStructureBuildSizesKHR - DONE
  vkGetAccelerationStructureDeviceAddressKHR - DONE
  vkGetDeviceAccelerationStructureCompatibilityKHR - DONE
- vkWriteAccelerationStructuresPropertiesKHR
 */
 
 #pragma once

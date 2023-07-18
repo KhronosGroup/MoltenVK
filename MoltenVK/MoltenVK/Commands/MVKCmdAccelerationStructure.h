@@ -40,6 +40,7 @@ public:
 protected:
     MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
     
+    MVKDevice* _mvkDevice;
     uint32_t _infoCount;
     VkAccelerationStructureBuildGeometryInfoKHR* _geometryInfos;
     VkAccelerationStructureBuildRangeInfoKHR const* _buildRangeInfos;
@@ -59,7 +60,7 @@ public:
     void encode(MVKCommandEncoder* cmdEncoder) override;
 protected:
     MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-    
+
     id<MTLAccelerationStructure> _srcAccelerationStructure;
     id<MTLAccelerationStructure> _dstAccelerationStructure;
     
