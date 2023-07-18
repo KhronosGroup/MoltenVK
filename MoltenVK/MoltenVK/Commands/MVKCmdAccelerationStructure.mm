@@ -154,9 +154,11 @@ void MVKCmdCopyAccelerationStructureToMemory::encode(MVKCommandEncoder* cmdEncod
     id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseNone);
     _mvkDevice = cmdEncoder->getDevice();
     
-    if(_copyMode != VK_COPY_ACCELERATION_STRUCTURE_MODE_SERIALIZE_KHR){
+    if(_copyMode != VK_COPY_ACCELERATION_STRUCTURE_MODE_SERIALIZE_KHR || !_dstBuffer->getDeviceMemory()->isMemoryHostAccessible()){
         return;
     }
+    
+    memcpy(_dstBuffer->getDeviceMemory()->getHostMemoryAddress(), (void*)_srcAccelerationStructure, sizeof(_srcAccelerationStructure));
 }
 
 #pragma mark -
