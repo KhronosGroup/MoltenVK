@@ -338,16 +338,16 @@ bool MVKGraphicsPipeline::supportsDynamicState(VkDynamicState state) {
 static const char vtxCompilerType[] = "Vertex stage pipeline for tessellation";
 
 bool MVKGraphicsPipeline::compileTessVertexStageState(MTLComputePipelineDescriptor* vtxPLDesc,
-													  id<MTLFunction>* vtxFunctions,
+													  MVKMTLFunction* pVtxFunctions,
 													  VkPipelineCreationFeedback* pVertexFB) {
 	uint64_t startTime = 0;
     if (pVertexFB) {
 		startTime = mvkGetTimestamp();
 	}
-    vtxPLDesc.computeFunction = vtxFunctions[0];
+	vtxPLDesc.computeFunction = pVtxFunctions[0].getMTLFunction();
     bool res = !!getOrCompilePipeline(vtxPLDesc, _mtlTessVertexStageState, vtxCompilerType);
 
-    vtxPLDesc.computeFunction = vtxFunctions[1];
+	vtxPLDesc.computeFunction = pVtxFunctions[1].getMTLFunction();
     vtxPLDesc.stageInputDescriptor.indexType = MTLIndexTypeUInt16;
     for (uint32_t i = 0; i < 31; i++) {
 		MTLBufferLayoutDescriptor* blDesc = vtxPLDesc.stageInputDescriptor.layouts[i];
@@ -357,7 +357,7 @@ bool MVKGraphicsPipeline::compileTessVertexStageState(MTLComputePipelineDescript
     }
     res |= !!getOrCompilePipeline(vtxPLDesc, _mtlTessVertexStageIndex16State, vtxCompilerType);
 
-    vtxPLDesc.computeFunction = vtxFunctions[2];
+	vtxPLDesc.computeFunction = pVtxFunctions[2].getMTLFunction();
     vtxPLDesc.stageInputDescriptor.indexType = MTLIndexTypeUInt32;
     res |= !!getOrCompilePipeline(vtxPLDesc, _mtlTessVertexStageIndex32State, vtxCompilerType);
 
@@ -695,7 +695,7 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 		SPIRVToMSLConversionConfiguration shaderConfig;
 		initShaderConversionConfig(shaderConfig, pCreateInfo, reflectData);
 
-		id<MTLFunction> vtxFunctions[3] = { nil };
+		MVKMTLFunction vtxFunctions[3] = {};
 		MTLComputePipelineDescriptor* vtxPLDesc = newMTLTessVertexStageDescriptor(pCreateInfo, reflectData, shaderConfig, pVertexSS, pVertexFB, pTessCtlSS, vtxFunctions);					// temp retained
 		MTLComputePipelineDescriptor* tcPLDesc = newMTLTessControlStageDescriptor(pCreateInfo, reflectData, shaderConfig, pTessCtlSS, pTessCtlFB, pVertexSS, pTessEvalSS);					// temp retained
 		MTLRenderPipelineDescriptor* rastPLDesc = newMTLTessRasterStageDescriptor(pCreateInfo, reflectData, shaderConfig, pTessEvalSS, pTessEvalFB, pFragmentSS, pFragmentFB, pTessCtlSS);	// temp retained
@@ -770,7 +770,7 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessVertexStageDescript
 																				   const VkPipelineShaderStageCreateInfo* pVertexSS,
 																				   VkPipelineCreationFeedback* pVertexFB,
 																				   const VkPipelineShaderStageCreateInfo* pTessCtlSS,
-																				   id<MTLFunction>* vtxFunctions) {
+																				   MVKMTLFunction* pVtxFunctions) {
 	MTLComputePipelineDescriptor* plDesc = [MTLComputePipelineDescriptor new];	// retained
 
 	SPIRVShaderInputs tcInputs;
@@ -787,7 +787,7 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessVertexStageDescript
 	}), tcInputs.end());
 
 	// Add shader stages.
-	if (!addVertexShaderToPipeline(plDesc, pCreateInfo, shaderConfig, tcInputs, pVertexSS, pVertexFB, vtxFunctions)) { return nil; }
+	if (!addVertexShaderToPipeline(plDesc, pCreateInfo, shaderConfig, tcInputs, pVertexSS, pVertexFB, pVtxFunctions)) { return nil; }
 
 	// Vertex input
 	plDesc.stageInputDescriptor = [MTLStageInputOutputDescriptor stageInputOutputDescriptor];
@@ -1076,7 +1076,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 													SPIRVShaderInputs& tcInputs,
 													const VkPipelineShaderStageCreateInfo* pVertexSS,
 													VkPipelineCreationFeedback* pVertexFB,
-													id<MTLFunction>* vtxFunctions) {
+													MVKMTLFunction* pVtxFunctions) {
 	shaderConfig.options.entryPointStage = spv::ExecutionModelVertex;
 	shaderConfig.options.entryPointName = pVertexSS->pName;
 	shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageVertex];
@@ -1100,9 +1100,9 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 	for (uint32_t i = 0; i < sizeof(indexTypes)/sizeof(indexTypes[0]); i++) {
 		shaderConfig.options.mslOptions.vertex_index_type = indexTypes[i];
 		func = getMTLFunction(shaderConfig, pVertexSS, pVertexFB, "Vertex");
-		id<MTLFunction> mtlFunc = func.getMTLFunction();
-		vtxFunctions[i] = mtlFunc;			// not retained
-		if ( !mtlFunc ) { return false; }
+		if ( !func.getMTLFunction() ) { return false; }
+
+		pVtxFunctions[i] = func;
 
 		auto& funcRslts = func.shaderConversionResults;
 		_needsVertexSwizzleBuffer = funcRslts.needsSwizzleBuffer;
