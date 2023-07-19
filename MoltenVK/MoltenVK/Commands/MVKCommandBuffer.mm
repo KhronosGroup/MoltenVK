@@ -839,6 +839,10 @@ void MVKCommandEncoder::endMetalRenderEncoding() {
 void MVKCommandEncoder::endCurrentMetalEncoding() {
 	endMetalRenderEncoding();
 
+	_computePipelineState.markDirty();
+	_computePushConstants.markDirty();
+	_computeResourcesState.markDirty();
+
 	if (_mtlComputeEncoder && _cmdBuffer->_hasStageCounterTimestampCommand) { [_mtlComputeEncoder updateFence: getStageCountersMTLFence()]; }
 	endMetalEncoding(_mtlComputeEncoder);
 	_mtlComputeEncoderUse = kMVKCommandUseNone;
@@ -856,7 +860,7 @@ id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandU
 		_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoder];
 		retainIfImmediatelyEncoding(_mtlComputeEncoder);
 		beginMetalComputeEncoding(cmdUse);
-		markCurrentComputeStateDirty = true;	// Always mark current compute state dirty for new encoder
+		markCurrentComputeStateDirty = false;	// Already marked dirty above in endCurrentMetalEncoding()
 	}
 	if(markCurrentComputeStateDirty) {
 		_computePipelineState.markDirty();
