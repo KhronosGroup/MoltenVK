@@ -61,7 +61,7 @@ public:
 
 #pragma mark -
 #pragma mark Getters and Setters
-    /** Used when building the acceleration structure, to mark whether or not an acceleration structure can be updated*/
+    /** Used when building the acceleration structure, to mark whether or not an acceleration structure can be updated, only to be set by MVKCmdBuildAccelerationStructure*/
     void setAllowUpdate(bool value) { _allowUpdate = value; }
     
     /** Checks if this acceleration structure is allowed to be updated*/
@@ -78,6 +78,12 @@ public:
     
     /** Gets the address of the acceleration structure*/
     uint64_t getDeviceAddress() { return _address; }
+    
+    /** Returns the Metal buffer using the same memory as the acceleration structure*/
+    MVKBuffer* getMVKBuffer() { return _buffer; }
+    
+    /** Gets the heap allocation that the acceleration structure, and buffer share*/
+    id<MTLHeap> getMTLHeap() { return _heap; }
 #pragma mark -
 #pragma mark Construction
     MVKAccelerationStructure(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
@@ -87,6 +93,9 @@ protected:
     void propagateDebugName() override {}
     
     id<MTLAccelerationStructure> _accelerationStructure;
+    MVKBuffer* _buffer;
+    id<MTLHeap> _heap;
+    
     bool _allowUpdate = false;
     bool _built = false;
     uint64_t _address = 0;

@@ -22,9 +22,12 @@
 #pragma mark -
 #pragma mark MVKAcceleration Structure
 
-id<MTLAccelerationStructure> MVKAccelerationStructure::getMTLAccelerationStructure()
-{
+id<MTLAccelerationStructure> MVKAccelerationStructure::getMTLAccelerationStructure() {
     return _accelerationStructure;
+}
+
+MVKBuffer* MVKAccelerationStructure::getMVKBuffer() {
+    return _buffer;
 }
 
 VkAccelerationStructureBuildSizesInfoKHR MVKAccelerationStructure::getBuildSizes()
@@ -48,4 +51,5 @@ uint64_t MVKAccelerationStructure::getMTLSize()
 void MVKAccelerationStructure::destroy()
 {
     // TODO
+    _built = false;
 }
