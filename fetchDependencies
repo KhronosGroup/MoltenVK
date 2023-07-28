@@ -232,7 +232,7 @@ function update_repo() {
 
 	if [ -d $1 -a -d $1/.git ]; then
 		cd $1
-		git fetch --all
+		git cat-file -e $3 || git fetch --all
 		git checkout --force $3
 		cd -  > /dev/null
 	else
