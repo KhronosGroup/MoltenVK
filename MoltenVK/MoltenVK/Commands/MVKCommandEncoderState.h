@@ -580,6 +580,7 @@ protected:
 
     ResourceBindings<8> _shaderStageResourceBindings[kMVKShaderStageFragment + 1];
 	std::unordered_map<id<MTLResource>, MTLRenderStages> _renderUsageStages;
+	std::unordered_map<id<MTLResource>, MTLResourceUsage> _renderResourceUsage;
 };
 
 
