@@ -46,9 +46,13 @@ uint64_t mvkGetTimestamp() { return mach_absolute_time() - _mvkTimestampBase; }
 
 double mvkGetTimestampPeriod() { return _mvkTimestampPeriod; }
 
-double mvkGetElapsedMilliseconds(uint64_t startTimestamp, uint64_t endTimestamp) {
+uint64_t mvkGetElapsedNanoseconds(uint64_t startTimestamp, uint64_t endTimestamp) {
 	if (endTimestamp == 0) { endTimestamp = mvkGetTimestamp(); }
-	return (double)(endTimestamp - startTimestamp) * _mvkTimestampPeriod / 1e6;
+	return (endTimestamp - startTimestamp) * _mvkTimestampPeriod;
+}
+
+double mvkGetElapsedMilliseconds(uint64_t startTimestamp, uint64_t endTimestamp) {
+	return mvkGetElapsedNanoseconds(startTimestamp, endTimestamp) / 1e6;
 }
 
 uint64_t mvkGetAbsoluteTime() { return mach_continuous_time() * _mvkMachTimebase.numer / _mvkMachTimebase.denom; }
@@ -99,7 +103,7 @@ bool mvkGetEnvVarBool(std::string varName, bool* pWasFound) {
 #pragma mark System memory
 
 uint64_t mvkGetSystemMemorySize() {
-#if MVK_MACOS_OR_IOS
+#if MVK_MACOS_OR_IOS_OR_VISIONOS
 	mach_msg_type_number_t host_size = HOST_BASIC_INFO_COUNT;
 	host_basic_info_data_t info;
 	if (host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&info, &host_size) == KERN_SUCCESS) {

@@ -780,10 +780,15 @@ MVK_PUBLIC_SYMBOL VkExtent2D mvkVkExtent2DFromCGSize(CGSize cgSize) {
 }
 
 MVK_PUBLIC_SYMBOL CGSize mvkCGSizeFromVkExtent2D(VkExtent2D vkExtent) {
-	CGSize cgSize;
-	cgSize.width = vkExtent.width;
-	cgSize.height = vkExtent.height;
-	return cgSize;
+	return CGSizeMake(vkExtent.width, vkExtent.height);
+}
+
+MVK_PUBLIC_SYMBOL CGPoint mvkCGPointFromVkOffset2D(VkOffset2D vkOffset) {
+	return CGPointMake(vkOffset.x, vkOffset.y);
+}
+
+MVK_PUBLIC_SYMBOL CGRect mvkCGRectFromVkRectLayerKHR(VkRectLayerKHR vkRect) {
+	return { mvkCGPointFromVkOffset2D(vkRect.offset), mvkCGSizeFromVkExtent2D(vkRect.extent) };
 }
 
 

@@ -434,6 +434,12 @@ VkExtent2D mvkVkExtent2DFromCGSize(CGSize cgSize);
 /** Returns a CGSize that corresponds to the specified VkExtent2D. */
 CGSize mvkCGSizeFromVkExtent2D(VkExtent2D vkExtent);
 
+/** Returns a CGPoint that corresponds to the specified VkOffset2D. */
+CGPoint mvkCGPointFromVkOffset2D(VkOffset2D vkOffset);
+
+/** Returns a CGRect that corresponds to the specified VkRectLayerKHR. The layer is ignored. */
+CGRect mvkCGRectFromVkRectLayerKHR(VkRectLayerKHR vkRect);
+
 /** Returns a Metal MTLOrigin constructed from a VkOffset3D. */
 static inline MTLOrigin mvkMTLOriginFromVkOffset3D(VkOffset3D vkOffset) {
 	return MTLOriginMake(vkOffset.x, vkOffset.y, vkOffset.z);

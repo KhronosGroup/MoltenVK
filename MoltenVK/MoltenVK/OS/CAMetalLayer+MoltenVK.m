@@ -80,7 +80,7 @@
 	CGColorSpaceRelease(csRef);
 }
 
-#if MVK_IOS_OR_TVOS || MVK_MACCAT
+#if (MVK_IOS_OR_TVOS || MVK_MACCAT) && !MVK_VISIONOS
 -(UIScreen*) screenMVK {
 	return UIScreen.mainScreen;
 }
