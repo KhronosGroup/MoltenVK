@@ -356,20 +356,6 @@ public:
 		return _metalFeatures.argumentBuffers && mvkConfig().useMetalArgumentBuffers != MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER;
 	};
 
-	/**
-	 * Returns the start timestamps of a timestamp correlation.
-	 * The returned values should be later passed back to updateTimestampPeriod().
-	 */
-	void startTimestampCorrelation(MTLTimestamp& cpuStart, MTLTimestamp& gpuStart);
-
-	/**
-	 * Updates the current value of VkPhysicalDeviceLimits::timestampPeriod, based on the
-	 * correlation between the CPU time tickes and GPU time ticks, from the specified start
-	 * values, to the current values. The cpuStart and gpuStart values should have been
-	 * retrieved from a prior call to startTimestampCorrelation().
-	 */
-	void updateTimestampPeriod(MTLTimestamp cpuStart, MTLTimestamp gpuStart);
-
 
 #pragma mark Construction
 
@@ -416,6 +402,7 @@ protected:
 	void initExtensions();
 	void initCounterSets();
 	bool needsCounterSetRetained();
+	void updateTimestampsAndPeriod();
 	MVKArrayRef<MVKQueueFamily*> getQueueFamilies();
 	void initPipelineCacheUUID();
 	uint32_t getHighestGPUCapability();
@@ -435,16 +422,18 @@ protected:
 	VkPhysicalDeviceMemoryProperties _memoryProperties;
 	MVKSmallVector<MVKQueueFamily*, kMVKQueueFamilyCount> _queueFamilies;
 	MVKPixelFormats _pixelFormats;
+	VkExternalMemoryProperties _hostPointerExternalMemoryProperties;
+	VkExternalMemoryProperties _mtlBufferExternalMemoryProperties;
+	VkExternalMemoryProperties _mtlTextureExternalMemoryProperties;
 	id<MTLCounterSet> _timestampMTLCounterSet;
 	MVKSemaphoreStyle _vkSemaphoreStyle;
+	MTLTimestamp _prevCPUTimestamp = 0;
+	MTLTimestamp _prevGPUTimestamp = 0;
 	uint32_t _allMemoryTypes;
 	uint32_t _hostVisibleMemoryTypes;
 	uint32_t _hostCoherentMemoryTypes;
 	uint32_t _privateMemoryTypes;
 	uint32_t _lazilyAllocatedMemoryTypes;
-	VkExternalMemoryProperties _hostPointerExternalMemoryProperties;
-	VkExternalMemoryProperties _mtlBufferExternalMemoryProperties;
-	VkExternalMemoryProperties _mtlTextureExternalMemoryProperties;
 };
 
 

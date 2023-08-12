@@ -363,6 +363,7 @@ Released 2022/02/07
 - Fix issue where *MSL 2.3* only available on *Apple Silicon*, even on *macOS*.
 - Fix memory leak of dummy `MTLTexture` in render subpasses that use no attachments.
 - Fix Metal object retain-release errors in assignment operators.
+- Fix sync delay between calls to `vkQueueSubmit()` on non-Apple-Silicon devices.
 - Fix use of GPU counter sets on older versions of iOS running on the simulator.
 - `mvk::getShaderOutputs()` in `SPRIVReflection.h` support flattening nested structures.
 - Replaced ASL logging levels with `MVKConfigLogLevel`.
