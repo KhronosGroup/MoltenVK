@@ -524,14 +524,7 @@ MVKQueueCommandBufferSubmission::~MVKQueueCommandBufferSubmission() {
 
 template <size_t N>
 void MVKQueueFullCommandBufferSubmission<N>::submitCommandBuffers() {
-	_queue->getPhysicalDevice()->startTimestampCorrelation(_cpuStart, _gpuStart);
 	for (auto& cb : _cmdBuffers) { cb->submit(this, &_encodingContext); }
-}
-
-template <size_t N>
-void MVKQueueFullCommandBufferSubmission<N>::finish() {
-	_queue->getPhysicalDevice()->updateTimestampPeriod(_cpuStart, _gpuStart);
-	MVKQueueCommandBufferSubmission::finish();
 }
 
 

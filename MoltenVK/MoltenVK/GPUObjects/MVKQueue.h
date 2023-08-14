@@ -255,11 +255,8 @@ public:
 
 protected:
 	void submitCommandBuffers() override;
-	void finish() override;
 
 	MVKSmallVector<MVKCommandBuffer*, N> _cmdBuffers;
-	MTLTimestamp _cpuStart = 0;
-	MTLTimestamp _gpuStart = 0;
 };
 
 

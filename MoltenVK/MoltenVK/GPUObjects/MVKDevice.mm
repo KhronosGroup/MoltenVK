@@ -451,10 +451,17 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 }
 
 void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties* properties) {
+	updateTimestampsAndPeriod();
 	*properties = _properties;
 }
 
 void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
+
+	properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+	getProperties(&properties->properties);
+
+	if ( !properties->pNext ) { return; }
+
 	uint32_t uintMax = std::numeric_limits<uint32_t>::max();
 	uint32_t maxSamplerCnt = getMaxSamplerCount();
 	bool isTier2 = supportsMetalArgumentBuffers() && (_metalFeatures.argumentBuffersTier >= MTLArgumentBuffersTier2);
@@ -536,8 +543,6 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps12.maxTimelineSemaphoreValueDifference = std::numeric_limits<uint64_t>::max();
 	supportedProps12.framebufferIntegerColorSampleCounts = _metalFeatures.supportedSampleCounts;
 
-	properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-	properties->properties = _properties;
 	for (auto* next = (VkBaseOutStructure*)properties->pNext; next; next = next->pNext) {
 		switch ((uint32_t)next->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES: {
@@ -1562,23 +1567,17 @@ VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 	return rslt;
 }
 
-// Don't need to do this for Apple GPUs, where the GPU and CPU timestamps
-// are the same, or if we're not using GPU timestamp counters.
-void MVKPhysicalDevice::startTimestampCorrelation(MTLTimestamp& cpuStart, MTLTimestamp& gpuStart) {
-	if (_properties.vendorID == kAppleVendorId || !_timestampMTLCounterSet) { return; }
-	[_mtlDevice sampleTimestamps: &cpuStart gpuTimestamp: &gpuStart];
-}
-
-// Don't need to do this for Apple GPUs, where the GPU and CPU timestamps
-// are the same, or if we're not using GPU timestamp counters.
-void MVKPhysicalDevice::updateTimestampPeriod(MTLTimestamp cpuStart, MTLTimestamp gpuStart) {
-	if (_properties.vendorID == kAppleVendorId || !_timestampMTLCounterSet) { return; }
-
-	MTLTimestamp cpuEnd;
-	MTLTimestamp gpuEnd;
-	[_mtlDevice sampleTimestamps: &cpuEnd gpuTimestamp: &gpuEnd];
-
-	_properties.limits.timestampPeriod = (double)(cpuEnd - cpuStart) / (double)(gpuEnd - gpuStart);
+// Mark both CPU and GPU timestamps, and if needed, update the timestamp period for this device.
+// On Apple GPUs, the CPU & GPU timestamps are the same, and the timestamp period never changes.
+void MVKPhysicalDevice::updateTimestampsAndPeriod() {
+	if (_properties.vendorID == kAppleVendorId) {
+		_prevGPUTimestamp = _prevCPUTimestamp = mvkGetElapsedNanoseconds();
+	} else {
+		MTLTimestamp earlierCPUTs = _prevCPUTimestamp;
+		MTLTimestamp earlierGPUTs = _prevGPUTimestamp;
+		[_mtlDevice sampleTimestamps: &_prevCPUTimestamp gpuTimestamp: &_prevGPUTimestamp];
+		_properties.limits.timestampPeriod = (double)(_prevCPUTimestamp - earlierCPUTs) / (double)(_prevGPUTimestamp - earlierGPUTs);
+	}
 }
 
 
@@ -2606,7 +2605,7 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.optimalBufferCopyRowPitchAlignment = 1;
 
 	_properties.limits.timestampComputeAndGraphics = VK_TRUE;
-	_properties.limits.timestampPeriod = _metalFeatures.counterSamplingPoints ? 1.0 : mvkGetTimestampPeriod();
+	_properties.limits.timestampPeriod = mvkGetTimestampPeriod();	// Will be 1.0 on Apple Silicon
 
     _properties.limits.pointSizeRange[0] = 1;
 	switch (_properties.vendorID) {
