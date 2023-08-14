@@ -28,9 +28,10 @@ Released TBD
 - Add support for `VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN`.
 - Support building MoltenVK for visionOS.
 - Ensure non-dispatch compute commands don't interfere with compute encoding state used by dispatch commands.
-- Support `VK_PRESENT_MODE_IMMEDIATE_KHR` if `VkPresentTimeGOOGLE::desiredPresentTime` is zero.
 - Support maximizing the concurrent executing compilation tasks via `MVKConfiguration::shouldMaximizeConcurrentCompilation`
+- Support `VK_PRESENT_MODE_IMMEDIATE_KHR` if `VkPresentTimeGOOGLE::desiredPresentTime` is zero.
 - Add support for `VK_PRESENT_MODE_IMMEDIATE_KHR` to macOS Cube demo.
+- Ensure Xcode simulator always uses 256B buffer alignment.
 - Log more info about SPIR-V to MSL conversion errors.
 - Drop official support for using *Xcode 11* to build MoltenVK.
 

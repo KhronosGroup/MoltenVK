@@ -2156,9 +2156,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #endif
 	}
 
-// iOS and tvOS adjustments necessary when running in the simulator on non-Apple GPUs.
-#if MVK_OS_SIMULATOR && !MVK_APPLE_SILICON
-	_metalFeatures.mtlBufferAlignment = 256;
+// iOS and tvOS adjustments necessary when running on the simulator.
+#if MVK_OS_SIMULATOR
+	_metalFeatures.mtlBufferAlignment = 256;	// Even on Apple Silicon
 #endif
 
 	// Currently, Metal argument buffer support is in beta stage, and is only supported
