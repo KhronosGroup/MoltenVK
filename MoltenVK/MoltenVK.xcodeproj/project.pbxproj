@@ -478,7 +478,7 @@
 		DCFD7F4A2A45BC6E007BBBF7 /* MVKRenderPass.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7941C7DFB4800632CA3 /* MVKRenderPass.mm */; };
 		DCFD7F4B2A45BC6E007BBBF7 /* MVKCmdTransfer.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB76D1C7DFB4800632CA3 /* MVKCmdTransfer.mm */; };
 		DCFD7F4C2A45BC6E007BBBF7 /* MVKCmdQueries.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7711C7DFB4800632CA3 /* MVKCmdQueries.mm */; };
-		DCFD7F4D2A45BC6E007BBBF7 /* vk_mvk_moltenvk.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7AC1C7DFB4800632CA3 /* vk_mvk_moltenvk.mm */; };
+		DCFD7F4D2A45BC6E007BBBF7 /* mvk_api.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7AC1C7DFB4800632CA3 /* mvk_api.mm */; };
 		DCFD7F4E2A45BC6E007BBBF7 /* MVKSwapchain.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB79C1C7DFB4800632CA3 /* MVKSwapchain.mm */; };
 		DCFD7F4F2A45BC6E007BBBF7 /* MVKCommandEncoderState.mm in Sources */ = {isa = PBXBuildFile; fileRef = A95B7D681D3EE486003183D3 /* MVKCommandEncoderState.mm */; };
 		DCFD7F502A45BC6E007BBBF7 /* MVKGPUCapture.mm in Sources */ = {isa = PBXBuildFile; fileRef = A93E83342121F0C8001FEBD4 /* MVKGPUCapture.mm */; };
@@ -1860,7 +1860,7 @@
 				DCFD7F4A2A45BC6E007BBBF7 /* MVKRenderPass.mm in Sources */,
 				DCFD7F4B2A45BC6E007BBBF7 /* MVKCmdTransfer.mm in Sources */,
 				DCFD7F4C2A45BC6E007BBBF7 /* MVKCmdQueries.mm in Sources */,
-				DCFD7F4D2A45BC6E007BBBF7 /* vk_mvk_moltenvk.mm in Sources */,
+				DCFD7F4D2A45BC6E007BBBF7 /* mvk_api.mm in Sources */,
 				DCFD7F4E2A45BC6E007BBBF7 /* MVKSwapchain.mm in Sources */,
 				DCFD7F4F2A45BC6E007BBBF7 /* MVKCommandEncoderState.mm in Sources */,
 				DCFD7F502A45BC6E007BBBF7 /* MVKGPUCapture.mm in Sources */,
@@ -2001,7 +2001,7 @@
 					"\"$(SRCROOT)/../External/cereal/include\"",
 					"\"${BUILT_PRODUCTS_DIR}\"",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				MACH_O_TYPE = staticlib;
 				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MTL_ENABLE_DEBUG_INFO = YES;
@@ -2011,7 +2011,7 @@
 				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKShaderConverter.a";
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
-				TVOS_DEPLOYMENT_TARGET = 11.0;
+				TVOS_DEPLOYMENT_TARGET = 12.0;
 				WARNING_CFLAGS = "-Wreorder";
 			};
 			name = Debug;
@@ -2072,7 +2072,7 @@
 					"\"$(SRCROOT)/../External/cereal/include\"",
 					"\"${BUILT_PRODUCTS_DIR}\"",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				MACH_O_TYPE = staticlib;
 				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -2082,7 +2082,7 @@
 				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKShaderConverter.a";
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
-				TVOS_DEPLOYMENT_TARGET = 11.0;
+				TVOS_DEPLOYMENT_TARGET = 12.0;
 				VALIDATE_PRODUCT = YES;
 				WARNING_CFLAGS = "-Wreorder";
 			};

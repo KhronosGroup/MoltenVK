@@ -93,6 +93,9 @@ if [ "${is_portability}" != "" ]; then
 	export MVK_CONFIG_ADVERTISE_EXTENSIONS=0xA
 fi
 
+# ----- System settings ------
+export DYLD_LIBRARY_PATH="/usr/local/lib"
+
 # ----- Metal validation settings ------
 export METAL_DEVICE_WRAPPER_TYPE=1
 export METAL_ERROR_MODE=3
