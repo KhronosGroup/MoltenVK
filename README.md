@@ -26,6 +26,7 @@ Table of Contents
 - [Building **MoltenVK**](#building)
 - [Running **MoltenVK** Demo Applications](#demos)
 - [Using **MoltenVK** in Your Application](#using)
+- [Debugging Your **MoltenVK** Application using Metal Frame Capture](#debugging)
 - [**MoltenVK** and *Vulkan* Compliance](#compliance)
 - [Getting Support](#support)
 - [Contributing to **MoltenVK** Development](#contributing)
@@ -352,7 +353,20 @@ in the `Docs` directory, to link the **MoltenVK** libraries and frameworks to yo
 The runtime distribution package in the `Package/Latest` directory is a stand-alone package, and you can copy 
 the contents of that directory out of this **MoltenVK** repository into your own application building environment.
 
+<a name="debugging"></a>
+Debugging Your **MoltenVK** Application using Metal Frame Capture
+-----------------------------------------------------------------------
 
+As **MoltenVK** translates Vulkan API calls to Metal, [Metal Frame Capture](https://developer.apple.com/documentation/xcode/capturing-a-metal-workload-in-xcode) can be used to debug your application. In order to create a GPU trace file, you have to set the following environment variables:
+
+1. `METAL_CAPTURE_ENABLED=1`, this enables capturing. The following environment variable then needs to be non-zero as well, otherwise an error will be thrown.
+2. `MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE=n`, this defines the scope of the capture, set `n` to:
+	* `0` to disable capturing,
+	* `1` to capture all frames created between the creation of a `VkDevice` to its destruction, or
+	* `2` to capture only the first frame.
+3. `MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE=filename.gputrace`, to set where the capture file should be saved to. Note that `filename.gputrace` must not already exist, otherwise an error will be thrown.
+
+The created capture file can then be opened with Xcode for investigation.
 
 <a name="compliance"></a>
 
