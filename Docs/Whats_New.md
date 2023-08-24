@@ -13,6 +13,16 @@ Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.2.6
+--------------
+
+Released TBD
+
+- Fix rare case where vertex attribute buffers are not bound to Metal 
+  when no other bindings change between pipelines.
+
+
+
 MoltenVK 1.2.5
 --------------
 
