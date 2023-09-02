@@ -44,7 +44,7 @@ typedef unsigned long MTLArgumentBuffersTier;
  */
 
 
-#define MVK_PRIVATE_API_VERSION   37
+#define MVK_PRIVATE_API_VERSION   38
 
 
 /** Identifies the type of rounding Metal uses for float to integer conversions in particular calculatons. */
@@ -153,13 +153,16 @@ typedef struct {
 	VkDeviceSize hostMemoryPageSize;				/**< The size of a page of host memory on this platform. */
 } MVKPhysicalDeviceMetalFeatures;
 
-/** MoltenVK performance of a particular type of activity. */
+/**
+ * MoltenVK performance of a particular type of activity.
+ * Durations are recorded in milliseconds. Memory sizes are recorded in kilobytes.
+ */
 typedef struct {
-    uint32_t count;             /**< The number of activities of this type. */
-	double latestDuration;      /**< The latest (most recent) duration of the activity, in milliseconds. */
-    double averageDuration;     /**< The average duration of the activity, in milliseconds. */
-    double minimumDuration;     /**< The minimum duration of the activity, in milliseconds. */
-    double maximumDuration;     /**< The maximum duration of the activity, in milliseconds. */
+    uint32_t count;       /**< The number of activities of this type. */
+	double latest;        /**< The latest (most recent) value of the activity. */
+    double average;       /**< The average value of the activity. */
+    double minimum;       /**< The minimum value of the activity. */
+    double maximum;       /**< The maximum value of the activity. */
 } MVKPerformanceTracker;
 
 /** MoltenVK performance of shader compilation activities. */
@@ -186,11 +189,19 @@ typedef struct {
 
 /** MoltenVK performance of queue activities. */
 typedef struct {
-	MVKPerformanceTracker mtlQueueAccess;               /** Create an MTLCommandQueue or access an existing cached instance. */
-	MVKPerformanceTracker mtlCommandBufferCompletion;   /** Completion of a MTLCommandBuffer on the GPU, from commit to completion callback. */
-	MVKPerformanceTracker nextCAMetalDrawable;			/** Retrieve next CAMetalDrawable from CAMetalLayer during presentation. */
-	MVKPerformanceTracker frameInterval;				/** Frame presentation interval (1000/FPS). */
+	MVKPerformanceTracker retrieveMTLCommandBuffer;     /** Retrieve a MTLCommandBuffer from a MTLQueue. */
+	MVKPerformanceTracker commandBufferEncoding;        /** Encode a single VkCommandBuffer to a MTLCommandBuffer (excludes MTLCommandBuffer encoding from configured immediate prefilling). */
+	MVKPerformanceTracker submitCommandBuffers;         /** Submit and encode all VkCommandBuffers in a vkQueueSubmit() operation to MTLCommandBuffers (including both prefilled and deferred encoding). */
+	MVKPerformanceTracker mtlCommandBufferExecution;    /** Execute a MTLCommandBuffer on the GPU, from commit to completion callback. */
+	MVKPerformanceTracker retrieveCAMetalDrawable;      /** Retrieve next CAMetalDrawable from a CAMetalLayer. */
+	MVKPerformanceTracker presentSwapchains;            /** Present the swapchains in a vkQueuePresentKHR() on the GPU, from commit to presentation callback. */
+	MVKPerformanceTracker frameInterval;                /** Frame presentation interval (1000/FPS). */
 } MVKQueuePerformance;
+
+/** MoltenVK performance of device activities. */
+typedef struct {
+	MVKPerformanceTracker gpuMemoryAllocated;		/** GPU memory allocated (in KB). */
+} MVKDevicePerformance;
 
 /**
  * MoltenVK performance. You can retrieve a copy of this structure using the vkGetPerformanceStatisticsMVK() function.
@@ -209,6 +220,7 @@ typedef struct {
 	MVKShaderCompilationPerformance shaderCompilation;	/** Shader compilations activities. */
 	MVKPipelineCachePerformance pipelineCache;			/** Pipeline cache activities. */
 	MVKQueuePerformance queue;          				/** Queue activities. */
+	MVKDevicePerformance device;          				/** Device activities. */
 } MVKPerformanceStatistics;
 
 

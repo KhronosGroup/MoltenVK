@@ -20,6 +20,9 @@ Released TBD
 
 - Fix rare case where vertex attribute buffers are not bound to Metal 
   when no other bindings change between pipelines.
+- Improve behavior of swapchain image presentation stalls caused by Metal regression.
+- Add several additional performance trackers, available via logging, or the `mvk_private_api.h` API.
+- Update `MVK_CONFIGURATION_API_VERSION` and `MVK_PRIVATE_API_VERSION` to `38`.
 
 
 

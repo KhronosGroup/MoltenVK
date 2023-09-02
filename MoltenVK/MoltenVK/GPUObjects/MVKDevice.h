@@ -53,7 +53,6 @@ class MVKSemaphore;
 class MVKTimelineSemaphore;
 class MVKDeferredOperation;
 class MVKEvent;
-class MVKSemaphoreImpl;
 class MVKQueryPool;
 class MVKShaderModule;
 class MVKPipelineCache;
@@ -440,6 +439,11 @@ protected:
 #pragma mark -
 #pragma mark MVKDevice
 
+typedef enum {
+	MVKActivityPerformanceValueTypeDuration,
+	MVKActivityPerformanceValueTypeByteCount,
+} MVKActivityPerformanceValueType;
+
 typedef struct MVKMTLBlitEncoder {
 	id<MTLBlitCommandEncoder> mtlBlitEncoder = nil;
 	id<MTLCommandBuffer> mtlCmdBuffer = nil;
@@ -704,13 +708,17 @@ public:
 	void addActivityPerformance(MVKPerformanceTracker& activityTracker,
 								uint64_t startTime, uint64_t endTime = 0) {
 		if (_isPerformanceTracking) {
-			updateActivityPerformance(activityTracker, startTime, endTime);
+			updateActivityPerformance(activityTracker, mvkGetElapsedMilliseconds(startTime, endTime));
+		}
+	};
 
-			// Log call not locked. Very minor chance that the tracker data will be updated during log call,
-			// resulting in an inconsistent report. Not worth taking lock perf hit for rare inline reporting.
-			if (_activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE) {
-				logActivityPerformance(activityTracker, _performanceStatistics, true);
-			}
+	/**
+	 * If performance is being tracked, adds the performance for an activity
+	 * with a kilobyte count, to the given performance statistics.
+	 */
+	void addActivityByteCount(MVKPerformanceTracker& activityTracker, uint64_t byteCount) {
+		if (_isPerformanceTracking) {
+			updateActivityPerformance(activityTracker, double(byteCount / KIBI));
 		}
 	};
 
@@ -885,8 +893,11 @@ protected:
 	template<typename S> void enableFeatures(S* pRequested, VkBool32* pEnabledBools, const VkBool32* pRequestedBools, const VkBool32* pAvailableBools, uint32_t count);
 	void enableExtensions(const VkDeviceCreateInfo* pCreateInfo);
     const char* getActivityPerformanceDescription(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats);
-	void logActivityPerformance(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);
-	void updateActivityPerformance(MVKPerformanceTracker& activity, uint64_t startTime, uint64_t endTime);
+	MVKActivityPerformanceValueType getActivityPerformanceValueType(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats);
+	void logActivityInline(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats);
+	void logActivityDuration(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);
+	void logActivityByteCount(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);
+	void updateActivityPerformance(MVKPerformanceTracker& activity, double currentValue);
 	void getDescriptorVariableDescriptorCountLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
 														   VkDescriptorSetLayoutSupport* pSupport,
 														   VkDescriptorSetVariableDescriptorCountLayoutSupport* pVarDescSetCountSupport);
@@ -908,7 +919,6 @@ protected:
 	id<MTLSamplerState> _defaultMTLSamplerState = nil;
 	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
     uint32_t _globalVisibilityQueryCount = 0;
-	MVKConfigActivityPerformanceLoggingStyle _activityPerformanceLoggingStyle = MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT;
 	bool _isPerformanceTracking = false;
 	bool _isCurrentlyAutoGPUCapturing = false;
 	bool _isUsingMetalArgumentBuffers = false;
@@ -1055,6 +1065,15 @@ protected:
 
 #pragma mark -
 #pragma mark Support functions
+
+/**
+ * Returns an autoreleased array containing the MTLDevices available on this system,
+ * sorted according to power, with higher power GPU's at the front of the array.
+ * This ensures that a lazy app that simply grabs the first GPU will get a high-power
+ * one by default. If MVKConfiguration::forceLowPowerGPU is enabled, the returned
+ * array will only include low-power devices.
+ */
+NSArray<id<MTLDevice>>* mvkGetAvailableMTLDevicesArray();
 
 /** Returns the registry ID of the specified device, or zero if the device does not have a registry ID. */
 uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice);

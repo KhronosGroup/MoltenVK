@@ -50,6 +50,11 @@ bool MVKSemaphoreImpl::isReserved() {
 	return !isClear();
 }
 
+uint32_t MVKSemaphoreImpl::getReservationCount() {
+	lock_guard<mutex> lock(_lock);
+	return _reservationCount;
+}
+
 bool MVKSemaphoreImpl::wait(uint64_t timeout, bool reserveAgain) {
     unique_lock<mutex> lock(_lock);
 

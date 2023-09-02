@@ -77,8 +77,8 @@ void MVKCommandPool::freeCommandBuffers(uint32_t commandBufferCount,
 	}
 }
 
-id<MTLCommandBuffer> MVKCommandPool::getMTLCommandBuffer(uint32_t queueIndex) {
-	return _device->getQueue(_queueFamilyIndex, queueIndex)->getMTLCommandBuffer(kMVKCommandUseEndCommandBuffer, true);
+id<MTLCommandBuffer> MVKCommandPool::getMTLCommandBuffer(MVKCommandUse cmdUse, uint32_t queueIndex) {
+	return _device->getQueue(_queueFamilyIndex, queueIndex)->getMTLCommandBuffer(cmdUse, true);
 }
 
 // Clear the command type pool member variables.

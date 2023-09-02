@@ -50,7 +50,7 @@ public:
 	void reportMessage(MVKConfigLogLevel logLevel, const char* format, ...) __printflike(3, 4);
 
 	/**
-	 * Report a Vulkan error message, on behalf of the object, which may be nil.
+	 * Report a message, on behalf of the object, which may be nil.
 	 * Reporting includes logging to a standard system logging stream, and if the object
 	 * is not nil and has access to the VkInstance, the message will also be forwarded
 	 * to the VkInstance for output to the Vulkan debug report messaging API.
@@ -58,14 +58,19 @@ public:
 	static void reportMessage(MVKBaseObject* mvkObj, MVKConfigLogLevel logLevel, const char* format, ...) __printflike(3, 4);
 
 	/**
-	 * Report a Vulkan error message, on behalf of the object, which may be nil.
+	 * Report a Vulkan result message. This includes logging to a standard system logging stream,
+	 * and some subclasses will also forward the message to their VkInstance for output to the
+	 * Vulkan debug report messaging API.
+	 */
+	VkResult reportResult(VkResult vkRslt, MVKConfigLogLevel logLevel, const char* format, ...) __printflike(4, 5);
+
+	/**
+	 * Report a Vulkan result message, on behalf of the object. which may be nil.
 	 * Reporting includes logging to a standard system logging stream, and if the object
 	 * is not nil and has access to the VkInstance, the message will also be forwarded
 	 * to the VkInstance for output to the Vulkan debug report messaging API.
-	 *
-	 * This is the core reporting implementation. Other similar functions delegate here.
 	 */
-	static void reportMessage(MVKBaseObject* mvkObj, MVKConfigLogLevel logLevel, const char* format, va_list args) __printflike(3, 0);
+	static VkResult reportResult(MVKBaseObject* mvkObj, VkResult vkRslt, MVKConfigLogLevel logLevel, const char* format, ...) __printflike(4, 5);
 
 	/**
 	 * Report a Vulkan error message. This includes logging to a standard system logging stream,
@@ -83,19 +88,29 @@ public:
 	static VkResult reportError(MVKBaseObject* mvkObj, VkResult vkErr, const char* format, ...) __printflike(3, 4);
 
 	/**
-	 * Report a Vulkan error message, on behalf of the object. which may be nil.
+	 * Report a Vulkan warning message. This includes logging to a standard system logging stream,
+	 * and some subclasses will also forward the message to their VkInstance for output to the
+	 * Vulkan debug report messaging API.
+	 */
+	VkResult reportWarning(VkResult vkRslt, const char* format, ...) __printflike(3, 4);
+
+	/**
+	 * Report a Vulkan warning message, on behalf of the object. which may be nil.
 	 * Reporting includes logging to a standard system logging stream, and if the object
 	 * is not nil and has access to the VkInstance, the message will also be forwarded
 	 * to the VkInstance for output to the Vulkan debug report messaging API.
-	 *
-	 * This is the core reporting implementation. Other similar functions delegate here.
 	 */
-	static VkResult reportError(MVKBaseObject* mvkObj, VkResult vkErr, const char* format, va_list args) __printflike(3, 0);
+	static VkResult reportWarning(MVKBaseObject* mvkObj, VkResult vkRslt, const char* format, ...) __printflike(3, 4);
 
 	/** Destroys this object. Default behaviour simply deletes it. Subclasses may override to delay deletion. */
 	virtual void destroy() { delete this; }
 
     virtual ~MVKBaseObject() {}
+
+protected:
+	static VkResult reportResult(MVKBaseObject* mvkObj, VkResult vkRslt, MVKConfigLogLevel logLevel, const char* format, va_list args) __printflike(4, 0);
+	static void reportMessage(MVKBaseObject* mvkObj, MVKConfigLogLevel logLevel, const char* format, va_list args) __printflike(3, 0);
+
 };
 
 

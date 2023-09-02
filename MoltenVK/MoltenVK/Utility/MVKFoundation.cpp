@@ -21,6 +21,44 @@
 
 #define CASE_STRINGIFY(V)  case V: return #V
 
+const char* mvkVkCommandName(MVKCommandUse cmdUse) {
+	switch (cmdUse) {
+		case kMVKCommandUseBeginCommandBuffer:           return "vkBeginCommandBuffer (prefilled VkCommandBuffer)";
+		case kMVKCommandUseQueueSubmit:                  return "vkQueueSubmit";
+		case kMVKCommandUseAcquireNextImage:             return "vkAcquireNextImageKHR";
+		case kMVKCommandUseQueuePresent:                 return "vkQueuePresentKHR";
+		case kMVKCommandUseQueueWaitIdle:                return "vkQueueWaitIdle";
+		case kMVKCommandUseDeviceWaitIdle:               return "vkDeviceWaitIdle";
+		case kMVKCommandUseInvalidateMappedMemoryRanges: return "vkInvalidateMappedMemoryRanges";
+		case kMVKCommandUseBeginRendering:               return "vkCmdBeginRendering";
+		case kMVKCommandUseBeginRenderPass:              return "vkCmdBeginRenderPass";
+		case kMVKCommandUseNextSubpass:                  return "vkCmdNextSubpass";
+		case kMVKCommandUseRestartSubpass:               return "Metal renderpass restart on barrier";
+		case kMVKCommandUsePipelineBarrier:              return "vkCmdPipelineBarrier";
+		case kMVKCommandUseBlitImage:                    return "vkCmdBlitImage";
+		case kMVKCommandUseCopyImage:                    return "vkCmdCopyImage";
+		case kMVKCommandUseResolveImage:                 return "vkCmdResolveImage (resolve stage)";
+		case kMVKCommandUseResolveExpandImage:           return "vkCmdResolveImage (expand stage)";
+		case kMVKCommandUseResolveCopyImage:             return "vkCmdResolveImage (copy stage)";
+		case kMVKCommandUseCopyBuffer:                   return "vkCmdCopyBuffer";
+		case kMVKCommandUseCopyBufferToImage:            return "vkCmdCopyBufferToImage";
+		case kMVKCommandUseCopyImageToBuffer:            return "vkCmdCopyImageToBuffer";
+		case kMVKCommandUseFillBuffer:                   return "vkCmdFillBuffer";
+		case kMVKCommandUseUpdateBuffer:                 return "vkCmdUpdateBuffer";
+		case kMVKCommandUseClearAttachments:             return "vkCmdClearAttachments";
+		case kMVKCommandUseClearColorImage:              return "vkCmdClearColorImage";
+		case kMVKCommandUseClearDepthStencilImage:       return "vkCmdClearDepthStencilImage";
+		case kMVKCommandUseResetQueryPool:               return "vkCmdResetQueryPool";
+		case kMVKCommandUseDispatch:                     return "vkCmdDispatch";
+		case kMVKCommandUseTessellationVertexTessCtl:    return "vkCmdDraw (vertex and tess control stages)";
+		case kMVKCommandUseDrawIndirectConvertBuffers:   return "vkCmdDrawIndirect (convert indirect buffers)";
+		case kMVKCommandUseCopyQueryPoolResults:         return "vkCmdCopyQueryPoolResults";
+		case kMVKCommandUseAccumOcclusionQuery:          return "Post-render-pass occlusion query accumulation";
+		case kMVKCommandUseRecordGPUCounterSample:       return "Record GPU Counter Sample";
+		default:                                         return "Unknown Vulkan command";
+	}
+}
+
 const char* mvkVkResultName(VkResult vkResult) {
 	switch (vkResult) {
 
