@@ -190,7 +190,7 @@ typedef struct {
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
 	 *
 	 * The initial value or this parameter is set by the
-	 * MVK_DEBUG
+	 * MVK_CONFIG_DEBUG
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * If neither is set, the value of this parameter is false if MoltenVK was
 	 * built in Release mode, and true if MoltenVK was built in Debug mode.
@@ -940,7 +940,7 @@ typedef struct {
 #ifndef VK_NO_PROTOTYPES
 
 /**
- * Populates the pConfiguration structure with the current MoltenVK configuration settings.
+ * Populates the pConfiguration structure with the current global MoltenVK configuration settings.
  *
  * To change a specific configuration value, call vkGetMoltenVKConfigurationMVK() to retrieve
  * the current configuration, make changes, and call  vkSetMoltenVKConfigurationMVK() to
@@ -978,7 +978,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetMoltenVKConfigurationMVK(
 	size_t*                                     pConfigurationSize);
 
 /**
- * Sets the MoltenVK configuration settings to those found in the pConfiguration structure.
+ * Sets the global MoltenVK configuration settings to those found in the pConfiguration structure.
  *
  * To change a specific configuration value, call vkGetMoltenVKConfigurationMVK()
  * to retrieve the current configuration, make changes, and call
@@ -988,8 +988,12 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetMoltenVKConfigurationMVK(
  * This function can be called before the VkInstance has been created. It is safe to call this function
  * with a VkInstance retrieved from a different layer in the Vulkan SDK Loader and Layers framework.
  *
- * To be active, some configuration settings must be set before a VkInstance or VkDevice
+ * To be active, some global configuration settings must be set before a VkInstance or VkDevice
  * is created. See the description of the MVKConfiguration members for more information.
+ * If the VkInstance has the VK_EXT_layer_settings extension enabled, this call must be
+ * performed before the VkInstance is created, and subsequent changes here will not apply
+ * to that VkInstance and its derivative objects. The VK_EXT_layer_settings extension can
+ * be used to make futher changes to that VkInstance.
  *
  * If you are linking to an implementation of MoltenVK that was compiled from a different
  * MVK_CONFIGURATION_API_VERSION than your app was, the size of the MVKConfiguration structure
@@ -1011,7 +1015,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetMoltenVKConfigurationMVK(
  * expects MVKConfiguration to be.
  */
 VKAPI_ATTR VkResult VKAPI_CALL vkSetMoltenVKConfigurationMVK(
-	VkInstance                                  ignored,
+	VkInstance                                  instance,
 	const MVKConfiguration*                     pConfiguration,
 	size_t*                                     pConfigurationSize);
 

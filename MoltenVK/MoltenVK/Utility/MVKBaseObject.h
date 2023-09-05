@@ -42,6 +42,13 @@ public:
 	/** Returns the Vulkan API opaque object controlling this object. */
 	virtual MVKVulkanAPIObject* getVulkanAPIObject() = 0;
 
+	/** 
+	 * If getVulkanAPIObject() does not return NULL, this function returns the MoltenVK
+	 * configuration info for the VkInstance that created the API object, otherwise
+	 * this function returns the global configuration info.
+	 */
+	virtual const MVKConfiguration& getMVKConfig();
+
 	/**
 	 * Report a message. This includes logging to a standard system logging stream,
 	 * and some subclasses will also forward the message to their VkInstance for

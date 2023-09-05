@@ -155,7 +155,7 @@ void MVKShaderLibrary::setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
 void MVKShaderLibrary::compressMSL(const string& msl) {
 	MVKDevice* mvkDev = _owner->getDevice();
 	uint64_t startTime = mvkDev->getPerformanceTimestamp();
-	_compressedMSL.compress(msl, mvkConfig().shaderSourceCompressionAlgorithm);
+	_compressedMSL.compress(msl, getMVKConfig().shaderSourceCompressionAlgorithm);
 	mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.shaderCompilation.mslCompress, startTime);
 }
 
@@ -353,7 +353,7 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration
 
 bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
 							  SPIRVToMSLConversionResult& conversionResult) {
-	bool shouldLogCode = mvkConfig().debugMode;
+	bool shouldLogCode = getMVKConfig().debugMode;
 	bool shouldLogEstimatedGLSL = shouldLogCode;
 
 	// If the SPIR-V converter does not have any code, but the GLSL converter does,
@@ -508,7 +508,7 @@ id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode,
 		@synchronized (mtlDev) {
 			auto mtlCompileOptions = _owner->getDevice()->getMTLCompileOptions(shaderConversionResults.entryPoint.supportsFastMath,
 																			   shaderConversionResults.isPositionInvariant);
-			MVKLogInfoIf(mvkConfig().debugMode, "Compiling Metal shader%s.", mtlCompileOptions.fastMathEnabled ? " with FastMath enabled" : "");
+			MVKLogInfoIf(getMVKConfig().debugMode, "Compiling Metal shader%s.", mtlCompileOptions.fastMathEnabled ? " with FastMath enabled" : "");
 			[mtlDev newLibraryWithSource: mslSourceCode
 								 options: mtlCompileOptions
 					   completionHandler: ^(id<MTLLibrary> mtlLib, NSError* error) {

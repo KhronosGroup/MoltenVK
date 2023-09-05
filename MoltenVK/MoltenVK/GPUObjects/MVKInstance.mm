@@ -289,7 +289,7 @@ NSArray<id<MTLDevice>>* MVKInstance::getAvailableMTLDevicesArray() {
 #if MVK_MACOS
 	NSArray* rawMTLDevs = [MTLCopyAllDevices() autorelease];
 	if (rawMTLDevs) {
-		bool forceLowPower = mvkConfig().forceLowPowerGPU;
+		bool forceLowPower = getMVKConfig().forceLowPowerGPU;
 
 		// Populate the array of appropriate MTLDevices
 		for (id<MTLDevice> md in rawMTLDevs) {
@@ -368,6 +368,7 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 	setConfigurationResult(pWritableExtns->enable(pCreateInfo->enabledExtensionCount,
 												  pCreateInfo->ppEnabledExtensionNames,
 												  getDriverLayer()->getSupportedInstanceExtensions()));
+	initMVKConfig(pCreateInfo);
 
 	MVKLogInfo("Created VkInstance for Vulkan version %s, as requested by app, with the following %d Vulkan extensions enabled:%s",
 			   mvkGetVulkanVersionString(_appInfo.apiVersion).c_str(),
@@ -394,6 +395,75 @@ void MVKInstance::initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo) {
 			default:
 				break;
 		}
+	}
+}
+
+#define STR(NAME) #NAME
+#define CHECK_CONFIG(name, configSetting, type)  \
+	if(mvkStringsAreEqual(pSetting->pSettingName, STR(MVK_CONFIG_##name))) {  \
+		_mvkConfig.configSetting = *(type*)(pSetting->pValues);  \
+		continue;  \
+	}
+
+// If the VK_EXT_layer_settings extension is enabled, initialize the local 
+// MVKConfiguration from the global version built from environment variables.
+void MVKInstance::initMVKConfig(const VkInstanceCreateInfo* pCreateInfo) {
+
+	if ( !_enabledExtensions.vk_EXT_layer_settings.enabled ) { return; }
+
+	_mvkConfig = getMVKConfig();
+
+	VkLayerSettingsCreateInfoEXT* pLSCreateInfo = nil;
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT:
+				pLSCreateInfo = (VkLayerSettingsCreateInfoEXT*)next;
+				break;
+			default:
+				break;
+		}
+	}
+
+	if ( !pLSCreateInfo ) { return; }
+
+	for (uint32_t lsIdx = 0; lsIdx < pLSCreateInfo->settingCount; lsIdx++) {
+		const auto* pSetting = &pLSCreateInfo->pSettings[lsIdx];
+
+		CHECK_CONFIG(DEBUG, debugMode, VkBool32);
+		CHECK_CONFIG(SHADER_CONVERSION_FLIP_VERTEX_Y, shaderConversionFlipVertexY, VkBool32);
+		CHECK_CONFIG(SYNCHRONOUS_QUEUE_SUBMITS, synchronousQueueSubmits, VkBool32);
+		CHECK_CONFIG(PREFILL_METAL_COMMAND_BUFFERS, prefillMetalCommandBuffers, MVKPrefillMetalCommandBuffersStyle);
+		CHECK_CONFIG(MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_QUEUE, maxActiveMetalCommandBuffersPerQueue, uint32_t);
+		CHECK_CONFIG(SUPPORT_LARGE_QUERY_POOLS, supportLargeQueryPools, VkBool32);
+		CHECK_CONFIG(PRESENT_WITH_COMMAND_BUFFER, presentWithCommandBuffer, VkBool32);
+		CHECK_CONFIG(SWAPCHAIN_MIN_MAG_FILTER_USE_NEAREST, swapchainMinMagFilterUseNearest, VkBool32);
+		CHECK_CONFIG(METAL_COMPILE_TIMEOUT, metalCompileTimeout, uint64_t);
+		CHECK_CONFIG(PERFORMANCE_TRACKING, performanceTracking, VkBool32);
+		CHECK_CONFIG(PERFORMANCE_LOGGING_FRAME_COUNT, performanceLoggingFrameCount, uint32_t);
+		CHECK_CONFIG(ACTIVITY_PERFORMANCE_LOGGING_STYLE, activityPerformanceLoggingStyle, MVKConfigActivityPerformanceLoggingStyle);
+		CHECK_CONFIG(DISPLAY_WATERMARK, displayWatermark, VkBool32);
+		CHECK_CONFIG(SPECIALIZED_QUEUE_FAMILIES, specializedQueueFamilies, VkBool32);
+		CHECK_CONFIG(SWITCH_SYSTEM_GPU, switchSystemGPU, VkBool32);
+		CHECK_CONFIG(FULL_IMAGE_VIEW_SWIZZLE, fullImageViewSwizzle, VkBool32);
+		CHECK_CONFIG(DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_FAMILY_INDEX, defaultGPUCaptureScopeQueueFamilyIndex, VkBool32);
+		CHECK_CONFIG(DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_INDEX, defaultGPUCaptureScopeQueueIndex, VkBool32);
+		CHECK_CONFIG(FAST_MATH_ENABLED, fastMathEnabled, MVKConfigFastMath);
+		CHECK_CONFIG(LOG_LEVEL, logLevel, MVKConfigLogLevel);
+		CHECK_CONFIG(TRACE_VULKAN_CALLS, traceVulkanCalls, MVKConfigTraceVulkanCalls);
+		CHECK_CONFIG(FORCE_LOW_POWER_GPU, forceLowPowerGPU, VkBool32);
+		CHECK_CONFIG(VK_SEMAPHORE_SUPPORT_STYLE, semaphoreSupportStyle, MVKVkSemaphoreSupportStyle);
+		CHECK_CONFIG(AUTO_GPU_CAPTURE_SCOPE, autoGPUCaptureScope, MVKConfigAutoGPUCaptureScope);
+		CHECK_CONFIG(AUTO_GPU_CAPTURE_OUTPUT_FILE, autoGPUCaptureOutputFilepath, const char*);
+		CHECK_CONFIG(TEXTURE_1D_AS_2D, texture1DAs2D, VkBool32);
+		CHECK_CONFIG(PREALLOCATE_DESCRIPTORS, preallocateDescriptors, VkBool32);
+		CHECK_CONFIG(USE_COMMAND_POOLING, useCommandPooling, VkBool32);
+		CHECK_CONFIG(USE_MTLHEAP, useMTLHeap, VkBool32);
+		CHECK_CONFIG(API_VERSION_TO_ADVERTISE, apiVersionToAdvertise, uint32_t);
+		CHECK_CONFIG(ADVERTISE_EXTENSIONS, advertiseExtensions, uint32_t);
+		CHECK_CONFIG(RESUME_LOST_DEVICE, resumeLostDevice, VkBool32);
+		CHECK_CONFIG(USE_METAL_ARGUMENT_BUFFERS, useMetalArgumentBuffers, MVKUseMetalArgumentBuffers);
+		CHECK_CONFIG(SHADER_COMPRESSION_ALGORITHM, shaderSourceCompressionAlgorithm, MVKConfigCompressionAlgorithm);
+		CHECK_CONFIG(SHOULD_MAXIMIZE_CONCURRENT_COMPILATION, shouldMaximizeConcurrentCompilation, VkBool32);
 	}
 }
 
@@ -761,7 +831,7 @@ void MVKInstance::logVersions() {
 	MVKExtensionList allExtns(this, true);
 	MVKLogInfo("MoltenVK version %s, supporting Vulkan version %s.\n\tThe following %d Vulkan extensions are supported:%s",
 			   mvkGetMoltenVKVersionString(MVK_VERSION).c_str(),
-			   mvkGetVulkanVersionString(mvkConfig().apiVersionToAdvertise).c_str(),
+			   mvkGetVulkanVersionString(getMVKConfig().apiVersionToAdvertise).c_str(),
 			   allExtns.getEnabledCount(),
 			   allExtns.enabledNamesString("\n\t\t", true).c_str());
 }

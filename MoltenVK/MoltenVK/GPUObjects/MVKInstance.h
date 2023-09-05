@@ -66,6 +66,9 @@ public:
 	/** Returns a pointer to the Vulkan instance. */
 	MVKInstance* getInstance() override { return this; }
 
+	/** Return the MoltenVK configuration info for this VkInstance. */
+	const MVKConfiguration& getMVKConfig() override { return _enabledExtensions.vk_EXT_layer_settings.enabled ? _mvkConfig : mvkConfig(); }
+
 	/** Returns the maximum version of Vulkan the application supports. */
 	inline uint32_t getAPIVersion() { return _appInfo.apiVersion; }
 
@@ -179,6 +182,7 @@ protected:
 	void propagateDebugName() override {}
 	void initProcAddrs();
 	void initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo);
+	void initMVKConfig(const VkInstanceCreateInfo* pCreateInfo);
 	NSArray<id<MTLDevice>>* getAvailableMTLDevicesArray();
 	VkDebugReportFlagsEXT getVkDebugReportFlagsFromLogLevel(MVKConfigLogLevel logLevel);
 	VkDebugUtilsMessageSeverityFlagBitsEXT getVkDebugUtilsMessageSeverityFlagBitsFromLogLevel(MVKConfigLogLevel logLevel);
@@ -187,6 +191,7 @@ protected:
     void logVersions();
 	VkResult verifyLayers(uint32_t count, const char* const* names);
 
+	MVKConfiguration _mvkConfig;
 	VkApplicationInfo _appInfo;
 	MVKSmallVector<MVKPhysicalDevice*, 2> _physicalDevices;
 	MVKSmallVector<MVKDebugReportCallback*> _debugReportCallbacks;

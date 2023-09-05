@@ -18,6 +18,8 @@ MoltenVK 1.2.6
 
 Released TBD
 
+- Add support for extensions:
+	- `VK_EXT_layer_settings`
 - Fix rare case where vertex attribute buffers are not bound to Metal 
   when no other bindings change between pipelines.
 

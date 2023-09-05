@@ -367,6 +367,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_host_query_reset`
 - `VK_EXT_image_robustness`
 - `VK_EXT_inline_uniform_block`
+- `VK_EXT_layer_settings`
 - `VK_EXT_memory_budget` *(requires Metal 2.0)*
 - `VK_EXT_metal_objects`
 - `VK_EXT_metal_surface`
@@ -516,11 +517,11 @@ you can address the issue as follows:
 
 - Errors encountered during **Runtime Shader Conversion** are logged to the console.
 
-- To help understand conversion issues during **Runtime Shader Conversion**, you can enable the 
-  logging of the *SPIR-V* and *MSL* shader source code during shader conversion, by turning on 
-  the `MVKConfiguration::debugMode` configuration parameter, or setting the value of the `MVK_DEBUG` 
-  runtime environment variable to `1`. See the [*MoltenVK Configuration*](#moltenvk_config) 
-  description above.
+- To help understand conversion issues during **Runtime Shader Conversion**, you can 
+  enable the logging of the *SPIR-V* and *MSL* shader source code during shader conversion, 
+  by turning on the `MVKConfiguration::debugMode` configuration parameter, or setting the 
+  value of the `MVK_CONFIG_DEBUG` runtime environment variable to `1`. See the 
+  [*MoltenVK Configuration*](#moltenvk_config) description above.
 
   Enabling debug mode in **MoltenVK** includes shader conversion logging, which causes both 
   the incoming *SPIR-V* code and the converted *MSL* source code to be logged to the console 

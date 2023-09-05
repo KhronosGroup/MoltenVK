@@ -1030,7 +1030,7 @@ VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreate
 	if (validSamples == VK_SAMPLE_COUNT_1_BIT) { return validSamples; }
 
 	// Don't use getImageType() because it hasn't been set yet.
-	if ( !((pCreateInfo->imageType == VK_IMAGE_TYPE_2D) || ((pCreateInfo->imageType == VK_IMAGE_TYPE_1D) && mvkConfig().texture1DAs2D)) ) {
+	if ( !((pCreateInfo->imageType == VK_IMAGE_TYPE_2D) || ((pCreateInfo->imageType == VK_IMAGE_TYPE_1D) && getMVKConfig().texture1DAs2D)) ) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling can only be used with a 2D image type. Setting sample count to 1."));
 		validSamples = VK_SAMPLE_COUNT_1_BIT;
 	}
@@ -1809,7 +1809,7 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 // Enable either native or shader swizzling, depending on what is available, preferring native, and return whether successful.
 bool MVKImageViewPlane::enableSwizzling() {
 	_useNativeSwizzle = _device->_pMetalFeatures->nativeTextureSwizzle;
-	_useShaderSwizzle = !_useNativeSwizzle && mvkConfig().fullImageViewSwizzle;
+	_useShaderSwizzle = !_useNativeSwizzle && getMVKConfig().fullImageViewSwizzle;
 	return _useNativeSwizzle || _useShaderSwizzle;
 }
 

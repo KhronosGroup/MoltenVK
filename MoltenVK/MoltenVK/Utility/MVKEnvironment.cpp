@@ -27,7 +27,7 @@ static void mvkInitConfigFromEnvVars() {
 	MVKConfiguration evCfg;
 	std::string evGPUCapFileStrObj;
 
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.debugMode,                              MVK_DEBUG);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.debugMode,                              MVK_CONFIG_DEBUG);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.shaderConversionFlipVertexY,            MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.synchronousQueueSubmits,                MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS);
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.prefillMetalCommandBuffers,             MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS);
@@ -64,6 +64,11 @@ static void mvkInitConfigFromEnvVars() {
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.useMetalArgumentBuffers,                MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS);
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.shaderSourceCompressionAlgorithm,       MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.shouldMaximizeConcurrentCompilation,    MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION);
+
+	// Support legacy environment variable MVK_DEBUG, but only if it has been explicitly set as an environment variable.
+	bool legacyDebugWasFound = false;
+	bool legacyDebugEV = mvkGetEnvVarBool("MVK_DEBUG", &legacyDebugWasFound);
+	if (legacyDebugWasFound) { evCfg.debugMode = legacyDebugEV; }
 
 	// Deprected legacy VkSemaphore MVK_ALLOW_METAL_FENCES and MVK_ALLOW_METAL_EVENTS config.
 	// Legacy MVK_ALLOW_METAL_EVENTS is covered by MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE,

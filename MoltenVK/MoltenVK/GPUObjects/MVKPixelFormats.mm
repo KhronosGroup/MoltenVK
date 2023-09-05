@@ -2026,7 +2026,7 @@ void MVKPixelFormats::buildVkFormatMaps() {
 #if MVK_IOS || MVK_TVOS
 					bool supportsNativeTextureSwizzle = mtlDev && mvkOSVersionIsAtLeast(13.0);
 #endif
-					if (!supportsNativeTextureSwizzle && !mvkConfig().fullImageViewSwizzle) {
+					if (!supportsNativeTextureSwizzle && !getMVKConfig().fullImageViewSwizzle) {
 						vkDesc.mtlPixelFormat = vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid;
 					}
 				}

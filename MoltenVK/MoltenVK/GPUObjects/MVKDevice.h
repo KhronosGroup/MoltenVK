@@ -352,8 +352,8 @@ public:
 	bool mslVersionIsAtLeast(MTLLanguageVersion minVer) { return _metalFeatures.mslVersionEnum >= minVer; }
 
 	/** Returns whether this physical device supports Metal argument buffers. */
-	bool supportsMetalArgumentBuffers() const  {
-		return _metalFeatures.argumentBuffers && mvkConfig().useMetalArgumentBuffers != MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER;
+	bool supportsMetalArgumentBuffers()  {
+		return _metalFeatures.argumentBuffers && getMVKConfig().useMetalArgumentBuffers != MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER;
 	};
 
 

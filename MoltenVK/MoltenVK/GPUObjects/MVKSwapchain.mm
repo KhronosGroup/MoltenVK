@@ -138,7 +138,7 @@ void MVKSwapchain::willPresentSurface(id<MTLTexture> mtlTexture, id<MTLCommandBu
 
 // If the product has not been fully licensed, renders the watermark image to the surface.
 void MVKSwapchain::renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff) {
-    if (mvkConfig().displayWatermark) {
+    if (getMVKConfig().displayWatermark) {
         if ( !_licenseWatermark ) {
             _licenseWatermark = new MVKWatermarkRandom(getMTLDevice(),
                                                        __watermarkTextureContent,
@@ -159,7 +159,7 @@ void MVKSwapchain::renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffe
 
 // Calculates and remembers the time interval between frames.
 void MVKSwapchain::markFrameInterval() {
-	if ( !(mvkConfig().performanceTracking || _licenseWatermark) ) { return; }
+	if ( !(getMVKConfig().performanceTracking || _licenseWatermark) ) { return; }
 
 	uint64_t prevFrameTime = _lastFrameTime;
 	_lastFrameTime = mvkGetTimestamp();
@@ -168,14 +168,14 @@ void MVKSwapchain::markFrameInterval() {
 
 	_device->addActivityPerformance(_device->_performanceStatistics.queue.frameInterval, prevFrameTime, _lastFrameTime);
 
-	uint32_t perfLogCntLimit = mvkConfig().performanceLoggingFrameCount;
+	uint32_t perfLogCntLimit = getMVKConfig().performanceLoggingFrameCount;
 	if ((perfLogCntLimit > 0) && (++_currentPerfLogFrameCount >= perfLogCntLimit)) {
 		_currentPerfLogFrameCount = 0;
 		MVKLogInfo("Performance statistics reporting every: %d frames, avg FPS: %.2f, elapsed time: %.3f seconds:",
 				   perfLogCntLimit,
 				   (1000.0 / _device->_performanceStatistics.queue.frameInterval.averageDuration),
 				   mvkGetElapsedMilliseconds() / 1000.0);
-		if (mvkConfig().activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT) {
+		if (getMVKConfig().activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT) {
 			_device->logPerformanceSummary();
 		}
 	}
@@ -341,7 +341,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 		return;
 	}
 
-	auto minMagFilter = mvkConfig().swapchainMinMagFilterUseNearest ? kCAFilterNearest : kCAFilterLinear;
+	auto minMagFilter = getMVKConfig().swapchainMinMagFilterUseNearest ? kCAFilterNearest : kCAFilterLinear;
 	_mtlLayer.device = getMTLDevice();
 	_mtlLayer.pixelFormat = getPixelFormats()->getMTLPixelFormat(pCreateInfo->imageFormat);
 	_mtlLayer.maximumDrawableCountMVK = imgCnt;
