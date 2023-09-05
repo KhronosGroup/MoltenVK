@@ -3058,7 +3058,7 @@ uint64_t MVKPhysicalDevice::getVRAMSize() {
 
 // If possible, retrieve from the MTLDevice, otherwise from available memory size, or a fixed conservative estimate.
 uint64_t MVKPhysicalDevice::getRecommendedMaxWorkingSetSize() {
-#if MVK_XCODE_14 || MVK_MACOS
+#if MVK_XCODE_15 || MVK_MACOS
 	if ( [_mtlDevice respondsToSelector: @selector(recommendedMaxWorkingSetSize)]) {
 		return _mtlDevice.recommendedMaxWorkingSetSize;
 	}
@@ -4194,7 +4194,7 @@ void MVKDevice::updateActivityPerformance(MVKPerformanceTracker& activity, doubl
 	double total = (activity.average * activity.count++) + currentValue;
 	activity.average = total / activity.count;
 
-	if (mvkConfig().activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE) {
+	if (_isPerformanceTracking && mvkConfig().activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE) {
 		logActivityInline(activity, _performanceStatistics);
 	}
 }
@@ -4299,8 +4299,8 @@ MVKActivityPerformanceValueType MVKDevice::getActivityPerformanceValueType(MVKPe
 }
 
 void MVKDevice::getPerformanceStatistics(MVKPerformanceStatistics* pPerf) {
-	addActivityByteCount(_performanceStatistics.device.gpuMemoryAllocated,
-						 _physicalDevice->getCurrentAllocatedSize());
+	addPerformanceByteCount(_performanceStatistics.device.gpuMemoryAllocated,
+							_physicalDevice->getCurrentAllocatedSize());
 
 	lock_guard<mutex> lock(_perfLock);
     if (pPerf) { *pPerf = _performanceStatistics; }

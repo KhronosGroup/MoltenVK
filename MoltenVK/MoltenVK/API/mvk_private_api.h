@@ -167,40 +167,40 @@ typedef struct {
 
 /** MoltenVK performance of shader compilation activities. */
 typedef struct {
-	MVKPerformanceTracker hashShaderCode;				/** Create a hash from the incoming shader code. */
-    MVKPerformanceTracker spirvToMSL;					/** Convert SPIR-V to MSL source code. */
-    MVKPerformanceTracker mslCompile;					/** Compile MSL source code into a MTLLibrary. */
-    MVKPerformanceTracker mslLoad;						/** Load pre-compiled MSL code into a MTLLibrary. */
-	MVKPerformanceTracker mslCompress;					/** Compress MSL source code after compiling a MTLLibrary, to hold it in a pipeline cache. */
-	MVKPerformanceTracker mslDecompress;				/** Decompress MSL source code to write the MSL when serializing a pipeline cache. */
-	MVKPerformanceTracker shaderLibraryFromCache;		/** Retrieve a shader library from the cache, lazily creating it if needed. */
-    MVKPerformanceTracker functionRetrieval;			/** Retrieve a MTLFunction from a MTLLibrary. */
-    MVKPerformanceTracker functionSpecialization;		/** Specialize a retrieved MTLFunction. */
-    MVKPerformanceTracker pipelineCompile;				/** Compile MTLFunctions into a pipeline. */
-	MVKPerformanceTracker glslToSPRIV;					/** Convert GLSL to SPIR-V code. */
+	MVKPerformanceTracker hashShaderCode;				/** Create a hash from the incoming shader code, in milliseconds. */
+    MVKPerformanceTracker spirvToMSL;					/** Convert SPIR-V to MSL source code, in milliseconds. */
+    MVKPerformanceTracker mslCompile;					/** Compile MSL source code into a MTLLibrary, in milliseconds. */
+    MVKPerformanceTracker mslLoad;						/** Load pre-compiled MSL code into a MTLLibrary, in milliseconds. */
+	MVKPerformanceTracker mslCompress;					/** Compress MSL source code after compiling a MTLLibrary, to hold it in a pipeline cache, in milliseconds. */
+	MVKPerformanceTracker mslDecompress;				/** Decompress MSL source code to write the MSL when serializing a pipeline cache, in milliseconds. */
+	MVKPerformanceTracker shaderLibraryFromCache;		/** Retrieve a shader library from the cache, lazily creating it if needed, in milliseconds. */
+    MVKPerformanceTracker functionRetrieval;			/** Retrieve a MTLFunction from a MTLLibrary, in milliseconds. */
+    MVKPerformanceTracker functionSpecialization;		/** Specialize a retrieved MTLFunction, in milliseconds. */
+    MVKPerformanceTracker pipelineCompile;				/** Compile MTLFunctions into a pipeline, in milliseconds. */
+	MVKPerformanceTracker glslToSPRIV;					/** Convert GLSL to SPIR-V code, in milliseconds. */
 } MVKShaderCompilationPerformance;
 
 /** MoltenVK performance of pipeline cache activities. */
 typedef struct {
-	MVKPerformanceTracker sizePipelineCache;			/** Calculate the size of cache data required to write MSL to pipeline cache data stream. */
-	MVKPerformanceTracker writePipelineCache;			/** Write MSL to pipeline cache data stream. */
-	MVKPerformanceTracker readPipelineCache;			/** Read MSL from pipeline cache data stream. */
+	MVKPerformanceTracker sizePipelineCache;			/** Calculate the size of cache data required to write MSL to pipeline cache data stream, in milliseconds. */
+	MVKPerformanceTracker writePipelineCache;			/** Write MSL to pipeline cache data stream, in milliseconds. */
+	MVKPerformanceTracker readPipelineCache;			/** Read MSL from pipeline cache data stream, in milliseconds. */
 } MVKPipelineCachePerformance;
 
 /** MoltenVK performance of queue activities. */
 typedef struct {
-	MVKPerformanceTracker retrieveMTLCommandBuffer;     /** Retrieve a MTLCommandBuffer from a MTLQueue. */
-	MVKPerformanceTracker commandBufferEncoding;        /** Encode a single VkCommandBuffer to a MTLCommandBuffer (excludes MTLCommandBuffer encoding from configured immediate prefilling). */
-	MVKPerformanceTracker submitCommandBuffers;         /** Submit and encode all VkCommandBuffers in a vkQueueSubmit() operation to MTLCommandBuffers (including both prefilled and deferred encoding). */
-	MVKPerformanceTracker mtlCommandBufferExecution;    /** Execute a MTLCommandBuffer on the GPU, from commit to completion callback. */
-	MVKPerformanceTracker retrieveCAMetalDrawable;      /** Retrieve next CAMetalDrawable from a CAMetalLayer. */
-	MVKPerformanceTracker presentSwapchains;            /** Present the swapchains in a vkQueuePresentKHR() on the GPU, from commit to presentation callback. */
-	MVKPerformanceTracker frameInterval;                /** Frame presentation interval (1000/FPS). */
+	MVKPerformanceTracker retrieveMTLCommandBuffer;     /** Retrieve a MTLCommandBuffer from a MTLQueue, in milliseconds. */
+	MVKPerformanceTracker commandBufferEncoding;        /** Encode a single VkCommandBuffer to a MTLCommandBuffer (excludes MTLCommandBuffer encoding from configured immediate prefilling), in milliseconds. */
+	MVKPerformanceTracker submitCommandBuffers;         /** Submit and encode all VkCommandBuffers in a vkQueueSubmit() operation to MTLCommandBuffers (including both prefilled and deferred encoding), in milliseconds. */
+	MVKPerformanceTracker mtlCommandBufferExecution;    /** Execute a MTLCommandBuffer on the GPU, from commit to completion callback, in milliseconds. */
+	MVKPerformanceTracker retrieveCAMetalDrawable;      /** Retrieve next CAMetalDrawable from a CAMetalLayer, in milliseconds. */
+	MVKPerformanceTracker presentSwapchains;            /** Present the swapchains in a vkQueuePresentKHR() on the GPU, from commit to presentation callback, in milliseconds. */
+	MVKPerformanceTracker frameInterval;                /** Frame presentation interval (1000/FPS), in milliseconds. */
 } MVKQueuePerformance;
 
 /** MoltenVK performance of device activities. */
 typedef struct {
-	MVKPerformanceTracker gpuMemoryAllocated;		/** GPU memory allocated (in KB). */
+	MVKPerformanceTracker gpuMemoryAllocated;		/** GPU memory allocated, in kilobytes. */
 } MVKDevicePerformance;
 
 /**

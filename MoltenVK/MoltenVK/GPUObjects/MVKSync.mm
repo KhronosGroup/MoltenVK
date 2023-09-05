@@ -588,7 +588,7 @@ void MVKMetalCompiler::compile(unique_lock<mutex>& lock, dispatch_block_t block)
 
 	if (_compileError) { handleError(); }
 
-	mvkDev->addActivityPerformance(*_pPerformanceTracker, _startTime);
+	mvkDev->addPerformanceInterval(*_pPerformanceTracker, _startTime);
 }
 
 void MVKMetalCompiler::handleError() {

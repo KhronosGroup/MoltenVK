@@ -347,7 +347,7 @@ void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff,
     encodeCommands(_cmdBuffer->_head);
     endEncoding();
 
-	mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.queue.commandBufferEncoding, startTime);
+	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.commandBufferEncoding, startTime);
 }
 
 void MVKCommandEncoder::beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext) {

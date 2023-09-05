@@ -689,26 +689,23 @@ public:
 
     /**
 	 * If performance is being tracked, returns a monotonic timestamp value for use performance timestamping.
-	 *
 	 * The returned value corresponds to the number of CPU "ticks" since the app was initialized.
 	 *
-	 * Calling this value twice, subtracting the first value from the second, and then multiplying
-	 * the result by the value returned by mvkGetTimestampPeriod() will provide an indication of the
-	 * number of nanoseconds between the two calls. The convenience function mvkGetElapsedMilliseconds()
-	 * can be used to perform this calculation.
+	 * Call this function twice, then use the functions mvkGetElapsedNanoseconds() or mvkGetElapsedMilliseconds()
+	 * to determine the number of nanoseconds or milliseconds between the two calls.
      */
     uint64_t getPerformanceTimestamp() { return _isPerformanceTracking ? mvkGetTimestamp() : 0; }
 
     /**
-     * If performance is being tracked, adds the performance for an activity with a duration
-     * interval between the start and end times, to the given performance statistics.
+     * If performance is being tracked, adds the performance for an activity with a duration interval
+	 * between the start and end times, measured in milliseconds, to the given performance statistics.
      *
      * If endTime is zero or not supplied, the current time is used.
      */
-	void addActivityPerformance(MVKPerformanceTracker& activityTracker,
+	void addPerformanceInterval(MVKPerformanceTracker& perfTracker,
 								uint64_t startTime, uint64_t endTime = 0) {
 		if (_isPerformanceTracking) {
-			updateActivityPerformance(activityTracker, mvkGetElapsedMilliseconds(startTime, endTime));
+			updateActivityPerformance(perfTracker, mvkGetElapsedMilliseconds(startTime, endTime));
 		}
 	};
 
@@ -716,11 +713,14 @@ public:
 	 * If performance is being tracked, adds the performance for an activity
 	 * with a kilobyte count, to the given performance statistics.
 	 */
-	void addActivityByteCount(MVKPerformanceTracker& activityTracker, uint64_t byteCount) {
+	void addPerformanceByteCount(MVKPerformanceTracker& perfTracker, uint64_t byteCount) {
 		if (_isPerformanceTracking) {
-			updateActivityPerformance(activityTracker, double(byteCount / KIBI));
+			updateActivityPerformance(perfTracker, double(byteCount / KIBI));
 		}
 	};
+
+	/** Updates the given performance statistic. */
+	void updateActivityPerformance(MVKPerformanceTracker& activity, double currentValue);
 
     /** Populates the specified statistics structure from the current activity performance statistics. */
     void getPerformanceStatistics(MVKPerformanceStatistics* pPerf);
@@ -897,7 +897,6 @@ protected:
 	void logActivityInline(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats);
 	void logActivityDuration(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);
 	void logActivityByteCount(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);
-	void updateActivityPerformance(MVKPerformanceTracker& activity, double currentValue);
 	void getDescriptorVariableDescriptorCountLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
 														   VkDescriptorSetLayoutSupport* pSupport,
 														   VkDescriptorSetVariableDescriptorCountLayoutSupport* pVarDescSetCountSupport);

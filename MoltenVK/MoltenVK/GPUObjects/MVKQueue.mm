@@ -150,8 +150,9 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdUse) {
 // few frames for that to happen. If there are still swapchain presentations that haven't completed,
 // log a warning, and force them to end presentation, so the images and drawables will be released.
 void MVKQueue::waitSwapchainPresentations(MVKCommandUse cmdUse) {
-	auto waitFrames = _device->_pMetalFeatures->maxSwapchainImageCount + 2;
-	if (_presentationCompletionBlocker.wait((waitFrames/60.0) * 1e9)) { return; }
+	uint32_t waitFrames = _device->_pMetalFeatures->maxSwapchainImageCount + 2;
+	uint64_t waitNanos = waitFrames * _device->_performanceStatistics.queue.frameInterval.average * 1e6;
+	if (_presentationCompletionBlocker.wait(waitNanos)) { return; }
 
 	auto imgCnt = _presentationCompletionBlocker.getReservationCount();
 	MVKPresentableSwapchainImage* images[imgCnt];
@@ -173,7 +174,7 @@ void MVKQueue::waitSwapchainPresentations(MVKCommandUse cmdUse) {
 
 	// Wait for forced presentation completions. If we still have unfinished swapchain image
 	// presentations, log a warning, and force each image to end, so that it can be released.
-	if ( !_presentationCompletionBlocker.wait((waitFrames/60.0) * 1e9) ) {
+	if ( !_presentationCompletionBlocker.wait(waitNanos) ) {
 		reportWarning(VK_TIMEOUT, "%s timed out after %d frames while awaiting %d swapchain image presentations to complete.",
 					  mvkVkCommandName(cmdUse), waitFrames * 2, _presentationCompletionBlocker.getReservationCount());
 		for (size_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
@@ -203,7 +204,7 @@ id<MTLCommandBuffer> MVKQueue::getMTLCommandBuffer(MVKCommandUse cmdUse, bool re
 	} else {
 		mtlCmdBuff = [_mtlQueue commandBufferWithUnretainedReferences];
 	}
-	mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.queue.retrieveMTLCommandBuffer, startTime);
+	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.retrieveMTLCommandBuffer, startTime);
 	NSString* mtlCmdBuffLabel = getMTLCommandBufferLabel(cmdUse);
 	setLabelIfNotNil(mtlCmdBuff, mtlCmdBuffLabel);
 	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) { handleMTLCommandBufferError(mtlCB); }];
@@ -496,7 +497,7 @@ VkResult MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool sign
 	MVKDevice* mvkDev = getDevice();
 	uint64_t startTime = mvkDev->getPerformanceTimestamp();
 	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) {
-		mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.queue.mtlCommandBufferExecution, startTime);
+		mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.mtlCommandBufferExecution, startTime);
 		if (signalCompletion) { this->finish(); }	// Must be the last thing the completetion callback does.
 	}];
 
@@ -592,7 +593,7 @@ void MVKQueueFullCommandBufferSubmission<N>::submitCommandBuffers() {
 
 	for (auto& cb : _cmdBuffers) { cb->submit(this, &_encodingContext); }
 
-	mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.queue.submitCommandBuffers, startTime);
+	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.submitCommandBuffers, startTime);
 }
 
 template <size_t N>
@@ -602,7 +603,6 @@ MVKQueueFullCommandBufferSubmission<N>::MVKQueueFullCommandBufferSubmission(MVKQ
 																			MVKCommandUse cmdUse)
 	: MVKQueueCommandBufferSubmission(queue, pSubmit, fence, cmdUse) {
 
-	// pSubmit can be null if just tracking the fence alone
 	if (pSubmit) {
 		uint32_t cbCnt = pSubmit->commandBufferCount;
 		_cmdBuffers.reserve(cbCnt);

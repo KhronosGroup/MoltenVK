@@ -1293,7 +1293,7 @@ id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
 			for (uint32_t attemptIdx = 0; !_mtlDrawable && attemptIdx < attemptCnt; attemptIdx++) {
 				uint64_t startTime = _device->getPerformanceTimestamp();
 				_mtlDrawable = [_swapchain->_surface->getCAMetalLayer().nextDrawable retain];	// retained
-				_device->addActivityPerformance(_device->_performanceStatistics.queue.retrieveCAMetalDrawable, startTime);
+				_device->addPerformanceInterval(_device->_performanceStatistics.queue.retrieveCAMetalDrawable, startTime);
 			}
 			if ( !_mtlDrawable ) { reportError(VK_ERROR_OUT_OF_POOL_MEMORY, "CAMetalDrawable could not be acquired after %d attempts.", attemptCnt); }
 		}
@@ -1398,7 +1398,7 @@ void MVKPresentableSwapchainImage::endPresentation(const MVKImagePresentInfo& pr
 		// If I have become detached from the swapchain, it means the swapchain, and possibly the
 		// VkDevice, have been destroyed by the time of this callback, so do not reference them.
 		lock_guard<mutex> lock(_detachmentLock);
-		if (_device) { _device->addActivityPerformance(_device->_performanceStatistics.queue.presentSwapchains, _presentationStartTime); }
+		if (_device) { _device->addPerformanceInterval(_device->_performanceStatistics.queue.presentSwapchains, _presentationStartTime); }
 		if (_swapchain) { _swapchain->endPresentation(presentInfo, actualPresentTime); }
 	}
 	presentInfo.queue->endPresentation(presentInfo);

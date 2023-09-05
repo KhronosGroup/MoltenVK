@@ -159,13 +159,14 @@ void MVKSwapchain::renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffe
 }
 
 // Calculates and remembers the time interval between frames.
+// Not threadsafe. Ensure this is called from a threadsafe environment.
 void MVKSwapchain::markFrameInterval() {
 	uint64_t prevFrameTime = _lastFrameTime;
-	_lastFrameTime = _device->getPerformanceTimestamp();
+	_lastFrameTime = mvkGetTimestamp();
 
 	if (prevFrameTime == 0) { return; }		// First frame starts at first presentation
 
-	_device->addActivityPerformance(_device->_performanceStatistics.queue.frameInterval, prevFrameTime, _lastFrameTime);
+	_device->updateActivityPerformance(_device->_performanceStatistics.queue.frameInterval, mvkGetElapsedMilliseconds(prevFrameTime, _lastFrameTime));
 
 	auto& mvkCfg = mvkConfig();
 	bool shouldLogOnFrames = mvkCfg.performanceTracking && mvkCfg.activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT;
@@ -244,10 +245,9 @@ VkResult MVKSwapchain::getPastPresentationTiming(uint32_t *pCount, VkPastPresent
 void MVKSwapchain::beginPresentation(const MVKImagePresentInfo& presentInfo) {}
 
 void MVKSwapchain::endPresentation(const MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime) {
+	std::lock_guard<std::mutex> lock(_presentHistoryLock);
 
 	markFrameInterval();
-
-	std::lock_guard<std::mutex> lock(_presentHistoryLock);
 	if (_presentHistoryCount < kMaxPresentationHistory) {
 		_presentHistoryCount++;
 	} else {
