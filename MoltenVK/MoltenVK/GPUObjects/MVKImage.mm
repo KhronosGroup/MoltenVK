@@ -1258,7 +1258,6 @@ VkResult MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphor
 	// This is not done earlier so the texture is retained for any post-processing such as screen captures, etc.
 	releaseMetalDrawable();
 
-	VkResult rslt = VK_SUCCESS;
 	auto signaler = MVKSwapchainSignaler{fence, semaphore, semaphore ? semaphore->deferSignal() : 0};
 	if (_availability.isAvailable) {
 		_availability.isAvailable = false;
@@ -1271,7 +1270,7 @@ VkResult MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphor
 			id<MTLCommandBuffer> mtlCmdBuff = nil;
 			if (mvkSem && mvkSem->isUsingCommandEncoding()) {
 				mtlCmdBuff = _device->getAnyQueue()->getMTLCommandBuffer(kMVKCommandUseAcquireNextImage);
-				if ( !mtlCmdBuff ) { rslt = VK_ERROR_OUT_OF_POOL_MEMORY; }
+				if ( !mtlCmdBuff ) { setConfigurationResult(VK_ERROR_OUT_OF_POOL_MEMORY); }
 			}
 			signal(signaler, mtlCmdBuff);
 			[mtlCmdBuff commit];
@@ -1283,19 +1282,29 @@ VkResult MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphor
 	}
 	markAsTracked(signaler);
 
-	return rslt;
+	return getConfigurationResult();
 }
 
+// Calling nextDrawable may result in a nil drawable, or a drawable with no pixel format.
+// Attempt several times to retrieve a good drawable, and set an error to trigger the
+// swapchain to be re-established if one cannot be retrieved.
 id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
 	if ( !_mtlDrawable ) {
 		@autoreleasepool {
+			bool hasInvalidFormat = false;
 			uint32_t attemptCnt = _swapchain->getImageCount() * 2;	// Attempt a resonable number of times
 			for (uint32_t attemptIdx = 0; !_mtlDrawable && attemptIdx < attemptCnt; attemptIdx++) {
 				uint64_t startTime = _device->getPerformanceTimestamp();
 				_mtlDrawable = [_swapchain->_surface->getCAMetalLayer().nextDrawable retain];	// retained
 				_device->addPerformanceInterval(_device->_performanceStatistics.queue.retrieveCAMetalDrawable, startTime);
+				hasInvalidFormat = _mtlDrawable && !_mtlDrawable.texture.pixelFormat;
+				if (hasInvalidFormat) { releaseMetalDrawable(); }
 			}
-			if ( !_mtlDrawable ) { reportError(VK_ERROR_OUT_OF_POOL_MEMORY, "CAMetalDrawable could not be acquired after %d attempts.", attemptCnt); }
+			if (hasInvalidFormat) {
+				setConfigurationResult(reportError(VK_ERROR_OUT_OF_DATE_KHR, "CAMetalDrawable with valid format could not be acquired after %d attempts.", attemptCnt));
+			} else if ( !_mtlDrawable ) {
+				setConfigurationResult(reportError(VK_ERROR_OUT_OF_POOL_MEMORY, "CAMetalDrawable could not be acquired after %d attempts.", attemptCnt));
+			}
 		}
 	}
 	return _mtlDrawable;
@@ -1303,8 +1312,8 @@ id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
 
 // Present the drawable and make myself available only once the command buffer has completed.
 // Pass MVKImagePresentInfo by value because it may not exist when the callback runs.
-void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff,
-														  MVKImagePresentInfo presentInfo) {
+VkResult MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff,
+															  MVKImagePresentInfo presentInfo) {
 	lock_guard<mutex> lock(_availabilityLock);
 
 	_swapchain->renderWatermark(getMTLTexture(0), mtlCmdBuff);
@@ -1363,6 +1372,8 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 	}];
 
 	signalPresentationSemaphore(signaler, mtlCmdBuff);
+
+	return getConfigurationResult();
 }
 
 // Pass MVKImagePresentInfo by value because it may not exist when the callback runs.

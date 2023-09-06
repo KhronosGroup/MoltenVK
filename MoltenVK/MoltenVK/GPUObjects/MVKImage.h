@@ -454,7 +454,7 @@ public:
 #pragma mark Metal
 
 	/** Presents the contained drawable to the OS. */
-	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff, MVKImagePresentInfo presentInfo);
+	VkResult presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff, MVKImagePresentInfo presentInfo);
 
 	/** Called when the presentation begins. */
 	void beginPresentation(const MVKImagePresentInfo& presentInfo);
