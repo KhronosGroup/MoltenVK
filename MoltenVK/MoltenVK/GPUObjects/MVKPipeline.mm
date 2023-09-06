@@ -2269,7 +2269,7 @@ VkResult MVKPipelineCache::writeDataImpl(size_t* pDataSize, void* pData) {
 // Serializes the data in this cache to a stream
 void MVKPipelineCache::writeData(ostream& outstream, bool isCounting) {
 #if MVK_USE_CEREAL
-	MVKPerformanceTracker& activityTracker = isCounting
+	MVKPerformanceTracker& perfTracker = isCounting
 		? _device->_performanceStatistics.pipelineCache.sizePipelineCache
 		: _device->_performanceStatistics.pipelineCache.writePipelineCache;
 
@@ -2297,7 +2297,7 @@ void MVKPipelineCache::writeData(ostream& outstream, bool isCounting) {
 			writer(cacheIter.getShaderConversionConfig());
 			writer(cacheIter.getShaderConversionResultInfo());
 			writer(cacheIter.getCompressedMSL());
-			_device->addActivityPerformance(activityTracker, startTime);
+			_device->addPerformanceInterval(perfTracker, startTime);
 		}
 	}
 
@@ -2366,7 +2366,7 @@ void MVKPipelineCache::readData(const VkPipelineCacheCreateInfo* pCreateInfo) {
 
 					// Add the shader library to the staging cache.
 					MVKShaderLibraryCache* slCache = getShaderLibraryCache(smKey);
-					_device->addActivityPerformance(_device->_performanceStatistics.pipelineCache.readPipelineCache, startTime);
+					_device->addPerformanceInterval(_device->_performanceStatistics.pipelineCache.readPipelineCache, startTime);
 					slCache->addShaderLibrary(&shaderConversionConfig, resultInfo, compressedMSL);
 
 					break;

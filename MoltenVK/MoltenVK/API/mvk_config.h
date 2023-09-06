@@ -51,7 +51,7 @@ extern "C" {
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
 
-#define MVK_CONFIGURATION_API_VERSION   37
+#define MVK_CONFIGURATION_API_VERSION   38
 
 /** Identifies the level of logging MoltenVK should be limited to outputting. */
 typedef enum MVKConfigLogLevel {
@@ -138,10 +138,11 @@ typedef enum MVKConfigCompressionAlgorithm {
 
 /** Identifies the style of activity performance logging to use. */
 typedef enum MVKConfigActivityPerformanceLoggingStyle {
-	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT     = 0,	/**< Repeatedly log performance after a configured number of frames. */
-	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE       = 1,	/**< Log immediately after each performance measurement. */
-	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_DEVICE_LIFETIME = 2,	/**< Log at the end of the VkDevice lifetime. This is useful for one-shot apps such as testing frameworks. */
-	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_MAX_ENUM        = 0x7FFFFFFF,
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT                = 0,	/**< Repeatedly log performance after a configured number of frames. */
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE                  = 1,	/**< Log immediately after each performance measurement. */
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_DEVICE_LIFETIME            = 2,	/**< Log at the end of the VkDevice lifetime. This is useful for one-shot apps such as testing frameworks. */
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_DEVICE_LIFETIME_ACCUMULATE = 3,	/**< Log at the end of the VkDevice lifetime, but continue to accumulate across mulitiple VkDevices throughout the app process. This is useful for testing frameworks that create many VkDevices serially. */
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_MAX_ENUM                   = 0x7FFFFFFF,
 } MVKConfigActivityPerformanceLoggingStyle;
 
 /**
@@ -785,6 +786,8 @@ typedef struct {
 
 	/**
 	 * Controls when MoltenVK should log activity performance events.
+	 *
+	 * The performanceTracking parameter must also be enabled.
 	 *
 	 * The value of this parameter must be changed before creating a VkDevice,
 	 * for the change to take effect.

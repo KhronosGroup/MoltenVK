@@ -63,7 +63,7 @@ typedef struct {
 /** Tracks the Vulkan command currently being used. */
 typedef enum : uint8_t {
     kMVKCommandUseNone = 0,                     /**< No use defined. */
-	kMVKCommandUseEndCommandBuffer,             /**< vkEndCommandBuffer (prefilled VkCommandBuffer). */
+	kMVKCommandUseBeginCommandBuffer,           /**< vkBeginCommandBuffer (prefilled VkCommandBuffer). */
     kMVKCommandUseQueueSubmit,                  /**< vkQueueSubmit. */
 	kMVKCommandUseAcquireNextImage,             /**< vkAcquireNextImageKHR. */
     kMVKCommandUseQueuePresent,                 /**< vkQueuePresentKHR. */
@@ -103,6 +103,9 @@ enum MVKGraphicsStage {
 	kMVKGraphicsStageTessControl,	/**< The tessellation control shader stage. */
 	kMVKGraphicsStageRasterization	/**< The rest of the pipeline. */
 };
+
+/** Returns the name of the command defined by the command use. */
+const char* mvkVkCommandName(MVKCommandUse cmdUse);
 
 /** Returns the name of the result value. */
 const char* mvkVkResultName(VkResult vkResult);

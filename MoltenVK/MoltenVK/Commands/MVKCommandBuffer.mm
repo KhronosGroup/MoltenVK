@@ -120,7 +120,7 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 
     if(_device->shouldPrefillMTLCommandBuffers() && !(_isSecondary || _supportsConcurrentExecution)) {
 		@autoreleasepool {
-			_prefilledMTLCmdBuffer = [_commandPool->getMTLCommandBuffer(0) retain];    // retained
+			_prefilledMTLCmdBuffer = [_commandPool->getMTLCommandBuffer(kMVKCommandUseBeginCommandBuffer, 0) retain];    // retained
 			auto prefillStyle = mvkConfig().prefillMetalCommandBuffers;
 			if (prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING ||
 				prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING_NO_AUTORELEASE ) {
@@ -335,11 +335,19 @@ void MVKCommandBuffer::recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline) {
 #pragma mark -
 #pragma mark MVKCommandEncoder
 
+// Activity performance tracking is put here to deliberately exclude when
+// MVKConfiguration::prefillMetalCommandBuffers is set to immediate prefilling,
+// because that would include app time between command submissions.
 void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff,
 							   MVKCommandEncodingContext* pEncodingContext) {
+	MVKDevice* mvkDev = getDevice();
+	uint64_t startTime = mvkDev->getPerformanceTimestamp();
+
     beginEncoding(mtlCmdBuff, pEncodingContext);
     encodeCommands(_cmdBuffer->_head);
     endEncoding();
+
+	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.commandBufferEncoding, startTime);
 }
 
 void MVKCommandEncoder::beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext) {
@@ -1168,19 +1176,6 @@ MVKCommandEncoder::~MVKCommandEncoder() {
 
 #pragma mark -
 #pragma mark Support functions
-
-NSString* mvkMTLCommandBufferLabel(MVKCommandUse cmdUse) {
-	switch (cmdUse) {
-		case kMVKCommandUseEndCommandBuffer:                return @"vkEndCommandBuffer (Prefilled) CommandBuffer";
-		case kMVKCommandUseQueueSubmit:                     return @"vkQueueSubmit CommandBuffer";
-		case kMVKCommandUseQueuePresent:                    return @"vkQueuePresentKHR CommandBuffer";
-		case kMVKCommandUseQueueWaitIdle:                   return @"vkQueueWaitIdle CommandBuffer";
-		case kMVKCommandUseDeviceWaitIdle:                  return @"vkDeviceWaitIdle CommandBuffer";
-		case kMVKCommandUseAcquireNextImage:                return @"vkAcquireNextImageKHR CommandBuffer";
-		case kMVKCommandUseInvalidateMappedMemoryRanges:    return @"vkInvalidateMappedMemoryRanges CommandBuffer";
-		default:                                            return @"Unknown Use CommandBuffer";
-	}
-}
 
 NSString* mvkMTLRenderCommandEncoderLabel(MVKCommandUse cmdUse) {
     switch (cmdUse) {

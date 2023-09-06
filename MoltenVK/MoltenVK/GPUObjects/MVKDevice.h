@@ -53,7 +53,6 @@ class MVKSemaphore;
 class MVKTimelineSemaphore;
 class MVKDeferredOperation;
 class MVKEvent;
-class MVKSemaphoreImpl;
 class MVKQueryPool;
 class MVKShaderModule;
 class MVKPipelineCache;
@@ -440,6 +439,11 @@ protected:
 #pragma mark -
 #pragma mark MVKDevice
 
+typedef enum {
+	MVKActivityPerformanceValueTypeDuration,
+	MVKActivityPerformanceValueTypeByteCount,
+} MVKActivityPerformanceValueType;
+
 typedef struct MVKMTLBlitEncoder {
 	id<MTLBlitCommandEncoder> mtlBlitEncoder = nil;
 	id<MTLCommandBuffer> mtlCmdBuffer = nil;
@@ -685,34 +689,38 @@ public:
 
     /**
 	 * If performance is being tracked, returns a monotonic timestamp value for use performance timestamping.
-	 *
 	 * The returned value corresponds to the number of CPU "ticks" since the app was initialized.
 	 *
-	 * Calling this value twice, subtracting the first value from the second, and then multiplying
-	 * the result by the value returned by mvkGetTimestampPeriod() will provide an indication of the
-	 * number of nanoseconds between the two calls. The convenience function mvkGetElapsedMilliseconds()
-	 * can be used to perform this calculation.
+	 * Call this function twice, then use the functions mvkGetElapsedNanoseconds() or mvkGetElapsedMilliseconds()
+	 * to determine the number of nanoseconds or milliseconds between the two calls.
      */
     uint64_t getPerformanceTimestamp() { return _isPerformanceTracking ? mvkGetTimestamp() : 0; }
 
     /**
-     * If performance is being tracked, adds the performance for an activity with a duration
-     * interval between the start and end times, to the given performance statistics.
+     * If performance is being tracked, adds the performance for an activity with a duration interval
+	 * between the start and end times, measured in milliseconds, to the given performance statistics.
      *
      * If endTime is zero or not supplied, the current time is used.
      */
-	void addActivityPerformance(MVKPerformanceTracker& activityTracker,
+	void addPerformanceInterval(MVKPerformanceTracker& perfTracker,
 								uint64_t startTime, uint64_t endTime = 0) {
 		if (_isPerformanceTracking) {
-			updateActivityPerformance(activityTracker, startTime, endTime);
-
-			// Log call not locked. Very minor chance that the tracker data will be updated during log call,
-			// resulting in an inconsistent report. Not worth taking lock perf hit for rare inline reporting.
-			if (_activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE) {
-				logActivityPerformance(activityTracker, _performanceStatistics, true);
-			}
+			updateActivityPerformance(perfTracker, mvkGetElapsedMilliseconds(startTime, endTime));
 		}
 	};
+
+	/**
+	 * If performance is being tracked, adds the performance for an activity
+	 * with a kilobyte count, to the given performance statistics.
+	 */
+	void addPerformanceByteCount(MVKPerformanceTracker& perfTracker, uint64_t byteCount) {
+		if (_isPerformanceTracking) {
+			updateActivityPerformance(perfTracker, double(byteCount / KIBI));
+		}
+	};
+
+	/** Updates the given performance statistic. */
+	void updateActivityPerformance(MVKPerformanceTracker& activity, double currentValue);
 
     /** Populates the specified statistics structure from the current activity performance statistics. */
     void getPerformanceStatistics(MVKPerformanceStatistics* pPerf);
@@ -885,8 +893,10 @@ protected:
 	template<typename S> void enableFeatures(S* pRequested, VkBool32* pEnabledBools, const VkBool32* pRequestedBools, const VkBool32* pAvailableBools, uint32_t count);
 	void enableExtensions(const VkDeviceCreateInfo* pCreateInfo);
     const char* getActivityPerformanceDescription(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats);
-	void logActivityPerformance(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);
-	void updateActivityPerformance(MVKPerformanceTracker& activity, uint64_t startTime, uint64_t endTime);
+	MVKActivityPerformanceValueType getActivityPerformanceValueType(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats);
+	void logActivityInline(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats);
+	void logActivityDuration(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);
+	void logActivityByteCount(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);
 	void getDescriptorVariableDescriptorCountLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
 														   VkDescriptorSetLayoutSupport* pSupport,
 														   VkDescriptorSetVariableDescriptorCountLayoutSupport* pVarDescSetCountSupport);
@@ -908,7 +918,6 @@ protected:
 	id<MTLSamplerState> _defaultMTLSamplerState = nil;
 	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
     uint32_t _globalVisibilityQueryCount = 0;
-	MVKConfigActivityPerformanceLoggingStyle _activityPerformanceLoggingStyle = MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT;
 	bool _isPerformanceTracking = false;
 	bool _isCurrentlyAutoGPUCapturing = false;
 	bool _isUsingMetalArgumentBuffers = false;
@@ -1055,6 +1064,15 @@ protected:
 
 #pragma mark -
 #pragma mark Support functions
+
+/**
+ * Returns an autoreleased array containing the MTLDevices available on this system,
+ * sorted according to power, with higher power GPU's at the front of the array.
+ * This ensures that a lazy app that simply grabs the first GPU will get a high-power
+ * one by default. If MVKConfiguration::forceLowPowerGPU is enabled, the returned
+ * array will only include low-power devices.
+ */
+NSArray<id<MTLDevice>>* mvkGetAvailableMTLDevicesArray();
 
 /** Returns the registry ID of the specified device, or zero if the device does not have a registry ID. */
 uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice);
