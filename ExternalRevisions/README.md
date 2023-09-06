@@ -133,6 +133,7 @@ if you encounter any building errors, you may need to re-add the *SPIRV-Cross* l
 		spirv_cross.hpp
 		spirv_glsl.cpp
 		spirv_glsl.hpp
+		spirv_msl_vertex_loader.cpp
 		spirv_msl.cpp
 		spirv_msl.hpp
 		spirv_parser.cpp

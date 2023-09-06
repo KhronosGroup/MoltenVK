@@ -475,29 +475,7 @@ void MVKPixelFormats::enumerateSupportedFormats(VkFormatProperties properties, b
 }
 
 MTLVertexFormat MVKPixelFormats::getMTLVertexFormat(VkFormat vkFormat) {
-	auto& vkDesc = getVkFormatDesc(vkFormat);
-	MTLVertexFormat mtlVtxFmt = vkDesc.mtlVertexFormat;
-
-	// If the MTLVertexFormat is not supported but VkFormat is valid,
-	// report an error, and possibly substitute a different MTLVertexFormat.
-	if ( !mtlVtxFmt && vkFormat ) {
-		string errMsg;
-		errMsg += "VkFormat ";
-		errMsg += vkDesc.name;
-		errMsg += " is not supported for vertex buffers on this device.";
-
-		if (vkDesc.vertexIsSupportedOrSubstitutable()) {
-			mtlVtxFmt = vkDesc.mtlVertexFormatSubstitute;
-
-			auto& vkDescSubs = getVkFormatDesc(getMTLVertexFormatDesc(mtlVtxFmt).vkFormat);
-			errMsg += " Using VkFormat ";
-			errMsg += vkDescSubs.name;
-			errMsg += " instead.";
-		}
-		MVKBaseObject::reportError(_physicalDevice, VK_ERROR_FORMAT_NOT_SUPPORTED, "%s", errMsg.c_str());
-	}
-
-	return mtlVtxFmt;
+	return getVkFormatDesc(vkFormat).mtlVertexFormat;
 }
 
 MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFormat vkFormat) {

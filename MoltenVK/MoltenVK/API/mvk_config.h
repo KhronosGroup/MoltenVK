@@ -961,6 +961,17 @@ typedef struct {
 	 */
 	float timestampPeriodLowPassAlpha;
 
+	/**
+	 * Force MoltenVK to always use shader code to load vertices (rather than translate to Metal's vertex descriptors).
+	 * (Default is to only use shader vertex loaders in situations that Metal's descriptors don't support.)
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_FORCE_SHADER_VERTEX_LOADER
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, this setting is disabled by default.
+	 */
+	VkBool32 forceShaderVertexLoader;
+
 } MVKConfiguration;
 
 

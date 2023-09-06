@@ -80,6 +80,10 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		164DCE072AABA74B00E4B88F /* spirv_msl_vertex_loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 164DCE062AABA74B00E4B88F /* spirv_msl_vertex_loader.cpp */; };
+		164DCE082AABA74B00E4B88F /* spirv_msl_vertex_loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 164DCE062AABA74B00E4B88F /* spirv_msl_vertex_loader.cpp */; };
+		164DCE092AABA74B00E4B88F /* spirv_msl_vertex_loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 164DCE062AABA74B00E4B88F /* spirv_msl_vertex_loader.cpp */; };
+		164DCE0A2AABA74B00E4B88F /* spirv_msl_vertex_loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 164DCE062AABA74B00E4B88F /* spirv_msl_vertex_loader.cpp */; };
 		2FEA0CDB2490322B00EEF3AD /* spirv_cfg.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A976290921CC60BC00B52A68 /* spirv_cfg.hpp */; };
 		2FEA0CDC2490322B00EEF3AD /* spirv_cross_parsed_ir.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A976290821CC60BC00B52A68 /* spirv_cross_parsed_ir.hpp */; };
 		2FEA0CDD2490322B00EEF3AD /* spirv_common.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A976290721CC60BC00B52A68 /* spirv_common.hpp */; };
@@ -2367,6 +2371,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		164DCE062AABA74B00E4B88F /* spirv_msl_vertex_loader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_msl_vertex_loader.cpp; sourceTree = "<group>"; };
 		2FEA0B4A2490321700EEF3AD /* libglslang.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libglslang.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEA0CD82490322100EEF3AD /* libSPIRVTools.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVTools.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEA0CEF2490322B00EEF3AD /* libSPIRVCross.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVCross.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -3019,6 +3024,7 @@
 				A976290321CC60BC00B52A68 /* spirv_cross.hpp */,
 				A976290621CC60BC00B52A68 /* spirv_glsl.cpp */,
 				A976290A21CC60BC00B52A68 /* spirv_glsl.hpp */,
+				164DCE062AABA74B00E4B88F /* spirv_msl_vertex_loader.cpp */,
 				A976290D21CC60BC00B52A68 /* spirv_msl.cpp */,
 				A976290221CC60BC00B52A68 /* spirv_msl.hpp */,
 				A976290421CC60BC00B52A68 /* spirv_parser.cpp */,
@@ -5813,6 +5819,7 @@
 				2FEA0CE72490322B00EEF3AD /* spirv_cross.cpp in Sources */,
 				2FEA0CE82490322B00EEF3AD /* spirv_reflect.cpp in Sources */,
 				2FEA0CE92490322B00EEF3AD /* spirv_glsl.cpp in Sources */,
+				164DCE082AABA74B00E4B88F /* spirv_msl_vertex_loader.cpp in Sources */,
 				2FEA0CEA2490322B00EEF3AD /* spirv_cross_parsed_ir.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -6385,6 +6392,7 @@
 				A976291621CC60BC00B52A68 /* spirv_cross.cpp in Sources */,
 				450A4F68221C5A95007203D7 /* spirv_reflect.cpp in Sources */,
 				A976291821CC60BC00B52A68 /* spirv_glsl.cpp in Sources */,
+				164DCE0A2AABA74B00E4B88F /* spirv_msl_vertex_loader.cpp in Sources */,
 				A976292821CC60BC00B52A68 /* spirv_cross_parsed_ir.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -6399,6 +6407,7 @@
 				A976291521CC60BC00B52A68 /* spirv_cross.cpp in Sources */,
 				450A4F67221C5A95007203D7 /* spirv_reflect.cpp in Sources */,
 				A976291721CC60BC00B52A68 /* spirv_glsl.cpp in Sources */,
+				164DCE072AABA74B00E4B88F /* spirv_msl_vertex_loader.cpp in Sources */,
 				A976292721CC60BC00B52A68 /* spirv_cross_parsed_ir.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -6413,6 +6422,7 @@
 				DCFD7C9B2A45BA7D007BBBF7 /* spirv_cross.cpp in Sources */,
 				DCFD7C9C2A45BA7D007BBBF7 /* spirv_reflect.cpp in Sources */,
 				DCFD7C9D2A45BA7D007BBBF7 /* spirv_glsl.cpp in Sources */,
+				164DCE092AABA74B00E4B88F /* spirv_msl_vertex_loader.cpp in Sources */,
 				DCFD7C9E2A45BA7D007BBBF7 /* spirv_cross_parsed_ir.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -1861,6 +1861,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if (supportsMTLFeatureSet(iOS_GPUFamily4_v1)) {
 		_metalFeatures.postDepthCoverage = true;
 		_metalFeatures.nonUniformThreadgroups = true;
+		_metalFeatures.pixelTypeLoads = true;
 	}
 
 	if (supportsMTLFeatureSet(iOS_GPUFamily5_v1)) {
@@ -2025,6 +2026,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.renderLinearTextures = true;
 		_metalFeatures.tileBasedDeferredRendering = true;
 
+		if (supportsMTLGPUFamily(Apple4)) {
+			_metalFeatures.pixelTypeLoads = true;
+		}
 #if MVK_XCODE_12
 		if (supportsMTLGPUFamily(Apple6)) {
 			_metalFeatures.astcHDRTextures = true;
