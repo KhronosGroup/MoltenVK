@@ -49,7 +49,7 @@ static inline bool mvkOSVersionIsAtLeast(MVKOSVersion minVer) { return mvkOSVers
 /**
  * Returns whether the operating system version is at least the appropriate min version.
  * The constant kMVKOSVersionUnsupported can be used for any of the values to cause the test
- * to always fail on that OS, which is useful for indidicating that functionalty guarded by
+ * to always fail on that OS, which is useful for indicating that functionalty guarded by
  * this test is not supported on that OS.
  */
 static inline bool mvkOSVersionIsAtLeast(MVKOSVersion macOSMinVer,
