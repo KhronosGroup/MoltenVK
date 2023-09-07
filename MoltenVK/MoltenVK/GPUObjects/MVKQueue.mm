@@ -623,12 +623,6 @@ MVKQueueFullCommandBufferSubmission<N>::MVKQueueFullCommandBufferSubmission(MVKQ
 // The semaphores know what to do.
 VkResult MVKQueuePresentSurfaceSubmission::execute() {
 	id<MTLCommandBuffer> mtlCmdBuff = _queue->getMTLCommandBuffer(kMVKCommandUseQueuePresent);
-	[mtlCmdBuff enqueue];
-
-	// Add completion handler that will destroy this submission only once the MTLCommandBuffer
-	// is finished with the resources retained here, including the wait semaphores.
-	// Completion handlers are also added in presentCAMetalDrawable() to retain the swapchain images.
-	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) { this->finish(); }];
 
 	for (auto& ws : _waitSemaphores) {
 		auto& sem4 = ws.first;
@@ -637,15 +631,22 @@ VkResult MVKQueuePresentSurfaceSubmission::execute() {
 	}
 
 	for (int i = 0; i < _presentInfo.size(); i++ ) {
-		_presentInfo[i].presentableImage->presentCAMetalDrawable(mtlCmdBuff, _presentInfo[i]);
+		setConfigurationResult(_presentInfo[i].presentableImage->presentCAMetalDrawable(mtlCmdBuff, _presentInfo[i]));
 	}
 
-	[mtlCmdBuff commit];
+	if ( !mtlCmdBuff ) { setConfigurationResult(VK_ERROR_OUT_OF_POOL_MEMORY); }	// Check after images may set error.
 
-	// If an error occurred and the MTLCommandBuffer was not created, call finish() directly.
-	if ( !mtlCmdBuff ) { finish(); }
-
-	return mtlCmdBuff ? VK_SUCCESS : VK_ERROR_OUT_OF_POOL_MEMORY;
+	// Add completion callback to the MTLCommandBuffer to call finish(), 
+	// or if the MTLCommandBuffer could not be created, call finish() directly.
+	// Retrieve the result first, because finish() will destroy this instance.
+	VkResult rslt = getConfigurationResult();
+	if (mtlCmdBuff) {
+		[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) { this->finish(); }];
+		[mtlCmdBuff commit];
+	} else {
+		finish();
+	}
+	return rslt;
 }
 
 void MVKQueuePresentSurfaceSubmission::finish() {

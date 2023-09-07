@@ -39,27 +39,30 @@ static const MVKOSVersion kMVKOSVersionUnsupported = std::numeric_limits<MVKOSVe
 MVKOSVersion mvkOSVersion();
 
 /** Returns a MVKOSVersion built from the version components. */
-inline MVKOSVersion mvkMakeOSVersion(uint32_t major, uint32_t minor, uint32_t patch) {
+static inline MVKOSVersion mvkMakeOSVersion(uint32_t major, uint32_t minor, uint32_t patch) {
 	return (float)major + ((float)minor / 100.0f) + ((float)patch / 10000.0f);
 }
 
 /** Returns whether the operating system version is at least minVer. */
-inline bool mvkOSVersionIsAtLeast(MVKOSVersion minVer) { return mvkOSVersion() >= minVer; }
+static inline bool mvkOSVersionIsAtLeast(MVKOSVersion minVer) { return mvkOSVersion() >= minVer; }
 
 /**
  * Returns whether the operating system version is at least the appropriate min version.
- * The constant kMVKOSVersionUnsupported can be used for either value to cause the test
- * to always fail on that OS, which is useful for indidicating functionalty guarded by
+ * The constant kMVKOSVersionUnsupported can be used for any of the values to cause the test
+ * to always fail on that OS, which is useful for indicating that functionalty guarded by
  * this test is not supported on that OS.
  */
-inline bool mvkOSVersionIsAtLeast(MVKOSVersion macOSMinVer, MVKOSVersion iOSMinVer, MVKOSVersion visionOSMinVer) {
+static inline bool mvkOSVersionIsAtLeast(MVKOSVersion macOSMinVer,
+										 MVKOSVersion iOSMinVer,
+										 MVKOSVersion visionOSMinVer) {
 #if MVK_MACOS
 	return mvkOSVersionIsAtLeast(macOSMinVer);
 #endif
+#if MVK_IOS_OR_TVOS
+	return mvkOSVersionIsAtLeast(iOSMinVer);
+#endif
 #if MVK_VISIONOS
 	return mvkOSVersionIsAtLeast(visionOSMinVer);
-#elif MVK_IOS_OR_TVOS
-	return mvkOSVersionIsAtLeast(iOSMinVer);
 #endif
 }
 
