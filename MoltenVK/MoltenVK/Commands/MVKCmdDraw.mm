@@ -107,6 +107,14 @@ void MVKCmdBindIndexBuffer::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->getState().bindIndexBuffer(_binding);
 }
 
+#pragma mark -
+
+/* Describes the draw parameters for mesh pipelines. */
+struct DrawInfo {
+	int32_t indexed;
+	int32_t indexSize;
+	uint64_t indexBuffer;
+};
 
 #pragma mark -
 #pragma mark MVKCmdDraw
@@ -726,6 +734,13 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 	auto* pipeline = cmdEncoder->getGraphicsPipeline();
 	auto& mtlFeats = cmdEncoder->getMetalFeatures();
 	auto& dvcLimits = cmdEncoder->getDeviceProperties().limits;
+
+#if MVK_XCODE_14
+    if (pipeline->isGeometryPipeline()) {
+        reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, "CmdDrawIndirect with geometry shader is not yet supported.");
+        return;
+    }
+#endif
 
 	// Metal doesn't support triangle fans, so encode it as indexed indirect triangles instead.
 	if (pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {

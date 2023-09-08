@@ -87,3 +87,18 @@
 }
 
 @end
+
+#if MVK_XCODE_14
+
+@implementation MTLMeshRenderPipelineDescriptor (MoltenVK)
+
+-(MTLPrimitiveTopologyClass) inputPrimitiveTopologyMVK {
+    return MTLPrimitiveTopologyClassUnspecified;
+}
+
+-(void) setInputPrimitiveTopologyMVK: (MTLPrimitiveTopologyClass) topology {
+}
+
+@end
+
+#endif

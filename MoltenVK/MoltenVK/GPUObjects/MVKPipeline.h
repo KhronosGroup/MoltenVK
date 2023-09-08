@@ -226,7 +226,9 @@ struct MVKTranslatedVertexBinding {
 /** Describes a vertex buffer binding whose divisor is zero. */
 typedef std::pair<uint32_t, uint32_t> MVKZeroDivisorVertexBinding;
 
-typedef MVKSmallVector<MVKGraphicsStage, 4> MVKPiplineStages;
+static constexpr uint32_t kMVKNumGraphicsShaderStages = kMVKShaderStageCompute;
+
+typedef MVKSmallVector<MVKGraphicsStage, kMVKNumGraphicsShaderStages> MVKPiplineStages;
 
 
 struct MVKPipelineStageResourceInfo {
@@ -285,6 +287,9 @@ public:
 	/** Returns true if the tessellation control shader needs a buffer to store its per-patch output. */
 	bool needsTessCtlPatchOutputBuffer() const { return _stageResources[kMVKShaderStageTessCtl].implicitBuffers.needed.has(MVKImplicitBuffer::PatchOutput); }
 
+    /** Returns the current draw info buffer binding for the mesh shader. */
+    uint32_t getDrawInfoBufferIndex() { return _meshDrawInfoBufferIndex; }
+
 	/** Returns the Vulkan primitive topology. */
 	VkPrimitiveTopology getVkPrimitiveTopology() { return _vkPrimitiveTopology; }
 
@@ -334,6 +339,9 @@ protected:
 	typedef MVKSmallVector<mvk::SPIRVShaderInterfaceVariable, 32> SPIRVShaderInputs;
 
     id<MTLRenderPipelineState> getOrCompilePipeline(MTLRenderPipelineDescriptor* plDesc, id<MTLRenderPipelineState>& plState);
+#if MVK_XCODE_14
+    id<MTLRenderPipelineState> getOrCompilePipeline(MTLMeshRenderPipelineDescriptor* plDesc, id<MTLRenderPipelineState>& plState);
+#endif
     id<MTLComputePipelineState> getOrCompilePipeline(MTLComputePipelineDescriptor* plDesc, id<MTLComputePipelineState>& plState, const char* compilerType);
 	bool compileTessVertexStageState(MTLComputePipelineDescriptor* vtxPLDesc, MVKMTLFunction* pVtxFunctions, VkPipelineCreationFeedback* pVertexFB);
 	bool compileTessControlStageState(MTLComputePipelineDescriptor* tcPLDesc, VkPipelineCreationFeedback* pTessCtlFB);
@@ -546,7 +554,9 @@ public:
 	 * nanoseconds, an error will be generated and logged, and nil will be returned.
 	 */
 	id<MTLRenderPipelineState> newMTLRenderPipelineState(MTLRenderPipelineDescriptor* mtlRPLDesc);
-
+#if MVK_XCODE_14
+	id<MTLRenderPipelineState> newMTLRenderPipelineState(MTLMeshRenderPipelineDescriptor* mtlRPLDesc);
+#endif
 
 #pragma mark Construction
 

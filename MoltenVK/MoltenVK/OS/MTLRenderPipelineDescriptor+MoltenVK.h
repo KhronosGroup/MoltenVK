@@ -53,3 +53,13 @@
 @property(nonatomic, readwrite) NSUInteger logicOperationMVK;
 
 @end
+
+#if MVK_XCODE_14
+
+@interface MTLMeshRenderPipelineDescriptor (MoltenVK)
+
+@property(nonatomic, readwrite) MTLPrimitiveTopologyClass inputPrimitiveTopologyMVK;
+
+@end
+
+#endif
