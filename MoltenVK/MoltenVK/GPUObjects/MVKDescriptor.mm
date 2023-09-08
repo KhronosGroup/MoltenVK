@@ -134,6 +134,7 @@ void mvkPopulateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& s
 		spv::ExecutionModelVertex,
 		spv::ExecutionModelTessellationControl,
 		spv::ExecutionModelTessellationEvaluation,
+		spv::ExecutionModelGeometry,
 		spv::ExecutionModelFragment,
 		spv::ExecutionModelGLCompute
 	};
@@ -526,8 +527,15 @@ MTLRenderStages MVKDescriptorSetLayoutBinding::getMTLRenderStages() {
 				case kMVKShaderStageTessCtl:
 				case kMVKShaderStageTessEval:
 					mtlStages |= MTLRenderStageVertex;
+#if MVK_XCODE_14
+                    mtlStages |= MTLRenderStageObject;
+#endif
 					break;
-
+#if MVK_XCODE_14
+                case kMVKShaderStageGeometry:
+                    mtlStages |= MTLRenderStageMesh;
+                    break;
+#endif
 				case kMVKShaderStageFragment:
 					mtlStages |= MTLRenderStageFragment;
 					break;

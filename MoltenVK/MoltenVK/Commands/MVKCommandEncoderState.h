@@ -120,13 +120,14 @@ public:
     MVKPipeline* getPipeline();
 
     /** Constructs this instance for the specified command encoder. */
-    MVKPipelineCommandEncoderState(MVKCommandEncoder* cmdEncoder)
-        : MVKCommandEncoderState(cmdEncoder) {}
+    MVKPipelineCommandEncoderState(MVKCommandEncoder* cmdEncoder, VkPipelineBindPoint bindPoint)
+        : MVKCommandEncoderState(cmdEncoder), _bindPoint(bindPoint) {}
 
 protected:
     void encodeImpl(uint32_t stage) override;
 
     MVKPipeline* _pipeline = nullptr;
+    VkPipelineBindPoint _bindPoint;
 };
 
 
@@ -571,6 +572,7 @@ public:
 	void endMetalRenderPass() override;
 
 	void markDirty() override;
+	void markDirty(MVKShaderStage stage);
 
 #pragma mark Construction
     

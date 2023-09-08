@@ -185,24 +185,29 @@ void MVKDescriptorSetLayout::populateShaderConversionConfig(mvk::SPIRVToMSLConve
 	}
 }
 
+static const spv::ExecutionModel getExecModel(MVKShaderStage stage) {
+	switch (stage) {
+		case kMVKShaderStageVertex:   return spv::ExecutionModelVertex;
+		case kMVKShaderStageTessCtl:  return spv::ExecutionModelTessellationControl;
+		case kMVKShaderStageTessEval: return spv::ExecutionModelTessellationEvaluation;
+		case kMVKShaderStageGeometry: return spv::ExecutionModelGeometry;
+		case kMVKShaderStageFragment: return spv::ExecutionModelFragment;
+		case kMVKShaderStageCompute:  return spv::ExecutionModelGLCompute;
+		case kMVKShaderStageCount:    assert(0); __builtin_unreachable();
+	}
+}
+
 bool MVKDescriptorSetLayout::populateBindingUse(MVKBitArray& bindingUse,
 												SPIRVToMSLConversionConfiguration& context,
 												MVKShaderStage stage,
 												uint32_t descSetIndex) {
-	static const spv::ExecutionModel spvExecModels[] = {
-		spv::ExecutionModelVertex,
-		spv::ExecutionModelTessellationControl,
-		spv::ExecutionModelTessellationEvaluation,
-		spv::ExecutionModelFragment,
-		spv::ExecutionModelGLCompute
-	};
 
 	bool descSetIsUsed = false;
 	uint32_t bindCnt = (uint32_t)_bindings.size();
 	bindingUse.resize(bindCnt);
 	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		auto& dslBind = _bindings[bindIdx];
-		if (context.isResourceUsed(spvExecModels[stage], descSetIndex, dslBind.getBinding())) {
+		if (context.isResourceUsed(getExecModel(stage), descSetIndex, dslBind.getBinding())) {
 			bindingUse.setBit(bindIdx);
 			descSetIsUsed = true;
 		}

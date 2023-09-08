@@ -34,3 +34,13 @@
 @property(nonatomic, readwrite) MTLPrimitiveTopologyClass inputPrimitiveTopologyMVK;
 
 @end
+
+#if MVK_XCODE_14
+
+@interface MTLMeshRenderPipelineDescriptor (MoltenVK)
+
+@property(nonatomic, readwrite) MTLPrimitiveTopologyClass inputPrimitiveTopologyMVK;
+
+@end
+
+#endif

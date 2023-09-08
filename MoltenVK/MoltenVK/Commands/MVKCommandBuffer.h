@@ -521,6 +521,7 @@ protected:
 	MVKPushConstantsCommandEncoderState _tessEvalPushConstants;
 	MVKPushConstantsCommandEncoderState _fragmentPushConstants;
 	MVKPushConstantsCommandEncoderState _computePushConstants;
+	MVKPushConstantsCommandEncoderState _geometryPushConstants;
     MVKOcclusionQueryCommandEncoderState _occlusionQueryState;
 	MVKPrefillMetalCommandBuffersStyle _prefillStyle;
 	VkSubpassContents _subpassContents;
