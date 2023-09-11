@@ -556,9 +556,6 @@ public:
 							 MTLResourceUsage mtlUsage,
 							 MTLRenderStages mtlStages) override;
 
-	/** Offset all buffers for vertex attribute bindings with zero divisors by the given number of strides. */
-	void offsetZeroDivisorVertexBuffers(MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);
-
 	/**
 	 * Marks the buffer binding using the index as having been overridden,
 	 * such as by push constants or internal rendering in some transfers.

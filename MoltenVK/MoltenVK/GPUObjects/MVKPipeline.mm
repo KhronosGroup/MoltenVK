@@ -882,33 +882,6 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 	return VK_FORMAT_UNDEFINED;
 }
 
-// Returns a format of the same base type with vector length adjusted to fit size.
-static MTLVertexFormat mvkAdjustFormatVectorToSize(MTLVertexFormat format, uint32_t size) {
-#define MVK_ADJUST_FORMAT_CASE(size_1, type, suffix) \
-	case MTLVertexFormat##type##4##suffix: if (size >= 4 * (size_1)) { return MTLVertexFormat##type##4##suffix; } \
-	case MTLVertexFormat##type##3##suffix: if (size >= 3 * (size_1)) { return MTLVertexFormat##type##3##suffix; } \
-	case MTLVertexFormat##type##2##suffix: if (size >= 2 * (size_1)) { return MTLVertexFormat##type##2##suffix; } \
-	case MTLVertexFormat##type##suffix:    if (size >= 1 * (size_1)) { return MTLVertexFormat##type##suffix; } \
-	return MTLVertexFormatInvalid;
-
-	switch (format) {
-		MVK_ADJUST_FORMAT_CASE(1, UChar, )
-		MVK_ADJUST_FORMAT_CASE(1, Char, )
-		MVK_ADJUST_FORMAT_CASE(1, UChar, Normalized)
-		MVK_ADJUST_FORMAT_CASE(1, Char, Normalized)
-		MVK_ADJUST_FORMAT_CASE(2, UShort, )
-		MVK_ADJUST_FORMAT_CASE(2, Short, )
-		MVK_ADJUST_FORMAT_CASE(2, UShort, Normalized)
-		MVK_ADJUST_FORMAT_CASE(2, Short, Normalized)
-		MVK_ADJUST_FORMAT_CASE(2, Half, )
-		MVK_ADJUST_FORMAT_CASE(4, Float, )
-		MVK_ADJUST_FORMAT_CASE(4, UInt, )
-		MVK_ADJUST_FORMAT_CASE(4, Int, )
-		default: return format;
-	}
-#undef MVK_ADJUST_FORMAT_CASE
-}
-
 // Returns a retained MTLComputePipelineDescriptor for the tess. control stage of a tessellated draw constructed from this instance, or nil if an error occurs.
 // It is the responsibility of the caller to release the returned descriptor.
 MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessControlStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo,
@@ -1405,15 +1378,6 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
     for (uint32_t i = 0; i < vbCnt; i++) {
         const VkVertexInputBindingDescription* pVKVB = &pVI->pVertexBindingDescriptions[i];
         if (shaderConfig.isVertexBufferUsed(pVKVB->binding)) {
-
-			// Vulkan allows any stride, but Metal only allows multiples of 4.
-            // TODO: We could try to expand the buffer to the required alignment in that case.
-			VkDeviceSize mtlVtxStrideAlignment = _device->_pMetalFeatures->vertexStrideAlignment;
-            if ((pVKVB->stride % mtlVtxStrideAlignment) != 0) {
-				setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Under Metal, vertex attribute binding strides must be aligned to %llu bytes.", mtlVtxStrideAlignment));
-                return false;
-            }
-
 			maxBinding = max(pVKVB->binding, maxBinding);
 			uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
 			auto vbDesc = inputDesc.layouts[vbIdx];
@@ -1432,19 +1396,14 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
     }
 
     // Vertex buffer divisors (step rates)
-    std::unordered_set<uint32_t> zeroDivisorBindings;
     if (pVertexInputDivisorState) {
         uint32_t vbdCnt = pVertexInputDivisorState->vertexBindingDivisorCount;
         for (uint32_t i = 0; i < vbdCnt; i++) {
             const VkVertexInputBindingDivisorDescriptionEXT* pVKVB = &pVertexInputDivisorState->pVertexBindingDivisors[i];
             if (shaderConfig.isVertexBufferUsed(pVKVB->binding)) {
                 uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
-                if ((NSUInteger)inputDesc.layouts[vbIdx].stepFunction == MTLStepFunctionPerInstance ||
-					(NSUInteger)inputDesc.layouts[vbIdx].stepFunction == MTLStepFunctionThreadPositionInGridY) {
-                    if (pVKVB->divisor == 0) {
-                        inputDesc.layouts[vbIdx].stepFunction = (decltype(inputDesc.layouts[vbIdx].stepFunction))MTLStepFunctionConstant;
-                        zeroDivisorBindings.insert(pVKVB->binding);
-                    }
+                MTLStepFunction fn = static_cast<MTLStepFunction>(inputDesc.layouts[vbIdx].stepFunction);
+                if (fn == MTLStepFunctionPerInstance || fn == MTLStepFunctionThreadPositionInGridY) {
                     inputDesc.layouts[vbIdx].stepRate = pVKVB->divisor;
                 }
             }
@@ -1459,9 +1418,6 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 			uint32_t vaBinding = pVKVA->binding;
 			uint32_t vaOffset = pVKVA->offset;
 
-			// Vulkan allows offsets to exceed the buffer stride, but Metal doesn't.
-			// If this is the case, fetch a translated artificial buffer binding, using the same MTLBuffer,
-			// but that is translated so that the reduced VA offset fits into the binding stride.
 			const VkVertexInputBindingDescription* pVKVB = pVI->pVertexBindingDescriptions;
 			uint32_t attrSize = 0;
 			for (uint32_t j = 0; j < vbCnt; j++, pVKVB++) {
@@ -1474,75 +1430,17 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 						auto vbDesc = inputDesc.layouts[vbIdx];
 						uint32_t strideLowBound = vaOffset + attrSize;
 						if (vbDesc.stride < strideLowBound) vbDesc.stride = strideLowBound;
-					} else if (vaOffset && vaOffset + attrSize > pVKVB->stride) {
-						// Move vertex attribute offset into the stride. This vertex attribute may be
-						// combined with other vertex attributes into the same translated buffer binding.
-						// But if the reduced offset combined with the vertex attribute size still won't
-						// fit into the buffer binding stride, force the vertex attribute offset to zero,
-						// effectively dedicating this vertex attribute to its own buffer binding.
-						uint32_t origOffset = vaOffset;
-						vaOffset %= pVKVB->stride;
-						if (vaOffset + attrSize > pVKVB->stride) {
-							vaOffset = 0;
-						}
-						vaBinding = getTranslatedVertexBinding(vaBinding, origOffset - vaOffset, maxBinding);
-                        if (zeroDivisorBindings.count(pVKVB->binding)) {
-                            zeroDivisorBindings.insert(vaBinding);
-                        }
 					}
 					break;
 				}
 			}
 
 			auto vaDesc = inputDesc.attributes[pVKVA->location];
-			auto mtlFormat = (decltype(vaDesc.format))getPixelFormats()->getMTLVertexFormat(pVKVA->format);
-			if (pVKVB->stride && attrSize > pVKVB->stride) {
-				/* Metal does not support overlapping loads. Truncate format vector length to prevent an assertion
-				 * and hope it's not used by the shader. */
-				MTLVertexFormat newFormat = mvkAdjustFormatVectorToSize((MTLVertexFormat)mtlFormat, pVKVB->stride);
-				reportError(VK_SUCCESS, "Found attribute with size (%u) larger than it's binding's stride (%u). Changing descriptor format from %s to %s.",
-					attrSize, pVKVB->stride, getPixelFormats()->getName((MTLVertexFormat)mtlFormat), getPixelFormats()->getName(newFormat));
-				mtlFormat = (decltype(vaDesc.format))newFormat;
-			}
-			vaDesc.format = mtlFormat;
+			vaDesc.format = (decltype(vaDesc.format))getPixelFormats()->getMTLVertexFormat(pVKVA->format);;
 			vaDesc.bufferIndex = (decltype(vaDesc.bufferIndex))getMetalBufferIndexForVertexAttributeBinding(vaBinding);
 			vaDesc.offset = vaOffset;
 		}
 	}
-
-	// Run through the vertex bindings. Add a new Metal vertex layout for each translated binding,
-	// identical to the original layout. The translated binding will index into the same MTLBuffer,
-	// but at an offset that is one or more strides away from the original.
-	for (uint32_t i = 0; i < vbCnt; i++) {
-		const VkVertexInputBindingDescription* pVKVB = &pVI->pVertexBindingDescriptions[i];
-		uint32_t vbVACnt = shaderConfig.countShaderInputsAt(pVKVB->binding);
-		if (vbVACnt > 0) {
-			uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
-			auto vbDesc = inputDesc.layouts[vbIdx];
-
-			uint32_t xldtVACnt = 0;
-			for (auto& xltdBind : _translatedVertexBindings) {
-				if (xltdBind.binding == pVKVB->binding) {
-					uint32_t vbXltdIdx = getMetalBufferIndexForVertexAttributeBinding(xltdBind.translationBinding);
-					auto vbXltdDesc = inputDesc.layouts[vbXltdIdx];
-					vbXltdDesc.stride = vbDesc.stride;
-					vbXltdDesc.stepFunction = vbDesc.stepFunction;
-					vbXltdDesc.stepRate = vbDesc.stepRate;
-					xldtVACnt++;
-				}
-			}
-
-			// If all of the vertex attributes at this vertex buffer binding have been translated, remove it.
-			if (xldtVACnt == vbVACnt) { vbDesc.stride = 0; }
-		}
-	}
-
-    // Collect all bindings with zero divisors. We need to remember them so we can offset
-    // the vertex buffers during a draw.
-    for (uint32_t binding : zeroDivisorBindings) {
-        uint32_t stride = (uint32_t)inputDesc.layouts[getMetalBufferIndexForVertexAttributeBinding(binding)].stride;
-        _zeroDivisorVertexBindings.emplace_back(binding, stride);
-    }
 
 	return true;
 }
@@ -1555,30 +1453,8 @@ void MVKGraphicsPipeline::adjustVertexInputForMultiview(MTLVertexDescriptor* inp
 		uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
 		if (inputDesc.layouts[vbIdx].stepFunction == MTLVertexStepFunctionPerInstance) {
 			inputDesc.layouts[vbIdx].stepRate = inputDesc.layouts[vbIdx].stepRate / oldViewCount * viewCount;
-			for (auto& xltdBind : _translatedVertexBindings) {
-				if (xltdBind.binding == pVKVB->binding) {
-					uint32_t vbXltdIdx = getMetalBufferIndexForVertexAttributeBinding(xltdBind.translationBinding);
-					inputDesc.layouts[vbXltdIdx].stepRate = inputDesc.layouts[vbXltdIdx].stepRate / oldViewCount * viewCount;
-				}
-			}
 		}
 	}
-}
-
-// Returns a translated binding for the existing binding and translation offset, creating it if needed.
-uint32_t MVKGraphicsPipeline::getTranslatedVertexBinding(uint32_t binding, uint32_t translationOffset, uint32_t maxBinding) {
-	// See if a translated binding already exists (for example if more than one VA needs the same translation).
-	for (auto& xltdBind : _translatedVertexBindings) {
-		if (xltdBind.binding == binding && xltdBind.translationOffset == translationOffset) {
-			return xltdBind.translationBinding;
-		}
-	}
-
-	// Get next available binding point and add a translation binding description for it
-	uint16_t xltdBindPt = (uint16_t)(maxBinding + _translatedVertexBindings.size() + 1);
-	_translatedVertexBindings.push_back( {.binding = (uint16_t)binding, .translationBinding = xltdBindPt, .translationOffset = translationOffset} );
-
-	return xltdBindPt;
 }
 
 void MVKGraphicsPipeline::addTessellationToPipeline(MTLRenderPipelineDescriptor* plDesc,

@@ -733,30 +733,6 @@ void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stag
     encodeBinding<MVKMTLSamplerStateBinding>(shaderStage.samplerStateBindings, shaderStage.areSamplerStateBindingsDirty, bindSampler);
 }
 
-void MVKGraphicsResourcesCommandEncoderState::offsetZeroDivisorVertexBuffers(MVKGraphicsStage stage,
-                                                                             MVKGraphicsPipeline* pipeline,
-                                                                             uint32_t firstInstance) {
-    auto& shaderStage = _shaderStageResourceBindings[kMVKShaderStageVertex];
-    for (auto& binding : pipeline->getZeroDivisorVertexBindings()) {
-        uint32_t mtlBuffIdx = pipeline->getMetalBufferIndexForVertexAttributeBinding(binding.first);
-        auto iter = std::find_if(shaderStage.bufferBindings.begin(), shaderStage.bufferBindings.end(), [mtlBuffIdx](const MVKMTLBufferBinding& b) { return b.index == mtlBuffIdx; });
-		if (!iter) { continue; }
-        switch (stage) {
-            case kMVKGraphicsStageVertex:
-                [_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl) setBufferOffset: iter->offset + firstInstance * binding.second
-                                                                                                    atIndex: mtlBuffIdx];
-                break;
-            case kMVKGraphicsStageRasterization:
-                [_cmdEncoder->_mtlRenderEncoder setVertexBufferOffset: iter->offset + firstInstance * binding.second
-                                                              atIndex: mtlBuffIdx];
-                break;
-            default:
-                assert(false);      // If we hit this, something went wrong.
-                break;
-        }
-    }
-}
-
 void MVKGraphicsResourcesCommandEncoderState::endMetalRenderPass() {
 	MVKResourcesCommandEncoderState::endMetalRenderPass();
 	_renderUsageStages.clear();
@@ -830,16 +806,6 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                        [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
                                                                                offset: b.offset
                                                                               atIndex: b.index];
-                                   }
-
-                                   // Add any translated vertex bindings for this binding
-                                   auto xltdVtxBindings = pipeline->getTranslatedVertexBindings();
-                                   for (auto& xltdBind : xltdVtxBindings) {
-                                       if (b.index == pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.binding)) {
-                                           [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
-                                                                                   offset: b.offset + xltdBind.translationOffset
-                                                                                  atIndex: pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.translationBinding)];
-                                       }
                                    }
                                }
                            } else {

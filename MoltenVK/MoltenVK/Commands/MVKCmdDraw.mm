@@ -191,9 +191,6 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                                          atIndex: pipeline->getOutputBufferIndex().stages[kMVKShaderStageVertex]];
                 }
 				[mtlTessCtlEncoder setStageInRegion: MTLRegionMake2D(_firstVertex, _firstInstance, _vertexCount, _instanceCount)];
-				// If there are vertex bindings with a zero vertex divisor, I need to offset them by
-				// _firstInstance * stride, since that is the expected behaviour for a divisor of 0.
-                cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _firstInstance);
 				id<MTLComputePipelineState> vtxState = pipeline->getTessVertexStageState();
 				if (cmdEncoder->getDevice()->_pMetalFeatures->nonUniformThreadgroups) {
 #if MVK_MACOS_OR_IOS
@@ -294,7 +291,6 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                     MVKRenderSubpass* subpass = cmdEncoder->getSubpass();
                     uint32_t viewCount = subpass->isMultiview() ? subpass->getViewCountInMetalPass(cmdEncoder->getMultiviewPassIndex()) : 1;
                     uint32_t instanceCount = _instanceCount * viewCount;
-                    cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _firstInstance);
                     if (cmdEncoder->_pDeviceMetalFeatures->baseVertexInstanceDrawing) {
                         [cmdEncoder->_mtlRenderEncoder drawPrimitives: cmdEncoder->_mtlPrimitiveType
                                                           vertexStart: _firstVertex
@@ -422,9 +418,6 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                                       offset: idxBuffOffset
                                      atIndex: pipeline->getIndirectParamsIndex().stages[kMVKShaderStageVertex]];
 				[mtlTessCtlEncoder setStageInRegion: MTLRegionMake2D(_vertexOffset, _firstInstance, _indexCount, _instanceCount)];
-				// If there are vertex bindings with a zero vertex divisor, I need to offset them by
-				// _firstInstance * stride, since that is the expected behaviour for a divisor of 0.
-                cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _firstInstance);
 				id<MTLComputePipelineState> vtxState = ibb.mtlIndexType == MTLIndexTypeUInt16 ? pipeline->getTessVertexStageIndex16State() : pipeline->getTessVertexStageIndex32State();
 				if (cmdEncoder->getDevice()->_pMetalFeatures->nonUniformThreadgroups) {
 #if MVK_MACOS_OR_IOS
@@ -528,7 +521,6 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                     MVKRenderSubpass* subpass = cmdEncoder->getSubpass();
                     uint32_t viewCount = subpass->isMultiview() ? subpass->getViewCountInMetalPass(cmdEncoder->getMultiviewPassIndex()) : 1;
                     uint32_t instanceCount = _instanceCount * viewCount;
-                    cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _firstInstance);
                     if (cmdEncoder->_pDeviceMetalFeatures->baseVertexInstanceDrawing) {
                         [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_mtlPrimitiveType
                                                                   indexCount: _indexCount
@@ -1230,9 +1222,6 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 						                                 indirectBufferOffset: mtlTempIndBuffOfst];
 						mtlTempIndBuffOfst += sizeof(MTLStageInRegionIndirectArguments);
 					}
-					// If this is a synthetic command that originated in a direct call, and there are vertex bindings with a zero vertex
-					// divisor, I need to offset them by _firstInstance * stride, since that is the expected behaviour for a divisor of 0.
-					cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _directCmdFirstInstance);
 					[mtlTessCtlEncoder dispatchThreadgroupsWithIndirectBuffer: mtlIndBuff
 														 indirectBufferOffset: mtlTempIndBuffOfst
 														threadsPerThreadgroup: MTLSizeMake(vtxThreadExecWidth, 1, 1)];
@@ -1311,7 +1300,6 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
                         cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
                         cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->beginMetalRenderPass();
                     } else {
-						cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _directCmdFirstInstance);
                         [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_mtlPrimitiveType
                                                                    indexType: (MTLIndexType)ibb.mtlIndexType
                                                                  indexBuffer: ibb.mtlBuffer
