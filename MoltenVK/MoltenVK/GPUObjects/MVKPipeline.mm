@@ -1358,26 +1358,26 @@ bool MVKGraphicsPipeline::canVertexInputUseMetalDescriptor(const VkPipelineVerte
 
 template<class T>
 bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
-												   const VkPipelineVertexInputStateCreateInfo* pVI,
-												   const SPIRVToMSLConversionConfiguration& shaderConfig) {
-    // Collect extension structures
-    VkPipelineVertexInputDivisorStateCreateInfoEXT* pVertexInputDivisorState = nullptr;
+                                                   const VkPipelineVertexInputStateCreateInfo* pVI,
+                                                   const SPIRVToMSLConversionConfiguration& shaderConfig) {
+	// Collect extension structures
+	VkPipelineVertexInputDivisorStateCreateInfoEXT* pVertexInputDivisorState = nullptr;
 	for (const auto* next = (VkBaseInStructure*)pVI->pNext; next; next = next->pNext) {
-        switch (next->sType) {
-        case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT:
-            pVertexInputDivisorState = (VkPipelineVertexInputDivisorStateCreateInfoEXT*)next;
-            break;
-        default:
-            break;
-        }
-    }
+		switch (next->sType) {
+		case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT:
+			pVertexInputDivisorState = (VkPipelineVertexInputDivisorStateCreateInfoEXT*)next;
+			break;
+		default:
+			break;
+		}
+	}
 
-    // Vertex buffer bindings
+	// Vertex buffer bindings
 	uint32_t vbCnt = pVI->vertexBindingDescriptionCount;
 	uint32_t maxBinding = 0;
-    for (uint32_t i = 0; i < vbCnt; i++) {
-        const VkVertexInputBindingDescription* pVKVB = &pVI->pVertexBindingDescriptions[i];
-        if (shaderConfig.isVertexBufferUsed(pVKVB->binding)) {
+	for (uint32_t i = 0; i < vbCnt; i++) {
+		const VkVertexInputBindingDescription* pVKVB = &pVI->pVertexBindingDescriptions[i];
+		if (shaderConfig.isVertexBufferUsed(pVKVB->binding)) {
 			maxBinding = max(pVKVB->binding, maxBinding);
 			uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
 			auto vbDesc = inputDesc.layouts[vbIdx];
@@ -1392,23 +1392,23 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 				vbDesc.stepFunction = (decltype(vbDesc.stepFunction))mvkMTLStepFunctionFromVkVertexInputRate(pVKVB->inputRate, isTessellationPipeline());
 				vbDesc.stepRate = 1;
 			}
-        }
-    }
+		}
+	}
 
-    // Vertex buffer divisors (step rates)
-    if (pVertexInputDivisorState) {
-        uint32_t vbdCnt = pVertexInputDivisorState->vertexBindingDivisorCount;
-        for (uint32_t i = 0; i < vbdCnt; i++) {
-            const VkVertexInputBindingDivisorDescriptionEXT* pVKVB = &pVertexInputDivisorState->pVertexBindingDivisors[i];
-            if (shaderConfig.isVertexBufferUsed(pVKVB->binding)) {
-                uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
-                MTLStepFunction fn = static_cast<MTLStepFunction>(inputDesc.layouts[vbIdx].stepFunction);
-                if (fn == MTLStepFunctionPerInstance || fn == MTLStepFunctionThreadPositionInGridY) {
-                    inputDesc.layouts[vbIdx].stepRate = pVKVB->divisor;
-                }
-            }
-        }
-    }
+	// Vertex buffer divisors (step rates)
+	if (pVertexInputDivisorState) {
+		uint32_t vbdCnt = pVertexInputDivisorState->vertexBindingDivisorCount;
+		for (uint32_t i = 0; i < vbdCnt; i++) {
+			const VkVertexInputBindingDivisorDescriptionEXT* pVKVB = &pVertexInputDivisorState->pVertexBindingDivisors[i];
+			if (shaderConfig.isVertexBufferUsed(pVKVB->binding)) {
+				uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
+				MTLStepFunction fn = static_cast<MTLStepFunction>(inputDesc.layouts[vbIdx].stepFunction);
+				if (fn == MTLStepFunctionPerInstance || fn == MTLStepFunctionThreadPositionInGridY) {
+					inputDesc.layouts[vbIdx].stepRate = pVKVB->divisor;
+				}
+			}
+		}
+	}
 
 	// Vertex attributes
 	uint32_t vaCnt = pVI->vertexAttributeDescriptionCount;
