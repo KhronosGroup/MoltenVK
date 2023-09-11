@@ -622,7 +622,10 @@ MVKQueueFullCommandBufferSubmission<N>::MVKQueueFullCommandBufferSubmission(MVKQ
 // If the semaphores are not encodable, wait on them inline after presenting.
 // The semaphores know what to do.
 VkResult MVKQueuePresentSurfaceSubmission::execute() {
-	id<MTLCommandBuffer> mtlCmdBuff = _queue->getMTLCommandBuffer(kMVKCommandUseQueuePresent);
+	// MTLCommandBuffer retain references to avoid rare case where objects are destroyed too early. 
+	// Although testing could not determine which objects were being lost, queue present MTLCommandBuffers
+	// are used only once per frame, and retain so few objects, that blanket retention is still performant.
+	id<MTLCommandBuffer> mtlCmdBuff = _queue->getMTLCommandBuffer(kMVKCommandUseQueuePresent, true);
 
 	for (auto& ws : _waitSemaphores) {
 		auto& sem4 = ws.first;

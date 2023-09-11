@@ -20,6 +20,7 @@ Released TBD
 
 - Fix rare case where vertex attribute buffers are not bound to Metal 
   when no other bindings change between pipelines.
+- Ensure objects retained for life of `MTLCommandBuffer` during `vkCmdBlitImage()` & `vkQueuePresentKHR()`.
 - Fix case where a `CAMetalDrawable` with invalid pixel format causes onscreen flickering.
 - Improve behavior of swapchain image presentation stalls caused by Metal regression.
 - Add several additional performance trackers, available via logging, or the `mvk_private_api.h` API.
