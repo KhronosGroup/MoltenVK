@@ -22,6 +22,7 @@ Released TBD
   when no other bindings change between pipelines.
 - Ensure objects retained for life of `MTLCommandBuffer` during `vkCmdBlitImage()` & `vkQueuePresentKHR()`.
 - Fix case where a `CAMetalDrawable` with invalid pixel format causes onscreen flickering.
+- Fix MSL code used in `vkCmdBlitImage()` on depth-stencil formats. 
 - Improve behavior of swapchain image presentation stalls caused by Metal regression.
 - Add several additional performance trackers, available via logging, or the `mvk_private_api.h` API.
 - Add configurable lowpass filter for `VkPhysicalDeviceLimits::timestampPeriod`.
