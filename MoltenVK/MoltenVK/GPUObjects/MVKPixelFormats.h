@@ -409,6 +409,7 @@ public:
 #pragma mark Construction
 
 	MVKPixelFormats(MVKPhysicalDevice* physicalDevice = nullptr);
+	void modifyCapabilitiesFromPhysicalDevice();
 
 protected:
 	MVKVkFormatDesc& getVkFormatDesc(VkFormat vkFormat);

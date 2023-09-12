@@ -2063,6 +2063,21 @@ typedef enum : VkFormatFeatureFlags {
 	kMVKVkFormatFeatureFlagsBufVertex   = (VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT),
 } MVKVkFormatFeatureFlags;
 
+void MVKPixelFormats::modifyCapabilitiesFromPhysicalDevice() {
+	bool int64 = _physicalDevice->getFeatures().shaderInt64;
+	bool float64 = _physicalDevice->getFeatures().shaderFloat64;
+	for (MVKVkFormatDesc& desc : _vkFormatDescriptions) {
+		using namespace SPIRV_CROSS_NAMESPACE;
+		MSLFormatInfo info = CompilerMSL::get_format_info(static_cast<MSLFormat>(desc.vkFormat));
+		if (info.log2_align > 2) {
+			bool supported = info.is_float ? float64 : int64;
+			if (!supported) {
+				mvkDisableFlags(desc.properties.bufferFeatures, kMVKVkFormatFeatureFlagsBufVertex);
+			}
+		}
+	}
+}
+
 // Sets the VkFormatProperties (optimal/linear/buffer) for the Vulkan format.
 void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 
@@ -2150,6 +2165,11 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 		enableFormatFeatures(Read, Buf, mtlPixFmtCaps, vkProps.bufferFeatures);
 		enableFormatFeatures(Write, Buf, mtlPixFmtCaps, vkProps.bufferFeatures);
 		enableFormatFeatures(Atomic, Buf, mtlPixFmtCaps, vkProps.bufferFeatures);
-		enableFormatFeatures(Vertex, Buf, getMTLVertexFormatDesc(vkDesc.mtlVertexFormat).mtlFmtCaps, vkProps.bufferFeatures);
+		using namespace SPIRV_CROSS_NAMESPACE;
+		MSLFormatInfo info = CompilerMSL::get_format_info(static_cast<MSLFormat>(vkDesc.vkFormat));
+		bool vertex_supported = info.is_supported();
+		if (vertex_supported) {
+			mvkEnableFlags(vkProps.bufferFeatures, kMVKVkFormatFeatureFlagsBufVertex);
+		}
 	}
 }

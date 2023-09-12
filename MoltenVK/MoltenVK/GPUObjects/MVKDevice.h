@@ -131,6 +131,9 @@ public:
 	/** Populates the specified structure with the features of this device. */
 	void getFeatures(VkPhysicalDeviceFeatures2* features);
 
+	/** Returns a structure with the features of this device  */
+	const VkPhysicalDeviceFeatures& getFeatures() const { return _features; }
+
 	/** Populates the specified structure with the properties of this device. */
 	void getProperties(VkPhysicalDeviceProperties* properties);
 

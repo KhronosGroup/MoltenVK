@@ -1642,6 +1642,7 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 	initMetalFeatures();        		// Call second.
 	initFeatures();             		// Call third.
 	initLimits();						// Call fourth.
+	_pixelFormats.modifyCapabilitiesFromPhysicalDevice();
 	initExtensions();
 	initMemoryProperties();
 	initExternalMemoryProperties();
