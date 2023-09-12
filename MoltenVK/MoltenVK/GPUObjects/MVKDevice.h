@@ -401,7 +401,7 @@ protected:
 	void initExtensions();
 	void initCounterSets();
 	bool needsCounterSetRetained();
-	void updateTimestampsAndPeriod();
+	void updateTimestampPeriod();
 	MVKArrayRef<MVKQueueFamily*> getQueueFamilies();
 	void initPipelineCacheUUID();
 	uint32_t getHighestGPUCapability();

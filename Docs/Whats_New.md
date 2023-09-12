@@ -24,6 +24,8 @@ Released TBD
 - Fix case where a `CAMetalDrawable` with invalid pixel format causes onscreen flickering.
 - Improve behavior of swapchain image presentation stalls caused by Metal regression.
 - Add several additional performance trackers, available via logging, or the `mvk_private_api.h` API.
+- Add configurable lowpass filter for `VkPhysicalDeviceLimits::timestampPeriod`.
+- Deprecate `MVK_DEBUG` env var, and add `MVK_CONFIG_DEBUG` env var to replace it. 
 - Update `MVK_CONFIGURATION_API_VERSION` and `MVK_PRIVATE_API_VERSION` to `38`.
 
 

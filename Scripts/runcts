@@ -103,7 +103,7 @@ export METAL_DEBUG_ERROR_MODE=3
 
 # ----- MoltenVK config settings ------
 export MVK_CONFIG_LOG_LEVEL=1	#(1 = Errors only, 3 = Info)
-export MVK_DEBUG=0
+export MVK_CONFIG_DEBUG=0
 
 # Additional MoltenVK configuration can be set here by editing below.
 export MVK_CONFIG_RESUME_LOST_DEVICE=1

@@ -108,62 +108,22 @@ void mvkDispatchToMainAndWait(dispatch_block_t block);
 #pragma mark Process environment
 
 /**
- * Returns the value of the environment variable at the given name,
- * or an empty string if no environment variable with that name exists.
- *
- * If pWasFound is not null, its value is set to true if the environment
- * variable exists, or false if not.
+ * Sets the value of the environment variable at the given name, into the
+ * std::string, and returns whether the environment variable was found.
  */
-std::string mvkGetEnvVar(std::string varName, bool* pWasFound = nullptr);
+bool mvkGetEnvVar(const char* evName, std::string& evStr);
+
+/**
+ * Returns a pointer to a string containing the value of the environment variable at
+ * the given name, or returns the default value if the environment variable was not set.
+ */
+const char* mvkGetEnvVarString(const char* evName, std::string& evStr, const char* defaultValue = "");
 
 /**
  * Returns the value of the environment variable at the given name,
- * or zero if no environment variable with that name exists.
- *
- * If pWasFound is not null, its value is set to true if the environment
- * variable exists, or false if not.
+ * or returns the default value if the environment variable was not set.
  */
-int64_t mvkGetEnvVarInt64(std::string varName, bool* pWasFound = nullptr);
-
-/**
- * Returns the value of the environment variable at the given name,
- * or false if no environment variable with that name exists.
- *
- * If pWasFound is not null, its value is set to true if the environment
- * variable exists, or false if not.
- */
-bool mvkGetEnvVarBool(std::string varName, bool* pWasFound = nullptr);
-
-#define MVK_SET_FROM_ENV_OR_BUILD_BOOL(cfgVal, EV)				\
-	do {														\
-		bool wasFound = false;									\
-		bool ev = mvkGetEnvVarBool(#EV, &wasFound);				\
-		cfgVal = wasFound ? ev : EV;							\
-	} while(false)
-
-#define MVK_SET_FROM_ENV_OR_BUILD_INT64(cfgVal, EV)				\
-	do {														\
-		bool wasFound = false;									\
-		int64_t ev = mvkGetEnvVarInt64(#EV, &wasFound);			\
-		cfgVal = wasFound ? ev : EV;							\
-	} while(false)
-
-// Pointer cast permits cfgVal to be an enum var
-#define MVK_SET_FROM_ENV_OR_BUILD_INT32(cfgVal, EV)				\
-	do {														\
-		bool wasFound = false;									\
-		int64_t ev = mvkGetEnvVarInt64(#EV, &wasFound);			\
-		int64_t val = wasFound ? ev : EV;						\
-		*(int32_t*)&cfgVal = (int32_t)std::min(std::max(val, (int64_t)INT32_MIN), (int64_t)INT32_MAX);	\
-	} while(false)
-
-#define MVK_SET_FROM_ENV_OR_BUILD_STRING(cfgVal, EV, strObj)	\
-	do {														\
-		bool wasFound = false;									\
-		std::string ev = mvkGetEnvVar(#EV, &wasFound);			\
-		strObj = wasFound ? std::move(ev) : EV;					\
-		cfgVal = strObj.c_str();								\
-	} while(false)
+double mvkGetEnvVarNumber(const char* evName, double defaultValue = 0.0);
 
 
 #pragma mark -

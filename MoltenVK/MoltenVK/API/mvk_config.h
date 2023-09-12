@@ -191,7 +191,7 @@ typedef struct {
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
 	 *
 	 * The initial value or this parameter is set by the
-	 * MVK_DEBUG
+	 * MVK_CONFIG_DEBUG
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * If neither is set, the value of this parameter is false if MoltenVK was
 	 * built in Release mode, and true if MoltenVK was built in Debug mode.
@@ -919,12 +919,47 @@ typedef struct {
 	/**
 	 * Maximize the concurrent executing compilation tasks.
 	 *
+	 * The value of this parameter must be changed before creating a VkInstance,
+	 * for the change to take effect.
+	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * This setting requires macOS 13.3 & is disabled by default.
 	 */
 	VkBool32 shouldMaximizeConcurrentCompilation;
+
+	/**
+	 * This parameter is ignored on Apple Silicon devices.
+	 *
+	 * Non-Apple GPUs can have a dynamic timestamp period, which varies over time according to GPU
+	 * workload. Depending on how often the app samples the VkPhysicalDeviceLimits::timestampPeriod
+	 * value using vkGetPhysicalDeviceProperties(), the app may want up-to-date, but potentially
+	 * volatile values, or it may find average values more useful.
+	 *
+	 * The value of this parameter sets the alpha (A) value of a simple lowpass filter 
+	 * on the timestampPeriod value, of the form:
+	 *
+	 *   TPout = (1 - A)TPout + (A * TPin)
+	 *
+	 * The alpha value can be set to a float between 0.0 and 1.0. Values of alpha closer to
+	 * 0.0 cause the value of timestampPeriod to vary slowly over time and be less volatile,
+	 * and values of alpha closer to 1.0 cause the value of timestampPeriod to vary quickly
+	 * and be more volatile.
+	 *
+	 * Apps that query the timestampPeriod value infrequently will prefer low volatility, whereas
+	 * apps that query frequently may prefer higher volatility, to track more recent changes.
+	 *
+	 * The value of this parameter can be changed at any time, and will affect subsequent queries.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, this parameter is set to 0.05 by default,
+	 * indicating that the timestampPeriod will vary relatively slowly,
+	 * with the expectation that the app is querying this value infrequently.
+	 */
+	float timestampPeriodLowPassAlpha;
 
 } MVKConfiguration;
 

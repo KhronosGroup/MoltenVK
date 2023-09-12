@@ -18,7 +18,7 @@
 
 #include "MVKEnvironment.h"
 #include "MVKOSExtensions.h"
-
+#include "MVKFoundation.h"
 
 static bool _mvkConfigInitialized = false;
 static void mvkInitConfigFromEnvVars() {
@@ -27,43 +27,22 @@ static void mvkInitConfigFromEnvVars() {
 	MVKConfiguration evCfg;
 	std::string evGPUCapFileStrObj;
 
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.debugMode,                              MVK_DEBUG);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.shaderConversionFlipVertexY,            MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.synchronousQueueSubmits,                MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS);
-	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.prefillMetalCommandBuffers,             MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS);
-	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.maxActiveMetalCommandBuffersPerQueue,   MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_QUEUE);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.supportLargeQueryPools,                 MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.presentWithCommandBuffer,               MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.swapchainMinMagFilterUseNearest,        MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST);	// Deprecated legacy env var
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.swapchainMinMagFilterUseNearest,        MVK_CONFIG_SWAPCHAIN_MIN_MAG_FILTER_USE_NEAREST);
-	MVK_SET_FROM_ENV_OR_BUILD_INT64 (evCfg.metalCompileTimeout,                    MVK_CONFIG_METAL_COMPILE_TIMEOUT);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.performanceTracking,                    MVK_CONFIG_PERFORMANCE_TRACKING);
-	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.performanceLoggingFrameCount,           MVK_CONFIG_PERFORMANCE_LOGGING_FRAME_COUNT);
-	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.activityPerformanceLoggingStyle,        MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.displayWatermark,                       MVK_CONFIG_DISPLAY_WATERMARK);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.specializedQueueFamilies,               MVK_CONFIG_SPECIALIZED_QUEUE_FAMILIES);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.switchSystemGPU,                        MVK_CONFIG_SWITCH_SYSTEM_GPU);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.fullImageViewSwizzle,                   MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.defaultGPUCaptureScopeQueueFamilyIndex, MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_FAMILY_INDEX);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.defaultGPUCaptureScopeQueueIndex,       MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_INDEX);
-	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.fastMathEnabled,                        MVK_CONFIG_FAST_MATH_ENABLED);
-	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.logLevel,                               MVK_CONFIG_LOG_LEVEL);
-	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.traceVulkanCalls,                       MVK_CONFIG_TRACE_VULKAN_CALLS);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.forceLowPowerGPU,                       MVK_CONFIG_FORCE_LOW_POWER_GPU);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.semaphoreUseMTLFence,                   MVK_ALLOW_METAL_FENCES);
-	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.semaphoreSupportStyle,                  MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE);
-	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.autoGPUCaptureScope,                    MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE);
-	MVK_SET_FROM_ENV_OR_BUILD_STRING(evCfg.autoGPUCaptureOutputFilepath,           MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE, evGPUCapFileStrObj);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.texture1DAs2D,                          MVK_CONFIG_TEXTURE_1D_AS_2D);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.preallocateDescriptors,                 MVK_CONFIG_PREALLOCATE_DESCRIPTORS);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.useCommandPooling,                      MVK_CONFIG_USE_COMMAND_POOLING);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.useMTLHeap,                             MVK_CONFIG_USE_MTLHEAP);
-	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.apiVersionToAdvertise,                  MVK_CONFIG_API_VERSION_TO_ADVERTISE);
-	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.advertiseExtensions,                    MVK_CONFIG_ADVERTISE_EXTENSIONS);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.resumeLostDevice,                       MVK_CONFIG_RESUME_LOST_DEVICE);
-	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.useMetalArgumentBuffers,                MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS);
-	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.shaderSourceCompressionAlgorithm,       MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.shouldMaximizeConcurrentCompilation,    MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION);
+#define STR(name) #name
+
+#define MVK_CONFIG_MEMBER(member, mbrType, name) \
+	evCfg.member = (mbrType)mvkGetEnvVarNumber(STR(MVK_CONFIG_##name), MVK_CONFIG_##name);
+
+#define MVK_CONFIG_MEMBER_STRING(member, strObj, name) \
+	evCfg.member = mvkGetEnvVarString(STR(MVK_CONFIG_##name), strObj, MVK_CONFIG_##name);
+
+#include "MVKConfigMembers.def"
+
+	// At this point, debugMode has been set by env var MVK_CONFIG_DEBUG.
+	// MVK_CONFIG_DEBUG replaced the deprecataed MVK_DEBUG env var, so for 
+	// legacy use, if the MVK_DEBUG env var is explicitly set, override debugMode.
+	double noEV = -3.1415;		// An unlikely env var value.
+	double cvMVKDebug = mvkGetEnvVarNumber("MVK_DEBUG", noEV);
+	if (cvMVKDebug != noEV) { evCfg.debugMode = cvMVKDebug; }
 
 	// Deprected legacy VkSemaphore MVK_ALLOW_METAL_FENCES and MVK_ALLOW_METAL_EVENTS config.
 	// Legacy MVK_ALLOW_METAL_EVENTS is covered by MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE,
@@ -71,9 +50,7 @@ static void mvkInitConfigFromEnvVars() {
 	// disabled, disable semaphoreUseMTLEvent (aliased as semaphoreSupportStyle value
 	// MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE), and let mvkSetConfig()
 	// further process legacy behavior of MVK_ALLOW_METAL_FENCES.
-	bool sem4UseMTLEvent;
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL(sem4UseMTLEvent, MVK_ALLOW_METAL_EVENTS);
-	if ( !sem4UseMTLEvent ) {
+	if ( !mvkGetEnvVarNumber("MVK_CONFIG_ALLOW_METAL_EVENTS", 1.0) ) {
 		evCfg.semaphoreUseMTLEvent = (MVKVkSemaphoreSupportStyle)false;		// Disabled. Also semaphoreSupportStyle MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE.
 	}
 
@@ -81,12 +58,10 @@ static void mvkInitConfigFromEnvVars() {
 	// MVK_CONFIG_PERFORMANCE_LOGGING_INLINE env var was used, and activityPerformanceLoggingStyle
 	// was not already set by MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE, set
 	// activityPerformanceLoggingStyle to MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE.
-	bool logPerfInline;
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL(logPerfInline, MVK_CONFIG_PERFORMANCE_LOGGING_INLINE);
+	bool logPerfInline = mvkGetEnvVarNumber("MVK_CONFIG_PERFORMANCE_LOGGING_INLINE", 0.0);
 	if (logPerfInline && evCfg.activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT) {
 		evCfg.activityPerformanceLoggingStyle = MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE;
 	}
-
 
 	mvkSetConfig(evCfg);
 }
@@ -129,4 +104,7 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig) {
 		_autoGPUCaptureOutputFile = _mvkConfig.autoGPUCaptureOutputFilepath;
 	}
 	_mvkConfig.autoGPUCaptureOutputFilepath = (char*)_autoGPUCaptureOutputFile.c_str();
+
+	// Clamp timestampPeriodLowPassAlpha between 0.0 and 1.0.
+	_mvkConfig.timestampPeriodLowPassAlpha = mvkClamp(_mvkConfig.timestampPeriodLowPassAlpha, 0.0f, 1.0f);
 }
