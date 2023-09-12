@@ -451,7 +451,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 }
 
 void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties* properties) {
-	updateTimestampsAndPeriod();
+	updateTimestampPeriod();
 	*properties = _properties;
 }
 
@@ -1570,10 +1570,10 @@ VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 // If needed, update the timestamp period for this device, using a crude lowpass filter to level out
 // wild temporary changes, particularly during initial queries before much GPU activity has occurred.
 // On Apple GPUs, CPU & GPU timestamps are the same, and timestamp period never changes.
-void MVKPhysicalDevice::updateTimestampsAndPeriod() {
-	if (_properties.vendorID == kAppleVendorId) { return; }
-	
-	if ([_mtlDevice respondsToSelector: @selector(sampleTimestamps:gpuTimestamp:)]) {
+void MVKPhysicalDevice::updateTimestampPeriod() {
+	if (_properties.vendorID != kAppleVendorId &&
+		[_mtlDevice respondsToSelector: @selector(sampleTimestamps:gpuTimestamp:)]) {
+
 		MTLTimestamp earlierCPUTs = _prevCPUTimestamp;
 		MTLTimestamp earlierGPUTs = _prevGPUTimestamp;
 		[_mtlDevice sampleTimestamps: &_prevCPUTimestamp gpuTimestamp: &_prevGPUTimestamp];
@@ -1582,9 +1582,9 @@ void MVKPhysicalDevice::updateTimestampsAndPeriod() {
 		if (elapsedCPUNanos && elapsedGPUTicks) {		// Ensure not zero
 			float tsPeriod = elapsedCPUNanos / elapsedGPUTicks;
 			
-			// Basic lowpass filter Y = (1 - a)Y + a*X.
-			// The lower a is, the slower Y will change over time.
-			static const float a = 0.05;
+			// Basic lowpass filter TPout = (1 - A)TPout + (A * TPin).
+			// The lower A is, the slower TPout will change over time.
+			float a = mvkConfig().timestampPeriodLowPassAlpha;
 			_properties.limits.timestampPeriod = ((1.0 - a) * _properties.limits.timestampPeriod) + (a * tsPeriod);
 		}
 	}

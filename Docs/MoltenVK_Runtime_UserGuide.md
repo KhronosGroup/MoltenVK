@@ -517,8 +517,8 @@ you can address the issue as follows:
 - Errors encountered during **Runtime Shader Conversion** are logged to the console.
 
 - To help understand conversion issues during **Runtime Shader Conversion**, you can enable the 
-  logging of the *SPIR-V* and *MSL* shader source code during shader conversion, by turning on 
-  the `MVKConfiguration::debugMode` configuration parameter, or setting the value of the `MVK_DEBUG` 
+  logging of the *SPIR-V* and *MSL* shader source code during shader conversion, by turning on the 
+  `MVKConfiguration::debugMode` configuration parameter, or setting the value of the `MVK_CONFIG_DEBUG` 
   runtime environment variable to `1`. See the [*MoltenVK Configuration*](#moltenvk_config) 
   description above.
 
