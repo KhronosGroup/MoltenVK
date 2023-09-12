@@ -717,7 +717,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_KHR: {
 				auto* portabilityProps = (VkPhysicalDevicePortabilitySubsetPropertiesKHR*)next;
-				portabilityProps->minVertexInputBindingStrideAlignment = (uint32_t)_metalFeatures.vertexStrideAlignment;
+				portabilityProps->minVertexInputBindingStrideAlignment = 1; // Shader vertex loader has no restrictions
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT: {
