@@ -780,21 +780,21 @@ MVKPixelFormats::MVKPixelFormats(MVKPhysicalDevice* physicalDevice) : _physicalD
 	buildVkFormatMaps();
 }
 
-#define addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A)  \
+#define addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A)  \
 	MVKAssert(fmtIdx < _vkFormatCount, "Attempting to describe %d VkFormats, but only have space for %d. Increase the value of _vkFormatCount", fmtIdx + 1, _vkFormatCount);  \
-	_vkFormatDescriptions[fmtIdx++] = { VK_FORMAT_ ##VK_FMT, MTLPixelFormat ##MTL_FMT, MTLPixelFormat ##MTL_FMT_ALT, MTLVertexFormat ##MTL_VTX_FMT, MTLVertexFormat ##MTL_VTX_FMT_ALT,  \
-										CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, kMVKFormat ##MVK_FMT_TYPE, { 0, 0, 0 }, \
-										{ VK_COMPONENT_SWIZZLE_ ##SWIZ_R, VK_COMPONENT_SWIZZLE_ ##SWIZ_G, VK_COMPONENT_SWIZZLE_ ##SWIZ_B, VK_COMPONENT_SWIZZLE_ ##SWIZ_A }, \
-										"VK_FORMAT_" #VK_FMT, false }
+	_vkFormatDescriptions[fmtIdx++] = { VK_FORMAT_ ##VK_FMT, MTLPixelFormat ##MTL_FMT, MTLPixelFormat ##MTL_FMT_ALT, MTLVertexFormat ##MTL_VTX_FMT,  \
+	                                    CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, kMVKFormat ##MVK_FMT_TYPE, { 0, 0, 0 }, \
+	                                    { VK_COMPONENT_SWIZZLE_ ##SWIZ_R, VK_COMPONENT_SWIZZLE_ ##SWIZ_G, VK_COMPONENT_SWIZZLE_ ##SWIZ_B, VK_COMPONENT_SWIZZLE_ ##SWIZ_A }, \
+	                                    "VK_FORMAT_" #VK_FMT, false }
 
-#define addVkFormatDesc(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE)  \
-    addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, 0, 0, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, IDENTITY, IDENTITY, IDENTITY, IDENTITY)
+#define addVkFormatDesc(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE)  \
+	addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, 0, 0, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, IDENTITY, IDENTITY, IDENTITY, IDENTITY)
 
-#define addVkFormatDescSwizzled(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A)  \
-    addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, 0, 0, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A)
+#define addVkFormatDescSwizzled(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A)  \
+	addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, 0, 0, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A)
 
 #define addVkFormatDescChromaSubsampling(VK_FMT, MTL_FMT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT)  \
-	addVkFormatDescFull(VK_FMT, MTL_FMT, Invalid, Invalid, Invalid, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, ColorFloat, IDENTITY, IDENTITY, IDENTITY, IDENTITY)
+	addVkFormatDescFull(VK_FMT, MTL_FMT, Invalid, Invalid, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, ColorFloat, IDENTITY, IDENTITY, IDENTITY, IDENTITY)
 
 void MVKPixelFormats::initVkFormatCapabilities() {
 
@@ -805,257 +805,257 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	// When adding to this list, be sure to ensure _vkFormatCount is large enough for the format count
 
 	// UNDEFINED must come first.
-	addVkFormatDesc( UNDEFINED, Invalid, Invalid, Invalid, Invalid, 1, 1, 0, None );
+	addVkFormatDesc( UNDEFINED, Invalid, Invalid, Invalid, 1, 1, 0, None );
 
-	addVkFormatDesc( R4G4_UNORM_PACK8,      Invalid,    Invalid, Invalid, Invalid, 1, 1, 1, ColorFloat );
-	addVkFormatDesc( R4G4B4A4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( B4G4R4A4_UNORM_PACK16, Invalid,    Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDescSwizzled( A4R4G4B4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, G, B, A, R );
-	addVkFormatDescSwizzled( A4B4G4R4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, A, B, G, R );
+	addVkFormatDesc( R4G4_UNORM_PACK8,      Invalid,    Invalid, Invalid, 1, 1, 1, ColorFloat );
+	addVkFormatDesc( R4G4B4A4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDesc( B4G4R4A4_UNORM_PACK16, Invalid,    Invalid, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDescSwizzled( A4R4G4B4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, 1, 1, 2, ColorFloat, G, B, A, R );
+	addVkFormatDescSwizzled( A4B4G4R4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, 1, 1, 2, ColorFloat, A, B, G, R );
 
-	addVkFormatDesc( R5G6B5_UNORM_PACK16,   B5G6R5Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( B5G6R5_UNORM_PACK16,   Invalid,     Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( R5G5B5A1_UNORM_PACK16, A1BGR5Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( B5G5R5A1_UNORM_PACK16, Invalid,     Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( A1R5G5B5_UNORM_PACK16, BGR5A1Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDesc( R5G6B5_UNORM_PACK16,   B5G6R5Unorm, Invalid, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDesc( B5G6R5_UNORM_PACK16,   Invalid,     Invalid, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDesc( R5G5B5A1_UNORM_PACK16, A1BGR5Unorm, Invalid, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDesc( B5G5R5A1_UNORM_PACK16, Invalid,     Invalid, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDesc( A1R5G5B5_UNORM_PACK16, BGR5A1Unorm, Invalid, Invalid, 1, 1, 2, ColorFloat );
 
-	addVkFormatDesc( R8_UNORM,   R8Unorm,      Invalid, UCharNormalized, UChar2Normalized, 1, 1, 1, ColorFloat );
-	addVkFormatDesc( R8_SNORM,   R8Snorm,      Invalid, CharNormalized,  Char2Normalized,  1, 1, 1, ColorFloat );
-	addVkFormatDesc( R8_USCALED, Invalid,      Invalid, UChar,           UChar2,           1, 1, 1, ColorFloat );
-	addVkFormatDesc( R8_SSCALED, Invalid,      Invalid, Char,            Char2,            1, 1, 1, ColorFloat );
-	addVkFormatDesc( R8_UINT,    R8Uint,       Invalid, UChar,           UChar2,           1, 1, 1, ColorUInt8 );
-	addVkFormatDesc( R8_SINT,    R8Sint,       Invalid, Char,            Char2,            1, 1, 1, ColorInt8 );
-	addVkFormatDesc( R8_SRGB,    R8Unorm_sRGB, Invalid, UCharNormalized, UChar2Normalized, 1, 1, 1, ColorFloat );
+	addVkFormatDesc( R8_UNORM,   R8Unorm,      Invalid, UCharNormalized, 1, 1, 1, ColorFloat );
+	addVkFormatDesc( R8_SNORM,   R8Snorm,      Invalid, CharNormalized,  1, 1, 1, ColorFloat );
+	addVkFormatDesc( R8_USCALED, Invalid,      Invalid, UChar,           1, 1, 1, ColorFloat );
+	addVkFormatDesc( R8_SSCALED, Invalid,      Invalid, Char,            1, 1, 1, ColorFloat );
+	addVkFormatDesc( R8_UINT,    R8Uint,       Invalid, UChar,           1, 1, 1, ColorUInt8 );
+	addVkFormatDesc( R8_SINT,    R8Sint,       Invalid, Char,            1, 1, 1, ColorInt8 );
+	addVkFormatDesc( R8_SRGB,    R8Unorm_sRGB, Invalid, UCharNormalized, 1, 1, 1, ColorFloat );
 
-	addVkFormatDesc( R8G8_UNORM,   RG8Unorm,      Invalid, UChar2Normalized, Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( R8G8_SNORM,   RG8Snorm,      Invalid, Char2Normalized,  Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( R8G8_USCALED, Invalid,       Invalid, UChar2,           Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( R8G8_SSCALED, Invalid,       Invalid, Char2,            Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( R8G8_UINT,    RG8Uint,       Invalid, UChar2,           Invalid, 1, 1, 2, ColorUInt8 );
-	addVkFormatDesc( R8G8_SINT,    RG8Sint,       Invalid, Char2,            Invalid, 1, 1, 2, ColorInt8 );
-	addVkFormatDesc( R8G8_SRGB,    RG8Unorm_sRGB, Invalid, UChar2Normalized, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDesc( R8G8_UNORM,   RG8Unorm,      Invalid, UChar2Normalized, 1, 1, 2, ColorFloat );
+	addVkFormatDesc( R8G8_SNORM,   RG8Snorm,      Invalid, Char2Normalized,  1, 1, 2, ColorFloat );
+	addVkFormatDesc( R8G8_USCALED, Invalid,       Invalid, UChar2,           1, 1, 2, ColorFloat );
+	addVkFormatDesc( R8G8_SSCALED, Invalid,       Invalid, Char2,            1, 1, 2, ColorFloat );
+	addVkFormatDesc( R8G8_UINT,    RG8Uint,       Invalid, UChar2,           1, 1, 2, ColorUInt8 );
+	addVkFormatDesc( R8G8_SINT,    RG8Sint,       Invalid, Char2,            1, 1, 2, ColorInt8 );
+	addVkFormatDesc( R8G8_SRGB,    RG8Unorm_sRGB, Invalid, UChar2Normalized, 1, 1, 2, ColorFloat );
 
-	addVkFormatDesc( R8G8B8_UNORM,   Invalid, Invalid, UChar3Normalized, Invalid, 1, 1, 3, ColorFloat );
-	addVkFormatDesc( R8G8B8_SNORM,   Invalid, Invalid, Char3Normalized,  Invalid, 1, 1, 3, ColorFloat );
-	addVkFormatDesc( R8G8B8_USCALED, Invalid, Invalid, UChar3,           Invalid, 1, 1, 3, ColorFloat );
-	addVkFormatDesc( R8G8B8_SSCALED, Invalid, Invalid, Char3,            Invalid, 1, 1, 3, ColorFloat );
-	addVkFormatDesc( R8G8B8_UINT,    Invalid, Invalid, UChar3,           Invalid, 1, 1, 3, ColorUInt8 );
-	addVkFormatDesc( R8G8B8_SINT,    Invalid, Invalid, Char3,            Invalid, 1, 1, 3, ColorInt8 );
-	addVkFormatDesc( R8G8B8_SRGB,    Invalid, Invalid, UChar3Normalized, Invalid, 1, 1, 3, ColorFloat );
+	addVkFormatDesc( R8G8B8_UNORM,   Invalid, Invalid, UChar3Normalized, 1, 1, 3, ColorFloat );
+	addVkFormatDesc( R8G8B8_SNORM,   Invalid, Invalid, Char3Normalized,  1, 1, 3, ColorFloat );
+	addVkFormatDesc( R8G8B8_USCALED, Invalid, Invalid, UChar3,           1, 1, 3, ColorFloat );
+	addVkFormatDesc( R8G8B8_SSCALED, Invalid, Invalid, Char3,            1, 1, 3, ColorFloat );
+	addVkFormatDesc( R8G8B8_UINT,    Invalid, Invalid, UChar3,           1, 1, 3, ColorUInt8 );
+	addVkFormatDesc( R8G8B8_SINT,    Invalid, Invalid, Char3,            1, 1, 3, ColorInt8 );
+	addVkFormatDesc( R8G8B8_SRGB,    Invalid, Invalid, UChar3Normalized, 1, 1, 3, ColorFloat );
 
-	addVkFormatDesc( B8G8R8_UNORM,   Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat );
-	addVkFormatDesc( B8G8R8_SNORM,   Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat );
-	addVkFormatDesc( B8G8R8_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat );
-	addVkFormatDesc( B8G8R8_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat );
-	addVkFormatDesc( B8G8R8_UINT,    Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorUInt8 );
-	addVkFormatDesc( B8G8R8_SINT,    Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorInt8 );
-	addVkFormatDesc( B8G8R8_SRGB,    Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat );
+	addVkFormatDesc( B8G8R8_UNORM,   Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat );
+	addVkFormatDesc( B8G8R8_SNORM,   Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat );
+	addVkFormatDesc( B8G8R8_USCALED, Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat );
+	addVkFormatDesc( B8G8R8_SSCALED, Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat );
+	addVkFormatDesc( B8G8R8_UINT,    Invalid, Invalid, Invalid, 1, 1, 3, ColorUInt8 );
+	addVkFormatDesc( B8G8R8_SINT,    Invalid, Invalid, Invalid, 1, 1, 3, ColorInt8 );
+	addVkFormatDesc( B8G8R8_SRGB,    Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat );
 
-	addVkFormatDesc( R8G8B8A8_UNORM,   RGBA8Unorm,      Invalid, UChar4Normalized, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( R8G8B8A8_SNORM,   RGBA8Snorm,      Invalid, Char4Normalized,  Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( R8G8B8A8_USCALED, Invalid,         Invalid, UChar4,           Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( R8G8B8A8_SSCALED, Invalid,         Invalid, Char4,            Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( R8G8B8A8_UINT,    RGBA8Uint,       Invalid, UChar4,           Invalid, 1, 1, 4, ColorUInt8 );
-	addVkFormatDesc( R8G8B8A8_SINT,    RGBA8Sint,       Invalid, Char4,            Invalid, 1, 1, 4, ColorInt8 );
-	addVkFormatDesc( R8G8B8A8_SRGB,    RGBA8Unorm_sRGB, Invalid, UChar4Normalized, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( R8G8B8A8_UNORM,   RGBA8Unorm,      Invalid, UChar4Normalized, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( R8G8B8A8_SNORM,   RGBA8Snorm,      Invalid, Char4Normalized,  1, 1, 4, ColorFloat );
+	addVkFormatDesc( R8G8B8A8_USCALED, Invalid,         Invalid, UChar4,           1, 1, 4, ColorFloat );
+	addVkFormatDesc( R8G8B8A8_SSCALED, Invalid,         Invalid, Char4,            1, 1, 4, ColorFloat );
+	addVkFormatDesc( R8G8B8A8_UINT,    RGBA8Uint,       Invalid, UChar4,           1, 1, 4, ColorUInt8 );
+	addVkFormatDesc( R8G8B8A8_SINT,    RGBA8Sint,       Invalid, Char4,            1, 1, 4, ColorInt8 );
+	addVkFormatDesc( R8G8B8A8_SRGB,    RGBA8Unorm_sRGB, Invalid, UChar4Normalized, 1, 1, 4, ColorFloat );
 
-	addVkFormatDesc( B8G8R8A8_UNORM,   BGRA8Unorm,      Invalid, UChar4Normalized_BGRA, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( B8G8R8A8_SNORM,   Invalid,         Invalid, Invalid,               Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( B8G8R8A8_USCALED, Invalid,         Invalid, Invalid,               Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( B8G8R8A8_SSCALED, Invalid,         Invalid, Invalid,               Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( B8G8R8A8_UINT,    Invalid,         Invalid, Invalid,               Invalid, 1, 1, 4, ColorUInt8 );
-	addVkFormatDesc( B8G8R8A8_SINT,    Invalid,         Invalid, Invalid,               Invalid, 1, 1, 4, ColorInt8 );
-	addVkFormatDesc( B8G8R8A8_SRGB,    BGRA8Unorm_sRGB, Invalid, Invalid,               Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( B8G8R8A8_UNORM,   BGRA8Unorm,      Invalid, UChar4Normalized_BGRA,  1, 1, 4, ColorFloat );
+	addVkFormatDesc( B8G8R8A8_SNORM,   Invalid,         Invalid, Invalid,                1, 1, 4, ColorFloat );
+	addVkFormatDesc( B8G8R8A8_USCALED, Invalid,         Invalid, Invalid,                1, 1, 4, ColorFloat );
+	addVkFormatDesc( B8G8R8A8_SSCALED, Invalid,         Invalid, Invalid,                1, 1, 4, ColorFloat );
+	addVkFormatDesc( B8G8R8A8_UINT,    Invalid,         Invalid, Invalid,                1, 1, 4, ColorUInt8 );
+	addVkFormatDesc( B8G8R8A8_SINT,    Invalid,         Invalid, Invalid,                1, 1, 4, ColorInt8 );
+	addVkFormatDesc( B8G8R8A8_SRGB,    BGRA8Unorm_sRGB, Invalid, Invalid,                1, 1, 4, ColorFloat );
 
-	addVkFormatDesc( A8B8G8R8_UNORM_PACK32,   RGBA8Unorm,      Invalid, UChar4Normalized, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( A8B8G8R8_SNORM_PACK32,   RGBA8Snorm,      Invalid, Char4Normalized,  Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( A8B8G8R8_USCALED_PACK32, Invalid,         Invalid, UChar4,           Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( A8B8G8R8_SSCALED_PACK32, Invalid,         Invalid, Char4,            Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( A8B8G8R8_UINT_PACK32,    RGBA8Uint,       Invalid, UChar4,           Invalid, 1, 1, 4, ColorUInt8 );
-	addVkFormatDesc( A8B8G8R8_SINT_PACK32,    RGBA8Sint,       Invalid, Char4,            Invalid, 1, 1, 4, ColorInt8 );
-	addVkFormatDesc( A8B8G8R8_SRGB_PACK32,    RGBA8Unorm_sRGB, Invalid, UChar4Normalized, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( A8B8G8R8_UNORM_PACK32,   RGBA8Unorm,      Invalid, UChar4Normalized, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( A8B8G8R8_SNORM_PACK32,   RGBA8Snorm,      Invalid, Char4Normalized,  1, 1, 4, ColorFloat );
+	addVkFormatDesc( A8B8G8R8_USCALED_PACK32, Invalid,         Invalid, UChar4,           1, 1, 4, ColorFloat );
+	addVkFormatDesc( A8B8G8R8_SSCALED_PACK32, Invalid,         Invalid, Char4,            1, 1, 4, ColorFloat );
+	addVkFormatDesc( A8B8G8R8_UINT_PACK32,    RGBA8Uint,       Invalid, UChar4,           1, 1, 4, ColorUInt8 );
+	addVkFormatDesc( A8B8G8R8_SINT_PACK32,    RGBA8Sint,       Invalid, Char4,            1, 1, 4, ColorInt8 );
+	addVkFormatDesc( A8B8G8R8_SRGB_PACK32,    RGBA8Unorm_sRGB, Invalid, UChar4Normalized, 1, 1, 4, ColorFloat );
 
-	addVkFormatDesc( A2R10G10B10_UNORM_PACK32,   BGR10A2Unorm, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( A2R10G10B10_SNORM_PACK32,   Invalid,      Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( A2R10G10B10_USCALED_PACK32, Invalid,      Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( A2R10G10B10_SSCALED_PACK32, Invalid,      Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( A2R10G10B10_UINT_PACK32,    Invalid,      Invalid, Invalid, Invalid, 1, 1, 4, ColorUInt16 );
-	addVkFormatDesc( A2R10G10B10_SINT_PACK32,    Invalid,      Invalid, Invalid, Invalid, 1, 1, 4, ColorInt16 );
+	addVkFormatDesc( A2R10G10B10_UNORM_PACK32,   BGR10A2Unorm, Invalid, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( A2R10G10B10_SNORM_PACK32,   Invalid,      Invalid, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( A2R10G10B10_USCALED_PACK32, Invalid,      Invalid, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( A2R10G10B10_SSCALED_PACK32, Invalid,      Invalid, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( A2R10G10B10_UINT_PACK32,    Invalid,      Invalid, Invalid, 1, 1, 4, ColorUInt16 );
+	addVkFormatDesc( A2R10G10B10_SINT_PACK32,    Invalid,      Invalid, Invalid, 1, 1, 4, ColorInt16 );
 
-	addVkFormatDesc( A2B10G10R10_UNORM_PACK32,   RGB10A2Unorm, Invalid, UInt1010102Normalized, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( A2B10G10R10_SNORM_PACK32,   Invalid,      Invalid, Int1010102Normalized,  Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( A2B10G10R10_USCALED_PACK32, Invalid,      Invalid, Invalid,               Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( A2B10G10R10_SSCALED_PACK32, Invalid,      Invalid, Invalid,               Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( A2B10G10R10_UINT_PACK32,    RGB10A2Uint,  Invalid, Invalid,               Invalid, 1, 1, 4, ColorUInt16 );
-	addVkFormatDesc( A2B10G10R10_SINT_PACK32,    Invalid,      Invalid, Invalid,               Invalid, 1, 1, 4, ColorInt16 );
+	addVkFormatDesc( A2B10G10R10_UNORM_PACK32,   RGB10A2Unorm, Invalid, UInt1010102Normalized, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( A2B10G10R10_SNORM_PACK32,   Invalid,      Invalid, Int1010102Normalized,  1, 1, 4, ColorFloat );
+	addVkFormatDesc( A2B10G10R10_USCALED_PACK32, Invalid,      Invalid, Invalid,               1, 1, 4, ColorFloat );
+	addVkFormatDesc( A2B10G10R10_SSCALED_PACK32, Invalid,      Invalid, Invalid,               1, 1, 4, ColorFloat );
+	addVkFormatDesc( A2B10G10R10_UINT_PACK32,    RGB10A2Uint,  Invalid, Invalid,               1, 1, 4, ColorUInt16 );
+	addVkFormatDesc( A2B10G10R10_SINT_PACK32,    Invalid,      Invalid, Invalid,               1, 1, 4, ColorInt16 );
 
-	addVkFormatDesc( R16_UNORM,   R16Unorm, Invalid, UShortNormalized, UShort2Normalized, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( R16_SNORM,   R16Snorm, Invalid, ShortNormalized,  Short2Normalized,  1, 1, 2, ColorFloat );
-	addVkFormatDesc( R16_USCALED, Invalid,  Invalid, UShort,           UShort2,           1, 1, 2, ColorFloat );
-	addVkFormatDesc( R16_SSCALED, Invalid,  Invalid, Short,            Short2,            1, 1, 2, ColorFloat );
-	addVkFormatDesc( R16_UINT,    R16Uint,  Invalid, UShort,           UShort2,           1, 1, 2, ColorUInt16 );
-	addVkFormatDesc( R16_SINT,    R16Sint,  Invalid, Short,            Short2,            1, 1, 2, ColorInt16 );
-	addVkFormatDesc( R16_SFLOAT,  R16Float, Invalid, Half,             Half2,             1, 1, 2, ColorFloat );
+	addVkFormatDesc( R16_UNORM,   R16Unorm, Invalid, UShortNormalized, 1, 1, 2, ColorFloat );
+	addVkFormatDesc( R16_SNORM,   R16Snorm, Invalid, ShortNormalized,  1, 1, 2, ColorFloat );
+	addVkFormatDesc( R16_USCALED, Invalid,  Invalid, UShort,           1, 1, 2, ColorFloat );
+	addVkFormatDesc( R16_SSCALED, Invalid,  Invalid, Short,            1, 1, 2, ColorFloat );
+	addVkFormatDesc( R16_UINT,    R16Uint,  Invalid, UShort,           1, 1, 2, ColorUInt16 );
+	addVkFormatDesc( R16_SINT,    R16Sint,  Invalid, Short,            1, 1, 2, ColorInt16 );
+	addVkFormatDesc( R16_SFLOAT,  R16Float, Invalid, Half,             1, 1, 2, ColorFloat );
 
-	addVkFormatDesc( R16G16_UNORM,   RG16Unorm, Invalid, UShort2Normalized, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( R16G16_SNORM,   RG16Snorm, Invalid, Short2Normalized,  Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( R16G16_USCALED, Invalid,   Invalid, UShort2,           Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( R16G16_SSCALED, Invalid,   Invalid, Short2,            Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( R16G16_UINT,    RG16Uint,  Invalid, UShort2,           Invalid, 1, 1, 4, ColorUInt16 );
-	addVkFormatDesc( R16G16_SINT,    RG16Sint,  Invalid, Short2,            Invalid, 1, 1, 4, ColorInt16 );
-	addVkFormatDesc( R16G16_SFLOAT,  RG16Float, Invalid, Half2,             Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( R16G16_UNORM,   RG16Unorm, Invalid, UShort2Normalized, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( R16G16_SNORM,   RG16Snorm, Invalid, Short2Normalized,  1, 1, 4, ColorFloat );
+	addVkFormatDesc( R16G16_USCALED, Invalid,   Invalid, UShort2,           1, 1, 4, ColorFloat );
+	addVkFormatDesc( R16G16_SSCALED, Invalid,   Invalid, Short2,            1, 1, 4, ColorFloat );
+	addVkFormatDesc( R16G16_UINT,    RG16Uint,  Invalid, UShort2,           1, 1, 4, ColorUInt16 );
+	addVkFormatDesc( R16G16_SINT,    RG16Sint,  Invalid, Short2,            1, 1, 4, ColorInt16 );
+	addVkFormatDesc( R16G16_SFLOAT,  RG16Float, Invalid, Half2,             1, 1, 4, ColorFloat );
 
-	addVkFormatDesc( R16G16B16_UNORM,   Invalid, Invalid, UShort3Normalized, Invalid, 1, 1, 6, ColorFloat );
-	addVkFormatDesc( R16G16B16_SNORM,   Invalid, Invalid, Short3Normalized,  Invalid, 1, 1, 6, ColorFloat );
-	addVkFormatDesc( R16G16B16_USCALED, Invalid, Invalid, UShort3,           Invalid, 1, 1, 6, ColorFloat );
-	addVkFormatDesc( R16G16B16_SSCALED, Invalid, Invalid, Short3,            Invalid, 1, 1, 6, ColorFloat );
-	addVkFormatDesc( R16G16B16_UINT,    Invalid, Invalid, UShort3,           Invalid, 1, 1, 6, ColorUInt16 );
-	addVkFormatDesc( R16G16B16_SINT,    Invalid, Invalid, Short3,            Invalid, 1, 1, 6, ColorInt16 );
-	addVkFormatDesc( R16G16B16_SFLOAT,  Invalid, Invalid, Half3,             Invalid, 1, 1, 6, ColorFloat );
+	addVkFormatDesc( R16G16B16_UNORM,   Invalid, Invalid, UShort3Normalized, 1, 1, 6, ColorFloat );
+	addVkFormatDesc( R16G16B16_SNORM,   Invalid, Invalid, Short3Normalized,  1, 1, 6, ColorFloat );
+	addVkFormatDesc( R16G16B16_USCALED, Invalid, Invalid, UShort3,           1, 1, 6, ColorFloat );
+	addVkFormatDesc( R16G16B16_SSCALED, Invalid, Invalid, Short3,            1, 1, 6, ColorFloat );
+	addVkFormatDesc( R16G16B16_UINT,    Invalid, Invalid, UShort3,           1, 1, 6, ColorUInt16 );
+	addVkFormatDesc( R16G16B16_SINT,    Invalid, Invalid, Short3,            1, 1, 6, ColorInt16 );
+	addVkFormatDesc( R16G16B16_SFLOAT,  Invalid, Invalid, Half3,             1, 1, 6, ColorFloat );
 
-	addVkFormatDesc( R16G16B16A16_UNORM,   RGBA16Unorm, Invalid, UShort4Normalized, Invalid, 1, 1, 8, ColorFloat );
-	addVkFormatDesc( R16G16B16A16_SNORM,   RGBA16Snorm, Invalid, Short4Normalized,  Invalid, 1, 1, 8, ColorFloat );
-	addVkFormatDesc( R16G16B16A16_USCALED, Invalid,     Invalid, UShort4,           Invalid, 1, 1, 8, ColorFloat );
-	addVkFormatDesc( R16G16B16A16_SSCALED, Invalid,     Invalid, Short4,            Invalid, 1, 1, 8, ColorFloat );
-	addVkFormatDesc( R16G16B16A16_UINT,    RGBA16Uint,  Invalid, UShort4,           Invalid, 1, 1, 8, ColorUInt16 );
-	addVkFormatDesc( R16G16B16A16_SINT,    RGBA16Sint,  Invalid, Short4,            Invalid, 1, 1, 8, ColorInt16 );
-	addVkFormatDesc( R16G16B16A16_SFLOAT,  RGBA16Float, Invalid, Half4,             Invalid, 1, 1, 8, ColorFloat );
+	addVkFormatDesc( R16G16B16A16_UNORM,   RGBA16Unorm, Invalid, UShort4Normalized, 1, 1, 8, ColorFloat );
+	addVkFormatDesc( R16G16B16A16_SNORM,   RGBA16Snorm, Invalid, Short4Normalized,  1, 1, 8, ColorFloat );
+	addVkFormatDesc( R16G16B16A16_USCALED, Invalid,     Invalid, UShort4,           1, 1, 8, ColorFloat );
+	addVkFormatDesc( R16G16B16A16_SSCALED, Invalid,     Invalid, Short4,            1, 1, 8, ColorFloat );
+	addVkFormatDesc( R16G16B16A16_UINT,    RGBA16Uint,  Invalid, UShort4,           1, 1, 8, ColorUInt16 );
+	addVkFormatDesc( R16G16B16A16_SINT,    RGBA16Sint,  Invalid, Short4,            1, 1, 8, ColorInt16 );
+	addVkFormatDesc( R16G16B16A16_SFLOAT,  RGBA16Float, Invalid, Half4,             1, 1, 8, ColorFloat );
 
-	addVkFormatDesc( R32_UINT,   R32Uint,  Invalid, UInt,  Invalid, 1, 1, 4, ColorUInt32 );
-	addVkFormatDesc( R32_SINT,   R32Sint,  Invalid, Int,   Invalid, 1, 1, 4, ColorInt32 );
-	addVkFormatDesc( R32_SFLOAT, R32Float, Invalid, Float, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( R32_UINT,   R32Uint,  Invalid, UInt,  1, 1, 4, ColorUInt32 );
+	addVkFormatDesc( R32_SINT,   R32Sint,  Invalid, Int,   1, 1, 4, ColorInt32 );
+	addVkFormatDesc( R32_SFLOAT, R32Float, Invalid, Float, 1, 1, 4, ColorFloat );
 
-	addVkFormatDesc( R32G32_UINT,   RG32Uint,  Invalid, UInt2,  Invalid, 1, 1, 8, ColorUInt32 );
-	addVkFormatDesc( R32G32_SINT,   RG32Sint,  Invalid, Int2,   Invalid, 1, 1, 8, ColorInt32 );
-	addVkFormatDesc( R32G32_SFLOAT, RG32Float, Invalid, Float2, Invalid, 1, 1, 8, ColorFloat );
+	addVkFormatDesc( R32G32_UINT,   RG32Uint,  Invalid, UInt2,  1, 1, 8, ColorUInt32 );
+	addVkFormatDesc( R32G32_SINT,   RG32Sint,  Invalid, Int2,   1, 1, 8, ColorInt32 );
+	addVkFormatDesc( R32G32_SFLOAT, RG32Float, Invalid, Float2, 1, 1, 8, ColorFloat );
 
-	addVkFormatDesc( R32G32B32_UINT,   Invalid, Invalid, UInt3,  Invalid, 1, 1, 12, ColorUInt32 );
-	addVkFormatDesc( R32G32B32_SINT,   Invalid, Invalid, Int3,   Invalid, 1, 1, 12, ColorInt32 );
-	addVkFormatDesc( R32G32B32_SFLOAT, Invalid, Invalid, Float3, Invalid, 1, 1, 12, ColorFloat );
+	addVkFormatDesc( R32G32B32_UINT,   Invalid, Invalid, UInt3,  1, 1, 12, ColorUInt32 );
+	addVkFormatDesc( R32G32B32_SINT,   Invalid, Invalid, Int3,   1, 1, 12, ColorInt32 );
+	addVkFormatDesc( R32G32B32_SFLOAT, Invalid, Invalid, Float3, 1, 1, 12, ColorFloat );
 
-	addVkFormatDesc( R32G32B32A32_UINT,   RGBA32Uint,  Invalid, UInt4,  Invalid, 1, 1, 16, ColorUInt32 );
-	addVkFormatDesc( R32G32B32A32_SINT,   RGBA32Sint,  Invalid, Int4,   Invalid, 1, 1, 16, ColorInt32 );
-	addVkFormatDesc( R32G32B32A32_SFLOAT, RGBA32Float, Invalid, Float4, Invalid, 1, 1, 16, ColorFloat );
+	addVkFormatDesc( R32G32B32A32_UINT,   RGBA32Uint,  Invalid, UInt4,  1, 1, 16, ColorUInt32 );
+	addVkFormatDesc( R32G32B32A32_SINT,   RGBA32Sint,  Invalid, Int4,   1, 1, 16, ColorInt32 );
+	addVkFormatDesc( R32G32B32A32_SFLOAT, RGBA32Float, Invalid, Float4, 1, 1, 16, ColorFloat );
 
-	addVkFormatDesc( R64_UINT,   Invalid, Invalid, Invalid, Invalid, 1, 1, 8, ColorFloat );
-	addVkFormatDesc( R64_SINT,   Invalid, Invalid, Invalid, Invalid, 1, 1, 8, ColorFloat );
-	addVkFormatDesc( R64_SFLOAT, Invalid, Invalid, Invalid, Invalid, 1, 1, 8, ColorFloat );
+	addVkFormatDesc( R64_UINT,   Invalid, Invalid, Invalid, 1, 1, 8, ColorFloat );
+	addVkFormatDesc( R64_SINT,   Invalid, Invalid, Invalid, 1, 1, 8, ColorFloat );
+	addVkFormatDesc( R64_SFLOAT, Invalid, Invalid, Invalid, 1, 1, 8, ColorFloat );
 
-	addVkFormatDesc( R64G64_UINT,   Invalid, Invalid, Invalid, Invalid, 1, 1, 16, ColorFloat );
-	addVkFormatDesc( R64G64_SINT,   Invalid, Invalid, Invalid, Invalid, 1, 1, 16, ColorFloat );
-	addVkFormatDesc( R64G64_SFLOAT, Invalid, Invalid, Invalid, Invalid, 1, 1, 16, ColorFloat );
+	addVkFormatDesc( R64G64_UINT,   Invalid, Invalid, Invalid, 1, 1, 16, ColorFloat );
+	addVkFormatDesc( R64G64_SINT,   Invalid, Invalid, Invalid, 1, 1, 16, ColorFloat );
+	addVkFormatDesc( R64G64_SFLOAT, Invalid, Invalid, Invalid, 1, 1, 16, ColorFloat );
 
-	addVkFormatDesc( R64G64B64_UINT,   Invalid, Invalid, Invalid, Invalid, 1, 1, 24, ColorFloat );
-	addVkFormatDesc( R64G64B64_SINT,   Invalid, Invalid, Invalid, Invalid, 1, 1, 24, ColorFloat );
-	addVkFormatDesc( R64G64B64_SFLOAT, Invalid, Invalid, Invalid, Invalid, 1, 1, 24, ColorFloat );
+	addVkFormatDesc( R64G64B64_UINT,   Invalid, Invalid, Invalid, 1, 1, 24, ColorFloat );
+	addVkFormatDesc( R64G64B64_SINT,   Invalid, Invalid, Invalid, 1, 1, 24, ColorFloat );
+	addVkFormatDesc( R64G64B64_SFLOAT, Invalid, Invalid, Invalid, 1, 1, 24, ColorFloat );
 
-	addVkFormatDesc( R64G64B64A64_UINT,   Invalid, Invalid, Invalid, Invalid, 1, 1, 32, ColorFloat );
-	addVkFormatDesc( R64G64B64A64_SINT,   Invalid, Invalid, Invalid, Invalid, 1, 1, 32, ColorFloat );
-	addVkFormatDesc( R64G64B64A64_SFLOAT, Invalid, Invalid, Invalid, Invalid, 1, 1, 32, ColorFloat );
+	addVkFormatDesc( R64G64B64A64_UINT,   Invalid, Invalid, Invalid, 1, 1, 32, ColorFloat );
+	addVkFormatDesc( R64G64B64A64_SINT,   Invalid, Invalid, Invalid, 1, 1, 32, ColorFloat );
+	addVkFormatDesc( R64G64B64A64_SFLOAT, Invalid, Invalid, Invalid, 1, 1, 32, ColorFloat );
 
-	addVkFormatDesc( B10G11R11_UFLOAT_PACK32, RG11B10Float, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( E5B9G9R9_UFLOAT_PACK32,  RGB9E5Float,  Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( B10G11R11_UFLOAT_PACK32, RG11B10Float, Invalid, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( E5B9G9R9_UFLOAT_PACK32,  RGB9E5Float,  Invalid, Invalid, 1, 1, 4, ColorFloat );
 
-	addVkFormatDesc( D32_SFLOAT,         Depth32Float,          Invalid, Invalid, Invalid, 1, 1, 4, DepthStencil );
-	addVkFormatDesc( D32_SFLOAT_S8_UINT, Depth32Float_Stencil8, Invalid, Invalid, Invalid, 1, 1, 5, DepthStencil );
+	addVkFormatDesc( D32_SFLOAT,         Depth32Float,          Invalid, Invalid, 1, 1, 4, DepthStencil );
+	addVkFormatDesc( D32_SFLOAT_S8_UINT, Depth32Float_Stencil8, Invalid, Invalid, 1, 1, 5, DepthStencil );
 
-	addVkFormatDesc( S8_UINT, Stencil8, Invalid, Invalid, Invalid, 1, 1, 1, DepthStencil );
+	addVkFormatDesc( S8_UINT, Stencil8, Invalid, Invalid, 1, 1, 1, DepthStencil );
 
-	addVkFormatDesc( D16_UNORM,         Depth16Unorm,          Depth32Float,          Invalid, Invalid, 1, 1, 2, DepthStencil );
-	addVkFormatDesc( D16_UNORM_S8_UINT, Invalid,               Depth16Unorm_Stencil8, Invalid, Invalid, 1, 1, 3, DepthStencil );
-	addVkFormatDesc( D24_UNORM_S8_UINT, Depth24Unorm_Stencil8, Depth32Float_Stencil8, Invalid, Invalid, 1, 1, 4, DepthStencil );
+	addVkFormatDesc( D16_UNORM,         Depth16Unorm,          Depth32Float,          Invalid, 1, 1, 2, DepthStencil );
+	addVkFormatDesc( D16_UNORM_S8_UINT, Invalid,               Depth16Unorm_Stencil8, Invalid, 1, 1, 3, DepthStencil );
+	addVkFormatDesc( D24_UNORM_S8_UINT, Depth24Unorm_Stencil8, Depth32Float_Stencil8, Invalid, 1, 1, 4, DepthStencil );
 
-	addVkFormatDesc( X8_D24_UNORM_PACK32, Invalid, Depth24Unorm_Stencil8, Invalid, Invalid, 1, 1, 4, DepthStencil );
+	addVkFormatDesc( X8_D24_UNORM_PACK32, Invalid, Depth24Unorm_Stencil8, Invalid, 1, 1, 4, DepthStencil );
 
-	addVkFormatDesc( BC1_RGB_UNORM_BLOCK,  BC1_RGBA,      Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
-	addVkFormatDesc( BC1_RGB_SRGB_BLOCK,   BC1_RGBA_sRGB, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
-	addVkFormatDesc( BC1_RGBA_UNORM_BLOCK, BC1_RGBA,      Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
-	addVkFormatDesc( BC1_RGBA_SRGB_BLOCK,  BC1_RGBA_sRGB, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( BC1_RGB_UNORM_BLOCK,  BC1_RGBA,      Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( BC1_RGB_SRGB_BLOCK,   BC1_RGBA_sRGB, Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( BC1_RGBA_UNORM_BLOCK, BC1_RGBA,      Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( BC1_RGBA_SRGB_BLOCK,  BC1_RGBA_sRGB, Invalid, Invalid, 4, 4, 8, Compressed );
 
-	addVkFormatDesc( BC2_UNORM_BLOCK, BC2_RGBA,      Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
-	addVkFormatDesc( BC2_SRGB_BLOCK,  BC2_RGBA_sRGB, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
+	addVkFormatDesc( BC2_UNORM_BLOCK, BC2_RGBA,      Invalid, Invalid, 4, 4, 16, Compressed );
+	addVkFormatDesc( BC2_SRGB_BLOCK,  BC2_RGBA_sRGB, Invalid, Invalid, 4, 4, 16, Compressed );
 
-	addVkFormatDesc( BC3_UNORM_BLOCK, BC3_RGBA,      Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
-	addVkFormatDesc( BC3_SRGB_BLOCK,  BC3_RGBA_sRGB, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
+	addVkFormatDesc( BC3_UNORM_BLOCK, BC3_RGBA,      Invalid, Invalid, 4, 4, 16, Compressed );
+	addVkFormatDesc( BC3_SRGB_BLOCK,  BC3_RGBA_sRGB, Invalid, Invalid, 4, 4, 16, Compressed );
 
-	addVkFormatDesc( BC4_UNORM_BLOCK, BC4_RUnorm, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
-	addVkFormatDesc( BC4_SNORM_BLOCK, BC4_RSnorm, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( BC4_UNORM_BLOCK, BC4_RUnorm, Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( BC4_SNORM_BLOCK, BC4_RSnorm, Invalid, Invalid, 4, 4, 8, Compressed );
 
-	addVkFormatDesc( BC5_UNORM_BLOCK, BC5_RGUnorm, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
-	addVkFormatDesc( BC5_SNORM_BLOCK, BC5_RGSnorm, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
+	addVkFormatDesc( BC5_UNORM_BLOCK, BC5_RGUnorm, Invalid, Invalid, 4, 4, 16, Compressed );
+	addVkFormatDesc( BC5_SNORM_BLOCK, BC5_RGSnorm, Invalid, Invalid, 4, 4, 16, Compressed );
 
-	addVkFormatDesc( BC6H_UFLOAT_BLOCK, BC6H_RGBUfloat, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
-	addVkFormatDesc( BC6H_SFLOAT_BLOCK, BC6H_RGBFloat,  Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
+	addVkFormatDesc( BC6H_UFLOAT_BLOCK, BC6H_RGBUfloat, Invalid, Invalid, 4, 4, 16, Compressed );
+	addVkFormatDesc( BC6H_SFLOAT_BLOCK, BC6H_RGBFloat,  Invalid, Invalid, 4, 4, 16, Compressed );
 
-	addVkFormatDesc( BC7_UNORM_BLOCK, BC7_RGBAUnorm,      Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
-	addVkFormatDesc( BC7_SRGB_BLOCK,  BC7_RGBAUnorm_sRGB, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
+	addVkFormatDesc( BC7_UNORM_BLOCK, BC7_RGBAUnorm,      Invalid, Invalid, 4, 4, 16, Compressed );
+	addVkFormatDesc( BC7_SRGB_BLOCK,  BC7_RGBAUnorm_sRGB, Invalid, Invalid, 4, 4, 16, Compressed );
 
-	addVkFormatDesc( ETC2_R8G8B8_UNORM_BLOCK,   ETC2_RGB8,        Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
-	addVkFormatDesc( ETC2_R8G8B8_SRGB_BLOCK,    ETC2_RGB8_sRGB,   Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
-	addVkFormatDesc( ETC2_R8G8B8A1_UNORM_BLOCK, ETC2_RGB8A1,      Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
-	addVkFormatDesc( ETC2_R8G8B8A1_SRGB_BLOCK,  ETC2_RGB8A1_sRGB, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( ETC2_R8G8B8_UNORM_BLOCK,   ETC2_RGB8,        Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( ETC2_R8G8B8_SRGB_BLOCK,    ETC2_RGB8_sRGB,   Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( ETC2_R8G8B8A1_UNORM_BLOCK, ETC2_RGB8A1,      Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( ETC2_R8G8B8A1_SRGB_BLOCK,  ETC2_RGB8A1_sRGB, Invalid, Invalid, 4, 4, 8, Compressed );
 
-	addVkFormatDesc( ETC2_R8G8B8A8_UNORM_BLOCK, EAC_RGBA8,      Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
-	addVkFormatDesc( ETC2_R8G8B8A8_SRGB_BLOCK,  EAC_RGBA8_sRGB, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
+	addVkFormatDesc( ETC2_R8G8B8A8_UNORM_BLOCK, EAC_RGBA8,      Invalid, Invalid, 4, 4, 16, Compressed );
+	addVkFormatDesc( ETC2_R8G8B8A8_SRGB_BLOCK,  EAC_RGBA8_sRGB, Invalid, Invalid, 4, 4, 16, Compressed );
 
-	addVkFormatDesc( EAC_R11_UNORM_BLOCK, EAC_R11Unorm, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
-	addVkFormatDesc( EAC_R11_SNORM_BLOCK, EAC_R11Snorm, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( EAC_R11_UNORM_BLOCK, EAC_R11Unorm, Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( EAC_R11_SNORM_BLOCK, EAC_R11Snorm, Invalid, Invalid, 4, 4, 8, Compressed );
 
-	addVkFormatDesc( EAC_R11G11_UNORM_BLOCK, EAC_RG11Unorm, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
-	addVkFormatDesc( EAC_R11G11_SNORM_BLOCK, EAC_RG11Snorm, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
+	addVkFormatDesc( EAC_R11G11_UNORM_BLOCK, EAC_RG11Unorm, Invalid, Invalid, 4, 4, 16, Compressed );
+	addVkFormatDesc( EAC_R11G11_SNORM_BLOCK, EAC_RG11Snorm, Invalid, Invalid, 4, 4, 16, Compressed );
 
-	addVkFormatDesc( ASTC_4x4_UNORM_BLOCK,        ASTC_4x4_LDR,    Invalid, Invalid, Invalid,  4,  4, 16, Compressed );
-	addVkFormatDesc( ASTC_4x4_SFLOAT_BLOCK_EXT,   ASTC_4x4_HDR,    Invalid, Invalid, Invalid,  4,  4, 16, Compressed );
-	addVkFormatDesc( ASTC_4x4_SRGB_BLOCK,         ASTC_4x4_sRGB,   Invalid, Invalid, Invalid,  4,  4, 16, Compressed );
-	addVkFormatDesc( ASTC_5x4_UNORM_BLOCK,        ASTC_5x4_LDR,    Invalid, Invalid, Invalid,  5,  4, 16, Compressed );
-	addVkFormatDesc( ASTC_5x4_SFLOAT_BLOCK_EXT,   ASTC_5x4_HDR,    Invalid, Invalid, Invalid,  5,  4, 16, Compressed );
-	addVkFormatDesc( ASTC_5x4_SRGB_BLOCK,         ASTC_5x4_sRGB,   Invalid, Invalid, Invalid,  5,  4, 16, Compressed );
-	addVkFormatDesc( ASTC_5x5_UNORM_BLOCK,        ASTC_5x5_LDR,    Invalid, Invalid, Invalid,  5,  5, 16, Compressed );
-	addVkFormatDesc( ASTC_5x5_SFLOAT_BLOCK_EXT,   ASTC_5x5_HDR,    Invalid, Invalid, Invalid,  5,  5, 16, Compressed );
-	addVkFormatDesc( ASTC_5x5_SRGB_BLOCK,         ASTC_5x5_sRGB,   Invalid, Invalid, Invalid,  5,  5, 16, Compressed );
-	addVkFormatDesc( ASTC_6x5_UNORM_BLOCK,        ASTC_6x5_LDR,    Invalid, Invalid, Invalid,  6,  5, 16, Compressed );
-	addVkFormatDesc( ASTC_6x5_SFLOAT_BLOCK_EXT,   ASTC_6x5_HDR,    Invalid, Invalid, Invalid,  6,  5, 16, Compressed );
-	addVkFormatDesc( ASTC_6x5_SRGB_BLOCK,         ASTC_6x5_sRGB,   Invalid, Invalid, Invalid,  6,  5, 16, Compressed );
-	addVkFormatDesc( ASTC_6x6_UNORM_BLOCK,        ASTC_6x6_LDR,    Invalid, Invalid, Invalid,  6,  6, 16, Compressed );
-	addVkFormatDesc( ASTC_6x6_SFLOAT_BLOCK_EXT,   ASTC_6x6_HDR,    Invalid, Invalid, Invalid,  6,  6, 16, Compressed );
-	addVkFormatDesc( ASTC_6x6_SRGB_BLOCK,         ASTC_6x6_sRGB,   Invalid, Invalid, Invalid,  6,  6, 16, Compressed );
-	addVkFormatDesc( ASTC_8x5_UNORM_BLOCK,        ASTC_8x5_LDR,    Invalid, Invalid, Invalid,  8,  5, 16, Compressed );
-	addVkFormatDesc( ASTC_8x5_SFLOAT_BLOCK_EXT,   ASTC_8x5_HDR,    Invalid, Invalid, Invalid,  8,  5, 16, Compressed );
-	addVkFormatDesc( ASTC_8x5_SRGB_BLOCK,         ASTC_8x5_sRGB,   Invalid, Invalid, Invalid,  8,  5, 16, Compressed );
-	addVkFormatDesc( ASTC_8x6_UNORM_BLOCK,        ASTC_8x6_LDR,    Invalid, Invalid, Invalid,  8,  6, 16, Compressed );
-	addVkFormatDesc( ASTC_8x6_SFLOAT_BLOCK_EXT,   ASTC_8x6_HDR,    Invalid, Invalid, Invalid,  8,  6, 16, Compressed );
-	addVkFormatDesc( ASTC_8x6_SRGB_BLOCK,         ASTC_8x6_sRGB,   Invalid, Invalid, Invalid,  8,  6, 16, Compressed );
-	addVkFormatDesc( ASTC_8x8_UNORM_BLOCK,        ASTC_8x8_LDR,    Invalid, Invalid, Invalid,  8,  8, 16, Compressed );
-	addVkFormatDesc( ASTC_8x8_SFLOAT_BLOCK_EXT,   ASTC_8x8_HDR,    Invalid, Invalid, Invalid,  8,  8, 16, Compressed );
-	addVkFormatDesc( ASTC_8x8_SRGB_BLOCK,         ASTC_8x8_sRGB,   Invalid, Invalid, Invalid,  8,  8, 16, Compressed );
-	addVkFormatDesc( ASTC_10x5_UNORM_BLOCK,       ASTC_10x5_LDR,   Invalid, Invalid, Invalid, 10,  5, 16, Compressed );
-	addVkFormatDesc( ASTC_10x5_SFLOAT_BLOCK_EXT,  ASTC_10x5_HDR,   Invalid, Invalid, Invalid, 10,  5, 16, Compressed );
-	addVkFormatDesc( ASTC_10x5_SRGB_BLOCK,        ASTC_10x5_sRGB,  Invalid, Invalid, Invalid, 10,  5, 16, Compressed );
-	addVkFormatDesc( ASTC_10x6_UNORM_BLOCK,       ASTC_10x6_LDR,   Invalid, Invalid, Invalid, 10,  6, 16, Compressed );
-	addVkFormatDesc( ASTC_10x6_SFLOAT_BLOCK_EXT,  ASTC_10x6_HDR,   Invalid, Invalid, Invalid, 10,  6, 16, Compressed );
-	addVkFormatDesc( ASTC_10x6_SRGB_BLOCK,        ASTC_10x6_sRGB,  Invalid, Invalid, Invalid, 10,  6, 16, Compressed );
-	addVkFormatDesc( ASTC_10x8_UNORM_BLOCK,       ASTC_10x8_LDR,   Invalid, Invalid, Invalid, 10,  8, 16, Compressed );
-	addVkFormatDesc( ASTC_10x8_SFLOAT_BLOCK_EXT,  ASTC_10x8_HDR,   Invalid, Invalid, Invalid, 10,  8, 16, Compressed );
-	addVkFormatDesc( ASTC_10x8_SRGB_BLOCK,        ASTC_10x8_sRGB,  Invalid, Invalid, Invalid, 10,  8, 16, Compressed );
-	addVkFormatDesc( ASTC_10x10_UNORM_BLOCK,      ASTC_10x10_LDR,  Invalid, Invalid, Invalid, 10, 10, 16, Compressed );
-	addVkFormatDesc( ASTC_10x10_SFLOAT_BLOCK_EXT, ASTC_10x10_HDR,  Invalid, Invalid, Invalid, 10, 10, 16, Compressed );
-	addVkFormatDesc( ASTC_10x10_SRGB_BLOCK,       ASTC_10x10_sRGB, Invalid, Invalid, Invalid, 10, 10, 16, Compressed );
-	addVkFormatDesc( ASTC_12x10_UNORM_BLOCK,      ASTC_12x10_LDR,  Invalid, Invalid, Invalid, 12, 10, 16, Compressed );
-	addVkFormatDesc( ASTC_12x10_SFLOAT_BLOCK_EXT, ASTC_12x10_HDR,  Invalid, Invalid, Invalid, 12, 10, 16, Compressed );
-	addVkFormatDesc( ASTC_12x10_SRGB_BLOCK,       ASTC_12x10_sRGB, Invalid, Invalid, Invalid, 12, 10, 16, Compressed );
-	addVkFormatDesc( ASTC_12x12_UNORM_BLOCK,      ASTC_12x12_LDR,  Invalid, Invalid, Invalid, 12, 12, 16, Compressed );
-	addVkFormatDesc( ASTC_12x12_SFLOAT_BLOCK_EXT, ASTC_12x12_HDR,  Invalid, Invalid, Invalid, 12, 12, 16, Compressed );
-	addVkFormatDesc( ASTC_12x12_SRGB_BLOCK,       ASTC_12x12_sRGB, Invalid, Invalid, Invalid, 12, 12, 16, Compressed );
+	addVkFormatDesc( ASTC_4x4_UNORM_BLOCK,        ASTC_4x4_LDR,    Invalid, Invalid,  4,  4, 16, Compressed );
+	addVkFormatDesc( ASTC_4x4_SFLOAT_BLOCK_EXT,   ASTC_4x4_HDR,    Invalid, Invalid,  4,  4, 16, Compressed );
+	addVkFormatDesc( ASTC_4x4_SRGB_BLOCK,         ASTC_4x4_sRGB,   Invalid, Invalid,  4,  4, 16, Compressed );
+	addVkFormatDesc( ASTC_5x4_UNORM_BLOCK,        ASTC_5x4_LDR,    Invalid, Invalid,  5,  4, 16, Compressed );
+	addVkFormatDesc( ASTC_5x4_SFLOAT_BLOCK_EXT,   ASTC_5x4_HDR,    Invalid, Invalid,  5,  4, 16, Compressed );
+	addVkFormatDesc( ASTC_5x4_SRGB_BLOCK,         ASTC_5x4_sRGB,   Invalid, Invalid,  5,  4, 16, Compressed );
+	addVkFormatDesc( ASTC_5x5_UNORM_BLOCK,        ASTC_5x5_LDR,    Invalid, Invalid,  5,  5, 16, Compressed );
+	addVkFormatDesc( ASTC_5x5_SFLOAT_BLOCK_EXT,   ASTC_5x5_HDR,    Invalid, Invalid,  5,  5, 16, Compressed );
+	addVkFormatDesc( ASTC_5x5_SRGB_BLOCK,         ASTC_5x5_sRGB,   Invalid, Invalid,  5,  5, 16, Compressed );
+	addVkFormatDesc( ASTC_6x5_UNORM_BLOCK,        ASTC_6x5_LDR,    Invalid, Invalid,  6,  5, 16, Compressed );
+	addVkFormatDesc( ASTC_6x5_SFLOAT_BLOCK_EXT,   ASTC_6x5_HDR,    Invalid, Invalid,  6,  5, 16, Compressed );
+	addVkFormatDesc( ASTC_6x5_SRGB_BLOCK,         ASTC_6x5_sRGB,   Invalid, Invalid,  6,  5, 16, Compressed );
+	addVkFormatDesc( ASTC_6x6_UNORM_BLOCK,        ASTC_6x6_LDR,    Invalid, Invalid,  6,  6, 16, Compressed );
+	addVkFormatDesc( ASTC_6x6_SFLOAT_BLOCK_EXT,   ASTC_6x6_HDR,    Invalid, Invalid,  6,  6, 16, Compressed );
+	addVkFormatDesc( ASTC_6x6_SRGB_BLOCK,         ASTC_6x6_sRGB,   Invalid, Invalid,  6,  6, 16, Compressed );
+	addVkFormatDesc( ASTC_8x5_UNORM_BLOCK,        ASTC_8x5_LDR,    Invalid, Invalid,  8,  5, 16, Compressed );
+	addVkFormatDesc( ASTC_8x5_SFLOAT_BLOCK_EXT,   ASTC_8x5_HDR,    Invalid, Invalid,  8,  5, 16, Compressed );
+	addVkFormatDesc( ASTC_8x5_SRGB_BLOCK,         ASTC_8x5_sRGB,   Invalid, Invalid,  8,  5, 16, Compressed );
+	addVkFormatDesc( ASTC_8x6_UNORM_BLOCK,        ASTC_8x6_LDR,    Invalid, Invalid,  8,  6, 16, Compressed );
+	addVkFormatDesc( ASTC_8x6_SFLOAT_BLOCK_EXT,   ASTC_8x6_HDR,    Invalid, Invalid,  8,  6, 16, Compressed );
+	addVkFormatDesc( ASTC_8x6_SRGB_BLOCK,         ASTC_8x6_sRGB,   Invalid, Invalid,  8,  6, 16, Compressed );
+	addVkFormatDesc( ASTC_8x8_UNORM_BLOCK,        ASTC_8x8_LDR,    Invalid, Invalid,  8,  8, 16, Compressed );
+	addVkFormatDesc( ASTC_8x8_SFLOAT_BLOCK_EXT,   ASTC_8x8_HDR,    Invalid, Invalid,  8,  8, 16, Compressed );
+	addVkFormatDesc( ASTC_8x8_SRGB_BLOCK,         ASTC_8x8_sRGB,   Invalid, Invalid,  8,  8, 16, Compressed );
+	addVkFormatDesc( ASTC_10x5_UNORM_BLOCK,       ASTC_10x5_LDR,   Invalid, Invalid, 10,  5, 16, Compressed );
+	addVkFormatDesc( ASTC_10x5_SFLOAT_BLOCK_EXT,  ASTC_10x5_HDR,   Invalid, Invalid, 10,  5, 16, Compressed );
+	addVkFormatDesc( ASTC_10x5_SRGB_BLOCK,        ASTC_10x5_sRGB,  Invalid, Invalid, 10,  5, 16, Compressed );
+	addVkFormatDesc( ASTC_10x6_UNORM_BLOCK,       ASTC_10x6_LDR,   Invalid, Invalid, 10,  6, 16, Compressed );
+	addVkFormatDesc( ASTC_10x6_SFLOAT_BLOCK_EXT,  ASTC_10x6_HDR,   Invalid, Invalid, 10,  6, 16, Compressed );
+	addVkFormatDesc( ASTC_10x6_SRGB_BLOCK,        ASTC_10x6_sRGB,  Invalid, Invalid, 10,  6, 16, Compressed );
+	addVkFormatDesc( ASTC_10x8_UNORM_BLOCK,       ASTC_10x8_LDR,   Invalid, Invalid, 10,  8, 16, Compressed );
+	addVkFormatDesc( ASTC_10x8_SFLOAT_BLOCK_EXT,  ASTC_10x8_HDR,   Invalid, Invalid, 10,  8, 16, Compressed );
+	addVkFormatDesc( ASTC_10x8_SRGB_BLOCK,        ASTC_10x8_sRGB,  Invalid, Invalid, 10,  8, 16, Compressed );
+	addVkFormatDesc( ASTC_10x10_UNORM_BLOCK,      ASTC_10x10_LDR,  Invalid, Invalid, 10, 10, 16, Compressed );
+	addVkFormatDesc( ASTC_10x10_SFLOAT_BLOCK_EXT, ASTC_10x10_HDR,  Invalid, Invalid, 10, 10, 16, Compressed );
+	addVkFormatDesc( ASTC_10x10_SRGB_BLOCK,       ASTC_10x10_sRGB, Invalid, Invalid, 10, 10, 16, Compressed );
+	addVkFormatDesc( ASTC_12x10_UNORM_BLOCK,      ASTC_12x10_LDR,  Invalid, Invalid, 12, 10, 16, Compressed );
+	addVkFormatDesc( ASTC_12x10_SFLOAT_BLOCK_EXT, ASTC_12x10_HDR,  Invalid, Invalid, 12, 10, 16, Compressed );
+	addVkFormatDesc( ASTC_12x10_SRGB_BLOCK,       ASTC_12x10_sRGB, Invalid, Invalid, 12, 10, 16, Compressed );
+	addVkFormatDesc( ASTC_12x12_UNORM_BLOCK,      ASTC_12x12_LDR,  Invalid, Invalid, 12, 12, 16, Compressed );
+	addVkFormatDesc( ASTC_12x12_SFLOAT_BLOCK_EXT, ASTC_12x12_HDR,  Invalid, Invalid, 12, 12, 16, Compressed );
+	addVkFormatDesc( ASTC_12x12_SRGB_BLOCK,       ASTC_12x12_sRGB, Invalid, Invalid, 12, 12, 16, Compressed );
 
 	// Extension VK_IMG_format_pvrtc
-	addVkFormatDesc( PVRTC1_2BPP_UNORM_BLOCK_IMG, PVRTC_RGBA_2BPP,      Invalid, Invalid, Invalid, 8, 4, 8, Compressed );
-	addVkFormatDesc( PVRTC1_4BPP_UNORM_BLOCK_IMG, PVRTC_RGBA_4BPP,      Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
-	addVkFormatDesc( PVRTC2_2BPP_UNORM_BLOCK_IMG, Invalid,              Invalid, Invalid, Invalid, 8, 4, 8, Compressed );
-	addVkFormatDesc( PVRTC2_4BPP_UNORM_BLOCK_IMG, Invalid,              Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
-	addVkFormatDesc( PVRTC1_2BPP_SRGB_BLOCK_IMG,  PVRTC_RGBA_2BPP_sRGB, Invalid, Invalid, Invalid, 8, 4, 8, Compressed );
-	addVkFormatDesc( PVRTC1_4BPP_SRGB_BLOCK_IMG,  PVRTC_RGBA_4BPP_sRGB, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
-	addVkFormatDesc( PVRTC2_2BPP_SRGB_BLOCK_IMG,  Invalid,              Invalid, Invalid, Invalid, 8, 4, 8, Compressed );
-	addVkFormatDesc( PVRTC2_4BPP_SRGB_BLOCK_IMG,  Invalid,              Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( PVRTC1_2BPP_UNORM_BLOCK_IMG, PVRTC_RGBA_2BPP,      Invalid, Invalid, 8, 4, 8, Compressed );
+	addVkFormatDesc( PVRTC1_4BPP_UNORM_BLOCK_IMG, PVRTC_RGBA_4BPP,      Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( PVRTC2_2BPP_UNORM_BLOCK_IMG, Invalid,              Invalid, Invalid, 8, 4, 8, Compressed );
+	addVkFormatDesc( PVRTC2_4BPP_UNORM_BLOCK_IMG, Invalid,              Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( PVRTC1_2BPP_SRGB_BLOCK_IMG,  PVRTC_RGBA_2BPP_sRGB, Invalid, Invalid, 8, 4, 8, Compressed );
+	addVkFormatDesc( PVRTC1_4BPP_SRGB_BLOCK_IMG,  PVRTC_RGBA_4BPP_sRGB, Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( PVRTC2_2BPP_SRGB_BLOCK_IMG,  Invalid,              Invalid, Invalid, 8, 4, 8, Compressed );
+	addVkFormatDesc( PVRTC2_4BPP_SRGB_BLOCK_IMG,  Invalid,              Invalid, Invalid, 4, 4, 8, Compressed );
 
 	// Extension VK_KHR_sampler_ycbcr_conversion
 	addVkFormatDescChromaSubsampling( G8B8G8R8_422_UNORM,                         GBGR422,     1,  8, 2, 1,  4 );
@@ -2021,10 +2021,6 @@ void MVKPixelFormats::buildVkFormatMaps() {
 				auto& mtlDesc = getMTLVertexFormatDesc(vkDesc.mtlVertexFormat);
 				if ( !mtlDesc.vkFormat ) { mtlDesc.vkFormat = vkFmt; }
 				if ( !mtlDesc.isSupported() ) { vkDesc.mtlVertexFormat = MTLVertexFormatInvalid; }
-			}
-			if (vkDesc.mtlVertexFormatSubstitute) {
-				auto& mtlDesc = getMTLVertexFormatDesc(vkDesc.mtlVertexFormatSubstitute);
-				if ( !mtlDesc.isSupported() ) { vkDesc.mtlVertexFormatSubstitute = MTLVertexFormatInvalid; }
 			}
 
 			// Set Vulkan format properties
