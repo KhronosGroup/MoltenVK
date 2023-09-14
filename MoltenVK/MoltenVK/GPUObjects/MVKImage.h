@@ -310,7 +310,10 @@ public:
      * attempting to copy a depth image with a substituted format to and from a buffer.
      */
     inline bool hasExpectedTexelSize() { return _hasExpectedTexelSize; }
-    
+
+	/** Returns whether the texture has the PixelFormatView usage flag, allowing it to be reinterpreted. */
+	inline bool hasPixelFormatView(uint32_t planeIndex) { return mvkIsAnyFlagEnabled(getMTLTexture(planeIndex).usage, MTLTextureUsagePixelFormatView); }
+
 	/** Returns the Metal resource options for this image. */
     MTLStorageMode getMTLStorageMode();
 
