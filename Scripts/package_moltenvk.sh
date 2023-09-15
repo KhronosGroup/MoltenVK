@@ -38,6 +38,8 @@ copy_dylib "-iphoneos" "iOS"
 copy_dylib "-iphonesimulator" "iOS-simulator"
 copy_dylib "-appletvos" "tvOS"
 copy_dylib "-appletvsimulator" "tvOS-simulator"
+copy_dylib "-xrvos" "xrOS"
+copy_dylib "-xrsimulator" "xrOS-simulator"
 
 # Remove and replace header include folder
 rm -rf "${MVK_PKG_PROD_PATH}/include"

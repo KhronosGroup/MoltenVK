@@ -43,7 +43,7 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
 													dynamicOffsets, dynamicOffsetIndex); }
 	if ( !isUsingMetalArgumentBuffers() ) {
 		for (auto& dslBind : _bindings) {
-			dslBind.bind(cmdEncoder, descSet, dslMTLRezIdxOffsets, dynamicOffsets, dynamicOffsetIndex);
+			dslBind.bind(cmdEncoder, pipelineBindPoint, descSet, dslMTLRezIdxOffsets, dynamicOffsets, dynamicOffsetIndex);
 		}
 	}
 }
@@ -91,6 +91,7 @@ static const void* getWriteParameters(VkDescriptorType type, const VkDescriptorI
 
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
+                                               VkPipelineBindPoint pipelineBindPoint,
                                                MVKArrayRef<VkWriteDescriptorSet> descriptorWrites,
                                                MVKShaderResourceBinding& dslMTLRezIdxOffsets) {
 
@@ -127,7 +128,7 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                                    pBufferInfo, pTexelBufferView, pInlineUniformBlock, stride);
             uint32_t descriptorsPushed = 0;
             uint32_t bindIdx = _bindingToIndex[dstBinding];
-            _bindings[bindIdx].push(cmdEncoder, dstArrayElement, descriptorCount,
+            _bindings[bindIdx].push(cmdEncoder, pipelineBindPoint, dstArrayElement, descriptorCount,
                                     descriptorsPushed, descWrite.descriptorType,
                                     stride, pData, dslMTLRezIdxOffsets);
             pBufferInfo += descriptorsPushed;
@@ -148,6 +149,7 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
         return;
 
 	if (!cmdEncoder) { clearConfigurationResult(); }
+	VkPipelineBindPoint bindPoint = descUpdateTemplate->getBindPoint();
     for (uint32_t i = 0; i < descUpdateTemplate->getNumberOfEntries(); i++) {
         const VkDescriptorUpdateTemplateEntry* pEntry = descUpdateTemplate->getEntry(i);
         uint32_t dstBinding = pEntry->dstBinding;
@@ -161,7 +163,7 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
             if (!_bindingToIndex.count(dstBinding)) continue;
             uint32_t descriptorsPushed = 0;
             uint32_t bindIdx = _bindingToIndex[dstBinding];
-            _bindings[bindIdx].push(cmdEncoder, dstArrayElement, descriptorCount,
+            _bindings[bindIdx].push(cmdEncoder, bindPoint, dstArrayElement, descriptorCount,
                                     descriptorsPushed, pEntry->descriptorType,
                                     pEntry->stride, pCurData, dslMTLRezIdxOffsets);
             pCurData = (const char*)pCurData + pEntry->stride * descriptorsPushed;
@@ -183,24 +185,29 @@ void MVKDescriptorSetLayout::populateShaderConversionConfig(mvk::SPIRVToMSLConve
 	}
 }
 
+static const spv::ExecutionModel getExecModel(MVKShaderStage stage) {
+	switch (stage) {
+		case kMVKShaderStageVertex:   return spv::ExecutionModelVertex;
+		case kMVKShaderStageTessCtl:  return spv::ExecutionModelTessellationControl;
+		case kMVKShaderStageTessEval: return spv::ExecutionModelTessellationEvaluation;
+		case kMVKShaderStageGeometry: return spv::ExecutionModelGeometry;
+		case kMVKShaderStageFragment: return spv::ExecutionModelFragment;
+		case kMVKShaderStageCompute:  return spv::ExecutionModelGLCompute;
+		case kMVKShaderStageCount:    assert(0); __builtin_unreachable();
+	}
+}
+
 bool MVKDescriptorSetLayout::populateBindingUse(MVKBitArray& bindingUse,
 												SPIRVToMSLConversionConfiguration& context,
 												MVKShaderStage stage,
 												uint32_t descSetIndex) {
-	static const spv::ExecutionModel spvExecModels[] = {
-		spv::ExecutionModelVertex,
-		spv::ExecutionModelTessellationControl,
-		spv::ExecutionModelTessellationEvaluation,
-		spv::ExecutionModelFragment,
-		spv::ExecutionModelGLCompute
-	};
 
 	bool descSetIsUsed = false;
 	uint32_t bindCnt = (uint32_t)_bindings.size();
 	bindingUse.resize(bindCnt);
 	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		auto& dslBind = _bindings[bindIdx];
-		if (context.isResourceUsed(spvExecModels[stage], descSetIndex, dslBind.getBinding())) {
+		if (context.isResourceUsed(getExecModel(stage), descSetIndex, dslBind.getBinding())) {
 			bindingUse.setBit(bindIdx);
 			descSetIsUsed = true;
 		}
@@ -876,7 +883,7 @@ VkDescriptorUpdateTemplateType MVKDescriptorUpdateTemplate::getType() const {
 
 MVKDescriptorUpdateTemplate::MVKDescriptorUpdateTemplate(MVKDevice* device,
 														 const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo) :
-	MVKVulkanAPIDeviceObject(device), _type(pCreateInfo->templateType) {
+	MVKVulkanAPIDeviceObject(device), _pipelineBindPoint(pCreateInfo->pipelineBindPoint), _type(pCreateInfo->templateType) {
 
 	for (uint32_t i = 0; i < pCreateInfo->descriptorUpdateEntryCount; i++)
 		_entries.push_back(pCreateInfo->pDescriptorUpdateEntries[i]);

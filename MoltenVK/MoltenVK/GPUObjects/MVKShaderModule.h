@@ -107,7 +107,9 @@ protected:
 	friend MVKShaderLibraryCache;
 	friend MVKShaderModule;
 
-	MVKMTLFunction getMTLFunction(const VkSpecializationInfo* pSpecializationInfo, MVKShaderModule* shaderModule);
+	MVKMTLFunction getMTLFunction(const VkSpecializationInfo* pSpecializationInfo,
+								  VkPipelineCreationFeedback* pShaderFeedback,
+								  MVKShaderModule* shaderModule);
 	void handleCompilationError(NSError* err, const char* opDesc);
     MTLFunctionConstant* getFunctionConstant(NSArray<MTLFunctionConstant*>* mtlFCs, NSUInteger mtlFCID);
 	void compileLibrary(const std::string& msl);
@@ -144,7 +146,8 @@ public:
 	 */
 	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig,
 									   MVKShaderModule* shaderModule, MVKPipeline* pipeline,
-									   bool* pWasAdded, uint64_t startTime = 0);
+									   bool* pWasAdded, VkPipelineCreationFeedback* pShaderFeedback,
+									   uint64_t startTime = 0);
 
 	MVKShaderLibraryCache(MVKVulkanAPIDeviceObject* owner) : _owner(owner) {};
 
@@ -155,7 +158,9 @@ protected:
 	friend MVKPipelineCache;
 	friend MVKShaderModule;
 
-	MVKShaderLibrary* findShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig, uint64_t startTime = 0);
+	MVKShaderLibrary* findShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig,
+										VkPipelineCreationFeedback* pShaderFeedback = nullptr,
+										uint64_t startTime = 0);
 	MVKShaderLibrary* addShaderLibrary(const SPIRVToMSLConversionConfiguration* pShaderConfig,
 									   const SPIRVToMSLConversionResult& conversionResult);
 	MVKShaderLibrary* addShaderLibrary(const SPIRVToMSLConversionConfiguration* pShaderConfig,
@@ -207,7 +212,8 @@ public:
 	/** Returns the Metal shader function, possibly specialized. */
 	MVKMTLFunction getMTLFunction(SPIRVToMSLConversionConfiguration* pShaderConfig,
 								  const VkSpecializationInfo* pSpecializationInfo,
-								  MVKPipeline* pipeline);
+								  MVKPipeline* pipeline,
+								  VkPipelineCreationFeedback* pShaderFeedback);
 
 	/** Convert the SPIR-V to MSL, using the specified shader conversion configuration. */
 	bool convert(SPIRVToMSLConversionConfiguration* pShaderConfig,

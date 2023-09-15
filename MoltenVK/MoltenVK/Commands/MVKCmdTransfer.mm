@@ -25,7 +25,6 @@
 #include "MVKFramebuffer.h"
 #include "MVKRenderPass.h"
 #include "MTLRenderPassDescriptor+MoltenVK.h"
-#include "MVKEnvironment.h"
 #include "mvk_datatypes.hpp"
 #include <algorithm>
 #include <sys/mman.h>
@@ -375,6 +374,7 @@ bool MVKCmdBlitImage<N>::canCopyFormats(const VkImageBlit2& region) {
     uint8_t srcPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(region.srcSubresource.aspectMask);
     uint8_t dstPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(region.dstSubresource.aspectMask);
 	return ((_srcImage->getMTLPixelFormat(srcPlaneIndex) == _dstImage->getMTLPixelFormat(dstPlaneIndex)) &&
+			!_srcImage->needsSwizzle() &&
 			(_dstImage->getSampleCount() == _srcImage->getSampleCount()));
 }
 
@@ -457,7 +457,7 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
 	uint32_t copyCnt = 0;
 	uint32_t blitCnt = 0;
 
-	// Separate BLITs into those that are really just simple texure region copies,
+	// Separate BLITs into those that are really just simple texture region copies,
 	// and those that require rendering
 	for (auto& vkIB : _vkImageBlits) {
 		if (canCopyFormats(vkIB) && canCopy(vkIB)) {
@@ -501,6 +501,15 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
         id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture(srcPlaneIndex);
         id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture(dstPlaneIndex);
         if (blitCnt && srcMTLTex && dstMTLTex) {
+			if (cmdEncoder->getDevice()->_pMetalFeatures->nativeTextureSwizzle &&
+				_srcImage->needsSwizzle()) {
+				// Use a view that has a swizzle on it.
+				srcMTLTex = [[srcMTLTex newTextureViewWithPixelFormat:srcMTLTex.pixelFormat
+														  textureType:srcMTLTex.textureType
+															   levels:NSMakeRange(0, srcMTLTex.mipmapLevelCount)
+															   slices:NSMakeRange(0, srcMTLTex.arrayLength)
+															  swizzle:_srcImage->getPixelFormats()->getMTLTextureSwizzleChannels(_srcImage->getVkFormat())] autorelease];
+			}
             cmdEncoder->endCurrentMetalEncoding();
 
             MTLRenderPassDescriptor* mtlRPD = [MTLRenderPassDescriptor renderPassDescriptor];
@@ -550,6 +559,14 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             blitKey.srcFilter = mvkMTLSamplerMinMagFilterFromVkFilter(_filter);
             blitKey.srcAspect = mvkIBR.region.srcSubresource.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
             blitKey.dstSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_dstImage->getSampleCount());
+			if (!cmdEncoder->getDevice()->_pMetalFeatures->nativeTextureSwizzle &&
+				_srcImage->needsSwizzle()) {
+				VkComponentMapping vkMapping = _srcImage->getPixelFormats()->getVkComponentMapping(_srcImage->getVkFormat());
+				blitKey.srcSwizzleR = vkMapping.r;
+				blitKey.srcSwizzleG = vkMapping.g;
+				blitKey.srcSwizzleB = vkMapping.b;
+				blitKey.srcSwizzleA = vkMapping.a;
+			}
             id<MTLRenderPipelineState> mtlRPS = cmdEncoder->getCommandEncodingPool()->getCmdBlitImageMTLRenderPipelineState(blitKey);
             bool isBlittingDepth = mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_DEPTH_BIT));
             bool isBlittingStencil = mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_STENCIL_BIT));
@@ -956,7 +973,7 @@ void MVKCmdCopyBuffer<N>::encode(MVKCommandEncoder* cmdEncoder) {
 			copyInfo.dstOffset = (uint32_t)cpyRgn.dstOffset;
 			copyInfo.size = (uint32_t)cpyRgn.size;
 
-			id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyBuffer);
+			id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyBuffer, true);
 			[mtlComputeEnc pushDebugGroup: @"vkCmdCopyBuffer"];
 			[mtlComputeEnc setComputePipelineState: cmdEncoder->getCommandEncodingPool()->getCmdCopyBufferBytesMTLComputePipelineState()];
 			[mtlComputeEnc setBuffer:srcMTLBuff offset: srcMTLBuffOffset atIndex: 0];
@@ -1142,7 +1159,7 @@ void MVKCmdBufferImageCopy<N>::encode(MVKCommandEncoder* cmdEncoder) {
             info.offset = cpyRgn.imageOffset;
             info.extent = cpyRgn.imageExtent;
             bool needsTempBuff = mipLevel != 0;
-            id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(cmdUse);
+			id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(cmdUse, false);  // Compute state will be marked dirty on next compute encoder after Blit encoder below.
             id<MTLComputePipelineState> mtlComputeState = cmdEncoder->getCommandEncodingPool()->getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(needsTempBuff);
             [mtlComputeEnc pushDebugGroup: @"vkCmdCopyBufferToImage"];
             [mtlComputeEnc setComputePipelineState: mtlComputeState];
@@ -1260,8 +1277,6 @@ VkResult MVKCmdClearAttachments<N>::setContent(MVKCommandBuffer* cmdBuff,
 	_commandUse = cmdUse;
 	_mtlDepthVal = 0.0;
     _mtlStencilValue = 0;
-    _isClearingDepth = false;
-    _isClearingStencil = false;
 	MVKPixelFormats* pixFmts = cmdBuff->getPixelFormats();
 
     // For each attachment to be cleared, mark it so in the render pipeline state
@@ -1279,14 +1294,12 @@ VkResult MVKCmdClearAttachments<N>::setContent(MVKCommandBuffer* cmdBuff,
         }
 
         if (mvkIsAnyFlagEnabled(clrAtt.aspectMask, VK_IMAGE_ASPECT_DEPTH_BIT)) {
-            _isClearingDepth = true;
-            _rpsKey.enableAttachment(kMVKClearAttachmentDepthStencilIndex);
+            _rpsKey.enableAttachment(kMVKClearAttachmentDepthIndex);
             _mtlDepthVal = pixFmts->getMTLClearDepthValue(clrAtt.clearValue);
         }
 
         if (mvkIsAnyFlagEnabled(clrAtt.aspectMask, VK_IMAGE_ASPECT_STENCIL_BIT)) {
-            _isClearingStencil = true;
-            _rpsKey.enableAttachment(kMVKClearAttachmentDepthStencilIndex);
+            _rpsKey.enableAttachment(kMVKClearAttachmentStencilIndex);
             _mtlStencilValue = pixFmts->getMTLClearStencilValue(clrAtt.clearValue);
         }
     }
@@ -1443,31 +1456,24 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		clearColors[caIdx] = { (float)mtlCC.red, (float)mtlCC.green, (float)mtlCC.blue, (float)mtlCC.alpha};
     }
 
-    // The depth value (including vertex position Z value) is held in the last index.
-    clearColors[kMVKClearAttachmentDepthStencilIndex] = { _mtlDepthVal, _mtlDepthVal, _mtlDepthVal, _mtlDepthVal };
+    // The depth value is the vertex position Z value.
+    clearColors[kMVKClearAttachmentDepthIndex] = { _mtlDepthVal, _mtlDepthVal, _mtlDepthVal, _mtlDepthVal };
 
-    VkFormat vkAttFmt = subpass->getDepthStencilFormat();
-	MTLPixelFormat mtlAttFmt = pixFmts->getMTLPixelFormat(vkAttFmt);
-    _rpsKey.attachmentMTLPixelFormats[kMVKClearAttachmentDepthStencilIndex] = mtlAttFmt;
+	_rpsKey.attachmentMTLPixelFormats[kMVKClearAttachmentDepthIndex] = pixFmts->getMTLPixelFormat(subpass->getDepthFormat());
+	if ( !subpass->isDepthAttachmentUsed() ) { _rpsKey.disableAttachment(kMVKClearAttachmentDepthIndex); }
 
-	bool isClearingDepth = _isClearingDepth && pixFmts->isDepthFormat(mtlAttFmt);
-	bool isClearingStencil = _isClearingStencil && pixFmts->isStencilFormat(mtlAttFmt);
-    if (!isClearingDepth && !isClearingStencil) {
-        // If the subpass attachment isn't actually used, don't try to clear it.
-        _rpsKey.disableAttachment(kMVKClearAttachmentDepthStencilIndex);
-    }
+	_rpsKey.attachmentMTLPixelFormats[kMVKClearAttachmentStencilIndex] = pixFmts->getMTLPixelFormat(subpass->getStencilFormat());
+	if ( !subpass->isStencilAttachmentUsed() ) { _rpsKey.disableAttachment(kMVKClearAttachmentStencilIndex); }
 
-	if (!_rpsKey.isAnyAttachmentEnabled()) {
-		// Nothing to do.
-		return;
-	}
+	if ( !_rpsKey.isAnyAttachmentEnabled() ) { return; }
 
     // Render the clear colors to the attachments
 	MVKCommandEncodingPool* cmdEncPool = cmdEncoder->getCommandEncodingPool();
     id<MTLRenderCommandEncoder> mtlRendEnc = cmdEncoder->_mtlRenderEncoder;
     [mtlRendEnc pushDebugGroup: getMTLDebugGroupLabel()];
     [mtlRendEnc setRenderPipelineState: cmdEncPool->getCmdClearMTLRenderPipelineState(_rpsKey)];
-    [mtlRendEnc setDepthStencilState: cmdEncPool->getMTLDepthStencilState(isClearingDepth, isClearingStencil)];
+    [mtlRendEnc setDepthStencilState: cmdEncPool->getMTLDepthStencilState(_rpsKey.isAttachmentUsed(kMVKClearAttachmentDepthIndex),
+																		  _rpsKey.isAttachmentUsed(kMVKClearAttachmentStencilIndex))];
     [mtlRendEnc setStencilReferenceValue: _mtlStencilValue];
     [mtlRendEnc setCullMode: MTLCullModeNone];
     [mtlRendEnc setTriangleFillMode: MTLTriangleFillModeFill];
@@ -1592,7 +1598,7 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
             // Luckily for us, linear images only have one mip and one array layer under Metal.
             assert( !isDS );
             id<MTLComputePipelineState> mtlClearState = cmdEncoder->getCommandEncodingPool()->getCmdClearColorImageMTLComputePipelineState(pixFmts->getFormatType(_image->getVkFormat()));
-            id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseClearColorImage);
+            id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseClearColorImage, true);
             [mtlComputeEnc pushDebugGroup: @"vkCmdClearColorImage"];
             [mtlComputeEnc setComputePipelineState: mtlClearState];
             [mtlComputeEnc setTexture: imgMTLTex atIndex: 0];
@@ -1759,7 +1765,7 @@ void MVKCmdFillBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 	NSUInteger tgWidth = std::min(cps.maxTotalThreadsPerThreadgroup, cmdEncoder->getMTLDevice().maxThreadsPerThreadgroup.width);
 	NSUInteger tgCount = _wordCount / tgWidth;
 
-	id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseFillBuffer);
+	id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseFillBuffer, true);
 	[mtlComputeEnc pushDebugGroup: @"vkCmdFillBuffer"];
 	[mtlComputeEnc setComputePipelineState: cps];
 	[mtlComputeEnc setBytes: &_dataValue length: sizeof(_dataValue) atIndex: 1];

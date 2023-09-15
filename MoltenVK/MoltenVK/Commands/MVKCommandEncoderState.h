@@ -81,6 +81,8 @@ public:
     /**
      * If the content of this instance is dirty, marks this instance as no longer dirty
      * and calls the encodeImpl() function to encode the content onto the Metal encoder.
+	 * Marking dirty is done in advance so that subclass encodeImpl() implementations
+	 * can override to leave this instance in a dirty state.
      * Subclasses must override the encodeImpl() function to do the actual work.
      */
     void encode(uint32_t stage = 0) {
@@ -118,13 +120,14 @@ public:
     MVKPipeline* getPipeline();
 
     /** Constructs this instance for the specified command encoder. */
-    MVKPipelineCommandEncoderState(MVKCommandEncoder* cmdEncoder)
-        : MVKCommandEncoderState(cmdEncoder) {}
+    MVKPipelineCommandEncoderState(MVKCommandEncoder* cmdEncoder, VkPipelineBindPoint bindPoint)
+        : MVKCommandEncoderState(cmdEncoder), _bindPoint(bindPoint) {}
 
 protected:
     void encodeImpl(uint32_t stage) override;
 
     MVKPipeline* _pipeline = nullptr;
+    VkPipelineBindPoint _bindPoint;
 };
 
 
@@ -152,7 +155,7 @@ public:
 protected:
     void encodeImpl(uint32_t stage) override;
 
-    MVKSmallVector<VkViewport, kMVKCachedViewportScissorCount> _viewports, _dynamicViewports;
+    MVKSmallVector<VkViewport, kMVKMaxViewportScissorCount> _viewports, _dynamicViewports;
 };
 
 
@@ -180,7 +183,7 @@ public:
 protected:
     void encodeImpl(uint32_t stage) override;
 
-    MVKSmallVector<VkRect2D, kMVKCachedViewportScissorCount> _scissors, _dynamicScissors;
+    MVKSmallVector<VkRect2D, kMVKMaxViewportScissorCount> _scissors, _dynamicScissors;
 };
 
 
@@ -355,11 +358,11 @@ public:
 						   MVKArrayRef<uint32_t> dynamicOffsets,
 						   uint32_t& dynamicOffsetIndex);
 
-	/** Encodes the Metal resource to the Metal command encoder. */
-	virtual void encodeArgumentBufferResourceUsage(MVKShaderStage stage,
-												   id<MTLResource> mtlResource,
-												   MTLResourceUsage mtlUsage,
-												   MTLRenderStages mtlStages) = 0;
+	/** Encodes the indirect use of the Metal resource to the Metal command encoder. */
+	virtual void encodeResourceUsage(MVKShaderStage stage,
+									 id<MTLResource> mtlResource,
+									 MTLResourceUsage mtlUsage,
+									 MTLRenderStages mtlStages) = 0;
 
 	void markDirty() override;
 
@@ -430,7 +433,8 @@ protected:
 
     // Template function that executes a lambda expression on each dirty element of
     // a vector of bindings, and marks the bindings and the vector as no longer dirty.
-	// Clear isDirty flag before operation to allow operation to possibly override.
+	// Clear binding isDirty flag before operation to allow operation to possibly override.
+	// If it does override, leave both the bindings and this instance as dirty.
 	template<class T, class V>
 	void encodeBinding(V& bindings,
 					   bool& bindingsDirtyFlag,
@@ -441,7 +445,7 @@ protected:
 				if (b.isDirty) {
 					b.isDirty = false;
 					mtlOperation(_cmdEncoder, b);
-					if (b.isDirty) { bindingsDirtyFlag = true; }
+					if (b.isDirty) { _isDirty = bindingsDirtyFlag = true; }
 				}
 			}
 		}
@@ -548,10 +552,10 @@ public:
                         std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
                         std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler);
 
-	void encodeArgumentBufferResourceUsage(MVKShaderStage stage,
-										   id<MTLResource> mtlResource,
-										   MTLResourceUsage mtlUsage,
-										   MTLRenderStages mtlStages) override;
+	void encodeResourceUsage(MVKShaderStage stage,
+							 id<MTLResource> mtlResource,
+							 MTLResourceUsage mtlUsage,
+							 MTLRenderStages mtlStages) override;
 
 	/** Offset all buffers for vertex attribute bindings with zero divisors by the given number of strides. */
 	void offsetZeroDivisorVertexBuffers(MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);
@@ -565,7 +569,10 @@ public:
 	/** Marks any overridden buffer indexes as dirty. */
 	void markOverriddenBufferIndexesDirty();
 
+	void endMetalRenderPass() override;
+
 	void markDirty() override;
+	void markDirty(MVKShaderStage stage);
 
 #pragma mark Construction
     
@@ -577,6 +584,7 @@ protected:
 	void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) override;
 
     ResourceBindings<8> _shaderStageResourceBindings[kMVKShaderStageFragment + 1];
+	std::unordered_map<id<MTLResource>, MTLRenderStages> _renderUsageStages;
 };
 
 
@@ -609,10 +617,10 @@ public:
 	/** Sets the current dynamic offset buffer state. */
 	void bindDynamicOffsetBuffer(const MVKShaderImplicitRezBinding& binding, bool needDynamicOffsetBuffer);
 
-	void encodeArgumentBufferResourceUsage(MVKShaderStage stage,
-										   id<MTLResource> mtlResource,
-										   MTLResourceUsage mtlUsage,
-										   MTLRenderStages mtlStages) override;
+	void encodeResourceUsage(MVKShaderStage stage,
+							 id<MTLResource> mtlResource,
+							 MTLResourceUsage mtlUsage,
+							 MTLRenderStages mtlStages) override;
 
 	/**
 	 * Marks the buffer binding using the index as having been overridden,

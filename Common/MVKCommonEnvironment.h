@@ -62,6 +62,14 @@ extern "C" {
 #	define MVK_TVOS					TARGET_OS_TV
 #endif
 
+/** Building for visionOS. */
+#ifndef TARGET_OS_XR
+#	define TARGET_OS_XR				0		// Older SDK's don't define TARGET_OS_XR
+#endif
+#ifndef MVK_VISIONOS
+#	define MVK_VISIONOS				TARGET_OS_XR
+#endif
+
 /** Building for iOS or tvOS. */
 #ifndef MVK_IOS_OR_TVOS
 #	define MVK_IOS_OR_TVOS			(MVK_IOS || MVK_TVOS)
@@ -70,6 +78,11 @@ extern "C" {
 /** Building for macOS or iOS. */
 #ifndef MVK_MACOS_OR_IOS
 #	define MVK_MACOS_OR_IOS			(MVK_MACOS || MVK_IOS)
+#endif
+
+/** Building for macOS, iOS or visionOS. */
+#ifndef MVK_MACOS_OR_IOS_OR_VISIONOS
+#	define MVK_MACOS_OR_IOS_OR_VISIONOS	(MVK_MACOS || MVK_IOS | MVK_VISIONOS)
 #endif
 
 /** Building for a Simulator. */
@@ -87,18 +100,26 @@ extern "C" {
 #	define MVK_MACOS_APPLE_SILICON	(MVK_MACOS && MVK_APPLE_SILICON)
 #endif
 
-/** Building with Xcode versions. */
+/** Building with Xcode versions. iOS version also covers tvOS. */
+#ifndef MVK_XCODE_15
+#   define MVK_XCODE_15             ((__MAC_OS_X_VERSION_MAX_ALLOWED >= 140000) || \
+                                    (__IPHONE_OS_VERSION_MAX_ALLOWED >= 170000))
+#endif
+#ifndef MVK_XCODE_14_3
+#	define MVK_XCODE_14_3			((__MAC_OS_X_VERSION_MAX_ALLOWED >= 130300) || \
+									(__IPHONE_OS_VERSION_MAX_ALLOWED >= 160400))
+#endif
 #ifndef MVK_XCODE_14
 #	define MVK_XCODE_14				((__MAC_OS_X_VERSION_MAX_ALLOWED >= 130000) || \
-									(__IPHONE_OS_VERSION_MAX_ALLOWED >= 160000))   // Also covers tvOS
+									(__IPHONE_OS_VERSION_MAX_ALLOWED >= 160000))
 #endif
 #ifndef MVK_XCODE_13
 #	define MVK_XCODE_13 			((__MAC_OS_X_VERSION_MAX_ALLOWED >= 120000) || \
-									 (__IPHONE_OS_VERSION_MAX_ALLOWED >= 150000))	// Also covers tvOS
+									 (__IPHONE_OS_VERSION_MAX_ALLOWED >= 150000))
 #endif
 #ifndef MVK_XCODE_12
-#	define MVK_XCODE_12 			((__MAC_OS_X_VERSION_MAX_ALLOWED >= 101600) || \
-									 (__IPHONE_OS_VERSION_MAX_ALLOWED >= 140000))	// Also covers tvOS
+#	define MVK_XCODE_12 			((__MAC_OS_X_VERSION_MAX_ALLOWED >= 110000) || \
+									 (__IPHONE_OS_VERSION_MAX_ALLOWED >= 140000))
 #endif
 
 /** Directive to identify public symbols. */

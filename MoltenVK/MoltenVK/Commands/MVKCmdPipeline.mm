@@ -23,7 +23,6 @@
 #include "MVKBuffer.h"
 #include "MVKPipeline.h"
 #include "MVKFoundation.h"
-#include "MVKEnvironment.h"
 #include "mvk_datatypes.hpp"
 
 
@@ -313,6 +312,7 @@ void MVKCmdPushConstants<N>::encode(MVKCommandEncoder* cmdEncoder) {
         VK_SHADER_STAGE_VERTEX_BIT,
         VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
         VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+        VK_SHADER_STAGE_GEOMETRY_BIT,
         VK_SHADER_STAGE_FRAGMENT_BIT,
         VK_SHADER_STAGE_COMPUTE_BIT
     };
@@ -394,7 +394,7 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdPushDescriptorSet::encode(MVKCommandEncoder* cmdEncoder) {
-	_pipelineLayout->pushDescriptorSet(cmdEncoder, _descriptorWrites.contents(), _set);
+	_pipelineLayout->pushDescriptorSet(cmdEncoder, _pipelineBindPoint, _descriptorWrites.contents(), _set);
 }
 
 MVKCmdPushDescriptorSet::~MVKCmdPushDescriptorSet() {

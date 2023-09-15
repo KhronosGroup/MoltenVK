@@ -20,7 +20,6 @@
 #include "MVKBuffer.h"
 #include "MVKImage.h"
 #include "MVKQueue.h"
-#include "MVKEnvironment.h"
 #include "mvk_datatypes.hpp"
 #include "MVKFoundation.h"
 #include <cstdlib>
@@ -160,7 +159,7 @@ VkResult MVKDeviceMemory::addImageMemoryBinding(MVKImageMemoryBinding* mvkImg) {
 	// If a dedicated alloc, ensure this image is the one and only image
 	// I am dedicated to. If my image is aliasable, though, allow other aliasable
 	// images to bind to me.
-	if (_isDedicated && (_imageMemoryBindings.empty() || !(contains(_imageMemoryBindings, mvkImg) || (_imageMemoryBindings[0]->_image->getIsAliasable() && mvkImg->_image->getIsAliasable()))) ) {
+	if (_isDedicated && (_imageMemoryBindings.empty() || !(mvkContains(_imageMemoryBindings, mvkImg) || (_imageMemoryBindings[0]->_image->getIsAliasable() && mvkImg->_image->getIsAliasable()))) ) {
 		return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind VkImage %p to a VkDeviceMemory dedicated to resource %p. A dedicated allocation may only be used with the resource it was dedicated to.", mvkImg, getDedicatedResource() );
 	}
 
@@ -180,7 +179,7 @@ bool MVKDeviceMemory::ensureMTLHeap() {
 
 	if (_mtlHeap) { return true; }
 
-	// Can't create a MTLHeap on a imported memory
+	// Can't create a MTLHeap on imported memory
 	if (_isHostMemImported) { return true; }
 
 	// Don't bother if we don't have placement heaps.
@@ -284,6 +283,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 								 const VkMemoryAllocateInfo* pAllocateInfo,
 								 const VkAllocationCallbacks* pAllocator) : MVKVulkanAPIDeviceObject(device) {
 	// Set Metal memory parameters
+	_vkMemAllocFlags = 0;
 	_vkMemPropFlags = _device->_pMemoryProperties->memoryTypes[pAllocateInfo->memoryTypeIndex].propertyFlags;
 	_mtlStorageMode = mvkMTLStorageModeFromVkMemoryPropertyFlags(_vkMemPropFlags);
 	_mtlCPUCacheMode = mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(_vkMemPropFlags);

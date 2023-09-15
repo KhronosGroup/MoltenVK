@@ -175,7 +175,9 @@ void MVKSwapchain::markFrameInterval() {
 				   perfLogCntLimit,
 				   (1000.0 / _device->_performanceStatistics.queue.frameInterval.averageDuration),
 				   mvkGetElapsedMilliseconds() / 1000.0);
-		_device->logPerformanceSummary();
+		if (mvkConfig().activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT) {
+			_device->logPerformanceSummary();
+		}
 	}
 }
 
@@ -503,14 +505,16 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRefreshCycleDuration) {
 	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 
-#if MVK_IOS_OR_TVOS || MVK_MACCAT
+#if MVK_VISIONOS
+    // TODO: See if this can be obtained from OS instead
+    NSInteger framesPerSecond = 90;
+#elif MVK_IOS_OR_TVOS || MVK_MACCAT
 	NSInteger framesPerSecond = 60;
 	UIScreen* screen = _mtlLayer.screenMVK;
 	if ([screen respondsToSelector: @selector(maximumFramesPerSecond)]) {
 		framesPerSecond = screen.maximumFramesPerSecond;
 	}
-#endif
-#if MVK_MACOS && !MVK_MACCAT
+#elif MVK_MACOS && !MVK_MACCAT
 	NSScreen* screen = _mtlLayer.screenMVK;
 	CGDirectDisplayID displayId = [[[screen deviceDescription] objectForKey:@"NSScreenNumber"] unsignedIntValue];
 	CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayId);
@@ -557,7 +561,7 @@ VkResult MVKSwapchain::getPastPresentationTiming(uint32_t *pCount, VkPastPresent
 	return res;
 }
 
-void MVKSwapchain::recordPresentTime(MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime) {
+void MVKSwapchain::recordPresentTime(const MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime) {
 	std::lock_guard<std::mutex> lock(_presentHistoryLock);
 	if (_presentHistoryCount < kMaxPresentationHistory) {
 		_presentHistoryCount++;
@@ -565,8 +569,11 @@ void MVKSwapchain::recordPresentTime(MVKImagePresentInfo& presentInfo, uint64_t 
 		_presentHistoryHeadIndex = (_presentHistoryHeadIndex + 1) % kMaxPresentationHistory;
 	}
 
-	// If actual time not supplied, use desired time instead
+	// If actual present time is not available, use desired time instead, and if that
+	// hasn't been set, use the current time, which should be reasonably accurate (sub-ms),
+	// since we are here as part of the addPresentedHandler: callback.
 	if (actualPresentTime == 0) { actualPresentTime = presentInfo.desiredPresentTime; }
+	if (actualPresentTime == 0) { actualPresentTime = CACurrentMediaTime() * 1.0e9; }
 
 	_presentTimingHistory[_presentHistoryIndex].presentID = presentInfo.presentID;
 	_presentTimingHistory[_presentHistoryIndex].desiredPresentTime = presentInfo.desiredPresentTime;
@@ -575,6 +582,30 @@ void MVKSwapchain::recordPresentTime(MVKImagePresentInfo& presentInfo, uint64_t 
 	_presentTimingHistory[_presentHistoryIndex].earliestPresentTime = actualPresentTime;
 	_presentTimingHistory[_presentHistoryIndex].presentMargin = 0;
 	_presentHistoryIndex = (_presentHistoryIndex + 1) % kMaxPresentationHistory;
+}
+
+void MVKSwapchain::setLayerNeedsDisplay(const VkPresentRegionKHR* pRegion) {
+	if (!pRegion || pRegion->rectangleCount == 0) {
+		[_mtlLayer setNeedsDisplay];
+		return;
+	}
+
+	for (uint32_t i = 0; i < pRegion->rectangleCount; ++i) {
+		CGRect cgRect = mvkCGRectFromVkRectLayerKHR(pRegion->pRectangles[i]);
+#if MVK_MACOS
+		// VK_KHR_incremental_present specifies an upper-left origin, but macOS by default
+		// uses a lower-left origin.
+		cgRect.origin.y = _mtlLayer.bounds.size.height - cgRect.origin.y;
+#endif
+		// We were given rectangles in pixels, but -[CALayer setNeedsDisplayInRect:] wants them
+		// in points, which is pixels / contentsScale.
+		CGFloat scaleFactor = _mtlLayer.contentsScale;
+		cgRect.origin.x /= scaleFactor;
+		cgRect.origin.y /= scaleFactor;
+		cgRect.size.width /= scaleFactor;
+		cgRect.size.height /= scaleFactor;
+		[_mtlLayer setNeedsDisplayInRect:cgRect];
+	}
 }
 
 // A retention loop exists between the swapchain and its images. The swapchain images

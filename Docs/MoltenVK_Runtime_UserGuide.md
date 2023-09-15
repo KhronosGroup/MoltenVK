@@ -25,13 +25,14 @@ Table of Contents
 	- [Install *MoltenVK* replacing the Vulkan SDK `libMoltenVK.dylib`](#install_vksdk)
 	- [Build and Runtime Requirements](#requirements)
 - [Interacting with the **MoltenVK** Runtime](#interaction)
-	- [MoltenVK `VK_MVK_moltenvk` Extension](#moltenvk_extension)
+	- [MoltenVK Header Files](#moltenvk_headers)
 	- [Configuring MoltenVK](#moltenvk_config)
 - [*Metal Shading Language* Shaders](#shaders)
 	- [Troubleshooting Shader Conversion](#spv_vs_msl)
 - [Performance Considerations](#performance)
 	- [Shader Loading Time](#shader_load_time)
 	- [Swapchains](#swapchains)
+	- [Timestamping](#timestamping)
 	- [Xcode Configuration](#xcode_config)
 	- [Metal System Trace Tool](#trace_tool)
 - [Known **MoltenVK** Limitations](#limitations)
@@ -327,6 +328,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_get_surface_capabilities2`
 - `VK_KHR_imageless_framebuffer`
 - `VK_KHR_image_format_list`
+- `VK_KHR_incremental_present`
 - `VK_KHR_maintenance1`
 - `VK_KHR_maintenance2`
 - `VK_KHR_maintenance3`
@@ -341,6 +343,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_shader_draw_parameters`
 - `VK_KHR_shader_float_controls`
 - `VK_KHR_shader_float16_int8`
+- `VK_KHR_shader_non_semantic_info`
 - `VK_KHR_shader_subgroup_extended_types` *(requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS)*
 - `VK_KHR_spirv_1_4`
 - `VK_KHR_storage_buffer_storage_class`
@@ -350,7 +353,9 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_timeline_semaphore`
 - `VK_KHR_uniform_buffer_standard_layout`
 - `VK_KHR_variable_pointers`
+- `VK_EXT_4444_formats` *(requires 16-bit formats and either native texture swizzling or manual swizzling to be enabled)*
 - `VK_EXT_buffer_device_address` *(requires GPU Tier 2 argument buffers support)*
+- `VK_EXT_calibrated_timestamps` *(requires Metal 2.2)*
 - `VK_EXT_debug_marker`
 - `VK_EXT_debug_report`
 - `VK_EXT_debug_utils`
@@ -366,6 +371,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_metal_objects`
 - `VK_EXT_metal_surface`
 - `VK_EXT_pipeline_creation_cache_control`
+- `VK_EXT_pipeline_creation_feedback`
 - `VK_EXT_post_depth_coverage` *(iOS and macOS, requires family 4 (A11) or better Apple GPU)*
 - `VK_EXT_private_data `
 - `VK_EXT_robustness2`
@@ -373,7 +379,10 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_scalar_block_layout`
 - `VK_EXT_separate_stencil_usage`
 - `VK_EXT_shader_atomic_float` *(requires Metal 3.0)*
+- `VK_EXT_shader_demote_to_helper_invocation` *(requires Metal Shading Language 2.3)*
 - `VK_EXT_shader_stencil_export` *(requires Mac GPU family 2 or iOS GPU family 5)*
+- `VK_EXT_shader_subgroup_ballot` *(requires Mac GPU family 2 or Apple GPU family 4)*
+- `VK_EXT_shader_subgroup_vote` *(requires Mac GPU family 2 or Apple GPU family 4)*
 - `VK_EXT_shader_viewport_index_layer`
 - `VK_EXT_subgroup_size_control` *(requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS)*
 - `VK_EXT_surface_maintenance1`
@@ -384,7 +393,6 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_texture_compression_astc_hdr` *(iOS and macOS, requires family 6 (A13) or better Apple GPU)*
 - `VK_MVK_ios_surface` *(iOS) (Obsolete. Use `VK_EXT_metal_surface` instead.)*
 - `VK_MVK_macos_surface` *(macOS) (Obsolete. Use `VK_EXT_metal_surface` instead.)*
-- `VK_MVK_moltenvk`
 - `VK_AMD_gpu_shader_half_float`
 - `VK_AMD_negative_viewport_height`
 - `VK_AMD_shader_image_load_store_lod` *(requires Apple GPU)*
@@ -425,14 +433,12 @@ extension in the *Vulkan* specification for more information about the use of th
 `VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR` flag.
 
 
+<a name="moltenvk_headers"></a>
+### MoltenVK Header Files
 
-<a name="moltenvk_extension"></a>
-### MoltenVK `VK_MVK_moltenvk` Extension
-
-The `VK_MVK_moltenvk` *Vulkan* extension provides functionality beyond standard *Vulkan* functionality, 
-to support configuration options and behaviour that is specific to the **MoltenVK** implementation of *Vulkan* 
-functionality. You can access this functionality by including the `vk_mvk_moltenvk.h` header file in your code. 
-The `vk_mvk_moltenvk.h` file also includes the API documentation for this `VK_MVK_moltenvk` extension.
+**MoltenVK** provides additional functionality beyond standard *Vulkan* functionality, 
+to support configuration options and query behaviour that is specific to the **MoltenVK** 
+implementation of *Vulkan* functionality.
 
 The following API header files are included in the **MoltenVK** package, each of which 
 can be included in your application source code as follows:
@@ -441,37 +447,33 @@ can be included in your application source code as follows:
 
 where `HEADER_FILE` is one of the following:
 
-- `vk_mvk_moltenvk.h` - Contains declarations and documentation for the functions, structures, 
-  and enumerations that define the behaviour of the `VK_MVK_moltenvk` *Vulkan* extension.
-
-- `mvk_vulkan.h` - This is a convenience header file that loads the `vulkan.h` header file
-   with the appropriate **MoltenVK** *Vulkan* platform surface extension automatically 
-   enabled for *macOS*, *iOS*, or *tvOS*. Use this header file in place of the `vulkan.h` 
-   header file, where access to a **MoltenVK** platform surface extension is required.
-   
-   The `mvk_vulkan.h` header file automatically enables the `VK_USE_PLATFORM_METAL_EXT` 
-   build setting and `VK_EXT_metal_surface` *Vulkan* extension.
+- `mvk_vulkan.h` - This is a convenience header file that loads the `<vulkan/vulkan.h>` header file 
+  with platform settings to enable the appropriate platform-surface and portability extensions.
   
-- `mvk_datatypes.h` - Contains helpful functions for converting between *Vulkan* and *Metal* data types.
-  You do not need to use this functionality to use **MoltenVK**, as **MoltenVK** converts between 
-  *Vulkan* and *Metal* datatypes automatically (using the functions declared in this header). 
-  These functions are exposed in this header for your own purposes such as interacting with *Metal* 
-  directly, or simply logging data values.
-
->***Note:*** Except for `vkGetMoltenVKConfigurationMVK()` and `vkSetMoltenVKConfigurationMVK()`, 
- the functions in `vk_mvk_moltenvk.h` are not supported by the *Vulkan SDK Loader and Layers*
- framework. The opaque Vulkan objects used by the functions in `vk_mvk_moltenvk.h` (`VkPhysicalDevice`, 
- `VkShaderModule`, `VKImage`, ...), must have been retrieved directly from **MoltenVK**, and not through 
- the *Vulkan SDK Loader and Layers* framework. The *Vulkan SDK Loader and Layers* framework often changes 
- these opaque objects, and passing them from a higher layer directly to **MoltenVK** will result in 
- undefined behaviour.
+- `mvk_config.h` - Contains public functions and structures to allow you to configure and 
+  optimize **MoltenVK** for your particular application runtime requirements. For more 
+  information, see the [Configuring MoltenVK](#moltenvk_config) section just below.
+  
+- `mvk_private_api.h` - Contains functions and structures to allow you to query **MoltenVK** 
+  performance activity, and Metal capabilities on the platform. _**NOTE:**_ THESE 
+  FUNCTIONS ARE NOT SUPPORTED BY THE *Vulkan Loader and Layers*, AND CAN ONLY BE USED 
+  WHEN **MoltenVK** IS LINKED DIRECTLY TO YOUR APPLICATION.
+  
+- `mvk_datatypes.h` - Contains helpful functions for converting between *Vulkan* and *Metal* 
+  data types. You do not need to use this functionality to use **MoltenVK**, as **MoltenVK** 
+  converts between *Vulkan* and *Metal* datatypes automatically (using the functions declared 
+  in this header). These functions are exposed in this header as a convienience for your own 
+  purposes such as interacting with *Metal* directly, or simply logging data values.
 
 
 <a name="moltenvk_config"></a>
 ### Configuring MoltenVK
 
-The `VK_MVK_moltenvk` *Vulkan* extension provides the ability to configure and optimize 
-**MoltenVK** for your particular application runtime requirements.
+The `mvk_config.h` header file provides the ability to configure and optimize **MoltenVK** 
+for your particular application runtime requirements. This can be helpful in situtations 
+where *Metal* behavior is different than *Vulkan* behavior, and the results or performance 
+you receive can depend on how **MoltenVK** works around those differences, which, in turn, may 
+depend on how you are using *Vulkan*. Different apps might benefit differently in this handling. 
 
 There are three mechanisms for setting the values of the **MoltenVK** configuration parameters:
 
@@ -488,9 +490,9 @@ by a corresponding environment variable, or if the environment variable is not s
 by a corresponding build setting at the time **MoltenVK** is compiled. The environment 
 variable and build setting for each configuration parameter share the same name.
 
-See the description of the `MVKConfiguration` structure parameters and corresponding environment 
-variables in the `vk_mvk_moltenvk.h` file for more info about configuring and optimizing 
-**MoltenVK** at runtime or build time.
+See the description of the `MVKConfiguration` structure parameters and corresponding 
+environment variables in the `mvk_config.h` file for more info about configuring and 
+optimizing **MoltenVK** at runtime or build time.
 
 
 <a name="shaders"></a>
@@ -580,6 +582,20 @@ image onto a separate composition surface before displaying it. Although *Direct
 performance throughput, it also means that *Metal* may hold onto each swapchain image a little longer 
 than when using an internal compositor, which increases the risk that a swapchain image will not be a
 vailable when you request it, resulting in frame delays and visual stuttering.
+
+
+<a name="timestamping"></a>
+### Timestamping
+
+On non-Apple Silicon devices (older Mac devices), the GPU can switch power and performance 
+states as required by usage. This affects the GPU timestamps retrievable through the Vulkan 
+API. As a result, the value of `VkPhysicalDeviceLimits::timestampPeriod` can vary over time. 
+Consider calling `vkGetPhysicalDeviceProperties()`, when needed, and retrieve the current
+value of `VkPhysicalDeviceLimits::timestampPeriod`, to help you calibrate recent GPU 
+timestamps queried through the Vulkan API.
+
+This is not needed on Apple Silicon devices, where all GPU timestamps are always returned 
+as nanoseconds, regardless of variations in power and performance states as the app runs.
 
 
 <a name="xcode_config"></a>

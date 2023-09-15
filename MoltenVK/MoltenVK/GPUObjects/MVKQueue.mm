@@ -524,14 +524,7 @@ MVKQueueCommandBufferSubmission::~MVKQueueCommandBufferSubmission() {
 
 template <size_t N>
 void MVKQueueFullCommandBufferSubmission<N>::submitCommandBuffers() {
-	_queue->getPhysicalDevice()->startTimestampCorrelation(_cpuStart, _gpuStart);
 	for (auto& cb : _cmdBuffers) { cb->submit(this, &_encodingContext); }
-}
-
-template <size_t N>
-void MVKQueueFullCommandBufferSubmission<N>::finish() {
-	_queue->getPhysicalDevice()->updateTimestampPeriod(_cpuStart, _gpuStart);
-	MVKQueueCommandBufferSubmission::finish();
 }
 
 
@@ -583,8 +576,12 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 	const VkPresentTimesInfoGOOGLE* pPresentTimesInfo = nullptr;
 	const VkSwapchainPresentFenceInfoEXT* pPresentFenceInfo = nullptr;
 	const VkSwapchainPresentModeInfoEXT* pPresentModeInfo = nullptr;
+	const VkPresentRegionsKHR* pPresentRegions = nullptr;
 	for (auto* next = (const VkBaseInStructure*)pPresentInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_PRESENT_REGIONS_KHR:
+				pPresentRegions = (const VkPresentRegionsKHR*) next;
+				break;
 			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT:
 				pPresentFenceInfo = (const VkSwapchainPresentFenceInfoEXT*) next;
 				break;
@@ -616,12 +613,16 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 		pFences = pPresentFenceInfo->pFences;
 		MVKAssert(pPresentFenceInfo->swapchainCount == scCnt, "VkSwapchainPresentFenceInfoEXT swapchainCount must match VkPresentInfo swapchainCount.");
 	}
+	const VkPresentRegionKHR* pRegions = nullptr;
+	if (pPresentRegions) {
+		pRegions = pPresentRegions->pRegions;
+	}
 
 	VkResult* pSCRslts = pPresentInfo->pResults;
 	_presentInfo.reserve(scCnt);
 	for (uint32_t scIdx = 0; scIdx < scCnt; scIdx++) {
 		MVKSwapchain* mvkSC = (MVKSwapchain*)pPresentInfo->pSwapchains[scIdx];
-		MVKImagePresentInfo presentInfo = {};
+		MVKImagePresentInfo presentInfo = {};	// Start with everything zeroed
 		presentInfo.presentableImage = mvkSC->getPresentableImage(pPresentInfo->pImageIndices[scIdx]);
 		presentInfo.presentMode = pPresentModes ? pPresentModes[scIdx] : VK_PRESENT_MODE_MAX_ENUM_KHR;
 		presentInfo.fence = pFences ? (MVKFence*)pFences[scIdx] : nullptr;
@@ -629,9 +630,8 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 			presentInfo.hasPresentTime = true;
 			presentInfo.presentID = pPresentTimes[scIdx].presentID;
 			presentInfo.desiredPresentTime = pPresentTimes[scIdx].desiredPresentTime;
-		} else {
-			presentInfo.hasPresentTime = false;
 		}
+		mvkSC->setLayerNeedsDisplay(pRegions ? &pRegions[scIdx] : nullptr);
 		_presentInfo.push_back(presentInfo);
 		VkResult scRslt = mvkSC->getSurfaceStatus();
 		if (pSCRslts) { pSCRslts[scIdx] = scRslt; }

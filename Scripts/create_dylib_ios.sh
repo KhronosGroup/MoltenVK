@@ -7,7 +7,6 @@ if [ "${IS_MACCATALYST}" == "YES" ]; then
 	exit 0
 fi
 
-export MVK_OS_CLANG="ios"
 export MVK_UX_FWK="UIKit"
 export MVK_MIN_OS_VERSION=${IPHONEOS_DEPLOYMENT_TARGET}
 export MVK_IOSURFACE_FWK="-framework IOSurface"

@@ -109,24 +109,26 @@ using namespace std;
 #endif
 
 #if MVK_IOS_OR_TVOS
-#   define MTLPixelFormatDepth24Unorm_Stencil8      MTLPixelFormatInvalid
-#   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
-#   define MTLPixelFormatBC1_RGBA                   MTLPixelFormatInvalid
-#   define MTLPixelFormatBC1_RGBA_sRGB              MTLPixelFormatInvalid
-#   define MTLPixelFormatBC2_RGBA                   MTLPixelFormatInvalid
-#   define MTLPixelFormatBC2_RGBA_sRGB              MTLPixelFormatInvalid
-#   define MTLPixelFormatBC3_RGBA                   MTLPixelFormatInvalid
-#   define MTLPixelFormatBC3_RGBA_sRGB              MTLPixelFormatInvalid
-#   define MTLPixelFormatBC4_RUnorm                 MTLPixelFormatInvalid
-#   define MTLPixelFormatBC4_RSnorm                 MTLPixelFormatInvalid
-#   define MTLPixelFormatBC5_RGUnorm                MTLPixelFormatInvalid
-#   define MTLPixelFormatBC5_RGSnorm                MTLPixelFormatInvalid
-#   define MTLPixelFormatBC6H_RGBUfloat             MTLPixelFormatInvalid
-#   define MTLPixelFormatBC6H_RGBFloat              MTLPixelFormatInvalid
-#   define MTLPixelFormatBC7_RGBAUnorm              MTLPixelFormatInvalid
-#   define MTLPixelFormatBC7_RGBAUnorm_sRGB         MTLPixelFormatInvalid
+#	if !MVK_XCODE_14_3   // iOS/tvOS 16.4
+#       define MTLPixelFormatBC1_RGBA               MTLPixelFormatInvalid
+#       define MTLPixelFormatBC1_RGBA_sRGB          MTLPixelFormatInvalid
+#       define MTLPixelFormatBC2_RGBA               MTLPixelFormatInvalid
+#       define MTLPixelFormatBC2_RGBA_sRGB          MTLPixelFormatInvalid
+#       define MTLPixelFormatBC3_RGBA               MTLPixelFormatInvalid
+#       define MTLPixelFormatBC3_RGBA_sRGB          MTLPixelFormatInvalid
+#       define MTLPixelFormatBC4_RUnorm             MTLPixelFormatInvalid
+#       define MTLPixelFormatBC4_RSnorm             MTLPixelFormatInvalid
+#       define MTLPixelFormatBC5_RGUnorm            MTLPixelFormatInvalid
+#       define MTLPixelFormatBC5_RGSnorm            MTLPixelFormatInvalid
+#       define MTLPixelFormatBC6H_RGBUfloat         MTLPixelFormatInvalid
+#       define MTLPixelFormatBC6H_RGBFloat          MTLPixelFormatInvalid
+#       define MTLPixelFormatBC7_RGBAUnorm          MTLPixelFormatInvalid
+#       define MTLPixelFormatBC7_RGBAUnorm_sRGB     MTLPixelFormatInvalid
+#   endif
 
 #   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatDepth32Float_Stencil8
+#   define MTLPixelFormatDepth24Unorm_Stencil8      MTLPixelFormatInvalid
+#   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
 #endif
 
 #if MVK_TVOS
@@ -375,6 +377,44 @@ size_t MVKPixelFormats::getBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesP
     return mvkCeilingDivide(texelRowsPerLayer, getVkFormatDesc(mtlFormat).blockTexelSize.height) * bytesPerRow;
 }
 
+bool MVKPixelFormats::needsSwizzle(VkFormat vkFormat) {
+    return getVkFormatDesc(vkFormat).needsSwizzle();
+}
+
+VkComponentMapping MVKPixelFormats::getVkComponentMapping(VkFormat vkFormat) {
+    return getVkFormatDesc(vkFormat).componentMapping;
+}
+
+VkComponentMapping MVKPixelFormats::getInverseComponentMapping(VkFormat vkFormat) {
+#define INVERT_SWIZZLE(x, X, Y) \
+			case VK_COMPONENT_SWIZZLE_##X: \
+				inverse.x = VK_COMPONENT_SWIZZLE_##Y; \
+				break
+#define INVERT_MAPPING(y, Y) \
+		switch (mapping.y) { \
+			case VK_COMPONENT_SWIZZLE_IDENTITY: \
+				inverse.y = VK_COMPONENT_SWIZZLE_IDENTITY; \
+				break; \
+			INVERT_SWIZZLE(r, R, Y); \
+			INVERT_SWIZZLE(g, G, Y); \
+			INVERT_SWIZZLE(b, B, Y); \
+			INVERT_SWIZZLE(a, A, Y); \
+			default: break; \
+		}
+	VkComponentMapping mapping = getVkComponentMapping(vkFormat), inverse;
+	INVERT_MAPPING(r, R)
+	INVERT_MAPPING(g, G)
+	INVERT_MAPPING(b, B)
+	INVERT_MAPPING(a, A)
+	return inverse;
+#undef INVERT_MAPPING
+#undef INVERT_SWIZZLE
+}
+
+MTLTextureSwizzleChannels MVKPixelFormats::getMTLTextureSwizzleChannels(VkFormat vkFormat) {
+	return mvkMTLTextureSwizzleChannelsFromVkComponentMapping(getVkComponentMapping(vkFormat));
+}
+
 VkFormatProperties& MVKPixelFormats::getVkFormatProperties(VkFormat vkFormat) {
 	return getVkFormatDesc(vkFormat).properties;
 }
@@ -462,13 +502,18 @@ MTLVertexFormat MVKPixelFormats::getMTLVertexFormat(VkFormat vkFormat) {
 
 MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFormat vkFormat) {
 	MTLClearColor mtlClr;
+	// The VkComponentMapping (and its MTLTextureSwizzleChannels equivalent) define the *sources*
+	// for the texture color components for reading. Since we're *writing* to the texture,
+	// we need to *invert* the mapping.
+	// n.b. Bad things might happen if the original swizzle isn't one-to-one!
+	VkComponentMapping inverseMap = getInverseComponentMapping(vkFormat);
 	switch (getFormatType(vkFormat)) {
 		case kMVKFormatColorHalf:
-		case kMVKFormatColorFloat:
-			mtlClr.red		= vkClearValue.color.float32[0];
-			mtlClr.green	= vkClearValue.color.float32[1];
-			mtlClr.blue		= vkClearValue.color.float32[2];
-			mtlClr.alpha	= vkClearValue.color.float32[3];
+		case kMVKFormatColorFloat: {
+			mtlClr.red		= mvkVkClearColorFloatValueFromVkComponentSwizzle(vkClearValue.color.float32, 0, inverseMap.r);
+			mtlClr.green	= mvkVkClearColorFloatValueFromVkComponentSwizzle(vkClearValue.color.float32, 1, inverseMap.g);
+			mtlClr.blue		= mvkVkClearColorFloatValueFromVkComponentSwizzle(vkClearValue.color.float32, 2, inverseMap.b);
+			mtlClr.alpha	= mvkVkClearColorFloatValueFromVkComponentSwizzle(vkClearValue.color.float32, 3, inverseMap.a);
 
 			if (_physicalDevice && _physicalDevice->getMetalFeatures()->clearColorFloatRounding == MVK_FLOAT_ROUNDING_DOWN) {
 				// For normalized formats, increment the clear value by half the ULP
@@ -484,6 +529,8 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 #define OFFSET_SNORM(COLOR, BIT_WIDTH)    OFFSET_NORM(-1.0, COLOR, BIT_WIDTH - 1)
 				switch (vkFormat) {
 					case VK_FORMAT_R4G4B4A4_UNORM_PACK16:
+					case VK_FORMAT_A4R4G4B4_UNORM_PACK16:
+					case VK_FORMAT_A4B4G4R4_UNORM_PACK16:
 						OFFSET_UNORM(red, 4)
 						OFFSET_UNORM(green, 4)
 						OFFSET_UNORM(blue, 4)
@@ -569,21 +616,22 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 #undef OFFSET_NORM
 			}
 			break;
+		}
 		case kMVKFormatColorUInt8:
 		case kMVKFormatColorUInt16:
 		case kMVKFormatColorUInt32:
-			mtlClr.red		= vkClearValue.color.uint32[0];
-			mtlClr.green	= vkClearValue.color.uint32[1];
-			mtlClr.blue		= vkClearValue.color.uint32[2];
-			mtlClr.alpha	= vkClearValue.color.uint32[3];
+			mtlClr.red		= mvkVkClearColorUIntValueFromVkComponentSwizzle(vkClearValue.color.uint32, 0, inverseMap.r);
+			mtlClr.green	= mvkVkClearColorUIntValueFromVkComponentSwizzle(vkClearValue.color.uint32, 1, inverseMap.g);
+			mtlClr.blue		= mvkVkClearColorUIntValueFromVkComponentSwizzle(vkClearValue.color.uint32, 2, inverseMap.b);
+			mtlClr.alpha	= mvkVkClearColorUIntValueFromVkComponentSwizzle(vkClearValue.color.uint32, 3, inverseMap.a);
 			break;
 		case kMVKFormatColorInt8:
 		case kMVKFormatColorInt16:
 		case kMVKFormatColorInt32:
-			mtlClr.red		= vkClearValue.color.int32[0];
-			mtlClr.green	= vkClearValue.color.int32[1];
-			mtlClr.blue		= vkClearValue.color.int32[2];
-			mtlClr.alpha	= vkClearValue.color.int32[3];
+			mtlClr.red		= mvkVkClearColorIntValueFromVkComponentSwizzle(vkClearValue.color.int32, 0, inverseMap.r);
+			mtlClr.green	= mvkVkClearColorIntValueFromVkComponentSwizzle(vkClearValue.color.int32, 1, inverseMap.g);
+			mtlClr.blue		= mvkVkClearColorIntValueFromVkComponentSwizzle(vkClearValue.color.int32, 2, inverseMap.b);
+			mtlClr.alpha	= mvkVkClearColorIntValueFromVkComponentSwizzle(vkClearValue.color.int32, 3, inverseMap.a);
 			break;
 		default:
 			mtlClr.red		= 0.0;
@@ -754,16 +802,21 @@ MVKPixelFormats::MVKPixelFormats(MVKPhysicalDevice* physicalDevice) : _physicalD
 	buildVkFormatMaps();
 }
 
-#define addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE)  \
+#define addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A)  \
 	MVKAssert(fmtIdx < _vkFormatCount, "Attempting to describe %d VkFormats, but only have space for %d. Increase the value of _vkFormatCount", fmtIdx + 1, _vkFormatCount);  \
 	_vkFormatDescriptions[fmtIdx++] = { VK_FORMAT_ ##VK_FMT, MTLPixelFormat ##MTL_FMT, MTLPixelFormat ##MTL_FMT_ALT, MTLVertexFormat ##MTL_VTX_FMT, MTLVertexFormat ##MTL_VTX_FMT_ALT,  \
-										CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, kMVKFormat ##MVK_FMT_TYPE, { 0, 0, 0 }, "VK_FORMAT_" #VK_FMT, false }
+										CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, kMVKFormat ##MVK_FMT_TYPE, { 0, 0, 0 }, \
+										{ VK_COMPONENT_SWIZZLE_ ##SWIZ_R, VK_COMPONENT_SWIZZLE_ ##SWIZ_G, VK_COMPONENT_SWIZZLE_ ##SWIZ_B, VK_COMPONENT_SWIZZLE_ ##SWIZ_A }, \
+										"VK_FORMAT_" #VK_FMT, false }
 
 #define addVkFormatDesc(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE)  \
-    addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, 0, 0, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE)
+    addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, 0, 0, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, IDENTITY, IDENTITY, IDENTITY, IDENTITY)
+
+#define addVkFormatDescSwizzled(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A)  \
+    addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, 0, 0, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A)
 
 #define addVkFormatDescChromaSubsampling(VK_FMT, MTL_FMT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT)  \
-	addVkFormatDescFull(VK_FMT, MTL_FMT, Invalid, Invalid, Invalid, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, ColorFloat)
+	addVkFormatDescFull(VK_FMT, MTL_FMT, Invalid, Invalid, Invalid, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, ColorFloat, IDENTITY, IDENTITY, IDENTITY, IDENTITY)
 
 void MVKPixelFormats::initVkFormatCapabilities() {
 
@@ -779,6 +832,8 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	addVkFormatDesc( R4G4_UNORM_PACK8, Invalid, Invalid, Invalid, Invalid, 1, 1, 1, ColorFloat );
 	addVkFormatDesc( R4G4B4A4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
 	addVkFormatDesc( B4G4R4A4_UNORM_PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDescSwizzled( A4R4G4B4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, G, B, A, R );
+	addVkFormatDescSwizzled( A4B4G4R4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, A, B, G, R );
 
 	addVkFormatDesc( R5G6B5_UNORM_PACK16, B5G6R5Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
 	addVkFormatDesc( B5G6R5_UNORM_PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
@@ -1217,20 +1272,20 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDescSRGB( ASTC_12x12_sRGB, ASTC_12x12, None, None, ASTC_12x12_LDR );
 	addMTLPixelFormatDesc    ( ASTC_12x12_HDR, ASTC_12x12, None, None );
 
-	addMTLPixelFormatDesc    ( BC1_RGBA, BC1_RGBA, None, RF );
-	addMTLPixelFormatDescSRGB( BC1_RGBA_sRGB, BC1_RGBA, None, RF, BC1_RGBA );
-	addMTLPixelFormatDesc    ( BC2_RGBA, BC2_RGBA, None, RF );
-	addMTLPixelFormatDescSRGB( BC2_RGBA_sRGB, BC2_RGBA, None, RF, BC2_RGBA );
-	addMTLPixelFormatDesc    ( BC3_RGBA, BC3_RGBA, None, RF );
-	addMTLPixelFormatDescSRGB( BC3_RGBA_sRGB, BC3_RGBA, None, RF, BC3_RGBA );
-	addMTLPixelFormatDesc    ( BC4_RUnorm, BC4_R, None, RF );
-	addMTLPixelFormatDesc    ( BC4_RSnorm, BC4_R, None, RF );
-	addMTLPixelFormatDesc    ( BC5_RGUnorm, BC5_RG, None, RF );
-	addMTLPixelFormatDesc    ( BC5_RGSnorm, BC5_RG, None, RF );
-	addMTLPixelFormatDesc    ( BC6H_RGBUfloat, BC6H_RGB, None, RF );
-	addMTLPixelFormatDesc    ( BC6H_RGBFloat, BC6H_RGB, None, RF );
-	addMTLPixelFormatDesc    ( BC7_RGBAUnorm, BC7_RGBA, None, RF );
-	addMTLPixelFormatDescSRGB( BC7_RGBAUnorm_sRGB, BC7_RGBA, None, RF, BC7_RGBAUnorm );
+	addMTLPixelFormatDesc    ( BC1_RGBA, BC1_RGBA, RF, RF );
+	addMTLPixelFormatDescSRGB( BC1_RGBA_sRGB, BC1_RGBA, RF, RF, BC1_RGBA );
+	addMTLPixelFormatDesc    ( BC2_RGBA, BC2_RGBA, RF, RF );
+	addMTLPixelFormatDescSRGB( BC2_RGBA_sRGB, BC2_RGBA, RF, RF, BC2_RGBA );
+	addMTLPixelFormatDesc    ( BC3_RGBA, BC3_RGBA, RF, RF );
+	addMTLPixelFormatDescSRGB( BC3_RGBA_sRGB, BC3_RGBA, RF, RF, BC3_RGBA );
+	addMTLPixelFormatDesc    ( BC4_RUnorm, BC4_R, RF, RF );
+	addMTLPixelFormatDesc    ( BC4_RSnorm, BC4_R, RF, RF );
+	addMTLPixelFormatDesc    ( BC5_RGUnorm, BC5_RG, RF, RF );
+	addMTLPixelFormatDesc    ( BC5_RGSnorm, BC5_RG, RF, RF );
+	addMTLPixelFormatDesc    ( BC6H_RGBUfloat, BC6H_RGB, RF, RF );
+	addMTLPixelFormatDesc    ( BC6H_RGBFloat, BC6H_RGB, RF, RF );
+	addMTLPixelFormatDesc    ( BC7_RGBAUnorm, BC7_RGBA, RF, RF );
+	addMTLPixelFormatDescSRGB( BC7_RGBAUnorm_sRGB, BC7_RGBA, RF, RF, BC7_RGBAUnorm );
 
 	// YUV pixel formats
 	addMTLPixelFormatDesc    ( GBGR422, None, RF, RF );
@@ -1450,10 +1505,10 @@ void MVKPixelFormats::modifyMTLFormatCapabilities() {
 // Mac Catalyst does not support feature sets, so we redefine them to GPU families in MVKDevice.h.
 #if MVK_MACCAT
 #define addFeatSetMTLPixFmtCaps(FEAT_SET, MTL_FMT, CAPS)  \
-	addMTLPixelFormatCapabilities(mtlDevice, MTLFeatureSet_ ##FEAT_SET, 10.16, MTLPixelFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
+	addMTLPixelFormatCapabilities(mtlDevice, MTLFeatureSet_ ##FEAT_SET, 11.0, MTLPixelFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
 
 #define addFeatSetMTLVtxFmtCaps(FEAT_SET, MTL_FMT, CAPS)  \
-	addMTLVertexFormatCapabilities(mtlDevice, MTLFeatureSet_ ##FEAT_SET, 10.16, MTLVertexFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
+	addMTLVertexFormatCapabilities(mtlDevice, MTLFeatureSet_ ##FEAT_SET, 11.0, MTLVertexFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
 
 #else
 #define addFeatSetMTLPixFmtCaps(FEAT_SET, MTL_FMT, CAPS)  \
@@ -1477,20 +1532,23 @@ void MVKPixelFormats::modifyMTLFormatCapabilities() {
 	addMTLVertexFormatCapabilities(mtlDevice, MTLGPUFamily ##GPU_FAM, OS_VER, MTLVertexFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
 
 // Modifies the format capability tables based on the capabilities of the specific MTLDevice
-#if MVK_MACOS
 void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
-
-	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v1, R32Uint, Atomic );
-	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v1, R32Sint, Atomic );
-
-	if (mtlDevice.isDepth24Stencil8PixelFormatSupported) {
-		addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v1, Depth24Unorm_Stencil8, DRFMR );
+	if ( !mvkSupportsBCTextureCompression(mtlDevice) ) {
+		disableAllMTLPixFmtCaps( BC1_RGBA );
+		disableAllMTLPixFmtCaps( BC1_RGBA_sRGB );
+		disableAllMTLPixFmtCaps( BC2_RGBA );
+		disableAllMTLPixFmtCaps( BC2_RGBA_sRGB );
+		disableAllMTLPixFmtCaps( BC3_RGBA );
+		disableAllMTLPixFmtCaps( BC3_RGBA_sRGB );
+		disableAllMTLPixFmtCaps( BC4_RUnorm );
+		disableAllMTLPixFmtCaps( BC4_RSnorm );
+		disableAllMTLPixFmtCaps( BC5_RGUnorm );
+		disableAllMTLPixFmtCaps( BC5_RGSnorm );
+		disableAllMTLPixFmtCaps( BC6H_RGBUfloat );
+		disableAllMTLPixFmtCaps( BC6H_RGBFloat );
+		disableAllMTLPixFmtCaps( BC7_RGBAUnorm );
+		disableAllMTLPixFmtCaps( BC7_RGBAUnorm_sRGB );
 	}
-
-	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v2, Depth16Unorm, DRFMR );
-
-	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v3, BGR10A2Unorm, RFCMRB );
-
 #if MVK_XCODE_12
 	if ([mtlDevice respondsToSelector: @selector(supports32BitMSAA)] &&
 		!mtlDevice.supports32BitMSAA) {
@@ -1522,104 +1580,101 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 		disableMTLPixFmtCaps( RG32Float, Filter );
 		disableMTLPixFmtCaps( RGBA32Float, Filter );
 	}
+#endif
 
-	if ( !mvkSupportsBCTextureCompression(mtlDevice) ) {
-		disableAllMTLPixFmtCaps( BC1_RGBA );
-		disableAllMTLPixFmtCaps( BC1_RGBA_sRGB );
-		disableAllMTLPixFmtCaps( BC2_RGBA );
-		disableAllMTLPixFmtCaps( BC2_RGBA_sRGB );
-		disableAllMTLPixFmtCaps( BC3_RGBA );
-		disableAllMTLPixFmtCaps( BC3_RGBA_sRGB );
-		disableAllMTLPixFmtCaps( BC4_RUnorm );
-		disableAllMTLPixFmtCaps( BC4_RSnorm );
-		disableAllMTLPixFmtCaps( BC5_RGUnorm );
-		disableAllMTLPixFmtCaps( BC5_RGSnorm );
-		disableAllMTLPixFmtCaps( BC6H_RGBUfloat );
-		disableAllMTLPixFmtCaps( BC6H_RGBFloat );
-		disableAllMTLPixFmtCaps( BC7_RGBAUnorm );
-		disableAllMTLPixFmtCaps( BC7_RGBAUnorm_sRGB );
+#if MVK_MACOS
+	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v1, R32Uint, Atomic );
+	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v1, R32Sint, Atomic );
+
+	if (mtlDevice.isDepth24Stencil8PixelFormatSupported) {
+		addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v1, Depth24Unorm_Stencil8, DRFMR );
 	}
 
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, R8Unorm_sRGB, All );
+	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v2, Depth16Unorm, DRFMR );
 
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, RG8Unorm_sRGB, All );
+	addFeatSetMTLPixFmtCaps( macOS_GPUFamily1_v3, BGR10A2Unorm, RFCMRB );
 
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, B5G6R5Unorm, RFCMRB );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, A1BGR5Unorm, RFCMRB );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ABGR4Unorm, RFCMRB );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, BGR5A1Unorm, RFCMRB );
+#if MVK_XCODE_12
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, R8Unorm_sRGB, All );
 
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, RGBA8Unorm_sRGB, All );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, BGRA8Unorm_sRGB, All );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, RG8Unorm_sRGB, All );
+
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, B5G6R5Unorm, RFCMRB );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, A1BGR5Unorm, RFCMRB );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ABGR4Unorm, RFCMRB );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, BGR5A1Unorm, RFCMRB );
+
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, RGBA8Unorm_sRGB, All );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, BGRA8Unorm_sRGB, All );
 
 	// Blending is actually supported for this format, but format channels cannot be individually write-enabled during blending.
 	// Disabling blending is the least-intrusive way to handle this in a Vulkan-friendly way.
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, RGB9E5Float, All );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, RGB9E5Float, All );
 	disableMTLPixFmtCaps ( RGB9E5Float, Blend);
 
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, PVRTC_RGBA_2BPP, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, PVRTC_RGBA_2BPP_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, PVRTC_RGBA_4BPP, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, PVRTC_RGBA_4BPP_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, PVRTC_RGBA_2BPP, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, PVRTC_RGBA_2BPP_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, PVRTC_RGBA_4BPP, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, PVRTC_RGBA_4BPP_sRGB, RF );
 
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ETC2_RGB8, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ETC2_RGB8_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ETC2_RGB8A1, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ETC2_RGB8A1_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, EAC_RGBA8, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, EAC_RGBA8_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, EAC_R11Unorm, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, EAC_R11Snorm, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, EAC_RG11Unorm, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, EAC_RG11Snorm, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ETC2_RGB8, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ETC2_RGB8_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ETC2_RGB8A1, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ETC2_RGB8A1_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, EAC_RGBA8, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, EAC_RGBA8_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, EAC_R11Unorm, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, EAC_R11Snorm, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, EAC_RG11Unorm, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, EAC_RG11Snorm, RF );
 
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_4x4_LDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_4x4_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_4x4_HDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_5x4_LDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_5x4_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_5x4_HDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_5x5_LDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_5x5_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_5x5_HDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_6x5_LDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_6x5_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_6x5_HDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_6x6_LDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_6x6_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_6x6_HDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_8x5_LDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_8x5_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_8x5_HDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_8x6_LDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_8x6_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_8x6_HDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_8x8_LDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_8x8_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_8x8_HDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_10x5_LDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_10x5_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_10x5_HDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_10x6_LDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_10x6_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_10x6_HDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_10x8_LDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_10x8_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_10x8_HDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_10x10_LDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_10x10_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_10x10_HDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_12x10_LDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_12x10_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_12x10_HDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_12x12_LDR, RF );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_12x12_sRGB, RF );
-	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_12x12_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_4x4_LDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_4x4_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 11.0, ASTC_4x4_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_5x4_LDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_5x4_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 11.0, ASTC_5x4_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_5x5_LDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_5x5_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 11.0, ASTC_5x5_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_6x5_LDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_6x5_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 11.0, ASTC_6x5_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_6x6_LDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_6x6_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 11.0, ASTC_6x6_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_8x5_LDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_8x5_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 11.0, ASTC_8x5_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_8x6_LDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_8x6_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 11.0, ASTC_8x6_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_8x8_LDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_8x8_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 11.0, ASTC_8x8_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_10x5_LDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_10x5_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 11.0, ASTC_10x5_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_10x6_LDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_10x6_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 11.0, ASTC_10x6_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_10x8_LDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_10x8_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 11.0, ASTC_10x8_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_10x10_LDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_10x10_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 11.0, ASTC_10x10_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_12x10_LDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_12x10_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 11.0, ASTC_12x10_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_12x12_LDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, ASTC_12x12_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 11.0, ASTC_12x12_HDR, RF );
 
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, BGRA10_XR, All );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, BGRA10_XR_sRGB, All );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, BGR10_XR, All );
-	addGPUOSMTLPixFmtCaps( Apple5, 10.16, BGR10_XR_sRGB, All );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, BGRA10_XR, All );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, BGRA10_XR_sRGB, All );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, BGR10_XR, All );
+	addGPUOSMTLPixFmtCaps( Apple5, 11.0, BGR10_XR_sRGB, All );
 #endif
 
 	addFeatSetMTLVtxFmtCaps( macOS_GPUFamily1_v3, UCharNormalized, Vertex );
@@ -1632,11 +1687,9 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addFeatSetMTLVtxFmtCaps( macOS_GPUFamily1_v3, Short, Vertex );
 	addFeatSetMTLVtxFmtCaps( macOS_GPUFamily1_v3, Half, Vertex );
 	addFeatSetMTLVtxFmtCaps( macOS_GPUFamily1_v3, UChar4Normalized_BGRA, Vertex );
-}
 #endif
 
 #if MVK_TVOS
-void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v2, R8Unorm_sRGB, All );
 	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily2_v1, R8Unorm_sRGB, All );
 
@@ -1675,43 +1728,43 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, RGBA32Sint, RWC );
 	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, RGBA32Float, RWC );
 
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_4x4_LDR, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_4x4_sRGB, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_5x4_LDR, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_5x4_sRGB, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_5x5_LDR, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_5x5_sRGB, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_6x5_LDR, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_6x5_sRGB, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_6x6_LDR, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_6x6_sRGB, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_8x5_LDR, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_8x5_sRGB, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_8x6_LDR, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_8x6_sRGB, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_8x8_LDR, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_8x8_sRGB, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_10x5_LDR, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_10x5_sRGB, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_10x6_LDR, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_10x6_sRGB, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_10x8_LDR, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_10x8_sRGB, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_10x10_LDR, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_10x10_sRGB, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_12x10_LDR, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_12x10_sRGB, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_12x12_LDR, RF );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily1_v1, ASTC_12x12_sRGB, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_4x4_LDR, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_4x4_sRGB, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_5x4_LDR, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_5x4_sRGB, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_5x5_LDR, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_5x5_sRGB, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_6x5_LDR, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_6x5_sRGB, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_6x6_LDR, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_6x6_sRGB, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_8x5_LDR, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_8x5_sRGB, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_8x6_LDR, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_8x6_sRGB, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_8x8_LDR, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_8x8_sRGB, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_10x5_LDR, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_10x5_sRGB, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_10x6_LDR, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_10x6_sRGB, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_10x8_LDR, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_10x8_sRGB, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_10x10_LDR, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_10x10_sRGB, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_12x10_LDR, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_12x10_sRGB, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_12x12_LDR, RF );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily1_v1, ASTC_12x12_sRGB, RF );
 
 	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily2_v1, Depth32Float, DRMR );
 	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily2_v1, Depth32Float_Stencil8, DRMR );
 	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily2_v1, Stencil8, DRMR );
 
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily2_v1, BGRA10_XR, All );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily2_v1, BGRA10_XR_sRGB, All );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily2_v1, BGR10_XR, All );
-	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily2_v1, BGR10_XR_sRGB, All );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily2_v1, BGRA10_XR, All );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily2_v1, BGRA10_XR_sRGB, All );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily2_v1, BGR10_XR, All );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily2_v1, BGR10_XR_sRGB, All );
 
 	addGPUOSMTLPixFmtCaps( Apple1, 13.0, Depth16Unorm, DRFM );
 	addGPUOSMTLPixFmtCaps( Apple3, 13.0, Depth16Unorm, DRFMR );
@@ -1732,53 +1785,51 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 #if MVK_OS_SIMULATOR
 	if (!([mtlDevice respondsToSelector: @selector(supportsFamily:)] &&
 		  [mtlDevice supportsFamily: MTLGPUFamilyApple5])) {
-		disableAllMTLPixFmtCaps(R8Unorm_sRGB);
-		disableAllMTLPixFmtCaps(RG8Unorm_sRGB);
-		disableAllMTLPixFmtCaps(B5G6R5Unorm);
-		disableAllMTLPixFmtCaps(A1BGR5Unorm);
-		disableAllMTLPixFmtCaps(ABGR4Unorm);
-		disableAllMTLPixFmtCaps(BGR5A1Unorm);
+		disableAllMTLPixFmtCaps( R8Unorm_sRGB );
+		disableAllMTLPixFmtCaps( RG8Unorm_sRGB );
+		disableAllMTLPixFmtCaps( B5G6R5Unorm );
+		disableAllMTLPixFmtCaps( A1BGR5Unorm );
+		disableAllMTLPixFmtCaps( ABGR4Unorm );
+		disableAllMTLPixFmtCaps( BGR5A1Unorm );
 
-		disableAllMTLPixFmtCaps(BGRA10_XR);
-		disableAllMTLPixFmtCaps(BGRA10_XR_sRGB);
-		disableAllMTLPixFmtCaps(BGR10_XR);
-		disableAllMTLPixFmtCaps(BGR10_XR_sRGB);
+		disableAllMTLPixFmtCaps( BGRA10_XR );
+		disableAllMTLPixFmtCaps( BGRA10_XR_sRGB );
+		disableAllMTLPixFmtCaps( BGR10_XR );
+		disableAllMTLPixFmtCaps( BGR10_XR_sRGB );
 
-		disableAllMTLPixFmtCaps(GBGR422);
-		disableAllMTLPixFmtCaps(BGRG422);
+		disableAllMTLPixFmtCaps( GBGR422 );
+		disableAllMTLPixFmtCaps( BGRG422 );
 
-		disableMTLPixFmtCaps(RGB9E5Float, ColorAtt);
+		disableMTLPixFmtCaps( RGB9E5Float, ColorAtt );
 
-		disableMTLPixFmtCaps(R8Unorm_sRGB, Write);
-		disableMTLPixFmtCaps(RG8Unorm_sRGB, Write);
-		disableMTLPixFmtCaps(RGBA8Unorm_sRGB, Write);
-		disableMTLPixFmtCaps(BGRA8Unorm_sRGB, Write);
-		disableMTLPixFmtCaps(PVRTC_RGBA_2BPP_sRGB, Write);
-		disableMTLPixFmtCaps(PVRTC_RGBA_4BPP_sRGB, Write);
-		disableMTLPixFmtCaps(ETC2_RGB8_sRGB, Write);
-		disableMTLPixFmtCaps(ETC2_RGB8A1_sRGB, Write);
-		disableMTLPixFmtCaps(EAC_RGBA8_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_4x4_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_5x4_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_5x5_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_6x5_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_6x6_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_8x5_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_8x6_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_8x8_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_10x5_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_10x6_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_10x8_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_10x10_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_12x10_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_12x12_sRGB, Write);
+		disableMTLPixFmtCaps( R8Unorm_sRGB, Write );
+		disableMTLPixFmtCaps( RG8Unorm_sRGB, Write );
+		disableMTLPixFmtCaps( RGBA8Unorm_sRGB, Write );
+		disableMTLPixFmtCaps( BGRA8Unorm_sRGB, Write );
+		disableMTLPixFmtCaps( PVRTC_RGBA_2BPP_sRGB, Write );
+		disableMTLPixFmtCaps( PVRTC_RGBA_4BPP_sRGB, Write );
+		disableMTLPixFmtCaps( ETC2_RGB8_sRGB, Write );
+		disableMTLPixFmtCaps( ETC2_RGB8A1_sRGB, Write );
+		disableMTLPixFmtCaps( EAC_RGBA8_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_4x4_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_5x4_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_5x5_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_6x5_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_6x6_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_8x5_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_8x6_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_8x8_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_10x5_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_10x6_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_10x8_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_10x10_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_12x10_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_12x12_sRGB, Write );
 	}
 #endif
-}
 #endif
 
 #if MVK_IOS
-void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addFeatSetMTLPixFmtCaps( iOS_GPUFamily2_v3, R8Unorm_sRGB, All );
 	addFeatSetMTLPixFmtCaps( iOS_GPUFamily3_v1, R8Unorm_sRGB, All );
 
@@ -1891,50 +1942,50 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 #if MVK_OS_SIMULATOR
 	if (!([mtlDevice respondsToSelector: @selector(supportsFamily:)] &&
 		  [mtlDevice supportsFamily: MTLGPUFamilyApple5])) {
-		disableAllMTLPixFmtCaps(R8Unorm_sRGB);
-		disableAllMTLPixFmtCaps(RG8Unorm_sRGB);
-		disableAllMTLPixFmtCaps(B5G6R5Unorm);
-		disableAllMTLPixFmtCaps(A1BGR5Unorm);
-		disableAllMTLPixFmtCaps(ABGR4Unorm);
-		disableAllMTLPixFmtCaps(BGR5A1Unorm);
+		disableAllMTLPixFmtCaps( R8Unorm_sRGB );
+		disableAllMTLPixFmtCaps( RG8Unorm_sRGB );
+		disableAllMTLPixFmtCaps( B5G6R5Unorm );
+		disableAllMTLPixFmtCaps( A1BGR5Unorm );
+		disableAllMTLPixFmtCaps( ABGR4Unorm );
+		disableAllMTLPixFmtCaps( BGR5A1Unorm );
 
-		disableAllMTLPixFmtCaps(BGRA10_XR);
-		disableAllMTLPixFmtCaps(BGRA10_XR_sRGB);
-		disableAllMTLPixFmtCaps(BGR10_XR);
-		disableAllMTLPixFmtCaps(BGR10_XR_sRGB);
+		disableAllMTLPixFmtCaps( BGRA10_XR );
+		disableAllMTLPixFmtCaps( BGRA10_XR_sRGB );
+		disableAllMTLPixFmtCaps( BGR10_XR );
+		disableAllMTLPixFmtCaps( BGR10_XR_sRGB );
 
-		disableAllMTLPixFmtCaps(GBGR422);
-		disableAllMTLPixFmtCaps(BGRG422);
+		disableAllMTLPixFmtCaps( GBGR422 );
+		disableAllMTLPixFmtCaps( BGRG422 );
 
-		disableMTLPixFmtCaps(RGB9E5Float, ColorAtt);
+		disableMTLPixFmtCaps( RGB9E5Float, ColorAtt );
 
-		disableMTLPixFmtCaps(R8Unorm_sRGB, Write);
-		disableMTLPixFmtCaps(RG8Unorm_sRGB, Write);
-		disableMTLPixFmtCaps(RGBA8Unorm_sRGB, Write);
-		disableMTLPixFmtCaps(BGRA8Unorm_sRGB, Write);
-		disableMTLPixFmtCaps(PVRTC_RGBA_2BPP_sRGB, Write);
-		disableMTLPixFmtCaps(PVRTC_RGBA_4BPP_sRGB, Write);
-		disableMTLPixFmtCaps(ETC2_RGB8_sRGB, Write);
-		disableMTLPixFmtCaps(ETC2_RGB8A1_sRGB, Write);
-		disableMTLPixFmtCaps(EAC_RGBA8_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_4x4_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_5x4_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_5x5_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_6x5_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_6x6_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_8x5_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_8x6_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_8x8_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_10x5_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_10x6_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_10x8_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_10x10_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_12x10_sRGB, Write);
-		disableMTLPixFmtCaps(ASTC_12x12_sRGB, Write);
+		disableMTLPixFmtCaps( R8Unorm_sRGB, Write );
+		disableMTLPixFmtCaps( RG8Unorm_sRGB, Write );
+		disableMTLPixFmtCaps( RGBA8Unorm_sRGB, Write );
+		disableMTLPixFmtCaps( BGRA8Unorm_sRGB, Write );
+		disableMTLPixFmtCaps( PVRTC_RGBA_2BPP_sRGB, Write );
+		disableMTLPixFmtCaps( PVRTC_RGBA_4BPP_sRGB, Write );
+		disableMTLPixFmtCaps( ETC2_RGB8_sRGB, Write );
+		disableMTLPixFmtCaps( ETC2_RGB8A1_sRGB, Write );
+		disableMTLPixFmtCaps( EAC_RGBA8_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_4x4_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_5x4_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_5x5_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_6x5_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_6x6_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_8x5_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_8x6_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_8x8_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_10x5_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_10x6_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_10x8_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_10x10_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_12x10_sRGB, Write );
+		disableMTLPixFmtCaps( ASTC_12x12_sRGB, Write );
 	}
 #endif
-}
 #endif
+}
 
 #undef addFeatSetMTLPixFmtCaps
 #undef addGPUOSMTLPixFmtCaps
@@ -1962,6 +2013,23 @@ void MVKPixelFormats::buildVkFormatMaps() {
 				_vkFormatDescIndicesByVkFormatsCore[vkFmt] = fmtIdx;
 			} else {
 				_vkFormatDescIndicesByVkFormatsExt[vkFmt] = fmtIdx;
+			}
+
+			if (vkDesc.needsSwizzle()) {
+				if (_physicalDevice) {
+					id<MTLDevice> mtlDev = _physicalDevice->getMTLDevice();
+#if MVK_MACCAT
+					bool supportsNativeTextureSwizzle = [mtlDev supportsFamily: MTLGPUFamilyMacCatalyst2];
+#elif MVK_MACOS
+					bool supportsNativeTextureSwizzle = mvkOSVersionIsAtLeast(10.15) && [mtlDev supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily2_v1];
+#endif
+#if MVK_IOS || MVK_TVOS
+					bool supportsNativeTextureSwizzle = mtlDev && mvkOSVersionIsAtLeast(13.0);
+#endif
+					if (!supportsNativeTextureSwizzle && !mvkConfig().fullImageViewSwizzle) {
+						vkDesc.mtlPixelFormat = vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid;
+					}
+				}
 			}
 
 			// Populate the back reference from the Metal formats to the Vulkan format.
@@ -2078,6 +2146,13 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 	// If we can't write the stencil reference from the shader, we can't blit stencil.
 	if (chromaSubsamplingComponentBits > 0 || (isStencilFormat(vkDesc.mtlPixelFormat) && !supportsStencilFeedback)) {
 		mvkDisableFlags(vkProps.optimalTilingFeatures, (VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT));
+	}
+
+	// These formats require swizzling. In order to support rendering, we'll have to swizzle
+	// in the fragment shader, but that hasn't been implemented yet.
+	if (vkDesc.needsSwizzle()) {
+		mvkDisableFlags(vkProps.optimalTilingFeatures, (kMVKVkFormatFeatureFlagsTexColorAtt |
+														kMVKVkFormatFeatureFlagsTexBlend));
 	}
 
 	// Linear tiling is not available to depth/stencil or compressed formats.

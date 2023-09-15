@@ -18,10 +18,9 @@
 
 #pragma once
 
-#include "mvk_datatypes.h"
-#include "MVKEnvironment.h"
-#include "MVKOSExtensions.h"
 #include "MVKBaseObject.h"
+#include "MVKOSExtensions.h"
+#include "mvk_datatypes.h"
 #include <spirv_msl.hpp>
 #include <unordered_map>
 
@@ -149,6 +148,7 @@ typedef struct MVKVkFormatDesc {
 	uint32_t bytesPerBlock;
 	MVKFormatType formatType;
 	VkFormatProperties properties;
+	VkComponentMapping componentMapping;
 	const char* name;
 	bool hasReportedSubstitution;
     
@@ -159,6 +159,13 @@ typedef struct MVKVkFormatDesc {
 
 	inline bool vertexIsSupported() const { return (mtlVertexFormat != MTLVertexFormatInvalid); };
 	inline bool vertexIsSupportedOrSubstitutable() const { return vertexIsSupported() || (mtlVertexFormatSubstitute != MTLVertexFormatInvalid); };
+
+	bool needsSwizzle() const {
+		return componentMapping.r != VK_COMPONENT_SWIZZLE_IDENTITY ||
+			componentMapping.g != VK_COMPONENT_SWIZZLE_IDENTITY ||
+			componentMapping.b != VK_COMPONENT_SWIZZLE_IDENTITY ||
+			componentMapping.a != VK_COMPONENT_SWIZZLE_IDENTITY;
+	}
 } MVKVkFormatDesc;
 
 /** Describes the properties of a MTLPixelFormat or MTLVertexFormat. */
@@ -320,6 +327,21 @@ public:
 	 * rounded up if texelRowsPerLayer is not an integer multiple of the compression block height.
 	 */
 	size_t getBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer);
+
+	/** Returns whether or not the specified Vulkan format requires swizzling to use with Metal. */
+	bool needsSwizzle(VkFormat vkFormat);
+
+	/** Returns any VkComponentMapping needed to use the specified Vulkan format. */
+	VkComponentMapping getVkComponentMapping(VkFormat vkFormat);
+
+	/**
+	 * Returns the inverse of the VkComponentMapping needed to use the specified Vulkan format.
+	 * If the original mapping is not a one-to-one function, the behaviour is undefined.
+	 */
+	VkComponentMapping getInverseComponentMapping(VkFormat vkFormat);
+
+	/** Returns any MTLTextureSwizzleChannels needed to use the specified Vulkan format. */
+	MTLTextureSwizzleChannels getMTLTextureSwizzleChannels(VkFormat vkFormat);
 
 	/** Returns the default properties for the specified Vulkan format. */
 	VkFormatProperties& getVkFormatProperties(VkFormat vkFormat);

@@ -37,20 +37,31 @@ class MVKQueryPool;
  * This structure can be used as a key in a std::map and std::unordered_map.
  */
 typedef struct MVKRPSKeyBlitImg {
-	uint16_t srcMTLPixelFormat = 0;			/**< as MTLPixelFormat */
-	uint16_t dstMTLPixelFormat = 0;			/**< as MTLPixelFormat */
-	uint8_t srcMTLTextureType = 0;			/**< as MTLTextureType */
+	uint16_t srcMTLPixelFormat : 12;		/**< as MTLPixelFormat */
+	uint16_t dstMTLPixelFormat : 12;		/**< as MTLPixelFormat */
+	uint8_t srcMTLTextureType : 4;			/**< as MTLTextureType */
+	uint8_t srcFilter : 4;					/**< as MTLSamplerMinMagFilter */
 	uint8_t srcAspect = 0;					/**< as VkImageAspectFlags */
-	uint8_t srcFilter = 0;					/**< as MTLSamplerMinMagFilter */
 	uint8_t dstSampleCount = 0;
+	uint8_t srcSwizzleR : 4;				/**< as VkComponentSwizzle */
+	uint8_t srcSwizzleG : 4;				/**< as VkComponentSwizzle */
+	uint8_t srcSwizzleB : 4;				/**< as VkComponentSwizzle */
+	uint8_t srcSwizzleA : 4;				/**< as VkComponentSwizzle */
+
+	MVKRPSKeyBlitImg() : srcMTLPixelFormat(0), dstMTLPixelFormat(0), srcMTLTextureType(0), srcFilter(0),
+		srcSwizzleR(0), srcSwizzleG(0), srcSwizzleB(0), srcSwizzleA(0) {}
 
 	bool operator==(const MVKRPSKeyBlitImg& rhs) const {
 		if (srcMTLPixelFormat != rhs.srcMTLPixelFormat) { return false; }
 		if (dstMTLPixelFormat != rhs.dstMTLPixelFormat) { return false; }
 		if (srcMTLTextureType != rhs.srcMTLTextureType) { return false; }
-		if (srcAspect != rhs.srcAspect) { return false; }
 		if (srcFilter != rhs.srcFilter) { return false; }
+		if (srcAspect != rhs.srcAspect) { return false; }
 		if (dstSampleCount != rhs.dstSampleCount) { return false; }
+		if (srcSwizzleR != rhs.srcSwizzleR) { return false; }
+		if (srcSwizzleG != rhs.srcSwizzleG) { return false; }
+		if (srcSwizzleB != rhs.srcSwizzleB) { return false; }
+		if (srcSwizzleA != rhs.srcSwizzleA) { return false; }
 		return true;
 	}
 
@@ -70,23 +81,40 @@ typedef struct MVKRPSKeyBlitImg {
 				srcMTLTextureType == MTLTextureType1DArray);
 	}
 
+	VkComponentMapping getSrcSwizzle() {
+		return { (VkComponentSwizzle)srcSwizzleR, (VkComponentSwizzle)srcSwizzleG,
+			 (VkComponentSwizzle)srcSwizzleB, (VkComponentSwizzle)srcSwizzleA };
+	}
+
 	std::size_t hash() const {
 		std::size_t hash = srcMTLPixelFormat;
 
-		hash <<= 16;
+		hash <<= 12;
 		hash |= dstMTLPixelFormat;
 
-		hash <<= 8;
+		hash <<= 4;
 		hash |= srcMTLTextureType;
+
+		hash <<= 4;
+		hash |= srcFilter;
 
 		hash <<= 8;
 		hash |= srcAspect;
 
 		hash <<= 8;
-		hash |= srcFilter;
-
-		hash <<= 8;
 		hash |= dstSampleCount;
+
+		hash <<= 4;
+		hash |= srcSwizzleR;
+
+		hash <<= 4;
+		hash |= srcSwizzleG;
+
+		hash <<= 4;
+		hash |= srcSwizzleB;
+
+		hash <<= 4;
+		hash |= srcSwizzleA;
 		return hash;
 	}
 
@@ -107,9 +135,11 @@ namespace std {
 #pragma mark -
 #pragma mark MVKRPSKeyClearAtt
 
-#define kMVKClearAttachmentCount						(kMVKCachedColorAttachmentCount + 1)
-#define kMVKClearAttachmentDepthStencilIndex			(kMVKClearAttachmentCount - 1)
-#define kMVKClearAttachmentLayeredRenderingBitIndex		kMVKClearAttachmentCount
+const static uint32_t kMVKClearColorAttachmentCount = kMVKMaxColorAttachmentCount;
+const static uint32_t kMVKClearAttachmentDepthIndex = kMVKClearColorAttachmentCount;
+const static uint32_t kMVKClearAttachmentStencilIndex = kMVKClearAttachmentDepthIndex + 1;
+const static uint32_t kMVKClearAttachmentCount = kMVKClearAttachmentStencilIndex + 1;
+const static uint32_t kMVKClearAttachmentLayeredRenderingBitIndex = kMVKClearAttachmentStencilIndex + 1;
 
 /**
  * Key to use for looking up cached MTLRenderPipelineState instances.
@@ -439,9 +469,12 @@ public:
 	id<MTLComputePipelineState> newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needTempBuf,
 																						   MVKVulkanAPIDeviceObject* owner);
 
-	/** Returns a new MTLComputePipelineState for converting an indirect buffer for use in a multiview draw. */
-	id<MTLComputePipelineState> newCmdDrawIndirectMultiviewConvertBuffersMTLComputePipelineState(bool indexed,
-																								 MVKVulkanAPIDeviceObject* owner);
+	/** Returns a new MTLComputePipelineState for populating an indirect index buffer from a non-indexed indirect buffer. */
+	id<MTLComputePipelineState> newCmdDrawIndirectPopulateIndexesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+
+	/** Returns a new MTLComputePipelineState for converting the contents of an indirect buffer. */
+	id<MTLComputePipelineState> newCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed,
+																						MVKVulkanAPIDeviceObject* owner);
 
 	/** Returns a new MTLComputePipelineState for converting an indirect buffer for use in a tessellated draw. */
 	id<MTLComputePipelineState> newCmdDrawIndirectTessConvertBuffersMTLComputePipelineState(bool indexed,

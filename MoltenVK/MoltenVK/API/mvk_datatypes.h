@@ -16,14 +16,6 @@
  * limitations under the License.
  */
 
-
-/* 
- * This file contains functions for converting between Vulkan and Metal data types.
- *
- * The functions here are used internally by MoltenVK, and are exposed here 
- * as a convenience for use elsewhere within applications using MoltenVK.
- */
-
 #ifndef __mvkDataTypes_h_
 #define __mvkDataTypes_h_ 1
 
@@ -35,6 +27,14 @@ extern "C" {
 
 #import <Metal/Metal.h>
 #import <CoreGraphics/CoreGraphics.h>
+
+
+/*
+ * This file contains functions for converting between Vulkan and Metal data types.
+ *
+ * The functions here are used internally by MoltenVK, and are exposed here
+ * as a convenience for use elsewhere within applications using MoltenVK.
+ */
 
 
 #pragma mark -
@@ -227,6 +227,15 @@ MTLTextureSwizzle mvkMTLTextureSwizzleFromVkComponentSwizzle(VkComponentSwizzle 
 /** Returns all four Metal texture swizzles from the Vulkan component mapping. */
 MTLTextureSwizzleChannels mvkMTLTextureSwizzleChannelsFromVkComponentMapping(VkComponentMapping vkMapping);
 
+/** Maps a clear color according to the specified VkComponentSwizzle. */
+float mvkVkClearColorFloatValueFromVkComponentSwizzle(float *colors, uint32_t index, VkComponentSwizzle vkSwizzle);
+
+/** Maps a clear color according to the specified VkComponentSwizzle. */
+uint32_t mvkVkClearColorUIntValueFromVkComponentSwizzle(uint32_t *colors, uint32_t index, VkComponentSwizzle vkSwizzle);
+
+/** Maps a clear color according to the specified VkComponentSwizzle. */
+int32_t mvkVkClearColorIntValueFromVkComponentSwizzle(int32_t *colors, uint32_t index, VkComponentSwizzle vkSwizzle);
+
 
 #pragma mark Mipmaps
 
@@ -318,6 +327,7 @@ typedef enum {
 	kMVKShaderStageVertex = 0,
 	kMVKShaderStageTessCtl,
 	kMVKShaderStageTessEval,
+	kMVKShaderStageGeometry,
 	kMVKShaderStageFragment,
 	kMVKShaderStageCompute,
 	kMVKShaderStageCount,
@@ -424,6 +434,12 @@ VkExtent2D mvkVkExtent2DFromCGSize(CGSize cgSize);
 
 /** Returns a CGSize that corresponds to the specified VkExtent2D. */
 CGSize mvkCGSizeFromVkExtent2D(VkExtent2D vkExtent);
+
+/** Returns a CGPoint that corresponds to the specified VkOffset2D. */
+CGPoint mvkCGPointFromVkOffset2D(VkOffset2D vkOffset);
+
+/** Returns a CGRect that corresponds to the specified VkRectLayerKHR. The layer is ignored. */
+CGRect mvkCGRectFromVkRectLayerKHR(VkRectLayerKHR vkRect);
 
 /** Returns a Metal MTLOrigin constructed from a VkOffset3D. */
 static inline MTLOrigin mvkMTLOriginFromVkOffset3D(VkOffset3D vkOffset) {

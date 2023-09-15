@@ -4,7 +4,8 @@
 #
 # fetchDependencies - Retrieves the correct versions of all dependencies
 #
-# macOS usage: ./fetchDependencies [--macos] [--ios] [--iossim] [--tvos] [--tvossim] [--all] [--none]
+# macOS usage: ./fetchDependencies [--macos] [--ios] [--iossim] [--tvos] [--tvossim]
+#                                  [--visionos] [--visionossim] [--all] [--none]
 #                                  [-v] [--debug] [--build-spirv-tools]
 #                                  [--v-headers-root path] [--spirv-cross-root path] [--glslang-root path]
 #
@@ -26,10 +27,18 @@
 #      --tvossim
 #              Build the external libraries for the tvOS Simulator platform.
 #
+#      --visionos
+#              Build the external libraries for the visionOS platform.
+#
+#      --visionossim
+#              Build the external libraries for the visionOS Simulator platform.
+#
 #      --all
 #              Equivalent to specifying [--macos --ios --iossim --maccat --tvos --tvossim].
 #              Results in one XCFramework for each external library, each containing
 #              binaries for all supported platforms.
+#              Currently excludes --visionos and --visionossim targets because those
+#              require Xcode 15+ and will abort a multi-platform build.
 #
 #      --none
 #              Don't build the external libraries for any platform (this is the default).
@@ -94,6 +103,8 @@ BLD_IOS_SIM=""
 BLD_MAC_CAT=""
 BLD_TVOS=""
 BLD_TVOS_SIM=""
+BLD_VISIONOS=""
+BLD_VISIONOS_SIM=""
 BLD_MACOS=""
 BLD_SPECIFIED=""
 XC_CONFIG="Release"
@@ -129,17 +140,27 @@ while (( "$#" )); do
          BLD_TVOS_SIM="Y"
          shift 1
          ;;
+       --visionos)
+         BLD_VISIONOS="Y"
+         shift 1
+         ;;
+       --visionossim)
+         BLD_VISIONOS_SIM="Y"
+         shift 1
+         ;;
        --macos)
          BLD_MACOS="Y"
          shift 1
          ;;
        --all)
+         BLD_MACOS="Y"
          BLD_IOS="Y"
          BLD_IOS_SIM="Y"
          BLD_MAC_CAT="Y"
          BLD_TVOS="Y"
          BLD_TVOS_SIM="Y"
-         BLD_MACOS="Y"
+#         BLD_VISIONOS="Y"              # Requires Xcode 15+
+#         BLD_VISIONOS_SIM="Y"          # Requires Xcode 15+
          shift 1
          ;;
        --none)
@@ -211,7 +232,7 @@ function update_repo() {
 
 	if [ -d $1 -a -d $1/.git ]; then
 		cd $1
-		git fetch --all
+		git cat-file -e $3 || git fetch --all
 		git checkout --force $3
 		cd -  > /dev/null
 	else
@@ -304,7 +325,7 @@ if [ ! "$SPIRV_CROSS_ROOT" = "" ]; then
 	rm -rf ${REPO_NAME}
 	ln -sfn ${SPIRV_CROSS_ROOT} ${REPO_NAME}
 else
-	REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
+	REPO_URL="https://github.com/js6i/${REPO_NAME}.git"
 	REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
 	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
@@ -477,6 +498,14 @@ if [ "$BLD_TVOS_SIM" != "" ]; then
 	build "tvOS" "tvOS Simulator"
 fi
 
+if [ "$BLD_VISIONOS" != "" ]; then
+	build "xrOS" "xrOS"
+fi
+
+if [ "$BLD_VISIONOS_SIM" != "" ]; then
+	build "xrOS" "xrOS Simulator"
+fi
+
 # Wait for any background process (if selected) to finish
 if [ "$XC_USE_BCKGND" != "" ]; then
 	wait
@@ -495,7 +524,7 @@ else
 		echo "WARNING: You did not specify a platform to build."
 		echo "To build the external libraries, include one or"
 		echo "more of the following platform options:"
-		echo "    --macos --ios --iossim --maccat --tvos --tvossim --all"
+		echo "    --macos --ios --iossim --maccat --tvos --tvossim --visionos --visionossim --all"
 		echo "See the instructions in the fetchDependencies script for more info."
 	fi
 fi

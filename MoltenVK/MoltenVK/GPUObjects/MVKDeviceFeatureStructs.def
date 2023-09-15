@@ -62,6 +62,7 @@ MVK_DEVICE_FEATURE(VariablePointer,                   VARIABLE_POINTER,         
 MVK_DEVICE_FEATURE(VulkanMemoryModel,                 VULKAN_MEMORY_MODEL,                    3)
 MVK_DEVICE_FEATURE_EXTN(FragmentShaderBarycentric,    FRAGMENT_SHADER_BARYCENTRIC,     KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(PortabilitySubset,            PORTABILITY_SUBSET,              KHR,  15)
+MVK_DEVICE_FEATURE_EXTN(4444Formats,                  4444_FORMATS,                    EXT,   2)
 MVK_DEVICE_FEATURE_EXTN(FragmentShaderInterlock,      FRAGMENT_SHADER_INTERLOCK,       EXT,   3)
 MVK_DEVICE_FEATURE_EXTN(PipelineCreationCacheControl, PIPELINE_CREATION_CACHE_CONTROL, EXT,   1)
 MVK_DEVICE_FEATURE_EXTN(Robustness2,                  ROBUSTNESS_2,                    EXT,   3)

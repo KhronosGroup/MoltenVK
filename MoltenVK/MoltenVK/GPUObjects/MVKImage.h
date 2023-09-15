@@ -224,6 +224,9 @@ public:
     /** Returns the number of planes of this image view. */
     uint8_t getPlaneCount() { return _planes.size(); }
 
+	/** Returns whether or not the image format requires swizzling. */
+	bool needsSwizzle() { return getPixelFormats()->needsSwizzle(_vkFormat); }
+
 	/** Populates the specified layout for the specified sub-resource. */
 	VkResult getSubresourceLayout(const VkImageSubresource* pSubresource,
 								  VkSubresourceLayout* pLayout);
@@ -449,7 +452,7 @@ public:
 #pragma mark Metal
 
 	/** Presents the contained drawable to the OS. */
-	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff, MVKImagePresentInfo& presentInfo);
+	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff, MVKImagePresentInfo presentInfo);
 
 
 #pragma mark Construction
@@ -463,7 +466,7 @@ protected:
 	friend MVKSwapchain;
 
 	id<CAMetalDrawable> getCAMetalDrawable() override;
-	void addPresentedHandler(id<CAMetalDrawable> mtlDrawable, MVKImagePresentInfo& presentInfo);
+	void addPresentedHandler(id<CAMetalDrawable> mtlDrawable, MVKImagePresentInfo presentInfo);
 	void releaseMetalDrawable();
 	MVKSwapchainImageAvailability getAvailability();
 	void makeAvailable(const MVKSwapchainSignaler& signaler);
@@ -559,6 +562,9 @@ public:
 
 	/**  Returns the 3D extent of this image at the specified mipmap level. */
 	VkExtent3D getExtent3D(uint8_t planeIndex = 0, uint32_t mipLevel = 0) { return _image->getExtent3D(planeIndex, mipLevel); }
+
+	/** Return the underlying image. */
+	MVKImage* getImage() { return _image; }
 
 #pragma mark Metal
 

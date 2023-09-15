@@ -58,6 +58,8 @@ public:
 
 	MVKFramebuffer(MVKDevice* device, const VkFramebufferCreateInfo* pCreateInfo);
 
+	MVKFramebuffer(MVKDevice* device, const VkRenderingInfo* pRenderingInfo);
+
 	~MVKFramebuffer() override;
 
 protected:
@@ -69,12 +71,3 @@ protected:
 	VkExtent2D _extent;
 	uint32_t _layerCount;
 };
-
-
-#pragma mark -
-#pragma mark Support functions
-
-/** Returns an image-less MVKFramebuffer object created from the rendering info. */
-MVKFramebuffer* mvkCreateFramebuffer(MVKDevice* device,
-									 const VkRenderingInfo* pRenderingInfo,
-									 MVKRenderPass* mvkRenderPass);

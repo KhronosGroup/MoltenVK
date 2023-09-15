@@ -344,7 +344,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 	} catch (CompilerError& ex) {
-		string errMsg("MSL conversion error: ");
+		string errMsg("SPIR-V to MSL conversion error: ");
 		errMsg += ex.what();
 		logError(conversionResult.resultLog, errMsg.data());
         if (shouldLogMSL && pMSLCompiler) {
@@ -366,6 +366,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	conversionResult.resultInfo.needsInputThreadgroupMem = pMSLCompiler && pMSLCompiler->needs_input_threadgroup_mem();
 	conversionResult.resultInfo.needsDispatchBaseBuffer = pMSLCompiler && pMSLCompiler->needs_dispatch_base_buffer();
 	conversionResult.resultInfo.needsViewRangeBuffer = pMSLCompiler && pMSLCompiler->needs_view_mask_buffer();
+	conversionResult.resultInfo.usesPhysicalStorageBufferAddressesCapability = usesPhysicalStorageBufferAddressesCapability(pMSLCompiler);
 
 	// When using Metal argument buffers, if the shader is provided with dynamic buffer offsets,
 	// then it needs a buffer to hold these dynamic offsets.
@@ -378,29 +379,31 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 		}
 	}
 
-	for (auto& ctxSI : shaderConfig.shaderInputs) {
-		if (ctxSI.shaderVar.builtin != spv::BuiltInMax) {
-			ctxSI.outIsUsedByShader = pMSLCompiler->has_active_builtin(ctxSI.shaderVar.builtin, spv::StorageClassInput);
-		} else {
-			ctxSI.outIsUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxSI.shaderVar.location);
-		}
-	}
-	for (auto& ctxSO : shaderConfig.shaderOutputs) {
-		if (ctxSO.shaderVar.builtin != spv::BuiltInMax) {
-			ctxSO.outIsUsedByShader = pMSLCompiler->has_active_builtin(ctxSO.shaderVar.builtin, spv::StorageClassOutput);
-		} else {
-			ctxSO.outIsUsedByShader = pMSLCompiler->is_msl_shader_output_used(ctxSO.shaderVar.location);
-		}
-	}
-	for (auto& ctxRB : shaderConfig.resourceBindings) {
-		if (ctxRB.resourceBinding.stage == shaderConfig.options.entryPointStage) {
-			ctxRB.outIsUsedByShader = pMSLCompiler->is_msl_resource_binding_used(ctxRB.resourceBinding.stage,
-																				 ctxRB.resourceBinding.desc_set,
-																				 ctxRB.resourceBinding.binding);
-		}
-	}
-
-	delete pMSLCompiler;
+    if (pMSLCompiler) {
+        for (auto& ctxSI : shaderConfig.shaderInputs) {
+            if (ctxSI.shaderVar.builtin != spv::BuiltInMax) {
+                ctxSI.outIsUsedByShader = pMSLCompiler->has_active_builtin(ctxSI.shaderVar.builtin, spv::StorageClassInput);
+            } else {
+                ctxSI.outIsUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxSI.shaderVar.location);
+            }
+        }
+        for (auto& ctxSO : shaderConfig.shaderOutputs) {
+            if (ctxSO.shaderVar.builtin != spv::BuiltInMax) {
+                ctxSO.outIsUsedByShader = pMSLCompiler->has_active_builtin(ctxSO.shaderVar.builtin, spv::StorageClassOutput);
+            } else {
+                ctxSO.outIsUsedByShader = pMSLCompiler->is_msl_shader_output_used(ctxSO.shaderVar.location);
+            }
+        }
+        for (auto& ctxRB : shaderConfig.resourceBindings) {
+            if (ctxRB.resourceBinding.stage == shaderConfig.options.entryPointStage) {
+                ctxRB.outIsUsedByShader = pMSLCompiler->is_msl_resource_binding_used(ctxRB.resourceBinding.stage,
+                                                                                     ctxRB.resourceBinding.desc_set,
+                                                                                     ctxRB.resourceBinding.binding);
+            }
+        }
+        
+        delete pMSLCompiler;
+    }
 
     // To check GLSL conversion
     if (shouldLogGLSL) {
@@ -445,6 +448,7 @@ void SPIRVToMSLConverter::logMsg(string& log, const char* logMsg) {
 // Appends the error text to the result log, and returns false to indicate an error.
 bool SPIRVToMSLConverter::logError(string& log, const char* errMsg) {
 	logMsg(log, errMsg);
+	fprintf(stderr, "[mvk-error] %s\n", errMsg);
 	return false;
 }
 
@@ -532,4 +536,16 @@ void SPIRVToMSLConverter::populateEntryPoint(Compiler* pCompiler,
 	populateWorkgroupDimension(wgSize.width, spvEP.workgroup_size.x, widthSC);
 	populateWorkgroupDimension(wgSize.height, spvEP.workgroup_size.y, heightSC);
 	populateWorkgroupDimension(wgSize.depth, spvEP.workgroup_size.z, depthSC);
+}
+
+bool SPIRVToMSLConverter::usesPhysicalStorageBufferAddressesCapability(Compiler* pCompiler) {
+	if (pCompiler) {
+		auto& declaredCapabilities = pCompiler->get_declared_capabilities();
+		for(auto dc: declaredCapabilities) {
+			if (dc == CapabilityPhysicalStorageBufferAddresses) {
+				return true;
+			}
+		}
+	}
+	return false;
 }

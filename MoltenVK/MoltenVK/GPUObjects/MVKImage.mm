@@ -21,7 +21,6 @@
 #include "MVKSwapchain.h"
 #include "MVKCommandBuffer.h"
 #include "MVKCmdDebug.h"
-#include "MVKEnvironment.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
 #include "MVKCodec.h"
@@ -63,7 +62,7 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
                            offset: memoryBinding->getDeviceMemoryOffset() + _subresources[0].layout.offset];
             if (_image->_isAliasable) { [_mtlTexture makeAliasable]; }
         } else if (_image->_isAliasable && dvcMem && dvcMem->isDedicatedAllocation() &&
-            !contains(dvcMem->_imageMemoryBindings, memoryBinding)) {
+            !mvkContains(dvcMem->_imageMemoryBindings, memoryBinding)) {
             // This is a dedicated allocation, but it belongs to another aliasable image.
             // In this case, use the MTLTexture from the memory's dedicated image.
             // We know the other image must be aliasable, or I couldn't have been bound
@@ -935,6 +934,9 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 							(_hasMutableFormat && pixFmts->getViewClass(_vkFormat) == MVKMTLViewClass::Color32 &&
 							 (getIsValidViewFormat(VK_FORMAT_R32_UINT) || getIsValidViewFormat(VK_FORMAT_R32_SINT)))));
 
+    if (mvkIsAnyFlagEnabled(getCombinedUsage(), VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) && !getDevice()->getPhysicalDevice()->getMetalFeatures()->renderLinearTextures)
+        _isLinearForAtomics = false;
+
 	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatCompressed) && !_device->_pMetalFeatures->native3DCompressedTextures;
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
 								 mvkAreAllFlagsEnabled(pixFmts->getVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
@@ -1295,8 +1297,9 @@ id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
 }
 
 // Present the drawable and make myself available only once the command buffer has completed.
+// Pass MVKImagePresentInfo by value because it may not exist when the callback runs.
 void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff,
-														  MVKImagePresentInfo& presentInfo) {
+														  MVKImagePresentInfo presentInfo) {
 	lock_guard<mutex> lock(_availabilityLock);
 
 	_swapchain->willPresentSurface(getMTLTexture(0), mtlCmdBuff);
@@ -1313,8 +1316,9 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 			mtlDrwbl.layer.displaySyncEnabledMVK = (presentInfo.presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR);
 		}
 		if (presentInfo.hasPresentTime) {
-			// Convert from nsecs to seconds for Metal
 			addPresentedHandler(mtlDrwbl, presentInfo);
+		}
+		if (presentInfo.desiredPresentTime) {
 			[mtlDrwbl presentAtTime: (double)presentInfo.desiredPresentTime * 1.0e-9];
 		} else {
 			[mtlDrwbl present];
@@ -1358,8 +1362,9 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 	signalPresentationSemaphore(signaler, mtlCmdBuff);
 }
 
+// Pass MVKImagePresentInfo by value because it may not exist when the callback runs.
 void MVKPresentableSwapchainImage::addPresentedHandler(id<CAMetalDrawable> mtlDrawable,
-													   MVKImagePresentInfo& presentInfo) {
+													   MVKImagePresentInfo presentInfo) {
 #if !MVK_OS_SIMULATOR
 	if ([mtlDrawable respondsToSelector: @selector(addPresentedHandler:)]) {
 		retain();	// Ensure this image is not destroyed while awaiting presentation
@@ -1573,6 +1578,26 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 	VkImageAspectFlags aspectMask = pCreateInfo->subresourceRange.aspectMask;
 
 #define adjustComponentSwizzleValue(comp, currVal, newVal)    if (_componentSwizzle.comp == VK_COMPONENT_SWIZZLE_ ##currVal) { _componentSwizzle.comp = VK_COMPONENT_SWIZZLE_ ##newVal; }
+#define adjustAnyComponentSwizzleValue(comp, I, R, G, B, A) \
+	switch (_componentSwizzle.comp) { \
+		case VK_COMPONENT_SWIZZLE_IDENTITY: \
+			_componentSwizzle.comp = VK_COMPONENT_SWIZZLE_##I; \
+			break; \
+		case VK_COMPONENT_SWIZZLE_R: \
+			_componentSwizzle.comp = VK_COMPONENT_SWIZZLE_##R; \
+			break; \
+		case VK_COMPONENT_SWIZZLE_G: \
+			_componentSwizzle.comp = VK_COMPONENT_SWIZZLE_##G; \
+			break; \
+		case VK_COMPONENT_SWIZZLE_B: \
+			_componentSwizzle.comp = VK_COMPONENT_SWIZZLE_##B; \
+			break; \
+		case VK_COMPONENT_SWIZZLE_A: \
+			_componentSwizzle.comp = VK_COMPONENT_SWIZZLE_##A; \
+			break; \
+		default: \
+			break; \
+	}
 
 	// Use swizzle adjustment to bridge some differences between Vulkan and Metal pixel formats.
 	// Do this ahead of other tests and adjustments so that swizzling will be enabled by tests below.
@@ -1585,6 +1610,24 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 			adjustComponentSwizzleValue(b, A, ONE);
 			adjustComponentSwizzleValue(a, A, ONE);
 			adjustComponentSwizzleValue(a, IDENTITY, ONE);
+			break;
+
+		case VK_FORMAT_A4R4G4B4_UNORM_PACK16:
+			// Metal doesn't (publicly) support this directly, so use a swizzle to get the ordering right.
+			// n.b. **Do NOT use adjustComponentSwizzleValue if multiple values need substitution,
+			// and some of the substitutes are keys for other substitutions!**
+			adjustAnyComponentSwizzleValue(r, G, G, B, A, R);
+			adjustAnyComponentSwizzleValue(g, B, G, B, A, R);
+			adjustAnyComponentSwizzleValue(b, A, G, B, A, R);
+			adjustAnyComponentSwizzleValue(a, R, G, B, A, R);
+			break;
+
+		case VK_FORMAT_A4B4G4R4_UNORM_PACK16:
+			// Metal doesn't support this directly, so use a swizzle to get the ordering right.
+			adjustAnyComponentSwizzleValue(r, A, A, B, G, R);
+			adjustAnyComponentSwizzleValue(g, B, A, B, G, R);
+			adjustAnyComponentSwizzleValue(b, G, A, B, G, R);
+			adjustAnyComponentSwizzleValue(a, R, A, B, G, R);
 			break;
 
 		default:

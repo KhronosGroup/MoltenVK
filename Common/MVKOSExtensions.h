@@ -52,11 +52,13 @@ inline bool mvkOSVersionIsAtLeast(MVKOSVersion minVer) { return mvkOSVersion() >
  * to always fail on that OS, which is useful for indidicating functionalty guarded by
  * this test is not supported on that OS.
  */
-inline bool mvkOSVersionIsAtLeast(MVKOSVersion macOSMinVer, MVKOSVersion iOSMinVer) {
+inline bool mvkOSVersionIsAtLeast(MVKOSVersion macOSMinVer, MVKOSVersion iOSMinVer, MVKOSVersion visionOSMinVer) {
 #if MVK_MACOS
 	return mvkOSVersionIsAtLeast(macOSMinVer);
 #endif
-#if MVK_IOS_OR_TVOS
+#if MVK_VISIONOS
+	return mvkOSVersionIsAtLeast(visionOSMinVer);
+#elif MVK_IOS_OR_TVOS
 	return mvkOSVersionIsAtLeast(iOSMinVer);
 #endif
 }
@@ -77,12 +79,23 @@ uint64_t mvkGetTimestamp();
 double mvkGetTimestampPeriod();
 
 /**
+ * Returns the number of nanoseconds elapsed between startTimestamp and endTimestamp,
+ * each of which should be a value returned by mvkGetTimestamp().
+ * If endTimestamp is zero or not supplied, it is taken to be the current time.
+ * If startTimestamp is zero or not supplied, it is taken to be the time the app was initialized.
+ */
+uint64_t mvkGetElapsedNanoseconds(uint64_t startTimestamp = 0, uint64_t endTimestamp = 0);
+
+/**
  * Returns the number of milliseconds elapsed between startTimestamp and endTimestamp,
  * each of which should be a value returned by mvkGetTimestamp().
  * If endTimestamp is zero or not supplied, it is taken to be the current time.
  * If startTimestamp is zero or not supplied, it is taken to be the time the app was initialized.
  */
 double mvkGetElapsedMilliseconds(uint64_t startTimestamp = 0, uint64_t endTimestamp = 0);
+
+/** Returns the current absolute time in nanoseconds. */
+uint64_t mvkGetAbsoluteTime();
 
 /** Ensures the block is executed on the main thread. */
 void mvkDispatchToMainAndWait(dispatch_block_t block);
@@ -164,3 +177,9 @@ uint64_t mvkGetUsedMemorySize();
 
 /** Returns the size of a page of host memory on this platform. */
 uint64_t mvkGetHostMemoryPageSize();
+
+#pragma mark -
+#pragma mark Threading
+
+/** Returns the amount of avaliable CPU cores. */
+uint32_t mvkGetAvaliableCPUCores();

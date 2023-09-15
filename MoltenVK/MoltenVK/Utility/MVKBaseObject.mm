@@ -21,7 +21,7 @@
 #include "MVKInstance.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
-#include <cxxabi.h>
+#include "MVKStrings.h"
 
 using namespace std;
 
@@ -44,13 +44,7 @@ static const char* getReportingLevelString(MVKConfigLogLevel logLevel) {
 #pragma mark -
 #pragma mark MVKBaseObject
 
-string MVKBaseObject::getClassName() {
-    int status;
-    char* demangled = abi::__cxa_demangle(typeid(*this).name(), 0, 0, &status);
-    string clzName = demangled;
-    free(demangled);
-    return clzName;
-}
+string MVKBaseObject::getClassName() { return mvk::getTypeName(this); }
 
 void MVKBaseObject::reportMessage(MVKConfigLogLevel logLevel, const char* format, ...) {
 	va_list args;
