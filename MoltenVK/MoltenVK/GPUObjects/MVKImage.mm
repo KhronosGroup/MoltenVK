@@ -1248,15 +1248,17 @@ static void signalAndUnmarkAsTracked(const MVKSwapchainSignaler& signaler) {
 }
 
 VkResult MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence) {
+
+	// Now that this image is being acquired, release the existing drawable and its texture.
+	// This is not done earlier so the texture is retained for any post-processing such as screen captures, etc.
+	// This may trigger a delayed presentation callback, which uses the _availabilityLock, also used below.
+	releaseMetalDrawable();
+
 	lock_guard<mutex> lock(_availabilityLock);
 
 	// Upon acquisition, update acquisition ID immediately, to move it to the back of the chain,
 	// so other images will be preferred if either all images are available or no images are available.
 	_availability.acquisitionID = _swapchain->getNextAcquisitionID();
-
-	// Now that this image is being acquired, release the existing drawable and its texture.
-	// This is not done earlier so the texture is retained for any post-processing such as screen captures, etc.
-	releaseMetalDrawable();
 
 	auto signaler = MVKSwapchainSignaler{fence, semaphore, semaphore ? semaphore->deferSignal() : 0};
 	if (_availability.isAvailable) {
@@ -1292,10 +1294,10 @@ id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
 	if ( !_mtlDrawable ) {
 		@autoreleasepool {
 			bool hasInvalidFormat = false;
-			uint32_t attemptCnt = _swapchain->getImageCount() * 2;	// Attempt a resonable number of times
+			uint32_t attemptCnt = _swapchain->getImageCount();	// Attempt a resonable number of times
 			for (uint32_t attemptIdx = 0; !_mtlDrawable && attemptIdx < attemptCnt; attemptIdx++) {
 				uint64_t startTime = _device->getPerformanceTimestamp();
-				_mtlDrawable = [_swapchain->_surface->getCAMetalLayer().nextDrawable retain];	// retained
+				_mtlDrawable = [_swapchain->getCAMetalLayer().nextDrawable retain];	// retained
 				_device->addPerformanceInterval(_device->_performanceStatistics.queue.retrieveCAMetalDrawable, startTime);
 				hasInvalidFormat = _mtlDrawable && !_mtlDrawable.texture.pixelFormat;
 				if (hasInvalidFormat) { releaseMetalDrawable(); }
@@ -1314,8 +1316,6 @@ id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
 // Pass MVKImagePresentInfo by value because it may not exist when the callback runs.
 VkResult MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff,
 															  MVKImagePresentInfo presentInfo) {
-	lock_guard<mutex> lock(_availabilityLock);
-
 	_swapchain->renderWatermark(getMTLTexture(0), mtlCmdBuff);
 
 	// According to Apple, it is more performant to call MTLDrawable present from within a
@@ -1323,8 +1323,11 @@ VkResult MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffe
 	// But get current drawable now, intead of in handler, because a new drawable might be acquired by then.
 	// Attach present handler before presenting to avoid race condition.
 	id<CAMetalDrawable> mtlDrwbl = getCAMetalDrawable();
-	addPresentedHandler(mtlDrwbl, presentInfo);
+	MVKSwapchainSignaler signaler = getPresentationSignaler();
 	[mtlCmdBuff addScheduledHandler: ^(id<MTLCommandBuffer> mcb) {
+
+		addPresentedHandler(mtlDrwbl, presentInfo, signaler);
+
 		// Try to do any present mode transitions as late as possible in an attempt
 		// to avoid visual disruptions on any presents already on the queue.
 		if (presentInfo.presentMode != VK_PRESENT_MODE_MAX_ENUM_KHR) {
@@ -1337,7 +1340,32 @@ VkResult MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffe
 		}
 	}];
 
-	MVKSwapchainSignaler signaler;
+	// Ensure this image, the drawable, and the present fence are not destroyed while
+	// awaiting MTLCommandBuffer completion. We retain the drawable separately because
+	// a new drawable might be acquired by this image by then.
+	// Signal the fence from this callback, because the last one or two presentation
+	// completion callbacks can occasionally stall.
+	retain();
+	[mtlDrwbl retain];
+	auto* fence = presentInfo.fence;
+	if (fence) { fence->retain(); }
+	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
+		if (fence) {
+			fence->signal();
+			fence->release();
+		}
+		[mtlDrwbl release];
+		release();
+	}];
+
+	signalPresentationSemaphore(signaler, mtlCmdBuff);
+
+	return getConfigurationResult();
+}
+
+MVKSwapchainSignaler MVKPresentableSwapchainImage::getPresentationSignaler() {
+	lock_guard<mutex> lock(_availabilityLock);
+
 	// Mark this image as available if no semaphores or fences are waiting to be signaled.
 	_availability.isAvailable = _availabilitySignalers.empty();
 	if (_availability.isAvailable) {
@@ -1346,52 +1374,34 @@ VkResult MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffe
 		// when an app uses a single semaphore or fence for more than one swapchain image.
 		// Because the semaphore or fence will be signaled by more than one image, it will
 		// get out of sync, and the final use of the image would not be signaled as a result.
-		signaler = _preSignaler;
+		return _preSignaler;
 	} else {
 		// If this image is not yet available, extract and signal the first semaphore and fence.
+		MVKSwapchainSignaler signaler;
 		auto sigIter = _availabilitySignalers.begin();
 		signaler = *sigIter;
 		_availabilitySignalers.erase(sigIter);
+		return signaler;
 	}
-
-	// Ensure this image, the drawable, and the present fence are not destroyed while
-	// awaiting MTLCommandBuffer completion. We retain the drawable separately because
-	// a new drawable might be acquired by this image by then.
-	retain();
-	[mtlDrwbl retain];
-	auto* fence = presentInfo.fence;
-	if (fence) { fence->retain(); }
-	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
-		[mtlDrwbl release];
-		makeAvailable(signaler);
-		release();
-		if (fence) {
-			fence->signal();
-			fence->release();
-		}
-	}];
-
-	signalPresentationSemaphore(signaler, mtlCmdBuff);
-
-	return getConfigurationResult();
 }
 
-// Pass MVKImagePresentInfo by value because it may not exist when the callback runs.
+// Pass MVKImagePresentInfo & MVKSwapchainSignaler by value because they may not exist when the callback runs.
 void MVKPresentableSwapchainImage::addPresentedHandler(id<CAMetalDrawable> mtlDrawable,
-													   MVKImagePresentInfo presentInfo) {
+													   MVKImagePresentInfo presentInfo,
+													   MVKSwapchainSignaler signaler) {
 	beginPresentation(presentInfo);
 
 #if !MVK_OS_SIMULATOR
 	if ([mtlDrawable respondsToSelector: @selector(addPresentedHandler:)]) {
 		[mtlDrawable addPresentedHandler: ^(id<MTLDrawable> mtlDrwbl) {
-			endPresentation(presentInfo, mtlDrwbl.presentedTime * 1.0e9);
+			endPresentation(presentInfo, signaler, mtlDrwbl.presentedTime * 1.0e9);
 		}];
 	} else
 #endif
 	{
 		// If MTLDrawable.presentedTime/addPresentedHandler isn't supported,
 		// treat it as if the present happened when requested.
-		endPresentation(presentInfo);
+		endPresentation(presentInfo, signaler);
 	}
 }
 
@@ -1399,11 +1409,11 @@ void MVKPresentableSwapchainImage::addPresentedHandler(id<CAMetalDrawable> mtlDr
 void MVKPresentableSwapchainImage::beginPresentation(const MVKImagePresentInfo& presentInfo) {
 	retain();
 	_swapchain->beginPresentation(presentInfo);
-	presentInfo.queue->beginPresentation(presentInfo);
 	_presentationStartTime = getDevice()->getPerformanceTimestamp();
 }
 
 void MVKPresentableSwapchainImage::endPresentation(const MVKImagePresentInfo& presentInfo,
+												   const MVKSwapchainSignaler& signaler,
 												   uint64_t actualPresentTime) {
 	{	// Scope to avoid deadlock if release() is run within detachment lock
 		// If I have become detached from the swapchain, it means the swapchain, and possibly the
@@ -1412,7 +1422,7 @@ void MVKPresentableSwapchainImage::endPresentation(const MVKImagePresentInfo& pr
 		if (_device) { _device->addPerformanceInterval(_device->_performanceStatistics.queue.presentSwapchains, _presentationStartTime); }
 		if (_swapchain) { _swapchain->endPresentation(presentInfo, actualPresentTime); }
 	}
-	presentInfo.queue->endPresentation(presentInfo);
+	makeAvailable(signaler);
 	release();
 }
 
@@ -1432,7 +1442,9 @@ void MVKPresentableSwapchainImage::makeAvailable(const MVKSwapchainSignaler& sig
 }
 
 // Signal, untrack, and release any signalers that are tracking.
+// Release the drawable before the lock, as it may trigger completion callback.
 void MVKPresentableSwapchainImage::makeAvailable() {
+	releaseMetalDrawable();
 	lock_guard<mutex> lock(_availabilityLock);
 
 	if ( !_availability.isAvailable ) {
@@ -1444,14 +1456,6 @@ void MVKPresentableSwapchainImage::makeAvailable() {
 		_availability.isAvailable = true;
 	}
 }
-
-// Clear the existing CAMetalDrawable and retrieve and release a new transient one,
-// in an attempt to trigger the existing CAMetalDrawable to complete it's callback.
-void MVKPresentableSwapchainImage::forcePresentationCompletion() {
-	releaseMetalDrawable();
-	if (_swapchain) { @autoreleasepool { [_swapchain->_surface->getCAMetalLayer() nextDrawable]; } }
-}
-
 
 #pragma mark Construction
 
@@ -1467,14 +1471,13 @@ MVKPresentableSwapchainImage::MVKPresentableSwapchainImage(MVKDevice* device,
 
 
 void MVKPresentableSwapchainImage::destroy() {
-	forcePresentationCompletion();
+	releaseMetalDrawable();
 	MVKSwapchainImage::destroy();
 }
 
 // Unsignaled signalers will exist if this image is acquired more than it is presented.
 // Ensure they are signaled and untracked so the fences and semaphores will be released.
 MVKPresentableSwapchainImage::~MVKPresentableSwapchainImage() {
-	releaseMetalDrawable();
 	makeAvailable();
 }
 

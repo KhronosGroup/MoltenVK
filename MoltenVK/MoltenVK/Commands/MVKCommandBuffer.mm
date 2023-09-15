@@ -260,7 +260,7 @@ bool MVKCommandBuffer::canExecute() {
 	}
 
 	_wasExecuted = true;
-	return true;
+	return wasConfigurationSuccessful();
 }
 
 // Return the number of bits set in the view mask, with a minimum value of 1.

@@ -100,13 +100,6 @@ public:
 	/** Block the current thread until this queue is idle. */
 	VkResult waitIdle(MVKCommandUse cmdUse);
 
-	/** Mark the beginning of a swapchain image presentation. */
-	void beginPresentation(const MVKImagePresentInfo& presentInfo);
-
-	/** Mark the end of a swapchain image presentation. */
-	void endPresentation(const MVKImagePresentInfo& presentInfo);
-
-
 #pragma mark Metal
 
 	/** Returns the Metal queue underlying this queue. */
@@ -150,11 +143,8 @@ protected:
 	VkResult submit(MVKQueueSubmission* qSubmit);
 	NSString* getMTLCommandBufferLabel(MVKCommandUse cmdUse);
 	void handleMTLCommandBufferError(id<MTLCommandBuffer> mtlCmdBuff);
-	void waitSwapchainPresentations(MVKCommandUse cmdUse);
 
 	MVKQueueFamily* _queueFamily;
-	MVKSemaphoreImpl _presentationCompletionBlocker;
-	std::unordered_map<MVKPresentableSwapchainImage*, uint32_t> _presentedImages;
 	std::string _name;
 	dispatch_queue_t _execQueue;
 	id<MTLCommandQueue> _mtlQueue = nil;
@@ -166,7 +156,6 @@ protected:
 	NSString* _mtlCmdBuffLabelAcquireNextImage = nil;
 	NSString* _mtlCmdBuffLabelInvalidateMappedMemoryRanges = nil;
 	MVKGPUCaptureScope* _submissionCaptureScope = nil;
-	std::mutex _presentedImagesLock;
 	float _priority;
 	uint32_t _index;
 };

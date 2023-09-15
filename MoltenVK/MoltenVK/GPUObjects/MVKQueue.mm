@@ -80,13 +80,14 @@ VkResult MVKQueue::submit(MVKQueueSubmission* qSubmit) {
 
 	if ( !qSubmit ) { return VK_SUCCESS; }     // Ignore nils
 
-	VkResult rslt = qSubmit->getConfigurationResult();     // Extract result before submission to avoid race condition with early destruction
-	if (rslt == VK_SUCCESS) {
-		if (_execQueue) {
-			dispatch_async(_execQueue, ^{ execute(qSubmit); } );
-		} else {
-			rslt = execute(qSubmit);
-		}
+	// Extract result before submission to avoid race condition with early destruction
+	// Submit regardless of config result, to ensure submission semaphores and fences are signalled.
+	// The submissions will ensure a misconfiguration will be safe to execute.
+	VkResult rslt = qSubmit->getConfigurationResult();
+	if (_execQueue) {
+		dispatch_async(_execQueue, ^{ execute(qSubmit); } );
+	} else {
+		rslt = execute(qSubmit);
 	}
 	return rslt;
 }
@@ -140,48 +141,7 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdUse) {
 	[mtlCmdBuff commit];
 	[mtlCmdBuff waitUntilCompleted];
 
-	waitSwapchainPresentations(cmdUse);
-
 	return VK_SUCCESS;
-}
-
-// If there are any swapchain presentations in flight, wait a few frames for them to complete.
-// If they don't complete within a few frames, attempt to force them to complete, and wait another
-// few frames for that to happen. If there are still swapchain presentations that haven't completed,
-// log a warning, and force them to end presentation, so the images and drawables will be released.
-void MVKQueue::waitSwapchainPresentations(MVKCommandUse cmdUse) {
-	uint32_t waitFrames = _device->_pMetalFeatures->maxSwapchainImageCount + 2;
-	uint64_t waitNanos = waitFrames * _device->_performanceStatistics.queue.frameInterval.average * 1e6;
-	if (_presentationCompletionBlocker.wait(waitNanos)) { return; }
-
-	auto imgCnt = _presentationCompletionBlocker.getReservationCount();
-	MVKPresentableSwapchainImage* images[imgCnt];
-	mvkClear(images, imgCnt);
-
-	{
-		// Scope of image lock limited to creating array copy of uncompleted presentations
-		// Populate a working array of the unpresented images.
-		lock_guard<mutex> lock(_presentedImagesLock);
-		size_t imgIdx = 0;
-		for (auto imgPair : _presentedImages) { images[imgIdx++] = imgPair.first; }
-	}
-
-	// Attempt to force each image to complete presentation through the callback.
-	for (size_t imgIdx = 0; imgIdx < imgCnt && _presentationCompletionBlocker.getReservationCount(); imgIdx++) {
-		auto* img = images[imgIdx];
-		if (img) { img->forcePresentationCompletion(); }
-	}
-
-	// Wait for forced presentation completions. If we still have unfinished swapchain image
-	// presentations, log a warning, and force each image to end, so that it can be released.
-	if ( !_presentationCompletionBlocker.wait(waitNanos) ) {
-		reportWarning(VK_TIMEOUT, "%s timed out after %d frames while awaiting %d swapchain image presentations to complete.",
-					  mvkVkCommandName(cmdUse), waitFrames * 2, _presentationCompletionBlocker.getReservationCount());
-		for (size_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
-			auto* img = images[imgIdx];
-			if (_presentedImages.count(img)) { img->endPresentation({.queue = this, .presentableImage = img}); }
-		}
-	}
 }
 
 id<MTLCommandBuffer> MVKQueue::getMTLCommandBuffer(MVKCommandUse cmdUse, bool retainRefs) {
@@ -310,25 +270,6 @@ void MVKQueue::handleMTLCommandBufferError(id<MTLCommandBuffer> mtlCmdBuff) {
 		}
 	}
 #endif
-}
-
-// _presentedImages counts presentations per swapchain image, because the presentation of an image can
-// begin before the previous presentation of that image has indicated that it has completed via a callback.
-void MVKQueue::beginPresentation(const MVKImagePresentInfo& presentInfo) {
-	lock_guard<mutex> lock(_presentedImagesLock);
-	_presentationCompletionBlocker.reserve();
-	_presentedImages[presentInfo.presentableImage]++;
-}
-
-void MVKQueue::endPresentation(const MVKImagePresentInfo& presentInfo) {
-	lock_guard<mutex> lock(_presentedImagesLock);
-	_presentationCompletionBlocker.release();
-	if (_presentedImages[presentInfo.presentableImage]) {
-		_presentedImages[presentInfo.presentableImage]--;
-	}
-	if ( !_presentedImages[presentInfo.presentableImage] ) {
-		_presentedImages.erase(presentInfo.presentableImage);
-	}
 }
 
 #pragma mark Construction
@@ -488,7 +429,7 @@ VkResult MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool sign
 
 	// If we need to signal completion, use getActiveMTLCommandBuffer() to ensure at least
 	// one MTLCommandBuffer is used, otherwise if this instance has no content, it will not
-	// finish(), signal the fence and semaphores ,and be destroyed.
+	// finish(), signal the fence and semaphores, and be destroyed.
 	// Use temp var for MTLCommandBuffer commit and release because completion callback
 	// may destroy this instance before this function ends.
 	id<MTLCommandBuffer> mtlCmdBuff = signalCompletion ? getActiveMTLCommandBuffer() : _activeMTLCommandBuffer;
@@ -501,6 +442,8 @@ VkResult MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool sign
 		if (signalCompletion) { this->finish(); }	// Must be the last thing the completetion callback does.
 	}];
 
+	// Retrieve the result before committing MTLCommandBuffer, because finish() will destroy this instance.
+	VkResult rslt = mtlCmdBuff ? getConfigurationResult() : VK_ERROR_OUT_OF_POOL_MEMORY;
 	[mtlCmdBuff commit];
 	[mtlCmdBuff release];		// retained
 
@@ -508,7 +451,7 @@ VkResult MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool sign
 	// was not created, call the finish() function directly.
 	if (signalCompletion && !mtlCmdBuff) { finish(); }
 
-	return mtlCmdBuff ? VK_SUCCESS : VK_ERROR_OUT_OF_POOL_MEMORY;
+	return rslt;
 }
 
 // Be sure to retain() any API objects referenced in this function, and release() them in the
