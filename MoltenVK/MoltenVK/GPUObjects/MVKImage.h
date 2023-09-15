@@ -460,10 +460,9 @@ public:
 	void beginPresentation(const MVKImagePresentInfo& presentInfo);
 
 	/** Called via callback when the presentation completes. */
-	void endPresentation(const MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime = 0);
-
-	/** If this image is stuck in-flight, attempt to force it to complete. */
-	void forcePresentationCompletion();
+	void endPresentation(const MVKImagePresentInfo& presentInfo,
+						 const MVKSwapchainSignaler& signaler,
+						 uint64_t actualPresentTime = 0);
 
 #pragma mark Construction
 
@@ -478,12 +477,13 @@ protected:
 	friend MVKSwapchain;
 
 	id<CAMetalDrawable> getCAMetalDrawable() override;
-	void addPresentedHandler(id<CAMetalDrawable> mtlDrawable, MVKImagePresentInfo presentInfo);
+	void addPresentedHandler(id<CAMetalDrawable> mtlDrawable, MVKImagePresentInfo presentInfo, MVKSwapchainSignaler signaler);
 	void releaseMetalDrawable();
 	MVKSwapchainImageAvailability getAvailability();
 	void makeAvailable(const MVKSwapchainSignaler& signaler);
 	void makeAvailable();
 	VkResult acquireAndSignalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence);
+	MVKSwapchainSignaler getPresentationSignaler();
 
 	id<CAMetalDrawable> _mtlDrawable = nil;
 	MVKSwapchainImageAvailability _availability;

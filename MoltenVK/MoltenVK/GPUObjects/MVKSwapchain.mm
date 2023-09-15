@@ -47,6 +47,8 @@ void MVKSwapchain::propagateDebugName() {
 	}
 }
 
+CAMetalLayer* MVKSwapchain::getCAMetalLayer() { return _surface->getCAMetalLayer(); }
+
 VkResult MVKSwapchain::getImages(uint32_t* pCount, VkImage* pSwapchainImages) {
 
 	// Get the number of surface images
@@ -104,7 +106,7 @@ VkResult MVKSwapchain::releaseImages(const VkReleaseSwapchainImagesInfoEXT* pRel
 		getPresentableImage(pReleaseInfo->pImageIndices[imgIdxIdx])->makeAvailable();
 	}
 
-	return VK_SUCCESS;
+	return _surface->getConfigurationResult();
 }
 
 uint64_t MVKSwapchain::getNextAcquisitionID() { return ++_currentAcquisitionID; }
@@ -128,7 +130,7 @@ VkResult MVKSwapchain::getSurfaceStatus() {
 bool MVKSwapchain::hasOptimalSurface() {
 	if (_isDeliberatelyScaled) { return true; }
 
-	auto* mtlLayer = _surface->getCAMetalLayer();
+	auto* mtlLayer = getCAMetalLayer();
 	VkExtent2D drawExtent = mvkVkExtent2DFromCGSize(mtlLayer.drawableSize);
 	return (mvkVkExtent2DsAreEqual(drawExtent, _mtlLayerDrawableExtent) &&
 			mvkVkExtent2DsAreEqual(drawExtent, mvkGetNaturalExtent(mtlLayer)));
@@ -185,7 +187,7 @@ void MVKSwapchain::markFrameInterval() {
 VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRefreshCycleDuration) {
 	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 
-	auto* mtlLayer = _surface->getCAMetalLayer();
+	auto* mtlLayer = getCAMetalLayer();
 #if MVK_VISIONOS
 	// TODO: See if this can be obtained from OS instead
 	NSInteger framesPerSecond = 90;
@@ -242,9 +244,13 @@ VkResult MVKSwapchain::getPastPresentationTiming(uint32_t *pCount, VkPastPresent
 	return res;
 }
 
-void MVKSwapchain::beginPresentation(const MVKImagePresentInfo& presentInfo) {}
+void MVKSwapchain::beginPresentation(const MVKImagePresentInfo& presentInfo) {
+	_unpresentedImageCount++;
+}
 
 void MVKSwapchain::endPresentation(const MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime) {
+	_unpresentedImageCount--;
+
 	std::lock_guard<std::mutex> lock(_presentHistoryLock);
 
 	markFrameInterval();
@@ -269,8 +275,18 @@ void MVKSwapchain::endPresentation(const MVKImagePresentInfo& presentInfo, uint6
 	_presentHistoryIndex = (_presentHistoryIndex + 1) % kMaxPresentationHistory;
 }
 
+// Because of a regression in Metal, the most recent one or two presentations may not complete
+// and call back. To work around this, if there are any uncompleted presentations, change the
+// drawableSize of the CAMetalLayer, which will trigger presentation completion and callbacks.
+// The drawableSize will be set to a correct size by the next swapchain created on the same surface.
+void MVKSwapchain::forceUnpresentedImageCompletion() {
+	if (_unpresentedImageCount) {
+		getCAMetalLayer().drawableSize = { 1,1 };
+	}
+}
+
 void MVKSwapchain::setLayerNeedsDisplay(const VkPresentRegionKHR* pRegion) {
-	auto* mtlLayer = _surface->getCAMetalLayer();
+	auto* mtlLayer = getCAMetalLayer();
 	if (!pRegion || pRegion->rectangleCount == 0) {
 		[mtlLayer setNeedsDisplay];
 		return;
@@ -350,7 +366,7 @@ void MVKSwapchain::setHDRMetadataEXT(const VkHdrMetadataEXT& metadata) {
 	CAEDRMetadata* caMetadata = [CAEDRMetadata HDR10MetadataWithDisplayInfo: colorVolData
 																contentInfo: lightLevelData
 														 opticalOutputScale: 1];
-	auto* mtlLayer = _surface->getCAMetalLayer();
+	auto* mtlLayer = getCAMetalLayer();
 	mtlLayer.EDRMetadata = caMetadata;
 	mtlLayer.wantsExtendedDynamicRangeContent = YES;
 	[caMetadata release];
@@ -456,7 +472,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 
 	if ( getIsSurfaceLost() ) { return; }
 
-	auto* mtlLayer = _surface->getCAMetalLayer();
+	auto* mtlLayer = getCAMetalLayer();
 	auto minMagFilter = mvkConfig().swapchainMinMagFilterUseNearest ? kCAFilterNearest : kCAFilterLinear;
 	mtlLayer.device = getMTLDevice();
 	mtlLayer.pixelFormat = getPixelFormats()->getMTLPixelFormat(pCreateInfo->imageFormat);
@@ -469,6 +485,16 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 																			   VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 																			   VK_IMAGE_USAGE_SAMPLED_BIT |
 																			   VK_IMAGE_USAGE_STORAGE_BIT));
+
+	// Because of a regression in Metal, the most recent one or two presentations may not
+	// complete and call back. Changing the CAMetalLayer drawableSize will force any incomplete
+	// presentations on the oldSwapchain to complete and call back, but if the drawableSize
+	// is not changing from the previous, we force those completions first.
+	auto* oldSwapchain = (MVKSwapchain*)pCreateInfo->oldSwapchain;
+	if (oldSwapchain && mvkVkExtent2DsAreEqual(pCreateInfo->imageExtent, mvkVkExtent2DFromCGSize(mtlLayer.drawableSize))) {
+		oldSwapchain->forceUnpresentedImageCompletion();
+	}
+
 	// Remember the extent to later detect if it has changed under the covers,
 	// and set the drawable size of the CAMetalLayer from the extent.
 	_mtlLayerDrawableExtent = pCreateInfo->imageExtent;
@@ -559,7 +585,7 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 		}
 	}
 
-	auto* mtlLayer = _surface->getCAMetalLayer();
+	auto* mtlLayer = getCAMetalLayer();
     VkExtent2D imgExtent = pCreateInfo->imageExtent;
     VkImageCreateInfo imgInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -598,12 +624,17 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 		screenName = mtlLayer.screenMVK.localizedName;
 	}
 #endif
-    MVKLogInfo("Created %d swapchain images with initial size (%d, %d) and contents scale %.1f for screen %s.",
-			   imgCnt, imgExtent.width, imgExtent.height, mtlLayer.contentsScale, screenName.UTF8String);
+	MVKLogInfo("Created %d swapchain images with size (%d, %d) and contents scale %.1f in layer %s (%p) on screen %s.",
+			   imgCnt, imgExtent.width, imgExtent.height, mtlLayer.contentsScale, mtlLayer.name.UTF8String, mtlLayer, screenName.UTF8String);
 }
 
 void MVKSwapchain::destroy() {
-	if (_surface->_activeSwapchain == this) { _surface->_activeSwapchain = nullptr; }
+	// If this swapchain was not replaced by a new swapchain, remove this swapchain
+	// from the surface, and force any outstanding presentations to complete.
+	if (_surface->_activeSwapchain == this) {
+		_surface->_activeSwapchain = nullptr;
+		forceUnpresentedImageCompletion();
+	}
 	for (auto& img : _presentableImages) { _device->destroyPresentableSwapchainImage(img, NULL); }
 	MVKVulkanAPIDeviceObject::destroy();
 }

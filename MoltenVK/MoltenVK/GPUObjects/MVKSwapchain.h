@@ -43,11 +43,14 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT; }
 
+	/** Returns the CAMetalLayer underlying the surface used by this swapchain. */
+	CAMetalLayer* getCAMetalLayer();
+
 	/** Returns the number of images in this swapchain. */
-	inline uint32_t getImageCount() { return (uint32_t)_presentableImages.size(); }
+	uint32_t getImageCount() { return (uint32_t)_presentableImages.size(); }
 
 	/** Returns the image at the specified index. */
-	inline MVKPresentableSwapchainImage* getPresentableImage(uint32_t index) { return _presentableImages[index]; }
+	MVKPresentableSwapchainImage* getPresentableImage(uint32_t index) { return _presentableImages[index]; }
 
 	/**
 	 * Returns the array of presentable images associated with this swapchain.
@@ -112,6 +115,7 @@ protected:
     void markFrameInterval();
 	void beginPresentation(const MVKImagePresentInfo& presentInfo);
 	void endPresentation(const MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime = 0);
+	void forceUnpresentedImageCompletion();
 
 	MVKSurface* _surface = nullptr;
     MVKWatermark* _licenseWatermark = nullptr;
@@ -123,6 +127,7 @@ protected:
 	std::mutex _presentHistoryLock;
 	uint64_t _lastFrameTime = 0;
 	VkExtent2D _mtlLayerDrawableExtent = {0, 0};
+	std::atomic<uint32_t> _unpresentedImageCount = 0;
 	uint32_t _currentPerfLogFrameCount = 0;
 	uint32_t _presentHistoryCount = 0;
 	uint32_t _presentHistoryIndex = 0;
