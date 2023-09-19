@@ -681,9 +681,7 @@ public:
 	void removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value);
 
 	/** Applies the specified global memory barrier to all resource issued by this device. */
-	void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
-							VkPipelineStageFlags dstStageMask,
-							MVKPipelineBarrier& barrier,
+	void applyMemoryBarrier(MVKPipelineBarrier& barrier,
 							MVKCommandEncoder* cmdEncoder,
 							MVKCommandUse cmdUse);
 

@@ -91,6 +91,7 @@ MVK_EXTENSION(KHR_storage_buffer_storage_class,       KHR_STORAGE_BUFFER_STORAGE
 MVK_EXTENSION(KHR_surface,                            KHR_SURFACE,                            INSTANCE, 10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_swapchain,                          KHR_SWAPCHAIN,                          DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_swapchain_mutable_format,           KHR_SWAPCHAIN_MUTABLE_FORMAT,           DEVICE,   10.11,  8.0,  1.0)
+MVK_EXTENSION(KHR_synchronization2,                   KHR_SYNCHRONIZATION_2,                  DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_timeline_semaphore,                 KHR_TIMELINE_SEMAPHORE,                 DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_uniform_buffer_standard_layout,     KHR_UNIFORM_BUFFER_STANDARD_LAYOUT,     DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_variable_pointers,                  KHR_VARIABLE_POINTERS,                  DEVICE,   10.11,  8.0,  1.0)

@@ -304,9 +304,7 @@ MVKImageMemoryBinding* MVKImagePlane::getMemoryBinding() const {
     return (_image->_memoryBindings.size() > 1) ? _image->_memoryBindings[_planeIndex] : _image->_memoryBindings[0];
 }
 
-void MVKImagePlane::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
-											VkPipelineStageFlags dstStageMask,
-											MVKPipelineBarrier& barrier,
+void MVKImagePlane::applyImageMemoryBarrier(MVKPipelineBarrier& barrier,
 											MVKCommandEncoder* cmdEncoder,
 											MVKCommandUse cmdUse) {
 
@@ -323,7 +321,7 @@ void MVKImagePlane::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 						 : (layerStart + barrier.layerCount));
 
 	MVKImageMemoryBinding* memBind = getMemoryBinding();
-	bool needsSync = memBind->needsHostReadSync(srcStageMask, dstStageMask, barrier);
+	bool needsSync = memBind->needsHostReadSync(barrier);
 	bool needsPull = ((!memBind->_mtlTexelBuffer || memBind->_ownsTexelBuffer) &&
 					  memBind->isMemoryHostCoherent() &&
 					  barrier.newLayout == VK_IMAGE_LAYOUT_GENERAL &&
@@ -444,13 +442,11 @@ VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDevi
     return _deviceMemory ? _deviceMemory->addImageMemoryBinding(this) : VK_SUCCESS;
 }
 
-void MVKImageMemoryBinding::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
-                                               VkPipelineStageFlags dstStageMask,
-                                               MVKPipelineBarrier& barrier,
+void MVKImageMemoryBinding::applyMemoryBarrier(MVKPipelineBarrier& barrier,
                                                MVKCommandEncoder* cmdEncoder,
                                                MVKCommandUse cmdUse) {
 #if MVK_MACOS
-    if ( needsHostReadSync(srcStageMask, dstStageMask, barrier) ) {
+    if (needsHostReadSync(barrier)) {
         for(uint8_t planeIndex = beginPlaneIndex(); planeIndex < endPlaneIndex(); planeIndex++) {
             [cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeResource: _image->_planes[planeIndex]->_mtlTexture];
         }
@@ -469,9 +465,7 @@ void MVKImageMemoryBinding::propagateDebugName() {
 
 // Returns whether the specified image memory barrier requires a sync between this
 // texture and host memory for the purpose of the host reading texture memory.
-bool MVKImageMemoryBinding::needsHostReadSync(VkPipelineStageFlags srcStageMask,
-                                              VkPipelineStageFlags dstStageMask,
-                                              MVKPipelineBarrier& barrier) {
+bool MVKImageMemoryBinding::needsHostReadSync(MVKPipelineBarrier& barrier) {
 #if MVK_MACOS
     return ((barrier.newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
             mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
@@ -625,15 +619,13 @@ bool MVKImage::getIsValidViewFormat(VkFormat viewFormat) {
 
 #pragma mark Resource memory
 
-void MVKImage::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
-									   VkPipelineStageFlags dstStageMask,
-									   MVKPipelineBarrier& barrier,
+void MVKImage::applyImageMemoryBarrier(MVKPipelineBarrier& barrier,
 									   MVKCommandEncoder* cmdEncoder,
 									   MVKCommandUse cmdUse) {
 
 	for (uint8_t planeIndex = 0; planeIndex < _planes.size(); planeIndex++) {
 		if ( !_hasChromaSubsampling || mvkIsAnyFlagEnabled(barrier.aspectMask, (VK_IMAGE_ASPECT_PLANE_0_BIT << planeIndex)) ) {
-			_planes[planeIndex]->applyImageMemoryBarrier(srcStageMask, dstStageMask, barrier, cmdEncoder, cmdUse);
+			_planes[planeIndex]->applyImageMemoryBarrier(barrier, cmdEncoder, cmdUse);
 		}
     }
 }

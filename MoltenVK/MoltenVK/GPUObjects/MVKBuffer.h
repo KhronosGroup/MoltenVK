@@ -52,16 +52,12 @@ public:
 	VkResult bindDeviceMemory2(const VkBindBufferMemoryInfo* pBindInfo);
 
 	/** Applies the specified global memory barrier. */
-	void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
-							VkPipelineStageFlags dstStageMask,
-							MVKPipelineBarrier& barrier,
+	void applyMemoryBarrier(MVKPipelineBarrier& barrier,
 							MVKCommandEncoder* cmdEncoder,
 							MVKCommandUse cmdUse) override;
 
 	/** Applies the specified buffer memory barrier. */
-	void applyBufferMemoryBarrier(VkPipelineStageFlags srcStageMask,
-								  VkPipelineStageFlags dstStageMask,
-								  MVKPipelineBarrier& barrier,
+	void applyBufferMemoryBarrier(MVKPipelineBarrier& barrier,
 								  MVKCommandEncoder* cmdEncoder,
 								  MVKCommandUse cmdUse);
 
@@ -95,9 +91,7 @@ protected:
 	friend class MVKDeviceMemory;
 
 	void propagateDebugName() override;
-	bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
-						   VkPipelineStageFlags dstStageMask,
-						   MVKPipelineBarrier& barrier);
+	bool needsHostReadSync(MVKPipelineBarrier& barrier);
     bool overlaps(VkDeviceSize offset, VkDeviceSize size, VkDeviceSize &overlapOffset, VkDeviceSize &overlapSize);
 	bool shouldFlushHostMemory();
 	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
