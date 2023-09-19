@@ -442,3 +442,47 @@ protected:
     uint32_t _stencilReference;
 };
 
+
+#pragma mark -
+#pragma mark MVKCmdSetCullMode
+
+/**
+ * Vulkan command to dynamically set the cull mode. Originally from VK_EXT_extended_dynamic_state,
+ * but also part of Vulkan 1.3.
+ */
+class MVKCmdSetCullMode : public MVKCommand {
+
+public:
+    VkResult setContent(MVKCommandBuffer* cmdBuff,
+                        VkCullModeFlags cullMode);
+
+    void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+    MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+    MTLCullMode _cullMode;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetFrontFace
+
+/**
+ * Vulkan command to dynamically set the front facing winding order. Originally from
+ * VK_EXT_extended_dynamic_state, but also part of Vulkan 1.3.
+ */
+class MVKCmdSetFrontFace : public MVKCommand {
+
+public:
+    VkResult setContent(MVKCommandBuffer* cmdBuff,
+                        VkFrontFace frontFace);
+
+    void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+    MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+    MTLWinding _frontFace;
+};
+

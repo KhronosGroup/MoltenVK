@@ -20,6 +20,7 @@ Released TBD
 
 - Add support for extensions:
 	- `VK_KHR_synchronization2`
+	- `VK_EXT_extended_dynamic_state`
 - Fix rare case where vertex attribute buffers are not bound to Metal 
   when no other bindings change between pipelines.
 - Ensure objects retained for life of `MTLCommandBuffer` during `vkCmdBlitImage()` & `vkQueuePresentKHR()`.
