@@ -320,6 +320,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				subgroupSizeFeatures->computeFullSubgroups = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES: {
+				auto* synch2Features = (VkPhysicalDeviceSynchronization2Features*)next;
+				synch2Features->synchronization2 = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES: {
 				auto* astcHDRFeatures = (VkPhysicalDeviceTextureCompressionASTCHDRFeatures*)next;
 				astcHDRFeatures->textureCompressionASTC_HDR = _metalFeatures.astcHDRTextures;
@@ -4172,16 +4177,14 @@ void MVKDevice::removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t val
 	mvkRemoveFirstOccurance(_awaitingTimelineSem4s, make_pair(sem4, value));
 }
 
-void MVKDevice::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
-								   VkPipelineStageFlags dstStageMask,
-								   MVKPipelineBarrier& barrier,
+void MVKDevice::applyMemoryBarrier(MVKPipelineBarrier& barrier,
 								   MVKCommandEncoder* cmdEncoder,
 								   MVKCommandUse cmdUse) {
-	if (!mvkIsAnyFlagEnabled(dstStageMask, VK_PIPELINE_STAGE_HOST_BIT) ||
+	if (!mvkIsAnyFlagEnabled(barrier.dstStageMask, VK_PIPELINE_STAGE_HOST_BIT) ||
 		!mvkIsAnyFlagEnabled(barrier.dstAccessMask, VK_ACCESS_HOST_READ_BIT) ) { return; }
 	lock_guard<mutex> lock(_rezLock);
 	for (auto& rez : _resources) {
-		rez->applyMemoryBarrier(srcStageMask, dstStageMask, barrier, cmdEncoder, cmdUse);
+		rez->applyMemoryBarrier(barrier, cmdEncoder, cmdUse);
 	}
 }
 

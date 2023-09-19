@@ -42,6 +42,9 @@ class MVKCmdPipelineBarrier : public MVKCommand {
 
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const VkDependencyInfo* pDependencyInfo);
+
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						VkPipelineStageFlags srcStageMask,
 						VkPipelineStageFlags dstStageMask,
 						VkDependencyFlags dependencyFlags,
@@ -59,8 +62,6 @@ protected:
 	bool coversTextures();
 
 	MVKSmallVector<MVKPipelineBarrier, N> _barriers;
-	VkPipelineStageFlags _srcStageMask;
-	VkPipelineStageFlags _dstStageMask;
 	VkDependencyFlags _dependencyFlags;
 };
 
@@ -281,34 +282,26 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKCmdSetResetEvent
+#pragma mark MVKCmdSetEvent
 
-/** Abstract Vulkan command to set or reset an event. */
-class MVKCmdSetResetEvent : public MVKCommand {
+/** Vulkan command to set an event. */
+class MVKCmdSetEvent : public MVKCommand {
 
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						VkEvent event,
+						const VkDependencyInfo* pDependencyInfo);
+
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkEvent event,
 						VkPipelineStageFlags stageMask);
 
-protected:
-	MVKEvent* _mvkEvent;
-
-};
-
-
-#pragma mark -
-#pragma mark MVKCmdSetEvent
-
-/** Vulkan command to set an event. */
-class MVKCmdSetEvent : public MVKCmdSetResetEvent {
-
-public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
+	MVKEvent* _mvkEvent;
 };
 
 
@@ -316,14 +309,19 @@ protected:
 #pragma mark MVKCmdResetEvent
 
 /** Vulkan command to reset an event. */
-class MVKCmdResetEvent : public MVKCmdSetResetEvent {
+class MVKCmdResetEvent : public MVKCommand {
 
 public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkEvent event,
+						VkPipelineStageFlags2 stageMask);
+
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
+	MVKEvent* _mvkEvent;
 };
 
 
@@ -339,6 +337,11 @@ template <size_t N>
 class MVKCmdWaitEvents : public MVKCommand {
 
 public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						uint32_t eventCount,
+						const VkEvent* pEvents,
+						const VkDependencyInfo* pDependencyInfos);
+
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						uint32_t eventCount,
 						const VkEvent* pEvents,

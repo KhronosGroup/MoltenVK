@@ -92,7 +92,8 @@ public:
 #pragma mark Queue submissions
 
 	/** Submits the specified command buffers to the queue. */
-	VkResult submit(uint32_t submitCount, const VkSubmitInfo* pSubmits, VkFence fence, MVKCommandUse cmdUse);
+	template <typename S>
+	VkResult submit(uint32_t submitCount, const S* pSubmits, VkFence fence, MVKCommandUse cmdUse);
 
 	/** Submits the specified presentation command to the queue. */
 	VkResult submit(const VkPresentInfoKHR* pPresentInfo);
@@ -164,6 +165,24 @@ protected:
 #pragma mark -
 #pragma mark MVKQueueSubmission
 
+typedef struct MVKSemaphoreSubmitInfo {
+private:
+	MVKSemaphore* _semaphore;
+public:
+	uint64_t value;
+	VkPipelineStageFlags2 stageMask;
+	uint32_t deviceIndex;
+
+	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff);
+	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff);
+	MVKSemaphoreSubmitInfo(const VkSemaphoreSubmitInfo& semaphoreSubmitInfo);
+	MVKSemaphoreSubmitInfo(const VkSemaphore semaphore, VkPipelineStageFlags stageMask);
+	MVKSemaphoreSubmitInfo(const MVKSemaphoreSubmitInfo& other);
+	MVKSemaphoreSubmitInfo& operator=(const MVKSemaphoreSubmitInfo& other);
+	~MVKSemaphoreSubmitInfo();
+
+} MVKSemaphoreSubmitInfo;
+
 /** This is an abstract class for an operation that can be submitted to an MVKQueue. */
 class MVKQueueSubmission : public MVKBaseObject, public MVKConfigurableMixin {
 
@@ -180,8 +199,13 @@ public:
 	virtual VkResult execute() = 0;
 
 	MVKQueueSubmission(MVKQueue* queue,
+					   uint32_t waitSemaphoreInfoCount,
+					   const VkSemaphoreSubmitInfo* pWaitSemaphoreSubmitInfos);
+
+	MVKQueueSubmission(MVKQueue* queue,
 					   uint32_t waitSemaphoreCount,
-					   const VkSemaphore* pWaitSemaphores);
+					   const VkSemaphore* pWaitSemaphores,
+					   const VkPipelineStageFlags* pWaitDstStageMask);
 
 	~MVKQueueSubmission() override;
 
@@ -192,12 +216,21 @@ protected:
 	MVKDevice* getDevice() { return _queue->getDevice(); }
 
 	MVKQueue* _queue;
-	MVKSmallVector<std::pair<MVKSemaphore*, uint64_t>> _waitSemaphores;
+	MVKSmallVector<MVKSemaphoreSubmitInfo> _waitSemaphores;
 };
 
 
 #pragma mark -
 #pragma mark MVKQueueCommandBufferSubmission
+
+typedef struct MVKCommandBufferSubmitInfo {
+	MVKCommandBuffer* commandBuffer;
+	uint32_t deviceMask;
+
+	MVKCommandBufferSubmitInfo(const VkCommandBufferSubmitInfo& commandBufferInfo);
+	MVKCommandBufferSubmitInfo(VkCommandBuffer commandBuffer);
+
+} MVKCommandBufferSubmitInfo;
 
 /**
  * Submits an empty set of command buffers to the queue.
@@ -208,7 +241,15 @@ class MVKQueueCommandBufferSubmission : public MVKQueueSubmission {
 public:
 	VkResult execute() override;
 
-	MVKQueueCommandBufferSubmission(MVKQueue* queue, const VkSubmitInfo* pSubmit, VkFence fence, MVKCommandUse cmdUse);
+	MVKQueueCommandBufferSubmission(MVKQueue* queue, 
+									const VkSubmitInfo2* pSubmit,
+									VkFence fence, 
+									MVKCommandUse cmdUse);
+
+	MVKQueueCommandBufferSubmission(MVKQueue* queue, 
+									const VkSubmitInfo* pSubmit,
+									VkFence fence,
+									MVKCommandUse cmdUse);
 
 	~MVKQueueCommandBufferSubmission() override;
 
@@ -222,11 +263,11 @@ protected:
 	virtual void submitCommandBuffers() {}
 
 	MVKCommandEncodingContext _encodingContext;
-	MVKSmallVector<std::pair<MVKSemaphore*, uint64_t>> _signalSemaphores;
-	MVKFence* _fence;
-	id<MTLCommandBuffer> _activeMTLCommandBuffer;
-	MVKCommandUse _commandUse;
-	bool _emulatedWaitDone; //Used to track if we've already waited for emulated semaphores.
+	MVKSmallVector<MVKSemaphoreSubmitInfo> _signalSemaphores;
+	MVKFence* _fence = nullptr;
+	id<MTLCommandBuffer> _activeMTLCommandBuffer = nil;
+	MVKCommandUse _commandUse = kMVKCommandUseNone;
+	bool _emulatedWaitDone = false;		//Used to track if we've already waited for emulated semaphores.
 };
 
 
@@ -238,7 +279,12 @@ template <size_t N>
 class MVKQueueFullCommandBufferSubmission : public MVKQueueCommandBufferSubmission {
 
 public:
-	MVKQueueFullCommandBufferSubmission(MVKQueue* queue,
+	MVKQueueFullCommandBufferSubmission(MVKQueue* queue, 
+										const VkSubmitInfo2* pSubmit,
+										VkFence fence,
+										MVKCommandUse cmdUse);
+
+	MVKQueueFullCommandBufferSubmission(MVKQueue* queue, 
 										const VkSubmitInfo* pSubmit,
 										VkFence fence,
 										MVKCommandUse cmdUse);
@@ -246,7 +292,7 @@ public:
 protected:
 	void submitCommandBuffers() override;
 
-	MVKSmallVector<MVKCommandBuffer*, N> _cmdBuffers;
+	MVKSmallVector<MVKCommandBufferSubmitInfo, N> _cmdBuffers;
 };
 
 

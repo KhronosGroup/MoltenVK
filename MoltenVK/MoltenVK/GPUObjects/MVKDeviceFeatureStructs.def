@@ -55,6 +55,7 @@ MVK_DEVICE_FEATURE(ShaderAtomicInt64,                 SHADER_ATOMIC_INT64,      
 MVK_DEVICE_FEATURE(ShaderFloat16Int8,                 SHADER_FLOAT16_INT8,                    2)
 MVK_DEVICE_FEATURE(ShaderSubgroupExtendedTypes,       SHADER_SUBGROUP_EXTENDED_TYPES,         1)
 MVK_DEVICE_FEATURE(SubgroupSizeControl,               SUBGROUP_SIZE_CONTROL,                  2)
+MVK_DEVICE_FEATURE(Synchronization2,                  SYNCHRONIZATION_2,                      1)
 MVK_DEVICE_FEATURE(TextureCompressionASTCHDR,         TEXTURE_COMPRESSION_ASTC_HDR,           1)
 MVK_DEVICE_FEATURE(TimelineSemaphore,                 TIMELINE_SEMAPHORE,                     1)
 MVK_DEVICE_FEATURE(UniformBufferStandardLayout,       UNIFORM_BUFFER_STANDARD_LAYOUT,         1)

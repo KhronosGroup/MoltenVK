@@ -265,6 +265,22 @@ protected:
 #pragma mark -
 #pragma mark MVKRenderPass
 
+/** Collects together VkSubpassDependency and VkMemoryBarrier2. */
+typedef struct MVKSubpassDependency {
+	uint32_t              srcSubpass;
+	uint32_t              dstSubpass;
+	VkPipelineStageFlags2 srcStageMask;
+	VkPipelineStageFlags2 dstStageMask;
+	VkAccessFlags2        srcAccessMask;
+	VkAccessFlags2        dstAccessMask;
+	VkDependencyFlags     dependencyFlags;
+	int32_t               viewOffset;
+
+	MVKSubpassDependency(const VkSubpassDependency& spDep, int32_t viewOffset);
+	MVKSubpassDependency(const VkSubpassDependency2& spDep, const VkMemoryBarrier2* pMemBar);
+
+} MVKSubpassDependency;
+
 /** Represents a Vulkan render pass. */
 class MVKRenderPass : public MVKVulkanAPIDeviceObject {
 
@@ -308,7 +324,7 @@ protected:
 
 	MVKSmallVector<MVKAttachmentDescription> _attachments;
 	MVKSmallVector<MVKRenderSubpass> _subpasses;
-	MVKSmallVector<VkSubpassDependency2> _subpassDependencies;
+	MVKSmallVector<MVKSubpassDependency> _subpassDependencies;
 	VkRenderingFlags _renderingFlags = 0;
 
 };

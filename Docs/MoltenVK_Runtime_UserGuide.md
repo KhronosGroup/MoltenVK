@@ -350,6 +350,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_surface`
 - `VK_KHR_swapchain`
 - `VK_KHR_swapchain_mutable_format`
+- `VK_KHR_synchronization2`
 - `VK_KHR_timeline_semaphore`
 - `VK_KHR_uniform_buffer_standard_layout`
 - `VK_KHR_variable_pointers`

@@ -904,6 +904,26 @@ MVKAttachmentDescription::MVKAttachmentDescription(MVKRenderPass* renderPass,
 #pragma mark -
 #pragma mark MVKRenderPass
 
+MVKSubpassDependency::MVKSubpassDependency(const VkSubpassDependency& spDep, int32_t viewOffset) :
+	srcSubpass(spDep.srcSubpass),
+	dstSubpass(spDep.dstSubpass),
+	srcStageMask(spDep.srcStageMask),
+	dstStageMask(spDep.dstStageMask),
+	srcAccessMask(spDep.srcAccessMask),
+	dstAccessMask(spDep.dstAccessMask),
+	dependencyFlags(spDep.dependencyFlags),
+	viewOffset(viewOffset) {}
+
+MVKSubpassDependency::MVKSubpassDependency(const VkSubpassDependency2& spDep, const VkMemoryBarrier2* pMemBar) :
+	srcSubpass(spDep.srcSubpass),
+	dstSubpass(spDep.dstSubpass),
+	srcStageMask(pMemBar ? pMemBar->srcStageMask : spDep.srcStageMask),
+	dstStageMask(pMemBar ? pMemBar->dstStageMask : spDep.dstStageMask),
+	srcAccessMask(pMemBar ? pMemBar->srcAccessMask : spDep.srcAccessMask),
+	dstAccessMask(pMemBar ? pMemBar->dstAccessMask : spDep.dstAccessMask),
+	dependencyFlags(spDep.dependencyFlags),
+	viewOffset(spDep.viewOffset) {}
+
 VkExtent2D MVKRenderPass::getRenderAreaGranularity() {
     if (_device->_pMetalFeatures->tileBasedDeferredRendering) {
         // This is the tile area.
@@ -954,19 +974,7 @@ MVKRenderPass::MVKRenderPass(MVKDevice* device,
 	}
 	_subpassDependencies.reserve(pCreateInfo->dependencyCount);
 	for (uint32_t i = 0; i < pCreateInfo->dependencyCount; i++) {
-		VkSubpassDependency2 dependency = {
-			.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
-			.pNext = nullptr,
-			.srcSubpass = pCreateInfo->pDependencies[i].srcSubpass,
-			.dstSubpass = pCreateInfo->pDependencies[i].dstSubpass,
-			.srcStageMask = pCreateInfo->pDependencies[i].srcStageMask,
-			.dstStageMask = pCreateInfo->pDependencies[i].dstStageMask,
-			.srcAccessMask = pCreateInfo->pDependencies[i].srcAccessMask,
-			.dstAccessMask = pCreateInfo->pDependencies[i].dstAccessMask,
-			.dependencyFlags = pCreateInfo->pDependencies[i].dependencyFlags,
-			.viewOffset = viewOffsets ? viewOffsets[i] : 0,
-		};
-		_subpassDependencies.push_back(dependency);
+		_subpassDependencies.emplace_back(pCreateInfo->pDependencies[i], viewOffsets ? viewOffsets[i] : 0);
 	}
 
 	// Link attachments to subpasses
@@ -991,7 +999,19 @@ MVKRenderPass::MVKRenderPass(MVKDevice* device,
 	}
 	_subpassDependencies.reserve(pCreateInfo->dependencyCount);
 	for (uint32_t i = 0; i < pCreateInfo->dependencyCount; i++) {
-		_subpassDependencies.push_back(pCreateInfo->pDependencies[i]);
+		auto& spDep = pCreateInfo->pDependencies[i];
+
+		const VkMemoryBarrier2* pMemoryBarrier2 = nullptr;
+		for (auto* next = (const VkBaseInStructure*)spDep.pNext; next; next = next->pNext) {
+			switch (next->sType) {
+				case VK_STRUCTURE_TYPE_MEMORY_BARRIER_2:
+					pMemoryBarrier2 = (const VkMemoryBarrier2*)next;
+					break;
+				default:
+					break;
+			}
+		}
+		_subpassDependencies.emplace_back(spDep, pMemoryBarrier2);
 	}
 
 	// Link attachments to subpasses
