@@ -2663,13 +2663,47 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdWriteTimestamp2(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_VULKAN_STUB_VKRESULT(vkCreatePrivateDataSlot, VkDevice, const VkPrivateDataSlotCreateInfo*, const VkAllocationCallbacks*, VkPrivateDataSlot*)
-MVK_PUBLIC_VULKAN_STUB(vkDestroyPrivateDataSlot, void, VkDevice, VkPrivateDataSlot, const VkAllocationCallbacks*)
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreatePrivateDataSlot(
+	VkDevice                                    device,
+	const VkPrivateDataSlotCreateInfoEXT*       pCreateInfo,
+	const VkAllocationCallbacks*                pAllocator,
+	VkPrivateDataSlotEXT*                       pPrivateDataSlot) {
+
+	MVKTraceVulkanCallStart();
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	VkResult rslt = mvkDev->createPrivateDataSlot(pCreateInfo, pAllocator, pPrivateDataSlot);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyPrivateDataSlot(
+	VkDevice                                    device,
+	VkPrivateDataSlotEXT                        privateDataSlot,
+	const VkAllocationCallbacks*                pAllocator) {
+
+	MVKTraceVulkanCallStart();
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	mvkDev->destroyPrivateDataSlot(privateDataSlot, pAllocator);
+	MVKTraceVulkanCallEnd();
+}
+
 MVK_PUBLIC_VULKAN_STUB(vkGetDeviceBufferMemoryRequirements, void, VkDevice, const VkDeviceBufferMemoryRequirements*, VkMemoryRequirements2*)
 MVK_PUBLIC_VULKAN_STUB(vkGetDeviceImageMemoryRequirements, void, VkDevice, const VkDeviceImageMemoryRequirements*, VkMemoryRequirements2*)
 MVK_PUBLIC_VULKAN_STUB(vkGetDeviceImageSparseMemoryRequirements, void, VkDevice, const VkDeviceImageMemoryRequirements*, uint32_t*, VkSparseImageMemoryRequirements2*)
 MVK_PUBLIC_VULKAN_STUB_VKRESULT(vkGetPhysicalDeviceToolProperties, VkPhysicalDevice, uint32_t*, VkPhysicalDeviceToolProperties*)
-MVK_PUBLIC_VULKAN_STUB(vkGetPrivateData, void, VkDevice, VkObjectType, uint64_t, VkPrivateDataSlot, uint64_t*)
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPrivateData(
+											   VkDevice                                    device,
+											   VkObjectType                                objectType,
+											   uint64_t                                    objectHandle,
+											   VkPrivateDataSlotEXT                        privateDataSlot,
+											   uint64_t*                                   pData) {
+
+	MVKTraceVulkanCallStart();
+	MVKPrivateDataSlot* mvkPDS = (MVKPrivateDataSlot*)privateDataSlot;
+	*pData = mvkPDS->getData(objectType, objectHandle);
+	MVKTraceVulkanCallEnd();
+}
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkQueueSubmit2(
     VkQueue                                     queue,
@@ -2684,7 +2718,21 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkQueueSubmit2(
 	return rslt;
 }
 
-MVK_PUBLIC_VULKAN_STUB_VKRESULT(vkSetPrivateData, VkDevice, VkObjectType, uint64_t, VkPrivateDataSlot, uint64_t)
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetPrivateData(
+	VkDevice                                    device,
+	VkObjectType                                objectType,
+	uint64_t                                    objectHandle,
+	VkPrivateDataSlotEXT                        privateDataSlot,
+	uint64_t                                    data) {
+
+	MVKTraceVulkanCallStart();
+	MVKPrivateDataSlot* mvkPDS = (MVKPrivateDataSlot*)privateDataSlot;
+	mvkPDS->setData(objectType, objectHandle, data);
+	MVKTraceVulkanCallEnd();
+	return VK_SUCCESS;
+}
+
+
 
 #pragma mark -
 #pragma mark VK_KHR_bind_memory2 extension
@@ -3511,56 +3559,11 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkExportMetalObjectsEXT(
 #pragma mark -
 #pragma mark VK_EXT_private_data extension
 
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreatePrivateDataSlotEXT(
-	VkDevice                                    device,
-	const VkPrivateDataSlotCreateInfoEXT*       pCreateInfo,
-	const VkAllocationCallbacks*                pAllocator,
-	VkPrivateDataSlotEXT*                       pPrivateDataSlot) {
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCreatePrivateDataSlot, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkDestroyPrivateDataSlot, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPrivateData, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkSetPrivateData, EXT);
 
-	MVKTraceVulkanCallStart();
-	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	VkResult rslt = mvkDev->createPrivateDataSlot(pCreateInfo, pAllocator, pPrivateDataSlot);
-	MVKTraceVulkanCallEnd();
-	return rslt;
-}
-
-MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyPrivateDataSlotEXT(
-	VkDevice                                    device,
-	VkPrivateDataSlotEXT                        privateDataSlot,
-	const VkAllocationCallbacks*                pAllocator) {
-
-	MVKTraceVulkanCallStart();
-	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	mvkDev->destroyPrivateDataSlot(privateDataSlot, pAllocator);
-	MVKTraceVulkanCallEnd();
-}
-
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetPrivateDataEXT(
-	VkDevice                                    device,
-	VkObjectType                                objectType,
-	uint64_t                                    objectHandle,
-	VkPrivateDataSlotEXT                        privateDataSlot,
-	uint64_t                                    data) {
-
-	MVKTraceVulkanCallStart();
-	MVKPrivateDataSlot* mvkPDS = (MVKPrivateDataSlot*)privateDataSlot;
-	mvkPDS->setData(objectType, objectHandle, data);
-	MVKTraceVulkanCallEnd();
-	return VK_SUCCESS;
-}
-
-MVK_PUBLIC_VULKAN_SYMBOL void vkGetPrivateDataEXT(
-	VkDevice                                    device,
-	VkObjectType                                objectType,
-	uint64_t                                    objectHandle,
-	VkPrivateDataSlotEXT                        privateDataSlot,
-	uint64_t*                                   pData) {
-
-	MVKTraceVulkanCallStart();
-	MVKPrivateDataSlot* mvkPDS = (MVKPrivateDataSlot*)privateDataSlot;
-	*pData = mvkPDS->getData(objectType, objectHandle);
-	MVKTraceVulkanCallEnd();
-}
 
 #pragma mark -
 #pragma mark VK_EXT_sample_locations extension
