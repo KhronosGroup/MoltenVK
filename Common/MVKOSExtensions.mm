@@ -81,21 +81,22 @@ void mvkDispatchToMainAndWait(dispatch_block_t block) {
 #pragma mark -
 #pragma mark Process environment
 
-string mvkGetEnvVar(string varName, bool* pWasFound) {
+bool mvkGetEnvVar(const char* varName, string& evStr) {
 	@autoreleasepool {
 		NSDictionary* nsEnv = [[NSProcessInfo processInfo] environment];
-		NSString* envStr = nsEnv[@(varName.c_str())];
-		if (pWasFound) { *pWasFound = envStr != nil; }
-		return envStr ? envStr.UTF8String : "";
+		NSString* nsStr = nsEnv[@(varName)];
+		if (nsStr) { evStr = nsStr.UTF8String; }
+		return nsStr != nil;
 	}
 }
 
-int64_t mvkGetEnvVarInt64(string varName, bool* pWasFound) {
-	return strtoll(mvkGetEnvVar(varName, pWasFound).c_str(), NULL, 0);
+const char* mvkGetEnvVarString(const char* varName, string& evStr, const char* defaultValue) {
+	return mvkGetEnvVar(varName, evStr) ? evStr.c_str() : defaultValue;
 }
 
-bool mvkGetEnvVarBool(std::string varName, bool* pWasFound) {
-	return mvkGetEnvVarInt64(varName, pWasFound) != 0;
+double mvkGetEnvVarNumber(const char* varName, double defaultValue) {
+	string evStr;
+	return mvkGetEnvVar(varName, evStr) ? strtod(evStr.c_str(), nullptr) : defaultValue;
 }
 
 
@@ -103,7 +104,7 @@ bool mvkGetEnvVarBool(std::string varName, bool* pWasFound) {
 #pragma mark System memory
 
 uint64_t mvkGetSystemMemorySize() {
-#if MVK_MACOS_OR_IOS
+#if MVK_MACOS_OR_IOS_OR_VISIONOS
 	mach_msg_type_number_t host_size = HOST_BASIC_INFO_COUNT;
 	host_basic_info_data_t info;
 	if (host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&info, &host_size) == KERN_SUCCESS) {

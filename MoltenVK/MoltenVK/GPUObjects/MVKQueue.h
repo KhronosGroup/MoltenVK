@@ -86,6 +86,9 @@ public:
 	/** Returns a pointer to the Vulkan instance. */
 	MVKInstance* getInstance() override { return _device->getInstance(); }
 
+	/** Return the name of this queue. */
+	const std::string& getName() { return _name; }
+
 #pragma mark Queue submissions
 
 	/** Submits the specified command buffers to the queue. */
@@ -96,10 +99,6 @@ public:
 
 	/** Block the current thread until this queue is idle. */
 	VkResult waitIdle(MVKCommandUse cmdUse);
-
-	/** Return the name of this queue. */
-	const std::string& getName() { return _name; }
-
 
 #pragma mark Metal
 
@@ -140,25 +139,25 @@ protected:
 	void initName();
 	void initExecQueue();
 	void initMTLCommandQueue();
-	void initGPUCaptureScopes();
 	void destroyExecQueue();
 	VkResult submit(MVKQueueSubmission* qSubmit);
 	NSString* getMTLCommandBufferLabel(MVKCommandUse cmdUse);
+	void handleMTLCommandBufferError(id<MTLCommandBuffer> mtlCmdBuff);
 
 	MVKQueueFamily* _queueFamily;
-	uint32_t _index;
-	float _priority;
-	dispatch_queue_t _execQueue;
-	id<MTLCommandQueue> _mtlQueue;
 	std::string _name;
-	NSString* _mtlCmdBuffLabelEndCommandBuffer;
-	NSString* _mtlCmdBuffLabelQueueSubmit;
-	NSString* _mtlCmdBuffLabelQueuePresent;
-	NSString* _mtlCmdBuffLabelDeviceWaitIdle;
-	NSString* _mtlCmdBuffLabelQueueWaitIdle;
-	NSString* _mtlCmdBuffLabelAcquireNextImage;
-	NSString* _mtlCmdBuffLabelInvalidateMappedMemoryRanges;
-	MVKGPUCaptureScope* _submissionCaptureScope;
+	dispatch_queue_t _execQueue;
+	id<MTLCommandQueue> _mtlQueue = nil;
+	NSString* _mtlCmdBuffLabelBeginCommandBuffer = nil;
+	NSString* _mtlCmdBuffLabelQueueSubmit = nil;
+	NSString* _mtlCmdBuffLabelQueuePresent = nil;
+	NSString* _mtlCmdBuffLabelDeviceWaitIdle = nil;
+	NSString* _mtlCmdBuffLabelQueueWaitIdle = nil;
+	NSString* _mtlCmdBuffLabelAcquireNextImage = nil;
+	NSString* _mtlCmdBuffLabelInvalidateMappedMemoryRanges = nil;
+	MVKGPUCaptureScope* _submissionCaptureScope = nil;
+	float _priority;
+	uint32_t _index;
 };
 
 
@@ -178,7 +177,7 @@ public:
 	 *
 	 * Upon completion of this function, no further calls should be made to this instance.
 	 */
-	virtual void execute() = 0;
+	virtual VkResult execute() = 0;
 
 	MVKQueueSubmission(MVKQueue* queue,
 					   uint32_t waitSemaphoreCount,
@@ -190,6 +189,7 @@ protected:
 	friend class MVKQueue;
 
 	virtual void finish() = 0;
+	MVKDevice* getDevice() { return _queue->getDevice(); }
 
 	MVKQueue* _queue;
 	MVKSmallVector<std::pair<MVKSemaphore*, uint64_t>> _waitSemaphores;
@@ -206,7 +206,7 @@ protected:
 class MVKQueueCommandBufferSubmission : public MVKQueueSubmission {
 
 public:
-	void execute() override;
+	VkResult execute() override;
 
 	MVKQueueCommandBufferSubmission(MVKQueue* queue, const VkSubmitInfo* pSubmit, VkFence fence, MVKCommandUse cmdUse);
 
@@ -217,7 +217,7 @@ protected:
 
 	id<MTLCommandBuffer> getActiveMTLCommandBuffer();
 	void setActiveMTLCommandBuffer(id<MTLCommandBuffer> mtlCmdBuff);
-	void commitActiveMTLCommandBuffer(bool signalCompletion = false);
+	VkResult commitActiveMTLCommandBuffer(bool signalCompletion = false);
 	void finish() override;
 	virtual void submitCommandBuffers() {}
 
@@ -238,28 +238,15 @@ template <size_t N>
 class MVKQueueFullCommandBufferSubmission : public MVKQueueCommandBufferSubmission {
 
 public:
-	MVKQueueFullCommandBufferSubmission(MVKQueue* queue, const VkSubmitInfo* pSubmit, VkFence fence) :
-		MVKQueueCommandBufferSubmission(queue, pSubmit, fence, kMVKCommandUseQueueSubmit) {
-
-			// pSubmit can be null if just tracking the fence alone
-			if (pSubmit) {
-				uint32_t cbCnt = pSubmit->commandBufferCount;
-				_cmdBuffers.reserve(cbCnt);
-				for (uint32_t i = 0; i < cbCnt; i++) {
-					MVKCommandBuffer* cb = MVKCommandBuffer::getMVKCommandBuffer(pSubmit->pCommandBuffers[i]);
-					_cmdBuffers.push_back(cb);
-					setConfigurationResult(cb->getConfigurationResult());
-				}
-			}
-		}
+	MVKQueueFullCommandBufferSubmission(MVKQueue* queue,
+										const VkSubmitInfo* pSubmit,
+										VkFence fence,
+										MVKCommandUse cmdUse);
 
 protected:
 	void submitCommandBuffers() override;
-	void finish() override;
 
 	MVKSmallVector<MVKCommandBuffer*, N> _cmdBuffers;
-	MTLTimestamp _cpuStart = 0;
-	MTLTimestamp _gpuStart = 0;
 };
 
 
@@ -270,7 +257,7 @@ protected:
 class MVKQueuePresentSurfaceSubmission : public MVKQueueSubmission {
 
 public:
-	void execute() override;
+	VkResult execute() override;
 
 	MVKQueuePresentSurfaceSubmission(MVKQueue* queue,
 									 const VkPresentInfoKHR* pPresentInfo);

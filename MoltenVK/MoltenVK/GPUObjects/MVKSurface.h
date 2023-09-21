@@ -35,6 +35,7 @@
 #endif
 
 class MVKInstance;
+class MVKSwapchain;
 
 @class MVKBlockObserver;
 
@@ -55,11 +56,8 @@ public:
 	/** Returns a pointer to the Vulkan instance. */
 	MVKInstance* getInstance() override { return _mvkInstance; }
 
-    /** Returns the CAMetalLayer underlying this surface.  */
-    inline CAMetalLayer* getCAMetalLayer() {
-        std::lock_guard<std::mutex> lock(_layerLock);
-        return _mtlCAMetalLayer;
-    }
+    /** Returns the CAMetalLayer underlying this surface. */
+	CAMetalLayer* getCAMetalLayer();
 
 
 #pragma mark Construction
@@ -75,13 +73,16 @@ public:
 	~MVKSurface() override;
 
 protected:
+	friend class MVKSwapchain;
+
 	void propagateDebugName() override {}
-	void initLayerObserver();
+	void initLayer(CAMetalLayer* mtlLayer, const char* vkFuncName);
 	void releaseLayer();
 
-	MVKInstance* _mvkInstance;
-	CAMetalLayer* _mtlCAMetalLayer;
-	MVKBlockObserver* _layerObserver;
 	std::mutex _layerLock;
+	MVKInstance* _mvkInstance = nullptr;
+	CAMetalLayer* _mtlCAMetalLayer = nil;
+	MVKBlockObserver* _layerObserver = nil;
+	MVKSwapchain* _activeSwapchain = nullptr;
 };
 

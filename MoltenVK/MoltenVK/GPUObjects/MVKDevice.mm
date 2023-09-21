@@ -156,7 +156,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 		.separateDepthStencilLayouts = true,
 		.hostQueryReset = true,
 		.timelineSemaphore = true,
-		.bufferDeviceAddress = mvkOSVersionIsAtLeast(12.05, 16.0),
+		.bufferDeviceAddress = mvkOSVersionIsAtLeast(12.05, 16.0, 1.0),
 		.bufferDeviceAddressCaptureReplay = false,
 		.bufferDeviceAddressMultiDevice = false,
 		.vulkanMemoryModel = false,
@@ -420,7 +420,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT: {
 				auto* demoteFeatures = (VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT*)next;
-				demoteFeatures->shaderDemoteToHelperInvocation = mvkOSVersionIsAtLeast(11.0, 14.0);
+				demoteFeatures->shaderDemoteToHelperInvocation = mvkOSVersionIsAtLeast(11.0, 14.0, 1.0);
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT: {
@@ -457,10 +457,17 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 }
 
 void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties* properties) {
+	updateTimestampPeriod();
 	*properties = _properties;
 }
 
 void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
+
+	properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+	getProperties(&properties->properties);
+
+	if ( !properties->pNext ) { return; }
+
 	uint32_t uintMax = std::numeric_limits<uint32_t>::max();
 	uint32_t maxSamplerCnt = getMaxSamplerCount();
 	bool isTier2 = supportsMetalArgumentBuffers() && (_metalFeatures.argumentBuffersTier >= MTLArgumentBuffersTier2);
@@ -542,8 +549,6 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps12.maxTimelineSemaphoreValueDifference = std::numeric_limits<uint64_t>::max();
 	supportedProps12.framebufferIntegerColorSampleCounts = _metalFeatures.supportedSampleCounts;
 
-	properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-	properties->properties = _properties;
 	for (auto* next = (VkBaseOutStructure*)properties->pNext; next; next = next->pNext) {
 		switch ((uint32_t)next->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES: {
@@ -825,7 +830,7 @@ void MVKPhysicalDevice::populateSubgroupProperties(VkPhysicalDeviceVulkan11Prope
 	if (_features.tessellationShader) {
 		pVk11Props->subgroupSupportedStages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
 	}
-	if (mvkOSVersionIsAtLeast(10.15, 13.0)) {
+	if (mvkOSVersionIsAtLeast(10.15, 13.0, 1.0)) {
 		pVk11Props->subgroupSupportedStages |= VK_SHADER_STAGE_FRAGMENT_BIT;
 	}
 	pVk11Props->subgroupSupportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT;
@@ -1581,23 +1586,27 @@ VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 	return rslt;
 }
 
-// Don't need to do this for Apple GPUs, where the GPU and CPU timestamps
-// are the same, or if we're not using GPU timestamp counters.
-void MVKPhysicalDevice::startTimestampCorrelation(MTLTimestamp& cpuStart, MTLTimestamp& gpuStart) {
-	if (_properties.vendorID == kAppleVendorId || !_timestampMTLCounterSet) { return; }
-	[_mtlDevice sampleTimestamps: &cpuStart gpuTimestamp: &gpuStart];
-}
+// If needed, update the timestamp period for this device, using a crude lowpass filter to level out
+// wild temporary changes, particularly during initial queries before much GPU activity has occurred.
+// On Apple GPUs, CPU & GPU timestamps are the same, and timestamp period never changes.
+void MVKPhysicalDevice::updateTimestampPeriod() {
+	if (_properties.vendorID != kAppleVendorId &&
+		[_mtlDevice respondsToSelector: @selector(sampleTimestamps:gpuTimestamp:)]) {
 
-// Don't need to do this for Apple GPUs, where the GPU and CPU timestamps
-// are the same, or if we're not using GPU timestamp counters.
-void MVKPhysicalDevice::updateTimestampPeriod(MTLTimestamp cpuStart, MTLTimestamp gpuStart) {
-	if (_properties.vendorID == kAppleVendorId || !_timestampMTLCounterSet) { return; }
-
-	MTLTimestamp cpuEnd;
-	MTLTimestamp gpuEnd;
-	[_mtlDevice sampleTimestamps: &cpuEnd gpuTimestamp: &gpuEnd];
-
-	_properties.limits.timestampPeriod = (double)(cpuEnd - cpuStart) / (double)(gpuEnd - gpuStart);
+		MTLTimestamp earlierCPUTs = _prevCPUTimestamp;
+		MTLTimestamp earlierGPUTs = _prevGPUTimestamp;
+		[_mtlDevice sampleTimestamps: &_prevCPUTimestamp gpuTimestamp: &_prevGPUTimestamp];
+		double elapsedCPUNanos = _prevCPUTimestamp - earlierCPUTs;
+		double elapsedGPUTicks = _prevGPUTimestamp - earlierGPUTs;
+		if (elapsedCPUNanos && elapsedGPUTicks) {		// Ensure not zero
+			float tsPeriod = elapsedCPUNanos / elapsedGPUTicks;
+			
+			// Basic lowpass filter TPout = (1 - A)TPout + (A * TPin).
+			// The lower A is, the slower TPout will change over time.
+			float a = mvkConfig().timestampPeriodLowPassAlpha;
+			_properties.limits.timestampPeriod = ((1.0 - a) * _properties.limits.timestampPeriod) + (a * tsPeriod);
+		}
+	}
 }
 
 
@@ -1712,7 +1721,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			break;
 		case kAppleVendorId:
 			// TODO: Other GPUs?
-			if (!mvkOSVersionIsAtLeast(14.0, 17.0)) {
+			if (!mvkOSVersionIsAtLeast(14.0, 17.0, 1.0)) {
 				_metalFeatures.needsSampleDrefLodArrayWorkaround = true;
 			}
 			// fallthrough
@@ -2176,9 +2185,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #endif
 	}
 
-// iOS and tvOS adjustments necessary when running in the simulator on non-Apple GPUs.
-#if MVK_OS_SIMULATOR && !MVK_APPLE_SILICON
-	_metalFeatures.mtlBufferAlignment = 256;
+// iOS and tvOS adjustments necessary when running on the simulator.
+#if MVK_OS_SIMULATOR
+	_metalFeatures.mtlBufferAlignment = 256;	// Even on Apple Silicon
 #endif
 
 	// Currently, Metal argument buffer support is in beta stage, and is only supported
@@ -2625,7 +2634,7 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.optimalBufferCopyRowPitchAlignment = 1;
 
 	_properties.limits.timestampComputeAndGraphics = VK_TRUE;
-	_properties.limits.timestampPeriod = _metalFeatures.counterSamplingPoints ? 1.0 : mvkGetTimestampPeriod();
+	_properties.limits.timestampPeriod = mvkGetTimestampPeriod();	// Will be 1.0 on Apple Silicon
 
     _properties.limits.pointSizeRange[0] = 1;
 	switch (_properties.vendorID) {
@@ -3068,32 +3077,23 @@ uint64_t MVKPhysicalDevice::getVRAMSize() {
 	}
 }
 
+// If possible, retrieve from the MTLDevice, otherwise from available memory size, or a fixed conservative estimate.
 uint64_t MVKPhysicalDevice::getRecommendedMaxWorkingSetSize() {
-#if MVK_MACOS
+#if MVK_XCODE_15 || MVK_MACOS
 	if ( [_mtlDevice respondsToSelector: @selector(recommendedMaxWorkingSetSize)]) {
 		return _mtlDevice.recommendedMaxWorkingSetSize;
 	}
 #endif
-#if MVK_IOS_OR_TVOS
-	// GPU and CPU use shared memory. Estimate the current free memory in the system.
 	uint64_t freeMem = mvkGetAvailableMemorySize();
-	if (freeMem) { return freeMem; }
-#endif
-
-	return 128 * MEBI;		// Conservative minimum for macOS GPU's & iOS shared memory
+	return freeMem ? freeMem : 256 * MEBI;
 }
 
+// If possible, retrieve from the MTLDevice, otherwise use the current memory used by this process.
 uint64_t MVKPhysicalDevice::getCurrentAllocatedSize() {
 	if ( [_mtlDevice respondsToSelector: @selector(currentAllocatedSize)] ) {
 		return _mtlDevice.currentAllocatedSize;
 	}
-#if MVK_IOS_OR_TVOS
-	// We can use the current memory used by this process as a reasonable approximation.
 	return mvkGetUsedMemorySize();
-#endif
-#if MVK_MACOS
-	return 0;
-#endif
 }
 
 // When using argument buffers, Metal imposes a hard limit on the number of MTLSamplerState
@@ -3261,31 +3261,14 @@ bool MVKPhysicalDevice::needsCounterSetRetained() {
 }
 
 void MVKPhysicalDevice::logGPUInfo() {
-	string devTypeStr;
-	switch (_properties.deviceType) {
-		case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
-			devTypeStr = "Discrete";
-			break;
-		case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
-			devTypeStr = "Integrated";
-			break;
-		case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
-			devTypeStr = "Virtual";
-			break;
-		case VK_PHYSICAL_DEVICE_TYPE_CPU:
-			devTypeStr = "CPU Emulation";
-			break;
-		default:
-			devTypeStr = "Unknown";
-			break;
-	}
-
 	string logMsg = "GPU device:";
 	logMsg += "\n\t\tmodel: %s";
 	logMsg += "\n\t\ttype: %s";
 	logMsg += "\n\t\tvendorID: %#06x";
 	logMsg += "\n\t\tdeviceID: %#06x";
 	logMsg += "\n\t\tpipelineCacheUUID: %s";
+	logMsg += "\n\t\tGPU memory available: %llu MB";
+	logMsg += "\n\t\tGPU memory used: %llu MB";
 	logMsg += "\n\tsupports the following Metal Versions, GPU's and Feature Sets:";
 	logMsg += "\n\t\tMetal Shading Language %s";
 
@@ -3368,9 +3351,29 @@ void MVKPhysicalDevice::logGPUInfo() {
 	}
 #endif
 
+	string devTypeStr;
+	switch (_properties.deviceType) {
+		case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+			devTypeStr = "Discrete";
+			break;
+		case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+			devTypeStr = "Integrated";
+			break;
+		case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+			devTypeStr = "Virtual";
+			break;
+		case VK_PHYSICAL_DEVICE_TYPE_CPU:
+			devTypeStr = "CPU Emulation";
+			break;
+		default:
+			devTypeStr = "Unknown";
+			break;
+	}
+
 	NSUUID* nsUUID = [[NSUUID alloc] initWithUUIDBytes: _properties.pipelineCacheUUID];		// temp retain
-	MVKLogInfo(logMsg.c_str(), _properties.deviceName, devTypeStr.c_str(),
+	MVKLogInfo(logMsg.c_str(), getName(), devTypeStr.c_str(),
 			   _properties.vendorID, _properties.deviceID, nsUUID.UUIDString.UTF8String,
+			   getRecommendedMaxWorkingSetSize() / MEBI, getCurrentAllocatedSize() / MEBI,
 			   SPIRVToMSLConversionOptions::printMSLVersion(_metalFeatures.mslVersion).c_str());
 	[nsUUID release];																		// temp release
 }
@@ -3378,7 +3381,11 @@ void MVKPhysicalDevice::logGPUInfo() {
 MVKPhysicalDevice::~MVKPhysicalDevice() {
 	mvkDestroyContainerContents(_queueFamilies);
 	[_timestampMTLCounterSet release];
+
+	uint64_t memUsed = getCurrentAllocatedSize();	// Retrieve before releasing MTLDevice
 	[_mtlDevice release];
+
+	MVKLogInfo("Destroyed VkPhysicalDevice for GPU %s with %llu MB of GPU memory still allocated.", getName(), memUsed / MEBI);
 }
 
 
@@ -4197,30 +4204,52 @@ void MVKDevice::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 	}
 }
 
-void MVKDevice::updateActivityPerformance(MVKPerformanceTracker& activity,
-										  uint64_t startTime, uint64_t endTime) {
-
-	double currInterval = mvkGetElapsedMilliseconds(startTime, endTime);
+void MVKDevice::updateActivityPerformance(MVKPerformanceTracker& activity, double currentValue) {
 	lock_guard<mutex> lock(_perfLock);
 
-	activity.latestDuration = currInterval;
-	activity.minimumDuration = ((activity.minimumDuration == 0.0)
-								? currInterval :
-								min(currInterval, activity.minimumDuration));
-	activity.maximumDuration = max(currInterval, activity.maximumDuration);
-	double totalInterval = (activity.averageDuration * activity.count++) + currInterval;
-	activity.averageDuration = totalInterval / activity.count;
+	activity.latest = currentValue;
+	activity.minimum = ((activity.minimum == 0.0)
+								? currentValue :
+								min(currentValue, activity.minimum));
+	activity.maximum = max(currentValue, activity.maximum);
+	double total = (activity.average * activity.count++) + currentValue;
+	activity.average = total / activity.count;
+
+	if (_isPerformanceTracking && mvkConfig().activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE) {
+		logActivityInline(activity, _performanceStatistics);
+	}
 }
 
-void MVKDevice::logActivityPerformance(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline) {
-	MVKLogInfo("%s%s%s avg: %.3f ms, latest: %.3f ms, min: %.3f ms, max: %.3f ms, count: %d",
-			   (isInline ? "" : "  "),
+void MVKDevice::logActivityInline(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats) {
+	if (getActivityPerformanceValueType(activity, _performanceStatistics) == MVKActivityPerformanceValueTypeByteCount) {
+		logActivityByteCount(activity, _performanceStatistics, true);
+	} else {
+		logActivityDuration(activity, _performanceStatistics, true);
+	}
+}
+void MVKDevice::logActivityDuration(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline) {
+	const char* fmt = (isInline
+					   ? "%s performance avg: %.3f ms, latest: %.3f ms, min: %.3f ms, max: %.3f ms, count: %d"
+					   : "  %-45s avg: %.3f ms, latest: %.3f ms, min: %.3f ms, max: %.3f ms, count: %d");
+	MVKLogInfo(fmt,
 			   getActivityPerformanceDescription(activity, perfStats),
-			   (isInline ? " performance" : ""),
-			   activity.averageDuration,
-			   activity.latestDuration,
-			   activity.minimumDuration,
-			   activity.maximumDuration,
+			   activity.average,
+			   activity.latest,
+			   activity.minimum,
+			   activity.maximum,
+			   activity.count);
+}
+
+void MVKDevice::logActivityByteCount(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline) {
+	const char* fmt = (isInline
+					   ? "%s avg: %5llu MB, latest: %5llu MB, min: %5llu MB, max: %5llu MB, count: %d"
+					   : "  %-45s avg: %5llu MB, latest: %5llu MB, min: %5llu MB, max: %5llu MB, count: %d");
+	MVKLogInfo(fmt,
+			   getActivityPerformanceDescription(activity, perfStats),
+			   uint64_t(activity.average) / KIBI,
+			   uint64_t(activity.latest) / KIBI,
+			   uint64_t(activity.minimum) / KIBI,
+			   uint64_t(activity.maximum) / KIBI,
 			   activity.count);
 }
 
@@ -4230,49 +4259,71 @@ void MVKDevice::logPerformanceSummary() {
 	MVKPerformanceStatistics perfStats;
 	getPerformanceStatistics(&perfStats);
 
-	logActivityPerformance(perfStats.queue.frameInterval, perfStats);
-	logActivityPerformance(perfStats.queue.nextCAMetalDrawable, perfStats);
-	logActivityPerformance(perfStats.queue.mtlCommandBufferCompletion, perfStats);
-	logActivityPerformance(perfStats.queue.mtlQueueAccess, perfStats);
-	logActivityPerformance(perfStats.shaderCompilation.hashShaderCode, perfStats);
-	logActivityPerformance(perfStats.shaderCompilation.spirvToMSL, perfStats);
-	logActivityPerformance(perfStats.shaderCompilation.mslCompile, perfStats);
-	logActivityPerformance(perfStats.shaderCompilation.mslLoad, perfStats);
-	logActivityPerformance(perfStats.shaderCompilation.mslCompress, perfStats);
-	logActivityPerformance(perfStats.shaderCompilation.mslDecompress, perfStats);
-	logActivityPerformance(perfStats.shaderCompilation.shaderLibraryFromCache, perfStats);
-	logActivityPerformance(perfStats.shaderCompilation.functionRetrieval, perfStats);
-	logActivityPerformance(perfStats.shaderCompilation.functionSpecialization, perfStats);
-	logActivityPerformance(perfStats.shaderCompilation.pipelineCompile, perfStats);
-	logActivityPerformance(perfStats.pipelineCache.sizePipelineCache, perfStats);
-	logActivityPerformance(perfStats.pipelineCache.readPipelineCache, perfStats);
-	logActivityPerformance(perfStats.pipelineCache.writePipelineCache, perfStats);
+#define logDuration(s)   logActivityDuration(perfStats.s, perfStats)
+#define logByteCount(s)  logActivityByteCount(perfStats.s, perfStats)
+
+	logDuration(queue.frameInterval);
+	logDuration(queue.retrieveMTLCommandBuffer);
+	logDuration(queue.commandBufferEncoding);
+	logDuration(queue.submitCommandBuffers);
+	logDuration(queue.mtlCommandBufferExecution);
+	logDuration(queue.retrieveCAMetalDrawable);
+	logDuration(queue.presentSwapchains);
+	logDuration(shaderCompilation.hashShaderCode);
+	logDuration(shaderCompilation.spirvToMSL);
+	logDuration(shaderCompilation.mslCompile);
+	logDuration(shaderCompilation.mslLoad);
+	logDuration(shaderCompilation.mslCompress);
+	logDuration(shaderCompilation.mslDecompress);
+	logDuration(shaderCompilation.shaderLibraryFromCache);
+	logDuration(shaderCompilation.functionRetrieval);
+	logDuration(shaderCompilation.functionSpecialization);
+	logDuration(shaderCompilation.pipelineCompile);
+	logDuration(pipelineCache.sizePipelineCache);
+	logDuration(pipelineCache.readPipelineCache);
+	logDuration(pipelineCache.writePipelineCache);
+	logByteCount(device.gpuMemoryAllocated);
+#undef logDuration
+#undef logByteCount
 }
 
 const char* MVKDevice::getActivityPerformanceDescription(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats) {
-	if (&activity == &perfStats.shaderCompilation.hashShaderCode) { return "Hash shader SPIR-V code"; }
-	if (&activity == &perfStats.shaderCompilation.spirvToMSL) { return "Convert SPIR-V to MSL source code"; }
-	if (&activity == &perfStats.shaderCompilation.mslCompile) { return "Compile MSL source code into a MTLLibrary"; }
-	if (&activity == &perfStats.shaderCompilation.mslLoad) { return "Load pre-compiled MSL code into a MTLLibrary"; }
-	if (&activity == &perfStats.shaderCompilation.mslCompress) { return "Compress MSL source code after compiling a MTLLibrary"; }
-	if (&activity == &perfStats.shaderCompilation.mslDecompress) { return "Decompress MSL source code during pipeline cache write"; }
-	if (&activity == &perfStats.shaderCompilation.shaderLibraryFromCache) { return "Retrieve shader library from the cache"; }
-	if (&activity == &perfStats.shaderCompilation.functionRetrieval) { return "Retrieve a MTLFunction from a MTLLibrary"; }
-	if (&activity == &perfStats.shaderCompilation.functionSpecialization) { return "Specialize a retrieved MTLFunction"; }
-	if (&activity == &perfStats.shaderCompilation.pipelineCompile) { return "Compile MTLFunctions into a pipeline"; }
-	if (&activity == &perfStats.pipelineCache.sizePipelineCache) { return "Calculate cache size required to write MSL to pipeline cache"; }
-	if (&activity == &perfStats.pipelineCache.readPipelineCache) { return "Read MSL from pipeline cache"; }
-	if (&activity == &perfStats.pipelineCache.writePipelineCache) { return "Write MSL to pipeline cache"; }
-	if (&activity == &perfStats.queue.mtlQueueAccess) { return "Access MTLCommandQueue"; }
-	if (&activity == &perfStats.queue.mtlCommandBufferCompletion) { return "Complete MTLCommandBuffer"; }
-	if (&activity == &perfStats.queue.nextCAMetalDrawable) { return "Retrieve a CAMetalDrawable from CAMetalLayer"; }
-	if (&activity == &perfStats.queue.frameInterval) { return "Frame interval"; }
-	return "Unknown performance activity";
+#define ifActivityReturnName(s, n)  if (&activity == &perfStats.s) return n
+	ifActivityReturnName(shaderCompilation.hashShaderCode,         "Hash shader SPIR-V code");
+	ifActivityReturnName(shaderCompilation.spirvToMSL,             "Convert SPIR-V to MSL source code");
+	ifActivityReturnName(shaderCompilation.mslCompile,             "Compile MSL into a MTLLibrary");
+	ifActivityReturnName(shaderCompilation.mslLoad,                "Load pre-compiled MSL into a MTLLibrary");
+	ifActivityReturnName(shaderCompilation.mslCompress,            "Compress MSL after compiling a MTLLibrary");
+	ifActivityReturnName(shaderCompilation.mslDecompress,          "Decompress MSL for pipeline cache write");
+	ifActivityReturnName(shaderCompilation.shaderLibraryFromCache, "Retrieve shader library from the cache");
+	ifActivityReturnName(shaderCompilation.functionRetrieval,      "Retrieve a MTLFunction from a MTLLibrary");
+	ifActivityReturnName(shaderCompilation.functionSpecialization, "Specialize a retrieved MTLFunction");
+	ifActivityReturnName(shaderCompilation.pipelineCompile,        "Compile MTLFunctions into a pipeline");
+	ifActivityReturnName(pipelineCache.sizePipelineCache,          "Calculate pipeline cache size");
+	ifActivityReturnName(pipelineCache.readPipelineCache,          "Read MSL from pipeline cache");
+	ifActivityReturnName(pipelineCache.writePipelineCache,         "Write MSL to pipeline cache");
+	ifActivityReturnName(queue.retrieveMTLCommandBuffer,           "Retrieve a MTLCommandBuffer");
+	ifActivityReturnName(queue.commandBufferEncoding,              "Encode VkCommandBuffer to MTLCommandBuffer");
+	ifActivityReturnName(queue.submitCommandBuffers,               "vkQueueSubmit() encoding to MTLCommandBuffers");
+	ifActivityReturnName(queue.mtlCommandBufferExecution,          "Execute a MTLCommandBuffer on GPU");
+	ifActivityReturnName(queue.retrieveCAMetalDrawable,            "Retrieve a CAMetalDrawable");
+	ifActivityReturnName(queue.presentSwapchains,                  "Present swapchains in on GPU");
+	ifActivityReturnName(queue.frameInterval,                      "Frame interval");
+	ifActivityReturnName(device.gpuMemoryAllocated,                "GPU memory allocated");
+	return                                                         "Unknown performance activity";
+#undef ifActivityReturnName
+}
+
+MVKActivityPerformanceValueType MVKDevice::getActivityPerformanceValueType(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats) {
+	if (&activity == &perfStats.device.gpuMemoryAllocated) return MVKActivityPerformanceValueTypeByteCount;
+	return MVKActivityPerformanceValueTypeDuration;
 }
 
 void MVKDevice::getPerformanceStatistics(MVKPerformanceStatistics* pPerf) {
-    lock_guard<mutex> lock(_perfLock);
+	addPerformanceByteCount(_performanceStatistics.device.gpuMemoryAllocated,
+							_physicalDevice->getCurrentAllocatedSize());
 
+	lock_guard<mutex> lock(_perfLock);
     if (pPerf) { *pPerf = _performanceStatistics; }
 }
 
@@ -4625,33 +4676,15 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	startAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE, getMTLDevice());
 
 	MVKLogInfo("Created VkDevice to run on GPU %s with the following %d Vulkan extensions enabled:%s",
-			   _pProperties->deviceName,
-			   _enabledExtensions.getEnabledCount(),
-			   _enabledExtensions.enabledNamesString("\n\t\t", true).c_str());
+			   getName(), _enabledExtensions.getEnabledCount(), _enabledExtensions.enabledNamesString("\n\t\t", true).c_str());
 }
 
+// Perf stats that last the duration of the app process.
+static MVKPerformanceStatistics _processPerformanceStatistics = {};
+
 void MVKDevice::initPerformanceTracking() {
-
 	_isPerformanceTracking = mvkConfig().performanceTracking;
-	_activityPerformanceLoggingStyle = mvkConfig().activityPerformanceLoggingStyle;
-
-	_performanceStatistics.shaderCompilation.hashShaderCode = {};
-    _performanceStatistics.shaderCompilation.spirvToMSL = {};
-    _performanceStatistics.shaderCompilation.mslCompile = {};
-    _performanceStatistics.shaderCompilation.mslLoad = {};
-	_performanceStatistics.shaderCompilation.mslCompress = {};
-	_performanceStatistics.shaderCompilation.mslDecompress = {};
-	_performanceStatistics.shaderCompilation.shaderLibraryFromCache = {};
-    _performanceStatistics.shaderCompilation.functionRetrieval = {};
-    _performanceStatistics.shaderCompilation.functionSpecialization = {};
-    _performanceStatistics.shaderCompilation.pipelineCompile = {};
-	_performanceStatistics.pipelineCache.sizePipelineCache = {};
-	_performanceStatistics.pipelineCache.writePipelineCache = {};
-	_performanceStatistics.pipelineCache.readPipelineCache = {};
-	_performanceStatistics.queue.mtlQueueAccess = {};
-	_performanceStatistics.queue.mtlCommandBufferCompletion = {};
-	_performanceStatistics.queue.nextCAMetalDrawable = {};
-	_performanceStatistics.queue.frameInterval = {};
+	_performanceStatistics = _processPerformanceStatistics;
 }
 
 void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {
@@ -4948,9 +4981,16 @@ void MVKDevice::reservePrivateData(const VkDeviceCreateInfo* pCreateInfo) {
 }
 
 MVKDevice::~MVKDevice() {
-	if (_activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_DEVICE_LIFETIME) {
-		MVKLogInfo("Device activity performance summary:");
-		logPerformanceSummary();
+	if (_isPerformanceTracking) {
+		auto perfLogStyle = mvkConfig().activityPerformanceLoggingStyle;
+		if (perfLogStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_DEVICE_LIFETIME) {
+			MVKLogInfo("Device activity performance summary:");
+			logPerformanceSummary();
+		} else if (perfLogStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_DEVICE_LIFETIME_ACCUMULATE) {
+			MVKLogInfo("Process activity performance summary:");
+			logPerformanceSummary();
+			_processPerformanceStatistics = _performanceStatistics;
+		}
 	}
 
 	for (auto& queues : _queuesByQueueFamilyIndex) {
@@ -4966,11 +5006,57 @@ MVKDevice::~MVKDevice() {
 	stopAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE);
 
 	mvkDestroyContainerContents(_privateDataSlots);
+
+	MVKLogInfo("Destroyed VkDevice on GPU %s with %d Vulkan extensions enabled.",
+			   getName(), _enabledExtensions.getEnabledCount());
 }
 
 
 #pragma mark -
 #pragma mark Support functions
+
+NSArray<id<MTLDevice>>* mvkGetAvailableMTLDevicesArray() {
+	NSMutableArray* mtlDevs = [NSMutableArray array];	// autoreleased
+
+#if MVK_MACOS
+	NSArray* rawMTLDevs = [MTLCopyAllDevices() autorelease];
+	bool forceLowPower = mvkConfig().forceLowPowerGPU;
+
+	// Populate the array of appropriate MTLDevices
+	for (id<MTLDevice> md in rawMTLDevs) {
+		if ( !forceLowPower || md.isLowPower ) { [mtlDevs addObject: md]; }
+	}
+
+	// Sort by power
+	[mtlDevs sortUsingComparator: ^(id<MTLDevice> md1, id<MTLDevice> md2) {
+		BOOL md1IsLP = md1.isLowPower;
+		BOOL md2IsLP = md2.isLowPower;
+
+		if (md1IsLP == md2IsLP) {
+			// If one device is headless and the other one is not, select the
+			// one that is not headless first.
+			BOOL md1IsHeadless = md1.isHeadless;
+			BOOL md2IsHeadless = md2.isHeadless;
+			if (md1IsHeadless == md2IsHeadless ) {
+				return NSOrderedSame;
+			}
+			return md2IsHeadless ? NSOrderedAscending : NSOrderedDescending;
+		}
+
+		return md2IsLP ? NSOrderedAscending : NSOrderedDescending;
+	}];
+
+	// If the survey found at least one device, return the array.
+	if (mtlDevs.count) { return mtlDevs; }
+
+#endif	// MVK_MACOS
+
+	// For other OS's, or for macOS if the survey returned empty, use the default device.
+	id<MTLDevice> md = [MTLCreateSystemDefaultDevice() autorelease];
+	if (md) { [mtlDevs addObject: md]; }
+
+	return mtlDevs;		// retained
+}
 
 uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice) {
 	return [mtlDevice respondsToSelector: @selector(registryID)] ? mtlDevice.registryID : 0;

@@ -93,6 +93,9 @@ if [ "${is_portability}" != "" ]; then
 	export MVK_CONFIG_ADVERTISE_EXTENSIONS=0xA
 fi
 
+# ----- System settings ------
+export DYLD_LIBRARY_PATH="/usr/local/lib"
+
 # ----- Metal validation settings ------
 export METAL_DEVICE_WRAPPER_TYPE=1
 export METAL_ERROR_MODE=3
@@ -100,7 +103,7 @@ export METAL_DEBUG_ERROR_MODE=3
 
 # ----- MoltenVK config settings ------
 export MVK_CONFIG_LOG_LEVEL=1	#(1 = Errors only, 3 = Info)
-export MVK_DEBUG=0
+export MVK_CONFIG_DEBUG=0
 
 # Additional MoltenVK configuration can be set here by editing below.
 export MVK_CONFIG_RESUME_LOST_DEVICE=1
@@ -110,7 +113,7 @@ export MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0          #(2 = VK_EXT_descriptor_
 export MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE=2          #(2 = MTLEvents always)
 export MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM=0        #(2 = ZLIB, 3 = LZ4)
 export MVK_CONFIG_PERFORMANCE_TRACKING=0
-export MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE=2  #(2 = Device lifetime)
+export MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE=3  #(2 = Device lifetime, 3 = Process lifetime)
 
 # -------------- Operation --------------------
 

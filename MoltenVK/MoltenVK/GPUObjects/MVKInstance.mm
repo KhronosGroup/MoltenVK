@@ -238,93 +238,36 @@ void MVKInstance::debugReportMessage(MVKVulkanAPIObject* mvkAPIObj, MVKConfigLog
 
 VkDebugReportFlagsEXT MVKInstance::getVkDebugReportFlagsFromLogLevel(MVKConfigLogLevel logLevel) {
 	switch (logLevel) {
-		case MVK_CONFIG_LOG_LEVEL_DEBUG:
-			return VK_DEBUG_REPORT_DEBUG_BIT_EXT;
-		case MVK_CONFIG_LOG_LEVEL_INFO:
-			return VK_DEBUG_REPORT_INFORMATION_BIT_EXT;
-		case MVK_CONFIG_LOG_LEVEL_WARNING:
-			return VK_DEBUG_REPORT_WARNING_BIT_EXT;
-		case MVK_CONFIG_LOG_LEVEL_ERROR:
-		default:
-			return VK_DEBUG_REPORT_ERROR_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_ERROR:    return VK_DEBUG_REPORT_ERROR_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_WARNING:  return VK_DEBUG_REPORT_WARNING_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_INFO:     return VK_DEBUG_REPORT_INFORMATION_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_DEBUG:    return VK_DEBUG_REPORT_DEBUG_BIT_EXT;
+		default:                            return VK_DEBUG_REPORT_ERROR_BIT_EXT;
 	}
 }
 
 VkDebugUtilsMessageSeverityFlagBitsEXT MVKInstance::getVkDebugUtilsMessageSeverityFlagBitsFromLogLevel(MVKConfigLogLevel logLevel) {
 	switch (logLevel) {
-		case MVK_CONFIG_LOG_LEVEL_DEBUG:
-			return VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
-		case MVK_CONFIG_LOG_LEVEL_INFO:
-			return VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
-		case MVK_CONFIG_LOG_LEVEL_WARNING:
-			return VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
-		case MVK_CONFIG_LOG_LEVEL_ERROR:
-		default:
-			return VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_ERROR:    return VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_WARNING:  return VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_INFO:     return VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_DEBUG:    return VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
+		default:                            return VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 	}
 }
 
 VkDebugUtilsMessageTypeFlagsEXT MVKInstance::getVkDebugUtilsMessageTypesFlagBitsFromLogLevel(MVKConfigLogLevel logLevel) {
 	switch (logLevel) {
-		case MVK_CONFIG_LOG_LEVEL_DEBUG:
-		case MVK_CONFIG_LOG_LEVEL_INFO:
-		case MVK_CONFIG_LOG_LEVEL_WARNING:
-			return VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
-		case MVK_CONFIG_LOG_LEVEL_ERROR:
-		default:
-			return VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_ERROR:    return VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_WARNING:  return VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_DEBUG:    return VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_INFO:     return VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
+		default:                            return VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
 	}
 }
 
 
 #pragma mark Object Creation
-
-// Returns an autoreleased array containing the MTLDevices available on this system, sorted according
-// to power, with higher power GPU's at the front of the array. This ensures that a lazy app that simply
-// grabs the first GPU will get a high-power one by default. If MVKConfiguration::forceLowPowerGPU is set,
-// the returned array will only include low-power devices.
-NSArray<id<MTLDevice>>* MVKInstance::getAvailableMTLDevicesArray() {
-	NSMutableArray* mtlDevs = [NSMutableArray array];
-
-#if MVK_MACOS
-	NSArray* rawMTLDevs = [MTLCopyAllDevices() autorelease];
-	if (rawMTLDevs) {
-		bool forceLowPower = mvkConfig().forceLowPowerGPU;
-
-		// Populate the array of appropriate MTLDevices
-		for (id<MTLDevice> md in rawMTLDevs) {
-			if ( !forceLowPower || md.isLowPower ) { [mtlDevs addObject: md]; }
-		}
-
-		// Sort by power
-		[mtlDevs sortUsingComparator: ^(id<MTLDevice> md1, id<MTLDevice> md2) {
-			BOOL md1IsLP = md1.isLowPower;
-			BOOL md2IsLP = md2.isLowPower;
-
-			if (md1IsLP == md2IsLP) {
-				// If one device is headless and the other one is not, select the
-				// one that is not headless first.
-				BOOL md1IsHeadless = md1.isHeadless;
-				BOOL md2IsHeadless = md2.isHeadless;
-				if (md1IsHeadless == md2IsHeadless ) {
-					return NSOrderedSame;
-				}
-				return md2IsHeadless ? NSOrderedAscending : NSOrderedDescending;
-			}
-
-			return md2IsLP ? NSOrderedAscending : NSOrderedDescending;
-		}];
-
-	}
-#endif	// MVK_MACOS
-
-#if MVK_IOS_OR_TVOS
-	id<MTLDevice> md = [MTLCreateSystemDefaultDevice() autorelease];
-	if (md) { [mtlDevs addObject: md]; }
-#endif	// MVK_IOS_OR_TVOS
-
-	return mtlDevs;		// retained
-}
 
 MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExtensions(this) {
 
@@ -347,7 +290,7 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 	// This effort creates a number of autoreleased instances of Metal
 	// and other Obj-C classes, so wrap it all in an autorelease pool.
 	@autoreleasepool {
-		NSArray<id<MTLDevice>>* mtlDevices = getAvailableMTLDevicesArray();
+		NSArray<id<MTLDevice>>* mtlDevices = mvkGetAvailableMTLDevicesArray();
 		_physicalDevices.reserve(mtlDevices.count);
 		for (id<MTLDevice> mtlDev in mtlDevices) {
 			_physicalDevices.push_back(new MVKPhysicalDevice(this, mtlDev));
@@ -788,5 +731,9 @@ MVKInstance::~MVKInstance() {
 
 	lock_guard<mutex> lock(_dcbLock);
 	mvkDestroyContainerContents(_debugReportCallbacks);
+
+	MVKLogInfo("Destroyed VkInstance for Vulkan version %s with %d Vulkan extensions enabled.",
+			   mvkGetVulkanVersionString(_appInfo.apiVersion).c_str(),
+			   _enabledExtensions.getEnabledCount());
 }
 

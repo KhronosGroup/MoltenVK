@@ -2,9 +2,9 @@
 
 set -e
 
-export MVK_OS_CLANG="tvos"
 export MVK_UX_FWK="UIKit"
 export MVK_MIN_OS_VERSION=${TVOS_DEPLOYMENT_TARGET}
+export MVK_CLANG_OS_MIN_VERSION="-mtvos-version-min=${MVK_MIN_OS_VERSION}"
 export MVK_IOSURFACE_FWK="-framework IOSurface"
 export MVK_IOKIT_FWK=""
 

@@ -13,24 +13,67 @@ Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
-MoltenVK 1.2.5
+MoltenVK 1.2.6
 --------------
 
 Released TBD
 
+- Fix rare case where vertex attribute buffers are not bound to Metal 
+  when no other bindings change between pipelines.
+- Ensure objects retained for life of `MTLCommandBuffer` during `vkCmdBlitImage()` & `vkQueuePresentKHR()`.
+- Fix case where a `CAMetalDrawable` with invalid pixel format causes onscreen flickering.
+- Fix MSL code used in `vkCmdBlitImage()` on depth-stencil formats. 
+- Improve behavior of swapchain image presentation stalls caused by Metal regression.
+- Add several additional performance trackers, available via logging, or the `mvk_private_api.h` API.
+- Add configurable lowpass filter for `VkPhysicalDeviceLimits::timestampPeriod`.
+- Deprecate `MVK_DEBUG` env var, and add `MVK_CONFIG_DEBUG` env var to replace it. 
+- Update `MVK_CONFIGURATION_API_VERSION` and `MVK_PRIVATE_API_VERSION` to `38`.
+
+
+
+MoltenVK 1.2.5
+--------------
+
+Released 2023/08/15
+
 - Add support for extensions:
+	- `VK_KHR_incremental_present`
 	- `VK_KHR_shader_non_semantic_info`
 	- `VK_EXT_4444_formats`
 	- `VK_EXT_calibrated_timestamps`
+	- `VK_EXT_pipeline_creation_feedback`
 	- `VK_EXT_shader_demote_to_helper_invocation`
 	- `VK_EXT_shader_subgroup_ballot`
 	- `VK_EXT_shader_subgroup_vote`
 - Add support for `VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN`.
+- Support building MoltenVK for visionOS.
 - Ensure non-dispatch compute commands don't interfere with compute encoding state used by dispatch commands.
-- Support `VK_PRESENT_MODE_IMMEDIATE_KHR` if `VkPresentTimeGOOGLE::desiredPresentTime` is zero.
 - Support maximizing the concurrent executing compilation tasks via `MVKConfiguration::shouldMaximizeConcurrentCompilation`
+- Support `VK_PRESENT_MODE_IMMEDIATE_KHR` if `VkPresentTimeGOOGLE::desiredPresentTime` is zero.
 - Add support for `VK_PRESENT_MODE_IMMEDIATE_KHR` to macOS Cube demo.
+- Allow both `renderPass` and `VkPipelineRenderingCreateInfo` to be missing.
+- Fix sync delay between calls to `vkQueueSubmit()` on non-Apple-Silicon devices.
+- Ensure Xcode simulator always uses 256B buffer alignment.
+- Don't attempt to force the window system to use the same high-power GPU as the app, on every swapchain creation.
 - Log more info about SPIR-V to MSL conversion errors.
+- Implement Deferred Host Operations.
+- Support _MSL Version 3.1_.
+- Drop official support for using *Xcode 11* to build MoltenVK.
+- To allow building MoltenVK without an internet connection, don't fetch a submodule if the commit is already known.
+- Update dependency libraries to match _Vulkan SDK 1.3.261_.
+- Update to latest SPIRV-Cross:
+  - MSL: Fix argument buffer padding when content includes arrays.
+  - MSL: ray-query intersection params
+  - MSL: Support `SPV_KHR_shader_ballot` and `SPV_KHR_subgroup_vote`.
+  - Skip line directives when emitting loop condition blocks.
+  - MSL: Consider changed array types for array-of-constant-bool in struct.
+  - MSL: Consider bool-short remapping for constant expressions as well.
+  - Minor cleanup in constant_expression().
+  - MSL: Add test for bool-in-struct edge cases.
+  - MSL: Handle more complex array copy scenarios with bool <-> short.
+  - MSL: Handle stores to struct bool[].
+  - MSL: Consider bool/short remapping when dealing with composites.
+  - MSL: fix function constant deduplication misfire
 
 
 

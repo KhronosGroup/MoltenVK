@@ -63,6 +63,9 @@ public:
 	/** Returns whether this instance is in a reserved state. */
 	bool isReserved();
 
+	/** Returns the number of outstanding reservations. */
+	uint32_t getReservationCount();
+
 	/**
 	 * Blocks processing on the current thread until any or all (depending on configuration) outstanding
      * reservations have been released, or until the specified timeout interval in nanoseconds expires.
@@ -89,20 +92,19 @@ public:
 	 * require a separate call to the release() function to cause the semaphore to stop blocking.
 	 */
     MVKSemaphoreImpl(bool waitAll = true, uint32_t reservationCount = 0)
-        : _shouldWaitAll(waitAll), _reservationCount(reservationCount) {}
+        : _reservationCount(reservationCount), _shouldWaitAll(waitAll) {}
 
-    /** Destructor. */
     ~MVKSemaphoreImpl();
 
 
 private:
 	bool operator()();
-    inline bool isClear() { return _reservationCount == 0; }    // Not thread-safe
+    bool isClear() { return _reservationCount == 0; }    // Not thread-safe
 
 	std::mutex _lock;
 	std::condition_variable _blocker;
-	bool _shouldWaitAll;
 	uint32_t _reservationCount;
+	bool _shouldWaitAll;
 };
 
 

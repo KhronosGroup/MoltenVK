@@ -81,6 +81,8 @@ public:
     /**
      * If the content of this instance is dirty, marks this instance as no longer dirty
      * and calls the encodeImpl() function to encode the content onto the Metal encoder.
+	 * Marking dirty is done in advance so that subclass encodeImpl() implementations
+	 * can override to leave this instance in a dirty state.
      * Subclasses must override the encodeImpl() function to do the actual work.
      */
     void encode(uint32_t stage = 0) {
@@ -430,7 +432,8 @@ protected:
 
     // Template function that executes a lambda expression on each dirty element of
     // a vector of bindings, and marks the bindings and the vector as no longer dirty.
-	// Clear isDirty flag before operation to allow operation to possibly override.
+	// Clear binding isDirty flag before operation to allow operation to possibly override.
+	// If it does override, leave both the bindings and this instance as dirty.
 	template<class T, class V>
 	void encodeBinding(V& bindings,
 					   bool& bindingsDirtyFlag,
@@ -441,7 +444,7 @@ protected:
 				if (b.isDirty) {
 					b.isDirty = false;
 					mtlOperation(_cmdEncoder, b);
-					if (b.isDirty) { bindingsDirtyFlag = true; }
+					if (b.isDirty) { _isDirty = bindingsDirtyFlag = true; }
 				}
 			}
 		}

@@ -540,9 +540,6 @@ protected:
 #pragma mark -
 #pragma mark Support functions
 
-/** Returns a name, suitable for use as a MTLCommandBuffer label, based on the MVKCommandUse. */
-NSString* mvkMTLCommandBufferLabel(MVKCommandUse cmdUse);
-
 /** Returns a name, suitable for use as a MTLRenderCommandEncoder label, based on the MVKCommandUse. */
 NSString* mvkMTLRenderCommandEncoderLabel(MVKCommandUse cmdUse);
 

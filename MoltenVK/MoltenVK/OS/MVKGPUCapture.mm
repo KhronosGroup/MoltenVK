@@ -67,7 +67,7 @@ void MVKGPUCaptureScope::makeDefault() {
 
 MVKGPUCaptureScope::MVKGPUCaptureScope(MVKQueue* mvkQueue) {
 	_mtlQueue = [mvkQueue->getMTLCommandQueue() retain];	// retained
-	if (mvkOSVersionIsAtLeast(10.13, 11.0)) {
+	if (mvkOSVersionIsAtLeast(10.13, 11.0, 1.0)) {
 		_mtlCaptureScope = [[MTLCaptureManager sharedCaptureManager] newCaptureScopeWithCommandQueue: _mtlQueue];	// retained
 		_mtlCaptureScope.label = @(mvkQueue->getName().c_str());
 
@@ -77,7 +77,7 @@ MVKGPUCaptureScope::MVKGPUCaptureScope(MVKQueue* mvkQueue) {
 		// that depends on Apple not taking internal references to capture scopes, but without it,
 		// we could get hung up waiting for a new queue, because the old queues are still outstanding.
 		// This bug was fixed by Apple in macOS 12.4 and iOS 15.4.
-		if ( !mvkOSVersionIsAtLeast(12.04, 15.04) ) {
+		if ( !mvkOSVersionIsAtLeast(12.04, 15.04, 1.0) ) {
 			while (_mtlCaptureScope.retainCount > 1) {
 				[_mtlCaptureScope release];
 			}

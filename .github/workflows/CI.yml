@@ -15,18 +15,14 @@ jobs:
   build:
     strategy:
       matrix:
-        xcode: [ "14.3" ]
+        xcode: [ "14.3.1" ]
         platform: [ "all", "macos", "ios" ]
         os: [ "macos-13" ]
         upload_artifacts: [ true ]
-        # additional specific configurations
+
+        # Legacy configurations
         include:
-          # "Legacy" Xcode 12.5.1 & 11.7 macOS builds
           - xcode: "12.5.1"
-            platform: "macos"
-            os: "macos-11"
-            upload_artifacts: false
-          - xcode: "11.7"
             platform: "macos"
             os: "macos-11"
             upload_artifacts: false

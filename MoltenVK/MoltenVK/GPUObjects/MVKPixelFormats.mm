@@ -1482,25 +1482,20 @@ void MVKPixelFormats::addMTLVertexFormatCapabilities(id<MTLDevice> mtlDevice,
 	}
 }
 
-// If supporting a physical device, retrieve the MTLDevice from it,
-// otherwise create a temp copy of the system default MTLDevice.
+// If supporting a physical device, retrieve the MTLDevice from it, otherwise
+// retrieve the array of physical GPU devices, and use the first one.
+// Retrieving the GPUs creates a number of autoreleased instances of Metal
+// and other Obj-C classes, so wrap it all in an autorelease pool.
 void MVKPixelFormats::modifyMTLFormatCapabilities() {
 	if (_physicalDevice) {
 		modifyMTLFormatCapabilities(_physicalDevice->getMTLDevice());
 	} else {
-#if MVK_IOS_OR_TVOS
-		id<MTLDevice> mtlDevice = MTLCreateSystemDefaultDevice();	// temp retained
-#endif
-#if MVK_MACOS
-		NSArray<id<MTLDevice>>* mtlDevices = MTLCopyAllDevices();	// temp retained
-		id<MTLDevice> mtlDevice = [mtlDevices count] > 0 ? [mtlDevices[0] retain] : MTLCreateSystemDefaultDevice();			// temp retained
-		[mtlDevices release];										// temp release
-#endif
-		modifyMTLFormatCapabilities(mtlDevice);
-		[mtlDevice release];										// release temp instance
+		@autoreleasepool {
+			auto* mtlDevs = mvkGetAvailableMTLDevicesArray();
+			if (mtlDevs.count) { modifyMTLFormatCapabilities(mtlDevs[0]); }
+		}
 	}
 }
-
 
 // Mac Catalyst does not support feature sets, so we redefine them to GPU families in MVKDevice.h.
 #if MVK_MACCAT

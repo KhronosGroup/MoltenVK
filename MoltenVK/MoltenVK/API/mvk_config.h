@@ -45,13 +45,13 @@ extern "C" {
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   2
-#define MVK_VERSION_PATCH   5
+#define MVK_VERSION_PATCH   6
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
 
-#define MVK_CONFIGURATION_API_VERSION   37
+#define MVK_CONFIGURATION_API_VERSION   38
 
 /** Identifies the level of logging MoltenVK should be limited to outputting. */
 typedef enum MVKConfigLogLevel {
@@ -138,10 +138,11 @@ typedef enum MVKConfigCompressionAlgorithm {
 
 /** Identifies the style of activity performance logging to use. */
 typedef enum MVKConfigActivityPerformanceLoggingStyle {
-	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT     = 0,	/**< Repeatedly log performance after a configured number of frames. */
-	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE       = 1,	/**< Log immediately after each performance measurement. */
-	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_DEVICE_LIFETIME = 2,	/**< Log at the end of the VkDevice lifetime. This is useful for one-shot apps such as testing frameworks. */
-	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_MAX_ENUM        = 0x7FFFFFFF,
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT                = 0,	/**< Repeatedly log performance after a configured number of frames. */
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE                  = 1,	/**< Log immediately after each performance measurement. */
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_DEVICE_LIFETIME            = 2,	/**< Log at the end of the VkDevice lifetime. This is useful for one-shot apps such as testing frameworks. */
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_DEVICE_LIFETIME_ACCUMULATE = 3,	/**< Log at the end of the VkDevice lifetime, but continue to accumulate across mulitiple VkDevices throughout the app process. This is useful for testing frameworks that create many VkDevices serially. */
+	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_MAX_ENUM                   = 0x7FFFFFFF,
 } MVKConfigActivityPerformanceLoggingStyle;
 
 /**
@@ -190,7 +191,7 @@ typedef struct {
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
 	 *
 	 * The initial value or this parameter is set by the
-	 * MVK_DEBUG
+	 * MVK_CONFIG_DEBUG
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * If neither is set, the value of this parameter is false if MoltenVK was
 	 * built in Release mode, and true if MoltenVK was built in Debug mode.
@@ -786,6 +787,8 @@ typedef struct {
 	/**
 	 * Controls when MoltenVK should log activity performance events.
 	 *
+	 * The performanceTracking parameter must also be enabled.
+	 *
 	 * The value of this parameter must be changed before creating a VkDevice,
 	 * for the change to take effect.
 	 *
@@ -916,12 +919,47 @@ typedef struct {
 	/**
 	 * Maximize the concurrent executing compilation tasks.
 	 *
+	 * The value of this parameter must be changed before creating a VkInstance,
+	 * for the change to take effect.
+	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * This setting requires macOS 13.3 & is disabled by default.
 	 */
 	VkBool32 shouldMaximizeConcurrentCompilation;
+
+	/**
+	 * This parameter is ignored on Apple Silicon devices.
+	 *
+	 * Non-Apple GPUs can have a dynamic timestamp period, which varies over time according to GPU
+	 * workload. Depending on how often the app samples the VkPhysicalDeviceLimits::timestampPeriod
+	 * value using vkGetPhysicalDeviceProperties(), the app may want up-to-date, but potentially
+	 * volatile values, or it may find average values more useful.
+	 *
+	 * The value of this parameter sets the alpha (A) value of a simple lowpass filter 
+	 * on the timestampPeriod value, of the form:
+	 *
+	 *   TPout = (1 - A)TPout + (A * TPin)
+	 *
+	 * The alpha value can be set to a float between 0.0 and 1.0. Values of alpha closer to
+	 * 0.0 cause the value of timestampPeriod to vary slowly over time and be less volatile,
+	 * and values of alpha closer to 1.0 cause the value of timestampPeriod to vary quickly
+	 * and be more volatile.
+	 *
+	 * Apps that query the timestampPeriod value infrequently will prefer low volatility, whereas
+	 * apps that query frequently may prefer higher volatility, to track more recent changes.
+	 *
+	 * The value of this parameter can be changed at any time, and will affect subsequent queries.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, this parameter is set to 0.05 by default,
+	 * indicating that the timestampPeriod will vary relatively slowly,
+	 * with the expectation that the app is querying this value infrequently.
+	 */
+	float timestampPeriodLowPassAlpha;
 
 } MVKConfiguration;
 
