@@ -1070,7 +1070,6 @@ const VkRenderingAttachmentInfo* MVKRenderingAttachmentIterator::getAttachmentIn
 	return useAlt ? pAltAtt : pAtt;
 }
 
-
 #pragma mark -
 #pragma mark Support functions
 
