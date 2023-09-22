@@ -253,14 +253,14 @@ public:
 	/** Returns the current tessellation level buffer binding for the tess. control shader. */
 	uint32_t getTessCtlLevelBufferIndex() { return _tessCtlLevelBufferIndex; }
 
-	/** Returns the MTLComputePipelineState object for the vertex stage of a tessellated draw with no indices. */
-	id<MTLComputePipelineState> getTessVertexStageState() { return _mtlTessVertexStageState; }
+	/** Returns the MTLComputePipelineState object for the vertex stage of a tessellated or transform feedback draw with no indices. */
+	id<MTLComputePipelineState> getVertexStageState() { return _mtlVertexStageState; }
 
-	/** Returns the MTLComputePipelineState object for the vertex stage of a tessellated draw with 16-bit indices. */
-	id<MTLComputePipelineState> getTessVertexStageIndex16State() { return _mtlTessVertexStageIndex16State; }
+	/** Returns the MTLComputePipelineState object for the vertex stage of a tessellated or transform feedback draw with 16-bit indices. */
+	id<MTLComputePipelineState> getVertexStageIndex16State() { return _mtlVertexStageIndex16State; }
 
-	/** Returns the MTLComputePipelineState object for the vertex stage of a tessellated draw with 32-bit indices. */
-	id<MTLComputePipelineState> getTessVertexStageIndex32State() { return _mtlTessVertexStageIndex32State; }
+	/** Returns the MTLComputePipelineState object for the vertex stage of a tessellated or transform feedback draw with 32-bit indices. */
+	id<MTLComputePipelineState> getVertexStageIndex32State() { return _mtlVertexStageIndex32State; }
 
 	/** Returns the MTLComputePipelineState object for the tessellation control stage of a tessellated draw. */
 	id<MTLComputePipelineState> getTessControlStageState() { return _mtlTessControlStageState; }
@@ -321,7 +321,7 @@ protected:
 
     id<MTLRenderPipelineState> getOrCompilePipeline(MTLRenderPipelineDescriptor* plDesc, id<MTLRenderPipelineState>& plState);
     id<MTLComputePipelineState> getOrCompilePipeline(MTLComputePipelineDescriptor* plDesc, id<MTLComputePipelineState>& plState, const char* compilerType);
-	bool compileTessVertexStageState(MTLComputePipelineDescriptor* vtxPLDesc, MVKMTLFunction* pVtxFunctions, VkPipelineCreationFeedback* pVertexFB);
+	bool compileVertexStageState(MTLComputePipelineDescriptor* vtxPLDesc, MVKMTLFunction* pVtxFunctions, VkPipelineCreationFeedback* pVertexFB);
 	bool compileTessControlStageState(MTLComputePipelineDescriptor* tcPLDesc, VkPipelineCreationFeedback* pTessCtlFB);
 	void initCustomSamplePositions(const VkGraphicsPipelineCreateInfo* pCreateInfo);
     void initMTLRenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, VkPipelineCreationFeedback* pPipelineFB, const VkPipelineShaderStageCreateInfo* pVertexSS, VkPipelineCreationFeedback* pVertexFB, const VkPipelineShaderStageCreateInfo* pTessCtlSS, VkPipelineCreationFeedback* pTessCtlFB, const VkPipelineShaderStageCreateInfo* pTessEvalSS, VkPipelineCreationFeedback* pTessEvalFB, const VkPipelineShaderStageCreateInfo* pFragmentSS, VkPipelineCreationFeedback* pFragmentFB);
@@ -331,9 +331,10 @@ protected:
     void addNextStageInputToShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig, SPIRVShaderInputs& inputs);
     void addPrevStageOutputToShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig, SPIRVShaderOutputs& outputs);
     MTLRenderPipelineDescriptor* newMTLRenderPipelineDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, const VkPipelineShaderStageCreateInfo* pVertexSS, VkPipelineCreationFeedback* pVertexFB, const VkPipelineShaderStageCreateInfo* pFragmentSS, VkPipelineCreationFeedback* pFragmentFB);
-    MTLComputePipelineDescriptor* newMTLTessVertexStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderConfig, const VkPipelineShaderStageCreateInfo* pVertexSS, VkPipelineCreationFeedback* pVertexFB, const VkPipelineShaderStageCreateInfo* pTessCtlSS, MVKMTLFunction* pVtxFunctions);
+    MTLComputePipelineDescriptor* newMTLVertexStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderConfig, const VkPipelineShaderStageCreateInfo* pVertexSS, VkPipelineCreationFeedback* pVertexFB, const VkPipelineShaderStageCreateInfo* pNextSS, MVKShaderStage nextSSType, MVKMTLFunction* pVtxFunctions);
 	MTLComputePipelineDescriptor* newMTLTessControlStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderConfig, const VkPipelineShaderStageCreateInfo* pTessCtlSS, VkPipelineCreationFeedback* pTessCtlFB, const VkPipelineShaderStageCreateInfo* pVertexSS, const VkPipelineShaderStageCreateInfo* pTessEvalSS);
 	MTLRenderPipelineDescriptor* newMTLTessRasterStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderConfig, const VkPipelineShaderStageCreateInfo* pTessEvalSS, VkPipelineCreationFeedback* pTessEvalFB, const VkPipelineShaderStageCreateInfo* pFragmentSS, VkPipelineCreationFeedback* pFragmentFB, const VkPipelineShaderStageCreateInfo* pTessCtlSS);
+	MTLRenderPipelineDescriptor* newMTLXFBRasterStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderConfig, const VkPipelineShaderStageCreateInfo* pFragmentSS, VkPipelineCreationFeedback* pFragmentFB, const VkPipelineShaderStageCreateInfo* pVertexSS);
 	bool addVertexShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderConfig, const VkPipelineShaderStageCreateInfo* pVertexSS, VkPipelineCreationFeedback* pVertexFB, const VkPipelineShaderStageCreateInfo*& pFragmentSS);
 	bool addVertexShaderToPipeline(MTLComputePipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderConfig, SPIRVShaderInputs& nextInputs, const VkPipelineShaderStageCreateInfo* pVertexSS, VkPipelineCreationFeedback* pVertexFB, MVKMTLFunction* pVtxFunctions);
 	bool addTessCtlShaderToPipeline(MTLComputePipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderConfig, SPIRVShaderOutputs& prevOutput, SPIRVShaderInputs& nextInputs, const VkPipelineShaderStageCreateInfo* pTessCtlSS, VkPipelineCreationFeedback* pTessCtlFB);
@@ -371,9 +372,9 @@ protected:
 	MVKSmallVector<MVKShaderStage> _stagesUsingPhysicalStorageBufferAddressesCapability;
 	std::unordered_map<uint32_t, id<MTLRenderPipelineState>> _multiviewMTLPipelineStates;
 
-	id<MTLComputePipelineState> _mtlTessVertexStageState = nil;
-	id<MTLComputePipelineState> _mtlTessVertexStageIndex16State = nil;
-	id<MTLComputePipelineState> _mtlTessVertexStageIndex32State = nil;
+	id<MTLComputePipelineState> _mtlVertexStageState = nil;
+	id<MTLComputePipelineState> _mtlVertexStageIndex16State = nil;
+	id<MTLComputePipelineState> _mtlVertexStageIndex32State = nil;
 	id<MTLComputePipelineState> _mtlTessControlStageState = nil;
 	id<MTLRenderPipelineState> _mtlPipelineState = nil;
 
