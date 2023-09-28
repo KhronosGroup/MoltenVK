@@ -1964,7 +1964,7 @@ static void mvkCmdBeginRenderPass(
 	
 	MVKAddCmdFrom5Thresholds(BeginRenderPass,
 							 pRenderPassBegin->clearValueCount, 1, 2,
-							 attachments.size, 0, 1, 2,
+							 attachments.size(), 0, 1, 2,
 							 commandBuffer,
 							 pRenderPassBegin,
 							 pSubpassBeginInfo,

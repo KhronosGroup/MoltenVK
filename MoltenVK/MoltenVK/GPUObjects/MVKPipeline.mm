@@ -49,7 +49,7 @@ void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
                                            MVKArrayRef<uint32_t> dynamicOffsets) {
 	if (!cmdEncoder) { clearConfigurationResult(); }
 	uint32_t dynamicOffsetIndex = 0;
-	size_t dsCnt = descriptorSets.size;
+	size_t dsCnt = descriptorSets.size();
 	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
 		MVKDescriptorSet* descSet = descriptorSets[dsIdx];
 		uint32_t dslIdx = firstSet + dsIdx;

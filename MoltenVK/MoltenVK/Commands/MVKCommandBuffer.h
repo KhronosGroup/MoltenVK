@@ -143,7 +143,7 @@ public:
     bool _needsVisibilityResultMTLBuffer;
 
 	/** Called when a MVKCmdExecuteCommands is added to this command buffer. */
-	void recordExecuteCommands(const MVKArrayRef<MVKCommandBuffer*> secondaryCommandBuffers);
+	void recordExecuteCommands(MVKArrayRef<MVKCommandBuffer*const> secondaryCommandBuffers);
 
 	/** Called when a timestamp command is added. */
 	void recordTimestampCommand();
@@ -182,7 +182,6 @@ protected:
 	friend class MVKCommandEncoder;
 	friend class MVKCommandPool;
 
-	MVKBaseObject* getBaseObject() override { return this; };
 	void propagateDebugName() override {}
 	void init(const VkCommandBufferAllocateInfo* pAllocateInfo);
 	bool canExecute();

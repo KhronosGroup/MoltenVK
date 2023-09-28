@@ -959,13 +959,9 @@ public:
 	bool isUsingPipelineStageMetalArgumentBuffers() { return isUsingMetalArgumentBuffers() && !_device->_pMetalFeatures->descriptorSetArgumentBuffers; };
 
 	/** Constructs an instance for the specified device. */
-    MVKDeviceTrackingMixin(MVKDevice* device) : _device(device) { assert(_device); }
-
-	virtual ~MVKDeviceTrackingMixin() {}
+	MVKDeviceTrackingMixin(MVKDevice* device) : _device(device) { assert(_device); }
 
 protected:
-	virtual MVKBaseObject* getBaseObject() = 0;
-
 	MVKDevice* _device;
 };
 
@@ -980,9 +976,6 @@ public:
 
 	/** Constructs an instance for the specified device. */
 	MVKBaseDeviceObject(MVKDevice* device) : MVKDeviceTrackingMixin(device) {}
-
-protected:
-	MVKBaseObject* getBaseObject() override { return this; };
 };
 
 
@@ -999,10 +992,6 @@ public:
 
 	/** Constructs an instance for the specified device. */
 	MVKVulkanAPIDeviceObject(MVKDevice* device) : MVKDeviceTrackingMixin(device) {}
-
-protected:
-	MVKBaseObject* getBaseObject() override { return this; };
-
 };
 
 
@@ -1055,7 +1044,6 @@ public:
 
 protected:
 	T* newObject() override { return new T(_device); }
-	MVKBaseObject* getBaseObject() override { return this; };
 
 };
 
