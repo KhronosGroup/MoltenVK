@@ -116,8 +116,8 @@ public:
 	void populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* mtlRPDesc,
 										 uint32_t passIdx,
 										 MVKFramebuffer* framebuffer,
-										 const MVKArrayRef<MVKImageView*> attachments,
-										 const MVKArrayRef<VkClearValue> clearValues,
+										 MVKArrayRef<MVKImageView*const> attachments,
+										 MVKArrayRef<const VkClearValue> clearValues,
 										 bool isRenderingEntireAttachment,
                                          bool loadOverride = false);
 
@@ -126,7 +126,7 @@ public:
 	 * when the render area is smaller than the full framebuffer size.
 	 */
 	void populateClearAttachments(MVKClearAttachments& clearAtts,
-								  const MVKArrayRef<VkClearValue> clearValues);
+								  MVKArrayRef<const VkClearValue> clearValues);
 
 	/**
 	 * Populates the specified vector with VkClearRects for clearing views of a specified multiview
@@ -140,11 +140,11 @@ public:
 	/** If a render encoder is active, sets the store actions for all attachments to it. */
 	void encodeStoreActions(MVKCommandEncoder* cmdEncoder,
 							bool isRenderingEntireAttachment,
-							const MVKArrayRef<MVKImageView*> attachments,
+							MVKArrayRef<MVKImageView*const> attachments,
 							bool storeOverride = false);
 
 	/** Resolves any resolve attachments that cannot be handled by native Metal subpass resolve behavior. */
-	void resolveUnresolvableAttachments(MVKCommandEncoder* cmdEncoder, const MVKArrayRef<MVKImageView*> attachments);
+	void resolveUnresolvableAttachments(MVKCommandEncoder* cmdEncoder, MVKArrayRef<MVKImageView*const> attachments);
 
 	MVKRenderSubpass(MVKRenderPass* renderPass, const VkSubpassDescription* pCreateInfo,
 					 const VkRenderPassInputAttachmentAspectCreateInfo* pInputAspects,

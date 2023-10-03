@@ -105,7 +105,7 @@ public:
 	/** Destroys this object. Default behaviour simply deletes it. Subclasses may override to delay deletion. */
 	virtual void destroy() { delete this; }
 
-    virtual ~MVKBaseObject() {}
+	virtual ~MVKBaseObject() {}
 
 protected:
 	static VkResult reportResult(MVKBaseObject* mvkObj, VkResult vkRslt, MVKConfigLogLevel logLevel, const char* format, va_list args) __printflike(4, 0);
@@ -143,7 +143,7 @@ public:
 	 * Called when this instance has been retained as a reference by another object,
 	 * indicating that this instance will not be deleted until that reference is released.
 	 */
-	void retain() { _refCount++; }
+	void retain() { _refCount.fetch_add(1, std::memory_order_relaxed); }
 
 	/**
 	 * Called when this instance has been released as a reference from another object.
@@ -154,7 +154,7 @@ public:
 	 * Note that the destroy() function is called on the BaseClass.
 	 * Releasing will not call any overridden destroy() function in a descendant class.
 	 */
-	void release() { if (--_refCount == 0) { BaseClass::destroy(); } }
+	void release() { if (_refCount.fetch_sub(1, std::memory_order_acq_rel) == 1) { BaseClass::destroy(); } }
 
 	/**
 	 * Marks this instance as destroyed. If all previous references to this instance
@@ -166,15 +166,10 @@ public:
 	MVKReferenceCountingMixin() : _refCount(1) {}
 
 	/** Copy starts with fresh reference counts. */
-	MVKReferenceCountingMixin(const MVKReferenceCountingMixin& other) {
-		_refCount = 1;
-	}
+	MVKReferenceCountingMixin(const MVKReferenceCountingMixin& other) : _refCount(1) {}
 
-	/** Copy starts with fresh reference counts. */
-	MVKReferenceCountingMixin& operator=(const MVKReferenceCountingMixin& other) {
-		_refCount = 1;
-		return *this;
-	}
+	/** Don't overwrite refcounted objects. */
+	MVKReferenceCountingMixin& operator=(const MVKReferenceCountingMixin& other) = delete;
 
 protected:
 	std::atomic<uint32_t> _refCount;

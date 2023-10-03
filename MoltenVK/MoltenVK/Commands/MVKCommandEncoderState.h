@@ -143,7 +143,7 @@ public:
 	 * The isSettingDynamically indicates that the scissor is being changed dynamically,
 	 * which is only allowed if the pipeline was created as VK_DYNAMIC_STATE_SCISSOR.
 	 */
-	void setViewports(const MVKArrayRef<VkViewport> viewports,
+	void setViewports(MVKArrayRef<const VkViewport> viewports,
 					  uint32_t firstViewport,
 					  bool isSettingDynamically);
 
@@ -171,7 +171,7 @@ public:
 	 * The isSettingDynamically indicates that the scissor is being changed dynamically,
 	 * which is only allowed if the pipeline was created as VK_DYNAMIC_STATE_SCISSOR.
 	 */
-	void setScissors(const MVKArrayRef<VkRect2D> scissors,
+	void setScissors(MVKArrayRef<const VkRect2D> scissors,
 					 uint32_t firstScissor,
 					 bool isSettingDynamically);
 
@@ -457,7 +457,7 @@ protected:
 		contents[index] = value;
 	}
 
-	void assertMissingSwizzles(bool needsSwizzle, const char* stageName, const MVKArrayRef<MVKMTLTextureBinding> texBindings);
+	void assertMissingSwizzles(bool needsSwizzle, const char* stageName, MVKArrayRef<const MVKMTLTextureBinding> texBindings);
 	void encodeMetalArgumentBuffer(MVKShaderStage stage);
 	virtual void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) = 0;
 
@@ -547,7 +547,7 @@ public:
                         const char* pStageName,
                         bool fullImageViewSwizzle,
                         std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&)> bindBuffer,
-                        std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, const MVKArrayRef<uint32_t>)> bindImplicitBuffer,
+                        std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, MVKArrayRef<const uint32_t>)> bindImplicitBuffer,
                         std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
                         std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler);
 

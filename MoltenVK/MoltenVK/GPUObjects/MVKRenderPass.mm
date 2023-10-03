@@ -138,8 +138,8 @@ uint32_t MVKRenderSubpass::getViewCountUpToMetalPass(uint32_t passIdx) const {
 void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* mtlRPDesc,
 													   uint32_t passIdx,
 													   MVKFramebuffer* framebuffer,
-													   const MVKArrayRef<MVKImageView*> attachments,
-													   const MVKArrayRef<VkClearValue> clearValues,
+													   MVKArrayRef<MVKImageView*const> attachments,
+													   MVKArrayRef<const VkClearValue> clearValues,
 													   bool isRenderingEntireAttachment,
 													   bool loadOverride) {
 	MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
@@ -279,7 +279,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 
 void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
                                           bool isRenderingEntireAttachment,
-										  const MVKArrayRef<MVKImageView*> attachments,
+                                          MVKArrayRef<MVKImageView*const> attachments,
                                           bool storeOverride) {
     if (!cmdEncoder->_mtlRenderEncoder) { return; }
 	if (!_renderPass->getDevice()->_pMetalFeatures->deferredStoreActions) { return; }
@@ -308,7 +308,7 @@ void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
 }
 
 void MVKRenderSubpass::populateClearAttachments(MVKClearAttachments& clearAtts,
-												const MVKArrayRef<VkClearValue> clearValues) {
+												MVKArrayRef<const VkClearValue> clearValues) {
 	uint32_t caCnt = getColorAttachmentCount();
 	for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
 		uint32_t attIdx = _colorAttachments[caIdx].attachment;
@@ -394,7 +394,7 @@ MVKMTLFmtCaps MVKRenderSubpass::getRequiredFormatCapabilitiesForAttachmentAt(uin
 	return caps;
 }
 
-void MVKRenderSubpass::resolveUnresolvableAttachments(MVKCommandEncoder* cmdEncoder, const MVKArrayRef<MVKImageView*> attachments) {
+void MVKRenderSubpass::resolveUnresolvableAttachments(MVKCommandEncoder* cmdEncoder, MVKArrayRef<MVKImageView*const> attachments) {
 	MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();
 	size_t raCnt = _resolveAttachments.size();
 	for (uint32_t raIdx = 0; raIdx < raCnt; raIdx++) {
