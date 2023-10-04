@@ -245,6 +245,7 @@ namespace mvk {
 		bool needsDispatchBaseBuffer = false;
 		bool needsViewRangeBuffer = false;
 		bool usesPhysicalStorageBufferAddressesCapability = false;
+		bool needsTransformFeedback = false;
 
 	} SPIRVToMSLConversionResultInfo;
 

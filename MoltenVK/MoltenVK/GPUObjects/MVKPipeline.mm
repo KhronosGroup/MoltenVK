@@ -1048,6 +1048,41 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 	return plDesc;
 }
 
+// Returns a retained MTLRenderPipelineDescriptor for the last stage of a transform feedback draw constructed from this instance, or nil if an error occurs.
+// It is the responsibility of the caller to release the returned descriptor.
+MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLXFBRasterStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo,
+																				 const SPIRVTessReflectionData& reflectData,
+																				 SPIRVToMSLConversionConfiguration& shaderConfig,
+																				 const VkPipelineShaderStageCreateInfo* pFragmentSS,
+																				 VkPipelineCreationFeedback* pFragmentFB,
+																				 const VkPipelineShaderStageCreateInfo* pVertexSS) {
+	MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];	// retained
+
+	SPIRVShaderOutputs vtxOutputs;
+	std::string errorLog;
+	if (!getShaderOutputs(((MVKShaderModule*)pVertexSS->module)->getSPIRV(), spv::ExecutionModelVertex, pVertexSS->pName, vtxOutputs, errorLog) ) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get vertex outputs: %s", errorLog.c_str()));
+		return nil;
+	}
+
+	// Add shader stages. Compile vertex shader before others just in case conversion changes anything...like rasterizaion disable.
+	if (!addPassThruVertexShaderToPipeline(plDesc, pCreateInfo, shaderConfig, vtxOutputs)) {
+		[plDesc release];
+		return nil;
+	}
+
+	// Fragment shader - only add if rasterization is enabled
+	if (!addFragmentShaderToPipeline(plDesc, pCreateInfo, shaderConfig, vtxOutputs, pFragmentSS, pFragmentFB)) {
+		[plDesc release];
+		return nil;
+	}
+
+	// Output
+	addFragmentOutputToPipeline(plDesc, pCreateInfo);
+
+	return plDesc;
+}
+
 bool MVKGraphicsPipeline::verifyImplicitBuffer(bool needsBuffer, MVKShaderImplicitRezBinding& index, MVKShaderStage stage, const char* name) {
 	const char* stageNames[] = {
 		"Vertex",
@@ -1365,6 +1400,21 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 			return false;
 		}
 	}
+	return true;
+}
+
+// Adds a pass-through vertex shader which reads transform feedback buffers to the pipeline description.
+bool MVKGraphicsPipeline::addPassThruVertexShaderToPipeline(MTLRenderPipelineDescriptor* plDesc,
+															const VkGraphicsPipelineCreateInfo* pCreateInfo,
+															SPIRVToMSLConversionConfiguration& shaderConfig,
+															SPIRVShaderOutputs& vtxOutputs) {
+
+	// FIXME: What needs to happen here:
+	// 1. Generate text for vertex shader
+	// 2. Somehow attach this to the MVKShaderModule object so it gets cached
+	// 3. Get an MTLFunction object
+	// 4. 
+
 	return true;
 }
 
@@ -2661,7 +2711,8 @@ namespace mvk {
 				scr.needsInputThreadgroupMem,
 				scr.needsDispatchBaseBuffer,
 				scr.needsViewRangeBuffer,
-				scr.usesPhysicalStorageBufferAddressesCapability);
+				scr.usesPhysicalStorageBufferAddressesCapability,
+				scr.needsTransformFeedback);
 	}
 
 }
