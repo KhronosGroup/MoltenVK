@@ -331,6 +331,10 @@
 		A9B51BD8225E986A00AC74D2 /* MVKOSExtensions.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9B51BD2225E986A00AC74D2 /* MVKOSExtensions.mm */; };
 		A9B51BD9225E986A00AC74D2 /* MVKOSExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = A9B51BD6225E986A00AC74D2 /* MVKOSExtensions.h */; };
 		A9B51BDA225E986A00AC74D2 /* MVKOSExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = A9B51BD6225E986A00AC74D2 /* MVKOSExtensions.h */; };
+		A9C327562AAFBD390025EE79 /* MVKConfigMembers.def in Headers */ = {isa = PBXBuildFile; fileRef = A9C327542AAF8A770025EE79 /* MVKConfigMembers.def */; };
+		A9C327572AAFBD3A0025EE79 /* MVKConfigMembers.def in Headers */ = {isa = PBXBuildFile; fileRef = A9C327542AAF8A770025EE79 /* MVKConfigMembers.def */; };
+		A9C327582AAFBD3A0025EE79 /* MVKConfigMembers.def in Headers */ = {isa = PBXBuildFile; fileRef = A9C327542AAF8A770025EE79 /* MVKConfigMembers.def */; };
+		A9C327592AAFBD3B0025EE79 /* MVKConfigMembers.def in Headers */ = {isa = PBXBuildFile; fileRef = A9C327542AAF8A770025EE79 /* MVKConfigMembers.def */; };
 		A9C96DD01DDC20C20053187F /* MVKMTLBufferAllocation.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C96DCE1DDC20C20053187F /* MVKMTLBufferAllocation.h */; };
 		A9C96DD11DDC20C20053187F /* MVKMTLBufferAllocation.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C96DCE1DDC20C20053187F /* MVKMTLBufferAllocation.h */; };
 		A9C96DD21DDC20C20053187F /* MVKMTLBufferAllocation.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9C96DCF1DDC20C20053187F /* MVKMTLBufferAllocation.mm */; };
@@ -478,7 +482,7 @@
 		DCFD7F4A2A45BC6E007BBBF7 /* MVKRenderPass.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7941C7DFB4800632CA3 /* MVKRenderPass.mm */; };
 		DCFD7F4B2A45BC6E007BBBF7 /* MVKCmdTransfer.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB76D1C7DFB4800632CA3 /* MVKCmdTransfer.mm */; };
 		DCFD7F4C2A45BC6E007BBBF7 /* MVKCmdQueries.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7711C7DFB4800632CA3 /* MVKCmdQueries.mm */; };
-		DCFD7F4D2A45BC6E007BBBF7 /* vk_mvk_moltenvk.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7AC1C7DFB4800632CA3 /* vk_mvk_moltenvk.mm */; };
+		DCFD7F4D2A45BC6E007BBBF7 /* mvk_api.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7AC1C7DFB4800632CA3 /* mvk_api.mm */; };
 		DCFD7F4E2A45BC6E007BBBF7 /* MVKSwapchain.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB79C1C7DFB4800632CA3 /* MVKSwapchain.mm */; };
 		DCFD7F4F2A45BC6E007BBBF7 /* MVKCommandEncoderState.mm in Sources */ = {isa = PBXBuildFile; fileRef = A95B7D681D3EE486003183D3 /* MVKCommandEncoderState.mm */; };
 		DCFD7F502A45BC6E007BBBF7 /* MVKGPUCapture.mm in Sources */ = {isa = PBXBuildFile; fileRef = A93E83342121F0C8001FEBD4 /* MVKGPUCapture.mm */; };
@@ -670,6 +674,7 @@
 		A9B51BD2225E986A00AC74D2 /* MVKOSExtensions.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKOSExtensions.mm; sourceTree = "<group>"; };
 		A9B51BD6225E986A00AC74D2 /* MVKOSExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKOSExtensions.h; sourceTree = "<group>"; };
 		A9B8EE0A1A98D796009C5A02 /* libMoltenVK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVK.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		A9C327542AAF8A770025EE79 /* MVKConfigMembers.def */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = MVKConfigMembers.def; sourceTree = "<group>"; };
 		A9C83DCD24533E22003E5261 /* MVKCommandTypePools.def */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = MVKCommandTypePools.def; sourceTree = "<group>"; };
 		A9C86CB61C55B8350096CAF2 /* MoltenVKShaderConverter.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = MoltenVKShaderConverter.xcodeproj; path = ../MoltenVKShaderConverter/MoltenVKShaderConverter.xcodeproj; sourceTree = "<group>"; };
 		A9C96DCE1DDC20C20053187F /* MVKMTLBufferAllocation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKMTLBufferAllocation.h; sourceTree = "<group>"; };
@@ -843,6 +848,7 @@
 				4553AEF62251617100E8EBCD /* MVKBlockObserver.m */,
 				45557A5121C9EFF3008868BD /* MVKCodec.h */,
 				45557A4D21C9EFF3008868BD /* MVKCodec.mm */,
+				A9C327542AAF8A770025EE79 /* MVKConfigMembers.def */,
 				45557A5721CD83C3008868BD /* MVKDXTnCodec.def */,
 				A9A5E9C525C0822700E9085E /* MVKEnvironment.cpp */,
 				A98149431FB6A3F7005F00B4 /* MVKEnvironment.h */,
@@ -1008,6 +1014,7 @@
 				2FEA0A7824902F9F00EEF3AD /* MVKDeviceMemory.h in Headers */,
 				2FEA0A7924902F9F00EEF3AD /* MVKMTLResourceBindings.h in Headers */,
 				2FEA0A7A24902F9F00EEF3AD /* MVKExtensions.def in Headers */,
+				A9C327572AAFBD3A0025EE79 /* MVKConfigMembers.def in Headers */,
 				2FEA0A7B24902F9F00EEF3AD /* mvk_datatypes.hpp in Headers */,
 				2FEA0A7C24902F9F00EEF3AD /* MVKCommandEncodingPool.h in Headers */,
 				2FEA0A7D24902F9F00EEF3AD /* MVKResource.h in Headers */,
@@ -1070,6 +1077,7 @@
 				A94FB7C41C7DFB4800632CA3 /* MVKCmdRenderPass.h in Headers */,
 				A94FB7BC1C7DFB4800632CA3 /* MVKCmdPipeline.h in Headers */,
 				A9F3D9DC24732A4D00745190 /* MVKSmallVectorAllocator.h in Headers */,
+				A9C327562AAFBD390025EE79 /* MVKConfigMembers.def in Headers */,
 				A94FB7F81C7DFB4800632CA3 /* MVKPipeline.h in Headers */,
 				A94FB7F01C7DFB4800632CA3 /* MVKImage.h in Headers */,
 				4553AEFD2251617100E8EBCD /* MVKBlockObserver.h in Headers */,
@@ -1147,6 +1155,7 @@
 				A94FB7BD1C7DFB4800632CA3 /* MVKCmdPipeline.h in Headers */,
 				A9F3D9DD24732A4D00745190 /* MVKSmallVectorAllocator.h in Headers */,
 				A94FB7F91C7DFB4800632CA3 /* MVKPipeline.h in Headers */,
+				A9C327582AAFBD3A0025EE79 /* MVKConfigMembers.def in Headers */,
 				A94FB7F11C7DFB4800632CA3 /* MVKImage.h in Headers */,
 				4553AEFE2251617100E8EBCD /* MVKBlockObserver.h in Headers */,
 				A94FB7B91C7DFB4800632CA3 /* MVKCmdTransfer.h in Headers */,
@@ -1204,6 +1213,7 @@
 				DCFD7EFD2A45BC6E007BBBF7 /* MVKSync.h in Headers */,
 				DCFD7EFE2A45BC6E007BBBF7 /* MVKDevice.h in Headers */,
 				DCFD7EFF2A45BC6E007BBBF7 /* MVKSmallVector.h in Headers */,
+				A9C327592AAFBD3B0025EE79 /* MVKConfigMembers.def in Headers */,
 				DCFD7F002A45BC6E007BBBF7 /* MVKCommandPool.h in Headers */,
 				DCFD7F012A45BC6E007BBBF7 /* MVKShaderModule.h in Headers */,
 				DCFD7F022A45BC6E007BBBF7 /* MVKVulkanAPIObject.h in Headers */,
@@ -1860,7 +1870,7 @@
 				DCFD7F4A2A45BC6E007BBBF7 /* MVKRenderPass.mm in Sources */,
 				DCFD7F4B2A45BC6E007BBBF7 /* MVKCmdTransfer.mm in Sources */,
 				DCFD7F4C2A45BC6E007BBBF7 /* MVKCmdQueries.mm in Sources */,
-				DCFD7F4D2A45BC6E007BBBF7 /* vk_mvk_moltenvk.mm in Sources */,
+				DCFD7F4D2A45BC6E007BBBF7 /* mvk_api.mm in Sources */,
 				DCFD7F4E2A45BC6E007BBBF7 /* MVKSwapchain.mm in Sources */,
 				DCFD7F4F2A45BC6E007BBBF7 /* MVKCommandEncoderState.mm in Sources */,
 				DCFD7F502A45BC6E007BBBF7 /* MVKGPUCapture.mm in Sources */,
@@ -2001,7 +2011,7 @@
 					"\"$(SRCROOT)/../External/cereal/include\"",
 					"\"${BUILT_PRODUCTS_DIR}\"",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				MACH_O_TYPE = staticlib;
 				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MTL_ENABLE_DEBUG_INFO = YES;
@@ -2011,7 +2021,7 @@
 				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKShaderConverter.a";
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
-				TVOS_DEPLOYMENT_TARGET = 11.0;
+				TVOS_DEPLOYMENT_TARGET = 12.0;
 				WARNING_CFLAGS = "-Wreorder";
 			};
 			name = Debug;
@@ -2072,7 +2082,7 @@
 					"\"$(SRCROOT)/../External/cereal/include\"",
 					"\"${BUILT_PRODUCTS_DIR}\"",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				MACH_O_TYPE = staticlib;
 				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -2082,7 +2092,7 @@
 				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKShaderConverter.a";
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
-				TVOS_DEPLOYMENT_TARGET = 11.0;
+				TVOS_DEPLOYMENT_TARGET = 12.0;
 				VALIDATE_PRODUCT = YES;
 				WARNING_CFLAGS = "-Wreorder";
 			};

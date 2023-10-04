@@ -32,6 +32,7 @@ Table of Contents
 - [Performance Considerations](#performance)
 	- [Shader Loading Time](#shader_load_time)
 	- [Swapchains](#swapchains)
+	- [Timestamping](#timestamping)
 	- [Xcode Configuration](#xcode_config)
 	- [Metal System Trace Tool](#trace_tool)
 - [Known **MoltenVK** Limitations](#limitations)
@@ -327,6 +328,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_get_surface_capabilities2`
 - `VK_KHR_imageless_framebuffer`
 - `VK_KHR_image_format_list`
+- `VK_KHR_incremental_present`
 - `VK_KHR_maintenance1`
 - `VK_KHR_maintenance2`
 - `VK_KHR_maintenance3`
@@ -348,6 +350,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_surface`
 - `VK_KHR_swapchain`
 - `VK_KHR_swapchain_mutable_format`
+- `VK_KHR_synchronization2`
 - `VK_KHR_timeline_semaphore`
 - `VK_KHR_uniform_buffer_standard_layout`
 - `VK_KHR_variable_pointers`
@@ -369,6 +372,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_metal_objects`
 - `VK_EXT_metal_surface`
 - `VK_EXT_pipeline_creation_cache_control`
+- `VK_EXT_pipeline_creation_feedback`
 - `VK_EXT_post_depth_coverage` *(iOS and macOS, requires family 4 (A11) or better Apple GPU)*
 - `VK_EXT_private_data `
 - `VK_EXT_robustness2`
@@ -514,8 +518,8 @@ you can address the issue as follows:
 - Errors encountered during **Runtime Shader Conversion** are logged to the console.
 
 - To help understand conversion issues during **Runtime Shader Conversion**, you can enable the 
-  logging of the *SPIR-V* and *MSL* shader source code during shader conversion, by turning on 
-  the `MVKConfiguration::debugMode` configuration parameter, or setting the value of the `MVK_DEBUG` 
+  logging of the *SPIR-V* and *MSL* shader source code during shader conversion, by turning on the 
+  `MVKConfiguration::debugMode` configuration parameter, or setting the value of the `MVK_CONFIG_DEBUG` 
   runtime environment variable to `1`. See the [*MoltenVK Configuration*](#moltenvk_config) 
   description above.
 
@@ -579,6 +583,20 @@ image onto a separate composition surface before displaying it. Although *Direct
 performance throughput, it also means that *Metal* may hold onto each swapchain image a little longer 
 than when using an internal compositor, which increases the risk that a swapchain image will not be a
 vailable when you request it, resulting in frame delays and visual stuttering.
+
+
+<a name="timestamping"></a>
+### Timestamping
+
+On non-Apple Silicon devices (older Mac devices), the GPU can switch power and performance 
+states as required by usage. This affects the GPU timestamps retrievable through the Vulkan 
+API. As a result, the value of `VkPhysicalDeviceLimits::timestampPeriod` can vary over time. 
+Consider calling `vkGetPhysicalDeviceProperties()`, when needed, and retrieve the current
+value of `VkPhysicalDeviceLimits::timestampPeriod`, to help you calibrate recent GPU 
+timestamps queried through the Vulkan API.
+
+This is not needed on Apple Silicon devices, where all GPU timestamps are always returned 
+as nanoseconds, regardless of variations in power and performance states as the app runs.
 
 
 <a name="xcode_config"></a>

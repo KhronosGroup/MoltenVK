@@ -729,7 +729,7 @@ void MVKBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 							   MVKArrayRef<uint32_t> dynamicOffsets,
 							   uint32_t& dynamicOffsetIndex) {
 	MVKMTLBufferBinding bb;
-	NSUInteger bufferDynamicOffset = (usesDynamicBufferOffsets() && dynamicOffsets.size > dynamicOffsetIndex
+	NSUInteger bufferDynamicOffset = (usesDynamicBufferOffsets() && dynamicOffsets.size() > dynamicOffsetIndex
 									  ? dynamicOffsets[dynamicOffsetIndex++] : 0);
 	if (_mvkBuffer) {
 		bb.mtlBuffer = _mvkBuffer->getMTLBuffer();

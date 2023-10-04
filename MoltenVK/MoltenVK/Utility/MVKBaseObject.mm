@@ -26,23 +26,18 @@
 using namespace std;
 
 
-static const char* getReportingLevelString(MVKConfigLogLevel logLevel) {
-	switch (logLevel) {
-		case MVK_CONFIG_LOG_LEVEL_DEBUG:
-			return "mvk-debug";
-		case MVK_CONFIG_LOG_LEVEL_INFO:
-			return "mvk-info";
-		case MVK_CONFIG_LOG_LEVEL_WARNING:
-			return "mvk-warn";
-		case MVK_CONFIG_LOG_LEVEL_ERROR:
-		default:
-			return "mvk-error";
-	}
-}
-
-
 #pragma mark -
 #pragma mark MVKBaseObject
+
+static const char* getReportingLevelString(MVKConfigLogLevel logLevel) {
+	switch (logLevel) {
+		case MVK_CONFIG_LOG_LEVEL_ERROR:    return "mvk-error";
+		case MVK_CONFIG_LOG_LEVEL_WARNING:  return "mvk-warn";
+		case MVK_CONFIG_LOG_LEVEL_INFO:     return "mvk-info";
+		case MVK_CONFIG_LOG_LEVEL_DEBUG:    return "mvk-debug";
+		default:                            return "mvk-unknown";
+	}
+}
 
 string MVKBaseObject::getClassName() { return mvk::getTypeName(this); }
 
@@ -102,10 +97,43 @@ void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, MVKConfigLogLevel logLe
 	free(redoBuff);
 }
 
+VkResult MVKBaseObject::reportResult(VkResult vkErr, MVKConfigLogLevel logLevel, const char* format, ...) {
+	va_list args;
+	va_start(args, format);
+	VkResult rslt = reportResult(this, vkErr, logLevel, format, args);
+	va_end(args);
+	return rslt;
+}
+
+VkResult MVKBaseObject::reportResult(MVKBaseObject* mvkObj, VkResult vkErr, MVKConfigLogLevel logLevel, const char* format, ...) {
+	va_list args;
+	va_start(args, format);
+	VkResult rslt = reportResult(mvkObj, vkErr, logLevel, format, args);
+	va_end(args);
+	return rslt;
+}
+
+VkResult MVKBaseObject::reportResult(MVKBaseObject* mvkObj, VkResult vkRslt, MVKConfigLogLevel logLevel, const char* format, va_list args) {
+
+	// Prepend the result code to the format string
+	const char* vkRsltName = mvkVkResultName(vkRslt);
+	size_t rsltLen = strlen(vkRsltName) + strlen(format) + 4;
+	char fmtStr[rsltLen];
+	snprintf(fmtStr, rsltLen, "%s: %s", vkRsltName, format);
+
+	// Report the message
+	va_list lclArgs;
+	va_copy(lclArgs, args);
+	reportMessage(mvkObj, logLevel, fmtStr, lclArgs);
+	va_end(lclArgs);
+
+	return vkRslt;
+}
+
 VkResult MVKBaseObject::reportError(VkResult vkErr, const char* format, ...) {
 	va_list args;
 	va_start(args, format);
-	VkResult rslt = reportError(this, vkErr, format, args);
+	VkResult rslt = reportResult(this, vkErr, MVK_CONFIG_LOG_LEVEL_ERROR, format, args);
 	va_end(args);
 	return rslt;
 }
@@ -113,25 +141,23 @@ VkResult MVKBaseObject::reportError(VkResult vkErr, const char* format, ...) {
 VkResult MVKBaseObject::reportError(MVKBaseObject* mvkObj, VkResult vkErr, const char* format, ...) {
 	va_list args;
 	va_start(args, format);
-	VkResult rslt = reportError(mvkObj, vkErr, format, args);
+	VkResult rslt = reportResult(mvkObj, vkErr, MVK_CONFIG_LOG_LEVEL_ERROR, format, args);
 	va_end(args);
 	return rslt;
 }
 
-// This is the core reporting implementation. Other similar functions delegate here.
-VkResult MVKBaseObject::reportError(MVKBaseObject* mvkObj, VkResult vkErr, const char* format, va_list args) {
+VkResult MVKBaseObject::reportWarning(VkResult vkErr, const char* format, ...) {
+	va_list args;
+	va_start(args, format);
+	VkResult rslt = reportResult(this, vkErr, MVK_CONFIG_LOG_LEVEL_WARNING, format, args);
+	va_end(args);
+	return rslt;
+}
 
-	// Prepend the error code to the format string
-	const char* vkRsltName = mvkVkResultName(vkErr);
-	size_t rsltLen = strlen(vkRsltName) + strlen(format) + 4;
-	char fmtStr[rsltLen];
-	snprintf(fmtStr, rsltLen, "%s: %s", vkRsltName, format);
-
-	// Report the error
-	va_list lclArgs;
-	va_copy(lclArgs, args);
-	reportMessage(mvkObj, MVK_CONFIG_LOG_LEVEL_ERROR, fmtStr, lclArgs);
-	va_end(lclArgs);
-
-	return vkErr;
+VkResult MVKBaseObject::reportWarning(MVKBaseObject* mvkObj, VkResult vkErr, const char* format, ...) {
+	va_list args;
+	va_start(args, format);
+	VkResult rslt = reportResult(mvkObj, vkErr, MVK_CONFIG_LOG_LEVEL_WARNING, format, args);
+	va_end(args);
+	return rslt;
 }

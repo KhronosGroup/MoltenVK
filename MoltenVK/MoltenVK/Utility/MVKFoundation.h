@@ -63,7 +63,7 @@ typedef struct {
 /** Tracks the Vulkan command currently being used. */
 typedef enum : uint8_t {
     kMVKCommandUseNone = 0,                     /**< No use defined. */
-	kMVKCommandUseEndCommandBuffer,             /**< vkEndCommandBuffer (prefilled VkCommandBuffer). */
+	kMVKCommandUseBeginCommandBuffer,           /**< vkBeginCommandBuffer (prefilled VkCommandBuffer). */
     kMVKCommandUseQueueSubmit,                  /**< vkQueueSubmit. */
 	kMVKCommandUseAcquireNextImage,             /**< vkAcquireNextImageKHR. */
     kMVKCommandUseQueuePresent,                 /**< vkQueuePresentKHR. */
@@ -103,6 +103,9 @@ enum MVKGraphicsStage {
 	kMVKGraphicsStageTessControl,	/**< The tessellation control shader stage. */
 	kMVKGraphicsStageRasterization	/**< The rest of the pipeline. */
 };
+
+/** Returns the name of the command defined by the command use. */
+const char* mvkVkCommandName(MVKCommandUse cmdUse);
 
 /** Returns the name of the result value. */
 const char* mvkVkResultName(VkResult vkResult);
@@ -475,20 +478,21 @@ std::size_t mvkHash(const N* pVals, std::size_t count = 1, std::size_t seed = 53
  */
 template<typename Type>
 struct MVKArrayRef {
-	Type* data;
-	const size_t size;
+public:
+	constexpr Type* begin() const { return _data; }
+	constexpr Type* end() const { return &_data[_size]; }
+	constexpr Type* data() const { return _data; }
+	constexpr size_t size() const { return _size; }
+	constexpr size_t byteSize() const { return _size * sizeof(Type); }
+	constexpr Type& operator[]( const size_t i ) const { return _data[i]; }
+	constexpr MVKArrayRef() : MVKArrayRef(nullptr, 0) {}
+	constexpr MVKArrayRef(Type* d, size_t s) : _data(d), _size(s) {}
+	template <typename Other, std::enable_if_t<std::is_convertible_v<Other(*)[], Type(*)[]>, bool> = true>
+	constexpr MVKArrayRef(MVKArrayRef<Other> other) : _data(other.data()), _size(other.size()) {}
 
-	const Type* begin() const { return data; }
-	const Type* end() const { return &data[size]; }
-	const Type& operator[]( const size_t i ) const { return data[i]; }
-	Type& operator[]( const size_t i ) { return data[i]; }
-	MVKArrayRef<Type>& operator=(const MVKArrayRef<Type>& other) {
-		data = other.data;
-		*(size_t*)&size = other.size;
-		return *this;
-	}
-	MVKArrayRef() : MVKArrayRef(nullptr, 0) {}
-	MVKArrayRef(Type* d, size_t s) : data(d), size(s) {}
+protected:
+	Type* _data;
+	size_t _size;
 };
 
 /** Ensures the size of the specified container is at least the specified size. */
@@ -595,7 +599,7 @@ bool mvkAreEqual(const T* pV1, const T* pV2, size_t count = 1) {
  * which works on individual chars or char arrays, not strings.
  * Returns false if either string is null.
  */
-static constexpr bool mvkStringsAreEqual(const char* pV1, const char* pV2, size_t count = 1) {
+static constexpr bool mvkStringsAreEqual(const char* pV1, const char* pV2) {
 	return pV1 && pV2 && (pV1 == pV2 || strcmp(pV1, pV2) == 0);
 }
 

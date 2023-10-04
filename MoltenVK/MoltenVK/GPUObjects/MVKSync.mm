@@ -50,6 +50,11 @@ bool MVKSemaphoreImpl::isReserved() {
 	return !isClear();
 }
 
+uint32_t MVKSemaphoreImpl::getReservationCount() {
+	lock_guard<mutex> lock(_lock);
+	return _reservationCount;
+}
+
 bool MVKSemaphoreImpl::wait(uint64_t timeout, bool reserveAgain) {
     unique_lock<mutex> lock(_lock);
 
@@ -583,7 +588,7 @@ void MVKMetalCompiler::compile(unique_lock<mutex>& lock, dispatch_block_t block)
 
 	if (_compileError) { handleError(); }
 
-	mvkDev->addActivityPerformance(*_pPerformanceTracker, _startTime);
+	mvkDev->addPerformanceInterval(*_pPerformanceTracker, _startTime);
 }
 
 void MVKMetalCompiler::handleError() {

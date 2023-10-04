@@ -18,6 +18,7 @@
 
 #import "DemoViewController.h"
 #import <QuartzCore/CAMetalLayer.h>
+#import <CoreVideo/CVDisplayLink.h>
 
 #include <MoltenVK/mvk_vulkan.h>
 #include "../../Vulkan-Tools/cube/cube.c"
@@ -27,27 +28,34 @@
 #pragma mark DemoViewController
 
 @implementation DemoViewController {
-	CVDisplayLinkRef	_displayLink;
+	CVDisplayLinkRef _displayLink;
 	struct demo demo;
+	uint32_t _maxFrameCount;
+	uint64_t _frameCount;
+	BOOL _stop;
+	BOOL _useDisplayLink;
 }
 
--(void) dealloc {
-	demo_cleanup(&demo);
-	CVDisplayLinkRelease(_displayLink);
-	[super dealloc];
-}
-
-/** Since this is a single-view app, initialize Vulkan during view loading. */
--(void) viewDidLoad {
-	[super viewDidLoad];
+/** Since this is a single-view app, initialize Vulkan as view is appearing. */
+-(void) viewWillAppear {
+	[super viewWillAppear];
 
 	self.view.wantsLayer = YES;		// Back the view with a layer created by the makeBackingLayer method.
 
-	// Enabling this will sync the rendering loop with the natural display link (60 fps).
-	// Disabling this will allow the rendering loop to run flat out, limited only by the rendering speed.
-	bool useDisplayLink = true;
+	// Enabling this will sync the rendering loop with the natural display link
+	// (monitor refresh rate, typically 60 fps). Disabling this will allow the
+	// rendering loop to run flat out, limited only by the rendering speed.
+	_useDisplayLink = YES;
 
-	VkPresentModeKHR vkPresentMode = useDisplayLink ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
+	// If this value is set to zero, the demo will render frames until the window is closed.
+	// If this value is not zero, it establishes a maximum number of frames that will be
+	// rendered, and once this count has been reached, the demo will stop rendering.
+	// Once rendering is finished, if _useDisplayLink is false, the demo will immediately
+	// clean up the Vulkan objects, or if _useDisplayLink is true, the demo will delay
+	// cleaning up Vulkan objects until the window is closed.
+	_maxFrameCount = 0;
+
+	VkPresentModeKHR vkPresentMode = _useDisplayLink ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
 	char vkPresentModeStr[64];
 	sprintf(vkPresentModeStr, "%d", vkPresentMode);
 
@@ -55,17 +63,31 @@
 	int argc = sizeof(argv)/sizeof(char*);
 	demo_main(&demo, self.view.layer, argc, argv);
 
-	if (useDisplayLink) {
+	_stop = NO;
+	_frameCount = 0;
+	if (_useDisplayLink) {
 		CVDisplayLinkCreateWithActiveCGDisplays(&_displayLink);
-		CVDisplayLinkSetOutputCallback(_displayLink, &DisplayLinkCallback, &demo);
+		CVDisplayLinkSetOutputCallback(_displayLink, &DisplayLinkCallback, self);
 		CVDisplayLinkStart(_displayLink);
 	} else {
 		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-			while(true) {
+			do {
 				demo_draw(&demo);
-			}
+				_stop = _stop || (_maxFrameCount && ++_frameCount >= _maxFrameCount);
+			} while( !_stop );
+			demo_cleanup(&demo);
 		});
 	}
+}
+
+-(void) viewDidDisappear {
+	_stop = YES;
+	if (_useDisplayLink) {
+		CVDisplayLinkRelease(_displayLink);
+		demo_cleanup(&demo);
+	}
+
+	[super viewDidDisappear];
 }
 
 
@@ -78,7 +100,11 @@ static CVReturn DisplayLinkCallback(CVDisplayLinkRef displayLink,
 									CVOptionFlags flagsIn,
 									CVOptionFlags* flagsOut,
 									void* target) {
-	demo_draw((struct demo*)target);
+	DemoViewController* demoVC =(DemoViewController*)target;
+	if ( !demoVC->_stop ) {
+		demo_draw(&demoVC->demo);
+		demoVC->_stop = (demoVC->_maxFrameCount && ++demoVC->_frameCount >= demoVC->_maxFrameCount);
+	}
 	return kCVReturnSuccess;
 }
 

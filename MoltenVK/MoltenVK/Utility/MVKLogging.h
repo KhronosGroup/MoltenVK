@@ -57,9 +57,9 @@ extern "C" {
  *		MVKLogErrorIf(cond, fmt, ...)	- same as MVKLogError if boolean "cond" condition expression evaluates to YES,
  *										  otherwise logs nothing.
  *
- *		MVKLogWarning(fmt, ...)		- recommended for not immediately harmful errors
+ *		MVKLogWarn(fmt, ...)			- recommended for not immediately harmful errors
  *										- will print if MVK_LOG_LEVEL_WARNING is set on.
- *		MVKLogWarningIf(cond, fmt, ...) - same as MVKLogWarning if boolean "cond" condition expression evaluates to YES,
+ *		MVKLogWarnIf(cond, fmt, ...) 	- same as MVKLogWarn if boolean "cond" condition expression evaluates to YES,
  *										  otherwise logs nothing.
  *
  *		MVKLogInfo(fmt, ...)			- recommended for general, infrequent, information messages
@@ -67,7 +67,7 @@ extern "C" {
  *		MVKLogInfoIf(cond, fmt, ...)	- same as MVKLogInfo if boolean "cond" condition expression evaluates to YES,
  *										  otherwise logs nothing.
  *
- *		MVKLogDebug(fmt, ...)		- recommended for temporary use during debugging
+ *		MVKLogDebug(fmt, ...)			- recommended for temporary use during debugging
  *										- will print if MVK_LOG_LEVEL_DEBUG is set on.
  *		MVKLogDebugIf(cond, fmt, ...)	- same as MVKLogDebug if boolean "cond" condition expression evaluates to YES,
  *										  otherwise logs nothing.
@@ -148,11 +148,11 @@ extern "C" {
 
 // Warning logging - for not immediately harmful errors
 #if MVK_LOG_LEVEL_WARNING
-#	define MVKLogWarning(fmt, ...)			MVKLogWarningImpl(fmt, ##__VA_ARGS__)
-#	define MVKLogWarningIf(cond, fmt, ...)	if(cond) { MVKLogWarningImpl(fmt, ##__VA_ARGS__); }
+#	define MVKLogWarn(fmt, ...)				MVKLogWarnImpl(fmt, ##__VA_ARGS__)
+#	define MVKLogWarnIf(cond, fmt, ...)		if(cond) { MVKLogWarnImpl(fmt, ##__VA_ARGS__); }
 #else
-#    define MVKLogWarning(...)
-#    define MVKLogWarningIf(cond, fmt, ...)
+#    define MVKLogWarn(...)
+#    define MVKLogWarnIf(cond, fmt, ...)
 #endif
 
 // Info logging - for general, non-performance affecting information messages
@@ -182,11 +182,11 @@ extern "C" {
 #	define MVKLogTraceIf(cond, fmt, ...)
 #endif
 
-#define MVKLogErrorImpl(fmt, ...)		reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, fmt, ##__VA_ARGS__)
-#define MVKLogWarningImpl(fmt, ...)		reportMessage(MVK_CONFIG_LOG_LEVEL_WARNING, fmt, ##__VA_ARGS__)
-#define MVKLogInfoImpl(fmt, ...)		reportMessage(MVK_CONFIG_LOG_LEVEL_INFO, fmt, ##__VA_ARGS__)
-#define MVKLogDebugImpl(fmt, ...)		reportMessage(MVK_CONFIG_LOG_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
-#define MVKLogTraceImpl(fmt, ...)		reportMessage(MVK_CONFIG_LOG_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
+#define MVKLogErrorImpl(fmt, ...)			reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, fmt, ##__VA_ARGS__)
+#define MVKLogWarnImpl(fmt, ...)			reportMessage(MVK_CONFIG_LOG_LEVEL_WARNING, fmt, ##__VA_ARGS__)
+#define MVKLogInfoImpl(fmt, ...)			reportMessage(MVK_CONFIG_LOG_LEVEL_INFO, fmt, ##__VA_ARGS__)
+#define MVKLogDebugImpl(fmt, ...)			reportMessage(MVK_CONFIG_LOG_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
+#define MVKLogTraceImpl(fmt, ...)			reportMessage(MVK_CONFIG_LOG_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
 
 // Assertions
 #ifdef NS_BLOCK_ASSERTIONS

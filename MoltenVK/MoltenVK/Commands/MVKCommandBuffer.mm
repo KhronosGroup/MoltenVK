@@ -120,7 +120,7 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 
     if(_device->shouldPrefillMTLCommandBuffers() && !(_isSecondary || _supportsConcurrentExecution)) {
 		@autoreleasepool {
-			_prefilledMTLCmdBuffer = [_commandPool->getMTLCommandBuffer(0) retain];    // retained
+			_prefilledMTLCmdBuffer = [_commandPool->getMTLCommandBuffer(kMVKCommandUseBeginCommandBuffer, 0) retain];    // retained
 			auto prefillStyle = mvkConfig().prefillMetalCommandBuffers;
 			if (prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING ||
 				prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING_NO_AUTORELEASE ) {
@@ -260,7 +260,7 @@ bool MVKCommandBuffer::canExecute() {
 	}
 
 	_wasExecuted = true;
-	return true;
+	return wasConfigurationSuccessful();
 }
 
 // Return the number of bits set in the view mask, with a minimum value of 1.
@@ -310,7 +310,7 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 }
 
 // Promote the initial visibility buffer and indication of timestamp use from the secondary buffers.
-void MVKCommandBuffer::recordExecuteCommands(const MVKArrayRef<MVKCommandBuffer*> secondaryCommandBuffers) {
+void MVKCommandBuffer::recordExecuteCommands(MVKArrayRef<MVKCommandBuffer*const> secondaryCommandBuffers) {
 	for (MVKCommandBuffer* cmdBuff : secondaryCommandBuffers) {
 		if (cmdBuff->_needsVisibilityResultMTLBuffer) { _needsVisibilityResultMTLBuffer = true; }
 		if (cmdBuff->_hasStageCounterTimestampCommand) { _hasStageCounterTimestampCommand = true; }
@@ -335,11 +335,19 @@ void MVKCommandBuffer::recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline) {
 #pragma mark -
 #pragma mark MVKCommandEncoder
 
+// Activity performance tracking is put here to deliberately exclude when
+// MVKConfiguration::prefillMetalCommandBuffers is set to immediate prefilling,
+// because that would include app time between command submissions.
 void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff,
 							   MVKCommandEncodingContext* pEncodingContext) {
+	MVKDevice* mvkDev = getDevice();
+	uint64_t startTime = mvkDev->getPerformanceTimestamp();
+
     beginEncoding(mtlCmdBuff, pEncodingContext);
     encodeCommands(_cmdBuffer->_head);
     endEncoding();
+
+	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.commandBufferEncoding, startTime);
 }
 
 void MVKCommandEncoder::beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext) {
@@ -464,8 +472,8 @@ void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
 	_attachments.assign(attachments.begin(), attachments.end());
 
 	// Copy the sample positions array of arrays, one array of sample positions for each subpass index.
-	_subpassSamplePositions.resize(subpassSamplePositions.size);
-	for (uint32_t spSPIdx = 0; spSPIdx < subpassSamplePositions.size; spSPIdx++) {
+	_subpassSamplePositions.resize(subpassSamplePositions.size());
+	for (uint32_t spSPIdx = 0; spSPIdx < subpassSamplePositions.size(); spSPIdx++) {
 		_subpassSamplePositions[spSPIdx].assign(subpassSamplePositions[spSPIdx].begin(),
 												subpassSamplePositions[spSPIdx].end());
 	}
@@ -585,7 +593,7 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 	// and Metal will default to using default sample postions.
 	if (_pDeviceMetalFeatures->programmableSamplePositions) {
 		auto cstmSampPosns = getCustomSamplePositions();
-		[mtlRPDesc setSamplePositions: cstmSampPosns.data count: cstmSampPosns.size];
+		[mtlRPDesc setSamplePositions: cstmSampPosns.data() count: cstmSampPosns.size()];
 	}
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
@@ -1168,19 +1176,6 @@ MVKCommandEncoder::~MVKCommandEncoder() {
 
 #pragma mark -
 #pragma mark Support functions
-
-NSString* mvkMTLCommandBufferLabel(MVKCommandUse cmdUse) {
-	switch (cmdUse) {
-		case kMVKCommandUseEndCommandBuffer:                return @"vkEndCommandBuffer (Prefilled) CommandBuffer";
-		case kMVKCommandUseQueueSubmit:                     return @"vkQueueSubmit CommandBuffer";
-		case kMVKCommandUseQueuePresent:                    return @"vkQueuePresentKHR CommandBuffer";
-		case kMVKCommandUseQueueWaitIdle:                   return @"vkQueueWaitIdle CommandBuffer";
-		case kMVKCommandUseDeviceWaitIdle:                  return @"vkDeviceWaitIdle CommandBuffer";
-		case kMVKCommandUseAcquireNextImage:                return @"vkAcquireNextImageKHR CommandBuffer";
-		case kMVKCommandUseInvalidateMappedMemoryRanges:    return @"vkInvalidateMappedMemoryRanges CommandBuffer";
-		default:                                            return @"Unknown Use CommandBuffer";
-	}
-}
 
 NSString* mvkMTLRenderCommandEncoderLabel(MVKCommandUse cmdUse) {
     switch (cmdUse) {

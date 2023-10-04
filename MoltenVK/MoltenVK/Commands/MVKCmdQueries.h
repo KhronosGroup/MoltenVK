@@ -85,7 +85,7 @@ class MVKCmdWriteTimestamp : public MVKCmdQuery {
 
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkPipelineStageFlagBits pipelineStage,
+						VkPipelineStageFlags2 stage,
 						VkQueryPool queryPool,
 						uint32_t query);
 
@@ -94,7 +94,7 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-    VkPipelineStageFlagBits _pipelineStage;
+	VkPipelineStageFlags2 _stage;
 };
 
 

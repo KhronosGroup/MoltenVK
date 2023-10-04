@@ -1964,7 +1964,7 @@ static void mvkCmdBeginRenderPass(
 	
 	MVKAddCmdFrom5Thresholds(BeginRenderPass,
 							 pRenderPassBegin->clearValueCount, 1, 2,
-							 attachments.size, 0, 1, 2,
+							 attachments.size(), 0, 1, 2,
 							 commandBuffer,
 							 pRenderPassBegin,
 							 pSubpassBeginInfo,
@@ -2517,8 +2517,8 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkWaitSemaphores(
 #pragma mark Vulkan 1.3 calls
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBeginRendering(
-        VkCommandBuffer                             commandBuffer,
-        const VkRenderingInfo*                      pRenderingInfo) {
+    VkCommandBuffer                             commandBuffer,
+    const VkRenderingInfo*                      pRenderingInfo) {
 
     MVKTraceVulkanCallStart();
     MVKAddCmdFrom3Thresholds(BeginRendering, pRenderingInfo->colorAttachmentCount,
@@ -2527,7 +2527,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBeginRendering(
 }
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEndRendering(
-        VkCommandBuffer                             commandBuffer) {
+    VkCommandBuffer                             commandBuffer) {
 
     MVKTraceVulkanCallStart();
     MVKAddCmd(EndRendering, commandBuffer);
@@ -2537,56 +2537,79 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEndRendering(
 MVK_PUBLIC_VULKAN_STUB(vkCmdBindVertexBuffers2, void, VkCommandBuffer, uint32_t, uint32_t, const VkBuffer*, const VkDeviceSize*, const VkDeviceSize*, const VkDeviceSize*)
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBlitImage2(
-        VkCommandBuffer                             commandBuffer,
-        const VkBlitImageInfo2*                     pBlitImageInfo) {
-    MVKTraceVulkanCallStart();
+    VkCommandBuffer                             commandBuffer,
+    const VkBlitImageInfo2*                     pBlitImageInfo) {
+
+	MVKTraceVulkanCallStart();
     MVKAddCmdFromThreshold(BlitImage, pBlitImageInfo->regionCount, 1, commandBuffer,
                            pBlitImageInfo);
     MVKTraceVulkanCallEnd();
 }
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyBuffer2(
-        VkCommandBuffer commandBuffer,
-        const VkCopyBufferInfo2* pCopyBufferInfo) {
-    MVKTraceVulkanCallStart();
+    VkCommandBuffer commandBuffer,
+    const VkCopyBufferInfo2* pCopyBufferInfo) {
+    
+	MVKTraceVulkanCallStart();
     MVKAddCmdFromThreshold(CopyBuffer, pCopyBufferInfo->regionCount, 1, commandBuffer, pCopyBufferInfo);
     MVKTraceVulkanCallEnd();
 }
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyBufferToImage2(
-        VkCommandBuffer                             commandBuffer,
-        const VkCopyBufferToImageInfo2*             pCopyBufferToImageInfo) {
-    MVKTraceVulkanCallStart();
+    VkCommandBuffer                             commandBuffer,
+    const VkCopyBufferToImageInfo2*             pCopyBufferToImageInfo) {
+
+	MVKTraceVulkanCallStart();
     MVKAddCmdFrom3Thresholds(BufferImageCopy, pCopyBufferToImageInfo->regionCount, 1, 4, 8, commandBuffer,
                              pCopyBufferToImageInfo);
     MVKTraceVulkanCallEnd();
 }
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyImage2(
-        VkCommandBuffer                             commandBuffer,
-        const VkCopyImageInfo2*                     pCopyImageInfo) {
-    MVKTraceVulkanCallStart();
+    VkCommandBuffer                             commandBuffer,
+    const VkCopyImageInfo2*                     pCopyImageInfo) {
+
+	MVKTraceVulkanCallStart();
     MVKAddCmdFromThreshold(CopyImage, pCopyImageInfo->regionCount, 1, commandBuffer,
                            pCopyImageInfo);
     MVKTraceVulkanCallEnd();
 }
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyImageToBuffer2(
-        VkCommandBuffer                             commandBuffer,
-        const VkCopyImageToBufferInfo2*             pCopyImageInfo) {
-    MVKTraceVulkanCallStart();
+    VkCommandBuffer                             commandBuffer,
+    const VkCopyImageToBufferInfo2*             pCopyImageInfo) {
+
+	MVKTraceVulkanCallStart();
     MVKAddCmdFrom3Thresholds(BufferImageCopy, pCopyImageInfo->regionCount, 1, 4, 8, commandBuffer,
                              pCopyImageInfo);
     MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_VULKAN_STUB(vkCmdPipelineBarrier2, void, VkCommandBuffer, const VkDependencyInfo*)
-MVK_PUBLIC_VULKAN_STUB(vkCmdResetEvent2, void, VkCommandBuffer, VkEvent, VkPipelineStageFlags2 stageMask)
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPipelineBarrier2(
+    VkCommandBuffer                             commandBuffer,
+    const VkDependencyInfo*                     pDependencyInfo) {
+
+	MVKTraceVulkanCallStart();
+	uint32_t barrierCount = pDependencyInfo->memoryBarrierCount + pDependencyInfo->bufferMemoryBarrierCount + pDependencyInfo->imageMemoryBarrierCount;
+	MVKAddCmdFrom2Thresholds(PipelineBarrier, barrierCount, 1, 4, commandBuffer, pDependencyInfo);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdResetEvent2(
+    VkCommandBuffer                             commandBuffer,
+    VkEvent                                     event,
+    VkPipelineStageFlags2                       stageMask) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(ResetEvent, commandBuffer, event, stageMask);
+	MVKTraceVulkanCallEnd();
+}
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdResolveImage2(
-        VkCommandBuffer commandBuffer,
-        const VkResolveImageInfo2* pResolveImageInfo) {
-    MVKTraceVulkanCallStart();
+    VkCommandBuffer commandBuffer,
+    const VkResolveImageInfo2* pResolveImageInfo) {
+
+	MVKTraceVulkanCallStart();
     MVKAddCmdFromThreshold(ResolveImage, pResolveImageInfo->regionCount, 1, commandBuffer,
                            pResolveImageInfo);
     MVKTraceVulkanCallEnd();
@@ -2598,7 +2621,17 @@ MVK_PUBLIC_VULKAN_STUB(vkCmdSetDepthBoundsTestEnable, void, VkCommandBuffer, VkB
 MVK_PUBLIC_VULKAN_STUB(vkCmdSetDepthCompareOp, void, VkCommandBuffer, VkCompareOp)
 MVK_PUBLIC_VULKAN_STUB(vkCmdSetDepthTestEnable, void, VkCommandBuffer, VkBool32)
 MVK_PUBLIC_VULKAN_STUB(vkCmdSetDepthWriteEnable, void, VkCommandBuffer, VkBool32)
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetEvent2, void, VkCommandBuffer, VkEvent, const VkDependencyInfo*)
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetEvent2(
+    VkCommandBuffer                             commandBuffer,
+    VkEvent                                     event,
+    const VkDependencyInfo*                     pDependencyInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(SetEvent, commandBuffer, event, pDependencyInfo);
+	MVKTraceVulkanCallEnd();
+}
+
 MVK_PUBLIC_VULKAN_STUB(vkCmdSetFrontFace, void, VkCommandBuffer, VkFrontFace)
 MVK_PUBLIC_VULKAN_STUB(vkCmdSetPrimitiveRestartEnable, void, VkCommandBuffer, VkBool32)
 MVK_PUBLIC_VULKAN_STUB(vkCmdSetPrimitiveTopology, void, VkCommandBuffer, VkPrimitiveTopology)
@@ -2607,17 +2640,99 @@ MVK_PUBLIC_VULKAN_STUB(vkCmdSetScissorWithCount, void, VkCommandBuffer, uint32_t
 MVK_PUBLIC_VULKAN_STUB(vkCmdSetStencilOp, void, VkCommandBuffer, VkStencilFaceFlags, VkStencilOp, VkStencilOp, VkStencilOp, VkCompareOp)
 MVK_PUBLIC_VULKAN_STUB(vkCmdSetStencilTestEnable, void, VkCommandBuffer, VkBool32)
 MVK_PUBLIC_VULKAN_STUB(vkCmdSetViewportWithCount, void, VkCommandBuffer, uint32_t, const VkViewport*)
-MVK_PUBLIC_VULKAN_STUB(vkCmdWaitEvents2, void, VkCommandBuffer, uint32_t, const VkEvent*, const VkDependencyInfo*)
-MVK_PUBLIC_VULKAN_STUB(vkCmdWriteTimestamp2, void, VkCommandBuffer, VkPipelineStageFlags2, VkQueryPool, uint32_t)
-MVK_PUBLIC_VULKAN_STUB_VKRESULT(vkCreatePrivateDataSlot, VkDevice, const VkPrivateDataSlotCreateInfo*, const VkAllocationCallbacks*, VkPrivateDataSlot*)
-MVK_PUBLIC_VULKAN_STUB(vkDestroyPrivateDataSlot, void, VkDevice, VkPrivateDataSlot, const VkAllocationCallbacks*)
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdWaitEvents2(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    eventCount,
+    const VkEvent*                              pEvents,
+    const VkDependencyInfo*                     pDependencyInfos) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmdFromThreshold(WaitEvents, eventCount, 1, commandBuffer, eventCount, pEvents, pDependencyInfos);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdWriteTimestamp2(
+    VkCommandBuffer                             commandBuffer,
+    VkPipelineStageFlags2                       stage,
+    VkQueryPool                                 queryPool,
+    uint32_t                                    query) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(WriteTimestamp, commandBuffer, stage, queryPool, query);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreatePrivateDataSlot(
+	VkDevice                                    device,
+	const VkPrivateDataSlotCreateInfoEXT*       pCreateInfo,
+	const VkAllocationCallbacks*                pAllocator,
+	VkPrivateDataSlotEXT*                       pPrivateDataSlot) {
+
+	MVKTraceVulkanCallStart();
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	VkResult rslt = mvkDev->createPrivateDataSlot(pCreateInfo, pAllocator, pPrivateDataSlot);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyPrivateDataSlot(
+	VkDevice                                    device,
+	VkPrivateDataSlotEXT                        privateDataSlot,
+	const VkAllocationCallbacks*                pAllocator) {
+
+	MVKTraceVulkanCallStart();
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	mvkDev->destroyPrivateDataSlot(privateDataSlot, pAllocator);
+	MVKTraceVulkanCallEnd();
+}
+
 MVK_PUBLIC_VULKAN_STUB(vkGetDeviceBufferMemoryRequirements, void, VkDevice, const VkDeviceBufferMemoryRequirements*, VkMemoryRequirements2*)
 MVK_PUBLIC_VULKAN_STUB(vkGetDeviceImageMemoryRequirements, void, VkDevice, const VkDeviceImageMemoryRequirements*, VkMemoryRequirements2*)
 MVK_PUBLIC_VULKAN_STUB(vkGetDeviceImageSparseMemoryRequirements, void, VkDevice, const VkDeviceImageMemoryRequirements*, uint32_t*, VkSparseImageMemoryRequirements2*)
 MVK_PUBLIC_VULKAN_STUB_VKRESULT(vkGetPhysicalDeviceToolProperties, VkPhysicalDevice, uint32_t*, VkPhysicalDeviceToolProperties*)
-MVK_PUBLIC_VULKAN_STUB(vkGetPrivateData, void, VkDevice, VkObjectType, uint64_t, VkPrivateDataSlot, uint64_t*)
-MVK_PUBLIC_VULKAN_STUB_VKRESULT(vkQueueSubmit2, VkQueue, uint32_t, const VkSubmitInfo2*, VkFence)
-MVK_PUBLIC_VULKAN_STUB_VKRESULT(vkSetPrivateData, VkDevice, VkObjectType, uint64_t, VkPrivateDataSlot, uint64_t)
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPrivateData(
+											   VkDevice                                    device,
+											   VkObjectType                                objectType,
+											   uint64_t                                    objectHandle,
+											   VkPrivateDataSlotEXT                        privateDataSlot,
+											   uint64_t*                                   pData) {
+
+	MVKTraceVulkanCallStart();
+	MVKPrivateDataSlot* mvkPDS = (MVKPrivateDataSlot*)privateDataSlot;
+	*pData = mvkPDS->getData(objectType, objectHandle);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkQueueSubmit2(
+    VkQueue                                     queue,
+    uint32_t                                    submitCount,
+    const VkSubmitInfo2*                        pSubmits,
+    VkFence                                     fence) {
+
+	MVKTraceVulkanCallStart();
+	MVKQueue* mvkQ = MVKQueue::getMVKQueue(queue);
+	VkResult rslt = mvkQ->submit(submitCount, pSubmits, fence, kMVKCommandUseQueueSubmit);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetPrivateData(
+	VkDevice                                    device,
+	VkObjectType                                objectType,
+	uint64_t                                    objectHandle,
+	VkPrivateDataSlotEXT                        privateDataSlot,
+	uint64_t                                    data) {
+
+	MVKTraceVulkanCallStart();
+	MVKPrivateDataSlot* mvkPDS = (MVKPrivateDataSlot*)privateDataSlot;
+	mvkPDS->setData(objectType, objectHandle, data);
+	MVKTraceVulkanCallEnd();
+	return VK_SUCCESS;
+}
+
+
 
 #pragma mark -
 #pragma mark VK_KHR_bind_memory2 extension
@@ -3103,6 +3218,17 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceSurfaceFormats2KHR(
 
 
 #pragma mark -
+#pragma mark VK_KHR_synchronization2
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdPipelineBarrier2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdResetEvent2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetEvent2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdWaitEvents2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdWriteTimestamp2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkQueueSubmit2, KHR);
+
+
+#pragma mark -
 #pragma mark VK_KHR_timeline_semaphore
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetSemaphoreCounterValue, KHR);
@@ -3433,56 +3559,11 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkExportMetalObjectsEXT(
 #pragma mark -
 #pragma mark VK_EXT_private_data extension
 
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreatePrivateDataSlotEXT(
-	VkDevice                                    device,
-	const VkPrivateDataSlotCreateInfoEXT*       pCreateInfo,
-	const VkAllocationCallbacks*                pAllocator,
-	VkPrivateDataSlotEXT*                       pPrivateDataSlot) {
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCreatePrivateDataSlot, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkDestroyPrivateDataSlot, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPrivateData, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkSetPrivateData, EXT);
 
-	MVKTraceVulkanCallStart();
-	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	VkResult rslt = mvkDev->createPrivateDataSlot(pCreateInfo, pAllocator, pPrivateDataSlot);
-	MVKTraceVulkanCallEnd();
-	return rslt;
-}
-
-MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyPrivateDataSlotEXT(
-	VkDevice                                    device,
-	VkPrivateDataSlotEXT                        privateDataSlot,
-	const VkAllocationCallbacks*                pAllocator) {
-
-	MVKTraceVulkanCallStart();
-	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	mvkDev->destroyPrivateDataSlot(privateDataSlot, pAllocator);
-	MVKTraceVulkanCallEnd();
-}
-
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetPrivateDataEXT(
-	VkDevice                                    device,
-	VkObjectType                                objectType,
-	uint64_t                                    objectHandle,
-	VkPrivateDataSlotEXT                        privateDataSlot,
-	uint64_t                                    data) {
-
-	MVKTraceVulkanCallStart();
-	MVKPrivateDataSlot* mvkPDS = (MVKPrivateDataSlot*)privateDataSlot;
-	mvkPDS->setData(objectType, objectHandle, data);
-	MVKTraceVulkanCallEnd();
-	return VK_SUCCESS;
-}
-
-MVK_PUBLIC_VULKAN_SYMBOL void vkGetPrivateDataEXT(
-	VkDevice                                    device,
-	VkObjectType                                objectType,
-	uint64_t                                    objectHandle,
-	VkPrivateDataSlotEXT                        privateDataSlot,
-	uint64_t*                                   pData) {
-
-	MVKTraceVulkanCallStart();
-	MVKPrivateDataSlot* mvkPDS = (MVKPrivateDataSlot*)privateDataSlot;
-	*pData = mvkPDS->getData(objectType, objectHandle);
-	MVKTraceVulkanCallEnd();
-}
 
 #pragma mark -
 #pragma mark VK_EXT_sample_locations extension

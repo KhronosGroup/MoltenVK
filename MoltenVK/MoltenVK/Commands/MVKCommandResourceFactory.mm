@@ -286,7 +286,7 @@ id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg&
 		[msl appendLineMVK: @"                         constant TexSubrez& subRez [[buffer(0)]]) {"];
 		[msl appendLineMVK: @"    FragmentOutputs out;"];
 		if (mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_DEPTH_BIT))) {
-			[msl appendFormat: @"    out.depth = tex.sample(ce_sampler, varyings.v_texCoord%@%@, level(subRez.lod)).%c;", coordArg, sliceArg, swizzleArg[0]];
+			[msl appendFormat: @"    out.depth = tex.sample(ce_sampler, varyings.v_texCoord%@%@, level(subRez.lod));", coordArg, sliceArg];
 			[msl appendLineMVK];
 		}
 		if (mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_STENCIL_BIT))) {
@@ -623,7 +623,7 @@ id<MTLFunction> MVKCommandResourceFactory::newFunctionNamed(const char* funcName
 	NSString* nsFuncName = [[NSString alloc] initWithUTF8String: funcName];		// temp retained
 	id<MTLFunction> mtlFunc = [_mtlLibrary newFunctionWithName: nsFuncName];	// retained
 	[nsFuncName release];														// temp release
-	_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
+	_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
 	return mtlFunc;
 }
 
@@ -636,7 +636,7 @@ id<MTLFunction> MVKCommandResourceFactory::newMTLFunction(NSString* mslSrcCode, 
 		id<MTLLibrary> mtlLib = [getMTLDevice() newLibraryWithSource: mslSrcCode
 															 options: getDevice()->getMTLCompileOptions()
 															   error: &err];	// temp retain
-		_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
+		_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
 
 		if (err) {
 			reportError(VK_ERROR_INITIALIZATION_FAILED,
@@ -645,7 +645,7 @@ id<MTLFunction> MVKCommandResourceFactory::newMTLFunction(NSString* mslSrcCode, 
 		} else {
 			startTime = _device->getPerformanceTimestamp();
 			mtlFunc = [mtlLib newFunctionWithName: funcName];
-			_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
+			_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
 		}
 
 		[mtlLib release];														// temp release
@@ -689,7 +689,7 @@ void MVKCommandResourceFactory::initMTLLibrary() {
                                                    options: getDevice()->getMTLCompileOptions()
                                                      error: &err];    // retained
 		MVKAssert( !err, "Could not compile command shaders (Error code %li):\n%s", (long)err.code, err.localizedDescription.UTF8String);
-		_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
+		_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
     }
 }
 

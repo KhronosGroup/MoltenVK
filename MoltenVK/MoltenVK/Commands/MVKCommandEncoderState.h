@@ -81,6 +81,8 @@ public:
     /**
      * If the content of this instance is dirty, marks this instance as no longer dirty
      * and calls the encodeImpl() function to encode the content onto the Metal encoder.
+	 * Marking dirty is done in advance so that subclass encodeImpl() implementations
+	 * can override to leave this instance in a dirty state.
      * Subclasses must override the encodeImpl() function to do the actual work.
      */
     void encode(uint32_t stage = 0) {
@@ -141,7 +143,7 @@ public:
 	 * The isSettingDynamically indicates that the scissor is being changed dynamically,
 	 * which is only allowed if the pipeline was created as VK_DYNAMIC_STATE_SCISSOR.
 	 */
-	void setViewports(const MVKArrayRef<VkViewport> viewports,
+	void setViewports(MVKArrayRef<const VkViewport> viewports,
 					  uint32_t firstViewport,
 					  bool isSettingDynamically);
 
@@ -169,7 +171,7 @@ public:
 	 * The isSettingDynamically indicates that the scissor is being changed dynamically,
 	 * which is only allowed if the pipeline was created as VK_DYNAMIC_STATE_SCISSOR.
 	 */
-	void setScissors(const MVKArrayRef<VkRect2D> scissors,
+	void setScissors(MVKArrayRef<const VkRect2D> scissors,
 					 uint32_t firstScissor,
 					 bool isSettingDynamically);
 
@@ -430,7 +432,8 @@ protected:
 
     // Template function that executes a lambda expression on each dirty element of
     // a vector of bindings, and marks the bindings and the vector as no longer dirty.
-	// Clear isDirty flag before operation to allow operation to possibly override.
+	// Clear binding isDirty flag before operation to allow operation to possibly override.
+	// If it does override, leave both the bindings and this instance as dirty.
 	template<class T, class V>
 	void encodeBinding(V& bindings,
 					   bool& bindingsDirtyFlag,
@@ -441,7 +444,7 @@ protected:
 				if (b.isDirty) {
 					b.isDirty = false;
 					mtlOperation(_cmdEncoder, b);
-					if (b.isDirty) { bindingsDirtyFlag = true; }
+					if (b.isDirty) { _isDirty = bindingsDirtyFlag = true; }
 				}
 			}
 		}
@@ -454,7 +457,7 @@ protected:
 		contents[index] = value;
 	}
 
-	void assertMissingSwizzles(bool needsSwizzle, const char* stageName, const MVKArrayRef<MVKMTLTextureBinding> texBindings);
+	void assertMissingSwizzles(bool needsSwizzle, const char* stageName, MVKArrayRef<const MVKMTLTextureBinding> texBindings);
 	void encodeMetalArgumentBuffer(MVKShaderStage stage);
 	virtual void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) = 0;
 
@@ -544,7 +547,7 @@ public:
                         const char* pStageName,
                         bool fullImageViewSwizzle,
                         std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&)> bindBuffer,
-                        std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, const MVKArrayRef<uint32_t>)> bindImplicitBuffer,
+                        std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, MVKArrayRef<const uint32_t>)> bindImplicitBuffer,
                         std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
                         std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler);
 

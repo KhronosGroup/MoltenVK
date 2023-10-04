@@ -82,6 +82,14 @@ const MVKConfiguration& mvkConfig();
 /** Global function to update MoltenVK configuration info. */
 void mvkSetConfig(const MVKConfiguration& mvkConfig);
 
+/** 
+ * Enable debug mode.
+ * By default, disabled for Release builds and enabled for Debug builds.
+ */
+#ifndef MVK_CONFIG_DEBUG
+#	define MVK_CONFIG_DEBUG		MVK_DEBUG
+#endif
+
 /** Flip the vertex coordinate in shaders. Enabled by default. */
 #ifndef MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y
 #   define MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y    1
@@ -244,11 +252,17 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #ifndef MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE
 #   define MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE    MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE
 #endif
-#ifndef MVK_ALLOW_METAL_EVENTS		// Deprecated
-#   define MVK_ALLOW_METAL_EVENTS    1
+#ifndef MVK_CONFIG_ALLOW_METAL_EVENTS
+#   define MVK_CONFIG_ALLOW_METAL_EVENTS    1
 #endif
-#ifndef MVK_ALLOW_METAL_FENCES		// Deprecated
-#   define MVK_ALLOW_METAL_FENCES    1
+#ifndef MVK_ALLOW_METAL_EVENTS				// Deprecated
+#   define MVK_ALLOW_METAL_EVENTS    		MVK_CONFIG_ALLOW_METAL_EVENTS
+#endif
+#ifndef MVK_CONFIG_ALLOW_METAL_FENCES
+#   define MVK_CONFIG_ALLOW_METAL_FENCES    1
+#endif
+#ifndef MVK_ALLOW_METAL_FENCES				// Deprecated
+#   define MVK_ALLOW_METAL_FENCES    		MVK_CONFIG_ALLOW_METAL_FENCES
 #endif
 
 /** Substitute Metal 2D textures for Vulkan 1D images. Enabled by default. */
@@ -302,4 +316,12 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
  */
 #ifndef MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION
 #  	define MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION    0
+#endif
+
+/**
+ * The alpha value of a lowpass filter tracking VkPhysicalDeviceLimits::timestampPeriod.
+ * This can be set to a float between 0.0 and 1.0.
+ */
+#ifndef MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA
+#  	define MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA    0.05
 #endif

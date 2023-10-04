@@ -179,7 +179,6 @@ protected:
 	void propagateDebugName() override {}
 	void initProcAddrs();
 	void initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo);
-	NSArray<id<MTLDevice>>* getAvailableMTLDevicesArray();
 	VkDebugReportFlagsEXT getVkDebugReportFlagsFromLogLevel(MVKConfigLogLevel logLevel);
 	VkDebugUtilsMessageSeverityFlagBitsEXT getVkDebugUtilsMessageSeverityFlagBitsFromLogLevel(MVKConfigLogLevel logLevel);
 	VkDebugUtilsMessageTypeFlagsEXT getVkDebugUtilsMessageTypesFlagBitsFromLogLevel(MVKConfigLogLevel logLevel);
