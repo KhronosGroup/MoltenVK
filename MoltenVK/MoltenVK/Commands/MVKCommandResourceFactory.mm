@@ -433,9 +433,10 @@ id<MTLDepthStencilState> MVKCommandResourceFactory::newMTLDepthStencilState(bool
 }
 
 id<MTLDepthStencilState> MVKCommandResourceFactory::newMTLDepthStencilState(MVKMTLDepthStencilDescriptorData& dsData) {
-	MTLStencilDescriptor* fsDesc = newMTLStencilDescriptor(dsData.frontFaceStencilData);	// temp retain
-	MTLStencilDescriptor* bsDesc = newMTLStencilDescriptor(dsData.backFaceStencilData);		// temp retain
-	MTLDepthStencilDescriptor* dsDesc = [MTLDepthStencilDescriptor new];					// temp retain
+	bool testStencil = dsData.stencilTestEnabled;
+	auto* fsDesc = testStencil ? newMTLStencilDescriptor(dsData.frontFaceStencilData) : nil;  // temp retain
+	auto* bsDesc = testStencil ? newMTLStencilDescriptor(dsData.backFaceStencilData) : nil;   // temp retain
+	auto* dsDesc = [MTLDepthStencilDescriptor new];											  // temp retain
     dsDesc.depthCompareFunction = (MTLCompareFunction)dsData.depthCompareFunction;
     dsDesc.depthWriteEnabled = dsData.depthWriteEnabled;
 	dsDesc.frontFaceStencil = fsDesc;
@@ -443,16 +444,14 @@ id<MTLDepthStencilState> MVKCommandResourceFactory::newMTLDepthStencilState(MVKM
 
 	id<MTLDepthStencilState> dss = [getMTLDevice() newDepthStencilStateWithDescriptor: dsDesc];
 
-	[fsDesc release];																		// temp release
-	[bsDesc release];																		// temp release
-	[dsDesc release];																		// temp release
+	[fsDesc release];	// temp release
+	[bsDesc release];	// temp release
+	[dsDesc release];	// temp release
 
 	return dss;
 }
 
 MTLStencilDescriptor* MVKCommandResourceFactory::newMTLStencilDescriptor(MVKMTLStencilDescriptorData& sData) {
-    if ( !sData.enabled ) { return nil; }
-
     MTLStencilDescriptor* sDesc = [MTLStencilDescriptor new];		// retained
     sDesc.stencilCompareFunction = (MTLCompareFunction)sData.stencilCompareFunction;
     sDesc.stencilFailureOperation = (MTLStencilOperation)sData.stencilFailureOperation;

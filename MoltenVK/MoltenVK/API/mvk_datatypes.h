@@ -378,10 +378,13 @@ MTLMultisampleStencilResolveFilter mvkMTLMultisampleStencilResolveFilterFromVkRe
 #endif
 
 /** Returns the Metal MTLViewport corresponding to the specified Vulkan VkViewport. */
-MTLViewport mvkMTLViewportFromVkViewport(VkViewport vkViewport);
+MTLViewport mvkMTLViewportFromVkViewport(const VkViewport vkViewport);
 
 /** Returns the Metal MTLScissorRect corresponding to the specified Vulkan VkRect2D. */
-MTLScissorRect mvkMTLScissorRectFromVkRect2D(VkRect2D vkRect);
+MTLScissorRect mvkMTLScissorRectFromVkRect2D(const VkRect2D vkRect);
+
+/** Returns the Vulkan VkRect2D corresponding to the specified  Metal MTLScissorRect. */
+VkRect2D mvkVkRect2DFromMTLScissorRect(const MTLScissorRect mtlScissorRect);
 
 /** Returns the Metal MTLCompareFunction corresponding to the specified Vulkan VkCompareOp, */
 MTLCompareFunction mvkMTLCompareFunctionFromVkCompareOp(VkCompareOp vkOp);

@@ -60,6 +60,9 @@ typedef struct {
 #pragma mark -
 #pragma mark Vulkan support
 
+/** A generic 32-bit color permitting float, int32, or uint32 values. */
+typedef VkClearColorValue MVKColor32;
+
 /** Tracks the Vulkan command currently being used. */
 typedef enum : uint8_t {
     kMVKCommandUseNone = 0,                     /**< No use defined. */
@@ -142,7 +145,7 @@ static inline std::string mvkGetMoltenVKVersionString(uint32_t mvkVersion) {
 /** Returns whether the specified positive value is a power-of-two. */
 template<typename T>
 static constexpr bool mvkIsPowerOfTwo(T value) {
-	return value && ((value & (value - 1)) == 0);
+	return value > 0 && ((value & (value - 1)) == 0);
 }
 
 /**
@@ -278,21 +281,21 @@ void mvkFlipVertically(void* rowMajorData, uint32_t rowCount, size_t bytesPerRow
  * They are ridiculously large numbers, but low enough to be safely used as both
  * uint and int values without risking overflowing between positive and negative values.
  */
-static  int32_t kMVKUndefinedLargePositiveInt32 =  mvkEnsurePowerOfTwo(std::numeric_limits<int32_t>::max() / 2);
-static  int32_t kMVKUndefinedLargeNegativeInt32 = -kMVKUndefinedLargePositiveInt32;
-static uint32_t kMVKUndefinedLargeUInt32        =  kMVKUndefinedLargePositiveInt32;
-static  int64_t kMVKUndefinedLargePositiveInt64 =  mvkEnsurePowerOfTwo(std::numeric_limits<int64_t>::max() / 2);
-static  int64_t kMVKUndefinedLargeNegativeInt64 = -kMVKUndefinedLargePositiveInt64;
-static uint64_t kMVKUndefinedLargeUInt64        =  kMVKUndefinedLargePositiveInt64;
+static constexpr  int32_t kMVKUndefinedLargePositiveInt32 =  mvkEnsurePowerOfTwo(std::numeric_limits<int32_t>::max() / 2);
+static constexpr  int32_t kMVKUndefinedLargeNegativeInt32 = -kMVKUndefinedLargePositiveInt32;
+static constexpr uint32_t kMVKUndefinedLargeUInt32        =  kMVKUndefinedLargePositiveInt32;
+static constexpr  int64_t kMVKUndefinedLargePositiveInt64 =  mvkEnsurePowerOfTwo(std::numeric_limits<int64_t>::max() / 2);
+static constexpr  int64_t kMVKUndefinedLargeNegativeInt64 = -kMVKUndefinedLargePositiveInt64;
+static constexpr uint64_t kMVKUndefinedLargeUInt64        =  kMVKUndefinedLargePositiveInt64;
 
 
 #pragma mark Vulkan structure support functions
 
 /** Returns a VkExtent2D created from the width and height of a VkExtent3D. */
-static inline VkExtent2D mvkVkExtent2DFromVkExtent3D(VkExtent3D e) { return {e.width, e.height }; }
+static constexpr VkExtent2D mvkVkExtent2DFromVkExtent3D(VkExtent3D e) { return {e.width, e.height }; }
 
 /** Returns a VkExtent3D, created from a VkExtent2D, and with depth of 1. */
-static inline VkExtent3D mvkVkExtent3DFromVkExtent2D(VkExtent2D e) { return {e.width, e.height, 1U }; }
+static constexpr VkExtent3D mvkVkExtent3DFromVkExtent2D(VkExtent2D e) { return {e.width, e.height, 1U }; }
 
 /** Returns whether the two Vulkan extents are equal by comparing their respective components. */
 static constexpr bool mvkVkExtent2DsAreEqual(VkExtent2D e1, VkExtent2D e2) {
@@ -333,13 +336,13 @@ static constexpr uint32_t mvkPackSwizzle(VkComponentMapping components) {
 }
 
 /** Unpacks a single 32-bit word containing four swizzle components. */
-static inline VkComponentMapping mvkUnpackSwizzle(uint32_t packed) {
-	VkComponentMapping components;
-	components.r = (VkComponentSwizzle)((packed >> 0) & 0xFF);
-	components.g = (VkComponentSwizzle)((packed >> 8) & 0xFF);
-	components.b = (VkComponentSwizzle)((packed >> 16) & 0xFF);
-	components.a = (VkComponentSwizzle)((packed >> 24) & 0xFF);
-	return components;
+static constexpr VkComponentMapping mvkUnpackSwizzle(uint32_t packed) {
+	return {
+		.r = (VkComponentSwizzle)((packed >> 0) & 0xFF),
+		.g = (VkComponentSwizzle)((packed >> 8) & 0xFF),
+		.b = (VkComponentSwizzle)((packed >> 16) & 0xFF),
+		.a = (VkComponentSwizzle)((packed >> 24) & 0xFF),
+	};
 }
 
 /**
@@ -353,8 +356,8 @@ static inline VkComponentMapping mvkUnpackSwizzle(uint32_t packed) {
  *      and matches any value.
  */
 static constexpr bool mvkVKComponentSwizzlesMatch(VkComponentSwizzle cs1,
-										   VkComponentSwizzle cs2,
-										   VkComponentSwizzle csPos) {
+												  VkComponentSwizzle cs2,
+												  VkComponentSwizzle csPos) {
 	return ((cs1 == cs2) ||
 			((cs1 == VK_COMPONENT_SWIZZLE_IDENTITY) && (cs2 == csPos)) ||
 			((cs2 == VK_COMPONENT_SWIZZLE_IDENTITY) && (cs1 == csPos)) ||
@@ -383,25 +386,25 @@ static constexpr bool mvkVkComponentMappingsMatch(VkComponentMapping cm1, VkComp
 #pragma mark Math
 
 /** Rounds the value to nearest integer using half-to-even rounding. */
-static inline double mvkRoundHalfToEven(const double val) {
+static constexpr double mvkRoundHalfToEven(const double val) {
 	return val - std::remainder(val, 1.0);	// remainder() uses half-to-even rounding, and unfortunately isn't constexpr until C++23.
 }
 
 /** Returns whether the value will fit inside the numeric type. */
 template<typename T, typename Tval>
-const bool mvkFits(const Tval& val) {
+static constexpr const bool mvkFits(const Tval& val) {
 	return val <= std::numeric_limits<T>::max();
 }
 
 /** Clamps the value between the lower and upper bounds, inclusive. */
 template<typename T>
-const T& mvkClamp(const T& val, const T& lower, const T& upper) {
+static constexpr const T& mvkClamp(const T& val, const T& lower, const T& upper) {
     return std::min(std::max(val, lower), upper);
 }
 
 /** Returns the result of a division, rounded up. */
 template<typename T, typename U>
-constexpr typename std::common_type<T, U>::type mvkCeilingDivide(T numerator, U denominator) {
+static constexpr typename std::common_type<T, U>::type mvkCeilingDivide(T numerator, U denominator) {
 	typedef typename std::common_type<T, U>::type R;
 	// Short circuit very common usecase of dividing by one.
 	return (denominator == 1) ? numerator : (R(numerator) + denominator - 1) / denominator;
@@ -427,18 +430,18 @@ struct MVKAbs<R, T, false> {
 
 /** Returns the absolute value of the difference of two numbers. */
 template<typename T, typename U>
-constexpr typename std::common_type<T, U>::type mvkAbsDiff(T x, U y) {
+static constexpr typename std::common_type<T, U>::type mvkAbsDiff(T x, U y) {
 	return x >= y ? x - y : y - x;
 }
 
 /** Returns the greatest common divisor of two numbers. */
 template<typename T>
-constexpr T mvkGreatestCommonDivisorImpl(T a, T b) {
+static constexpr T mvkGreatestCommonDivisorImpl(T a, T b) {
 	return b == 0 ? a : mvkGreatestCommonDivisorImpl(b, a % b);
 }
 
 template<typename T, typename U>
-constexpr typename std::common_type<T, U>::type mvkGreatestCommonDivisor(T a, U b) {
+static constexpr typename std::common_type<T, U>::type mvkGreatestCommonDivisor(T a, U b) {
 	typedef typename std::common_type<T, U>::type R;
 	typedef typename std::make_unsigned<R>::type UI;
 	return static_cast<R>(mvkGreatestCommonDivisorImpl(static_cast<UI>(MVKAbs<R, T>::eval(a)), static_cast<UI>(MVKAbs<R, U>::eval(b))));
@@ -446,7 +449,7 @@ constexpr typename std::common_type<T, U>::type mvkGreatestCommonDivisor(T a, U 
 
 /** Returns the least common multiple of two numbers. */
 template<typename T, typename U>
-constexpr typename std::common_type<T, U>::type mvkLeastCommonMultiple(T a, U b) {
+static constexpr typename std::common_type<T, U>::type mvkLeastCommonMultiple(T a, U b) {
 	typedef typename std::common_type<T, U>::type R;
 	return (a == 0 && b == 0) ? 0 : MVKAbs<R, T>::eval(a) / mvkGreatestCommonDivisor(a, b) * MVKAbs<R, U>::eval(b);
 }
@@ -463,7 +466,7 @@ constexpr typename std::common_type<T, U>::type mvkLeastCommonMultiple(T a, U b)
  * value returned by previous calls as the seed in subsequent calls.
  */
 template<class N>
-std::size_t mvkHash(const N* pVals, std::size_t count = 1, std::size_t seed = 5381) {
+static constexpr std::size_t mvkHash(const N* pVals, std::size_t count = 1, std::size_t seed = 5381) {
     std::size_t hash = seed;
     for (std::size_t i = 0; i < count; i++) { hash = ((hash << 5) + hash) ^ pVals[i]; }
     return hash;
@@ -497,7 +500,7 @@ protected:
 
 /** Ensures the size of the specified container is at least the specified size. */
 template<typename C, typename S>
-void mvkEnsureSize(C& container, S size) {
+static void mvkEnsureSize(C& container, S size) {
     if (size > container.size()) { container.resize(size); }
 }
 
@@ -506,7 +509,7 @@ void mvkEnsureSize(C& container, S size) {
  * each object, including freeing the object memory, and clearing the container.
  */
 template<typename C>
-void mvkDestroyContainerContents(C& container) {
+static void mvkDestroyContainerContents(C& container) {
     for (auto elem : container) { elem->destroy(); }
     container.clear();
 }
@@ -517,7 +520,7 @@ void mvkDestroyContainerContents(C& container) {
  */
 #ifdef __OBJC__
 template<typename C>
-void mvkReleaseContainerContents(C& container) {
+static void mvkReleaseContainerContents(C& container) {
     for (auto elem : container) { [elem release]; }
     container.clear();
 }
@@ -525,14 +528,14 @@ void mvkReleaseContainerContents(C& container) {
 
 /** Returns whether the container contains an item equal to the value. */
 template<class C, class T>
-bool mvkContains(C& container, const T& val) {
+static constexpr bool mvkContains(C& container, const T& val) {
 	for (const T& cVal : container) { if (cVal == val) { return true; } }
 	return false;
 }
 
 /** Removes the first occurance of the specified value from the specified container. */
 template<class C, class T>
-void mvkRemoveFirstOccurance(C& container, T val) {
+static void mvkRemoveFirstOccurance(C& container, T val) {
     for (auto iter = container.begin(), end = container.end(); iter != end; iter++) {
         if( *iter == val ) {
             container.erase(iter);
@@ -543,7 +546,7 @@ void mvkRemoveFirstOccurance(C& container, T val) {
 
 /** Removes all occurances of the specified value from the specified container. */
 template<class C, class T>
-void mvkRemoveAllOccurances(C& container, T val) {
+static void mvkRemoveAllOccurances(C& container, T val) {
     container.erase(std::remove(container.begin(), container.end(), val), container.end());
 }
 
@@ -552,7 +555,7 @@ void mvkRemoveAllOccurances(C& container, T val) {
 
 /** Selects and returns one of the values, based on the platform OS. */
 template<typename T>
-const T& mvkSelectPlatformValue(const T& macOSVal, const T& iOSVal) {
+static constexpr const T& mvkSelectPlatformValue(const T& macOSVal, const T& iOSVal) {
 #if MVK_IOS_OR_TVOS
 	return iOSVal;
 #endif
@@ -566,22 +569,29 @@ const T& mvkSelectPlatformValue(const T& macOSVal, const T& iOSVal) {
  * The optional count allows clearing multiple elements in an array.
  */
 template<typename T>
-void mvkClear(T* pVal, size_t count = 1) { if (pVal) { memset(pVal, 0, sizeof(T) * count); } }
+static void mvkClear(T* pDst, size_t count = 1) {
+	if ( !pDst ) { return; }					// Bad pointer
+	if constexpr(std::is_arithmetic_v<T>) { if (count == 1) { *pDst = static_cast<T>(0); } }  // Fast clear of a single primitive
+	memset(pDst, 0, sizeof(T) * count);			// Memory clear of complex content or array
+}
 
 /**
  * If pVal is not null, overrides the const declaration, and clears the memory occupied by *pVal
  * by writing zeros to all bytes. The optional count allows clearing multiple elements in an array.
 */
 template<typename T>
-void mvkClear(const T* pVal, size_t count = 1) { mvkClear((T*)pVal, count); }
+static void mvkClear(const T* pVal, size_t count = 1) { mvkClear((T*)pVal, count); }
 
 /**
  * If pSrc and pDst are both not null, copies the contents of the source value to the
  * destination value. The optional count allows copying of multiple elements in an array.
  */
 template<typename T>
-void mvkCopy(T* pDst, const T* pSrc, size_t count = 1) {
-	if (pSrc && pDst) { memcpy(pDst, pSrc, sizeof(T) * count); }
+static void mvkCopy(T* pDst, const T* pSrc, size_t count = 1) {
+	if ( !pDst || !pSrc ) { return; }			// Bad pointers
+	if (pDst == pSrc) { return; }				// Same object
+	if constexpr(std::is_arithmetic_v<T>) { if (count == 1) { *pDst = *pSrc; } }  // Fast copy of a single primitive
+	memcpy(pDst, pSrc, sizeof(T) * count);		// Memory copy of complex content or array
 }
 
 /**
@@ -589,8 +599,11 @@ void mvkCopy(T* pDst, const T* pSrc, size_t count = 1) {
  * otherwise returns false. The optional count allows comparing multiple elements in an array.
  */
 template<typename T>
-bool mvkAreEqual(const T* pV1, const T* pV2, size_t count = 1) {
-	return (pV1 && pV2) ? (memcmp(pV1, pV2, sizeof(T) * count) == 0) : false;
+static constexpr bool mvkAreEqual(const T* pV1, const T* pV2, size_t count = 1) {
+	if ( !pV2 || !pV2 ) { return false; }				// Bad pointers
+	if (pV1 == pV2) { return true; }					// Same object
+	if constexpr(std::is_arithmetic_v<T>) { if (count == 1) { return *pV1 == *pV2; } }  // Fast compare of a single primitive
+	return memcmp(pV1, pV2, sizeof(T) * count) == 0;	// Memory compare of complex content or array
 }
 
 /**
@@ -632,9 +645,17 @@ static constexpr bool mvkSetOrClear(T* pDest, const T* pSrc) {
 template<typename Tv, typename Tm>
 void mvkEnableFlags(Tv& value, const Tm bitMask) { value = (Tv)(value | bitMask); }
 
+/** Enables all the flags (sets bits to 1) within the value parameter. */
+template<typename Tv>
+void mvkEnableAllFlags(Tv& value) { value = ~static_cast<Tv>(0); }
+
 /** Disables the flags (sets bits to 0) within the value parameter specified by the bitMask parameter. */
 template<typename Tv, typename Tm>
 void mvkDisableFlags(Tv& value, const Tm bitMask) { value = (Tv)(value & ~(Tv)bitMask); }
+
+/** Enables all the flags (sets bits to 1) within the value parameter. */
+template<typename Tv>
+void mvkDisableAllFlags(Tv& value) { value = static_cast<Tv>(0); }
 
 /** Returns whether the specified value has ANY of the flags specified in bitMask enabled (set to 1). */
 template<typename Tv, typename Tm>

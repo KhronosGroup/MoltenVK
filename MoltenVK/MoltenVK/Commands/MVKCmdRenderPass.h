@@ -352,10 +352,64 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-    float _red;
-    float _green;
-    float _blue;
-    float _alpha;
+	float _blendConstants[4] = {};
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthTestEnable
+
+/** Vulkan command to dynamically enable depth testing. */
+class MVKCmdSetDepthTestEnable : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkBool32 depthTestEnable);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	VkBool32 _depthTestEnable;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthWriteEnable
+
+/** Vulkan command to dynamically enable depth writing. */
+class MVKCmdSetDepthWriteEnable : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkBool32 depthWriteEnable);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	VkBool32 _depthWriteEnable;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthCompareOp
+
+/** Vulkan command to dynamically set the depth compare operation. */
+class MVKCmdSetDepthCompareOp : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkCompareOp depthCompareOp);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	VkCompareOp _depthCompareOp;
 };
 
 
@@ -377,6 +431,71 @@ protected:
 
     float _minDepthBounds;
     float _maxDepthBounds;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthBoundsTestEnable
+
+/** Vulkan command to enable depth bounds testing. */
+class MVKCmdSetDepthBoundsTestEnable : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkBool32 depthBoundsTestEnable);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	bool _depthBoundsTestEnable;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetStencilTestEnable
+
+/** Vulkan command to dynamically enable stencil testing. */
+class MVKCmdSetStencilTestEnable : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkBool32 stencilTestEnable);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	VkBool32 _stencilTestEnable;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetStencilOp
+
+/** Vulkan command to dynamically set the stencil operations. */
+class MVKCmdSetStencilOp : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkStencilFaceFlags faceMask,
+						VkStencilOp failOp,
+						VkStencilOp passOp,
+						VkStencilOp depthFailOp,
+						VkCompareOp compareOp);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	VkStencilFaceFlags _faceMask;
+	VkStencilOp _failOp;
+	VkStencilOp _passOp;
+	VkStencilOp _depthFailOp;
+	VkCompareOp _compareOp;
 };
 
 
@@ -446,10 +565,7 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdSetCullMode
 
-/**
- * Vulkan command to dynamically set the cull mode. Originally from VK_EXT_extended_dynamic_state,
- * but also part of Vulkan 1.3.
- */
+/** Vulkan command to dynamically set the cull mode. */
 class MVKCmdSetCullMode : public MVKCommand {
 
 public:
@@ -461,17 +577,14 @@ public:
 protected:
     MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-    MTLCullMode _cullMode;
+	VkCullModeFlags _cullMode;
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdSetFrontFace
 
-/**
- * Vulkan command to dynamically set the front facing winding order. Originally from
- * VK_EXT_extended_dynamic_state, but also part of Vulkan 1.3.
- */
+/** Vulkan command to dynamically set the front facing winding order. */
 class MVKCmdSetFrontFace : public MVKCommand {
 
 public:
@@ -483,6 +596,25 @@ public:
 protected:
     MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-    MTLWinding _frontFace;
+	VkFrontFace _frontFace;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetPrimitiveTopology
+
+/** Vulkan command to dynamically set the primitive topology. */
+class MVKCmdSetPrimitiveTopology : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkPrimitiveTopology primitiveTopology);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	VkPrimitiveTopology _primitiveTopology;
 };
 

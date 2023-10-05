@@ -67,6 +67,7 @@ typedef struct MVKMTLBufferBinding {
     union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; const void* mtlBytes; }; // aliases
     VkDeviceSize offset = 0;
     uint32_t size = 0;
+	uint32_t stride = 0;
 	uint16_t index = 0;
     bool justOffset = false;
     bool isDirty = true;
@@ -78,14 +79,16 @@ typedef struct MVKMTLBufferBinding {
     void update(const MVKMTLBufferBinding &other) {
         if (mtlBuffer != other.mtlBuffer || size != other.size || other.isInline) {
             mtlBuffer = other.mtlBuffer;
+			offset = other.offset;
             size = other.size;
+			stride = other.stride;
             isInline = other.isInline;
-            offset = other.offset;
             justOffset = false;
 			isOverridden = false;
 			isDirty = true;
-        } else if (offset != other.offset) {
+        } else if (offset != other.offset || stride != other.stride) {
             offset = other.offset;
+			stride = other.stride;
             justOffset = !isOverridden && (!isDirty || justOffset);
 			isOverridden = false;
             isDirty = true;

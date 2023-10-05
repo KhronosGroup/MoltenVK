@@ -1564,13 +1564,14 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindIndexBuffer(
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindVertexBuffers(
     VkCommandBuffer                             commandBuffer,
-    uint32_t                                    startBinding,
+    uint32_t                                    firstBinding,
     uint32_t                                    bindingCount,
     const VkBuffer*                             pBuffers,
     const VkDeviceSize*                         pOffsets) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmdFrom2Thresholds(BindVertexBuffers, bindingCount, 1, 2, commandBuffer, startBinding, bindingCount, pBuffers, pOffsets);
+	MVKAddCmdFrom2Thresholds(BindVertexBuffers, bindingCount, 1, 2, commandBuffer, 
+							 firstBinding, bindingCount, pBuffers, pOffsets, nullptr, nullptr);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2536,7 +2537,8 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindVertexBuffers2(
     const VkDeviceSize*                         pStrides) {
 
     MVKTraceVulkanCallStart();
-
+	MVKAddCmdFrom2Thresholds(BindVertexBuffers, bindingCount, 1, 2, commandBuffer,
+							 firstBinding, bindingCount, pBuffers, pOffsets, pSizes, pStrides);
     MVKTraceVulkanCallEnd();
 }
 
@@ -2643,7 +2645,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthBoundsTestEnable(
     VkBool32                                    depthBoundsTestEnable) {
     
     MVKTraceVulkanCallStart();
-
+	MVKAddCmd(SetDepthBoundsTestEnable, commandBuffer, depthBoundsTestEnable);
     MVKTraceVulkanCallEnd();
 }
 
@@ -2652,7 +2654,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthCompareOp(
     VkCompareOp                                 depthCompareOp) {
     
     MVKTraceVulkanCallStart();
-
+	MVKAddCmd(SetDepthCompareOp, commandBuffer, depthCompareOp);
     MVKTraceVulkanCallEnd();
 }
 
@@ -2661,7 +2663,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthTestEnable(
     VkBool32                                    depthTestEnable) {
     
     MVKTraceVulkanCallStart();
-
+	MVKAddCmd(SetDepthTestEnable, commandBuffer, depthTestEnable);
     MVKTraceVulkanCallEnd();
 }
 
@@ -2670,6 +2672,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthWriteEnable(
     VkBool32                                    depthWriteEnable) {
     
     MVKTraceVulkanCallStart();
+	MVKAddCmd(SetDepthWriteEnable, commandBuffer, depthWriteEnable);
     MVKTraceVulkanCallEnd();
 }
 
@@ -2699,6 +2702,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetPrimitiveTopology(
     VkPrimitiveTopology                         primitiveTopology) {
     
     MVKTraceVulkanCallStart();
+	MVKAddCmd(SetPrimitiveTopology, commandBuffer, primitiveTopology);
     MVKTraceVulkanCallEnd();
 }
 
@@ -2723,6 +2727,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetStencilOp(
     VkCompareOp                                 compareOp) {
     
 	MVKTraceVulkanCallStart();
+	MVKAddCmd(SetStencilOp, commandBuffer, faceMask, failOp, passOp, depthFailOp, compareOp);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2731,6 +2736,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetStencilTestEnable(
     VkBool32                                    stencilTestEnable) {
     
 	MVKTraceVulkanCallStart();
+	MVKAddCmd(SetStencilTestEnable, commandBuffer, stencilTestEnable);
 	MVKTraceVulkanCallEnd();
 }
 

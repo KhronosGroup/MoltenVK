@@ -278,7 +278,7 @@ VkResult MVKCmdSetViewport<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N>
 void MVKCmdSetViewport<N>::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_viewportState.setViewports(_viewports.contents(), _firstViewport, true);
+	cmdEncoder->_rasterizingState.setViewports(_viewports.contents(), _firstViewport, true);
 }
 
 template class MVKCmdSetViewport<1>;
@@ -305,7 +305,7 @@ VkResult MVKCmdSetScissor<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N>
 void MVKCmdSetScissor<N>::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_scissorState.setScissors(_scissors.contents(), _firstScissor, true);
+    cmdEncoder->_rasterizingState.setScissors(_scissors.contents(), _firstScissor, true);
 }
 
 template class MVKCmdSetScissor<1>;
@@ -345,9 +345,9 @@ VkResult MVKCmdSetDepthBias::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetDepthBias::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_depthBiasState.setDepthBias(_depthBiasConstantFactor,
-                                             _depthBiasSlopeFactor,
-                                             _depthBiasClamp);
+	cmdEncoder->_rasterizingState.setDepthBias(_depthBiasConstantFactor,
+											   _depthBiasSlopeFactor,
+											   _depthBiasClamp);
 }
 
 
@@ -356,16 +356,54 @@ void MVKCmdSetDepthBias::encode(MVKCommandEncoder* cmdEncoder) {
 
 VkResult MVKCmdSetBlendConstants::setContent(MVKCommandBuffer* cmdBuff,
 											 const float blendConst[4]) {
-    _red = blendConst[0];
-    _green = blendConst[1];
-    _blue = blendConst[2];
-    _alpha = blendConst[3];
-
+	mvkCopy(_blendConstants, blendConst, 4);
 	return VK_SUCCESS;
 }
 
 void MVKCmdSetBlendConstants::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_blendColorState.setBlendColor(_red, _green, _blue, _alpha, true);
+    cmdEncoder->_rasterizingState.setBlendConstants(_blendConstants, true);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthTestEnable
+
+VkResult MVKCmdSetDepthTestEnable::setContent(MVKCommandBuffer* cmdBuff,
+											  VkBool32 depthTestEnable) {
+	_depthTestEnable = depthTestEnable;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetDepthTestEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_depthStencilState.setDepthTestEnable(_depthTestEnable);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthWriteEnable
+
+VkResult MVKCmdSetDepthWriteEnable::setContent(MVKCommandBuffer* cmdBuff,
+											   VkBool32 depthWriteEnable) {
+	_depthWriteEnable = depthWriteEnable;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetDepthWriteEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_depthStencilState.setDepthWriteEnable(_depthWriteEnable);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthCompareOp
+
+VkResult MVKCmdSetDepthCompareOp::setContent(MVKCommandBuffer* cmdBuff,
+											 VkCompareOp depthCompareOp) {
+	_depthCompareOp = depthCompareOp;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetDepthCompareOp::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_depthStencilState.setDepthCompareOp(_depthCompareOp);
 }
 
 
@@ -387,6 +425,60 @@ VkResult MVKCmdSetDepthBounds::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetDepthBounds::encode(MVKCommandEncoder* cmdEncoder) {}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthBoundsTestEnable
+
+VkResult MVKCmdSetDepthBoundsTestEnable::setContent(MVKCommandBuffer* cmdBuff,
+													VkBool32 depthBoundsTestEnable) {
+	_depthBoundsTestEnable = static_cast<bool>(depthBoundsTestEnable);
+
+	// Validate
+	if (cmdBuff->getDevice()->_enabledFeatures.depthBounds) {
+		return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetDepthBoundsTestEnable(): The current device does not support testing depth bounds.");
+	}
+
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetDepthBoundsTestEnable::encode(MVKCommandEncoder* cmdEncoder) {}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetStencilTestEnable
+
+VkResult MVKCmdSetStencilTestEnable::setContent(MVKCommandBuffer* cmdBuff,
+											  VkBool32 stencilTestEnable) {
+	_stencilTestEnable = stencilTestEnable;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetStencilTestEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_depthStencilState.setStencilTestEnable(_stencilTestEnable);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetStencilOp
+
+VkResult MVKCmdSetStencilOp::setContent(MVKCommandBuffer* cmdBuff,
+										VkStencilFaceFlags faceMask,
+										VkStencilOp failOp,
+										VkStencilOp passOp,
+										VkStencilOp depthFailOp,
+										VkCompareOp compareOp) {
+	_faceMask = faceMask;
+	_failOp = failOp;
+	_passOp = passOp;
+	_depthFailOp = depthFailOp;
+	_compareOp = compareOp;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetStencilOp::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_depthStencilState.setStencilOp(_faceMask, _failOp, _passOp, _depthFailOp, _compareOp);
+}
 
 
 #pragma mark -
@@ -436,7 +528,7 @@ VkResult MVKCmdSetStencilReference::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetStencilReference::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_stencilReferenceValueState.setReferenceValues(_faceMask, _stencilReference);
+    cmdEncoder->_rasterizingState.setStencilReferenceValues(_faceMask, _stencilReference);
 }
 
 
@@ -445,29 +537,12 @@ void MVKCmdSetStencilReference::encode(MVKCommandEncoder* cmdEncoder) {
 
 VkResult MVKCmdSetCullMode::setContent(MVKCommandBuffer* cmdBuff,
                                        VkCullModeFlags cullMode) {
-    switch (cullMode) {
-        case VK_CULL_MODE_NONE: {
-            _cullMode = MTLCullModeNone;
-            break;
-        }
-        case VK_CULL_MODE_FRONT_BIT: {
-            _cullMode = MTLCullModeFront;
-            break;
-        }
-        case VK_CULL_MODE_BACK_BIT: {
-            _cullMode = MTLCullModeBack;
-            break;
-        }
-        case VK_CULL_MODE_FRONT_AND_BACK: {
-            // Metal doesn't have a equivalent to this...
-        }
-    }
-
-    return VK_SUCCESS;
+	_cullMode = cullMode;
+	return VK_SUCCESS;
 }
 
 void MVKCmdSetCullMode::encode(MVKCommandEncoder* cmdEncoder) {
-    [((id<MTLRenderCommandEncoder>)cmdEncoder->getMTLEncoder()) setCullMode:_cullMode];
+	cmdEncoder->_rasterizingState.setCullMode(_cullMode, true);
 }
 
 
@@ -476,14 +551,25 @@ void MVKCmdSetCullMode::encode(MVKCommandEncoder* cmdEncoder) {
 
 VkResult MVKCmdSetFrontFace::setContent(MVKCommandBuffer* cmdBuff,
                                        VkFrontFace frontFace) {
-    _frontFace = frontFace == VK_FRONT_FACE_COUNTER_CLOCKWISE
-        ? MTLWindingClockwise
-        : MTLWindingCounterClockwise;
-
-    return VK_SUCCESS;
+	_frontFace = frontFace;
+	return VK_SUCCESS;
 }
 
 void MVKCmdSetFrontFace::encode(MVKCommandEncoder* cmdEncoder) {
-    [((id<MTLRenderCommandEncoder>)cmdEncoder->getMTLEncoder()) setFrontFacingWinding:_frontFace];
+	cmdEncoder->_rasterizingState.setFrontFace(_frontFace, true);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetPrimitiveTopology
+
+VkResult MVKCmdSetPrimitiveTopology::setContent(MVKCommandBuffer* cmdBuff,
+												VkPrimitiveTopology primitiveTopology) {
+	_primitiveTopology = primitiveTopology;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetPrimitiveTopology::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_rasterizingState.setPrimitiveTopology(_primitiveTopology, true);
 }
 

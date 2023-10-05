@@ -607,16 +607,12 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 
     _graphicsPipelineState.beginMetalRenderPass();
     _graphicsResourcesState.beginMetalRenderPass();
-    _viewportState.beginMetalRenderPass();
-    _scissorState.beginMetalRenderPass();
-    _depthBiasState.beginMetalRenderPass();
-    _blendColorState.beginMetalRenderPass();
+	_depthStencilState.beginMetalRenderPass();
+    _rasterizingState.beginMetalRenderPass();
     _vertexPushConstants.beginMetalRenderPass();
     _tessCtlPushConstants.beginMetalRenderPass();
     _tessEvalPushConstants.beginMetalRenderPass();
     _fragmentPushConstants.beginMetalRenderPass();
-    _depthStencilState.beginMetalRenderPass();
-    _stencilReferenceValueState.beginMetalRenderPass();
     _occlusionQueryState.beginMetalRenderPass();
 }
 
@@ -706,24 +702,23 @@ void MVKCommandEncoder::signalEvent(MVKEvent* mvkEvent, bool status) {
 	mvkEvent->encodeSignal(_mtlCmdBuffer, status);
 }
 
-bool MVKCommandEncoder::supportsDynamicState(VkDynamicState state) {
-    MVKGraphicsPipeline* gpl = (MVKGraphicsPipeline*)_graphicsPipelineState.getPipeline();
-    return !gpl || gpl->supportsDynamicState(state);
+VkRect2D MVKCommandEncoder::clipToRenderArea(VkRect2D rect) {
+
+	uint32_t raLeft = max(_renderArea.offset.x, 0);
+	uint32_t raRight = raLeft + _renderArea.extent.width;
+	uint32_t raBottom = max(_renderArea.offset.y, 0);
+	uint32_t raTop = raBottom + _renderArea.extent.height;
+
+	rect.offset.x      = mvkClamp<uint32_t>(rect.offset.x, raLeft, max(raRight - 1, raLeft));
+	rect.offset.y      = mvkClamp<uint32_t>(rect.offset.y, raBottom, max(raTop - 1, raBottom));
+	rect.extent.width  = min<uint32_t>(rect.extent.width, raRight - rect.offset.x);
+	rect.extent.height = min<uint32_t>(rect.extent.height, raTop - rect.offset.y);
+
+	return rect;
 }
 
-VkRect2D MVKCommandEncoder::clipToRenderArea(VkRect2D scissor) {
-
-	int32_t raLeft = _renderArea.offset.x;
-	int32_t raRight = raLeft + _renderArea.extent.width;
-	int32_t raBottom = _renderArea.offset.y;
-	int32_t raTop = raBottom + _renderArea.extent.height;
-
-	scissor.offset.x		= mvkClamp(scissor.offset.x, raLeft, max(raRight - 1, raLeft));
-	scissor.offset.y		= mvkClamp(scissor.offset.y, raBottom, max(raTop - 1, raBottom));
-	scissor.extent.width	= min<int32_t>(scissor.extent.width, raRight - scissor.offset.x);
-	scissor.extent.height	= min<int32_t>(scissor.extent.height, raTop - scissor.offset.y);
-
-	return scissor;
+MTLScissorRect MVKCommandEncoder::clipToRenderArea(MTLScissorRect scissor) {
+	return mvkMTLScissorRectFromVkRect2D(clipToRenderArea(mvkVkRect2DFromMTLScissorRect(scissor)));
 }
 
 void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
@@ -733,16 +728,12 @@ void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
     }
     _graphicsPipelineState.encode(stage);    // Must do first..it sets others
     _graphicsResourcesState.encode(stage);   // Before push constants, to allow them to override.
-    _viewportState.encode(stage);
-    _scissorState.encode(stage);
-    _depthBiasState.encode(stage);
-    _blendColorState.encode(stage);
+	_depthStencilState.encode(stage);
+    _rasterizingState.encode(stage);
     _vertexPushConstants.encode(stage);
     _tessCtlPushConstants.encode(stage);
     _tessEvalPushConstants.encode(stage);
     _fragmentPushConstants.encode(stage);
-    _depthStencilState.encode(stage);
-    _stencilReferenceValueState.encode(stage);
     _occlusionQueryState.encode(stage);
 }
 
@@ -831,16 +822,12 @@ void MVKCommandEncoder::endMetalRenderEncoding() {
 
     _graphicsPipelineState.endMetalRenderPass();
     _graphicsResourcesState.endMetalRenderPass();
-    _viewportState.endMetalRenderPass();
-    _scissorState.endMetalRenderPass();
-    _depthBiasState.endMetalRenderPass();
-    _blendColorState.endMetalRenderPass();
+	_depthStencilState.endMetalRenderPass();
+    _rasterizingState.endMetalRenderPass();
     _vertexPushConstants.endMetalRenderPass();
     _tessCtlPushConstants.endMetalRenderPass();
     _tessEvalPushConstants.endMetalRenderPass();
     _fragmentPushConstants.endMetalRenderPass();
-    _depthStencilState.endMetalRenderPass();
-    _stencilReferenceValueState.endMetalRenderPass();
     _occlusionQueryState.endMetalRenderPass();
 }
 
@@ -1131,39 +1118,35 @@ void MVKCommandEncoder::finishQueries() {
 
 MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
 									 MVKPrefillMetalCommandBuffersStyle prefillStyle) : MVKBaseDeviceObject(cmdBuffer->getDevice()),
-        _cmdBuffer(cmdBuffer),
-        _graphicsPipelineState(this),
-        _computePipelineState(this),
-        _viewportState(this),
-        _scissorState(this),
-        _depthBiasState(this),
-        _blendColorState(this),
-        _depthStencilState(this),
-        _stencilReferenceValueState(this),
-        _graphicsResourcesState(this),
-        _computeResourcesState(this),
-        _vertexPushConstants(this, VK_SHADER_STAGE_VERTEX_BIT),
-        _tessCtlPushConstants(this, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT),
-        _tessEvalPushConstants(this, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT),
-        _fragmentPushConstants(this, VK_SHADER_STAGE_FRAGMENT_BIT),
-        _computePushConstants(this, VK_SHADER_STAGE_COMPUTE_BIT),
-        _occlusionQueryState(this),
-		_prefillStyle(prefillStyle){
+	_cmdBuffer(cmdBuffer),
+	_graphicsPipelineState(this),
+	_graphicsResourcesState(this),
+	_computePipelineState(this),
+	_computeResourcesState(this),
+	_depthStencilState(this),
+	_rasterizingState(this),
+	_vertexPushConstants(this, VK_SHADER_STAGE_VERTEX_BIT),
+	_tessCtlPushConstants(this, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT),
+	_tessEvalPushConstants(this, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT),
+	_fragmentPushConstants(this, VK_SHADER_STAGE_FRAGMENT_BIT),
+	_computePushConstants(this, VK_SHADER_STAGE_COMPUTE_BIT),
+	_occlusionQueryState(this),
+	_prefillStyle(prefillStyle){
 
-            _pDeviceFeatures = &_device->_enabledFeatures;
-            _pDeviceMetalFeatures = _device->_pMetalFeatures;
-            _pDeviceProperties = _device->_pProperties;
-            _pDeviceMemoryProperties = _device->_pMemoryProperties;
-            _pActivatedQueries = nullptr;
-            _mtlCmdBuffer = nil;
-            _mtlRenderEncoder = nil;
-            _mtlComputeEncoder = nil;
-			_mtlComputeEncoderUse = kMVKCommandUseNone;
-            _mtlBlitEncoder = nil;
-            _mtlBlitEncoderUse = kMVKCommandUseNone;
-			_pEncodingContext = nullptr;
-			_stageCountersMTLFence = nil;
-			_flushCount = 0;
+	_pDeviceFeatures = &_device->_enabledFeatures;
+	_pDeviceMetalFeatures = _device->_pMetalFeatures;
+	_pDeviceProperties = _device->_pProperties;
+	_pDeviceMemoryProperties = _device->_pMemoryProperties;
+	_pActivatedQueries = nullptr;
+	_mtlCmdBuffer = nil;
+	_mtlRenderEncoder = nil;
+	_mtlComputeEncoder = nil;
+	_mtlComputeEncoderUse = kMVKCommandUseNone;
+	_mtlBlitEncoder = nil;
+	_mtlBlitEncoderUse = kMVKCommandUseNone;
+	_pEncodingContext = nullptr;
+	_stageCountersMTLFence = nil;
+	_flushCount = 0;
 }
 
 MVKCommandEncoder::~MVKCommandEncoder() {
