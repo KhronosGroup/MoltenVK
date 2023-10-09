@@ -380,6 +380,9 @@ bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
 
 	if (wasConverted) {
 		if (shouldLogCode) { MVKLogInfo("%s", conversionResult.resultLog.c_str()); }
+		if (conversionResult.resultInfo.needsTransformFeedback) {
+			generatePassThruVertexShader(conversionResult);
+		}
 	} else {
 		reportError(VK_ERROR_INVALID_SHADER_NV, "Unable to convert SPIR-V to MSL:\n%s", conversionResult.resultLog.c_str());
 	}
