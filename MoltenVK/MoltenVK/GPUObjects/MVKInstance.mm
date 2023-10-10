@@ -723,11 +723,12 @@ MVKInstance::~MVKInstance() {
 	_useCreationCallbacks = true;
 	mvkDestroyContainerContents(_physicalDevices);
 
-	lock_guard<mutex> lock(_dcbLock);
-	mvkDestroyContainerContents(_debugReportCallbacks);
-
-	MVKLogInfo("Destroyed VkInstance for Vulkan version %s with %d Vulkan extensions enabled.",
+	// Since this message may invoke debug callbacks, do it before locking callbacks.
+	MVKLogInfo("Destroying VkInstance for Vulkan version %s with %d Vulkan extensions enabled.",
 			   mvkGetVulkanVersionString(_appInfo.apiVersion).c_str(),
 			   _enabledExtensions.getEnabledCount());
+
+	lock_guard<mutex> lock(_dcbLock);
+	mvkDestroyContainerContents(_debugReportCallbacks);
 }
 
