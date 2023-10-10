@@ -141,9 +141,8 @@ typedef struct MVKVkFormatDesc {
 	MTLPixelFormat mtlPixelFormat;
 	MTLPixelFormat mtlPixelFormatSubstitute;
 	MTLVertexFormat mtlVertexFormat;
-	MTLVertexFormat mtlVertexFormatSubstitute;
-    uint8_t chromaSubsamplingPlaneCount;
-    uint8_t chromaSubsamplingComponentBits;
+	uint8_t chromaSubsamplingPlaneCount;
+	uint8_t chromaSubsamplingComponentBits;
 	VkExtent2D blockTexelSize;
 	uint32_t bytesPerBlock;
 	MVKFormatType formatType;
@@ -158,7 +157,6 @@ typedef struct MVKVkFormatDesc {
 	inline bool isSupportedOrSubstitutable() const { return isSupported() || (mtlPixelFormatSubstitute != MTLPixelFormatInvalid); };
 
 	inline bool vertexIsSupported() const { return (mtlVertexFormat != MTLVertexFormatInvalid); };
-	inline bool vertexIsSupportedOrSubstitutable() const { return vertexIsSupported() || (mtlVertexFormatSubstitute != MTLVertexFormatInvalid); };
 
 	bool needsSwizzle() const {
 		return componentMapping.r != VK_COMPONENT_SWIZZLE_IDENTITY ||
@@ -409,6 +407,7 @@ public:
 #pragma mark Construction
 
 	MVKPixelFormats(MVKPhysicalDevice* physicalDevice = nullptr);
+	void modifyCapabilitiesFromPhysicalDevice();
 
 protected:
 	MVKVkFormatDesc& getVkFormatDesc(VkFormat vkFormat);

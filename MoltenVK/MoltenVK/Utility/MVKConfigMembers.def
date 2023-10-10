@@ -81,6 +81,7 @@ MVK_CONFIG_MEMBER(useMetalArgumentBuffers,                MVKUseMetalArgumentBuf
 MVK_CONFIG_MEMBER(shaderSourceCompressionAlgorithm,       MVKConfigCompressionAlgorithm,            SHADER_COMPRESSION_ALGORITHM)
 MVK_CONFIG_MEMBER(shouldMaximizeConcurrentCompilation,    VkBool32,                                 SHOULD_MAXIMIZE_CONCURRENT_COMPILATION)
 MVK_CONFIG_MEMBER(timestampPeriodLowPassAlpha,            float,                                    TIMESTAMP_PERIOD_LOWPASS_ALPHA)
+MVK_CONFIG_MEMBER(forceShaderVertexLoader,                VkBool32,                                 FORCE_SHADER_VERTEX_LOADER)
 
 #undef MVK_CONFIG_MEMBER
 #undef MVK_CONFIG_MEMBER_STRING

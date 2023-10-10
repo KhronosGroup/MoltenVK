@@ -325,3 +325,8 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #ifndef MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA
 #  	define MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA    0.05
 #endif
+
+/** Always use shader code to load vertices (rather than MTLVertexDescriptors).  Disabled by default. */
+#ifndef MVK_CONFIG_FORCE_SHADER_VERTEX_LOADER
+#   define MVK_CONFIG_FORCE_SHADER_VERTEX_LOADER    0
+#endif

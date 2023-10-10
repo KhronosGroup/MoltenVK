@@ -717,7 +717,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_KHR: {
 				auto* portabilityProps = (VkPhysicalDevicePortabilitySubsetPropertiesKHR*)next;
-				portabilityProps->minVertexInputBindingStrideAlignment = (uint32_t)_metalFeatures.vertexStrideAlignment;
+				portabilityProps->minVertexInputBindingStrideAlignment = 1; // Shader vertex loader has no restrictions
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT: {
@@ -1642,6 +1642,7 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 	initMetalFeatures();        		// Call second.
 	initFeatures();             		// Call third.
 	initLimits();						// Call fourth.
+	_pixelFormats.modifyCapabilitiesFromPhysicalDevice();
 	initExtensions();
 	initMemoryProperties();
 	initExternalMemoryProperties();
@@ -1861,6 +1862,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if (supportsMTLFeatureSet(iOS_GPUFamily4_v1)) {
 		_metalFeatures.postDepthCoverage = true;
 		_metalFeatures.nonUniformThreadgroups = true;
+		_metalFeatures.pixelTypeLoads = true;
 	}
 
 	if (supportsMTLFeatureSet(iOS_GPUFamily5_v1)) {
@@ -2025,6 +2027,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.renderLinearTextures = true;
 		_metalFeatures.tileBasedDeferredRendering = true;
 
+		if (supportsMTLGPUFamily(Apple4)) {
+			_metalFeatures.pixelTypeLoads = true;
+		}
 #if MVK_XCODE_12
 		if (supportsMTLGPUFamily(Apple6)) {
 			_metalFeatures.astcHDRTextures = true;

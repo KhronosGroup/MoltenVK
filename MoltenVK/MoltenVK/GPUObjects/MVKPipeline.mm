@@ -746,7 +746,11 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLRenderPipelineDescriptor
 
 	// Vertex input
 	// This needs to happen before compiling the fragment shader, or we'll lose information on vertex attributes.
-	if (!addVertexInputToPipeline(plDesc.vertexDescriptor, pCreateInfo->pVertexInputState, shaderConfig)) { return nil; }
+	if (!shaderConfig.options.shouldUseShaderVertexLoader) {
+		if (!addVertexInputToPipeline(plDesc.vertexDescriptor, pCreateInfo->pVertexInputState, shaderConfig)) { return nil; }
+	}
+	// Disable for non-vertex shaders
+	shaderConfig.options.shouldUseShaderVertexLoader = false;
 
 	// Fragment shader - only add if rasterization is enabled
 	if (!addFragmentShaderToPipeline(plDesc, pCreateInfo, shaderConfig, vtxOutputs, pFragmentSS, pFragmentFB)) { return nil; }
@@ -790,9 +794,11 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessVertexStageDescript
 	if (!addVertexShaderToPipeline(plDesc, pCreateInfo, shaderConfig, tcInputs, pVertexSS, pVertexFB, pVtxFunctions)) { return nil; }
 
 	// Vertex input
-	plDesc.stageInputDescriptor = [MTLStageInputOutputDescriptor stageInputOutputDescriptor];
-	if (!addVertexInputToPipeline(plDesc.stageInputDescriptor, pCreateInfo->pVertexInputState, shaderConfig)) { return nil; }
-	plDesc.stageInputDescriptor.indexBufferIndex = _indirectParamsIndex.stages[kMVKShaderStageVertex];
+	if (!shaderConfig.options.shouldUseShaderVertexLoader) {
+		plDesc.stageInputDescriptor = [MTLStageInputOutputDescriptor stageInputOutputDescriptor];
+		if (!addVertexInputToPipeline(plDesc.stageInputDescriptor, pCreateInfo->pVertexInputState, shaderConfig)) { return nil; }
+		plDesc.stageInputDescriptor.indexBufferIndex = _indirectParamsIndex.stages[kMVKShaderStageVertex];
+	}
 
 	plDesc.threadGroupSizeIsMultipleOfThreadExecutionWidth = YES;
 
@@ -874,33 +880,6 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 			break;
 	}
 	return VK_FORMAT_UNDEFINED;
-}
-
-// Returns a format of the same base type with vector length adjusted to fit size.
-static MTLVertexFormat mvkAdjustFormatVectorToSize(MTLVertexFormat format, uint32_t size) {
-#define MVK_ADJUST_FORMAT_CASE(size_1, type, suffix) \
-	case MTLVertexFormat##type##4##suffix: if (size >= 4 * (size_1)) { return MTLVertexFormat##type##4##suffix; } \
-	case MTLVertexFormat##type##3##suffix: if (size >= 3 * (size_1)) { return MTLVertexFormat##type##3##suffix; } \
-	case MTLVertexFormat##type##2##suffix: if (size >= 2 * (size_1)) { return MTLVertexFormat##type##2##suffix; } \
-	case MTLVertexFormat##type##suffix:    if (size >= 1 * (size_1)) { return MTLVertexFormat##type##suffix; } \
-	return MTLVertexFormatInvalid;
-
-	switch (format) {
-		MVK_ADJUST_FORMAT_CASE(1, UChar, )
-		MVK_ADJUST_FORMAT_CASE(1, Char, )
-		MVK_ADJUST_FORMAT_CASE(1, UChar, Normalized)
-		MVK_ADJUST_FORMAT_CASE(1, Char, Normalized)
-		MVK_ADJUST_FORMAT_CASE(2, UShort, )
-		MVK_ADJUST_FORMAT_CASE(2, Short, )
-		MVK_ADJUST_FORMAT_CASE(2, UShort, Normalized)
-		MVK_ADJUST_FORMAT_CASE(2, Short, Normalized)
-		MVK_ADJUST_FORMAT_CASE(2, Half, )
-		MVK_ADJUST_FORMAT_CASE(4, Float, )
-		MVK_ADJUST_FORMAT_CASE(4, UInt, )
-		MVK_ADJUST_FORMAT_CASE(4, Int, )
-		default: return format;
-	}
-#undef MVK_ADJUST_FORMAT_CASE
 }
 
 // Returns a retained MTLComputePipelineDescriptor for the tess. control stage of a tessellated draw constructed from this instance, or nil if an error occurs.
@@ -1022,7 +1001,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	shaderConfig.options.mslOptions.view_mask_buffer_index = _viewRangeBufferIndex.stages[kMVKShaderStageVertex];
 	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
-    addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
+	addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
 
 	MVKMTLFunction func = getMTLFunction(shaderConfig, pVertexSS, pVertexFB, "Vertex");
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
@@ -1087,7 +1066,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 	shaderConfig.options.mslOptions.capture_output_to_buffer = true;
 	shaderConfig.options.mslOptions.vertex_for_tessellation = true;
 	shaderConfig.options.mslOptions.disable_rasterization = true;
-    addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
+	addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
 	addNextStageInputToShaderConversionConfig(shaderConfig, tcInputs);
 
 	// We need to compile this function three times, with no indexing, 16-bit indices, and 32-bit indices.
@@ -1311,37 +1290,94 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 	return true;
 }
 
+bool MVKGraphicsPipeline::canVertexInputUseMetalDescriptor(const VkPipelineVertexInputStateCreateInfo* pVI) {
+	if (mvkConfig().forceShaderVertexLoader) {
+		return false;
+	}
+	MVKArrayRef<const VkVertexInputBindingDivisorDescriptionEXT> divisors;
+	for (const auto* next = (VkBaseInStructure*)pVI->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+		case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT: {
+			auto* pVIDS = reinterpret_cast<const VkPipelineVertexInputDivisorStateCreateInfoEXT*>(next);
+			divisors = MVKArrayRef(pVIDS->pVertexBindingDivisors, pVIDS->vertexBindingDivisorCount);
+			break;
+		}
+		default:
+			break;
+		}
+	}
+	MVKArrayRef attributes(pVI->pVertexAttributeDescriptions, pVI->vertexAttributeDescriptionCount);
+	struct StrideAndAlign {
+		uint32_t stride = 0;
+		uint32_t align = 0;
+	};
+	MVKSmallVector<StrideAndAlign, 31> strides;
+	for (const auto& attribute : attributes) {
+		if (strides.size() < attribute.binding + 1)
+			strides.resize(attribute.binding + 1);
+		const MSLFormatInfo& fmt = CompilerMSL::get_format_info(static_cast<MSLFormat>(attribute.format));
+		strides[attribute.binding].align = std::max(strides[attribute.binding].align, fmt.vk_align());
+	}
+	VkDeviceSize mtlVtxStrideAlignment = _device->_pMetalFeatures->vertexStrideAlignment;
+	for (const auto& binding : MVKArrayRef(pVI->pVertexBindingDescriptions, pVI->vertexBindingDescriptionCount)) {
+		if (binding.binding >= strides.size() || strides[binding.binding].align == 0)
+			continue;
+		strides[binding.binding].stride = binding.stride;
+		// Metal has stricter requirements on the alignment of vertex strides
+		if ((binding.stride % mtlVtxStrideAlignment) != 0)
+			return false;
+		// Metal doesn't support 0 divisors
+		if (binding.stride != 0) {
+			for (const auto& divisor : divisors) {
+				if (divisor.binding == binding.binding && divisor.divisor == 0)
+					return false;
+			}
+		}
+	}
+	for (const auto& attribute : attributes) {
+		const MSLFormatInfo& fmt = CompilerMSL::get_format_info(static_cast<MSLFormat>(attribute.format));
+		StrideAndAlign stride = strides[attribute.binding];
+		// Metal doesn't support strides past the end of the vertex
+		if (stride.stride != 0 && attribute.offset + fmt.size() > stride.stride)
+			return false;
+		// Metal requires 4-byte alignment of vertex buffer offsets
+		// Therefore an unaligned attribute offset will always produce an unaligned load, making this guaranteed UB
+		// (Vulkan lets you unalign both the attribute offset and vertex buffer offset as long as the load is aligned once you add them)
+		// The AMD driver in particular doesn't handle unaligned attribute offsets
+		if ((attribute.offset & (fmt.align() - 1)) != 0)
+			return false;
+		// Metal requires vertex buffer offsets to be aligned to this value
+		if (stride.align < mtlVtxStrideAlignment)
+			return false;
+		// Check if Metal supports the format at all
+		if (getPixelFormats()->getMTLVertexFormat(attribute.format) == MTLVertexFormatInvalid)
+			return false;
+	}
+	return true;
+}
+
 template<class T>
 bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
-												   const VkPipelineVertexInputStateCreateInfo* pVI,
-												   const SPIRVToMSLConversionConfiguration& shaderConfig) {
-    // Collect extension structures
-    VkPipelineVertexInputDivisorStateCreateInfoEXT* pVertexInputDivisorState = nullptr;
+                                                   const VkPipelineVertexInputStateCreateInfo* pVI,
+                                                   const SPIRVToMSLConversionConfiguration& shaderConfig) {
+	// Collect extension structures
+	VkPipelineVertexInputDivisorStateCreateInfoEXT* pVertexInputDivisorState = nullptr;
 	for (const auto* next = (VkBaseInStructure*)pVI->pNext; next; next = next->pNext) {
-        switch (next->sType) {
-        case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT:
-            pVertexInputDivisorState = (VkPipelineVertexInputDivisorStateCreateInfoEXT*)next;
-            break;
-        default:
-            break;
-        }
-    }
+		switch (next->sType) {
+		case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT:
+			pVertexInputDivisorState = (VkPipelineVertexInputDivisorStateCreateInfoEXT*)next;
+			break;
+		default:
+			break;
+		}
+	}
 
-    // Vertex buffer bindings
+	// Vertex buffer bindings
 	uint32_t vbCnt = pVI->vertexBindingDescriptionCount;
 	uint32_t maxBinding = 0;
-    for (uint32_t i = 0; i < vbCnt; i++) {
-        const VkVertexInputBindingDescription* pVKVB = &pVI->pVertexBindingDescriptions[i];
-        if (shaderConfig.isVertexBufferUsed(pVKVB->binding)) {
-
-			// Vulkan allows any stride, but Metal only allows multiples of 4.
-            // TODO: We could try to expand the buffer to the required alignment in that case.
-			VkDeviceSize mtlVtxStrideAlignment = _device->_pMetalFeatures->vertexStrideAlignment;
-            if ((pVKVB->stride % mtlVtxStrideAlignment) != 0) {
-				setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Under Metal, vertex attribute binding strides must be aligned to %llu bytes.", mtlVtxStrideAlignment));
-                return false;
-            }
-
+	for (uint32_t i = 0; i < vbCnt; i++) {
+		const VkVertexInputBindingDescription* pVKVB = &pVI->pVertexBindingDescriptions[i];
+		if (shaderConfig.isVertexBufferUsed(pVKVB->binding)) {
 			maxBinding = max(pVKVB->binding, maxBinding);
 			uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
 			auto vbDesc = inputDesc.layouts[vbIdx];
@@ -1356,28 +1392,23 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 				vbDesc.stepFunction = (decltype(vbDesc.stepFunction))mvkMTLStepFunctionFromVkVertexInputRate(pVKVB->inputRate, isTessellationPipeline());
 				vbDesc.stepRate = 1;
 			}
-        }
-    }
+		}
+	}
 
-    // Vertex buffer divisors (step rates)
-    std::unordered_set<uint32_t> zeroDivisorBindings;
-    if (pVertexInputDivisorState) {
-        uint32_t vbdCnt = pVertexInputDivisorState->vertexBindingDivisorCount;
-        for (uint32_t i = 0; i < vbdCnt; i++) {
-            const VkVertexInputBindingDivisorDescriptionEXT* pVKVB = &pVertexInputDivisorState->pVertexBindingDivisors[i];
-            if (shaderConfig.isVertexBufferUsed(pVKVB->binding)) {
-                uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
-                if ((NSUInteger)inputDesc.layouts[vbIdx].stepFunction == MTLStepFunctionPerInstance ||
-					(NSUInteger)inputDesc.layouts[vbIdx].stepFunction == MTLStepFunctionThreadPositionInGridY) {
-                    if (pVKVB->divisor == 0) {
-                        inputDesc.layouts[vbIdx].stepFunction = (decltype(inputDesc.layouts[vbIdx].stepFunction))MTLStepFunctionConstant;
-                        zeroDivisorBindings.insert(pVKVB->binding);
-                    }
-                    inputDesc.layouts[vbIdx].stepRate = pVKVB->divisor;
-                }
-            }
-        }
-    }
+	// Vertex buffer divisors (step rates)
+	if (pVertexInputDivisorState) {
+		uint32_t vbdCnt = pVertexInputDivisorState->vertexBindingDivisorCount;
+		for (uint32_t i = 0; i < vbdCnt; i++) {
+			const VkVertexInputBindingDivisorDescriptionEXT* pVKVB = &pVertexInputDivisorState->pVertexBindingDivisors[i];
+			if (shaderConfig.isVertexBufferUsed(pVKVB->binding)) {
+				uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
+				MTLStepFunction fn = static_cast<MTLStepFunction>(inputDesc.layouts[vbIdx].stepFunction);
+				if (fn == MTLStepFunctionPerInstance || fn == MTLStepFunctionThreadPositionInGridY) {
+					inputDesc.layouts[vbIdx].stepRate = pVKVB->divisor;
+				}
+			}
+		}
+	}
 
 	// Vertex attributes
 	uint32_t vaCnt = pVI->vertexAttributeDescriptionCount;
@@ -1387,9 +1418,6 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 			uint32_t vaBinding = pVKVA->binding;
 			uint32_t vaOffset = pVKVA->offset;
 
-			// Vulkan allows offsets to exceed the buffer stride, but Metal doesn't.
-			// If this is the case, fetch a translated artificial buffer binding, using the same MTLBuffer,
-			// but that is translated so that the reduced VA offset fits into the binding stride.
 			const VkVertexInputBindingDescription* pVKVB = pVI->pVertexBindingDescriptions;
 			uint32_t attrSize = 0;
 			for (uint32_t j = 0; j < vbCnt; j++, pVKVB++) {
@@ -1402,75 +1430,17 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 						auto vbDesc = inputDesc.layouts[vbIdx];
 						uint32_t strideLowBound = vaOffset + attrSize;
 						if (vbDesc.stride < strideLowBound) vbDesc.stride = strideLowBound;
-					} else if (vaOffset && vaOffset + attrSize > pVKVB->stride) {
-						// Move vertex attribute offset into the stride. This vertex attribute may be
-						// combined with other vertex attributes into the same translated buffer binding.
-						// But if the reduced offset combined with the vertex attribute size still won't
-						// fit into the buffer binding stride, force the vertex attribute offset to zero,
-						// effectively dedicating this vertex attribute to its own buffer binding.
-						uint32_t origOffset = vaOffset;
-						vaOffset %= pVKVB->stride;
-						if (vaOffset + attrSize > pVKVB->stride) {
-							vaOffset = 0;
-						}
-						vaBinding = getTranslatedVertexBinding(vaBinding, origOffset - vaOffset, maxBinding);
-                        if (zeroDivisorBindings.count(pVKVB->binding)) {
-                            zeroDivisorBindings.insert(vaBinding);
-                        }
 					}
 					break;
 				}
 			}
 
 			auto vaDesc = inputDesc.attributes[pVKVA->location];
-			auto mtlFormat = (decltype(vaDesc.format))getPixelFormats()->getMTLVertexFormat(pVKVA->format);
-			if (pVKVB->stride && attrSize > pVKVB->stride) {
-				/* Metal does not support overlapping loads. Truncate format vector length to prevent an assertion
-				 * and hope it's not used by the shader. */
-				MTLVertexFormat newFormat = mvkAdjustFormatVectorToSize((MTLVertexFormat)mtlFormat, pVKVB->stride);
-				reportError(VK_SUCCESS, "Found attribute with size (%u) larger than it's binding's stride (%u). Changing descriptor format from %s to %s.",
-					attrSize, pVKVB->stride, getPixelFormats()->getName((MTLVertexFormat)mtlFormat), getPixelFormats()->getName(newFormat));
-				mtlFormat = (decltype(vaDesc.format))newFormat;
-			}
-			vaDesc.format = mtlFormat;
+			vaDesc.format = (decltype(vaDesc.format))getPixelFormats()->getMTLVertexFormat(pVKVA->format);;
 			vaDesc.bufferIndex = (decltype(vaDesc.bufferIndex))getMetalBufferIndexForVertexAttributeBinding(vaBinding);
 			vaDesc.offset = vaOffset;
 		}
 	}
-
-	// Run through the vertex bindings. Add a new Metal vertex layout for each translated binding,
-	// identical to the original layout. The translated binding will index into the same MTLBuffer,
-	// but at an offset that is one or more strides away from the original.
-	for (uint32_t i = 0; i < vbCnt; i++) {
-		const VkVertexInputBindingDescription* pVKVB = &pVI->pVertexBindingDescriptions[i];
-		uint32_t vbVACnt = shaderConfig.countShaderInputsAt(pVKVB->binding);
-		if (vbVACnt > 0) {
-			uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
-			auto vbDesc = inputDesc.layouts[vbIdx];
-
-			uint32_t xldtVACnt = 0;
-			for (auto& xltdBind : _translatedVertexBindings) {
-				if (xltdBind.binding == pVKVB->binding) {
-					uint32_t vbXltdIdx = getMetalBufferIndexForVertexAttributeBinding(xltdBind.translationBinding);
-					auto vbXltdDesc = inputDesc.layouts[vbXltdIdx];
-					vbXltdDesc.stride = vbDesc.stride;
-					vbXltdDesc.stepFunction = vbDesc.stepFunction;
-					vbXltdDesc.stepRate = vbDesc.stepRate;
-					xldtVACnt++;
-				}
-			}
-
-			// If all of the vertex attributes at this vertex buffer binding have been translated, remove it.
-			if (xldtVACnt == vbVACnt) { vbDesc.stride = 0; }
-		}
-	}
-
-    // Collect all bindings with zero divisors. We need to remember them so we can offset
-    // the vertex buffers during a draw.
-    for (uint32_t binding : zeroDivisorBindings) {
-        uint32_t stride = (uint32_t)inputDesc.layouts[getMetalBufferIndexForVertexAttributeBinding(binding)].stride;
-        _zeroDivisorVertexBindings.emplace_back(binding, stride);
-    }
 
 	return true;
 }
@@ -1483,30 +1453,8 @@ void MVKGraphicsPipeline::adjustVertexInputForMultiview(MTLVertexDescriptor* inp
 		uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
 		if (inputDesc.layouts[vbIdx].stepFunction == MTLVertexStepFunctionPerInstance) {
 			inputDesc.layouts[vbIdx].stepRate = inputDesc.layouts[vbIdx].stepRate / oldViewCount * viewCount;
-			for (auto& xltdBind : _translatedVertexBindings) {
-				if (xltdBind.binding == pVKVB->binding) {
-					uint32_t vbXltdIdx = getMetalBufferIndexForVertexAttributeBinding(xltdBind.translationBinding);
-					inputDesc.layouts[vbXltdIdx].stepRate = inputDesc.layouts[vbXltdIdx].stepRate / oldViewCount * viewCount;
-				}
-			}
 		}
 	}
-}
-
-// Returns a translated binding for the existing binding and translation offset, creating it if needed.
-uint32_t MVKGraphicsPipeline::getTranslatedVertexBinding(uint32_t binding, uint32_t translationOffset, uint32_t maxBinding) {
-	// See if a translated binding already exists (for example if more than one VA needs the same translation).
-	for (auto& xltdBind : _translatedVertexBindings) {
-		if (xltdBind.binding == binding && xltdBind.translationOffset == translationOffset) {
-			return xltdBind.translationBinding;
-		}
-	}
-
-	// Get next available binding point and add a translation binding description for it
-	uint16_t xltdBindPt = (uint16_t)(maxBinding + _translatedVertexBindings.size() + 1);
-	_translatedVertexBindings.push_back( {.binding = (uint16_t)binding, .translationBinding = xltdBindPt, .translationOffset = translationOffset} );
-
-	return xltdBindPt;
 }
 
 void MVKGraphicsPipeline::addTessellationToPipeline(MTLRenderPipelineDescriptor* plDesc,
@@ -1641,6 +1589,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
     shaderConfig.options.mslOptions.texel_buffer_texture_width = _device->_pMetalFeatures->maxTextureDimension;
     shaderConfig.options.mslOptions.r32ui_linear_texture_alignment = (uint32_t)_device->getVkFormatTexelBufferAlignment(VK_FORMAT_R32_UINT, this);
 	shaderConfig.options.mslOptions.texture_buffer_native = _device->_pMetalFeatures->textureBuffers;
+	shaderConfig.options.mslOptions.use_pixel_type_loads = _device->_pMetalFeatures->pixelTypeLoads;
 
 	bool useMetalArgBuff = isUsingMetalArgumentBuffers();
 	shaderConfig.options.mslOptions.argument_buffers = useMetalArgBuff;
@@ -1711,6 +1660,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 
     shaderConfig.options.tessPatchKind = reflectData.patchKind;
     shaderConfig.options.numTessControlPoints = reflectData.numControlPoints;
+    shaderConfig.options.shouldUseShaderVertexLoader = !canVertexInputUseMetalDescriptor(pCreateInfo->pVertexInputState);
 }
 
 uint32_t MVKGraphicsPipeline::getImplicitBufferIndex(MVKShaderStage stage, uint32_t bufferIndexOffset) {
@@ -1760,53 +1710,89 @@ bool MVKGraphicsPipeline::isValidVertexBufferIndex(MVKShaderStage stage, uint32_
 // Initializes the vertex attributes in a shader conversion configuration.
 void MVKGraphicsPipeline::addVertexInputToShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig,
                                                                  const VkGraphicsPipelineCreateInfo* pCreateInfo) {
-    // Set the shader conversion config vertex attribute information
-    shaderConfig.shaderInputs.clear();
-    uint32_t vaCnt = pCreateInfo->pVertexInputState->vertexAttributeDescriptionCount;
-    for (uint32_t vaIdx = 0; vaIdx < vaCnt; vaIdx++) {
-        const VkVertexInputAttributeDescription* pVKVA = &pCreateInfo->pVertexInputState->pVertexAttributeDescriptions[vaIdx];
+	// Set the shader conversion config vertex attribute information
+	shaderConfig.shaderInputs.clear();
+	shaderConfig.vertexAttributes.clear();
+	shaderConfig.vertexAttributes.clear();
+	const VkPipelineVertexInputStateCreateInfo* pVIS = pCreateInfo->pVertexInputState;
+	MVKArrayRef bindings(pVIS->pVertexBindingDescriptions, pVIS->vertexBindingDescriptionCount);
+	MVKArrayRef attributes(pVIS->pVertexAttributeDescriptions, pVIS->vertexAttributeDescriptionCount);
+	if (shaderConfig.options.shouldUseShaderVertexLoader) {
+		MVKArrayRef<const VkVertexInputBindingDivisorDescriptionEXT> divisors;
+		for (const auto* next = (VkBaseInStructure*)pVIS->pNext; next; next = next->pNext) {
+			switch (next->sType) {
+			case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT: {
+				auto* pVIDS = reinterpret_cast<const VkPipelineVertexInputDivisorStateCreateInfoEXT*>(next);
+				divisors = MVKArrayRef(pVIDS->pVertexBindingDivisors, pVIDS->vertexBindingDivisorCount);
+				break;
+			}
+			default:
+				break;
+			}
+		}
+		for (const VkVertexInputBindingDescription& vkBinding : bindings) {
+			mvk::MSLVertexBinding mslBinding;
+			mslBinding.binding.binding = getMetalBufferIndexForVertexAttributeBinding(vkBinding.binding);
+			mslBinding.binding.stride = vkBinding.stride;
+			mslBinding.binding.rate = static_cast<MSLVertexInputRate>(vkBinding.inputRate);
+			for (const auto& divisor : divisors) {
+				if (divisor.binding == vkBinding.binding)
+					mslBinding.binding.divisor = divisor.divisor;
+			}
+			shaderConfig.vertexBindings.push_back(mslBinding);
+		}
+		for (const VkVertexInputAttributeDescription& vkAttr : attributes) {
+			mvk::MSLVertexAttribute mslAttr;
+			mslAttr.attribute.location = vkAttr.location;
+			mslAttr.attribute.binding = getMetalBufferIndexForVertexAttributeBinding(vkAttr.binding);
+			mslAttr.attribute.format = static_cast<MSLFormat>(vkAttr.format);
+			mslAttr.attribute.offset = vkAttr.offset;
+			shaderConfig.vertexAttributes.push_back(mslAttr);
+		}
+	} else {
+		for (const VkVertexInputAttributeDescription& attribute : attributes) {
+			// Set binding and offset from Vulkan vertex attribute
+			mvk::MSLShaderInput si;
+			si.shaderVar.location = attribute.location;
+			si.binding = attribute.binding;
 
-        // Set binding and offset from Vulkan vertex attribute
-        mvk::MSLShaderInput si;
-        si.shaderVar.location = pVKVA->location;
-        si.binding = pVKVA->binding;
+			// Metal can't do signedness conversions on vertex buffers (rdar://45922847). If the shader
+			// and the vertex attribute have mismatched signedness, we have to fix the shader
+			// to match the vertex attribute. So tell SPIRV-Cross if we're expecting an unsigned format.
+			// Only do this if the attribute could be reasonably expected to fit in the shader's
+			// declared type. Programs that try to invoke undefined behavior are on their own.
+			switch (getPixelFormats()->getFormatType(attribute.format) ) {
+			case kMVKFormatColorUInt8:
+				si.shaderVar.format = MSL_VERTEX_FORMAT_UINT8;
+				break;
 
-        // Metal can't do signedness conversions on vertex buffers (rdar://45922847). If the shader
-        // and the vertex attribute have mismatched signedness, we have to fix the shader
-        // to match the vertex attribute. So tell SPIRV-Cross if we're expecting an unsigned format.
-        // Only do this if the attribute could be reasonably expected to fit in the shader's
-        // declared type. Programs that try to invoke undefined behavior are on their own.
-        switch (getPixelFormats()->getFormatType(pVKVA->format) ) {
-        case kMVKFormatColorUInt8:
-            si.shaderVar.format = MSL_VERTEX_FORMAT_UINT8;
-            break;
+			case kMVKFormatColorUInt16:
+				si.shaderVar.format = MSL_VERTEX_FORMAT_UINT16;
+				break;
 
-        case kMVKFormatColorUInt16:
-            si.shaderVar.format = MSL_VERTEX_FORMAT_UINT16;
-            break;
+			case kMVKFormatDepthStencil:
+				// Only some depth/stencil formats have unsigned components.
+				switch (attribute.format) {
+				case VK_FORMAT_S8_UINT:
+				case VK_FORMAT_D16_UNORM_S8_UINT:
+				case VK_FORMAT_D24_UNORM_S8_UINT:
+				case VK_FORMAT_D32_SFLOAT_S8_UINT:
+					si.shaderVar.format = MSL_VERTEX_FORMAT_UINT8;
+					break;
 
-        case kMVKFormatDepthStencil:
-            // Only some depth/stencil formats have unsigned components.
-            switch (pVKVA->format) {
-            case VK_FORMAT_S8_UINT:
-            case VK_FORMAT_D16_UNORM_S8_UINT:
-            case VK_FORMAT_D24_UNORM_S8_UINT:
-            case VK_FORMAT_D32_SFLOAT_S8_UINT:
-                si.shaderVar.format = MSL_VERTEX_FORMAT_UINT8;
-                break;
+				default:
+					break;
+				}
+				break;
 
-            default:
-                break;
-            }
-            break;
+			default:
+				break;
 
-        default:
-            break;
+			}
 
-        }
-
-        shaderConfig.shaderInputs.push_back(si);
-    }
+			shaderConfig.shaderInputs.push_back(si);
+		}
+	}
 }
 
 // Initializes the shader outputs in a shader conversion config from the next stage input.
@@ -1858,6 +1844,8 @@ void MVKGraphicsPipeline::addPrevStageOutputToShaderConversionConfig(SPIRVToMSLC
                                                                      SPIRVShaderOutputs& shaderOutputs) {
     // Set the shader conversion configuration input variable information
     shaderConfig.shaderInputs.clear();
+    shaderConfig.vertexAttributes.clear();
+    shaderConfig.vertexBindings.clear();
     uint32_t siCnt = (uint32_t)shaderOutputs.size();
     for (uint32_t siIdx = 0; siIdx < siCnt; siIdx++) {
 		if (!shaderOutputs[siIdx].isUsed) { continue; }
@@ -2472,6 +2460,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.ios_use_simdgroup_functions,
 				opt.emulate_subgroups,
 				opt.vertex_index_type,
+				opt.use_pixel_type_loads,
 				opt.force_sample_rate_shading,
 				opt.manual_helper_invocation_updates,
 				opt.check_discarded_frag_stores,
@@ -2498,6 +2487,22 @@ namespace SPIRV_CROSS_NAMESPACE {
 				rb.msl_buffer,
 				rb.msl_texture,
 				rb.msl_sampler);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, MSLVertexBinding& vb) {
+		archive(vb.binding,
+		        vb.stride,
+		        vb.rate,
+		        vb.divisor);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, MSLVertexAttribute& va) {
+		archive(va.location,
+		        va.binding,
+		        va.format,
+		        va.offset);
 	}
 
 	template<class Archive>
@@ -2556,7 +2561,8 @@ namespace mvk {
 				opt.entryPointStage,
 				opt.tessPatchKind,
 				opt.numTessControlPoints,
-				opt.shouldFlipVertexY);
+				opt.shouldFlipVertexY,
+				opt.shouldUseShaderVertexLoader);
 	}
 
 	template<class Archive>
@@ -2575,6 +2581,17 @@ namespace mvk {
 	}
 
 	template<class Archive>
+	void serialize(Archive & archive, MSLVertexAttribute& va) {
+		archive(va.attribute,
+		        va.outIsUsedByShader);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, MSLVertexBinding& vb) {
+		archive(vb.binding);
+	}
+
+	template<class Archive>
 	void serialize(Archive & archive, DescriptorBinding& db) {
 		archive(db.stage,
 				db.descriptorSet,
@@ -2587,6 +2604,8 @@ namespace mvk {
 		archive(ctx.options,
 				ctx.shaderInputs,
 				ctx.shaderOutputs,
+				ctx.vertexAttributes,
+				ctx.vertexBindings,
 				ctx.resourceBindings,
 				ctx.discreteDescriptorSets);
 	}

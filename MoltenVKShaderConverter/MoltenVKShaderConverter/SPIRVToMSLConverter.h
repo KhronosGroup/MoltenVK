@@ -43,6 +43,7 @@ namespace mvk {
 		spv::ExecutionMode tessPatchKind = spv::ExecutionModeMax;
 		uint32_t numTessControlPoints = 0;
 		bool shouldFlipVertexY = true;
+		bool shouldUseShaderVertexLoader = false;
 
 		/**
 		 * Returns whether the specified options match this one.
@@ -85,6 +86,49 @@ namespace mvk {
 		MSLShaderInterfaceVariable();
 
 	} MSLShaderInterfaceVariable, MSLShaderInput;
+
+	/**
+	 * Defines a VK vertex attribute for use with in-shader vertex loading
+	 *
+	 * The outIsUsedByShader flag is set to true during conversion of SPIR-V to MSL if the shader
+	 * makes use of this interface variable. This allows a pipeline to be optimized, and for two
+	 * shader conversion configurations to be compared only against the attributes that are
+	 * actually used by the shader.
+	 *
+	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIPELINE CACHE.
+	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
+	 */
+	typedef struct MSLVertexAttribute {
+		SPIRV_CROSS_NAMESPACE::MSLVertexAttribute attribute;
+		bool outIsUsedByShader = false;
+
+		/**
+		 * Returns whether the specified resource binding match this one.
+		 * It does if all corresponding elements except outIsUsedByShader are equal.
+		 */
+		bool matches(const MSLVertexAttribute& other) const;
+	} MSLVertexAttribute;
+
+	/**
+	 * Defines a VK vertex binding for use with in-shader vertex loading
+	 *
+	 * The outIsUsedByShader flag is set to true during conversion of SPIR-V to MSL if the shader
+	 * makes use of this interface variable. This allows a pipeline to be optimized, and for two
+	 * shader conversion configurations to be compared only against the attributes that are
+	 * actually used by the shader.
+	 *
+	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIPELINE CACHE.
+	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
+	 */
+	typedef struct MSLVertexBinding {
+		SPIRV_CROSS_NAMESPACE::MSLVertexBinding binding;
+
+		/**
+		 * Returns whether the specified resource binding match this one.
+		 * It does if all corresponding elements except outIsUsedByShader are equal.
+		 */
+		bool matches(const MSLVertexBinding& other) const;
+	} MSLVertexBinding;
 
 	/**
 	 * Matches the binding index of a MSL resource for a binding within a descriptor set.
@@ -148,6 +192,8 @@ namespace mvk {
 		SPIRVToMSLConversionOptions options;
 		std::vector<MSLShaderInterfaceVariable> shaderInputs;
 		std::vector<MSLShaderInterfaceVariable> shaderOutputs;
+		std::vector<MSLVertexAttribute> vertexAttributes;
+		std::vector<MSLVertexBinding> vertexBindings;
 		std::vector<MSLResourceBinding> resourceBindings;
 		std::vector<uint32_t> discreteDescriptorSets;
 		std::vector<DescriptorBinding> dynamicBufferDescriptors;

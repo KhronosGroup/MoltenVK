@@ -53,6 +53,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionOptions::matches(const SPIRVToMSLConv
 	if (tessPatchKind != other.tessPatchKind) { return false; }
 	if (numTessControlPoints != other.numTessControlPoints) { return false; }
 	if (shouldFlipVertexY != other.shouldFlipVertexY) { return false; }
+	if (shouldUseShaderVertexLoader != other.shouldUseShaderVertexLoader) { return false; }
 	return true;
 }
 
@@ -126,6 +127,14 @@ MVK_PUBLIC_SYMBOL mvk::MSLResourceBinding::MSLResourceBinding() {
 	constExprSampler = SPIRV_CROSS_NAMESPACE::MSLConstexprSampler();
 }
 
+MVK_PUBLIC_SYMBOL bool mvk::MSLVertexAttribute::matches(const mvk::MSLVertexAttribute& other) const {
+	return memcmp(&attribute, &other.attribute, sizeof(attribute)) != 0;
+}
+
+MVK_PUBLIC_SYMBOL bool mvk::MSLVertexBinding::matches(const mvk::MSLVertexBinding& other) const {
+	return memcmp(&binding, &other.binding, sizeof(binding)) != 0;
+}
+
 MVK_PUBLIC_SYMBOL bool mvk::DescriptorBinding::matches(const mvk::DescriptorBinding& other) const {
 	if (stage != other.stage) { return false; }
 	if (descriptorSet != other.descriptorSet) { return false; }
@@ -181,6 +190,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::isResourceUsed(Executi
 }
 
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::markAllInterfaceVarsAndResourcesUsed() {
+	for (auto& va : vertexAttributes) { va.outIsUsedByShader = true; }
 	for (auto& si : shaderInputs) { si.outIsUsedByShader = true; }
 	for (auto& so : shaderOutputs) { so.outIsUsedByShader = true; }
 	for (auto& rb : resourceBindings) { rb.outIsUsedByShader = true; }
@@ -193,7 +203,7 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::markAllInterfaceVarsAn
 // and shaderInputs and shaderOutputs are populated before each stage, so neither needs to be filtered by stage here.
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToMSLConversionConfiguration& other) const {
 
-    if ( !options.matches(other.options) ) { return false; }
+	if ( !options.matches(other.options) ) { return false; }
 
 	for (const auto& si : shaderInputs) {
 		if (si.outIsUsedByShader && !containsMatching(other.shaderInputs, si)) { return false; }
@@ -203,11 +213,22 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToM
 		if (so.outIsUsedByShader && !containsMatching(other.shaderOutputs, so)) { return false; }
 	}
 
-    for (const auto& rb : resourceBindings) {
-        if (rb.resourceBinding.stage == options.entryPointStage &&
+	uint32_t usedBindings = 0;
+	for (const auto& va : vertexAttributes) {
+		if (va.outIsUsedByShader && !containsMatching(other.vertexAttributes, va)) { return false; }
+		if (va.outIsUsedByShader) { usedBindings |= 1 << va.attribute.binding; }
+	}
+
+	for (const auto& vb : vertexBindings) {
+		bool used = (usedBindings >> vb.binding.binding) & 1;
+		if (used && !containsMatching(other.vertexBindings, vb)) { return false; }
+	}
+
+	for (const auto& rb : resourceBindings) {
+		if (rb.resourceBinding.stage == options.entryPointStage &&
 			rb.outIsUsedByShader &&
 			!containsMatching(other.resourceBindings, rb)) { return false; }
-    }
+	}
 
 	for (const auto& db : dynamicBufferDescriptors) {
 		if (db.stage == options.entryPointStage &&
@@ -218,11 +239,18 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToM
 		if ( !contains(other.discreteDescriptorSets, dsIdx)) { return false; }
 	}
 
-    return true;
+	return true;
 }
 
 
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::alignWith(const SPIRVToMSLConversionConfiguration& srcContext) {
+
+	for (auto& va : vertexAttributes) {
+		va.outIsUsedByShader = false;
+		for (auto& srcVA : srcContext.vertexAttributes) {
+			if (va.matches(srcVA)) { va.outIsUsedByShader = srcVA.outIsUsedByShader; }
+		}
+	}
 
 	for (auto& si : shaderInputs) {
 		si.outIsUsedByShader = false;
@@ -305,6 +333,15 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 		pMSLCompiler->set_common_options(scOpts);
 
 		// Add shader inputs and outputs
+		if (shaderConfig.options.shouldUseShaderVertexLoader) {
+			for (auto& va : shaderConfig.vertexAttributes) {
+				pMSLCompiler->add_shader_vertex_loader_attribute(va.attribute);
+			}
+			for (auto& vb : shaderConfig.vertexBindings) {
+				pMSLCompiler->add_shader_vertex_loader_binding(vb.binding);
+			}
+		}
+
 		for (auto& si : shaderConfig.shaderInputs) {
 			pMSLCompiler->add_msl_shader_input(si.shaderVar);
 		}
@@ -379,6 +416,11 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 		}
 	}
 
+	if (shaderConfig.options.shouldUseShaderVertexLoader) {
+		for (auto& ctxVA : shaderConfig.vertexAttributes) {
+			ctxVA.outIsUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxVA.attribute.location);
+		}
+	}
 	for (auto& ctxSI : shaderConfig.shaderInputs) {
 		if (ctxSI.shaderVar.builtin != spv::BuiltInMax) {
 			ctxSI.outIsUsedByShader = pMSLCompiler->has_active_builtin(ctxSI.shaderVar.builtin, spv::StorageClassInput);

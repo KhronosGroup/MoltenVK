@@ -149,6 +149,7 @@ typedef struct {
 	VkBool32 programmableSamplePositions;			/**< If true, programmable MSAA sample positions are supported. */
 	VkBool32 shaderBarycentricCoordinates;			/**< If true, fragment shader barycentric coordinates are supported. */
 	MTLArgumentBuffersTier argumentBuffersTier;		/**< The argument buffer tier available on this device, as a Metal enumeration. */
+	VkBool32 pixelTypeLoads;                        /**< Supports loading from types like `device rgb9e5<float3>*` in MSL */
 	VkBool32 needsSampleDrefLodArrayWorkaround;		/**< If true, sampling from arrayed depth images with explicit LoD is broken and needs a workaround. */
 	VkDeviceSize hostMemoryPageSize;				/**< The size of a page of host memory on this platform. */
 } MVKPhysicalDeviceMetalFeatures;
