@@ -27,6 +27,33 @@
 
 
 #pragma mark -
+#pragma mark MVKCmdExecuteCommands
+
+template <size_t N>
+VkResult MVKCmdExecuteCommands<N>::setContent(MVKCommandBuffer* cmdBuff,
+											  uint32_t commandBuffersCount,
+											  const VkCommandBuffer* pCommandBuffers) {
+	// Add clear values
+	_secondaryCommandBuffers.clear();	// Clear for reuse
+	_secondaryCommandBuffers.reserve(commandBuffersCount);
+	for (uint32_t cbIdx = 0; cbIdx < commandBuffersCount; cbIdx++) {
+		_secondaryCommandBuffers.push_back(MVKCommandBuffer::getMVKCommandBuffer(pCommandBuffers[cbIdx]));
+	}
+	cmdBuff->recordExecuteCommands(_secondaryCommandBuffers.contents());
+
+	return VK_SUCCESS;
+}
+
+template <size_t N>
+void MVKCmdExecuteCommands<N>::encode(MVKCommandEncoder* cmdEncoder) {
+    for (auto& cb : _secondaryCommandBuffers) { cmdEncoder->encodeSecondary(cb); }
+}
+
+template class MVKCmdExecuteCommands<1>;
+template class MVKCmdExecuteCommands<16>;
+
+
+#pragma mark -
 #pragma mark MVKCmdPipelineBarrier
 
 template <size_t N>

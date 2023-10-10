@@ -119,25 +119,56 @@ protected:
 #pragma mark -
 #pragma mark MVKPipelineCommandEncoderState
 
-/** Holds encoder state established by pipeline commands. */
+/** Abstract class to hold encoder state established by pipeline commands. */
 class MVKPipelineCommandEncoderState : public MVKCommandEncoderState {
 
 public:
+    virtual void bindPipeline(MVKPipeline* pipeline);
 
-	/** Binds the pipeline. */
-    void bindPipeline(MVKPipeline* pipeline);
-
-    /** Returns the currently bound pipeline. */
     MVKPipeline* getPipeline();
 
-    /** Constructs this instance for the specified command encoder. */
-    MVKPipelineCommandEncoderState(MVKCommandEncoder* cmdEncoder)
-        : MVKCommandEncoderState(cmdEncoder) {}
+    MVKPipelineCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKCommandEncoderState(cmdEncoder) {}
 
 protected:
     void encodeImpl(uint32_t stage) override;
 
     MVKPipeline* _pipeline = nullptr;
+};
+
+
+#pragma mark -
+#pragma mark MVKGraphicsPipelineCommandEncoderState
+
+/** Holds encoder state established by graphics pipeline commands. */
+class MVKGraphicsPipelineCommandEncoderState : public MVKPipelineCommandEncoderState {
+
+public:
+	void bindPipeline(MVKPipeline* pipeline) override;
+
+	MVKGraphicsPipeline* getGraphicsPipeline() { return (MVKGraphicsPipeline*)getPipeline(); }
+
+	void setPatchControlPoints(uint32_t patchControlPoints);
+	uint32_t getPatchControlPoints();
+
+	MVKGraphicsPipelineCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKPipelineCommandEncoderState(cmdEncoder) {}
+
+protected:
+	uint32_t _patchControlPoints[StateScope::Count] = {};
+};
+
+
+#pragma mark -
+#pragma mark MVKComputePipelineCommandEncoderState
+
+/** Holds encoder state established by compute pipeline commands. */
+class MVKComputePipelineCommandEncoderState : public MVKPipelineCommandEncoderState {
+
+public:
+	MVKComputePipeline* getComputePipeline() { return (MVKComputePipeline*)getPipeline(); }
+
+	MVKComputePipelineCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKPipelineCommandEncoderState(cmdEncoder) {}
+
+protected:
 };
 
 
@@ -233,7 +264,7 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKRasterizingCommandEncoderState
+#pragma mark MVKRenderingCommandEncoderState
 
 struct MVKDepthBias {
 	float depthBiasConstantFactor;
@@ -256,8 +287,8 @@ struct MVKMTLScissors {
 	uint32_t scissorCount;
 };
 
-/** Holds encoder state established by various state commands. */
-class MVKRasterizingCommandEncoderState : public MVKCommandEncoderState {
+/** Holds encoder state established by various rendering state commands. */
+class MVKRenderingCommandEncoderState : public MVKCommandEncoderState {
 public:
 	void setCullMode(VkCullModeFlags cullMode, bool isDynamic);
 
@@ -281,9 +312,11 @@ public:
 	void setViewports(const MVKArrayRef<VkViewport> viewports, uint32_t firstViewport, bool isDynamic);
 	void setScissors(const MVKArrayRef<VkRect2D> scissors, uint32_t firstScissor, bool isDynamic);
 
+	void setRasterizerDiscardEnable(VkBool32 rasterizerDiscardEnable, bool isDynamic);
+
 	void beginMetalRenderPass() override;
 
-	MVKRasterizingCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKCommandEncoderState(cmdEncoder) {}
+	MVKRenderingCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKCommandEncoderState(cmdEncoder) {}
 
 protected:
 	void encodeImpl(uint32_t stage) override;
@@ -312,6 +345,7 @@ protected:
 	MVKRenderStateFlags _dirtyStates;
 	MVKRenderStateFlags _modifiedStates;
 	bool _mtlDepthBiasEnable[StateScope::Count] = {};
+	bool _mtlRasterizerDiscardEnable[StateScope::Count] = {};
 	bool _cullBothFaces[StateScope::Count] = {};
 };
 

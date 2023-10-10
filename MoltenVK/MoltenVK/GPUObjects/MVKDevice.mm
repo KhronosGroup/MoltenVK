@@ -392,6 +392,13 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				extDynState->extendedDynamicState = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT: {
+				auto* extDynState2 = (VkPhysicalDeviceExtendedDynamicState2FeaturesEXT*)next;
+				extDynState2->extendedDynamicState2 = true;
+				extDynState2->extendedDynamicState2LogicOp = false;
+				extDynState2->extendedDynamicState2PatchControlPoints = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: {
 				auto* interlockFeatures = (VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT*)next;
 				interlockFeatures->fragmentShaderSampleInterlock = _metalFeatures.rasterOrderGroups;

@@ -25,7 +25,7 @@
 #include "MVKFoundation.h"
 #include "MTLRenderPassDescriptor+MoltenVK.h"
 #include "MVKCmdDraw.h"
-#include "MVKCmdRenderPass.h"
+#include "MVKCmdRendering.h"
 #include <sys/mman.h>
 
 using namespace std;
@@ -608,7 +608,7 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
     _graphicsPipelineState.beginMetalRenderPass();
     _graphicsResourcesState.beginMetalRenderPass();
 	_depthStencilState.beginMetalRenderPass();
-    _rasterizingState.beginMetalRenderPass();
+    _renderingState.beginMetalRenderPass();
     _vertexPushConstants.beginMetalRenderPass();
     _tessCtlPushConstants.beginMetalRenderPass();
     _tessEvalPushConstants.beginMetalRenderPass();
@@ -729,7 +729,7 @@ void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
     _graphicsPipelineState.encode(stage);    // Must do first..it sets others
     _graphicsResourcesState.encode(stage);   // Before push constants, to allow them to override.
 	_depthStencilState.encode(stage);
-    _rasterizingState.encode(stage);
+    _renderingState.encode(stage);
     _vertexPushConstants.encode(stage);
     _tessCtlPushConstants.encode(stage);
     _tessEvalPushConstants.encode(stage);
@@ -823,7 +823,7 @@ void MVKCommandEncoder::endMetalRenderEncoding() {
     _graphicsPipelineState.endMetalRenderPass();
     _graphicsResourcesState.endMetalRenderPass();
 	_depthStencilState.endMetalRenderPass();
-    _rasterizingState.endMetalRenderPass();
+    _renderingState.endMetalRenderPass();
     _vertexPushConstants.endMetalRenderPass();
     _tessCtlPushConstants.endMetalRenderPass();
     _tessEvalPushConstants.endMetalRenderPass();
@@ -1124,7 +1124,7 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
 	_computePipelineState(this),
 	_computeResourcesState(this),
 	_depthStencilState(this),
-	_rasterizingState(this),
+	_renderingState(this),
 	_vertexPushConstants(this, VK_SHADER_STAGE_VERTEX_BIT),
 	_tessCtlPushConstants(this, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT),
 	_tessEvalPushConstants(this, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT),

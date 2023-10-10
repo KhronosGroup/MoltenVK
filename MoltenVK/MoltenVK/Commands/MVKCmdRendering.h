@@ -1,5 +1,5 @@
 /*
- * MVKCmdRenderPass.h
+ * MVKCmdRendering.h
  *
  * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
@@ -208,34 +208,6 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKCmdExecuteCommands
-
-/**
- * Vulkan command to execute secondary command buffers.
- * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
- */
-template <size_t N>
-class MVKCmdExecuteCommands : public MVKCommand {
-
-public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						uint32_t commandBuffersCount,
-						const VkCommandBuffer* pCommandBuffers);
-
-	void encode(MVKCommandEncoder* cmdEncoder) override;
-
-protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	MVKSmallVector<MVKCommandBuffer*, N> _secondaryCommandBuffers;
-};
-
-// Concrete template class implementations.
-typedef MVKCmdExecuteCommands<1> MVKCmdExecuteCommands1;
-typedef MVKCmdExecuteCommands<16> MVKCmdExecuteCommandsMulti;
-
-
-#pragma mark -
 #pragma mark MVKCmdSetViewport
 
 /**
@@ -338,6 +310,25 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKCmdSetDepthBiasEnable
+
+/** Vulkan command to dynamically enable or disable depth bias. */
+class MVKCmdSetDepthBiasEnable : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkBool32 depthBiasEnable);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	VkBool32 _depthBiasEnable;
+};
+
+
+#pragma mark -
 #pragma mark MVKCmdSetBlendConstants
 
 /** Vulkan command to set the blend constants. */
@@ -353,6 +344,40 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	float _blendConstants[4] = {};
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetLogicOp
+
+/** Vulkan command to dynamically set the blending logic operation. */
+class MVKCmdSetLogicOp : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkLogicOp logicOp);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetLogicOpEnable
+
+/** Vulkan command to dynamically enable or disable the blending logic operation. */
+class MVKCmdSetLogicOpEnable : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkBool32 logicOpEnable);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 };
 
 
@@ -601,6 +626,25 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKCmdSetPatchControlPoints
+
+/** Vulkan command to dynamically set the number of patch control points. */
+class MVKCmdSetPatchControlPoints : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						uint32_t patchControlPoints);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	uint32_t _patchControlPoints;
+};
+
+
+#pragma mark -
 #pragma mark MVKCmdSetPrimitiveTopology
 
 /** Vulkan command to dynamically set the primitive topology. */
@@ -616,5 +660,41 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	VkPrimitiveTopology _primitiveTopology;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetPrimitiveRestartEnable
+
+/** Vulkan command to dynamically enable or disable primitive restart functionality. */
+class MVKCmdSetPrimitiveRestartEnable : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkBool32 primitiveRestartEnable);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetRasterizerDiscardEnable
+
+/** Vulkan command to dynamically enable or disable rasterization. */
+class MVKCmdSetRasterizerDiscardEnable : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkBool32 rasterizerDiscardEnable);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	VkBool32 _rasterizerDiscardEnable;
 };
 

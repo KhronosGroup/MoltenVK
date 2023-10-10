@@ -1,5 +1,5 @@
 /*
- * MVKCmdRenderPass.mm
+ * MVKCmdRendering.mm
  *
  * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-#include "MVKCmdRenderPass.h"
+#include "MVKCmdRendering.h"
 #include "MVKCommandBuffer.h"
 #include "MVKCommandPool.h"
 #include "MVKFramebuffer.h"
@@ -232,33 +232,6 @@ void MVKCmdSetSampleLocations::encode(MVKCommandEncoder* cmdEncoder) {
 
 
 #pragma mark -
-#pragma mark MVKCmdExecuteCommands
-
-template <size_t N>
-VkResult MVKCmdExecuteCommands<N>::setContent(MVKCommandBuffer* cmdBuff,
-											  uint32_t commandBuffersCount,
-											  const VkCommandBuffer* pCommandBuffers) {
-	// Add clear values
-	_secondaryCommandBuffers.clear();	// Clear for reuse
-	_secondaryCommandBuffers.reserve(commandBuffersCount);
-	for (uint32_t cbIdx = 0; cbIdx < commandBuffersCount; cbIdx++) {
-		_secondaryCommandBuffers.push_back(MVKCommandBuffer::getMVKCommandBuffer(pCommandBuffers[cbIdx]));
-	}
-	cmdBuff->recordExecuteCommands(_secondaryCommandBuffers.contents());
-
-	return VK_SUCCESS;
-}
-
-template <size_t N>
-void MVKCmdExecuteCommands<N>::encode(MVKCommandEncoder* cmdEncoder) {
-    for (auto& cb : _secondaryCommandBuffers) { cmdEncoder->encodeSecondary(cb); }
-}
-
-template class MVKCmdExecuteCommands<1>;
-template class MVKCmdExecuteCommands<16>;
-
-
-#pragma mark -
 #pragma mark MVKCmdSetViewport
 
 template <size_t N>
@@ -278,7 +251,7 @@ VkResult MVKCmdSetViewport<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N>
 void MVKCmdSetViewport<N>::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_rasterizingState.setViewports(_viewports.contents(), _firstViewport, true);
+	cmdEncoder->_renderingState.setViewports(_viewports.contents(), _firstViewport, true);
 }
 
 template class MVKCmdSetViewport<1>;
@@ -305,7 +278,7 @@ VkResult MVKCmdSetScissor<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N>
 void MVKCmdSetScissor<N>::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_rasterizingState.setScissors(_scissors.contents(), _firstScissor, true);
+    cmdEncoder->_renderingState.setScissors(_scissors.contents(), _firstScissor, true);
 }
 
 template class MVKCmdSetScissor<1>;
@@ -345,9 +318,23 @@ VkResult MVKCmdSetDepthBias::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetDepthBias::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_rasterizingState.setDepthBias(_depthBiasConstantFactor,
+	cmdEncoder->_renderingState.setDepthBias(_depthBiasConstantFactor,
 											   _depthBiasSlopeFactor,
 											   _depthBiasClamp);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthBiasEnable
+
+VkResult MVKCmdSetDepthBiasEnable::setContent(MVKCommandBuffer* cmdBuff,
+											  VkBool32 depthBiasEnable) {
+	_depthBiasEnable = depthBiasEnable;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetDepthBiasEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_renderingState.setDepthBiasEnable(_depthBiasEnable);
 }
 
 
@@ -361,8 +348,40 @@ VkResult MVKCmdSetBlendConstants::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetBlendConstants::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_rasterizingState.setBlendConstants(_blendConstants, true);
+    cmdEncoder->_renderingState.setBlendConstants(_blendConstants, true);
 }
+
+
+#pragma mark -
+#pragma mark MVKCmdSetLogicOp
+
+VkResult MVKCmdSetLogicOp::setContent(MVKCommandBuffer* cmdBuff,
+									  VkLogicOp logicOp) {
+	// Validate
+	if (logicOp != VK_LOGIC_OP_COPY) {
+		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support blending using logic operations.");
+	}
+
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetLogicOp::encode(MVKCommandEncoder* cmdEncoder) {}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetLogicOpEnable
+
+VkResult MVKCmdSetLogicOpEnable::setContent(MVKCommandBuffer* cmdBuff,
+											VkBool32 logicOpEnable) {
+	// Validate
+	if (logicOpEnable) {
+		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support blending using logic operations.");
+	}
+
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetLogicOpEnable::encode(MVKCommandEncoder* cmdEncoder) {}
 
 
 #pragma mark -
@@ -528,7 +547,7 @@ VkResult MVKCmdSetStencilReference::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetStencilReference::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_rasterizingState.setStencilReferenceValues(_faceMask, _stencilReference);
+    cmdEncoder->_renderingState.setStencilReferenceValues(_faceMask, _stencilReference);
 }
 
 
@@ -542,7 +561,7 @@ VkResult MVKCmdSetCullMode::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetCullMode::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_rasterizingState.setCullMode(_cullMode, true);
+	cmdEncoder->_renderingState.setCullMode(_cullMode, true);
 }
 
 
@@ -556,7 +575,21 @@ VkResult MVKCmdSetFrontFace::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetFrontFace::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_rasterizingState.setFrontFace(_frontFace, true);
+	cmdEncoder->_renderingState.setFrontFace(_frontFace, true);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetPatchControlPoints
+
+VkResult MVKCmdSetPatchControlPoints::setContent(MVKCommandBuffer* cmdBuff,
+												 uint32_t patchControlPoints) {
+	_patchControlPoints = patchControlPoints;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetPatchControlPoints::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_graphicsPipelineState.setPatchControlPoints(_patchControlPoints);
 }
 
 
@@ -570,6 +603,39 @@ VkResult MVKCmdSetPrimitiveTopology::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetPrimitiveTopology::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_rasterizingState.setPrimitiveTopology(_primitiveTopology, true);
+	cmdEncoder->_renderingState.setPrimitiveTopology(_primitiveTopology, true);
 }
 
+
+#pragma mark -
+#pragma mark MVKCmdSetPrimitiveRestartEnable
+
+VkResult MVKCmdSetPrimitiveRestartEnable::setContent(MVKCommandBuffer* cmdBuff,
+													 VkBool32 primitiveRestartEnable) {
+	// Validate
+	// In Metal, primitive restart cannot be disabled.
+	// Just issue warning here, as it is very likely the app is not actually expecting 
+	// to use primitive restart at all, and is just setting this as a "just-in-case",
+	// and forcing an error here would be unexpected to the app (including CTS).
+	if ( !primitiveRestartEnable ) {
+		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support disabling primitive restart.");
+	}
+
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetPrimitiveRestartEnable::encode(MVKCommandEncoder* cmdEncoder) {}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetRasterizerDiscardEnable
+
+VkResult MVKCmdSetRasterizerDiscardEnable::setContent(MVKCommandBuffer* cmdBuff,
+													  VkBool32 rasterizerDiscardEnable) {
+	_rasterizerDiscardEnable = rasterizerDiscardEnable;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetRasterizerDiscardEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_renderingState.setRasterizerDiscardEnable(_rasterizerDiscardEnable, true);
+}

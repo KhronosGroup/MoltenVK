@@ -432,13 +432,13 @@ public:
 	id<MTLRenderCommandEncoder> _mtlRenderEncoder;
 
     /** Tracks the current graphics pipeline bound to the encoder. */
-    MVKPipelineCommandEncoderState _graphicsPipelineState;
+    MVKGraphicsPipelineCommandEncoderState _graphicsPipelineState;
 
 	/** Tracks the current graphics resources state of the encoder. */
 	MVKGraphicsResourcesCommandEncoderState _graphicsResourcesState;
 
     /** Tracks the current compute pipeline bound to the encoder. */
-    MVKPipelineCommandEncoderState _computePipelineState;
+    MVKComputePipelineCommandEncoderState _computePipelineState;
 
 	/** Tracks the current compute resources state of the encoder. */
 	MVKComputeResourcesCommandEncoderState _computeResourcesState;
@@ -446,8 +446,8 @@ public:
     /** Tracks the current depth stencil state of the encoder. */
     MVKDepthStencilCommandEncoderState _depthStencilState;
 
-	/** Tracks the current rasterizing states of the encoder. */
-	MVKRasterizingCommandEncoderState _rasterizingState;
+	/** Tracks the current rendering states of the encoder. */
+	MVKRenderingCommandEncoderState _renderingState;
 
     /** The size of the threadgroup for the compute shader. */
     MTLSize _mtlThreadgroupSize;

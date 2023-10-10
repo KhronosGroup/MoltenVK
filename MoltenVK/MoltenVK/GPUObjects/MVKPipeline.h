@@ -232,8 +232,13 @@ enum MVKRenderStateType {
 	DepthTestEnable,
 	DepthWriteEnable,
 	FrontFace,
+	LogicOp,
+	LogicOpEnable,
+	PatchControlPoints,
 	PolygonMode,
+	PrimitiveRestartEnable,
 	PrimitiveTopology,
+	RasterizerDiscardEnable,
 	SampleLocations,
 	Scissors,
 	StencilCompareMask,
@@ -272,9 +277,6 @@ public:
 
     /** Returns whether this pipeline has tessellation shaders. */
     bool isTessellationPipeline() { return _tessInfo.patchControlPoints > 0; }
-
-    /** Returns the number of input tessellation patch control points. */
-    uint32_t getInputControlPointCount() { return _tessInfo.patchControlPoints; }
 
     /** Returns the number of output tessellation patch control points. */
     uint32_t getOutputControlPointCount() { return _outputControlPointCount; }
@@ -351,6 +353,8 @@ public:
 	~MVKGraphicsPipeline() override;
 
 protected:
+	friend class MVKGraphicsPipelineCommandEncoderState;
+
 	typedef MVKSmallVector<SPIRVShaderInterfaceVariable, 32> SPIRVShaderOutputs;
 	typedef MVKSmallVector<SPIRVShaderInterfaceVariable, 32> SPIRVShaderInputs;
 
@@ -414,10 +418,10 @@ protected:
 	id<MTLRenderPipelineState> _mtlPipelineState = nil;
 
 	float _blendConstants[4] = {};
-	VkPrimitiveTopology _vkPrimitiveTopology;
 	MVKShaderImplicitRezBinding _reservedVertexAttributeBufferCount;
 	MVKShaderImplicitRezBinding _viewRangeBufferIndex;
 	MVKShaderImplicitRezBinding _outputBufferIndex;
+	VkPrimitiveTopology _vkPrimitiveTopology;
 	uint32_t _outputControlPointCount;
 	uint32_t _tessCtlPatchOutputBufferIndex = 0;
 	uint32_t _tessCtlLevelBufferIndex = 0;

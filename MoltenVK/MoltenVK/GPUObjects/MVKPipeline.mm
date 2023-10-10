@@ -294,17 +294,17 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 			cmdEncoder->_depthStencilState.setDepthStencilState(_depthStencilInfo);
 
             // Rasterization
-			cmdEncoder->_rasterizingState.setPrimitiveTopology(_vkPrimitiveTopology, false);
-			cmdEncoder->_rasterizingState.setBlendConstants(_blendConstants, false);
-			cmdEncoder->_rasterizingState.setStencilReferenceValues(_depthStencilInfo);
-            cmdEncoder->_rasterizingState.setViewports(_viewports.contents(), 0, false);
-            cmdEncoder->_rasterizingState.setScissors(_scissors.contents(), 0, false);
+			cmdEncoder->_renderingState.setPrimitiveTopology(_vkPrimitiveTopology, false);
+			cmdEncoder->_renderingState.setBlendConstants(_blendConstants, false);
+			cmdEncoder->_renderingState.setStencilReferenceValues(_depthStencilInfo);
+            cmdEncoder->_renderingState.setViewports(_viewports.contents(), 0, false);
+            cmdEncoder->_renderingState.setScissors(_scissors.contents(), 0, false);
 			if (_hasRasterInfo) {
-				cmdEncoder->_rasterizingState.setCullMode(_rasterInfo.cullMode, false);
-				cmdEncoder->_rasterizingState.setFrontFace(_rasterInfo.frontFace, false);
-				cmdEncoder->_rasterizingState.setPolygonMode(_rasterInfo.polygonMode, false);
-				cmdEncoder->_rasterizingState.setDepthBias(_rasterInfo);
-				cmdEncoder->_rasterizingState.setDepthClipEnable( !_rasterInfo.depthClampEnable, false );
+				cmdEncoder->_renderingState.setCullMode(_rasterInfo.cullMode, false);
+				cmdEncoder->_renderingState.setFrontFace(_rasterInfo.frontFace, false);
+				cmdEncoder->_renderingState.setPolygonMode(_rasterInfo.polygonMode, false);
+				cmdEncoder->_renderingState.setDepthBias(_rasterInfo);
+				cmdEncoder->_renderingState.setDepthClipEnable( !_rasterInfo.depthClampEnable, false );
 			}
             break;
     }
@@ -497,8 +497,13 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	// Blending - must ignore allowed bad pColorBlendState pointer if rasterization disabled or no color attachments
 	if (_isRasterizingColor && pCreateInfo->pColorBlendState) {
 		mvkCopy(_blendConstants, pCreateInfo->pColorBlendState->blendConstants, 4);
+
+		// Metal does not support blending with logic operations.
+		if (pCreateInfo->pColorBlendState->logicOpEnable && pCreateInfo->pColorBlendState->logicOp != VK_LOGIC_OP_COPY) {
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support blending using logic operations."));
+		}
 	} else {
-		float defaultBlendConstants[4] = { 0, 0.0, 0.0, 1.0 };
+		static float defaultBlendConstants[4] = { 0, 0.0, 0.0, 1.0 };
 		mvkCopy(_blendConstants, defaultBlendConstants, 4);
 	}
 
@@ -506,6 +511,14 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	_vkPrimitiveTopology = (pCreateInfo->pInputAssemblyState && !isRenderingPoints(pCreateInfo)
 				   ? pCreateInfo->pInputAssemblyState->topology
 				   : VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
+
+		// In Metal, primitive restart cannot be disabled.
+		// Just issue warning here, as it is very likely the app is not actually expecting
+		// to use primitive restart at all, and is just setting this as a "just-in-case",
+		// and forcing an error here would be unexpected to the app (including CTS).
+	if (pCreateInfo->pInputAssemblyState && !pCreateInfo->pInputAssemblyState->primitiveRestartEnable) {
+		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateGraphicsPipeline(): Metal does not support disabling primitive restart.");
+	}
 
 	// Rasterization
 	_hasRasterInfo = mvkSetOrClear(&_rasterInfo, pCreateInfo->pRasterizationState);
@@ -548,6 +561,7 @@ static MVKRenderStateType getRenderStateType(VkDynamicState vkDynamicState) {
 		case VK_DYNAMIC_STATE_BLEND_CONSTANTS:             return BlendConstants;
 		case VK_DYNAMIC_STATE_CULL_MODE:                   return CullMode;
 		case VK_DYNAMIC_STATE_DEPTH_BIAS:                  return DepthBias;
+		case VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE:           return DepthBiasEnable;
 		case VK_DYNAMIC_STATE_DEPTH_BOUNDS:                return DepthBounds;
 		case VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE:    return DepthBoundsTestEnable;
 		case VK_DYNAMIC_STATE_DEPTH_CLAMP_ENABLE_EXT:      return DepthClipEnable;
@@ -556,9 +570,13 @@ static MVKRenderStateType getRenderStateType(VkDynamicState vkDynamicState) {
 		case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE:           return DepthTestEnable;
 		case VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE:          return DepthWriteEnable;
 		case VK_DYNAMIC_STATE_FRONT_FACE:                  return FrontFace;
+		case VK_DYNAMIC_STATE_LOGIC_OP_EXT:                return LogicOp;
+		case VK_DYNAMIC_STATE_LOGIC_OP_ENABLE_EXT:         return LogicOpEnable;
+		case VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT:    return PatchControlPoints;
 		case VK_DYNAMIC_STATE_POLYGON_MODE_EXT:            return PolygonMode;
+		case VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE:    return PrimitiveRestartEnable;
 		case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY:          return PrimitiveTopology;
-		case VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT:        return SampleLocations;
+		case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE:   return RasterizerDiscardEnable;
 		case VK_DYNAMIC_STATE_SCISSOR:                     return Scissors;
 		case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT:          return Scissors;
 		case VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK:        return StencilCompareMask;
@@ -579,12 +597,12 @@ void MVKGraphicsPipeline::initDynamicState(const VkGraphicsPipelineCreateInfo* p
 	if ( !pDS ) { return; }
 
 	for (uint32_t i = 0; i < pDS->dynamicStateCount; i++) {
-		VkDynamicState vkDynState = pDS->pDynamicStates[i];
+		auto dynStateType = getRenderStateType(pDS->pDynamicStates[i]);
 		bool isDynamic = true;
 
 		// Some dynamic states have other restrictions
-		switch (vkDynState) {
-			case VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE:
+		switch (dynStateType) {
+			case VertexStride:
 				isDynamic = _device->_pMetalFeatures->dynamicVertexStride;
 				if ( !isDynamic ) { setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "This device and platform does not support VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE (macOS 14.0 or iOS/tvOS 17.0, plus either Apple4 or Mac2 GPU).")); }
 				break;
@@ -592,7 +610,7 @@ void MVKGraphicsPipeline::initDynamicState(const VkGraphicsPipelineCreateInfo* p
 				break;
 		}
 
-		if (isDynamic) { _dynamicState.enable(getRenderStateType(vkDynState)); }
+		if (isDynamic) { _dynamicState.enable(dynStateType); }
 	}
 }
 
@@ -1923,10 +1941,10 @@ bool MVKGraphicsPipeline::isRenderingPoints(const VkGraphicsPipelineCreateInfo* 
 			(pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->polygonMode == VK_POLYGON_MODE_POINT)));
 }
 
-// We disable rasterization if either rasterizerDiscard is enabled or the static cull mode dictates it.
+// We disable rasterization if either static rasterizerDiscard is enabled or the static cull mode dictates it.
 bool MVKGraphicsPipeline::isRasterizationDisabled(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
 	return (pCreateInfo->pRasterizationState &&
-			(pCreateInfo->pRasterizationState->rasterizerDiscardEnable ||
+			((pCreateInfo->pRasterizationState->rasterizerDiscardEnable && !isDynamicState(RasterizerDiscardEnable)) ||
 			 ((pCreateInfo->pRasterizationState->cullMode == VK_CULL_MODE_FRONT_AND_BACK) && !isDynamicState(CullMode) &&
 			  pCreateInfo->pInputAssemblyState &&
 			  (mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology) == MTLPrimitiveTopologyClassTriangle))));

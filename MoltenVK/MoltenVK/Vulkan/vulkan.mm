@@ -2638,7 +2638,14 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetCullMode(
     MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetDepthBiasEnable, void, VkCommandBuffer, VkBool32)
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthBiasEnable(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    depthBiasEnable) {
+
+    MVKTraceVulkanCallStart();
+	MVKAddCmd(SetDepthBiasEnable, commandBuffer, depthBiasEnable);
+    MVKTraceVulkanCallEnd();
+}
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthBoundsTestEnable(
     VkCommandBuffer                             commandBuffer,
@@ -2695,7 +2702,14 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetFrontFace(
     MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetPrimitiveRestartEnable, void, VkCommandBuffer, VkBool32)
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetPrimitiveRestartEnable(
+    VkCommandBuffer                             commandBuffer,
+	VkBool32                                    primitiveRestartEnable) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(SetPrimitiveRestartEnable, commandBuffer, primitiveRestartEnable);
+	MVKTraceVulkanCallEnd();
+}
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetPrimitiveTopology(
     VkCommandBuffer                             commandBuffer,
@@ -2706,7 +2720,14 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetPrimitiveTopology(
     MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetRasterizerDiscardEnable, void, VkCommandBuffer, VkBool32)
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetRasterizerDiscardEnable(
+    VkCommandBuffer                             commandBuffer,
+	VkBool32                                    rasterizerDiscardEnable) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(SetRasterizerDiscardEnable, commandBuffer, rasterizerDiscardEnable);
+	MVKTraceVulkanCallEnd();
+}
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetScissorWithCount(
     VkCommandBuffer                             commandBuffer,
@@ -2840,7 +2861,6 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetPrivateData(
 	MVKTraceVulkanCallEnd();
 	return VK_SUCCESS;
 }
-
 
 
 #pragma mark -
@@ -3605,6 +3625,45 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetScissorWithCount, EXT);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetStencilOp, EXT);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetStencilTestEnable, EXT);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetViewportWithCount, EXT);
+
+
+#pragma mark -
+#pragma mark VK_EXT_extended_dynamic_state2
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetDepthBiasEnable, EXT);
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetLogicOpEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkLogicOp                                   logicOp) {
+
+    MVKTraceVulkanCallStart();
+	MVKAddCmd(SetLogicOp, commandBuffer, logicOp);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetPatchControlPointsEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    patchControlPoints) {
+
+    MVKTraceVulkanCallStart();
+	MVKAddCmd(SetPatchControlPoints, commandBuffer, patchControlPoints);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetPrimitiveRestartEnable, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetRasterizerDiscardEnable, EXT);
+
+
+#pragma mark -
+#pragma mark VK_EXT_extended_dynamic_state3
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetLogicOpEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    logicOpEnable) {
+
+    MVKTraceVulkanCallStart();
+	MVKAddCmd(SetLogicOpEnable, commandBuffer, logicOpEnable);
+    MVKTraceVulkanCallEnd();
+}
 
 
 #pragma mark -
