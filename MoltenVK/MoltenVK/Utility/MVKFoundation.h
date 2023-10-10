@@ -386,8 +386,8 @@ static constexpr bool mvkVkComponentMappingsMatch(VkComponentMapping cm1, VkComp
 #pragma mark Math
 
 /** Rounds the value to nearest integer using half-to-even rounding. */
-static constexpr double mvkRoundHalfToEven(const double val) {
-	return val - std::remainder(val, 1.0);	// remainder() uses half-to-even rounding, and unfortunately isn't constexpr until C++23.
+static inline double mvkRoundHalfToEven(const double val) {
+	return val - std::remainder(val, 1.0);	// remainder() uses half-to-even rounding, but unfortunately isn't constexpr until C++23.
 }
 
 /** Returns whether the value will fit inside the numeric type. */
