@@ -1507,10 +1507,7 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	// Return to the previous rendering state on the next render activity
 	cmdEncoder->_graphicsPipelineState.markDirty();
 	cmdEncoder->_depthStencilState.markDirty();
-	cmdEncoder->_stencilReferenceValueState.markDirty();
-    cmdEncoder->_depthBiasState.markDirty();
-    cmdEncoder->_viewportState.markDirty();
-    cmdEncoder->_scissorState.markDirty();
+	cmdEncoder->_renderingState.markDirty();
 }
 
 template <size_t N>

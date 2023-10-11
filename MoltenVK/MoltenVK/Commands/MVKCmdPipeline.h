@@ -31,6 +31,34 @@ class MVKDescriptorUpdateTemplate;
 
 
 #pragma mark -
+#pragma mark MVKCmdExecuteCommands
+
+/**
+ * Vulkan command to execute secondary command buffers.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
+class MVKCmdExecuteCommands : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						uint32_t commandBuffersCount,
+						const VkCommandBuffer* pCommandBuffers);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MVKSmallVector<MVKCommandBuffer*, N> _secondaryCommandBuffers;
+};
+
+// Concrete template class implementations.
+typedef MVKCmdExecuteCommands<1> MVKCmdExecuteCommands1;
+typedef MVKCmdExecuteCommands<16> MVKCmdExecuteCommandsMulti;
+
+
+#pragma mark -
 #pragma mark MVKCmdPipelineBarrier
 
 /**

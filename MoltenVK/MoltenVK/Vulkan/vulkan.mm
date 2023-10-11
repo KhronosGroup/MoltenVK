@@ -1466,7 +1466,6 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetLineWidth(
 	float                                       lineWidth) {
 
 	MVKTraceVulkanCallStart();
-    MVKAddCmd(SetLineWidth, commandBuffer, lineWidth);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1496,7 +1495,6 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthBounds(
 	float                                       maxDepthBounds) {
 
 	MVKTraceVulkanCallStart();
-    MVKAddCmd(SetDepthBounds, commandBuffer, minDepthBounds, maxDepthBounds);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1564,13 +1562,14 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindIndexBuffer(
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindVertexBuffers(
     VkCommandBuffer                             commandBuffer,
-    uint32_t                                    startBinding,
+    uint32_t                                    firstBinding,
     uint32_t                                    bindingCount,
     const VkBuffer*                             pBuffers,
     const VkDeviceSize*                         pOffsets) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmdFrom2Thresholds(BindVertexBuffers, bindingCount, 1, 2, commandBuffer, startBinding, bindingCount, pBuffers, pOffsets);
+	MVKAddCmdFrom2Thresholds(BindVertexBuffers, bindingCount, 1, 2, commandBuffer, 
+							 firstBinding, bindingCount, pBuffers, pOffsets, nullptr, nullptr);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2526,15 +2525,20 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBeginRendering(
     MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEndRendering(
-    VkCommandBuffer                             commandBuffer) {
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindVertexBuffers2(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    firstBinding,
+    uint32_t                                    bindingCount,
+    const VkBuffer*                             pBuffers,
+    const VkDeviceSize*                         pOffsets,
+    const VkDeviceSize*                         pSizes,
+    const VkDeviceSize*                         pStrides) {
 
     MVKTraceVulkanCallStart();
-    MVKAddCmd(EndRendering, commandBuffer);
+	MVKAddCmdFrom2Thresholds(BindVertexBuffers, bindingCount, 1, 2, commandBuffer,
+							 firstBinding, bindingCount, pBuffers, pOffsets, pSizes, pStrides);
     MVKTraceVulkanCallEnd();
 }
-
-MVK_PUBLIC_VULKAN_STUB(vkCmdBindVertexBuffers2, void, VkCommandBuffer, uint32_t, uint32_t, const VkBuffer*, const VkDeviceSize*, const VkDeviceSize*, const VkDeviceSize*)
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBlitImage2(
     VkCommandBuffer                             commandBuffer,
@@ -2585,6 +2589,14 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyImageToBuffer2(
     MVKTraceVulkanCallEnd();
 }
 
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEndRendering(
+    VkCommandBuffer                             commandBuffer) {
+
+    MVKTraceVulkanCallStart();
+    MVKAddCmd(EndRendering, commandBuffer);
+    MVKTraceVulkanCallEnd();
+}
+
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPipelineBarrier2(
     VkCommandBuffer                             commandBuffer,
     const VkDependencyInfo*                     pDependencyInfo) {
@@ -2615,12 +2627,58 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdResolveImage2(
     MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetCullMode, void, VkCommandBuffer, VkCullModeFlags)
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetDepthBiasEnable, void, VkCommandBuffer, VkBool32)
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetDepthBoundsTestEnable, void, VkCommandBuffer, VkBool32)
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetDepthCompareOp, void, VkCommandBuffer, VkCompareOp)
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetDepthTestEnable, void, VkCommandBuffer, VkBool32)
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetDepthWriteEnable, void, VkCommandBuffer, VkBool32)
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetCullMode(
+    VkCommandBuffer                             commandBuffer,
+    VkCullModeFlags                             cullMode) {
+
+    MVKTraceVulkanCallStart();
+    MVKAddCmd(SetCullMode, commandBuffer, cullMode);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthBiasEnable(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    depthBiasEnable) {
+
+    MVKTraceVulkanCallStart();
+	MVKAddCmd(SetDepthBiasEnable, commandBuffer, depthBiasEnable);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthBoundsTestEnable(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    depthBoundsTestEnable) {
+    
+    MVKTraceVulkanCallStart();
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthCompareOp(
+    VkCommandBuffer                             commandBuffer,
+    VkCompareOp                                 depthCompareOp) {
+    
+    MVKTraceVulkanCallStart();
+	MVKAddCmd(SetDepthCompareOp, commandBuffer, depthCompareOp);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthTestEnable(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    depthTestEnable) {
+    
+    MVKTraceVulkanCallStart();
+	MVKAddCmd(SetDepthTestEnable, commandBuffer, depthTestEnable);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthWriteEnable(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    depthWriteEnable) {
+    
+    MVKTraceVulkanCallStart();
+	MVKAddCmd(SetDepthWriteEnable, commandBuffer, depthWriteEnable);
+    MVKTraceVulkanCallEnd();
+}
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetEvent2(
     VkCommandBuffer                             commandBuffer,
@@ -2632,14 +2690,83 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetEvent2(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetFrontFace, void, VkCommandBuffer, VkFrontFace)
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetPrimitiveRestartEnable, void, VkCommandBuffer, VkBool32)
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetPrimitiveTopology, void, VkCommandBuffer, VkPrimitiveTopology)
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetRasterizerDiscardEnable, void, VkCommandBuffer, VkBool32)
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetScissorWithCount, void, VkCommandBuffer, uint32_t, const VkRect2D*)
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetStencilOp, void, VkCommandBuffer, VkStencilFaceFlags, VkStencilOp, VkStencilOp, VkStencilOp, VkCompareOp)
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetStencilTestEnable, void, VkCommandBuffer, VkBool32)
-MVK_PUBLIC_VULKAN_STUB(vkCmdSetViewportWithCount, void, VkCommandBuffer, uint32_t, const VkViewport*)
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetFrontFace(
+    VkCommandBuffer                             commandBuffer,
+    VkFrontFace                                 frontFace) {
+    
+    MVKTraceVulkanCallStart();
+    MVKAddCmd(SetFrontFace, commandBuffer, frontFace);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetPrimitiveRestartEnable(
+    VkCommandBuffer                             commandBuffer,
+	VkBool32                                    primitiveRestartEnable) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(SetPrimitiveRestartEnable, commandBuffer, primitiveRestartEnable);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetPrimitiveTopology(
+    VkCommandBuffer                             commandBuffer,
+    VkPrimitiveTopology                         primitiveTopology) {
+    
+    MVKTraceVulkanCallStart();
+	MVKAddCmd(SetPrimitiveTopology, commandBuffer, primitiveTopology);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetRasterizerDiscardEnable(
+    VkCommandBuffer                             commandBuffer,
+	VkBool32                                    rasterizerDiscardEnable) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(SetRasterizerDiscardEnable, commandBuffer, rasterizerDiscardEnable);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetScissorWithCount(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    scissorCount,
+    const VkRect2D*                             pScissors) {
+    
+    MVKTraceVulkanCallStart();
+    MVKAddCmdFromThreshold(SetScissor, scissorCount, 1, commandBuffer, 0, scissorCount, pScissors);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetStencilOp(
+    VkCommandBuffer                             commandBuffer,
+    VkStencilFaceFlags                          faceMask,
+    VkStencilOp                                 failOp,
+    VkStencilOp                                 passOp,
+    VkStencilOp                                 depthFailOp,
+    VkCompareOp                                 compareOp) {
+    
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(SetStencilOp, commandBuffer, faceMask, failOp, passOp, depthFailOp, compareOp);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetStencilTestEnable(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    stencilTestEnable) {
+    
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(SetStencilTestEnable, commandBuffer, stencilTestEnable);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetViewportWithCount(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    viewportCount,
+    const VkViewport*                           pViewports) {
+    
+    MVKTraceVulkanCallStart();
+    MVKAddCmdFromThreshold(SetViewport, viewportCount, 1, commandBuffer, 0, viewportCount, pViewports);
+    MVKTraceVulkanCallEnd();
+}
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdWaitEvents2(
     VkCommandBuffer                             commandBuffer,
@@ -2731,7 +2858,6 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetPrivateData(
 	MVKTraceVulkanCallEnd();
 	return VK_SUCCESS;
 }
-
 
 
 #pragma mark -
@@ -3482,6 +3608,60 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkSubmitDebugUtilsMessageEXT(
 
 
 #pragma mark -
+#pragma mark VK_EXT_extended_dynamic_state
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdBindVertexBuffers2, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetCullMode, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetDepthBoundsTestEnable, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetDepthCompareOp, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetDepthTestEnable, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetDepthWriteEnable, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetFrontFace, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetPrimitiveTopology, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetScissorWithCount, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetStencilOp, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetStencilTestEnable, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetViewportWithCount, EXT);
+
+
+#pragma mark -
+#pragma mark VK_EXT_extended_dynamic_state2
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetDepthBiasEnable, EXT);
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetLogicOpEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkLogicOp                                   logicOp) {
+
+    MVKTraceVulkanCallStart();
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetPatchControlPointsEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    patchControlPoints) {
+
+    MVKTraceVulkanCallStart();
+	MVKAddCmd(SetPatchControlPoints, commandBuffer, patchControlPoints);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetPrimitiveRestartEnable, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetRasterizerDiscardEnable, EXT);
+
+
+#pragma mark -
+#pragma mark VK_EXT_extended_dynamic_state3
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetLogicOpEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    logicOpEnable) {
+
+    MVKTraceVulkanCallStart();
+    MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
 #pragma mark VK_EXT_external_memory_host extension
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMemoryHostPointerPropertiesEXT(
@@ -3565,6 +3745,7 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPrivateData, EXT);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkSetPrivateData, EXT);
 
 
+
 #pragma mark -
 #pragma mark VK_EXT_sample_locations extension
 
@@ -3587,6 +3768,7 @@ void vkCmdSetSampleLocationsEXT(
 	MVKAddCmd(SetSampleLocations, commandBuffer, pSampleLocationsInfo);
 	MVKTraceVulkanCallEnd();
 }
+
 
 #pragma mark -
 #pragma mark VK_GOOGLE_display_timing extension
@@ -3616,11 +3798,13 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPastPresentationTimingGOOGLE(
 	return rslt;
 }
 
+
 #pragma mark -
 #pragma mark VK_AMD_draw_indirect_count
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDrawIndexedIndirectCount, AMD);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDrawIndirectCount, AMD);
+
 
 #pragma mark -
 #pragma mark iOS & macOS surface extensions
