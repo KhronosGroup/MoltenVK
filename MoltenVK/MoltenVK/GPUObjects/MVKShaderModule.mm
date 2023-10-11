@@ -381,7 +381,7 @@ bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
 	if (wasConverted) {
 		if (shouldLogCode) { MVKLogInfo("%s", conversionResult.resultLog.c_str()); }
 		if (conversionResult.resultInfo.needsTransformFeedback) {
-			generatePassThruVertexShader(conversionResult);
+			generatePassThruVertexShader(pShaderConfig->options.entryPointName, conversionResult);
 		}
 	} else {
 		reportError(VK_ERROR_INVALID_SHADER_NV, "Unable to convert SPIR-V to MSL:\n%s", conversionResult.resultLog.c_str());
@@ -404,6 +404,12 @@ MVKGLSLConversionShaderStage MVKShaderModule::getMVKGLSLConversionShaderStage(SP
 			MVKAssert(false, "Bad shader stage provided for GLSL to SPIR-V conversion.");
 			return kMVKGLSLConversionShaderStageAuto;
 	}
+}
+
+void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName, SPIRVToMSLConversionResultInfo& conversionResult) {
+	SPIRVShaderOutputs vtxOutputs;
+	std::string errorLog;
+	getShaderOutputs(getSPIRV(), spv::ExecutionModelVertex, entryName, vtxOutputs, errorLog);
 }
 
 void MVKShaderModule::setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
