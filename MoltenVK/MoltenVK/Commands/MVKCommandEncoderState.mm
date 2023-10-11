@@ -464,7 +464,7 @@ void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
 			[rendEnc setDepthBias: 0 slopeScale: 0 clamp: 0];
 		}
 	}
-	if (isDirty(DepthClipEnable) && getDevice()->_enabledFeatures.depthClamp) {
+	if (isDirty(DepthClipEnable) && _cmdEncoder->_pDeviceFeatures->depthClamp) {
 		[rendEnc setDepthClipMode: getContent(DepthClipEnable)];
 	}
 
@@ -876,40 +876,19 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                            // We must not bind those extra buffers to the shader because they might overwrite
                            // any implicit buffers used by the pipeline.
                            if (pipeline->isValidVertexBufferIndex(kMVKShaderStageVertex, b.index)) {
-							   NSUInteger mtlStride = isDynamicVertexStride ? b.stride : MTLAttributeStrideStatic;
-							   if (b.isInline) {
-								   [cmdEncoder->_mtlRenderEncoder setVertexBytes: b.mtlBytes
-																		  length: b.size
-#if MVK_XCODE_15
-																 attributeStride: mtlStride
-#endif
-																		 atIndex: b.index];
-                               } else {
-								   if (b.justOffset) {
-									   [cmdEncoder->_mtlRenderEncoder setVertexBufferOffset: b.offset
-#if MVK_XCODE_15
-																			attributeStride: mtlStride
-#endif
-																					atIndex: b.index];
-								   } else {
-                                       [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
-                                                                               offset: b.offset
-#if MVK_XCODE_15
-																	  attributeStride: mtlStride
-#endif
-                                                                              atIndex: b.index];
-                                   }
+                               cmdEncoder->encodeVertexAttributeBuffer(b, isDynamicVertexStride);
 
-                                   // Add any translated vertex bindings for this binding
+							   // Add any translated vertex bindings for this binding
+							   if ( !b.isInline ) {
                                    auto xltdVtxBindings = pipeline->getTranslatedVertexBindings();
                                    for (auto& xltdBind : xltdVtxBindings) {
                                        if (b.index == pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.binding)) {
-                                           [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
-                                                                                   offset: b.offset + xltdBind.translationOffset
-#if MVK_XCODE_15
-																			attributeStride: mtlStride
-#endif
-                                                                                  atIndex: pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.translationBinding)];
+                                           MVKMTLBufferBinding bx = { 
+                                               .mtlBuffer = b.mtlBuffer,
+                                               .offset = b.offset + xltdBind.translationOffset,
+                                               .stride = b.stride,
+											   .index = static_cast<uint16_t>(pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.translationBinding)) };
+										   cmdEncoder->encodeVertexAttributeBuffer(bx, isDynamicVertexStride);
                                        }
                                    }
                                }
@@ -970,28 +949,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
     if (forTessellation && stage == kMVKGraphicsStageRasterization) {
         encodeBindings(kMVKShaderStageTessEval, "tessellation evaluation", fullImageViewSwizzle,
 					   [isDynamicVertexStride](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
-                           NSUInteger mtlStride = isDynamicVertexStride ? b.stride : MTLAttributeStrideStatic;
-                           if (b.isInline) {
-                               [cmdEncoder->_mtlRenderEncoder setVertexBytes: b.mtlBytes
-                                                                      length: b.size
-#if MVK_XCODE_15
-														     attributeStride: mtlStride
-#endif
-                                                                     atIndex: b.index];
-                           } else if (b.justOffset) {
-                               [cmdEncoder->_mtlRenderEncoder setVertexBufferOffset: b.offset
-#if MVK_XCODE_15
-                                                                    attributeStride: mtlStride
-#endif
-                                                                            atIndex: b.index];
-                           } else {
-                               [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
-                                                                       offset: b.offset
-#if MVK_XCODE_15
-															  attributeStride: mtlStride
-#endif
-                                                                      atIndex: b.index];
-                           }
+                           cmdEncoder->encodeVertexAttributeBuffer(b, isDynamicVertexStride);
                        },
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKArrayRef<const uint32_t> s)->void {
                            cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,

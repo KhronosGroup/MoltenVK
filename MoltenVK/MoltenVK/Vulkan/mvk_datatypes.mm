@@ -583,7 +583,7 @@ MTLMultisampleStencilResolveFilter mvkMTLMultisampleStencilResolveFilterFromVkRe
 }
 #endif
 
-MVK_PUBLIC_SYMBOL MTLViewport mvkMTLViewportFromVkViewport(const VkViewport vkViewport) {
+MVK_PUBLIC_SYMBOL MTLViewport mvkMTLViewportFromVkViewport(VkViewport vkViewport) {
 	return {
 		.originX = vkViewport.x,
 		.originY = vkViewport.y,
@@ -594,7 +594,7 @@ MVK_PUBLIC_SYMBOL MTLViewport mvkMTLViewportFromVkViewport(const VkViewport vkVi
 	};
 }
 
-MVK_PUBLIC_SYMBOL MTLScissorRect mvkMTLScissorRectFromVkRect2D(const VkRect2D vkRect) {
+MVK_PUBLIC_SYMBOL MTLScissorRect mvkMTLScissorRectFromVkRect2D(VkRect2D vkRect) {
 	return {
 		.x      = (NSUInteger)max(vkRect.offset.x, 0),
 		.y      = (NSUInteger)max(vkRect.offset.y, 0),
@@ -603,7 +603,7 @@ MVK_PUBLIC_SYMBOL MTLScissorRect mvkMTLScissorRectFromVkRect2D(const VkRect2D vk
 	};
 }
 
-MVK_PUBLIC_SYMBOL VkRect2D mvkVkRect2DFromMTLScissorRect(const MTLScissorRect mtlScissorRect) {
+MVK_PUBLIC_SYMBOL VkRect2D mvkVkRect2DFromMTLScissorRect(MTLScissorRect mtlScissorRect) {
 	return {
 		.offset = { .x = (int32_t)mtlScissorRect.x, 
 					.y = (int32_t)mtlScissorRect.y },

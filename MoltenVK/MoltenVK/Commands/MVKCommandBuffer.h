@@ -358,6 +358,9 @@ public:
 	/** Returns the push constants associated with the specified shader stage. */
 	MVKPushConstantsCommandEncoderState* getPushConstants(VkShaderStageFlagBits shaderStage);
 
+	/** Encode the buffer binding as a vertex attribute buffer. */
+	void encodeVertexAttributeBuffer(MVKMTLBufferBinding& b, bool isDynamicStride);
+
     /**
 	 * Copy bytes into the Metal encoder at a Metal vertex buffer index, and optionally indicate
 	 * that this binding might override a desriptor binding. If so, the descriptor binding will

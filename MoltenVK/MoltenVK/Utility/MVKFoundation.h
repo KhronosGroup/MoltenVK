@@ -392,7 +392,7 @@ static inline double mvkRoundHalfToEven(const double val) {
 
 /** Returns whether the value will fit inside the numeric type. */
 template<typename T, typename Tval>
-static constexpr const bool mvkFits(const Tval& val) {
+static constexpr bool mvkFits(const Tval& val) {
 	return val <= std::numeric_limits<T>::max();
 }
 

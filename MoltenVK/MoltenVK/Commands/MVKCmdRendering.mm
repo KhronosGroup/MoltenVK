@@ -286,24 +286,6 @@ template class MVKCmdSetScissor<kMVKMaxViewportScissorCount>;
 
 
 #pragma mark -
-#pragma mark MVKCmdSetLineWidth
-
-VkResult MVKCmdSetLineWidth::setContent(MVKCommandBuffer* cmdBuff,
-										float lineWidth) {
-    _lineWidth = lineWidth;
-
-    // Validate
-    if (_lineWidth != 1.0 || cmdBuff->getDevice()->_enabledFeatures.wideLines) {
-        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetLineWidth(): The current device does not support wide lines.");
-    }
-
-	return VK_SUCCESS;
-}
-
-void MVKCmdSetLineWidth::encode(MVKCommandEncoder* cmdEncoder) {}
-
-
-#pragma mark -
 #pragma mark MVKCmdSetDepthBias
 
 VkResult MVKCmdSetDepthBias::setContent(MVKCommandBuffer* cmdBuff,
@@ -353,38 +335,6 @@ void MVKCmdSetBlendConstants::encode(MVKCommandEncoder* cmdEncoder) {
 
 
 #pragma mark -
-#pragma mark MVKCmdSetLogicOp
-
-VkResult MVKCmdSetLogicOp::setContent(MVKCommandBuffer* cmdBuff,
-									  VkLogicOp logicOp) {
-	// Validate
-	if (logicOp != VK_LOGIC_OP_COPY) {
-		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support blending using logic operations.");
-	}
-
-	return VK_SUCCESS;
-}
-
-void MVKCmdSetLogicOp::encode(MVKCommandEncoder* cmdEncoder) {}
-
-
-#pragma mark -
-#pragma mark MVKCmdSetLogicOpEnable
-
-VkResult MVKCmdSetLogicOpEnable::setContent(MVKCommandBuffer* cmdBuff,
-											VkBool32 logicOpEnable) {
-	// Validate
-	if (logicOpEnable) {
-		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support blending using logic operations.");
-	}
-
-	return VK_SUCCESS;
-}
-
-void MVKCmdSetLogicOpEnable::encode(MVKCommandEncoder* cmdEncoder) {}
-
-
-#pragma mark -
 #pragma mark MVKCmdSetDepthTestEnable
 
 VkResult MVKCmdSetDepthTestEnable::setContent(MVKCommandBuffer* cmdBuff,
@@ -424,44 +374,6 @@ VkResult MVKCmdSetDepthCompareOp::setContent(MVKCommandBuffer* cmdBuff,
 void MVKCmdSetDepthCompareOp::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->_depthStencilState.setDepthCompareOp(_depthCompareOp);
 }
-
-
-#pragma mark -
-#pragma mark MVKCmdSetDepthBounds
-
-VkResult MVKCmdSetDepthBounds::setContent(MVKCommandBuffer* cmdBuff,
-										  float minDepthBounds,
-										  float maxDepthBounds) {
-    _minDepthBounds = minDepthBounds;
-    _maxDepthBounds = maxDepthBounds;
-
-    // Validate
-    if (cmdBuff->getDevice()->_enabledFeatures.depthBounds) {
-        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetDepthBounds(): The current device does not support setting depth bounds.");
-    }
-
-	return VK_SUCCESS;
-}
-
-void MVKCmdSetDepthBounds::encode(MVKCommandEncoder* cmdEncoder) {}
-
-
-#pragma mark -
-#pragma mark MVKCmdSetDepthBoundsTestEnable
-
-VkResult MVKCmdSetDepthBoundsTestEnable::setContent(MVKCommandBuffer* cmdBuff,
-													VkBool32 depthBoundsTestEnable) {
-	_depthBoundsTestEnable = static_cast<bool>(depthBoundsTestEnable);
-
-	// Validate
-	if (cmdBuff->getDevice()->_enabledFeatures.depthBounds) {
-		return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetDepthBoundsTestEnable(): The current device does not support testing depth bounds.");
-	}
-
-	return VK_SUCCESS;
-}
-
-void MVKCmdSetDepthBoundsTestEnable::encode(MVKCommandEncoder* cmdEncoder) {}
 
 
 #pragma mark -

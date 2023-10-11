@@ -268,25 +268,6 @@ typedef MVKCmdSetScissor<kMVKMaxViewportScissorCount> MVKCmdSetScissorMulti;
 
 
 #pragma mark -
-#pragma mark MVKCmdSetLineWidth
-
-/** Vulkan command to set the line width. */
-class MVKCmdSetLineWidth : public MVKCommand {
-
-public:
-    VkResult setContent(MVKCommandBuffer* cmdBuff,
-					float lineWidth);
-
-    void encode(MVKCommandEncoder* cmdEncoder) override;
-
-protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-    float _lineWidth;
-};
-
-
-#pragma mark -
 #pragma mark MVKCmdSetDepthBias
 
 /** Vulkan command to set the depth bias. */
@@ -348,40 +329,6 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKCmdSetLogicOp
-
-/** Vulkan command to dynamically set the blending logic operation. */
-class MVKCmdSetLogicOp : public MVKCommand {
-
-public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkLogicOp logicOp);
-
-	void encode(MVKCommandEncoder* cmdEncoder) override;
-
-protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-};
-
-
-#pragma mark -
-#pragma mark MVKCmdSetLogicOpEnable
-
-/** Vulkan command to dynamically enable or disable the blending logic operation. */
-class MVKCmdSetLogicOpEnable : public MVKCommand {
-
-public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkBool32 logicOpEnable);
-
-	void encode(MVKCommandEncoder* cmdEncoder) override;
-
-protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-};
-
-
-#pragma mark -
 #pragma mark MVKCmdSetDepthTestEnable
 
 /** Vulkan command to dynamically enable depth testing. */
@@ -435,46 +382,6 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	VkCompareOp _depthCompareOp;
-};
-
-
-#pragma mark -
-#pragma mark MVKCmdSetDepthBounds
-
-/** Vulkan command to set depth bounds. */
-class MVKCmdSetDepthBounds : public MVKCommand {
-
-public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						float minDepthBounds,
-						float maxDepthBounds);
-
-    void encode(MVKCommandEncoder* cmdEncoder) override;
-
-protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-    float _minDepthBounds;
-    float _maxDepthBounds;
-};
-
-
-#pragma mark -
-#pragma mark MVKCmdSetDepthBoundsTestEnable
-
-/** Vulkan command to enable depth bounds testing. */
-class MVKCmdSetDepthBoundsTestEnable : public MVKCommand {
-
-public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkBool32 depthBoundsTestEnable);
-
-	void encode(MVKCommandEncoder* cmdEncoder) override;
-
-protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	bool _depthBoundsTestEnable;
 };
 
 

@@ -919,6 +919,42 @@ void MVKCommandEncoder::setVertexBytes(id<MTLRenderCommandEncoder> mtlEncoder,
 	}
 }
 
+void MVKCommandEncoder::encodeVertexAttributeBuffer(MVKMTLBufferBinding& b, bool isDynamicStride) {
+	if (_device->_pMetalFeatures->dynamicVertexStride) {
+#if MVK_XCODE_15
+		NSUInteger mtlStride = isDynamicStride ? b.stride : MTLAttributeStrideStatic;
+		if (b.isInline) {
+			[_mtlRenderEncoder setVertexBytes: b.mtlBytes
+									   length: b.size
+							  attributeStride: mtlStride
+									  atIndex: b.index];
+		} else if (b.justOffset) {
+			[_mtlRenderEncoder setVertexBufferOffset: b.offset
+									 attributeStride: mtlStride
+											 atIndex: b.index];
+		} else {
+			[_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
+										offset: b.offset
+							   attributeStride: mtlStride
+									   atIndex: b.index];
+		}
+#endif
+	} else {
+		if (b.isInline) {
+			[_mtlRenderEncoder setVertexBytes: b.mtlBytes
+									   length: b.size
+									  atIndex: b.index];
+		} else if (b.justOffset) {
+			[_mtlRenderEncoder setVertexBufferOffset: b.offset
+											 atIndex: b.index];
+		} else {
+			[_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
+										offset: b.offset
+									   atIndex: b.index];
+		}
+	}
+}
+
 void MVKCommandEncoder::setFragmentBytes(id<MTLRenderCommandEncoder> mtlEncoder,
                                          const void* bytes,
                                          NSUInteger length,

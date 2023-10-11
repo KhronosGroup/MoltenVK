@@ -497,11 +497,6 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	// Blending - must ignore allowed bad pColorBlendState pointer if rasterization disabled or no color attachments
 	if (_isRasterizingColor && pCreateInfo->pColorBlendState) {
 		mvkCopy(_blendConstants, pCreateInfo->pColorBlendState->blendConstants, 4);
-
-		// Metal does not support blending with logic operations.
-		if (pCreateInfo->pColorBlendState->logicOpEnable && pCreateInfo->pColorBlendState->logicOp != VK_LOGIC_OP_COPY) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support blending using logic operations."));
-		}
 	} else {
 		static float defaultBlendConstants[4] = { 0, 0.0, 0.0, 1.0 };
 		mvkCopy(_blendConstants, defaultBlendConstants, 4);
@@ -522,11 +517,6 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 
 	// Rasterization
 	_hasRasterInfo = mvkSetOrClear(&_rasterInfo, pCreateInfo->pRasterizationState);
-	if (_hasRasterInfo) {
-		if (_rasterInfo.depthClampEnable && !_device->_enabledFeatures.depthClamp) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "This device does not support depth clamping."));
-		}
-	}
 
 	// Must run after _isRasterizing and _dynamicState are populated
 	initCustomSamplePositions(pCreateInfo);

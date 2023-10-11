@@ -1466,7 +1466,6 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetLineWidth(
 	float                                       lineWidth) {
 
 	MVKTraceVulkanCallStart();
-    MVKAddCmd(SetLineWidth, commandBuffer, lineWidth);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1496,7 +1495,6 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthBounds(
 	float                                       maxDepthBounds) {
 
 	MVKTraceVulkanCallStart();
-    MVKAddCmd(SetDepthBounds, commandBuffer, minDepthBounds, maxDepthBounds);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2652,7 +2650,6 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthBoundsTestEnable(
     VkBool32                                    depthBoundsTestEnable) {
     
     MVKTraceVulkanCallStart();
-	MVKAddCmd(SetDepthBoundsTestEnable, commandBuffer, depthBoundsTestEnable);
     MVKTraceVulkanCallEnd();
 }
 
@@ -3636,7 +3633,6 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetLogicOpEXT(
     VkLogicOp                                   logicOp) {
 
     MVKTraceVulkanCallStart();
-	MVKAddCmd(SetLogicOp, commandBuffer, logicOp);
     MVKTraceVulkanCallEnd();
 }
 
@@ -3661,7 +3657,6 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetLogicOpEnableEXT(
     VkBool32                                    logicOpEnable) {
 
     MVKTraceVulkanCallStart();
-	MVKAddCmd(SetLogicOpEnable, commandBuffer, logicOpEnable);
     MVKTraceVulkanCallEnd();
 }
 
