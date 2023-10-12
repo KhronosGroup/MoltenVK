@@ -584,23 +584,32 @@ MTLMultisampleStencilResolveFilter mvkMTLMultisampleStencilResolveFilterFromVkRe
 #endif
 
 MVK_PUBLIC_SYMBOL MTLViewport mvkMTLViewportFromVkViewport(VkViewport vkViewport) {
-	MTLViewport mtlViewport;
-	mtlViewport.originX	= vkViewport.x;
-	mtlViewport.originY	= vkViewport.y;
-	mtlViewport.width	= vkViewport.width;
-	mtlViewport.height	= vkViewport.height;
-	mtlViewport.znear	= vkViewport.minDepth;
-	mtlViewport.zfar	= vkViewport.maxDepth;
-	return mtlViewport;
+	return {
+		.originX = vkViewport.x,
+		.originY = vkViewport.y,
+		.width   = vkViewport.width,
+		.height  = vkViewport.height,
+		.znear   = vkViewport.minDepth,
+		.zfar    = vkViewport.maxDepth
+	};
 }
 
 MVK_PUBLIC_SYMBOL MTLScissorRect mvkMTLScissorRectFromVkRect2D(VkRect2D vkRect) {
-	MTLScissorRect mtlScissor;
-	mtlScissor.x		= vkRect.offset.x;
-	mtlScissor.y		= vkRect.offset.y;
-	mtlScissor.width	= vkRect.extent.width;
-	mtlScissor.height	= vkRect.extent.height;
-	return mtlScissor;
+	return {
+		.x      = (NSUInteger)max(vkRect.offset.x, 0),
+		.y      = (NSUInteger)max(vkRect.offset.y, 0),
+		.width  = vkRect.extent.width,
+		.height = vkRect.extent.height
+	};
+}
+
+MVK_PUBLIC_SYMBOL VkRect2D mvkVkRect2DFromMTLScissorRect(MTLScissorRect mtlScissorRect) {
+	return {
+		.offset = { .x = (int32_t)mtlScissorRect.x, 
+					.y = (int32_t)mtlScissorRect.y },
+		.extent = { .width = (uint32_t)mtlScissorRect.width, 
+					.height = (uint32_t)mtlScissorRect.height }
+	};
 }
 
 MVK_PUBLIC_SYMBOL MTLCompareFunction mvkMTLCompareFunctionFromVkCompareOp(VkCompareOp vkOp) {

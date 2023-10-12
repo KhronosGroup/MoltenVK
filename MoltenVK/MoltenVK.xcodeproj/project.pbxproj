@@ -46,7 +46,7 @@
 		2FEA0A6724902F9F00EEF3AD /* MVKCommonEnvironment.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F0429D1FB4CF82009FCCB8 /* MVKCommonEnvironment.h */; };
 		2FEA0A6824902F9F00EEF3AD /* MVKWatermark.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149491FB6A3F7005F00B4 /* MVKWatermark.h */; };
 		2FEA0A6924902F9F00EEF3AD /* MVKOSExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = A9B51BD6225E986A00AC74D2 /* MVKOSExtensions.h */; };
-		2FEA0A6A24902F9F00EEF3AD /* MVKCmdRenderPass.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7721C7DFB4800632CA3 /* MVKCmdRenderPass.h */; };
+		2FEA0A6A24902F9F00EEF3AD /* MVKCmdRendering.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7721C7DFB4800632CA3 /* MVKCmdRendering.h */; };
 		2FEA0A6B24902F9F00EEF3AD /* MVKCmdPipeline.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB76E1C7DFB4800632CA3 /* MVKCmdPipeline.h */; };
 		2FEA0A6C24902F9F00EEF3AD /* MVKSmallVectorAllocator.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F3D9D924732A4C00745190 /* MVKSmallVectorAllocator.h */; };
 		2FEA0A6D24902F9F00EEF3AD /* MVKPipeline.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB78D1C7DFB4800632CA3 /* MVKPipeline.h */; };
@@ -90,7 +90,7 @@
 		2FEA0A9424902F9F00EEF3AD /* MVKCommandPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB77B1C7DFB4800632CA3 /* MVKCommandPool.mm */; };
 		2FEA0A9524902F9F00EEF3AD /* MVKCmdDraw.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7751C7DFB4800632CA3 /* MVKCmdDraw.mm */; };
 		2FEA0A9624902F9F00EEF3AD /* MVKCommandBuffer.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7791C7DFB4800632CA3 /* MVKCommandBuffer.mm */; };
-		2FEA0A9724902F9F00EEF3AD /* MVKCmdRenderPass.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7731C7DFB4800632CA3 /* MVKCmdRenderPass.mm */; };
+		2FEA0A9724902F9F00EEF3AD /* MVKCmdRendering.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7731C7DFB4800632CA3 /* MVKCmdRendering.mm */; };
 		2FEA0A9824902F9F00EEF3AD /* MVKBuffer.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7801C7DFB4800632CA3 /* MVKBuffer.mm */; };
 		2FEA0A9924902F9F00EEF3AD /* mvk_datatypes.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7A91C7DFB4800632CA3 /* mvk_datatypes.mm */; };
 		2FEA0A9A24902F9F00EEF3AD /* MVKExtensions.mm in Sources */ = {isa = PBXBuildFile; fileRef = A909F65E213B190700FCD6BE /* MVKExtensions.mm */; };
@@ -172,10 +172,10 @@
 		A94FB7C11C7DFB4800632CA3 /* MVKCmdQueries.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7701C7DFB4800632CA3 /* MVKCmdQueries.h */; };
 		A94FB7C21C7DFB4800632CA3 /* MVKCmdQueries.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7711C7DFB4800632CA3 /* MVKCmdQueries.mm */; };
 		A94FB7C31C7DFB4800632CA3 /* MVKCmdQueries.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7711C7DFB4800632CA3 /* MVKCmdQueries.mm */; };
-		A94FB7C41C7DFB4800632CA3 /* MVKCmdRenderPass.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7721C7DFB4800632CA3 /* MVKCmdRenderPass.h */; };
-		A94FB7C51C7DFB4800632CA3 /* MVKCmdRenderPass.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7721C7DFB4800632CA3 /* MVKCmdRenderPass.h */; };
-		A94FB7C61C7DFB4800632CA3 /* MVKCmdRenderPass.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7731C7DFB4800632CA3 /* MVKCmdRenderPass.mm */; };
-		A94FB7C71C7DFB4800632CA3 /* MVKCmdRenderPass.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7731C7DFB4800632CA3 /* MVKCmdRenderPass.mm */; };
+		A94FB7C41C7DFB4800632CA3 /* MVKCmdRendering.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7721C7DFB4800632CA3 /* MVKCmdRendering.h */; };
+		A94FB7C51C7DFB4800632CA3 /* MVKCmdRendering.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7721C7DFB4800632CA3 /* MVKCmdRendering.h */; };
+		A94FB7C61C7DFB4800632CA3 /* MVKCmdRendering.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7731C7DFB4800632CA3 /* MVKCmdRendering.mm */; };
+		A94FB7C71C7DFB4800632CA3 /* MVKCmdRendering.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7731C7DFB4800632CA3 /* MVKCmdRendering.mm */; };
 		A94FB7C81C7DFB4800632CA3 /* MVKCmdDraw.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7741C7DFB4800632CA3 /* MVKCmdDraw.h */; };
 		A94FB7C91C7DFB4800632CA3 /* MVKCmdDraw.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7741C7DFB4800632CA3 /* MVKCmdDraw.h */; };
 		A94FB7CA1C7DFB4800632CA3 /* MVKCmdDraw.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7751C7DFB4800632CA3 /* MVKCmdDraw.mm */; };
@@ -420,7 +420,7 @@
 		DCFD7F0B2A45BC6E007BBBF7 /* MVKCommonEnvironment.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F0429D1FB4CF82009FCCB8 /* MVKCommonEnvironment.h */; };
 		DCFD7F0C2A45BC6E007BBBF7 /* MVKWatermark.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149491FB6A3F7005F00B4 /* MVKWatermark.h */; };
 		DCFD7F0D2A45BC6E007BBBF7 /* MVKOSExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = A9B51BD6225E986A00AC74D2 /* MVKOSExtensions.h */; };
-		DCFD7F0E2A45BC6E007BBBF7 /* MVKCmdRenderPass.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7721C7DFB4800632CA3 /* MVKCmdRenderPass.h */; };
+		DCFD7F0E2A45BC6E007BBBF7 /* MVKCmdRendering.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7721C7DFB4800632CA3 /* MVKCmdRendering.h */; };
 		DCFD7F0F2A45BC6E007BBBF7 /* MVKCmdPipeline.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB76E1C7DFB4800632CA3 /* MVKCmdPipeline.h */; };
 		DCFD7F102A45BC6E007BBBF7 /* MVKSmallVectorAllocator.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F3D9D924732A4C00745190 /* MVKSmallVectorAllocator.h */; };
 		DCFD7F112A45BC6E007BBBF7 /* MVKPipeline.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB78D1C7DFB4800632CA3 /* MVKPipeline.h */; };
@@ -466,7 +466,7 @@
 		DCFD7F3A2A45BC6E007BBBF7 /* MVKCommandPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB77B1C7DFB4800632CA3 /* MVKCommandPool.mm */; };
 		DCFD7F3B2A45BC6E007BBBF7 /* MVKCmdDraw.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7751C7DFB4800632CA3 /* MVKCmdDraw.mm */; };
 		DCFD7F3C2A45BC6E007BBBF7 /* MVKCommandBuffer.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7791C7DFB4800632CA3 /* MVKCommandBuffer.mm */; };
-		DCFD7F3D2A45BC6E007BBBF7 /* MVKCmdRenderPass.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7731C7DFB4800632CA3 /* MVKCmdRenderPass.mm */; };
+		DCFD7F3D2A45BC6E007BBBF7 /* MVKCmdRendering.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7731C7DFB4800632CA3 /* MVKCmdRendering.mm */; };
 		DCFD7F3E2A45BC6E007BBBF7 /* MVKBuffer.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7801C7DFB4800632CA3 /* MVKBuffer.mm */; };
 		DCFD7F3F2A45BC6E007BBBF7 /* MVKEnvironment.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9A5E9C525C0822700E9085E /* MVKEnvironment.cpp */; };
 		DCFD7F402A45BC6E007BBBF7 /* mvk_datatypes.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7A91C7DFB4800632CA3 /* mvk_datatypes.mm */; };
@@ -595,8 +595,8 @@
 		A94FB76F1C7DFB4800632CA3 /* MVKCmdPipeline.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdPipeline.mm; sourceTree = "<group>"; };
 		A94FB7701C7DFB4800632CA3 /* MVKCmdQueries.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCmdQueries.h; sourceTree = "<group>"; };
 		A94FB7711C7DFB4800632CA3 /* MVKCmdQueries.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdQueries.mm; sourceTree = "<group>"; };
-		A94FB7721C7DFB4800632CA3 /* MVKCmdRenderPass.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCmdRenderPass.h; sourceTree = "<group>"; };
-		A94FB7731C7DFB4800632CA3 /* MVKCmdRenderPass.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdRenderPass.mm; sourceTree = "<group>"; };
+		A94FB7721C7DFB4800632CA3 /* MVKCmdRendering.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCmdRendering.h; sourceTree = "<group>"; };
+		A94FB7731C7DFB4800632CA3 /* MVKCmdRendering.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdRendering.mm; sourceTree = "<group>"; };
 		A94FB7741C7DFB4800632CA3 /* MVKCmdDraw.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCmdDraw.h; sourceTree = "<group>"; };
 		A94FB7751C7DFB4800632CA3 /* MVKCmdDraw.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdDraw.mm; sourceTree = "<group>"; };
 		A94FB7761C7DFB4800632CA3 /* MVKCommand.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCommand.h; sourceTree = "<group>"; };
@@ -744,8 +744,8 @@
 				A94FB76F1C7DFB4800632CA3 /* MVKCmdPipeline.mm */,
 				A94FB7701C7DFB4800632CA3 /* MVKCmdQueries.h */,
 				A94FB7711C7DFB4800632CA3 /* MVKCmdQueries.mm */,
-				A94FB7721C7DFB4800632CA3 /* MVKCmdRenderPass.h */,
-				A94FB7731C7DFB4800632CA3 /* MVKCmdRenderPass.mm */,
+				A94FB7721C7DFB4800632CA3 /* MVKCmdRendering.h */,
+				A94FB7731C7DFB4800632CA3 /* MVKCmdRendering.mm */,
 				A94FB76C1C7DFB4800632CA3 /* MVKCmdTransfer.h */,
 				A94FB76D1C7DFB4800632CA3 /* MVKCmdTransfer.mm */,
 				A94FB7761C7DFB4800632CA3 /* MVKCommand.h */,
@@ -995,7 +995,7 @@
 				2FEA0A6724902F9F00EEF3AD /* MVKCommonEnvironment.h in Headers */,
 				2FEA0A6824902F9F00EEF3AD /* MVKWatermark.h in Headers */,
 				2FEA0A6924902F9F00EEF3AD /* MVKOSExtensions.h in Headers */,
-				2FEA0A6A24902F9F00EEF3AD /* MVKCmdRenderPass.h in Headers */,
+				2FEA0A6A24902F9F00EEF3AD /* MVKCmdRendering.h in Headers */,
 				2FEA0A6B24902F9F00EEF3AD /* MVKCmdPipeline.h in Headers */,
 				2FEA0A6C24902F9F00EEF3AD /* MVKSmallVectorAllocator.h in Headers */,
 				2FEA0A6D24902F9F00EEF3AD /* MVKPipeline.h in Headers */,
@@ -1074,7 +1074,7 @@
 				A9F042A41FB4CF83009FCCB8 /* MVKCommonEnvironment.h in Headers */,
 				A981495D1FB6A3F7005F00B4 /* MVKWatermark.h in Headers */,
 				A9B51BD9225E986A00AC74D2 /* MVKOSExtensions.h in Headers */,
-				A94FB7C41C7DFB4800632CA3 /* MVKCmdRenderPass.h in Headers */,
+				A94FB7C41C7DFB4800632CA3 /* MVKCmdRendering.h in Headers */,
 				A94FB7BC1C7DFB4800632CA3 /* MVKCmdPipeline.h in Headers */,
 				A9F3D9DC24732A4D00745190 /* MVKSmallVectorAllocator.h in Headers */,
 				A9C327562AAFBD390025EE79 /* MVKConfigMembers.def in Headers */,
@@ -1151,7 +1151,7 @@
 				A9F042A51FB4CF83009FCCB8 /* MVKCommonEnvironment.h in Headers */,
 				A981495E1FB6A3F7005F00B4 /* MVKWatermark.h in Headers */,
 				A9B51BDA225E986A00AC74D2 /* MVKOSExtensions.h in Headers */,
-				A94FB7C51C7DFB4800632CA3 /* MVKCmdRenderPass.h in Headers */,
+				A94FB7C51C7DFB4800632CA3 /* MVKCmdRendering.h in Headers */,
 				A94FB7BD1C7DFB4800632CA3 /* MVKCmdPipeline.h in Headers */,
 				A9F3D9DD24732A4D00745190 /* MVKSmallVectorAllocator.h in Headers */,
 				A94FB7F91C7DFB4800632CA3 /* MVKPipeline.h in Headers */,
@@ -1228,7 +1228,7 @@
 				DCFD7F0B2A45BC6E007BBBF7 /* MVKCommonEnvironment.h in Headers */,
 				DCFD7F0C2A45BC6E007BBBF7 /* MVKWatermark.h in Headers */,
 				DCFD7F0D2A45BC6E007BBBF7 /* MVKOSExtensions.h in Headers */,
-				DCFD7F0E2A45BC6E007BBBF7 /* MVKCmdRenderPass.h in Headers */,
+				DCFD7F0E2A45BC6E007BBBF7 /* MVKCmdRendering.h in Headers */,
 				DCFD7F0F2A45BC6E007BBBF7 /* MVKCmdPipeline.h in Headers */,
 				DCFD7F102A45BC6E007BBBF7 /* MVKSmallVectorAllocator.h in Headers */,
 				DCFD7F112A45BC6E007BBBF7 /* MVKPipeline.h in Headers */,
@@ -1674,7 +1674,7 @@
 				2FEA0A9424902F9F00EEF3AD /* MVKCommandPool.mm in Sources */,
 				2FEA0A9524902F9F00EEF3AD /* MVKCmdDraw.mm in Sources */,
 				2FEA0A9624902F9F00EEF3AD /* MVKCommandBuffer.mm in Sources */,
-				2FEA0A9724902F9F00EEF3AD /* MVKCmdRenderPass.mm in Sources */,
+				2FEA0A9724902F9F00EEF3AD /* MVKCmdRendering.mm in Sources */,
 				2FEA0A9824902F9F00EEF3AD /* MVKBuffer.mm in Sources */,
 				2FEA0A9924902F9F00EEF3AD /* mvk_datatypes.mm in Sources */,
 				2FEA0A9A24902F9F00EEF3AD /* MVKExtensions.mm in Sources */,
@@ -1734,7 +1734,7 @@
 				A94FB7D61C7DFB4800632CA3 /* MVKCommandPool.mm in Sources */,
 				A94FB7CA1C7DFB4800632CA3 /* MVKCmdDraw.mm in Sources */,
 				A94FB7D21C7DFB4800632CA3 /* MVKCommandBuffer.mm in Sources */,
-				A94FB7C61C7DFB4800632CA3 /* MVKCmdRenderPass.mm in Sources */,
+				A94FB7C61C7DFB4800632CA3 /* MVKCmdRendering.mm in Sources */,
 				A94FB7DE1C7DFB4800632CA3 /* MVKBuffer.mm in Sources */,
 				A9A5E9C725C0822700E9085E /* MVKEnvironment.cpp in Sources */,
 				A94FB82A1C7DFB4800632CA3 /* mvk_datatypes.mm in Sources */,
@@ -1794,7 +1794,7 @@
 				A94FB7D71C7DFB4800632CA3 /* MVKCommandPool.mm in Sources */,
 				A94FB7CB1C7DFB4800632CA3 /* MVKCmdDraw.mm in Sources */,
 				A94FB7D31C7DFB4800632CA3 /* MVKCommandBuffer.mm in Sources */,
-				A94FB7C71C7DFB4800632CA3 /* MVKCmdRenderPass.mm in Sources */,
+				A94FB7C71C7DFB4800632CA3 /* MVKCmdRendering.mm in Sources */,
 				A94FB7DF1C7DFB4800632CA3 /* MVKBuffer.mm in Sources */,
 				A9A5E9C925C0822700E9085E /* MVKEnvironment.cpp in Sources */,
 				A94FB82B1C7DFB4800632CA3 /* mvk_datatypes.mm in Sources */,
@@ -1854,7 +1854,7 @@
 				DCFD7F3A2A45BC6E007BBBF7 /* MVKCommandPool.mm in Sources */,
 				DCFD7F3B2A45BC6E007BBBF7 /* MVKCmdDraw.mm in Sources */,
 				DCFD7F3C2A45BC6E007BBBF7 /* MVKCommandBuffer.mm in Sources */,
-				DCFD7F3D2A45BC6E007BBBF7 /* MVKCmdRenderPass.mm in Sources */,
+				DCFD7F3D2A45BC6E007BBBF7 /* MVKCmdRendering.mm in Sources */,
 				DCFD7F3E2A45BC6E007BBBF7 /* MVKBuffer.mm in Sources */,
 				DCFD7F3F2A45BC6E007BBBF7 /* MVKEnvironment.cpp in Sources */,
 				DCFD7F402A45BC6E007BBBF7 /* mvk_datatypes.mm in Sources */,

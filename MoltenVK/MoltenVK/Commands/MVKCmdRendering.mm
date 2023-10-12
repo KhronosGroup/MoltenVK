@@ -1,5 +1,5 @@
 /*
- * MVKCmdRenderPass.mm
+ * MVKCmdRendering.mm
  *
  * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-#include "MVKCmdRenderPass.h"
+#include "MVKCmdRendering.h"
 #include "MVKCommandBuffer.h"
 #include "MVKCommandPool.h"
 #include "MVKFramebuffer.h"
@@ -232,33 +232,6 @@ void MVKCmdSetSampleLocations::encode(MVKCommandEncoder* cmdEncoder) {
 
 
 #pragma mark -
-#pragma mark MVKCmdExecuteCommands
-
-template <size_t N>
-VkResult MVKCmdExecuteCommands<N>::setContent(MVKCommandBuffer* cmdBuff,
-											  uint32_t commandBuffersCount,
-											  const VkCommandBuffer* pCommandBuffers) {
-	// Add clear values
-	_secondaryCommandBuffers.clear();	// Clear for reuse
-	_secondaryCommandBuffers.reserve(commandBuffersCount);
-	for (uint32_t cbIdx = 0; cbIdx < commandBuffersCount; cbIdx++) {
-		_secondaryCommandBuffers.push_back(MVKCommandBuffer::getMVKCommandBuffer(pCommandBuffers[cbIdx]));
-	}
-	cmdBuff->recordExecuteCommands(_secondaryCommandBuffers.contents());
-
-	return VK_SUCCESS;
-}
-
-template <size_t N>
-void MVKCmdExecuteCommands<N>::encode(MVKCommandEncoder* cmdEncoder) {
-    for (auto& cb : _secondaryCommandBuffers) { cmdEncoder->encodeSecondary(cb); }
-}
-
-template class MVKCmdExecuteCommands<1>;
-template class MVKCmdExecuteCommands<16>;
-
-
-#pragma mark -
 #pragma mark MVKCmdSetViewport
 
 template <size_t N>
@@ -278,7 +251,7 @@ VkResult MVKCmdSetViewport<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N>
 void MVKCmdSetViewport<N>::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_viewportState.setViewports(_viewports.contents(), _firstViewport, true);
+	cmdEncoder->_renderingState.setViewports(_viewports.contents(), _firstViewport, true);
 }
 
 template class MVKCmdSetViewport<1>;
@@ -305,29 +278,11 @@ VkResult MVKCmdSetScissor<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N>
 void MVKCmdSetScissor<N>::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_scissorState.setScissors(_scissors.contents(), _firstScissor, true);
+    cmdEncoder->_renderingState.setScissors(_scissors.contents(), _firstScissor, true);
 }
 
 template class MVKCmdSetScissor<1>;
 template class MVKCmdSetScissor<kMVKMaxViewportScissorCount>;
-
-
-#pragma mark -
-#pragma mark MVKCmdSetLineWidth
-
-VkResult MVKCmdSetLineWidth::setContent(MVKCommandBuffer* cmdBuff,
-										float lineWidth) {
-    _lineWidth = lineWidth;
-
-    // Validate
-    if (_lineWidth != 1.0 || cmdBuff->getDevice()->_enabledFeatures.wideLines) {
-        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetLineWidth(): The current device does not support wide lines.");
-    }
-
-	return VK_SUCCESS;
-}
-
-void MVKCmdSetLineWidth::encode(MVKCommandEncoder* cmdEncoder) {}
 
 
 #pragma mark -
@@ -345,9 +300,23 @@ VkResult MVKCmdSetDepthBias::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetDepthBias::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_depthBiasState.setDepthBias(_depthBiasConstantFactor,
-                                             _depthBiasSlopeFactor,
-                                             _depthBiasClamp);
+	cmdEncoder->_renderingState.setDepthBias(_depthBiasConstantFactor,
+											   _depthBiasSlopeFactor,
+											   _depthBiasClamp);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthBiasEnable
+
+VkResult MVKCmdSetDepthBiasEnable::setContent(MVKCommandBuffer* cmdBuff,
+											  VkBool32 depthBiasEnable) {
+	_depthBiasEnable = depthBiasEnable;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetDepthBiasEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_renderingState.setDepthBiasEnable(_depthBiasEnable);
 }
 
 
@@ -356,37 +325,91 @@ void MVKCmdSetDepthBias::encode(MVKCommandEncoder* cmdEncoder) {
 
 VkResult MVKCmdSetBlendConstants::setContent(MVKCommandBuffer* cmdBuff,
 											 const float blendConst[4]) {
-    _red = blendConst[0];
-    _green = blendConst[1];
-    _blue = blendConst[2];
-    _alpha = blendConst[3];
-
+	mvkCopy(_blendConstants, blendConst, 4);
 	return VK_SUCCESS;
 }
 
 void MVKCmdSetBlendConstants::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_blendColorState.setBlendColor(_red, _green, _blue, _alpha, true);
+    cmdEncoder->_renderingState.setBlendConstants(_blendConstants, true);
 }
 
 
 #pragma mark -
-#pragma mark MVKCmdSetDepthBounds
+#pragma mark MVKCmdSetDepthTestEnable
 
-VkResult MVKCmdSetDepthBounds::setContent(MVKCommandBuffer* cmdBuff,
-										  float minDepthBounds,
-										  float maxDepthBounds) {
-    _minDepthBounds = minDepthBounds;
-    _maxDepthBounds = maxDepthBounds;
-
-    // Validate
-    if (cmdBuff->getDevice()->_enabledFeatures.depthBounds) {
-        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetDepthBounds(): The current device does not support setting depth bounds.");
-    }
-
+VkResult MVKCmdSetDepthTestEnable::setContent(MVKCommandBuffer* cmdBuff,
+											  VkBool32 depthTestEnable) {
+	_depthTestEnable = depthTestEnable;
 	return VK_SUCCESS;
 }
 
-void MVKCmdSetDepthBounds::encode(MVKCommandEncoder* cmdEncoder) {}
+void MVKCmdSetDepthTestEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_depthStencilState.setDepthTestEnable(_depthTestEnable);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthWriteEnable
+
+VkResult MVKCmdSetDepthWriteEnable::setContent(MVKCommandBuffer* cmdBuff,
+											   VkBool32 depthWriteEnable) {
+	_depthWriteEnable = depthWriteEnable;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetDepthWriteEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_depthStencilState.setDepthWriteEnable(_depthWriteEnable);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthCompareOp
+
+VkResult MVKCmdSetDepthCompareOp::setContent(MVKCommandBuffer* cmdBuff,
+											 VkCompareOp depthCompareOp) {
+	_depthCompareOp = depthCompareOp;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetDepthCompareOp::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_depthStencilState.setDepthCompareOp(_depthCompareOp);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetStencilTestEnable
+
+VkResult MVKCmdSetStencilTestEnable::setContent(MVKCommandBuffer* cmdBuff,
+											  VkBool32 stencilTestEnable) {
+	_stencilTestEnable = stencilTestEnable;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetStencilTestEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_depthStencilState.setStencilTestEnable(_stencilTestEnable);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetStencilOp
+
+VkResult MVKCmdSetStencilOp::setContent(MVKCommandBuffer* cmdBuff,
+										VkStencilFaceFlags faceMask,
+										VkStencilOp failOp,
+										VkStencilOp passOp,
+										VkStencilOp depthFailOp,
+										VkCompareOp compareOp) {
+	_faceMask = faceMask;
+	_failOp = failOp;
+	_passOp = passOp;
+	_depthFailOp = depthFailOp;
+	_compareOp = compareOp;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetStencilOp::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_depthStencilState.setStencilOp(_faceMask, _failOp, _passOp, _depthFailOp, _compareOp);
+}
 
 
 #pragma mark -
@@ -436,6 +459,95 @@ VkResult MVKCmdSetStencilReference::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetStencilReference::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_stencilReferenceValueState.setReferenceValues(_faceMask, _stencilReference);
+    cmdEncoder->_renderingState.setStencilReferenceValues(_faceMask, _stencilReference);
 }
 
+
+#pragma mark -
+#pragma mark MVKCmdSetCullMode
+
+VkResult MVKCmdSetCullMode::setContent(MVKCommandBuffer* cmdBuff,
+                                       VkCullModeFlags cullMode) {
+	_cullMode = cullMode;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetCullMode::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_renderingState.setCullMode(_cullMode, true);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetFrontFace
+
+VkResult MVKCmdSetFrontFace::setContent(MVKCommandBuffer* cmdBuff,
+                                       VkFrontFace frontFace) {
+	_frontFace = frontFace;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetFrontFace::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_renderingState.setFrontFace(_frontFace, true);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetPatchControlPoints
+
+VkResult MVKCmdSetPatchControlPoints::setContent(MVKCommandBuffer* cmdBuff,
+												 uint32_t patchControlPoints) {
+	_patchControlPoints = patchControlPoints;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetPatchControlPoints::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_graphicsPipelineState.setPatchControlPoints(_patchControlPoints);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetPrimitiveTopology
+
+VkResult MVKCmdSetPrimitiveTopology::setContent(MVKCommandBuffer* cmdBuff,
+												VkPrimitiveTopology primitiveTopology) {
+	_primitiveTopology = primitiveTopology;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetPrimitiveTopology::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_renderingState.setPrimitiveTopology(_primitiveTopology, true);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetPrimitiveRestartEnable
+
+VkResult MVKCmdSetPrimitiveRestartEnable::setContent(MVKCommandBuffer* cmdBuff,
+													 VkBool32 primitiveRestartEnable) {
+	// Validate
+	// In Metal, primitive restart cannot be disabled.
+	// Just issue warning here, as it is very likely the app is not actually expecting 
+	// to use primitive restart at all, and is just setting this as a "just-in-case",
+	// and forcing an error here would be unexpected to the app (including CTS).
+	if ( !primitiveRestartEnable ) {
+		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support disabling primitive restart.");
+	}
+
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetPrimitiveRestartEnable::encode(MVKCommandEncoder* cmdEncoder) {}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetRasterizerDiscardEnable
+
+VkResult MVKCmdSetRasterizerDiscardEnable::setContent(MVKCommandBuffer* cmdBuff,
+													  VkBool32 rasterizerDiscardEnable) {
+	_rasterizerDiscardEnable = rasterizerDiscardEnable;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetRasterizerDiscardEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_renderingState.setRasterizerDiscardEnable(_rasterizerDiscardEnable, true);
+}

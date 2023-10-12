@@ -292,24 +292,20 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 
             // Depth stencil state - Cleared _depthStencilInfo values will disable depth testing
 			cmdEncoder->_depthStencilState.setDepthStencilState(_depthStencilInfo);
-			cmdEncoder->_stencilReferenceValueState.setReferenceValues(_depthStencilInfo);
 
             // Rasterization
-            cmdEncoder->_blendColorState.setBlendColor(_blendConstants[0], _blendConstants[1],
-                                                       _blendConstants[2], _blendConstants[3], false);
-            cmdEncoder->_depthBiasState.setDepthBias(_rasterInfo);
-            cmdEncoder->_viewportState.setViewports(_viewports.contents(), 0, false);
-            cmdEncoder->_scissorState.setScissors(_scissors.contents(), 0, false);
-            cmdEncoder->_mtlPrimitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(_vkPrimitiveTopology);
-
-            [mtlCmdEnc setCullMode: _mtlCullMode];
-            [mtlCmdEnc setFrontFacingWinding: _mtlFrontWinding];
-            [mtlCmdEnc setTriangleFillMode: _mtlFillMode];
-
-            if (_device->_enabledFeatures.depthClamp) {
-                [mtlCmdEnc setDepthClipMode: _mtlDepthClipMode];
-            }
-
+			cmdEncoder->_renderingState.setPrimitiveTopology(_vkPrimitiveTopology, false);
+			cmdEncoder->_renderingState.setBlendConstants(_blendConstants, false);
+			cmdEncoder->_renderingState.setStencilReferenceValues(_depthStencilInfo);
+            cmdEncoder->_renderingState.setViewports(_viewports.contents(), 0, false);
+            cmdEncoder->_renderingState.setScissors(_scissors.contents(), 0, false);
+			if (_hasRasterInfo) {
+				cmdEncoder->_renderingState.setCullMode(_rasterInfo.cullMode, false);
+				cmdEncoder->_renderingState.setFrontFace(_rasterInfo.frontFace, false);
+				cmdEncoder->_renderingState.setPolygonMode(_rasterInfo.polygonMode, false);
+				cmdEncoder->_renderingState.setDepthBias(_rasterInfo);
+				cmdEncoder->_renderingState.setDepthClipEnable( !_rasterInfo.depthClampEnable, false );
+			}
             break;
     }
 
@@ -318,21 +314,6 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
     cmdEncoder->_graphicsResourcesState.bindBufferSizeBuffer(_bufferSizeBufferIndex, _needsVertexBufferSizeBuffer, _needsTessCtlBufferSizeBuffer, _needsTessEvalBufferSizeBuffer, _needsFragmentBufferSizeBuffer);
 	cmdEncoder->_graphicsResourcesState.bindDynamicOffsetBuffer(_dynamicOffsetBufferIndex, _needsVertexDynamicOffsetBuffer, _needsTessCtlDynamicOffsetBuffer, _needsTessEvalDynamicOffsetBuffer, _needsFragmentDynamicOffsetBuffer);
     cmdEncoder->_graphicsResourcesState.bindViewRangeBuffer(_viewRangeBufferIndex, _needsVertexViewRangeBuffer, _needsFragmentViewRangeBuffer);
-}
-
-bool MVKGraphicsPipeline::supportsDynamicState(VkDynamicState state) {
-	for (auto& ds : _dynamicState) {
-		if (state == ds) {
-			// Some dynamic states have other restrictions
-			switch (state) {
-				case VK_DYNAMIC_STATE_DEPTH_BIAS:
-					return _rasterInfo.depthBiasEnable;
-				default:
-					return true;
-			}
-		}
-	}
-	return false;
 }
 
 static const char vtxCompilerType[] = "Vertex stage pipeline for tessellation";
@@ -413,6 +394,10 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 										 MVKPipeline* parent,
 										 const VkGraphicsPipelineCreateInfo* pCreateInfo) :
 	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, pCreateInfo->flags, parent) {
+
+
+	// Extract dynamic state first, as it can affect many configurations.
+	initDynamicState(pCreateInfo);
 
 	// Determine rasterization early, as various other structs are validated and interpreted in this context.
 	const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
@@ -509,17 +494,12 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	initMTLRenderPipelineState(pCreateInfo, reflectData, pPipelineFB, pVertexSS, pVertexFB, pTessCtlSS, pTessCtlFB, pTessEvalSS, pTessEvalFB, pFragmentSS, pFragmentFB);
 	if ( !_hasValidMTLPipelineStates ) { return; }
 
-	// Track dynamic state
-	const VkPipelineDynamicStateCreateInfo* pDS = pCreateInfo->pDynamicState;
-	if (pDS) {
-		for (uint32_t i = 0; i < pDS->dynamicStateCount; i++) {
-			_dynamicState.push_back(pDS->pDynamicStates[i]);
-		}
-	}
-
 	// Blending - must ignore allowed bad pColorBlendState pointer if rasterization disabled or no color attachments
 	if (_isRasterizingColor && pCreateInfo->pColorBlendState) {
-		memcpy(&_blendConstants, &pCreateInfo->pColorBlendState->blendConstants, sizeof(_blendConstants));
+		mvkCopy(_blendConstants, pCreateInfo->pColorBlendState->blendConstants, 4);
+	} else {
+		static float defaultBlendConstants[4] = { 0, 0.0, 0.0, 1.0 };
+		mvkCopy(_blendConstants, defaultBlendConstants, 4);
 	}
 
 	// Topology
@@ -527,24 +507,16 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 				   ? pCreateInfo->pInputAssemblyState->topology
 				   : VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
 
-	// Rasterization
-	_mtlCullMode = MTLCullModeNone;
-	_mtlFrontWinding = MTLWindingCounterClockwise;
-	_mtlFillMode = MTLTriangleFillModeFill;
-	_mtlDepthClipMode = MTLDepthClipModeClip;
-	bool hasRasterInfo = mvkSetOrClear(&_rasterInfo, pCreateInfo->pRasterizationState);
-	if (hasRasterInfo) {
-		_mtlCullMode = mvkMTLCullModeFromVkCullModeFlags(_rasterInfo.cullMode);
-		_mtlFrontWinding = mvkMTLWindingFromVkFrontFace(_rasterInfo.frontFace);
-		_mtlFillMode = mvkMTLTriangleFillModeFromVkPolygonMode(_rasterInfo.polygonMode);
-		if (_rasterInfo.depthClampEnable) {
-			if (_device->_enabledFeatures.depthClamp) {
-				_mtlDepthClipMode = MTLDepthClipModeClamp;
-			} else {
-				setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "This device does not support depth clamping."));
-			}
-		}
+		// In Metal, primitive restart cannot be disabled.
+		// Just issue warning here, as it is very likely the app is not actually expecting
+		// to use primitive restart at all, and is just setting this as a "just-in-case",
+		// and forcing an error here would be unexpected to the app (including CTS).
+	if (pCreateInfo->pInputAssemblyState && !pCreateInfo->pInputAssemblyState->primitiveRestartEnable) {
+		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateGraphicsPipeline(): Metal does not support disabling primitive restart.");
 	}
+
+	// Rasterization
+	_hasRasterInfo = mvkSetOrClear(&_rasterInfo, pCreateInfo->pRasterizationState);
 
 	// Must run after _isRasterizing and _dynamicState are populated
 	initCustomSamplePositions(pCreateInfo);
@@ -557,23 +529,78 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	// Viewports and scissors - must ignore allowed bad pViewportState pointer if rasterization is disabled
 	auto pVPState = _isRasterizing ? pCreateInfo->pViewportState : nullptr;
 	if (pVPState) {
-		uint32_t vpCnt = pVPState->viewportCount;
+
+		// If viewports are dynamic, ignore them here.
+		uint32_t vpCnt = (pVPState->pViewports && !isDynamicState(Viewports)) ? pVPState->viewportCount : 0;
 		_viewports.reserve(vpCnt);
 		for (uint32_t vpIdx = 0; vpIdx < vpCnt; vpIdx++) {
-			// If viewport is dyanamic, we still add a dummy so that the count will be tracked.
-			VkViewport vp;
-			if ( !supportsDynamicState(VK_DYNAMIC_STATE_VIEWPORT) ) { vp = pVPState->pViewports[vpIdx]; }
-			_viewports.push_back(vp);
+			_viewports.push_back(pVPState->pViewports[vpIdx]);
 		}
 
-		uint32_t sCnt = pVPState->scissorCount;
+		// If scissors are dynamic, ignore them here.
+		uint32_t sCnt = (pVPState->pScissors && !isDynamicState(Scissors)) ? pVPState->scissorCount : 0;
 		_scissors.reserve(sCnt);
 		for (uint32_t sIdx = 0; sIdx < sCnt; sIdx++) {
-			// If scissor is dyanamic, we still add a dummy so that the count will be tracked.
-			VkRect2D sc;
-			if ( !supportsDynamicState(VK_DYNAMIC_STATE_SCISSOR) ) { sc = pVPState->pScissors[sIdx]; }
-			_scissors.push_back(sc);
+			_scissors.push_back(pVPState->pScissors[sIdx]);
 		}
+	}
+}
+
+static MVKRenderStateType getRenderStateType(VkDynamicState vkDynamicState) {
+	switch (vkDynamicState) {
+		case VK_DYNAMIC_STATE_BLEND_CONSTANTS:             return BlendConstants;
+		case VK_DYNAMIC_STATE_CULL_MODE:                   return CullMode;
+		case VK_DYNAMIC_STATE_DEPTH_BIAS:                  return DepthBias;
+		case VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE:           return DepthBiasEnable;
+		case VK_DYNAMIC_STATE_DEPTH_BOUNDS:                return DepthBounds;
+		case VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE:    return DepthBoundsTestEnable;
+		case VK_DYNAMIC_STATE_DEPTH_CLAMP_ENABLE_EXT:      return DepthClipEnable;
+		case VK_DYNAMIC_STATE_DEPTH_CLIP_ENABLE_EXT:       return DepthClipEnable;
+		case VK_DYNAMIC_STATE_DEPTH_COMPARE_OP:            return DepthCompareOp;
+		case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE:           return DepthTestEnable;
+		case VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE:          return DepthWriteEnable;
+		case VK_DYNAMIC_STATE_FRONT_FACE:                  return FrontFace;
+		case VK_DYNAMIC_STATE_LOGIC_OP_EXT:                return LogicOp;
+		case VK_DYNAMIC_STATE_LOGIC_OP_ENABLE_EXT:         return LogicOpEnable;
+		case VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT:    return PatchControlPoints;
+		case VK_DYNAMIC_STATE_POLYGON_MODE_EXT:            return PolygonMode;
+		case VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE:    return PrimitiveRestartEnable;
+		case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY:          return PrimitiveTopology;
+		case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE:   return RasterizerDiscardEnable;
+		case VK_DYNAMIC_STATE_SCISSOR:                     return Scissors;
+		case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT:          return Scissors;
+		case VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK:        return StencilCompareMask;
+		case VK_DYNAMIC_STATE_STENCIL_OP:                  return StencilOp;
+		case VK_DYNAMIC_STATE_STENCIL_REFERENCE:           return StencilReference;
+		case VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE:         return StencilTestEnable;
+		case VK_DYNAMIC_STATE_STENCIL_WRITE_MASK:          return StencilWriteMask;
+		case VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE: return VertexStride;
+		case VK_DYNAMIC_STATE_VIEWPORT:                    return Viewports;
+		case VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT:         return Viewports;
+		default:                                           return Unknown;
+	}
+}
+
+// This is executed first during pipeline creation. Do not depend on any internal state here.
+void MVKGraphicsPipeline::initDynamicState(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
+	const auto* pDS = pCreateInfo->pDynamicState;
+	if ( !pDS ) { return; }
+
+	for (uint32_t i = 0; i < pDS->dynamicStateCount; i++) {
+		auto dynStateType = getRenderStateType(pDS->pDynamicStates[i]);
+		bool isDynamic = true;
+
+		// Some dynamic states have other restrictions
+		switch (dynStateType) {
+			case VertexStride:
+				isDynamic = _device->_pMetalFeatures->dynamicVertexStride;
+				if ( !isDynamic ) { setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "This device and platform does not support VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE (macOS 14.0 or iOS/tvOS 17.0, plus either Apple4 or Mac2 GPU).")); }
+				break;
+			default:
+				break;
+		}
+
+		if (isDynamic) { _dynamicState.enable(dynStateType); }
 	}
 }
 
@@ -613,7 +640,7 @@ void MVKGraphicsPipeline::initCustomSamplePositions(const VkGraphicsPipelineCrea
 			case VK_STRUCTURE_TYPE_PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT: {
 				auto* pSampLocnsCreateInfo = (VkPipelineSampleLocationsStateCreateInfoEXT*)next;
 				_isUsingCustomSamplePositions = pSampLocnsCreateInfo->sampleLocationsEnable;
-				if (_isUsingCustomSamplePositions && !supportsDynamicState(VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT)) {
+				if (_isUsingCustomSamplePositions && !isDynamicState(SampleLocations)) {
 					for (uint32_t slIdx = 0; slIdx < pSampLocnsCreateInfo->sampleLocationsInfo.sampleLocationsCount; slIdx++) {
 						auto& sl = pSampLocnsCreateInfo->sampleLocationsInfo.pSampleLocations[slIdx];
 						_customSamplePositions.push_back(MTLSamplePositionMake(sl.x, sl.y));
@@ -1311,6 +1338,10 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 	return true;
 }
 
+#if !MVK_XCODE_15
+static const NSUInteger MTLBufferLayoutStrideDynamic = NSUIntegerMax;
+#endif
+
 template<class T>
 bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 												   const VkPipelineVertexInputStateCreateInfo* pVI,
@@ -1328,8 +1359,9 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
     }
 
     // Vertex buffer bindings
-	uint32_t vbCnt = pVI->vertexBindingDescriptionCount;
+	bool isVtxStrideStatic = !isDynamicState(VertexStride);
 	uint32_t maxBinding = 0;
+	uint32_t vbCnt = pVI->vertexBindingDescriptionCount;
     for (uint32_t i = 0; i < vbCnt; i++) {
         const VkVertexInputBindingDescription* pVKVB = &pVI->pVertexBindingDescriptions[i];
         if (shaderConfig.isVertexBufferUsed(pVKVB->binding)) {
@@ -1352,7 +1384,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 				vbDesc.stepFunction = (decltype(vbDesc.stepFunction))MTLStepFunctionConstant;
 				vbDesc.stepRate = 0;
 			} else {
-				vbDesc.stride = pVKVB->stride;
+				vbDesc.stride = isVtxStrideStatic ? pVKVB->stride : MTLBufferLayoutStrideDynamic;
 				vbDesc.stepFunction = (decltype(vbDesc.stepFunction))mvkMTLStepFunctionFromVkVertexInputRate(pVKVB->inputRate, isTessellationPipeline());
 				vbDesc.stepRate = 1;
 			}
@@ -1903,11 +1935,12 @@ bool MVKGraphicsPipeline::isRenderingPoints(const VkGraphicsPipelineCreateInfo* 
 			(pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->polygonMode == VK_POLYGON_MODE_POINT)));
 }
 
-// We disable rasterization if either rasterizerDiscard is enabled or the cull mode dictates it.
+// We disable rasterization if either static rasterizerDiscard is enabled or the static cull mode dictates it.
 bool MVKGraphicsPipeline::isRasterizationDisabled(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
 	return (pCreateInfo->pRasterizationState &&
-			(pCreateInfo->pRasterizationState->rasterizerDiscardEnable ||
-			 ((pCreateInfo->pRasterizationState->cullMode == VK_CULL_MODE_FRONT_AND_BACK) && pCreateInfo->pInputAssemblyState &&
+			((pCreateInfo->pRasterizationState->rasterizerDiscardEnable && !isDynamicState(RasterizerDiscardEnable)) ||
+			 ((pCreateInfo->pRasterizationState->cullMode == VK_CULL_MODE_FRONT_AND_BACK) && !isDynamicState(CullMode) &&
+			  pCreateInfo->pInputAssemblyState &&
 			  (mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology) == MTLPrimitiveTopologyClassTriangle))));
 }
 

@@ -23,7 +23,7 @@
 #include "MVKCommandEncodingPool.h"
 #include "MVKCommand.h"
 #include "MVKCmdPipeline.h"
-#include "MVKCmdRenderPass.h"
+#include "MVKCmdRendering.h"
 #include "MVKCmdDispatch.h"
 #include "MVKCmdDraw.h"
 #include "MVKCmdTransfer.h"
