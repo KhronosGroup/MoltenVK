@@ -617,9 +617,9 @@ vailable when you request it, resulting in frame delays and visual stuttering.
 <a name="timestamping"></a>
 ### Timestamping
 
-On non-Apple Silicon devices (older Mac devices), the GPU can switch power and performance 
-states as required by usage. This affects the GPU timestamps retrievable through the Vulkan 
-API. As a result, the value of `VkPhysicalDeviceLimits::timestampPeriod` can vary over time. 
+On non-Apple GPUs (older Mac devices), the GPU can switch power and performance states as 
+required by usage. This affects the GPU timestamps retrievable through the Vulkan API. 
+As a result, the value of `VkPhysicalDeviceLimits::timestampPeriod` can vary over time. 
 Consider calling `vkGetPhysicalDeviceProperties()`, when needed, and retrieve the current
 value of `VkPhysicalDeviceLimits::timestampPeriod`, to help you calibrate recent GPU 
 timestamps queried through the Vulkan API.

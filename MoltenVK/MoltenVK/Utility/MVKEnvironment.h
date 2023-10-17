@@ -323,5 +323,5 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
  * This can be set to a float between 0.0 and 1.0.
  */
 #ifndef MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA
-#  	define MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA    0.05
+#  	define MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA    1.0
 #endif

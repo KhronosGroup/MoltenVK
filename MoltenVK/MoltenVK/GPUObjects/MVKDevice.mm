@@ -1601,7 +1601,8 @@ void MVKPhysicalDevice::updateTimestampPeriod() {
 			
 			// Basic lowpass filter TPout = (1 - A)TPout + (A * TPin).
 			// The lower A is, the slower TPout will change over time.
-			float a = mvkConfig().timestampPeriodLowPassAlpha;
+			// First time through, just use the measured value directly.
+			float a = earlierCPUTs ? mvkConfig().timestampPeriodLowPassAlpha : 1.0;
 			_properties.limits.timestampPeriod = ((1.0 - a) * _properties.limits.timestampPeriod) + (a * tsPeriod);
 		}
 	}
@@ -2637,7 +2638,7 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.optimalBufferCopyRowPitchAlignment = 1;
 
 	_properties.limits.timestampComputeAndGraphics = VK_TRUE;
-	_properties.limits.timestampPeriod = mvkGetTimestampPeriod();	// Will be 1.0 on Apple Silicon
+	_properties.limits.timestampPeriod = 1.0;	// On non-Apple GPU's, this can vary over time, and is calculated based on actual GPU activity.
 
     _properties.limits.pointSizeRange[0] = 1;
 	switch (_properties.vendorID) {
