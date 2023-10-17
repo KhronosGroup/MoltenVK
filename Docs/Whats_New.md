@@ -16,24 +16,33 @@ Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.2.6
 --------------
 
-Released TBD
+Released 2023/10/17
 
 - Add support for extensions:
 	- `VK_KHR_synchronization2`
 	- `VK_EXT_extended_dynamic_state` *(requires Metal 3.1 for `VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE`)*
 	- `VK_EXT_extended_dynamic_state2`
-- Fix rare case where vertex attribute buffers are not bound to Metal 
-  when no other bindings change between pipelines.
+- Fix rare case where vertex attribute buffers are not bound to Metal when no other bindings change between pipelines.
 - Ensure objects retained for life of `MTLCommandBuffer` during `vkCmdBlitImage()` & `vkQueuePresentKHR()`.
 - Fix case where a `CAMetalDrawable` with invalid pixel format causes onscreen flickering.
-- Fix MSL code used in `vkCmdBlitImage()` on depth-stencil formats. 
+- Fix deadlock when reporting debug message on `MVKInstance` destruction.
+- Fix MSL code used in `vkCmdBlitImage()` on depth-stencil formats.
 - Improve behavior of swapchain image presentation stalls caused by Metal regression.
-- Add several additional performance trackers, available via logging, or the `mvk_private_api.h` API.
+- `VkPhysicalDeviceLimits::timestampPeriod` set to 1.0 on Apple GPUs, and calculated dynamically on non-Apple GPUs.
 - Add `MVKConfiguration::timestampPeriodLowPassAlpha` and environment variable 
   `MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA`, to add a configurable lowpass filter 
   for varying `VkPhysicalDeviceLimits::timestampPeriod` on non-Apple GPUs.
+- Add several additional performance trackers, available via logging, or the `mvk_private_api.h` API.
 - Deprecate `MVK_DEBUG` env var, and add `MVK_CONFIG_DEBUG` env var to replace it. 
 - Update `MVK_CONFIGURATION_API_VERSION` and `MVK_PRIVATE_API_VERSION` to `38`.
+- Update dependency libraries to match _Vulkan SDK 1.3.268_.
+- Update to latest SPIRV-Cross:
+  - MSL: Workaround Metal 3.1 regression bug on recursive input structs.
+  - MSL: fix extraction of global variables, in case of atomics.
+  - MSL: Workaround bizarre crash on macOS.
+  - MSL: runtime array over argument buffers.
+  - MSL: Make rw texture fences optional.
+  - MSL: Prevent RAW hazards on read_write textures.
 
 
 
