@@ -1711,7 +1711,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.maxPerStageStorageTextureCount = 8;
 
 	_metalFeatures.vertexStrideAlignment = supportsMTLGPUFamily(Apple5) ? 1 : 4;
+
+#if MVK_XCODE_15
+	// Dynamic vertex stride needs to have everything aligned - compiled with support for vertex stride calls, and supported by both runtime OS and GPU.
 	_metalFeatures.dynamicVertexStride = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0) && (supportsMTLGPUFamily(Apple4) || supportsMTLGPUFamily(Mac2));
+#endif
 
 	// GPU-specific features
 	switch (_properties.vendorID) {

@@ -232,6 +232,7 @@ enum MVKRenderStateType {
 	DepthTestEnable,
 	DepthWriteEnable,
 	FrontFace,
+	LineWidth,
 	LogicOp,
 	LogicOpEnable,
 	PatchControlPoints,
