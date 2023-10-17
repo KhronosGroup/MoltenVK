@@ -381,7 +381,7 @@ void MVKTimestampQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncod
 // If not using MTLCounterSampleBuffer, update timestamp values, then mark queries as available
 void MVKTimestampQueryPool::finishQueries(MVKArrayRef<const uint32_t> queries) {
 	if ( !_mtlCounterBuffer ) {
-		uint64_t ts = mvkGetTimestamp();
+		uint64_t ts = mvkGetElapsedNanoseconds();
 		for (uint32_t qry : queries) { _timestamps[qry] = ts; }
 	}
 	MVKQueryPool::finishQueries(queries);

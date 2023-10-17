@@ -29,7 +29,9 @@ Released TBD
 - Fix MSL code used in `vkCmdBlitImage()` on depth-stencil formats. 
 - Improve behavior of swapchain image presentation stalls caused by Metal regression.
 - Add several additional performance trackers, available via logging, or the `mvk_private_api.h` API.
-- Add configurable lowpass filter for `VkPhysicalDeviceLimits::timestampPeriod`.
+- Add `MVKConfiguration::timestampPeriodLowPassAlpha` and environment variable 
+  `MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA`, to add a configurable lowpass filter 
+  for varying `VkPhysicalDeviceLimits::timestampPeriod` on non-Apple GPUs.
 - Deprecate `MVK_DEBUG` env var, and add `MVK_CONFIG_DEBUG` env var to replace it. 
 - Update `MVK_CONFIGURATION_API_VERSION` and `MVK_PRIVATE_API_VERSION` to `38`.
 
