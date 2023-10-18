@@ -584,6 +584,8 @@ public:
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	VkBool32 _primitiveRestartEnable;
 };
 
 

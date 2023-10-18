@@ -295,6 +295,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 
             // Rasterization
 			cmdEncoder->_renderingState.setPrimitiveTopology(_vkPrimitiveTopology, false);
+			cmdEncoder->_renderingState.setPrimitiveRestartEnable(_primitiveRestartEnable, false);
 			cmdEncoder->_renderingState.setBlendConstants(_blendConstants, false);
 			cmdEncoder->_renderingState.setStencilReferenceValues(_depthStencilInfo);
             cmdEncoder->_renderingState.setViewports(_viewports.contents(), 0, false);
@@ -507,13 +508,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 				   ? pCreateInfo->pInputAssemblyState->topology
 				   : VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
 
-		// In Metal, primitive restart cannot be disabled.
-		// Just issue warning here, as it is very likely the app is not actually expecting
-		// to use primitive restart at all, and is just setting this as a "just-in-case",
-		// and forcing an error here would be unexpected to the app (including CTS).
-	if (pCreateInfo->pInputAssemblyState && !pCreateInfo->pInputAssemblyState->primitiveRestartEnable) {
-		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateGraphicsPipeline(): Metal does not support disabling primitive restart.");
-	}
+	_primitiveRestartEnable = pCreateInfo->pInputAssemblyState ? pCreateInfo->pInputAssemblyState->primitiveRestartEnable : true;
 
 	// Rasterization
 	_hasRasterInfo = mvkSetOrClear(&_rasterInfo, pCreateInfo->pRasterizationState);
