@@ -524,19 +524,13 @@ void MVKCmdSetPrimitiveTopology::encode(MVKCommandEncoder* cmdEncoder) {
 
 VkResult MVKCmdSetPrimitiveRestartEnable::setContent(MVKCommandBuffer* cmdBuff,
 													 VkBool32 primitiveRestartEnable) {
-	// Validate
-	// In Metal, primitive restart cannot be disabled.
-	// Just issue warning here, as it is very likely the app is not actually expecting 
-	// to use primitive restart at all, and is just setting this as a "just-in-case",
-	// and forcing an error here would be unexpected to the app (including CTS).
-	if ( !primitiveRestartEnable ) {
-		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support disabling primitive restart.");
-	}
-
+	_primitiveRestartEnable = primitiveRestartEnable;
 	return VK_SUCCESS;
 }
 
-void MVKCmdSetPrimitiveRestartEnable::encode(MVKCommandEncoder* cmdEncoder) {}
+void MVKCmdSetPrimitiveRestartEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_renderingState.setPrimitiveRestartEnable(_primitiveRestartEnable, true);
+}
 
 
 #pragma mark -
