@@ -410,6 +410,24 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 	SPIRVShaderOutputs vtxOutputs;
 	std::string errorLog;
 	getShaderOutputs(getSPIRV(), spv::ExecutionModelVertex, entryName, vtxOutputs, errorLog);
+	// Normally, we'd need to sort the outputs into XFB buffers. But since we're appending to the
+	// original shader, we can just reuse those structs.
+	// FIXME: Do we want to use a "fast string concatenation" type here?
+	conversionResult.msl += "\n"
+		"struct " + entryName + "_passthru\n"
+		"{\n";
+	for (const auto& output : vtxOutputs) {
+		// FIXME: Get SPIRV-Cross to emit this!
+	}
+	conversionResult.msl += "};\n\n";
+	conversionResult.msl += "vertex " + entryName + "_passthru " + entryName + "PassThru(";
+	// FIXME: Emit parameters for XFB buffers and the other output buffer
+	conversionResult.msl += ")\n"
+		"{\n"
+		"    " + entryName + "_passthru out;\n";
+	// FIXME: Emit loads from the XFB buffers and stores to stage out
+	conversionResult.msl += "    return out;\n"
+		"}\n";
 }
 
 void MVKShaderModule::setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
