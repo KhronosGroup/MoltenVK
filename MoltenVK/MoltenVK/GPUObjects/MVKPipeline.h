@@ -232,6 +232,7 @@ enum MVKRenderStateType {
 	DepthTestEnable,
 	DepthWriteEnable,
 	FrontFace,
+	LineWidth,
 	LogicOp,
 	LogicOpEnable,
 	PatchControlPoints,
@@ -426,6 +427,7 @@ protected:
 	uint32_t _tessCtlPatchOutputBufferIndex = 0;
 	uint32_t _tessCtlLevelBufferIndex = 0;
 
+	bool _primitiveRestartEnable = true;
 	bool _hasRasterInfo = false;
 	bool _needsVertexSwizzleBuffer = false;
 	bool _needsVertexBufferSizeBuffer = false;

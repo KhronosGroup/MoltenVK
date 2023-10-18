@@ -23,16 +23,13 @@
 // To use this file, define the macros:
 //
 //   MVK_CONFIG_MEMBER(member, mbrType, name)
-//   MVK_CONFIG_MEMBER_STRING(member, strObj,  name)
+//   MVK_CONFIG_MEMBER_STRING(member, mbrType,  name)
 //
 // then #include this file inline with your code.
 //
 // The name prameter is the name of the configuration parameter, which is used as the name
 // of the environment variable, and build setting, that sets the config value, and is entered
 // here without the "MVK_CONFIG_" prefix.
-//
-// Since string members are set from char pointers, the text must be copied to a std::string
-// object, which is passed as a parameter to MVK_CONFIG_MEMBER_STRING.
 
 
 #ifndef MVK_CONFIG_MEMBER
@@ -69,7 +66,7 @@ MVK_CONFIG_MEMBER(forceLowPowerGPU,                       VkBool32,             
 MVK_CONFIG_MEMBER(semaphoreUseMTLFence,                   VkBool32,                                 ALLOW_METAL_FENCES)  				// Deprecated legacy
 MVK_CONFIG_MEMBER(semaphoreSupportStyle,                  MVKVkSemaphoreSupportStyle,               VK_SEMAPHORE_SUPPORT_STYLE)
 MVK_CONFIG_MEMBER(autoGPUCaptureScope,                    MVKConfigAutoGPUCaptureScope,             AUTO_GPU_CAPTURE_SCOPE)
-MVK_CONFIG_MEMBER_STRING(autoGPUCaptureOutputFilepath,    evGPUCapFileStrObj,                       AUTO_GPU_CAPTURE_OUTPUT_FILE)
+MVK_CONFIG_MEMBER_STRING(autoGPUCaptureOutputFilepath,    char*,                                    AUTO_GPU_CAPTURE_OUTPUT_FILE)
 MVK_CONFIG_MEMBER(texture1DAs2D,                          VkBool32,                                 TEXTURE_1D_AS_2D)
 MVK_CONFIG_MEMBER(preallocateDescriptors,                 VkBool32,                                 PREALLOCATE_DESCRIPTORS)
 MVK_CONFIG_MEMBER(useCommandPooling,                      VkBool32,                                 USE_COMMAND_POOLING)

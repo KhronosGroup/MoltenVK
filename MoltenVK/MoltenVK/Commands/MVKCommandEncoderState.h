@@ -312,6 +312,8 @@ public:
 	void setViewports(const MVKArrayRef<VkViewport> viewports, uint32_t firstViewport, bool isDynamic);
 	void setScissors(const MVKArrayRef<VkRect2D> scissors, uint32_t firstScissor, bool isDynamic);
 
+	void setPrimitiveRestartEnable(VkBool32 primitiveRestartEnable, bool isDynamic);
+
 	void setRasterizerDiscardEnable(VkBool32 rasterizerDiscardEnable, bool isDynamic);
 
 	void beginMetalRenderPass() override;
@@ -345,6 +347,7 @@ protected:
 	MVKRenderStateFlags _dirtyStates;
 	MVKRenderStateFlags _modifiedStates;
 	bool _mtlDepthBiasEnable[StateScope::Count] = {};
+	bool _mtlPrimitiveRestartEnable[StateScope::Count] = {};
 	bool _mtlRasterizerDiscardEnable[StateScope::Count] = {};
 	bool _cullBothFaces[StateScope::Count] = {};
 };

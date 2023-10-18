@@ -295,6 +295,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 
             // Rasterization
 			cmdEncoder->_renderingState.setPrimitiveTopology(_vkPrimitiveTopology, false);
+			cmdEncoder->_renderingState.setPrimitiveRestartEnable(_primitiveRestartEnable, false);
 			cmdEncoder->_renderingState.setBlendConstants(_blendConstants, false);
 			cmdEncoder->_renderingState.setStencilReferenceValues(_depthStencilInfo);
             cmdEncoder->_renderingState.setViewports(_viewports.contents(), 0, false);
@@ -507,13 +508,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 				   ? pCreateInfo->pInputAssemblyState->topology
 				   : VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
 
-		// In Metal, primitive restart cannot be disabled.
-		// Just issue warning here, as it is very likely the app is not actually expecting
-		// to use primitive restart at all, and is just setting this as a "just-in-case",
-		// and forcing an error here would be unexpected to the app (including CTS).
-	if (pCreateInfo->pInputAssemblyState && !pCreateInfo->pInputAssemblyState->primitiveRestartEnable) {
-		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateGraphicsPipeline(): Metal does not support disabling primitive restart.");
-	}
+	_primitiveRestartEnable = pCreateInfo->pInputAssemblyState ? pCreateInfo->pInputAssemblyState->primitiveRestartEnable : true;
 
 	// Rasterization
 	_hasRasterInfo = mvkSetOrClear(&_rasterInfo, pCreateInfo->pRasterizationState);
@@ -560,6 +555,7 @@ static MVKRenderStateType getRenderStateType(VkDynamicState vkDynamicState) {
 		case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE:           return DepthTestEnable;
 		case VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE:          return DepthWriteEnable;
 		case VK_DYNAMIC_STATE_FRONT_FACE:                  return FrontFace;
+		case VK_DYNAMIC_STATE_LINE_WIDTH:                  return LineWidth;
 		case VK_DYNAMIC_STATE_LOGIC_OP_EXT:                return LogicOp;
 		case VK_DYNAMIC_STATE_LOGIC_OP_ENABLE_EXT:         return LogicOpEnable;
 		case VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT:    return PatchControlPoints;
@@ -1366,18 +1362,16 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
         const VkVertexInputBindingDescription* pVKVB = &pVI->pVertexBindingDescriptions[i];
         if (shaderConfig.isVertexBufferUsed(pVKVB->binding)) {
 
-			// Vulkan allows any stride, but Metal only allows multiples of 4.
-            // TODO: We could try to expand the buffer to the required alignment in that case.
-			VkDeviceSize mtlVtxStrideAlignment = _device->_pMetalFeatures->vertexStrideAlignment;
-            if ((pVKVB->stride % mtlVtxStrideAlignment) != 0) {
-				setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Under Metal, vertex attribute binding strides must be aligned to %llu bytes.", mtlVtxStrideAlignment));
+			// Vulkan allows any stride, but Metal requires multiples of 4 on older GPUs.
+            if (isVtxStrideStatic && (pVKVB->stride % _device->_pMetalFeatures->vertexStrideAlignment) != 0) {
+				setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Under Metal, vertex attribute binding strides must be aligned to %llu bytes.", _device->_pMetalFeatures->vertexStrideAlignment));
                 return false;
             }
 
 			maxBinding = max(pVKVB->binding, maxBinding);
 			uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
 			auto vbDesc = inputDesc.layouts[vbIdx];
-			if (pVKVB->stride == 0) {
+			if (isVtxStrideStatic && pVKVB->stride == 0) {
 				// Stride can't be 0, it will be set later to attributes' maximum offset + size
 				// to prevent it from being larger than the underlying buffer permits.
 				vbDesc.stride = 0;
@@ -1418,52 +1412,54 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 		if (shaderConfig.isShaderInputLocationUsed(pVKVA->location)) {
 			uint32_t vaBinding = pVKVA->binding;
 			uint32_t vaOffset = pVKVA->offset;
+			auto vaDesc = inputDesc.attributes[pVKVA->location];
+			auto mtlFormat = (decltype(vaDesc.format))getPixelFormats()->getMTLVertexFormat(pVKVA->format);
 
 			// Vulkan allows offsets to exceed the buffer stride, but Metal doesn't.
 			// If this is the case, fetch a translated artificial buffer binding, using the same MTLBuffer,
 			// but that is translated so that the reduced VA offset fits into the binding stride.
-			const VkVertexInputBindingDescription* pVKVB = pVI->pVertexBindingDescriptions;
-			uint32_t attrSize = 0;
-			for (uint32_t j = 0; j < vbCnt; j++, pVKVB++) {
-				if (pVKVB->binding == pVKVA->binding) {
-					attrSize = getPixelFormats()->getBytesPerBlock(pVKVA->format);
-					if (pVKVB->stride == 0) {
-						// The step is set to constant, but we need to change stride to be non-zero for metal.
-						// Look for the maximum offset + size to set as the stride.
-						uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
-						auto vbDesc = inputDesc.layouts[vbIdx];
-						uint32_t strideLowBound = vaOffset + attrSize;
-						if (vbDesc.stride < strideLowBound) vbDesc.stride = strideLowBound;
-					} else if (vaOffset && vaOffset + attrSize > pVKVB->stride) {
-						// Move vertex attribute offset into the stride. This vertex attribute may be
-						// combined with other vertex attributes into the same translated buffer binding.
-						// But if the reduced offset combined with the vertex attribute size still won't
-						// fit into the buffer binding stride, force the vertex attribute offset to zero,
-						// effectively dedicating this vertex attribute to its own buffer binding.
-						uint32_t origOffset = vaOffset;
-						vaOffset %= pVKVB->stride;
-						if (vaOffset + attrSize > pVKVB->stride) {
-							vaOffset = 0;
+			if (isVtxStrideStatic) {
+				const VkVertexInputBindingDescription* pVKVB = pVI->pVertexBindingDescriptions;
+				uint32_t attrSize = 0;
+				for (uint32_t j = 0; j < vbCnt; j++, pVKVB++) {
+					if (pVKVB->binding == pVKVA->binding) {
+						attrSize = getPixelFormats()->getBytesPerBlock(pVKVA->format);
+						if (pVKVB->stride == 0) {
+							// The step is set to constant, but we need to change stride to be non-zero for metal.
+							// Look for the maximum offset + size to set as the stride.
+							uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
+							auto vbDesc = inputDesc.layouts[vbIdx];
+							uint32_t strideLowBound = vaOffset + attrSize;
+							if (vbDesc.stride < strideLowBound) vbDesc.stride = strideLowBound;
+						} else if (vaOffset && vaOffset + attrSize > pVKVB->stride) {
+							// Move vertex attribute offset into the stride. This vertex attribute may be
+							// combined with other vertex attributes into the same translated buffer binding.
+							// But if the reduced offset combined with the vertex attribute size still won't
+							// fit into the buffer binding stride, force the vertex attribute offset to zero,
+							// effectively dedicating this vertex attribute to its own buffer binding.
+							uint32_t origOffset = vaOffset;
+							vaOffset %= pVKVB->stride;
+							if (vaOffset + attrSize > pVKVB->stride) {
+								vaOffset = 0;
+							}
+							vaBinding = getTranslatedVertexBinding(vaBinding, origOffset - vaOffset, maxBinding);
+							if (zeroDivisorBindings.count(pVKVB->binding)) {
+								zeroDivisorBindings.insert(vaBinding);
+							}
 						}
-						vaBinding = getTranslatedVertexBinding(vaBinding, origOffset - vaOffset, maxBinding);
-                        if (zeroDivisorBindings.count(pVKVB->binding)) {
-                            zeroDivisorBindings.insert(vaBinding);
-                        }
+						break;
 					}
-					break;
+				}
+				if (pVKVB->stride && attrSize > pVKVB->stride) {
+					/* Metal does not support overlapping loads. Truncate format vector length to prevent an assertion
+					 * and hope it's not used by the shader. */
+					MTLVertexFormat newFormat = mvkAdjustFormatVectorToSize((MTLVertexFormat)mtlFormat, pVKVB->stride);
+					reportError(VK_SUCCESS, "Found attribute with size (%u) larger than it's binding's stride (%u). Changing descriptor format from %s to %s.",
+								attrSize, pVKVB->stride, getPixelFormats()->getName((MTLVertexFormat)mtlFormat), getPixelFormats()->getName(newFormat));
+					mtlFormat = (decltype(vaDesc.format))newFormat;
 				}
 			}
 
-			auto vaDesc = inputDesc.attributes[pVKVA->location];
-			auto mtlFormat = (decltype(vaDesc.format))getPixelFormats()->getMTLVertexFormat(pVKVA->format);
-			if (pVKVB->stride && attrSize > pVKVB->stride) {
-				/* Metal does not support overlapping loads. Truncate format vector length to prevent an assertion
-				 * and hope it's not used by the shader. */
-				MTLVertexFormat newFormat = mvkAdjustFormatVectorToSize((MTLVertexFormat)mtlFormat, pVKVB->stride);
-				reportError(VK_SUCCESS, "Found attribute with size (%u) larger than it's binding's stride (%u). Changing descriptor format from %s to %s.",
-					attrSize, pVKVB->stride, getPixelFormats()->getName((MTLVertexFormat)mtlFormat), getPixelFormats()->getName(newFormat));
-				mtlFormat = (decltype(vaDesc.format))newFormat;
-			}
 			vaDesc.format = mtlFormat;
 			vaDesc.bufferIndex = (decltype(vaDesc.bufferIndex))getMetalBufferIndexForVertexAttributeBinding(vaBinding);
 			vaDesc.offset = vaOffset;
@@ -1733,6 +1729,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
     shaderConfig.options.mslOptions.multiview = mvkIsMultiview(pRendInfo->viewMask);
     shaderConfig.options.mslOptions.multiview_layered_rendering = getPhysicalDevice()->canUseInstancingForMultiview();
     shaderConfig.options.mslOptions.view_index_from_device_index = mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT);
+	shaderConfig.options.mslOptions.replace_recursive_inputs = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0);
 #if MVK_MACOS
     shaderConfig.options.mslOptions.emulate_subgroups = !_device->_pMetalFeatures->simdPermute;
 #endif
@@ -2138,6 +2135,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     shaderConfig.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageCompute];
 	shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageCompute];
     shaderConfig.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageCompute];
+	shaderConfig.options.mslOptions.replace_recursive_inputs = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0);
 
     MVKMTLFunction func = ((MVKShaderModule*)pSS->module)->getMTLFunction(&shaderConfig, pSS->pSpecializationInfo, this, pStageFB);
 	if ( !func.getMTLFunction() ) {
