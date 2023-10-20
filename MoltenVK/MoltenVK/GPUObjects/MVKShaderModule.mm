@@ -421,7 +421,9 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 	}
 	conversionResult.msl += "};\n\n";
 	conversionResult.msl += "vertex " + entryName + "_passthru " + entryName + "PassThru(";
-	// FIXME: Emit parameters for XFB buffers and the other output buffer
+	// Emit parameters for XFB buffers and the other output buffer
+	for (const auto& output : vtxOutputs) {
+	}
 	conversionResult.msl += ")\n"
 		"{\n"
 		"    " + entryName + "_passthru out;\n";

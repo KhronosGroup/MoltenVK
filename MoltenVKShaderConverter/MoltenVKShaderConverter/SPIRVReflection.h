@@ -88,6 +88,12 @@ namespace mvk {
 
 		/** Whether this variable is actually used (read or written) by the shader. */
 		bool isUsed;
+
+		/**
+		 * The index of the transform feedback buffer, if this is an output captured
+		 * by transform feedback; otherwise, this will be -1.
+		 */
+		int32_t xfbBufferIndex;
 	};
 	typedef SPIRVShaderInterfaceVariable SPIRVShaderOutput;
 
@@ -345,7 +351,7 @@ namespace mvk {
 						SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
 						loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
 					} else {
-						vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
+						vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed, });
 						loc = addSat(loc, 1);
 					}
 				}
