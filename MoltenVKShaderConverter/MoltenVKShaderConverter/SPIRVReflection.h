@@ -94,6 +94,12 @@ namespace mvk {
 		 * by transform feedback; otherwise, this will be -1.
 		 */
 		int32_t xfbBufferIndex;
+
+		/**
+		 * The offset within the transform feedback buffer, if this is an output captured
+		 * by transform feedback.
+		 */
+		uint32_t xfbBufferOffset;
 	};
 	typedef SPIRVShaderInterfaceVariable SPIRVShaderOutput;
 
@@ -338,6 +344,12 @@ namespace mvk {
 				if (reflect.has_decoration(varID, spv::DecorationComponent)) {
 					cmp = reflect.get_decoration(varID, spv::DecorationComponent);
 				}
+				uint32_t xfbBuffer = -1;
+				uint32_t xfbOffset = 0;
+				if (reflect.has_decoration(varID, spv::DecorationOffset)) {
+					xfbBuffer = reflect.get_decoration(varID, spv::DecorationXfbBuffer);
+					xfbOffset = reflect.get_decoration(varID, spv::DecorationOffset);
+				}
 				// For tessellation shaders, peel away the initial array type. SPIRV-Cross adds the array back automatically.
 				// Only some builtins will be arrayed here.
 				if ((model == spv::ExecutionModelTessellationControl || (model == spv::ExecutionModelTessellationEvaluation && storage == spv::StorageClassInput)) && !patch &&
@@ -351,7 +363,7 @@ namespace mvk {
 						SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
 						loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
 					} else {
-						vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed, });
+						vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed, xfbBuffer, xfbOffset});
 						loc = addSat(loc, 1);
 					}
 				}
