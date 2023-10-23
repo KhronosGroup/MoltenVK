@@ -19,6 +19,8 @@
 #include "MVKShaderModule.h"
 #include "MVKPipeline.h"
 #include "MVKFoundation.h"
+#include <sstream>
+#include <unordered_map>
 
 using namespace std;
 
@@ -409,7 +411,11 @@ MVKGLSLConversionShaderStage MVKShaderModule::getMVKGLSLConversionShaderStage(SP
 void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName, SPIRVToMSLConversionResultInfo& conversionResult) {
 	SPIRVShaderOutputs vtxOutputs;
 	std::string errorLog;
+	std::unordered_map<uint32_t, std::vector<size_t>> xfbBuffers;
 	getShaderOutputs(getSPIRV(), spv::ExecutionModelVertex, entryName, vtxOutputs, errorLog);
+	for (size_t i = 0; i < vtxOutputs.size(); ++i) {
+		xfbBuffers[vtxOutputs[i].xfbBufferIndex].push_back(i);
+	}
 	// Normally, we'd need to sort the outputs into XFB buffers. But since we're appending to the
 	// original shader, we can just reuse those structs.
 	// FIXME: Do we want to use a "fast string concatenation" type here?
@@ -421,9 +427,17 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 	}
 	conversionResult.msl += "};\n\n";
 	conversionResult.msl += "vertex " + entryName + "_passthru " + entryName + "PassThru(";
+	std::ostringstream os;
 	// Emit parameters for XFB buffers and the other output buffer
-	for (const auto& output : vtxOutputs) {
+	for (const auto& buffer : xfbBuffers) {
+		if (!os.str().empty())
+			os << ", ";
+		if (buffer.first == -1)
+			os << "const device " << entryName << "_pt_misc* misc_in [[buffer(4)]]";
+		else
+			os << "const device " << entryName << "_pt_xfb" << buffer.first << "* xfb" << buffer.first << " [[buffer(" << buffer.first << ")]]";
 	}
+	conversionResult.msl += os.str();
 	conversionResult.msl += ")\n"
 		"{\n"
 		"    " + entryName + "_passthru out;\n";
