@@ -13,6 +13,15 @@ Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.2.7
+--------------
+
+Released TBD
+
+- Reduce disk space consumed after running `fetchDependencies` script by removing intermediate file caches.
+
+
+
 MoltenVK 1.2.6
 --------------
 

@@ -165,8 +165,8 @@ platforms and simulators. The `--visionos` and `--visionossim` selections must b
 with a separate invocation of `fetchDependencies`, because those selections require 
 Xcode 15+, and will cause a multi-platform build on older versions of Xcode to abort.
 
-Running `fetchDependencies` repeatedly with different platforms will accumulate 
-targets in the `XCFramework`.
+Running `fetchDependencies` repeatedly with different platforms will accumulate targets 
+in the `XCFramework`, if the `--keep-cache` option is used on each invocation.
 
 For more information about the external open-source libraries used by **MoltenVK**,
 see the [`ExternalRevisions/README.md`](ExternalRevisions/README.md) document.
