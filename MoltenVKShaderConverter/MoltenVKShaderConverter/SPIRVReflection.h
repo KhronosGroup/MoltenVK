@@ -93,7 +93,7 @@ namespace mvk {
 		 * The index of the transform feedback buffer, if this is an output captured
 		 * by transform feedback; otherwise, this will be -1.
 		 */
-		int32_t xfbBufferIndex;
+		uint32_t xfbBufferIndex;
 
 		/**
 		 * The offset within the transform feedback buffer, if this is an output captured

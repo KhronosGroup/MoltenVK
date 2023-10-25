@@ -408,6 +408,104 @@ MVKGLSLConversionShaderStage MVKShaderModule::getMVKGLSLConversionShaderStage(SP
 	}
 }
 
+static std::string mvkTypeToMSL(const SPIRVShaderOutput& output) {
+	std::ostringstream os;
+	switch (output.baseType) {
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Boolean:
+			os << "bool";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::SByte:
+			os << "char";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UByte:
+			os << "uchar";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Short:
+			os << "short";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UShort:
+			os << "ushort";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Int:
+			os << "int";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UInt:
+			os << "uint";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Int64:
+			os << "long";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UInt64:
+			os << "ulong";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Half:
+			os << "half";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Float:
+			os << "float";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Double:
+			os << "double";
+			break;
+		default:
+			os << "unknown";
+			break;
+	}
+	if (output.vecWidth > 1) {
+		os << output.vecWidth;
+	}
+	return os.str();
+}
+
+static std::string mvkBuiltInToName(spv::BuiltIn builtin) {
+	switch (builtin) {
+		case spv::BuiltInPosition:
+			return "gl_Position";
+		case spv::BuiltInPointSize:
+			return "gl_PointSize";
+		case spv::BuiltInClipDistance:
+			return "gl_ClipDistance";
+		case spv::BuiltInCullDistance:
+			return "gl_CullDistance";
+		default:
+			// No other builtins should appear as a vertex shader output.
+			return "unknown";
+	}
+}
+
+static std::string mvkBuiltInToAttr(spv::BuiltIn builtin) {
+	switch (builtin) {
+		case spv::BuiltInPosition:
+			return "position";
+		case spv::BuiltInPointSize:
+			return "point_size";
+		case spv::BuiltInClipDistance:
+			return "clip_distance";
+		case spv::BuiltInCullDistance:
+			// XXX This doesn't have a Metal equivalent.
+			return "cull_distance";
+		default:
+			// No other builtins should appear as a vertex shader output.
+			return "unknown";
+	}
+}
+
+static std::string mvkVertexAttrToName(const SPIRVShaderOutput& output) {
+	std::ostringstream os;
+	os << "m" << output.location;
+	if (output.component > 0)
+		os << "_" << output.component;
+	return os.str();
+}
+
+static std::string mvkVertexAttrToUserAttr(const SPIRVShaderOutput& output) {
+	std::ostringstream os;
+	os << "locn" << output.location;
+	if (output.component > 0)
+		os << "_" << output.component;
+	return os.str();
+}
+
 void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName, SPIRVToMSLConversionResultInfo& conversionResult) {
 	SPIRVShaderOutputs vtxOutputs;
 	std::string errorLog;
@@ -416,14 +514,19 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 	for (size_t i = 0; i < vtxOutputs.size(); ++i) {
 		xfbBuffers[vtxOutputs[i].xfbBufferIndex].push_back(i);
 	}
-	// Normally, we'd need to sort the outputs into XFB buffers. But since we're appending to the
-	// original shader, we can just reuse those structs.
 	// FIXME: Do we want to use a "fast string concatenation" type here?
 	conversionResult.msl += "\n"
 		"struct " + entryName + "_passthru\n"
 		"{\n";
 	for (const auto& output : vtxOutputs) {
-		// FIXME: Get SPIRV-Cross to emit this!
+		conversionResult.msl += "    " + mvkTypeToMSL(output) + " ";
+		if (output.builtin != spv::BuiltInMax) {
+			// FIXME: Clip/cull distances aren't handled properly here!
+			conversionResult.msl += mvkBuiltInToName(output.builtin) + " [[" + mvkBuiltInToAttr(output.builtin) + "]]";
+		} else {
+			conversionResult.msl += mvkVertexAttrToName(output) + " [[user(" + mvkVertexAttrToUserAttr(output) + "]]";
+		}
+		conversionResult.msl += ";\n";
 	}
 	conversionResult.msl += "};\n\n";
 	conversionResult.msl += "vertex " + entryName + "_passthru " + entryName + "PassThru(";
