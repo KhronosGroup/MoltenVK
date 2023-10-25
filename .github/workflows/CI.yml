@@ -10,12 +10,12 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 # See the following, which includes links to supported macOS versions, including supported Xcode versions
-# https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
+# https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
 jobs:
   build:
     strategy:
       matrix:
-        xcode: [ "14.3.1" ]
+        xcode: [ "15.0" ]
         platform: [ "all", "macos", "ios" ]
         os: [ "macos-13" ]
         upload_artifacts: [ true ]

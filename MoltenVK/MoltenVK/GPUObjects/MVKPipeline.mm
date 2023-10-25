@@ -2506,7 +2506,8 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.force_sample_rate_shading,
 				opt.manual_helper_invocation_updates,
 				opt.check_discarded_frag_stores,
-				opt.sample_dref_lod_array_as_grad);
+				opt.sample_dref_lod_array_as_grad,
+				opt.replace_recursive_inputs);
 	}
 
 	template<class Archive>
