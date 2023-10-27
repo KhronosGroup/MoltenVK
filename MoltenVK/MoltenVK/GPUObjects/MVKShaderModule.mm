@@ -544,7 +544,30 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 	conversionResult.msl += ")\n"
 		"{\n"
 		"    " + entryName + "_passthru out;\n";
-	// FIXME: Emit loads from the XFB buffers and stores to stage out
+	// Emit loads from the XFB buffers and stores to stage out
+	for (const auto& output : vtxOutputs) {
+		std::ostringstream loadStore;
+		loadStore << "out.";
+		if (output.builtin != spv::BuiltInMax) {
+			// FIXME: Clip/cull distances aren't handled properly here!
+			loadStore << mvkBuiltInToName(output.builtin);
+		} else {
+			loadStore << mvkVertexAttrToName(output);
+		}
+		loadStore << " = ";
+		if (output.xfbBufferIndex == -1) {
+			loadStore << "misc_in[gl_VertexIndex].";
+		} else {
+			loadStore << "xfb" << output.xfbBufferIndex << "[gl_VertexIndex].";
+		}
+		if (output.builtin != spv::BuiltInMax) {
+			// FIXME: Clip/cull distances aren't handled properly here!
+			loadStore << mvkBuiltInToName(output.builtin);
+		} else {
+			loadStore << mvkVertexAttrToName(output);
+		}
+		conversionResult.msl += "    " + loadStore.str() + ";";
+	}
 	conversionResult.msl += "    return out;\n"
 		"}\n";
 }
