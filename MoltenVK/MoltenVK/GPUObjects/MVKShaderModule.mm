@@ -514,6 +514,20 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 	for (size_t i = 0; i < vtxOutputs.size(); ++i) {
 		xfbBuffers[vtxOutputs[i].xfbBufferIndex].push_back(i);
 	}
+	// Sort XFB buffers by offset; sort the other outputs by index.
+	for (const auto& buffer : xfbBuffers) {
+		if (buffer.first == (uint32_t)(-1)) {
+			std::sort(buffer.second.begin(), buffer.second.end(), [&vtxOutputs](uint32_t a, uint32_t b) {
+				if (vtxOutputs[a].location == vtxOutputs[b].location)
+					return vtxOutputs[a].component < vtxOutputs[b].component;
+				return vtxOutputs[a].location < vtxOutputs[b].location;
+			});
+		} else {
+			std::sort(buffer.second.begin(), buffer.second.end(), [&vtxOutputs](uint32_t a, uint32_t b) {
+				return vtxOutputs[a].xfbBufferOffset < vtxOutputs[b].xfbBufferOffset;
+			});
+		}
+	}
 	// FIXME: Do we want to use a "fast string concatenation" type here?
 	conversionResult.msl += "\n"
 		"struct " + entryName + "_passthru\n"
