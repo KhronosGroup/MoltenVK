@@ -528,7 +528,45 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 			});
 		}
 	}
+	// Emit the buffer structures used by the passthrough function. We can't
+	// reuse the ones from SPIRV-Cross because the reflection gave us the vertex
+	// outputs broken up (no structs or arrays), but SPIRV-Cross has the
+	// structs and arrays intact. Mapping between the two is difficult without
+	// additional information and code.
 	// FIXME: Do we want to use a "fast string concatenation" type here?
+	conversionResult.msl += "\n";
+	for (const auto& buffer : xfbBuffers) {
+		if (buffer.first == (uint32_t)(-1)) {
+			conversionResult.msl += "struct " + entryName + "_pt_misc\n"
+				"{\n";
+		} else {
+			std::ostringstream os;
+			os << "struct " << entryName + "_pt_xfb" << buffer.first << "\n";
+			conversionResult.msl += os.str() + "{\n";
+		}
+		uint32_t offset = 0;
+		uint32_t padNo = 0;
+		for (const auto& outputIdx : buffer.second) {
+			if (offset != vtxOutputs[outputIdx].xfbBufferOffset) {
+				// Emit padding to put us at the right offset.
+				std::ostringstream os;
+				os << "    char pad" << padNo++ << "[" << vtxOutputs[outputIdx].xfbBufferOffset - offset << "];\n";
+				conversionResult.msl += os.str();
+			}
+			// If the offset isn't at the natural alignment of the type, we'll have to use a packed type.
+			conversionResult.msl += "    " + mvkTypeToMSL(vtxOutputs[outputIdx]) + " ";
+			if (output.builtin != spv::BuiltInMax) {
+				// FIXME: Clip/cull distances aren't handled properly here!
+				conversionResult.msl += mvkBuiltInToName(vtxOutputs[outputIdx].builtin);
+			} else {
+				conversionResult.msl += mvkVertexAttrToName(vtxOutputs[outputIdx]);
+			}
+			conversionResult.msl += ";\n";
+		}
+		// FIXME: Additional padding for buffer stride
+		conversionResult.msl += "};\n";
+	}
+	// Emit the vertex stage output structure.
 	conversionResult.msl += "\n"
 		"struct " + entryName + "_passthru\n"
 		"{\n";
@@ -545,7 +583,7 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 	conversionResult.msl += "};\n\n";
 	conversionResult.msl += "vertex " + entryName + "_passthru " + entryName + "PassThru(";
 	std::ostringstream os;
-	// Emit parameters for XFB buffers and the other output buffer
+	// Emit parameters for XFB buffers and the other output buffer.
 	for (const auto& buffer : xfbBuffers) {
 		if (!os.str().empty())
 			os << ", ";
@@ -558,7 +596,7 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 	conversionResult.msl += ")\n"
 		"{\n"
 		"    " + entryName + "_passthru out;\n";
-	// Emit loads from the XFB buffers and stores to stage out
+	// Emit loads from the XFB buffers and stores to stage out.
 	for (const auto& output : vtxOutputs) {
 		std::ostringstream loadStore;
 		loadStore << "out.";
