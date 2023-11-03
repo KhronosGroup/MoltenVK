@@ -91,7 +91,10 @@ id<MTLTexture> MVKImagePlane::getMTLTexture(MTLPixelFormat mtlPixFmt) {
         lock_guard<mutex> lock(_image->_lock);
         mtlTex = _mtlTextureViews[mtlPixFmt];
         if ( !mtlTex ) {
-            mtlTex = [baseTexture newTextureViewWithPixelFormat: mtlPixFmt];    // retained
+            if ([baseTexture pixelFormat] == mtlPixFmt)
+                mtlTex = [baseTexture retain];
+            else
+                mtlTex = [baseTexture newTextureViewWithPixelFormat: mtlPixFmt];    // retained
             _mtlTextureViews[mtlPixFmt] = mtlTex;
         }
     }
