@@ -39,6 +39,11 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
 
+      # Python 3.12 removed distutils, which is used by glslang::update_glslang_sources.py called from fetchDependencies
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
       - name: Select Xcode version
         run: sudo xcode-select -switch "${XCODE_DEV_PATH}"
 
