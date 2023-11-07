@@ -506,6 +506,35 @@ static std::string mvkVertexAttrToUserAttr(const SPIRVShaderOutput& output) {
 	return os.str();
 }
 
+static uint32_t mvkSizeOfOutput(const SPIRVShaderOutput& output) {
+	uint32_t size = 0;
+	switch (output.baseType) {
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Boolean:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::SByte:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UByte:
+			size = 1;
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Short:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UShort:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Half:
+			size = 2;
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Int:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UInt:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Float:
+			size = 4;
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Int64:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UInt64:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Double:
+			size = 8;
+			break;
+		default:
+			break;
+	}
+	return size * (output.vecWidth == 0 ? 1 : output.vecWidth);
+}
+
 void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName, SPIRVToMSLConversionResultInfo& conversionResult) {
 	SPIRVShaderOutputs vtxOutputs;
 	std::string errorLog;
@@ -546,6 +575,7 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 		}
 		uint32_t offset = 0;
 		uint32_t padNo = 0;
+		uint32_t stride = vtxOutputs[buffer.second[0]].xfbBufferStride;
 		for (const auto& outputIdx : buffer.second) {
 			if (offset != vtxOutputs[outputIdx].xfbBufferOffset) {
 				// Emit padding to put us at the right offset.
@@ -554,7 +584,10 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 				conversionResult.msl += os.str();
 			}
 			// If the offset isn't at the natural alignment of the type, we'll have to use a packed type.
-			conversionResult.msl += "    " + mvkTypeToMSL(vtxOutputs[outputIdx]) + " ";
+			conversionResult.msl += "    ";
+			if (offset % mvkEnsurePowerOfTwo(mvkSizeOfOutput(vtxOutputs[outputIdx])) != 0)
+				conversionResult.msl += "packed_";
+			conversionResult.msl +=	mvkTypeToMSL(vtxOutputs[outputIdx]) + " ";
 			if (output.builtin != spv::BuiltInMax) {
 				// FIXME: Clip/cull distances aren't handled properly here!
 				conversionResult.msl += mvkBuiltInToName(vtxOutputs[outputIdx].builtin);
@@ -562,8 +595,12 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 				conversionResult.msl += mvkVertexAttrToName(vtxOutputs[outputIdx]);
 			}
 			conversionResult.msl += ";\n";
+			offset = vtxOutputs[outputIdx].xfbBufferOffset + mvkSizeOfOutput(vtxOutputs[outputIdx]);
 		}
-		// FIXME: Additional padding for buffer stride
+		// Emit additional padding for the buffer stride.
+		if (stride != offset) {
+			conversionResult.msl += "    char pad" << padNo++ << "[" << stride - offset << "];\n";
+		}
 		conversionResult.msl += "};\n";
 	}
 	// Emit the vertex stage output structure.
