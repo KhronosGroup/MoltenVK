@@ -476,17 +476,19 @@ static std::string mvkBuiltInToName(const SPIRVShaderOutput& output) {
 	}
 }
 
-static std::string mvkBuiltInToAttr(spv::BuiltIn builtin) {
-	switch (builtin) {
+static std::string mvkBuiltInToAttr(const SPIRVShaderOutput& output) {
+	std::ostringstream os;
+	switch (output.builtin) {
 		case spv::BuiltInPosition:
 			return "position";
 		case spv::BuiltInPointSize:
 			return "point_size";
 		case spv::BuiltInClipDistance:
-			return "clip_distance";
+			os << "user(clip" << output.arrayIndex << ")";
+			return os.str();
 		case spv::BuiltInCullDistance:
-			// XXX This doesn't have a Metal equivalent.
-			return "cull_distance";
+			os << "user(cull" << output.arrayIndex << ")";
+			return os.str();
 		default:
 			// No other builtins should appear as a vertex shader output.
 			return "unknown";
@@ -513,6 +515,7 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 	SPIRVShaderOutputs vtxOutputs;
 	std::string errorLog;
 	std::unordered_map<uint32_t, std::vector<size_t>> xfbBuffers;
+	uint32_t clipDistances = 0;
 	getShaderOutputs(getSPIRV(), spv::ExecutionModelVertex, entryName, vtxOutputs, errorLog);
 	for (size_t i = 0; i < vtxOutputs.size(); ++i) {
 		xfbBuffers[vtxOutputs[i].xfbBufferIndex].push_back(i);
@@ -585,11 +588,19 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 	for (const auto& output : vtxOutputs) {
 		conversionResult.msl += "    " + mvkTypeToMSL(output) + " ";
 		if (output.builtin != spv::BuiltInMax) {
-			conversionResult.msl += mvkBuiltInToName(output) + " [[" + mvkBuiltInToAttr(output.builtin) + "]]";
+			conversionResult.msl += mvkBuiltInToName(output) + " [[" + mvkBuiltInToAttr(output) + "]]";
+			if (output.builtin == spv::BuiltInClipDistance) {
+				clipDistances++;
+			}
 		} else {
 			conversionResult.msl += mvkVertexAttrToName(output) + " [[user(" + mvkVertexAttrToUserAttr(output) + "]]";
 		}
 		conversionResult.msl += ";\n";
+	}
+	if (clipDistances > 0) {
+		std::ostringstream os;
+		os << "    float gl_ClipDistance [[clip_distance]] [" << clipDistances << "];\n";
+		conversionResult.msl += os.str();
 	}
 	conversionResult.msl += "};\n\n";
 	conversionResult.msl += "vertex " + entryName + "_passthru " + entryName + "PassThru(";
@@ -627,7 +638,18 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 		} else {
 			loadStore << mvkVertexAttrToName(output);
 		}
-		conversionResult.msl += "    " + loadStore.str() + ";";
+		conversionResult.msl += "    " + loadStore.str() + ";\n";
+		if (output.builtin == spv::BuiltInClipDistance) {
+			std::ostringstream clipLoadStore;
+			clipLoadStore << "out.gl_ClipDistance[" << output.arrayIndex << "] = ";
+			if (output.xfbBufferIndex == -1) {
+				clipLoadStore << "misc_in[gl_VertexIndex].";
+			} else {
+				clipLoadStore << "xfb" << output.xfbBufferIndex << "[gl_VertexIndex].";
+			}
+			clipLoadStore << mvkBuiltInToName(output);
+			conversionResult.msl += "    " + clipLoadStore.str() + ";\n";
+		}
 	}
 	conversionResult.msl += "    return out;\n"
 		"}\n";
