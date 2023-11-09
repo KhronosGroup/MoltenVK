@@ -74,6 +74,9 @@ namespace mvk {
 		/** The component index of the variable. */
 		uint32_t component;
 
+		/** The array index, if this is an array, or -1 otherwise. */
+		uint32_t arrayIndex;
+
 		/**
 		 * If this is the first member of a struct, this will contain the alignment
 		 * of the struct containing this variable, otherwise this will be zero.
@@ -281,7 +284,7 @@ namespace mvk {
 				else {
 					// The alignment of a structure is the same as the largest member of the structure.
 					// Consequently, the first flattened member of a structure should align with structure itself.
-					vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
+					vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, 0, biType, patch, isUsed});
 					auto& currOutput = vars.back();
 					if ( !pFirstMember ) { pFirstMember = &currOutput; }
 					pFirstMember->firstStructMemberAlignment = std::max(pFirstMember->firstStructMemberAlignment, getShaderOutputSize(currOutput));
@@ -371,7 +374,7 @@ namespace mvk {
 						SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
 						loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
 					} else {
-						vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed, xfbBuffer, xfbOffset, xfbStride});
+						vars.push_back({type->basetype, type->vecsize, loc, cmp, i, 0, biType, patch, isUsed, xfbBuffer, xfbOffset, xfbStride});
 						loc = addSat(loc, 1);
 					}
 				}
