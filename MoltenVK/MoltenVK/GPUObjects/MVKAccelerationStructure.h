@@ -83,7 +83,7 @@ public:
     MVKBuffer* getMVKBuffer() { return _buffer; }
     
     /** Gets the heap allocation that the acceleration structure, and buffer share*/
-    id<MTLHeap> getMTLHeap() { return _heap; }
+    id<MTLHeap> getMTLHeap() { return _heap; }
 #pragma mark -
 #pragma mark Construction
     MVKAccelerationStructure(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}

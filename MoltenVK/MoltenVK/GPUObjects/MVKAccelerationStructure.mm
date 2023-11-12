@@ -26,10 +26,6 @@ id<MTLAccelerationStructure> MVKAccelerationStructure::getMTLAccelerationStructu
     return _accelerationStructure;
 }
 
-MVKBuffer* MVKAccelerationStructure::getMVKBuffer() {
-    return _buffer;
-}
-
 VkAccelerationStructureBuildSizesInfoKHR MVKAccelerationStructure::getBuildSizes()
 {
     VkAccelerationStructureBuildSizesInfoKHR vkBuildSizes{};
