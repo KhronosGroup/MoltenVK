@@ -19,6 +19,8 @@ MoltenVK 1.2.7
 Released TBD
 
 - Reduce disk space consumed after running `fetchDependencies` script by removing intermediate file caches.
+- Update to latest SPIRV-Cross:
+  - MSL: Fix regression error in argument buffer runtime arrays.
 
 
 
@@ -61,6 +63,7 @@ MoltenVK 1.2.5
 Released 2023/08/15
 
 - Add support for extensions:
+	- `VK_KHR_deferred_host_operations`
 	- `VK_KHR_incremental_present`
 	- `VK_KHR_shader_non_semantic_info`
 	- `VK_EXT_4444_formats`

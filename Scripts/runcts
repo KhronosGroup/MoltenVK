@@ -122,8 +122,12 @@ start_time=${SECONDS}
 
 "${cts_vk_dir}/deqp-vk"                    \
 --deqp-archive-dir="${cts_vk_dir}/.."      \
+--deqp-log-filename="/dev/null"            \
 --deqp-log-images=disable                  \
 --deqp-log-shader-sources=disable          \
+--deqp-shadercache=disable                 \
+--deqp-log-decompiled-spirv=disable        \
+--deqp-log-flush=disable                   \
 --deqp-caselist-file="${caselist_file}"    \
 &> "${results_file}"
 

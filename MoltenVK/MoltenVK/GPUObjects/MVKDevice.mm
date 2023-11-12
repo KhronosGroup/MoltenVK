@@ -2208,6 +2208,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if ([_mtlDevice respondsToSelector: @selector(argumentBuffersSupport)]) {
 		_metalFeatures.argumentBuffersTier = _mtlDevice.argumentBuffersSupport;
+	} else {
+		_metalFeatures.argumentBuffersTier = MTLArgumentBuffersTier1;
 	}
 
 #define checkSupportsMTLCounterSamplingPoint(mtlSP, mvkSP)  \
