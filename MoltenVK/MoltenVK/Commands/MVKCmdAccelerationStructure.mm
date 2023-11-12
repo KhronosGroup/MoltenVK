@@ -211,7 +211,6 @@ VkResult MVKCmdCopyAccelerationStructure::setContent(MVKCommandBuffer*          
 
 void MVKCmdCopyAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseCopyAccelerationStructure);
-    
     if(_copyMode == VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR)
     {
         [accStructEncoder
