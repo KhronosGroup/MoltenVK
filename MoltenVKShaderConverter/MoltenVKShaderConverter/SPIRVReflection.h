@@ -258,8 +258,10 @@ namespace mvk {
 	static inline uint32_t getShaderInterfaceStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
 														   Vi& vars, SPIRVShaderInterfaceVariable* pParentFirstMember,
 														   const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
-														   bool patch, uint32_t loc) {
+														   bool patch, uint32_t loc, uint32_t xfbBuffer, uint32_t xfbOffset
+														   uint32_t xfbStride) {
 		bool isUsed = true;
+		bool isBlock = reflect.has_decoration(structType->self, spv::DecorationBlock);
 		auto biType = spv::BuiltInMax;
 		SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
 		size_t mbrCnt = structType->member_types.size();
@@ -271,6 +273,11 @@ namespace mvk {
 				loc = reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationLocation);
 				cmp = reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationComponent);
 			}
+			uint32_t structOffset = reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationOffset);
+			if (isBlock && reflect.has_member_decoration(structType->self, mbrIdx, spv::DecorationOffset)) {
+				xfbBuffer = reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationXfbBuffer);
+				xfbStride = reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationXfbStride);
+			}
 			patch = patch || reflect.has_member_decoration(structType->self, mbrIdx, spv::DecorationPatch);
 			if (reflect.has_member_decoration(structType->self, mbrIdx, spv::DecorationBuiltIn)) {
 				biType = (spv::BuiltIn)reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationBuiltIn);
@@ -279,12 +286,12 @@ namespace mvk {
 			const SPIRV_CROSS_NAMESPACE::SPIRType* type = &reflect.get_type(structType->member_types[mbrIdx]);
 			uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
 			for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
-				if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct)
-					loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
-				else {
+				if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct) {
+					loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc, xfbBuffer, xfbOffset + structOffset, xfbStride);
+				} else {
 					// The alignment of a structure is the same as the largest member of the structure.
 					// Consequently, the first flattened member of a structure should align with structure itself.
-					vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, 0, biType, patch, isUsed});
+					vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, 0, biType, patch, isUsed, xfbBuffer, xfbOffset + structOffset, xfbStride});
 					auto& currOutput = vars.back();
 					if ( !pFirstMember ) { pFirstMember = &currOutput; }
 					pFirstMember->firstStructMemberAlignment = std::max(pFirstMember->firstStructMemberAlignment, getShaderOutputSize(currOutput));
@@ -307,7 +314,7 @@ namespace mvk {
 														Vo& outputs, SPIRVShaderOutput* pParentFirstMember,
 														const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
 														bool patch, uint32_t loc) {
-		return getShaderInterfaceStructMembers(reflect, outputs, pParentFirstMember, structType, storage, patch, loc);
+		return getShaderInterfaceStructMembers(reflect, outputs, pParentFirstMember, structType, storage, patch, loc, 0, 0, 0);
 	}
 
 	/** Given a shader in SPIR-V format, returns interface reflection data. */
@@ -372,7 +379,7 @@ namespace mvk {
 				for (uint32_t i = 0; i < elemCnt; i++) {
 					if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct) {
 						SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
-						loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
+						loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc, xfbBuffer, xfbOffset, xfbStride);
 					} else {
 						vars.push_back({type->basetype, type->vecsize, loc, cmp, i, 0, biType, patch, isUsed, xfbBuffer, xfbOffset, xfbStride});
 						loc = addSat(loc, 1);
