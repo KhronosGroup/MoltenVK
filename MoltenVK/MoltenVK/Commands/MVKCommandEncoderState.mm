@@ -45,8 +45,11 @@ bool MVKCommandEncoderState::isDynamicState(MVKRenderStateType state) {
 #pragma mark MVKPipelineCommandEncoderState
 
 void MVKPipelineCommandEncoderState::bindPipeline(MVKPipeline* pipeline) {
-    if (pipeline != _pipeline) markDirty();
-    _pipeline = pipeline;
+	if (pipeline == _pipeline) { return; }
+
+	_pipeline = pipeline;
+	_pipeline->wasBound(_cmdEncoder);
+	markDirty();
 }
 
 MVKPipeline* MVKPipelineCommandEncoderState::getPipeline() { return _pipeline; }
@@ -56,23 +59,6 @@ void MVKPipelineCommandEncoderState::encodeImpl(uint32_t stage) {
 		_pipeline->encode(_cmdEncoder, stage);
 		_pipeline->bindPushConstants(_cmdEncoder);
 	}
-}
-
-
-#pragma mark -
-#pragma mark MVKGraphicsPipelineCommandEncoderState
-
-void MVKGraphicsPipelineCommandEncoderState::bindPipeline(MVKPipeline* pipeline) {
-	MVKPipelineCommandEncoderState::bindPipeline(pipeline);
-	_patchControlPoints[StateScope::Static] = getGraphicsPipeline()->_tessInfo.patchControlPoints;
-}
-
-void MVKGraphicsPipelineCommandEncoderState::setPatchControlPoints(uint32_t patchControlPoints) {
-	_patchControlPoints[StateScope::Dynamic] = patchControlPoints;
-}
-
-uint32_t MVKGraphicsPipelineCommandEncoderState::getPatchControlPoints() {
-	return getContent(_patchControlPoints, PatchControlPoints);
 }
 
 
@@ -310,60 +296,43 @@ void MVKDepthStencilCommandEncoderState::encodeImpl(uint32_t stage) {
 #pragma mark -
 #pragma mark MVKRenderingCommandEncoderState
 
-#define getContent(state)  getContent(_mtl##state, state)
-#define setContent(state)  setContent(_mtl##state, &mtl##state, state, isDynamic)
+#define getMTLContent(state)  getContent(_mtl##state, state)
+#define setMTLContent(state)  setContent(_mtl##state, &mtl##state, state, isDynamic)
 
 void MVKRenderingCommandEncoderState::setCullMode(VkCullModeFlags cullMode, bool isDynamic) {
 	auto mtlCullMode = mvkMTLCullModeFromVkCullModeFlags(cullMode);
-	setContent(CullMode);
+	setMTLContent(CullMode);
 	_cullBothFaces[isDynamic ? StateScope::Dynamic : StateScope::Static] = (cullMode == VK_CULL_MODE_FRONT_AND_BACK);
 }
 
 void MVKRenderingCommandEncoderState::setFrontFace(VkFrontFace frontFace, bool isDynamic) {
 	auto mtlFrontFace = mvkMTLWindingFromVkFrontFace(frontFace);
-	setContent(FrontFace);
-}
-
-void MVKRenderingCommandEncoderState::setPrimitiveTopology(VkPrimitiveTopology topology, bool isDynamic) {
-	auto mtlPrimitiveTopology = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(topology);
-	setContent(PrimitiveTopology);
-}
-
-MTLPrimitiveType MVKRenderingCommandEncoderState::getPrimitiveType() {
-	return getContent(PrimitiveTopology);
-}
-
-bool MVKRenderingCommandEncoderState::isDrawingTriangles() {
-	switch (getPrimitiveType()) {
-		case MTLPrimitiveTypeTriangle:      return true;
-		case MTLPrimitiveTypeTriangleStrip: return true;
-		default:                            return false;
-	}
+	setMTLContent(FrontFace);
 }
 
 void MVKRenderingCommandEncoderState::setPolygonMode(VkPolygonMode polygonMode, bool isDynamic) {
 	auto mtlPolygonMode = mvkMTLTriangleFillModeFromVkPolygonMode(polygonMode);
-	setContent(PolygonMode);
+	setMTLContent(PolygonMode);
 }
 
 void MVKRenderingCommandEncoderState::setBlendConstants(float blendConstants[4], bool isDynamic) {
 	MVKColor32 mtlBlendConstants;
 	mvkCopy(mtlBlendConstants.float32, blendConstants, 4);
-	setContent(BlendConstants);
+	setMTLContent(BlendConstants);
 }
 
 void MVKRenderingCommandEncoderState::setDepthBias(const VkPipelineRasterizationStateCreateInfo& vkRasterInfo) {
 	bool isDynamic = false;
 
 	bool mtlDepthBiasEnable = static_cast<bool>(vkRasterInfo.depthBiasEnable);
-	setContent(DepthBiasEnable);
+	setMTLContent(DepthBiasEnable);
 
 	MVKDepthBias mtlDepthBias = {
 		.depthBiasConstantFactor = vkRasterInfo.depthBiasConstantFactor,
 		.depthBiasSlopeFactor = vkRasterInfo.depthBiasSlopeFactor,
 		.depthBiasClamp = vkRasterInfo.depthBiasClamp
 	};
-	setContent(DepthBias);
+	setMTLContent(DepthBias);
 }
 
 void MVKRenderingCommandEncoderState::setDepthBias(float depthBiasConstantFactor,
@@ -375,18 +344,18 @@ void MVKRenderingCommandEncoderState::setDepthBias(float depthBiasConstantFactor
 		.depthBiasSlopeFactor = depthBiasSlopeFactor,
 		.depthBiasClamp = depthBiasClamp
 	};
-	setContent(DepthBias);
+	setMTLContent(DepthBias);
 }
 
 void MVKRenderingCommandEncoderState::setDepthBiasEnable(VkBool32 depthBiasEnable) {
 	bool isDynamic = true;
 	bool mtlDepthBiasEnable = static_cast<bool>(depthBiasEnable);
-	setContent(DepthBiasEnable);
+	setMTLContent(DepthBiasEnable);
 }
 
 void MVKRenderingCommandEncoderState::setDepthClipEnable(bool depthClip, bool isDynamic) {
 	auto mtlDepthClipEnable = depthClip ? MTLDepthClipModeClip : MTLDepthClipModeClamp;
-	setContent(DepthClipEnable);
+	setMTLContent(DepthClipEnable);
 }
 
 void MVKRenderingCommandEncoderState::setStencilReferenceValues(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo) {
@@ -395,7 +364,7 @@ void MVKRenderingCommandEncoderState::setStencilReferenceValues(const VkPipeline
 		.frontFaceValue = vkDepthStencilInfo.front.reference,
 		.backFaceValue = vkDepthStencilInfo.back.reference
 	};
-	setContent(StencilReference);
+	setMTLContent(StencilReference);
 }
 
 void MVKRenderingCommandEncoderState::setStencilReferenceValues(VkStencilFaceFlags faceMask, uint32_t stencilReference) {
@@ -403,7 +372,7 @@ void MVKRenderingCommandEncoderState::setStencilReferenceValues(VkStencilFaceFla
 	MVKStencilReference mtlStencilReference = _mtlStencilReference[StateScope::Dynamic];
 	if (shouldUpdateFace(FRONT)) { mtlStencilReference.frontFaceValue = stencilReference; }
 	if (shouldUpdateFace(BACK)) { mtlStencilReference.backFaceValue = stencilReference; }
-	setContent(StencilReference);
+	setMTLContent(StencilReference);
 }
 
 void MVKRenderingCommandEncoderState::setViewports(const MVKArrayRef<VkViewport> viewports,
@@ -418,7 +387,7 @@ void MVKRenderingCommandEncoderState::setViewports(const MVKArrayRef<VkViewport>
 		mtlViewports.viewports[firstViewport + vpIdx] = mvkMTLViewportFromVkViewport(viewports[vpIdx]);
 		mtlViewports.viewportCount = max(mtlViewports.viewportCount, vpIdx + 1);
 	}
-	setContent(Viewports);
+	setMTLContent(Viewports);
 }
 
 void MVKRenderingCommandEncoderState::setScissors(const MVKArrayRef<VkRect2D> scissors,
@@ -433,17 +402,118 @@ void MVKRenderingCommandEncoderState::setScissors(const MVKArrayRef<VkRect2D> sc
 		mtlScissors.scissors[firstScissor + sIdx] = mvkMTLScissorRectFromVkRect2D(scissors[sIdx]);
 		mtlScissors.scissorCount = max(mtlScissors.scissorCount, sIdx + 1);
 	}
-	setContent(Scissors);
+	setMTLContent(Scissors);
 }
 
 void MVKRenderingCommandEncoderState::setPrimitiveRestartEnable(VkBool32 primitiveRestartEnable, bool isDynamic) {
 	bool mtlPrimitiveRestartEnable = static_cast<bool>(primitiveRestartEnable);
-	setContent(PrimitiveRestartEnable);
+	setMTLContent(PrimitiveRestartEnable);
 }
 
 void MVKRenderingCommandEncoderState::setRasterizerDiscardEnable(VkBool32 rasterizerDiscardEnable, bool isDynamic) {
 	bool mtlRasterizerDiscardEnable = static_cast<bool>(rasterizerDiscardEnable);
-	setContent(RasterizerDiscardEnable);
+	setMTLContent(RasterizerDiscardEnable);
+}
+
+// This value is retrieved, not encoded, so don't mark this encoder as dirty.
+void MVKRenderingCommandEncoderState::setPrimitiveTopology(VkPrimitiveTopology topology, bool isDynamic) {
+	getContent(_mtlPrimitiveTopology, isDynamic) = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(topology);
+}
+
+MTLPrimitiveType MVKRenderingCommandEncoderState::getPrimitiveType() {
+	return getMTLContent(PrimitiveTopology);
+}
+
+bool MVKRenderingCommandEncoderState::isDrawingTriangles() {
+	switch (getPrimitiveType()) {
+		case MTLPrimitiveTypeTriangle:      return true;
+		case MTLPrimitiveTypeTriangleStrip: return true;
+		default:                            return false;
+	}
+}
+
+// This value is retrieved, not encoded, so don't mark this encoder as dirty.
+void MVKRenderingCommandEncoderState::setPatchControlPoints(uint32_t patchControlPoints, bool isDynamic) {
+	getContent(_mtlPatchControlPoints, isDynamic) = patchControlPoints;
+}
+
+uint32_t MVKRenderingCommandEncoderState::getPatchControlPoints() {
+	return getMTLContent(PatchControlPoints);
+}
+
+void MVKRenderingCommandEncoderState::setSampleLocationsEnable(VkBool32 sampleLocationsEnable, bool isDynamic) {
+	bool slEnbl = static_cast<bool>(sampleLocationsEnable);
+	auto& mtlSampLocEnbl = getContent(_mtlSampleLocationsEnable, isDynamic);
+
+	if (slEnbl == mtlSampLocEnbl) { return; }
+
+	mtlSampLocEnbl = slEnbl;
+
+	// This value is retrieved, not encoded, so don't mark this encoder as dirty.
+	_dirtyStates.enable(SampleLocationsEnable);
+}
+
+void MVKRenderingCommandEncoderState::setSampleLocations(MVKArrayRef<VkSampleLocationEXT> sampleLocations, bool isDynamic) {
+	auto& mtlSampPosns = getContent(_mtlSampleLocations, isDynamic);
+	size_t slCnt = sampleLocations.size();
+
+	// When comparing new vs current, make use of fact that MTLSamplePosition & VkSampleLocationEXT have same memory footprint.
+	if (slCnt == mtlSampPosns.size() &&
+		mvkAreEqual((MTLSamplePosition*)sampleLocations.data(),
+					mtlSampPosns.data(), slCnt)) {
+		return;
+	}
+
+	mtlSampPosns.clear();
+	for (uint32_t slIdx = 0; slIdx < slCnt; slIdx++) {
+		auto& sl = sampleLocations[slIdx];
+		mtlSampPosns.push_back(MTLSamplePositionMake(mvkClamp(sl.x, kMVKMinSampleLocation, kMVKMaxSampleLocation),
+													 mvkClamp(sl.y, kMVKMinSampleLocation, kMVKMaxSampleLocation)));
+	}
+
+	// This value is retrieved, not encoded, so don't mark this encoder as dirty.
+	_dirtyStates.enable(SampleLocations);
+}
+
+MVKArrayRef<MTLSamplePosition> MVKRenderingCommandEncoderState::getSamplePositions() {
+	return getMTLContent(SampleLocationsEnable) ? getMTLContent(SampleLocations).contents() : MVKArrayRef<MTLSamplePosition>();
+}
+
+// Return whether state is dirty, and mark it not dirty
+bool MVKRenderingCommandEncoderState::isDirty(MVKRenderStateType state) {
+	bool rslt = _dirtyStates.isEnabled(state);
+	_dirtyStates.disable(state);
+	return rslt;
+}
+
+// Don't force sample location & sample location enable to become dirty if they weren't already, because
+// this may cause needsMetalRenderPassRestart() to trigger an unnecessary Metal renderpass restart.
+void MVKRenderingCommandEncoderState::markDirty() {
+	MVKCommandEncoderState::markDirty();
+
+	bool wasSLDirty = _dirtyStates.isEnabled(SampleLocations);
+	bool wasSLEnblDirty = _dirtyStates.isEnabled(SampleLocationsEnable);
+	
+	_dirtyStates.enableAll();
+
+	_dirtyStates.set(SampleLocations, wasSLDirty);
+	_dirtyStates.set(SampleLocationsEnable, wasSLEnblDirty);
+}
+
+// Don't call parent beginMetalRenderPass() because it may cause 
+// will call local markDirty() which is too aggressive.
+void MVKRenderingCommandEncoderState::beginMetalRenderPass() {
+	if (_isModified) {
+		_dirtyStates = _modifiedStates;
+		MVKCommandEncoderState::markDirty();
+	}
+}
+
+// Don't use || on isDirty calls, to ensure they both get called, so that the dirty flag of each will be cleared.
+bool MVKRenderingCommandEncoderState::needsMetalRenderPassRestart() {
+	bool isSLDirty = isDirty(SampleLocations);
+	bool isSLEnblDirty = isDirty(SampleLocationsEnable);
+	return isSLDirty || isSLEnblDirty;
 }
 
 #pragma mark Encoding
@@ -453,15 +523,16 @@ void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
 
 	auto& rendEnc = _cmdEncoder->_mtlRenderEncoder;
 
-	if (isDirty(CullMode)) { [rendEnc setCullMode: getContent(CullMode)]; }
-	if (isDirty(FrontFace)) { [rendEnc setFrontFacingWinding: getContent(FrontFace)]; }
+	if (isDirty(PolygonMode)) { [rendEnc setTriangleFillMode: getMTLContent(PolygonMode)]; }
+	if (isDirty(CullMode)) { [rendEnc setCullMode: getMTLContent(CullMode)]; }
+	if (isDirty(FrontFace)) { [rendEnc setFrontFacingWinding: getMTLContent(FrontFace)]; }
 	if (isDirty(BlendConstants)) {
-		auto& bcFlt = getContent(BlendConstants).float32;
+		auto& bcFlt = getMTLContent(BlendConstants).float32;
 		[rendEnc setBlendColorRed: bcFlt[0] green: bcFlt[1] blue: bcFlt[2] alpha: bcFlt[3]];
 	}
 	if (isDirty(DepthBiasEnable) || isDirty(DepthBias)) {
-		if (getContent(DepthBiasEnable)) {
-			auto& db = getContent(DepthBias);
+		if (getMTLContent(DepthBiasEnable)) {
+			auto& db = getMTLContent(DepthBias);
 			[rendEnc setDepthBias: db.depthBiasConstantFactor
 					   slopeScale: db.depthBiasSlopeFactor
 							clamp: db.depthBiasClamp];
@@ -470,11 +541,11 @@ void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
 		}
 	}
 	if (isDirty(DepthClipEnable) && _cmdEncoder->_pDeviceFeatures->depthClamp) {
-		[rendEnc setDepthClipMode: getContent(DepthClipEnable)];
+		[rendEnc setDepthClipMode: getMTLContent(DepthClipEnable)];
 	}
 
 	if (isDirty(StencilReference)) {
-		auto& sr = getContent(StencilReference);
+		auto& sr = getMTLContent(StencilReference);
 		[rendEnc setStencilFrontReferenceValue: sr.frontFaceValue backReferenceValue: sr.backFaceValue];
 	}
 
@@ -484,13 +555,13 @@ void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
 	// to use primitive restart at all, and is just setting this as a "just-in-case",
 	// and forcing an error here would be unexpected to the app (including CTS).
 	auto mtlPrimType = getPrimitiveType();
-	if (isDirty(PrimitiveRestartEnable) && !getContent(PrimitiveRestartEnable) &&
+	if (isDirty(PrimitiveRestartEnable) && !getMTLContent(PrimitiveRestartEnable) &&
 		(mtlPrimType == MTLPrimitiveTypeTriangleStrip || mtlPrimType == MTLPrimitiveTypeLineStrip)) {
 		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support disabling primitive restart.");
 	}
 
 	if (isDirty(Viewports)) {
-		auto& mtlViewports = getContent(Viewports);
+		auto& mtlViewports = getMTLContent(Viewports);
 		if (_cmdEncoder->_pDeviceFeatures->multiViewport) {
 #if MVK_MACOS_OR_IOS
 			[rendEnc setViewports: mtlViewports.viewports count: mtlViewports.viewportCount];
@@ -504,7 +575,7 @@ void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
 	// set to front-and-back, emulate this by using zeroed scissor rectangles.
 	if (isDirty(Scissors)) {
 		static MTLScissorRect zeroRect = {};
-		auto mtlScissors = getContent(Scissors);
+		auto mtlScissors = getMTLContent(Scissors);
 		bool shouldDiscard = ((_mtlRasterizerDiscardEnable[StateScope::Dynamic] && isDynamicState(RasterizerDiscardEnable)) ||
 							  (isDrawingTriangles() && _cullBothFaces[StateScope::Dynamic] && isDynamicState(CullMode)));
 		for (uint32_t sIdx = 0; sIdx < mtlScissors.scissorCount; sIdx++) {
@@ -521,17 +592,8 @@ void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
 	}
 }
 
-// Return whether state is dirty, and mark it not dirty
-bool MVKRenderingCommandEncoderState::isDirty(MVKRenderStateType state) {
-	bool rslt = _dirtyStates.isEnabled(state);
-	_dirtyStates.disable(state);
-	return rslt;
-}
-
-void MVKRenderingCommandEncoderState::beginMetalRenderPass() {
-	MVKCommandEncoderState::beginMetalRenderPass();
-	_dirtyStates = _modifiedStates;
-}
+#undef getMTLContent
+#undef setMTLContent
 
 
 #pragma mark -

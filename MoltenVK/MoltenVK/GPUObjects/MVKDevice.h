@@ -73,16 +73,21 @@ class MVKPrivateDataSlot;
 
 
 /** The buffer index to use for vertex content. */
-const static uint32_t kMVKVertexContentBufferIndex = 0;
+static constexpr uint32_t kMVKVertexContentBufferIndex = 0;
 
 // Parameters to define the sizing of inline collections
-const static uint32_t kMVKQueueFamilyCount = 4;
-const static uint32_t kMVKQueueCountPerQueueFamily = 1;		// Must be 1. See comments in MVKPhysicalDevice::getQueueFamilies()
-const static uint32_t kMVKMinSwapchainImageCount = 2;
-const static uint32_t kMVKMaxSwapchainImageCount = 3;
-const static uint32_t kMVKMaxColorAttachmentCount = 8;
-const static uint32_t kMVKMaxViewportScissorCount = 16;
-const static uint32_t kMVKMaxDescriptorSetCount = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
+static constexpr uint32_t   kMVKQueueFamilyCount = 4;
+static constexpr uint32_t   kMVKQueueCountPerQueueFamily = 1;		// Must be 1. See comments in MVKPhysicalDevice::getQueueFamilies()
+static constexpr uint32_t   kMVKMinSwapchainImageCount = 2;
+static constexpr uint32_t   kMVKMaxSwapchainImageCount = 3;
+static constexpr uint32_t   kMVKMaxColorAttachmentCount = 8;
+static constexpr uint32_t   kMVKMaxViewportScissorCount = 16;
+static constexpr uint32_t   kMVKMaxDescriptorSetCount = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
+static constexpr uint32_t   kMVKSampleLocationCount = 16;
+static constexpr float      kMVKMinSampleLocation = 0.0;
+static constexpr float      kMVKMaxSampleLocation = (float)(kMVKSampleLocationCount - 1) / (float)kMVKSampleLocationCount;
+static constexpr VkExtent2D kMetalSampleLocationGridSize = { 1, 1 };
+static constexpr VkExtent2D kMetalSampleLocationGridSizeNotSupported = { 0, 0 };
 
 #if !MVK_XCODE_12
 typedef NSUInteger MTLTimestamp;

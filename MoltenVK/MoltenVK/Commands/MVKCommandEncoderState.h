@@ -106,8 +106,11 @@ protected:
 	virtual void encodeImpl(uint32_t stage) = 0;
 	MVKDevice* getDevice();
 	bool isDynamicState(MVKRenderStateType state);
+	template <typename T> T& getContent(T* iVarAry, bool isDynamic) {
+		return iVarAry[isDynamic ? StateScope::Dynamic : StateScope::Static];
+	}
 	template <typename T> T& getContent(T* iVarAry, MVKRenderStateType state) {
-		return iVarAry[isDynamicState(state) ? StateScope::Dynamic : StateScope::Static];
+		return getContent(iVarAry, isDynamicState(state));
 	}
 
     MVKCommandEncoder* _cmdEncoder;
@@ -123,9 +126,11 @@ protected:
 class MVKPipelineCommandEncoderState : public MVKCommandEncoderState {
 
 public:
-    virtual void bindPipeline(MVKPipeline* pipeline);
+	void bindPipeline(MVKPipeline* pipeline);
 
     MVKPipeline* getPipeline();
+	MVKGraphicsPipeline* getGraphicsPipeline() { return (MVKGraphicsPipeline*)getPipeline(); }
+	MVKComputePipeline* getComputePipeline() { return (MVKComputePipeline*)getPipeline(); }
 
     MVKPipelineCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKCommandEncoderState(cmdEncoder) {}
 
@@ -133,42 +138,6 @@ protected:
     void encodeImpl(uint32_t stage) override;
 
     MVKPipeline* _pipeline = nullptr;
-};
-
-
-#pragma mark -
-#pragma mark MVKGraphicsPipelineCommandEncoderState
-
-/** Holds encoder state established by graphics pipeline commands. */
-class MVKGraphicsPipelineCommandEncoderState : public MVKPipelineCommandEncoderState {
-
-public:
-	void bindPipeline(MVKPipeline* pipeline) override;
-
-	MVKGraphicsPipeline* getGraphicsPipeline() { return (MVKGraphicsPipeline*)getPipeline(); }
-
-	void setPatchControlPoints(uint32_t patchControlPoints);
-	uint32_t getPatchControlPoints();
-
-	MVKGraphicsPipelineCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKPipelineCommandEncoderState(cmdEncoder) {}
-
-protected:
-	uint32_t _patchControlPoints[StateScope::Count] = {};
-};
-
-
-#pragma mark -
-#pragma mark MVKComputePipelineCommandEncoderState
-
-/** Holds encoder state established by compute pipeline commands. */
-class MVKComputePipelineCommandEncoderState : public MVKPipelineCommandEncoderState {
-
-public:
-	MVKComputePipeline* getComputePipeline() { return (MVKComputePipeline*)getPipeline(); }
-
-	MVKComputePipelineCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKPipelineCommandEncoderState(cmdEncoder) {}
-
-protected:
 };
 
 
@@ -257,7 +226,7 @@ protected:
 					  VkStencilOp passOp, VkStencilOp depthFailOp, VkCompareOp compareOp);
 
 	MVKMTLDepthStencilDescriptorData _depthStencilData[StateScope::Count];
-	bool _depthTestEnabled[StateScope::Count];
+	bool _depthTestEnabled[StateScope::Count] = {};
 	bool _hasDepthAttachment = false;
 	bool _hasStencilAttachment = false;
 };
@@ -294,9 +263,6 @@ public:
 
 	void setFrontFace(VkFrontFace frontFace, bool isDynamic);
 
-	void setPrimitiveTopology(VkPrimitiveTopology topology, bool isDynamic);
-	MTLPrimitiveType getPrimitiveType();
-
 	void setPolygonMode(VkPolygonMode polygonMode, bool isDynamic);
 
 	void setBlendConstants(float blendConstants[4], bool isDynamic);
@@ -316,13 +282,26 @@ public:
 
 	void setRasterizerDiscardEnable(VkBool32 rasterizerDiscardEnable, bool isDynamic);
 
+	void setPrimitiveTopology(VkPrimitiveTopology topology, bool isDynamic);
+	MTLPrimitiveType getPrimitiveType();
+
+	void setPatchControlPoints(uint32_t patchControlPoints, bool isDynamic);
+	uint32_t getPatchControlPoints();
+
+	void setSampleLocationsEnable(VkBool32 sampleLocationsEnable, bool isDynamic);
+	void setSampleLocations(const MVKArrayRef<VkSampleLocationEXT> sampleLocations, bool isDynamic);
+	MVKArrayRef<MTLSamplePosition> getSamplePositions();
+
 	void beginMetalRenderPass() override;
+	bool needsMetalRenderPassRestart();
+
+	bool isDirty(MVKRenderStateType state);
+	void markDirty() override;
 
 	MVKRenderingCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKCommandEncoderState(cmdEncoder) {}
 
 protected:
 	void encodeImpl(uint32_t stage) override;
-	bool isDirty(MVKRenderStateType state);
 	bool isDrawingTriangles();
 	template <typename T> void setContent(T* iVarAry, T* pVal, MVKRenderStateType state, bool isDynamic) {
 		auto* pIVar = &iVarAry[isDynamic ? StateScope::Dynamic : StateScope::Static];
@@ -330,10 +309,11 @@ protected:
 			*pIVar = *pVal;
 			_dirtyStates.enable(state);
 			_modifiedStates.enable(state);
-			markDirty();
+			MVKCommandEncoderState::markDirty();	// Avoid local markDirty() as it marks all states dirty.
 		}
 	}
 
+	MVKSmallVector<MTLSamplePosition, kMVKSampleLocationCount> _mtlSampleLocations[StateScope::Count] = {};
 	MVKMTLViewports _mtlViewports[StateScope::Count] = {};
 	MVKMTLScissors _mtlScissors[StateScope::Count] = {};
 	MVKColor32 _mtlBlendConstants[StateScope::Count] = {};
@@ -344,8 +324,10 @@ protected:
 	MTLPrimitiveType _mtlPrimitiveTopology[StateScope::Count] = { MTLPrimitiveTypePoint, MTLPrimitiveTypePoint };
 	MTLDepthClipMode _mtlDepthClipEnable[StateScope::Count] = { MTLDepthClipModeClip, MTLDepthClipModeClip };
 	MTLTriangleFillMode _mtlPolygonMode[StateScope::Count] = { MTLTriangleFillModeFill, MTLTriangleFillModeFill };
+	uint32_t _mtlPatchControlPoints[StateScope::Count] = {};
 	MVKRenderStateFlags _dirtyStates;
 	MVKRenderStateFlags _modifiedStates;
+	bool _mtlSampleLocationsEnable[StateScope::Count] = {};
 	bool _mtlDepthBiasEnable[StateScope::Count] = {};
 	bool _mtlPrimitiveRestartEnable[StateScope::Count] = {};
 	bool _mtlRasterizerDiscardEnable[StateScope::Count] = {};

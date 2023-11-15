@@ -375,6 +375,8 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
   - *Requires Metal 3.1 for `VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE`.*
 - `VK_EXT_extended_dynamic_state2`
   - *Primitive restart is always enabled, as Metal does not support disabling it (`VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT`).*
+- `VK_EXT_extended_dynamic_state3`
+  - *Metal does not support `VK_POLYGON_MODE_POINT`*
 - `VK_EXT_external_memory_host`
 - `VK_EXT_fragment_shader_interlock`
   - *Requires Metal 2.0 and Raster Order Groups.*

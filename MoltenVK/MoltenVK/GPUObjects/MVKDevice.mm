@@ -75,9 +75,6 @@ static const uint32_t kAMDRadeonRX5500DeviceId = 0x7340;
 static const uint32_t kAMDRadeonRX6800DeviceId = 0x73bf;
 static const uint32_t kAMDRadeonRX6700DeviceId = 0x73df;
 
-static const VkExtent2D kMetalSamplePositionGridSize = { 1, 1 };
-static const VkExtent2D kMetalSamplePositionGridSizeNotSupported = { 0, 0 };
-
 static const uint32_t kMaxTimeDomains = 2;
 
 #pragma clang diagnostic pop
@@ -397,6 +394,41 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				extDynState2->extendedDynamicState2 = true;
 				extDynState2->extendedDynamicState2LogicOp = false;
 				extDynState2->extendedDynamicState2PatchControlPoints = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT: {
+				auto* extDynState3 = (VkPhysicalDeviceExtendedDynamicState3FeaturesEXT*)next;
+				extDynState3->extendedDynamicState3TessellationDomainOrigin = false;
+				extDynState3->extendedDynamicState3DepthClampEnable = true;
+				extDynState3->extendedDynamicState3PolygonMode = true;
+				extDynState3->extendedDynamicState3RasterizationSamples = false;
+				extDynState3->extendedDynamicState3SampleMask = false;
+				extDynState3->extendedDynamicState3AlphaToCoverageEnable = false;
+				extDynState3->extendedDynamicState3AlphaToOneEnable = false;
+				extDynState3->extendedDynamicState3LogicOpEnable = false;
+				extDynState3->extendedDynamicState3ColorBlendEnable = false;
+				extDynState3->extendedDynamicState3ColorBlendEquation = false;
+				extDynState3->extendedDynamicState3ColorWriteMask = false;
+				extDynState3->extendedDynamicState3RasterizationStream = false;
+				extDynState3->extendedDynamicState3ConservativeRasterizationMode = false;
+				extDynState3->extendedDynamicState3ExtraPrimitiveOverestimationSize = false;
+				extDynState3->extendedDynamicState3DepthClipEnable = true;
+				extDynState3->extendedDynamicState3SampleLocationsEnable = true;
+				extDynState3->extendedDynamicState3ColorBlendAdvanced = false;
+				extDynState3->extendedDynamicState3ProvokingVertexMode = false;
+				extDynState3->extendedDynamicState3LineRasterizationMode = false;
+				extDynState3->extendedDynamicState3LineStippleEnable = false;
+				extDynState3->extendedDynamicState3DepthClipNegativeOneToOne = false;
+				extDynState3->extendedDynamicState3ViewportWScalingEnable = false;
+				extDynState3->extendedDynamicState3ViewportSwizzle = false;
+				extDynState3->extendedDynamicState3CoverageToColorEnable = false;
+				extDynState3->extendedDynamicState3CoverageToColorLocation = false;
+				extDynState3->extendedDynamicState3CoverageModulationMode = false;
+				extDynState3->extendedDynamicState3CoverageModulationTableEnable = false;
+				extDynState3->extendedDynamicState3CoverageModulationTable = false;
+				extDynState3->extendedDynamicState3CoverageReductionMode = false;
+				extDynState3->extendedDynamicState3RepresentativeFragmentTestEnable = false;
+				extDynState3->extendedDynamicState3ShadingRateImageEnable = false;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: {
@@ -747,11 +779,11 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT: {
 				auto* sampLocnProps = (VkPhysicalDeviceSampleLocationsPropertiesEXT*)next;
 				sampLocnProps->sampleLocationSampleCounts = _metalFeatures.supportedSampleCounts;
-				sampLocnProps->maxSampleLocationGridSize = kMetalSamplePositionGridSize;
-				sampLocnProps->sampleLocationCoordinateRange[0] = 0.0;
-				sampLocnProps->sampleLocationCoordinateRange[1] = (15.0 / 16.0);
+				sampLocnProps->maxSampleLocationGridSize = kMetalSampleLocationGridSize;
+				sampLocnProps->sampleLocationCoordinateRange[0] = kMVKMinSampleLocation;
+				sampLocnProps->sampleLocationCoordinateRange[1] = kMVKMaxSampleLocation;
 				sampLocnProps->sampleLocationSubPixelBits = 4;
-				sampLocnProps->variableSampleLocations = VK_FALSE;
+				sampLocnProps->variableSampleLocations = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
@@ -860,8 +892,8 @@ void MVKPhysicalDevice::getMultisampleProperties(VkSampleCountFlagBits samples,
 												 VkMultisamplePropertiesEXT* pMultisampleProperties) {
 	if (pMultisampleProperties) {
 		pMultisampleProperties->maxSampleLocationGridSize = (mvkIsOnlyAnyFlagEnabled(samples, _metalFeatures.supportedSampleCounts)
-															 ? kMetalSamplePositionGridSize
-															 : kMetalSamplePositionGridSizeNotSupported);
+															 ? kMetalSampleLocationGridSize
+															 : kMetalSampleLocationGridSizeNotSupported);
 	}
 }
 

@@ -76,7 +76,7 @@ typedef enum : uint8_t {
 	kMVKCommandUseBeginRendering,               /**< vkCmdBeginRendering. */
     kMVKCommandUseBeginRenderPass,              /**< vkCmdBeginRenderPass. */
     kMVKCommandUseNextSubpass,                  /**< vkCmdNextSubpass. */
-	kMVKCommandUseRestartSubpass,               /**< Restart a subpass because of explicit or implicit barrier. */
+	kMVKCommandUseRestartSubpass,               /**< Create a new Metal renderpass due to Metal requirements. */
     kMVKCommandUsePipelineBarrier,              /**< vkCmdPipelineBarrier. */
     kMVKCommandUseBlitImage,                    /**< vkCmdBlitImage. */
     kMVKCommandUseCopyImage,                    /**< vkCmdCopyImage. */
@@ -102,8 +102,8 @@ typedef enum : uint8_t {
 
 /** Represents a given stage of a graphics pipeline. */
 enum MVKGraphicsStage {
-	kMVKGraphicsStageVertex = 0,	/**< The vertex shader stage. */
-	kMVKGraphicsStageTessControl,	/**< The tessellation control shader stage. */
+	kMVKGraphicsStageVertex = 0,	/**< The tessellation vertex compute shader stage. */
+	kMVKGraphicsStageTessControl,	/**< The tessellation control compute shader stage. */
 	kMVKGraphicsStageRasterization	/**< The rest of the pipeline. */
 };
 
