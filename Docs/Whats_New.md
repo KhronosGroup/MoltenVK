@@ -19,6 +19,7 @@ MoltenVK 1.2.7
 Released TBD
 
 - Reduce disk space consumed after running `fetchDependencies` script by removing intermediate file caches.
+- Fix rare deadlock during launch via `dlopen()`.
 - Update to latest SPIRV-Cross:
   - MSL: Fix regression error in argument buffer runtime arrays.
 
