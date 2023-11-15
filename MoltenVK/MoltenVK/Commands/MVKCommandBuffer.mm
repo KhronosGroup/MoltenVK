@@ -442,7 +442,6 @@ void MVKCommandEncoder::beginRendering(MVKCommand* rendCmd, const VkRenderingInf
 					pRenderingInfo->renderArea,
 					MVKArrayRef(clearValues, attCnt),
 					MVKArrayRef(imageViews, attCnt),
-					MVKArrayRef<MVKArrayRef<MTLSamplePosition>>(),
 					kMVKCommandUseBeginRendering);
 
 	// If we've just created new transient objects, once retained by this encoder,
@@ -462,7 +461,6 @@ void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
 										const VkRect2D& renderArea,
 										MVKArrayRef<VkClearValue> clearValues,
 										MVKArrayRef<MVKImageView*> attachments,
-										MVKArrayRef<MVKArrayRef<MTLSamplePosition>> subpassSamplePositions,
 										MVKCommandUse cmdUse) {
 	_pEncodingContext->setRenderingContext(renderPass, framebuffer);
 	_renderArea = renderArea;
@@ -470,13 +468,6 @@ void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
 									mvkVkExtent2DsAreEqual(_renderArea.extent, getFramebufferExtent()));
 	_clearValues.assign(clearValues.begin(), clearValues.end());
 	_attachments.assign(attachments.begin(), attachments.end());
-
-	// Copy the sample positions array of arrays, one array of sample positions for each subpass index.
-	_subpassSamplePositions.resize(subpassSamplePositions.size());
-	for (uint32_t spSPIdx = 0; spSPIdx < subpassSamplePositions.size(); spSPIdx++) {
-		_subpassSamplePositions[spSPIdx].assign(subpassSamplePositions[spSPIdx].begin(),
-												subpassSamplePositions[spSPIdx].end());
-	}
 
 	setSubpass(passCmd, subpassContents, 0, cmdUse);
 }
@@ -518,10 +509,6 @@ void MVKCommandEncoder::beginNextMultiviewPass() {
 	beginMetalRenderPass(kMVKCommandUseNextSubpass);
 }
 
-void MVKCommandEncoder::setDynamicSamplePositions(MVKArrayRef<MTLSamplePosition> dynamicSamplePositions) {
-	_dynamicSamplePositions.assign(dynamicSamplePositions.begin(), dynamicSamplePositions.end());
-}
-
 // Retain encoders when prefilling, because prefilling may span multiple autorelease pools.
 template<typename T>
 void MVKCommandEncoder::retainIfImmediatelyEncoding(T& mtlEnc) {
@@ -535,7 +522,6 @@ void MVKCommandEncoder::endMetalEncoding(T& mtlEnc) {
 	if (_cmdBuffer->_immediateCmdEncoder) { [mtlEnc release]; }
 	mtlEnc = nil;
 }
-
 
 // Creates _mtlRenderEncoder and marks cached render state as dirty so it will be set into the _mtlRenderEncoder.
 void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
@@ -592,8 +578,8 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 	// If no custom sample positions are established, size will be zero,
 	// and Metal will default to using default sample postions.
 	if (_pDeviceMetalFeatures->programmableSamplePositions) {
-		auto cstmSampPosns = getCustomSamplePositions();
-		[mtlRPDesc setSamplePositions: cstmSampPosns.data() count: cstmSampPosns.size()];
+		auto sampPosns = _renderingState.getSamplePositions();
+		[mtlRPDesc setSamplePositions: sampPosns.data() count: sampPosns.size()];
 	}
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
@@ -616,16 +602,13 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
     _occlusionQueryState.beginMetalRenderPass();
 }
 
-// If custom sample positions have been set, return them, otherwise return an empty array.
-// For Metal, VkPhysicalDeviceSampleLocationsPropertiesEXT::variableSampleLocations is false.
-// As such, Vulkan requires that sample positions must be established at the beginning of
-// a renderpass, and that both pipeline and dynamic sample locations must be the same as those
-// set for each subpass. Therefore, the only sample positions of use are those set for each
-// subpass when the renderpass begins. The pipeline and dynamic sample positions are ignored.
-MVKArrayRef<MTLSamplePosition> MVKCommandEncoder::getCustomSamplePositions() {
-	return (_renderSubpassIndex < _subpassSamplePositions.size()
-			? _subpassSamplePositions[_renderSubpassIndex].contents()
-			: MVKArrayRef<MTLSamplePosition>());
+void MVKCommandEncoder::restartMetalRenderPassIfNeeded() {
+	if ( !_mtlRenderEncoder ) { return; }
+
+	if (_renderingState.needsMetalRenderPassRestart()) {
+		encodeStoreActions(true);
+		beginMetalRenderPass(kMVKCommandUseRestartSubpass);
+	}
 }
 
 void MVKCommandEncoder::encodeStoreActions(bool storeOverride) {
@@ -1161,12 +1144,12 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
 	_computeResourcesState(this),
 	_depthStencilState(this),
 	_renderingState(this),
+	_occlusionQueryState(this),
 	_vertexPushConstants(this, VK_SHADER_STAGE_VERTEX_BIT),
 	_tessCtlPushConstants(this, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT),
 	_tessEvalPushConstants(this, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT),
 	_fragmentPushConstants(this, VK_SHADER_STAGE_FRAGMENT_BIT),
 	_computePushConstants(this, VK_SHADER_STAGE_COMPUTE_BIT),
-	_occlusionQueryState(this),
 	_prefillStyle(prefillStyle){
 
 	_pDeviceFeatures = &_device->_enabledFeatures;
