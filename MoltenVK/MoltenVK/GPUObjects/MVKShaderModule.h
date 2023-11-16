@@ -109,7 +109,8 @@ protected:
 
 	MVKMTLFunction getMTLFunction(const VkSpecializationInfo* pSpecializationInfo,
 								  VkPipelineCreationFeedback* pShaderFeedback,
-								  MVKShaderModule* shaderModule);
+								  MVKShaderModule* shaderModule,
+								  bool passThruFunc);
 	void handleCompilationError(NSError* err, const char* opDesc);
     MTLFunctionConstant* getFunctionConstant(NSArray<MTLFunctionConstant*>* mtlFCs, NSUInteger mtlFCID);
 	void compileLibrary(const std::string& msl);
@@ -213,7 +214,8 @@ public:
 	MVKMTLFunction getMTLFunction(SPIRVToMSLConversionConfiguration* pShaderConfig,
 								  const VkSpecializationInfo* pSpecializationInfo,
 								  MVKPipeline* pipeline,
-								  VkPipelineCreationFeedback* pShaderFeedback);
+								  VkPipelineCreationFeedback* pShaderFeedback,
+								  bool passThruFunc);
 
 	/** Convert the SPIR-V to MSL, using the specified shader conversion configuration. */
 	bool convert(SPIRVToMSLConversionConfiguration* pShaderConfig,

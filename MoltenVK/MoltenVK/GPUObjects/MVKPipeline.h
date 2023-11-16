@@ -354,7 +354,8 @@ protected:
 	MVKMTLFunction getMTLFunction(SPIRVToMSLConversionConfiguration& shaderConfig,
 								  const VkPipelineShaderStageCreateInfo* pShaderStage,
 								  VkPipelineCreationFeedback* pStageFB,
-								  const char* pStageName);
+								  const char* pStageName,
+								  bool passThru = false);
 	void markIfUsingPhysicalStorageBufferAddressesCapability(SPIRVToMSLConversionResultInfo& resultsInfo,
 															 MVKShaderStage stage);
 

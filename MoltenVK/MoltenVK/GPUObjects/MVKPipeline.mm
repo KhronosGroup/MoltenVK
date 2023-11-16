@@ -1066,7 +1066,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLXFBRasterStageDescriptor
 	}
 
 	// Add shader stages. Compile vertex shader before others just in case conversion changes anything...like rasterizaion disable.
-	if (!addPassThruVertexShaderToPipeline(plDesc, pCreateInfo, shaderConfig, vtxOutputs)) {
+	if (!addPassThruVertexShaderToPipeline(plDesc, pCreateInfo, shaderConfig)) {
 		[plDesc release];
 		return nil;
 	}
@@ -1406,14 +1406,11 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 // Adds a pass-through vertex shader which reads transform feedback buffers to the pipeline description.
 bool MVKGraphicsPipeline::addPassThruVertexShaderToPipeline(MTLRenderPipelineDescriptor* plDesc,
 															const VkGraphicsPipelineCreateInfo* pCreateInfo,
-															SPIRVToMSLConversionConfiguration& shaderConfig,
-															SPIRVShaderOutputs& vtxOutputs) {
-
-	// FIXME: What needs to happen here:
-	// 1. Generate text for vertex shader
-	// 2. Somehow attach this to the MVKShaderModule object so it gets cached
-	// 3. Get an MTLFunction object
-	// 4. 
+															SPIRVToMSLConversionConfiguration& shaderConfig) {
+	shaderConfig.entryPointName = pVertexSS->pName;
+	MVKMTLFunction func = getMTLFunction(shaderConfig, pVertexSS, pVertexFB, "Vertex (pass-through)", true);
+	if ( !func.getMTLFunction() ) { return false; }
+	plDesc.vertexFunction = func.getMTLFunction();
 
 	return true;
 }
@@ -2021,12 +2018,14 @@ bool MVKGraphicsPipeline::isRasterizationDisabled(const VkGraphicsPipelineCreate
 MVKMTLFunction MVKGraphicsPipeline::getMTLFunction(SPIRVToMSLConversionConfiguration& shaderConfig,
 												   const VkPipelineShaderStageCreateInfo* pShaderStage,
 												   VkPipelineCreationFeedback* pStageFB,
-												   const char* pStageName) {
+												   const char* pStageName,
+												   bool passThru) {
 	MVKShaderModule* shaderModule = (MVKShaderModule*)pShaderStage->module;
 	MVKMTLFunction func = shaderModule->getMTLFunction(&shaderConfig,
 													   pShaderStage->pSpecializationInfo,
 													   this,
-													   pStageFB);
+													   pStageFB,
+													   passThru);
 	if ( !func.getMTLFunction() ) {
 		if (shouldFailOnPipelineCompileRequired()) {
 			setConfigurationResult(VK_PIPELINE_COMPILE_REQUIRED);
@@ -2213,7 +2212,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageCompute];
     shaderConfig.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageCompute];
 
-    MVKMTLFunction func = ((MVKShaderModule*)pSS->module)->getMTLFunction(&shaderConfig, pSS->pSpecializationInfo, this, pStageFB);
+    MVKMTLFunction func = ((MVKShaderModule*)pSS->module)->getMTLFunction(&shaderConfig, pSS->pSpecializationInfo, this, pStageFB, false);
 	if ( !func.getMTLFunction() ) {
 		if (shouldFailOnPipelineCompileRequired()) {
 			setConfigurationResult(VK_PIPELINE_COMPILE_REQUIRED);

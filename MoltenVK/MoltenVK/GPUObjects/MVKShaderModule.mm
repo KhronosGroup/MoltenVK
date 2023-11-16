@@ -71,13 +71,17 @@ static uint32_t getWorkgroupDimensionSize(const SPIRVWorkgroupSizeDimension& wgD
 
 MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpecializationInfo,
 												VkPipelineCreationFeedback* pShaderFeedback,
-												MVKShaderModule* shaderModule) {
+												MVKShaderModule* shaderModule,
+												bool passThruFunc) {
 
 	if ( !_mtlLibrary ) { return MVKMTLFunctionNull; }
 
 	@synchronized (_owner->getMTLDevice()) {
 		@autoreleasepool {
 			NSString* mtlFuncName = @(_shaderConversionResultInfo.entryPoint.mtlFunctionName.c_str());
+			if (passThruFunc) {
+				mtlFuncName = [mtlFuncName stringByAppendingString:@"_PassThru"];
+			}
 			MVKDevice* mvkDev = _owner->getDevice();
 
 			uint64_t startTime = pShaderFeedback ? mvkGetTimestamp() : mvkDev->getPerformanceTimestamp();
@@ -334,7 +338,8 @@ MVKShaderLibraryCache::~MVKShaderLibraryCache() {
 MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration* pShaderConfig,
 											   const VkSpecializationInfo* pSpecializationInfo,
 											   MVKPipeline* pipeline,
-											   VkPipelineCreationFeedback* pShaderFeedback) {
+											   VkPipelineCreationFeedback* pShaderFeedback,
+											   bool passThruFunc) {
 	MVKShaderLibrary* mvkLib = _directMSLLibrary;
 	if ( !mvkLib ) {
 		uint64_t startTime = pShaderFeedback ? mvkGetTimestamp() : _device->getPerformanceTimestamp();
@@ -350,7 +355,7 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration
 		pShaderConfig->markAllInterfaceVarsAndResourcesUsed();
 	}
 
-	return mvkLib ? mvkLib->getMTLFunction(pSpecializationInfo, pShaderFeedback, this) : MVKMTLFunctionNull;
+	return mvkLib ? mvkLib->getMTLFunction(pSpecializationInfo, pShaderFeedback, this, passThruFunc) : MVKMTLFunctionNull;
 }
 
 bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
