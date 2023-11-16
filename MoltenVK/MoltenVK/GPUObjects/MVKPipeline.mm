@@ -229,6 +229,13 @@ MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVK
 #pragma mark -
 #pragma mark MVKGraphicsPipeline
 
+// Set retrieve-only rendering state when pipeline is bound, as it's too late at draw command.
+void MVKGraphicsPipeline::wasBound(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_renderingState.setPatchControlPoints(_tessInfo.patchControlPoints, false);
+	cmdEncoder->_renderingState.setSampleLocations(_sampleLocations.contents(), false);
+	cmdEncoder->_renderingState.setSampleLocationsEnable(_sampleLocationsEnable, false);
+}
+
 void MVKGraphicsPipeline::getStages(MVKPiplineStages& stages) {
     if (isTessellationPipeline()) {
         stages.push_back(kMVKGraphicsStageVertex);
@@ -305,7 +312,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 				cmdEncoder->_renderingState.setFrontFace(_rasterInfo.frontFace, false);
 				cmdEncoder->_renderingState.setPolygonMode(_rasterInfo.polygonMode, false);
 				cmdEncoder->_renderingState.setDepthBias(_rasterInfo);
-				cmdEncoder->_renderingState.setDepthClipEnable( !_rasterInfo.depthClampEnable, false );
+				cmdEncoder->_renderingState.setDepthClipEnable( !_rasterInfo.depthClampEnable, false);
 			}
             break;
     }
@@ -514,7 +521,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	_hasRasterInfo = mvkSetOrClear(&_rasterInfo, pCreateInfo->pRasterizationState);
 
 	// Must run after _isRasterizing and _dynamicState are populated
-	initCustomSamplePositions(pCreateInfo);
+	initSampleLocations(pCreateInfo);
 
 	// Depth stencil content - clearing will disable depth and stencil testing
 	// Must ignore allowed bad pDepthStencilState pointer if rasterization disabled or no depth or stencil attachment format
@@ -563,6 +570,8 @@ static MVKRenderStateType getRenderStateType(VkDynamicState vkDynamicState) {
 		case VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE:    return PrimitiveRestartEnable;
 		case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY:          return PrimitiveTopology;
 		case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE:   return RasterizerDiscardEnable;
+		case VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT:        return SampleLocations;
+		case VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE_EXT: return SampleLocationsEnable;
 		case VK_DYNAMIC_STATE_SCISSOR:                     return Scissors;
 		case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT:          return Scissors;
 		case VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK:        return StencilCompareMask;
@@ -626,7 +635,7 @@ id<MTLComputePipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLCompute
 }
 
 // Must run after _isRasterizing and _dynamicState are populated
-void MVKGraphicsPipeline::initCustomSamplePositions(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
+void MVKGraphicsPipeline::initSampleLocations(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
 
 	// Must ignore allowed bad pMultisampleState pointer if rasterization disabled
 	if ( !(_isRasterizing && pCreateInfo->pMultisampleState) ) { return; }
@@ -635,12 +644,9 @@ void MVKGraphicsPipeline::initCustomSamplePositions(const VkGraphicsPipelineCrea
 		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT: {
 				auto* pSampLocnsCreateInfo = (VkPipelineSampleLocationsStateCreateInfoEXT*)next;
-				_isUsingCustomSamplePositions = pSampLocnsCreateInfo->sampleLocationsEnable;
-				if (_isUsingCustomSamplePositions && !isDynamicState(SampleLocations)) {
-					for (uint32_t slIdx = 0; slIdx < pSampLocnsCreateInfo->sampleLocationsInfo.sampleLocationsCount; slIdx++) {
-						auto& sl = pSampLocnsCreateInfo->sampleLocationsInfo.pSampleLocations[slIdx];
-						_customSamplePositions.push_back(MTLSamplePositionMake(sl.x, sl.y));
-					}
+				_sampleLocationsEnable = pSampLocnsCreateInfo->sampleLocationsEnable;
+				for (uint32_t slIdx = 0; slIdx < pSampLocnsCreateInfo->sampleLocationsInfo.sampleLocationsCount; slIdx++) {
+					_sampleLocations.push_back(pSampLocnsCreateInfo->sampleLocationsInfo.pSampleLocations[slIdx]);
 				}
 				break;
 			}
@@ -1635,7 +1641,7 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
 
     // Multisampling - must ignore allowed bad pMultisampleState pointer if rasterization disabled
     if (_isRasterizing && pCreateInfo->pMultisampleState) {
-        plDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(pCreateInfo->pMultisampleState->rasterizationSamples);
+        plDesc.rasterSampleCount = mvkSampleCountFromVkSampleCountFlagBits(pCreateInfo->pMultisampleState->rasterizationSamples);
         plDesc.alphaToCoverageEnabled = pCreateInfo->pMultisampleState->alphaToCoverageEnable;
         plDesc.alphaToOneEnabled = pCreateInfo->pMultisampleState->alphaToOneEnable;
 
@@ -1926,10 +1932,14 @@ void MVKGraphicsPipeline::addPrevStageOutputToShaderConversionConfig(SPIRVToMSLC
     }
 }
 
-// We render points if either the topology or polygon fill mode dictate it
+// We render points if either the static topology or static polygon fill mode dictate it
 bool MVKGraphicsPipeline::isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
-	return ((pCreateInfo->pInputAssemblyState && (pCreateInfo->pInputAssemblyState->topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST)) ||
-			(pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->polygonMode == VK_POLYGON_MODE_POINT)));
+	return ((pCreateInfo->pInputAssemblyState && 
+			 (pCreateInfo->pInputAssemblyState->topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST) &&
+			 !isDynamicState(PrimitiveTopology)) ||
+			(pCreateInfo->pRasterizationState && 
+			 (pCreateInfo->pRasterizationState->polygonMode == VK_POLYGON_MODE_POINT) &&
+			 !isDynamicState(PolygonMode)));
 }
 
 // We disable rasterization if either static rasterizerDiscard is enabled or the static cull mode dictates it.

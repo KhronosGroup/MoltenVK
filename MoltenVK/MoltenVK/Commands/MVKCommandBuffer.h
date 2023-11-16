@@ -250,20 +250,22 @@ public:
 						 const VkRect2D& renderArea,
 						 MVKArrayRef<VkClearValue> clearValues,
 						 MVKArrayRef<MVKImageView*> attachments,
-						 MVKArrayRef<MVKArrayRef<MTLSamplePosition>> subpassSamplePositions,
-						 MVKCommandUse cmdUse = kMVKCommandUseBeginRenderPass);
+						 MVKCommandUse cmdUse);
 
 	/** Begins the next render subpass. */
 	void beginNextSubpass(MVKCommand* subpassCmd, VkSubpassContents renderpassContents);
-
-	/** Sets the dynamic custom sample positions to use when rendering. */
-	void setDynamicSamplePositions(MVKArrayRef<MTLSamplePosition> dynamicSamplePositions);
 
 	/** Begins dynamic rendering. */
 	void beginRendering(MVKCommand* rendCmd, const VkRenderingInfo* pRenderingInfo);
 
 	/** Begins a Metal render pass for the current render subpass. */
 	void beginMetalRenderPass(MVKCommandUse cmdUse);
+
+	/** 
+	 * If a Metal render pass has started, and it needs to be restarted,
+	 * then end the existing Metal render pass, and start a new one.
+	 */
+	void restartMetalRenderPassIfNeeded();
 
 	/** If a render encoder is active, encodes store actions for all attachments to it. */
 	void encodeStoreActions(bool storeOverride = false);
@@ -435,13 +437,13 @@ public:
 	id<MTLRenderCommandEncoder> _mtlRenderEncoder;
 
     /** Tracks the current graphics pipeline bound to the encoder. */
-    MVKGraphicsPipelineCommandEncoderState _graphicsPipelineState;
+	MVKPipelineCommandEncoderState _graphicsPipelineState;
 
 	/** Tracks the current graphics resources state of the encoder. */
 	MVKGraphicsResourcesCommandEncoderState _graphicsResourcesState;
 
     /** Tracks the current compute pipeline bound to the encoder. */
-    MVKComputePipelineCommandEncoderState _computePipelineState;
+	MVKPipelineCommandEncoderState _computePipelineState;
 
 	/** Tracks the current compute resources state of the encoder. */
 	MVKComputeResourcesCommandEncoderState _computeResourcesState;
@@ -451,6 +453,9 @@ public:
 
 	/** Tracks the current rendering states of the encoder. */
 	MVKRenderingCommandEncoderState _renderingState;
+
+	/** Tracks the occlusion query state of the encoder. */
+	MVKOcclusionQueryCommandEncoderState _occlusionQueryState;
 
     /** The size of the threadgroup for the compute shader. */
     MTLSize _mtlThreadgroupSize;
@@ -479,7 +484,6 @@ protected:
 	void encodeGPUCounterSample(MVKGPUCounterQueryPool* mvkQryPool, uint32_t sampleIndex, MVKCounterSamplingFlags samplingPoints);
 	void encodeTimestampStageCounterSamples();
 	id<MTLFence> getStageCountersMTLFence();
-	MVKArrayRef<MTLSamplePosition> getCustomSamplePositions();
 	NSString* getMTLRenderCommandEncoderName(MVKCommandUse cmdUse);
 	template<typename T> void retainIfImmediatelyEncoding(T& mtlEnc);
 	template<typename T> void endMetalEncoding(T& mtlEnc);
@@ -495,8 +499,6 @@ protected:
 	MVKSmallVector<GPUCounterQuery, 16> _timestampStageCounterQueries;
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
 	MVKSmallVector<MVKImageView*, kMVKDefaultAttachmentCount> _attachments;
-	MVKSmallVector<MTLSamplePosition> _dynamicSamplePositions;
-	MVKSmallVector<MVKSmallVector<MTLSamplePosition>> _subpassSamplePositions;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
 	id<MTLFence> _stageCountersMTLFence;
@@ -505,7 +507,6 @@ protected:
 	MVKPushConstantsCommandEncoderState _tessEvalPushConstants;
 	MVKPushConstantsCommandEncoderState _fragmentPushConstants;
 	MVKPushConstantsCommandEncoderState _computePushConstants;
-    MVKOcclusionQueryCommandEncoderState _occlusionQueryState;
 	MVKPrefillMetalCommandBuffersStyle _prefillStyle;
 	VkSubpassContents _subpassContents;
 	uint32_t _renderSubpassIndex;
