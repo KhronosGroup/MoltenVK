@@ -746,7 +746,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: {
 				auto* xfbProps = (VkPhysicalDeviceTransformFeedbackPropertiesEXT*)next;
 				xfbProps->maxTransformFeedbackStreams = 1;																			// Must be 1 if geometryStreams isn't supported.
-				xfbProps->maxTransformFeedbackBuffers = 1;
+				xfbProps->maxTransformFeedbackBuffers = kMVKMaxTransformFeedbackBufferCount;
 				xfbProps->maxTransformFeedbackBufferSize = _metalFeatures.maxMTLBufferSize;
 				xfbProps->maxTransformFeedbackStreamDataSize = (_properties.limits.maxFragmentInputComponents + 4) * sizeof(float);	// +4 more for the position.
 				xfbProps->maxTransformFeedbackBufferDataSize = xfbProps->maxTransformFeedbackStreamDataSize;

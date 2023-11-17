@@ -83,6 +83,7 @@ const static uint32_t kMVKMaxSwapchainImageCount = 3;
 const static uint32_t kMVKMaxColorAttachmentCount = 8;
 const static uint32_t kMVKMaxViewportScissorCount = 16;
 const static uint32_t kMVKMaxDescriptorSetCount = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
+static constexpr uint32_t kMVKMaxTransformFeedbackBufferCount = 1;	// TODO: Increase to 4.
 
 #if !MVK_XCODE_12
 typedef NSUInteger MTLTimestamp;

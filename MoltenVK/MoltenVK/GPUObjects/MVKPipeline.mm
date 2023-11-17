@@ -232,7 +232,7 @@ void MVKGraphicsPipeline::getStages(MVKPiplineStages& stages) {
     if (isTessellationPipeline()) {
         stages.push_back(kMVKGraphicsStageVertex);
         stages.push_back(kMVKGraphicsStageTessControl);
-    } else if(isTransformFeedbackPipeline()) {
+    } else if (isTransformFeedbackPipeline()) {
         stages.push_back(kMVKGraphicsStageVertex);
     }
     stages.push_back(kMVKGraphicsStageRasterization);
@@ -1115,6 +1115,10 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	shaderConfig.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageVertex];
 	shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageVertex];
 	shaderConfig.options.mslOptions.view_mask_buffer_index = _viewRangeBufferIndex.stages[kMVKShaderStageVertex];
+	if (isTransformFeedbackPipeline()) {
+		shaderConfig.options.mslOptions.xfb_counter_buffer_index_base = getTransformFeedbackCounterBufferIndex(kMVKShaderStageVertex);
+		shaderConfig.options.mslOptions.xfb_buffer_index_base = getTransformFeedbackBufferIndex(kMVKShaderStageVertex);
+	}
 	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
     addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
@@ -1824,6 +1828,14 @@ uint32_t MVKGraphicsPipeline::getImplicitBufferIndex(MVKShaderStage stage, uint3
 	return getMetalBufferIndexForVertexAttributeBinding(_reservedVertexAttributeBufferCount.stages[stage] + bufferIndexOffset);
 }
 
+uint32_t MVKGraphicsPipeline::getTransformFeedbackBufferIndex(MVKShaderStage stage) {
+	return getMetalBufferIndexForVertexAttributeBinding(_reservedVertexAttributeBufferCount.stages[stage] - 2 * kMVKMaxTransformFeedbackBufferCount);
+}
+
+uint32_t MVKGraphicsPipeline::getTransformFeedbackCounterBufferIndex(MVKShaderStage stage) {
+	return getMetalBufferIndexForVertexAttributeBinding(_reservedVertexAttributeBufferCount.stages[stage] - kMVKMaxTransformFeedbackBufferCount);
+}
+
 // Set the number of vertex attribute buffers consumed by this pipeline at each stage.
 // Any implicit buffers needed by this pipeline will be assigned indexes below the range
 // defined by this count below the max number of Metal buffer bindings per stage.
@@ -1855,7 +1867,7 @@ void MVKGraphicsPipeline::initReservedVertexAttributeBufferCount(const VkGraphic
 	// The number of reserved bindings we need for the vertex stage is determined from the largest vertex
 	// attribute binding number, plus any synthetic buffer bindings created to support translated offsets.
 	mvkClear<uint32_t>(_reservedVertexAttributeBufferCount.stages, kMVKShaderStageCount);
-	_reservedVertexAttributeBufferCount.stages[kMVKShaderStageVertex] = (maxBinding + 1) + xltdBuffCnt;
+	_reservedVertexAttributeBufferCount.stages[kMVKShaderStageVertex] = (maxBinding + 1) + xltdBuffCnt + (isTransformFeedbackPipeline() ? 2*kMVKMaxTransformFeedbackBufferCount : 0);
 	_reservedVertexAttributeBufferCount.stages[kMVKShaderStageTessCtl] = kMVKTessCtlNumReservedBuffers;
 	_reservedVertexAttributeBufferCount.stages[kMVKShaderStageTessEval] = kMVKTessEvalNumReservedBuffers;
 }
