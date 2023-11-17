@@ -729,9 +729,12 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 
 		MVKMTLFunction vtxFunctions[3] = {};
 		MTLComputePipelineDescriptor* vtxPLDesc = newMTLVertexStageDescriptor(pCreateInfo, reflectData, shaderConfig, pVertexSS, pVertexFB, pFragmentSS, kMVKShaderStageFragment, vtxFunctions);					// temp retained
-		MTLRenderPipelineDescriptor* rastPLDesc = newMTLXFBRasterStageDescriptor(pCreateInfo, reflectData, shaderConfig, pFragmentSS, pFragmentFB, pVertexSS);	// temp retained
-		if (vtxPLDesc && rastPLDesc) {
-			if (compileVertexStageState(vtxPLDesc, vtxFunctions, pVertexFB)) {
+		MTLRenderPipelineDescriptor* rastPLDesc = nil;
+		if (_isRasterizing) {
+			rastPLDesc = newMTLXFBRasterStageDescriptor(pCreateInfo, reflectData, shaderConfig, pFragmentSS, pFragmentFB, pVertexSS);	// temp retained
+		}
+		if (vtxPLDesc && (!_isRasterizing || rastPLDesc)) {
+			if (compileVertexStageState(vtxPLDesc, vtxFunctions, pVertexFB) && _isRasterizing) {
 				getOrCompilePipeline(rastPLDesc, _mtlPipelineState);
 			}
 		} else {
