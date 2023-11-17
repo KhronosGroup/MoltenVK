@@ -325,7 +325,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
     cmdEncoder->_graphicsResourcesState.bindViewRangeBuffer(_viewRangeBufferIndex, _needsVertexViewRangeBuffer, _needsFragmentViewRangeBuffer);
 }
 
-static const char vtxCompilerType[] = "Vertex stage pipeline for tessellation";
+static const char vtxCompilerType[] = "Vertex stage pipeline for tessellation/transform feedback";
 
 bool MVKGraphicsPipeline::compileVertexStageState(MTLComputePipelineDescriptor* vtxPLDesc,
 												  MVKMTLFunction* pVtxFunctions,
