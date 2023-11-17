@@ -46,7 +46,6 @@ public:
 
 protected:
 
-	MVKSmallVector<MVKSmallVector<MTLSamplePosition>> _subpassSamplePositions;
 	MVKRenderPass* _renderPass;
 	MVKFramebuffer* _framebuffer;
 	VkRect2D _renderArea;
@@ -203,7 +202,26 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKSmallVector<MTLSamplePosition, 8> _samplePositions;
+	MVKSmallVector<VkSampleLocationEXT, kMVKMaxSampleCount> _sampleLocations;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetSampleLocationsEnable
+
+/** Vulkan command to dynamically enable custom sample locations. */
+class MVKCmdSetSampleLocationsEnable : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkBool32 sampleLocationsEnable);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	VkBool32 _sampleLocationsEnable;
 };
 
 
@@ -363,6 +381,25 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	VkBool32 _depthWriteEnable;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthClipEnable
+
+/** Vulkan command to dynamically enable depth clip. */
+class MVKCmdSetDepthClipEnable : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkBool32 depthClipEnable);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	VkBool32 _depthClipEnable;
 };
 
 
@@ -548,6 +585,25 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	uint32_t _patchControlPoints;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetPolygonMode
+
+/** Vulkan command to dynamically set the polygon mode. */
+class MVKCmdSetPolygonMode : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkPolygonMode polygonMode);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	VkPolygonMode _polygonMode;
 };
 
 

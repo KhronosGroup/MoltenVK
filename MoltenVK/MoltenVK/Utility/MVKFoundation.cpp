@@ -33,7 +33,7 @@ const char* mvkVkCommandName(MVKCommandUse cmdUse) {
 		case kMVKCommandUseBeginRendering:               return "vkCmdBeginRendering";
 		case kMVKCommandUseBeginRenderPass:              return "vkCmdBeginRenderPass";
 		case kMVKCommandUseNextSubpass:                  return "vkCmdNextSubpass";
-		case kMVKCommandUseRestartSubpass:               return "Metal renderpass restart on barrier";
+		case kMVKCommandUseRestartSubpass:               return "Metal renderpass restart";
 		case kMVKCommandUsePipelineBarrier:              return "vkCmdPipelineBarrier";
 		case kMVKCommandUseBlitImage:                    return "vkCmdBlitImage";
 		case kMVKCommandUseCopyImage:                    return "vkCmdCopyImage";

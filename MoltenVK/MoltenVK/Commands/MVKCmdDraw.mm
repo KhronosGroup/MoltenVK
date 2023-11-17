@@ -144,10 +144,9 @@ void MVKCmdDraw::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
 
 void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 
-    if (_vertexCount == 0 || _instanceCount == 0) {
-        // Nothing to do.
-        return;
-    }
+	if (_vertexCount == 0 || _instanceCount == 0) { return; }	// Nothing to do.
+
+	cmdEncoder->restartMetalRenderPassIfNeeded();
 
 	auto* pipeline = cmdEncoder->_graphicsPipelineState.getGraphicsPipeline();
 
@@ -172,7 +171,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 	} tessParams;
     uint32_t outControlPointCount = 0;
     if (pipeline->isTessellationPipeline()) {
-        tessParams.inControlPointCount = cmdEncoder->_graphicsPipelineState.getPatchControlPoints();
+        tessParams.inControlPointCount = cmdEncoder->_renderingState.getPatchControlPoints();
         outControlPointCount = pipeline->getOutputControlPointCount();
         tessParams.patchCount = mvkCeilingDivide(_vertexCount, tessParams.inControlPointCount) * _instanceCount;
     }
@@ -369,10 +368,9 @@ void MVKCmdDrawIndexed::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
 
 void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 
-    if (_indexCount == 0 || _instanceCount == 0) {
-        // Nothing to do.
-        return;
-    }
+	if (_indexCount == 0 || _instanceCount == 0) { return; }	// Nothing to do.
+
+	cmdEncoder->restartMetalRenderPassIfNeeded();
 
 	auto* pipeline = cmdEncoder->_graphicsPipelineState.getGraphicsPipeline();
 
@@ -401,7 +399,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 	} tessParams;
     uint32_t outControlPointCount = 0;
     if (pipeline->isTessellationPipeline()) {
-        tessParams.inControlPointCount = cmdEncoder->_graphicsPipelineState.getPatchControlPoints();
+        tessParams.inControlPointCount = cmdEncoder->_renderingState.getPatchControlPoints();
         outControlPointCount = pipeline->getOutputControlPointCount();
         tessParams.patchCount = mvkCeilingDivide(_indexCount, tessParams.inControlPointCount) * _instanceCount;
     }
@@ -649,6 +647,8 @@ void MVKCmdDrawIndirect::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
 
 void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 
+	cmdEncoder->restartMetalRenderPassIfNeeded();
+
 	auto* pipeline = cmdEncoder->_graphicsPipelineState.getGraphicsPipeline();
 
 	// Metal doesn't support triangle fans, so encode it as indexed indirect triangles instead.
@@ -686,7 +686,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         // encoding and execution. So we don't know how big to make the buffers.
         // We must assume an arbitrarily large number of vertices may be submitted.
         // But not too many, or we'll exhaust available VRAM.
-        inControlPointCount = cmdEncoder->_graphicsPipelineState.getPatchControlPoints();
+        inControlPointCount = cmdEncoder->_renderingState.getPatchControlPoints();
         outControlPointCount = pipeline->getOutputControlPointCount();
         vertexCount = kMVKMaxDrawIndirectVertexCount;
         patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
@@ -990,6 +990,7 @@ VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->restartMetalRenderPassIfNeeded();
 	encode(cmdEncoder, cmdEncoder->_graphicsResourcesState._mtlIndexBufferBinding);
 }
 
@@ -1034,7 +1035,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
         // encoding and execution. So we don't know how big to make the buffers.
         // We must assume an arbitrarily large number of vertices may be submitted.
         // But not too many, or we'll exhaust available VRAM.
-        inControlPointCount = cmdEncoder->_graphicsPipelineState.getPatchControlPoints();
+        inControlPointCount = cmdEncoder->_renderingState.getPatchControlPoints();
         outControlPointCount = pipeline->getOutputControlPointCount();
         vertexCount = kMVKMaxDrawIndirectVertexCount;
         patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
