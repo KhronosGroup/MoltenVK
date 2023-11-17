@@ -45,7 +45,7 @@ extern "C" {
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   2
-#define MVK_VERSION_PATCH   6
+#define MVK_VERSION_PATCH   7
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
@@ -955,7 +955,7 @@ typedef struct {
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA
 	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, this parameter is set to 0.05 by default,
+	 * If neither is set, this parameter is set to 1.0 by default,
 	 * indicating that the timestampPeriod will vary relatively slowly,
 	 * with the expectation that the app is querying this value infrequently.
 	 */

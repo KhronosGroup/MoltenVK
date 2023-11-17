@@ -38,10 +38,11 @@ MVKMTLFunction::MVKMTLFunction(const MVKMTLFunction& other) {
 }
 
 MVKMTLFunction& MVKMTLFunction::operator=(const MVKMTLFunction& other) {
-	if (_mtlFunction != other._mtlFunction) {
-		[_mtlFunction release];
-		_mtlFunction = [other._mtlFunction retain];		// retained
-	}
+	// Retain new object first in case it's the same object
+	[other._mtlFunction retain];
+	[_mtlFunction release];
+	_mtlFunction = other._mtlFunction;
+
 	shaderConversionResults = other.shaderConversionResults;
 	threadGroupSize = other.threadGroupSize;
 	return *this;

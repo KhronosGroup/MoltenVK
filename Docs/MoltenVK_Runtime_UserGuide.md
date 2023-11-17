@@ -312,7 +312,8 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_16bit_storage`
 - `VK_KHR_8bit_storage`
 - `VK_KHR_bind_memory2`
-- `VK_KHR_buffer_device_address` *(requires GPU Tier 2 argument buffers support)*
+- `VK_KHR_buffer_device_address`
+  - *Requires GPU Tier 2 argument buffers support.*
 - `VK_KHR_copy_commands2`
 - `VK_KHR_create_renderpass2`
 - `VK_KHR_dedicated_allocation`
@@ -322,7 +323,8 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_device_group_creation`
 - `VK_KHR_driver_properties`
 - `VK_KHR_dynamic_rendering`
-- `VK_KHR_fragment_shader_barycentric` *(requires Metal 2.2 on Mac or Metal 2.3 on iOS)*
+- `VK_KHR_fragment_shader_barycentric`
+  - *Requires Metal 2.2 on Mac or Metal 2.3 on iOS.*
 - `VK_KHR_get_memory_requirements2`
 - `VK_KHR_get_physical_device_properties2`
 - `VK_KHR_get_surface_capabilities2`
@@ -337,69 +339,99 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_portability_subset`
 - `VK_KHR_push_descriptor`
 - `VK_KHR_relaxed_block_layout`
-- `VK_KHR_sampler_mirror_clamp_to_edge` *(requires a Mac GPU or Apple family 7 GPU)*
+- `VK_KHR_sampler_mirror_clamp_to_edge`
+  - *Requires a Mac GPU or Apple family 7 GPU.*
 - `VK_KHR_sampler_ycbcr_conversion`
 - `VK_KHR_separate_depth_stencil_layouts`
 - `VK_KHR_shader_draw_parameters`
 - `VK_KHR_shader_float_controls`
 - `VK_KHR_shader_float16_int8`
 - `VK_KHR_shader_non_semantic_info`
-- `VK_KHR_shader_subgroup_extended_types` *(requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS)*
+- `VK_KHR_shader_subgroup_extended_types`
+  - *Requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS.*
 - `VK_KHR_spirv_1_4`
 - `VK_KHR_storage_buffer_storage_class`
 - `VK_KHR_surface`
 - `VK_KHR_swapchain`
 - `VK_KHR_swapchain_mutable_format`
+- `VK_KHR_synchronization2`
 - `VK_KHR_timeline_semaphore`
 - `VK_KHR_uniform_buffer_standard_layout`
 - `VK_KHR_variable_pointers`
-- `VK_EXT_4444_formats` *(requires 16-bit formats and either native texture swizzling or manual swizzling to be enabled)*
-- `VK_EXT_buffer_device_address` *(requires GPU Tier 2 argument buffers support)*
-- `VK_EXT_calibrated_timestamps` *(requires Metal 2.2)*
+- `VK_EXT_4444_formats`
+  - *Requires 16-bit formats and either native texture swizzling or manual swizzling to be enabled.*
+- `VK_EXT_buffer_device_address`
+  - *Requires GPU Tier 2 argument buffers support.*
+- `VK_EXT_calibrated_timestamps`
+  - *Requires Metal 2.2.*
 - `VK_EXT_debug_marker`
 - `VK_EXT_debug_report`
 - `VK_EXT_debug_utils`
-- `VK_EXT_descriptor_indexing` *(initial release limited to Metal Tier 1: 96/128 textures, 
-  16 samplers, except macOS 11.0 (Big Sur) or later, or on older versions of macOS using 
-  an Intel GPU, and if Metal argument buffers enabled in config)*
+- `VK_EXT_descriptor_indexing` 
+  - *Initial release limited to Metal Tier 1: 96/128 textures, 
+    16 samplers, except macOS 11.0 (Big Sur) or later, or on older versions of macOS using 
+    an Intel GPU, and if Metal argument buffers enabled in config.*
+- `VK_EXT_extended_dynamic_state`
+  - *Requires Metal 3.1 for `VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE`.*
+- `VK_EXT_extended_dynamic_state2`
+  - *Primitive restart is always enabled, as Metal does not support disabling it (`VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT`).*
+- `VK_EXT_extended_dynamic_state3`
+  - *Metal does not support `VK_POLYGON_MODE_POINT`*
 - `VK_EXT_external_memory_host`
-- `VK_EXT_fragment_shader_interlock` *(requires Metal 2.0 and Raster Order Groups)*
+- `VK_EXT_fragment_shader_interlock`
+  - *Requires Metal 2.0 and Raster Order Groups.*
 - `VK_EXT_host_query_reset`
 - `VK_EXT_image_robustness`
 - `VK_EXT_inline_uniform_block`
-- `VK_EXT_memory_budget` *(requires Metal 2.0)*
+- `VK_EXT_memory_budget`
+  - *Requires Metal 2.0.*
 - `VK_EXT_metal_objects`
 - `VK_EXT_metal_surface`
 - `VK_EXT_pipeline_creation_cache_control`
 - `VK_EXT_pipeline_creation_feedback`
-- `VK_EXT_post_depth_coverage` *(iOS and macOS, requires family 4 (A11) or better Apple GPU)*
+- `VK_EXT_post_depth_coverage` 
+  - *iOS and macOS, requires family 4 (A11) or better Apple GPU.*
 - `VK_EXT_private_data `
 - `VK_EXT_robustness2`
 - `VK_EXT_sample_locations`
 - `VK_EXT_scalar_block_layout`
 - `VK_EXT_separate_stencil_usage`
-- `VK_EXT_shader_atomic_float` *(requires Metal 3.0)*
-- `VK_EXT_shader_demote_to_helper_invocation` *(requires Metal Shading Language 2.3)*
-- `VK_EXT_shader_stencil_export` *(requires Mac GPU family 2 or iOS GPU family 5)*
-- `VK_EXT_shader_subgroup_ballot` *(requires Mac GPU family 2 or Apple GPU family 4)*
-- `VK_EXT_shader_subgroup_vote` *(requires Mac GPU family 2 or Apple GPU family 4)*
+- `VK_EXT_shader_atomic_float` 
+  - *Requires Metal 3.0.*
+- `VK_EXT_shader_demote_to_helper_invocation` 
+  - *Requires Metal Shading Language 2.3.*
+- `VK_EXT_shader_stencil_export`
+  - *Requires Mac GPU family 2 or iOS GPU family 5.*
+- `VK_EXT_shader_subgroup_ballot` 
+  - *Requires Mac GPU family 2 or Apple GPU family 4.*
+- `VK_EXT_shader_subgroup_vote`
+  - *Requires Mac GPU family 2 or Apple GPU family 4.*
 - `VK_EXT_shader_viewport_index_layer`
-- `VK_EXT_subgroup_size_control` *(requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS)*
+- `VK_EXT_subgroup_size_control`
+  - *Requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS.*
 - `VK_EXT_surface_maintenance1`
 - `VK_EXT_swapchain_colorspace`
 - `VK_EXT_swapchain_maintenance1`
 - `VK_EXT_vertex_attribute_divisor`
-- `VK_EXT_texel_buffer_alignment` *(requires Metal 2.0)*
-- `VK_EXT_texture_compression_astc_hdr` *(iOS and macOS, requires family 6 (A13) or better Apple GPU)*
-- `VK_MVK_ios_surface` *(iOS) (Obsolete. Use `VK_EXT_metal_surface` instead.)*
-- `VK_MVK_macos_surface` *(macOS) (Obsolete. Use `VK_EXT_metal_surface` instead.)*
+- `VK_EXT_texel_buffer_alignment`
+  - *Requires Metal 2.0.*
+- `VK_EXT_texture_compression_astc_hdr`
+  - *iOS and macOS, requires family 6 (A13) or better Apple GPU.*
+- `VK_MVK_ios_surface` 
+  - *Obsolete. Use `VK_EXT_metal_surface` instead.*
+- `VK_MVK_macos_surface` 
+  - *Obsolete. Use `VK_EXT_metal_surface` instead.*
 - `VK_AMD_gpu_shader_half_float`
 - `VK_AMD_negative_viewport_height`
-- `VK_AMD_shader_image_load_store_lod` *(requires Apple GPU)*
-- `VK_AMD_shader_trinary_minmax` *(requires Metal 2.1)*
-- `VK_IMG_format_pvrtc` *(requires Apple GPU)*
+- `VK_AMD_shader_image_load_store_lod`
+  - *Requires Apple GPU.*
+- `VK_AMD_shader_trinary_minmax`
+  - *Requires Metal 2.1.*
+- `VK_IMG_format_pvrtc`
+  - *Requires Apple GPU.*
 - `VK_INTEL_shader_integer_functions2`
-- `VK_NV_fragment_shader_barycentric` *(requires Metal 2.2 on Mac or Metal 2.3 on iOS)*
+- `VK_NV_fragment_shader_barycentric`
+  - *Requires Metal 2.2 on Mac or Metal 2.3 on iOS.*
 - `VK_NV_glsl_shader`
 
 In order to visibly display your content on *macOS*, *iOS*, or *tvOS*, you must enable the
@@ -587,9 +619,9 @@ vailable when you request it, resulting in frame delays and visual stuttering.
 <a name="timestamping"></a>
 ### Timestamping
 
-On non-Apple Silicon devices (older Mac devices), the GPU can switch power and performance 
-states as required by usage. This affects the GPU timestamps retrievable through the Vulkan 
-API. As a result, the value of `VkPhysicalDeviceLimits::timestampPeriod` can vary over time. 
+On non-Apple GPUs (older Mac devices), the GPU can switch power and performance states as 
+required by usage. This affects the GPU timestamps retrievable through the Vulkan API. 
+As a result, the value of `VkPhysicalDeviceLimits::timestampPeriod` can vary over time. 
 Consider calling `vkGetPhysicalDeviceProperties()`, when needed, and retrieve the current
 value of `VkPhysicalDeviceLimits::timestampPeriod`, to help you calibrate recent GPU 
 timestamps queried through the Vulkan API.
@@ -621,6 +653,8 @@ Known **MoltenVK** Limitations
 ------------------------------
 
 This section documents the known limitations in this version of **MoltenVK**.
+  
+- See [above](#interaction) for known limitations for specific Vulkan extensions.
 
 - On *macOS* versions prior to *macOS 10.15.6*, native host-coherent image device memory is not available.
   Because of this, changes made to `VkImage VK_MEMORY_PROPERTY_HOST_COHERENT_BIT` device memory by the CPU 
@@ -644,4 +678,3 @@ This section documents the known limitations in this version of **MoltenVK**.
   use the *Vulkan Loader and Layers* from the *[Vulkan SDK](https://vulkan.lunarg.com/sdk/home)*. 
   Refer to the *Vulkan SDK [Getting Started](https://vulkan.lunarg.com/doc/sdk/latest/mac/getting_started.html)* 
   document for more info.
-

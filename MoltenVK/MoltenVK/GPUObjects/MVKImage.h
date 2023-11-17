@@ -74,9 +74,7 @@ protected:
 	bool overlaps(VkSubresourceLayout& imgLayout, VkDeviceSize offset, VkDeviceSize size);
     void propagateDebugName();
     MVKImageMemoryBinding* getMemoryBinding() const;
-	void applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
-								 VkPipelineStageFlags dstStageMask,
-								 MVKPipelineBarrier& barrier,
+	void applyImageMemoryBarrier(MVKPipelineBarrier& barrier,
 								 MVKCommandEncoder* cmdEncoder,
 								 MVKCommandUse cmdUse);
 	void pullFromDeviceOnCompletion(MVKCommandEncoder* cmdEncoder,
@@ -119,9 +117,7 @@ public:
     VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
 
     /** Applies the specified global memory barrier. */
-    void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
-                            VkPipelineStageFlags dstStageMask,
-                            MVKPipelineBarrier& barrier,
+    void applyMemoryBarrier(MVKPipelineBarrier& barrier,
                             MVKCommandEncoder* cmdEncoder,
                             MVKCommandUse cmdUse) override;
 
@@ -133,9 +129,7 @@ protected:
     friend MVKImage;
 
     void propagateDebugName() override;
-    bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
-                           VkPipelineStageFlags dstStageMask,
-                           MVKPipelineBarrier& barrier);
+    bool needsHostReadSync(MVKPipelineBarrier& barrier);
     bool shouldFlushHostMemory();
     VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
     VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);
@@ -251,9 +245,7 @@ public:
 	virtual VkResult bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo);
 
 	/** Applies the specified image memory barrier. */
-	void applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
-								 VkPipelineStageFlags dstStageMask,
-								 MVKPipelineBarrier& barrier,
+	void applyImageMemoryBarrier(MVKPipelineBarrier& barrier,
 								 MVKCommandEncoder* cmdEncoder,
 								 MVKCommandUse cmdUse);
 

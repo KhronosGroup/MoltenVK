@@ -20,8 +20,19 @@
 #include "MVKOSExtensions.h"
 #include "MVKFoundation.h"
 
+// Return the expected size of MVKConfiguration, based on contents of MVKConfigMembers.def.
+static constexpr uint32_t getExpectedMVKConfigurationSize() {
+#define MVK_CONFIG_MEMBER_STRING(member, mbrType, name)  MVK_CONFIG_MEMBER(member, mbrType, name)
+#define MVK_CONFIG_MEMBER(member, mbrType, name)         cfgSize += sizeof(mbrType);
+	uint32_t cfgSize = 0;
+#include "MVKConfigMembers.def"
+	return cfgSize;
+}
+
 static bool _mvkConfigInitialized = false;
 static void mvkInitConfigFromEnvVars() {
+	static_assert(getExpectedMVKConfigurationSize() == sizeof(MVKConfiguration), "MVKConfigMembers.def does not match the members of MVKConfiguration.");
+
 	_mvkConfigInitialized = true;
 
 	MVKConfiguration evCfg;
@@ -32,8 +43,8 @@ static void mvkInitConfigFromEnvVars() {
 #define MVK_CONFIG_MEMBER(member, mbrType, name) \
 	evCfg.member = (mbrType)mvkGetEnvVarNumber(STR(MVK_CONFIG_##name), MVK_CONFIG_##name);
 
-#define MVK_CONFIG_MEMBER_STRING(member, strObj, name) \
-	evCfg.member = mvkGetEnvVarString(STR(MVK_CONFIG_##name), strObj, MVK_CONFIG_##name);
+#define MVK_CONFIG_MEMBER_STRING(member, mbrType, name) \
+	evCfg.member = mvkGetEnvVarString(STR(MVK_CONFIG_##name), evGPUCapFileStrObj, MVK_CONFIG_##name);
 
 #include "MVKConfigMembers.def"
 

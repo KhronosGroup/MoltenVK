@@ -37,10 +37,12 @@ class MVKCmdBindVertexBuffers : public MVKCommand {
 
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						uint32_t startBinding,
+						uint32_t firstBinding,
 						uint32_t bindingCount,
 						const VkBuffer* pBuffers,
-						const VkDeviceSize* pOffsets);
+						const VkDeviceSize* pOffsets,
+						const VkDeviceSize* pSizes,
+						const VkDeviceSize* pStrides);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 

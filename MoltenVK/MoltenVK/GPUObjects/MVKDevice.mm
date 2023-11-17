@@ -75,9 +75,6 @@ static const uint32_t kAMDRadeonRX5500DeviceId = 0x7340;
 static const uint32_t kAMDRadeonRX6800DeviceId = 0x73bf;
 static const uint32_t kAMDRadeonRX6700DeviceId = 0x73df;
 
-static const VkExtent2D kMetalSamplePositionGridSize = { 1, 1 };
-static const VkExtent2D kMetalSamplePositionGridSizeNotSupported = { 0, 0 };
-
 static const uint32_t kMaxTimeDomains = 2;
 
 #pragma clang diagnostic pop
@@ -320,6 +317,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				subgroupSizeFeatures->computeFullSubgroups = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES: {
+				auto* synch2Features = (VkPhysicalDeviceSynchronization2Features*)next;
+				synch2Features->synchronization2 = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES: {
 				auto* astcHDRFeatures = (VkPhysicalDeviceTextureCompressionASTCHDRFeatures*)next;
 				astcHDRFeatures->textureCompressionASTC_HDR = _metalFeatures.astcHDRTextures;
@@ -380,6 +382,53 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 									   mvkConfig().fullImageViewSwizzle);
 				formatFeatures->formatA4R4G4B4 = canSupport4444;
 				formatFeatures->formatA4B4G4R4 = canSupport4444;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
+				auto* extDynState = (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT*)next;
+				extDynState->extendedDynamicState = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT: {
+				auto* extDynState2 = (VkPhysicalDeviceExtendedDynamicState2FeaturesEXT*)next;
+				extDynState2->extendedDynamicState2 = true;
+				extDynState2->extendedDynamicState2LogicOp = false;
+				extDynState2->extendedDynamicState2PatchControlPoints = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT: {
+				auto* extDynState3 = (VkPhysicalDeviceExtendedDynamicState3FeaturesEXT*)next;
+				extDynState3->extendedDynamicState3TessellationDomainOrigin = false;
+				extDynState3->extendedDynamicState3DepthClampEnable = true;
+				extDynState3->extendedDynamicState3PolygonMode = true;
+				extDynState3->extendedDynamicState3RasterizationSamples = false;
+				extDynState3->extendedDynamicState3SampleMask = false;
+				extDynState3->extendedDynamicState3AlphaToCoverageEnable = false;
+				extDynState3->extendedDynamicState3AlphaToOneEnable = false;
+				extDynState3->extendedDynamicState3LogicOpEnable = false;
+				extDynState3->extendedDynamicState3ColorBlendEnable = false;
+				extDynState3->extendedDynamicState3ColorBlendEquation = false;
+				extDynState3->extendedDynamicState3ColorWriteMask = false;
+				extDynState3->extendedDynamicState3RasterizationStream = false;
+				extDynState3->extendedDynamicState3ConservativeRasterizationMode = false;
+				extDynState3->extendedDynamicState3ExtraPrimitiveOverestimationSize = false;
+				extDynState3->extendedDynamicState3DepthClipEnable = true;
+				extDynState3->extendedDynamicState3SampleLocationsEnable = true;
+				extDynState3->extendedDynamicState3ColorBlendAdvanced = false;
+				extDynState3->extendedDynamicState3ProvokingVertexMode = false;
+				extDynState3->extendedDynamicState3LineRasterizationMode = false;
+				extDynState3->extendedDynamicState3LineStippleEnable = false;
+				extDynState3->extendedDynamicState3DepthClipNegativeOneToOne = false;
+				extDynState3->extendedDynamicState3ViewportWScalingEnable = false;
+				extDynState3->extendedDynamicState3ViewportSwizzle = false;
+				extDynState3->extendedDynamicState3CoverageToColorEnable = false;
+				extDynState3->extendedDynamicState3CoverageToColorLocation = false;
+				extDynState3->extendedDynamicState3CoverageModulationMode = false;
+				extDynState3->extendedDynamicState3CoverageModulationTableEnable = false;
+				extDynState3->extendedDynamicState3CoverageModulationTable = false;
+				extDynState3->extendedDynamicState3CoverageReductionMode = false;
+				extDynState3->extendedDynamicState3RepresentativeFragmentTestEnable = false;
+				extDynState3->extendedDynamicState3ShadingRateImageEnable = false;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: {
@@ -736,11 +785,11 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT: {
 				auto* sampLocnProps = (VkPhysicalDeviceSampleLocationsPropertiesEXT*)next;
 				sampLocnProps->sampleLocationSampleCounts = _metalFeatures.supportedSampleCounts;
-				sampLocnProps->maxSampleLocationGridSize = kMetalSamplePositionGridSize;
-				sampLocnProps->sampleLocationCoordinateRange[0] = 0.0;
-				sampLocnProps->sampleLocationCoordinateRange[1] = (15.0 / 16.0);
-				sampLocnProps->sampleLocationSubPixelBits = 4;
-				sampLocnProps->variableSampleLocations = VK_FALSE;
+				sampLocnProps->maxSampleLocationGridSize = kMVKSampleLocationPixelGridSize;
+				sampLocnProps->sampleLocationCoordinateRange[0] = kMVKMinSampleLocationCoordinate;
+				sampLocnProps->sampleLocationCoordinateRange[1] = kMVKMaxSampleLocationCoordinate;
+				sampLocnProps->sampleLocationSubPixelBits = mvkPowerOfTwoExponent(kMVKSampleLocationCoordinateGridSize);
+				sampLocnProps->variableSampleLocations = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: {
@@ -862,8 +911,8 @@ void MVKPhysicalDevice::getMultisampleProperties(VkSampleCountFlagBits samples,
 												 VkMultisamplePropertiesEXT* pMultisampleProperties) {
 	if (pMultisampleProperties) {
 		pMultisampleProperties->maxSampleLocationGridSize = (mvkIsOnlyAnyFlagEnabled(samples, _metalFeatures.supportedSampleCounts)
-															 ? kMetalSamplePositionGridSize
-															 : kMetalSamplePositionGridSizeNotSupported);
+															 ? kMVKSampleLocationPixelGridSize
+															 : kMVKSampleLocationPixelGridSizeNotSupported);
 	}
 }
 
@@ -1544,7 +1593,7 @@ MVKArrayRef<MVKQueueFamily*> MVKPhysicalDevice::getQueueFamilies() {
 VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 													 VkQueueFamilyProperties* pQueueFamilyProperties) {
 	auto qFams = getQueueFamilies();
-	uint32_t qfCnt = uint32_t(qFams.size);
+	uint32_t qfCnt = uint32_t(qFams.size());
 
 	// If properties aren't actually being requested yet, simply update the returned count
 	if ( !pQueueFamilyProperties ) {
@@ -1603,7 +1652,8 @@ void MVKPhysicalDevice::updateTimestampPeriod() {
 			
 			// Basic lowpass filter TPout = (1 - A)TPout + (A * TPin).
 			// The lower A is, the slower TPout will change over time.
-			float a = mvkConfig().timestampPeriodLowPassAlpha;
+			// First time through, just use the measured value directly.
+			float a = earlierCPUTs ? mvkConfig().timestampPeriodLowPassAlpha : 1.0;
 			_properties.limits.timestampPeriod = ((1.0 - a) * _properties.limits.timestampPeriod) + (a * tsPeriod);
 		}
 	}
@@ -1710,9 +1760,14 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.minSwapchainImageCount = kMVKMinSwapchainImageCount;
 	_metalFeatures.maxSwapchainImageCount = kMVKMaxSwapchainImageCount;
 
-	_metalFeatures.vertexStrideAlignment = 4;
-
 	_metalFeatures.maxPerStageStorageTextureCount = 8;
+
+	_metalFeatures.vertexStrideAlignment = supportsMTLGPUFamily(Apple5) ? 1 : 4;
+
+#if MVK_XCODE_15
+	// Dynamic vertex stride needs to have everything aligned - compiled with support for vertex stride calls, and supported by both runtime OS and GPU.
+	_metalFeatures.dynamicVertexStride = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0) && (supportsMTLGPUFamily(Apple4) || supportsMTLGPUFamily(Mac2));
+#endif
 
 	// GPU-specific features
 	switch (_properties.vendorID) {
@@ -2204,6 +2259,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if ([_mtlDevice respondsToSelector: @selector(argumentBuffersSupport)]) {
 		_metalFeatures.argumentBuffersTier = _mtlDevice.argumentBuffersSupport;
+	} else {
+		_metalFeatures.argumentBuffersTier = MTLArgumentBuffersTier1;
 	}
 
 #define checkSupportsMTLCounterSamplingPoint(mtlSP, mvkSP)  \
@@ -2425,7 +2482,7 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.maxVertexInputAttributes = 31;
     _properties.limits.maxVertexInputBindings = 16;
 
-    _properties.limits.maxVertexInputBindingStride = (2 * KIBI);
+    _properties.limits.maxVertexInputBindingStride = supportsMTLGPUFamily(Apple2) ? kMVKUndefinedLargeUInt32 : (4 * KIBI);
 	_properties.limits.maxVertexInputAttributeOffset = _properties.limits.maxVertexInputBindingStride - 1;
 
 	_properties.limits.maxPerStageDescriptorSamplers = _metalFeatures.maxPerStageSamplerCount;
@@ -2634,7 +2691,7 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.optimalBufferCopyRowPitchAlignment = 1;
 
 	_properties.limits.timestampComputeAndGraphics = VK_TRUE;
-	_properties.limits.timestampPeriod = mvkGetTimestampPeriod();	// Will be 1.0 on Apple Silicon
+	_properties.limits.timestampPeriod = 1.0;	// On non-Apple GPU's, this can vary over time, and is calculated based on actual GPU activity.
 
     _properties.limits.pointSizeRange[0] = 1;
 	switch (_properties.vendorID) {
@@ -4191,16 +4248,14 @@ void MVKDevice::removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t val
 	mvkRemoveFirstOccurance(_awaitingTimelineSem4s, make_pair(sem4, value));
 }
 
-void MVKDevice::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
-								   VkPipelineStageFlags dstStageMask,
-								   MVKPipelineBarrier& barrier,
+void MVKDevice::applyMemoryBarrier(MVKPipelineBarrier& barrier,
 								   MVKCommandEncoder* cmdEncoder,
 								   MVKCommandUse cmdUse) {
-	if (!mvkIsAnyFlagEnabled(dstStageMask, VK_PIPELINE_STAGE_HOST_BIT) ||
+	if (!mvkIsAnyFlagEnabled(barrier.dstStageMask, VK_PIPELINE_STAGE_HOST_BIT) ||
 		!mvkIsAnyFlagEnabled(barrier.dstAccessMask, VK_ACCESS_HOST_READ_BIT) ) { return; }
 	lock_guard<mutex> lock(_rezLock);
 	for (auto& rez : _resources) {
-		rez->applyMemoryBarrier(srcStageMask, dstStageMask, barrier, cmdEncoder, cmdUse);
+		rez->applyMemoryBarrier(barrier, cmdEncoder, cmdUse);
 	}
 }
 

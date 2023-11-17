@@ -73,17 +73,23 @@ class MVKPrivateDataSlot;
 
 
 /** The buffer index to use for vertex content. */
-const static uint32_t kMVKVertexContentBufferIndex = 0;
+static constexpr uint32_t kMVKVertexContentBufferIndex = 0;
 
 // Parameters to define the sizing of inline collections
-const static uint32_t kMVKQueueFamilyCount = 4;
-const static uint32_t kMVKQueueCountPerQueueFamily = 1;		// Must be 1. See comments in MVKPhysicalDevice::getQueueFamilies()
-const static uint32_t kMVKMinSwapchainImageCount = 2;
-const static uint32_t kMVKMaxSwapchainImageCount = 3;
-const static uint32_t kMVKMaxColorAttachmentCount = 8;
-const static uint32_t kMVKMaxViewportScissorCount = 16;
-const static uint32_t kMVKMaxDescriptorSetCount = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
-static constexpr uint32_t kMVKMaxTransformFeedbackBufferCount = 1;	// TODO: Increase to 4.
+static constexpr uint32_t   kMVKQueueFamilyCount = 4;
+static constexpr uint32_t   kMVKQueueCountPerQueueFamily = 1;		// Must be 1. See comments in MVKPhysicalDevice::getQueueFamilies()
+static constexpr uint32_t   kMVKMinSwapchainImageCount = 2;
+static constexpr uint32_t   kMVKMaxSwapchainImageCount = 3;
+static constexpr uint32_t   kMVKMaxColorAttachmentCount = 8;
+static constexpr uint32_t   kMVKMaxViewportScissorCount = 16;
+static constexpr uint32_t   kMVKMaxDescriptorSetCount = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
+static constexpr uint32_t   kMVKMaxSampleCount = 8;
+static constexpr uint32_t   kMVKSampleLocationCoordinateGridSize = 16;
+static constexpr float      kMVKMinSampleLocationCoordinate = 0.0;
+static constexpr float      kMVKMaxSampleLocationCoordinate = (float)(kMVKSampleLocationCoordinateGridSize - 1) / (float)kMVKSampleLocationCoordinateGridSize;
+static constexpr VkExtent2D kMVKSampleLocationPixelGridSize = { 1, 1 };
+static constexpr VkExtent2D kMVKSampleLocationPixelGridSizeNotSupported = { 0, 0 };
+static constexpr uint32_t   kMVKMaxTransformFeedbackBufferCount = 1;	// TODO: Increase to 4.
 
 #if !MVK_XCODE_12
 typedef NSUInteger MTLTimestamp;
@@ -682,9 +688,7 @@ public:
 	void removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value);
 
 	/** Applies the specified global memory barrier to all resource issued by this device. */
-	void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
-							VkPipelineStageFlags dstStageMask,
-							MVKPipelineBarrier& barrier,
+	void applyMemoryBarrier(MVKPipelineBarrier& barrier,
 							MVKCommandEncoder* cmdEncoder,
 							MVKCommandUse cmdUse);
 
@@ -968,13 +972,9 @@ public:
 	bool isUsingPipelineStageMetalArgumentBuffers() { return isUsingMetalArgumentBuffers() && !_device->_pMetalFeatures->descriptorSetArgumentBuffers; };
 
 	/** Constructs an instance for the specified device. */
-    MVKDeviceTrackingMixin(MVKDevice* device) : _device(device) { assert(_device); }
-
-	virtual ~MVKDeviceTrackingMixin() {}
+	MVKDeviceTrackingMixin(MVKDevice* device) : _device(device) { assert(_device); }
 
 protected:
-	virtual MVKBaseObject* getBaseObject() = 0;
-
 	MVKDevice* _device;
 };
 
@@ -989,9 +989,6 @@ public:
 
 	/** Constructs an instance for the specified device. */
 	MVKBaseDeviceObject(MVKDevice* device) : MVKDeviceTrackingMixin(device) {}
-
-protected:
-	MVKBaseObject* getBaseObject() override { return this; };
 };
 
 
@@ -1008,10 +1005,6 @@ public:
 
 	/** Constructs an instance for the specified device. */
 	MVKVulkanAPIDeviceObject(MVKDevice* device) : MVKDeviceTrackingMixin(device) {}
-
-protected:
-	MVKBaseObject* getBaseObject() override { return this; };
-
 };
 
 
@@ -1064,7 +1057,6 @@ public:
 
 protected:
 	T* newObject() override { return new T(_device); }
-	MVKBaseObject* getBaseObject() override { return this; };
 
 };
 

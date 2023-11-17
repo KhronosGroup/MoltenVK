@@ -132,7 +132,10 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT; }
 
-	/** Binds this pipeline to the specified command encoder. */
+	/** Called when the pipeline has been bound to the command encoder. */
+	virtual void wasBound(MVKCommandEncoder* cmdEncoder) {}
+
+	/** Encodes this pipeline to the command encoder. */
 	virtual void encode(MVKCommandEncoder* cmdEncoder, uint32_t stage = 0) = 0;
 
 	/** Binds the push constants to a command encoder. */
@@ -218,6 +221,56 @@ struct MVKStagedDescriptorBindingUse {
 	MVKBitArray stages[4] = {};
 };
 
+/** Enumeration identifying different state content types. */
+enum MVKRenderStateType {
+	Unknown = 0,
+	BlendConstants,
+	CullMode,
+	DepthBias,
+	DepthBiasEnable,
+	DepthBounds,
+	DepthBoundsTestEnable,
+	DepthClipEnable,
+	DepthCompareOp,
+	DepthTestEnable,
+	DepthWriteEnable,
+	FrontFace,
+	LineWidth,
+	LogicOp,
+	LogicOpEnable,
+	PatchControlPoints,
+	PolygonMode,
+	PrimitiveRestartEnable,
+	PrimitiveTopology,
+	RasterizerDiscardEnable,
+	SampleLocations,
+	SampleLocationsEnable,
+	Scissors,
+	StencilCompareMask,
+	StencilOp,
+	StencilReference,
+	StencilTestEnable,
+	StencilWriteMask,
+	VertexStride,
+	Viewports,
+	MVKRenderStateTypeCount
+};
+
+/** Boolean tracking of rendering state. */
+struct MVKRenderStateFlags {
+	void enable(MVKRenderStateType rs) { if (rs) { mvkEnableFlags(_stateFlags, getFlagMask(rs)); } }
+	void disable(MVKRenderStateType rs) { if (rs) { mvkDisableFlags(_stateFlags, getFlagMask(rs)); } }
+	void set(MVKRenderStateType rs, bool val) { val? enable(rs) : disable(rs); }
+	void enableAll() { mvkEnableAllFlags(_stateFlags); }
+	void disableAll() { mvkDisableAllFlags(_stateFlags); }
+	bool isEnabled(MVKRenderStateType rs) { return mvkIsAnyFlagEnabled(_stateFlags, getFlagMask(rs)); }
+protected:
+	uint32_t getFlagMask(MVKRenderStateType rs) { return rs ? (1u << (rs - 1u)) : 0; }	 // Ignore Unknown type
+	
+	uint32_t _stateFlags = 0;
+	static_assert(sizeof(_stateFlags) * 8 >= MVKRenderStateTypeCount - 1, "_stateFlags is too small to support the number of flags in MVKRenderStateType."); // Ignore Unknown type
+};
+
 /** Represents an Vulkan graphics pipeline. */
 class MVKGraphicsPipeline : public MVKPipeline {
 
@@ -226,20 +279,18 @@ public:
 	/** Returns the number and order of stages in this pipeline. Draws commands must encode this pipeline once per stage. */
 	void getStages(MVKPiplineStages& stages);
 
-	/** Binds this pipeline to the specified command encoder. */
+	virtual void wasBound(MVKCommandEncoder* cmdEncoder) override;
+
 	void encode(MVKCommandEncoder* cmdEncoder, uint32_t stage = 0) override;
 
-    /** Returns whether this pipeline permits dynamic setting of the specifie state. */
-    bool supportsDynamicState(VkDynamicState state);
+    /** Returns whether this pipeline permits dynamic setting of the state. */
+	bool isDynamicState(MVKRenderStateType state) { return _dynamicState.isEnabled(state); }
 
     /** Returns whether this pipeline has tessellation shaders. */
     bool isTessellationPipeline() { return _tessInfo.patchControlPoints > 0; }
 
     /** Returns whether this pipeline uses transform feedback. */
     bool isTransformFeedbackPipeline() { return _isTransformFeedback; }
-
-    /** Returns the number of input tessellation patch control points. */
-    uint32_t getInputControlPointCount() { return _tessInfo.patchControlPoints; }
 
     /** Returns the number of output tessellation patch control points. */
     uint32_t getOutputControlPointCount() { return _outputControlPointCount; }
@@ -274,9 +325,6 @@ public:
 	/** Returns true if the tessellation control shader needs a buffer to store its per-patch output. */
 	bool needsTessCtlPatchOutputBuffer() { return _needsTessCtlPatchOutputBuffer; }
 
-	/** Returns whether this pipeline has custom sample positions enabled. */
-	bool isUsingCustomSamplePositions() { return _isUsingCustomSamplePositions; }
-
 	/** Returns the Vulkan primitive topology. */
 	VkPrimitiveTopology getVkPrimitiveTopology() { return _vkPrimitiveTopology; }
 
@@ -288,9 +336,6 @@ public:
 	 * or a vertex attribute binding above any implicit buffer bindings.
 	 */
 	bool isValidVertexBufferIndex(MVKShaderStage stage, uint32_t mtlBufferIndex);
-
-	/** Returns the custom samples used by this pipeline. */
-	MVKArrayRef<MTLSamplePosition> getCustomSamplePositions() { return _customSamplePositions.contents(); }
 
 	/** Returns the Metal vertex buffer index to use for the specified vertex attribute binding number.  */
 	uint32_t getMetalBufferIndexForVertexAttributeBinding(uint32_t binding) { return _device->getMetalBufferIndexForVertexAttributeBinding(binding); }
@@ -323,7 +368,8 @@ protected:
     id<MTLComputePipelineState> getOrCompilePipeline(MTLComputePipelineDescriptor* plDesc, id<MTLComputePipelineState>& plState, const char* compilerType);
 	bool compileVertexStageState(MTLComputePipelineDescriptor* vtxPLDesc, MVKMTLFunction* pVtxFunctions, VkPipelineCreationFeedback* pVertexFB);
 	bool compileTessControlStageState(MTLComputePipelineDescriptor* tcPLDesc, VkPipelineCreationFeedback* pTessCtlFB);
-	void initCustomSamplePositions(const VkGraphicsPipelineCreateInfo* pCreateInfo);
+	void initDynamicState(const VkGraphicsPipelineCreateInfo* pCreateInfo);
+	void initSampleLocations(const VkGraphicsPipelineCreateInfo* pCreateInfo);
     void initMTLRenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, VkPipelineCreationFeedback* pPipelineFB, const VkPipelineShaderStageCreateInfo* pVertexSS, VkPipelineCreationFeedback* pVertexFB, const VkPipelineShaderStageCreateInfo* pTessCtlSS, VkPipelineCreationFeedback* pTessCtlFB, const VkPipelineShaderStageCreateInfo* pTessEvalSS, VkPipelineCreationFeedback* pTessEvalFB, const VkPipelineShaderStageCreateInfo* pFragmentSS, VkPipelineCreationFeedback* pFragmentFB);
     void initShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig, const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
 	void initReservedVertexAttributeBufferCount(const VkGraphicsPipelineCreateInfo* pCreateInfo);
@@ -364,11 +410,11 @@ protected:
 	VkPipelineTessellationStateCreateInfo _tessInfo;
 	VkPipelineRasterizationStateCreateInfo _rasterInfo;
 	VkPipelineDepthStencilStateCreateInfo _depthStencilInfo;
+	MVKRenderStateFlags _dynamicState;
 
 	MVKSmallVector<VkViewport, kMVKMaxViewportScissorCount> _viewports;
 	MVKSmallVector<VkRect2D, kMVKMaxViewportScissorCount> _scissors;
-	MVKSmallVector<VkDynamicState> _dynamicState;
-	MVKSmallVector<MTLSamplePosition> _customSamplePositions;
+	MVKSmallVector<VkSampleLocationEXT> _sampleLocations;
 	MVKSmallVector<MVKTranslatedVertexBinding> _translatedVertexBindings;
 	MVKSmallVector<MVKZeroDivisorVertexBinding> _zeroDivisorVertexBindings;
 	MVKSmallVector<MVKStagedMTLArgumentEncoders> _mtlArgumentEncoders;
@@ -382,11 +428,7 @@ protected:
 	id<MTLComputePipelineState> _mtlTessControlStageState = nil;
 	id<MTLRenderPipelineState> _mtlPipelineState = nil;
 
-    float _blendConstants[4] = { 0.0, 0.0, 0.0, 1.0 };
-	MTLCullMode _mtlCullMode;
-	MTLWinding _mtlFrontWinding;
-	MTLTriangleFillMode _mtlFillMode;
-	MTLDepthClipMode _mtlDepthClipMode;
+	float _blendConstants[4] = {};
 	MVKShaderImplicitRezBinding _reservedVertexAttributeBufferCount;
 	MVKShaderImplicitRezBinding _viewRangeBufferIndex;
 	MVKShaderImplicitRezBinding _outputBufferIndex;
@@ -395,6 +437,8 @@ protected:
 	uint32_t _tessCtlPatchOutputBufferIndex = 0;
 	uint32_t _tessCtlLevelBufferIndex = 0;
 
+	bool _primitiveRestartEnable = true;
+	bool _hasRasterInfo = false;
 	bool _needsVertexSwizzleBuffer = false;
 	bool _needsVertexBufferSizeBuffer = false;
 	bool _needsVertexDynamicOffsetBuffer = false;
@@ -415,7 +459,7 @@ protected:
 	bool _needsFragmentViewRangeBuffer = false;
 	bool _isRasterizing = false;
 	bool _isRasterizingColor = false;
-	bool _isUsingCustomSamplePositions = false;
+	bool _sampleLocationsEnable = false;
 	bool _isTransformFeedback = false;
 };
 
@@ -428,7 +472,6 @@ class MVKComputePipeline : public MVKPipeline {
 
 public:
 
-	/** Binds this pipeline to the specified command encoder. */
 	void encode(MVKCommandEncoder* cmdEncoder, uint32_t = 0) override;
 
 	/** Returns if this pipeline allows non-zero dispatch bases in vkCmdDispatchBase(). */
