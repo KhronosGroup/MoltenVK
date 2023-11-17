@@ -1864,11 +1864,11 @@ uint32_t MVKGraphicsPipeline::getImplicitBufferIndex(MVKShaderStage stage, uint3
 }
 
 uint32_t MVKGraphicsPipeline::getTransformFeedbackBufferIndex(MVKShaderStage stage) {
-	return getMetalBufferIndexForVertexAttributeBinding(_reservedVertexAttributeBufferCount.stages[stage] - 2 * kMVKMaxTransformFeedbackBufferCount);
+	return _device->getMetalBufferIndexForTransformFeedbackBinding(stage, 0);
 }
 
 uint32_t MVKGraphicsPipeline::getTransformFeedbackCounterBufferIndex(MVKShaderStage stage) {
-	return getMetalBufferIndexForVertexAttributeBinding(_reservedVertexAttributeBufferCount.stages[stage] - kMVKMaxTransformFeedbackBufferCount);
+	return _device->getMetalBufferIndexForTransformFeedbackCounterBinding(stage, 0);
 }
 
 // Set the number of vertex attribute buffers consumed by this pipeline at each stage.
