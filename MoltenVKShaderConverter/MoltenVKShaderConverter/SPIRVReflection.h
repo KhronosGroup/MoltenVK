@@ -258,7 +258,7 @@ namespace mvk {
 	static inline uint32_t getShaderInterfaceStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
 														   Vi& vars, SPIRVShaderInterfaceVariable* pParentFirstMember,
 														   const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
-														   bool patch, uint32_t loc, uint32_t xfbBuffer, uint32_t xfbOffset
+														   bool patch, uint32_t loc, uint32_t xfbBuffer, uint32_t xfbOffset,
 														   uint32_t xfbStride) {
 		bool isUsed = true;
 		bool isBlock = reflect.has_decoration(structType->self, spv::DecorationBlock);

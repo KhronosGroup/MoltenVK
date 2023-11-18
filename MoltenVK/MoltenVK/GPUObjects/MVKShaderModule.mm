@@ -517,8 +517,8 @@ static std::string mvkVertexAttrToUserAttr(const SPIRVShaderOutput& output) {
 	return os.str();
 }
 
-void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName, SPIRVToMSLConversionResultInfo& conversionResult) {
-	SPIRVShaderOutputs vtxOutputs;
+void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName, SPIRVToMSLConversionResult& conversionResult) {
+	MVKSmallVector<SPIRVShaderOutput, 16> vtxOutputs;
 	std::string errorLog;
 	std::unordered_map<uint32_t, std::vector<size_t>> xfbBuffers;
 	uint32_t clipDistances = 0;
@@ -527,7 +527,7 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 		xfbBuffers[vtxOutputs[i].xfbBufferIndex].push_back(i);
 	}
 	// Sort XFB buffers by offset; sort the other outputs by index.
-	for (const auto& buffer : xfbBuffers) {
+	for (auto& buffer : xfbBuffers) {
 		if (buffer.first == (uint32_t)(-1)) {
 			std::sort(buffer.second.begin(), buffer.second.end(), [&vtxOutputs](uint32_t a, uint32_t b) {
 				if (vtxOutputs[a].location == vtxOutputs[b].location)
@@ -573,7 +573,7 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 			if (offset % getShaderOutputAlignment(vtxOutputs[outputIdx]) != 0)
 				conversionResult.msl += "packed_";
 			conversionResult.msl +=	mvkTypeToMSL(vtxOutputs[outputIdx]) + " ";
-			if (output.builtin != spv::BuiltInMax) {
+			if (vtxOutputs[outputIdx].builtin != spv::BuiltInMax) {
 				conversionResult.msl += mvkBuiltInToName(vtxOutputs[outputIdx]);
 			} else {
 				conversionResult.msl += mvkVertexAttrToName(vtxOutputs[outputIdx]);
@@ -583,7 +583,9 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 		}
 		// Emit additional padding for the buffer stride.
 		if (stride != offset) {
-			conversionResult.msl += "    char pad" << padNo++ << "[" << stride - offset << "];\n";
+			std::ostringstream os;
+			os << "    char pad" << padNo++ << "[" << stride - offset << "];\n";
+			conversionResult.msl += os.str();
 		}
 		conversionResult.msl += "};\n";
 	}

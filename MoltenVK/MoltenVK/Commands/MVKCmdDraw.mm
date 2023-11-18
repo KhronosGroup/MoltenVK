@@ -203,7 +203,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 				// If there are vertex bindings with a zero vertex divisor, I need to offset them by
 				// _firstInstance * stride, since that is the expected behaviour for a divisor of 0.
                 cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _firstInstance);
-				id<MTLComputePipelineState> vtxState = pipeline->getTessVertexStageState();
+				id<MTLComputePipelineState> vtxState = pipeline->getVertexStageState();
 				if (cmdEncoder->getDevice()->_pMetalFeatures->nonUniformThreadgroups) {
 #if MVK_MACOS_OR_IOS
 					[mtlTessCtlEncoder dispatchThreads: MTLSizeMake(_vertexCount, _instanceCount, 1)
@@ -433,7 +433,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 				// If there are vertex bindings with a zero vertex divisor, I need to offset them by
 				// _firstInstance * stride, since that is the expected behaviour for a divisor of 0.
                 cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _firstInstance);
-				id<MTLComputePipelineState> vtxState = ibb.mtlIndexType == MTLIndexTypeUInt16 ? pipeline->getTessVertexStageIndex16State() : pipeline->getTessVertexStageIndex32State();
+				id<MTLComputePipelineState> vtxState = ibb.mtlIndexType == MTLIndexTypeUInt16 ? pipeline->getVertexStageIndex16State() : pipeline->getVertexStageIndex32State();
 				if (cmdEncoder->getDevice()->_pMetalFeatures->nonUniformThreadgroups) {
 #if MVK_MACOS_OR_IOS
 					[mtlTessCtlEncoder dispatchThreads: MTLSizeMake(_indexCount, _instanceCount, 1)
@@ -719,7 +719,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         }
         tcLevelBuff = cmdEncoder->getTempMTLBuffer(patchCount * sizeof(MTLQuadTessellationFactorsHalf), true);
 
-        vtxThreadExecWidth = pipeline->getTessVertexStageState().threadExecutionWidth;
+        vtxThreadExecWidth = pipeline->getVertexStageState().threadExecutionWidth;
         NSUInteger sgSize = pipeline->getTessControlStageState().threadExecutionWidth;
         tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
         while (tcWorkgroupSize > cmdEncoder->getDevice()->_pProperties->limits.maxComputeWorkGroupSize[0]) {
@@ -1071,7 +1071,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
         vtxIndexBuff = cmdEncoder->getTempMTLBuffer(ibb.mtlBuffer.length, true);
 
         id<MTLComputePipelineState> vtxState;
-        vtxState = ibb.mtlIndexType == MTLIndexTypeUInt16 ? pipeline->getTessVertexStageIndex16State() : pipeline->getTessVertexStageIndex32State();
+        vtxState = ibb.mtlIndexType == MTLIndexTypeUInt16 ? pipeline->getVertexStageIndex16State() : pipeline->getVertexStageIndex32State();
         vtxThreadExecWidth = vtxState.threadExecutionWidth;
 
         NSUInteger sgSize = pipeline->getTessControlStageState().threadExecutionWidth;

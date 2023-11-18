@@ -760,7 +760,7 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 		MTLComputePipelineDescriptor* vtxPLDesc = newMTLVertexStageDescriptor(pCreateInfo, reflectData, shaderConfig, pVertexSS, pVertexFB, pFragmentSS, kMVKShaderStageFragment, vtxFunctions);					// temp retained
 		MTLRenderPipelineDescriptor* rastPLDesc = nil;
 		if (_isRasterizing) {
-			rastPLDesc = newMTLXFBRasterStageDescriptor(pCreateInfo, reflectData, shaderConfig, pFragmentSS, pFragmentFB, pVertexSS);	// temp retained
+			rastPLDesc = newMTLXFBRasterStageDescriptor(pCreateInfo, reflectData, shaderConfig, pFragmentSS, pFragmentFB, pVertexSS, pVertexFB);	// temp retained
 		}
 		if (vtxPLDesc && (!_isRasterizing || rastPLDesc)) {
 			if (compileVertexStageState(vtxPLDesc, vtxFunctions, pVertexFB) && _isRasterizing) {
@@ -835,7 +835,7 @@ static inline spv::ExecutionModel mvkShaderStageToSPVExecutionModel(MVKShaderSta
 		case kMVKShaderStageCompute:
 			return spv::ExecutionModelGLCompute;
 		default:
-			return 0;
+			return spv::ExecutionModelMax;
 	}
 }
 
@@ -1087,7 +1087,8 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLXFBRasterStageDescriptor
 																				 SPIRVToMSLConversionConfiguration& shaderConfig,
 																				 const VkPipelineShaderStageCreateInfo* pFragmentSS,
 																				 VkPipelineCreationFeedback* pFragmentFB,
-																				 const VkPipelineShaderStageCreateInfo* pVertexSS) {
+																				 const VkPipelineShaderStageCreateInfo* pVertexSS,
+																				 VkPipelineCreationFeedback* pVertexFB) {
 	MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];	// retained
 
 	SPIRVShaderOutputs vtxOutputs;
@@ -1098,7 +1099,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLXFBRasterStageDescriptor
 	}
 
 	// Add shader stages. Compile vertex shader before others just in case conversion changes anything...like rasterizaion disable.
-	if (!addPassThruVertexShaderToPipeline(plDesc, pCreateInfo, shaderConfig)) {
+	if (!addPassThruVertexShaderToPipeline(plDesc, shaderConfig, pVertexSS, pVertexFB)) {
 		[plDesc release];
 		return nil;
 	}
@@ -1146,7 +1147,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	shaderConfig.options.mslOptions.view_mask_buffer_index = _viewRangeBufferIndex.stages[kMVKShaderStageVertex];
 	if (isTransformFeedbackPipeline()) {
 		shaderConfig.options.mslOptions.xfb_counter_buffer_index_base = getTransformFeedbackCounterBufferIndex(kMVKShaderStageVertex);
-		shaderConfig.options.mslOptions.xfb_buffer_index_base = getTransformFeedbackBufferIndex(kMVKShaderStageVertex);
+		shaderConfig.options.mslOptions.xfb_output_buffer_index_base = getTransformFeedbackBufferIndex(kMVKShaderStageVertex);
 	}
 	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
@@ -1441,9 +1442,10 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 
 // Adds a pass-through vertex shader which reads transform feedback buffers to the pipeline description.
 bool MVKGraphicsPipeline::addPassThruVertexShaderToPipeline(MTLRenderPipelineDescriptor* plDesc,
-															const VkGraphicsPipelineCreateInfo* pCreateInfo,
-															SPIRVToMSLConversionConfiguration& shaderConfig) {
-	shaderConfig.entryPointName = pVertexSS->pName;
+															SPIRVToMSLConversionConfiguration& shaderConfig,
+															const VkPipelineShaderStageCreateInfo* pVertexSS,
+															VkPipelineCreationFeedback* pVertexFB) {
+	shaderConfig.options.entryPointName = pVertexSS->pName;
 	MVKMTLFunction func = getMTLFunction(shaderConfig, pVertexSS, pVertexFB, "Vertex (pass-through)", true);
 	if ( !func.getMTLFunction() ) { return false; }
 	plDesc.vertexFunction = func.getMTLFunction();
@@ -2104,9 +2106,9 @@ bool MVKGraphicsPipeline::usesPhysicalStorageBufferAddressesCapability(MVKShader
 
 MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 	@synchronized (getMTLDevice()) {
-		[_mtlTessVertexStageState release];
-		[_mtlTessVertexStageIndex16State release];
-		[_mtlTessVertexStageIndex32State release];
+		[_mtlVertexStageState release];
+		[_mtlVertexStageIndex16State release];
+		[_mtlVertexStageIndex32State release];
 		[_mtlTessControlStageState release];
 		[_mtlPipelineState release];
 	}

@@ -239,7 +239,7 @@ protected:
 
 	void propagateDebugName() override {}
 	MVKGLSLConversionShaderStage getMVKGLSLConversionShaderStage(SPIRVToMSLConversionConfiguration* pShaderConfig);
-	void generatePassThruVertexShader(const std::string& entryPoint, SPIRVToMSLConversionResultInfo& conversionResult);
+	void generatePassThruVertexShader(const std::string& entryPoint, SPIRVToMSLConversionResult& conversionResult);
 
 	MVKShaderLibraryCache _shaderLibraryCache;
 	SPIRVToMSLConverter _spvConverter;
