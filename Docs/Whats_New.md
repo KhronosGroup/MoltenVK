@@ -23,6 +23,7 @@ Released TBD
 - Fix regression that broke `VK_POLYGON_MODE_LINE`.
 - Fix regression in marking rendering state dirty after `vkCmdClearAttachments()`.
 - Reduce disk space consumed after running `fetchDependencies` script by removing intermediate file caches.
+- Fix rare deadlock during launch via `dlopen()`.
 - Update to latest SPIRV-Cross:
   - MSL: Fix regression error in argument buffer runtime arrays.
 

@@ -779,10 +779,10 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT: {
 				auto* sampLocnProps = (VkPhysicalDeviceSampleLocationsPropertiesEXT*)next;
 				sampLocnProps->sampleLocationSampleCounts = _metalFeatures.supportedSampleCounts;
-				sampLocnProps->maxSampleLocationGridSize = kMetalSampleLocationGridSize;
-				sampLocnProps->sampleLocationCoordinateRange[0] = kMVKMinSampleLocation;
-				sampLocnProps->sampleLocationCoordinateRange[1] = kMVKMaxSampleLocation;
-				sampLocnProps->sampleLocationSubPixelBits = 4;
+				sampLocnProps->maxSampleLocationGridSize = kMVKSampleLocationPixelGridSize;
+				sampLocnProps->sampleLocationCoordinateRange[0] = kMVKMinSampleLocationCoordinate;
+				sampLocnProps->sampleLocationCoordinateRange[1] = kMVKMaxSampleLocationCoordinate;
+				sampLocnProps->sampleLocationSubPixelBits = mvkPowerOfTwoExponent(kMVKSampleLocationCoordinateGridSize);
 				sampLocnProps->variableSampleLocations = true;
 				break;
 			}
@@ -892,8 +892,8 @@ void MVKPhysicalDevice::getMultisampleProperties(VkSampleCountFlagBits samples,
 												 VkMultisamplePropertiesEXT* pMultisampleProperties) {
 	if (pMultisampleProperties) {
 		pMultisampleProperties->maxSampleLocationGridSize = (mvkIsOnlyAnyFlagEnabled(samples, _metalFeatures.supportedSampleCounts)
-															 ? kMetalSampleLocationGridSize
-															 : kMetalSampleLocationGridSizeNotSupported);
+															 ? kMVKSampleLocationPixelGridSize
+															 : kMVKSampleLocationPixelGridSizeNotSupported);
 	}
 }
 
@@ -2370,8 +2370,6 @@ void MVKPhysicalDevice::initFeatures() {
     _features.depthClamp = true;
     _features.vertexPipelineStoresAndAtomics = true;
     _features.fragmentStoresAndAtomics = true;
-	_features.geometryShader = true;
-	_features.shaderCullDistance = true;
 #if MVK_XCODE_12
 	_features.shaderInt64 = mslVersionIsAtLeast(MTLLanguageVersion2_3);
 #else

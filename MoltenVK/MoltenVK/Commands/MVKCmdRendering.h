@@ -202,7 +202,7 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKSmallVector<VkSampleLocationEXT, kMVKSampleLocationCount> _sampleLocations;
+	MVKSmallVector<VkSampleLocationEXT, kMVKMaxSampleCount> _sampleLocations;
 };
 
 

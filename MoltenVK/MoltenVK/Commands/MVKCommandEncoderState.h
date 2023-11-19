@@ -313,7 +313,7 @@ protected:
 		}
 	}
 
-	MVKSmallVector<MTLSamplePosition, kMVKSampleLocationCount> _mtlSampleLocations[StateScope::Count] = {};
+	MVKSmallVector<MTLSamplePosition, kMVKMaxSampleCount> _mtlSampleLocations[StateScope::Count] = {};
 	MVKMTLViewports _mtlViewports[StateScope::Count] = {};
 	MVKMTLScissors _mtlScissors[StateScope::Count] = {};
 	MVKColor32 _mtlBlendConstants[StateScope::Count] = {};

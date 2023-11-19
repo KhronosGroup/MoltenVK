@@ -467,8 +467,8 @@ void MVKRenderingCommandEncoderState::setSampleLocations(MVKArrayRef<VkSampleLoc
 	mtlSampPosns.clear();
 	for (uint32_t slIdx = 0; slIdx < slCnt; slIdx++) {
 		auto& sl = sampleLocations[slIdx];
-		mtlSampPosns.push_back(MTLSamplePositionMake(mvkClamp(sl.x, kMVKMinSampleLocation, kMVKMaxSampleLocation),
-													 mvkClamp(sl.y, kMVKMinSampleLocation, kMVKMaxSampleLocation)));
+		mtlSampPosns.push_back(MTLSamplePositionMake(mvkClamp(sl.x, kMVKMinSampleLocationCoordinate, kMVKMaxSampleLocationCoordinate),
+													 mvkClamp(sl.y, kMVKMinSampleLocationCoordinate, kMVKMaxSampleLocationCoordinate)));
 	}
 
 	// This value is retrieved, not encoded, so don't mark this encoder as dirty.
@@ -500,7 +500,7 @@ void MVKRenderingCommandEncoderState::markDirty() {
 	_dirtyStates.set(SampleLocationsEnable, wasSLEnblDirty);
 }
 
-// Don't call parent beginMetalRenderPass() because it may cause 
+// Don't call parent beginMetalRenderPass() because it 
 // will call local markDirty() which is too aggressive.
 void MVKRenderingCommandEncoderState::beginMetalRenderPass() {
 	if (_isModified) {
