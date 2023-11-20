@@ -3432,12 +3432,13 @@ MVKPhysicalDevice::~MVKPhysicalDevice() {
 
 // Returns core device commands and enabled extension device commands.
 PFN_vkVoidFunction MVKDevice::getProcAddr(const char* pName) {
-	MVKEntryPoint* pMVKPA = _physicalDevice->_mvkInstance->getEntryPoint(pName);
-	uint32_t apiVersion = _physicalDevice->_mvkInstance->_appInfo.apiVersion;
+	MVKInstance* pMVKInst = _physicalDevice->_mvkInstance;
+	MVKEntryPoint* pMVKPA = pMVKInst->getEntryPoint(pName);
+	uint32_t apiVersion = pMVKInst->_appInfo.apiVersion;
 
-	bool isSupported = (pMVKPA &&											// Command exists and...
-						pMVKPA->isDevice &&									// ...is a device command and...
-						pMVKPA->isEnabled(apiVersion, _enabledExtensions));	// ...is a core or enabled extension command.
+	bool isSupported = (pMVKPA &&																			// Command exists and...
+						pMVKPA->isDevice &&																	// ...is a device command and...
+						pMVKPA->isEnabled(apiVersion, _enabledExtensions, &pMVKInst->_enabledExtensions));	// ...is a core or enabled extension command.
 
 	return isSupported ? pMVKPA->functionPointer : nullptr;
 }
