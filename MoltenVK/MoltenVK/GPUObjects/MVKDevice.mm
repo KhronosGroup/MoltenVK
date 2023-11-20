@@ -2692,7 +2692,7 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.pointSizeGranularity = 1;
     _properties.limits.lineWidthRange[0] = 1;
     _properties.limits.lineWidthRange[1] = 1;
-    _properties.limits.lineWidthGranularity = 1;
+    _properties.limits.lineWidthGranularity = 0;
 
     _properties.limits.standardSampleLocations = VK_TRUE;
     _properties.limits.strictLines = _properties.vendorID == kIntelVendorId || _properties.vendorID == kNVVendorId;
