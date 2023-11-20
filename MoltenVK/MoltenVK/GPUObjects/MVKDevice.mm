@@ -128,9 +128,9 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 		.shaderInputAttachmentArrayDynamicIndexing = _metalFeatures.arrayOfTextures,
 		.shaderUniformTexelBufferArrayDynamicIndexing = _metalFeatures.arrayOfTextures,
 		.shaderStorageTexelBufferArrayDynamicIndexing = _metalFeatures.arrayOfTextures,
-		.shaderUniformBufferArrayNonUniformIndexing = false,
+		.shaderUniformBufferArrayNonUniformIndexing = true,
 		.shaderSampledImageArrayNonUniformIndexing = _metalFeatures.arrayOfTextures && _metalFeatures.arrayOfSamplers,
-		.shaderStorageBufferArrayNonUniformIndexing = false,
+		.shaderStorageBufferArrayNonUniformIndexing = true,
 		.shaderStorageImageArrayNonUniformIndexing = _metalFeatures.arrayOfTextures,
 		.shaderInputAttachmentArrayNonUniformIndexing = _metalFeatures.arrayOfTextures,
 		.shaderUniformTexelBufferArrayNonUniformIndexing = _metalFeatures.arrayOfTextures,
@@ -2402,7 +2402,7 @@ void MVKPhysicalDevice::initFeatures() {
 	mvkClear(&_vulkan12FeaturesNoExt);		// Start with everything cleared
 	_vulkan12FeaturesNoExt.samplerMirrorClampToEdge = _metalFeatures.samplerMirrorClampToEdge;
 	_vulkan12FeaturesNoExt.drawIndirectCount = false;
-	_vulkan12FeaturesNoExt.descriptorIndexing = true;
+	_vulkan12FeaturesNoExt.descriptorIndexing = _metalFeatures.arrayOfTextures && _metalFeatures.arrayOfSamplers;
 	_vulkan12FeaturesNoExt.samplerFilterMinmax = false;
 	_vulkan12FeaturesNoExt.shaderOutputViewportIndex = _features.multiViewport;
 	_vulkan12FeaturesNoExt.shaderOutputLayer = _metalFeatures.layeredRendering;
@@ -3198,6 +3198,9 @@ void MVKPhysicalDevice::initExtensions() {
 	if (!_metalFeatures.shaderBarycentricCoordinates) {
 		pWritableExtns->vk_KHR_fragment_shader_barycentric.enabled = false;
 		pWritableExtns->vk_NV_fragment_shader_barycentric.enabled = false;
+	}
+	if (!_metalFeatures.arrayOfTextures || !_metalFeatures.arrayOfSamplers) {
+		pWritableExtns->vk_EXT_descriptor_indexing.enabled = false;
 	}
     
     // The relevant functions are not available if not built with Xcode 14.
