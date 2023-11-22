@@ -1628,14 +1628,15 @@ void MVKPhysicalDevice::updateTimestampPeriod() {
 		[_mtlDevice sampleTimestamps: &_prevCPUTimestamp gpuTimestamp: &_prevGPUTimestamp];
 		double elapsedCPUNanos = _prevCPUTimestamp - earlierCPUTs;
 		double elapsedGPUTicks = _prevGPUTimestamp - earlierGPUTs;
-		if (elapsedCPUNanos && elapsedGPUTicks) {		// Ensure not zero
-			float tsPeriod = elapsedCPUNanos / elapsedGPUTicks;
-			
+
+		// Don't update period the first time through, or if no time elapsed.
+		if (earlierCPUTs && elapsedCPUNanos && elapsedGPUTicks) {
 			// Basic lowpass filter TPout = (1 - A)TPout + (A * TPin).
 			// The lower A is, the slower TPout will change over time.
-			// First time through, just use the measured value directly.
-			float a = earlierCPUTs ? mvkConfig().timestampPeriodLowPassAlpha : 1.0;
-			_properties.limits.timestampPeriod = ((1.0 - a) * _properties.limits.timestampPeriod) + (a * tsPeriod);
+			auto& vkTsp = _properties.limits.timestampPeriod;
+			float a = mvkConfig().timestampPeriodLowPassAlpha;
+			float tsPeriod = elapsedCPUNanos / elapsedGPUTicks;
+			vkTsp = ((1.0 - a) * vkTsp) + (a * tsPeriod);
 		}
 	}
 }
@@ -2672,7 +2673,10 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.optimalBufferCopyRowPitchAlignment = 1;
 
 	_properties.limits.timestampComputeAndGraphics = VK_TRUE;
-	_properties.limits.timestampPeriod = 1.0;	// On non-Apple GPU's, this can vary over time, and is calculated based on actual GPU activity.
+
+	// On non-Apple GPU's, this can vary over time, and is calculated based on actual GPU activity.
+	_properties.limits.timestampPeriod = 1.0;
+	updateTimestampPeriod();
 
     _properties.limits.pointSizeRange[0] = 1;
 	switch (_properties.vendorID) {
