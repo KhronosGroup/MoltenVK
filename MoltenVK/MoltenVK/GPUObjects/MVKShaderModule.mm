@@ -19,6 +19,8 @@
 #include "MVKShaderModule.h"
 #include "MVKPipeline.h"
 #include "MVKFoundation.h"
+#include <sstream>
+#include <unordered_map>
 
 using namespace std;
 
@@ -70,13 +72,17 @@ static uint32_t getWorkgroupDimensionSize(const SPIRVWorkgroupSizeDimension& wgD
 
 MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpecializationInfo,
 												VkPipelineCreationFeedback* pShaderFeedback,
-												MVKShaderModule* shaderModule) {
+												MVKShaderModule* shaderModule,
+												bool passThruFunc) {
 
 	if ( !_mtlLibrary ) { return MVKMTLFunctionNull; }
 
 	@synchronized (_owner->getMTLDevice()) {
 		@autoreleasepool {
 			NSString* mtlFuncName = @(_shaderConversionResultInfo.entryPoint.mtlFunctionName.c_str());
+			if (passThruFunc) {
+				mtlFuncName = [mtlFuncName stringByAppendingString:@"_PassThru"];
+			}
 			MVKDevice* mvkDev = _owner->getDevice();
 
 			uint64_t startTime = pShaderFeedback ? mvkGetTimestamp() : mvkDev->getPerformanceTimestamp();
@@ -333,7 +339,8 @@ MVKShaderLibraryCache::~MVKShaderLibraryCache() {
 MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration* pShaderConfig,
 											   const VkSpecializationInfo* pSpecializationInfo,
 											   MVKPipeline* pipeline,
-											   VkPipelineCreationFeedback* pShaderFeedback) {
+											   VkPipelineCreationFeedback* pShaderFeedback,
+											   bool passThruFunc) {
 	MVKShaderLibrary* mvkLib = _directMSLLibrary;
 	if ( !mvkLib ) {
 		uint64_t startTime = pShaderFeedback ? mvkGetTimestamp() : _device->getPerformanceTimestamp();
@@ -349,7 +356,7 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration
 		pShaderConfig->markAllInterfaceVarsAndResourcesUsed();
 	}
 
-	return mvkLib ? mvkLib->getMTLFunction(pSpecializationInfo, pShaderFeedback, this) : MVKMTLFunctionNull;
+	return mvkLib ? mvkLib->getMTLFunction(pSpecializationInfo, pShaderFeedback, this, passThruFunc) : MVKMTLFunctionNull;
 }
 
 bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
@@ -381,6 +388,9 @@ bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
 
 	if (wasConverted) {
 		if (shouldLogCode) { MVKLogInfo("%s", conversionResult.resultLog.c_str()); }
+		if (conversionResult.resultInfo.needsTransformFeedback) {
+			generatePassThruVertexShader(pShaderConfig->options.entryPointName, conversionResult);
+		}
 	} else {
 		reportError(VK_ERROR_INVALID_SHADER_NV, "Unable to convert SPIR-V to MSL:\n%s", conversionResult.resultLog.c_str());
 	}
@@ -402,6 +412,255 @@ MVKGLSLConversionShaderStage MVKShaderModule::getMVKGLSLConversionShaderStage(SP
 			MVKAssert(false, "Bad shader stage provided for GLSL to SPIR-V conversion.");
 			return kMVKGLSLConversionShaderStageAuto;
 	}
+}
+
+static std::string mvkTypeToMSL(const SPIRVShaderOutput& output) {
+	std::ostringstream os;
+	switch (output.baseType) {
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Boolean:
+			os << "bool";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::SByte:
+			os << "char";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UByte:
+			os << "uchar";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Short:
+			os << "short";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UShort:
+			os << "ushort";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Int:
+			os << "int";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UInt:
+			os << "uint";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Int64:
+			os << "long";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UInt64:
+			os << "ulong";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Half:
+			os << "half";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Float:
+			os << "float";
+			break;
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Double:
+			os << "double";
+			break;
+		default:
+			os << "unknown";
+			break;
+	}
+	if (output.vecWidth > 1) {
+		os << output.vecWidth;
+	}
+	return os.str();
+}
+
+static std::string mvkBuiltInToName(const SPIRVShaderOutput& output) {
+	std::ostringstream os;
+	switch (output.builtin) {
+		case spv::BuiltInPosition:
+			return "gl_Position";
+		case spv::BuiltInPointSize:
+			return "gl_PointSize";
+		case spv::BuiltInClipDistance:
+			os << "gl_ClipDistance_" << output.arrayIndex;
+			return os.str();
+		case spv::BuiltInCullDistance:
+			os << "gl_CullDistance_" << output.arrayIndex;
+			return os.str();
+		default:
+			// No other builtins should appear as a vertex shader output.
+			return "unknown";
+	}
+}
+
+static std::string mvkBuiltInToAttr(const SPIRVShaderOutput& output) {
+	std::ostringstream os;
+	switch (output.builtin) {
+		case spv::BuiltInPosition:
+			return "position";
+		case spv::BuiltInPointSize:
+			return "point_size";
+		case spv::BuiltInClipDistance:
+			os << "user(clip" << output.arrayIndex << ")";
+			return os.str();
+		case spv::BuiltInCullDistance:
+			os << "user(cull" << output.arrayIndex << ")";
+			return os.str();
+		default:
+			// No other builtins should appear as a vertex shader output.
+			return "unknown";
+	}
+}
+
+static std::string mvkVertexAttrToName(const SPIRVShaderOutput& output) {
+	std::ostringstream os;
+	os << "m" << output.location;
+	if (output.component > 0)
+		os << "_" << output.component;
+	return os.str();
+}
+
+static std::string mvkVertexAttrToUserAttr(const SPIRVShaderOutput& output) {
+	std::ostringstream os;
+	os << "locn" << output.location;
+	if (output.component > 0)
+		os << "_" << output.component;
+	return os.str();
+}
+
+void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName, SPIRVToMSLConversionResult& conversionResult) {
+	MVKSmallVector<SPIRVShaderOutput, 16> vtxOutputs;
+	std::string errorLog;
+	std::unordered_map<uint32_t, std::vector<size_t>> xfbBuffers;
+	uint32_t clipDistances = 0;
+	getShaderOutputs(getSPIRV(), spv::ExecutionModelVertex, entryName, vtxOutputs, errorLog);
+	for (size_t i = 0; i < vtxOutputs.size(); ++i) {
+		xfbBuffers[vtxOutputs[i].xfbBufferIndex].push_back(i);
+	}
+	// Sort XFB buffers by offset; sort the other outputs by index.
+	for (auto& buffer : xfbBuffers) {
+		if (buffer.first == (uint32_t)(-1)) {
+			std::sort(buffer.second.begin(), buffer.second.end(), [&vtxOutputs](uint32_t a, uint32_t b) {
+				if (vtxOutputs[a].location == vtxOutputs[b].location)
+					return vtxOutputs[a].component < vtxOutputs[b].component;
+				return vtxOutputs[a].location < vtxOutputs[b].location;
+			});
+		} else {
+			std::sort(buffer.second.begin(), buffer.second.end(), [&vtxOutputs](uint32_t a, uint32_t b) {
+				return vtxOutputs[a].xfbBufferOffset < vtxOutputs[b].xfbBufferOffset;
+			});
+		}
+	}
+	// Emit the buffer structures used by the passthrough function. We can't
+	// reuse the ones from SPIRV-Cross because the reflection gave us the vertex
+	// outputs broken up (no structs or arrays), but SPIRV-Cross has the
+	// structs and arrays intact. Mapping between the two is difficult without
+	// additional information and code.
+	// FIXME: Do we want to use a "fast string concatenation" type here?
+	conversionResult.msl += "\n";
+	for (const auto& buffer : xfbBuffers) {
+		if (buffer.first == (uint32_t)(-1)) {
+			conversionResult.msl += "struct " + entryName + "_pt_misc\n"
+				"{\n";
+		} else {
+			std::ostringstream os;
+			os << "struct " << entryName + "_pt_xfb" << buffer.first << "\n";
+			conversionResult.msl += os.str() + "{\n";
+		}
+		uint32_t offset = 0;
+		uint32_t padNo = 0;
+		uint32_t stride = vtxOutputs[buffer.second[0]].xfbBufferStride;
+		for (const auto& outputIdx : buffer.second) {
+			if (offset < vtxOutputs[outputIdx].xfbBufferOffset) {
+				// Emit padding to put us at the right offset.
+				std::ostringstream os;
+				os << "    char pad" << padNo++ << "[" << vtxOutputs[outputIdx].xfbBufferOffset - offset << "];\n";
+				conversionResult.msl += os.str();
+			} else {
+				offset = vtxOutputs[outputIdx].xfbBufferOffset;
+			}
+			// If the offset isn't at the natural alignment of the type, we'll have to use a packed type.
+			conversionResult.msl += "    ";
+			if (offset % getShaderOutputAlignment(vtxOutputs[outputIdx]) != 0)
+				conversionResult.msl += "packed_";
+			conversionResult.msl +=	mvkTypeToMSL(vtxOutputs[outputIdx]) + " ";
+			if (vtxOutputs[outputIdx].builtin != spv::BuiltInMax) {
+				conversionResult.msl += mvkBuiltInToName(vtxOutputs[outputIdx]);
+			} else {
+				conversionResult.msl += mvkVertexAttrToName(vtxOutputs[outputIdx]);
+			}
+			conversionResult.msl += ";\n";
+			offset = vtxOutputs[outputIdx].xfbBufferOffset + getShaderOutputSize(vtxOutputs[outputIdx]);
+		}
+		// Emit additional padding for the buffer stride.
+		if (stride != offset) {
+			std::ostringstream os;
+			os << "    char pad" << padNo++ << "[" << stride - offset << "];\n";
+			conversionResult.msl += os.str();
+		}
+		conversionResult.msl += "};\n";
+	}
+	// Emit the vertex stage output structure.
+	conversionResult.msl += "\n"
+		"struct " + entryName + "_passthru\n"
+		"{\n";
+	for (const auto& output : vtxOutputs) {
+		conversionResult.msl += "    " + mvkTypeToMSL(output) + " ";
+		if (output.builtin != spv::BuiltInMax) {
+			conversionResult.msl += mvkBuiltInToName(output) + " [[" + mvkBuiltInToAttr(output) + "]]";
+			if (output.builtin == spv::BuiltInClipDistance) {
+				clipDistances++;
+			}
+		} else {
+			conversionResult.msl += mvkVertexAttrToName(output) + " [[user(" + mvkVertexAttrToUserAttr(output) + "]]";
+		}
+		conversionResult.msl += ";\n";
+	}
+	if (clipDistances > 0) {
+		std::ostringstream os;
+		os << "    float gl_ClipDistance [[clip_distance]] [" << clipDistances << "];\n";
+		conversionResult.msl += os.str();
+	}
+	conversionResult.msl += "};\n\n";
+	conversionResult.msl += "vertex " + entryName + "_passthru " + entryName + "PassThru(";
+	std::ostringstream os;
+	// Emit parameters for XFB buffers and the other output buffer.
+	for (const auto& buffer : xfbBuffers) {
+		if (!os.str().empty())
+			os << ", ";
+		if (buffer.first == -1)
+			os << "const device " << entryName << "_pt_misc* misc_in [[buffer(4)]]";
+		else
+			os << "const device " << entryName << "_pt_xfb" << buffer.first << "* xfb" << buffer.first << " [[buffer(" << buffer.first << ")]]";
+	}
+	conversionResult.msl += os.str();
+	conversionResult.msl += ")\n"
+		"{\n"
+		"    " + entryName + "_passthru out;\n";
+	// Emit loads from the XFB buffers and stores to stage out.
+	for (const auto& output : vtxOutputs) {
+		std::ostringstream loadStore;
+		loadStore << "out.";
+		if (output.builtin != spv::BuiltInMax) {
+			loadStore << mvkBuiltInToName(output);
+		} else {
+			loadStore << mvkVertexAttrToName(output);
+		}
+		loadStore << " = ";
+		if (output.xfbBufferIndex == -1) {
+			loadStore << "misc_in[gl_VertexIndex].";
+		} else {
+			loadStore << "xfb" << output.xfbBufferIndex << "[gl_VertexIndex].";
+		}
+		if (output.builtin != spv::BuiltInMax) {
+			loadStore << mvkBuiltInToName(output);
+		} else {
+			loadStore << mvkVertexAttrToName(output);
+		}
+		conversionResult.msl += "    " + loadStore.str() + ";\n";
+		if (output.builtin == spv::BuiltInClipDistance) {
+			std::ostringstream clipLoadStore;
+			clipLoadStore << "out.gl_ClipDistance[" << output.arrayIndex << "] = ";
+			if (output.xfbBufferIndex == -1) {
+				clipLoadStore << "misc_in[gl_VertexIndex].";
+			} else {
+				clipLoadStore << "xfb" << output.xfbBufferIndex << "[gl_VertexIndex].";
+			}
+			clipLoadStore << mvkBuiltInToName(output);
+			conversionResult.msl += "    " + clipLoadStore.str() + ";\n";
+		}
+	}
+	conversionResult.msl += "    return out;\n"
+		"}\n";
 }
 
 void MVKShaderModule::setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {

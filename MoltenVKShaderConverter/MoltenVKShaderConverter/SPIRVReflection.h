@@ -74,6 +74,9 @@ namespace mvk {
 		/** The component index of the variable. */
 		uint32_t component;
 
+		/** The array index, if this is an array, or -1 otherwise. */
+		uint32_t arrayIndex;
+
 		/**
 		 * If this is the first member of a struct, this will contain the alignment
 		 * of the struct containing this variable, otherwise this will be zero.
@@ -88,6 +91,24 @@ namespace mvk {
 
 		/** Whether this variable is actually used (read or written) by the shader. */
 		bool isUsed;
+
+		/**
+		 * The index of the transform feedback buffer, if this is an output captured
+		 * by transform feedback; otherwise, this will be -1.
+		 */
+		uint32_t xfbBufferIndex;
+
+		/**
+		 * The offset within the transform feedback buffer, if this is an output captured
+		 * by transform feedback.
+		 */
+		uint32_t xfbBufferOffset;
+
+		/**
+		 * The per-vertex stride of the transform feedback buffer, if this is an output
+		 * captured by transform feedback.
+		 */
+		uint32_t xfbBufferStride;
 	};
 	typedef SPIRVShaderInterfaceVariable SPIRVShaderOutput;
 
@@ -237,8 +258,10 @@ namespace mvk {
 	static inline uint32_t getShaderInterfaceStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
 														   Vi& vars, SPIRVShaderInterfaceVariable* pParentFirstMember,
 														   const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
-														   bool patch, uint32_t loc) {
+														   bool patch, uint32_t loc, uint32_t xfbBuffer, uint32_t xfbOffset,
+														   uint32_t xfbStride) {
 		bool isUsed = true;
+		bool isBlock = reflect.has_decoration(structType->self, spv::DecorationBlock);
 		auto biType = spv::BuiltInMax;
 		SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
 		size_t mbrCnt = structType->member_types.size();
@@ -250,6 +273,11 @@ namespace mvk {
 				loc = reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationLocation);
 				cmp = reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationComponent);
 			}
+			uint32_t structOffset = reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationOffset);
+			if (isBlock && reflect.has_member_decoration(structType->self, mbrIdx, spv::DecorationOffset)) {
+				xfbBuffer = reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationXfbBuffer);
+				xfbStride = reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationXfbStride);
+			}
 			patch = patch || reflect.has_member_decoration(structType->self, mbrIdx, spv::DecorationPatch);
 			if (reflect.has_member_decoration(structType->self, mbrIdx, spv::DecorationBuiltIn)) {
 				biType = (spv::BuiltIn)reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationBuiltIn);
@@ -258,12 +286,12 @@ namespace mvk {
 			const SPIRV_CROSS_NAMESPACE::SPIRType* type = &reflect.get_type(structType->member_types[mbrIdx]);
 			uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
 			for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
-				if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct)
-					loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
-				else {
+				if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct) {
+					loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc, xfbBuffer, xfbOffset + structOffset, xfbStride);
+				} else {
 					// The alignment of a structure is the same as the largest member of the structure.
 					// Consequently, the first flattened member of a structure should align with structure itself.
-					vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
+					vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, 0, biType, patch, isUsed, xfbBuffer, xfbOffset + structOffset, xfbStride});
 					auto& currOutput = vars.back();
 					if ( !pFirstMember ) { pFirstMember = &currOutput; }
 					pFirstMember->firstStructMemberAlignment = std::max(pFirstMember->firstStructMemberAlignment, getShaderOutputSize(currOutput));
@@ -286,7 +314,7 @@ namespace mvk {
 														Vo& outputs, SPIRVShaderOutput* pParentFirstMember,
 														const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
 														bool patch, uint32_t loc) {
-		return getShaderInterfaceStructMembers(reflect, outputs, pParentFirstMember, structType, storage, patch, loc);
+		return getShaderInterfaceStructMembers(reflect, outputs, pParentFirstMember, structType, storage, patch, loc, 0, 0, 0);
 	}
 
 	/** Given a shader in SPIR-V format, returns interface reflection data. */
@@ -332,6 +360,14 @@ namespace mvk {
 				if (reflect.has_decoration(varID, spv::DecorationComponent)) {
 					cmp = reflect.get_decoration(varID, spv::DecorationComponent);
 				}
+				uint32_t xfbBuffer = -1;
+				uint32_t xfbOffset = 0;
+				uint32_t xfbStride = 0;
+				if (reflect.has_decoration(varID, spv::DecorationOffset)) {
+					xfbBuffer = reflect.get_decoration(varID, spv::DecorationXfbBuffer);
+					xfbOffset = reflect.get_decoration(varID, spv::DecorationOffset);
+					xfbStride = reflect.get_decoration(varID, spv::DecorationXfbStride);
+				}
 				// For tessellation shaders, peel away the initial array type. SPIRV-Cross adds the array back automatically.
 				// Only some builtins will be arrayed here.
 				if ((model == spv::ExecutionModelTessellationControl || (model == spv::ExecutionModelTessellationEvaluation && storage == spv::StorageClassInput)) && !patch &&
@@ -343,9 +379,9 @@ namespace mvk {
 				for (uint32_t i = 0; i < elemCnt; i++) {
 					if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct) {
 						SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
-						loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
+						loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc, xfbBuffer, xfbOffset, xfbStride);
 					} else {
-						vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
+						vars.push_back({type->basetype, type->vecsize, loc, cmp, i, 0, biType, patch, isUsed, xfbBuffer, xfbOffset, xfbStride});
 						loc = addSat(loc, 1);
 					}
 				}
@@ -378,6 +414,32 @@ namespace mvk {
 										Vo& outputs, std::string& errorLog) {
 		return getShaderInterfaceVariables(spirv, spv::StorageClassInput, model, entryName, outputs, errorLog);
 	}
+
+    template<typename Vs>
+    static inline bool getUsesTransformFeedback(const Vs& spirv, spv::ExecutionModel model, const std::string&
+    entryName, std::string& errorLog) {
+#ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+        try {
+#endif
+            SPIRV_CROSS_NAMESPACE::CompilerReflection transFeedbackReflect(spirv);
+
+            if (!entryName.empty()) {
+                transFeedbackReflect.set_entry_point(entryName, model);
+            }
+
+            transFeedbackReflect.compile();
+
+            const SPIRV_CROSS_NAMESPACE::Bitset& txbModes = transFeedbackReflect.get_execution_mode_bitset();
+
+            return txbModes.get(spv::ExecutionModeXfb);
+
+#ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+        } catch (SPIRV_CROSS_NAMESPACE::CompilerError& ex) {
+            errorLog = ex.what();
+            return false;
+        }
+#endif
+    }
 
 }
 #endif

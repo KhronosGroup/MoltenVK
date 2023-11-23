@@ -367,6 +367,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	conversionResult.resultInfo.needsDispatchBaseBuffer = pMSLCompiler && pMSLCompiler->needs_dispatch_base_buffer();
 	conversionResult.resultInfo.needsViewRangeBuffer = pMSLCompiler && pMSLCompiler->needs_view_mask_buffer();
 	conversionResult.resultInfo.usesPhysicalStorageBufferAddressesCapability = usesPhysicalStorageBufferAddressesCapability(pMSLCompiler);
+	conversionResult.resultInfo.needsTransformFeedback = pMSLCompiler && pMSLCompiler->needs_transform_feedback();
 
 	// When using Metal argument buffers, if the shader is provided with dynamic buffer offsets,
 	// then it needs a buffer to hold these dynamic offsets.

@@ -191,3 +191,105 @@ protected:
 	uint32_t _drawCount;
 	uint32_t _directCmdFirstInstance;
 };
+
+
+#pragma mark -
+#pragma mark MVKCmdBeginTransformFeedback
+
+/*
+ * The active transform feedback buffers will capture primitives emitted from the corresponding XfbBuffer in the bound
+ * graphics pipeline. Any XfbBuffer emitted that does not output to an active transform feedback buffer will not be
+ * captured.
+ */
+
+template <size_t N>
+class MVKCmdBeginTransformFeedback : public MVKCommand {
+public:
+    VkResult setContent(MVKCommandBuffer* cmdBuffer,
+                        uint32_t firstCounterBuffer,
+                        uint32_t counterBufferCount,
+                        const VkBuffer* counterBuffers,
+                        const VkDeviceSize* counterBufferOffsets);
+    void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+    MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+    MVKSmallVector<MVKMTLBufferBinding, N> _counterBuffers;
+};
+
+// Concrete template class implementations.
+typedef MVKCmdBeginTransformFeedback<1> MVKCmdBeginTransformFeedback1;
+typedef MVKCmdBeginTransformFeedback<2> MVKCmdBeginTransformFeedback2;
+typedef MVKCmdBeginTransformFeedback<4> MVKCmdBeginTransformFeedbackMulti;
+
+#pragma mark -
+#pragma mark MVKCmdBindTransformFeedbackBuffers
+
+/*
+ * The values taken from elements i of pBuffers, pOffsets and pSizes replace the current state for the transform
+ * feedback binding firstBinding + i, for i in [0, bindingCount). The transform feedback binding is updated to start
+ * at the offset indicated by pOffsets[i] from the start of the buffer pBuffers[i].
+ */
+template <size_t N>
+class MVKCmdBindTransformFeedbackBuffers : public MVKCommand {
+public:
+    VkResult setContent(MVKCommandBuffer* cmdBuffer,
+                        uint32_t firstBinding,
+                        uint32_t bindingCount,
+                        const VkBuffer* pBuffers,
+                        const VkDeviceSize* pOffsets,
+                        const VkDeviceSize* pSizes);
+    void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+    MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+    MVKSmallVector<MVKMTLBufferBinding, N> _bindings;
+};
+
+// Concrete template class implementations.
+typedef MVKCmdBindTransformFeedbackBuffers<1> MVKCmdBindTransformFeedbackBuffers1;
+typedef MVKCmdBindTransformFeedbackBuffers<2> MVKCmdBindTransformFeedbackBuffers2;
+typedef MVKCmdBindTransformFeedbackBuffers<4> MVKCmdBindTransformFeedbackBuffersMulti;
+
+#pragma mark -
+#pragma mark MVKCmdDrawIndirectByteCount
+
+/*
+ * Draw primitives where the vertex count is derived from the counter byte value in the counter buffer
+ */
+
+class MVKCmdDrawIndirectByteCount : public MVKCommand {
+public:
+    MVKCmdDrawIndirectByteCount() :
+            instanceCount(0), firstInstance(0), counterBuffer(), deviceSize(), stride() {}
+    VkResult setContent(MVKCommandBuffer* cmdBuffer,
+                   uint32_t instanceCount,
+                   uint32_t firstInstance,
+                   VkBuffer counterBuffer,
+                   uint32_t deviceSize,
+                   uint32_t stride);
+    void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+    MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+    uint32_t instanceCount;
+    uint32_t firstInstance;
+    VkBuffer counterBuffer;
+    uint32_t deviceSize;
+    uint32_t stride;
+};
+
+#pragma mark -
+#pragma mark MVKCmdEndTransformFeedback
+
+class MVKCmdEndTransformFeedback : public MVKCommand {
+public:
+    VkResult setContent(MVKCommandBuffer* cmdBuffer);
+    void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+    MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};

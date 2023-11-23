@@ -152,6 +152,7 @@ typedef struct {
 	VkBool32 needsSampleDrefLodArrayWorkaround;		/**< If true, sampling from arrayed depth images with explicit LoD is broken and needs a workaround. */
 	VkDeviceSize hostMemoryPageSize;				/**< The size of a page of host memory on this platform. */
 	VkBool32 dynamicVertexStride;					/**< If true, VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE is supported. */
+	uint32_t maxTransformFeedbackBuffers;           /**< The maximum transform feedback Buffers to support */
 } MVKPhysicalDeviceMetalFeatures;
 
 /**

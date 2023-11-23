@@ -34,7 +34,7 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKRenderSubpass
 
-MVKVulkanAPIObject* MVKRenderSubpass::getVulkanAPIObject() { return _renderPass->getVulkanAPIObject(); };
+MVKVulkanAPIObject* MVKRenderSubpass::getVulkanAPIObject() { return _renderPass->getVulkanAPIObject(); }
 
 bool MVKRenderSubpass::hasColorAttachments() {
 	for (auto& ca : _colorAttachments) {
@@ -633,7 +633,7 @@ MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass, const VkRenderingI
 #pragma mark -
 #pragma mark MVKAttachmentDescription
 
-MVKVulkanAPIObject* MVKAttachmentDescription::getVulkanAPIObject() { return _renderPass->getVulkanAPIObject(); };
+MVKVulkanAPIObject* MVKAttachmentDescription::getVulkanAPIObject() { return _renderPass->getVulkanAPIObject(); }
 
 VkFormat MVKAttachmentDescription::getFormat() { return _info.format; }
 
@@ -1089,7 +1089,6 @@ const VkRenderingAttachmentInfo* MVKRenderingAttachmentIterator::getAttachmentIn
 	}
 	return useAlt ? pAltAtt : pAtt;
 }
-
 
 #pragma mark -
 #pragma mark Support functions
