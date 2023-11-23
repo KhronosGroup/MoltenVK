@@ -525,9 +525,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps11.maxMultiviewViewCount = 32;
 	supportedProps11.maxMultiviewInstanceIndex = canUseInstancingForMultiview() ? uintMax / 32 : uintMax;
 	supportedProps11.protectedNoFault = false;
-	supportedProps11.maxPerSetDescriptors = 4 * (_metalFeatures.maxPerStageBufferCount +
-												 _metalFeatures.maxPerStageTextureCount +
-												 _metalFeatures.maxPerStageSamplerCount);
+	supportedProps11.maxPerSetDescriptors = getMaxPerSetDescriptorCount();
 	supportedProps11.maxMemoryAllocationSize = _metalFeatures.maxMTLBufferSize;
 
 	// Create a SSOT for these Vulkan 1.2 properties, which can be queried via two mechanisms here.
@@ -3150,6 +3148,13 @@ uint32_t MVKPhysicalDevice::getMaxSamplerCount() {
 	}
 }
 
+// Vulkan imposes a minimum maximum of 1024 descriptors per set.
+uint32_t MVKPhysicalDevice::getMaxPerSetDescriptorCount() {
+	return max(4 * (_metalFeatures.maxPerStageBufferCount +
+					_metalFeatures.maxPerStageTextureCount +
+					_metalFeatures.maxPerStageSamplerCount), 1024u);
+}
+
 void MVKPhysicalDevice::initExternalMemoryProperties() {
 
 	// Common
@@ -3507,7 +3512,7 @@ void MVKDevice::getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateI
 	for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
 		descriptorCount += pCreateInfo->pBindings[i].descriptorCount;
 	}
-	pSupport->supported = (descriptorCount < ((_physicalDevice->_metalFeatures.maxPerStageBufferCount + _physicalDevice->_metalFeatures.maxPerStageTextureCount + _physicalDevice->_metalFeatures.maxPerStageSamplerCount) * 2));
+	pSupport->supported = (descriptorCount < _physicalDevice->getMaxPerSetDescriptorCount());
 
 	// Check whether the layout has a variable-count descriptor, and if so, whether we can support it.
 	for (auto* next = (VkBaseOutStructure*)pSupport->pNext; next; next = next->pNext) {
