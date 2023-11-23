@@ -529,6 +529,7 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 #define OFFSET_SNORM(COLOR, BIT_WIDTH)    OFFSET_NORM(-1.0, COLOR, BIT_WIDTH - 1)
 				switch (vkFormat) {
 					case VK_FORMAT_R4G4B4A4_UNORM_PACK16:
+					case VK_FORMAT_B4G4R4A4_UNORM_PACK16:
 					case VK_FORMAT_A4R4G4B4_UNORM_PACK16:
 					case VK_FORMAT_A4B4G4R4_UNORM_PACK16:
 						OFFSET_UNORM(red, 4)
@@ -831,7 +832,7 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 
 	addVkFormatDesc( R4G4_UNORM_PACK8, Invalid, Invalid, Invalid, Invalid, 1, 1, 1, ColorFloat );
 	addVkFormatDesc( R4G4B4A4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( B4G4R4A4_UNORM_PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDescSwizzled( B4G4R4A4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, B, G, R, A );
 	addVkFormatDescSwizzled( A4R4G4B4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, G, B, A, R );
 	addVkFormatDescSwizzled( A4B4G4R4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, A, B, G, R );
 

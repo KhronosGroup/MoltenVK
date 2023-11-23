@@ -1661,6 +1661,14 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 			adjustAnyComponentSwizzleValue(a, R, A, B, G, R);
 			break;
 
+		case VK_FORMAT_B4G4R4A4_UNORM_PACK16:
+			// Metal doesn't support this directly, so use a swizzle to get the ordering right.
+			adjustAnyComponentSwizzleValue(r, B, B, G, R, A);
+			adjustAnyComponentSwizzleValue(g, G, B, G, R, A);
+			adjustAnyComponentSwizzleValue(b, R, B, G, R, A);
+			adjustAnyComponentSwizzleValue(a, A, B, G, R, A);
+			break;
+
 		default:
 			break;
 	}
