@@ -2696,7 +2696,7 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.pointSizeGranularity = 1;
     _properties.limits.lineWidthRange[0] = 1;
     _properties.limits.lineWidthRange[1] = 1;
-    _properties.limits.lineWidthGranularity = 1;
+    _properties.limits.lineWidthGranularity = 0;
 
     _properties.limits.standardSampleLocations = VK_TRUE;
     _properties.limits.strictLines = _properties.vendorID == kIntelVendorId || _properties.vendorID == kNVVendorId;
@@ -2752,7 +2752,7 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.maxComputeWorkGroupCount[1] = kMVKUndefinedLargeUInt32;
     _properties.limits.maxComputeWorkGroupCount[2] = kMVKUndefinedLargeUInt32;
 
-    _properties.limits.maxDrawIndexedIndexValue = numeric_limits<uint32_t>::max() - 1;	// Support both fullDrawIndexUint32 and automatic primitive restart.
+    _properties.limits.maxDrawIndexedIndexValue = numeric_limits<uint32_t>::max();
     _properties.limits.maxDrawIndirectCount = kMVKUndefinedLargeUInt32;
 
 
