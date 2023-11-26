@@ -97,7 +97,7 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "2.4"
+            argument = "3.1"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument

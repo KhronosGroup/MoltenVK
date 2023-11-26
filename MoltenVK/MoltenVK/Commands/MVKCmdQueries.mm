@@ -77,13 +77,13 @@ void MVKCmdEndQuery::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdWriteTimestamp
 
 VkResult MVKCmdWriteTimestamp::setContent(MVKCommandBuffer* cmdBuff,
-										  VkPipelineStageFlagBits pipelineStage,
+										  VkPipelineStageFlags2 stage,
 										  VkQueryPool queryPool,
 										  uint32_t query) {
 
 	VkResult rslt = MVKCmdQuery::setContent(cmdBuff, queryPool, query);
 
-	_pipelineStage = pipelineStage;
+	_stage = stage;
 
 	cmdBuff->recordTimestampCommand();
 

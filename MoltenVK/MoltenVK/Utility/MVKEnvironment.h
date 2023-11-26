@@ -20,8 +20,9 @@
 #pragma once
 
 #include "MVKCommonEnvironment.h"
+#include "mvk_vulkan.h"
+#include "mvk_config.h"
 #include "MVKLogging.h"
-#include "vk_mvk_moltenvk.h"
 
 
 // Expose MoltenVK Apple surface extension functionality
@@ -80,6 +81,14 @@ const MVKConfiguration& mvkConfig();
 
 /** Global function to update MoltenVK configuration info. */
 void mvkSetConfig(const MVKConfiguration& mvkConfig);
+
+/** 
+ * Enable debug mode.
+ * By default, disabled for Release builds and enabled for Debug builds.
+ */
+#ifndef MVK_CONFIG_DEBUG
+#	define MVK_CONFIG_DEBUG		MVK_DEBUG
+#endif
 
 /** Flip the vertex coordinate in shaders. Enabled by default. */
 #ifndef MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y
@@ -151,8 +160,11 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #   define MVK_CONFIG_PERFORMANCE_LOGGING_FRAME_COUNT    0
 #endif
 
-/** Log activity performance every time an activity occurs. Disabled by default. */
-#	ifndef MVK_CONFIG_PERFORMANCE_LOGGING_INLINE
+/** Activity performance logging style. Default is to log after a configured number of frames. */
+#	ifndef MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE
+#   	define MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE    MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT
+#	endif
+#	ifndef MVK_CONFIG_PERFORMANCE_LOGGING_INLINE	// Deprecated
 #   	define MVK_CONFIG_PERFORMANCE_LOGGING_INLINE    0
 #	endif
 
@@ -240,11 +252,17 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #ifndef MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE
 #   define MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE    MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE
 #endif
-#ifndef MVK_ALLOW_METAL_EVENTS		// Deprecated
-#   define MVK_ALLOW_METAL_EVENTS    1
+#ifndef MVK_CONFIG_ALLOW_METAL_EVENTS
+#   define MVK_CONFIG_ALLOW_METAL_EVENTS    1
 #endif
-#ifndef MVK_ALLOW_METAL_FENCES		// Deprecated
-#   define MVK_ALLOW_METAL_FENCES    1
+#ifndef MVK_ALLOW_METAL_EVENTS				// Deprecated
+#   define MVK_ALLOW_METAL_EVENTS    		MVK_CONFIG_ALLOW_METAL_EVENTS
+#endif
+#ifndef MVK_CONFIG_ALLOW_METAL_FENCES
+#   define MVK_CONFIG_ALLOW_METAL_FENCES    1
+#endif
+#ifndef MVK_ALLOW_METAL_FENCES				// Deprecated
+#   define MVK_ALLOW_METAL_FENCES    		MVK_CONFIG_ALLOW_METAL_FENCES
 #endif
 
 /** Substitute Metal 2D textures for Vulkan 1D images. Enabled by default. */
@@ -285,4 +303,25 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 /** Support Metal argument buffers. Disabled by default. */
 #ifndef MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS
 #   define MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS    MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER
+#endif
+
+/** Compress MSL shader source code in a pipeline cache. Defaults to no compression. */
+#ifndef MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM
+#  	define MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM    MVK_CONFIG_COMPRESSION_ALGORITHM_NONE
+#endif
+
+/**
+ * Maximize the concurrent executing compilation tasks.
+ * This functionality requires macOS 13.3. Disabled by default.
+ */
+#ifndef MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION
+#  	define MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION    0
+#endif
+
+/**
+ * The alpha value of a lowpass filter tracking VkPhysicalDeviceLimits::timestampPeriod.
+ * This can be set to a float between 0.0 and 1.0.
+ */
+#ifndef MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA
+#  	define MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA    1.0
 #endif

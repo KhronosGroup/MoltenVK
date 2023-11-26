@@ -76,7 +76,9 @@
  */
 @property(nonatomic, readwrite) CFStringRef colorspaceNameMVK;
 
+#if !MVK_VISIONOS
 /** Returns the screen on which this layer is rendering. */
 @property(nonatomic, readonly) PLATFORM_SCREEN_CLASS* screenMVK;
+#endif
 
 @end

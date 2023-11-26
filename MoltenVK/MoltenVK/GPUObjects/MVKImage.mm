@@ -19,9 +19,9 @@
 #include "MVKImage.h"
 #include "MVKQueue.h"
 #include "MVKSwapchain.h"
+#include "MVKSurface.h"
 #include "MVKCommandBuffer.h"
 #include "MVKCmdDebug.h"
-#include "MVKEnvironment.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
 #include "MVKCodec.h"
@@ -63,7 +63,7 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
                            offset: memoryBinding->getDeviceMemoryOffset() + _subresources[0].layout.offset];
             if (_image->_isAliasable) { [_mtlTexture makeAliasable]; }
         } else if (_image->_isAliasable && dvcMem && dvcMem->isDedicatedAllocation() &&
-            !contains(dvcMem->_imageMemoryBindings, memoryBinding)) {
+            !mvkContains(dvcMem->_imageMemoryBindings, memoryBinding)) {
             // This is a dedicated allocation, but it belongs to another aliasable image.
             // In this case, use the MTLTexture from the memory's dedicated image.
             // We know the other image must be aliasable, or I couldn't have been bound
@@ -304,9 +304,7 @@ MVKImageMemoryBinding* MVKImagePlane::getMemoryBinding() const {
     return (_image->_memoryBindings.size() > 1) ? _image->_memoryBindings[_planeIndex] : _image->_memoryBindings[0];
 }
 
-void MVKImagePlane::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
-											VkPipelineStageFlags dstStageMask,
-											MVKPipelineBarrier& barrier,
+void MVKImagePlane::applyImageMemoryBarrier(MVKPipelineBarrier& barrier,
 											MVKCommandEncoder* cmdEncoder,
 											MVKCommandUse cmdUse) {
 
@@ -323,7 +321,7 @@ void MVKImagePlane::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 						 : (layerStart + barrier.layerCount));
 
 	MVKImageMemoryBinding* memBind = getMemoryBinding();
-	bool needsSync = memBind->needsHostReadSync(srcStageMask, dstStageMask, barrier);
+	bool needsSync = memBind->needsHostReadSync(barrier);
 	bool needsPull = ((!memBind->_mtlTexelBuffer || memBind->_ownsTexelBuffer) &&
 					  memBind->isMemoryHostCoherent() &&
 					  barrier.newLayout == VK_IMAGE_LAYOUT_GENERAL &&
@@ -444,13 +442,11 @@ VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDevi
     return _deviceMemory ? _deviceMemory->addImageMemoryBinding(this) : VK_SUCCESS;
 }
 
-void MVKImageMemoryBinding::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
-                                               VkPipelineStageFlags dstStageMask,
-                                               MVKPipelineBarrier& barrier,
+void MVKImageMemoryBinding::applyMemoryBarrier(MVKPipelineBarrier& barrier,
                                                MVKCommandEncoder* cmdEncoder,
                                                MVKCommandUse cmdUse) {
 #if MVK_MACOS
-    if ( needsHostReadSync(srcStageMask, dstStageMask, barrier) ) {
+    if (needsHostReadSync(barrier)) {
         for(uint8_t planeIndex = beginPlaneIndex(); planeIndex < endPlaneIndex(); planeIndex++) {
             [cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeResource: _image->_planes[planeIndex]->_mtlTexture];
         }
@@ -469,9 +465,7 @@ void MVKImageMemoryBinding::propagateDebugName() {
 
 // Returns whether the specified image memory barrier requires a sync between this
 // texture and host memory for the purpose of the host reading texture memory.
-bool MVKImageMemoryBinding::needsHostReadSync(VkPipelineStageFlags srcStageMask,
-                                              VkPipelineStageFlags dstStageMask,
-                                              MVKPipelineBarrier& barrier) {
+bool MVKImageMemoryBinding::needsHostReadSync(MVKPipelineBarrier& barrier) {
 #if MVK_MACOS
     return ((barrier.newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
             mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
@@ -625,15 +619,13 @@ bool MVKImage::getIsValidViewFormat(VkFormat viewFormat) {
 
 #pragma mark Resource memory
 
-void MVKImage::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
-									   VkPipelineStageFlags dstStageMask,
-									   MVKPipelineBarrier& barrier,
+void MVKImage::applyImageMemoryBarrier(MVKPipelineBarrier& barrier,
 									   MVKCommandEncoder* cmdEncoder,
 									   MVKCommandUse cmdUse) {
 
 	for (uint8_t planeIndex = 0; planeIndex < _planes.size(); planeIndex++) {
 		if ( !_hasChromaSubsampling || mvkIsAnyFlagEnabled(barrier.aspectMask, (VK_IMAGE_ASPECT_PLANE_0_BIT << planeIndex)) ) {
-			_planes[planeIndex]->applyImageMemoryBarrier(srcStageMask, dstStageMask, barrier, cmdEncoder, cmdUse);
+			_planes[planeIndex]->applyImageMemoryBarrier(barrier, cmdEncoder, cmdUse);
 		}
     }
 }
@@ -1150,6 +1142,7 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttac
 }
 
 void MVKImage::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
+	if ( !handleTypes ) { return; }
 	if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR)) {
         auto& xmProps = getPhysicalDevice()->getExternalImageProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR);
         for(auto& memoryBinding : _memoryBindings) {
@@ -1193,8 +1186,9 @@ MVKSwapchainImage::MVKSwapchainImage(MVKDevice* device,
 }
 
 void MVKSwapchainImage::detachSwapchain() {
-	lock_guard<mutex> lock(_swapchainLock);
+	lock_guard<mutex> lock(_detachmentLock);
 	_swapchain = nullptr;
+	_device = nullptr;
 }
 
 void MVKSwapchainImage::destroy() {
@@ -1246,29 +1240,33 @@ static void signalAndUnmarkAsTracked(const MVKSwapchainSignaler& signaler) {
 	unmarkAsTracked(signaler);
 }
 
-void MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence) {
+VkResult MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence) {
+
+	// Now that this image is being acquired, release the existing drawable and its texture.
+	// This is not done earlier so the texture is retained for any post-processing such as screen captures, etc.
+	// This may trigger a delayed presentation callback, which uses the _availabilityLock, also used below.
+	releaseMetalDrawable();
+
 	lock_guard<mutex> lock(_availabilityLock);
 
 	// Upon acquisition, update acquisition ID immediately, to move it to the back of the chain,
 	// so other images will be preferred if either all images are available or no images are available.
 	_availability.acquisitionID = _swapchain->getNextAcquisitionID();
 
-	// Now that this image is being acquired, release the existing drawable and its texture.
-	// This is not done earlier so the texture is retained for any post-processing such as screen captures, etc.
-	releaseMetalDrawable();
-
 	auto signaler = MVKSwapchainSignaler{fence, semaphore, semaphore ? semaphore->deferSignal() : 0};
 	if (_availability.isAvailable) {
 		_availability.isAvailable = false;
 
-		// If signalling through a MTLEvent, and there's no command buffer presenting me, use an ephemeral MTLCommandBuffer.
+		// If signalling through a MTLEvent, signal through an ephemeral MTLCommandBuffer.
 		// Another option would be to use MTLSharedEvent in MVKSemaphore, but that might
 		// impose unacceptable performance costs to handle this particular case.
 		@autoreleasepool {
 			MVKSemaphore* mvkSem = signaler.semaphore;
-			id<MTLCommandBuffer> mtlCmdBuff = (mvkSem && mvkSem->isUsingCommandEncoding()
-											   ? _device->getAnyQueue()->getMTLCommandBuffer(kMVKCommandUseAcquireNextImage)
-											   : nil);
+			id<MTLCommandBuffer> mtlCmdBuff = nil;
+			if (mvkSem && mvkSem->isUsingCommandEncoding()) {
+				mtlCmdBuff = _device->getAnyQueue()->getMTLCommandBuffer(kMVKCommandUseAcquireNextImage);
+				if ( !mtlCmdBuff ) { setConfigurationResult(VK_ERROR_OUT_OF_POOL_MEMORY); }
+			}
 			signal(signaler, mtlCmdBuff);
 			[mtlCmdBuff commit];
 		}
@@ -1278,50 +1276,89 @@ void MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphore* s
 		_availabilitySignalers.push_back(signaler);
 	}
 	markAsTracked(signaler);
+
+	return getConfigurationResult();
 }
 
+// Calling nextDrawable may result in a nil drawable, or a drawable with no pixel format.
+// Attempt several times to retrieve a good drawable, and set an error to trigger the
+// swapchain to be re-established if one cannot be retrieved.
 id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
-	while ( !_mtlDrawable ) {
-		@autoreleasepool {      // Reclaim auto-released drawable object before end of loop
-			uint64_t startTime = _device->getPerformanceTimestamp();
-
-			_mtlDrawable = [_swapchain->_mtlLayer.nextDrawable retain];
-			if ( !_mtlDrawable ) { MVKLogError("CAMetalDrawable could not be acquired."); }
-
-			_device->addActivityPerformance(_device->_performanceStatistics.queue.nextCAMetalDrawable, startTime);
+	if ( !_mtlDrawable ) {
+		@autoreleasepool {
+			bool hasInvalidFormat = false;
+			uint32_t attemptCnt = _swapchain->getImageCount();	// Attempt a resonable number of times
+			for (uint32_t attemptIdx = 0; !_mtlDrawable && attemptIdx < attemptCnt; attemptIdx++) {
+				uint64_t startTime = _device->getPerformanceTimestamp();
+				_mtlDrawable = [_swapchain->getCAMetalLayer().nextDrawable retain];	// retained
+				_device->addPerformanceInterval(_device->_performanceStatistics.queue.retrieveCAMetalDrawable, startTime);
+				hasInvalidFormat = _mtlDrawable && !_mtlDrawable.texture.pixelFormat;
+				if (hasInvalidFormat) { releaseMetalDrawable(); }
+			}
+			if (hasInvalidFormat) {
+				setConfigurationResult(reportError(VK_ERROR_OUT_OF_DATE_KHR, "CAMetalDrawable with valid format could not be acquired after %d attempts.", attemptCnt));
+			} else if ( !_mtlDrawable ) {
+				setConfigurationResult(reportError(VK_ERROR_OUT_OF_POOL_MEMORY, "CAMetalDrawable could not be acquired after %d attempts.", attemptCnt));
+			}
 		}
 	}
 	return _mtlDrawable;
 }
 
 // Present the drawable and make myself available only once the command buffer has completed.
-void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff,
-														  MVKImagePresentInfo& presentInfo) {
-	lock_guard<mutex> lock(_availabilityLock);
-
-	_swapchain->willPresentSurface(getMTLTexture(0), mtlCmdBuff);
+// Pass MVKImagePresentInfo by value because it may not exist when the callback runs.
+VkResult MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff,
+															  MVKImagePresentInfo presentInfo) {
+	_swapchain->renderWatermark(getMTLTexture(0), mtlCmdBuff);
 
 	// According to Apple, it is more performant to call MTLDrawable present from within a
 	// MTLCommandBuffer scheduled-handler than it is to call MTLCommandBuffer presentDrawable:.
 	// But get current drawable now, intead of in handler, because a new drawable might be acquired by then.
 	// Attach present handler before presenting to avoid race condition.
 	id<CAMetalDrawable> mtlDrwbl = getCAMetalDrawable();
+	MVKSwapchainSignaler signaler = getPresentationSignaler();
 	[mtlCmdBuff addScheduledHandler: ^(id<MTLCommandBuffer> mcb) {
+
+		addPresentedHandler(mtlDrwbl, presentInfo, signaler);
+
 		// Try to do any present mode transitions as late as possible in an attempt
 		// to avoid visual disruptions on any presents already on the queue.
 		if (presentInfo.presentMode != VK_PRESENT_MODE_MAX_ENUM_KHR) {
 			mtlDrwbl.layer.displaySyncEnabledMVK = (presentInfo.presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR);
 		}
-		if (presentInfo.hasPresentTime) {
-			// Convert from nsecs to seconds for Metal
-			addPresentedHandler(mtlDrwbl, presentInfo);
+		if (presentInfo.desiredPresentTime) {
 			[mtlDrwbl presentAtTime: (double)presentInfo.desiredPresentTime * 1.0e-9];
 		} else {
 			[mtlDrwbl present];
 		}
 	}];
 
-	MVKSwapchainSignaler signaler;
+	// Ensure this image, the drawable, and the present fence are not destroyed while
+	// awaiting MTLCommandBuffer completion. We retain the drawable separately because
+	// a new drawable might be acquired by this image by then.
+	// Signal the fence from this callback, because the last one or two presentation
+	// completion callbacks can occasionally stall.
+	retain();
+	[mtlDrwbl retain];
+	auto* fence = presentInfo.fence;
+	if (fence) { fence->retain(); }
+	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
+		if (fence) {
+			fence->signal();
+			fence->release();
+		}
+		[mtlDrwbl release];
+		release();
+	}];
+
+	signalPresentationSemaphore(signaler, mtlCmdBuff);
+
+	return getConfigurationResult();
+}
+
+MVKSwapchainSignaler MVKPresentableSwapchainImage::getPresentationSignaler() {
+	lock_guard<mutex> lock(_availabilityLock);
+
 	// Mark this image as available if no semaphores or fences are waiting to be signaled.
 	_availability.isAvailable = _availabilitySignalers.empty();
 	if (_availability.isAvailable) {
@@ -1330,64 +1367,60 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 		// when an app uses a single semaphore or fence for more than one swapchain image.
 		// Because the semaphore or fence will be signaled by more than one image, it will
 		// get out of sync, and the final use of the image would not be signaled as a result.
-		signaler = _preSignaler;
+		return _preSignaler;
 	} else {
 		// If this image is not yet available, extract and signal the first semaphore and fence.
+		MVKSwapchainSignaler signaler;
 		auto sigIter = _availabilitySignalers.begin();
 		signaler = *sigIter;
 		_availabilitySignalers.erase(sigIter);
+		return signaler;
 	}
-
-	// Ensure this image, the drawable, and the present fence are not destroyed while
-	// awaiting MTLCommandBuffer completion. We retain the drawable separately because
-	// a new drawable might be acquired by this image by then.
-	retain();
-	[mtlDrwbl retain];
-	auto* fence = presentInfo.fence;
-	if (fence) { fence->retain(); }
-	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
-		[mtlDrwbl release];
-		makeAvailable(signaler);
-		release();
-		if (fence) {
-			fence->signal();
-			fence->release();
-		}
-	}];
-
-	signalPresentationSemaphore(signaler, mtlCmdBuff);
 }
 
+// Pass MVKImagePresentInfo & MVKSwapchainSignaler by value because they may not exist when the callback runs.
 void MVKPresentableSwapchainImage::addPresentedHandler(id<CAMetalDrawable> mtlDrawable,
-													   MVKImagePresentInfo& presentInfo) {
+													   MVKImagePresentInfo presentInfo,
+													   MVKSwapchainSignaler signaler) {
+	beginPresentation(presentInfo);
+
 #if !MVK_OS_SIMULATOR
 	if ([mtlDrawable respondsToSelector: @selector(addPresentedHandler:)]) {
-		retain();	// Ensure this image is not destroyed while awaiting presentation
-		[mtlDrawable addPresentedHandler: ^(id<MTLDrawable> drawable) {
-			// Since we're in a callback, it's possible that the swapchain has been released by now.
-			// Lock the swapchain, and test if it is present before doing anything with it.
-			lock_guard<mutex> cblock(_swapchainLock);
-			if (_swapchain) { _swapchain->recordPresentTime(presentInfo, drawable.presentedTime * 1.0e9); }
-			release();
+		[mtlDrawable addPresentedHandler: ^(id<MTLDrawable> mtlDrwbl) {
+			endPresentation(presentInfo, signaler, mtlDrwbl.presentedTime * 1.0e9);
 		}];
-		return;
-	}
+	} else
 #endif
-
-	// If MTLDrawable.presentedTime/addPresentedHandler isn't supported,
-	// treat it as if the present happened when requested.
-	// Since this function may be called in a callback, it's possible that
-	// the swapchain has been released by the time this function runs.
-	// Lock the swapchain, and test if it is present before doing anything with it.
-	lock_guard<mutex> lock(_swapchainLock);
-	if (_swapchain) {_swapchain->recordPresentTime(presentInfo); }
+	{
+		// If MTLDrawable.presentedTime/addPresentedHandler isn't supported,
+		// treat it as if the present happened when requested.
+		endPresentation(presentInfo, signaler);
+	}
 }
 
-// Resets the MTLTexture and CAMetalDrawable underlying this image.
+// Ensure this image and the swapchain are not destroyed while awaiting presentation
+void MVKPresentableSwapchainImage::beginPresentation(const MVKImagePresentInfo& presentInfo) {
+	retain();
+	_swapchain->beginPresentation(presentInfo);
+	_presentationStartTime = getDevice()->getPerformanceTimestamp();
+}
+
+void MVKPresentableSwapchainImage::endPresentation(const MVKImagePresentInfo& presentInfo,
+												   const MVKSwapchainSignaler& signaler,
+												   uint64_t actualPresentTime) {
+	{	// Scope to avoid deadlock if release() is run within detachment lock
+		// If I have become detached from the swapchain, it means the swapchain, and possibly the
+		// VkDevice, have been destroyed by the time of this callback, so do not reference them.
+		lock_guard<mutex> lock(_detachmentLock);
+		if (_device) { _device->addPerformanceInterval(_device->_performanceStatistics.queue.presentSwapchains, _presentationStartTime); }
+		if (_swapchain) { _swapchain->endPresentation(presentInfo, actualPresentTime); }
+	}
+	makeAvailable(signaler);
+	release();
+}
+
+// Releases the CAMetalDrawable underlying this image.
 void MVKPresentableSwapchainImage::releaseMetalDrawable() {
-    for (uint8_t planeIndex = 0; planeIndex < _planes.size(); ++planeIndex) {
-        _planes[planeIndex]->releaseMTLTexture();
-    }
     [_mtlDrawable release];
 	_mtlDrawable = nil;
 }
@@ -1402,7 +1435,9 @@ void MVKPresentableSwapchainImage::makeAvailable(const MVKSwapchainSignaler& sig
 }
 
 // Signal, untrack, and release any signalers that are tracking.
+// Release the drawable before the lock, as it may trigger completion callback.
 void MVKPresentableSwapchainImage::makeAvailable() {
+	releaseMetalDrawable();
 	lock_guard<mutex> lock(_availabilityLock);
 
 	if ( !_availability.isAvailable ) {
@@ -1415,7 +1450,6 @@ void MVKPresentableSwapchainImage::makeAvailable() {
 	}
 }
 
-
 #pragma mark Construction
 
 MVKPresentableSwapchainImage::MVKPresentableSwapchainImage(MVKDevice* device,
@@ -1424,17 +1458,19 @@ MVKPresentableSwapchainImage::MVKPresentableSwapchainImage(MVKDevice* device,
 														   uint32_t swapchainIndex) :
 	MVKSwapchainImage(device, pCreateInfo, swapchain, swapchainIndex) {
 
-	_mtlDrawable = nil;
-
 	_availability.acquisitionID = _swapchain->getNextAcquisitionID();
 	_availability.isAvailable = true;
-	_preSignaler = MVKSwapchainSignaler{nullptr, nullptr, 0};
+}
+
+
+void MVKPresentableSwapchainImage::destroy() {
+	releaseMetalDrawable();
+	MVKSwapchainImage::destroy();
 }
 
 // Unsignaled signalers will exist if this image is acquired more than it is presented.
 // Ensure they are signaled and untracked so the fences and semaphores will be released.
 MVKPresentableSwapchainImage::~MVKPresentableSwapchainImage() {
-	releaseMetalDrawable();
 	makeAvailable();
 }
 
@@ -1573,6 +1609,26 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 	VkImageAspectFlags aspectMask = pCreateInfo->subresourceRange.aspectMask;
 
 #define adjustComponentSwizzleValue(comp, currVal, newVal)    if (_componentSwizzle.comp == VK_COMPONENT_SWIZZLE_ ##currVal) { _componentSwizzle.comp = VK_COMPONENT_SWIZZLE_ ##newVal; }
+#define adjustAnyComponentSwizzleValue(comp, I, R, G, B, A) \
+	switch (_componentSwizzle.comp) { \
+		case VK_COMPONENT_SWIZZLE_IDENTITY: \
+			_componentSwizzle.comp = VK_COMPONENT_SWIZZLE_##I; \
+			break; \
+		case VK_COMPONENT_SWIZZLE_R: \
+			_componentSwizzle.comp = VK_COMPONENT_SWIZZLE_##R; \
+			break; \
+		case VK_COMPONENT_SWIZZLE_G: \
+			_componentSwizzle.comp = VK_COMPONENT_SWIZZLE_##G; \
+			break; \
+		case VK_COMPONENT_SWIZZLE_B: \
+			_componentSwizzle.comp = VK_COMPONENT_SWIZZLE_##B; \
+			break; \
+		case VK_COMPONENT_SWIZZLE_A: \
+			_componentSwizzle.comp = VK_COMPONENT_SWIZZLE_##A; \
+			break; \
+		default: \
+			break; \
+	}
 
 	// Use swizzle adjustment to bridge some differences between Vulkan and Metal pixel formats.
 	// Do this ahead of other tests and adjustments so that swizzling will be enabled by tests below.
@@ -1585,6 +1641,32 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 			adjustComponentSwizzleValue(b, A, ONE);
 			adjustComponentSwizzleValue(a, A, ONE);
 			adjustComponentSwizzleValue(a, IDENTITY, ONE);
+			break;
+
+		case VK_FORMAT_A4R4G4B4_UNORM_PACK16:
+			// Metal doesn't (publicly) support this directly, so use a swizzle to get the ordering right.
+			// n.b. **Do NOT use adjustComponentSwizzleValue if multiple values need substitution,
+			// and some of the substitutes are keys for other substitutions!**
+			adjustAnyComponentSwizzleValue(r, G, G, B, A, R);
+			adjustAnyComponentSwizzleValue(g, B, G, B, A, R);
+			adjustAnyComponentSwizzleValue(b, A, G, B, A, R);
+			adjustAnyComponentSwizzleValue(a, R, G, B, A, R);
+			break;
+
+		case VK_FORMAT_A4B4G4R4_UNORM_PACK16:
+			// Metal doesn't support this directly, so use a swizzle to get the ordering right.
+			adjustAnyComponentSwizzleValue(r, A, A, B, G, R);
+			adjustAnyComponentSwizzleValue(g, B, A, B, G, R);
+			adjustAnyComponentSwizzleValue(b, G, A, B, G, R);
+			adjustAnyComponentSwizzleValue(a, R, A, B, G, R);
+			break;
+
+		case VK_FORMAT_B4G4R4A4_UNORM_PACK16:
+			// Metal doesn't support this directly, so use a swizzle to get the ordering right.
+			adjustAnyComponentSwizzleValue(r, B, B, G, R, A);
+			adjustAnyComponentSwizzleValue(g, G, B, G, R, A);
+			adjustAnyComponentSwizzleValue(b, R, B, G, R, A);
+			adjustAnyComponentSwizzleValue(a, A, B, G, R, A);
 			break;
 
 		default:

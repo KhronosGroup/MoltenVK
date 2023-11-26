@@ -21,6 +21,8 @@
 
 #include <string>
 #include <streambuf>
+#include <vector>
+#include <cxxabi.h>
 
 namespace mvk {
 
@@ -57,6 +59,26 @@ namespace mvk {
 			if ( !(c == '_' || isalpha(c) || (isdigit(c) && cIdx > 0)) ) { c = '_'; }
 		}
 		return varName;
+	}
+
+	/** Returns a string containing the ordinal suffix for a numeric value.*/
+	inline const char* getOrdinalSuffix(int64_t val) {
+		static const char* suffixes[] = {"th", "st", "nd", "rd"};
+		auto ord = val % 100;
+		if (ord > 10 && ord < 20) { return suffixes[0]; }	// All teens end in th.
+		ord = ord % 10;
+		if (ord > 3) { return suffixes[0]; }	// 4-9 end in th.
+		return suffixes[ord];
+	}
+
+	/** Returns the name of a C++ type. */
+	template<typename T>
+	inline std::string getTypeName(const T* pObj) {
+		int status;
+		char* demangledName = abi::__cxa_demangle(typeid(*pObj).name(), 0, 0, &status);
+		std::string tName = demangledName;
+		free(demangledName);
+		return tName;
 	}
 
 

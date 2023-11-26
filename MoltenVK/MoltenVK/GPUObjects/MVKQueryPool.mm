@@ -52,7 +52,7 @@ void MVKQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) {
 }
 
 // Mark queries as available
-void MVKQueryPool::finishQueries(const MVKArrayRef<uint32_t> queries) {
+void MVKQueryPool::finishQueries(MVKArrayRef<const uint32_t> queries) {
     lock_guard<mutex> lock(_availabilityLock);
     for (uint32_t qry : queries) {
         if (_availability[qry] == DeviceAvailable) {
@@ -284,7 +284,7 @@ id<MTLBuffer> MVKOcclusionQueryPool::getResultBuffer(MVKCommandEncoder*, uint32_
 }
 
 id<MTLComputeCommandEncoder> MVKOcclusionQueryPool::encodeComputeCopyResults(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t, uint32_t index) {
-	id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults);
+	id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults, true);
 	[mtlCmdEnc setBuffer: getVisibilityResultMTLBuffer() offset: getVisibilityResultOffset(firstQuery) atIndex: index];
 	return mtlCmdEnc;
 }
@@ -316,7 +316,9 @@ MVKOcclusionQueryPool::MVKOcclusionQueryPool(MVKDevice* device,
         VkDeviceSize newBuffLen = min(reqBuffLen, maxBuffLen);
 
         if (reqBuffLen > maxBuffLen) {
-            reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCreateQueryPool(): Each query pool can support a maximum of %d queries.", uint32_t(newBuffLen / kMVKQuerySlotSizeInBytes));
+			reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+						"vkCreateQueryPool(): Each occlusion query pool can support a maximum of %d queries.",
+						uint32_t(newBuffLen / kMVKQuerySlotSizeInBytes));
         }
 
         NSUInteger mtlBuffLen = mvkAlignByteCount(newBuffLen, _device->_pMetalFeatures->mtlBufferAlignment);
@@ -356,9 +358,9 @@ void MVKGPUCounterQueryPool::initMTLCounterSampleBuffer(const VkQueryPoolCreateI
 		NSError* err = nil;
 		_mtlCounterBuffer = [getMTLDevice() newCounterSampleBufferWithDescriptor: tsDesc error: &err];
 		if (err) {
-			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED,
-											   "Could not create MTLCounterSampleBuffer for query pool of type %s. Reverting to emulated behavior. (Error code %li): %s",
-											   queryTypeName, (long)err.code, err.localizedDescription.UTF8String));
+			reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+						"Could not create MTLCounterSampleBuffer of size %llu, for %d queries, in query pool of type %s. Reverting to emulated behavior. (Error code %li): %s",
+						(VkDeviceSize)pCreateInfo->queryCount * kMVKQuerySlotSizeInBytes, pCreateInfo->queryCount, queryTypeName, (long)err.code, err.localizedDescription.UTF8String);
 		}
 	}
 };
@@ -377,9 +379,9 @@ void MVKTimestampQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncod
 }
 
 // If not using MTLCounterSampleBuffer, update timestamp values, then mark queries as available
-void MVKTimestampQueryPool::finishQueries(const MVKArrayRef<uint32_t> queries) {
+void MVKTimestampQueryPool::finishQueries(MVKArrayRef<const uint32_t> queries) {
 	if ( !_mtlCounterBuffer ) {
-		uint64_t ts = mvkGetTimestamp();
+		uint64_t ts = mvkGetElapsedNanoseconds();
 		for (uint32_t qry : queries) { _timestamps[qry] = ts; }
 	}
 	MVKQueryPool::finishQueries(queries);
@@ -432,12 +434,12 @@ id<MTLComputeCommandEncoder> MVKTimestampQueryPool::encodeComputeCopyResults(MVK
 					 destinationBuffer: tempBuff->_mtlBuffer
 					 destinationOffset: tempBuff->_offset];
 
-		id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults);
+		id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults, true);
 		[mtlCmdEnc setBuffer: tempBuff->_mtlBuffer offset: tempBuff->_offset atIndex: index];
 		return mtlCmdEnc;
 	} else {
 		// We can set the timestamp bytes into the compute encoder.
-		id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults);
+		id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults, true);
 		cmdEncoder->setComputeBytes(mtlCmdEnc, &_timestamps[firstQuery], queryCount * _queryElementCount * sizeof(uint64_t), index);
 		return mtlCmdEnc;
 	}

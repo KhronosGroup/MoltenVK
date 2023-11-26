@@ -298,12 +298,12 @@ public:
   reverse_iterator rbegin() const { return reverse_iterator( end() ); }
   reverse_iterator rend()   const { return reverse_iterator( begin() ); }
 
-  const MVKArrayRef<Type> contents() const { return MVKArrayRef<Type>(data(), size()); }
-        MVKArrayRef<Type> contents()       { return MVKArrayRef<Type>(data(), size()); }
+  MVKArrayRef<const Type> contents() const { return MVKArrayRef<const Type>(data(), size()); }
+  MVKArrayRef<      Type> contents()       { return MVKArrayRef<      Type>(data(), size()); }
 
-  const Type &operator[]( const size_t i ) const { return alc[i]; }
+  const Type &operator[]( const size_t i ) const  { return alc[i]; }
         Type &operator[]( const size_t i )        { return alc[i]; }
-  const Type &at( const size_t i )         const { return alc[i]; }
+  const Type &at( const size_t i )         const  { return alc[i]; }
         Type &at( const size_t i )                { return alc[i]; }
   const Type &front()                      const  { return alc[0]; }
         Type &front()                             { return alc[0]; }

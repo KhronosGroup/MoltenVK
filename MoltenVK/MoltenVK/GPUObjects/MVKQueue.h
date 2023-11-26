@@ -86,20 +86,20 @@ public:
 	/** Returns a pointer to the Vulkan instance. */
 	MVKInstance* getInstance() override { return _device->getInstance(); }
 
+	/** Return the name of this queue. */
+	const std::string& getName() { return _name; }
+
 #pragma mark Queue submissions
 
 	/** Submits the specified command buffers to the queue. */
-	VkResult submit(uint32_t submitCount, const VkSubmitInfo* pSubmits, VkFence fence, MVKCommandUse cmdUse);
+	template <typename S>
+	VkResult submit(uint32_t submitCount, const S* pSubmits, VkFence fence, MVKCommandUse cmdUse);
 
 	/** Submits the specified presentation command to the queue. */
 	VkResult submit(const VkPresentInfoKHR* pPresentInfo);
 
 	/** Block the current thread until this queue is idle. */
 	VkResult waitIdle(MVKCommandUse cmdUse);
-
-	/** Return the name of this queue. */
-	const std::string& getName() { return _name; }
-
 
 #pragma mark Metal
 
@@ -135,35 +135,52 @@ protected:
 	friend class MVKQueueCommandBufferSubmission;
 	friend class MVKQueuePresentSurfaceSubmission;
 
-	MVKBaseObject* getBaseObject() override { return this; };
 	void propagateDebugName() override;
 	void initName();
 	void initExecQueue();
 	void initMTLCommandQueue();
-	void initGPUCaptureScopes();
 	void destroyExecQueue();
 	VkResult submit(MVKQueueSubmission* qSubmit);
 	NSString* getMTLCommandBufferLabel(MVKCommandUse cmdUse);
+	void handleMTLCommandBufferError(id<MTLCommandBuffer> mtlCmdBuff);
 
 	MVKQueueFamily* _queueFamily;
-	uint32_t _index;
-	float _priority;
-	dispatch_queue_t _execQueue;
-	id<MTLCommandQueue> _mtlQueue;
 	std::string _name;
-	NSString* _mtlCmdBuffLabelEndCommandBuffer;
-	NSString* _mtlCmdBuffLabelQueueSubmit;
-	NSString* _mtlCmdBuffLabelQueuePresent;
-	NSString* _mtlCmdBuffLabelDeviceWaitIdle;
-	NSString* _mtlCmdBuffLabelQueueWaitIdle;
-	NSString* _mtlCmdBuffLabelAcquireNextImage;
-	NSString* _mtlCmdBuffLabelInvalidateMappedMemoryRanges;
-	MVKGPUCaptureScope* _submissionCaptureScope;
+	dispatch_queue_t _execQueue;
+	id<MTLCommandQueue> _mtlQueue = nil;
+	NSString* _mtlCmdBuffLabelBeginCommandBuffer = nil;
+	NSString* _mtlCmdBuffLabelQueueSubmit = nil;
+	NSString* _mtlCmdBuffLabelQueuePresent = nil;
+	NSString* _mtlCmdBuffLabelDeviceWaitIdle = nil;
+	NSString* _mtlCmdBuffLabelQueueWaitIdle = nil;
+	NSString* _mtlCmdBuffLabelAcquireNextImage = nil;
+	NSString* _mtlCmdBuffLabelInvalidateMappedMemoryRanges = nil;
+	MVKGPUCaptureScope* _submissionCaptureScope = nil;
+	float _priority;
+	uint32_t _index;
 };
 
 
 #pragma mark -
 #pragma mark MVKQueueSubmission
+
+typedef struct MVKSemaphoreSubmitInfo {
+private:
+	MVKSemaphore* _semaphore;
+public:
+	uint64_t value;
+	VkPipelineStageFlags2 stageMask;
+	uint32_t deviceIndex;
+
+	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff);
+	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff);
+	MVKSemaphoreSubmitInfo(const VkSemaphoreSubmitInfo& semaphoreSubmitInfo);
+	MVKSemaphoreSubmitInfo(const VkSemaphore semaphore, VkPipelineStageFlags stageMask);
+	MVKSemaphoreSubmitInfo(const MVKSemaphoreSubmitInfo& other);
+	MVKSemaphoreSubmitInfo& operator=(const MVKSemaphoreSubmitInfo& other);
+	~MVKSemaphoreSubmitInfo();
+
+} MVKSemaphoreSubmitInfo;
 
 /** This is an abstract class for an operation that can be submitted to an MVKQueue. */
 class MVKQueueSubmission : public MVKBaseObject, public MVKConfigurableMixin {
@@ -178,11 +195,16 @@ public:
 	 *
 	 * Upon completion of this function, no further calls should be made to this instance.
 	 */
-	virtual void execute() = 0;
+	virtual VkResult execute() = 0;
+
+	MVKQueueSubmission(MVKQueue* queue,
+					   uint32_t waitSemaphoreInfoCount,
+					   const VkSemaphoreSubmitInfo* pWaitSemaphoreSubmitInfos);
 
 	MVKQueueSubmission(MVKQueue* queue,
 					   uint32_t waitSemaphoreCount,
-					   const VkSemaphore* pWaitSemaphores);
+					   const VkSemaphore* pWaitSemaphores,
+					   const VkPipelineStageFlags* pWaitDstStageMask);
 
 	~MVKQueueSubmission() override;
 
@@ -190,14 +212,24 @@ protected:
 	friend class MVKQueue;
 
 	virtual void finish() = 0;
+	MVKDevice* getDevice() { return _queue->getDevice(); }
 
 	MVKQueue* _queue;
-	MVKSmallVector<std::pair<MVKSemaphore*, uint64_t>> _waitSemaphores;
+	MVKSmallVector<MVKSemaphoreSubmitInfo> _waitSemaphores;
 };
 
 
 #pragma mark -
 #pragma mark MVKQueueCommandBufferSubmission
+
+typedef struct MVKCommandBufferSubmitInfo {
+	MVKCommandBuffer* commandBuffer;
+	uint32_t deviceMask;
+
+	MVKCommandBufferSubmitInfo(const VkCommandBufferSubmitInfo& commandBufferInfo);
+	MVKCommandBufferSubmitInfo(VkCommandBuffer commandBuffer);
+
+} MVKCommandBufferSubmitInfo;
 
 /**
  * Submits an empty set of command buffers to the queue.
@@ -206,9 +238,17 @@ protected:
 class MVKQueueCommandBufferSubmission : public MVKQueueSubmission {
 
 public:
-	void execute() override;
+	VkResult execute() override;
 
-	MVKQueueCommandBufferSubmission(MVKQueue* queue, const VkSubmitInfo* pSubmit, VkFence fence, MVKCommandUse cmdUse);
+	MVKQueueCommandBufferSubmission(MVKQueue* queue, 
+									const VkSubmitInfo2* pSubmit,
+									VkFence fence, 
+									MVKCommandUse cmdUse);
+
+	MVKQueueCommandBufferSubmission(MVKQueue* queue, 
+									const VkSubmitInfo* pSubmit,
+									VkFence fence,
+									MVKCommandUse cmdUse);
 
 	~MVKQueueCommandBufferSubmission() override;
 
@@ -217,16 +257,16 @@ protected:
 
 	id<MTLCommandBuffer> getActiveMTLCommandBuffer();
 	void setActiveMTLCommandBuffer(id<MTLCommandBuffer> mtlCmdBuff);
-	void commitActiveMTLCommandBuffer(bool signalCompletion = false);
+	VkResult commitActiveMTLCommandBuffer(bool signalCompletion = false);
 	void finish() override;
 	virtual void submitCommandBuffers() {}
 
 	MVKCommandEncodingContext _encodingContext;
-	MVKSmallVector<std::pair<MVKSemaphore*, uint64_t>> _signalSemaphores;
-	MVKFence* _fence;
-	id<MTLCommandBuffer> _activeMTLCommandBuffer;
-	MVKCommandUse _commandUse;
-	bool _emulatedWaitDone; //Used to track if we've already waited for emulated semaphores.
+	MVKSmallVector<MVKSemaphoreSubmitInfo> _signalSemaphores;
+	MVKFence* _fence = nullptr;
+	id<MTLCommandBuffer> _activeMTLCommandBuffer = nil;
+	MVKCommandUse _commandUse = kMVKCommandUseNone;
+	bool _emulatedWaitDone = false;		//Used to track if we've already waited for emulated semaphores.
 };
 
 
@@ -238,28 +278,20 @@ template <size_t N>
 class MVKQueueFullCommandBufferSubmission : public MVKQueueCommandBufferSubmission {
 
 public:
-	MVKQueueFullCommandBufferSubmission(MVKQueue* queue, const VkSubmitInfo* pSubmit, VkFence fence) :
-		MVKQueueCommandBufferSubmission(queue, pSubmit, fence, kMVKCommandUseQueueSubmit) {
+	MVKQueueFullCommandBufferSubmission(MVKQueue* queue, 
+										const VkSubmitInfo2* pSubmit,
+										VkFence fence,
+										MVKCommandUse cmdUse);
 
-			// pSubmit can be null if just tracking the fence alone
-			if (pSubmit) {
-				uint32_t cbCnt = pSubmit->commandBufferCount;
-				_cmdBuffers.reserve(cbCnt);
-				for (uint32_t i = 0; i < cbCnt; i++) {
-					MVKCommandBuffer* cb = MVKCommandBuffer::getMVKCommandBuffer(pSubmit->pCommandBuffers[i]);
-					_cmdBuffers.push_back(cb);
-					setConfigurationResult(cb->getConfigurationResult());
-				}
-			}
-		}
+	MVKQueueFullCommandBufferSubmission(MVKQueue* queue, 
+										const VkSubmitInfo* pSubmit,
+										VkFence fence,
+										MVKCommandUse cmdUse);
 
 protected:
 	void submitCommandBuffers() override;
-	void finish() override;
 
-	MVKSmallVector<MVKCommandBuffer*, N> _cmdBuffers;
-	MTLTimestamp _cpuStart = 0;
-	MTLTimestamp _gpuStart = 0;
+	MVKSmallVector<MVKCommandBufferSubmitInfo, N> _cmdBuffers;
 };
 
 
@@ -270,7 +302,7 @@ protected:
 class MVKQueuePresentSurfaceSubmission : public MVKQueueSubmission {
 
 public:
-	void execute() override;
+	VkResult execute() override;
 
 	MVKQueuePresentSurfaceSubmission(MVKQueue* queue,
 									 const VkPresentInfoKHR* pPresentInfo);

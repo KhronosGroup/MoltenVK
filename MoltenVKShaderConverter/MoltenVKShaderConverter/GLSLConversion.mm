@@ -32,27 +32,27 @@ MVK_PUBLIC_SYMBOL bool mvkConvertGLSLToSPIRV(const char* glslSource,
                                              char** pResultLog,
                                              bool shouldLogGLSL,
                                              bool shouldLogSPIRV) {
-    GLSLToSPIRVConverter glslConverter;
+
+	GLSLToSPIRVConversionResult conversionResult;
+	GLSLToSPIRVConverter glslConverter;
     glslConverter.setGLSL(glslSource);
-    bool wasConverted = glslConverter.convert(shaderStage, shouldLogGLSL, shouldLogSPIRV);
+    bool wasConverted = glslConverter.convert(shaderStage, conversionResult, shouldLogGLSL, shouldLogSPIRV);
 
     size_t spvLen = 0;
     if (pSPIRVCode) {
         uint32_t* spvCode = NULL;
         if (wasConverted) {
-            auto spv = glslConverter.getSPIRV();
-            spvLen = spv.size() * sizeof(uint32_t);
+            spvLen = conversionResult.spirv.size() * sizeof(uint32_t);
             spvCode = (uint32_t*)malloc(spvLen);
-            memcpy(spvCode, spv.data(), spvLen);
+            memcpy(spvCode, conversionResult.spirv.data(), spvLen);
         }
         *pSPIRVCode = spvCode;
     }
     if (pSPIRVLength) { *pSPIRVLength = spvLen; }
 
     if (pResultLog) {
-        auto log = glslConverter.getResultLog();
-        *pResultLog = (char*)malloc(log.size() + 1);
-        strcpy(*pResultLog, log.data());
+        *pResultLog = (char*)malloc(conversionResult.resultLog.size() + 1);
+        strcpy(*pResultLog, conversionResult.resultLog.data());
     }
 
     return wasConverted;

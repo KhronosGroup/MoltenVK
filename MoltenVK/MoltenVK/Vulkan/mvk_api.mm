@@ -1,5 +1,5 @@
 /*
- * vk_mvk_moltenvk.mm
+ * mvk_api.mm
  *
  * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
@@ -17,9 +17,10 @@
  */
 
 
-#include "MVKInstance.h"
-#include "vk_mvk_moltenvk.h"
 #include "MVKEnvironment.h"
+#include "mvk_private_api.h"
+#include "mvk_deprecated_api.h"
+#include "MVKInstance.h"
 #include "MVKSwapchain.h"
 #include "MVKImage.h"
 #include "MVKBuffer.h"
@@ -30,6 +31,7 @@
 
 using namespace std;
 
+// Copies the contents of a struct that might grow larger across MoltenVK versions.
 // If pSrc and pDst are not null, copies at most *pCopySize bytes from the contents of the
 // source struct to the destination struct, and sets *pCopySize to the number of bytes copied,
 // which is the smaller of the original value of *pCopySize and the actual size of the struct.
@@ -37,7 +39,7 @@ using namespace std;
 // the struct, or VK_INCOMPLETE otherwise. If either pSrc or pDst are null, sets the value
 // of *pCopySize to the size of the struct and returns VK_SUCCESS.
 template<typename S>
-VkResult mvkCopy(S* pDst, const S* pSrc, size_t* pCopySize) {
+VkResult mvkCopyGrowingStruct(S* pDst, const S* pSrc, size_t* pCopySize) {
 	if (pSrc && pDst) {
 		size_t origSize = *pCopySize;
 		*pCopySize = std::min(origSize, sizeof(S));
@@ -49,12 +51,16 @@ VkResult mvkCopy(S* pDst, const S* pSrc, size_t* pCopySize) {
 	}
 }
 
+
+#pragma mark -
+#pragma mark mvk_config.h
+
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMoltenVKConfigurationMVK(
 	VkInstance                                  ignored,
 	MVKConfiguration*                           pConfiguration,
 	size_t*                                     pConfigurationSize) {
 
-	return mvkCopy(pConfiguration, &mvkConfig(), pConfigurationSize);
+	return mvkCopyGrowingStruct(pConfiguration, &mvkConfig(), pConfigurationSize);
 }
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
@@ -64,10 +70,14 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
 
 	// Start with copy of current config, in case incoming is not fully copied
 	MVKConfiguration mvkCfg = mvkConfig();
-	VkResult rslt = mvkCopy(&mvkCfg, pConfiguration, pConfigurationSize);
+	VkResult rslt = mvkCopyGrowingStruct(&mvkCfg, pConfiguration, pConfigurationSize);
 	mvkSetConfig(mvkCfg);
 	return rslt;
 }
+
+
+#pragma mark -
+#pragma mark mvk_private_api.h
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceMetalFeaturesMVK(
 	VkPhysicalDevice                            physicalDevice,
@@ -75,7 +85,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceMetalFeaturesMVK(
 	size_t*                                     pMetalFeaturesSize) {
 
 	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-	return mvkCopy(pMetalFeatures, mvkPD->getMetalFeatures(), pMetalFeaturesSize);
+	return mvkCopyGrowingStruct(pMetalFeatures, mvkPD->getMetalFeatures(), pMetalFeaturesSize);
 }
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPerformanceStatisticsMVK(
@@ -85,8 +95,12 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPerformanceStatisticsMVK(
 
 	MVKPerformanceStatistics mvkPerf;
 	MVKDevice::getMVKDevice(device)->getPerformanceStatistics(&mvkPerf);
-	return mvkCopy(pPerf, &mvkPerf, pPerfSize);
+	return mvkCopyGrowingStruct(pPerf, &mvkPerf, pPerfSize);
 }
+
+
+#pragma mark -
+#pragma mark mvk_deprecated_api.h
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkGetVersionStringsMVK(
 	char*										pMoltenVersionStringBuffer,

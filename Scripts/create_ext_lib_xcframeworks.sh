@@ -1,5 +1,7 @@
 #!/bin/bash
 
+if [ "${SKIP_PACKAGING}" = "Y" ]; then exit 0; fi
+
 . "${PROJECT_DIR}/Scripts/create_xcframework_func.sh"
 
 export MVK_EXT_DIR="${PROJECT_DIR}/External"

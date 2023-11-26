@@ -18,7 +18,6 @@
 
 #include "MVKResource.h"
 #include "MVKCommandBuffer.h"
-#include "MVKEnvironment.h"
 
 
 #pragma mark MVKResource

@@ -137,23 +137,22 @@ bool MoltenVKShaderConverterTool::convertGLSL(string& glslInFile,
 	}
 
 	// Convert GLSL to SPIR-V
+	GLSLToSPIRVConversionResult conversionResult;
 	GLSLToSPIRVConverter glslConverter;
 	glslConverter.setGLSL(glslCode);
 
 	uint64_t startTime = _glslConversionPerformance.getTimestamp();
-	bool wasConverted = glslConverter.convert(shaderStage, _shouldLogConversions, _shouldLogConversions);
+	bool wasConverted = glslConverter.convert(shaderStage, conversionResult, _shouldLogConversions, _shouldLogConversions);
 	_glslConversionPerformance.accumulate(startTime);
 
 	if (wasConverted) {
-		if (_shouldLogConversions) { log(glslConverter.getResultLog().data()); }
+		if (_shouldLogConversions) { log(conversionResult.resultLog.data()); }
 	} else {
 		string logMsg = "Could not convert GLSL in file: " + absolutePath(path);
 		log(logMsg.data());
-		log(glslConverter.getResultLog().data());
+		log(conversionResult.resultLog.data());
 		return false;
 	}
-
-	const vector<uint32_t>& spv = glslConverter.getSPIRV();
 
 	// Write the SPIR-V code to a file.
 	// If no file has been supplied, create one from the GLSL file name.
@@ -162,9 +161,9 @@ bool MoltenVKShaderConverterTool::convertGLSL(string& glslInFile,
 		if (path.empty()) { path = pathWithExtension(glslInFile, _shouldOutputAsHeaders ? "h" : "spv",
 													 _shouldIncludeOrigPathExtn, _origPathExtnSep); }
 		if (_shouldOutputAsHeaders) {
-			spirvToHeaderBytes(spv, fileContents, fileName(path, false));
+			spirvToHeaderBytes(conversionResult.spirv, fileContents, fileName(path, false));
 		} else {
-			spirvToBytes(spv, fileContents);
+			spirvToBytes(conversionResult.spirv, fileContents);
 		}
 
 		if (writeFile(path, fileContents, errMsg)) {
@@ -177,7 +176,7 @@ bool MoltenVKShaderConverterTool::convertGLSL(string& glslInFile,
 		}
 	}
 
-	return convertSPIRV(spv, glslInFile, mslOutFile, false);
+	return convertSPIRV(conversionResult.spirv, glslInFile, mslOutFile, false);
 }
 
 // Read SPIR-V code from a SPIR-V file, convert to MSL, and write the MSL code to files.
@@ -221,31 +220,33 @@ bool MoltenVKShaderConverterTool::convertSPIRV(const vector<uint32_t>& spv,
 	mslContext.options.shouldFlipVertexY = _shouldFlipVertexY;
 	mslContext.options.mslOptions.argument_buffers = _useMetalArgumentBuffers;
 	mslContext.options.mslOptions.force_active_argument_buffer_resources = _useMetalArgumentBuffers;
-	mslContext.options.mslOptions.pad_argument_buffer_resources = _useMetalArgumentBuffers;
+	mslContext.options.mslOptions.pad_argument_buffer_resources = false;
+	mslContext.options.mslOptions.argument_buffers_tier = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::ArgumentBuffersTier::Tier2;
+	mslContext.options.mslOptions.replace_recursive_inputs = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0);
 
 	SPIRVToMSLConverter spvConverter;
 	spvConverter.setSPIRV(spv);
 
 	uint64_t startTime = _spvConversionPerformance.getTimestamp();
-	bool wasConverted = spvConverter.convert(mslContext, shouldLogSPV, _shouldLogConversions, (_shouldLogConversions && shouldLogSPV));
+	SPIRVToMSLConversionResult conversionResult;
+	bool wasConverted = spvConverter.convert(mslContext, conversionResult, shouldLogSPV, _shouldLogConversions, (_shouldLogConversions && shouldLogSPV));
 	_spvConversionPerformance.accumulate(startTime);
 
 	if (wasConverted) {
-		if (_shouldLogConversions) { log(spvConverter.getResultLog().data()); }
+		if (_shouldLogConversions) { log(conversionResult.resultLog.data()); }
 	} else {
 		string errMsg = "Could not convert SPIR-V in file: " + absolutePath(inFile);
 		log(errMsg.data());
-		log(spvConverter.getResultLog().data());
+		log(conversionResult.resultLog.data());
 		return false;
 	}
 
 	// Write the MSL to file
 	string path = mslOutFile;
 	if (mslOutFile.empty()) { path = pathWithExtension(inFile, "metal", _shouldIncludeOrigPathExtn, _origPathExtnSep); }
-	const string& msl = spvConverter.getMSL();
 
 	string compileErrMsg;
-	bool wasCompiled = compile(msl, compileErrMsg, _mslVersionMajor, _mslVersionMinor, _mslVersionPatch);
+	bool wasCompiled = compile(conversionResult.msl, compileErrMsg, _mslVersionMajor, _mslVersionMinor, _mslVersionPatch);
 	if (compileErrMsg.size() > 0) {
 		string preamble = wasCompiled ? "is valid but the validation compilation produced warnings: " : "failed a validation compilation: ";
 		compileErrMsg = "Generated MSL " + preamble + compileErrMsg;
@@ -255,7 +256,7 @@ bool MoltenVKShaderConverterTool::convertSPIRV(const vector<uint32_t>& spv,
 	}
 
 	vector<char> fileContents;
-	fileContents.insert(fileContents.end(), msl.begin(), msl.end());
+	fileContents.insert(fileContents.end(), conversionResult.msl.begin(), conversionResult.msl.end());
 	string writeErrMsg;
 	if (writeFile(path, fileContents, writeErrMsg)) {
 		string logMsg = "Saved MSL to file: " + fileName(path);
@@ -425,7 +426,10 @@ MoltenVKShaderConverterTool::MoltenVKShaderConverterTool(int argc, const char* a
 	_quietMode = false;
 	_useMetalArgumentBuffers = false;
 
-	if (mvkOSVersionIsAtLeast(13.0)) {
+	if (mvkOSVersionIsAtLeast(14.0)) {
+		_mslVersionMajor = 3;
+		_mslVersionMinor = 1;
+	} else 	if (mvkOSVersionIsAtLeast(13.0)) {
 		_mslVersionMajor = 3;
 		_mslVersionMinor = 0;
 	} else if (mvkOSVersionIsAtLeast(12.0)) {

@@ -45,7 +45,7 @@ clang++ \
 -stdlib=${CLANG_CXX_LIBRARY} \
 -dynamiclib \
 $(printf -- "-arch %s " ${ARCHS}) \
--m${MVK_OS_CLANG}-version-min=${MVK_MIN_OS_VERSION} \
+${MVK_CLANG_OS_MIN_VERSION} \
 -compatibility_version 1.0.0 -current_version 1.0.0  \
 -install_name "@rpath/${MVK_DYLIB_NAME}"  \
 -Wno-incompatible-sysroot \

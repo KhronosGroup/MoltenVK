@@ -23,7 +23,7 @@
 #include "MVKCommandEncodingPool.h"
 #include "MVKCommand.h"
 #include "MVKCmdPipeline.h"
-#include "MVKCmdRenderPass.h"
+#include "MVKCmdRendering.h"
 #include "MVKCmdDispatch.h"
 #include "MVKCmdDraw.h"
 #include "MVKCmdTransfer.h"
@@ -82,7 +82,7 @@ public:
 	 * Returns a retained MTLCommandBuffer created from the indexed queue
 	 * within the queue family for which this command pool was created.
 	 */
-	id<MTLCommandBuffer> getMTLCommandBuffer(uint32_t queueIndex);
+	id<MTLCommandBuffer> getMTLCommandBuffer(MVKCommandUse cmdUse, uint32_t queueIndex);
 
 	/** Release any held but unused memory back to the system. */
 	void trim();

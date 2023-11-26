@@ -22,6 +22,7 @@
 #include "MVKFoundation.h"
 #include "MVKSurface.h"
 #include "MVKOSExtensions.h"
+#include "mvk_deprecated_api.h"
 
 using namespace std;
 
@@ -237,93 +238,36 @@ void MVKInstance::debugReportMessage(MVKVulkanAPIObject* mvkAPIObj, MVKConfigLog
 
 VkDebugReportFlagsEXT MVKInstance::getVkDebugReportFlagsFromLogLevel(MVKConfigLogLevel logLevel) {
 	switch (logLevel) {
-		case MVK_CONFIG_LOG_LEVEL_DEBUG:
-			return VK_DEBUG_REPORT_DEBUG_BIT_EXT;
-		case MVK_CONFIG_LOG_LEVEL_INFO:
-			return VK_DEBUG_REPORT_INFORMATION_BIT_EXT;
-		case MVK_CONFIG_LOG_LEVEL_WARNING:
-			return VK_DEBUG_REPORT_WARNING_BIT_EXT;
-		case MVK_CONFIG_LOG_LEVEL_ERROR:
-		default:
-			return VK_DEBUG_REPORT_ERROR_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_ERROR:    return VK_DEBUG_REPORT_ERROR_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_WARNING:  return VK_DEBUG_REPORT_WARNING_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_INFO:     return VK_DEBUG_REPORT_INFORMATION_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_DEBUG:    return VK_DEBUG_REPORT_DEBUG_BIT_EXT;
+		default:                            return VK_DEBUG_REPORT_ERROR_BIT_EXT;
 	}
 }
 
 VkDebugUtilsMessageSeverityFlagBitsEXT MVKInstance::getVkDebugUtilsMessageSeverityFlagBitsFromLogLevel(MVKConfigLogLevel logLevel) {
 	switch (logLevel) {
-		case MVK_CONFIG_LOG_LEVEL_DEBUG:
-			return VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
-		case MVK_CONFIG_LOG_LEVEL_INFO:
-			return VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
-		case MVK_CONFIG_LOG_LEVEL_WARNING:
-			return VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
-		case MVK_CONFIG_LOG_LEVEL_ERROR:
-		default:
-			return VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_ERROR:    return VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_WARNING:  return VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_INFO:     return VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_DEBUG:    return VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
+		default:                            return VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 	}
 }
 
 VkDebugUtilsMessageTypeFlagsEXT MVKInstance::getVkDebugUtilsMessageTypesFlagBitsFromLogLevel(MVKConfigLogLevel logLevel) {
 	switch (logLevel) {
-		case MVK_CONFIG_LOG_LEVEL_DEBUG:
-		case MVK_CONFIG_LOG_LEVEL_INFO:
-		case MVK_CONFIG_LOG_LEVEL_WARNING:
-			return VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
-		case MVK_CONFIG_LOG_LEVEL_ERROR:
-		default:
-			return VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_ERROR:    return VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_WARNING:  return VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_DEBUG:    return VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
+		case MVK_CONFIG_LOG_LEVEL_INFO:     return VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
+		default:                            return VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
 	}
 }
 
 
 #pragma mark Object Creation
-
-// Returns an autoreleased array containing the MTLDevices available on this system, sorted according
-// to power, with higher power GPU's at the front of the array. This ensures that a lazy app that simply
-// grabs the first GPU will get a high-power one by default. If MVKConfiguration::forceLowPowerGPU is set,
-// the returned array will only include low-power devices.
-NSArray<id<MTLDevice>>* MVKInstance::getAvailableMTLDevicesArray() {
-	NSMutableArray* mtlDevs = [NSMutableArray array];
-
-#if MVK_MACOS
-	NSArray* rawMTLDevs = [MTLCopyAllDevices() autorelease];
-	if (rawMTLDevs) {
-		bool forceLowPower = mvkConfig().forceLowPowerGPU;
-
-		// Populate the array of appropriate MTLDevices
-		for (id<MTLDevice> md in rawMTLDevs) {
-			if ( !forceLowPower || md.isLowPower ) { [mtlDevs addObject: md]; }
-		}
-
-		// Sort by power
-		[mtlDevs sortUsingComparator: ^(id<MTLDevice> md1, id<MTLDevice> md2) {
-			BOOL md1IsLP = md1.isLowPower;
-			BOOL md2IsLP = md2.isLowPower;
-
-			if (md1IsLP == md2IsLP) {
-				// If one device is headless and the other one is not, select the
-				// one that is not headless first.
-				BOOL md1IsHeadless = md1.isHeadless;
-				BOOL md2IsHeadless = md2.isHeadless;
-				if (md1IsHeadless == md2IsHeadless ) {
-					return NSOrderedSame;
-				}
-				return md2IsHeadless ? NSOrderedAscending : NSOrderedDescending;
-			}
-
-			return md2IsLP ? NSOrderedAscending : NSOrderedDescending;
-		}];
-
-	}
-#endif	// MVK_MACOS
-
-#if MVK_IOS_OR_TVOS
-	id<MTLDevice> md = [MTLCreateSystemDefaultDevice() autorelease];
-	if (md) { [mtlDevs addObject: md]; }
-#endif	// MVK_IOS_OR_TVOS
-
-	return mtlDevs;		// retained
-}
 
 MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExtensions(this) {
 
@@ -340,18 +284,13 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
     
 	initProcAddrs();		// Init function pointers
 
-	setConfigurationResult(verifyLayers(pCreateInfo->enabledLayerCount, pCreateInfo->ppEnabledLayerNames));
-	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_enabledExtensions;
-	setConfigurationResult(pWritableExtns->enable(pCreateInfo->enabledExtensionCount,
-												  pCreateInfo->ppEnabledExtensionNames,
-												  getDriverLayer()->getSupportedInstanceExtensions()));
 	logVersions();	// Log the MoltenVK and Vulkan versions
 
 	// Populate the array of physical GPU devices.
 	// This effort creates a number of autoreleased instances of Metal
 	// and other Obj-C classes, so wrap it all in an autorelease pool.
 	@autoreleasepool {
-		NSArray<id<MTLDevice>>* mtlDevices = getAvailableMTLDevicesArray();
+		NSArray<id<MTLDevice>>* mtlDevices = mvkGetAvailableMTLDevicesArray();
 		_physicalDevices.reserve(mtlDevices.count);
 		for (id<MTLDevice> mtlDev in mtlDevices) {
 			_physicalDevices.push_back(new MVKPhysicalDevice(this, mtlDev));
@@ -365,6 +304,13 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 	if (MVK_MACCAT && !mvkOSVersionIsAtLeast(11.0)) {
 		setConfigurationResult(reportError(VK_ERROR_INCOMPATIBLE_DRIVER, "To support Mac Catalyst, MoltenVK requires macOS 11.0 or above."));
 	}
+
+	// Enable extensions after logging the system and GPU info, for any logging done during extension enablement.
+	setConfigurationResult(verifyLayers(pCreateInfo->enabledLayerCount, pCreateInfo->ppEnabledLayerNames));
+	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_enabledExtensions;
+	setConfigurationResult(pWritableExtns->enable(pCreateInfo->enabledExtensionCount,
+												  pCreateInfo->ppEnabledExtensionNames,
+												  getDriverLayer()->getSupportedInstanceExtensions()));
 
 	MVKLogInfo("Created VkInstance for Vulkan version %s, as requested by app, with the following %d Vulkan extensions enabled:%s",
 			   mvkGetVulkanVersionString(_appInfo.apiVersion).c_str(),
@@ -434,13 +380,17 @@ void MVKInstance::initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo) {
 #define ADD_INST_EXT_ENTRY_POINT(func, EXT)				ADD_ENTRY_POINT(func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, false)
 #define ADD_DVC_EXT_ENTRY_POINT(func, EXT)				ADD_ENTRY_POINT(func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, true)
 
-#define ADD_INST_EXT2_ENTRY_POINT(func, EXT1, EXT2)		ADD_ENTRY_POINT(func, 0, VK_##EXT1##_EXTENSION_NAME, VK_##EXT2##_EXTENSION_NAME, false)
-#define ADD_DVC_EXT2_ENTRY_POINT(func, EXT1, EXT2)		ADD_ENTRY_POINT(func, 0, VK_##EXT1##_EXTENSION_NAME, VK_##EXT2##_EXTENSION_NAME, true)
+#define ADD_INST_EXT2_ENTRY_POINT(func, API, EXT1, EXT2)	ADD_ENTRY_POINT(func, VK_API_VERSION_##API, VK_##EXT1##_EXTENSION_NAME, VK_##EXT2##_EXTENSION_NAME, false)
+#define ADD_DVC_EXT2_ENTRY_POINT(func, API, EXT1, EXT2)		ADD_ENTRY_POINT(func, VK_API_VERSION_##API, VK_##EXT1##_EXTENSION_NAME, VK_##EXT2##_EXTENSION_NAME, true)
+
+// Add an open function, not tied to core or an extension.
+#define ADD_INST_OPEN_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, 0, nullptr, nullptr, false)
+#define ADD_DVC_OPEN_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, 0, nullptr, nullptr, true)
 
 // Initializes the function pointer map.
 void MVKInstance::initProcAddrs() {
 
-	// Instance functions
+	// Instance functions.
 	ADD_INST_ENTRY_POINT(vkDestroyInstance);
 	ADD_INST_ENTRY_POINT(vkEnumeratePhysicalDevices);
 	ADD_INST_ENTRY_POINT(vkGetPhysicalDeviceFeatures);
@@ -468,7 +418,58 @@ void MVKInstance::initProcAddrs() {
 
 	ADD_INST_1_3_PROMOTED_ENTRY_POINT(vkGetPhysicalDeviceToolProperties, EXT_TOOLING_INFO);
 
-	// Device functions:
+	// Instance extension functions.
+	ADD_INST_EXT_ENTRY_POINT(vkDestroySurfaceKHR, KHR_SURFACE);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceSupportKHR, KHR_SURFACE);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR, KHR_SURFACE);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceFormatsKHR, KHR_SURFACE);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfacePresentModesKHR, KHR_SURFACE);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceCapabilities2KHR, KHR_GET_SURFACE_CAPABILITIES_2);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceFormats2KHR, KHR_GET_SURFACE_CAPABILITIES_2);
+	ADD_INST_EXT_ENTRY_POINT(vkCreateDebugReportCallbackEXT, EXT_DEBUG_REPORT);
+	ADD_INST_EXT_ENTRY_POINT(vkDestroyDebugReportCallbackEXT, EXT_DEBUG_REPORT);
+	ADD_INST_EXT_ENTRY_POINT(vkDebugReportMessageEXT, EXT_DEBUG_REPORT);
+	// n.b. Despite that VK_EXT_debug_utils is an instance extension, these functions are device functions.
+	ADD_DVC_EXT_ENTRY_POINT(vkSetDebugUtilsObjectNameEXT, EXT_DEBUG_UTILS);
+	ADD_DVC_EXT_ENTRY_POINT(vkSetDebugUtilsObjectTagEXT, EXT_DEBUG_UTILS);
+	ADD_DVC_EXT_ENTRY_POINT(vkQueueBeginDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
+	ADD_DVC_EXT_ENTRY_POINT(vkQueueEndDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
+	ADD_DVC_EXT_ENTRY_POINT(vkQueueInsertDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdBeginDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdEndDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdInsertDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
+	ADD_INST_EXT_ENTRY_POINT(vkCreateDebugUtilsMessengerEXT, EXT_DEBUG_UTILS);
+	ADD_INST_EXT_ENTRY_POINT(vkDestroyDebugUtilsMessengerEXT, EXT_DEBUG_UTILS);
+	ADD_INST_EXT_ENTRY_POINT(vkSubmitDebugUtilsMessageEXT, EXT_DEBUG_UTILS);
+	ADD_INST_EXT_ENTRY_POINT(vkCreateMetalSurfaceEXT, EXT_METAL_SURFACE);
+
+#ifdef VK_USE_PLATFORM_IOS_MVK
+	ADD_INST_EXT_ENTRY_POINT(vkCreateIOSSurfaceMVK, MVK_IOS_SURFACE);
+#endif
+#ifdef VK_USE_PLATFORM_MACOS_MVK
+	ADD_INST_EXT_ENTRY_POINT(vkCreateMacOSSurfaceMVK, MVK_MACOS_SURFACE);
+#endif
+
+	// MoltenVK-specific instannce functions, not tied to a Vulkan API version or an extension.
+	ADD_INST_OPEN_ENTRY_POINT(vkGetMoltenVKConfigurationMVK);
+	ADD_INST_OPEN_ENTRY_POINT(vkSetMoltenVKConfigurationMVK);
+	ADD_INST_OPEN_ENTRY_POINT(vkGetPhysicalDeviceMetalFeaturesMVK);
+	ADD_INST_OPEN_ENTRY_POINT(vkGetPerformanceStatisticsMVK);
+
+	// For deprecated MoltenVK-specific functions, suppress compiler deprecation warning.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+	ADD_INST_EXT_ENTRY_POINT(vkGetVersionStringsMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetMTLDeviceMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkSetMTLTextureMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetMTLTextureMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetMTLBufferMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkUseIOSurfaceMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetIOSurfaceMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetMTLCommandQueueMVK, MVK_MOLTENVK);
+#pragma clang diagnostic pop
+
+	// Device functions.
 	ADD_DVC_ENTRY_POINT(vkGetDeviceProcAddr);
 	ADD_DVC_ENTRY_POINT(vkDestroyDevice);
 	ADD_DVC_ENTRY_POINT(vkGetDeviceQueue);
@@ -635,16 +636,16 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdResetEvent2, KHR, KHR_SYNCHRONIZATION_2);
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdResolveImage2, KHR, KHR_COPY_COMMANDS_2);
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdSetCullMode, EXT, EXT_EXTENDED_DYNAMIC_STATE);
-	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdSetDepthBiasEnable, EXT, EXT_EXTENDED_DYNAMIC_STATE);
+	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdSetDepthBiasEnable, EXT, EXT_EXTENDED_DYNAMIC_STATE_2);
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdSetDepthBoundsTestEnable, EXT, EXT_EXTENDED_DYNAMIC_STATE);
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdSetDepthCompareOp, EXT, EXT_EXTENDED_DYNAMIC_STATE);
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdSetDepthTestEnable, EXT, EXT_EXTENDED_DYNAMIC_STATE);
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdSetDepthWriteEnable, EXT, EXT_EXTENDED_DYNAMIC_STATE);
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdSetEvent2, KHR, KHR_SYNCHRONIZATION_2);
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdSetFrontFace, EXT, EXT_EXTENDED_DYNAMIC_STATE);
-	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdSetPrimitiveRestartEnable, EXT, EXT_EXTENDED_DYNAMIC_STATE);
+	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdSetPrimitiveRestartEnable, EXT, EXT_EXTENDED_DYNAMIC_STATE_2);
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdSetPrimitiveTopology, EXT, EXT_EXTENDED_DYNAMIC_STATE);
-	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdSetRasterizerDiscardEnable, EXT, EXT_EXTENDED_DYNAMIC_STATE);
+	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdSetRasterizerDiscardEnable, EXT, EXT_EXTENDED_DYNAMIC_STATE_2);
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdSetScissorWithCount, EXT, EXT_EXTENDED_DYNAMIC_STATE);
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdSetStencilOp, EXT, EXT_EXTENDED_DYNAMIC_STATE);
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkCmdSetStencilTestEnable, EXT, EXT_EXTENDED_DYNAMIC_STATE);
@@ -660,67 +661,33 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkQueueSubmit2, KHR, KHR_SYNCHRONIZATION_2);
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkSetPrivateData, EXT, EXT_PRIVATE_DATA);
 
-	// Instance extension functions:
-	ADD_INST_EXT_ENTRY_POINT(vkDestroySurfaceKHR, KHR_SURFACE);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceSupportKHR, KHR_SURFACE);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR, KHR_SURFACE);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceFormatsKHR, KHR_SURFACE);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfacePresentModesKHR, KHR_SURFACE);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceCapabilities2KHR, KHR_GET_SURFACE_CAPABILITIES_2);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceFormats2KHR, KHR_GET_SURFACE_CAPABILITIES_2);
-	ADD_INST_EXT_ENTRY_POINT(vkCreateDebugReportCallbackEXT, EXT_DEBUG_REPORT);
-	ADD_INST_EXT_ENTRY_POINT(vkDestroyDebugReportCallbackEXT, EXT_DEBUG_REPORT);
-	ADD_INST_EXT_ENTRY_POINT(vkDebugReportMessageEXT, EXT_DEBUG_REPORT);
-	ADD_INST_EXT_ENTRY_POINT(vkSetDebugUtilsObjectNameEXT, EXT_DEBUG_UTILS);
-	ADD_INST_EXT_ENTRY_POINT(vkSetDebugUtilsObjectTagEXT, EXT_DEBUG_UTILS);
-	ADD_INST_EXT_ENTRY_POINT(vkQueueBeginDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
-	ADD_INST_EXT_ENTRY_POINT(vkQueueEndDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
-	ADD_INST_EXT_ENTRY_POINT(vkQueueInsertDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
-	ADD_INST_EXT_ENTRY_POINT(vkCmdBeginDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
-	ADD_INST_EXT_ENTRY_POINT(vkCmdEndDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
-	ADD_INST_EXT_ENTRY_POINT(vkCmdInsertDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
-	ADD_INST_EXT_ENTRY_POINT(vkCreateDebugUtilsMessengerEXT, EXT_DEBUG_UTILS);
-	ADD_INST_EXT_ENTRY_POINT(vkDestroyDebugUtilsMessengerEXT, EXT_DEBUG_UTILS);
-	ADD_INST_EXT_ENTRY_POINT(vkSubmitDebugUtilsMessageEXT, EXT_DEBUG_UTILS);
-	ADD_INST_EXT_ENTRY_POINT(vkCreateMetalSurfaceEXT, EXT_METAL_SURFACE);
-
-#ifdef VK_USE_PLATFORM_IOS_MVK
-	ADD_INST_EXT_ENTRY_POINT(vkCreateIOSSurfaceMVK, MVK_IOS_SURFACE);
-#endif
-#ifdef VK_USE_PLATFORM_MACOS_MVK
-	ADD_INST_EXT_ENTRY_POINT(vkCreateMacOSSurfaceMVK, MVK_MACOS_SURFACE);
-#endif
-
-	ADD_INST_EXT_ENTRY_POINT(vkGetMoltenVKConfigurationMVK, MVK_MOLTENVK);
-	ADD_INST_EXT_ENTRY_POINT(vkSetMoltenVKConfigurationMVK, MVK_MOLTENVK);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceMetalFeaturesMVK, MVK_MOLTENVK);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPerformanceStatisticsMVK, MVK_MOLTENVK);
-	ADD_INST_EXT_ENTRY_POINT(vkGetVersionStringsMVK, MVK_MOLTENVK);
-	ADD_INST_EXT_ENTRY_POINT(vkGetMTLDeviceMVK, MVK_MOLTENVK);
-	ADD_INST_EXT_ENTRY_POINT(vkSetMTLTextureMVK, MVK_MOLTENVK);
-	ADD_INST_EXT_ENTRY_POINT(vkGetMTLTextureMVK, MVK_MOLTENVK);
-    ADD_INST_EXT_ENTRY_POINT(vkGetMTLBufferMVK, MVK_MOLTENVK);
-	ADD_INST_EXT_ENTRY_POINT(vkUseIOSurfaceMVK, MVK_MOLTENVK);
-	ADD_INST_EXT_ENTRY_POINT(vkGetIOSurfaceMVK, MVK_MOLTENVK);
-    ADD_INST_EXT_ENTRY_POINT(vkGetMTLCommandQueueMVK, MVK_MOLTENVK);
-
-	// Device extension functions:
+	// Device extension functions.
+    ADD_DVC_EXT_ENTRY_POINT(vkCreateDeferredOperationKHR, KHR_DEFERRED_HOST_OPERATIONS);
+    ADD_DVC_EXT_ENTRY_POINT(vkDeferredOperationJoinKHR, KHR_DEFERRED_HOST_OPERATIONS);
+    ADD_DVC_EXT_ENTRY_POINT(vkDestroyDeferredOperationKHR, KHR_DEFERRED_HOST_OPERATIONS);
+    ADD_DVC_EXT_ENTRY_POINT(vkGetDeferredOperationMaxConcurrencyKHR, KHR_DEFERRED_HOST_OPERATIONS);
+    ADD_DVC_EXT_ENTRY_POINT(vkGetDeferredOperationResultKHR, KHR_DEFERRED_HOST_OPERATIONS);
+	ADD_DVC_EXT_ENTRY_POINT(vkMapMemory2KHR, KHR_MAP_MEMORY_2);
+	ADD_DVC_EXT_ENTRY_POINT(vkUnmapMemory2KHR, KHR_MAP_MEMORY_2);
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdPushDescriptorSetKHR, KHR_PUSH_DESCRIPTOR);
-	ADD_DVC_EXT2_ENTRY_POINT(vkCmdPushDescriptorSetWithTemplateKHR, KHR_PUSH_DESCRIPTOR, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
+	ADD_DVC_EXT2_ENTRY_POINT(vkCmdPushDescriptorSetWithTemplateKHR, 1_1, KHR_PUSH_DESCRIPTOR, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
 	ADD_DVC_EXT_ENTRY_POINT(vkCreateSwapchainKHR, KHR_SWAPCHAIN);
 	ADD_DVC_EXT_ENTRY_POINT(vkDestroySwapchainKHR, KHR_SWAPCHAIN);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetSwapchainImagesKHR, KHR_SWAPCHAIN);
 	ADD_DVC_EXT_ENTRY_POINT(vkAcquireNextImageKHR, KHR_SWAPCHAIN);
 	ADD_DVC_EXT_ENTRY_POINT(vkQueuePresentKHR, KHR_SWAPCHAIN);
-	ADD_DVC_EXT2_ENTRY_POINT(vkGetDeviceGroupPresentCapabilitiesKHR, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
-	ADD_DVC_EXT2_ENTRY_POINT(vkGetDeviceGroupSurfacePresentModesKHR, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
-	ADD_DVC_EXT2_ENTRY_POINT(vkGetPhysicalDevicePresentRectanglesKHR, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
-	ADD_DVC_EXT2_ENTRY_POINT(vkAcquireNextImage2KHR, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
+	ADD_DVC_EXT2_ENTRY_POINT(vkGetDeviceGroupPresentCapabilitiesKHR, 1_1, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
+	ADD_DVC_EXT2_ENTRY_POINT(vkGetDeviceGroupSurfacePresentModesKHR, 1_1, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
+	ADD_DVC_EXT2_ENTRY_POINT(vkGetPhysicalDevicePresentRectanglesKHR, 1_1, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
+	ADD_DVC_EXT2_ENTRY_POINT(vkAcquireNextImage2KHR, 1_1, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
+	ADD_DVC_EXT_ENTRY_POINT(vkGetCalibratedTimestampsEXT, EXT_CALIBRATED_TIMESTAMPS);
+	ADD_DVC_EXT_ENTRY_POINT(vkGetPhysicalDeviceCalibrateableTimeDomainsEXT, EXT_CALIBRATED_TIMESTAMPS);
 	ADD_DVC_EXT_ENTRY_POINT(vkDebugMarkerSetObjectTagEXT, EXT_DEBUG_MARKER);
 	ADD_DVC_EXT_ENTRY_POINT(vkDebugMarkerSetObjectNameEXT, EXT_DEBUG_MARKER);
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdDebugMarkerBeginEXT, EXT_DEBUG_MARKER);
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdDebugMarkerEndEXT, EXT_DEBUG_MARKER);
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdDebugMarkerInsertEXT, EXT_DEBUG_MARKER);
+	ADD_DVC_EXT_ENTRY_POINT(vkGetMemoryHostPointerPropertiesEXT, EXT_EXTERNAL_MEMORY_HOST);
 	ADD_DVC_EXT_ENTRY_POINT(vkSetHdrMetadataEXT, EXT_HDR_METADATA);
 	ADD_DVC_EXT_ENTRY_POINT(vkExportMetalObjectsEXT, EXT_METAL_OBJECTS);
 	ADD_DVC_EXT_ENTRY_POINT(vkCreatePrivateDataSlotEXT, EXT_PRIVATE_DATA);
@@ -732,6 +699,29 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_EXT_ENTRY_POINT(vkReleaseSwapchainImagesEXT, EXT_SWAPCHAIN_MAINTENANCE_1);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetRefreshCycleDurationGOOGLE, GOOGLE_DISPLAY_TIMING);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetPastPresentationTimingGOOGLE, GOOGLE_DISPLAY_TIMING);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetLogicOpEXT, EXT_EXTENDED_DYNAMIC_STATE_2);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetPatchControlPointsEXT, EXT_EXTENDED_DYNAMIC_STATE_2);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetAlphaToCoverageEnableEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetAlphaToOneEnableEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetColorBlendAdvancedEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetColorBlendEnableEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetColorBlendEquationEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetColorWriteMaskEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetConservativeRasterizationModeEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetDepthClampEnableEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetDepthClipEnableEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetDepthClipNegativeOneToOneEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetExtraPrimitiveOverestimationSizeEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetLineRasterizationModeEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetLineStippleEnableEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetLogicOpEnableEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetPolygonModeEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetProvokingVertexModeEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetRasterizationSamplesEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetRasterizationStreamEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetSampleLocationsEnableEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetSampleMaskEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetTessellationDomainOriginEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
 #if MVK_XCODE_14
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdDrawMeshTasksEXT, EXT_MESH_SHADER);
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdDrawMeshTasksIndirectEXT, EXT_MESH_SHADER);
@@ -761,6 +751,11 @@ VkResult MVKInstance::verifyLayers(uint32_t count, const char* const* names) {
 MVKInstance::~MVKInstance() {
 	_useCreationCallbacks = true;
 	mvkDestroyContainerContents(_physicalDevices);
+
+	// Since this message may invoke debug callbacks, do it before locking callbacks.
+	MVKLogInfo("Destroying VkInstance for Vulkan version %s with %d Vulkan extensions enabled.",
+			   mvkGetVulkanVersionString(_appInfo.apiVersion).c_str(),
+			   _enabledExtensions.getEnabledCount());
 
 	lock_guard<mutex> lock(_dcbLock);
 	mvkDestroyContainerContents(_debugReportCallbacks);

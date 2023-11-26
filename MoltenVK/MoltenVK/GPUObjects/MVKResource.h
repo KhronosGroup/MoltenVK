@@ -60,9 +60,7 @@ public:
 	}
 
 	/** Applies the specified global memory barrier. */
-	virtual void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
-									VkPipelineStageFlags dstStageMask,
-									MVKPipelineBarrier& barrier,
+	virtual void applyMemoryBarrier(MVKPipelineBarrier& barrier,
 									MVKCommandEncoder* cmdEncoder,
 									MVKCommandUse cmdUse) = 0;
 

@@ -99,7 +99,6 @@ public:
 protected:
 	friend class MVKMTLBufferAllocation;
 	
-	MVKBaseObject* getBaseObject() override { return this; };
 	MVKMTLBufferAllocation* newObject() override;
     void returnAllocationUnlocked(MVKMTLBufferAllocation* ba);
     void returnAllocation(MVKMTLBufferAllocation* ba);

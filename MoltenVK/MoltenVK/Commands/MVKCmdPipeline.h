@@ -31,6 +31,34 @@ class MVKDescriptorUpdateTemplate;
 
 
 #pragma mark -
+#pragma mark MVKCmdExecuteCommands
+
+/**
+ * Vulkan command to execute secondary command buffers.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
+class MVKCmdExecuteCommands : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						uint32_t commandBuffersCount,
+						const VkCommandBuffer* pCommandBuffers);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MVKSmallVector<MVKCommandBuffer*, N> _secondaryCommandBuffers;
+};
+
+// Concrete template class implementations.
+typedef MVKCmdExecuteCommands<1> MVKCmdExecuteCommands1;
+typedef MVKCmdExecuteCommands<16> MVKCmdExecuteCommandsMulti;
+
+
+#pragma mark -
 #pragma mark MVKCmdPipelineBarrier
 
 /**
@@ -41,6 +69,9 @@ template <size_t N>
 class MVKCmdPipelineBarrier : public MVKCommand {
 
 public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const VkDependencyInfo* pDependencyInfo);
+
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						VkPipelineStageFlags srcStageMask,
 						VkPipelineStageFlags dstStageMask,
@@ -59,8 +90,6 @@ protected:
 	bool coversTextures();
 
 	MVKSmallVector<MVKPipelineBarrier, N> _barriers;
-	VkPipelineStageFlags _srcStageMask;
-	VkPipelineStageFlags _dstStageMask;
 	VkDependencyFlags _dependencyFlags;
 };
 
@@ -281,34 +310,26 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKCmdSetResetEvent
+#pragma mark MVKCmdSetEvent
 
-/** Abstract Vulkan command to set or reset an event. */
-class MVKCmdSetResetEvent : public MVKCommand {
+/** Vulkan command to set an event. */
+class MVKCmdSetEvent : public MVKCommand {
 
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						VkEvent event,
+						const VkDependencyInfo* pDependencyInfo);
+
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkEvent event,
 						VkPipelineStageFlags stageMask);
 
-protected:
-	MVKEvent* _mvkEvent;
-
-};
-
-
-#pragma mark -
-#pragma mark MVKCmdSetEvent
-
-/** Vulkan command to set an event. */
-class MVKCmdSetEvent : public MVKCmdSetResetEvent {
-
-public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
+	MVKEvent* _mvkEvent;
 };
 
 
@@ -316,14 +337,19 @@ protected:
 #pragma mark MVKCmdResetEvent
 
 /** Vulkan command to reset an event. */
-class MVKCmdResetEvent : public MVKCmdSetResetEvent {
+class MVKCmdResetEvent : public MVKCommand {
 
 public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkEvent event,
+						VkPipelineStageFlags2 stageMask);
+
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
+	MVKEvent* _mvkEvent;
 };
 
 
@@ -339,6 +365,11 @@ template <size_t N>
 class MVKCmdWaitEvents : public MVKCommand {
 
 public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						uint32_t eventCount,
+						const VkEvent* pEvents,
+						const VkDependencyInfo* pDependencyInfos);
+
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						uint32_t eventCount,
 						const VkEvent* pEvents,
