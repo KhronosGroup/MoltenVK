@@ -232,6 +232,7 @@ MVKBuffer::MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo) :
 }
 
 void MVKBuffer::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
+	if ( !handleTypes ) { return; }
 	if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR)) {
 		_externalMemoryHandleTypes = handleTypes;
 		auto& xmProps = getPhysicalDevice()->getExternalBufferProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR);

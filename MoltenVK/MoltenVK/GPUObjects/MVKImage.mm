@@ -1142,6 +1142,7 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttac
 }
 
 void MVKImage::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
+	if ( !handleTypes ) { return; }
 	if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR)) {
         auto& xmProps = getPhysicalDevice()->getExternalImageProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR);
         for(auto& memoryBinding : _memoryBindings) {
@@ -1658,6 +1659,14 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 			adjustAnyComponentSwizzleValue(g, B, A, B, G, R);
 			adjustAnyComponentSwizzleValue(b, G, A, B, G, R);
 			adjustAnyComponentSwizzleValue(a, R, A, B, G, R);
+			break;
+
+		case VK_FORMAT_B4G4R4A4_UNORM_PACK16:
+			// Metal doesn't support this directly, so use a swizzle to get the ordering right.
+			adjustAnyComponentSwizzleValue(r, B, B, G, R, A);
+			adjustAnyComponentSwizzleValue(g, G, B, G, R, A);
+			adjustAnyComponentSwizzleValue(b, R, B, G, R, A);
+			adjustAnyComponentSwizzleValue(a, A, B, G, R, A);
 			break;
 
 		default:

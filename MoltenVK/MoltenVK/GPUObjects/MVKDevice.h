@@ -403,6 +403,7 @@ protected:
 	uint64_t getRecommendedMaxWorkingSetSize();
 	uint64_t getCurrentAllocatedSize();
 	uint32_t getMaxSamplerCount();
+	uint32_t getMaxPerSetDescriptorCount();
 	void initExternalMemoryProperties();
 	void initExtensions();
 	void initCounterSets();
