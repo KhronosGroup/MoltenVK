@@ -27,6 +27,7 @@ Released TBD
 - Fix initial value of `VkPhysicalDeviceLimits::timestampPeriod` on non-Apple Silicon GPUs.
 - Update to latest SPIRV-Cross:
   - MSL: Fix regression error in argument buffer runtime arrays.
+  - MSL: Work around broken cube texture gradients on Apple Silicon.
 
 
 
