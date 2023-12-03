@@ -1759,6 +1759,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			if (!mvkOSVersionIsAtLeast(14.0, 17.0, 1.0)) {
 				_metalFeatures.needsSampleDrefLodArrayWorkaround = true;
 			}
+			_metalFeatures.needsCubeGradWorkaround = true;
 			// fallthrough
 		case kIntelVendorId:
 		case kNVVendorId:

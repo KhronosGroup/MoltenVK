@@ -1680,6 +1680,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	shaderConfig.options.mslOptions.argument_buffers = useMetalArgBuff;
 	shaderConfig.options.mslOptions.force_active_argument_buffer_resources = useMetalArgBuff;
 	shaderConfig.options.mslOptions.pad_argument_buffer_resources = useMetalArgBuff;
+	shaderConfig.options.mslOptions.agx_manual_cube_grad_fixup = _device->_pMetalFeatures->needsCubeGradWorkaround;
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConversionConfig(shaderConfig);
@@ -2517,7 +2518,8 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.manual_helper_invocation_updates,
 				opt.check_discarded_frag_stores,
 				opt.sample_dref_lod_array_as_grad,
-				opt.replace_recursive_inputs);
+				opt.replace_recursive_inputs,
+				opt.agx_manual_cube_grad_fixup);
 	}
 
 	template<class Archive>
