@@ -23,12 +23,10 @@
 #import <QuartzCore/QuartzCore.h>
 
 #if MVK_IOS_OR_TVOS || MVK_MACCAT
-#	define PLATFORM_SCREEN_CLASS	UIScreen
 #	include <UIKit/UIScreen.h>
 #endif
 
 #if MVK_MACOS && !MVK_MACCAT
-#	define PLATFORM_SCREEN_CLASS	NSScreen
 #	include <AppKit/NSScreen.h>
 #endif
 
@@ -76,9 +74,16 @@
  */
 @property(nonatomic, readwrite) CFStringRef colorspaceNameMVK;
 
-#if !MVK_VISIONOS
+#if MVK_IOS_OR_TVOS || MVK_MACCAT
 /** Returns the screen on which this layer is rendering. */
-@property(nonatomic, readonly) PLATFORM_SCREEN_CLASS* screenMVK;
+@property(nonatomic, readonly) UIScreen* screenMVK;
+#endif
+
+#if MVK_MACOS && !MVK_MACCAT
+/** Returns the screen on which this layer is rendering. */
+@property(nonatomic, readonly) NSScreen* screenMVK;
+
+@property(nonatomic, readonly) NSScreen* privateScreenMVKImpl;
 #endif
 
 @end

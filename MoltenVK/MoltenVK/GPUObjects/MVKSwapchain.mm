@@ -26,9 +26,11 @@
 #include "MVKWatermarkTextureContent.h"
 #include "MVKWatermarkShaderSource.h"
 #include "mvk_datatypes.hpp"
+#include <libkern/OSByteOrder.h>
+
+#import "CAMetalLayer+MoltenVK.h"
 #import "MVKBlockObserver.h"
 
-#include <libkern/OSByteOrder.h>
 
 using namespace std;
 
@@ -48,6 +50,8 @@ void MVKSwapchain::propagateDebugName() {
 }
 
 CAMetalLayer* MVKSwapchain::getCAMetalLayer() { return _surface->getCAMetalLayer(); }
+
+bool MVKSwapchain::isHeadless() { return _surface->isHeadless(); }
 
 VkResult MVKSwapchain::getImages(uint32_t* pCount, VkImage* pSwapchainImages) {
 
@@ -124,16 +128,15 @@ VkResult MVKSwapchain::getSurfaceStatus() {
 	return VK_SUCCESS;
 }
 
-// This swapchain is optimally sized for the surface if the app has specified deliberate
-// swapchain scaling, or the CAMetalLayer drawableSize has not changed since the swapchain
-// was created, and the CAMetalLayer will not need to be scaled when composited.
+// This swapchain is optimally sized for the surface if the app has specified 
+// deliberate swapchain scaling, or the surface extent has not changed since the
+// swapchain was created, and the surface will not need to be scaled when composited.
 bool MVKSwapchain::hasOptimalSurface() {
 	if (_isDeliberatelyScaled) { return true; }
 
-	auto* mtlLayer = getCAMetalLayer();
-	VkExtent2D drawExtent = mvkVkExtent2DFromCGSize(mtlLayer.drawableSize);
-	return (mvkVkExtent2DsAreEqual(drawExtent, _mtlLayerDrawableExtent) &&
-			mvkVkExtent2DsAreEqual(drawExtent, mvkGetNaturalExtent(mtlLayer)));
+	VkExtent2D surfExtent = _surface->getExtent();
+	return (mvkVkExtent2DsAreEqual(surfExtent, _imageExtent) &&
+			mvkVkExtent2DsAreEqual(surfExtent, _surface->getNaturalExtent()));
 }
 
 
@@ -187,30 +190,29 @@ void MVKSwapchain::markFrameInterval() {
 VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRefreshCycleDuration) {
 	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 
-	auto* mtlLayer = getCAMetalLayer();
-#if MVK_VISIONOS
-	// TODO: See if this can be obtained from OS instead
-	NSInteger framesPerSecond = 90;
+	auto* screen = getCAMetalLayer().screenMVK;		// Will be nil if headless
+#if MVK_MACOS && !MVK_MACCAT
+	double framesPerSecond = 60;
+	if (screen) {
+		CGDirectDisplayID displayId = [[[screen deviceDescription] objectForKey:@"NSScreenNumber"] unsignedIntValue];
+		CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayId);
+		framesPerSecond = CGDisplayModeGetRefreshRate(mode);
+		CGDisplayModeRelease(mode);
+#if MVK_XCODE_13
+		if (framesPerSecond == 0 && [screen respondsToSelector: @selector(maximumFramesPerSecond)])
+			framesPerSecond = [screen maximumFramesPerSecond];
+#endif
+		// Builtin panels, e.g., on MacBook, report a zero refresh rate.
+		if (framesPerSecond == 0)
+			framesPerSecond = 60.0;
+	}
 #elif MVK_IOS_OR_TVOS || MVK_MACCAT
 	NSInteger framesPerSecond = 60;
-	UIScreen* screen = mtlLayer.screenMVK;
 	if ([screen respondsToSelector: @selector(maximumFramesPerSecond)]) {
 		framesPerSecond = screen.maximumFramesPerSecond;
 	}
-#elif MVK_MACOS && !MVK_MACCAT
-	NSScreen* screen = mtlLayer.screenMVK;
-	CGDirectDisplayID displayId = [[[screen deviceDescription] objectForKey:@"NSScreenNumber"] unsignedIntValue];
-	CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayId);
-	double framesPerSecond = CGDisplayModeGetRefreshRate(mode);
-	CGDisplayModeRelease(mode);
-#if MVK_XCODE_13
-	if (framesPerSecond == 0 && [screen respondsToSelector: @selector(maximumFramesPerSecond)])
-		framesPerSecond = [screen maximumFramesPerSecond];
-#endif
-
-	// Builtin panels, e.g., on MacBook, report a zero refresh rate.
-	if (framesPerSecond == 0)
-		framesPerSecond = 60.0;
+#elif MVK_VISIONOS
+	NSInteger framesPerSecond = 90;		// TODO: See if this can be obtained from OS instead
 #endif
 
 	pRefreshCycleDuration->refreshDuration = (uint64_t)1e9 / framesPerSecond;
@@ -259,12 +261,6 @@ void MVKSwapchain::endPresentation(const MVKImagePresentInfo& presentInfo, uint6
 	} else {
 		_presentHistoryHeadIndex = (_presentHistoryHeadIndex + 1) % kMaxPresentationHistory;
 	}
-
-	// If actual present time is not available, use desired time instead, and if that
-	// hasn't been set, use the current time, which should be reasonably accurate (sub-ms),
-	// since we are here as part of the addPresentedHandler: callback.
-	if (actualPresentTime == 0) { actualPresentTime = presentInfo.desiredPresentTime; }
-	if (actualPresentTime == 0) { actualPresentTime = CACurrentMediaTime() * 1.0e9; }
 
 	_presentTimingHistory[_presentHistoryIndex].presentID = presentInfo.presentID;
 	_presentTimingHistory[_presentHistoryIndex].desiredPresentTime = presentInfo.desiredPresentTime;
@@ -380,12 +376,13 @@ void MVKSwapchain::setHDRMetadataEXT(const VkHdrMetadataEXT& metadata) {
 
 MVKSwapchain::MVKSwapchain(MVKDevice* device, const VkSwapchainCreateInfoKHR* pCreateInfo)
 	: MVKVulkanAPIDeviceObject(device),
-	_surface((MVKSurface*)pCreateInfo->surface) {
+	_surface((MVKSurface*)pCreateInfo->surface),
+	_imageExtent(pCreateInfo->imageExtent) {
 
 	// Check if oldSwapchain is properly set
 	auto* oldSwapchain = (MVKSwapchain*)pCreateInfo->oldSwapchain;
 	if (oldSwapchain == _surface->_activeSwapchain) {
-		_surface->_activeSwapchain = this;
+		_surface->setActiveSwapchain(this);
 	} else {
 		setConfigurationResult(reportError(VK_ERROR_NATIVE_WINDOW_IN_USE_KHR, "vkCreateSwapchainKHR(): pCreateInfo->oldSwapchain does not match the VkSwapchain that is in use by the surface"));
 		return;
@@ -470,10 +467,11 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 									VkSwapchainPresentScalingCreateInfoEXT* pScalingInfo,
 									uint32_t imgCnt) {
 
-	if ( getIsSurfaceLost() ) { return; }
-
 	auto* mtlLayer = getCAMetalLayer();
+	if ( !mtlLayer || getIsSurfaceLost() ) { return; }
+
 	auto minMagFilter = mvkConfig().swapchainMinMagFilterUseNearest ? kCAFilterNearest : kCAFilterLinear;
+	mtlLayer.drawableSize = mvkCGSizeFromVkExtent2D(_imageExtent);
 	mtlLayer.device = getMTLDevice();
 	mtlLayer.pixelFormat = getPixelFormats()->getMTLPixelFormat(pCreateInfo->imageFormat);
 	mtlLayer.maximumDrawableCountMVK = imgCnt;
@@ -491,14 +489,9 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 	// presentations on the oldSwapchain to complete and call back, but if the drawableSize
 	// is not changing from the previous, we force those completions first.
 	auto* oldSwapchain = (MVKSwapchain*)pCreateInfo->oldSwapchain;
-	if (oldSwapchain && mvkVkExtent2DsAreEqual(pCreateInfo->imageExtent, mvkVkExtent2DFromCGSize(mtlLayer.drawableSize))) {
+	if (oldSwapchain && mvkVkExtent2DsAreEqual(pCreateInfo->imageExtent, _surface->getExtent())) {
 		oldSwapchain->forceUnpresentedImageCompletion();
 	}
-
-	// Remember the extent to later detect if it has changed under the covers,
-	// and set the drawable size of the CAMetalLayer from the extent.
-	_mtlLayerDrawableExtent = pCreateInfo->imageExtent;
-	mtlLayer.drawableSize = mvkCGSizeFromVkExtent2D(_mtlLayerDrawableExtent);
 
 	if (pCreateInfo->compositeAlpha != VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) {
 		mtlLayer.opaque = pCreateInfo->compositeAlpha == VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
@@ -585,14 +578,13 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 		}
 	}
 
-	auto* mtlLayer = getCAMetalLayer();
     VkExtent2D imgExtent = pCreateInfo->imageExtent;
     VkImageCreateInfo imgInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .pNext = VK_NULL_HANDLE,
         .imageType = VK_IMAGE_TYPE_2D,
-        .format = getPixelFormats()->getVkFormat(mtlLayer.pixelFormat),
-        .extent = { imgExtent.width, imgExtent.height, 1 },
+        .format = pCreateInfo->imageFormat,
+        .extent = mvkVkExtent3DFromVkExtent2D(imgExtent),
         .mipLevels = 1,
         .arrayLayers = 1,
         .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -618,14 +610,20 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 		_presentableImages.push_back(_device->createPresentableSwapchainImage(&imgInfo, this, imgIdx, nullptr));
 	}
 
-	NSString* screenName = @"Main Screen";
+	auto* mtlLayer = getCAMetalLayer();
+	if (mtlLayer) {
+		NSString* screenName = @"Main Screen";
 #if MVK_MACOS && !MVK_MACCAT
-	if ([mtlLayer.screenMVK respondsToSelector:@selector(localizedName)]) {
-		screenName = mtlLayer.screenMVK.localizedName;
-	}
+		auto* screen = mtlLayer.screenMVK;
+		if ([screen respondsToSelector:@selector(localizedName)]) {
+			screenName = screen.localizedName;
+		}
 #endif
-	MVKLogInfo("Created %d swapchain images with size (%d, %d) and contents scale %.1f in layer %s (%p) on screen %s.",
-			   imgCnt, imgExtent.width, imgExtent.height, mtlLayer.contentsScale, mtlLayer.name.UTF8String, mtlLayer, screenName.UTF8String);
+		MVKLogInfo("Created %d swapchain images with size (%d, %d) and contents scale %.1f in layer %s (%p) on screen %s.",
+				   imgCnt, imgExtent.width, imgExtent.height, mtlLayer.contentsScale, mtlLayer.name.UTF8String, mtlLayer, screenName.UTF8String);
+	} else {
+		MVKLogInfo("Created %d swapchain images with size (%d, %d) on headless surface.", imgCnt, imgExtent.width, imgExtent.height);
+	}
 }
 
 void MVKSwapchain::destroy() {

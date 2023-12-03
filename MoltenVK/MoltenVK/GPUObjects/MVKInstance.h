@@ -117,6 +117,9 @@ public:
 	MVKSurface* createSurface(const VkMetalSurfaceCreateInfoEXT* pCreateInfo,
 							  const VkAllocationCallbacks* pAllocator);
 
+	MVKSurface* createSurface(const VkHeadlessSurfaceCreateInfoEXT* pCreateInfo,
+							  const VkAllocationCallbacks* pAllocator);
+
 	MVKSurface* createSurface(const Vk_PLATFORM_SurfaceCreateInfoMVK* pCreateInfo,
 							  const VkAllocationCallbacks* pAllocator);
 

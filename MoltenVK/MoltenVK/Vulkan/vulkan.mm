@@ -3870,6 +3870,26 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkSetHdrMetadataEXT(
 
 
 #pragma mark -
+#pragma mark VK_EXT_headless_surface extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateHeadlessSurfaceEXT(
+    VkInstance                                  instance,
+    const VkHeadlessSurfaceCreateInfoEXT*       pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkSurfaceKHR*                               pSurface) {
+
+	MVKTraceVulkanCallStart();
+	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
+	MVKSurface* mvkSrfc = mvkInst->createSurface(pCreateInfo, pAllocator);
+	*pSurface = (VkSurfaceKHR)mvkSrfc;
+	VkResult rslt = mvkSrfc->getConfigurationResult();
+	if (rslt < 0) { *pSurface = VK_NULL_HANDLE; mvkInst->destroySurface(mvkSrfc, pAllocator); }
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+
+#pragma mark -
 #pragma mark VK_EXT_host_query_reset extension
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkResetQueryPool, EXT);

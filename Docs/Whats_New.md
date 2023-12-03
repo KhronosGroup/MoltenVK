@@ -20,11 +20,13 @@ Released TBD
 
 - Add support for extensions:
 	- `VK_EXT_extended_dynamic_state3` *(Metal does not support `VK_POLYGON_MODE_POINT`)*
+	- `VK_EXT_headless_surface`
 - Fix regression that broke `VK_POLYGON_MODE_LINE`.
 - Fix regression in marking rendering state dirty after `vkCmdClearAttachments()`.
 - Reduce disk space consumed after running `fetchDependencies` script by removing intermediate file caches.
 - Fix rare deadlock during launch via `dlopen()`.
 - Fix initial value of `VkPhysicalDeviceLimits::timestampPeriod` on non-Apple Silicon GPUs.
+- Fix swapchain and surface bugs when windowing system is accessed from off the main thread.
 - Update to latest SPIRV-Cross:
   - MSL: Fix regression error in argument buffer runtime arrays.
 
