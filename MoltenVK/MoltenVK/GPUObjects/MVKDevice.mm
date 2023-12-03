@@ -4310,7 +4310,6 @@ VkExtent2D MVKDevice::getDynamicRenderAreaGranularity() {
     return { 1, 1 };
 }
 
-
 MVKBuffer* MVKDevice::getBufferAtAddress(uint64_t address)
 {
     lock_guard<mutex> lock(_rezLock);
@@ -4352,7 +4351,6 @@ VkAccelerationStructureCompatibilityKHR MVKDevice::getAccelerationStructureCompa
     
     return compat;
 }
-
 
 #pragma mark Object lifecycle
 
