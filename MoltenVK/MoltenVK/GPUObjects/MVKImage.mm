@@ -25,8 +25,10 @@
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
 #include "MVKCodec.h"
+
 #import "MTLTextureDescriptor+MoltenVK.h"
 #import "MTLSamplerDescriptor+MoltenVK.h"
+#import "CAMetalLayer+MoltenVK.h"
 
 using namespace std;
 using namespace SPIRV_CROSS_NAMESPACE;
@@ -1169,12 +1171,6 @@ VkResult MVKSwapchainImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSi
 }
 
 
-#pragma mark Metal
-
-// Overridden to always retrieve the MTLTexture directly from the CAMetalDrawable.
-id<MTLTexture> MVKSwapchainImage::getMTLTexture(uint8_t planeIndex) { return [getCAMetalDrawable() texture]; }
-
-
 #pragma mark Construction
 
 MVKSwapchainImage::MVKSwapchainImage(MVKDevice* device,
@@ -1212,39 +1208,33 @@ MVKSwapchainImageAvailability MVKPresentableSwapchainImage::getAvailability() {
 	return _availability;
 }
 
-// If present, signal the semaphore for the first waiter for the given image.
-static void signalPresentationSemaphore(const MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff) {
-	if (signaler.semaphore) { signaler.semaphore->encodeDeferredSignal(mtlCmdBuff, signaler.semaphoreSignalToken); }
-}
-
-// Signal either or both of the semaphore and fence in the specified tracker pair.
-static void signal(const MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff) {
-	if (signaler.semaphore) { signaler.semaphore->encodeDeferredSignal(mtlCmdBuff, signaler.semaphoreSignalToken); }
-	if (signaler.fence) { signaler.fence->signal(); }
-}
-
 // Tell the semaphore and fence that they are being tracked for future signaling.
-static void markAsTracked(const MVKSwapchainSignaler& signaler) {
+static void track(const MVKSwapchainSignaler& signaler) {
 	if (signaler.semaphore) { signaler.semaphore->retain(); }
 	if (signaler.fence) { signaler.fence->retain(); }
 }
 
-// Tell the semaphore and fence that they are no longer being tracked for future signaling.
-static void unmarkAsTracked(const MVKSwapchainSignaler& signaler) {
-	if (signaler.semaphore) { signaler.semaphore->release(); }
-	if (signaler.fence) { signaler.fence->release(); }
+static void signal(MVKSemaphore* semaphore, uint64_t semaphoreSignalToken, id<MTLCommandBuffer> mtlCmdBuff) {
+	if (semaphore) { semaphore->encodeDeferredSignal(mtlCmdBuff, semaphoreSignalToken); }
 }
 
-static void signalAndUnmarkAsTracked(const MVKSwapchainSignaler& signaler) {
-	signal(signaler, nil);
-	unmarkAsTracked(signaler);
+static void signal(MVKFence* fence) {
+	if (fence) { fence->signal(); }
+}
+
+// Signal the semaphore and fence and tell them that they are no longer being tracked for future signaling.
+static void signalAndUntrack(const MVKSwapchainSignaler& signaler) {
+	signal(signaler.semaphore, signaler.semaphoreSignalToken, nil);
+	if (signaler.semaphore) { signaler.semaphore->release(); }
+
+	signal(signaler.fence);
+	if (signaler.fence) { signaler.fence->release(); }
 }
 
 VkResult MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence) {
 
 	// Now that this image is being acquired, release the existing drawable and its texture.
 	// This is not done earlier so the texture is retained for any post-processing such as screen captures, etc.
-	// This may trigger a delayed presentation callback, which uses the _availabilityLock, also used below.
 	releaseMetalDrawable();
 
 	lock_guard<mutex> lock(_availabilityLock);
@@ -1267,7 +1257,8 @@ VkResult MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphor
 				mtlCmdBuff = _device->getAnyQueue()->getMTLCommandBuffer(kMVKCommandUseAcquireNextImage);
 				if ( !mtlCmdBuff ) { setConfigurationResult(VK_ERROR_OUT_OF_POOL_MEMORY); }
 			}
-			signal(signaler, mtlCmdBuff);
+			signal(signaler.semaphore, signaler.semaphoreSignalToken, mtlCmdBuff);
+			signal(signaler.fence);
 			[mtlCmdBuff commit];
 		}
 
@@ -1275,7 +1266,7 @@ VkResult MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphor
 	} else {
 		_availabilitySignalers.push_back(signaler);
 	}
-	markAsTracked(signaler);
+	track(signaler);
 
 	return getConfigurationResult();
 }
@@ -1284,6 +1275,9 @@ VkResult MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphor
 // Attempt several times to retrieve a good drawable, and set an error to trigger the
 // swapchain to be re-established if one cannot be retrieved.
 id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
+
+	if (_mtlTextureHeadless) { return nil; }	// If headless, there is no drawable.
+
 	if ( !_mtlDrawable ) {
 		@autoreleasepool {
 			bool hasInvalidFormat = false;
@@ -1303,6 +1297,11 @@ id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
 		}
 	}
 	return _mtlDrawable;
+}
+
+// If not headless, retrieve the MTLTexture directly from the CAMetalDrawable.
+id<MTLTexture> MVKPresentableSwapchainImage::getMTLTexture(uint8_t planeIndex) {
+	return _mtlTextureHeadless ? _mtlTextureHeadless : getCAMetalDrawable().texture;
 }
 
 // Present the drawable and make myself available only once the command buffer has completed.
@@ -1343,15 +1342,13 @@ VkResult MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffe
 	auto* fence = presentInfo.fence;
 	if (fence) { fence->retain(); }
 	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
-		if (fence) {
-			fence->signal();
-			fence->release();
-		}
+		signal(fence);
+		if (fence) { fence->release(); }
 		[mtlDrwbl release];
 		release();
 	}];
 
-	signalPresentationSemaphore(signaler, mtlCmdBuff);
+	signal(signaler.semaphore, signaler.semaphoreSignalToken, mtlCmdBuff);
 
 	return getConfigurationResult();
 }
@@ -1408,6 +1405,13 @@ void MVKPresentableSwapchainImage::beginPresentation(const MVKImagePresentInfo& 
 void MVKPresentableSwapchainImage::endPresentation(const MVKImagePresentInfo& presentInfo,
 												   const MVKSwapchainSignaler& signaler,
 												   uint64_t actualPresentTime) {
+
+	// If the presentation time is not available, use the current nanosecond runtime clock,
+	// which should be reasonably accurate (sub-ms) to the presentation time. The presentation
+	// time will not be available if the presentation did not actually happen, such as when
+	// running headless, or on a test harness that is not attached to the windowing system.
+	if (actualPresentTime == 0) { actualPresentTime = mvkGetRuntimeNanoseconds(); }
+
 	{	// Scope to avoid deadlock if release() is run within detachment lock
 		// If I have become detached from the swapchain, it means the swapchain, and possibly the
 		// VkDevice, have been destroyed by the time of this callback, so do not reference them.
@@ -1415,7 +1419,11 @@ void MVKPresentableSwapchainImage::endPresentation(const MVKImagePresentInfo& pr
 		if (_device) { _device->addPerformanceInterval(_device->_performanceStatistics.queue.presentSwapchains, _presentationStartTime); }
 		if (_swapchain) { _swapchain->endPresentation(presentInfo, actualPresentTime); }
 	}
-	makeAvailable(signaler);
+
+	// Makes an image available for acquisition by the app.
+	// If any semaphores are waiting to be signaled when this image becomes available, the
+	// earliest semaphore is signaled, and this image remains unavailable for other uses.
+	signalAndUntrack(signaler);
 	release();
 }
 
@@ -1425,15 +1433,6 @@ void MVKPresentableSwapchainImage::releaseMetalDrawable() {
 	_mtlDrawable = nil;
 }
 
-// Makes an image available for acquisition by the app.
-// If any semaphores are waiting to be signaled when this image becomes available, the
-// earliest semaphore is signaled, and this image remains unavailable for other uses.
-void MVKPresentableSwapchainImage::makeAvailable(const MVKSwapchainSignaler& signaler) {
-	lock_guard<mutex> lock(_availabilityLock);
-
-	signalAndUnmarkAsTracked(signaler);
-}
-
 // Signal, untrack, and release any signalers that are tracking.
 // Release the drawable before the lock, as it may trigger completion callback.
 void MVKPresentableSwapchainImage::makeAvailable() {
@@ -1441,9 +1440,9 @@ void MVKPresentableSwapchainImage::makeAvailable() {
 	lock_guard<mutex> lock(_availabilityLock);
 
 	if ( !_availability.isAvailable ) {
-		signalAndUnmarkAsTracked(_preSignaler);
+		signalAndUntrack(_preSignaler);
 		for (auto& sig : _availabilitySignalers) {
-			signalAndUnmarkAsTracked(sig);
+			signalAndUntrack(sig);
 		}
 		_availabilitySignalers.clear();
 		_availability.isAvailable = true;
@@ -1460,11 +1459,26 @@ MVKPresentableSwapchainImage::MVKPresentableSwapchainImage(MVKDevice* device,
 
 	_availability.acquisitionID = _swapchain->getNextAcquisitionID();
 	_availability.isAvailable = true;
+
+	if (swapchain->isHeadless()) {
+		@autoreleasepool {
+			MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: getMTLPixelFormat()
+																								  width: pCreateInfo->extent.width
+																								 height: pCreateInfo->extent.height
+																							  mipmapped: NO];
+			mtlTexDesc.usageMVK = MTLTextureUsageRenderTarget;
+			mtlTexDesc.storageModeMVK = MTLStorageModePrivate;
+
+			_mtlTextureHeadless = [[getMTLDevice() newTextureWithDescriptor: mtlTexDesc] retain];	// retained
+		}
+	}
 }
 
 
 void MVKPresentableSwapchainImage::destroy() {
 	releaseMetalDrawable();
+	[_mtlTextureHeadless release];
+	_mtlTextureHeadless = nil;
 	MVKSwapchainImage::destroy();
 }
 
@@ -1498,8 +1512,8 @@ VkResult MVKPeerSwapchainImage::bindDeviceMemory2(const VkBindImageMemoryInfo* p
 
 #pragma mark Metal
 
-id<CAMetalDrawable> MVKPeerSwapchainImage::getCAMetalDrawable() {
-	return ((MVKSwapchainImage*)_swapchain->getPresentableImage(_swapchainIndex))->getCAMetalDrawable();
+id<MTLTexture> MVKPeerSwapchainImage::getMTLTexture(uint8_t planeIndex) { 
+	return ((MVKSwapchainImage*)_swapchain->getPresentableImage(_swapchainIndex))->getMTLTexture(planeIndex);
 }
 
 

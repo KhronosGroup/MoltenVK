@@ -24,6 +24,9 @@
 #include <limits>
 
 
+#pragma mark -
+#pragma mark Operating System versions
+
 typedef float MVKOSVersion;
 
 /*** Constant indicating unsupported functionality in an OS. */
@@ -66,20 +69,31 @@ static inline bool mvkOSVersionIsAtLeast(MVKOSVersion macOSMinVer,
 #endif
 }
 
+
+#pragma mark -
+#pragma mark Timestamps
+
 /**
- * Returns a monotonic timestamp value for use in Vulkan and performance timestamping.
+ * Returns a monotonic tick value for use in Vulkan and performance timestamping.
  *
- * The returned value corresponds to the number of CPU "ticks" since the app was initialized.
- *
- * Calling this value twice, subtracting the first value from the second, and then multiplying
- * the result by the value returned by mvkGetTimestampPeriod() will provide an indication of the
- * number of nanoseconds between the two calls. The convenience function mvkGetElapsedMilliseconds()
- * can be used to perform this calculation.
+ * The returned value corresponds to the number of CPU ticks since an arbitrary 
+ * point in the past, and does not increment while the system is asleep.
  */
 uint64_t mvkGetTimestamp();
 
-/** Returns the number of nanoseconds between each increment of the value returned by mvkGetTimestamp(). */
-double mvkGetTimestampPeriod();
+/** 
+ * Returns the number of runtime nanoseconds since an arbitrary point in the past,
+ * excluding any time spent while the system is asleep.
+ *
+ * This value corresponds to the timestamps returned by Metal presentation timings.
+ */
+uint64_t mvkGetRuntimeNanoseconds();
+
+/**
+ * Returns the number of nanoseconds since an arbitrary point in the past,
+ * including any time spent while the system is asleep.
+ */
+uint64_t mvkGetContinuousNanoseconds();
 
 /**
  * Returns the number of nanoseconds elapsed between startTimestamp and endTimestamp,
@@ -96,12 +110,6 @@ uint64_t mvkGetElapsedNanoseconds(uint64_t startTimestamp = 0, uint64_t endTimes
  * If startTimestamp is zero or not supplied, it is taken to be the time the app was initialized.
  */
 double mvkGetElapsedMilliseconds(uint64_t startTimestamp = 0, uint64_t endTimestamp = 0);
-
-/** Returns the current absolute time in nanoseconds. */
-uint64_t mvkGetAbsoluteTime();
-
-/** Ensures the block is executed on the main thread. */
-void mvkDispatchToMainAndWait(dispatch_block_t block);
 
 
 #pragma mark -
@@ -141,8 +149,12 @@ uint64_t mvkGetUsedMemorySize();
 /** Returns the size of a page of host memory on this platform. */
 uint64_t mvkGetHostMemoryPageSize();
 
+
 #pragma mark -
 #pragma mark Threading
 
 /** Returns the amount of avaliable CPU cores. */
 uint32_t mvkGetAvaliableCPUCores();
+
+/** Ensures the block is executed on the main thread. */
+void mvkDispatchToMainAndWait(dispatch_block_t block);

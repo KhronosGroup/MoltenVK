@@ -23,7 +23,6 @@
 #include "MVKSmallVector.h"
 #include <mutex>
 
-#import "CAMetalLayer+MoltenVK.h"
 #import <Metal/Metal.h>
 
 class MVKWatermark;
@@ -46,8 +45,14 @@ public:
 	/** Returns the CAMetalLayer underlying the surface used by this swapchain. */
 	CAMetalLayer* getCAMetalLayer();
 
+	/** Returns whether the surface is headless. */
+	bool isHeadless();
+
 	/** Returns the number of images in this swapchain. */
 	uint32_t getImageCount() { return (uint32_t)_presentableImages.size(); }
+
+	/** Returns the size of the images in this swapchain. */
+	VkExtent2D getImageExtent() { return _imageExtent; }
 
 	/** Returns the image at the specified index. */
 	MVKPresentableSwapchainImage* getPresentableImage(uint32_t index) { return _presentableImages[index]; }
@@ -126,7 +131,7 @@ protected:
 	std::atomic<uint64_t> _currentAcquisitionID = 0;
 	std::mutex _presentHistoryLock;
 	uint64_t _lastFrameTime = 0;
-	VkExtent2D _mtlLayerDrawableExtent = {0, 0};
+	VkExtent2D _imageExtent = {0, 0};
 	std::atomic<uint32_t> _unpresentedImageCount = 0;
 	uint32_t _currentPerfLogFrameCount = 0;
 	uint32_t _presentHistoryCount = 0;
@@ -134,18 +139,3 @@ protected:
 	uint32_t _presentHistoryHeadIndex = 0;
 	bool _isDeliberatelyScaled = false;
 };
-
-
-#pragma mark -
-#pragma mark Support functions
-
-/**
- * Returns the natural extent of the CAMetalLayer.
- *
- * The natural extent is the size of the bounds property of the layer,
- * multiplied by the contentsScale property of the layer, rounded
- * to nearest integer using half-to-even rounding.
- */
-static inline VkExtent2D mvkGetNaturalExtent(CAMetalLayer* mtlLayer) {
-	return mvkVkExtent2DFromCGSize(mtlLayer.naturalDrawableSizeMVK);
-}

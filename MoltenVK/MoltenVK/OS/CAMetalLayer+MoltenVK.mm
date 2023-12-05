@@ -18,6 +18,7 @@
 
 
 #include "CAMetalLayer+MoltenVK.h"
+#include "MVKOSExtensions.h"
 
 #if MVK_MACOS && !MVK_MACCAT
 #	include <AppKit/NSApplication.h>
@@ -88,6 +89,13 @@
 
 #if MVK_MACOS && !MVK_MACCAT
 -(NSScreen*) screenMVK {
+	__block NSScreen* screen;
+	mvkDispatchToMainAndWait(^{ screen = self.privateScreenMVKImpl; });
+	return screen;
+}
+
+// Search for the screen currently displaying the layer, and default to the main screen if it can't be found.
+-(NSScreen*) privateScreenMVKImpl {
 	// If this layer has a delegate that is an NSView, and the view is in a window, retrieve the screen from the window.
 	if ([self.delegate isKindOfClass: NSView.class]) {
 		NSWindow* window = ((NSView*)self.delegate).window;

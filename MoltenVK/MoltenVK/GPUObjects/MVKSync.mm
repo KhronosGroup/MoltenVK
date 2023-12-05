@@ -128,7 +128,7 @@ uint64_t MVKSemaphoreMTLEvent::deferSignal() {
 }
 
 void MVKSemaphoreMTLEvent::encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t deferToken) {
-	if (mtlCmdBuff) { [mtlCmdBuff encodeSignalEvent: _mtlEvent value: deferToken]; }
+	[mtlCmdBuff encodeSignalEvent: _mtlEvent value: deferToken];
 }
 
 MVKSemaphoreMTLEvent::MVKSemaphoreMTLEvent(MVKDevice* device,
