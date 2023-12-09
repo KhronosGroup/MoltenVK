@@ -597,6 +597,33 @@ void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
 
 
 #pragma mark -
+#pragma mark MVKLineWidthCommandEncoderState
+
+// An extension of the MTLRenderCommandEncoder protocol containing a declaration of the
+// -setLineWidth: method.
+@protocol MVKMTLRenderCommandEncoderLineWidth <MTLRenderCommandEncoder>
+-(void) setLineWidth:(float)width;
+@end
+
+void MVKLineWidthCommandEncoderState::setLineWidth(float lineWidth, bool isDynamic) {
+    // Abort if dynamic allowed but call is not dynamic, or vice-versa
+    if (!(_cmdEncoder->supportsDynamicState(MVKRenderStateType.LineWidth) == isDynamic) ) {
+		return;
+	}
+
+    _lineWidth = lineWidth;
+    markDirty();
+}
+
+void MVKLineWidthCommandEncoderState::encodeImpl(uint32_t stage) {
+    if (stage != kMVKGraphicsStageRasterization) { return; }
+    if (!_cmdEncoder->_pDeviceFeatures->wideLines) { return; }
+    if (![_cmdEncoder->_mtlRenderEncoder respondsToSelector: @selector(setLineWidth:)]) { return; }
+    [(id<MVKMTLRenderCommandEncoderLineWidth>)_cmdEncoder->_mtlRenderEncoder setLineWidth: _lineWidth];
+}
+
+
+#pragma mark -
 #pragma mark MVKResourcesCommandEncoderState
 
 void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,

@@ -552,3 +552,17 @@ VkResult MVKCmdSetRasterizerDiscardEnable::setContent(MVKCommandBuffer* cmdBuff,
 void MVKCmdSetRasterizerDiscardEnable::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->_renderingState.setRasterizerDiscardEnable(_rasterizerDiscardEnable, true);
 }
+
+
+#pragma mark -
+#pragma mark MVKCmdSetLineWidth
+
+VkResult MVKCmdSetLineWidth::setContent(MVKCommandBuffer* cmdBuff,
+													  float lineWidth) {
+	_lineWidth = lineWidth;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetLineWidth::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_lineWidthState.setLineWidth(_lineWidth, true);
+}

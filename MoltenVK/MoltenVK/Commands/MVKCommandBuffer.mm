@@ -592,6 +592,7 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
     if ( !isRestart && !_isRenderingEntireAttachment ) { clearRenderArea(cmdUse); }
 
     _graphicsPipelineState.beginMetalRenderPass();
+	_lineWidthState.beginMetalRenderPass();
     _graphicsResourcesState.beginMetalRenderPass();
 	_depthStencilState.beginMetalRenderPass();
     _renderingState.beginMetalRenderPass();
@@ -710,6 +711,7 @@ void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
         encodeStoreActions(true);
     }
     _graphicsPipelineState.encode(stage);    // Must do first..it sets others
+	_lineWidthState.encode(stage);
     _graphicsResourcesState.encode(stage);   // Before push constants, to allow them to override.
 	_depthStencilState.encode(stage);
     _renderingState.encode(stage);
@@ -804,6 +806,7 @@ void MVKCommandEncoder::endMetalRenderEncoding() {
 	getSubpass()->resolveUnresolvableAttachments(this, _attachments.contents());
 
     _graphicsPipelineState.endMetalRenderPass();
+	_lineWidthState.endMetalRenderPass();
     _graphicsResourcesState.endMetalRenderPass();
 	_depthStencilState.endMetalRenderPass();
     _renderingState.endMetalRenderPass();
@@ -1139,6 +1142,7 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
 									 MVKPrefillMetalCommandBuffersStyle prefillStyle) : MVKBaseDeviceObject(cmdBuffer->getDevice()),
 	_cmdBuffer(cmdBuffer),
 	_graphicsPipelineState(this),
+	_lineWidthState(this),
 	_graphicsResourcesState(this),
 	_computePipelineState(this),
 	_computeResourcesState(this),

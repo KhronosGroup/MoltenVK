@@ -308,6 +308,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
             cmdEncoder->_renderingState.setViewports(_viewports.contents(), 0, false);
             cmdEncoder->_renderingState.setScissors(_scissors.contents(), 0, false);
 			if (_hasRasterInfo) {
+				cmdEncoder->_lineWidthState.setLineWidth(_rasterInfo.lineWidth, false);
 				cmdEncoder->_renderingState.setCullMode(_rasterInfo.cullMode, false);
 				cmdEncoder->_renderingState.setFrontFace(_rasterInfo.frontFace, false);
 				cmdEncoder->_renderingState.setPolygonMode(_rasterInfo.polygonMode, false);

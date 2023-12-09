@@ -6,9 +6,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -44,37 +44,37 @@ class MVKComputePipeline;
 
 typedef uint64_t MVKMTLCommandBufferID;
 
-
 #pragma mark -
 #pragma mark MVKCommandEncodingContext
 
 /** Context for tracking information across multiple encodings. */
-typedef struct MVKCommandEncodingContext {
+typedef struct MVKCommandEncodingContext
+{
 	NSUInteger mtlVisibilityResultOffset = 0;
-	const MVKMTLBufferAllocation* visibilityResultBuffer = nullptr;
+	const MVKMTLBufferAllocation *visibilityResultBuffer = nullptr;
 
-	MVKRenderPass* getRenderPass() { return _renderPass; }
-	MVKFramebuffer* getFramebuffer() { return _framebuffer; }
-	void setRenderingContext(MVKRenderPass* renderPass, MVKFramebuffer* framebuffer);
+	MVKRenderPass *getRenderPass() { return _renderPass; }
+	MVKFramebuffer *getFramebuffer() { return _framebuffer; }
+	void setRenderingContext(MVKRenderPass *renderPass, MVKFramebuffer *framebuffer);
 	VkRenderingFlags getRenderingFlags() { return _renderPass ? _renderPass->getRenderingFlags() : 0; }
 	~MVKCommandEncodingContext();
 
 private:
-	MVKRenderPass* _renderPass = nullptr;
-	MVKFramebuffer* _framebuffer = nullptr;
+	MVKRenderPass *_renderPass = nullptr;
+	MVKFramebuffer *_framebuffer = nullptr;
 } MVKCommandEncodingContext;
-
 
 #pragma mark -
 #pragma mark MVKCurrentSubpassInfo
 
 /** Tracks current render subpass information. */
-typedef struct MVKCurrentSubpassInfo {
-	MVKRenderPass* renderpass;
+typedef struct MVKCurrentSubpassInfo
+{
+	MVKRenderPass *renderpass;
 	uint32_t subpassIndex;
 	uint32_t subpassViewMask;
 
-	void beginRenderpass(MVKRenderPass* rp);
+	void beginRenderpass(MVKRenderPass *rp);
 	void nextSubpass();
 	void beginRendering(uint32_t viewMask);
 
@@ -82,16 +82,15 @@ private:
 	void updateViewMask();
 } MVKCurrentSubpassInfo;
 
-
 #pragma mark -
 #pragma mark MVKCommandBuffer
 
 /** Represents a Vulkan command pool. */
 class MVKCommandBuffer : public MVKDispatchableVulkanAPIObject,
 						 public MVKDeviceTrackingMixin,
-						 public MVKLinkableMixin<MVKCommandBuffer> {
+						 public MVKLinkableMixin<MVKCommandBuffer>
+{
 public:
-
 	/** Returns the Vulkan type of this object. */
 	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_COMMAND_BUFFER; }
 
@@ -99,10 +98,10 @@ public:
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT; }
 
 	/** Returns a pointer to the Vulkan instance. */
-	MVKInstance* getInstance() override { return _device->getInstance(); }
+	MVKInstance *getInstance() override { return _device->getInstance(); }
 
 	/** Prepares this instance to receive commands. */
-	VkResult begin(const VkCommandBufferBeginInfo* pBeginInfo);
+	VkResult begin(const VkCommandBufferBeginInfo *pBeginInfo);
 
 	/** Resets this instance to allow it to receive new commands. */
 	VkResult reset(VkCommandBufferResetFlags flags);
@@ -111,19 +110,19 @@ public:
 	VkResult end();
 
 	/** Adds the specified execution command at the end of this command buffer. */
-	void addCommand(MVKCommand* command);
+	void addCommand(MVKCommand *command);
 
 	/** Returns the number of commands currently in this command buffer. */
 	uint32_t getCommandCount() { return _commandCount; }
 
 	/** Returns the command pool backing this command buffer. */
-	MVKCommandPool* getCommandPool() { return _commandPool; }
+	MVKCommandPool *getCommandPool() { return _commandPool; }
 
 	/** Submit the commands in this buffer as part of the queue submission. */
-	void submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit, MVKCommandEncodingContext* pEncodingContext);
+	void submit(MVKQueueCommandBufferSubmission *cmdBuffSubmit, MVKCommandEncodingContext *pEncodingContext);
 
-    /** Returns whether this command buffer can be submitted to a queue more than once. */
-    bool getIsReusable() { return _isReusable; }
+	/** Returns whether this command buffer can be submitted to a queue more than once. */
+	bool getIsReusable() { return _isReusable; }
 
 	/**
 	 * If this is a secondary command buffer, returns the number of views inherited
@@ -134,72 +133,71 @@ public:
 	/** Updated as renderpass commands are added. */
 	MVKCurrentSubpassInfo _currentSubpassInfo;
 
-    /**
-     * Metal requires that a visibility buffer is established when a render pass is created, 
-     * but Vulkan permits it to be set during a render pass. When the first occlusion query
-     * command is added, it sets this value so that it can be applied when the first renderpass
-     * is begun.
-     */
-    bool _needsVisibilityResultMTLBuffer;
+	/**
+	 * Metal requires that a visibility buffer is established when a render pass is created,
+	 * but Vulkan permits it to be set during a render pass. When the first occlusion query
+	 * command is added, it sets this value so that it can be applied when the first renderpass
+	 * is begun.
+	 */
+	bool _needsVisibilityResultMTLBuffer;
 
 	/** Called when a MVKCmdExecuteCommands is added to this command buffer. */
-	void recordExecuteCommands(MVKArrayRef<MVKCommandBuffer*const> secondaryCommandBuffers);
+	void recordExecuteCommands(MVKArrayRef<MVKCommandBuffer *const> secondaryCommandBuffers);
 
 	/** Called when a timestamp command is added. */
 	void recordTimestampCommand();
 
-
 #pragma mark Tessellation constituent command management
 
 	/** Update the last recorded pipeline with tessellation shaders */
-	void recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline);
+	void recordBindPipeline(MVKCmdBindPipeline *mvkBindPipeline);
 
 	/** The most recent recorded tessellation pipeline */
-	MVKCmdBindPipeline* _lastTessellationPipeline;
-
+	MVKCmdBindPipeline *_lastTessellationPipeline;
 
 #pragma mark Construction
 
-	MVKCommandBuffer(MVKDevice* device) : MVKDeviceTrackingMixin(device) {}
+	MVKCommandBuffer(MVKDevice *device) : MVKDeviceTrackingMixin(device) {}
 
 	~MVKCommandBuffer() override;
 
-    /**
-     * Returns a reference to this object suitable for use as a Vulkan API handle.
-     * This is the compliment of the getMVKCommandBuffer() method.
-     */
+	/**
+	 * Returns a reference to this object suitable for use as a Vulkan API handle.
+	 * This is the compliment of the getMVKCommandBuffer() method.
+	 */
 	VkCommandBuffer getVkCommandBuffer() { return (VkCommandBuffer)getVkHandle(); }
 
-    /**
-     * Retrieves the MVKCommandBuffer instance referenced by the VkCommandBuffer handle.
-     * This is the compliment of the getVkCommandBuffer() method.
-     */
-    static MVKCommandBuffer* getMVKCommandBuffer(VkCommandBuffer vkCommandBuffer) {
-        return (MVKCommandBuffer*)getDispatchableObject(vkCommandBuffer);
-    }
+	/**
+	 * Retrieves the MVKCommandBuffer instance referenced by the VkCommandBuffer handle.
+	 * This is the compliment of the getVkCommandBuffer() method.
+	 */
+	static MVKCommandBuffer *getMVKCommandBuffer(VkCommandBuffer vkCommandBuffer)
+	{
+		return (MVKCommandBuffer *)getDispatchableObject(vkCommandBuffer);
+	}
 
 protected:
 	friend class MVKCommandEncoder;
 	friend class MVKCommandPool;
 
 	void propagateDebugName() override {}
-	void init(const VkCommandBufferAllocateInfo* pAllocateInfo);
+	void init(const VkCommandBufferAllocateInfo *pAllocateInfo);
 	bool canExecute();
 	void clearPrefilledMTLCommandBuffer();
-    void releaseCommands(MVKCommand* command);
+	void releaseCommands(MVKCommand *command);
 	void releaseRecordedCommands();
 	void flushImmediateCmdEncoder();
 	void checkDeferredEncoding();
 
-	MVKCommand* _head = nullptr;
-	MVKCommand* _tail = nullptr;
+	MVKCommand *_head = nullptr;
+	MVKCommand *_tail = nullptr;
 	MVKSmallVector<VkFormat, kMVKDefaultAttachmentCount> _colorAttachmentFormats;
-	MVKCommandPool* _commandPool;
+	MVKCommandPool *_commandPool;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
 	VkCommandBufferInheritanceRenderingInfo _secondaryInheritanceRenderingInfo;
 	id<MTLCommandBuffer> _prefilledMTLCmdBuffer = nil;
-    MVKCommandEncodingContext* _immediateCmdEncodingContext = nullptr;
-    MVKCommandEncoder* _immediateCmdEncoder = nullptr;
+	MVKCommandEncodingContext *_immediateCmdEncodingContext = nullptr;
+	MVKCommandEncoder *_immediateCmdEncoder = nullptr;
 	uint32_t _commandCount;
 	std::atomic_flag _isExecutingNonConcurrently;
 	bool _isSecondary;
@@ -211,57 +209,56 @@ protected:
 	bool _hasStageCounterTimestampCommand;
 };
 
-
 #pragma mark -
 #pragma mark MVKCommandEncoder
 
 /*** Holds a collection of active queries for each query pool. */
-typedef std::unordered_map<MVKQueryPool*, MVKSmallVector<uint32_t, kMVKDefaultQueryCount>> MVKActivatedQueries;
+typedef std::unordered_map<MVKQueryPool *, MVKSmallVector<uint32_t, kMVKDefaultQueryCount>> MVKActivatedQueries;
 
-/** 
- * MVKCommandEncoder uses a visitor design pattern iterate the commands in a MVKCommandBuffer, 
+/**
+ * MVKCommandEncoder uses a visitor design pattern iterate the commands in a MVKCommandBuffer,
  * tracking and caching dynamic encoding state, and encoding the commands onto Metal MTLCommandBuffers.
  *
  * Much of the dynamic cached encoding state has public access and is accessed directly
  * from the commands in the command buffer.
  */
-class MVKCommandEncoder : public MVKBaseDeviceObject {
+class MVKCommandEncoder : public MVKBaseDeviceObject
+{
 
 public:
-
 	/** Returns the Vulkan API opaque object controlling this object. */
-	MVKVulkanAPIObject* getVulkanAPIObject() override { return _cmdBuffer->getVulkanAPIObject(); };
+	MVKVulkanAPIObject *getVulkanAPIObject() override { return _cmdBuffer->getVulkanAPIObject(); };
 
 	/** Encode commands from the command buffer onto the Metal command buffer. */
-	void encode(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext);
-    
-    void beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext);
-    void encodeCommands(MVKCommand* command);
-    void endEncoding();
+	void encode(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext *pEncodingContext);
+
+	void beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext *pEncodingContext);
+	void encodeCommands(MVKCommand *command);
+	void endEncoding();
 
 	/** Encode commands from the specified secondary command buffer onto the Metal command buffer. */
-	void encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer);
+	void encodeSecondary(MVKCommandBuffer *secondaryCmdBuffer);
 
 	/** Begins a render pass and establishes initial draw state. */
-	void beginRenderpass(MVKCommand* passCmd,
+	void beginRenderpass(MVKCommand *passCmd,
 						 VkSubpassContents subpassContents,
-						 MVKRenderPass* renderPass,
-						 MVKFramebuffer* framebuffer,
-						 const VkRect2D& renderArea,
+						 MVKRenderPass *renderPass,
+						 MVKFramebuffer *framebuffer,
+						 const VkRect2D &renderArea,
 						 MVKArrayRef<VkClearValue> clearValues,
-						 MVKArrayRef<MVKImageView*> attachments,
+						 MVKArrayRef<MVKImageView *> attachments,
 						 MVKCommandUse cmdUse);
 
 	/** Begins the next render subpass. */
-	void beginNextSubpass(MVKCommand* subpassCmd, VkSubpassContents renderpassContents);
+	void beginNextSubpass(MVKCommand *subpassCmd, VkSubpassContents renderpassContents);
 
 	/** Begins dynamic rendering. */
-	void beginRendering(MVKCommand* rendCmd, const VkRenderingInfo* pRenderingInfo);
+	void beginRendering(MVKCommand *rendCmd, const VkRenderingInfo *pRenderingInfo);
 
 	/** Begins a Metal render pass for the current render subpass. */
 	void beginMetalRenderPass(MVKCommandUse cmdUse);
 
-	/** 
+	/**
 	 * If a Metal render pass has started, and it needs to be restarted,
 	 * then end the existing Metal render pass, and start a new one.
 	 */
@@ -274,7 +271,7 @@ public:
 	bool isInRenderPass() { return _pEncodingContext->getRenderPass() != nullptr; }
 
 	/** Returns the render subpass that is currently active. */
-	MVKRenderSubpass* getSubpass();
+	MVKRenderSubpass *getSubpass();
 
 	/** The extent of current framebuffer.*/
 	VkExtent2D getFramebufferExtent();
@@ -288,19 +285,19 @@ public:
 	/** Begins a Metal compute encoding. */
 	void beginMetalComputeEncoding(MVKCommandUse cmdUse);
 
-    /** Binds a pipeline to a bind point. */
-    void bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline);
+	/** Binds a pipeline to a bind point. */
+	void bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline *pipeline);
 
 	/** Binds the descriptor set to the index at the bind point. */
 	void bindDescriptorSet(VkPipelineBindPoint pipelineBindPoint,
 						   uint32_t descSetIndex,
-						   MVKDescriptorSet* descSet,
-						   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+						   MVKDescriptorSet *descSet,
+						   MVKShaderResourceBinding &dslMTLRezIdxOffsets,
 						   MVKArrayRef<uint32_t> dynamicOffsets,
-						   uint32_t& dynamicOffsetIndex);
+						   uint32_t &dynamicOffsetIndex);
 
 	/** Encodes an operation to signal an event to a status. */
-	void signalEvent(MVKEvent* mvkEvent, bool status);
+	void signalEvent(MVKEvent *mvkEvent, bool status);
 
 	/** Clips the rect to ensure it fits inside the render area.  */
 	VkRect2D clipToRenderArea(VkRect2D rect);
@@ -311,8 +308,8 @@ public:
 	/** Called by each graphics draw command to establish any outstanding state just prior to performing the draw. */
 	void finalizeDrawState(MVKGraphicsStage stage);
 
-    /** Called by each compute dispatch command to establish any outstanding state just prior to performing the dispatch. */
-    void finalizeDispatchState();
+	/** Called by each compute dispatch command to establish any outstanding state just prior to performing the dispatch. */
+	void finalizeDispatchState();
 
 	/** Ends the current renderpass. */
 	void endRenderpass();
@@ -320,10 +317,10 @@ public:
 	/** Ends the current dymamic rendering. */
 	void endRendering();
 
-	/** 
+	/**
 	 * Ends all encoding operations on the current Metal command encoder.
 	 *
-	 * This must be called once all encoding is complete, and prior 
+	 * This must be called once all encoding is complete, and prior
 	 * to each switch between render, compute, and BLIT encoding.
 	 */
 	void endCurrentMetalEncoding();
@@ -331,7 +328,7 @@ public:
 	/** Ends encoding operations on the current Metal command encoder if it is a rendering encoder. */
 	void endMetalRenderEncoding();
 
-	/** 
+	/**
 	 * Returns the current Metal compute encoder for the specified use,
 	 * which determines the label assigned to the returned encoder.
 	 *
@@ -344,10 +341,10 @@ public:
 
 	/**
 	 * Returns the current Metal BLIT encoder for the specified use,
-     * which determines the label assigned to the returned encoder.
+	 * which determines the label assigned to the returned encoder.
 	 *
-	 * If the current encoder is not a BLIT encoder, this function ends 
-     * the current encoder before beginning BLIT encoding.
+	 * If the current encoder is not a BLIT encoder, this function ends
+	 * the current encoder before beginning BLIT encoding.
 	 */
 	id<MTLBlitCommandEncoder> getMTLBlitEncoder(MVKCommandUse cmdUse);
 
@@ -358,17 +355,17 @@ public:
 	id<MTLCommandEncoder> getMTLEncoder();
 
 	/** Returns the push constants associated with the specified shader stage. */
-	MVKPushConstantsCommandEncoderState* getPushConstants(VkShaderStageFlagBits shaderStage);
+	MVKPushConstantsCommandEncoderState *getPushConstants(VkShaderStageFlagBits shaderStage);
 
 	/** Encode the buffer binding as a vertex attribute buffer. */
-	void encodeVertexAttributeBuffer(MVKMTLBufferBinding& b, bool isDynamicStride);
+	void encodeVertexAttributeBuffer(MVKMTLBufferBinding &b, bool isDynamicStride);
 
-    /**
+	/**
 	 * Copy bytes into the Metal encoder at a Metal vertex buffer index, and optionally indicate
 	 * that this binding might override a desriptor binding. If so, the descriptor binding will
 	 * be marked dirty so that it will rebind before the next usage.
 	 */
-    void setVertexBytes(id<MTLRenderCommandEncoder> mtlEncoder, const void* bytes,
+	void setVertexBytes(id<MTLRenderCommandEncoder> mtlEncoder, const void *bytes,
 						NSUInteger length, uint32_t mtlBuffIndex, bool descOverride = false);
 
 	/**
@@ -376,7 +373,7 @@ public:
 	 * that this binding might override a desriptor binding. If so, the descriptor binding will
 	 * be marked dirty so that it will rebind before the next usage.
 	 */
-    void setFragmentBytes(id<MTLRenderCommandEncoder> mtlEncoder, const void* bytes,
+	void setFragmentBytes(id<MTLRenderCommandEncoder> mtlEncoder, const void *bytes,
 						  NSUInteger length, uint32_t mtlBuffIndex, bool descOverride = false);
 
 	/**
@@ -384,51 +381,51 @@ public:
 	 * that this binding might override a desriptor binding. If so, the descriptor binding will
 	 * be marked dirty so that it will rebind before the next usage.
 	 */
-    void setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder, const void* bytes,
+	void setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder, const void *bytes,
 						 NSUInteger length, uint32_t mtlBuffIndex, bool descOverride = false);
 
-    /** Get a temporary MTLBuffer that will be returned to a pool after the command buffer is finished. */
-    const MVKMTLBufferAllocation* getTempMTLBuffer(NSUInteger length, bool isPrivate = false, bool isDedicated = false);
+	/** Get a temporary MTLBuffer that will be returned to a pool after the command buffer is finished. */
+	const MVKMTLBufferAllocation *getTempMTLBuffer(NSUInteger length, bool isPrivate = false, bool isDedicated = false);
 
 	/** Copy the bytes to a temporary MTLBuffer that will be returned to a pool after the command buffer is finished. */
-	const MVKMTLBufferAllocation* copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length, bool isDedicated = false);
+	const MVKMTLBufferAllocation *copyToTempMTLBufferAllocation(const void *bytes, NSUInteger length, bool isDedicated = false);
 
-    /** Returns the command encoding pool. */
-    MVKCommandEncodingPool* getCommandEncodingPool();
+	/** Returns the command encoding pool. */
+	MVKCommandEncodingPool *getCommandEncodingPool();
 
 #pragma mark Queries
 
-    /** Begins an occlusion query. */
-    void beginOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags);
+	/** Begins an occlusion query. */
+	void beginOcclusionQuery(MVKOcclusionQueryPool *pQueryPool, uint32_t query, VkQueryControlFlags flags);
 
-    /** Ends the current occlusion query. */
-    void endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query);
+	/** Ends the current occlusion query. */
+	void endOcclusionQuery(MVKOcclusionQueryPool *pQueryPool, uint32_t query);
 
-    /** Marks a timestamp for the specified query. */
-    void markTimestamp(MVKTimestampQueryPool* pQueryPool, uint32_t query);
+	/** Marks a timestamp for the specified query. */
+	void markTimestamp(MVKTimestampQueryPool *pQueryPool, uint32_t query);
 
-    /** Reset a range of queries. */
-    void resetQueries(MVKQueryPool* pQueryPool, uint32_t firstQuery, uint32_t queryCount);
+	/** Reset a range of queries. */
+	void resetQueries(MVKQueryPool *pQueryPool, uint32_t firstQuery, uint32_t queryCount);
 
 #pragma mark Dynamic encoding state accessed directly
 
 	/** Context for tracking information across multiple encodings. */
-	MVKCommandEncodingContext* _pEncodingContext;
+	MVKCommandEncodingContext *_pEncodingContext;
 
-    /** A reference to the Metal features supported by the device. */
-    const MVKPhysicalDeviceMetalFeatures* _pDeviceMetalFeatures;
+	/** A reference to the Metal features supported by the device. */
+	const MVKPhysicalDeviceMetalFeatures *_pDeviceMetalFeatures;
 
-    /** A reference to the Vulkan features supported by the device. */
-    const VkPhysicalDeviceFeatures* _pDeviceFeatures;
+	/** A reference to the Vulkan features supported by the device. */
+	const VkPhysicalDeviceFeatures *_pDeviceFeatures;
 
-    /** Pointer to the properties of the device. */
-    const VkPhysicalDeviceProperties* _pDeviceProperties;
+	/** Pointer to the properties of the device. */
+	const VkPhysicalDeviceProperties *_pDeviceProperties;
 
-    /** Pointer to the memory properties of the device. */
-    const VkPhysicalDeviceMemoryProperties* _pDeviceMemoryProperties;
+	/** Pointer to the memory properties of the device. */
+	const VkPhysicalDeviceMemoryProperties *_pDeviceMemoryProperties;
 
 	/** The command buffer whose commands are being encoded. */
-	MVKCommandBuffer* _cmdBuffer;
+	MVKCommandBuffer *_cmdBuffer;
 
 	/** The current Metal command buffer. */
 	id<MTLCommandBuffer> _mtlCmdBuffer;
@@ -436,20 +433,23 @@ public:
 	/** The current Metal render encoder. */
 	id<MTLRenderCommandEncoder> _mtlRenderEncoder;
 
-    /** Tracks the current graphics pipeline bound to the encoder. */
+	/** Tracks the current graphics pipeline bound to the encoder. */
 	MVKPipelineCommandEncoderState _graphicsPipelineState;
+
+	/** Tracks the current line width state of the encoder. */
+	MVKLineWidthCommandEncoderState _lineWidthState;
 
 	/** Tracks the current graphics resources state of the encoder. */
 	MVKGraphicsResourcesCommandEncoderState _graphicsResourcesState;
 
-    /** Tracks the current compute pipeline bound to the encoder. */
+	/** Tracks the current compute pipeline bound to the encoder. */
 	MVKPipelineCommandEncoderState _computePipelineState;
 
 	/** Tracks the current compute resources state of the encoder. */
 	MVKComputeResourcesCommandEncoderState _computeResourcesState;
 
-    /** Tracks the current depth stencil state of the encoder. */
-    MVKDepthStencilCommandEncoderState _depthStencilState;
+	/** Tracks the current depth stencil state of the encoder. */
+	MVKDepthStencilCommandEncoderState _depthStencilState;
 
 	/** Tracks the current rendering states of the encoder. */
 	MVKRenderingCommandEncoderState _renderingState;
@@ -457,8 +457,8 @@ public:
 	/** Tracks the occlusion query state of the encoder. */
 	MVKOcclusionQueryCommandEncoderState _occlusionQueryState;
 
-    /** The size of the threadgroup for the compute shader. */
-    MTLSize _mtlThreadgroupSize;
+	/** The size of the threadgroup for the compute shader. */
+	MTLSize _mtlThreadgroupSize;
 
 	/** Indicates whether the current render subpass is able to render to an array (layered) framebuffer. */
 	bool _canUseLayeredRendering;
@@ -468,37 +468,40 @@ public:
 
 #pragma mark Construction
 
-	MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
+	MVKCommandEncoder(MVKCommandBuffer *cmdBuffer,
 					  MVKPrefillMetalCommandBuffersStyle prefillStyle = MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_NO_PREFILL);
 
 	~MVKCommandEncoder() override;
 
 protected:
-    void addActivatedQueries(MVKQueryPool* pQueryPool, uint32_t query, uint32_t queryCount);
-    void finishQueries();
-	void setSubpass(MVKCommand* passCmd, VkSubpassContents subpassContents, uint32_t subpassIndex, MVKCommandUse cmdUse);
+	void addActivatedQueries(MVKQueryPool *pQueryPool, uint32_t query, uint32_t queryCount);
+	void finishQueries();
+	void setSubpass(MVKCommand *passCmd, VkSubpassContents subpassContents, uint32_t subpassIndex, MVKCommandUse cmdUse);
 	void clearRenderArea(MVKCommandUse cmdUse);
 	bool hasMoreMultiviewPasses();
 	void beginNextMultiviewPass();
-	void encodeCommandsImpl(MVKCommand* command);
-	void encodeGPUCounterSample(MVKGPUCounterQueryPool* mvkQryPool, uint32_t sampleIndex, MVKCounterSamplingFlags samplingPoints);
+	void encodeCommandsImpl(MVKCommand *command);
+	void encodeGPUCounterSample(MVKGPUCounterQueryPool *mvkQryPool, uint32_t sampleIndex, MVKCounterSamplingFlags samplingPoints);
 	void encodeTimestampStageCounterSamples();
 	id<MTLFence> getStageCountersMTLFence();
-	NSString* getMTLRenderCommandEncoderName(MVKCommandUse cmdUse);
-	template<typename T> void retainIfImmediatelyEncoding(T& mtlEnc);
-	template<typename T> void endMetalEncoding(T& mtlEnc);
+	NSString *getMTLRenderCommandEncoderName(MVKCommandUse cmdUse);
+	template <typename T>
+	void retainIfImmediatelyEncoding(T &mtlEnc);
+	template <typename T>
+	void endMetalEncoding(T &mtlEnc);
 
-	typedef struct GPUCounterQuery {
-		MVKGPUCounterQueryPool* queryPool = nullptr;
+	typedef struct GPUCounterQuery
+	{
+		MVKGPUCounterQueryPool *queryPool = nullptr;
 		uint32_t query = 0;
 	} GPUCounterQuery;
 
 	VkRect2D _renderArea;
-	MVKCommand* _lastMultiviewPassCmd;
-    MVKActivatedQueries* _pActivatedQueries;
+	MVKCommand *_lastMultiviewPassCmd;
+	MVKActivatedQueries *_pActivatedQueries;
 	MVKSmallVector<GPUCounterQuery, 16> _timestampStageCounterQueries;
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
-	MVKSmallVector<MVKImageView*, kMVKDefaultAttachmentCount> _attachments;
+	MVKSmallVector<MVKImageView *, kMVKDefaultAttachmentCount> _attachments;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
 	id<MTLFence> _stageCountersMTLFence;
@@ -511,21 +514,20 @@ protected:
 	VkSubpassContents _subpassContents;
 	uint32_t _renderSubpassIndex;
 	uint32_t _multiviewPassIndex;
-    uint32_t _flushCount;
+	uint32_t _flushCount;
 	MVKCommandUse _mtlComputeEncoderUse;
 	MVKCommandUse _mtlBlitEncoderUse;
 	bool _isRenderingEntireAttachment;
 };
 
-
 #pragma mark -
 #pragma mark Support functions
 
 /** Returns a name, suitable for use as a MTLRenderCommandEncoder label, based on the MVKCommandUse. */
-NSString* mvkMTLRenderCommandEncoderLabel(MVKCommandUse cmdUse);
+NSString *mvkMTLRenderCommandEncoderLabel(MVKCommandUse cmdUse);
 
 /** Returns a name, suitable for use as a MTLBlitCommandEncoder label, based on the MVKCommandUse. */
-NSString* mvkMTLBlitCommandEncoderLabel(MVKCommandUse cmdUse);
+NSString *mvkMTLBlitCommandEncoderLabel(MVKCommandUse cmdUse);
 
 /** Returns a name, suitable for use as a MTLComputeCommandEncoder label, based on the MVKCommandUse. */
-NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse);
+NSString *mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse);
