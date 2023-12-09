@@ -30,20 +30,23 @@
 
 template <size_t N>
 VkResult MVKCmdBindVertexBuffers<N>::setContent(MVKCommandBuffer* cmdBuff,
-												uint32_t startBinding,
+												uint32_t firstBinding,
 												uint32_t bindingCount,
 												const VkBuffer* pBuffers,
-												const VkDeviceSize* pOffsets) {
-
+												const VkDeviceSize* pOffsets,
+												const VkDeviceSize* pSizes,
+												const VkDeviceSize* pStrides) {
 	MVKDevice* mvkDvc = cmdBuff->getDevice();
 	_bindings.clear();	// Clear for reuse
     _bindings.reserve(bindingCount);
     MVKMTLBufferBinding b;
     for (uint32_t bindIdx = 0; bindIdx < bindingCount; bindIdx++) {
         MVKBuffer* mvkBuffer = (MVKBuffer*)pBuffers[bindIdx];
-        b.index = mvkDvc->getMetalBufferIndexForVertexAttributeBinding(startBinding + bindIdx);
+        b.index = mvkDvc->getMetalBufferIndexForVertexAttributeBinding(firstBinding + bindIdx);
         b.mtlBuffer = mvkBuffer->getMTLBuffer();
         b.offset = mvkBuffer->getMTLBufferOffset() + pOffsets[bindIdx];
+		b.size = pSizes ? (uint32_t)pSizes[bindIdx] : 0;
+		b.stride = pStrides ? (uint32_t)pStrides[bindIdx] : 0;
         _bindings.push_back(b);
     }
 
@@ -141,12 +144,11 @@ void MVKCmdDraw::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
 
 void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 
-    if (_vertexCount == 0 || _instanceCount == 0) {
-        // Nothing to do.
-        return;
-    }
+	if (_vertexCount == 0 || _instanceCount == 0) { return; }	// Nothing to do.
 
-	auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
+	cmdEncoder->restartMetalRenderPassIfNeeded();
+
+	auto* pipeline = cmdEncoder->_graphicsPipelineState.getGraphicsPipeline();
 
 	// Metal doesn't support triangle fans, so encode it as triangles via an indexed indirect triangles command instead.
 	if (pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
@@ -169,7 +171,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 	} tessParams;
     uint32_t outControlPointCount = 0;
     if (pipeline->isTessellationPipeline()) {
-        tessParams.inControlPointCount = pipeline->getInputControlPointCount();
+        tessParams.inControlPointCount = cmdEncoder->_renderingState.getPatchControlPoints();
         outControlPointCount = pipeline->getOutputControlPointCount();
         tessParams.patchCount = mvkCeilingDivide(_vertexCount, tessParams.inControlPointCount) * _instanceCount;
     }
@@ -296,13 +298,13 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                     uint32_t instanceCount = _instanceCount * viewCount;
                     cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _firstInstance);
                     if (cmdEncoder->_pDeviceMetalFeatures->baseVertexInstanceDrawing) {
-                        [cmdEncoder->_mtlRenderEncoder drawPrimitives: cmdEncoder->_mtlPrimitiveType
+                        [cmdEncoder->_mtlRenderEncoder drawPrimitives: cmdEncoder->_renderingState.getPrimitiveType()
                                                           vertexStart: _firstVertex
                                                           vertexCount: _vertexCount
                                                         instanceCount: instanceCount
                                                          baseInstance: _firstInstance];
                     } else {
-                        [cmdEncoder->_mtlRenderEncoder drawPrimitives: cmdEncoder->_mtlPrimitiveType
+                        [cmdEncoder->_mtlRenderEncoder drawPrimitives: cmdEncoder->_renderingState.getPrimitiveType()
                                                           vertexStart: _firstVertex
                                                           vertexCount: _vertexCount
                                                         instanceCount: instanceCount];
@@ -366,12 +368,11 @@ void MVKCmdDrawIndexed::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
 
 void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 
-    if (_indexCount == 0 || _instanceCount == 0) {
-        // Nothing to do.
-        return;
-    }
+	if (_indexCount == 0 || _instanceCount == 0) { return; }	// Nothing to do.
 
-	auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
+	cmdEncoder->restartMetalRenderPassIfNeeded();
+
+	auto* pipeline = cmdEncoder->_graphicsPipelineState.getGraphicsPipeline();
 
 	// Metal doesn't support triangle fans, so encode it as triangles via an indexed indirect triangles command instead.
 	if (pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
@@ -398,7 +399,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 	} tessParams;
     uint32_t outControlPointCount = 0;
     if (pipeline->isTessellationPipeline()) {
-        tessParams.inControlPointCount = pipeline->getInputControlPointCount();
+        tessParams.inControlPointCount = cmdEncoder->_renderingState.getPatchControlPoints();
         outControlPointCount = pipeline->getOutputControlPointCount();
         tessParams.patchCount = mvkCeilingDivide(_indexCount, tessParams.inControlPointCount) * _instanceCount;
     }
@@ -530,7 +531,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                     uint32_t instanceCount = _instanceCount * viewCount;
                     cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _firstInstance);
                     if (cmdEncoder->_pDeviceMetalFeatures->baseVertexInstanceDrawing) {
-                        [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_mtlPrimitiveType
+                        [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_renderingState.getPrimitiveType()
                                                                   indexCount: _indexCount
                                                                    indexType: (MTLIndexType)ibb.mtlIndexType
                                                                  indexBuffer: ibb.mtlBuffer
@@ -539,7 +540,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                                                                   baseVertex: _vertexOffset
                                                                 baseInstance: _firstInstance];
                     } else {
-                        [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_mtlPrimitiveType
+                        [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_renderingState.getPrimitiveType()
                                                                   indexCount: _indexCount
                                                                    indexType: (MTLIndexType)ibb.mtlIndexType
                                                                  indexBuffer: ibb.mtlBuffer
@@ -646,7 +647,9 @@ void MVKCmdDrawIndirect::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
 
 void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 
-	auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
+	cmdEncoder->restartMetalRenderPassIfNeeded();
+
+	auto* pipeline = cmdEncoder->_graphicsPipelineState.getGraphicsPipeline();
 
 	// Metal doesn't support triangle fans, so encode it as indexed indirect triangles instead.
 	if (pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
@@ -683,7 +686,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         // encoding and execution. So we don't know how big to make the buffers.
         // We must assume an arbitrarily large number of vertices may be submitted.
         // But not too many, or we'll exhaust available VRAM.
-        inControlPointCount = pipeline->getInputControlPointCount();
+        inControlPointCount = cmdEncoder->_renderingState.getPatchControlPoints();
         outControlPointCount = pipeline->getOutputControlPointCount();
         vertexCount = kMVKMaxDrawIndirectVertexCount;
         patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
@@ -925,7 +928,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                         cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
                         cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->beginMetalRenderPass();
                     } else {
-                        [cmdEncoder->_mtlRenderEncoder drawPrimitives: cmdEncoder->_mtlPrimitiveType
+                        [cmdEncoder->_mtlRenderEncoder drawPrimitives: cmdEncoder->_renderingState.getPrimitiveType()
                                                        indirectBuffer: mtlIndBuff
                                                  indirectBufferOffset: mtlIndBuffOfst];
                         mtlIndBuffOfst += needsInstanceAdjustment ? sizeof(MTLDrawPrimitivesIndirectArguments) : _mtlIndirectBufferStride;
@@ -987,6 +990,7 @@ VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->restartMetalRenderPassIfNeeded();
 	encode(cmdEncoder, cmdEncoder->_graphicsResourcesState._mtlIndexBufferBinding);
 }
 
@@ -996,7 +1000,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 
     MVKIndexMTLBufferBinding ibb = ibbOrig;
 	MVKIndexMTLBufferBinding ibbTriFan = ibb;
-    auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
+    auto* pipeline = cmdEncoder->_graphicsPipelineState.getGraphicsPipeline();
 
 	MVKVertexAdjustments vtxAdjmts;
 	vtxAdjmts.mtlIndexType = ibb.mtlIndexType;
@@ -1031,7 +1035,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
         // encoding and execution. So we don't know how big to make the buffers.
         // We must assume an arbitrarily large number of vertices may be submitted.
         // But not too many, or we'll exhaust available VRAM.
-        inControlPointCount = pipeline->getInputControlPointCount();
+        inControlPointCount = cmdEncoder->_renderingState.getPatchControlPoints();
         outControlPointCount = pipeline->getOutputControlPointCount();
         vertexCount = kMVKMaxDrawIndirectVertexCount;
         patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
@@ -1312,7 +1316,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
                         cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->beginMetalRenderPass();
                     } else {
 						cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _directCmdFirstInstance);
-                        [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_mtlPrimitiveType
+                        [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_renderingState.getPrimitiveType()
                                                                    indexType: (MTLIndexType)ibb.mtlIndexType
                                                                  indexBuffer: ibb.mtlBuffer
                                                            indexBufferOffset: ibb.offset

@@ -383,6 +383,9 @@ MTLViewport mvkMTLViewportFromVkViewport(VkViewport vkViewport);
 /** Returns the Metal MTLScissorRect corresponding to the specified Vulkan VkRect2D. */
 MTLScissorRect mvkMTLScissorRectFromVkRect2D(VkRect2D vkRect);
 
+/** Returns the Vulkan VkRect2D corresponding to the specified  Metal MTLScissorRect. */
+VkRect2D mvkVkRect2DFromMTLScissorRect(MTLScissorRect mtlScissorRect);
+
 /** Returns the Metal MTLCompareFunction corresponding to the specified Vulkan VkCompareOp, */
 MTLCompareFunction mvkMTLCompareFunctionFromVkCompareOp(VkCompareOp vkOp);
 
@@ -414,13 +417,13 @@ MTLWinding mvkMTLWindingFromSpvExecutionMode(uint32_t spvMode);
 MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionMode(uint32_t spvMode);
 
 /**
- * Returns the combination of Metal MTLRenderStage bits corresponding to the specified Vulkan VkPiplineStageFlags,
+ * Returns the combination of Metal MTLRenderStage bits corresponding to the specified Vulkan VkPipelineStageFlags2,
  * taking into consideration whether the barrier is to be placed before or after the specified pipeline stages.
  */
-MTLRenderStages mvkMTLRenderStagesFromVkPipelineStageFlags(VkPipelineStageFlags vkStages, bool placeBarrierBefore);
+MTLRenderStages mvkMTLRenderStagesFromVkPipelineStageFlags(VkPipelineStageFlags2 vkStages, bool placeBarrierBefore);
 
-/** Returns the combination of Metal MTLBarrierScope bits corresponding to the specified Vulkan VkAccessFlags. */
-MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFlags vkAccess);
+/** Returns the combination of Metal MTLBarrierScope bits corresponding to the specified Vulkan VkAccessFlags2. */
+MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFlags2 vkAccess);
 
 #pragma mark -
 #pragma mark Geometry conversions

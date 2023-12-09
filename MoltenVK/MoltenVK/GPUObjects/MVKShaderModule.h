@@ -43,7 +43,7 @@ using namespace mvk;
 typedef struct MVKMTLFunction {
 	SPIRVToMSLConversionResultInfo shaderConversionResults;
 	MTLSize threadGroupSize;
-	inline id<MTLFunction> getMTLFunction() { return _mtlFunction; }
+	id<MTLFunction> getMTLFunction() { return _mtlFunction; }
 
 	MVKMTLFunction(id<MTLFunction> mtlFunc, const SPIRVToMSLConversionResultInfo scRslts, MTLSize tgSize);
 	MVKMTLFunction(const MVKMTLFunction& other);

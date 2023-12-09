@@ -94,25 +94,21 @@ VkResult MVKBuffer::bindDeviceMemory2(const VkBindBufferMemoryInfo* pBindInfo) {
 	return bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset);
 }
 
-void MVKBuffer::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
-								   VkPipelineStageFlags dstStageMask,
-								   MVKPipelineBarrier& barrier,
+void MVKBuffer::applyMemoryBarrier(MVKPipelineBarrier& barrier,
                                    MVKCommandEncoder* cmdEncoder,
                                    MVKCommandUse cmdUse) {
 #if MVK_MACOS
-	if ( needsHostReadSync(srcStageMask, dstStageMask, barrier) ) {
+	if ( needsHostReadSync(barrier) ) {
 		[cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeResource: getMTLBuffer()];
 	}
 #endif
 }
 
-void MVKBuffer::applyBufferMemoryBarrier(VkPipelineStageFlags srcStageMask,
-										 VkPipelineStageFlags dstStageMask,
-										 MVKPipelineBarrier& barrier,
+void MVKBuffer::applyBufferMemoryBarrier(MVKPipelineBarrier& barrier,
                                          MVKCommandEncoder* cmdEncoder,
                                          MVKCommandUse cmdUse) {
 #if MVK_MACOS
-	if ( needsHostReadSync(srcStageMask, dstStageMask, barrier) ) {
+	if ( needsHostReadSync(barrier) ) {
 		[cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeResource: getMTLBuffer()];
 	}
 #endif
@@ -120,11 +116,9 @@ void MVKBuffer::applyBufferMemoryBarrier(VkPipelineStageFlags srcStageMask,
 
 // Returns whether the specified buffer memory barrier requires a sync between this
 // buffer and host memory for the purpose of the host reading texture memory.
-bool MVKBuffer::needsHostReadSync(VkPipelineStageFlags srcStageMask,
-								  VkPipelineStageFlags dstStageMask,
-								  MVKPipelineBarrier& barrier) {
+bool MVKBuffer::needsHostReadSync(MVKPipelineBarrier& barrier) {
 #if MVK_MACOS
-	return (mvkIsAnyFlagEnabled(dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
+	return (mvkIsAnyFlagEnabled(barrier.dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
 			mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT)) &&
 			isMemoryHostAccessible() && (!isMemoryHostCoherent() || _isHostCoherentTexelBuffer));
 #endif
@@ -238,6 +232,7 @@ MVKBuffer::MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo) :
 }
 
 void MVKBuffer::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
+	if ( !handleTypes ) { return; }
 	if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR)) {
 		_externalMemoryHandleTypes = handleTypes;
 		auto& xmProps = getPhysicalDevice()->getExternalBufferProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR);

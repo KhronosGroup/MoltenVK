@@ -67,6 +67,7 @@ typedef struct MVKMTLBufferBinding {
     union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; const void* mtlBytes; }; // aliases
     VkDeviceSize offset = 0;
     uint32_t size = 0;
+	uint32_t stride = 0;
 	uint16_t index = 0;
     bool justOffset = false;
     bool isDirty = true;
@@ -78,14 +79,16 @@ typedef struct MVKMTLBufferBinding {
     void update(const MVKMTLBufferBinding &other) {
         if (mtlBuffer != other.mtlBuffer || size != other.size || other.isInline) {
             mtlBuffer = other.mtlBuffer;
+			offset = other.offset;
             size = other.size;
+			stride = other.stride;
             isInline = other.isInline;
-            offset = other.offset;
             justOffset = false;
 			isOverridden = false;
 			isDirty = true;
-        } else if (offset != other.offset) {
+        } else if (offset != other.offset || stride != other.stride) {
             offset = other.offset;
+			stride = other.stride;
             justOffset = !isOverridden && (!isDirty || justOffset);
 			isOverridden = false;
             isDirty = true;
@@ -112,8 +115,10 @@ typedef struct MVKPipelineBarrier {
 	} MVKPipelineBarrierType;
 
 	MVKPipelineBarrierType type = None;
-	VkAccessFlags srcAccessMask = 0;
-	VkAccessFlags dstAccessMask = 0;
+	VkPipelineStageFlags2 srcStageMask = 0;
+	VkAccessFlags2 srcAccessMask = 0;
+	VkPipelineStageFlags2 dstStageMask = 0;
+	VkAccessFlags2 dstAccessMask = 0;
 	uint8_t srcQueueFamilyIndex = 0;
 	uint8_t dstQueueFamilyIndex = 0;
 	union { MVKBuffer* mvkBuffer = nullptr; MVKImage* mvkImage; MVKResource* mvkResource; };
@@ -136,15 +141,29 @@ typedef struct MVKPipelineBarrier {
 	bool isBufferBarrier() { return type == Buffer; }
 	bool isImageBarrier() { return type == Image; }
 
-	MVKPipelineBarrier(const VkMemoryBarrier& vkBarrier) :
+	MVKPipelineBarrier(const VkMemoryBarrier2& vkBarrier) :
 		type(Memory),
+		srcStageMask(vkBarrier.srcStageMask),
 		srcAccessMask(vkBarrier.srcAccessMask),
+		dstStageMask(vkBarrier.dstStageMask),
 		dstAccessMask(vkBarrier.dstAccessMask)
 		{}
 
-	MVKPipelineBarrier(const VkBufferMemoryBarrier& vkBarrier) :
-		type(Buffer),
+	MVKPipelineBarrier(const VkMemoryBarrier& vkBarrier,
+					   VkPipelineStageFlags srcStageMask,
+					   VkPipelineStageFlags dstStageMask) :
+		type(Memory),
+		srcStageMask(srcStageMask),
 		srcAccessMask(vkBarrier.srcAccessMask),
+		dstStageMask(dstStageMask),
+		dstAccessMask(vkBarrier.dstAccessMask)
+		{}
+
+	MVKPipelineBarrier(const VkBufferMemoryBarrier2& vkBarrier) :
+		type(Buffer),
+		srcStageMask(vkBarrier.srcStageMask),
+		srcAccessMask(vkBarrier.srcAccessMask),
+		dstStageMask(vkBarrier.dstStageMask),
 		dstAccessMask(vkBarrier.dstAccessMask),
 		srcQueueFamilyIndex(vkBarrier.srcQueueFamilyIndex),
 		dstQueueFamilyIndex(vkBarrier.dstQueueFamilyIndex),
@@ -153,9 +172,45 @@ typedef struct MVKPipelineBarrier {
 		size(vkBarrier.size)
 		{}
 
-	MVKPipelineBarrier(const VkImageMemoryBarrier& vkBarrier) :
-		type(Image),
+	MVKPipelineBarrier(const VkBufferMemoryBarrier& vkBarrier,
+					   VkPipelineStageFlags srcStageMask,
+					   VkPipelineStageFlags dstStageMask) :
+		type(Buffer),
+		srcStageMask(srcStageMask),
 		srcAccessMask(vkBarrier.srcAccessMask),
+		dstStageMask(dstStageMask),
+		dstAccessMask(vkBarrier.dstAccessMask),
+		srcQueueFamilyIndex(vkBarrier.srcQueueFamilyIndex),
+		dstQueueFamilyIndex(vkBarrier.dstQueueFamilyIndex),
+		mvkBuffer((MVKBuffer*)vkBarrier.buffer),
+		offset(vkBarrier.offset),
+		size(vkBarrier.size)
+		{}
+
+	MVKPipelineBarrier(const VkImageMemoryBarrier2& vkBarrier) :
+		type(Image),
+		srcStageMask(vkBarrier.srcStageMask),
+		srcAccessMask(vkBarrier.srcAccessMask),
+		dstStageMask(vkBarrier.dstStageMask),
+		dstAccessMask(vkBarrier.dstAccessMask),
+		srcQueueFamilyIndex(vkBarrier.srcQueueFamilyIndex),
+		dstQueueFamilyIndex(vkBarrier.dstQueueFamilyIndex),
+		mvkImage((MVKImage*)vkBarrier.image),
+		newLayout(vkBarrier.newLayout),
+		aspectMask(vkBarrier.subresourceRange.aspectMask),
+		baseArrayLayer(vkBarrier.subresourceRange.baseArrayLayer),
+		layerCount(vkBarrier.subresourceRange.layerCount),
+		baseMipLevel(vkBarrier.subresourceRange.baseMipLevel),
+		levelCount(vkBarrier.subresourceRange.levelCount)
+		{}
+
+	MVKPipelineBarrier(const VkImageMemoryBarrier& vkBarrier,
+					   VkPipelineStageFlags srcStageMask,
+					   VkPipelineStageFlags dstStageMask) :
+		type(Image),
+		srcStageMask(srcStageMask),
+		srcAccessMask(vkBarrier.srcAccessMask),
+		dstStageMask(dstStageMask),
 		dstAccessMask(vkBarrier.dstAccessMask),
 		srcQueueFamilyIndex(vkBarrier.srcQueueFamilyIndex),
 		dstQueueFamilyIndex(vkBarrier.dstQueueFamilyIndex),

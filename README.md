@@ -149,24 +149,17 @@ for which to build the external libraries. The platform choices include:
 	--maccat 
 	--tvos 
 	--tvossim
-	--visionos 
-	--visionossim
-
-The `visionos` and `visionossim` selections require Xcode 15+.
 
 You can specify multiple of these selections. The result is a single `XCFramework` 
 for each external dependency library, with each `XCFramework` containing binaries for 
 each of the requested platforms. 
 
-The `--all` selection is the same as entering all of the other platform choices, except 
-`--visionos` and `--visionossim`, and will result in a single `XCFramework` for each 
-external dependency library, with each `XCFramework` containing binaries for all supported 
-platforms and simulators. The `--visionos` and `--visionossim` selections must be invoked
-with a separate invocation of `fetchDependencies`, because those selections require 
-Xcode 15+, and will cause a multi-platform build on older versions of Xcode to abort.
+The `--all` selection is the same as entering all of the other platform choices, 
+and will result in a single `XCFramework` for each external dependency library, 
+with each `XCFramework` containing binaries for all supported platforms and simulators. 
 
-Running `fetchDependencies` repeatedly with different platforms will accumulate 
-targets in the `XCFramework`.
+Running `fetchDependencies` repeatedly with different platforms will accumulate targets 
+in the `XCFramework`, if the `--keep-cache` option is used on each invocation.
 
 For more information about the external open-source libraries used by **MoltenVK**,
 see the [`ExternalRevisions/README.md`](ExternalRevisions/README.md) document.
@@ -263,8 +256,6 @@ from the command line. The following `make` targets are provided:
 	make maccat
 	make tvos
 	make tvossim
-	make visionos
-	make visionossim
 	
 	make all-debug
 	make macos-debug
@@ -273,15 +264,12 @@ from the command line. The following `make` targets are provided:
 	make maccat-debug
 	make tvos-debug
 	make tvossim-debug
-	make visionos-debug
-	make visionossim-debug
 	
 	make clean
 	make install
 
 - Running `make` repeatedly with different targets will accumulate binaries for these different targets.
-- The `all` target executes all platform targets, except `visionos` and `visionossim`, as these require
-  Xcode 15+, and will abort a multi-platform build on older versions of Xcode.
+- The `all` target executes all platform targets.
 - The `all` target is the default target. Running `make` with no arguments is the same as running `make all`.
 - The `*-debug` targets build the binaries using the **_Debug_** configuration.
 - The `install` target will copy the most recently built `MoltenVK.xcframework` into the 

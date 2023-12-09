@@ -504,11 +504,12 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
 			if (cmdEncoder->getDevice()->_pMetalFeatures->nativeTextureSwizzle &&
 				_srcImage->needsSwizzle()) {
 				// Use a view that has a swizzle on it.
-				srcMTLTex = [[srcMTLTex newTextureViewWithPixelFormat:srcMTLTex.pixelFormat
-														  textureType:srcMTLTex.textureType
-															   levels:NSMakeRange(0, srcMTLTex.mipmapLevelCount)
-															   slices:NSMakeRange(0, srcMTLTex.arrayLength)
-															  swizzle:_srcImage->getPixelFormats()->getMTLTextureSwizzleChannels(_srcImage->getVkFormat())] autorelease];
+				srcMTLTex = [srcMTLTex newTextureViewWithPixelFormat:srcMTLTex.pixelFormat
+														 textureType:srcMTLTex.textureType
+															  levels:NSMakeRange(0, srcMTLTex.mipmapLevelCount)
+															  slices:NSMakeRange(0, srcMTLTex.arrayLength)
+															 swizzle:_srcImage->getPixelFormats()->getMTLTextureSwizzleChannels(_srcImage->getVkFormat())];
+				[cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) { [srcMTLTex release]; }];
 			}
             cmdEncoder->endCurrentMetalEncoding();
 
@@ -551,9 +552,7 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                                                          textureType: MTLTextureType2DArray
                                                               levels: NSMakeRange(0, srcMTLTex.mipmapLevelCount)
                                                               slices: NSMakeRange(0, srcMTLTex.arrayLength)];
-                [cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) {
-                    [srcMTLTex release];
-                }];
+                [cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) { [srcMTLTex release]; }];
             }
             blitKey.dstMTLPixelFormat = _dstImage->getMTLPixelFormat(dstPlaneIndex);
             blitKey.srcFilter = mvkMTLSamplerMinMagFilterFromVkFilter(_filter);
@@ -655,9 +654,7 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
 #endif
                         }
                         id<MTLTexture> stencilMTLTex = [srcMTLTex newTextureViewWithPixelFormat: stencilFmt];
-                        [cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) {
-                            [stencilMTLTex release];
-                        }];
+                        [cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) { [stencilMTLTex release]; }];
                         [mtlRendEnc setFragmentTexture: stencilMTLTex atIndex: 1];
                     } else {
                         [mtlRendEnc setFragmentTexture: srcMTLTex atIndex: 1];
@@ -1509,11 +1506,10 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
 	// Return to the previous rendering state on the next render activity
 	cmdEncoder->_graphicsPipelineState.markDirty();
+	cmdEncoder->_graphicsResourcesState.markDirty();
 	cmdEncoder->_depthStencilState.markDirty();
-	cmdEncoder->_stencilReferenceValueState.markDirty();
-    cmdEncoder->_depthBiasState.markDirty();
-    cmdEncoder->_viewportState.markDirty();
-    cmdEncoder->_scissorState.markDirty();
+	cmdEncoder->_renderingState.markDirty();
+	cmdEncoder->_occlusionQueryState.markDirty();
 }
 
 template <size_t N>

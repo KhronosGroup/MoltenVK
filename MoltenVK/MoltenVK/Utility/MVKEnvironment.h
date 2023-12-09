@@ -23,6 +23,7 @@
 #include "mvk_vulkan.h"
 #include "mvk_config.h"
 #include "MVKLogging.h"
+#include <string>
 
 
 // Expose MoltenVK Apple surface extension functionality
@@ -69,7 +70,7 @@
 #endif
 
 #if MVK_TVOS
-# define MVK_SUPPORT_IOSURFACE_BOOL (__TV_OS_VERSION_MIN_REQUIRED >= __TVOS_11_0)
+#	define MVK_SUPPORT_IOSURFACE_BOOL (__TV_OS_VERSION_MIN_REQUIRED >= __TVOS_11_0)
 #endif
 
 
@@ -79,8 +80,24 @@
 /** Global function to access MoltenVK configuration info. */
 const MVKConfiguration& mvkConfig();
 
-/** Global function to update MoltenVK configuration info. */
+/** Sets the MoltenVK global configuration content. */
 void mvkSetConfig(const MVKConfiguration& mvkConfig);
+
+/** 
+ * Sets the content from the source config into the destination 
+ * config, while using the string object to retain string content.
+ */
+void mvkSetConfig(MVKConfiguration& dstMVKConfig, 
+				  const MVKConfiguration& srcMVKConfig,
+				  std::string& autoGPUCaptureOutputFilepath);
+
+/**
+ * Enable debug mode.
+ * By default, disabled for Release builds and enabled for Debug builds.
+ */
+#ifndef MVK_CONFIG_DEBUG
+#	define MVK_CONFIG_DEBUG		MVK_DEBUG
+#endif
 
 /** Flip the vertex coordinate in shaders. Enabled by default. */
 #ifndef MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y
@@ -244,11 +261,17 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
 #ifndef MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE
 #   define MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE    MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE
 #endif
-#ifndef MVK_ALLOW_METAL_EVENTS		// Deprecated
-#   define MVK_ALLOW_METAL_EVENTS    1
+#ifndef MVK_CONFIG_ALLOW_METAL_EVENTS
+#   define MVK_CONFIG_ALLOW_METAL_EVENTS    1
 #endif
-#ifndef MVK_ALLOW_METAL_FENCES		// Deprecated
-#   define MVK_ALLOW_METAL_FENCES    1
+#ifndef MVK_ALLOW_METAL_EVENTS				// Deprecated
+#   define MVK_ALLOW_METAL_EVENTS    		MVK_CONFIG_ALLOW_METAL_EVENTS
+#endif
+#ifndef MVK_CONFIG_ALLOW_METAL_FENCES
+#   define MVK_CONFIG_ALLOW_METAL_FENCES    1
+#endif
+#ifndef MVK_ALLOW_METAL_FENCES				// Deprecated
+#   define MVK_ALLOW_METAL_FENCES    		MVK_CONFIG_ALLOW_METAL_FENCES
 #endif
 
 /** Substitute Metal 2D textures for Vulkan 1D images. Enabled by default. */
@@ -302,4 +325,12 @@ void mvkSetConfig(const MVKConfiguration& mvkConfig);
  */
 #ifndef MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION
 #  	define MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION    0
+#endif
+
+/**
+ * The alpha value of a lowpass filter tracking VkPhysicalDeviceLimits::timestampPeriod.
+ * This can be set to a float between 0.0 and 1.0.
+ */
+#ifndef MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA
+#  	define MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA    1.0
 #endif

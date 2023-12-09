@@ -30,15 +30,9 @@
 	struct demo demo;
 }
 
--(void) dealloc {
-	demo_cleanup(&demo);
-	[_displayLink release];
-	[super dealloc];
-}
-
-/** Since this is a single-view app, init Vulkan when the view is loaded. */
--(void) viewDidLoad {
-	[super viewDidLoad];
+/** Since this is a single-view app, initialize Vulkan as view is appearing. */
+-(void) viewWillAppear: (BOOL) animated {
+	[super viewWillAppear: animated];
 
 	self.view.contentScaleFactor = UIScreen.mainScreen.nativeScale;
 
@@ -66,6 +60,13 @@
 -(void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id)coordinator {
 	[super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
 	demo_resize(&demo);
+}
+
+-(void) viewDidDisappear: (BOOL) animated {
+	[_displayLink invalidate];
+	[_displayLink release];
+	demo_cleanup(&demo);
+	[super viewDidDisappear: animated];
 }
 
 @end

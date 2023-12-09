@@ -23,12 +23,9 @@
 #include "MVKSmallVector.h"
 #include <mutex>
 
-#import "CAMetalLayer+MoltenVK.h"
 #import <Metal/Metal.h>
 
 class MVKWatermark;
-
-@class MVKBlockObserver;
 
 
 #pragma mark -
@@ -45,11 +42,20 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT; }
 
+	/** Returns the CAMetalLayer underlying the surface used by this swapchain. */
+	CAMetalLayer* getCAMetalLayer();
+
+	/** Returns whether the surface is headless. */
+	bool isHeadless();
+
 	/** Returns the number of images in this swapchain. */
-	inline uint32_t getImageCount() { return (uint32_t)_presentableImages.size(); }
+	uint32_t getImageCount() { return (uint32_t)_presentableImages.size(); }
+
+	/** Returns the size of the images in this swapchain. */
+	VkExtent2D getImageExtent() { return _imageExtent; }
 
 	/** Returns the image at the specified index. */
-	inline MVKPresentableSwapchainImage* getPresentableImage(uint32_t index) { return _presentableImages[index]; }
+	MVKPresentableSwapchainImage* getPresentableImage(uint32_t index) { return _presentableImages[index]; }
 
 	/**
 	 * Returns the array of presentable images associated with this swapchain.
@@ -76,19 +82,8 @@ public:
 	/** Releases swapchain images. */
 	VkResult releaseImages(const VkReleaseSwapchainImagesInfoEXT* pReleaseInfo);
 
-	/** Returns whether the parent surface is now lost and this swapchain must be recreated. */
-	bool getIsSurfaceLost() { return _surfaceLost; }
-
-	/** Returns whether this swapchain is optimally sized for the surface. */
-	bool hasOptimalSurface();
-
 	/** Returns the status of the surface. Surface loss takes precedence over sub-optimal errors. */
-	VkResult getSurfaceStatus() {
-		if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
-		if (getIsSurfaceLost()) { return VK_ERROR_SURFACE_LOST_KHR; }
-		if ( !hasOptimalSurface() ) { return VK_SUBOPTIMAL_KHR; }
-		return VK_SUCCESS;
-	}
+	VkResult getSurfaceStatus();
 
 	/** Adds HDR metadata to this swapchain. */
 	void setHDRMetadataEXT(const VkHdrMetadataEXT& metadata);
@@ -118,45 +113,29 @@ protected:
 						  VkSwapchainPresentScalingCreateInfoEXT* pScalingInfo,
 						  uint32_t imgCnt);
 	void initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
-	void releaseLayer();
-	void releaseUndisplayedSurfaces();
+	bool getIsSurfaceLost();
+	bool hasOptimalSurface();
 	uint64_t getNextAcquisitionID();
-    void willPresentSurface(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void markFrameInterval();
-	void recordPresentTime(const MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime = 0);
+	void beginPresentation(const MVKImagePresentInfo& presentInfo);
+	void endPresentation(const MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime = 0);
+	void forceUnpresentedImageCompletion();
 
-	CAMetalLayer* _mtlLayer = nil;
+	MVKSurface* _surface = nullptr;
     MVKWatermark* _licenseWatermark = nullptr;
 	MVKSmallVector<MVKPresentableSwapchainImage*, kMVKMaxSwapchainImageCount> _presentableImages;
 	MVKSmallVector<VkPresentModeKHR, 2> _compatiblePresentModes;
 	static const int kMaxPresentationHistory = 60;
 	VkPastPresentationTimingGOOGLE _presentTimingHistory[kMaxPresentationHistory];
 	std::atomic<uint64_t> _currentAcquisitionID = 0;
-    MVKBlockObserver* _layerObserver = nil;
 	std::mutex _presentHistoryLock;
-	std::mutex _layerLock;
 	uint64_t _lastFrameTime = 0;
-	VkExtent2D _mtlLayerDrawableExtent = {0, 0};
+	VkExtent2D _imageExtent = {0, 0};
+	std::atomic<uint32_t> _unpresentedImageCount = 0;
 	uint32_t _currentPerfLogFrameCount = 0;
 	uint32_t _presentHistoryCount = 0;
 	uint32_t _presentHistoryIndex = 0;
 	uint32_t _presentHistoryHeadIndex = 0;
-	std::atomic<bool> _surfaceLost = false;
 	bool _isDeliberatelyScaled = false;
 };
-
-
-#pragma mark -
-#pragma mark Support functions
-
-/**
- * Returns the natural extent of the CAMetalLayer.
- *
- * The natural extent is the size of the bounds property of the layer,
- * multiplied by the contentsScale property of the layer, rounded
- * to nearest integer using half-to-even rounding.
- */
-static inline VkExtent2D mvkGetNaturalExtent(CAMetalLayer* mtlLayer) {
-	return mvkVkExtent2DFromCGSize(mtlLayer.naturalDrawableSizeMVK);
-}

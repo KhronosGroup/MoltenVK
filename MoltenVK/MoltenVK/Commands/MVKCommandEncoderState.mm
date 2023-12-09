@@ -25,20 +25,31 @@
 
 using namespace std;
 
+#define shouldUpdateFace(face)  mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_##face##_BIT)
+
 
 #pragma mark -
 #pragma mark MVKCommandEncoderState
 
 MVKVulkanAPIObject* MVKCommandEncoderState::getVulkanAPIObject() { return _cmdEncoder->getVulkanAPIObject(); };
+
 MVKDevice* MVKCommandEncoderState::getDevice() { return _cmdEncoder->getDevice(); }
+
+bool MVKCommandEncoderState::isDynamicState(MVKRenderStateType state) {
+	auto* gpl = _cmdEncoder->_graphicsPipelineState.getGraphicsPipeline();
+	return !gpl || gpl->isDynamicState(state);
+}
 
 
 #pragma mark -
 #pragma mark MVKPipelineCommandEncoderState
 
 void MVKPipelineCommandEncoderState::bindPipeline(MVKPipeline* pipeline) {
-    if (pipeline != _pipeline) markDirty();
-    _pipeline = pipeline;
+	if (pipeline == _pipeline) { return; }
+
+	_pipeline = pipeline;
+	_pipeline->wasBound(_cmdEncoder);
+	markDirty();
 }
 
 MVKPipeline* MVKPipelineCommandEncoderState::getPipeline() { return _pipeline; }
@@ -52,112 +63,6 @@ void MVKPipelineCommandEncoderState::encodeImpl(uint32_t stage) {
 
 
 #pragma mark -
-#pragma mark MVKViewportCommandEncoderState
-
-void MVKViewportCommandEncoderState::setViewports(const MVKArrayRef<VkViewport> viewports,
-												  uint32_t firstViewport,
-												  bool isSettingDynamically) {
-
-	size_t vpCnt = viewports.size;
-	uint32_t maxViewports = getDevice()->_pProperties->limits.maxViewports;
-	if ((firstViewport + vpCnt > maxViewports) ||
-		(firstViewport >= maxViewports) ||
-		(isSettingDynamically && vpCnt == 0))
-		return;
-
-	auto& usingViewports = isSettingDynamically ? _dynamicViewports : _viewports;
-
-	if (firstViewport + vpCnt > usingViewports.size()) {
-		usingViewports.resize(firstViewport + vpCnt);
-	}
-
-    bool dirty;
-	bool mustSetDynamically = _cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
-	if (isSettingDynamically || (!mustSetDynamically && vpCnt > 0)) {
-        dirty = memcmp(&usingViewports[firstViewport], &viewports[0], vpCnt * sizeof(VkViewport)) != 0;
-		std::copy(viewports.begin(), viewports.end(), usingViewports.begin() + firstViewport);
-	} else {
-        dirty = !usingViewports.empty();
-		usingViewports.clear();
-	}
-
-	if (dirty) markDirty();
-}
-
-void MVKViewportCommandEncoderState::encodeImpl(uint32_t stage) {
-    if (stage != kMVKGraphicsStageRasterization) { return; }
-	auto& usingViewports = _viewports.size() > 0 ? _viewports : _dynamicViewports;
-	if (usingViewports.empty()) { return; }
-
-    if (_cmdEncoder->_pDeviceFeatures->multiViewport) {
-		size_t vpCnt = usingViewports.size();
-		MTLViewport mtlViewports[vpCnt];
-		for (uint32_t vpIdx = 0; vpIdx < vpCnt; vpIdx++) {
-			mtlViewports[vpIdx] = mvkMTLViewportFromVkViewport(usingViewports[vpIdx]);
-		}
-#if MVK_MACOS_OR_IOS
-        [_cmdEncoder->_mtlRenderEncoder setViewports: mtlViewports count: vpCnt];
-#endif
-	} else {
-        [_cmdEncoder->_mtlRenderEncoder setViewport: mvkMTLViewportFromVkViewport(usingViewports[0])];
-    }
-}
-
-
-#pragma mark -
-#pragma mark MVKScissorCommandEncoderState
-
-void MVKScissorCommandEncoderState::setScissors(const MVKArrayRef<VkRect2D> scissors,
-                                                uint32_t firstScissor,
-												bool isSettingDynamically) {
-
-	size_t sCnt = scissors.size;
-	uint32_t maxScissors = getDevice()->_pProperties->limits.maxViewports;
-	if ((firstScissor + sCnt > maxScissors) ||
-		(firstScissor >= maxScissors) ||
-		(isSettingDynamically && sCnt == 0))
-		return;
-
-	auto& usingScissors = isSettingDynamically ? _dynamicScissors : _scissors;
-
-	if (firstScissor + sCnt > usingScissors.size()) {
-		usingScissors.resize(firstScissor + sCnt);
-	}
-
-    bool dirty;
-	bool mustSetDynamically = _cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_SCISSOR);
-	if (isSettingDynamically || (!mustSetDynamically && sCnt > 0)) {
-        dirty = memcmp(&usingScissors[firstScissor], &scissors[0], sCnt * sizeof(VkRect2D)) != 0;
-		std::copy(scissors.begin(), scissors.end(), usingScissors.begin() + firstScissor);
-	} else {
-        dirty = !usingScissors.empty();
-		usingScissors.clear();
-	}
-
-	if (dirty) markDirty();
-}
-
-void MVKScissorCommandEncoderState::encodeImpl(uint32_t stage) {
-	if (stage != kMVKGraphicsStageRasterization) { return; }
-	auto& usingScissors = _scissors.size() > 0 ? _scissors : _dynamicScissors;
-	if (usingScissors.empty()) { return; }
-
-	if (_cmdEncoder->_pDeviceFeatures->multiViewport) {
-		size_t sCnt = usingScissors.size();
-		MTLScissorRect mtlScissors[sCnt];
-		for (uint32_t sIdx = 0; sIdx < sCnt; sIdx++) {
-			mtlScissors[sIdx] = mvkMTLScissorRectFromVkRect2D(_cmdEncoder->clipToRenderArea(usingScissors[sIdx]));
-		}
-#if MVK_MACOS_OR_IOS
-		[_cmdEncoder->_mtlRenderEncoder setScissorRects: mtlScissors count: sCnt];
-#endif
-	} else {
-		[_cmdEncoder->_mtlRenderEncoder setScissorRect: mvkMTLScissorRectFromVkRect2D(_cmdEncoder->clipToRenderArea(usingScissors[0]))];
-	}
-}
-
-
-#pragma mark -
 #pragma mark MVKPushConstantsCommandEncoderState
 
 void MVKPushConstantsCommandEncoderState:: setPushConstants(uint32_t offset, MVKArrayRef<char> pushConstants) {
@@ -165,7 +70,7 @@ void MVKPushConstantsCommandEncoderState:: setPushConstants(uint32_t offset, MVK
 	// Typically any MSL struct that contains a float4 will also have a size that is rounded up to a multiple of a float4 size.
 	// Ensure that we pass along enough content to cover this extra space even if it is never actually accessed by the shader.
 	size_t pcSizeAlign = getDevice()->_pMetalFeatures->pushConstantSizeAlignment;
-    size_t pcSize = pushConstants.size;
+    size_t pcSize = pushConstants.size();
 	size_t pcBuffSize = mvkAlignByteCount(offset + pcSize, pcSizeAlign);
     mvkEnsureSize(_pushConstants, pcBuffSize);
     copy(pushConstants.begin(), pushConstants.end(), _pushConstants.begin() + offset);
@@ -245,7 +150,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
 }
 
 bool MVKPushConstantsCommandEncoderState::isTessellating() {
-	MVKGraphicsPipeline* gp = (MVKGraphicsPipeline*)_cmdEncoder->_graphicsPipelineState.getPipeline();
+	auto* gp = _cmdEncoder->_graphicsPipelineState.getGraphicsPipeline();
 	return gp ? gp->isTessellationPipeline() : false;
 }
 
@@ -254,74 +159,84 @@ bool MVKPushConstantsCommandEncoderState::isTessellating() {
 #pragma mark MVKDepthStencilCommandEncoderState
 
 void MVKDepthStencilCommandEncoderState:: setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo) {
-    auto oldData = _depthStencilData;
+	auto& depthEnabled = _depthTestEnabled[StateScope::Static];
+	auto oldDepthEnabled = depthEnabled;
+	depthEnabled = static_cast<bool>(vkDepthStencilInfo.depthTestEnable);
 
-    if (vkDepthStencilInfo.depthTestEnable) {
-        _depthStencilData.depthCompareFunction = mvkMTLCompareFunctionFromVkCompareOp(vkDepthStencilInfo.depthCompareOp);
-        _depthStencilData.depthWriteEnabled = vkDepthStencilInfo.depthWriteEnable;
-    } else {
-        _depthStencilData.depthCompareFunction = kMVKMTLDepthStencilDescriptorDataDefault.depthCompareFunction;
-        _depthStencilData.depthWriteEnabled = kMVKMTLDepthStencilDescriptorDataDefault.depthWriteEnabled;
-    }
+	auto& dsData = _depthStencilData[StateScope::Static];
+	auto oldData = dsData;
+	dsData.depthCompareFunction = mvkMTLCompareFunctionFromVkCompareOp(vkDepthStencilInfo.depthCompareOp);
+	dsData.depthWriteEnabled = vkDepthStencilInfo.depthWriteEnable;
 
-    setStencilState(_depthStencilData.frontFaceStencilData, vkDepthStencilInfo.front, vkDepthStencilInfo.stencilTestEnable);
-    setStencilState(_depthStencilData.backFaceStencilData, vkDepthStencilInfo.back, vkDepthStencilInfo.stencilTestEnable);
+	dsData.stencilTestEnabled = static_cast<bool>(vkDepthStencilInfo.stencilTestEnable);
+	setStencilState(dsData.frontFaceStencilData, vkDepthStencilInfo.front);
+	setStencilState(dsData.backFaceStencilData, vkDepthStencilInfo.back);
 
-    if (!(oldData == _depthStencilData)) markDirty();
+	if (depthEnabled != oldDepthEnabled || dsData != oldData) { markDirty(); }
 }
 
-void MVKDepthStencilCommandEncoderState::setStencilState(MVKMTLStencilDescriptorData& stencilInfo,
-                                                         const VkStencilOpState& vkStencil,
-                                                         bool enabled) {
-    if ( !enabled ) {
-        stencilInfo = kMVKMTLStencilDescriptorDataDefault;
-        return;
-    }
-
-    stencilInfo.enabled = true;
-    stencilInfo.stencilCompareFunction = mvkMTLCompareFunctionFromVkCompareOp(vkStencil.compareOp);
-    stencilInfo.stencilFailureOperation = mvkMTLStencilOperationFromVkStencilOp(vkStencil.failOp);
-    stencilInfo.depthFailureOperation = mvkMTLStencilOperationFromVkStencilOp(vkStencil.depthFailOp);
-    stencilInfo.depthStencilPassOperation = mvkMTLStencilOperationFromVkStencilOp(vkStencil.passOp);
-
-    if ( !_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK) ) {
-		stencilInfo.readMask = vkStencil.compareMask;
-	}
-    if ( !_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK) ) {
-		stencilInfo.writeMask = vkStencil.writeMask;
-	}
+void MVKDepthStencilCommandEncoderState::setStencilState(MVKMTLStencilDescriptorData& sData,
+                                                         const VkStencilOpState& vkStencil) {
+	sData.readMask = vkStencil.compareMask;
+	sData.writeMask = vkStencil.writeMask;
+    sData.stencilCompareFunction = mvkMTLCompareFunctionFromVkCompareOp(vkStencil.compareOp);
+    sData.stencilFailureOperation = mvkMTLStencilOperationFromVkStencilOp(vkStencil.failOp);
+    sData.depthFailureOperation = mvkMTLStencilOperationFromVkStencilOp(vkStencil.depthFailOp);
+    sData.depthStencilPassOperation = mvkMTLStencilOperationFromVkStencilOp(vkStencil.passOp);
 }
 
-// We don't check for dynamic state here, because if this is called before pipeline is set,
-// it may not be accurate, and if not dynamic, pipeline will override when it is encoded anyway.
+void MVKDepthStencilCommandEncoderState::setDepthTestEnable(VkBool32 depthTestEnable) {
+	setContent(_depthTestEnabled[StateScope::Dynamic], static_cast<bool>(depthTestEnable));
+}
+
+void MVKDepthStencilCommandEncoderState::setDepthWriteEnable(VkBool32 depthWriteEnable) {
+	setContent(_depthStencilData[StateScope::Dynamic].depthWriteEnabled, static_cast<bool>(depthWriteEnable));
+}
+
+void MVKDepthStencilCommandEncoderState::setDepthCompareOp(VkCompareOp depthCompareOp) {
+	setContent(_depthStencilData[StateScope::Dynamic].depthCompareFunction,
+			   (uint8_t)mvkMTLCompareFunctionFromVkCompareOp(depthCompareOp));
+}
+
+void MVKDepthStencilCommandEncoderState::setStencilTestEnable(VkBool32 stencilTestEnable) {
+	setContent(_depthStencilData[StateScope::Dynamic].stencilTestEnabled, static_cast<bool>(stencilTestEnable));
+}
+
+void MVKDepthStencilCommandEncoderState::setStencilOp(MVKMTLStencilDescriptorData& sData,
+													  VkStencilOp failOp,
+													  VkStencilOp passOp,
+													  VkStencilOp depthFailOp,
+													  VkCompareOp compareOp) {
+	auto oldData = sData;
+	sData.stencilCompareFunction = mvkMTLCompareFunctionFromVkCompareOp(compareOp);
+	sData.stencilFailureOperation = mvkMTLStencilOperationFromVkStencilOp(failOp);
+	sData.depthFailureOperation = mvkMTLStencilOperationFromVkStencilOp(depthFailOp);
+	sData.depthStencilPassOperation = mvkMTLStencilOperationFromVkStencilOp(passOp);
+	if (sData != oldData) { markDirty(); }
+}
+
+void MVKDepthStencilCommandEncoderState::setStencilOp(VkStencilFaceFlags faceMask,
+													  VkStencilOp failOp,
+													  VkStencilOp passOp,
+													  VkStencilOp depthFailOp,
+													  VkCompareOp compareOp) {
+	auto& dsData = _depthStencilData[StateScope::Dynamic];
+	if (shouldUpdateFace(FRONT)) { setStencilOp(dsData.frontFaceStencilData, failOp, passOp, depthFailOp, compareOp); }
+	if (shouldUpdateFace(BACK)) { setStencilOp(dsData.backFaceStencilData, failOp, passOp, depthFailOp, compareOp); }
+}
+
 void MVKDepthStencilCommandEncoderState::setStencilCompareMask(VkStencilFaceFlags faceMask,
-                                                               uint32_t stencilCompareMask) {
-    auto oldData = _depthStencilData;
-
-    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
-        _depthStencilData.frontFaceStencilData.readMask = stencilCompareMask;
-    }
-    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_BACK_BIT)) {
-        _depthStencilData.backFaceStencilData.readMask = stencilCompareMask;
-    }
-
-    if (!(oldData == _depthStencilData)) markDirty();
+															   uint32_t stencilCompareMask) {
+	auto& dsData = _depthStencilData[StateScope::Dynamic];
+	if (shouldUpdateFace(FRONT)) { setContent(dsData.frontFaceStencilData.readMask, stencilCompareMask); }
+	if (shouldUpdateFace(BACK)) { setContent(dsData.backFaceStencilData.readMask, stencilCompareMask); }
 }
 
-// We don't check for dynamic state here, because if this is called before pipeline is set,
-// it may not be accurate, and if not dynamic, pipeline will override when it is encoded anyway.
 void MVKDepthStencilCommandEncoderState::setStencilWriteMask(VkStencilFaceFlags faceMask,
-                                                             uint32_t stencilWriteMask) {
-    auto oldData = _depthStencilData;
-
-    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
-        _depthStencilData.frontFaceStencilData.writeMask = stencilWriteMask;
-    }
-    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_BACK_BIT)) {
-        _depthStencilData.backFaceStencilData.writeMask = stencilWriteMask;
-    }
-
-    if (!(oldData == _depthStencilData)) markDirty();
+															 uint32_t stencilWriteMask) {
+	auto& dsData = _depthStencilData[StateScope::Dynamic];
+	if (shouldUpdateFace(FRONT)) { setContent(dsData.frontFaceStencilData.writeMask, stencilWriteMask); }
+	if (shouldUpdateFace(BACK)) { setContent(dsData.backFaceStencilData.writeMask, stencilWriteMask); }
 }
 
 void MVKDepthStencilCommandEncoderState::beginMetalRenderPass() {
@@ -337,131 +252,348 @@ void MVKDepthStencilCommandEncoderState::beginMetalRenderPass() {
 	if (_hasStencilAttachment != prevHasStencilAttachment) { markDirty(); }
 }
 
+// Combine static and dynamic depth/stencil data
 void MVKDepthStencilCommandEncoderState::encodeImpl(uint32_t stage) {
-	auto cmdEncPool = _cmdEncoder->getCommandEncodingPool();
-	switch (stage) {
-		case kMVKGraphicsStageRasterization: {
-			// If renderpass does not have a depth or a stencil attachment, disable corresponding test
-			MVKMTLDepthStencilDescriptorData adjustedDSData = _depthStencilData;
-			adjustedDSData.disable(!_hasDepthAttachment, !_hasStencilAttachment);
-			[_cmdEncoder->_mtlRenderEncoder setDepthStencilState: cmdEncPool->getMTLDepthStencilState(adjustedDSData)];
-			break;
-		}
-		default:		// Do nothing on other stages
-			break;
+	if (stage != kMVKGraphicsStageRasterization) { return; }
+
+	MVKMTLDepthStencilDescriptorData dsData;
+
+	if (_hasDepthAttachment && getContent(_depthTestEnabled, DepthTestEnable)) {
+		dsData.depthCompareFunction = getData(DepthCompareOp).depthCompareFunction;
+		dsData.depthWriteEnabled = getData(DepthWriteEnable).depthWriteEnabled;
+	}
+
+	if (_hasStencilAttachment && getData(StencilTestEnable).stencilTestEnabled) {
+		dsData.stencilTestEnabled = true;
+
+		auto& frontFace = dsData.frontFaceStencilData;
+		auto& backFace  = dsData.backFaceStencilData;
+
+		const auto& srcRM = getData(StencilCompareMask);
+		frontFace.readMask  = srcRM.frontFaceStencilData.readMask;
+		backFace.readMask   = srcRM.backFaceStencilData.readMask;
+
+		const auto& srcWM = getData(StencilWriteMask);
+		frontFace.writeMask = srcWM.frontFaceStencilData.writeMask;
+		backFace.writeMask  = srcWM.backFaceStencilData.writeMask;
+
+		const auto& srcSOp = getData(StencilOp);
+		frontFace.stencilCompareFunction    = srcSOp.frontFaceStencilData.stencilCompareFunction;
+		frontFace.stencilFailureOperation   = srcSOp.frontFaceStencilData.stencilFailureOperation;
+		frontFace.depthFailureOperation     = srcSOp.frontFaceStencilData.depthFailureOperation;
+		frontFace.depthStencilPassOperation = srcSOp.frontFaceStencilData.depthStencilPassOperation;
+
+		backFace.stencilCompareFunction     = srcSOp.backFaceStencilData.stencilCompareFunction;
+		backFace.stencilFailureOperation    = srcSOp.backFaceStencilData.stencilFailureOperation;
+		backFace.depthFailureOperation      = srcSOp.backFaceStencilData.depthFailureOperation;
+		backFace.depthStencilPassOperation  = srcSOp.backFaceStencilData.depthStencilPassOperation;
+	}
+
+	[_cmdEncoder->_mtlRenderEncoder setDepthStencilState: _cmdEncoder->getCommandEncodingPool()->getMTLDepthStencilState(dsData)];
+}
+
+
+#pragma mark -
+#pragma mark MVKRenderingCommandEncoderState
+
+#define getMTLContent(state)  getContent(_mtl##state, state)
+#define setMTLContent(state)  setContent(_mtl##state, &mtl##state, state, isDynamic)
+
+void MVKRenderingCommandEncoderState::setCullMode(VkCullModeFlags cullMode, bool isDynamic) {
+	auto mtlCullMode = mvkMTLCullModeFromVkCullModeFlags(cullMode);
+	setMTLContent(CullMode);
+	_cullBothFaces[isDynamic ? StateScope::Dynamic : StateScope::Static] = (cullMode == VK_CULL_MODE_FRONT_AND_BACK);
+}
+
+void MVKRenderingCommandEncoderState::setFrontFace(VkFrontFace frontFace, bool isDynamic) {
+	auto mtlFrontFace = mvkMTLWindingFromVkFrontFace(frontFace);
+	setMTLContent(FrontFace);
+}
+
+void MVKRenderingCommandEncoderState::setPolygonMode(VkPolygonMode polygonMode, bool isDynamic) {
+	auto mtlPolygonMode = mvkMTLTriangleFillModeFromVkPolygonMode(polygonMode);
+	setMTLContent(PolygonMode);
+}
+
+void MVKRenderingCommandEncoderState::setBlendConstants(float blendConstants[4], bool isDynamic) {
+	MVKColor32 mtlBlendConstants;
+	mvkCopy(mtlBlendConstants.float32, blendConstants, 4);
+	setMTLContent(BlendConstants);
+}
+
+void MVKRenderingCommandEncoderState::setDepthBias(const VkPipelineRasterizationStateCreateInfo& vkRasterInfo) {
+	bool isDynamic = false;
+
+	bool mtlDepthBiasEnable = static_cast<bool>(vkRasterInfo.depthBiasEnable);
+	setMTLContent(DepthBiasEnable);
+
+	MVKDepthBias mtlDepthBias = {
+		.depthBiasConstantFactor = vkRasterInfo.depthBiasConstantFactor,
+		.depthBiasSlopeFactor = vkRasterInfo.depthBiasSlopeFactor,
+		.depthBiasClamp = vkRasterInfo.depthBiasClamp
+	};
+	setMTLContent(DepthBias);
+}
+
+void MVKRenderingCommandEncoderState::setDepthBias(float depthBiasConstantFactor,
+													 float depthBiasSlopeFactor,
+													 float depthBiasClamp) {
+	bool isDynamic = true;
+	MVKDepthBias mtlDepthBias = {
+		.depthBiasConstantFactor = depthBiasConstantFactor,
+		.depthBiasSlopeFactor = depthBiasSlopeFactor,
+		.depthBiasClamp = depthBiasClamp
+	};
+	setMTLContent(DepthBias);
+}
+
+void MVKRenderingCommandEncoderState::setDepthBiasEnable(VkBool32 depthBiasEnable) {
+	bool isDynamic = true;
+	bool mtlDepthBiasEnable = static_cast<bool>(depthBiasEnable);
+	setMTLContent(DepthBiasEnable);
+}
+
+void MVKRenderingCommandEncoderState::setDepthClipEnable(bool depthClip, bool isDynamic) {
+	auto mtlDepthClipEnable = depthClip ? MTLDepthClipModeClip : MTLDepthClipModeClamp;
+	setMTLContent(DepthClipEnable);
+}
+
+void MVKRenderingCommandEncoderState::setStencilReferenceValues(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo) {
+	bool isDynamic = false;
+	MVKStencilReference mtlStencilReference = {
+		.frontFaceValue = vkDepthStencilInfo.front.reference,
+		.backFaceValue = vkDepthStencilInfo.back.reference
+	};
+	setMTLContent(StencilReference);
+}
+
+void MVKRenderingCommandEncoderState::setStencilReferenceValues(VkStencilFaceFlags faceMask, uint32_t stencilReference) {
+	bool isDynamic = true;
+	MVKStencilReference mtlStencilReference = _mtlStencilReference[StateScope::Dynamic];
+	if (shouldUpdateFace(FRONT)) { mtlStencilReference.frontFaceValue = stencilReference; }
+	if (shouldUpdateFace(BACK)) { mtlStencilReference.backFaceValue = stencilReference; }
+	setMTLContent(StencilReference);
+}
+
+void MVKRenderingCommandEncoderState::setViewports(const MVKArrayRef<VkViewport> viewports,
+													 uint32_t firstViewport,
+													 bool isDynamic) {
+	uint32_t maxViewports = getDevice()->_pProperties->limits.maxViewports;
+	if (firstViewport >= maxViewports) { return; }
+
+	MVKMTLViewports mtlViewports = isDynamic ? _mtlViewports[StateScope::Dynamic] : _mtlViewports[StateScope::Static];
+	size_t vpCnt = min((uint32_t)viewports.size(), maxViewports - firstViewport);
+	for (uint32_t vpIdx = 0; vpIdx < vpCnt; vpIdx++) {
+		mtlViewports.viewports[firstViewport + vpIdx] = mvkMTLViewportFromVkViewport(viewports[vpIdx]);
+		mtlViewports.viewportCount = max(mtlViewports.viewportCount, vpIdx + 1);
+	}
+	setMTLContent(Viewports);
+}
+
+void MVKRenderingCommandEncoderState::setScissors(const MVKArrayRef<VkRect2D> scissors,
+													uint32_t firstScissor,
+													bool isDynamic) {
+	uint32_t maxScissors = getDevice()->_pProperties->limits.maxViewports;
+	if (firstScissor >= maxScissors) { return; }
+
+	MVKMTLScissors mtlScissors = isDynamic ? _mtlScissors[StateScope::Dynamic] : _mtlScissors[StateScope::Static];
+	size_t sCnt = min((uint32_t)scissors.size(), maxScissors - firstScissor);
+	for (uint32_t sIdx = 0; sIdx < sCnt; sIdx++) {
+		mtlScissors.scissors[firstScissor + sIdx] = mvkMTLScissorRectFromVkRect2D(scissors[sIdx]);
+		mtlScissors.scissorCount = max(mtlScissors.scissorCount, sIdx + 1);
+	}
+	setMTLContent(Scissors);
+}
+
+void MVKRenderingCommandEncoderState::setPrimitiveRestartEnable(VkBool32 primitiveRestartEnable, bool isDynamic) {
+	bool mtlPrimitiveRestartEnable = static_cast<bool>(primitiveRestartEnable);
+	setMTLContent(PrimitiveRestartEnable);
+}
+
+void MVKRenderingCommandEncoderState::setRasterizerDiscardEnable(VkBool32 rasterizerDiscardEnable, bool isDynamic) {
+	bool mtlRasterizerDiscardEnable = static_cast<bool>(rasterizerDiscardEnable);
+	setMTLContent(RasterizerDiscardEnable);
+}
+
+// This value is retrieved, not encoded, so don't mark this encoder as dirty.
+void MVKRenderingCommandEncoderState::setPrimitiveTopology(VkPrimitiveTopology topology, bool isDynamic) {
+	getContent(_mtlPrimitiveTopology, isDynamic) = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(topology);
+}
+
+MTLPrimitiveType MVKRenderingCommandEncoderState::getPrimitiveType() {
+	return getMTLContent(PrimitiveTopology);
+}
+
+bool MVKRenderingCommandEncoderState::isDrawingTriangles() {
+	switch (getPrimitiveType()) {
+		case MTLPrimitiveTypeTriangle:      return true;
+		case MTLPrimitiveTypeTriangleStrip: return true;
+		default:                            return false;
 	}
 }
 
-
-#pragma mark -
-#pragma mark MVKStencilReferenceValueCommandEncoderState
-
-void MVKStencilReferenceValueCommandEncoderState:: setReferenceValues(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo) {
-
-    // If ref values are to be set dynamically, don't set them here.
-    if (_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_STENCIL_REFERENCE)) { return; }
-
-    if (_frontFaceValue != vkDepthStencilInfo.front.reference || _backFaceValue != vkDepthStencilInfo.back.reference)
-        markDirty();
-
-    _frontFaceValue = vkDepthStencilInfo.front.reference;
-    _backFaceValue = vkDepthStencilInfo.back.reference;
+// This value is retrieved, not encoded, so don't mark this encoder as dirty.
+void MVKRenderingCommandEncoderState::setPatchControlPoints(uint32_t patchControlPoints, bool isDynamic) {
+	getContent(_mtlPatchControlPoints, isDynamic) = patchControlPoints;
 }
 
-// We don't check for dynamic state here, because if this is called before pipeline is set,
-// it may not be accurate, and if not dynamic, pipeline will override when it is encoded anyway.
-void MVKStencilReferenceValueCommandEncoderState::setReferenceValues(VkStencilFaceFlags faceMask,
-                                                                     uint32_t stencilReference) {
-    bool dirty = false;
-    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
-        dirty |= (_frontFaceValue != stencilReference);
-        _frontFaceValue = stencilReference;
-    }
-    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_BACK_BIT)) {
-        dirty |= (_backFaceValue != stencilReference);
-        _backFaceValue = stencilReference;
-    }
-    if (dirty) markDirty();
+uint32_t MVKRenderingCommandEncoderState::getPatchControlPoints() {
+	return getMTLContent(PatchControlPoints);
 }
 
-void MVKStencilReferenceValueCommandEncoderState::encodeImpl(uint32_t stage) {
-    if (stage != kMVKGraphicsStageRasterization) { return; }
-    [_cmdEncoder->_mtlRenderEncoder setStencilFrontReferenceValue: _frontFaceValue
-                                               backReferenceValue: _backFaceValue];
+void MVKRenderingCommandEncoderState::setSampleLocationsEnable(VkBool32 sampleLocationsEnable, bool isDynamic) {
+	bool slEnbl = static_cast<bool>(sampleLocationsEnable);
+	auto& mtlSampLocEnbl = getContent(_mtlSampleLocationsEnable, isDynamic);
+
+	if (slEnbl == mtlSampLocEnbl) { return; }
+
+	mtlSampLocEnbl = slEnbl;
+
+	// This value is retrieved, not encoded, so don't mark this encoder as dirty.
+	_dirtyStates.enable(SampleLocationsEnable);
 }
 
+void MVKRenderingCommandEncoderState::setSampleLocations(MVKArrayRef<VkSampleLocationEXT> sampleLocations, bool isDynamic) {
+	auto& mtlSampPosns = getContent(_mtlSampleLocations, isDynamic);
+	size_t slCnt = sampleLocations.size();
 
-#pragma mark -
-#pragma mark MVKDepthBiasCommandEncoderState
+	// When comparing new vs current, make use of fact that MTLSamplePosition & VkSampleLocationEXT have same memory footprint.
+	if (slCnt == mtlSampPosns.size() &&
+		mvkAreEqual((MTLSamplePosition*)sampleLocations.data(),
+					mtlSampPosns.data(), slCnt)) {
+		return;
+	}
 
-void MVKDepthBiasCommandEncoderState::setDepthBias(const VkPipelineRasterizationStateCreateInfo& vkRasterInfo) {
+	mtlSampPosns.clear();
+	for (uint32_t slIdx = 0; slIdx < slCnt; slIdx++) {
+		auto& sl = sampleLocations[slIdx];
+		mtlSampPosns.push_back(MTLSamplePositionMake(mvkClamp(sl.x, kMVKMinSampleLocationCoordinate, kMVKMaxSampleLocationCoordinate),
+													 mvkClamp(sl.y, kMVKMinSampleLocationCoordinate, kMVKMaxSampleLocationCoordinate)));
+	}
 
-    auto wasEnabled = _isEnabled;
-    _isEnabled = vkRasterInfo.depthBiasEnable;
-
-    // If ref values are to be set dynamically, don't set them here.
-    if (_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_DEPTH_BIAS)) { return; }
-
-    if (_isEnabled != wasEnabled || _depthBiasConstantFactor != vkRasterInfo.depthBiasConstantFactor
-        || _depthBiasSlopeFactor != vkRasterInfo.depthBiasSlopeFactor || _depthBiasClamp != vkRasterInfo.depthBiasClamp) {
-
-        markDirty();
-        _depthBiasConstantFactor = vkRasterInfo.depthBiasConstantFactor;
-        _depthBiasSlopeFactor = vkRasterInfo.depthBiasSlopeFactor;
-        _depthBiasClamp = vkRasterInfo.depthBiasClamp;
-    }
+	// This value is retrieved, not encoded, so don't mark this encoder as dirty.
+	_dirtyStates.enable(SampleLocations);
 }
 
-// We don't check for dynamic state here, because if this is called before pipeline is set,
-// it may not be accurate, and if not dynamic, pipeline will override when it is encoded anyway.
-void MVKDepthBiasCommandEncoderState::setDepthBias(float depthBiasConstantFactor,
-                                                   float depthBiasSlopeFactor,
-                                                   float depthBiasClamp) {
-
-    if (_depthBiasConstantFactor != depthBiasConstantFactor || _depthBiasSlopeFactor != depthBiasSlopeFactor
-        || _depthBiasClamp != depthBiasClamp) {
-
-        markDirty();
-        _depthBiasConstantFactor = depthBiasConstantFactor;
-        _depthBiasSlopeFactor = depthBiasSlopeFactor;
-        _depthBiasClamp = depthBiasClamp;
-    }
+MVKArrayRef<MTLSamplePosition> MVKRenderingCommandEncoderState::getSamplePositions() {
+	return getMTLContent(SampleLocationsEnable) ? getMTLContent(SampleLocations).contents() : MVKArrayRef<MTLSamplePosition>();
 }
 
-void MVKDepthBiasCommandEncoderState::encodeImpl(uint32_t stage) {
-    if (stage != kMVKGraphicsStageRasterization) { return; }
-    if (_isEnabled) {
-        [_cmdEncoder->_mtlRenderEncoder setDepthBias: _depthBiasConstantFactor
-                                          slopeScale: _depthBiasSlopeFactor
-                                               clamp: _depthBiasClamp];
-    } else {
-        [_cmdEncoder->_mtlRenderEncoder setDepthBias: 0 slopeScale: 0 clamp: 0];
-    }
+// Return whether state is dirty, and mark it not dirty
+bool MVKRenderingCommandEncoderState::isDirty(MVKRenderStateType state) {
+	bool rslt = _dirtyStates.isEnabled(state);
+	_dirtyStates.disable(state);
+	return rslt;
 }
 
+// Don't force sample location & sample location enable to become dirty if they weren't already, because
+// this may cause needsMetalRenderPassRestart() to trigger an unnecessary Metal renderpass restart.
+void MVKRenderingCommandEncoderState::markDirty() {
+	MVKCommandEncoderState::markDirty();
 
-#pragma mark -
-#pragma mark MVKBlendColorCommandEncoderState
+	bool wasSLDirty = _dirtyStates.isEnabled(SampleLocations);
+	bool wasSLEnblDirty = _dirtyStates.isEnabled(SampleLocationsEnable);
+	
+	_dirtyStates.enableAll();
 
-void MVKBlendColorCommandEncoderState::setBlendColor(float red, float green,
-                                                     float blue, float alpha,
-                                                     bool isDynamic) {
-    // Abort if we are using dynamic, but call is not dynamic.
-	if ( !isDynamic && _cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_BLEND_CONSTANTS) ) { return; }
-
-    if (_red != red || _green != green || _blue != blue || _alpha != alpha) {
-        markDirty();
-        _red = red;
-        _green = green;
-        _blue = blue;
-        _alpha = alpha;
-    }
+	_dirtyStates.set(SampleLocations, wasSLDirty);
+	_dirtyStates.set(SampleLocationsEnable, wasSLEnblDirty);
 }
 
-void MVKBlendColorCommandEncoderState::encodeImpl(uint32_t stage) {
-    if (stage != kMVKGraphicsStageRasterization) { return; }
-    [_cmdEncoder->_mtlRenderEncoder setBlendColorRed: _red green: _green blue: _blue alpha: _alpha];
+// Don't call parent beginMetalRenderPass() because it 
+// will call local markDirty() which is too aggressive.
+void MVKRenderingCommandEncoderState::beginMetalRenderPass() {
+	if (_isModified) {
+		_dirtyStates = _modifiedStates;
+		MVKCommandEncoderState::markDirty();
+	}
 }
+
+// Don't use || on isDirty calls, to ensure they both get called, so that the dirty flag of each will be cleared.
+bool MVKRenderingCommandEncoderState::needsMetalRenderPassRestart() {
+	bool isSLDirty = isDirty(SampleLocations);
+	bool isSLEnblDirty = isDirty(SampleLocationsEnable);
+	return isSLDirty || isSLEnblDirty;
+}
+
+#pragma mark Encoding
+
+void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
+	if (stage != kMVKGraphicsStageRasterization) { return; }
+
+	auto& rendEnc = _cmdEncoder->_mtlRenderEncoder;
+
+	if (isDirty(PolygonMode)) { [rendEnc setTriangleFillMode: getMTLContent(PolygonMode)]; }
+	if (isDirty(CullMode)) { [rendEnc setCullMode: getMTLContent(CullMode)]; }
+	if (isDirty(FrontFace)) { [rendEnc setFrontFacingWinding: getMTLContent(FrontFace)]; }
+	if (isDirty(BlendConstants)) {
+		auto& bcFlt = getMTLContent(BlendConstants).float32;
+		[rendEnc setBlendColorRed: bcFlt[0] green: bcFlt[1] blue: bcFlt[2] alpha: bcFlt[3]];
+	}
+	if (isDirty(DepthBiasEnable) || isDirty(DepthBias)) {
+		if (getMTLContent(DepthBiasEnable)) {
+			auto& db = getMTLContent(DepthBias);
+			[rendEnc setDepthBias: db.depthBiasConstantFactor
+					   slopeScale: db.depthBiasSlopeFactor
+							clamp: db.depthBiasClamp];
+		} else {
+			[rendEnc setDepthBias: 0 slopeScale: 0 clamp: 0];
+		}
+	}
+	if (isDirty(DepthClipEnable) && _cmdEncoder->_pDeviceFeatures->depthClamp) {
+		[rendEnc setDepthClipMode: getMTLContent(DepthClipEnable)];
+	}
+
+	if (isDirty(StencilReference)) {
+		auto& sr = getMTLContent(StencilReference);
+		[rendEnc setStencilFrontReferenceValue: sr.frontFaceValue backReferenceValue: sr.backFaceValue];
+	}
+
+	// Validate
+	// In Metal, primitive restart cannot be disabled.
+	// Just issue warning here, as it is very likely the app is not actually expecting
+	// to use primitive restart at all, and is just setting this as a "just-in-case",
+	// and forcing an error here would be unexpected to the app (including CTS).
+	auto mtlPrimType = getPrimitiveType();
+	if (isDirty(PrimitiveRestartEnable) && !getMTLContent(PrimitiveRestartEnable) &&
+		(mtlPrimType == MTLPrimitiveTypeTriangleStrip || mtlPrimType == MTLPrimitiveTypeLineStrip)) {
+		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support disabling primitive restart.");
+	}
+
+	if (isDirty(Viewports)) {
+		auto& mtlViewports = getMTLContent(Viewports);
+		if (_cmdEncoder->_pDeviceFeatures->multiViewport) {
+#if MVK_MACOS_OR_IOS
+			[rendEnc setViewports: mtlViewports.viewports count: mtlViewports.viewportCount];
+#endif
+		} else {
+			[rendEnc setViewport: mtlViewports.viewports[0]];
+		}
+	}
+
+	// If rasterizing discard has been dynamically enabled, or culling has been dynamically 
+	// set to front-and-back, emulate this by using zeroed scissor rectangles.
+	if (isDirty(Scissors)) {
+		static MTLScissorRect zeroRect = {};
+		auto mtlScissors = getMTLContent(Scissors);
+		bool shouldDiscard = ((_mtlRasterizerDiscardEnable[StateScope::Dynamic] && isDynamicState(RasterizerDiscardEnable)) ||
+							  (isDrawingTriangles() && _cullBothFaces[StateScope::Dynamic] && isDynamicState(CullMode)));
+		for (uint32_t sIdx = 0; sIdx < mtlScissors.scissorCount; sIdx++) {
+			mtlScissors.scissors[sIdx] = shouldDiscard ? zeroRect : _cmdEncoder->clipToRenderArea(mtlScissors.scissors[sIdx]);
+		}
+
+		if (_cmdEncoder->_pDeviceFeatures->multiViewport) {
+#if MVK_MACOS_OR_IOS
+			[rendEnc setScissorRects: mtlScissors.scissors count: mtlScissors.scissorCount];
+#endif
+		} else {
+			[rendEnc setScissorRect: mtlScissors.scissors[0]];
+		}
+	}
+}
+
+#undef getMTLContent
+#undef setMTLContent
 
 
 #pragma mark -
@@ -488,7 +620,7 @@ void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 		// Update dynamic buffer offsets
 		uint32_t baseDynOfstIdx = dslMTLRezIdxOffsets.getMetalResourceIndexes().dynamicOffsetBufferIndex;
 		uint32_t doCnt = descSet->getDynamicOffsetDescriptorCount();
-		for (uint32_t doIdx = 0; doIdx < doCnt && dynamicOffsetIndex < dynamicOffsets.size; doIdx++) {
+		for (uint32_t doIdx = 0; doIdx < doCnt && dynamicOffsetIndex < dynamicOffsets.size(); doIdx++) {
 			updateImplicitBuffer(_dynamicOffsets, baseDynOfstIdx + doIdx, dynamicOffsets[dynamicOffsetIndex++]);
 		}
 
@@ -594,7 +726,7 @@ void MVKResourcesCommandEncoderState::markDirty() {
 }
 
 // If a swizzle is needed for this stage, iterates all the bindings and logs errors for those that need texture swizzling.
-void MVKResourcesCommandEncoderState::assertMissingSwizzles(bool needsSwizzle, const char* stageName, const MVKArrayRef<MVKMTLTextureBinding> texBindings) {
+void MVKResourcesCommandEncoderState::assertMissingSwizzles(bool needsSwizzle, const char* stageName, MVKArrayRef<const MVKMTLTextureBinding> texBindings) {
 	if (needsSwizzle) {
 		for (auto& tb : texBindings) {
 			VkComponentMapping vkcm = mvkUnpackSwizzle(tb.swizzle);
@@ -684,7 +816,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stag
                                                              const char* pStageName,
                                                              bool fullImageViewSwizzle,
                                                              std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&)> bindBuffer,
-                                                             std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, const MVKArrayRef<uint32_t>)> bindImplicitBuffer,
+                                                             std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, MVKArrayRef<const uint32_t>)> bindImplicitBuffer,
                                                              std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
                                                              std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler) {
 
@@ -772,11 +904,16 @@ void MVKGraphicsResourcesCommandEncoderState::markDirty() {
     }
 }
 
+#if !MVK_XCODE_15
+static const NSUInteger MTLAttributeStrideStatic = NSUIntegerMax;
+#endif
+
 void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 
-    MVKGraphicsPipeline* pipeline = (MVKGraphicsPipeline*)getPipeline();
+	auto* pipeline = _cmdEncoder->_graphicsPipelineState.getGraphicsPipeline();
     bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle() || getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     bool forTessellation = pipeline->isTessellationPipeline();
+	bool isDynamicVertexStride = pipeline->isDynamicState(VertexStride);
 
 	if (stage == kMVKGraphicsStageVertex) {
         encodeBindings(kMVKShaderStageVertex, "vertex", fullImageViewSwizzle,
@@ -795,10 +932,10 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                                                                                              offset: b.offset
                                                                                                             atIndex: b.index];
                        },
-                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, const MVKArrayRef<uint32_t> s)->void {
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKArrayRef<const uint32_t> s)->void {
                            cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
-                                                       s.data,
-                                                       s.size * sizeof(uint32_t),
+                                                       s.data(),
+                                                       s.byteSize(),
                                                        b.index);
                        },
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {
@@ -812,33 +949,24 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 
 	} else if (!forTessellation && stage == kMVKGraphicsStageRasterization) {
         encodeBindings(kMVKShaderStageVertex, "vertex", fullImageViewSwizzle,
-                       [pipeline](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
+					   [pipeline, isDynamicVertexStride](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
                            // The app may have bound more vertex attribute buffers than used by the pipeline.
                            // We must not bind those extra buffers to the shader because they might overwrite
                            // any implicit buffers used by the pipeline.
                            if (pipeline->isValidVertexBufferIndex(kMVKShaderStageVertex, b.index)) {
-                               if (b.isInline) {
-                                   cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
-                                                              b.mtlBytes,
-                                                              b.size,
-                                                              b.index);
-                               } else {
-                                   if (b.justOffset) {
-                                       [cmdEncoder->_mtlRenderEncoder setVertexBufferOffset: b.offset
-                                                                                    atIndex: b.index];
-                                   } else {
-                                       [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
-                                                                               offset: b.offset
-                                                                              atIndex: b.index];
-                                   }
+                               cmdEncoder->encodeVertexAttributeBuffer(b, isDynamicVertexStride);
 
-                                   // Add any translated vertex bindings for this binding
+							   // Add any translated vertex bindings for this binding
+							   if ( !b.isInline ) {
                                    auto xltdVtxBindings = pipeline->getTranslatedVertexBindings();
                                    for (auto& xltdBind : xltdVtxBindings) {
                                        if (b.index == pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.binding)) {
-                                           [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
-                                                                                   offset: b.offset + xltdBind.translationOffset
-                                                                                  atIndex: pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.translationBinding)];
+                                           MVKMTLBufferBinding bx = { 
+                                               .mtlBuffer = b.mtlBuffer,
+                                               .offset = b.offset + xltdBind.translationOffset,
+                                               .stride = b.stride,
+											   .index = static_cast<uint16_t>(pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.translationBinding)) };
+										   cmdEncoder->encodeVertexAttributeBuffer(bx, isDynamicVertexStride);
                                        }
                                    }
                                }
@@ -846,10 +974,10 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                b.isDirty = true;	// We haven't written it out, so leave dirty until next time.
 						   }
                        },
-                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, const MVKArrayRef<uint32_t> s)->void {
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKArrayRef<const uint32_t> s)->void {
                            cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
-                                                      s.data,
-                                                      s.size * sizeof(uint32_t),
+                                                      s.data(),
+                                                      s.byteSize(),
                                                       b.index);
                        },
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {
@@ -879,10 +1007,10 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                                                                                              offset: b.offset
                                                                                                             atIndex: b.index];
                        },
-                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, const MVKArrayRef<uint32_t> s)->void {
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKArrayRef<const uint32_t> s)->void {
                            cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
-                                                       s.data,
-                                                       s.size * sizeof(uint32_t),
+                                                       s.data(),
+                                                       s.byteSize(),
                                                        b.index);
                        },
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {
@@ -898,24 +1026,13 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 
     if (forTessellation && stage == kMVKGraphicsStageRasterization) {
         encodeBindings(kMVKShaderStageTessEval, "tessellation evaluation", fullImageViewSwizzle,
-                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
-                           if (b.isInline)
-                               cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
-                                                          b.mtlBytes,
-                                                          b.size,
-                                                          b.index);
-                           else if (b.justOffset)
-                               [cmdEncoder->_mtlRenderEncoder setVertexBufferOffset: b.offset
-                                                                            atIndex: b.index];
-                           else
-                               [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
-                                                                       offset: b.offset
-                                                                      atIndex: b.index];
+					   [isDynamicVertexStride](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
+                           cmdEncoder->encodeVertexAttributeBuffer(b, isDynamicVertexStride);
                        },
-                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, const MVKArrayRef<uint32_t> s)->void {
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKArrayRef<const uint32_t> s)->void {
                            cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
-                                                      s.data,
-                                                      s.size * sizeof(uint32_t),
+                                                      s.data(),
+                                                      s.byteSize(),
                                                       b.index);
                        },
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {
@@ -945,10 +1062,10 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                                                          offset: b.offset
                                                                         atIndex: b.index];
                        },
-                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, const MVKArrayRef<uint32_t> s)->void {
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKArrayRef<const uint32_t> s)->void {
                            cmdEncoder->setFragmentBytes(cmdEncoder->_mtlRenderEncoder,
-                                                        s.data,
-                                                        s.size * sizeof(uint32_t),
+                                                        s.data(),
+                                                        s.byteSize(),
                                                         b.index);
                        },
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {

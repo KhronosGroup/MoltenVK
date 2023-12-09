@@ -20,7 +20,7 @@
 
 #include "MVKBaseObject.h"
 #include "MVKOSExtensions.h"
-#include "mvk_datatypes.h"
+#include "mvk_datatypes.hpp"
 #include <spirv_msl.hpp>
 #include <unordered_map>
 

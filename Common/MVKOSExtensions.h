@@ -24,6 +24,9 @@
 #include <limits>
 
 
+#pragma mark -
+#pragma mark Operating System versions
+
 typedef float MVKOSVersion;
 
 /*** Constant indicating unsupported functionality in an OS. */
@@ -39,44 +42,58 @@ static const MVKOSVersion kMVKOSVersionUnsupported = std::numeric_limits<MVKOSVe
 MVKOSVersion mvkOSVersion();
 
 /** Returns a MVKOSVersion built from the version components. */
-inline MVKOSVersion mvkMakeOSVersion(uint32_t major, uint32_t minor, uint32_t patch) {
+static inline MVKOSVersion mvkMakeOSVersion(uint32_t major, uint32_t minor, uint32_t patch) {
 	return (float)major + ((float)minor / 100.0f) + ((float)patch / 10000.0f);
 }
 
 /** Returns whether the operating system version is at least minVer. */
-inline bool mvkOSVersionIsAtLeast(MVKOSVersion minVer) { return mvkOSVersion() >= minVer; }
+static inline bool mvkOSVersionIsAtLeast(MVKOSVersion minVer) { return mvkOSVersion() >= minVer; }
 
 /**
  * Returns whether the operating system version is at least the appropriate min version.
- * The constant kMVKOSVersionUnsupported can be used for either value to cause the test
- * to always fail on that OS, which is useful for indidicating functionalty guarded by
+ * The constant kMVKOSVersionUnsupported can be used for any of the values to cause the test
+ * to always fail on that OS, which is useful for indicating that functionalty guarded by
  * this test is not supported on that OS.
  */
-inline bool mvkOSVersionIsAtLeast(MVKOSVersion macOSMinVer, MVKOSVersion iOSMinVer, MVKOSVersion visionOSMinVer) {
+static inline bool mvkOSVersionIsAtLeast(MVKOSVersion macOSMinVer,
+										 MVKOSVersion iOSMinVer,
+										 MVKOSVersion visionOSMinVer) {
 #if MVK_MACOS
 	return mvkOSVersionIsAtLeast(macOSMinVer);
 #endif
+#if MVK_IOS_OR_TVOS
+	return mvkOSVersionIsAtLeast(iOSMinVer);
+#endif
 #if MVK_VISIONOS
 	return mvkOSVersionIsAtLeast(visionOSMinVer);
-#elif MVK_IOS_OR_TVOS
-	return mvkOSVersionIsAtLeast(iOSMinVer);
 #endif
 }
 
+
+#pragma mark -
+#pragma mark Timestamps
+
 /**
- * Returns a monotonic timestamp value for use in Vulkan and performance timestamping.
+ * Returns a monotonic tick value for use in Vulkan and performance timestamping.
  *
- * The returned value corresponds to the number of CPU "ticks" since the app was initialized.
- *
- * Calling this value twice, subtracting the first value from the second, and then multiplying
- * the result by the value returned by mvkGetTimestampPeriod() will provide an indication of the
- * number of nanoseconds between the two calls. The convenience function mvkGetElapsedMilliseconds()
- * can be used to perform this calculation.
+ * The returned value corresponds to the number of CPU ticks since an arbitrary 
+ * point in the past, and does not increment while the system is asleep.
  */
 uint64_t mvkGetTimestamp();
 
-/** Returns the number of nanoseconds between each increment of the value returned by mvkGetTimestamp(). */
-double mvkGetTimestampPeriod();
+/** 
+ * Returns the number of runtime nanoseconds since an arbitrary point in the past,
+ * excluding any time spent while the system is asleep.
+ *
+ * This value corresponds to the timestamps returned by Metal presentation timings.
+ */
+uint64_t mvkGetRuntimeNanoseconds();
+
+/**
+ * Returns the number of nanoseconds since an arbitrary point in the past,
+ * including any time spent while the system is asleep.
+ */
+uint64_t mvkGetContinuousNanoseconds();
 
 /**
  * Returns the number of nanoseconds elapsed between startTimestamp and endTimestamp,
@@ -94,73 +111,27 @@ uint64_t mvkGetElapsedNanoseconds(uint64_t startTimestamp = 0, uint64_t endTimes
  */
 double mvkGetElapsedMilliseconds(uint64_t startTimestamp = 0, uint64_t endTimestamp = 0);
 
-/** Returns the current absolute time in nanoseconds. */
-uint64_t mvkGetAbsoluteTime();
-
-/** Ensures the block is executed on the main thread. */
-void mvkDispatchToMainAndWait(dispatch_block_t block);
-
 
 #pragma mark -
 #pragma mark Process environment
 
 /**
- * Returns the value of the environment variable at the given name,
- * or an empty string if no environment variable with that name exists.
- *
- * If pWasFound is not null, its value is set to true if the environment
- * variable exists, or false if not.
+ * Sets the value of the environment variable at the given name, into the
+ * std::string, and returns whether the environment variable was found.
  */
-std::string mvkGetEnvVar(std::string varName, bool* pWasFound = nullptr);
+bool mvkGetEnvVar(const char* evName, std::string& evStr);
+
+/**
+ * Returns a pointer to a string containing the value of the environment variable at
+ * the given name, or returns the default value if the environment variable was not set.
+ */
+const char* mvkGetEnvVarString(const char* evName, std::string& evStr, const char* defaultValue = "");
 
 /**
  * Returns the value of the environment variable at the given name,
- * or zero if no environment variable with that name exists.
- *
- * If pWasFound is not null, its value is set to true if the environment
- * variable exists, or false if not.
+ * or returns the default value if the environment variable was not set.
  */
-int64_t mvkGetEnvVarInt64(std::string varName, bool* pWasFound = nullptr);
-
-/**
- * Returns the value of the environment variable at the given name,
- * or false if no environment variable with that name exists.
- *
- * If pWasFound is not null, its value is set to true if the environment
- * variable exists, or false if not.
- */
-bool mvkGetEnvVarBool(std::string varName, bool* pWasFound = nullptr);
-
-#define MVK_SET_FROM_ENV_OR_BUILD_BOOL(cfgVal, EV)				\
-	do {														\
-		bool wasFound = false;									\
-		bool ev = mvkGetEnvVarBool(#EV, &wasFound);				\
-		cfgVal = wasFound ? ev : EV;							\
-	} while(false)
-
-#define MVK_SET_FROM_ENV_OR_BUILD_INT64(cfgVal, EV)				\
-	do {														\
-		bool wasFound = false;									\
-		int64_t ev = mvkGetEnvVarInt64(#EV, &wasFound);			\
-		cfgVal = wasFound ? ev : EV;							\
-	} while(false)
-
-// Pointer cast permits cfgVal to be an enum var
-#define MVK_SET_FROM_ENV_OR_BUILD_INT32(cfgVal, EV)				\
-	do {														\
-		bool wasFound = false;									\
-		int64_t ev = mvkGetEnvVarInt64(#EV, &wasFound);			\
-		int64_t val = wasFound ? ev : EV;						\
-		*(int32_t*)&cfgVal = (int32_t)std::min(std::max(val, (int64_t)INT32_MIN), (int64_t)INT32_MAX);	\
-	} while(false)
-
-#define MVK_SET_FROM_ENV_OR_BUILD_STRING(cfgVal, EV, strObj)	\
-	do {														\
-		bool wasFound = false;									\
-		std::string ev = mvkGetEnvVar(#EV, &wasFound);			\
-		strObj = wasFound ? std::move(ev) : EV;					\
-		cfgVal = strObj.c_str();								\
-	} while(false)
+double mvkGetEnvVarNumber(const char* evName, double defaultValue = 0.0);
 
 
 #pragma mark -
@@ -178,8 +149,12 @@ uint64_t mvkGetUsedMemorySize();
 /** Returns the size of a page of host memory on this platform. */
 uint64_t mvkGetHostMemoryPageSize();
 
+
 #pragma mark -
 #pragma mark Threading
 
 /** Returns the amount of avaliable CPU cores. */
 uint32_t mvkGetAvaliableCPUCores();
+
+/** Ensures the block is executed on the main thread. */
+void mvkDispatchToMainAndWait(dispatch_block_t block);
