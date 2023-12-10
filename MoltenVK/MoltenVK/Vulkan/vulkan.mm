@@ -1466,6 +1466,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetLineWidth(
 	float                                       lineWidth) {
 
 	MVKTraceVulkanCallStart();
+    MVKAddCmd(SetLineWidth, commandBuffer, lineWidth);
 	MVKTraceVulkanCallEnd();
 }
 

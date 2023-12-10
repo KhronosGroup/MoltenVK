@@ -607,7 +607,7 @@ void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
 
 void MVKLineWidthCommandEncoderState::setLineWidth(float lineWidth, bool isDynamic) {
     // Abort if dynamic allowed but call is not dynamic, or vice-versa
-    if (!(_cmdEncoder->supportsDynamicState(MVKRenderStateType.LineWidth) == isDynamic) ) {
+    if (!(_cmdEncoder->_lineWidthState.isDynamicState(LineWidth) == isDynamic) ) {
 		return;
 	}
 
