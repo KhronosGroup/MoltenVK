@@ -1777,6 +1777,13 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 		}
 	}
 
+	if (!_imageView->_image->hasPixelFormatView(_planeIndex)) {
+		if (!enableSwizzling()) {
+			MVKAssert(0, "Image without PixelFormatView usage couldn't enable swizzling!");
+		}
+		return VK_SUCCESS;
+	}
+
 	switch (_mtlPixFmt) {
 		case MTLPixelFormatR8Unorm:
 			if (SWIZZLE_MATCHES(ZERO, ANY, ANY, R)) {
