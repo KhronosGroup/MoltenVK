@@ -1202,8 +1202,8 @@ VkResult MVKPhysicalDevice::getSurfaceSupport(uint32_t queueFamilyIndex,
     isHeadless = getMTLDevice().isHeadless;
 #endif
     
-	// If this device is headless or the surface does not have a CAMetalLayer, it is not supported.
-    *pSupported = !(isHeadless || (surface->getCAMetalLayer() == nil));
+	// If this device is headless, the surface must be headless.
+	*pSupported = isHeadless ? surface->isHeadless() : wasConfigurationSuccessful();
 	return *pSupported ? VK_SUCCESS : surface->getConfigurationResult();
 }
 
@@ -1262,13 +1262,12 @@ VkResult MVKPhysicalDevice::getSurfaceCapabilities(	const VkPhysicalDeviceSurfac
 
 	// The CAlayer underlying the surface must be a CAMetalLayer.
 	MVKSurface* surface = (MVKSurface*)pSurfaceInfo->surface;
-	CAMetalLayer* mtlLayer = surface->getCAMetalLayer();
-	if ( !mtlLayer ) { return surface->getConfigurationResult(); }
+	if ( !surface->wasConfigurationSuccessful() ) { return surface->getConfigurationResult(); }
 
 	VkSurfaceCapabilitiesKHR& surfCaps = pSurfaceCapabilities->surfaceCapabilities;
 	surfCaps.minImageCount = _metalFeatures.minSwapchainImageCount;
 	surfCaps.maxImageCount = _metalFeatures.maxSwapchainImageCount;
-	surfCaps.currentExtent = mvkGetNaturalExtent(mtlLayer);
+	surfCaps.currentExtent = surface->getNaturalExtent();
 	surfCaps.minImageExtent = { 1, 1 };
 	surfCaps.maxImageExtent = { _properties.limits.maxImageDimension2D, _properties.limits.maxImageDimension2D };
 	surfCaps.maxImageArrayLayers = 1;
@@ -1347,9 +1346,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 											  uint32_t* pCount,
 											  VkSurfaceFormatKHR* pSurfaceFormats) {
 
-	// The layer underlying the surface view must be a CAMetalLayer.
-	CAMetalLayer* mtlLayer = surface->getCAMetalLayer();
-	if ( !mtlLayer ) { return surface->getConfigurationResult(); }
+	if ( !surface->wasConfigurationSuccessful() ) { return surface->getConfigurationResult(); }
 
 #define addSurfFmt(MTL_FMT) \
 	do { \
@@ -1472,9 +1469,7 @@ VkResult MVKPhysicalDevice::getSurfacePresentModes(MVKSurface* surface,
 												   uint32_t* pCount,
 												   VkPresentModeKHR* pPresentModes) {
 
-	// The layer underlying the surface view must be a CAMetalLayer.
-	CAMetalLayer* mtlLayer = surface->getCAMetalLayer();
-	if ( !mtlLayer ) { return surface->getConfigurationResult(); }
+	if ( !surface->wasConfigurationSuccessful() ) { return surface->getConfigurationResult(); }
 
 #define ADD_VK_PRESENT_MODE(VK_PM)																	\
 	do {																							\
@@ -1502,9 +1497,7 @@ VkResult MVKPhysicalDevice::getPresentRectangles(MVKSurface* surface,
 												 uint32_t* pRectCount,
 												 VkRect2D* pRects) {
 
-	// The layer underlying the surface view must be a CAMetalLayer.
-	CAMetalLayer* mtlLayer = surface->getCAMetalLayer();
-	if ( !mtlLayer ) { return surface->getConfigurationResult(); }
+	if ( !surface->wasConfigurationSuccessful() ) { return surface->getConfigurationResult(); }
 
 	if ( !pRects ) {
 		*pRectCount = 1;
@@ -1516,7 +1509,7 @@ VkResult MVKPhysicalDevice::getPresentRectangles(MVKSurface* surface,
 	*pRectCount = 1;
 
 	pRects[0].offset = { 0, 0 };
-	pRects[0].extent = mvkGetNaturalExtent(mtlLayer);
+	pRects[0].extent = surface->getNaturalExtent();
 
 	return VK_SUCCESS;
 }
@@ -3672,14 +3665,14 @@ void MVKDevice::getCalibratedTimestamps(uint32_t timestampCount,
 	MTLTimestamp cpuStamp, gpuStamp;
 	uint64_t cpuStart, cpuEnd;
 
-	cpuStart = mvkGetAbsoluteTime();
+	cpuStart = mvkGetContinuousNanoseconds();
 	[getMTLDevice() sampleTimestamps: &cpuStamp gpuTimestamp: &gpuStamp];
 	// Sample again to calculate the maximum deviation. Note that the
 	// -[MTLDevice sampleTimestamps:gpuTimestamp:] method guarantees that CPU
 	// timestamps are in nanoseconds. We don't want to call the method again,
 	// because that could result in an expensive syscall to query the GPU time-
 	// stamp.
-	cpuEnd = mvkGetAbsoluteTime();
+	cpuEnd = mvkGetContinuousNanoseconds();
 	for (uint32_t tsIdx = 0; tsIdx < timestampCount; ++tsIdx) {
 		switch (pTimestampInfos[tsIdx].timeDomain) {
 			case VK_TIME_DOMAIN_DEVICE_EXT:

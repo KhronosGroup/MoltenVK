@@ -133,12 +133,17 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
         
         MTLPixelFormat srcMTLPixFmt = _srcImage->getMTLPixelFormat(srcPlaneIndex);
         bool isSrcCompressed = _srcImage->getIsCompressed();
+        bool canReinterpretSrc = _srcImage->hasPixelFormatView(srcPlaneIndex);
 
         MTLPixelFormat dstMTLPixFmt = _dstImage->getMTLPixelFormat(dstPlaneIndex);
         bool isDstCompressed = _dstImage->getIsCompressed();
+        bool canReinterpretDst = _dstImage->hasPixelFormatView(dstPlaneIndex);
 
-        // If source and destination have different formats and at least one is compressed, use a temporary intermediary buffer
-        bool useTempBuffer = (srcMTLPixFmt != dstMTLPixFmt) && (isSrcCompressed || isDstCompressed);
+        bool isEitherCompressed = isSrcCompressed || isDstCompressed;
+        bool canReinterpret = canReinterpretSrc || canReinterpretDst;
+
+        // If source and destination can't be reinterpreted to matching formats use a temporary intermediary buffer
+        bool useTempBuffer = (srcMTLPixFmt != dstMTLPixFmt) && (isEitherCompressed || !canReinterpret);
 
         if (useTempBuffer) {
             // Add copy from source image to temp buffer.
@@ -177,12 +182,13 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
 
             size_t bytesPerRow = pixFmts->getBytesPerRow(srcMTLPixFmt, vkIC.extent.width);
             size_t bytesPerRegion = pixFmts->getBytesPerLayer(srcMTLPixFmt, bytesPerRow, vkIC.extent.height);
-            tmpBuffSize += bytesPerRegion;
+            tmpBuffSize += bytesPerRegion * vkIC.extent.depth;
         } else {
-            // Map the source pixel format to the dest pixel format through a texture view on the source texture.
-            // If the source and dest pixel formats are the same, this will simply degenerate to the source texture itself.
-            id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture(srcPlaneIndex, _dstImage->getMTLPixelFormat(dstPlaneIndex));
-            id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture(dstPlaneIndex);
+            // Map the source pixel format to the dest pixel format through a texture view on the reinterpretable texture.
+            // If the source and dest pixel formats are the same, this will simply degenerate to the texture itself.
+            MTLPixelFormat fmt = (canReinterpretSrc ? _dstImage : _srcImage)->getMTLPixelFormat(canReinterpretSrc ? dstPlaneIndex : srcPlaneIndex);
+            id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture(srcPlaneIndex, fmt);
+            id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture(dstPlaneIndex, fmt);
             if ( !srcMTLTex || !dstMTLTex ) { return; }
 
             id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(commandUse);

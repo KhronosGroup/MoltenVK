@@ -17,10 +17,25 @@
  */
 
 #include "MVKSurface.h"
+#include "MVKSwapchain.h"
 #include "MVKInstance.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
+#include "mvk_datatypes.hpp"
+
+#import "CAMetalLayer+MoltenVK.h"
 #import "MVKBlockObserver.h"
+
+#ifdef VK_USE_PLATFORM_IOS_MVK
+#	define PLATFORM_VIEW_CLASS	UIView
+#	import <UIKit/UIView.h>
+#endif
+
+#ifdef VK_USE_PLATFORM_MACOS_MVK
+#	define PLATFORM_VIEW_CLASS	NSView
+#	import <AppKit/NSView.h>
+#endif
+
 
 // We need to double-dereference the name to first convert to the platform symbol, then to a string.
 #define STR_PLATFORM(NAME) #NAME
@@ -34,38 +49,55 @@ CAMetalLayer* MVKSurface::getCAMetalLayer() {
 	return _mtlCAMetalLayer;
 }
 
+VkExtent2D MVKSurface::getExtent() {
+	return _mtlCAMetalLayer ? mvkVkExtent2DFromCGSize(_mtlCAMetalLayer.drawableSize) : _headlessExtent;
+}
+
+VkExtent2D MVKSurface::getNaturalExtent() {
+	return _mtlCAMetalLayer ? mvkVkExtent2DFromCGSize(_mtlCAMetalLayer.naturalDrawableSizeMVK) : _headlessExtent;
+}
+
+// Per spec, headless surface extent is set from the swapchain.
+void MVKSurface::setActiveSwapchain(MVKSwapchain* swapchain) {
+	_activeSwapchain = swapchain;
+	_headlessExtent = swapchain->getImageExtent();
+}
+
 MVKSurface::MVKSurface(MVKInstance* mvkInstance,
 					   const VkMetalSurfaceCreateInfoEXT* pCreateInfo,
 					   const VkAllocationCallbacks* pAllocator) : _mvkInstance(mvkInstance) {
-	initLayer((CAMetalLayer*)pCreateInfo->pLayer, "vkCreateMetalSurfaceEXT");
+	initLayer((CAMetalLayer*)pCreateInfo->pLayer, "vkCreateMetalSurfaceEXT", false);
+}
+
+MVKSurface::MVKSurface(MVKInstance* mvkInstance,
+					   const VkHeadlessSurfaceCreateInfoEXT* pCreateInfo,
+					   const VkAllocationCallbacks* pAllocator) : _mvkInstance(mvkInstance) {
+	initLayer(nil, "vkCreateHeadlessSurfaceEXT", true);
 }
 
 // pCreateInfo->pView can be either a CAMetalLayer or a view (NSView/UIView).
 MVKSurface::MVKSurface(MVKInstance* mvkInstance,
 					   const Vk_PLATFORM_SurfaceCreateInfoMVK* pCreateInfo,
 					   const VkAllocationCallbacks* pAllocator) : _mvkInstance(mvkInstance) {
+	MVKLogWarn("%s() is deprecated. Use vkCreateMetalSurfaceEXT() from the VK_EXT_metal_surface extension.", STR(vkCreate_PLATFORM_SurfaceMVK));
 
 	// Get the platform object contained in pView
-	id<NSObject> obj = (id<NSObject>)pCreateInfo->pView;
-
 	// If it's a view (NSView/UIView), extract the layer, otherwise assume it's already a CAMetalLayer.
+	id<NSObject> obj = (id<NSObject>)pCreateInfo->pView;
 	if ([obj isKindOfClass: [PLATFORM_VIEW_CLASS class]]) {
-		obj = ((PLATFORM_VIEW_CLASS*)obj).layer;
-		if ( !NSThread.isMainThread ) {
-			MVKLogWarn("%s(): You are not calling this function from the main thread. %s should only be accessed from the main thread. When using this function outside the main thread, consider passing the CAMetalLayer itself in %s::pView, instead of the %s.",
-					   STR(vkCreate_PLATFORM_SurfaceMVK), STR(PLATFORM_VIEW_CLASS), STR(Vk_PLATFORM_SurfaceCreateInfoMVK), STR(PLATFORM_VIEW_CLASS));
-		}
+		__block id<NSObject> layer;
+		mvkDispatchToMainAndWait(^{ layer = ((PLATFORM_VIEW_CLASS*)obj).layer; });
+		obj = layer;
 	}
 
 	// Confirm that we were provided with a CAMetalLayer
-	initLayer([obj isKindOfClass: CAMetalLayer.class] ? (CAMetalLayer*)obj : nil,
-			  STR(vkCreate_PLATFORM_SurfaceMVK));
+	initLayer([obj isKindOfClass: CAMetalLayer.class] ? (CAMetalLayer*)obj : nil, STR(vkCreate_PLATFORM_SurfaceMVK), false);
 }
 
-void MVKSurface::initLayer(CAMetalLayer* mtlLayer, const char* vkFuncName) {
+void MVKSurface::initLayer(CAMetalLayer* mtlLayer, const char* vkFuncName, bool isHeadless) {
 
 	_mtlCAMetalLayer = [mtlLayer retain];	// retained
-	if ( !_mtlCAMetalLayer ) { setConfigurationResult(reportError(VK_ERROR_SURFACE_LOST_KHR, "%s(): On-screen rendering requires a layer of type CAMetalLayer.", vkFuncName)); }
+	if ( !_mtlCAMetalLayer && !isHeadless ) { setConfigurationResult(reportError(VK_ERROR_SURFACE_LOST_KHR, "%s(): On-screen rendering requires a layer of type CAMetalLayer.", vkFuncName)); }
 
 	// Sometimes, the owning view can replace its CAMetalLayer.
 	// When that happens, the app needs to recreate the surface.

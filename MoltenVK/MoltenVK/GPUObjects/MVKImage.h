@@ -310,7 +310,10 @@ public:
      * attempting to copy a depth image with a substituted format to and from a buffer.
      */
     inline bool hasExpectedTexelSize() { return _hasExpectedTexelSize; }
-    
+
+	/** Returns whether the texture has the PixelFormatView usage flag, allowing it to be reinterpreted. */
+	inline bool hasPixelFormatView(uint32_t planeIndex) { return mvkIsAnyFlagEnabled(getMTLTexture(planeIndex).usage, MTLTextureUsagePixelFormatView); }
+
 	/** Returns the Metal resource options for this image. */
     MTLStorageMode getMTLStorageMode();
 
@@ -378,13 +381,7 @@ class MVKSwapchainImage : public MVKImage {
 
 public:
 
-	/** Binds this resource to the specified offset within the specified memory allocation. */
 	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset, uint8_t planeIndex) override;
-
-#pragma mark Metal
-
-	/** Returns the Metal texture used by the CAMetalDrawable underlying this image. */
-	id<MTLTexture> getMTLTexture(uint8_t planeIndex) override;
 
 
 #pragma mark Construction
@@ -399,7 +396,6 @@ public:
 protected:
 	friend class MVKPeerSwapchainImage;
 
-	virtual id<CAMetalDrawable> getCAMetalDrawable() = 0;
 	void detachSwapchain();
 
 	std::mutex _detachmentLock;
@@ -445,6 +441,8 @@ public:
 
 #pragma mark Metal
 
+	id<MTLTexture> getMTLTexture(uint8_t planeIndex) override;
+
 	/** Presents the contained drawable to the OS. */
 	VkResult presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff, MVKImagePresentInfo presentInfo);
 
@@ -468,16 +466,16 @@ public:
 protected:
 	friend MVKSwapchain;
 
-	id<CAMetalDrawable> getCAMetalDrawable() override;
+	id<CAMetalDrawable> getCAMetalDrawable();
 	void addPresentedHandler(id<CAMetalDrawable> mtlDrawable, MVKImagePresentInfo presentInfo, MVKSwapchainSignaler signaler);
 	void releaseMetalDrawable();
 	MVKSwapchainImageAvailability getAvailability();
-	void makeAvailable(const MVKSwapchainSignaler& signaler);
 	void makeAvailable();
 	VkResult acquireAndSignalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence);
 	MVKSwapchainSignaler getPresentationSignaler();
 
 	id<CAMetalDrawable> _mtlDrawable = nil;
+	id<MTLTexture> _mtlTextureHeadless = nil;
 	MVKSwapchainImageAvailability _availability;
 	MVKSmallVector<MVKSwapchainSignaler, 1> _availabilitySignalers;
 	MVKSwapchainSignaler _preSignaler = {};
@@ -494,7 +492,8 @@ class MVKPeerSwapchainImage : public MVKSwapchainImage {
 
 public:
 
-	/** Binds this resource according to the specified bind information. */
+	id<MTLTexture> getMTLTexture(uint8_t planeIndex) override;
+
 	VkResult bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo) override;
 
 
@@ -504,10 +503,6 @@ public:
 						  const VkImageCreateInfo* pCreateInfo,
 						  MVKSwapchain* swapchain,
 						  uint32_t swapchainIndex);
-
-protected:
-	id<CAMetalDrawable> getCAMetalDrawable() override;
-
 };
 
 
