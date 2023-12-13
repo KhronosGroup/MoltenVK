@@ -296,6 +296,8 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 			}
 		}
 
+		shaderConfig.options.mslOptions.pad_argument_buffer_resources = false;
+
 		// Establish the MSL options for the compiler
 		// This needs to be done in two steps...for CompilerMSL and its superclass.
 		pMSLCompiler->set_msl_options(shaderConfig.options.mslOptions);
