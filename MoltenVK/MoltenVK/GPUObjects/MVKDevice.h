@@ -26,7 +26,6 @@
 #include "MVKSmallVector.h"
 #include "MVKPixelFormats.h"
 #include "MVKOSExtensions.h"
-#include "mvk_private_api.h"
 #include "mvk_datatypes.hpp"
 #include <string>
 #include <mutex>
@@ -1063,7 +1062,7 @@ protected:
  * sorted according to power, with higher power GPU's at the front of the array.
  * This ensures that a lazy app that simply grabs the first GPU will get a high-power
  * one by default. If MVKConfiguration::forceLowPowerGPU is enabled, the returned
- * array will only include low-power devices. The intance may be a nullptr.
+ * array will only include low-power devices. The instance may be a nullptr.
  */
 NSArray<id<MTLDevice>>* mvkGetAvailableMTLDevicesArray(MVKInstance* instance);
 

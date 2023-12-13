@@ -372,7 +372,8 @@ void MVKInstance::initMVKConfig(const VkInstanceCreateInfo* pCreateInfo) {
 
 #define STR(name) #name
 #define MVK_CONFIG_MEMBER(member, mbrType, name) \
-		if(mvkStringsAreEqual(pSetting->pSettingName, STR(MVK_CONFIG_##name))) {  \
+		if(mvkStringsAreEqual(pSetting->pLayerName, getDriverLayer()->getName()) &&  \
+		   mvkStringsAreEqual(pSetting->pSettingName, STR(MVK_CONFIG_##name))) {  \
 			_mvkConfig.member = *(mbrType*)(pSetting->pValues);  \
 			continue;  \
 		}
@@ -494,13 +495,13 @@ void MVKInstance::initProcAddrs() {
 
 	// MoltenVK-specific instannce functions, not tied to a Vulkan API version or an extension.
 	ADD_INST_OPEN_ENTRY_POINT(vkGetMoltenVKConfigurationMVK);
-	ADD_INST_OPEN_ENTRY_POINT(vkSetMoltenVKConfigurationMVK);
 	ADD_INST_OPEN_ENTRY_POINT(vkGetPhysicalDeviceMetalFeaturesMVK);
 	ADD_INST_OPEN_ENTRY_POINT(vkGetPerformanceStatisticsMVK);
 
 	// For deprecated MoltenVK-specific functions, suppress compiler deprecation warning.
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+	ADD_INST_OPEN_ENTRY_POINT(vkSetMoltenVKConfigurationMVK);
 	ADD_INST_EXT_ENTRY_POINT(vkGetVersionStringsMVK, MVK_MOLTENVK);
 	ADD_INST_EXT_ENTRY_POINT(vkGetMTLDeviceMVK, MVK_MOLTENVK);
 	ADD_INST_EXT_ENTRY_POINT(vkSetMTLTextureMVK, MVK_MOLTENVK);

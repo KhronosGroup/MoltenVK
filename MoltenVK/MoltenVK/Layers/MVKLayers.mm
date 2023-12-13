@@ -100,10 +100,14 @@ MVKLayerManager::MVKLayerManager() {
 static mutex _lock;
 static MVKLayerManager* _globalManager = VK_NULL_HANDLE;
 
+// Test first and lock only if we need to create it.
+// Test again after lock established to ensure it wasn't added by another thread between test and lock.
 MVKLayerManager* MVKLayerManager::globalManager() {
-	lock_guard<mutex> lock(_lock);
-	if ( !_globalManager ) { _globalManager = new MVKLayerManager(); }
+	if ( !_globalManager ) {
+		lock_guard<mutex> lock(_lock);
+		if ( !_globalManager ) {
+			_globalManager = new MVKLayerManager();
+		}
+	}
 	return _globalManager;
 }
-
-

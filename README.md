@@ -284,7 +284,7 @@ Building from the command line creates the same `Package` folder structure descr
 building from within *Xcode*.
 
 When building from the command line, you can set any of the build settings documented 
-in the `mvk_config.h` file for `MVKConfiguration`, by passing them in the command line, 
+in the `MoltenVK_Configuration_Parameters.md` file, by passing them in the command line, 
 as in the following examples:
 
 	make MVK_CONFIG_LOG_LEVEL=0
@@ -343,7 +343,6 @@ the contents of that directory out of this **MoltenVK** repository into your own
 
 
 <a name="compliance"></a>
-
 **MoltenVK** and *Vulkan* Compliance
 ------------------------------------
 

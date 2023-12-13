@@ -18,7 +18,6 @@
 
 
 #include "MVKEnvironment.h"
-#include "mvk_private_api.h"
 #include "mvk_deprecated_api.h"
 #include "MVKInstance.h"
 #include "MVKSwapchain.h"
@@ -53,7 +52,7 @@ VkResult mvkCopyGrowingStruct(S* pDst, const S* pSrc, size_t* pCopySize) {
 
 
 #pragma mark -
-#pragma mark mvk_config.h
+#pragma mark mvk_private_api.h
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMoltenVKConfigurationMVK(
 	VkInstance                                  ignored,
@@ -69,15 +68,12 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
 	size_t*                                     pConfigurationSize) {
 
 	// Start with copy of current config, in case incoming is not fully copied
+	MVKBaseObject::reportMessage(nullptr, MVK_CONFIG_LOG_LEVEL_WARNING, "vkSetMoltenVKConfigurationMVK() is deprecated. To set MoltenVK configuration parameters, the VK_EXT_layer_settings extension, or environment variables.");
 	MVKConfiguration mvkCfg = mvkConfig();
 	VkResult rslt = mvkCopyGrowingStruct(&mvkCfg, pConfiguration, pConfigurationSize);
 	mvkSetConfig(mvkCfg);
 	return rslt;
 }
-
-
-#pragma mark -
-#pragma mark mvk_private_api.h
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceMetalFeaturesMVK(
 	VkPhysicalDevice                            physicalDevice,

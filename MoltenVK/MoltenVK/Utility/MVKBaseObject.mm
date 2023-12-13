@@ -22,7 +22,6 @@
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
 #include "MVKStrings.h"
-#include <MoltenVK/mvk_config.h>
 
 using namespace std;
 

@@ -28,6 +28,8 @@ Released TBD
 - Fix rare deadlock during launch via `dlopen()`.
 - Fix initial value of `VkPhysicalDeviceLimits::timestampPeriod` on non-Apple Silicon GPUs.
 - Fix swapchain and surface bugs when windowing system is accessed from off the main thread.
+- Deprecate `vkSetMoltenVKConfigurationMVK()`.
+- Deprecate `mvk_config.h` and move content to `mvk_private_api.h` and `mvk_deprecated_api.h`.
 - Update to latest SPIRV-Cross:
   - MSL: Fix regression error in argument buffer runtime arrays.
   - MSL: Work around broken cube texture gradients on Apple Silicon.

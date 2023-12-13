@@ -483,18 +483,15 @@ can be included in your application source code as follows:
 
 where `HEADER_FILE` is one of the following:
 
-- `mvk_vulkan.h` - This is a convenience header file that loads the `<vulkan/vulkan.h>` header file 
-  with platform settings to enable the appropriate platform-surface and portability extensions.
+- `mvk_vulkan.h` - This is a convenience header file that loads the `<vulkan/vulkan.h>` header file
+  with platform settings to enable the appropriate _Vulkan_ WSI surface and portability extensions.
   
-- `mvk_config.h` - Contains public functions and structures to allow you to configure and 
-  optimize **MoltenVK** for your particular application runtime requirements. For more 
-  information, see the [Configuring MoltenVK](#moltenvk_config) section just below.
-  
-- `mvk_private_api.h` - Contains functions and structures to allow you to query **MoltenVK** 
-  performance activity, and Metal capabilities on the platform. _**NOTE:**_ THESE 
-  FUNCTIONS ARE NOT SUPPORTED BY THE *Vulkan Loader and Layers*, AND CAN ONLY BE USED 
-  WHEN **MoltenVK** IS LINKED DIRECTLY TO YOUR APPLICATION.
-  
+- `mvk_private_api.h` - Contains private structures and functions to query **MoltenVK** about 
+  **MoltenVK** version and configuration, runtime performance information, and available 
+  _Metal_ capabilities. 
+  > _**NOTE:**_ THE FUNCTIONS in `mvk_private_api.h` ARE NOT SUPPORTED BY THE _Vulkan Loader 
+  and Layers_, AND CAN ONLY BE USED WHEN **MoltenVK** IS LINKED DIRECTLY TO YOUR APPLICATION.
+
 - `mvk_datatypes.h` - Contains helpful functions for converting between *Vulkan* and *Metal* 
   data types. You do not need to use this functionality to use **MoltenVK**, as **MoltenVK** 
   converts between *Vulkan* and *Metal* datatypes automatically (using the functions declared 
@@ -505,30 +502,36 @@ where `HEADER_FILE` is one of the following:
 <a name="moltenvk_config"></a>
 ### Configuring MoltenVK
 
-The `mvk_config.h` header file provides the ability to configure and optimize **MoltenVK** 
-for your particular application runtime requirements. This can be helpful in situtations 
-where *Metal* behavior is different than *Vulkan* behavior, and the results or performance 
-you receive can depend on how **MoltenVK** works around those differences, which, in turn, may 
-depend on how you are using *Vulkan*. Different apps might benefit differently in this handling. 
+**MoltenVK** provides the ability to configure and optimize **MoltenVK** for your particular 
+application runtime requirements and development-time needs. 
 
-There are three mechanisms for setting the values of the **MoltenVK** configuration parameters:
+At runtime, configuration can be helpful in situtations where _Metal_ behavior is different 
+than _Vulkan_ behavior, and the results or performance you receive can depend on how **MoltenVK** 
+works around those differences, which, in turn, may depend on how you are using _Vulkan_. 
+Different apps might benefit differently in this handling.
 
-- Runtime API via the `vkGetMoltenVKConfigurationMVK()/vkSetMoltenVKConfigurationMVK()` functions.
+Additional configuration parameters can be helpful at development time by providing you with
+additional tracing, debugging, and performance measuring capabilities.
+
+Each configuration parameter has a *name* and *value*, and can be passed to **MoltenVK** 
+via any of the following mechanisms:
+
+- The standard _Vulkan_ `VK_EXT_layer_settings` extension.
 - Application runtime environment variables.
 - Build settings at **MoltenVK** build time.
 
-To change some of the **MoltenVK** configuration settings at runtime using a programmatic API, 
-use the `vkGetMoltenVKConfigurationMVK()` and `vkSetMoltenVKConfigurationMVK()` functions to 
-retrieve, modify, and set a copy of the `MVKConfiguration` structure.
+Parameter values configured by build settings at **MoltenVK** build time can be overridden 
+by values set by environment variables, which, in turn, can be overridden during `VkInstance` 
+creation via the Vulkan `VK_EXT_layer_settings` extension.
 
-The initial value of each of the configuration settings can be established at runtime 
-by a corresponding environment variable, or if the environment variable is not set, 
-by a corresponding build setting at the time **MoltenVK** is compiled. The environment 
-variable and build setting for each configuration parameter share the same name.
+Using the `VK_EXT_layer_settings` extension is the preferred mechanism, as it is a standard 
+_Vulkan_ extension, and is supported by the _Vulkan_ loader and layers. Using environment 
+variables can be a convinient mechanism to modify configuration parameters during runtime
+debugging in the field (if the settings are *not* overridden during `VkInstance` creation
+via the _Vulkan_ `VK_EXT_layer_settings` extension).
 
-See the description of the `MVKConfiguration` structure parameters and corresponding 
-environment variables in the `mvk_config.h` file for more info about configuring and 
-optimizing **MoltenVK** at runtime or build time.
+A description of each configuration parameter supported by **MoltenVK** can be found in the 
+[`MoltenVK_Configuration_Parameters.md`](MoltenVK_Configuration_Parameters.md) document in the `Docs` directory.
 
 
 <a name="shaders"></a>
@@ -552,19 +555,9 @@ you can address the issue as follows:
 
 - Errors encountered during **Runtime Shader Conversion** are logged to the console.
 
-<<<<<<< HEAD
-- To help understand conversion issues during **Runtime Shader Conversion**, you can 
-  enable the logging of the *SPIR-V* and *MSL* shader source code during shader conversion, 
-  by turning on the `MVKConfiguration::debugMode` configuration parameter, or setting the 
-  value of the `MVK_CONFIG_DEBUG` runtime environment variable to `1`. See the 
-  [*MoltenVK Configuration*](#moltenvk_config) description above.
-=======
-- To help understand conversion issues during **Runtime Shader Conversion**, you can enable the 
-  logging of the *SPIR-V* and *MSL* shader source code during shader conversion, by turning on the 
-  `MVKConfiguration::debugMode` configuration parameter, or setting the value of the `MVK_CONFIG_DEBUG` 
-  runtime environment variable to `1`. See the [*MoltenVK Configuration*](#moltenvk_config) 
-  description above.
->>>>>>> e6a3886313a270e93a327cdb822f856fb75393b2
+- To help understand conversion issues during **Runtime Shader Conversion**, you can enable logging 
+  the *SPIR-V* and *MSL* shader source code during shader conversion, by enabing the `MVK_CONFIG_DEBUG` 
+  configuration parameter. See the [*MoltenVK Configuration*](#moltenvk_config) description above.
 
   Enabling debug mode in **MoltenVK** includes shader conversion logging, which causes both 
   the incoming *SPIR-V* code and the converted *MSL* source code to be logged to the console 
