@@ -23,6 +23,7 @@
 #include <mach/mach_time.h>
 #include <mach/task.h>
 #include <os/proc.h>
+#include <sys/sysctl.h>
 
 #import <Foundation/Foundation.h>
 
@@ -100,17 +101,12 @@ double mvkGetEnvVarNumber(const char* varName, double defaultValue) {
 #pragma mark System memory
 
 uint64_t mvkGetSystemMemorySize() {
-#if MVK_MACOS_OR_IOS_OR_VISIONOS
-	mach_msg_type_number_t host_size = HOST_BASIC_INFO_COUNT;
-	host_basic_info_data_t info;
-	if (host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&info, &host_size) == KERN_SUCCESS) {
-		return info.max_mem;
+	uint64_t host_memsize = 0;
+	size_t size = sizeof(host_memsize);
+	if (sysctlbyname("hw.memsize", &host_memsize, &size, NULL, 0) == KERN_SUCCESS) {
+		return host_memsize;
 	}
 	return 0;
-#endif
-#if MVK_TVOS
-	return 0;
-#endif
 }
 
 uint64_t mvkGetAvailableMemorySize() {
