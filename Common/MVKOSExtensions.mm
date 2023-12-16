@@ -135,10 +135,12 @@ uint64_t mvkGetUsedMemorySize() {
 	mach_msg_type_number_t task_size = TASK_VM_INFO_COUNT;
 	if (task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)&task_vm_info, &task_size) == KERN_SUCCESS) {
 #ifdef TASK_VM_INFO_REV3_COUNT	// check for rev3 version of task_vm_info
-		return task_vm_info.ledger_tag_graphics_footprint;
-#else
-		return task_vm_info.phys_footprint;
+		if (task_size >= TASK_VM_INFO_REV3_COUNT) {
+			return task_vm_info.ledger_tag_graphics_footprint;
+		}
+		else
 #endif
+			return task_vm_info.phys_footprint;
 	}
 	return 0;
 }
