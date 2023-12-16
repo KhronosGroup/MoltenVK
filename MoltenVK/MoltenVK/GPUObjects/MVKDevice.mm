@@ -1655,7 +1655,12 @@ VkResult MVKPhysicalDevice::getMemoryProperties(VkPhysicalDeviceMemoryProperties
 					budgetProps->heapUsage[1] = (VkDeviceSize)mvkGetUsedMemorySize();
 				}
 				budgetProps->heapBudget[0] = (VkDeviceSize)getRecommendedMaxWorkingSetSize();
-				budgetProps->heapUsage[0] = (VkDeviceSize)getCurrentAllocatedSize() - budgetProps->heapUsage[1];
+				uint64_t currentAllocatedSize = (VkDeviceSize)getCurrentAllocatedSize();
+				if (budgetProps->heapUsage[1] > currentAllocatedSize) {
+					// mapped memory can't be larger than total memory, so ignore and zero-out
+					budgetProps->heapUsage[1] = 0;
+				}
+				budgetProps->heapUsage[0] = currentAllocatedSize - budgetProps->heapUsage[1];
 				break;
 			}
 			default:
