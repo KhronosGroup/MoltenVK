@@ -509,8 +509,8 @@ MTLTriangleFillMode mvkMTLTriangleFillModeFromVkPolygonModeInObj(VkPolygonMode v
 		case VK_POLYGON_MODE_FILL:
 			return MTLTriangleFillModeFill;
 
+		// Metal does not support VK_POLYGON_MODE_POINT. Next best option is lines.
 		case VK_POLYGON_MODE_POINT:
-			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "VkPolygonMode value VK_POLYGON_MODE_POINT is not supported for render pipelines.");
 		case VK_POLYGON_MODE_LINE:
 			return MTLTriangleFillModeLines;
 
