@@ -44,7 +44,7 @@ string MVKBaseObject::getClassName() { return mvk::getTypeName(this); }
 const MVKConfiguration& MVKBaseObject::getMVKConfig() {
 	MVKVulkanAPIObject* mvkAPIObj = getVulkanAPIObject();
 	MVKInstance* mvkInst = mvkAPIObj ? mvkAPIObj->getInstance() : nullptr;
-	return mvkInst ? mvkInst->getMVKConfig() : mvkConfig();
+	return mvkGetMVKConfig(mvkInst);
 }
 
 void MVKBaseObject::reportMessage(MVKConfigLogLevel logLevel, const char* format, ...) {
@@ -67,7 +67,7 @@ void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, MVKConfigLogLevel logLe
 	MVKVulkanAPIObject* mvkAPIObj = mvkObj ? mvkObj->getVulkanAPIObject() : nullptr;
 	MVKInstance* mvkInst = mvkAPIObj ? mvkAPIObj->getInstance() : nullptr;
 	bool hasDebugCallbacks = mvkInst && mvkInst->hasDebugCallbacks();
-	bool shouldLog = logLevel <= (mvkInst ? mvkInst->getMVKConfig() : mvkConfig()).logLevel;
+	bool shouldLog = logLevel <= mvkGetMVKConfig(mvkInst).logLevel;
 
 	// Fail fast to avoid further unnecessary processing.
 	if ( !(shouldLog || hasDebugCallbacks) ) { return; }

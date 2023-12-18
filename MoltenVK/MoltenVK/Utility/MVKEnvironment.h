@@ -75,21 +75,22 @@
 
 
 #pragma mark -
-#pragma mark Global Configuration
+#pragma mark MoltenVK Configuration
+
+/** The number of members of MVKConfiguration that are strings. */
+static constexpr uint32_t kMVKConfigurationStringCount = 1;
 
 /** Global function to access MoltenVK configuration info. */
-const MVKConfiguration& mvkConfig();
+const MVKConfiguration& getGlobalMVKConfig();
 
 /** Sets the MoltenVK global configuration content. */
-void mvkSetConfig(const MVKConfiguration& mvkConfig);
+void mvkSetGlobalConfig(const MVKConfiguration& srcMVKConfig);
 
 /** 
  * Sets the content from the source config into the destination 
  * config, while using the string object to retain string content.
  */
-void mvkSetConfig(MVKConfiguration& dstMVKConfig, 
-				  const MVKConfiguration& srcMVKConfig,
-				  std::string& autoGPUCaptureOutputFilepath);
+void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVKConfig, std::string* stringHolders);
 
 /**
  * Enable debug mode.

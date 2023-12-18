@@ -59,7 +59,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMoltenVKConfigurationMVK(
 	MVKConfiguration*                           pConfiguration,
 	size_t*                                     pConfigurationSize) {
 
-	return mvkCopyGrowingStruct(pConfiguration, &mvkConfig(), pConfigurationSize);
+	return mvkCopyGrowingStruct(pConfiguration, &getGlobalMVKConfig(), pConfigurationSize);
 }
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
@@ -69,9 +69,9 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
 
 	// Start with copy of current config, in case incoming is not fully copied
 	MVKBaseObject::reportMessage(nullptr, MVK_CONFIG_LOG_LEVEL_WARNING, "vkSetMoltenVKConfigurationMVK() is deprecated. To set MoltenVK configuration parameters, the VK_EXT_layer_settings extension, or environment variables.");
-	MVKConfiguration mvkCfg = mvkConfig();
+	MVKConfiguration mvkCfg = getGlobalMVKConfig();
 	VkResult rslt = mvkCopyGrowingStruct(&mvkCfg, pConfiguration, pConfigurationSize);
-	mvkSetConfig(mvkCfg);
+	mvkSetGlobalConfig(mvkCfg);
 	return rslt;
 }
 
@@ -110,7 +110,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkGetVersionStringsMVK(
 	len = mvkVer.copy(pMoltenVersionStringBuffer, moltenVersionStringBufferLength - 1);
 	pMoltenVersionStringBuffer[len] = 0;    // terminator
 
-	string vkVer = mvkGetVulkanVersionString(mvkConfig().apiVersionToAdvertise);
+	string vkVer = mvkGetVulkanVersionString(getGlobalMVKConfig().apiVersionToAdvertise);
 	len = vkVer.copy(pVulkanVersionStringBuffer, vulkanVersionStringBufferLength - 1);
 	pVulkanVersionStringBuffer[len] = 0;    // terminator
 }

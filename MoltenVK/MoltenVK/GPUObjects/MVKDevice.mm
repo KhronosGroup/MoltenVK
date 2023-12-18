@@ -533,7 +533,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
 	supportedProps12.pNext = nullptr;
 	supportedProps12.driverID = VK_DRIVER_ID_MOLTENVK;
-	strcpy(supportedProps12.driverName, "MoltenVK");
+	strcpy(supportedProps12.driverName, kMVKMoltenVKDriverLayerName);
 	strcpy(supportedProps12.driverInfo, mvkGetMoltenVKVersionString(MVK_VERSION).c_str());
 	supportedProps12.conformanceVersion.major = 0;
 	supportedProps12.conformanceVersion.minor = 0;

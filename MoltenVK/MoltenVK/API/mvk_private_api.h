@@ -88,7 +88,7 @@ typedef unsigned long MTLArgumentBuffersTier;
  * Each configuration parameter has a name and value, and can be passed to MoltenVK
  * via any of the following mechanisms:
  *
- *   - The standard Vulkan VK_EXT_layer_settings extension.
+ *   - The standard Vulkan VK_EXT_layer_settings extension (layer name "MoltenVK").
  *   - Application runtime environment variables.
  *   - Build settings at MoltenVK build time.
  *

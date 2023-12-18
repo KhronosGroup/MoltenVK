@@ -40,7 +40,7 @@ MVKLayer::MVKLayer() : _supportedInstanceExtensions(nullptr, true) {
 
 	// The core driver layer
 	mvkClear(_layerProperties.layerName, VK_MAX_EXTENSION_NAME_SIZE);
-	strcpy(_layerProperties.layerName, "MoltenVK");
+	strcpy(_layerProperties.layerName, kMVKMoltenVKDriverLayerName);
 	mvkClear(_layerProperties.description, VK_MAX_DESCRIPTION_SIZE);
 	strcpy(_layerProperties.description, "MoltenVK driver layer");
 	_layerProperties.specVersion = getMVKConfig().apiVersionToAdvertise;

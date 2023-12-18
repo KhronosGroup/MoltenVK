@@ -69,7 +69,7 @@ MVK_CONFIG_MEMBER(forceLowPowerGPU,                       VkBool32,             
 MVK_CONFIG_MEMBER(semaphoreUseMTLFence,                   VkBool32,                                 ALLOW_METAL_FENCES)  				// Deprecated legacy
 MVK_CONFIG_MEMBER(semaphoreSupportStyle,                  MVKVkSemaphoreSupportStyle,               VK_SEMAPHORE_SUPPORT_STYLE)
 MVK_CONFIG_MEMBER(autoGPUCaptureScope,                    MVKConfigAutoGPUCaptureScope,             AUTO_GPU_CAPTURE_SCOPE)
-MVK_CONFIG_MEMBER_STRING(autoGPUCaptureOutputFilepath,    char*,                                    AUTO_GPU_CAPTURE_OUTPUT_FILE)
+MVK_CONFIG_MEMBER_STRING(autoGPUCaptureOutputFilepath,    const char*,                              AUTO_GPU_CAPTURE_OUTPUT_FILE)
 MVK_CONFIG_MEMBER(texture1DAs2D,                          VkBool32,                                 TEXTURE_1D_AS_2D)
 MVK_CONFIG_MEMBER(preallocateDescriptors,                 VkBool32,                                 PREALLOCATE_DESCRIPTORS)
 MVK_CONFIG_MEMBER(useCommandPooling,                      VkBool32,                                 USE_COMMAND_POOLING)

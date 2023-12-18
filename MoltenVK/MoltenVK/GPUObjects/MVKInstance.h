@@ -72,7 +72,7 @@ public:
 	MVKInstance* getInstance() override { return this; }
 
 	/** Return the MoltenVK configuration info for this VkInstance. */
-	const MVKConfiguration& getMVKConfig() override { return _enabledExtensions.vk_EXT_layer_settings.enabled ? _mvkConfig : mvkConfig(); }
+	const MVKConfiguration& getMVKConfig() override { return _enabledExtensions.vk_EXT_layer_settings.enabled ? _mvkConfig : getGlobalMVKConfig(); }
 
 	/** Returns the maximum version of Vulkan the application supports. */
 	inline uint32_t getAPIVersion() { return _appInfo.apiVersion; }
@@ -204,7 +204,7 @@ protected:
 	MVKSmallVector<MVKDebugReportCallback*> _debugReportCallbacks;
 	MVKSmallVector<MVKDebugUtilsMessenger*> _debugUtilMessengers;
 	std::unordered_map<std::string, MVKEntryPoint> _entryPoints;
-	std::string _autoGPUCaptureOutputFilepath;
+	std::string _mvkConfigStringHolders[kMVKConfigurationStringCount] = {};
 	std::mutex _dcbLock;
 	bool _hasDebugReportCallbacks;
 	bool _hasDebugUtilsMessengers;

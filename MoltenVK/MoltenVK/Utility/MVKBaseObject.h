@@ -222,5 +222,5 @@ protected:
  * VkInstance that created the object, otherwise returns the global configuration info.
  */
 static inline const MVKConfiguration& mvkGetMVKConfig(MVKBaseObject* mvkObj) {
-	return mvkObj ? mvkObj->getMVKConfig() : mvkConfig();
+	return mvkObj ? mvkObj->getMVKConfig() : getGlobalMVKConfig();
 }

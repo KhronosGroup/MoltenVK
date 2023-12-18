@@ -352,7 +352,7 @@ void MVKInstance::initMVKConfig(const VkInstanceCreateInfo* pCreateInfo) {
 
 	if ( !_enabledExtensions.vk_EXT_layer_settings.enabled ) { return; }
 
-	_mvkConfig = mvkConfig();
+	_mvkConfig = getGlobalMVKConfig();
 
 	VkLayerSettingsCreateInfoEXT* pLSCreateInfo = nil;
 	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
@@ -379,7 +379,7 @@ void MVKInstance::initMVKConfig(const VkInstanceCreateInfo* pCreateInfo) {
 		}
 #include "MVKConfigMembers.def"
 	}
-	mvkSetConfig(_mvkConfig, _mvkConfig, _autoGPUCaptureOutputFilepath);
+	mvkSetConfig(_mvkConfig, _mvkConfig, _mvkConfigStringHolders);
 }
 
 #define ADD_ENTRY_POINT_MAP(name, func, api, ext1, ext2, isDev)	\

@@ -78,11 +78,11 @@ typedef void (VKAPI_PTR *PFN_vkGetMTLCommandQueueMVK)(VkQueue queue, id<MTLComma
  * DEPRECATED.
  * To set configuration values, use one of the following mechansims:
  *
- *   - The standard Vulkan VK_EXT_layer_settings extension.
+ *   - The standard Vulkan VK_EXT_layer_settings extension (layer name "MoltenVK").
  *   - Application runtime environment variables.
  *   - Build settings at MoltenVK build time.
  */
-VKAPI_ATTR [[deprecated("Use the VK_EXT_layer_settings extension instead.")]]
+VKAPI_ATTR [[deprecated("Use the VK_EXT_layer_settings extension, or environment variables, instead.")]]
 VkResult VKAPI_CALL vkSetMoltenVKConfigurationMVK(
     VkInstance                                  instance,
     const MVKConfiguration*                     pConfiguration,

@@ -582,7 +582,7 @@ void MVKMetalCompiler::compile(unique_lock<mutex>& lock, dispatch_block_t block)
 	if ( !_isCompileDone ) {
 		@autoreleasepool {
 			NSString* errDesc = [NSString stringWithFormat: @"Timeout after %.3f milliseconds. Likely internal Metal compiler error", (double)nanoTimeout.count() / 1e6];
-			_compileError = [[NSError alloc] initWithDomain: @"MoltenVK" code: 1 userInfo: @{NSLocalizedDescriptionKey : errDesc}];	// retained
+			_compileError = [[NSError alloc] initWithDomain: @(kMVKMoltenVKDriverLayerName) code: 1 userInfo: @{NSLocalizedDescriptionKey : errDesc}];	// retained
 		}
 	}
 

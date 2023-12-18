@@ -28,7 +28,7 @@
  * To configure MoltenVK, use one of the following mechanisms,
  * as documented in MoltenVK_Configuration_Parameters.md:
  *
- *   - The standard Vulkan VK_EXT_layer_settings extension.
+ *   - The standard Vulkan VK_EXT_layer_settings extension (layer name "MoltenVK").
  *   - Application runtime environment variables.
  *   - Build settings at MoltenVK build time.
  *

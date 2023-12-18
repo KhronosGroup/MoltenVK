@@ -47,4 +47,7 @@
 
 #include <vulkan/vulkan.h>
 
+/** The name of the MoltenVK driver layer. */
+static const char* kMVKMoltenVKDriverLayerName = "MoltenVK";
+
 #endif

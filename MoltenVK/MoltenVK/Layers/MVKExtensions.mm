@@ -50,7 +50,7 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 
 	// If the config indicates that not all supported extensions should be advertised,
 	// only advertise those supported extensions that have been specifically configured.
-	auto advExtns = mvkConfig().advertiseExtensions;
+	auto advExtns = getGlobalMVKConfig().advertiseExtensions;
 	if ( !mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL) ) {
 #define MVK_NA  kMVKOSVersionUnsupported
 		if (mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_WSI)) {
