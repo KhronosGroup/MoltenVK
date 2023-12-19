@@ -34,7 +34,7 @@ static constexpr uint32_t getExpectedMVKConfigurationSize() {
 // Return the expected number of string members in MVKConfiguration, based on contents of MVKConfigMembers.def.
 static constexpr uint32_t getExpectedMVKConfigurationStringCount() {
 #define MVK_CONFIG_MEMBER(member, mbrType, name)
-#define MVK_CONFIG_MEMBER_STRING(member, mbrType, name)  if(std::is_same<mbrType, const char*>::value) { strCnt++; }
+#define MVK_CONFIG_MEMBER_STRING(member, mbrType, name)  strCnt++;
 	uint32_t strCnt = 0;
 #include "MVKConfigMembers.def"
 	return strCnt;
