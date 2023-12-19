@@ -332,6 +332,7 @@ protected:
 	bool _mtlPrimitiveRestartEnable[StateScope::Count] = {};
 	bool _mtlRasterizerDiscardEnable[StateScope::Count] = {};
 	bool _cullBothFaces[StateScope::Count] = {};
+	bool _isPolygonModePoint[StateScope::Count] = {};
 };
 
 

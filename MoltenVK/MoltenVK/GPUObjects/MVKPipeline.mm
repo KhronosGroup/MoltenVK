@@ -511,11 +511,12 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	}
 
 	// Topology
-	_vkPrimitiveTopology = (pCreateInfo->pInputAssemblyState && !isRenderingPoints(pCreateInfo)
-				   ? pCreateInfo->pInputAssemblyState->topology
-				   : VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
-
-	_primitiveRestartEnable = pCreateInfo->pInputAssemblyState ? pCreateInfo->pInputAssemblyState->primitiveRestartEnable : true;
+	_vkPrimitiveTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+	_primitiveRestartEnable = true;			// Always enabled in Metal
+	if (pCreateInfo->pInputAssemblyState) {
+		_vkPrimitiveTopology = pCreateInfo->pInputAssemblyState->topology;
+		_primitiveRestartEnable = pCreateInfo->pInputAssemblyState->primitiveRestartEnable;
+	}
 
 	// Rasterization
 	_hasRasterInfo = mvkSetOrClear(&_rasterInfo, pCreateInfo->pRasterizationState);
@@ -1933,11 +1934,16 @@ void MVKGraphicsPipeline::addPrevStageOutputToShaderConversionConfig(SPIRVToMSLC
     }
 }
 
-// We render points if either the static topology or static polygon fill mode dictate it
+// We render points if either the static topology or static polygon-mode dictate it.
+// The topology class must be the same between static and dynamic, so point topology
+// in static also implies point topology in dynamic.
+// Metal does not support VK_POLYGON_MODE_POINT, but it can be emulated if the polygon mode
+// is static, which allows both the topology and the pipeline topology-class to be set to points.
+// This cannot be accomplished if the dynamic polygon mode has been changed to points when the
+// pipeline is expecting triangles or lines, because the pipeline topology class will be incorrect.
 bool MVKGraphicsPipeline::isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
-	return ((pCreateInfo->pInputAssemblyState && 
-			 (pCreateInfo->pInputAssemblyState->topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST) &&
-			 !isDynamicState(PrimitiveTopology)) ||
+	return ((pCreateInfo->pInputAssemblyState &&
+			 (pCreateInfo->pInputAssemblyState->topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST)) ||
 			(pCreateInfo->pRasterizationState && 
 			 (pCreateInfo->pRasterizationState->polygonMode == VK_POLYGON_MODE_POINT) &&
 			 !isDynamicState(PolygonMode)));
