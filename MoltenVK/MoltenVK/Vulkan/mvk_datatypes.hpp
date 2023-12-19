@@ -47,6 +47,12 @@ class MVKPixelFormats;
  * of an MVKBaseObject subclass, which is true for all but static calling functions.
  */
 
+MTLTextureType mvkMTLTextureTypeFromVkImageTypeObj(VkImageType vkImageType, uint32_t arraySize, bool isMultisample, MVKBaseObject* mvkObj);
+#define mvkMTLTextureTypeFromVkImageType(vkImageType, arraySize, isMultisample) mvkMTLTextureTypeFromVkImageTypeObj(vkImageType, arraySize, isMultisample, this)
+
+MTLTextureType mvkMTLTextureTypeFromVkImageViewTypeObj(VkImageViewType vkImageViewType, bool isMultisample, MVKBaseObject* mvkObj);
+#define mvkMTLTextureTypeFromVkImageViewType(vkImageViewType, isMultisample) mvkMTLTextureTypeFromVkImageViewTypeObj(vkImageViewType, isMultisample, this)
+
 MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopologyInObj(VkPrimitiveTopology vkTopology, MVKBaseObject* mvkObj);
 #define mvkMTLPrimitiveTypeFromVkPrimitiveTopology(vkTopology) mvkMTLPrimitiveTypeFromVkPrimitiveTopologyInObj(vkTopology, this)
 

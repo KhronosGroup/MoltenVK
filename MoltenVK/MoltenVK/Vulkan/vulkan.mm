@@ -55,7 +55,7 @@ static inline uint64_t MVKTraceVulkanCallStartImpl(const char* funcName) {
 	bool includeExit = false;
 	bool includeDuration = false;
 
-	switch (mvkConfig().traceVulkanCalls) {
+	switch (getGlobalMVKConfig().traceVulkanCalls) {
 		case MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION:
 			includeDuration = true;		// fallthrough
 		case MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT:
@@ -94,7 +94,7 @@ static inline uint64_t MVKTraceVulkanCallStartImpl(const char* funcName) {
 
 // Optionally log end of function calls and timings to stderr
 static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t startTime) {
-	switch(mvkConfig().traceVulkanCalls) {
+	switch(getGlobalMVKConfig().traceVulkanCalls) {
 		case MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT:
 		case MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT_THREAD_ID:
 			fprintf(stderr, "[mvk-trace] } %s\n", funcName);
@@ -2021,7 +2021,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkEnumerateInstanceVersion(
     uint32_t*                                   pApiVersion) {
 
     MVKTraceVulkanCallStart();
-    *pApiVersion = mvkConfig().apiVersionToAdvertise;
+    *pApiVersion = getGlobalMVKConfig().apiVersionToAdvertise;
     MVKTraceVulkanCallEnd();
     return VK_SUCCESS;
 }

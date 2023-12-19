@@ -144,7 +144,7 @@ bool MVKSwapchain::hasOptimalSurface() {
 
 // Renders the watermark image to the surface.
 void MVKSwapchain::renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff) {
-    if (mvkConfig().displayWatermark) {
+    if (getMVKConfig().displayWatermark) {
         if ( !_licenseWatermark ) {
             _licenseWatermark = new MVKWatermarkRandom(getMTLDevice(),
                                                        __watermarkTextureContent,
@@ -173,7 +173,7 @@ void MVKSwapchain::markFrameInterval() {
 
 	_device->updateActivityPerformance(_device->_performanceStatistics.queue.frameInterval, mvkGetElapsedMilliseconds(prevFrameTime, _lastFrameTime));
 
-	auto& mvkCfg = mvkConfig();
+	auto& mvkCfg = getMVKConfig();
 	bool shouldLogOnFrames = mvkCfg.performanceTracking && mvkCfg.activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT;
 	if (shouldLogOnFrames && (mvkCfg.performanceLoggingFrameCount > 0) && (++_currentPerfLogFrameCount >= mvkCfg.performanceLoggingFrameCount)) {
 		_currentPerfLogFrameCount = 0;
@@ -181,7 +181,7 @@ void MVKSwapchain::markFrameInterval() {
 				   mvkCfg.performanceLoggingFrameCount,
 				   (1000.0 / _device->_performanceStatistics.queue.frameInterval.average),
 				   mvkGetElapsedMilliseconds() / 1000.0);
-		if (mvkConfig().activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT) {
+		if (getMVKConfig().activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT) {
 			_device->logPerformanceSummary();
 		}
 	}
@@ -470,7 +470,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 	auto* mtlLayer = getCAMetalLayer();
 	if ( !mtlLayer || getIsSurfaceLost() ) { return; }
 
-	auto minMagFilter = mvkConfig().swapchainMinMagFilterUseNearest ? kCAFilterNearest : kCAFilterLinear;
+	auto minMagFilter = getMVKConfig().swapchainMinMagFilterUseNearest ? kCAFilterNearest : kCAFilterLinear;
 	mtlLayer.drawableSize = mvkCGSizeFromVkExtent2D(_imageExtent);
 	mtlLayer.device = getMTLDevice();
 	mtlLayer.pixelFormat = getPixelFormats()->getMTLPixelFormat(pCreateInfo->imageFormat);
@@ -480,9 +480,9 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 	mtlLayer.magnificationFilter = minMagFilter;
 	mtlLayer.contentsGravity = getCALayerContentsGravity(pScalingInfo);
 	mtlLayer.framebufferOnly = !mvkIsAnyFlagEnabled(pCreateInfo->imageUsage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-																			   VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-																			   VK_IMAGE_USAGE_SAMPLED_BIT |
-																			   VK_IMAGE_USAGE_STORAGE_BIT));
+																			  VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+																			  VK_IMAGE_USAGE_SAMPLED_BIT |
+																			  VK_IMAGE_USAGE_STORAGE_BIT));
 
 	// Because of a regression in Metal, the most recent one or two presentations may not
 	// complete and call back. Changing the CAMetalLayer drawableSize will force any incomplete

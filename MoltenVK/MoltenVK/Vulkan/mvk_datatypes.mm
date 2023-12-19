@@ -144,12 +144,21 @@ MVK_PUBLIC_SYMBOL bool mvkMTLPixelFormatIsPVRTCFormat(MTLPixelFormat mtlFormat) 
 	return getPlatformPixelFormats()->isPVRTCFormat(mtlFormat);
 }
 
+
+#undef mvkMTLTextureTypeFromVkImageType
 MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageType(VkImageType vkImageType,
 																  uint32_t arraySize,
 																  bool isMultisample) {
+	return mvkMTLTextureTypeFromVkImageTypeObj(vkImageType, arraySize, isMultisample, nullptr);
+}
+
+MTLTextureType mvkMTLTextureTypeFromVkImageTypeObj(VkImageType vkImageType,
+												   uint32_t arraySize,
+												   bool isMultisample,
+												   MVKBaseObject* mvkObj) {
 	switch (vkImageType) {
 		case VK_IMAGE_TYPE_3D: return MTLTextureType3D;
-		case VK_IMAGE_TYPE_1D: return (mvkConfig().texture1DAs2D
+		case VK_IMAGE_TYPE_1D: return (mvkGetMVKConfig(mvkObj).texture1DAs2D
 									   ? mvkMTLTextureTypeFromVkImageType(VK_IMAGE_TYPE_2D, arraySize, isMultisample)
 									   : (arraySize > 1 ? MTLTextureType1DArray : MTLTextureType1D));
 		case VK_IMAGE_TYPE_2D:
@@ -175,14 +184,22 @@ MVK_PUBLIC_SYMBOL VkImageType mvkVkImageTypeFromMTLTextureType(MTLTextureType mt
 			return VK_IMAGE_TYPE_2D;
 	}
 }
+
+#undef mvkMTLTextureTypeFromVkImageViewType
 MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageViewType(VkImageViewType vkImageViewType,
 																	  bool isMultisample) {
+	return mvkMTLTextureTypeFromVkImageViewTypeObj(vkImageViewType, isMultisample, nullptr);
+}
+
+MTLTextureType mvkMTLTextureTypeFromVkImageViewTypeObj(VkImageViewType vkImageViewType,
+													   bool isMultisample,
+													   MVKBaseObject* mvkObj) {
 	switch (vkImageViewType) {
 		case VK_IMAGE_VIEW_TYPE_3D:			return MTLTextureType3D;
 		case VK_IMAGE_VIEW_TYPE_CUBE:		return MTLTextureTypeCube;
 		case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:	return MTLTextureTypeCubeArray;
-		case VK_IMAGE_VIEW_TYPE_1D:			return mvkConfig().texture1DAs2D ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D, isMultisample) : MTLTextureType1D;
-		case VK_IMAGE_VIEW_TYPE_1D_ARRAY:	return mvkConfig().texture1DAs2D ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY, isMultisample) : MTLTextureType1DArray;
+		case VK_IMAGE_VIEW_TYPE_1D:			return mvkGetMVKConfig(mvkObj).texture1DAs2D ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D, isMultisample) : MTLTextureType1D;
+		case VK_IMAGE_VIEW_TYPE_1D_ARRAY:	return mvkGetMVKConfig(mvkObj).texture1DAs2D ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY, isMultisample) : MTLTextureType1DArray;
 
 		case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
 #if MVK_MACOS

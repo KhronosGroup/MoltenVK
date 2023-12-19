@@ -307,7 +307,7 @@ void MVKOcclusionQueryPool::beginQueryAddedTo(uint32_t query, MVKCommandBuffer* 
 MVKOcclusionQueryPool::MVKOcclusionQueryPool(MVKDevice* device,
                                              const VkQueryPoolCreateInfo* pCreateInfo) : MVKQueryPool(device, pCreateInfo, 1) {
 
-    if (mvkConfig().supportLargeQueryPools) {
+    if (getMVKConfig().supportLargeQueryPools) {
         _queryIndexOffset = 0;
 
         // Ensure we don't overflow the maximum number of queries

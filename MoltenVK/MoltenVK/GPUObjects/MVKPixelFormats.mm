@@ -1492,7 +1492,7 @@ void MVKPixelFormats::modifyMTLFormatCapabilities() {
 		modifyMTLFormatCapabilities(_physicalDevice->getMTLDevice());
 	} else {
 		@autoreleasepool {
-			auto* mtlDevs = mvkGetAvailableMTLDevicesArray();
+			auto* mtlDevs = mvkGetAvailableMTLDevicesArray(nullptr);
 			if (mtlDevs.count) { modifyMTLFormatCapabilities(mtlDevs[0]); }
 		}
 	}
@@ -2022,7 +2022,7 @@ void MVKPixelFormats::buildVkFormatMaps() {
 #if MVK_IOS || MVK_TVOS
 					bool supportsNativeTextureSwizzle = mtlDev && mvkOSVersionIsAtLeast(13.0);
 #endif
-					if (!supportsNativeTextureSwizzle && !mvkConfig().fullImageViewSwizzle) {
+					if (!supportsNativeTextureSwizzle && !getMVKConfig().fullImageViewSwizzle) {
 						vkDesc.mtlPixelFormat = vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid;
 					}
 				}

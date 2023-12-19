@@ -215,7 +215,7 @@ MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVK
 	_pipelineCache(pipelineCache),
 	_flags(flags),
 	_descriptorSetCount(layout->getDescriptorSetCount()),
-	_fullImageViewSwizzle(mvkConfig().fullImageViewSwizzle) {
+	_fullImageViewSwizzle(getMVKConfig().fullImageViewSwizzle) {
 
 		// Establish descriptor counts and push constants use.
 		for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
@@ -1727,11 +1727,11 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	}
 
 	shaderConfig.options.mslOptions.ios_support_base_vertex_instance = getDevice()->_pMetalFeatures->baseVertexInstanceDrawing;
-	shaderConfig.options.mslOptions.texture_1D_as_2D = mvkConfig().texture1DAs2D;
+	shaderConfig.options.mslOptions.texture_1D_as_2D = getMVKConfig().texture1DAs2D;
     shaderConfig.options.mslOptions.enable_point_size_builtin = isRenderingPoints(pCreateInfo) || reflectData.pointMode;
 	shaderConfig.options.mslOptions.enable_frag_depth_builtin = pixFmts->isDepthFormat(pixFmts->getMTLPixelFormat(pRendInfo->depthAttachmentFormat));
 	shaderConfig.options.mslOptions.enable_frag_stencil_ref_builtin = pixFmts->isStencilFormat(pixFmts->getMTLPixelFormat(pRendInfo->stencilAttachmentFormat));
-    shaderConfig.options.shouldFlipVertexY = mvkConfig().shaderConversionFlipVertexY;
+    shaderConfig.options.shouldFlipVertexY = getMVKConfig().shaderConversionFlipVertexY;
     shaderConfig.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     shaderConfig.options.mslOptions.tess_domain_origin_lower_left = pTessDomainOriginState && pTessDomainOriginState->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
     shaderConfig.options.mslOptions.multiview = mvkIsMultiview(pRendInfo->viewMask);
@@ -2117,7 +2117,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderConfig.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
 	shaderConfig.options.mslOptions.texture_buffer_native = _device->_pMetalFeatures->textureBuffers;
 	shaderConfig.options.mslOptions.dispatch_base = _allowsDispatchBase;
-	shaderConfig.options.mslOptions.texture_1D_as_2D = mvkConfig().texture1DAs2D;
+	shaderConfig.options.mslOptions.texture_1D_as_2D = getMVKConfig().texture1DAs2D;
     shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : _device->_pMetalFeatures->maxSubgroupSize;
 
 	bool useMetalArgBuff = isUsingMetalArgumentBuffers();

@@ -84,13 +84,12 @@ fi
 # -------------- MoltenVK configuration --------------------
 
 # As documented above, the portability option restricts to Vulkan 1.0 and a very limited set of extensions.
-# The values used here are documented in mvk_config.h.
-# - MVK_CONFIG_API_VERSION_TO_ADVERTISE = VK_API_VERSION_1_0 (4194304)
-# - MVK_CONFIG_ADVERTISE_EXTENSIONS selects support for a very limited set of extensions,
-#   using a bit-or of values in MVKConfigAdvertiseExtensions (extension list documented above).
+# The values used here are documented in MoltenVK_Configuration_Parameters.md.
+# - MVK_CONFIG_API_VERSION_TO_ADVERTISE = 4194304 (VK_API_VERSION_1_0).
+# - MVK_CONFIG_ADVERTISE_EXTENSIONS = 4 (VK_KHR_portability_subset and prerequistes).
 if [ "${is_portability}" != "" ]; then
 	export MVK_CONFIG_API_VERSION_TO_ADVERTISE=4194304
-	export MVK_CONFIG_ADVERTISE_EXTENSIONS=0xA
+	export MVK_CONFIG_ADVERTISE_EXTENSIONS=4
 fi
 
 # ----- System settings ------
@@ -106,6 +105,7 @@ export MVK_CONFIG_LOG_LEVEL=1	#(1 = Errors only, 3 = Info)
 export MVK_CONFIG_DEBUG=0
 
 # Additional MoltenVK configuration can be set here by editing below.
+# The values used here are documented in MoltenVK_Configuration_Parameters.md.
 export MVK_CONFIG_RESUME_LOST_DEVICE=1
 export MVK_CONFIG_FAST_MATH_ENABLED=1
 export MVK_CONFIG_FORCE_LOW_POWER_GPU=0

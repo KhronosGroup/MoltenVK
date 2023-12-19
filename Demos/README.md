@@ -24,19 +24,19 @@ Table of Contents
 *Cube*
 ------
 
-The basic canonical *Cube* sample app from the 
-[*Vulkan-Tools* repository](https://github.com/KhronosGroup/Vulkan-Tools) 
+The basic canonical *Cube* sample app from the
+[*Vulkan-Tools* repository](https://github.com/KhronosGroup/Vulkan-Tools)
 is included in this **MoltenVK** package.
 
 This demo renders a basic textured cube that spins in place.
 
-The demo can be found in the `Cube` folder, and in the `Cube` group in the 
+The demo can be found in the `Cube` folder, and in the `Cube` group in the
 *Xcode Project Navigator* in the `Demos.xcworkspace` *Xcode* workspace.
 
-To run this demo, run the `Cube-iOS`, `Cube-tvOS`, or `Cube-macOS` *Scheme* from within *Xcode*. 
+To run this demo, run the `Cube-iOS`, `Cube-tvOS`, or `Cube-macOS` *Scheme* from within *Xcode*.
 In addition to devices, this demo will also run on the `iOS Simulator` or `tvOS Simulator` destinations.
 
-The `Cube` demo is a simple example of installing **MoltenVK** as an `XCFramework` that is 
+The `Cube` demo is a simple example of installing **MoltenVK** as an `XCFramework` that is
 statically linked to the application. It supports all platforms, including _Mac Catalyst_, _iOS
 Simulator_ and _tvOS Simulator_, and all architectures including _Apple Silicon_.
 
@@ -46,5 +46,5 @@ Simulator_ and _tvOS Simulator_, and all architectures including _Apple Silicon_
 *Khronos Vulkan Samples*
 ----------------------
 
-*Khronos Group* provides a [repository](https://github.com/KhronosGroup/Vulkan-Samples) 
+*Khronos Group* provides a [repository](https://github.com/KhronosGroup/Vulkan-Samples)
 containing a full suite of standard *Vulkan* samples that run on **MoltenVK** on *macOS*.

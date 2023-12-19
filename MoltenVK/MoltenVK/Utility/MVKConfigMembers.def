@@ -20,9 +20,12 @@
 // When a new member is added to the MVKConfiguration struct, a corresponding description
 // must be added here.
 //
-// To use this file, define the macros:
+// To use this file, define the macro:
 //
 //   MVK_CONFIG_MEMBER(member, mbrType, name)
+//
+// and if strings are handled differently:
+//
 //   MVK_CONFIG_MEMBER_STRING(member, mbrType,  name)
 //
 // then #include this file inline with your code.
@@ -37,7 +40,7 @@
 #endif
 
 #ifndef MVK_CONFIG_MEMBER_STRING
-#error MVK_CONFIG_MEMBER_STRING must be defined before including this file
+#	define MVK_CONFIG_MEMBER_STRING(member, mbrType, name)  MVK_CONFIG_MEMBER(member, mbrType, name)
 #endif
 
 MVK_CONFIG_MEMBER(debugMode,                              VkBool32,                                 DEBUG)
@@ -66,7 +69,7 @@ MVK_CONFIG_MEMBER(forceLowPowerGPU,                       VkBool32,             
 MVK_CONFIG_MEMBER(semaphoreUseMTLFence,                   VkBool32,                                 ALLOW_METAL_FENCES)  				// Deprecated legacy
 MVK_CONFIG_MEMBER(semaphoreSupportStyle,                  MVKVkSemaphoreSupportStyle,               VK_SEMAPHORE_SUPPORT_STYLE)
 MVK_CONFIG_MEMBER(autoGPUCaptureScope,                    MVKConfigAutoGPUCaptureScope,             AUTO_GPU_CAPTURE_SCOPE)
-MVK_CONFIG_MEMBER_STRING(autoGPUCaptureOutputFilepath,    char*,                                    AUTO_GPU_CAPTURE_OUTPUT_FILE)
+MVK_CONFIG_MEMBER_STRING(autoGPUCaptureOutputFilepath,    const char*,                              AUTO_GPU_CAPTURE_OUTPUT_FILE)
 MVK_CONFIG_MEMBER(texture1DAs2D,                          VkBool32,                                 TEXTURE_1D_AS_2D)
 MVK_CONFIG_MEMBER(preallocateDescriptors,                 VkBool32,                                 PREALLOCATE_DESCRIPTORS)
 MVK_CONFIG_MEMBER(useCommandPooling,                      VkBool32,                                 USE_COMMAND_POOLING)

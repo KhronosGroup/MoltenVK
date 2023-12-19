@@ -71,6 +71,9 @@ public:
 	/** Returns a pointer to the Vulkan instance. */
 	MVKInstance* getInstance() override { return this; }
 
+	/** Return the MoltenVK configuration info for this VkInstance. */
+	const MVKConfiguration& getMVKConfig() override { return _enabledExtensions.vk_EXT_layer_settings.enabled ? _mvkConfig : getGlobalMVKConfig(); }
+
 	/** Returns the maximum version of Vulkan the application supports. */
 	inline uint32_t getAPIVersion() { return _appInfo.apiVersion; }
 
@@ -186,6 +189,7 @@ protected:
 
 	void propagateDebugName() override {}
 	void initProcAddrs();
+	void initMVKConfig(const VkInstanceCreateInfo* pCreateInfo);
 	void initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo);
 	VkDebugReportFlagsEXT getVkDebugReportFlagsFromLogLevel(MVKConfigLogLevel logLevel);
 	VkDebugUtilsMessageSeverityFlagBitsEXT getVkDebugUtilsMessageSeverityFlagBitsFromLogLevel(MVKConfigLogLevel logLevel);
@@ -194,11 +198,13 @@ protected:
     void logVersions();
 	VkResult verifyLayers(uint32_t count, const char* const* names);
 
+	MVKConfiguration _mvkConfig;
 	VkApplicationInfo _appInfo;
 	MVKSmallVector<MVKPhysicalDevice*, 2> _physicalDevices;
 	MVKSmallVector<MVKDebugReportCallback*> _debugReportCallbacks;
 	MVKSmallVector<MVKDebugUtilsMessenger*> _debugUtilMessengers;
 	std::unordered_map<std::string, MVKEntryPoint> _entryPoints;
+	std::string _mvkConfigStringHolders[kMVKConfigurationStringCount] = {};
 	std::mutex _dcbLock;
 	bool _hasDebugReportCallbacks;
 	bool _hasDebugUtilsMessengers;

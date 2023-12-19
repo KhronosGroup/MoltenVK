@@ -21,8 +21,9 @@
 
 #include "MVKCommonEnvironment.h"
 #include "mvk_vulkan.h"
-#include "mvk_config.h"
+#include "mvk_private_api.h"
 #include "MVKLogging.h"
+#include <string>
 
 
 // Expose MoltenVK Apple surface extension functionality
@@ -69,20 +70,29 @@
 #endif
 
 #if MVK_TVOS
-# define MVK_SUPPORT_IOSURFACE_BOOL (__TV_OS_VERSION_MIN_REQUIRED >= __TVOS_11_0)
+#	define MVK_SUPPORT_IOSURFACE_BOOL (__TV_OS_VERSION_MIN_REQUIRED >= __TVOS_11_0)
 #endif
 
 
 #pragma mark -
-#pragma mark Global Configuration
+#pragma mark MoltenVK Configuration
+
+/** The number of members of MVKConfiguration that are strings. */
+static constexpr uint32_t kMVKConfigurationStringCount = 1;
 
 /** Global function to access MoltenVK configuration info. */
-const MVKConfiguration& mvkConfig();
+const MVKConfiguration& getGlobalMVKConfig();
 
-/** Global function to update MoltenVK configuration info. */
-void mvkSetConfig(const MVKConfiguration& mvkConfig);
+/** Sets the MoltenVK global configuration content. */
+void mvkSetGlobalConfig(const MVKConfiguration& srcMVKConfig);
 
 /** 
+ * Sets the content from the source config into the destination 
+ * config, while using the string object to retain string content.
+ */
+void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVKConfig, std::string* stringHolders);
+
+/**
  * Enable debug mode.
  * By default, disabled for Release builds and enabled for Debug builds.
  */
