@@ -783,8 +783,7 @@ MVKMTLFormatDesc& MVKPixelFormats::getMTLPixelFormatDesc(MTLPixelFormat mtlForma
 
 // Return a reference to the Metal format descriptor corresponding to the MTLVertexFormat.
 MVKMTLFormatDesc& MVKPixelFormats::getMTLVertexFormatDesc(MTLVertexFormat mtlFormat) {
-	uint16_t fmtIdx = (mtlFormat < _mtlVertexFormatCount) ? _mtlFormatDescIndicesByMTLVertexFormats[mtlFormat] : 0;
-	return _mtlVertexFormatDescriptions[fmtIdx];
+	return _mtlVertexFormatDescriptions[mtlFormat < _mtlVertexFormatCount ? mtlFormat : 0];
 }
 
 
@@ -1312,21 +1311,24 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 }
 
 #define addMTLVertexFormatDesc(MTL_VTX_FMT, IOS_CAPS, MACOS_CAPS)  \
-	MVKAssert(fmtIdx < _mtlVertexFormatCount, "Attempting to describe %d MTLVertexFormats, but only have space for %d. Increase the value of _mtlVertexFormatCount", fmtIdx + 1, _mtlVertexFormatCount);  \
-	_mtlVertexFormatDescriptions[fmtIdx++] = { .mtlVertexFormat = MTLVertexFormat ##MTL_VTX_FMT, VK_FORMAT_UNDEFINED,  \
-                                               mvkSelectPlatformValue<MVKMTLFmtCaps>(kMVKMTLFmtCaps ##MACOS_CAPS, kMVKMTLFmtCaps ##IOS_CAPS),  \
-                                               MVKMTLViewClass::None, MTLPixelFormatInvalid, "MTLVertexFormat" #MTL_VTX_FMT }
+	mtlVtxFmt = MTLVertexFormat ##MTL_VTX_FMT;  \
+	if (mtlVtxFmt < _mtlVertexFormatCount) {  \
+		_mtlVertexFormatDescriptions[mtlVtxFmt] = { .mtlVertexFormat = mtlVtxFmt, VK_FORMAT_UNDEFINED,  \
+													mvkSelectPlatformValue<MVKMTLFmtCaps>(kMVKMTLFmtCaps ##MACOS_CAPS, kMVKMTLFmtCaps ##IOS_CAPS),  \
+													MVKMTLViewClass::None, MTLPixelFormatInvalid, "MTLVertexFormat" #MTL_VTX_FMT };  \
+	} else {  \
+		MVKAssert(false, "Attempting to describe at least %lu MTLVertexFormats, but only have space for %d. Increase the value of _mtlVertexFormatCount", mtlVtxFmt + 1, _mtlVertexFormatCount);  \
+	}
 
 void MVKPixelFormats::initMTLVertexFormatCapabilities() {
 
 	mvkClear(_mtlVertexFormatDescriptions, _mtlVertexFormatCount);
 
-	uint32_t fmtIdx = 0;
+	MTLVertexFormat mtlVtxFmt = MTLVertexFormatInvalid;
 
 	// When adding to this list, be sure to ensure _mtlVertexFormatCount is large enough for the format count
 
-	// MTLVertexFormatInvalid must come first.
-	addMTLVertexFormatDesc( Invalid, None, None );
+	addMTLVertexFormatDesc( Invalid, None, None );  // MTLVertexFormatInvalid must come first.
 
 	addMTLVertexFormatDesc( UChar2Normalized, Vertex, Vertex );
 	addMTLVertexFormatDesc( Char2Normalized, Vertex, Vertex );
@@ -1399,9 +1401,8 @@ void MVKPixelFormats::initMTLVertexFormatCapabilities() {
 // Populates the Metal lookup maps
 void MVKPixelFormats::buildMTLFormatMaps() {
 
-	// Set all MTLPixelFormats and MTLVertexFormats to undefined/invalid
+	// Set all MTLPixelFormats lookups to undefined/invalid
 	mvkClear(_mtlFormatDescIndicesByMTLPixelFormatsCore, _mtlPixelFormatCoreCount);
-	mvkClear(_mtlFormatDescIndicesByMTLVertexFormats, _mtlVertexFormatCount);
 
 	// Build lookup table for MTLPixelFormat specs.
 	// For most Metal format values, which are small and consecutive, use a simple lookup array.
@@ -1415,12 +1416,6 @@ void MVKPixelFormats::buildMTLFormatMaps() {
 				_mtlFormatDescIndicesByMTLPixelFormatsExt[fmt] = fmtIdx;
 			}
 		}
-	}
-
-	// Build lookup table for MTLVertexFormat specs
-	for (uint32_t fmtIdx = 0; fmtIdx < _mtlVertexFormatCount; fmtIdx++) {
-		MTLVertexFormat fmt = _mtlVertexFormatDescriptions[fmtIdx].mtlVertexFormat;
-		if (fmt) { _mtlFormatDescIndicesByMTLVertexFormats[fmt] = fmtIdx; }
 	}
 }
 

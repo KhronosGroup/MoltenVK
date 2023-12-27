@@ -459,6 +459,4 @@ protected:
 	// Outliers are mapped by a map.
 	uint16_t _mtlFormatDescIndicesByMTLPixelFormatsCore[_mtlPixelFormatCoreCount];
 	std::unordered_map<NSUInteger, uint32_t> _mtlFormatDescIndicesByMTLPixelFormatsExt;
-
-	uint16_t _mtlFormatDescIndicesByMTLVertexFormats[_mtlVertexFormatCount];
 };
