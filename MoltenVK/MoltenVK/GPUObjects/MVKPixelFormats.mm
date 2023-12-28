@@ -1682,6 +1682,12 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addGPUOSMTLPixFmtCaps( Apple5, 11.0, BGR10_XR, All );
 	addGPUOSMTLPixFmtCaps( Apple5, 11.0, BGR10_XR_sRGB, All );
 #endif
+    
+#if MVK_XCODE_15
+    addGPUOSMTLPixFmtCaps( Apple9, 14.0, R32Float, All );
+    addGPUOSMTLPixFmtCaps( Apple9, 14.0, RG32Float, All );
+    addGPUOSMTLPixFmtCaps( Apple9, 14.0, RGBA32Float, All );
+#endif
 
 	addFeatSetMTLVtxFmtCaps( macOS_GPUFamily1_v3, UCharNormalized, Vertex );
 	addFeatSetMTLVtxFmtCaps( macOS_GPUFamily1_v3, CharNormalized, Vertex );
@@ -1941,6 +1947,12 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 
 	addGPUOSMTLPixFmtCaps( Apple1, 13.0, Depth16Unorm, DRFM );
 	addGPUOSMTLPixFmtCaps( Apple3, 13.0, Depth16Unorm, DRFMR );
+    
+#if MVK_XCODE_15
+    addGPUOSMTLPixFmtCaps( Apple9, 14.0, R32Float, All );
+    addGPUOSMTLPixFmtCaps( Apple9, 14.0, RG32Float, All );
+    addGPUOSMTLPixFmtCaps( Apple9, 14.0, RGBA32Float, All );
+#endif
 
 	// Vertex formats
 	addFeatSetMTLVtxFmtCaps( iOS_GPUFamily1_v4, UCharNormalized, Vertex );
