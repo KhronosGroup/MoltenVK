@@ -762,10 +762,7 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 
 // Return a reference to the Vulkan format descriptor corresponding to the VkFormat.
 MVKVkFormatDesc& MVKPixelFormats::getVkFormatDesc(VkFormat vkFormat) {
-	uint16_t fmtIdx = ((vkFormat < _vkFormatCoreCount)
-					   ? _vkFormatDescIndicesByVkFormatsCore[vkFormat]
-					   : _vkFormatDescIndicesByVkFormatsExt[vkFormat]);
-	return _vkFormatDescriptions[fmtIdx];
+	return _vkFormatDescriptions[vkFormat];
 }
 
 // Return a reference to the Vulkan format descriptor corresponding to the MTLPixelFormat.
@@ -775,15 +772,12 @@ MVKVkFormatDesc& MVKPixelFormats::getVkFormatDesc(MTLPixelFormat mtlFormat) {
 
 // Return a reference to the Metal format descriptor corresponding to the MTLPixelFormat.
 MVKMTLFormatDesc& MVKPixelFormats::getMTLPixelFormatDesc(MTLPixelFormat mtlFormat) {
-	uint16_t fmtIdx = ((mtlFormat < _mtlPixelFormatCoreCount)
-					   ? _mtlFormatDescIndicesByMTLPixelFormatsCore[mtlFormat]
-					   : _mtlFormatDescIndicesByMTLPixelFormatsExt[mtlFormat]);
-	return _mtlPixelFormatDescriptions[fmtIdx];
+	return _mtlPixelFormatDescriptions[mtlFormat];
 }
 
 // Return a reference to the Metal format descriptor corresponding to the MTLVertexFormat.
 MVKMTLFormatDesc& MVKPixelFormats::getMTLVertexFormatDesc(MTLVertexFormat mtlFormat) {
-	return _mtlVertexFormatDescriptions[mtlFormat < _mtlVertexFormatCount ? mtlFormat : 0];
+	return _mtlVertexFormatDescriptions[mtlFormat];
 }
 
 
@@ -794,7 +788,6 @@ MVKPixelFormats::MVKPixelFormats(MVKPhysicalDevice* physicalDevice) : _physicalD
 	// Build and update the Metal formats
 	initMTLPixelFormatCapabilities();
 	initMTLVertexFormatCapabilities();
-	buildMTLFormatMaps();
 	modifyMTLFormatCapabilities();
 
 	// Build the Vulkan formats and link them to the Metal formats
@@ -803,11 +796,11 @@ MVKPixelFormats::MVKPixelFormats(MVKPhysicalDevice* physicalDevice) : _physicalD
 }
 
 #define addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A)  \
-	MVKAssert(fmtIdx < _vkFormatCount, "Attempting to describe %d VkFormats, but only have space for %d. Increase the value of _vkFormatCount", fmtIdx + 1, _vkFormatCount);  \
-	_vkFormatDescriptions[fmtIdx++] = { VK_FORMAT_ ##VK_FMT, MTLPixelFormat ##MTL_FMT, MTLPixelFormat ##MTL_FMT_ALT, MTLVertexFormat ##MTL_VTX_FMT, MTLVertexFormat ##MTL_VTX_FMT_ALT,  \
-										CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, kMVKFormat ##MVK_FMT_TYPE, { 0, 0, 0 }, \
-										{ VK_COMPONENT_SWIZZLE_ ##SWIZ_R, VK_COMPONENT_SWIZZLE_ ##SWIZ_G, VK_COMPONENT_SWIZZLE_ ##SWIZ_B, VK_COMPONENT_SWIZZLE_ ##SWIZ_A }, \
-										"VK_FORMAT_" #VK_FMT, false }
+	vkFmt = VK_FORMAT_ ##VK_FMT;  \
+	_vkFormatDescriptions[vkFmt] = { vkFmt, MTLPixelFormat ##MTL_FMT, MTLPixelFormat ##MTL_FMT_ALT, MTLVertexFormat ##MTL_VTX_FMT, MTLVertexFormat ##MTL_VTX_FMT_ALT,  \
+									 CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, kMVKFormat ##MVK_FMT_TYPE, { 0, 0, 0 }, \
+									 { VK_COMPONENT_SWIZZLE_ ##SWIZ_R, VK_COMPONENT_SWIZZLE_ ##SWIZ_G, VK_COMPONENT_SWIZZLE_ ##SWIZ_B, VK_COMPONENT_SWIZZLE_ ##SWIZ_A }, \
+									 "VK_FORMAT_" #VK_FMT, false }
 
 #define addVkFormatDesc(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE)  \
     addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, 0, 0, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, IDENTITY, IDENTITY, IDENTITY, IDENTITY)
@@ -819,12 +812,7 @@ MVKPixelFormats::MVKPixelFormats(MVKPhysicalDevice* physicalDevice) : _physicalD
 	addVkFormatDescFull(VK_FMT, MTL_FMT, Invalid, Invalid, Invalid, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, ColorFloat, IDENTITY, IDENTITY, IDENTITY, IDENTITY)
 
 void MVKPixelFormats::initVkFormatCapabilities() {
-
-	mvkClear(_vkFormatDescriptions, _vkFormatCount);
-
-	uint32_t fmtIdx = 0;
-
-	// When adding to this list, be sure to ensure _vkFormatCount is large enough for the format count
+	VkFormat vkFmt;
 
 	// UNDEFINED must come first.
 	addVkFormatDesc( UNDEFINED, Invalid, Invalid, Invalid, Invalid, 1, 1, 0, None );
@@ -1115,15 +1103,14 @@ void MVKPixelFormats::initVkFormatCapabilities() {
     addVkFormatDescChromaSubsampling( G16_B16R16_2PLANE_422_UNORM, Invalid, 2, 16, 2, 1, 8 );
     addVkFormatDescChromaSubsampling( G16_B16_R16_3PLANE_444_UNORM, Invalid, 3, 16, 1, 1, 6 );
 
-	// When adding to this list, be sure to ensure _vkFormatCount is large enough for the format count
+	_vkFormatDescriptions.shrink_to_fit();
 }
 
-
 #define addMTLPixelFormatDescFull(MTL_FMT, VIEW_CLASS, IOS_CAPS, MACOS_CAPS, MTL_FMT_LINEAR)  \
-	MVKAssert(fmtIdx < _mtlPixelFormatCount, "Attempting to describe %d MTLPixelFormats, but only have space for %d. Increase the value of _mtlPixelFormatCount", fmtIdx + 1, _mtlPixelFormatCount);  \
-	_mtlPixelFormatDescriptions[fmtIdx++] = { .mtlPixelFormat = MTLPixelFormat ##MTL_FMT, VK_FORMAT_UNDEFINED,  \
-											  mvkSelectPlatformValue<MVKMTLFmtCaps>(kMVKMTLFmtCaps ##MACOS_CAPS, kMVKMTLFmtCaps ##IOS_CAPS),  \
-											  MVKMTLViewClass:: VIEW_CLASS, MTLPixelFormat ##MTL_FMT_LINEAR, "MTLPixelFormat" #MTL_FMT }
+	mtlPixFmt = MTLPixelFormat ##MTL_FMT;  \
+	_mtlPixelFormatDescriptions[mtlPixFmt] = { .mtlPixelFormat = mtlPixFmt, VK_FORMAT_UNDEFINED,  \
+											   mvkSelectPlatformValue<MVKMTLFmtCaps>(kMVKMTLFmtCaps ##MACOS_CAPS, kMVKMTLFmtCaps ##IOS_CAPS),  \
+											   MVKMTLViewClass:: VIEW_CLASS, MTLPixelFormat ##MTL_FMT_LINEAR, "MTLPixelFormat" #MTL_FMT }
 
 #define addMTLPixelFormatDesc(MTL_FMT, VIEW_CLASS, IOS_CAPS, MACOS_CAPS) \
 	addMTLPixelFormatDescFull(MTL_FMT, VIEW_CLASS, IOS_CAPS, MACOS_CAPS, MTL_FMT)
@@ -1133,12 +1120,7 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 
 
 void MVKPixelFormats::initMTLPixelFormatCapabilities() {
-
-	mvkClear(_mtlPixelFormatDescriptions, _mtlPixelFormatCount);
-
-	uint32_t fmtIdx = 0;
-
-	// When adding to this list, be sure to ensure _mtlPixelFormatCount is large enough for the format count
+	MTLPixelFormat mtlPixFmt;
 
 	// MTLPixelFormatInvalid must come first.
 	addMTLPixelFormatDesc    ( Invalid, None, None, None );
@@ -1307,26 +1289,21 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDesc    ( X24_Stencil8, Depth24_Stencil8, None, DRMR );
 	addMTLPixelFormatDesc    ( X32_Stencil8, Depth32_Stencil8, DRM, DRMR );
 
-	// When adding to this list, be sure to ensure _mtlPixelFormatCount is large enough for the format count
+	_mtlPixelFormatDescriptions.shrink_to_fit();
 }
 
+// If necessary, resize vector with empty elements
 #define addMTLVertexFormatDesc(MTL_VTX_FMT, IOS_CAPS, MACOS_CAPS)  \
 	mtlVtxFmt = MTLVertexFormat ##MTL_VTX_FMT;  \
-	if (mtlVtxFmt < _mtlVertexFormatCount) {  \
-		_mtlVertexFormatDescriptions[mtlVtxFmt] = { .mtlVertexFormat = mtlVtxFmt, VK_FORMAT_UNDEFINED,  \
-													mvkSelectPlatformValue<MVKMTLFmtCaps>(kMVKMTLFmtCaps ##MACOS_CAPS, kMVKMTLFmtCaps ##IOS_CAPS),  \
-													MVKMTLViewClass::None, MTLPixelFormatInvalid, "MTLVertexFormat" #MTL_VTX_FMT };  \
-	} else {  \
-		MVKAssert(false, "Attempting to describe at least %lu MTLVertexFormats, but only have space for %d. Increase the value of _mtlVertexFormatCount", mtlVtxFmt + 1, _mtlVertexFormatCount);  \
-	}
+if (mtlVtxFmt >= _mtlVertexFormatDescriptions.size()) { _mtlVertexFormatDescriptions.resize(mtlVtxFmt + 1, {}); }  \
+	_mtlVertexFormatDescriptions[mtlVtxFmt] = { .mtlVertexFormat = mtlVtxFmt, VK_FORMAT_UNDEFINED,  \
+												mvkSelectPlatformValue<MVKMTLFmtCaps>(kMVKMTLFmtCaps ##MACOS_CAPS, kMVKMTLFmtCaps ##IOS_CAPS),  \
+												MVKMTLViewClass::None, MTLPixelFormatInvalid, "MTLVertexFormat" #MTL_VTX_FMT };
 
 void MVKPixelFormats::initMTLVertexFormatCapabilities() {
+	MTLVertexFormat mtlVtxFmt;
 
-	mvkClear(_mtlVertexFormatDescriptions, _mtlVertexFormatCount);
-
-	MTLVertexFormat mtlVtxFmt = MTLVertexFormatInvalid;
-
-	// When adding to this list, be sure to ensure _mtlVertexFormatCount is large enough for the format count
+	_mtlVertexFormatDescriptions.reserve(MTLVertexFormatHalf + 3);
 
 	addMTLVertexFormatDesc( Invalid, None, None );  // MTLVertexFormatInvalid must come first.
 
@@ -1395,28 +1372,7 @@ void MVKPixelFormats::initMTLVertexFormatCapabilities() {
 
 	addMTLVertexFormatDesc( UChar4Normalized_BGRA, None, None );
 
-	// When adding to this list, be sure to ensure _mtlVertexFormatCount is large enough for the format count
-}
-
-// Populates the Metal lookup maps
-void MVKPixelFormats::buildMTLFormatMaps() {
-
-	// Set all MTLPixelFormats lookups to undefined/invalid
-	mvkClear(_mtlFormatDescIndicesByMTLPixelFormatsCore, _mtlPixelFormatCoreCount);
-
-	// Build lookup table for MTLPixelFormat specs.
-	// For most Metal format values, which are small and consecutive, use a simple lookup array.
-	// For outlier format values, which can be large, use a map.
-	for (uint32_t fmtIdx = 0; fmtIdx < _mtlPixelFormatCount; fmtIdx++) {
-		MTLPixelFormat fmt = _mtlPixelFormatDescriptions[fmtIdx].mtlPixelFormat;
-		if (fmt) {
-			if (fmt < _mtlPixelFormatCoreCount) {
-				_mtlFormatDescIndicesByMTLPixelFormatsCore[fmt] = fmtIdx;
-			} else {
-				_mtlFormatDescIndicesByMTLPixelFormatsExt[fmt] = fmtIdx;
-			}
-		}
-	}
+	_mtlVertexFormatDescriptions.shrink_to_fit();
 }
 
 // If the device supports the feature set, add additional capabilities to a MTLPixelFormat
@@ -1985,69 +1941,50 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 #undef addFeatSetMTLVtxFmtCaps
 #undef addGPUOSMTLVtxFmtCaps
 
-// Populates the VkFormat lookup maps and connects Vulkan and Metal pixel formats to one-another.
+// Connects Vulkan and Metal pixel formats to one-another.
 void MVKPixelFormats::buildVkFormatMaps() {
-
-	// Set the VkFormats to undefined/invalid
-	mvkClear(_vkFormatDescIndicesByVkFormatsCore, _vkFormatCoreCount);
-
-	// Iterate through the VkFormat descriptions, populate the lookup maps and back pointers,
-	// and validate the Metal formats for the platform and OS.
-	for (uint32_t fmtIdx = 0; fmtIdx < _vkFormatCount; fmtIdx++) {
-		MVKVkFormatDesc& vkDesc = _vkFormatDescriptions[fmtIdx];
-		VkFormat vkFmt = vkDesc.vkFormat;
-		if (vkFmt) {
-			// Create a lookup between the Vulkan format and an index to the format info.
-			// For core Vulkan format values, which are small and consecutive, use a simple lookup array.
-			// For extension format values, which can be large, use a map.
-			if (vkFmt < _vkFormatCoreCount) {
-				_vkFormatDescIndicesByVkFormatsCore[vkFmt] = fmtIdx;
-			} else {
-				_vkFormatDescIndicesByVkFormatsExt[vkFmt] = fmtIdx;
-			}
-
-			if (vkDesc.needsSwizzle()) {
-				if (_physicalDevice) {
-					id<MTLDevice> mtlDev = _physicalDevice->getMTLDevice();
+	for (auto& vkDesc : _vkFormatDescriptions) {
+		if (vkDesc.needsSwizzle()) {
+			if (_physicalDevice) {
+				id<MTLDevice> mtlDev = _physicalDevice->getMTLDevice();
 #if MVK_MACCAT
-					bool supportsNativeTextureSwizzle = [mtlDev supportsFamily: MTLGPUFamilyMacCatalyst2];
+				bool supportsNativeTextureSwizzle = [mtlDev supportsFamily: MTLGPUFamilyMacCatalyst2];
 #elif MVK_MACOS
-					bool supportsNativeTextureSwizzle = mvkOSVersionIsAtLeast(10.15) && [mtlDev supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily2_v1];
+				bool supportsNativeTextureSwizzle = mvkOSVersionIsAtLeast(10.15) && [mtlDev supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily2_v1];
 #endif
 #if MVK_IOS || MVK_TVOS
-					bool supportsNativeTextureSwizzle = mtlDev && mvkOSVersionIsAtLeast(13.0);
+				bool supportsNativeTextureSwizzle = mtlDev && mvkOSVersionIsAtLeast(13.0);
 #endif
-					if (!supportsNativeTextureSwizzle && !getMVKConfig().fullImageViewSwizzle) {
-						vkDesc.mtlPixelFormat = vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid;
-					}
+				if (!supportsNativeTextureSwizzle && !getMVKConfig().fullImageViewSwizzle) {
+					vkDesc.mtlPixelFormat = vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid;
 				}
 			}
-
-			// Populate the back reference from the Metal formats to the Vulkan format.
-			// Validate the corresponding Metal formats for the platform, and clear them
-			// in the Vulkan format if not supported.
-			if (vkDesc.mtlPixelFormat) {
-				auto& mtlDesc = getMTLPixelFormatDesc(vkDesc.mtlPixelFormat);
-				if ( !mtlDesc.vkFormat ) { mtlDesc.vkFormat = vkFmt; }
-				if ( !mtlDesc.isSupported() ) { vkDesc.mtlPixelFormat = MTLPixelFormatInvalid; }
-			}
-			if (vkDesc.mtlPixelFormatSubstitute) {
-				auto& mtlDesc = getMTLPixelFormatDesc(vkDesc.mtlPixelFormatSubstitute);
-				if ( !mtlDesc.isSupported() ) { vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid; }
-			}
-			if (vkDesc.mtlVertexFormat) {
-				auto& mtlDesc = getMTLVertexFormatDesc(vkDesc.mtlVertexFormat);
-				if ( !mtlDesc.vkFormat ) { mtlDesc.vkFormat = vkFmt; }
-				if ( !mtlDesc.isSupported() ) { vkDesc.mtlVertexFormat = MTLVertexFormatInvalid; }
-			}
-			if (vkDesc.mtlVertexFormatSubstitute) {
-				auto& mtlDesc = getMTLVertexFormatDesc(vkDesc.mtlVertexFormatSubstitute);
-				if ( !mtlDesc.isSupported() ) { vkDesc.mtlVertexFormatSubstitute = MTLVertexFormatInvalid; }
-			}
-
-			// Set Vulkan format properties
-			setFormatProperties(vkDesc);
 		}
+
+		// Populate the back reference from the Metal formats to the Vulkan format.
+		// Validate the corresponding Metal formats for the platform, and clear them
+		// if the Vulkan format if not supported.
+		if (vkDesc.mtlPixelFormat) {
+			auto& mtlDesc = getMTLPixelFormatDesc(vkDesc.mtlPixelFormat);
+			if ( !mtlDesc.vkFormat ) { mtlDesc.vkFormat = vkDesc.vkFormat; }
+			if ( !mtlDesc.isSupported() ) { vkDesc.mtlPixelFormat = MTLPixelFormatInvalid; }
+		}
+		if (vkDesc.mtlPixelFormatSubstitute) {
+			auto& mtlDesc = getMTLPixelFormatDesc(vkDesc.mtlPixelFormatSubstitute);
+			if ( !mtlDesc.isSupported() ) { vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid; }
+		}
+		if (vkDesc.mtlVertexFormat) {
+			auto& mtlDesc = getMTLVertexFormatDesc(vkDesc.mtlVertexFormat);
+			if ( !mtlDesc.vkFormat ) { mtlDesc.vkFormat = vkDesc.vkFormat; }
+			if ( !mtlDesc.isSupported() ) { vkDesc.mtlVertexFormat = MTLVertexFormatInvalid; }
+		}
+		if (vkDesc.mtlVertexFormatSubstitute) {
+			auto& mtlDesc = getMTLVertexFormatDesc(vkDesc.mtlVertexFormatSubstitute);
+			if ( !mtlDesc.isSupported() ) { vkDesc.mtlVertexFormatSubstitute = MTLVertexFormatInvalid; }
+		}
+
+		// Set Vulkan format properties
+		setFormatProperties(vkDesc);
 	}
 }
 
