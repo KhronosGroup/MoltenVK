@@ -317,9 +317,10 @@ _Vulkan_ API calls as function pointers.
 <a name="metal_private_api"></a>
 ### Accessing _Metal_ Private API calls
 
-You can optionally build **MoltenVK** with access to private _Metal_ API calls.
-Doing so will allow **MoltenVK** to extend its functionality by using certain private _Metal_ 
-API calls, but it will also disqualify the app from being distributed via _Apple_ App Stores.
+You can optionally build **MoltenVK** with access to private _Metal_ API calls, also known
+as "Service Provider Interfaces" (SPIs). Doing so will allow **MoltenVK** to extend its
+functionality by using certain private _Metal_ API calls, but it will also disqualify the
+app from being distributed via _Apple_ App Stores.
 
 To do so, when building **MoltenVK**, set the build setting `MVK_USE_METAL_PRIVATE_API=1`.
 This build setting can be set in the `MoltenVK.xcodeproj` *Xcode* project, or it can be 

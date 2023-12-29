@@ -663,3 +663,16 @@ Determines the style used to implement _Vulkan_ semaphore (`VkSemaphore`) functi
 In the special case of `VK_SEMAPHORE_TYPE_TIMELINE` semaphores, **MoltenVK** will always use
 `MTLSharedEvent` if it is available on the platform, regardless of the value of this parameter.
 
+
+---------------------------------------
+#### MVK_CONFIG_USE_METAL_PRIVATE_API
+
+##### Type: Boolean
+##### Default: Value of `MVK_USE_METAL_PRIVATE_API`
+
+If enabled, **MoltenVK** will _use_ private interfaces exposed by _Metal_ to implement _Vulkan_
+features that are difficult to support otherwise.
+
+Unlike `MVK_USE_METAL_PRIVATE_API`, this setting may be overridden at run time.
+
+This option is not available unless MoltenVK were built with `MVK_USE_METAL_PRIVATE_API` set to `1`.
