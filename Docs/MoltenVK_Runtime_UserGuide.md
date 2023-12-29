@@ -323,6 +323,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_device_group_creation`
 - `VK_KHR_driver_properties`
 - `VK_KHR_dynamic_rendering`
+- `VK_KHR_format_feature_flags2`
 - `VK_KHR_fragment_shader_barycentric`
   - *Requires Metal 2.2 on Mac or Metal 2.3 on iOS.*
 - `VK_KHR_get_memory_requirements2`

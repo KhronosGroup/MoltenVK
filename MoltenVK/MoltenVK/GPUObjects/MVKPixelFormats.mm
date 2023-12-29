@@ -420,8 +420,17 @@ MTLTextureSwizzleChannels MVKPixelFormats::getMTLTextureSwizzleChannels(VkFormat
 	return mvkMTLTextureSwizzleChannelsFromVkComponentMapping(getVkComponentMapping(vkFormat));
 }
 
-VkFormatProperties& MVKPixelFormats::getVkFormatProperties(VkFormat vkFormat) {
+VkFormatProperties3& MVKPixelFormats::getVkFormatProperties3(VkFormat vkFormat) {
 	return getVkFormatDesc(vkFormat).properties;
+}
+
+VkFormatProperties MVKPixelFormats::getVkFormatProperties(VkFormat vkFormat) {
+    auto& properties = getVkFormatProperties3(vkFormat);
+    VkFormatProperties ret;
+    ret.linearTilingFeatures = MVKPixelFormats::convertFormatPropertiesFlagBits(properties.linearTilingFeatures);
+    ret.optimalTilingFeatures = MVKPixelFormats::convertFormatPropertiesFlagBits(properties.optimalTilingFeatures);
+    ret.bufferFeatures = MVKPixelFormats::convertFormatPropertiesFlagBits(properties.bufferFeatures);
+    return ret;
 }
 
 MVKMTLFmtCaps MVKPixelFormats::getCapabilities(VkFormat vkFormat, bool isExtended) {
@@ -460,7 +469,7 @@ const char* MVKPixelFormats::getName(MTLVertexFormat mtlFormat) {
 }
 
 void MVKPixelFormats::enumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func) {
-	static const auto areFeaturesSupported = [any](uint32_t a, uint32_t b) {
+	static const auto areFeaturesSupported = [any](VkFlags64 a, VkFlags64 b) {
 		if (b == 0) return true;
 		if (any)
 			return mvkIsAnyFlagEnabled(a, b);
@@ -792,6 +801,11 @@ MVKMTLFormatDesc& MVKPixelFormats::getMTLVertexFormatDesc(MTLVertexFormat mtlFor
 	return _mtlVertexFormatDescriptions[fmtIdx];
 }
 
+VkFormatFeatureFlags MVKPixelFormats::convertFormatPropertiesFlagBits(VkFormatFeatureFlags2 flags) {
+    // Truncate to 32-bits and just return. All current values are identical.
+    return static_cast<VkFormatFeatureFlags>(flags);
+}
+
 
 #pragma mark Construction
 
@@ -811,7 +825,7 @@ MVKPixelFormats::MVKPixelFormats(MVKPhysicalDevice* physicalDevice) : _physicalD
 #define addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A)  \
 	MVKAssert(fmtIdx < _vkFormatCount, "Attempting to describe %d VkFormats, but only have space for %d. Increase the value of _vkFormatCount", fmtIdx + 1, _vkFormatCount);  \
 	_vkFormatDescriptions[fmtIdx++] = { VK_FORMAT_ ##VK_FMT, MTLPixelFormat ##MTL_FMT, MTLPixelFormat ##MTL_FMT_ALT, MTLVertexFormat ##MTL_VTX_FMT, MTLVertexFormat ##MTL_VTX_FMT_ALT,  \
-										CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, kMVKFormat ##MVK_FMT_TYPE, { 0, 0, 0 }, \
+										CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, kMVKFormat ##MVK_FMT_TYPE, { VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3, nullptr, 0, 0, 0 }, \
 										{ VK_COMPONENT_SWIZZLE_ ##SWIZ_R, VK_COMPONENT_SWIZZLE_ ##SWIZ_G, VK_COMPONENT_SWIZZLE_ ##SWIZ_B, VK_COMPONENT_SWIZZLE_ ##SWIZ_A }, \
 										"VK_FORMAT_" #VK_FMT, false }
 
@@ -2119,7 +2133,7 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 		mvkEnableFlags(VK_FEATS, kMVKVkFormatFeatureFlags ##TYPE ##CAP);  \
 	}
 
-	VkFormatProperties& vkProps = vkDesc.properties;
+	VkFormatProperties3& vkProps = vkDesc.properties;
 	MVKMTLFmtCaps mtlPixFmtCaps = getMTLPixelFormatDesc(vkDesc.mtlPixelFormat).mtlFmtCaps;
     vkProps.optimalTilingFeatures = kMVKVkFormatFeatureFlagsTexNone;
     vkProps.linearTilingFeatures = kMVKVkFormatFeatureFlagsTexNone;

@@ -888,6 +888,22 @@ void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties*
 
 void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties2KHR* pFormatProperties) {
 	pFormatProperties->sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR;
+
+    for (auto* next = (VkBaseOutStructure*)pFormatProperties->pNext; next; next = next->pNext) {
+        switch (next->sType) {
+            case VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR: {
+                auto* properties3 = (VkFormatProperties3*)next;
+                auto& properties = _pixelFormats.getVkFormatProperties3(format);
+                properties3->linearTilingFeatures = properties.linearTilingFeatures;
+                properties3->optimalTilingFeatures = properties.optimalTilingFeatures;
+                properties3->bufferFeatures = properties.bufferFeatures;
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
 	getFormatProperties(format, &pFormatProperties->formatProperties);
 }
 
@@ -2530,7 +2546,7 @@ void MVKPhysicalDevice::initLimits() {
             } else {
                 alignment = [_mtlDevice minimumLinearTextureAlignmentForPixelFormat: mtlFmt];
             }
-            VkFormatProperties& props = _pixelFormats.getVkFormatProperties(vk);
+            VkFormatProperties3& props = _pixelFormats.getVkFormatProperties3(vk);
             // For uncompressed formats, this is the size of a single texel.
             // Note that no implementations of Metal support compressed formats
             // in a linear texture (including texture buffers). It's likely that even
@@ -2558,11 +2574,11 @@ void MVKPhysicalDevice::initLimits() {
                     break;
                 }
             }
-            if (mvkAreAllFlagsEnabled(props.bufferFeatures, VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)) {
+            if (mvkAreAllFlagsEnabled(props.bufferFeatures, VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT)) {
                 maxUniform = max(maxUniform, uint32_t(alignment));
                 if (alignment > texelSize) { singleTexelUniform = false; }
             }
-            if (mvkAreAllFlagsEnabled(props.bufferFeatures, VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT)) {
+            if (mvkAreAllFlagsEnabled(props.bufferFeatures, VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT)) {
                 maxStorage = max(maxStorage, uint32_t(alignment));
                 if (alignment > texelSize) { singleTexelStorage = false; }
             }
