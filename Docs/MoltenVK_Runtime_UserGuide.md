@@ -314,6 +314,8 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_bind_memory2`
 - `VK_KHR_buffer_device_address`
   - *Requires GPU Tier 2 argument buffers support.*
+- `VK_KHR_calibrated_timestamp`
+  - *Requires Metal 2.2.*
 - `VK_KHR_copy_commands2`
 - `VK_KHR_create_renderpass2`
 - `VK_KHR_dedicated_allocation`
