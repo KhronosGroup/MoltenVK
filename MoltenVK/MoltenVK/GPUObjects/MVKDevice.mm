@@ -2926,6 +2926,9 @@ uint32_t MVKPhysicalDevice::getHighestGPUCapability() {
 #if MVK_XCODE_14 || (MVK_IOS && MVK_XCODE_13)
 	if (supportsMTLGPUFamily(Apple8)) { gpuFam = MTLGPUFamilyApple8; }
 #endif
+#if MVK_XCODE_15 && (MVK_IOS || MVK_MACOS)
+    if (supportsMTLGPUFamily(Apple9)) { gpuFam = MTLGPUFamilyApple9; }
+#endif
 
 	// Combine OS major (8 bits), OS minor (8 bits), and GPU family (16 bits)
 	// into one 32-bit value summarizing highest GPU capability.
@@ -3326,6 +3329,9 @@ void MVKPhysicalDevice::logGPUInfo() {
 	logMsg += "\n\tsupports the following Metal Versions, GPU's and Feature Sets:";
 	logMsg += "\n\t\tMetal Shading Language %s";
 
+#if MVK_XCODE_15 && (MVK_IOS || MVK_MACOS)
+    if (supportsMTLGPUFamily(Apple9)) { logMsg += "\n\t\tGPU Family Apple 9"; }
+#endif
 #if MVK_XCODE_14 || (MVK_IOS && MVK_XCODE_13)
 	if (supportsMTLGPUFamily(Apple8)) { logMsg += "\n\t\tGPU Family Apple 8"; }
 #endif
