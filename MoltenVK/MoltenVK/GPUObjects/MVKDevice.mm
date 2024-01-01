@@ -1015,15 +1015,14 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				maxLayers = 1;
 				sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 			} else {
-				VkFormatProperties fmtProps;
-				getFormatProperties(format, &fmtProps);
+				VkFormatProperties3& fmtProps = _pixelFormats.getVkFormatProperties3(format);
 				// Compressed multisampled textures aren't supported.
 				// Chroma-subsampled multisampled textures aren't supported.
 				// Multisampled cube textures aren't supported.
 				// Non-renderable multisampled textures aren't supported.
 				if (mvkFmt == kMVKFormatCompressed || isChromaSubsampled ||
 					mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) ||
-					!mvkIsAnyFlagEnabled(fmtProps.optimalTilingFeatures, VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT|VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) ) {
+					!mvkIsAnyFlagEnabled(fmtProps.optimalTilingFeatures, VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT) ) {
 					sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 				}
 				// BGRG and GBGR images may only have one mip level and one layer.
@@ -2536,7 +2535,11 @@ void MVKPhysicalDevice::initLimits() {
 		// to fill out the VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT struct.
         uint32_t maxStorage = 0, maxUniform = 0;
         bool singleTexelStorage = true, singleTexelUniform = true;
-        _pixelFormats.enumerateSupportedFormats({0, 0, VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT | VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT}, true, [&](VkFormat vk) {
+		
+		VkFormatProperties3 fmtProps = {}; // We don't initialize sType as enumerateSupportedFormats doesn't care.
+		fmtProps.bufferFeatures = VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT | VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT;
+		
+        _pixelFormats.enumerateSupportedFormats(fmtProps, true, [&](VkFormat vk) {
 			MTLPixelFormat mtlFmt = _pixelFormats.getMTLPixelFormat(vk);
 			if ( !mtlFmt ) { return false; }	// If format is invalid, avoid validation errors on MTLDevice format alignment calls
 

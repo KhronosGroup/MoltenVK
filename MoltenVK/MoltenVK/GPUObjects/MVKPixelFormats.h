@@ -398,7 +398,7 @@ public:
                                        bool isExtended = false);
 
 	/** Enumerates all formats that support the given features, calling a specified function for each one. */
-	void enumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func);
+	void enumerateSupportedFormats(const VkFormatProperties3& properties, bool any, std::function<bool(VkFormat)> func);
 
 	/**
 	 * Returns the Metal MTLVertexFormat corresponding to the specified

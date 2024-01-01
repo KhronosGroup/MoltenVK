@@ -468,7 +468,7 @@ const char* MVKPixelFormats::getName(MTLVertexFormat mtlFormat) {
     return getMTLVertexFormatDesc(mtlFormat).name;
 }
 
-void MVKPixelFormats::enumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func) {
+void MVKPixelFormats::enumerateSupportedFormats(const VkFormatProperties3& properties, bool any, std::function<bool(VkFormat)> func) {
 	static const auto areFeaturesSupported = [any](VkFlags64 a, VkFlags64 b) {
 		if (b == 0) return true;
 		if (any)
@@ -2096,33 +2096,33 @@ void MVKPixelFormats::buildVkFormatMaps() {
 }
 
 // Enumeration of Vulkan format features aligned to the MVKMTLFmtCaps enumeration.
-typedef enum : VkFormatFeatureFlags {
+typedef enum : VkFormatFeatureFlags2 {
 	kMVKVkFormatFeatureFlagsTexNone     = 0,
-	kMVKVkFormatFeatureFlagsTexRead     = (VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
-										   VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
-										   VK_FORMAT_FEATURE_TRANSFER_DST_BIT |
-										   VK_FORMAT_FEATURE_BLIT_SRC_BIT),
-	kMVKVkFormatFeatureFlagsTexFilter   = (VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT),
-	kMVKVkFormatFeatureFlagsTexWrite    = (VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT),
-	kMVKVkFormatFeatureFlagsTexAtomic   = (VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT),
-	kMVKVkFormatFeatureFlagsTexColorAtt = (VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
-										   VK_FORMAT_FEATURE_BLIT_DST_BIT),
-	kMVKVkFormatFeatureFlagsTexDSAtt    = (VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
-										   VK_FORMAT_FEATURE_BLIT_DST_BIT),
-	kMVKVkFormatFeatureFlagsTexBlend    = (VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT),
-    kMVKVkFormatFeatureFlagsTexTransfer          = (VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
-                                                    VK_FORMAT_FEATURE_TRANSFER_DST_BIT),
-    kMVKVkFormatFeatureFlagsTexChromaSubsampling = (VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT_KHR),
-    kMVKVkFormatFeatureFlagsTexMultiPlanar       = (VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_DISJOINT_BIT_KHR),
-	kMVKVkFormatFeatureFlagsBufRead     = (VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT),
-	kMVKVkFormatFeatureFlagsBufWrite    = (VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT),
-	kMVKVkFormatFeatureFlagsBufAtomic   = (VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT),
-	kMVKVkFormatFeatureFlagsBufVertex   = (VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT),
+	kMVKVkFormatFeatureFlagsTexRead     = (VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT |
+										   VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT |
+										   VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT |
+										   VK_FORMAT_FEATURE_2_BLIT_SRC_BIT),
+	kMVKVkFormatFeatureFlagsTexFilter   = (VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT),
+	kMVKVkFormatFeatureFlagsTexWrite    = (VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT),
+	kMVKVkFormatFeatureFlagsTexAtomic   = (VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT),
+	kMVKVkFormatFeatureFlagsTexColorAtt = (VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT |
+										   VK_FORMAT_FEATURE_2_BLIT_DST_BIT),
+	kMVKVkFormatFeatureFlagsTexDSAtt    = (VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT |
+										   VK_FORMAT_FEATURE_2_BLIT_DST_BIT),
+	kMVKVkFormatFeatureFlagsTexBlend    = (VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT),
+    kMVKVkFormatFeatureFlagsTexTransfer          = (VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT |
+                                                    VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT),
+    kMVKVkFormatFeatureFlagsTexChromaSubsampling = (VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT_KHR |
+                                                    VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT_KHR),
+    kMVKVkFormatFeatureFlagsTexMultiPlanar       = (VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT_KHR |
+                                                    VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT_KHR |
+                                                    VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT_KHR |
+                                                    VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT_KHR |
+                                                    VK_FORMAT_FEATURE_2_DISJOINT_BIT_KHR),
+	kMVKVkFormatFeatureFlagsBufRead     = (VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT),
+	kMVKVkFormatFeatureFlagsBufWrite    = (VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT),
+	kMVKVkFormatFeatureFlagsBufAtomic   = (VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT),
+	kMVKVkFormatFeatureFlagsBufVertex   = (VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT),
 } MVKVkFormatFeatureFlags;
 
 // Sets the VkFormatProperties (optimal/linear/buffer) for the Vulkan format.
@@ -2180,7 +2180,7 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 	// Vulkan forbids blits between chroma-subsampled formats.
 	// If we can't write the stencil reference from the shader, we can't blit stencil.
 	if (chromaSubsamplingComponentBits > 0 || (isStencilFormat(vkDesc.mtlPixelFormat) && !supportsStencilFeedback)) {
-		mvkDisableFlags(vkProps.optimalTilingFeatures, (VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT));
+		mvkDisableFlags(vkProps.optimalTilingFeatures, (VK_FORMAT_FEATURE_2_BLIT_SRC_BIT | VK_FORMAT_FEATURE_2_BLIT_DST_BIT));
 	}
 
 	// These formats require swizzling. In order to support rendering, we'll have to swizzle
