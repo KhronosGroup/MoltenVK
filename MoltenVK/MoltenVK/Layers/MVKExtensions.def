@@ -64,6 +64,7 @@ MVK_EXTENSION(KHR_external_memory_capabilities,       KHR_EXTERNAL_MEMORY_CAPABI
 MVK_EXTENSION(KHR_external_semaphore,                 KHR_EXTERNAL_SEMAPHORE,                 DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_external_semaphore_capabilities,    KHR_EXTERNAL_SEMAPHORE_CAPABILITIES,    INSTANCE, 10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_fragment_shader_barycentric,        KHR_FRAGMENT_SHADER_BARYCENTRIC,        DEVICE,   10.15, 14.0,  1.0)
+MVK_EXTENSION(KHR_format_feature_flags2,              KHR_FORMAT_FEATURE_FLAGS_2,             DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_get_memory_requirements2,           KHR_GET_MEMORY_REQUIREMENTS_2,          DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_get_physical_device_properties2,    KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2,   INSTANCE, 10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_get_surface_capabilities2,          KHR_GET_SURFACE_CAPABILITIES_2,         INSTANCE, 10.11,  8.0,  1.0)

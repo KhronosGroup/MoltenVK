@@ -147,7 +147,7 @@ typedef struct MVKVkFormatDesc {
 	VkExtent2D blockTexelSize;
 	uint32_t bytesPerBlock;
 	MVKFormatType formatType;
-	VkFormatProperties properties;
+    VkFormatProperties3 properties;
 	VkComponentMapping componentMapping;
 	const char* name;
 	bool hasReportedSubstitution;
@@ -344,7 +344,8 @@ public:
 	MTLTextureSwizzleChannels getMTLTextureSwizzleChannels(VkFormat vkFormat);
 
 	/** Returns the default properties for the specified Vulkan format. */
-	VkFormatProperties& getVkFormatProperties(VkFormat vkFormat);
+    VkFormatProperties getVkFormatProperties(VkFormat format);
+	VkFormatProperties3& getVkFormatProperties3(VkFormat vkFormat);
 
 	/** Returns the Metal format capabilities supported by the specified Vulkan format, without substitution. */
 	MVKMTLFmtCaps getCapabilities(VkFormat vkFormat, bool isExtended = false);
@@ -397,15 +398,15 @@ public:
                                        bool isExtended = false);
 
 	/** Enumerates all formats that support the given features, calling a specified function for each one. */
-	void enumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func);
+	void enumerateSupportedFormats(const VkFormatProperties3& properties, bool any, std::function<bool(VkFormat)> func);
 
 	/**
 	 * Returns the Metal MTLVertexFormat corresponding to the specified
 	 * Vulkan VkFormat as used as a vertex attribute format.
 	 */
 	MTLVertexFormat getMTLVertexFormat(VkFormat vkFormat);
-
-
+    
+    static VkFormatFeatureFlags convertFormatPropertiesFlagBits(VkFormatFeatureFlags2 flags);
 #pragma mark Construction
 
 	MVKPixelFormats(MVKPhysicalDevice* physicalDevice = nullptr);
