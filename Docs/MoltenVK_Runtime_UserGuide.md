@@ -314,6 +314,8 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_bind_memory2`
 - `VK_KHR_buffer_device_address`
   - *Requires GPU Tier 2 argument buffers support.*
+- `VK_KHR_calibrated_timestamp`
+  - *Requires Metal 2.2.*
 - `VK_KHR_copy_commands2`
 - `VK_KHR_create_renderpass2`
 - `VK_KHR_dedicated_allocation`
@@ -323,6 +325,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_device_group_creation`
 - `VK_KHR_driver_properties`
 - `VK_KHR_dynamic_rendering`
+- `VK_KHR_format_feature_flags2`
 - `VK_KHR_fragment_shader_barycentric`
   - *Requires Metal 2.2 on Mac or Metal 2.3 on iOS.*
 - `VK_KHR_get_memory_requirements2`
@@ -358,6 +361,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_timeline_semaphore`
 - `VK_KHR_uniform_buffer_standard_layout`
 - `VK_KHR_variable_pointers`
+- `VK_KHR_vertex_attribute_divisor`
 - `VK_EXT_4444_formats`
   - *Requires 16-bit formats and either native texture swizzling or manual swizzling to be enabled.*
 - `VK_EXT_buffer_device_address`

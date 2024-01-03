@@ -420,8 +420,17 @@ MTLTextureSwizzleChannels MVKPixelFormats::getMTLTextureSwizzleChannels(VkFormat
 	return mvkMTLTextureSwizzleChannelsFromVkComponentMapping(getVkComponentMapping(vkFormat));
 }
 
-VkFormatProperties& MVKPixelFormats::getVkFormatProperties(VkFormat vkFormat) {
+VkFormatProperties3& MVKPixelFormats::getVkFormatProperties3(VkFormat vkFormat) {
 	return getVkFormatDesc(vkFormat).properties;
+}
+
+VkFormatProperties MVKPixelFormats::getVkFormatProperties(VkFormat vkFormat) {
+    auto& properties = getVkFormatProperties3(vkFormat);
+    VkFormatProperties ret;
+    ret.linearTilingFeatures = MVKPixelFormats::convertFormatPropertiesFlagBits(properties.linearTilingFeatures);
+    ret.optimalTilingFeatures = MVKPixelFormats::convertFormatPropertiesFlagBits(properties.optimalTilingFeatures);
+    ret.bufferFeatures = MVKPixelFormats::convertFormatPropertiesFlagBits(properties.bufferFeatures);
+    return ret;
 }
 
 MVKMTLFmtCaps MVKPixelFormats::getCapabilities(VkFormat vkFormat, bool isExtended) {
@@ -459,8 +468,8 @@ const char* MVKPixelFormats::getName(MTLVertexFormat mtlFormat) {
     return getMTLVertexFormatDesc(mtlFormat).name;
 }
 
-void MVKPixelFormats::enumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func) {
-	static const auto areFeaturesSupported = [any](uint32_t a, uint32_t b) {
+void MVKPixelFormats::enumerateSupportedFormats(const VkFormatProperties3& properties, bool any, std::function<bool(VkFormat)> func) {
+	static const auto areFeaturesSupported = [any](VkFlags64 a, VkFlags64 b) {
 		if (b == 0) return true;
 		if (any)
 			return mvkIsAnyFlagEnabled(a, b);
@@ -785,6 +794,11 @@ MVKMTLFormatDesc& MVKPixelFormats::getMTLVertexFormatDesc(MTLVertexFormat mtlFor
 	return _mtlVertexFormatDescriptions[mtlFormat];
 }
 
+VkFormatFeatureFlags MVKPixelFormats::convertFormatPropertiesFlagBits(VkFormatFeatureFlags2 flags) {
+    // Truncate to 32-bits and just return. All current values are identical.
+    return static_cast<VkFormatFeatureFlags>(flags);
+}
+
 
 #pragma mark Construction
 
@@ -803,7 +817,7 @@ MVKPixelFormats::MVKPixelFormats(MVKPhysicalDevice* physicalDevice) : _physicalD
 #define addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A)  \
 	vkFmt = VK_FORMAT_ ##VK_FMT;  \
 	_vkFormatDescriptions[vkFmt] = { vkFmt, MTLPixelFormat ##MTL_FMT, MTLPixelFormat ##MTL_FMT_ALT, MTLVertexFormat ##MTL_VTX_FMT, MTLVertexFormat ##MTL_VTX_FMT_ALT,  \
-									 CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, kMVKFormat ##MVK_FMT_TYPE, { 0, 0, 0 }, \
+									 CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, kMVKFormat ##MVK_FMT_TYPE, { VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3, nullptr, 0, 0, 0 }, \
 									 { VK_COMPONENT_SWIZZLE_ ##SWIZ_R, VK_COMPONENT_SWIZZLE_ ##SWIZ_G, VK_COMPONENT_SWIZZLE_ ##SWIZ_B, VK_COMPONENT_SWIZZLE_ ##SWIZ_A }, \
 									 "VK_FORMAT_" #VK_FMT, false }
 
@@ -818,6 +832,7 @@ MVKPixelFormats::MVKPixelFormats(MVKPhysicalDevice* physicalDevice) : _physicalD
 
 void MVKPixelFormats::initVkFormatCapabilities() {
 	VkFormat vkFmt;
+	_vkFormatDescriptions.reserve(512);	// High estimate to future-proof against allocations as elements are added. shrink_to_fit() below will collapse.
 
 	// UNDEFINED must come first.
 	addVkFormatDesc( UNDEFINED, Invalid, Invalid, Invalid, Invalid, 1, 1, 0, None );
@@ -1126,6 +1141,7 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 
 void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 	MTLPixelFormat mtlPixFmt;
+	_mtlPixelFormatDescriptions.reserve(512);	// High estimate to future-proof against allocations as elements are added. shrink_to_fit() below will collapse.
 
 	// MTLPixelFormatInvalid must come first.
 	addMTLPixelFormatDesc    ( Invalid, None, None, None );
@@ -1307,7 +1323,6 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 
 void MVKPixelFormats::initMTLVertexFormatCapabilities() {
 	MTLVertexFormat mtlVtxFmt;
-
 	_mtlVertexFormatDescriptions.resize(MTLVertexFormatHalf + 3, {});
 
 	addMTLVertexFormatDesc( Invalid, None, None );  // MTLVertexFormatInvalid must come first.
@@ -2026,33 +2041,33 @@ void MVKPixelFormats::buildVkFormatMaps() {
 }
 
 // Enumeration of Vulkan format features aligned to the MVKMTLFmtCaps enumeration.
-typedef enum : VkFormatFeatureFlags {
+typedef enum : VkFormatFeatureFlags2 {
 	kMVKVkFormatFeatureFlagsTexNone     = 0,
-	kMVKVkFormatFeatureFlagsTexRead     = (VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
-										   VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
-										   VK_FORMAT_FEATURE_TRANSFER_DST_BIT |
-										   VK_FORMAT_FEATURE_BLIT_SRC_BIT),
-	kMVKVkFormatFeatureFlagsTexFilter   = (VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT),
-	kMVKVkFormatFeatureFlagsTexWrite    = (VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT),
-	kMVKVkFormatFeatureFlagsTexAtomic   = (VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT),
-	kMVKVkFormatFeatureFlagsTexColorAtt = (VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
-										   VK_FORMAT_FEATURE_BLIT_DST_BIT),
-	kMVKVkFormatFeatureFlagsTexDSAtt    = (VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
-										   VK_FORMAT_FEATURE_BLIT_DST_BIT),
-	kMVKVkFormatFeatureFlagsTexBlend    = (VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT),
-    kMVKVkFormatFeatureFlagsTexTransfer          = (VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
-                                                    VK_FORMAT_FEATURE_TRANSFER_DST_BIT),
-    kMVKVkFormatFeatureFlagsTexChromaSubsampling = (VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT_KHR),
-    kMVKVkFormatFeatureFlagsTexMultiPlanar       = (VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_DISJOINT_BIT_KHR),
-	kMVKVkFormatFeatureFlagsBufRead     = (VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT),
-	kMVKVkFormatFeatureFlagsBufWrite    = (VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT),
-	kMVKVkFormatFeatureFlagsBufAtomic   = (VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT),
-	kMVKVkFormatFeatureFlagsBufVertex   = (VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT),
+	kMVKVkFormatFeatureFlagsTexRead     = (VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT |
+										   VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT |
+										   VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT |
+										   VK_FORMAT_FEATURE_2_BLIT_SRC_BIT),
+	kMVKVkFormatFeatureFlagsTexFilter   = (VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT),
+	kMVKVkFormatFeatureFlagsTexWrite    = (VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT),
+	kMVKVkFormatFeatureFlagsTexAtomic   = (VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT),
+	kMVKVkFormatFeatureFlagsTexColorAtt = (VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT |
+										   VK_FORMAT_FEATURE_2_BLIT_DST_BIT),
+	kMVKVkFormatFeatureFlagsTexDSAtt    = (VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT |
+										   VK_FORMAT_FEATURE_2_BLIT_DST_BIT),
+	kMVKVkFormatFeatureFlagsTexBlend    = (VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT),
+    kMVKVkFormatFeatureFlagsTexTransfer          = (VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT |
+                                                    VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT),
+    kMVKVkFormatFeatureFlagsTexChromaSubsampling = (VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT_KHR |
+                                                    VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT_KHR),
+    kMVKVkFormatFeatureFlagsTexMultiPlanar       = (VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT_KHR |
+                                                    VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT_KHR |
+                                                    VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT_KHR |
+                                                    VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT_KHR |
+                                                    VK_FORMAT_FEATURE_2_DISJOINT_BIT_KHR),
+	kMVKVkFormatFeatureFlagsBufRead     = (VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT),
+	kMVKVkFormatFeatureFlagsBufWrite    = (VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT),
+	kMVKVkFormatFeatureFlagsBufAtomic   = (VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT),
+	kMVKVkFormatFeatureFlagsBufVertex   = (VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT),
 } MVKVkFormatFeatureFlags;
 
 // Sets the VkFormatProperties (optimal/linear/buffer) for the Vulkan format.
@@ -2063,7 +2078,7 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 		mvkEnableFlags(VK_FEATS, kMVKVkFormatFeatureFlags ##TYPE ##CAP);  \
 	}
 
-	VkFormatProperties& vkProps = vkDesc.properties;
+	VkFormatProperties3& vkProps = vkDesc.properties;
 	MVKMTLFmtCaps mtlPixFmtCaps = getMTLPixelFormatDesc(vkDesc.mtlPixelFormat).mtlFmtCaps;
     vkProps.optimalTilingFeatures = kMVKVkFormatFeatureFlagsTexNone;
     vkProps.linearTilingFeatures = kMVKVkFormatFeatureFlagsTexNone;
@@ -2110,7 +2125,7 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 	// Vulkan forbids blits between chroma-subsampled formats.
 	// If we can't write the stencil reference from the shader, we can't blit stencil.
 	if (chromaSubsamplingComponentBits > 0 || (isStencilFormat(vkDesc.mtlPixelFormat) && !supportsStencilFeedback)) {
-		mvkDisableFlags(vkProps.optimalTilingFeatures, (VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT));
+		mvkDisableFlags(vkProps.optimalTilingFeatures, (VK_FORMAT_FEATURE_2_BLIT_SRC_BIT | VK_FORMAT_FEATURE_2_BLIT_DST_BIT));
 	}
 
 	// These formats require swizzling. In order to support rendering, we'll have to swizzle

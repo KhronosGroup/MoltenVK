@@ -81,6 +81,7 @@ public:
 
 	bool empty() { return _values.size() == 0; }
 	size_t size() { return _values.size(); }
+	void reserve(const size_t new_cap) { _values.reserve(new_cap); }
 	void shrink_to_fit() { _values.shrink_to_fit(); }
 
 protected:
