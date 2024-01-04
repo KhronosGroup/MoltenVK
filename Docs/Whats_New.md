@@ -6,7 +6,7 @@
 
 # What's New in MoltenVK
 
-Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
+Copyright (c) 2015-2024 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 [comment]: # "This document is written in Markdown (http://en.wikipedia.org/wiki/Markdown) format."
 [comment]: # "For best results, use a Markdown reader."
@@ -30,6 +30,7 @@ Released TBD
 - Fix swapchain and surface bugs when windowing system is accessed from off the main thread.
 - Deprecate `vkSetMoltenVKConfigurationMVK()`.
 - Deprecate `mvk_config.h` and move content to `mvk_private_api.h` and `mvk_deprecated_api.h`.
+- Update copyright notices to year 2024.
 - Update to latest SPIRV-Cross:
   - MSL: Fix regression error in argument buffer runtime arrays.
   - MSL: Work around broken cube texture gradients on Apple Silicon.
