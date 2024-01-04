@@ -20,6 +20,7 @@
 
 #include "MVKBaseObject.h"
 #include "MVKOSExtensions.h"
+#include "MVKInflectionMap.h"
 #include "mvk_datatypes.hpp"
 #include <spirv_msl.hpp>
 #include <unordered_map>
@@ -27,14 +28,6 @@
 #import <Metal/Metal.h>
 
 class MVKPhysicalDevice;
-
-
-// Validate these values periodically as new formats are added over time.
-static const uint32_t _vkFormatCount = 256;
-static const uint32_t _vkFormatCoreCount = VK_FORMAT_ASTC_12x12_SRGB_BLOCK + 1;
-static const uint32_t _mtlPixelFormatCount = 256;
-static const uint32_t _mtlPixelFormatCoreCount = MTLPixelFormatX32_Stencil8 + 2;     // The actual last enum value is not available on iOS
-static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 3;     // The actual last enum value is not available before Xcode 15
 
 
 #pragma mark -
@@ -419,7 +412,6 @@ protected:
 	void initVkFormatCapabilities();
 	void initMTLPixelFormatCapabilities();
 	void initMTLVertexFormatCapabilities();
-	void buildMTLFormatMaps();
 	void buildVkFormatMaps();
 	void setFormatProperties(MVKVkFormatDesc& vkDesc);
 	void modifyMTLFormatCapabilities();
@@ -447,19 +439,7 @@ protected:
 										MVKMTLFmtCaps mtlFmtCaps);
 
 	MVKPhysicalDevice* _physicalDevice;
-	MVKVkFormatDesc _vkFormatDescriptions[_vkFormatCount];
-	MVKMTLFormatDesc _mtlPixelFormatDescriptions[_mtlPixelFormatCount];
-	MVKMTLFormatDesc _mtlVertexFormatDescriptions[_mtlVertexFormatCount];
-
-	// Vulkan core formats have small values and are mapped by simple lookup array.
-	// Vulkan extension formats have larger values and are mapped by a map.
-	uint16_t _vkFormatDescIndicesByVkFormatsCore[_vkFormatCoreCount];
-	std::unordered_map<uint32_t, uint32_t> _vkFormatDescIndicesByVkFormatsExt;
-
-	// Most Metal formats have small values and are mapped by simple lookup array.
-	// Outliers are mapped by a map.
-	uint16_t _mtlFormatDescIndicesByMTLPixelFormatsCore[_mtlPixelFormatCoreCount];
-	std::unordered_map<NSUInteger, uint32_t> _mtlFormatDescIndicesByMTLPixelFormatsExt;
-
-	uint16_t _mtlFormatDescIndicesByMTLVertexFormats[_mtlVertexFormatCount];
+	MVKInflectionMap<VkFormat, MVKVkFormatDesc, VK_FORMAT_ASTC_12x12_SRGB_BLOCK + 1> _vkFormatDescriptions;
+	MVKInflectionMap<uint16_t, MVKMTLFormatDesc, MTLPixelFormatX32_Stencil8 + 2> _mtlPixelFormatDescriptions;  // The actual last enum value is not available on iOS
+	MVKSmallVector<MVKMTLFormatDesc> _mtlVertexFormatDescriptions;
 };

@@ -131,4 +131,4 @@ start_time=${SECONDS}
 --deqp-caselist-file="${caselist_file}"    \
 &> "${results_file}"
 
-echo Testing complete in $(($SECONDS - $start_time)) seconds
+echo Testing complete in $(($SECONDS - $start_time)) seconds at `date +%r`
