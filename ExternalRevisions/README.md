@@ -240,7 +240,6 @@ if you encounter any building errors, you may need to re-add the *glslang* libra
    *Group* in the *Project Navigator* panel:
 
 		glslang
-		OGLCompilersDLL
 		SPIRV
 
    In the ***Choose options for adding these files*** dialog that opens, select the ***Create groups*** option, 

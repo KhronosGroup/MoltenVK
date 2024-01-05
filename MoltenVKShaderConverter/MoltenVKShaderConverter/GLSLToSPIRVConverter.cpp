@@ -22,6 +22,7 @@
 #include "SPIRVSupport.h"
 #include "MVKStrings.h"
 #include <glslang/SPIRV/GlslangToSpv.h>
+#include <glslang/glslang/Include/intermediate.h>
 #include <sstream>
 
 using namespace std;
