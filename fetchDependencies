@@ -4,7 +4,7 @@
 #
 # fetchDependencies - Retrieves the correct versions of all dependencies
 #
-# macOS usage: ./fetchDependencies [--macos] [--ios] [--iossim] [--tvos] [--tvossim]
+# macOS usage: ./fetchDependencies [--macos] [--ios] [--iossim] [--maccat] [--tvos] [--tvossim]
 #                                  [--visionos] [--visionossim] [--all] [--none]
 #                                  [-v] [--debug] [--build-spirv-tools]
 #                                  [--v-headers-root path] [--spirv-cross-root path] [--glslang-root path]
