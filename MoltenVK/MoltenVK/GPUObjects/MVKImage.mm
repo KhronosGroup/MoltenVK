@@ -167,10 +167,10 @@ void MVKImagePlane::initSubresources(const VkImageCreateInfo* pCreateInfo) {
 
     for (uint32_t mipLvl = 0; mipLvl < _image->_mipLevels; mipLvl++) {
         subRez.subresource.mipLevel = mipLvl;
-        VkDeviceSize rowPitch = _image->getBytesPerRow(_planeIndex, mipLvl);
-        VkDeviceSize depthPitch = _image->getBytesPerLayer(_planeIndex, mipLvl);
-
-        VkExtent3D mipExtent = _image->getExtent3D(_planeIndex, mipLvl);
+		VkExtent3D mipExtent = _image->getExtent3D(_planeIndex, mipLvl);
+		auto planeMTLPixFmt = _image->getPixelFormats()->getChromaSubsamplingPlaneMTLPixelFormat(_image->_vkFormat, _planeIndex);
+        VkDeviceSize rowPitch = _image->getBytesPerRow(planeMTLPixFmt, mipExtent.width);
+        VkDeviceSize depthPitch = _image->getPixelFormats()->getBytesPerLayer(planeMTLPixFmt, rowPitch, mipExtent.height);
         
         for (uint32_t layer = 0; layer < _image->_arrayLayers; layer++) {
             subRez.subresource.arrayLayer = layer;
@@ -575,17 +575,15 @@ VkExtent3D MVKImage::getExtent3D(uint8_t planeIndex, uint32_t mipLevel) {
 	return mvkMipmapLevelSizeFromBaseSize3D(extent, mipLevel);
 }
 
-VkDeviceSize MVKImage::getBytesPerRow(uint8_t planeIndex, uint32_t mipLevel) {
-    MTLPixelFormat planeMTLPixFmt = getPixelFormats()->getChromaSubsamplingPlaneMTLPixelFormat(_vkFormat, planeIndex);
-    size_t bytesPerRow = getPixelFormats()->getBytesPerRow(planeMTLPixFmt, getExtent3D(planeIndex, mipLevel).width);
+VkDeviceSize MVKImage::getBytesPerRow(MTLPixelFormat planePixelFormat, uint32_t mipWidth) {
+    size_t bytesPerRow = getPixelFormats()->getBytesPerRow(planePixelFormat, mipWidth);
     return mvkAlignByteCount(bytesPerRow, _rowByteAlignment);
 }
 
-VkDeviceSize MVKImage::getBytesPerLayer(uint8_t planeIndex, uint32_t mipLevel) {
-    MTLPixelFormat planeMTLPixFmt = getPixelFormats()->getChromaSubsamplingPlaneMTLPixelFormat(_vkFormat, planeIndex);
-    VkExtent3D extent = getExtent3D(planeIndex, mipLevel);
-    size_t bytesPerRow = getBytesPerRow(planeIndex, mipLevel);
-    return getPixelFormats()->getBytesPerLayer(planeMTLPixFmt, bytesPerRow, extent.height);
+VkDeviceSize MVKImage::getBytesPerLayer(uint8_t planeIndex, VkExtent3D mipExtent) {
+	MTLPixelFormat planeMTLPixFmt = getPixelFormats()->getChromaSubsamplingPlaneMTLPixelFormat(_vkFormat, planeIndex);
+	VkDeviceSize bytesPerRow = getBytesPerRow(planeMTLPixFmt, mipExtent.width);
+	return getPixelFormats()->getBytesPerLayer(planeMTLPixFmt, bytesPerRow, mipExtent.height);
 }
 
 VkResult MVKImage::getSubresourceLayout(const VkImageSubresource* pSubresource,
@@ -617,7 +615,6 @@ bool MVKImage::getIsValidViewFormat(VkFormat viewFormat) {
 	}
 	return _viewFormats.empty();
 }
-
 
 #pragma mark Resource memory
 
@@ -670,6 +667,12 @@ VkResult MVKImage::getMemoryRequirements(const void* pInfo, VkMemoryRequirements
     VkResult rslt = getMemoryRequirements(&pMemoryRequirements->memoryRequirements, planeIndex);
     if (rslt != VK_SUCCESS) { return rslt; }
     return _memoryBindings[planeIndex]->getMemoryRequirements(pInfo, pMemoryRequirements);
+}
+
+VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements2 *pMemoryRequirements, uint8_t planeIndex) {
+	VkResult rslt = getMemoryRequirements(&pMemoryRequirements->memoryRequirements, planeIndex);
+	if (rslt != VK_SUCCESS) { return rslt; }
+	return _memoryBindings[planeIndex]->getMemoryRequirements(nullptr, pMemoryRequirements);
 }
 
 VkResult MVKImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset, uint8_t planeIndex) {
@@ -933,7 +936,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
 								 mvkAreAllFlagsEnabled(pixFmts->getVkFormatProperties3(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT));
 	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
-	_rowByteAlignment = _isLinear || _isLinearForAtomics ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(pixFmts->getBytesPerBlock(pCreateInfo->format));
+	_rowByteAlignment = _isLinear || _isLinearForAtomics ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format) : mvkEnsurePowerOfTwo(pixFmts->getBytesPerBlock(pCreateInfo->format));
 
     VkExtent2D blockTexelSizeOfPlane[3];
     uint32_t bytesPerBlockOfPlane[3];
@@ -970,15 +973,15 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
             NSUInteger bufferLength = 0;
             for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
                 VkExtent3D mipExtent = getExtent3D(planeIndex, mipLvl);
-                bufferLength += getBytesPerLayer(planeIndex, mipLvl) * mipExtent.depth * _arrayLayers;
+                bufferLength += getBytesPerLayer(planeIndex, mipExtent) * mipExtent.depth * _arrayLayers;
             }
             MTLSizeAndAlign sizeAndAlign = [_device->getMTLDevice() heapBufferSizeAndAlignWithLength: bufferLength options: MTLResourceStorageModePrivate];
-            memoryBinding->_byteCount += sizeAndAlign.size;
+            memoryBinding->_byteCount = sizeAndAlign.size;
             memoryBinding->_byteAlignment = std::max(std::max(memoryBinding->_byteAlignment, _rowByteAlignment), (VkDeviceSize)sizeAndAlign.align);
         } else {
             for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
                 VkExtent3D mipExtent = getExtent3D(planeIndex, mipLvl);
-                memoryBinding->_byteCount += getBytesPerLayer(planeIndex, mipLvl) * mipExtent.depth * _arrayLayers;
+                memoryBinding->_byteCount += getBytesPerLayer(planeIndex, mipExtent) * mipExtent.depth * _arrayLayers;
             }
             memoryBinding->_byteAlignment = std::max(memoryBinding->_byteAlignment, _rowByteAlignment);
         }

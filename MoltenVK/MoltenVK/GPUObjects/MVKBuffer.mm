@@ -346,7 +346,7 @@ MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pC
 		// Multiple rows will automatically align with PoT max texture dimension, but need to align upwards if less than full single row.
 		size_t maxBlocksPerRow = _device->_pMetalFeatures->maxTextureDimension / fmtBlockSize.width;
 		size_t blocksPerRow = min(blockCount, maxBlocksPerRow);
-		_mtlBytesPerRow = mvkAlignByteCount(blocksPerRow * bytesPerBlock, _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this));
+		_mtlBytesPerRow = mvkAlignByteCount(blocksPerRow * bytesPerBlock, _device->getVkFormatTexelBufferAlignment(pCreateInfo->format));
 
 		size_t rowCount = blockCount / blocksPerRow;
 		if (blockCount % blocksPerRow) { rowCount++; }
@@ -358,7 +358,7 @@ MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pC
 		// We can just use a simple 1D texel array.
 		_textureSize.width = uint32_t(blockCount * fmtBlockSize.width);
 		_textureSize.height = 1;
-		_mtlBytesPerRow = mvkAlignByteCount(byteCount, _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this));
+		_mtlBytesPerRow = mvkAlignByteCount(byteCount, _device->getVkFormatTexelBufferAlignment(pCreateInfo->format));
 	}
 
     if ( !_device->_pMetalFeatures->texelBuffers ) {

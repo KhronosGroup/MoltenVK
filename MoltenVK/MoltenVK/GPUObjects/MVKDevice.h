@@ -766,7 +766,7 @@ public:
 	uint32_t getMetalBufferIndexForVertexAttributeBinding(uint32_t binding);
 
 	/** Returns the memory alignment required for the format when used in a texel buffer. */
-	VkDeviceSize getVkFormatTexelBufferAlignment(VkFormat format, MVKBaseObject* mvkObj);
+	VkDeviceSize getVkFormatTexelBufferAlignment(VkFormat format);
 
     /** 
      * Returns the MTLBuffer used to hold occlusion query results, 
