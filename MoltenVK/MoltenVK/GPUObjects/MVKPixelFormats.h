@@ -409,12 +409,12 @@ protected:
 	MVKVkFormatDesc& getVkFormatDesc(MTLPixelFormat mtlFormat);
 	MVKMTLFormatDesc& getMTLPixelFormatDesc(MTLPixelFormat mtlFormat);
 	MVKMTLFormatDesc& getMTLVertexFormatDesc(MTLVertexFormat mtlFormat);
+	id<MTLDevice> getMTLDevice();
 	void initVkFormatCapabilities();
 	void initMTLPixelFormatCapabilities();
 	void initMTLVertexFormatCapabilities();
-	void buildVkFormatMaps();
-	void setFormatProperties(MVKVkFormatDesc& vkDesc);
-	void modifyMTLFormatCapabilities();
+	void buildVkFormatMaps(id<MTLDevice> mtlDevice);
+	void setFormatProperties(id<MTLDevice> mtlDevice, MVKVkFormatDesc& vkDesc);
 	void modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice);
 	void addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
 									   MTLFeatureSet mtlFeatSet,

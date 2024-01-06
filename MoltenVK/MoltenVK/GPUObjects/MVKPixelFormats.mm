@@ -804,14 +804,29 @@ VkFormatFeatureFlags MVKPixelFormats::convertFormatPropertiesFlagBits(VkFormatFe
 
 MVKPixelFormats::MVKPixelFormats(MVKPhysicalDevice* physicalDevice) : _physicalDevice(physicalDevice) {
 
+	auto* mtlDev = getMTLDevice();
+
 	// Build and update the Metal formats
 	initMTLPixelFormatCapabilities();
 	initMTLVertexFormatCapabilities();
-	modifyMTLFormatCapabilities();
+	modifyMTLFormatCapabilities(mtlDev);
 
 	// Build the Vulkan formats and link them to the Metal formats
 	initVkFormatCapabilities();
-	buildVkFormatMaps();
+	buildVkFormatMaps(mtlDev);
+}
+
+// Call this sparsely. If there is no physical device, this operation may be costly.
+// If supporting a physical device, retrieve the MTLDevice from it, otherwise
+// retrieve the array of physical GPU devices, and use the first one.
+// Retrieving the GPUs creates a number of autoreleased instances of Metal
+// and other Obj-C classes, so wrap it all in an autorelease pool.
+id<MTLDevice> MVKPixelFormats::getMTLDevice() {
+	if (_physicalDevice) { return _physicalDevice->getMTLDevice(); }
+	@autoreleasepool {
+		auto* mtlDevs = mvkGetAvailableMTLDevicesArray(nullptr);
+		return mtlDevs.count ? mtlDevs[0] : nil;
+	}
 }
 
 #define addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A)  \
@@ -1459,21 +1474,6 @@ void MVKPixelFormats::addMTLVertexFormatCapabilities(id<MTLDevice> mtlDevice,
 	}
 }
 
-// If supporting a physical device, retrieve the MTLDevice from it, otherwise
-// retrieve the array of physical GPU devices, and use the first one.
-// Retrieving the GPUs creates a number of autoreleased instances of Metal
-// and other Obj-C classes, so wrap it all in an autorelease pool.
-void MVKPixelFormats::modifyMTLFormatCapabilities() {
-	if (_physicalDevice) {
-		modifyMTLFormatCapabilities(_physicalDevice->getMTLDevice());
-	} else {
-		@autoreleasepool {
-			auto* mtlDevs = mvkGetAvailableMTLDevicesArray(nullptr);
-			if (mtlDevs.count) { modifyMTLFormatCapabilities(mtlDevs[0]); }
-		}
-	}
-}
-
 // Mac Catalyst does not support feature sets, so we redefine them to GPU families in MVKDevice.h.
 #if MVK_MACCAT
 #define addFeatSetMTLPixFmtCaps(FEAT_SET, MTL_FMT, CAPS)  \
@@ -1994,22 +1994,19 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 #undef addGPUOSMTLVtxFmtCaps
 
 // Connects Vulkan and Metal pixel formats to one-another.
-void MVKPixelFormats::buildVkFormatMaps() {
+void MVKPixelFormats::buildVkFormatMaps(id<MTLDevice> mtlDevice) {
 	for (auto& vkDesc : _vkFormatDescriptions) {
 		if (vkDesc.needsSwizzle()) {
-			if (_physicalDevice) {
-				id<MTLDevice> mtlDev = _physicalDevice->getMTLDevice();
 #if MVK_MACCAT
-				bool supportsNativeTextureSwizzle = [mtlDev supportsFamily: MTLGPUFamilyMacCatalyst2];
+			bool supportsNativeTextureSwizzle = [mtlDevice supportsFamily: MTLGPUFamilyMacCatalyst2];
 #elif MVK_MACOS
-				bool supportsNativeTextureSwizzle = mvkOSVersionIsAtLeast(10.15) && [mtlDev supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily2_v1];
+			bool supportsNativeTextureSwizzle = mvkOSVersionIsAtLeast(10.15) && [mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily2_v1];
 #endif
 #if MVK_IOS || MVK_TVOS
-				bool supportsNativeTextureSwizzle = mtlDev && mvkOSVersionIsAtLeast(13.0);
+			bool supportsNativeTextureSwizzle = mtlDevice && mvkOSVersionIsAtLeast(13.0);
 #endif
-				if (!supportsNativeTextureSwizzle && !getMVKConfig().fullImageViewSwizzle) {
-					vkDesc.mtlPixelFormat = vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid;
-				}
+			if (!supportsNativeTextureSwizzle && !getMVKConfig().fullImageViewSwizzle) {
+				vkDesc.mtlPixelFormat = vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid;
 			}
 		}
 
@@ -2036,7 +2033,7 @@ void MVKPixelFormats::buildVkFormatMaps() {
 		}
 
 		// Set Vulkan format properties
-		setFormatProperties(vkDesc);
+		setFormatProperties(mtlDevice, vkDesc);
 	}
 }
 
@@ -2073,7 +2070,7 @@ typedef enum : VkFormatFeatureFlags2 {
 } MVKVkFormatFeatureFlags;
 
 // Sets the VkFormatProperties (optimal/linear/buffer) for the Vulkan format.
-void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
+void MVKPixelFormats::setFormatProperties(id<MTLDevice> mtlDevice, MVKVkFormatDesc& vkDesc) {
 
 #	define enableFormatFeatures(CAP, TYPE, MTL_FMT_CAPS, VK_FEATS)        \
 	if (mvkAreAllFlagsEnabled(MTL_FMT_CAPS, kMVKMTLFmtCaps ##CAP)) {      \
@@ -2114,18 +2111,17 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 
 	// We would really want to use the device's Metal features instead of duplicating
 	// the logic from MVKPhysicalDevice, but those may not have been initialized yet.
-	id<MTLDevice> mtlDev = _physicalDevice ? _physicalDevice->getMTLDevice() : nil;
 #if MVK_MACOS && !MVK_MACCAT
-	bool supportsStencilFeedback = [mtlDev supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily2_v1];
+	bool supportsStencilFeedback = [mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily2_v1];
 #endif
 #if MVK_MACCAT
-	bool supportsStencilFeedback = [mtlDev supportsFamily: MTLGPUFamilyMacCatalyst2];
+	bool supportsStencilFeedback = [mtlDevice supportsFamily: MTLGPUFamilyMacCatalyst2];
 #endif
 #if MVK_IOS
-	bool supportsStencilFeedback = [mtlDev supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1];
+	bool supportsStencilFeedback = [mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1];
 #endif
 #if MVK_TVOS
-	bool supportsStencilFeedback = (mtlDev && !mtlDev);		// Really just false...but silence warning on unused mtlDev otherwise
+	bool supportsStencilFeedback = false;
 #endif
 
 	// Vulkan forbids blits between chroma-subsampled formats.
