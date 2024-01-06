@@ -2048,7 +2048,9 @@ typedef enum : VkFormatFeatureFlags2 {
 										   VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT |
 										   VK_FORMAT_FEATURE_2_BLIT_SRC_BIT),
 	kMVKVkFormatFeatureFlagsTexFilter   = (VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT),
-	kMVKVkFormatFeatureFlagsTexWrite    = (VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT),
+	kMVKVkFormatFeatureFlagsTexWrite    = (VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT |
+										   VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
+										   VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT),
 	kMVKVkFormatFeatureFlagsTexAtomic   = (VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT),
 	kMVKVkFormatFeatureFlagsTexColorAtt = (VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT |
 										   VK_FORMAT_FEATURE_2_BLIT_DST_BIT),
@@ -2105,6 +2107,10 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 	enableFormatFeatures(ColorAtt, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 	enableFormatFeatures(DSAtt, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 	enableFormatFeatures(Blend, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
+
+	if (isDepthFormat(vkDesc.mtlPixelFormat) && mvkIsAnyFlagEnabled(vkProps.optimalTilingFeatures, VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT)) {
+		vkProps.optimalTilingFeatures |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT;
+	}
 
 	// We would really want to use the device's Metal features instead of duplicating
 	// the logic from MVKPhysicalDevice, but those may not have been initialized yet.
