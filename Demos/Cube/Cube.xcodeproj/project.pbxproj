@@ -123,7 +123,7 @@
 				A904B5331C9A08C90008C013 /* cube.vert */,
 			);
 			name = cube;
-			path = "../Vulkan-Tools/cube";
+			path = "../../External/Vulkan-Tools/cube";
 			sourceTree = "<group>";
 		};
 		A9B67B6A1C3AAE9800373FFD /* iOS */ = {
@@ -473,12 +473,14 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					_DEBUG,
+					VK_NO_PROTOTYPES,
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				HEADER_SEARCH_PATHS = (
-					"\"$(SRCROOT)/include\"",
+					"\"$(SRCROOT)/include/cube\"",
+					"\"$(SRCROOT)/include/volk\"",
 					"\"$(SRCROOT)/../../MoltenVK/include\"",
 				);
 				OTHER_LDFLAGS = (
@@ -502,11 +504,13 @@
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_OPTIMIZATION_LEVEL = 2;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = VK_NO_PROTOTYPES;
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				HEADER_SEARCH_PATHS = (
-					"\"$(SRCROOT)/include\"",
+					"\"$(SRCROOT)/include/cube\"",
+					"\"$(SRCROOT)/include/volk\"",
 					"\"$(SRCROOT)/../../MoltenVK/include\"",
 				);
 				OTHER_LDFLAGS = (

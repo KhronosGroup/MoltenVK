@@ -21,7 +21,7 @@
 #import <CoreVideo/CVDisplayLink.h>
 
 #include <MoltenVK/mvk_vulkan.h>
-#include "../../Vulkan-Tools/cube/cube.c"
+#include "cube.c"
 
 
 #pragma mark -

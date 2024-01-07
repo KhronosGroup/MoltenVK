@@ -33,7 +33,13 @@ This demo renders a basic textured cube that spins in place.
 The demo can be found in the `Cube` folder, and in the `Cube` group in the
 *Xcode Project Navigator* in the `Demos.xcworkspace` *Xcode* workspace.
 
-To run this demo, run the `Cube-iOS`, `Cube-tvOS`, or `Cube-macOS` *Scheme* from within *Xcode*.
+The _Cube_ demo uses _Volk_, which requires Vulkan API static call symbols (`vk*`) to be hidden.
+Before building and running the _Cube_ demo, build **MoltenVK** with the `MVK_HIDE_VULKAN_SYMBOLS`
+build setting enabled, such as with the following command-line command:
+
+	make MVK_HIDE_VULKAN_SYMBOLS=1
+
+Then, to run this demo, run the `Cube-iOS`, `Cube-tvOS`, or `Cube-macOS` *Scheme* from within *Xcode*.
 In addition to devices, this demo will also run on the `iOS Simulator` or `tvOS Simulator` destinations.
 
 The `Cube` demo is a simple example of installing **MoltenVK** as an `XCFramework` that is

@@ -419,15 +419,18 @@ void MVKInstance::initMVKConfig(const VkInstanceCreateInfo* pCreateInfo) {
 	ADD_ENTRY_POINT_MAP(func##suffix, func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, true)
 
 // Add an extension function.
-#define ADD_INST_EXT_ENTRY_POINT(func, EXT)				ADD_ENTRY_POINT(func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, false)
-#define ADD_DVC_EXT_ENTRY_POINT(func, EXT)				ADD_ENTRY_POINT(func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, true)
+#define ADD_INST_EXT_ENTRY_POINT(func, EXT)					ADD_ENTRY_POINT(func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, false)
+#define ADD_DVC_EXT_ENTRY_POINT(func, EXT)					ADD_ENTRY_POINT(func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, true)
 
 #define ADD_INST_EXT2_ENTRY_POINT(func, API, EXT1, EXT2)	ADD_ENTRY_POINT(func, VK_API_VERSION_##API, VK_##EXT1##_EXTENSION_NAME, VK_##EXT2##_EXTENSION_NAME, false)
 #define ADD_DVC_EXT2_ENTRY_POINT(func, API, EXT1, EXT2)		ADD_ENTRY_POINT(func, VK_API_VERSION_##API, VK_##EXT1##_EXTENSION_NAME, VK_##EXT2##_EXTENSION_NAME, true)
 
+#define ADD_INST_EXT_ENTRY_POINT_ALIAS(alias, func, EXT)	ADD_ENTRY_POINT_MAP(alias, func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, false)
+#define ADD_DVC_EXT_ENTRY_POINT_ALIAS(alias, func, EXT)		ADD_ENTRY_POINT_MAP(alias, func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, true)
+
 // Add an open function, not tied to core or an extension.
-#define ADD_INST_OPEN_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, 0, nullptr, nullptr, false)
-#define ADD_DVC_OPEN_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, 0, nullptr, nullptr, true)
+#define ADD_INST_OPEN_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, 0, nullptr, nullptr, false)
+#define ADD_DVC_OPEN_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, 0, nullptr, nullptr, true)
 
 // Initializes the function pointer map.
 void MVKInstance::initProcAddrs() {
@@ -725,8 +728,8 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_EXT2_ENTRY_POINT(vkGetDeviceGroupSurfacePresentModesKHR, 1_1, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
 	ADD_DVC_EXT2_ENTRY_POINT(vkGetPhysicalDevicePresentRectanglesKHR, 1_1, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
 	ADD_DVC_EXT2_ENTRY_POINT(vkAcquireNextImage2KHR, 1_1, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
-	ADD_DVC_EXT_ENTRY_POINT(vkGetCalibratedTimestampsEXT, EXT_CALIBRATED_TIMESTAMPS);
-	ADD_DVC_EXT_ENTRY_POINT(vkGetPhysicalDeviceCalibrateableTimeDomainsEXT, EXT_CALIBRATED_TIMESTAMPS);
+	ADD_DVC_EXT_ENTRY_POINT_ALIAS(vkGetCalibratedTimestampsEXT, vkGetCalibratedTimestampsKHR, EXT_CALIBRATED_TIMESTAMPS);
+	ADD_DVC_EXT_ENTRY_POINT_ALIAS(vkGetPhysicalDeviceCalibrateableTimeDomainsEXT, vkGetPhysicalDeviceCalibrateableTimeDomainsKHR, EXT_CALIBRATED_TIMESTAMPS);
 	ADD_DVC_EXT_ENTRY_POINT(vkDebugMarkerSetObjectTagEXT, EXT_DEBUG_MARKER);
 	ADD_DVC_EXT_ENTRY_POINT(vkDebugMarkerSetObjectNameEXT, EXT_DEBUG_MARKER);
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdDebugMarkerBeginEXT, EXT_DEBUG_MARKER);
@@ -735,10 +738,6 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_EXT_ENTRY_POINT(vkGetMemoryHostPointerPropertiesEXT, EXT_EXTERNAL_MEMORY_HOST);
 	ADD_DVC_EXT_ENTRY_POINT(vkSetHdrMetadataEXT, EXT_HDR_METADATA);
 	ADD_DVC_EXT_ENTRY_POINT(vkExportMetalObjectsEXT, EXT_METAL_OBJECTS);
-	ADD_DVC_EXT_ENTRY_POINT(vkCreatePrivateDataSlotEXT, EXT_PRIVATE_DATA);
-	ADD_DVC_EXT_ENTRY_POINT(vkDestroyPrivateDataSlotEXT, EXT_PRIVATE_DATA);
-	ADD_DVC_EXT_ENTRY_POINT(vkGetPrivateDataEXT, EXT_PRIVATE_DATA);
-	ADD_DVC_EXT_ENTRY_POINT(vkSetPrivateDataEXT, EXT_PRIVATE_DATA);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetPhysicalDeviceMultisamplePropertiesEXT, EXT_SAMPLE_LOCATIONS);
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetSampleLocationsEXT, EXT_SAMPLE_LOCATIONS);
 	ADD_DVC_EXT_ENTRY_POINT(vkReleaseSwapchainImagesEXT, EXT_SWAPCHAIN_MAINTENANCE_1);
