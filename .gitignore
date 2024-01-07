@@ -5,10 +5,9 @@ Package/
 External/cereal
 External/glslang
 External/SPIRV-Cross
+External/Volk
 External/Vulkan-Headers
-External/Vulkan-Portability
 External/Vulkan-Tools
-External/VulkanSamples
 
 # Vulkan CTS testing artifacts
 Scripts/TestResults.qpa

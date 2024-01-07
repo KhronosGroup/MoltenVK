@@ -343,7 +343,6 @@ else
 fi
 
 
-
 # ----------------- glslang -------------------
 
 echo
@@ -383,7 +382,6 @@ else
 fi
 
 
-
 # ----------------- Vulkan-Tools -------------------
 
 echo
@@ -392,6 +390,19 @@ echo
 
 REPO_NAME=Vulkan-Tools
 REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
+REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+
+update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+
+
+# ----------------- Volk -------------------
+
+echo
+echo ========== Volk ==========
+echo
+
+REPO_NAME=Volk
+REPO_URL="https://github.com/zeux/${REPO_NAME}.git"
 REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
 update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
