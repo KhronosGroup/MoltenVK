@@ -36,10 +36,10 @@ The demo can be found in the `Cube` folder, and in the `Cube` group in the
 To run this demo, run the `Cube-macOS`, `Cube-iOS`, or `Cube-tvOS` *Scheme* from within *Xcode*.
 In addition to devices, this demo will also run on the `iOS Simulator` or `tvOS Simulator` destinations.
 
-The `Cube` demo is a simple example of installing **MoltenVK** as an `XCFramework` that is
-statically linked to the application. It supports all platforms, including _Mac Catalyst_, _iOS
-Simulator_ and _tvOS Simulator_, and all architectures including _Apple Silicon_.
-
+The `Cube` demo is a simple example of installing **MoltenVK** as a `libMoltenVK.dylib` library that 
+is dynamically linked to the application, and the _Vulkan_ calls all use _Volk_ to dynamically access 
+function pointers, retrieved from **MoltenVK** using `vkGetInstanceProcAddr()` and `vkGetDeviceProcAddr()`. 
+It supports all platforms, including _Mac Catalyst_, _iOSSimulator_ and _tvOS Simulator_.
 
 
 <a name="khronos-vulkan-samples"></a>

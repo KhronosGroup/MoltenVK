@@ -294,26 +294,25 @@ or
 
 ...etc.
 
+### Hiding Vulkan API Symbols
 
-### Exposing Static Vulkan API Symbols
+You can optionally build **MoltenVK** with the Vulkan API static call symbols (`vk*`) hidden, to avoid 
+library linking conflicts when statically bound to a _Vulkan_ loader that also exports identical symbols.
 
-For default compatability with the _Vulkan SDK_ loader environment, by default, **MoltenVK** hides
-static access to the _Vulkan_ API symbols (`vk*`), in favor of using the standard _Vulkan_ 
-function pointers retrieved using `vkGetInstanceProcAddr()` and `vkGetDeviceProcAddr()`.
-
-If you are not using the _Vulkan_ loader, and wish to statically link to the _Vulkan_ API symbols, 
-you can optionally build **MoltenVK** with the _Vulkan_ API static call symbols exposed.
-
-To do so, when building **MoltenVK**, set the build setting `MVK_HIDE_VULKAN_SYMBOLS=0`.
+To do so, when building **MoltenVK**, set the build setting `MVK_HIDE_VULKAN_SYMBOLS=1`.
 This build setting can be set in the `MoltenVK.xcodeproj` *Xcode* project,
 or it can be included in any of the `make` build commands. For example:
 
-	make MVK_HIDE_VULKAN_SYMBOLS=0
+	make MVK_HIDE_VULKAN_SYMBOLS=1
 or
 
-	make macos MVK_HIDE_VULKAN_SYMBOLS=0
+	make macos MVK_HIDE_VULKAN_SYMBOLS=1
 
 ...etc.
+
+With `MVK_HIDE_VULKAN_SYMBOLS=1`, the _Vulkan_ `vkGetInstanceProcAddr()` call remains
+statically bound, to provide the application with the ability to retrieve the remaining
+_Vulkan_ API calls as function pointers.
 
 
 <a name="demos"></a>
