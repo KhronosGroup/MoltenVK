@@ -44,6 +44,12 @@ uint64_t MVKAccelerationStructure::getMTLSize()
     return _accelerationStructure.size;
 }
 
+void MVKAccelerationStructure::create()
+{
+    [_accelerationStructure makeAliasable];
+    [_heap newAccelerationStructureWithSize:getBuildSizes().accelerationStructureSize];
+}
+
 void MVKAccelerationStructure::destroy()
 {
     // TODO

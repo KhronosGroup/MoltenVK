@@ -88,6 +88,7 @@ public:
 #pragma mark Construction
     MVKAccelerationStructure(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
     
+    void create();
     void destroy() override;
 protected:
     void propagateDebugName() override {}

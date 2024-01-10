@@ -51,6 +51,9 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
         id<MTLAccelerationStructure> srcAccelerationStructure = (id<MTLAccelerationStructure>)mvkSrcAccelerationStructure->getMTLAccelerationStructure();
         id<MTLAccelerationStructure> dstAccelerationStructure = (id<MTLAccelerationStructure>)mvkDstAccelerationStructure->getMTLAccelerationStructure();
         
+        id<MTLHeap> srcAccelerationStructureHeap = mvkSrcAccelerationStructure->getMTLHeap();
+        id<MTLHeap> dstAccelerationStructureHeap = mvkDstAccelerationStructure->getMTLHeap();
+        
         if(_geometryInfos[i].mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR && !mvkDstAccelerationStructure->getAllowUpdate())
         {
             continue;
@@ -77,10 +80,14 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
                     accStructBuildDescriptor.usage = MTLAccelerationStructureUsageNone;
                 }
                 
+                // What would the offset be?
+                [dstAccelerationStructureHeap newAccelerationStructureWithDescriptor:accStructBuildDescriptor];
+                
                 [accStructEncoder buildAccelerationStructure:dstAccelerationStructure
                                                     descriptor:accStructBuildDescriptor
                                                     scratchBuffer:scratchBuffer
                                                     scratchBufferOffset:scratchBufferOffset];
+                
             }
             
             if(_geometryInfos[i].type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR)
@@ -122,6 +129,7 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
                                              scratchBufferOffset:scratchBufferOffset];
                 }
                 // Need to implement AABBS
+                // This is just a dummy copy of Bottom Level
                 if(_geometryInfos[i].pGeometries->geometryType == VK_GEOMETRY_TYPE_AABBS_KHR)
                 {
                     MTLPrimitiveAccelerationStructureDescriptor* accStructTriangleBuildDescriptor = [MTLPrimitiveAccelerationStructureDescriptor new];
@@ -237,19 +245,16 @@ VkResult MVKCmdCopyAccelerationStructureToMemory::setContent(MVKCommandBuffer*  
     
     MVKAccelerationStructure* mvkSrcAccStruct = (MVKAccelerationStructure*)srcAccelerationStructure;
     _srcAccelerationStructure = mvkSrcAccStruct->getMTLAccelerationStructure();
-    
+
     _dstBuffer = _mvkDevice->getBufferAtAddress(_dstAddress);
     return VK_SUCCESS;
 }
                                         
 void MVKCmdCopyAccelerationStructureToMemory::encode(MVKCommandEncoder* cmdEncoder) {
+    id<MTLBlitCommandEncoder> blitEncoder = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyAccelerationStructureToMemory);
     _mvkDevice = cmdEncoder->getDevice();
     
-    if(_copyMode != VK_COPY_ACCELERATION_STRUCTURE_MODE_SERIALIZE_KHR || !_dstBuffer->getDeviceMemory()->isMemoryHostAccessible()){
-        return;
-    }
-    
-    memcpy(_dstBuffer->getDeviceMemory()->getHostMemoryAddress(), (void*)_srcAccelerationStructure, sizeof(_srcAccelerationStructure));
+    [_srcAccelerationStructure]
 }
 
 #pragma mark -
