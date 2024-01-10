@@ -25,7 +25,6 @@ Released 2024/01/08
 	- `VK_EXT_extended_dynamic_state3` *(Metal does not support `VK_POLYGON_MODE_POINT`)*
 	- `VK_EXT_headless_surface`
 	- `VK_EXT_layer_settings`
-- **MoltenVK** build now hides static _Vulkan_ API symbols by default (build setting `MVK_HIDE_VULKAN_SYMBOLS=1` by default).
 - Add support for format `VK_FORMAT_B4G4R4A4_UNORM_PACK16`.
 - Add support for vertex formats `VK_FORMAT_B10G11R11_UFLOAT_PACK32` & `VK_FORMAT_E5B9G9R9_UFLOAT_PACK32`.
 - Fix regression that broke `VK_POLYGON_MODE_LINE`.
@@ -48,6 +47,7 @@ Released 2024/01/08
 - Reduce disk space consumed after running `fetchDependencies` script by removing intermediate file caches.
 - Deprecate `vkSetMoltenVKConfigurationMVK()`.
 - Deprecate `mvk_config.h` and move content to `mvk_private_api.h` and `mvk_deprecated_api.h`.
+- The _Cube_ demo is now based on _Volk_, with dynamic library linking, and dynamic function pointer calls.
 - Update copyright notices to year 2024.
 - Update dependency libraries to match _Vulkan SDK 1.3.275_.
 - Update to latest SPIRV-Cross:

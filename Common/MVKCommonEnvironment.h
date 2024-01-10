@@ -136,7 +136,7 @@ extern "C" {
  * conflicts when bound to a Vulkan Loader that also exports identical symbols.
  */
 #ifndef MVK_HIDE_VULKAN_SYMBOLS
-#	define MVK_HIDE_VULKAN_SYMBOLS		1
+#	define MVK_HIDE_VULKAN_SYMBOLS		0
 #endif
 #if MVK_HIDE_VULKAN_SYMBOLS
 #	define MVK_PUBLIC_VULKAN_SYMBOL

@@ -304,7 +304,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkGetPhysicalDeviceMemoryProperties(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_VULKAN_SYMBOL PFN_vkVoidFunction vkGetInstanceProcAddr(
+MVK_PUBLIC_SYMBOL PFN_vkVoidFunction vkGetInstanceProcAddr(
     VkInstance                                  instance,
     const char*                                 pName) {
 
