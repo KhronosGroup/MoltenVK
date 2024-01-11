@@ -1,7 +1,7 @@
 /*
  * MVKPixelFormats.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 
 #include "MVKBaseObject.h"
 #include "MVKOSExtensions.h"
+#include "MVKInflectionMap.h"
 #include "mvk_datatypes.hpp"
 #include <spirv_msl.hpp>
 #include <unordered_map>
@@ -27,14 +28,6 @@
 #import <Metal/Metal.h>
 
 class MVKPhysicalDevice;
-
-
-// Validate these values periodically as new formats are added over time.
-static const uint32_t _vkFormatCount = 256;
-static const uint32_t _vkFormatCoreCount = VK_FORMAT_ASTC_12x12_SRGB_BLOCK + 1;
-static const uint32_t _mtlPixelFormatCount = 256;
-static const uint32_t _mtlPixelFormatCoreCount = MTLPixelFormatX32_Stencil8 + 2;     // The actual last enum value is not available on iOS
-static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 1;
 
 
 #pragma mark -
@@ -147,7 +140,7 @@ typedef struct MVKVkFormatDesc {
 	VkExtent2D blockTexelSize;
 	uint32_t bytesPerBlock;
 	MVKFormatType formatType;
-	VkFormatProperties properties;
+    VkFormatProperties3 properties;
 	VkComponentMapping componentMapping;
 	const char* name;
 	bool hasReportedSubstitution;
@@ -344,7 +337,8 @@ public:
 	MTLTextureSwizzleChannels getMTLTextureSwizzleChannels(VkFormat vkFormat);
 
 	/** Returns the default properties for the specified Vulkan format. */
-	VkFormatProperties& getVkFormatProperties(VkFormat vkFormat);
+    VkFormatProperties getVkFormatProperties(VkFormat format);
+	VkFormatProperties3& getVkFormatProperties3(VkFormat vkFormat);
 
 	/** Returns the Metal format capabilities supported by the specified Vulkan format, without substitution. */
 	MVKMTLFmtCaps getCapabilities(VkFormat vkFormat, bool isExtended = false);
@@ -397,15 +391,15 @@ public:
                                        bool isExtended = false);
 
 	/** Enumerates all formats that support the given features, calling a specified function for each one. */
-	void enumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func);
+	void enumerateSupportedFormats(const VkFormatProperties3& properties, bool any, std::function<bool(VkFormat)> func);
 
 	/**
 	 * Returns the Metal MTLVertexFormat corresponding to the specified
 	 * Vulkan VkFormat as used as a vertex attribute format.
 	 */
 	MTLVertexFormat getMTLVertexFormat(VkFormat vkFormat);
-
-
+    
+    static VkFormatFeatureFlags convertFormatPropertiesFlagBits(VkFormatFeatureFlags2 flags);
 #pragma mark Construction
 
 	MVKPixelFormats(MVKPhysicalDevice* physicalDevice = nullptr);
@@ -415,13 +409,12 @@ protected:
 	MVKVkFormatDesc& getVkFormatDesc(MTLPixelFormat mtlFormat);
 	MVKMTLFormatDesc& getMTLPixelFormatDesc(MTLPixelFormat mtlFormat);
 	MVKMTLFormatDesc& getMTLVertexFormatDesc(MTLVertexFormat mtlFormat);
+	id<MTLDevice> getMTLDevice();
 	void initVkFormatCapabilities();
 	void initMTLPixelFormatCapabilities();
 	void initMTLVertexFormatCapabilities();
-	void buildMTLFormatMaps();
-	void buildVkFormatMaps();
-	void setFormatProperties(MVKVkFormatDesc& vkDesc);
-	void modifyMTLFormatCapabilities();
+	void buildVkFormatMaps(id<MTLDevice> mtlDevice);
+	void setFormatProperties(id<MTLDevice> mtlDevice, MVKVkFormatDesc& vkDesc);
 	void modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice);
 	void addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
 									   MTLFeatureSet mtlFeatSet,
@@ -446,19 +439,7 @@ protected:
 										MVKMTLFmtCaps mtlFmtCaps);
 
 	MVKPhysicalDevice* _physicalDevice;
-	MVKVkFormatDesc _vkFormatDescriptions[_vkFormatCount];
-	MVKMTLFormatDesc _mtlPixelFormatDescriptions[_mtlPixelFormatCount];
-	MVKMTLFormatDesc _mtlVertexFormatDescriptions[_mtlVertexFormatCount];
-
-	// Vulkan core formats have small values and are mapped by simple lookup array.
-	// Vulkan extension formats have larger values and are mapped by a map.
-	uint16_t _vkFormatDescIndicesByVkFormatsCore[_vkFormatCoreCount];
-	std::unordered_map<uint32_t, uint32_t> _vkFormatDescIndicesByVkFormatsExt;
-
-	// Most Metal formats have small values and are mapped by simple lookup array.
-	// Outliers are mapped by a map.
-	uint16_t _mtlFormatDescIndicesByMTLPixelFormatsCore[_mtlPixelFormatCoreCount];
-	std::unordered_map<NSUInteger, uint32_t> _mtlFormatDescIndicesByMTLPixelFormatsExt;
-
-	uint16_t _mtlFormatDescIndicesByMTLVertexFormats[_mtlVertexFormatCount];
+	MVKInflectionMap<VkFormat, MVKVkFormatDesc, VK_FORMAT_ASTC_12x12_SRGB_BLOCK + 1> _vkFormatDescriptions;
+	MVKInflectionMap<uint16_t, MVKMTLFormatDesc, MTLPixelFormatX32_Stencil8 + 2> _mtlPixelFormatDescriptions;  // The actual last enum value is not available on iOS
+	MVKSmallVector<MVKMTLFormatDesc> _mtlVertexFormatDescriptions;
 };

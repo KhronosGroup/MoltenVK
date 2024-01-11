@@ -1,7 +1,7 @@
 /*
  * mvk_datatypes.hpp
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,12 @@ class MVKPixelFormats;
  * functions declared here, passing the calling instance, which is assumed to be an instance
  * of an MVKBaseObject subclass, which is true for all but static calling functions.
  */
+
+MTLTextureType mvkMTLTextureTypeFromVkImageTypeObj(VkImageType vkImageType, uint32_t arraySize, bool isMultisample, MVKBaseObject* mvkObj);
+#define mvkMTLTextureTypeFromVkImageType(vkImageType, arraySize, isMultisample) mvkMTLTextureTypeFromVkImageTypeObj(vkImageType, arraySize, isMultisample, this)
+
+MTLTextureType mvkMTLTextureTypeFromVkImageViewTypeObj(VkImageViewType vkImageViewType, bool isMultisample, MVKBaseObject* mvkObj);
+#define mvkMTLTextureTypeFromVkImageViewType(vkImageViewType, isMultisample) mvkMTLTextureTypeFromVkImageViewTypeObj(vkImageViewType, isMultisample, this)
 
 MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopologyInObj(VkPrimitiveTopology vkTopology, MVKBaseObject* mvkObj);
 #define mvkMTLPrimitiveTypeFromVkPrimitiveTopology(vkTopology) mvkMTLPrimitiveTypeFromVkPrimitiveTopologyInObj(vkTopology, this)

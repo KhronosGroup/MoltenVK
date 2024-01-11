@@ -1,7 +1,7 @@
 /*
  * MVKBaseObject.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,13 @@ public:
 
 	/** Returns the Vulkan API opaque object controlling this object. */
 	virtual MVKVulkanAPIObject* getVulkanAPIObject() = 0;
+
+	/** 
+	 * If getVulkanAPIObject() does not return NULL, this function returns the MoltenVK
+	 * configuration info for the VkInstance that created the API object, otherwise
+	 * this function returns the global configuration info.
+	 */
+	virtual const MVKConfiguration& getMVKConfig();
 
 	/**
 	 * Report a message. This includes logging to a standard system logging stream,
@@ -205,3 +212,15 @@ public:
 protected:
 	VkResult _configurationResult = VK_SUCCESS;
 };
+
+
+#pragma mark -
+#pragma mark Support functions
+
+/**
+ * If the object is not a nullptr, returns the MoltenVK configuration info for the
+ * VkInstance that created the object, otherwise returns the global configuration info.
+ */
+static inline const MVKConfiguration& mvkGetMVKConfig(MVKBaseObject* mvkObj) {
+	return mvkObj ? mvkObj->getMVKConfig() : getGlobalMVKConfig();
+}

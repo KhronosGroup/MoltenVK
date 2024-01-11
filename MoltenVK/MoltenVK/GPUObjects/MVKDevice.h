@@ -1,7 +1,7 @@
 /*
  * MVKDevice.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@
 #include "MVKSmallVector.h"
 #include "MVKPixelFormats.h"
 #include "MVKOSExtensions.h"
-#include "mvk_private_api.h"
 #include "mvk_datatypes.hpp"
 #include <string>
 #include <mutex>
@@ -357,8 +356,8 @@ public:
 	bool mslVersionIsAtLeast(MTLLanguageVersion minVer) { return _metalFeatures.mslVersionEnum >= minVer; }
 
 	/** Returns whether this physical device supports Metal argument buffers. */
-	bool supportsMetalArgumentBuffers() const  {
-		return _metalFeatures.argumentBuffers && mvkConfig().useMetalArgumentBuffers != MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER;
+	bool supportsMetalArgumentBuffers()  {
+		return _metalFeatures.argumentBuffers && getMVKConfig().useMetalArgumentBuffers != MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER;
 	};
 
 
@@ -1063,9 +1062,9 @@ protected:
  * sorted according to power, with higher power GPU's at the front of the array.
  * This ensures that a lazy app that simply grabs the first GPU will get a high-power
  * one by default. If MVKConfiguration::forceLowPowerGPU is enabled, the returned
- * array will only include low-power devices.
+ * array will only include low-power devices. The instance may be a nullptr.
  */
-NSArray<id<MTLDevice>>* mvkGetAvailableMTLDevicesArray();
+NSArray<id<MTLDevice>>* mvkGetAvailableMTLDevicesArray(MVKInstance* instance);
 
 /** Returns the registry ID of the specified device, or zero if the device does not have a registry ID. */
 uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice);

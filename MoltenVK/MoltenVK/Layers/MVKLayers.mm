@@ -1,7 +1,7 @@
 /*
  * MVKLayers.mm
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,10 +40,10 @@ MVKLayer::MVKLayer() : _supportedInstanceExtensions(nullptr, true) {
 
 	// The core driver layer
 	mvkClear(_layerProperties.layerName, VK_MAX_EXTENSION_NAME_SIZE);
-	strcpy(_layerProperties.layerName, "MoltenVK");
+	strcpy(_layerProperties.layerName, kMVKMoltenVKDriverLayerName);
 	mvkClear(_layerProperties.description, VK_MAX_DESCRIPTION_SIZE);
 	strcpy(_layerProperties.description, "MoltenVK driver layer");
-	_layerProperties.specVersion = mvkConfig().apiVersionToAdvertise;
+	_layerProperties.specVersion = getMVKConfig().apiVersionToAdvertise;
 	_layerProperties.implementationVersion = MVK_VERSION;
 
 	((MVKExtensionList*)&_supportedInstanceExtensions)->disableAllButEnabledInstanceExtensions();
@@ -100,10 +100,14 @@ MVKLayerManager::MVKLayerManager() {
 static mutex _lock;
 static MVKLayerManager* _globalManager = VK_NULL_HANDLE;
 
+// Test first and lock only if we need to create it.
+// Test again after lock established to ensure it wasn't added by another thread between test and lock.
 MVKLayerManager* MVKLayerManager::globalManager() {
-	lock_guard<mutex> lock(_lock);
-	if ( !_globalManager ) { _globalManager = new MVKLayerManager(); }
+	if ( !_globalManager ) {
+		lock_guard<mutex> lock(_lock);
+		if ( !_globalManager ) {
+			_globalManager = new MVKLayerManager();
+		}
+	}
 	return _globalManager;
 }
-
-

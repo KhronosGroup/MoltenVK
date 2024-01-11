@@ -1,7 +1,7 @@
 /*
  * MVKCommandEncoderState.mm
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -302,7 +302,7 @@ void MVKDepthStencilCommandEncoderState::encodeImpl(uint32_t stage) {
 void MVKRenderingCommandEncoderState::setCullMode(VkCullModeFlags cullMode, bool isDynamic) {
 	auto mtlCullMode = mvkMTLCullModeFromVkCullModeFlags(cullMode);
 	setMTLContent(CullMode);
-	_cullBothFaces[isDynamic ? StateScope::Dynamic : StateScope::Static] = (cullMode == VK_CULL_MODE_FRONT_AND_BACK);
+	getContent(_cullBothFaces, isDynamic) = (cullMode == VK_CULL_MODE_FRONT_AND_BACK);
 }
 
 void MVKRenderingCommandEncoderState::setFrontFace(VkFrontFace frontFace, bool isDynamic) {
@@ -313,6 +313,7 @@ void MVKRenderingCommandEncoderState::setFrontFace(VkFrontFace frontFace, bool i
 void MVKRenderingCommandEncoderState::setPolygonMode(VkPolygonMode polygonMode, bool isDynamic) {
 	auto mtlPolygonMode = mvkMTLTriangleFillModeFromVkPolygonMode(polygonMode);
 	setMTLContent(PolygonMode);
+	getContent(_isPolygonModePoint, isDynamic) = (polygonMode == VK_POLYGON_MODE_POINT);
 }
 
 void MVKRenderingCommandEncoderState::setBlendConstants(float blendConstants[4], bool isDynamic) {
@@ -420,8 +421,20 @@ void MVKRenderingCommandEncoderState::setPrimitiveTopology(VkPrimitiveTopology t
 	getContent(_mtlPrimitiveTopology, isDynamic) = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(topology);
 }
 
+// Metal does not support VK_POLYGON_MODE_POINT, but it can be emulated if the polygon mode
+// is static, which allows both the topology and the pipeline topology-class to be set to points.
+// This cannot be accomplished if the dynamic polygon mode has been changed to points when the
+// pipeline is expecting triangles or lines, because the pipeline topology class will be incorrect.
 MTLPrimitiveType MVKRenderingCommandEncoderState::getPrimitiveType() {
-	return getMTLContent(PrimitiveTopology);
+	if (isDynamicState(PolygonMode) &&
+		_isPolygonModePoint[StateScope::Dynamic] &&
+		!_isPolygonModePoint[StateScope::Static]) {
+		
+		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetPolygonMode(): Metal does not support setting VK_POLYGON_MODE_POINT dynamically.");
+		return getMTLContent(PrimitiveTopology);
+	}
+
+	return getContent(_isPolygonModePoint, PolygonMode) ? MTLPrimitiveTypePoint : getMTLContent(PrimitiveTopology);
 }
 
 bool MVKRenderingCommandEncoderState::isDrawingTriangles() {

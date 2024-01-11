@@ -1,7 +1,7 @@
 /*
  * MVKOSExtensions.mm
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
 #include <mach/mach_time.h>
 #include <mach/task.h>
 #include <os/proc.h>
+#include <sys/sysctl.h>
 
 #import <Foundation/Foundation.h>
 
@@ -100,17 +101,12 @@ double mvkGetEnvVarNumber(const char* varName, double defaultValue) {
 #pragma mark System memory
 
 uint64_t mvkGetSystemMemorySize() {
-#if MVK_MACOS_OR_IOS_OR_VISIONOS
-	mach_msg_type_number_t host_size = HOST_BASIC_INFO_COUNT;
-	host_basic_info_data_t info;
-	if (host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&info, &host_size) == KERN_SUCCESS) {
-		return info.max_mem;
+	uint64_t host_memsize = 0;
+	size_t size = sizeof(host_memsize);
+	if (sysctlbyname("hw.memsize", &host_memsize, &size, NULL, 0) == KERN_SUCCESS) {
+		return host_memsize;
 	}
 	return 0;
-#endif
-#if MVK_TVOS
-	return 0;
-#endif
 }
 
 uint64_t mvkGetAvailableMemorySize() {
@@ -134,7 +130,13 @@ uint64_t mvkGetUsedMemorySize() {
 	task_vm_info_data_t task_vm_info;
 	mach_msg_type_number_t task_size = TASK_VM_INFO_COUNT;
 	if (task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)&task_vm_info, &task_size) == KERN_SUCCESS) {
-		return task_vm_info.phys_footprint;
+#ifdef TASK_VM_INFO_REV3_COUNT	// check for rev3 version of task_vm_info
+		if (task_size >= TASK_VM_INFO_REV3_COUNT) {
+			return task_vm_info.ledger_tag_graphics_footprint;
+		}
+		else
+#endif
+			return task_vm_info.phys_footprint;
 	}
 	return 0;
 }

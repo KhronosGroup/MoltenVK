@@ -1,7 +1,7 @@
 /*
  * MVKFoundation.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -378,9 +378,6 @@ static constexpr bool mvkVkComponentMappingsMatch(VkComponentMapping cm1, VkComp
 			mvkVKComponentSwizzlesMatch(cm1.b, cm2.b, VK_COMPONENT_SWIZZLE_B) &&
 			mvkVKComponentSwizzlesMatch(cm1.a, cm2.a, VK_COMPONENT_SWIZZLE_A));
 }
-
-/** Print the size of the type. */
-#define mvkPrintSizeOf(type)    printf("Size of " #type " is %lu.\n", sizeof(type))
 
 
 #pragma mark Math

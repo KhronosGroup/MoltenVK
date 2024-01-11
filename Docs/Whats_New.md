@@ -6,30 +6,78 @@
 
 # What's New in MoltenVK
 
-Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
+Copyright (c) 2015-2024 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 [comment]: # "This document is written in Markdown (http://en.wikipedia.org/wiki/Markdown) format."
 [comment]: # "For best results, use a Markdown reader."
 
 
 
-MoltenVK 1.2.7
+MoltenVK 1.2.8
 --------------
 
 Released TBD
 
+- Fix potential crash when using multi-planar images.
+
+
+
+MoltenVK 1.2.7
+--------------
+
+Released 2024/01/08
+
 - Add support for extensions:
+	- `VK_KHR_calibrated_timestamp`
+	- `VK_KHR_format_feature_flags2`
+	- `VK_KHR_vertex_attribute_divisor`
 	- `VK_EXT_extended_dynamic_state3` *(Metal does not support `VK_POLYGON_MODE_POINT`)*
 	- `VK_EXT_headless_surface`
+	- `VK_EXT_layer_settings`
+- Add support for format `VK_FORMAT_B4G4R4A4_UNORM_PACK16`.
+- Add support for vertex formats `VK_FORMAT_B10G11R11_UFLOAT_PACK32` & `VK_FORMAT_E5B9G9R9_UFLOAT_PACK32`.
 - Fix regression that broke `VK_POLYGON_MODE_LINE`.
 - Fix regression in marking rendering state dirty after `vkCmdClearAttachments()`.
-- Reduce disk space consumed after running `fetchDependencies` script by removing intermediate file caches.
+- Fix regression error in argument buffer runtime arrays.
 - Fix rare deadlock during launch via `dlopen()`.
 - Fix initial value of `VkPhysicalDeviceLimits::timestampPeriod` on non-Apple Silicon GPUs.
 - Fix swapchain and surface bugs when windowing system is accessed from off the main thread.
+- Fix system memory size of _tvOS_.
+- Fix `heapUsage` query for non-unified memory devices.
+- Add a defensive guard to ensure `heapUsage[0]` calculation is correct.
+- Clamp max per-set descriptor limit to minimum `1024`.
+- Enable the cube texture gradient workaround for Apple Silicon.
+- Ensure `lineWidthGranularity` is zero if the `wideLines` feature isn't supported.
+- Ensure `maxDrawIndexedIndexValue` set to `UINT32_MAX`.
+- Ignore no external handle types specified for buffers and images.
+- Expose `VK_EXT_debug_utils` device functions as device functions, not instance functions.
+- Emit `primitiveRestartEnable` disabled warning only for strip topology.
+- Enable mandatory `VK_EXT_descriptor_indexing` features, and don't advertise extension if they are not supported.
+- Reduce disk space consumed after running `fetchDependencies` script by removing intermediate file caches.
+- Deprecate `vkSetMoltenVKConfigurationMVK()`.
+- Deprecate `mvk_config.h` and move content to `mvk_private_api.h` and `mvk_deprecated_api.h`.
+- The _Cube_ demo is now based on _Volk_, with dynamic library linking, and dynamic function pointer calls.
+- Update copyright notices to year 2024.
+- Update dependency libraries to match _Vulkan SDK 1.3.275_.
 - Update to latest SPIRV-Cross:
   - MSL: Fix regression error in argument buffer runtime arrays.
   - MSL: Work around broken cube texture gradients on Apple Silicon.
+  - MSL: Ensure discrete runtime arrays of buffers have known length.
+  - MSL: Implement Metal 3.1 image atomics natively.
+  - MSL: Fix patch vertex count with raw buffer tese input.
+  - MSL: Improve handling of sample masks.
+  - MSL: Add divide to reserved function names.
+  - MSL: Support std140 half matrices and arrays.
+  - MSL: Use more appropriate padded types.
+  - MSL: Don't use swizzle if we have wrapper.
+  - MSL: Add ray-cull mask
+  - MSL: Consider PtrAccessChain on array types.
+  - MSL: Use LHS expression to determine whether or not to do array copy.
+  - MSL: Only do address-of expression when needed.
+  - MSL: Improve PtrAccessChain handling.
+  - MSL: Use powr instead of pow.
+  - MSL: Remove special case for threadgroup array wrapper.
+  - MSL: Added an `Op` field to `SPIRType` and refactor.
 
 
 

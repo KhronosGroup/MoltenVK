@@ -218,12 +218,6 @@
 		A997FA1C26865A550006F71B /* disassemble.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95E26865A550006F71B /* disassemble.cpp */; };
 		A997FA1D26865A550006F71B /* disassemble.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95E26865A550006F71B /* disassemble.cpp */; };
 		A997FA1E26865A550006F71B /* disassemble.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95E26865A550006F71B /* disassemble.cpp */; };
-		A997FA1F26865A550006F71B /* InitializeDll.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F96126865A550006F71B /* InitializeDll.h */; };
-		A997FA2026865A550006F71B /* InitializeDll.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F96126865A550006F71B /* InitializeDll.h */; };
-		A997FA2126865A550006F71B /* InitializeDll.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F96126865A550006F71B /* InitializeDll.h */; };
-		A997FA2226865A550006F71B /* InitializeDll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F96226865A550006F71B /* InitializeDll.cpp */; };
-		A997FA2326865A550006F71B /* InitializeDll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F96226865A550006F71B /* InitializeDll.cpp */; };
-		A997FA2426865A550006F71B /* InitializeDll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F96226865A550006F71B /* InitializeDll.cpp */; };
 		A997FA2826865A550006F71B /* ossource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F96C26865A550006F71B /* ossource.cpp */; };
 		A997FA2926865A550006F71B /* ossource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F96C26865A550006F71B /* ossource.cpp */; };
 		A997FA2A26865A550006F71B /* ossource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F96C26865A550006F71B /* ossource.cpp */; };
@@ -1783,7 +1777,6 @@
 		DCFD7CD72A45BA92007BBBF7 /* NonSemanticDebugPrintf.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94226865A550006F71B /* NonSemanticDebugPrintf.h */; };
 		DCFD7CD82A45BA92007BBBF7 /* glslang_tab.cpp.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9A126865A550006F71B /* glslang_tab.cpp.h */; };
 		DCFD7CD92A45BA92007BBBF7 /* ParseHelper.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9AC26865A550006F71B /* ParseHelper.h */; };
-		DCFD7CDA2A45BA92007BBBF7 /* InitializeDll.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F96126865A550006F71B /* InitializeDll.h */; };
 		DCFD7CDC2A45BA92007BBBF7 /* ParseHelper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F98626865A550006F71B /* ParseHelper.cpp */; };
 		DCFD7CDD2A45BA92007BBBF7 /* doc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95D26865A550006F71B /* doc.cpp */; };
 		DCFD7CDE2A45BA92007BBBF7 /* attribute.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A426865A550006F71B /* attribute.cpp */; };
@@ -1805,7 +1798,6 @@
 		DCFD7CEE2A45BA92007BBBF7 /* SpirvIntrinsics.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99426865A550006F71B /* SpirvIntrinsics.cpp */; };
 		DCFD7CEF2A45BA92007BBBF7 /* linkValidate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9AA26865A550006F71B /* linkValidate.cpp */; };
 		DCFD7CF02A45BA92007BBBF7 /* parseConst.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99526865A550006F71B /* parseConst.cpp */; };
-		DCFD7CF12A45BA92007BBBF7 /* InitializeDll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F96226865A550006F71B /* InitializeDll.cpp */; };
 		DCFD7CF22A45BA92007BBBF7 /* Link.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9CD26865A550006F71B /* Link.cpp */; };
 		DCFD7CF32A45BA92007BBBF7 /* iomapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99A26865A550006F71B /* iomapper.cpp */; };
 		DCFD7CF42A45BA92007BBBF7 /* ParseContextBase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B526865A550006F71B /* ParseContextBase.cpp */; };
@@ -2428,9 +2420,6 @@
 		A997F95C26865A550006F71B /* Logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Logger.h; sourceTree = "<group>"; };
 		A997F95D26865A550006F71B /* doc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = doc.cpp; sourceTree = "<group>"; };
 		A997F95E26865A550006F71B /* disassemble.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = disassemble.cpp; sourceTree = "<group>"; };
-		A997F96026865A550006F71B /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
-		A997F96126865A550006F71B /* InitializeDll.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InitializeDll.h; sourceTree = "<group>"; };
-		A997F96226865A550006F71B /* InitializeDll.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InitializeDll.cpp; sourceTree = "<group>"; };
 		A997F96426865A550006F71B /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
 		A997F96C26865A550006F71B /* ossource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ossource.cpp; sourceTree = "<group>"; };
 		A997F96D26865A550006F71B /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
@@ -2982,7 +2971,6 @@
 			isa = PBXGroup;
 			children = (
 				A997F96326865A550006F71B /* glslang */,
-				A997F95F26865A550006F71B /* OGLCompilersDLL */,
 				A997F94126865A550006F71B /* SPIRV */,
 			);
 			path = glslang;
@@ -3071,16 +3059,6 @@
 				A997F94826865A550006F71B /* spirv_c_interface.cpp */,
 			);
 			path = CInterface;
-			sourceTree = "<group>";
-		};
-		A997F95F26865A550006F71B /* OGLCompilersDLL */ = {
-			isa = PBXGroup;
-			children = (
-				A997F96026865A550006F71B /* CMakeLists.txt */,
-				A997F96126865A550006F71B /* InitializeDll.h */,
-				A997F96226865A550006F71B /* InitializeDll.cpp */,
-			);
-			path = OGLCompilersDLL;
 			sourceTree = "<group>";
 		};
 		A997F96326865A550006F71B /* glslang */ = {
@@ -3796,7 +3774,6 @@
 				A997F9CF26865A550006F71B /* NonSemanticDebugPrintf.h in Headers */,
 				A997FAB326865A560006F71B /* glslang_tab.cpp.h in Headers */,
 				A997FAD126865A560006F71B /* ParseHelper.h in Headers */,
-				A997FA2026865A550006F71B /* InitializeDll.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4517,7 +4494,6 @@
 				A997F9CE26865A550006F71B /* NonSemanticDebugPrintf.h in Headers */,
 				A997FAB226865A560006F71B /* glslang_tab.cpp.h in Headers */,
 				A997FAD026865A560006F71B /* ParseHelper.h in Headers */,
-				A997FA1F26865A550006F71B /* InitializeDll.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4577,7 +4553,6 @@
 				A997F9D026865A550006F71B /* NonSemanticDebugPrintf.h in Headers */,
 				A997FAB426865A560006F71B /* glslang_tab.cpp.h in Headers */,
 				A997FAD226865A560006F71B /* ParseHelper.h in Headers */,
-				A997FA2126865A550006F71B /* InitializeDll.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4694,7 +4669,6 @@
 				DCFD7CD72A45BA92007BBBF7 /* NonSemanticDebugPrintf.h in Headers */,
 				DCFD7CD82A45BA92007BBBF7 /* glslang_tab.cpp.h in Headers */,
 				DCFD7CD92A45BA92007BBBF7 /* ParseHelper.h in Headers */,
-				DCFD7CDA2A45BA92007BBBF7 /* InitializeDll.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -5549,7 +5523,6 @@
 				A997FA8C26865A560006F71B /* SpirvIntrinsics.cpp in Sources */,
 				A997FACE26865A560006F71B /* linkValidate.cpp in Sources */,
 				A997FA8F26865A560006F71B /* parseConst.cpp in Sources */,
-				A997FA2326865A550006F71B /* InitializeDll.cpp in Sources */,
 				A997FB2826865A560006F71B /* Link.cpp in Sources */,
 				A997FA9E26865A560006F71B /* iomapper.cpp in Sources */,
 				A997FAE926865A560006F71B /* ParseContextBase.cpp in Sources */,
@@ -6300,7 +6273,6 @@
 				A997FA8B26865A560006F71B /* SpirvIntrinsics.cpp in Sources */,
 				A997FACD26865A560006F71B /* linkValidate.cpp in Sources */,
 				A997FA8E26865A560006F71B /* parseConst.cpp in Sources */,
-				A997FA2226865A550006F71B /* InitializeDll.cpp in Sources */,
 				A997FB2726865A560006F71B /* Link.cpp in Sources */,
 				A997FA9D26865A560006F71B /* iomapper.cpp in Sources */,
 				A997FAE826865A560006F71B /* ParseContextBase.cpp in Sources */,
@@ -6350,7 +6322,6 @@
 				A997FA8D26865A560006F71B /* SpirvIntrinsics.cpp in Sources */,
 				A997FACF26865A560006F71B /* linkValidate.cpp in Sources */,
 				A997FA9026865A560006F71B /* parseConst.cpp in Sources */,
-				A997FA2426865A550006F71B /* InitializeDll.cpp in Sources */,
 				A997FB2926865A560006F71B /* Link.cpp in Sources */,
 				A997FA9F26865A560006F71B /* iomapper.cpp in Sources */,
 				A997FAEA26865A560006F71B /* ParseContextBase.cpp in Sources */,
@@ -6442,7 +6413,6 @@
 				DCFD7CEE2A45BA92007BBBF7 /* SpirvIntrinsics.cpp in Sources */,
 				DCFD7CEF2A45BA92007BBBF7 /* linkValidate.cpp in Sources */,
 				DCFD7CF02A45BA92007BBBF7 /* parseConst.cpp in Sources */,
-				DCFD7CF12A45BA92007BBBF7 /* InitializeDll.cpp in Sources */,
 				DCFD7CF22A45BA92007BBBF7 /* Link.cpp in Sources */,
 				DCFD7CF32A45BA92007BBBF7 /* iomapper.cpp in Sources */,
 				DCFD7CF42A45BA92007BBBF7 /* ParseContextBase.cpp in Sources */,

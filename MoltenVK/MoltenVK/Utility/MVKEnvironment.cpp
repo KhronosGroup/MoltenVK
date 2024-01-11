@@ -1,7 +1,7 @@
 /*
  * MVKEnvironment.cpp
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,20 +20,73 @@
 #include "MVKOSExtensions.h"
 #include "MVKFoundation.h"
 
+
+#pragma mark Support functions
+
 // Return the expected size of MVKConfiguration, based on contents of MVKConfigMembers.def.
 static constexpr uint32_t getExpectedMVKConfigurationSize() {
-#define MVK_CONFIG_MEMBER_STRING(member, mbrType, name)  MVK_CONFIG_MEMBER(member, mbrType, name)
 #define MVK_CONFIG_MEMBER(member, mbrType, name)         cfgSize += sizeof(mbrType);
 	uint32_t cfgSize = 0;
 #include "MVKConfigMembers.def"
 	return cfgSize;
 }
 
-static bool _mvkConfigInitialized = false;
-static void mvkInitConfigFromEnvVars() {
+// Return the expected number of string members in MVKConfiguration, based on contents of MVKConfigMembers.def.
+static constexpr uint32_t getExpectedMVKConfigurationStringCount() {
+#define MVK_CONFIG_MEMBER(member, mbrType, name)
+#define MVK_CONFIG_MEMBER_STRING(member, mbrType, name)  strCnt++;
+	uint32_t strCnt = 0;
+#include "MVKConfigMembers.def"
+	return strCnt;
+}
+
+
+#pragma mark Set configuration values
+
+// Sets destination config content from the source content, validates content,
+// and ensures the content of any string members of MVKConfiguration are copied locally.
+void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVKConfig, std::string* stringHolders) {
+
+	dstMVKConfig = srcMVKConfig;
+
+	// Ensure the API version is supported, and add the VK_HEADER_VERSION.
+	dstMVKConfig.apiVersionToAdvertise = std::min(dstMVKConfig.apiVersionToAdvertise, MVK_VULKAN_API_VERSION);
+	dstMVKConfig.apiVersionToAdvertise = VK_MAKE_VERSION(VK_VERSION_MAJOR(dstMVKConfig.apiVersionToAdvertise),
+														 VK_VERSION_MINOR(dstMVKConfig.apiVersionToAdvertise),
+														 VK_HEADER_VERSION);
+
+	// Deprecated legacy support for specific case where both legacy semaphoreUseMTLEvent
+	// (now aliased to semaphoreSupportStyle) and legacy semaphoreUseMTLFence are explicitly
+	// disabled by the app. In this case the app had been using CPU emulation, so use
+	// MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK.
+	if ( !dstMVKConfig.semaphoreUseMTLEvent && !dstMVKConfig.semaphoreUseMTLFence ) {
+		dstMVKConfig.semaphoreSupportStyle = MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK;
+	}
+
+	// Clamp timestampPeriodLowPassAlpha between 0.0 and 1.0.
+	dstMVKConfig.timestampPeriodLowPassAlpha = mvkClamp(dstMVKConfig.timestampPeriodLowPassAlpha, 0.0f, 1.0f);
+
+	// For each string member of the destination MVKConfiguration, store the contents
+	// in a std::string, then repoint the member to the contents of the std::string.
+#define MVK_CONFIG_MEMBER(member, mbrType, name)
+#define MVK_CONFIG_MEMBER_STRING(member, mbrType, name)  \
+	if (dstMVKConfig.member) { stringHolders[strIdx] = dstMVKConfig.member; }  \
+	dstMVKConfig.member = stringHolders[strIdx++].c_str();
+
+	static_assert(getExpectedMVKConfigurationStringCount() == kMVKConfigurationStringCount, "Each string member in MVKConfiguration needs a separate std::string to hold its content.");
+	uint32_t strIdx = 0;
+#include "MVKConfigMembers.def"
+	assert(strIdx == kMVKConfigurationStringCount);  // Ensure all string members of MVKConfiguration were stored in separate std::strings.
+}
+
+
+#pragma mark Load global configuration from environment variables
+
+static bool _mvkGlobalConfigInitialized = false;
+static void mvkInitGlobalConfigFromEnvVars() {
 	static_assert(getExpectedMVKConfigurationSize() == sizeof(MVKConfiguration), "MVKConfigMembers.def does not match the members of MVKConfiguration.");
 
-	_mvkConfigInitialized = true;
+	_mvkGlobalConfigInitialized = true;
 
 	MVKConfiguration evCfg;
 	std::string evGPUCapFileStrObj;
@@ -59,7 +112,7 @@ static void mvkInitConfigFromEnvVars() {
 	// Legacy MVK_ALLOW_METAL_EVENTS is covered by MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE,
 	// but for backwards compatibility, if legacy MVK_ALLOW_METAL_EVENTS is explicitly
 	// disabled, disable semaphoreUseMTLEvent (aliased as semaphoreSupportStyle value
-	// MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE), and let mvkSetConfig()
+	// MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE), and let mvkSetGlobalConfig()
 	// further process legacy behavior of MVK_ALLOW_METAL_FENCES.
 	if ( !mvkGetEnvVarNumber("MVK_CONFIG_ALLOW_METAL_EVENTS", 1.0) ) {
 		evCfg.semaphoreUseMTLEvent = (MVKVkSemaphoreSupportStyle)false;		// Disabled. Also semaphoreSupportStyle MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE.
@@ -74,48 +127,23 @@ static void mvkInitConfigFromEnvVars() {
 		evCfg.activityPerformanceLoggingStyle = MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE;
 	}
 
-	mvkSetConfig(evCfg);
+	mvkSetGlobalConfig(evCfg);
 }
 
-static MVKConfiguration _mvkConfig;
-static std::string _autoGPUCaptureOutputFile;
+static MVKConfiguration _globalMVKConfig;
+static std::string _globalMVKConfigStringHolders[kMVKConfigurationStringCount] = {};
 
 // Returns the MoltenVK config, lazily initializing it if necessary.
 // We initialize lazily instead of in a library constructor function to
 // ensure the NSProcessInfo environment is available when called upon.
-const MVKConfiguration& mvkConfig() {
-	if ( !_mvkConfigInitialized ) {
-		mvkInitConfigFromEnvVars();
+const MVKConfiguration& getGlobalMVKConfig() {
+	if ( !_mvkGlobalConfigInitialized ) {
+		mvkInitGlobalConfigFromEnvVars();
 	}
-	return _mvkConfig;
+	return _globalMVKConfig;
 }
 
-// Sets config content, and updates any content that needs baking, including copying the contents
-// of strings from the incoming MVKConfiguration member to a corresponding std::string, and then
-// repointing the MVKConfiguration member to the contents of the std::string.
-void mvkSetConfig(const MVKConfiguration& mvkConfig) {
-	_mvkConfig = mvkConfig;
-
-	// Ensure the API version is supported, and add the VK_HEADER_VERSION.
-	_mvkConfig.apiVersionToAdvertise = std::min(_mvkConfig.apiVersionToAdvertise, MVK_VULKAN_API_VERSION);
-	_mvkConfig.apiVersionToAdvertise = VK_MAKE_VERSION(VK_VERSION_MAJOR(_mvkConfig.apiVersionToAdvertise),
-													   VK_VERSION_MINOR(_mvkConfig.apiVersionToAdvertise),
-													   VK_HEADER_VERSION);
-
-	// Deprecated legacy support for specific case where both legacy semaphoreUseMTLEvent
-	// (now aliased to semaphoreSupportStyle) and legacy semaphoreUseMTLFence are explicitly
-	// disabled by the app. In this case the app had been using CPU emulation, so use
-	// MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK.
-	if ( !_mvkConfig.semaphoreUseMTLEvent && !_mvkConfig.semaphoreUseMTLFence ) {
-		_mvkConfig.semaphoreSupportStyle = MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK;
-	}
-
-	// Set capture file path string
-	if (_mvkConfig.autoGPUCaptureOutputFilepath) {
-		_autoGPUCaptureOutputFile = _mvkConfig.autoGPUCaptureOutputFilepath;
-	}
-	_mvkConfig.autoGPUCaptureOutputFilepath = (char*)_autoGPUCaptureOutputFile.c_str();
-
-	// Clamp timestampPeriodLowPassAlpha between 0.0 and 1.0.
-	_mvkConfig.timestampPeriodLowPassAlpha = mvkClamp(_mvkConfig.timestampPeriodLowPassAlpha, 0.0f, 1.0f);
+void mvkSetGlobalConfig(const MVKConfiguration& srcMVKConfig) {
+	mvkSetConfig(_globalMVKConfig, srcMVKConfig, _globalMVKConfigStringHolders);
 }
+

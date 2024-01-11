@@ -14,7 +14,7 @@ else
 	OUTPUT_FMT_CMD = -quiet
 endif
 
-# Collect all variables defined on the command-line (eg: MVK_HIDE_VULKAN_SYMBOLS=1)
+# Collect all build settings defined on the command-line (eg: MVK_HIDE_VULKAN_SYMBOLS=1, MVK_CONFIG_LOG_LEVEL=3...)
 MAKEARGS := $(strip \
   $(foreach v,$(.VARIABLES),\
     $(if $(filter command\ line,$(origin $(v))),\

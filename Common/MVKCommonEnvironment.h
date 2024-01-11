@@ -1,7 +1,7 @@
 /*
  * MVKCommonEnvironment.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,8 +31,8 @@ extern "C" {
  * Compiler build setting that ensures a definite value for whether this
  * build is a debug build or not.
  *
- * If the standard DEBUG build setting is defined, MVK_DEBUG is set to true,
- * otherwise, it is set to false.
+ * If the standard DEBUG build setting is defined, MVK_CONFIG_DEBUG is
+ * set to true, otherwise, it is set to false.
  */
 #ifndef MVK_DEBUG
 #	ifdef DEBUG
@@ -40,6 +40,9 @@ extern "C" {
 #	else
 #		define MVK_DEBUG			0
 #	endif
+#endif
+#ifndef MVK_CONFIG_DEBUG
+#	define MVK_CONFIG_DEBUG			MVK_DEBUG
 #endif
 
 /** Building for macOS. */

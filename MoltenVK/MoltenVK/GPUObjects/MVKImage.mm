@@ -1,7 +1,7 @@
 /*
  * MVKImage.mm
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -145,7 +145,7 @@ void MVKImagePlane::initSubresources(const VkImageCreateInfo* pCreateInfo) {
     subRez.layoutState = pCreateInfo->initialLayout;
 
     VkDeviceSize offset = 0;
-    if (_planeIndex > 0 && _image->_memoryBindings.size() == 1) {
+    if (_planeIndex > 0 && _image->getMemoryBindingCount() == 1) {
         if (!_image->_isLinear && !_image->_isLinearForAtomics && _image->getDevice()->_pMetalFeatures->placementHeaps) {
             // For textures allocated directly on the heap, we need to obey the size and alignment
             // requirements reported by the device.
@@ -303,7 +303,7 @@ void MVKImagePlane::propagateDebugName() {
 }
 
 MVKImageMemoryBinding* MVKImagePlane::getMemoryBinding() const {
-    return (_image->_memoryBindings.size() > 1) ? _image->_memoryBindings[_planeIndex] : _image->_memoryBindings[0];
+	return _image->getMemoryBinding(_planeIndex);
 }
 
 void MVKImagePlane::applyImageMemoryBarrier(MVKPipelineBarrier& barrier,
@@ -522,12 +522,14 @@ VkResult MVKImageMemoryBinding::pullFromDevice(VkDeviceSize offset, VkDeviceSize
     return VK_SUCCESS;
 }
 
+// If I am the only memory binding, I cover all planes.
 uint8_t MVKImageMemoryBinding::beginPlaneIndex() const {
-    return (_image->_memoryBindings.size() > 1) ? _planeIndex : 0;
+    return (_image->getMemoryBindingCount() > 1) ? _planeIndex : 0;
 }
 
+// If I am the only memory binding, I cover all planes.
 uint8_t MVKImageMemoryBinding::endPlaneIndex() const {
-    return (_image->_memoryBindings.size() > 1) ? _planeIndex : (uint8_t)_image->_memoryBindings.size();
+    return (_image->getMemoryBindingCount() > 1) ? _planeIndex + 1 : (uint8_t)_image->_planes.size();
 }
 
 MVKImageMemoryBinding::MVKImageMemoryBinding(MVKDevice* device, MVKImage* image, uint8_t planeIndex) : MVKResource(device), _image(image), _planeIndex(planeIndex) {
@@ -554,7 +556,7 @@ void MVKImage::propagateDebugName() {
 }
 
 void MVKImage::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
-    for (int bindingIndex = 0; bindingIndex < _memoryBindings.size(); bindingIndex++) {
+    for (int bindingIndex = 0; bindingIndex < getMemoryBindingCount(); bindingIndex++) {
         MVKImageMemoryBinding *binding = _memoryBindings[bindingIndex];
         binding->flushToDevice(offset, size);
     }
@@ -621,6 +623,15 @@ bool MVKImage::getIsValidViewFormat(VkFormat viewFormat) {
 
 #pragma mark Resource memory
 
+// There may be less memory bindings than planes, but there will always be at least one.
+uint8_t MVKImage::getMemoryBindingIndex(uint8_t planeIndex) const {
+	return std::min<uint8_t>(planeIndex, getMemoryBindingCount() - 1);
+}
+
+MVKImageMemoryBinding* MVKImage::getMemoryBinding(uint8_t planeIndex) {
+	return _memoryBindings[getMemoryBindingIndex(planeIndex)];
+}
+
 void MVKImage::applyImageMemoryBarrier(MVKPipelineBarrier& barrier,
 									   MVKCommandEncoder* cmdEncoder,
 									   MVKCommandUse cmdUse) {
@@ -650,7 +661,7 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
         mvkDisableFlags(pMemoryRequirements->memoryTypeBits, getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
     }
 
-    return _memoryBindings[planeIndex]->getMemoryRequirements(pMemoryRequirements);
+    return getMemoryBinding(planeIndex)->getMemoryRequirements(pMemoryRequirements);
 }
 
 VkResult MVKImage::getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements) {
@@ -669,11 +680,11 @@ VkResult MVKImage::getMemoryRequirements(const void* pInfo, VkMemoryRequirements
 	}
     VkResult rslt = getMemoryRequirements(&pMemoryRequirements->memoryRequirements, planeIndex);
     if (rslt != VK_SUCCESS) { return rslt; }
-    return _memoryBindings[planeIndex]->getMemoryRequirements(pInfo, pMemoryRequirements);
+    return getMemoryBinding(planeIndex)->getMemoryRequirements(pInfo, pMemoryRequirements);
 }
 
 VkResult MVKImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset, uint8_t planeIndex) {
-    return _memoryBindings[planeIndex]->bindDeviceMemory(mvkMem, memOffset);
+    return getMemoryBinding(planeIndex)->bindDeviceMemory(mvkMem, memOffset);
 }
 
 VkResult MVKImage::bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo) {
@@ -931,7 +942,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 
 	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatCompressed) && !_device->_pMetalFeatures->native3DCompressedTextures;
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
-								 mvkAreAllFlagsEnabled(pixFmts->getVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
+								 mvkAreAllFlagsEnabled(pixFmts->getVkFormatProperties3(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT));
 	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
 	_rowByteAlignment = _isLinear || _isLinearForAtomics ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(pixFmts->getBytesPerBlock(pCreateInfo->format));
 
@@ -1025,7 +1036,7 @@ VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreate
 	if (validSamples == VK_SAMPLE_COUNT_1_BIT) { return validSamples; }
 
 	// Don't use getImageType() because it hasn't been set yet.
-	if ( !((pCreateInfo->imageType == VK_IMAGE_TYPE_2D) || ((pCreateInfo->imageType == VK_IMAGE_TYPE_1D) && mvkConfig().texture1DAs2D)) ) {
+	if ( !((pCreateInfo->imageType == VK_IMAGE_TYPE_2D) || ((pCreateInfo->imageType == VK_IMAGE_TYPE_1D) && getMVKConfig().texture1DAs2D)) ) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling can only be used with a 2D image type. Setting sample count to 1."));
 		validSamples = VK_SAMPLE_COUNT_1_BIT;
 	}
@@ -1872,7 +1883,7 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 // Enable either native or shader swizzling, depending on what is available, preferring native, and return whether successful.
 bool MVKImageViewPlane::enableSwizzling() {
 	_useNativeSwizzle = _device->_pMetalFeatures->nativeTextureSwizzle;
-	_useShaderSwizzle = !_useNativeSwizzle && mvkConfig().fullImageViewSwizzle;
+	_useShaderSwizzle = !_useNativeSwizzle && getMVKConfig().fullImageViewSwizzle;
 	return _useNativeSwizzle || _useShaderSwizzle;
 }
 

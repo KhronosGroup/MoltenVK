@@ -1,7 +1,7 @@
 /*
  * MVKSync.mm
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -576,13 +576,13 @@ void MVKMetalCompiler::compile(unique_lock<mutex>& lock, dispatch_block_t block)
 	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{ @autoreleasepool { block(); } });
 
 	// Limit timeout to avoid overflow since wait_for() uses wait_until()
-	chrono::nanoseconds nanoTimeout(min(mvkConfig().metalCompileTimeout, kMVKUndefinedLargeUInt64));
+	chrono::nanoseconds nanoTimeout(min(getMVKConfig().metalCompileTimeout, kMVKUndefinedLargeUInt64));
 	_blocker.wait_for(lock, nanoTimeout, [this]{ return _isCompileDone; });
 
 	if ( !_isCompileDone ) {
 		@autoreleasepool {
 			NSString* errDesc = [NSString stringWithFormat: @"Timeout after %.3f milliseconds. Likely internal Metal compiler error", (double)nanoTimeout.count() / 1e6];
-			_compileError = [[NSError alloc] initWithDomain: @"MoltenVK" code: 1 userInfo: @{NSLocalizedDescriptionKey : errDesc}];	// retained
+			_compileError = [[NSError alloc] initWithDomain: @(kMVKMoltenVKDriverLayerName) code: 1 userInfo: @{NSLocalizedDescriptionKey : errDesc}];	// retained
 		}
 	}
 

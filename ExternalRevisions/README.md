@@ -5,7 +5,7 @@
 
 #MoltenVK External Dependencies
 
-Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
+Copyright (c) 2015-2024 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 [comment]: # "This document is written in Markdown (http://en.wikipedia.org/wiki/Markdown) format."
 [comment]: # "For best results, use a Markdown reader."
@@ -240,7 +240,6 @@ if you encounter any building errors, you may need to re-add the *glslang* libra
    *Group* in the *Project Navigator* panel:
 
 		glslang
-		OGLCompilersDLL
 		SPIRV
 
    In the ***Choose options for adding these files*** dialog that opens, select the ***Create groups*** option, 

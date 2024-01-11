@@ -1,7 +1,7 @@
 /*
  * MVKPipeline.mm
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -215,7 +215,7 @@ MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVK
 	_pipelineCache(pipelineCache),
 	_flags(flags),
 	_descriptorSetCount(layout->getDescriptorSetCount()),
-	_fullImageViewSwizzle(mvkConfig().fullImageViewSwizzle) {
+	_fullImageViewSwizzle(getMVKConfig().fullImageViewSwizzle) {
 
 		// Establish descriptor counts and push constants use.
 		for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
@@ -511,11 +511,12 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	}
 
 	// Topology
-	_vkPrimitiveTopology = (pCreateInfo->pInputAssemblyState && !isRenderingPoints(pCreateInfo)
-				   ? pCreateInfo->pInputAssemblyState->topology
-				   : VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
-
-	_primitiveRestartEnable = pCreateInfo->pInputAssemblyState ? pCreateInfo->pInputAssemblyState->primitiveRestartEnable : true;
+	_vkPrimitiveTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+	_primitiveRestartEnable = true;			// Always enabled in Metal
+	if (pCreateInfo->pInputAssemblyState) {
+		_vkPrimitiveTopology = pCreateInfo->pInputAssemblyState->topology;
+		_primitiveRestartEnable = pCreateInfo->pInputAssemblyState->primitiveRestartEnable;
+	}
 
 	// Rasterization
 	_hasRasterInfo = mvkSetOrClear(&_rasterInfo, pCreateInfo->pRasterizationState);
@@ -1726,11 +1727,11 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	}
 
 	shaderConfig.options.mslOptions.ios_support_base_vertex_instance = getDevice()->_pMetalFeatures->baseVertexInstanceDrawing;
-	shaderConfig.options.mslOptions.texture_1D_as_2D = mvkConfig().texture1DAs2D;
+	shaderConfig.options.mslOptions.texture_1D_as_2D = getMVKConfig().texture1DAs2D;
     shaderConfig.options.mslOptions.enable_point_size_builtin = isRenderingPoints(pCreateInfo) || reflectData.pointMode;
 	shaderConfig.options.mslOptions.enable_frag_depth_builtin = pixFmts->isDepthFormat(pixFmts->getMTLPixelFormat(pRendInfo->depthAttachmentFormat));
 	shaderConfig.options.mslOptions.enable_frag_stencil_ref_builtin = pixFmts->isStencilFormat(pixFmts->getMTLPixelFormat(pRendInfo->stencilAttachmentFormat));
-    shaderConfig.options.shouldFlipVertexY = mvkConfig().shaderConversionFlipVertexY;
+    shaderConfig.options.shouldFlipVertexY = getMVKConfig().shaderConversionFlipVertexY;
     shaderConfig.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     shaderConfig.options.mslOptions.tess_domain_origin_lower_left = pTessDomainOriginState && pTessDomainOriginState->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
     shaderConfig.options.mslOptions.multiview = mvkIsMultiview(pRendInfo->viewMask);
@@ -1933,11 +1934,16 @@ void MVKGraphicsPipeline::addPrevStageOutputToShaderConversionConfig(SPIRVToMSLC
     }
 }
 
-// We render points if either the static topology or static polygon fill mode dictate it
+// We render points if either the static topology or static polygon-mode dictate it.
+// The topology class must be the same between static and dynamic, so point topology
+// in static also implies point topology in dynamic.
+// Metal does not support VK_POLYGON_MODE_POINT, but it can be emulated if the polygon mode
+// is static, which allows both the topology and the pipeline topology-class to be set to points.
+// This cannot be accomplished if the dynamic polygon mode has been changed to points when the
+// pipeline is expecting triangles or lines, because the pipeline topology class will be incorrect.
 bool MVKGraphicsPipeline::isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
-	return ((pCreateInfo->pInputAssemblyState && 
-			 (pCreateInfo->pInputAssemblyState->topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST) &&
-			 !isDynamicState(PrimitiveTopology)) ||
+	return ((pCreateInfo->pInputAssemblyState &&
+			 (pCreateInfo->pInputAssemblyState->topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST)) ||
 			(pCreateInfo->pRasterizationState && 
 			 (pCreateInfo->pRasterizationState->polygonMode == VK_POLYGON_MODE_POINT) &&
 			 !isDynamicState(PolygonMode)));
@@ -2111,7 +2117,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderConfig.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
 	shaderConfig.options.mslOptions.texture_buffer_native = _device->_pMetalFeatures->textureBuffers;
 	shaderConfig.options.mslOptions.dispatch_base = _allowsDispatchBase;
-	shaderConfig.options.mslOptions.texture_1D_as_2D = mvkConfig().texture1DAs2D;
+	shaderConfig.options.mslOptions.texture_1D_as_2D = getMVKConfig().texture1DAs2D;
     shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : _device->_pMetalFeatures->maxSubgroupSize;
 
 	bool useMetalArgBuff = isUsingMetalArgumentBuffers();

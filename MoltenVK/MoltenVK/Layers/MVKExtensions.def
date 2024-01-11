@@ -1,7 +1,7 @@
 /*
  * MVKExtensions.def
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,6 +45,7 @@ MVK_EXTENSION(KHR_16bit_storage,                      KHR_16BIT_STORAGE,        
 MVK_EXTENSION(KHR_8bit_storage,                       KHR_8BIT_STORAGE,                       DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_bind_memory2,                       KHR_BIND_MEMORY_2,                      DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_buffer_device_address,              KHR_BUFFER_DEVICE_ADDRESS,              DEVICE,   13.0,  16.0,  1.0)
+MVK_EXTENSION(KHR_calibrated_timestamps,              KHR_CALIBRATED_TIMESTAMPS,              DEVICE,   10.15, 14.0,  1.0)
 MVK_EXTENSION(KHR_copy_commands2,                     KHR_COPY_COMMANDS_2,                    DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_create_renderpass2,                 KHR_CREATE_RENDERPASS_2,                DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_dedicated_allocation,               KHR_DEDICATED_ALLOCATION,               DEVICE,   10.11,  8.0,  1.0)
@@ -63,6 +64,7 @@ MVK_EXTENSION(KHR_external_memory_capabilities,       KHR_EXTERNAL_MEMORY_CAPABI
 MVK_EXTENSION(KHR_external_semaphore,                 KHR_EXTERNAL_SEMAPHORE,                 DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_external_semaphore_capabilities,    KHR_EXTERNAL_SEMAPHORE_CAPABILITIES,    INSTANCE, 10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_fragment_shader_barycentric,        KHR_FRAGMENT_SHADER_BARYCENTRIC,        DEVICE,   10.15, 14.0,  1.0)
+MVK_EXTENSION(KHR_format_feature_flags2,              KHR_FORMAT_FEATURE_FLAGS_2,             DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_get_memory_requirements2,           KHR_GET_MEMORY_REQUIREMENTS_2,          DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_get_physical_device_properties2,    KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2,   INSTANCE, 10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_get_surface_capabilities2,          KHR_GET_SURFACE_CAPABILITIES_2,         INSTANCE, 10.11,  8.0,  1.0)
@@ -95,6 +97,7 @@ MVK_EXTENSION(KHR_synchronization2,                   KHR_SYNCHRONIZATION_2,    
 MVK_EXTENSION(KHR_timeline_semaphore,                 KHR_TIMELINE_SEMAPHORE,                 DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_uniform_buffer_standard_layout,     KHR_UNIFORM_BUFFER_STANDARD_LAYOUT,     DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_variable_pointers,                  KHR_VARIABLE_POINTERS,                  DEVICE,   10.11,  8.0,  1.0)
+MVK_EXTENSION(KHR_vertex_attribute_divisor,           KHR_VERTEX_ATTRIBUTE_DIVISOR,           DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_vulkan_memory_model,                KHR_VULKAN_MEMORY_MODEL,                DEVICE,   MVK_NA, MVK_NA, MVK_NA)
 MVK_EXTENSION(EXT_4444_formats,                       EXT_4444_FORMATS,                       DEVICE,   11.0,  13.0,  1.0)
 MVK_EXTENSION(EXT_buffer_device_address,              EXT_BUFFER_DEVICE_ADDRESS,              DEVICE,   13.0,  16.0,  1.0)
@@ -113,6 +116,7 @@ MVK_EXTENSION(EXT_headless_surface,                   EXT_HEADLESS_SURFACE,     
 MVK_EXTENSION(EXT_host_query_reset,                   EXT_HOST_QUERY_RESET,                   DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_image_robustness,                   EXT_IMAGE_ROBUSTNESS,                   DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_inline_uniform_block,               EXT_INLINE_UNIFORM_BLOCK,               DEVICE,   10.11,  8.0,  1.0)
+MVK_EXTENSION(EXT_layer_settings,                     EXT_LAYER_SETTINGS,                     INSTANCE, 10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_memory_budget,                      EXT_MEMORY_BUDGET,                      DEVICE,   10.13, 11.0,  1.0)
 MVK_EXTENSION(EXT_metal_objects,                      EXT_METAL_OBJECTS,                      DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_metal_surface,                      EXT_METAL_SURFACE,                      INSTANCE, 10.11,  8.0,  1.0)

@@ -1,7 +1,7 @@
 /*
  * MVKQueue.mm
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ id<MTLCommandQueue> MVKQueueFamily::getMTLCommandQueue(uint32_t queueIndex) {
 	id<MTLCommandQueue> mtlQ = _mtlQueues[queueIndex];
 	if ( !mtlQ ) {
 		@autoreleasepool {		// Catch any autoreleased objects created during MTLCommandQueue creation
-			uint32_t maxCmdBuffs = mvkConfig().maxActiveMetalCommandBuffersPerQueue;
+			uint32_t maxCmdBuffs = getMVKConfig().maxActiveMetalCommandBuffersPerQueue;
 			mtlQ = [_physicalDevice->getMTLDevice() newCommandQueueWithMaxCommandBufferCount: maxCmdBuffs];		// retained
 			_mtlQueues[queueIndex] = mtlQ;
 		}
@@ -160,7 +160,7 @@ id<MTLCommandBuffer> MVKQueue::getMTLCommandBuffer(MVKCommandUse cmdUse, bool re
 	if ([_mtlQueue respondsToSelector: @selector(commandBufferWithDescriptor:)]) {
 		MTLCommandBufferDescriptor* mtlCmdBuffDesc = [MTLCommandBufferDescriptor new];	// temp retain
 		mtlCmdBuffDesc.retainedReferences = retainRefs;
-		if (mvkConfig().debugMode) {
+		if (getMVKConfig().debugMode) {
 			mtlCmdBuffDesc.errorOptions |= MTLCommandBufferErrorOptionEncoderExecutionStatus;
 		}
 		mtlCmdBuff = [_mtlQueue commandBufferWithDescriptor: mtlCmdBuffDesc];
@@ -223,7 +223,7 @@ void MVKQueue::handleMTLCommandBufferError(id<MTLCommandBuffer> mtlCmdBuff) {
 	// If the error is local to this command buffer, optionally mark the device (but not the
 	// physical device) as lost, depending on the value of MVKConfiguration::resumeLostDevice.
 	VkResult vkErr = VK_ERROR_UNKNOWN;
-	bool markDeviceLoss = !mvkConfig().resumeLostDevice;
+	bool markDeviceLoss = !getMVKConfig().resumeLostDevice;
 	bool markPhysicalDeviceLoss = false;
 	switch (mtlCmdBuff.error.code) {
 		case MTLCommandBufferErrorBlacklisted:
@@ -303,7 +303,7 @@ void MVKQueue::initName() {
 
 void MVKQueue::initExecQueue() {
 	_execQueue = nil;
-	if ( !mvkConfig().synchronousQueueSubmits ) {
+	if ( !getMVKConfig().synchronousQueueSubmits ) {
 		// Determine the dispatch queue priority
 		dispatch_qos_class_t dqQOS = MVK_DISPATCH_QUEUE_QOS_CLASS;
 		int dqPriority = (1.0 - _priority) * QOS_MIN_RELATIVE_PRIORITY;
@@ -319,8 +319,8 @@ void MVKQueue::initMTLCommandQueue() {
 	_mtlQueue = _queueFamily->getMTLCommandQueue(_index);	// not retained (cached in queue family)
 
 	_submissionCaptureScope = new MVKGPUCaptureScope(this);
-	if (_queueFamily->getIndex() == mvkConfig().defaultGPUCaptureScopeQueueFamilyIndex &&
-		_index == mvkConfig().defaultGPUCaptureScopeQueueIndex) {
+	if (_queueFamily->getIndex() == getMVKConfig().defaultGPUCaptureScopeQueueFamilyIndex &&
+		_index == getMVKConfig().defaultGPUCaptureScopeQueueIndex) {
 		getDevice()->startAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME, _mtlQueue);
 		_submissionCaptureScope->makeDefault();
 	}
@@ -715,8 +715,8 @@ void MVKQueuePresentSurfaceSubmission::finish() {
 	auto cs = _queue->_submissionCaptureScope;
 	cs->endScope();
 	cs->beginScope();
-	if (_queue->_queueFamily->getIndex() == mvkConfig().defaultGPUCaptureScopeQueueFamilyIndex &&
-		_queue->_index == mvkConfig().defaultGPUCaptureScopeQueueIndex) {
+	if (_queue->_queueFamily->getIndex() == getMVKConfig().defaultGPUCaptureScopeQueueFamilyIndex &&
+		_queue->_index == getMVKConfig().defaultGPUCaptureScopeQueueIndex) {
 		getDevice()->stopAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME);
 	}
 

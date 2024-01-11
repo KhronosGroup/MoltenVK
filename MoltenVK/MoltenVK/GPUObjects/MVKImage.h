@@ -1,7 +1,7 @@
 /*
  * MVKImage.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -345,6 +345,9 @@ protected:
 	bool getIsValidViewFormat(VkFormat viewFormat);
 	VkImageUsageFlags getCombinedUsage() { return _usage | _stencilUsage; }
 	MTLTextureUsage getMTLTextureUsage(MTLPixelFormat mtlPixFmt);
+	uint8_t getMemoryBindingCount() const { return (uint8_t)_memoryBindings.size(); }
+	uint8_t getMemoryBindingIndex(uint8_t planeIndex) const;
+	MVKImageMemoryBinding* getMemoryBinding(uint8_t planeIndex);
 
     MVKSmallVector<MVKImageMemoryBinding*, 3> _memoryBindings;
     MVKSmallVector<MVKImagePlane*, 3> _planes;
