@@ -345,6 +345,9 @@ protected:
 	bool getIsValidViewFormat(VkFormat viewFormat);
 	VkImageUsageFlags getCombinedUsage() { return _usage | _stencilUsage; }
 	MTLTextureUsage getMTLTextureUsage(MTLPixelFormat mtlPixFmt);
+	uint8_t getMemoryBindingCount() const { return (uint8_t)_memoryBindings.size(); }
+	uint8_t getMemoryBindingIndex(uint8_t planeIndex) const;
+	MVKImageMemoryBinding* getMemoryBinding(uint8_t planeIndex);
 
     MVKSmallVector<MVKImageMemoryBinding*, 3> _memoryBindings;
     MVKSmallVector<MVKImagePlane*, 3> _planes;
