@@ -13,6 +13,15 @@ Copyright (c) 2015-2024 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.2.8
+--------------
+
+Released TBD
+
+- Fix potential crash when using multi-planar images.
+
+
+
 MoltenVK 1.2.7
 --------------
 
