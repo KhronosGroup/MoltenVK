@@ -357,6 +357,12 @@ public:
 	 */
 	id<MTLCommandEncoder> getMTLEncoder();
 
+	/** Returns the graphics pipeline. */
+	MVKGraphicsPipeline* getGraphicsPipeline() { return (MVKGraphicsPipeline*)_graphicsPipelineState.getPipeline(); }
+
+	/** Returns the compute pipeline. */
+	MVKComputePipeline* getComputePipeline() { return (MVKComputePipeline*)_computePipelineState.getPipeline(); }
+
 	/** Returns the push constants associated with the specified shader stage. */
 	MVKPushConstantsCommandEncoderState* getPushConstants(VkShaderStageFlagBits shaderStage);
 
@@ -447,6 +453,9 @@ public:
 
 	/** Tracks the current compute resources state of the encoder. */
 	MVKComputeResourcesCommandEncoderState _computeResourcesState;
+
+	/** Tracks whether the GPU-addressable buffers need to be used. */
+	MVKGPUAddressableBuffersCommandEncoderState _gpuAddressableBuffersState;
 
     /** Tracks the current depth stencil state of the encoder. */
     MVKDepthStencilCommandEncoderState _depthStencilState;

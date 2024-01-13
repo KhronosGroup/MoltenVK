@@ -19,6 +19,7 @@ MoltenVK 1.2.8
 Released TBD
 
 - Fix potential crash when using multi-planar images.
+- Ensure buffers available for buffer addresses in push constants.
 
 
 
