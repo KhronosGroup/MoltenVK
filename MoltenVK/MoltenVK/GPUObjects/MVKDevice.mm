@@ -153,7 +153,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 		.separateDepthStencilLayouts = true,
 		.hostQueryReset = true,
 		.timelineSemaphore = true,
-		.bufferDeviceAddress = mvkOSVersionIsAtLeast(12.05, 16.0, 1.0),
+		.bufferDeviceAddress = mvkOSVersionIsAtLeast(13.0, 16.0, 1.0),
 		.bufferDeviceAddressCaptureReplay = false,
 		.bufferDeviceAddressMultiDevice = false,
 		.vulkanMemoryModel = false,

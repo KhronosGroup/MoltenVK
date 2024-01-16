@@ -129,8 +129,6 @@ public:
 	void bindPipeline(MVKPipeline* pipeline);
 
     MVKPipeline* getPipeline();
-	MVKGraphicsPipeline* getGraphicsPipeline() { return (MVKGraphicsPipeline*)getPipeline(); }
-	MVKComputePipeline* getComputePipeline() { return (MVKComputePipeline*)getPipeline(); }
 
     MVKPipelineCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKCommandEncoderState(cmdEncoder) {}
 
@@ -638,6 +636,26 @@ protected:
 	void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) override;
 
 	ResourceBindings<4> _resourceBindings;
+};
+
+
+#pragma mark -
+#pragma mark MVKGPUAddressableBuffersCommandEncoderState
+
+/** Tracks whether the GPU-addressable buffers need to be used. */
+class MVKGPUAddressableBuffersCommandEncoderState : public MVKCommandEncoderState {
+
+public:
+
+	/** Marks that GPU addressable buffers may be needed in the specified shader stage. */
+	void useGPUAddressableBuffersInStage(MVKShaderStage shaderStage);
+
+	MVKGPUAddressableBuffersCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKCommandEncoderState(cmdEncoder) {}
+
+protected:
+	void encodeImpl(uint32_t stage) override;
+
+	bool _usageStages[kMVKShaderStageCount] = {};
 };
 
 

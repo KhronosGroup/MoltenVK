@@ -908,8 +908,8 @@ protected:
 	MVKPhysicalDevice* _physicalDevice = nullptr;
     MVKCommandResourceFactory* _commandResourceFactory = nullptr;
 	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
-	MVKSmallVector<MVKResource*, 256> _resources;
-	MVKSmallVector<MVKBuffer*, 8> _gpuAddressableBuffers;
+	MVKSmallVector<MVKResource*> _resources;
+	MVKSmallVector<MVKBuffer*> _gpuAddressableBuffers;
 	MVKSmallVector<MVKPrivateDataSlot*> _privateDataSlots;
 	MVKSmallVector<bool> _privateDataSlotsAvailability;
 	MVKSmallVector<MVKSemaphoreImpl*> _awaitingSemaphores;
