@@ -206,6 +206,7 @@ struct MVKTranslatedVertexBinding {
 	uint16_t binding;
 	uint16_t translationBinding;
 	uint32_t translationOffset;
+	uint32_t mappedAttributeCount;
 };
 
 /** Describes a vertex buffer binding whose divisor is zero. */
