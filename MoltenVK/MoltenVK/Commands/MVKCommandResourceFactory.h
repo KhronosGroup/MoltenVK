@@ -454,11 +454,13 @@ public:
 
 	/** Returns a new MTLComputePipelineState for clearing an image. */
 	id<MTLComputePipelineState> newCmdClearColorImageMTLComputePipelineState(MVKFormatType type,
-																			 MVKVulkanAPIDeviceObject* owner);
+																			 MVKVulkanAPIDeviceObject* owner,
+																			 bool isTextureArray);
 
 	/** Returns a new MTLComputePipelineState for resolving an image. */
 	id<MTLComputePipelineState> newCmdResolveColorImageMTLComputePipelineState(MVKFormatType type,
-																			   MVKVulkanAPIDeviceObject* owner);
+																			   MVKVulkanAPIDeviceObject* owner,
+																			   bool isTextureArray);
 
 	/** Returns a new MTLComputePipelineState for copying between a buffer holding compressed data and a 3D image. */
 	id<MTLComputePipelineState> newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needTempBuf,
