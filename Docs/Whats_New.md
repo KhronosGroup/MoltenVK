@@ -20,7 +20,8 @@ Released TBD
 
 - Fix potential crash when using multi-planar images.
 - Ensure buffers available for buffer addresses in push constants.
-
+- Support `libMoltenVK.dylib` for _iOS Simulator_ architecture.
+- Restore support for _iOS Simulator_ destination in recent update to _Cube_ demo that uses dynamic-linking.
 
 
 MoltenVK 1.2.7

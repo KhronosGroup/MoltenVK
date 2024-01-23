@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 48;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -269,6 +269,7 @@
 				A9B53B2E1C3AC15200ABC6F6 /* Resources */,
 				A9B53B331C3AC15200ABC6F6 /* Sources */,
 				A90998A12B4EFA78002CEF67 /* Copy MoltenVK Library */,
+				A90998AE2B602480002CEF67 /* Copy MoltenVK Simulator Library */,
 				A9B53B371C3AC15200ABC6F6 /* Frameworks */,
 			);
 			buildRules = (
@@ -351,6 +352,28 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A90998AE2B602480002CEF67 /* Copy MoltenVK Simulator Library */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy MoltenVK Simulator Library";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "#!/bin/bash\n\n# If running on the simulator, we need to overwrite the \n# iOS build of MoltenVK with the iOS Simulator build.\n# We can't use this script to copy the iOS build itself, \n# because it needs to be signed to run on an actual device.\n# The simulator build does not need to be signed.\nif [[ \"${PLATFORM_NAME}\" == \"iphonesimulator\" ]]; then \n\tmvk_lib_file=\"libMoltenVK.dylib\"\n\tmvk_lib_dir=\"${PROJECT_DIR}/../../MoltenVK/dylib/iOS-simulator\"\n\tapp_fwk_dir=\"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Frameworks\"\n\tcp -af \"${mvk_lib_dir}/${mvk_lib_file}\" \"${app_fwk_dir}/${mvk_lib_file}\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		A93DBF4024A2A4D500079F64 /* Sources */ = {

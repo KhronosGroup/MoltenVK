@@ -34,7 +34,8 @@ The demo can be found in the `Cube` folder, and in the `Cube` group in the
 *Xcode Project Navigator* in the `Demos.xcworkspace` *Xcode* workspace.
 
 To run this demo, run the `Cube-macOS`, `Cube-iOS`, or `Cube-tvOS` *Scheme* from within *Xcode*.
-In addition to devices, this demo will also run on the `iOS Simulator` or `tvOS Simulator` destinations.
+In addition to devices, this demo will also run on an `iOS Simulator` destination.
+This demo is not supported on a `tvOS Simulator` destination.
 
 The `Cube` demo is a simple example of installing **MoltenVK** as a `libMoltenVK.dylib` library that 
 is dynamically linked to the application, and the _Vulkan_ calls all use _Volk_ to dynamically access 
