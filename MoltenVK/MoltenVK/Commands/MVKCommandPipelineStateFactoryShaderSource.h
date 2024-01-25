@@ -121,10 +121,26 @@ kernel void cmdClearColorImage2DFloat(texture2d<float, access::write> dst [[ tex
     dst.write(clearValue, pos);                                                                                 \n\
 }                                                                                                               \n\
                                                                                                                 \n\
+kernel void cmdClearColorImage2DFloatArray(texture2d_array<float, access::write> dst [[ texture(0) ]],          \n\
+                                           constant float4& clearValue [[ buffer(0) ]],                         \n\
+                                           uint2 pos [[thread_position_in_grid]]) {                             \n\
+    for (uint i = 0u; i < dst.get_array_size(); ++i) {                                                          \n\
+        dst.write(clearValue, pos, i);                                                                          \n\
+    }                                                                                                           \n\
+}                                                                                                               \n\
+                                                                                                                \n\
 kernel void cmdClearColorImage2DUInt(texture2d<uint, access::write> dst [[ texture(0) ]],                       \n\
                                      constant uint4& clearValue [[ buffer(0) ]],                                \n\
                                      uint2 pos [[thread_position_in_grid]]) {                                   \n\
     dst.write(clearValue, pos);                                                                                 \n\
+}                                                                                                               \n\
+                                                                                                                \n\
+kernel void cmdClearColorImage2DUIntArray(texture2d_array<uint, access::write> dst [[ texture(0) ]],            \n\
+                                          constant uint4& clearValue [[ buffer(0) ]],                           \n\
+                                          uint2 pos [[thread_position_in_grid]]) {                              \n\
+    for (uint i = 0u; i < dst.get_array_size(); ++i) {                                                          \n\
+        dst.write(clearValue, pos, i);                                                                          \n\
+    }                                                                                                           \n\
 }                                                                                                               \n\
                                                                                                                 \n\
 kernel void cmdClearColorImage2DInt(texture2d<int, access::write> dst [[ texture(0) ]],                         \n\
@@ -133,10 +149,26 @@ kernel void cmdClearColorImage2DInt(texture2d<int, access::write> dst [[ texture
     dst.write(clearValue, pos);                                                                                 \n\
 }                                                                                                               \n\
                                                                                                                 \n\
+kernel void cmdClearColorImage2DIntArray(texture2d_array<int, access::write> dst [[ texture(0) ]],              \n\
+                                         constant int4& clearValue [[ buffer(0) ]],                             \n\
+                                         uint2 pos [[thread_position_in_grid]]) {                               \n\
+    for (uint i = 0u; i < dst.get_array_size(); ++i) {                                                          \n\
+        dst.write(clearValue, pos, i);                                                                          \n\
+    }                                                                                                           \n\
+}                                                                                                               \n\
+                                                                                                                \n\
 kernel void cmdResolveColorImage2DFloat(texture2d<float, access::write> dst [[ texture(0) ]],                   \n\
-                                       texture2d_ms<float, access::read> src [[ texture(1) ]],                  \n\
-                                       uint2 pos [[thread_position_in_grid]]) {                                 \n\
+                                        texture2d_ms<float, access::read> src [[ texture(1) ]],                 \n\
+                                        uint2 pos [[thread_position_in_grid]]) {                                \n\
     dst.write(src.read(pos, 0), pos);                                                                           \n\
+}                                                                                                               \n\
+                                                                                                                \n\
+kernel void cmdResolveColorImage2DFloatArray(texture2d_array<float, access::write> dst [[ texture(0) ]],        \n\
+                                             texture2d_ms_array<float, access::read> src [[ texture(1) ]],      \n\
+                                             uint2 pos [[thread_position_in_grid]]) {                           \n\
+    for (uint i = 0u; i < src.get_array_size(); ++i) {                                                          \n\
+        dst.write(src.read(pos, i, 0), pos, i);                                                                 \n\
+    }                                                                                                           \n\
 }                                                                                                               \n\
                                                                                                                 \n\
 kernel void cmdResolveColorImage2DUInt(texture2d<uint, access::write> dst [[ texture(0) ]],                     \n\
@@ -145,10 +177,26 @@ kernel void cmdResolveColorImage2DUInt(texture2d<uint, access::write> dst [[ tex
     dst.write(src.read(pos, 0), pos);                                                                           \n\
 }                                                                                                               \n\
                                                                                                                 \n\
+kernel void cmdResolveColorImage2DUIntArray(texture2d_array<uint, access::write> dst [[ texture(0) ]],          \n\
+                                            texture2d_ms_array<uint, access::read> src [[ texture(1) ]],        \n\
+                                            uint2 pos [[thread_position_in_grid]]) {                            \n\
+    for (uint i = 0u; i < src.get_array_size(); ++i) {                                                          \n\
+        dst.write(src.read(pos, i, 0), pos, i);                                                                 \n\
+    }                                                                                                           \n\
+}                                                                                                               \n\
+                                                                                                                \n\
 kernel void cmdResolveColorImage2DInt(texture2d<int, access::write> dst [[ texture(0) ]],                       \n\
                                       texture2d_ms<int, access::read> src [[ texture(1) ]],                     \n\
                                       uint2 pos [[thread_position_in_grid]]) {                                  \n\
     dst.write(src.read(pos, 0), pos);                                                                           \n\
+}                                                                                                               \n\
+                                                                                                                \n\
+kernel void cmdResolveColorImage2DIntArray(texture2d_array<int, access::write> dst [[ texture(0) ]],            \n\
+                                           texture2d_ms_array<int, access::read> src [[ texture(1) ]],          \n\
+                                           uint2 pos [[thread_position_in_grid]]) {                             \n\
+    for (uint i = 0u; i < src.get_array_size(); ++i) {                                                          \n\
+        dst.write(src.read(pos, i, 0), pos, i);                                                                 \n\
+    }                                                                                                           \n\
 }                                                                                                               \n\
                                                                                                                 \n\
 typedef struct {                                                                                                \n\

@@ -110,10 +110,10 @@ public:
 	id<MTLComputePipelineState> getCmdFillBufferMTLComputePipelineState();
 
 	/** Returns a MTLComputePipelineState for clearing an image. Currently only used for 2D linear images on Mac. */
-	id<MTLComputePipelineState> getCmdClearColorImageMTLComputePipelineState(MVKFormatType type);
+	id<MTLComputePipelineState> getCmdClearColorImageMTLComputePipelineState(MVKFormatType type, bool isTextureArray);
 
 	/** Returns a MTLComputePipelineState for resolving an image. */
-	id<MTLComputePipelineState> getCmdResolveColorImageMTLComputePipelineState(MVKFormatType type);
+	id<MTLComputePipelineState> getCmdResolveColorImageMTLComputePipelineState(MVKFormatType type, bool isTextureArray);
 
 	/** Returns a MTLComputePipelineState for decompressing a buffer into a 3D image. */
 	id<MTLComputePipelineState> getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needsTempBuff);
@@ -166,8 +166,10 @@ protected:
     id<MTLComputePipelineState> _mtlCopyBufferBytesComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlFillBufferComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlDrawIndirectPopulateIndexesComputePipelineState = nil;
-	id<MTLComputePipelineState> _mtlClearColorImageComputePipelineState[3] = {nil, nil, nil};
-	id<MTLComputePipelineState> _mtlResolveColorImageComputePipelineState[3] = {nil, nil, nil};
+	// 6 slots, first 3 for non array textures, last 3 for array textures
+	static constexpr uint32_t kColorImageCount = 6u;
+	id<MTLComputePipelineState> _mtlClearColorImageComputePipelineState[kColorImageCount] = {nil, nil, nil, nil, nil, nil};
+	id<MTLComputePipelineState> _mtlResolveColorImageComputePipelineState[kColorImageCount] = {nil, nil, nil, nil, nil, nil};
 	id<MTLComputePipelineState> _mtlCopyBufferToImage3DDecompressComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndirectConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndirectTessConvertBuffersComputePipelineState[2] = {nil, nil};
