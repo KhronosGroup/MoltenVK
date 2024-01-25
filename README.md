@@ -24,6 +24,9 @@ Table of Contents
 	- [Using MoltenVK Directly](#download)
 - [Fetching **MoltenVK** Source Code](#install)
 - [Building **MoltenVK**](#building)
+	- [Building from the Command Line](#command_line_build)
+	- [Hiding _Vulkan_ API Symbols](#hiding_vulkan_symbols)
+	- [Accessing _Metal_ Private API calls](#metal_private_api)
 - [Running **MoltenVK** Demo Applications](#demos)
 - [Using **MoltenVK** in Your Application](#using)
 - [**MoltenVK** and *Vulkan* Compliance](#compliance)
@@ -236,6 +239,7 @@ to the **MoltenVK** libraries and frameworks in the `Package/Latest` directory, 
 to test your app with either a **_Debug_** build, or a higher-performance **_Release_** build.
 
 
+<a name="command_line_build"></a>
 ### Building from the Command Line
 
 If you prefer to build **MoltenVK** from the command line, or to include the activity in a larger build script,
@@ -294,25 +298,35 @@ or
 
 ...etc.
 
-### Hiding Vulkan API Symbols
 
-You can optionally build **MoltenVK** with the Vulkan API static call symbols (`vk*`) hidden, to avoid 
+<a name="hiding_vulkan_symbols"></a>
+### Hiding _Vulkan_ API Symbols
+
+You can optionally build **MoltenVK** with the _Vulkan_ API static call symbols (`vk*`) hidden, to avoid 
 library linking conflicts when statically bound to a _Vulkan_ loader that also exports identical symbols.
 
 To do so, when building **MoltenVK**, set the build setting `MVK_HIDE_VULKAN_SYMBOLS=1`.
-This build setting can be set in the `MoltenVK.xcodeproj` *Xcode* project,
-or it can be included in any of the `make` build commands. For example:
-
-	make MVK_HIDE_VULKAN_SYMBOLS=1
-or
-
-	make macos MVK_HIDE_VULKAN_SYMBOLS=1
-
-...etc.
+This build setting can be set in the `MoltenVK.xcodeproj` *Xcode* project, or it can be 
+included in any of the `make` command-line build commands [mentioned above](#command_line_build).
 
 With `MVK_HIDE_VULKAN_SYMBOLS=1`, the _Vulkan_ `vkGetInstanceProcAddr()` call remains
 statically bound, to provide the application with the ability to retrieve the remaining
 _Vulkan_ API calls as function pointers.
+
+
+<a name="metal_private_api"></a>
+### Accessing _Metal_ Private API calls
+
+You can optionally build **MoltenVK** with access to private _Metal_ API calls.
+Doing so will allow **MoltenVK** to extend its functionality by using certain private _Metal_ 
+API calls, but it will also disqualify the app from being distributed via _Apple_ App Stores.
+
+To do so, when building **MoltenVK**, set the build setting `MVK_USE_METAL_PRIVATE_API=1`.
+This build setting can be set in the `MoltenVK.xcodeproj` *Xcode* project, or it can be 
+included in any of the `make` command-line build commands [mentioned above](#command_line_build).
+
+Functionality added with `MVK_USE_METAL_PRIVATE_API` enabled includes:
+- `VkPhysicalDeviceFeatures::wideLines`
 
 
 <a name="demos"></a>

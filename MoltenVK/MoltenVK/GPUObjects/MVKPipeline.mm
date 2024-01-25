@@ -311,6 +311,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 				cmdEncoder->_renderingState.setCullMode(_rasterInfo.cullMode, false);
 				cmdEncoder->_renderingState.setFrontFace(_rasterInfo.frontFace, false);
 				cmdEncoder->_renderingState.setPolygonMode(_rasterInfo.polygonMode, false);
+				cmdEncoder->_renderingState.setLineWidth(_rasterInfo.lineWidth, false);
 				cmdEncoder->_renderingState.setDepthBias(_rasterInfo);
 				cmdEncoder->_renderingState.setDepthClipEnable( !_rasterInfo.depthClampEnable, false );
 			}

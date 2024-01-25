@@ -322,6 +322,11 @@ void MVKRenderingCommandEncoderState::setPolygonMode(VkPolygonMode polygonMode, 
 	getContent(_isPolygonModePoint, isDynamic) = (polygonMode == VK_POLYGON_MODE_POINT);
 }
 
+void MVKRenderingCommandEncoderState::setLineWidth(float lineWidth, bool isDynamic) {
+	auto mtlLineWidth = lineWidth;
+	setMTLContent(LineWidth);
+}
+
 void MVKRenderingCommandEncoderState::setBlendConstants(float blendConstants[4], bool isDynamic) {
 	MVKColor32 mtlBlendConstants;
 	mvkCopy(mtlBlendConstants.float32, blendConstants, 4);
@@ -537,6 +542,13 @@ bool MVKRenderingCommandEncoderState::needsMetalRenderPassRestart() {
 
 #pragma mark Encoding
 
+#if MVK_USE_METAL_PRIVATE_API
+// An extension of the MTLRenderCommandEncoder protocol to declare the setLineWidth: method.
+@protocol MVKMTLRenderCommandEncoderLineWidth <MTLRenderCommandEncoder>
+-(void) setLineWidth: (float) width;
+@end
+#endif
+
 void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
 	if (stage != kMVKGraphicsStageRasterization) { return; }
 
@@ -549,6 +561,16 @@ void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
 		auto& bcFlt = getMTLContent(BlendConstants).float32;
 		[rendEnc setBlendColorRed: bcFlt[0] green: bcFlt[1] blue: bcFlt[2] alpha: bcFlt[3]];
 	}
+
+#if MVK_USE_METAL_PRIVATE_API
+	if (isDirty(LineWidth)) {
+		auto lineWidthRendEnc = (id<MVKMTLRenderCommandEncoderLineWidth>)rendEnc;
+		if ([lineWidthRendEnc respondsToSelector: @selector(setLineWidth:)]) {
+			[lineWidthRendEnc setLineWidth: getMTLContent(LineWidth)];
+		}
+	}
+#endif
+
 	if (isDirty(DepthBiasEnable) || isDirty(DepthBias)) {
 		if (getMTLContent(DepthBiasEnable)) {
 			auto& db = getMTLContent(DepthBias);
