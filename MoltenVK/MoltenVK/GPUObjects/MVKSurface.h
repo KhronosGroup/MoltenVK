@@ -87,6 +87,5 @@ protected:
 	CAMetalLayer* _mtlCAMetalLayer = nil;
 	MVKBlockObserver* _layerObserver = nil;
 	MVKSwapchain* _activeSwapchain = nullptr;
-	VkExtent2D _headlessExtent = {0xFFFFFFFF, 0xFFFFFFFF};
 };
 

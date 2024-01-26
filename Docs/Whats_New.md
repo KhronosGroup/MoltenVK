@@ -24,6 +24,8 @@ Released TBD
 - Ensure buffers available for buffer addresses in push constants.
 - Support `libMoltenVK.dylib` for _iOS Simulator_ architecture.
 - Restore support for _iOS Simulator_ destination in recent update to _Cube_ demo that uses dynamic-linking.
+- Don't update `currentExtent` of headless surface when swapchain attached.
+
 
 
 MoltenVK 1.2.7
