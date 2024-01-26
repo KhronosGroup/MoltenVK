@@ -1698,35 +1698,68 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 			break;
 	}
 
+	// Metal requires special handling when sampling depth/stencil textures in the following cases:
+	// 1. Sampling stencil from a depth/stencil format
+	// 2. Metal's undefined values for depth/stencil sample to vec4 conversion
+	if (mvkIsAnyFlagEnabled(aspectMask, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT) &&
+		mvkIsAnyFlagEnabled(_imageView->_usage, (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)))
+	{
+		// 1. Sampling stencil from a depth/stencil format
+		// To sample the stencil value from a depth/stencil format, Metal requires to drop the depth for the view format.
+		// Meaning that MTLPixelFormatDepth32Float_Stencil8 needs to be MTLPixelFormatX32_Stencil8 for the view according to spec:
+		// You can't directly read the stencil value of a texture with the MTLPixelFormatDepth32Float_Stencil8 format.
+		// To read stencil values from a texture with the MTLPixelFormatDepth32Float_Stencil8 format, create a texture view
+		// of that texture using the MTLPixelFormatX32_Stencil8 format, and sample the texture view instead.
+		if (aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+			if (_mtlPixFmt == MTLPixelFormatDepth32Float_Stencil8) {
+				_mtlPixFmt = MTLPixelFormatX32_Stencil8;
+			}
+#if MVK_MACOS
+			else if (_mtlPixFmt == MTLPixelFormatDepth24Unorm_Stencil8) {
+				_mtlPixFmt = MTLPixelFormatX24_Stencil8;
+			}
+#endif
+		}
+		
+		// 2. Metal's undefined values for depth/stencil sample to vec4 conversion
+		// Due to differences in Metal and Vulkan specification for sampling depth/stencil textures into vec4, we need to
+		// provide the correct mapping from Vulkan to Metal
+		// Metal states:
+		// "For a texture with depth or stencil pixel format (such as MTLPixelFormatDepth24Unorm_Stencil8 or MTLPixelFormatStencil8),
+		// the default value for an unspecified component is undefined." which means all values but R will be undefined.
+		// Vulkan states: https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#textures-conversion-to-rgba
+		// So we need to ensure that G and B are set to 0 and A to 1 for the swizzle in Metal
+		if (enableSwizzling()) {
+			if (_componentSwizzle.r == VK_COMPONENT_SWIZZLE_A) {
+				_componentSwizzle.r = VK_COMPONENT_SWIZZLE_ONE;
+			} else if (_componentSwizzle.r == VK_COMPONENT_SWIZZLE_G || _componentSwizzle.r == VK_COMPONENT_SWIZZLE_B) {
+				_componentSwizzle.r = VK_COMPONENT_SWIZZLE_ZERO;
+			}
+			if (_componentSwizzle.g == VK_COMPONENT_SWIZZLE_A) {
+				_componentSwizzle.g = VK_COMPONENT_SWIZZLE_ONE;
+			} else if (_componentSwizzle.g == VK_COMPONENT_SWIZZLE_G || _componentSwizzle.g == VK_COMPONENT_SWIZZLE_B || _componentSwizzle.g == VK_COMPONENT_SWIZZLE_IDENTITY) {
+				_componentSwizzle.g = VK_COMPONENT_SWIZZLE_ZERO;
+			}
+			if (_componentSwizzle.b == VK_COMPONENT_SWIZZLE_A) {
+				_componentSwizzle.b = VK_COMPONENT_SWIZZLE_ONE;
+			} else if (_componentSwizzle.b == VK_COMPONENT_SWIZZLE_G || _componentSwizzle.b == VK_COMPONENT_SWIZZLE_B || _componentSwizzle.b == VK_COMPONENT_SWIZZLE_IDENTITY) {
+				_componentSwizzle.b = VK_COMPONENT_SWIZZLE_ZERO;
+			}
+			if (_componentSwizzle.a == VK_COMPONENT_SWIZZLE_A || _componentSwizzle.a == VK_COMPONENT_SWIZZLE_IDENTITY) {
+				_componentSwizzle.a = VK_COMPONENT_SWIZZLE_ONE;
+			} else if (_componentSwizzle.a == VK_COMPONENT_SWIZZLE_G || _componentSwizzle.a == VK_COMPONENT_SWIZZLE_B ) {
+				_componentSwizzle.a = VK_COMPONENT_SWIZZLE_ZERO;
+			}
+			
+			return VK_SUCCESS;
+		}
+	}
+
 #define SWIZZLE_MATCHES(R, G, B, A)    mvkVkComponentMappingsMatch(_componentSwizzle, {VK_COMPONENT_SWIZZLE_ ##R, VK_COMPONENT_SWIZZLE_ ##G, VK_COMPONENT_SWIZZLE_ ##B, VK_COMPONENT_SWIZZLE_ ##A} )
 #define VK_COMPONENT_SWIZZLE_ANY       VK_COMPONENT_SWIZZLE_MAX_ENUM
 
 	// If we have an identity swizzle, we're all good.
 	if (SWIZZLE_MATCHES(R, G, B, A)) {
-
-		// Identity swizzles of depth/stencil formats can require special handling.
-		if (mvkIsAnyFlagEnabled(_imageView->_usage, (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
-
-			// If only stencil aspect is requested, possibly change to stencil-only format.
-			if (aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
-				if (_mtlPixFmt == MTLPixelFormatDepth32Float_Stencil8) {
-					_mtlPixFmt = MTLPixelFormatX32_Stencil8;
-				}
-#if MVK_MACOS
-				else if (_mtlPixFmt == MTLPixelFormatDepth24Unorm_Stencil8) {
-					_mtlPixFmt = MTLPixelFormatX24_Stencil8;
-				}
-#endif
-			}
-
-			// When reading or sampling into a vec4 color, Vulkan expects the depth or stencil value in only the red component.
-			// Metal can be inconsistent, but on most platforms populates all components with the depth or stencil value.
-			// If swizzling is available, we can compensate for this by forcing the appropriate swizzle.
-			if (mvkIsAnyFlagEnabled(aspectMask, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT) && enableSwizzling()) {
-				_componentSwizzle = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ONE };
-			}
-		}
-
 		return VK_SUCCESS;
 	}
 
@@ -1838,26 +1871,16 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 			}
 			break;
 
-		case MTLPixelFormatDepth32Float_Stencil8:
-			// If aspect mask looking only for stencil then change to stencil-only format even if shader swizzling is needed
-			if (aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT &&
-				mvkIsAnyFlagEnabled(_imageView->_usage, (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
-				_mtlPixFmt = MTLPixelFormatX32_Stencil8;
-				if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
-					return VK_SUCCESS;
-				}
+		case MTLPixelFormatX32_Stencil8:
+			if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
+				return VK_SUCCESS;
 			}
 			break;
 
 #if MVK_MACOS
-		case MTLPixelFormatDepth24Unorm_Stencil8:
-			// If aspect mask looking only for stencil then change to stencil-only format even if shader swizzling is needed
-			if (aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT &&
-				mvkIsAnyFlagEnabled(_imageView->_usage, (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
-				_mtlPixFmt = MTLPixelFormatX24_Stencil8;
-				if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
-					return VK_SUCCESS;
-				}
+		case MTLPixelFormatX24_Stencil8:
+			if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
+				return VK_SUCCESS;
 			}
 			break;
 #endif
