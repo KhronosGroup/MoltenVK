@@ -2341,6 +2341,7 @@ void MVKPhysicalDevice::initFeatures() {
     _features.depthBiasClamp = true;
     _features.fillModeNonSolid = true;
     _features.largePoints = true;
+	_features.wideLines = bool(MVK_USE_METAL_PRIVATE_API);
     _features.alphaToOne = true;
     _features.samplerAnisotropy = true;
     _features.shaderImageGatherExtended = true;
@@ -2761,8 +2762,8 @@ void MVKPhysicalDevice::initLimits() {
 
     _properties.limits.pointSizeGranularity = 1;
     _properties.limits.lineWidthRange[0] = 1;
-    _properties.limits.lineWidthRange[1] = 1;
-    _properties.limits.lineWidthGranularity = 0;
+    _properties.limits.lineWidthRange[1] = _features.wideLines ? 8 : 1;
+    _properties.limits.lineWidthGranularity = _features.wideLines ? 0.125f : 0;
 
     _properties.limits.standardSampleLocations = VK_TRUE;
     _properties.limits.strictLines = _properties.vendorID == kIntelVendorId || _properties.vendorID == kNVVendorId;

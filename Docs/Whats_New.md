@@ -18,6 +18,8 @@ MoltenVK 1.2.8
 
 Released TBD
 
+- Add `MVK_USE_METAL_PRIVATE_API` build setting to allow **MoltenVK** to be built with access to _Metal_ private API calls.
+- Add support for `VkPhysicalDeviceFeatures::wideLines` feature when `MVK_USE_METAL_PRIVATE_API` is enabled in a **MoltenVK** build.
 - Fix potential crash when using multi-planar images.
 - Ensure buffers available for buffer addresses in push constants.
 - Support `libMoltenVK.dylib` for _iOS Simulator_ architecture.

@@ -263,6 +263,8 @@ public:
 
 	void setPolygonMode(VkPolygonMode polygonMode, bool isDynamic);
 
+	void setLineWidth(float lineWidth, bool isDynamic);
+
 	void setBlendConstants(float blendConstants[4], bool isDynamic);
 
 	void setDepthBias(const VkPipelineRasterizationStateCreateInfo& vkRasterInfo);
@@ -322,7 +324,8 @@ protected:
 	MTLPrimitiveType _mtlPrimitiveTopology[StateScope::Count] = { MTLPrimitiveTypePoint, MTLPrimitiveTypePoint };
 	MTLDepthClipMode _mtlDepthClipEnable[StateScope::Count] = { MTLDepthClipModeClip, MTLDepthClipModeClip };
 	MTLTriangleFillMode _mtlPolygonMode[StateScope::Count] = { MTLTriangleFillModeFill, MTLTriangleFillModeFill };
-	uint32_t _mtlPatchControlPoints[StateScope::Count] = {};
+	float _mtlLineWidth[StateScope::Count] = { 1, 1 };
+	uint32_t _mtlPatchControlPoints[StateScope::Count] = { 0, 0 };
 	MVKRenderStateFlags _dirtyStates;
 	MVKRenderStateFlags _modifiedStates;
 	bool _mtlSampleLocationsEnable[StateScope::Count] = {};
