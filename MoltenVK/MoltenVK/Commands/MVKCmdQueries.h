@@ -44,7 +44,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdBeginQuery
 
-/** Vulkan command to begin a query. */
 class MVKCmdBeginQuery : public MVKCmdQuery {
 
 public:
@@ -65,7 +64,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdEndQuery
 
-/** Vulkan command to end a query. */
 class MVKCmdEndQuery : public MVKCmdQuery {
 
 public:
@@ -80,7 +78,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdWriteTimestamp
 
-/** Vulkan command to write a timestamp. */
 class MVKCmdWriteTimestamp : public MVKCmdQuery {
 
 public:
@@ -101,7 +98,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdResetQueryPool
 
-/** Vulkan command to reset the results in a query pool. */
 class MVKCmdResetQueryPool : public MVKCmdQuery {
 
 public:
@@ -122,7 +118,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdCopyQueryPoolResults
 
-/** Vulkan command to reset the results in a query pool. */
 class MVKCmdCopyQueryPoolResults : public MVKCmdQuery {
 
 public:

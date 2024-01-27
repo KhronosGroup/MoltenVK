@@ -76,3 +76,21 @@ protected:
 	virtual MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) = 0;
 };
 
+
+#pragma mark -
+#pragma mark MVKSingleValueCommand
+
+/** Abstract class of a simple Vulkan command that simply holds a single value to encode. */
+template <typename Tv>
+class MVKSingleValueCommand : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff, Tv value) {
+		_value = value;
+		return VK_SUCCESS;
+	}
+
+protected:
+	Tv _value;
+};
+

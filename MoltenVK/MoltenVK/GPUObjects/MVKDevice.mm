@@ -2341,7 +2341,7 @@ void MVKPhysicalDevice::initFeatures() {
     _features.depthBiasClamp = true;
     _features.fillModeNonSolid = true;
     _features.largePoints = true;
-	_features.wideLines = bool(MVK_USE_METAL_PRIVATE_API);
+	_features.wideLines = static_cast<bool>(MVK_USE_METAL_PRIVATE_API);
     _features.alphaToOne = true;
     _features.samplerAnisotropy = true;
     _features.shaderImageGatherExtended = true;

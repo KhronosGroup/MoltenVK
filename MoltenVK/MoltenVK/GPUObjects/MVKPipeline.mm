@@ -505,10 +505,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 
 	// Blending - must ignore allowed bad pColorBlendState pointer if rasterization disabled or no color attachments
 	if (_isRasterizingColor && pCreateInfo->pColorBlendState) {
-		mvkCopy(_blendConstants, pCreateInfo->pColorBlendState->blendConstants, 4);
-	} else {
-		static float defaultBlendConstants[4] = { 0, 0.0, 0.0, 1.0 };
-		mvkCopy(_blendConstants, defaultBlendConstants, 4);
+		mvkCopy(_blendConstants.float32, pCreateInfo->pColorBlendState->blendConstants, 4);
 	}
 
 	// Topology
