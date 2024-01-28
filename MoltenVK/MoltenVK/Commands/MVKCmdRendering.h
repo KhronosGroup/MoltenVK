@@ -608,6 +608,25 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKCmdSetLineWidth
+
+/** Vulkan command to dynamically set the line width. */
+class MVKCmdSetLineWidth : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						float lineWidth);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	float _lineWidth;
+};
+
+
+#pragma mark -
 #pragma mark MVKCmdSetPrimitiveTopology
 
 /** Vulkan command to dynamically set the primitive topology. */

@@ -148,7 +148,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 
 	cmdEncoder->restartMetalRenderPassIfNeeded();
 
-	auto* pipeline = cmdEncoder->_graphicsPipelineState.getGraphicsPipeline();
+	auto* pipeline = cmdEncoder->getGraphicsPipeline();
 
 	// Metal doesn't support triangle fans, so encode it as triangles via an indexed indirect triangles command instead.
 	if (pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
@@ -372,7 +372,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 
 	cmdEncoder->restartMetalRenderPassIfNeeded();
 
-	auto* pipeline = cmdEncoder->_graphicsPipelineState.getGraphicsPipeline();
+	auto* pipeline = cmdEncoder->getGraphicsPipeline();
 
 	// Metal doesn't support triangle fans, so encode it as triangles via an indexed indirect triangles command instead.
 	if (pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
@@ -649,7 +649,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 
 	cmdEncoder->restartMetalRenderPassIfNeeded();
 
-	auto* pipeline = cmdEncoder->_graphicsPipelineState.getGraphicsPipeline();
+	auto* pipeline = cmdEncoder->getGraphicsPipeline();
 
 	// Metal doesn't support triangle fans, so encode it as indexed indirect triangles instead.
 	if (pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
@@ -1000,7 +1000,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 
     MVKIndexMTLBufferBinding ibb = ibbOrig;
 	MVKIndexMTLBufferBinding ibbTriFan = ibb;
-    auto* pipeline = cmdEncoder->_graphicsPipelineState.getGraphicsPipeline();
+    auto* pipeline = cmdEncoder->getGraphicsPipeline();
 
 	MVKVertexAdjustments vtxAdjmts;
 	vtxAdjmts.mtlIndexType = ibb.mtlIndexType;

@@ -53,6 +53,7 @@ MVK_DEVICE_FEATURE(SeparateDepthStencilLayouts,       SEPARATE_DEPTH_STENCIL_LAY
 MVK_DEVICE_FEATURE(ShaderDrawParameters,              SHADER_DRAW_PARAMETERS,                 1)
 MVK_DEVICE_FEATURE(ShaderAtomicInt64,                 SHADER_ATOMIC_INT64,                    2)
 MVK_DEVICE_FEATURE(ShaderFloat16Int8,                 SHADER_FLOAT16_INT8,                    2)
+MVK_DEVICE_FEATURE(ShaderIntegerDotProduct,           SHADER_INTEGER_DOT_PRODUCT,             1)
 MVK_DEVICE_FEATURE(ShaderSubgroupExtendedTypes,       SHADER_SUBGROUP_EXTENDED_TYPES,         1)
 MVK_DEVICE_FEATURE(SubgroupSizeControl,               SUBGROUP_SIZE_CONTROL,                  2)
 MVK_DEVICE_FEATURE(Synchronization2,                  SYNCHRONIZATION_2,                      1)

@@ -311,6 +311,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 				cmdEncoder->_renderingState.setCullMode(_rasterInfo.cullMode, false);
 				cmdEncoder->_renderingState.setFrontFace(_rasterInfo.frontFace, false);
 				cmdEncoder->_renderingState.setPolygonMode(_rasterInfo.polygonMode, false);
+				cmdEncoder->_renderingState.setLineWidth(_rasterInfo.lineWidth, false);
 				cmdEncoder->_renderingState.setDepthBias(_rasterInfo);
 				cmdEncoder->_renderingState.setDepthClipEnable( !_rasterInfo.depthClampEnable, false);
 			}
@@ -1491,7 +1492,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 					vbXltdDesc.stride = vbDesc.stride;
 					vbXltdDesc.stepFunction = vbDesc.stepFunction;
 					vbXltdDesc.stepRate = vbDesc.stepRate;
-					xldtVACnt++;
+					xldtVACnt += xltdBind.mappedAttributeCount;
 				}
 			}
 
@@ -1533,13 +1534,14 @@ uint32_t MVKGraphicsPipeline::getTranslatedVertexBinding(uint32_t binding, uint3
 	// See if a translated binding already exists (for example if more than one VA needs the same translation).
 	for (auto& xltdBind : _translatedVertexBindings) {
 		if (xltdBind.binding == binding && xltdBind.translationOffset == translationOffset) {
+			xltdBind.mappedAttributeCount++;
 			return xltdBind.translationBinding;
 		}
 	}
 
 	// Get next available binding point and add a translation binding description for it
 	uint16_t xltdBindPt = (uint16_t)(maxBinding + _translatedVertexBindings.size() + 1);
-	_translatedVertexBindings.push_back( {.binding = (uint16_t)binding, .translationBinding = xltdBindPt, .translationOffset = translationOffset} );
+	_translatedVertexBindings.push_back( {.binding = (uint16_t)binding, .translationBinding = xltdBindPt, .translationOffset = translationOffset, .mappedAttributeCount = 1u} );
 
 	return xltdBindPt;
 }

@@ -523,22 +523,23 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdFillBufferMTLComput
 }
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdClearColorImageMTLComputePipelineState(MVKFormatType type,
-					MVKVulkanAPIDeviceObject* owner) {
+					MVKVulkanAPIDeviceObject* owner,
+					bool isTextureArray) {
 	const char* funcName;
 	switch (type) {
 		case kMVKFormatColorHalf:
 		case kMVKFormatColorFloat:
-			funcName = "cmdClearColorImage2DFloat";
+			funcName = isTextureArray ? "cmdClearColorImage2DFloatArray" : "cmdClearColorImage2DFloat";
 			break;
 		case kMVKFormatColorInt8:
 		case kMVKFormatColorInt16:
 		case kMVKFormatColorInt32:
-			funcName = "cmdClearColorImage2DInt";
+			funcName = isTextureArray ? "cmdClearColorImage2DIntArray" : "cmdClearColorImage2DInt";
 			break;
 		case kMVKFormatColorUInt8:
 		case kMVKFormatColorUInt16:
 		case kMVKFormatColorUInt32:
-			funcName = "cmdClearColorImage2DUInt";
+			funcName = isTextureArray ? "cmdClearColorImage2DUIntArray" : "cmdClearColorImage2DUInt";
 			break;
 		default:
 			owner->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "Format type %u is not supported for clearing with a compute shader.", type);
@@ -548,22 +549,23 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdClearColorImageMTLC
 }
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdResolveColorImageMTLComputePipelineState(MVKFormatType type,
-																									  MVKVulkanAPIDeviceObject* owner) {
+																									  MVKVulkanAPIDeviceObject* owner,
+																									  bool isTextureArray) {
 	const char* funcName;
 	switch (type) {
 		case kMVKFormatColorHalf:
 		case kMVKFormatColorFloat:
-			funcName = "cmdResolveColorImage2DFloat";
+			funcName = isTextureArray ? "cmdResolveColorImage2DFloatArray" : "cmdResolveColorImage2DFloat";
 			break;
 		case kMVKFormatColorInt8:
 		case kMVKFormatColorInt16:
 		case kMVKFormatColorInt32:
-			funcName = "cmdResolveColorImage2DInt";
+			funcName = isTextureArray ? "cmdResolveColorImage2DIntArray" : "cmdResolveColorImage2DInt";
 			break;
 		case kMVKFormatColorUInt8:
 		case kMVKFormatColorUInt16:
 		case kMVKFormatColorUInt32:
-			funcName = "cmdResolveColorImage2DUInt";
+			funcName = isTextureArray ? "cmdResolveColorImage2DUIntArray" : "cmdResolveColorImage2DUInt";
 			break;
 		default:
 			owner->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "Format type %u is not supported for resolving with a compute shader.", type);

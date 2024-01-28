@@ -36,7 +36,7 @@ MVKVulkanAPIObject* MVKCommandEncoderState::getVulkanAPIObject() { return _cmdEn
 MVKDevice* MVKCommandEncoderState::getDevice() { return _cmdEncoder->getDevice(); }
 
 bool MVKCommandEncoderState::isDynamicState(MVKRenderStateType state) {
-	auto* gpl = _cmdEncoder->_graphicsPipelineState.getGraphicsPipeline();
+	auto* gpl = _cmdEncoder->getGraphicsPipeline();
 	return !gpl || gpl->isDynamicState(state);
 }
 
@@ -100,12 +100,14 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                                              _pushConstants.data(),
                                              _pushConstants.size(),
                                              _mtlBufferIndex, true);
+				_cmdEncoder->_gpuAddressableBuffersState.useGPUAddressableBuffersInStage(kMVKShaderStageVertex);
 				_isDirty = false;	// Okay, I changed the encoder
 			} else if (!isTessellating() && stage == kMVKGraphicsStageRasterization) {
                 _cmdEncoder->setVertexBytes(_cmdEncoder->_mtlRenderEncoder,
                                             _pushConstants.data(),
                                             _pushConstants.size(),
                                             _mtlBufferIndex, true);
+				_cmdEncoder->_gpuAddressableBuffersState.useGPUAddressableBuffersInStage(kMVKShaderStageVertex);
 				_isDirty = false;	// Okay, I changed the encoder
             }
             break;
@@ -115,6 +117,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                                              _pushConstants.data(),
                                              _pushConstants.size(),
                                              _mtlBufferIndex, true);
+				_cmdEncoder->_gpuAddressableBuffersState.useGPUAddressableBuffersInStage(kMVKShaderStageTessCtl);
 				_isDirty = false;	// Okay, I changed the encoder
             }
             break;
@@ -124,6 +127,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                                             _pushConstants.data(),
                                             _pushConstants.size(),
                                             _mtlBufferIndex, true);
+				_cmdEncoder->_gpuAddressableBuffersState.useGPUAddressableBuffersInStage(kMVKShaderStageTessEval);
 				_isDirty = false;	// Okay, I changed the encoder
             }
             break;
@@ -133,6 +137,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                                               _pushConstants.data(),
                                               _pushConstants.size(),
                                               _mtlBufferIndex, true);
+				_cmdEncoder->_gpuAddressableBuffersState.useGPUAddressableBuffersInStage(kMVKShaderStageFragment);
 				_isDirty = false;	// Okay, I changed the encoder
             }
             break;
@@ -141,6 +146,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                                          _pushConstants.data(),
                                          _pushConstants.size(),
                                          _mtlBufferIndex, true);
+			_cmdEncoder->_gpuAddressableBuffersState.useGPUAddressableBuffersInStage(kMVKShaderStageCompute);
 			_isDirty = false;	// Okay, I changed the encoder
             break;
         default:
@@ -150,7 +156,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
 }
 
 bool MVKPushConstantsCommandEncoderState::isTessellating() {
-	auto* gp = _cmdEncoder->_graphicsPipelineState.getGraphicsPipeline();
+	auto* gp = _cmdEncoder->getGraphicsPipeline();
 	return gp ? gp->isTessellationPipeline() : false;
 }
 
@@ -314,6 +320,11 @@ void MVKRenderingCommandEncoderState::setPolygonMode(VkPolygonMode polygonMode, 
 	auto mtlPolygonMode = mvkMTLTriangleFillModeFromVkPolygonMode(polygonMode);
 	setMTLContent(PolygonMode);
 	getContent(_isPolygonModePoint, isDynamic) = (polygonMode == VK_POLYGON_MODE_POINT);
+}
+
+void MVKRenderingCommandEncoderState::setLineWidth(float lineWidth, bool isDynamic) {
+	auto mtlLineWidth = lineWidth;
+	setMTLContent(LineWidth);
 }
 
 void MVKRenderingCommandEncoderState::setBlendConstants(float blendConstants[4], bool isDynamic) {
@@ -531,6 +542,13 @@ bool MVKRenderingCommandEncoderState::needsMetalRenderPassRestart() {
 
 #pragma mark Encoding
 
+#if MVK_USE_METAL_PRIVATE_API
+// An extension of the MTLRenderCommandEncoder protocol to declare the setLineWidth: method.
+@protocol MVKMTLRenderCommandEncoderLineWidth <MTLRenderCommandEncoder>
+-(void) setLineWidth: (float) width;
+@end
+#endif
+
 void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
 	if (stage != kMVKGraphicsStageRasterization) { return; }
 
@@ -543,6 +561,16 @@ void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
 		auto& bcFlt = getMTLContent(BlendConstants).float32;
 		[rendEnc setBlendColorRed: bcFlt[0] green: bcFlt[1] blue: bcFlt[2] alpha: bcFlt[3]];
 	}
+
+#if MVK_USE_METAL_PRIVATE_API
+	if (isDirty(LineWidth)) {
+		auto lineWidthRendEnc = (id<MVKMTLRenderCommandEncoderLineWidth>)rendEnc;
+		if ([lineWidthRendEnc respondsToSelector: @selector(setLineWidth:)]) {
+			[lineWidthRendEnc setLineWidth: getMTLContent(LineWidth)];
+		}
+	}
+#endif
+
 	if (isDirty(DepthBiasEnable) || isDirty(DepthBias)) {
 		if (getMTLContent(DepthBiasEnable)) {
 			auto& db = getMTLContent(DepthBias);
@@ -835,11 +863,6 @@ void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stag
 
 	encodeMetalArgumentBuffer(stage);
 
-	MVKPipeline* pipeline = getPipeline();
-	if (pipeline && pipeline->usesPhysicalStorageBufferAddressesCapability(stage)) {
-		getDevice()->encodeGPUAddressableBuffers(this, stage);
-	}
-
     auto& shaderStage = _shaderStageResourceBindings[stage];
 
     if (shaderStage.swizzleBufferBinding.isDirty) {
@@ -873,9 +896,15 @@ void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stag
         bindImplicitBuffer(_cmdEncoder, shaderStage.viewRangeBufferBinding, viewRange.contents());
     }
 
+	bool wereBufferBindingsDirty = shaderStage.areBufferBindingsDirty;
     encodeBinding<MVKMTLBufferBinding>(shaderStage.bufferBindings, shaderStage.areBufferBindingsDirty, bindBuffer);
     encodeBinding<MVKMTLTextureBinding>(shaderStage.textureBindings, shaderStage.areTextureBindingsDirty, bindTexture);
     encodeBinding<MVKMTLSamplerStateBinding>(shaderStage.samplerStateBindings, shaderStage.areSamplerStateBindingsDirty, bindSampler);
+
+	// If any buffers have been bound, mark the GPU addressable buffers as needed.
+	if (wereBufferBindingsDirty && !shaderStage.areBufferBindingsDirty ) {
+		_cmdEncoder->_gpuAddressableBuffersState.useGPUAddressableBuffersInStage(MVKShaderStage(stage));
+	}
 }
 
 void MVKGraphicsResourcesCommandEncoderState::offsetZeroDivisorVertexBuffers(MVKGraphicsStage stage,
@@ -923,7 +952,7 @@ static const NSUInteger MTLAttributeStrideStatic = NSUIntegerMax;
 
 void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 
-	auto* pipeline = _cmdEncoder->_graphicsPipelineState.getGraphicsPipeline();
+	auto* pipeline = _cmdEncoder->getGraphicsPipeline();
     bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle() || getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     bool forTessellation = pipeline->isTessellationPipeline();
 	bool isDynamicVertexStride = pipeline->isDynamicState(VertexStride);
@@ -1181,11 +1210,6 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
 
 	encodeMetalArgumentBuffer(kMVKShaderStageCompute);
 
-	MVKPipeline* pipeline = getPipeline();
-	if (pipeline && pipeline->usesPhysicalStorageBufferAddressesCapability(kMVKShaderStageCompute)) {
-		getDevice()->encodeGPUAddressableBuffers(this, kMVKShaderStageCompute);
-	}
-
     if (_resourceBindings.swizzleBufferBinding.isDirty) {
 		for (auto& b : _resourceBindings.textureBindings) {
 			if (b.isDirty) { updateImplicitBuffer(_resourceBindings.swizzleConstants, b.index, b.swizzle); }
@@ -1197,6 +1221,7 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
                                      _resourceBindings.swizzleBufferBinding.index);
 
 	} else {
+		MVKPipeline* pipeline = getPipeline();
 		bool fullImageViewSwizzle = pipeline ? pipeline->fullImageViewSwizzle() : false;
 		assertMissingSwizzles(_resourceBindings.needsSwizzle && !fullImageViewSwizzle, "compute", _resourceBindings.textureBindings.contents());
     }
@@ -1221,6 +1246,7 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
 
 	}
 
+	bool wereBufferBindingsDirty = _resourceBindings.areBufferBindingsDirty;
 	encodeBinding<MVKMTLBufferBinding>(_resourceBindings.bufferBindings, _resourceBindings.areBufferBindingsDirty,
 									   [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
 		if (b.isInline) {
@@ -1251,6 +1277,11 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
                                                  [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setSamplerState: b.mtlSamplerState
 																												   atIndex: b.index];
                                              });
+
+	// If any buffers have been bound, mark the GPU addressable buffers as needed.
+	if (wereBufferBindingsDirty && !_resourceBindings.areBufferBindingsDirty ) {
+		_cmdEncoder->_gpuAddressableBuffersState.useGPUAddressableBuffersInStage(kMVKShaderStageCompute);
+	}
 }
 
 MVKPipeline* MVKComputeResourcesCommandEncoderState::getPipeline() {
@@ -1277,6 +1308,34 @@ void MVKComputeResourcesCommandEncoderState::markBufferIndexOverridden(uint32_t 
 
 void MVKComputeResourcesCommandEncoderState::markOverriddenBufferIndexesDirty() {
 	MVKResourcesCommandEncoderState::markOverriddenBufferIndexesDirty(_resourceBindings.bufferBindings, _resourceBindings.areBufferBindingsDirty);
+}
+
+
+#pragma mark -
+#pragma mark MVKGPUAddressableBuffersCommandEncoderState
+
+void MVKGPUAddressableBuffersCommandEncoderState::useGPUAddressableBuffersInStage(MVKShaderStage shaderStage) {
+	MVKPipeline* pipeline = (shaderStage == kMVKShaderStageCompute
+							 ? (MVKPipeline*)_cmdEncoder->getComputePipeline()
+							 : (MVKPipeline*)_cmdEncoder->getGraphicsPipeline());
+	if (pipeline && pipeline->usesPhysicalStorageBufferAddressesCapability(shaderStage)) {
+		_usageStages[shaderStage] = true;
+		markDirty();
+	}
+}
+
+void MVKGPUAddressableBuffersCommandEncoderState::encodeImpl(uint32_t stage) {
+	auto* mvkDev = getDevice();
+	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
+		MVKShaderStage shaderStage = MVKShaderStage(i);
+		if (_usageStages[shaderStage]) {
+			MVKResourcesCommandEncoderState* rezEncState = (shaderStage == kMVKShaderStageCompute
+															? (MVKResourcesCommandEncoderState*)&_cmdEncoder->_computeResourcesState
+															: (MVKResourcesCommandEncoderState*)&_cmdEncoder->_graphicsResourcesState);
+			mvkDev->encodeGPUAddressableBuffers(rezEncState, shaderStage);
+		}
+	}
+	mvkClear(_usageStages);
 }
 
 

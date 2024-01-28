@@ -513,6 +513,20 @@ void MVKCmdSetPolygonMode::encode(MVKCommandEncoder* cmdEncoder) {
 
 
 #pragma mark -
+#pragma mark MVKCmdSetLineWidth
+
+VkResult MVKCmdSetLineWidth::setContent(MVKCommandBuffer* cmdBuff,
+										float lineWidth) {
+	_lineWidth = lineWidth;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetLineWidth::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_renderingState.setLineWidth(_lineWidth, true);
+}
+
+
+#pragma mark -
 #pragma mark MVKCmdSetPrimitiveTopology
 
 VkResult MVKCmdSetPrimitiveTopology::setContent(MVKCommandBuffer* cmdBuff,

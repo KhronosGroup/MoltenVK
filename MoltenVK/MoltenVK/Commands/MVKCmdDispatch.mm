@@ -46,7 +46,7 @@ void MVKCmdDispatch::encode(MVKCommandEncoder* cmdEncoder) {
 	MTLRegion mtlThreadgroupCount = MTLRegionMake3D(_baseGroupX, _baseGroupY, _baseGroupZ, _groupCountX, _groupCountY, _groupCountZ);
 	cmdEncoder->finalizeDispatchState();	// Ensure all updated state has been submitted to Metal
 	id<MTLComputeCommandEncoder> mtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch);
-	auto* pipeline = cmdEncoder->_computePipelineState.getComputePipeline();
+	auto* pipeline = cmdEncoder->getComputePipeline();
 	if (pipeline->allowsDispatchBase()) {
 		if ([mtlEncoder respondsToSelector: @selector(setStageInRegion:)]) {
 			// We'll use the stage-input region to pass the base along to the shader.

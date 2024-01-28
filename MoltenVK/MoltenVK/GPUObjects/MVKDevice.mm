@@ -153,7 +153,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 		.separateDepthStencilLayouts = true,
 		.hostQueryReset = true,
 		.timelineSemaphore = true,
-		.bufferDeviceAddress = mvkOSVersionIsAtLeast(12.05, 16.0, 1.0),
+		.bufferDeviceAddress = mvkOSVersionIsAtLeast(13.0, 16.0, 1.0),
 		.bufferDeviceAddressCaptureReplay = false,
 		.bufferDeviceAddressMultiDevice = false,
 		.vulkanMemoryModel = false,
@@ -373,6 +373,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->tessellationPointMode = false;
 				portabilityFeatures->triangleFans = true;
 				portabilityFeatures->vertexAttributeAccessBeyondStride = true;	// Costs additional buffers. Should make configuration switch.
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_FEATURES: {
+				auto* shaderIntDotFeatures = (VkPhysicalDeviceShaderIntegerDotProductFeatures*)next;
+				shaderIntDotFeatures->shaderIntegerDotProduct = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
@@ -752,6 +757,40 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 barycentricProperties->triStripVertexOrderIndependentOfProvokingVertex = false;
                 break;
             }
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_PROPERTIES: {
+				auto* shaderIntDotProperties = (VkPhysicalDeviceShaderIntegerDotProductProperties*)next;
+				shaderIntDotProperties->integerDotProduct8BitUnsignedAccelerated = false;
+				shaderIntDotProperties->integerDotProduct8BitSignedAccelerated = false;
+				shaderIntDotProperties->integerDotProduct8BitMixedSignednessAccelerated = false;
+				shaderIntDotProperties->integerDotProduct4x8BitPackedUnsignedAccelerated = false;
+				shaderIntDotProperties->integerDotProduct4x8BitPackedSignedAccelerated = false;
+				shaderIntDotProperties->integerDotProduct4x8BitPackedMixedSignednessAccelerated = false;
+				shaderIntDotProperties->integerDotProduct16BitUnsignedAccelerated = false;
+				shaderIntDotProperties->integerDotProduct16BitSignedAccelerated = false;
+				shaderIntDotProperties->integerDotProduct16BitMixedSignednessAccelerated = false;
+				shaderIntDotProperties->integerDotProduct32BitUnsignedAccelerated = false;
+				shaderIntDotProperties->integerDotProduct32BitSignedAccelerated = false;
+				shaderIntDotProperties->integerDotProduct32BitMixedSignednessAccelerated = false;
+				shaderIntDotProperties->integerDotProduct64BitUnsignedAccelerated = false;
+				shaderIntDotProperties->integerDotProduct64BitSignedAccelerated = false;
+				shaderIntDotProperties->integerDotProduct64BitMixedSignednessAccelerated = false;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating8BitUnsignedAccelerated = false;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating8BitSignedAccelerated = false;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating8BitMixedSignednessAccelerated = false;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating4x8BitPackedUnsignedAccelerated = false;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating4x8BitPackedSignedAccelerated = false;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating4x8BitPackedMixedSignednessAccelerated = false;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating16BitUnsignedAccelerated = false;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating16BitSignedAccelerated = false;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating16BitMixedSignednessAccelerated = false;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating32BitUnsignedAccelerated = false;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating32BitSignedAccelerated = false;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating32BitMixedSignednessAccelerated = false;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating64BitUnsignedAccelerated = false;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating64BitSignedAccelerated = false;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating64BitMixedSignednessAccelerated = false;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
 				auto* pushDescProps = (VkPhysicalDevicePushDescriptorPropertiesKHR*)next;
 				pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;
@@ -2302,6 +2341,7 @@ void MVKPhysicalDevice::initFeatures() {
     _features.depthBiasClamp = true;
     _features.fillModeNonSolid = true;
     _features.largePoints = true;
+	_features.wideLines = bool(MVK_USE_METAL_PRIVATE_API);
     _features.alphaToOne = true;
     _features.samplerAnisotropy = true;
     _features.shaderImageGatherExtended = true;
@@ -2722,8 +2762,8 @@ void MVKPhysicalDevice::initLimits() {
 
     _properties.limits.pointSizeGranularity = 1;
     _properties.limits.lineWidthRange[0] = 1;
-    _properties.limits.lineWidthRange[1] = 1;
-    _properties.limits.lineWidthGranularity = 0;
+    _properties.limits.lineWidthRange[1] = _features.wideLines ? 8 : 1;
+    _properties.limits.lineWidthGranularity = _features.wideLines ? 0.125f : 0;
 
     _properties.limits.standardSampleLocations = VK_TRUE;
     _properties.limits.strictLines = _properties.vendorID == kIntelVendorId || _properties.vendorID == kNVVendorId;
