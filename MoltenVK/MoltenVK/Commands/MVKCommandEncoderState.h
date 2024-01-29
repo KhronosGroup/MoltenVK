@@ -265,7 +265,7 @@ public:
 
 	void setLineWidth(float lineWidth, bool isDynamic);
 
-	void setBlendConstants(float blendConstants[4], bool isDynamic);
+	void setBlendConstants(MVKColor32 blendConstants, bool isDynamic);
 
 	void setDepthBias(const VkPipelineRasterizationStateCreateInfo& vkRasterInfo);
 	void setDepthBias(float depthBiasConstantFactor, float depthBiasSlopeFactor, float depthBiasClamp);

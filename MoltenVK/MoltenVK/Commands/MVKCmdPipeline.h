@@ -119,7 +119,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdBindGraphicsPipeline
 
-/** Vulkan command to bind a graphics pipeline. */
 class MVKCmdBindGraphicsPipeline : public MVKCmdBindPipeline {
 
 public:
@@ -136,7 +135,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdBindComputePipeline
 
-/** Vulkan command to bind a compute pipeline. */
 class MVKCmdBindComputePipeline : public MVKCmdBindPipeline {
 
 public:
@@ -256,7 +254,6 @@ typedef MVKCmdPushConstants<512> MVKCmdPushConstantsMulti;
 #pragma mark -
 #pragma mark MVKCmdPushDescriptorSet
 
-/** Vulkan command to update a descriptor set. */
 class MVKCmdPushDescriptorSet : public MVKCommand {
 
 public:
@@ -285,7 +282,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdPushDescriptorSetWithTemplate
 
-/** Vulkan command to update a descriptor set from a template. */
 class MVKCmdPushDescriptorSetWithTemplate : public MVKCommand {
 
 public:
@@ -312,7 +308,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdSetEvent
 
-/** Vulkan command to set an event. */
 class MVKCmdSetEvent : public MVKCommand {
 
 public:
@@ -336,7 +331,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdResetEvent
 
-/** Vulkan command to reset an event. */
 class MVKCmdResetEvent : public MVKCommand {
 
 public:

@@ -327,9 +327,8 @@ void MVKRenderingCommandEncoderState::setLineWidth(float lineWidth, bool isDynam
 	setMTLContent(LineWidth);
 }
 
-void MVKRenderingCommandEncoderState::setBlendConstants(float blendConstants[4], bool isDynamic) {
-	MVKColor32 mtlBlendConstants;
-	mvkCopy(mtlBlendConstants.float32, blendConstants, 4);
+void MVKRenderingCommandEncoderState::setBlendConstants(MVKColor32 blendConstants, bool isDynamic) {
+	MVKColor32 mtlBlendConstants = blendConstants;
 	setMTLContent(BlendConstants);
 }
 

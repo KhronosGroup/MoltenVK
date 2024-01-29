@@ -26,7 +26,6 @@
 #pragma mark -
 #pragma mark MVKCmdDispatch
 
-/** Vulkan command to dispatch compute threadgroups. */
 class MVKCmdDispatch : public MVKCommand {
 
 public:
@@ -51,7 +50,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdDispatchIndirect
 
-/** Vulkan command to dispatch compute threadgroups. */
 class MVKCmdDispatchIndirect : public MVKCommand {
 
 public:

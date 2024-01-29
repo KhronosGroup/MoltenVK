@@ -421,7 +421,7 @@ protected:
 	id<MTLComputePipelineState> _mtlTessControlStageState = nil;
 	id<MTLRenderPipelineState> _mtlPipelineState = nil;
 
-	float _blendConstants[4] = {};
+	MVKColor32 _blendConstants = { 0.0, 0.0, 0.0, 1.0 };
 	MVKShaderImplicitRezBinding _reservedVertexAttributeBufferCount;
 	MVKShaderImplicitRezBinding _viewRangeBufferIndex;
 	MVKShaderImplicitRezBinding _outputBufferIndex;
