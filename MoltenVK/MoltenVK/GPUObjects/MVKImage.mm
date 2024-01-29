@@ -1727,8 +1727,8 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 		// Metal states:
 		// "For a texture with depth or stencil pixel format (such as MTLPixelFormatDepth24Unorm_Stencil8 or MTLPixelFormatStencil8),
 		// the default value for an unspecified component is undefined." which means all values but R will be undefined.
-		// Vulkan states: https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#textures-conversion-to-rgba
-		// So we need to ensure that G and B are set to 0 and A to 1 for the swizzle in Metal
+		// Vulkan requires that all components be defined, with `G` and `B` set to `0` and `A` set to `1`.
+		// See https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#textures-conversion-to-rgba.
 		if (enableSwizzling()) {
 			if (_componentSwizzle.r == VK_COMPONENT_SWIZZLE_A) {
 				_componentSwizzle.r = VK_COMPONENT_SWIZZLE_ONE;
