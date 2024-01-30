@@ -29,6 +29,7 @@ Released TBD
 - Support `libMoltenVK.dylib` for _iOS Simulator_ architecture.
 - Restore support for _iOS Simulator_ destination in recent update to _Cube_ demo that uses dynamic-linking.
 - Don't update `currentExtent` of headless surface when swapchain attached.
+- `runcts` script also output a file containing a list of the failed CTS tests.
 
 
 
