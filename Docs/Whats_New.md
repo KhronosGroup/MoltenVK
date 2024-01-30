@@ -20,6 +20,10 @@ Released TBD
 
 - Add `MVK_USE_METAL_PRIVATE_API` build setting to allow **MoltenVK** to be built with access to _Metal_ private API calls.
 - Add support for `VkPhysicalDeviceFeatures::wideLines` feature when `MVK_USE_METAL_PRIVATE_API` is enabled in a **MoltenVK** build.
+- Add support for the `VkPhysicalDeviceFeatures::logicOp` feature when `MVK_USE_METAL_PRIVATE_API` is enabled in a **MoltenVK** build.
+- Add support for the `VkPhysicalDeviceFeatures::depthBounds` feature on AMD GPUs when `MVK_USE_METAL_PRIVATE_API` is enabled in a **MoltenVK** build.
+- Add support for the `VkPhysicalDevicePortabilitySubsetFeaturesKHR::samplerMipLodBias` feature when `MVK_USE_METAL_PRIVATE_API` is enabled in a **MoltenVK** build.
+- Add support for Metal native pipeline sample masks when `MVK_USE_METAL_PRIVATE_API` is enabled in a **MoltenVK** build.
 - Fix potential crash when using multi-planar images.
 - Ensure buffers available for buffer addresses in push constants.
 - Support `libMoltenVK.dylib` for _iOS Simulator_ architecture.

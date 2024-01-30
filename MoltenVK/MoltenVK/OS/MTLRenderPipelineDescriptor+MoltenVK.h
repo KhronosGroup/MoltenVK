@@ -33,4 +33,13 @@
  */
 @property(nonatomic, readwrite) MTLPrimitiveTopologyClass inputPrimitiveTopologyMVK;
 
+/**
+ * Replacement for the sampleMask property.
+ *
+ * This property allows support under all OS versions. Delegates to the sampleMask
+ * property if it is available. otherwise, returns 0xFFFFFFFF when
+ * read and does nothing when set.
+ */
+@property(nonatomic, readwrite) NSUInteger sampleMaskMVK;
+
 @end
