@@ -21,6 +21,15 @@
 #include "MVKCommonEnvironment.h"
 
 
+#if MVK_USE_METAL_PRIVATE_API
+/** Additional methods not necessarily declared in <Metal/MTLSampler.h>. */
+@interface MTLSamplerDescriptor ()
+
+@property(nonatomic, readwrite) float lodBias;
+
+@end
+#endif
+
 @implementation MTLSamplerDescriptor (MoltenVK)
 
 -(MTLCompareFunction) compareFunctionMVK {
@@ -44,5 +53,16 @@
 	if ( [self respondsToSelector: @selector(setBorderColor:)] ) { self.borderColor = (MTLSamplerBorderColor) color; }
 #endif
 }
+
+#if MVK_USE_METAL_PRIVATE_API
+-(float) lodBiasMVK {
+	if ( [self respondsToSelector: @selector(lodBias)] ) { return self.lodBias; }
+	return 0.0f;
+}
+
+-(void) setLodBiasMVK: (float) bias {
+	if ( [self respondsToSelector: @selector(setLodBias:)] ) { self.lodBias = bias; }
+}
+#endif
 
 @end

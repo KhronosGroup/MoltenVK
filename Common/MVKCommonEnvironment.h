@@ -125,6 +125,19 @@ extern "C" {
 									 (__IPHONE_OS_VERSION_MAX_ALLOWED >= 140000))
 #endif
 
+/**
+ * Enable use of private Metal APIs.
+ *
+ * Enabling this build setting during a MoltenVK build will allow MoltenVK to
+ * extend its functionality by using certain private Metal API calls, but it 
+ * will also disqualify the app from being distributed via Apple App Stores.
+ *
+ * Disabled by default.
+ */
+#ifndef MVK_USE_METAL_PRIVATE_API
+#	define MVK_USE_METAL_PRIVATE_API		0
+#endif
+
 /** Directive to identify public symbols. */
 #define MVK_PUBLIC_SYMBOL    __attribute__((visibility("default"))) __attribute__((used))
 

@@ -1486,7 +1486,9 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetBlendConstants(
 	const float                                 blendConst[4]) {
 
 	MVKTraceVulkanCallStart();
-    MVKAddCmd(SetBlendConstants, commandBuffer, blendConst);
+	MVKColor32 blendConstants;
+	mvkCopy(blendConstants.float32, blendConst, 4);
+    MVKAddCmd(SetBlendConstants, commandBuffer, blendConstants);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1496,6 +1498,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthBounds(
 	float                                       maxDepthBounds) {
 
 	MVKTraceVulkanCallStart();
+	MVKAddCmd(SetDepthBounds, commandBuffer, minDepthBounds, maxDepthBounds);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2651,6 +2654,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthBoundsTestEnable(
     VkBool32                                    depthBoundsTestEnable) {
     
     MVKTraceVulkanCallStart();
+	MVKAddCmd(SetDepthBoundsTestEnable, commandBuffer, depthBoundsTestEnable);
     MVKTraceVulkanCallEnd();
 }
 

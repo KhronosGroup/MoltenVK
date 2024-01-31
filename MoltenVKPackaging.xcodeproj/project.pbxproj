@@ -232,6 +232,7 @@
 		A9DDBF8C26827F02005DD991 /* runcts */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = runcts; sourceTree = "<group>"; };
 		A9FC5F60249D2ED3003CB086 /* package_all.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_all.sh; sourceTree = "<group>"; };
 		A9FC5F64249D3778003CB086 /* create_dylib_tvos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_tvos.sh; sourceTree = "<group>"; };
+		A9FE05632B697AE400208814 /* get_failing_cts_tests.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = get_failing_cts_tests.py; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -280,6 +281,7 @@
 				A975D55C213F25D700D4834F /* create_dylib.sh */,
 				A9B1007A24F837AF00EADC6E /* create_xcframework_func.sh */,
 				A980A25F24C628F3007A8F6F /* gen_moltenvk_rev_hdr.sh */,
+				A9FE05632B697AE400208814 /* get_failing_cts_tests.py */,
 				A9FC5F60249D2ED3003CB086 /* package_all.sh */,
 				A92EF7C921856EA200C8B91B /* package_docs.sh */,
 				A9CBBFF924F8A1EB006D41EF /* package_moltenvk_xcframework.sh */,
