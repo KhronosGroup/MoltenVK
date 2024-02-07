@@ -86,9 +86,9 @@ public:
       return *this;
     }
 
-    Type *operator->() { return &vector->alc.ptr[index]; }
-    Type &operator*()  { return  vector->alc.ptr[index]; }
-    operator Type*()   { return &vector->alc.ptr[index]; }
+    Type *operator->() const { return &vector->alc.ptr[index]; }
+    Type &operator*() const  { return  vector->alc.ptr[index]; }
+    operator Type*() const   { return &vector->alc.ptr[index]; }
 
     bool operator==( const iterator &it ) const { return vector == it.vector && index == it.index; }
     bool operator!=( const iterator &it ) const { return vector != it.vector || index != it.index; }
@@ -98,12 +98,12 @@ public:
     iterator& operator--()      {                 --index; return *this; }
     iterator  operator--( int ) { auto t = *this; --index; return t; }
 
-    iterator operator+ (const diff_type n)   { return iterator( index + n, *vector ); }
-    iterator& operator+= (const diff_type n) { index += n; return *this; }
-    iterator operator- (const diff_type n)   { return iterator( index - n, *vector ); }
-    iterator& operator-= (const diff_type n) { index -= n; return *this; }
+    iterator operator+ (const diff_type n) const { return iterator( index + n, *vector ); }
+    iterator& operator+= (const diff_type n)     { index += n; return *this; }
+    iterator operator- (const diff_type n) const { return iterator( index - n, *vector ); }
+    iterator& operator-= (const diff_type n)     { index -= n; return *this; }
 
-    diff_type operator- (const iterator& it) { return index - it.index; }
+    diff_type operator- (const iterator& it) const { return index - it.index; }
 
     bool operator< (const iterator& it)  { return index < it.index; }
     bool operator<= (const iterator& it) { return index <= it.index; }
