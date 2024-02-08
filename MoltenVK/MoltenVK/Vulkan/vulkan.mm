@@ -1477,7 +1477,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthBias(
 	float                                       depthBiasSlopeFactor) {
 
 	MVKTraceVulkanCallStart();
-    MVKAddCmd(SetDepthBias, commandBuffer,depthBiasConstantFactor, depthBiasClamp, depthBiasSlopeFactor);
+	MVKAddCmd(SetDepthBias, commandBuffer, {depthBiasConstantFactor, depthBiasClamp, depthBiasSlopeFactor} );
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1498,7 +1498,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthBounds(
 	float                                       maxDepthBounds) {
 
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(SetDepthBounds, commandBuffer, minDepthBounds, maxDepthBounds);
+	MVKAddCmd(SetDepthBounds, commandBuffer, {minDepthBounds, maxDepthBounds});
 	MVKTraceVulkanCallEnd();
 }
 

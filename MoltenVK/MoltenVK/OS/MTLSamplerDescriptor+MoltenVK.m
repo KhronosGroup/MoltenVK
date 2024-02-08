@@ -54,15 +54,17 @@
 #endif
 }
 
-#if MVK_USE_METAL_PRIVATE_API
 -(float) lodBiasMVK {
+#if MVK_USE_METAL_PRIVATE_API
 	if ( [self respondsToSelector: @selector(lodBias)] ) { return self.lodBias; }
+#endif
 	return 0.0f;
 }
 
 -(void) setLodBiasMVK: (float) bias {
+#if MVK_USE_METAL_PRIVATE_API
 	if ( [self respondsToSelector: @selector(setLodBias:)] ) { self.lodBias = bias; }
-}
 #endif
+}
 
 @end

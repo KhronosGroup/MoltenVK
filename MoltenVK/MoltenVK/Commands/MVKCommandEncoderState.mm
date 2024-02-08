@@ -303,89 +303,59 @@ void MVKDepthStencilCommandEncoderState::encodeImpl(uint32_t stage) {
 #pragma mark MVKRenderingCommandEncoderState
 
 #define getMTLContent(state)  getContent(_mtl##state, state)
-#define setMTLContent(state)  setContent(_mtl##state, &mtl##state, state, isDynamic)
+#define setMTLContent(state, val)  setContent(state, _mtl##state, val, isDynamic)
 
 void MVKRenderingCommandEncoderState::setCullMode(VkCullModeFlags cullMode, bool isDynamic) {
-	auto mtlCullMode = mvkMTLCullModeFromVkCullModeFlags(cullMode);
-	setMTLContent(CullMode);
+	setMTLContent(CullMode, mvkMTLCullModeFromVkCullModeFlags(cullMode));
 	getContent(_cullBothFaces, isDynamic) = (cullMode == VK_CULL_MODE_FRONT_AND_BACK);
 }
 
 void MVKRenderingCommandEncoderState::setFrontFace(VkFrontFace frontFace, bool isDynamic) {
-	auto mtlFrontFace = mvkMTLWindingFromVkFrontFace(frontFace);
-	setMTLContent(FrontFace);
+	setMTLContent(FrontFace, mvkMTLWindingFromVkFrontFace(frontFace));
 }
 
 void MVKRenderingCommandEncoderState::setPolygonMode(VkPolygonMode polygonMode, bool isDynamic) {
-	auto mtlPolygonMode = mvkMTLTriangleFillModeFromVkPolygonMode(polygonMode);
-	setMTLContent(PolygonMode);
+	setMTLContent(PolygonMode, mvkMTLTriangleFillModeFromVkPolygonMode(polygonMode));
 	getContent(_isPolygonModePoint, isDynamic) = (polygonMode == VK_POLYGON_MODE_POINT);
 }
 
 void MVKRenderingCommandEncoderState::setLineWidth(float lineWidth, bool isDynamic) {
-	auto mtlLineWidth = lineWidth;
-	setMTLContent(LineWidth);
+	setMTLContent(LineWidth, lineWidth);
 }
 
 void MVKRenderingCommandEncoderState::setBlendConstants(MVKColor32 blendConstants, bool isDynamic) {
-	MVKColor32 mtlBlendConstants = blendConstants;
-	setMTLContent(BlendConstants);
+	setMTLContent(BlendConstants, blendConstants);
 }
 
 void MVKRenderingCommandEncoderState::setDepthBias(const VkPipelineRasterizationStateCreateInfo& vkRasterInfo) {
-	bool isDynamic = false;
-
-	bool mtlDepthBiasEnable = static_cast<bool>(vkRasterInfo.depthBiasEnable);
-	setMTLContent(DepthBiasEnable);
-
-	MVKDepthBias mtlDepthBias = {
-		.depthBiasConstantFactor = vkRasterInfo.depthBiasConstantFactor,
-		.depthBiasSlopeFactor = vkRasterInfo.depthBiasSlopeFactor,
-		.depthBiasClamp = vkRasterInfo.depthBiasClamp
-	};
-	setMTLContent(DepthBias);
+	setDepthBiasEnable(vkRasterInfo.depthBiasEnable, false);
+	setDepthBias( { vkRasterInfo.depthBiasConstantFactor, vkRasterInfo.depthBiasClamp, vkRasterInfo.depthBiasSlopeFactor } , false);
 }
 
-void MVKRenderingCommandEncoderState::setDepthBias(float depthBiasConstantFactor,
-													 float depthBiasSlopeFactor,
-													 float depthBiasClamp) {
-	bool isDynamic = true;
-	MVKDepthBias mtlDepthBias = {
-		.depthBiasConstantFactor = depthBiasConstantFactor,
-		.depthBiasSlopeFactor = depthBiasSlopeFactor,
-		.depthBiasClamp = depthBiasClamp
-	};
-	setMTLContent(DepthBias);
+void MVKRenderingCommandEncoderState::setDepthBias(MVKDepthBias depthBias, bool isDynamic) {
+	setMTLContent(DepthBias, depthBias);
 }
 
-void MVKRenderingCommandEncoderState::setDepthBiasEnable(VkBool32 depthBiasEnable) {
-	bool isDynamic = true;
-	bool mtlDepthBiasEnable = static_cast<bool>(depthBiasEnable);
-	setMTLContent(DepthBiasEnable);
+void MVKRenderingCommandEncoderState::setDepthBiasEnable(VkBool32 depthBiasEnable, bool isDynamic) {
+	setMTLContent(DepthBiasEnable, static_cast<bool>(depthBiasEnable));
 }
 
 void MVKRenderingCommandEncoderState::setDepthClipEnable(bool depthClip, bool isDynamic) {
-	auto mtlDepthClipEnable = depthClip ? MTLDepthClipModeClip : MTLDepthClipModeClamp;
-	setMTLContent(DepthClipEnable);
+	setMTLContent(DepthClipEnable, depthClip ? MTLDepthClipModeClip : MTLDepthClipModeClamp);
 }
 
-void MVKRenderingCommandEncoderState::setDepthBounds(float minDepthBounds, float maxDepthBounds, bool isDynamic) {
-	MVKDepthBounds mtlDepthBounds = { minDepthBounds, maxDepthBounds };
-	setMTLContent(DepthBounds);
+void MVKRenderingCommandEncoderState::setDepthBounds(MVKDepthBounds depthBounds, bool isDynamic) {
+	setMTLContent(DepthBounds, depthBounds);
 }
 
 void MVKRenderingCommandEncoderState::setDepthBoundsTestEnable(VkBool32 depthBoundsTestEnable, bool isDynamic) {
-	auto mtlDepthBoundsTestEnable = static_cast<bool>(depthBoundsTestEnable);
-	setMTLContent(DepthBoundsTestEnable);
+	setMTLContent(DepthBoundsTestEnable, static_cast<bool>(depthBoundsTestEnable));
 }
 
 void MVKRenderingCommandEncoderState::setStencilReferenceValues(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo) {
 	bool isDynamic = false;
-	MVKStencilReference mtlStencilReference = {
-		.frontFaceValue = vkDepthStencilInfo.front.reference,
-		.backFaceValue = vkDepthStencilInfo.back.reference
-	};
-	setMTLContent(StencilReference);
+	MVKStencilReference mtlStencilReference = { vkDepthStencilInfo.front.reference, vkDepthStencilInfo.back.reference };
+	setMTLContent(StencilReference, &mtlStencilReference);
 }
 
 void MVKRenderingCommandEncoderState::setStencilReferenceValues(VkStencilFaceFlags faceMask, uint32_t stencilReference) {
@@ -393,7 +363,7 @@ void MVKRenderingCommandEncoderState::setStencilReferenceValues(VkStencilFaceFla
 	MVKStencilReference mtlStencilReference = _mtlStencilReference[StateScope::Dynamic];
 	if (shouldUpdateFace(FRONT)) { mtlStencilReference.frontFaceValue = stencilReference; }
 	if (shouldUpdateFace(BACK)) { mtlStencilReference.backFaceValue = stencilReference; }
-	setMTLContent(StencilReference);
+	setMTLContent(StencilReference, &mtlStencilReference);
 }
 
 void MVKRenderingCommandEncoderState::setViewports(const MVKArrayRef<VkViewport> viewports,
@@ -408,7 +378,7 @@ void MVKRenderingCommandEncoderState::setViewports(const MVKArrayRef<VkViewport>
 		mtlViewports.viewports[firstViewport + vpIdx] = mvkMTLViewportFromVkViewport(viewports[vpIdx]);
 		mtlViewports.viewportCount = max(mtlViewports.viewportCount, vpIdx + 1);
 	}
-	setMTLContent(Viewports);
+	setMTLContent(Viewports, &mtlViewports);
 }
 
 void MVKRenderingCommandEncoderState::setScissors(const MVKArrayRef<VkRect2D> scissors,
@@ -423,17 +393,15 @@ void MVKRenderingCommandEncoderState::setScissors(const MVKArrayRef<VkRect2D> sc
 		mtlScissors.scissors[firstScissor + sIdx] = mvkMTLScissorRectFromVkRect2D(scissors[sIdx]);
 		mtlScissors.scissorCount = max(mtlScissors.scissorCount, sIdx + 1);
 	}
-	setMTLContent(Scissors);
+	setMTLContent(Scissors, &mtlScissors);
 }
 
 void MVKRenderingCommandEncoderState::setPrimitiveRestartEnable(VkBool32 primitiveRestartEnable, bool isDynamic) {
-	bool mtlPrimitiveRestartEnable = static_cast<bool>(primitiveRestartEnable);
-	setMTLContent(PrimitiveRestartEnable);
+	setMTLContent(PrimitiveRestartEnable, static_cast<bool>(primitiveRestartEnable));
 }
 
 void MVKRenderingCommandEncoderState::setRasterizerDiscardEnable(VkBool32 rasterizerDiscardEnable, bool isDynamic) {
-	bool mtlRasterizerDiscardEnable = static_cast<bool>(rasterizerDiscardEnable);
-	setMTLContent(RasterizerDiscardEnable);
+	setMTLContent(RasterizerDiscardEnable, static_cast<bool>(rasterizerDiscardEnable));
 }
 
 // This value is retrieved, not encoded, so don't mark this encoder as dirty.
