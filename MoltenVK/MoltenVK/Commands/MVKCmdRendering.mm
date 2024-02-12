@@ -261,21 +261,8 @@ template class MVKCmdSetScissor<kMVKMaxViewportScissorCount>;
 #pragma mark -
 #pragma mark MVKCmdSetDepthBias
 
-VkResult MVKCmdSetDepthBias::setContent(MVKCommandBuffer* cmdBuff,
-										float depthBiasConstantFactor,
-										float depthBiasClamp,
-										float depthBiasSlopeFactor) {
-    _depthBiasConstantFactor = depthBiasConstantFactor;
-    _depthBiasSlopeFactor = depthBiasSlopeFactor;
-    _depthBiasClamp = depthBiasClamp;
-
-	return VK_SUCCESS;
-}
-
 void MVKCmdSetDepthBias::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setDepthBias(_depthBiasConstantFactor,
-											   _depthBiasSlopeFactor,
-											   _depthBiasClamp);
+	cmdEncoder->_renderingState.setDepthBias(_value, true);
 }
 
 
@@ -283,7 +270,7 @@ void MVKCmdSetDepthBias::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetDepthBiasEnable
 
 void MVKCmdSetDepthBiasEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setDepthBiasEnable(_value);
+	cmdEncoder->_renderingState.setDepthBiasEnable(_value, true);
 }
 
 
@@ -330,16 +317,8 @@ void MVKCmdSetDepthCompareOp::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdSetDepthBounds
 
-VkResult MVKCmdSetDepthBounds::setContent(MVKCommandBuffer* cmdBuff,
-										  float minDepthBounds,
-										  float maxDepthBounds) {
-    _minDepthBounds = minDepthBounds;
-    _maxDepthBounds = maxDepthBounds;
-	return VK_SUCCESS;
-}
-
 void MVKCmdSetDepthBounds::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setDepthBounds(_minDepthBounds, _maxDepthBounds, true);
+	cmdEncoder->_renderingState.setDepthBounds(_value, true);
 }
 
 

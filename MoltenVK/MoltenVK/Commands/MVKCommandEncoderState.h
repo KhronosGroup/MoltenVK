@@ -235,8 +235,8 @@ protected:
 
 struct MVKDepthBias {
 	float depthBiasConstantFactor;
-	float depthBiasSlopeFactor;
 	float depthBiasClamp;
+	float depthBiasSlopeFactor;
 };
 
 struct MVKDepthBounds {
@@ -273,11 +273,10 @@ public:
 	void setBlendConstants(MVKColor32 blendConstants, bool isDynamic);
 
 	void setDepthBias(const VkPipelineRasterizationStateCreateInfo& vkRasterInfo);
-	void setDepthBias(float depthBiasConstantFactor, float depthBiasSlopeFactor, float depthBiasClamp);
-	void setDepthBiasEnable(VkBool32 depthBiasEnable);
+	void setDepthBias(MVKDepthBias depthBias, bool isDynamic);
+	void setDepthBiasEnable(VkBool32 depthBiasEnable, bool isDynamic);
 	void setDepthClipEnable(bool depthClip, bool isDynamic);
-
-	void setDepthBounds(float minDepthBounds, float maxDepthBounds, bool isDynamic);
+	void setDepthBounds(MVKDepthBounds depthBounds, bool isDynamic);
 	void setDepthBoundsTestEnable(VkBool32 depthBoundsTestEnable, bool isDynamic);
 	void setStencilReferenceValues(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo);
 	void setStencilReferenceValues(VkStencilFaceFlags faceMask, uint32_t stencilReference);
@@ -310,7 +309,7 @@ public:
 protected:
 	void encodeImpl(uint32_t stage) override;
 	bool isDrawingTriangles();
-	template <typename T> void setContent(T* iVarAry, T* pVal, MVKRenderStateType state, bool isDynamic) {
+	template <typename T> void setContent(MVKRenderStateType state, T* iVarAry, T* pVal, bool isDynamic) {
 		auto* pIVar = &iVarAry[isDynamic ? StateScope::Dynamic : StateScope::Static];
 		if( !mvkAreEqual(pVal, pIVar) ) {
 			*pIVar = *pVal;
@@ -318,6 +317,9 @@ protected:
 			_modifiedStates.enable(state);
 			MVKCommandEncoderState::markDirty();	// Avoid local markDirty() as it marks all states dirty.
 		}
+	}
+	template <typename T> void setContent(MVKRenderStateType state, T* iVarAry, T val, bool isDynamic) {
+		setContent(state, iVarAry, &val, isDynamic);
 	}
 
 	MVKSmallVector<MTLSamplePosition, kMVKMaxSampleCount> _mtlSampleLocations[StateScope::Count] = {};

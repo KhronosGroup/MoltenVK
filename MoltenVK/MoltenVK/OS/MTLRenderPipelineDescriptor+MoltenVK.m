@@ -41,15 +41,17 @@
 	if ([self respondsToSelector: @selector(setInputPrimitiveTopology:)]) { [self setInputPrimitiveTopology:topology]; }
 }
 
-#if MVK_USE_METAL_PRIVATE_API
 -(NSUInteger) sampleMaskMVK {
+#if MVK_USE_METAL_PRIVATE_API
 	if ( [self respondsToSelector: @selector(sampleMask)] ) { return self.sampleMask; }
+#endif
 	return 0xFFFFFFFFFFFFFFFFULL;
 }
 
 -(void) setSampleMaskMVK: (NSUInteger) mask {
+#if MVK_USE_METAL_PRIVATE_API
 	if ([self respondsToSelector: @selector(setSampleMask:)]) { self.sampleMask = mask; }
-}
 #endif
+}
 
 @end
