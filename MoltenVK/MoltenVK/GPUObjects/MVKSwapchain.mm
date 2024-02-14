@@ -128,11 +128,11 @@ VkResult MVKSwapchain::getSurfaceStatus() {
 	return VK_SUCCESS;
 }
 
-// This swapchain is optimally sized for the surface if the app has specified 
-// deliberate swapchain scaling, or the surface extent has not changed since the
-// swapchain was created, and the surface will not need to be scaled when composited.
+// This swapchain is optimally sized for the surface if the app has specified deliberate
+// swapchain scaling, or if the surface is headless, or if the surface extent has not changed 
+// since the swapchain was created, and the surface will not need to be scaled when composited.
 bool MVKSwapchain::hasOptimalSurface() {
-	if (_isDeliberatelyScaled) { return true; }
+	if (_isDeliberatelyScaled || isHeadless()) { return true; }
 
 	VkExtent2D surfExtent = _surface->getExtent();
 	return (mvkVkExtent2DsAreEqual(surfExtent, _imageExtent) &&
