@@ -121,8 +121,7 @@ bool MVKBuffer::needsHostReadSync(MVKPipelineBarrier& barrier) {
 	return (mvkIsAnyFlagEnabled(barrier.dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
 			mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT)) &&
 			isMemoryHostAccessible() && (!isMemoryHostCoherent() || _isHostCoherentTexelBuffer));
-#endif
-#if MVK_IOS_OR_TVOS
+#else
 	return false;
 #endif
 }

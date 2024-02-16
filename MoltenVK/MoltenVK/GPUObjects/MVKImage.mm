@@ -472,8 +472,7 @@ bool MVKImageMemoryBinding::needsHostReadSync(MVKPipelineBarrier& barrier) {
     return ((barrier.newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
             mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
             isMemoryHostAccessible() && (!_device->_pMetalFeatures->sharedLinearTextures || !isMemoryHostCoherent()));
-#endif
-#if MVK_IOS_OR_TVOS
+#else
     return false;
 #endif
 }

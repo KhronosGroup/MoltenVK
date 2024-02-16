@@ -206,6 +206,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		279BD8642B7FAE0A0021CE70 /* create_dylib_xros.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_xros.sh; sourceTree = "<group>"; };
 		A92DB3E41CE0F37D00FBC835 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		A92DB3E51CE0F37D00FBC835 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		A92DB3E61CE0F37D00FBC835 /* Whats_New.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Whats_New.md; path = Docs/Whats_New.md; sourceTree = "<group>"; };
@@ -278,6 +279,7 @@
 				A9C70F45221B04C800FBA31A /* create_dylib_ios.sh */,
 				A9C70F41221B04C800FBA31A /* create_dylib_macos.sh */,
 				A9FC5F64249D3778003CB086 /* create_dylib_tvos.sh */,
+				279BD8642B7FAE0A0021CE70 /* create_dylib_xros.sh */,
 				A975D55C213F25D700D4834F /* create_dylib.sh */,
 				A9B1007A24F837AF00EADC6E /* create_xcframework_func.sh */,
 				A980A25F24C628F3007A8F6F /* gen_moltenvk_rev_hdr.sh */,

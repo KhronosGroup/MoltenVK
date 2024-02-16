@@ -75,6 +75,10 @@
 #	define MVK_SUPPORT_IOSURFACE_BOOL (__TV_OS_VERSION_MIN_REQUIRED >= __TVOS_11_0)
 #endif
 
+#if MVK_VISIONOS
+#    define MVK_SUPPORT_IOSURFACE_BOOL   1
+#endif
+
 
 #pragma mark -
 #pragma mark MoltenVK Configuration
@@ -125,6 +129,9 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #endif
 #if MVK_IOS_OR_TVOS
 #   define MVK_CONFIG_MTLEVENT_MIN_OS  12.0
+#endif
+#if MVK_VISIONOS
+#   define MVK_CONFIG_MTLEVENT_MIN_OS  1.0
 #endif
 #ifndef MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS
 #   define MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS    mvkOSVersionIsAtLeast(MVK_CONFIG_MTLEVENT_MIN_OS)
