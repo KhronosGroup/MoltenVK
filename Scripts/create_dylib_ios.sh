@@ -2,7 +2,8 @@
 
 set -e
 
-# We don't support dylib for Mac Catalyst yet
+# Xcode cannot currently handle creating a Mac Catalyst dylib
+# containing both x86_64 and arm64 (Apple Silicon) architectures.
 if [ "${IS_MACCATALYST}" == "YES" ]; then
 	exit 0
 fi

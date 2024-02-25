@@ -7,9 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A90998A02B4EE8C3002CEF67 /* libMoltenVK.dylib in Copy MoltenVK Library */ = {isa = PBXBuildFile; fileRef = A909989F2B4EE8C3002CEF67 /* libMoltenVK.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		A90998A32B4EFB51002CEF67 /* libMoltenVK.dylib in Copy MoltenVK Library */ = {isa = PBXBuildFile; fileRef = A90998A22B4EFB51002CEF67 /* libMoltenVK.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		A90998A62B4EFBAA002CEF67 /* libMoltenVK.dylib in Copy MoltenVK Library */ = {isa = PBXBuildFile; fileRef = A90998A52B4EFBAA002CEF67 /* libMoltenVK.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		A93DBF3C24A2A4D500079F64 /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = A9B67B761C3AAE9800373FFD /* Icon.png */; };
 		A93DBF3E24A2A4D500079F64 /* Default~ipad.png in Resources */ = {isa = PBXBuildFile; fileRef = A9B67B751C3AAE9800373FFD /* Default~ipad.png */; };
 		A93DBF3F24A2A4D500079F64 /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = A9B67B741C3AAE9800373FFD /* Default-568h@2x.png */; };
@@ -29,40 +26,46 @@
 		A9B53B341C3AC15200ABC6F6 /* DemoViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A9B67B6F1C3AAE9800373FFD /* DemoViewController.m */; };
 		A9B53B351C3AC15200ABC6F6 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = A9B67B6C1C3AAE9800373FFD /* AppDelegate.m */; };
 		A9B53B361C3AC15200ABC6F6 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = A9B67B711C3AAE9800373FFD /* main.m */; };
+		A9F4D8772B8590F2004AD576 /* MoltenVK.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D8702B858DDE004AD576 /* MoltenVK.xcframework */; };
+		A9F4D8782B8590F2004AD576 /* MoltenVK.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D8702B858DDE004AD576 /* MoltenVK.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A9F4D87F2B88F7B1004AD576 /* MoltenVK.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D8702B858DDE004AD576 /* MoltenVK.xcframework */; };
+		A9F4D8802B88F7B1004AD576 /* MoltenVK.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D8702B858DDE004AD576 /* MoltenVK.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A9F4D88A2B8A9C11004AD576 /* MoltenVK.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D8702B858DDE004AD576 /* MoltenVK.xcframework */; };
+		A9F4D88B2B8A9C11004AD576 /* MoltenVK.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D8702B858DDE004AD576 /* MoltenVK.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		A909989E2B4EE849002CEF67 /* Copy MoltenVK Library */ = {
+		A9F4D87A2B8590F2004AD576 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				A90998A02B4EE8C3002CEF67 /* libMoltenVK.dylib in Copy MoltenVK Library */,
+				A9F4D8782B8590F2004AD576 /* MoltenVK.xcframework in Embed Frameworks */,
 			);
-			name = "Copy MoltenVK Library";
+			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A90998A12B4EFA78002CEF67 /* Copy MoltenVK Library */ = {
+		A9F4D8822B88F7B1004AD576 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				A90998A32B4EFB51002CEF67 /* libMoltenVK.dylib in Copy MoltenVK Library */,
+				A9F4D8802B88F7B1004AD576 /* MoltenVK.xcframework in Embed Frameworks */,
 			);
-			name = "Copy MoltenVK Library";
+			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A90998A42B4EFB81002CEF67 /* Copy MoltenVK Library */ = {
+		A9F4D88C2B8A9C11004AD576 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				A90998A62B4EFBAA002CEF67 /* libMoltenVK.dylib in Copy MoltenVK Library */,
+				A9F4D88B2B8A9C11004AD576 /* MoltenVK.xcframework in Embed Frameworks */,
 			);
-			name = "Copy MoltenVK Library";
+			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -100,27 +103,32 @@
 		A9B67B8A1C3AAEA200373FFD /* Main.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
 		A9B67B8B1C3AAEA200373FFD /* macOS.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = macOS.xcassets; sourceTree = "<group>"; };
 		A9B734FE2576E04000455E2A /* Cube.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Cube.entitlements; sourceTree = "<group>"; };
+		A9F4D8702B858DDE004AD576 /* MoltenVK.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = MoltenVK.xcframework; path = ../../Package/Latest/MoltenVK/dynamic/MoltenVK.xcframework; sourceTree = "<group>"; };
+		A9F4D8862B8A9BD8004AD576 /* MoltenVK.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = MoltenVK.xcframework; path = ../../Package/Latest/MoltenVK/dynamic/MoltenVK.xcframework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		A93DBF4424A2A4D500079F64 /* Frameworks */ = {
+		A9F4D8792B8590F2004AD576 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A9F4D8772B8590F2004AD576 /* MoltenVK.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A9B53B1B1C3AC0BE00ABC6F6 /* Frameworks */ = {
+		A9F4D87D2B88F771004AD576 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A9F4D88A2B8A9C11004AD576 /* MoltenVK.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A9B53B371C3AC15200ABC6F6 /* Frameworks */ = {
+		A9F4D8812B88F7B1004AD576 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A9F4D87F2B88F7B1004AD576 /* MoltenVK.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -216,6 +224,8 @@
 		A9C2ABA82185085B00DDBC03 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				A9F4D8702B858DDE004AD576 /* MoltenVK.xcframework */,
+				A9F4D8862B8A9BD8004AD576 /* MoltenVK.xcframework */,
 				A90998A52B4EFBAA002CEF67 /* libMoltenVK.dylib */,
 				A909989F2B4EE8C3002CEF67 /* libMoltenVK.dylib */,
 				A90998A22B4EFB51002CEF67 /* libMoltenVK.dylib */,
@@ -232,8 +242,8 @@
 			buildPhases = (
 				A93DBF3B24A2A4D500079F64 /* Resources */,
 				A93DBF4024A2A4D500079F64 /* Sources */,
-				A90998A42B4EFB81002CEF67 /* Copy MoltenVK Library */,
-				A93DBF4424A2A4D500079F64 /* Frameworks */,
+				A9F4D8812B88F7B1004AD576 /* Frameworks */,
+				A9F4D8822B88F7B1004AD576 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -250,8 +260,8 @@
 			buildPhases = (
 				A9B53B141C3AC0BE00ABC6F6 /* Resources */,
 				A9B53B171C3AC0BE00ABC6F6 /* Sources */,
-				A909989E2B4EE849002CEF67 /* Copy MoltenVK Library */,
-				A9B53B1B1C3AC0BE00ABC6F6 /* Frameworks */,
+				A9F4D8792B8590F2004AD576 /* Frameworks */,
+				A9F4D87A2B8590F2004AD576 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -268,9 +278,8 @@
 			buildPhases = (
 				A9B53B2E1C3AC15200ABC6F6 /* Resources */,
 				A9B53B331C3AC15200ABC6F6 /* Sources */,
-				A90998A12B4EFA78002CEF67 /* Copy MoltenVK Library */,
-				A90998AE2B602480002CEF67 /* Copy MoltenVK Simulator Library */,
-				A9B53B371C3AC15200ABC6F6 /* Frameworks */,
+				A9F4D87D2B88F771004AD576 /* Frameworks */,
+				A9F4D88C2B8A9C11004AD576 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -353,28 +362,6 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
-/* Begin PBXShellScriptBuildPhase section */
-		A90998AE2B602480002CEF67 /* Copy MoltenVK Simulator Library */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Copy MoltenVK Simulator Library";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "#!/bin/bash\n\n# If running on the simulator, we need to overwrite the \n# iOS build of MoltenVK with the iOS Simulator build.\n# We can't use this script to copy the iOS build itself, \n# because it needs to be signed to run on an actual device.\n# The simulator build does not need to be signed.\nif [[ \"${PLATFORM_NAME}\" == \"iphonesimulator\" ]]; then \n\tmvk_lib_file=\"libMoltenVK.dylib\"\n\tmvk_lib_dir=\"${PROJECT_DIR}/../../MoltenVK/dylib/iOS-simulator\"\n\tapp_fwk_dir=\"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Frameworks\"\n\tcp -af \"${mvk_lib_dir}/${mvk_lib_file}\" \"${app_fwk_dir}/${mvk_lib_file}\"\nfi\n";
-		};
-/* End PBXShellScriptBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
 		A93DBF4024A2A4D500079F64 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -421,7 +408,10 @@
 					MVK_SAMP_CUBE,
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/InfoTV.plist";
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/Frameworks/MoltenVK.framework",
+				);
 				MARKETING_VERSION = 1;
 				PRODUCT_NAME = Cube;
 				SDKROOT = appletvos;
@@ -441,7 +431,10 @@
 					MVK_SAMP_CUBE,
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/InfoTV.plist";
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/Frameworks/MoltenVK.framework",
+				);
 				MARKETING_VERSION = 1;
 				PRODUCT_NAME = Cube;
 				SDKROOT = appletvos;
@@ -458,13 +451,17 @@
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
 				GCC_PREFIX_HEADER = "$(SRCROOT)/macOS/Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					MVK_SAMP_CUBE,
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/macOS/Info.plist";
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/../Frameworks",
+					"@executable_path/../Frameworks/MoltenVK.framework",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 10.14;
 				PRODUCT_NAME = Cube;
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -481,13 +478,17 @@
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
 				GCC_PREFIX_HEADER = "$(SRCROOT)/macOS/Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					MVK_SAMP_CUBE,
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/macOS/Info.plist";
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/../Frameworks",
+					"@executable_path/../Frameworks/MoltenVK.framework",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 10.14;
 				PRODUCT_NAME = Cube;
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -500,6 +501,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Cube.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
@@ -511,7 +513,10 @@
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				"IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]" = 14.2;
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/Frameworks/MoltenVK.framework",
+				);
 				MARKETING_VERSION = 1;
 				PRODUCT_NAME = Cube;
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -526,6 +531,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Cube.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
@@ -537,7 +543,10 @@
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				"IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]" = 14.2;
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/Frameworks/MoltenVK.framework",
+				);
 				MARKETING_VERSION = 1;
 				PRODUCT_NAME = Cube;
 				PROVISIONING_PROFILE_SPECIFIER = "";

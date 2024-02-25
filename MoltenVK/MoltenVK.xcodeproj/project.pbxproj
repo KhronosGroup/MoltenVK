@@ -1286,8 +1286,8 @@
 				A980A25D24C6288D007A8F6F /* Generate Version Header */,
 				2FEA0A4024902F9F00EEF3AD /* Headers */,
 				2FEA0A8224902F9F00EEF3AD /* Sources */,
-				A9CBBFF124F89F79006D41EF /* Copy to Staging */,
 				2FEA0AB524902F9F00EEF3AD /* Create Dynamic Library */,
+				A9CBBFF124F89F79006D41EF /* Copy to Staging */,
 			);
 			buildRules = (
 			);
@@ -1306,8 +1306,8 @@
 				A980A25B24C6283D007A8F6F /* Generate Version Header */,
 				A9B8EE071A98D796009C5A02 /* Headers */,
 				A9B8EE051A98D796009C5A02 /* Sources */,
-				A9CBBFEF24F89F5F006D41EF /* Copy to Staging */,
 				A9731FAD1EDDAE39006B7298 /* Create Dynamic Library */,
+				A9CBBFEF24F89F5F006D41EF /* Copy to Staging */,
 			);
 			buildRules = (
 			);
@@ -1326,8 +1326,8 @@
 				A980A25E24C62895007A8F6F /* Generate Version Header */,
 				A9CBED871B6299D800E45FDC /* Headers */,
 				A9CBEDCE1B6299D800E45FDC /* Sources */,
-				A9CBBFF224F89F87006D41EF /* Copy to Staging */,
 				A93F47C91D7E389E002AF700 /* Create Dynamic Library */,
+				A9CBBFF224F89F87006D41EF /* Copy to Staging */,
 			);
 			buildRules = (
 			);
@@ -1346,8 +1346,8 @@
 				DCFD7EE22A45BC6E007BBBF7 /* Generate Version Header */,
 				DCFD7EE32A45BC6E007BBBF7 /* Headers */,
 				DCFD7F272A45BC6E007BBBF7 /* Sources */,
-				DCFD7F5D2A45BC6E007BBBF7 /* Copy to Staging */,
 				DCFD7F5E2A45BC6E007BBBF7 /* Create Dynamic Library */,
+				DCFD7F5D2A45BC6E007BBBF7 /* Copy to Staging */,
 			);
 			buildRules = (
 			);
@@ -1568,7 +1568,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\" \"lib${PRODUCT_NAME}.a\"\n. \"${SRCROOT}/../Scripts/copy_to_staging.sh\" \"dynamic/${PRODUCT_NAME}.framework\"\n\n";
 		};
 		A9CBBFF124F89F79006D41EF /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -1588,7 +1588,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\" \"lib${PRODUCT_NAME}.a\"\n. \"${SRCROOT}/../Scripts/copy_to_staging.sh\" \"dynamic/${PRODUCT_NAME}.framework\"\n";
 		};
 		A9CBBFF224F89F87006D41EF /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -1608,7 +1608,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\"\n\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\" \"lib${PRODUCT_NAME}.a\"\n. \"${SRCROOT}/../Scripts/copy_to_staging.sh\" \"dynamic/${PRODUCT_NAME}.framework\"\n\n";
 		};
 		DCFD7EE22A45BC6E007BBBF7 /* Generate Version Header */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -1647,7 +1647,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\" \"lib${PRODUCT_NAME}.a\"\n. \"${SRCROOT}/../Scripts/copy_to_staging.sh\" \"dynamic/${PRODUCT_NAME}.framework\"\n\n";
 		};
 		DCFD7F5E2A45BC6E007BBBF7 /* Create Dynamic Library */ = {
 			isa = PBXShellScriptBuildPhase;

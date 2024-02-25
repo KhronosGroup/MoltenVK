@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 48;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXAggregateTarget section */
@@ -218,7 +218,6 @@
 		A92EF7CB21856EA300C8B91B /* package_shader_converter_xcframework.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_shader_converter_xcframework.sh; sourceTree = "<group>"; };
 		A92EF7DE2186451700C8B91B /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; name = Makefile; path = ../Makefile; sourceTree = "<group>"; };
 		A93ED4DE24F59CDB00FEB018 /* copy_lib_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_lib_to_staging.sh; sourceTree = "<group>"; };
-		A93ED4E324F59CDB00FEB018 /* copy_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_to_staging.sh; sourceTree = "<group>"; };
 		A975D55C213F25D700D4834F /* create_dylib.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib.sh; sourceTree = "<group>"; };
 		A97D77502B24FBDF00E36932 /* MoltenVK_Configuration_Parameters.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = MoltenVK_Configuration_Parameters.md; path = Docs/MoltenVK_Configuration_Parameters.md; sourceTree = "<group>"; };
 		A980A25F24C628F3007A8F6F /* gen_moltenvk_rev_hdr.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = gen_moltenvk_rev_hdr.sh; sourceTree = "<group>"; };
@@ -230,6 +229,7 @@
 		A9CBBFF924F8A1EB006D41EF /* package_moltenvk_xcframework.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_moltenvk_xcframework.sh; sourceTree = "<group>"; };
 		A9DA8341218A198C002AA662 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		A9DDBF8C26827F02005DD991 /* runcts */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = runcts; sourceTree = "<group>"; };
+		A9F4D8942B8D4F81004AD576 /* copy_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_to_staging.sh; sourceTree = "<group>"; };
 		A9FC5F60249D2ED3003CB086 /* package_all.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_all.sh; sourceTree = "<group>"; };
 		A9FC5F64249D3778003CB086 /* create_dylib_tvos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_tvos.sh; sourceTree = "<group>"; };
 		A9FE05632B697AE400208814 /* get_failing_cts_tests.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = get_failing_cts_tests.py; sourceTree = "<group>"; };
@@ -273,7 +273,7 @@
 		A975D55B213F25AD00D4834F /* Scripts */ = {
 			isa = PBXGroup;
 			children = (
-				A93ED4E324F59CDB00FEB018 /* copy_to_staging.sh */,
+				A9F4D8942B8D4F81004AD576 /* copy_to_staging.sh */,
 				A93ED4DE24F59CDB00FEB018 /* copy_lib_to_staging.sh */,
 				A9C70F45221B04C800FBA31A /* create_dylib_ios.sh */,
 				A9C70F41221B04C800FBA31A /* create_dylib_macos.sh */,
@@ -430,6 +430,7 @@
 /* Begin PBXShellScriptBuildPhase section */
 		2FEA0A3424902F5E00EEF3AD /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -446,6 +447,7 @@
 		};
 		A975D5872140585200D4834F /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -462,6 +464,7 @@
 		};
 		A975D59A2140586700D4834F /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -478,6 +481,7 @@
 		};
 		A9AD70122440ED3B00B9E254 /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -494,6 +498,7 @@
 		};
 		A9B1008824F84BE400EADC6E /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -514,6 +519,7 @@
 		};
 		DCFD7ED82A45BC56007BBBF7 /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);

@@ -477,7 +477,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\" \"lib${PRODUCT_NAME}.a\"\n";
 		};
 		A93ED4E824F59E1100FEB018 /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -497,7 +497,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\" \"lib${PRODUCT_NAME}.a\"\n";
 		};
 		A93ED4E924F59E1800FEB018 /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -517,7 +517,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\" \"lib${PRODUCT_NAME}.a\"\n";
 		};
 		DCFD7F842A45BDA0007BBBF7 /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -537,7 +537,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\" \"lib${PRODUCT_NAME}.a\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
