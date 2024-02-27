@@ -1810,6 +1810,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #if MVK_XCODE_15
 	// Dynamic vertex stride needs to have everything aligned - compiled with support for vertex stride calls, and supported by both runtime OS and GPU.
 	_metalFeatures.dynamicVertexStride = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0) && (supportsMTLGPUFamily(Apple4) || supportsMTLGPUFamily(Mac2));
+
+	_metalFeatures.nativeTextureAtomics = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0) && (supportsMTLGPUFamily(Metal3) || supportsMTLGPUFamily(Apple6) || supportsMTLGPUFamily(Mac2));
 #endif
 
 	// GPU-specific features
@@ -3682,7 +3684,10 @@ void MVKDevice::getDescriptorVariableDescriptorCountLayoutSupport(const VkDescri
 				case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 				case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 					mtlTexCnt += pBind->descriptorCount;
-					mtlBuffCnt += pBind->descriptorCount;
+
+					if (getPhysicalDevice()->useNativeTextureAtomics())
+						mtlBuffCnt += pBind->descriptorCount;
+
 					maxVarDescCount = min(_pMetalFeatures->maxPerStageTextureCount - mtlTexCnt,
 										  _pMetalFeatures->maxPerStageBufferCount - mtlBuffCnt);
 					break;

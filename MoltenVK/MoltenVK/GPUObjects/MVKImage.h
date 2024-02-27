@@ -372,6 +372,7 @@ protected:
 	bool _isAliasable;
 	bool _hasExtendedUsage;
 	bool _hasMutableFormat;
+	bool _shouldSupportAtomics;
 	bool _isLinearForAtomics;
 };
 

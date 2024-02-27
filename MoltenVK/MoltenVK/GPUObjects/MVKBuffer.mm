@@ -290,7 +290,11 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
 
         MTLTextureUsage usage = MTLTextureUsageShaderRead;
         if ( mvkIsAnyFlagEnabled(_buffer->getUsage(), VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) ) {
-            usage |= MTLTextureUsageShaderWrite;
+			usage |= MTLTextureUsageShaderWrite;
+#if MVK_XCODE_15
+			if (getPhysicalDevice()->useNativeTextureAtomics())
+				usage |= MTLTextureUsageShaderAtomic;
+#endif
         }
         id<MTLBuffer> mtlBuff;
         VkDeviceSize mtlBuffOffset;

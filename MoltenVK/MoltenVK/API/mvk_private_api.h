@@ -359,6 +359,7 @@ typedef struct {
 	VkDeviceSize hostMemoryPageSize;				/**< The size of a page of host memory on this platform. */
 	VkBool32 dynamicVertexStride;					/**< If true, VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE is supported. */
 	VkBool32 needsCubeGradWorkaround;				/**< If true, sampling from cube textures with explicit gradients is broken and needs a workaround. */
+	VkBool32 nativeTextureAtomics;                  /**< If true, atomic operations on textures are supported natively. */
 } MVKPhysicalDeviceMetalFeatures;
 
 
