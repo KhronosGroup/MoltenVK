@@ -946,10 +946,6 @@ void MVKGraphicsResourcesCommandEncoderState::markDirty() {
     }
 }
 
-#if !MVK_XCODE_15
-static const NSUInteger MTLAttributeStrideStatic = NSUIntegerMax;
-#endif
-
 void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 
 	auto* pipeline = _cmdEncoder->getGraphicsPipeline();

@@ -14,9 +14,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "DCFD7EDF2A45BC6E007BBBF7"
-               BuildableName = "libMoltenVK.a"
-               BlueprintName = "MoltenVK-xrOS"
+               BlueprintIdentifier = "A9F4D9BA2B8EB6DC004AD576"
+               BuildableName = "MoltenVK.framework"
+               BlueprintName = "MoltenVK-xrOS-dynamic"
                ReferencedContainer = "container:MoltenVK.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -46,15 +46,6 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
-      <MacroExpansion>
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "DCFD7EDF2A45BC6E007BBBF7"
-            BuildableName = "libMoltenVK.a"
-            BlueprintName = "MoltenVK-xrOS"
-            ReferencedContainer = "container:MoltenVK.xcodeproj">
-         </BuildableReference>
-      </MacroExpansion>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">

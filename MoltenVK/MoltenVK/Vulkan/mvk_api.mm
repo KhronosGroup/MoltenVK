@@ -106,7 +106,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkGetVersionStringsMVK(
 
 	size_t len;
 
-	string mvkVer = mvkGetMoltenVKVersionString(MVK_VERSION);
+	string mvkVer = MVK_VERSION_STRING;
 	len = mvkVer.copy(pMoltenVersionStringBuffer, moltenVersionStringBufferLength - 1);
 	pMoltenVersionStringBuffer[len] = 0;    // terminator
 

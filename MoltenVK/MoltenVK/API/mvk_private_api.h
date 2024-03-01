@@ -44,7 +44,7 @@ typedef unsigned long MTLArgumentBuffersTier;
  */
 
 
-#define MVK_PRIVATE_API_VERSION   39
+#define MVK_PRIVATE_API_VERSION   40
 
 
 #pragma mark -
@@ -66,9 +66,12 @@ typedef unsigned long MTLArgumentBuffersTier;
 #define MVK_VERSION_MINOR   2
 #define MVK_VERSION_PATCH   8
 
-#define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
-#define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
+#define MVK_MAKE_VERSION(major, minor, patch)  (((major) * 10000) + ((minor) * 100) + (patch))
+#define MVK_VERSION                            MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
+#define MVK_STRINGIFY_IMPL(val)	 #val
+#define MVK_STRINGIFY(val)       MVK_STRINGIFY_IMPL(val)
+#define MVK_VERSION_STRING       (MVK_STRINGIFY(MVK_VERSION_MAJOR) "." MVK_STRINGIFY(MVK_VERSION_MINOR) "." MVK_STRINGIFY(MVK_VERSION_PATCH))
 
 #pragma mark -
 #pragma mark MoltenVK configuration

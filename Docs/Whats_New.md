@@ -18,6 +18,10 @@ MoltenVK 1.2.8
 
 Released TBD
 
+- Improve support for _iOS App Store_ rules by using dynamic _XCFramework_, instead of naked `dylib`.
+  - Static _XCFramework_ now available in `Package/Latest/MoltenVK/static/MoltenVK.xcframework`.
+  - Dynamic _XCFramework_ now available in `Package/Latest/MoltenVK/dynamic/MoltenVK.xcframework`.
+  - _macOS_ dynamic library now available in `Package/Latest/MoltenVK/dynamic/dylib/macOS/libMoltenVK.dylib`.
 - Add `MVK_USE_METAL_PRIVATE_API` build setting to allow **MoltenVK** to be built with access to _Metal_ private API calls.
   - `VkPhysicalDeviceFeatures::wideLines` enabled when `MVK_USE_METAL_PRIVATE_API` is enabled in a **MoltenVK** build.
   - `VkPhysicalDeviceFeatures::logicOp` enabled when `MVK_USE_METAL_PRIVATE_API` is enabled in a **MoltenVK** build.
@@ -26,8 +30,6 @@ Released TBD
   - _Metal_ native pipeline sample masks supported when `MVK_USE_METAL_PRIVATE_API` is enabled in a **MoltenVK** build.
 - Fix potential crash when using multi-planar images.
 - Ensure buffers available for buffer addresses in push constants.
-- Support `libMoltenVK.dylib` for _iOS Simulator_ architecture.
-- Restore support for _iOS Simulator_ destination in recent update to _Cube_ demo that uses dynamic-linking.
 - Don't update `currentExtent` of headless surface when swapchain attached.
 - `runcts` script also output a file containing a list of the failed CTS tests.
 
