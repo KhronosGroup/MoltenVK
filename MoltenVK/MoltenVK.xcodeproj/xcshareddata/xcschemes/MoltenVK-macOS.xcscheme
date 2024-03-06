@@ -14,9 +14,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A9CBED861B6299D800E45FDC"
-               BuildableName = "libMoltenVK.a"
-               BlueprintName = "MoltenVK-macOS"
+               BlueprintIdentifier = "A9F4D9D92B8EC112004AD576"
+               BuildableName = "MoltenVK.framework"
+               BlueprintName = "MoltenVK-macOS-dynamic"
                ReferencedContainer = "container:MoltenVK.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -45,15 +45,6 @@
       enableGPUValidationMode = "1"
       allowLocationSimulation = "NO"
       queueDebuggingEnabled = "No">
-      <MacroExpansion>
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "A9CBED861B6299D800E45FDC"
-            BuildableName = "libMoltenVK.a"
-            BlueprintName = "MoltenVK-macOS"
-            ReferencedContainer = "container:MoltenVK.xcodeproj">
-         </BuildableReference>
-      </MacroExpansion>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -61,15 +52,6 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
-      <MacroExpansion>
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "A9CBED861B6299D800E45FDC"
-            BuildableName = "libMoltenVK.a"
-            BlueprintName = "MoltenVK-macOS"
-            ReferencedContainer = "container:MoltenVK.xcodeproj">
-         </BuildableReference>
-      </MacroExpansion>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">
