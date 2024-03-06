@@ -2938,7 +2938,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 
 #endif	//MVK_MACOS
 
-#if MVK_IOS_OR_TVOS
+#if !MVK_MACOS
 // For Apple Silicon, the Device ID is determined by the highest
 // GPU capability, which is a combination of OS version and GPU type.
 void MVKPhysicalDevice::initGPUInfoProperties() {
@@ -2947,7 +2947,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 	_properties.deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
 	strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
 }
-#endif	//MVK_IOS_OR_TVOS
+#endif	//!MVK_MACOS
 
 // Since this is a uint8_t array, use Big-Endian byte ordering,
 // so a hex dump of the array is human readable in its parts.
@@ -3015,7 +3015,7 @@ uint32_t MVKPhysicalDevice::getHighestGPUCapability() {
 	}
 
 	// Fall back to legacy feature sets on older OS's
-#if MVK_IOS
+#if MVK_IOS_OR_VISIONOS
 	uint32_t maxFS = (uint32_t)MTLFeatureSet_iOS_GPUFamily5_v1;
 	uint32_t minFS = (uint32_t)MTLFeatureSet_iOS_GPUFamily1_v1;
 #endif
@@ -3179,12 +3179,11 @@ void MVKPhysicalDevice::initMemoryProperties() {
 }
 
 bool MVKPhysicalDevice::getHasUnifiedMemory() {
-#if MVK_IOS_OR_TVOS
-	return true;
-#endif
 #if MVK_MACOS
 	return ([_mtlDevice respondsToSelector: @selector(hasUnifiedMemory)]
 			? _mtlDevice.hasUnifiedMemory : _mtlDevice.isLowPower);
+#else
+    return true;
 #endif
 }
 

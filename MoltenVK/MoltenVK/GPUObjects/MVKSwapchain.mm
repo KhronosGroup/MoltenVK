@@ -190,8 +190,8 @@ void MVKSwapchain::markFrameInterval() {
 VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRefreshCycleDuration) {
 	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 
-	auto* screen = getCAMetalLayer().screenMVK;		// Will be nil if headless
 #if MVK_MACOS && !MVK_MACCAT
+    auto* screen = getCAMetalLayer().screenMVK;        // Will be nil if headless
 	double framesPerSecond = 60;
 	if (screen) {
 		CGDirectDisplayID displayId = [[[screen deviceDescription] objectForKey:@"NSScreenNumber"] unsignedIntValue];
@@ -207,6 +207,7 @@ VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRe
 			framesPerSecond = 60.0;
 	}
 #elif MVK_IOS_OR_TVOS || MVK_MACCAT
+    auto* screen = getCAMetalLayer().screenMVK;        // Will be nil if headless
 	NSInteger framesPerSecond = 60;
 	if ([screen respondsToSelector: @selector(maximumFramesPerSecond)]) {
 		framesPerSecond = screen.maximumFramesPerSecond;

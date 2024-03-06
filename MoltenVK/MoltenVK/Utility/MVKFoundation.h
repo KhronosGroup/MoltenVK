@@ -542,11 +542,10 @@ static void mvkRemoveAllOccurances(C& container, T val) {
 /** Selects and returns one of the values, based on the platform OS. */
 template<typename T>
 static constexpr const T& mvkSelectPlatformValue(const T& macOSVal, const T& iOSVal) {
-#if MVK_IOS_OR_TVOS
-	return iOSVal;
-#endif
 #if MVK_MACOS
 	return macOSVal;
+#else
+    return iOSVal;
 #endif
 }
 
