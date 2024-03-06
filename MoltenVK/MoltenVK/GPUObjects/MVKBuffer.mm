@@ -121,8 +121,7 @@ bool MVKBuffer::needsHostReadSync(MVKPipelineBarrier& barrier) {
 	return (mvkIsAnyFlagEnabled(barrier.dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
 			mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT)) &&
 			isMemoryHostAccessible() && (!isMemoryHostCoherent() || _isHostCoherentTexelBuffer));
-#endif
-#if MVK_IOS_OR_TVOS
+#else
 	return false;
 #endif
 }
@@ -290,7 +289,11 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
 
         MTLTextureUsage usage = MTLTextureUsageShaderRead;
         if ( mvkIsAnyFlagEnabled(_buffer->getUsage(), VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) ) {
-            usage |= MTLTextureUsageShaderWrite;
+			usage |= MTLTextureUsageShaderWrite;
+#if MVK_XCODE_15
+			if (getPhysicalDevice()->useNativeTextureAtomics())
+				usage |= MTLTextureUsageShaderAtomic;
+#endif
         }
         id<MTLBuffer> mtlBuff;
         VkDeviceSize mtlBuffOffset;

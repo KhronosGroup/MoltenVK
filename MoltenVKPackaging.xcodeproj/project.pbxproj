@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 48;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXAggregateTarget section */
@@ -14,9 +14,21 @@
 				2FEA0A3424902F5E00EEF3AD /* Package MoltenVK */,
 			);
 			dependencies = (
-				2FEA0AC32490303F00EEF3AD /* PBXTargetDependency */,
+				A9F4D9B62B8EB63E004AD576 /* PBXTargetDependency */,
 			);
 			name = "MoltenVK-tvOS";
+			productName = Package;
+		};
+		A91170FD2B9110050057AD37 /* MoltenVK-MacCat */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = A91171012B9110050057AD37 /* Build configuration list for PBXAggregateTarget "MoltenVK-MacCat" */;
+			buildPhases = (
+				A91171002B9110050057AD37 /* Package MoltenVK */,
+			);
+			dependencies = (
+				A911710D2B9110380057AD37 /* PBXTargetDependency */,
+			);
+			name = "MoltenVK-MacCat";
 			productName = Package;
 		};
 		A975D5782140585200D4834F /* MoltenVK-iOS */ = {
@@ -26,7 +38,7 @@
 				A975D5872140585200D4834F /* Package MoltenVK */,
 			);
 			dependencies = (
-				A975D5792140585200D4834F /* PBXTargetDependency */,
+				A9F4D99B2B8E8E1D004AD576 /* PBXTargetDependency */,
 			);
 			name = "MoltenVK-iOS";
 			productName = Package;
@@ -38,7 +50,7 @@
 				A975D59A2140586700D4834F /* Package MoltenVK */,
 			);
 			dependencies = (
-				A975D58E2140586700D4834F /* PBXTargetDependency */,
+				A9F4D9F12B8EC210004AD576 /* PBXTargetDependency */,
 			);
 			name = "MoltenVK-macOS";
 			productName = Package;
@@ -62,9 +74,9 @@
 				A9B1008824F84BE400EADC6E /* Package MoltenVK */,
 			);
 			dependencies = (
-				A9B1008124F84BA700EADC6E /* PBXTargetDependency */,
-				A9B1008324F84BA700EADC6E /* PBXTargetDependency */,
-				A9B1008524F84BA700EADC6E /* PBXTargetDependency */,
+				A9F4D9F82B8EC22E004AD576 /* PBXTargetDependency */,
+				A9F4D9F62B8EC22E004AD576 /* PBXTargetDependency */,
+				A9F4D9FA2B8EC22E004AD576 /* PBXTargetDependency */,
 			);
 			name = MoltenVK;
 			productName = Package;
@@ -76,7 +88,7 @@
 				DCFD7ED82A45BC56007BBBF7 /* Package MoltenVK */,
 			);
 			dependencies = (
-				DCFD7F682A45BC81007BBBF7 /* PBXTargetDependency */,
+				A9F4D9D52B8EBA14004AD576 /* PBXTargetDependency */,
 			);
 			name = "MoltenVK-xrOS";
 			productName = Package;
@@ -91,12 +103,12 @@
 			remoteGlobalIDString = 2FEA0ABA24902F9F00EEF3AD;
 			remoteInfo = "MoltenVK-tvOS";
 		};
-		2FEA0AC22490303F00EEF3AD /* PBXContainerItemProxy */ = {
+		A911710C2B9110380057AD37 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
 			proxyType = 1;
-			remoteGlobalIDString = 2FEA0A3B24902F9F00EEF3AD;
-			remoteInfo = "MoltenVK-tvOS";
+			remoteGlobalIDString = A9B8EE091A98D796009C5A02;
+			remoteInfo = "MoltenVK-iOS-static";
 		};
 		A92DB3F41CE0F72500FBC835 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -110,20 +122,6 @@
 			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
 			proxyType = 2;
 			remoteGlobalIDString = A9CBEE011B6299D800E45FDC;
-			remoteInfo = "MoltenVK-macOS";
-		};
-		A975D57A2140585200D4834F /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
-			proxyType = 1;
-			remoteGlobalIDString = A9B8EE091A98D796009C5A02;
-			remoteInfo = "MoltenVK-iOS";
-		};
-		A975D58F2140586700D4834F /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
-			proxyType = 1;
-			remoteGlobalIDString = A9CBED861B6299D800E45FDC;
 			remoteInfo = "MoltenVK-macOS";
 		};
 		A97D77552B24FBDF00E36932 /* PBXContainerItemProxy */ = {
@@ -161,26 +159,82 @@
 			remoteGlobalIDString = A9092A8C1A81717B00051823;
 			remoteInfo = MoltenVKShaderConverter;
 		};
-		A9B1008024F84BA700EADC6E /* PBXContainerItemProxy */ = {
+		A9F4D9982B8E8CE0004AD576 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
-			proxyType = 1;
-			remoteGlobalIDString = A9B8EE091A98D796009C5A02;
-			remoteInfo = "MoltenVK-iOS";
+			proxyType = 2;
+			remoteGlobalIDString = A9F4D96B2B8E7366004AD576;
+			remoteInfo = "MoltenVK-iOS-dynamic";
 		};
-		A9B1008224F84BA700EADC6E /* PBXContainerItemProxy */ = {
+		A9F4D99A2B8E8E1D004AD576 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
 			proxyType = 1;
-			remoteGlobalIDString = A9CBED861B6299D800E45FDC;
-			remoteInfo = "MoltenVK-macOS";
+			remoteGlobalIDString = A9F4D96A2B8E7366004AD576;
+			remoteInfo = "MoltenVK-iOS-dynamic";
 		};
-		A9B1008424F84BA700EADC6E /* PBXContainerItemProxy */ = {
+		A9F4D9B52B8EB63E004AD576 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
 			proxyType = 1;
-			remoteGlobalIDString = 2FEA0A3B24902F9F00EEF3AD;
-			remoteInfo = "MoltenVK-tvOS";
+			remoteGlobalIDString = A9F4D99E2B8EB2FC004AD576;
+			remoteInfo = "MoltenVK-tvOS-dynamic";
+		};
+		A9F4D9B82B8EB63E004AD576 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = A9F4D9B22B8EB2FC004AD576;
+			remoteInfo = "MoltenVK-tvOS-dynamic";
+		};
+		A9F4D9D42B8EBA14004AD576 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A9F4D9BA2B8EB6DC004AD576;
+			remoteInfo = "MoltenVK-xrOS-dynamic";
+		};
+		A9F4D9D72B8EBA14004AD576 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = A9F4D9CE2B8EB6DC004AD576;
+			remoteInfo = "MoltenVK-xrOS-dynamic";
+		};
+		A9F4D9F02B8EC210004AD576 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A9F4D9D92B8EC112004AD576;
+			remoteInfo = "MoltenVK-macOS-dynamic";
+		};
+		A9F4D9F32B8EC210004AD576 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = A9F4D9ED2B8EC112004AD576;
+			remoteInfo = "MoltenVK-macOS-dynamic";
+		};
+		A9F4D9F52B8EC22E004AD576 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A9F4D96A2B8E7366004AD576;
+			remoteInfo = "MoltenVK-iOS-dynamic";
+		};
+		A9F4D9F72B8EC22E004AD576 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A9F4D9D92B8EC112004AD576;
+			remoteInfo = "MoltenVK-macOS-dynamic";
+		};
+		A9F4D9F92B8EC22E004AD576 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A9F4D99E2B8EB2FC004AD576;
+			remoteInfo = "MoltenVK-tvOS-dynamic";
 		};
 		A9FC5F5C249D2547003CB086 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -196,16 +250,10 @@
 			remoteGlobalIDString = DCFD7F622A45BC6E007BBBF7;
 			remoteInfo = "MoltenVK-xrOS";
 		};
-		DCFD7F672A45BC81007BBBF7 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
-			proxyType = 1;
-			remoteGlobalIDString = DCFD7EDF2A45BC6E007BBBF7;
-			remoteInfo = "MoltenVK-xrOS";
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		279BD8642B7FAE0A0021CE70 /* create_dylib_xros.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_xros.sh; sourceTree = "<group>"; };
 		A92DB3E41CE0F37D00FBC835 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		A92DB3E51CE0F37D00FBC835 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		A92DB3E61CE0F37D00FBC835 /* Whats_New.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Whats_New.md; path = Docs/Whats_New.md; sourceTree = "<group>"; };
@@ -218,20 +266,16 @@
 		A92EF7CB21856EA300C8B91B /* package_shader_converter_xcframework.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_shader_converter_xcframework.sh; sourceTree = "<group>"; };
 		A92EF7DE2186451700C8B91B /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; name = Makefile; path = ../Makefile; sourceTree = "<group>"; };
 		A93ED4DE24F59CDB00FEB018 /* copy_lib_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_lib_to_staging.sh; sourceTree = "<group>"; };
-		A93ED4E324F59CDB00FEB018 /* copy_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_to_staging.sh; sourceTree = "<group>"; };
-		A975D55C213F25D700D4834F /* create_dylib.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib.sh; sourceTree = "<group>"; };
 		A97D77502B24FBDF00E36932 /* MoltenVK_Configuration_Parameters.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = MoltenVK_Configuration_Parameters.md; path = Docs/MoltenVK_Configuration_Parameters.md; sourceTree = "<group>"; };
 		A980A25F24C628F3007A8F6F /* gen_moltenvk_rev_hdr.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = gen_moltenvk_rev_hdr.sh; sourceTree = "<group>"; };
 		A98149E51FB78829005F00B4 /* MoltenVK_Runtime_UserGuide.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = MoltenVK_Runtime_UserGuide.md; path = Docs/MoltenVK_Runtime_UserGuide.md; sourceTree = "<group>"; };
 		A9A15AA625D6D884004EEBE9 /* CI.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; name = CI.yml; path = .github/workflows/CI.yml; sourceTree = "<group>"; };
 		A9B1007A24F837AF00EADC6E /* create_xcframework_func.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_xcframework_func.sh; sourceTree = "<group>"; };
-		A9C70F41221B04C800FBA31A /* create_dylib_macos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_macos.sh; sourceTree = "<group>"; };
-		A9C70F45221B04C800FBA31A /* create_dylib_ios.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_ios.sh; sourceTree = "<group>"; };
 		A9CBBFF924F8A1EB006D41EF /* package_moltenvk_xcframework.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_moltenvk_xcframework.sh; sourceTree = "<group>"; };
 		A9DA8341218A198C002AA662 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		A9DDBF8C26827F02005DD991 /* runcts */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = runcts; sourceTree = "<group>"; };
+		A9F4D8942B8D4F81004AD576 /* copy_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_to_staging.sh; sourceTree = "<group>"; };
 		A9FC5F60249D2ED3003CB086 /* package_all.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_all.sh; sourceTree = "<group>"; };
-		A9FC5F64249D3778003CB086 /* create_dylib_tvos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_tvos.sh; sourceTree = "<group>"; };
 		A9FE05632B697AE400208814 /* get_failing_cts_tests.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = get_failing_cts_tests.py; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -244,6 +288,7 @@
 				A975D55B213F25AD00D4834F /* Scripts */,
 				A92DB3E11CE0F34500FBC835 /* Docs */,
 				A9DA833F218A193F002AA662 /* Git */,
+				A9F4D9582B8E7345004AD576 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
@@ -262,10 +307,14 @@
 		A92DB3EF1CE0F72500FBC835 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				A92DB3F51CE0F72500FBC835 /* libMoltenVK.a */,
-				2FEA0ABE2490302F00EEF3AD /* libMoltenVK.a */,
 				A92DB3F71CE0F72500FBC835 /* libMoltenVK.a */,
+				A9F4D9F42B8EC210004AD576 /* MoltenVK.framework */,
+				A92DB3F51CE0F72500FBC835 /* libMoltenVK.a */,
+				A9F4D9992B8E8CE0004AD576 /* MoltenVK.framework */,
+				2FEA0ABE2490302F00EEF3AD /* libMoltenVK.a */,
+				A9F4D9B92B8EB63E004AD576 /* MoltenVK.framework */,
 				DCFD7F662A45BC7D007BBBF7 /* libMoltenVK.a */,
+				A9F4D9D82B8EBA14004AD576 /* MoltenVK.framework */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -273,12 +322,8 @@
 		A975D55B213F25AD00D4834F /* Scripts */ = {
 			isa = PBXGroup;
 			children = (
-				A93ED4E324F59CDB00FEB018 /* copy_to_staging.sh */,
+				A9F4D8942B8D4F81004AD576 /* copy_to_staging.sh */,
 				A93ED4DE24F59CDB00FEB018 /* copy_lib_to_staging.sh */,
-				A9C70F45221B04C800FBA31A /* create_dylib_ios.sh */,
-				A9C70F41221B04C800FBA31A /* create_dylib_macos.sh */,
-				A9FC5F64249D3778003CB086 /* create_dylib_tvos.sh */,
-				A975D55C213F25D700D4834F /* create_dylib.sh */,
 				A9B1007A24F837AF00EADC6E /* create_xcframework_func.sh */,
 				A980A25F24C628F3007A8F6F /* gen_moltenvk_rev_hdr.sh */,
 				A9FE05632B697AE400208814 /* get_failing_cts_tests.py */,
@@ -316,6 +361,13 @@
 			name = Git;
 			sourceTree = "<group>";
 		};
+		A9F4D9582B8E7345004AD576 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXProject section */
@@ -338,6 +390,7 @@
 				Base,
 			);
 			mainGroup = A90B2B1C1A9B6170008EE819;
+			productRefGroup = A9F4D9582B8E7345004AD576 /* Products */;
 			projectDirPath = "";
 			projectReferences = (
 				{
@@ -355,8 +408,9 @@
 				A975D5782140585200D4834F /* MoltenVK-iOS */,
 				2FEA0A2F24902F5E00EEF3AD /* MoltenVK-tvOS */,
 				A975D58B2140586700D4834F /* MoltenVK-macOS */,
-				A9AD700D2440ED3B00B9E254 /* MVKShaderConverterTool */,
 				DCFD7ED52A45BC56007BBBF7 /* MoltenVK-xrOS */,
+				A91170FD2B9110050057AD37 /* MoltenVK-MacCat */,
+				A9AD700D2440ED3B00B9E254 /* MVKShaderConverterTool */,
 			);
 		};
 /* End PBXProject section */
@@ -411,6 +465,34 @@
 			remoteRef = A98149921FB6B566005F00B4 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
+		A9F4D9992B8E8CE0004AD576 /* MoltenVK.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			path = MoltenVK.framework;
+			remoteRef = A9F4D9982B8E8CE0004AD576 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		A9F4D9B92B8EB63E004AD576 /* MoltenVK.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			path = MoltenVK.framework;
+			remoteRef = A9F4D9B82B8EB63E004AD576 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		A9F4D9D82B8EBA14004AD576 /* MoltenVK.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			path = MoltenVK.framework;
+			remoteRef = A9F4D9D72B8EBA14004AD576 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		A9F4D9F42B8EC210004AD576 /* MoltenVK.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			path = MoltenVK.framework;
+			remoteRef = A9F4D9F32B8EC210004AD576 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
 		A9FC5F5D249D2547003CB086 /* libMoltenVKShaderConverter.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
@@ -430,11 +512,29 @@
 /* Begin PBXShellScriptBuildPhase section */
 		2FEA0A3424902F5E00EEF3AD /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputPaths = (
-				"${BUILT_PRODUCTS_DIR}/../XCFrameworkStaging",
+				"${BUILD_DIR}/XCFrameworkStaging",
+			);
+			name = "Package MoltenVK";
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/PackagePhaseDummyOutputFile",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/Scripts/package_all.sh\"\n";
+		};
+		A91171002B9110050057AD37 /* Package MoltenVK */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${BUILD_DIR}/XCFrameworkStaging",
 			);
 			name = "Package MoltenVK";
 			outputPaths = (
@@ -446,11 +546,12 @@
 		};
 		A975D5872140585200D4834F /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputPaths = (
-				"${BUILT_PRODUCTS_DIR}/../XCFrameworkStaging",
+				"${BUILD_DIR}/XCFrameworkStaging",
 			);
 			name = "Package MoltenVK";
 			outputPaths = (
@@ -462,11 +563,12 @@
 		};
 		A975D59A2140586700D4834F /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputPaths = (
-				"${BUILT_PRODUCTS_DIR}/../XCFrameworkStaging",
+				"${BUILD_DIR}/XCFrameworkStaging",
 			);
 			name = "Package MoltenVK";
 			outputPaths = (
@@ -478,11 +580,12 @@
 		};
 		A9AD70122440ED3B00B9E254 /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputPaths = (
-				"${BUILT_PRODUCTS_DIR}/../XCFrameworkStaging",
+				"${BUILD_DIR}/XCFrameworkStaging",
 			);
 			name = "Package MoltenVK";
 			outputPaths = (
@@ -494,13 +597,14 @@
 		};
 		A9B1008824F84BE400EADC6E /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputFileListPaths = (
 			);
 			inputPaths = (
-				"${BUILT_PRODUCTS_DIR}/../XCFrameworkStaging",
+				"${BUILD_DIR}/XCFrameworkStaging",
 			);
 			name = "Package MoltenVK";
 			outputFileListPaths = (
@@ -514,11 +618,12 @@
 		};
 		DCFD7ED82A45BC56007BBBF7 /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputPaths = (
-				"${BUILT_PRODUCTS_DIR}/../XCFrameworkStaging",
+				"${BUILD_DIR}/XCFrameworkStaging",
 			);
 			name = "Package MoltenVK";
 			outputPaths = (
@@ -531,45 +636,50 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		2FEA0AC32490303F00EEF3AD /* PBXTargetDependency */ = {
+		A911710D2B9110380057AD37 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			name = "MoltenVK-tvOS";
-			targetProxy = 2FEA0AC22490303F00EEF3AD /* PBXContainerItemProxy */;
-		};
-		A975D5792140585200D4834F /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = "MoltenVK-iOS";
-			targetProxy = A975D57A2140585200D4834F /* PBXContainerItemProxy */;
-		};
-		A975D58E2140586700D4834F /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = "MoltenVK-macOS";
-			targetProxy = A975D58F2140586700D4834F /* PBXContainerItemProxy */;
+			name = "MoltenVK-iOS-static";
+			targetProxy = A911710C2B9110380057AD37 /* PBXContainerItemProxy */;
 		};
 		A9AD70102440ED3B00B9E254 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = MoltenVKShaderConverter;
 			targetProxy = A9AD70112440ED3B00B9E254 /* PBXContainerItemProxy */;
 		};
-		A9B1008124F84BA700EADC6E /* PBXTargetDependency */ = {
+		A9F4D99B2B8E8E1D004AD576 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			name = "MoltenVK-iOS";
-			targetProxy = A9B1008024F84BA700EADC6E /* PBXContainerItemProxy */;
+			name = "MoltenVK-iOS-dynamic";
+			targetProxy = A9F4D99A2B8E8E1D004AD576 /* PBXContainerItemProxy */;
 		};
-		A9B1008324F84BA700EADC6E /* PBXTargetDependency */ = {
+		A9F4D9B62B8EB63E004AD576 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			name = "MoltenVK-macOS";
-			targetProxy = A9B1008224F84BA700EADC6E /* PBXContainerItemProxy */;
+			name = "MoltenVK-tvOS-dynamic";
+			targetProxy = A9F4D9B52B8EB63E004AD576 /* PBXContainerItemProxy */;
 		};
-		A9B1008524F84BA700EADC6E /* PBXTargetDependency */ = {
+		A9F4D9D52B8EBA14004AD576 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			name = "MoltenVK-tvOS";
-			targetProxy = A9B1008424F84BA700EADC6E /* PBXContainerItemProxy */;
+			name = "MoltenVK-xrOS-dynamic";
+			targetProxy = A9F4D9D42B8EBA14004AD576 /* PBXContainerItemProxy */;
 		};
-		DCFD7F682A45BC81007BBBF7 /* PBXTargetDependency */ = {
+		A9F4D9F12B8EC210004AD576 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			name = "MoltenVK-xrOS";
-			targetProxy = DCFD7F672A45BC81007BBBF7 /* PBXContainerItemProxy */;
+			name = "MoltenVK-macOS-dynamic";
+			targetProxy = A9F4D9F02B8EC210004AD576 /* PBXContainerItemProxy */;
+		};
+		A9F4D9F62B8EC22E004AD576 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "MoltenVK-iOS-dynamic";
+			targetProxy = A9F4D9F52B8EC22E004AD576 /* PBXContainerItemProxy */;
+		};
+		A9F4D9F82B8EC22E004AD576 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "MoltenVK-macOS-dynamic";
+			targetProxy = A9F4D9F72B8EC22E004AD576 /* PBXContainerItemProxy */;
+		};
+		A9F4D9FA2B8EC22E004AD576 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "MoltenVK-tvOS-dynamic";
+			targetProxy = A9F4D9F92B8EC22E004AD576 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -599,6 +709,20 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				DISABLE_MANUAL_TARGET_ORDER_BUILD_WARNING = YES;
+			};
+			name = Release;
+		};
+		A91171022B9110050057AD37 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		A91171032B9110050057AD37 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
 		};
@@ -691,6 +815,15 @@
 			buildConfigurations = (
 				A90B2B211A9B6170008EE819 /* Debug */,
 				A90B2B221A9B6170008EE819 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A91171012B9110050057AD37 /* Build configuration list for PBXAggregateTarget "MoltenVK-MacCat" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A91171022B9110050057AD37 /* Debug */,
+				A91171032B9110050057AD37 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

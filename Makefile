@@ -71,11 +71,11 @@ iossim-debug:
 
 .PHONY: maccat
 maccat:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=macOS,variant=Mac Catalyst" GCC_PREPROCESSOR_DEFINITIONS='$${inherited} $(MAKEARGS)' $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (MacCat only)" -destination "generic/platform=macOS,variant=Mac Catalyst" GCC_PREPROCESSOR_DEFINITIONS='$${inherited} $(MAKEARGS)' $(OUTPUT_FMT_CMD)
 
 .PHONY: maccat-debug
 maccat-debug:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=macOS,variant=Mac Catalyst" -configuration "Debug" GCC_PREPROCESSOR_DEFINITIONS='$${inherited} $(MAKEARGS)' $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (MacCat only)" -destination "generic/platform=macOS,variant=Mac Catalyst" -configuration "Debug" GCC_PREPROCESSOR_DEFINITIONS='$${inherited} $(MAKEARGS)' $(OUTPUT_FMT_CMD)
 
 .PHONY: tvos
 tvos:
@@ -117,27 +117,5 @@ clean:
 # Usually requires 'sudo make install'
 .PHONY: install
 install:
-	rm -rf /Library/Frameworks/MoltenVK.framework
-	rm -rf /Library/Frameworks/MoltenVK.xcframework
-	cp -a Package/Latest/MoltenVK/MoltenVK.xcframework /Library/Frameworks/
-
-# Deprecated target names
-.PHONY: iosfat
-iosfat:
-	@$(MAKE) ios
-	@$(MAKE) iossim
-
-.PHONY: iosfat-debug
-iosfat-debug:
-	@$(MAKE) ios-debug
-	@$(MAKE) iossim-debug
-
-.PHONY: tvosfat
-tvosfat:
-	@$(MAKE) tvos
-	@$(MAKE) tvossim
-
-.PHONY: tvosfat-debug
-tvosfat-debug:
-	@$(MAKE) tvos-debug
-	@$(MAKE) tvossim-debug
+	$ rm -f /usr/local/lib/libMoltenVK.dylib
+	$ cp -p Package/Latest/MoltenVK/dynamic/dylib/macOS/libMoltenVK.dylib /usr/local/lib

@@ -69,8 +69,11 @@ extern "C" {
 #ifndef TARGET_OS_XR
 #	define TARGET_OS_XR				0		// Older SDK's don't define TARGET_OS_XR
 #endif
+#ifndef TARGET_OS_VISION
+#   define TARGET_OS_VISION         0        // Older SDK's don't define TARGET_OS_VISION
+#endif
 #ifndef MVK_VISIONOS
-#	define MVK_VISIONOS				TARGET_OS_XR
+#	define MVK_VISIONOS				(TARGET_OS_XR || TARGET_OS_VISION)
 #endif
 
 /** Building for iOS or tvOS. */
@@ -83,9 +86,9 @@ extern "C" {
 #	define MVK_MACOS_OR_IOS			(MVK_MACOS || MVK_IOS)
 #endif
 
-/** Building for macOS, iOS or visionOS. */
-#ifndef MVK_MACOS_OR_IOS_OR_VISIONOS
-#	define MVK_MACOS_OR_IOS_OR_VISIONOS	(MVK_MACOS || MVK_IOS | MVK_VISIONOS)
+/** Building for iOS or visionOS. */
+#ifndef MVK_IOS_OR_VISIONOS
+#    define MVK_IOS_OR_VISIONOS    (MVK_IOS || MVK_VISIONOS)
 #endif
 
 /** Building for a Simulator. */

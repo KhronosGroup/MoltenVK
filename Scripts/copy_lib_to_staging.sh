@@ -1,15 +1,17 @@
 #!/bin/bash
 
 # Copy the static library file to its own directory within the XCFrameworkStaging directory.
+# and mark the XCFrameworkStaging directory as changed, to trigger packaging dependencies.
 #
-# Requires the variable MVK_XCFWK_STAGING_DIR.
-#
-export MVK_PROD_FILENAME="lib${PRODUCT_NAME}.a"
-export MVK_BUILT_PROD_FILE="${BUILT_PRODUCTS_DIR}/${MVK_PROD_FILENAME}"
+# Takes 2 parameters:
+#   1 - prod_file_name
+#   2 - xcfwk_dst_dir, destiation directory in which to create XCFramework
 
-staging_dir="${MVK_XCFWK_STAGING_DIR}/Platform${EFFECTIVE_PLATFORM_NAME}"
+prod_file_name=${1}
+xcfwk_dst_dir=${2}
+built_prod_file="${BUILT_PRODUCTS_DIR}/${prod_file_name}"
+staging_dir="${xcfwk_dst_dir}/XCFrameworkStaging/${CONFIGURATION}/Platform${EFFECTIVE_PLATFORM_NAME}"
+
 mkdir -p "${staging_dir}"
-cp -a "${MVK_BUILT_PROD_FILE}" "${staging_dir}/${MVK_PROD_FILENAME}"
-
-# Mark the XCFrameworkStaging directory as changed, to trigger packaging dependencies.
-touch "${MVK_XCFWK_STAGING_DIR}/.."
+cp -a "${built_prod_file}" "${staging_dir}/"
+touch "${staging_dir}/.."

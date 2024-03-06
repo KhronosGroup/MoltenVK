@@ -131,6 +131,13 @@ using namespace std;
 #   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
 #endif
 
+#if MVK_VISIONOS
+#   define MTLPixelFormatDepth24Unorm_Stencil8      MTLPixelFormatInvalid
+#   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatInvalid
+#   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
+#endif
+
+
 #if MVK_TVOS
 #       define MTLPixelFormatASTC_4x4_HDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_5x4_HDR           MTLPixelFormatInvalid
@@ -695,7 +702,8 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 													VkSampleCountFlagBits samples,
                                                     bool isLinear,
                                                     bool needsReinterpretation,
-                                                    bool isExtended) {
+                                                    bool isExtended,
+													bool supportAtomics) {
 	bool isDepthFmt = isDepthFormat(mtlFormat);
 	bool isStencilFmt = isStencilFormat(mtlFormat);
 	bool isCombinedDepthStencilFmt = isDepthFmt && isStencilFmt;
@@ -719,6 +727,13 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 
 		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderWrite);
 	}
+
+#if MVK_XCODE_15
+	if (supportAtomics) {
+		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderAtomic);
+	}
+#endif
+
 #if MVK_MACOS
     // Clearing a linear image may use shader writes.
     if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_TRANSFER_DST_BIT)) &&
@@ -2005,6 +2020,9 @@ void MVKPixelFormats::buildVkFormatMaps(id<MTLDevice> mtlDevice) {
 #if MVK_IOS || MVK_TVOS
 			bool supportsNativeTextureSwizzle = mtlDevice && mvkOSVersionIsAtLeast(13.0);
 #endif
+#if MVK_VISIONOS
+            bool supportsNativeTextureSwizzle = mtlDevice;
+#endif
 			if (!supportsNativeTextureSwizzle && !getMVKConfig().fullImageViewSwizzle) {
 				vkDesc.mtlPixelFormat = vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid;
 			}
@@ -2122,6 +2140,9 @@ void MVKPixelFormats::setFormatProperties(id<MTLDevice> mtlDevice, MVKVkFormatDe
 #endif
 #if MVK_TVOS
 	bool supportsStencilFeedback = false;
+#endif
+#if MVK_VISIONOS
+    bool supportsStencilFeedback = [mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1];
 #endif
 
 	// Vulkan forbids blits between chroma-subsampled formats.

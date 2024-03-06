@@ -127,17 +127,6 @@ static inline std::string mvkGetVulkanVersionString(uint32_t vkVersion) {
 	return verStr;
 }
 
-/** Returns the MoltenVK API version number as a string. */
-static inline std::string mvkGetMoltenVKVersionString(uint32_t mvkVersion) {
-	std::string verStr;
-	verStr += std::to_string(mvkVersion / 10000);
-	verStr += ".";
-	verStr += std::to_string((mvkVersion % 10000) / 100);
-	verStr += ".";
-	verStr += std::to_string(mvkVersion % 100);
-	return verStr;
-}
-
 
 #pragma mark -
 #pragma mark Alignment functions
@@ -553,11 +542,10 @@ static void mvkRemoveAllOccurances(C& container, T val) {
 /** Selects and returns one of the values, based on the platform OS. */
 template<typename T>
 static constexpr const T& mvkSelectPlatformValue(const T& macOSVal, const T& iOSVal) {
-#if MVK_IOS_OR_TVOS
-	return iOSVal;
-#endif
 #if MVK_MACOS
 	return macOSVal;
+#else
+    return iOSVal;
 #endif
 }
 

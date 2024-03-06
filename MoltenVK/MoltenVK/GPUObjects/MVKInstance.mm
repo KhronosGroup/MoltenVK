@@ -24,6 +24,8 @@
 #include "MVKOSExtensions.h"
 #include "mvk_deprecated_api.h"
 
+#include <string_view>
+
 using namespace std;
 
 
@@ -769,9 +771,11 @@ void MVKInstance::initProcAddrs() {
 }
 
 void MVKInstance::logVersions() {
+	static_assert(string_view(MVK_STRINGIFY(MVK_FRAMEWORK_VERSION)) == MVK_VERSION_STRING, "Xcode build setting CURRENT_PROJECT_VERSION must be identical to the MoltenVK version (MVK_VERSION_STRING).");
+
 	MVKExtensionList allExtns(this, true);
 	MVKLogInfo("MoltenVK version %s, supporting Vulkan version %s.\n\tThe following %d Vulkan extensions are supported:%s",
-			   mvkGetMoltenVKVersionString(MVK_VERSION).c_str(),
+			   MVK_VERSION_STRING,
 			   mvkGetVulkanVersionString(getMVKConfig().apiVersionToAdvertise).c_str(),
 			   allExtns.getEnabledCount(),
 			   allExtns.enabledNamesString("\n\t\t", true).c_str());
