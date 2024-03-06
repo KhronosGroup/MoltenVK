@@ -1336,8 +1336,8 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDesc    ( Depth32Float, None, DRM, DRFMR );
 	addMTLPixelFormatDesc    ( Stencil8, None, DRM, DRMR );
 	addMTLPixelFormatDesc    ( Depth24Unorm_Stencil8, Depth24_Stencil8, None, None );
-	addMTLPixelFormatDesc    ( X24_Stencil8, Depth24_Stencil8, None, DRMR );
 	addMTLPixelFormatDesc    ( Depth32Float_Stencil8, Depth32_Stencil8, DRM, DRFMR );
+	addMTLPixelFormatDesc    ( X24_Stencil8, Depth24_Stencil8, None, DRMR );
 	addMTLPixelFormatDesc    ( X32_Stencil8, Depth32_Stencil8, DRM, DRMR );
 
 	_mtlPixelFormatDescriptions.shrink_to_fit();
