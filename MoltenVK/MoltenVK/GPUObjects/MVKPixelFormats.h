@@ -388,7 +388,8 @@ public:
 									   VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT,
                                        bool isLinear = false,
                                        bool needsReinterpretation = true,
-                                       bool isExtended = false);
+                                       bool isExtended = false,
+									   bool supportAtomics = false);
 
 	/** Enumerates all formats that support the given features, calling a specified function for each one. */
 	void enumerateSupportedFormats(const VkFormatProperties3& properties, bool any, std::function<bool(VkFormat)> func);

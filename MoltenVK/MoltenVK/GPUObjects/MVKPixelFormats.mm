@@ -702,7 +702,8 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 													VkSampleCountFlagBits samples,
                                                     bool isLinear,
                                                     bool needsReinterpretation,
-                                                    bool isExtended) {
+                                                    bool isExtended,
+													bool supportAtomics) {
 	bool isDepthFmt = isDepthFormat(mtlFormat);
 	bool isStencilFmt = isStencilFormat(mtlFormat);
 	bool isCombinedDepthStencilFmt = isDepthFmt && isStencilFmt;
@@ -726,6 +727,13 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 
 		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderWrite);
 	}
+
+#if MVK_XCODE_15
+	if (supportAtomics) {
+		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderAtomic);
+	}
+#endif
+
 #if MVK_MACOS
     // Clearing a linear image may use shader writes.
     if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_TRANSFER_DST_BIT)) &&

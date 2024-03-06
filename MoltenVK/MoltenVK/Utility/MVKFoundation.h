@@ -127,17 +127,6 @@ static inline std::string mvkGetVulkanVersionString(uint32_t vkVersion) {
 	return verStr;
 }
 
-/** Returns the MoltenVK API version number as a string. */
-static inline std::string mvkGetMoltenVKVersionString(uint32_t mvkVersion) {
-	std::string verStr;
-	verStr += std::to_string(mvkVersion / 10000);
-	verStr += ".";
-	verStr += std::to_string((mvkVersion % 10000) / 100);
-	verStr += ".";
-	verStr += std::to_string(mvkVersion % 100);
-	return verStr;
-}
-
 
 #pragma mark -
 #pragma mark Alignment functions

@@ -360,6 +360,9 @@ public:
 		return _metalFeatures.argumentBuffers && getMVKConfig().useMetalArgumentBuffers != MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER;
 	};
 
+	/** Returns whether native texture atomics are supported and should be used. */
+	bool useNativeTextureAtomics() { return _metalFeatures.nativeTextureAtomics; }
+
 
 #pragma mark Construction
 
