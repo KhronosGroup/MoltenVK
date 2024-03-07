@@ -4,7 +4,7 @@ set -e
 
 . "${PROJECT_DIR}/Scripts/create_xcframework_func.sh"
 
-export prod_name="MoltenVK"
+prod_name="MoltenVK"
 export MVK_XCFWK_STAGING_DIR="${BUILD_DIR}/XCFrameworkStaging"
 
 # Assemble the headers
