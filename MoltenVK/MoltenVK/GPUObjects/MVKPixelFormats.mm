@@ -729,7 +729,7 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 	}
 
 #if MVK_XCODE_15
-	if (supportAtomics) {
+	if (supportAtomics && (mtlFormat == MTLPixelFormatR32Uint || mtlFormat == MTLPixelFormatR32Sint || mtlFormat == MTLPixelFormatRG32Uint)) {
 		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderAtomic);
 	}
 #endif
