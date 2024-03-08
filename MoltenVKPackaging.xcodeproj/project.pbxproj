@@ -50,6 +50,7 @@
 				A975D59A2140586700D4834F /* Package MoltenVK */,
 			);
 			dependencies = (
+				A979A95A2B9A232800F69E67 /* PBXTargetDependency */,
 				A9F4D9F12B8EC210004AD576 /* PBXTargetDependency */,
 			);
 			name = "MoltenVK-macOS";
@@ -74,6 +75,7 @@
 				A9B1008824F84BE400EADC6E /* Package MoltenVK */,
 			);
 			dependencies = (
+				A979A9662B9A233C00F69E67 /* PBXTargetDependency */,
 				A9F4D9F82B8EC22E004AD576 /* PBXTargetDependency */,
 				A9F4D9F62B8EC22E004AD576 /* PBXTargetDependency */,
 				A9F4D9FA2B8EC22E004AD576 /* PBXTargetDependency */,
@@ -123,6 +125,27 @@
 			proxyType = 2;
 			remoteGlobalIDString = A9CBEE011B6299D800E45FDC;
 			remoteInfo = "MoltenVK-macOS";
+		};
+		A979A9592B9A232800F69E67 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A979A94E2B9A215200F69E67;
+			remoteInfo = "MoltenVK-macOS-dylib";
+		};
+		A979A95F2B9A232800F69E67 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = A979A94F2B9A215200F69E67;
+			remoteInfo = "MoltenVK-macOS-dylib";
+		};
+		A979A9652B9A233C00F69E67 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A979A94E2B9A215200F69E67;
+			remoteInfo = "MoltenVK-macOS-dylib";
 		};
 		A97D77552B24FBDF00E36932 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -253,19 +276,19 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		279BD8642B7FAE0A0021CE70 /* create_dylib_xros.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_xros.sh; sourceTree = "<group>"; };
 		A92DB3E41CE0F37D00FBC835 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		A92DB3E51CE0F37D00FBC835 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		A92DB3E61CE0F37D00FBC835 /* Whats_New.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Whats_New.md; path = Docs/Whats_New.md; sourceTree = "<group>"; };
 		A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = MoltenVK.xcodeproj; path = MoltenVK/MoltenVK.xcodeproj; sourceTree = "<group>"; };
 		A92DB40E1CE0F89600FBC835 /* MoltenVKShaderConverter.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = MoltenVKShaderConverter.xcodeproj; path = MoltenVKShaderConverter/MoltenVKShaderConverter.xcodeproj; sourceTree = "<group>"; };
-		A92EF7C621856EA200C8B91B /* package_moltenvk.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_moltenvk.sh; sourceTree = "<group>"; };
+		A92EF7C621856EA200C8B91B /* package_headers.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_headers.sh; sourceTree = "<group>"; };
 		A92EF7C721856EA200C8B91B /* package_shader_converter_tool.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_shader_converter_tool.sh; sourceTree = "<group>"; };
 		A92EF7C921856EA200C8B91B /* package_docs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_docs.sh; sourceTree = "<group>"; };
 		A92EF7CA21856EA200C8B91B /* package_update_latest.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_update_latest.sh; sourceTree = "<group>"; };
 		A92EF7CB21856EA300C8B91B /* package_shader_converter_xcframework.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_shader_converter_xcframework.sh; sourceTree = "<group>"; };
 		A92EF7DE2186451700C8B91B /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; name = Makefile; path = ../Makefile; sourceTree = "<group>"; };
 		A93ED4DE24F59CDB00FEB018 /* copy_lib_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_lib_to_staging.sh; sourceTree = "<group>"; };
+		A979A9702B9A3D7900F69E67 /* package_dylibs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_dylibs.sh; sourceTree = "<group>"; };
 		A97D77502B24FBDF00E36932 /* MoltenVK_Configuration_Parameters.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = MoltenVK_Configuration_Parameters.md; path = Docs/MoltenVK_Configuration_Parameters.md; sourceTree = "<group>"; };
 		A980A25F24C628F3007A8F6F /* gen_moltenvk_rev_hdr.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = gen_moltenvk_rev_hdr.sh; sourceTree = "<group>"; };
 		A98149E51FB78829005F00B4 /* MoltenVK_Runtime_UserGuide.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = MoltenVK_Runtime_UserGuide.md; path = Docs/MoltenVK_Runtime_UserGuide.md; sourceTree = "<group>"; };
@@ -308,6 +331,7 @@
 			isa = PBXGroup;
 			children = (
 				A92DB3F71CE0F72500FBC835 /* libMoltenVK.a */,
+				A979A9602B9A232800F69E67 /* libMoltenVK.dylib */,
 				A9F4D9F42B8EC210004AD576 /* MoltenVK.framework */,
 				A92DB3F51CE0F72500FBC835 /* libMoltenVK.a */,
 				A9F4D9992B8E8CE0004AD576 /* MoltenVK.framework */,
@@ -329,8 +353,9 @@
 				A9FE05632B697AE400208814 /* get_failing_cts_tests.py */,
 				A9FC5F60249D2ED3003CB086 /* package_all.sh */,
 				A92EF7C921856EA200C8B91B /* package_docs.sh */,
+				A979A9702B9A3D7900F69E67 /* package_dylibs.sh */,
 				A9CBBFF924F8A1EB006D41EF /* package_moltenvk_xcframework.sh */,
-				A92EF7C621856EA200C8B91B /* package_moltenvk.sh */,
+				A92EF7C621856EA200C8B91B /* package_headers.sh */,
 				A92EF7C721856EA200C8B91B /* package_shader_converter_tool.sh */,
 				A92EF7CB21856EA300C8B91B /* package_shader_converter_xcframework.sh */,
 				A92EF7CA21856EA200C8B91B /* package_update_latest.sh */,
@@ -374,7 +399,7 @@
 		A90B2B1D1A9B6170008EE819 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1400;
+				LastUpgradeCheck = 9999;
 				TargetAttributes = {
 					A9FEADBC1F3517480010240E = {
 						DevelopmentTeam = VU3TCKU48B;
@@ -435,6 +460,13 @@
 			fileType = archive.ar;
 			path = libMoltenVK.a;
 			remoteRef = A92DB3F61CE0F72500FBC835 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		A979A9602B9A232800F69E67 /* libMoltenVK.dylib */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.dylib";
+			path = libMoltenVK.dylib;
+			remoteRef = A979A95F2B9A232800F69E67 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 		A97D77562B24FBDF00E36932 /* libMoltenVKShaderConverter.a */ = {
@@ -640,6 +672,16 @@
 			isa = PBXTargetDependency;
 			name = "MoltenVK-iOS-static";
 			targetProxy = A911710C2B9110380057AD37 /* PBXContainerItemProxy */;
+		};
+		A979A95A2B9A232800F69E67 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "MoltenVK-macOS-dylib";
+			targetProxy = A979A9592B9A232800F69E67 /* PBXContainerItemProxy */;
+		};
+		A979A9662B9A233C00F69E67 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "MoltenVK-macOS-dylib";
+			targetProxy = A979A9652B9A233C00F69E67 /* PBXContainerItemProxy */;
 		};
 		A9AD70102440ED3B00B9E254 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;

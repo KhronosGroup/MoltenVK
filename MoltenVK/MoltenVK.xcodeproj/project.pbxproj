@@ -285,6 +285,15 @@
 		A966A5E023C535D000BBF9B4 /* MVKDescriptor.h in Headers */ = {isa = PBXBuildFile; fileRef = A966A5DC23C535D000BBF9B4 /* MVKDescriptor.h */; };
 		A966A5E123C535D000BBF9B4 /* MVKDescriptor.mm in Sources */ = {isa = PBXBuildFile; fileRef = A966A5DE23C535D000BBF9B4 /* MVKDescriptor.mm */; };
 		A966A5E223C535D000BBF9B4 /* MVKDescriptor.mm in Sources */ = {isa = PBXBuildFile; fileRef = A966A5DE23C535D000BBF9B4 /* MVKDescriptor.mm */; };
+		A979A9562B9A22CB00F69E67 /* libMoltenVK.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9CBEE011B6299D800E45FDC /* libMoltenVK.a */; };
+		A979A9672B9A277000F69E67 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9FB2B8ECACF004AD576 /* AppKit.framework */; };
+		A979A9682B9A277000F69E67 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9892B8E7D18004AD576 /* CoreGraphics.framework */; };
+		A979A9692B9A277000F69E67 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D98B2B8E7D3A004AD576 /* Foundation.framework */; };
+		A979A96A2B9A277000F69E67 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D98F2B8E7D66004AD576 /* IOKit.framework */; };
+		A979A96B2B9A277000F69E67 /* IOSurface.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D98D2B8E7D5D004AD576 /* IOSurface.framework */; };
+		A979A96C2B9A277000F69E67 /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9932B8E7E8A004AD576 /* libc++.tbd */; };
+		A979A96D2B9A277000F69E67 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9852B8E7CDB004AD576 /* Metal.framework */; };
+		A979A96E2B9A277000F69E67 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9872B8E7D10004AD576 /* QuartzCore.framework */; };
 		A981494D1FB6A3F7005F00B4 /* MVKBaseObject.mm in Sources */ = {isa = PBXBuildFile; fileRef = A98149411FB6A3F7005F00B4 /* MVKBaseObject.mm */; };
 		A981494E1FB6A3F7005F00B4 /* MVKBaseObject.mm in Sources */ = {isa = PBXBuildFile; fileRef = A98149411FB6A3F7005F00B4 /* MVKBaseObject.mm */; };
 		A981494F1FB6A3F7005F00B4 /* MVKBaseObject.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149421FB6A3F7005F00B4 /* MVKBaseObject.h */; };
@@ -558,12 +567,19 @@
 			remoteGlobalIDString = 2FEA0D142490381A00EEF3AD;
 			remoteInfo = "MoltenVKSPIRVToMSLConverter-tvOS";
 		};
-		A979A9172B924B9700F69E67 /* PBXContainerItemProxy */ = {
+		A979A9532B9A215200F69E67 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A9C86CB61C55B8350096CAF2 /* MoltenVKShaderConverter.xcodeproj */;
 			proxyType = 2;
-			remoteGlobalIDString = A979A9152B9174EA00F69E67;
+			remoteGlobalIDString = A979A9412B9A200400F69E67;
 			remoteInfo = "MoltenVKShaderConverter-xrOS";
+		};
+		A979A9572B9A22CB00F69E67 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A9F55D25198BE6A7004EC31B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A9CBED861B6299D800E45FDC;
+			remoteInfo = "MoltenVK-macOS-static";
 		};
 		A981497B1FB6B566005F00B4 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -723,6 +739,7 @@
 		A9653FB924129C84005999D7 /* MVKPixelFormats.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKPixelFormats.mm; sourceTree = "<group>"; };
 		A966A5DC23C535D000BBF9B4 /* MVKDescriptor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKDescriptor.h; sourceTree = "<group>"; };
 		A966A5DE23C535D000BBF9B4 /* MVKDescriptor.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKDescriptor.mm; sourceTree = "<group>"; };
+		A979A94F2B9A215200F69E67 /* libMoltenVK.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libMoltenVK.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		A98149411FB6A3F7005F00B4 /* MVKBaseObject.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKBaseObject.mm; sourceTree = "<group>"; };
 		A98149421FB6A3F7005F00B4 /* MVKBaseObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKBaseObject.h; sourceTree = "<group>"; };
 		A98149431FB6A3F7005F00B4 /* MVKEnvironment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKEnvironment.h; sourceTree = "<group>"; };
@@ -791,6 +808,22 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		A979A94D2B9A215200F69E67 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A979A96B2B9A277000F69E67 /* IOSurface.framework in Frameworks */,
+				A979A96C2B9A277000F69E67 /* libc++.tbd in Frameworks */,
+				A979A9682B9A277000F69E67 /* CoreGraphics.framework in Frameworks */,
+				A979A9562B9A22CB00F69E67 /* libMoltenVK.a in Frameworks */,
+				A979A9672B9A277000F69E67 /* AppKit.framework in Frameworks */,
+				A979A96A2B9A277000F69E67 /* IOKit.framework in Frameworks */,
+				A979A96D2B9A277000F69E67 /* Metal.framework in Frameworks */,
+				A979A9692B9A277000F69E67 /* Foundation.framework in Frameworks */,
+				A979A96E2B9A277000F69E67 /* QuartzCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A9F4D9682B8E7366004AD576 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -1026,7 +1059,7 @@
 				A98149821FB6B566005F00B4 /* libMoltenVKShaderConverter.a */,
 				2FEA0D1C249040CA00EEF3AD /* libMoltenVKShaderConverter.a */,
 				A98149841FB6B566005F00B4 /* libMoltenVKShaderConverter.a */,
-				A979A9182B924B9700F69E67 /* libMoltenVKShaderConverter.a */,
+				A979A9542B9A215200F69E67 /* libMoltenVKShaderConverter.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1118,6 +1151,7 @@
 				A9F4D9B22B8EB2FC004AD576 /* MoltenVK.framework */,
 				A9F4D9CE2B8EB6DC004AD576 /* MoltenVK.framework */,
 				A9F4D9ED2B8EC112004AD576 /* MoltenVK.framework */,
+				A979A94F2B9A215200F69E67 /* libMoltenVK.dylib */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1200,6 +1234,13 @@
 				2FEA0A7F24902F9F00EEF3AD /* MVKPixelFormats.h in Headers */,
 				2FEA0A8024902F9F00EEF3AD /* MVKStrings.h in Headers */,
 				2FEA0A8124902F9F00EEF3AD /* MVKLayers.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A979A94B2B9A215200F69E67 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1489,6 +1530,24 @@
 			productReference = 2FEA0ABA24902F9F00EEF3AD /* libMoltenVK.a */;
 			productType = "com.apple.product-type.library.static";
 		};
+		A979A94E2B9A215200F69E67 /* MoltenVK-macOS-dylib */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A979A9552B9A215200F69E67 /* Build configuration list for PBXNativeTarget "MoltenVK-macOS-dylib" */;
+			buildPhases = (
+				A979A94B2B9A215200F69E67 /* Headers */,
+				A979A94C2B9A215200F69E67 /* Sources */,
+				A979A94D2B9A215200F69E67 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A979A9582B9A22CB00F69E67 /* PBXTargetDependency */,
+			);
+			name = "MoltenVK-macOS-dylib";
+			productName = "MoltenVK-macOS-dylib";
+			productReference = A979A94F2B9A215200F69E67 /* libMoltenVK.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
 		A9B8EE091A98D796009C5A02 /* MoltenVK-iOS-static */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A9B8EE1D1A98D796009C5A02 /* Build configuration list for PBXNativeTarget "MoltenVK-iOS-static" */;
@@ -1632,9 +1691,12 @@
 		A9F55D25198BE6A7004EC31B /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1410;
+				LastUpgradeCheck = 9999;
 				ORGANIZATIONNAME = "The Brenwill Workshop Ltd.";
 				TargetAttributes = {
+					A979A94E2B9A215200F69E67 = {
+						CreatedOnToolsVersion = 15.2;
+					};
 					A9B8EE091A98D796009C5A02 = {
 						CreatedOnToolsVersion = 6.1.1;
 						DevelopmentTeam = VU3TCKU48B;
@@ -1667,6 +1729,7 @@
 			projectRoot = "";
 			targets = (
 				A9CBED861B6299D800E45FDC /* MoltenVK-macOS-static */,
+				A979A94E2B9A215200F69E67 /* MoltenVK-macOS-dylib */,
 				A9F4D9D92B8EC112004AD576 /* MoltenVK-macOS-dynamic */,
 				A9B8EE091A98D796009C5A02 /* MoltenVK-iOS-static */,
 				A9F4D96A2B8E7366004AD576 /* MoltenVK-iOS-dynamic */,
@@ -1686,13 +1749,12 @@
 			remoteRef = 2FEA0D1B249040CA00EEF3AD /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		A979A9182B924B9700F69E67 /* libMoltenVKShaderConverter.a */ = {
+		A979A9542B9A215200F69E67 /* libMoltenVKShaderConverter.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
-			name = libMoltenVKShaderConverter.a;
-			path = "/Users/bill/Documents/Dev/iOSProjects/Molten/MoltenVK-bh/MoltenVKShaderConverter/build/Debug-xros/libMoltenVKShaderConverter.a";
-			remoteRef = A979A9172B924B9700F69E67 /* PBXContainerItemProxy */;
-			sourceTree = "<absolute>";
+			path = libMoltenVKShaderConverter.a;
+			remoteRef = A979A9532B9A215200F69E67 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 		A981497C1FB6B566005F00B4 /* MoltenVKShaderConverter */ = {
 			isa = PBXReferenceProxy;
@@ -2047,6 +2109,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A979A94C2B9A215200F69E67 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A9B8EE051A98D796009C5A02 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -2265,6 +2334,11 @@
 			name = "MoltenVKSPIRVToMSLConverter-tvOS";
 			targetProxy = 2F21D82E24983488009BEA5F /* PBXContainerItemProxy */;
 		};
+		A979A9582B9A22CB00F69E67 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A9CBED861B6299D800E45FDC /* MoltenVK-macOS-static */;
+			targetProxy = A979A9572B9A22CB00F69E67 /* PBXContainerItemProxy */;
+		};
 		A981499B1FB6B9CF005F00B4 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = "MVKSPIRVToMSLConverter-iOS";
@@ -2317,6 +2391,32 @@
 			};
 			name = Release;
 		};
+		A979A9502B9A215200F69E67 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				LD_DYLIB_INSTALL_NAME = "@rpath/lib${PRODUCT_NAME}.dylib";
+				OTHER_LDFLAGS = (
+					"-all_load",
+					"-w",
+				);
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		A979A9512B9A215200F69E67 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				LD_DYLIB_INSTALL_NAME = "@rpath/lib${PRODUCT_NAME}.dylib";
+				OTHER_LDFLAGS = (
+					"-all_load",
+					"-w",
+				);
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
 		A9B8EE1E1A98D796009C5A02 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -2349,6 +2449,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GENERATE_INFOPLIST_FILE = YES;
+				LD_DYLIB_INSTALL_NAME = "@rpath/${PRODUCT_NAME}.framework/${PRODUCT_NAME}";
 				OTHER_LDFLAGS = (
 					"-all_load",
 					"-w",
@@ -2361,6 +2462,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GENERATE_INFOPLIST_FILE = YES;
+				LD_DYLIB_INSTALL_NAME = "@rpath/${PRODUCT_NAME}.framework/${PRODUCT_NAME}";
 				OTHER_LDFLAGS = (
 					"-all_load",
 					"-w",
@@ -2373,6 +2475,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GENERATE_INFOPLIST_FILE = YES;
+				LD_DYLIB_INSTALL_NAME = "@rpath/${PRODUCT_NAME}.framework/${PRODUCT_NAME}";
 				OTHER_LDFLAGS = (
 					"-all_load",
 					"-w",
@@ -2385,6 +2488,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GENERATE_INFOPLIST_FILE = YES;
+				LD_DYLIB_INSTALL_NAME = "@rpath/${PRODUCT_NAME}.framework/${PRODUCT_NAME}";
 				OTHER_LDFLAGS = (
 					"-all_load",
 					"-w",
@@ -2397,6 +2501,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GENERATE_INFOPLIST_FILE = YES;
+				LD_DYLIB_INSTALL_NAME = "@rpath/${PRODUCT_NAME}.framework/${PRODUCT_NAME}";
 				OTHER_LDFLAGS = (
 					"-all_load",
 					"-w",
@@ -2409,6 +2514,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GENERATE_INFOPLIST_FILE = YES;
+				LD_DYLIB_INSTALL_NAME = "@rpath/${PRODUCT_NAME}.framework/${PRODUCT_NAME}";
 				OTHER_LDFLAGS = (
 					"-all_load",
 					"-w",
@@ -2421,6 +2527,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GENERATE_INFOPLIST_FILE = YES;
+				LD_DYLIB_INSTALL_NAME = "@rpath/${PRODUCT_NAME}.framework/${PRODUCT_NAME}";
 				OTHER_LDFLAGS = (
 					"-all_load",
 					"-w",
@@ -2433,6 +2540,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GENERATE_INFOPLIST_FILE = YES;
+				LD_DYLIB_INSTALL_NAME = "@rpath/${PRODUCT_NAME}.framework/${PRODUCT_NAME}";
 				OTHER_LDFLAGS = (
 					"-all_load",
 					"-w",
@@ -2500,7 +2608,6 @@
 					"\"${BUILT_PRODUCTS_DIR}\"",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
-				LD_DYLIB_INSTALL_NAME = "@rpath/${PRODUCT_NAME}.framework/${PRODUCT_NAME}";
 				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MARKETING_VERSION = "${CURRENT_PROJECT_VERSION}";
 				MTL_ENABLE_DEBUG_INFO = YES;
@@ -2576,7 +2683,6 @@
 					"\"${BUILT_PRODUCTS_DIR}\"",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
-				LD_DYLIB_INSTALL_NAME = "@rpath/${PRODUCT_NAME}.framework/${PRODUCT_NAME}";
 				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MARKETING_VERSION = "${CURRENT_PROJECT_VERSION}";
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -2614,6 +2720,15 @@
 			buildConfigurations = (
 				2FEA0AB824902F9F00EEF3AD /* Debug */,
 				2FEA0AB924902F9F00EEF3AD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A979A9552B9A215200F69E67 /* Build configuration list for PBXNativeTarget "MoltenVK-macOS-dylib" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A979A9502B9A215200F69E67 /* Debug */,
+				A979A9512B9A215200F69E67 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

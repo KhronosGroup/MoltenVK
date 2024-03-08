@@ -296,7 +296,7 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1410;
+				LastUpgradeCheck = 9999;
 				TargetAttributes = {
 					A9B53B0F1C3AC0BE00ABC6F6 = {
 						ProvisioningStyle = Manual;
