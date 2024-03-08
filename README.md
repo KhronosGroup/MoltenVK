@@ -353,7 +353,7 @@ in the `Docs` directory, to link the **MoltenVK** libraries and frameworks to yo
 The runtime distribution package in the `Package/Latest` directory is a stand-alone package, and you can copy 
 the contents of that directory out of this **MoltenVK** repository into your own application building environment.
 
-<a name="debugging"></a>
+<a name="gpu-capture"></a>
 Debugging Your **MoltenVK** Application using Metal Frame Capture
 -----------------------------------------------------------------------
 
