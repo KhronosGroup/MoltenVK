@@ -26,7 +26,7 @@ Table of Contents
 - [Building **MoltenVK**](#building)
 - [Running **MoltenVK** Demo Applications](#demos)
 - [Using **MoltenVK** in Your Application](#using)
-- [Debugging Your **MoltenVK** Application using Metal Frame Capture](#debugging)
+- [Debugging Your **MoltenVK** Application using Metal Frame Capture](#gpu-capture)
 - [**MoltenVK** and *Vulkan* Compliance](#compliance)
 - [Getting Support](#support)
 - [Contributing to **MoltenVK** Development](#contributing)
