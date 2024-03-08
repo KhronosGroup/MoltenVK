@@ -27,6 +27,7 @@ Table of Contents
 - [Interacting with the **MoltenVK** Runtime](#interaction)
 	- [MoltenVK Header Files](#moltenvk_headers)
 	- [Configuring MoltenVK](#moltenvk_config)
+- [Debugging Your **MoltenVK** Application using _Metal Frame Capture_](#gpu-capture)
 - [*Metal Shading Language* Shaders](#shaders)
 	- [Troubleshooting Shader Conversion](#spv_vs_msl)
 - [Performance Considerations](#performance)
@@ -464,6 +465,35 @@ creation via the _Vulkan_ `VK_EXT_layer_settings` extension).
 
 A description of each configuration parameter supported by **MoltenVK** can be found in the
 [`MoltenVK_Configuration_Parameters.md`](MoltenVK_Configuration_Parameters.md) document in the `Docs` directory.
+
+
+
+<a name="gpu-capture"></a>
+Debugging Your MoltenVK Application using _Metal Frame Capture_
+-----------------------------------------------------------------
+
+Since **MoltenVK** translates _Vulkan API_ calls to _Metal_, you can use _Apple's_
+[Metal Frame Capture](https://developer.apple.com/documentation/xcode/capturing-a-metal-workload-in-xcode)
+to help debug your application. You can configure **MoltenVK** to automatically write to a GPU trace file,
+without manual intervention, by using the following environment variables and configuration parameters:
+
+1. `METAL_CAPTURE_ENABLED=1`, to enable Metal GPU capture. This must be set as an environment variable,
+   or in _Xcode_ as an _Option_ in the _Scheme_ you use to launch your app from _Xcode_.
+2. `MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE=n`, this defines the scope of the capture.
+   You can set `n` to:
+	- `0` to disable capturing,
+	- `1` to capture all frames created between the creation of a `VkDevice` to its destruction, or
+	- `2` to capture only the first frame.
+3. `MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE=filename.gputrace`, to set where the capture file
+   should be saved to. Note that `filename.gputrace` must not already exist, otherwise the file
+   will not be written, and an error will be logged.
+
+Except for `METAL_CAPTURE_ENABLED=1`, the other parameters can be set as configuration parameters, as described
+in the [Configuring MoltenVK](#moltenvk_config) section above (including as environment variables).
+
+The created capture file can then be opened with _Xcode_ for investigation. You do not need to launch
+your app from _Xcode_ to capture and generate the trace file.
+
 
 
 <a name="shaders"></a>
