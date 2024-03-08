@@ -357,7 +357,7 @@ the contents of that directory out of this **MoltenVK** repository into your own
 Debugging Your **MoltenVK** Application using Metal Frame Capture
 -----------------------------------------------------------------------
 
-As **MoltenVK** translates Vulkan API calls to Metal, [Metal Frame Capture](https://developer.apple.com/documentation/xcode/capturing-a-metal-workload-in-xcode) can be used to debug your application. In order to create a GPU trace file, you have to set the following environment variables:
+As **MoltenVK** translates Vulkan API calls to Metal, [Metal Frame Capture](https://developer.apple.com/documentation/xcode/capturing-a-metal-workload-in-xcode) can be used to debug your application. You can configure **MoltenVK** to automatically create a GPU trace file, without manual intervention, by using the following environment variables:
 
 1. `METAL_CAPTURE_ENABLED=1`, this enables capturing. The following environment variable then needs to be non-zero as well, otherwise an error will be thrown.
 2. `MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE=n`, this defines the scope of the capture, set `n` to:
