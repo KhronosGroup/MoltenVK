@@ -349,7 +349,7 @@ typedef struct {
 	VkBool32 simdPermute;							/**< If true, SIMD-group permutation functions (vote, ballot, shuffle) are supported in shaders. */
 	VkBool32 simdReduction;							/**< If true, SIMD-group reduction functions (arithmetic) are supported in shaders. */
     uint32_t minSubgroupSize;			        	/**< The minimum number of threads in a SIMD-group. */
-    VkBool32 textureBarriers;                   	/**< If true, texture barriers are supported within Metal render passes. */
+    VkBool32 textureBarriers;                   	/**< If true, texture barriers are supported within Metal render passes. Deprecated. Will always be false on all platforms. */
     VkBool32 tileBasedDeferredRendering;        	/**< If true, this device uses tile-based deferred rendering. */
 	VkBool32 argumentBuffers;						/**< If true, Metal argument buffers are supported. */
 	VkBool32 descriptorSetArgumentBuffers;			/**< If true, a Metal argument buffer can be assigned to a descriptor set, and used on any pipeline and pipeline stage. If false, a different Metal argument buffer must be used for each pipeline-stage/descriptor-set combination. */
