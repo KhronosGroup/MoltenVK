@@ -2152,11 +2152,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	// Don't use barriers in render passes on Apple GPUs. Apple GPUs don't support them,
 	// and in fact Metal's validation layer will complain if you try to use them.
+	// Texture barriers deprecated as of macOS 10.14.
 	if ( !supportsMTLGPUFamily(Apple1) ) {
 		if (supportsMTLFeatureSet(macOS_GPUFamily1_v4)) {
 			_metalFeatures.memoryBarriers = true;
 		}
-		_metalFeatures.textureBarriers = true;
 	}
 
 #endif

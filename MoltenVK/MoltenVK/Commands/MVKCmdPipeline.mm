@@ -152,10 +152,6 @@ void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 					break;
 			}
 		}
-	} else if (cmdEncoder->getDevice()->_pMetalFeatures->textureBarriers) {
-#if !MVK_MACCAT
-		if (coversTextures()) { [cmdEncoder->_mtlRenderEncoder textureBarrier]; }
-#endif
 	}
 #endif
 

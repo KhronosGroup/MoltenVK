@@ -2607,17 +2607,15 @@
 					"\"$(SRCROOT)/../External/cereal/include\"",
 					"\"${BUILT_PRODUCTS_DIR}\"",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
-				MACOSX_DEPLOYMENT_TARGET = 10.13;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				MARKETING_VERSION = "${CURRENT_PROJECT_VERSION}";
 				MTL_ENABLE_DEBUG_INFO = YES;
-				MVK_SKIP_DYLIB = "";
-				"MVK_SKIP_DYLIB[sdk=appletvsimulator*]" = YES;
 				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKShaderConverter.a";
 				PRODUCT_BUNDLE_IDENTIFIER = com.moltenvk.framework;
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
-				TVOS_DEPLOYMENT_TARGET = 12.0;
+				TVOS_DEPLOYMENT_TARGET = 13.0;
 				WARNING_CFLAGS = "-Wreorder";
 			};
 			name = Debug;
@@ -2682,17 +2680,15 @@
 					"\"$(SRCROOT)/../External/cereal/include\"",
 					"\"${BUILT_PRODUCTS_DIR}\"",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
-				MACOSX_DEPLOYMENT_TARGET = 10.13;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				MARKETING_VERSION = "${CURRENT_PROJECT_VERSION}";
 				MTL_ENABLE_DEBUG_INFO = NO;
-				MVK_SKIP_DYLIB = "";
-				"MVK_SKIP_DYLIB[sdk=appletvsimulator*]" = YES;
 				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKShaderConverter.a";
 				PRODUCT_BUNDLE_IDENTIFIER = com.moltenvk.framework;
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
-				TVOS_DEPLOYMENT_TARGET = 12.0;
+				TVOS_DEPLOYMENT_TARGET = 13.0;
 				VALIDATE_PRODUCT = YES;
 				WARNING_CFLAGS = "-Wreorder";
 			};

@@ -18,9 +18,9 @@ Table of Contents
 - [Fetching and Building External Libraries](#fetching)
 - [Updating External Library Versions](#updating)
 - [Adding the *cereal* Library to the *MoltenVK Xcode* Project](#add_cereal)
-- [Adding the *SPIRV-Cross* Library to the *ExternalDependencies Xcode* Project](#add_spirv-cross)
-- [Adding the *SPIRV-Tools* Library to the *ExternalDependencies Xcode* Project](#add_spirv-tools)
 - [Adding the *glslang* Library to the *ExternalDependencies Xcode* Project](#add_glslang)
+- [Adding the *SPIRV-Tools* Library to the *ExternalDependencies Xcode* Project](#add_spirv-tools)
+- [Adding the *SPIRV-Cross* Library to the *ExternalDependencies Xcode* Project](#add_spirv-cross)
 
 
 
@@ -31,11 +31,12 @@ Fetching and Building External Libraries
 **MoltenVK** uses technology from the following external open-source libraries:
 
 - [*cereal*](https://github.com/USCiLab/cereal)
-- [*Vulkan-Headers*](https://github.com/KhronosGroup/Vulkan-Headers)
-- [*SPIRV-Cross*](https://github.com/KhronosGroup/SPIRV-Cross)
 - [*glslang*](https://github.com/KhronosGroup/glslang)
-- [*SPIRV-Tools*](https://github.com/KhronosGroup/SPIRV-Tools)
-- [*SPIRV-Headers*](https://github.com/KhronosGroup/SPIRV-Headers)
+  - [*SPIRV-Tools*](https://github.com/KhronosGroup/SPIRV-Tools)
+  - [*SPIRV-Headers*](https://github.com/KhronosGroup/SPIRV-Headers)
+- [*SPIRV-Cross*](https://github.com/KhronosGroup/SPIRV-Cross)
+- [*volk*](https://github.com/zeux/volk)
+- [*Vulkan-Headers*](https://github.com/KhronosGroup/Vulkan-Headers)
 - [*Vulkan-Tools*](https://github.com/KhronosGroup/Vulkan-Tools)
 
 These external open-source libraries are maintained in the `External` directory.
@@ -59,27 +60,29 @@ determined as follows:
 - **_cereal_**: a GitHub repository commit identifier found in the
   `ExternalRevisions/cereal_repo_revision` file. 
   
-- **_Vulkan-Headers_**: a GitHub repository commit identifier found in the
-  `ExternalRevisions/Vulkan-Headers_repo_revision` file.
+- **_glslang_**: a GitHub repository commit identifier found
+  in the `ExternalRevisions/glslang_repo_revision` file.
+
+  - **_SPIRV-Tools_**: automatically retrieved by the *glslang* repository.
+
+  - **_SPIRV-Headers_**: automatically retrieved by the *glslang* repository.
 
 - **_SPIRV-Cross_**: a GitHub repository commit identifier found in the
   `ExternalRevisions/SPIRV-Cross_repo_revision` file. 
-  
-- **_glslang_**: a GitHub repository commit identifier found
-  in the `ExternalRevisions/glslang_repo_revision` file.
-  
-- **_SPIRV-Tools_**: automatically retrieved by the *glslang* repository.
 
-- **_SPIRV-Headers_**: automatically retrieved by the *glslang* repository.
-  
+- **_volk_**: a GitHub repository commit identifier found in the
+  `ExternalRevisions/Volk_repo_revision` file.
+
+- **_Vulkan-Headers_**: a GitHub repository commit identifier found in the
+  `ExternalRevisions/Vulkan-Headers_repo_revision` file.
+
 - **_Vulkan-Tools_**: a GitHub repository commit identifier found in the
   `ExternalRevisions/Vulkan-Tools_repo_revision` file.
-  
-You can update which versions of the *cereal*, *Vulkan-Headers*, *SPIRV-Cross*, 
-*glslang*, *Vulkan-Tools*, or *VulkanSamples* libraries are retrieved by changing 
+
+You can update which versions of the external libraries are retrieved by changing 
 the value held in the corresponding `*_repo_revision` file listed above.
 
-The version of the *SPIRV-Tools* and *SPIRV-Headers* libraries is automatically 
+The versions of the *SPIRV-Tools* and *SPIRV-Headers* libraries are automatically 
 determined by the version of the *glslang* library you have retrieved.
 
 Once you have made changes to the `*_repo_revision` files, you can retrieve the updated 
@@ -88,6 +91,9 @@ library versions by running the `fetchDependencies` script, as described above, 
 >***Note:*** If, after updating to new versions of the external libraries, you encounter 
 >build errors when building **MoltenVK**, review the instructions in the sections below 
 >to ensure all necessary external library files are included in the **MoltenVK** builds.
+
+>***Note:*** _Vulkan-Tools_ and _volk_ are not used by **MoltenVK** itself, but are used
+>by the _Cube_ demo app included in the **MoltenVK** repository.
 
 
 
@@ -104,6 +110,87 @@ errors, you may need to re-add the *cereal* library to the `MoltenVK` *Xcode* pr
    **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
    
 		"$(SRCROOT)/../External/cereal/include"
+
+
+
+<a name="add_glslang"></a>
+Adding the *glslang* Library to the *ExternalDependencies Xcode* Project
+------------------------------------------------------------------------
+
+The `ExternalDependencies` *Xcode* project is already configured to use the *glslang*
+library. However, after updating the version of *glslang*, as described [above](#updating),
+if you encounter any building errors, you may need to re-add the *glslang* library to the
+`ExternalDependencies` *Xcode* project as follows:
+
+1. In the *Project Navigator* panel, select the `ExternalDependencies` *Xcode* project, then 
+   select the `glslang-macOS` target, and open the *Build Settings* tab. Locate the build 
+   setting entry **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
+
+		$(inherited) 
+		"$(SRCROOT)/External/glslang"
+		"$(SRCROOT)/External/glslang/build/include"
+
+2. Repeat *Step 1* for the `glslang-iOS` target within the `ExternalDependencies` *Xcode* project
+
+3. In the *Project Navigator*, remove all *Groups* from under the *Group* named
+   `External/glslang`.
+
+4. Drag the following folders from the `External/glslang` file folder to the `External/glslang` 
+   *Group* in the *Project Navigator* panel:
+
+		glslang
+		SPIRV
+
+   In the ***Choose options for adding these files*** dialog that opens, select the ***Create groups*** option, 
+   add the files to *all* of the `glslang-macOS`, `glslang-iOS`, and `glslang-tvOS` targets, and click the ***Finish*** button.
+
+5. In the *Project Navigator* panel, remove the references to the following files and folders:
+
+		External/glslang/glslang/MachineIndependant/glslang.y
+		External/glslang/glslang/OSDependent/Windows
+		External/glslang/glslang/OSDependent/Web
+		External/glslang/glslang/HLSL
+
+
+
+<a name="add_spirv-tools"></a>
+Adding the *SPIRV-Tools* Library to the *ExternalDependencies Xcode* Project
+----------------------------------------------------------------------------
+
+The `ExternalDependencies` *Xcode* project is already configured to use the *SPIRV-Tools*
+library. However, after updating the version of *glslang* (which adds *SPIRV-Tools*), 
+as described [above](#updating), if you encounter any building errors, you may need to re-add 
+the *SPIRV-Tools* library to the `ExternalDependencies` *Xcode* project as follows:
+
+1. In the *Project Navigator* panel, select the `ExternalDependencies` *Xcode* project, then 
+   select the `SPIRV-Tools-macOS` target, and open the *Build Settings* tab. Locate the build 
+   setting entry **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
+
+		$(inherited) 
+		"$(SRCROOT)/External/glslang/External/spirv-tools/"
+		"$(SRCROOT)/External/glslang/External/spirv-tools/include"
+		"$(SRCROOT)/External/glslang/External/spirv-tools/external/spirv-headers/include"
+		"$(SRCROOT)/External/glslang/External/spirv-tools/build"
+
+2. Repeat *Step 1* for the `SPIRV-Tools-iOS` target within the `ExternalDependencies` *Xcode* project
+
+3. In the *Project Navigator*, remove the *Group* named `source` from under the *Group* named
+   `External/SPIRV-Tools`.
+
+4. Drag the `External/glslang/External/spirv-tools/source` file folder to the `External/SPIRV-Tools` 
+   group in the *Project Navigator* panel. In the _**Choose options for adding these files**_ dialog 
+   that opens, select the _**Create groups**_ option, add the files to *all* of the `SPIRV-Tools-macOS`, 
+   `SPIRV-Tools-iOS`, and `SPIRV-Tools-tvOS` targets, and click the ***Finish*** button.
+
+5. Remove the following *Groups* from under the *Group* named `External/SPIRV-Tools/source`:
+   - `fuzz`
+   - `wasm`
+
+6. In the `Scripts` folder, run `./packagePregenSpirvToolsHeaders`, which will fetch and build the 
+   full `SPIRV-Tools` library and will update `Templates/spirv-tools/build.zip` from the `*.h` and 
+   `*.inc` files in `External/glslang/External/spirv-tools/build`. Test by running `./fetchDependencies --all` 
+   and a **MoltenVK** build.
+
 
 
 <a name="add_spirv-cross"></a>
@@ -171,87 +258,6 @@ following steps:
 3. Run the regression tests:
 
 		./test_shaders.sh
-
-
-
-<a name="add_spirv-tools"></a>
-Adding the *SPIRV-Tools* Library to the *ExternalDependencies Xcode* Project
-----------------------------------------------------------------------------
-
-The `ExternalDependencies` *Xcode* project is already configured to use the *SPIRV-Tools*
-library. However, after updating the version of *glslang* (which adds *SPIRV-Tools*), 
-as described [above](#updating), if you encounter any building errors, you may need to re-add 
-the *SPIRV-Tools* library to the `ExternalDependencies` *Xcode* project as follows:
-
-1. In the *Project Navigator* panel, select the `ExternalDependencies` *Xcode* project, then 
-   select the `SPIRV-Tools-macOS` target, and open the *Build Settings* tab. Locate the build 
-   setting entry **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
-
-		$(inherited) 
-		"$(SRCROOT)/External/glslang/External/spirv-tools/"
-		"$(SRCROOT)/External/glslang/External/spirv-tools/include"
-		"$(SRCROOT)/External/glslang/External/spirv-tools/external/spirv-headers/include"
-		"$(SRCROOT)/External/glslang/External/spirv-tools/build"
-
-2. Repeat *Step 1* for the `SPIRV-Tools-iOS` target within the `ExternalDependencies` *Xcode* project
-
-3. In the *Project Navigator*, remove the *Group* named `source` from under the *Group* named
-   `External/SPIRV-Tools`.
-
-4. Drag the `External/glslang/External/spirv-tools/source` file folder to the `External/SPIRV-Tools` 
-   group in the *Project Navigator* panel. In the _**Choose options for adding these files**_ dialog 
-   that opens, select the _**Create groups**_ option, add the files to *all* of the `SPIRV-Tools-macOS`, 
-   `SPIRV-Tools-iOS`, and `SPIRV-Tools-tvOS` targets, and click the ***Finish*** button.
-
-5. Remove the following *Groups* from under the *Group* named `External/SPIRV-Tools/source`:
-   - `fuzz`
-   - `wasm`
-
-6. In the `Scripts` folder, run `./packagePregenSpirvToolsHeaders`, which will fetch and build the 
-   full `SPIRV-Tools` library and will update `Templates/spirv-tools/build.zip` from the `*.h` and 
-   `*.inc` files in `External/glslang/External/spirv-tools/build`. Test by running `./fetchDependencies --all` 
-   and a **MoltenVK** build.
-
-
-
-<a name="add_glslang"></a>
-Adding the *glslang* Library to the *ExternalDependencies Xcode* Project
-------------------------------------------------------------------------
-
-The `ExternalDependencies` *Xcode* project is already configured to use the *glslang*
-library. However, after updating the version of *glslang*, as described [above](#updating),
-if you encounter any building errors, you may need to re-add the *glslang* library to the
-`ExternalDependencies` *Xcode* project as follows:
-
-1. In the *Project Navigator* panel, select the `ExternalDependencies` *Xcode* project, then 
-   select the `glslang-macOS` target, and open the *Build Settings* tab. Locate the build 
-   setting entry **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
-
-		$(inherited) 
-		"$(SRCROOT)/External/glslang"
-		"$(SRCROOT)/External/glslang/build/include"
-
-2. Repeat *Step 1* for the `glslang-iOS` target within the `ExternalDependencies` *Xcode* project
-
-3. In the *Project Navigator*, remove all *Groups* from under the *Group* named
-   `External/glslang`.
-
-4. Drag the following folders from the `External/glslang` file folder to the `External/glslang` 
-   *Group* in the *Project Navigator* panel:
-
-		glslang
-		SPIRV
-
-   In the ***Choose options for adding these files*** dialog that opens, select the ***Create groups*** option, 
-   add the files to *all* of the `glslang-macOS`, `glslang-iOS`, and `glslang-tvOS` targets, and click the ***Finish*** button.
-
-5. In the *Project Navigator* panel, remove the references to the following files and folders:
-
-		External/glslang/glslang/MachineIndependant/glslang.y
-		External/glslang/glslang/OSDependent/Windows
-		External/glslang/glslang/OSDependent/Web
-		External/glslang/glslang/HLSL
-
 
 
 
