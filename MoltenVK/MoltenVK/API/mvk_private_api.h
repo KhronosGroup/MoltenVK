@@ -376,6 +376,7 @@ typedef struct {
 typedef struct {
     uint32_t count;       /**< The number of activities of this type. */
 	double latest;        /**< The latest (most recent) value of the activity. */
+	double previous;      /**< The previous (second most recent) value of the activity. */
     double average;       /**< The average value of the activity. */
     double minimum;       /**< The minimum value of the activity. */
     double maximum;       /**< The maximum value of the activity. */
@@ -427,10 +428,6 @@ typedef struct {
  * than your app was, the size of this structure in your app may be larger or smaller than the
  * struct in MoltenVK. See the description of the vkGetPerformanceStatisticsMVK() function for
  * information about how to handle this.
- *
- * TO SUPPORT DYNAMIC LINKING TO THIS STRUCTURE AS DESCRIBED ABOVE, THIS STRUCTURE SHOULD NOT
- * BE CHANGED EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
- * SHOULD NOT BE CHANGED.
  */
 typedef struct {
 	MVKShaderCompilationPerformance shaderCompilation;	/** Shader compilations activities. */
