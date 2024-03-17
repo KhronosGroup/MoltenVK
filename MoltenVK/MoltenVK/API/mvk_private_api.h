@@ -44,7 +44,7 @@ typedef unsigned long MTLArgumentBuffersTier;
  */
 
 
-#define MVK_PRIVATE_API_VERSION   40
+#define MVK_PRIVATE_API_VERSION   41
 
 
 #pragma mark -
