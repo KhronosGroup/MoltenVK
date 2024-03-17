@@ -1,7 +1,7 @@
 /*
  * MVKCmdQueries.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,13 +77,13 @@ void MVKCmdEndQuery::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdWriteTimestamp
 
 VkResult MVKCmdWriteTimestamp::setContent(MVKCommandBuffer* cmdBuff,
-										  VkPipelineStageFlags2 stage,
+										  VkPipelineStageFlagBits pipelineStage,
 										  VkQueryPool queryPool,
 										  uint32_t query) {
 
 	VkResult rslt = MVKCmdQuery::setContent(cmdBuff, queryPool, query);
 
-	_stage = stage;
+	_pipelineStage = pipelineStage;
 
 	cmdBuff->recordTimestampCommand();
 

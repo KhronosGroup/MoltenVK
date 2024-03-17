@@ -1,7 +1,7 @@
 /*
  * MVKSmallVector.h
  *
- * Copyright (c) 2012-2024 Dr. Torsten Hans (hans@ipacs.de)
+ * Copyright (c) 2012-2023 Dr. Torsten Hans (hans@ipacs.de)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,9 +86,9 @@ public:
       return *this;
     }
 
-    Type *operator->() const { return &vector->alc.ptr[index]; }
-    Type &operator*()  const { return  vector->alc.ptr[index]; }
-    operator Type*()   const { return &vector->alc.ptr[index]; }
+    Type *operator->() { return &vector->alc.ptr[index]; }
+    Type &operator*()  { return  vector->alc.ptr[index]; }
+    operator Type*()   { return &vector->alc.ptr[index]; }
 
     bool operator==( const iterator &it ) const { return vector == it.vector && index == it.index; }
     bool operator!=( const iterator &it ) const { return vector != it.vector || index != it.index; }
@@ -98,19 +98,20 @@ public:
     iterator& operator--()      {                 --index; return *this; }
     iterator  operator--( int ) { auto t = *this; --index; return t; }
 
-    iterator operator+ (const diff_type n)   const { return iterator( index + n, *vector ); }
-    iterator& operator+= (const diff_type n)       { index += n; return *this; }
-    iterator operator- (const diff_type n)   const { return iterator( index - n, *vector ); }
-    iterator& operator-= (const diff_type n)       { index -= n; return *this; }
+    iterator operator+ (const diff_type n)   { return iterator( index + n, *vector ); }
+    iterator& operator+= (const diff_type n) { index += n; return *this; }
+    iterator operator- (const diff_type n)   { return iterator( index - n, *vector ); }
+    iterator& operator-= (const diff_type n) { index -= n; return *this; }
 
-    diff_type operator- (const iterator& it) const { return index - it.index; }
+    diff_type operator- (const iterator& it) { return index - it.index; }
 
-    bool operator< (const iterator& it)  const { return index < it.index; }
-    bool operator<= (const iterator& it) const { return index <= it.index; }
-    bool operator> (const iterator& it)  const { return index > it.index; }
-    bool operator>= (const iterator& it) const { return index >= it.index; }
+    bool operator< (const iterator& it)  { return index < it.index; }
+    bool operator<= (const iterator& it) { return index <= it.index; }
+    bool operator> (const iterator& it)  { return index > it.index; }
+    bool operator>= (const iterator& it) { return index >= it.index; }
 
-    Type &operator[]( const diff_type i ) const { return vector->alc.ptr[index + i]; }
+    const Type &operator[]( const diff_type i ) const { return vector->alc.ptr[index + i]; }
+    Type &operator[]( const diff_type i )             { return vector->alc.ptr[index + i]; }
 
     bool   is_valid()     const { return index < vector->alc.size(); }
     size_t get_position() const { return index; }
@@ -297,12 +298,12 @@ public:
   reverse_iterator rbegin() const { return reverse_iterator( end() ); }
   reverse_iterator rend()   const { return reverse_iterator( begin() ); }
 
-  MVKArrayRef<const Type> contents() const { return MVKArrayRef<const Type>(data(), size()); }
-  MVKArrayRef<      Type> contents()       { return MVKArrayRef<      Type>(data(), size()); }
+  const MVKArrayRef<Type> contents() const { return MVKArrayRef<Type>(data(), size()); }
+        MVKArrayRef<Type> contents()       { return MVKArrayRef<Type>(data(), size()); }
 
-  const Type &operator[]( const size_t i ) const  { return alc[i]; }
+  const Type &operator[]( const size_t i ) const { return alc[i]; }
         Type &operator[]( const size_t i )        { return alc[i]; }
-  const Type &at( const size_t i )         const  { return alc[i]; }
+  const Type &at( const size_t i )         const { return alc[i]; }
         Type &at( const size_t i )                { return alc[i]; }
   const Type &front()                      const  { return alc[0]; }
         Type &front()                             { return alc[0]; }

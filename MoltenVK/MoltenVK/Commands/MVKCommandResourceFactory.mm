@@ -1,7 +1,7 @@
 /*
  * MVKCommandResourceFactory.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -286,7 +286,7 @@ id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg&
 		[msl appendLineMVK: @"                         constant TexSubrez& subRez [[buffer(0)]]) {"];
 		[msl appendLineMVK: @"    FragmentOutputs out;"];
 		if (mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_DEPTH_BIT))) {
-			[msl appendFormat: @"    out.depth = tex.sample(ce_sampler, varyings.v_texCoord%@%@, level(subRez.lod));", coordArg, sliceArg];
+			[msl appendFormat: @"    out.depth = tex.sample(ce_sampler, varyings.v_texCoord%@%@, level(subRez.lod)).%c;", coordArg, sliceArg, swizzleArg[0]];
 			[msl appendLineMVK];
 		}
 		if (mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_STENCIL_BIT))) {
@@ -433,10 +433,9 @@ id<MTLDepthStencilState> MVKCommandResourceFactory::newMTLDepthStencilState(bool
 }
 
 id<MTLDepthStencilState> MVKCommandResourceFactory::newMTLDepthStencilState(MVKMTLDepthStencilDescriptorData& dsData) {
-	bool testStencil = dsData.stencilTestEnabled;
-	auto* fsDesc = testStencil ? newMTLStencilDescriptor(dsData.frontFaceStencilData) : nil;  // temp retain
-	auto* bsDesc = testStencil ? newMTLStencilDescriptor(dsData.backFaceStencilData) : nil;   // temp retain
-	auto* dsDesc = [MTLDepthStencilDescriptor new];											  // temp retain
+	MTLStencilDescriptor* fsDesc = newMTLStencilDescriptor(dsData.frontFaceStencilData);	// temp retain
+	MTLStencilDescriptor* bsDesc = newMTLStencilDescriptor(dsData.backFaceStencilData);		// temp retain
+	MTLDepthStencilDescriptor* dsDesc = [MTLDepthStencilDescriptor new];					// temp retain
     dsDesc.depthCompareFunction = (MTLCompareFunction)dsData.depthCompareFunction;
     dsDesc.depthWriteEnabled = dsData.depthWriteEnabled;
 	dsDesc.frontFaceStencil = fsDesc;
@@ -444,14 +443,16 @@ id<MTLDepthStencilState> MVKCommandResourceFactory::newMTLDepthStencilState(MVKM
 
 	id<MTLDepthStencilState> dss = [getMTLDevice() newDepthStencilStateWithDescriptor: dsDesc];
 
-	[fsDesc release];	// temp release
-	[bsDesc release];	// temp release
-	[dsDesc release];	// temp release
+	[fsDesc release];																		// temp release
+	[bsDesc release];																		// temp release
+	[dsDesc release];																		// temp release
 
 	return dss;
 }
 
 MTLStencilDescriptor* MVKCommandResourceFactory::newMTLStencilDescriptor(MVKMTLStencilDescriptorData& sData) {
+    if ( !sData.enabled ) { return nil; }
+
     MTLStencilDescriptor* sDesc = [MTLStencilDescriptor new];		// retained
     sDesc.stencilCompareFunction = (MTLCompareFunction)sData.stencilCompareFunction;
     sDesc.stencilFailureOperation = (MTLStencilOperation)sData.stencilFailureOperation;
@@ -523,23 +524,22 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdFillBufferMTLComput
 }
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdClearColorImageMTLComputePipelineState(MVKFormatType type,
-					MVKVulkanAPIDeviceObject* owner,
-					bool isTextureArray) {
+					MVKVulkanAPIDeviceObject* owner) {
 	const char* funcName;
 	switch (type) {
 		case kMVKFormatColorHalf:
 		case kMVKFormatColorFloat:
-			funcName = isTextureArray ? "cmdClearColorImage2DFloatArray" : "cmdClearColorImage2DFloat";
+			funcName = "cmdClearColorImage2DFloat";
 			break;
 		case kMVKFormatColorInt8:
 		case kMVKFormatColorInt16:
 		case kMVKFormatColorInt32:
-			funcName = isTextureArray ? "cmdClearColorImage2DIntArray" : "cmdClearColorImage2DInt";
+			funcName = "cmdClearColorImage2DInt";
 			break;
 		case kMVKFormatColorUInt8:
 		case kMVKFormatColorUInt16:
 		case kMVKFormatColorUInt32:
-			funcName = isTextureArray ? "cmdClearColorImage2DUIntArray" : "cmdClearColorImage2DUInt";
+			funcName = "cmdClearColorImage2DUInt";
 			break;
 		default:
 			owner->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "Format type %u is not supported for clearing with a compute shader.", type);
@@ -549,23 +549,22 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdClearColorImageMTLC
 }
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdResolveColorImageMTLComputePipelineState(MVKFormatType type,
-																									  MVKVulkanAPIDeviceObject* owner,
-																									  bool isTextureArray) {
+																									  MVKVulkanAPIDeviceObject* owner) {
 	const char* funcName;
 	switch (type) {
 		case kMVKFormatColorHalf:
 		case kMVKFormatColorFloat:
-			funcName = isTextureArray ? "cmdResolveColorImage2DFloatArray" : "cmdResolveColorImage2DFloat";
+			funcName = "cmdResolveColorImage2DFloat";
 			break;
 		case kMVKFormatColorInt8:
 		case kMVKFormatColorInt16:
 		case kMVKFormatColorInt32:
-			funcName = isTextureArray ? "cmdResolveColorImage2DIntArray" : "cmdResolveColorImage2DInt";
+			funcName = "cmdResolveColorImage2DInt";
 			break;
 		case kMVKFormatColorUInt8:
 		case kMVKFormatColorUInt16:
 		case kMVKFormatColorUInt32:
-			funcName = isTextureArray ? "cmdResolveColorImage2DUIntArray" : "cmdResolveColorImage2DUInt";
+			funcName = "cmdResolveColorImage2DUInt";
 			break;
 		default:
 			owner->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "Format type %u is not supported for resolving with a compute shader.", type);
@@ -624,7 +623,7 @@ id<MTLFunction> MVKCommandResourceFactory::newFunctionNamed(const char* funcName
 	NSString* nsFuncName = [[NSString alloc] initWithUTF8String: funcName];		// temp retained
 	id<MTLFunction> mtlFunc = [_mtlLibrary newFunctionWithName: nsFuncName];	// retained
 	[nsFuncName release];														// temp release
-	_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
+	_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
 	return mtlFunc;
 }
 
@@ -637,7 +636,7 @@ id<MTLFunction> MVKCommandResourceFactory::newMTLFunction(NSString* mslSrcCode, 
 		id<MTLLibrary> mtlLib = [getMTLDevice() newLibraryWithSource: mslSrcCode
 															 options: getDevice()->getMTLCompileOptions()
 															   error: &err];	// temp retain
-		_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
+		_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
 
 		if (err) {
 			reportError(VK_ERROR_INITIALIZATION_FAILED,
@@ -646,7 +645,7 @@ id<MTLFunction> MVKCommandResourceFactory::newMTLFunction(NSString* mslSrcCode, 
 		} else {
 			startTime = _device->getPerformanceTimestamp();
 			mtlFunc = [mtlLib newFunctionWithName: funcName];
-			_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
+			_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
 		}
 
 		[mtlLib release];														// temp release
@@ -690,7 +689,7 @@ void MVKCommandResourceFactory::initMTLLibrary() {
                                                    options: getDevice()->getMTLCompileOptions()
                                                      error: &err];    // retained
 		MVKAssert( !err, "Could not compile command shaders (Error code %li):\n%s", (long)err.code, err.localizedDescription.UTF8String);
-		_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
+		_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
     }
 }
 

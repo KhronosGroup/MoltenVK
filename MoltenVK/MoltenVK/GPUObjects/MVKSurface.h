@@ -1,7 +1,7 @@
 /*
  * MVKSurface.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,17 @@
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 
+#ifdef VK_USE_PLATFORM_IOS_MVK
+#	define PLATFORM_VIEW_CLASS	UIView
+#	import <UIKit/UIView.h>
+#endif
+
+#ifdef VK_USE_PLATFORM_MACOS_MVK
+#	define PLATFORM_VIEW_CLASS	NSView
+#	import <AppKit/NSView.h>
+#endif
+
 class MVKInstance;
-class MVKSwapchain;
 
 @class MVKBlockObserver;
 
@@ -46,26 +55,17 @@ public:
 	/** Returns a pointer to the Vulkan instance. */
 	MVKInstance* getInstance() override { return _mvkInstance; }
 
-    /** Returns the CAMetalLayer underlying this surface. */
-	CAMetalLayer* getCAMetalLayer();
+    /** Returns the CAMetalLayer underlying this surface.  */
+    inline CAMetalLayer* getCAMetalLayer() {
+        std::lock_guard<std::mutex> lock(_layerLock);
+        return _mtlCAMetalLayer;
+    }
 
-	/** Returns the extent of this surface. */
-	VkExtent2D getExtent();
-
-	/** Returns the extent for which the underlying CAMetalLayer will not need to be scaled when composited. */
-	VkExtent2D getNaturalExtent();
-
-	/** Returns whether this surface is headless. */
-	bool isHeadless() { return !_mtlCAMetalLayer && wasConfigurationSuccessful(); }
 
 #pragma mark Construction
 
 	MVKSurface(MVKInstance* mvkInstance,
 			   const VkMetalSurfaceCreateInfoEXT* pCreateInfo,
-			   const VkAllocationCallbacks* pAllocator);
-
-	MVKSurface(MVKInstance* mvkInstance,
-			   const VkHeadlessSurfaceCreateInfoEXT* pCreateInfo,
 			   const VkAllocationCallbacks* pAllocator);
 
 	MVKSurface(MVKInstance* mvkInstance,
@@ -75,17 +75,13 @@ public:
 	~MVKSurface() override;
 
 protected:
-	friend class MVKSwapchain;
-
 	void propagateDebugName() override {}
-	void setActiveSwapchain(MVKSwapchain* swapchain);
-	void initLayer(CAMetalLayer* mtlLayer, const char* vkFuncName, bool isHeadless);
+	void initLayerObserver();
 	void releaseLayer();
 
+	MVKInstance* _mvkInstance;
+	CAMetalLayer* _mtlCAMetalLayer;
+	MVKBlockObserver* _layerObserver;
 	std::mutex _layerLock;
-	MVKInstance* _mvkInstance = nullptr;
-	CAMetalLayer* _mtlCAMetalLayer = nil;
-	MVKBlockObserver* _layerObserver = nil;
-	MVKSwapchain* _activeSwapchain = nullptr;
 };
 

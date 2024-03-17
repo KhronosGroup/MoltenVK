@@ -1,7 +1,7 @@
 /*
  * MVKDevice.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@
 #include "MVKSmallVector.h"
 #include "MVKPixelFormats.h"
 #include "MVKOSExtensions.h"
+#include "mvk_private_api.h"
 #include "mvk_datatypes.hpp"
 #include <string>
 #include <mutex>
@@ -52,6 +53,7 @@ class MVKSemaphore;
 class MVKTimelineSemaphore;
 class MVKDeferredOperation;
 class MVKEvent;
+class MVKSemaphoreImpl;
 class MVKQueryPool;
 class MVKShaderModule;
 class MVKPipelineCache;
@@ -72,22 +74,16 @@ class MVKPrivateDataSlot;
 
 
 /** The buffer index to use for vertex content. */
-static constexpr uint32_t kMVKVertexContentBufferIndex = 0;
+const static uint32_t kMVKVertexContentBufferIndex = 0;
 
 // Parameters to define the sizing of inline collections
-static constexpr uint32_t   kMVKQueueFamilyCount = 4;
-static constexpr uint32_t   kMVKQueueCountPerQueueFamily = 1;		// Must be 1. See comments in MVKPhysicalDevice::getQueueFamilies()
-static constexpr uint32_t   kMVKMinSwapchainImageCount = 2;
-static constexpr uint32_t   kMVKMaxSwapchainImageCount = 3;
-static constexpr uint32_t   kMVKMaxColorAttachmentCount = 8;
-static constexpr uint32_t   kMVKMaxViewportScissorCount = 16;
-static constexpr uint32_t   kMVKMaxDescriptorSetCount = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
-static constexpr uint32_t   kMVKMaxSampleCount = 8;
-static constexpr uint32_t   kMVKSampleLocationCoordinateGridSize = 16;
-static constexpr float      kMVKMinSampleLocationCoordinate = 0.0;
-static constexpr float      kMVKMaxSampleLocationCoordinate = (float)(kMVKSampleLocationCoordinateGridSize - 1) / (float)kMVKSampleLocationCoordinateGridSize;
-static constexpr VkExtent2D kMVKSampleLocationPixelGridSize = { 1, 1 };
-static constexpr VkExtent2D kMVKSampleLocationPixelGridSizeNotSupported = { 0, 0 };
+const static uint32_t kMVKQueueFamilyCount = 4;
+const static uint32_t kMVKQueueCountPerQueueFamily = 1;		// Must be 1. See comments in MVKPhysicalDevice::getQueueFamilies()
+const static uint32_t kMVKMinSwapchainImageCount = 2;
+const static uint32_t kMVKMaxSwapchainImageCount = 3;
+const static uint32_t kMVKMaxColorAttachmentCount = 8;
+const static uint32_t kMVKMaxViewportScissorCount = 16;
+const static uint32_t kMVKMaxDescriptorSetCount = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
 
 #if !MVK_XCODE_12
 typedef NSUInteger MTLTimestamp;
@@ -356,12 +352,9 @@ public:
 	bool mslVersionIsAtLeast(MTLLanguageVersion minVer) { return _metalFeatures.mslVersionEnum >= minVer; }
 
 	/** Returns whether this physical device supports Metal argument buffers. */
-	bool supportsMetalArgumentBuffers()  {
-		return _metalFeatures.argumentBuffers && getMVKConfig().useMetalArgumentBuffers != MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER;
+	bool supportsMetalArgumentBuffers() const  {
+		return _metalFeatures.argumentBuffers && mvkConfig().useMetalArgumentBuffers != MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER;
 	};
-
-	/** Returns whether native texture atomics are supported and should be used. */
-	bool useNativeTextureAtomics() { return _metalFeatures.nativeTextureAtomics; }
 
 
 #pragma mark Construction
@@ -405,12 +398,11 @@ protected:
 	uint64_t getRecommendedMaxWorkingSetSize();
 	uint64_t getCurrentAllocatedSize();
 	uint32_t getMaxSamplerCount();
-	uint32_t getMaxPerSetDescriptorCount();
 	void initExternalMemoryProperties();
 	void initExtensions();
 	void initCounterSets();
 	bool needsCounterSetRetained();
-	void updateTimestampPeriod();
+	void updateTimestampsAndPeriod();
 	MVKArrayRef<MVKQueueFamily*> getQueueFamilies();
 	void initPipelineCacheUUID();
 	uint32_t getHighestGPUCapability();
@@ -447,11 +439,6 @@ protected:
 
 #pragma mark -
 #pragma mark MVKDevice
-
-typedef enum {
-	MVKActivityPerformanceValueTypeDuration,
-	MVKActivityPerformanceValueTypeByteCount,
-} MVKActivityPerformanceValueType;
 
 typedef struct MVKMTLBlitEncoder {
 	id<MTLBlitCommandEncoder> mtlBlitEncoder = nil;
@@ -690,44 +677,42 @@ public:
 	void removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value);
 
 	/** Applies the specified global memory barrier to all resource issued by this device. */
-	void applyMemoryBarrier(MVKPipelineBarrier& barrier,
+	void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
+							VkPipelineStageFlags dstStageMask,
+							MVKPipelineBarrier& barrier,
 							MVKCommandEncoder* cmdEncoder,
 							MVKCommandUse cmdUse);
 
     /**
 	 * If performance is being tracked, returns a monotonic timestamp value for use performance timestamping.
+	 *
 	 * The returned value corresponds to the number of CPU "ticks" since the app was initialized.
 	 *
-	 * Call this function twice, then use the functions mvkGetElapsedNanoseconds() or mvkGetElapsedMilliseconds()
-	 * to determine the number of nanoseconds or milliseconds between the two calls.
+	 * Calling this value twice, subtracting the first value from the second, and then multiplying
+	 * the result by the value returned by mvkGetTimestampPeriod() will provide an indication of the
+	 * number of nanoseconds between the two calls. The convenience function mvkGetElapsedMilliseconds()
+	 * can be used to perform this calculation.
      */
     uint64_t getPerformanceTimestamp() { return _isPerformanceTracking ? mvkGetTimestamp() : 0; }
 
     /**
-     * If performance is being tracked, adds the performance for an activity with a duration interval
-	 * between the start and end times, measured in milliseconds, to the given performance statistics.
+     * If performance is being tracked, adds the performance for an activity with a duration
+     * interval between the start and end times, to the given performance statistics.
      *
      * If endTime is zero or not supplied, the current time is used.
      */
-	void addPerformanceInterval(MVKPerformanceTracker& perfTracker,
+	void addActivityPerformance(MVKPerformanceTracker& activityTracker,
 								uint64_t startTime, uint64_t endTime = 0) {
 		if (_isPerformanceTracking) {
-			updateActivityPerformance(perfTracker, mvkGetElapsedMilliseconds(startTime, endTime));
+			updateActivityPerformance(activityTracker, startTime, endTime);
+
+			// Log call not locked. Very minor chance that the tracker data will be updated during log call,
+			// resulting in an inconsistent report. Not worth taking lock perf hit for rare inline reporting.
+			if (_activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_IMMEDIATE) {
+				logActivityPerformance(activityTracker, _performanceStatistics, true);
+			}
 		}
 	};
-
-	/**
-	 * If performance is being tracked, adds the performance for an activity
-	 * with a kilobyte count, to the given performance statistics.
-	 */
-	void addPerformanceByteCount(MVKPerformanceTracker& perfTracker, uint64_t byteCount) {
-		if (_isPerformanceTracking) {
-			updateActivityPerformance(perfTracker, double(byteCount / KIBI));
-		}
-	};
-
-	/** Updates the given performance statistic. */
-	void updateActivityPerformance(MVKPerformanceTracker& activity, double currentValue);
 
     /** Populates the specified statistics structure from the current activity performance statistics. */
     void getPerformanceStatistics(MVKPerformanceStatistics* pPerf);
@@ -900,10 +885,8 @@ protected:
 	template<typename S> void enableFeatures(S* pRequested, VkBool32* pEnabledBools, const VkBool32* pRequestedBools, const VkBool32* pAvailableBools, uint32_t count);
 	void enableExtensions(const VkDeviceCreateInfo* pCreateInfo);
     const char* getActivityPerformanceDescription(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats);
-	MVKActivityPerformanceValueType getActivityPerformanceValueType(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats);
-	void logActivityInline(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats);
-	void logActivityDuration(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);
-	void logActivityByteCount(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);
+	void logActivityPerformance(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);
+	void updateActivityPerformance(MVKPerformanceTracker& activity, uint64_t startTime, uint64_t endTime);
 	void getDescriptorVariableDescriptorCountLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
 														   VkDescriptorSetLayoutSupport* pSupport,
 														   VkDescriptorSetVariableDescriptorCountLayoutSupport* pVarDescSetCountSupport);
@@ -911,8 +894,8 @@ protected:
 	MVKPhysicalDevice* _physicalDevice = nullptr;
     MVKCommandResourceFactory* _commandResourceFactory = nullptr;
 	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
-	MVKSmallVector<MVKResource*> _resources;
-	MVKSmallVector<MVKBuffer*> _gpuAddressableBuffers;
+	MVKSmallVector<MVKResource*, 256> _resources;
+	MVKSmallVector<MVKBuffer*, 8> _gpuAddressableBuffers;
 	MVKSmallVector<MVKPrivateDataSlot*> _privateDataSlots;
 	MVKSmallVector<bool> _privateDataSlotsAvailability;
 	MVKSmallVector<MVKSemaphoreImpl*> _awaitingSemaphores;
@@ -925,6 +908,7 @@ protected:
 	id<MTLSamplerState> _defaultMTLSamplerState = nil;
 	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
     uint32_t _globalVisibilityQueryCount = 0;
+	MVKConfigActivityPerformanceLoggingStyle _activityPerformanceLoggingStyle = MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT;
 	bool _isPerformanceTracking = false;
 	bool _isCurrentlyAutoGPUCapturing = false;
 	bool _isUsingMetalArgumentBuffers = false;
@@ -968,9 +952,13 @@ public:
 	bool isUsingPipelineStageMetalArgumentBuffers() { return isUsingMetalArgumentBuffers() && !_device->_pMetalFeatures->descriptorSetArgumentBuffers; };
 
 	/** Constructs an instance for the specified device. */
-	MVKDeviceTrackingMixin(MVKDevice* device) : _device(device) { assert(_device); }
+    MVKDeviceTrackingMixin(MVKDevice* device) : _device(device) { assert(_device); }
+
+	virtual ~MVKDeviceTrackingMixin() {}
 
 protected:
+	virtual MVKBaseObject* getBaseObject() = 0;
+
 	MVKDevice* _device;
 };
 
@@ -985,6 +973,9 @@ public:
 
 	/** Constructs an instance for the specified device. */
 	MVKBaseDeviceObject(MVKDevice* device) : MVKDeviceTrackingMixin(device) {}
+
+protected:
+	MVKBaseObject* getBaseObject() override { return this; };
 };
 
 
@@ -1001,6 +992,10 @@ public:
 
 	/** Constructs an instance for the specified device. */
 	MVKVulkanAPIDeviceObject(MVKDevice* device) : MVKDeviceTrackingMixin(device) {}
+
+protected:
+	MVKBaseObject* getBaseObject() override { return this; };
+
 };
 
 
@@ -1053,21 +1048,13 @@ public:
 
 protected:
 	T* newObject() override { return new T(_device); }
+	MVKBaseObject* getBaseObject() override { return this; };
 
 };
 
 
 #pragma mark -
 #pragma mark Support functions
-
-/**
- * Returns an autoreleased array containing the MTLDevices available on this system,
- * sorted according to power, with higher power GPU's at the front of the array.
- * This ensures that a lazy app that simply grabs the first GPU will get a high-power
- * one by default. If MVKConfiguration::forceLowPowerGPU is enabled, the returned
- * array will only include low-power devices. The instance may be a nullptr.
- */
-NSArray<id<MTLDevice>>* mvkGetAvailableMTLDevicesArray(MVKInstance* instance);
 
 /** Returns the registry ID of the specified device, or zero if the device does not have a registry ID. */
 uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice);

@@ -1,7 +1,7 @@
 /*
  * MVKCmdDispatch.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ void MVKCmdDispatch::encode(MVKCommandEncoder* cmdEncoder) {
 	MTLRegion mtlThreadgroupCount = MTLRegionMake3D(_baseGroupX, _baseGroupY, _baseGroupZ, _groupCountX, _groupCountY, _groupCountZ);
 	cmdEncoder->finalizeDispatchState();	// Ensure all updated state has been submitted to Metal
 	id<MTLComputeCommandEncoder> mtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch);
-	auto* pipeline = cmdEncoder->getComputePipeline();
+	auto* pipeline = (MVKComputePipeline*)cmdEncoder->_computePipelineState.getPipeline();
 	if (pipeline->allowsDispatchBase()) {
 		if ([mtlEncoder respondsToSelector: @selector(setStageInRegion:)]) {
 			// We'll use the stage-input region to pass the base along to the shader.

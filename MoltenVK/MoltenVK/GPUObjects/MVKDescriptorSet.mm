@@ -1,7 +1,7 @@
 /*
  * MVKDescriptorSet.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,11 +41,6 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
 	if (cmdEncoder) { cmdEncoder->bindDescriptorSet(pipelineBindPoint, descSetIndex,
 													descSet, dslMTLRezIdxOffsets,
 													dynamicOffsets, dynamicOffsetIndex); }
-	if ( !isUsingMetalArgumentBuffers() ) {
-		for (auto& dslBind : _bindings) {
-			dslBind.bind(cmdEncoder, pipelineBindPoint, descSet, dslMTLRezIdxOffsets, dynamicOffsets, dynamicOffsetIndex);
-		}
-	}
 }
 
 static const void* getWriteParameters(VkDescriptorType type, const VkDescriptorImageInfo* pImageInfo,
@@ -185,24 +180,29 @@ void MVKDescriptorSetLayout::populateShaderConversionConfig(mvk::SPIRVToMSLConve
 	}
 }
 
+static const spv::ExecutionModel getExecModel(MVKShaderStage stage) {
+	switch (stage) {
+		case kMVKShaderStageVertex:   return spv::ExecutionModelVertex;
+		case kMVKShaderStageTessCtl:  return spv::ExecutionModelTessellationControl;
+		case kMVKShaderStageTessEval: return spv::ExecutionModelTessellationEvaluation;
+		case kMVKShaderStageGeometry: return spv::ExecutionModelGeometry;
+		case kMVKShaderStageFragment: return spv::ExecutionModelFragment;
+		case kMVKShaderStageCompute:  return spv::ExecutionModelGLCompute;
+		case kMVKShaderStageCount:    assert(0); __builtin_unreachable();
+	}
+}
+
 bool MVKDescriptorSetLayout::populateBindingUse(MVKBitArray& bindingUse,
 												SPIRVToMSLConversionConfiguration& context,
 												MVKShaderStage stage,
 												uint32_t descSetIndex) {
-	static const spv::ExecutionModel spvExecModels[] = {
-		spv::ExecutionModelVertex,
-		spv::ExecutionModelTessellationControl,
-		spv::ExecutionModelTessellationEvaluation,
-		spv::ExecutionModelFragment,
-		spv::ExecutionModelGLCompute
-	};
 
 	bool descSetIsUsed = false;
 	uint32_t bindCnt = (uint32_t)_bindings.size();
 	bindingUse.resize(bindCnt);
 	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		auto& dslBind = _bindings[bindIdx];
-		if (context.isResourceUsed(spvExecModels[stage], descSetIndex, dslBind.getBinding())) {
+		if (context.isResourceUsed(getExecModel(stage), descSetIndex, dslBind.getBinding())) {
 			bindingUse.setBit(bindIdx);
 			descSetIsUsed = true;
 		}
@@ -710,7 +710,7 @@ size_t MVKDescriptorPool::getPoolSize(const VkDescriptorPoolCreateInfo* pCreateI
 
 MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo) :
 	MVKVulkanAPIDeviceObject(device),
-    _hasPooledDescriptors(getMVKConfig().preallocateDescriptors),		// Set this first! Accessed by MVKDescriptorSet constructor and getPoolSize() in following lines.
+    _hasPooledDescriptors(mvkConfig().preallocateDescriptors),		// Set this first! Accessed by MVKDescriptorSet constructor and getPoolSize() in following lines.
 	_descriptorSets(pCreateInfo->maxSets, MVKDescriptorSet(this)),
 	_descriptorSetAvailablility(pCreateInfo->maxSets, true),
 	_inlineBlockMTLBufferAllocator(device, device->_pMetalFeatures->dynamicMTLBufferSize, true),
@@ -761,8 +761,7 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 				case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 				case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 					mtlTexCnt += poolSize.descriptorCount;
-					if (!getPhysicalDevice()->useNativeTextureAtomics())
-						mtlBuffCnt += poolSize.descriptorCount;
+					mtlBuffCnt += poolSize.descriptorCount;
 					break;
 
 				case VK_DESCRIPTOR_TYPE_SAMPLER:

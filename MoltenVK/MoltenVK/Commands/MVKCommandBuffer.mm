@@ -1,7 +1,7 @@
 /*
  * MVKCommandBuffer.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 #include "MVKFoundation.h"
 #include "MTLRenderPassDescriptor+MoltenVK.h"
 #include "MVKCmdDraw.h"
-#include "MVKCmdRendering.h"
+#include "MVKCmdRenderPass.h"
 #include <sys/mman.h>
 
 using namespace std;
@@ -120,8 +120,8 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 
     if(_device->shouldPrefillMTLCommandBuffers() && !(_isSecondary || _supportsConcurrentExecution)) {
 		@autoreleasepool {
-			_prefilledMTLCmdBuffer = [_commandPool->getMTLCommandBuffer(kMVKCommandUseBeginCommandBuffer, 0) retain];    // retained
-			auto prefillStyle = getMVKConfig().prefillMetalCommandBuffers;
+			_prefilledMTLCmdBuffer = [_commandPool->getMTLCommandBuffer(0) retain];    // retained
+			auto prefillStyle = mvkConfig().prefillMetalCommandBuffers;
 			if (prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING ||
 				prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING_NO_AUTORELEASE ) {
 				_immediateCmdEncodingContext = new MVKCommandEncodingContext;
@@ -193,7 +193,7 @@ VkResult MVKCommandBuffer::end() {
 }
 
 void MVKCommandBuffer::checkDeferredEncoding() {
-	if (getMVKConfig().prefillMetalCommandBuffers == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_DEFERRED_ENCODING) {
+	if (mvkConfig().prefillMetalCommandBuffers == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_DEFERRED_ENCODING) {
 		@autoreleasepool {
 			MVKCommandEncodingContext encodingContext;
 			MVKCommandEncoder encoder(this);
@@ -260,7 +260,7 @@ bool MVKCommandBuffer::canExecute() {
 	}
 
 	_wasExecuted = true;
-	return wasConfigurationSuccessful();
+	return true;
 }
 
 // Return the number of bits set in the view mask, with a minimum value of 1.
@@ -310,7 +310,7 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 }
 
 // Promote the initial visibility buffer and indication of timestamp use from the secondary buffers.
-void MVKCommandBuffer::recordExecuteCommands(MVKArrayRef<MVKCommandBuffer*const> secondaryCommandBuffers) {
+void MVKCommandBuffer::recordExecuteCommands(const MVKArrayRef<MVKCommandBuffer*> secondaryCommandBuffers) {
 	for (MVKCommandBuffer* cmdBuff : secondaryCommandBuffers) {
 		if (cmdBuff->_needsVisibilityResultMTLBuffer) { _needsVisibilityResultMTLBuffer = true; }
 		if (cmdBuff->_hasStageCounterTimestampCommand) { _hasStageCounterTimestampCommand = true; }
@@ -335,19 +335,11 @@ void MVKCommandBuffer::recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline) {
 #pragma mark -
 #pragma mark MVKCommandEncoder
 
-// Activity performance tracking is put here to deliberately exclude when
-// MVKConfiguration::prefillMetalCommandBuffers is set to immediate prefilling,
-// because that would include app time between command submissions.
 void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff,
 							   MVKCommandEncodingContext* pEncodingContext) {
-	MVKDevice* mvkDev = getDevice();
-	uint64_t startTime = mvkDev->getPerformanceTimestamp();
-
     beginEncoding(mtlCmdBuff, pEncodingContext);
     encodeCommands(_cmdBuffer->_head);
     endEncoding();
-
-	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.commandBufferEncoding, startTime);
 }
 
 void MVKCommandEncoder::beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext) {
@@ -442,6 +434,7 @@ void MVKCommandEncoder::beginRendering(MVKCommand* rendCmd, const VkRenderingInf
 					pRenderingInfo->renderArea,
 					MVKArrayRef(clearValues, attCnt),
 					MVKArrayRef(imageViews, attCnt),
+					MVKArrayRef<MVKArrayRef<MTLSamplePosition>>(),
 					kMVKCommandUseBeginRendering);
 
 	// If we've just created new transient objects, once retained by this encoder,
@@ -461,6 +454,7 @@ void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
 										const VkRect2D& renderArea,
 										MVKArrayRef<VkClearValue> clearValues,
 										MVKArrayRef<MVKImageView*> attachments,
+										MVKArrayRef<MVKArrayRef<MTLSamplePosition>> subpassSamplePositions,
 										MVKCommandUse cmdUse) {
 	_pEncodingContext->setRenderingContext(renderPass, framebuffer);
 	_renderArea = renderArea;
@@ -468,6 +462,13 @@ void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
 									mvkVkExtent2DsAreEqual(_renderArea.extent, getFramebufferExtent()));
 	_clearValues.assign(clearValues.begin(), clearValues.end());
 	_attachments.assign(attachments.begin(), attachments.end());
+
+	// Copy the sample positions array of arrays, one array of sample positions for each subpass index.
+	_subpassSamplePositions.resize(subpassSamplePositions.size);
+	for (uint32_t spSPIdx = 0; spSPIdx < subpassSamplePositions.size; spSPIdx++) {
+		_subpassSamplePositions[spSPIdx].assign(subpassSamplePositions[spSPIdx].begin(),
+												subpassSamplePositions[spSPIdx].end());
+	}
 
 	setSubpass(passCmd, subpassContents, 0, cmdUse);
 }
@@ -509,6 +510,10 @@ void MVKCommandEncoder::beginNextMultiviewPass() {
 	beginMetalRenderPass(kMVKCommandUseNextSubpass);
 }
 
+void MVKCommandEncoder::setDynamicSamplePositions(MVKArrayRef<MTLSamplePosition> dynamicSamplePositions) {
+	_dynamicSamplePositions.assign(dynamicSamplePositions.begin(), dynamicSamplePositions.end());
+}
+
 // Retain encoders when prefilling, because prefilling may span multiple autorelease pools.
 template<typename T>
 void MVKCommandEncoder::retainIfImmediatelyEncoding(T& mtlEnc) {
@@ -522,6 +527,7 @@ void MVKCommandEncoder::endMetalEncoding(T& mtlEnc) {
 	if (_cmdBuffer->_immediateCmdEncoder) { [mtlEnc release]; }
 	mtlEnc = nil;
 }
+
 
 // Creates _mtlRenderEncoder and marks cached render state as dirty so it will be set into the _mtlRenderEncoder.
 void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
@@ -578,8 +584,8 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 	// If no custom sample positions are established, size will be zero,
 	// and Metal will default to using default sample postions.
 	if (_pDeviceMetalFeatures->programmableSamplePositions) {
-		auto sampPosns = _renderingState.getSamplePositions();
-		[mtlRPDesc setSamplePositions: sampPosns.data() count: sampPosns.size()];
+		auto cstmSampPosns = getCustomSamplePositions();
+		[mtlRPDesc setSamplePositions: cstmSampPosns.data count: cstmSampPosns.size];
 	}
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
@@ -593,22 +599,30 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 
     _graphicsPipelineState.beginMetalRenderPass();
     _graphicsResourcesState.beginMetalRenderPass();
-	_depthStencilState.beginMetalRenderPass();
-    _renderingState.beginMetalRenderPass();
+    _viewportState.beginMetalRenderPass();
+    _scissorState.beginMetalRenderPass();
+    _depthBiasState.beginMetalRenderPass();
+    _blendColorState.beginMetalRenderPass();
     _vertexPushConstants.beginMetalRenderPass();
     _tessCtlPushConstants.beginMetalRenderPass();
     _tessEvalPushConstants.beginMetalRenderPass();
     _fragmentPushConstants.beginMetalRenderPass();
+    _depthStencilState.beginMetalRenderPass();
+    _stencilReferenceValueState.beginMetalRenderPass();
     _occlusionQueryState.beginMetalRenderPass();
+	_transformFeedbackBinding.markDirty();
 }
 
-void MVKCommandEncoder::restartMetalRenderPassIfNeeded() {
-	if ( !_mtlRenderEncoder ) { return; }
-
-	if (_renderingState.needsMetalRenderPassRestart()) {
-		encodeStoreActions(true);
-		beginMetalRenderPass(kMVKCommandUseRestartSubpass);
-	}
+// If custom sample positions have been set, return them, otherwise return an empty array.
+// For Metal, VkPhysicalDeviceSampleLocationsPropertiesEXT::variableSampleLocations is false.
+// As such, Vulkan requires that sample positions must be established at the beginning of
+// a renderpass, and that both pipeline and dynamic sample locations must be the same as those
+// set for each subpass. Therefore, the only sample positions of use are those set for each
+// subpass when the renderpass begins. The pipeline and dynamic sample positions are ignored.
+MVKArrayRef<MTLSamplePosition> MVKCommandEncoder::getCustomSamplePositions() {
+	return (_renderSubpassIndex < _subpassSamplePositions.size()
+			? _subpassSamplePositions[_renderSubpassIndex].contents()
+			: MVKArrayRef<MTLSamplePosition>());
 }
 
 void MVKCommandEncoder::encodeStoreActions(bool storeOverride) {
@@ -685,23 +699,24 @@ void MVKCommandEncoder::signalEvent(MVKEvent* mvkEvent, bool status) {
 	mvkEvent->encodeSignal(_mtlCmdBuffer, status);
 }
 
-VkRect2D MVKCommandEncoder::clipToRenderArea(VkRect2D rect) {
-
-	uint32_t raLeft = max(_renderArea.offset.x, 0);
-	uint32_t raRight = raLeft + _renderArea.extent.width;
-	uint32_t raBottom = max(_renderArea.offset.y, 0);
-	uint32_t raTop = raBottom + _renderArea.extent.height;
-
-	rect.offset.x      = mvkClamp<uint32_t>(rect.offset.x, raLeft, max(raRight - 1, raLeft));
-	rect.offset.y      = mvkClamp<uint32_t>(rect.offset.y, raBottom, max(raTop - 1, raBottom));
-	rect.extent.width  = min<uint32_t>(rect.extent.width, raRight - rect.offset.x);
-	rect.extent.height = min<uint32_t>(rect.extent.height, raTop - rect.offset.y);
-
-	return rect;
+bool MVKCommandEncoder::supportsDynamicState(VkDynamicState state) {
+    MVKGraphicsPipeline* gpl = (MVKGraphicsPipeline*)_graphicsPipelineState.getPipeline();
+    return !gpl || gpl->supportsDynamicState(state);
 }
 
-MTLScissorRect MVKCommandEncoder::clipToRenderArea(MTLScissorRect scissor) {
-	return mvkMTLScissorRectFromVkRect2D(clipToRenderArea(mvkVkRect2DFromMTLScissorRect(scissor)));
+VkRect2D MVKCommandEncoder::clipToRenderArea(VkRect2D scissor) {
+
+	int32_t raLeft = _renderArea.offset.x;
+	int32_t raRight = raLeft + _renderArea.extent.width;
+	int32_t raBottom = _renderArea.offset.y;
+	int32_t raTop = raBottom + _renderArea.extent.height;
+
+	scissor.offset.x		= mvkClamp(scissor.offset.x, raLeft, max(raRight - 1, raLeft));
+	scissor.offset.y		= mvkClamp(scissor.offset.y, raBottom, max(raTop - 1, raBottom));
+	scissor.extent.width	= min<int32_t>(scissor.extent.width, raRight - scissor.offset.x);
+	scissor.extent.height	= min<int32_t>(scissor.extent.height, raTop - scissor.offset.y);
+
+	return scissor;
 }
 
 void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
@@ -709,15 +724,20 @@ void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
         // Must happen before switching encoders.
         encodeStoreActions(true);
     }
-    _graphicsPipelineState.encode(stage);    	// Must do first..it sets others
-	_depthStencilState.encode(stage);
-    _graphicsResourcesState.encode(stage);   	// Before push constants, to allow them to override.
+    if (_graphicsPipelineState.isDirty() || _graphicsResourcesState.isDirty())
+        _graphicsResourcesState.updateBindings();
+    _graphicsPipelineState.encode(stage);    // Must do first..it sets others
+    _graphicsResourcesState.encode(stage);   // Before push constants, to allow them to override.
+    _viewportState.encode(stage);
+    _scissorState.encode(stage);
+    _depthBiasState.encode(stage);
+    _blendColorState.encode(stage);
     _vertexPushConstants.encode(stage);
     _tessCtlPushConstants.encode(stage);
     _tessEvalPushConstants.encode(stage);
     _fragmentPushConstants.encode(stage);
-	_gpuAddressableBuffersState.encode(stage);	// After resources and push constants
-	_renderingState.encode(stage);
+    _depthStencilState.encode(stage);
+    _stencilReferenceValueState.encode(stage);
     _occlusionQueryState.encode(stage);
 }
 
@@ -772,10 +792,11 @@ void MVKCommandEncoder::beginMetalComputeEncoding(MVKCommandUse cmdUse) {
 }
 
 void MVKCommandEncoder::finalizeDispatchState() {
-    _computePipelineState.encode();    		// Must do first..it sets others
-    _computeResourcesState.encode();   		// Before push constants, to allow them to override.
+    if (_computePipelineState.isDirty() || _computeResourcesState.isDirty())
+        _computeResourcesState.updateBindings();
+    _computePipelineState.encode();    // Must do first..it sets others
+    _computeResourcesState.encode();   // Before push constants, to allow them to override.
     _computePushConstants.encode();
-	_gpuAddressableBuffersState.encode();	// After resources and push constants
 }
 
 void MVKCommandEncoder::endRendering() {
@@ -807,12 +828,16 @@ void MVKCommandEncoder::endMetalRenderEncoding() {
 
     _graphicsPipelineState.endMetalRenderPass();
     _graphicsResourcesState.endMetalRenderPass();
-	_depthStencilState.endMetalRenderPass();
-    _renderingState.endMetalRenderPass();
+    _viewportState.endMetalRenderPass();
+    _scissorState.endMetalRenderPass();
+    _depthBiasState.endMetalRenderPass();
+    _blendColorState.endMetalRenderPass();
     _vertexPushConstants.endMetalRenderPass();
     _tessCtlPushConstants.endMetalRenderPass();
     _tessEvalPushConstants.endMetalRenderPass();
     _fragmentPushConstants.endMetalRenderPass();
+    _depthStencilState.endMetalRenderPass();
+    _stencilReferenceValueState.endMetalRenderPass();
     _occlusionQueryState.endMetalRenderPass();
 }
 
@@ -881,6 +906,7 @@ MVKPushConstantsCommandEncoderState* MVKCommandEncoder::getPushConstants(VkShade
 		case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:	return &_tessEvalPushConstants;
 		case VK_SHADER_STAGE_FRAGMENT_BIT:					return &_fragmentPushConstants;
 		case VK_SHADER_STAGE_COMPUTE_BIT:					return &_computePushConstants;
+		case VK_SHADER_STAGE_GEOMETRY_BIT:					return &_geometryPushConstants;
 		default:
 			MVKAssert(false, "Invalid shader stage: %u", shaderStage);
 			return nullptr;
@@ -901,42 +927,6 @@ void MVKCommandEncoder::setVertexBytes(id<MTLRenderCommandEncoder> mtlEncoder,
 
 	if (descOverride) {
 		_graphicsResourcesState.markBufferIndexOverridden(kMVKShaderStageVertex, mtlBuffIndex);
-	}
-}
-
-void MVKCommandEncoder::encodeVertexAttributeBuffer(MVKMTLBufferBinding& b, bool isDynamicStride) {
-	if (_device->_pMetalFeatures->dynamicVertexStride) {
-#if MVK_XCODE_15
-		NSUInteger mtlStride = isDynamicStride ? b.stride : MTLAttributeStrideStatic;
-		if (b.isInline) {
-			[_mtlRenderEncoder setVertexBytes: b.mtlBytes
-									   length: b.size
-							  attributeStride: mtlStride
-									  atIndex: b.index];
-		} else if (b.justOffset) {
-			[_mtlRenderEncoder setVertexBufferOffset: b.offset
-									 attributeStride: mtlStride
-											 atIndex: b.index];
-		} else {
-			[_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
-										offset: b.offset
-							   attributeStride: mtlStride
-									   atIndex: b.index];
-		}
-#endif
-	} else {
-		if (b.isInline) {
-			[_mtlRenderEncoder setVertexBytes: b.mtlBytes
-									   length: b.size
-									  atIndex: b.index];
-		} else if (b.justOffset) {
-			[_mtlRenderEncoder setVertexBufferOffset: b.offset
-											 atIndex: b.index];
-		} else {
-			[_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
-										offset: b.offset
-									   atIndex: b.index];
-		}
 	}
 }
 
@@ -1139,36 +1129,40 @@ void MVKCommandEncoder::finishQueries() {
 
 MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
 									 MVKPrefillMetalCommandBuffersStyle prefillStyle) : MVKBaseDeviceObject(cmdBuffer->getDevice()),
-	_cmdBuffer(cmdBuffer),
-	_graphicsPipelineState(this),
-	_graphicsResourcesState(this),
-	_computePipelineState(this),
-	_computeResourcesState(this),
-	_gpuAddressableBuffersState(this),
-	_depthStencilState(this),
-	_renderingState(this),
-	_occlusionQueryState(this),
-	_vertexPushConstants(this, VK_SHADER_STAGE_VERTEX_BIT),
-	_tessCtlPushConstants(this, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT),
-	_tessEvalPushConstants(this, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT),
-	_fragmentPushConstants(this, VK_SHADER_STAGE_FRAGMENT_BIT),
-	_computePushConstants(this, VK_SHADER_STAGE_COMPUTE_BIT),
-	_prefillStyle(prefillStyle){
+        _cmdBuffer(cmdBuffer),
+        _graphicsPipelineState(this, VK_PIPELINE_BIND_POINT_GRAPHICS),
+        _computePipelineState(this, VK_PIPELINE_BIND_POINT_COMPUTE),
+        _viewportState(this),
+        _scissorState(this),
+        _depthBiasState(this),
+        _blendColorState(this),
+        _depthStencilState(this),
+        _stencilReferenceValueState(this),
+        _graphicsResourcesState(this),
+        _computeResourcesState(this),
+        _vertexPushConstants(this, VK_SHADER_STAGE_VERTEX_BIT),
+        _tessCtlPushConstants(this, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT),
+        _tessEvalPushConstants(this, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT),
+        _fragmentPushConstants(this, VK_SHADER_STAGE_FRAGMENT_BIT),
+        _computePushConstants(this, VK_SHADER_STAGE_COMPUTE_BIT),
+        _geometryPushConstants(this, VK_SHADER_STAGE_GEOMETRY_BIT),
+        _occlusionQueryState(this),
+        _prefillStyle(prefillStyle){
 
-	_pDeviceFeatures = &_device->_enabledFeatures;
-	_pDeviceMetalFeatures = _device->_pMetalFeatures;
-	_pDeviceProperties = _device->_pProperties;
-	_pDeviceMemoryProperties = _device->_pMemoryProperties;
-	_pActivatedQueries = nullptr;
-	_mtlCmdBuffer = nil;
-	_mtlRenderEncoder = nil;
-	_mtlComputeEncoder = nil;
-	_mtlComputeEncoderUse = kMVKCommandUseNone;
-	_mtlBlitEncoder = nil;
-	_mtlBlitEncoderUse = kMVKCommandUseNone;
-	_pEncodingContext = nullptr;
-	_stageCountersMTLFence = nil;
-	_flushCount = 0;
+            _pDeviceFeatures = &_device->_enabledFeatures;
+            _pDeviceMetalFeatures = _device->_pMetalFeatures;
+            _pDeviceProperties = _device->_pProperties;
+            _pDeviceMemoryProperties = _device->_pMemoryProperties;
+            _pActivatedQueries = nullptr;
+            _mtlCmdBuffer = nil;
+            _mtlRenderEncoder = nil;
+            _mtlComputeEncoder = nil;
+			_mtlComputeEncoderUse = kMVKCommandUseNone;
+            _mtlBlitEncoder = nil;
+            _mtlBlitEncoderUse = kMVKCommandUseNone;
+			_pEncodingContext = nullptr;
+			_stageCountersMTLFence = nil;
+			_flushCount = 0;
 }
 
 MVKCommandEncoder::~MVKCommandEncoder() {
@@ -1181,6 +1175,19 @@ MVKCommandEncoder::~MVKCommandEncoder() {
 
 #pragma mark -
 #pragma mark Support functions
+
+NSString* mvkMTLCommandBufferLabel(MVKCommandUse cmdUse) {
+	switch (cmdUse) {
+		case kMVKCommandUseEndCommandBuffer:                return @"vkEndCommandBuffer (Prefilled) CommandBuffer";
+		case kMVKCommandUseQueueSubmit:                     return @"vkQueueSubmit CommandBuffer";
+		case kMVKCommandUseQueuePresent:                    return @"vkQueuePresentKHR CommandBuffer";
+		case kMVKCommandUseQueueWaitIdle:                   return @"vkQueueWaitIdle CommandBuffer";
+		case kMVKCommandUseDeviceWaitIdle:                  return @"vkDeviceWaitIdle CommandBuffer";
+		case kMVKCommandUseAcquireNextImage:                return @"vkAcquireNextImageKHR CommandBuffer";
+		case kMVKCommandUseInvalidateMappedMemoryRanges:    return @"vkInvalidateMappedMemoryRanges CommandBuffer";
+		default:                                            return @"Unknown Use CommandBuffer";
+	}
+}
 
 NSString* mvkMTLRenderCommandEncoderLabel(MVKCommandUse cmdUse) {
     switch (cmdUse) {

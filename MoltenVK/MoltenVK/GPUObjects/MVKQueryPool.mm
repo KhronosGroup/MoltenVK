@@ -1,7 +1,7 @@
 /*
  * MVKQueryPool.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ void MVKQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) {
 }
 
 // Mark queries as available
-void MVKQueryPool::finishQueries(MVKArrayRef<const uint32_t> queries) {
+void MVKQueryPool::finishQueries(const MVKArrayRef<uint32_t> queries) {
     lock_guard<mutex> lock(_availabilityLock);
     for (uint32_t qry : queries) {
         if (_availability[qry] == DeviceAvailable) {
@@ -307,7 +307,7 @@ void MVKOcclusionQueryPool::beginQueryAddedTo(uint32_t query, MVKCommandBuffer* 
 MVKOcclusionQueryPool::MVKOcclusionQueryPool(MVKDevice* device,
                                              const VkQueryPoolCreateInfo* pCreateInfo) : MVKQueryPool(device, pCreateInfo, 1) {
 
-    if (getMVKConfig().supportLargeQueryPools) {
+    if (mvkConfig().supportLargeQueryPools) {
         _queryIndexOffset = 0;
 
         // Ensure we don't overflow the maximum number of queries
@@ -379,9 +379,9 @@ void MVKTimestampQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncod
 }
 
 // If not using MTLCounterSampleBuffer, update timestamp values, then mark queries as available
-void MVKTimestampQueryPool::finishQueries(MVKArrayRef<const uint32_t> queries) {
+void MVKTimestampQueryPool::finishQueries(const MVKArrayRef<uint32_t> queries) {
 	if ( !_mtlCounterBuffer ) {
-		uint64_t ts = mvkGetElapsedNanoseconds();
+		uint64_t ts = mvkGetTimestamp();
 		for (uint32_t qry : queries) { _timestamps[qry] = ts; }
 	}
 	MVKQueryPool::finishQueries(queries);

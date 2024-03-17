@@ -1,7 +1,7 @@
 /*
  * MVKBuffer.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,12 +52,16 @@ public:
 	VkResult bindDeviceMemory2(const VkBindBufferMemoryInfo* pBindInfo);
 
 	/** Applies the specified global memory barrier. */
-	void applyMemoryBarrier(MVKPipelineBarrier& barrier,
+	void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
+							VkPipelineStageFlags dstStageMask,
+							MVKPipelineBarrier& barrier,
 							MVKCommandEncoder* cmdEncoder,
 							MVKCommandUse cmdUse) override;
 
 	/** Applies the specified buffer memory barrier. */
-	void applyBufferMemoryBarrier(MVKPipelineBarrier& barrier,
+	void applyBufferMemoryBarrier(VkPipelineStageFlags srcStageMask,
+								  VkPipelineStageFlags dstStageMask,
+								  MVKPipelineBarrier& barrier,
 								  MVKCommandEncoder* cmdEncoder,
 								  MVKCommandUse cmdUse);
 
@@ -91,7 +95,9 @@ protected:
 	friend class MVKDeviceMemory;
 
 	void propagateDebugName() override;
-	bool needsHostReadSync(MVKPipelineBarrier& barrier);
+	bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
+						   VkPipelineStageFlags dstStageMask,
+						   MVKPipelineBarrier& barrier);
     bool overlaps(VkDeviceSize offset, VkDeviceSize size, VkDeviceSize &overlapOffset, VkDeviceSize &overlapSize);
 	bool shouldFlushHostMemory();
 	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);

@@ -1,7 +1,7 @@
 /*
  * mvk_datatypes.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -144,21 +144,12 @@ MVK_PUBLIC_SYMBOL bool mvkMTLPixelFormatIsPVRTCFormat(MTLPixelFormat mtlFormat) 
 	return getPlatformPixelFormats()->isPVRTCFormat(mtlFormat);
 }
 
-
-#undef mvkMTLTextureTypeFromVkImageType
 MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageType(VkImageType vkImageType,
 																  uint32_t arraySize,
 																  bool isMultisample) {
-	return mvkMTLTextureTypeFromVkImageTypeObj(vkImageType, arraySize, isMultisample, nullptr);
-}
-
-MTLTextureType mvkMTLTextureTypeFromVkImageTypeObj(VkImageType vkImageType,
-												   uint32_t arraySize,
-												   bool isMultisample,
-												   MVKBaseObject* mvkObj) {
 	switch (vkImageType) {
 		case VK_IMAGE_TYPE_3D: return MTLTextureType3D;
-		case VK_IMAGE_TYPE_1D: return (mvkGetMVKConfig(mvkObj).texture1DAs2D
+		case VK_IMAGE_TYPE_1D: return (mvkConfig().texture1DAs2D
 									   ? mvkMTLTextureTypeFromVkImageType(VK_IMAGE_TYPE_2D, arraySize, isMultisample)
 									   : (arraySize > 1 ? MTLTextureType1DArray : MTLTextureType1D));
 		case VK_IMAGE_TYPE_2D:
@@ -184,22 +175,14 @@ MVK_PUBLIC_SYMBOL VkImageType mvkVkImageTypeFromMTLTextureType(MTLTextureType mt
 			return VK_IMAGE_TYPE_2D;
 	}
 }
-
-#undef mvkMTLTextureTypeFromVkImageViewType
 MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageViewType(VkImageViewType vkImageViewType,
 																	  bool isMultisample) {
-	return mvkMTLTextureTypeFromVkImageViewTypeObj(vkImageViewType, isMultisample, nullptr);
-}
-
-MTLTextureType mvkMTLTextureTypeFromVkImageViewTypeObj(VkImageViewType vkImageViewType,
-													   bool isMultisample,
-													   MVKBaseObject* mvkObj) {
 	switch (vkImageViewType) {
 		case VK_IMAGE_VIEW_TYPE_3D:			return MTLTextureType3D;
 		case VK_IMAGE_VIEW_TYPE_CUBE:		return MTLTextureTypeCube;
 		case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:	return MTLTextureTypeCubeArray;
-		case VK_IMAGE_VIEW_TYPE_1D:			return mvkGetMVKConfig(mvkObj).texture1DAs2D ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D, isMultisample) : MTLTextureType1D;
-		case VK_IMAGE_VIEW_TYPE_1D_ARRAY:	return mvkGetMVKConfig(mvkObj).texture1DAs2D ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY, isMultisample) : MTLTextureType1DArray;
+		case VK_IMAGE_VIEW_TYPE_1D:			return mvkConfig().texture1DAs2D ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D, isMultisample) : MTLTextureType1D;
+		case VK_IMAGE_VIEW_TYPE_1D_ARRAY:	return mvkConfig().texture1DAs2D ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY, isMultisample) : MTLTextureType1DArray;
 
 		case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
 #if MVK_MACOS
@@ -433,52 +416,6 @@ MVK_PUBLIC_SYMBOL MTLBlendFactor mvkMTLBlendFactorFromVkBlendFactor(VkBlendFacto
 	}
 }
 
-#if MVK_USE_METAL_PRIVATE_API
-
-// This isn't in any public header yet. I'm really just guessing based on the D3D11 values here.
-typedef NS_ENUM(NSUInteger, MTLLogicOperation) {
-	MTLLogicOperationClear,
-	MTLLogicOperationSet,
-	MTLLogicOperationCopy,
-	MTLLogicOperationCopyInverted,
-	MTLLogicOperationNoop,
-	MTLLogicOperationInvert,
-	MTLLogicOperationAnd,
-	MTLLogicOperationNand,
-	MTLLogicOperationOr,
-	MTLLogicOperationNor,
-	MTLLogicOperationXor,
-	MTLLogicOperationEquivalence,
-	MTLLogicOperationAndReverse,
-	MTLLogicOperationAndInverted,
-	MTLLogicOperationOrReverse,
-	MTLLogicOperationOrInverted,
-};
-
-MVK_PUBLIC_SYMBOL NSUInteger mvkMTLLogicOperationFromVkLogicOp(VkLogicOp vkLogicOp) {
-	switch (vkLogicOp) {
-		case VK_LOGIC_OP_CLEAR:			return MTLLogicOperationClear;
-		case VK_LOGIC_OP_AND:			return MTLLogicOperationAnd;
-		case VK_LOGIC_OP_AND_REVERSE:	return MTLLogicOperationAndReverse;
-		case VK_LOGIC_OP_COPY:			return MTLLogicOperationCopy;
-		case VK_LOGIC_OP_AND_INVERTED:	return MTLLogicOperationAndInverted;
-		case VK_LOGIC_OP_NO_OP:			return MTLLogicOperationNoop;
-		case VK_LOGIC_OP_XOR:			return MTLLogicOperationXor;
-		case VK_LOGIC_OP_OR:			return MTLLogicOperationOr;
-		case VK_LOGIC_OP_NOR:			return MTLLogicOperationNor;
-		case VK_LOGIC_OP_EQUIVALENT:	return MTLLogicOperationEquivalence;
-		case VK_LOGIC_OP_INVERT:		return MTLLogicOperationInvert;
-		case VK_LOGIC_OP_OR_REVERSE:	return MTLLogicOperationOrReverse;
-		case VK_LOGIC_OP_COPY_INVERTED:	return MTLLogicOperationCopyInverted;
-		case VK_LOGIC_OP_OR_INVERTED:	return MTLLogicOperationOrInverted;
-		case VK_LOGIC_OP_NAND:			return MTLLogicOperationNand;
-		case VK_LOGIC_OP_SET:			return MTLLogicOperationSet;
-		default:						return MTLLogicOperationCopy;
-	}
-}
-
-#endif
-
 MVK_PUBLIC_SYMBOL MTLVertexStepFunction mvkMTLVertexStepFunctionFromVkVertexInputRate(VkVertexInputRate vkVtxStep) {
 	switch (vkVtxStep) {
 		case VK_VERTEX_INPUT_RATE_VERTEX:		return MTLVertexStepFunctionPerVertex;
@@ -572,8 +509,8 @@ MTLTriangleFillMode mvkMTLTriangleFillModeFromVkPolygonModeInObj(VkPolygonMode v
 		case VK_POLYGON_MODE_FILL:
 			return MTLTriangleFillModeFill;
 
-		// Metal does not support VK_POLYGON_MODE_POINT. Next best option is lines.
 		case VK_POLYGON_MODE_POINT:
+			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "VkPolygonMode value VK_POLYGON_MODE_POINT is not supported for render pipelines.");
 		case VK_POLYGON_MODE_LINE:
 			return MTLTriangleFillModeLines;
 
@@ -652,32 +589,23 @@ MTLMultisampleStencilResolveFilter mvkMTLMultisampleStencilResolveFilterFromVkRe
 #endif
 
 MVK_PUBLIC_SYMBOL MTLViewport mvkMTLViewportFromVkViewport(VkViewport vkViewport) {
-	return {
-		.originX = vkViewport.x,
-		.originY = vkViewport.y,
-		.width   = vkViewport.width,
-		.height  = vkViewport.height,
-		.znear   = vkViewport.minDepth,
-		.zfar    = vkViewport.maxDepth
-	};
+	MTLViewport mtlViewport;
+	mtlViewport.originX	= vkViewport.x;
+	mtlViewport.originY	= vkViewport.y;
+	mtlViewport.width	= vkViewport.width;
+	mtlViewport.height	= vkViewport.height;
+	mtlViewport.znear	= vkViewport.minDepth;
+	mtlViewport.zfar	= vkViewport.maxDepth;
+	return mtlViewport;
 }
 
 MVK_PUBLIC_SYMBOL MTLScissorRect mvkMTLScissorRectFromVkRect2D(VkRect2D vkRect) {
-	return {
-		.x      = (NSUInteger)max(vkRect.offset.x, 0),
-		.y      = (NSUInteger)max(vkRect.offset.y, 0),
-		.width  = vkRect.extent.width,
-		.height = vkRect.extent.height
-	};
-}
-
-MVK_PUBLIC_SYMBOL VkRect2D mvkVkRect2DFromMTLScissorRect(MTLScissorRect mtlScissorRect) {
-	return {
-		.offset = { .x = (int32_t)mtlScissorRect.x, 
-					.y = (int32_t)mtlScissorRect.y },
-		.extent = { .width = (uint32_t)mtlScissorRect.width, 
-					.height = (uint32_t)mtlScissorRect.height }
-	};
+	MTLScissorRect mtlScissor;
+	mtlScissor.x		= vkRect.offset.x;
+	mtlScissor.y		= vkRect.offset.y;
+	mtlScissor.width	= vkRect.extent.width;
+	mtlScissor.height	= vkRect.extent.height;
+	return mtlScissor;
 }
 
 MVK_PUBLIC_SYMBOL MTLCompareFunction mvkMTLCompareFunctionFromVkCompareOp(VkCompareOp vkOp) {
@@ -750,7 +678,7 @@ MVKShaderStage mvkShaderStageFromVkShaderStageFlagBitsInObj(VkShaderStageFlagBit
 		case VK_SHADER_STAGE_VERTEX_BIT:					return kMVKShaderStageVertex;
 		case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:		return kMVKShaderStageTessCtl;
 		case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:	return kMVKShaderStageTessEval;
-		/* FIXME: VK_SHADER_STAGE_GEOMETRY_BIT */
+		case VK_SHADER_STAGE_GEOMETRY_BIT:					return kMVKShaderStageGeometry;
 		case VK_SHADER_STAGE_FRAGMENT_BIT:					return kMVKShaderStageFragment;
 		case VK_SHADER_STAGE_COMPUTE_BIT:					return kMVKShaderStageCompute;
 		default:
@@ -764,7 +692,7 @@ MVK_PUBLIC_SYMBOL VkShaderStageFlagBits mvkVkShaderStageFlagBitsFromMVKShaderSta
 		case kMVKShaderStageVertex:		return VK_SHADER_STAGE_VERTEX_BIT;
 		case kMVKShaderStageTessCtl:	return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
 		case kMVKShaderStageTessEval:	return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-		/* FIXME: kMVKShaderStageGeometry */
+		case kMVKShaderStageGeometry:	return VK_SHADER_STAGE_GEOMETRY_BIT;
 		case kMVKShaderStageFragment:	return VK_SHADER_STAGE_FRAGMENT_BIT;
 		case kMVKShaderStageCompute:	return VK_SHADER_STAGE_COMPUTE_BIT;
 		case kMVKShaderStageCount:
@@ -805,50 +733,40 @@ MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionMode
 	}
 }
 
-MVK_PUBLIC_SYMBOL MTLRenderStages mvkMTLRenderStagesFromVkPipelineStageFlags(VkPipelineStageFlags2 vkStages,
+MVK_PUBLIC_SYMBOL MTLRenderStages mvkMTLRenderStagesFromVkPipelineStageFlags(VkPipelineStageFlags vkStages,
 																			 bool placeBarrierBefore) {
 	// Although there are many combined render/compute/host stages in Vulkan, there are only two render
 	// stages in Metal. If the Vulkan stage did not map ONLY to a specific Metal render stage, then if the
 	// barrier is to be placed before the render stages, it should come before the vertex stage, otherwise
 	// if the barrier is to be placed after the render stages, it should come after the fragment stage.
 	if (placeBarrierBefore) {
-		bool placeBeforeFragment = mvkIsOnlyAnyFlagEnabled(vkStages, (VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
-																		VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
-																		VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT |
-																		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT |
-																		VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT));
+		bool placeBeforeFragment = mvkIsOnlyAnyFlagEnabled(vkStages, (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+																		VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+																		VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
+																		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+																		VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
 		return placeBeforeFragment ? MTLRenderStageFragment : MTLRenderStageVertex;
 	} else {
-		bool placeAfterVertex = mvkIsOnlyAnyFlagEnabled(vkStages, (VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT |
-																	 VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
-																	 VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT |
-																	 VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
-																	 VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
-																	 VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT));
+		bool placeAfterVertex = mvkIsOnlyAnyFlagEnabled(vkStages, (VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT |
+																	 VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
+																	 VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
+																	 VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+																	 VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
+																	 VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT));
 		return placeAfterVertex ? MTLRenderStageVertex : MTLRenderStageFragment;
 	}
 }
 
-MVK_PUBLIC_SYMBOL MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFlags2 vkAccess) {
+MVK_PUBLIC_SYMBOL MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFlags vkAccess) {
 	MTLBarrierScope mtlScope = MTLBarrierScope(0);
-	if ( mvkIsAnyFlagEnabled(vkAccess, (VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | 
-										VK_ACCESS_2_INDEX_READ_BIT |
-										VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT | 
-										VK_ACCESS_2_UNIFORM_READ_BIT)) ) {
+	if ( mvkIsAnyFlagEnabled(vkAccess, VK_ACCESS_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT) ) {
 		mtlScope |= MTLBarrierScopeBuffers;
 	}
-	if ( mvkIsAnyFlagEnabled(vkAccess, (VK_ACCESS_2_SHADER_READ_BIT | 
-										VK_ACCESS_2_SHADER_WRITE_BIT |
-										VK_ACCESS_2_MEMORY_READ_BIT | 
-										VK_ACCESS_2_MEMORY_WRITE_BIT)) ) {
+	if ( mvkIsAnyFlagEnabled(vkAccess, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT) ) {
 		mtlScope |= MTLBarrierScopeBuffers | MTLBarrierScopeTextures;
 	}
 #if MVK_MACOS
-	if ( mvkIsAnyFlagEnabled(vkAccess, (VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT | 
-										VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT |
-										VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | 
-										VK_ACCESS_2_MEMORY_READ_BIT |
-										VK_ACCESS_2_MEMORY_WRITE_BIT)) ) {
+	if ( mvkIsAnyFlagEnabled(vkAccess, VK_ACCESS_INPUT_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT) ) {
 		mtlScope |= MTLBarrierScopeRenderTargets;
 	}
 #endif

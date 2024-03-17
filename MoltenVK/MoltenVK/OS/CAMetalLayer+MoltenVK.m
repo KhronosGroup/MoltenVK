@@ -1,7 +1,7 @@
 /*
  * CAMetalLayer+MoltenVK.m
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@
 
 
 #include "CAMetalLayer+MoltenVK.h"
-#include "MVKOSExtensions.h"
 
 #if MVK_MACOS && !MVK_MACCAT
 #	include <AppKit/NSApplication.h>
@@ -89,13 +88,6 @@
 
 #if MVK_MACOS && !MVK_MACCAT
 -(NSScreen*) screenMVK {
-	__block NSScreen* screen;
-	mvkDispatchToMainAndWait(^{ screen = self.privateScreenMVKImpl; });
-	return screen;
-}
-
-// Search for the screen currently displaying the layer, and default to the main screen if it can't be found.
--(NSScreen*) privateScreenMVKImpl {
 	// If this layer has a delegate that is an NSView, and the view is in a window, retrieve the screen from the window.
 	if ([self.delegate isKindOfClass: NSView.class]) {
 		NSWindow* window = ((NSView*)self.delegate).window;

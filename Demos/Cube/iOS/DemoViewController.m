@@ -1,7 +1,7 @@
 /*
  * DemoViewController.m
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 #import "DemoViewController.h"
 
 #include <MoltenVK/mvk_vulkan.h>
-#include "cube.c"
+#include "../../Vulkan-Tools/cube/cube.c"
 
 
 #pragma mark -
@@ -30,9 +30,15 @@
 	struct demo demo;
 }
 
-/** Since this is a single-view app, initialize Vulkan as view is appearing. */
--(void) viewWillAppear: (BOOL) animated {
-	[super viewWillAppear: animated];
+-(void) dealloc {
+	demo_cleanup(&demo);
+	[_displayLink release];
+	[super dealloc];
+}
+
+/** Since this is a single-view app, init Vulkan when the view is loaded. */
+-(void) viewDidLoad {
+	[super viewDidLoad];
 
 	self.view.contentScaleFactor = UIScreen.mainScreen.nativeScale;
 
@@ -60,13 +66,6 @@
 -(void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id)coordinator {
 	[super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
 	demo_resize(&demo);
-}
-
--(void) viewDidDisappear: (BOOL) animated {
-	[_displayLink invalidate];
-	[_displayLink release];
-	demo_cleanup(&demo);
-	[super viewDidDisappear: animated];
 }
 
 @end

@@ -1,7 +1,7 @@
 /*
  * MVKCommandEncodingPool.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -109,32 +109,30 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdFillBufferMTLComputePi
 	MVK_ENC_REZ_ACCESS(_mtlFillBufferComputePipelineState, newCmdFillBufferMTLComputePipelineState(_commandPool));
 }
 
-static constexpr uint32_t getRenderpassLoadStoreStateIndex(MVKFormatType type, bool isTextureArray) {
-	// Kernels for array textures are stored from slot 3 onwards
-	uint32_t layeredOffset = isTextureArray ? 3u : 0u;
+static constexpr uint32_t getRenderpassLoadStoreStateIndex(MVKFormatType type) {
 	switch (type) {
 		case kMVKFormatColorHalf:
 		case kMVKFormatColorFloat:
-			return 0 + layeredOffset;
+			return 0;
 		case kMVKFormatColorInt8:
 		case kMVKFormatColorInt16:
 		case kMVKFormatColorInt32:
-			return 1 + layeredOffset;
+			return 1;
 		case kMVKFormatColorUInt8:
 		case kMVKFormatColorUInt16:
 		case kMVKFormatColorUInt32:
-			return 2 + layeredOffset;
+			return 2;
 		default:
-			return 0 + layeredOffset;
+			return 0;
 	}
 }
 
-id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdClearColorImageMTLComputePipelineState(MVKFormatType type, bool isTextureArray) {
-	MVK_ENC_REZ_ACCESS(_mtlClearColorImageComputePipelineState[getRenderpassLoadStoreStateIndex(type, isTextureArray)], newCmdClearColorImageMTLComputePipelineState(type, _commandPool, isTextureArray));
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdClearColorImageMTLComputePipelineState(MVKFormatType type) {
+	MVK_ENC_REZ_ACCESS(_mtlClearColorImageComputePipelineState[getRenderpassLoadStoreStateIndex(type)], newCmdClearColorImageMTLComputePipelineState(type, _commandPool));
 }
 
-id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdResolveColorImageMTLComputePipelineState(MVKFormatType type, bool isTextureArray) {
-	MVK_ENC_REZ_ACCESS(_mtlResolveColorImageComputePipelineState[getRenderpassLoadStoreStateIndex(type, isTextureArray)], newCmdResolveColorImageMTLComputePipelineState(type, _commandPool, isTextureArray));
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdResolveColorImageMTLComputePipelineState(MVKFormatType type) {
+	MVK_ENC_REZ_ACCESS(_mtlResolveColorImageComputePipelineState[getRenderpassLoadStoreStateIndex(type)], newCmdResolveColorImageMTLComputePipelineState(type, _commandPool));
 }
 
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needsTempBuff) {
@@ -226,13 +224,19 @@ void MVKCommandEncodingPool::destroyMetalResources() {
 	[_mtlDrawIndirectPopulateIndexesComputePipelineState release];
 	_mtlDrawIndirectPopulateIndexesComputePipelineState = nil;
 
-	for (uint32_t i = 0; i < kColorImageCount; i++)
-	{
-		[_mtlClearColorImageComputePipelineState[i] release];
-		_mtlClearColorImageComputePipelineState[i] = nil;
-		[_mtlResolveColorImageComputePipelineState[i] release];
-		_mtlResolveColorImageComputePipelineState[i] = nil;
-	}
+    [_mtlClearColorImageComputePipelineState[0] release];
+    [_mtlClearColorImageComputePipelineState[1] release];
+    [_mtlClearColorImageComputePipelineState[2] release];
+    _mtlClearColorImageComputePipelineState[0] = nil;
+    _mtlClearColorImageComputePipelineState[1] = nil;
+    _mtlClearColorImageComputePipelineState[2] = nil;
+
+	[_mtlResolveColorImageComputePipelineState[0] release];
+	[_mtlResolveColorImageComputePipelineState[1] release];
+	[_mtlResolveColorImageComputePipelineState[2] release];
+	_mtlResolveColorImageComputePipelineState[0] = nil;
+	_mtlResolveColorImageComputePipelineState[1] = nil;
+	_mtlResolveColorImageComputePipelineState[2] = nil;
 
     [_mtlCopyBufferToImage3DDecompressComputePipelineState[0] release];
     [_mtlCopyBufferToImage3DDecompressComputePipelineState[1] release];

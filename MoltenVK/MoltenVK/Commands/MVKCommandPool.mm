@@ -1,7 +1,7 @@
 /*
  * MVKCommandPool.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,8 +77,8 @@ void MVKCommandPool::freeCommandBuffers(uint32_t commandBufferCount,
 	}
 }
 
-id<MTLCommandBuffer> MVKCommandPool::getMTLCommandBuffer(MVKCommandUse cmdUse, uint32_t queueIndex) {
-	return _device->getQueue(_queueFamilyIndex, queueIndex)->getMTLCommandBuffer(cmdUse, true);
+id<MTLCommandBuffer> MVKCommandPool::getMTLCommandBuffer(uint32_t queueIndex) {
+	return _device->getQueue(_queueFamilyIndex, queueIndex)->getMTLCommandBuffer(kMVKCommandUseEndCommandBuffer, true);
 }
 
 // Clear the command type pool member variables.

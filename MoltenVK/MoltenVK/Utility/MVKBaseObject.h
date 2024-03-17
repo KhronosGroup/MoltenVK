@@ -1,7 +1,7 @@
 /*
  * MVKBaseObject.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,13 +42,6 @@ public:
 	/** Returns the Vulkan API opaque object controlling this object. */
 	virtual MVKVulkanAPIObject* getVulkanAPIObject() = 0;
 
-	/** 
-	 * If getVulkanAPIObject() does not return NULL, this function returns the MoltenVK
-	 * configuration info for the VkInstance that created the API object, otherwise
-	 * this function returns the global configuration info.
-	 */
-	virtual const MVKConfiguration& getMVKConfig();
-
 	/**
 	 * Report a message. This includes logging to a standard system logging stream,
 	 * and some subclasses will also forward the message to their VkInstance for
@@ -57,7 +50,7 @@ public:
 	void reportMessage(MVKConfigLogLevel logLevel, const char* format, ...) __printflike(3, 4);
 
 	/**
-	 * Report a message, on behalf of the object, which may be nil.
+	 * Report a Vulkan error message, on behalf of the object, which may be nil.
 	 * Reporting includes logging to a standard system logging stream, and if the object
 	 * is not nil and has access to the VkInstance, the message will also be forwarded
 	 * to the VkInstance for output to the Vulkan debug report messaging API.
@@ -65,19 +58,14 @@ public:
 	static void reportMessage(MVKBaseObject* mvkObj, MVKConfigLogLevel logLevel, const char* format, ...) __printflike(3, 4);
 
 	/**
-	 * Report a Vulkan result message. This includes logging to a standard system logging stream,
-	 * and some subclasses will also forward the message to their VkInstance for output to the
-	 * Vulkan debug report messaging API.
-	 */
-	VkResult reportResult(VkResult vkRslt, MVKConfigLogLevel logLevel, const char* format, ...) __printflike(4, 5);
-
-	/**
-	 * Report a Vulkan result message, on behalf of the object. which may be nil.
+	 * Report a Vulkan error message, on behalf of the object, which may be nil.
 	 * Reporting includes logging to a standard system logging stream, and if the object
 	 * is not nil and has access to the VkInstance, the message will also be forwarded
 	 * to the VkInstance for output to the Vulkan debug report messaging API.
+	 *
+	 * This is the core reporting implementation. Other similar functions delegate here.
 	 */
-	static VkResult reportResult(MVKBaseObject* mvkObj, VkResult vkRslt, MVKConfigLogLevel logLevel, const char* format, ...) __printflike(4, 5);
+	static void reportMessage(MVKBaseObject* mvkObj, MVKConfigLogLevel logLevel, const char* format, va_list args) __printflike(3, 0);
 
 	/**
 	 * Report a Vulkan error message. This includes logging to a standard system logging stream,
@@ -95,29 +83,19 @@ public:
 	static VkResult reportError(MVKBaseObject* mvkObj, VkResult vkErr, const char* format, ...) __printflike(3, 4);
 
 	/**
-	 * Report a Vulkan warning message. This includes logging to a standard system logging stream,
-	 * and some subclasses will also forward the message to their VkInstance for output to the
-	 * Vulkan debug report messaging API.
-	 */
-	VkResult reportWarning(VkResult vkRslt, const char* format, ...) __printflike(3, 4);
-
-	/**
-	 * Report a Vulkan warning message, on behalf of the object. which may be nil.
+	 * Report a Vulkan error message, on behalf of the object. which may be nil.
 	 * Reporting includes logging to a standard system logging stream, and if the object
 	 * is not nil and has access to the VkInstance, the message will also be forwarded
 	 * to the VkInstance for output to the Vulkan debug report messaging API.
+	 *
+	 * This is the core reporting implementation. Other similar functions delegate here.
 	 */
-	static VkResult reportWarning(MVKBaseObject* mvkObj, VkResult vkRslt, const char* format, ...) __printflike(3, 4);
+	static VkResult reportError(MVKBaseObject* mvkObj, VkResult vkErr, const char* format, va_list args) __printflike(3, 0);
 
 	/** Destroys this object. Default behaviour simply deletes it. Subclasses may override to delay deletion. */
 	virtual void destroy() { delete this; }
 
-	virtual ~MVKBaseObject() {}
-
-protected:
-	static VkResult reportResult(MVKBaseObject* mvkObj, VkResult vkRslt, MVKConfigLogLevel logLevel, const char* format, va_list args) __printflike(4, 0);
-	static void reportMessage(MVKBaseObject* mvkObj, MVKConfigLogLevel logLevel, const char* format, va_list args) __printflike(3, 0);
-
+    virtual ~MVKBaseObject() {}
 };
 
 
@@ -150,7 +128,7 @@ public:
 	 * Called when this instance has been retained as a reference by another object,
 	 * indicating that this instance will not be deleted until that reference is released.
 	 */
-	void retain() { _refCount.fetch_add(1, std::memory_order_relaxed); }
+	void retain() { _refCount++; }
 
 	/**
 	 * Called when this instance has been released as a reference from another object.
@@ -161,7 +139,7 @@ public:
 	 * Note that the destroy() function is called on the BaseClass.
 	 * Releasing will not call any overridden destroy() function in a descendant class.
 	 */
-	void release() { if (_refCount.fetch_sub(1, std::memory_order_acq_rel) == 1) { BaseClass::destroy(); } }
+	void release() { if (--_refCount == 0) { BaseClass::destroy(); } }
 
 	/**
 	 * Marks this instance as destroyed. If all previous references to this instance
@@ -173,10 +151,15 @@ public:
 	MVKReferenceCountingMixin() : _refCount(1) {}
 
 	/** Copy starts with fresh reference counts. */
-	MVKReferenceCountingMixin(const MVKReferenceCountingMixin& other) : _refCount(1) {}
+	MVKReferenceCountingMixin(const MVKReferenceCountingMixin& other) {
+		_refCount = 1;
+	}
 
-	/** Don't overwrite refcounted objects. */
-	MVKReferenceCountingMixin& operator=(const MVKReferenceCountingMixin& other) = delete;
+	/** Copy starts with fresh reference counts. */
+	MVKReferenceCountingMixin& operator=(const MVKReferenceCountingMixin& other) {
+		_refCount = 1;
+		return *this;
+	}
 
 protected:
 	std::atomic<uint32_t> _refCount;
@@ -212,15 +195,3 @@ public:
 protected:
 	VkResult _configurationResult = VK_SUCCESS;
 };
-
-
-#pragma mark -
-#pragma mark Support functions
-
-/**
- * If the object is not a nullptr, returns the MoltenVK configuration info for the
- * VkInstance that created the object, otherwise returns the global configuration info.
- */
-static inline const MVKConfiguration& mvkGetMVKConfig(MVKBaseObject* mvkObj) {
-	return mvkObj ? mvkObj->getMVKConfig() : getGlobalMVKConfig();
-}

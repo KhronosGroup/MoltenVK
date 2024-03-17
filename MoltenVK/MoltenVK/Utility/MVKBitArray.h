@@ -1,7 +1,7 @@
 /*
  * MVKBitArray.h
  *
- * Copyright (c) 2020-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2020-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -90,11 +90,7 @@ public:
 	 * and optionally clears that bit. If no bits are set, returns the size() of this bit array.
 	 */
 	size_t getIndexOfFirstSetBit(size_t startIndex, bool shouldClear) {
-		size_t startSecIdx = getIndexOfSection(startIndex);
-		if (startSecIdx < _clearedSectionCount) {
-			startSecIdx = _clearedSectionCount;
-			startIndex = 0;
-		}
+		size_t startSecIdx = std::max(getIndexOfSection(startIndex), _clearedSectionCount);
 		size_t bitIdx = startSecIdx << SectionMaskSize;
 		size_t secCnt = getSectionCount();
 		for (size_t secIdx = startSecIdx; secIdx < secCnt; secIdx++) {
@@ -105,7 +101,6 @@ public:
 				if (shouldClear) { clearBit(bitIdx); }
 				return std::min(bitIdx, _bitCount);
 			}
-			startIndex = 0;
 		}
 		return std::min(bitIdx, _bitCount);
 	}

@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# Copyright (c) 2016-2024 The Brenwill Workshop Ltd.
+# Copyright (c) 2016-2023 The Brenwill Workshop Ltd.
 #
 # fetchDependencies - Retrieves the correct versions of all dependencies
 #
-# macOS usage: ./fetchDependencies [--macos] [--ios] [--iossim] [--maccat] [--tvos] [--tvossim]
+# macOS usage: ./fetchDependencies [--macos] [--ios] [--iossim] [--tvos] [--tvossim]
 #                                  [--visionos] [--visionossim] [--all] [--none]
 #                                  [-v] [--debug] [--build-spirv-tools]
 #                                  [--v-headers-root path] [--spirv-cross-root path] [--glslang-root path]
@@ -67,12 +67,6 @@
 #      --no-parallel-build
 #              Build the external libraries serially instead of in parallel. This is the default.
 #
-#      --keep-cache
-#              Do not remove the External/build/Intermediates cache directory after building.
-#              Removing the Intermediates directory returns significant disk space after the
-#              build, and is the default behaviour. Use this option if you intend to run this
-#              script repeatedly to incrementally build one platform at a time.
-#
 #      --glslang-root path
 #              "path" specifies a directory path to a KhronosGroup/glslang repository.
 #              This repository does need to be built and the build directory must be in the
@@ -123,7 +117,6 @@ V_HEADERS_ROOT=""
 SPIRV_CROSS_ROOT=""
 GLSLANG_ROOT=""
 BLD_SPV_TLS=""
-export KEEP_CACHE=""
 
 while (( "$#" )); do
   case "$1" in
@@ -196,10 +189,6 @@ while (( "$#" )); do
          ;;
        --no-parallel-build)
          XC_USE_BCKGND=""
-         shift 1
-         ;;
-       --keep-cache)
-         KEEP_CACHE="Y"
          shift 1
          ;;
        -v)
@@ -336,11 +325,14 @@ if [ ! "$SPIRV_CROSS_ROOT" = "" ]; then
 	rm -rf ${REPO_NAME}
 	ln -sfn ${SPIRV_CROSS_ROOT} ${REPO_NAME}
 else
-	REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
+	REPO_REMOTE=$(git remote | head -n 1)
+	REPO_URL=$(git remote get-url "$REPO_REMOTE")
+	REPO_URL="$(dirname "$REPO_URL")/${REPO_NAME}.git"
 	REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
 	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 fi
+
 
 
 # ----------------- glslang -------------------
@@ -382,6 +374,7 @@ else
 fi
 
 
+
 # ----------------- Vulkan-Tools -------------------
 
 echo
@@ -390,19 +383,6 @@ echo
 
 REPO_NAME=Vulkan-Tools
 REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
-REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
-
-update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
-
-
-# ----------------- Volk -------------------
-
-echo
-echo ========== Volk ==========
-echo
-
-REPO_NAME=Volk
-REPO_URL="https://github.com/zeux/${REPO_NAME}.git"
 REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
 update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
@@ -432,6 +412,7 @@ function execute_xcodebuild_command () {
 # 2 - Platform
 # 3 - Destination (Optional. Defaults to same as platform)
 function build_impl() {
+    BLD_SPECIFIED="Y"
 	XC_OS=${1}
 	XC_PLTFM=${2}
 	if [ "${3}" != "" ]; then
@@ -446,6 +427,7 @@ function build_impl() {
 	echo Building external libraries for platform ${XC_PLTFM} and destination ${XC_DEST}
 
 	execute_xcodebuild_command 									\
+		GCC_PREPROCESSOR_DEFINITIONS='NDEBUG $(inherited)'		\
 		-project "${XC_PROJ}"									\
 		-scheme "${XC_SCHEME}"									\
 		-destination "generic/platform=${XC_DEST}"				\
@@ -463,9 +445,7 @@ function build_impl() {
 # Select whether or not to run the build in parallel.
 # 1 - OS
 # 2 - platform
-# 3 - Destination (Optional. Defaults to same as platform)
 function build() {
-    BLD_SPECIFIED="Y"
 	if [ "$XC_USE_BCKGND" != "" ]; then
 		build_impl "${1}" "${2}" "${3}" &
 	else
@@ -476,7 +456,6 @@ function build() {
 EXT_DEPS=ExternalDependencies
 XC_PROJ="${EXT_DEPS}.xcodeproj"
 XC_DD_PATH="${EXT_DIR}/build"
-export SKIP_PACKAGING="Y"
 
 # Determine if xcpretty is present
 XCPRETTY_PATH=$(command -v xcpretty 2> /dev/null || true) # ignore failures
@@ -536,10 +515,9 @@ if [ "$XC_USE_BCKGND" != "" ]; then
 fi
 
 if [ "$BLD_SPECIFIED" != "" ]; then
-	# Build XCFrameworks, update latest symlink, remove intermediates, and clean MoltenVK for rebuild
+	# Build XCFrameworks, update latest symlink, and clean MoltenVK for rebuild
 	PROJECT_DIR="."
 	CONFIGURATION=${XC_CONFIG}
-	SKIP_PACKAGING=""
 	. "./Scripts/create_ext_lib_xcframeworks.sh"
 	. "./Scripts/package_ext_libs_finish.sh"
 else

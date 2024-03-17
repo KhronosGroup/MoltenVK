@@ -1,7 +1,7 @@
 /*
  * MVKSync.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,11 +48,6 @@ void MVKSemaphoreImpl::reserve() {
 bool MVKSemaphoreImpl::isReserved() {
 	lock_guard<mutex> lock(_lock);
 	return !isClear();
-}
-
-uint32_t MVKSemaphoreImpl::getReservationCount() {
-	lock_guard<mutex> lock(_lock);
-	return _reservationCount;
 }
 
 bool MVKSemaphoreImpl::wait(uint64_t timeout, bool reserveAgain) {
@@ -128,7 +123,7 @@ uint64_t MVKSemaphoreMTLEvent::deferSignal() {
 }
 
 void MVKSemaphoreMTLEvent::encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t deferToken) {
-	[mtlCmdBuff encodeSignalEvent: _mtlEvent value: deferToken];
+	if (mtlCmdBuff) { [mtlCmdBuff encodeSignalEvent: _mtlEvent value: deferToken]; }
 }
 
 MVKSemaphoreMTLEvent::MVKSemaphoreMTLEvent(MVKDevice* device,
@@ -576,19 +571,19 @@ void MVKMetalCompiler::compile(unique_lock<mutex>& lock, dispatch_block_t block)
 	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{ @autoreleasepool { block(); } });
 
 	// Limit timeout to avoid overflow since wait_for() uses wait_until()
-	chrono::nanoseconds nanoTimeout(min(getMVKConfig().metalCompileTimeout, kMVKUndefinedLargeUInt64));
+	chrono::nanoseconds nanoTimeout(min(mvkConfig().metalCompileTimeout, kMVKUndefinedLargeUInt64));
 	_blocker.wait_for(lock, nanoTimeout, [this]{ return _isCompileDone; });
 
 	if ( !_isCompileDone ) {
 		@autoreleasepool {
 			NSString* errDesc = [NSString stringWithFormat: @"Timeout after %.3f milliseconds. Likely internal Metal compiler error", (double)nanoTimeout.count() / 1e6];
-			_compileError = [[NSError alloc] initWithDomain: @(kMVKMoltenVKDriverLayerName) code: 1 userInfo: @{NSLocalizedDescriptionKey : errDesc}];	// retained
+			_compileError = [[NSError alloc] initWithDomain: @"MoltenVK" code: 1 userInfo: @{NSLocalizedDescriptionKey : errDesc}];	// retained
 		}
 	}
 
 	if (_compileError) { handleError(); }
 
-	mvkDev->addPerformanceInterval(*_pPerformanceTracker, _startTime);
+	mvkDev->addActivityPerformance(*_pPerformanceTracker, _startTime);
 }
 
 void MVKMetalCompiler::handleError() {

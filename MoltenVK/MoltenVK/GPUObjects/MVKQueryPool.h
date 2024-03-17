@@ -1,7 +1,7 @@
 /*
  * MVKQueryPool.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ public:
     virtual void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder);
 
     /** Finishes the specified queries and marks them as available. */
-    virtual void finishQueries(MVKArrayRef<const uint32_t> queries);
+    virtual void finishQueries(const MVKArrayRef<uint32_t> queries);
 
 	/** Resets the results and availability status of the specified queries. */
 	virtual void resetResults(uint32_t firstQuery, uint32_t queryCount, MVKCommandEncoder* cmdEncoder);
@@ -212,7 +212,7 @@ class MVKTimestampQueryPool : public MVKGPUCounterQueryPool {
 
 public:
 	void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) override;
-	void finishQueries(MVKArrayRef<const uint32_t> queries) override;
+	void finishQueries(const MVKArrayRef<uint32_t> queries) override;
 
 #pragma mark Construction
 

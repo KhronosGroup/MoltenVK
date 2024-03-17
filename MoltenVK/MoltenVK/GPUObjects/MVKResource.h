@@ -1,7 +1,7 @@
 /*
  * MVKResource.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,7 +60,9 @@ public:
 	}
 
 	/** Applies the specified global memory barrier. */
-	virtual void applyMemoryBarrier(MVKPipelineBarrier& barrier,
+	virtual void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
+									VkPipelineStageFlags dstStageMask,
+									MVKPipelineBarrier& barrier,
 									MVKCommandEncoder* cmdEncoder,
 									MVKCommandUse cmdUse) = 0;
 

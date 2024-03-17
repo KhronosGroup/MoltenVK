@@ -1,7 +1,7 @@
 /*
  * MVKCommand.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -74,23 +74,5 @@ protected:
 	// This function is overridden in each concrete subclass declaration, but the implementation of
 	// this function in each subclass is automatically generated in the MVKCommandPool implementation.
 	virtual MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) = 0;
-};
-
-
-#pragma mark -
-#pragma mark MVKSingleValueCommand
-
-/** Abstract class of a simple Vulkan command that simply holds a single value to encode. */
-template <typename Tv>
-class MVKSingleValueCommand : public MVKCommand {
-
-public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff, Tv value) {
-		_value = value;
-		return VK_SUCCESS;
-	}
-
-protected:
-	Tv _value;
 };
 

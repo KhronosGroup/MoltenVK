@@ -1,7 +1,7 @@
 /*
  * MVKOSExtensions.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,16 +23,11 @@
 #include <mach/mach_time.h>
 #include <mach/task.h>
 #include <os/proc.h>
-#include <sys/sysctl.h>
 
 #import <Foundation/Foundation.h>
 
 
 using namespace std;
-
-
-#pragma mark -
-#pragma mark Operating System versions
 
 MVKOSVersion mvkOSVersion() {
 	static MVKOSVersion _mvkOSVersion = 0;
@@ -43,57 +38,64 @@ MVKOSVersion mvkOSVersion() {
 	return _mvkOSVersion;
 }
 
-
-#pragma mark -
-#pragma mark Timestamps
-
+static uint64_t _mvkTimestampBase;
+static double _mvkTimestampPeriod;
 static mach_timebase_info_data_t _mvkMachTimebase;
 
-uint64_t mvkGetTimestamp() { return mach_absolute_time(); }
+uint64_t mvkGetTimestamp() { return mach_absolute_time() - _mvkTimestampBase; }
 
-uint64_t mvkGetRuntimeNanoseconds() { return mach_absolute_time() * _mvkMachTimebase.numer / _mvkMachTimebase.denom; }
-
-uint64_t mvkGetContinuousNanoseconds() { return mach_continuous_time() * _mvkMachTimebase.numer / _mvkMachTimebase.denom; }
+double mvkGetTimestampPeriod() { return _mvkTimestampPeriod; }
 
 uint64_t mvkGetElapsedNanoseconds(uint64_t startTimestamp, uint64_t endTimestamp) {
 	if (endTimestamp == 0) { endTimestamp = mvkGetTimestamp(); }
-	return (endTimestamp - startTimestamp) * _mvkMachTimebase.numer / _mvkMachTimebase.denom;
+	return (endTimestamp - startTimestamp) * _mvkTimestampPeriod;
 }
 
 double mvkGetElapsedMilliseconds(uint64_t startTimestamp, uint64_t endTimestamp) {
 	return mvkGetElapsedNanoseconds(startTimestamp, endTimestamp) / 1e6;
 }
 
-// Initialize timestamp capabilities on app startup.
-// Called automatically when the framework is loaded and initialized.
+uint64_t mvkGetAbsoluteTime() { return mach_continuous_time() * _mvkMachTimebase.numer / _mvkMachTimebase.denom; }
+
+// Initialize timestamping capabilities on app startup.
+//Called automatically when the framework is loaded and initialized.
 static bool _mvkTimestampsInitialized = false;
 __attribute__((constructor)) static void MVKInitTimestamps() {
 	if (_mvkTimestampsInitialized ) { return; }
 	_mvkTimestampsInitialized = true;
 
+	_mvkTimestampBase = mach_absolute_time();
 	mach_timebase_info(&_mvkMachTimebase);
+	_mvkTimestampPeriod = (double)_mvkMachTimebase.numer / (double)_mvkMachTimebase.denom;
+}
+
+void mvkDispatchToMainAndWait(dispatch_block_t block) {
+	if (NSThread.isMainThread) {
+		block();
+	} else {
+		dispatch_sync(dispatch_get_main_queue(), block);
+	}
 }
 
 
 #pragma mark -
 #pragma mark Process environment
 
-bool mvkGetEnvVar(const char* varName, string& evStr) {
+string mvkGetEnvVar(string varName, bool* pWasFound) {
 	@autoreleasepool {
 		NSDictionary* nsEnv = [[NSProcessInfo processInfo] environment];
-		NSString* nsStr = nsEnv[@(varName)];
-		if (nsStr) { evStr = nsStr.UTF8String; }
-		return nsStr != nil;
+		NSString* envStr = nsEnv[@(varName.c_str())];
+		if (pWasFound) { *pWasFound = envStr != nil; }
+		return envStr ? envStr.UTF8String : "";
 	}
 }
 
-const char* mvkGetEnvVarString(const char* varName, string& evStr, const char* defaultValue) {
-	return mvkGetEnvVar(varName, evStr) ? evStr.c_str() : defaultValue;
+int64_t mvkGetEnvVarInt64(string varName, bool* pWasFound) {
+	return strtoll(mvkGetEnvVar(varName, pWasFound).c_str(), NULL, 0);
 }
 
-double mvkGetEnvVarNumber(const char* varName, double defaultValue) {
-	string evStr;
-	return mvkGetEnvVar(varName, evStr) ? strtod(evStr.c_str(), nullptr) : defaultValue;
+bool mvkGetEnvVarBool(std::string varName, bool* pWasFound) {
+	return mvkGetEnvVarInt64(varName, pWasFound) != 0;
 }
 
 
@@ -101,12 +103,17 @@ double mvkGetEnvVarNumber(const char* varName, double defaultValue) {
 #pragma mark System memory
 
 uint64_t mvkGetSystemMemorySize() {
-	uint64_t host_memsize = 0;
-	size_t size = sizeof(host_memsize);
-	if (sysctlbyname("hw.memsize", &host_memsize, &size, NULL, 0) == KERN_SUCCESS) {
-		return host_memsize;
+#if MVK_MACOS_OR_IOS_OR_VISIONOS
+	mach_msg_type_number_t host_size = HOST_BASIC_INFO_COUNT;
+	host_basic_info_data_t info;
+	if (host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&info, &host_size) == KERN_SUCCESS) {
+		return info.max_mem;
 	}
 	return 0;
+#endif
+#if MVK_TVOS
+	return 0;
+#endif
 }
 
 uint64_t mvkGetAvailableMemorySize() {
@@ -130,19 +137,12 @@ uint64_t mvkGetUsedMemorySize() {
 	task_vm_info_data_t task_vm_info;
 	mach_msg_type_number_t task_size = TASK_VM_INFO_COUNT;
 	if (task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)&task_vm_info, &task_size) == KERN_SUCCESS) {
-#ifdef TASK_VM_INFO_REV3_COUNT	// check for rev3 version of task_vm_info
-		if (task_size >= TASK_VM_INFO_REV3_COUNT) {
-			return task_vm_info.ledger_tag_graphics_footprint;
-		}
-		else
-#endif
-			return task_vm_info.phys_footprint;
+		return task_vm_info.phys_footprint;
 	}
 	return 0;
 }
 
 uint64_t mvkGetHostMemoryPageSize() { return sysconf(_SC_PAGESIZE); }
-
 
 #pragma mark -
 #pragma mark Threading
@@ -150,12 +150,4 @@ uint64_t mvkGetHostMemoryPageSize() { return sysconf(_SC_PAGESIZE); }
 /** Returns the amount of avaliable CPU cores. */
 uint32_t mvkGetAvaliableCPUCores() {
     return (uint32_t)[[NSProcessInfo processInfo] activeProcessorCount];
-}
-
-void mvkDispatchToMainAndWait(dispatch_block_t block) {
-	if (NSThread.isMainThread) {
-		block();
-	} else {
-		dispatch_sync(dispatch_get_main_queue(), block);
-	}
 }

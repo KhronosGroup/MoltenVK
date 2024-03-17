@@ -114,7 +114,6 @@
 		A9546B232672A3B8004BA3E6 /* SPIRVSupport.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPIRVSupport.cpp; sourceTree = "<group>"; };
 		A9546B242672A3B8004BA3E6 /* SPIRVSupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIRVSupport.h; sourceTree = "<group>"; };
 		A964BD5F1C57EFBD00D930D8 /* MoltenVKShaderConverter */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MoltenVKShaderConverter; sourceTree = BUILT_PRODUCTS_DIR; };
-		A979A9412B9A200400F69E67 /* libMoltenVKShaderConverter.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVKShaderConverter.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A97CC73D1C7527F3004A5C7E /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		A97CC73E1C7527F3004A5C7E /* MoltenVKShaderConverterTool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MoltenVKShaderConverterTool.cpp; sourceTree = "<group>"; };
 		A97CC73F1C7527F3004A5C7E /* MoltenVKShaderConverterTool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MoltenVKShaderConverterTool.h; sourceTree = "<group>"; };
@@ -126,6 +125,7 @@
 		A9B51BDB225E98BB00AC74D2 /* MVKOSExtensions.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKOSExtensions.mm; sourceTree = "<group>"; };
 		A9B51BDC225E98BB00AC74D2 /* MVKOSExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKOSExtensions.h; sourceTree = "<group>"; };
 		A9F042AA1FB4D060009FCCB8 /* MVKCommonEnvironment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCommonEnvironment.h; sourceTree = "<group>"; };
+		DCFD7F882A45BDA0007BBBF7 /* libMoltenVKShaderConverter.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVKShaderConverter.a; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -256,7 +256,7 @@
 				A9F042A81FB4D060009FCCB8 /* Common */,
 				A964B28D1C57EBC400D930D8 /* Products */,
 				A972AD2921CEE6A80013AB25 /* Frameworks */,
-				A979A9412B9A200400F69E67 /* libMoltenVKShaderConverter.a */,
+				DCFD7F882A45BDA0007BBBF7 /* libMoltenVKShaderConverter.a */,
 			);
 			sourceTree = "<group>";
 		};
@@ -412,7 +412,7 @@
 			);
 			name = "MoltenVKShaderConverter-xrOS";
 			productName = "MetalGLShaderConverter-macOS";
-			productReference = A979A9412B9A200400F69E67 /* libMoltenVKShaderConverter.a */;
+			productReference = DCFD7F882A45BDA0007BBBF7 /* libMoltenVKShaderConverter.a */;
 			productType = "com.apple.product-type.library.static";
 		};
 /* End PBXNativeTarget section */
@@ -421,7 +421,7 @@
 		A9F55D25198BE6A7004EC31B /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 9999;
+				LastUpgradeCheck = 1410;
 				ORGANIZATIONNAME = "The Brenwill Workshop Ltd.";
 				TargetAttributes = {
 					A9092A8C1A81717B00051823 = {
@@ -477,7 +477,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\" \"lib${PRODUCT_NAME}.a\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\"\n";
 		};
 		A93ED4E824F59E1100FEB018 /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -497,7 +497,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\" \"lib${PRODUCT_NAME}.a\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\"\n";
 		};
 		A93ED4E924F59E1800FEB018 /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -517,7 +517,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\" \"lib${PRODUCT_NAME}.a\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\"\n";
 		};
 		DCFD7F842A45BDA0007BBBF7 /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -537,7 +537,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\" \"lib${PRODUCT_NAME}.a\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -646,7 +646,6 @@
 		A9092A921A81717C00051823 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				GCC_OPTIMIZATION_LEVEL = 3;
 				MACH_O_TYPE = mh_execute;
 				OTHER_LDFLAGS = (
 					"-ObjC",
@@ -709,7 +708,6 @@
 				COPY_PHASE_STRIP = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -769,7 +767,6 @@
 				COPY_PHASE_STRIP = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_NO_COMMON_BLOCKS = YES;

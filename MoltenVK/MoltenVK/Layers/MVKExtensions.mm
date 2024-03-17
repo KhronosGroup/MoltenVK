@@ -1,7 +1,7 @@
 /*
  * MVKExtensions.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 
 	// If the config indicates that not all supported extensions should be advertised,
 	// only advertise those supported extensions that have been specifically configured.
-	auto advExtns = getGlobalMVKConfig().advertiseExtensions;
+	auto advExtns = mvkConfig().advertiseExtensions;
 	if ( !mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL) ) {
 #define MVK_NA  kMVKOSVersionUnsupported
 		if (mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_WSI)) {

@@ -1,7 +1,7 @@
 /*
  * MVKCommandPool.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 #include "MVKCommandEncodingPool.h"
 #include "MVKCommand.h"
 #include "MVKCmdPipeline.h"
-#include "MVKCmdRendering.h"
+#include "MVKCmdRenderPass.h"
 #include "MVKCmdDispatch.h"
 #include "MVKCmdDraw.h"
 #include "MVKCmdTransfer.h"
@@ -82,7 +82,7 @@ public:
 	 * Returns a retained MTLCommandBuffer created from the indexed queue
 	 * within the queue family for which this command pool was created.
 	 */
-	id<MTLCommandBuffer> getMTLCommandBuffer(MVKCommandUse cmdUse, uint32_t queueIndex);
+	id<MTLCommandBuffer> getMTLCommandBuffer(uint32_t queueIndex);
 
 	/** Release any held but unused memory back to the system. */
 	void trim();

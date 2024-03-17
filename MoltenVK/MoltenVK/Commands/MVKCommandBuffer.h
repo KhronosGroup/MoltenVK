@@ -1,7 +1,7 @@
 /*
  * MVKCommandBuffer.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -143,7 +143,7 @@ public:
     bool _needsVisibilityResultMTLBuffer;
 
 	/** Called when a MVKCmdExecuteCommands is added to this command buffer. */
-	void recordExecuteCommands(MVKArrayRef<MVKCommandBuffer*const> secondaryCommandBuffers);
+	void recordExecuteCommands(const MVKArrayRef<MVKCommandBuffer*> secondaryCommandBuffers);
 
 	/** Called when a timestamp command is added. */
 	void recordTimestampCommand();
@@ -182,6 +182,7 @@ protected:
 	friend class MVKCommandEncoder;
 	friend class MVKCommandPool;
 
+	MVKBaseObject* getBaseObject() override { return this; };
 	void propagateDebugName() override {}
 	void init(const VkCommandBufferAllocateInfo* pAllocateInfo);
 	bool canExecute();
@@ -250,22 +251,20 @@ public:
 						 const VkRect2D& renderArea,
 						 MVKArrayRef<VkClearValue> clearValues,
 						 MVKArrayRef<MVKImageView*> attachments,
-						 MVKCommandUse cmdUse);
+						 MVKArrayRef<MVKArrayRef<MTLSamplePosition>> subpassSamplePositions,
+						 MVKCommandUse cmdUse = kMVKCommandUseBeginRenderPass);
 
 	/** Begins the next render subpass. */
 	void beginNextSubpass(MVKCommand* subpassCmd, VkSubpassContents renderpassContents);
+
+	/** Sets the dynamic custom sample positions to use when rendering. */
+	void setDynamicSamplePositions(MVKArrayRef<MTLSamplePosition> dynamicSamplePositions);
 
 	/** Begins dynamic rendering. */
 	void beginRendering(MVKCommand* rendCmd, const VkRenderingInfo* pRenderingInfo);
 
 	/** Begins a Metal render pass for the current render subpass. */
 	void beginMetalRenderPass(MVKCommandUse cmdUse);
-
-	/** 
-	 * If a Metal render pass has started, and it needs to be restarted,
-	 * then end the existing Metal render pass, and start a new one.
-	 */
-	void restartMetalRenderPassIfNeeded();
 
 	/** If a render encoder is active, encodes store actions for all attachments to it. */
 	void encodeStoreActions(bool storeOverride = false);
@@ -302,11 +301,14 @@ public:
 	/** Encodes an operation to signal an event to a status. */
 	void signalEvent(MVKEvent* mvkEvent, bool status);
 
-	/** Clips the rect to ensure it fits inside the render area.  */
-	VkRect2D clipToRenderArea(VkRect2D rect);
+    /**
+     * If a pipeline is currently bound, returns whether the current pipeline permits dynamic
+     * setting of the specified state. If no pipeline is currently bound, returns true.
+     */
+    bool supportsDynamicState(VkDynamicState state);
 
 	/** Clips the scissor to ensure it fits inside the render area.  */
-	MTLScissorRect clipToRenderArea(MTLScissorRect scissor);
+	VkRect2D clipToRenderArea(VkRect2D scissor);
 
 	/** Called by each graphics draw command to establish any outstanding state just prior to performing the draw. */
 	void finalizeDrawState(MVKGraphicsStage stage);
@@ -357,17 +359,8 @@ public:
 	 */
 	id<MTLCommandEncoder> getMTLEncoder();
 
-	/** Returns the graphics pipeline. */
-	MVKGraphicsPipeline* getGraphicsPipeline() { return (MVKGraphicsPipeline*)_graphicsPipelineState.getPipeline(); }
-
-	/** Returns the compute pipeline. */
-	MVKComputePipeline* getComputePipeline() { return (MVKComputePipeline*)_computePipelineState.getPipeline(); }
-
 	/** Returns the push constants associated with the specified shader stage. */
 	MVKPushConstantsCommandEncoderState* getPushConstants(VkShaderStageFlagBits shaderStage);
-
-	/** Encode the buffer binding as a vertex attribute buffer. */
-	void encodeVertexAttributeBuffer(MVKMTLBufferBinding& b, bool isDynamicStride);
 
     /**
 	 * Copy bytes into the Metal encoder at a Metal vertex buffer index, and optionally indicate
@@ -443,28 +436,37 @@ public:
 	id<MTLRenderCommandEncoder> _mtlRenderEncoder;
 
     /** Tracks the current graphics pipeline bound to the encoder. */
-	MVKPipelineCommandEncoderState _graphicsPipelineState;
-
-	/** Tracks the current graphics resources state of the encoder. */
-	MVKGraphicsResourcesCommandEncoderState _graphicsResourcesState;
+    MVKPipelineCommandEncoderState _graphicsPipelineState;
 
     /** Tracks the current compute pipeline bound to the encoder. */
-	MVKPipelineCommandEncoderState _computePipelineState;
+    MVKPipelineCommandEncoderState _computePipelineState;
 
-	/** Tracks the current compute resources state of the encoder. */
-	MVKComputeResourcesCommandEncoderState _computeResourcesState;
+    /** Tracks the current viewport state of the encoder. */
+    MVKViewportCommandEncoderState _viewportState;
 
-	/** Tracks whether the GPU-addressable buffers need to be used. */
-	MVKGPUAddressableBuffersCommandEncoderState _gpuAddressableBuffersState;
+    /** Tracks the current scissor state of the encoder. */
+    MVKScissorCommandEncoderState _scissorState;
+
+    /** Tracks the current depth bias state of the encoder. */
+    MVKDepthBiasCommandEncoderState _depthBiasState;
+
+    /** Tracks the current blend color state of the encoder. */
+    MVKBlendColorCommandEncoderState _blendColorState;
 
     /** Tracks the current depth stencil state of the encoder. */
     MVKDepthStencilCommandEncoderState _depthStencilState;
 
-	/** Tracks the current rendering states of the encoder. */
-	MVKRenderingCommandEncoderState _renderingState;
+    /** Tracks the current stencil reference value state of the encoder. */
+    MVKStencilReferenceValueCommandEncoderState _stencilReferenceValueState;
 
-	/** Tracks the occlusion query state of the encoder. */
-	MVKOcclusionQueryCommandEncoderState _occlusionQueryState;
+    /** Tracks the current graphics resources state of the encoder. */
+    MVKGraphicsResourcesCommandEncoderState _graphicsResourcesState;
+
+    /** Tracks the current compute resources state of the encoder. */
+    MVKComputeResourcesCommandEncoderState _computeResourcesState;
+
+	/** The type of primitive that will be rendered. */
+	MTLPrimitiveType _mtlPrimitiveType;
 
     /** The size of the threadgroup for the compute shader. */
     MTLSize _mtlThreadgroupSize;
@@ -474,6 +476,10 @@ public:
 
 	/** Indicates whether the current draw is an indexed draw. */
 	bool _isIndexedDraw;
+
+	bool _transformFeedbackEnabled = false;
+	uint32_t _transformFeedbackBufferIndex = 19;
+	MVKMTLBufferBinding _transformFeedbackBinding;
 
 #pragma mark Construction
 
@@ -493,6 +499,7 @@ protected:
 	void encodeGPUCounterSample(MVKGPUCounterQueryPool* mvkQryPool, uint32_t sampleIndex, MVKCounterSamplingFlags samplingPoints);
 	void encodeTimestampStageCounterSamples();
 	id<MTLFence> getStageCountersMTLFence();
+	MVKArrayRef<MTLSamplePosition> getCustomSamplePositions();
 	NSString* getMTLRenderCommandEncoderName(MVKCommandUse cmdUse);
 	template<typename T> void retainIfImmediatelyEncoding(T& mtlEnc);
 	template<typename T> void endMetalEncoding(T& mtlEnc);
@@ -508,6 +515,8 @@ protected:
 	MVKSmallVector<GPUCounterQuery, 16> _timestampStageCounterQueries;
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
 	MVKSmallVector<MVKImageView*, kMVKDefaultAttachmentCount> _attachments;
+	MVKSmallVector<MTLSamplePosition> _dynamicSamplePositions;
+	MVKSmallVector<MVKSmallVector<MTLSamplePosition>> _subpassSamplePositions;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
 	id<MTLFence> _stageCountersMTLFence;
@@ -516,6 +525,8 @@ protected:
 	MVKPushConstantsCommandEncoderState _tessEvalPushConstants;
 	MVKPushConstantsCommandEncoderState _fragmentPushConstants;
 	MVKPushConstantsCommandEncoderState _computePushConstants;
+	MVKPushConstantsCommandEncoderState _geometryPushConstants;
+    MVKOcclusionQueryCommandEncoderState _occlusionQueryState;
 	MVKPrefillMetalCommandBuffersStyle _prefillStyle;
 	VkSubpassContents _subpassContents;
 	uint32_t _renderSubpassIndex;
@@ -529,6 +540,9 @@ protected:
 
 #pragma mark -
 #pragma mark Support functions
+
+/** Returns a name, suitable for use as a MTLCommandBuffer label, based on the MVKCommandUse. */
+NSString* mvkMTLCommandBufferLabel(MVKCommandUse cmdUse);
 
 /** Returns a name, suitable for use as a MTLRenderCommandEncoder label, based on the MVKCommandUse. */
 NSString* mvkMTLRenderCommandEncoderLabel(MVKCommandUse cmdUse);

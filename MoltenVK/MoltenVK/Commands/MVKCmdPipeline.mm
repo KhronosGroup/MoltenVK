@@ -1,7 +1,7 @@
 /*
  * MVKCmdPipeline.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,57 +27,7 @@
 
 
 #pragma mark -
-#pragma mark MVKCmdExecuteCommands
-
-template <size_t N>
-VkResult MVKCmdExecuteCommands<N>::setContent(MVKCommandBuffer* cmdBuff,
-											  uint32_t commandBuffersCount,
-											  const VkCommandBuffer* pCommandBuffers) {
-	// Add clear values
-	_secondaryCommandBuffers.clear();	// Clear for reuse
-	_secondaryCommandBuffers.reserve(commandBuffersCount);
-	for (uint32_t cbIdx = 0; cbIdx < commandBuffersCount; cbIdx++) {
-		_secondaryCommandBuffers.push_back(MVKCommandBuffer::getMVKCommandBuffer(pCommandBuffers[cbIdx]));
-	}
-	cmdBuff->recordExecuteCommands(_secondaryCommandBuffers.contents());
-
-	return VK_SUCCESS;
-}
-
-template <size_t N>
-void MVKCmdExecuteCommands<N>::encode(MVKCommandEncoder* cmdEncoder) {
-    for (auto& cb : _secondaryCommandBuffers) { cmdEncoder->encodeSecondary(cb); }
-}
-
-template class MVKCmdExecuteCommands<1>;
-template class MVKCmdExecuteCommands<16>;
-
-
-#pragma mark -
 #pragma mark MVKCmdPipelineBarrier
-
-template <size_t N>
-VkResult MVKCmdPipelineBarrier<N>::setContent(MVKCommandBuffer* cmdBuff,
-											  const VkDependencyInfo* pDependencyInfo) {
-	_dependencyFlags = pDependencyInfo->dependencyFlags;
-
-	_barriers.clear();	// Clear for reuse
-	_barriers.reserve(pDependencyInfo->memoryBarrierCount + 
-					  pDependencyInfo->bufferMemoryBarrierCount +
-					  pDependencyInfo->imageMemoryBarrierCount);
-
-	for (uint32_t i = 0; i < pDependencyInfo->memoryBarrierCount; i++) {
-		_barriers.emplace_back(pDependencyInfo->pMemoryBarriers[i]);
-	}
-	for (uint32_t i = 0; i < pDependencyInfo->bufferMemoryBarrierCount; i++) {
-		_barriers.emplace_back(pDependencyInfo->pBufferMemoryBarriers[i]);
-	}
-	for (uint32_t i = 0; i < pDependencyInfo->imageMemoryBarrierCount; i++) {
-		_barriers.emplace_back(pDependencyInfo->pImageMemoryBarriers[i]);
-	}
-
-	return VK_SUCCESS;
-}
 
 template <size_t N>
 VkResult MVKCmdPipelineBarrier<N>::setContent(MVKCommandBuffer* cmdBuff,
@@ -90,19 +40,21 @@ VkResult MVKCmdPipelineBarrier<N>::setContent(MVKCommandBuffer* cmdBuff,
 											  const VkBufferMemoryBarrier* pBufferMemoryBarriers,
 											  uint32_t imageMemoryBarrierCount,
 											  const VkImageMemoryBarrier* pImageMemoryBarriers) {
+	_srcStageMask = srcStageMask;
+	_dstStageMask = dstStageMask;
 	_dependencyFlags = dependencyFlags;
 
 	_barriers.clear();	// Clear for reuse
 	_barriers.reserve(memoryBarrierCount + bufferMemoryBarrierCount + imageMemoryBarrierCount);
 
 	for (uint32_t i = 0; i < memoryBarrierCount; i++) {
-		_barriers.emplace_back(pMemoryBarriers[i], srcStageMask, dstStageMask);
+		_barriers.emplace_back(pMemoryBarriers[i]);
 	}
 	for (uint32_t i = 0; i < bufferMemoryBarrierCount; i++) {
-		_barriers.emplace_back(pBufferMemoryBarriers[i], srcStageMask, dstStageMask);
+		_barriers.emplace_back(pBufferMemoryBarriers[i]);
 	}
 	for (uint32_t i = 0; i < imageMemoryBarrierCount; i++) {
-		_barriers.emplace_back(pImageMemoryBarriers[i], srcStageMask, dstStageMask);
+		_barriers.emplace_back(pImageMemoryBarriers[i]);
 	}
 
 	return VK_SUCCESS;
@@ -115,9 +67,13 @@ void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	// Calls below invoke MTLBlitCommandEncoder so must apply this first.
 	// Check if pipeline barriers are available and we are in a renderpass.
 	if (cmdEncoder->getDevice()->_pMetalFeatures->memoryBarriers && cmdEncoder->_mtlRenderEncoder) {
+		MTLRenderStages srcStages = mvkMTLRenderStagesFromVkPipelineStageFlags(_srcStageMask, false);
+		MTLRenderStages dstStages = mvkMTLRenderStagesFromVkPipelineStageFlags(_dstStageMask, true);
+
+		id<MTLResource> resources[_barriers.size()];
+		uint32_t rezCnt = 0;
+
 		for (auto& b : _barriers) {
-			MTLRenderStages srcStages = mvkMTLRenderStagesFromVkPipelineStageFlags(b.srcStageMask, false);
-			MTLRenderStages dstStages = mvkMTLRenderStagesFromVkPipelineStageFlags(b.dstStageMask, true);
 			switch (b.type) {
 				case MVKPipelineBarrier::Memory: {
 					MTLBarrierScope scope = (mvkMTLBarrierScopeFromVkAccessFlags(b.srcAccessMask) |
@@ -128,29 +84,26 @@ void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 					break;
 				}
 
-				case MVKPipelineBarrier::Buffer: {
-					id<MTLResource> mtlRez = b.mvkBuffer->getMTLBuffer();
-					[cmdEncoder->_mtlRenderEncoder memoryBarrierWithResources: &mtlRez
-																		count: 1
-																  afterStages: srcStages
-																 beforeStages: dstStages];
+				case MVKPipelineBarrier::Buffer:
+					resources[rezCnt++] = b.mvkBuffer->getMTLBuffer();
 					break;
-				}
-				case MVKPipelineBarrier::Image: {
-					uint32_t plnCnt = b.mvkImage->getPlaneCount();
-					id<MTLResource> mtlRezs[plnCnt];
-					for (uint8_t plnIdx = 0; plnIdx < plnCnt; plnIdx++) {
-						mtlRezs[plnIdx] = b.mvkImage->getMTLTexture(plnIdx);
-					}
-					[cmdEncoder->_mtlRenderEncoder memoryBarrierWithResources: mtlRezs
-																		count: plnCnt
-																  afterStages: srcStages
-																 beforeStages: dstStages];
+
+				case MVKPipelineBarrier::Image:
+                    for (uint8_t planeIndex = 0; planeIndex < b.mvkImage->getPlaneCount(); planeIndex++) {
+                        resources[rezCnt++] = b.mvkImage->getMTLTexture(planeIndex);
+                    }
 					break;
-				}
+
 				default:
 					break;
 			}
+		}
+
+		if (rezCnt) {
+			[cmdEncoder->_mtlRenderEncoder memoryBarrierWithResources: resources
+																count: rezCnt
+														  afterStages: srcStages
+														 beforeStages: dstStages];
 		}
 	} else if (cmdEncoder->getDevice()->_pMetalFeatures->textureBarriers) {
 #if !MVK_MACCAT
@@ -185,15 +138,15 @@ void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	for (auto& b : _barriers) {
 		switch (b.type) {
 			case MVKPipelineBarrier::Memory:
-				mvkDvc->applyMemoryBarrier(b, cmdEncoder, cmdUse);
+				mvkDvc->applyMemoryBarrier(_srcStageMask, _dstStageMask, b, cmdEncoder, cmdUse);
 				break;
 
 			case MVKPipelineBarrier::Buffer:
-				b.mvkBuffer->applyBufferMemoryBarrier(b, cmdEncoder, cmdUse);
+				b.mvkBuffer->applyBufferMemoryBarrier(_srcStageMask, _dstStageMask, b, cmdEncoder, cmdUse);
 				break;
 
 			case MVKPipelineBarrier::Image:
-				b.mvkImage->applyImageMemoryBarrier(b, cmdEncoder, cmdUse);
+				b.mvkImage->applyImageMemoryBarrier(_srcStageMask, _dstStageMask, b, cmdEncoder, cmdUse);
 				break;
 
 			default:
@@ -359,6 +312,7 @@ void MVKCmdPushConstants<N>::encode(MVKCommandEncoder* cmdEncoder) {
         VK_SHADER_STAGE_VERTEX_BIT,
         VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
         VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+        VK_SHADER_STAGE_GEOMETRY_BIT,
         VK_SHADER_STAGE_FRAGMENT_BIT,
         VK_SHADER_STAGE_COMPUTE_BIT
     };
@@ -540,23 +494,19 @@ MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
 
 
 #pragma mark -
+#pragma mark MVKCmdSetResetEvent
+
+VkResult MVKCmdSetResetEvent::setContent(MVKCommandBuffer* cmdBuff,
+										 VkEvent event,
+										 VkPipelineStageFlags stageMask) {
+	_mvkEvent = (MVKEvent*)event;
+
+	return VK_SUCCESS;
+}
+
+
+#pragma mark -
 #pragma mark MVKCmdSetEvent
-
-VkResult MVKCmdSetEvent::setContent(MVKCommandBuffer* cmdBuff,
-									VkEvent event,
-									VkPipelineStageFlags stageMask) {
-	_mvkEvent = (MVKEvent*)event;
-
-	return VK_SUCCESS;
-}
-
-VkResult MVKCmdSetEvent::setContent(MVKCommandBuffer* cmdBuff,
-									VkEvent event,
-									const VkDependencyInfo* pDependencyInfo) {
-	_mvkEvent = (MVKEvent*)event;
-
-	return VK_SUCCESS;
-}
 
 void MVKCmdSetEvent::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->signalEvent(_mvkEvent, true);
@@ -566,14 +516,6 @@ void MVKCmdSetEvent::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdResetEvent
 
-VkResult MVKCmdResetEvent::setContent(MVKCommandBuffer* cmdBuff,
-									  VkEvent event,
-									  VkPipelineStageFlags2 stageMask) {
-	_mvkEvent = (MVKEvent*)event;
-
-	return VK_SUCCESS;
-}
-
 void MVKCmdResetEvent::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->signalEvent(_mvkEvent, false);
 }
@@ -581,20 +523,6 @@ void MVKCmdResetEvent::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark -
 #pragma mark MVKCmdWaitEvents
-
-template <size_t N>
-VkResult MVKCmdWaitEvents<N>::setContent(MVKCommandBuffer* cmdBuff,
-										 uint32_t eventCount,
-										 const VkEvent* pEvents,
-										 const VkDependencyInfo* pDependencyInfos) {
-	_mvkEvents.clear();	// Clear for reuse
-	_mvkEvents.reserve(eventCount);
-	for (uint32_t i = 0; i < eventCount; i++) {
-		_mvkEvents.push_back((MVKEvent*)pEvents[i]);
-	}
-
-	return VK_SUCCESS;
-}
 
 template <size_t N>
 VkResult MVKCmdWaitEvents<N>::setContent(MVKCommandBuffer* cmdBuff,

@@ -1,7 +1,7 @@
 /*
  * MVKImage.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,6 @@
 class MVKImage;
 class MVKImageView;
 class MVKSwapchain;
-class MVKQueue;
 class MVKCommandEncoder;
 
 
@@ -74,7 +73,9 @@ protected:
 	bool overlaps(VkSubresourceLayout& imgLayout, VkDeviceSize offset, VkDeviceSize size);
     void propagateDebugName();
     MVKImageMemoryBinding* getMemoryBinding() const;
-	void applyImageMemoryBarrier(MVKPipelineBarrier& barrier,
+	void applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
+								 VkPipelineStageFlags dstStageMask,
+								 MVKPipelineBarrier& barrier,
 								 MVKCommandEncoder* cmdEncoder,
 								 MVKCommandUse cmdUse);
 	void pullFromDeviceOnCompletion(MVKCommandEncoder* cmdEncoder,
@@ -117,7 +118,9 @@ public:
     VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
 
     /** Applies the specified global memory barrier. */
-    void applyMemoryBarrier(MVKPipelineBarrier& barrier,
+    void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
+                            VkPipelineStageFlags dstStageMask,
+                            MVKPipelineBarrier& barrier,
                             MVKCommandEncoder* cmdEncoder,
                             MVKCommandUse cmdUse) override;
 
@@ -129,7 +132,9 @@ protected:
     friend MVKImage;
 
     void propagateDebugName() override;
-    bool needsHostReadSync(MVKPipelineBarrier& barrier);
+    bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
+                           VkPipelineStageFlags dstStageMask,
+                           MVKPipelineBarrier& barrier);
     bool shouldFlushHostMemory();
     VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
     VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);
@@ -245,7 +250,9 @@ public:
 	virtual VkResult bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo);
 
 	/** Applies the specified image memory barrier. */
-	void applyImageMemoryBarrier(MVKPipelineBarrier& barrier,
+	void applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
+								 VkPipelineStageFlags dstStageMask,
+								 MVKPipelineBarrier& barrier,
 								 MVKCommandEncoder* cmdEncoder,
 								 MVKCommandUse cmdUse);
 
@@ -345,9 +352,6 @@ protected:
 	bool getIsValidViewFormat(VkFormat viewFormat);
 	VkImageUsageFlags getCombinedUsage() { return _usage | _stencilUsage; }
 	MTLTextureUsage getMTLTextureUsage(MTLPixelFormat mtlPixFmt);
-	uint8_t getMemoryBindingCount() const { return (uint8_t)_memoryBindings.size(); }
-	uint8_t getMemoryBindingIndex(uint8_t planeIndex) const;
-	MVKImageMemoryBinding* getMemoryBinding(uint8_t planeIndex);
 
     MVKSmallVector<MVKImageMemoryBinding*, 3> _memoryBindings;
     MVKSmallVector<MVKImagePlane*, 3> _planes;
@@ -372,7 +376,6 @@ protected:
 	bool _isAliasable;
 	bool _hasExtendedUsage;
 	bool _hasMutableFormat;
-	bool _shouldSupportAtomics;
 	bool _isLinearForAtomics;
 };
 
@@ -385,7 +388,13 @@ class MVKSwapchainImage : public MVKImage {
 
 public:
 
+	/** Binds this resource to the specified offset within the specified memory allocation. */
 	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset, uint8_t planeIndex) override;
+
+#pragma mark Metal
+
+	/** Returns the Metal texture used by the CAMetalDrawable underlying this image. */
+	id<MTLTexture> getMTLTexture(uint8_t planeIndex) override;
 
 
 #pragma mark Construction
@@ -400,10 +409,11 @@ public:
 protected:
 	friend class MVKPeerSwapchainImage;
 
+	virtual id<CAMetalDrawable> getCAMetalDrawable() = 0;
 	void detachSwapchain();
 
-	std::mutex _detachmentLock;
 	MVKSwapchain* _swapchain;
+	std::mutex _swapchainLock;
 	uint32_t _swapchainIndex;
 };
 
@@ -422,7 +432,6 @@ typedef struct MVKSwapchainImageAvailability {
 /** Presentation info. */
 typedef struct  {
 	MVKPresentableSwapchainImage* presentableImage;
-	MVKQueue* queue;				// The queue on which the vkQueuePresentKHR() command was executed.
 	MVKFence* fence;				// VK_EXT_swapchain_maintenance1 fence signaled when resources can be destroyed
 	uint64_t desiredPresentTime;  	// VK_GOOGLE_display_timing desired presentation time in nanoseconds
 	uint32_t presentID;           	// VK_GOOGLE_display_timing presentID
@@ -445,46 +454,35 @@ public:
 
 #pragma mark Metal
 
-	id<MTLTexture> getMTLTexture(uint8_t planeIndex) override;
-
 	/** Presents the contained drawable to the OS. */
-	VkResult presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff, MVKImagePresentInfo presentInfo);
+	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff, MVKImagePresentInfo presentInfo);
 
-	/** Called when the presentation begins. */
-	void beginPresentation(const MVKImagePresentInfo& presentInfo);
-
-	/** Called via callback when the presentation completes. */
-	void endPresentation(const MVKImagePresentInfo& presentInfo,
-						 const MVKSwapchainSignaler& signaler,
-						 uint64_t actualPresentTime = 0);
 
 #pragma mark Construction
 
 	MVKPresentableSwapchainImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo,
 								 MVKSwapchain* swapchain, uint32_t swapchainIndex);
 
-	void destroy() override;
-
 	~MVKPresentableSwapchainImage() override;
 
 protected:
 	friend MVKSwapchain;
 
-	id<CAMetalDrawable> getCAMetalDrawable();
-	void addPresentedHandler(id<CAMetalDrawable> mtlDrawable, MVKImagePresentInfo presentInfo, MVKSwapchainSignaler signaler);
+	id<CAMetalDrawable> getCAMetalDrawable() override;
+	void addPresentedHandler(id<CAMetalDrawable> mtlDrawable, MVKImagePresentInfo presentInfo);
 	void releaseMetalDrawable();
 	MVKSwapchainImageAvailability getAvailability();
+	void makeAvailable(const MVKSwapchainSignaler& signaler);
 	void makeAvailable();
-	VkResult acquireAndSignalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence);
-	MVKSwapchainSignaler getPresentationSignaler();
+	void acquireAndSignalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence);
+	void renderWatermark(id<MTLCommandBuffer> mtlCmdBuff);
 
-	id<CAMetalDrawable> _mtlDrawable = nil;
-	id<MTLTexture> _mtlTextureHeadless = nil;
+	id<CAMetalDrawable> _mtlDrawable;
+	id<MTLCommandBuffer> _presentingMTLCmdBuff;
 	MVKSwapchainImageAvailability _availability;
 	MVKSmallVector<MVKSwapchainSignaler, 1> _availabilitySignalers;
-	MVKSwapchainSignaler _preSignaler = {};
+	MVKSwapchainSignaler _preSignaler;
 	std::mutex _availabilityLock;
-	uint64_t _presentationStartTime = 0;
 };
 
 
@@ -496,8 +494,7 @@ class MVKPeerSwapchainImage : public MVKSwapchainImage {
 
 public:
 
-	id<MTLTexture> getMTLTexture(uint8_t planeIndex) override;
-
+	/** Binds this resource according to the specified bind information. */
 	VkResult bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo) override;
 
 
@@ -507,6 +504,10 @@ public:
 						  const VkImageCreateInfo* pCreateInfo,
 						  MVKSwapchain* swapchain,
 						  uint32_t swapchainIndex);
+
+protected:
+	id<CAMetalDrawable> getCAMetalDrawable() override;
+
 };
 
 

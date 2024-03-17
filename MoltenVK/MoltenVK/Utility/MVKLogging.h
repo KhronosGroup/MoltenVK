@@ -1,7 +1,7 @@
 /*
  * MVKLogging.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,9 +57,9 @@ extern "C" {
  *		MVKLogErrorIf(cond, fmt, ...)	- same as MVKLogError if boolean "cond" condition expression evaluates to YES,
  *										  otherwise logs nothing.
  *
- *		MVKLogWarn(fmt, ...)			- recommended for not immediately harmful errors
+ *		MVKLogWarning(fmt, ...)		- recommended for not immediately harmful errors
  *										- will print if MVK_LOG_LEVEL_WARNING is set on.
- *		MVKLogWarnIf(cond, fmt, ...) 	- same as MVKLogWarn if boolean "cond" condition expression evaluates to YES,
+ *		MVKLogWarningIf(cond, fmt, ...) - same as MVKLogWarning if boolean "cond" condition expression evaluates to YES,
  *										  otherwise logs nothing.
  *
  *		MVKLogInfo(fmt, ...)			- recommended for general, infrequent, information messages
@@ -67,7 +67,7 @@ extern "C" {
  *		MVKLogInfoIf(cond, fmt, ...)	- same as MVKLogInfo if boolean "cond" condition expression evaluates to YES,
  *										  otherwise logs nothing.
  *
- *		MVKLogDebug(fmt, ...)			- recommended for temporary use during debugging
+ *		MVKLogDebug(fmt, ...)		- recommended for temporary use during debugging
  *										- will print if MVK_LOG_LEVEL_DEBUG is set on.
  *		MVKLogDebugIf(cond, fmt, ...)	- same as MVKLogDebug if boolean "cond" condition expression evaluates to YES,
  *										  otherwise logs nothing.
@@ -128,7 +128,7 @@ extern "C" {
 #	define MVK_LOG_LEVEL_INFO		MVK_LOGGING_ENABLED
 #endif
 #ifndef MVK_LOG_LEVEL_DEBUG
-#	define MVK_LOG_LEVEL_DEBUG		(MVK_LOGGING_ENABLED && MVK_CONFIG_DEBUG)
+#	define MVK_LOG_LEVEL_DEBUG		(MVK_LOGGING_ENABLED && MVK_DEBUG)
 #endif
 #ifndef MVK_LOG_LEVEL_TRACE
 #	define MVK_LOG_LEVEL_TRACE		0
@@ -148,11 +148,11 @@ extern "C" {
 
 // Warning logging - for not immediately harmful errors
 #if MVK_LOG_LEVEL_WARNING
-#	define MVKLogWarn(fmt, ...)				MVKLogWarnImpl(fmt, ##__VA_ARGS__)
-#	define MVKLogWarnIf(cond, fmt, ...)		if(cond) { MVKLogWarnImpl(fmt, ##__VA_ARGS__); }
+#	define MVKLogWarning(fmt, ...)			MVKLogWarningImpl(fmt, ##__VA_ARGS__)
+#	define MVKLogWarningIf(cond, fmt, ...)	if(cond) { MVKLogWarningImpl(fmt, ##__VA_ARGS__); }
 #else
-#    define MVKLogWarn(...)
-#    define MVKLogWarnIf(cond, fmt, ...)
+#    define MVKLogWarning(...)
+#    define MVKLogWarningIf(cond, fmt, ...)
 #endif
 
 // Info logging - for general, non-performance affecting information messages
@@ -182,11 +182,11 @@ extern "C" {
 #	define MVKLogTraceIf(cond, fmt, ...)
 #endif
 
-#define MVKLogErrorImpl(fmt, ...)			reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, fmt, ##__VA_ARGS__)
-#define MVKLogWarnImpl(fmt, ...)			reportMessage(MVK_CONFIG_LOG_LEVEL_WARNING, fmt, ##__VA_ARGS__)
-#define MVKLogInfoImpl(fmt, ...)			reportMessage(MVK_CONFIG_LOG_LEVEL_INFO, fmt, ##__VA_ARGS__)
-#define MVKLogDebugImpl(fmt, ...)			reportMessage(MVK_CONFIG_LOG_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
-#define MVKLogTraceImpl(fmt, ...)			reportMessage(MVK_CONFIG_LOG_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
+#define MVKLogErrorImpl(fmt, ...)		reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, fmt, ##__VA_ARGS__)
+#define MVKLogWarningImpl(fmt, ...)		reportMessage(MVK_CONFIG_LOG_LEVEL_WARNING, fmt, ##__VA_ARGS__)
+#define MVKLogInfoImpl(fmt, ...)		reportMessage(MVK_CONFIG_LOG_LEVEL_INFO, fmt, ##__VA_ARGS__)
+#define MVKLogDebugImpl(fmt, ...)		reportMessage(MVK_CONFIG_LOG_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
+#define MVKLogTraceImpl(fmt, ...)		reportMessage(MVK_CONFIG_LOG_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
 
 // Assertions
 #ifdef NS_BLOCK_ASSERTIONS

@@ -1,7 +1,7 @@
 /*
  * MVKBuffer.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -94,21 +94,25 @@ VkResult MVKBuffer::bindDeviceMemory2(const VkBindBufferMemoryInfo* pBindInfo) {
 	return bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset);
 }
 
-void MVKBuffer::applyMemoryBarrier(MVKPipelineBarrier& barrier,
+void MVKBuffer::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
+								   VkPipelineStageFlags dstStageMask,
+								   MVKPipelineBarrier& barrier,
                                    MVKCommandEncoder* cmdEncoder,
                                    MVKCommandUse cmdUse) {
 #if MVK_MACOS
-	if ( needsHostReadSync(barrier) ) {
+	if ( needsHostReadSync(srcStageMask, dstStageMask, barrier) ) {
 		[cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeResource: getMTLBuffer()];
 	}
 #endif
 }
 
-void MVKBuffer::applyBufferMemoryBarrier(MVKPipelineBarrier& barrier,
+void MVKBuffer::applyBufferMemoryBarrier(VkPipelineStageFlags srcStageMask,
+										 VkPipelineStageFlags dstStageMask,
+										 MVKPipelineBarrier& barrier,
                                          MVKCommandEncoder* cmdEncoder,
                                          MVKCommandUse cmdUse) {
 #if MVK_MACOS
-	if ( needsHostReadSync(barrier) ) {
+	if ( needsHostReadSync(srcStageMask, dstStageMask, barrier) ) {
 		[cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeResource: getMTLBuffer()];
 	}
 #endif
@@ -116,12 +120,15 @@ void MVKBuffer::applyBufferMemoryBarrier(MVKPipelineBarrier& barrier,
 
 // Returns whether the specified buffer memory barrier requires a sync between this
 // buffer and host memory for the purpose of the host reading texture memory.
-bool MVKBuffer::needsHostReadSync(MVKPipelineBarrier& barrier) {
+bool MVKBuffer::needsHostReadSync(VkPipelineStageFlags srcStageMask,
+								  VkPipelineStageFlags dstStageMask,
+								  MVKPipelineBarrier& barrier) {
 #if MVK_MACOS
-	return (mvkIsAnyFlagEnabled(barrier.dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
+	return (mvkIsAnyFlagEnabled(dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
 			mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT)) &&
 			isMemoryHostAccessible() && (!isMemoryHostCoherent() || _isHostCoherentTexelBuffer));
-#else
+#endif
+#if MVK_IOS_OR_TVOS
 	return false;
 #endif
 }
@@ -231,7 +238,6 @@ MVKBuffer::MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo) :
 }
 
 void MVKBuffer::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
-	if ( !handleTypes ) { return; }
 	if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR)) {
 		_externalMemoryHandleTypes = handleTypes;
 		auto& xmProps = getPhysicalDevice()->getExternalBufferProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR);
@@ -289,11 +295,7 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
 
         MTLTextureUsage usage = MTLTextureUsageShaderRead;
         if ( mvkIsAnyFlagEnabled(_buffer->getUsage(), VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) ) {
-			usage |= MTLTextureUsageShaderWrite;
-#if MVK_XCODE_15
-			if (getPhysicalDevice()->useNativeTextureAtomics() && (_mtlPixelFormat == MTLPixelFormatR32Sint || _mtlPixelFormat == MTLPixelFormatR32Uint || _mtlPixelFormat == MTLPixelFormatRG32Uint))
-				usage |= MTLTextureUsageShaderAtomic;
-#endif
+            usage |= MTLTextureUsageShaderWrite;
         }
         id<MTLBuffer> mtlBuff;
         VkDeviceSize mtlBuffOffset;

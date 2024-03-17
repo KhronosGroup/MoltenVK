@@ -1,7 +1,7 @@
 /*
  * MVKEnvironment.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,11 +21,8 @@
 
 #include "MVKCommonEnvironment.h"
 #include "mvk_vulkan.h"
-#include "mvk_private_api.h"
+#include "mvk_config.h"
 #include "MVKLogging.h"
-#ifdef __cplusplus
-#include <string>
-#endif
 
 
 // Expose MoltenVK Apple surface extension functionality
@@ -72,43 +69,18 @@
 #endif
 
 #if MVK_TVOS
-#	define MVK_SUPPORT_IOSURFACE_BOOL (__TV_OS_VERSION_MIN_REQUIRED >= __TVOS_11_0)
-#endif
-
-#if MVK_VISIONOS
-#    define MVK_SUPPORT_IOSURFACE_BOOL   1
+# define MVK_SUPPORT_IOSURFACE_BOOL (__TV_OS_VERSION_MIN_REQUIRED >= __TVOS_11_0)
 #endif
 
 
 #pragma mark -
-#pragma mark MoltenVK Configuration
-
-#ifdef __cplusplus
-
-/** The number of members of MVKConfiguration that are strings. */
-static constexpr uint32_t kMVKConfigurationStringCount = 1;
+#pragma mark Global Configuration
 
 /** Global function to access MoltenVK configuration info. */
-const MVKConfiguration& getGlobalMVKConfig();
+const MVKConfiguration& mvkConfig();
 
-/** Sets the MoltenVK global configuration content. */
-void mvkSetGlobalConfig(const MVKConfiguration& srcMVKConfig);
-
-/** 
- * Sets the content from the source config into the destination 
- * config, while using the string object to retain string content.
- */
-void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVKConfig, std::string* stringHolders);
-
-#endif
-
-/**
- * Enable debug mode.
- * By default, disabled for Release builds and enabled for Debug builds.
- */
-#ifndef MVK_CONFIG_DEBUG
-#	define MVK_CONFIG_DEBUG		MVK_DEBUG
-#endif
+/** Global function to update MoltenVK configuration info. */
+void mvkSetConfig(const MVKConfiguration& mvkConfig);
 
 /** Flip the vertex coordinate in shaders. Enabled by default. */
 #ifndef MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y
@@ -129,9 +101,6 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #endif
 #if MVK_IOS_OR_TVOS
 #   define MVK_CONFIG_MTLEVENT_MIN_OS  12.0
-#endif
-#if MVK_VISIONOS
-#   define MVK_CONFIG_MTLEVENT_MIN_OS  1.0
 #endif
 #ifndef MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS
 #   define MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS    mvkOSVersionIsAtLeast(MVK_CONFIG_MTLEVENT_MIN_OS)
@@ -208,7 +177,7 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 
 /** Support full ImageView swizzles. Disabled by default. */
 #ifndef MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE
-#   define MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE    1
+#   define MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE    0
 #endif
 
 /** Set the fastMathEnabled Metal Compiler option. Set to always use fast math by default. */
@@ -273,19 +242,13 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
  * By default, use Metal events, if availalble, on most platforms.
  */
 #ifndef MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE
-#   define MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE    MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE
+#   define MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE    MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE
 #endif
-#ifndef MVK_CONFIG_ALLOW_METAL_EVENTS
-#   define MVK_CONFIG_ALLOW_METAL_EVENTS    1
+#ifndef MVK_ALLOW_METAL_EVENTS		// Deprecated
+#   define MVK_ALLOW_METAL_EVENTS    1
 #endif
-#ifndef MVK_ALLOW_METAL_EVENTS				// Deprecated
-#   define MVK_ALLOW_METAL_EVENTS    		MVK_CONFIG_ALLOW_METAL_EVENTS
-#endif
-#ifndef MVK_CONFIG_ALLOW_METAL_FENCES
-#   define MVK_CONFIG_ALLOW_METAL_FENCES    1
-#endif
-#ifndef MVK_ALLOW_METAL_FENCES				// Deprecated
-#   define MVK_ALLOW_METAL_FENCES    		MVK_CONFIG_ALLOW_METAL_FENCES
+#ifndef MVK_ALLOW_METAL_FENCES		// Deprecated
+#   define MVK_ALLOW_METAL_FENCES    1
 #endif
 
 /** Substitute Metal 2D textures for Vulkan 1D images. Enabled by default. */
@@ -320,7 +283,7 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 
 /** Resume MVKDevice VK_ERROR_DEVICE_LOST errors that do not cause MVKPhysicalDevice errors. Disabled by default. */
 #ifndef MVK_CONFIG_RESUME_LOST_DEVICE
-#   define MVK_CONFIG_RESUME_LOST_DEVICE    1
+#   define MVK_CONFIG_RESUME_LOST_DEVICE    0
 #endif
 
 /** Support Metal argument buffers. Disabled by default. */
@@ -340,22 +303,3 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #ifndef MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION
 #  	define MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION    0
 #endif
-
-/**
- * The alpha value of a lowpass filter tracking VkPhysicalDeviceLimits::timestampPeriod.
- * This can be set to a float between 0.0 and 1.0.
- */
-#ifndef MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA
-#  	define MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA    1.0
-#endif
-
-/**
- * Enable the use of Metal private interfaces, also known as "Service Provider Interfaces" (SPIs),
- * to support Vulkan features. Enabled by default if support is included.
- */
-#ifndef MVK_CONFIG_USE_METAL_PRIVATE_API
-#	define MVK_CONFIG_USE_METAL_PRIVATE_API MVK_USE_METAL_PRIVATE_API
-#endif
-
-#undef MVK_CONFIG__UNUSED_STRUCT_PADDING
-#define MVK_CONFIG__UNUSED_STRUCT_PADDING 0

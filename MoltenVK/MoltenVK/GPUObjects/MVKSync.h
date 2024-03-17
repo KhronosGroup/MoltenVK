@@ -1,7 +1,7 @@
 /*
  * MVKSync.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,9 +63,6 @@ public:
 	/** Returns whether this instance is in a reserved state. */
 	bool isReserved();
 
-	/** Returns the number of outstanding reservations. */
-	uint32_t getReservationCount();
-
 	/**
 	 * Blocks processing on the current thread until any or all (depending on configuration) outstanding
      * reservations have been released, or until the specified timeout interval in nanoseconds expires.
@@ -92,19 +89,20 @@ public:
 	 * require a separate call to the release() function to cause the semaphore to stop blocking.
 	 */
     MVKSemaphoreImpl(bool waitAll = true, uint32_t reservationCount = 0)
-        : _reservationCount(reservationCount), _shouldWaitAll(waitAll) {}
+        : _shouldWaitAll(waitAll), _reservationCount(reservationCount) {}
 
+    /** Destructor. */
     ~MVKSemaphoreImpl();
 
 
 private:
 	bool operator()();
-    bool isClear() { return _reservationCount == 0; }    // Not thread-safe
+    inline bool isClear() { return _reservationCount == 0; }    // Not thread-safe
 
 	std::mutex _lock;
 	std::condition_variable _blocker;
-	uint32_t _reservationCount;
 	bool _shouldWaitAll;
+	uint32_t _reservationCount;
 };
 
 
@@ -191,6 +189,11 @@ public:
 	 */
 	virtual id<MTLSharedEvent> getMTLSharedEvent() { return nil; };
 
+	/** Encodes an operation to block command buffer operation until this semaphore is signaled. */
+	void encodeWait(id<MTLCommandBuffer> cmdBuff);
+
+	/** Encodes an operation to signal the semaphore. */
+	void encodeSignal(id<MTLCommandBuffer> cmdBuff);
 
 #pragma mark Construction
 
@@ -275,6 +278,8 @@ public:
 
 protected:
 	MVKSemaphoreImpl _blocker;
+	id<MTLEvent> _mtlEvent;
+	std::atomic<uint64_t> _mtlEventValue;
 };
 
 

@@ -1,7 +1,7 @@
 /*
  * CAMetalLayer+MoltenVK.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,10 +23,12 @@
 #import <QuartzCore/QuartzCore.h>
 
 #if MVK_IOS_OR_TVOS || MVK_MACCAT
+#	define PLATFORM_SCREEN_CLASS	UIScreen
 #	include <UIKit/UIScreen.h>
 #endif
 
 #if MVK_MACOS && !MVK_MACCAT
+#	define PLATFORM_SCREEN_CLASS	NSScreen
 #	include <AppKit/NSScreen.h>
 #endif
 
@@ -74,16 +76,9 @@
  */
 @property(nonatomic, readwrite) CFStringRef colorspaceNameMVK;
 
-#if MVK_IOS_OR_TVOS || MVK_MACCAT
+#if !MVK_VISIONOS
 /** Returns the screen on which this layer is rendering. */
-@property(nonatomic, readonly) UIScreen* screenMVK;
-#endif
-
-#if MVK_MACOS && !MVK_MACCAT
-/** Returns the screen on which this layer is rendering. */
-@property(nonatomic, readonly) NSScreen* screenMVK;
-
-@property(nonatomic, readonly) NSScreen* privateScreenMVKImpl;
+@property(nonatomic, readonly) PLATFORM_SCREEN_CLASS* screenMVK;
 #endif
 
 @end

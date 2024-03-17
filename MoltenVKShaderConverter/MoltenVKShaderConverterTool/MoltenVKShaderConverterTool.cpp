@@ -1,7 +1,7 @@
 /*
  * MoltenVKShaderConverterTool.cpp
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -220,9 +220,7 @@ bool MoltenVKShaderConverterTool::convertSPIRV(const vector<uint32_t>& spv,
 	mslContext.options.shouldFlipVertexY = _shouldFlipVertexY;
 	mslContext.options.mslOptions.argument_buffers = _useMetalArgumentBuffers;
 	mslContext.options.mslOptions.force_active_argument_buffer_resources = _useMetalArgumentBuffers;
-	mslContext.options.mslOptions.pad_argument_buffer_resources = false;
-	mslContext.options.mslOptions.argument_buffers_tier = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::ArgumentBuffersTier::Tier2;
-	mslContext.options.mslOptions.replace_recursive_inputs = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0);
+	mslContext.options.mslOptions.pad_argument_buffer_resources = _useMetalArgumentBuffers;
 
 	SPIRVToMSLConverter spvConverter;
 	spvConverter.setSPIRV(spv);
@@ -426,10 +424,7 @@ MoltenVKShaderConverterTool::MoltenVKShaderConverterTool(int argc, const char* a
 	_quietMode = false;
 	_useMetalArgumentBuffers = false;
 
-	if (mvkOSVersionIsAtLeast(14.0)) {
-		_mslVersionMajor = 3;
-		_mslVersionMinor = 1;
-	} else 	if (mvkOSVersionIsAtLeast(13.0)) {
+	if (mvkOSVersionIsAtLeast(13.0)) {
 		_mslVersionMajor = 3;
 		_mslVersionMinor = 0;
 	} else if (mvkOSVersionIsAtLeast(12.0)) {

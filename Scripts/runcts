@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2016-2024 The Brenwill Workshop Ltd.
+# Copyright (c) 2016-2023 The Brenwill Workshop Ltd.
 #
 # runcts - This script simplifies running Vulkan CTS tests on MoltenVK.
 #
@@ -25,11 +25,6 @@
 #         case_list_file, with "-results.txt" appended. CTS will also output several
 #         working temporary files into the directory holding this script.
 #
-#     -fo path
-#         The path to the file to write a list of the failed CTS tests. If this option
-#         is not provided, the list of failed tests will be written to an output text
-#         file with the same name as the case_list_file, with "-fails.txt" appended.
-#
 #     --cts path
 #         The path to the directory containing the built CTS executable.
 #         If this parameter is not provided, it defaults to:
@@ -49,17 +44,12 @@
 cts_vk_dir="../../VK-GL-CTS/build/external/vulkancts/modules/vulkan/Debug"
 caselist_file=""
 results_file=""
-failures_file=""
 is_portability=""
 
 while (( "$#" )); do
   case "$1" in
        -o)
          results_file="${2}"
-         shift 2
-         ;;
-       -fo)
-         failures_file="${2}"
          shift 2
          ;;
        --cts)
@@ -90,20 +80,17 @@ if [ "${results_file}" == "" ]; then
 	results_file="${caselist_file}-results.txt"
 fi
 
-if [ "${failures_file}" == "" ]; then
-	failures_file="${caselist_file}-fails.txt"
-fi
-
 
 # -------------- MoltenVK configuration --------------------
 
 # As documented above, the portability option restricts to Vulkan 1.0 and a very limited set of extensions.
-# The values used here are documented in MoltenVK_Configuration_Parameters.md.
-# - MVK_CONFIG_API_VERSION_TO_ADVERTISE = 4194304 (VK_API_VERSION_1_0).
-# - MVK_CONFIG_ADVERTISE_EXTENSIONS = 4 (VK_KHR_portability_subset and prerequistes).
+# The values used here are documented in mvk_config.h.
+# - MVK_CONFIG_API_VERSION_TO_ADVERTISE = VK_API_VERSION_1_0 (4194304)
+# - MVK_CONFIG_ADVERTISE_EXTENSIONS selects support for a very limited set of extensions,
+#   using a bit-or of values in MVKConfigAdvertiseExtensions (extension list documented above).
 if [ "${is_portability}" != "" ]; then
 	export MVK_CONFIG_API_VERSION_TO_ADVERTISE=4194304
-	export MVK_CONFIG_ADVERTISE_EXTENSIONS=4
+	export MVK_CONFIG_ADVERTISE_EXTENSIONS=0xA
 fi
 
 # ----- System settings ------
@@ -116,10 +103,9 @@ export METAL_DEBUG_ERROR_MODE=3
 
 # ----- MoltenVK config settings ------
 export MVK_CONFIG_LOG_LEVEL=1	#(1 = Errors only, 3 = Info)
-export MVK_CONFIG_DEBUG=0
+export MVK_DEBUG=0
 
 # Additional MoltenVK configuration can be set here by editing below.
-# The values used here are documented in MoltenVK_Configuration_Parameters.md.
 export MVK_CONFIG_RESUME_LOST_DEVICE=1
 export MVK_CONFIG_FAST_MATH_ENABLED=1
 export MVK_CONFIG_FORCE_LOW_POWER_GPU=0
@@ -127,7 +113,7 @@ export MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0          #(2 = VK_EXT_descriptor_
 export MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE=2          #(2 = MTLEvents always)
 export MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM=0        #(2 = ZLIB, 3 = LZ4)
 export MVK_CONFIG_PERFORMANCE_TRACKING=0
-export MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE=3  #(2 = Device lifetime, 3 = Process lifetime)
+export MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE=2  #(2 = Device lifetime)
 
 # -------------- Operation --------------------
 
@@ -136,15 +122,9 @@ start_time=${SECONDS}
 
 "${cts_vk_dir}/deqp-vk"                    \
 --deqp-archive-dir="${cts_vk_dir}/.."      \
---deqp-log-filename="/dev/null"            \
 --deqp-log-images=disable                  \
 --deqp-log-shader-sources=disable          \
---deqp-shadercache=disable                 \
---deqp-log-decompiled-spirv=disable        \
---deqp-log-flush=disable                   \
 --deqp-caselist-file="${caselist_file}"    \
 &> "${results_file}"
 
-python3 ./get_failing_cts_tests.py -q -o "${failures_file}" "${results_file}"
-
-echo Testing complete in $(($SECONDS - $start_time)) seconds at `date +%r`
+echo Testing complete in $(($SECONDS - $start_time)) seconds

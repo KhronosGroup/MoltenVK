@@ -1,7 +1,7 @@
 /*
  * MVKDescriptor.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -134,6 +134,7 @@ void mvkPopulateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& s
 		spv::ExecutionModelVertex,
 		spv::ExecutionModelTessellationControl,
 		spv::ExecutionModelTessellationEvaluation,
+		spv::ExecutionModelGeometry,
 		spv::ExecutionModelFragment,
 		spv::ExecutionModelGLCompute
 	};
@@ -323,7 +324,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                         if (_applyToStage[i]) {
                             tb.index = mtlIdxs.stages[i].textureIndex + rezIdx + planeIndex;
                             BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindTexture, pipelineBindPoint, i, tb);
-                            if (_info.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && !getPhysicalDevice()->useNativeTextureAtomics()) {
+                            if (_info.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
                                 bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
                                 BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
                             }
@@ -348,7 +349,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                     if (_applyToStage[i]) {
                         tb.index = mtlIdxs.stages[i].textureIndex + rezIdx;
                         BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindTexture, pipelineBindPoint, i, tb);
-                        if (_info.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER && !getPhysicalDevice()->useNativeTextureAtomics()) {
+                        if (_info.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
                             bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
                             BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
                         }
@@ -440,9 +441,7 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptors(NSMutableArray<MTL
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadWrite);
-			if (!getPhysicalDevice()->useNativeTextureAtomics()) { // Needed for emulated atomic operations
-				addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadWrite);
-			}
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadWrite);		// Needed for atomic operations
 			break;
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
@@ -451,9 +450,7 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptors(NSMutableArray<MTL
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadWrite);
-			if (!getPhysicalDevice()->useNativeTextureAtomics()) { // Needed for emulated atomic operations
-				addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadWrite);
-			}
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadWrite);		// Needed for atomic operations
 			break;
 
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
@@ -530,8 +527,15 @@ MTLRenderStages MVKDescriptorSetLayoutBinding::getMTLRenderStages() {
 				case kMVKShaderStageTessCtl:
 				case kMVKShaderStageTessEval:
 					mtlStages |= MTLRenderStageVertex;
+#if MVK_XCODE_14
+                    mtlStages |= MTLRenderStageObject;
+#endif
 					break;
-
+#if MVK_XCODE_14
+                case kMVKShaderStageGeometry:
+                    mtlStages |= MTLRenderStageMesh;
+                    break;
+#endif
 				case kMVKShaderStageFragment:
 					mtlStages |= MTLRenderStageFragment;
 					break;
@@ -668,7 +672,7 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(const VkDescri
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 			setResourceIndexOffset(textureIndex);
-			if (!getPhysicalDevice()->useNativeTextureAtomics()) setResourceIndexOffset(bufferIndex);
+			setResourceIndexOffset(bufferIndex);
 
 			if (pBinding->descriptorCount > 1 && !_device->_pMetalFeatures->arrayOfTextures) {
 				_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of textures.", _device->getName()));
@@ -733,7 +737,7 @@ void MVKBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 							   MVKArrayRef<uint32_t> dynamicOffsets,
 							   uint32_t& dynamicOffsetIndex) {
 	MVKMTLBufferBinding bb;
-	NSUInteger bufferDynamicOffset = (usesDynamicBufferOffsets() && dynamicOffsets.size() > dynamicOffsetIndex
+	NSUInteger bufferDynamicOffset = (usesDynamicBufferOffsets() && dynamicOffsets.size > dynamicOffsetIndex
 									  ? dynamicOffsets[dynamicOffsetIndex++] : 0);
 	if (_mvkBuffer) {
 		bb.mtlBuffer = _mvkBuffer->getMTLBuffer();
@@ -931,7 +935,7 @@ void MVKImageDescriptor::bind(MVKCommandEncoder* cmdEncoder,
             if (stages[i]) {
                 tb.index = mtlIndexes.stages[i].textureIndex + elementIndex + planeIndex;
                 BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindTexture, pipelineBindPoint, i, tb);
-                if (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && !cmdEncoder->getPhysicalDevice()->useNativeTextureAtomics()) {
+                if (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
                     bb.index = mtlIndexes.stages[i].bufferIndex + elementIndex + planeIndex;
                     BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
                 }
@@ -962,7 +966,7 @@ void MVKImageDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderS
 		if (encodeUsage) {
 			rezEncState->encodeResourceUsage(stage, mtlTexture, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 		}
-		if (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && !mvkDSLBind->getPhysicalDevice()->useNativeTextureAtomics()) {
+		if (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
 			id<MTLTexture> mtlTex = mtlTexture.parentTexture ? mtlTexture.parentTexture : mtlTexture;
 			id<MTLBuffer> mtlBuff = mtlTex.buffer;
 			if (mtlBuff) {
@@ -1230,7 +1234,7 @@ void MVKTexelBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 		if (stages[i]) {
 			tb.index = mtlIndexes.stages[i].textureIndex + elementIndex;
 			BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindTexture, pipelineBindPoint, i, tb);
-			if (descType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER && !cmdEncoder->getPhysicalDevice()->useNativeTextureAtomics()) {
+			if (descType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
 				bb.index = mtlIndexes.stages[i].bufferIndex + elementIndex;
 				BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
 			}
@@ -1255,7 +1259,7 @@ void MVKTexelBufferDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEn
 		rezEncState->encodeResourceUsage(stage, mtlTexture, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 	}
 
-	if (descType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER && !mvkDSLBind->getPhysicalDevice()->useNativeTextureAtomics()) {
+	if (descType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
 		id<MTLBuffer> mtlBuff = mtlTexture.buffer;
 		if (mtlBuff) {
 			if (encodeToArgBuffer) {

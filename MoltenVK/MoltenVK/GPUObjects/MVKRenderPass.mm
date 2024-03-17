@@ -1,7 +1,7 @@
 /*
  * MVKRenderPass.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -138,8 +138,8 @@ uint32_t MVKRenderSubpass::getViewCountUpToMetalPass(uint32_t passIdx) const {
 void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* mtlRPDesc,
 													   uint32_t passIdx,
 													   MVKFramebuffer* framebuffer,
-													   MVKArrayRef<MVKImageView*const> attachments,
-													   MVKArrayRef<const VkClearValue> clearValues,
+													   const MVKArrayRef<MVKImageView*> attachments,
+													   const MVKArrayRef<VkClearValue> clearValues,
 													   bool isRenderingEntireAttachment,
 													   bool loadOverride) {
 	MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
@@ -279,7 +279,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 
 void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
                                           bool isRenderingEntireAttachment,
-                                          MVKArrayRef<MVKImageView*const> attachments,
+										  const MVKArrayRef<MVKImageView*> attachments,
                                           bool storeOverride) {
     if (!cmdEncoder->_mtlRenderEncoder) { return; }
 	if (!_renderPass->getDevice()->_pMetalFeatures->deferredStoreActions) { return; }
@@ -308,7 +308,7 @@ void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
 }
 
 void MVKRenderSubpass::populateClearAttachments(MVKClearAttachments& clearAtts,
-												MVKArrayRef<const VkClearValue> clearValues) {
+												const MVKArrayRef<VkClearValue> clearValues) {
 	uint32_t caCnt = getColorAttachmentCount();
 	for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
 		uint32_t attIdx = _colorAttachments[caIdx].attachment;
@@ -394,7 +394,7 @@ MVKMTLFmtCaps MVKRenderSubpass::getRequiredFormatCapabilitiesForAttachmentAt(uin
 	return caps;
 }
 
-void MVKRenderSubpass::resolveUnresolvableAttachments(MVKCommandEncoder* cmdEncoder, MVKArrayRef<MVKImageView*const> attachments) {
+void MVKRenderSubpass::resolveUnresolvableAttachments(MVKCommandEncoder* cmdEncoder, const MVKArrayRef<MVKImageView*> attachments) {
 	MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();
 	size_t raCnt = _resolveAttachments.size();
 	for (uint32_t raIdx = 0; raIdx < raCnt; raIdx++) {
@@ -406,8 +406,7 @@ void MVKRenderSubpass::resolveUnresolvableAttachments(MVKCommandEncoder* cmdEnco
 
 			if ( !mvkAreAllFlagsEnabled(pixFmts->getCapabilities(raImgView->getMTLPixelFormat()), kMVKMTLFmtCapsResolve) ) {
 				MVKFormatType mvkFmtType = _renderPass->getPixelFormats()->getFormatType(raImgView->getMTLPixelFormat());
-				const bool isTextureArray = raImgView->getImage()->getLayerCount() != 1u;
-				id<MTLComputePipelineState> mtlRslvState = cmdEncoder->getCommandEncodingPool()->getCmdResolveColorImageMTLComputePipelineState(mvkFmtType, isTextureArray);
+				id<MTLComputePipelineState> mtlRslvState = cmdEncoder->getCommandEncodingPool()->getCmdResolveColorImageMTLComputePipelineState(mvkFmtType);
 				id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseResolveImage);
 				[mtlComputeEnc setComputePipelineState: mtlRslvState];
 				[mtlComputeEnc setTexture: raImgView->getMTLTexture() atIndex: 0];
@@ -905,26 +904,6 @@ MVKAttachmentDescription::MVKAttachmentDescription(MVKRenderPass* renderPass,
 #pragma mark -
 #pragma mark MVKRenderPass
 
-MVKSubpassDependency::MVKSubpassDependency(const VkSubpassDependency& spDep, int32_t viewOffset) :
-	srcSubpass(spDep.srcSubpass),
-	dstSubpass(spDep.dstSubpass),
-	srcStageMask(spDep.srcStageMask),
-	dstStageMask(spDep.dstStageMask),
-	srcAccessMask(spDep.srcAccessMask),
-	dstAccessMask(spDep.dstAccessMask),
-	dependencyFlags(spDep.dependencyFlags),
-	viewOffset(viewOffset) {}
-
-MVKSubpassDependency::MVKSubpassDependency(const VkSubpassDependency2& spDep, const VkMemoryBarrier2* pMemBar) :
-	srcSubpass(spDep.srcSubpass),
-	dstSubpass(spDep.dstSubpass),
-	srcStageMask(pMemBar ? pMemBar->srcStageMask : spDep.srcStageMask),
-	dstStageMask(pMemBar ? pMemBar->dstStageMask : spDep.dstStageMask),
-	srcAccessMask(pMemBar ? pMemBar->srcAccessMask : spDep.srcAccessMask),
-	dstAccessMask(pMemBar ? pMemBar->dstAccessMask : spDep.dstAccessMask),
-	dependencyFlags(spDep.dependencyFlags),
-	viewOffset(spDep.viewOffset) {}
-
 VkExtent2D MVKRenderPass::getRenderAreaGranularity() {
     if (_device->_pMetalFeatures->tileBasedDeferredRendering) {
         // This is the tile area.
@@ -975,7 +954,19 @@ MVKRenderPass::MVKRenderPass(MVKDevice* device,
 	}
 	_subpassDependencies.reserve(pCreateInfo->dependencyCount);
 	for (uint32_t i = 0; i < pCreateInfo->dependencyCount; i++) {
-		_subpassDependencies.emplace_back(pCreateInfo->pDependencies[i], viewOffsets ? viewOffsets[i] : 0);
+		VkSubpassDependency2 dependency = {
+			.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
+			.pNext = nullptr,
+			.srcSubpass = pCreateInfo->pDependencies[i].srcSubpass,
+			.dstSubpass = pCreateInfo->pDependencies[i].dstSubpass,
+			.srcStageMask = pCreateInfo->pDependencies[i].srcStageMask,
+			.dstStageMask = pCreateInfo->pDependencies[i].dstStageMask,
+			.srcAccessMask = pCreateInfo->pDependencies[i].srcAccessMask,
+			.dstAccessMask = pCreateInfo->pDependencies[i].dstAccessMask,
+			.dependencyFlags = pCreateInfo->pDependencies[i].dependencyFlags,
+			.viewOffset = viewOffsets ? viewOffsets[i] : 0,
+		};
+		_subpassDependencies.push_back(dependency);
 	}
 
 	// Link attachments to subpasses
@@ -1000,19 +991,7 @@ MVKRenderPass::MVKRenderPass(MVKDevice* device,
 	}
 	_subpassDependencies.reserve(pCreateInfo->dependencyCount);
 	for (uint32_t i = 0; i < pCreateInfo->dependencyCount; i++) {
-		auto& spDep = pCreateInfo->pDependencies[i];
-
-		const VkMemoryBarrier2* pMemoryBarrier2 = nullptr;
-		for (auto* next = (const VkBaseInStructure*)spDep.pNext; next; next = next->pNext) {
-			switch (next->sType) {
-				case VK_STRUCTURE_TYPE_MEMORY_BARRIER_2:
-					pMemoryBarrier2 = (const VkMemoryBarrier2*)next;
-					break;
-				default:
-					break;
-			}
-		}
-		_subpassDependencies.emplace_back(spDep, pMemoryBarrier2);
+		_subpassDependencies.push_back(pCreateInfo->pDependencies[i]);
 	}
 
 	// Link attachments to subpasses

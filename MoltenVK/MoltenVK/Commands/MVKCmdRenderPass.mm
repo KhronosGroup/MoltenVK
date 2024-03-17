@@ -1,7 +1,7 @@
 /*
- * MVKCmdRendering.mm
+ * MVKCmdRenderPass.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-#include "MVKCmdRendering.h"
+#include "MVKCmdRenderPass.h"
 #include "MVKCommandBuffer.h"
 #include "MVKCommandPool.h"
 #include "MVKFramebuffer.h"
@@ -36,6 +36,30 @@ VkResult MVKCmdBeginRenderPassBase::setContent(MVKCommandBuffer* cmdBuff,
 	_renderPass = (MVKRenderPass*)pRenderPassBegin->renderPass;
 	_framebuffer = (MVKFramebuffer*)pRenderPassBegin->framebuffer;
 	_renderArea = pRenderPassBegin->renderArea;
+	_subpassSamplePositions.clear();
+
+	for (const auto* next = (VkBaseInStructure*)pRenderPassBegin->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT: {
+				// Build an array of arrays, one array of sample positions for each subpass index.
+				// For subpasses not included in VkRenderPassSampleLocationsBeginInfoEXT, the resulting array of samples will be empty.
+				_subpassSamplePositions.resize(_renderPass->getSubpassCount());
+				auto* pRPSampLocnsInfo = (VkRenderPassSampleLocationsBeginInfoEXT*)next;
+				for (uint32_t spSLIdx = 0; spSLIdx < pRPSampLocnsInfo->postSubpassSampleLocationsCount; spSLIdx++) {
+					auto& spsl = pRPSampLocnsInfo->pPostSubpassSampleLocations[spSLIdx];
+					uint32_t spIdx = spsl.subpassIndex;
+					auto& spSampPosns = _subpassSamplePositions[spIdx];
+					for (uint32_t slIdx = 0; slIdx < spsl.sampleLocationsInfo.sampleLocationsCount; slIdx++) {
+						auto& sl = spsl.sampleLocationsInfo.pSampleLocations[slIdx];
+						spSampPosns.push_back(MTLSamplePositionMake(sl.x, sl.y));
+					}
+				}
+				break;
+			}
+			default:
+				break;
+		}
+	}
 
 	cmdBuff->_currentSubpassInfo.beginRenderpass(_renderPass);
 
@@ -62,6 +86,15 @@ VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N_CV, size_t N_A>
 void MVKCmdBeginRenderPass<N_CV, N_A>::encode(MVKCommandEncoder* cmdEncoder) {
+
+	// Convert the sample position array of arrays to an array of array-references,
+	// so that it can be passed to the command encoder.
+	size_t spSPCnt = _subpassSamplePositions.size();
+	MVKArrayRef<MTLSamplePosition> spSPRefs[spSPCnt];
+	for (uint32_t spSPIdx = 0; spSPIdx < spSPCnt; spSPIdx++) {
+		spSPRefs[spSPIdx] = _subpassSamplePositions[spSPIdx].contents();
+	}
+	
 	cmdEncoder->beginRenderpass(this,
 								_contents,
 								_renderPass,
@@ -69,7 +102,7 @@ void MVKCmdBeginRenderPass<N_CV, N_A>::encode(MVKCommandEncoder* cmdEncoder) {
 								_renderArea,
 								_clearValues.contents(),
 								_attachments.contents(),
-								kMVKCommandUseBeginRenderPass);
+								MVKArrayRef(spSPRefs, spSPCnt));
 }
 
 template class MVKCmdBeginRenderPass<1, 0>;
@@ -184,24 +217,45 @@ void MVKCmdEndRendering::encode(MVKCommandEncoder* cmdEncoder) {
 
 VkResult MVKCmdSetSampleLocations::setContent(MVKCommandBuffer* cmdBuff,
 											  const VkSampleLocationsInfoEXT* pSampleLocationsInfo) {
-	_sampleLocations.clear();
+
 	for (uint32_t slIdx = 0; slIdx < pSampleLocationsInfo->sampleLocationsCount; slIdx++) {
-		_sampleLocations.push_back(pSampleLocationsInfo->pSampleLocations[slIdx]);
+		auto& sl = pSampleLocationsInfo->pSampleLocations[slIdx];
+		_samplePositions.push_back(MTLSamplePositionMake(sl.x, sl.y));
 	}
+
 	return VK_SUCCESS;
 }
 
 void MVKCmdSetSampleLocations::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setSampleLocations(_sampleLocations.contents(), true);
+	cmdEncoder->setDynamicSamplePositions(_samplePositions.contents());
 }
 
 
 #pragma mark -
-#pragma mark MVKCmdSetSampleLocationsEnable
+#pragma mark MVKCmdExecuteCommands
 
-void MVKCmdSetSampleLocationsEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setSampleLocationsEnable(_value, true);
+template <size_t N>
+VkResult MVKCmdExecuteCommands<N>::setContent(MVKCommandBuffer* cmdBuff,
+											  uint32_t commandBuffersCount,
+											  const VkCommandBuffer* pCommandBuffers) {
+	// Add clear values
+	_secondaryCommandBuffers.clear();	// Clear for reuse
+	_secondaryCommandBuffers.reserve(commandBuffersCount);
+	for (uint32_t cbIdx = 0; cbIdx < commandBuffersCount; cbIdx++) {
+		_secondaryCommandBuffers.push_back(MVKCommandBuffer::getMVKCommandBuffer(pCommandBuffers[cbIdx]));
+	}
+	cmdBuff->recordExecuteCommands(_secondaryCommandBuffers.contents());
+
+	return VK_SUCCESS;
 }
+
+template <size_t N>
+void MVKCmdExecuteCommands<N>::encode(MVKCommandEncoder* cmdEncoder) {
+    for (auto& cb : _secondaryCommandBuffers) { cmdEncoder->encodeSecondary(cb); }
+}
+
+template class MVKCmdExecuteCommands<1>;
+template class MVKCmdExecuteCommands<16>;
 
 
 #pragma mark -
@@ -213,7 +267,7 @@ VkResult MVKCmdSetViewport<N>::setContent(MVKCommandBuffer* cmdBuff,
 										  uint32_t viewportCount,
 										  const VkViewport* pViewports) {
 	_firstViewport = firstViewport;
-	_viewports.clear();
+	_viewports.clear();	// Clear for reuse
 	_viewports.reserve(viewportCount);
 	for (uint32_t vpIdx = 0; vpIdx < viewportCount; vpIdx++) {
 		_viewports.push_back(pViewports[vpIdx]);
@@ -224,7 +278,7 @@ VkResult MVKCmdSetViewport<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N>
 void MVKCmdSetViewport<N>::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setViewports(_viewports.contents(), _firstViewport, true);
+	cmdEncoder->_viewportState.setViewports(_viewports.contents(), _firstViewport, true);
 }
 
 template class MVKCmdSetViewport<1>;
@@ -240,7 +294,7 @@ VkResult MVKCmdSetScissor<N>::setContent(MVKCommandBuffer* cmdBuff,
 										 uint32_t scissorCount,
 										 const VkRect2D* pScissors) {
 	_firstScissor = firstScissor;
-	_scissors.clear();
+	_scissors.clear();	// Clear for reuse
 	_scissors.reserve(scissorCount);
 	for (uint32_t sIdx = 0; sIdx < scissorCount; sIdx++) {
 		_scissors.push_back(pScissors[sIdx]);
@@ -251,7 +305,7 @@ VkResult MVKCmdSetScissor<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N>
 void MVKCmdSetScissor<N>::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_renderingState.setScissors(_scissors.contents(), _firstScissor, true);
+    cmdEncoder->_scissorState.setScissors(_scissors.contents(), _firstScissor, true);
 }
 
 template class MVKCmdSetScissor<1>;
@@ -259,105 +313,80 @@ template class MVKCmdSetScissor<kMVKMaxViewportScissorCount>;
 
 
 #pragma mark -
-#pragma mark MVKCmdSetDepthBias
+#pragma mark MVKCmdSetLineWidth
 
-void MVKCmdSetDepthBias::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setDepthBias(_value, true);
+VkResult MVKCmdSetLineWidth::setContent(MVKCommandBuffer* cmdBuff,
+										float lineWidth) {
+    _lineWidth = lineWidth;
+
+    // Validate
+    if (_lineWidth != 1.0 || cmdBuff->getDevice()->_enabledFeatures.wideLines) {
+        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetLineWidth(): The current device does not support wide lines.");
+    }
+
+	return VK_SUCCESS;
 }
+
+void MVKCmdSetLineWidth::encode(MVKCommandEncoder* cmdEncoder) {}
 
 
 #pragma mark -
-#pragma mark MVKCmdSetDepthBiasEnable
+#pragma mark MVKCmdSetDepthBias
 
-void MVKCmdSetDepthBiasEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setDepthBiasEnable(_value, true);
+VkResult MVKCmdSetDepthBias::setContent(MVKCommandBuffer* cmdBuff,
+										float depthBiasConstantFactor,
+										float depthBiasClamp,
+										float depthBiasSlopeFactor) {
+    _depthBiasConstantFactor = depthBiasConstantFactor;
+    _depthBiasSlopeFactor = depthBiasSlopeFactor;
+    _depthBiasClamp = depthBiasClamp;
+
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetDepthBias::encode(MVKCommandEncoder* cmdEncoder) {
+    cmdEncoder->_depthBiasState.setDepthBias(_depthBiasConstantFactor,
+                                             _depthBiasSlopeFactor,
+                                             _depthBiasClamp);
 }
 
 
 #pragma mark -
 #pragma mark MVKCmdSetBlendConstants
 
+VkResult MVKCmdSetBlendConstants::setContent(MVKCommandBuffer* cmdBuff,
+											 const float blendConst[4]) {
+    _red = blendConst[0];
+    _green = blendConst[1];
+    _blue = blendConst[2];
+    _alpha = blendConst[3];
+
+	return VK_SUCCESS;
+}
+
 void MVKCmdSetBlendConstants::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_renderingState.setBlendConstants(_value, true);
-}
-
-
-#pragma mark -
-#pragma mark MVKCmdSetDepthTestEnable
-
-void MVKCmdSetDepthTestEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_depthStencilState.setDepthTestEnable(_value);
-}
-
-
-#pragma mark -
-#pragma mark MVKCmdSetDepthWriteEnable
-
-void MVKCmdSetDepthWriteEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_depthStencilState.setDepthWriteEnable(_value);
-}
-
-
-#pragma mark -
-#pragma mark MVKCmdSetDepthClipEnable
-
-void MVKCmdSetDepthClipEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setDepthClipEnable(_value, true);
-}
-
-
-#pragma mark -
-#pragma mark MVKCmdSetDepthCompareOp
-
-void MVKCmdSetDepthCompareOp::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_depthStencilState.setDepthCompareOp(_value);
+    cmdEncoder->_blendColorState.setBlendColor(_red, _green, _blue, _alpha, true);
 }
 
 
 #pragma mark -
 #pragma mark MVKCmdSetDepthBounds
 
-void MVKCmdSetDepthBounds::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setDepthBounds(_value, true);
-}
+VkResult MVKCmdSetDepthBounds::setContent(MVKCommandBuffer* cmdBuff,
+										  float minDepthBounds,
+										  float maxDepthBounds) {
+    _minDepthBounds = minDepthBounds;
+    _maxDepthBounds = maxDepthBounds;
 
+    // Validate
+    if (cmdBuff->getDevice()->_enabledFeatures.depthBounds) {
+        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetDepthBounds(): The current device does not support setting depth bounds.");
+    }
 
-#pragma mark -
-#pragma mark MVKCmdSetDepthBoundsTestEnable
-
-void MVKCmdSetDepthBoundsTestEnable::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_renderingState.setDepthBoundsTestEnable(_value, true);
-}
-
-
-#pragma mark -
-#pragma mark MVKCmdSetStencilTestEnable
-
-void MVKCmdSetStencilTestEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_depthStencilState.setStencilTestEnable(_value);
-}
-
-
-#pragma mark -
-#pragma mark MVKCmdSetStencilOp
-
-VkResult MVKCmdSetStencilOp::setContent(MVKCommandBuffer* cmdBuff,
-										VkStencilFaceFlags faceMask,
-										VkStencilOp failOp,
-										VkStencilOp passOp,
-										VkStencilOp depthFailOp,
-										VkCompareOp compareOp) {
-	_faceMask = faceMask;
-	_failOp = failOp;
-	_passOp = passOp;
-	_depthFailOp = depthFailOp;
-	_compareOp = compareOp;
 	return VK_SUCCESS;
 }
 
-void MVKCmdSetStencilOp::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_depthStencilState.setStencilOp(_faceMask, _failOp, _passOp, _depthFailOp, _compareOp);
-}
+void MVKCmdSetDepthBounds::encode(MVKCommandEncoder* cmdEncoder) {}
 
 
 #pragma mark -
@@ -407,69 +436,98 @@ VkResult MVKCmdSetStencilReference::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetStencilReference::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_renderingState.setStencilReferenceValues(_faceMask, _stencilReference);
+    cmdEncoder->_stencilReferenceValueState.setReferenceValues(_faceMask, _stencilReference);
 }
 
 
 #pragma mark -
-#pragma mark MVKCmdSetCullMode
+#pragma mark MVKCmdBeginTransformFeedback
 
-void MVKCmdSetCullMode::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setCullMode(_value, true);
+
+VkResult MVKCmdBeginTransformFeedback::setContent(MVKCommandBuffer* cmdBuff,
+												  uint32_t firstCounterBuffer,
+												  uint32_t counterBufferCount,
+												  const VkBuffer* pCounterBuffers,
+												  const VkDeviceSize* pCounterBufferOffsets) {
+	_firstCounterBuffer = firstCounterBuffer;
+
+	_counterBuffers.resize(counterBufferCount);
+	memcpy(_counterBuffers.data(), pCounterBuffers, counterBufferCount * sizeof(MVKBuffer *));
+
+	_counterBufferOffsets.resize(counterBufferCount);
+	memcpy(_counterBufferOffsets.data(), pCounterBufferOffsets, counterBufferCount * sizeof(VkDeviceSize));
+
+	return VK_SUCCESS;
+}
+
+void MVKCmdBeginTransformFeedback::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_transformFeedbackEnabled = true;
 }
 
 
 #pragma mark -
-#pragma mark MVKCmdSetFrontFace
+#pragma mark MVKCmdEndTransformFeedback
 
-void MVKCmdSetFrontFace::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setFrontFace(_value, true);
+VkResult MVKCmdEndTransformFeedback::setContent(MVKCommandBuffer* cmdBuff,
+												uint32_t firstCounterBuffer,
+												uint32_t counterBufferCount,
+												const VkBuffer* pCounterBuffers,
+												const VkDeviceSize* pCounterBufferOffsets) {
+	_firstCounterBuffer = firstCounterBuffer;
+
+	_counterBuffers.resize(counterBufferCount);
+	memcpy(_counterBuffers.data(), pCounterBuffers, counterBufferCount * sizeof(MVKBuffer *));
+
+	_counterBufferOffsets.resize(counterBufferCount);
+	memcpy(_counterBufferOffsets.data(), pCounterBufferOffsets, counterBufferCount * sizeof(VkDeviceSize));
+
+	return VK_SUCCESS;
+}
+
+void MVKCmdEndTransformFeedback::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_transformFeedbackEnabled = false;
 }
 
 
 #pragma mark -
-#pragma mark MVKCmdSetPatchControlPoints
+#pragma mark MVKCmdBindTransformFeedbackBuffers
 
-void MVKCmdSetPatchControlPoints::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setPatchControlPoints(_value, true);
+VkResult MVKCmdBindTransformFeedbackBuffers::setContent(MVKCommandBuffer* cmdBuff,
+														uint32_t firstBinding,
+														uint32_t bindingCount,
+														const VkBuffer* pBuffers,
+														const VkDeviceSize* pOffsets,
+														const VkDeviceSize* pSizes) {
+	_buffers.resize(bindingCount);
+	memcpy(_buffers.data(), pBuffers, bindingCount * sizeof(MVKBuffer *));
+
+	_offsets.resize(bindingCount);
+	memcpy(_offsets.data(), pOffsets, bindingCount * sizeof(VkDeviceSize));
+
+	if (pSizes) {
+		_sizes.resize(bindingCount);
+		memcpy(_sizes.data(), pSizes, bindingCount * sizeof(VkDeviceSize));
+	}
+
+	_firstBinding = firstBinding;
+
+	return VK_SUCCESS;
 }
 
+void MVKCmdBindTransformFeedbackBuffers::encode(MVKCommandEncoder* cmdEncoder) {
+	if (_buffers.size()) {
+		MVKMTLBufferBinding binding;
+		binding.mtlBuffer = _buffers[0]->getMTLBuffer();
+		binding.offset = _buffers[0]->getMTLBufferOffset() + _offsets[0];
 
-#pragma mark -
-#pragma mark MVKCmdSetPolygonMode
+		if (_sizes.size()) {
+			VkDeviceSize size = _sizes[0];
+			if (size == VK_WHOLE_SIZE)
+				size = _buffers[0]->getByteCount();
+			binding.size = (uint32_t)size;
+		}
 
-void MVKCmdSetPolygonMode::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setPolygonMode(_value, true);
-}
-
-
-#pragma mark -
-#pragma mark MVKCmdSetLineWidth
-
-void MVKCmdSetLineWidth::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setLineWidth(_value, true);
-}
-
-
-#pragma mark -
-#pragma mark MVKCmdSetPrimitiveTopology
-
-void MVKCmdSetPrimitiveTopology::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setPrimitiveTopology(_value, true);
-}
-
-
-#pragma mark -
-#pragma mark MVKCmdSetPrimitiveRestartEnable
-
-void MVKCmdSetPrimitiveRestartEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setPrimitiveRestartEnable(_value, true);
-}
-
-
-#pragma mark -
-#pragma mark MVKCmdSetRasterizerDiscardEnable
-
-void MVKCmdSetRasterizerDiscardEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setRasterizerDiscardEnable(_value, true);
+		cmdEncoder->_transformFeedbackBinding.index = cmdEncoder->_transformFeedbackBufferIndex;
+		cmdEncoder->_transformFeedbackBinding.update(binding);
+	}
 }

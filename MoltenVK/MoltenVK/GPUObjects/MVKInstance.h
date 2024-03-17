@@ -1,7 +1,7 @@
 /*
  * MVKInstance.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,14 +41,9 @@ typedef struct MVKEntryPoint {
 	bool isDevice;
 
 	bool isCore() { return !ext1Name && !ext2Name; }
-	bool isEnabled(uint32_t enabledVersion, const MVKExtensionList& extList, const MVKExtensionList* instExtList = nullptr) {
-		bool isAPISupported = MVK_VULKAN_API_VERSION_CONFORM(enabledVersion) >= apiVersion;
-		auto isExtnSupported = [this, isAPISupported](const MVKExtensionList& extList) {
-			return extList.isEnabled(this->ext1Name) && (isAPISupported || !this->ext2Name || extList.isEnabled(this->ext2Name));
-		};
-		return ((isCore() && isAPISupported) ||
-				isExtnSupported(extList) ||
-				(instExtList && isExtnSupported(*instExtList)));
+	bool isEnabled(uint32_t enabledVersion, const MVKExtensionList& extList) {
+		return ((isCore() && MVK_VULKAN_API_VERSION_CONFORM(enabledVersion) >= apiVersion) ||
+				extList.isEnabled(ext1Name) || extList.isEnabled(ext2Name));
 	}
 
 } MVKEntryPoint;
@@ -70,9 +65,6 @@ public:
 
 	/** Returns a pointer to the Vulkan instance. */
 	MVKInstance* getInstance() override { return this; }
-
-	/** Return the MoltenVK configuration info for this VkInstance. */
-	const MVKConfiguration& getMVKConfig() override { return _enabledExtensions.vk_EXT_layer_settings.enabled ? _mvkConfig : getGlobalMVKConfig(); }
 
 	/** Returns the maximum version of Vulkan the application supports. */
 	inline uint32_t getAPIVersion() { return _appInfo.apiVersion; }
@@ -118,9 +110,6 @@ public:
 	MVKLayer* getDriverLayer() { return getLayerManager()->getDriverLayer(); }
 
 	MVKSurface* createSurface(const VkMetalSurfaceCreateInfoEXT* pCreateInfo,
-							  const VkAllocationCallbacks* pAllocator);
-
-	MVKSurface* createSurface(const VkHeadlessSurfaceCreateInfoEXT* pCreateInfo,
 							  const VkAllocationCallbacks* pAllocator);
 
 	MVKSurface* createSurface(const Vk_PLATFORM_SurfaceCreateInfoMVK* pCreateInfo,
@@ -189,8 +178,8 @@ protected:
 
 	void propagateDebugName() override {}
 	void initProcAddrs();
-	void initMVKConfig(const VkInstanceCreateInfo* pCreateInfo);
 	void initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo);
+	NSArray<id<MTLDevice>>* getAvailableMTLDevicesArray();
 	VkDebugReportFlagsEXT getVkDebugReportFlagsFromLogLevel(MVKConfigLogLevel logLevel);
 	VkDebugUtilsMessageSeverityFlagBitsEXT getVkDebugUtilsMessageSeverityFlagBitsFromLogLevel(MVKConfigLogLevel logLevel);
 	VkDebugUtilsMessageTypeFlagsEXT getVkDebugUtilsMessageTypesFlagBitsFromLogLevel(MVKConfigLogLevel logLevel);
@@ -198,13 +187,11 @@ protected:
     void logVersions();
 	VkResult verifyLayers(uint32_t count, const char* const* names);
 
-	MVKConfiguration _mvkConfig;
 	VkApplicationInfo _appInfo;
 	MVKSmallVector<MVKPhysicalDevice*, 2> _physicalDevices;
 	MVKSmallVector<MVKDebugReportCallback*> _debugReportCallbacks;
 	MVKSmallVector<MVKDebugUtilsMessenger*> _debugUtilMessengers;
 	std::unordered_map<std::string, MVKEntryPoint> _entryPoints;
-	std::string _mvkConfigStringHolders[kMVKConfigurationStringCount] = {};
 	std::mutex _dcbLock;
 	bool _hasDebugReportCallbacks;
 	bool _hasDebugUtilsMessengers;
