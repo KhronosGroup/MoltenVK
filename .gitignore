@@ -1,17 +1,12 @@
-# MoltenVK specific
-Package/
+# MoltenVK runtime build
+/Package
 
-# MoltenVK Dependencies
-External/cereal
-External/glslang
-External/SPIRV-Cross
-External/Volk
-External/Vulkan-Headers
-External/Vulkan-Tools
+# MoltenVK dependencies
+/External
 
 # Vulkan CTS testing artifacts
-Scripts/TestResults.qpa
-Scripts/shadercache.bin
+/Scripts/TestResults.qpa
+/Scripts/shadercache.bin
 
 # Mac OS X Finder
 .DS_Store
