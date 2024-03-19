@@ -408,9 +408,11 @@ typedef struct {
 typedef struct {
 	MVKPerformanceTracker retrieveMTLCommandBuffer;     /** Retrieve a MTLCommandBuffer from a MTLQueue, in milliseconds. */
 	MVKPerformanceTracker commandBufferEncoding;        /** Encode a single VkCommandBuffer to a MTLCommandBuffer (excludes MTLCommandBuffer encoding from configured immediate prefilling), in milliseconds. */
+	MVKPerformanceTracker waitSubmitCommandBuffers;		/** Wait time from initial call to starting the submit and encoding of all VkCommandBuffers in an asynchronous vkQueueSubmit() operation,  in milliseconds. */
 	MVKPerformanceTracker submitCommandBuffers;         /** Submit and encode all VkCommandBuffers in a vkQueueSubmit() operation to MTLCommandBuffers (including both prefilled and deferred encoding), in milliseconds. */
 	MVKPerformanceTracker mtlCommandBufferExecution;    /** Execute a MTLCommandBuffer on the GPU, from commit to completion callback, in milliseconds. */
 	MVKPerformanceTracker retrieveCAMetalDrawable;      /** Retrieve next CAMetalDrawable from a CAMetalLayer, in milliseconds. */
+	MVKPerformanceTracker waitPresentSwapchains;		/** Wait time from initial call to starting presentation of the swapchains in an asynchronous vkQueuePresentKHR() operation,  in milliseconds. */
 	MVKPerformanceTracker presentSwapchains;            /** Present the swapchains in a vkQueuePresentKHR() on the GPU, from commit to presentation callback, in milliseconds. */
 	MVKPerformanceTracker frameInterval;                /** Frame presentation interval (1000/FPS), in milliseconds. */
 } MVKQueuePerformance;
