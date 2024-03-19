@@ -1,7 +1,21 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.20)
 project(MoltenVK)
 
 set(MVK_GIT_REV "unknown")
+
+function(check_lists_equal list1 list2)
+    set(DIFF_ITEMS )
+    # Check if each element in the first list is in the second list
+    foreach(element IN LISTS ${list1})
+        if(NOT ${element} IN LISTS ${list2})
+            LIST(APPEND DIFF_ITEMS ${element})
+        endif()
+    endforeach()
+
+    if(DIFF_ITEMS)
+        message(STATUS "glob found the following files ${DIFF_ITEMS} which aren't part of the SRC_LIST in ${CMAKE_CURRENT_LIST_FILE}")
+    endif ()
+endfunction()
 
 find_package(Git)
 if(GIT_FOUND)
@@ -23,6 +37,9 @@ add_subdirectory(External)
 add_subdirectory(MoltenVKShaderConverter)
 add_subdirectory(MoltenVK)
 
-target_include_directories(MoltenVK-iOS PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_include_directories(MoltenVK-tvOS PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_include_directories(MoltenVK-macOS PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(MoltenVK PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
+install ( TARGETS MoltenVK moltenvk_shader_converter EXPORT MotlenVK )
+export ( TARGETS MoltenVK moltenvk_shader_converter cereal glslang SPIRV OGLCompiler OSDependent MachineIndependent
+        GenericCodeGen
+        FILE ${CMAKE_BINARY_DIR}/MoltenVKConfig.cmake )

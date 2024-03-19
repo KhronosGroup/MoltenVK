@@ -1,8 +1,7 @@
 ##
 ## MoltenVKShaderConverter Files
 ##
-
-add_library(moltenvk_shader_converter STATIC
+set(SRC_LIST
         ../Common/MVKOSExtensions.mm
         MoltenVKShaderConverter/SPIRVSupport.cpp
         MoltenVKShaderConverterTool/MoltenVKShaderConverterTool.cpp
@@ -13,6 +12,15 @@ add_library(moltenvk_shader_converter STATIC
         MoltenVKShaderConverter/GLSLToSPIRVConverter.cpp
         MoltenVKShaderConverter/SPIRVConversion.mm
         MoltenVKShaderConverter/SPIRVToMSLConverter.cpp
+)
+
+file(GLOB SRCS RELATIVE CONFIGURE_DEPENDS ${CMAKE_CURRENT_LIST_DIR}/MoltenVKShaderConverter *.mm *.cpp *.m)
+list(PREPEND SRCS ../Common/MVKOSExtensions.mm)
+
+check_lists_equal(${SRCS}, ${SRC_LIST})
+
+add_library(moltenvk_shader_converter STATIC
+        ${SRC_LIST}
         )
 
 find_library(FOUNDATION_LIBRARY Foundation)
