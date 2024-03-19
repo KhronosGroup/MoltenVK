@@ -375,6 +375,19 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->vertexAttributeAccessBeyondStride = true;	// Costs additional buffers. Should make configuration switch.
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_METAL_FEATURES_KHR: {
+				auto* portabilityFeaturesMetal = (VkPhysicalDevicePortabilitySubsetMetalFeaturesKHR*)next;
+				portabilityFeaturesMetal->imageView2DOn3DImage = false;
+				portabilityFeaturesMetal->rasterizationDynamicPolygonModePoints = false;
+				portabilityFeaturesMetal->samplerMipLodBias = getMVKConfig().useMetalPrivateAPI;
+				portabilityFeaturesMetal->shaderAtomicOrderingStrong = false;
+				portabilityFeaturesMetal->shaderImageGatherExtendedConstOffsets = false;
+				portabilityFeaturesMetal->shaderNonUniformMemoryBarriers = false;
+				portabilityFeaturesMetal->shaderSampleRateInterpolationFunctions = _metalFeatures.pullModelInterpolation;
+				portabilityFeaturesMetal->shaderTessellationIsolines = false;
+				portabilityFeaturesMetal->shaderTessellationPointMode = false;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_FEATURES: {
 				auto* shaderIntDotFeatures = (VkPhysicalDeviceShaderIntegerDotProductFeatures*)next;
 				shaderIntDotFeatures->shaderIntegerDotProduct = true;

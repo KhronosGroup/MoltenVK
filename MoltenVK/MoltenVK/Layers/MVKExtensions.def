@@ -77,6 +77,7 @@ MVK_EXTENSION(KHR_maintenance3,                       KHR_MAINTENANCE3,         
 MVK_EXTENSION(KHR_map_memory2,                        KHR_MAP_MEMORY_2,                       DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_multiview,                          KHR_MULTIVIEW,                          DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_portability_subset,                 KHR_PORTABILITY_SUBSET,                 DEVICE,   10.11,  8.0,  1.0)
+MVK_EXTENSION(KHR_portability_subset_metal,           KHR_PORTABILITY_SUBSET_METAL,           DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_push_descriptor,                    KHR_PUSH_DESCRIPTOR,                    DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_relaxed_block_layout,               KHR_RELAXED_BLOCK_LAYOUT,               DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_sampler_mirror_clamp_to_edge,       KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE,       DEVICE,   10.11, 14.0,  1.0)
