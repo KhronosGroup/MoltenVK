@@ -69,7 +69,7 @@ void MVKQueue::propagateDebugName() { setLabelIfNotNil(_mtlQueue, _debugName); }
 
 // Execute the queue submission under an autoreleasepool to ensure transient Metal objects are autoreleased.
 // This is critical for apps that don't use standard OS autoreleasing runloop threading.
-static inline VkResult execute(MVKQueueSubmission* qSubmit, uint64_t startTime) { @autoreleasepool { return qSubmit->execute(startTime); } }
+static inline VkResult execute(MVKQueueSubmission* qSubmit) { @autoreleasepool { return qSubmit->execute(); } }
 
 // Executes the submmission, either immediately, or by dispatching to an execution queue.
 // Submissions to the execution queue are wrapped in a dedicated autoreleasepool.
@@ -83,13 +83,11 @@ VkResult MVKQueue::submit(MVKQueueSubmission* qSubmit) {
 	// Extract result before submission to avoid race condition with early destruction
 	// Submit regardless of config result, to ensure submission semaphores and fences are signalled.
 	// The submissions will ensure a misconfiguration will be safe to execute.
-	MVKDevice* mvkDev = getDevice();
-	uint64_t startTime = mvkDev->getPerformanceTimestamp();
 	VkResult rslt = qSubmit->getConfigurationResult();
 	if (_execQueue) {
-		dispatch_async(_execQueue, ^{ execute(qSubmit, startTime); } );
+		dispatch_async(_execQueue, ^{ execute(qSubmit); } );
 	} else {
-		rslt = execute(qSubmit, startTime);
+		rslt = execute(qSubmit);
 	}
 	return rslt;
 }
@@ -417,6 +415,8 @@ MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 	_queue = queue;
 	_queue->retain();	// Retain here and release in destructor. See note for MVKQueueCommandBufferSubmission::finish().
 
+	_creationTime = getDevice()->getPerformanceTimestamp();		// call getDevice() only after _queue is defined
+
 	_waitSemaphores.reserve(waitSemaphoreInfoCount);
 	for (uint32_t i = 0; i < waitSemaphoreInfoCount; i++) {
 		_waitSemaphores.emplace_back(pWaitSemaphoreSubmitInfos[i]);
@@ -429,6 +429,8 @@ MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 									   const VkPipelineStageFlags* pWaitDstStageMask) {
 	_queue = queue;
 	_queue->retain();	// Retain here and release in destructor. See note for MVKQueueCommandBufferSubmission::finish().
+
+	_creationTime = getDevice()->getPerformanceTimestamp();		// call getDevice() only after _queue is defined
 
 	_waitSemaphores.reserve(waitSemaphoreCount);
 	for (uint32_t i = 0; i < waitSemaphoreCount; i++) {
@@ -444,7 +446,7 @@ MVKQueueSubmission::~MVKQueueSubmission() {
 #pragma mark -
 #pragma mark MVKQueueCommandBufferSubmission
 
-VkResult MVKQueueCommandBufferSubmission::execute(uint64_t startTime) {
+VkResult MVKQueueCommandBufferSubmission::execute() {
 
 	_queue->_submissionCaptureScope->beginScope();
 
@@ -453,7 +455,7 @@ VkResult MVKQueueCommandBufferSubmission::execute(uint64_t startTime) {
 
 	// Wait time from an async vkQueueSubmit() call to starting submit and encoding of the command buffers
 	MVKDevice* mvkDev = getDevice();
-	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.waitSubmitCommandBuffers, startTime);
+	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.waitSubmitCommandBuffers, _creationTime);
 
 	// Submit each command buffer.
 	submitCommandBuffers();
@@ -684,7 +686,7 @@ MVKQueueFullCommandBufferSubmission<N>::MVKQueueFullCommandBufferSubmission(MVKQ
 // If the semaphores are encodable, wait on them by encoding them on the MTLCommandBuffer before presenting.
 // If the semaphores are not encodable, wait on them inline after presenting.
 // The semaphores know what to do.
-VkResult MVKQueuePresentSurfaceSubmission::execute(uint64_t startTime) {
+VkResult MVKQueuePresentSurfaceSubmission::execute() {
 	// MTLCommandBuffer retain references to avoid rare case where objects are destroyed too early.
 	// Although testing could not determine which objects were being lost, queue present MTLCommandBuffers
 	// are used only once per frame, and retain so few objects, that blanket retention is still performant.
@@ -697,7 +699,7 @@ VkResult MVKQueuePresentSurfaceSubmission::execute(uint64_t startTime) {
 
 	// Wait time from an async vkQueuePresentKHR() call to starting presentation of the swapchains
 	MVKDevice* mvkDev = getDevice();
-	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.waitPresentSwapchains, startTime);
+	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.waitPresentSwapchains, _creationTime);
 
 	for (int i = 0; i < _presentInfo.size(); i++ ) {
 		setConfigurationResult(_presentInfo[i].presentableImage->presentCAMetalDrawable(mtlCmdBuff, _presentInfo[i]));

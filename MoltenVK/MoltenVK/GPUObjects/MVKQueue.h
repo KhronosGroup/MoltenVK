@@ -195,7 +195,7 @@ public:
 	 *
 	 * Upon completion of this function, no further calls should be made to this instance.
 	 */
-	virtual VkResult execute(uint64_t startTime) = 0;
+	virtual VkResult execute() = 0;
 
 	MVKQueueSubmission(MVKQueue* queue,
 					   uint32_t waitSemaphoreInfoCount,
@@ -216,6 +216,7 @@ protected:
 
 	MVKQueue* _queue;
 	MVKSmallVector<MVKSemaphoreSubmitInfo> _waitSemaphores;
+	uint64_t _creationTime;
 };
 
 
@@ -238,7 +239,7 @@ typedef struct MVKCommandBufferSubmitInfo {
 class MVKQueueCommandBufferSubmission : public MVKQueueSubmission {
 
 public:
-	VkResult execute(uint64_t startTime) override;
+	VkResult execute() override;
 
 	MVKQueueCommandBufferSubmission(MVKQueue* queue, 
 									const VkSubmitInfo2* pSubmit,
@@ -302,7 +303,7 @@ protected:
 class MVKQueuePresentSurfaceSubmission : public MVKQueueSubmission {
 
 public:
-	VkResult execute(uint64_t startTime) override;
+	VkResult execute() override;
 
 	MVKQueuePresentSurfaceSubmission(MVKQueue* queue,
 									 const VkPresentInfoKHR* pPresentInfo);
