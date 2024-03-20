@@ -216,6 +216,7 @@ protected:
 
 	MVKQueue* _queue;
 	MVKSmallVector<MVKSemaphoreSubmitInfo> _waitSemaphores;
+	uint64_t _creationTime;
 };
 
 

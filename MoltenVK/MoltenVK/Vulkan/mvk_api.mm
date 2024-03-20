@@ -43,7 +43,7 @@ VkResult mvkCopyGrowingStruct(S* pDst, const S* pSrc, size_t* pCopySize) {
 		size_t origSize = *pCopySize;
 		*pCopySize = std::min(origSize, sizeof(S));
 		memcpy(pDst, pSrc, *pCopySize);
-		return (*pCopySize == origSize) ? VK_SUCCESS : VK_INCOMPLETE;
+		return (sizeof(S) == origSize) ? VK_SUCCESS : VK_INCOMPLETE;
 	} else {
 		*pCopySize = sizeof(S);
 		return VK_SUCCESS;

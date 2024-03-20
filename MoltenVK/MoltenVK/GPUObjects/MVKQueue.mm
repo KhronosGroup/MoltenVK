@@ -415,6 +415,8 @@ MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 	_queue = queue;
 	_queue->retain();	// Retain here and release in destructor. See note for MVKQueueCommandBufferSubmission::finish().
 
+	_creationTime = getDevice()->getPerformanceTimestamp();		// call getDevice() only after _queue is defined
+
 	_waitSemaphores.reserve(waitSemaphoreInfoCount);
 	for (uint32_t i = 0; i < waitSemaphoreInfoCount; i++) {
 		_waitSemaphores.emplace_back(pWaitSemaphoreSubmitInfos[i]);
@@ -427,6 +429,8 @@ MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 									   const VkPipelineStageFlags* pWaitDstStageMask) {
 	_queue = queue;
 	_queue->retain();	// Retain here and release in destructor. See note for MVKQueueCommandBufferSubmission::finish().
+
+	_creationTime = getDevice()->getPerformanceTimestamp();		// call getDevice() only after _queue is defined
 
 	_waitSemaphores.reserve(waitSemaphoreCount);
 	for (uint32_t i = 0; i < waitSemaphoreCount; i++) {
@@ -448,6 +452,10 @@ VkResult MVKQueueCommandBufferSubmission::execute() {
 
 	// If using encoded semaphore waiting, do so now.
 	for (auto& ws : _waitSemaphores) { ws.encodeWait(getActiveMTLCommandBuffer()); }
+
+	// Wait time from an async vkQueueSubmit() call to starting submit and encoding of the command buffers
+	MVKDevice* mvkDev = getDevice();
+	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.waitSubmitCommandBuffers, _creationTime);
 
 	// Submit each command buffer.
 	submitCommandBuffers();
@@ -679,7 +687,7 @@ MVKQueueFullCommandBufferSubmission<N>::MVKQueueFullCommandBufferSubmission(MVKQ
 // If the semaphores are not encodable, wait on them inline after presenting.
 // The semaphores know what to do.
 VkResult MVKQueuePresentSurfaceSubmission::execute() {
-	// MTLCommandBuffer retain references to avoid rare case where objects are destroyed too early. 
+	// MTLCommandBuffer retain references to avoid rare case where objects are destroyed too early.
 	// Although testing could not determine which objects were being lost, queue present MTLCommandBuffers
 	// are used only once per frame, and retain so few objects, that blanket retention is still performant.
 	id<MTLCommandBuffer> mtlCmdBuff = _queue->getMTLCommandBuffer(kMVKCommandUseQueuePresent, true);
@@ -688,6 +696,10 @@ VkResult MVKQueuePresentSurfaceSubmission::execute() {
 		ws.encodeWait(mtlCmdBuff);	// Encoded semaphore waits
 		ws.encodeWait(nil);			// Inline semaphore waits
 	}
+
+	// Wait time from an async vkQueuePresentKHR() call to starting presentation of the swapchains
+	MVKDevice* mvkDev = getDevice();
+	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.waitPresentSwapchains, _creationTime);
 
 	for (int i = 0; i < _presentInfo.size(); i++ ) {
 		setConfigurationResult(_presentInfo[i].presentableImage->presentCAMetalDrawable(mtlCmdBuff, _presentInfo[i]));
