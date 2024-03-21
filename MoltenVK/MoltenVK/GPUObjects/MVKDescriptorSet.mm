@@ -266,12 +266,29 @@ void MVKDescriptorSetLayout::initMTLArgumentEncoder() {
 	if (isUsingDescriptorSetMetalArgumentBuffers() && isUsingMetalArgumentBuffer()) {
 		@autoreleasepool {
 			NSMutableArray<MTLArgumentDescriptor*>* args = [NSMutableArray arrayWithCapacity: _bindings.size()];
-			for (auto& dslBind : _bindings) { dslBind.addMTLArgumentDescriptors(args); }
+			for (auto& dslBind : _bindings) { dslBind.addMTLArgumentDescriptors(args, dslBind.getDescriptorCount()); }
 			_mtlArgumentEncoder.init(args.count ? [getMTLDevice() newArgumentEncoderWithArguments: args] : nil);
 		}
 	}
 }
 
+size_t MVKDescriptorSetLayout::getEncodedArgumentBufferLength(uint32_t variableDescriptorCount) {
+	if (_bindings.size() > 0) {
+		auto binding = _bindings.back();
+		if (binding.hasVariableDescriptorCount() && variableDescriptorCount < binding.getDescriptorCount()) {
+			@autoreleasepool {
+				NSMutableArray<MTLArgumentDescriptor*>* args = [NSMutableArray arrayWithCapacity: _bindings.size()];
+				for (auto& dslBind : _bindings) { dslBind.addMTLArgumentDescriptors(args, variableDescriptorCount); }
+				auto encoder = [getMTLDevice() newArgumentEncoderWithArguments: args];
+				auto size = [encoder encodedLength];
+				[encoder release];
+				return size;
+			}
+		}
+	}
+
+	return _mtlArgumentEncoder.mtlArgumentEncoderSize;
+}
 
 #pragma mark -
 #pragma mark MVKDescriptorSet
@@ -487,7 +504,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 												  uint32_t variableDescriptorCount,
 												  VkDescriptorSet* pVKDS) {
 	VkResult rslt = VK_ERROR_OUT_OF_POOL_MEMORY;
-	NSUInteger mtlArgBuffAllocSize = mvkDSL->getMTLArgumentEncoder().mtlArgumentEncoderSize;
+	NSUInteger mtlArgBuffAllocSize = mvkDSL->getEncodedArgumentBufferLength(variableDescriptorCount);
 	NSUInteger mtlArgBuffAlignedSize = mvkAlignByteCount(mtlArgBuffAllocSize,
 														 getDevice()->_pMetalFeatures->mtlBufferAlignment);
 

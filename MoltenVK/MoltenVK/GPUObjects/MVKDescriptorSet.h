@@ -122,6 +122,9 @@ public:
 	/** Returns the MTLArgumentEncoder for the descriptor set. */
 	MVKMTLArgumentEncoder& getMTLArgumentEncoder() { return _mtlArgumentEncoder; }
 
+	/** Calculates the length of encoded argument buffer. */
+	size_t getEncodedArgumentBufferLength(uint32_t variableDescriptorCount = 0);
+
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
 protected:

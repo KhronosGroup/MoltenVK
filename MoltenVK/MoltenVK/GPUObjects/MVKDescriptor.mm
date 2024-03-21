@@ -190,14 +190,17 @@ void mvkPopulateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& s
 
 MVKVulkanAPIObject* MVKDescriptorSetLayoutBinding::getVulkanAPIObject() { return _layout; };
 
-uint32_t MVKDescriptorSetLayoutBinding::getDescriptorCount(MVKDescriptorSet* descSet) const {
+uint32_t MVKDescriptorSetLayoutBinding::getDescriptorCount(MVKDescriptorSet* descSet, uint32_t variableDescriptorCount) const {
 
 	if (_info.descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
 		return 1;
 	}
 
-	if (descSet && hasVariableDescriptorCount()) {
-		return descSet->_variableDescriptorCount;
+	if (hasVariableDescriptorCount()) {
+		if (descSet)
+			return descSet->_variableDescriptorCount;
+		if (variableDescriptorCount != std::numeric_limits<uint32_t>::max())
+			return variableDescriptorCount;
 	}
 
 	return _info.descriptorCount;
@@ -419,50 +422,50 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
 bool MVKDescriptorSetLayoutBinding::isUsingMetalArgumentBuffer() { return _layout->isUsingMetalArgumentBuffer(); };
 
 // Adds MTLArgumentDescriptors to the array, and updates resource indexes consumed.
-void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptors(NSMutableArray<MTLArgumentDescriptor*>* args) {
+void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptors(NSMutableArray<MTLArgumentDescriptor*>* args, uint32_t variableDescriptorCount) {
 	switch (getDescriptorType()) {
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
-			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadOnly);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadOnly, variableDescriptorCount);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadWrite);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadWrite, variableDescriptorCount);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadOnly);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadOnly, variableDescriptorCount);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadWrite);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadWrite, variableDescriptorCount);
 			if (!getPhysicalDevice()->useNativeTextureAtomics()) { // Needed for emulated atomic operations
-				addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadWrite);
+				addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadWrite, variableDescriptorCount);
 			}
 			break;
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadOnly);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadOnly, variableDescriptorCount);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadWrite);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadWrite, variableDescriptorCount);
 			if (!getPhysicalDevice()->useNativeTextureAtomics()) { // Needed for emulated atomic operations
-				addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadWrite);
+				addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadWrite, variableDescriptorCount);
 			}
 			break;
 
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
-			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().samplerIndex, MTLDataTypeSampler, MTLArgumentAccessReadOnly);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().samplerIndex, MTLDataTypeSampler, MTLArgumentAccessReadOnly, variableDescriptorCount);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadOnly);
-			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().samplerIndex, MTLDataTypeSampler, MTLArgumentAccessReadOnly);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadOnly, variableDescriptorCount);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().samplerIndex, MTLDataTypeSampler, MTLArgumentAccessReadOnly, variableDescriptorCount);
 			break;
 
 		default:
@@ -473,8 +476,10 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptors(NSMutableArray<MTL
 void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptor(NSMutableArray<MTLArgumentDescriptor*>* args,
 															 uint32_t argIndex,
 															 MTLDataType dataType,
-															 MTLArgumentAccess access) {
-	uint32_t descCnt = getDescriptorCount();
+															 MTLArgumentAccess access,
+															 uint32_t variableDescriptorCount) {
+	uint32_t descCnt = getDescriptorCount(nullptr, variableDescriptorCount);
+
 	if (descCnt == 0) { return; }
 	
 	auto* argDesc = [MTLArgumentDescriptor argumentDescriptor];
