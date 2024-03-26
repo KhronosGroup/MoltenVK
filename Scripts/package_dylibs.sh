@@ -45,3 +45,7 @@ copy_dylib "" "macOS"
 #copy_dylib "-appletvsimulator" "tvOS-simulator"
 #copy_dylib "-xrvos" "xrOS"
 #copy_dylib "-xrsimulator" "xrOS-simulator"
+
+# For legacy support, symlink old dylib location to new location
+ln -sfn "dynamic/dylib" "${mvk_pkg_prod_path}/dylib"
+

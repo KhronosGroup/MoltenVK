@@ -18,7 +18,8 @@ MoltenVK 1.2.9
 
 Released TBD
 
-
+- To support legacy apps, restore `MoltenVK/dylib` directory via symlink to `MoltenVK/dynamic/dylib`.
+- Add `MVKPerformanceTracker::previous` to track latest-but-one performance measurements.
 
 
 MoltenVK 1.2.8
