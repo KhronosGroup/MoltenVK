@@ -27,6 +27,7 @@
 #include "MVKPixelFormats.h"
 #include "MVKOSExtensions.h"
 #include "mvk_datatypes.hpp"
+#include "MVKMap.h"
 #include <string>
 #include <mutex>
 
@@ -69,6 +70,7 @@ class MVKCommandPool;
 class MVKCommandEncoder;
 class MVKCommandResourceFactory;
 class MVKPrivateDataSlot;
+class MVKAccelerationStructure; // Not sure where to place, I'll move it there later
 
 
 /** The buffer index to use for vertex content. */
@@ -458,6 +460,8 @@ typedef struct MVKMTLBlitEncoder {
 	id<MTLCommandBuffer> mtlCmdBuffer = nil;
 } MVKMTLBlitEncoder;
 
+typedef std::pair<uint64_t, uint64_t> MVKBufferAddressRange;
+
 /** Represents a Vulkan logical GPU device, associated with a physical device. */
 class MVKDevice : public MVKDispatchableVulkanAPIObject {
 
@@ -525,6 +529,15 @@ public:
 								 const VkCalibratedTimestampInfoEXT* pTimestampInfos,
 								 uint64_t* pTimestamps,
 								 uint64_t* pMaxDeviation);
+    
+    /** Returns a pointer to the buffer at the provided address*/
+    MVKBuffer* getBufferAtAddress(uint64_t address); // Unsure where to place within the file
+    
+    /** Returns a pointer to the acceleration structure at the provided address*/
+    MVKAccelerationStructure* getAccelerationStructureAtAddress(uint64_t address);
+    
+    /** Returns whether or not the device supports acceleration structures*/
+    VkAccelerationStructureCompatibilityKHR getAccelerationStructureCompatibility(const VkAccelerationStructureVersionInfoKHR* pVersionInfo);
 
 #pragma mark Object lifecycle
 
@@ -597,6 +610,11 @@ public:
 											const VkAllocationCallbacks* pAllocator);
 	void destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
 							   const VkAllocationCallbacks* pAllocator);
+    
+    MVKAccelerationStructure* createAccelerationStructure(const VkAccelerationStructureCreateInfoKHR* pCreateInfo,
+                                                          const VkAllocationCallbacks*                pAllocator);
+    void destroyAccelerationStructure(MVKAccelerationStructure*     mvkAccStruct,
+                                      const VkAllocationCallbacks*  pAllocator);
 
     /**
      * Template function that creates count number of pipelines of type PipelineType,
@@ -688,7 +706,13 @@ public:
 
 	/** Removes the specified timeline semaphore. */
 	void removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value);
-
+    
+    /** Adds the specified acceleration structure to the address map, so it can be referenced else where*/
+    MVKAccelerationStructure* addAccelerationStructure(MVKAccelerationStructure* accStruct);
+    
+    /** Removes the specified accelerations from the address map */
+    void removeAccelerationStructure(MVKAccelerationStructure* accStruct);
+    
 	/** Applies the specified global memory barrier to all resource issued by this device. */
 	void applyMemoryBarrier(MVKPipelineBarrier& barrier,
 							MVKCommandEncoder* cmdEncoder,
@@ -913,6 +937,9 @@ protected:
 	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
 	MVKSmallVector<MVKResource*> _resources;
 	MVKSmallVector<MVKBuffer*> _gpuAddressableBuffers;
+    std::unordered_map<MVKBufferAddressRange, MVKBuffer*, MVKHash_uint64_t_pair> _gpuBufferAddressMap;
+    std::unordered_map<uint64_t, MVKAccelerationStructure*> _gpuAccStructAddressMap;
+    uint64_t _nextValidAccStructureAddress;
 	MVKSmallVector<MVKPrivateDataSlot*> _privateDataSlots;
 	MVKSmallVector<bool> _privateDataSlotsAvailability;
 	MVKSmallVector<MVKSemaphoreImpl*> _awaitingSemaphores;

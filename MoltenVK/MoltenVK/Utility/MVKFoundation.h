@@ -97,7 +97,11 @@ typedef enum : uint8_t {
 	kMVKCommandUseDrawIndirectConvertBuffers,   /**< vkCmdDrawIndirect* convert indirect buffers. */
     kMVKCommandUseCopyQueryPoolResults,         /**< vkCmdCopyQueryPoolResults. */
     kMVKCommandUseAccumOcclusionQuery,          /**< Any command terminating a Metal render pass with active visibility buffer. */
-	kMVKCommandUseRecordGPUCounterSample        /**< Any command triggering the recording of a GPU counter sample. */
+	kMVKCommandUseRecordGPUCounterSample,        /**< Any command triggering the recording of a GPU counter sample. */
+    kMVKCommandUseBuildAccelerationStructure,       /**< vkCmdBuiildAccelerationStructure - Builds an acceleration structure */
+    kMVKCommandUseCopyAccelerationStructure,        /**< vkCmdCopyAccelerationStructure- Copies an acceleration structure to another acceleration structure*/
+    kMVKCommandUseCopyAccelerationStructureToMemory,/**< vkCmdCopyAccelerationStructureToMemory - Copies and serializes an acceleration structure to a buffer*/
+    kMVKCommandUseCopyMemoryToAccelerationStructure,/**< vkCmdCopyMemoryToAccelerationStructure - Copies and deserializes an acceleration structure from a buffer*/
 } MVKCommandUse;
 
 /** Represents a given stage of a graphics pipeline. */
