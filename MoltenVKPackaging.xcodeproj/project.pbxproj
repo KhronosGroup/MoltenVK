@@ -50,8 +50,8 @@
 				A975D59A2140586700D4834F /* Package MoltenVK */,
 			);
 			dependencies = (
-				A979A95A2B9A232800F69E67 /* PBXTargetDependency */,
 				A9F4D9F12B8EC210004AD576 /* PBXTargetDependency */,
+				A979A95A2B9A232800F69E67 /* PBXTargetDependency */,
 			);
 			name = "MoltenVK-macOS";
 			productName = Package;
@@ -75,8 +75,8 @@
 				A9B1008824F84BE400EADC6E /* Package MoltenVK */,
 			);
 			dependencies = (
-				A979A9662B9A233C00F69E67 /* PBXTargetDependency */,
 				A9F4D9F82B8EC22E004AD576 /* PBXTargetDependency */,
+				A979A9662B9A233C00F69E67 /* PBXTargetDependency */,
 				A9F4D9F62B8EC22E004AD576 /* PBXTargetDependency */,
 				A9F4D9FA2B8EC22E004AD576 /* PBXTargetDependency */,
 			);
@@ -276,6 +276,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A905CE6F2BB897F700BBCB10 /* clean_dynamic.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = clean_dynamic.sh; sourceTree = "<group>"; };
 		A92DB3E41CE0F37D00FBC835 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		A92DB3E51CE0F37D00FBC835 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		A92DB3E61CE0F37D00FBC835 /* Whats_New.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Whats_New.md; path = Docs/Whats_New.md; sourceTree = "<group>"; };
@@ -346,6 +347,7 @@
 		A975D55B213F25AD00D4834F /* Scripts */ = {
 			isa = PBXGroup;
 			children = (
+				A905CE6F2BB897F700BBCB10 /* clean_dynamic.sh */,
 				A9F4D8942B8D4F81004AD576 /* copy_to_staging.sh */,
 				A93ED4DE24F59CDB00FEB018 /* copy_lib_to_staging.sh */,
 				A9B1007A24F837AF00EADC6E /* create_xcframework_func.sh */,
@@ -430,9 +432,9 @@
 			projectRoot = "";
 			targets = (
 				A9FEADBC1F3517480010240E /* MoltenVK */,
+				A975D58B2140586700D4834F /* MoltenVK-macOS */,
 				A975D5782140585200D4834F /* MoltenVK-iOS */,
 				2FEA0A2F24902F5E00EEF3AD /* MoltenVK-tvOS */,
-				A975D58B2140586700D4834F /* MoltenVK-macOS */,
 				DCFD7ED52A45BC56007BBBF7 /* MoltenVK-xrOS */,
 				A91170FD2B9110050057AD37 /* MoltenVK-MacCat */,
 				A9AD700D2440ED3B00B9E254 /* MVKShaderConverterTool */,

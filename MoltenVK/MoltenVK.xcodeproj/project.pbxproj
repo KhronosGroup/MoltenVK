@@ -1519,6 +1519,7 @@
 				2FEA0A4024902F9F00EEF3AD /* Headers */,
 				2FEA0A8224902F9F00EEF3AD /* Sources */,
 				A9CBBFF124F89F79006D41EF /* Copy to Staging */,
+				A905CE712BB898E000BBCB10 /* Clean Dynamic */,
 			);
 			buildRules = (
 			);
@@ -1556,6 +1557,7 @@
 				A9B8EE071A98D796009C5A02 /* Headers */,
 				A9B8EE051A98D796009C5A02 /* Sources */,
 				A9CBBFEF24F89F5F006D41EF /* Copy to Staging */,
+				A905CE702BB8988A00BBCB10 /* Clean Dynamic */,
 			);
 			buildRules = (
 			);
@@ -1575,6 +1577,7 @@
 				A9CBED871B6299D800E45FDC /* Headers */,
 				A9CBEDCE1B6299D800E45FDC /* Sources */,
 				A9CBBFF224F89F87006D41EF /* Copy to Staging */,
+				A942D3052BAC3AD200A25A0A /* Clean Dynamic */,
 			);
 			buildRules = (
 			);
@@ -1674,6 +1677,7 @@
 				DCFD7EE32A45BC6E007BBBF7 /* Headers */,
 				DCFD7F272A45BC6E007BBBF7 /* Sources */,
 				DCFD7F5D2A45BC6E007BBBF7 /* Copy to Staging */,
+				A905CE722BB8993F00BBCB10 /* Clean Dynamic */,
 			);
 			buildRules = (
 			);
@@ -1811,6 +1815,86 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		A905CE702BB8988A00BBCB10 /* Clean Dynamic */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/libMoltenVK.a",
+			);
+			name = "Clean Dynamic";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/CleanDynamicDummyOutputFile",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/clean_dynamic.sh\"\n";
+		};
+		A905CE712BB898E000BBCB10 /* Clean Dynamic */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/libMoltenVK.a",
+			);
+			name = "Clean Dynamic";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/CleanDynamicDummyOutputFile",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/clean_dynamic.sh\"\n";
+		};
+		A905CE722BB8993F00BBCB10 /* Clean Dynamic */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/libMoltenVK.a",
+			);
+			name = "Clean Dynamic";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/CleanDynamicDummyOutputFile",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/clean_dynamic.sh\"\n";
+		};
+		A942D3052BAC3AD200A25A0A /* Clean Dynamic */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${BUILT_PRODUCTS_DIR}/libMoltenVK.a",
+			);
+			name = "Clean Dynamic";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/CleanDynamicDummyOutputFile",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/clean_dynamic.sh\"\n";
+		};
 		A980A25B24C6283D007A8F6F /* Generate Version Header */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
