@@ -174,7 +174,9 @@ Open the *Build Phases* tab and open the *Link Binary With Libraries* list.
    - `Metal.framework`
    - `Foundation.framework`.
    - `QuartzCore.framework`
+   - `CoreGraphics.framework`
    - `IOKit.framework` (*macOS*)
+   - `AppKit.framework` (*macOS*)
    - `UIKit.framework` (*iOS* or *tvOS*)
    - `IOSurface.framework` (*macOS*, or *iOS* if `IPHONEOS_DEPLOYMENT_TARGET` is at least `iOS 11.0`,
 	  or *tvOS* if `TVOS_DEPLOYMENT_TARGET` is at least `tvOS 11.0`)
