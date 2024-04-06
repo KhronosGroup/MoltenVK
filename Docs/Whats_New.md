@@ -20,6 +20,7 @@ Released TBD
 
 - To support legacy apps, restore `MoltenVK/dylib` directory via symlink to `MoltenVK/dynamic/dylib`.
 - Add `MVKPerformanceTracker::previous` to track latest-but-one performance measurements.
+- Fix crash when using `VK_EXT_metal_objects` under _ARC_.
 
 
 MoltenVK 1.2.8
