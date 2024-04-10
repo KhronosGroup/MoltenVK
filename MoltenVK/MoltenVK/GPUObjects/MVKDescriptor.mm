@@ -501,10 +501,10 @@ void MVKDescriptorSetLayoutBinding::populateShaderConversionConfig(mvk::SPIRVToM
     // Establish the resource indices to use, by combining the offsets of the DSL and this DSL binding.
     MVKShaderResourceBinding mtlIdxs = _mtlResourceIndexOffsets + dslMTLRezIdxOffsets;
 
-	uint32_t descCnt = getDescriptorCount();
+	uint32_t descCnt = getDescriptorCount(nullptr, 0);
 	bool isUsingMtlArgBuff = isUsingMetalArgumentBuffer();
 	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
-        if ((_applyToStage[stage] || isUsingMtlArgBuff) && descCnt > 0) {
+        if ((_applyToStage[stage] || isUsingMtlArgBuff) && (descCnt > 0 || hasVariableDescriptorCount())) {
             mvkPopulateShaderConversionConfig(shaderConfig,
                                               mtlIdxs.stages[stage],
                                               MVKShaderStage(stage),
