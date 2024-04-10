@@ -120,7 +120,7 @@ public:
 	bool isUsingMetalArgumentBuffer()  { return isUsingMetalArgumentBuffers() && !isPushDescriptorLayout(); };
 
 	/** Returns the MTLArgumentEncoder for the descriptor set. */
-	MVKMTLArgumentEncoder& getMTLArgumentEncoder() { return _mtlArgumentEncoder; }
+	MVKMTLArgumentEncoder& getMTLArgumentEncoder(MVKDescriptorSet *dsSet);
 
 	/** Calculates the length of encoded argument buffer. */
 	size_t getEncodedArgumentBufferLength(uint32_t variableDescriptorCount = 0);
@@ -138,7 +138,8 @@ protected:
 	uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return getBinding(binding)->getDescriptorIndex(elementIndex); }
 	MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
 	const VkDescriptorBindingFlags* getBindingFlags(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
-	void initMTLArgumentEncoder();
+	void initMTLArgumentEncoder(MVKMTLArgumentEncoder &encoder, MVKDescriptorSet *dsSet = nullptr);
+	bool needsDedicatedArgumentEncoder(MVKDescriptorSet *dsSet);
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
@@ -206,6 +207,9 @@ public:
 	/** Returns the number of descriptors in this descriptor set that use dynamic offsets. */
 	uint32_t getDynamicOffsetDescriptorCount() { return _dynamicOffsetDescriptorCount; }
 
+	/** Returns the MTLArgumentEncoder for the descriptor set. */
+	MVKMTLArgumentEncoder& getMTLArgumentEncoder() { return _mtlArgumentEncoder; }
+
 	MVKDescriptorSet(MVKDescriptorPool* pool);
 
 protected:
@@ -226,6 +230,7 @@ protected:
 	NSUInteger _metalArgumentBufferOffset;
 	uint32_t _dynamicOffsetDescriptorCount;
 	uint32_t _variableDescriptorCount;
+	MVKMTLArgumentEncoder _mtlArgumentEncoder;
 };
 
 

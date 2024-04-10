@@ -687,7 +687,7 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 
 		// The Metal arg encoder can only write to one arg buffer at a time (it holds the arg buffer),
 		// so we need to lock out other access to it while we are writing to it.
-		auto& mvkArgEnc = useDescSetArgBuff ? dsLayout->getMTLArgumentEncoder() : pipeline->getMTLArgumentEncoder(dsIdx, stage);
+		auto& mvkArgEnc = useDescSetArgBuff ? dsLayout->getMTLArgumentEncoder(descSet) : pipeline->getMTLArgumentEncoder(dsIdx, stage);
 		lock_guard<mutex> lock(mvkArgEnc.mtlArgumentEncodingLock);
 
 		id<MTLBuffer> mtlArgBuffer = nil;
