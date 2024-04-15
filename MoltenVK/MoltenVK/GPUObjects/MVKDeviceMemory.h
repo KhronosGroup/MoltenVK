@@ -69,8 +69,8 @@ public:
     inline VkDeviceSize getDeviceMemoryCommitment() { return _allocationSize; }
 
 	/**
-	 * Returns the host memory address of this memory, or NULL if the memory
-	 * is marked as device-only and cannot be mapped to a host address.
+	 * Returns the host memory address of this memory, or NULL if the memory has not been
+	 * mapped yet, or is marked as device-only and cannot be mapped to a host address.
 	 */
 	inline void* getHostMemoryAddress() { return _pMemory; }
 

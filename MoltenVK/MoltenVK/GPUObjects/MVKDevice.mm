@@ -443,6 +443,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				interlockFeatures->fragmentShaderShadingRateInterlock = false;    // Requires variable rate shading; not supported yet in Metal
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES_EXT: {
+				auto* hostImageCopyFeatures = (VkPhysicalDeviceHostImageCopyFeaturesEXT*)next;
+				hostImageCopyFeatures->hostImageCopy = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT: {
 				auto* pipelineCreationCacheControlFeatures = (VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT*)next;
 				pipelineCreationCacheControlFeatures->pipelineCreationCacheControl = true;
@@ -817,6 +822,10 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				extMemHostProps->minImportedHostPointerAlignment = _metalFeatures.hostMemoryPageSize;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES_EXT: {
+				populateHostImageCopyProperties((VkPhysicalDeviceHostImageCopyPropertiesEXT*)next);
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
 				// This isn't implemented yet, but when it is, it is expected that we'll wind up doing it manually.
 				auto* robustness2Props = (VkPhysicalDeviceRobustness2PropertiesEXT*)next;
@@ -843,6 +852,77 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				break;
 		}
 	}
+}
+
+void MVKPhysicalDevice::populateHostImageCopyProperties(VkPhysicalDeviceHostImageCopyPropertiesEXT* pHostImageCopyProps) {
+
+	// Metal lacks the concept of image layouts, and so does not restrict 
+	// host copy transfers based on them. Assume all image layouts are supported.
+	// TODO: As extensions that add layouts are implemented, this list should be extended.
+	VkImageLayout supportedImgLayouts[] =  {
+		VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_GENERAL,
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		VK_IMAGE_LAYOUT_PREINITIALIZED,
+		VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
+		VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
+		VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+		VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL,
+		VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL,
+		VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL,
+		VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
+		VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+	};
+	uint32_t supportedImgLayoutsCnt = sizeof(supportedImgLayouts) / sizeof(VkImageLayout);
+
+	// pCopySrcLayouts
+	// If pCopySrcLayouts is NULL, return the number of supported layouts.
+	if (pHostImageCopyProps->pCopySrcLayouts) {
+		mvkCopy(pHostImageCopyProps->pCopySrcLayouts, supportedImgLayouts, min(pHostImageCopyProps->copySrcLayoutCount, supportedImgLayoutsCnt));
+	} else {
+		pHostImageCopyProps->copySrcLayoutCount = supportedImgLayoutsCnt;
+	}
+
+	// pCopyDstLayouts
+	// If pCopyDstLayouts is NULL, return the number of supported layouts.
+	if (pHostImageCopyProps->pCopyDstLayouts) {
+		mvkCopy(pHostImageCopyProps->pCopyDstLayouts, supportedImgLayouts, min(pHostImageCopyProps->copyDstLayoutCount, supportedImgLayoutsCnt));
+	} else {
+		pHostImageCopyProps->copyDstLayoutCount = supportedImgLayoutsCnt;
+	}
+
+	// optimalTilingLayoutUUID
+	// Since optimalTilingLayoutUUID is an uint8_t array, use Big-Endian byte ordering,
+	// so a hex dump of the array is human readable in its parts.
+	uint8_t* uuid = pHostImageCopyProps->optimalTilingLayoutUUID;
+	size_t uuidComponentOffset = 0;
+	mvkClear(uuid, VK_UUID_SIZE);
+
+	// First 4 bytes contains GPU vendor ID.
+	// Use Big-Endian byte ordering, so a hex dump is human readable
+	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(_properties.vendorID);
+	uuidComponentOffset += sizeof(uint32_t);
+
+	// Next 4 bytes contains GPU device ID
+	// Use Big-Endian byte ordering, so a hex dump is human readable
+	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(_properties.deviceID);
+	uuidComponentOffset += sizeof(uint32_t);
+
+	// Next 4 bytes contains OS version
+	*(MVKOSVersion*)&uuid[uuidComponentOffset] = mvkOSVersion();
+	uuidComponentOffset += sizeof(MVKOSVersion);
+
+	// Last 4 bytes are left zero
+
+	// identicalMemoryTypeRequirements
+	// Metal cannot use Private storage mode with host memory access.
+	pHostImageCopyProps->identicalMemoryTypeRequirements = false;
 }
 
 // Since these are uint8_t arrays, use Big-Endian byte ordering,
@@ -1177,6 +1257,15 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
                 samplerYcbcrConvProps->combinedImageSamplerDescriptorCount = std::max(_pixelFormats.getChromaSubsamplingPlaneCount(pImageFormatInfo->format), (uint8_t)1u);
                 break;
             }
+			case VK_STRUCTURE_TYPE_HOST_IMAGE_COPY_DEVICE_PERFORMANCE_QUERY_EXT: {
+				// Under Metal, VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT does not affect either memory layout
+				// or access, therefore, both identicalMemoryLayout and optimalDeviceAccess should be VK_TRUE.
+				// Also, per Vulkan spec, if identicalMemoryLayout is VK_TRUE, optimalDeviceAccess must also be VK_TRUE.
+				auto* hostImgCopyPerfQry = (VkHostImageCopyDevicePerformanceQueryEXT*)nextProps;
+				hostImgCopyPerfQry->optimalDeviceAccess = VK_TRUE;
+				hostImgCopyPerfQry->identicalMemoryLayout = VK_TRUE;
+				break;
+			}
             default:
                 break;
         }
@@ -3068,38 +3157,6 @@ void MVKPhysicalDevice::setMemoryType(uint32_t typeIndex, uint32_t heapIndex, Vk
 	_memoryProperties.memoryTypes[typeIndex].propertyFlags = propertyFlags;
 }
 
-// Initializes the memory properties of this instance.
-// Metal Shared:
-//	- applies to both buffers and textures
-//	- default mode for buffers on both iOS & macOS
-//	- default mode for textures on iOS
-//	- one copy of memory visible to both CPU & GPU
-//	- coherent at command buffer boundaries
-// Metal Private:
-//	- applies to both buffers and textures
-//	- accessed only by GPU through render, compute, or BLIT operations
-//	- no access by CPU
-//	- always use for framebuffers and renderable textures
-// Metal Managed:
-//	- applies to both buffers and textures
-//	- default mode for textures on macOS
-//	- two copies of each buffer or texture when discrete memory available
-//	- convenience of shared mode, performance of private mode
-//	- on unified systems behaves like shared memory and has only one copy of content
-//	- when writing, use:
-//		- buffer didModifyRange:
-//		- texture replaceRegion:
-//	- when reading, use:
-//		- encoder synchronizeResource: followed by
-//		- cmdbuff waitUntilCompleted (or completion handler)
-//		- buffer/texture getBytes:
-// Metal Memoryless:
-//	- applies only to textures used as transient render targets
-//	- only available with TBDR devices (i.e. on iOS)
-//	- no device memory is reserved at all
-//	- storage comes from tile memory
-//	- contents are undefined after rendering
-//	- use for temporary renderable textures
 void MVKPhysicalDevice::initMemoryProperties() {
 
 	mvkClear(&_memoryProperties);	// Start with everything cleared

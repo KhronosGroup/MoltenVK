@@ -226,6 +226,10 @@ public:
 	VkResult getSubresourceLayout(const VkImageSubresource* pSubresource,
 								  VkSubresourceLayout* pLayout);
 
+	/** Populates the specified layout for the specified sub-resource. */
+	VkResult getSubresourceLayout(const VkImageSubresource2KHR* pSubresource,
+								  VkSubresourceLayout2KHR* pLayout);
+
     /** Populates the specified transfer image descriptor data structure. */
     void getTransferDescriptorData(MVKImageDescriptorData& imgData);
 
@@ -251,6 +255,13 @@ public:
 
     /** Flush underlying buffer memory into the image if necessary */
     void flushToDevice(VkDeviceSize offset, VkDeviceSize size);
+
+	/** Host-copy the content of this image to or from memory using the CPU. */
+	template<typename CopyInfo> VkResult copyContent(const CopyInfo* pCopyInfo);
+
+	/** Host-copy the content of one image to another using the CPU. */
+	static VkResult copyContent(const VkCopyImageToImageInfoEXT* pCopyImageToImageInfo);
+
 
 #pragma mark Metal
 
@@ -348,6 +359,12 @@ protected:
 	uint8_t getMemoryBindingCount() const { return (uint8_t)_memoryBindings.size(); }
 	uint8_t getMemoryBindingIndex(uint8_t planeIndex) const;
 	MVKImageMemoryBinding* getMemoryBinding(uint8_t planeIndex);
+	VkResult copyContent(id<MTLTexture> mtlTex,
+						 VkMemoryToImageCopyEXT imgRgn, uint32_t mipLevel, uint32_t slice,
+						 void* pImgBytes, size_t rowPitch, size_t depthPitch);
+	VkResult copyContent(id<MTLTexture> mtlTex,
+						 VkImageToMemoryCopyEXT imgRgn, uint32_t mipLevel, uint32_t slice,
+						 void* pImgBytes, size_t rowPitch, size_t depthPitch);
 
     MVKSmallVector<MVKImageMemoryBinding*, 3> _memoryBindings;
     MVKSmallVector<MVKImagePlane*, 3> _planes;

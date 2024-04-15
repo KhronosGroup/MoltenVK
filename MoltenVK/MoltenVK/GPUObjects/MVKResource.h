@@ -34,29 +34,30 @@ class MVKResource : public MVKVulkanAPIDeviceObject {
 public:
 
 	/** Returns the number of bytes required for the entire resource. */
-    inline VkDeviceSize getByteCount() { return _byteCount; }
+    VkDeviceSize getByteCount() { return _byteCount; }
 
     /** Returns the byte offset in the bound device memory. */
-    inline VkDeviceSize getDeviceMemoryOffset() { return _deviceMemoryOffset; }
+    VkDeviceSize getDeviceMemoryOffset() { return _deviceMemoryOffset; }
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
 	virtual VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset);
 
 	/** Returns the device memory underlying this resource. */
-	inline MVKDeviceMemory* getDeviceMemory() { return _deviceMemory; }
+	MVKDeviceMemory* getDeviceMemory() { return _deviceMemory; }
 
 	/** Returns whether the memory is accessible from the host. */
-	inline bool isMemoryHostAccessible() { return _deviceMemory && _deviceMemory->isMemoryHostAccessible(); }
+	bool isMemoryHostAccessible() { return _deviceMemory && _deviceMemory->isMemoryHostAccessible(); }
 
 	/** Returns whether the memory is automatically coherent between device and host. */
-	inline bool isMemoryHostCoherent() { return _deviceMemory && _deviceMemory->isMemoryHostCoherent(); }
+	bool isMemoryHostCoherent() { return _deviceMemory && _deviceMemory->isMemoryHostCoherent(); }
 
 	/**
-	 * Returns the host memory address of this resource, or NULL if the memory
-	 * is marked as device-only and cannot be mapped to a host address.
+	 * Returns the host memory address of this resource, or NULL if the memory is not mapped to a 
+	 * host address yet, or if the memory is marked as device-only and cannot be mapped to a host address.
 	 */
-	inline void* getHostMemoryAddress() {
-		return (_deviceMemory ? (void*)((uintptr_t)_deviceMemory->getHostMemoryAddress() + _deviceMemoryOffset) : nullptr);
+	void* getHostMemoryAddress() {
+		void* devMemHostAddr = _deviceMemory ? _deviceMemory->getHostMemoryAddress() : nullptr;
+		return devMemHostAddr ? (void*)((uintptr_t)devMemHostAddr + _deviceMemoryOffset) : nullptr;
 	}
 
 	/** Applies the specified global memory barrier. */

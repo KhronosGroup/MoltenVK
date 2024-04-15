@@ -2061,6 +2061,7 @@ typedef enum : VkFormatFeatureFlags2 {
 	kMVKVkFormatFeatureFlagsTexRead     = (VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT |
 										   VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT |
 										   VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT |
+										   VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT_EXT |
 										   VK_FORMAT_FEATURE_2_BLIT_SRC_BIT),
 	kMVKVkFormatFeatureFlagsTexFilter   = (VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT),
 	kMVKVkFormatFeatureFlagsTexWrite    = (VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT |
@@ -2072,8 +2073,6 @@ typedef enum : VkFormatFeatureFlags2 {
 	kMVKVkFormatFeatureFlagsTexDSAtt    = (VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT |
 										   VK_FORMAT_FEATURE_2_BLIT_DST_BIT),
 	kMVKVkFormatFeatureFlagsTexBlend    = (VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT),
-    kMVKVkFormatFeatureFlagsTexTransfer          = (VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT |
-                                                    VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT),
     kMVKVkFormatFeatureFlagsTexChromaSubsampling = (VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT_KHR |
                                                     VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT_KHR),
     kMVKVkFormatFeatureFlagsTexMultiPlanar       = (VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT_KHR |
@@ -2106,7 +2105,6 @@ void MVKPixelFormats::setFormatProperties(id<MTLDevice> mtlDevice, MVKVkFormatDe
     if (chromaSubsamplingComponentBits > 0) {
         if (mtlPixFmtCaps != 0 || chromaSubsamplingPlaneCount > 1) {
             mtlPixFmtCaps = kMVKMTLFmtCapsRF;
-            vkProps.optimalTilingFeatures = kMVKVkFormatFeatureFlagsTexTransfer;
         }
         enableFormatFeatures(ChromaSubsampling, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
     }
