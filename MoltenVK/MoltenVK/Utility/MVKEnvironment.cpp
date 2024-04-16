@@ -28,6 +28,7 @@ static constexpr uint32_t getExpectedMVKConfigurationSize() {
 #define MVK_CONFIG_MEMBER(member, mbrType, name)         cfgSize += sizeof(mbrType);
 	uint32_t cfgSize = 0;
 #include "MVKConfigMembers.def"
+	cfgSize += kMVKConfigurationInternalPaddingByteCount;
 	return cfgSize;
 }
 

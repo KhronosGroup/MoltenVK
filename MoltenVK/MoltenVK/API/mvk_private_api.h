@@ -244,7 +244,6 @@ typedef struct {
 	VkBool32 shouldMaximizeConcurrentCompilation;                              /**< MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION */
 	float timestampPeriodLowPassAlpha;                                         /**< MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA */
 	VkBool32 useMetalPrivateAPI;                                               /**< MVK_CONFIG_USE_METAL_PRIVATE_API */
-	uint32_t _unused_struct_padding;
 } MVKConfiguration;
 
 // Legacy support for renamed struct elements.
