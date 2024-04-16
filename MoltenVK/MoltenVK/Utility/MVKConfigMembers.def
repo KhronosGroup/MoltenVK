@@ -16,24 +16,25 @@
  * limitations under the License.
  */
 
-// The items in the list below describe the members of the MVKConfiguration struct.
-// When a new member is added to the MVKConfiguration struct, a corresponding description
-// must be added here.
-//
-// To use this file, define the macro:
-//
-//   MVK_CONFIG_MEMBER(member, mbrType, name)
-//
-// and if strings are handled differently:
-//
-//   MVK_CONFIG_MEMBER_STRING(member, mbrType,  name)
-//
-// then #include this file inline with your code.
-//
-// The name prameter is the name of the configuration parameter, which is used as the name
-// of the environment variable, and build setting, that sets the config value, and is entered
-// here without the "MVK_CONFIG_" prefix.
-
+/**
+ * The items in the list below describe the members of the MVKConfiguration struct.
+ * When a new member is added to the MVKConfiguration struct, a corresponding description
+ * must be added here.
+ *
+ * To use this file, define the macro:
+ *
+ *   MVK_CONFIG_MEMBER(member, mbrType, name)
+ *
+ * and if strings are handled differently:
+ *
+ *   MVK_CONFIG_MEMBER_STRING(member, mbrType,  name)
+ *
+ * then #include this file inline with your code.
+ *
+ * The name prameter is the name of the configuration parameter, which is used as the name
+ * of the environment variable, and build setting, that sets the config value, and is entered
+ * here without the "MVK_CONFIG_" prefix.
+ */
 
 #ifndef MVK_CONFIG_MEMBER
 #error MVK_CONFIG_MEMBER must be defined before including this file
@@ -82,7 +83,20 @@ MVK_CONFIG_MEMBER(shaderSourceCompressionAlgorithm,       MVKConfigCompressionAl
 MVK_CONFIG_MEMBER(shouldMaximizeConcurrentCompilation,    VkBool32,                                 SHOULD_MAXIMIZE_CONCURRENT_COMPILATION)
 MVK_CONFIG_MEMBER(timestampPeriodLowPassAlpha,            float,                                    TIMESTAMP_PERIOD_LOWPASS_ALPHA)
 MVK_CONFIG_MEMBER(useMetalPrivateAPI,                     VkBool32,                                 USE_METAL_PRIVATE_API)
-MVK_CONFIG_MEMBER(_unused_struct_padding,                 uint32_t,                                 _UNUSED_STRUCT_PADDING)
 
 #undef MVK_CONFIG_MEMBER
 #undef MVK_CONFIG_MEMBER_STRING
+
+/**
+ * Specifies the total number of bytes of padding internal to the MVKConfiguration structure.
+ *
+ * This value is the natural difference between sizeof(MVKConfiguration) and the sum of 
+ * the number of bytes in the corresponding members declared above. If a change is made
+ * to MVKConfiguration without a corresponding change above, a static assertion will be
+ * raised at build time, based on the difference between those two size values.
+ *
+ * Once  MVKConfiguration and the list above are in agreement, it may be necessary to modify
+ * this value if the internal padding has changed as a result of new MVKConfiguration members.
+ */
+#define kMVKConfigurationInternalPaddingByteCount  4
+
