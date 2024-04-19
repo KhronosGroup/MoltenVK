@@ -19,6 +19,7 @@
 #include "MVKShaderModule.h"
 #include "MVKPipeline.h"
 #include "MVKFoundation.h"
+#include <sys/stat.h>
 
 using namespace std;
 
@@ -378,6 +379,42 @@ bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
 	uint64_t startTime = _device->getPerformanceTimestamp();
 	bool wasConverted = _spvConverter.convert(*pShaderConfig, conversionResult, shouldLogCode, shouldLogCode, shouldLogEstimatedGLSL);
 	_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.spirvToMSL, startTime);
+
+	const char* dumpDir = getMVKConfig().shaderDumpDir;
+	if (dumpDir && *dumpDir) {
+		char path[PATH_MAX];
+		const char* type;
+		switch (pShaderConfig->options.entryPointStage) {
+			case spv::ExecutionModelVertex:                 type = "-vs"; break;
+			case spv::ExecutionModelTessellationControl:    type = "-tcs"; break;
+			case spv::ExecutionModelTessellationEvaluation: type = "-tes"; break;
+			case spv::ExecutionModelFragment:               type = "-fs"; break;
+			case spv::ExecutionModelGeometry:               type = "-gs"; break;
+			case spv::ExecutionModelTaskNV:                 type = "-ts"; break;
+			case spv::ExecutionModelMeshNV:                 type = "-ms"; break;
+			case spv::ExecutionModelGLCompute:              type = "-cs"; break;
+			default:                                        type = "";    break;
+		}
+		mkdir(dumpDir, 0755);
+		snprintf(path, sizeof(path), "%s/shader%s-%016zx.spv", dumpDir, type, _key.codeHash);
+		FILE* file = fopen(path, "wb");
+		if (file) {
+			fwrite(_spvConverter.getSPIRV().data(), sizeof(uint32_t), _spvConverter.getSPIRV().size(), file);
+			fclose(file);
+		}
+		snprintf(path, sizeof(path), "%s/shader%s-%016zx.metal", dumpDir, type, _key.codeHash);
+		file = fopen(path, "wb");
+		if (file) {
+			if (wasConverted) {
+				fwrite(conversionResult.msl.data(), 1, conversionResult.msl.size(), file);
+				fclose(file);
+			} else {
+				fputs("Failed to convert:\n", file);
+				fwrite(conversionResult.resultLog.data(), 1, conversionResult.resultLog.size(), file);
+				fclose(file);
+			}
+		}
+	}
 
 	if (wasConverted) {
 		if (shouldLogCode) { MVKLogInfo("%s", conversionResult.resultLog.c_str()); }

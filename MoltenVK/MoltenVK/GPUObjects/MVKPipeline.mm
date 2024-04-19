@@ -27,6 +27,7 @@
 #include "MTLRenderPipelineColorAttachmentDescriptor+MoltenVK.h"
 #endif
 #include "mvk_datatypes.hpp"
+#include <sys/stat.h>
 
 #ifndef MVK_USE_CEREAL
 #define MVK_USE_CEREAL (1)
@@ -684,6 +685,34 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 
 	if (isUsingMetalArgumentBuffers()) { _descriptorBindingUse.resize(_descriptorSetCount); }
 	if (isUsingPipelineStageMetalArgumentBuffers()) { _mtlArgumentEncoders.resize(_descriptorSetCount); }
+
+	const char* dumpDir = getMVKConfig().shaderDumpDir;
+	if (dumpDir && *dumpDir) {
+		char filename[PATH_MAX];
+		char text[1024];
+		char* ptext = text;
+		size_t full_hash = 0;
+		const char* type = pTessCtlSS && pTessEvalSS ? "-tess" : "";
+		auto addShader = [&](const char* type, const VkPipelineShaderStageCreateInfo* ss) {
+			if (!ss) {
+				return;
+			}
+			size_t hash = reinterpret_cast<MVKShaderModule*>(ss->module)->getKey().codeHash;
+			full_hash = full_hash * 33 ^ hash;
+			ptext = std::min(ptext + snprintf(ptext, std::end(text) - ptext, "%s: %016zx\n", type, hash), std::end(text) - 1);
+		};
+		addShader(" VS", pVertexSS);
+		addShader("TCS", pTessCtlSS);
+		addShader("TES", pTessEvalSS);
+		addShader(" FS", pFragmentSS);
+		mkdir(dumpDir, 0755);
+		snprintf(filename, sizeof(filename), "%s/pipeline%s-%016zx.txt", dumpDir, type, full_hash);
+		FILE* file = fopen(filename, "w");
+		if (file) {
+			fwrite(text, 1, ptext - text, file);
+			fclose(file);
+		}
+	}
 
 	if (!isTessellationPipeline()) {
 		MTLRenderPipelineDescriptor* plDesc = newMTLRenderPipelineDescriptor(pCreateInfo, reflectData, pVertexSS, pVertexFB, pFragmentSS, pFragmentFB);	// temp retain
