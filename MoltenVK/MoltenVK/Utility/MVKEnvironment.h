@@ -362,5 +362,3 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #   define MVK_CONFIG_SHADER_DUMP_DIR ""
 #endif
 
-#undef MVK_CONFIG__UNUSED_STRUCT_PADDING
-#define MVK_CONFIG__UNUSED_STRUCT_PADDING 0
