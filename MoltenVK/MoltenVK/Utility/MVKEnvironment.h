@@ -357,9 +357,7 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #	define MVK_CONFIG_USE_METAL_PRIVATE_API MVK_USE_METAL_PRIVATE_API
 #endif
 
-/**
- * If set, MVK will dump spirv input, translated msl, and pipelines into the given directory.
- */
+/** If set, MVK will dump spirv input, translated msl, and pipelines into the given directory. */
 #ifndef MVK_CONFIG_SHADER_DUMP_DIR
 #   define MVK_CONFIG_SHADER_DUMP_DIR ""
 #endif
