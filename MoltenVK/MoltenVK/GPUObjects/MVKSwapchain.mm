@@ -615,9 +615,12 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 	if (mtlLayer) {
 		NSString* screenName = @"Main Screen";
 #if MVK_MACOS && !MVK_MACCAT
-		auto* screen = mtlLayer.screenMVK;
-		if ([screen respondsToSelector:@selector(localizedName)]) {
-			screenName = screen.localizedName;
+		// To prevent deadlocks, avoid dispatching screenMVK to the main thread at the cost of a less informative log.
+		if (NSThread.isMainThread) {
+			auto* screen = mtlLayer.screenMVK;
+			if ([screen respondsToSelector:@selector(localizedName)]) {
+				screenName = screen.localizedName;
+			}
 		}
 #endif
 		MVKLogInfo("Created %d swapchain images with size (%d, %d) and contents scale %.1f in layer %s (%p) on screen %s.",
