@@ -3909,7 +3909,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyImageToImageEXT(
     const VkCopyImageToImageInfoEXT*            pCopyImageToImageInfo) {
 
 	MVKTraceVulkanCallStart();
-	VkResult rslt = MVKImage::copyContent(pCopyImageToImageInfo);
+	VkResult rslt = MVKImage::copyImageToImage(pCopyImageToImageInfo);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -3920,7 +3920,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyImageToMemoryEXT(
 
 	MVKTraceVulkanCallStart();
 	MVKImage* srcImg = (MVKImage*)pCopyImageToMemoryInfo->srcImage;
-	VkResult rslt = srcImg->copyContent(pCopyImageToMemoryInfo);
+	VkResult rslt = srcImg->copyImageToMemory(pCopyImageToMemoryInfo);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -3931,7 +3931,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyMemoryToImageEXT(
 
 	MVKTraceVulkanCallStart();
 	MVKImage* dstImg = (MVKImage*)pCopyMemoryToImageInfo->dstImage;
-	VkResult rslt = dstImg->copyContent(pCopyMemoryToImageInfo);
+	VkResult rslt = dstImg->copyMemoryToImage(pCopyMemoryToImageInfo);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }

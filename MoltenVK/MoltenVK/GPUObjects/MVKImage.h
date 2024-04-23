@@ -256,11 +256,14 @@ public:
     /** Flush underlying buffer memory into the image if necessary */
     void flushToDevice(VkDeviceSize offset, VkDeviceSize size);
 
-	/** Host-copy the content of this image to or from memory using the CPU. */
-	template<typename CopyInfo> VkResult copyContent(const CopyInfo* pCopyInfo);
+	/** Host-copy the content of an image to another using the CPU. */
+	static VkResult copyImageToImage(const VkCopyImageToImageInfoEXT* pCopyImageToImageInfo);
 
-	/** Host-copy the content of one image to another using the CPU. */
-	static VkResult copyContent(const VkCopyImageToImageInfoEXT* pCopyImageToImageInfo);
+	/** Host-copy the content of an image to memory using the CPU. */
+	VkResult copyImageToMemory(const VkCopyImageToMemoryInfoEXT* pCopyImageToMemoryInfo);
+
+	/** Host-copy the content of an image from memory using the CPU. */
+	VkResult copyMemoryToImage(const VkCopyMemoryToImageInfoEXT* pCopyMemoryToImageInfo);
 
 
 #pragma mark Metal
@@ -359,6 +362,7 @@ protected:
 	uint8_t getMemoryBindingCount() const { return (uint8_t)_memoryBindings.size(); }
 	uint8_t getMemoryBindingIndex(uint8_t planeIndex) const;
 	MVKImageMemoryBinding* getMemoryBinding(uint8_t planeIndex);
+	template<typename CopyInfo> VkResult copyContent(const CopyInfo* pCopyInfo);
 	VkResult copyContent(id<MTLTexture> mtlTex,
 						 VkMemoryToImageCopyEXT imgRgn, uint32_t mipLevel, uint32_t slice,
 						 void* pImgBytes, size_t rowPitch, size_t depthPitch);

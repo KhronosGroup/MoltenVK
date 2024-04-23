@@ -83,6 +83,7 @@ typedef enum : uint8_t {
     kMVKCommandUseResolveImage,                 /**< vkCmdResolveImage - resolve stage. */
     kMVKCommandUseResolveExpandImage,           /**< vkCmdResolveImage - expand stage. */
     kMVKCommandUseResolveCopyImage,             /**< vkCmdResolveImage - copy stage. */
+	kMVKCommandUseCopyImageToMemory,            /**< vkCopyImageToMemoryEXT host sync. */
     kMVKCommandUseCopyBuffer,                   /**< vkCmdCopyBuffer. */
     kMVKCommandUseCopyBufferToImage,            /**< vkCmdCopyBufferToImage. */
     kMVKCommandUseCopyImageToBuffer,            /**< vkCmdCopyImageToBuffer. */

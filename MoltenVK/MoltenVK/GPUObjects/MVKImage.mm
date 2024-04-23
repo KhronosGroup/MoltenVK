@@ -566,7 +566,7 @@ static MTLRegion getMTLRegion(const ImgRgn& imgRgn) {
 	return { mvkMTLOriginFromVkOffset3D(imgRgn.imageOffset), mvkMTLSizeFromVkExtent3D(imgRgn.imageExtent) };
 }
 
-// Host-copy from memory to a MTLTexture.
+// Host-copy from a MTLTexture to memory.
 VkResult MVKImage::copyContent(id<MTLTexture> mtlTex,
 							   VkImageToMemoryCopyEXT imgRgn, uint32_t mipLevel, uint32_t slice,
 							   void* pImgBytes, size_t rowPitch, size_t depthPitch) {
@@ -579,7 +579,7 @@ VkResult MVKImage::copyContent(id<MTLTexture> mtlTex,
 	return VK_SUCCESS;
 }
 
-// Host-copy from a MTLTexture to memory.
+// Host-copy from memory to a MTLTexture.
 VkResult MVKImage::copyContent(id<MTLTexture> mtlTex,
 							   VkMemoryToImageCopyEXT imgRgn, uint32_t mipLevel, uint32_t slice,
 							   void* pImgBytes, size_t rowPitch, size_t depthPitch) {
@@ -646,14 +646,9 @@ VkResult MVKImage::copyContent(const CopyInfo* pCopyInfo) {
 	return VK_SUCCESS;
 }
 
-// Create concrete implementations of the variations of the copyContent() template function.
-// This is required since the template is called from outside this file (compilation unit).
-template VkResult MVKImage::copyContent(const VkCopyMemoryToImageInfoEXT* pCopyInfo);
-template VkResult MVKImage::copyContent(const VkCopyImageToMemoryInfoEXT* pCopyInfo);
-
 // Host-copy content between images by allocating a temporary memory buffer, copying into it from the
 // source image, and then copying from the memory buffer into the destination image, all using the CPU.
-VkResult MVKImage::copyContent(const VkCopyImageToImageInfoEXT* pCopyImageToImageInfo) {
+VkResult MVKImage::copyImageToImage(const VkCopyImageToImageInfoEXT* pCopyImageToImageInfo) {
 	for (uint32_t imgRgnIdx = 0; imgRgnIdx < pCopyImageToImageInfo->regionCount; imgRgnIdx++) {
 		auto& imgRgn = pCopyImageToImageInfo->pRegions[imgRgnIdx];
 
@@ -714,6 +709,40 @@ VkResult MVKImage::copyContent(const VkCopyImageToImageInfoEXT* pCopyImageToImag
 		dstMVKImg->copyContent(&dstCopyInfo);
 	}
 	return VK_SUCCESS;
+}
+
+VkResult MVKImage::copyImageToMemory(const VkCopyImageToMemoryInfoEXT* pCopyImageToMemoryInfo) {
+#if MVK_MACOS
+	// On macOS, if the device doesn't have unified memory, and the texture is using managed memory, we need
+	// to sync the managed memory from the GPU, so the texture content is accessible to be copied by the CPU.
+	if ( !getPhysicalDevice()->getHasUnifiedMemory() && getMTLStorageMode() == MTLStorageModeManaged ) {
+		@autoreleasepool {
+			id<MTLCommandBuffer> mtlCmdBuff = getDevice()->getAnyQueue()->getMTLCommandBuffer(kMVKCommandUseCopyImageToMemory);
+			id<MTLBlitCommandEncoder> mtlBlitEnc = [mtlCmdBuff blitCommandEncoder];
+
+			for (uint32_t imgRgnIdx = 0; imgRgnIdx < pCopyImageToMemoryInfo->regionCount; imgRgnIdx++) {
+				auto& imgRgn = pCopyImageToMemoryInfo->pRegions[imgRgnIdx];
+				auto& imgSubRez = imgRgn.imageSubresource;
+				id<MTLTexture> mtlTex = getMTLTexture(getPlaneFromVkImageAspectFlags(imgSubRez.aspectMask));
+				for (uint32_t imgLyrIdx = 0; imgLyrIdx < imgSubRez.layerCount; imgLyrIdx++) {
+					[mtlBlitEnc synchronizeTexture: mtlTex
+											 slice: imgSubRez.baseArrayLayer + imgLyrIdx
+											 level: imgSubRez.mipLevel];
+				}
+			}
+
+			[mtlBlitEnc endEncoding];
+			[mtlCmdBuff commit];
+			[mtlCmdBuff waitUntilCompleted];
+		}
+	}
+#endif
+
+	return copyContent(pCopyImageToMemoryInfo);
+}
+
+VkResult MVKImage::copyMemoryToImage(const VkCopyMemoryToImageInfoEXT* pCopyMemoryToImageInfo) {
+	return copyContent(pCopyMemoryToImageInfo);
 }
 
 VkImageType MVKImage::getImageType() { return mvkVkImageTypeFromMTLTextureType(_mtlTextureType); }
@@ -823,21 +852,22 @@ void MVKImage::applyImageMemoryBarrier(MVKPipelineBarrier& barrier,
 }
 
 VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements, uint8_t planeIndex) {
+	MVKPhysicalDevice* mvkPD = getPhysicalDevice();
+	VkImageUsageFlags combinedUsage = getCombinedUsage();
+
     pMemoryRequirements->memoryTypeBits = (_isDepthStencilAttachment)
-                                          ? getPhysicalDevice()->getPrivateMemoryTypes()
-                                          : getPhysicalDevice()->getAllMemoryTypes();
+                                          ? mvkPD->getPrivateMemoryTypes()
+                                          : mvkPD->getAllMemoryTypes();
 #if MVK_MACOS
     // Metal on macOS does not provide native support for host-coherent memory, but Vulkan requires it for Linear images
     if ( !_isLinear ) {
-        mvkDisableFlags(pMemoryRequirements->memoryTypeBits, getPhysicalDevice()->getHostCoherentMemoryTypes());
+        mvkDisableFlags(pMemoryRequirements->memoryTypeBits, mvkPD->getHostCoherentMemoryTypes());
     }
 #endif
 
-	VkImageUsageFlags combinedUsage = getCombinedUsage();
-
 	// If the image can be used in a host-copy transfer, the memory cannot be private.
 	if (mvkIsAnyFlagEnabled(combinedUsage, VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT)) {
-		mvkDisableFlags(pMemoryRequirements->memoryTypeBits, getPhysicalDevice()->getPrivateMemoryTypes());
+		mvkDisableFlags(pMemoryRequirements->memoryTypeBits, mvkPD->getPrivateMemoryTypes());
 	}
 
     // Only transient attachments may use memoryless storage.
@@ -845,7 +875,7 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 	// TODO: support framebuffer fetch so VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT uses color(m) in shader instead of setFragmentTexture:, which crashes Metal
     if (!mvkIsAnyFlagEnabled(combinedUsage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ||
 		 mvkIsAnyFlagEnabled(combinedUsage, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) ) {
-        mvkDisableFlags(pMemoryRequirements->memoryTypeBits, getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
+        mvkDisableFlags(pMemoryRequirements->memoryTypeBits, mvkPD->getLazilyAllocatedMemoryTypes());
     }
 
     return getMemoryBinding(planeIndex)->getMemoryRequirements(pMemoryRequirements);

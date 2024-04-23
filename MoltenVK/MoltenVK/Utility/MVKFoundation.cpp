@@ -40,6 +40,7 @@ const char* mvkVkCommandName(MVKCommandUse cmdUse) {
 		case kMVKCommandUseResolveImage:                 return "vkCmdResolveImage (resolve stage)";
 		case kMVKCommandUseResolveExpandImage:           return "vkCmdResolveImage (expand stage)";
 		case kMVKCommandUseResolveCopyImage:             return "vkCmdResolveImage (copy stage)";
+		case kMVKCommandUseCopyImageToMemory:            return "vkCopyImageToMemory host sync";
 		case kMVKCommandUseCopyBuffer:                   return "vkCmdCopyBuffer";
 		case kMVKCommandUseCopyBufferToImage:            return "vkCmdCopyBufferToImage";
 		case kMVKCommandUseCopyImageToBuffer:            return "vkCmdCopyImageToBuffer";
