@@ -315,6 +315,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_hdr_metadata`
   - *macOS only.*
 - `VK_EXT_headless_surface`
+- `VK_EXT_host_image_copy`
 - `VK_EXT_host_query_reset`
 - `VK_EXT_image_robustness`
 - `VK_EXT_inline_uniform_block`

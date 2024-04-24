@@ -155,6 +155,7 @@ protected:
 	NSString* _mtlCmdBuffLabelQueueWaitIdle = nil;
 	NSString* _mtlCmdBuffLabelAcquireNextImage = nil;
 	NSString* _mtlCmdBuffLabelInvalidateMappedMemoryRanges = nil;
+	NSString* _mtlCmdBuffLabelCopyImageToMemory = nil;
 	MVKGPUCaptureScope* _submissionCaptureScope = nil;
 	float _priority;
 	uint32_t _index;

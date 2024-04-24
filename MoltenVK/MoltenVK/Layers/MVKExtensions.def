@@ -114,6 +114,7 @@ MVK_EXTENSION(EXT_external_memory_host,               EXT_EXTERNAL_MEMORY_HOST, 
 MVK_EXTENSION(EXT_fragment_shader_interlock,          EXT_FRAGMENT_SHADER_INTERLOCK,          DEVICE,   10.13, 11.0,  1.0)
 MVK_EXTENSION(EXT_hdr_metadata,                       EXT_HDR_METADATA,                       DEVICE,   10.15, MVK_NA, MVK_NA)
 MVK_EXTENSION(EXT_headless_surface,                   EXT_HEADLESS_SURFACE,                   INSTANCE, 10.11,  8.0,  1.0)
+MVK_EXTENSION(EXT_host_image_copy,                    EXT_HOST_IMAGE_COPY,                    DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_host_query_reset,                   EXT_HOST_QUERY_RESET,                   DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_image_robustness,                   EXT_IMAGE_ROBUSTNESS,                   DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_inline_uniform_block,               EXT_INLINE_UNIFORM_BLOCK,               DEVICE,   10.11,  8.0,  1.0)

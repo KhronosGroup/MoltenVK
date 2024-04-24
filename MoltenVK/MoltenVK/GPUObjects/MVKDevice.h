@@ -417,6 +417,7 @@ protected:
 	uint32_t getMoltenVKGitRevision();
 	void populateDeviceIDProperties(VkPhysicalDeviceVulkan11Properties* pVk11Props);
 	void populateSubgroupProperties(VkPhysicalDeviceVulkan11Properties* pVk11Props);
+	void populateHostImageCopyProperties(VkPhysicalDeviceHostImageCopyPropertiesEXT* pHostImageCopyProps);
 	void logGPUInfo();
 
 	id<MTLDevice> _mtlDevice;

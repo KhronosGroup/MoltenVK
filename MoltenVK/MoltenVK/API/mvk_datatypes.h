@@ -452,7 +452,7 @@ static inline MTLOrigin mvkMTLOriginFromVkOffset3D(VkOffset3D vkOffset) {
 }
 
 /** Returns a Vulkan VkOffset3D constructed from a Metal MTLOrigin. */
-static inline VkOffset3D mvkVkOffset3DFromMTLSize(MTLOrigin mtlOrigin) {
+static inline VkOffset3D mvkVkOffset3DFromMTLOrigin(MTLOrigin mtlOrigin) {
 	return { (int32_t)mtlOrigin.x, (int32_t)mtlOrigin.y, (int32_t)mtlOrigin.z };
 }
 

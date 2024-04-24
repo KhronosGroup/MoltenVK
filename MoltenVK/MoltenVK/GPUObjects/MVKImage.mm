@@ -191,7 +191,7 @@ void MVKImagePlane::initSubresources(const VkImageCreateInfo* pCreateInfo) {
 // Returns a pointer to the internal subresource for the specified MIP level layer.
 MVKImageSubresource* MVKImagePlane::getSubresource(uint32_t mipLevel, uint32_t arrayLayer) {
     uint32_t srIdx = (mipLevel * _image->_arrayLayers) + arrayLayer;
-    return (srIdx < _subresources.size()) ? &_subresources[srIdx] : NULL;
+    return (srIdx < _subresources.size()) ? &_subresources[srIdx] : nullptr;
 }
 
 // Updates the contents of the underlying MTLTexture, corresponding to the
@@ -219,8 +219,8 @@ void MVKImagePlane::updateMTLTextureContent(MVKImageSubresource& subresource,
 #if MVK_MACOS
     std::unique_ptr<char[]> decompBuffer;
     if (_image->_is3DCompressed) {
-        // We cannot upload the texture data directly in this case. But we
-        // can upload the decompressed image data.
+        // We cannot upload the texture data directly in this case.
+		// But we can upload the decompressed image data.
         std::unique_ptr<MVKCodec> codec = mvkCreateCodec(_image->getVkFormat());
         if (!codec) {
             _image->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "A 3D texture used a compressed format that MoltenVK does not yet support.");
@@ -561,6 +561,190 @@ void MVKImage::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
     }
 }
 
+template<typename ImgRgn>
+static MTLRegion getMTLRegion(const ImgRgn& imgRgn) {
+	return { mvkMTLOriginFromVkOffset3D(imgRgn.imageOffset), mvkMTLSizeFromVkExtent3D(imgRgn.imageExtent) };
+}
+
+// Host-copy from a MTLTexture to memory.
+VkResult MVKImage::copyContent(id<MTLTexture> mtlTex,
+							   VkImageToMemoryCopyEXT imgRgn, uint32_t mipLevel, uint32_t slice,
+							   void* pImgBytes, size_t rowPitch, size_t depthPitch) {
+	[mtlTex getBytes: pImgBytes
+		 bytesPerRow: rowPitch
+	   bytesPerImage: depthPitch
+		  fromRegion: getMTLRegion(imgRgn)
+		 mipmapLevel: mipLevel
+			   slice: slice];
+	return VK_SUCCESS;
+}
+
+// Host-copy from memory to a MTLTexture.
+VkResult MVKImage::copyContent(id<MTLTexture> mtlTex,
+							   VkMemoryToImageCopyEXT imgRgn, uint32_t mipLevel, uint32_t slice,
+							   void* pImgBytes, size_t rowPitch, size_t depthPitch) {
+	VkSubresourceLayout imgLayout = { 0, 0, rowPitch, 0, depthPitch};
+#if MVK_MACOS
+	// Compressed content cannot be directly uploaded to a compressed 3D texture.
+	// But we can upload the decompressed image data.
+	std::unique_ptr<char[]> decompBuffer;
+	if (_is3DCompressed) {
+		std::unique_ptr<MVKCodec> codec = mvkCreateCodec(getPixelFormats()->getVkFormat(mtlTex.pixelFormat));
+		if ( !codec ) { return reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "A 3D texture used a compressed format that MoltenVK does not yet support."); }
+		VkSubresourceLayout linearLayout = {};
+		linearLayout.rowPitch = 4 * imgRgn.imageExtent.width;
+		linearLayout.depthPitch = linearLayout.rowPitch * imgRgn.imageExtent.height;
+		linearLayout.size = linearLayout.depthPitch * imgRgn.imageExtent.depth;
+		decompBuffer = std::unique_ptr<char[]>(new char[linearLayout.size]);
+		codec->decompress(decompBuffer.get(), pImgBytes, linearLayout, imgLayout, imgRgn.imageExtent);
+		pImgBytes = decompBuffer.get();
+		imgLayout = linearLayout;
+	}
+#endif
+	[mtlTex replaceRegion: getMTLRegion(imgRgn)
+			  mipmapLevel: mipLevel
+					slice: slice
+				withBytes: pImgBytes
+			  bytesPerRow: imgLayout.rowPitch
+			bytesPerImage: imgLayout.depthPitch];
+	return VK_SUCCESS;
+}
+
+template<typename CopyInfo>
+VkResult MVKImage::copyContent(const CopyInfo* pCopyInfo) {
+	MVKPixelFormats* pixFmts = getPixelFormats();
+	VkImageType imgType = getImageType();
+	bool is1D = imgType == VK_IMAGE_TYPE_1D;
+	bool is3D = imgType == VK_IMAGE_TYPE_3D;
+
+	for (uint32_t imgRgnIdx = 0; imgRgnIdx < pCopyInfo->regionCount; imgRgnIdx++) {
+		auto& imgRgn = pCopyInfo->pRegions[imgRgnIdx];
+		auto& imgSubRez = imgRgn.imageSubresource;
+
+		id<MTLTexture> mtlTex = getMTLTexture(getPlaneFromVkImageAspectFlags(imgSubRez.aspectMask));
+		MTLPixelFormat mtlPixFmt = mtlTex.pixelFormat;
+		bool isPVRTC = pixFmts->isPVRTCFormat(mtlPixFmt);
+
+		uint32_t texelsWidth = imgRgn.memoryRowLength ? imgRgn.memoryRowLength : imgRgn.imageExtent.width;
+		uint32_t texelsHeight = imgRgn.memoryImageHeight ? imgRgn.memoryImageHeight : imgRgn.imageExtent.height;
+		uint32_t texelsDepth = imgRgn.imageExtent.depth;
+		size_t rowPitch = pixFmts->getBytesPerRow(mtlPixFmt, texelsWidth);
+		size_t depthPitch = pixFmts->getBytesPerLayer(mtlPixFmt, rowPitch, texelsHeight);
+		size_t arrayPitch = depthPitch * texelsDepth;
+
+		for (uint32_t imgLyrIdx = 0; imgLyrIdx < imgSubRez.layerCount; imgLyrIdx++) {
+			VkResult rslt = copyContent(mtlTex,
+										imgRgn,
+										imgSubRez.mipLevel,
+										imgSubRez.baseArrayLayer + imgLyrIdx,
+										(void*)((uintptr_t)imgRgn.pHostPointer + (arrayPitch * imgLyrIdx)),
+										(isPVRTC || is1D) ? 0 : rowPitch,
+										(isPVRTC || !is3D) ? 0 : depthPitch);
+			if (rslt) { return rslt; }
+		}
+	}
+	return VK_SUCCESS;
+}
+
+// Host-copy content between images by allocating a temporary memory buffer, copying into it from the
+// source image, and then copying from the memory buffer into the destination image, all using the CPU.
+VkResult MVKImage::copyImageToImage(const VkCopyImageToImageInfoEXT* pCopyImageToImageInfo) {
+	for (uint32_t imgRgnIdx = 0; imgRgnIdx < pCopyImageToImageInfo->regionCount; imgRgnIdx++) {
+		auto& imgRgn = pCopyImageToImageInfo->pRegions[imgRgnIdx];
+
+		// Create a temporary memory buffer to copy the image region content.
+		MVKImage* srcMVKImg = (MVKImage*)pCopyImageToImageInfo->srcImage;
+		MVKPixelFormats* pixFmts = srcMVKImg->getPixelFormats();
+		MTLPixelFormat srcMTLPixFmt = srcMVKImg->getMTLPixelFormat(getPlaneFromVkImageAspectFlags(imgRgn.srcSubresource.aspectMask));
+		size_t rowPitch = pixFmts->getBytesPerRow(srcMTLPixFmt, imgRgn.extent.width);
+		size_t depthPitch = pixFmts->getBytesPerLayer(srcMTLPixFmt, rowPitch, imgRgn.extent.height);
+		size_t arrayPitch = depthPitch * imgRgn.extent.depth;
+		size_t rgnSizeInBytes = arrayPitch * imgRgn.srcSubresource.layerCount;
+		auto xfrBuffer = unique_ptr<char[]>(new char[rgnSizeInBytes]);
+		void* pImgBytes = xfrBuffer.get();
+
+		// Host-copy the source image content into the memory buffer using the CPU.
+		VkImageToMemoryCopyEXT srcCopy = {
+			VK_STRUCTURE_TYPE_IMAGE_TO_MEMORY_COPY_EXT,
+			nullptr,
+			pImgBytes,
+			0,
+			0,
+			imgRgn.srcSubresource,
+			imgRgn.srcOffset,
+			imgRgn.extent
+		};
+		VkCopyImageToMemoryInfoEXT srcCopyInfo = {
+			VK_STRUCTURE_TYPE_COPY_IMAGE_TO_MEMORY_INFO_EXT,
+			nullptr,
+			pCopyImageToImageInfo->flags,
+			pCopyImageToImageInfo->srcImage,
+			pCopyImageToImageInfo->srcImageLayout,
+			1,
+			&srcCopy
+		};
+		srcMVKImg->copyContent(&srcCopyInfo);
+
+		// Host-copy the image content from the memory buffer into the destination image using the CPU.
+		MVKImage* dstMVKImg = (MVKImage*)pCopyImageToImageInfo->dstImage;
+		VkMemoryToImageCopyEXT dstCopy = {
+			VK_STRUCTURE_TYPE_MEMORY_TO_IMAGE_COPY_EXT,
+			nullptr,
+			pImgBytes,
+			0,
+			0,
+			imgRgn.dstSubresource,
+			imgRgn.dstOffset,
+			imgRgn.extent
+		};
+		VkCopyMemoryToImageInfoEXT dstCopyInfo = {
+			VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INFO_EXT,
+			nullptr,
+			pCopyImageToImageInfo->flags,
+			pCopyImageToImageInfo->dstImage,
+			pCopyImageToImageInfo->dstImageLayout,
+			1,
+			&dstCopy
+		};
+		dstMVKImg->copyContent(&dstCopyInfo);
+	}
+	return VK_SUCCESS;
+}
+
+VkResult MVKImage::copyImageToMemory(const VkCopyImageToMemoryInfoEXT* pCopyImageToMemoryInfo) {
+#if MVK_MACOS
+	// On macOS, if the device doesn't have unified memory, and the texture is using managed memory, we need
+	// to sync the managed memory from the GPU, so the texture content is accessible to be copied by the CPU.
+	if ( !getPhysicalDevice()->getHasUnifiedMemory() && getMTLStorageMode() == MTLStorageModeManaged ) {
+		@autoreleasepool {
+			id<MTLCommandBuffer> mtlCmdBuff = getDevice()->getAnyQueue()->getMTLCommandBuffer(kMVKCommandUseCopyImageToMemory);
+			id<MTLBlitCommandEncoder> mtlBlitEnc = [mtlCmdBuff blitCommandEncoder];
+
+			for (uint32_t imgRgnIdx = 0; imgRgnIdx < pCopyImageToMemoryInfo->regionCount; imgRgnIdx++) {
+				auto& imgRgn = pCopyImageToMemoryInfo->pRegions[imgRgnIdx];
+				auto& imgSubRez = imgRgn.imageSubresource;
+				id<MTLTexture> mtlTex = getMTLTexture(getPlaneFromVkImageAspectFlags(imgSubRez.aspectMask));
+				for (uint32_t imgLyrIdx = 0; imgLyrIdx < imgSubRez.layerCount; imgLyrIdx++) {
+					[mtlBlitEnc synchronizeTexture: mtlTex
+											 slice: imgSubRez.baseArrayLayer + imgLyrIdx
+											 level: imgSubRez.mipLevel];
+				}
+			}
+
+			[mtlBlitEnc endEncoding];
+			[mtlCmdBuff commit];
+			[mtlCmdBuff waitUntilCompleted];
+		}
+	}
+#endif
+
+	return copyContent(pCopyImageToMemoryInfo);
+}
+
+VkResult MVKImage::copyMemoryToImage(const VkCopyMemoryToImageInfoEXT* pCopyMemoryToImageInfo) {
+	return copyContent(pCopyMemoryToImageInfo);
+}
+
 VkImageType MVKImage::getImageType() { return mvkVkImageTypeFromMTLTextureType(_mtlTextureType); }
 
 bool MVKImage::getIsDepthStencil() { return getPixelFormats()->getFormatType(_vkFormat) == kMVKFormatDepthStencil; }
@@ -591,12 +775,37 @@ VkDeviceSize MVKImage::getBytesPerLayer(uint8_t planeIndex, uint32_t mipLevel) {
 
 VkResult MVKImage::getSubresourceLayout(const VkImageSubresource* pSubresource,
 										VkSubresourceLayout* pLayout) {
-    uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(pSubresource->aspectMask);
-    MVKImageSubresource* pImgRez = _planes[planeIndex]->getSubresource(pSubresource->mipLevel, pSubresource->arrayLayer);
-    if ( !pImgRez ) { return VK_INCOMPLETE; }
+	VkImageSubresource2KHR subresource2 = { VK_STRUCTURE_TYPE_IMAGE_SUBRESOURCE_2_KHR, nullptr, *pSubresource};
+	VkSubresourceLayout2KHR layout2 = { VK_STRUCTURE_TYPE_SUBRESOURCE_LAYOUT_2_KHR, nullptr, *pLayout};
+	VkResult rslt = getSubresourceLayout(&subresource2, &layout2);
+	*pLayout = layout2.subresourceLayout;
+	return rslt;
+}
 
-    *pLayout = pImgRez->layout;
-    return VK_SUCCESS;
+VkResult MVKImage::getSubresourceLayout(const VkImageSubresource2KHR* pSubresource,
+										VkSubresourceLayout2KHR* pLayout) {
+	pLayout->sType = VK_STRUCTURE_TYPE_SUBRESOURCE_LAYOUT_2_KHR;
+	VkSubresourceHostMemcpySizeEXT* pMemcpySize = nullptr;
+	for (auto* next = (VkBaseOutStructure*)pLayout->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_SUBRESOURCE_HOST_MEMCPY_SIZE_EXT: {
+				pMemcpySize = (VkSubresourceHostMemcpySizeEXT*)next;
+				break;
+			}
+			default:
+				break;
+		}
+	}
+
+	uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(pSubresource->imageSubresource.aspectMask);
+	MVKImageSubresource* pImgRez = _planes[planeIndex]->getSubresource(pSubresource->imageSubresource.mipLevel, 
+																	   pSubresource->imageSubresource.arrayLayer);
+	if ( !pImgRez ) { return VK_INCOMPLETE; }
+
+	pLayout->subresourceLayout = pImgRez->layout;
+	if (pMemcpySize) { pMemcpySize->size = pImgRez->layout.size; }
+
+	return VK_SUCCESS;
 }
 
 void MVKImage::getTransferDescriptorData(MVKImageDescriptorData& imgData) {
@@ -643,21 +852,30 @@ void MVKImage::applyImageMemoryBarrier(MVKPipelineBarrier& barrier,
 }
 
 VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements, uint8_t planeIndex) {
+	MVKPhysicalDevice* mvkPD = getPhysicalDevice();
+	VkImageUsageFlags combinedUsage = getCombinedUsage();
+
     pMemoryRequirements->memoryTypeBits = (_isDepthStencilAttachment)
-                                          ? getPhysicalDevice()->getPrivateMemoryTypes()
-                                          : getPhysicalDevice()->getAllMemoryTypes();
+                                          ? mvkPD->getPrivateMemoryTypes()
+                                          : mvkPD->getAllMemoryTypes();
 #if MVK_MACOS
     // Metal on macOS does not provide native support for host-coherent memory, but Vulkan requires it for Linear images
     if ( !_isLinear ) {
-        mvkDisableFlags(pMemoryRequirements->memoryTypeBits, getPhysicalDevice()->getHostCoherentMemoryTypes());
+        mvkDisableFlags(pMemoryRequirements->memoryTypeBits, mvkPD->getHostCoherentMemoryTypes());
     }
 #endif
+
+	// If the image can be used in a host-copy transfer, the memory cannot be private.
+	if (mvkIsAnyFlagEnabled(combinedUsage, VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT)) {
+		mvkDisableFlags(pMemoryRequirements->memoryTypeBits, mvkPD->getPrivateMemoryTypes());
+	}
+
     // Only transient attachments may use memoryless storage.
 	// Using memoryless as an input attachment requires shader framebuffer fetch, which MoltenVK does not support yet.
 	// TODO: support framebuffer fetch so VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT uses color(m) in shader instead of setFragmentTexture:, which crashes Metal
-    if (!mvkIsAnyFlagEnabled(getCombinedUsage(), VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ||
-		 mvkIsAnyFlagEnabled(getCombinedUsage(), VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) ) {
-        mvkDisableFlags(pMemoryRequirements->memoryTypeBits, getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
+    if (!mvkIsAnyFlagEnabled(combinedUsage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ||
+		 mvkIsAnyFlagEnabled(combinedUsage, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) ) {
+        mvkDisableFlags(pMemoryRequirements->memoryTypeBits, mvkPD->getLazilyAllocatedMemoryTypes());
     }
 
     return getMemoryBinding(planeIndex)->getMemoryRequirements(pMemoryRequirements);

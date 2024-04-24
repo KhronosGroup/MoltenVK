@@ -18,6 +18,8 @@ MoltenVK 1.2.9
 
 Released TBD
 
+- Add support for extensions:
+	- `VK_EXT_host_image_copy`
 - To support legacy apps, restore `MoltenVK/dylib` directory via symlink to `MoltenVK/dynamic/dylib`.
 - Add `MVKPerformanceTracker::previous` to track latest-but-one performance measurements.
 - Fix crash when using `VK_EXT_metal_objects` under _ARC_.

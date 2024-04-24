@@ -195,6 +195,7 @@ NSString* MVKQueue::getMTLCommandBufferLabel(MVKCommandUse cmdUse) {
 		CASE_GET_LABEL(DeviceWaitIdle);
 		CASE_GET_LABEL(AcquireNextImage);
 		CASE_GET_LABEL(InvalidateMappedMemoryRanges);
+		CASE_GET_LABEL(CopyImageToMemory);
 		default:
 			MVKAssert(false, "Uncached MTLCommandBuffer label for command use %s.", mvkVkCommandName(cmdUse));
 			return [NSString stringWithFormat: @"%s MTLCommandBuffer on Queue %d-%d", mvkVkCommandName(cmdUse), _queueFamily->getIndex(), _index];

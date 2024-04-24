@@ -3902,6 +3902,65 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateHeadlessSurfaceEXT(
 
 
 #pragma mark -
+#pragma mark VK_EXT_host_image_copy extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyImageToImageEXT(
+    VkDevice                                    device,
+    const VkCopyImageToImageInfoEXT*            pCopyImageToImageInfo) {
+
+	MVKTraceVulkanCallStart();
+	VkResult rslt = MVKImage::copyImageToImage(pCopyImageToImageInfo);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyImageToMemoryEXT(
+    VkDevice                                    device,
+    const VkCopyImageToMemoryInfoEXT*           pCopyImageToMemoryInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKImage* srcImg = (MVKImage*)pCopyImageToMemoryInfo->srcImage;
+	VkResult rslt = srcImg->copyImageToMemory(pCopyImageToMemoryInfo);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyMemoryToImageEXT(
+    VkDevice                                    device,
+	const VkCopyMemoryToImageInfoEXT*           pCopyMemoryToImageInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKImage* dstImg = (MVKImage*)pCopyMemoryToImageInfo->dstImage;
+	VkResult rslt = dstImg->copyMemoryToImage(pCopyMemoryToImageInfo);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void  vkGetImageSubresourceLayout2EXT(
+    VkDevice                                    device,
+    VkImage                                     image,
+    const VkImageSubresource2KHR*               pSubresource,
+    VkSubresourceLayout2KHR*                    pLayout) {
+
+	MVKTraceVulkanCallStart();
+	MVKImage* mvkImg = (MVKImage*)image;
+	mvkImg->getSubresourceLayout(pSubresource, pLayout);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkTransitionImageLayoutEXT(
+    VkDevice                                    device,
+    uint32_t                                    transitionCount,
+    const VkHostImageLayoutTransitionInfoEXT*   pTransitions) {
+
+	MVKTraceVulkanCallStart();
+	// Metal lacks the concept of image layouts, so nothing to do.
+	MVKTraceVulkanCallEnd();
+	return VK_SUCCESS;
+}
+
+
+#pragma mark -
 #pragma mark VK_EXT_host_query_reset extension
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkResetQueryPool, EXT);

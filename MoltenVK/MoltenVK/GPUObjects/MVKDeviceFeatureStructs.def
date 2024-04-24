@@ -69,6 +69,7 @@ MVK_DEVICE_FEATURE_EXTN(ExtendedDynamicState,         EXTENDED_DYNAMIC_STATE,   
 MVK_DEVICE_FEATURE_EXTN(ExtendedDynamicState2,        EXTENDED_DYNAMIC_STATE_2,        EXT,   3)
 MVK_DEVICE_FEATURE_EXTN(ExtendedDynamicState3,        EXTENDED_DYNAMIC_STATE_3,        EXT,  31)
 MVK_DEVICE_FEATURE_EXTN(FragmentShaderInterlock,      FRAGMENT_SHADER_INTERLOCK,       EXT,   3)
+MVK_DEVICE_FEATURE_EXTN(HostImageCopy,                HOST_IMAGE_COPY,                 EXT,   1)
 MVK_DEVICE_FEATURE_EXTN(PipelineCreationCacheControl, PIPELINE_CREATION_CACHE_CONTROL, EXT,   1)
 MVK_DEVICE_FEATURE_EXTN(Robustness2,                  ROBUSTNESS_2,                    EXT,   3)
 MVK_DEVICE_FEATURE_EXTN(ShaderAtomicFloat,            SHADER_ATOMIC_FLOAT,             EXT,  12)
