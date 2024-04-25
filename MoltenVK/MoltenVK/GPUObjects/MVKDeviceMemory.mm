@@ -84,7 +84,7 @@ VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size) 
 	if (memSize == 0 || !isMemoryHostAccessible()) { return VK_SUCCESS; }
 
 #if MVK_MACOS
-	if (_mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {
+	if ( !isUnifiedMemoryGPU() && _mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {
 		[_mtlBuffer didModifyRange: NSMakeRange(offset, memSize)];
 	}
 #endif
@@ -106,7 +106,7 @@ VkResult MVKDeviceMemory::pullFromDevice(VkDeviceSize offset,
 	if (memSize == 0 || !isMemoryHostAccessible()) { return VK_SUCCESS; }
 
 #if MVK_MACOS
-	if (pBlitEnc && _mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {
+	if ( !isUnifiedMemoryGPU() && pBlitEnc && _mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {
 		if ( !pBlitEnc->mtlCmdBuffer) { pBlitEnc->mtlCmdBuffer = _device->getAnyQueue()->getMTLCommandBuffer(kMVKCommandUseInvalidateMappedMemoryRanges); }
 		if ( !pBlitEnc->mtlBlitEncoder) { pBlitEnc->mtlBlitEncoder = [pBlitEnc->mtlCmdBuffer blitCommandEncoder]; }
 		[pBlitEnc->mtlBlitEncoder synchronizeResource: _mtlBuffer];
@@ -285,7 +285,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 	// Set Metal memory parameters
 	_vkMemAllocFlags = 0;
 	_vkMemPropFlags = _device->_pMemoryProperties->memoryTypes[pAllocateInfo->memoryTypeIndex].propertyFlags;
-	_mtlStorageMode = mvkMTLStorageModeFromVkMemoryPropertyFlags(_vkMemPropFlags);
+	_mtlStorageMode = getPhysicalDevice()->getMTLStorageModeFromVkMemoryPropertyFlags(_vkMemPropFlags);
 	_mtlCPUCacheMode = mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(_vkMemPropFlags);
 
 	_allocationSize = pAllocateInfo->allocationSize;

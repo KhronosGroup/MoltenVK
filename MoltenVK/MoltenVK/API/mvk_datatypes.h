@@ -482,9 +482,6 @@ static inline VkExtent3D mvkVkExtent3DFromMTLSize(MTLSize mtlSize) {
 /** Macro indicating the Vulkan memory type bits corresponding to Metal memoryless memory (not host visible and lazily allocated). */
 #define MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS	(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT)
 
-/** Returns the Metal storage mode corresponding to the specified Vulkan memory flags. */
-MTLStorageMode mvkMTLStorageModeFromVkMemoryPropertyFlags(VkMemoryPropertyFlags vkFlags);
-
 /** Returns the Metal CPU cache mode corresponding to the specified Vulkan memory flags. */
 MTLCPUCacheMode mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(VkMemoryPropertyFlags vkFlags);
 
