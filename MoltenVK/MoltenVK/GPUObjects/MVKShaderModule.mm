@@ -75,14 +75,13 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 
 	if ( !_mtlLibrary ) { return MVKMTLFunctionNull; }
 
-	@synchronized (_owner->getMTLDevice()) {
+	@synchronized (getMTLDevice()) {
 		@autoreleasepool {
 			NSString* mtlFuncName = @(_shaderConversionResultInfo.entryPoint.mtlFunctionName.c_str());
-			MVKDevice* mvkDev = _owner->getDevice();
 
-			uint64_t startTime = pShaderFeedback ? mvkGetTimestamp() : mvkDev->getPerformanceTimestamp();
+			uint64_t startTime = pShaderFeedback ? mvkGetTimestamp() : getPerformanceTimestamp();
 			id<MTLFunction> mtlFunc = [[_mtlLibrary newFunctionWithName: mtlFuncName] autorelease];
-			mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
+			addPerformanceInterval(getPerformanceStats().shaderCompilation.functionRetrieval, startTime);
 			if (pShaderFeedback) {
 				if (mtlFunc) {
 					mvkEnableFlags(pShaderFeedback->flags, VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT);
@@ -94,7 +93,7 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 				// If the Metal device supports shader specialization, and the Metal function expects to be specialized,
 				// populate Metal function constant values from the Vulkan specialization info, and compile a specialized
 				// Metal function, otherwise simply use the unspecialized Metal function.
-				if (mvkDev->_pMetalFeatures->shaderSpecialization) {
+				if (getMetalFeatures().shaderSpecialization) {
 					NSArray<MTLFunctionConstant*>* mtlFCs = mtlFunc.functionConstantsDictionary.allValues;
 					if (mtlFCs.count > 0) {
 						// The Metal shader contains function constants and expects to be specialized.
@@ -155,22 +154,23 @@ void MVKShaderLibrary::setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
 
 // Sets the cached MSL source code, after first compressing it.
 void MVKShaderLibrary::compressMSL(const string& msl) {
-	MVKDevice* mvkDev = _owner->getDevice();
-	uint64_t startTime = mvkDev->getPerformanceTimestamp();
+	uint64_t startTime = getPerformanceTimestamp();
 	_compressedMSL.compress(msl, getMVKConfig().shaderSourceCompressionAlgorithm);
-	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.shaderCompilation.mslCompress, startTime);
+	addPerformanceInterval(getPerformanceStats().shaderCompilation.mslCompress, startTime);
 }
 
 // Decompresses the cached MSL into the string.
 void MVKShaderLibrary::decompressMSL(string& msl) {
-	MVKDevice* mvkDev = _owner->getDevice();
-	uint64_t startTime = mvkDev->getPerformanceTimestamp();
+	uint64_t startTime = getPerformanceTimestamp();
 	_compressedMSL.decompress(msl);
-	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.shaderCompilation.mslDecompress, startTime);
+	addPerformanceInterval(getPerformanceStats().shaderCompilation.mslDecompress, startTime);
 }
 
 MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
-								   const SPIRVToMSLConversionResult& conversionResult) : _owner(owner) {
+								   const SPIRVToMSLConversionResult& conversionResult) :
+	MVKBaseDeviceObject(owner->getDevice()),
+	_owner(owner) {
+
 	_shaderConversionResultInfo = conversionResult.resultInfo;
 	compressMSL(conversionResult.msl);
 	compileLibrary(conversionResult.msl);
@@ -178,7 +178,10 @@ MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 
 MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 								   const SPIRVToMSLConversionResultInfo& resultInfo,
-								   const MVKCompressor<std::string> compressedMSL) : _owner(owner) {
+								   const MVKCompressor<std::string> compressedMSL) :
+	MVKBaseDeviceObject(owner->getDevice()),
+	_owner(owner) {
+
 	_shaderConversionResultInfo = resultInfo;
 	_compressedMSL = compressedMSL;
 	string msl;
@@ -196,24 +199,28 @@ void MVKShaderLibrary::compileLibrary(const string& msl) {
 
 MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
                                    const void* mslCompiledCodeData,
-                                   size_t mslCompiledCodeLength) : _owner(owner) {
-	MVKDevice* mvkDev = _owner->getDevice();
-    uint64_t startTime = mvkDev->getPerformanceTimestamp();
+                                   size_t mslCompiledCodeLength) :
+	MVKBaseDeviceObject(owner->getDevice()),
+	_owner(owner) {
+
+    uint64_t startTime = getPerformanceTimestamp();
     @autoreleasepool {
         dispatch_data_t shdrData = dispatch_data_create(mslCompiledCodeData,
                                                         mslCompiledCodeLength,
                                                         NULL,
                                                         DISPATCH_DATA_DESTRUCTOR_DEFAULT);
         NSError* err = nil;
-        _mtlLibrary = [mvkDev->getMTLDevice() newLibraryWithData: shdrData error: &err];    // retained
+        _mtlLibrary = [getMTLDevice() newLibraryWithData: shdrData error: &err];    // retained
         handleCompilationError(err, "Compiled shader module creation");
         [shdrData release];
     }
-    mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.shaderCompilation.mslLoad, startTime);
+	addPerformanceInterval(getPerformanceStats().shaderCompilation.mslLoad, startTime);
 }
 
-MVKShaderLibrary::MVKShaderLibrary(const MVKShaderLibrary& other) {
-	_owner = other._owner;
+MVKShaderLibrary::MVKShaderLibrary(const MVKShaderLibrary& other) :
+	MVKBaseDeviceObject(other._device),
+	_owner(other._owner) {
+
 	_mtlLibrary = [other._mtlLibrary retain];
 	_shaderConversionResultInfo = other._shaderConversionResultInfo;
 	_compressedMSL = other._compressedMSL;
@@ -284,8 +291,7 @@ MVKShaderLibrary* MVKShaderLibraryCache::findShaderLibrary(SPIRVToMSLConversionC
 	for (auto& slPair : _shaderLibraries) {
 		if (slPair.first.matches(*pShaderConfig)) {
 			pShaderConfig->alignWith(slPair.first);
-			MVKDevice* mvkDev = _owner->getDevice();
-			mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.shaderCompilation.shaderLibraryFromCache, startTime);
+			addPerformanceInterval(getPerformanceStats().shaderCompilation.shaderLibraryFromCache, startTime);
 			if (pShaderFeedback) {
 				pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime);
 			}
@@ -337,7 +343,7 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration
 											   VkPipelineCreationFeedback* pShaderFeedback) {
 	MVKShaderLibrary* mvkLib = _directMSLLibrary;
 	if ( !mvkLib ) {
-		uint64_t startTime = pShaderFeedback ? mvkGetTimestamp() : _device->getPerformanceTimestamp();
+		uint64_t startTime = pShaderFeedback ? mvkGetTimestamp() : getPerformanceTimestamp();
 		MVKPipelineCache* pipelineCache = pipeline->getPipelineCache();
 		if (pipelineCache) {
 			mvkLib = pipelineCache->getShaderLibrary(pShaderConfig, this, pipeline, pShaderFeedback, startTime);
@@ -363,9 +369,9 @@ bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
 	if ( !_spvConverter.hasSPIRV() && _glslConverter.hasGLSL() ) {
 
 		GLSLToSPIRVConversionResult glslConversionResult;
-		uint64_t startTime = _device->getPerformanceTimestamp();
+		uint64_t startTime = getPerformanceTimestamp();
 		bool wasConverted = _glslConverter.convert(getMVKGLSLConversionShaderStage(pShaderConfig), glslConversionResult, shouldLogCode, false);
-		_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.glslToSPRIV, startTime);
+		addPerformanceInterval(getPerformanceStats().shaderCompilation.glslToSPRIV, startTime);
 
 		if (wasConverted) {
 			if (shouldLogCode) { MVKLogInfo("%s", glslConversionResult.resultLog.c_str()); }
@@ -376,9 +382,9 @@ bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
 		shouldLogEstimatedGLSL = false;
 	}
 
-	uint64_t startTime = _device->getPerformanceTimestamp();
+	uint64_t startTime = getPerformanceTimestamp();
 	bool wasConverted = _spvConverter.convert(*pShaderConfig, conversionResult, shouldLogCode, shouldLogCode, shouldLogEstimatedGLSL);
-	_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.spirvToMSL, startTime);
+	addPerformanceInterval(getPerformanceStats().shaderCompilation.spirvToMSL, startTime);
 
 	const char* dumpDir = getMVKConfig().shaderDumpDir;
 	if (dumpDir && *dumpDir) {
@@ -472,9 +478,9 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 		case kMVKMagicNumberSPIRVCode: {					// SPIR-V code
 			size_t spvCount = (codeSize + 3) >> 2;			// Round up if byte length not exactly on uint32_t boundary
 
-			uint64_t startTime = _device->getPerformanceTimestamp();
+			uint64_t startTime = getPerformanceTimestamp();
 			codeHash = mvkHash(pCreateInfo->pCode, spvCount);
-			_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.hashShaderCode, startTime);
+			addPerformanceInterval(getPerformanceStats().shaderCompilation.hashShaderCode, startTime);
 
 			_spvConverter.setSPIRV(pCreateInfo->pCode, spvCount);
 
@@ -485,10 +491,10 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 			char* pMSLCode = (char*)(uintptr_t(pCreateInfo->pCode) + hdrSize);
 			size_t mslCodeLen = codeSize - hdrSize;
 
-			uint64_t startTime = _device->getPerformanceTimestamp();
+			uint64_t startTime = getPerformanceTimestamp();
 			codeHash = mvkHash(&magicNum);
 			codeHash = mvkHash(pMSLCode, mslCodeLen, codeHash);
-			_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.hashShaderCode, startTime);
+			addPerformanceInterval(getPerformanceStats().shaderCompilation.hashShaderCode, startTime);
 
 			SPIRVToMSLConversionResult conversionResult;
 			conversionResult.msl = pMSLCode;
@@ -501,23 +507,23 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 			char* pMSLCode = (char*)(uintptr_t(pCreateInfo->pCode) + hdrSize);
 			size_t mslCodeLen = codeSize - hdrSize;
 
-			uint64_t startTime = _device->getPerformanceTimestamp();
+			uint64_t startTime = getPerformanceTimestamp();
 			codeHash = mvkHash(&magicNum);
 			codeHash = mvkHash(pMSLCode, mslCodeLen, codeHash);
-			_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.hashShaderCode, startTime);
+			addPerformanceInterval(getPerformanceStats().shaderCompilation.hashShaderCode, startTime);
 
 			_directMSLLibrary = new MVKShaderLibrary(this, (void*)(pMSLCode), mslCodeLen);
 
 			break;
 		}
 		default:											// Could be GLSL source code
-			if (_device->_enabledExtensions.vk_NV_glsl_shader.enabled) {
+			if (getEnabledExtensions().vk_NV_glsl_shader.enabled) {
 				const char* pGLSL = (char*)pCreateInfo->pCode;
 				size_t glslLen = codeSize - 1;
 
-				uint64_t startTime = _device->getPerformanceTimestamp();
+				uint64_t startTime = getPerformanceTimestamp();
 				codeHash = mvkHash(pGLSL, codeSize);
-				_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.hashShaderCode, startTime);
+				addPerformanceInterval(getPerformanceStats().shaderCompilation.hashShaderCode, startTime);
 
 				_glslConverter.setGLSL(pGLSL, glslLen);
 			} else {
@@ -542,9 +548,9 @@ id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode,
 	unique_lock<mutex> lock(_completionLock);
 
 	compile(lock, ^{
-		auto mtlDev = _owner->getMTLDevice();
+		auto mtlDev = getMTLDevice();
 		@synchronized (mtlDev) {
-			auto mtlCompileOptions = _owner->getDevice()->getMTLCompileOptions(shaderConversionResults.entryPoint.supportsFastMath,
+			auto mtlCompileOptions = getDevice()->getMTLCompileOptions(shaderConversionResults.entryPoint.supportsFastMath,
 																			   shaderConversionResults.isPositionInvariant);
 			MVKLogInfoIf(getMVKConfig().debugMode, "Compiling Metal shader%s.", mtlCompileOptions.fastMathEnabled ? " with FastMath enabled" : "");
 			[mtlDev newLibraryWithSource: mslSourceCode

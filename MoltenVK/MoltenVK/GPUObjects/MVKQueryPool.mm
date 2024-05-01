@@ -293,7 +293,7 @@ void MVKOcclusionQueryPool::beginQueryAddedTo(uint32_t query, MVKCommandBuffer* 
 	// In multiview passes, one query is used for each view.
 	NSUInteger queryCount = cmdBuffer->getViewCount();
     NSUInteger offset = getVisibilityResultOffset(query);
-    NSUInteger maxOffset = getDevice()->_pMetalFeatures->maxQueryBufferSize - kMVKQuerySlotSizeInBytes * queryCount;
+    NSUInteger maxOffset = getMetalFeatures().maxQueryBufferSize - kMVKQuerySlotSizeInBytes * queryCount;
     if (offset > maxOffset) {
         cmdBuffer->setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCmdBeginQuery(): The query offset value %lu is larger than the maximum offset value %lu available on this device.", offset, maxOffset));
     }
@@ -311,8 +311,9 @@ MVKOcclusionQueryPool::MVKOcclusionQueryPool(MVKDevice* device,
         _queryIndexOffset = 0;
 
         // Ensure we don't overflow the maximum number of queries
+		auto& mtlFeats = getMetalFeatures();
         VkDeviceSize reqBuffLen = (VkDeviceSize)pCreateInfo->queryCount * kMVKQuerySlotSizeInBytes;
-        VkDeviceSize maxBuffLen = _device->_pMetalFeatures->maxQueryBufferSize;
+        VkDeviceSize maxBuffLen = mtlFeats.maxQueryBufferSize;
         VkDeviceSize newBuffLen = min(reqBuffLen, maxBuffLen);
 
         if (reqBuffLen > maxBuffLen) {
@@ -321,7 +322,7 @@ MVKOcclusionQueryPool::MVKOcclusionQueryPool(MVKDevice* device,
 						uint32_t(newBuffLen / kMVKQuerySlotSizeInBytes));
         }
 
-        NSUInteger mtlBuffLen = mvkAlignByteCount(newBuffLen, _device->_pMetalFeatures->mtlBufferAlignment);
+        NSUInteger mtlBuffLen = mvkAlignByteCount(newBuffLen, mtlFeats.mtlBufferAlignment);
         MTLResourceOptions mtlBuffOpts = MTLResourceStorageModeShared | MTLResourceCPUCacheModeDefaultCache;
         _visibilityResultMTLBuffer = [getMTLDevice() newBufferWithLength: mtlBuffLen options: mtlBuffOpts];     // retained
 
@@ -463,7 +464,7 @@ MVKTimestampQueryPool::MVKTimestampQueryPool(MVKDevice* device, const VkQueryPoo
 
 MVKPipelineStatisticsQueryPool::MVKPipelineStatisticsQueryPool(MVKDevice* device,
 															   const VkQueryPoolCreateInfo* pCreateInfo) : MVKGPUCounterQueryPool(device, pCreateInfo) {
-	if ( !_device->_enabledFeatures.pipelineStatisticsQuery ) {
+	if ( !getEnabledFeatures().pipelineStatisticsQuery ) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateQueryPool: VK_QUERY_TYPE_PIPELINE_STATISTICS is not supported."));
 	}
 }

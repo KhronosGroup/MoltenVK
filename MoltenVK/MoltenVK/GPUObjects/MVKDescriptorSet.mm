@@ -98,7 +98,9 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
     if (!_isPushDescriptorLayout) return;
 
 	if (!cmdEncoder) { clearConfigurationResult(); }
-    for (const VkWriteDescriptorSet& descWrite : descriptorWrites) {
+
+	auto& enabledExtns = getEnabledExtensions();
+	for (const VkWriteDescriptorSet& descWrite : descriptorWrites) {
         uint32_t dstBinding = descWrite.dstBinding;
         uint32_t dstArrayElement = descWrite.dstArrayElement;
         uint32_t descriptorCount = descWrite.descriptorCount;
@@ -106,7 +108,7 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
         const VkDescriptorBufferInfo* pBufferInfo = descWrite.pBufferInfo;
         const VkBufferView* pTexelBufferView = descWrite.pTexelBufferView;
         const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
-        if (_device->_enabledExtensions.vk_EXT_inline_uniform_block.enabled) {
+        if (enabledExtns.vk_EXT_inline_uniform_block.enabled) {
 			for (const auto* next = (VkBaseInStructure*)descWrite.pNext; next; next = next->pNext) {
                 switch (next->sType) {
                 case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
@@ -489,7 +491,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 	VkResult rslt = VK_ERROR_OUT_OF_POOL_MEMORY;
 	NSUInteger mtlArgBuffAllocSize = mvkDSL->getMTLArgumentEncoder().mtlArgumentEncoderSize;
 	NSUInteger mtlArgBuffAlignedSize = mvkAlignByteCount(mtlArgBuffAllocSize,
-														 getDevice()->_pMetalFeatures->mtlBufferAlignment);
+														 getMetalFeatures().mtlBufferAlignment);
 
 	size_t dsCnt = _descriptorSetAvailablility.size();
 	_descriptorSetAvailablility.enumerateEnabledBits(true, [&](size_t dsIdx) {
@@ -713,7 +715,7 @@ MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCr
     _hasPooledDescriptors(getMVKConfig().preallocateDescriptors),		// Set this first! Accessed by MVKDescriptorSet constructor and getPoolSize() in following lines.
 	_descriptorSets(pCreateInfo->maxSets, MVKDescriptorSet(this)),
 	_descriptorSetAvailablility(pCreateInfo->maxSets, true),
-	_inlineBlockMTLBufferAllocator(device, device->_pMetalFeatures->dynamicMTLBufferSize, true),
+	_inlineBlockMTLBufferAllocator(device, getMetalFeatures().dynamicMTLBufferSize, true),
 	_uniformBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)),
 	_storageBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)),
 	_uniformBufferDynamicDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)),
@@ -735,6 +737,7 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 
 	if ( !isUsingDescriptorSetMetalArgumentBuffers() ) { return; }
 
+	auto& mtlFeats = getMetalFeatures();
 	@autoreleasepool {
 		NSUInteger mtlBuffCnt = 0;
 		NSUInteger mtlTexCnt = 0;
@@ -803,14 +806,14 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 		// the alignment of each descriptor set Metal argument buffer offset.
 		NSUInteger overheadPerDescSet = (2 * getMetalArgumentBufferResourceStorageSize(1, 1, 1) -
 										 getMetalArgumentBufferResourceStorageSize(2, 2, 2) +
-										 _device->_pMetalFeatures->mtlBufferAlignment);
+										 mtlFeats.mtlBufferAlignment);
 
 		// Measure the size of an argument buffer that would hold all of the resources
 		// managed in this pool, then add any overhead for all the descriptor sets.
 		NSUInteger metalArgBuffSize = getMetalArgumentBufferResourceStorageSize(mtlBuffCnt, mtlTexCnt, mtlSampCnt);
 		metalArgBuffSize += (overheadPerDescSet * (pCreateInfo->maxSets - 1));	// metalArgBuffSize already includes overhead for one descriptor set
 		if (metalArgBuffSize) {
-			NSUInteger maxMTLBuffSize = _device->_pMetalFeatures->maxMTLBufferSize;
+			NSUInteger maxMTLBuffSize = mtlFeats.maxMTLBufferSize;
 			if (metalArgBuffSize > maxMTLBuffSize) {
 				setConfigurationResult(reportError(VK_ERROR_FRAGMENTATION, "vkCreateDescriptorPool(): The requested descriptor storage of %d MB is larger than the maximum descriptor storage of %d MB per VkDescriptorPool.", (uint32_t)(metalArgBuffSize / MEBI), (uint32_t)(maxMTLBuffSize / MEBI)));
 				metalArgBuffSize = maxMTLBuffSize;
@@ -902,7 +905,7 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 		MVKDescriptorSet* dstSet = (MVKDescriptorSet*)pDescWrite->dstSet;
 
 		const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
-		if (dstSet->getDevice()->_enabledExtensions.vk_EXT_inline_uniform_block.enabled) {
+		if (dstSet->getEnabledExtensions().vk_EXT_inline_uniform_block.enabled) {
 			for (const auto* next = (VkBaseInStructure*)pDescWrite->pNext; next; next = next->pNext) {
 				switch (next->sType) {
 				case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {

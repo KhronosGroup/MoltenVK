@@ -139,7 +139,7 @@ VkResult MVKDeviceMemory::addBuffer(MVKBuffer* mvkBuff) {
 	}
 
 	if (!ensureMTLBuffer() ) {
-		return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind a VkBuffer to a VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a VkDeviceMemory that supports a VkBuffer is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize);
+		return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind a VkBuffer to a VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a VkDeviceMemory that supports a VkBuffer is %llu bytes.", _allocationSize, getMetalFeatures().maxMTLBufferSize);
 	}
 
 	// In the dedicated case, we already saved the buffer we're going to use.
@@ -183,7 +183,7 @@ bool MVKDeviceMemory::ensureMTLHeap() {
 	if (_isHostMemImported) { return true; }
 
 	// Don't bother if we don't have placement heaps.
-	if (!getDevice()->_pMetalFeatures->placementHeaps) { return true; }
+	if (!getMetalFeatures().placementHeaps) { return true; }
 
 	// Can't create MTLHeaps of zero size.
 	if (_allocationSize == 0) { return true; }
@@ -206,7 +206,7 @@ bool MVKDeviceMemory::ensureMTLHeap() {
 	// to untracked, since Vulkan uses explicit barriers anyway.
 	heapDesc.hazardTrackingMode = MTLHazardTrackingModeTracked;
 	heapDesc.size = _allocationSize;
-	_mtlHeap = [_device->getMTLDevice() newHeapWithDescriptor: heapDesc];	// retained
+	_mtlHeap = [getMTLDevice() newHeapWithDescriptor: heapDesc];	// retained
 	[heapDesc release];
 	if (!_mtlHeap) { return false; }
 
@@ -221,9 +221,9 @@ bool MVKDeviceMemory::ensureMTLBuffer() {
 
 	if (_mtlBuffer) { return true; }
 
-	NSUInteger memLen = mvkAlignByteCount(_allocationSize, _device->_pMetalFeatures->mtlBufferAlignment);
+	NSUInteger memLen = mvkAlignByteCount(_allocationSize, getMetalFeatures().mtlBufferAlignment);
 
-	if (memLen > _device->_pMetalFeatures->maxMTLBufferSize) { return false; }
+	if (memLen > getMetalFeatures().maxMTLBufferSize) { return false; }
 
 	// If host memory was already allocated, it is copied into the new MTLBuffer, and then released.
 	if (_mtlHeap) {
@@ -258,7 +258,7 @@ bool MVKDeviceMemory::ensureHostMemory() {
 	if (_pMemory) { return true; }
 
 	if ( !_pHostMemory) {
-		size_t memAlign = _device->_pMetalFeatures->mtlBufferAlignment;
+		size_t memAlign = getMetalFeatures().mtlBufferAlignment;
 		NSUInteger memLen = mvkAlignByteCount(_allocationSize, memAlign);
 		int err = posix_memalign(&_pHostMemory, memAlign, memLen);
 		if (err) { return false; }
@@ -284,7 +284,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 								 const VkAllocationCallbacks* pAllocator) : MVKVulkanAPIDeviceObject(device) {
 	// Set Metal memory parameters
 	_vkMemAllocFlags = 0;
-	_vkMemPropFlags = _device->_pMemoryProperties->memoryTypes[pAllocateInfo->memoryTypeIndex].propertyFlags;
+	_vkMemPropFlags = getDeviceMemoryProperties().memoryTypes[pAllocateInfo->memoryTypeIndex].propertyFlags;
 	_mtlStorageMode = getPhysicalDevice()->getMTLStorageModeFromVkMemoryPropertyFlags(_vkMemPropFlags);
 	_mtlCPUCacheMode = mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(_vkMemPropFlags);
 
@@ -359,13 +359,13 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 			if (!((MVKImage*)dedicatedImage)->_isLinear) {
 				setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkAllocateMemory(): Host-coherent VkDeviceMemory objects cannot be associated with optimal-tiling images."));
 			} else {
-				if (!_device->_pMetalFeatures->sharedLinearTextures) {
+				if (!getMetalFeatures().sharedLinearTextures) {
 					// Need to use the managed mode for images.
 					_mtlStorageMode = MTLStorageModeManaged;
 				}
 				// Nonetheless, we need a buffer to be able to map the memory at will.
 				if (!ensureMTLBuffer() ) {
-					setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkAllocateMemory(): Could not allocate a host-coherent VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize));
+					setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkAllocateMemory(): Could not allocate a host-coherent VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, getMetalFeatures().maxMTLBufferSize));
 				}
 			}
 		}
@@ -392,7 +392,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 	// If memory was imported, a MTLBuffer must be created on it.
 	// Or if a MTLBuffer will be exported, ensure it exists.
 	if ((isMemoryHostCoherent() || _isHostMemImported || willExportMTLBuffer) && !ensureMTLBuffer() ) {
-		setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkAllocateMemory(): Could not allocate a host-coherent or exportable VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize));
+		setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkAllocateMemory(): Could not allocate a host-coherent or exportable VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, getMetalFeatures().maxMTLBufferSize));
 	}
 }
 

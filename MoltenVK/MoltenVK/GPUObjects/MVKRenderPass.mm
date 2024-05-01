@@ -263,7 +263,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 	// Vulkan supports rendering without attachments, but older Metal does not.
 	// If Metal does not support rendering without attachments, create a dummy attachment to pass Metal validation.
 	if (caUsedCnt == 0 && depthRPAttIdx == VK_ATTACHMENT_UNUSED && stencilRPAttIdx == VK_ATTACHMENT_UNUSED) {
-        if (_renderPass->getDevice()->_pMetalFeatures->renderWithoutAttachments) {
+        if (_renderPass->getMetalFeatures().renderWithoutAttachments) {
             mtlRPDesc.defaultRasterSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_defaultSampleCount);
 		} else {
 			MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = mtlRPDesc.colorAttachments[0];
@@ -282,7 +282,7 @@ void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
                                           MVKArrayRef<MVKImageView*const> attachments,
                                           bool storeOverride) {
     if (!cmdEncoder->_mtlRenderEncoder) { return; }
-	if (!_renderPass->getDevice()->_pMetalFeatures->deferredStoreActions) { return; }
+	if (!_renderPass->getMetalFeatures().deferredStoreActions) { return; }
 
 	MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
     uint32_t caCnt = getColorAttachmentCount();
@@ -414,7 +414,7 @@ void MVKRenderSubpass::resolveUnresolvableAttachments(MVKCommandEncoder* cmdEnco
 				[mtlComputeEnc setTexture: caImgView->getMTLTexture() atIndex: 1];
 				MTLSize gridSize = mvkMTLSizeFromVkExtent3D(raImgView->getExtent3D());
 				MTLSize tgSize = MTLSizeMake(mtlRslvState.threadExecutionWidth, 1, 1);
-				if (cmdEncoder->getDevice()->_pMetalFeatures->nonUniformThreadgroups) {
+				if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
 					[mtlComputeEnc dispatchThreads: gridSize threadsPerThreadgroup: tgSize];
 				} else {
 					MTLSize tgCount = MTLSizeMake(gridSize.width / tgSize.width, gridSize.height, gridSize.depth);
@@ -676,7 +676,7 @@ bool MVKAttachmentDescription::populateMTLRenderPassAttachmentDescriptor(MTLRend
     // If the device supports late-specified store actions, we'll use those, and then set them later.
     // That way, if we wind up doing a tessellated draw, we can set the store action to store then,
     // and then when the render pass actually ends, we can use the true store action.
-    if ( _renderPass->getDevice()->_pMetalFeatures->deferredStoreActions ) {
+    if (_renderPass->getMetalFeatures().deferredStoreActions) {
         mtlAttDesc.storeAction = MTLStoreActionUnknown;
     } else {
 		// For a combined depth-stencil format in an attachment with VK_IMAGE_ASPECT_STENCIL_BIT,
@@ -777,7 +777,7 @@ MTLStoreAction MVKAttachmentDescription::getMTLStoreAction(MVKRenderSubpass* sub
 	}
 
 	// If a resolve attachment exists, this attachment must resolve once complete.
-    if (hasResolveAttachment && canResolveFormat && !_renderPass->getDevice()->_pMetalFeatures->combinedStoreResolveAction) {
+    if (hasResolveAttachment && canResolveFormat && !_renderPass->getMetalFeatures().combinedStoreResolveAction) {
         return MTLStoreActionMultisampleResolve;
     }
 	// Memoryless can't be stored.
@@ -926,7 +926,7 @@ MVKSubpassDependency::MVKSubpassDependency(const VkSubpassDependency2& spDep, co
 	viewOffset(spDep.viewOffset) {}
 
 VkExtent2D MVKRenderPass::getRenderAreaGranularity() {
-    if (_device->_pMetalFeatures->tileBasedDeferredRendering) {
+    if (getMetalFeatures().tileBasedDeferredRendering) {
         // This is the tile area.
         // FIXME: We really ought to use MTLRenderCommandEncoder.tile{Width,Height}, but that requires
         // creating a command buffer.

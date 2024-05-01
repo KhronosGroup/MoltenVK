@@ -32,7 +32,7 @@ using namespace std;
 
 id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPipelineState(MVKRPSKeyBlitImg& blitKey,
 																							MVKVulkanAPIDeviceObject* owner) {
-	bool isLayeredBlit = blitKey.dstSampleCount > 1 ? _device->_pMetalFeatures->multisampleLayeredRendering : _device->_pMetalFeatures->layeredRendering;
+	bool isLayeredBlit = blitKey.dstSampleCount > 1 ? getMetalFeatures().multisampleLayeredRendering : getMetalFeatures().layeredRendering;
 	id<MTLFunction> vtxFunc = newFunctionNamed(isLayeredBlit ? "vtxCmdBlitImageLayered" : "vtxCmdBlitImage");	// temp retain
 	id<MTLFunction> fragFunc = newBlitFragFunction(blitKey);													// temp retain
     MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];									// temp retain
@@ -188,7 +188,7 @@ static void getSwizzleString(char swizzleStr[4], VkComponentMapping vkMapping) {
 
 id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg& blitKey) {
 	@autoreleasepool {
-		bool isLayeredBlit = blitKey.dstSampleCount > 1 ? _device->_pMetalFeatures->multisampleLayeredRendering : _device->_pMetalFeatures->layeredRendering;
+		bool isLayeredBlit = blitKey.dstSampleCount > 1 ? getMetalFeatures().multisampleLayeredRendering : getMetalFeatures().layeredRendering;
 		NSString* typeStr = getMTLFormatTypeString(blitKey.getSrcMTLPixelFormat());
 
 		bool isArrayType = blitKey.isSrcArrayType();
@@ -228,7 +228,7 @@ id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg&
 		}
 		NSString* sliceArg = isArrayType ? (isLayeredBlit ? @", subRez.slice + varyings.v_layer" : @", subRez.slice") : @"";
 		NSString* srcFilter = isLinearFilter ? @"linear" : @"nearest";
-		if (!getDevice()->_pMetalFeatures->nativeTextureSwizzle) {
+		if (!getMetalFeatures().nativeTextureSwizzle) {
 			getSwizzleString(swizzleArg, blitKey.getSrcSwizzle());
 		}
 
@@ -620,11 +620,11 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newAccumulateOcclusionQue
 // Returns the retained MTLFunction with the name.
 // The caller is responsible for releasing the returned function object.
 id<MTLFunction> MVKCommandResourceFactory::newFunctionNamed(const char* funcName) {
-	uint64_t startTime = _device->getPerformanceTimestamp();
+	uint64_t startTime = getPerformanceTimestamp();
 	NSString* nsFuncName = [[NSString alloc] initWithUTF8String: funcName];		// temp retained
 	id<MTLFunction> mtlFunc = [_mtlLibrary newFunctionWithName: nsFuncName];	// retained
 	[nsFuncName release];														// temp release
-	_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
+	addPerformanceInterval(getPerformanceStats().shaderCompilation.functionRetrieval, startTime);
 	return mtlFunc;
 }
 
@@ -633,20 +633,20 @@ id<MTLFunction> MVKCommandResourceFactory::newMTLFunction(NSString* mslSrcCode, 
 		id<MTLFunction> mtlFunc = nil;
 		NSError* err = nil;
 
-		uint64_t startTime = _device->getPerformanceTimestamp();
+		uint64_t startTime = getPerformanceTimestamp();
 		id<MTLLibrary> mtlLib = [getMTLDevice() newLibraryWithSource: mslSrcCode
 															 options: getDevice()->getMTLCompileOptions()
 															   error: &err];	// temp retain
-		_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
+		addPerformanceInterval(getPerformanceStats().shaderCompilation.mslCompile, startTime);
 
 		if (err) {
 			reportError(VK_ERROR_INITIALIZATION_FAILED,
 						"Could not compile support shader from MSL source (Error code %li):\n%s\n%s",
 						(long)err.code, mslSrcCode.UTF8String, err.localizedDescription.UTF8String);
 		} else {
-			startTime = _device->getPerformanceTimestamp();
+			startTime = getPerformanceTimestamp();
 			mtlFunc = [mtlLib newFunctionWithName: funcName];
-			_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
+			addPerformanceInterval(getPerformanceStats().shaderCompilation.functionRetrieval, startTime);
 		}
 
 		[mtlLib release];														// temp release
@@ -685,12 +685,12 @@ MVKCommandResourceFactory::MVKCommandResourceFactory(MVKDevice* device) : MVKBas
 void MVKCommandResourceFactory::initMTLLibrary() {
     @autoreleasepool {
         NSError* err = nil;
-		uint64_t startTime = _device->getPerformanceTimestamp();
+		uint64_t startTime = getPerformanceTimestamp();
         _mtlLibrary = [getMTLDevice() newLibraryWithSource: _MVKStaticCmdShaderSource
                                                    options: getDevice()->getMTLCompileOptions()
                                                      error: &err];    // retained
 		MVKAssert( !err, "Could not compile command shaders (Error code %li):\n%s", (long)err.code, err.localizedDescription.UTF8String);
-		_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
+		addPerformanceInterval(getPerformanceStats().shaderCompilation.mslCompile, startTime);
     }
 }
 

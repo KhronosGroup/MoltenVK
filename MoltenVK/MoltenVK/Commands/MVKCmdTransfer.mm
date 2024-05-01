@@ -319,7 +319,7 @@ VkResult MVKCmdBlitImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 	_filter = filter;
 
-	bool isDestUnwritableLinear = MVK_MACOS && !cmdBuff->getDevice()->_pMetalFeatures->renderLinearTextures && _dstImage->getIsLinear();
+	bool isDestUnwritableLinear = MVK_MACOS && !cmdBuff->getMetalFeatures().renderLinearTextures && _dstImage->getIsLinear();
 
 	_vkImageBlits.clear();		// Clear for reuse
 	for (uint32_t rIdx = 0; rIdx < regionCount; rIdx++) {
@@ -350,7 +350,7 @@ VkResult MVKCmdBlitImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 
     _filter = pBlitImageInfo->filter;
 
-    bool isDestUnwritableLinear = MVK_MACOS && !cmdBuff->getDevice()->_pMetalFeatures->renderLinearTextures && _dstImage->getIsLinear();
+    bool isDestUnwritableLinear = MVK_MACOS && !cmdBuff->getMetalFeatures().renderLinearTextures && _dstImage->getIsLinear();
 
     _vkImageBlits.clear();        // Clear for reuse
     _vkImageBlits.reserve(pBlitImageInfo->regionCount);
@@ -457,6 +457,7 @@ void MVKCmdBlitImage<N>::populateVertices(MVKVertexPosTex* vertices, const VkIma
 template <size_t N>
 void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse commandUse) {
 
+	auto& mtlFeats = cmdEncoder->getMetalFeatures();
 	size_t vkIBCnt = _vkImageBlits.size();
 	VkImageCopy vkImageCopies[vkIBCnt];
 	MVKImageBlitRender mvkBlitRenders[vkIBCnt];
@@ -507,7 +508,7 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
         id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture(srcPlaneIndex);
         id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture(dstPlaneIndex);
         if (blitCnt && srcMTLTex && dstMTLTex) {
-			if (cmdEncoder->getDevice()->_pMetalFeatures->nativeTextureSwizzle &&
+			if (mtlFeats.nativeTextureSwizzle &&
 				_srcImage->needsSwizzle()) {
 				// Use a view that has a swizzle on it.
 				srcMTLTex = [srcMTLTex newTextureViewWithPixelFormat:srcMTLTex.pixelFormat
@@ -564,7 +565,7 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             blitKey.srcFilter = mvkMTLSamplerMinMagFilterFromVkFilter(_filter);
             blitKey.srcAspect = mvkIBR.region.srcSubresource.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
             blitKey.dstSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_dstImage->getSampleCount());
-			if (!cmdEncoder->getDevice()->_pMetalFeatures->nativeTextureSwizzle &&
+			if (!mtlFeats.nativeTextureSwizzle &&
 				_srcImage->needsSwizzle()) {
 				VkComponentMapping vkMapping = _srcImage->getPixelFormats()->getVkComponentMapping(_srcImage->getVkFormat());
 				blitKey.srcSwizzleR = vkMapping.r;
@@ -581,7 +582,7 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             mtlDepthAttDesc.level = mvkIBR.region.dstSubresource.mipLevel;
             mtlStencilAttDesc.level = mvkIBR.region.dstSubresource.mipLevel;
 
-            bool isLayeredBlit = blitKey.dstSampleCount > 1 ? cmdEncoder->getDevice()->_pMetalFeatures->multisampleLayeredRendering : cmdEncoder->getDevice()->_pMetalFeatures->layeredRendering;
+            bool isLayeredBlit = blitKey.dstSampleCount > 1 ? mtlFeats.multisampleLayeredRendering : mtlFeats.layeredRendering;
             
             uint32_t layCnt = mvkIBR.region.srcSubresource.layerCount;
             if (_dstImage->getMTLTextureType() == MTLTextureType3D) {
@@ -761,13 +762,14 @@ inline VkResult MVKCmdResolveImage<N>::validate(MVKCommandBuffer* cmdBuff, const
 template <size_t N>
 void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
+	auto& mtlFeats = cmdEncoder->getMetalFeatures();
 	size_t vkIRCnt = _vkImageResolves.size();
 	VkImageBlit expansionRegions[vkIRCnt];
 	VkImageCopy copyRegions[vkIRCnt];
 
 	// If we can do layered rendering to a multisample texture, I can resolve all the layers at once.
 	uint32_t layerCnt = 0;
-	if (cmdEncoder->getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
+	if (mtlFeats.multisampleLayeredRendering) {
 		layerCnt = (uint32_t)_vkImageResolves.size();
 	} else {
 		for (VkImageResolve2& vkIR : _vkImageResolves) { layerCnt += vkIR.dstSubresource.layerCount; }
@@ -820,7 +822,7 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		// direct resolve, but that of the DESTINATION if we need a temporary transfer image.
 		mtlResolveSlices[sliceCnt].dstSubresource = vkIR.dstSubresource;
 		mtlResolveSlices[sliceCnt].srcSubresource = needXfrImage ? vkIR.dstSubresource : vkIR.srcSubresource;
-		if (cmdEncoder->getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
+		if (mtlFeats.multisampleLayeredRendering) {
 			sliceCnt++;
 		} else {
 			uint32_t layCnt = vkIR.dstSubresource.layerCount;
@@ -961,7 +963,7 @@ void MVKCmdCopyBuffer<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	id<MTLBuffer> dstMTLBuff = _dstBuffer->getMTLBuffer();
 	NSUInteger dstMTLBuffOffset = _dstBuffer->getMTLBufferOffset();
 
-	VkDeviceSize buffAlign = cmdEncoder->getDevice()->_pMetalFeatures->mtlCopyBufferAlignment;
+	VkDeviceSize buffAlign = cmdEncoder->getMetalFeatures().mtlCopyBufferAlignment;
 
 	for (const auto& cpyRgn : _bufferCopyRegions) {
 		const bool useComputeCopy = buffAlign > 1 && (cpyRgn.srcOffset % buffAlign != 0 ||
@@ -1149,7 +1151,7 @@ void MVKCmdBufferImageCopy<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		// If we're copying to mip level 0, we can skip the copy and just decode
 		// directly into the image. Otherwise, we need to use an intermediate buffer.
         if (_toImage && _image->getIsCompressed() && mtlTexture.textureType == MTLTextureType3D &&
-            !cmdEncoder->getDevice()->_pMetalFeatures->native3DCompressedTextures) {
+            !cmdEncoder->getMetalFeatures().native3DCompressedTextures) {
 
             MVKCmdCopyBufferToImageInfo info;
             info.srcRowStride = bytesPerRow & 0xffffffff;
@@ -1496,7 +1498,7 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	// Apple GPUs do not support rendering/writing to an attachment and then reading from
 	// that attachment within a single Metal renderpass. So, if any of the attachments just
 	// cleared is an input attachment, we need to restart into separate Metal renderpasses.
-	if (cmdEncoder->getDevice()->_pMetalFeatures->tileBasedDeferredRendering) {
+	if (cmdEncoder->getMetalFeatures().tileBasedDeferredRendering) {
 		bool needsRenderpassRestart = false;
 		for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
 			if (_rpsKey.isAttachmentEnabled(caIdx) && subpass->isColorAttachmentAlsoInputAttachment(caIdx)) {
@@ -1562,7 +1564,7 @@ VkResult MVKCmdClearImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 
         // Validate
         MVKMTLFmtCaps mtlFmtCaps = cmdBuff->getPixelFormats()->getCapabilities(_image->getMTLPixelFormat(planeIndex));
-		bool isDestUnwritableLinear = MVK_MACOS && !cmdBuff->getDevice()->_pMetalFeatures->renderLinearTextures && _image->getIsLinear();
+		bool isDestUnwritableLinear = MVK_MACOS && !cmdBuff->getMetalFeatures().renderLinearTextures && _image->getIsLinear();
 		uint32_t reqCap = isDS ? kMVKMTLFmtCapsDSAtt : (isDestUnwritableLinear ? kMVKMTLFmtCapsWrite : kMVKMTLFmtCapsColorAtt);
         if (!mvkAreAllFlagsEnabled(mtlFmtCaps, reqCap)) {
             return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClear%sImage(): Format %s cannot be cleared on this device.", (isDS ? "DepthStencil" : "Color"), cmdBuff->getPixelFormats()->getName(_image->getVkFormat()));
@@ -1588,6 +1590,7 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
 	cmdEncoder->endCurrentMetalEncoding();
 
+	auto& mtlFeats = cmdEncoder->getMetalFeatures();
 	MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();
 	for (auto& srRange : _subresourceRanges) {
 		uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(srRange.aspectMask);
@@ -1595,7 +1598,7 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
         if ( !imgMTLTex ) { continue; }
 
 #if MVK_MACOS
-        if ( _image->getIsLinear() && !cmdEncoder->getDevice()->_pMetalFeatures->renderLinearTextures ) {
+        if (_image->getIsLinear() && !mtlFeats.renderLinearTextures) {
             // These images cannot be rendered. Instead, use a compute shader.
             // Luckily for us, linear images only have one mip and one array layer under Metal.
             assert( !isDS );
@@ -1608,7 +1611,7 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
             cmdEncoder->setComputeBytes(mtlComputeEnc, &_clearValue, sizeof(_clearValue), 0);
             MTLSize gridSize = mvkMTLSizeFromVkExtent3D(_image->getExtent3D());
             MTLSize tgSize = MTLSizeMake(mtlClearState.threadExecutionWidth, 1, 1);
-            if (cmdEncoder->getDevice()->_pMetalFeatures->nonUniformThreadgroups) {
+            if (mtlFeats.nonUniformThreadgroups) {
                 [mtlComputeEnc dispatchThreads: gridSize threadsPerThreadgroup: tgSize];
             } else {
                 MTLSize tgCount = MTLSizeMake(gridSize.width / tgSize.width, gridSize.height, gridSize.depth);
@@ -1681,8 +1684,7 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 			}
 
             // If we can do layered rendering, I can clear all the layers at once.
-            if (cmdEncoder->getDevice()->_pMetalFeatures->layeredRendering &&
-                (_image->getSampleCount() == VK_SAMPLE_COUNT_1_BIT || cmdEncoder->getDevice()->_pMetalFeatures->multisampleLayeredRendering)) {
+            if (mtlFeats.layeredRendering && (mtlFeats.multisampleLayeredRendering || _image->getSampleCount() == VK_SAMPLE_COUNT_1_BIT)) {
                 if (is3D) {
                     mtlRPCADesc.depthPlane = layerStart;
                     mtlRPDADesc.depthPlane = layerStart;

@@ -110,11 +110,13 @@ VkResult MVKCmdPipelineBarrier<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N>
 void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
+	
+	auto& mtlFeats = cmdEncoder->getMetalFeatures();
 
 #if MVK_MACOS
 	// Calls below invoke MTLBlitCommandEncoder so must apply this first.
 	// Check if pipeline barriers are available and we are in a renderpass.
-	if (cmdEncoder->getDevice()->_pMetalFeatures->memoryBarriers && cmdEncoder->_mtlRenderEncoder) {
+	if (mtlFeats.memoryBarriers && cmdEncoder->_mtlRenderEncoder) {
 		for (auto& b : _barriers) {
 			MTLRenderStages srcStages = mvkMTLRenderStagesFromVkPipelineStageFlags(b.srcStageMask, false);
 			MTLRenderStages dstStages = mvkMTLRenderStagesFromVkPipelineStageFlags(b.dstStageMask, true);
@@ -161,7 +163,7 @@ void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	// into separate Metal renderpasses. Since this is a potentially expensive operation,
 	// verify that at least one attachment is being used both as an input and render attachment
 	// by checking for a VK_IMAGE_LAYOUT_GENERAL layout.
-	if (cmdEncoder->_mtlRenderEncoder && cmdEncoder->getDevice()->_pMetalFeatures->tileBasedDeferredRendering) {
+	if (cmdEncoder->_mtlRenderEncoder && mtlFeats.tileBasedDeferredRendering) {
 		bool needsRenderpassRestart = false;
 		for (auto& b : _barriers) {
 			if (b.type == MVKPipelineBarrier::Image && b.newLayout == VK_IMAGE_LAYOUT_GENERAL) {
@@ -388,7 +390,7 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 	_pipelineLayout->retain();
 
 	// Add the descriptor writes
-	MVKDevice* mvkDvc = cmdBuff->getDevice();
+	auto& enabledExtns = cmdBuff->getEnabledExtensions();
 	clearDescriptorWrites();	// Clear for reuse
 	_descriptorWrites.reserve(descriptorWriteCount);
 	for (uint32_t dwIdx = 0; dwIdx < descriptorWriteCount; dwIdx++) {
@@ -410,7 +412,7 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 			std::copy_n(descWrite.pTexelBufferView, descWrite.descriptorCount, pNewTexelBufferView);
 			descWrite.pTexelBufferView = pNewTexelBufferView;
 		}
-        if (mvkDvc->_enabledExtensions.vk_EXT_inline_uniform_block.enabled) {
+        if (enabledExtns.vk_EXT_inline_uniform_block.enabled) {
             const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
 			for (const auto* next = (VkBaseInStructure*)descWrite.pNext; next; next = next->pNext) {
                 switch (next->sType) {

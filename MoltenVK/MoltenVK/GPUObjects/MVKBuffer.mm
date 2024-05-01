@@ -42,8 +42,9 @@ void MVKBuffer::propagateDebugName() {
 #pragma mark Resource memory
 
 VkResult MVKBuffer::getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements) {
-	if (_device->_pMetalFeatures->placementHeaps) {
-		MTLSizeAndAlign sizeAndAlign = [_device->getMTLDevice() heapBufferSizeAndAlignWithLength: getByteCount() options: MTLResourceStorageModePrivate];
+	if (getMetalFeatures().placementHeaps) {
+		MTLSizeAndAlign sizeAndAlign = [getMTLDevice() heapBufferSizeAndAlignWithLength: getByteCount() 
+																				options: MTLResourceStorageModePrivate];
 		pMemoryRequirements->size = sizeAndAlign.size;
 		pMemoryRequirements->alignment = sizeAndAlign.align;
 	} else {
@@ -82,7 +83,7 @@ VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOf
 #if MVK_MACOS
 	if (_deviceMemory) {
 		_isHostCoherentTexelBuffer = (!isUnifiedMemoryGPU() &&
-									  !_device->_pMetalFeatures->sharedLinearTextures &&
+									  !getMetalFeatures().sharedLinearTextures &&
 									  _deviceMemory->isMemoryHostCoherent() &&
 									  mvkIsAnyFlagEnabled(_usage, (VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
 																   VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)));
@@ -199,8 +200,8 @@ id<MTLBuffer> MVKBuffer::getMTLBufferCache() {
         lock_guard<mutex> lock(_lock);
         if (_mtlBufferCache) { return _mtlBufferCache; }
 
-        _mtlBufferCache = [_device->getMTLDevice() newBufferWithLength: getByteCount()
-                                                               options: MTLResourceStorageModeManaged];    // retained
+		_mtlBufferCache = [getMTLDevice() newBufferWithLength: getByteCount()
+													  options: MTLResourceStorageModeManaged];    // retained
         flushToDevice(_deviceMemoryOffset, _byteCount);
     }
 #endif
@@ -217,7 +218,7 @@ uint64_t MVKBuffer::getMTLBufferGPUAddress() {
 #pragma mark Construction
 
 MVKBuffer::MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo) : MVKResource(device), _usage(pCreateInfo->usage) {
-    _byteAlignment = _device->_pMetalFeatures->mtlBufferAlignment;
+    _byteAlignment = getMetalFeatures().mtlBufferAlignment;
     _byteCount = pCreateInfo->size;
 
 	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
@@ -284,7 +285,8 @@ void MVKBufferView::propagateDebugName() {
 #pragma mark Metal
 
 id<MTLTexture> MVKBufferView::getMTLTexture() {
-    if ( !_mtlTexture && _mtlPixelFormat && _device->_pMetalFeatures->texelBuffers) {
+	auto& mtlFeats = getMetalFeatures();
+    if ( !_mtlTexture && _mtlPixelFormat && mtlFeats.texelBuffers) {
 
 		// Lock and check again in case another thread has created the texture.
 		lock_guard<mutex> lock(_lock);
@@ -300,7 +302,7 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
         }
         id<MTLBuffer> mtlBuff;
         VkDeviceSize mtlBuffOffset;
-        if ( !_device->_pMetalFeatures->sharedLinearTextures && _buffer->isMemoryHostCoherent() ) {
+        if ( !mtlFeats.sharedLinearTextures && _buffer->isMemoryHostCoherent() ) {
             mtlBuff = _buffer->getMTLBufferCache();
             mtlBuffOffset = _offset;
         } else {
@@ -308,7 +310,7 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
             mtlBuffOffset = _buffer->getMTLBufferOffset() + _offset;
         }
         MTLTextureDescriptor* mtlTexDesc;
-        if ( _device->_pMetalFeatures->textureBuffers ) {
+        if ( mtlFeats.textureBuffers ) {
             mtlTexDesc = [MTLTextureDescriptor textureBufferDescriptorWithPixelFormat: _mtlPixelFormat
                                                                                 width: _textureSize.width
                                                                       resourceOptions: (mtlBuff.cpuCacheMode << MTLResourceCPUCacheModeShift) | (mtlBuff.storageMode << MTLResourceStorageModeShift)
@@ -347,10 +349,11 @@ MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pC
     if (byteCount == VK_WHOLE_SIZE) { byteCount = _buffer->getByteCount() - pCreateInfo->offset; }    // Remaining bytes in buffer
     size_t blockCount = byteCount / bytesPerBlock;
 
-	if ( !_device->_pMetalFeatures->textureBuffers ) {
+	auto& mtlFeats = getMetalFeatures();
+	if ( !mtlFeats.textureBuffers ) {
 		// But Metal requires the texture to be a 2D texture. Determine the number of 2D rows we need and their width.
 		// Multiple rows will automatically align with PoT max texture dimension, but need to align upwards if less than full single row.
-		size_t maxBlocksPerRow = _device->_pMetalFeatures->maxTextureDimension / fmtBlockSize.width;
+		size_t maxBlocksPerRow = mtlFeats.maxTextureDimension / fmtBlockSize.width;
 		size_t blocksPerRow = min(blockCount, maxBlocksPerRow);
 		_mtlBytesPerRow = mvkAlignByteCount(blocksPerRow * bytesPerBlock, _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this));
 
@@ -367,7 +370,7 @@ MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pC
 		_mtlBytesPerRow = mvkAlignByteCount(byteCount, _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this));
 	}
 
-    if ( !_device->_pMetalFeatures->texelBuffers ) {
+    if ( !mtlFeats.texelBuffers ) {
         setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Texel buffers are not supported on this device."));
     }
 }

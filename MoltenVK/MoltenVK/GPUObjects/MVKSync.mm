@@ -141,10 +141,10 @@ MVKSemaphoreMTLEvent::MVKSemaphoreMTLEvent(MVKDevice* device,
 		_mtlEvent = [pImportInfo->mtlSharedEvent retain];		// retained
 		_mtlEventValue = pImportInfo->mtlSharedEvent.signaledValue + 1;
 	} else if (pExportInfo && pExportInfo->exportObjectType == VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT) {
-		_mtlEvent = [device->getMTLDevice() newSharedEvent];	//retained
+		_mtlEvent = [getMTLDevice() newSharedEvent];	//retained
 		_mtlEventValue = ((id<MTLSharedEvent>)_mtlEvent).signaledValue + 1;
 	} else {
-		_mtlEvent = [device->getMTLDevice() newEvent];			//retained
+		_mtlEvent = [getMTLDevice() newEvent];			//retained
 		_mtlEventValue = 1;
 	}
 }
@@ -241,7 +241,7 @@ MVKTimelineSemaphoreMTLEvent::MVKTimelineSemaphoreMTLEvent(MVKDevice* device,
 	// Import or create a Metal event
 	_mtlEvent = (pImportInfo && pImportInfo->mtlSharedEvent
 				 ? [pImportInfo->mtlSharedEvent retain]
-				 : [device->getMTLDevice() newSharedEvent]);	//retained
+				 : [getMTLDevice() newSharedEvent]);	//retained
 
 	if (pTypeCreateInfo) {
 		_mtlEvent.signaledValue = pTypeCreateInfo->initialValue;
@@ -423,7 +423,7 @@ MVKEventNative::MVKEventNative(MVKDevice* device,
 	// Import or create a Metal event
 	_mtlEvent = (pImportInfo
 				 ? [pImportInfo->mtlSharedEvent retain]
-				 : [device->getMTLDevice() newSharedEvent]);	//retained
+				 : [getMTLDevice() newSharedEvent]);	//retained
 }
 
 MVKEventNative::~MVKEventNative() {
@@ -570,8 +570,7 @@ VkResult mvkWaitSemaphores(MVKDevice* device,
 void MVKMetalCompiler::compile(unique_lock<mutex>& lock, dispatch_block_t block) {
 	MVKAssert( _startTime == 0, "%s compile occurred already in this instance. Instances of %s should only be used for a single compile activity.", _compilerType.c_str(), getClassName().c_str());
 
-	MVKDevice* mvkDev = _owner->getDevice();
-	_startTime = mvkDev->getPerformanceTimestamp();
+	_startTime = getPerformanceTimestamp();
 
 	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{ @autoreleasepool { block(); } });
 
@@ -588,7 +587,7 @@ void MVKMetalCompiler::compile(unique_lock<mutex>& lock, dispatch_block_t block)
 
 	if (_compileError) { handleError(); }
 
-	mvkDev->addPerformanceInterval(*_pPerformanceTracker, _startTime);
+	addPerformanceInterval(*_pPerformanceTracker, _startTime);
 }
 
 void MVKMetalCompiler::handleError() {

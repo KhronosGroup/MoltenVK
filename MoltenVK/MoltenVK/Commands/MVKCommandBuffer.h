@@ -421,18 +421,6 @@ public:
 	/** Context for tracking information across multiple encodings. */
 	MVKCommandEncodingContext* _pEncodingContext;
 
-    /** A reference to the Metal features supported by the device. */
-    const MVKPhysicalDeviceMetalFeatures* _pDeviceMetalFeatures;
-
-    /** A reference to the Vulkan features supported by the device. */
-    const VkPhysicalDeviceFeatures* _pDeviceFeatures;
-
-    /** Pointer to the properties of the device. */
-    const VkPhysicalDeviceProperties* _pDeviceProperties;
-
-    /** Pointer to the memory properties of the device. */
-    const VkPhysicalDeviceMemoryProperties* _pDeviceMemoryProperties;
-
 	/** The command buffer whose commands are being encoded. */
 	MVKCommandBuffer* _cmdBuffer;
 
