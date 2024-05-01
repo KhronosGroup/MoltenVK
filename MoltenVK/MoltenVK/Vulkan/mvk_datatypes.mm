@@ -882,31 +882,6 @@ MVK_PUBLIC_SYMBOL CGRect mvkCGRectFromVkRectLayerKHR(VkRectLayerKHR vkRect) {
 #pragma mark -
 #pragma mark Memory options
 
-MVK_PUBLIC_SYMBOL MTLStorageMode mvkMTLStorageModeFromVkMemoryPropertyFlags(VkMemoryPropertyFlags vkFlags) {
-
-	// If not visible to the host, use Private, or Memoryless if available and lazily allocated.
-	if ( !mvkAreAllFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ) {
-#if MVK_APPLE_SILICON
-		if (mvkAreAllFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT)) {
-			return MTLStorageModeMemoryless;
-		}
-#endif
-		return MTLStorageModePrivate;
-	}
-
-	// If visible to the host and coherent: Shared
-	if (mvkAreAllFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
-		return MTLStorageModeShared;
-	}
-
-	// If visible to the host, and not coherent: Managed on macOS, Shared on iOS
-#if MVK_MACOS
-	return MTLStorageModeManaged;
-#else
-	return MTLStorageModeShared;
-#endif
-}
-
 MVK_PUBLIC_SYMBOL MTLCPUCacheMode mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(VkMemoryPropertyFlags vkFlags) {
 	return MTLCPUCacheModeDefaultCache;
 }

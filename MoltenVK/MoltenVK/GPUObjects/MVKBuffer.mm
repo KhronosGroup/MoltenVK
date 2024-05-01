@@ -81,7 +81,11 @@ VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOf
 
 #if MVK_MACOS
 	if (_deviceMemory) {
-		_isHostCoherentTexelBuffer = !_device->_pMetalFeatures->sharedLinearTextures && _deviceMemory->isMemoryHostCoherent() && mvkIsAnyFlagEnabled(_usage, VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT);
+		_isHostCoherentTexelBuffer = (!isUnifiedMemoryGPU() &&
+									  !_device->_pMetalFeatures->sharedLinearTextures &&
+									  _deviceMemory->isMemoryHostCoherent() &&
+									  mvkIsAnyFlagEnabled(_usage, (VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
+																   VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)));
 	}
 #endif
 
@@ -118,7 +122,8 @@ void MVKBuffer::applyBufferMemoryBarrier(MVKPipelineBarrier& barrier,
 // buffer and host memory for the purpose of the host reading texture memory.
 bool MVKBuffer::needsHostReadSync(MVKPipelineBarrier& barrier) {
 #if MVK_MACOS
-	return (mvkIsAnyFlagEnabled(barrier.dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
+	return (!isUnifiedMemoryGPU() &&
+			mvkIsAnyFlagEnabled(barrier.dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
 			mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT)) &&
 			isMemoryHostAccessible() && (!isMemoryHostCoherent() || _isHostCoherentTexelBuffer));
 #else
@@ -138,9 +143,7 @@ bool MVKBuffer::overlaps(VkDeviceSize offset, VkDeviceSize size, VkDeviceSize &o
     return false;
 }
 
-#if MVK_MACOS
-bool MVKBuffer::shouldFlushHostMemory() { return _isHostCoherentTexelBuffer; }
-#endif
+bool MVKBuffer::shouldFlushHostMemory() { return !isUnifiedMemoryGPU() && _isHostCoherentTexelBuffer; }
 
 // Flushes the device memory at the specified memory range into the MTLBuffer.
 VkResult MVKBuffer::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {

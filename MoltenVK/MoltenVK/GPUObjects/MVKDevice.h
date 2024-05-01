@@ -331,9 +331,6 @@ public:
 	 */
 	uint32_t getLazilyAllocatedMemoryTypes() { return _lazilyAllocatedMemoryTypes; }
 
-	/** Returns whether this is a unified memory device. */
-	bool getHasUnifiedMemory();
-
 	/** Returns the external memory properties supported for buffers for the handle type. */
 	VkExternalMemoryProperties& getExternalBufferProperties(VkExternalMemoryHandleTypeFlagBits handleType);
 
@@ -363,6 +360,9 @@ public:
 	/** Returns whether native texture atomics are supported and should be used. */
 	bool useNativeTextureAtomics() { return _metalFeatures.nativeTextureAtomics; }
 
+	/** Returns the MTLStorageMode that matches the Vulkan memory property flags. */
+	MTLStorageMode getMTLStorageModeFromVkMemoryPropertyFlags(VkMemoryPropertyFlags vkFlags);
+
 
 #pragma mark Construction
 
@@ -388,6 +388,7 @@ public:
 
 protected:
 	friend class MVKDevice;
+	friend class MVKDeviceTrackingMixin;
 
 	void propagateDebugName() override {}
 	MTLFeatureSet getMaximalMTLFeatureSet();
@@ -443,6 +444,8 @@ protected:
 	uint32_t _hostCoherentMemoryTypes;
 	uint32_t _privateMemoryTypes;
 	uint32_t _lazilyAllocatedMemoryTypes;
+	bool _hasUnifiedMemory = true;
+	bool _isAppleGPU = true;
 };
 
 
@@ -887,6 +890,8 @@ public:
     }
 
 protected:
+	friend class MVKDeviceTrackingMixin;
+
 	void propagateDebugName() override  {}
 	MVKBuffer* addBuffer(MVKBuffer* mvkBuff);
 	MVKBuffer* removeBuffer(MVKBuffer* mvkBuff);
@@ -955,6 +960,12 @@ public:
 
 	/** Returns the underlying Metal device. */
 	id<MTLDevice> getMTLDevice() { return _device->getMTLDevice(); }
+
+	/** Returns whether the GPU is a unified memory device. */
+	bool isUnifiedMemoryGPU() { return getPhysicalDevice()->_hasUnifiedMemory; }
+
+	/** Returns whether the GPU is Apple Silicon. */
+	bool isAppleGPU() { return getPhysicalDevice()->_isAppleGPU; }
 
 	/** Returns info about the pixel format supported by the physical device. */
 	MVKPixelFormats* getPixelFormats() { return _device->getPixelFormats(); }
