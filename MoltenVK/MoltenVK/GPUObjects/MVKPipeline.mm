@@ -1414,6 +1414,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 
 			maxBinding = max(pVKVB->binding, maxBinding);
 			uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
+			_isVertexInputBindingUsed[vbIdx] = true;
 			auto vbDesc = inputDesc.layouts[vbIdx];
 			if (isVtxStrideStatic && pVKVB->stride == 0) {
 				// Stride can't be 0, it will be set later to attributes' maximum offset + size
@@ -1840,7 +1841,7 @@ void MVKGraphicsPipeline::initReservedVertexAttributeBufferCount(const VkGraphic
 }
 
 bool MVKGraphicsPipeline::isValidVertexBufferIndex(MVKShaderStage stage, uint32_t mtlBufferIndex) {
-	return mtlBufferIndex < _descriptorBufferCounts.stages[stage] || mtlBufferIndex > getImplicitBufferIndex(stage, 0);
+	return _isVertexInputBindingUsed[mtlBufferIndex] || mtlBufferIndex < _descriptorBufferCounts.stages[stage] || mtlBufferIndex > getImplicitBufferIndex(stage, 0);
 }
 
 // Initializes the vertex attributes in a shader conversion configuration.
