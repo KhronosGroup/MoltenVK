@@ -174,9 +174,9 @@ void MVKCommandEncodingPool::clear() {
 #pragma mark Construction
 
 MVKCommandEncodingPool::MVKCommandEncodingPool(MVKCommandPool* commandPool) : _commandPool(commandPool),
-    _mtlBufferAllocator(commandPool->getDevice(), commandPool->getDevice()->_pMetalFeatures->maxMTLBufferSize, true),
-    _privateMtlBufferAllocator(commandPool->getDevice(), commandPool->getDevice()->_pMetalFeatures->maxMTLBufferSize, true, false, MTLStorageModePrivate),
-    _dedicatedMtlBufferAllocator(commandPool->getDevice(), commandPool->getDevice()->_pMetalFeatures->maxQueryBufferSize, true, true, MTLStorageModePrivate) {
+    _mtlBufferAllocator(commandPool->getDevice(), commandPool->getMetalFeatures().maxMTLBufferSize, true),
+    _privateMtlBufferAllocator(commandPool->getDevice(), commandPool->getMetalFeatures().maxMTLBufferSize, true, false, MTLStorageModePrivate),
+    _dedicatedMtlBufferAllocator(commandPool->getDevice(), commandPool->getMetalFeatures().maxQueryBufferSize, true, true, MTLStorageModePrivate) {
 }
 
 MVKCommandEncodingPool::~MVKCommandEncodingPool() {

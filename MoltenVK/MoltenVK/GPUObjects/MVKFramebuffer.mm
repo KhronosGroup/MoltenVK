@@ -37,7 +37,7 @@ id<MTLTexture> MVKFramebuffer::getDummyAttachmentMTLTexture(MVKRenderSubpass* su
 	MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatR8Unorm width: fbExtent.width height: fbExtent.height mipmapped: NO];
 	if (subpass->isMultiview()) {
 #if MVK_MACOS_OR_IOS
-		if (sampleCount > 1 && getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
+		if (sampleCount > 1 && getMetalFeatures().multisampleLayeredRendering) {
 			mtlTexDesc.textureType = MTLTextureType2DMultisampleArray;
 			mtlTexDesc.sampleCount = sampleCount;
 		} else {
@@ -49,7 +49,7 @@ id<MTLTexture> MVKFramebuffer::getDummyAttachmentMTLTexture(MVKRenderSubpass* su
 		mtlTexDesc.arrayLength = subpass->getViewCountInMetalPass(passIdx);
 	} else if (fbLayerCount > 1) {
 #if MVK_MACOS
-		if (sampleCount > 1 && getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
+		if (sampleCount > 1 && getMetalFeatures().multisampleLayeredRendering) {
 			mtlTexDesc.textureType = MTLTextureType2DMultisampleArray;
 			mtlTexDesc.sampleCount = sampleCount;
 		} else {

@@ -154,8 +154,7 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdUse) {
 
 id<MTLCommandBuffer> MVKQueue::getMTLCommandBuffer(MVKCommandUse cmdUse, bool retainRefs) {
 	id<MTLCommandBuffer> mtlCmdBuff = nil;
-	MVKDevice* mvkDev = getDevice();
-	uint64_t startTime = mvkDev->getPerformanceTimestamp();
+	uint64_t startTime = getPerformanceTimestamp();
 #if MVK_XCODE_12
 	if ([_mtlQueue respondsToSelector: @selector(commandBufferWithDescriptor:)]) {
 		MTLCommandBufferDescriptor* mtlCmdBuffDesc = [MTLCommandBufferDescriptor new];	// temp retain
@@ -172,7 +171,7 @@ id<MTLCommandBuffer> MVKQueue::getMTLCommandBuffer(MVKCommandUse cmdUse, bool re
 	} else {
 		mtlCmdBuff = [_mtlQueue commandBufferWithUnretainedReferences];
 	}
-	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.retrieveMTLCommandBuffer, startTime);
+	addPerformanceInterval(getPerformanceStats().queue.retrieveMTLCommandBuffer, startTime);
 	NSString* mtlCmdBuffLabel = getMTLCommandBufferLabel(cmdUse);
 	setLabelIfNotNil(mtlCmdBuff, mtlCmdBuffLabel);
 	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) { handleMTLCommandBufferError(mtlCB); }];
@@ -412,11 +411,12 @@ MVKCommandBufferSubmitInfo::MVKCommandBufferSubmitInfo(VkCommandBuffer commandBu
 
 MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 									   uint32_t waitSemaphoreInfoCount,
-									   const VkSemaphoreSubmitInfo* pWaitSemaphoreSubmitInfos) {
-	_queue = queue;
-	_queue->retain();	// Retain here and release in destructor. See note for MVKQueueCommandBufferSubmission::finish().
+									   const VkSemaphoreSubmitInfo* pWaitSemaphoreSubmitInfos) : 
+	MVKBaseDeviceObject(queue->getDevice()),
+	_queue(queue) {
 
-	_creationTime = getDevice()->getPerformanceTimestamp();		// call getDevice() only after _queue is defined
+	_queue->retain();	// Retain here and release in destructor. See note for MVKQueueCommandBufferSubmission::finish().
+	_creationTime = getPerformanceTimestamp();
 
 	_waitSemaphores.reserve(waitSemaphoreInfoCount);
 	for (uint32_t i = 0; i < waitSemaphoreInfoCount; i++) {
@@ -427,11 +427,12 @@ MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 									   uint32_t waitSemaphoreCount,
 									   const VkSemaphore* pWaitSemaphores,
-									   const VkPipelineStageFlags* pWaitDstStageMask) {
-	_queue = queue;
-	_queue->retain();	// Retain here and release in destructor. See note for MVKQueueCommandBufferSubmission::finish().
+									   const VkPipelineStageFlags* pWaitDstStageMask) :
+	MVKBaseDeviceObject(queue->getDevice()),
+	_queue(queue) {
 
-	_creationTime = getDevice()->getPerformanceTimestamp();		// call getDevice() only after _queue is defined
+	_queue->retain();	// Retain here and release in destructor. See note for MVKQueueCommandBufferSubmission::finish().
+	_creationTime = getPerformanceTimestamp();
 
 	_waitSemaphores.reserve(waitSemaphoreCount);
 	for (uint32_t i = 0; i < waitSemaphoreCount; i++) {
@@ -455,8 +456,7 @@ VkResult MVKQueueCommandBufferSubmission::execute() {
 	for (auto& ws : _waitSemaphores) { ws.encodeWait(getActiveMTLCommandBuffer()); }
 
 	// Wait time from an async vkQueueSubmit() call to starting submit and encoding of the command buffers
-	MVKDevice* mvkDev = getDevice();
-	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.waitSubmitCommandBuffers, _creationTime);
+	addPerformanceInterval(_queue->getPerformanceStats().queue.waitSubmitCommandBuffers, _creationTime);
 
 	// Submit each command buffer.
 	submitCommandBuffers();
@@ -518,10 +518,9 @@ VkResult MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool sign
 	id<MTLCommandBuffer> mtlCmdBuff = signalCompletion ? getActiveMTLCommandBuffer() : _activeMTLCommandBuffer;
 	_activeMTLCommandBuffer = nil;
 
-	MVKDevice* mvkDev = getDevice();
-	uint64_t startTime = mvkDev->getPerformanceTimestamp();
+	uint64_t startTime = getPerformanceTimestamp();
 	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) {
-		mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.mtlCommandBufferExecution, startTime);
+		addPerformanceInterval(getPerformanceStats().queue.mtlCommandBufferExecution, startTime);
 		if (signalCompletion) { this->finish(); }	// Must be the last thing the completetion callback does.
 	}];
 
@@ -638,12 +637,11 @@ MVKQueueCommandBufferSubmission::~MVKQueueCommandBufferSubmission() {
 
 template <size_t N>
 void MVKQueueFullCommandBufferSubmission<N>::submitCommandBuffers() {
-	MVKDevice* mvkDev = getDevice();
-	uint64_t startTime = mvkDev->getPerformanceTimestamp();
+	uint64_t startTime = getPerformanceTimestamp();
 
 	for (auto& cbInfo : _cmdBuffers) { cbInfo.commandBuffer->submit(this, &_encodingContext); }
 
-	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.submitCommandBuffers, startTime);
+	addPerformanceInterval(getPerformanceStats().queue.submitCommandBuffers, startTime);
 }
 
 template <size_t N>
@@ -699,8 +697,7 @@ VkResult MVKQueuePresentSurfaceSubmission::execute() {
 	}
 
 	// Wait time from an async vkQueuePresentKHR() call to starting presentation of the swapchains
-	MVKDevice* mvkDev = getDevice();
-	mvkDev->addPerformanceInterval(mvkDev->_performanceStatistics.queue.waitPresentSwapchains, _creationTime);
+	addPerformanceInterval(getPerformanceStats().queue.waitPresentSwapchains, _creationTime);
 
 	for (int i = 0; i < _presentInfo.size(); i++ ) {
 		setConfigurationResult(_presentInfo[i].presentableImage->presentCAMetalDrawable(mtlCmdBuff, _presentInfo[i]));

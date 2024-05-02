@@ -164,7 +164,7 @@ public:
 
 	/** Returns whether the pipeline creation fail if a pipeline compile is required. */
 	bool shouldFailOnPipelineCompileRequired() {
-		return (_device->_enabledPipelineCreationCacheControlFeatures.pipelineCreationCacheControl &&
+		return (getEnabledPipelineCreationCacheControlFeatures().pipelineCreationCacheControl &&
 				mvkIsAnyFlagEnabled(_flags, VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT));
 	}
 
@@ -590,7 +590,7 @@ public:
 
 	MVKRenderPipelineCompiler(MVKVulkanAPIDeviceObject* owner) : MVKMetalCompiler(owner) {
 		_compilerType = "Render pipeline";
-		_pPerformanceTracker = &_owner->getDevice()->_performanceStatistics.shaderCompilation.pipelineCompile;
+		_pPerformanceTracker = &getPerformanceStats().shaderCompilation.pipelineCompile;
 	}
 
 	~MVKRenderPipelineCompiler() override;
@@ -635,7 +635,7 @@ public:
 
 	MVKComputePipelineCompiler(MVKVulkanAPIDeviceObject* owner, const char* compilerType = nullptr) : MVKMetalCompiler(owner) {
 		_compilerType = compilerType ? compilerType : "Compute pipeline";
-		_pPerformanceTracker = &_owner->getDevice()->_performanceStatistics.shaderCompilation.pipelineCompile;
+		_pPerformanceTracker = &getPerformanceStats().shaderCompilation.pipelineCompile;
 	}
 
 	~MVKComputePipelineCompiler() override;

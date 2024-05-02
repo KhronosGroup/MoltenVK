@@ -159,9 +159,6 @@ public:
 	/** Returns whether debug callbacks are being used. */
 	bool hasDebugCallbacks() { return _hasDebugReportCallbacks || _hasDebugUtilsMessengers; }
 
-	/** The list of Vulkan extensions, indicating whether each has been enabled by the app. */
-	const MVKExtensionList _enabledExtensions;
-
 
 #pragma mark Object Creation
 
@@ -198,6 +195,7 @@ protected:
     void logVersions();
 	VkResult verifyLayers(uint32_t count, const char* const* names);
 
+	MVKExtensionList _enabledExtensions;
 	MVKConfiguration _mvkConfig;
 	VkApplicationInfo _appInfo;
 	MVKSmallVector<MVKPhysicalDevice*, 2> _physicalDevices;

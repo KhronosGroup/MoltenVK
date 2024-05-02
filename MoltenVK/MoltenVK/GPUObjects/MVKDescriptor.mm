@@ -619,6 +619,7 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(const VkDescri
 		}																					\
 	} while(false)
 
+	auto& mtlFeats = getMetalFeatures();
 	MVKShaderStageResourceBinding& bindIdxs = _mtlResourceIndexOffsets.stages[stage];
 	MVKShaderStageResourceBinding& dslCnts = _layout->_mtlResourceCounts.stages[stage];
 
@@ -627,7 +628,7 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(const VkDescri
         case VK_DESCRIPTOR_TYPE_SAMPLER:
 			setResourceIndexOffset(samplerIndex);
 
-			if (pBinding->descriptorCount > 1 && !_device->_pMetalFeatures->arrayOfSamplers) {
+			if (pBinding->descriptorCount > 1 && !mtlFeats.arrayOfSamplers) {
 				_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of samplers.", _device->getName()));
 			}
             break;
@@ -637,10 +638,10 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(const VkDescri
 			setResourceIndexOffset(samplerIndex);
 
 			if (pBinding->descriptorCount > 1) {
-				if ( !_device->_pMetalFeatures->arrayOfTextures ) {
+				if ( !mtlFeats.arrayOfTextures ) {
 					_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of textures.", _device->getName()));
 				}
-				if ( !_device->_pMetalFeatures->arrayOfSamplers ) {
+				if ( !mtlFeats.arrayOfSamplers ) {
 					_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of samplers.", _device->getName()));
 				}
 			}
@@ -660,7 +661,7 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(const VkDescri
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 			setResourceIndexOffset(textureIndex);
 
-			if (pBinding->descriptorCount > 1 && !_device->_pMetalFeatures->arrayOfTextures) {
+			if (pBinding->descriptorCount > 1 && !mtlFeats.arrayOfTextures) {
 				_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of textures.", _device->getName()));
 			}
             break;
@@ -670,7 +671,7 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(const VkDescri
 			setResourceIndexOffset(textureIndex);
 			if (!getPhysicalDevice()->useNativeTextureAtomics()) setResourceIndexOffset(bufferIndex);
 
-			if (pBinding->descriptorCount > 1 && !_device->_pMetalFeatures->arrayOfTextures) {
+			if (pBinding->descriptorCount > 1 && !mtlFeats.arrayOfTextures) {
 				_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of textures.", _device->getName()));
 			}
 			break;

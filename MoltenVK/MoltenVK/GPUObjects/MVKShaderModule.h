@@ -60,7 +60,7 @@ private:
 const MVKMTLFunction MVKMTLFunctionNull(nil, SPIRVToMSLConversionResultInfo(), MTLSizeMake(1, 1, 1));
 
 /** Wraps a single MTLLibrary. */
-class MVKShaderLibrary : public MVKBaseObject {
+class MVKShaderLibrary : public MVKBaseDeviceObject {
 
 public:
 
@@ -128,7 +128,7 @@ protected:
 #pragma mark MVKShaderLibraryCache
 
 /** Represents a cache of shader libraries for one shader module. */
-class MVKShaderLibraryCache : public MVKBaseObject {
+class MVKShaderLibraryCache : public MVKBaseDeviceObject {
 
 public:
 
@@ -149,7 +149,7 @@ public:
 									   bool* pWasAdded, VkPipelineCreationFeedback* pShaderFeedback,
 									   uint64_t startTime = 0);
 
-	MVKShaderLibraryCache(MVKVulkanAPIDeviceObject* owner) : _owner(owner) {};
+	MVKShaderLibraryCache(MVKVulkanAPIDeviceObject* owner) : MVKBaseDeviceObject(owner->getDevice()), _owner(owner) {};
 
 	~MVKShaderLibraryCache() override;
 
@@ -273,7 +273,7 @@ public:
 
 	MVKShaderLibraryCompiler(MVKVulkanAPIDeviceObject* owner) : MVKMetalCompiler(owner) {
 		_compilerType = "Shader library";
-		_pPerformanceTracker = &_owner->getDevice()->_performanceStatistics.shaderCompilation.mslCompile;
+		_pPerformanceTracker = &getPerformanceStats().shaderCompilation.mslCompile;
 	}
 
 	~MVKShaderLibraryCompiler() override;
@@ -311,7 +311,7 @@ public:
 
 	MVKFunctionSpecializer(MVKVulkanAPIDeviceObject* owner) : MVKMetalCompiler(owner) {
 		_compilerType = "Function specialization";
-		_pPerformanceTracker = &_owner->getDevice()->_performanceStatistics.shaderCompilation.functionSpecialization;
+		_pPerformanceTracker = &getPerformanceStats().shaderCompilation.functionSpecialization;
 	}
 
 	~MVKFunctionSpecializer() override;

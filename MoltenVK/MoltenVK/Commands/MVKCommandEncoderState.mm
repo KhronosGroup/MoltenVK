@@ -69,7 +69,7 @@ void MVKPushConstantsCommandEncoderState:: setPushConstants(uint32_t offset, MVK
 	// MSL structs can have a larger size than the equivalent C struct due to MSL alignment needs.
 	// Typically any MSL struct that contains a float4 will also have a size that is rounded up to a multiple of a float4 size.
 	// Ensure that we pass along enough content to cover this extra space even if it is never actually accessed by the shader.
-	size_t pcSizeAlign = getDevice()->_pMetalFeatures->pushConstantSizeAlignment;
+	size_t pcSizeAlign = _cmdEncoder->getMetalFeatures().pushConstantSizeAlignment;
     size_t pcSize = pushConstants.size();
 	size_t pcBuffSize = mvkAlignByteCount(offset + pcSize, pcSizeAlign);
     mvkEnsureSize(_pushConstants, pcBuffSize);
@@ -369,7 +369,7 @@ void MVKRenderingCommandEncoderState::setStencilReferenceValues(VkStencilFaceFla
 void MVKRenderingCommandEncoderState::setViewports(const MVKArrayRef<VkViewport> viewports,
 													 uint32_t firstViewport,
 													 bool isDynamic) {
-	uint32_t maxViewports = getDevice()->_pProperties->limits.maxViewports;
+	uint32_t maxViewports = _cmdEncoder->getDeviceProperties().limits.maxViewports;
 	if (firstViewport >= maxViewports) { return; }
 
 	MVKMTLViewports mtlViewports = isDynamic ? _mtlViewports[StateScope::Dynamic] : _mtlViewports[StateScope::Static];
@@ -384,7 +384,7 @@ void MVKRenderingCommandEncoderState::setViewports(const MVKArrayRef<VkViewport>
 void MVKRenderingCommandEncoderState::setScissors(const MVKArrayRef<VkRect2D> scissors,
 													uint32_t firstScissor,
 													bool isDynamic) {
-	uint32_t maxScissors = getDevice()->_pProperties->limits.maxViewports;
+	uint32_t maxScissors = _cmdEncoder->getDeviceProperties().limits.maxViewports;
 	if (firstScissor >= maxScissors) { return; }
 
 	MVKMTLScissors mtlScissors = isDynamic ? _mtlScissors[StateScope::Dynamic] : _mtlScissors[StateScope::Static];
@@ -538,6 +538,7 @@ void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
 	if (stage != kMVKGraphicsStageRasterization) { return; }
 
 	auto& rendEnc = _cmdEncoder->_mtlRenderEncoder;
+	auto& enabledFeats = _cmdEncoder->getEnabledFeatures();
 
 	if (isDirty(PolygonMode)) { [rendEnc setTriangleFillMode: getMTLContent(PolygonMode)]; }
 	if (isDirty(CullMode)) { [rendEnc setCullMode: getMTLContent(CullMode)]; }
@@ -566,13 +567,13 @@ void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
 			[rendEnc setDepthBias: 0 slopeScale: 0 clamp: 0];
 		}
 	}
-	if (isDirty(DepthClipEnable) && _cmdEncoder->_pDeviceFeatures->depthClamp) {
+	if (isDirty(DepthClipEnable) && enabledFeats.depthClamp) {
 		[rendEnc setDepthClipMode: getMTLContent(DepthClipEnable)];
 	}
 
 #if MVK_USE_METAL_PRIVATE_API
     if (getMVKConfig().useMetalPrivateAPI && (isDirty(DepthBoundsTestEnable) || isDirty(DepthBounds)) &&
-		_cmdEncoder->_pDeviceFeatures->depthBounds) {
+		enabledFeats.depthBounds) {
 		if (getMTLContent(DepthBoundsTestEnable)) {
 			auto& db = getMTLContent(DepthBounds);
 			[(id<MVKMTLRenderCommandEncoderDepthBoundsAMD>)_cmdEncoder->_mtlRenderEncoder setDepthBoundsTestAMD: YES
@@ -603,7 +604,7 @@ void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
 
 	if (isDirty(Viewports)) {
 		auto& mtlViewports = getMTLContent(Viewports);
-		if (_cmdEncoder->_pDeviceFeatures->multiViewport) {
+		if (enabledFeats.multiViewport) {
 #if MVK_MACOS_OR_IOS
 			[rendEnc setViewports: mtlViewports.viewports count: mtlViewports.viewportCount];
 #endif
@@ -623,7 +624,7 @@ void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
 			mtlScissors.scissors[sIdx] = shouldDiscard ? zeroRect : _cmdEncoder->clipToRenderArea(mtlScissors.scissors[sIdx]);
 		}
 
-		if (_cmdEncoder->_pDeviceFeatures->multiViewport) {
+		if (enabledFeats.multiViewport) {
 #if MVK_MACOS_OR_IOS
 			[rendEnc setScissorRects: mtlScissors.scissors count: mtlScissors.scissorCount];
 #endif
@@ -949,7 +950,7 @@ void MVKGraphicsResourcesCommandEncoderState::markDirty() {
 void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 
 	auto* pipeline = _cmdEncoder->getGraphicsPipeline();
-    bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle() || getDevice()->_pMetalFeatures->nativeTextureSwizzle;
+    bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle() || _cmdEncoder->getMetalFeatures().nativeTextureSwizzle;
     bool forTessellation = pipeline->isTessellationPipeline();
 	bool isDynamicVertexStride = pipeline->isDynamicState(VertexStride);
 
@@ -1369,12 +1370,12 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
 // In most cases, a MTLCommandBuffer corresponds to a Vulkan command submit (VkSubmitInfo),
 // and so the error text is framed in terms of the Vulkan submit.
 void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags) {
-	if (_cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset + kMVKQuerySlotSizeInBytes <= _cmdEncoder->_pDeviceMetalFeatures->maxQueryBufferSize) {
-		bool shouldCount = _cmdEncoder->_pDeviceFeatures->occlusionQueryPrecise && mvkAreAllFlagsEnabled(flags, VK_QUERY_CONTROL_PRECISE_BIT);
+	if (_cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset + kMVKQuerySlotSizeInBytes <= _cmdEncoder->getMetalFeatures().maxQueryBufferSize) {
+		bool shouldCount = _cmdEncoder->getEnabledFeatures().occlusionQueryPrecise && mvkAreAllFlagsEnabled(flags, VK_QUERY_CONTROL_PRECISE_BIT);
 		_mtlVisibilityResultMode = shouldCount ? MTLVisibilityResultModeCounting : MTLVisibilityResultModeBoolean;
 		_mtlRenderPassQueries.emplace_back(pQueryPool, query, _cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset);
 	} else {
-		reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCmdBeginQuery(): The maximum number of queries in a single Vulkan command submission is %llu.", _cmdEncoder->_pDeviceMetalFeatures->maxQueryBufferSize / kMVKQuerySlotSizeInBytes);
+		reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCmdBeginQuery(): The maximum number of queries in a single Vulkan command submission is %llu.", _cmdEncoder->getMetalFeatures().maxQueryBufferSize / kMVKQuerySlotSizeInBytes);
 		_mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
 		_cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset -= kMVKQuerySlotSizeInBytes;
 	}

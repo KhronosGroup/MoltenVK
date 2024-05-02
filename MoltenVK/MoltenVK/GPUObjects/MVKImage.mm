@@ -146,7 +146,7 @@ void MVKImagePlane::initSubresources(const VkImageCreateInfo* pCreateInfo) {
 
     VkDeviceSize offset = 0;
     if (_planeIndex > 0 && _image->getMemoryBindingCount() == 1) {
-        if (!_image->_isLinear && !_image->_isLinearForAtomics && _image->getDevice()->_pMetalFeatures->placementHeaps) {
+        if (!_image->_isLinear && !_image->_isLinearForAtomics && _image->getMetalFeatures().placementHeaps) {
             // For textures allocated directly on the heap, we need to obey the size and alignment
             // requirements reported by the device.
             MTLTextureDescriptor* mtlTexDesc = _image->_planes[_planeIndex-1]->newMTLTextureDescriptor();    // temp retain
@@ -387,16 +387,17 @@ VkResult MVKImageMemoryBinding::getMemoryRequirements(VkMemoryRequirements* pMem
 }
 
 VkResult MVKImageMemoryBinding::getMemoryRequirements(const void*, VkMemoryRequirements2* pMemoryRequirements) {
+	auto& mtlFeats = getMetalFeatures();
     pMemoryRequirements->sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
     for (auto* next = (VkBaseOutStructure*)pMemoryRequirements->pNext; next; next = next->pNext) {
         switch (next->sType) {
         case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
             auto* dedicatedReqs = (VkMemoryDedicatedRequirements*)next;
             bool writable = mvkIsAnyFlagEnabled(_image->getCombinedUsage(), VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-            bool canUseTexelBuffer = _device->_pMetalFeatures->texelBuffers && _image->_isLinear && !_image->getIsCompressed();
+            bool canUseTexelBuffer = mtlFeats.texelBuffers && _image->_isLinear && !_image->getIsCompressed();
             dedicatedReqs->requiresDedicatedAllocation = _requiresDedicatedMemoryAllocation;
             dedicatedReqs->prefersDedicatedAllocation = (dedicatedReqs->requiresDedicatedAllocation ||
-                                                        (!canUseTexelBuffer && (writable || !_device->_pMetalFeatures->placementHeaps)));
+                                                        (!canUseTexelBuffer && (writable || !mtlFeats.placementHeaps)));
             break;
         }
         default:
@@ -411,13 +412,14 @@ VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDevi
     if (_deviceMemory) { _deviceMemory->removeImageMemoryBinding(this); }
     MVKResource::bindDeviceMemory(mvkMem, memOffset);
 
-    bool usesTexelBuffer = _device->_pMetalFeatures->texelBuffers && _deviceMemory; // Texel buffers available
-    usesTexelBuffer = usesTexelBuffer && (isMemoryHostAccessible() || _device->_pMetalFeatures->placementHeaps) && _image->_isLinear && !_image->getIsCompressed(); // Applicable memory layout
+	auto& mtlFeats = getMetalFeatures();
+    bool usesTexelBuffer = mtlFeats.texelBuffers && _deviceMemory; // Texel buffers available
+    usesTexelBuffer = usesTexelBuffer && (isMemoryHostAccessible() || mtlFeats.placementHeaps) && _image->_isLinear && !_image->getIsCompressed(); // Applicable memory layout
 
     // macOS before 10.15.5 cannot use shared memory for texel buffers.
-    usesTexelBuffer = usesTexelBuffer && (_device->_pMetalFeatures->sharedLinearTextures || !isMemoryHostCoherent());
+    usesTexelBuffer = usesTexelBuffer && (mtlFeats.sharedLinearTextures || !isMemoryHostCoherent());
 
-    if (_image->_isLinearForAtomics || (usesTexelBuffer && _device->_pMetalFeatures->placementHeaps)) {
+    if (_image->_isLinearForAtomics || (usesTexelBuffer && mtlFeats.placementHeaps)) {
         if (usesTexelBuffer && _deviceMemory->ensureMTLBuffer()) {
             _mtlTexelBuffer = _deviceMemory->_mtlBuffer;
             _mtlTexelBufferOffset = getDeviceMemoryOffset();
@@ -471,7 +473,7 @@ bool MVKImageMemoryBinding::needsHostReadSync(MVKPipelineBarrier& barrier) {
 #if MVK_MACOS
     return ( !isUnifiedMemoryGPU() && (barrier.newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
             mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
-            isMemoryHostAccessible() && (!_device->_pMetalFeatures->sharedLinearTextures || !isMemoryHostCoherent()));
+            isMemoryHostAccessible() && (!getMetalFeatures().sharedLinearTextures || !isMemoryHostCoherent()));
 #else
 	return false;
 #endif
@@ -953,7 +955,7 @@ VkResult MVKImage::setMTLTexture(uint8_t planeIndex, id<MTLTexture> mtlTexture) 
 	_usage = getPixelFormats()->getVkImageUsageFlags(mtlTexture.usage, mtlTexture.pixelFormat);
 	_stencilUsage = _usage;
 
-	if (_device->_pMetalFeatures->ioSurfaces) {
+	if (getMetalFeatures().ioSurfaces) {
 		_ioSurface = mtlTexture.iosurface;
 		if (_ioSurface) { CFRetain(_ioSurface); }
 	}
@@ -976,7 +978,7 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 	// Don't recreate existing. But special case of incoming nil if already nil means create a new IOSurface.
 	if (ioSurface && _ioSurface == ioSurface) { return VK_SUCCESS; }
 
-    if (!_device->_pMetalFeatures->ioSurfaces) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkUseIOSurfaceMVK() : IOSurfaces are not supported on this platform."); }
+    if (!getMetalFeatures().ioSurfaces) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkUseIOSurfaceMVK() : IOSurfaces are not supported on this platform."); }
 
 #if MVK_SUPPORT_IOSURFACE_BOOL
 
@@ -1053,7 +1055,7 @@ MTLStorageMode MVKImage::getMTLStorageMode() {
 #if MVK_MACOS
 	// For macOS prior to 10.15.5, textures cannot use Shared storage mode, so change to Managed storage mode.
 	// All Apple GPUs support shared linear textures, so this only applies to other GPUs.
-    if (stgMode == MTLStorageModeShared && !_device->_pMetalFeatures->sharedLinearTextures) {
+    if (stgMode == MTLStorageModeShared && !getMetalFeatures().sharedLinearTextures) {
         stgMode = MTLStorageModeManaged;
     }
 #endif
@@ -1144,6 +1146,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	_mipLevels = validateMipLevels(pCreateInfo, isAttachment);
 	_isLinear = validateLinear(pCreateInfo, isAttachment);
 
+	auto& mtlFeats = getMetalFeatures();
 	MVKPixelFormats* pixFmts = getPixelFormats();
     _vkFormat = pCreateInfo->format;
     _isAliasable = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_ALIAS_BIT);
@@ -1159,10 +1162,10 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 
 	_isLinearForAtomics = _shouldSupportAtomics && !getPhysicalDevice()->useNativeTextureAtomics() && _arrayLayers == 1 && getImageType() == VK_IMAGE_TYPE_2D;
 
-	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatCompressed) && !_device->_pMetalFeatures->native3DCompressedTextures;
+	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatCompressed) && !mtlFeats.native3DCompressedTextures;
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
 								 mvkAreAllFlagsEnabled(pixFmts->getVkFormatProperties3(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT));
-	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
+	_canSupportMTLTextureView = !_isDepthStencilAttachment || mtlFeats.stencilViews;
 	_rowByteAlignment = _isLinear || _isLinearForAtomics ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(pixFmts->getBytesPerBlock(pCreateInfo->format));
 
     VkExtent2D blockTexelSizeOfPlane[3];
@@ -1188,21 +1191,21 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
         }
         _planes[planeIndex]->initSubresources(pCreateInfo);
         MVKImageMemoryBinding* memoryBinding = _planes[planeIndex]->getMemoryBinding();
-        if (!_isLinear && !_isLinearForAtomics && _device->_pMetalFeatures->placementHeaps) {
+        if (!_isLinear && !_isLinearForAtomics && mtlFeats.placementHeaps) {
             MTLTextureDescriptor* mtlTexDesc = _planes[planeIndex]->newMTLTextureDescriptor();    // temp retain
-            MTLSizeAndAlign sizeAndAlign = [_device->getMTLDevice() heapTextureSizeAndAlignWithDescriptor: mtlTexDesc];
+            MTLSizeAndAlign sizeAndAlign = [getMTLDevice() heapTextureSizeAndAlignWithDescriptor: mtlTexDesc];
             [mtlTexDesc release];
             // Textures allocated on heaps must be aligned to the alignment reported here,
             // so make sure there's enough space to hold all the planes after alignment.
             memoryBinding->_byteCount = mvkAlignByteRef(memoryBinding->_byteCount, sizeAndAlign.align) + sizeAndAlign.size;
             memoryBinding->_byteAlignment = std::max(memoryBinding->_byteAlignment, (VkDeviceSize)sizeAndAlign.align);
-        } else if (_isLinearForAtomics && _device->_pMetalFeatures->placementHeaps) {
+        } else if (_isLinearForAtomics && mtlFeats.placementHeaps) {
             NSUInteger bufferLength = 0;
             for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
                 VkExtent3D mipExtent = getExtent3D(planeIndex, mipLvl);
                 bufferLength += getBytesPerLayer(planeIndex, mipLvl) * mipExtent.depth * _arrayLayers;
             }
-            MTLSizeAndAlign sizeAndAlign = [_device->getMTLDevice() heapBufferSizeAndAlignWithLength: bufferLength options: MTLResourceStorageModePrivate];
+            MTLSizeAndAlign sizeAndAlign = [getMTLDevice() heapBufferSizeAndAlignWithLength: bufferLength options: MTLResourceStorageModePrivate];
             memoryBinding->_byteCount += sizeAndAlign.size;
             memoryBinding->_byteAlignment = std::max(std::max(memoryBinding->_byteAlignment, _rowByteAlignment), (VkDeviceSize)sizeAndAlign.align);
         } else {
@@ -1269,7 +1272,7 @@ VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreate
 		validSamples = VK_SAMPLE_COUNT_1_BIT;
 	}
 
-	if (pCreateInfo->arrayLayers > 1 && !_device->_pMetalFeatures->multisampleArrayTextures ) {
+	if (pCreateInfo->arrayLayers > 1 && !getMetalFeatures().multisampleArrayTextures ) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support multisampled array textures. Setting sample count to 1."));
 		validSamples = VK_SAMPLE_COUNT_1_BIT;
 	}
@@ -1513,9 +1516,9 @@ id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
 			bool hasInvalidFormat = false;
 			uint32_t attemptCnt = _swapchain->getImageCount();	// Attempt a resonable number of times
 			for (uint32_t attemptIdx = 0; !_mtlDrawable && attemptIdx < attemptCnt; attemptIdx++) {
-				uint64_t startTime = _device->getPerformanceTimestamp();
+				uint64_t startTime = getPerformanceTimestamp();
 				_mtlDrawable = [_swapchain->getCAMetalLayer().nextDrawable retain];	// retained
-				_device->addPerformanceInterval(_device->_performanceStatistics.queue.retrieveCAMetalDrawable, startTime);
+				addPerformanceInterval(getPerformanceStats().queue.retrieveCAMetalDrawable, startTime);
 				hasInvalidFormat = _mtlDrawable && !_mtlDrawable.texture.pixelFormat;
 				if (hasInvalidFormat) { releaseMetalDrawable(); }
 			}
@@ -1629,7 +1632,7 @@ void MVKPresentableSwapchainImage::addPresentedHandler(id<CAMetalDrawable> mtlDr
 void MVKPresentableSwapchainImage::beginPresentation(const MVKImagePresentInfo& presentInfo) {
 	retain();
 	_swapchain->beginPresentation(presentInfo);
-	_presentationStartTime = getDevice()->getPerformanceTimestamp();
+	_presentationStartTime = getPerformanceTimestamp();
 }
 
 void MVKPresentableSwapchainImage::endPresentation(const MVKImagePresentInfo& presentInfo,
@@ -1646,7 +1649,7 @@ void MVKPresentableSwapchainImage::endPresentation(const MVKImagePresentInfo& pr
 		// If I have become detached from the swapchain, it means the swapchain, and possibly the
 		// VkDevice, have been destroyed by the time of this callback, so do not reference them.
 		lock_guard<mutex> lock(_detachmentLock);
-		if (_device) { _device->addPerformanceInterval(_device->_performanceStatistics.queue.presentSwapchains, _presentationStartTime); }
+		if (_device) { addPerformanceInterval(getPerformanceStats().queue.presentSwapchains, _presentationStartTime); }
 		if (_swapchain) { _swapchain->endPresentation(presentInfo, actualPresentTime); }
 	}
 
@@ -2124,7 +2127,7 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 
 // Enable either native or shader swizzling, depending on what is available, preferring native, and return whether successful.
 bool MVKImageViewPlane::enableSwizzling() {
-	_useNativeSwizzle = _device->_pMetalFeatures->nativeTextureSwizzle;
+	_useNativeSwizzle = getMetalFeatures().nativeTextureSwizzle;
 	_useShaderSwizzle = !_useNativeSwizzle && getMVKConfig().fullImageViewSwizzle;
 	return _useNativeSwizzle || _useShaderSwizzle;
 }
@@ -2261,15 +2264,16 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
 		_subresourceRange.layerCount = _image->getLayerCount() - _subresourceRange.baseArrayLayer;
 	}
 
+	auto& mtlFeats = getMetalFeatures();
 	bool isAttachment = mvkIsAnyFlagEnabled(_usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
 													 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
 													 VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
 													 VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT));
 	if (isAttachment && _subresourceRange.layerCount > 1) {
-		if ( !_device->_pMetalFeatures->layeredRendering ) {
+		if ( !mtlFeats.layeredRendering ) {
 			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView() : This device does not support rendering to array (layered) attachments."));
 		}
-		if (_image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT && !_device->_pMetalFeatures->multisampleLayeredRendering ) {
+		if (_image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT && !mtlFeats.multisampleLayeredRendering ) {
 			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView() : This device does not support rendering to multisampled array (layered) attachments."));
 		}
 	}
@@ -2414,8 +2418,9 @@ bool MVKSampler::getConstexprSampler(mvk::MSLResourceBinding& resourceBinding) {
 
 // Ensure available Metal features.
 MTLSamplerAddressMode MVKSampler::getMTLSamplerAddressMode(VkSamplerAddressMode vkMode) {
-	if ((vkMode == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER && !_device->_pMetalFeatures->samplerClampToBorder) ||
-		(vkMode == VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE && !_device->_pMetalFeatures->samplerMirrorClampToEdge)) {
+	auto& mtlFeats = getMetalFeatures();
+	if ((vkMode == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER && !mtlFeats.samplerClampToBorder) ||
+		(vkMode == VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE && !mtlFeats.samplerMirrorClampToEdge)) {
 		return MTLSamplerAddressModeClampToZero;
 	}
 	return mvkMTLSamplerAddressModeFromVkSamplerAddressMode(vkMode);
@@ -2448,7 +2453,7 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
 	mtlSampDesc.lodMinClamp = pCreateInfo->minLod;
 	mtlSampDesc.lodMaxClamp = pCreateInfo->maxLod;
 	mtlSampDesc.maxAnisotropy = (pCreateInfo->anisotropyEnable
-								 ? mvkClamp(pCreateInfo->maxAnisotropy, 1.0f, _device->_pProperties->limits.maxSamplerAnisotropy)
+								 ? mvkClamp(pCreateInfo->maxAnisotropy, 1.0f, getDeviceProperties().limits.maxSamplerAnisotropy)
 								 : 1);
 	mtlSampDesc.normalizedCoordinates = !pCreateInfo->unnormalizedCoordinates;
 	mtlSampDesc.supportArgumentBuffers = isUsingMetalArgumentBuffers();
@@ -2483,7 +2488,7 @@ MVKSampler::MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo
 		}
 	}
 
-	_requiresConstExprSampler = (pCreateInfo->compareEnable && !_device->_pMetalFeatures->depthSampleCompare) || _ycbcrConversion;
+	_requiresConstExprSampler = (pCreateInfo->compareEnable && !getMetalFeatures().depthSampleCompare) || _ycbcrConversion;
 
 	@autoreleasepool {
 		auto mtlDev = getMTLDevice();

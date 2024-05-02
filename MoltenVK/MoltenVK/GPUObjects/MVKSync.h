@@ -605,7 +605,7 @@ VkResult mvkWaitSemaphores(MVKDevice* device,
  *
  * Instances of this class are one-shot, and can only be used for a single compilation.
  */
-class MVKMetalCompiler : public MVKBaseObject {
+class MVKMetalCompiler : public MVKBaseDeviceObject {
 
 public:
 
@@ -618,7 +618,7 @@ public:
 
 #pragma mark Construction
 
-	MVKMetalCompiler(MVKVulkanAPIDeviceObject* owner) : _owner(owner) {}
+	MVKMetalCompiler(MVKVulkanAPIDeviceObject* owner) : MVKBaseDeviceObject(owner->getDevice()), _owner(owner) {}
 
 	~MVKMetalCompiler() override;
 

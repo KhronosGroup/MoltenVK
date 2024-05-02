@@ -184,7 +184,7 @@ public:
 } MVKSemaphoreSubmitInfo;
 
 /** This is an abstract class for an operation that can be submitted to an MVKQueue. */
-class MVKQueueSubmission : public MVKBaseObject, public MVKConfigurableMixin {
+class MVKQueueSubmission : public MVKBaseDeviceObject, public MVKConfigurableMixin {
 
 public:
 

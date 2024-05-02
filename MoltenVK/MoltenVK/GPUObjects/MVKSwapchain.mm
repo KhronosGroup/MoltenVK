@@ -171,7 +171,7 @@ void MVKSwapchain::markFrameInterval() {
 
 	if (prevFrameTime == 0) { return; }		// First frame starts at first presentation
 
-	_device->updateActivityPerformance(_device->_performanceStatistics.queue.frameInterval, mvkGetElapsedMilliseconds(prevFrameTime, _lastFrameTime));
+	addPerformanceInterval(getPerformanceStats().queue.frameInterval, prevFrameTime, _lastFrameTime, true);
 
 	auto& mvkCfg = getMVKConfig();
 	bool shouldLogOnFrames = mvkCfg.performanceTracking && mvkCfg.activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT;
@@ -179,7 +179,7 @@ void MVKSwapchain::markFrameInterval() {
 		_currentPerfLogFrameCount = 0;
 		MVKLogInfo("Performance statistics reporting every: %d frames, avg FPS: %.2f, elapsed time: %.3f seconds:",
 				   mvkCfg.performanceLoggingFrameCount,
-				   (1000.0 / _device->_performanceStatistics.queue.frameInterval.average),
+				   (1000.0 / getPerformanceStats().queue.frameInterval.average),
 				   mvkGetElapsedMilliseconds() / 1000.0);
 		if (getMVKConfig().activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT) {
 			_device->logPerformanceSummary();
@@ -419,9 +419,10 @@ MVKSwapchain::MVKSwapchain(MVKDevice* device, const VkSwapchainCreateInfoKHR* pC
 		}
 	}
 
+	auto& mtlFeats = getMetalFeatures();
 	uint32_t imgCnt = mvkClamp(pCreateInfo->minImageCount,
-							   _device->_pMetalFeatures->minSwapchainImageCount,
-							   _device->_pMetalFeatures->maxSwapchainImageCount);
+							   mtlFeats.minSwapchainImageCount,
+							   mtlFeats.maxSwapchainImageCount);
 	initCAMetalLayer(pCreateInfo, pScalingInfo, imgCnt);
     initSurfaceImages(pCreateInfo, imgCnt);		// After initCAMetalLayer()
 }
