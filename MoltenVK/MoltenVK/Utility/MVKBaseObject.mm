@@ -29,16 +29,6 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKBaseObject
 
-static const char* getReportingLevelString(MVKConfigLogLevel logLevel) {
-	switch (logLevel) {
-		case MVK_CONFIG_LOG_LEVEL_ERROR:    return "mvk-error";
-		case MVK_CONFIG_LOG_LEVEL_WARNING:  return "mvk-warn";
-		case MVK_CONFIG_LOG_LEVEL_INFO:     return "mvk-info";
-		case MVK_CONFIG_LOG_LEVEL_DEBUG:    return "mvk-debug";
-		default:                            return "mvk-unknown";
-	}
-}
-
 string MVKBaseObject::getClassName() { return mvk::getTypeName(this); }
 
 const MVKConfiguration& MVKBaseObject::getMVKConfig() {
@@ -95,7 +85,7 @@ void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, MVKConfigLogLevel logLe
 	va_end(origArgs);
 
 	// Log the message to the standard error stream
-	if (shouldLog) { fprintf(stderr, "[%s] %s\n", getReportingLevelString(logLevel), pMessage); }
+	if (shouldLog) { fprintf(stderr, "[%s] %s\n", mvkGetReportingLevelString(logLevel), pMessage); }
 
 	// Broadcast the message to any Vulkan debug report callbacks
 	if (hasDebugCallbacks) { mvkInst->debugReportMessage(mvkAPIObj, logLevel, pMessage); }
