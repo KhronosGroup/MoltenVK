@@ -145,9 +145,12 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdUse) {
 	VkResult rslt = _device->getConfigurationResult();
 	if (rslt != VK_SUCCESS) { return rslt; }
 
-	auto* mtlCmdBuff = getMTLCommandBuffer(cmdUse);
-	[mtlCmdBuff commit];
-	[mtlCmdBuff waitUntilCompleted];
+	@autoreleasepool {
+		auto* mtlCmdBuff = getMTLCommandBuffer(cmdUse);
+
+		[mtlCmdBuff commit];
+		[mtlCmdBuff waitUntilCompleted];
+	}
 
 	return VK_SUCCESS;
 }
