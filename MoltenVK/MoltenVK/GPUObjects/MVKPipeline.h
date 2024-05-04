@@ -430,7 +430,7 @@ protected:
 	uint32_t _tessCtlPatchOutputBufferIndex = 0;
 	uint32_t _tessCtlLevelBufferIndex = 0;
 
-	static constexpr uint32_t _maxVertexInputBindingBufferCount = 31u; // Taken from Metal Feature Set Table. Highest value out of all present GPUs
+	static constexpr uint32_t kMVKMaxVertexInputBindingBufferCount = 31u; // Taken from Metal Feature Set Table. Highest value out of all present GPUs
 	bool _isVertexInputBindingUsed[_maxVertexInputBindingBufferCount] = { false };
 	bool _primitiveRestartEnable = true;
 	bool _hasRasterInfo = false;
