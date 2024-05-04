@@ -227,7 +227,7 @@ void MVKInstance::debugReportMessage(MVKVulkanAPIObject* mvkAPIObj, MVKConfigLog
 			.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CALLBACK_DATA_EXT,
 			.pNext = nullptr,
 			.flags = 0,
-			.pMessageIdName = nullptr,
+			.pMessageIdName = mvkGetReportingLevelString(logLevel),
 			.messageIdNumber = 0,
 			.pMessage = pMessage,
 			.queueLabelCount = 0,
