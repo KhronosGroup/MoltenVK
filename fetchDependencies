@@ -320,14 +320,6 @@ else
 	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 fi
 
-# Apply a Git diff file to add an __unsafe_unretained ownership
-# qualifier to the Metal object declarations in vulkan_metal.h.
-# This should be a temporary patch until the VK_EXT_metal_objects extension can be properly modified.
-echo "Adding __unsafe_unretained ownership qualifier to the Metal objects in vulkan_metal.h."
-cd ${REPO_NAME}
-git apply ../../Templates/${REPO_NAME}/VK_EXT_metal_objects-unret.gitdiff
-cd -  > /dev/null
-
 
 # ----------------- SPIRV-Cross -------------------
 

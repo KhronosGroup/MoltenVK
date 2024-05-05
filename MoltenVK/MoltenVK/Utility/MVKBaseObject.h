@@ -226,7 +226,7 @@ static inline const MVKConfiguration& mvkGetMVKConfig(MVKBaseObject* mvkObj) {
 }
 
 /** Returns the reporting level string associated with the specified MoltenVK log level. */
-static constexpr char* mvkGetReportingLevelString(MVKConfigLogLevel logLevel) {
+static inline const char* mvkGetReportingLevelString(MVKConfigLogLevel logLevel) {
 	switch (logLevel) {
 		case MVK_CONFIG_LOG_LEVEL_ERROR:    return "mvk-error";
 		case MVK_CONFIG_LOG_LEVEL_WARNING:  return "mvk-warn";
