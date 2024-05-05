@@ -16,13 +16,31 @@ Copyright (c) 2015-2024 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.2.9
 --------------
 
-Released TBD
+Released 2024/05/07
 
 - Add support for extensions:
 	- `VK_EXT_host_image_copy`
 - To support legacy apps, restore `MoltenVK/dylib` directory via symlink to `MoltenVK/dynamic/dylib`.
-- Add `MVKPerformanceTracker::previous` to track latest-but-one performance measurements.
+- Enhancements to `MVKPerformanceStatistics`. Add `MVKPerformanceTracker::previous`, 
+  `MVKQueuePerformance::waitSubmitCommandBuffers`, and `MVKQueuePerformance::waitPresentSwapchains`.
+- Add `MVK_CONFIG_SHADER_DUMP_DIR` configuration parameter to optionally dump shaders to files.
+- Return **MoltenVK** log level string in `pMessageIdName` field of debug utils callback data.
 - Fix crash when using `VK_EXT_metal_objects` under _ARC_.
+- Fix deadlock when creating a swapchain on a thread other than the main thread.
+- Fix potential memory leak in `vkQueueWaitIdle()`.
+- Ensure buffer bindings are actually used to avoid potential overrun on Metal buffer indexes.
+- Update dependency libraries to match _Vulkan SDK 1.3.283_.
+- Update `MVK_PRIVATE_API_VERSION` to `41`.
+- Update to latest SPIRV-Cross:
+  - MSL: Add support for overlapping bindings.
+  - MSL: Use recursive template for `spvArrayCopy()`.
+  - MSL: Improve argument buffer descriptor aliasing implementation.
+  - MSL: Workaround compiler issue with image fence when used as reference.
+  - MSL: Fix SUMulExtended for 64-bit inputs.
+  - MSL: Handle Atomic{S,U}{Min,Max} with mismatched image sign.
+  - MSL: Handle missing FP16 trancendental overloads.
+  - MSL: Remove pointer wrapper stored in `spvDescriptorArray()` to avoid potential Metal compiler bug. 
+
 
 
 MoltenVK 1.2.8

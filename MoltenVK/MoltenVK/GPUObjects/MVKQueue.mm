@@ -147,7 +147,6 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdUse) {
 
 	@autoreleasepool {
 		auto* mtlCmdBuff = getMTLCommandBuffer(cmdUse);
-
 		[mtlCmdBuff commit];
 		[mtlCmdBuff waitUntilCompleted];
 	}
