@@ -28,6 +28,8 @@ Released 2024/05/07
 - Fix crash when using `VK_EXT_metal_objects` under _ARC_.
 - Fix deadlock when creating a swapchain on a thread other than the main thread.
 - Fix potential memory leak in `vkQueueWaitIdle()`.
+- Fix argument buffer padding on shader conversion.
+- Avoid atomic image usage if native atomics are not supported on the platform.
 - Ensure buffer bindings are actually used to avoid potential overrun on Metal buffer indexes.
 - Update dependency libraries to match _Vulkan SDK 1.3.283_.
 - Update `MVK_PRIVATE_API_VERSION` to `41`.
@@ -40,6 +42,7 @@ Released 2024/05/07
   - MSL: Handle Atomic{S,U}{Min,Max} with mismatched image sign.
   - MSL: Handle missing FP16 trancendental overloads.
   - MSL: Remove pointer wrapper stored in `spvDescriptorArray()` to avoid potential Metal compiler bug. 
+  - MSL: Fix argument buffer padding.
 
 
 
