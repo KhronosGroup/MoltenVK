@@ -60,6 +60,8 @@ using namespace std;
 
 #define supportsMTLGPUFamily(GPUF)	([_mtlDevice respondsToSelector: @selector(supportsFamily:)] && [_mtlDevice supportsFamily: MTLGPUFamily ##GPUF])
 
+#define makeMissingFeature(feat) VK_PORTABILITY_SUBSET_MISSING_FEATURE_## feat ##_KHR
+
 // Suppress unused variable warnings to allow us to define these all in one place,
 // but use them in platform-conditional code blocks.
 #pragma clang diagnostic push
@@ -507,6 +509,32 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				break;
 		}
 	}
+}
+
+VkResult MVKPhysicalDevice::getMissingFeatures(uint32_t* pMissingFeatureCount, VkPortabilitySubsetMissingFeatureKHR* pMissingFeatures) {
+#define addMissingFeature(feat)  \
+	if (pMissingFeatures) {  \
+		if (mfCnt < *pMissingFeatureCount) {  \
+			pMissingFeatures[mfCnt] = makeMissingFeature(feat);  \
+		} else {  \
+			return VK_INCOMPLETE;  \
+		}  \
+	}  \
+	mfCnt++;
+
+	uint32_t mfCnt = 0;
+	addMissingFeature(IMAGE_VIEW_2D_ON_3D_IMAGE);
+	addMissingFeature(RASTERIZATION_DYNAMIC_POLYGON_MODE_POINTS);
+	addMissingFeature(SAMPLER_MIP_LOD_BIAS);
+	addMissingFeature(SHADER_ATOMIC_ORDERING_STRONG);
+	addMissingFeature(SHADER_NON_UNIFORM_MEMORY_BARRIERS);
+	addMissingFeature(SHADER_SAMPLE_RATE_INTERPOLATION_FUNCTIONS);
+	addMissingFeature(SHADER_TESSELLATION_ISOLINES);
+	addMissingFeature(SHADER_TESSELLATION_POINT_MODE);
+
+	// Return the count of missing features.
+	*pMissingFeatureCount = mfCnt;
+	return VK_SUCCESS;
 }
 
 void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties* properties) {
@@ -3470,6 +3498,26 @@ bool MVKPhysicalDevice::needsCounterSetRetained() {
 	}
 }
 
+static const char* getMissingFeatureName(VkPortabilitySubsetMissingFeatureKHR missingFeat) {
+#define STR_IMPL(sym) #sym
+#define STR(sym) STR_IMPL(sym)
+#define CASE_STRINGIFY(sym)  case sym: return STR(sym)
+	switch (missingFeat) {
+		CASE_STRINGIFY(makeMissingFeature(IMAGE_VIEW_2D_ON_3D_IMAGE));
+		CASE_STRINGIFY(makeMissingFeature(RASTERIZATION_DYNAMIC_POLYGON_MODE_POINTS));
+		CASE_STRINGIFY(makeMissingFeature(SAMPLER_MIP_LOD_BIAS));
+		CASE_STRINGIFY(makeMissingFeature(SHADER_ATOMIC_ORDERING_STRONG));
+		CASE_STRINGIFY(makeMissingFeature(SHADER_NON_UNIFORM_MEMORY_BARRIERS));
+		CASE_STRINGIFY(makeMissingFeature(SHADER_SAMPLE_RATE_INTERPOLATION_FUNCTIONS));
+		CASE_STRINGIFY(makeMissingFeature(SHADER_TESSELLATION_ISOLINES));
+		CASE_STRINGIFY(makeMissingFeature(SHADER_TESSELLATION_POINT_MODE));
+		default: return STR(makeMissingFeature(UNKNOWN));
+	}
+#undef CASE_STRINGIFY
+#undef STR
+#undef STR_IMPL
+}
+
 void MVKPhysicalDevice::logGPUInfo() {
 	string logMsg = "GPU device:";
 	logMsg += "\n\t\tmodel: %s";
@@ -3479,7 +3527,7 @@ void MVKPhysicalDevice::logGPUInfo() {
 	logMsg += "\n\t\tpipelineCacheUUID: %s";
 	logMsg += "\n\t\tGPU memory available: %llu MB";
 	logMsg += "\n\t\tGPU memory used: %llu MB";
-	logMsg += "\n\tsupports the following Metal Versions, GPU's and Feature Sets:";
+	logMsg += "\n\tsupports the following Metal features:";
 	logMsg += "\n\t\tMetal Shading Language %s";
 
 #if MVK_XCODE_15 && (MVK_IOS || MVK_MACOS)
@@ -3563,6 +3611,17 @@ void MVKPhysicalDevice::logGPUInfo() {
 		logMsg += "\n\t\tmacOS Read-Write Texture Tier 2";
 	}
 #endif
+
+	logMsg += "\n\tconforms to all supported Vulkan features";
+	uint32_t missingFeatCnt = 0;
+	getMissingFeatures(&missingFeatCnt, nullptr);
+	VkPortabilitySubsetMissingFeatureKHR missingFeats[missingFeatCnt];
+	getMissingFeatures(&missingFeatCnt, missingFeats);
+	for (uint32_t missingFeatIdx = 0; missingFeatIdx < missingFeatCnt; missingFeatIdx++) {
+		if (missingFeatIdx == 0) { logMsg += " except the following:"; }
+		logMsg += "\n\t\t";
+		logMsg += getMissingFeatureName(missingFeats[missingFeatIdx]);
+	}
 
 	string devTypeStr;
 	switch (_properties.deviceType) {

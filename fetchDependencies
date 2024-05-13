@@ -320,6 +320,18 @@ else
 	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 fi
 
+	# Temporary patch to fetch dev versions of header files that support
+	# VK_KHR_portability_subset_metal header and copy them to Vulkan-Headers repo.
+	# This requires password access to private Khronos member dev repos.
+	REPO_URL="https://gitlab.khronos.org/vulkan/vulkan.git"
+	REPO_REV="78b1dc7cb54714f8f7ce639b336277a861c6f059"
+	update_repo "vulkan" ${REPO_URL} ${REPO_REV}
+	cd "vulkan/xml"
+	make clean install
+	cd -  > /dev/null
+	cp -a "vulkan/gen/include/vulkan/vulkan_core.h" "${REPO_NAME}/include/vulkan/"
+	cp -a "vulkan/gen/include/vulkan/vulkan_beta.h" "${REPO_NAME}/include/vulkan/"
+
 
 # ----------------- SPIRV-Cross -------------------
 

@@ -3100,6 +3100,22 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkUnmapMemory2KHR(
 
 
 #pragma mark -
+#pragma mark VK_KHR_portability_subset extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDevicePortabilitySubsetMissingFeaturesKHR(
+    VkPhysicalDevice                            physicalDevice,
+    uint32_t*                                   pMissingFeatureCount,
+    VkPortabilitySubsetMissingFeatureKHR*       pMissingFeatures) {
+
+	MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	VkResult rslt = mvkPD->getMissingFeatures(pMissingFeatureCount, pMissingFeatures);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+
+#pragma mark -
 #pragma mark VK_KHR_push_descriptor extension
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSetKHR(
