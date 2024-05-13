@@ -136,6 +136,9 @@ public:
 	/** Populates the specified structure with the features of this device. */
 	void getFeatures(VkPhysicalDeviceFeatures2* features);
 
+	/** Populates a list of Vulkan features that are NOT supported by this device. */
+	VkResult getMissingFeatures(uint32_t* pMissingFeatureCount, VkPortabilitySubsetMissingFeatureKHR* pMissingFeatures);
+
 	/** Populates the specified structure with the properties of this device. */
 	void getProperties(VkPhysicalDeviceProperties* properties);
 
