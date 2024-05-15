@@ -245,7 +245,7 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 		_descriptorCount += _bindings.back().getDescriptorCount();
 	}
 
-	initMTLArgumentEncoder();
+	initMTLArgumentEncoder(_mtlArgumentEncoder);
 }
 
 // Find and return an array of binding flags from the pNext chain of pCreateInfo,
@@ -264,16 +264,42 @@ const VkDescriptorBindingFlags* MVKDescriptorSetLayout::getBindingFlags(const Vk
 	return nullptr;
 }
 
-void MVKDescriptorSetLayout::initMTLArgumentEncoder() {
-	if (isUsingDescriptorSetMetalArgumentBuffers() && isUsingMetalArgumentBuffer()) {
-		@autoreleasepool {
-			NSMutableArray<MTLArgumentDescriptor*>* args = [NSMutableArray arrayWithCapacity: _bindings.size()];
-			for (auto& dslBind : _bindings) { dslBind.addMTLArgumentDescriptors(args); }
-			_mtlArgumentEncoder.init(args.count ? [getMTLDevice() newArgumentEncoderWithArguments: args] : nil);
-		}
+void MVKDescriptorSetLayout::initMTLArgumentEncoder(MVKMTLArgumentEncoder &encoder, MVKDescriptorSet *dsSet) {
+	if (isUsingDescriptorSetMetalArgumentBuffers() && isUsingMetalArgumentBuffer()) @autoreleasepool {
+		NSMutableArray<MTLArgumentDescriptor*>* args = [NSMutableArray arrayWithCapacity: _bindings.size()];
+		for (auto& dslBind : _bindings) { dslBind.addMTLArgumentDescriptors(args, dslBind.getDescriptorCount(dsSet)); }
+		encoder.init(args.count ? [getMTLDevice() newArgumentEncoderWithArguments: args] : nil);
 	}
 }
 
+MVKMTLArgumentEncoder &MVKDescriptorSetLayout::getMTLArgumentEncoder(MVKDescriptorSet *dsSet) {
+	if (needsDedicatedArgumentEncoder(dsSet))
+		return dsSet->getMTLArgumentEncoder();
+
+	return _mtlArgumentEncoder;
+}
+
+bool MVKDescriptorSetLayout::needsDedicatedArgumentEncoder(MVKDescriptorSet *dsSet) {
+   return dsSet && _bindings.size() && _bindings.back().hasVariableDescriptorCount() && (dsSet->getDescriptorCount() != _descriptorCount);
+}
+
+size_t MVKDescriptorSetLayout::getEncodedArgumentBufferLength(uint32_t variableDescriptorCount) {
+	if (_bindings.size() > 0) {
+		auto binding = _bindings.back();
+		if (binding.hasVariableDescriptorCount() && variableDescriptorCount < binding.getDescriptorCount()) {
+			@autoreleasepool {
+				NSMutableArray<MTLArgumentDescriptor*>* args = [NSMutableArray arrayWithCapacity: _bindings.size()];
+				for (auto& dslBind : _bindings) { dslBind.addMTLArgumentDescriptors(args, variableDescriptorCount); }
+				auto encoder = [getMTLDevice() newArgumentEncoderWithArguments: args];
+				auto size = [encoder encodedLength];
+				[encoder release];
+				return size;
+			}
+		}
+	}
+
+	return _mtlArgumentEncoder.mtlArgumentEncoderSize;
+}
 
 #pragma mark -
 #pragma mark MVKDescriptorSet
@@ -375,6 +401,10 @@ VkResult MVKDescriptorSet::allocate(MVKDescriptorSetLayout* layout,
 			_descriptors.push_back(mvkDesc);
 		}
 	}
+
+	if (layout->needsDedicatedArgumentEncoder(this))
+		layout->initMTLArgumentEncoder(_mtlArgumentEncoder, this);
+
 	return getConfigurationResult();
 }
 
@@ -393,6 +423,8 @@ void MVKDescriptorSet::free(bool isPoolReset) {
 	_descriptors.clear();
 	_descriptors.shrink_to_fit();
 	_metalArgumentBufferDirtyDescriptors.resize(0);
+
+	_mtlArgumentEncoder = MVKMTLArgumentEncoder();
 
 	clearConfigurationResult();
 }
@@ -489,7 +521,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 												  uint32_t variableDescriptorCount,
 												  VkDescriptorSet* pVKDS) {
 	VkResult rslt = VK_ERROR_OUT_OF_POOL_MEMORY;
-	NSUInteger mtlArgBuffAllocSize = mvkDSL->getMTLArgumentEncoder().mtlArgumentEncoderSize;
+	NSUInteger mtlArgBuffAllocSize = mvkDSL->getEncodedArgumentBufferLength(variableDescriptorCount);
 	NSUInteger mtlArgBuffAlignedSize = mvkAlignByteCount(mtlArgBuffAllocSize,
 														 getMetalFeatures().mtlBufferAlignment);
 

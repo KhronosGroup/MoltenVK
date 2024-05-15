@@ -43,6 +43,9 @@ VkResult MVKCmdDispatch::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdDispatch::encode(MVKCommandEncoder* cmdEncoder) {
+	if (_groupCountX == 0 || _groupCountY == 0 || _groupCountZ == 0)
+		return;
+
 	MTLRegion mtlThreadgroupCount = MTLRegionMake3D(_baseGroupX, _baseGroupY, _baseGroupZ, _groupCountX, _groupCountY, _groupCountZ);
 	cmdEncoder->finalizeDispatchState();	// Ensure all updated state has been submitted to Metal
 	id<MTLComputeCommandEncoder> mtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch);

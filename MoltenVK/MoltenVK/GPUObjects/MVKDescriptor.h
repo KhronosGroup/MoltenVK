@@ -105,7 +105,7 @@ public:
 	 * count provided to that descriptor set is returned. Otherwise returns the value
 	 * defined in VkDescriptorSetLayoutBinding::descriptorCount.
 	 */
-	uint32_t getDescriptorCount(MVKDescriptorSet* descSet = nullptr) const;
+	uint32_t getDescriptorCount(MVKDescriptorSet* descSet = nullptr, uint32_t variableDescriptorCount = std::numeric_limits<uint32_t>::max()) const;
 
 	/** Returns the descriptor type of this layout. */
 	inline VkDescriptorType getDescriptorType() { return _info.descriptorType; }
@@ -170,11 +170,12 @@ protected:
     friend class MVKInlineUniformBlockDescriptor;
 	
 	void initMetalResourceIndexOffsets(const VkDescriptorSetLayoutBinding* pBinding, uint32_t stage);
-	void addMTLArgumentDescriptors(NSMutableArray<MTLArgumentDescriptor*>* args);
+	void addMTLArgumentDescriptors(NSMutableArray<MTLArgumentDescriptor*>* args, uint32_t variableDescriptorCount = 0);
 	void addMTLArgumentDescriptor(NSMutableArray<MTLArgumentDescriptor*>* args,
 								  uint32_t argIndex,
 								  MTLDataType dataType,
-								  MTLArgumentAccess access);
+								  MTLArgumentAccess access,
+								  uint32_t variableDescriptorCount);
 	bool isUsingMetalArgumentBuffer();
 	void populateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 										MVKShaderResourceBinding& dslMTLRezIdxOffsets,
