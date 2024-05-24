@@ -776,7 +776,8 @@ public:
 	 *
 	 * The mtlCaptureObject must be one of:
 	 *   - MTLDevice for scope MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE
-	 *   - MTLCommandQueue for scope MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME.
+	 *   - MTLCommandQueue for scopes MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME
+	 *       and MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_ON_DEMAND.
 	 */
 	void startAutoGPUCapture(MVKConfigAutoGPUCaptureScope autoGPUCaptureScope, id mtlCaptureObject);
 
@@ -839,6 +840,7 @@ protected:
 	void getDescriptorVariableDescriptorCountLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
 														   VkDescriptorSetLayoutSupport* pSupport,
 														   VkDescriptorSetVariableDescriptorCountLayoutSupport* pVarDescSetCountSupport);
+	bool readGPUCapturePipe() { char dummy; return _capturePipeFileDesc >= 0 && read(_capturePipeFileDesc, &dummy, 1) > 0; };
 
 	MVKPhysicalDevice* _physicalDevice = nullptr;
 	MVKExtensionList _enabledExtensions;
@@ -865,10 +867,12 @@ protected:
 	std::mutex _sem4Lock;
     std::mutex _perfLock;
 	std::mutex _vizLock;
+	std::string _capturePipeFileName;
     id<MTLBuffer> _globalVisibilityResultMTLBuffer = nil;
 	id<MTLSamplerState> _defaultMTLSamplerState = nil;
 	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
     uint32_t _globalVisibilityQueryCount = 0;
+	int _capturePipeFileDesc = -1;
 	bool _isPerformanceTracking = false;
 	bool _isCurrentlyAutoGPUCapturing = false;
 	bool _isUsingMetalArgumentBuffers = false;
