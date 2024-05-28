@@ -75,7 +75,8 @@ void mvkPopulateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& s
 									   uint32_t bindingIndex,
 									   uint32_t count,
 									   VkDescriptorType descType,
-									   MVKSampler* immutableSampler);
+									   MVKSampler* immutableSampler,
+									   bool usingNativeTextureAtomics);
 
 
 #pragma mark -

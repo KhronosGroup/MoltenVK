@@ -104,7 +104,8 @@ void MVKPipelineLayout::populateShaderConversionConfig(SPIRVToMSLConversionConfi
 											  kPushConstBinding,
 											  1,
 											  VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT,
-											  nullptr);
+											  nullptr,
+											  getMetalFeatures().nativeTextureAtomics);
 		}
 	}
 
