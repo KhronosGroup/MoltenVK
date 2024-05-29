@@ -191,22 +191,10 @@ to your app or game, first add the value `-fno-objc-msgsend-selector-stubs` to t
 projects, build **MoltenVK** with *Xcode 14* or later, and then link `MoltenVK.xcframework`
 to your app or game using *Xcode 13* or earlier.
 
-**MoltenVK** can be built to support at least *macOS 10.11*, *iOS 9*, or *tvOS 9*, but the default
-_Xcode_ build settings in the included _Xcode_ projects are set to a minimum deployment target of 
-*macOS 10.13*, *iOS 11*, and *tvOS 11*, which are the oldest OS versions supported by the current
-_Xcode_ version. If you require support for earlier OS versions, modify the `MACOSX_DEPLOYMENT_TARGET`,
-`IPHONEOS_DEPLOYMENT_TARGET`, or `TVOS_DEPLOYMENT_TARGET` build settings in _Xcode_ before building **MoltenVK**.
-
->***Note:*** To support `IOSurfaces` on *iOS* or *tvOS*, **MoltenVK**, and any app that uses
-**MoltenVK**, must be built with a minimum **iOS Deployment Target** (aka `IPHONEOS_DEPLOYMENT_TARGET `)
-build setting of `iOS 11.0` or greater, or a minimum **tvOS Deployment Target** (aka `TVOS_DEPLOYMENT_TARGET `)
-build setting of `tvOS 11.0` or greater.
-
 Once built, the **MoltenVK** libraries can be run on *macOS*, *iOS*, *tvOS*, or *visionOS* devices
 that support *Metal*,or on the *Xcode* *iOS Simulator*, *tvOS Simulator*, or *visionOS Simulator*.
 
-- At runtime, **MoltenVK** requires at least *macOS 10.11*, *iOS 9.0*, *tvOS 9.0*,
-  or *visionOS 1.0* (or *iOS 11* or *tvOS 11* if using `IOSurfaces`).
+- The minimum runtime OS versions are indicated in the _Deployment Target_ build settings in `MoltenVK.xcodeproj`.
 - Information on *macOS* devices that are compatible with *Metal* can be found in
   [this article](http://www.idownloadblog.com/2015/06/22/how-to-find-mac-el-capitan-metal-compatible).
 - Information on *iOS* devices that are compatible with *Metal* can be found in

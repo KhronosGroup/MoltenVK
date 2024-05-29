@@ -316,10 +316,11 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 		// Add resource bindings and hardcoded constexpr samplers
 		for (auto& rb : shaderConfig.resourceBindings) {
 			auto& rbb = rb.resourceBinding;
-			pMSLCompiler->add_msl_resource_binding(rbb);
-
-			if (rb.requiresConstExprSampler) {
-				pMSLCompiler->remap_constexpr_sampler_by_binding(rbb.desc_set, rbb.binding, rb.constExprSampler);
+			if (rbb.stage == shaderConfig.options.entryPointStage) {
+				pMSLCompiler->add_msl_resource_binding(rbb);
+				if (rb.requiresConstExprSampler) {
+					pMSLCompiler->remap_constexpr_sampler_by_binding(rbb.desc_set, rbb.binding, rb.constExprSampler);
+				}
 			}
 		}
 
