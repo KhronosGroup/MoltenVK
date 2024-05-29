@@ -4342,14 +4342,12 @@ MVKAccelerationStructure* MVKDevice::getAccelerationStructureAtAddress(uint64_t 
 
 VkAccelerationStructureCompatibilityKHR MVKDevice::getAccelerationStructureCompatibility(const VkAccelerationStructureVersionInfoKHR* pVersionInfo)
 {
-    VkAccelerationStructureCompatibilityKHR compat = VK_ACCELERATION_STRUCTURE_COMPATIBILITY_INCOMPATIBLE_KHR;
-
     if(_enabledAccelerationStructureFeatures.accelerationStructure)
     {
-        compat = VK_ACCELERATION_STRUCTURE_COMPATIBILITY_COMPATIBLE_KHR;
+        return VK_ACCELERATION_STRUCTURE_COMPATIBILITY_COMPATIBLE_KHR;
     }
     
-    return compat;
+    return VK_ACCELERATION_STRUCTURE_COMPATIBILITY_INCOMPATIBLE_KHR;
 }
 
 #pragma mark Object lifecycle

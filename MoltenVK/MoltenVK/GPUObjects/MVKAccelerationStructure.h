@@ -27,7 +27,7 @@
  vkCmdWriteAccelerationStructuresPropertiesKHR
  vkCreateAccelerationStructureKHR - DONE
  vkDestroyAccelerationStructureKHR - DONE
- vkGetAccelerationStructureBuildSizesKHR - DONE
+ vkGetAccelerationStructureBuildSizesKHR
  vkGetAccelerationStructureDeviceAddressKHR - DONE
  vkGetDeviceAccelerationStructureCompatibilityKHR - DONE
 */
@@ -43,7 +43,7 @@
 #pragma mark MVKAccelerationStructure
 
 class MVKAccelerationStructure : public MVKVulkanAPIDeviceObject {
-
+    
 public:
     VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR; }
     
@@ -54,11 +54,11 @@ public:
     id<MTLAccelerationStructure> getMTLAccelerationStructure();
     
     /** Gets the required build sizes for acceleration structure and scratch buffer*/
-    static VkAccelerationStructureBuildSizesInfoKHR getBuildSizes();
+    static VkAccelerationStructureBuildSizesInfoKHR getBuildSizes(MVKDevice* device, VkAccelerationStructureBuildTypeKHR buildType, const VkAccelerationStructureBuildGeometryInfoKHR* buildInfo);
     
     /** Gets the actual size of the acceleration structure*/
     uint64_t getMTLSize();
-
+    
 #pragma mark -
 #pragma mark Getters and Setters
     /** Used when building the acceleration structure, to mark whether or not an acceleration structure can be updated, only to be set by MVKCmdBuildAccelerationStructure*/
@@ -80,22 +80,22 @@ public:
     uint64_t getDeviceAddress() { return _address; }
     
     /** Returns the Metal buffer using the same memory as the acceleration structure*/
-    MVKBuffer* getMVKBuffer() { return _buffer; }
+    id<MTLBuffer> getMTLBuffer() { return _buffer; }
     
     /** Gets the heap allocation that the acceleration structure, and buffer share*/
     id<MTLHeap> getMTLHeap() { return _heap; }
+    
+    MTLAccelerationStructureTriangleGeometryDescriptor* getTriangleDescriptor();
 #pragma mark -
 #pragma mark Construction
-    MVKAccelerationStructure(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
-    
-    void create();
+    MVKAccelerationStructure(MVKDevice* device);
     void destroy() override;
 protected:
     void propagateDebugName() override {}
     
-    id<MTLAccelerationStructure> _accelerationStructure;
-    MVKBuffer* _buffer;
     id<MTLHeap> _heap;
+    id<MTLAccelerationStructure> _accelerationStructure;
+    id<MTLBuffer> _buffer;
     
     bool _allowUpdate = false;
     bool _built = false;

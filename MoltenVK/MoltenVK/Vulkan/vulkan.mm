@@ -41,7 +41,7 @@
 #include "MVKSurface.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
-#include "MVKAccelerationStructure.h" // I'll reposition this as well if it's needed
+#include "MVKAccelerationStructure.h" // I'll reposition this if needed
 
 #include <pthread.h>
 
@@ -3194,7 +3194,8 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkGetAccelerationStructureBuildSizesKHR(
     VkAccelerationStructureBuildSizesInfoKHR*             pSizeInfo) {
     
     MVKTraceVulkanCallStart();
-    VkAccelerationStructureBuildSizesInfoKHR buildSizes = MVKAccelerationStructure::getBuildSizes();
+    MVKDevice* mvkDev = (MVKDevice*)device;
+    VkAccelerationStructureBuildSizesInfoKHR buildSizes = MVKAccelerationStructure::getBuildSizes(mvkDev, buildType, pBuildInfo);
     pSizeInfo = &buildSizes;
     MVKTraceVulkanCallEnd();
 }

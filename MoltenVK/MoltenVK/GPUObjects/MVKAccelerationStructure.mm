@@ -17,6 +17,7 @@
  */
 
 #include "MVKDevice.h"
+#include "MVKBuffer.h"
 #include "MVKAccelerationStructure.h"
 
 #pragma mark -
@@ -26,14 +27,87 @@ id<MTLAccelerationStructure> MVKAccelerationStructure::getMTLAccelerationStructu
     return _accelerationStructure;
 }
 
-VkAccelerationStructureBuildSizesInfoKHR MVKAccelerationStructure::getBuildSizes()
+VkAccelerationStructureBuildSizesInfoKHR MVKAccelerationStructure::getBuildSizes(MVKDevice* device, VkAccelerationStructureBuildTypeKHR type, const VkAccelerationStructureBuildGeometryInfoKHR* info)
 {
     VkAccelerationStructureBuildSizesInfoKHR vkBuildSizes{};
-        
-    MTLAccelerationStructureSizes mtlBuildSizes;
-    vkBuildSizes.accelerationStructureSize = mtlBuildSizes.accelerationStructureSize;
-    vkBuildSizes.buildScratchSize = mtlBuildSizes.buildScratchBufferSize;
-    vkBuildSizes.updateScratchSize = mtlBuildSizes.refitScratchBufferSize;
+    MTLAccelerationStructureDescriptor* accStructDescriptor;
+    
+    if(type == VK_ACCELERATION_STRUCTURE_BUILD_TYPE_HOST_KHR) {
+        // We can't do that, throw an error?
+        return vkBuildSizes;
+    }
+    
+    switch (info->type)
+    {
+        case VK_ACCELERATION_STRUCTURE_TYPE_GENERIC_KHR:
+        {
+            accStructDescriptor = [MTLAccelerationStructureDescriptor new];
+            
+            if(mvkIsAnyFlagEnabled(info->flags, VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)){
+                accStructDescriptor.usage += MTLAccelerationStructureUsageRefit;
+            }else if(mvkIsAnyFlagEnabled(info->flags, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR)){
+                accStructDescriptor.usage += MTLAccelerationStructureUsagePreferFastBuild;
+            }else{
+                accStructDescriptor.usage = MTLAccelerationStructureUsageNone;
+            }
+            break;
+        }
+            
+        case VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR:
+        {
+            if(info->pGeometries->geometryType == VK_GEOMETRY_TYPE_AABBS_KHR) { return vkBuildSizes; }
+            if(info->pGeometries->geometryType == VK_GEOMETRY_TYPE_INSTANCES_KHR) { return vkBuildSizes; }
+            
+            if(info->pGeometries->geometryType == VK_GEOMETRY_TYPE_TRIANGLES_KHR)
+            {
+                accStructDescriptor = [MTLPrimitiveAccelerationStructureDescriptor new];
+                
+                if(mvkIsAnyFlagEnabled(info->flags, VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)){
+                    accStructDescriptor.usage += MTLAccelerationStructureUsageRefit;
+                }else if(mvkIsAnyFlagEnabled(info->flags, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR)){
+                    accStructDescriptor.usage += MTLAccelerationStructureUsagePreferFastBuild;
+                }else{
+                    accStructDescriptor.usage = MTLAccelerationStructureUsageNone;
+                }
+                
+                VkAccelerationStructureGeometryTrianglesDataKHR triangleGeometryData = info->pGeometries->geometry.triangles;
+                uint64_t vertexBDA = triangleGeometryData.vertexData.deviceAddress;
+                uint64_t indexBDA = triangleGeometryData.indexData.deviceAddress;
+                MVKBuffer* mvkVertexBuffer = device->getBufferAtAddress(vertexBDA);
+                MVKBuffer* mvkIndexBuffer = device->getBufferAtAddress(indexBDA);
+                
+                MTLAccelerationStructureTriangleGeometryDescriptor* geometryTriangles = [MTLAccelerationStructureTriangleGeometryDescriptor new];
+                geometryTriangles.triangleCount = info->geometryCount;
+                geometryTriangles.vertexBuffer = mvkVertexBuffer->getMTLBuffer();
+//                geometryTriangles.vertexBufferOffset = _buildRangeInfos[i].primitiveOffset;
+                
+                geometryTriangles.indexBuffer = mvkIndexBuffer->getMTLBuffer();
+                geometryTriangles.indexBufferOffset = 0; // Need to get this value
+                geometryTriangles.indexType = mvkMTLIndexTypeFromVkIndexType(triangleGeometryData.indexType);
+//                accStructDescriptor.geometryDescriptors = @[geometryTriangles];
+            }
+            break;
+        }
+        case VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR:
+        {
+            MTLInstanceAccelerationStructureDescriptor* accStructInstanceBuildDescriptor = [MTLInstanceAccelerationStructureDescriptor new];
+            
+            if(mvkIsAnyFlagEnabled(info->flags, VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)){
+                accStructInstanceBuildDescriptor.usage += MTLAccelerationStructureUsageRefit;
+            }else if(mvkIsAnyFlagEnabled(info->flags, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR)){
+                accStructInstanceBuildDescriptor.usage += MTLAccelerationStructureUsagePreferFastBuild;
+            }else{
+                accStructInstanceBuildDescriptor.usage = MTLAccelerationStructureUsageNone;
+            }
+        }
+        default:
+            break;
+    }
+    
+//    MTLAccelerationStructureSizes sizes = [device->getMTLDevi ce() accelerationStructureSizesWithDescriptor:accelerationStructureDescriptor];
+//    vkBuildSizes.accelerationStructureSize = sizes.accelerationStructureSize;
+//    vkBuildSizes.buildScratchSize = sizes.buildScratchBufferSize;
+//    vkBuildSizes.updateScratchSize = sizes.refitScratchBufferSize;
     
     return vkBuildSizes;
 }
@@ -44,14 +118,19 @@ uint64_t MVKAccelerationStructure::getMTLSize()
     return _accelerationStructure.size;
 }
 
-void MVKAccelerationStructure::create()
+MVKAccelerationStructure::MVKAccelerationStructure(MVKDevice* device) : MVKVulkanAPIDeviceObject(device)
 {
-    [_accelerationStructure makeAliasable];
-    [_heap newAccelerationStructureWithSize:getBuildSizes().accelerationStructureSize];
+    MTLHeapDescriptor* heapDescriptor = [MTLHeapDescriptor new];
+    heapDescriptor.storageMode = MTLStorageModePrivate;
+//    heapDescriptor.size = getBuildSizes().accelerationStructureSize;
+    _heap = [getMTLDevice() newHeapWithDescriptor:heapDescriptor];
+    
+//    _accelerationStructure = [_heap newAccelerationStructureWithSize:getBuildSizes().accelerationStructureSize];
+//    _buffer = [_heap newBufferWithLength:getBuildSizes().accelerationStructureSize options:MTLResourceOptionCPUCacheModeDefault];
 }
 
 void MVKAccelerationStructure::destroy()
 {
-    // TODO
+    [_heap release];
     _built = false;
 }

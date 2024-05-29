@@ -132,37 +132,6 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
                 // This is just a dummy copy of Bottom Level
                 if(_geometryInfos[i].pGeometries->geometryType == VK_GEOMETRY_TYPE_AABBS_KHR)
                 {
-                    MTLPrimitiveAccelerationStructureDescriptor* accStructTriangleBuildDescriptor = [MTLPrimitiveAccelerationStructureDescriptor new];
-                    
-                    if(mvkIsAnyFlagEnabled(_geometryInfos[i].flags, VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)){
-                        accStructTriangleBuildDescriptor.usage += MTLAccelerationStructureUsageRefit;
-                        mvkDstAccelerationStructure->setAllowUpdate(true);
-                    }else if(mvkIsAnyFlagEnabled(_geometryInfos[i].flags, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR)){
-                        accStructTriangleBuildDescriptor.usage += MTLAccelerationStructureUsagePreferFastBuild;
-                    }else{
-                        accStructTriangleBuildDescriptor.usage = MTLAccelerationStructureUsageNone;
-                    }
-                    
-                    VkAccelerationStructureGeometryTrianglesDataKHR triangleGeometryData = _geometryInfos[i].pGeometries->geometry.triangles;
-                    uint64_t vertexBDA = triangleGeometryData.vertexData.deviceAddress;
-                    uint64_t indexBDA = triangleGeometryData.indexData.deviceAddress;
-                    MVKBuffer* mvkVertexBuffer = _mvkDevice->getBufferAtAddress(vertexBDA);
-                    MVKBuffer* mvkIndexBuffer = _mvkDevice->getBufferAtAddress(indexBDA);
-                    
-                    MTLAccelerationStructureTriangleGeometryDescriptor* geometryTriangles = [MTLAccelerationStructureTriangleGeometryDescriptor new];
-                    geometryTriangles.triangleCount = _geometryInfos[i].geometryCount;
-                    geometryTriangles.vertexBuffer = mvkVertexBuffer->getMTLBuffer();
-                    geometryTriangles.vertexBufferOffset = _buildRangeInfos[i].primitiveOffset;
-                    
-                    geometryTriangles.indexBuffer = mvkIndexBuffer->getMTLBuffer();
-                    geometryTriangles.indexBufferOffset = 0; // Need to get this value
-                    geometryTriangles.indexType = mvkMTLIndexTypeFromVkIndexType(triangleGeometryData.indexType);
-                    accStructTriangleBuildDescriptor.geometryDescriptors = @[geometryTriangles];
-                    
-                    [accStructEncoder buildAccelerationStructure:dstAccelerationStructure
-                                                      descriptor:accStructTriangleBuildDescriptor
-                                                   scratchBuffer:scratchBuffer
-                                             scratchBufferOffset:scratchBufferOffset];
                 }
             }
             
@@ -245,6 +214,7 @@ VkResult MVKCmdCopyAccelerationStructureToMemory::setContent(MVKCommandBuffer*  
     
     MVKAccelerationStructure* mvkSrcAccStruct = (MVKAccelerationStructure*)srcAccelerationStructure;
     _srcAccelerationStructure = mvkSrcAccStruct->getMTLAccelerationStructure();
+    
 
     _dstBuffer = _mvkDevice->getBufferAtAddress(_dstAddress);
     return VK_SUCCESS;
@@ -254,7 +224,7 @@ void MVKCmdCopyAccelerationStructureToMemory::encode(MVKCommandEncoder* cmdEncod
     id<MTLBlitCommandEncoder> blitEncoder = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyAccelerationStructureToMemory);
     _mvkDevice = cmdEncoder->getDevice();
     
-    [_srcAccelerationStructure]
+    [blitEncoder copyFromBuffer:_srcAccelerationStructureBuffer sourceOffset:0 toBuffer:_dstBuffer->getMTLBuffer() destinationOffset:0 size:_copySize];
 }
 
 #pragma mark -
@@ -271,26 +241,13 @@ VkResult MVKCmdCopyMemoryToAccelerationStructure::setContent(MVKCommandBuffer* c
     
     MVKAccelerationStructure* mvkDstAccStruct = (MVKAccelerationStructure*)dstAccelerationStructure;
     _dstAccelerationStructure = mvkDstAccStruct->getMTLAccelerationStructure();
+    _dstAccelerationStructureBuffer = mvkDstAccStruct->getMTLBuffer();
     return VK_SUCCESS;
 }
 
 void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
-    id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseCopyMemoryToAccelerationStructure);
+    id<MTLBlitCommandEncoder> blitEncoder = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyAccelerationStructureToMemory);
     _mvkDevice = cmdEncoder->getDevice();
     
-    if(_copyMode != VK_COPY_ACCELERATION_STRUCTURE_MODE_DESERIALIZE_KHR){
-        return;
-    }
-    
-    void* serializedAccStruct = _srcBuffer->getHostMemoryAddress();
-    if(!serializedAccStruct){
-        return; // Should I remove this? For this to work, the memory can't be device only, but the spec does not seem to restrict this
-    }
-
-    MVKAccelerationStructure* mvkSrcAccStruct = (MVKAccelerationStructure*)serializedAccStruct;
-    id<MTLAccelerationStructure> srcAccelerationStructure = mvkSrcAccStruct->getMTLAccelerationStructure();
-    
-    [accStructEncoder
-         copyAccelerationStructure:srcAccelerationStructure
-         toAccelerationStructure:_dstAccelerationStructure];
+    [blitEncoder copyFromBuffer:_srcBuffer->getMTLBuffer() sourceOffset:0 toBuffer:_dstAccelerationStructureBuffer destinationOffset:0 size:_copySize];
 }
