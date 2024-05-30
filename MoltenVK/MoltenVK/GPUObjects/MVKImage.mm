@@ -1083,7 +1083,7 @@ MTLTextureUsage MVKImage::getMTLTextureUsage(MTLPixelFormat mtlPixFmt) {
 
 	MTLTextureUsage mtlUsage = pixFmts->getMTLTextureUsage(getCombinedUsage(), mtlPixFmt, _samples,
 														   _isLinear || _isLinearForAtomics, needsReinterpretation, _hasExtendedUsage,
-														   _shouldSupportAtomics && getPhysicalDevice()->useNativeTextureAtomics());
+														   _shouldSupportAtomics && getMetalFeatures().nativeTextureAtomics);
 
 	// Metal before 3.0 doesn't support 3D compressed textures, so we'll
 	// decompress the texture ourselves, and we need to be able to write to it.
@@ -1162,7 +1162,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 				((_vkFormat == VK_FORMAT_R32_UINT || _vkFormat == VK_FORMAT_R32_SINT) ||
 					(_hasMutableFormat && pixFmts->getViewClass(_vkFormat) == MVKMTLViewClass::Color32 && (getIsValidViewFormat(VK_FORMAT_R32_UINT) || getIsValidViewFormat(VK_FORMAT_R32_SINT))));
 
-	_isLinearForAtomics = _shouldSupportAtomics && !getPhysicalDevice()->useNativeTextureAtomics() && _arrayLayers == 1 && getImageType() == VK_IMAGE_TYPE_2D;
+	_isLinearForAtomics = _shouldSupportAtomics && !getMetalFeatures().nativeTextureAtomics && _arrayLayers == 1 && getImageType() == VK_IMAGE_TYPE_2D;
 
 	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatCompressed) && !mtlFeats.native3DCompressedTextures;
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||

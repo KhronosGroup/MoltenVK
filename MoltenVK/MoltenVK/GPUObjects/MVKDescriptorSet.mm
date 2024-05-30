@@ -764,7 +764,7 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 				case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 				case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 					mtlTexCnt += poolSize.descriptorCount;
-					if (!getPhysicalDevice()->useNativeTextureAtomics())
+					if (!getMetalFeatures().nativeTextureAtomics)
 						mtlBuffCnt += poolSize.descriptorCount;
 					break;
 

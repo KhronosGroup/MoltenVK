@@ -3764,7 +3764,7 @@ void MVKDevice::getDescriptorVariableDescriptorCountLayoutSupport(const VkDescri
 				case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 				case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 					mtlTexCnt += pBind->descriptorCount;
-					if (_physicalDevice->useNativeTextureAtomics()) {
+					if (_physicalDevice->_metalFeatures.nativeTextureAtomics) {
 						mtlBuffCnt += pBind->descriptorCount;
 					}
 					maxVarDescCount = min(mtlFeats.maxPerStageTextureCount - mtlTexCnt,
