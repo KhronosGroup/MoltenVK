@@ -13,6 +13,20 @@ Copyright (c) 2015-2024 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.2.10
+---------------
+
+Released TBD
+
+- MSL shader conversion, only pass resource bindings that apply to current shader stage.
+- Update documentation for minimum runtime OS requirements to indicate _macOS 10.15_, _iOS 13_, or _tvOS 13_.
+- Update to latest SPIRV-Cross:
+  - MSL: Add option to force depth write in fragment shaders
+  - MSL: Improve handling of padded descriptors with argument buffers
+  - MSL: Support ConstOffsets on image gather.
+
+
+
 MoltenVK 1.2.9
 --------------
 
