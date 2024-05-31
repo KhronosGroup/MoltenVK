@@ -122,17 +122,24 @@ a user's home directory. This feature requires _Metal 2.2 (macOS 10.15+, iOS/tvO
 - `0`: No automatic GPU capture.
 - `1`: Automatically capture all GPU activity during the lifetime of a `VkDevice`.
 - `2`: Automatically capture all GPU activity during the rendering and presentation of the first frame.
-  The queue for which the frame is captured is identifed by the values of the
-  `MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_FAMILY_INDEX` and
-  `MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_INDEX` configuration parameters.
+- `3`: Automatically capture all GPU activity while signaled on a temporary named pipe. Automatically 
+  begins recording whenever the pipe is not empty, and records as many frames as the pipe contains bytes.
 
 ##### Default: `0`
 
 Controls whether _Metal_ should run an automatic GPU capture without the user having to
 trigger it manually via the _Xcode_ user interface, and controls the scope under which
 that GPU capture will occur. This is useful when trying to capture a one-shot GPU trace,
-such as when running a _Vulkan_ CTS test case. For the automatic GPU capture to occur, the
-_Xcode_ scheme under which the app is run must have the _Metal_ GPU capture option enabled.
+such as when running a _Vulkan_ CTS test case, or for triggering the capture via an
+IPC on a temporary named pipe. 
+
+For values `2` and `3`, the queue for which the frames are captured is identifed by 
+the values of the `MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_FAMILY_INDEX` and 
+`MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_INDEX` configuration parameters.
+
+For the automatic GPU capture to occur, the environment variable `MTL_CAPTURE_ENABLED` must be enabled,
+or, if running the app from _Xcode_, the _GPU Frame Capture_ option can be set to _Metal_.
+
 To manually trigger a GPU capture via the _Xcode_ user interface, leave this parameter at `0`.
 
 
