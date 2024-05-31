@@ -124,9 +124,10 @@ typedef enum MVKConfigTraceVulkanCalls {
 
 /** Identifies the scope for Metal to run an automatic GPU capture for diagnostic debugging purposes. */
 typedef enum MVKConfigAutoGPUCaptureScope {
-	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE     = 0,	/**< No automatic GPU capture. */
-	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE   = 1,	/**< Automatically capture all GPU activity during the lifetime of a VkDevice. */
-	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME    = 2,	/**< Automatically capture all GPU activity during the rendering and presentation of the first frame. */
+	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE      = 0,	/**< No automatic GPU capture. */
+	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE    = 1,	/**< Automatically capture all GPU activity during the lifetime of a VkDevice. */
+	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME     = 2,	/**< Automatically capture all GPU activity during the rendering and presentation of the first frame. */
+	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_ON_DEMAND = 3,	/**< Capture all GPU activity when signaled on a temporary named pipe. */
 	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_MAX_ENUM = 0x7FFFFFFF
 } MVKConfigAutoGPUCaptureScope;
 

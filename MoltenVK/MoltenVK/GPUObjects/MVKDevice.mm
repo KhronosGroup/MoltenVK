@@ -37,6 +37,7 @@
 
 #import "CAMetalLayer+MoltenVK.h"
 
+#include <sys/stat.h>
 #include <cmath>
 
 using namespace std;
@@ -4726,6 +4727,8 @@ void MVKDevice::startAutoGPUCapture(MVKConfigAutoGPUCaptureScope autoGPUCaptureS
 
 	if (_isCurrentlyAutoGPUCapturing || (getMVKConfig().autoGPUCaptureScope != autoGPUCaptureScope)) { return; }
 
+	if (autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_ON_DEMAND && !readGPUCapturePipe()) return;
+
 	_isCurrentlyAutoGPUCapturing = true;
 
 	@autoreleasepool {
@@ -4773,6 +4776,7 @@ void MVKDevice::startAutoGPUCapture(MVKConfigAutoGPUCaptureScope autoGPUCaptureS
 
 void MVKDevice::stopAutoGPUCapture(MVKConfigAutoGPUCaptureScope autoGPUCaptureScope) {
 	if (_isCurrentlyAutoGPUCapturing && getMVKConfig().autoGPUCaptureScope == autoGPUCaptureScope) {
+		if (autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_ON_DEMAND && readGPUCapturePipe()) return;
 		[[MTLCaptureManager sharedCaptureManager] stopCapture];
 		_isCurrentlyAutoGPUCapturing = false;
 	}
@@ -4879,6 +4883,30 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_commandResourceFactory = new MVKCommandResourceFactory(this);
 
 	startAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE, _physicalDevice->_mtlDevice);
+
+	if (getMVKConfig().autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_ON_DEMAND) {
+		for (int tries = 0; tries < 3; ++tries) {
+			char pipeName[] = "/tmp/MoltenVKCapturePipe-XXXXXXXXXX";
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+			mktemp(pipeName);
+#pragma clang diagnostic pop
+
+			if (mkfifo(pipeName, 0600) < 0) {
+				if (errno == EEXIST) continue; // Name collision, retry.
+				reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, "Could not create named pipe for signaling GPU capture: %s\n", strerror(errno));
+			} else {
+				_capturePipeFileName = std::string(pipeName);
+				_capturePipeFileDesc = open(pipeName, O_RDONLY | O_NONBLOCK);
+				if (_capturePipeFileDesc < 0) {
+					reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, "Could not open named pipe for signaling GPU capture at path %s: %s\n", pipeName, strerror(errno));
+				}
+			}
+
+			break;
+		}
+	}
 
 	MVKLogInfo("Created VkDevice to run on GPU %s with the following %d Vulkan extensions enabled:%s",
 			   getName(), _enabledExtensions.getEnabledCount(), _enabledExtensions.enabledNamesString("\n\t\t", true).c_str());
@@ -5205,6 +5233,8 @@ MVKDevice::~MVKDevice() {
 	[_dummyBlitMTLBuffer release];
 
 	stopAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE);
+
+	if (!_capturePipeFileName.empty()) { unlink(_capturePipeFileName.c_str()); }
 
 	mvkDestroyContainerContents(_privateDataSlots);
 
