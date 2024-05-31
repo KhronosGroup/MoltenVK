@@ -288,7 +288,7 @@ public:
 	bool isDynamicState(MVKRenderStateType state) { return _dynamicState.isEnabled(state); }
 
     /** Returns whether this pipeline has tessellation shaders. */
-    bool isTessellationPipeline() { return _tessInfo.patchControlPoints > 0; }
+    bool isTessellationPipeline() { return _isTessellationPipeline; }
 
     /** Returns the number of output tessellation patch control points. */
     uint32_t getOutputControlPointCount() { return _outputControlPointCount; }
@@ -455,6 +455,7 @@ protected:
 	bool _isRasterizing = false;
 	bool _isRasterizingColor = false;
 	bool _sampleLocationsEnable = false;
+	bool _isTessellationPipeline = false;
 };
 
 

@@ -490,6 +490,8 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	SPIRVTessReflectionData reflectData;
 	std::string reflectErrorLog;
 	if (pTessCtlSS && pTessEvalSS) {
+		_isTessellationPipeline = true;
+
 		if (!getTessReflectionData(((MVKShaderModule*)pTessCtlSS->module)->getSPIRV(), pTessCtlSS->pName, ((MVKShaderModule*)pTessEvalSS->module)->getSPIRV(), pTessEvalSS->pName, reflectData, reflectErrorLog) ) {
 			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to reflect tessellation shaders: %s", reflectErrorLog.c_str()));
 			return;
@@ -503,7 +505,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 
 	// Tessellation - must ignore allowed bad pTessellationState pointer if not tess pipeline
 	_outputControlPointCount = reflectData.numControlPoints;
-	mvkSetOrClear(&_tessInfo, (pTessCtlSS && pTessEvalSS) ? pCreateInfo->pTessellationState : nullptr);
+	mvkSetOrClear(&_tessInfo, _isTessellationPipeline ? pCreateInfo->pTessellationState : nullptr);
 
 	// Render pipeline state. Do this as early as possible, to fail fast if pipeline requires a fail on cache-miss.
 	initMTLRenderPipelineState(pCreateInfo, reflectData, pPipelineFB, pVertexSS, pVertexFB, pTessCtlSS, pTessCtlFB, pTessEvalSS, pTessEvalFB, pFragmentSS, pFragmentFB);
