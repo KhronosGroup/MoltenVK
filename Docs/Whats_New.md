@@ -18,6 +18,7 @@ MoltenVK 1.2.10
 
 Released TBD
 
+- Add option to generate a GPU capture via a temporary named pipe from an external process.
 - Fix shader conversion failure when using native texture atomics.
 - MSL shader conversion, only pass resource bindings that apply to current shader stage.
 - Update documentation for minimum runtime OS requirements to indicate _macOS 10.15_, _iOS 13_, or _tvOS 13_.
