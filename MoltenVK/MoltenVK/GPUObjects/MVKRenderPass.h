@@ -67,10 +67,10 @@ public:
 	bool isColorAttachmentAlsoInputAttachment(uint32_t colorAttIdx);
 
 	/** Returns whether or not the depth attachment is being used. */
-	bool isDepthAttachmentUsed() { return _depthAttachment.attachment != VK_ATTACHMENT_UNUSED; }
+	bool isDepthAttachmentUsed() const { return _depthAttachment.attachment != VK_ATTACHMENT_UNUSED; }
 
 	/** Returns whether or not the stencil attachment is being used. */
-	bool isStencilAttachmentUsed() { return _stencilAttachment.attachment != VK_ATTACHMENT_UNUSED; }
+	bool isStencilAttachmentUsed() const { return _stencilAttachment.attachment != VK_ATTACHMENT_UNUSED; }
 
 	/** Return the depth attachment format. */
 	VkFormat getDepthFormat();
@@ -89,6 +89,9 @@ public:
 
 	/** Returns whether or not this is a multiview subpass. */
 	bool isMultiview() const { return _pipelineRenderingCreateInfo.viewMask != 0; }
+
+	/** Returns whether or not the depth stencil is being used as input attachment */
+	bool isInputAttachmentDepthStencilAttachment() const { return _isInputAttachmentDepthStencilAttachment; }
 
 	/** Returns the multiview view mask. */
 	uint32_t getViewMask() const { return _pipelineRenderingCreateInfo.viewMask; }
@@ -177,6 +180,7 @@ protected:
 	VkResolveModeFlagBits _stencilResolveMode = VK_RESOLVE_MODE_NONE;
 	VkSampleCountFlagBits _defaultSampleCount = VK_SAMPLE_COUNT_1_BIT;
 	uint32_t _subpassIndex;
+	bool _isInputAttachmentDepthStencilAttachment = false;
 };
 
 

@@ -507,6 +507,16 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	_outputControlPointCount = reflectData.numControlPoints;
 	mvkSetOrClear(&_tessInfo, _isTessellationPipeline ? pCreateInfo->pTessellationState : nullptr);
 
+	// Handles depth attachment being used as input attachment. However, it does not solve the issue when
+	// the pipeline is created without render pass (dynamic rendering) since we won't be able to know
+	// which resources will be used when rendering. Needs to be done before we do shaders
+	// Potential solution would be to generate 2 pipelines, one with the workaround for the Metal issue
+	// and one without it, and decide at bind time once we know the resources which one to use.
+	if (pCreateInfo->renderPass) {
+		MVKRenderSubpass* subpass = ((MVKRenderPass*)pCreateInfo->renderPass)->getSubpass(pCreateInfo->subpass);
+		_inputAttachmentIsDSAttachment = subpass->isInputAttachmentDepthStencilAttachment();
+	}
+
 	// Render pipeline state. Do this as early as possible, to fail fast if pipeline requires a fail on cache-miss.
 	initMTLRenderPipelineState(pCreateInfo, reflectData, pPipelineFB, pVertexSS, pVertexFB, pTessCtlSS, pTessCtlFB, pTessEvalSS, pTessEvalFB, pFragmentSS, pFragmentFB);
 	if ( !_hasValidMTLPipelineStates ) { return; }
@@ -1332,6 +1342,8 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 		shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pFragmentSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : mtlFeats.maxSubgroupSize;
 		shaderConfig.options.mslOptions.check_discarded_frag_stores = true;
+		shaderConfig.options.mslOptions.force_fragment_with_side_effects_execution = true;
+		shaderConfig.options.mslOptions.input_attachment_is_ds_attachment = _inputAttachmentIsDSAttachment;
 		if (mtlFeats.needsSampleDrefLodArrayWorkaround) {
 			shaderConfig.options.mslOptions.sample_dref_lod_array_as_grad = true;
 		}
@@ -2580,6 +2592,8 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.force_sample_rate_shading,
 				opt.manual_helper_invocation_updates,
 				opt.check_discarded_frag_stores,
+				opt.force_fragment_with_side_effects_execution,
+				opt.input_attachment_is_ds_attachment,
 				opt.sample_dref_lod_array_as_grad,
 				opt.replace_recursive_inputs,
 				opt.agx_manual_cube_grad_fixup);

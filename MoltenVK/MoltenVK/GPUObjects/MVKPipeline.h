@@ -456,6 +456,7 @@ protected:
 	bool _isRasterizingColor = false;
 	bool _sampleLocationsEnable = false;
 	bool _isTessellationPipeline = false;
+	bool _inputAttachmentIsDSAttachment = false;
 };
 
 
