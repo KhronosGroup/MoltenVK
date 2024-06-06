@@ -1592,7 +1592,7 @@ void MVKGraphicsPipeline::addTessellationToPipeline(MTLRenderPipelineDescriptor*
 													const VkPipelineTessellationStateCreateInfo* pTS) {
 
 	VkPipelineTessellationDomainOriginStateCreateInfo* pTessDomainOriginState = nullptr;
-	if (reflectData.patchKind == spv::ExecutionModeTriangles) {
+	if (pTS && reflectData.patchKind == spv::ExecutionModeTriangles) {
 		for (const auto* next = (VkBaseInStructure*)pTS->pNext; next; next = next->pNext) {
 			switch (next->sType) {
 			case VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO:
