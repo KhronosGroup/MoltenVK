@@ -22,6 +22,7 @@
 #include "MVKPipeline.h"
 #include "MVKInstance.h"
 #include "MVKOSExtensions.h"
+#include <sstream>
 
 
 #pragma mark -
@@ -304,11 +305,12 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 			}
 		} else {
 			for (auto& dslBind : _bindings) {
-				_mtlArgumentBufferEncodedSize += dslBind.getResourceCount() * kMVKMetal3ArgBuffSlotSizeInBytes;
+				_mtlArgumentBufferEncodedSize += dslBind.getMetalArgumentBufferEncodedSize();
 			}
 		}
 	}
 
+	MVKLogDebugIf(getMVKConfig().debugMode, "Created %s\n", getLogDescription().c_str());
 }
 
 // Find and return an array of binding flags from the pNext chain of pCreateInfo,
@@ -325,6 +327,17 @@ const VkDescriptorBindingFlags* MVKDescriptorSetLayout::getBindingFlags(const Vk
 		}
 	}
 	return nullptr;
+}
+
+std::string MVKDescriptorSetLayout::getLogDescription() {
+	std::stringstream logMsgOut;
+	logMsgOut << "VkDescriptorSetLayout with " << _bindings.size() << " descriptors:";
+	for (auto& dlb : _bindings) {
+		logMsgOut << "\n\t\t" << dlb.getDescriptorIndex() << ": ";
+		logMsgOut << mvkVkDescriptorTypeName(dlb.getDescriptorType());
+		logMsgOut << " with " << dlb.getDescriptorCount() << " bindings.";
+	}
+	return logMsgOut.str();
 }
 
 MVKDescriptorSetLayout::~MVKDescriptorSetLayout() {
@@ -873,7 +886,7 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 				metalArgBuffSize = maxMTLBuffSize;
 			}
 			_metalArgumentBuffer = [getMTLDevice() newBufferWithLength: metalArgBuffSize options: MTLResourceStorageModeShared];	// retained
-			_metalArgumentBuffer.label = @"Descriptor pool argument buffer";
+			_metalArgumentBuffer.label = @"Descriptor set argument buffer";
 		}
 	}
 }

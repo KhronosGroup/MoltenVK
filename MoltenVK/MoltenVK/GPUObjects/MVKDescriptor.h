@@ -187,7 +187,8 @@ protected:
 										uint32_t dslIndex);
 	bool validate(MVKSampler* mvkSampler);
 	void encodeImmutableSamplersToMetalArgumentBuffer(MVKDescriptorSet* mvkDescSet);
-	uint32_t getResourceCount();
+	uint32_t getResourceCountPerElement();
+	uint64_t getMetalArgumentBufferEncodedSize();
 
 	MVKDescriptorSetLayout* _layout;
 	VkDescriptorSetLayoutBinding _info;
@@ -673,3 +674,10 @@ class MVKStorageTexelBufferDescriptor : public MVKTexelBufferDescriptor {
 public:
 	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER; }
 };
+
+
+#pragma mark -
+#pragma mark Support functions
+
+/** Returns the name of the descriptor type. */
+const char* mvkVkDescriptorTypeName(VkDescriptorType vkDescType);

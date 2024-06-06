@@ -491,16 +491,20 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptor(NSMutableArray<MTLA
 	[args addObject: argDesc];
 }
 
-uint32_t MVKDescriptorSetLayoutBinding::getResourceCount() {
-	switch (getDescriptorType()) {
-		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+uint32_t MVKDescriptorSetLayoutBinding::getResourceCountPerElement() {
+	switch (_info.descriptorType) {
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
 			return 2;
-
+		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+			return getMetalFeatures().nativeTextureAtomics ? 1 : 2;
 		default:
 			return 1;
 	}
+}
+
+uint64_t MVKDescriptorSetLayoutBinding::getMetalArgumentBufferEncodedSize() {
+	return getResourceCountPerElement() * getDescriptorCount() * kMVKMetal3ArgBuffSlotSizeInBytes;
 }
 
 // Encodes an immutable sampler to the Metal argument buffer.
@@ -998,7 +1002,7 @@ void MVKImageDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			uint32_t texArgIdx = mvkDSLBind->getMetalResourceIndexOffsets().textureIndex + planeDescIdx;
 			mvkArgBuff.setTexture(mtlTexture, texArgIdx);
 
-			if (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+			if (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && !mvkDSLBind->getMetalFeatures().nativeTextureAtomics) {
 				id<MTLTexture> mtlTex = mtlTexture.parentTexture ? mtlTexture.parentTexture : mtlTexture;
 				id<MTLBuffer> mtlBuff = mtlTex.buffer;
 				if (mtlBuff) {
@@ -1031,7 +1035,7 @@ void MVKImageDescriptor::encodeResourceUsage(MVKResourcesCommandEncoderState* re
 		id<MTLTexture> mtlTexture = _mvkImageView ? _mvkImageView->getMTLTexture(planeIndex) : nil;
 		rezEncState->encodeResourceUsage(stage, mtlTexture, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 
-		if (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+		if (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && !mvkDSLBind->getMetalFeatures().nativeTextureAtomics) {
 			id<MTLTexture> mtlTex = mtlTexture.parentTexture ? mtlTexture.parentTexture : mtlTexture;
 			id<MTLBuffer> mtlBuff = mtlTex.buffer;
 			if (mtlBuff) {
@@ -1275,7 +1279,7 @@ void MVKTexelBufferDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 		uint32_t texArgIdx = mvkDSLBind->getMetalResourceIndexOffsets().textureIndex + dstIdx;
 		mvkArgBuff.setTexture(mtlTexture, texArgIdx);
 
-		if (descType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
+		if (descType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER && !mvkDSLBind->getMetalFeatures().nativeTextureAtomics) {
 			id<MTLBuffer> mtlBuff = mtlTexture.buffer;
 			if (mtlBuff) {
 				uint32_t buffArgIdx = mvkDSLBind->getMetalResourceIndexOffsets().bufferIndex + dstIdx;
@@ -1302,7 +1306,7 @@ void MVKTexelBufferDescriptor::encodeResourceUsage(MVKResourcesCommandEncoderSta
 	id<MTLTexture> mtlTexture = _mvkBufferView ? _mvkBufferView->getMTLTexture() : nil;
 	rezEncState->encodeResourceUsage(stage, mtlTexture, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 
-	if (descType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
+	if (descType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER && !mvkDSLBind->getMetalFeatures().nativeTextureAtomics) {
 		id<MTLBuffer> mtlBuff = mtlTexture.buffer;
 		if (mtlBuff) {
 			rezEncState->encodeResourceUsage(stage, mtlBuff, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
@@ -1314,4 +1318,33 @@ void MVKTexelBufferDescriptor::reset() {
 	if (_mvkBufferView) { _mvkBufferView->release(); }
 	_mvkBufferView = nullptr;
 	MVKDescriptor::reset();
+}
+
+
+#pragma mark -
+#pragma mark Support functions
+
+#define CASE_STRINGIFY(V)  case V: return #V
+
+const char* mvkVkDescriptorTypeName(VkDescriptorType vkDescType) {
+	switch (vkDescType) {
+		CASE_STRINGIFY(VK_DESCRIPTOR_TYPE_SAMPLER);
+		CASE_STRINGIFY(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+		CASE_STRINGIFY(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+		CASE_STRINGIFY(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+		CASE_STRINGIFY(VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
+		CASE_STRINGIFY(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
+		CASE_STRINGIFY(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+		CASE_STRINGIFY(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+		CASE_STRINGIFY(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
+		CASE_STRINGIFY(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC);
+		CASE_STRINGIFY(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT);
+		CASE_STRINGIFY(VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK);
+		CASE_STRINGIFY(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+		CASE_STRINGIFY(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV);
+		CASE_STRINGIFY(VK_DESCRIPTOR_TYPE_SAMPLE_WEIGHT_IMAGE_QCOM);
+		CASE_STRINGIFY(VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM);
+		CASE_STRINGIFY(VK_DESCRIPTOR_TYPE_MUTABLE_EXT);
+		default: return "VK_UNKNOWN_VkDescriptorType";
+	}
 }
