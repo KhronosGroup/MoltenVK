@@ -323,7 +323,7 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 	MVKLogInfo("Created VkInstance for Vulkan version %s, as requested by app, with the following %d Vulkan extensions enabled:%s",
 			   mvkGetVulkanVersionString(_appInfo.apiVersion).c_str(),
 			   _enabledExtensions.getEnabledCount(),
-			   _enabledExtensions.enabledNamesString("\n\t\t", true).c_str());
+			   _enabledExtensions.enabledNamesString("\n\t", true).c_str());
 
 	_useCreationCallbacks = false;
 }
@@ -783,7 +783,7 @@ void MVKInstance::logVersions() {
 			   MVK_VERSION_STRING,
 			   mvkGetVulkanVersionString(getMVKConfig().apiVersionToAdvertise).c_str(),
 			   allExtns.getEnabledCount(),
-			   allExtns.enabledNamesString("\n\t\t", true).c_str());
+			   allExtns.enabledNamesString("\n\t", true).c_str());
 }
 
 VkResult MVKInstance::verifyLayers(uint32_t count, const char* const* names) {

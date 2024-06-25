@@ -352,11 +352,6 @@ public:
 	/** Returns whether the MSL version is supported on this device. */
 	bool mslVersionIsAtLeast(MTLLanguageVersion minVer) { return _metalFeatures.mslVersionEnum >= minVer; }
 
-	/** Returns whether this physical device supports using Metal argument buffers for descriptor sets. */
-	bool supportsDescriptorSetMetalArgumentBuffers()  {
-		return _metalFeatures.descriptorSetArgumentBuffers && getMVKConfig().useMetalArgumentBuffers != MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER;
-	};
-
 	/** Returns the MTLStorageMode that matches the Vulkan memory property flags. */
 	MTLStorageMode getMTLStorageModeFromVkMemoryPropertyFlags(VkMemoryPropertyFlags vkFlags);
 
@@ -443,6 +438,7 @@ protected:
 	uint32_t _lazilyAllocatedMemoryTypes;
 	bool _hasUnifiedMemory = true;
 	bool _isAppleGPU = true;
+	bool _isUsingMetalArgumentBuffers = false;
 };
 
 
@@ -869,7 +865,6 @@ protected:
 	int _capturePipeFileDesc = -1;
 	bool _isPerformanceTracking = false;
 	bool _isCurrentlyAutoGPUCapturing = false;
-	bool _isUsingDescriptorSetMetalArgumentBuffers = false;
 
 };
 
@@ -904,7 +899,7 @@ public:
 	bool isAppleGPU() { return _device->_physicalDevice->_isAppleGPU; }
 
 	/** Returns whether this device is using one Metal argument buffer for each descriptor set, on multiple pipeline and pipeline stages. */
-	bool isUsingDescriptorSetMetalArgumentBuffers() { return _device->_isUsingDescriptorSetMetalArgumentBuffers && getMetalFeatures().descriptorSetArgumentBuffers; };
+	virtual bool isUsingMetalArgumentBuffers() { return _device->_physicalDevice->_isUsingMetalArgumentBuffers; };
 
 	/** Returns whether this device needs Metal argument buffer encoders to populate argument buffer content. */
 	bool needsMetalArgumentBufferEncoders() { return _device->_physicalDevice->_metalFeatures.needsArgumentBufferEncoders; };
@@ -961,6 +956,8 @@ public:
 
 	/** Constructs an instance for the specified device. */
 	MVKDeviceTrackingMixin(MVKDevice* device) : _device(device) { assert(_device); }
+
+	virtual ~MVKDeviceTrackingMixin() {}
 
 protected:
 	MVKDevice* _device;

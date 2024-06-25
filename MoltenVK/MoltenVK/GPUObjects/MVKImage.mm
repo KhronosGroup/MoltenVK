@@ -2458,7 +2458,7 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
 								 ? mvkClamp(pCreateInfo->maxAnisotropy, 1.0f, getDeviceProperties().limits.maxSamplerAnisotropy)
 								 : 1);
 	mtlSampDesc.normalizedCoordinates = !pCreateInfo->unnormalizedCoordinates;
-	mtlSampDesc.supportArgumentBuffers = isUsingDescriptorSetMetalArgumentBuffers();
+	mtlSampDesc.supportArgumentBuffers = isUsingMetalArgumentBuffers();
 
 	// If compareEnable is true, but dynamic samplers with depth compare are not available
 	// on this device, this sampler must only be used as an immutable sampler, and will

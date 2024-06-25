@@ -76,18 +76,6 @@ public:
 	/** Populates the specified shader conversion config. */
 	void populateShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig);
 
-	/** Returns the number of textures in this layout. This is used to calculate the size of the swizzle buffer. */
-	uint32_t getTextureCount() { return _mtlResourceCounts.getMaxTextureIndex(); }
-
-	/** Returns the number of buffers in this layout. This is used to calculate the size of the buffer size buffer. */
-	uint32_t getBufferCount() { return _mtlResourceCounts.getMaxBufferIndex(); }
-
-	/** Returns the number of descriptor sets in this pipeline layout. */
-	uint32_t getDescriptorSetCount() { return (uint32_t)_descriptorSetLayouts.size(); }
-
-	/** Returns the number of descriptors in the descriptor set layout. */
-	uint32_t getDescriptorCount(uint32_t descSetIndex) { return getDescriptorSetLayout(descSetIndex)->getDescriptorCount(); }
-
 	/** Returns the descriptor set layout. */
 	MVKDescriptorSetLayout* getDescriptorSetLayout(uint32_t descSetIndex) { return _descriptorSetLayouts[descSetIndex]; }
 
@@ -101,6 +89,7 @@ protected:
 
 	void propagateDebugName() override {}
 	bool stageUsesPushConstants(MVKShaderStage mvkStage);
+	std::string getLogDescription();
 
 	MVKSmallVector<MVKDescriptorSetLayout*, 1> _descriptorSetLayouts;
 	MVKSmallVector<MVKShaderResourceBinding, 1> _dslMTLResourceIndexOffsets;

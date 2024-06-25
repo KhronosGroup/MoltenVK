@@ -39,7 +39,6 @@ typedef struct MVKShaderStageResourceBinding {
 	uint32_t bufferIndex = 0;
 	uint32_t textureIndex = 0;
 	uint32_t samplerIndex = 0;
-	uint32_t resourceIndex = 0;
 	uint32_t dynamicOffsetBufferIndex = 0;
 
 	MVKShaderStageResourceBinding operator+ (const MVKShaderStageResourceBinding& rhs);
@@ -55,10 +54,9 @@ typedef struct MVKShaderStageResourceBinding {
 typedef struct MVKShaderResourceBinding {
 	MVKShaderStageResourceBinding stages[kMVKShaderStageCount];
 
-	uint16_t getMaxResourceIndex();
-	uint16_t getMaxBufferIndex();
-	uint16_t getMaxTextureIndex();
-	uint16_t getMaxSamplerIndex();
+	uint32_t getMaxBufferIndex();
+	uint32_t getMaxTextureIndex();
+	uint32_t getMaxSamplerIndex();
 
 	MVKShaderResourceBinding operator+ (const MVKShaderResourceBinding& rhs);
 	MVKShaderResourceBinding& operator+= (const MVKShaderResourceBinding& rhs);
@@ -95,10 +93,10 @@ public:
 	MVKVulkanAPIObject* getVulkanAPIObject() override;
 
 	/** Returns the binding number of this layout. */
-	inline uint32_t getBinding() { return _info.binding; }
+	uint32_t getBinding() { return _info.binding; }
 
 	/** Returns whether this binding has a variable descriptor count. */
-	inline bool hasVariableDescriptorCount() const {
+	bool hasVariableDescriptorCount() const {
 		return mvkIsAnyFlagEnabled(_flags, VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT);
 	}
 
@@ -163,8 +161,7 @@ public:
 	MVKDescriptorSetLayoutBinding(MVKDevice* device,
 								  MVKDescriptorSetLayout* layout,
 								  const VkDescriptorSetLayoutBinding* pBinding,
-								  VkDescriptorBindingFlagsEXT bindingFlags,
-								  uint32_t descriptorIndex);
+								  VkDescriptorBindingFlagsEXT bindingFlags);
 
 	MVKDescriptorSetLayoutBinding(const MVKDescriptorSetLayoutBinding& binding);
 
@@ -181,14 +178,15 @@ protected:
 								  uint32_t argIndex,
 								  MTLDataType dataType,
 								  MTLArgumentAccess access);
-	bool isUsingMetalArgumentBuffer();
 	void populateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 										MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 										uint32_t dslIndex);
 	bool validate(MVKSampler* mvkSampler);
 	void encodeImmutableSamplersToMetalArgumentBuffer(MVKDescriptorSet* mvkDescSet);
-	uint32_t getResourceCountPerElement();
-	uint64_t getMetalArgumentBufferEncodedSize();
+	uint32_t getMTLResourceCountPerElement();
+	uint64_t getMetal3ArgumentBufferEncodedSize();
+	bool needsBuffSizeAuxBuffer();
+	std::string getLogDescription();
 
 	MVKDescriptorSetLayout* _layout;
 	VkDescriptorSetLayoutBinding _info;
@@ -313,6 +311,8 @@ public:
 	~MVKBufferDescriptor() { reset(); }
 
 protected:
+	uint32_t getBufferSize(VkDeviceSize dynamicOffset = 0);
+
 	MVKBuffer* _mvkBuffer = nullptr;
 	VkDeviceSize _buffOffset = 0;
 	VkDeviceSize _buffRange = 0;
@@ -377,8 +377,7 @@ public:
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
-//			   uint32_t dstOffset, // For inline buffers we are using this parameter as dst offset not as src descIdx
-			   uint32_t dstIdx,
+			   uint32_t dstOffset, 	// Inline buffers use this parameter as an offset, not an index
 			   uint32_t srcIdx,
 			   size_t srcStride,
 			   const void* pData) override;

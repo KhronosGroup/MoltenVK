@@ -111,11 +111,8 @@ public:
 	/** Returns the binding at the index in a descriptor set layout. */
 	MVKDescriptorSetLayoutBinding* getBindingAt(uint32_t index) { return &_bindings[index]; }
 
-	/** Returns true if this layout is for push descriptors only. */
-	bool isPushDescriptorLayout() const { return _isPushDescriptorLayout; }
-
-	/** Returns true if this layout is using a Metal argument buffer. */
-	bool isUsingMetalArgumentBuffer()  { return isUsingDescriptorSetMetalArgumentBuffers() && !isPushDescriptorLayout(); };
+	/** Overridden becasue descriptor sets may be marked as discrete and not use an argument buffer. */
+	bool isUsingMetalArgumentBuffers() override;
 
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
@@ -133,6 +130,7 @@ protected:
 	uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return getBinding(binding)->getDescriptorIndex(elementIndex); }
 	MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
 	const VkDescriptorBindingFlags* getBindingFlags(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
+	uint32_t getBufferSizeBufferArgBuferIndex() { return _mtlResourceCount; }
 	std::string getLogDescription();
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
@@ -141,6 +139,8 @@ protected:
 	NSArray<MTLArgumentDescriptor*>* _mtlArgumentEncoderArgs = nil;
 	uint64_t _mtlArgumentBufferEncodedSize = 0;
 	uint32_t _descriptorCount = 0;
+	uint32_t _mtlResourceCount = 0;
+	int32_t _maxBufferIndex = -1;
 	bool _isPushDescriptorLayout = false;
 };
 
@@ -179,9 +179,6 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
 
-	/** Returns an MTLBuffer region allocation. */
-    MVKMTLBufferAllocation* acquireMTLBufferRegion(NSUInteger length);
-
 	/** Returns the descriptor at an index. */
 	MVKDescriptor* getDescriptorAt(uint32_t descIndex) { return _descriptors[descIndex]; }
 
@@ -192,16 +189,21 @@ public:
 	uint32_t getDynamicOffsetDescriptorCount() { return _dynamicOffsetDescriptorCount; }
 
 	/** Returns true if this descriptor set is using a Metal argument buffer. */
-	bool isUsingMetalArgumentBuffer() { return _layout->isUsingMetalArgumentBuffer(); };
+	bool hasMetalArgumentBuffer() { return _layout->isUsingMetalArgumentBuffers(); };
 
 	/** Returns the argument buffer helper object used by this descriptor set. */
 	MVKMetalArgumentBuffer& getMetalArgumentBuffer() { return _argumentBuffer; }
+
+	/** Encode the buffer sizes auxiliary buffer to the GPU. */
+	void encodeAuxBufferUsage(MVKResourcesCommandEncoderState* rezEncState, MVKShaderStage stage);
 
 	MVKDescriptorSet(MVKDescriptorPool* pool);
 
 protected:
 	friend class MVKDescriptorSetLayoutBinding;
 	friend class MVKDescriptorPool;
+	friend class MVKBufferDescriptor;
+	friend class MVKInlineUniformBlockDescriptor;
 
 	void propagateDebugName() override {}
 	MVKDescriptor* getDescriptor(uint32_t binding, uint32_t elementIndex = 0);
@@ -209,11 +211,14 @@ protected:
 					  uint32_t variableDescriptorCount,
 					  NSUInteger mtlArgBufferOffset);
 	void free(bool isPoolReset);
+	MVKMTLBufferAllocation* acquireMTLBufferRegion(NSUInteger length);
+	void setBufferSize(uint32_t descIdx, uint32_t value);
 
 	MVKDescriptorPool* _pool;
 	MVKDescriptorSetLayout* _layout;
 	MVKSmallVector<MVKDescriptor*> _descriptors;
 	MVKMetalArgumentBuffer _argumentBuffer;
+	MVKMTLBufferAllocation* _bufferSizesBuffer = nullptr;
 	uint32_t _dynamicOffsetDescriptorCount;
 	uint32_t _variableDescriptorCount;
 };
@@ -292,7 +297,7 @@ protected:
 	MVKBitArray _descriptorSetAvailablility;
 	id<MTLBuffer> _metalArgumentBuffer;
 	NSUInteger _nextMetalArgumentBufferOffset;
-	MVKMTLBufferAllocator _inlineBlockMTLBufferAllocator;
+	MVKMTLBufferAllocator _mtlBufferAllocator;
 
 	MVKDescriptorTypePool<MVKUniformBufferDescriptor> _uniformBufferDescriptors;
 	MVKDescriptorTypePool<MVKStorageBufferDescriptor> _storageBufferDescriptors;

@@ -29,8 +29,8 @@
 #pragma mark MVKMetalArgumentBuffer
 
 void MVKMetalArgumentBuffer::setArgumentBuffer(id<MTLBuffer> mtlArgBuff,
-										  NSUInteger mtlArgBuffOfst,
-										  id<MTLArgumentEncoder> mtlArgEnc) {
+											   NSUInteger mtlArgBuffOfst,
+											   id<MTLArgumentEncoder> mtlArgEnc) {
 	_mtlArgumentBuffer = mtlArgBuff;
 	_mtlArgumentBufferOffset = mtlArgBuffOfst;
 
@@ -90,7 +90,7 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
 	if (cmdEncoder) { cmdEncoder->bindDescriptorSet(pipelineBindPoint, descSetIndex,
 													descSet, dslMTLRezIdxOffsets,
 													dynamicOffsets, dynamicOffsetIndex); }
-	if ( !isUsingMetalArgumentBuffer() ) {
+	if ( !isUsingMetalArgumentBuffers() ) {
 		for (auto& dslBind : _bindings) {
 			dslBind.bind(cmdEncoder, pipelineBindPoint, descSet, dslMTLRezIdxOffsets, dynamicOffsets, dynamicOffsetIndex);
 		}
@@ -222,6 +222,24 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
     }
 }
 
+static void populateAuxBuffer(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
+							  MVKShaderStageResourceBinding buffBinding,
+							  uint32_t descSetIndex,
+							  uint32_t descBinding,
+							  bool usingNativeTextureAtomics) {
+	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
+		mvkPopulateShaderConversionConfig(shaderConfig,
+										  buffBinding,
+										  MVKShaderStage(stage),
+										  descSetIndex,
+										  descBinding,
+										  1,
+										  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+										  nullptr,
+										  usingNativeTextureAtomics);
+	}
+}
+
 void MVKDescriptorSetLayout::populateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
                                                             MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 															uint32_t descSetIndex) {
@@ -230,8 +248,18 @@ void MVKDescriptorSetLayout::populateShaderConversionConfig(mvk::SPIRVToMSLConve
 		_bindings[bindIdx].populateShaderConversionConfig(shaderConfig, dslMTLRezIdxOffsets, descSetIndex);
 	}
 
-	// Mark if Metal argument buffers are in use, but this descriptor set layout is not using them.
-	if (isUsingDescriptorSetMetalArgumentBuffers() && !isUsingMetalArgumentBuffer()) {
+	// If this descriptor set is using an argument buffer, add the buffer size auxiliary buffer.
+	if (isUsingMetalArgumentBuffers()) {
+		MVKShaderStageResourceBinding buffBinding;
+		buffBinding.bufferIndex = getBufferSizeBufferArgBuferIndex();
+		populateAuxBuffer(shaderConfig, buffBinding, descSetIndex,
+						  MVK_spirv_cross::kBufferSizeBufferBinding,
+						  getMetalFeatures().nativeTextureAtomics);
+	}
+
+	// If the app is using argument buffers, but this descriptor set is 
+	// not, because this is a discrete descriptor set, mark it as such.
+	if(MVKDeviceTrackingMixin::isUsingMetalArgumentBuffers() && !isUsingMetalArgumentBuffers()) {
 		shaderConfig.discreteDescriptorSets.push_back(descSetIndex);
 	}
 }
@@ -261,13 +289,26 @@ bool MVKDescriptorSetLayout::populateBindingUse(MVKBitArray& bindingUse,
 	return descSetIsUsed;
 }
 
+bool MVKDescriptorSetLayout::isUsingMetalArgumentBuffers() {
+	return MVKDeviceTrackingMixin::isUsingMetalArgumentBuffers() && !_isPushDescriptorLayout;
+};
+
+// Returns an autoreleased MTLArgumentDescriptor suitable for adding an auxiliary buffer to the argument buffer.
+static MTLArgumentDescriptor* getAuxBufferArgumentDescriptor(uint32_t argIndex) {
+	auto* argDesc = [MTLArgumentDescriptor argumentDescriptor];
+	argDesc.dataType = MTLDataTypePointer;
+	argDesc.access = MTLArgumentAccessReadWrite;
+	argDesc.index = argIndex;
+	argDesc.arrayLength = 1;
+	return argDesc;
+}
+
 MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
                                                const VkDescriptorSetLayoutCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
-
 	uint32_t bindCnt = pCreateInfo->bindingCount;
 	const auto* pBindingFlags = getBindingFlags(pCreateInfo);
 
-	// The bindings in VkDescriptorSetLayoutCreateInfo do not need to provided in order of binding number.
+	// The bindings in VkDescriptorSetLayoutCreateInfo do not need to be provided in order of binding number.
 	// However, several subsequent operations, such as the dynamic offsets in vkCmdBindDescriptorSets()
 	// are ordered by binding number. To prepare for this, sort the bindings by binding number.
 	struct BindInfo {
@@ -288,24 +329,37 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 	_bindings.reserve(bindCnt);
     for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		BindInfo& bindInfo = sortedBindings[bindIdx];
-        _bindings.emplace_back(_device, this, bindInfo.pBinding, bindInfo.bindingFlags, _descriptorCount);
+        _bindings.emplace_back(_device, this, bindInfo.pBinding, bindInfo.bindingFlags);
 		_bindingToIndex[bindInfo.pBinding->binding] = bindIdx;
-		_descriptorCount += _bindings.back().getDescriptorCount();
 	}
 
-	if (isUsingMetalArgumentBuffer()) {
+	if (isUsingMetalArgumentBuffers()) {
+		bool needsBuffSizeAuxBuff = false;
 		if (needsMetalArgumentBufferEncoders()) {
 			@autoreleasepool {
 				auto* mutableArgs = [[NSMutableArray alloc] initWithCapacity: _bindings.size()];
 				for (auto& dslBind : _bindings) {
 					dslBind.addMTLArgumentDescriptors(mutableArgs);
+					needsBuffSizeAuxBuff = needsBuffSizeAuxBuff || dslBind.needsBuffSizeAuxBuffer();
 				}
+
+				// Possibly add buffer sizes auxiliary buffer.
+				if (needsBuffSizeAuxBuff) {
+					[mutableArgs addObject: getAuxBufferArgumentDescriptor(getBufferSizeBufferArgBuferIndex())];
+				}
+
 				_mtlArgumentEncoderArgs = mutableArgs;		// retained
 				_mtlArgumentBufferEncodedSize = [[getMTLDevice() newArgumentEncoderWithArguments: _mtlArgumentEncoderArgs] autorelease].encodedLength;
 			}
 		} else {
 			for (auto& dslBind : _bindings) {
-				_mtlArgumentBufferEncodedSize += dslBind.getMetalArgumentBufferEncodedSize();
+				_mtlArgumentBufferEncodedSize += dslBind.getMetal3ArgumentBufferEncodedSize();
+				needsBuffSizeAuxBuff = needsBuffSizeAuxBuff || dslBind.needsBuffSizeAuxBuffer();
+			}
+
+			// Possibly add buffer sizes auxiliary buffer.
+			if (needsBuffSizeAuxBuff) {
+				_mtlArgumentBufferEncodedSize += kMVKMetal3ArgBuffSlotSizeInBytes;
 			}
 		}
 	}
@@ -330,14 +384,12 @@ const VkDescriptorBindingFlags* MVKDescriptorSetLayout::getBindingFlags(const Vk
 }
 
 std::string MVKDescriptorSetLayout::getLogDescription() {
-	std::stringstream logMsgOut;
-	logMsgOut << "VkDescriptorSetLayout with " << _bindings.size() << " descriptors:";
+	std::stringstream descStr;
+	descStr << "VkDescriptorSetLayout " << this << " with " << _bindings.size() << " bindings:";
 	for (auto& dlb : _bindings) {
-		logMsgOut << "\n\t\t" << dlb.getDescriptorIndex() << ": ";
-		logMsgOut << mvkVkDescriptorTypeName(dlb.getDescriptorType());
-		logMsgOut << " with " << dlb.getDescriptorCount() << " bindings.";
+		descStr << "\n\t" << dlb.getLogDescription();
 	}
-	return logMsgOut.str();
+	return descStr.str();
 }
 
 MVKDescriptorSetLayout::~MVKDescriptorSetLayout() {
@@ -405,7 +457,7 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
 }
 
 MVKMTLBufferAllocation* MVKDescriptorSet::acquireMTLBufferRegion(NSUInteger length) {
-	return _pool->_inlineBlockMTLBufferAllocator.acquireMTLBufferRegion(length);
+	return _pool->_mtlBufferAllocator.acquireMTLBufferRegion(length);
 }
 
 VkResult MVKDescriptorSet::allocate(MVKDescriptorSetLayout* layout,
@@ -415,7 +467,7 @@ VkResult MVKDescriptorSet::allocate(MVKDescriptorSetLayout* layout,
 	_variableDescriptorCount = variableDescriptorCount;
 
 	id<MTLArgumentEncoder> mtlArgEnc = nil;
-	if (isUsingMetalArgumentBuffer() && needsMetalArgumentBufferEncoders()) {
+	if (hasMetalArgumentBuffer() && needsMetalArgumentBufferEncoders()) {
 		mtlArgEnc = [getMTLDevice() newArgumentEncoderWithArguments: layout->_mtlArgumentEncoderArgs];	// temp retain
 	}
 	_argumentBuffer.setArgumentBuffer(_pool->_metalArgumentBuffer, mtlArgBufferOffset, mtlArgEnc);
@@ -439,6 +491,16 @@ VkResult MVKDescriptorSet::allocate(MVKDescriptorSetLayout* layout,
 		mvkDSLBind->encodeImmutableSamplersToMetalArgumentBuffer(this);
 	}
 
+	// If needed, allocate a MTLBuffer to track buffer sizes, and add it to the argument buffer.
+	// If this desc set doesn't contain buffers, buffSizesSlotCount will be zero, since _maxBufferIndex starts at -1.
+	uint32_t buffSizesSlotCount = _layout->_maxBufferIndex + 1;
+	if (buffSizesSlotCount) {
+		_bufferSizesBuffer = acquireMTLBufferRegion(buffSizesSlotCount * sizeof(uint32_t));
+		_argumentBuffer.setBuffer(_bufferSizesBuffer->_mtlBuffer,
+								  _bufferSizesBuffer->_offset,
+								  _layout->getBufferSizeBufferArgBuferIndex());
+	}
+
 	return getConfigurationResult();
 }
 
@@ -456,7 +518,25 @@ void MVKDescriptorSet::free(bool isPoolReset) {
 	_descriptors.clear();
 	_descriptors.shrink_to_fit();
 
+	if (_bufferSizesBuffer) {
+		_bufferSizesBuffer->returnToPool();
+		_bufferSizesBuffer = nullptr;
+	}
+
 	clearConfigurationResult();
+}
+
+void MVKDescriptorSet::setBufferSize(uint32_t descIdx, uint32_t value) {
+	if (_bufferSizesBuffer) {
+		*(uint32_t*)((uintptr_t)_bufferSizesBuffer->getContents() + (descIdx * sizeof(uint32_t))) = value;
+	}
+}
+
+void MVKDescriptorSet::encodeAuxBufferUsage(MVKResourcesCommandEncoderState* rezEncState, MVKShaderStage stage) {
+	if (_bufferSizesBuffer) {
+		MTLRenderStages mtlRendStages = MTLRenderStageVertex | MTLRenderStageFragment;
+		rezEncState->encodeResourceUsage(stage, _bufferSizesBuffer->_mtlBuffer, MTLResourceUsageRead, mtlRendStages);
+	}
 }
 
 MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorPool* pool) : MVKVulkanAPIDeviceObject(pool->_device), _pool(pool) {
@@ -521,7 +601,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSets(const VkDescriptorSetAllocate
 	const auto* pVarDescCounts = getVariableDecriptorCounts(pAllocateInfo);
 	for (uint32_t dsIdx = 0; dsIdx < pAllocateInfo->descriptorSetCount; dsIdx++) {
 		MVKDescriptorSetLayout* mvkDSL = (MVKDescriptorSetLayout*)pAllocateInfo->pSetLayouts[dsIdx];
-		if ( !mvkDSL->isPushDescriptorLayout() ) {
+		if ( !mvkDSL->_isPushDescriptorLayout ) {
 			rslt = allocateDescriptorSet(mvkDSL, (pVarDescCounts ? pVarDescCounts[dsIdx] : 0), &pDescriptorSets[dsIdx]);
 			if (rslt) { return rslt; }
 		}
@@ -562,7 +642,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 		// will fit in the slot that might already have been allocated for it in the Metal argument
 		// buffer from a previous allocation that was returned. If this pool has been reset recently,
 		// then the desc sets will not have had a Metal argument buffer allocation assigned yet.
-		if (mvkDSL->isUsingMetalArgumentBuffer()) {
+		if (mvkDSL->isUsingMetalArgumentBuffers()) {
 
 			// If the offset has not been set (and it's not the first desc set except
 			// on a reset pool), set the offset and update the next available offset value.
@@ -774,7 +854,7 @@ MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCr
     _hasPooledDescriptors(getMVKConfig().preallocateDescriptors),		// Set this first! Accessed by MVKDescriptorSet constructor and getPoolSize() in following lines.
 	_descriptorSets(pCreateInfo->maxSets, MVKDescriptorSet(this)),
 	_descriptorSetAvailablility(pCreateInfo->maxSets, true),
-	_inlineBlockMTLBufferAllocator(device, getMetalFeatures().dynamicMTLBufferSize, true),
+	_mtlBufferAllocator(_device, getMetalFeatures().maxMTLBufferSize, true),
 	_uniformBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)),
 	_storageBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)),
 	_uniformBufferDynamicDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)),
@@ -794,7 +874,7 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 	_metalArgumentBuffer = nil;
 	_nextMetalArgumentBufferOffset = 0;
 
-	if ( !isUsingDescriptorSetMetalArgumentBuffers() ) { return; }
+	if ( !isUsingMetalArgumentBuffers() ) { return; }
 
 	auto& mtlFeats = getMetalFeatures();
 	@autoreleasepool {
@@ -853,6 +933,10 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 					break;
 			}
 		}
+
+		// To support the SPIR-V OpArrayLength operation, for each descriptor set that 
+		// contain buffers, we add an additional buffer at the end to track buffer sizes.
+		mtlBuffCnt += std::min<NSUInteger>(mtlBuffCnt, pCreateInfo->maxSets);
 
 		// Each descriptor set uses a separate Metal argument buffer, but all of these descriptor set
 		// Metal argument buffers share a single MTLBuffer. This single MTLBuffer needs to be large

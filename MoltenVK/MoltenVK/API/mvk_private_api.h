@@ -44,7 +44,7 @@ typedef unsigned long MTLArgumentBuffersTier;
  */
 
 
-#define MVK_PRIVATE_API_VERSION   42
+#define MVK_PRIVATE_API_VERSION   43
 
 
 #pragma mark -
@@ -140,14 +140,6 @@ typedef enum MVKConfigAdvertiseExtensionBits {
 } MVKConfigAdvertiseExtensionBits;
 typedef VkFlags MVKConfigAdvertiseExtensions;
 
-/** Identifies the use of Metal Argument Buffers. */
-typedef enum MVKUseMetalArgumentBuffers {
-	MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER               = 0,	/**< Don't use Metal Argument Buffers. */
-	MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_ALWAYS              = 1,	/**< Use Metal Argument Buffers for all pipelines. */
-	MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_DESCRIPTOR_INDEXING = 2,	/**< Use Metal Argument Buffers only if VK_EXT_descriptor_indexing extension is enabled. */
-	MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_MAX_ENUM            = 0x7FFFFFFF
-} MVKUseMetalArgumentBuffers;
-
 /** Identifies the Metal functionality used to support Vulkan semaphore functionality (VkSemaphore). */
 typedef enum MVKVkSemaphoreSupportStyle {
 	MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_SINGLE_QUEUE            = 0,	/**< Limit Vulkan to a single queue, with no explicit semaphore synchronization, and use Metal's implicit guarantees that all operations submitted to a queue will give the same result as if they had been run in submission order. */
@@ -240,7 +232,7 @@ typedef struct {
 	uint32_t apiVersionToAdvertise;                                            /**< MVK_CONFIG_API_VERSION_TO_ADVERTISE */
 	MVKConfigAdvertiseExtensions advertiseExtensions;                          /**< MVK_CONFIG_ADVERTISE_EXTENSIONS */
 	VkBool32 resumeLostDevice;                                                 /**< MVK_CONFIG_RESUME_LOST_DEVICE */
-	MVKUseMetalArgumentBuffers useMetalArgumentBuffers;                        /**< MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS */
+	VkBool32 useMetalArgumentBuffers;                                          /**< MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS */
 	MVKConfigCompressionAlgorithm shaderSourceCompressionAlgorithm;            /**< MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM */
 	VkBool32 shouldMaximizeConcurrentCompilation;                              /**< MVK_CONFIG_SHOULD_MAXIMIZE_CONCURRENT_COMPILATION */
 	float timestampPeriodLowPassAlpha;                                         /**< MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA */
@@ -353,7 +345,7 @@ typedef struct {
     VkBool32 textureBarriers;                   	/**< If true, texture barriers are supported within Metal render passes. Deprecated. Will always be false on all platforms. */
     VkBool32 tileBasedDeferredRendering;        	/**< If true, this device uses tile-based deferred rendering. */
 	VkBool32 argumentBuffers;						/**< If true, Metal argument buffers are supported on the platform. */
-	VkBool32 descriptorSetArgumentBuffers;			/**< If true, a Metal argument buffers can be used for descriptor sets. */
+	VkBool32 descriptorSetArgumentBuffers;			/**< If true, Metal argument buffers can be used for descriptor sets. */
 	MVKFloatRounding clearColorFloatRounding;		/**< Identifies the type of rounding Metal uses for MTLClearColor float to integer conversions. */
 	MVKCounterSamplingFlags counterSamplingPoints;	/**< Identifies the points where pipeline GPU counter sampling may occur. */
 	VkBool32 programmableSamplePositions;			/**< If true, programmable MSAA sample positions are supported. */

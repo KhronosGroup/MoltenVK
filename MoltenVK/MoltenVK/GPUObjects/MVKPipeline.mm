@@ -110,7 +110,7 @@ void MVKPipelineLayout::populateShaderConversionConfig(SPIRVToMSLConversionConfi
 	}
 
     // Add resource bindings defined in the descriptor set layouts
-	uint32_t dslCnt = getDescriptorSetCount();
+	auto dslCnt = _descriptorSetLayouts.size();
 	for (uint32_t dslIdx = 0; dslIdx < dslCnt; dslIdx++) {
 		_descriptorSetLayouts[dslIdx]->populateShaderConversionConfig(shaderConfig,
 																	  _dslMTLResourceIndexOffsets[dslIdx],
@@ -128,6 +128,16 @@ bool MVKPipelineLayout::stageUsesPushConstants(MVKShaderStage mvkStage) {
 	return false;
 }
 
+std::string MVKPipelineLayout::getLogDescription() {
+	std::stringstream descStr;
+	size_t dslCnt = _descriptorSetLayouts.size();
+	descStr << "VkPipelineLayout " << this << " with " << dslCnt << " descriptor set layouts:";
+	for (uint32_t dslIdx = 0; dslIdx < dslCnt; dslIdx++) {
+		descStr << "\n\t" << dslIdx << ": " << _descriptorSetLayouts[dslIdx];
+	}
+	return descStr.str();
+}
+
 MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
                                      const VkPipelineLayoutCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 
@@ -139,7 +149,7 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 
 	// If we are using Metal argument buffers, consume a fixed number
 	// of buffer indexes for the Metal argument buffers themselves.
-	if (isUsingDescriptorSetMetalArgumentBuffers()) {
+	if (isUsingMetalArgumentBuffers()) {
 		_mtlResourceCounts.addArgumentBuffers(kMVKMaxDescriptorSetCount);
 	}
 
@@ -168,13 +178,15 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 
 		MVKShaderResourceBinding adjstdDSLRezOfsts = _mtlResourceCounts;
 		MVKShaderResourceBinding adjstdDSLRezCnts = pDescSetLayout->_mtlResourceCounts;
-		if (pDescSetLayout->isUsingMetalArgumentBuffer()) {
+		if (pDescSetLayout->isUsingMetalArgumentBuffers()) {
 			adjstdDSLRezOfsts.clearArgumentBufferResources();
 			adjstdDSLRezCnts.clearArgumentBufferResources();
 		}
 		_dslMTLResourceIndexOffsets.push_back(adjstdDSLRezOfsts);
 		_mtlResourceCounts += adjstdDSLRezCnts;
 	}
+
+	MVKLogDebugIf(getMVKConfig().debugMode, "Created %s\n", getLogDescription().c_str());
 }
 
 MVKPipelineLayout::~MVKPipelineLayout() {
@@ -200,7 +212,7 @@ void MVKPipeline::populateDescriptorSetBindingUse(MVKMTLFunction& mvkMTLFunc,
 												  const CreateInfo* pCreateInfo,
 												  SPIRVToMSLConversionConfiguration& shaderConfig,
 												  MVKShaderStage stage) {
-	if (isUsingDescriptorSetMetalArgumentBuffers()) {
+	if (isUsingMetalArgumentBuffers()) {
 		for (uint32_t dsIdx = 0; dsIdx < _descriptorSetCount; dsIdx++) {
 			auto* dsLayout = ((MVKPipelineLayout*)pCreateInfo->layout)->getDescriptorSetLayout(dsIdx);
 			dsLayout->populateBindingUse(getDescriptorBindingUse(dsIdx, stage), shaderConfig, stage, dsIdx);
@@ -213,7 +225,7 @@ MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVK
 	MVKVulkanAPIDeviceObject(device),
 	_pipelineCache(pipelineCache),
 	_flags(flags),
-	_descriptorSetCount(layout->getDescriptorSetCount()),
+	_descriptorSetCount(uint32_t(layout->_descriptorSetLayouts.size())),
 	_fullImageViewSwizzle(getMVKConfig().fullImageViewSwizzle) {
 
 		// Establish descriptor counts and push constants use.
@@ -690,7 +702,7 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 		pipelineStart = mvkGetTimestamp();
 	}
 
-	if (isUsingDescriptorSetMetalArgumentBuffers()) { _descriptorBindingUse.resize(_descriptorSetCount); }
+	if (isUsingMetalArgumentBuffers()) { _descriptorBindingUse.resize(_descriptorSetCount); }
 
 	const char* dumpDir = getMVKConfig().shaderDumpDir;
 	if (dumpDir && *dumpDir) {
@@ -1737,9 +1749,9 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
     shaderConfig.options.mslOptions.r32ui_linear_texture_alignment = (uint32_t)_device->getVkFormatTexelBufferAlignment(VK_FORMAT_R32_UINT, this);
 	shaderConfig.options.mslOptions.texture_buffer_native = mtlFeats.textureBuffers;
 
-	bool useMetalArgBuff = isUsingDescriptorSetMetalArgumentBuffers();
+	bool useMetalArgBuff = isUsingMetalArgumentBuffers();
 	shaderConfig.options.mslOptions.argument_buffers = useMetalArgBuff;
-	shaderConfig.options.mslOptions.force_active_argument_buffer_resources = useMetalArgBuff;
+	shaderConfig.options.mslOptions.force_active_argument_buffer_resources = false;
 	shaderConfig.options.mslOptions.pad_argument_buffer_resources = useMetalArgBuff;
 	shaderConfig.options.mslOptions.agx_manual_cube_grad_fixup = mtlFeats.needsCubeGradWorkaround;
 
@@ -2082,7 +2094,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 
 	_allowsDispatchBase = mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DISPATCH_BASE_BIT);
 
-	if (isUsingDescriptorSetMetalArgumentBuffers()) { _descriptorBindingUse.resize(_descriptorSetCount); }
+	if (isUsingMetalArgumentBuffers()) { _descriptorBindingUse.resize(_descriptorSetCount); }
 
 	const VkPipelineCreationFeedbackCreateInfo* pFeedbackInfo = nullptr;
 	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
@@ -2181,9 +2193,9 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderConfig.options.mslOptions.texture_1D_as_2D = getMVKConfig().texture1DAs2D;
     shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : mtlFeats.maxSubgroupSize;
 
-	bool useMetalArgBuff = isUsingDescriptorSetMetalArgumentBuffers();
+	bool useMetalArgBuff = isUsingMetalArgumentBuffers();
 	shaderConfig.options.mslOptions.argument_buffers = useMetalArgBuff;
-	shaderConfig.options.mslOptions.force_active_argument_buffer_resources = useMetalArgBuff;
+	shaderConfig.options.mslOptions.force_active_argument_buffer_resources = false;
 	shaderConfig.options.mslOptions.pad_argument_buffer_resources = useMetalArgBuff;
 
 #if MVK_MACOS

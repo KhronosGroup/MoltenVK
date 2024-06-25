@@ -651,7 +651,7 @@ void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 
 	_boundDescriptorSets[descSetIndex] = descSet;
 
-	if (descSet->isUsingMetalArgumentBuffer()) {
+	if (descSet->hasMetalArgumentBuffer()) {
 		// If the descriptor set has changed, track new resource usage.
 		if (dsChanged) {
 			auto& usageDirty = _metalUsageDirtyDescriptors[descSetIndex];
@@ -674,13 +674,13 @@ void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 // Encode the Metal command encoder usage for each resource,
 // and bind the Metal argument buffer to the command encoder.
 void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage stage) {
-	if ( !_cmdEncoder->isUsingDescriptorSetMetalArgumentBuffers() ) { return; }
+	if ( !_cmdEncoder->isUsingMetalArgumentBuffers() ) { return; }
 
 	MVKPipeline* pipeline = getPipeline();
 	uint32_t dsCnt = pipeline->getDescriptorSetCount();
 	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
 		auto* descSet = _boundDescriptorSets[dsIdx];
-		if ( !(descSet && descSet->isUsingMetalArgumentBuffer()) ) { continue; }
+		if ( !(descSet && descSet->hasMetalArgumentBuffer()) ) { continue; }
 
 		auto* dsLayout = descSet->getLayout();
 		auto& resourceUsageDirtyDescs = _metalUsageDirtyDescriptors[dsIdx];
@@ -702,6 +702,8 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 				}
 			}
 		}
+		descSet->encodeAuxBufferUsage(this, stage);
+
 
 		// If it is needed, bind the Metal argument buffer itself to the command encoder,
 		if (shouldBindArgBuffToStage) {
@@ -724,7 +726,7 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 // Mark the resource usage as needing an update for each Metal render encoder.
 void MVKResourcesCommandEncoderState::markDirty() {
 	MVKCommandEncoderState::markDirty();
-	if (_cmdEncoder->isUsingDescriptorSetMetalArgumentBuffers()) {
+	if (_cmdEncoder->isUsingMetalArgumentBuffers()) {
 		for (uint32_t dsIdx = 0; dsIdx < kMVKMaxDescriptorSetCount; dsIdx++) {
 			_metalUsageDirtyDescriptors[dsIdx].setAllBits();
 		}
