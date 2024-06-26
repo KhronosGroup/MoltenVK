@@ -11,7 +11,7 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ vkGetDeviceAccelerationStructureCompatibilityKHR  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -20,16 +20,16 @@
  Commands that need to be implemented
  
  vkCmdBuildAccelerationStructuresIndirectKHR
- vkCmdBuildAccelerationStructuresKHR - DONE
- vkCmdCopyAccelerationStructureKHR - DONE
- vkCmdCopyAccelerationStructureToMemoryKHR - DONE
- vkCmdCopyMemoryToAccelerationStructureKHR - DONE
+ vkCmdBuildAccelerationStructuresKHR 
+ vkCmdCopyAccelerationStructureKHR 
+ vkCmdCopyAccelerationStructureToMemoryKHR 
+ vkCmdCopyMemoryToAccelerationStructureKHR 
  vkCmdWriteAccelerationStructuresPropertiesKHR
- vkCreateAccelerationStructureKHR - DONE
- vkDestroyAccelerationStructureKHR - DONE
- vkGetAccelerationStructureBuildSizesKHR
- vkGetAccelerationStructureDeviceAddressKHR - DONE
- vkGetDeviceAccelerationStructureCompatibilityKHR - DONE
+ vkCreateAccelerationStructureKHR - Complete
+ vkDestroyAccelerationStructureKHR - Complete
+ vkGetAccelerationStructureBuildSizesKHR 
+ vkGetAccelerationStructureDeviceAddressKHR  - Complete
+ vkGetDeviceAccelerationStructureCompatibilityKHR  - Complete
 */
 
 #pragma once

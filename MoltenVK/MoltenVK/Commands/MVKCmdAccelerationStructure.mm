@@ -80,7 +80,6 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
                     accStructBuildDescriptor.usage = MTLAccelerationStructureUsageNone;
                 }
                 
-                // What would the offset be?
                 [dstAccelerationStructureHeap newAccelerationStructureWithDescriptor:accStructBuildDescriptor];
                 
                 [accStructEncoder buildAccelerationStructure:dstAccelerationStructure
@@ -92,21 +91,21 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
             
             if(_geometryInfos[i].type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR)
             {
+                MTLPrimitiveAccelerationStructureDescriptor* accStructBuildDescriptor = [MTLPrimitiveAccelerationStructureDescriptor new];
+                
+                if(mvkIsAnyFlagEnabled(_geometryInfos[i].flags, VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)){
+                    accStructBuildDescriptor.usage += MTLAccelerationStructureUsageRefit;
+                    mvkDstAccelerationStructure->setAllowUpdate(true);
+                }else if(mvkIsAnyFlagEnabled(_geometryInfos[i].flags, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR)){
+                    accStructBuildDescriptor.usage += MTLAccelerationStructureUsagePreferFastBuild;
+                }else{
+                    accStructBuildDescriptor.usage = MTLAccelerationStructureUsageNone;
+                }
+                
                 if(_geometryInfos[i].pGeometries->geometryType == VK_GEOMETRY_TYPE_INSTANCES_KHR) { return; }
                 
                 if(_geometryInfos[i].pGeometries->geometryType == VK_GEOMETRY_TYPE_TRIANGLES_KHR)
                 {
-                    MTLPrimitiveAccelerationStructureDescriptor* accStructTriangleBuildDescriptor = [MTLPrimitiveAccelerationStructureDescriptor new];
-                    
-                    if(mvkIsAnyFlagEnabled(_geometryInfos[i].flags, VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)){
-                        accStructTriangleBuildDescriptor.usage += MTLAccelerationStructureUsageRefit;
-                        mvkDstAccelerationStructure->setAllowUpdate(true);
-                    }else if(mvkIsAnyFlagEnabled(_geometryInfos[i].flags, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR)){
-                        accStructTriangleBuildDescriptor.usage += MTLAccelerationStructureUsagePreferFastBuild;
-                    }else{
-                        accStructTriangleBuildDescriptor.usage = MTLAccelerationStructureUsageNone;
-                    }
-                    
                     VkAccelerationStructureGeometryTrianglesDataKHR triangleGeometryData = _geometryInfos[i].pGeometries->geometry.triangles;
                     uint64_t vertexBDA = triangleGeometryData.vertexData.deviceAddress;
                     uint64_t indexBDA = triangleGeometryData.indexData.deviceAddress;
@@ -116,37 +115,37 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
                     MTLAccelerationStructureTriangleGeometryDescriptor* geometryTriangles = [MTLAccelerationStructureTriangleGeometryDescriptor new];
                     geometryTriangles.triangleCount = _geometryInfos[i].geometryCount;
                     geometryTriangles.vertexBuffer = mvkVertexBuffer->getMTLBuffer();
-                    geometryTriangles.vertexBufferOffset = _buildRangeInfos[i].primitiveOffset;
+                    geometryTriangles.vertexBufferOffset = mvkVertexBuffer->getMTLBufferOffset();
                     
                     geometryTriangles.indexBuffer = mvkIndexBuffer->getMTLBuffer();
-                    geometryTriangles.indexBufferOffset = 0; // Need to get this value
+                    geometryTriangles.indexBufferOffset = mvkIndexBuffer->getMTLBufferOffset();
                     geometryTriangles.indexType = mvkMTLIndexTypeFromVkIndexType(triangleGeometryData.indexType);
-                    accStructTriangleBuildDescriptor.geometryDescriptors = @[geometryTriangles];
+                    accStructBuildDescriptor.geometryDescriptors = @[geometryTriangles];
                     
                     [accStructEncoder buildAccelerationStructure:dstAccelerationStructure
-                                                      descriptor:accStructTriangleBuildDescriptor
+                                                      descriptor:accStructBuildDescriptor
                                                    scratchBuffer:scratchBuffer
                                              scratchBufferOffset:scratchBufferOffset];
                 }
-                // Need to implement AABBS
-                // This is just a dummy copy of Bottom Level
+                
                 if(_geometryInfos[i].pGeometries->geometryType == VK_GEOMETRY_TYPE_AABBS_KHR)
                 {
+                    VkAccelerationStructureGeometryAabbsDataKHR aabbGeometryData = _geometryInfos[i].pGeometries->geometry.aabbs;
+                    uint64_t boundingBoxBDA = aabbGeometryData.data.deviceAddress;
+                    MVKBuffer* mvkBoundingBoxBuffer = _mvkDevice->getBufferAtAddress(boundingBoxBDA);
+                    
+                    MTLAccelerationStructureBoundingBoxGeometryDescriptor* geometryAABBs = [MTLAccelerationStructureBoundingBoxGeometryDescriptor new];
+                    geometryAABBs.boundingBoxCount = _geometryInfos[i].geometryCount;
+                    geometryAABBs.boundingBoxBuffer = mvkBoundingBoxBuffer->getMTLBuffer();
+                    geometryAABBs.boundingBoxStride = 0; // Need to get this
+                    geometryAABBs.boundingBoxBufferOffset = mvkBoundingBoxBuffer->getMTLBufferOffset();
+                    accStructBuildDescriptor.geometryDescriptors = @[geometryAABBs];
                 }
             }
             
             if(_geometryInfos[i].type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR)
             {
                 MTLInstanceAccelerationStructureDescriptor* accStructInstanceBuildDescriptor = [MTLInstanceAccelerationStructureDescriptor new];
-                
-                if(mvkIsAnyFlagEnabled(_geometryInfos[i].flags, VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)){
-                    accStructInstanceBuildDescriptor.usage += MTLAccelerationStructureUsageRefit;
-                    mvkDstAccelerationStructure->setAllowUpdate(true);
-                }else if(mvkIsAnyFlagEnabled(_geometryInfos[i].flags, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR)){
-                    accStructInstanceBuildDescriptor.usage += MTLAccelerationStructureUsagePreferFastBuild;
-                }else{
-                    accStructInstanceBuildDescriptor.usage = MTLAccelerationStructureUsageNone;
-                }
             }
         }
         
