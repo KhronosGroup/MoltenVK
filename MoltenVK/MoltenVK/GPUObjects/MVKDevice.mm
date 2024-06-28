@@ -33,6 +33,7 @@
 #include "MVKFoundation.h"
 #include "MVKCodec.h"
 #include "MVKStrings.h"
+#include "MVKAccelerationStructure.h"
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 
 #import "CAMetalLayer+MoltenVK.h"
@@ -3862,6 +3863,46 @@ void MVKDevice::getCalibratedTimestamps(uint32_t timestampCount,
 	*pMaxDeviation = cpuEnd - cpuStart;
 }
 
+MVKBuffer* MVKDevice::getBufferAtAddress(uint64_t address)
+{
+    lock_guard<mutex> lock(_rezLock);
+    
+    std::unordered_map<MVKBufferAddressRange, MVKBuffer*>::iterator it;
+    // Super inefficent but this can be fixed in the future
+    for(it = _gpuBufferAddressMap.begin(); it != _gpuBufferAddressMap.end(); it++)
+    {
+        // If the beginning address is bigger than, or the ending address is smaller than the passed address, then skip this it
+        if(it->first.first > address || it->first.second < address)
+        {
+            continue;
+        }
+        break;
+    }
+    
+    // Couldn't find the buffer at address
+    if (it == _gpuBufferAddressMap.end()) { return nullptr;}
+
+    return it->second;
+}
+
+MVKAccelerationStructure* MVKDevice::getAccelerationStructureAtAddress(uint64_t address)
+{
+    std::unordered_map<uint64_t, MVKAccelerationStructure*>::iterator accStructIt = _gpuAccStructAddressMap.find(address);
+    if(accStructIt == _gpuAccStructAddressMap.end()) { return nullptr; }
+    
+    return accStructIt->second;
+}
+
+VkAccelerationStructureCompatibilityKHR MVKDevice::getAccelerationStructureCompatibility(const VkAccelerationStructureVersionInfoKHR* pVersionInfo)
+{
+    if(_enabledAccelerationStructureFeatures.accelerationStructure)
+    {
+        return VK_ACCELERATION_STRUCTURE_COMPATIBILITY_COMPATIBLE_KHR;
+    }
+    
+    return VK_ACCELERATION_STRUCTURE_COMPATIBILITY_INCOMPATIBLE_KHR;
+}
+
 #pragma mark Object lifecycle
 
 uint32_t MVKDevice::getVulkanMemoryTypeIndex(MTLStorageMode mtlStorageMode) {
@@ -4115,6 +4156,18 @@ MVKPipelineLayout* MVKDevice::createPipelineLayout(const VkPipelineLayoutCreateI
 void MVKDevice::destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
 									  const VkAllocationCallbacks* pAllocator) {
 	if (mvkPLL) { mvkPLL->destroy(); }
+}
+
+MVKAccelerationStructure* MVKDevice::createAccelerationStructure(const VkAccelerationStructureCreateInfoKHR* pCreateInfo,
+                                                                 const VkAllocationCallbacks*                pAllocator) {
+    return addAccelerationStructure(new MVKAccelerationStructure(this));
+}
+
+void MVKDevice::destroyAccelerationStructure(MVKAccelerationStructure*     mvkAccStruct,
+                                             const VkAllocationCallbacks*  pAllocator) {
+    if(!mvkAccStruct) { return; }
+    removeAccelerationStructure(mvkAccStruct);
+    mvkAccStruct->destroy();
 }
 
 template<typename PipelineType, typename PipelineInfoType>
@@ -4408,6 +4461,30 @@ void MVKDevice::addTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value)
 void MVKDevice::removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value) {
 	lock_guard<mutex> lock(_sem4Lock);
 	mvkRemoveFirstOccurance(_awaitingTimelineSem4s, make_pair(sem4, value));
+}
+
+MVKAccelerationStructure* MVKDevice::addAccelerationStructure(MVKAccelerationStructure* accStruct) {
+    std::pair<uint64_t, MVKAccelerationStructure*> accStructMemoryPair = std::make_pair(_nextValidAccStructureAddress, accStruct);
+    _gpuAccStructAddressMap.insert(accStructMemoryPair);
+    accStruct->setDeviceAddress(_nextValidAccStructureAddress);
+    _nextValidAccStructureAddress += accStruct->getMTLSize();
+    return accStruct;
+}
+
+void MVKDevice::removeAccelerationStructure(MVKAccelerationStructure* accStruct) {
+    std::unordered_map<uint64_t, MVKAccelerationStructure*>::iterator accStructIt = _gpuAccStructAddressMap.find(accStruct->getDeviceAddress());
+    uint64_t addressOffset = accStructIt->second->getMTLSize();
+    _gpuAccStructAddressMap.erase(accStructIt);
+    
+    // This can lead to fragmentation over time, so I'll just push all keys after this back
+    // This, however is also another performance issue
+    for(auto it = accStructIt; it != _gpuAccStructAddressMap.end(); it++)
+    {
+        auto extractedAccStruct = _gpuAccStructAddressMap.extract(it->first);
+        extractedAccStruct.key() = it->first - addressOffset;
+        _gpuAccStructAddressMap.insert(std::move(extractedAccStruct));
+        _gpuAccStructAddressMap.erase(it->first);
+    }
 }
 
 void MVKDevice::applyMemoryBarrier(MVKPipelineBarrier& barrier,
