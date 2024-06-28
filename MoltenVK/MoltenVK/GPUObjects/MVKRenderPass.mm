@@ -438,6 +438,21 @@ void MVKRenderSubpass::populatePipelineRenderingCreateInfo() {
 	_pipelineRenderingCreateInfo.pColorAttachmentFormats = _colorAttachmentFormats.data();
 	_pipelineRenderingCreateInfo.depthAttachmentFormat = getDepthFormat();
 	_pipelineRenderingCreateInfo.stencilAttachmentFormat = getStencilFormat();
+
+	// Needed to understand if we need to force the depth/stencil write to post fragment execution
+	// since Metal may try to do the write pre fragment exeuction which is against Vulkan
+	bool depthAttachmentUsed = isDepthAttachmentUsed();
+	bool stencilAttachmentUsed = isStencilAttachmentUsed();
+	for (uint32_t i = 0u; i < _inputAttachments.size(); ++i) {
+		bool isDepthInput = depthAttachmentUsed && (_inputAttachments[i].attachment == _depthAttachment.attachment) &&
+							  (_inputAttachments[i].aspectMask & _depthAttachment.aspectMask);
+		bool isStencilInput = stencilAttachmentUsed && (_inputAttachments[i].attachment == _stencilAttachment.attachment) &&
+							  (_inputAttachments[i].aspectMask & _stencilAttachment.aspectMask);
+		if (isDepthInput || isStencilInput) {
+			_isInputAttachmentDepthStencilAttachment = true;
+			break;
+		}
+	}
 }
 
 static const VkAttachmentReference2 _unusedAttachment = {VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2, nullptr, VK_ATTACHMENT_UNUSED, VK_IMAGE_LAYOUT_UNDEFINED, 0};
