@@ -2014,6 +2014,13 @@ void MVKPhysicalDevice::initMetalFeatures() {
     }
 #endif
 
+#if MVK_XCODE_16
+	if ( mvkOSVersionIsAtLeast(18.0) ) {
+		// We don't explicitly support Metal 3.2 yet
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_1;
+	}
+#endif
+
 #endif
 
 #if MVK_IOS
@@ -2136,6 +2143,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.mslVersionEnum = MTLLanguageVersion3_1;
     }
 #endif
+#if MVK_XCODE_16
+	if ( mvkOSVersionIsAtLeast(18.0) ) {
+		// We don't explicitly support Metal 3.2 yet
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_1;
+	}
+#endif
 
 #endif
 
@@ -2225,6 +2238,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
     if ( mvkOSVersionIsAtLeast(14.0) ) {
         _metalFeatures.mslVersionEnum = MTLLanguageVersion3_1;
     }
+#endif
+#if MVK_XCODE_16
+	if ( mvkOSVersionIsAtLeast(18.0) ) {
+		// We don't explicitly support Metal 3.2 yet
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_1;
+	}
 #endif
 
 	// This is an Apple GPU--treat it accordingly.
@@ -2341,6 +2360,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(maj, min);
 
 	switch (_metalFeatures.mslVersionEnum) {
+#if MVK_XCODE_16
+		case MTLLanguageVersion3_2:
+			// We don't explicitly support Metal 3.2 yet
+			setMSLVersion(3, 1);
+			break;
+#endif
 #if MVK_XCODE_15
         case MTLLanguageVersion3_1:
             setMSLVersion(3, 1);
