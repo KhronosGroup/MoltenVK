@@ -616,21 +616,13 @@ cleared via a call to the `vkTrimCommandPoolKHR()` command.
 ---------------------------------------
 #### MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS
 
-##### Type: Enumeration
-- `0`: Don't use _Metal_ Argument Buffers.
-- `1`: Use _Metal_ Argument Buffers for all pipelines.
-- `2`: Use _Metal_ Argument Buffers only if the `VK_EXT_descriptor_indexing` extension is enabled.
-
-##### Default: `0`
+##### Type: Boolean
+##### Default: `1`
 
 Controls whether **MoltenVK** should use _Metal_ argument buffers for resources defined in descriptor sets,
 if _Metal_ argument buffers are supported on the platform. Using _Metal_ argument buffers dramatically
 increases the number of buffers, textures and samplers that can be bound to a pipeline shader, and in most
 cases improves performance.
-
-_**NOTE:**_ Currently, _Metal_ argument buffer support is in beta stage, and is only supported on _macOS 11.0+_,
-or on older versions of _macOS_ using an _Intel_ GPU. _Metal_ argument buffers support is not available on _iOS_ or _tvOS_.
-Development to support _iOS_ and _tvOS_ and a wider combination of GPU's on older _macOS_ versions is under way.
 
 
 ---------------------------------------

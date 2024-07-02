@@ -352,11 +352,6 @@ public:
 	/** Returns whether the MSL version is supported on this device. */
 	bool mslVersionIsAtLeast(MTLLanguageVersion minVer) { return _metalFeatures.mslVersionEnum >= minVer; }
 
-	/** Returns whether this physical device supports Metal argument buffers. */
-	bool supportsMetalArgumentBuffers()  {
-		return _metalFeatures.argumentBuffers && getMVKConfig().useMetalArgumentBuffers != MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER;
-	};
-
 	/** Returns the MTLStorageMode that matches the Vulkan memory property flags. */
 	MTLStorageMode getMTLStorageModeFromVkMemoryPropertyFlags(VkMemoryPropertyFlags vkFlags);
 
@@ -443,6 +438,7 @@ protected:
 	uint32_t _lazilyAllocatedMemoryTypes;
 	bool _hasUnifiedMemory = true;
 	bool _isAppleGPU = true;
+	bool _isUsingMetalArgumentBuffers = false;
 };
 
 
@@ -710,9 +706,6 @@ public:
 
 #pragma mark Metal
 
-	/** Returns whether this device is using Metal argument buffers. */
-	bool isUsingMetalArgumentBuffers() { return _isUsingMetalArgumentBuffers; };
-
 	/**
 	 * Returns an autoreleased options object to be used when compiling MSL shaders.
 	 * The requestFastMath parameter is combined with the value of MVKConfiguration::fastMathEnabled
@@ -872,7 +865,6 @@ protected:
 	int _capturePipeFileDesc = -1;
 	bool _isPerformanceTracking = false;
 	bool _isCurrentlyAutoGPUCapturing = false;
-	bool _isUsingMetalArgumentBuffers = false;
 
 };
 
@@ -906,17 +898,14 @@ public:
 	/** Returns whether the GPU is Apple Silicon. */
 	bool isAppleGPU() { return _device->_physicalDevice->_isAppleGPU; }
 
+	/** Returns whether this device is using one Metal argument buffer for each descriptor set, on multiple pipeline and pipeline stages. */
+	virtual bool isUsingMetalArgumentBuffers() { return _device->_physicalDevice->_isUsingMetalArgumentBuffers; };
+
+	/** Returns whether this device needs Metal argument buffer encoders to populate argument buffer content. */
+	bool needsMetalArgumentBufferEncoders() { return _device->_physicalDevice->_metalFeatures.needsArgumentBufferEncoders; };
+
 	/** Returns info about the pixel format supported by the physical device. */
 	MVKPixelFormats* getPixelFormats() { return &_device->_physicalDevice->_pixelFormats; }
-
-	/** Returns whether this device is using Metal argument buffers. */
-	bool isUsingMetalArgumentBuffers() { return _device->_isUsingMetalArgumentBuffers; };
-
-	/** Returns whether this device is using one Metal argument buffer for each descriptor set, on multiple pipeline and pipeline stages. */
-	bool isUsingDescriptorSetMetalArgumentBuffers() { return _device->_isUsingMetalArgumentBuffers && getMetalFeatures().descriptorSetArgumentBuffers; };
-
-	/** Returns whether this device is using one Metal argument buffer for each descriptor set-pipeline-stage combination. */
-	bool isUsingPipelineStageMetalArgumentBuffers() { return _device->_isUsingMetalArgumentBuffers && !getMetalFeatures().descriptorSetArgumentBuffers; };
 
 	/** The list of Vulkan extensions, indicating whether each has been enabled by the app for this device. */
 	MVKExtensionList& getEnabledExtensions() { return _device->_enabledExtensions; }
@@ -967,6 +956,8 @@ public:
 
 	/** Constructs an instance for the specified device. */
 	MVKDeviceTrackingMixin(MVKDevice* device) : _device(device) { assert(_device); }
+
+	virtual ~MVKDeviceTrackingMixin() {}
 
 protected:
 	MVKDevice* _device;

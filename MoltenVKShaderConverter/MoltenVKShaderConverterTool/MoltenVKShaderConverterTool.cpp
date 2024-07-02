@@ -219,7 +219,7 @@ bool MoltenVKShaderConverterTool::convertSPIRV(const vector<uint32_t>& spv,
 	mslContext.options.mslOptions.set_msl_version(_mslVersionMajor, _mslVersionMinor, _mslVersionPatch);
 	mslContext.options.shouldFlipVertexY = _shouldFlipVertexY;
 	mslContext.options.mslOptions.argument_buffers = _useMetalArgumentBuffers;
-	mslContext.options.mslOptions.force_active_argument_buffer_resources = _useMetalArgumentBuffers;
+	mslContext.options.mslOptions.force_active_argument_buffer_resources = false;
 	mslContext.options.mslOptions.pad_argument_buffer_resources = false;
 	mslContext.options.mslOptions.argument_buffers_tier = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::ArgumentBuffersTier::Tier2;
 	mslContext.options.mslOptions.replace_recursive_inputs = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0);

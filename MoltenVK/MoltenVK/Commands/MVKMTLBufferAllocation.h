@@ -45,7 +45,7 @@ public:
      * Returns a pointer to the begining of this allocation memory, taking into
      * consideration this allocation's offset into the underlying MTLBuffer.
      */
-    inline void* getContents() const { return (void*)((uintptr_t)_mtlBuffer.contents + _offset); }
+    void* getContents() const { return (void*)((uintptr_t)_mtlBuffer.contents + _offset); }
 
     /** Returns the pool whence this object was created. */
     MVKMTLBufferAllocationPool* getPool() const { return _pool; }

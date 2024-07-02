@@ -291,8 +291,7 @@ as in the following examples:
 
 	make MVK_CONFIG_LOG_LEVEL=0
 or
-
-	make macos MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=2
+	make macos MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=1
 
 ...etc.
 

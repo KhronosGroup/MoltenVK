@@ -78,7 +78,7 @@ MVK_CONFIG_MEMBER(useMTLHeap,                             VkBool32,             
 MVK_CONFIG_MEMBER(apiVersionToAdvertise,                  uint32_t,                                 API_VERSION_TO_ADVERTISE)
 MVK_CONFIG_MEMBER(advertiseExtensions,                    uint32_t,                                 ADVERTISE_EXTENSIONS)
 MVK_CONFIG_MEMBER(resumeLostDevice,                       VkBool32,                                 RESUME_LOST_DEVICE)
-MVK_CONFIG_MEMBER(useMetalArgumentBuffers,                MVKUseMetalArgumentBuffers,               USE_METAL_ARGUMENT_BUFFERS)
+MVK_CONFIG_MEMBER(useMetalArgumentBuffers,                VkBool32,                                 USE_METAL_ARGUMENT_BUFFERS)
 MVK_CONFIG_MEMBER(shaderSourceCompressionAlgorithm,       MVKConfigCompressionAlgorithm,            SHADER_COMPRESSION_ALGORITHM)
 MVK_CONFIG_MEMBER(shouldMaximizeConcurrentCompilation,    VkBool32,                                 SHOULD_MAXIMIZE_CONCURRENT_COMPILATION)
 MVK_CONFIG_MEMBER(timestampPeriodLowPassAlpha,            float,                                    TIMESTAMP_PERIOD_LOWPASS_ALPHA)
