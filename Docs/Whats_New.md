@@ -30,7 +30,7 @@ Released TBD
 - Fix shader conversion failure when using native texture atomics.
 - MSL shader conversion, only pass resource bindings that apply to current shader stage.
 - Update documentation for minimum runtime OS requirements to indicate _macOS 10.15_, _iOS 13_, or _tvOS 13_.
-- Update `MVK_PRIVATE_API_VERSION` to version `43`.
+- Update `MVK_PRIVATE_API_VERSION` to version `42`.
 - Update to latest SPIRV-Cross:
   - MSL: Add option to force depth write in fragment shaders
   - MSL: Improve handling of padded descriptors with argument buffers

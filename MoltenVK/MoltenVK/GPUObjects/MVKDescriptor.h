@@ -399,7 +399,7 @@ public:
 	~MVKInlineUniformBlockDescriptor() { reset(); }
 
 protected:
-	inline uint8_t* getData() { return _mvkMTLBufferAllocation ? (uint8_t*)_mvkMTLBufferAllocation->getContents() : nullptr; }
+	uint8_t* getData() { return _mvkMTLBufferAllocation ? (uint8_t*)_mvkMTLBufferAllocation->getContents() : nullptr; }
 
 	MVKMTLBufferAllocation* _mvkMTLBufferAllocation = nullptr;
 };
