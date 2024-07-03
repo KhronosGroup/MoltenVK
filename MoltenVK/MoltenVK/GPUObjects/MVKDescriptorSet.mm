@@ -44,7 +44,9 @@ void MVKMetalArgumentBuffer::setBuffer(id<MTLBuffer> mtlBuff, NSUInteger offset,
 	if (_mtlArgumentEncoder) {
 		[_mtlArgumentEncoder setBuffer: mtlBuff offset: offset atIndex: index];
 	} else {
+#if MVK_XCODE_14
 		*(uint64_t*)getArgumentPointer(index) = mtlBuff.gpuAddress + offset;
+#endif
 	}
 }
 
@@ -52,7 +54,9 @@ void MVKMetalArgumentBuffer::setTexture(id<MTLTexture> mtlTex, uint32_t index) {
 	if (_mtlArgumentEncoder) {
 		[_mtlArgumentEncoder setTexture: mtlTex atIndex: index];
 	} else {
+#if MVK_XCODE_14
 		*(MTLResourceID*)getArgumentPointer(index) = mtlTex.gpuResourceID;
+#endif
 	}
 }
 
@@ -60,7 +64,9 @@ void MVKMetalArgumentBuffer::setSamplerState(id<MTLSamplerState> mtlSamp, uint32
 	if (_mtlArgumentEncoder) {
 		[_mtlArgumentEncoder setSamplerState: mtlSamp atIndex: index];
 	} else {
+#if MVK_XCODE_14
 		*(MTLResourceID*)getArgumentPointer(index) = mtlSamp.gpuResourceID;
+#endif
 	}
 }
 
