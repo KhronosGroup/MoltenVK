@@ -28,6 +28,10 @@ class MVKCommandEncoder;
 class MVKResourcesCommandEncoderState;
 
 
+// The size of one Metal3 Argument Buffer slot in bytes.
+static const size_t kMVKMetal3ArgBuffSlotSizeInBytes = sizeof(uint64_t);
+
+
 #pragma mark MVKShaderStageResourceBinding
 
 /** Indicates the Metal resource indexes used by a single shader stage in a descriptor. */
@@ -35,7 +39,6 @@ typedef struct MVKShaderStageResourceBinding {
 	uint32_t bufferIndex = 0;
 	uint32_t textureIndex = 0;
 	uint32_t samplerIndex = 0;
-	uint32_t resourceIndex = 0;
 	uint32_t dynamicOffsetBufferIndex = 0;
 
 	MVKShaderStageResourceBinding operator+ (const MVKShaderStageResourceBinding& rhs);
@@ -51,10 +54,9 @@ typedef struct MVKShaderStageResourceBinding {
 typedef struct MVKShaderResourceBinding {
 	MVKShaderStageResourceBinding stages[kMVKShaderStageCount];
 
-	uint16_t getMaxResourceIndex();
-	uint16_t getMaxBufferIndex();
-	uint16_t getMaxTextureIndex();
-	uint16_t getMaxSamplerIndex();
+	uint32_t getMaxBufferIndex();
+	uint32_t getMaxTextureIndex();
+	uint32_t getMaxSamplerIndex();
 
 	MVKShaderResourceBinding operator+ (const MVKShaderResourceBinding& rhs);
 	MVKShaderResourceBinding& operator+= (const MVKShaderResourceBinding& rhs);
@@ -91,10 +93,10 @@ public:
 	MVKVulkanAPIObject* getVulkanAPIObject() override;
 
 	/** Returns the binding number of this layout. */
-	inline uint32_t getBinding() { return _info.binding; }
+	uint32_t getBinding() { return _info.binding; }
 
 	/** Returns whether this binding has a variable descriptor count. */
-	inline bool hasVariableDescriptorCount() const {
+	bool hasVariableDescriptorCount() const {
 		return mvkIsAnyFlagEnabled(_flags, VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT);
 	}
 
@@ -109,7 +111,7 @@ public:
 	uint32_t getDescriptorCount(MVKDescriptorSet* descSet = nullptr) const;
 
 	/** Returns the descriptor type of this layout. */
-	inline VkDescriptorType getDescriptorType() { return _info.descriptorType; }
+	VkDescriptorType getDescriptorType() { return _info.descriptorType; }
 
 	/** Returns whether this binding uses immutable samplers. */
 	bool usesImmutableSamplers() { return !_immutableSamplers.empty(); }
@@ -159,8 +161,7 @@ public:
 	MVKDescriptorSetLayoutBinding(MVKDevice* device,
 								  MVKDescriptorSetLayout* layout,
 								  const VkDescriptorSetLayoutBinding* pBinding,
-								  VkDescriptorBindingFlagsEXT bindingFlags,
-								  uint32_t descriptorIndex);
+								  VkDescriptorBindingFlagsEXT bindingFlags);
 
 	MVKDescriptorSetLayoutBinding(const MVKDescriptorSetLayoutBinding& binding);
 
@@ -168,6 +169,7 @@ public:
 
 protected:
 	friend class MVKDescriptorSetLayout;
+	friend class MVKDescriptorSet;
     friend class MVKInlineUniformBlockDescriptor;
 	
 	void initMetalResourceIndexOffsets(const VkDescriptorSetLayoutBinding* pBinding, uint32_t stage);
@@ -176,11 +178,15 @@ protected:
 								  uint32_t argIndex,
 								  MTLDataType dataType,
 								  MTLArgumentAccess access);
-	bool isUsingMetalArgumentBuffer();
 	void populateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 										MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 										uint32_t dslIndex);
 	bool validate(MVKSampler* mvkSampler);
+	void encodeImmutableSamplersToMetalArgumentBuffer(MVKDescriptorSet* mvkDescSet);
+	uint32_t getMTLResourceCountPerElement();
+	uint64_t getMetal3ArgumentBufferEncodedSize();
+	bool needsBuffSizeAuxBuffer();
+	std::string getLogDescription();
 
 	MVKDescriptorSetLayout* _layout;
 	VkDescriptorSetLayoutBinding _info;
@@ -218,16 +224,6 @@ public:
 					  MVKArrayRef<uint32_t> dynamicOffsets,
 					  uint32_t& dynamicOffsetIndex) = 0;
 
-	/** Encodes this descriptor to the Metal argument buffer. */
-	virtual void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-											 id<MTLArgumentEncoder> mtlArgEncoder,
-											 uint32_t descSetIndex,
-											 MVKDescriptorSetLayoutBinding* mvkDSLBind,
-											 uint32_t elementIndex,
-											 MVKShaderStage stage,
-											 bool encodeToArgBuffer,
-											 bool encodeUsage) = 0;
-
 	/**
 	 * Updates the internal binding from the specified content. The format of the content depends
 	 * on the descriptor type, and is extracted from pData at the location given by index * stride.
@@ -235,8 +231,9 @@ public:
 	 */
 	virtual void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 					   MVKDescriptorSet* mvkDescSet,
-					   uint32_t index,
-					   size_t stride,
+					   uint32_t dstIdx,
+					   uint32_t srcIdx,
+					   size_t srcStride,
 					   const void* pData) = 0;
 
 	/**
@@ -257,6 +254,11 @@ public:
 					  VkDescriptorBufferInfo* pBufferInfo,
 					  VkBufferView* pTexelBufferView,
 					  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) = 0;
+
+	/** Encodes the usage of this resource to the Metal command encoder. */
+	virtual void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
+									 MVKShaderStage stage) = 0;
 
 	/** Resets any internal content. */
 	virtual void reset() {}
@@ -285,19 +287,11 @@ public:
 			  MVKArrayRef<uint32_t> dynamicOffsets,
 			  uint32_t& dynamicOffsetIndex) override;
 
-	void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-									 id<MTLArgumentEncoder> mtlArgEncoder,
-									 uint32_t descSetIndex,
-									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
-									 uint32_t elementIndex,
-									 MVKShaderStage stage,
-									 bool encodeToArgBuffer,
-									 bool encodeUsage) override;
-
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
-			   uint32_t srcIndex,
-			   size_t stride,
+			   uint32_t dstIdx,
+			   uint32_t srcIdx,
+			   size_t srcStride,
 			   const void* pData) override;
 
 	void read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -308,11 +302,17 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
 
+	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
+							 MVKShaderStage stage) override;
+
 	void reset() override;
 
 	~MVKBufferDescriptor() { reset(); }
 
 protected:
+	uint32_t getBufferSize(VkDeviceSize dynamicOffset = 0);
+
 	MVKBuffer* _mvkBuffer = nullptr;
 	VkDeviceSize _buffOffset = 0;
 	VkDeviceSize _buffRange = 0;
@@ -375,19 +375,11 @@ public:
 			  MVKArrayRef<uint32_t> dynamicOffsets,
 			  uint32_t& dynamicOffsetIndex) override;
 
-	void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-									 id<MTLArgumentEncoder> mtlArgEncoder,
-									 uint32_t descSetIndex,
-									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
-									 uint32_t elementIndex,
-									 MVKShaderStage stage,
-									 bool encodeToArgBuffer,
-									 bool encodeUsage) override;
-
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
-			   uint32_t dstOffset, // For inline buffers we are using this parameter as dst offset not as src descIdx
-			   size_t stride,
+			   uint32_t dstOffset, 	// Inline buffers use this parameter as an offset, not an index
+			   uint32_t srcIdx,
+			   size_t srcStride,
 			   const void* pData) override;
 
 	void read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -397,13 +389,17 @@ public:
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
-    
+
+	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
+							 MVKShaderStage stage) override;
+
 	void reset() override;
 
 	~MVKInlineUniformBlockDescriptor() { reset(); }
 
 protected:
-	inline uint8_t* getData() { return _mvkMTLBufferAllocation ? (uint8_t*)_mvkMTLBufferAllocation->getContents() : nullptr; }
+	uint8_t* getData() { return _mvkMTLBufferAllocation ? (uint8_t*)_mvkMTLBufferAllocation->getContents() : nullptr; }
 
 	MVKMTLBufferAllocation* _mvkMTLBufferAllocation = nullptr;
 };
@@ -425,19 +421,11 @@ public:
 			  MVKArrayRef<uint32_t> dynamicOffsets,
 			  uint32_t& dynamicOffsetIndex) override;
 
-	void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-									 id<MTLArgumentEncoder> mtlArgEncoder,
-									 uint32_t descSetIndex,
-									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
-									 uint32_t elementIndex,
-									 MVKShaderStage stage,
-									 bool encodeToArgBuffer,
-									 bool encodeUsage) override;
-
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
-			   uint32_t srcIndex,
-			   size_t stride,
+			   uint32_t dstIdx,
+			   uint32_t srcIdx,
+			   size_t srcStride,
 			   const void* pData) override;
 
 	void read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -447,6 +435,10 @@ public:
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
+
+	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
+							 MVKShaderStage stage) override;
 
 	void reset() override;
 
@@ -506,18 +498,11 @@ protected:
 			  MVKArrayRef<uint32_t> dynamicOffsets,
 			  uint32_t& dynamicOffsetIndex);
 
-	void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-									 id<MTLArgumentEncoder> mtlArgEncoder,
-									 uint32_t descSetIndex,
-									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
-									 uint32_t elementIndex,
-									 MVKShaderStage stage,
-									 bool encodeToArgBuffer);
-
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
-			   uint32_t srcIndex,
-			   size_t stride,
+			   uint32_t dstIdx,
+			   uint32_t srcIdx,
+			   size_t srcStride,
 			   const void* pData);
 
 	void read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -527,6 +512,10 @@ protected:
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock);
+
+	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
+							 MVKShaderStage stage) {}
 
 	void reset();
 
@@ -554,19 +543,11 @@ public:
 			  MVKArrayRef<uint32_t> dynamicOffsets,
 			  uint32_t& dynamicOffsetIndex) override;
 
-	void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-									 id<MTLArgumentEncoder> mtlArgEncoder,
-									 uint32_t descSetIndex,
-									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
-									 uint32_t elementIndex,
-									 MVKShaderStage stage,
-									 bool encodeToArgBuffer,
-									 bool encodeUsage) override;
-
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
-			   uint32_t srcIndex,
-			   size_t stride,
+			   uint32_t dstIdx,
+			   uint32_t srcIdx,
+			   size_t srcStride,
 			   const void* pData) override;
 
 	void read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -576,6 +557,10 @@ public:
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
+
+	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
+							 MVKShaderStage stage) override {}
 
 	void reset() override;
 
@@ -602,19 +587,11 @@ public:
 			  MVKArrayRef<uint32_t> dynamicOffsets,
 			  uint32_t& dynamicOffsetIndex) override;
 
-	void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-									 id<MTLArgumentEncoder> mtlArgEncoder,
-									 uint32_t descSetIndex,
-									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
-									 uint32_t elementIndex,
-									 MVKShaderStage stage,
-									 bool encodeToArgBuffer,
-									 bool encodeUsage) override;
-
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
-			   uint32_t srcIndex,
-			   size_t stride,
+			   uint32_t dstIdx,
+			   uint32_t srcIdx,
+			   size_t srcStride,
 			   const void* pData) override;
 
 	void read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -624,6 +601,10 @@ public:
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
+
+	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
+							 MVKShaderStage stage) override;
 
 	void reset() override;
 
@@ -648,19 +629,11 @@ public:
 			  MVKArrayRef<uint32_t> dynamicOffsets,
 			  uint32_t& dynamicOffsetIndex) override;
 
-	void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-									 id<MTLArgumentEncoder> mtlArgEncoder,
-									 uint32_t descSetIndex,
-									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
-									 uint32_t elementIndex,
-									 MVKShaderStage stage,
-									 bool encodeToArgBuffer,
-									 bool encodeUsage) override;
-
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
-			   uint32_t srcIndex,
-			   size_t stride,
+			   uint32_t dstIdx,
+			   uint32_t srcIdx,
+			   size_t srcStride,
 			   const void* pData) override;
 
 	void read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -670,6 +643,10 @@ public:
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
+
+	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
+							 MVKShaderStage stage) override;
 
 	void reset() override;
 
@@ -696,3 +673,10 @@ class MVKStorageTexelBufferDescriptor : public MVKTexelBufferDescriptor {
 public:
 	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER; }
 };
+
+
+#pragma mark -
+#pragma mark Support functions
+
+/** Returns the name of the descriptor type. */
+const char* mvkVkDescriptorTypeName(VkDescriptorType vkDescType);
