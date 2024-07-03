@@ -15,17 +15,19 @@ jobs:
   build:
     strategy:
       matrix:
-        xcode: [ "15.0" ]
+        # Primary build on latest macOS and its default Xcode version
+        os: [ "macos-latest" ]
         platform: [ "all", "macos", "ios" ]
-        os: [ "macos-13" ]
         upload_artifacts: [ true ]
+        select_xcode: [ false ]
 
-        # Legacy configurations
+        # Legacy build. Up to 3 versions behind latest (or beta).
         include:
-          - xcode: "12.5.1"
+          - os: "macos-12"
+            xcode: "13.4.1"
             platform: "macos"
-            os: "macos-11"
             upload_artifacts: false
+            select_xcode: true
       fail-fast: false
 
     name: 'MoltenVK (Xcode ${{ matrix.xcode }} - ${{ matrix.platform }})'
@@ -44,7 +46,11 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: List available Xcode versions
+        run: ls /Applications | grep Xcode
+
       - name: Select Xcode version
+        if: matrix.select_xcode == true
         run: sudo xcode-select -switch "${XCODE_DEV_PATH}"
 
       - name: Prep
