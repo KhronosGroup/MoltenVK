@@ -2402,10 +2402,14 @@ void MVKPhysicalDevice::initMetalFeatures() {
 													_properties.vendorID == kIntelVendorId));
 
 	// Argument encoders are not needed if Metal 3 plus Tier 2 argument buffers.
+#if MVK_XCODE_14
 	_metalFeatures.needsArgumentBufferEncoders = (_metalFeatures.argumentBuffers &&
 												  !(mvkOSVersionIsAtLeast(13.0, 16.0, 1.0) &&
 													supportsMTLGPUFamily(Metal3) &&
 													_metalFeatures.argumentBuffersTier >= MTLArgumentBuffersTier2));
+#else
+	_metalFeatures.needsArgumentBufferEncoders = _metalFeatures.argumentBuffers;
+#endif
 
 	_isUsingMetalArgumentBuffers = _metalFeatures.descriptorSetArgumentBuffers && getMVKConfig().useMetalArgumentBuffers;;
 
@@ -3486,7 +3490,9 @@ void MVKPhysicalDevice::logGPUInfo() {
 	logMsg += "\n\tMetal Shading Language %s";
 	logMsg += "\n\tsupports the following GPU Features:";
 
+#if MVK_XCODE_14
 	if (supportsMTLGPUFamily(Metal3)) { logMsg += "\n\t\tGPU Family Metal 3"; }
+#endif
 #if MVK_XCODE_15 && (MVK_IOS || MVK_MACOS)
     if (supportsMTLGPUFamily(Apple9)) { logMsg += "\n\t\tGPU Family Apple 9"; }
 #endif
