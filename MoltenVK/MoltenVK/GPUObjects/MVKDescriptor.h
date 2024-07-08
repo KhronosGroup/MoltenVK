@@ -28,10 +28,6 @@ class MVKCommandEncoder;
 class MVKResourcesCommandEncoderState;
 
 
-// The size of one Metal3 Argument Buffer slot in bytes.
-static const size_t kMVKMetal3ArgBuffSlotSizeInBytes = sizeof(uint64_t);
-
-
 #pragma mark MVKShaderStageResourceBinding
 
 /** Indicates the Metal resource indexes used by a single shader stage in a descriptor. */
@@ -183,8 +179,8 @@ protected:
 										uint32_t dslIndex);
 	bool validate(MVKSampler* mvkSampler);
 	void encodeImmutableSamplersToMetalArgumentBuffer(MVKDescriptorSet* mvkDescSet);
-	uint32_t getMTLResourceCountPerElement();
-	uint64_t getMetal3ArgumentBufferEncodedSize();
+	uint8_t getMaxPlaneCount();
+	uint32_t getMTLResourceCount();
 	bool needsBuffSizeAuxBuffer();
 	std::string getLogDescription();
 

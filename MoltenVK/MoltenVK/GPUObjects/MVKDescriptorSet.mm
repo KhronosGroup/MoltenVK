@@ -25,6 +25,10 @@
 #include <sstream>
 
 
+// The size of one Metal3 Argument Buffer slot in bytes.
+static const size_t kMVKMetal3ArgBuffSlotSizeInBytes = sizeof(uint64_t);
+
+
 #pragma mark -
 #pragma mark MVKMetalArgumentBuffer
 
@@ -355,11 +359,13 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 				}
 
 				_mtlArgumentEncoderArgs = mutableArgs;		// retained
-				_mtlArgumentBufferEncodedSize = [[getMTLDevice() newArgumentEncoderWithArguments: _mtlArgumentEncoderArgs] autorelease].encodedLength;
+				if (_mtlArgumentEncoderArgs.count) {
+					_mtlArgumentBufferEncodedSize = [[getMTLDevice() newArgumentEncoderWithArguments: _mtlArgumentEncoderArgs] autorelease].encodedLength;
+				}
 			}
 		} else {
 			for (auto& dslBind : _bindings) {
-				_mtlArgumentBufferEncodedSize += dslBind.getMetal3ArgumentBufferEncodedSize();
+				_mtlArgumentBufferEncodedSize += dslBind.getMTLResourceCount() * kMVKMetal3ArgBuffSlotSizeInBytes;
 				needsBuffSizeAuxBuff = needsBuffSizeAuxBuff || dslBind.needsBuffSizeAuxBuffer();
 			}
 
@@ -473,7 +479,7 @@ VkResult MVKDescriptorSet::allocate(MVKDescriptorSetLayout* layout,
 	_variableDescriptorCount = variableDescriptorCount;
 
 	id<MTLArgumentEncoder> mtlArgEnc = nil;
-	if (hasMetalArgumentBuffer() && needsMetalArgumentBufferEncoders()) {
+	if (hasMetalArgumentBuffer() && needsMetalArgumentBufferEncoders() && layout->_mtlArgumentEncoderArgs.count) {
 		mtlArgEnc = [getMTLDevice() newArgumentEncoderWithArguments: layout->_mtlArgumentEncoderArgs];	// temp retain
 	}
 	_argumentBuffer.setArgumentBuffer(_pool->_metalArgumentBuffer, mtlArgBufferOffset, mtlArgEnc);

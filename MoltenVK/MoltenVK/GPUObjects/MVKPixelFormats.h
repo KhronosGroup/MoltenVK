@@ -154,10 +154,10 @@ typedef struct MVKVkFormatDesc {
 	inline bool vertexIsSupportedOrSubstitutable() const { return vertexIsSupported() || (mtlVertexFormatSubstitute != MTLVertexFormatInvalid); };
 
 	bool needsSwizzle() const {
-		return componentMapping.r != VK_COMPONENT_SWIZZLE_IDENTITY ||
-			componentMapping.g != VK_COMPONENT_SWIZZLE_IDENTITY ||
-			componentMapping.b != VK_COMPONENT_SWIZZLE_IDENTITY ||
-			componentMapping.a != VK_COMPONENT_SWIZZLE_IDENTITY;
+		return (componentMapping.r != VK_COMPONENT_SWIZZLE_IDENTITY ||
+				componentMapping.g != VK_COMPONENT_SWIZZLE_IDENTITY ||
+				componentMapping.b != VK_COMPONENT_SWIZZLE_IDENTITY ||
+				componentMapping.a != VK_COMPONENT_SWIZZLE_IDENTITY);
 	}
 } MVKVkFormatDesc;
 

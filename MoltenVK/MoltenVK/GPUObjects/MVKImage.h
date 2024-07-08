@@ -662,7 +662,7 @@ public:
     VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT; }
     
     /** Returns the number of planes of this ycbcr conversion. */
-    inline uint8_t getPlaneCount() { return _planes; }
+    uint8_t getPlaneCount() { return _planes; }
 
     /** Writes this conversion settings to a MSL constant sampler */
     void updateConstExprSampler(SPIRV_CROSS_NAMESPACE::MSLConstexprSampler& constExprSampler) const;
@@ -700,10 +700,10 @@ public:
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_EXT; }
 
 	/** Returns the Metal sampler state. */
-	inline id<MTLSamplerState> getMTLSamplerState() { return _mtlSamplerState; }
+	id<MTLSamplerState> getMTLSamplerState() { return _mtlSamplerState; }
     
     /** Returns the number of planes if this is a ycbcr conversion or 0 otherwise. */
-    inline uint8_t getPlaneCount() { return (_ycbcrConversion) ? _ycbcrConversion->getPlaneCount() : 0; }
+    uint8_t getPlaneCount() { return (_ycbcrConversion) ? _ycbcrConversion->getPlaneCount() : 0; }
 
 	/**
 	 * If this sampler requires hardcoding in MSL, populates the hardcoded sampler in the resource binding.

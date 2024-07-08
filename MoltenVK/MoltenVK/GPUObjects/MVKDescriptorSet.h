@@ -130,7 +130,7 @@ protected:
 	uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return getBinding(binding)->getDescriptorIndex(elementIndex); }
 	MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
 	const VkDescriptorBindingFlags* getBindingFlags(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
-	uint32_t getBufferSizeBufferArgBuferIndex() { return _mtlResourceCount; }
+	uint32_t getBufferSizeBufferArgBuferIndex() { return _mtlResourceTotalCount; }
 	std::string getLogDescription();
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
@@ -139,7 +139,7 @@ protected:
 	NSArray<MTLArgumentDescriptor*>* _mtlArgumentEncoderArgs = nil;
 	uint64_t _mtlArgumentBufferEncodedSize = 0;
 	uint32_t _descriptorCount = 0;
-	uint32_t _mtlResourceCount = 0;
+	uint32_t _mtlResourceTotalCount = 0;
 	int32_t _maxBufferIndex = -1;
 	bool _isPushDescriptorLayout = false;
 };
