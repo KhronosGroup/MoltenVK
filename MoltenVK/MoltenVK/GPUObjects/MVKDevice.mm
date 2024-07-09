@@ -2016,8 +2016,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 #if MVK_XCODE_16
 	if ( mvkOSVersionIsAtLeast(18.0) ) {
-		// We don't explicitly support Metal 3.2 yet
-		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_1;
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_2;
 	}
 #endif
 
@@ -2145,8 +2144,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #endif
 #if MVK_XCODE_16
 	if ( mvkOSVersionIsAtLeast(18.0) ) {
-		// We don't explicitly support Metal 3.2 yet
-		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_1;
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_2;
 	}
 #endif
 
@@ -2240,9 +2238,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
     }
 #endif
 #if MVK_XCODE_16
-	if ( mvkOSVersionIsAtLeast(18.0) ) {
-		// We don't explicitly support Metal 3.2 yet
-		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_1;
+	if ( mvkOSVersionIsAtLeast(15.0) ) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_2;
 	}
 #endif
 
@@ -2362,8 +2359,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	switch (_metalFeatures.mslVersionEnum) {
 #if MVK_XCODE_16
 		case MTLLanguageVersion3_2:
-			// We don't explicitly support Metal 3.2 yet
-			setMSLVersion(3, 1);
+			setMSLVersion(3, 2);
 			break;
 #endif
 #if MVK_XCODE_15
