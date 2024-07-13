@@ -25,6 +25,8 @@ Released TBD
   - Use Metal argument buffers by default when they are available.
   - Revert `MVKConfiguration::useMetalArgumentBuffers` and env var 
     `MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS` to a boolean value, and enable it by default.
+  - Support a descriptor pool with less descriptors than the descriptor set layout, 
+    as long as the pool has enough descriptors for the variable descriptor count,     
   - Update max number of bindless buffers and textures per stage to 1M, per Apple Docs.
 - Add option to generate a GPU capture via a temporary named pipe from an external process.
 - Fix shader conversion failure when using native texture atomics.

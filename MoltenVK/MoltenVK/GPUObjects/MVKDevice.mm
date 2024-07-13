@@ -4903,9 +4903,9 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	}
 #endif
 
-	MVKLogInfoIf(getMVKConfig().debugMode, "Descriptor sets binding resources using %s.",
-				 _physicalDevice->_isUsingMetalArgumentBuffers ? (_physicalDevice->_metalFeatures.needsArgumentBufferEncoders
-																  ? "Metal argument buffers" : "Metal3 argument buffers") : "discrete resource indexes");
+	MVKLogInfo("Descriptor sets binding resources using %s.",
+			   _physicalDevice->_isUsingMetalArgumentBuffers ? (_physicalDevice->_metalFeatures.needsArgumentBufferEncoders
+																? "Metal argument buffers" : "Metal3 argument buffers") : "discrete resource indexes");
 
 	_commandResourceFactory = new MVKCommandResourceFactory(this);
 
