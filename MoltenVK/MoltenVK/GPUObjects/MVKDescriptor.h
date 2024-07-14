@@ -28,6 +28,10 @@ class MVKCommandEncoder;
 class MVKResourcesCommandEncoderState;
 
 
+/** Magic number to indicate the variable descriptor count is currently unknown. */
+static uint32_t kMVKVariableDescriptorCountUnknown = std::numeric_limits<uint32_t>::max();
+
+
 #pragma mark MVKShaderStageResourceBinding
 
 /** Indicates the Metal resource indexes used by a single shader stage in a descriptor. */
@@ -100,11 +104,10 @@ public:
 	 * Returns the number of descriptors in this layout.
 	 *
 	 * If this is an inline block data descriptor, always returns 1. If this descriptor
-	 * has a variable descriptor count, and descSet is not null, the variable descriptor
-	 * count provided to that descriptor set is returned. Otherwise returns the value
-	 * defined in VkDescriptorSetLayoutBinding::descriptorCount.
+	 * has a variable descriptor count, and it is provided here, it is returned.
+	 * Otherwise returns the value defined in VkDescriptorSetLayoutBinding::descriptorCount.
 	 */
-	uint32_t getDescriptorCount(MVKDescriptorSet* descSet = nullptr) const;
+	uint32_t getDescriptorCount(uint32_t variableDescriptorCount = kMVKVariableDescriptorCountUnknown) const;
 
 	/** Returns the descriptor type of this layout. */
 	VkDescriptorType getDescriptorType() { return _info.descriptorType; }
@@ -157,7 +160,9 @@ public:
 	MVKDescriptorSetLayoutBinding(MVKDevice* device,
 								  MVKDescriptorSetLayout* layout,
 								  const VkDescriptorSetLayoutBinding* pBinding,
-								  VkDescriptorBindingFlagsEXT bindingFlags);
+								  VkDescriptorBindingFlagsEXT bindingFlags,
+								  uint32_t& dslDescCnt,
+								  uint32_t& dslMTLRezCnt);
 
 	MVKDescriptorSetLayoutBinding(const MVKDescriptorSetLayoutBinding& binding);
 
@@ -168,9 +173,13 @@ protected:
 	friend class MVKDescriptorSet;
     friend class MVKInlineUniformBlockDescriptor;
 	
-	void initMetalResourceIndexOffsets(const VkDescriptorSetLayoutBinding* pBinding, uint32_t stage);
-	void addMTLArgumentDescriptors(NSMutableArray<MTLArgumentDescriptor*>* args);
+	void initMetalResourceIndexOffsets(const VkDescriptorSetLayoutBinding* pBinding,
+									   uint32_t stage,
+									   uint32_t dslMTLRezCnt);
+	void addMTLArgumentDescriptors(NSMutableArray<MTLArgumentDescriptor*>* args,
+								   uint32_t variableDescriptorCount);
 	void addMTLArgumentDescriptor(NSMutableArray<MTLArgumentDescriptor*>* args,
+								  uint32_t variableDescriptorCount,
 								  uint32_t argIndex,
 								  MTLDataType dataType,
 								  MTLArgumentAccess access);
@@ -180,8 +189,7 @@ protected:
 	bool validate(MVKSampler* mvkSampler);
 	void encodeImmutableSamplersToMetalArgumentBuffer(MVKDescriptorSet* mvkDescSet);
 	uint8_t getMaxPlaneCount();
-	uint32_t getMTLResourceCount();
-	bool needsBuffSizeAuxBuffer();
+	uint32_t getMTLResourceCount(uint32_t variableDescriptorCount = kMVKVariableDescriptorCountUnknown);
 	std::string getLogDescription();
 
 	MVKDescriptorSetLayout* _layout;
@@ -673,6 +681,13 @@ public:
 
 #pragma mark -
 #pragma mark Support functions
+
+/** 
+ * If the binding defines a buffer type, returns whether there are buffers, and
+ * therefore an auxilliary buffer is required to hold the lengths of those buffers.
+ * Returns false if the binding does not define a buffer type.
+ */
+bool mvkNeedsBuffSizeAuxBuffer(const VkDescriptorSetLayoutBinding* pBinding);
 
 /** Returns the name of the descriptor type. */
 const char* mvkVkDescriptorTypeName(VkDescriptorType vkDescType);

@@ -111,12 +111,13 @@ public:
 	/** Returns the binding at the index in a descriptor set layout. */
 	MVKDescriptorSetLayoutBinding* getBindingAt(uint32_t index) { return &_bindings[index]; }
 
-	/** Overridden becasue descriptor sets may be marked as discrete and not use an argument buffer. */
+	/** Overridden because descriptor sets may be marked as discrete and not use an argument buffer. */
 	bool isUsingMetalArgumentBuffers() override;
 
-	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
+	/** Returns whether descriptor sets from this layout requires an auxilliary buffer-size buffer. */
+	bool needsBufferSizeAuxBuffer() { return _maxBufferIndex >= 0; }
 
-	~MVKDescriptorSetLayout();
+	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
 protected:
 
@@ -126,20 +127,17 @@ protected:
 	friend class MVKDescriptorPool;
 
 	void propagateDebugName() override {}
-	uint32_t getDescriptorCount() { return _descriptorCount; }
+	uint32_t getDescriptorCount(uint32_t variableDescriptorCount);
 	uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return getBinding(binding)->getDescriptorIndex(elementIndex); }
 	MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
-	const VkDescriptorBindingFlags* getBindingFlags(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
-	uint32_t getBufferSizeBufferArgBuferIndex() { return _mtlResourceTotalCount; }
+	uint32_t getBufferSizeBufferArgBuferIndex() { return 0; }
+	id <MTLArgumentEncoder> getMTLArgumentEncoder(uint32_t variableDescriptorCount);
+	uint64_t getMetal3ArgumentBufferEncodedLength(uint32_t variableDescriptorCount);
 	std::string getLogDescription();
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
 	MVKShaderResourceBinding _mtlResourceCounts;
-	NSArray<MTLArgumentDescriptor*>* _mtlArgumentEncoderArgs = nil;
-	uint64_t _mtlArgumentBufferEncodedSize = 0;
-	uint32_t _descriptorCount = 0;
-	uint32_t _mtlResourceTotalCount = 0;
 	int32_t _maxBufferIndex = -1;
 	bool _isPushDescriptorLayout = false;
 };
@@ -185,6 +183,9 @@ public:
 	/** Returns the number of descriptors in this descriptor set. */
 	uint32_t getDescriptorCount() { return (uint32_t)_descriptors.size(); }
 
+	/** Returns the count of descriptors in the binding in this descriptor set that has a variable descriptor count. */
+	uint32_t getVariableDescriptorCount() const { return _variableDescriptorCount; }
+
 	/** Returns the number of descriptors in this descriptor set that use dynamic offsets. */
 	uint32_t getDynamicOffsetDescriptorCount() { return _dynamicOffsetDescriptorCount; }
 
@@ -209,7 +210,8 @@ protected:
 	MVKDescriptor* getDescriptor(uint32_t binding, uint32_t elementIndex = 0);
 	VkResult allocate(MVKDescriptorSetLayout* layout,
 					  uint32_t variableDescriptorCount,
-					  NSUInteger mtlArgBufferOffset);
+					  NSUInteger mtlArgBufferOffset,
+					  id<MTLArgumentEncoder> mtlArgEnc);
 	void free(bool isPoolReset);
 	MVKMTLBufferAllocation* acquireMTLBufferRegion(NSUInteger length);
 	void setBufferSize(uint32_t descIdx, uint32_t value);
@@ -282,7 +284,6 @@ protected:
 	template<class> friend class MVKDescriptorTypePool;
 
 	void propagateDebugName() override {}
-	const uint32_t* getVariableDecriptorCounts(const VkDescriptorSetAllocateInfo* pAllocateInfo);
 	VkResult allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL, uint32_t variableDescriptorCount, VkDescriptorSet* pVKDS);
 	void freeDescriptorSet(MVKDescriptorSet* mvkDS, bool isPoolReset);
 	VkResult allocateDescriptor(VkDescriptorType descriptorType, MVKDescriptor** pMVKDesc);
@@ -291,6 +292,7 @@ protected:
 	NSUInteger getMetalArgumentBufferEncodedResourceStorageSize(NSUInteger bufferCount, NSUInteger textureCount, NSUInteger samplerCount);
 	MTLArgumentDescriptor* getMTLArgumentDescriptor(MTLDataType resourceType, NSUInteger argIndex, NSUInteger count);
 	size_t getPoolSize(const VkDescriptorPoolCreateInfo* pCreateInfo, VkDescriptorType descriptorType);
+	std::string getLogDescription();
 
     bool _hasPooledDescriptors;
 	MVKSmallVector<MVKDescriptorSet> _descriptorSets;
