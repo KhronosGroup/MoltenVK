@@ -608,8 +608,13 @@ MVK_PUBLIC_SYMBOL MTLStoreAction mvkMTLStoreActionFromVkAttachmentStoreOp(VkAtta
 // If we need to resolve, but the format doesn't support it, we must store the attachment so we can run a post-renderpass compute shader to perform the resolve.
 MTLStoreAction mvkMTLStoreActionFromVkAttachmentStoreOpInObj(VkAttachmentStoreOp vkStoreOp, bool hasResolveAttachment, bool canResolveFormat, MVKBaseObject* mvkObj) {
 	switch (vkStoreOp) {
-		case VK_ATTACHMENT_STORE_OP_STORE:		return hasResolveAttachment && canResolveFormat ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionStore;
-		case VK_ATTACHMENT_STORE_OP_DONT_CARE:	return hasResolveAttachment ? (canResolveFormat ? MTLStoreActionMultisampleResolve : MTLStoreActionStore) : MTLStoreActionDontCare;
+		// Metal does not support VK_ATTACHMENT_STORE_OP_NONE. Next best option is store.
+		case VK_ATTACHMENT_STORE_OP_NONE:
+		case VK_ATTACHMENT_STORE_OP_STORE:
+			return hasResolveAttachment && canResolveFormat ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionStore;
+
+		case VK_ATTACHMENT_STORE_OP_DONT_CARE:
+			return hasResolveAttachment ? (canResolveFormat ? MTLStoreActionMultisampleResolve : MTLStoreActionStore) : MTLStoreActionDontCare;
 
 		default:
 			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "VkAttachmentStoreOp value %d is not supported.", vkStoreOp);
