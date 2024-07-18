@@ -648,6 +648,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 			mtlArgBuffEncSize = mvkDSL->getMetal3ArgumentBufferEncodedLength(variableDescriptorCount);
 		}
 	}
+	uint64_t mtlArgBuffEncAlignedSize = mvkAlignByteCount(mtlArgBuffEncSize, getMetalFeatures().mtlBufferAlignment);
 
 	size_t dsCnt = _descriptorSetAvailablility.size();
 	_descriptorSetAvailablility.enumerateEnabledBits(true, [&](size_t dsIdx) {
@@ -665,7 +666,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 			// on a reset pool), set the offset and update the next available offset value.
 			if ( !mtlArgBuffOffset && (dsIdx || !_nextMetalArgumentBufferOffset)) {
 				mtlArgBuffOffset = _nextMetalArgumentBufferOffset;
-				_nextMetalArgumentBufferOffset += mtlArgBuffEncSize;
+				_nextMetalArgumentBufferOffset += mtlArgBuffEncAlignedSize;
 			}
 
 			// Get the offset of the next desc set, if one exists and
@@ -975,9 +976,10 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 		// contain buffers, we add an additional buffer at the end to track buffer sizes.
 		mtlBuffCnt += std::min<NSUInteger>(mtlBuffCnt, pCreateInfo->maxSets);
 
-		// Each descriptor set uses a separate Metal argument buffer, but all of these descriptor set
-		// Metal argument buffers share a single MTLBuffer. This single MTLBuffer needs to be large
-		// enough to hold all of the encoded resources for the descriptors.
+		// Each descriptor set uses a separate Metal argument buffer, but all of these
+		// descriptor set Metal argument buffers share a single MTLBuffer. This single
+		// MTLBuffer needs to be large enough to hold all of the encoded resources for the
+		// descriptors, plus additional buffer offset alignment space for each descriptor set.
 		NSUInteger metalArgBuffSize = 0;
 		if (needsMetalArgumentBufferEncoders()) {
 			// If argument buffer encoders are required, depending on the platform, a Metal argument
@@ -998,6 +1000,7 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 		} else {
 			// For Metal 3, encoders are not required, and each arg buffer entry fits into 64 bits.
 			metalArgBuffSize = (mtlBuffCnt + mtlTexCnt + mtlSampCnt) * kMVKMetal3ArgBuffSlotSizeInBytes;
+			metalArgBuffSize += (mtlFeats.mtlBufferAlignment * pCreateInfo->maxSets);
 		}
 
 		if (metalArgBuffSize) {
