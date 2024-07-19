@@ -504,6 +504,14 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_FEATURES_EXT: {
+				auto* rasterOrderFeatures = (VkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesEXT*)next;
+				rasterOrderFeatures->rasterizationOrderColorAttachmentAccess = VK_TRUE;
+				// Metal doesn't support depth/stencil fetch.
+				rasterOrderFeatures->rasterizationOrderDepthAttachmentAccess = VK_FALSE;
+				rasterOrderFeatures->rasterizationOrderStencilAttachmentAccess = VK_FALSE;
+				break;
+			}
 			default:
 				break;
 		}
@@ -1436,6 +1444,9 @@ VkResult MVKPhysicalDevice::getSurfaceCapabilities(	const VkPhysicalDeviceSurfac
 									VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
 									VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 									VK_IMAGE_USAGE_SAMPLED_BIT);
+	if (_metalFeatures.programmableBlending) {
+		surfCaps.supportedUsageFlags |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+	}
 
 	// Swapchain-to-surface scaling capabilities.
 	if (pScalingCaps) {
@@ -2455,6 +2466,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	}
 #endif
 
+    _metalFeatures.programmableBlending = _isAppleGPU;
 }
 
 // Initializes the physical device features of this instance.
@@ -3419,6 +3431,10 @@ void MVKPhysicalDevice::initExtensions() {
 		pWritableExtns->vk_IMG_format_pvrtc.enabled = false;
 	}
 #endif
+
+	if (!_metalFeatures.programmableBlending) {
+		pWritableExtns->vk_EXT_rasterization_order_attachment_access.enabled = false;
+	}
 }
 
 void MVKPhysicalDevice::initCounterSets() {
