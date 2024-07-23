@@ -1298,7 +1298,7 @@ void MVKGPUAddressableBuffersCommandEncoderState::encodeImpl(uint32_t stage) {
 			mvkDev->encodeGPUAddressableBuffers(rezEncState, shaderStage);
 		}
 	}
-	mvkClear(_usageStages);
+	mvkClear(_usageStages, kMVKShaderStageCount);
 }
 
 
