@@ -26,8 +26,8 @@
 #include "MVKSmallVector.h"
 #include "MVKPixelFormats.h"
 #include "MVKOSExtensions.h"
+#include "MVKAddressMap.h"
 #include "mvk_datatypes.hpp"
-#include "MVKMap.h"
 #include <string>
 #include <mutex>
 
@@ -574,13 +574,7 @@ public:
 								 const VkCalibratedTimestampInfoEXT* pTimestampInfos,
 								 uint64_t* pTimestamps,
 								 uint64_t* pMaxDeviation);
-    
-    /** Returns a pointer to the buffer at the provided address*/
-    MVKBuffer* getBufferAtAddress(uint64_t address); // Unsure where to place within the file
-    
-    /** Returns a pointer to the acceleration structure at the provided address*/
-    MVKAccelerationStructure* getAccelerationStructureAtAddress(uint64_t address);
-    
+
     /** Returns whether or not the device supports acceleration structures*/
     VkAccelerationStructureCompatibilityKHR getAccelerationStructureCompatibility(const VkAccelerationStructureVersionInfoKHR* pVersionInfo);
 
@@ -783,6 +777,12 @@ public:
 
 	/** Log all performance statistics. */
 	void logPerformanceSummary();
+    
+    /** Returns a pointer to the buffer at the provided address*/
+    MVKBuffer* getBufferAtAddress(uint64_t address);
+    
+    /** Returns a pointer to the acceleration structure at the provided address*/
+    MVKAccelerationStructure* getAccelerationStructureAtAddress(uint64_t address);
 
 
 #pragma mark Metal
@@ -986,9 +986,9 @@ protected:
 	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
 	MVKSmallVector<MVKResource*> _resources;
 	MVKSmallVector<MVKBuffer*> _gpuAddressableBuffers;
-    std::unordered_map<MVKBufferAddressRange, MVKBuffer*, MVKHash_uint64_t_pair> _gpuBufferAddressMap;
+    MVKAddressMap* _gpuBufferAddressMap;
+    uint64_t _nextValidAccStructureAddress = 0;
     std::unordered_map<uint64_t, MVKAccelerationStructure*> _gpuAccStructAddressMap;
-    uint64_t _nextValidAccStructureAddress;
 	MVKSmallVector<MVKPrivateDataSlot*> _privateDataSlots;
 	MVKSmallVector<bool> _privateDataSlotsAvailability;
 	MVKSmallVector<MVKSemaphoreImpl*> _awaitingSemaphores;

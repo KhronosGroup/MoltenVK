@@ -4312,24 +4312,9 @@ VkExtent2D MVKDevice::getDynamicRenderAreaGranularity() {
 
 MVKBuffer* MVKDevice::getBufferAtAddress(uint64_t address)
 {
-    lock_guard<mutex> lock(_rezLock);
-    
-    std::unordered_map<MVKBufferAddressRange, MVKBuffer*>::iterator it;
-    // Super inefficent but this can be fixed in the future
-    for(it = _gpuBufferAddressMap.begin(); it != _gpuBufferAddressMap.end(); it++)
-    {
-        // If the beginning address is bigger than, or the ending address is smaller than the passed address, then skip this it
-        if(it->first.first > address || it->first.second < address)
-        {
-            continue;
-        }
-        break;
-    }
-    
-    // Couldn't find the buffer at address
-    if (it == _gpuBufferAddressMap.end()) { return nullptr;}
-
-    return it->second;
+    void* value = nullptr;
+    _gpuBufferAddressMap->getValue(address, value);
+    return (MVKBuffer*)value;
 }
 
 MVKAccelerationStructure* MVKDevice::getAccelerationStructureAtAddress(uint64_t address)
@@ -4848,11 +4833,12 @@ MVKBuffer* MVKDevice::addBuffer(MVKBuffer* mvkBuff) {
 	_resources.push_back(mvkBuff);
 	if (mvkIsAnyFlagEnabled(mvkBuff->getUsage(), VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT)) {
 		_gpuAddressableBuffers.push_back(mvkBuff);
-        
-        MVKBufferAddressRange bdaRange = std::make_pair<uint64_t, uint64_t>(mvkBuff->getMTLBufferGPUAddress(), mvkBuff->getMTLBufferGPUAddress() + (uint64_t)mvkBuff->getByteCount());
-        std::pair<MVKBufferAddressRange, MVKBuffer*> _bufferAddressPair = std::make_pair(bdaRange, mvkBuff);
-        _gpuBufferAddressMap.insert(_bufferAddressPair);
-    }
+        _gpuBufferAddressMap->addEntry({
+            mvkBuff->getMTLBufferGPUAddress(),
+            mvkBuff->getByteCount(),
+            mvkBuff
+        });
+	}
 	return mvkBuff;
 }
 
@@ -4863,9 +4849,11 @@ MVKBuffer* MVKDevice::removeBuffer(MVKBuffer* mvkBuff) {
 	mvkRemoveFirstOccurance(_resources, mvkBuff);
 	if (mvkIsAnyFlagEnabled(mvkBuff->getUsage(), VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT)) {
 		mvkRemoveFirstOccurance(_gpuAddressableBuffers, mvkBuff);
-        MVKBufferAddressRange bdaRange = std::make_pair<uint64_t, uint64_t>(mvkBuff->getMTLBufferGPUAddress(), mvkBuff->getMTLBufferGPUAddress() + (uint64_t)mvkBuff->getByteCount());
-        auto bufferAddressIt = _gpuBufferAddressMap.find(bdaRange);
-        _gpuBufferAddressMap.erase(bufferAddressIt);
+        _gpuBufferAddressMap->removeEntry({
+            mvkBuff->getMTLBufferGPUAddress(),
+            mvkBuff->getByteCount(),
+            mvkBuff
+        });
 	}
 	return mvkBuff;
 }
@@ -5456,6 +5444,8 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 
 	_commandResourceFactory = new MVKCommandResourceFactory(this);
 
+    _gpuBufferAddressMap = new MVKAddressMap();
+
 	startAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE, _physicalDevice->_mtlDevice);
 
 	if (getMVKConfig().autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_ON_DEMAND) {
@@ -5817,6 +5807,8 @@ MVKDevice::~MVKDevice() {
 	}
 
 	if (_commandResourceFactory) { _commandResourceFactory->destroy(); }
+
+    if (_gpuBufferAddressMap) { delete _gpuBufferAddressMap; }
 
 	for (auto &fences: _barrierFences) for (auto fence: fences) [fence release];
 
