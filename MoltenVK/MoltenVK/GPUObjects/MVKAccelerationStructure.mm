@@ -99,6 +99,7 @@ VkAccelerationStructureBuildSizesInfoKHR MVKAccelerationStructure::getBuildSizes
         {
             accStructDescriptor = [MTLInstanceAccelerationStructureDescriptor new];
             MTLInstanceAccelerationStructureDescriptor* instanceAccStructDescriptor = (MTLInstanceAccelerationStructureDescriptor*)accStructDescriptor;
+            // add bottom level acceleration structures
             
             instanceAccStructDescriptor.instanceDescriptorType = MTLAccelerationStructureInstanceDescriptorTypeDefault;
         }

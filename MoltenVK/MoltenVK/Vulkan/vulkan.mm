@@ -3249,6 +3249,19 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyMemoryToAccelerationStructureKHR(
     MVKTraceVulkanCallEnd();
 }
 
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdWriteAccelerationStructuresPropertiesKHR(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    accelerationStructureCount,
+    const VkAccelerationStructureKHR*           pAccelerationStructures,
+    VkQueryType                                 queryType,
+    VkQueryPool                                 queryPool,
+    uint32_t                                    firstQuery) {
+    
+    MVKTraceVulkanCallStart();
+    MVKAddCmd(WriteAccelerationStructuresProperties, commandBuffer, accelerationStructureCount, pAccelerationStructures, queryType, queryPool, firstQuery);
+    MVKTraceVulkanCallEnd();
+}
+
 
 #pragma mark -
 #pragma mark VK_KHR_bind_memory2 extension

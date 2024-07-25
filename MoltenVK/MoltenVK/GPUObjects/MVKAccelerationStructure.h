@@ -65,25 +65,25 @@ public:
     void setAllowUpdate(bool value) { _allowUpdate = value; }
     
     /** Checks if this acceleration structure is allowed to be updated*/
-    bool getAllowUpdate() { return _allowUpdate; }
+    bool getAllowUpdate() const { return _allowUpdate; }
     
     /** Only to be called by the MVKCmdBuildAccelerationStructure, and sets the build status*/
     void setBuildStatus(bool value) { _built = value; }
     
     /** Checks if this acceleration structure has been built*/
-    bool getBuildStatus() { return _built; }
+    bool getBuildStatus() const { return _built; }
     
     /** Sets the address of the acceleration structure, only to be used by MVKDevice*/
     void setDeviceAddress(uint64_t address) { _address = address; }
     
     /** Gets the address of the acceleration structure*/
-    uint64_t getDeviceAddress() { return _address; }
+    uint64_t getDeviceAddress() const { return _address; }
     
     /** Returns the Metal buffer using the same memory as the acceleration structure*/
-    id<MTLBuffer> getMTLBuffer() { return _buffer; }
+    id<MTLBuffer> getMTLBuffer() const { return _buffer; }
     
     /** Gets the heap allocation that the acceleration structure, and buffer share*/
-    id<MTLHeap> getMTLHeap() { return _heap; }
+    id<MTLHeap> getMTLHeap() const { return _heap; }
     
     MTLAccelerationStructureTriangleGeometryDescriptor* getTriangleDescriptor();
 #pragma mark -

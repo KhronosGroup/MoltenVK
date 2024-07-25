@@ -117,4 +117,26 @@ protected:
     VkCopyAccelerationStructureModeKHR _copyMode;
 };
 
+#pragma mark -
+#pragma mark MVKCmdWriteAccelerationStructuresProperties
 
+class MVKCmdWriteAccelerationStructuresProperties: public MVKCommand {
+    
+public:
+    VkResult setContent(MVKCommandBuffer* cmdBuff,
+                        uint32_t accelerationStructureCount,
+                        const VkAccelerationStructureKHR* pAccelerationStructures,
+                        VkQueryType queryType,
+                        VkQueryPool queryPool,
+                        uint32_t firstQuery);
+    
+    void encode(MVKCommandEncoder* cmdEncoder) override;
+protected:
+    MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+    
+    uint32_t _accelerationStructureCount;
+    const MVKAccelerationStructure* _pAccelerationStructures;
+    VkQueryType _queryType;
+    VkQueryPool _queryPool;
+    uint32_t _firstQuery;
+};

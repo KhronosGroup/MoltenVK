@@ -250,3 +250,47 @@ void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncod
     
     [blitEncoder copyFromBuffer:_srcBuffer->getMTLBuffer() sourceOffset:0 toBuffer:_dstAccelerationStructureBuffer destinationOffset:0 size:_copySize];
 }
+
+#pragma mark -
+#pragma mark MVKCmdWriteAccelerationStructuresProperties
+
+VkResult MVKCmdWriteAccelerationStructuresProperties::setContent(MVKCommandBuffer* cmdBuff,
+                    uint32_t accelerationStructureCount,
+                    const VkAccelerationStructureKHR* pAccelerationStructures,
+                    VkQueryType queryType,
+                    VkQueryPool queryPool,
+                    uint32_t firstQuery) {
+    
+    _accelerationStructureCount = accelerationStructureCount;
+    _pAccelerationStructures = (const MVKAccelerationStructure*)pAccelerationStructures;
+    _queryType = queryType;
+    _queryPool = queryPool;
+    _firstQuery = firstQuery;
+    return VK_SUCCESS;
+}
+
+void MVKCmdWriteAccelerationStructuresProperties::encode(MVKCommandEncoder* cmdEncoder) {
+    
+    for(int i = 0; i < _accelerationStructureCount; i++)
+    {
+        if(!_pAccelerationStructures[i].getBuildStatus()) {
+            return;
+        }
+        
+        // actually finish up the meat of the code here
+    }
+    
+    switch(_queryType)
+    {
+        case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE_KHR:
+            break;
+        case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_BOTTOM_LEVEL_POINTERS_KHR:
+            break;
+        case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR:
+            break;
+        case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR:
+            break;
+        default:
+            break;
+    }
+}
