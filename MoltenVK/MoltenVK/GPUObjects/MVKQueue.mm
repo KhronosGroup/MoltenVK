@@ -771,7 +771,7 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 	// Populate the array of swapchain images, testing each one for status
 	uint32_t scCnt = pPresentInfo->swapchainCount;
 	const VkPresentTimeGOOGLE* pPresentTimes = nullptr;
-	if (pPresentTimesInfo && pPresentTimesInfo->pTimes) {
+	if (pPresentTimesInfo) {
 		pPresentTimes = pPresentTimesInfo->pTimes;
 		MVKAssert(pPresentTimesInfo->swapchainCount == scCnt, "VkPresentTimesInfoGOOGLE swapchainCount must match VkPresentInfo swapchainCount.");
 	}
