@@ -19,6 +19,7 @@ MoltenVK 1.2.11
 Released TBD
 
 - Fix rendering issue with render pass that immediately follows a kernel dispatch.
+- Ensure all MoltenVK config info set by `VK_EXT_layer_settings` is used.
 
 
 
