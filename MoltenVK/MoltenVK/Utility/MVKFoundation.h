@@ -99,7 +99,8 @@ typedef enum : uint8_t {
 	kMVKCommandUseCopyQueryPoolResults,         /**< vkCmdCopyQueryPoolResults. */
 	kMVKCommandUseAccumOcclusionQuery,          /**< Any command terminating a Metal render pass with active visibility buffer. */
 	kMVKCommandConvertUint8Indices,             /**< Converting a Uint8 index buffer to Uint16. */
-	kMVKCommandUseRecordGPUCounterSample        /**< Any command triggering the recording of a GPU counter sample. */
+	kMVKCommandUseRecordGPUCounterSample,       /**< Any command triggering the recording of a GPU counter sample. */
+    kMVKCommandUseBuildAccelerationStructureConvertBuffers, /**< vkCmdBuildAccelerationStructure* convert instance buffers. */
     kMVKCommandUseBuildAccelerationStructure,       /**< vkCmdBuiildAccelerationStructure - Builds an acceleration structure */
     kMVKCommandUseCopyAccelerationStructure,        /**< vkCmdCopyAccelerationStructure- Copies an acceleration structure to another acceleration structure*/
     kMVKCommandUseCopyAccelerationStructureToMemory,/**< vkCmdCopyAccelerationStructureToMemory - Copies and serializes an acceleration structure to a buffer*/

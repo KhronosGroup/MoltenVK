@@ -21,27 +21,28 @@
 #include "MVKCommandBuffer.h"
 #include "MVKCommandPool.h"
 #include "MVKAccelerationStructure.h"
+#include "MVKFoundation.h"
 
 #include <Metal/Metal.h>
 
 #pragma mark -
 #pragma mark MVKCmdBuildAccelerationStructure
 
-VkResult MVKCmdBuildAccelerationStructure::setContent(MVKCommandBuffer*                                       cmdBuff,
-                                                      uint32_t                                                infoCount,
-                                                      const VkAccelerationStructureBuildGeometryInfoKHR*      pInfos,
-                                                      const VkAccelerationStructureBuildRangeInfoKHR* const*  ppBuildRangeInfos) {
+VkResult MVKCmdBuildAccelerationStructure::setContent(MVKCommandBuffer* cmdBuff,
+                                                      uint32_t infoCount,
+                                                      const VkAccelerationStructureBuildGeometryInfoKHR* pInfos,
+                                                      const VkAccelerationStructureBuildRangeInfoKHR* const* ppBuildRangeInfos) {
+    _buildInfos.clear();
     _buildInfos.reserve(infoCount);
-    for (uint32_t i = 0; i < infoCount; i++)
-    {
+    for (uint32_t i = 0; i < infoCount; i++) {
         MVKAccelerationStructureBuildInfo& info = _buildInfos.emplace_back();
         info.info = pInfos[i];
 
         // TODO: ppGeometries
         info.geometries.reserve(pInfos[i].geometryCount);
         info.ranges.reserve(pInfos[i].geometryCount);
-        memcpy(info.geometries.data(), pInfos[i].pGeometries, pInfos[i].geometryCount);
-        memcpy(info.ranges.data(), ppBuildRangeInfos[i], pInfos[i].geometryCount);
+        memcpy(info.geometries.data(), pInfos[i].pGeometries, pInfos[i].geometryCount * sizeof(VkAccelerationStructureGeometryKHR));
+        memcpy(info.ranges.data(), ppBuildRangeInfos[i], pInfos[i].geometryCount * sizeof(VkAccelerationStructureBuildRangeInfoKHR));
 
         info.info.pGeometries = info.geometries.data();
     }
@@ -50,25 +51,12 @@ VkResult MVKCmdBuildAccelerationStructure::setContent(MVKCommandBuffer*         
 }
 
 void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
-    id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseBuildAccelerationStructure);
-    
-    for (MVKAccelerationStructureBuildInfo& entry : _buildInfos)
-    {
-        VkAccelerationStructureBuildGeometryInfoKHR& buildInfo = entry.info;
+    for (MVKAccelerationStructureBuildInfo& entry : _buildInfos) {
+        const auto& buildInfo = entry.info;
+        const auto& ranges = entry.ranges;
 
-        MVKAccelerationStructure* mvkSrcAccStruct = (MVKAccelerationStructure*)buildInfo.srcAccelerationStructure;
         MVKAccelerationStructure* mvkDstAccStruct = (MVKAccelerationStructure*)buildInfo.dstAccelerationStructure;
-
-        id<MTLAccelerationStructure> srcAccStruct = mvkSrcAccStruct->getMTLAccelerationStructure();
         id<MTLAccelerationStructure> dstAccStruct = mvkDstAccStruct->getMTLAccelerationStructure();
-        
-        id<MTLHeap> srcAccStructHeap = mvkSrcAccStruct->getMTLHeap();
-        id<MTLHeap> dstAccStructHeap = mvkDstAccStruct->getMTLHeap();
-        
-        // Should we throw an error here?
-        // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCmdBuildAccelerationStructuresKHR.html#VUID-vkCmdBuildAccelerationStructuresKHR-pInfos-03667
-        if(buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR && !mvkDstAccStruct->getAllowUpdate())
-            continue;
         
         MVKDevice* mvkDevice = cmdEncoder->getDevice();
         MVKBuffer* mvkBuffer = mvkDevice->getBufferAtAddress(buildInfo.scratchData.deviceAddress);
@@ -78,32 +66,95 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
         id<MTLBuffer> scratchBuffer = mvkBuffer->getMTLBuffer();
         NSInteger scratchBufferOffset = mvkBuffer->getMTLBufferOffset();
         
-        if (buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR)
-        {
-            MTLAccelerationStructureDescriptor* descriptor = mvkDstAccStruct->populateMTLDescriptor(
-                mvkDevice,
-                buildInfo,
-                entry.ranges.data(),
-                nullptr
-            );
+        if (buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR) {
+            MTLAccelerationStructureDescriptor* descriptor = mvkDstAccStruct->newMTLAccelerationStructureDescriptor(buildInfo, entry.ranges.data(), nullptr);
+
+            id<MTLFence> fence = nil;
+            if (buildInfo.type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR) {
+                // Only one geometry, validated in populateMTLDescriptor
+
+                // TODO: handle instances.arrayOfPointers == true
+                // TODO: ppGeometries
+                const VkAccelerationStructureGeometryInstancesDataKHR& instancesData = buildInfo.pGeometries[0].geometry.instances;
+                uint64_t instancesBDA = instancesData.data.deviceAddress;
+                MVKBuffer* mvkInstancesBuffer = cmdEncoder->getDevice()->getBufferAtAddress(instancesBDA);
+                NSUInteger bOffset = (instancesBDA - mvkInstancesBuffer->getMTLBufferGPUAddress()) + mvkInstancesBuffer->getMTLBufferOffset();
+
+                // Allocate a transient buffer to store converted instance data
+                NSUInteger tmpBuffSize = sizeof(MTLAccelerationStructureInstanceDescriptor) * ranges[0].primitiveCount;
+                const MVKMTLBufferAllocation* tmpBuff = cmdEncoder->getTempMTLBuffer(tmpBuffSize, true);
+
+                ((MTLInstanceAccelerationStructureDescriptor*)descriptor).instanceDescriptorBuffer = tmpBuff->_mtlBuffer;
+                ((MTLInstanceAccelerationStructureDescriptor*)descriptor).instanceDescriptorBufferOffset = tmpBuff->_offset;
+
+                // Dispatch compute pipeline to convert instance data
+                uint32_t srcStride = sizeof(VkAccelerationStructureInstanceKHR);
+                uint32_t instanceCount = ranges[0].primitiveCount;
+                id<MTLComputeCommandEncoder> mtlConvertEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseBuildAccelerationStructureConvertBuffers);
+                id<MTLComputePipelineState> mtlConvertState = cmdEncoder->getCommandEncodingPool()->getCmdBuildAccelerationStructureConvertBuffersMTLComputePipelineState();
+                [mtlConvertEncoder setComputePipelineState: mtlConvertState];
+                [mtlConvertEncoder setBuffer: mvkInstancesBuffer->getMTLBuffer()
+                                      offset: bOffset
+                                     atIndex: 0];
+                [mtlConvertEncoder setBuffer: tmpBuff->_mtlBuffer
+                                      offset: tmpBuff->_offset
+                                     atIndex: 1];
+                cmdEncoder->setComputeBytes(mtlConvertEncoder,
+                                            &srcStride,
+                                            sizeof(srcStride),
+                                            2);
+                cmdEncoder->setComputeBytes(mtlConvertEncoder,
+                                            &instanceCount,
+                                            sizeof(instanceCount),
+                                            3);
+
+                if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
+                    [mtlConvertEncoder dispatchThreads: MTLSizeMake(instanceCount, 1, 1)
+                                 threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
+                } else {
+                    [mtlConvertEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(instanceCount, mtlConvertState.threadExecutionWidth), 1, 1)
+                                      threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
+                }
+    
+                // We (probably) need to insert an explicit fence here. It is not exactly clear what is going on, but based on
+                // the Metal debugger, Metal does not recognize the read-write dependency between the tmpBuff and the build command.
+                // Thus, we need to explicitly synchronize.
+                fence = [cmdEncoder->getMTLDevice() newFence];
+                [mtlConvertEncoder updateFence:fence];
+                [cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) { [fence release]; }];
+            }
+
+            id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseBuildAccelerationStructure);
+
+            if (fence)
+                [accStructEncoder waitForFence:fence];
 
             [accStructEncoder buildAccelerationStructure:dstAccStruct
-                                                descriptor:descriptor
-                                                scratchBuffer:scratchBuffer
-                                                scratchBufferOffset:scratchBufferOffset];
+                                              descriptor:descriptor
+                                           scratchBuffer:scratchBuffer
+                                     scratchBufferOffset:scratchBufferOffset];
+
+            [descriptor release];
         }
-        else if (buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR)
-        {
+        else if (buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR) {
+            // TODO: check if we are allowed to update, not sure if validation layers handle this
+
             MTLAccelerationStructureDescriptor* descriptor = [MTLAccelerationStructureDescriptor new];
+
+            MVKAccelerationStructure* mvkSrcAccStruct = (MVKAccelerationStructure*)buildInfo.srcAccelerationStructure;
+            id<MTLAccelerationStructure> srcAccStruct = mvkSrcAccStruct->getMTLAccelerationStructure();
             
             if (mvkIsAnyFlagEnabled(buildInfo.flags, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR))
                 descriptor.usage += MTLAccelerationStructureUsagePreferFastBuild;
             
+            id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseBuildAccelerationStructure);
             [accStructEncoder refitAccelerationStructure:srcAccStruct
                                               descriptor:descriptor
                                              destination:dstAccStruct
                                            scratchBuffer:scratchBuffer
                                      scratchBufferOffset:scratchBufferOffset];
+
+            [descriptor release];
         }
     }
 }
@@ -111,9 +162,9 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdCopyAccelerationStructure
 
-VkResult MVKCmdCopyAccelerationStructure::setContent(MVKCommandBuffer*                  cmdBuff,
-                                                     VkAccelerationStructureKHR         srcAccelerationStructure,
-                                                     VkAccelerationStructureKHR         dstAccelerationStructure,
+VkResult MVKCmdCopyAccelerationStructure::setContent(MVKCommandBuffer* cmdBuff,
+                                                     VkAccelerationStructureKHR srcAccelerationStructure,
+                                                     VkAccelerationStructureKHR dstAccelerationStructure,
                                                      VkCopyAccelerationStructureModeKHR copyMode) {
     
     MVKAccelerationStructure* mvkSrcAccStruct = (MVKAccelerationStructure*)srcAccelerationStructure;
@@ -122,13 +173,16 @@ VkResult MVKCmdCopyAccelerationStructure::setContent(MVKCommandBuffer*          
     _srcAccelerationStructure = mvkSrcAccStruct->getMTLAccelerationStructure();
     _dstAccelerationStructure = mvkDstAccStruct->getMTLAccelerationStructure();
     _copyMode = copyMode;
+
     return VK_SUCCESS;
 }
 
 void MVKCmdCopyAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseCopyAccelerationStructure);
-    if(_copyMode == VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR)
-    {
+
+    // TODO: other copy modes
+
+    if(_copyMode == VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR) {
         [accStructEncoder
          copyAndCompactAccelerationStructure:_srcAccelerationStructure
          toAccelerationStructure:_dstAccelerationStructure];
@@ -144,26 +198,28 @@ void MVKCmdCopyAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdCopyAccelerationStructureToMemory
 
-VkResult MVKCmdCopyAccelerationStructureToMemory::setContent(MVKCommandBuffer*                  cmdBuff,
-                                                             VkAccelerationStructureKHR         srcAccelerationStructure,
-                                                             uint64_t                           dstAddress,
+VkResult MVKCmdCopyAccelerationStructureToMemory::setContent(MVKCommandBuffer* cmdBuff,
+                                                             VkAccelerationStructureKHR srcAccelerationStructure,
+                                                             uint64_t dstAddress,
                                                              VkCopyAccelerationStructureModeKHR copyMode) {
-    _dstAddress = dstAddress;
-    _copyMode = copyMode;
     
     MVKAccelerationStructure* mvkSrcAccStruct = (MVKAccelerationStructure*)srcAccelerationStructure;
-    _srcAccelerationStructure = mvkSrcAccStruct->getMTLAccelerationStructure();
-    
 
-    _dstBuffer = _mvkDevice->getBufferAtAddress(_dstAddress);
+    _copyMode = copyMode;
+    _srcBuffer = mvkSrcAccStruct->getMTLBuffer();
+    _dstBuffer = cmdBuff->getDevice()->getBufferAtAddress(dstAddress);
+
     return VK_SUCCESS;
 }
                                         
 void MVKCmdCopyAccelerationStructureToMemory::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLBlitCommandEncoder> blitEncoder = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyAccelerationStructureToMemory);
-    _mvkDevice = cmdEncoder->getDevice();
     
-    [blitEncoder copyFromBuffer:_srcAccelerationStructureBuffer sourceOffset:0 toBuffer:_dstBuffer->getMTLBuffer() destinationOffset:0 size:_copySize];
+    [blitEncoder copyFromBuffer:_srcBuffer
+                   sourceOffset:0
+                       toBuffer:_dstBuffer->getMTLBuffer()
+              destinationOffset:_dstBuffer->getMTLBufferOffset()
+                           size:_copySize];
 }
 
 #pragma mark -
@@ -195,11 +251,11 @@ void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncod
 #pragma mark MVKCmdWriteAccelerationStructuresProperties
 
 VkResult MVKCmdWriteAccelerationStructuresProperties::setContent(MVKCommandBuffer* cmdBuff,
-                    uint32_t accelerationStructureCount,
-                    const VkAccelerationStructureKHR* pAccelerationStructures,
-                    VkQueryType queryType,
-                    VkQueryPool queryPool,
-                    uint32_t firstQuery) {
+                                                                 uint32_t accelerationStructureCount,
+                                                                 const VkAccelerationStructureKHR* pAccelerationStructures,
+                                                                 VkQueryType queryType,
+                                                                 VkQueryPool queryPool,
+                                                                 uint32_t firstQuery) {
     
     _accelerationStructureCount = accelerationStructureCount;
     _pAccelerationStructures = (const MVKAccelerationStructure*)pAccelerationStructures;
@@ -211,17 +267,11 @@ VkResult MVKCmdWriteAccelerationStructuresProperties::setContent(MVKCommandBuffe
 
 void MVKCmdWriteAccelerationStructuresProperties::encode(MVKCommandEncoder* cmdEncoder) {
     
-    for(int i = 0; i < _accelerationStructureCount; i++)
-    {
-        if(!_pAccelerationStructures[i].getBuildStatus()) {
-            return;
-        }
-        
+    for(int i = 0; i < _accelerationStructureCount; i++) {
         // actually finish up the meat of the code here
     }
     
-    switch(_queryType)
-    {
+    switch(_queryType) {
         case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE_KHR:
             break;
         case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_BOTTOM_LEVEL_POINTERS_KHR:

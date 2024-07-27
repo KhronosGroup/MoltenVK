@@ -336,16 +336,17 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				storageFeatures->storagePushConstant8 = supportedFeats12.storagePushConstant8;
 				break;
 			}
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR: {
-                // In the future we should update this to allow for more advanced features if they can be supported.
-                auto* storageFeatures = (VkPhysicalDeviceAccelerationStructureFeaturesKHR*)next;
-                storageFeatures->accelerationStructure = mvkOSVersionIsAtLeast(11.0, 14.0, 1.0);
-                storageFeatures->accelerationStructureCaptureReplay = false;
-                storageFeatures->accelerationStructureIndirectBuild = false;
-                storageFeatures->accelerationStructureHostCommands = false;
-                storageFeatures->descriptorBindingAccelerationStructureUpdateAfterBind = false;
-                break;
-            }
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR: {
+				auto* accStructFeatures = (VkPhysicalDeviceAccelerationStructureFeaturesKHR*)next;
+        accStructFeatures->accelerationStructure = _metalFeatures.accelerationStructures;
+        accStructFeatures->accelerationStructureCaptureReplay = false;
+        accStructFeatures->accelerationStructureIndirectBuild = false;
+        accStructFeatures->accelerationStructureHostCommands = false;
+
+        // TODO: look into this
+        accStructFeatures->descriptorBindingAccelerationStructureUpdateAfterBind = false;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES:
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: {
 				auto* bufferDeviceAddressFeatures = (VkPhysicalDeviceBufferDeviceAddressFeatures*)next;
@@ -972,19 +973,20 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				populateHostImageCopyProperties((VkPhysicalDeviceHostImageCopyProperties*)next);
 				break;
 			}
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR: {
-                /*
-                    These are all magic numbers at the moment and should be probaly defined as constants, as well as that, there is an extended mode which allows for more geometry in the acceleration structures. If you're looking for a source here it is. https://developer.apple.com/documentation/metal/mtlaccelerationstructureusage/3750490-extendedlimits
-                */
-        
-                auto* accelerationStructureProps = (VkPhysicalDeviceAccelerationStructurePropertiesKHR*)next;
-                accelerationStructureProps->maxGeometryCount = pow(2, 24);
-                accelerationStructureProps->maxInstanceCount = pow(2, 24);
-                accelerationStructureProps->maxPrimitiveCount = pow(2, 28);
-                accelerationStructureProps->minAccelerationStructureScratchOffsetAlignment = (uint32_t)_metalFeatures.mtlBufferAlignment;
-                // Other properties have not been figured out quite yet
-                break;
-            }
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR: {
+				auto* accStructProps = (VkPhysicalDeviceAccelerationStructurePropertiesKHR*)next;
+        accStructProps->maxGeometryCount = 1 << 24;
+        accStructProps->maxInstanceCount = 1 << 24;
+        accStructProps->maxPrimitiveCount = 1 << 28;
+
+        // TODO: Not certain about these, doesn't seem to specify anywhere
+        accStructProps->maxPerStageDescriptorAccelerationStructures = _metalFeatures.maxPerStageBufferCount;
+        accStructProps->maxPerStageDescriptorUpdateAfterBindAccelerationStructures = _metalFeatures.maxPerStageBufferCount;
+        accStructProps->maxDescriptorSetAccelerationStructures = accStructProps->maxPerStageDescriptorAccelerationStructures * 5;
+        accStructProps->maxDescriptorSetUpdateAfterBindAccelerationStructures = accStructProps->maxPerStageDescriptorUpdateAfterBindAccelerationStructures * 5;
+        accStructProps->minAccelerationStructureScratchOffsetAlignment = (uint32_t)_metalFeatures.mtlBufferAlignment;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
 				auto* dvcIDProps = (VkPhysicalDeviceIDProperties*)next;
 				mvkCopy(dvcIDProps->deviceUUID, supportedProps11.deviceUUID, VK_UUID_SIZE);
@@ -2504,6 +2506,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #if MVK_XCODE_14
 	if ( mvkOSVersionIsAtLeast(16.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_0;
+        _metalFeatures.accelerationStructures = true;
 	}
 #endif
 
@@ -2608,6 +2611,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( mvkOSVersionIsAtLeast(14.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
         _metalFeatures.multisampleArrayTextures = true;
+        _metalFeatures.accelerationStructures = true;
 		if ( supportsMTLGPUFamily(Apple7) ) {
 			_metalFeatures.maxQueryBufferSize = (256 * KIBI);
 			_metalFeatures.multisampleLayeredRendering = _metalFeatures.layeredRendering;
@@ -2707,6 +2711,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #if MVK_XCODE_12
 	if ( mvkOSVersionIsAtLeast(11.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
+    _metalFeatures.accelerationStructures = true;
 	}
 #endif
 #if MVK_XCODE_13
@@ -3859,6 +3864,9 @@ void MVKPhysicalDevice::initExtensions() {
 	}
 	if (!_metalFeatures.arrayOfTextures || !_metalFeatures.arrayOfSamplers) {
 		pWritableExtns->vk_EXT_descriptor_indexing.enabled = false;
+
+        // Depends on descriptor indexinfs
+        pWritableExtns->vk_KHR_acceleration_structure.enabled = false;
 	}
 	if (!_metalFeatures.placementHeaps) {
 		pWritableExtns->vk_EXT_image_2d_view_of_3d.enabled = false;
@@ -3870,10 +3878,14 @@ void MVKPhysicalDevice::initExtensions() {
     if (_metalFeatures.argumentBuffersTier < MTLArgumentBuffersTier2) {
 		pWritableExtns->vk_KHR_buffer_device_address.enabled = false;
 		pWritableExtns->vk_EXT_buffer_device_address.enabled = false;
+
+        // Depends on device address
+        pWritableExtns->vk_KHR_acceleration_structure.enabled = false;
 	}
 #else
     pWritableExtns->vk_KHR_buffer_device_address.enabled = false;
     pWritableExtns->vk_EXT_buffer_device_address.enabled = false;
+    pWritableExtns->vk_KHR_acceleration_structure.enabled = false;
 #endif
 
 #if MVK_MACOS
@@ -4310,6 +4322,21 @@ VkExtent2D MVKDevice::getDynamicRenderAreaGranularity() {
     return { 1, 1 };
 }
 
+void MVKDevice::trackBufferAddress(MVKBuffer* mvkBuff, bool track) {
+    MVKAddressMap::Entry entry = {
+        mvkBuff->getMTLBufferGPUAddress(),
+        mvkBuff->getByteCount(),
+        mvkBuff
+    };
+
+    if (entry.baseAddress == 0) return;
+    
+    if (track)
+        _gpuBufferAddressMap->addEntry(entry);
+    else
+        _gpuBufferAddressMap->removeEntry(entry);
+}
+
 MVKBuffer* MVKDevice::getBufferAtAddress(uint64_t address)
 {
     void* value = nullptr;
@@ -4317,18 +4344,15 @@ MVKBuffer* MVKDevice::getBufferAtAddress(uint64_t address)
     return (MVKBuffer*)value;
 }
 
-MVKAccelerationStructure* MVKDevice::getAccelerationStructureAtAddress(uint64_t address)
-{
+MVKAccelerationStructure* MVKDevice::getAccelerationStructureAtAddress(uint64_t address) {
     std::unordered_map<uint64_t, MVKAccelerationStructure*>::iterator accStructIt = _gpuAccStructAddressMap.find(address);
     if(accStructIt == _gpuAccStructAddressMap.end()) { return nullptr; }
     
     return accStructIt->second;
 }
 
-VkAccelerationStructureCompatibilityKHR MVKDevice::getAccelerationStructureCompatibility(const VkAccelerationStructureVersionInfoKHR* pVersionInfo)
-{
-    if(_enabledAccelerationStructureFeatures.accelerationStructure)
-    {
+VkAccelerationStructureCompatibilityKHR MVKDevice::getAccelerationStructureCompatibility(const VkAccelerationStructureVersionInfoKHR* pVersionInfo) {
+    if(_enabledAccelerationStructureFeatures.accelerationStructure) {
         return VK_ACCELERATION_STRUCTURE_COMPATIBILITY_COMPATIBLE_KHR;
     }
     
@@ -4592,7 +4616,7 @@ void MVKDevice::destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
 
 MVKAccelerationStructure* MVKDevice::createAccelerationStructure(const VkAccelerationStructureCreateInfoKHR* pCreateInfo,
                                                                  const VkAllocationCallbacks*                pAllocator) {
-    return addAccelerationStructure(new MVKAccelerationStructure(this));
+    return addAccelerationStructure(new MVKAccelerationStructure(this, pCreateInfo));
 }
 
 void MVKDevice::destroyAccelerationStructure(MVKAccelerationStructure*     mvkAccStruct,
@@ -4833,11 +4857,6 @@ MVKBuffer* MVKDevice::addBuffer(MVKBuffer* mvkBuff) {
 	_resources.push_back(mvkBuff);
 	if (mvkIsAnyFlagEnabled(mvkBuff->getUsage(), VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT)) {
 		_gpuAddressableBuffers.push_back(mvkBuff);
-        _gpuBufferAddressMap->addEntry({
-            mvkBuff->getMTLBufferGPUAddress(),
-            mvkBuff->getByteCount(),
-            mvkBuff
-        });
 	}
 	return mvkBuff;
 }
@@ -4849,11 +4868,6 @@ MVKBuffer* MVKDevice::removeBuffer(MVKBuffer* mvkBuff) {
 	mvkRemoveFirstOccurance(_resources, mvkBuff);
 	if (mvkIsAnyFlagEnabled(mvkBuff->getUsage(), VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT)) {
 		mvkRemoveFirstOccurance(_gpuAddressableBuffers, mvkBuff);
-        _gpuBufferAddressMap->removeEntry({
-            mvkBuff->getMTLBufferGPUAddress(),
-            mvkBuff->getByteCount(),
-            mvkBuff
-        });
 	}
 	return mvkBuff;
 }
@@ -4909,27 +4923,24 @@ void MVKDevice::removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t val
 }
 
 MVKAccelerationStructure* MVKDevice::addAccelerationStructure(MVKAccelerationStructure* accStruct) {
-    std::pair<uint64_t, MVKAccelerationStructure*> accStructMemoryPair = std::make_pair(_nextValidAccStructureAddress, accStruct);
-    _gpuAccStructAddressMap.insert(accStructMemoryPair);
-    accStruct->setDeviceAddress(_nextValidAccStructureAddress);
-    _nextValidAccStructureAddress += accStruct->getMTLSize();
+    std::lock_guard lock(_accLock);
+
+    // TODO: free list
+    uint64_t address = kMVKAccelerationStructureBaseAddr + _allAccStructs.size();
+    _gpuAccStructAddressMap.insert({ address, accStruct });
+    _allAccStructs.push_back(accStruct->getMTLAccelerationStructure());
+
+    accStruct->_address = address;
+
     return accStruct;
 }
 
 void MVKDevice::removeAccelerationStructure(MVKAccelerationStructure* accStruct) {
-    std::unordered_map<uint64_t, MVKAccelerationStructure*>::iterator accStructIt = _gpuAccStructAddressMap.find(accStruct->getDeviceAddress());
-    uint64_t addressOffset = accStructIt->second->getMTLSize();
-    _gpuAccStructAddressMap.erase(accStructIt);
-    
-    // This can lead to fragmentation over time, so I'll just push all keys after this back
-    // This, however is also another performance issue
-    for(auto it = accStructIt; it != _gpuAccStructAddressMap.end(); it++)
-    {
-        auto extractedAccStruct = _gpuAccStructAddressMap.extract(it->first);
-        extractedAccStruct.key() = it->first - addressOffset;
-        _gpuAccStructAddressMap.insert(std::move(extractedAccStruct));
-        _gpuAccStructAddressMap.erase(it->first);
-    }
+    std::lock_guard lock(_accLock);
+
+    _gpuAccStructAddressMap.erase(accStruct->getDeviceAddress());
+
+    // TODO: remove entry from _allAccStructs
 }
 
 void MVKDevice::applyMemoryBarrier(MVKPipelineBarrier& barrier,
@@ -5188,6 +5199,13 @@ uint32_t MVKDevice::expandVisibilityResultMTLBuffer(uint32_t queryCount) {
     _globalVisibilityResultMTLBuffer = [_physicalDevice->_mtlDevice newBufferWithLength: mtlBuffLen options: mtlBuffOpts];     // retained
 
     return _globalVisibilityQueryCount - queryCount;     // Might be lower than requested if an overflow occurred
+}
+
+NSArray<id<MTLAccelerationStructure>>* MVKDevice::getAccelerationStructureList()
+{
+    std::lock_guard lock(_accLock);
+
+    return [[NSArray alloc] initWithObjects:_allAccStructs.data() count:_allAccStructs.size()];
 }
 
 id<MTLSamplerState> MVKDevice::getDefaultMTLSamplerState() {

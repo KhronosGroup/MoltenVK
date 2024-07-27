@@ -25,55 +25,44 @@
 #pragma mark -
 #pragma mark MVKAcceleration Structure
 
-id<MTLAccelerationStructure> MVKAccelerationStructure::getMTLAccelerationStructure()
-{
+id<MTLAccelerationStructure> MVKAccelerationStructure::getMTLAccelerationStructure() {
     return _accelerationStructure;
 }
     
-MTLAccelerationStructureDescriptor* MVKAccelerationStructure::populateMTLDescriptor(MVKDevice* device,
-                                                                                    const VkAccelerationStructureBuildGeometryInfoKHR& buildInfo,
-                                                                                    const VkAccelerationStructureBuildRangeInfoKHR* rangeInfos,
-                                                                                    const uint32_t* maxPrimitiveCounts)
-{
+MTLAccelerationStructureDescriptor* MVKAccelerationStructure::newMTLAccelerationStructureDescriptor(const VkAccelerationStructureBuildGeometryInfoKHR& buildInfo,
+                                                                                                    const VkAccelerationStructureBuildRangeInfoKHR* rangeInfos,
+                                                                                                    const uint32_t* maxPrimitiveCounts) {
     MTLAccelerationStructureDescriptor* descriptor = nullptr;
 
-    switch (buildInfo.type)
-    {
+    switch (buildInfo.type) {
         default:
             break; // TODO: throw error
-        case VK_ACCELERATION_STRUCTURE_TYPE_GENERIC_KHR:
-        {
+        case VK_ACCELERATION_STRUCTURE_TYPE_GENERIC_KHR: {
             // TODO: should building generic not be allowed?
             // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkAccelerationStructureTypeKHR.html
         } break;
 
-        case VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR:
-        {
+        case VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR: {
             MTLPrimitiveAccelerationStructureDescriptor* primitive = [MTLPrimitiveAccelerationStructureDescriptor new];
 
             NSMutableArray* geoms = [NSMutableArray arrayWithCapacity:buildInfo.geometryCount];
-            for (uint32_t i = 0; i < buildInfo.geometryCount; i++)
-            {
+            for (uint32_t i = 0; i < buildInfo.geometryCount; i++) {
                 // TODO: buildInfo.ppGeometries
 
                 const VkAccelerationStructureGeometryKHR& geom = buildInfo.pGeometries[i];
-                switch (geom.geometryType)
-                {
+                switch (geom.geometryType) {
+                    // TODO: Throw error, invalid BLAS geometry type
                     default:
-                        break;
-
-                    case VK_GEOMETRY_TYPE_INSTANCES_KHR:
-                        break;
+                        continue;
                     
-                    case VK_GEOMETRY_TYPE_TRIANGLES_KHR:
-                    {
+                    case VK_GEOMETRY_TYPE_TRIANGLES_KHR: {
                         const VkAccelerationStructureGeometryTrianglesDataKHR& triangleData = geom.geometry.triangles;
                         uint64_t vertexBDA = triangleData.vertexData.deviceAddress;
                         uint64_t indexBDA = triangleData.indexData.deviceAddress;
                         uint64_t transformBDA = triangleData.transformData.deviceAddress;
-                        MVKBuffer* mvkVertexBuffer = device->getBufferAtAddress(vertexBDA);
-                        MVKBuffer* mvkIndexBuffer = device->getBufferAtAddress(indexBDA);
-                        MVKBuffer* mvkTransformBuffer = device->getBufferAtAddress(transformBDA);
+                        MVKBuffer* mvkVertexBuffer = getDevice()->getBufferAtAddress(vertexBDA);
+                        MVKBuffer* mvkIndexBuffer = getDevice()->getBufferAtAddress(indexBDA);
+                        MVKBuffer* mvkTransformBuffer = getDevice()->getBufferAtAddress(transformBDA);
 
                         // TODO: should validate that buffer->getMTLBufferOffset is a multiple of vertexStride. This could cause issues
                         NSUInteger vbOffset = (vertexBDA - mvkVertexBuffer->getMTLBufferGPUAddress()) + mvkVertexBuffer->getMTLBufferOffset();
@@ -84,22 +73,19 @@ MTLAccelerationStructureDescriptor* MVKAccelerationStructure::populateMTLDescrip
                         geometryTriangles.vertexBuffer = mvkVertexBuffer->getMTLBuffer();
                         geometryTriangles.vertexStride = triangleData.vertexStride;
 
-                        if (transformBDA && mvkTransformBuffer)
-                        {
+                        if (transformBDA && mvkTransformBuffer) {
                             tfOffset = (transformBDA - mvkTransformBuffer->getMTLBufferGPUAddress()) + mvkTransformBuffer->getMTLBufferOffset();
                             geometryTriangles.transformationMatrixBuffer = mvkTransformBuffer->getMTLBuffer();
                         }
 
                         bool useIndices = indexBDA && mvkIndexBuffer && triangleData.indexType != VK_INDEX_TYPE_NONE_KHR;
-                        if (useIndices)
-                        {
+                        if (useIndices) {
                             ibOffset = (indexBDA - mvkIndexBuffer->getMTLBufferGPUAddress()) + mvkIndexBuffer->getMTLBufferOffset();
                             geometryTriangles.indexBuffer = mvkIndexBuffer->getMTLBuffer();
                             geometryTriangles.indexType = mvkMTLIndexTypeFromVkIndexType(triangleData.indexType);
                         }
 
-                        if (rangeInfos)
-                        {
+                        if (rangeInfos) {
                             // Utilize range information during build time
 
                             geometryTriangles.triangleCount = rangeInfos[i].primitiveCount;
@@ -110,8 +96,7 @@ MTLAccelerationStructureDescriptor* MVKAccelerationStructure::populateMTLDescrip
                             if (!useIndices)
                                 geometryTriangles.vertexBufferOffset += rangeInfos[i].primitiveOffset + rangeInfos[i].firstVertex * triangleData.vertexStride;
                         }
-                        else
-                        {
+                        else {
                             // Less information required when computing size
 
                             geometryTriangles.vertexBufferOffset = vbOffset;
@@ -123,11 +108,10 @@ MTLAccelerationStructureDescriptor* MVKAccelerationStructure::populateMTLDescrip
                         [geoms addObject:geometryTriangles];
                     } break;
                     
-                    case VK_GEOMETRY_TYPE_AABBS_KHR:
-                    {
+                    case VK_GEOMETRY_TYPE_AABBS_KHR: {
                         const VkAccelerationStructureGeometryAabbsDataKHR& aabbData = geom.geometry.aabbs;
                         uint64_t boundingBoxBDA = aabbData.data.deviceAddress;
-                        MVKBuffer* mvkBoundingBoxBuffer = device->getBufferAtAddress(boundingBoxBDA);
+                        MVKBuffer* mvkBoundingBoxBuffer = getDevice()->getBufferAtAddress(boundingBoxBDA);
 
                         NSUInteger bOffset = (boundingBoxBDA - mvkBoundingBoxBuffer->getMTLBufferGPUAddress()) + mvkBoundingBoxBuffer->getMTLBufferOffset();
                         
@@ -136,8 +120,7 @@ MTLAccelerationStructureDescriptor* MVKAccelerationStructure::populateMTLDescrip
                         geometryAABBs.boundingBoxBuffer = mvkBoundingBoxBuffer->getMTLBuffer();
                         geometryAABBs.boundingBoxBufferOffset = bOffset;
 
-                        if (rangeInfos)
-                        {
+                        if (rangeInfos) {
                             geometryAABBs.boundingBoxCount = rangeInfos[i].primitiveCount;
                             geometryAABBs.boundingBoxBufferOffset += rangeInfos[i].primitiveOffset;
                         }
@@ -153,13 +136,37 @@ MTLAccelerationStructureDescriptor* MVKAccelerationStructure::populateMTLDescrip
             descriptor = primitive;
         } break;
         
-        case VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR:
-        {
-            accStructDescriptor = [MTLInstanceAccelerationStructureDescriptor new];
-            MTLInstanceAccelerationStructureDescriptor* instanceAccStructDescriptor = (MTLInstanceAccelerationStructureDescriptor*)accStructDescriptor;
-            // add bottom level acceleration structures
-            
-            instanceAccStructDescriptor.instanceDescriptorType = MTLAccelerationStructureInstanceDescriptorTypeDefault;
+        case VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR: {
+            // Validate geometry count
+            // TODO: throw error
+            if (buildInfo.geometryCount != 1)
+                break;
+
+            // TODO: buildInfo.ppGeometries
+
+            const VkAccelerationStructureGeometryKHR& geom = buildInfo.pGeometries[0];
+            if (geom.geometryType != VK_GEOMETRY_TYPE_INSTANCES_KHR)
+                // TODO: Throw error, invalid TLAS geometry type
+                break;
+
+            NSArray<id<MTLAccelerationStructure>>* accelerationStructureList = getDevice()->getAccelerationStructureList();
+            MTLInstanceAccelerationStructureDescriptor* tlas = [MTLInstanceAccelerationStructureDescriptor new];
+            tlas.instanceDescriptorType = MTLAccelerationStructureInstanceDescriptorTypeUserID;
+            tlas.instancedAccelerationStructures = accelerationStructureList;
+            [accelerationStructureList release];
+
+            // TODO: need to release array copy?
+
+            // Buffer and buffer offset must be populated later since instance data will be converted
+
+            if (rangeInfos)
+                tlas.instanceCount = rangeInfos[0].primitiveCount;
+            else
+                tlas.instanceCount = maxPrimitiveCounts[0];
+
+            // TODO: investigate primitive offset
+
+            descriptor = tlas;
         } break;
     }
 
@@ -176,46 +183,44 @@ MTLAccelerationStructureDescriptor* MVKAccelerationStructure::populateMTLDescrip
     return descriptor;
 }
 
-VkAccelerationStructureBuildSizesInfoKHR MVKAccelerationStructure::getBuildSizes(MVKDevice* device,
-                                                                                 VkAccelerationStructureBuildTypeKHR type,
+VkAccelerationStructureBuildSizesInfoKHR MVKAccelerationStructure::getBuildSizes(VkAccelerationStructureBuildTypeKHR type,
                                                                                  const VkAccelerationStructureBuildGeometryInfoKHR* info,
-                                                                                 const uint32_t* maxPrimitiveCounts)
-{
+                                                                                 const uint32_t* maxPrimitiveCounts) {
     VkAccelerationStructureBuildSizesInfoKHR vkBuildSizes{};
     
     // TODO: We can't perform host builds, throw an error?
     if (type == VK_ACCELERATION_STRUCTURE_BUILD_TYPE_HOST_KHR)
         return vkBuildSizes;
     
-    MTLAccelerationStructureDescriptor* descriptor = populateMTLDescriptor(device, *info, maxPrimitiveCounts);
+    MTLAccelerationStructureDescriptor* descriptor = newMTLAccelerationStructureDescriptor(*info, nullptr, maxPrimitiveCounts);
 
-    MTLAccelerationStructureSizes sizes = [device->getMTLDevice() accelerationStructureSizesWithDescriptor:descriptor];
+    MTLAccelerationStructureSizes sizes = [getMTLDevice() accelerationStructureSizesWithDescriptor:descriptor];
     vkBuildSizes.accelerationStructureSize = sizes.accelerationStructureSize;
     vkBuildSizes.buildScratchSize = sizes.buildScratchBufferSize;
     vkBuildSizes.updateScratchSize = sizes.refitScratchBufferSize;
+
+    [descriptor release];
     
     return vkBuildSizes;
 }
 
-uint64_t MVKAccelerationStructure::getMTLSize()
-{
-    if (!_built) { return 0; }
-    return _accelerationStructure.size;
-}
+// Empty constructor to allow function accessing
+MVKAccelerationStructure::MVKAccelerationStructure(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
 
-MVKAccelerationStructure::MVKAccelerationStructure(MVKDevice* device) : MVKVulkanAPIDeviceObject(device)
-{
-    MTLHeapDescriptor* heapDescriptor = [MTLHeapDescriptor new];
-    heapDescriptor.storageMode = MTLStorageModePrivate;
-//    heapDescriptor.size = getBuildSizes().accelerationStructureSize;
-    _heap = [getMTLDevice() newHeapWithDescriptor:heapDescriptor];
+MVKAccelerationStructure::MVKAccelerationStructure(MVKDevice* device,
+                                                   const VkAccelerationStructureCreateInfoKHR* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
+    MVKBuffer* buff = (MVKBuffer*)pCreateInfo->buffer;
+    id<MTLHeap> heap = buff->getMTLHeap();
+
+    MVKAssert(heap, "Buffer passed to MVKAccelerationStructure must be backed by a MTLHeap");
     
-//    _accelerationStructure = [_heap newAccelerationStructureWithSize:getBuildSizes().accelerationStructureSize];
-//    _buffer = [_heap newBufferWithLength:getBuildSizes().accelerationStructureSize options:MTLResourceOptionCPUCacheModeDefault];
+    _size = pCreateInfo->size;
+    _buffer = buff->getMTLBuffer();
+    _accelerationStructure = [heap newAccelerationStructureWithSize:pCreateInfo->size
+                                                             offset:buff->getMTLHeapOffset()];
 }
 
-void MVKAccelerationStructure::destroy()
-{
-    [_heap release];
-    _built = false;
+MVKAccelerationStructure::~MVKAccelerationStructure() {
+    [_accelerationStructure release];
+    _accelerationStructure = nil;
 }

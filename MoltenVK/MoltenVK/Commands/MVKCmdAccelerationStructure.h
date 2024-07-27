@@ -39,8 +39,7 @@ public:
     
     void encode(MVKCommandEncoder* cmdEncoder) override;
 protected:
-    struct MVKAccelerationStructureBuildInfo
-    {
+    struct MVKAccelerationStructureBuildInfo {
         VkAccelerationStructureBuildGeometryInfoKHR info;
         MVKSmallVector<VkAccelerationStructureGeometryKHR, 3> geometries;
         MVKSmallVector<VkAccelerationStructureBuildRangeInfoKHR, 3> ranges;
@@ -87,13 +86,9 @@ public:
 protected:
     MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
     
-    id<MTLAccelerationStructure> _srcAccelerationStructure;
-    id<MTLBuffer> _srcAccelerationStructureBuffer;
+    id<MTLBuffer> _srcBuffer;
     MVKBuffer* _dstBuffer;
     uint64_t _copySize;
-    
-    uint64_t _dstAddress;
-    MVKDevice* _mvkDevice;
     VkCopyAccelerationStructureModeKHR _copyMode;
 };
 

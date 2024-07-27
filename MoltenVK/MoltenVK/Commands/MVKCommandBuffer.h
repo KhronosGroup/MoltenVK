@@ -555,7 +555,7 @@ protected:
     uint32_t _flushCount;
 	MVKCommandUse _mtlComputeEncoderUse;
 	MVKCommandUse _mtlBlitEncoderUse;
-    MVKCommandUse _mtlAccelerationStructureUse;
+  MVKCommandUse _mtlAccelerationStructureEncoderUse;
 	bool _isRenderingEntireAttachment;
 };
 
@@ -571,3 +571,6 @@ NSString* mvkMTLBlitCommandEncoderLabel(MVKCommandUse cmdUse);
 
 /** Returns a name, suitable for use as a MTLComputeCommandEncoder label, based on the MVKCommandUse. */
 NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse);
+
+/** Returns a name, suitable for use as a MTLAccelerationStructureCommandEncoder label, based on the MVKCommandUse. */
+NSString* mvkMTLAccelerationStructureCommandEncoderLabel(MVKCommandUse cmdUse);

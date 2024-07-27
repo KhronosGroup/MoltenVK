@@ -130,7 +130,7 @@ void MVKAddressMap::processEntry(const Entry& entry, bool add)
 
         SmallStorage* small = loadAtomic(block->small);
 
-        auto lock = std::lock_guard<std::mutex>(small->lock);
+        std::lock_guard<std::mutex> lock(small->lock);
         if (add)
             small->entries.emplace_back(entry);
         else
@@ -159,6 +159,8 @@ void MVKAddressMap::removeEntry(const Entry& entry)
 bool MVKAddressMap::getEntry(uint64_t addr, Entry& outEntry) const
 {
     Block* block = getBlock(addr);
+    if (!block)
+        return false;
 
     // First check left. This means the address is within the range and the base
     // address is to the left.
@@ -183,7 +185,7 @@ bool MVKAddressMap::getEntry(uint64_t addr, Entry& outEntry) const
         return false;
     
     // Find the small entry where the address is within the range.
-    auto lock = std::lock_guard<std::mutex>(small->lock);
+    std::lock_guard<std::mutex> lock(small->lock);
     auto found = std::find_if(
         small->entries.begin(),
         small->entries.end(),

@@ -577,6 +577,13 @@ static MVKBarrierStage commandUseToBarrierStage(MVKCommandUse use) {
 	case kMVKCommandUseAccumOcclusionQuery:          return kMVKBarrierStageNone; /**< Any command terminating a Metal render pass with active visibility buffer. */
 	case kMVKCommandConvertUint8Indices:             return kMVKBarrierStageCopy; /**< Converting a Uint8 index buffer to Uint16. */
 	case kMVKCommandUseRecordGPUCounterSample:       return kMVKBarrierStageNone; /**< Any command triggering the recording of a GPU counter sample. */
+  // TODO: validate these
+  case kMVKCommandUseBuildAccelerationStructureConvertBuffers: return kMVKBarrierStageCopy;
+  case kMVKCommandUseBuildAccelerationStructure:               return kMVKBarrierStageNone;
+  case kMVKCommandUseCopyAccelerationStructure:                return kMVKBarrierStageCopy;
+  case kMVKCommandUseCopyAccelerationStructureToMemory:        return kMVKBarrierStageCopy;
+  case kMVKCommandUseCopyMemoryToAccelerationStructure:        return kMVKBarrierStageCopy;
+  case kMVKCommandUseWriteAccelerationStructuresProperties:    return kMVKBarrierStageNone; 
 	}
 }
 
@@ -1016,9 +1023,9 @@ void MVKCommandEncoder::endCurrentMetalEncoding() {
 	endMetalEncoding(_mtlBlitEncoder);
     _mtlBlitEncoderUse = kMVKCommandUseNone;
     
-    if (_mtlAccelerationStructureEncoder && _cmdBuffer->_hasStageCounterTimestampCommand) { [_mtlAccelerationStructureEncoder updateFence: getStageCountersMTLFence()]; }
-    endMetalEncoding(_mtlAccelerationStructureEncoder);
-    _mtlAccelerationStructureUse = kMVKCommandUseNone;
+	if (_mtlAccelerationStructureEncoder && _cmdBuffer->_hasStageCounterTimestampCommand) { [_mtlAccelerationStructureEncoder updateFence: getStageCountersMTLFence()]; }
+	endMetalEncoding(_mtlAccelerationStructureEncoder);
+    _mtlAccelerationStructureEncoderUse = kMVKCommandUseNone;
 
 	encodeTimestampStageCounterSamples();
 }
@@ -1057,11 +1064,11 @@ id<MTLBlitCommandEncoder> MVKCommandEncoder::getMTLBlitEncoder(MVKCommandUse cmd
 		_mtlBlitEncoder = [_mtlCmdBuffer blitCommandEncoder];
 		retainIfImmediatelyEncoding(_mtlBlitEncoder);
 	}
-    if (_mtlBlitEncoderUse != cmdUse) {
+  if (_mtlBlitEncoderUse != cmdUse) {
 		needWaits = true;
-        _mtlBlitEncoderUse = cmdUse;
+    _mtlBlitEncoderUse = cmdUse;
 		_cmdBuffer->setMetalObjectLabel(_mtlBlitEncoder, mvkMTLBlitCommandEncoderLabel(cmdUse));
-    }
+  }
 	if (needWaits) {
 		encodeBarrierWaits(cmdUse);
 	}
@@ -1069,23 +1076,29 @@ id<MTLBlitCommandEncoder> MVKCommandEncoder::getMTLBlitEncoder(MVKCommandUse cmd
 }
 
 id<MTLAccelerationStructureCommandEncoder> MVKCommandEncoder::getMTLAccelerationStructureEncoder(MVKCommandUse cmdUse) {
-    if ( !_mtlAccelerationStructureEncoder ) {
-        endCurrentMetalEncoding();
-        _mtlAccelerationStructureEncoder = [_mtlCmdBuffer accelerationStructureCommandEncoder];
-        retainIfImmediatelyEncoding(_mtlAccelerationStructureEncoder);
-    }
-    if (_mtlAccelerationStructureUse != cmdUse) {
-        _mtlAccelerationStructureUse = cmdUse;
-        setLabelIfNotNil(_mtlAccelerationStructureEncoder, mvkMTLBlitCommandEncoderLabel(cmdUse));
-    }
-    return _mtlAccelerationStructureEncoder;
+	bool needWaits = false;
+  if ( !_mtlAccelerationStructureEncoder ) {
+    needWaits = true;
+    endCurrentMetalEncoding();
+    _mtlAccelerationStructureEncoder = [_mtlCmdBuffer accelerationStructureCommandEncoder];
+    retainIfImmediatelyEncoding(_mtlAccelerationStructureEncoder);
+  }
+  if (_mtlAccelerationStructureEncoderUse != cmdUse) {
+    needWaits = true;
+    _mtlAccelerationStructureEncoderUse = cmdUse;
+		_cmdBuffer->setMetalObjectLabel(_mtlAccelerationStructureEncoder, mvkMTLAccelerationStructureCommandEncoderLabel(cmdUse));
+  }
+	if (needWaits) {
+		encodeBarrierWaits(cmdUse);
+	}
+  return _mtlAccelerationStructureEncoder;
 }
 
 id<MTLCommandEncoder> MVKCommandEncoder::getMTLEncoder(){
 	if (_mtlRenderEncoder) { return _mtlRenderEncoder; }
 	if (_mtlComputeEncoder) { return _mtlComputeEncoder; }
 	if (_mtlBlitEncoder) { return _mtlBlitEncoder; }
-    if (_mtlAccelerationStructureEncoder) { return _mtlAccelerationStructureEncoder; }
+  if (_mtlAccelerationStructureEncoder) { return _mtlAccelerationStructureEncoder; }
 	return nil;
 }
 
@@ -1403,7 +1416,7 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
 	_mtlBlitEncoder = nil;
 	_mtlBlitEncoderUse = kMVKCommandUseNone;
     _mtlAccelerationStructureEncoder = nil;
-    _mtlAccelerationStructureUse = kMVKCommandUseNone;
+    _mtlAccelerationStructureEncoderUse = kMVKCommandUseNone;
 	_pEncodingContext = nullptr;
 	_stageCountersMTLFence = nil;
 	_flushCount = 0;
@@ -1413,7 +1426,7 @@ MVKCommandEncoder::~MVKCommandEncoder() {
 	[_mtlRenderEncoder release];
 	[_mtlComputeEncoder release];
 	[_mtlBlitEncoder release];
-    [_mtlAccelerationStructureEncoder release];
+	[_mtlAccelerationStructureEncoder release];
 	// _stageCountersMTLFence is released after Metal command buffer completion
 }
 
@@ -1467,6 +1480,18 @@ NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse) {
         case kMVKCommandUseCopyQueryPoolResults:            return @"vkCmdCopyQueryPoolResults ComputeEncoder";
         case kMVKCommandUseAccumOcclusionQuery:             return @"Post-render-pass occlusion query accumulation ComputeEncoder";
         case kMVKCommandConvertUint8Indices:                return @"Convert Uint8 indices to Uint16 ComputeEncoder";
-        default:                                            return @"Unknown Use ComputeEncoder";
+        case kMVKCommandUseBuildAccelerationStructureConvertBuffers:  return @"vkCmdBuildAccelerationStructures (convert instance buffers) ComputeEncoder";
+        default:                                                      return @"Unknown Use ComputeEncoder";
+    }
+}
+
+NSString* mvkMTLAccelerationStructureCommandEncoderLabel(MVKCommandUse cmdUse) {
+    switch (cmdUse) {
+        case kMVKCommandUseBuildAccelerationStructure:            return @"vkCmdBuildAccelerationStructures AccelerationStructureEncoder";
+        case kMVKCommandUseCopyAccelerationStructure:             return @"vkCmdCopyAccelerationStructure AccelerationStructureEncoder";
+        case kMVKCommandUseCopyAccelerationStructureToMemory:     return @"vkCmdCopyAccelerationStructureToMemory AccelerationStructureEncoder";
+        case kMVKCommandUseCopyMemoryToAccelerationStructure:     return @"vkCmdCopyMemoryToAccelerationStructure AccelerationStructureEncoder";
+        case kMVKCommandUseWriteAccelerationStructuresProperties: return @"vkCmdWriteAccelerationStructureProperties AccelerationStructureEncoder";
+        default:                                                  return @"Unknown Use AccelerationStructureEncoder";
     }
 }

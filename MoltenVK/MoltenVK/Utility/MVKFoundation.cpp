@@ -58,7 +58,13 @@ const char* mvkVkCommandName(MVKCommandUse cmdUse) {
 		case kMVKCommandUseAccumOcclusionQuery:          return "Post-render-pass occlusion query accumulation";
 		case kMVKCommandConvertUint8Indices:             return "Convert Uint8 indices to Uint16";
 		case kMVKCommandUseRecordGPUCounterSample:       return "Record GPU Counter Sample";
-		default:                                         return "Unknown Vulkan command";
+        case kMVKCommandUseBuildAccelerationStructureConvertBuffers: return "vkCmdBuildAccelerationStructure (convert instance buffers)";
+        case kMVKCommandUseBuildAccelerationStructure:               return "vkCmdBuildAccelerationStructure";
+        case kMVKCommandUseCopyAccelerationStructure:                return "vkCmdCopyAccelerationStructure";
+        case kMVKCommandUseCopyAccelerationStructureToMemory:        return "vkCmdCopyAccelerationStructureToMemory";
+        case kMVKCommandUseCopyMemoryToAccelerationStructure:        return "vkCmdCopyMemoryToAccelerationStructure";
+        case kMVKCommandUseWriteAccelerationStructuresProperties:    return "vkCmdWriteAccelerationStructureProperties";
+		default:                                                     return "Unknown Vulkan command";
 	}
 }
 
