@@ -34,7 +34,7 @@
 
 #pragma once
 
-#include "MVKVulkanAPIObject.h"
+#include "MVKDevice.h"
 
 #import <Metal/MTLAccelerationStructure.h>
 #import <Metal/MTLAccelerationStructureTypes.h>
@@ -53,8 +53,17 @@ public:
     
     id<MTLAccelerationStructure> getMTLAccelerationStructure();
     
+    /** Populates a MTL acceleration structure descriptor given a vulkan descriptor */
+    static MTLAccelerationStructureDescriptor* populateMTLDescriptor(MVKDevice* device,
+                                                                     const VkAccelerationStructureBuildGeometryInfoKHR& buildInfo,
+                                                                     const VkAccelerationStructureBuildRangeInfoKHR* rangeInfos,
+                                                                     const uint32_t* maxPrimitiveCounts);
+
     /** Gets the required build sizes for acceleration structure and scratch buffer*/
-    static VkAccelerationStructureBuildSizesInfoKHR getBuildSizes(MVKDevice* device, VkAccelerationStructureBuildTypeKHR buildType, const VkAccelerationStructureBuildGeometryInfoKHR* buildInfo);
+    static VkAccelerationStructureBuildSizesInfoKHR getBuildSizes(MVKDevice* device,
+                                                                  VkAccelerationStructureBuildTypeKHR buildType,
+                                                                  const VkAccelerationStructureBuildGeometryInfoKHR* buildInfo,
+                                                                  const uint32_t* maxPrimitiveCounts);
     
     /** Gets the actual size of the acceleration structure*/
     uint64_t getMTLSize();

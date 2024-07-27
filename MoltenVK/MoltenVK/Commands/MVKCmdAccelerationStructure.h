@@ -20,6 +20,7 @@
 
 #include "MVKDevice.h"
 #include "MVKCommand.h"
+#include "MVKSmallVector.h"
 
 #import <Metal/Metal.h>
 #import <Metal/MTLAccelerationStructure.h>
@@ -38,12 +39,16 @@ public:
     
     void encode(MVKCommandEncoder* cmdEncoder) override;
 protected:
+    struct MVKAccelerationStructureBuildInfo
+    {
+        VkAccelerationStructureBuildGeometryInfoKHR info;
+        MVKSmallVector<VkAccelerationStructureGeometryKHR, 3> geometries;
+        MVKSmallVector<VkAccelerationStructureBuildRangeInfoKHR, 3> ranges;
+    };
+protected:
     MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
     
-    MVKDevice* _mvkDevice;
-    uint32_t _infoCount;
-    VkAccelerationStructureBuildGeometryInfoKHR* _geometryInfos;
-    VkAccelerationStructureBuildRangeInfoKHR const* _buildRangeInfos;
+    MVKSmallVector<MVKAccelerationStructureBuildInfo, 1> _buildInfos;
 };
 
 #pragma mark -
