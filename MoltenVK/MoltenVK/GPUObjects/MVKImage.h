@@ -448,7 +448,6 @@ typedef struct  {
 	uint64_t desiredPresentTime;  	// VK_GOOGLE_display_timing desired presentation time in nanoseconds
 	uint32_t presentID;           	// VK_GOOGLE_display_timing presentID
 	VkPresentModeKHR presentMode;	// VK_EXT_swapchain_maintenance1 present mode specialization
-	bool hasPresentTimesInfo;      	// Keep track of whether presentation included VK_GOOGLE_display_timing
 } MVKImagePresentInfo;
 
 /** Tracks a semaphore and fence for later signaling. */

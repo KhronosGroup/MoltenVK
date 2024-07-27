@@ -1557,7 +1557,7 @@ VkResult MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffe
 		if (presentInfo.presentMode != VK_PRESENT_MODE_MAX_ENUM_KHR) {
 			mtlDrwbl.layer.displaySyncEnabledMVK = (presentInfo.presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR);
 		}
-		if (presentInfo.hasPresentTimesInfo) {
+		if (getEnabledExtensions().vk_GOOGLE_display_timing.enabled) {
 			addPresentedHandler(mtlDrwbl, presentInfo, signaler);
 		}
 		if (presentInfo.desiredPresentTime) {

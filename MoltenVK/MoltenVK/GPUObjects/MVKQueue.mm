@@ -799,12 +799,9 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 		presentInfo.presentableImage = mvkSC->getPresentableImage(pPresentInfo->pImageIndices[scIdx]);
 		presentInfo.presentMode = pPresentModes ? pPresentModes[scIdx] : VK_PRESENT_MODE_MAX_ENUM_KHR;
 		presentInfo.fence = pFences ? (MVKFence*)pFences[scIdx] : nullptr;
-		if (pPresentTimesInfo) {
-			presentInfo.hasPresentTimesInfo = true;
-			if (pPresentTimes) {
-				presentInfo.presentID = pPresentTimes[scIdx].presentID;
-				presentInfo.desiredPresentTime = pPresentTimes[scIdx].desiredPresentTime;
-			}
+		if (pPresentTimes) {
+			presentInfo.presentID = pPresentTimes[scIdx].presentID;
+			presentInfo.desiredPresentTime = pPresentTimes[scIdx].desiredPresentTime;
 		}
 		mvkSC->setLayerNeedsDisplay(pRegions ? &pRegions[scIdx] : nullptr);
 		_presentInfo.push_back(presentInfo);
