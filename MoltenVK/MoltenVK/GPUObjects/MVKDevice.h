@@ -438,7 +438,7 @@ protected:
 	uint32_t _lazilyAllocatedMemoryTypes;
 	bool _hasUnifiedMemory = true;
 	bool _isAppleGPU = true;
-	bool _isUsingMetalArgumentBuffers = false;
+	bool _isUsingMetalArgumentBuffers = true;
 };
 
 
