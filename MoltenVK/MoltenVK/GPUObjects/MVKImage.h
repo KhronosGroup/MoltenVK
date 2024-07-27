@@ -504,6 +504,7 @@ protected:
 	MVKSmallVector<MVKSwapchainSignaler, 1> _availabilitySignalers;
 	MVKSwapchainSignaler _preSignaler = {};
 	std::mutex _availabilityLock;
+	uint64_t _startPresentTime = 0;
 	uint64_t _presentationStartTime = 0;
 };
 
