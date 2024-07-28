@@ -18,6 +18,11 @@ MoltenVK 1.2.11
 
 Released TBD
 
+- Support dynamically allocating descriptors when pool is exhausted.
+- Deprecate `MVKConfiguration::preallocateDescriptors` and `MVK_CONFIG_PREALLOCATE_DESCRIPTORS` environment variable.
+- `vkAllocateDescriptorSets()`: Per Vulkan spec, if any descriptor set allocation 
+  fails, populate all descriptor set pointers with `VK_NULL_HANDLE`. In addition, 
+  return `VK_ERROR_FRAGMENTED_POOL` if failure was due to pool fragmentation.
 - Fix rendering issue with render pass that immediately follows a kernel dispatch.
 - Ensure all MoltenVK config info set by `VK_EXT_layer_settings` is used.
 

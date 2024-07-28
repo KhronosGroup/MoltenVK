@@ -225,7 +225,7 @@ typedef struct {
 	MVKConfigAutoGPUCaptureScope autoGPUCaptureScope;                          /**< MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE */
 	const char* autoGPUCaptureOutputFilepath;                                  /**< MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE */
 	VkBool32 texture1DAs2D;                                                    /**< MVK_CONFIG_TEXTURE_1D_AS_2D */
-	VkBool32 preallocateDescriptors;                                           /**< MVK_CONFIG_PREALLOCATE_DESCRIPTORS */
+	VkBool32 preallocateDescriptors;                                           /**< Obsolete, deprecated, and ignored. */
 	VkBool32 useCommandPooling;                                                /**< MVK_CONFIG_USE_COMMAND_POOLING */
 	VkBool32 useMTLHeap;                                                       /**< MVK_CONFIG_USE_MTLHEAP */
 	MVKConfigActivityPerformanceLoggingStyle activityPerformanceLoggingStyle;  /**< MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE */

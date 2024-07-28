@@ -325,19 +325,6 @@ You can also use the `MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE` and
 
 
 ---------------------------------------
-#### MVK_CONFIG_PREALLOCATE_DESCRIPTORS
-
-##### Type: Boolean
-##### Default: `1`
-
-Controls whether **MoltenVK** should preallocate memory in each `VkDescriptorPool` according
-to the values of the `VkDescriptorPoolSize` parameters. Doing so may improve descriptor set
-allocation performance and memory stability at a cost of preallocated application memory.
-If this setting is disabled, the descriptors required for a descriptor set will be individually
-dynamically allocated in application memory when the descriptor set itself is allocated.
-
-
----------------------------------------
 #### MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS
 
 ##### Type: Enumeration

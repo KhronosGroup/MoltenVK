@@ -293,7 +293,7 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #   define MVK_CONFIG_TEXTURE_1D_AS_2D    1
 #endif
 
-/** Preallocate descriptors when creating VkDescriptorPool. Enabled by default. */
+/** Obsolete, deprecated, and ignored. */
 #ifndef MVK_CONFIG_PREALLOCATE_DESCRIPTORS
 #   define MVK_CONFIG_PREALLOCATE_DESCRIPTORS    1
 #endif

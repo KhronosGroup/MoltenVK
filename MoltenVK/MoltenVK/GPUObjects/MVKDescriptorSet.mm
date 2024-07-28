@@ -494,7 +494,9 @@ VkResult MVKDescriptorSet::allocate(MVKDescriptorSetLayout* layout,
 		for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 			VkDescriptorType descType = mvkDSLBind->getDescriptorType();
 			MVKDescriptor* mvkDesc = nullptr;
-			setConfigurationResult(_pool->allocateDescriptor(descType, &mvkDesc));
+			bool dynamicAllocation = true;
+			setConfigurationResult(_pool->allocateDescriptor(descType, &mvkDesc, dynamicAllocation));	// Modifies dynamicAllocation.
+			if (dynamicAllocation) { _allDescriptorsAreFromPool = false; }
 			if ( !wasConfigurationSuccessful() ) { return getConfigurationResult(); }
 			if (mvkDesc->usesDynamicBufferOffsets()) { _dynamicOffsetDescriptorCount++; }
 			_descriptors.push_back(mvkDesc);
@@ -521,12 +523,13 @@ void MVKDescriptorSet::free(bool isPoolReset) {
 
 	if (isPoolReset) { _argumentBuffer.setArgumentBuffer(_pool->_metalArgumentBuffer, 0, nil); }
 
-	// Pooled descriptors don't need to be individually freed under pool resets.
-	if ( !(_pool->_hasPooledDescriptors && isPoolReset) ) {
+	// If this is a pool reset, and all desciptors are from the pool, we don't need to free them.
+	if ( !(isPoolReset && _allDescriptorsAreFromPool) ) {
 		for (auto mvkDesc : _descriptors) { _pool->freeDescriptor(mvkDesc); }
 	}
 	_descriptors.clear();
 	_descriptors.shrink_to_fit();
+	_allDescriptorsAreFromPool = true;
 
 	if (_bufferSizesBuffer) {
 		_bufferSizesBuffer->returnToPool();
@@ -557,33 +560,46 @@ MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorPool* pool) : MVKVulkanAPIDevice
 #pragma mark -
 #pragma mark MVKDescriptorTypePool
 
-// If preallocated, find the next availalble descriptor.
-// If not preallocated, create one on the fly.
+// Find the next availalble descriptor in the pool. or if the pool is exhausted, optionally create one on the fly.
+// The dynamicAllocation parameter is both an input and output parameter. Incoming, dynamicAllocation indicates that,
+// if there are no more descriptors in this pool, a new descriptor should be created and returned.
+// On return, dynamicAllocation indicates back to the caller whether a descriptor was dynamically created.
+// If a descriptor could not be found in the pool and was not created dynamically, a null descriptor is returned.
 template<class DescriptorClass>
-VkResult MVKDescriptorTypePool<DescriptorClass>::allocateDescriptor(MVKDescriptor** pMVKDesc,
+VkResult MVKDescriptorTypePool<DescriptorClass>::allocateDescriptor(VkDescriptorType descType,
+																	MVKDescriptor** pMVKDesc,
+																	bool& dynamicAllocation,
 																	MVKDescriptorPool* pool) {
-	DescriptorClass* mvkDesc;
-	if (pool->_hasPooledDescriptors) {
-		size_t availDescIdx = _availability.getIndexOfFirstSetBit(true);
-		if (availDescIdx >= _availability.size()) { return VK_ERROR_OUT_OF_POOL_MEMORY; }
-		mvkDesc = &_descriptors[availDescIdx];
-		mvkDesc->reset();		// Clear before reusing.
+	VkResult errRslt = VK_ERROR_OUT_OF_POOL_MEMORY;
+	size_t availDescIdx = _availability.getIndexOfFirstSetBit();
+	if (availDescIdx < size()) {
+		_availability.clearBit(availDescIdx);		// Mark the descriptor as taken
+		*pMVKDesc = &_descriptors[availDescIdx];
+		(*pMVKDesc)->reset();						// Reset descriptor before reusing.
+		dynamicAllocation = false;
+		return VK_SUCCESS;
+	} else if (dynamicAllocation) {
+		*pMVKDesc = new DescriptorClass();
+		reportWarning(errRslt, "VkDescriptorPool exhausted pool of %zu %s descriptors. Allocating descriptor dynamically.", size(), mvkVkDescriptorTypeName(descType));
+		return VK_SUCCESS;
 	} else {
-		mvkDesc = new DescriptorClass();
+		*pMVKDesc = nullptr;
+		dynamicAllocation = false;
+		return reportError(errRslt, "VkDescriptorPool exhausted pool of %zu %s descriptors.", size(), mvkVkDescriptorTypeName(descType));
 	}
-	*pMVKDesc = mvkDesc;
-	return VK_SUCCESS;
 }
 
-// If preallocated, descriptors are held in contiguous memory, so the index of the returning
-// descriptor can be calculated by pointer differences, and it can be marked as available.
-// The descriptor will be reset when it is re-allocated. This streamlines the reset() of this pool.
-// If not preallocated, simply destroy returning descriptor.
+// If the descriptor is from the pool, mark it as available, otherwise destroy it.
+// Pooled descriptors are held in contiguous memory, so the index of the returning
+// descriptor can be calculated by typed pointer differences. The descriptor will
+// be reset when it is re-allocated. This streamlines a pool reset().
 template<typename DescriptorClass>
 void MVKDescriptorTypePool<DescriptorClass>::freeDescriptor(MVKDescriptor* mvkDesc,
 															MVKDescriptorPool* pool) {
-	if (pool->_hasPooledDescriptors) {
-		size_t descIdx = (DescriptorClass*)mvkDesc - _descriptors.data();
+	DescriptorClass* pDesc = (DescriptorClass*)mvkDesc;
+	DescriptorClass* pFirstDesc = _descriptors.data();
+	int64_t descIdx = pDesc >= pFirstDesc ? pDesc - pFirstDesc : pFirstDesc - pDesc;
+	if (descIdx >= 0 && descIdx < size()) {
 		_availability.setBit(descIdx);
 	} else {
 		mvkDesc->destroy();
@@ -594,6 +610,13 @@ void MVKDescriptorTypePool<DescriptorClass>::freeDescriptor(MVKDescriptor* mvkDe
 template<typename DescriptorClass>
 void MVKDescriptorTypePool<DescriptorClass>::reset() {
 	_availability.setAllBits();
+}
+
+template<typename DescriptorClass>
+size_t MVKDescriptorTypePool<DescriptorClass>::getRemainingDescriptorCount() {
+	size_t enabledCount = 0;
+	_availability.enumerateEnabledBits(false, [&](size_t bitIdx) { enabledCount++; return true; });
+	return enabledCount;
 }
 
 template<typename DescriptorClass>
@@ -620,11 +643,20 @@ VkResult MVKDescriptorPool::allocateDescriptorSets(const VkDescriptorSetAllocate
 	}
 
 	@autoreleasepool {
-		for (uint32_t dsIdx = 0; dsIdx < pAllocateInfo->descriptorSetCount; dsIdx++) {
+		auto dsCnt = pAllocateInfo->descriptorSetCount;
+		for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
 			MVKDescriptorSetLayout* mvkDSL = (MVKDescriptorSetLayout*)pAllocateInfo->pSetLayouts[dsIdx];
 			if ( !mvkDSL->_isPushDescriptorLayout ) {
 				VkResult rslt = allocateDescriptorSet(mvkDSL, (pVarDescCounts ? pVarDescCounts[dsIdx] : 0), &pDescriptorSets[dsIdx]);
-				if (rslt) { return rslt; }
+				if (rslt) {
+					// Per Vulkan spec, if any descriptor set allocation fails, free any successful
+					// allocations, and populate all descriptor set pointers with VK_NULL_HANDLE.
+					freeDescriptorSets(dsIdx, pDescriptorSets);
+					for (uint32_t i = 0; i < dsCnt; i++) { pDescriptorSets[i] = VK_NULL_HANDLE; }
+					return rslt;
+				}
+			} else {
+				pDescriptorSets[dsIdx] = VK_NULL_HANDLE;
 			}
 		}
 	}
@@ -637,7 +669,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSets(const VkDescriptorSetAllocate
 VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL,
 												  uint32_t variableDescriptorCount,
 												  VkDescriptorSet* pVKDS) {
-	VkResult rslt = VK_ERROR_OUT_OF_POOL_MEMORY;
+	VkResult rslt = VK_ERROR_FRAGMENTED_POOL;
 	uint64_t mtlArgBuffEncSize = 0;
 	id<MTLArgumentEncoder> mtlArgEnc = nil;
 	if (mvkDSL->isUsingMetalArgumentBuffers()) {
@@ -747,43 +779,44 @@ VkResult MVKDescriptorPool::reset(VkDescriptorPoolResetFlags flags) {
 
 // Allocate a descriptor of the specified type
 VkResult MVKDescriptorPool::allocateDescriptor(VkDescriptorType descriptorType,
-											   MVKDescriptor** pMVKDesc) {
+											   MVKDescriptor** pMVKDesc,
+											   bool& dynamicAllocation) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-			return _uniformBufferDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _uniformBufferDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-			return _storageBufferDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _storageBufferDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-			return _uniformBufferDynamicDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _uniformBufferDynamicDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-			return _storageBufferDynamicDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _storageBufferDynamicDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
-			return _inlineUniformBlockDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _inlineUniformBlockDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-			return _sampledImageDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _sampledImageDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-			return _storageImageDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _storageImageDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-			return _inputAttachmentDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _inputAttachmentDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
-			return _samplerDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _samplerDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-			return _combinedImageSamplerDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _combinedImageSamplerDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-			return _uniformTexelBufferDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _uniformTexelBufferDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-			return _storageTexelBufferDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _storageTexelBufferDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		default:
 			return reportError(VK_ERROR_INITIALIZATION_FAILED, "Unrecognized VkDescriptorType %d.", descriptorType);
@@ -834,17 +867,12 @@ void MVKDescriptorPool::freeDescriptor(MVKDescriptor* mvkDesc) {
 	}
 }
 
-// Return the size of the preallocated pool for descriptors of the specified type,
-// or zero if we are not preallocating descriptors in the pool.
+// Return the size of the preallocated pool for descriptors of the specified type.
 // There may be more than one poolSizeCount instance for the desired VkDescriptorType.
 // Accumulate the descriptor count for the desired VkDescriptorType accordingly.
 // For descriptors of the VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT type,
 // we accumulate the count via the pNext chain.
-size_t MVKDescriptorPool::getPoolSize(const VkDescriptorPoolCreateInfo* pCreateInfo,
-									  VkDescriptorType descriptorType) {
-
-	if ( !_hasPooledDescriptors ) { return 0; }
-
+size_t MVKDescriptorPool::getPoolSize(const VkDescriptorPoolCreateInfo* pCreateInfo, VkDescriptorType descriptorType) {
 	uint32_t descCnt = 0;
 	if (descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
 		for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
@@ -868,26 +896,28 @@ size_t MVKDescriptorPool::getPoolSize(const VkDescriptorPoolCreateInfo* pCreateI
 }
 
 std::string MVKDescriptorPool::getLogDescription() {
+#define STR(name) #name
+#define printDescCnt(descType, spacing, descPool)  descStr << "\n\t" STR(VK_DESCRIPTOR_TYPE_##descType) ": " spacing << _##descPool##Descriptors.size() << "  (" << _##descPool##Descriptors.getRemainingDescriptorCount() << " remaining)";
+
 	std::stringstream descStr;
-	descStr << "VkDescriptorPool " << this << " with " << _descriptorSetAvailablility.size() << " descriptor sets, and descriptors:";
-	descStr << "\n\tVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: "           << _uniformBufferDescriptors._availability.size();
-	descStr << "\n\tVK_DESCRIPTOR_TYPE_STORAGE_BUFFER: "           << _storageBufferDescriptors._availability.size();
-	descStr << "\n\tVK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: "   << _uniformBufferDynamicDescriptors._availability.size();
-	descStr << "\n\tVK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: "   << _storageBufferDynamicDescriptors._availability.size();
-	descStr << "\n\tVK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: " << _inlineUniformBlockDescriptors._availability.size();
-	descStr << "\n\tVK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: "            << _sampledImageDescriptors._availability.size();
-	descStr << "\n\tVK_DESCRIPTOR_TYPE_STORAGE_IMAGE: "            << _storageImageDescriptors._availability.size();
-	descStr << "\n\tVK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: "         << _inputAttachmentDescriptors._availability.size();
-	descStr << "\n\tVK_DESCRIPTOR_TYPE_SAMPLER: "                  << _samplerDescriptors._availability.size();
-	descStr << "\n\tVK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: "   << _combinedImageSamplerDescriptors._availability.size();
-	descStr << "\n\tVK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: "     << _uniformTexelBufferDescriptors._availability.size();
-	descStr << "\n\tVK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: "     << _storageTexelBufferDescriptors._availability.size();
+	descStr << "VkDescriptorPool " << this << " with " << _descriptorSetAvailablility.size() << " descriptor sets, and pooled descriptors:";
+	printDescCnt(UNIFORM_BUFFER, "          ", uniformBuffer);
+	printDescCnt(STORAGE_BUFFER, "          ", storageBuffer);
+	printDescCnt(UNIFORM_BUFFER_DYNAMIC, "  ", uniformBufferDynamic);
+	printDescCnt(STORAGE_BUFFER_DYNAMIC, "  ", storageBufferDynamic);
+	printDescCnt(INLINE_UNIFORM_BLOCK_EXT, "", inlineUniformBlock);
+	printDescCnt(SAMPLED_IMAGE, "           ", sampledImage);
+	printDescCnt(STORAGE_IMAGE, "           ", storageImage);
+	printDescCnt(INPUT_ATTACHMENT, "        ", inputAttachment);
+	printDescCnt(SAMPLER, "                 ", sampler);
+	printDescCnt(COMBINED_IMAGE_SAMPLER, "  ", combinedImageSampler);
+	printDescCnt(UNIFORM_TEXEL_BUFFER, "    ", uniformTexelBuffer);
+	printDescCnt(STORAGE_TEXEL_BUFFER, "    ", storageTexelBuffer);
 	return descStr.str();
 }
 
 MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo) :
 	MVKVulkanAPIDeviceObject(device),
-    _hasPooledDescriptors(getMVKConfig().preallocateDescriptors),		// Set this first! Accessed by MVKDescriptorSet constructor and getPoolSize() in following lines.
 	_descriptorSets(pCreateInfo->maxSets, MVKDescriptorSet(this)),
 	_descriptorSetAvailablility(pCreateInfo->maxSets, true),
 	_mtlBufferAllocator(_device, getMetalFeatures().maxMTLBufferSize, true),
@@ -1096,6 +1126,8 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 		size_t stride;
 		MVKDescriptorSet* dstSet = (MVKDescriptorSet*)pDescWrite->dstSet;
 
+		if( !dstSet ) { continue; }		// Nulls are permitted
+
 		const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
 		if (dstSet->getEnabledExtensions().vk_EXT_inline_uniform_block.enabled) {
 			for (const auto* next = (VkBaseInStructure*)pDescWrite->pNext; next; next = next->pNext) {
@@ -1134,9 +1166,10 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 		inlineUniformBlock.dataSize = descCnt;
 
 		MVKDescriptorSet* srcSet = (MVKDescriptorSet*)pDescCopy->srcSet;
-		srcSet->read(pDescCopy, imgInfos, buffInfos, texelBuffInfos, &inlineUniformBlock);
-
 		MVKDescriptorSet* dstSet = (MVKDescriptorSet*)pDescCopy->dstSet;
+		if( !srcSet || !dstSet ) { continue; }		// Nulls are permitted
+
+		srcSet->read(pDescCopy, imgInfos, buffInfos, texelBuffInfos, &inlineUniformBlock);
 		VkDescriptorType descType = dstSet->getDescriptorType(pDescCopy->dstBinding);
 		size_t stride;
 		const void* pData = getWriteParameters(descType, imgInfos, buffInfos, texelBuffInfos, &inlineUniformBlock, stride);
