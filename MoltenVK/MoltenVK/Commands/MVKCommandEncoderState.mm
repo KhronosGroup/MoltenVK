@@ -591,17 +591,6 @@ void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
 		[rendEnc setStencilFrontReferenceValue: sr.frontFaceValue backReferenceValue: sr.backFaceValue];
 	}
 
-	// Validate
-	// In Metal, primitive restart cannot be disabled.
-	// Just issue warning here, as it is very likely the app is not actually expecting
-	// to use primitive restart at all, and is just setting this as a "just-in-case",
-	// and forcing an error here would be unexpected to the app (including CTS).
-	auto mtlPrimType = getPrimitiveType();
-	if (isDirty(PrimitiveRestartEnable) && !getMTLContent(PrimitiveRestartEnable) &&
-		(mtlPrimType == MTLPrimitiveTypeTriangleStrip || mtlPrimType == MTLPrimitiveTypeLineStrip)) {
-		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support disabling primitive restart.");
-	}
-
 	if (isDirty(Viewports)) {
 		auto& mtlViewports = getMTLContent(Viewports);
 		if (enabledFeats.multiViewport) {

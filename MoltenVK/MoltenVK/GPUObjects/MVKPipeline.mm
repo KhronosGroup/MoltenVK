@@ -540,6 +540,21 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 		_primitiveRestartEnable = pCreateInfo->pInputAssemblyState->primitiveRestartEnable;
 	}
 
+	// In Metal, primitive restart cannot be disabled, so issue a warning if the app
+	// has disabled it statically, or indicates that it might do so dynamically.
+	// Just issue a warning here, as it is very likely the app is not actually
+	// expecting to use primitive restart at all, and is disabling it "just-in-case".
+	// As such, forcing an error here would be unexpected to the app (including CTS).
+	// BTW, although Metal docs avoid mentioning it, testing shows that Metal does not support primitive
+	// restart for list topologies, meaning VK_EXT_primitive_topology_list_restart cannot be supported.
+	if (( !_primitiveRestartEnable || isDynamicState(PrimitiveRestartEnable)) &&
+		 (_vkPrimitiveTopology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP ||
+		  _vkPrimitiveTopology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP ||
+		  _vkPrimitiveTopology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN ||
+		  isDynamicState(PrimitiveTopology))) {
+		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support disabling primitive restart.");
+	}
+
 	// Rasterization
 	_hasRasterInfo = mvkSetOrClear(&_rasterInfo, pCreateInfo->pRasterizationState);
 
