@@ -1634,6 +1634,7 @@ void MVKPresentableSwapchainImage::addPresentedHandler(id<CAMetalDrawable> mtlDr
 void MVKPresentableSwapchainImage::beginPresentation(const MVKImagePresentInfo& presentInfo) {
 	retain();
 	_swapchain->beginPresentation(presentInfo);
+	_beginPresentTime = mvkGetRuntimeNanoseconds();
 	_presentationStartTime = getPerformanceTimestamp();
 }
 
@@ -1652,7 +1653,7 @@ void MVKPresentableSwapchainImage::endPresentation(const MVKImagePresentInfo& pr
 		// VkDevice, have been destroyed by the time of this callback, so do not reference them.
 		lock_guard<mutex> lock(_detachmentLock);
 		if (_device) { addPerformanceInterval(getPerformanceStats().queue.presentSwapchains, _presentationStartTime); }
-		if (_swapchain) { _swapchain->endPresentation(presentInfo, actualPresentTime); }
+		if (_swapchain) { _swapchain->endPresentation(presentInfo, _beginPresentTime, actualPresentTime); }
 	}
 
 	// Makes an image available for acquisition by the app.

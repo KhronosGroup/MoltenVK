@@ -119,7 +119,7 @@ protected:
     void renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void markFrameInterval();
 	void beginPresentation(const MVKImagePresentInfo& presentInfo);
-	void endPresentation(const MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime = 0);
+	void endPresentation(const MVKImagePresentInfo& presentInfo, uint64_t beginPresentTime, uint64_t actualPresentTime = 0);
 	void forceUnpresentedImageCompletion();
 
 	MVKSurface* _surface = nullptr;

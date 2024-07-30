@@ -251,7 +251,7 @@ void MVKSwapchain::beginPresentation(const MVKImagePresentInfo& presentInfo) {
 	_unpresentedImageCount++;
 }
 
-void MVKSwapchain::endPresentation(const MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime) {
+void MVKSwapchain::endPresentation(const MVKImagePresentInfo& presentInfo, uint64_t beginPresentTime, uint64_t actualPresentTime) {
 	_unpresentedImageCount--;
 
 	std::lock_guard<std::mutex> lock(_presentHistoryLock);
@@ -266,9 +266,9 @@ void MVKSwapchain::endPresentation(const MVKImagePresentInfo& presentInfo, uint6
 	_presentTimingHistory[_presentHistoryIndex].presentID = presentInfo.presentID;
 	_presentTimingHistory[_presentHistoryIndex].desiredPresentTime = presentInfo.desiredPresentTime;
 	_presentTimingHistory[_presentHistoryIndex].actualPresentTime = actualPresentTime;
-	// These details are not available in Metal
+	// These details are not available in Metal, but can estimate earliestPresentTime by using actualPresentTime instead
 	_presentTimingHistory[_presentHistoryIndex].earliestPresentTime = actualPresentTime;
-	_presentTimingHistory[_presentHistoryIndex].presentMargin = 0;
+	_presentTimingHistory[_presentHistoryIndex].presentMargin = actualPresentTime > beginPresentTime ? actualPresentTime - beginPresentTime : 0;
 	_presentHistoryIndex = (_presentHistoryIndex + 1) % kMaxPresentationHistory;
 }
 

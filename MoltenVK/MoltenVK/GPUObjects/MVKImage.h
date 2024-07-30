@@ -448,7 +448,6 @@ typedef struct  {
 	uint64_t desiredPresentTime;  	// VK_GOOGLE_display_timing desired presentation time in nanoseconds
 	uint32_t presentID;           	// VK_GOOGLE_display_timing presentID
 	VkPresentModeKHR presentMode;	// VK_EXT_swapchain_maintenance1 present mode specialization
-	bool hasPresentTime;      		// Keep track of whether presentation included VK_GOOGLE_display_timing
 } MVKImagePresentInfo;
 
 /** Tracks a semaphore and fence for later signaling. */
@@ -505,6 +504,7 @@ protected:
 	MVKSmallVector<MVKSwapchainSignaler, 1> _availabilitySignalers;
 	MVKSwapchainSignaler _preSignaler = {};
 	std::mutex _availabilityLock;
+	uint64_t _beginPresentTime = 0;
 	uint64_t _presentationStartTime = 0;
 };
 
