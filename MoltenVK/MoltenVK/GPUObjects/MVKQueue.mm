@@ -85,7 +85,16 @@ VkResult MVKQueue::submit(MVKQueueSubmission* qSubmit) {
 	// The submissions will ensure a misconfiguration will be safe to execute.
 	VkResult rslt = qSubmit->getConfigurationResult();
 	if (_execQueue) {
-		dispatch_async(_execQueue, ^{ execute(qSubmit); } );
+		std::unique_lock lock(_execQueueMutex);
+		_execQueueJobCount++;
+
+		dispatch_async(_execQueue, ^{
+			execute(qSubmit);
+
+			std::unique_lock execLock(_execQueueMutex);
+			if (!--_execQueueJobCount)
+				_execQueueConditionVariable.notify_all();
+		} );
 	} else {
 		rslt = execute(qSubmit);
 	}
@@ -144,6 +153,12 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdUse) {
 
 	VkResult rslt = _device->getConfigurationResult();
 	if (rslt != VK_SUCCESS) { return rslt; }
+
+	if (_execQueue) {
+		std::unique_lock lock(_execQueueMutex);
+		while (_execQueueJobCount)
+			_execQueueConditionVariable.wait(lock);
+	}
 
 	@autoreleasepool {
 		auto* mtlCmdBuff = getMTLCommandBuffer(cmdUse);
