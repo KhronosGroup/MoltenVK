@@ -865,6 +865,19 @@ id<MTLBlitCommandEncoder> MVKCommandEncoder::getMTLBlitEncoder(MVKCommandUse cmd
 	return _mtlBlitEncoder;
 }
 
+id<MTLAccelerationStructureCommandEncoder> MVKCommandEncoder::getMTLAccelerationStructureEncoder(MVKCommandUse cmdUse) {
+    if ( !_mtlAccelerationStructureEncoder ) {
+        endCurrentMetalEncoding();
+        _mtlAccelerationStructureEncoder = [_mtlCmdBuffer accelerationStructureCommandEncoder];
+        retainIfImmediatelyEncoding(_mtlAccelerationStructureEncoder);
+    }
+    if (_mtlAccelerationStructureUse != cmdUse) {
+        _mtlAccelerationStructureUse = cmdUse;
+        setLabelIfNotNil(_mtlAccelerationStructureEncoder, mvkMTLBlitCommandEncoderLabel(cmdUse));
+    }
+    return _mtlAccelerationStructureEncoder;
+}
+
 id<MTLCommandEncoder> MVKCommandEncoder::getMTLEncoder(){
 	if (_mtlRenderEncoder) { return _mtlRenderEncoder; }
 	if (_mtlComputeEncoder) { return _mtlComputeEncoder; }
