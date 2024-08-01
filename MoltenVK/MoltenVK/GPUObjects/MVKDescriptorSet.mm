@@ -300,7 +300,7 @@ bool MVKDescriptorSetLayout::populateBindingUse(MVKBitArray& bindingUse,
 }
 
 bool MVKDescriptorSetLayout::isUsingMetalArgumentBuffers() {
-	return MVKDeviceTrackingMixin::isUsingMetalArgumentBuffers() && !_isPushDescriptorLayout;
+	return MVKDeviceTrackingMixin::isUsingMetalArgumentBuffers() && _canUseMetalArgumentBuffer;
 };
 
 // Returns an autoreleased MTLArgumentDescriptor suitable for adding an auxiliary buffer to the argument buffer.
@@ -354,6 +354,7 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
                                                const VkDescriptorSetLayoutCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 
 	_isPushDescriptorLayout = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+	_canUseMetalArgumentBuffer = !_isPushDescriptorLayout;	// Push descriptors don't use argument buffers
 
 	const VkDescriptorBindingFlags* pBindingFlags = nullptr;
 	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {

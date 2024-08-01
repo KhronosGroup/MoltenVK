@@ -140,6 +140,7 @@ protected:
 	MVKShaderResourceBinding _mtlResourceCounts;
 	int32_t _maxBufferIndex = -1;
 	bool _isPushDescriptorLayout = false;
+	bool _canUseMetalArgumentBuffer = true;
 };
 
 
