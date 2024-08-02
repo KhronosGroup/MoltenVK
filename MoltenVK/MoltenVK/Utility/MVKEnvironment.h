@@ -117,7 +117,7 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 
 /**
  * Process command queue submissions on the same thread on which the submission call was made.
- * The default value actually depends on whether MTLEvents are supported, becuase if MTLEvents
+ * The default value actually depends on whether MTLEvents are supported, because if MTLEvents
  * are not supported, then synchronous queues should be turned off by default to ensure the
  * CPU emulation of VkEvent behaviour does not deadlock a queue submission, whereas if MTLEvents
  * are supported, we want sychronous queues for better, and more performant, behaviour.

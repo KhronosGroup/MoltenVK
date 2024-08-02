@@ -75,6 +75,7 @@ static const uint32_t kAMDRadeonRX5700DeviceId = 0x731f;
 static const uint32_t kAMDRadeonRX5500DeviceId = 0x7340;
 static const uint32_t kAMDRadeonRX6800DeviceId = 0x73bf;
 static const uint32_t kAMDRadeonRX6700DeviceId = 0x73df;
+static const uint32_t kAMDRadeonRX6600DeviceId = 0x73ff;
 
 static const uint32_t kMaxTimeDomains = 2;
 
@@ -2327,6 +2328,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
                     case kAMDRadeonRX5500DeviceId:
                     case kAMDRadeonRX6800DeviceId:
                     case kAMDRadeonRX6700DeviceId:
+                    case kAMDRadeonRX6600DeviceId:
                         _metalFeatures.minSubgroupSize = 32;
                         break;
                     default:
