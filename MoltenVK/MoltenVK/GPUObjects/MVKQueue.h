@@ -24,6 +24,7 @@
 #include "MVKSync.h"
 #include "MVKSmallVector.h"
 #include <mutex>
+#include <condition_variable>
 
 #import <Metal/Metal.h>
 
@@ -147,6 +148,9 @@ protected:
 	MVKQueueFamily* _queueFamily;
 	std::string _name;
 	dispatch_queue_t _execQueue;
+	std::mutex _execQueueMutex;
+	std::condition_variable _execQueueConditionVariable;
+	uint32_t _execQueueJobCount = 0;
 	id<MTLCommandQueue> _mtlQueue = nil;
 	NSString* _mtlCmdBuffLabelBeginCommandBuffer = nil;
 	NSString* _mtlCmdBuffLabelQueueSubmit = nil;
