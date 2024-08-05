@@ -350,6 +350,17 @@ uint32_t MVKDescriptorSetLayout::getDescriptorCount(uint32_t variableDescriptorC
 	return descCnt;
 }
 
+MVKDescriptorSetLayoutBinding* MVKDescriptorSetLayout::getBinding(uint32_t binding, uint32_t bindingIndexOffset) {
+	auto itr = _bindingToIndex.find(binding);
+	if (itr != _bindingToIndex.end()) {
+		uint32_t bindIdx = itr->second + bindingIndexOffset;
+		if (bindIdx < _bindings.size()) {
+			return &_bindings[bindIdx];
+		}
+	}
+	return nullptr;
+}
+
 MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
                                                const VkDescriptorSetLayoutCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 
@@ -430,21 +441,32 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
 							 size_t srcStride,
 							 const void* pData) {
 
-	MVKDescriptorSetLayoutBinding* mvkDSLBind = _layout->getBinding(pDescriptorAction->dstBinding);
-	VkDescriptorType descType = mvkDSLBind->getDescriptorType();
-	if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
-		// For inline buffers dstArrayElement is a byte offset
-		getDescriptor(pDescriptorAction->dstBinding)->write(mvkDSLBind, this, pDescriptorAction->dstArrayElement, 0, srcStride, pData);
+	auto* mvkDSLBind = _layout->getBinding(pDescriptorAction->dstBinding);
+	if (mvkDSLBind->getDescriptorType() == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+		// For inline buffers, descriptorCount is a byte count and dstArrayElement is a byte offset.
+		// If needed, Vulkan allows updates to extend into subsequent bindings that are of the same type,
+		// so iterate layout bindings and their associated descriptors, until all bytes are updated.
+		const auto* pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlockEXT*)pData;
+		uint32_t numBytesToCopy = pDescriptorAction->descriptorCount;
+		uint32_t dstOffset = pDescriptorAction->dstArrayElement;
+		uint32_t srcOffset = 0;
+		while (mvkDSLBind && numBytesToCopy > 0 && srcOffset < pInlineUniformBlock->dataSize) {
+			auto* mvkDesc = (MVKInlineUniformBlockDescriptor*)_descriptors[mvkDSLBind->_descriptorIndex];
+			auto numBytesMoved = mvkDesc->writeBytes(mvkDSLBind, this, dstOffset, srcOffset, numBytesToCopy, pInlineUniformBlock);
+			numBytesToCopy -= numBytesMoved;
+			dstOffset = 0;
+			srcOffset += numBytesMoved;
+			mvkDSLBind = _layout->getBinding(mvkDSLBind->getBinding(), 1);	// Next binding if needed
+		}
 	} else {
-		uint32_t dslBindDescCnt = mvkDSLBind->getDescriptorCount(_variableDescriptorCount);
+		// We don't test against the descriptor count of the binding, because Vulkan allows
+		// updates to extend into subsequent bindings that are of the same type, if needed.
 		uint32_t srcElemIdx = 0;
 		uint32_t dstElemIdx = pDescriptorAction->dstArrayElement;
-		uint32_t descIdx    = _layout->getDescriptorIndex(pDescriptorAction->dstBinding, dstElemIdx);
-		if (dstElemIdx < dslBindDescCnt) {
-			uint32_t elemCnt = std::min(pDescriptorAction->descriptorCount, dslBindDescCnt - dstElemIdx);
-			while (srcElemIdx < elemCnt) {
-				_descriptors[descIdx++]->write(mvkDSLBind, this, dstElemIdx++, srcElemIdx++, srcStride, pData);
-			}
+		uint32_t descIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding, dstElemIdx);
+		uint32_t descCnt = pDescriptorAction->descriptorCount;
+		while (srcElemIdx < descCnt) {
+			_descriptors[descIdx++]->write(mvkDSLBind, this, dstElemIdx++, srcElemIdx++, srcStride, pData);
 		}
 	}
 }
@@ -458,18 +480,29 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
 	MVKDescriptorSetLayoutBinding* mvkDSLBind = _layout->getBinding(pDescriptorCopy->srcBinding);
 	VkDescriptorType descType = mvkDSLBind->getDescriptorType();
     if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
-		// For inline buffers srcArrayElement is a byte offset
-		getDescriptor(pDescriptorCopy->srcBinding)->read(mvkDSLBind, this, pDescriptorCopy->srcArrayElement, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
+		// For inline buffers, descriptorCount is a byte count and dstArrayElement is a byte offset.
+		// If needed, Vulkan allows updates to extend into subsequent bindings that are of the same type,
+		// so iterate layout bindings and their associated descriptors, until all bytes are updated.
+		uint32_t numBytesToCopy = pDescriptorCopy->descriptorCount;
+		uint32_t dstOffset = 0;
+		uint32_t srcOffset = pDescriptorCopy->srcArrayElement;
+		while (mvkDSLBind && numBytesToCopy > 0 && dstOffset < pInlineUniformBlock->dataSize) {
+			auto* mvkDesc = (MVKInlineUniformBlockDescriptor*)_descriptors[mvkDSLBind->_descriptorIndex];
+			auto numBytesMoved = mvkDesc->readBytes(mvkDSLBind, this, dstOffset, srcOffset, numBytesToCopy, pInlineUniformBlock);
+			numBytesToCopy -= numBytesMoved;
+			dstOffset += numBytesMoved;
+			srcOffset = 0;
+			mvkDSLBind = _layout->getBinding(mvkDSLBind->getBinding(), 1);	// Next binding if needed
+		}
     } else {
-		uint32_t dslBindDescCnt = mvkDSLBind->getDescriptorCount(_variableDescriptorCount);
-		uint32_t dstElemIdx = 0;
+		// We don't test against the descriptor count of the binding, because Vulkan allows
+		// updates to extend into subsequent bindings that are of the same type, if needed.
 		uint32_t srcElemIdx = pDescriptorCopy->srcArrayElement;
-		uint32_t descIdx    = _layout->getDescriptorIndex(pDescriptorCopy->srcBinding, srcElemIdx);
-		if (srcElemIdx < dslBindDescCnt) {
-			uint32_t elemCnt = std::min(pDescriptorCopy->descriptorCount, dslBindDescCnt - srcElemIdx);
-			while (dstElemIdx < elemCnt) {
-				_descriptors[descIdx++]->read(mvkDSLBind, this, dstElemIdx++, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
-			}
+		uint32_t dstElemIdx = 0;
+		uint32_t descIdx = _layout->getDescriptorIndex(pDescriptorCopy->srcBinding, srcElemIdx);
+		uint32_t descCnt = pDescriptorCopy->descriptorCount;
+		while (dstElemIdx < descCnt) {
+			_descriptors[descIdx++]->read(mvkDSLBind, this, dstElemIdx++, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
 		}
     }
 }

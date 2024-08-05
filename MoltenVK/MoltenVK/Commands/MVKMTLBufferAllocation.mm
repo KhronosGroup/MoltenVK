@@ -82,7 +82,6 @@ void MVKMTLBufferAllocationPool::returnAllocation(MVKMTLBufferAllocation* ba) {
     }
 }
 
-
 MVKMTLBufferAllocationPool::MVKMTLBufferAllocationPool(MVKDevice* device, NSUInteger allocationLength, bool makeThreadSafe,
 													   bool isDedicated, MTLStorageMode mtlStorageMode) :
 	MVKObjectPool<MVKMTLBufferAllocation>(true),

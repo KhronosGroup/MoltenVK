@@ -381,18 +381,33 @@ public:
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
-			   uint32_t dstOffset, 	// Inline buffers use this parameter as an offset, not an index
+			   uint32_t dstIdx,
 			   uint32_t srcIdx,
 			   size_t srcStride,
-			   const void* pData) override;
+			   const void* pData) override {}
 
 	void read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			  MVKDescriptorSet* mvkDescSet,
-			  uint32_t srcOffset, // For inline buffers we are using this parameter as src offset not as dst descIdx
+			  uint32_t dstIndex,
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
-			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
+			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override {}
+
+	uint32_t writeBytes(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+						MVKDescriptorSet* mvkDescSet,
+						uint32_t dstOffset,
+						uint32_t srcOffset,
+						uint32_t byteCount,
+						const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
+
+	uint32_t readBytes(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+					   MVKDescriptorSet* mvkDescSet,
+					   uint32_t dstOffset,
+					   uint32_t srcOffset,
+					   uint32_t byteCount,
+					   const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
+
 
 	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
 							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
