@@ -898,21 +898,26 @@ void MVKInlineUniformBlockDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 	}
 }
 
-void MVKInlineUniformBlockDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
-											MVKDescriptorSet* mvkDescSet,
-											uint32_t dstOffset,
-											uint32_t srcIdx,
-											size_t srcStride,
-											const void* pData) {
-	// Ensure there is a destination to write to
-	uint32_t buffSize = mvkDSLBind->_info.descriptorCount;
-	if ( !_mvkMTLBufferAllocation ) { _mvkMTLBufferAllocation = mvkDescSet->acquireMTLBufferRegion(buffSize); }
+uint32_t MVKInlineUniformBlockDescriptor::writeBytes(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+													 MVKDescriptorSet* mvkDescSet,
+													 uint32_t dstOffset,
+													 uint32_t srcOffset,
+													 uint32_t byteCount,
+													 const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+	uint32_t dataLen = 0;
+	uint32_t dstBuffSize = mvkDSLBind->_info.descriptorCount;
+	uint32_t srcBuffSize = pInlineUniformBlock->dataSize;
+	if (dstOffset < dstBuffSize && srcOffset < srcBuffSize) {
+		dataLen = std::min({ byteCount, dstBuffSize - dstOffset, srcBuffSize - srcOffset });
+	}
 
-	uint8_t* data = getData();
-	const auto& pInlineUniformBlock = *(VkWriteDescriptorSetInlineUniformBlockEXT*)pData;
-	if (data && pInlineUniformBlock.pData && dstOffset < buffSize) {
-		uint32_t dataLen = std::min(pInlineUniformBlock.dataSize, buffSize - dstOffset);
-		memcpy(data + dstOffset, pInlineUniformBlock.pData, dataLen);
+	// Ensure there is a destination to write to
+	if ( !_mvkMTLBufferAllocation ) { _mvkMTLBufferAllocation = mvkDescSet->acquireMTLBufferRegion(dstBuffSize); }
+
+	uint8_t* pDstData = getData();
+	uint8_t* pSrcData = (uint8_t*)pInlineUniformBlock->pData;
+	if (pDstData && pSrcData && dataLen) {
+		memcpy(pDstData + dstOffset, pSrcData + srcOffset, dataLen);
 	}
 
 	// Write resource to Metal argument buffer
@@ -923,21 +928,29 @@ void MVKInlineUniformBlockDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDS
 							 _mvkMTLBufferAllocation ? _mvkMTLBufferAllocation->_offset : 0,
 							 argIdx);
 	}
+
+	return dataLen;
 }
 
-void MVKInlineUniformBlockDescriptor::read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
-										   MVKDescriptorSet* mvkDescSet,
-										   uint32_t srcOffset,
-										   VkDescriptorImageInfo* pImageInfo,
-										   VkDescriptorBufferInfo* pBufferInfo,
-										   VkBufferView* pTexelBufferView,
-										   VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
-	uint8_t* data = getData();
-	uint32_t buffSize = mvkDSLBind->_info.descriptorCount;
-	if (data && pInlineUniformBlock->pData && srcOffset < buffSize) {
-		uint32_t dataLen = std::min(pInlineUniformBlock->dataSize, buffSize - srcOffset);
-		memcpy((void*)pInlineUniformBlock->pData, data + srcOffset, dataLen);
+uint32_t MVKInlineUniformBlockDescriptor::readBytes(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+													MVKDescriptorSet* mvkDescSet,
+													uint32_t dstOffset,
+													uint32_t srcOffset,
+													uint32_t byteCount,
+													const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+	uint32_t dataLen = 0;
+	uint32_t dstBuffSize = pInlineUniformBlock->dataSize;
+	uint32_t srcBuffSize = mvkDSLBind->_info.descriptorCount;
+	if (dstOffset < dstBuffSize && srcOffset < srcBuffSize) {
+		dataLen = std::min({ byteCount, dstBuffSize - dstOffset, srcBuffSize - srcOffset });
 	}
+
+	uint8_t* pDstData = (uint8_t*)pInlineUniformBlock->pData;
+	uint8_t* pSrcData = getData();
+	if (pDstData && pSrcData && dataLen) {
+		memcpy(pDstData + dstOffset, pSrcData + srcOffset, dataLen);
+	}
+	return dataLen;
 }
 
 void MVKInlineUniformBlockDescriptor::encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,

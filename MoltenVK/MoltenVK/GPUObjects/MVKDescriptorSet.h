@@ -129,7 +129,7 @@ protected:
 	void propagateDebugName() override {}
 	uint32_t getDescriptorCount(uint32_t variableDescriptorCount);
 	uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return getBinding(binding)->getDescriptorIndex(elementIndex); }
-	MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
+	MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding, uint32_t bindingIndexOffset = 0);
 	uint32_t getBufferSizeBufferArgBuferIndex() { return 0; }
 	id <MTLArgumentEncoder> getMTLArgumentEncoder(uint32_t variableDescriptorCount);
 	uint64_t getMetal3ArgumentBufferEncodedLength(uint32_t variableDescriptorCount);
