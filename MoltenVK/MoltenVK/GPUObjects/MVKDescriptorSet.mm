@@ -236,7 +236,8 @@ static void populateAuxBuffer(mvk::SPIRVToMSLConversionConfiguration& shaderConf
 							  MVKShaderStageResourceBinding buffBinding,
 							  uint32_t descSetIndex,
 							  uint32_t descBinding,
-							  bool usingNativeTextureAtomics) {
+							  bool usingNativeTextureAtomics,
+							  bool usingProgrammableBlending) {
 	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
 		mvkPopulateShaderConversionConfig(shaderConfig,
 										  buffBinding,
@@ -246,7 +247,8 @@ static void populateAuxBuffer(mvk::SPIRVToMSLConversionConfiguration& shaderConf
 										  1,
 										  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
 										  nullptr,
-										  usingNativeTextureAtomics);
+										  usingNativeTextureAtomics,
+										  usingProgrammableBlending);
 	}
 }
 
@@ -264,7 +266,8 @@ void MVKDescriptorSetLayout::populateShaderConversionConfig(mvk::SPIRVToMSLConve
 		buffBinding.bufferIndex = getBufferSizeBufferArgBuferIndex();
 		populateAuxBuffer(shaderConfig, buffBinding, descSetIndex,
 						  MVK_spirv_cross::kBufferSizeBufferBinding,
-						  getMetalFeatures().nativeTextureAtomics);
+						  getMetalFeatures().nativeTextureAtomics,
+						  getMetalFeatures().programmableBlending);
 	}
 
 	// If the app is using argument buffers, but this descriptor set is 

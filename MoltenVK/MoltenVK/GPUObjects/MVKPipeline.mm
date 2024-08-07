@@ -105,7 +105,8 @@ void MVKPipelineLayout::populateShaderConversionConfig(SPIRVToMSLConversionConfi
 											  1,
 											  VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT,
 											  nullptr,
-											  getMetalFeatures().nativeTextureAtomics);
+											  getMetalFeatures().nativeTextureAtomics,
+											  getMetalFeatures().programmableBlending);
 		}
 	}
 
@@ -1837,6 +1838,8 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 
     shaderConfig.options.tessPatchKind = reflectData.patchKind;
     shaderConfig.options.numTessControlPoints = reflectData.numControlPoints;
+
+    shaderConfig.options.mslOptions.use_framebuffer_fetch_subpasses = mtlFeats.programmableBlending;
 }
 
 uint32_t MVKGraphicsPipeline::getImplicitBufferIndex(MVKShaderStage stage, uint32_t bufferIndexOffset) {
