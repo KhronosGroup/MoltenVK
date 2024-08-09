@@ -267,7 +267,10 @@ void MVKQueue::handleMTLCommandBufferError(id<MTLCommandBuffer> mtlCmdBuff) {
 	reportError(vkErr, "MTLCommandBuffer \"%s\" execution failed (code %li): %s",
 				mtlCmdBuff.label ? mtlCmdBuff.label.UTF8String : "",
 				mtlCmdBuff.error.code, mtlCmdBuff.error.localizedDescription.UTF8String);
-	if (markDeviceLoss) { getDevice()->markLost(markPhysicalDeviceLoss); }
+	if (markDeviceLoss) {
+		getDevice()->stopAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE);
+		getDevice()->markLost(markPhysicalDeviceLoss);
+	}
 
 #if MVK_XCODE_12
 	if (&MTLCommandBufferEncoderInfoErrorKey != nullptr) {

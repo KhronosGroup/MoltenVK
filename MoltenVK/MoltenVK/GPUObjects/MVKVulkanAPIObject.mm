@@ -24,6 +24,8 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKVulkanAPIObject
 
+std::atomic<uint64_t> nextMetalObjectIdentifier;
+
 VkResult MVKVulkanAPIObject::setDebugName(const char* pObjectName) {
 	if (pObjectName) {
 		[_debugName release];
