@@ -126,7 +126,8 @@ protected:
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wobjc-method-access"
 /** Generically avoids setting a label to nil, which many objects don't like. */
-static inline void setLabelIfNotNil(id object, NSString* label) { if (label) { [object setLabel: label]; } }
+extern std::atomic<uint64_t> nextMetalObjectIdentifier;
+static inline void setLabelIfNotNil(id object, NSString* label) { if (label) { [object setLabel: [label stringByAppendingFormat:@" (%llu)", nextMetalObjectIdentifier++]]; } }
 #pragma clang diagnostic pop
 
 
