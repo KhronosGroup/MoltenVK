@@ -25,6 +25,7 @@ Released TBD
   return `VK_ERROR_FRAGMENTED_POOL` if failure was due to pool fragmentation.
 - `vkUpdateDescriptorSets()`: Per Vulkan spec, allow write or copy beyond the 
   end of a descriptor binding count, including inline uniform block descriptors.
+- Update `VkFormat` capabilities based on latest Metal docs.
 - Fix rendering issue with render pass that immediately follows a kernel dispatch.
 - Ensure all MoltenVK config info set by `VK_EXT_layer_settings` is used.
 - Move primitive-restart-disabled warning from renderpass to pipeline creation, to reduce voluminous log noise.
