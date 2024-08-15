@@ -895,3 +895,11 @@ MVK_PUBLIC_SYMBOL MTLResourceOptions mvkMTLResourceOptions(MTLStorageMode mtlSto
 														   MTLCPUCacheMode mtlCPUCacheMode) {
 	return (mtlStorageMode << MTLResourceStorageModeShift) | (mtlCPUCacheMode << MTLResourceCPUCacheModeShift);
 }
+
+MVK_PUBLIC_SYMBOL MTLStorageMode mvkMTLStorageMode(MTLResourceOptions options) {
+	return static_cast<MTLStorageMode>((options & MTLResourceStorageModeMask) >> MTLResourceStorageModeShift);
+}
+
+MVK_PUBLIC_SYMBOL MTLCPUCacheMode mvkMTLCPUCacheMode(MTLResourceOptions options) {
+	return static_cast<MTLCPUCacheMode>((options & MTLResourceCPUCacheModeMask) >> MTLResourceCPUCacheModeShift);
+}
