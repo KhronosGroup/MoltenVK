@@ -805,5 +805,6 @@ MVKInstance::~MVKInstance() {
 
 	lock_guard<mutex> lock(_dcbLock);
 	mvkDestroyContainerContents(_debugReportCallbacks);
+	mvkDestroyContainerContents(_debugUtilMessengers);
 }
 
