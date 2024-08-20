@@ -488,6 +488,12 @@ MTLCPUCacheMode mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(VkMemoryPropertyFlag
 /** Returns the Metal resource option flags corresponding to the Metal storage mode and cache mode. */
 MTLResourceOptions mvkMTLResourceOptions(MTLStorageMode mtlStorageMode, MTLCPUCacheMode mtlCPUCacheMode);
 
+/** Resturn the Metal storage mode from the Metal resource options */
+MTLStorageMode mvkMTLStorageMode(MTLResourceOptions options);
+
+/** Resturn the Metal cache mode from the Metal resource options */
+MTLCPUCacheMode mvkMTLCPUCacheMode(MTLResourceOptions options);
+
 
 #ifdef __cplusplus
 }

@@ -79,7 +79,7 @@ protected:
 								 MVKCommandUse cmdUse);
 	void pullFromDeviceOnCompletion(MVKCommandEncoder* cmdEncoder,
 									MVKImageSubresource& subresource,
-									const MVKMappedMemoryRange& mappedRange);
+									const MVKMemoryRange& mapRange);
 
     MVKImagePlane(MVKImage* image, uint8_t planeIndex);
 
