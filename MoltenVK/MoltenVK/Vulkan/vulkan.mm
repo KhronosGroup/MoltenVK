@@ -3035,6 +3035,34 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceExternalBufferProperties, KHR);
 
 
 #pragma mark -
+#pragma mark VK_EXT_external_memory_metal extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMemoryMetalHandleEXT(
+															VkDevice                                device,
+															const VkMemoryGetMetalHandleInfoEXT*    pGetMetalHandleInfo,
+															MTLResource_id*                         pHandle) {
+
+	MVKTraceVulkanCallStart();
+	MVKDevice* mvkDvc = MVKDevice::getMVKDevice(device);
+	mvkDvc->getResourceIdFromHandle(pGetMetalHandleInfo, pHandle);
+	MVKTraceVulkanCallEnd();
+	return VK_SUCCESS;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMemoryMetalHandlePropertiesEXT(
+																	  VkDevice                              device,
+																	  VkExternalMemoryHandleTypeFlagBits    handleType,
+																	  MTLResource_id                        handle,
+																	  VkMemoryMetalHandlePropertiesEXT*     pMemoryMetalHandleProperties) {
+
+	MVKTraceVulkanCallStart();
+	// TODO
+	MVKTraceVulkanCallEnd();
+	return VK_SUCCESS;
+}
+
+
+#pragma mark -
 #pragma mark VK_KHR_external_semaphore_capabilities extension
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceExternalSemaphoreProperties, KHR);
