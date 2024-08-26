@@ -1395,6 +1395,30 @@ VkExternalMemoryProperties& MVKPhysicalDevice::getExternalImageProperties(VkForm
 	}
 }
 
+uint32_t MVKPhysicalDevice::getExternalResourceMemoryTypeBits(MTLResource_id handle) const {
+	uint32_t memoryTypeBits = 0u;
+	switch (handle.storageMode) {
+	case MTLStorageModeShared:
+		memoryTypeBits = _hostCoherentMemoryTypes;
+		break;
+#if !MVK_IOS && !MVK_TVOS
+	case MTLStorageModeManaged:
+		memoryTypeBits = _hostVisibleMemoryTypes;
+		break;
+#endif
+	case MTLStorageModePrivate:
+		memoryTypeBits = _privateMemoryTypes;
+		break;
+	case MTLStorageModeMemoryless:
+		memoryTypeBits = _lazilyAllocatedMemoryTypes;
+		break;
+	default:
+		// This should never be reached, but just to be future-proof
+		break;
+	};
+	return memoryTypeBits;
+}
+
 static const VkExternalFenceProperties _emptyExtFenceProps = {VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES, nullptr, 0, 0, 0};
 
 void MVKPhysicalDevice::getExternalFenceProperties(const VkPhysicalDeviceExternalFenceInfo* pExternalFenceInfo,
