@@ -27,6 +27,7 @@ Released TBD
   end of a descriptor binding count, including inline uniform block descriptors.
 - Update `VkFormat` capabilities based on latest Metal docs.
 - Fix rendering issue with render pass that immediately follows a kernel dispatch.
+- Fix race condition when `VkImage` destroyed while used by descriptor.
 - Ensure all MoltenVK config info set by `VK_EXT_layer_settings` is used.
 - Move primitive-restart-disabled warning from renderpass to pipeline creation, to reduce voluminous log noise.
 - iOS: Support storage images in _Metal_ argument buffers.
