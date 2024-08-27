@@ -108,13 +108,13 @@ bool mvk::compile(const string& mslSourceCode,
 		mslVerEnum = MTLLanguageVersion1_1;
 	}
 
-	if ( !mslVerEnum ) {
-		errMsg = [NSString stringWithFormat: @"%d.%d.%d is not a valid MSL version number on this device",
-				  mslVersionMajor, mslVersionMinor, mslVersionPoint].UTF8String;
-		return false;
-	}
-
 	@autoreleasepool {
+		if ( !mslVerEnum ) {
+			errMsg = [NSString stringWithFormat: @"%d.%d.%d is not a valid MSL version number on this device",
+					  mslVersionMajor, mslVersionMinor, mslVersionPoint].UTF8String;
+			return false;
+		}
+
 		NSArray* mtlDevs = [MTLCopyAllDevices() autorelease];
 		if (mtlDevs.count == 0) {
 			errMsg = "Could not retrieve MTLDevice to compile shader.";

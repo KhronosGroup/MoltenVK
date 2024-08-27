@@ -851,7 +851,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLRenderPipelineDescriptor
 	// Metal does not allow the name of the pipeline to be changed after it has been created,
 	// and we need to create the Metal pipeline immediately to provide error feedback to app.
 	// The best we can do at this point is set the pipeline name from the layout.
-	setLabelIfNotNil(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
+	setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
 
 	return plDesc;
 }
@@ -893,7 +893,7 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessVertexStageDescript
 	// Metal does not allow the name of the pipeline to be changed after it has been created,
 	// and we need to create the Metal pipeline immediately to provide error feedback to app.
 	// The best we can do at this point is set the pipeline name from the layout.
-	setLabelIfNotNil(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
+	setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
 
 	return plDesc;
 }
@@ -1035,7 +1035,7 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessControlStageDescrip
 	// Metal does not allow the name of the pipeline to be changed after it has been created,
 	// and we need to create the Metal pipeline immediately to provide error feedback to app.
 	// The best we can do at this point is set the pipeline name from the layout.
-	setLabelIfNotNil(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
+	setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
 
 	return plDesc;
 }
@@ -2159,7 +2159,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 		// Metal does not allow the name of the pipeline to be changed after it has been created,
 		// and we need to create the Metal pipeline immediately to provide error feedback to app.
 		// The best we can do at this point is set the pipeline name from the layout.
-		setLabelIfNotNil(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
+		setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
 
 		MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(this);
 		_mtlPipelineState = plc->newMTLComputePipelineState(plDesc);	// retained

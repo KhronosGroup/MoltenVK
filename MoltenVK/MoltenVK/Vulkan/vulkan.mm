@@ -340,6 +340,10 @@ MVK_PUBLIC_VULKAN_SYMBOL PFN_vkVoidFunction vkGetDeviceProcAddr(
 	return func;
 }
 
+static MVKDevice* createMVKDevice(MVKPhysicalDevice* mvkPD, const VkDeviceCreateInfo* pCreateInfo) {
+	@autoreleasepool { return new MVKDevice(mvkPD, pCreateInfo); }
+}
+
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateDevice(
     VkPhysicalDevice                            physicalDevice,
     const VkDeviceCreateInfo*                   pCreateInfo,
@@ -348,7 +352,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateDevice(
 
 	MVKTraceVulkanCallStart();
 	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-	MVKDevice* mvkDev = new MVKDevice(mvkPD, pCreateInfo);
+	MVKDevice* mvkDev = createMVKDevice(mvkPD, pCreateInfo);
 	*pDevice = mvkDev->getVkDevice();
 	VkResult rslt = mvkDev->getConfigurationResult();
 	if (rslt < 0) { *pDevice = nullptr; mvkDev->destroy(); }
@@ -3468,13 +3472,17 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkDebugMarkerSetObjectTagEXT(
 	return rslt;
 }
 
+static VkResult setDebugName(MVKVulkanAPIObject* mvkObj, const char* pObjectName) {
+	@autoreleasepool { return mvkObj ? mvkObj->setDebugName(pObjectName) : VK_SUCCESS; }
+}
+
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkDebugMarkerSetObjectNameEXT(
 	VkDevice                                    device,
 	const VkDebugMarkerObjectNameInfoEXT*       pNameInfo) {
 
 	MVKTraceVulkanCallStart();
 	MVKVulkanAPIObject* mvkObj = MVKVulkanAPIObject::getMVKVulkanAPIObject(pNameInfo->objectType, pNameInfo->object);
-	VkResult rslt = mvkObj ? mvkObj->setDebugName(pNameInfo->pObjectName) : VK_SUCCESS;
+	VkResult rslt = setDebugName(mvkObj, pNameInfo->pObjectName);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -3515,7 +3523,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetDebugUtilsObjectNameEXT(
 
 	MVKTraceVulkanCallStart();
 	MVKVulkanAPIObject* mvkObj = MVKVulkanAPIObject::getMVKVulkanAPIObject(pNameInfo->objectType, pNameInfo->objectHandle);
-	VkResult rslt = mvkObj ? mvkObj->setDebugName(pNameInfo->pObjectName) : VK_SUCCESS;
+	VkResult rslt = setDebugName(mvkObj, pNameInfo->pObjectName);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }

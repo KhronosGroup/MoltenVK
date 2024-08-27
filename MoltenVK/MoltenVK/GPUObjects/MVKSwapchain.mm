@@ -42,9 +42,7 @@ void MVKSwapchain::propagateDebugName() {
 	if (_debugName) {
 		size_t imgCnt = _presentableImages.size();
 		for (size_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
-			NSString* nsName = [[NSString alloc] initWithFormat: @"%@(%lu)", _debugName, imgIdx];	// temp retain
-			_presentableImages[imgIdx]->setDebugName(nsName.UTF8String);
-			[nsName release];																		// release temp string
+			_presentableImages[imgIdx]->setDebugName([NSString stringWithFormat: @"%@(%lu)", _debugName, imgIdx].UTF8String);
 		}
 	}
 }

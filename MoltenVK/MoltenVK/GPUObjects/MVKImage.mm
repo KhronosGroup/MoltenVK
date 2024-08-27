@@ -299,7 +299,7 @@ bool MVKImagePlane::overlaps(VkSubresourceLayout& imgLayout, VkDeviceSize offset
 }
 
 void MVKImagePlane::propagateDebugName() {
-    setLabelIfNotNil(_image->_planes[_planeIndex]->_mtlTexture, _image->_debugName);
+	_image->setMetalObjectLabel(_image->_planes[_planeIndex]->_mtlTexture, _image->_debugName);
 }
 
 MVKImageMemoryBinding* MVKImagePlane::getMemoryBinding() const {
@@ -463,7 +463,7 @@ void MVKImageMemoryBinding::propagateDebugName() {
         _image->_planes[planeIndex]->propagateDebugName();
     }
     if (_ownsTexelBuffer) {
-        setLabelIfNotNil(_mtlTexelBuffer, _image->_debugName);
+        setMetalObjectLabel(_mtlTexelBuffer, _image->_debugName);
     }
 }
 
@@ -1768,7 +1768,7 @@ MVKPeerSwapchainImage::MVKPeerSwapchainImage(MVKDevice* device,
 
 MVKVulkanAPIObject* MVKImageViewPlane::getVulkanAPIObject() { return _imageView; }
 
-void MVKImageViewPlane::propagateDebugName() { setLabelIfNotNil(_mtlTexture, _imageView->_debugName); }
+void MVKImageViewPlane::propagateDebugName() { _imageView->setMetalObjectLabel(_mtlTexture, _imageView->_debugName); }
 
 
 #pragma mark Metal

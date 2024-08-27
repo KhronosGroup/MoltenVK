@@ -31,8 +31,8 @@ using namespace std;
 #pragma mark MVKDeviceMemory
 
 void MVKDeviceMemory::propagateDebugName() {
-	setLabelIfNotNil(_mtlHeap, _debugName);
-	setLabelIfNotNil(_mtlBuffer, _debugName);
+	setMetalObjectLabel(_mtlHeap, _debugName);
+	setMetalObjectLabel(_mtlBuffer, _debugName);
 }
 
 VkResult MVKDeviceMemory::map(const VkMemoryMapInfoKHR* pMemoryMapInfo, void** ppData) {

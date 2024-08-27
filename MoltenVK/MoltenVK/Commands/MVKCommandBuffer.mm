@@ -359,7 +359,7 @@ void MVKCommandEncoder::beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKComman
 
     _mtlCmdBuffer = mtlCmdBuff;        // not retained
 
-    setLabelIfNotNil(_mtlCmdBuffer, _cmdBuffer->_debugName);
+	_cmdBuffer->setMetalObjectLabel(_mtlCmdBuffer, _cmdBuffer->_debugName);
 }
 
 // Multithread autorelease prefill style uses a dedicated autorelease pool when encoding each command.
@@ -582,7 +582,7 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
 	retainIfImmediatelyEncoding(_mtlRenderEncoder);
-	setLabelIfNotNil(_mtlRenderEncoder, getMTLRenderCommandEncoderName(cmdUse));
+	_cmdBuffer->setMetalObjectLabel(_mtlRenderEncoder, getMTLRenderCommandEncoderName(cmdUse));
 
 	// We shouldn't clear the render area if we are restarting the Metal renderpass
 	// separately from a Vulkan subpass, and we otherwise only need to clear render
@@ -847,7 +847,7 @@ id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandU
 	}
 	if (_mtlComputeEncoderUse != cmdUse) {
 		_mtlComputeEncoderUse = cmdUse;
-		setLabelIfNotNil(_mtlComputeEncoder, mvkMTLComputeCommandEncoderLabel(cmdUse));
+		_cmdBuffer->setMetalObjectLabel(_mtlComputeEncoder, mvkMTLComputeCommandEncoderLabel(cmdUse));
 	}
 	return _mtlComputeEncoder;
 }
@@ -860,7 +860,7 @@ id<MTLBlitCommandEncoder> MVKCommandEncoder::getMTLBlitEncoder(MVKCommandUse cmd
 	}
     if (_mtlBlitEncoderUse != cmdUse) {
         _mtlBlitEncoderUse = cmdUse;
-		setLabelIfNotNil(_mtlBlitEncoder, mvkMTLBlitCommandEncoderLabel(cmdUse));
+		_cmdBuffer->setMetalObjectLabel(_mtlBlitEncoder, mvkMTLBlitCommandEncoderLabel(cmdUse));
     }
 	return _mtlBlitEncoder;
 }
@@ -1083,7 +1083,7 @@ void MVKCommandEncoder::encodeTimestampStageCounterSamples() {
 		}
 
 		auto* mtlEnc = [_mtlCmdBuffer blitCommandEncoderWithDescriptor: bpDesc];
-		setLabelIfNotNil(mtlEnc, mvkMTLBlitCommandEncoderLabel(kMVKCommandUseRecordGPUCounterSample));
+		_cmdBuffer->setMetalObjectLabel(mtlEnc, mvkMTLBlitCommandEncoderLabel(kMVKCommandUseRecordGPUCounterSample));
 		[bpDesc release];		// Release temp object
 		[mtlEnc waitForFence: getStageCountersMTLFence()];
 		[mtlEnc fillBuffer: _device->getDummyBlitMTLBuffer() range: NSMakeRange(0, 1) value: 0];
