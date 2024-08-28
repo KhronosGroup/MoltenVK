@@ -2194,6 +2194,8 @@ void MVKImageView::populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPas
 
 MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 	_image = (MVKImage*)pCreateInfo->image;
+	_image->retain();		// Ensure image sticks around while this image view is in flight.
+
     _mtlTextureType = mvkMTLTextureTypeFromVkImageViewType(pCreateInfo->viewType,
 														   _image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT);
 
@@ -2306,6 +2308,7 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
 // Memory detached in destructor too, as a fail-safe.
 MVKImageView::~MVKImageView() {
 	detachMemory();
+	_image->release();
 }
 
 // Overridden to detach from the resource memory when the app destroys this object.
