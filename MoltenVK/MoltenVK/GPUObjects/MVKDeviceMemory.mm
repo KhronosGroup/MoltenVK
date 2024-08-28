@@ -429,6 +429,7 @@ void MVKDeviceMemory::initExternalMemory(MVKImage* dedicatedImage) {
 		// Textures require a dedicated allocation according to the spec
 		if (dedicatedImage == nullptr) {
 			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkAllocateMemory(): External memory requires a dedicated VkImage when a export operation will be done."));
+			return;
 		}
 		auto& xmProps = getPhysicalDevice()->getExternalImageProperties(dedicatedImage->getVkFormat(), VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT);
 		// Not all texture formats allow to exporting. Vulkan formats that are emulated through the use of multiple MTLTextures
