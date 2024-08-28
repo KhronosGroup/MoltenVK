@@ -33,6 +33,20 @@ VkResult MVKVulkanAPIObject::setDebugName(const char* pObjectName) {
 	return VK_SUCCESS;
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wobjc-method-access"
+void MVKVulkanAPIObject::setMetalObjectLabel(id mtlObj, NSString* label) {
+	if ( !label ) { return; }
+
+	// If debug mode is enabled, append the object address.
+	if (getMVKConfig().debugMode) {
+		[mtlObj setLabel: [label stringByAppendingFormat: @" (%p)", mtlObj]];
+	} else {
+		[mtlObj setLabel: label];
+	}
+}
+#pragma clang diagnostic pop
+
 MVKVulkanAPIObject* MVKVulkanAPIObject::getMVKVulkanAPIObject(VkDebugReportObjectTypeEXT objType, uint64_t object) {
 	void* pVkObj = (void*)object;
 	switch (objType) {

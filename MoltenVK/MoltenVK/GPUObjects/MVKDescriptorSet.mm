@@ -932,7 +932,10 @@ size_t MVKDescriptorPool::getPoolSize(const VkDescriptorPoolCreateInfo* pCreateI
 
 std::string MVKDescriptorPool::getLogDescription() {
 #define STR(name) #name
-#define printDescCnt(descType, spacing, descPool)  descStr << "\n\t" STR(VK_DESCRIPTOR_TYPE_##descType) ": " spacing << _##descPool##Descriptors.size() << "  (" << _##descPool##Descriptors.getRemainingDescriptorCount() << " remaining)";
+#define printDescCnt(descType, spacing, descPool)  \
+	if (_##descPool##Descriptors.size()) {  \
+		descStr << "\n\t" STR(VK_DESCRIPTOR_TYPE_##descType) ": " spacing << _##descPool##Descriptors.size()  \
+		<< "  (" << _##descPool##Descriptors.getRemainingDescriptorCount() << " remaining)"; }
 
 	std::stringstream descStr;
 	descStr << "VkDescriptorPool " << this << " with " << _descriptorSetAvailablility.size() << " descriptor sets, and pooled descriptors:";
@@ -1075,7 +1078,7 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 				metalArgBuffSize = maxMTLBuffSize;
 			}
 			_metalArgumentBuffer = [getMTLDevice() newBufferWithLength: metalArgBuffSize options: MTLResourceStorageModeShared];	// retained
-			_metalArgumentBuffer.label = @"Descriptor set argument buffer";
+			setMetalObjectLabel(_metalArgumentBuffer, @"Descriptor set argument buffer");
 		}
 	}
 }

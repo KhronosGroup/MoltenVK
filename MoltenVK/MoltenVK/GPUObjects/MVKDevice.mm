@@ -4071,39 +4071,41 @@ VkResult MVKDevice::createPipelines(VkPipelineCache pipelineCache,
     VkResult rslt = VK_SUCCESS;
     MVKPipelineCache* mvkPLC = (MVKPipelineCache*)pipelineCache;
 
-    for (uint32_t plIdx = 0; plIdx < count; plIdx++) {
+	@autoreleasepool {
+		for (uint32_t plIdx = 0; plIdx < count; plIdx++) {
 
-		// Ensure all slots are purposefully set.
-		pPipelines[plIdx] = VK_NULL_HANDLE;
-		if (ignoreFurtherPipelines) { continue; }
+			// Ensure all slots are purposefully set.
+			pPipelines[plIdx] = VK_NULL_HANDLE;
+			if (ignoreFurtherPipelines) { continue; }
 
-        const PipelineInfoType* pCreateInfo = &pCreateInfos[plIdx];
+			const PipelineInfoType* pCreateInfo = &pCreateInfos[plIdx];
 
-        // See if this pipeline has a parent. This can come either directly
-        // via basePipelineHandle or indirectly via basePipelineIndex.
-        MVKPipeline* parentPL = VK_NULL_HANDLE;
-        if ( mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DERIVATIVE_BIT) ) {
-            VkPipeline vkParentPL = pCreateInfo->basePipelineHandle;
-            int32_t parentPLIdx = pCreateInfo->basePipelineIndex;
-            if ( !vkParentPL && (parentPLIdx >= 0)) { vkParentPL = pPipelines[parentPLIdx]; }
-            parentPL = vkParentPL ? (MVKPipeline*)vkParentPL : VK_NULL_HANDLE;
-        }
+			// See if this pipeline has a parent. This can come either directly
+			// via basePipelineHandle or indirectly via basePipelineIndex.
+			MVKPipeline* parentPL = VK_NULL_HANDLE;
+			if ( mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DERIVATIVE_BIT) ) {
+				VkPipeline vkParentPL = pCreateInfo->basePipelineHandle;
+				int32_t parentPLIdx = pCreateInfo->basePipelineIndex;
+				if ( !vkParentPL && (parentPLIdx >= 0)) { vkParentPL = pPipelines[parentPLIdx]; }
+				parentPL = vkParentPL ? (MVKPipeline*)vkParentPL : VK_NULL_HANDLE;
+			}
 
-        // Create the pipeline and if creation was successful, insert the new pipeline in the return array.
-        MVKPipeline* mvkPL = new PipelineType(this, mvkPLC, parentPL, pCreateInfo);
-        VkResult plRslt = mvkPL->getConfigurationResult();
-        if (plRslt == VK_SUCCESS) {
-            pPipelines[plIdx] = (VkPipeline)mvkPL;
-        } else {
-			// If creation was unsuccessful, destroy the broken pipeline, change the result
-			// code of this function, and if the VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT
-			// flag is set, don't build any further pipelines.
-			mvkPL->destroy();
-			if (rslt == VK_SUCCESS) { rslt = plRslt; }
-			ignoreFurtherPipelines = (_enabledPipelineCreationCacheControlFeatures.pipelineCreationCacheControl &&
-									  mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT));
-        }
-    }
+			// Create the pipeline and if creation was successful, insert the new pipeline in the return array.
+			MVKPipeline* mvkPL = new PipelineType(this, mvkPLC, parentPL, pCreateInfo);
+			VkResult plRslt = mvkPL->getConfigurationResult();
+			if (plRslt == VK_SUCCESS) {
+				pPipelines[plIdx] = (VkPipeline)mvkPL;
+			} else {
+				// If creation was unsuccessful, destroy the broken pipeline, change the result
+				// code of this function, and if the VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT
+				// flag is set, don't build any further pipelines.
+				mvkPL->destroy();
+				if (rslt == VK_SUCCESS) { rslt = plRslt; }
+				ignoreFurtherPipelines = (_enabledPipelineCreationCacheControlFeatures.pipelineCreationCacheControl &&
+										  mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT));
+			}
+		}
+	}
 
     return rslt;
 }

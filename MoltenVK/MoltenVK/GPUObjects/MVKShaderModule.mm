@@ -129,9 +129,9 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 			}
 
 			// Set the debug name. First try name of shader module, otherwise try name of owner.
-			NSString* dbName = shaderModule-> getDebugName();
-			if ( !dbName ) { dbName = _owner-> getDebugName(); }
-			setLabelIfNotNil(mtlFunc, dbName);
+			NSString* dbName = shaderModule->getDebugName();
+			if ( !dbName ) { dbName = _owner->getDebugName(); }
+			_owner->setMetalObjectLabel(mtlFunc, dbName);
 
 			auto& wgSize = _shaderConversionResultInfo.entryPoint.workgroupSize;
 			return MVKMTLFunction(mtlFunc, _shaderConversionResultInfo, MTLSizeMake(getWorkgroupDimensionSize(wgSize.width, pSpecializationInfo),

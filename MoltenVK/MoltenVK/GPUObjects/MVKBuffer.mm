@@ -35,7 +35,7 @@ void MVKBuffer::propagateDebugName() {
 
 		_deviceMemory->setDebugName(_debugName.UTF8String);
 	}
-	setLabelIfNotNil(_mtlBuffer, _debugName);
+	setMetalObjectLabel(_mtlBuffer, _debugName);
 }
 
 
@@ -279,7 +279,7 @@ void MVKBuffer::detachMemory() {
 #pragma mark MVKBufferView
 
 void MVKBufferView::propagateDebugName() {
-	setLabelIfNotNil(_mtlTexture, _debugName);
+	setMetalObjectLabel(_mtlTexture, _debugName);
 }
 
 #pragma mark Metal
