@@ -38,6 +38,16 @@ typedef struct MVKMappedMemoryRange {
 	VkDeviceSize size = 0;
 } MVKMappedMemoryRange;
 
+struct HeapAllocation {
+    id<MTLHeap> heap = nil; // Reference to the heap containing this allocation
+    size_t offset = 0; // Offset into the heap
+    size_t size = 0; // Total size of this allocation
+    size_t align = 0; // Allocation alignment requirement
+
+    bool isValid() const {
+        return (heap != nil) && (size != 0);
+    }
+};
 
 /** Represents a Vulkan device-space memory allocation. */
 class MVKDeviceMemory : public MVKVulkanAPIDeviceObject {
