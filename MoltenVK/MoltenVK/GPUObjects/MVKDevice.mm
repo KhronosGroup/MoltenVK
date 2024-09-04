@@ -128,7 +128,7 @@ MVKMTLDeviceCapabilities::MVKMTLDeviceCapabilities(id<MTLDevice> mtlDev) {
 	supportsApple8 = supportsGPUFam(Apple8, mtlDev);
 	supportsMetal3 = supportsGPUFam(Metal3, mtlDev);
 #endif
-#if MVK_XCODE_15 && !MVK_TVOS
+#if MVK_XCODE_15 && !MVK_TVOS && !MVK_VISIONOS
 	supportsApple9 = supportsGPUFam(Apple9, mtlDev);
 #endif
 	supportsMac1 = MVK_MACOS;	// Incl Mac1 & MacCatalyst1
