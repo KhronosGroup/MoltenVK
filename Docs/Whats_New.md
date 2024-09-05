@@ -16,7 +16,7 @@ Copyright (c) 2015-2024 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.2.11
 ---------------
 
-Released TBD
+Released 2024-09-24
 
 - Support dynamically allocating descriptors when pool is exhausted.
 - Deprecate `MVKConfiguration::preallocateDescriptors` and `MVK_CONFIG_PREALLOCATE_DESCRIPTORS` environment variable.
