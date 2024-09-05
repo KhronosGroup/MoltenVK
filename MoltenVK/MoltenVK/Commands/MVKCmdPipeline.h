@@ -298,10 +298,11 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKDescriptorUpdateTemplate* _descUpdateTemplate;
+	MVKDescriptorUpdateTemplate* _descUpdateTemplate = nullptr;
 	MVKPipelineLayout* _pipelineLayout = nullptr;
 	void* _pData = nullptr;
-	uint32_t _set;
+	size_t _dataSize = 0;
+	uint32_t _set = 0;
 };
 
 

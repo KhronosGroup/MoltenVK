@@ -339,6 +339,9 @@ public:
 	/** Get the total number of entries. */
 	uint32_t getNumberOfEntries() const;
 
+	/** Get the total number of bytes of data requried by this template. */
+	size_t getSize() const { return _size; }
+
 	/** Get the type of this template. */
 	VkDescriptorUpdateTemplateType getType() const;
 
@@ -354,9 +357,10 @@ public:
 protected:
 	void propagateDebugName() override {}
 
+	MVKSmallVector<VkDescriptorUpdateTemplateEntry, 1> _entries;
+	size_t _size = 0;
 	VkPipelineBindPoint _pipelineBindPoint;
 	VkDescriptorUpdateTemplateType _type;
-	MVKSmallVector<VkDescriptorUpdateTemplateEntry, 1> _entries;
 };
 
 #pragma mark -

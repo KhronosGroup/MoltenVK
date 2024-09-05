@@ -478,49 +478,20 @@ VkResult MVKCmdPushDescriptorSetWithTemplate::setContent(MVKCommandBuffer* cmdBu
 														 uint32_t set,
 														 const void* pData) {
 	if (_pipelineLayout) { _pipelineLayout->release(); }
-
-	_descUpdateTemplate = (MVKDescriptorUpdateTemplate*)descUpdateTemplate;
 	_pipelineLayout = (MVKPipelineLayout*)layout;
-	_set = set;
-
 	_pipelineLayout->retain();
+	_set = set;
+	_descUpdateTemplate = (MVKDescriptorUpdateTemplate*)descUpdateTemplate;
 
-	if (_pData) delete[] (char*)_pData;
-	// Work out how big the memory block in pData is.
-	const VkDescriptorUpdateTemplateEntry* pEntry =
-		_descUpdateTemplate->getEntry(_descUpdateTemplate->getNumberOfEntries()-1);
-	size_t size = pEntry->offset;
-	// If we were given a stride, use that; otherwise, assume only one info
-	// struct of the appropriate type.
-	if (pEntry->stride)
-		size += pEntry->stride * pEntry->descriptorCount;
-	else switch (pEntry->descriptorType) {
-
-		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-			size += sizeof(VkDescriptorBufferInfo);
-			break;
-
-		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-		case VK_DESCRIPTOR_TYPE_SAMPLER:
-		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-			size += sizeof(VkDescriptorImageInfo);
-			break;
-
-		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-			size += sizeof(VkBufferView);
-			break;
-
-		default:
-			break;
+	size_t oldSize = _dataSize;
+	_dataSize = _descUpdateTemplate->getSize();
+	if (_dataSize > oldSize) {
+		free(_pData);
+		_pData = malloc(_dataSize);
 	}
-	_pData = new char[size];
-	memcpy(_pData, pData, size);
+	if (_pData && pData) {
+		mvkCopy(_pData, pData, _dataSize);
+	}
 
 	// Validate by encoding on a null encoder
 	encode(nullptr);
@@ -533,7 +504,7 @@ void MVKCmdPushDescriptorSetWithTemplate::encode(MVKCommandEncoder* cmdEncoder) 
 
 MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
 	if (_pipelineLayout) { _pipelineLayout->release(); }
-	if (_pData) delete[] (char*)_pData;
+	free(_pData);
 }
 
 
