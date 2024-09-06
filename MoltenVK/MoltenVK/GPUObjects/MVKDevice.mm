@@ -586,7 +586,10 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                 if (getMVKConfig().enable2DViewOf3D) {
                     auto* extFeatures = (VkPhysicalDeviceImage2DViewOf3DFeaturesEXT*)next;
                     extFeatures->image2DViewOf3D = true;
-                    extFeatures->sampler2DViewOf3D = true;
+
+                    // TODO (ncesario-lunarg) Related CTS tests (e.g., dEQP-VK.pipeline.monolithic.image_2d_view_3d_image.compute.sampler.mip0_layer0)
+                    // are failing with this enabled.
+                    extFeatures->sampler2DViewOf3D = false;
                 }
 				break;
 			}
