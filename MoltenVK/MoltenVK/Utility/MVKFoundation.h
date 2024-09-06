@@ -571,13 +571,22 @@ static void mvkClear(const T* pVal, size_t count = 1) { mvkClear((T*)pVal, count
 /**
  * If pSrc and pDst are both not null, copies the contents of the source value to the
  * destination value. The optional count allows copying of multiple elements in an array.
+ * Supports void pointers, and copies single values via direct assignment.
  */
 template<typename T>
 static void mvkCopy(T* pDst, const T* pSrc, size_t count = 1) {
-	if ( !pDst || !pSrc ) { return; }			// Bad pointers
-	if (pDst == pSrc) { return; }				// Same object
-	if constexpr(std::is_arithmetic_v<T>) { if (count == 1) { *pDst = *pSrc; } }  // Fast copy of a single primitive
-	memcpy(pDst, pSrc, sizeof(T) * count);		// Memory copy of complex content or array
+	if ( !pDst || !pSrc ) { return; }				// Bad pointers
+	if (pDst == pSrc) { return; }					// Same object
+
+	if constexpr(std::is_void_v<T>) {
+		memcpy(pDst, pSrc, count);					// Copy as bytes
+	} else {
+		if (count == 1) {
+			*pDst = *pSrc;  						// Fast copy of a single value
+		} else {
+			memcpy(pDst, pSrc, sizeof(T) * count);	// Memory copy of value array
+		}
+	}
 }
 
 /**
