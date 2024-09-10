@@ -2561,6 +2561,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_DYLIB_INSTALL_NAME = "@rpath/${PRODUCT_NAME}.framework/${PRODUCT_NAME}";
 				OTHER_LDFLAGS = (
+					"-ld_classic",
 					"-all_load",
 					"-w",
 				);
@@ -2574,6 +2575,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_DYLIB_INSTALL_NAME = "@rpath/${PRODUCT_NAME}.framework/${PRODUCT_NAME}";
 				OTHER_LDFLAGS = (
+					"-ld_classic",
 					"-all_load",
 					"-w",
 				);
