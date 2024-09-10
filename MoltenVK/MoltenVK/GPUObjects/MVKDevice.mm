@@ -1593,10 +1593,8 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	addSurfFmt(BGRA8Unorm);
 	addSurfFmt(BGRA8Unorm_sRGB);
 	addSurfFmt(RGBA16Float);
-#if MVK_MACOS
 	addSurfFmt(RGB10A2Unorm);
 	addSurfFmt(BGR10A2Unorm);
-#endif
 #if MVK_APPLE_SILICON
 	addSurfFmt(BGRA10_XR);
 	addSurfFmt(BGRA10_XR_sRGB);
