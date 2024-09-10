@@ -26,13 +26,27 @@ Released 2024-09-24
 - `vkUpdateDescriptorSets()`: Per Vulkan spec, allow write or copy beyond the 
   end of a descriptor binding count, including inline uniform block descriptors.
 - Update `VkFormat` capabilities based on latest Metal docs.
+- Ensure all MoltenVK config info set by `VK_EXT_layer_settings` is used.
+- Support storage images in Metal argument buffers on _iOS_.
 - Fix rendering issue with render pass that immediately follows a kernel dispatch.
 - Fix race condition when `VkImage` destroyed while used by descriptor.
 - Fix crash in `vkCmdPushDescriptorSetWithTemplateKHR()` when entries in 
   `VkDescriptorUpdateTemplateCreateInfo` are not sorted by offset.
-- Ensure all MoltenVK config info set by `VK_EXT_layer_settings` is used.
+- Fix issue where `vkQueueWaitIdle()` and `vkDeviceWaitIdle()` were not 
+  waiting for all commands to be enqueued before enqueuing wait operation.
+- Fix memory leak in debug utils messenger.
+- Fix build failure on _VisionOS 2.0_ platform.
+- `vkUpdateDescriptorSets()`: Support writing beyond descriptor binding size if subsequent bindings are of same type.
+- Support `VK_FORMAT_A2B10G10R10_UNORM_PACK32` and `VK_FORMAT_A2R10G10B10_UNORM_PACK32` formats as surface formats on all platforms.
+- Add `MTLStoreAction` mapping for `VK_ATTACHMENT_STORE_OP_NONE`.
+- Add estimate of `presentMargin` in returned data from `vkGetPastPresentationTimingGOOGLE()`.
+- Update value of `minSubgroupSize` on _AMD RX6600_ to `32`.
+- Fix support for running on `tvOS 13`.
+- Only add present handler if `VK_GOOGLE_display_timing` info is available during presentation.
 - Move primitive-restart-disabled warning from renderpass to pipeline creation, to reduce voluminous log noise.
 - iOS: Support storage images in _Metal_ argument buffers.
+- Update dependency libraries to match _Vulkan SDK 1.3.295_.
+
 
 
 MoltenVK 1.2.10
