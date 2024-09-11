@@ -282,8 +282,71 @@ static constexpr  int64_t kMVKUndefinedLargePositiveInt64 =  mvkEnsurePowerOfTwo
 static constexpr  int64_t kMVKUndefinedLargeNegativeInt64 = -kMVKUndefinedLargePositiveInt64;
 static constexpr uint64_t kMVKUndefinedLargeUInt64        =  kMVKUndefinedLargePositiveInt64;
 
+#pragma mark - Bit Manipulation
 
-#pragma mark Vulkan structure support functions
+#ifndef __has_builtin
+#define __has_builtin(x) 0
+#endif
+
+#if __has_builtin(__builtin_popcount)
+static constexpr uint32_t mvkPopcount(unsigned char x)      { return __builtin_popcount(x); }
+static constexpr uint32_t mvkPopcount(unsigned short x)     { return __builtin_popcount(x); }
+static constexpr uint32_t mvkPopcount(unsigned x)           { return __builtin_popcount(x); }
+static constexpr uint32_t mvkPopcount(unsigned long x)      { return __builtin_popcountl(x); }
+static constexpr uint32_t mvkPopcount(unsigned long long x) { return __builtin_popcountll(x); }
+template <typename T> static constexpr uint32_t mvkPopcount(T t) { return mvkPopcount(static_cast<std::make_unsigned_t<T>>(t)); }
+#else
+template <typename T>
+static constexpr uint32_t mvkPopcount(T t) {
+	// From https://graphics.stanford.edu/~seander/bithacks.html
+	using U = std::make_unsigned_t<T>;
+	U val = t;
+	U allset = ~static_cast<U>(0);
+	U c0 = allset / 3;
+	U c1 = allset / 15 * 3;
+	U c2 = allset / 255;
+	val = val - ((val >> 1) & c0);
+	val = (val & c1) + ((val >> 2) & c1);
+	val = (val + (val >> 4)) & (c2 * 15);
+	return (val * c2) >> ((sizeof(U) - 1) * 8);
+}
+#endif
+
+#if __has_builtin(__builtin_clz)
+static constexpr uint32_t mvkCLZ(unsigned char x)      { return __builtin_clz(x) - (sizeof(int) - sizeof(char)) * 8; }
+static constexpr uint32_t mvkCLZ(unsigned short x)     { return __builtin_clz(x) - (sizeof(int) - sizeof(short)) * 8; }
+static constexpr uint32_t mvkCLZ(unsigned x)           { return __builtin_clz(x); }
+static constexpr uint32_t mvkCLZ(unsigned long x)      { return __builtin_clzl(x); }
+static constexpr uint32_t mvkCLZ(unsigned long long x) { return __builtin_clzll(x); }
+template <typename T> static constexpr uint32_t mvkCLZ(T t) { return mvkCLZ(static_cast<std::make_unsigned_t<T>>(t)); }
+#else
+template <typename T>
+static constexpr uint32_t mvkCLZ(T t) {
+	for (unsigned i = 0; i < sizeof(T) * 8; i++)
+		if (t & (static_cast<T>(1) << (sizeof(T) * 8 - 1 - i)))
+			return i;
+	return sizeof(T) * 8;
+}
+#endif
+
+#if __has_builtin(__builtin_ctz)
+static constexpr uint32_t mvkCTZ(unsigned char x)      { return __builtin_ctz(x); }
+static constexpr uint32_t mvkCTZ(unsigned short x)     { return __builtin_ctz(x); }
+static constexpr uint32_t mvkCTZ(unsigned x)           { return __builtin_ctz(x); }
+static constexpr uint32_t mvkCTZ(unsigned long x)      { return __builtin_ctzl(x); }
+static constexpr uint32_t mvkCTZ(unsigned long long x) { return __builtin_ctzll(x); }
+template <typename T> static constexpr uint32_t mvkCTZ(T t) { return mvkCTZ(static_cast<std::make_unsigned_t<T>>(t)); }
+#else
+template <typename T>
+static constexpr uint32_t mvkCTZ(T t) {
+	for (unsigned i = 0; i < sizeof(T) * 8; i++)
+		if (t & (static_cast<T>(1) << i))
+			return i;
+	return sizeof(T) * 8;
+}
+#endif
+
+#pragma mark - Vulkan structure support functions
 
 /** Returns a VkExtent2D created from the width and height of a VkExtent3D. */
 static constexpr VkExtent2D mvkVkExtent2DFromVkExtent3D(VkExtent3D e) { return {e.width, e.height }; }
