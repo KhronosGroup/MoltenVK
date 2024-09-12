@@ -84,6 +84,7 @@ MVK_CONFIG_MEMBER(shouldMaximizeConcurrentCompilation,    VkBool32,             
 MVK_CONFIG_MEMBER(timestampPeriodLowPassAlpha,            float,                                    TIMESTAMP_PERIOD_LOWPASS_ALPHA)
 MVK_CONFIG_MEMBER(useMetalPrivateAPI,                     VkBool32,                                 USE_METAL_PRIVATE_API)
 MVK_CONFIG_MEMBER_STRING(shaderDumpDir,                   char*,                                    SHADER_DUMP_DIR)
+MVK_CONFIG_MEMBER(shaderLogEstimatedGLSL,                 VkBool32,                                 SHADER_LOG_ESTIMATED_GLSL)
 
 #undef MVK_CONFIG_MEMBER
 #undef MVK_CONFIG_MEMBER_STRING
@@ -99,5 +100,5 @@ MVK_CONFIG_MEMBER_STRING(shaderDumpDir,                   char*,                
  * Once  MVKConfiguration and the list above are in agreement, it may be necessary to modify
  * this value if the internal padding has changed as a result of new MVKConfiguration members.
  */
-#define kMVKConfigurationInternalPaddingByteCount  4
+#define kMVKConfigurationInternalPaddingByteCount  8
 

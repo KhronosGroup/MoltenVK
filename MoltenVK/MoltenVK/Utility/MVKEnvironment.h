@@ -362,3 +362,11 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #   define MVK_CONFIG_SHADER_DUMP_DIR ""
 #endif
 
+/**
+ * Enable logging estimated GLSL code during shader conversion.
+ * Disabled by default.
+ */
+#ifndef MVK_CONFIG_SHADER_LOG_ESTIMATED_GLSL
+#	define MVK_CONFIG_SHADER_LOG_ESTIMATED_GLSL		0
+#endif
+
