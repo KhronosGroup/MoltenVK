@@ -244,7 +244,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 	} tessParams;
     uint32_t outControlPointCount = 0;
     if (pipeline->isTessellationPipeline()) {
-        tessParams.inControlPointCount = cmdEncoder->_renderingState.getPatchControlPoints();
+        tessParams.inControlPointCount = cmdEncoder->getVkGraphics().getPatchControlPoints();
         outControlPointCount = pipeline->getOutputControlPointCount();
         tessParams.patchCount = mvkCeilingDivide(_vertexCount, tessParams.inControlPointCount) * _instanceCount;
     }
@@ -281,9 +281,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 				}
                 // Mark pipeline, resources, and tess control push constants as dirty
                 // so I apply them during the next stage.
-                cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
                 cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
-                cmdEncoder->_depthStencilState.markDirty();
                 cmdEncoder->getPushConstants(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)->beginMetalRenderPass();
                 break;
 			}
@@ -362,7 +360,6 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                                                   baseInstance: 0];
                     // Mark pipeline, resources, and tess control push constants as dirty
                     // so I apply them during the next stage.
-                    cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
                     cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
                     cmdEncoder->getPushConstants(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)->beginMetalRenderPass();
                 } else {
@@ -371,13 +368,13 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                     uint32_t instanceCount = _instanceCount * viewCount;
                     cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _firstInstance);
                     if (mtlFeats.baseVertexInstanceDrawing) {
-                        [cmdEncoder->_mtlRenderEncoder drawPrimitives: cmdEncoder->_renderingState.getPrimitiveType()
+                        [cmdEncoder->_mtlRenderEncoder drawPrimitives: cmdEncoder->getMtlGraphics().getPrimitiveType()
                                                           vertexStart: _firstVertex
                                                           vertexCount: _vertexCount
                                                         instanceCount: instanceCount
                                                          baseInstance: _firstInstance];
                     } else {
-                        [cmdEncoder->_mtlRenderEncoder drawPrimitives: cmdEncoder->_renderingState.getPrimitiveType()
+                        [cmdEncoder->_mtlRenderEncoder drawPrimitives: cmdEncoder->getMtlGraphics().getPrimitiveType()
                                                           vertexStart: _firstVertex
                                                           vertexCount: _vertexCount
                                                         instanceCount: instanceCount];
@@ -474,7 +471,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 	} tessParams;
     uint32_t outControlPointCount = 0;
     if (pipeline->isTessellationPipeline()) {
-        tessParams.inControlPointCount = cmdEncoder->_renderingState.getPatchControlPoints();
+        tessParams.inControlPointCount = cmdEncoder->getVkGraphics().getPatchControlPoints();
         outControlPointCount = pipeline->getOutputControlPointCount();
         tessParams.patchCount = mvkCeilingDivide(_indexCount, tessParams.inControlPointCount) * _instanceCount;
     }
@@ -513,9 +510,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 				}
                 // Mark pipeline, resources, and tess control push constants as dirty
                 // so I apply them during the next stage.
-                cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
                 cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
-                cmdEncoder->_depthStencilState.markDirty();
                 cmdEncoder->getPushConstants(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)->beginMetalRenderPass();
                 break;
 			}
@@ -597,7 +592,6 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                                                   baseInstance: 0];
                     // Mark pipeline, resources, and tess control push constants as dirty
                     // so I apply them during the next stage.
-                    cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
                     cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
                     cmdEncoder->getPushConstants(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)->beginMetalRenderPass();
                 } else {
@@ -606,7 +600,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                     uint32_t instanceCount = _instanceCount * viewCount;
                     cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _firstInstance);
                     if (mtlFeats.baseVertexInstanceDrawing) {
-                        [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_renderingState.getPrimitiveType()
+                        [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->getMtlGraphics().getPrimitiveType()
                                                                   indexCount: _indexCount
                                                                    indexType: (MTLIndexType)ibb.mtlIndexType
                                                                  indexBuffer: ibb.mtlBuffer
@@ -615,7 +609,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                                                                   baseVertex: _vertexOffset
                                                                 baseInstance: _firstInstance];
                     } else {
-                        [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_renderingState.getPrimitiveType()
+                        [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->getMtlGraphics().getPrimitiveType()
                                                                   indexCount: _indexCount
                                                                    indexType: (MTLIndexType)ibb.mtlIndexType
                                                                  indexBuffer: ibb.mtlBuffer
@@ -764,7 +758,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         // encoding and execution. So we don't know how big to make the buffers.
         // We must assume an arbitrarily large number of vertices may be submitted.
         // But not too many, or we'll exhaust available VRAM.
-        inControlPointCount = cmdEncoder->_renderingState.getPatchControlPoints();
+        inControlPointCount = cmdEncoder->getVkGraphics().getPatchControlPoints();
         outControlPointCount = pipeline->getOutputControlPointCount();
         vertexCount = kMVKMaxDrawIndirectVertexCount;
         patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
@@ -865,7 +859,6 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 				}
                 // Mark pipelines, resources, and vertex push constants as dirty
                 // so I apply them during the next stage.
-                cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
                 cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
                 cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->beginMetalRenderPass();
             } else if (drawIdx == 0 && needsInstanceAdjustment) {
@@ -934,9 +927,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 					mtlIndBuffOfst += sizeof(MTLDispatchThreadgroupsIndirectArguments);
                     // Mark pipeline, resources, and tess control push constants as dirty
                     // so I apply them during the next stage.
-                    cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
                     cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
-                    cmdEncoder->_depthStencilState.markDirty();
                     cmdEncoder->getPushConstants(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)->beginMetalRenderPass();
                     break;
                 case kMVKGraphicsStageTessControl:
@@ -1002,11 +993,10 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 						mtlIndBuffOfst += sizeof(MTLDrawPatchIndirectArguments);
                         // Mark pipeline, resources, and vertex push constants as dirty
                         // so I apply them during the next stage.
-                        cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
                         cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
                         cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->beginMetalRenderPass();
                     } else {
-                        [cmdEncoder->_mtlRenderEncoder drawPrimitives: cmdEncoder->_renderingState.getPrimitiveType()
+                        [cmdEncoder->_mtlRenderEncoder drawPrimitives: cmdEncoder->getMtlGraphics().getPrimitiveType()
                                                        indirectBuffer: mtlIndBuff
                                                  indirectBufferOffset: mtlIndBuffOfst];
                         mtlIndBuffOfst += needsInstanceAdjustment ? sizeof(MTLDrawPrimitivesIndirectArguments) : _mtlIndirectBufferStride;
@@ -1115,7 +1105,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
         // encoding and execution. So we don't know how big to make the buffers.
         // We must assume an arbitrarily large number of vertices may be submitted.
         // But not too many, or we'll exhaust available VRAM.
-        inControlPointCount = cmdEncoder->_renderingState.getPatchControlPoints();
+        inControlPointCount = cmdEncoder->getVkGraphics().getPatchControlPoints();
         outControlPointCount = pipeline->getOutputControlPointCount();
         vertexCount = kMVKMaxDrawIndirectVertexCount;
         patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
@@ -1238,7 +1228,6 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 				mtlIndBuffOfst += sizeof(MTLDrawIndexedPrimitivesIndirectArguments);
                 // Mark pipeline, resources, and vertex push constants as dirty
                 // so I apply them during the next stage.
-                cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
                 cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
                 cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->beginMetalRenderPass();
             } else if (drawIdx == 0 && vtxAdjmts.needsAdjustment()) {
@@ -1323,9 +1312,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 					mtlTempIndBuffOfst += sizeof(MTLDispatchThreadgroupsIndirectArguments);
                     // Mark pipeline, resources, and tess control push constants as dirty
                     // so I apply them during the next stage.
-                    cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
                     cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
-                    cmdEncoder->_depthStencilState.markDirty();
                     cmdEncoder->getPushConstants(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)->beginMetalRenderPass();
                     break;
                 case kMVKGraphicsStageTessControl:
@@ -1391,12 +1378,11 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 						mtlTempIndBuffOfst += sizeof(MTLDrawPatchIndirectArguments);
                         // Mark pipeline, resources, and vertex push constants as dirty
                         // so I apply them during the next stage.
-                        cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
                         cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
                         cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->beginMetalRenderPass();
                     } else {
 						cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _directCmdFirstInstance);
-                        [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_renderingState.getPrimitiveType()
+                        [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->getMtlGraphics().getPrimitiveType()
                                                                    indexType: (MTLIndexType)ibb.mtlIndexType
                                                                  indexBuffer: ibb.mtlBuffer
                                                            indexBufferOffset: ibb.offset
