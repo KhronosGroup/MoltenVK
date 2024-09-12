@@ -45,7 +45,10 @@ Released 2024-09-24
 - Only add present handler if `VK_GOOGLE_display_timing` info is available during presentation.
 - Move primitive-restart-disabled warning from renderpass to pipeline creation, to reduce voluminous log noise.
 - iOS: Support storage images in _Metal_ argument buffers.
+- Add `MVKConfiguration::shaderLogEstimatedGLSL`, and environment variable `MVK_CONFIG_SHADER_LOG_ESTIMATED_GLSL`, 
+  to enable or disable the logging of estimated _GLSL_ code, and disable it by default
 - Update dependency libraries to match _Vulkan SDK 1.3.295_.
+- Update `MVK_PRIVATE_API_VERSION` to version `43`.
 
 
 

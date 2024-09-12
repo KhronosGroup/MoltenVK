@@ -361,8 +361,9 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration
 
 bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
 							  SPIRVToMSLConversionResult& conversionResult) {
-	bool shouldLogCode = getMVKConfig().debugMode;
-	bool shouldLogEstimatedGLSL = shouldLogCode;
+	const auto& mvkCfg = getMVKConfig();
+	bool shouldLogCode = mvkCfg.debugMode;
+	bool shouldLogEstimatedGLSL = shouldLogCode && mvkCfg.shaderLogEstimatedGLSL;
 
 	// If the SPIR-V converter does not have any code, but the GLSL converter does,
 	// convert the GLSL code to SPIR-V and set it into the SPIR-V conveter.
