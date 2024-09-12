@@ -1536,20 +1536,16 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
     // Render the clear colors to the attachments
 	MVKCommandEncodingPool* cmdEncPool = cmdEncoder->getCommandEncodingPool();
-    id<MTLRenderCommandEncoder> mtlRendEnc = cmdEncoder->_mtlRenderEncoder;
-    [mtlRendEnc pushDebugGroup: getMTLDebugGroupLabel()];
-    [mtlRendEnc setRenderPipelineState: cmdEncPool->getCmdClearMTLRenderPipelineState(_rpsKey)];
-    [mtlRendEnc setDepthStencilState: cmdEncPool->getMTLDepthStencilState(_rpsKey.isAttachmentUsed(kMVKClearAttachmentDepthIndex),
-																		  _rpsKey.isAttachmentUsed(kMVKClearAttachmentStencilIndex))];
-    [mtlRendEnc setStencilReferenceValue: _mtlStencilValue];
-    [mtlRendEnc setCullMode: MTLCullModeNone];
-    [mtlRendEnc setTriangleFillMode: MTLTriangleFillModeFill];
-    [mtlRendEnc setDepthBias: 0 slopeScale: 0 clamp: 0];
-    [mtlRendEnc setViewport: {0, 0, (double) fbExtent.width, (double) fbExtent.height, 0.0, 1.0}];
-    [mtlRendEnc setScissorRect: {0, 0, fbExtent.width, fbExtent.height}];
-	[mtlRendEnc setVisibilityResultMode: MTLVisibilityResultModeDisabled
-								 offset: cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset];
+	id<MTLRenderCommandEncoder> mtlRendEnc = cmdEncoder->_mtlRenderEncoder;
 
+	[mtlRendEnc pushDebugGroup: getMTLDebugGroupLabel()];
+	MVKHelperDrawState state = {};
+	state.pipeline           = cmdEncPool->getCmdClearMTLRenderPipelineState(_rpsKey);
+	state.viewportAndScissor = { {}, fbExtent };
+	state.stencilReference   = _mtlStencilValue;
+	state.writeDepth         = _rpsKey.isAttachmentUsed(kMVKClearAttachmentDepthIndex);
+	state.writeStencil       = _rpsKey.isAttachmentUsed(kMVKClearAttachmentStencilIndex);
+	cmdEncoder->getMtlGraphics().prepareHelperDraw(mtlRendEnc, *cmdEncoder, state);
     cmdEncoder->setVertexBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0, true);
     cmdEncoder->setFragmentBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0, true);
     cmdEncoder->setVertexBytes(mtlRendEnc, vertices, vtxCnt * sizeof(vertices[0]),
@@ -1575,11 +1571,7 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	}
 
 	// Return to the previous rendering state on the next render activity
-	cmdEncoder->_graphicsPipelineState.markDirty();
 	cmdEncoder->_graphicsResourcesState.markDirty();
-	cmdEncoder->_depthStencilState.markDirty();
-	cmdEncoder->_renderingState.markDirty();
-	cmdEncoder->_occlusionQueryState.markDirty();
 }
 
 template <size_t N>
