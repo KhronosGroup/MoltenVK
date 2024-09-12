@@ -453,10 +453,10 @@ id<MTLDepthStencilState> MVKCommandResourceFactory::newMTLDepthStencilState(MVKM
 
 MTLStencilDescriptor* MVKCommandResourceFactory::newMTLStencilDescriptor(MVKMTLStencilDescriptorData& sData) {
     MTLStencilDescriptor* sDesc = [MTLStencilDescriptor new];		// retained
-    sDesc.stencilCompareFunction = (MTLCompareFunction)sData.stencilCompareFunction;
-    sDesc.stencilFailureOperation = (MTLStencilOperation)sData.stencilFailureOperation;
-    sDesc.depthFailureOperation = (MTLStencilOperation)sData.depthFailureOperation;
-    sDesc.depthStencilPassOperation = (MTLStencilOperation)sData.depthStencilPassOperation;
+    sDesc.stencilCompareFunction = (MTLCompareFunction)sData.op.stencilCompareFunction;
+    sDesc.stencilFailureOperation = (MTLStencilOperation)sData.op.stencilFailureOperation;
+    sDesc.depthFailureOperation = (MTLStencilOperation)sData.op.depthFailureOperation;
+    sDesc.depthStencilPassOperation = (MTLStencilOperation)sData.op.depthStencilPassOperation;
     sDesc.readMask = sData.readMask;
     sDesc.writeMask = sData.writeMask;
     return sDesc;
