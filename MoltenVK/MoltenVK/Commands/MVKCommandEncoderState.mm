@@ -25,7 +25,528 @@
 
 using namespace std;
 
-#define shouldUpdateFace(face)  mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_##face##_BIT)
+#if MVK_USE_METAL_PRIVATE_API
+// An extension of the MTLRenderCommandEncoder protocol to declare the setLineWidth: method.
+@protocol MVKMTLRenderCommandEncoderLineWidth <MTLRenderCommandEncoder>
+- (void)setLineWidth:(float)width;
+@end
+
+// An extension of the MTLRenderCommandEncoder protocol containing a declaration of the
+// -setDepthBoundsTestAMD:minDepth:maxDepth: method.
+@protocol MVKMTLRenderCommandEncoderDepthBoundsAMD <MTLRenderCommandEncoder>
+- (void)setDepthBoundsTestAMD:(BOOL)enable minDepth:(float)minDepth maxDepth:(float)maxDepth;
+@end
+#endif
+
+#pragma mark - MVKVulkanGraphicsCommandEncoderState
+
+MVKArrayRef<const MTLSamplePosition> MVKVulkanGraphicsCommandEncoderState::getSamplePositions() const {
+	MVKArrayRef<const MTLSamplePosition> res;
+	if (_pipeline) {
+		if (pickRenderState(MVKRenderStateFlag::SampleLocationsEnable).enable.has(MVKRenderStateEnableFlag::SampleLocations)) {
+			bool dynamic = _pipeline->getDynamicStateFlags().has(MVKRenderStateFlag::SampleLocations);
+			uint32_t count = (dynamic ? &_renderState : &_pipeline->getStaticStateData())->numSampleLocations;
+			const MTLSamplePosition* samples = dynamic ? _sampleLocations : _pipeline->getSampleLocations();
+			res = MVKArrayRef(samples, count);
+		}
+	}
+	return res;
+}
+
+bool MVKVulkanGraphicsCommandEncoderState::isBresenhamLines() const {
+	if (!_pipeline)
+		return false;
+	if (pickRenderState(MVKRenderStateFlag::LineRasterizationMode).lineRasterizationMode != MVKLineRasterizationMode::Bresenham)
+		return false;
+
+	switch (pickRenderState(MVKRenderStateFlag::PrimitiveTopology).primitiveType) {
+		case MTLPrimitiveTypeLine:
+		case MTLPrimitiveTypeLineStrip:
+			return true;
+
+		case MTLPrimitiveTypeTriangle:
+		case MTLPrimitiveTypeTriangleStrip:
+			return pickRenderState(MVKRenderStateFlag::PolygonMode).polygonMode == MVKPolygonMode::Lines;
+
+		default:
+			return false;
+	}
+}
+
+#pragma mark - MVKMetalGraphicsCommandEncoderState
+
+static uint32_t getSampleCount(VkSampleCountFlags vk) {
+	if (vk <= VK_SAMPLE_COUNT_1_BIT)
+		return 1;
+	if (vk <= VK_SAMPLE_COUNT_2_BIT)
+		return 2;
+	if (vk <= VK_SAMPLE_COUNT_4_BIT)
+		return 4;
+	static_assert(kMVKMaxSampleCount == 8, "Cases need update");
+	return 8;
+}
+
+void MVKMetalGraphicsCommandEncoderState::reset(VkSampleCountFlags sampleCount) {
+	memset(this, 0, offsetof(MVKMetalGraphicsCommandEncoderState, MEMSET_RESET_LINE));
+	_lineWidth = 1;
+	_sampleCount = getSampleCount(sampleCount);
+	_depthStencil.reset();
+}
+
+void MVKMetalGraphicsCommandEncoderState::changePipeline(MVKGraphicsPipeline* from, MVKGraphicsPipeline* to) {
+	_flags.remove(MVKMetalRenderEncoderStateFlag::PipelineReady);
+	// Everything that was static is now dirty
+	if (from)
+		markDirty(from->getStaticStateFlags());
+	if (to)
+		markDirty(to->getStaticStateFlags());
+}
+
+static constexpr MVKRenderStateFlags FlagsViewportScissor {
+	MVKRenderStateFlag::Viewports,
+	MVKRenderStateFlag::Scissors,
+};
+
+static constexpr MVKRenderStateFlags FlagsMetalState {
+	MVKRenderStateFlag::BlendConstants,
+	MVKRenderStateFlag::DepthClipEnable,
+	MVKRenderStateFlag::FrontFace,
+	MVKRenderStateFlag::StencilReference,
+#if MVK_USE_METAL_PRIVATE_API
+	MVKRenderStateFlag::LineWidth,
+#endif
+};
+
+static constexpr MVKRenderStateFlags FlagsHandledByBindStateData = FlagsViewportScissor | FlagsMetalState;
+
+void MVKMetalGraphicsCommandEncoderState::bindStateData(
+	id<MTLRenderCommandEncoder> encoder,
+	MVKCommandEncoder& mvkEncoder,
+	const MVKRenderStateData& data,
+	MVKRenderStateFlags flags,
+	const VkViewport* viewports,
+	const VkRect2D* scissors)
+{
+	if (flags.hasAny(FlagsViewportScissor)) {
+		if (flags.has(MVKRenderStateFlag::Viewports) &&
+		    (_numViewports != data.numViewports || !mvkAreEqual(_viewports, viewports, data.numViewports)))
+		{
+			_numViewports = data.numViewports;
+			mvkCopy(_viewports, viewports, data.numViewports);
+			MTLViewport mtlViewports[kMVKMaxViewportScissorCount];
+			uint32_t numViewports = data.numViewports;
+			for (uint32_t i = 0; i < numViewports; i++) {
+				mtlViewports[i].width = viewports[i].width;
+				mtlViewports[i].height = viewports[i].height;
+				mtlViewports[i].originX = viewports[i].x;
+				mtlViewports[i].originY = viewports[i].y;
+				mtlViewports[i].znear = viewports[i].minDepth;
+				mtlViewports[i].zfar = viewports[i].maxDepth;
+			}
+			if (numViewports == 1) {
+				[encoder setViewport:mtlViewports[0]];
+			} else {
+#if MVK_MACOS_OR_IOS
+				[encoder setViewports:mtlViewports count:numViewports];
+#endif
+			}
+		}
+		if (flags.has(MVKRenderStateFlag::Scissors) &&
+			(_numScissors != data.numScissors || !mvkAreEqual(_scissors, scissors, data.numScissors)))
+		{
+			if (!_flags.has(MVKMetalRenderEncoderStateFlag::RasterizationDisabledByScissor) || _numScissors != data.numScissors)
+				_flags.add(MVKMetalRenderEncoderStateFlag::ScissorDirty);
+			_numScissors = data.numScissors;
+			mvkCopy(_scissors, scissors, data.numScissors);
+		}
+	}
+
+	if (flags.hasAny(FlagsMetalState)) {
+		if (flags.has(MVKRenderStateFlag::BlendConstants) && !mvkAreEqual(&_blendConstants, &data.blendConstants)) {
+			_blendConstants = data.blendConstants;
+			const float* c = data.blendConstants.float32;
+			[encoder setBlendColorRed:c[0] green:c[1] blue:c[2] alpha:c[3]];
+		}
+		if (flags.has(MVKRenderStateFlag::DepthClipEnable)) {
+			bool enable = data.enable.has(MVKRenderStateEnableFlag::DepthClamp);
+			if (_flags.has(MVKMetalRenderEncoderStateFlag::DepthClampEnable) != enable) {
+				_flags.flip(MVKMetalRenderEncoderStateFlag::DepthClampEnable);
+				[encoder setDepthClipMode:enable ? MTLDepthClipModeClamp : MTLDepthClipModeClip];
+			}
+		}
+		if (flags.has(MVKRenderStateFlag::FrontFace) && _frontFace != data.frontFace) {
+			_frontFace = data.frontFace;
+			[encoder setFrontFacingWinding:static_cast<MTLWinding>(data.frontFace)];
+		}
+		if (flags.has(MVKRenderStateFlag::StencilReference) && !mvkAreEqual(&_stencilReference, &data.stencilReference)) {
+			_stencilReference = data.stencilReference;
+			if (_stencilReference.frontFaceValue == _stencilReference.backFaceValue)
+				[encoder setStencilReferenceValue:_stencilReference.frontFaceValue];
+			else
+				[encoder setStencilFrontReferenceValue:_stencilReference.frontFaceValue backReferenceValue:_stencilReference.backFaceValue];
+		}
+#if MVK_USE_METAL_PRIVATE_API
+		if (flags.has(MVKRenderStateFlag::LineWidth) && _lineWidth != data.lineWidth && mvkEncoder.getMVKConfig().useMetalPrivateAPI) {
+			_lineWidth = data.lineWidth;
+			auto lineWidthRendEnc = static_cast<id<MVKMTLRenderCommandEncoderLineWidth>>(encoder);
+			if ([lineWidthRendEnc respondsToSelector:@selector(setLineWidth:)]) {
+				[lineWidthRendEnc setLineWidth:_lineWidth];
+			}
+		}
+#endif
+	}
+}
+
+void MVKMetalGraphicsCommandEncoderState::bindState(
+	id<MTLRenderCommandEncoder> encoder,
+	MVKCommandEncoder& mvkEncoder,
+	const MVKVulkanGraphicsCommandEncoderState& vk)
+{
+	MVKGraphicsPipeline* pipeline = vk._pipeline;
+	MVKRenderStateFlags staticStateFlags = pipeline->getStaticStateFlags();
+	MVKRenderStateFlags dynamicStateFlags = pipeline->getDynamicStateFlags();
+	MVKRenderStateFlags anyStateNeeded = (staticStateFlags | dynamicStateFlags).removingAll(_stateReady);
+	const MVKRenderStateData& staticStateData = pipeline->getStaticStateData();
+	const MVKRenderStateData& dynamicStateData = vk._renderState;
+#define PICK_STATE(x) (dynamicStateFlags.has(MVKRenderStateFlag::x) ? &dynamicStateData : &staticStateData)
+	// Handle anything that requires data from multiple (possibly different) sources out here
+
+	// Polygon mode and primitive topology need to be handled specially, as we implement point mode by switching the primitive topology
+	// Cull mode and discard both are specially handled only when using dynamic state
+	// Whether cull mode discards is affected by whether we're rendering triangles, so do all of them at once
+	static constexpr MVKRenderStateFlags FlagsWithSpecialHandling = {
+		MVKRenderStateFlag::CullMode,
+		MVKRenderStateFlag::PolygonMode,
+		MVKRenderStateFlag::PrimitiveTopology,
+		MVKRenderStateFlag::RasterizerDiscardEnable,
+	};
+	if (anyStateNeeded.hasAny(FlagsWithSpecialHandling)) {
+		// Special handling, static can override dynamic due to Metal not supporting full dynamic topology
+		_stateReady.addAll(FlagsWithSpecialHandling);
+		uint8_t prim = PICK_STATE(PrimitiveTopology)->primitiveType;
+		MVKPolygonMode fill = PICK_STATE(PolygonMode)->polygonMode;
+		if (fill == MVKPolygonMode::Point) {
+			MTLPrimitiveTopologyClass topologyClass = pipeline->getPrimitiveTopologyClass();
+			if (topologyClass == MTLPrimitiveTopologyClassPoint || topologyClass == MTLPrimitiveTopologyClassUnspecified) {
+				// Supported by pipeline, yay
+				prim = MTLPrimitiveTypePoint;
+			} else {
+				// Not supported, lines are probably closer than fill
+				fill = MVKPolygonMode::Lines;
+				mvkEncoder.reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetPolygonMode(): Metal does not support setting VK_POLYGON_MODE_POINT dynamically.");
+			}
+		}
+		_primitiveType = prim;
+		bool isTriangle = prim == MTLPrimitiveTypeTriangle || prim == MTLPrimitiveTypeTriangleStrip;
+		// Fill mode only affects triangles in Metal, might as well save a few API calls
+		if (isTriangle && fill != _polygonMode) {
+			_polygonMode = fill;
+			[encoder setTriangleFillMode:static_cast<MTLTriangleFillMode>(fill)];
+		}
+		// Same for cull mode
+		uint8_t cull = PICK_STATE(CullMode)->cullMode;
+		if (isTriangle && cull != _cullMode) {
+			_cullMode = cull;
+			[encoder setCullMode:static_cast<MTLCullMode>(cull)];
+		}
+
+		MVKRenderStateEnableFlags dynEnable = dynamicStateData.enable;
+		bool dynRasterizationDisable = isTriangle && dynamicStateFlags.has(MVKRenderStateFlag::CullMode) && dynEnable.has(MVKRenderStateEnableFlag::CullBothFaces);
+		dynRasterizationDisable |= dynamicStateFlags.has(MVKRenderStateFlag::RasterizerDiscardEnable) && dynEnable.has(MVKRenderStateEnableFlag::RasterizerDiscard);
+		bool staticRasterizationDisable = pipeline->isRasterizationDisabled();
+
+		if (dynRasterizationDisable != _flags.has(MVKMetalRenderEncoderStateFlag::RasterizationDisabledByScissor) && !staticRasterizationDisable) {
+			_flags.flip(MVKMetalRenderEncoderStateFlag::RasterizationDisabledByScissor);
+			_flags.add(MVKMetalRenderEncoderStateFlag::ScissorDirty);
+		}
+	}
+
+	// Depth stencil has many sources that all go together into one Metal DepthStencilState
+	static constexpr MVKRenderStateFlags FlagsDepthStencil {
+		MVKRenderStateFlag::DepthCompareOp,
+		MVKRenderStateFlag::DepthTestEnable,
+		MVKRenderStateFlag::DepthWriteEnable,
+		MVKRenderStateFlag::StencilCompareMask,
+		MVKRenderStateFlag::StencilOp,
+		MVKRenderStateFlag::StencilTestEnable,
+		MVKRenderStateFlag::StencilWriteMask,
+	};
+	if (anyStateNeeded.hasAny(FlagsDepthStencil)) {
+		_stateReady.addAll(FlagsDepthStencil);
+		MVKRenderSubpass* subpass = mvkEncoder.getSubpass();
+		MVKMTLDepthStencilDescriptorData desc;
+		if (subpass->isStencilAttachmentUsed() && PICK_STATE(StencilTestEnable)->depthStencil.stencilTestEnabled) {
+			const MVKMTLDepthStencilDescriptorData& op = PICK_STATE(StencilOp)->depthStencil;
+			desc.backFaceStencilData.op = op.backFaceStencilData.op;
+			desc.frontFaceStencilData.op = op.frontFaceStencilData.op;
+			const MVKMTLDepthStencilDescriptorData& read = PICK_STATE(StencilCompareMask)->depthStencil;
+			desc.backFaceStencilData.readMask = read.backFaceStencilData.readMask;
+			desc.frontFaceStencilData.readMask = read.frontFaceStencilData.readMask;
+			const MVKMTLDepthStencilDescriptorData& write = PICK_STATE(StencilWriteMask)->depthStencil;
+			desc.backFaceStencilData.writeMask = write.backFaceStencilData.writeMask;
+			desc.frontFaceStencilData.writeMask = write.frontFaceStencilData.writeMask;
+		}
+		if (subpass->isDepthAttachmentUsed() && PICK_STATE(DepthTestEnable)->enable.has(MVKRenderStateEnableFlag::DepthTest)) {
+			desc.depthWriteEnabled = PICK_STATE(DepthWriteEnable)->depthStencil.depthWriteEnabled;
+			desc.depthCompareFunction = PICK_STATE(DepthCompareOp)->depthStencil.depthCompareFunction;
+		}
+		desc.simplify(true);
+		if (!mvkAreEqual(&desc, &_depthStencil)) {
+			_depthStencil = desc;
+			[encoder setDepthStencilState:mvkEncoder.getCommandEncodingPool()->getMTLDepthStencilState(desc)];
+		}
+	}
+
+	// Flags with a separate enable flag can come from two places at once
+	static constexpr MVKRenderStateFlags FlagsWithEnable {
+		MVKRenderStateFlag::DepthBias,
+		MVKRenderStateFlag::DepthBiasEnable,
+#if MVK_USE_METAL_PRIVATE_API
+		MVKRenderStateFlag::DepthBounds,
+		MVKRenderStateFlag::DepthBoundsTestEnable,
+#endif
+	};
+	if (anyStateNeeded.hasAny(FlagsWithEnable)) {
+		_stateReady.addAll(anyStateNeeded & FlagsWithEnable);
+		if (anyStateNeeded.hasAny({ MVKRenderStateFlag::DepthBias, MVKRenderStateFlag::DepthBiasEnable })) {
+			bool wasEnabled = _flags.has(MVKMetalRenderEncoderStateFlag::DepthBiasEnable);
+			if (PICK_STATE(DepthBiasEnable)->enable.has(MVKRenderStateEnableFlag::DepthBias)) {
+				const MVKDepthBias& src = PICK_STATE(DepthBias)->depthBias;
+				if (!wasEnabled || !mvkAreEqual(&src, &_depthBias)) {
+					_flags.add(MVKMetalRenderEncoderStateFlag::DepthBiasEnable);
+					_depthBias = src;
+					[encoder setDepthBias:src.depthBiasConstantFactor
+					           slopeScale:src.depthBiasSlopeFactor
+					                clamp:src.depthBiasClamp];
+				}
+			} else if (wasEnabled) {
+				_flags.remove(MVKMetalRenderEncoderStateFlag::DepthBiasEnable);
+				[encoder setDepthBias:0 slopeScale:0 clamp:0];
+			}
+		}
+#if MVK_USE_METAL_PRIVATE_API
+		if (anyStateNeeded.hasAny({ MVKRenderStateFlag::DepthBounds, MVKRenderStateFlag::DepthBoundsTestEnable }) &&
+		    mvkEncoder.getEnabledFeatures().depthBounds && mvkEncoder.getMVKConfig().useMetalPrivateAPI)
+		{
+			auto encoder_ = static_cast<id<MVKMTLRenderCommandEncoderDepthBoundsAMD>>(encoder);
+			bool wasEnabled = _flags.has(MVKMetalRenderEncoderStateFlag::DepthBoundsEnable);
+			if (PICK_STATE(DepthBoundsTestEnable)->enable.has(MVKRenderStateEnableFlag::DepthBoundsTest)) {
+				const MVKDepthBounds& src = PICK_STATE(DepthBounds)->depthBounds;
+				if (!wasEnabled || !mvkAreEqual(&src, &_depthBounds)) {
+					_flags.add(MVKMetalRenderEncoderStateFlag::DepthBoundsEnable);
+					_depthBounds = src;
+					[encoder_ setDepthBoundsTestAMD:YES
+					                       minDepth:src.minDepthBound
+					                       maxDepth:src.maxDepthBound];
+				}
+			} else if (wasEnabled) {
+				_flags.remove(MVKMetalRenderEncoderStateFlag::DepthBoundsEnable);
+				[encoder_ setDepthBoundsTestAMD:NO
+				                       minDepth:0.0f
+				                       maxDepth:1.0f];
+			}
+		}
+#endif
+	}
+#undef PICK_STATE
+
+	// For all the things that are sourced from one place, do them in two separate calls to bindStateData
+	MVKRenderStateFlags handledByBindStateData = anyStateNeeded & FlagsHandledByBindStateData;
+	_stateReady.addAll(handledByBindStateData);
+	if (MVKRenderStateFlags neededStatic = handledByBindStateData & staticStateFlags; !neededStatic.empty()) {
+		bindStateData(encoder, mvkEncoder, staticStateData, neededStatic, pipeline->getViewports(), pipeline->getScissors());
+	}
+	if (MVKRenderStateFlags neededDynamic = handledByBindStateData & dynamicStateFlags; !neededDynamic.empty()) {
+		bindStateData(encoder, mvkEncoder, dynamicStateData, neededDynamic, vk._viewports, vk._scissors);
+	}
+
+	// Scissor can be affected by a number of things so do it at the end
+	if (_flags.has(MVKMetalRenderEncoderStateFlag::ScissorDirty)) {
+		_flags.remove(MVKMetalRenderEncoderStateFlag::ScissorDirty);
+		MTLScissorRect mtlScissors[kMVKMaxViewportScissorCount];
+		uint32_t numScissors = _numScissors;
+		if (_flags.has(MVKMetalRenderEncoderStateFlag::RasterizationDisabledByScissor)) {
+			mvkClear(mtlScissors, numScissors);
+		} else {
+			for (uint32_t i = 0; i < numScissors; i++)
+				mtlScissors[i] = mvkMTLScissorRectFromVkRect2D(mvkEncoder.clipToRenderArea(_scissors[i]));
+		}
+		if (numScissors == 1) {
+			[encoder setScissorRect:mtlScissors[0]];
+		} else {
+#if MVK_MACOS_OR_IOS
+			[encoder setScissorRects:mtlScissors count:numScissors];
+#endif
+		}
+	}
+}
+
+void MVKMetalGraphicsCommandEncoderState::prepareDraw(
+	id<MTLRenderCommandEncoder> encoder,
+	MVKCommandEncoder& mvkEncoder,
+	const MVKVulkanGraphicsCommandEncoderState& vk)
+{
+	MVKGraphicsPipeline* pipeline = vk._pipeline;
+	if (!pipeline->getMainPipelineState()) // Abort if pipeline could not be created.
+		return;
+
+	// Pipeline
+	if (!_flags.has(MVKMetalRenderEncoderStateFlag::PipelineReady)) {
+		_flags.add(MVKMetalRenderEncoderStateFlag::PipelineReady);
+		id<MTLRenderPipelineState> mtlPipeline;
+		const MVKRenderSubpass* subpass = mvkEncoder.getSubpass();
+		if (subpass->isMultiview() && !pipeline->isTessellationPipeline()) {
+			mtlPipeline = pipeline->getMultiviewPipelineState(subpass->getViewCountInMetalPass(mvkEncoder.getMultiviewPassIndex()));
+		} else {
+			mtlPipeline = pipeline->getMainPipelineState();
+		}
+		if (mtlPipeline != _pipeline) {
+			_pipeline = mtlPipeline;
+			[encoder setRenderPipelineState:mtlPipeline];
+		}
+		pipeline->encode(&mvkEncoder, kMVKGraphicsStageRasterization);
+		pipeline->bindPushConstants(&mvkEncoder);
+	}
+
+	// State
+	bindState(encoder, mvkEncoder, vk);
+}
+
+void MVKMetalGraphicsCommandEncoderState::prepareHelperDraw(
+	id<MTLRenderCommandEncoder> encoder,
+	MVKCommandEncoder& mvkEncoder,
+	const MVKHelperDrawState& state)
+{
+	_stateReady.removeAll({
+		MVKRenderStateFlag::CullMode,
+		MVKRenderStateFlag::DepthBiasEnable,
+		MVKRenderStateFlag::DepthBoundsTestEnable,
+		MVKRenderStateFlag::DepthCompareOp,
+		MVKRenderStateFlag::DepthTestEnable,
+		MVKRenderStateFlag::DepthWriteEnable,
+		MVKRenderStateFlag::LineWidth,
+		MVKRenderStateFlag::PolygonMode,
+		MVKRenderStateFlag::RasterizerDiscardEnable,
+		MVKRenderStateFlag::Scissors,
+		MVKRenderStateFlag::StencilCompareMask,
+		MVKRenderStateFlag::StencilOp,
+		MVKRenderStateFlag::StencilReference,
+		MVKRenderStateFlag::StencilTestEnable,
+		MVKRenderStateFlag::StencilWriteMask,
+		MVKRenderStateFlag::Viewports,
+	});
+	_flags.removeAll({
+		MVKMetalRenderEncoderStateFlag::PipelineReady,
+	});
+	if (_pipeline != state.pipeline) {
+		_pipeline = state.pipeline;
+		[encoder setRenderPipelineState:state.pipeline];
+	}
+	if (_cullMode != MTLCullModeNone) {
+		_cullMode = MTLCullModeNone;
+		[encoder setCullMode:MTLCullModeNone];
+	}
+	if (_flags.has(MVKMetalRenderEncoderStateFlag::DepthBiasEnable)) {
+		_flags.remove(MVKMetalRenderEncoderStateFlag::DepthBiasEnable);
+		[encoder setDepthBias:0 slopeScale:0 clamp:0];
+	}
+	if (_polygonMode != MVKPolygonMode::Fill) {
+		_polygonMode = MVKPolygonMode::Fill;
+		[encoder setTriangleFillMode:MTLTriangleFillModeFill];
+	}
+	MVKMTLDepthStencilDescriptorData ds = MVKMTLDepthStencilDescriptorData::Write(state.writeDepth, state.writeStencil);
+	if (!mvkAreEqual(&_depthStencil, &ds)) {
+		_depthStencil = ds;
+		[encoder setDepthStencilState:mvkEncoder.getCommandEncodingPool()->getMTLDepthStencilState(state.writeDepth, state.writeStencil)];
+	}
+	if (state.writeStencil && (_stencilReference.backFaceValue  != state.stencilReference
+	                        || _stencilReference.frontFaceValue != state.stencilReference))
+	{
+		_stencilReference.backFaceValue  = state.stencilReference;
+		_stencilReference.frontFaceValue = state.stencilReference;
+		[encoder setStencilReferenceValue:state.stencilReference];
+	}
+	if (_flags.has(MVKMetalRenderEncoderStateFlag::RasterizationDisabledByScissor)
+	    || _numScissors != 1 || !mvkAreEqual(&_scissors[0], &state.viewportAndScissor))
+	{
+		_flags.remove(MVKMetalRenderEncoderStateFlag::RasterizationDisabledByScissor);
+		_numScissors = 1;
+		_scissors[0] = state.viewportAndScissor;
+		[encoder setScissorRect:mvkMTLScissorRectFromVkRect2D(state.viewportAndScissor)];
+	}
+	VkViewport viewport = {
+		static_cast<float>(state.viewportAndScissor.offset.x),
+		static_cast<float>(state.viewportAndScissor.offset.y),
+		static_cast<float>(state.viewportAndScissor.extent.width),
+		static_cast<float>(state.viewportAndScissor.extent.height),
+		0,
+		1
+	};
+	if (_numViewports != 1 || !mvkAreEqual(&_viewports[0], &viewport)) {
+		_numViewports = 1;
+		_viewports[0] = viewport;
+		[encoder setViewport:mvkMTLViewportFromVkViewport(viewport)];
+	}
+	[encoder setVisibilityResultMode:MTLVisibilityResultModeDisabled
+	                          offset:mvkEncoder._pEncodingContext->mtlVisibilityResultOffset];
+	mvkEncoder._occlusionQueryState.markDirty();
+}
+
+
+#pragma mark - MVKCommandEncoderStateNew
+
+static constexpr MVKRenderStateFlags SampleLocationFlags {
+	MVKRenderStateFlag::SampleLocations,
+	MVKRenderStateFlag::SampleLocationsEnable,
+};
+
+static constexpr MTLSamplePosition kSampPosCenter = {0.5, 0.5};
+static MTLSamplePosition kSamplePositionsAllCenter[] = { kSampPosCenter, kSampPosCenter, kSampPosCenter, kSampPosCenter, kSampPosCenter, kSampPosCenter, kSampPosCenter, kSampPosCenter };
+static_assert(sizeof(kSamplePositionsAllCenter) / sizeof(MTLSamplePosition) == kMVKMaxSampleCount, "kSamplePositionsAllCenter is not competely populated.");
+
+static MVKArrayRef<const MTLSamplePosition> getSamplePositions(const MVKVulkanGraphicsCommandEncoderState& vk, bool locOverride, uint32_t sampleCount) {
+	if (locOverride)
+		return MVKArrayRef(kSamplePositionsAllCenter, sampleCount);
+	return vk.getSamplePositions();
+}
+
+MVKArrayRef<const MTLSamplePosition> MVKCommandEncoderStateNew::updateSamplePositions() {
+	// Multisample Bresenham lines require sampling from the pixel center.
+	bool locOverride = _mtlGraphics._sampleCount > 1 && _vkGraphics.isBresenhamLines();
+	if (locOverride == _mtlGraphics._flags.has(MVKMetalRenderEncoderStateFlag::SamplePositionsOverridden) && _mtlGraphics._stateReady.hasAll(SampleLocationFlags))
+		return MVKArrayRef(_mtlGraphics._samplePositions, _mtlGraphics._numSamplePositions);
+	MVKArrayRef<const MTLSamplePosition> res = getSamplePositions(_vkGraphics, locOverride, _mtlGraphics._sampleCount);
+	_mtlGraphics._stateReady.addAll(SampleLocationFlags);
+	_mtlGraphics._flags.set(MVKMetalRenderEncoderStateFlag::SamplePositionsOverridden, locOverride);
+	_mtlGraphics._numSamplePositions = res.size();
+	if (res.size() > 0)
+		mvkCopy(_mtlGraphics._samplePositions, res.data(), res.size());
+	return res;
+}
+
+bool MVKCommandEncoderStateNew::needsMetalRenderPassRestart() {
+	// Multisample Bresenham lines require sampling from the pixel center.
+	bool locOverride = _mtlGraphics._sampleCount > 1 && _vkGraphics.isBresenhamLines();
+	if (locOverride == _mtlGraphics._flags.has(MVKMetalRenderEncoderStateFlag::SamplePositionsOverridden) && _mtlGraphics._stateReady.hasAll(SampleLocationFlags))
+		return false;
+	MVKArrayRef<const MTLSamplePosition> positions = getSamplePositions(_vkGraphics, locOverride, _mtlGraphics._sampleCount);
+	size_t count = positions.size();
+	bool res = count != _mtlGraphics._numSamplePositions || !mvkAreEqual(positions.data(), _mtlGraphics._samplePositions, count);
+	if (!res)
+		_mtlGraphics._stateReady.addAll(SampleLocationFlags);
+	return res;
+}
+
+void MVKCommandEncoderStateNew::prepareRenderDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, MVKGraphicsStage stage) {
+	// Since we currently run tessellation passes by starting a new render pass each time, there's no point in trying to track dirtiness
+	_vkGraphics._pipeline->encode(&mvkEncoder, stage);
+	_vkGraphics._pipeline->bindPushConstants(&mvkEncoder);
+}
+
+void MVKCommandEncoderStateNew::bindPipeline(MVKGraphicsPipeline* pipeline) {
+	_mtlGraphics.changePipeline(_vkGraphics._pipeline, pipeline);
+	_vkGraphics._pipeline = pipeline;
+}
 
 
 #pragma mark -
@@ -34,11 +555,6 @@ using namespace std;
 MVKVulkanAPIObject* MVKCommandEncoderState::getVulkanAPIObject() { return _cmdEncoder->getVulkanAPIObject(); };
 
 MVKDevice* MVKCommandEncoderState::getDevice() { return _cmdEncoder->getDevice(); }
-
-bool MVKCommandEncoderState::isDynamicState(MVKRenderStateType state) {
-	auto* gpl = _cmdEncoder->getGraphicsPipeline();
-	return !gpl || gpl->isDynamicState(state);
-}
 
 
 #pragma mark -
@@ -159,530 +675,6 @@ bool MVKPushConstantsCommandEncoderState::isTessellating() {
 	auto* gp = _cmdEncoder->getGraphicsPipeline();
 	return gp ? gp->isTessellationPipeline() : false;
 }
-
-
-#pragma mark -
-#pragma mark MVKDepthStencilCommandEncoderState
-
-void MVKDepthStencilCommandEncoderState:: setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo) {
-	auto& depthEnabled = _depthTestEnabled[StateScope::Static];
-	auto oldDepthEnabled = depthEnabled;
-	depthEnabled = static_cast<bool>(vkDepthStencilInfo.depthTestEnable);
-
-	auto& dsData = _depthStencilData[StateScope::Static];
-	auto oldData = dsData;
-	dsData.depthCompareFunction = mvkMTLCompareFunctionFromVkCompareOp(vkDepthStencilInfo.depthCompareOp);
-	dsData.depthWriteEnabled = vkDepthStencilInfo.depthWriteEnable;
-
-	dsData.stencilTestEnabled = static_cast<bool>(vkDepthStencilInfo.stencilTestEnable);
-	setStencilState(dsData.frontFaceStencilData, vkDepthStencilInfo.front);
-	setStencilState(dsData.backFaceStencilData, vkDepthStencilInfo.back);
-
-	if (depthEnabled != oldDepthEnabled || dsData != oldData) { markDirty(); }
-}
-
-void MVKDepthStencilCommandEncoderState::setStencilState(MVKMTLStencilDescriptorData& sData,
-                                                         const VkStencilOpState& vkStencil) {
-	sData.readMask = vkStencil.compareMask;
-	sData.writeMask = vkStencil.writeMask;
-    sData.stencilCompareFunction = mvkMTLCompareFunctionFromVkCompareOp(vkStencil.compareOp);
-    sData.stencilFailureOperation = mvkMTLStencilOperationFromVkStencilOp(vkStencil.failOp);
-    sData.depthFailureOperation = mvkMTLStencilOperationFromVkStencilOp(vkStencil.depthFailOp);
-    sData.depthStencilPassOperation = mvkMTLStencilOperationFromVkStencilOp(vkStencil.passOp);
-}
-
-void MVKDepthStencilCommandEncoderState::setDepthTestEnable(VkBool32 depthTestEnable) {
-	setContent(_depthTestEnabled[StateScope::Dynamic], static_cast<bool>(depthTestEnable));
-}
-
-void MVKDepthStencilCommandEncoderState::setDepthWriteEnable(VkBool32 depthWriteEnable) {
-	setContent(_depthStencilData[StateScope::Dynamic].depthWriteEnabled, static_cast<bool>(depthWriteEnable));
-}
-
-void MVKDepthStencilCommandEncoderState::setDepthCompareOp(VkCompareOp depthCompareOp) {
-	setContent(_depthStencilData[StateScope::Dynamic].depthCompareFunction,
-			   (uint8_t)mvkMTLCompareFunctionFromVkCompareOp(depthCompareOp));
-}
-
-void MVKDepthStencilCommandEncoderState::setStencilTestEnable(VkBool32 stencilTestEnable) {
-	setContent(_depthStencilData[StateScope::Dynamic].stencilTestEnabled, static_cast<bool>(stencilTestEnable));
-}
-
-void MVKDepthStencilCommandEncoderState::setStencilOp(MVKMTLStencilDescriptorData& sData,
-													  VkStencilOp failOp,
-													  VkStencilOp passOp,
-													  VkStencilOp depthFailOp,
-													  VkCompareOp compareOp) {
-	auto oldData = sData;
-	sData.stencilCompareFunction = mvkMTLCompareFunctionFromVkCompareOp(compareOp);
-	sData.stencilFailureOperation = mvkMTLStencilOperationFromVkStencilOp(failOp);
-	sData.depthFailureOperation = mvkMTLStencilOperationFromVkStencilOp(depthFailOp);
-	sData.depthStencilPassOperation = mvkMTLStencilOperationFromVkStencilOp(passOp);
-	if (sData != oldData) { markDirty(); }
-}
-
-void MVKDepthStencilCommandEncoderState::setStencilOp(VkStencilFaceFlags faceMask,
-													  VkStencilOp failOp,
-													  VkStencilOp passOp,
-													  VkStencilOp depthFailOp,
-													  VkCompareOp compareOp) {
-	auto& dsData = _depthStencilData[StateScope::Dynamic];
-	if (shouldUpdateFace(FRONT)) { setStencilOp(dsData.frontFaceStencilData, failOp, passOp, depthFailOp, compareOp); }
-	if (shouldUpdateFace(BACK)) { setStencilOp(dsData.backFaceStencilData, failOp, passOp, depthFailOp, compareOp); }
-}
-
-void MVKDepthStencilCommandEncoderState::setStencilCompareMask(VkStencilFaceFlags faceMask,
-															   uint32_t stencilCompareMask) {
-	auto& dsData = _depthStencilData[StateScope::Dynamic];
-	if (shouldUpdateFace(FRONT)) { setContent(dsData.frontFaceStencilData.readMask, stencilCompareMask); }
-	if (shouldUpdateFace(BACK)) { setContent(dsData.backFaceStencilData.readMask, stencilCompareMask); }
-}
-
-void MVKDepthStencilCommandEncoderState::setStencilWriteMask(VkStencilFaceFlags faceMask,
-															 uint32_t stencilWriteMask) {
-	auto& dsData = _depthStencilData[StateScope::Dynamic];
-	if (shouldUpdateFace(FRONT)) { setContent(dsData.frontFaceStencilData.writeMask, stencilWriteMask); }
-	if (shouldUpdateFace(BACK)) { setContent(dsData.backFaceStencilData.writeMask, stencilWriteMask); }
-}
-
-void MVKDepthStencilCommandEncoderState::beginMetalRenderPass() {
-    MVKCommandEncoderState::beginMetalRenderPass();
-
-	MVKRenderSubpass* mvkSubpass = _cmdEncoder->getSubpass();
-	bool prevHasDepthAttachment = _hasDepthAttachment;
-	_hasDepthAttachment = mvkSubpass->isDepthAttachmentUsed();
-	if (_hasDepthAttachment != prevHasDepthAttachment) { markDirty(); }
-
-	bool prevHasStencilAttachment = _hasStencilAttachment;
-	_hasStencilAttachment = mvkSubpass->isStencilAttachmentUsed();
-	if (_hasStencilAttachment != prevHasStencilAttachment) { markDirty(); }
-}
-
-// Combine static and dynamic depth/stencil data
-void MVKDepthStencilCommandEncoderState::encodeImpl(uint32_t stage) {
-	if (stage != kMVKGraphicsStageRasterization) { return; }
-
-	MVKMTLDepthStencilDescriptorData dsData;
-
-	if (_hasDepthAttachment && getContent(_depthTestEnabled, DepthTestEnable)) {
-		dsData.depthCompareFunction = getData(DepthCompareOp).depthCompareFunction;
-		dsData.depthWriteEnabled = getData(DepthWriteEnable).depthWriteEnabled;
-	}
-
-	if (_hasStencilAttachment && getData(StencilTestEnable).stencilTestEnabled) {
-		dsData.stencilTestEnabled = true;
-
-		auto& frontFace = dsData.frontFaceStencilData;
-		auto& backFace  = dsData.backFaceStencilData;
-
-		const auto& srcRM = getData(StencilCompareMask);
-		frontFace.readMask  = srcRM.frontFaceStencilData.readMask;
-		backFace.readMask   = srcRM.backFaceStencilData.readMask;
-
-		const auto& srcWM = getData(StencilWriteMask);
-		frontFace.writeMask = srcWM.frontFaceStencilData.writeMask;
-		backFace.writeMask  = srcWM.backFaceStencilData.writeMask;
-
-		const auto& srcSOp = getData(StencilOp);
-		frontFace.stencilCompareFunction    = srcSOp.frontFaceStencilData.stencilCompareFunction;
-		frontFace.stencilFailureOperation   = srcSOp.frontFaceStencilData.stencilFailureOperation;
-		frontFace.depthFailureOperation     = srcSOp.frontFaceStencilData.depthFailureOperation;
-		frontFace.depthStencilPassOperation = srcSOp.frontFaceStencilData.depthStencilPassOperation;
-
-		backFace.stencilCompareFunction     = srcSOp.backFaceStencilData.stencilCompareFunction;
-		backFace.stencilFailureOperation    = srcSOp.backFaceStencilData.stencilFailureOperation;
-		backFace.depthFailureOperation      = srcSOp.backFaceStencilData.depthFailureOperation;
-		backFace.depthStencilPassOperation  = srcSOp.backFaceStencilData.depthStencilPassOperation;
-	}
-
-	[_cmdEncoder->_mtlRenderEncoder setDepthStencilState: _cmdEncoder->getCommandEncodingPool()->getMTLDepthStencilState(dsData)];
-}
-
-
-#pragma mark -
-#pragma mark MVKRenderingCommandEncoderState
-
-#define getVkContent(state)   getContent(_vk##state,  state)
-#define getMTLContent(state)  getContent(_mtl##state, state)
-
-#define setVkContent(state, val)   setContent(state, _vk##state,  val, isDynamic)
-#define setMTLContent(state, val)  setContent(state, _mtl##state, val, isDynamic)
-
-void MVKRenderingCommandEncoderState::setCullMode(VkCullModeFlags cullMode, bool isDynamic) {
-	setMTLContent(CullMode, mvkMTLCullModeFromVkCullModeFlags(cullMode));
-	getContent(_cullBothFaces, isDynamic) = (cullMode == VK_CULL_MODE_FRONT_AND_BACK);
-}
-
-void MVKRenderingCommandEncoderState::setFrontFace(VkFrontFace frontFace, bool isDynamic) {
-	setMTLContent(FrontFace, mvkMTLWindingFromVkFrontFace(frontFace));
-}
-
-void MVKRenderingCommandEncoderState::setPolygonMode(VkPolygonMode polygonMode, bool isDynamic) {
-	setMTLContent(PolygonMode, mvkMTLTriangleFillModeFromVkPolygonMode(polygonMode));
-	getContent(_isPolygonModePoint, isDynamic) = (polygonMode == VK_POLYGON_MODE_POINT);
-	_shouldCheckSamplePositionOverride = true;
-}
-
-void MVKRenderingCommandEncoderState::setLineWidth(float lineWidth, bool isDynamic) {
-	setMTLContent(LineWidth, lineWidth);
-}
-
-void MVKRenderingCommandEncoderState::setLineRasterizationMode(VkLineRasterizationMode lineRasterizationMode, bool isDynamic) {
-	setVkContent(LineRasterizationMode, lineRasterizationMode);
-	_shouldCheckSamplePositionOverride = true;
-}
-
-void MVKRenderingCommandEncoderState::setBlendConstants(MVKColor32 blendConstants, bool isDynamic) {
-	setMTLContent(BlendConstants, blendConstants);
-}
-
-void MVKRenderingCommandEncoderState::setDepthBias(const VkPipelineRasterizationStateCreateInfo& vkRasterInfo) {
-	setDepthBiasEnable(vkRasterInfo.depthBiasEnable, false);
-	setDepthBias( { vkRasterInfo.depthBiasConstantFactor, vkRasterInfo.depthBiasClamp, vkRasterInfo.depthBiasSlopeFactor } , false);
-}
-
-void MVKRenderingCommandEncoderState::setDepthBias(MVKDepthBias depthBias, bool isDynamic) {
-	setMTLContent(DepthBias, depthBias);
-}
-
-void MVKRenderingCommandEncoderState::setDepthBiasEnable(VkBool32 depthBiasEnable, bool isDynamic) {
-	setMTLContent(DepthBiasEnable, static_cast<bool>(depthBiasEnable));
-}
-
-void MVKRenderingCommandEncoderState::setDepthClipEnable(bool depthClip, bool isDynamic) {
-	setMTLContent(DepthClipEnable, depthClip ? MTLDepthClipModeClip : MTLDepthClipModeClamp);
-}
-
-void MVKRenderingCommandEncoderState::setDepthBounds(MVKDepthBounds depthBounds, bool isDynamic) {
-	setMTLContent(DepthBounds, depthBounds);
-}
-
-void MVKRenderingCommandEncoderState::setDepthBoundsTestEnable(VkBool32 depthBoundsTestEnable, bool isDynamic) {
-	setMTLContent(DepthBoundsTestEnable, static_cast<bool>(depthBoundsTestEnable));
-}
-
-void MVKRenderingCommandEncoderState::setStencilReferenceValues(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo) {
-	bool isDynamic = false;
-	MVKStencilReference mtlStencilReference = { vkDepthStencilInfo.front.reference, vkDepthStencilInfo.back.reference };
-	setMTLContent(StencilReference, &mtlStencilReference);
-}
-
-void MVKRenderingCommandEncoderState::setStencilReferenceValues(VkStencilFaceFlags faceMask, uint32_t stencilReference) {
-	bool isDynamic = true;
-	MVKStencilReference mtlStencilReference = _mtlStencilReference[StateScope::Dynamic];
-	if (shouldUpdateFace(FRONT)) { mtlStencilReference.frontFaceValue = stencilReference; }
-	if (shouldUpdateFace(BACK)) { mtlStencilReference.backFaceValue = stencilReference; }
-	setMTLContent(StencilReference, &mtlStencilReference);
-}
-
-void MVKRenderingCommandEncoderState::setViewports(const MVKArrayRef<VkViewport> viewports,
-													 uint32_t firstViewport,
-													 bool isDynamic) {
-	uint32_t maxViewports = _cmdEncoder->getDeviceProperties().limits.maxViewports;
-	if (firstViewport >= maxViewports) { return; }
-
-	MVKMTLViewports mtlViewports = isDynamic ? _mtlViewports[StateScope::Dynamic] : _mtlViewports[StateScope::Static];
-	size_t vpCnt = min((uint32_t)viewports.size(), maxViewports - firstViewport);
-	for (uint32_t vpIdx = 0; vpIdx < vpCnt; vpIdx++) {
-		mtlViewports.viewports[firstViewport + vpIdx] = mvkMTLViewportFromVkViewport(viewports[vpIdx]);
-		mtlViewports.viewportCount = max(mtlViewports.viewportCount, vpIdx + 1);
-	}
-	setMTLContent(Viewports, &mtlViewports);
-}
-
-void MVKRenderingCommandEncoderState::setScissors(const MVKArrayRef<VkRect2D> scissors,
-													uint32_t firstScissor,
-													bool isDynamic) {
-	uint32_t maxScissors = _cmdEncoder->getDeviceProperties().limits.maxViewports;
-	if (firstScissor >= maxScissors) { return; }
-
-	MVKMTLScissors mtlScissors = isDynamic ? _mtlScissors[StateScope::Dynamic] : _mtlScissors[StateScope::Static];
-	size_t sCnt = min((uint32_t)scissors.size(), maxScissors - firstScissor);
-	for (uint32_t sIdx = 0; sIdx < sCnt; sIdx++) {
-		mtlScissors.scissors[firstScissor + sIdx] = mvkMTLScissorRectFromVkRect2D(scissors[sIdx]);
-		mtlScissors.scissorCount = max(mtlScissors.scissorCount, sIdx + 1);
-	}
-	setMTLContent(Scissors, &mtlScissors);
-}
-
-void MVKRenderingCommandEncoderState::setPrimitiveRestartEnable(VkBool32 primitiveRestartEnable, bool isDynamic) {
-	setMTLContent(PrimitiveRestartEnable, static_cast<bool>(primitiveRestartEnable));
-}
-
-void MVKRenderingCommandEncoderState::setRasterizerDiscardEnable(VkBool32 rasterizerDiscardEnable, bool isDynamic) {
-	setMTLContent(RasterizerDiscardEnable, static_cast<bool>(rasterizerDiscardEnable));
-}
-
-// This value is retrieved, not encoded, so don't mark this encoder as dirty.
-void MVKRenderingCommandEncoderState::setPrimitiveTopology(VkPrimitiveTopology topology, bool isDynamic) {
-	getContent(_mtlPrimitiveTopology, isDynamic) = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(topology);
-	_shouldCheckSamplePositionOverride = true;
-}
-
-// Metal does not support VK_POLYGON_MODE_POINT, but it can be emulated if the polygon mode
-// is static, which allows both the topology and the pipeline topology-class to be set to points.
-// This cannot be accomplished if the dynamic polygon mode has been changed to points when the
-// pipeline is expecting triangles or lines, because the pipeline topology class will be incorrect.
-MTLPrimitiveType MVKRenderingCommandEncoderState::getPrimitiveType() {
-	if (isDynamicState(PolygonMode) &&
-		_isPolygonModePoint[StateScope::Dynamic] &&
-		!_isPolygonModePoint[StateScope::Static]) {
-		
-		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetPolygonMode(): Metal does not support setting VK_POLYGON_MODE_POINT dynamically.");
-		return getMTLContent(PrimitiveTopology);
-	}
-
-	return getContent(_isPolygonModePoint, PolygonMode) ? MTLPrimitiveTypePoint : getMTLContent(PrimitiveTopology);
-}
-
-bool MVKRenderingCommandEncoderState::isDrawingTriangles() {
-	switch (getPrimitiveType()) {
-		case MTLPrimitiveTypeTriangle:
-		case MTLPrimitiveTypeTriangleStrip:
-			return true;
-		default:
-			return false;
-	}
-}
-
-bool MVKRenderingCommandEncoderState::isDrawingLines() {
-	switch (getPrimitiveType()) {
-		case MTLPrimitiveTypeLine:
-		case MTLPrimitiveTypeLineStrip:
-			return true;
-		case MTLPrimitiveTypeTriangle:
-		case MTLPrimitiveTypeTriangleStrip:
-			return getMTLContent(PolygonMode) == MTLTriangleFillModeLines;
-		default:
-			return false;
-	}
-}
-
-// This value is retrieved, not encoded, so don't mark this encoder as dirty.
-void MVKRenderingCommandEncoderState::setPatchControlPoints(uint32_t patchControlPoints, bool isDynamic) {
-	getContent(_mtlPatchControlPoints, isDynamic) = patchControlPoints;
-}
-
-uint32_t MVKRenderingCommandEncoderState::getPatchControlPoints() {
-	return getMTLContent(PatchControlPoints);
-}
-
-void MVKRenderingCommandEncoderState::setSampleLocationsEnable(VkBool32 sampleLocationsEnable, bool isDynamic) {
-	bool slEnbl = static_cast<bool>(sampleLocationsEnable);
-	auto& mtlSampLocEnbl = getContent(_mtlSampleLocationsEnable, isDynamic);
-
-	if (slEnbl == mtlSampLocEnbl) { return; }
-
-	mtlSampLocEnbl = slEnbl;
-
-	// This value is retrieved, not encoded, so don't mark this encoder as dirty.
-	_dirtyStates.enable(SampleLocationsEnable);
-}
-
-void MVKRenderingCommandEncoderState::setSampleLocations(MVKArrayRef<VkSampleLocationEXT> sampleLocations, bool isDynamic) {
-	auto& mtlSampPosns = getContent(_mtlSampleLocations, isDynamic);
-	size_t slCnt = sampleLocations.size();
-
-	// When comparing new vs current, make use of fact that MTLSamplePosition & VkSampleLocationEXT have same memory footprint.
-	if (slCnt == mtlSampPosns.size() &&
-		mvkAreEqual((MTLSamplePosition*)sampleLocations.data(),
-					mtlSampPosns.data(), slCnt)) {
-		return;
-	}
-
-	mtlSampPosns.clear();
-	for (uint32_t slIdx = 0; slIdx < slCnt; slIdx++) {
-		auto& sl = sampleLocations[slIdx];
-		mtlSampPosns.push_back(MTLSamplePositionMake(mvkClamp(sl.x, kMVKMinSampleLocationCoordinate, kMVKMaxSampleLocationCoordinate),
-													 mvkClamp(sl.y, kMVKMinSampleLocationCoordinate, kMVKMaxSampleLocationCoordinate)));
-	}
-
-	// This value is retrieved, not encoded, so don't mark this encoder as dirty.
-	_dirtyStates.enable(SampleLocations);
-}
-
-// If needed, check if sample positions need to be overridden.
-// Multisample Bresenham lines require sampling from the pixel center.
-// Additional sample position overrides based on other rendering requirements could be added here too.
-void MVKRenderingCommandEncoderState::checkSamplePositionsOverride() {
-	if ( !_shouldCheckSamplePositionOverride ) { return; }
-
-	_shouldCheckSamplePositionOverride = false;
-
-	auto oldSamplePositionsOverride = _samplePositionsOverride;
-	_samplePositionsOverride = None;
-
-	// Multisample Bresenham lines require sampling from the pixel center.
-	if (isDrawingLines() &&
-		getVkContent(LineRasterizationMode) == VK_LINE_RASTERIZATION_MODE_BRESENHAM &&
-		_cmdEncoder->getSampleCount() > VK_SAMPLE_COUNT_1_BIT) {
-		_samplePositionsOverride = Centered;
-	}
-
-	if (_samplePositionsOverride != oldSamplePositionsOverride) {
-		_dirtyStates.enable(SampleLocations);	// Sample Positions are retrieved, not encoded, so don't mark this encoder as dirty.
-	}
-}
-
-static constexpr MTLSamplePosition kSampPosCenter = {0.5, 0.5};
-static MTLSamplePosition kSamplePositionsAllCenter[] = { kSampPosCenter, kSampPosCenter, kSampPosCenter, kSampPosCenter, kSampPosCenter, kSampPosCenter, kSampPosCenter, kSampPosCenter };
-static_assert(sizeof(kSamplePositionsAllCenter) / sizeof(MTLSamplePosition) == kMVKMaxSampleCount, "kSamplePositionsAllCenter is not competely populated.");
-
-// Sample positions may be overridden if rendering conditions require.
-// Otherwise, use the sample positions set by the application.
-MVKArrayRef<MTLSamplePosition> MVKRenderingCommandEncoderState::getSamplePositions() {
-	if (_samplePositionsOverride == Centered) {
-		return MVKArrayRef<MTLSamplePosition>(kSamplePositionsAllCenter, _cmdEncoder->getSampleCount());
-	}
-	return getMTLContent(SampleLocationsEnable) ? getMTLContent(SampleLocations).contents() : MVKArrayRef<MTLSamplePosition>();
-}
-
-// Return whether state is dirty, and mark it not dirty
-bool MVKRenderingCommandEncoderState::isDirty(MVKRenderStateType state) {
-	bool rslt = _dirtyStates.isEnabled(state);
-	_dirtyStates.disable(state);
-	return rslt;
-}
-
-// Don't force sample location & sample location enable to become dirty if they weren't already, because
-// this may cause needsMetalRenderPassRestart() to trigger an unnecessary Metal renderpass restart.
-void MVKRenderingCommandEncoderState::markDirty() {
-	MVKCommandEncoderState::markDirty();
-
-	bool wasSLDirty = _dirtyStates.isEnabled(SampleLocations);
-	bool wasSLEnblDirty = _dirtyStates.isEnabled(SampleLocationsEnable);
-	
-	_dirtyStates.enableAll();
-
-	_dirtyStates.set(SampleLocations, wasSLDirty);
-	_dirtyStates.set(SampleLocationsEnable, wasSLEnblDirty);
-}
-
-// Don't call parent beginMetalRenderPass() because it 
-// will call local markDirty() which is too aggressive.
-void MVKRenderingCommandEncoderState::beginMetalRenderPass() {
-	if (_isModified) {
-		_dirtyStates = _modifiedStates;
-		MVKCommandEncoderState::markDirty();
-	}
-}
-
-// Don't use || on isDirty calls, to ensure they both get called, so that the dirty flag of each will be cleared.
-bool MVKRenderingCommandEncoderState::needsMetalRenderPassRestart() {
-	checkSamplePositionsOverride();
-	bool isSLDirty = isDirty(SampleLocations);
-	bool isSLEnblDirty = isDirty(SampleLocationsEnable);
-	return isSLDirty || isSLEnblDirty;
-}
-
-#pragma mark Encoding
-
-#if MVK_USE_METAL_PRIVATE_API
-// An extension of the MTLRenderCommandEncoder protocol to declare the setLineWidth: method.
-@protocol MVKMTLRenderCommandEncoderLineWidth <MTLRenderCommandEncoder>
--(void) setLineWidth: (float) width;
-@end
-
-// An extension of the MTLRenderCommandEncoder protocol containing a declaration of the
-// -setDepthBoundsTestAMD:minDepth:maxDepth: method.
-@protocol MVKMTLRenderCommandEncoderDepthBoundsAMD <MTLRenderCommandEncoder>
-
-- (void)setDepthBoundsTestAMD:(BOOL)enable minDepth:(float)minDepth maxDepth:(float)maxDepth;
-
-@end
-#endif
-
-void MVKRenderingCommandEncoderState::encodeImpl(uint32_t stage) {
-	if (stage != kMVKGraphicsStageRasterization) { return; }
-
-	auto& rendEnc = _cmdEncoder->_mtlRenderEncoder;
-	auto& enabledFeats = _cmdEncoder->getEnabledFeatures();
-
-	if (isDirty(PolygonMode)) { [rendEnc setTriangleFillMode: getMTLContent(PolygonMode)]; }
-	if (isDirty(CullMode)) { [rendEnc setCullMode: getMTLContent(CullMode)]; }
-	if (isDirty(FrontFace)) { [rendEnc setFrontFacingWinding: getMTLContent(FrontFace)]; }
-	if (isDirty(BlendConstants)) {
-		auto& bcFlt = getMTLContent(BlendConstants).float32;
-		[rendEnc setBlendColorRed: bcFlt[0] green: bcFlt[1] blue: bcFlt[2] alpha: bcFlt[3]];
-	}
-
-#if MVK_USE_METAL_PRIVATE_API
-	if (isDirty(LineWidth)) {
-		auto lineWidthRendEnc = (id<MVKMTLRenderCommandEncoderLineWidth>)rendEnc;
-		if ([lineWidthRendEnc respondsToSelector: @selector(setLineWidth:)]) {
-			[lineWidthRendEnc setLineWidth: getMTLContent(LineWidth)];
-		}
-	}
-#endif
-
-	if (isDirty(DepthBiasEnable) || isDirty(DepthBias)) {
-		if (getMTLContent(DepthBiasEnable)) {
-			auto& db = getMTLContent(DepthBias);
-			[rendEnc setDepthBias: db.depthBiasConstantFactor
-					   slopeScale: db.depthBiasSlopeFactor
-							clamp: db.depthBiasClamp];
-		} else {
-			[rendEnc setDepthBias: 0 slopeScale: 0 clamp: 0];
-		}
-	}
-	if (isDirty(DepthClipEnable) && enabledFeats.depthClamp) {
-		[rendEnc setDepthClipMode: getMTLContent(DepthClipEnable)];
-	}
-
-#if MVK_USE_METAL_PRIVATE_API
-    if (getMVKConfig().useMetalPrivateAPI && (isDirty(DepthBoundsTestEnable) || isDirty(DepthBounds)) &&
-		enabledFeats.depthBounds) {
-		if (getMTLContent(DepthBoundsTestEnable)) {
-			auto& db = getMTLContent(DepthBounds);
-			[(id<MVKMTLRenderCommandEncoderDepthBoundsAMD>)_cmdEncoder->_mtlRenderEncoder setDepthBoundsTestAMD: YES
-					   minDepth: db.minDepthBound
-					   maxDepth: db.maxDepthBound];
-		} else {
-			[(id<MVKMTLRenderCommandEncoderDepthBoundsAMD>)_cmdEncoder->_mtlRenderEncoder setDepthBoundsTestAMD: NO
-					   minDepth: 0.0f
-					   maxDepth: 1.0f];
-		}
-	}
-#endif
-	if (isDirty(StencilReference)) {
-		auto& sr = getMTLContent(StencilReference);
-		[rendEnc setStencilFrontReferenceValue: sr.frontFaceValue backReferenceValue: sr.backFaceValue];
-	}
-
-	if (isDirty(Viewports)) {
-		auto& mtlViewports = getMTLContent(Viewports);
-		if (enabledFeats.multiViewport) {
-#if MVK_MACOS_OR_IOS
-			[rendEnc setViewports: mtlViewports.viewports count: mtlViewports.viewportCount];
-#endif
-		} else {
-			[rendEnc setViewport: mtlViewports.viewports[0]];
-		}
-	}
-
-	// If rasterizing discard has been dynamically enabled, or culling has been dynamically 
-	// set to front-and-back, emulate this by using zeroed scissor rectangles.
-	if (isDirty(Scissors)) {
-		static MTLScissorRect zeroRect = {};
-		auto mtlScissors = getMTLContent(Scissors);
-		bool shouldDiscard = ((_mtlRasterizerDiscardEnable[StateScope::Dynamic] && isDynamicState(RasterizerDiscardEnable)) ||
-							  (isDrawingTriangles() && _cullBothFaces[StateScope::Dynamic] && isDynamicState(CullMode)));
-		for (uint32_t sIdx = 0; sIdx < mtlScissors.scissorCount; sIdx++) {
-			mtlScissors.scissors[sIdx] = shouldDiscard ? zeroRect : _cmdEncoder->clipToRenderArea(mtlScissors.scissors[sIdx]);
-		}
-
-		if (enabledFeats.multiViewport) {
-#if MVK_MACOS_OR_IOS
-			[rendEnc setScissorRects: mtlScissors.scissors count: mtlScissors.scissorCount];
-#endif
-		} else {
-			[rendEnc setScissorRect: mtlScissors.scissors[0]];
-		}
-	}
-}
-
-#undef getMTLContent
-#undef setMTLContent
 
 
 #pragma mark -
@@ -970,7 +962,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 	auto* pipeline = _cmdEncoder->getGraphicsPipeline();
     bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle() || _cmdEncoder->getMetalFeatures().nativeTextureSwizzle;
     bool forTessellation = pipeline->isTessellationPipeline();
-	bool isDynamicVertexStride = pipeline->isDynamicState(VertexStride) && _cmdEncoder->getMetalFeatures().dynamicVertexStride;
+	bool isDynamicVertexStride = pipeline->getDynamicStateFlags().has(MVKRenderStateFlag::VertexStride) && _cmdEncoder->getMetalFeatures().dynamicVertexStride;
 
 	if (stage == kMVKGraphicsStageVertex) {
         encodeBindings(kMVKShaderStageVertex, "vertex", fullImageViewSwizzle,
@@ -1168,7 +1160,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 }
 
 MVKPipeline* MVKGraphicsResourcesCommandEncoderState::getPipeline() {
-	return _cmdEncoder->_graphicsPipelineState.getPipeline();
+	return _cmdEncoder->getVkGraphics()._pipeline;
 }
 
 void MVKGraphicsResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) {

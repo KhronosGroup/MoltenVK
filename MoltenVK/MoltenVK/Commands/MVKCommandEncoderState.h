@@ -26,6 +26,7 @@
 #include "MVKSmallVector.h"
 #include "MVKBitArray.h"
 #include <unordered_map>
+#include <objc/message.h>
 
 class MVKCommandEncoder;
 class MVKGraphicsPipeline;
@@ -34,6 +35,149 @@ class MVKOcclusionQueryPool;
 
 struct MVKShaderImplicitRezBinding;
 
+#pragma mark - MVKVulkanRenderCommandEncoderState
+
+/** Tracks the state of a Vulkan render encoder. */
+struct MVKVulkanGraphicsCommandEncoderState {
+	MVKPipelineLayout* _layout = nullptr;
+	MVKGraphicsPipeline* _pipeline = nullptr;
+	MVKRenderStateData _renderState;
+	VkViewport _viewports[kMVKMaxViewportScissorCount];
+	VkRect2D _scissors[kMVKMaxViewportScissorCount];
+	MTLSamplePosition _sampleLocations[kMVKMaxSampleCount];
+
+	/** Choose between the dynamic and pipeline render states based on whether the given state flag is marked dynamic on the pipeline. */
+	const MVKRenderStateData& pickRenderState(MVKRenderStateFlag state) const {
+		bool dynamic = _pipeline->getDynamicStateFlags().has(state);
+		return *(dynamic ? &_renderState : &_pipeline->getStaticStateData());
+	}
+	MVKArrayRef<const MTLSamplePosition> getSamplePositions() const;
+	bool isBresenhamLines() const;
+	uint32_t getPatchControlPoints() const {
+		return pickRenderState(MVKRenderStateFlag::PatchControlPoints).patchControlPoints;
+	}
+};
+
+#pragma mark - MVKMetalRenderCommandEncoderState
+
+enum class MVKMetalRenderEncoderStateFlag {
+	DepthBiasEnable,
+	DepthBoundsEnable,
+	DepthClampEnable,
+	DepthTestEnable,
+	RasterizationDisabledByScissor,
+	ScissorDirty,
+	PipelineReady,
+	SamplePositionsOverridden,
+	Count
+};
+
+using MVKMetalRenderEncoderStateFlags = MVKFlagList<MVKMetalRenderEncoderStateFlag>;
+
+class MVKRenderSubpass;
+
+/** The state for a draw inserted by MoltenVK. */
+struct MVKHelperDrawState {
+	id<MTLRenderPipelineState> pipeline;
+	VkRect2D viewportAndScissor;
+	uint32_t stencilReference;
+	bool writeDepth;
+	bool writeStencil;
+};
+
+/** Tracks the state of a Metal render encoder. */
+struct MVKMetalGraphicsCommandEncoderState {
+	id<MTLRenderPipelineState> _pipeline;
+
+	/** Flags that mark whether a render state matches the current Vulkan render state. */
+	MVKRenderStateFlags _stateReady;
+	/** Other single-bit flags. */
+	MVKMetalRenderEncoderStateFlags _flags;
+	MVKStaticBitSet<kMVKMaxDescriptorSetCount> _descriptorSetsReady;
+
+	MVKStencilReference _stencilReference;
+	MVKColor32 _blendConstants;
+	uint8_t _numViewports;
+	uint8_t _numScissors;
+	uint8_t _patchControlPoints;
+	uint8_t _cullMode;
+	uint8_t _frontFace;
+	MVKPolygonMode _polygonMode;
+
+	// Everything above here can be reset by a memset from the beginning of the struct to offsetof(struct, MEMSET_RESET_LINE)
+	struct {} MEMSET_RESET_LINE;
+
+	uint8_t _primitiveType;
+	uint8_t _numSamplePositions = 0;
+	MVKDepthBias _depthBias;
+	MVKDepthBounds _depthBounds;
+	float _lineWidth;
+	uint32_t _sampleCount;
+	MVKMTLDepthStencilDescriptorData _depthStencil;
+
+	VkViewport _viewports[kMVKMaxViewportScissorCount];
+	VkRect2D _scissors[kMVKMaxViewportScissorCount];
+	MTLSamplePosition _samplePositions[kMVKMaxSampleCount];
+
+	MTLPrimitiveType getPrimitiveType() const { return static_cast<MTLPrimitiveType>(_primitiveType); }
+
+	/** Reset to the state of a fresh Metal render encoder. */
+	void reset(VkSampleCountFlags sampleCount);
+
+	/** Mark the given pieces of render state as dirty. */
+	void markDirty(MVKRenderStateFlags flags) { _stateReady.removeAll(flags); }
+	/** Mark everything dirty that needs to be marked when changing pipelines. */
+	void changePipeline(MVKGraphicsPipeline* from, MVKGraphicsPipeline* to);
+
+	void bindStateData(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKRenderStateData& data, MVKRenderStateFlags flags, const VkViewport* viewports, const VkRect2D* scissors);
+	void bindState(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanGraphicsCommandEncoderState& vkState);
+	void bindResources(id<MTLRenderCommandEncoder> encoder, const MVKVulkanGraphicsCommandEncoderState& vkState);
+	void prepareDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanGraphicsCommandEncoderState& vkState);
+	void prepareHelperDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKHelperDrawState& state);
+};
+
+#pragma mark - MVKCommandEncoderStateNew
+
+/** Holds both Metal and Vulkan state for both compute and graphics. */
+class MVKCommandEncoderStateNew {
+	MVKVulkanGraphicsCommandEncoderState _vkGraphics;
+	MVKMetalGraphicsCommandEncoderState  _mtlGraphics;
+
+public:
+	/** Get a reference to the Vulkan graphics state.  Read-only, use methods on this class (which will invalidate associated Metal state) to modify. */
+	const MVKVulkanGraphicsCommandEncoderState& vkGraphics() const { return _vkGraphics; }
+	/** Get a reference to the Metal graphics state. */
+	MVKMetalGraphicsCommandEncoderState& mtlGraphics() { return _mtlGraphics; }
+
+	/**
+	 * Update the given dynamic state, invalidating the passed flags on the Metal graphics state.
+	 * (Use the returned reference to do the actual update to the Vulkan state.)
+	 */
+	MVKVulkanGraphicsCommandEncoderState& updateDynamicState(MVKRenderStateFlags state) {
+		_mtlGraphics.markDirty(state);
+		return _vkGraphics;
+	}
+
+	/** Get the current sample positions and mark those positions as the currently bound positions. */
+	MVKArrayRef<const MTLSamplePosition> updateSamplePositions();
+	/** Check if the render pass needs to be restarted before drawing with the current graphics configuration. */
+	bool needsMetalRenderPassRestart();
+	/** Bind everything needed to render with the current Vulkan graphics state on the current Metal graphics state. */
+	void prepareDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder) {
+		_mtlGraphics.prepareDraw(encoder, mvkEncoder, _vkGraphics);
+	}
+	/** Bind everything needed to dispatch a compute-based emulation of the given stage of the current Vulkan graphics state on the current Metal compute state. */
+	void prepareRenderDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, MVKGraphicsStage stage);
+	/** Bind everything needed to dispatch a Vulkan compute shader on the current Metal compute state. */
+	void prepareComputeDispatch(id<MTLComputeCommandEncoder>, MVKCommandEncoder& mvkEncoder);
+	/** Bind the given graphics pipeline to the Vulkan graphics state, invalidating any necessary resources. */
+	void bindPipeline(MVKGraphicsPipeline* pipeline);
+
+	/** Begin tracking for a fresh MTLRenderCommandEncoder. */
+	void beginGraphicsEncoding(VkSampleCountFlags sampleCount) {
+		_mtlGraphics.reset(sampleCount);
+	}
+};
 
 #pragma mark -
 #pragma mark MVKCommandEncoderState
@@ -97,21 +241,9 @@ public:
     MVKCommandEncoderState(MVKCommandEncoder* cmdEncoder) : _cmdEncoder(cmdEncoder) {}
 
 protected:
-	enum StateScope {
-		Static = 0,
-		Dynamic,
-		Count
-	};
 
 	virtual void encodeImpl(uint32_t stage) = 0;
 	MVKDevice* getDevice();
-	bool isDynamicState(MVKRenderStateType state);
-	template <typename T> T& getContent(T* iVarAry, bool isDynamic) {
-		return iVarAry[isDynamic ? StateScope::Dynamic : StateScope::Static];
-	}
-	template <typename T> T& getContent(T* iVarAry, MVKRenderStateType state) {
-		return getContent(iVarAry, isDynamicState(state));
-	}
 
     MVKCommandEncoder* _cmdEncoder;
 	bool _isDirty = false;
@@ -165,197 +297,6 @@ protected:
     VkShaderStageFlagBits _shaderStage;
     uint32_t _mtlBufferIndex = 0;
 	bool _pipelineStageUsesPushConstants = false;
-};
-
-
-#pragma mark -
-#pragma mark MVKDepthStencilCommandEncoderState
-
-/** Holds encoder state established by depth stencil commands. */
-class MVKDepthStencilCommandEncoderState : public MVKCommandEncoderState {
-
-public:
-
-    /** Sets the depth stencil state during pipeline binding. */
-    void setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo);
-
-	/** Enables or disables depth testing, from explicit dynamic command. */
-	void setDepthTestEnable(VkBool32 depthTestEnable);
-
-	/** Enables or disables depth writing, from explicit dynamic command. */
-	void setDepthWriteEnable(VkBool32 depthWriteEnable);
-
-	/** Sets the depth compare operation, from explicit dynamic command. */
-	void setDepthCompareOp(VkCompareOp depthCompareOp);
-
-	/** Enables or disables stencil testing, from explicit dynamic command. */
-	void setStencilTestEnable(VkBool32 stencilTestEnable);
-
-	/** Sets the stencil operations of the indicated faces from explicit dynamic command. */
-	void setStencilOp(VkStencilFaceFlags faceMask,
-					  VkStencilOp failOp,
-					  VkStencilOp passOp,
-					  VkStencilOp depthFailOp,
-					  VkCompareOp compareOp);
-
-    /** Sets the stencil compare mask value of the indicated faces from explicit dynamic command. */
-    void setStencilCompareMask(VkStencilFaceFlags faceMask, uint32_t stencilCompareMask);
-
-    /** Sets the stencil write mask value of the indicated faces from explicit dynamic command. */
-    void setStencilWriteMask(VkStencilFaceFlags faceMask, uint32_t stencilWriteMask);
-
-	void beginMetalRenderPass() override;
-
-    /** Constructs this instance for the specified command encoder. */
-    MVKDepthStencilCommandEncoderState(MVKCommandEncoder* cmdEncoder)
-        : MVKCommandEncoderState(cmdEncoder) {}
-
-protected:
-    void encodeImpl(uint32_t stage) override;
-	MVKMTLDepthStencilDescriptorData& getData(MVKRenderStateType state) { return getContent(_depthStencilData, state); }
-	template <typename T> void setContent(T& content, T value) {
-		if (content != value) {
-			content = value;
-			markDirty();
-		}
-	}
-	void setStencilState(MVKMTLStencilDescriptorData& sData, const VkStencilOpState& vkStencil);
-	void setStencilOp(MVKMTLStencilDescriptorData& sData, VkStencilOp failOp,
-					  VkStencilOp passOp, VkStencilOp depthFailOp, VkCompareOp compareOp);
-
-	MVKMTLDepthStencilDescriptorData _depthStencilData[StateScope::Count];
-	bool _depthTestEnabled[StateScope::Count] = {};
-	bool _hasDepthAttachment = false;
-	bool _hasStencilAttachment = false;
-};
-
-
-#pragma mark -
-#pragma mark MVKRenderingCommandEncoderState
-
-struct MVKDepthBias {
-	float depthBiasConstantFactor;
-	float depthBiasClamp;
-	float depthBiasSlopeFactor;
-};
-
-struct MVKDepthBounds {
-	float minDepthBound;
-	float maxDepthBound;
-};
-
-struct MVKStencilReference {
-	uint32_t frontFaceValue;
-	uint32_t backFaceValue;
-};
-
-struct MVKMTLViewports {
-	MTLViewport viewports[kMVKMaxViewportScissorCount];
-	uint32_t viewportCount;
-};
-
-struct MVKMTLScissors {
-	MTLScissorRect scissors[kMVKMaxViewportScissorCount];
-	uint32_t scissorCount;
-};
-
-/** Holds encoder state established by various rendering state commands. */
-class MVKRenderingCommandEncoderState : public MVKCommandEncoderState {
-public:
-	void setCullMode(VkCullModeFlags cullMode, bool isDynamic);
-
-	void setFrontFace(VkFrontFace frontFace, bool isDynamic);
-
-	void setPolygonMode(VkPolygonMode polygonMode, bool isDynamic);
-
-	void setLineWidth(float lineWidth, bool isDynamic);
-	void setLineRasterizationMode(VkLineRasterizationMode lineRasterizationMode, bool isDynamic);
-
-	void setBlendConstants(MVKColor32 blendConstants, bool isDynamic);
-
-	void setDepthBias(const VkPipelineRasterizationStateCreateInfo& vkRasterInfo);
-	void setDepthBias(MVKDepthBias depthBias, bool isDynamic);
-	void setDepthBiasEnable(VkBool32 depthBiasEnable, bool isDynamic);
-	void setDepthClipEnable(bool depthClip, bool isDynamic);
-	void setDepthBounds(MVKDepthBounds depthBounds, bool isDynamic);
-	void setDepthBoundsTestEnable(VkBool32 depthBoundsTestEnable, bool isDynamic);
-	void setStencilReferenceValues(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo);
-	void setStencilReferenceValues(VkStencilFaceFlags faceMask, uint32_t stencilReference);
-
-	void setViewports(const MVKArrayRef<VkViewport> viewports, uint32_t firstViewport, bool isDynamic);
-	void setScissors(const MVKArrayRef<VkRect2D> scissors, uint32_t firstScissor, bool isDynamic);
-
-	void setPrimitiveRestartEnable(VkBool32 primitiveRestartEnable, bool isDynamic);
-
-	void setRasterizerDiscardEnable(VkBool32 rasterizerDiscardEnable, bool isDynamic);
-
-	void setPrimitiveTopology(VkPrimitiveTopology topology, bool isDynamic);
-	MTLPrimitiveType getPrimitiveType();
-
-	void setPatchControlPoints(uint32_t patchControlPoints, bool isDynamic);
-	uint32_t getPatchControlPoints();
-
-	void setSampleLocationsEnable(VkBool32 sampleLocationsEnable, bool isDynamic);
-	void setSampleLocations(const MVKArrayRef<VkSampleLocationEXT> sampleLocations, bool isDynamic);
-	MVKArrayRef<MTLSamplePosition> getSamplePositions();
-
-	void beginMetalRenderPass() override;
-	bool needsMetalRenderPassRestart();
-
-	bool isDirty(MVKRenderStateType state);
-	void markDirty() override;
-
-	MVKRenderingCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKCommandEncoderState(cmdEncoder) {}
-
-protected:
-	void encodeImpl(uint32_t stage) override;
-	bool isDrawingTriangles();
-	bool isDrawingLines();
-	void checkSamplePositionsOverride();
-	template <typename T> void setContent(MVKRenderStateType state, T* iVarAry, T* pVal, bool isDynamic) {
-		auto* pIVar = &iVarAry[isDynamic ? StateScope::Dynamic : StateScope::Static];
-		if( !mvkAreEqual(pVal, pIVar) ) {
-			*pIVar = *pVal;
-			_dirtyStates.enable(state);
-			_modifiedStates.enable(state);
-			MVKCommandEncoderState::markDirty();	// Avoid local markDirty() as it marks all states dirty.
-		}
-	}
-	template <typename T> void setContent(MVKRenderStateType state, T* iVarAry, T val, bool isDynamic) {
-		setContent(state, iVarAry, &val, isDynamic);
-	}
-
-	enum SamplePositionsOverride {
-		None = 0,
-		Centered
-	};
-
-	MVKSmallVector<MTLSamplePosition, kMVKMaxSampleCount> _mtlSampleLocations[StateScope::Count] = {};
-	MVKMTLViewports _mtlViewports[StateScope::Count] = {};
-	MVKMTLScissors _mtlScissors[StateScope::Count] = {};
-	MVKColor32 _mtlBlendConstants[StateScope::Count] = {};
-	MVKDepthBias _mtlDepthBias[StateScope::Count] = {};
-	MVKDepthBounds _mtlDepthBounds[StateScope::Count] = {};
-	MVKStencilReference _mtlStencilReference[StateScope::Count] = {};
-	MTLCullMode _mtlCullMode[StateScope::Count] = { MTLCullModeNone, MTLCullModeNone };
-	MTLWinding _mtlFrontFace[StateScope::Count] = { MTLWindingClockwise, MTLWindingClockwise };
-	MTLPrimitiveType _mtlPrimitiveTopology[StateScope::Count] = { MTLPrimitiveTypePoint, MTLPrimitiveTypePoint };
-	MTLDepthClipMode _mtlDepthClipEnable[StateScope::Count] = { MTLDepthClipModeClip, MTLDepthClipModeClip };
-	MTLTriangleFillMode _mtlPolygonMode[StateScope::Count] = { MTLTriangleFillModeFill, MTLTriangleFillModeFill };
-	float _mtlLineWidth[StateScope::Count] = { 1, 1 };
-	VkLineRasterizationMode _vkLineRasterizationMode[StateScope::Count] = { VK_LINE_RASTERIZATION_MODE_DEFAULT, VK_LINE_RASTERIZATION_MODE_DEFAULT };
-	uint32_t _mtlPatchControlPoints[StateScope::Count] = { 0, 0 };
-	MVKRenderStateFlags _dirtyStates;
-	MVKRenderStateFlags _modifiedStates;
-	SamplePositionsOverride _samplePositionsOverride = None;
-	bool _mtlSampleLocationsEnable[StateScope::Count] = {};
-	bool _mtlDepthBiasEnable[StateScope::Count] = {};
-	bool _mtlPrimitiveRestartEnable[StateScope::Count] = {};
-	bool _mtlRasterizerDiscardEnable[StateScope::Count] = {};
-	bool _mtlDepthBoundsTestEnable[StateScope::Count] = {};
-	bool _cullBothFaces[StateScope::Count] = {};
-	bool _isPolygonModePoint[StateScope::Count] = {};
-	bool _shouldCheckSamplePositionOverride = false;
 };
 
 

@@ -824,13 +824,14 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 	// If no custom sample positions are established, size will be zero,
 	// and Metal will default to using default sample postions.
 	if (getMetalFeatures().programmableSamplePositions) {
-		auto sampPosns = _renderingState.getSamplePositions();
+		auto sampPosns = _state.updateSamplePositions();
 		[mtlRPDesc setSamplePositions: sampPosns.data() count: sampPosns.size()];
 	}
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
 	retainIfImmediatelyEncoding(_mtlRenderEncoder);
 	_cmdBuffer->setMetalObjectLabel(_mtlRenderEncoder, getMTLRenderCommandEncoderName(cmdUse));
+	getState().beginGraphicsEncoding(getSampleCount());
 
 	encodeBarrierWaits(cmdUse);
 
@@ -839,10 +840,7 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 	// area if we're not rendering to the entire attachment.
     if ( !isRestart && !_isRenderingEntireAttachment ) { clearRenderArea(cmdUse); }
 
-    _graphicsPipelineState.beginMetalRenderPass();
     _graphicsResourcesState.beginMetalRenderPass();
-	_depthStencilState.beginMetalRenderPass();
-    _renderingState.beginMetalRenderPass();
     _vertexPushConstants.beginMetalRenderPass();
     _tessCtlPushConstants.beginMetalRenderPass();
     _tessEvalPushConstants.beginMetalRenderPass();
@@ -851,7 +849,7 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 }
 
 void MVKCommandEncoder::restartMetalRenderPassIfNeeded() {
-	if ( !_mtlRenderEncoder || _renderingState.needsMetalRenderPassRestart() ) {
+	if ( !_mtlRenderEncoder || _state.needsMetalRenderPassRestart() ) {
 		encodeStoreActions(true);
 		beginMetalRenderPass(kMVKCommandUseRestartSubpass);
 	}
@@ -895,7 +893,8 @@ uint32_t MVKCommandEncoder::getFramebufferLayerCount() {
 void MVKCommandEncoder::bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline) {
     switch (pipelineBindPoint) {
         case VK_PIPELINE_BIND_POINT_GRAPHICS:
-            _graphicsPipelineState.bindPipeline(pipeline);
+            _state.bindPipeline(static_cast<MVKGraphicsPipeline*>(pipeline));
+            static_cast<MVKGraphicsPipeline*>(pipeline)->wasBound(this);
             break;
 
         case VK_PIPELINE_BIND_POINT_COMPUTE:
@@ -985,15 +984,16 @@ void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
         // Must happen before switching encoders.
         encodeStoreActions(true);
     }
-    _graphicsPipelineState.encode(stage);    	// Must do first..it sets others
-	_depthStencilState.encode(stage);
+	if (stage == kMVKGraphicsStageRasterization)
+		prepareDraw();
+	else
+		prepareRenderDispatch(stage);
     _graphicsResourcesState.encode(stage);   	// Before push constants, to allow them to override.
     _vertexPushConstants.encode(stage);
     _tessCtlPushConstants.encode(stage);
     _tessEvalPushConstants.encode(stage);
     _fragmentPushConstants.encode(stage);
 	_gpuAddressableBuffersState.encode(stage);	// After resources and push constants
-	_renderingState.encode(stage);
     _occlusionQueryState.encode(stage);
 }
 
@@ -1082,10 +1082,7 @@ void MVKCommandEncoder::endMetalRenderEncoding() {
 
 	getSubpass()->resolveUnresolvableAttachments(this, _attachments.contents());
 
-    _graphicsPipelineState.endMetalRenderPass();
     _graphicsResourcesState.endMetalRenderPass();
-	_depthStencilState.endMetalRenderPass();
-    _renderingState.endMetalRenderPass();
     _vertexPushConstants.endMetalRenderPass();
     _tessCtlPushConstants.endMetalRenderPass();
     _tessEvalPushConstants.endMetalRenderPass();
@@ -1455,13 +1452,10 @@ void MVKCommandEncoder::finishQueries() {
 MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
 									 MVKPrefillMetalCommandBuffersStyle prefillStyle) : MVKBaseDeviceObject(cmdBuffer->getDevice()),
 	_cmdBuffer(cmdBuffer),
-	_graphicsPipelineState(this),
 	_graphicsResourcesState(this),
 	_computePipelineState(this),
 	_computeResourcesState(this),
 	_gpuAddressableBuffersState(this),
-	_depthStencilState(this),
-	_renderingState(this),
 	_occlusionQueryState(this),
 	_vertexPushConstants(this, VK_SHADER_STAGE_VERTEX_BIT),
 	_tessCtlPushConstants(this, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT),

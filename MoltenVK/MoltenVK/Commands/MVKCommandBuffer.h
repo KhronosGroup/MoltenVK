@@ -390,8 +390,23 @@ public:
 	 */
 	id<MTLCommandEncoder> getMTLEncoder();
 
+	/** Returns the command encoder state. */
+	MVKCommandEncoderStateNew& getState() { return _state; }
+
+	/** Returns the Vulkan graphics encoder state. */
+	const MVKVulkanGraphicsCommandEncoderState& getVkGraphics() const { return _state.vkGraphics(); }
+
+	/** Returns the Metal graphics encoder state. */
+	MVKMetalGraphicsCommandEncoderState& getMtlGraphics() { return _state.mtlGraphics(); }
+
+	/** Prepares state for a rasterization pipeline draw. */
+	void prepareDraw() { _state.prepareDraw(_mtlRenderEncoder, *this); }
+
+	/** Prepares the Metal compute pipeline state to dispatch the given stage of the Vulkan render pipeline. */
+	void prepareRenderDispatch(MVKGraphicsStage stage) { _state.prepareRenderDispatch(_mtlComputeEncoder, *this, stage); }
+
 	/** Returns the graphics pipeline. */
-	MVKGraphicsPipeline* getGraphicsPipeline() { return (MVKGraphicsPipeline*)_graphicsPipelineState.getPipeline(); }
+	MVKGraphicsPipeline* getGraphicsPipeline() { return getVkGraphics()._pipeline; }
 
 	/** Returns the compute pipeline. */
 	MVKComputePipeline* getComputePipeline() { return (MVKComputePipeline*)_computePipelineState.getPipeline(); }
@@ -492,8 +507,8 @@ public:
 	/** The current Metal render encoder. */
 	id<MTLRenderCommandEncoder> _mtlRenderEncoder;
 
-    /** Tracks the current graphics pipeline bound to the encoder. */
-	MVKPipelineCommandEncoderState _graphicsPipelineState;
+	/** Tracks the state of command encoding. */
+	MVKCommandEncoderStateNew _state;
 
 	/** Tracks the current graphics resources state of the encoder. */
 	MVKGraphicsResourcesCommandEncoderState _graphicsResourcesState;
@@ -506,12 +521,6 @@ public:
 
 	/** Tracks whether the GPU-addressable buffers need to be used. */
 	MVKGPUAddressableBuffersCommandEncoderState _gpuAddressableBuffersState;
-
-    /** Tracks the current depth stencil state of the encoder. */
-    MVKDepthStencilCommandEncoderState _depthStencilState;
-
-	/** Tracks the current rendering states of the encoder. */
-	MVKRenderingCommandEncoderState _renderingState;
 
 	/** Tracks the occlusion query state of the encoder. */
 	MVKOcclusionQueryCommandEncoderState _occlusionQueryState;
