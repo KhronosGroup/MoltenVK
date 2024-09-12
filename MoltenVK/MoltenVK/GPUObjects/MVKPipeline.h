@@ -22,6 +22,7 @@
 #include "MVKRenderPass.h"
 #include "MVKDescriptorSet.h"
 #include "MVKShaderModule.h"
+#include "MVKStateTracking.h"
 #include "MVKSync.h"
 #include "MVKSmallVector.h"
 #include "MVKBitArray.h"
@@ -227,58 +228,6 @@ struct MVKStagedDescriptorBindingUse {
 	MVKBitArray stages[4] = {};
 };
 
-/** Enumeration identifying different state content types. */
-enum MVKRenderStateType {
-	Unknown = 0,
-	BlendConstants,
-	CullMode,
-	DepthBias,
-	DepthBiasEnable,
-	DepthBounds,
-	DepthBoundsTestEnable,
-	DepthClipEnable,
-	DepthCompareOp,
-	DepthTestEnable,
-	DepthWriteEnable,
-	FrontFace,
-	LineRasterizationMode,
-	LineStippleEnable,
-	LineWidth,
-	LogicOp,
-	LogicOpEnable,
-	PatchControlPoints,
-	PolygonMode,
-	PrimitiveRestartEnable,
-	PrimitiveTopology,
-	RasterizerDiscardEnable,
-	SampleLocations,
-	SampleLocationsEnable,
-	Scissors,
-	StencilCompareMask,
-	StencilOp,
-	StencilReference,
-	StencilTestEnable,
-	StencilWriteMask,
-	VertexStride,
-	Viewports,
-	MVKRenderStateTypeCount
-};
-
-/** Boolean tracking of rendering state. */
-struct MVKRenderStateFlags {
-	void enable(MVKRenderStateType rs) { if (rs) { mvkEnableFlags(_stateFlags, getFlagMask(rs)); } }
-	void disable(MVKRenderStateType rs) { if (rs) { mvkDisableFlags(_stateFlags, getFlagMask(rs)); } }
-	void set(MVKRenderStateType rs, bool val) { val? enable(rs) : disable(rs); }
-	void enableAll() { mvkEnableAllFlags(_stateFlags); }
-	void disableAll() { mvkDisableAllFlags(_stateFlags); }
-	bool isEnabled(MVKRenderStateType rs) { return mvkIsAnyFlagEnabled(_stateFlags, getFlagMask(rs)); }
-protected:
-	uint32_t getFlagMask(MVKRenderStateType rs) { return rs ? (1u << (rs - 1u)) : 0; }	 // Ignore Unknown type
-	
-	uint32_t _stateFlags = 0;
-	static_assert(sizeof(_stateFlags) * 8 >= MVKRenderStateTypeCount - 1, "_stateFlags is too small to support the number of flags in MVKRenderStateType."); // Ignore Unknown type
-};
-
 /** Represents an Vulkan graphics pipeline. */
 class MVKGraphicsPipeline : public MVKPipeline {
 
@@ -291,14 +240,11 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder, uint32_t stage = 0) override;
 
-    /** Returns whether this pipeline permits dynamic setting of the state. */
-	bool isDynamicState(MVKRenderStateType state) { return _dynamicState.isEnabled(state); }
+	/** Returns whether this pipeline has tessellation shaders. */
+	bool isTessellationPipeline() { return _isTessellationPipeline; }
 
-    /** Returns whether this pipeline has tessellation shaders. */
-    bool isTessellationPipeline() { return _isTessellationPipeline; }
-
-    /** Returns the number of output tessellation patch control points. */
-    uint32_t getOutputControlPointCount() { return _outputControlPointCount; }
+	/** Returns the number of output tessellation patch control points. */
+	uint32_t getOutputControlPointCount() { return _outputControlPointCount; }
 
 	/** Returns the current captured output buffer bindings. */
 	const MVKShaderImplicitRezBinding& getOutputBufferIndex() { return _outputBufferIndex; }
@@ -308,6 +254,14 @@ public:
 
 	/** Returns the current tessellation level buffer binding for the tess. control shader. */
 	uint32_t getTessCtlLevelBufferIndex() { return _tessCtlLevelBufferIndex; }
+
+	/** Returns the MTLRenderPipelineState for the final stage of the pipeline */
+	id<MTLRenderPipelineState> getMainPipelineState() const { return _mtlPipelineState; }
+
+	/** Returns the MTLRenderPipelineState for the final stage of the pipeline */
+	id<MTLRenderPipelineState> getMultiviewPipelineState(uint32_t mv) const {
+		return _multiviewMTLPipelineStates.empty() ? _mtlPipelineState : _multiviewMTLPipelineStates.find(mv)->second;
+	}
 
 	/** Returns the MTLComputePipelineState object for the vertex stage of a tessellated draw with no indices. */
 	id<MTLComputePipelineState> getTessVertexStageState() { return _mtlTessVertexStageState; }
@@ -354,6 +308,20 @@ public:
 	/** Returns the array of descriptor binding use for the descriptor set. */
 	MVKBitArray& getDescriptorBindingUse(uint32_t descSetIndex, MVKShaderStage stage) override { return _descriptorBindingUse[descSetIndex].stages[stage]; }
 
+	/** Check if rasterization is disabled. */
+	bool isRasterizationDisabled() const { return !_isRasterizing; }
+
+	/** Returns the list of state that is needed from the command encoder */
+	const MVKRenderStateFlags& getDynamicStateFlags() const { return _dynamicStateFlags; }
+	/** Returns the list of state that is stored on the pipeline */
+	const MVKRenderStateFlags& getStaticStateFlags() const { return _staticStateFlags; }
+	/** Returns the state data that is stored on the pipeline */
+	const MVKRenderStateData& getStaticStateData() const { return _staticStateData; }
+	const VkViewport* getViewports() const { return _viewports; }
+	const VkRect2D* getScissors() const { return _scissors; }
+	const MTLSamplePosition* getSampleLocations() const { return _sampleLocations; }
+	const MTLPrimitiveTopologyClass getPrimitiveTopologyClass() const { return static_cast<MTLPrimitiveTopologyClass>(_primitiveTopologyClass); }
+
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKGraphicsPipeline(MVKDevice* device,
 						MVKPipelineCache* pipelineCache,
@@ -392,7 +360,7 @@ protected:
 	void adjustVertexInputForMultiview(MTLVertexDescriptor* inputDesc, const VkPipelineVertexInputStateCreateInfo* pVI, uint32_t viewCount, uint32_t oldViewCount = 1);
     void addTessellationToPipeline(MTLRenderPipelineDescriptor* plDesc, const mvk::SPIRVTessReflectionData& reflectData, const VkPipelineTessellationStateCreateInfo* pTS);
     void addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo);
-    bool isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo);
+    bool isRenderingPoints();
     bool isRasterizationDisabled(const VkGraphicsPipelineCreateInfo* pCreateInfo);
     bool isDepthClipNegativeOneToOne(const VkGraphicsPipelineCreateInfo* pCreateInfo);
 	bool verifyImplicitBuffer(bool needsBuffer, MVKShaderImplicitRezBinding& index, MVKShaderStage stage, const char* name);
@@ -406,15 +374,13 @@ protected:
 	void markIfUsingPhysicalStorageBufferAddressesCapability(mvk::SPIRVToMSLConversionResultInfo& resultsInfo, MVKShaderStage stage);
 	void populateRenderingAttachmentInfo(const VkGraphicsPipelineCreateInfo* pCreateInfo);
 
-	VkPipelineTessellationStateCreateInfo _tessInfo;
-	VkPipelineRasterizationStateCreateInfo _rasterInfo;
-	VkPipelineRasterizationLineStateCreateInfo _rasterLineInfo;
-	VkPipelineDepthStencilStateCreateInfo _depthStencilInfo;
-	MVKRenderStateFlags _dynamicState;
+	MVKRenderStateFlags _dynamicStateFlags;
+	MVKRenderStateFlags _staticStateFlags;
+	MVKRenderStateData _staticStateData;
 
-	MVKSmallVector<VkViewport, kMVKMaxViewportScissorCount> _viewports;
-	MVKSmallVector<VkRect2D, kMVKMaxViewportScissorCount> _scissors;
-	MVKSmallVector<VkSampleLocationEXT> _sampleLocations;
+	VkViewport _viewports[kMVKMaxViewportScissorCount];
+	VkRect2D _scissors[kMVKMaxViewportScissorCount];
+	MTLSamplePosition _sampleLocations[kMVKMaxSampleCount];
 	MVKSmallVector<MVKTranslatedVertexBinding> _translatedVertexBindings;
 	MVKSmallVector<MVKZeroDivisorVertexBinding> _zeroDivisorVertexBindings;
 	MVKSmallVector<MVKStagedDescriptorBindingUse> _descriptorBindingUse;
@@ -428,7 +394,6 @@ protected:
 	id<MTLComputePipelineState> _mtlTessControlStageState = nil;
 	id<MTLRenderPipelineState> _mtlPipelineState = nil;
 
-	MVKColor32 _blendConstants = { 0.0, 0.0, 0.0, 1.0 };
 	MVKShaderImplicitRezBinding _reservedVertexAttributeBufferCount;
 	MVKShaderImplicitRezBinding _viewRangeBufferIndex;
 	MVKShaderImplicitRezBinding _outputBufferIndex;
@@ -447,10 +412,8 @@ protected:
 	bool _ownsFragmentModule = false;
 
 	static constexpr uint32_t kMVKMaxVertexInputBindingBufferCount = 31u; // Taken from Metal Feature Set Table. Highest value out of all present GPUs
+	uint8_t _primitiveTopologyClass;
 	bool _isVertexInputBindingUsed[kMVKMaxVertexInputBindingBufferCount] = { false };
-	bool _primitiveRestartEnable = true;
-	bool _hasRasterInfo = false;
-	bool _hasRasterLineInfo = false;
 	bool _needsVertexSwizzleBuffer = false;
 	bool _needsVertexBufferSizeBuffer = false;
 	bool _needsVertexDynamicOffsetBuffer = false;
@@ -471,7 +434,6 @@ protected:
 	bool _needsFragmentViewRangeBuffer = false;
 	bool _isRasterizing = false;
 	bool _isRasterizingColor = false;
-	bool _sampleLocationsEnable = false;
 	bool _isTessellationPipeline = false;
 	bool _inputAttachmentIsDSAttachment = false;
 	bool _hasRemappedAttachmentLocations = false;
