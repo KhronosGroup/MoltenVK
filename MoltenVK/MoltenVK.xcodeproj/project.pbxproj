@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		16089AF42C924621003CF426 /* MVKStateTracking.h in Headers */ = {isa = PBXBuildFile; fileRef = 16089AF22C924621003CF426 /* MVKStateTracking.h */; };
+		16089AF62C924621003CF426 /* MVKStateTracking.h in Headers */ = {isa = PBXBuildFile; fileRef = 16089AF22C924621003CF426 /* MVKStateTracking.h */; };
+		16089AF82C924621003CF426 /* MVKStateTracking.h in Headers */ = {isa = PBXBuildFile; fileRef = 16089AF22C924621003CF426 /* MVKStateTracking.h */; };
+		16089AFA2C924621003CF426 /* MVKStateTracking.h in Headers */ = {isa = PBXBuildFile; fileRef = 16089AF22C924621003CF426 /* MVKStateTracking.h */; };
 		2FEA0A4124902F9F00EEF3AD /* MVKExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = A909F65A213B190600FCD6BE /* MVKExtensions.h */; };
 		2FEA0A4224902F9F00EEF3AD /* vk_mvk_moltenvk.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7691C7DFB4800632CA3 /* vk_mvk_moltenvk.h */; };
 		2FEA0A4324902F9F00EEF3AD /* mvk_datatypes.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7671C7DFB4800632CA3 /* mvk_datatypes.h */; };
@@ -654,6 +658,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		16089AF22C924621003CF426 /* MVKStateTracking.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MVKStateTracking.h; sourceTree = "<group>"; };
 		2FEA0ABA24902F9F00EEF3AD /* libMoltenVK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVK.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		45003E6F214AD4C900E989CB /* MVKExtensions.def */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = MVKExtensions.def; sourceTree = "<group>"; };
 		4536382D2508A4C6000EFFD3 /* MTLRenderPassStencilAttachmentDescriptor+MoltenVK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "MTLRenderPassStencilAttachmentDescriptor+MoltenVK.h"; sourceTree = "<group>"; };
@@ -1048,6 +1053,7 @@
 				A981494A1FB6A3F7005F00B4 /* MVKWatermark.mm */,
 				A981494B1FB6A3F7005F00B4 /* MVKWatermarkShaderSource.h */,
 				A981494C1FB6A3F7005F00B4 /* MVKWatermarkTextureContent.h */,
+				16089AF22C924621003CF426 /* MVKStateTracking.h */,
 			);
 			path = Utility;
 			sourceTree = "<group>";
@@ -1183,6 +1189,7 @@
 				2FEA0A5024902F9F00EEF3AD /* MVKCodec.h in Headers */,
 				2FEA0A5124902F9F00EEF3AD /* MVKRenderPass.h in Headers */,
 				2FEA0A5224902F9F00EEF3AD /* MVKLogging.h in Headers */,
+				16089AF82C924621003CF426 /* MVKStateTracking.h in Headers */,
 				2FEA0A5324902F9F00EEF3AD /* MVKQueue.h in Headers */,
 				2FEA0A5424902F9F00EEF3AD /* MVKFramebuffer.h in Headers */,
 				2FEA0A5624902F9F00EEF3AD /* MVKWatermarkShaderSource.h in Headers */,
@@ -1262,6 +1269,7 @@
 				A94FB7FC1C7DFB4800632CA3 /* MVKQueryPool.h in Headers */,
 				A95B7D691D3EE486003183D3 /* MVKCommandEncoderState.h in Headers */,
 				A94FB7D81C7DFB4800632CA3 /* MVKCommandPipelineStateFactoryShaderSource.h in Headers */,
+				16089AF62C924621003CF426 /* MVKStateTracking.h in Headers */,
 				A94FB7E01C7DFB4800632CA3 /* MVKDescriptorSet.h in Headers */,
 				A9D7104F25CDE05E00E38106 /* MVKBitArray.h in Headers */,
 				A9E53DE12100B197002781DD /* NSString+MoltenVK.h in Headers */,
@@ -1342,6 +1350,7 @@
 				A94FB7FD1C7DFB4800632CA3 /* MVKQueryPool.h in Headers */,
 				A95B7D6A1D3EE486003183D3 /* MVKCommandEncoderState.h in Headers */,
 				A94FB7D91C7DFB4800632CA3 /* MVKCommandPipelineStateFactoryShaderSource.h in Headers */,
+				16089AF42C924621003CF426 /* MVKStateTracking.h in Headers */,
 				A94FB7E11C7DFB4800632CA3 /* MVKDescriptorSet.h in Headers */,
 				A9D7105125CDE05E00E38106 /* MVKBitArray.h in Headers */,
 				A9E53DE22100B197002781DD /* NSString+MoltenVK.h in Headers */,
@@ -1496,6 +1505,7 @@
 				DCFD7F1B2A45BC6E007BBBF7 /* MVKFoundation.h in Headers */,
 				DCFD7F1C2A45BC6E007BBBF7 /* MVKDeviceMemory.h in Headers */,
 				DCFD7F1D2A45BC6E007BBBF7 /* MVKMTLResourceBindings.h in Headers */,
+				16089AFA2C924621003CF426 /* MVKStateTracking.h in Headers */,
 				DCFD7F1E2A45BC6E007BBBF7 /* MVKExtensions.def in Headers */,
 				DCFD7F1F2A45BC6E007BBBF7 /* mvk_datatypes.hpp in Headers */,
 				DCFD7F202A45BC6E007BBBF7 /* MVKCommandEncodingPool.h in Headers */,
