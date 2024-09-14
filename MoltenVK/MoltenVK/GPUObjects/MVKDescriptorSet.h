@@ -133,6 +133,7 @@ protected:
 	uint32_t getBufferSizeBufferArgBuferIndex() { return 0; }
 	id <MTLArgumentEncoder> getMTLArgumentEncoder(uint32_t variableDescriptorCount);
 	uint64_t getMetal3ArgumentBufferEncodedLength(uint32_t variableDescriptorCount);
+	bool checkCanUseArgumentBuffers(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 	std::string getLogDescription();
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
