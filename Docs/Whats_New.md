@@ -28,15 +28,16 @@ Released 2024-09-24
 - Update `VkFormat` capabilities based on latest Metal docs.
 - Ensure all MoltenVK config info set by `VK_EXT_layer_settings` is used.
 - Support storage images in Metal argument buffers on _iOS_.
+- `vkUpdateDescriptorSets()`: Support writing beyond descriptor binding size if subsequent bindings are of same type.
 - Fix rendering issue with render pass that immediately follows a kernel dispatch.
 - Fix race condition when `VkImage` destroyed while used by descriptor.
 - Fix crash in `vkCmdPushDescriptorSetWithTemplateKHR()` when entries in 
   `VkDescriptorUpdateTemplateCreateInfo` are not sorted by offset.
 - Fix issue where `vkQueueWaitIdle()` and `vkDeviceWaitIdle()` were not 
   waiting for all commands to be enqueued before enqueuing wait operation.
+- Fix shader conversion failure when using storage images on _iOS_ & _tvOS_ with Tier 1 argument buffer support.
 - Fix memory leak in debug utils messenger.
 - Fix build failure on _VisionOS 2.0_ platform.
-- `vkUpdateDescriptorSets()`: Support writing beyond descriptor binding size if subsequent bindings are of same type.
 - Support `VK_FORMAT_A2B10G10R10_UNORM_PACK32` and `VK_FORMAT_A2R10G10B10_UNORM_PACK32` formats as surface formats on all platforms.
 - Add `MTLStoreAction` mapping for `VK_ATTACHMENT_STORE_OP_NONE`.
 - Add estimate of `presentMargin` in returned data from `vkGetPastPresentationTimingGOOGLE()`.

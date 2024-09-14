@@ -363,10 +363,6 @@ MVKDescriptorSetLayoutBinding* MVKDescriptorSetLayout::getBinding(uint32_t bindi
 
 MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
                                                const VkDescriptorSetLayoutCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
-
-	_isPushDescriptorLayout = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
-	_canUseMetalArgumentBuffer = !_isPushDescriptorLayout;	// Push descriptors don't use argument buffers
-
 	const VkDescriptorBindingFlags* pBindingFlags = nullptr;
 	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
@@ -381,6 +377,9 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 				break;
 		}
 	}
+
+	_isPushDescriptorLayout = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+	_canUseMetalArgumentBuffer = checkCanUseArgumentBuffers(pCreateInfo);	// After _isPushDescriptorLayout
 
 	// The bindings in VkDescriptorSetLayoutCreateInfo do not need to be provided in order of binding number.
 	// However, several subsequent operations, such as the dynamic offsets in vkCmdBindDescriptorSets()
@@ -403,6 +402,7 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 		return bindInfo1.pBinding->binding < bindInfo2.pBinding->binding;
 	});
 
+	// Create bindings. Must be done after _isPushDescriptorLayout & _canUseMetalArgumentBuffer are set.
 	uint32_t dslDescCnt = 0;
 	uint32_t dslMTLRezCnt = needsBuffSizeAuxBuff ? 1 : 0;	// If needed, leave a slot for the buffer sizes buffer at front.
 	_bindings.reserve(bindCnt);
@@ -422,6 +422,28 @@ std::string MVKDescriptorSetLayout::getLogDescription() {
 		descStr << "\n\t" << dlb.getLogDescription();
 	}
 	return descStr.str();
+}
+
+// Check if argument buffers can be used, and return findings.
+// Must be called after setting _isPushDescriptorLayout.
+bool MVKDescriptorSetLayout::checkCanUseArgumentBuffers(const VkDescriptorSetLayoutCreateInfo* pCreateInfo) {
+
+// iOS Tier 1 argument buffers do not support writable images.
+#if MVK_IOS_OR_TVOS
+	if (getMetalFeatures().argumentBuffersTier < MTLArgumentBuffersTier2) {
+		for (uint32_t bindIdx = 0; bindIdx < pCreateInfo->bindingCount; bindIdx++) {
+			switch (pCreateInfo->pBindings[bindIdx].descriptorType) {
+				case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+				case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+					return false;
+				default:
+					break;
+			}
+		}
+	}
+#endif
+
+	return !_isPushDescriptorLayout;	// Push descriptors don't use argument buffers
 }
 
 
