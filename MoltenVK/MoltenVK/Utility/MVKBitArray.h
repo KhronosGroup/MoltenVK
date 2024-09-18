@@ -155,7 +155,7 @@ public:
 	bool enumerateEnabledBits(bool shouldClear, std::function<bool(size_t bitIndex)> func) {
 		for (size_t bitIdx = getIndexOfFirstSetBit(shouldClear);
 			 bitIdx < _bitCount;
-			 getIndexOfFirstSetBit(++bitIdx, shouldClear)) {
+			 bitIdx = getIndexOfFirstSetBit(++bitIdx, shouldClear)) {
 
 			if ( !func(bitIdx) ) { return false; }
 		}
