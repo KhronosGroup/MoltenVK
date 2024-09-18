@@ -226,7 +226,7 @@ while (( "$#" )); do
          GLSLANG_ROOT=$2
          shift 2
          ;;
-       -*|--*=)
+       *)
          echo "Error: Unsupported option $1" >&2
          exit 1
          ;;
