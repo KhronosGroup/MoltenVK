@@ -412,8 +412,10 @@ VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDevi
     if (_deviceMemory) { _deviceMemory->removeImageMemoryBinding(this); }
     MVKResource::bindDeviceMemory(mvkMem, memOffset);
 
+    if (!_deviceMemory) { return VK_SUCCESS; }
+
 	auto& mtlFeats = getMetalFeatures();
-    bool usesTexelBuffer = mtlFeats.texelBuffers && _deviceMemory; // Texel buffers available
+    bool usesTexelBuffer = mtlFeats.texelBuffers; // Texel buffers available
     usesTexelBuffer = usesTexelBuffer && (isMemoryHostAccessible() || mtlFeats.placementHeaps) && _image->_isLinear && !_image->getIsCompressed(); // Applicable memory layout
 
     // macOS before 10.15.5 cannot use shared memory for texel buffers.
@@ -425,7 +427,8 @@ VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDevi
             _mtlTexelBufferOffset = getDeviceMemoryOffset();
         } else {
             // Create our own buffer for this.
-            if (_deviceMemory && _deviceMemory->_mtlHeap && _image->getMTLStorageMode() == _deviceMemory->_mtlStorageMode) {
+            if (_ownsTexelBuffer) { [_mtlTexelBuffer release]; }
+            if (_deviceMemory->_mtlHeap && _image->getMTLStorageMode() == _deviceMemory->_mtlStorageMode) {
                 _mtlTexelBuffer = [_deviceMemory->_mtlHeap newBufferWithLength: _byteCount options: _deviceMemory->getMTLResourceOptions() offset: getDeviceMemoryOffset()];
                 if (_image->_isAliasable) { [_mtlTexelBuffer makeAliasable]; }
             } else {
@@ -443,7 +446,7 @@ VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDevi
     }
 
     flushToDevice(getDeviceMemoryOffset(), getByteCount());
-    return _deviceMemory ? _deviceMemory->addImageMemoryBinding(this) : VK_SUCCESS;
+    return _deviceMemory->addImageMemoryBinding(this);
 }
 
 void MVKImageMemoryBinding::applyMemoryBarrier(MVKPipelineBarrier& barrier,
