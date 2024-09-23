@@ -181,50 +181,53 @@ public:
 	void resize(size_t size, bool val = false) {
 		if (size == _bitCount) { return; }
 
-		size_t oldBitCnt = _bitCount;
-		size_t oldSecCnt = getSectionCount();
-		size_t oldEndBitCnt = oldSecCnt << SectionMaskSize;
-
-		// Some magic here. If we need only one section, _data is used as that section,
-		// and it will be stomped on if we reallocate, so we cache it here.
-		uint64_t* oldData = _data;
-		uint64_t* pOldData = oldSecCnt > 1 ? oldData : (uint64_t*)&oldData;
-
-		_bitCount = size;
-
-		size_t newSecCnt = getSectionCount();
-		if (newSecCnt == 0) {
-			// Clear out the existing data
-			if (oldSecCnt > 1) { free(pOldData); }
+		if (size == 0) {
+			if (_bitCapacity > SectionBitCount)
+				free(_data);
 			_data = 0;
+			_bitCapacity = SectionBitCount;
 			_clearedSectionCount = 0;
 			_lowestNeverClearedBitIndex = 0;
-		} else if (newSecCnt == oldSecCnt) {
-			// Keep the existing data, but fill any bits in the last section
-			// that were beyond the old bit count with the new initial value.
-			for (size_t bitIdx = oldBitCnt; bitIdx < oldEndBitCnt; bitIdx++) { setBit(bitIdx, val); }
-		} else if (newSecCnt > oldSecCnt) {
-			size_t oldByteCnt = oldSecCnt * SectionByteCount;
-			size_t newByteCnt = newSecCnt * SectionByteCount;
-
-			// If needed, allocate new memory.
-			if (newSecCnt > 1) { _data = (uint64_t*)malloc(newByteCnt); }
-
-			// Fill the new memory with the new initial value, copy the old contents to
-			// the new memory, fill any bits in the old last section that were beyond
-			// the old bit count with the new initial value, and remove the old memory.
-			uint64_t* pNewData = getData();
-			memset(pNewData, val ? ~0 : 0, newByteCnt);
-			memcpy(pNewData, pOldData, oldByteCnt);
-			for (size_t bitIdx = oldBitCnt; bitIdx < oldEndBitCnt; bitIdx++) { setBit(bitIdx, val); }
-			if (oldSecCnt > 1) { free(pOldData); }
-			if (!val) { _lowestNeverClearedBitIndex = _bitCount; }	// Cover additional sections
-
-			// If the entire old array and the new array are cleared, move the uncleared indicator to the new end.
-			if (_clearedSectionCount == oldSecCnt && !val) { _clearedSectionCount = newSecCnt; }
+			return;
 		}
-		// If we shrank, ensure this value still fits
-		if (_lowestNeverClearedBitIndex > _bitCount) { _lowestNeverClearedBitIndex = _bitCount; }
+
+		size_t oldBitCnt = _bitCount;
+		size_t oldSecCnt = getSectionCount();
+		_bitCount = size;
+		size_t newSecCnt = getSectionCount();
+
+		if (_bitCapacity < size) {
+			uint64_t* alloc = static_cast<uint64_t*>(malloc(newSecCnt * SectionByteCount));
+			if (_bitCapacity <= SectionBitCount) {
+				*alloc = reinterpret_cast<uint64_t>(_data);
+			} else {
+				memcpy(alloc, _data, oldSecCnt * SectionByteCount);
+				_clearedSectionCount = std::min(_clearedSectionCount, oldSecCnt);
+				free(_data);
+			}
+			_data = alloc;
+			_bitCapacity = newSecCnt * SectionBitCount;
+		}
+
+		if (oldBitCnt < size) {
+			// Fill in new sections
+			if (oldSecCnt < newSecCnt) {
+				uint64_t* data = const_cast<uint64_t*>(getData());
+				memset(&data[oldSecCnt], val ? ~0 : 0, (newSecCnt - oldSecCnt) * SectionByteCount);
+			}
+			if (!val) { _lowestNeverClearedBitIndex = _bitCount; } // Cover additional sections
+
+			if (_clearedSectionCount == oldSecCnt && !val) {
+				// If the entire old array and the new array are cleared, move the uncleared indicator to the new end.
+				_clearedSectionCount = newSecCnt;
+			} else {
+				// Otherwise, set the remaining bits
+				for (size_t i = oldBitCnt; i < oldSecCnt * SectionBitCount; i++) { setBit(i, val); }
+			}
+		} else if (_lowestNeverClearedBitIndex > _bitCount) {
+			// If we shrank, ensure this value still fits
+			_lowestNeverClearedBitIndex = _bitCount;
+		}
 	}
 
 	/** Constructs an instance for the specified number of bits, and sets the initial value of all the bits. */
@@ -253,7 +256,7 @@ protected:
 	// Returns a pointer do the data.
 	// Some magic here. If we need only one section, _data is used as that section.
 	uint64_t* getData() const {
-		return getSectionCount() > 1 ? _data : (uint64_t*)&_data;
+		return _bitCapacity > SectionBitCount ? _data : (uint64_t*)&_data;
 	}
 
 	// Returns a reference to the section.
@@ -263,7 +266,7 @@ protected:
 
 	// Returns the number of sections.
 	size_t getSectionCount() const {
-		return _bitCount ? getIndexOfSection(_bitCount - 1) + 1 : 0;
+		return (_bitCount / SectionBitCount) + !!(_bitCount % SectionBitCount);
 	}
 
 	// Returns the index of the section that contains the specified bit.
@@ -294,6 +297,7 @@ protected:
 
 	uint64_t* _data = nullptr;
 	size_t _bitCount = 0;
+	size_t _bitCapacity = SectionBitCount;
 	size_t _clearedSectionCount = 0;			// Tracks where to start looking for bits that are set
 	size_t _lowestNeverClearedBitIndex = 0;		// Tracks the lowest bit that has never been cleared
 };
