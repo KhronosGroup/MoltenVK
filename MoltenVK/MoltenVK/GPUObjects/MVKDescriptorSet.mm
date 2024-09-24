@@ -960,7 +960,10 @@ std::string MVKDescriptorPool::getLogDescription() {
 		<< "  (" << _##descPool##Descriptors.getRemainingDescriptorCount() << " remaining)"; }
 
 	std::stringstream descStr;
-	descStr << "VkDescriptorPool " << this << " with " << _descriptorSetAvailablility.size() << " descriptor sets, and pooled descriptors:";
+	descStr << "VkDescriptorPool " << this;
+	descStr << " with " << _descriptorSetAvailablility.size() << " descriptor sets";
+	descStr << " (reset " << (mvkIsAnyFlagEnabled(_flags, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) ? "or free" : "only") << ")";
+	descStr << ", and pooled descriptors:";
 	printDescCnt(UNIFORM_BUFFER, "          ", uniformBuffer);
 	printDescCnt(STORAGE_BUFFER, "          ", storageBuffer);
 	printDescCnt(UNIFORM_BUFFER_DYNAMIC, "  ", uniformBufferDynamic);
@@ -992,7 +995,8 @@ MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCr
 	_samplerDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_SAMPLER)),
 	_combinedImageSamplerDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)),
 	_uniformTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)),
-    _storageTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)) {
+    _storageTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)),
+    _flags(pCreateInfo->flags) {
 
 		initMetalArgumentBuffer(pCreateInfo);
 		MVKLogDebugIf(getMVKConfig().debugMode, "Created %s\n", getLogDescription().c_str());
