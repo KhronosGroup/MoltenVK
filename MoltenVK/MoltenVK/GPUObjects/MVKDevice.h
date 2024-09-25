@@ -368,7 +368,10 @@ public:
 	/** Returns the external memory properties supported for images for the handle type. */
 	VkExternalMemoryProperties& getExternalImageProperties(VkExternalMemoryHandleTypeFlagBits handleType);
 
-	
+	/** Returns the amount of memory currently consumed by the GPU. */
+	size_t getCurrentAllocatedSize();
+
+
 #pragma mark Metal
 
 	/** Populates the specified structure with the Metal-specific features of this device. */
@@ -430,7 +433,6 @@ protected:
 	void setMemoryType(uint32_t typeIndex, uint32_t heapIndex, VkMemoryPropertyFlags propertyFlags);
 	uint64_t getVRAMSize();
 	uint64_t getRecommendedMaxWorkingSetSize();
-	uint64_t getCurrentAllocatedSize();
 	uint32_t getMaxSamplerCount();
 	uint32_t getMaxPerSetDescriptorCount();
 	void initExternalMemoryProperties();

@@ -157,6 +157,9 @@ public:
 	/** Returns whether this binding should be applied to the shader stage. */
 	bool getApplyToStage(MVKShaderStage stage) { return _applyToStage[stage]; }
 
+	/** Returns a text description of this binding. */
+	std::string getLogDescription();
+
 	MVKDescriptorSetLayoutBinding(MVKDevice* device,
 								  MVKDescriptorSetLayout* layout,
 								  const VkDescriptorSetLayoutBinding* pBinding,
@@ -190,7 +193,6 @@ protected:
 	void encodeImmutableSamplersToMetalArgumentBuffer(MVKDescriptorSet* mvkDescSet);
 	uint8_t getMaxPlaneCount();
 	uint32_t getMTLResourceCount(uint32_t variableDescriptorCount = kMVKVariableDescriptorCountUnknown);
-	std::string getLogDescription();
 
 	MVKDescriptorSetLayout* _layout;
 	VkDescriptorSetLayoutBinding _info;

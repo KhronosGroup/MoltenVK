@@ -117,6 +117,9 @@ public:
 	/** Returns whether descriptor sets from this layout requires an auxilliary buffer-size buffer. */
 	bool needsBufferSizeAuxBuffer() { return _maxBufferIndex >= 0; }
 
+	/** Returns a text description of this layout. */
+	std::string getLogDescription();
+
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
 protected:
@@ -134,7 +137,6 @@ protected:
 	id <MTLArgumentEncoder> getMTLArgumentEncoder(uint32_t variableDescriptorCount);
 	uint64_t getMetal3ArgumentBufferEncodedLength(uint32_t variableDescriptorCount);
 	bool checkCanUseArgumentBuffers(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
-	std::string getLogDescription();
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
@@ -280,6 +282,9 @@ public:
 	/** Destroys all currently allocated descriptor sets. */
 	VkResult reset(VkDescriptorPoolResetFlags flags);
 
+	/** Returns a text description of this pool. */
+	std::string getLogDescription();
+
 	MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo);
 
 	~MVKDescriptorPool() override;
@@ -297,7 +302,6 @@ protected:
 	NSUInteger getMetalArgumentBufferEncodedResourceStorageSize(NSUInteger bufferCount, NSUInteger textureCount, NSUInteger samplerCount);
 	MTLArgumentDescriptor* getMTLArgumentDescriptor(MTLDataType resourceType, NSUInteger argIndex, NSUInteger count);
 	size_t getPoolSize(const VkDescriptorPoolCreateInfo* pCreateInfo, VkDescriptorType descriptorType);
-	std::string getLogDescription();
 
 	MVKSmallVector<MVKDescriptorSet> _descriptorSets;
 	MVKBitArray _descriptorSetAvailablility;
@@ -317,6 +321,8 @@ protected:
 	MVKDescriptorTypePool<MVKCombinedImageSamplerDescriptor> _combinedImageSamplerDescriptors;
 	MVKDescriptorTypePool<MVKUniformTexelBufferDescriptor> _uniformTexelBufferDescriptors;
 	MVKDescriptorTypePool<MVKStorageTexelBufferDescriptor> _storageTexelBufferDescriptors;
+
+	VkDescriptorPoolCreateFlags _flags;
 };
 
 

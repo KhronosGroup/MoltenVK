@@ -79,6 +79,9 @@ public:
 	/** Returns the descriptor set layout. */
 	MVKDescriptorSetLayout* getDescriptorSetLayout(uint32_t descSetIndex) { return _descriptorSetLayouts[descSetIndex]; }
 
+	/** Returns a text description of this layout. */
+	std::string getLogDescription();
+
 	/** Constructs an instance for the specified device. */
 	MVKPipelineLayout(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
 
@@ -89,7 +92,6 @@ protected:
 
 	void propagateDebugName() override {}
 	bool stageUsesPushConstants(MVKShaderStage mvkStage);
-	std::string getLogDescription();
 
 	MVKSmallVector<MVKDescriptorSetLayout*, 1> _descriptorSetLayouts;
 	MVKSmallVector<MVKShaderResourceBinding, 1> _dslMTLResourceIndexOffsets;
