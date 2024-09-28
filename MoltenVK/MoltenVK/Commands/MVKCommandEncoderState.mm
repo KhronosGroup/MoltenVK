@@ -645,7 +645,7 @@ void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 		if (dsChanged) {
 			auto& usageDirty = _metalUsageDirtyDescriptors[descSetIndex];
 			usageDirty.resize(descSet->getDescriptorCount());
-			usageDirty.setAllBits();
+			usageDirty.enableAllBits();
 		}
 
 		// Update dynamic buffer offsets
@@ -717,7 +717,7 @@ void MVKResourcesCommandEncoderState::markDirty() {
 	MVKCommandEncoderState::markDirty();
 	if (_cmdEncoder->isUsingMetalArgumentBuffers()) {
 		for (uint32_t dsIdx = 0; dsIdx < kMVKMaxDescriptorSetCount; dsIdx++) {
-			_metalUsageDirtyDescriptors[dsIdx].setAllBits();
+			_metalUsageDirtyDescriptors[dsIdx].enableAllBits();
 		}
 	}
 }
