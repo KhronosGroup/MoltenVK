@@ -538,6 +538,7 @@ VkResult MVKDescriptorSet::allocate(MVKDescriptorSetLayout* layout,
 									NSUInteger mtlArgBufferOffset,
 									id<MTLArgumentEncoder> mtlArgEnc) {
 	_layout = layout;
+	_layout->retain();
 	_variableDescriptorCount = variableDescriptorCount;
 	_argumentBuffer.setArgumentBuffer(_pool->_metalArgumentBuffer, mtlArgBufferOffset, mtlArgEnc);
 
@@ -574,6 +575,7 @@ VkResult MVKDescriptorSet::allocate(MVKDescriptorSetLayout* layout,
 }
 
 void MVKDescriptorSet::free(bool isPoolReset) {
+	if(_layout) { _layout->release(); }
 	_layout = nullptr;
 	_dynamicOffsetDescriptorCount = 0;
 	_variableDescriptorCount = 0;
@@ -611,6 +613,10 @@ void MVKDescriptorSet::encodeAuxBufferUsage(MVKResourcesCommandEncoderState* rez
 
 MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorPool* pool) : MVKVulkanAPIDeviceObject(pool->_device), _pool(pool) {
 	free(true);
+}
+
+MVKDescriptorSet::~MVKDescriptorSet() {
+	if(_layout) { _layout->release(); }
 }
 
 
