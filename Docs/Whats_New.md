@@ -16,7 +16,7 @@ Copyright (c) 2015-2024 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.2.11
 ---------------
 
-Released 2024-09-24
+Released 2024-10-01
 
 - Support dynamically allocating descriptors when pool is exhausted.
 - Deprecate `MVKConfiguration::preallocateDescriptors` and `MVK_CONFIG_PREALLOCATE_DESCRIPTORS` environment variable.
@@ -27,16 +27,22 @@ Released 2024-09-24
   end of a descriptor binding count, including inline uniform block descriptors.
 - Update `VkFormat` capabilities based on latest Metal docs.
 - Ensure all MoltenVK config info set by `VK_EXT_layer_settings` is used.
+- Advertise `VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT` and 
+  `VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT` for storage texel buffers.
 - Support storage images in Metal argument buffers on _iOS_.
 - `vkUpdateDescriptorSets()`: Support writing beyond descriptor binding size if subsequent bindings are of same type.
 - Fix rendering issue with render pass that immediately follows a kernel dispatch.
+- Fix occasional GPU crash when a smaller descriptor set replaces a larger one.
 - Fix race condition when `VkImage` destroyed while used by descriptor.
 - Fix crash in `vkCmdPushDescriptorSetWithTemplateKHR()` when entries in 
   `VkDescriptorUpdateTemplateCreateInfo` are not sorted by offset.
 - Fix issue where `vkQueueWaitIdle()` and `vkDeviceWaitIdle()` were not 
   waiting for all commands to be enqueued before enqueuing wait operation.
+- Fix occassional incorrect detection of available descriptor sets during `vkAllocateDescriptorSets()`.
 - Fix shader conversion failure when using storage images on _iOS_ & _tvOS_ with Tier 1 argument buffer support.
+- Fix occasional memory leak where spurious texel buffer was accidentally created during image-memory unbinding.
 - Fix memory leak in debug utils messenger.
+- Fix crash when `VkDescriptorSetLayout` is destroyed while descriptor set is in use.
 - Fix build failure on _VisionOS 2.0_ platform.
 - Support `VK_FORMAT_A2B10G10R10_UNORM_PACK32` and `VK_FORMAT_A2R10G10B10_UNORM_PACK32` formats as surface formats on all platforms.
 - Add `MTLStoreAction` mapping for `VK_ATTACHMENT_STORE_OP_NONE`.
@@ -48,8 +54,11 @@ Released 2024-09-24
 - iOS: Support storage images in _Metal_ argument buffers.
 - Add `MVKConfiguration::shaderLogEstimatedGLSL`, and environment variable `MVK_CONFIG_SHADER_LOG_ESTIMATED_GLSL`, 
   to enable or disable the logging of estimated _GLSL_ code, and disable it by default
-- Update dependency libraries to match _Vulkan SDK 1.3.295_.
+- Fix endless loop in `fetchDependencies` when `--` is missing on platform names.
+- Update dependency libraries to match _Vulkan SDK 1.3.296_.
 - Update `MVK_PRIVATE_API_VERSION` to version `43`.
+- Update to latest SPIRV-Cross:
+  - Various non-feature maintenance updates.
 
 
 
