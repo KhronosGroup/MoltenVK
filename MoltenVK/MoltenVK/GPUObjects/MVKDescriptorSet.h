@@ -204,6 +204,8 @@ public:
 
 	MVKDescriptorSet(MVKDescriptorPool* pool);
 
+	~MVKDescriptorSet() override;
+
 protected:
 	friend class MVKDescriptorSetLayoutBinding;
 	friend class MVKDescriptorPool;
