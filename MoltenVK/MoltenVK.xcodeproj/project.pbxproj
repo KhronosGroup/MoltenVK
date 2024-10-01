@@ -2464,6 +2464,8 @@
 		2FEA0AB824902F9F00EEF3AD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				SDKROOT = appletvos;
 			};
 			name = Debug;
@@ -2471,6 +2473,8 @@
 		2FEA0AB924902F9F00EEF3AD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				SDKROOT = appletvos;
 			};
 			name = Release;
@@ -2504,6 +2508,7 @@
 		A9B8EE1E1A98D796009C5A02 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				SDKROOT = iphoneos;
 			};
 			name = Debug;
@@ -2511,6 +2516,7 @@
 		A9B8EE1F1A98D796009C5A02 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				SDKROOT = iphoneos;
 			};
 			name = Release;
@@ -2518,6 +2524,7 @@
 		A9CBEDFF1B6299D800E45FDC /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -2525,6 +2532,7 @@
 		A9CBEE001B6299D800E45FDC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				SDKROOT = macosx;
 			};
 			name = Release;
