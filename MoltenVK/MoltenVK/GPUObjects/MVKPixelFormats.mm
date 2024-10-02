@@ -126,6 +126,14 @@ using namespace std;
 #       define MTLPixelFormatBC7_RGBAUnorm_sRGB     MTLPixelFormatInvalid
 #   endif
 
+#   if MVK_OS_SIMULATOR
+#       define MTLPixelFormatR8Unorm_sRGB           MTLPixelFormatInvalid
+#       define MTLPixelFormatRG8Unorm_sRGB          MTLPixelFormatInvalid
+#       define MTLPixelFormatB5G6R5Unorm            MTLPixelFormatInvalid
+#       define MTLPixelFormatA1BGR5Unorm            MTLPixelFormatInvalid
+#       define MTLPixelFormatABGR4Unorm             MTLPixelFormatInvalid
+#   endif
+
 #   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatDepth32Float_Stencil8
 #   define MTLPixelFormatDepth24Unorm_Stencil8      MTLPixelFormatInvalid
 #   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
