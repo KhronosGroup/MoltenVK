@@ -1595,7 +1595,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	addSurfFmt(RGBA16Float);
 	addSurfFmt(RGB10A2Unorm);
 	addSurfFmt(BGR10A2Unorm);
-#if MVK_APPLE_SILICON
+#if MVK_APPLE_SILICON && !MVK_OS_SIMULATOR
 	addSurfFmt(BGRA10_XR);
 	addSurfFmt(BGRA10_XR_sRGB);
 	addSurfFmt(BGR10_XR);
