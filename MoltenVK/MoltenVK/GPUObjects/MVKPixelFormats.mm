@@ -126,21 +126,6 @@ using namespace std;
 #       define MTLPixelFormatBC7_RGBAUnorm_sRGB     MTLPixelFormatInvalid
 #   endif
 
-#   if MVK_OS_SIMULATOR
-#       define MTLPixelFormatR8Unorm_sRGB           MTLPixelFormatInvalid
-#       define MTLPixelFormatRG8Unorm_sRGB          MTLPixelFormatInvalid
-#       define MTLPixelFormatB5G6R5Unorm            MTLPixelFormatInvalid
-#       define MTLPixelFormatA1BGR5Unorm            MTLPixelFormatInvalid
-#       define MTLPixelFormatABGR4Unorm             MTLPixelFormatInvalid
-#       define MTLPixelFormatBGR5A1Unorm            MTLPixelFormatInvalid
-#       define MTLPixelFormatGBGR422                MTLPixelFormatInvalid
-#       define MTLPixelFormatBGRG422                MTLPixelFormatInvalid
-#       define MTLPixelFormatBGR10_XR               MTLPixelFormatInvalid
-#       define MTLPixelFormatBGR10_XR_sRGB          MTLPixelFormatInvalid
-#       define MTLPixelFormatBGRA10_XR              MTLPixelFormatInvalid
-#       define MTLPixelFormatBGRA10_XR_sRGB         MTLPixelFormatInvalid
-#   endif
-
 #   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatDepth32Float_Stencil8
 #   define MTLPixelFormatDepth24Unorm_Stencil8      MTLPixelFormatInvalid
 #   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
@@ -167,6 +152,21 @@ using namespace std;
 #       define MTLPixelFormatASTC_10x10_HDR         MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_12x10_HDR         MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_12x12_HDR         MTLPixelFormatInvalid
+#endif
+
+#if MVK_OS_SIMULATOR
+#   define MTLPixelFormatR8Unorm_sRGB               MTLPixelFormatInvalid
+#   define MTLPixelFormatRG8Unorm_sRGB              MTLPixelFormatInvalid
+#   define MTLPixelFormatB5G6R5Unorm                MTLPixelFormatInvalid
+#   define MTLPixelFormatA1BGR5Unorm                MTLPixelFormatInvalid
+#   define MTLPixelFormatABGR4Unorm                 MTLPixelFormatInvalid
+#   define MTLPixelFormatBGR5A1Unorm                MTLPixelFormatInvalid
+#   define MTLPixelFormatBGR10_XR                   MTLPixelFormatInvalid
+#   define MTLPixelFormatBGR10_XR_sRGB              MTLPixelFormatInvalid
+#   define MTLPixelFormatBGRA10_XR                  MTLPixelFormatInvalid
+#   define MTLPixelFormatBGRA10_XR_sRGB             MTLPixelFormatInvalid
+#   define MTLPixelFormatGBGR422                    MTLPixelFormatInvalid
+#   define MTLPixelFormatBGRG422                    MTLPixelFormatInvalid
 #endif
 
 #if !MVK_XCODE_15
@@ -1194,7 +1194,7 @@ void MVKPixelFormats::addValidatedMTLPixelFormatDesc(MTLPixelFormat mtlPixFmt, M
 
 #define addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, appleGPUCaps, macGPUCaps)  \
 	addValidatedMTLPixelFormatDesc(MTLPixelFormat ##mtlFmt, MTLPixelFormat ##mtlFmtLinear, MVKMTLViewClass:: viewClass,  \
-								   appleGPUCaps, macGPUCaps, gpuCaps, "MTLPixelFormat" #mtlFmt)
+	                               appleGPUCaps, macGPUCaps, gpuCaps, "MTLPixelFormat" #mtlFmt)
 
 #define addMTLPixelFormatDesc(mtlFmt, viewClass, appleGPUCaps, macGPUCaps)  \
 	addMTLPixelFormatDescFull(mtlFmt, mtlFmt, viewClass, kMVKMTLFmtCaps ##appleGPUCaps, kMVKMTLFmtCaps ##macGPUCaps)
@@ -1202,9 +1202,9 @@ void MVKPixelFormats::addValidatedMTLPixelFormatDesc(MTLPixelFormat mtlPixFmt, M
 #define addMTLPixelFormatDescSRGB(mtlFmt, viewClass, appleGPUCaps, macGPUCaps, mtlFmtLinear)  \
 	/* Cannot write to sRGB textures in the simulator */  \
 	if(MVK_OS_SIMULATOR) { MVKMTLFmtCaps appleFmtCaps = kMVKMTLFmtCaps ##appleGPUCaps;  \
-						   mvkDisableFlags(appleFmtCaps, kMVKMTLFmtCapsWrite);  \
-						   addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, appleFmtCaps, kMVKMTLFmtCaps ##macGPUCaps); }  \
-	else				 { addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, kMVKMTLFmtCaps ##appleGPUCaps, kMVKMTLFmtCaps ##macGPUCaps); }
+	                       mvkDisableFlags(appleFmtCaps, kMVKMTLFmtCapsWrite);  \
+	                       addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, appleFmtCaps, kMVKMTLFmtCaps ##macGPUCaps); }  \
+	else                 { addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, kMVKMTLFmtCaps ##appleGPUCaps, kMVKMTLFmtCaps ##macGPUCaps); }
 
 void MVKPixelFormats::initMTLPixelFormatCapabilities(const MVKMTLDeviceCapabilities& gpuCaps) {
 	_mtlPixelFormatDescriptions.reserve(KIBI);	// High estimate to future-proof against allocations as elements are added. shrink_to_fit() below will collapse.
