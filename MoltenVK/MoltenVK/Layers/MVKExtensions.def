@@ -147,6 +147,7 @@ MVK_EXTENSION(EXT_vertex_attribute_divisor,           EXT_VERTEX_ATTRIBUTE_DIVIS
 MVK_EXTENSION(AMD_draw_indirect_count,                AMD_DRAW_INDIRECT_COUNT,                DEVICE,   MVK_NA, MVK_NA, MVK_NA)
 MVK_EXTENSION(AMD_gpu_shader_half_float,              AMD_GPU_SHADER_HALF_FLOAT,              DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(AMD_negative_viewport_height,           AMD_NEGATIVE_VIEWPORT_HEIGHT,           DEVICE,   10.11,  8.0,  1.0)
+MVK_EXTENSION(EXT_rasterization_order_attachment_access, EXT_RASTERIZATION_ORDER_ATTACHMENT_ACCESS, DEVICE, 10.11, 8.0, 1.0)
 MVK_EXTENSION(AMD_shader_image_load_store_lod,        AMD_SHADER_IMAGE_LOAD_STORE_LOD,        DEVICE,   11.0,   8.0,  1.0)
 MVK_EXTENSION(AMD_shader_trinary_minmax,              AMD_SHADER_TRINARY_MINMAX,              DEVICE,   10.14, 12.0,  1.0)
 MVK_EXTENSION(IMG_format_pvrtc,                       IMG_FORMAT_PVRTC,                       DEVICE,   11.0,   8.0,  1.0)

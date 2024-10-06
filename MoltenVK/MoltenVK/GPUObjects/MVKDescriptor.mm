@@ -109,7 +109,8 @@ void mvkPopulateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& s
 									   uint32_t count,
 									   VkDescriptorType descType,
 									   MVKSampler* immutableSampler,
-									   bool usingNativeTextureAtomics) {
+									   bool usingNativeTextureAtomics,
+									   bool usingProgrammableBlending) {
 	if (count == 0) { return; }
 
 #define addResourceBinding(spvRezType)												\
@@ -156,8 +157,13 @@ void mvkPopulateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& s
 			break;
 		}
 
-		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+			if (!usingProgrammableBlending) {
+				addResourceBinding(Image);
+			}
+			break;
+
+		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 			addResourceBinding(Image);
 			break;
@@ -550,7 +556,8 @@ void MVKDescriptorSetLayoutBinding::populateShaderConversionConfig(mvk::SPIRVToM
 											  descCnt,
 											  getDescriptorType(),
 											  mvkSamp,
-											  getMetalFeatures().nativeTextureAtomics);
+											  getMetalFeatures().nativeTextureAtomics,
+											  getMetalFeatures().programmableBlending);
         }
     }
 }
