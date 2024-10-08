@@ -39,10 +39,10 @@ jobs:
 
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       # Python 3.12 removed distutils, which is used by glslang::update_glslang_sources.py called from fetchDependencies
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -108,7 +108,7 @@ jobs:
 
       - name: Upload Artifacts
         if: success() && matrix.upload_artifacts == true
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: "MoltenVK-${{ matrix.platform }}"
           path: "MoltenVK-${{ matrix.platform }}.tar"
@@ -127,7 +127,7 @@ jobs:
 
     steps:
       - name: Download Artifacts
-        uses: actions/download-artifact@v4.1.7
+        uses: actions/download-artifact@v4
 
       - name: Create Release
         uses: ncipollo/release-action@v1
