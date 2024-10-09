@@ -4534,7 +4534,7 @@ uint32_t MVKDevice::getFirstViewIndexInMetalPass(uint32_t viewMask, uint32_t pas
 	uint32_t mask = viewMask;
 	uint32_t startView = 0, viewCount = 0;
 	if ( !_physicalDevice->canUseInstancingForMultiview() ) {
-		for (uint32_t i = 0; mask != 0; ++i) {
+		while (mask != 0) {
 			mask = mvkGetNextViewMaskGroup(mask, &startView, &viewCount);
 			while (passIdx-- > 0 && viewCount-- > 0) {
 				startView++;
