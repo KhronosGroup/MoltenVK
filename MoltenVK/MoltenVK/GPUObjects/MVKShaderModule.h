@@ -33,19 +33,16 @@ class MVKShaderCacheIterator;
 class MVKShaderLibraryCache;
 class MVKShaderModule;
 
-using namespace mvk;
-
-
 #pragma mark -
 #pragma mark MVKShaderLibrary
 
 /** A MTLFunction and corresponding result information resulting from a shader conversion. */
 typedef struct MVKMTLFunction {
-	SPIRVToMSLConversionResultInfo shaderConversionResults;
+  mvk::SPIRVToMSLConversionResultInfo shaderConversionResults;
 	MTLSize threadGroupSize;
 	id<MTLFunction> getMTLFunction() { return _mtlFunction; }
 
-	MVKMTLFunction(id<MTLFunction> mtlFunc, const SPIRVToMSLConversionResultInfo scRslts, MTLSize tgSize);
+	MVKMTLFunction(id<MTLFunction> mtlFunc, const mvk::SPIRVToMSLConversionResultInfo scRslts, MTLSize tgSize);
 	MVKMTLFunction(const MVKMTLFunction& other);
 	MVKMTLFunction& operator=(const MVKMTLFunction& other);
 	MVKMTLFunction() {}
@@ -57,7 +54,7 @@ private:
 } MVKMTLFunction;
 
 /** A MVKMTLFunction indicating an invalid MTLFunction. The mtlFunction member is nil. */
-const MVKMTLFunction MVKMTLFunctionNull(nil, SPIRVToMSLConversionResultInfo(), MTLSizeMake(1, 1, 1));
+const MVKMTLFunction MVKMTLFunctionNull(nil, mvk::SPIRVToMSLConversionResultInfo(), MTLSizeMake(1, 1, 1));
 
 /** Wraps a single MTLLibrary. */
 class MVKShaderLibrary : public MVKBaseDeviceObject {
@@ -86,10 +83,10 @@ public:
     void setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z);
     
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
-					 const SPIRVToMSLConversionResult& conversionResult);
+					 const mvk::SPIRVToMSLConversionResult& conversionResult);
 
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
-					 const SPIRVToMSLConversionResultInfo& resultInfo,
+					 const mvk::SPIRVToMSLConversionResultInfo& resultInfo,
 					 const MVKCompressor<std::string> compressedMSL);
 
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
@@ -120,7 +117,7 @@ protected:
 	MVKVulkanAPIDeviceObject* _owner;
 	id<MTLLibrary> _mtlLibrary;
 	MVKCompressor<std::string> _compressedMSL;
-	SPIRVToMSLConversionResultInfo _shaderConversionResultInfo;
+  mvk::SPIRVToMSLConversionResultInfo _shaderConversionResultInfo;
 };
 
 
@@ -144,7 +141,7 @@ public:
 	 * If pWasAdded is not nil, this function will set it to true if a new shader library was created,
 	 * and to false if an existing shader library was found and returned.
 	 */
-	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig,
+	MVKShaderLibrary* getShaderLibrary(mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
 									   MVKShaderModule* shaderModule, MVKPipeline* pipeline,
 									   bool* pWasAdded, VkPipelineCreationFeedback* pShaderFeedback,
 									   uint64_t startTime = 0);
@@ -158,18 +155,18 @@ protected:
 	friend MVKPipelineCache;
 	friend MVKShaderModule;
 
-	MVKShaderLibrary* findShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig,
+	MVKShaderLibrary* findShaderLibrary(mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
 										VkPipelineCreationFeedback* pShaderFeedback = nullptr,
 										uint64_t startTime = 0);
-	MVKShaderLibrary* addShaderLibrary(const SPIRVToMSLConversionConfiguration* pShaderConfig,
-									   const SPIRVToMSLConversionResult& conversionResult);
-	MVKShaderLibrary* addShaderLibrary(const SPIRVToMSLConversionConfiguration* pShaderConfig,
-									   const SPIRVToMSLConversionResultInfo& resultInfo,
+	MVKShaderLibrary* addShaderLibrary(const mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
+									   const mvk::SPIRVToMSLConversionResult& conversionResult);
+	MVKShaderLibrary* addShaderLibrary(const mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
+									   const mvk::SPIRVToMSLConversionResultInfo& resultInfo,
 									   const MVKCompressor<std::string> compressedMSL);
 	void merge(MVKShaderLibraryCache* other);
 
 	MVKVulkanAPIDeviceObject* _owner;
-	MVKSmallVector<std::pair<SPIRVToMSLConversionConfiguration, MVKShaderLibrary*>> _shaderLibraries;
+	MVKSmallVector<std::pair<mvk::SPIRVToMSLConversionConfiguration, MVKShaderLibrary*>> _shaderLibraries;
 };
 
 
@@ -210,14 +207,14 @@ public:
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT; }
 
 	/** Returns the Metal shader function, possibly specialized. */
-	MVKMTLFunction getMTLFunction(SPIRVToMSLConversionConfiguration* pShaderConfig,
+	MVKMTLFunction getMTLFunction(mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
 								  const VkSpecializationInfo* pSpecializationInfo,
 								  MVKPipeline* pipeline,
 								  VkPipelineCreationFeedback* pShaderFeedback);
 
 	/** Convert the SPIR-V to MSL, using the specified shader conversion configuration. */
-	bool convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
-				 SPIRVToMSLConversionResult& conversionResult);
+	bool convert(mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
+               mvk::SPIRVToMSLConversionResult& conversionResult);
 
 	/** Returns the original SPIR-V code that was specified when this object was created. */
 	const std::vector<uint32_t>& getSPIRV() { return _spvConverter.getSPIRV(); }
@@ -236,11 +233,11 @@ protected:
 	friend MVKShaderCacheIterator;
 
 	void propagateDebugName() override {}
-	MVKGLSLConversionShaderStage getMVKGLSLConversionShaderStage(SPIRVToMSLConversionConfiguration* pShaderConfig);
+	MVKGLSLConversionShaderStage getMVKGLSLConversionShaderStage(mvk::SPIRVToMSLConversionConfiguration* pShaderConfig);
 
 	MVKShaderLibraryCache _shaderLibraryCache;
-	SPIRVToMSLConverter _spvConverter;
-	GLSLToSPIRVConverter _glslConverter;
+  mvk::SPIRVToMSLConverter _spvConverter;
+  mvk::GLSLToSPIRVConverter _glslConverter;
 	MVKShaderLibrary* _directMSLLibrary;
 	MVKShaderModuleKey _key;
     std::mutex _accessLock;
@@ -266,7 +263,7 @@ public:
 	 * nanoseconds, an error will be generated and logged, and nil will be returned.
 	 */
 	id<MTLLibrary> newMTLLibrary(NSString* mslSourceCode,
-								 const SPIRVToMSLConversionResultInfo& shaderConversionResults);
+								 const mvk::SPIRVToMSLConversionResultInfo& shaderConversionResults);
 
 
 #pragma mark Construction
