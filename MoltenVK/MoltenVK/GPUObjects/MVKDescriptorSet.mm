@@ -263,7 +263,7 @@ void MVKDescriptorSetLayout::populateShaderConversionConfig(mvk::SPIRVToMSLConve
 		MVKShaderStageResourceBinding buffBinding;
 		buffBinding.bufferIndex = getBufferSizeBufferArgBuferIndex();
 		populateAuxBuffer(shaderConfig, buffBinding, descSetIndex,
-						  MVK_spirv_cross::kBufferSizeBufferBinding,
+						  SPIRV_CROSS_NAMESPACE::kBufferSizeBufferBinding,
 						  getMetalFeatures().nativeTextureAtomics);
 	}
 
