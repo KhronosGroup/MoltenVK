@@ -1595,7 +1595,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	addSurfFmt(RGBA16Float);
 	addSurfFmt(RGB10A2Unorm);
 	addSurfFmt(BGR10A2Unorm);
-#if MVK_APPLE_SILICON
+#if MVK_APPLE_SILICON && !MVK_OS_SIMULATOR
 	addSurfFmt(BGRA10_XR);
 	addSurfFmt(BGRA10_XR_sRGB);
 	addSurfFmt(BGR10_XR);
@@ -2146,11 +2146,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.placementHeaps = getMVKConfig().useMTLHeap;
-#if MVK_OS_SIMULATOR
-		_metalFeatures.nativeTextureSwizzle = false;
-#else
 		_metalFeatures.nativeTextureSwizzle = true;
-#endif
+
 		if (supportsMTLGPUFamily(Apple3)) {
 			_metalFeatures.native3DCompressedTextures = true;
 		}
@@ -2448,9 +2445,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #endif
 	}
 
-// iOS and tvOS adjustments necessary when running on the simulator.
+// iOS, tvOS and visionOS adjustments necessary when running on the simulator.
 #if MVK_OS_SIMULATOR
 	_metalFeatures.mtlBufferAlignment = 256;	// Even on Apple Silicon
+	_metalFeatures.nativeTextureSwizzle = false;
 #endif
 
 	// Argument buffers
@@ -2543,6 +2541,7 @@ void MVKPhysicalDevice::initFeatures() {
     _features.textureCompressionASTC_LDR = true;
 
 	_features.dualSrcBlend = true;
+	_features.depthClamp = true;
 
     if (supportsMTLGPUFamily(Apple3)) {
         _features.occlusionQueryPrecise = true;
@@ -2550,6 +2549,7 @@ void MVKPhysicalDevice::initFeatures() {
 
 	if (supportsMTLGPUFamily(Apple3)) {
 		_features.tessellationShader = true;
+		_features.shaderTessellationAndGeometryPointSize = true;
 	}
 #endif
 
@@ -2566,13 +2566,9 @@ void MVKPhysicalDevice::initFeatures() {
 
 	_features.dualSrcBlend = true;
 
-#if MVK_OS_SIMULATOR
-	_features.depthClamp = false;
-#else
 	if (supportsMTLGPUFamily(Apple2)) {
 		_features.depthClamp = true;
 	}
-#endif
 
 	if (supportsMTLGPUFamily(Apple3)) {
 		_features.tessellationShader = true;
@@ -2590,6 +2586,11 @@ void MVKPhysicalDevice::initFeatures() {
 	if (supportsMTLGPUFamily(Apple6)) {
         _features.shaderResourceMinLod = true;
 	}
+#endif
+
+// iOS, tvOS and visionOS adjustments necessary when running on the simulator.
+#if MVK_OS_SIMULATOR
+	_features.depthClamp = false;
 #endif
 
 #if MVK_MACOS

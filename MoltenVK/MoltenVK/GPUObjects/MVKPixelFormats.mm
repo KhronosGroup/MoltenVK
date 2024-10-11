@@ -154,6 +154,21 @@ using namespace std;
 #       define MTLPixelFormatASTC_12x12_HDR         MTLPixelFormatInvalid
 #endif
 
+#if MVK_OS_SIMULATOR
+#   define MTLPixelFormatR8Unorm_sRGB               MTLPixelFormatInvalid
+#   define MTLPixelFormatRG8Unorm_sRGB              MTLPixelFormatInvalid
+#   define MTLPixelFormatB5G6R5Unorm                MTLPixelFormatInvalid
+#   define MTLPixelFormatA1BGR5Unorm                MTLPixelFormatInvalid
+#   define MTLPixelFormatABGR4Unorm                 MTLPixelFormatInvalid
+#   define MTLPixelFormatBGR5A1Unorm                MTLPixelFormatInvalid
+#   define MTLPixelFormatBGR10_XR                   MTLPixelFormatInvalid
+#   define MTLPixelFormatBGR10_XR_sRGB              MTLPixelFormatInvalid
+#   define MTLPixelFormatBGRA10_XR                  MTLPixelFormatInvalid
+#   define MTLPixelFormatBGRA10_XR_sRGB             MTLPixelFormatInvalid
+#   define MTLPixelFormatGBGR422                    MTLPixelFormatInvalid
+#   define MTLPixelFormatBGRG422                    MTLPixelFormatInvalid
+#endif
+
 #if !MVK_XCODE_15
 #   define MTLVertexFormatFloatRG11B10              MTLVertexFormatInvalid
 #   define MTLVertexFormatFloatRGB9E5               MTLVertexFormatInvalid
@@ -1179,13 +1194,17 @@ void MVKPixelFormats::addValidatedMTLPixelFormatDesc(MTLPixelFormat mtlPixFmt, M
 
 #define addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, appleGPUCaps, macGPUCaps)  \
 	addValidatedMTLPixelFormatDesc(MTLPixelFormat ##mtlFmt, MTLPixelFormat ##mtlFmtLinear, MVKMTLViewClass:: viewClass,  \
-								   kMVKMTLFmtCaps ##appleGPUCaps, kMVKMTLFmtCaps ##macGPUCaps, gpuCaps, "MTLPixelFormat" #mtlFmt)
+	                               appleGPUCaps, macGPUCaps, gpuCaps, "MTLPixelFormat" #mtlFmt)
 
 #define addMTLPixelFormatDesc(mtlFmt, viewClass, appleGPUCaps, macGPUCaps)  \
-	addMTLPixelFormatDescFull(mtlFmt, mtlFmt, viewClass, appleGPUCaps, macGPUCaps)
+	addMTLPixelFormatDescFull(mtlFmt, mtlFmt, viewClass, kMVKMTLFmtCaps ##appleGPUCaps, kMVKMTLFmtCaps ##macGPUCaps)
 
 #define addMTLPixelFormatDescSRGB(mtlFmt, viewClass, appleGPUCaps, macGPUCaps, mtlFmtLinear)  \
-	addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, appleGPUCaps, macGPUCaps)
+	/* Cannot write to sRGB textures in the simulator */  \
+	if(MVK_OS_SIMULATOR) { MVKMTLFmtCaps appleFmtCaps = kMVKMTLFmtCaps ##appleGPUCaps;  \
+	                       mvkDisableFlags(appleFmtCaps, kMVKMTLFmtCapsWrite);  \
+	                       addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, appleFmtCaps, kMVKMTLFmtCaps ##macGPUCaps); }  \
+	else                 { addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, kMVKMTLFmtCaps ##appleGPUCaps, kMVKMTLFmtCaps ##macGPUCaps); }
 
 void MVKPixelFormats::initMTLPixelFormatCapabilities(const MVKMTLDeviceCapabilities& gpuCaps) {
 	_mtlPixelFormatDescriptions.reserve(KIBI);	// High estimate to future-proof against allocations as elements are added. shrink_to_fit() below will collapse.
@@ -1507,6 +1526,9 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(const MVKMTLDeviceCapabilities
 	// be individually write-enabled during blending on macOS. Disabling blending
 	// on macOS is the least-intrusive way to handle this in a Vulkan-friendly way.
 	disableMTLPixFmtCapsIfGPU( Mac1, RGB9E5Float, Blend);
+
+	// RGB9E5Float cannot be used as a render target on the simulator
+	disableMTLPixFmtCapsIf( MVK_OS_SIMULATOR, RGB9E5Float, ColorAtt );
 
 	setMTLPixFmtCapsIf( iosOnly6, RG32Uint, RWC );
 	setMTLPixFmtCapsIf( iosOnly6, RG32Sint, RWC );
