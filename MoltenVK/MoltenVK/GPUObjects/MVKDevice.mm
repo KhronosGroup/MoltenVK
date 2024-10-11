@@ -2541,6 +2541,7 @@ void MVKPhysicalDevice::initFeatures() {
     _features.textureCompressionASTC_LDR = true;
 
 	_features.dualSrcBlend = true;
+	_features.depthClamp = true;
 
     if (supportsMTLGPUFamily(Apple3)) {
         _features.occlusionQueryPrecise = true;
@@ -2548,6 +2549,7 @@ void MVKPhysicalDevice::initFeatures() {
 
 	if (supportsMTLGPUFamily(Apple3)) {
 		_features.tessellationShader = true;
+		_features.shaderTessellationAndGeometryPointSize = true;
 	}
 #endif
 
