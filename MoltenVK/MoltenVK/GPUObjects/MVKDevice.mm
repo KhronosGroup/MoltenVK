@@ -1384,20 +1384,22 @@ VkExternalMemoryProperties& MVKPhysicalDevice::getExternalImageProperties(VkForm
 			return _hostPointerExternalMemoryProperties;
 		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT:
 			// We cannot export images that have no Metal counterparts. This is because we are emulating them via multiple MTLTextures
-			// and we would require to export multiple MTLTextures. A possible workaround would be to let the user export them as a
-			// MTLBuffer that covers all textures' memory. However, this would have limited usage since MoltenVK will only know what
-			// the layout of that MTLBuffer is and how to read it.
+			// and we would require to export multiple MTLTextures. We let them export them as a heap whenever possible.
 			if (_pixelFormats.getChromaSubsamplingPlaneCount(format) > 1u)
-				return _emptyExtMemProps;
+				return _mtlTextureHeapExternalMemoryProperties;
 			return _mtlTextureExternalMemoryProperties;
 		default:
 			return _emptyExtMemProps;
 	}
 }
 
-uint32_t MVKPhysicalDevice::getExternalResourceMemoryTypeBits(MTLResource_id handle) const {
+uint32_t MVKPhysicalDevice::getExternalResourceMemoryTypeBits(VkExternalMemoryHandleTypeFlagBits handleType,
+															  void* handle) const {
+	// MTLBuffer and MTLTextures are resources. MTLHeap is not according to Metal
+	const bool isResource = handleType != VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT;
+	const MTLStorageMode storageMode = isResource ? ((id<MTLResource>)handle).storageMode : ((id<MTLHeap>)handle).storageMode;
 	uint32_t memoryTypeBits = 0u;
-	switch (handle.storageMode) {
+	switch (storageMode) {
 	case MTLStorageModeShared:
 		memoryTypeBits = _hostCoherentMemoryTypes;
 		break;
@@ -3364,6 +3366,14 @@ void MVKPhysicalDevice::initExternalMemoryProperties() {
 																  VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
 	_mtlTextureExternalMemoryProperties.exportFromImportedHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT;
 	_mtlTextureExternalMemoryProperties.compatibleHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT;
+
+	if (_metalFeatures.placementHeaps) {
+		_mtlTextureHeapExternalMemoryProperties = _mtlTextureExternalMemoryProperties;
+		_mtlTextureHeapExternalMemoryProperties.exportFromImportedHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT;
+		_mtlTextureHeapExternalMemoryProperties.compatibleHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT;
+	} else {
+		_mtlTextureHeapExternalMemoryProperties = _emptyExtMemProps;
+	}
 }
 
 void MVKPhysicalDevice::initExtensions() {
@@ -4814,17 +4824,19 @@ void MVKDevice::getMetalObjects(VkExportMetalObjectsInfoEXT* pMetalObjectsInfo) 
 	}
 }
 
-MTLResource_id MVKDevice::getResourceIdFromHandle(const VkMemoryGetMetalHandleInfoEXT* pGetMetalHandleInfo, MTLResource_id* pHandle) const
+void* MVKDevice::getResourceIdFromHandle(const VkMemoryGetMetalHandleInfoEXT* pGetMetalHandleInfo) const
 {
-	MTLResource_id handle = nil;
+	void* handle = nil;
 	MVKDeviceMemory* memory = (MVKDeviceMemory*)pGetMetalHandleInfo->memory;
 	switch (pGetMetalHandleInfo->handleType) {
 		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT:
-			*pHandle = memory->getMTLBuffer();
+			handle = memory->getMTLBuffer();
 			break;
 		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT:
-			*pHandle = memory->getMTLTexture();
+			handle = memory->getMTLTexture();
 			break;
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT:
+			handle = memory->getMTLHeap();
 		default:
 			break;
 	}

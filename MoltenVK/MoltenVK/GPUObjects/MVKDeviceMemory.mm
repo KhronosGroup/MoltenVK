@@ -347,7 +347,15 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 			case VK_STRUCTURE_TYPE_IMPORT_MEMORY_METAL_HANDLE_INFO_EXT: {
 				const auto* pImportInfo = (VkImportMemoryMetalHandleInfoEXT*)next;
 				_externalMemoryHandleType = pImportInfo->handleType;
-				if (pImportInfo->handleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT) {
+				// This handle type will only be exposed to the user if we actually are supporting heaps
+				if (pImportInfo->handleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT) {
+					[_mtlHeap release];
+					_mtlHeap = [((id<MTLHeap>)pImportInfo->handle) retain];
+					_mtlStorageMode = _mtlHeap.storageMode;
+					_mtlCPUCacheMode = _mtlHeap.cpuCacheMode;
+					_allocationSize = _mtlHeap.size;
+				}
+				else if (pImportInfo->handleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT) {
 					[_mtlBuffer release];							// guard against dups
 					_mtlBuffer = [((id<MTLBuffer>)pImportInfo->handle) retain];	// retained
 					_mtlStorageMode = _mtlBuffer.storageMode;
@@ -395,11 +403,9 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 	}
 
 	// If we can, create a MTLHeap. This should happen before creating the buffer, allowing us to map its contents.
-	if ( !_isDedicated ) {
-		if (!ensureMTLHeap()) {
-			setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkAllocateMemory(): Could not allocate VkDeviceMemory of size %llu bytes.", _allocationSize));
-			return;
-		}
+	if (!ensureMTLHeap()) {
+		setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkAllocateMemory(): Could not allocate VkDeviceMemory of size %llu bytes.", _allocationSize));
+		return;
 	}
 
 	// If memory needs to be coherent it must reside in a MTLBuffer, since an open-ended map() must work.
@@ -418,6 +424,13 @@ void MVKDeviceMemory::initExternalMemory(MVKImage* dedicatedImage) {
 	}
 
 	bool requiresDedicated = false;
+	if (mvkIsAnyFlagEnabled(_externalMemoryHandleType, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT)) {
+		auto& xmProps = getPhysicalDevice()->getExternalBufferProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT);
+		requiresDedicated = requiresDedicated || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
+		
+		// Make sure allocation happens at creation time since we may need to export the memory before usage
+		ensureMTLBuffer();
+	}
 	if (mvkIsAnyFlagEnabled(_externalMemoryHandleType, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT)) {
 		auto& xmProps = getPhysicalDevice()->getExternalBufferProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT);
 		requiresDedicated = requiresDedicated || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);

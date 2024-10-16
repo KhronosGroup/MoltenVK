@@ -3040,11 +3040,11 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceExternalBufferProperties, KHR);
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMemoryMetalHandleEXT(
 															VkDevice                                device,
 															const VkMemoryGetMetalHandleInfoEXT*    pGetMetalHandleInfo,
-															MTLResource_id*                         pHandle) {
+															void**                         pHandle) {
 
 	MVKTraceVulkanCallStart();
 	MVKDevice* mvkDvc = MVKDevice::getMVKDevice(device);
-	mvkDvc->getResourceIdFromHandle(pGetMetalHandleInfo, pHandle);
+	*pHandle = mvkDvc->getResourceIdFromHandle(pGetMetalHandleInfo);
 	MVKTraceVulkanCallEnd();
 	return VK_SUCCESS;
 }
@@ -3052,12 +3052,12 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMemoryMetalHandleEXT(
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMemoryMetalHandlePropertiesEXT(
 																	  VkDevice                              device,
 																	  VkExternalMemoryHandleTypeFlagBits    handleType,
-																	  MTLResource_id                        handle,
+																	  void*        			                handle,
 																	  VkMemoryMetalHandlePropertiesEXT*     pMemoryMetalHandleProperties) {
 
 	MVKTraceVulkanCallStart();
 	MVKDevice* mvkDvc = MVKDevice::getMVKDevice(device);
-	pMemoryMetalHandleProperties->memoryTypeBits = mvkDvc->getPhysicalDevice()->getExternalResourceMemoryTypeBits(handle);
+	pMemoryMetalHandleProperties->memoryTypeBits = mvkDvc->getPhysicalDevice()->getExternalResourceMemoryTypeBits(handleType, handle);
 	MVKTraceVulkanCallEnd();
 	return VK_SUCCESS;
 }
