@@ -2702,7 +2702,10 @@
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
 				TVOS_DEPLOYMENT_TARGET = 13.0;
-				WARNING_CFLAGS = "-Wreorder";
+				WARNING_CFLAGS = (
+					"-Wreorder",
+					"-Wheader-hygiene",
+				);
 			};
 			name = Debug;
 		};
@@ -2776,7 +2779,10 @@
 				SKIP_INSTALL = YES;
 				TVOS_DEPLOYMENT_TARGET = 13.0;
 				VALIDATE_PRODUCT = YES;
-				WARNING_CFLAGS = "-Wreorder";
+				WARNING_CFLAGS = (
+					"-Wreorder",
+					"-Wheader-hygiene",
+				);
 			};
 			name = Release;
 		};

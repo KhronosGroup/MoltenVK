@@ -275,9 +275,9 @@ void MVKDescriptorSetLayout::populateShaderConversionConfig(mvk::SPIRVToMSLConve
 }
 
 bool MVKDescriptorSetLayout::populateBindingUse(MVKBitArray& bindingUse,
-												SPIRVToMSLConversionConfiguration& context,
-												MVKShaderStage stage,
-												uint32_t descSetIndex) {
+                                                mvk::SPIRVToMSLConversionConfiguration& context,
+                                                MVKShaderStage stage,
+                                                uint32_t descSetIndex) {
 	static const spv::ExecutionModel spvExecModels[] = {
 		spv::ExecutionModelVertex,
 		spv::ExecutionModelTessellationControl,

@@ -3529,9 +3529,9 @@ void MVKPhysicalDevice::logGPUInfo() {
 
 	NSUUID* nsUUID = [[NSUUID alloc] initWithUUIDBytes: _properties.pipelineCacheUUID];		// temp retain
 	MVKLogInfo(logMsg.c_str(), getName(), devTypeStr.c_str(),
-			   _properties.vendorID, _properties.deviceID, nsUUID.UUIDString.UTF8String,
-			   getRecommendedMaxWorkingSetSize() / MEBI, getCurrentAllocatedSize() / MEBI,
-			   SPIRVToMSLConversionOptions::printMSLVersion(_metalFeatures.mslVersion).c_str());
+             _properties.vendorID, _properties.deviceID, nsUUID.UUIDString.UTF8String,
+             getRecommendedMaxWorkingSetSize() / MEBI, getCurrentAllocatedSize() / MEBI,
+             mvk::SPIRVToMSLConversionOptions::printMSLVersion(_metalFeatures.mslVersion).c_str());
 	[nsUUID release];																		// temp release
 }
 

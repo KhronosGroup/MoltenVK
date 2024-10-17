@@ -22,7 +22,7 @@
 #include <sys/stat.h>
 
 using namespace std;
-
+using namespace mvk;
 
 MVKMTLFunction::MVKMTLFunction(id<MTLFunction> mtlFunc, const SPIRVToMSLConversionResultInfo scRslts, MTLSize tgSize) {
 	_mtlFunction = [mtlFunc retain];		// retained

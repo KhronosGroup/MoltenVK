@@ -40,6 +40,7 @@
 #endif
 
 using namespace std;
+using namespace mvk;
 using namespace SPIRV_CROSS_NAMESPACE;
 
 
