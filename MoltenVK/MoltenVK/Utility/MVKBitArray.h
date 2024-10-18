@@ -20,6 +20,8 @@
 
 #include "MVKFoundation.h"
 
+#include <functional>
+
 
 #pragma mark -
 #pragma mark MVKBitArray
