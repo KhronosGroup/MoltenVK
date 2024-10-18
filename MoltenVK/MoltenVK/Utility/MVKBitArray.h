@@ -19,6 +19,7 @@
 #pragma once
 
 #include "MVKFoundation.h"
+#include <functional>
 
 
 #pragma mark -
