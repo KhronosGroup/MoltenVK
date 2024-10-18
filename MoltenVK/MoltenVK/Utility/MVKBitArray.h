@@ -105,6 +105,10 @@ public:
 			secIdx = _fullyDisabledSectionCount;
 			startIndex = 0;
 		}
+		/* If all bits are disabled and the number of bits is precisely a multiple of SectionBitCount,
+		 * then we'd be trying to access a section that doesn't exist, so we must bail out immediately. */
+		if (secIdx >= getSectionCount())
+			return _bitCount;
 		return std::min((secIdx * SectionBitCount) + getIndexOfFirstEnabledBitInSection(getSection(secIdx), getBitIndexInSection(startIndex)), _bitCount);
 	}
 
