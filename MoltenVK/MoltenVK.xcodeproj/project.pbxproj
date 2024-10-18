@@ -2705,6 +2705,7 @@
 				WARNING_CFLAGS = (
 					"-Wreorder",
 					"-Wheader-hygiene",
+					"-Wunused-but-set-variable",
 				);
 			};
 			name = Debug;
@@ -2782,6 +2783,7 @@
 				WARNING_CFLAGS = (
 					"-Wreorder",
 					"-Wheader-hygiene",
+					"-Wunused-but-set-variable",
 				);
 			};
 			name = Release;
