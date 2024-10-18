@@ -38,6 +38,150 @@ using namespace std;
 @end
 #endif
 
+#pragma mark - Resource Binding
+
+struct MVKFragmentBinder {
+	static SEL selSetBytes()   { return @selector(setFragmentBytes:length:atIndex:); }
+	static SEL selSetBuffer()  { return @selector(setFragmentBuffer:offset:atIndex:); }
+	static SEL selSetOffset()  { return @selector(setFragmentBufferOffset:atIndex:); }
+	static SEL selSetTexture() { return @selector(setFragmentTexture:atIndex:); }
+	static SEL selSetSampler() { return @selector(setFragmentSamplerState:atIndex:); }
+	static void setBuffer(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger index) {
+		[encoder setFragmentBuffer:buffer offset:offset atIndex:index];
+	}
+	static void setBufferOffset(id<MTLRenderCommandEncoder> encoder, NSUInteger offset, NSUInteger index) {
+		[encoder setFragmentBufferOffset:offset atIndex:index];
+	}
+	static void setBytes(id<MTLRenderCommandEncoder> encoder, const void* bytes, NSUInteger length, NSUInteger index) {
+		[encoder setFragmentBytes:bytes length:length atIndex:index];
+	}
+	static void setTexture(id<MTLRenderCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index) {
+		[encoder setFragmentTexture:texture atIndex:index];
+	}
+	static void setSampler(id<MTLRenderCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index) {
+		[encoder setFragmentSamplerState:sampler atIndex:index];
+	}
+};
+
+struct MVKVertexBinder {
+	static SEL selSetBytes()   { return @selector(setVertexBytes:length:atIndex:); }
+	static SEL selSetBuffer()  { return @selector(setVertexBuffer:offset:atIndex:); }
+	static SEL selSetOffset()  { return @selector(setVertexBufferOffset:atIndex:); }
+	static SEL selSetTexture() { return @selector(setVertexTexture:atIndex:); }
+	static SEL selSetSampler() { return @selector(setVertexSamplerState:atIndex:); }
+#if MVK_XCODE_15
+	static SEL selSetBufferDynamic() { return @selector(setVertexBuffer:offset:attributeStride:atIndex:); }
+	static SEL selSetOffsetDynamic() { return @selector(setVertexBufferOffset:attributeStride:atIndex:); }
+#endif
+	static void setBuffer(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger index) {
+		[encoder setVertexBuffer:buffer offset:offset atIndex:index];
+	}
+	static void setBufferOffset(id<MTLRenderCommandEncoder> encoder, NSUInteger offset, NSUInteger index) {
+		[encoder setVertexBufferOffset:offset atIndex:index];
+	}
+	static void setBufferDynamic(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger stride, NSUInteger index) {
+#if MVK_XCODE_15
+		[encoder setVertexBuffer:buffer offset:offset attributeStride:stride atIndex:index];
+#else
+		assert(0);
+#endif
+	}
+	static void setBufferOffsetDynamic(id<MTLRenderCommandEncoder> encoder, NSUInteger offset, NSUInteger stride, NSUInteger index) {
+#if MVK_XCODE_15
+		[encoder setVertexBufferOffset:offset attributeStride:stride atIndex:index];
+#else
+		assert(0);
+#endif
+	}
+	static void setBytes(id<MTLRenderCommandEncoder> encoder, const void* bytes, NSUInteger length, NSUInteger index) {
+		[encoder setVertexBytes:bytes length:length atIndex:index];
+	}
+	static void setTexture(id<MTLRenderCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index) {
+		[encoder setVertexTexture:texture atIndex:index];
+	}
+	static void setSampler(id<MTLRenderCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index) {
+		[encoder setVertexSamplerState:sampler atIndex:index];
+	}
+};
+
+struct MVKComputeBinder {
+	static SEL selSetBytes()   { return @selector(setBytes:length:atIndex:); }
+	static SEL selSetBuffer()  { return @selector(setBuffer:offset:atIndex:); }
+	static SEL selSetOffset()  { return @selector(setBufferOffset:atIndex:); }
+	static SEL selSetTexture() { return @selector(setTexture:atIndex:); }
+	static SEL selSetSampler() { return @selector(setSamplerState:atIndex:); }
+#if MVK_XCODE_15
+	static SEL selSetBufferDynamic() { return @selector(setBuffer:offset:attributeStride:atIndex:); }
+	static SEL selSetOffsetDynamic() { return @selector(setBufferOffset:attributeStride:atIndex:); }
+#endif
+	static void setBuffer(id<MTLComputeCommandEncoder> encoder, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger index) {
+		[encoder setBuffer:buffer offset:offset atIndex:index];
+	}
+	static void setBufferOffset(id<MTLComputeCommandEncoder> encoder, NSUInteger offset, NSUInteger index) {
+		[encoder setBufferOffset:offset atIndex:index];
+	}
+	static void setBufferDynamic(id<MTLComputeCommandEncoder> encoder, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger stride, NSUInteger index) {
+#if MVK_XCODE_15
+		[encoder setBuffer:buffer offset:offset attributeStride:stride atIndex:index];
+#else
+		assert(0);
+#endif
+	}
+	static void setBufferOffsetDynamic(id<MTLComputeCommandEncoder> encoder, NSUInteger offset, NSUInteger stride, NSUInteger index) {
+#if MVK_XCODE_15
+		[encoder setBufferOffset:offset attributeStride:stride atIndex:index];
+#else
+		assert(0);
+#endif
+	}
+	static void setBytes(id<MTLComputeCommandEncoder> encoder, const void* bytes, NSUInteger length, NSUInteger index) {
+		[encoder setBytes:bytes length:length atIndex:index];
+	}
+	static void setTexture(id<MTLComputeCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index) {
+		[encoder setTexture:texture atIndex:index];
+	}
+	static void setSampler(id<MTLComputeCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index) {
+		[encoder setSamplerState:sampler atIndex:index];
+	}
+};
+
+template <typename T> struct ResourceBinderTable {
+	T values[static_cast<uint32_t>(T::Stage::Count)];
+	constexpr const T& operator[](typename T::Stage stage) const {
+		assert(stage < T::Stage::Count);
+		return values[static_cast<uint32_t>(stage)];
+	}
+	constexpr T& operator[](typename T::Stage stage) {
+		assert(stage < T::Stage::Count);
+		return values[static_cast<uint32_t>(stage)];
+	}
+};
+
+static ResourceBinderTable<MVKResourceBinder> GenResourceBinders() {
+	ResourceBinderTable<MVKResourceBinder> res = {};
+	res[MVKResourceBinder::Stage::Vertex]   = MVKResourceBinder::Create<MVKVertexBinder>();
+	res[MVKResourceBinder::Stage::Fragment] = MVKResourceBinder::Create<MVKFragmentBinder>();
+	res[MVKResourceBinder::Stage::Compute]  = MVKResourceBinder::Create<MVKComputeBinder>();
+	return res;
+}
+
+static ResourceBinderTable<MVKVertexBufferBinder> GenVertexBufferBinders() {
+	ResourceBinderTable<MVKVertexBufferBinder> res = {};
+	res[MVKVertexBufferBinder::Stage::Vertex]   = MVKVertexBufferBinder::Create<MVKVertexBinder>();
+	res[MVKVertexBufferBinder::Stage::Compute]  = MVKVertexBufferBinder::Create<MVKComputeBinder>();
+	return res;
+}
+
+const MVKResourceBinder& MVKResourceBinder::Get(Stage stage) {
+	static const ResourceBinderTable<MVKResourceBinder> table = GenResourceBinders();
+	return table[stage];
+}
+
+const MVKVertexBufferBinder& MVKVertexBufferBinder::Get(Stage stage) {
+	static const ResourceBinderTable<MVKVertexBufferBinder> table = GenVertexBufferBinders();
+	return table[stage];
+}
+
 #pragma mark - MVKVulkanGraphicsCommandEncoderState
 
 MVKArrayRef<const MTLSamplePosition> MVKVulkanGraphicsCommandEncoderState::getSamplePositions() const {
