@@ -128,6 +128,12 @@ struct MVKVertexBufferBinder {
 
 #pragma mark - MVKVulkanRenderCommandEncoderState
 
+struct MVKBindingList {
+	MVKSmallVector<MVKMTLBufferBinding, 8> bufferBindings;
+	MVKSmallVector<MVKMTLTextureBinding, 8> textureBindings;
+	MVKSmallVector<MVKMTLSamplerStateBinding, 8> samplerStateBindings;
+};
+
 /** Tracks the state of a Vulkan render encoder. */
 struct MVKVulkanGraphicsCommandEncoderState {
 	MVKPipelineLayout* _layout = nullptr;
@@ -150,6 +156,27 @@ struct MVKVulkanGraphicsCommandEncoderState {
 };
 
 #pragma mark - MVKMetalRenderCommandEncoderState
+
+struct MVKStageResourceBindings {
+	id<MTLTexture> textures[kMVKMaxTextureCount];
+	struct Buffer {
+		id<MTLBuffer> buffer;
+		VkDeviceSize offset;
+		bool operator==(Buffer other) const { return std::make_pair(buffer, offset) == std::make_pair(other.buffer, other.offset); }
+		bool operator!=(Buffer other) const { return !(*this == other); }
+	} buffers[kMVKMaxBufferCount];
+	id<MTLSamplerState> samplers[kMVKMaxSamplerCount];
+	static Buffer NullBuffer() { return { nil, 0 }; }
+	static Buffer InvalidBuffer() { return { nil, ~0ull }; }
+};
+
+template <typename T>
+struct MVKOnePerGraphicsStage: public MVKOnePerEnumEntry<T, MVKMetalGraphicsStage> {
+	      T& vertex()         { return (*this)[MVKMetalGraphicsStage::Vertex]; }
+	const T& vertex()   const { return (*this)[MVKMetalGraphicsStage::Vertex]; }
+	      T& fragment()       { return (*this)[MVKMetalGraphicsStage::Fragment]; }
+	const T& fragment() const { return (*this)[MVKMetalGraphicsStage::Fragment]; }
+};
 
 enum class MVKMetalRenderEncoderStateFlag {
 	DepthBiasEnable,
@@ -178,6 +205,14 @@ struct MVKHelperDrawState {
 
 /** Tracks the state of a Metal render encoder. */
 struct MVKMetalGraphicsCommandEncoderState {
+	/**
+	 * If clear, ignore the binding in `bindings` and assume the Metal default value (usually nil / zero).
+	 * Allows us to quickly reset to the state of a fresh command encoder without having to zero all the bindings.
+	 */
+	MVKOnePerGraphicsStage<MVKStageResourceBits> _exists;
+	/** If set, the resource matches what is needed by the current pipeline + descriptor set. */
+	MVKOnePerGraphicsStage<MVKStageResourceBits> _ready;
+
 	id<MTLRenderPipelineState> _pipeline;
 
 	/** Flags that mark whether a render state matches the current Vulkan render state. */
@@ -206,6 +241,8 @@ struct MVKMetalGraphicsCommandEncoderState {
 	uint32_t _sampleCount;
 	MVKMTLDepthStencilDescriptorData _depthStencil;
 
+	MVKOnePerGraphicsStage<MVKStageResourceBindings> _bindings;
+
 	VkViewport _viewports[kMVKMaxViewportScissorCount];
 	VkRect2D _scissors[kMVKMaxViewportScissorCount];
 	MTLSamplePosition _samplePositions[kMVKMaxSampleCount];
@@ -220,6 +257,16 @@ struct MVKMetalGraphicsCommandEncoderState {
 	/** Mark everything dirty that needs to be marked when changing pipelines. */
 	void changePipeline(MVKGraphicsPipeline* from, MVKGraphicsPipeline* to);
 
+	void bindFragmentBuffer(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index);
+	void bindFragmentBytes(id<MTLRenderCommandEncoder> encoder, const void* data, size_t size, NSUInteger index);
+	void bindFragmentTexture(id<MTLRenderCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index);
+	void bindFragmentSampler(id<MTLRenderCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index);
+	void bindVertexBuffer(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index);
+	void bindVertexBytes(id<MTLRenderCommandEncoder> encoder, const void* data, size_t size, NSUInteger index);
+	void bindVertexTexture(id<MTLRenderCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index);
+	void bindVertexSampler(id<MTLRenderCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index);
+	template <typename T> void bindFragmentStructBytes(id<MTLComputeCommandEncoder> encoder, const T& t, NSUInteger index) { bindFragmentBytes(encoder, &t, sizeof(T), index); }
+	template <typename T> void bindVertexStructBytes(id<MTLComputeCommandEncoder> encoder, const T& t, NSUInteger index) { bindVertexBytes(encoder, &t, sizeof(T), index); }
 	void bindStateData(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKRenderStateData& data, MVKRenderStateFlags flags, const VkViewport* viewports, const VkRect2D* scissors);
 	void bindState(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanGraphicsCommandEncoderState& vkState);
 	void bindResources(id<MTLRenderCommandEncoder> encoder, const MVKVulkanGraphicsCommandEncoderState& vkState);

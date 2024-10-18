@@ -165,6 +165,19 @@ struct std::hash<MVKMTLDepthStencilDescriptorData> {
 	std::size_t operator()(const MVKMTLDepthStencilDescriptorData& k) const { return k.hash(); }
 };
 
+/** One bit for each resource that can be bound to a pipeline stage */
+union MVKStageResourceBits {
+	struct {
+		MVKStaticBitSet<kMVKMaxTextureCount> textures;
+		MVKStaticBitSet<kMVKMaxBufferCount>  buffers;
+		MVKStaticBitSet<kMVKMaxSamplerCount> samplers;
+	};
+	MVKStaticBitSet<192> allBits;
+	constexpr MVKStageResourceBits(): allBits{} {}
+	// Note: Reset is done with a large memset over multiple StageResourceBits
+};
+static_assert(sizeof(MVKStageResourceBits) == sizeof(MVKStageResourceBits::allBits), "Make sure we can quickly process all bits");
+
 enum class MVKRenderStateFlag {
 	BlendConstants,
 	ColorBlend,
