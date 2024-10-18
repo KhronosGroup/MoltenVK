@@ -35,6 +35,97 @@ class MVKOcclusionQueryPool;
 
 struct MVKShaderImplicitRezBinding;
 
+enum class MVKMetalGraphicsStage {
+	Vertex,
+	Fragment,
+	Count
+};
+
+#pragma mark - Dynamic Resource Binders
+
+/** Provides dynamic dispatch for binding resources to an encoder. */
+struct MVKResourceBinder {
+	SEL _setBytes;
+	SEL _setBuffer;
+	SEL _setOffset;
+	SEL _setTexture;
+	SEL _setSampler;
+	template <typename T> static MVKResourceBinder Create() {
+		return { T::selSetBytes(), T::selSetBuffer(), T::selSetOffset(), T::selSetTexture(), T::selSetSampler() };
+	}
+	void setBytes(id<MTLCommandEncoder> encoder, const void* bytes, NSUInteger length, NSUInteger index) const {
+		reinterpret_cast<void(*)(id, SEL, const void*, NSUInteger, NSUInteger)>(objc_msgSend)(encoder, _setBytes, bytes, length, index);
+	}
+	void setBuffer(id<MTLCommandEncoder> encoder, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger index) const {
+		reinterpret_cast<void(*)(id, SEL, id<MTLBuffer>, NSUInteger, NSUInteger)>(objc_msgSend)(encoder, _setBuffer, buffer, offset, index);
+	}
+	void setBufferOffset(id<MTLCommandEncoder> encoder, NSUInteger offset, NSUInteger index) const {
+		reinterpret_cast<void(*)(id, SEL, NSUInteger, NSUInteger)>(objc_msgSend)(encoder, _setOffset, offset, index);
+	}
+	void setTexture(id<MTLCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index) const {
+		reinterpret_cast<void(*)(id, SEL, id<MTLTexture>, NSUInteger)>(objc_msgSend)(encoder, _setTexture, texture, index);
+	}
+	void setSampler(id<MTLCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index) const {
+		reinterpret_cast<void(*)(id, SEL, id<MTLSamplerState>, NSUInteger)>(objc_msgSend)(encoder, _setSampler, sampler, index);
+	}
+	enum class Stage {
+		Vertex   = static_cast<uint32_t>(MVKMetalGraphicsStage::Vertex),
+		Fragment = static_cast<uint32_t>(MVKMetalGraphicsStage::Fragment),
+		Compute  = static_cast<uint32_t>(MVKMetalGraphicsStage::Count),
+		Count
+	};
+	static const MVKResourceBinder& Get(Stage stage) GCC_CONST;
+	static const MVKResourceBinder& Get(MVKMetalGraphicsStage stage) { return Get(static_cast<Stage>(stage)); }
+	static const MVKResourceBinder& Vertex()   { return Get(Stage::Vertex); }
+	static const MVKResourceBinder& Fragment() { return Get(Stage::Fragment); }
+	static const MVKResourceBinder& Compute()  { return Get(Stage::Compute); }
+};
+
+/** Provides dynamic dispatch for binding vertex buffers to an encoder. */
+struct MVKVertexBufferBinder {
+	SEL _setBuffer;
+	SEL _setOffset;
+#if MVK_XCODE_15
+	SEL _setBufferDynamic;
+	SEL _setOffsetDynamic;
+#endif
+	template <typename T> static MVKVertexBufferBinder Create() {
+#if MVK_XCODE_15
+		return { T::selSetBuffer(), T::selSetOffset(), T::selSetBufferDynamic(), T::selSetOffsetDynamic() };
+#else
+		return { T::selSetBuffer(), T::selSetOffset() };
+#endif
+	}
+	void setBuffer(id<MTLCommandEncoder> encoder, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger index) const {
+		reinterpret_cast<void(*)(id, SEL, id<MTLBuffer>, NSUInteger, NSUInteger)>(objc_msgSend)(encoder, _setBuffer, buffer, offset, index);
+	}
+	void setBufferOffset(id<MTLCommandEncoder> encoder, NSUInteger offset, NSUInteger index) const {
+		reinterpret_cast<void(*)(id, SEL, NSUInteger, NSUInteger)>(objc_msgSend)(encoder, _setOffset, offset, index);
+	}
+	void setBufferDynamic(id<MTLCommandEncoder> encoder, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger stride, NSUInteger index) const {
+#if MVK_XCODE_15
+		reinterpret_cast<void(*)(id, SEL, id<MTLBuffer>, NSUInteger, NSUInteger, NSUInteger)>(objc_msgSend)(encoder, _setBufferDynamic, buffer, offset, stride, index);
+#else
+		assert(0);
+#endif
+	}
+	void setBufferOffsetDynamic(id<MTLCommandEncoder> encoder, NSUInteger offset, NSUInteger stride, NSUInteger index) const {
+#if MVK_XCODE_15
+		reinterpret_cast<void(*)(id, SEL, NSUInteger, NSUInteger, NSUInteger)>(objc_msgSend)(encoder, _setOffsetDynamic, offset, stride, index);
+#else
+		assert(0);
+#endif
+	}
+	enum class Stage {
+		Vertex,
+		Compute,
+		Count
+	};
+	static const MVKVertexBufferBinder& Get(Stage stage) GCC_CONST;
+	static const MVKVertexBufferBinder& Vertex()  { return Get(Stage::Vertex); }
+	static const MVKVertexBufferBinder& Compute() { return Get(Stage::Compute); }
+};
+
 #pragma mark - MVKVulkanRenderCommandEncoderState
 
 /** Tracks the state of a Vulkan render encoder. */
