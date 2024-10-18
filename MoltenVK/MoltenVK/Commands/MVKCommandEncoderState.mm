@@ -38,7 +38,7 @@ using namespace std;
 @end
 #endif
 
-#pragma mark - Resource Binding
+#pragma mark - Resource Binder Structs
 
 struct MVKFragmentBinder {
 	static SEL selSetBytes()   { return @selector(setFragmentBytes:length:atIndex:); }
@@ -182,6 +182,81 @@ const MVKVertexBufferBinder& MVKVertexBufferBinder::Get(Stage stage) {
 	return table[stage];
 }
 
+#pragma mark - Resource Binding Functions
+
+template <typename Binder, typename Encoder>
+static void bindBuffer(Encoder encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index,
+                       MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const Binder& binder)
+{
+	if (buffer) {
+		if (!exists.buffers.get(index) || bindings.buffers[index].buffer != buffer) {
+			exists.buffers.set(index);
+			binder.setBuffer(encoder, buffer, offset, index);
+			bindings.buffers[index] = { buffer, offset };
+		} else if (bindings.buffers[index].offset != offset) {
+			binder.setBufferOffset(encoder, offset, index);
+			bindings.buffers[index].offset = offset;
+		}
+	} else if (exists.buffers.get(index)) {
+		exists.buffers.clear(index);
+		binder.setBuffer(encoder, nil, 0, index);
+	}
+}
+
+template <typename Binder, typename Encoder>
+static void bindBytes(Encoder encoder, const void* data, size_t size, NSUInteger index,
+                      MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const Binder& binder)
+{
+	exists.buffers.set(index);
+	bindings.buffers[index] = MVKStageResourceBindings::InvalidBuffer();
+	binder.setBytes(encoder, data, size, index);
+}
+
+template <bool DynamicStride>
+static void bindVertexBuffer(id<MTLCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, uint32_t stride, NSUInteger index,
+                             MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const MVKVertexBufferBinder& binder)
+{
+	VkDeviceSize offsetLookup = offset;
+	if (DynamicStride)
+		offsetLookup ^= static_cast<VkDeviceSize>(stride ^ (1u << 31)) << 32;
+	if (!exists.buffers.get(index) || bindings.buffers[index].buffer != buffer) {
+		exists.buffers.set(index);
+		if (DynamicStride)
+			binder.setBufferDynamic(encoder, buffer, offset, stride, index);
+		else
+			binder.setBuffer(encoder, buffer, offset, index);
+		bindings.buffers[index] = { buffer, offsetLookup };
+	} else if (bindings.buffers[index].offset != offsetLookup) {
+		if (DynamicStride)
+			binder.setBufferOffsetDynamic(encoder, offset, stride, index);
+		else
+			binder.setBufferOffset(encoder, offset, index);
+		bindings.buffers[index].offset = offsetLookup;
+	}
+}
+
+template <typename Binder, typename Encoder>
+static void bindTexture(Encoder encoder, id<MTLTexture> texture, NSUInteger index,
+                        MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const Binder& binder)
+{
+	if (!exists.textures.get(index) || bindings.textures[index] != texture) {
+		exists.textures.set(index);
+		binder.setTexture(encoder, texture, index);
+		bindings.textures[index] = texture;
+	}
+}
+
+template <typename Binder, typename Encoder>
+static void bindSampler(Encoder encoder, id<MTLSamplerState> sampler, NSUInteger index,
+                        MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const Binder& binder)
+{
+	if (!exists.samplers.get(index) || bindings.samplers[index] != sampler) {
+		exists.samplers.set(index);
+		binder.setSampler(encoder, sampler, index);
+		bindings.samplers[index] = sampler;
+	}
+}
+
 #pragma mark - MVKVulkanGraphicsCommandEncoderState
 
 MVKArrayRef<const MTLSamplePosition> MVKVulkanGraphicsCommandEncoderState::getSamplePositions() const {
@@ -235,6 +310,39 @@ void MVKMetalGraphicsCommandEncoderState::reset(VkSampleCountFlags sampleCount) 
 	_lineWidth = 1;
 	_sampleCount = getSampleCount(sampleCount);
 	_depthStencil.reset();
+}
+
+void MVKMetalGraphicsCommandEncoderState::bindFragmentBuffer(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index) {
+	_ready.fragment().buffers.set(index, false);
+	bindBuffer(encoder, buffer, offset, index, _exists.fragment(), _bindings.fragment(), MVKFragmentBinder());
+}
+void MVKMetalGraphicsCommandEncoderState::bindFragmentBytes(id<MTLRenderCommandEncoder> encoder, const void* data, size_t size, NSUInteger index) {
+	_ready.fragment().buffers.set(index, false);
+	bindBytes(encoder, data, size, index, _exists.fragment(), _bindings.fragment(), MVKFragmentBinder());
+}
+void MVKMetalGraphicsCommandEncoderState::bindFragmentTexture(id<MTLRenderCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index) {
+	_ready.fragment().textures.set(index, false);
+	bindTexture(encoder, texture, index, _exists.fragment(), _bindings.fragment(), MVKFragmentBinder());
+}
+void MVKMetalGraphicsCommandEncoderState::bindFragmentSampler(id<MTLRenderCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index) {
+	_ready.fragment().samplers.set(index, false);
+	bindSampler(encoder, sampler, index, _exists.fragment(), _bindings.fragment(), MVKFragmentBinder());
+}
+void MVKMetalGraphicsCommandEncoderState::bindVertexBuffer(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index) {
+	_ready.vertex().buffers.set(index, false);
+	bindBuffer(encoder, buffer, offset, index, _exists.vertex(), _bindings.vertex(), MVKVertexBinder());
+}
+void MVKMetalGraphicsCommandEncoderState::bindVertexBytes(id<MTLRenderCommandEncoder> encoder, const void* data, size_t size, NSUInteger index) {
+	_ready.vertex().buffers.set(index, false);
+	bindBytes(encoder, data, size, index, _exists.vertex(), _bindings.vertex(), MVKVertexBinder());
+}
+void MVKMetalGraphicsCommandEncoderState::bindVertexTexture(id<MTLRenderCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index) {
+	_ready.vertex().textures.set(index, false);
+	bindTexture(encoder, texture, index, _exists.vertex(), _bindings.vertex(), MVKVertexBinder());
+}
+void MVKMetalGraphicsCommandEncoderState::bindVertexSampler(id<MTLRenderCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index) {
+	_ready.vertex().samplers.set(index, false);
+	bindSampler(encoder, sampler, index, _exists.vertex(), _bindings.vertex(), MVKVertexBinder());
 }
 
 void MVKMetalGraphicsCommandEncoderState::changePipeline(MVKGraphicsPipeline* from, MVKGraphicsPipeline* to) {
