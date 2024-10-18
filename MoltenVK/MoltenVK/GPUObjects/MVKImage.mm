@@ -48,6 +48,10 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
         MVKImageMemoryBinding* memoryBinding = getMemoryBinding();
 		MVKDeviceMemory* dvcMem = memoryBinding->_deviceMemory;
 
+        if (_image->_is2DViewOn3DImageCompatible && !dvcMem->ensureMTLHeap()) {
+            MVKAssert(0, "Creating a 2D view of a 3D texture currently requires a placement heap, which is not available.");
+        }
+
         if (_image->_ioSurface) {
             _mtlTexture = [_image->getMTLDevice()
                            newTextureWithDescriptor: mtlTexDesc
@@ -60,6 +64,11 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
                            bytesPerRow: _subresources[0].layout.rowPitch];
         } else if (dvcMem && dvcMem->getMTLHeap() && !_image->getIsDepthStencil()) {
             // Metal support for depth/stencil from heaps is flaky
+            _heapAllocation.heap = dvcMem->getMTLHeap();
+            _heapAllocation.offset = memoryBinding->getDeviceMemoryOffset() + _subresources[0].layout.offset;
+            const auto texSizeAlign = [dvcMem->getMTLDevice() heapTextureSizeAndAlignWithDescriptor:mtlTexDesc];
+            _heapAllocation.size = texSizeAlign.size;
+            _heapAllocation.align = texSizeAlign.align;
             _mtlTexture = [dvcMem->getMTLHeap()
                            newTextureWithDescriptor: mtlTexDesc
                            offset: memoryBinding->getDeviceMemoryOffset() + _subresources[0].layout.offset];
@@ -823,6 +832,10 @@ void MVKImage::getTransferDescriptorData(MVKImageDescriptorData& imgData) {
     imgData.usage = getCombinedUsage();
 }
 
+MTLTextureDescriptor* MVKImage::getTextureDescriptor(uint32_t planeIndex) {
+    return _planes[planeIndex]->newMTLTextureDescriptor();
+}
+
 // Returns whether an MVKImageView can have the specified format.
 // If the list of pre-declared view formats is not empty,
 // and the format is not on that list, the view format is not valid.
@@ -1069,6 +1082,11 @@ MTLCPUCacheMode MVKImage::getMTLCPUCacheMode() {
 	return _memoryBindings[0]->_deviceMemory ? _memoryBindings[0]->_deviceMemory->getMTLCPUCacheMode() : MTLCPUCacheModeDefaultCache;
 }
 
+HeapAllocation* MVKImage::getHeapAllocation(uint32_t planeIndex) {
+    auto& heapAllocation = _planes[planeIndex]->_heapAllocation;
+    return (heapAllocation.isValid()) ? &heapAllocation : nullptr;
+}
+
 MTLTextureUsage MVKImage::getMTLTextureUsage(MTLPixelFormat mtlPixFmt) {
 
 	// In the special case of a dedicated aliasable image, we must presume the texture can be used for anything.
@@ -1254,6 +1272,8 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	if (pExportInfo && pExportInfo->exportObjectType == VK_EXPORT_METAL_OBJECT_TYPE_METAL_IOSURFACE_BIT_EXT && !_ioSurface) {
 		setConfigurationResult(useIOSurface(nil));
 	}
+
+    _is2DViewOn3DImageCompatible = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_2D_VIEW_COMPATIBLE_BIT_EXT);
 }
 
 VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
@@ -1801,12 +1821,34 @@ id<MTLTexture> MVKImageViewPlane::newMTLTexture() {
     MTLTextureType mtlTextureType = _imageView->_mtlTextureType;
     NSRange sliceRange = NSMakeRange(_imageView->_subresourceRange.baseArrayLayer, _imageView->_subresourceRange.layerCount);
     // Fake support for 2D views of 3D textures.
-    if (_imageView->_image->getImageType() == VK_IMAGE_TYPE_3D &&
+    auto* image = _imageView->_image;
+    id<MTLTexture> mtlTex = image->getMTLTexture(_planeIndex);
+    if (image->getImageType() == VK_IMAGE_TYPE_3D &&
         (mtlTextureType == MTLTextureType2D || mtlTextureType == MTLTextureType2DArray)) {
-        mtlTextureType = MTLTextureType3D;
-        sliceRange = NSMakeRange(0, 1);
+        if (!image->_is2DViewOn3DImageCompatible) {
+            mtlTextureType = MTLTextureType3D;
+            sliceRange = NSMakeRange(0, 1);
+        } else {
+            if (!_mtlTexture) {
+                const auto heapAllocation = image->getHeapAllocation(_planeIndex);
+                MVKAssert(heapAllocation, "Attempting to create a 2D view of a 3D texture without a placement heap");
+                // TODO (ncesario-lunarg) untested where _imageView->subresourceRange.layerCount > 1, but VK_EXT_image_2d_view_of_3d
+                //      allows for 2D_ARRAY views of 3D textures.
+                const auto relativeSliceOffset = _imageView->_subresourceRange.baseArrayLayer * (heapAllocation->size / image->_extent.depth);
+                MTLTextureDescriptor* mtlTexDesc = image->getTextureDescriptor(_planeIndex);
+
+                mtlTexDesc.depth = _imageView->_subresourceRange.layerCount;
+                mtlTexDesc.textureType = mtlTextureType;
+
+                // Create a temporary texture that is backed by the 3D texture's memory
+                _mtlTexture = [heapAllocation->heap
+                                     newTextureWithDescriptor: mtlTexDesc
+                                     offset: heapAllocation->offset + relativeSliceOffset];
+            }
+            mtlTex = _mtlTexture;
+            sliceRange = NSMakeRange(0, _imageView->_subresourceRange.layerCount);
+        }
     }
-    id<MTLTexture> mtlTex = _imageView->_image->getMTLTexture(_planeIndex);
     if (_useNativeSwizzle) {
         return [mtlTex newTextureViewWithPixelFormat: _mtlPixFmt
                                          textureType: mtlTextureType
@@ -2230,18 +2272,6 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
             } */
 			default:
 				break;
-		}
-	}
-
-	VkImageType imgType = _image->getImageType();
-	VkImageViewType viewType = pCreateInfo->viewType;
-
-	// VK_KHR_maintenance1 supports taking 2D image views of 3D slices for sampling.
-	// No dice in Metal. But we are able to fake out a 3D render attachment by making the Metal view
-	// itself a 3D texture (when we create it), and setting the rendering depthPlane appropriately.
-	if ((viewType == VK_IMAGE_VIEW_TYPE_2D || viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) && (imgType == VK_IMAGE_TYPE_3D)) {
-		if (!mvkIsOnlyAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images can only be used as color attachments."));
 		}
 	}
 
