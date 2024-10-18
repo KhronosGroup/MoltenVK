@@ -104,6 +104,7 @@ public:
 			secIdx = _fullyDisabledSectionCount;
 			startIndex = 0;
 		}
+		if (secIdx >= getSectionCount()) { return _bitCount; }
 		return std::min((secIdx * SectionBitCount) + getIndexOfFirstEnabledBitInSection(getSection(secIdx), getBitIndexInSection(startIndex)), _bitCount);
 	}
 
