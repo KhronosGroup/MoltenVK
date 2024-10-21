@@ -419,8 +419,8 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 void MVKDeviceMemory::initExternalMemory(MVKImage* dedicatedImage) {
 	if ( !_externalMemoryHandleType ) { return; }
 	
-	if ( !mvkIsOnlyAnyFlagEnabled(_externalMemoryHandleType, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT | VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT) ) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkAllocateMemory(): Only external memory handle types VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT or VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT are supported."));
+	if ( !mvkIsOnlyAnyFlagEnabled(_externalMemoryHandleType, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT | VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT | VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT) ) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkAllocateMemory(): Only external memory handle types VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT or VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT are supported."));
 	}
 
 	bool requiresDedicated = false;
@@ -429,7 +429,7 @@ void MVKDeviceMemory::initExternalMemory(MVKImage* dedicatedImage) {
 		requiresDedicated = requiresDedicated || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
 		
 		// Make sure allocation happens at creation time since we may need to export the memory before usage
-		ensureMTLBuffer();
+		ensureMTLHeap();
 	}
 	if (mvkIsAnyFlagEnabled(_externalMemoryHandleType, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT)) {
 		auto& xmProps = getPhysicalDevice()->getExternalBufferProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT);
