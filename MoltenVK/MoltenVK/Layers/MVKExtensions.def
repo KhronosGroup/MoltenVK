@@ -144,6 +144,7 @@ MVK_EXTENSION(EXT_swapchain_maintenance1,             EXT_SWAPCHAIN_MAINTENANCE_
 MVK_EXTENSION(EXT_texel_buffer_alignment,             EXT_TEXEL_BUFFER_ALIGNMENT,             DEVICE,   10.13, 11.0,  1.0)
 MVK_EXTENSION(EXT_texture_compression_astc_hdr,       EXT_TEXTURE_COMPRESSION_ASTC_HDR,       DEVICE,   11.0,  13.0,  1.0)
 MVK_EXTENSION(EXT_vertex_attribute_divisor,           EXT_VERTEX_ATTRIBUTE_DIVISOR,           DEVICE,   10.11,  8.0,  1.0)
+MVK_EXTENSION(EXT_image_2d_view_of_3d,                EXT_IMAGE_2D_VIEW_OF_3D,                DEVICE,   10.15, 13.0,  1.0)
 MVK_EXTENSION(AMD_draw_indirect_count,                AMD_DRAW_INDIRECT_COUNT,                DEVICE,   MVK_NA, MVK_NA, MVK_NA)
 MVK_EXTENSION(AMD_gpu_shader_half_float,              AMD_GPU_SHADER_HALF_FLOAT,              DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(AMD_negative_viewport_height,           AMD_NEGATIVE_VIEWPORT_HEIGHT,           DEVICE,   10.11,  8.0,  1.0)
