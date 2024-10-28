@@ -43,7 +43,7 @@
 using namespace std;
 
 
-#if MVK_IOS_OR_TVOS
+#if MVK_IOS_OR_TVOS || MVK_VISIONOS
 #	include <UIKit/UIKit.h>
 #	define MVKViewClass		UIView
 #endif
@@ -1248,7 +1248,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			// Metal does not allow compressed or depth/stencil formats on 3D textures
 			if (mvkFmt == kMVKFormatDepthStencil ||
 				isChromaSubsampled
-#if MVK_IOS_OR_TVOS
+#if MVK_IOS_OR_TVOS || MVK_VISIONOS
 				|| (mvkFmt == kMVKFormatCompressed && !_metalFeatures.native3DCompressedTextures)
 #endif
 				) {
@@ -1626,7 +1626,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
     }
 #endif
 #endif
-#if MVK_IOS_OR_TVOS
+#if MVK_IOS_OR_TVOS || MVK_VISIONOS
     // iOS 8 doesn't support anything but sRGB.
     if (mvkOSVersionIsAtLeast(9.0)) {
         colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT);
@@ -2091,6 +2091,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 #if MVK_IOS
 	_metalFeatures.mslVersionEnum = MTLLanguageVersion2_0;
+#endif
+#if MVK_VISIONOS
+    _metalFeatures.mslVersionEnum = MTLLanguageVersion3_2;
+#endif
+#if MVK_IOS_OR_VISIONOS
     _metalFeatures.mtlBufferAlignment = 64;
 	_metalFeatures.mtlCopyBufferAlignment = 1;
     _metalFeatures.texelBuffers = true;
@@ -2327,7 +2332,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	}
 #endif
 
-#if (MVK_MACOS && !MVK_MACCAT) || (MVK_MACCAT && MVK_XCODE_14) || (MVK_IOS && MVK_XCODE_12)
+#if (MVK_MACOS && !MVK_MACCAT) || (MVK_MACCAT && MVK_XCODE_14) || (MVK_IOS && MVK_XCODE_12) || MVK_VISIONOS
 	// Both current and deprecated properties are retrieved and OR'd together, due to a
 	// Metal bug that, in some environments, returned true for one and false for the other.
 	bool bcProp1 = false;
@@ -2385,7 +2390,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
         }
     }
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_VISIONOS
     if (_metalFeatures.simdPermute) {
         _metalFeatures.minSubgroupSize = 4;
         _metalFeatures.maxSubgroupSize = 32;
@@ -2396,7 +2401,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 #define setMSLVersion(maj, min)	\
 	_metalFeatures.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(maj, min);
-
 	switch (_metalFeatures.mslVersionEnum) {
 #if MVK_XCODE_16
 		case MTLLanguageVersion3_2:
@@ -2442,6 +2446,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		case MTLLanguageVersion1_0:
 			setMSLVersion(1, 0);
 			break;
+#endif
+#if MVK_VISIONOS
+        default:
+            setMSLVersion(3, 2);
+            break;
 #endif
 	}
 
@@ -2553,7 +2562,7 @@ void MVKPhysicalDevice::initFeatures() {
 	}
 #endif
 
-#if MVK_IOS
+#if MVK_IOS_OR_VISIONOS
     _features.textureCompressionETC2 = true;
 
     if (supportsMTLGPUFamily(Apple2)) {
@@ -2639,7 +2648,7 @@ void MVKPhysicalDevice::initLimits() {
 #if MVK_TVOS
     _properties.limits.maxColorAttachments = kMVKMaxColorAttachmentCount;
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_VISIONOS
     if (supportsMTLGPUFamily(Apple2)) {
         _properties.limits.maxColorAttachments = kMVKMaxColorAttachmentCount;
     } else {
@@ -2726,7 +2735,7 @@ void MVKPhysicalDevice::initLimits() {
 		_properties.limits.maxUniformBufferRange = (uint32_t)min(_metalFeatures.maxMTLBufferSize, (VkDeviceSize)std::numeric_limits<uint32_t>::max());
 	}
 #endif
-#if MVK_IOS_OR_TVOS
+#if MVK_IOS_OR_TVOS || MVK_VISIONOS
 	_properties.limits.maxUniformBufferRange = (uint32_t)min(_metalFeatures.maxMTLBufferSize, (VkDeviceSize)std::numeric_limits<uint32_t>::max());
 #endif
 	_properties.limits.maxStorageBufferRange = (uint32_t)min(_metalFeatures.maxMTLBufferSize, (VkDeviceSize)std::numeric_limits<uint32_t>::max());
@@ -2806,7 +2815,7 @@ void MVKPhysicalDevice::initLimits() {
 #if MVK_TVOS
         _properties.limits.minTexelBufferOffsetAlignment = 64;
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_VISIONOS
         if (supportsMTLGPUFamily(Apple3)) {
             _properties.limits.minTexelBufferOffsetAlignment = 16;
         } else {
@@ -2841,7 +2850,7 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.maxTessellationGenerationLevel = 16;
     _properties.limits.maxTessellationPatchSize = 32;
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_VISIONOS
     if (mvkOSVersionIsAtLeast(13.0) && supportsMTLGPUFamily(Apple4)) {
         _properties.limits.maxFragmentInputComponents = 124;
     } else {
@@ -2942,7 +2951,7 @@ void MVKPhysicalDevice::initLimits() {
 			_properties.limits.maxComputeSharedMemorySize = ((16 * KIBI) - 32);
 		}
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_VISIONOS
 		if (supportsMTLGPUFamily(Apple4)) {
 			_properties.limits.maxComputeSharedMemorySize = (32 * KIBI);
 		} else if (supportsMTLGPUFamily(Apple3)) {
@@ -3220,7 +3229,7 @@ void MVKPhysicalDevice::initMemoryProperties() {
 		typeIdx++;
 	}
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_VISIONOS
 	memlessBit = 1 << typeIdx;
 	setMemoryType(typeIdx, mainHeapIdx, MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS);
 	typeIdx++;
@@ -3483,7 +3492,7 @@ void MVKPhysicalDevice::logGPUInfo() {
 #if MVK_XCODE_14
 	if (supportsMTLGPUFamily(Metal3)) { logMsg += "\n\t\tGPU Family Metal 3"; }
 #endif
-#if MVK_XCODE_15 && (MVK_IOS || MVK_MACOS)
+#if MVK_XCODE_15 && (MVK_IOS_OR_VISIONOS || MVK_MACOS)
 	if (supportsMTLGPUFamily(Apple9)) { logMsg += "\n\t\tGPU Family Apple 9"; } else
 #endif
 #if MVK_XCODE_14 || (MVK_IOS && MVK_XCODE_13)
