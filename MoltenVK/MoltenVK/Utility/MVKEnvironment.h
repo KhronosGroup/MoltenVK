@@ -370,3 +370,7 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #	define MVK_CONFIG_SHADER_LOG_ESTIMATED_GLSL		0
 #endif
 
+/** Advertise VK_EXT_image_2d_view_of_3d */
+#ifndef MVK_CONFIG_ENABLE_2DVIEWOF3D
+#   define MVK_CONFIG_ENABLE_2DVIEWOF3D  0
+#endif

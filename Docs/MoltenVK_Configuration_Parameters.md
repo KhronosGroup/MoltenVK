@@ -684,3 +684,15 @@ Determines the style used to implement _Vulkan_ semaphore (`VkSemaphore`) functi
 
 In the special case of `VK_SEMAPHORE_TYPE_TIMELINE` semaphores, **MoltenVK** will always use
 `MTLSharedEvent` if it is available on the platform, regardless of the value of this parameter.
+
+---------------------------------------
+#### MVK_CONFIG_ENABLE_2DVIEWOF3D
+
+##### Type: Boolean
+##### Default: `0`
+
+If enabled, **MoltenVK** will advertise the `VK_EXT_image_2d_view_of_3d` extension. The **MoltenVK** implementation of this extension uses
+`MTLHeap`s to create 2D textures from memory allocated for 3D textures, which makes some assumptions about how a 3D texture's memory is laid
+out by the metal driver.
+
+Note that the use of this feature depends on `MVK_CONFIG_USE_MTLHEAP`.

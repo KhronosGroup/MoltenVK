@@ -441,7 +441,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->imageViewFormatReinterpretation = true;
 				portabilityFeatures->imageViewFormatSwizzle = (_metalFeatures.nativeTextureSwizzle ||
 															   getMVKConfig().fullImageViewSwizzle);
-				portabilityFeatures->imageView2DOn3DImage = true;
+				portabilityFeatures->imageView2DOn3DImage = getMVKConfig().enable2DViewOf3D;
 				portabilityFeatures->multisampleArrayImage = _metalFeatures.multisampleArrayTextures;
 				portabilityFeatures->mutableComparisonSamplers = _metalFeatures.depthSampleCompare;
 				portabilityFeatures->pointPolygons = false;
@@ -583,9 +583,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				break;
             }
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT: {
-				auto* extFeatures = (VkPhysicalDeviceImage2DViewOf3DFeaturesEXT*)next;
-                extFeatures->image2DViewOf3D = true;
-                extFeatures->sampler2DViewOf3D = true;
+                if (getMVKConfig().enable2DViewOf3D) {
+                    auto* extFeatures = (VkPhysicalDeviceImage2DViewOf3DFeaturesEXT*)next;
+                    extFeatures->image2DViewOf3D = true;
+                    extFeatures->sampler2DViewOf3D = true;
+                }
 				break;
 			}
 			default:

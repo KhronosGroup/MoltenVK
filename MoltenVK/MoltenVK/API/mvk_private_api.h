@@ -239,6 +239,7 @@ typedef struct {
 	VkBool32 useMetalPrivateAPI;                                               /**< MVK_CONFIG_USE_METAL_PRIVATE_API */
 	const char* shaderDumpDir;                                                 /**< MVK_CONFIG_SHADER_DUMP_DIR */
 	VkBool32 shaderLogEstimatedGLSL;                                           /**< MVK_CONFIG_SHADER_LOG_ESTIMATED_GLSL */
+	VkBool32 enable2DViewOf3D;                                                 /**< MVK_CONFIG_VK_ENABLE_2DVIEWOF3D */
 } MVKConfiguration;
 
 // Legacy support for renamed struct elements.
