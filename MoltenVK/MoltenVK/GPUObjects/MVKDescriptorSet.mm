@@ -761,7 +761,6 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 			// on a reset pool), set the offset and update the next available offset value.
 			if ( !mtlArgBuffOffset && (dsIdx || !_nextMetalArgumentBufferOffset)) {
 				mtlArgBuffOffset = _nextMetalArgumentBufferOffset;
-				_nextMetalArgumentBufferOffset += mtlArgBuffEncAlignedSize;
 			}
 
 			// Get the offset of the next desc set, if one exists and
@@ -780,6 +779,11 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 			} else {
 				_descriptorSetAvailablility.disableBit(dsIdx);
 				_maxAllocDescSetCount = std::max(_maxAllocDescSetCount, dsIdx + 1);
+				if ((dsIdx + 1) == _maxAllocDescSetCount)
+				{
+					// if this is the highest index set, update the next free arg buffer offset
+					_nextMetalArgumentBufferOffset = mtlArgBuffOffset + mtlArgBuffEncAlignedSize;
+				}
 				*pVKDS = (VkDescriptorSet)mvkDS;
 			}
 			return false;
