@@ -124,7 +124,7 @@ public:
 		for (size_t bitIdx = getIndexOfFirstEnabledBit();
 			 bitIdx < _bitCount;
 			 bitIdx = getIndexOfFirstEnabledBit(++bitIdx)) {
-
+			if ( !getBit(bitIdx)) { continue; }
 			if ( !func(bitIdx) ) { return false; }
 		}
 		return true;
