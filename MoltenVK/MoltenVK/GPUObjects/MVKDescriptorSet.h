@@ -118,7 +118,7 @@ public:
 	bool needsBufferSizeAuxBuffer() { return _maxBufferIndex >= 0; }
 
 	/** Returns a text description of this layout. */
-	std::string getLogDescription();
+	std::string getLogDescription(std::string indent = "");
 
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
@@ -285,7 +285,7 @@ public:
 	VkResult reset(VkDescriptorPoolResetFlags flags);
 
 	/** Returns a text description of this pool. */
-	std::string getLogDescription();
+	std::string getLogDescription(std::string indent = "");
 
 	MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo);
 

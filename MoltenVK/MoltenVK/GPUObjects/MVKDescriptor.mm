@@ -587,7 +587,7 @@ MTLRenderStages MVKDescriptorSetLayoutBinding::getMTLRenderStages() {
 	return mtlStages;
 }
 
-std::string MVKDescriptorSetLayoutBinding::getLogDescription() {
+std::string MVKDescriptorSetLayoutBinding::getLogDescription(std::string indent) {
 	uint32_t elemCnt = getDescriptorCount();
 	std::stringstream descStr;
 	descStr << getDescriptorIndex() << ": ";

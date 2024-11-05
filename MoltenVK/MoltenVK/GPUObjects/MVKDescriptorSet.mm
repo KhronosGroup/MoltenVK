@@ -415,11 +415,12 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 	MVKLogDebugIf(getMVKConfig().debugMode, "Created %s\n", getLogDescription().c_str());
 }
 
-std::string MVKDescriptorSetLayout::getLogDescription() {
+std::string MVKDescriptorSetLayout::getLogDescription(std::string indent) {
 	std::stringstream descStr;
-	descStr << "VkDescriptorSetLayout " << this << " with " << _bindings.size() << " bindings:";
+	descStr << "VkDescriptorSetLayout with " << _bindings.size() << " bindings:";
+	auto bindIndent = indent + "\t";
 	for (auto& dlb : _bindings) {
-		descStr << "\n\t" << dlb.getLogDescription();
+		descStr << "\n" << bindIndent << dlb.getLogDescription(bindIndent);
 	}
 	return descStr.str();
 }
@@ -959,18 +960,19 @@ size_t MVKDescriptorPool::getPoolSize(const VkDescriptorPoolCreateInfo* pCreateI
 	return descCnt;
 }
 
-std::string MVKDescriptorPool::getLogDescription() {
+std::string MVKDescriptorPool::getLogDescription(std::string indent) {
 #define STR(name) #name
 #define printDescCnt(descType, spacing, descPool)  \
 	if (_##descPool##Descriptors.size()) {  \
-		descStr << "\n\t" STR(VK_DESCRIPTOR_TYPE_##descType) ": " spacing << _##descPool##Descriptors.size()  \
+		descStr << "\n" << descCntIndent << STR(VK_DESCRIPTOR_TYPE_##descType) ": " spacing << _##descPool##Descriptors.size()  \
 		<< "  (" << _##descPool##Descriptors.getRemainingDescriptorCount() << " remaining)"; }
 
 	std::stringstream descStr;
-	descStr << "VkDescriptorPool " << this;
-	descStr << " with " << _descriptorSetAvailablility.size() << " descriptor sets";
+	descStr << "VkDescriptorPool with " << _descriptorSetAvailablility.size() << " descriptor sets";
 	descStr << " (reset " << (mvkIsAnyFlagEnabled(_flags, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) ? "or free" : "only") << ")";
 	descStr << ", and pooled descriptors:";
+
+	auto descCntIndent = indent + "\t";
 	printDescCnt(UNIFORM_BUFFER, "          ", uniformBuffer);
 	printDescCnt(STORAGE_BUFFER, "          ", storageBuffer);
 	printDescCnt(UNIFORM_BUFFER_DYNAMIC, "  ", uniformBufferDynamic);

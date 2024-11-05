@@ -158,7 +158,7 @@ public:
 	bool getApplyToStage(MVKShaderStage stage) { return _applyToStage[stage]; }
 
 	/** Returns a text description of this binding. */
-	std::string getLogDescription();
+	std::string getLogDescription(std::string indent = "");
 
 	MVKDescriptorSetLayoutBinding(MVKDevice* device,
 								  MVKDescriptorSetLayout* layout,
