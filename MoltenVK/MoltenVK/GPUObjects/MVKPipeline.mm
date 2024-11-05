@@ -129,12 +129,13 @@ bool MVKPipelineLayout::stageUsesPushConstants(MVKShaderStage mvkStage) {
 	return false;
 }
 
-std::string MVKPipelineLayout::getLogDescription() {
+std::string MVKPipelineLayout::getLogDescription(std::string indent) {
 	std::stringstream descStr;
 	size_t dslCnt = _descriptorSetLayouts.size();
-	descStr << "VkPipelineLayout " << this << " with " << dslCnt << " descriptor set layouts:";
+	descStr << "VkPipelineLayout with " << dslCnt << " descriptor set layouts:";
+	auto descLayoutIndent = indent + "\t";
 	for (uint32_t dslIdx = 0; dslIdx < dslCnt; dslIdx++) {
-		descStr << "\n\t" << dslIdx << ": " << _descriptorSetLayouts[dslIdx];
+		descStr << "\n" << descLayoutIndent << dslIdx << ": " << _descriptorSetLayouts[dslIdx]->getLogDescription(descLayoutIndent);
 	}
 	return descStr.str();
 }

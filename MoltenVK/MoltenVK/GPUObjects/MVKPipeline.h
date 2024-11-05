@@ -80,7 +80,7 @@ public:
 	MVKDescriptorSetLayout* getDescriptorSetLayout(uint32_t descSetIndex) { return _descriptorSetLayouts[descSetIndex]; }
 
 	/** Returns a text description of this layout. */
-	std::string getLogDescription();
+	std::string getLogDescription(std::string indent = "");
 
 	/** Constructs an instance for the specified device. */
 	MVKPipelineLayout(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
