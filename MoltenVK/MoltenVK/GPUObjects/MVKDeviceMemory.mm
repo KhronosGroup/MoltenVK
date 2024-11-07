@@ -249,7 +249,7 @@ bool MVKDeviceMemory::ensureMTLBuffer() {
 	}
 	if (!_mtlBuffer) { return false; }
 	_pMemory = isMemoryHostAccessible() ? _mtlBuffer.contents : nullptr;
-
+	getDevice()->makeResident(_mtlBuffer);
 	propagateDebugName();
 
 	return true;
@@ -428,6 +428,7 @@ MVKDeviceMemory::~MVKDeviceMemory() {
 	auto imgCopies = _imageMemoryBindings;
 	for (auto& img : imgCopies) { img->bindDeviceMemory(nullptr, 0); }
 
+	if (_mtlBuffer) getDevice()->removeResidency(_mtlBuffer);
 	[_mtlBuffer release];
 	_mtlBuffer = nil;
 
