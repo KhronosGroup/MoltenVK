@@ -823,6 +823,41 @@ public:
 	/** Returns the Metal objects underpinning the Vulkan objects indicated in the pNext chain of pMetalObjectsInfo. */
 	void getMetalObjects(VkExportMetalObjectsInfoEXT* pMetalObjectsInfo);
 
+#if !MVK_XCODE_16
+	inline void makeResident(id allocation) {}
+#else
+	inline void makeResident(id<MTLAllocation> allocation) {
+		@synchronized(_residencySet) {
+			[_residencySet addAllocation: allocation];
+			[_residencySet commit];
+		}
+	}
+#endif
+
+#if !MVK_XCODE_16
+	inline void removeResidency(id allocation) {}
+#else
+	inline void removeResidency(id<MTLAllocation> allocation) {
+		@synchronized(_residencySet) {
+			[_residencySet removeAllocation:allocation];
+			[_residencySet commit];
+		}
+	}
+#endif
+
+	inline void addResidencySet(id<MTLCommandQueue> queue) {
+#if MVK_XCODE_16
+		if (_residencySet) [queue addResidencySet:_residencySet];
+#endif
+	}
+
+	inline bool hasResidencySet() {
+#if MVK_XCODE_16
+		return _residencySet != nil;
+#else
+		return false;
+#endif
+	}
 
 #pragma mark Construction
 
@@ -912,6 +947,9 @@ protected:
     id<MTLBuffer> _globalVisibilityResultMTLBuffer = nil;
 	id<MTLSamplerState> _defaultMTLSamplerState = nil;
 	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
+#if MVK_XCODE_16
+	id<MTLResidencySet> _residencySet = nil;
+#endif
     uint32_t _globalVisibilityQueryCount = 0;
 	int _capturePipeFileDesc = -1;
 	bool _isPerformanceTracking = false;

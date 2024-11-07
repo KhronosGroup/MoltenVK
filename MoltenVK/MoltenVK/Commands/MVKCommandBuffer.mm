@@ -577,7 +577,7 @@ static MVKBarrierStage commandUseToBarrierStage(MVKCommandUse use) {
 
 
 void MVKCommandEncoder::barrierWait(MVKBarrierStage stage, id<MTLRenderCommandEncoder> mtlEncoder, MTLRenderStages beforeStages) {
-	if (!isUsingMetalArgumentBuffers()) return;
+	if (!isUsingMetalArgumentBuffers() || !getDevice()->hasResidencySet()) return;
 	for (int i = 0; i < kMVKBarrierStageCount; ++i) {
 		auto fenceIndex = _waitFenceSlots[stage][i];
 		auto fence = _device->getFence((MVKBarrierStage)i, fenceIndex);
@@ -586,7 +586,7 @@ void MVKCommandEncoder::barrierWait(MVKBarrierStage stage, id<MTLRenderCommandEn
 }
 
 void MVKCommandEncoder::barrierWait(MVKBarrierStage stage, id<MTLBlitCommandEncoder> mtlEncoder) {
-	if (!isUsingMetalArgumentBuffers()) return;
+	if (!isUsingMetalArgumentBuffers() || !getDevice()->hasResidencySet()) return;
 	for (int i = 0; i < kMVKBarrierStageCount; ++i) {
 		auto fenceIndex = _waitFenceSlots[stage][i];
 		auto fence = _device->getFence((MVKBarrierStage)i, fenceIndex);
@@ -595,7 +595,7 @@ void MVKCommandEncoder::barrierWait(MVKBarrierStage stage, id<MTLBlitCommandEnco
 }
 
 void MVKCommandEncoder::barrierWait(MVKBarrierStage stage, id<MTLComputeCommandEncoder> mtlEncoder) {
-	if (!isUsingMetalArgumentBuffers()) return;
+	if (!isUsingMetalArgumentBuffers() || !getDevice()->hasResidencySet()) return;
 	for (int i = 0; i < kMVKBarrierStageCount; ++i) {
 		auto fenceIndex = _waitFenceSlots[stage][i];
 		auto fence = _device->getFence((MVKBarrierStage)i, fenceIndex);
@@ -604,19 +604,19 @@ void MVKCommandEncoder::barrierWait(MVKBarrierStage stage, id<MTLComputeCommandE
 }
 
 void MVKCommandEncoder::barrierUpdate(MVKBarrierStage stage, id<MTLRenderCommandEncoder> mtlEncoder, MTLRenderStages afterStages) {
-	if (!isUsingMetalArgumentBuffers()) return;
+	if (!isUsingMetalArgumentBuffers() || !getDevice()->hasResidencySet()) return;
 	auto fence = getBarrierStageFence(stage);
 	[mtlEncoder updateFence:fence afterStages:afterStages];
 }
 
 void MVKCommandEncoder::barrierUpdate(MVKBarrierStage stage, id<MTLBlitCommandEncoder> mtlEncoder) {
-	if (!isUsingMetalArgumentBuffers()) return;
+	if (!isUsingMetalArgumentBuffers() || !getDevice()->hasResidencySet()) return;
 	auto fence = getBarrierStageFence(stage);
 	[mtlEncoder updateFence:fence];
 }
 
 void MVKCommandEncoder::barrierUpdate(MVKBarrierStage stage, id<MTLComputeCommandEncoder> mtlEncoder) {
-	if (!isUsingMetalArgumentBuffers()) return;
+	if (!isUsingMetalArgumentBuffers() || !getDevice()->hasResidencySet()) return;
 	auto fence = getBarrierStageFence(stage);
 	[mtlEncoder updateFence:fence];
 }
