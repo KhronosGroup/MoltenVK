@@ -5113,6 +5113,21 @@ void MVKDevice::enableExtensions(const VkDeviceCreateInfo* pCreateInfo) {
 
 // Create the command queues
 void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
+#if MVK_XCODE_16
+	MTLResidencySetDescriptor *setDescriptor;
+	setDescriptor = [MTLResidencySetDescriptor new];
+	setDescriptor.label = @"Primary residency set";
+	setDescriptor.initialCapacity = 256;
+
+	NSError *error;
+	_residencySet = [_physicalDevice->getMTLDevice() newResidencySetWithDescriptor:setDescriptor
+																			 error:&error];
+	if (error) {
+		reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, "Error allocating residency set: %s", error.description.UTF8String);
+	}
+	[setDescriptor release];
+#endif
+
 	auto qFams = _physicalDevice->getQueueFamilies();
 	uint32_t qrCnt = pCreateInfo->queueCreateInfoCount;
 	for (uint32_t qrIdx = 0; qrIdx < qrCnt; qrIdx++) {
@@ -5178,6 +5193,9 @@ MVKDevice::~MVKDevice() {
 
 	for (auto &fences: _barrierFences) for (auto fence: fences) [fence release];
 
+#if MVK_XCODE_16
+	[_residencySet release];
+#endif
     [_globalVisibilityResultMTLBuffer release];
 	[_defaultMTLSamplerState release];
 	[_dummyBlitMTLBuffer release];
