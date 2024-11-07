@@ -1,0 +1,49 @@
+# Indentation
+IndentWidth: 4
+UseTab: Never
+ContinuationIndentWidth: 4
+
+# Braces
+BreakBeforeBraces: Attach  # Braces attach to control statements (if, while, for)
+
+# Spacing
+SpaceBeforeParens: ControlStatements
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpaceBeforeAssignmentOperators: true
+
+# Line Breaking
+ColumnLimit: 80  # Larger column limit to prevent premature breaks
+PenaltyBreakBeforeFirstCallParameter: 1000  # Prevent breaking at the first call parameter
+PenaltyBreakString: 1000  # Prevent breaking strings
+PenaltyBreakComment: 1000  # Prevent breaking comments
+
+# Allow Short If-Statements, Loops, and Functions on a Single Line
+AllowShortIfStatementsOnASingleLine: true  # Keep short if-statements on a single line
+AllowShortLoopsOnASingleLine: true  # Keep short loops on a single line
+AllowShortFunctionsOnASingleLine: All  # Keep short functions on a single line
+
+# Comments
+AlignTrailingComments: true
+
+# Includes
+SortIncludes: false 
+
+# Objective-C
+ObjCSpaceBeforeProtocolList: true
+
+# Space in Parentheses
+SpacesInParens: Custom
+SpacesInParensOptions:
+  ExceptDoubleParentheses: false
+  InConditionalStatements: false
+  Other: false
+
+# Pointer alignment
+PointerAlignment: Left
+
+# Prevent line break for very short blocks
+MaxEmptyLinesToKeep: 1  # Don't break up short blocks with many empty lines
+
+# Function formatting
+AlwaysBreakAfterReturnType: None  # Avoid breaking the return type of functions
