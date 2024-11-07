@@ -99,15 +99,31 @@ public:
 		_fullyDisabledSectionCount = (uint32_t)secCnt;
 	}
 
-	/** Returns the index of the first bit that is enabled, at or after the specified index. */
+	/**
+	 * Returns the index of the first enabled bit, at or after the specified index.
+	 * If no bits are enabled, returns the size() of this bit array.
+	 */
 	size_t getIndexOfFirstEnabledBit(size_t startIndex = 0) {
+		size_t secCnt = getSectionCount();
 		size_t secIdx = getIndexOfSection(startIndex);
+
+		// Optimize by skipping all consecutive sections at the beginning that are known to have no enabled bits.
 		if (secIdx < _fullyDisabledSectionCount) {
 			secIdx = _fullyDisabledSectionCount;
 			startIndex = 0;
 		}
-		if (secIdx >= getSectionCount()) { return _bitCount; }
-		return std::min((secIdx * SectionBitCount) + getIndexOfFirstEnabledBitInSection(getSection(secIdx), getBitIndexInSection(startIndex)), _bitCount);
+
+		// Search all sections at or after the starting index, and if an enabled bit is found, return the index of it.
+		while (secIdx < secCnt) {
+			size_t lclBitIdx = getIndexOfFirstEnabledBitInSection(getSection(secIdx), getBitIndexInSection(startIndex));
+			if (lclBitIdx < SectionBitCount) {
+				return (secIdx * SectionBitCount) + lclBitIdx;
+			}
+			startIndex = 0;
+			secIdx++;
+		}
+
+		return _bitCount;
 	}
 
 	/**
