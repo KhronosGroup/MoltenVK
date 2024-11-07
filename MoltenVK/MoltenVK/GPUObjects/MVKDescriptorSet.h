@@ -44,13 +44,15 @@ typedef struct MVKMetalArgumentBuffer {
 	void setSamplerState(id<MTLSamplerState> mtlSamp, uint32_t index);
 	id<MTLBuffer> getMetalArgumentBuffer() { return _mtlArgumentBuffer; }
 	NSUInteger getMetalArgumentBufferOffset() { return _mtlArgumentBufferOffset; }
-	void setArgumentBuffer(id<MTLBuffer> mtlArgBuff, NSUInteger mtlArgBuffOfst, id<MTLArgumentEncoder> mtlArgEnc);
+	NSUInteger getMetalArgumentBufferEncodedSize() { return _mtlArgumentBufferEncodedSize; }
+	void setArgumentBuffer(id<MTLBuffer> mtlArgBuff, NSUInteger mtlArgBuffOfst, NSUInteger mtlArgBuffEncSize, id<MTLArgumentEncoder> mtlArgEnc);
 	~MVKMetalArgumentBuffer();
 protected:
 	void* getArgumentPointer(uint32_t index) const;
 	id<MTLArgumentEncoder> _mtlArgumentEncoder = nil;
 	id<MTLBuffer> _mtlArgumentBuffer = nil;
 	NSUInteger _mtlArgumentBufferOffset = 0;
+	NSUInteger _mtlArgumentBufferEncodedSize = 0;
 } MVKMetalArgumentBuffer;
 
 
@@ -135,7 +137,7 @@ protected:
 	MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding, uint32_t bindingIndexOffset = 0);
 	uint32_t getBufferSizeBufferArgBuferIndex() { return 0; }
 	id <MTLArgumentEncoder> getMTLArgumentEncoder(uint32_t variableDescriptorCount);
-	uint64_t getMetal3ArgumentBufferEncodedLength(uint32_t variableDescriptorCount);
+	size_t getMetal3ArgumentBufferEncodedLength(uint32_t variableDescriptorCount);
 	bool checkCanUseArgumentBuffers(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
@@ -216,7 +218,8 @@ protected:
 	MVKDescriptor* getDescriptor(uint32_t binding, uint32_t elementIndex = 0);
 	VkResult allocate(MVKDescriptorSetLayout* layout,
 					  uint32_t variableDescriptorCount,
-					  NSUInteger mtlArgBufferOffset,
+					  NSUInteger mtlArgBuffOffset,
+					  NSUInteger mtlArgBuffEncSize,
 					  id<MTLArgumentEncoder> mtlArgEnc);
 	void free(bool isPoolReset);
 	MVKMTLBufferAllocation* acquireMTLBufferRegion(NSUInteger length);
@@ -309,7 +312,6 @@ protected:
 	MVKBitArray _descriptorSetAvailablility;
 	MVKMTLBufferAllocator _mtlBufferAllocator;
 	id<MTLBuffer> _metalArgumentBuffer = nil;
-	NSUInteger _nextMetalArgumentBufferOffset = 0;
 
 	MVKDescriptorTypePool<MVKUniformBufferDescriptor> _uniformBufferDescriptors;
 	MVKDescriptorTypePool<MVKStorageBufferDescriptor> _storageBufferDescriptors;
@@ -325,7 +327,7 @@ protected:
 	MVKDescriptorTypePool<MVKStorageTexelBufferDescriptor> _storageTexelBufferDescriptors;
 
 	VkDescriptorPoolCreateFlags _flags = 0;
-	size_t _maxAllocDescSetCount = 0;
+	size_t _allocatedDescSetCount = 0;
 };
 
 
