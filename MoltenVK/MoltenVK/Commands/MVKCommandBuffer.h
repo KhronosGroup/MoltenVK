@@ -410,6 +410,27 @@ public:
     /** Returns the command encoding pool. */
     MVKCommandEncodingPool* getCommandEncodingPool();
 
+	#pragma mark Barriers
+
+	/** Encode waits in the current command encoder for the stage that corresponds to given use. */
+	void encodeBarrierWaits(MVKCommandUse use);
+
+	/** Update fences for the currently executing pipeline stage. */
+	void encodeBarrierUpdates();
+
+	/** Insert a new execution barrier */
+	void setBarrier(uint64_t sourceStageMask, uint64_t destStageMask);
+
+	/** Encode waits for a specific stage in given encoder. */
+	void barrierWait(MVKBarrierStage stage, id<MTLRenderCommandEncoder> mtlEncoder, MTLRenderStages beforeStages);
+	void barrierWait(MVKBarrierStage stage, id<MTLBlitCommandEncoder> mtlEncoder);
+	void barrierWait(MVKBarrierStage stage, id<MTLComputeCommandEncoder> mtlEncoder);
+
+	/** Encode update for a specific stage in given encoder. */
+	void barrierUpdate(MVKBarrierStage stage, id<MTLRenderCommandEncoder> mtlEncoder, MTLRenderStages afterStages);
+	void barrierUpdate(MVKBarrierStage stage, id<MTLBlitCommandEncoder> mtlEncoder);
+	void barrierUpdate(MVKBarrierStage stage, id<MTLComputeCommandEncoder> mtlEncoder);
+
 #pragma mark Queries
 
     /** Begins an occlusion query. */
@@ -492,6 +513,7 @@ protected:
 	NSString* getMTLRenderCommandEncoderName(MVKCommandUse cmdUse);
 	template<typename T> void retainIfImmediatelyEncoding(T& mtlEnc);
 	template<typename T> void endMetalEncoding(T& mtlEnc);
+	id<MTLFence> getBarrierStageFence(MVKBarrierStage stage);
 
 	typedef struct GPUCounterQuery {
 		MVKGPUCounterQueryPool* queryPool = nullptr;
@@ -519,6 +541,9 @@ protected:
     uint32_t _flushCount;
 	MVKCommandUse _mtlComputeEncoderUse;
 	MVKCommandUse _mtlBlitEncoderUse;
+	uint32_t _updateFenceSlotDirtyBits = ~0;
+	int _updateFenceSlots[kMVKBarrierStageCount] = {};
+	int _waitFenceSlots[kMVKBarrierStageCount][kMVKBarrierStageCount] = {};
 	bool _isRenderingEntireAttachment;
 };
 

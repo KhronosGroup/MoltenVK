@@ -4813,6 +4813,9 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	initQueues(pCreateInfo);
 	reservePrivateData(pCreateInfo);
 
+	// Initialize fences for execution barriers
+	for (auto &stage: _barrierFences) for (auto &fence: stage) fence = [_physicalDevice->getMTLDevice() newFence];
+
 #if MVK_MACOS
 	// After enableExtensions
 	// If the VK_KHR_swapchain extension is enabled, we expect to render to the screen.
@@ -5177,6 +5180,8 @@ MVKDevice::~MVKDevice() {
 	}
 
 	if (_commandResourceFactory) { _commandResourceFactory->destroy(); }
+
+	for (auto &fences: _barrierFences) for (auto fence: fences) [fence release];
 
     [_globalVisibilityResultMTLBuffer release];
 	[_defaultMTLSamplerState release];

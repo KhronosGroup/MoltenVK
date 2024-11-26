@@ -491,6 +491,10 @@ typedef struct MVKMTLBlitEncoder {
 	id<MTLCommandBuffer> mtlCmdBuffer = nil;
 } MVKMTLBlitEncoder;
 
+// Arbitrary, after that many barriers with a given source pipeline stage we will wrap around
+// and potentially introduce extra synchronization on previous invocations of the same stage.
+static const uint32_t kMVKBarrierFenceCount = 64;
+
 /** Represents a Vulkan logical GPU device, associated with a physical device. */
 class MVKDevice : public MVKDispatchableVulkanAPIObject {
 
@@ -841,6 +845,15 @@ public:
         return (MVKDevice*)getDispatchableObject(vkDevice);
     }
 
+#pragma mark Barriers
+
+	/** Returns a Metal fence to update for the given barrier stage. */
+	id<MTLFence> getBarrierStageFence(id<MTLCommandBuffer> mtlCommandBuffer, MVKBarrierStage stage);
+
+	inline id<MTLFence> getFence(MVKBarrierStage stage, int index) {
+		return _barrierFences[stage][index];
+	}
+
 protected:
 	friend class MVKDeviceTrackingMixin;
 
@@ -879,6 +892,8 @@ protected:
 #define MVK_DEVICE_FEATURE_EXTN(structName, enumName, extnSfx, flagCount) \
 	VkPhysicalDevice##structName##Features##extnSfx _enabled##structName##Features;
 #include "MVKDeviceFeatureStructs.def"
+
+	id<MTLFence> _barrierFences[kMVKBarrierStageCount][kMVKBarrierFenceCount];
 
 	MVKPerformanceStatistics _performanceStats;
     MVKCommandResourceFactory* _commandResourceFactory = nullptr;
