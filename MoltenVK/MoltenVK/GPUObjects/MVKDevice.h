@@ -841,6 +841,25 @@ public:
         return (MVKDevice*)getDispatchableObject(vkDevice);
     }
 
+#pragma mark Barriers
+
+	/** Returns a Metal fence to update for the given barrier stage. */
+	id<MTLFence> getBarrierStageFence(id<MTLCommandBuffer> mtlCommandBuffer, MVKBarrierStage stage);
+
+	void setBarrier(id<MTLCommandBuffer> commandBuffer, uint64_t sourceStageMask, uint64_t destStageMask);
+
+	void barrierWait(MVKBarrierStage stage, id<MTLCommandBuffer> mtlCommandBuffer, id<MTLRenderCommandEncoder> mtlEncoder, MTLRenderStages beforeStages);
+	void barrierWait(MVKBarrierStage stage, id<MTLCommandBuffer> mtlCommandBuffer, id<MTLBlitCommandEncoder> mtlEncoder);
+	void barrierWait(MVKBarrierStage stage, id<MTLCommandBuffer> mtlCommandBuffer, id<MTLComputeCommandEncoder> mtlEncoder);
+
+	void barrierUpdate(MVKBarrierStage stage, id<MTLCommandBuffer> mtlCommandBuffer, id<MTLRenderCommandEncoder> mtlEncoder, MTLRenderStages afterStages);
+	void barrierUpdate(MVKBarrierStage stage, id<MTLCommandBuffer> mtlCommandBuffer, id<MTLBlitCommandEncoder> mtlEncoder);
+	void barrierUpdate(MVKBarrierStage stage, id<MTLCommandBuffer> mtlCommandBuffer, id<MTLComputeCommandEncoder> mtlEncoder);
+
+	id<MTLFence> _stageBarriers[kMVKBarrierStageCount] = {};
+	id<MTLFence> _activeBarriers[kMVKBarrierStageCount][kMVKBarrierStageCount] = {};
+	bool _stageBarriersDirty[kMVKBarrierStageCount] = {};
+
 protected:
 	friend class MVKDeviceTrackingMixin;
 

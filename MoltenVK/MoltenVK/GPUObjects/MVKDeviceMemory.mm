@@ -108,7 +108,10 @@ VkResult MVKDeviceMemory::pullFromDevice(VkDeviceSize offset,
 #if MVK_MACOS
 	if ( !isUnifiedMemoryGPU() && pBlitEnc && _mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {
 		if ( !pBlitEnc->mtlCmdBuffer) { pBlitEnc->mtlCmdBuffer = _device->getAnyQueue()->getMTLCommandBuffer(kMVKCommandUseInvalidateMappedMemoryRanges); }
-		if ( !pBlitEnc->mtlBlitEncoder) { pBlitEnc->mtlBlitEncoder = [pBlitEnc->mtlCmdBuffer blitCommandEncoder]; }
+		if ( !pBlitEnc->mtlBlitEncoder) {
+			pBlitEnc->mtlBlitEncoder = [pBlitEnc->mtlCmdBuffer blitCommandEncoder];
+			getDevice()->barrierWait(kMVKBarrierStageHost, pBlitEnc->mtlCmdBuffer, pBlitEnc->mtlBlitEncoder);
+		}
 		[pBlitEnc->mtlBlitEncoder synchronizeResource: _mtlBuffer];
 	}
 #endif
