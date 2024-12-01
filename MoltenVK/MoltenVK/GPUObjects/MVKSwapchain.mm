@@ -356,8 +356,8 @@ void MVKSwapchain::setHDRMetadataEXT(const VkHdrMetadataEXT& metadata) {
 	colorVol.min_display_mastering_luminance = OSSwapHostToBigInt32((uint32_t)(metadata.minLuminance * 10000));
 	lightLevel.max_content_light_level = OSSwapHostToBigInt16((uint16_t)metadata.maxContentLightLevel);
 	lightLevel.max_pic_average_light_level = OSSwapHostToBigInt16((uint16_t)metadata.maxFrameAverageLightLevel);
-	NSData* colorVolData = [NSData dataWithBytes: &colorVol length: sizeof(colorVol)];
-	NSData* lightLevelData = [NSData dataWithBytes: &lightLevel length: sizeof(lightLevel)];
+	NSData* colorVolData = [[NSData alloc] initWithBytes: &colorVol length: sizeof(colorVol)];
+	NSData* lightLevelData = [[NSData alloc] initWithBytes: &lightLevel length: sizeof(lightLevel)];
 	CAEDRMetadata* caMetadata = [CAEDRMetadata HDR10MetadataWithDisplayInfo: colorVolData
 																contentInfo: lightLevelData
 														 opticalOutputScale: 1];
