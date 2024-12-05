@@ -29,6 +29,7 @@ class MVKDescriptorPool;
 class MVKPipelineLayout;
 class MVKCommandEncoder;
 class MVKResourcesCommandEncoderState;
+struct MVKBindingList;
 
 
 #pragma mark -
@@ -69,6 +70,15 @@ public:
 
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT; }
+
+	/** Appends the bindings from the given descriptor set to a list */
+	void appendDescriptorSetBindings(MVKBindingList& target,
+	                                 MVKSmallVector<uint32_t, 8>& targetDynamicOffsets,
+	                                 MVKShaderStage stage,
+	                                 uint32_t index,
+	                                 MVKDescriptorSet* set,
+	                                 const MVKShaderStageResourceBinding& indexOffsets,
+	                                 const uint32_t*& dynamicOffsets);
 
 	/** Encodes this descriptor set layout and the specified descriptor set on the specified command encoder. */
 	void bindDescriptorSet(MVKCommandEncoder* cmdEncoder,

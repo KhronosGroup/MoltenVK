@@ -26,6 +26,7 @@ class MVKDescriptorSet;
 class MVKDescriptorSetLayout;
 class MVKCommandEncoder;
 class MVKResourcesCommandEncoderState;
+struct MVKBindingList;
 
 
 /** Magic number to indicate the variable descriptor count is currently unknown. */
@@ -119,6 +120,13 @@ public:
 	MVKSampler* getImmutableSampler(uint32_t index) {
 		return (index < _immutableSamplers.size()) ? _immutableSamplers[index] : nullptr;
 	}
+
+	/** Appends the bindings from this binding on the given descriptor set to a list */
+	void appendBindings(MVKBindingList& target,
+	                    MVKShaderStage stage,
+	                    MVKDescriptorSet* set,
+	                    const MVKShaderStageResourceBinding& indexOffsets,
+	                    const uint32_t*& dynamicOffsets);
 
 	/** Encodes the descriptors in the descriptor set that are specified by this layout, */
 	void bind(MVKCommandEncoder* cmdEncoder,
@@ -220,6 +228,13 @@ public:
 	/** Returns whether this descriptor type uses dynamic buffer offsets. */
 	virtual bool usesDynamicBufferOffsets() { return false; }
 
+	/** Appends the bindings from this descriptor to a list */
+	virtual void appendBindings(MVKBindingList& target,
+	                            uint32_t elementIndex,
+	                            MVKDescriptorSetLayoutBinding* layout,
+	                            const MVKShaderStageResourceBinding& indexOffsets,
+	                            const uint32_t*& dynamicOffsets) = 0;
+
 	/** Encodes this descriptor (based on its layout binding index) on the the command encoder. */
 	virtual void bind(MVKCommandEncoder* cmdEncoder,
 					  VkPipelineBindPoint pipelineBindPoint,
@@ -284,6 +299,12 @@ protected:
 class MVKBufferDescriptor : public MVKDescriptor {
 
 public:
+	void appendBindings(MVKBindingList& target,
+	                    uint32_t elementIndex,
+	                    MVKDescriptorSetLayoutBinding* layout,
+	                    const MVKShaderStageResourceBinding& indexOffsets,
+	                    const uint32_t*& dynamicOffsets) override;
+
 	void bind(MVKCommandEncoder* cmdEncoder,
 			  VkPipelineBindPoint pipelineBindPoint,
 			  MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -372,6 +393,12 @@ class MVKInlineUniformBlockDescriptor : public MVKDescriptor {
 public:
 	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK; }
 
+	void appendBindings(MVKBindingList& target,
+	                    uint32_t elementIndex,
+	                    MVKDescriptorSetLayoutBinding* layout,
+	                    const MVKShaderStageResourceBinding& indexOffsets,
+	                    const uint32_t*& dynamicOffsets) override;
+
 	void bind(MVKCommandEncoder* cmdEncoder,
 			  VkPipelineBindPoint pipelineBindPoint,
 			  MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -433,6 +460,12 @@ protected:
 class MVKImageDescriptor : public MVKDescriptor {
 
 public:
+	void appendBindings(MVKBindingList& target,
+	                    uint32_t elementIndex,
+	                    MVKDescriptorSetLayoutBinding* layout,
+	                    const MVKShaderStageResourceBinding& indexOffsets,
+	                    const uint32_t*& dynamicOffsets) override;
+
 	void bind(MVKCommandEncoder* cmdEncoder,
 			  VkPipelineBindPoint pipelineBindPoint,
 			  MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -510,6 +543,12 @@ public:
 class MVKSamplerDescriptorMixin {
 
 protected:
+	void appendBindings(MVKBindingList& target,
+	                    uint32_t elementIndex,
+	                    MVKDescriptorSetLayoutBinding* layout,
+	                    const MVKShaderStageResourceBinding& indexOffsets,
+	                    const uint32_t*& dynamicOffsets);
+
 	void bind(MVKCommandEncoder* cmdEncoder,
 			  VkPipelineBindPoint pipelineBindPoint,
 			  MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -555,6 +594,12 @@ class MVKSamplerDescriptor : public MVKDescriptor, public MVKSamplerDescriptorMi
 public:
 	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_SAMPLER; }
 
+	void appendBindings(MVKBindingList& target,
+	                    uint32_t elementIndex,
+	                    MVKDescriptorSetLayoutBinding* layout,
+	                    const MVKShaderStageResourceBinding& indexOffsets,
+	                    const uint32_t*& dynamicOffsets) override;
+
 	void bind(MVKCommandEncoder* cmdEncoder,
 			  VkPipelineBindPoint pipelineBindPoint,
 			  MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -599,6 +644,12 @@ class MVKCombinedImageSamplerDescriptor : public MVKImageDescriptor, public MVKS
 public:
 	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; }
 
+	void appendBindings(MVKBindingList& target,
+	                    uint32_t elementIndex,
+	                    MVKDescriptorSetLayoutBinding* layout,
+	                    const MVKShaderStageResourceBinding& indexOffsets,
+	                    const uint32_t*& dynamicOffsets) override;
+
 	void bind(MVKCommandEncoder* cmdEncoder,
 			  VkPipelineBindPoint pipelineBindPoint,
 			  MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -641,6 +692,12 @@ public:
 class MVKTexelBufferDescriptor : public MVKDescriptor {
 
 public:
+	void appendBindings(MVKBindingList& target,
+	                    uint32_t elementIndex,
+	                    MVKDescriptorSetLayoutBinding* layout,
+	                    const MVKShaderStageResourceBinding& indexOffsets,
+	                    const uint32_t*& dynamicOffsets) override;
+
 	void bind(MVKCommandEncoder* cmdEncoder,
 			  VkPipelineBindPoint pipelineBindPoint,
 			  MVKDescriptorSetLayoutBinding* mvkDSLBind,

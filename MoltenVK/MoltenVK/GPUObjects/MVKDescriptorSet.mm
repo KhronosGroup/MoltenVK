@@ -88,6 +88,43 @@ MVKMetalArgumentBuffer::~MVKMetalArgumentBuffer() { [_mtlArgumentEncoder release
 #pragma mark -
 #pragma mark MVKDescriptorSetLayout
 
+void MVKDescriptorSetLayout::appendDescriptorSetBindings(
+	MVKBindingList& target,
+	MVKSmallVector<uint32_t, 8>& targetDynamicOffsets,
+	MVKShaderStage stage,
+	uint32_t index,
+	MVKDescriptorSet* set,
+	const MVKShaderStageResourceBinding& indexOffsets,
+	const uint32_t*& dynamicOffsets)
+{
+	if (_isPushDescriptorLayout) return;
+	if (isUsingMetalArgumentBuffers()) {
+		// Bind argument buffer
+		MVKMTLBufferBinding bb;
+		auto& argbuf = set->getMetalArgumentBuffer();
+		bb.mtlBuffer = argbuf.getMetalArgumentBuffer();
+		bb.offset = argbuf.getMetalArgumentBufferOffset();
+		bb.index = index;
+		target.bufferBindings.push_back(bb);
+		// Copy dynamic offsets
+		uint32_t offsetCount = set->getDynamicOffsetDescriptorCount();
+		uint32_t baseOffset = indexOffsets.dynamicOffsetBufferIndex;
+		const uint32_t* dynamicOffsetsIn = dynamicOffsets;
+		dynamicOffsets += offsetCount;
+		for (uint32_t i = 0; i < offsetCount; i++) {
+			uint32_t write = i + baseOffset;
+			if (targetDynamicOffsets.size() <= write) {
+				targetDynamicOffsets.resize(write + 1);
+			}
+			targetDynamicOffsets[write] = dynamicOffsetsIn[i];
+		}
+	} else {
+		for (auto& binding : _bindings) {
+			binding.appendBindings(target, stage, set, indexOffsets, dynamicOffsets);
+		}
+	}
+}
+
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
 											   VkPipelineBindPoint pipelineBindPoint,
