@@ -36,6 +36,7 @@
 
 class MVKCommandEncoder;
 class MVKPipelineCache;
+struct MVKBindingList;
 
 
 #pragma mark -
@@ -55,6 +56,19 @@ public:
 
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT; }
+
+	/** Appends the bindings from the given descriptor set to a list */
+	void appendDescriptorSetBindings(MVKBindingList& target,
+	                                 MVKSmallVector<uint32_t, 8>& targetDynamicOffsets,
+	                                 MVKShaderStage stage,
+	                                 uint32_t index,
+	                                 MVKDescriptorSet* set,
+	                                 const uint32_t*& dynamicOffsets)
+	{
+		MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[index];
+		const MVKShaderStageResourceBinding& indexOffsets = _dslMTLResourceIndexOffsets[index].stages[stage];
+		dsl->appendDescriptorSetBindings(target, targetDynamicOffsets, stage, index, set, indexOffsets, dynamicOffsets);
+	}
 
 	/** Binds descriptor sets to a command encoder. */
     void bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
