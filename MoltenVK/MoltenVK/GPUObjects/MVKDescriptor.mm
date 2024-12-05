@@ -200,6 +200,35 @@ uint32_t MVKDescriptorSetLayoutBinding::getDescriptorCount(uint32_t variableDesc
 	return _info.descriptorCount;
 }
 
+void MVKDescriptorSetLayoutBinding::appendBindings(MVKBindingList& target,
+                                                   MVKShaderStage stage,
+                                                   MVKDescriptorSet* set,
+                                                   const MVKShaderStageResourceBinding& indexOffsets,
+                                                   const uint32_t*& dynamicOffsets)
+{
+	if (!_applyToStage[stage]) {
+		// Skip the dynamic offsets if this descriptor uses them
+		switch (getDescriptorType()) {
+			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+				dynamicOffsets += getDescriptorCount(set->_variableDescriptorCount);
+				break;
+			default:
+				break;
+		}
+		return;
+	}
+	// Establish the resource indices to use, by combining the offsets of the DSL and this DSL binding.
+	MVKShaderStageResourceBinding indices = _mtlResourceIndexOffsets.stages[stage] + indexOffsets;
+
+	uint32_t count = getDescriptorCount(set->_variableDescriptorCount);
+	for (uint32_t i = 0; i < count; i++) {
+		MVKDescriptor* desc = set->getDescriptor(getBinding(), i);
+		assert(desc->getDescriptorType() == getDescriptorType());
+		desc->appendBindings(target, i, this, indices, dynamicOffsets);
+	}
+}
+
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
 										 VkPipelineBindPoint pipelineBindPoint,
@@ -786,6 +815,23 @@ uint32_t MVKBufferDescriptor::getBufferSize(VkDeviceSize dynamicOffset) {
 					 : _buffRange));
 }
 
+void MVKBufferDescriptor::appendBindings(MVKBindingList& target,
+                                         uint32_t elementIndex,
+                                         MVKDescriptorSetLayoutBinding* layout,
+                                         const MVKShaderStageResourceBinding& indexOffsets,
+                                         const uint32_t*& dynamicOffsets)
+{
+	MVKMTLBufferBinding bb;
+	NSUInteger bufferDynamicOffset = usesDynamicBufferOffsets() ? *dynamicOffsets++ : 0;
+	bb.index = indexOffsets.bufferIndex + elementIndex;
+	if (_mvkBuffer) {
+		bb.mtlBuffer = _mvkBuffer->getMTLBuffer();
+		bb.offset = _mvkBuffer->getMTLBufferOffset() + _buffOffset + bufferDynamicOffset;
+		bb.size = getBufferSize(bufferDynamicOffset);
+	}
+	target.bufferBindings.push_back(bb);
+}
+
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 							   VkPipelineBindPoint pipelineBindPoint,
@@ -869,6 +915,22 @@ void MVKBufferDescriptor::encodeResourceUsage(MVKResourcesCommandEncoderState* r
 
 #pragma mark -
 #pragma mark MVKInlineUniformBlockDescriptor
+
+void MVKInlineUniformBlockDescriptor::appendBindings(MVKBindingList& target,
+                                                     uint32_t elementIndex,
+                                                     MVKDescriptorSetLayoutBinding* layout,
+                                                     const MVKShaderStageResourceBinding& indexOffsets,
+                                                     const uint32_t*& dynamicOffsets)
+{
+	MVKMTLBufferBinding bb;
+	bb.index = indexOffsets.bufferIndex;
+	if (_mvkMTLBufferAllocation) {
+		bb.mtlBuffer = _mvkMTLBufferAllocation->_mtlBuffer;
+		bb.offset = _mvkMTLBufferAllocation->_offset;
+		bb.size = layout->_info.descriptorCount;
+	}
+	target.bufferBindings.push_back(bb);
+}
 
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKInlineUniformBlockDescriptor::bind(MVKCommandEncoder* cmdEncoder,
@@ -965,6 +1027,42 @@ void MVKInlineUniformBlockDescriptor::reset() {
 
 #pragma mark -
 #pragma mark MVKImageDescriptor
+
+void MVKImageDescriptor::appendBindings(MVKBindingList& target,
+                                        uint32_t elementIndex,
+                                        MVKDescriptorSetLayoutBinding* layout,
+                                        const MVKShaderStageResourceBinding& indexOffsets,
+                                        const uint32_t*& dynamicOffsets)
+{
+	VkDescriptorType descType = getDescriptorType();
+	uint8_t planeCount = (_mvkImageView) ? _mvkImageView->getPlaneCount() : 1;
+	for (uint8_t planeIndex = 0; planeIndex < planeCount; planeIndex++) {
+		bool isStorage = descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+		bool isSampled = descType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE
+		              || descType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		MVKMTLTextureBinding tb;
+		uint32_t index = elementIndex * planeCount + planeIndex;
+		tb.index = indexOffsets.textureIndex + index;
+
+		if (_mvkImageView) {
+			tb.mtlTexture = _mvkImageView->getMTLTexture(planeIndex);
+		}
+		tb.swizzle = (isSampled && tb.mtlTexture) ? _mvkImageView->getPackedSwizzle() : 0;
+		target.textureBindings.push_back(tb);
+		if (isStorage && !layout->getMetalFeatures().nativeTextureAtomics) {
+			MVKMTLBufferBinding bb;
+			bb.index = indexOffsets.bufferIndex + index;
+			if (tb.mtlTexture) {
+				id<MTLTexture> mtlTex = tb.mtlTexture;
+				if (id<MTLTexture> parent = mtlTex.parentTexture) { mtlTex = parent; }
+				bb.mtlBuffer = mtlTex.buffer;
+				bb.offset = mtlTex.bufferOffset;
+				bb.size = (uint32_t)(mtlTex.height * mtlTex.bufferBytesPerRow);
+			}
+			target.bufferBindings.push_back(bb);
+		}
+	}
+}
 
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKImageDescriptor::bind(MVKCommandEncoder* cmdEncoder,
@@ -1088,6 +1186,22 @@ void MVKImageDescriptor::reset() {
 #pragma mark -
 #pragma mark MVKSamplerDescriptorMixin
 
+
+void MVKSamplerDescriptorMixin::appendBindings(MVKBindingList& target,
+                                               uint32_t elementIndex,
+                                               MVKDescriptorSetLayoutBinding* layout,
+                                               const MVKShaderStageResourceBinding& indexOffsets,
+                                               const uint32_t*& dynamicOffsets)
+{
+	MVKSampler* immutable = layout->getImmutableSampler(elementIndex);
+	MVKSampler* samp = immutable ? immutable : _mvkSampler;
+
+	MVKMTLSamplerStateBinding sb;
+	sb.index = indexOffsets.samplerIndex + elementIndex;
+	sb.mtlSamplerState = samp ? samp->getMTLSamplerState() : layout->getDevice()->getDefaultMTLSamplerState();
+	target.samplerStateBindings.push_back(sb);
+}
+
 // A null cmdEncoder can be passed to perform a validation pass
 // Metal validation requires each sampler in an array of samplers to be populated,
 // even if not used, so populate a default if one hasn't been set.
@@ -1168,6 +1282,15 @@ void MVKSamplerDescriptorMixin::reset() {
 #pragma mark -
 #pragma mark MVKSamplerDescriptor
 
+void MVKSamplerDescriptor::appendBindings(MVKBindingList& target,
+                                          uint32_t elementIndex,
+                                          MVKDescriptorSetLayoutBinding* layout,
+                                          const MVKShaderStageResourceBinding& indexOffsets,
+                                          const uint32_t*& dynamicOffsets)
+{
+	MVKSamplerDescriptorMixin::appendBindings(target, elementIndex, layout, indexOffsets, dynamicOffsets);
+}
+
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKSamplerDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 								VkPipelineBindPoint pipelineBindPoint,
@@ -1207,6 +1330,16 @@ void MVKSamplerDescriptor::reset() {
 
 #pragma mark -
 #pragma mark MVKCombinedImageSamplerDescriptor
+
+void MVKCombinedImageSamplerDescriptor::appendBindings(MVKBindingList& target,
+                                                       uint32_t elementIndex,
+                                                       MVKDescriptorSetLayoutBinding* layout,
+                                                       const MVKShaderStageResourceBinding& indexOffsets,
+                                                       const uint32_t*& dynamicOffsets)
+{
+	MVKImageDescriptor::appendBindings(target, elementIndex, layout, indexOffsets, dynamicOffsets);
+	MVKSamplerDescriptorMixin::appendBindings(target, elementIndex, layout, indexOffsets, dynamicOffsets);
+}
 
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKCombinedImageSamplerDescriptor::bind(MVKCommandEncoder* cmdEncoder,
@@ -1256,6 +1389,30 @@ void MVKCombinedImageSamplerDescriptor::reset() {
 
 #pragma mark -
 #pragma mark MVKTexelBufferDescriptor
+
+void MVKTexelBufferDescriptor::appendBindings(MVKBindingList& target,
+                                              uint32_t elementIndex,
+                                              MVKDescriptorSetLayoutBinding* layout,
+                                              const MVKShaderStageResourceBinding& indexOffsets,
+                                              const uint32_t*& dynamicOffsets)
+{
+	VkDescriptorType descType = getDescriptorType();
+	MVKMTLTextureBinding tb;
+	tb.index = indexOffsets.textureIndex + elementIndex;
+	if (_mvkBufferView) {
+		tb.mtlTexture = _mvkBufferView->getMTLTexture();
+		target.textureBindings.push_back(tb);
+		if (descType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
+			id<MTLTexture> mtlTex = tb.mtlTexture;
+			MVKMTLBufferBinding bb;
+			bb.index = indexOffsets.bufferIndex + elementIndex;
+			bb.mtlBuffer = mtlTex.buffer;
+			bb.offset = mtlTex.bufferOffset;
+			bb.size = (uint32_t)(mtlTex.height * mtlTex.bufferBytesPerRow);
+			target.bufferBindings.push_back(bb);
+		}
+	}
+}
 
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKTexelBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
