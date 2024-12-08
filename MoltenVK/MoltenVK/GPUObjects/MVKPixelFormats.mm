@@ -601,6 +601,9 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 						break;
 					case VK_FORMAT_R8G8B8A8_UNORM:
 					case VK_FORMAT_B8G8R8A8_UNORM:
+					case VK_FORMAT_B8G8R8A8_SNORM:
+					case VK_FORMAT_B8G8R8A8_UINT:
+					case VK_FORMAT_B8G8R8A8_SINT:
 					case VK_FORMAT_A8B8G8R8_UNORM_PACK32:
 						OFFSET_UNORM(red, 8)
 						OFFSET_UNORM(green, 8)
@@ -936,11 +939,11 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	addVkFormatDesc( R8G8B8A8_SRGB, RGBA8Unorm_sRGB, Invalid, UChar4Normalized, Invalid, 1, 1, 4, ColorFloat );
 
 	addVkFormatDesc( B8G8R8A8_UNORM, BGRA8Unorm, Invalid, UChar4Normalized_BGRA, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( B8G8R8A8_SNORM, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDescSwizzled( B8G8R8A8_SNORM, RGBA8Snorm, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, B, G, R, A );
 	addVkFormatDesc( B8G8R8A8_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
 	addVkFormatDesc( B8G8R8A8_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( B8G8R8A8_UINT, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorUInt8 );
-	addVkFormatDesc( B8G8R8A8_SINT, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorInt8 );
+	addVkFormatDescSwizzled( B8G8R8A8_UINT, RGBA8Uint, Invalid, Invalid, Invalid, 1, 1, 4, ColorUInt8, B, G, R, A );
+	addVkFormatDescSwizzled( B8G8R8A8_SINT, RGBA8Sint, Invalid, Invalid, Invalid, 1, 1, 4, ColorInt8, B, G, R, A );
 	addVkFormatDesc( B8G8R8A8_SRGB, BGRA8Unorm_sRGB, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
 
 	addVkFormatDesc( A8B8G8R8_UNORM_PACK32, RGBA8Unorm, Invalid, UChar4Normalized, Invalid, 1, 1, 4, ColorFloat );
