@@ -76,6 +76,7 @@ MVK_DEVICE_FEATURE_EXTN(ShaderAtomicFloat,            SHADER_ATOMIC_FLOAT,      
 MVK_DEVICE_FEATURE_EXTN(SwapchainMaintenance1,        SWAPCHAIN_MAINTENANCE_1,         EXT,   1)
 MVK_DEVICE_FEATURE_EXTN(TexelBufferAlignment,         TEXEL_BUFFER_ALIGNMENT,          EXT,   1)
 MVK_DEVICE_FEATURE_EXTN(VertexAttributeDivisor,       VERTEX_ATTRIBUTE_DIVISOR,        EXT,   2)
+MVK_DEVICE_FEATURE_EXTN(Image2DViewOf3D,              IMAGE_2D_VIEW_OF_3D,             EXT,   2)
 MVK_DEVICE_FEATURE_EXTN(ShaderIntegerFunctions2,      SHADER_INTEGER_FUNCTIONS_2,      INTEL, 1)
 
 #pragma pop_macro("INTEL")
