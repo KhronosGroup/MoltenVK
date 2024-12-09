@@ -16,7 +16,6 @@
 			dependencies = (
 				2FEA0CF12490325400EEF3AD /* PBXTargetDependency */,
 				2FEA0CF32490325400EEF3AD /* PBXTargetDependency */,
-				2FEA0CF52490325400EEF3AD /* PBXTargetDependency */,
 			);
 			name = "ExternalDependencies-tvOS";
 			productName = "ExternalLibraries-macOS";
@@ -30,7 +29,6 @@
 			dependencies = (
 				A972A7E921CEC76A0013AB25 /* PBXTargetDependency */,
 				A972A82821CECD780013AB25 /* PBXTargetDependency */,
-				A972ABF421CED8C20013AB25 /* PBXTargetDependency */,
 			);
 			name = "ExternalDependencies-macOS";
 			productName = "ExternalLibraries-macOS";
@@ -44,7 +42,6 @@
 			dependencies = (
 				A972A7F121CEC8140013AB25 /* PBXTargetDependency */,
 				A972A82621CECD6B0013AB25 /* PBXTargetDependency */,
-				A972ABF221CED8BA0013AB25 /* PBXTargetDependency */,
 			);
 			name = "ExternalDependencies-iOS";
 			productName = "ExternalLibraries-macOS";
@@ -72,7 +69,6 @@
 			dependencies = (
 				DCFD7ECD2A45BC08007BBBF7 /* PBXTargetDependency */,
 				DCFD7ECF2A45BC0C007BBBF7 /* PBXTargetDependency */,
-				DCFD7ED12A45BC10007BBBF7 /* PBXTargetDependency */,
 			);
 			name = "ExternalDependencies-xrOS";
 			productName = "ExternalLibraries-macOS";
@@ -1893,288 +1889,6 @@
 		A976292621CC60BC00B52A68 /* spirv_msl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A976290D21CC60BC00B52A68 /* spirv_msl.cpp */; };
 		A976292721CC60BC00B52A68 /* spirv_cross_parsed_ir.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A976290E21CC60BC00B52A68 /* spirv_cross_parsed_ir.cpp */; };
 		A976292821CC60BC00B52A68 /* spirv_cross_parsed_ir.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A976290E21CC60BC00B52A68 /* spirv_cross_parsed_ir.cpp */; };
-		A997F9CE26865A550006F71B /* NonSemanticDebugPrintf.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94226865A550006F71B /* NonSemanticDebugPrintf.h */; };
-		A997F9CF26865A550006F71B /* NonSemanticDebugPrintf.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94226865A550006F71B /* NonSemanticDebugPrintf.h */; };
-		A997F9D026865A550006F71B /* NonSemanticDebugPrintf.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94226865A550006F71B /* NonSemanticDebugPrintf.h */; };
-		A997F9D126865A550006F71B /* SPVRemapper.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94326865A550006F71B /* SPVRemapper.h */; };
-		A997F9D226865A550006F71B /* SPVRemapper.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94326865A550006F71B /* SPVRemapper.h */; };
-		A997F9D326865A550006F71B /* SPVRemapper.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94326865A550006F71B /* SPVRemapper.h */; };
-		A997F9D426865A550006F71B /* SpvBuilder.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94426865A550006F71B /* SpvBuilder.h */; };
-		A997F9D526865A550006F71B /* SpvBuilder.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94426865A550006F71B /* SpvBuilder.h */; };
-		A997F9D626865A550006F71B /* SpvBuilder.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94426865A550006F71B /* SpvBuilder.h */; };
-		A997F9D726865A550006F71B /* SpvPostProcess.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94626865A550006F71B /* SpvPostProcess.cpp */; };
-		A997F9D826865A550006F71B /* SpvPostProcess.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94626865A550006F71B /* SpvPostProcess.cpp */; };
-		A997F9D926865A550006F71B /* SpvPostProcess.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94626865A550006F71B /* SpvPostProcess.cpp */; };
-		A997F9DA26865A550006F71B /* spirv_c_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94826865A550006F71B /* spirv_c_interface.cpp */; };
-		A997F9DB26865A550006F71B /* spirv_c_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94826865A550006F71B /* spirv_c_interface.cpp */; };
-		A997F9DC26865A550006F71B /* spirv_c_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94826865A550006F71B /* spirv_c_interface.cpp */; };
-		A997F9DD26865A550006F71B /* SpvTools.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94926865A550006F71B /* SpvTools.h */; };
-		A997F9DE26865A550006F71B /* SpvTools.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94926865A550006F71B /* SpvTools.h */; };
-		A997F9DF26865A550006F71B /* SpvTools.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94926865A550006F71B /* SpvTools.h */; };
-		A997F9E026865A550006F71B /* SpvTools.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94A26865A550006F71B /* SpvTools.cpp */; };
-		A997F9E126865A550006F71B /* SpvTools.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94A26865A550006F71B /* SpvTools.cpp */; };
-		A997F9E226865A550006F71B /* SpvTools.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94A26865A550006F71B /* SpvTools.cpp */; };
-		A997F9E326865A550006F71B /* InReadableOrder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94B26865A550006F71B /* InReadableOrder.cpp */; };
-		A997F9E426865A550006F71B /* InReadableOrder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94B26865A550006F71B /* InReadableOrder.cpp */; };
-		A997F9E526865A550006F71B /* InReadableOrder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94B26865A550006F71B /* InReadableOrder.cpp */; };
-		A997F9E626865A550006F71B /* GLSL.ext.AMD.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94C26865A550006F71B /* GLSL.ext.AMD.h */; };
-		A997F9E726865A550006F71B /* GLSL.ext.AMD.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94C26865A550006F71B /* GLSL.ext.AMD.h */; };
-		A997F9E826865A550006F71B /* GLSL.ext.AMD.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94C26865A550006F71B /* GLSL.ext.AMD.h */; };
-		A997F9E926865A550006F71B /* doc.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94D26865A550006F71B /* doc.h */; };
-		A997F9EA26865A550006F71B /* doc.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94D26865A550006F71B /* doc.h */; };
-		A997F9EB26865A550006F71B /* doc.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94D26865A550006F71B /* doc.h */; };
-		A997F9EC26865A550006F71B /* spirv.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A997F94E26865A550006F71B /* spirv.hpp */; };
-		A997F9ED26865A550006F71B /* spirv.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A997F94E26865A550006F71B /* spirv.hpp */; };
-		A997F9EE26865A550006F71B /* spirv.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A997F94E26865A550006F71B /* spirv.hpp */; };
-		A997F9EF26865A550006F71B /* SpvBuilder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94F26865A550006F71B /* SpvBuilder.cpp */; };
-		A997F9F026865A550006F71B /* SpvBuilder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94F26865A550006F71B /* SpvBuilder.cpp */; };
-		A997F9F126865A550006F71B /* SpvBuilder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94F26865A550006F71B /* SpvBuilder.cpp */; };
-		A997F9F226865A550006F71B /* GLSL.ext.EXT.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95026865A550006F71B /* GLSL.ext.EXT.h */; };
-		A997F9F326865A550006F71B /* GLSL.ext.EXT.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95026865A550006F71B /* GLSL.ext.EXT.h */; };
-		A997F9F426865A550006F71B /* GLSL.ext.EXT.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95026865A550006F71B /* GLSL.ext.EXT.h */; };
-		A997F9F526865A550006F71B /* GLSL.ext.KHR.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95126865A550006F71B /* GLSL.ext.KHR.h */; };
-		A997F9F626865A550006F71B /* GLSL.ext.KHR.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95126865A550006F71B /* GLSL.ext.KHR.h */; };
-		A997F9F726865A550006F71B /* GLSL.ext.KHR.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95126865A550006F71B /* GLSL.ext.KHR.h */; };
-		A997F9F826865A550006F71B /* GLSL.ext.NV.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95226865A550006F71B /* GLSL.ext.NV.h */; };
-		A997F9F926865A550006F71B /* GLSL.ext.NV.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95226865A550006F71B /* GLSL.ext.NV.h */; };
-		A997F9FA26865A550006F71B /* GLSL.ext.NV.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95226865A550006F71B /* GLSL.ext.NV.h */; };
-		A997F9FB26865A550006F71B /* GlslangToSpv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95326865A550006F71B /* GlslangToSpv.cpp */; };
-		A997F9FC26865A550006F71B /* GlslangToSpv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95326865A550006F71B /* GlslangToSpv.cpp */; };
-		A997F9FD26865A550006F71B /* GlslangToSpv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95326865A550006F71B /* GlslangToSpv.cpp */; };
-		A997F9FE26865A550006F71B /* spvIR.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95426865A550006F71B /* spvIR.h */; };
-		A997F9FF26865A550006F71B /* spvIR.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95426865A550006F71B /* spvIR.h */; };
-		A997FA0026865A550006F71B /* spvIR.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95426865A550006F71B /* spvIR.h */; };
-		A997FA0126865A550006F71B /* bitutils.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95526865A550006F71B /* bitutils.h */; };
-		A997FA0226865A550006F71B /* bitutils.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95526865A550006F71B /* bitutils.h */; };
-		A997FA0326865A550006F71B /* bitutils.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95526865A550006F71B /* bitutils.h */; };
-		A997FA0426865A550006F71B /* disassemble.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95626865A550006F71B /* disassemble.h */; };
-		A997FA0526865A550006F71B /* disassemble.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95626865A550006F71B /* disassemble.h */; };
-		A997FA0626865A550006F71B /* disassemble.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95626865A550006F71B /* disassemble.h */; };
-		A997FA0726865A550006F71B /* GlslangToSpv.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95726865A550006F71B /* GlslangToSpv.h */; };
-		A997FA0826865A550006F71B /* GlslangToSpv.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95726865A550006F71B /* GlslangToSpv.h */; };
-		A997FA0926865A550006F71B /* GlslangToSpv.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95726865A550006F71B /* GlslangToSpv.h */; };
-		A997FA0A26865A550006F71B /* GLSL.std.450.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95826865A550006F71B /* GLSL.std.450.h */; };
-		A997FA0B26865A550006F71B /* GLSL.std.450.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95826865A550006F71B /* GLSL.std.450.h */; };
-		A997FA0C26865A550006F71B /* GLSL.std.450.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95826865A550006F71B /* GLSL.std.450.h */; };
-		A997FA0D26865A550006F71B /* SPVRemapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95926865A550006F71B /* SPVRemapper.cpp */; };
-		A997FA0E26865A550006F71B /* SPVRemapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95926865A550006F71B /* SPVRemapper.cpp */; };
-		A997FA0F26865A550006F71B /* SPVRemapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95926865A550006F71B /* SPVRemapper.cpp */; };
-		A997FA1026865A550006F71B /* Logger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95A26865A550006F71B /* Logger.cpp */; };
-		A997FA1126865A550006F71B /* Logger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95A26865A550006F71B /* Logger.cpp */; };
-		A997FA1226865A550006F71B /* Logger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95A26865A550006F71B /* Logger.cpp */; };
-		A997FA1326865A550006F71B /* hex_float.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95B26865A550006F71B /* hex_float.h */; };
-		A997FA1426865A550006F71B /* hex_float.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95B26865A550006F71B /* hex_float.h */; };
-		A997FA1526865A550006F71B /* hex_float.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95B26865A550006F71B /* hex_float.h */; };
-		A997FA1626865A550006F71B /* Logger.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95C26865A550006F71B /* Logger.h */; };
-		A997FA1726865A550006F71B /* Logger.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95C26865A550006F71B /* Logger.h */; };
-		A997FA1826865A550006F71B /* Logger.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95C26865A550006F71B /* Logger.h */; };
-		A997FA1926865A550006F71B /* doc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95D26865A550006F71B /* doc.cpp */; };
-		A997FA1A26865A550006F71B /* doc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95D26865A550006F71B /* doc.cpp */; };
-		A997FA1B26865A550006F71B /* doc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95D26865A550006F71B /* doc.cpp */; };
-		A997FA1C26865A550006F71B /* disassemble.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95E26865A550006F71B /* disassemble.cpp */; };
-		A997FA1D26865A550006F71B /* disassemble.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95E26865A550006F71B /* disassemble.cpp */; };
-		A997FA1E26865A550006F71B /* disassemble.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95E26865A550006F71B /* disassemble.cpp */; };
-		A997FA2826865A550006F71B /* ossource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F96C26865A550006F71B /* ossource.cpp */; };
-		A997FA2926865A550006F71B /* ossource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F96C26865A550006F71B /* ossource.cpp */; };
-		A997FA2A26865A550006F71B /* ossource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F96C26865A550006F71B /* ossource.cpp */; };
-		A997FA2B26865A550006F71B /* osinclude.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F96E26865A550006F71B /* osinclude.h */; };
-		A997FA2C26865A550006F71B /* osinclude.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F96E26865A550006F71B /* osinclude.h */; };
-		A997FA2D26865A550006F71B /* osinclude.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F96E26865A550006F71B /* osinclude.h */; };
-		A997FA3426865A550006F71B /* glslang_c_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F97426865A550006F71B /* glslang_c_interface.cpp */; };
-		A997FA3526865A550006F71B /* glslang_c_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F97426865A550006F71B /* glslang_c_interface.cpp */; };
-		A997FA3626865A550006F71B /* glslang_c_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F97426865A550006F71B /* glslang_c_interface.cpp */; };
-		A997FA3726865A550006F71B /* ResourceLimits.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97626865A550006F71B /* ResourceLimits.h */; };
-		A997FA3826865A550006F71B /* ResourceLimits.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97626865A550006F71B /* ResourceLimits.h */; };
-		A997FA3926865A550006F71B /* ResourceLimits.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97626865A550006F71B /* ResourceLimits.h */; };
-		A997FA3A26865A550006F71B /* glslang_c_interface.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97726865A550006F71B /* glslang_c_interface.h */; };
-		A997FA3B26865A550006F71B /* glslang_c_interface.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97726865A550006F71B /* glslang_c_interface.h */; };
-		A997FA3C26865A550006F71B /* glslang_c_interface.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97726865A550006F71B /* glslang_c_interface.h */; };
-		A997FA3D26865A550006F71B /* SpirvIntrinsics.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97826865A550006F71B /* SpirvIntrinsics.h */; };
-		A997FA3E26865A550006F71B /* SpirvIntrinsics.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97826865A550006F71B /* SpirvIntrinsics.h */; };
-		A997FA3F26865A550006F71B /* SpirvIntrinsics.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97826865A550006F71B /* SpirvIntrinsics.h */; };
-		A997FA4026865A550006F71B /* Types.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97926865A550006F71B /* Types.h */; };
-		A997FA4126865A550006F71B /* Types.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97926865A550006F71B /* Types.h */; };
-		A997FA4226865A550006F71B /* Types.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97926865A550006F71B /* Types.h */; };
-		A997FA4326865A560006F71B /* intermediate.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97A26865A550006F71B /* intermediate.h */; };
-		A997FA4426865A560006F71B /* intermediate.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97A26865A550006F71B /* intermediate.h */; };
-		A997FA4526865A560006F71B /* intermediate.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97A26865A550006F71B /* intermediate.h */; };
-		A997FA4626865A560006F71B /* glslang_c_shader_types.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97B26865A550006F71B /* glslang_c_shader_types.h */; };
-		A997FA4726865A560006F71B /* glslang_c_shader_types.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97B26865A550006F71B /* glslang_c_shader_types.h */; };
-		A997FA4826865A560006F71B /* glslang_c_shader_types.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97B26865A550006F71B /* glslang_c_shader_types.h */; };
-		A997FA4926865A560006F71B /* BaseTypes.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97C26865A550006F71B /* BaseTypes.h */; };
-		A997FA4A26865A560006F71B /* BaseTypes.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97C26865A550006F71B /* BaseTypes.h */; };
-		A997FA4B26865A560006F71B /* BaseTypes.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97C26865A550006F71B /* BaseTypes.h */; };
-		A997FA4C26865A560006F71B /* InitializeGlobals.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97D26865A550006F71B /* InitializeGlobals.h */; };
-		A997FA4D26865A560006F71B /* InitializeGlobals.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97D26865A550006F71B /* InitializeGlobals.h */; };
-		A997FA4E26865A560006F71B /* InitializeGlobals.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97D26865A550006F71B /* InitializeGlobals.h */; };
-		A997FA4F26865A560006F71B /* ShHandle.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97E26865A550006F71B /* ShHandle.h */; };
-		A997FA5026865A560006F71B /* ShHandle.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97E26865A550006F71B /* ShHandle.h */; };
-		A997FA5126865A560006F71B /* ShHandle.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97E26865A550006F71B /* ShHandle.h */; };
-		A997FA5226865A560006F71B /* arrays.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97F26865A550006F71B /* arrays.h */; };
-		A997FA5326865A560006F71B /* arrays.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97F26865A550006F71B /* arrays.h */; };
-		A997FA5426865A560006F71B /* arrays.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97F26865A550006F71B /* arrays.h */; };
-		A997FA5526865A560006F71B /* Common.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98026865A550006F71B /* Common.h */; };
-		A997FA5626865A560006F71B /* Common.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98026865A550006F71B /* Common.h */; };
-		A997FA5726865A560006F71B /* Common.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98026865A550006F71B /* Common.h */; };
-		A997FA5826865A560006F71B /* ConstantUnion.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98126865A550006F71B /* ConstantUnion.h */; };
-		A997FA5926865A560006F71B /* ConstantUnion.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98126865A550006F71B /* ConstantUnion.h */; };
-		A997FA5A26865A560006F71B /* ConstantUnion.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98126865A550006F71B /* ConstantUnion.h */; };
-		A997FA5B26865A560006F71B /* InfoSink.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98226865A550006F71B /* InfoSink.h */; };
-		A997FA5C26865A560006F71B /* InfoSink.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98226865A550006F71B /* InfoSink.h */; };
-		A997FA5D26865A560006F71B /* InfoSink.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98226865A550006F71B /* InfoSink.h */; };
-		A997FA5E26865A560006F71B /* PoolAlloc.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98326865A550006F71B /* PoolAlloc.h */; };
-		A997FA5F26865A560006F71B /* PoolAlloc.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98326865A550006F71B /* PoolAlloc.h */; };
-		A997FA6026865A560006F71B /* PoolAlloc.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98326865A550006F71B /* PoolAlloc.h */; };
-		A997FA6126865A560006F71B /* ParseHelper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F98626865A550006F71B /* ParseHelper.cpp */; };
-		A997FA6226865A560006F71B /* ParseHelper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F98626865A550006F71B /* ParseHelper.cpp */; };
-		A997FA6326865A560006F71B /* ParseHelper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F98626865A550006F71B /* ParseHelper.cpp */; };
-		A997FA6426865A560006F71B /* parseVersions.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98726865A550006F71B /* parseVersions.h */; };
-		A997FA6526865A560006F71B /* parseVersions.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98726865A550006F71B /* parseVersions.h */; };
-		A997FA6626865A560006F71B /* parseVersions.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98726865A550006F71B /* parseVersions.h */; };
-		A997FA6726865A560006F71B /* gl_types.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98826865A550006F71B /* gl_types.h */; };
-		A997FA6826865A560006F71B /* gl_types.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98826865A550006F71B /* gl_types.h */; };
-		A997FA6926865A560006F71B /* gl_types.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98826865A550006F71B /* gl_types.h */; };
-		A997FA6A26865A560006F71B /* propagateNoContraction.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F98926865A550006F71B /* propagateNoContraction.cpp */; };
-		A997FA6B26865A560006F71B /* propagateNoContraction.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F98926865A550006F71B /* propagateNoContraction.cpp */; };
-		A997FA6C26865A560006F71B /* propagateNoContraction.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F98926865A550006F71B /* propagateNoContraction.cpp */; };
-		A997FA6D26865A560006F71B /* pch.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98A26865A550006F71B /* pch.h */; };
-		A997FA6E26865A560006F71B /* pch.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98A26865A550006F71B /* pch.h */; };
-		A997FA6F26865A560006F71B /* pch.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98A26865A550006F71B /* pch.h */; };
-		A997FA7026865A560006F71B /* ScanContext.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98B26865A550006F71B /* ScanContext.h */; };
-		A997FA7126865A560006F71B /* ScanContext.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98B26865A550006F71B /* ScanContext.h */; };
-		A997FA7226865A560006F71B /* ScanContext.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98B26865A550006F71B /* ScanContext.h */; };
-		A997FA7326865A560006F71B /* iomapper.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98C26865A550006F71B /* iomapper.h */; };
-		A997FA7426865A560006F71B /* iomapper.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98C26865A550006F71B /* iomapper.h */; };
-		A997FA7526865A560006F71B /* iomapper.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98C26865A550006F71B /* iomapper.h */; };
-		A997FA7626865A560006F71B /* localintermediate.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98D26865A550006F71B /* localintermediate.h */; };
-		A997FA7726865A560006F71B /* localintermediate.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98D26865A550006F71B /* localintermediate.h */; };
-		A997FA7826865A560006F71B /* localintermediate.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98D26865A550006F71B /* localintermediate.h */; };
-		A997FA7926865A560006F71B /* Scan.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F98E26865A550006F71B /* Scan.cpp */; };
-		A997FA7A26865A560006F71B /* Scan.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F98E26865A550006F71B /* Scan.cpp */; };
-		A997FA7B26865A560006F71B /* Scan.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F98E26865A550006F71B /* Scan.cpp */; };
-		A997FA7F26865A560006F71B /* RemoveTree.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F99026865A550006F71B /* RemoveTree.h */; };
-		A997FA8026865A560006F71B /* RemoveTree.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F99026865A550006F71B /* RemoveTree.h */; };
-		A997FA8126865A560006F71B /* RemoveTree.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F99026865A550006F71B /* RemoveTree.h */; };
-		A997FA8226865A560006F71B /* Initialize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99126865A550006F71B /* Initialize.cpp */; };
-		A997FA8326865A560006F71B /* Initialize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99126865A550006F71B /* Initialize.cpp */; };
-		A997FA8426865A560006F71B /* Initialize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99126865A550006F71B /* Initialize.cpp */; };
-		A997FA8526865A560006F71B /* glslang_tab.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99226865A550006F71B /* glslang_tab.cpp */; };
-		A997FA8626865A560006F71B /* glslang_tab.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99226865A550006F71B /* glslang_tab.cpp */; };
-		A997FA8726865A560006F71B /* glslang_tab.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99226865A550006F71B /* glslang_tab.cpp */; };
-		A997FA8826865A560006F71B /* limits.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99326865A550006F71B /* limits.cpp */; };
-		A997FA8926865A560006F71B /* limits.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99326865A550006F71B /* limits.cpp */; };
-		A997FA8A26865A560006F71B /* limits.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99326865A550006F71B /* limits.cpp */; };
-		A997FA8B26865A560006F71B /* SpirvIntrinsics.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99426865A550006F71B /* SpirvIntrinsics.cpp */; };
-		A997FA8C26865A560006F71B /* SpirvIntrinsics.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99426865A550006F71B /* SpirvIntrinsics.cpp */; };
-		A997FA8D26865A560006F71B /* SpirvIntrinsics.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99426865A550006F71B /* SpirvIntrinsics.cpp */; };
-		A997FA8E26865A560006F71B /* parseConst.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99526865A550006F71B /* parseConst.cpp */; };
-		A997FA8F26865A560006F71B /* parseConst.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99526865A550006F71B /* parseConst.cpp */; };
-		A997FA9026865A560006F71B /* parseConst.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99526865A550006F71B /* parseConst.cpp */; };
-		A997FA9126865A560006F71B /* propagateNoContraction.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F99626865A550006F71B /* propagateNoContraction.h */; };
-		A997FA9226865A560006F71B /* propagateNoContraction.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F99626865A550006F71B /* propagateNoContraction.h */; };
-		A997FA9326865A560006F71B /* propagateNoContraction.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F99626865A550006F71B /* propagateNoContraction.h */; };
-		A997FA9426865A560006F71B /* Versions.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F99726865A550006F71B /* Versions.h */; };
-		A997FA9526865A560006F71B /* Versions.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F99726865A550006F71B /* Versions.h */; };
-		A997FA9626865A560006F71B /* Versions.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F99726865A550006F71B /* Versions.h */; };
-		A997FA9726865A560006F71B /* IntermTraverse.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99826865A550006F71B /* IntermTraverse.cpp */; };
-		A997FA9826865A560006F71B /* IntermTraverse.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99826865A550006F71B /* IntermTraverse.cpp */; };
-		A997FA9926865A560006F71B /* IntermTraverse.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99826865A550006F71B /* IntermTraverse.cpp */; };
-		A997FA9A26865A560006F71B /* intermOut.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99926865A550006F71B /* intermOut.cpp */; };
-		A997FA9B26865A560006F71B /* intermOut.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99926865A550006F71B /* intermOut.cpp */; };
-		A997FA9C26865A560006F71B /* intermOut.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99926865A550006F71B /* intermOut.cpp */; };
-		A997FA9D26865A560006F71B /* iomapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99A26865A550006F71B /* iomapper.cpp */; };
-		A997FA9E26865A560006F71B /* iomapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99A26865A550006F71B /* iomapper.cpp */; };
-		A997FA9F26865A560006F71B /* iomapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99A26865A550006F71B /* iomapper.cpp */; };
-		A997FAA026865A560006F71B /* PoolAlloc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99B26865A550006F71B /* PoolAlloc.cpp */; };
-		A997FAA126865A560006F71B /* PoolAlloc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99B26865A550006F71B /* PoolAlloc.cpp */; };
-		A997FAA226865A560006F71B /* PoolAlloc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99B26865A550006F71B /* PoolAlloc.cpp */; };
-		A997FAA326865A560006F71B /* ShaderLang.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99C26865A550006F71B /* ShaderLang.cpp */; };
-		A997FAA426865A560006F71B /* ShaderLang.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99C26865A550006F71B /* ShaderLang.cpp */; };
-		A997FAA526865A560006F71B /* ShaderLang.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99C26865A550006F71B /* ShaderLang.cpp */; };
-		A997FAA626865A560006F71B /* SymbolTable.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F99D26865A550006F71B /* SymbolTable.h */; };
-		A997FAA726865A560006F71B /* SymbolTable.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F99D26865A550006F71B /* SymbolTable.h */; };
-		A997FAA826865A560006F71B /* SymbolTable.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F99D26865A550006F71B /* SymbolTable.h */; };
-		A997FAA926865A560006F71B /* InfoSink.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99E26865A550006F71B /* InfoSink.cpp */; };
-		A997FAAA26865A560006F71B /* InfoSink.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99E26865A550006F71B /* InfoSink.cpp */; };
-		A997FAAB26865A560006F71B /* InfoSink.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99E26865A550006F71B /* InfoSink.cpp */; };
-		A997FAAC26865A560006F71B /* Intermediate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99F26865A550006F71B /* Intermediate.cpp */; };
-		A997FAAD26865A560006F71B /* Intermediate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99F26865A550006F71B /* Intermediate.cpp */; };
-		A997FAAE26865A560006F71B /* Intermediate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99F26865A550006F71B /* Intermediate.cpp */; };
-		A997FAAF26865A560006F71B /* SymbolTable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A026865A550006F71B /* SymbolTable.cpp */; };
-		A997FAB026865A560006F71B /* SymbolTable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A026865A550006F71B /* SymbolTable.cpp */; };
-		A997FAB126865A560006F71B /* SymbolTable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A026865A550006F71B /* SymbolTable.cpp */; };
-		A997FAB226865A560006F71B /* glslang_tab.cpp.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9A126865A550006F71B /* glslang_tab.cpp.h */; };
-		A997FAB326865A560006F71B /* glslang_tab.cpp.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9A126865A550006F71B /* glslang_tab.cpp.h */; };
-		A997FAB426865A560006F71B /* glslang_tab.cpp.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9A126865A550006F71B /* glslang_tab.cpp.h */; };
-		A997FAB526865A560006F71B /* LiveTraverser.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9A226865A550006F71B /* LiveTraverser.h */; };
-		A997FAB626865A560006F71B /* LiveTraverser.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9A226865A550006F71B /* LiveTraverser.h */; };
-		A997FAB726865A560006F71B /* LiveTraverser.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9A226865A550006F71B /* LiveTraverser.h */; };
-		A997FAB826865A560006F71B /* Initialize.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9A326865A550006F71B /* Initialize.h */; };
-		A997FAB926865A560006F71B /* Initialize.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9A326865A550006F71B /* Initialize.h */; };
-		A997FABA26865A560006F71B /* Initialize.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9A326865A550006F71B /* Initialize.h */; };
-		A997FABB26865A560006F71B /* attribute.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A426865A550006F71B /* attribute.cpp */; };
-		A997FABC26865A560006F71B /* attribute.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A426865A550006F71B /* attribute.cpp */; };
-		A997FABD26865A560006F71B /* attribute.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A426865A550006F71B /* attribute.cpp */; };
-		A997FABE26865A560006F71B /* reflection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A526865A550006F71B /* reflection.cpp */; };
-		A997FABF26865A560006F71B /* reflection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A526865A550006F71B /* reflection.cpp */; };
-		A997FAC026865A560006F71B /* reflection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A526865A550006F71B /* reflection.cpp */; };
-		A997FAC126865A560006F71B /* RemoveTree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A626865A550006F71B /* RemoveTree.cpp */; };
-		A997FAC226865A560006F71B /* RemoveTree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A626865A550006F71B /* RemoveTree.cpp */; };
-		A997FAC326865A560006F71B /* RemoveTree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A626865A550006F71B /* RemoveTree.cpp */; };
-		A997FAC426865A560006F71B /* attribute.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9A726865A550006F71B /* attribute.h */; };
-		A997FAC526865A560006F71B /* attribute.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9A726865A550006F71B /* attribute.h */; };
-		A997FAC626865A560006F71B /* attribute.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9A726865A550006F71B /* attribute.h */; };
-		A997FAC726865A560006F71B /* Versions.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A826865A550006F71B /* Versions.cpp */; };
-		A997FAC826865A560006F71B /* Versions.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A826865A550006F71B /* Versions.cpp */; };
-		A997FAC926865A560006F71B /* Versions.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A826865A550006F71B /* Versions.cpp */; };
-		A997FACA26865A560006F71B /* Constant.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A926865A550006F71B /* Constant.cpp */; };
-		A997FACB26865A560006F71B /* Constant.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A926865A550006F71B /* Constant.cpp */; };
-		A997FACC26865A560006F71B /* Constant.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A926865A550006F71B /* Constant.cpp */; };
-		A997FACD26865A560006F71B /* linkValidate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9AA26865A550006F71B /* linkValidate.cpp */; };
-		A997FACE26865A560006F71B /* linkValidate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9AA26865A550006F71B /* linkValidate.cpp */; };
-		A997FACF26865A560006F71B /* linkValidate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9AA26865A550006F71B /* linkValidate.cpp */; };
-		A997FAD026865A560006F71B /* ParseHelper.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9AC26865A550006F71B /* ParseHelper.h */; };
-		A997FAD126865A560006F71B /* ParseHelper.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9AC26865A550006F71B /* ParseHelper.h */; };
-		A997FAD226865A560006F71B /* ParseHelper.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9AC26865A550006F71B /* ParseHelper.h */; };
-		A997FAD326865A560006F71B /* PpAtom.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9AE26865A550006F71B /* PpAtom.cpp */; };
-		A997FAD426865A560006F71B /* PpAtom.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9AE26865A550006F71B /* PpAtom.cpp */; };
-		A997FAD526865A560006F71B /* PpAtom.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9AE26865A550006F71B /* PpAtom.cpp */; };
-		A997FAD626865A560006F71B /* PpTokens.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9AF26865A550006F71B /* PpTokens.h */; };
-		A997FAD726865A560006F71B /* PpTokens.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9AF26865A550006F71B /* PpTokens.h */; };
-		A997FAD826865A560006F71B /* PpTokens.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9AF26865A550006F71B /* PpTokens.h */; };
-		A997FAD926865A560006F71B /* Pp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B026865A550006F71B /* Pp.cpp */; };
-		A997FADA26865A560006F71B /* Pp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B026865A550006F71B /* Pp.cpp */; };
-		A997FADB26865A560006F71B /* Pp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B026865A550006F71B /* Pp.cpp */; };
-		A997FADC26865A560006F71B /* PpContext.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9B126865A550006F71B /* PpContext.h */; };
-		A997FADD26865A560006F71B /* PpContext.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9B126865A550006F71B /* PpContext.h */; };
-		A997FADE26865A560006F71B /* PpContext.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9B126865A550006F71B /* PpContext.h */; };
-		A997FADF26865A560006F71B /* PpTokens.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B226865A550006F71B /* PpTokens.cpp */; };
-		A997FAE026865A560006F71B /* PpTokens.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B226865A550006F71B /* PpTokens.cpp */; };
-		A997FAE126865A560006F71B /* PpTokens.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B226865A550006F71B /* PpTokens.cpp */; };
-		A997FAE226865A560006F71B /* PpContext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B326865A550006F71B /* PpContext.cpp */; };
-		A997FAE326865A560006F71B /* PpContext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B326865A550006F71B /* PpContext.cpp */; };
-		A997FAE426865A560006F71B /* PpContext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B326865A550006F71B /* PpContext.cpp */; };
-		A997FAE526865A560006F71B /* PpScanner.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B426865A550006F71B /* PpScanner.cpp */; };
-		A997FAE626865A560006F71B /* PpScanner.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B426865A550006F71B /* PpScanner.cpp */; };
-		A997FAE726865A560006F71B /* PpScanner.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B426865A550006F71B /* PpScanner.cpp */; };
-		A997FAE826865A560006F71B /* ParseContextBase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B526865A550006F71B /* ParseContextBase.cpp */; };
-		A997FAE926865A560006F71B /* ParseContextBase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B526865A550006F71B /* ParseContextBase.cpp */; };
-		A997FAEA26865A560006F71B /* ParseContextBase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B526865A550006F71B /* ParseContextBase.cpp */; };
-		A997FAEB26865A560006F71B /* reflection.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9B626865A550006F71B /* reflection.h */; };
-		A997FAEC26865A560006F71B /* reflection.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9B626865A550006F71B /* reflection.h */; };
-		A997FAED26865A560006F71B /* reflection.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9B626865A550006F71B /* reflection.h */; };
-		A997FAEE26865A560006F71B /* Scan.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9B726865A550006F71B /* Scan.h */; };
-		A997FAEF26865A560006F71B /* Scan.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9B726865A550006F71B /* Scan.h */; };
-		A997FAF026865A560006F71B /* Scan.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9B726865A550006F71B /* Scan.h */; };
-		A997FAF126865A560006F71B /* ShaderLang.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9B926865A550006F71B /* ShaderLang.h */; };
-		A997FAF226865A560006F71B /* ShaderLang.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9B926865A550006F71B /* ShaderLang.h */; };
-		A997FAF326865A560006F71B /* ShaderLang.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9B926865A550006F71B /* ShaderLang.h */; };
-		A997FB2426865A560006F71B /* CodeGen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9CC26865A550006F71B /* CodeGen.cpp */; };
-		A997FB2526865A560006F71B /* CodeGen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9CC26865A550006F71B /* CodeGen.cpp */; };
-		A997FB2626865A560006F71B /* CodeGen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9CC26865A550006F71B /* CodeGen.cpp */; };
-		A997FB2726865A560006F71B /* Link.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9CD26865A550006F71B /* Link.cpp */; };
-		A997FB2826865A560006F71B /* Link.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9CD26865A550006F71B /* Link.cpp */; };
-		A997FB2926865A560006F71B /* Link.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9CD26865A550006F71B /* Link.cpp */; };
 		DCFD7C8B2A45BA7D007BBBF7 /* spirv_cfg.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A976290921CC60BC00B52A68 /* spirv_cfg.hpp */; };
 		DCFD7C8C2A45BA7D007BBBF7 /* spirv_cross_parsed_ir.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A976290821CC60BC00B52A68 /* spirv_cross_parsed_ir.hpp */; };
 		DCFD7C8D2A45BA7D007BBBF7 /* spirv_common.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A976290721CC60BC00B52A68 /* spirv_common.hpp */; };
@@ -2194,100 +1908,6 @@
 		DCFD7C9C2A45BA7D007BBBF7 /* spirv_reflect.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 450A4F64221C5A95007203D7 /* spirv_reflect.cpp */; };
 		DCFD7C9D2A45BA7D007BBBF7 /* spirv_glsl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A976290621CC60BC00B52A68 /* spirv_glsl.cpp */; };
 		DCFD7C9E2A45BA7D007BBBF7 /* spirv_cross_parsed_ir.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A976290E21CC60BC00B52A68 /* spirv_cross_parsed_ir.cpp */; };
-		DCFD7CA62A45BA92007BBBF7 /* propagateNoContraction.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F99626865A550006F71B /* propagateNoContraction.h */; };
-		DCFD7CA72A45BA92007BBBF7 /* disassemble.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95626865A550006F71B /* disassemble.h */; };
-		DCFD7CA82A45BA92007BBBF7 /* PpContext.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9B126865A550006F71B /* PpContext.h */; };
-		DCFD7CA92A45BA92007BBBF7 /* InfoSink.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98226865A550006F71B /* InfoSink.h */; };
-		DCFD7CAA2A45BA92007BBBF7 /* bitutils.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95526865A550006F71B /* bitutils.h */; };
-		DCFD7CAB2A45BA92007BBBF7 /* SpvBuilder.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94426865A550006F71B /* SpvBuilder.h */; };
-		DCFD7CAC2A45BA92007BBBF7 /* GLSL.std.450.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95826865A550006F71B /* GLSL.std.450.h */; };
-		DCFD7CAD2A45BA92007BBBF7 /* Logger.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95C26865A550006F71B /* Logger.h */; };
-		DCFD7CAE2A45BA92007BBBF7 /* pch.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98A26865A550006F71B /* pch.h */; };
-		DCFD7CAF2A45BA92007BBBF7 /* LiveTraverser.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9A226865A550006F71B /* LiveTraverser.h */; };
-		DCFD7CB02A45BA92007BBBF7 /* spvIR.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95426865A550006F71B /* spvIR.h */; };
-		DCFD7CB12A45BA92007BBBF7 /* glslang_c_shader_types.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97B26865A550006F71B /* glslang_c_shader_types.h */; };
-		DCFD7CB22A45BA92007BBBF7 /* attribute.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9A726865A550006F71B /* attribute.h */; };
-		DCFD7CB32A45BA92007BBBF7 /* Scan.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9B726865A550006F71B /* Scan.h */; };
-		DCFD7CB42A45BA92007BBBF7 /* Types.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97926865A550006F71B /* Types.h */; };
-		DCFD7CB52A45BA92007BBBF7 /* PoolAlloc.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98326865A550006F71B /* PoolAlloc.h */; };
-		DCFD7CB62A45BA92007BBBF7 /* InitializeGlobals.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97D26865A550006F71B /* InitializeGlobals.h */; };
-		DCFD7CB72A45BA92007BBBF7 /* parseVersions.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98726865A550006F71B /* parseVersions.h */; };
-		DCFD7CB82A45BA92007BBBF7 /* osinclude.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F96E26865A550006F71B /* osinclude.h */; };
-		DCFD7CB92A45BA92007BBBF7 /* gl_types.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98826865A550006F71B /* gl_types.h */; };
-		DCFD7CBA2A45BA92007BBBF7 /* localintermediate.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98D26865A550006F71B /* localintermediate.h */; };
-		DCFD7CBB2A45BA92007BBBF7 /* GLSL.ext.AMD.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94C26865A550006F71B /* GLSL.ext.AMD.h */; };
-		DCFD7CBC2A45BA92007BBBF7 /* reflection.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9B626865A550006F71B /* reflection.h */; };
-		DCFD7CBD2A45BA92007BBBF7 /* ShHandle.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97E26865A550006F71B /* ShHandle.h */; };
-		DCFD7CBE2A45BA92007BBBF7 /* iomapper.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98C26865A550006F71B /* iomapper.h */; };
-		DCFD7CBF2A45BA92007BBBF7 /* GLSL.ext.NV.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95226865A550006F71B /* GLSL.ext.NV.h */; };
-		DCFD7CC02A45BA92007BBBF7 /* Versions.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F99726865A550006F71B /* Versions.h */; };
-		DCFD7CC12A45BA92007BBBF7 /* SPVRemapper.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94326865A550006F71B /* SPVRemapper.h */; };
-		DCFD7CC22A45BA92007BBBF7 /* ConstantUnion.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98126865A550006F71B /* ConstantUnion.h */; };
-		DCFD7CC32A45BA92007BBBF7 /* doc.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94D26865A550006F71B /* doc.h */; };
-		DCFD7CC42A45BA92007BBBF7 /* Initialize.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9A326865A550006F71B /* Initialize.h */; };
-		DCFD7CC52A45BA92007BBBF7 /* GLSL.ext.EXT.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95026865A550006F71B /* GLSL.ext.EXT.h */; };
-		DCFD7CC62A45BA92007BBBF7 /* ResourceLimits.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97626865A550006F71B /* ResourceLimits.h */; };
-		DCFD7CC72A45BA92007BBBF7 /* Common.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98026865A550006F71B /* Common.h */; };
-		DCFD7CC82A45BA92007BBBF7 /* GLSL.ext.KHR.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95126865A550006F71B /* GLSL.ext.KHR.h */; };
-		DCFD7CC92A45BA92007BBBF7 /* intermediate.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97A26865A550006F71B /* intermediate.h */; };
-		DCFD7CCA2A45BA92007BBBF7 /* ShaderLang.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9B926865A550006F71B /* ShaderLang.h */; };
-		DCFD7CCB2A45BA92007BBBF7 /* ScanContext.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F98B26865A550006F71B /* ScanContext.h */; };
-		DCFD7CCC2A45BA92007BBBF7 /* PpTokens.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9AF26865A550006F71B /* PpTokens.h */; };
-		DCFD7CCD2A45BA92007BBBF7 /* BaseTypes.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97C26865A550006F71B /* BaseTypes.h */; };
-		DCFD7CCE2A45BA92007BBBF7 /* hex_float.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95B26865A550006F71B /* hex_float.h */; };
-		DCFD7CCF2A45BA92007BBBF7 /* SpvTools.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94926865A550006F71B /* SpvTools.h */; };
-		DCFD7CD02A45BA92007BBBF7 /* RemoveTree.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F99026865A550006F71B /* RemoveTree.h */; };
-		DCFD7CD12A45BA92007BBBF7 /* SymbolTable.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F99D26865A550006F71B /* SymbolTable.h */; };
-		DCFD7CD22A45BA92007BBBF7 /* arrays.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97F26865A550006F71B /* arrays.h */; };
-		DCFD7CD32A45BA92007BBBF7 /* spirv.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A997F94E26865A550006F71B /* spirv.hpp */; };
-		DCFD7CD42A45BA92007BBBF7 /* glslang_c_interface.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97726865A550006F71B /* glslang_c_interface.h */; };
-		DCFD7CD52A45BA92007BBBF7 /* GlslangToSpv.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F95726865A550006F71B /* GlslangToSpv.h */; };
-		DCFD7CD62A45BA92007BBBF7 /* SpirvIntrinsics.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F97826865A550006F71B /* SpirvIntrinsics.h */; };
-		DCFD7CD72A45BA92007BBBF7 /* NonSemanticDebugPrintf.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F94226865A550006F71B /* NonSemanticDebugPrintf.h */; };
-		DCFD7CD82A45BA92007BBBF7 /* glslang_tab.cpp.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9A126865A550006F71B /* glslang_tab.cpp.h */; };
-		DCFD7CD92A45BA92007BBBF7 /* ParseHelper.h in Headers */ = {isa = PBXBuildFile; fileRef = A997F9AC26865A550006F71B /* ParseHelper.h */; };
-		DCFD7CDC2A45BA92007BBBF7 /* ParseHelper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F98626865A550006F71B /* ParseHelper.cpp */; };
-		DCFD7CDD2A45BA92007BBBF7 /* doc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95D26865A550006F71B /* doc.cpp */; };
-		DCFD7CDE2A45BA92007BBBF7 /* attribute.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A426865A550006F71B /* attribute.cpp */; };
-		DCFD7CDF2A45BA92007BBBF7 /* IntermTraverse.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99826865A550006F71B /* IntermTraverse.cpp */; };
-		DCFD7CE02A45BA92007BBBF7 /* Versions.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A826865A550006F71B /* Versions.cpp */; };
-		DCFD7CE12A45BA92007BBBF7 /* reflection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A526865A550006F71B /* reflection.cpp */; };
-		DCFD7CE22A45BA92007BBBF7 /* spirv_c_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94826865A550006F71B /* spirv_c_interface.cpp */; };
-		DCFD7CE32A45BA92007BBBF7 /* propagateNoContraction.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F98926865A550006F71B /* propagateNoContraction.cpp */; };
-		DCFD7CE42A45BA92007BBBF7 /* glslang_c_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F97426865A550006F71B /* glslang_c_interface.cpp */; };
-		DCFD7CE52A45BA92007BBBF7 /* SPVRemapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95926865A550006F71B /* SPVRemapper.cpp */; };
-		DCFD7CE62A45BA92007BBBF7 /* SpvTools.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94A26865A550006F71B /* SpvTools.cpp */; };
-		DCFD7CE72A45BA92007BBBF7 /* Logger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95A26865A550006F71B /* Logger.cpp */; };
-		DCFD7CE82A45BA92007BBBF7 /* ossource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F96C26865A550006F71B /* ossource.cpp */; };
-		DCFD7CE92A45BA92007BBBF7 /* SpvPostProcess.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94626865A550006F71B /* SpvPostProcess.cpp */; };
-		DCFD7CEA2A45BA92007BBBF7 /* Scan.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F98E26865A550006F71B /* Scan.cpp */; };
-		DCFD7CEB2A45BA92007BBBF7 /* PpScanner.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B426865A550006F71B /* PpScanner.cpp */; };
-		DCFD7CEC2A45BA92007BBBF7 /* PpContext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B326865A550006F71B /* PpContext.cpp */; };
-		DCFD7CED2A45BA92007BBBF7 /* disassemble.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95E26865A550006F71B /* disassemble.cpp */; };
-		DCFD7CEE2A45BA92007BBBF7 /* SpirvIntrinsics.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99426865A550006F71B /* SpirvIntrinsics.cpp */; };
-		DCFD7CEF2A45BA92007BBBF7 /* linkValidate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9AA26865A550006F71B /* linkValidate.cpp */; };
-		DCFD7CF02A45BA92007BBBF7 /* parseConst.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99526865A550006F71B /* parseConst.cpp */; };
-		DCFD7CF22A45BA92007BBBF7 /* Link.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9CD26865A550006F71B /* Link.cpp */; };
-		DCFD7CF32A45BA92007BBBF7 /* iomapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99A26865A550006F71B /* iomapper.cpp */; };
-		DCFD7CF42A45BA92007BBBF7 /* ParseContextBase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B526865A550006F71B /* ParseContextBase.cpp */; };
-		DCFD7CF52A45BA92007BBBF7 /* PpTokens.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B226865A550006F71B /* PpTokens.cpp */; };
-		DCFD7CF62A45BA92007BBBF7 /* GlslangToSpv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F95326865A550006F71B /* GlslangToSpv.cpp */; };
-		DCFD7CF72A45BA92007BBBF7 /* limits.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99326865A550006F71B /* limits.cpp */; };
-		DCFD7CF82A45BA92007BBBF7 /* glslang_tab.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99226865A550006F71B /* glslang_tab.cpp */; };
-		DCFD7CF92A45BA92007BBBF7 /* Constant.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A926865A550006F71B /* Constant.cpp */; };
-		DCFD7CFA2A45BA92007BBBF7 /* InfoSink.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99E26865A550006F71B /* InfoSink.cpp */; };
-		DCFD7CFB2A45BA92007BBBF7 /* RemoveTree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A626865A550006F71B /* RemoveTree.cpp */; };
-		DCFD7CFC2A45BA92007BBBF7 /* intermOut.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99926865A550006F71B /* intermOut.cpp */; };
-		DCFD7CFD2A45BA92007BBBF7 /* PoolAlloc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99B26865A550006F71B /* PoolAlloc.cpp */; };
-		DCFD7CFE2A45BA92007BBBF7 /* Initialize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99126865A550006F71B /* Initialize.cpp */; };
-		DCFD7CFF2A45BA92007BBBF7 /* ShaderLang.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99C26865A550006F71B /* ShaderLang.cpp */; };
-		DCFD7D002A45BA92007BBBF7 /* Intermediate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F99F26865A550006F71B /* Intermediate.cpp */; };
-		DCFD7D012A45BA92007BBBF7 /* InReadableOrder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94B26865A550006F71B /* InReadableOrder.cpp */; };
-		DCFD7D022A45BA92007BBBF7 /* PpAtom.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9AE26865A550006F71B /* PpAtom.cpp */; };
-		DCFD7D032A45BA92007BBBF7 /* SpvBuilder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F94F26865A550006F71B /* SpvBuilder.cpp */; };
-		DCFD7D042A45BA92007BBBF7 /* CodeGen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9CC26865A550006F71B /* CodeGen.cpp */; };
-		DCFD7D052A45BA92007BBBF7 /* SymbolTable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9A026865A550006F71B /* SymbolTable.cpp */; };
-		DCFD7D062A45BA92007BBBF7 /* Pp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A997F9B026865A550006F71B /* Pp.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -2304,13 +1924,6 @@
 			proxyType = 1;
 			remoteGlobalIDString = 2FEA0B4B2490322100EEF3AD;
 			remoteInfo = "SPIRV-Tools-tvOS";
-		};
-		2FEA0CF42490325400EEF3AD /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A9F55D25198BE6A7004EC31B /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 2FEA0AE82490321700EEF3AD;
-			remoteInfo = "glslang-tvOS";
 		};
 		2FEA0CF72490344F00EEF3AD /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -2361,20 +1974,6 @@
 			remoteGlobalIDString = A972A81021CECBE90013AB25;
 			remoteInfo = "SPIRV-Tools-macOS";
 		};
-		A972ABF121CED8BA0013AB25 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A9F55D25198BE6A7004EC31B /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = A972ABC921CED7BC0013AB25;
-			remoteInfo = "glslang-iOS";
-		};
-		A972ABF321CED8C20013AB25 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A9F55D25198BE6A7004EC31B /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = A972ABDD21CED7CB0013AB25;
-			remoteInfo = "glslang-macOS";
-		};
 		DCFD7ECC2A45BC08007BBBF7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A9F55D25198BE6A7004EC31B /* Project object */;
@@ -2389,17 +1988,9 @@
 			remoteGlobalIDString = DCFD7D0C2A45BA9C007BBBF7;
 			remoteInfo = "SPIRV-Tools-xrOS";
 		};
-		DCFD7ED02A45BC10007BBBF7 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A9F55D25198BE6A7004EC31B /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = DCFD7CA42A45BA92007BBBF7;
-			remoteInfo = "glslang-xrOS";
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		2FEA0B4A2490321700EEF3AD /* libglslang.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libglslang.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEA0CD82490322100EEF3AD /* libSPIRVTools.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVTools.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEA0CEF2490322B00EEF3AD /* libSPIRVCross.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVCross.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		450A4F63221C5A95007203D7 /* spirv_reflect.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = spirv_reflect.hpp; sourceTree = "<group>"; };
@@ -2860,8 +2451,6 @@
 		A9717C0F26EE8C9D0041AE82 /* spirv.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = spirv.hpp; sourceTree = "<group>"; };
 		A972A80F21CECBBF0013AB25 /* libSPIRVTools.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVTools.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A972A82321CECBE90013AB25 /* libSPIRVTools.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVTools.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		A972ABDC21CED7BC0013AB25 /* libglslang.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libglslang.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		A972ABF021CED7CB0013AB25 /* libglslang.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libglslang.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A976290221CC60BC00B52A68 /* spirv_msl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = spirv_msl.hpp; sourceTree = "<group>"; };
 		A976290321CC60BC00B52A68 /* spirv_cross.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = spirv_cross.hpp; sourceTree = "<group>"; };
 		A976290421CC60BC00B52A68 /* spirv_parser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_parser.cpp; sourceTree = "<group>"; };
@@ -2877,110 +2466,10 @@
 		A976290E21CC60BC00B52A68 /* spirv_cross_parsed_ir.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_cross_parsed_ir.cpp; sourceTree = "<group>"; };
 		A9772CFF24F9930E002617D0 /* copy_lib_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_lib_to_staging.sh; sourceTree = "<group>"; };
 		A991DB2124E6016E00AEEC36 /* create_xcframework_func.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_xcframework_func.sh; sourceTree = "<group>"; };
-		A997F94226865A550006F71B /* NonSemanticDebugPrintf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NonSemanticDebugPrintf.h; sourceTree = "<group>"; };
-		A997F94326865A550006F71B /* SPVRemapper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPVRemapper.h; sourceTree = "<group>"; };
-		A997F94426865A550006F71B /* SpvBuilder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SpvBuilder.h; sourceTree = "<group>"; };
-		A997F94526865A550006F71B /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
-		A997F94626865A550006F71B /* SpvPostProcess.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SpvPostProcess.cpp; sourceTree = "<group>"; };
-		A997F94826865A550006F71B /* spirv_c_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_c_interface.cpp; sourceTree = "<group>"; };
-		A997F94926865A550006F71B /* SpvTools.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SpvTools.h; sourceTree = "<group>"; };
-		A997F94A26865A550006F71B /* SpvTools.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SpvTools.cpp; sourceTree = "<group>"; };
-		A997F94B26865A550006F71B /* InReadableOrder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InReadableOrder.cpp; sourceTree = "<group>"; };
-		A997F94C26865A550006F71B /* GLSL.ext.AMD.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GLSL.ext.AMD.h; sourceTree = "<group>"; };
-		A997F94D26865A550006F71B /* doc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = doc.h; sourceTree = "<group>"; };
-		A997F94E26865A550006F71B /* spirv.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = spirv.hpp; sourceTree = "<group>"; };
-		A997F94F26865A550006F71B /* SpvBuilder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SpvBuilder.cpp; sourceTree = "<group>"; };
-		A997F95026865A550006F71B /* GLSL.ext.EXT.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GLSL.ext.EXT.h; sourceTree = "<group>"; };
-		A997F95126865A550006F71B /* GLSL.ext.KHR.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GLSL.ext.KHR.h; sourceTree = "<group>"; };
-		A997F95226865A550006F71B /* GLSL.ext.NV.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GLSL.ext.NV.h; sourceTree = "<group>"; };
-		A997F95326865A550006F71B /* GlslangToSpv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GlslangToSpv.cpp; sourceTree = "<group>"; };
-		A997F95426865A550006F71B /* spvIR.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = spvIR.h; sourceTree = "<group>"; };
-		A997F95526865A550006F71B /* bitutils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bitutils.h; sourceTree = "<group>"; };
-		A997F95626865A550006F71B /* disassemble.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = disassemble.h; sourceTree = "<group>"; };
-		A997F95726865A550006F71B /* GlslangToSpv.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GlslangToSpv.h; sourceTree = "<group>"; };
-		A997F95826865A550006F71B /* GLSL.std.450.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GLSL.std.450.h; sourceTree = "<group>"; };
-		A997F95926865A550006F71B /* SPVRemapper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPVRemapper.cpp; sourceTree = "<group>"; };
-		A997F95A26865A550006F71B /* Logger.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Logger.cpp; sourceTree = "<group>"; };
-		A997F95B26865A550006F71B /* hex_float.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = hex_float.h; sourceTree = "<group>"; };
-		A997F95C26865A550006F71B /* Logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Logger.h; sourceTree = "<group>"; };
-		A997F95D26865A550006F71B /* doc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = doc.cpp; sourceTree = "<group>"; };
-		A997F95E26865A550006F71B /* disassemble.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = disassemble.cpp; sourceTree = "<group>"; };
-		A997F96426865A550006F71B /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
-		A997F96C26865A550006F71B /* ossource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ossource.cpp; sourceTree = "<group>"; };
-		A997F96D26865A550006F71B /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
-		A997F96E26865A550006F71B /* osinclude.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = osinclude.h; sourceTree = "<group>"; };
-		A997F97426865A550006F71B /* glslang_c_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = glslang_c_interface.cpp; sourceTree = "<group>"; };
-		A997F97626865A550006F71B /* ResourceLimits.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ResourceLimits.h; sourceTree = "<group>"; };
-		A997F97726865A550006F71B /* glslang_c_interface.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = glslang_c_interface.h; sourceTree = "<group>"; };
-		A997F97826865A550006F71B /* SpirvIntrinsics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SpirvIntrinsics.h; sourceTree = "<group>"; };
-		A997F97926865A550006F71B /* Types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Types.h; sourceTree = "<group>"; };
-		A997F97A26865A550006F71B /* intermediate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = intermediate.h; sourceTree = "<group>"; };
-		A997F97B26865A550006F71B /* glslang_c_shader_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = glslang_c_shader_types.h; sourceTree = "<group>"; };
-		A997F97C26865A550006F71B /* BaseTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BaseTypes.h; sourceTree = "<group>"; };
-		A997F97D26865A550006F71B /* InitializeGlobals.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InitializeGlobals.h; sourceTree = "<group>"; };
-		A997F97E26865A550006F71B /* ShHandle.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ShHandle.h; sourceTree = "<group>"; };
-		A997F97F26865A550006F71B /* arrays.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = arrays.h; sourceTree = "<group>"; };
-		A997F98026865A550006F71B /* Common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Common.h; sourceTree = "<group>"; };
-		A997F98126865A550006F71B /* ConstantUnion.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ConstantUnion.h; sourceTree = "<group>"; };
-		A997F98226865A550006F71B /* InfoSink.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InfoSink.h; sourceTree = "<group>"; };
-		A997F98326865A550006F71B /* PoolAlloc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PoolAlloc.h; sourceTree = "<group>"; };
-		A997F98426865A550006F71B /* updateGrammar */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = updateGrammar; sourceTree = "<group>"; };
-		A997F98626865A550006F71B /* ParseHelper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ParseHelper.cpp; sourceTree = "<group>"; };
-		A997F98726865A550006F71B /* parseVersions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = parseVersions.h; sourceTree = "<group>"; };
-		A997F98826865A550006F71B /* gl_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gl_types.h; sourceTree = "<group>"; };
-		A997F98926865A550006F71B /* propagateNoContraction.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = propagateNoContraction.cpp; sourceTree = "<group>"; };
-		A997F98A26865A550006F71B /* pch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pch.h; sourceTree = "<group>"; };
-		A997F98B26865A550006F71B /* ScanContext.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ScanContext.h; sourceTree = "<group>"; };
-		A997F98C26865A550006F71B /* iomapper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = iomapper.h; sourceTree = "<group>"; };
-		A997F98D26865A550006F71B /* localintermediate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = localintermediate.h; sourceTree = "<group>"; };
-		A997F98E26865A550006F71B /* Scan.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Scan.cpp; sourceTree = "<group>"; };
-		A997F99026865A550006F71B /* RemoveTree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RemoveTree.h; sourceTree = "<group>"; };
-		A997F99126865A550006F71B /* Initialize.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Initialize.cpp; sourceTree = "<group>"; };
-		A997F99226865A550006F71B /* glslang_tab.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = glslang_tab.cpp; sourceTree = "<group>"; };
-		A997F99326865A550006F71B /* limits.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = limits.cpp; sourceTree = "<group>"; };
-		A997F99426865A550006F71B /* SpirvIntrinsics.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SpirvIntrinsics.cpp; sourceTree = "<group>"; };
-		A997F99526865A550006F71B /* parseConst.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = parseConst.cpp; sourceTree = "<group>"; };
-		A997F99626865A550006F71B /* propagateNoContraction.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = propagateNoContraction.h; sourceTree = "<group>"; };
-		A997F99726865A550006F71B /* Versions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Versions.h; sourceTree = "<group>"; };
-		A997F99826865A550006F71B /* IntermTraverse.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = IntermTraverse.cpp; sourceTree = "<group>"; };
-		A997F99926865A550006F71B /* intermOut.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = intermOut.cpp; sourceTree = "<group>"; };
-		A997F99A26865A550006F71B /* iomapper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = iomapper.cpp; sourceTree = "<group>"; };
-		A997F99B26865A550006F71B /* PoolAlloc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PoolAlloc.cpp; sourceTree = "<group>"; };
-		A997F99C26865A550006F71B /* ShaderLang.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ShaderLang.cpp; sourceTree = "<group>"; };
-		A997F99D26865A550006F71B /* SymbolTable.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SymbolTable.h; sourceTree = "<group>"; };
-		A997F99E26865A550006F71B /* InfoSink.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InfoSink.cpp; sourceTree = "<group>"; };
-		A997F99F26865A550006F71B /* Intermediate.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Intermediate.cpp; sourceTree = "<group>"; };
-		A997F9A026865A550006F71B /* SymbolTable.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SymbolTable.cpp; sourceTree = "<group>"; };
-		A997F9A126865A550006F71B /* glslang_tab.cpp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = glslang_tab.cpp.h; sourceTree = "<group>"; };
-		A997F9A226865A550006F71B /* LiveTraverser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LiveTraverser.h; sourceTree = "<group>"; };
-		A997F9A326865A550006F71B /* Initialize.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Initialize.h; sourceTree = "<group>"; };
-		A997F9A426865A550006F71B /* attribute.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = attribute.cpp; sourceTree = "<group>"; };
-		A997F9A526865A550006F71B /* reflection.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = reflection.cpp; sourceTree = "<group>"; };
-		A997F9A626865A550006F71B /* RemoveTree.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RemoveTree.cpp; sourceTree = "<group>"; };
-		A997F9A726865A550006F71B /* attribute.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = attribute.h; sourceTree = "<group>"; };
-		A997F9A826865A550006F71B /* Versions.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Versions.cpp; sourceTree = "<group>"; };
-		A997F9A926865A550006F71B /* Constant.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Constant.cpp; sourceTree = "<group>"; };
-		A997F9AA26865A550006F71B /* linkValidate.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = linkValidate.cpp; sourceTree = "<group>"; };
-		A997F9AB26865A550006F71B /* glslang.m4 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = glslang.m4; sourceTree = "<group>"; };
-		A997F9AC26865A550006F71B /* ParseHelper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ParseHelper.h; sourceTree = "<group>"; };
-		A997F9AE26865A550006F71B /* PpAtom.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PpAtom.cpp; sourceTree = "<group>"; };
-		A997F9AF26865A550006F71B /* PpTokens.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PpTokens.h; sourceTree = "<group>"; };
-		A997F9B026865A550006F71B /* Pp.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Pp.cpp; sourceTree = "<group>"; };
-		A997F9B126865A550006F71B /* PpContext.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PpContext.h; sourceTree = "<group>"; };
-		A997F9B226865A550006F71B /* PpTokens.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PpTokens.cpp; sourceTree = "<group>"; };
-		A997F9B326865A550006F71B /* PpContext.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PpContext.cpp; sourceTree = "<group>"; };
-		A997F9B426865A550006F71B /* PpScanner.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PpScanner.cpp; sourceTree = "<group>"; };
-		A997F9B526865A550006F71B /* ParseContextBase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ParseContextBase.cpp; sourceTree = "<group>"; };
-		A997F9B626865A550006F71B /* reflection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = reflection.h; sourceTree = "<group>"; };
-		A997F9B726865A550006F71B /* Scan.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Scan.h; sourceTree = "<group>"; };
-		A997F9B926865A550006F71B /* ShaderLang.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ShaderLang.h; sourceTree = "<group>"; };
-		A997F9CC26865A550006F71B /* CodeGen.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CodeGen.cpp; sourceTree = "<group>"; };
-		A997F9CD26865A550006F71B /* Link.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Link.cpp; sourceTree = "<group>"; };
 		A9C2104521D14FD7006BA2D3 /* fetchDependencies */ = {isa = PBXFileReference; lastKnownFileType = text; path = fetchDependencies; sourceTree = "<group>"; };
 		A9C2104721D15843006BA2D3 /* ExternalRevisions */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ExternalRevisions; sourceTree = "<group>"; };
 		A9FC5F7F249DA96D003CB086 /* package_ext_libs_finish.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_ext_libs_finish.sh; sourceTree = "<group>"; };
 		DCFD7CA32A45BA7D007BBBF7 /* libSPIRVCross.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVCross.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		DCFD7D0B2A45BA92007BBBF7 /* libglslang.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libglslang.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		DCFD7EC02A45BA9C007BBBF7 /* libSPIRVTools.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVTools.a; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -2990,7 +2479,6 @@
 			children = (
 				A97628F021CC5DA700B52A68 /* SPIRV-Cross */,
 				A972A82421CECC410013AB25 /* SPIRV-Tools */,
-				A972ABC821CED6F90013AB25 /* glslang */,
 			);
 			path = External;
 			sourceTree = "<group>";
@@ -3522,16 +3010,7 @@
 				A969BD4F2CAB352000D7EE4D /* source */,
 			);
 			name = "SPIRV-Tools";
-			path = "glslang/External/spirv-tools";
-			sourceTree = "<group>";
-		};
-		A972ABC821CED6F90013AB25 /* glslang */ = {
-			isa = PBXGroup;
-			children = (
-				A997F96326865A550006F71B /* glslang */,
-				A997F94126865A550006F71B /* SPIRV */,
-			);
-			path = glslang;
+			path = "SPIRV-Tools";
 			sourceTree = "<group>";
 		};
 		A972AD2421CEE30F0013AB25 /* Products */ = {
@@ -3543,9 +3022,6 @@
 				A972A80F21CECBBF0013AB25 /* libSPIRVTools.a */,
 				2FEA0CD82490322100EEF3AD /* libSPIRVTools.a */,
 				A972A82321CECBE90013AB25 /* libSPIRVTools.a */,
-				A972ABDC21CED7BC0013AB25 /* libglslang.a */,
-				2FEA0B4A2490321700EEF3AD /* libglslang.a */,
-				A972ABF021CED7CB0013AB25 /* libglslang.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -3576,191 +3052,6 @@
 			path = "SPIRV-Cross";
 			sourceTree = "<group>";
 		};
-		A997F94126865A550006F71B /* SPIRV */ = {
-			isa = PBXGroup;
-			children = (
-				A997F94226865A550006F71B /* NonSemanticDebugPrintf.h */,
-				A997F94326865A550006F71B /* SPVRemapper.h */,
-				A997F94426865A550006F71B /* SpvBuilder.h */,
-				A997F94526865A550006F71B /* CMakeLists.txt */,
-				A997F94626865A550006F71B /* SpvPostProcess.cpp */,
-				A997F94726865A550006F71B /* CInterface */,
-				A997F94926865A550006F71B /* SpvTools.h */,
-				A997F94A26865A550006F71B /* SpvTools.cpp */,
-				A997F94B26865A550006F71B /* InReadableOrder.cpp */,
-				A997F94C26865A550006F71B /* GLSL.ext.AMD.h */,
-				A997F94D26865A550006F71B /* doc.h */,
-				A997F94E26865A550006F71B /* spirv.hpp */,
-				A997F94F26865A550006F71B /* SpvBuilder.cpp */,
-				A997F95026865A550006F71B /* GLSL.ext.EXT.h */,
-				A997F95126865A550006F71B /* GLSL.ext.KHR.h */,
-				A997F95226865A550006F71B /* GLSL.ext.NV.h */,
-				A997F95326865A550006F71B /* GlslangToSpv.cpp */,
-				A997F95426865A550006F71B /* spvIR.h */,
-				A997F95526865A550006F71B /* bitutils.h */,
-				A997F95626865A550006F71B /* disassemble.h */,
-				A997F95726865A550006F71B /* GlslangToSpv.h */,
-				A997F95826865A550006F71B /* GLSL.std.450.h */,
-				A997F95926865A550006F71B /* SPVRemapper.cpp */,
-				A997F95A26865A550006F71B /* Logger.cpp */,
-				A997F95B26865A550006F71B /* hex_float.h */,
-				A997F95C26865A550006F71B /* Logger.h */,
-				A997F95D26865A550006F71B /* doc.cpp */,
-				A997F95E26865A550006F71B /* disassemble.cpp */,
-			);
-			path = SPIRV;
-			sourceTree = "<group>";
-		};
-		A997F94726865A550006F71B /* CInterface */ = {
-			isa = PBXGroup;
-			children = (
-				A997F94826865A550006F71B /* spirv_c_interface.cpp */,
-			);
-			path = CInterface;
-			sourceTree = "<group>";
-		};
-		A997F96326865A550006F71B /* glslang */ = {
-			isa = PBXGroup;
-			children = (
-				A997F96426865A550006F71B /* CMakeLists.txt */,
-				A997F96526865A550006F71B /* OSDependent */,
-				A997F97326865A550006F71B /* CInterface */,
-				A997F97526865A550006F71B /* Include */,
-				A997F98426865A550006F71B /* updateGrammar */,
-				A997F98526865A550006F71B /* MachineIndependent */,
-				A997F9B826865A550006F71B /* Public */,
-				A997F9CB26865A550006F71B /* GenericCodeGen */,
-			);
-			path = glslang;
-			sourceTree = "<group>";
-		};
-		A997F96526865A550006F71B /* OSDependent */ = {
-			isa = PBXGroup;
-			children = (
-				A997F96B26865A550006F71B /* Unix */,
-				A997F96E26865A550006F71B /* osinclude.h */,
-			);
-			path = OSDependent;
-			sourceTree = "<group>";
-		};
-		A997F96B26865A550006F71B /* Unix */ = {
-			isa = PBXGroup;
-			children = (
-				A997F96C26865A550006F71B /* ossource.cpp */,
-				A997F96D26865A550006F71B /* CMakeLists.txt */,
-			);
-			path = Unix;
-			sourceTree = "<group>";
-		};
-		A997F97326865A550006F71B /* CInterface */ = {
-			isa = PBXGroup;
-			children = (
-				A997F97426865A550006F71B /* glslang_c_interface.cpp */,
-			);
-			path = CInterface;
-			sourceTree = "<group>";
-		};
-		A997F97526865A550006F71B /* Include */ = {
-			isa = PBXGroup;
-			children = (
-				A997F97626865A550006F71B /* ResourceLimits.h */,
-				A997F97726865A550006F71B /* glslang_c_interface.h */,
-				A997F97826865A550006F71B /* SpirvIntrinsics.h */,
-				A997F97926865A550006F71B /* Types.h */,
-				A997F97A26865A550006F71B /* intermediate.h */,
-				A997F97B26865A550006F71B /* glslang_c_shader_types.h */,
-				A997F97C26865A550006F71B /* BaseTypes.h */,
-				A997F97D26865A550006F71B /* InitializeGlobals.h */,
-				A997F97E26865A550006F71B /* ShHandle.h */,
-				A997F97F26865A550006F71B /* arrays.h */,
-				A997F98026865A550006F71B /* Common.h */,
-				A997F98126865A550006F71B /* ConstantUnion.h */,
-				A997F98226865A550006F71B /* InfoSink.h */,
-				A997F98326865A550006F71B /* PoolAlloc.h */,
-			);
-			path = Include;
-			sourceTree = "<group>";
-		};
-		A997F98526865A550006F71B /* MachineIndependent */ = {
-			isa = PBXGroup;
-			children = (
-				A997F98626865A550006F71B /* ParseHelper.cpp */,
-				A997F98726865A550006F71B /* parseVersions.h */,
-				A997F98826865A550006F71B /* gl_types.h */,
-				A997F98926865A550006F71B /* propagateNoContraction.cpp */,
-				A997F98A26865A550006F71B /* pch.h */,
-				A997F98B26865A550006F71B /* ScanContext.h */,
-				A997F98C26865A550006F71B /* iomapper.h */,
-				A997F98D26865A550006F71B /* localintermediate.h */,
-				A997F98E26865A550006F71B /* Scan.cpp */,
-				A997F99026865A550006F71B /* RemoveTree.h */,
-				A997F99126865A550006F71B /* Initialize.cpp */,
-				A997F99226865A550006F71B /* glslang_tab.cpp */,
-				A997F99326865A550006F71B /* limits.cpp */,
-				A997F99426865A550006F71B /* SpirvIntrinsics.cpp */,
-				A997F99526865A550006F71B /* parseConst.cpp */,
-				A997F99626865A550006F71B /* propagateNoContraction.h */,
-				A997F99726865A550006F71B /* Versions.h */,
-				A997F99826865A550006F71B /* IntermTraverse.cpp */,
-				A997F99926865A550006F71B /* intermOut.cpp */,
-				A997F99A26865A550006F71B /* iomapper.cpp */,
-				A997F99B26865A550006F71B /* PoolAlloc.cpp */,
-				A997F99C26865A550006F71B /* ShaderLang.cpp */,
-				A997F99D26865A550006F71B /* SymbolTable.h */,
-				A997F99E26865A550006F71B /* InfoSink.cpp */,
-				A997F99F26865A550006F71B /* Intermediate.cpp */,
-				A997F9A026865A550006F71B /* SymbolTable.cpp */,
-				A997F9A126865A550006F71B /* glslang_tab.cpp.h */,
-				A997F9A226865A550006F71B /* LiveTraverser.h */,
-				A997F9A326865A550006F71B /* Initialize.h */,
-				A997F9A426865A550006F71B /* attribute.cpp */,
-				A997F9A526865A550006F71B /* reflection.cpp */,
-				A997F9A626865A550006F71B /* RemoveTree.cpp */,
-				A997F9A726865A550006F71B /* attribute.h */,
-				A997F9A826865A550006F71B /* Versions.cpp */,
-				A997F9A926865A550006F71B /* Constant.cpp */,
-				A997F9AA26865A550006F71B /* linkValidate.cpp */,
-				A997F9AB26865A550006F71B /* glslang.m4 */,
-				A997F9AC26865A550006F71B /* ParseHelper.h */,
-				A997F9AD26865A550006F71B /* preprocessor */,
-				A997F9B526865A550006F71B /* ParseContextBase.cpp */,
-				A997F9B626865A550006F71B /* reflection.h */,
-				A997F9B726865A550006F71B /* Scan.h */,
-			);
-			path = MachineIndependent;
-			sourceTree = "<group>";
-		};
-		A997F9AD26865A550006F71B /* preprocessor */ = {
-			isa = PBXGroup;
-			children = (
-				A997F9AE26865A550006F71B /* PpAtom.cpp */,
-				A997F9AF26865A550006F71B /* PpTokens.h */,
-				A997F9B026865A550006F71B /* Pp.cpp */,
-				A997F9B126865A550006F71B /* PpContext.h */,
-				A997F9B226865A550006F71B /* PpTokens.cpp */,
-				A997F9B326865A550006F71B /* PpContext.cpp */,
-				A997F9B426865A550006F71B /* PpScanner.cpp */,
-			);
-			path = preprocessor;
-			sourceTree = "<group>";
-		};
-		A997F9B826865A550006F71B /* Public */ = {
-			isa = PBXGroup;
-			children = (
-				A997F9B926865A550006F71B /* ShaderLang.h */,
-			);
-			path = Public;
-			sourceTree = "<group>";
-		};
-		A997F9CB26865A550006F71B /* GenericCodeGen */ = {
-			isa = PBXGroup;
-			children = (
-				A997F9CC26865A550006F71B /* CodeGen.cpp */,
-				A997F9CD26865A550006F71B /* Link.cpp */,
-			);
-			path = GenericCodeGen;
-			sourceTree = "<group>";
-		};
 		A9F55D24198BE6A7004EC31B = {
 			isa = PBXGroup;
 			children = (
@@ -3770,7 +3061,6 @@
 				A9679AAB21D2699800856BF7 /* Scripts */,
 				A972AD2421CEE30F0013AB25 /* Products */,
 				DCFD7CA32A45BA7D007BBBF7 /* libSPIRVCross.a */,
-				DCFD7D0B2A45BA92007BBBF7 /* libglslang.a */,
 				DCFD7EC02A45BA9C007BBBF7 /* libSPIRVTools.a */,
 			);
 			sourceTree = "<group>";
@@ -3778,65 +3068,6 @@
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
-		2FEA0AE92490321700EEF3AD /* Headers */ = {
-			isa = PBXHeadersBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A997FA9226865A560006F71B /* propagateNoContraction.h in Headers */,
-				A997FA0526865A550006F71B /* disassemble.h in Headers */,
-				A997FADD26865A560006F71B /* PpContext.h in Headers */,
-				A997FA5C26865A560006F71B /* InfoSink.h in Headers */,
-				A997FA0226865A550006F71B /* bitutils.h in Headers */,
-				A997F9D526865A550006F71B /* SpvBuilder.h in Headers */,
-				A997FA0B26865A550006F71B /* GLSL.std.450.h in Headers */,
-				A997FA1726865A550006F71B /* Logger.h in Headers */,
-				A997FA6E26865A560006F71B /* pch.h in Headers */,
-				A997FAB626865A560006F71B /* LiveTraverser.h in Headers */,
-				A997F9FF26865A550006F71B /* spvIR.h in Headers */,
-				A997FA4726865A560006F71B /* glslang_c_shader_types.h in Headers */,
-				A997FAC526865A560006F71B /* attribute.h in Headers */,
-				A997FAEF26865A560006F71B /* Scan.h in Headers */,
-				A997FA4126865A550006F71B /* Types.h in Headers */,
-				A997FA5F26865A560006F71B /* PoolAlloc.h in Headers */,
-				A997FA4D26865A560006F71B /* InitializeGlobals.h in Headers */,
-				A997FA6526865A560006F71B /* parseVersions.h in Headers */,
-				A997FA2C26865A550006F71B /* osinclude.h in Headers */,
-				A997FA6826865A560006F71B /* gl_types.h in Headers */,
-				A997FA7726865A560006F71B /* localintermediate.h in Headers */,
-				A997F9E726865A550006F71B /* GLSL.ext.AMD.h in Headers */,
-				A997FAEC26865A560006F71B /* reflection.h in Headers */,
-				A997FA5026865A560006F71B /* ShHandle.h in Headers */,
-				A997FA7426865A560006F71B /* iomapper.h in Headers */,
-				A997F9F926865A550006F71B /* GLSL.ext.NV.h in Headers */,
-				A997FA9526865A560006F71B /* Versions.h in Headers */,
-				A997F9D226865A550006F71B /* SPVRemapper.h in Headers */,
-				A997FA5926865A560006F71B /* ConstantUnion.h in Headers */,
-				A997F9EA26865A550006F71B /* doc.h in Headers */,
-				A997FAB926865A560006F71B /* Initialize.h in Headers */,
-				A997F9F326865A550006F71B /* GLSL.ext.EXT.h in Headers */,
-				A997FA3826865A550006F71B /* ResourceLimits.h in Headers */,
-				A997FA5626865A560006F71B /* Common.h in Headers */,
-				A997F9F626865A550006F71B /* GLSL.ext.KHR.h in Headers */,
-				A997FA4426865A560006F71B /* intermediate.h in Headers */,
-				A997FAF226865A560006F71B /* ShaderLang.h in Headers */,
-				A997FA7126865A560006F71B /* ScanContext.h in Headers */,
-				A997FAD726865A560006F71B /* PpTokens.h in Headers */,
-				A997FA4A26865A560006F71B /* BaseTypes.h in Headers */,
-				A997FA1426865A550006F71B /* hex_float.h in Headers */,
-				A997F9DE26865A550006F71B /* SpvTools.h in Headers */,
-				A997FA8026865A560006F71B /* RemoveTree.h in Headers */,
-				A997FAA726865A560006F71B /* SymbolTable.h in Headers */,
-				A997FA5326865A560006F71B /* arrays.h in Headers */,
-				A997F9ED26865A550006F71B /* spirv.hpp in Headers */,
-				A997FA3B26865A550006F71B /* glslang_c_interface.h in Headers */,
-				A997FA0826865A550006F71B /* GlslangToSpv.h in Headers */,
-				A997FA3E26865A550006F71B /* SpirvIntrinsics.h in Headers */,
-				A997F9CF26865A550006F71B /* NonSemanticDebugPrintf.h in Headers */,
-				A997FAB326865A560006F71B /* glslang_tab.cpp.h in Headers */,
-				A997FAD126865A560006F71B /* ParseHelper.h in Headers */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		2FEA0B4C2490322100EEF3AD /* Headers */ = {
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
@@ -4513,124 +3744,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A972ABCA21CED7BC0013AB25 /* Headers */ = {
-			isa = PBXHeadersBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A997FA9126865A560006F71B /* propagateNoContraction.h in Headers */,
-				A997FA0426865A550006F71B /* disassemble.h in Headers */,
-				A997FADC26865A560006F71B /* PpContext.h in Headers */,
-				A997FA5B26865A560006F71B /* InfoSink.h in Headers */,
-				A997FA0126865A550006F71B /* bitutils.h in Headers */,
-				A997F9D426865A550006F71B /* SpvBuilder.h in Headers */,
-				A997FA0A26865A550006F71B /* GLSL.std.450.h in Headers */,
-				A997FA1626865A550006F71B /* Logger.h in Headers */,
-				A997FA6D26865A560006F71B /* pch.h in Headers */,
-				A997FAB526865A560006F71B /* LiveTraverser.h in Headers */,
-				A997F9FE26865A550006F71B /* spvIR.h in Headers */,
-				A997FA4626865A560006F71B /* glslang_c_shader_types.h in Headers */,
-				A997FAC426865A560006F71B /* attribute.h in Headers */,
-				A997FAEE26865A560006F71B /* Scan.h in Headers */,
-				A997FA4026865A550006F71B /* Types.h in Headers */,
-				A997FA5E26865A560006F71B /* PoolAlloc.h in Headers */,
-				A997FA4C26865A560006F71B /* InitializeGlobals.h in Headers */,
-				A997FA6426865A560006F71B /* parseVersions.h in Headers */,
-				A997FA2B26865A550006F71B /* osinclude.h in Headers */,
-				A997FA6726865A560006F71B /* gl_types.h in Headers */,
-				A997FA7626865A560006F71B /* localintermediate.h in Headers */,
-				A997F9E626865A550006F71B /* GLSL.ext.AMD.h in Headers */,
-				A997FAEB26865A560006F71B /* reflection.h in Headers */,
-				A997FA4F26865A560006F71B /* ShHandle.h in Headers */,
-				A997FA7326865A560006F71B /* iomapper.h in Headers */,
-				A997F9F826865A550006F71B /* GLSL.ext.NV.h in Headers */,
-				A997FA9426865A560006F71B /* Versions.h in Headers */,
-				A997F9D126865A550006F71B /* SPVRemapper.h in Headers */,
-				A997FA5826865A560006F71B /* ConstantUnion.h in Headers */,
-				A997F9E926865A550006F71B /* doc.h in Headers */,
-				A997FAB826865A560006F71B /* Initialize.h in Headers */,
-				A997F9F226865A550006F71B /* GLSL.ext.EXT.h in Headers */,
-				A997FA3726865A550006F71B /* ResourceLimits.h in Headers */,
-				A997FA5526865A560006F71B /* Common.h in Headers */,
-				A997F9F526865A550006F71B /* GLSL.ext.KHR.h in Headers */,
-				A997FA4326865A560006F71B /* intermediate.h in Headers */,
-				A997FAF126865A560006F71B /* ShaderLang.h in Headers */,
-				A997FA7026865A560006F71B /* ScanContext.h in Headers */,
-				A997FAD626865A560006F71B /* PpTokens.h in Headers */,
-				A997FA4926865A560006F71B /* BaseTypes.h in Headers */,
-				A997FA1326865A550006F71B /* hex_float.h in Headers */,
-				A997F9DD26865A550006F71B /* SpvTools.h in Headers */,
-				A997FA7F26865A560006F71B /* RemoveTree.h in Headers */,
-				A997FAA626865A560006F71B /* SymbolTable.h in Headers */,
-				A997FA5226865A560006F71B /* arrays.h in Headers */,
-				A997F9EC26865A550006F71B /* spirv.hpp in Headers */,
-				A997FA3A26865A550006F71B /* glslang_c_interface.h in Headers */,
-				A997FA0726865A550006F71B /* GlslangToSpv.h in Headers */,
-				A997FA3D26865A550006F71B /* SpirvIntrinsics.h in Headers */,
-				A997F9CE26865A550006F71B /* NonSemanticDebugPrintf.h in Headers */,
-				A997FAB226865A560006F71B /* glslang_tab.cpp.h in Headers */,
-				A997FAD026865A560006F71B /* ParseHelper.h in Headers */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		A972ABDE21CED7CB0013AB25 /* Headers */ = {
-			isa = PBXHeadersBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A997FA9326865A560006F71B /* propagateNoContraction.h in Headers */,
-				A997FA0626865A550006F71B /* disassemble.h in Headers */,
-				A997FADE26865A560006F71B /* PpContext.h in Headers */,
-				A997FA5D26865A560006F71B /* InfoSink.h in Headers */,
-				A997FA0326865A550006F71B /* bitutils.h in Headers */,
-				A997F9D626865A550006F71B /* SpvBuilder.h in Headers */,
-				A997FA0C26865A550006F71B /* GLSL.std.450.h in Headers */,
-				A997FA1826865A550006F71B /* Logger.h in Headers */,
-				A997FA6F26865A560006F71B /* pch.h in Headers */,
-				A997FAB726865A560006F71B /* LiveTraverser.h in Headers */,
-				A997FA0026865A550006F71B /* spvIR.h in Headers */,
-				A997FA4826865A560006F71B /* glslang_c_shader_types.h in Headers */,
-				A997FAC626865A560006F71B /* attribute.h in Headers */,
-				A997FAF026865A560006F71B /* Scan.h in Headers */,
-				A997FA4226865A550006F71B /* Types.h in Headers */,
-				A997FA6026865A560006F71B /* PoolAlloc.h in Headers */,
-				A997FA4E26865A560006F71B /* InitializeGlobals.h in Headers */,
-				A997FA6626865A560006F71B /* parseVersions.h in Headers */,
-				A997FA2D26865A550006F71B /* osinclude.h in Headers */,
-				A997FA6926865A560006F71B /* gl_types.h in Headers */,
-				A997FA7826865A560006F71B /* localintermediate.h in Headers */,
-				A997F9E826865A550006F71B /* GLSL.ext.AMD.h in Headers */,
-				A997FAED26865A560006F71B /* reflection.h in Headers */,
-				A997FA5126865A560006F71B /* ShHandle.h in Headers */,
-				A997FA7526865A560006F71B /* iomapper.h in Headers */,
-				A997F9FA26865A550006F71B /* GLSL.ext.NV.h in Headers */,
-				A997FA9626865A560006F71B /* Versions.h in Headers */,
-				A997F9D326865A550006F71B /* SPVRemapper.h in Headers */,
-				A997FA5A26865A560006F71B /* ConstantUnion.h in Headers */,
-				A997F9EB26865A550006F71B /* doc.h in Headers */,
-				A997FABA26865A560006F71B /* Initialize.h in Headers */,
-				A997F9F426865A550006F71B /* GLSL.ext.EXT.h in Headers */,
-				A997FA3926865A550006F71B /* ResourceLimits.h in Headers */,
-				A997FA5726865A560006F71B /* Common.h in Headers */,
-				A997F9F726865A550006F71B /* GLSL.ext.KHR.h in Headers */,
-				A997FA4526865A560006F71B /* intermediate.h in Headers */,
-				A997FAF326865A560006F71B /* ShaderLang.h in Headers */,
-				A997FA7226865A560006F71B /* ScanContext.h in Headers */,
-				A997FAD826865A560006F71B /* PpTokens.h in Headers */,
-				A997FA4B26865A560006F71B /* BaseTypes.h in Headers */,
-				A997FA1526865A550006F71B /* hex_float.h in Headers */,
-				A997F9DF26865A550006F71B /* SpvTools.h in Headers */,
-				A997FA8126865A560006F71B /* RemoveTree.h in Headers */,
-				A997FAA826865A560006F71B /* SymbolTable.h in Headers */,
-				A997FA5426865A560006F71B /* arrays.h in Headers */,
-				A997F9EE26865A550006F71B /* spirv.hpp in Headers */,
-				A997FA3C26865A550006F71B /* glslang_c_interface.h in Headers */,
-				A997FA0926865A550006F71B /* GlslangToSpv.h in Headers */,
-				A997FA3F26865A550006F71B /* SpirvIntrinsics.h in Headers */,
-				A997F9D026865A550006F71B /* NonSemanticDebugPrintf.h in Headers */,
-				A997FAB426865A560006F71B /* glslang_tab.cpp.h in Headers */,
-				A997FAD226865A560006F71B /* ParseHelper.h in Headers */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		A97628FF21CC608900B52A68 /* Headers */ = {
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
@@ -4685,65 +3798,6 @@
 				DCFD7C942A45BA7D007BBBF7 /* spirv_cross.hpp in Headers */,
 				DCFD7C952A45BA7D007BBBF7 /* spirv_msl.hpp in Headers */,
 				DCFD7C962A45BA7D007BBBF7 /* spirv_reflect.hpp in Headers */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		DCFD7CA52A45BA92007BBBF7 /* Headers */ = {
-			isa = PBXHeadersBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				DCFD7CA62A45BA92007BBBF7 /* propagateNoContraction.h in Headers */,
-				DCFD7CA72A45BA92007BBBF7 /* disassemble.h in Headers */,
-				DCFD7CA82A45BA92007BBBF7 /* PpContext.h in Headers */,
-				DCFD7CA92A45BA92007BBBF7 /* InfoSink.h in Headers */,
-				DCFD7CAA2A45BA92007BBBF7 /* bitutils.h in Headers */,
-				DCFD7CAB2A45BA92007BBBF7 /* SpvBuilder.h in Headers */,
-				DCFD7CAC2A45BA92007BBBF7 /* GLSL.std.450.h in Headers */,
-				DCFD7CAD2A45BA92007BBBF7 /* Logger.h in Headers */,
-				DCFD7CAE2A45BA92007BBBF7 /* pch.h in Headers */,
-				DCFD7CAF2A45BA92007BBBF7 /* LiveTraverser.h in Headers */,
-				DCFD7CB02A45BA92007BBBF7 /* spvIR.h in Headers */,
-				DCFD7CB12A45BA92007BBBF7 /* glslang_c_shader_types.h in Headers */,
-				DCFD7CB22A45BA92007BBBF7 /* attribute.h in Headers */,
-				DCFD7CB32A45BA92007BBBF7 /* Scan.h in Headers */,
-				DCFD7CB42A45BA92007BBBF7 /* Types.h in Headers */,
-				DCFD7CB52A45BA92007BBBF7 /* PoolAlloc.h in Headers */,
-				DCFD7CB62A45BA92007BBBF7 /* InitializeGlobals.h in Headers */,
-				DCFD7CB72A45BA92007BBBF7 /* parseVersions.h in Headers */,
-				DCFD7CB82A45BA92007BBBF7 /* osinclude.h in Headers */,
-				DCFD7CB92A45BA92007BBBF7 /* gl_types.h in Headers */,
-				DCFD7CBA2A45BA92007BBBF7 /* localintermediate.h in Headers */,
-				DCFD7CBB2A45BA92007BBBF7 /* GLSL.ext.AMD.h in Headers */,
-				DCFD7CBC2A45BA92007BBBF7 /* reflection.h in Headers */,
-				DCFD7CBD2A45BA92007BBBF7 /* ShHandle.h in Headers */,
-				DCFD7CBE2A45BA92007BBBF7 /* iomapper.h in Headers */,
-				DCFD7CBF2A45BA92007BBBF7 /* GLSL.ext.NV.h in Headers */,
-				DCFD7CC02A45BA92007BBBF7 /* Versions.h in Headers */,
-				DCFD7CC12A45BA92007BBBF7 /* SPVRemapper.h in Headers */,
-				DCFD7CC22A45BA92007BBBF7 /* ConstantUnion.h in Headers */,
-				DCFD7CC32A45BA92007BBBF7 /* doc.h in Headers */,
-				DCFD7CC42A45BA92007BBBF7 /* Initialize.h in Headers */,
-				DCFD7CC52A45BA92007BBBF7 /* GLSL.ext.EXT.h in Headers */,
-				DCFD7CC62A45BA92007BBBF7 /* ResourceLimits.h in Headers */,
-				DCFD7CC72A45BA92007BBBF7 /* Common.h in Headers */,
-				DCFD7CC82A45BA92007BBBF7 /* GLSL.ext.KHR.h in Headers */,
-				DCFD7CC92A45BA92007BBBF7 /* intermediate.h in Headers */,
-				DCFD7CCA2A45BA92007BBBF7 /* ShaderLang.h in Headers */,
-				DCFD7CCB2A45BA92007BBBF7 /* ScanContext.h in Headers */,
-				DCFD7CCC2A45BA92007BBBF7 /* PpTokens.h in Headers */,
-				DCFD7CCD2A45BA92007BBBF7 /* BaseTypes.h in Headers */,
-				DCFD7CCE2A45BA92007BBBF7 /* hex_float.h in Headers */,
-				DCFD7CCF2A45BA92007BBBF7 /* SpvTools.h in Headers */,
-				DCFD7CD02A45BA92007BBBF7 /* RemoveTree.h in Headers */,
-				DCFD7CD12A45BA92007BBBF7 /* SymbolTable.h in Headers */,
-				DCFD7CD22A45BA92007BBBF7 /* arrays.h in Headers */,
-				DCFD7CD32A45BA92007BBBF7 /* spirv.hpp in Headers */,
-				DCFD7CD42A45BA92007BBBF7 /* glslang_c_interface.h in Headers */,
-				DCFD7CD52A45BA92007BBBF7 /* GlslangToSpv.h in Headers */,
-				DCFD7CD62A45BA92007BBBF7 /* SpirvIntrinsics.h in Headers */,
-				DCFD7CD72A45BA92007BBBF7 /* NonSemanticDebugPrintf.h in Headers */,
-				DCFD7CD82A45BA92007BBBF7 /* glslang_tab.cpp.h in Headers */,
-				DCFD7CD92A45BA92007BBBF7 /* ParseHelper.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4969,23 +4023,6 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		2FEA0AE82490321700EEF3AD /* glslang-tvOS */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 2FEA0B472490321700EEF3AD /* Build configuration list for PBXNativeTarget "glslang-tvOS" */;
-			buildPhases = (
-				2FEA0AE92490321700EEF3AD /* Headers */,
-				2FEA0B1C2490321700EEF3AD /* Sources */,
-				A9194DF124E8855F00FB127B /* Copy to Staging */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = "glslang-tvOS";
-			productName = "SPIRV-Cross-iOS";
-			productReference = 2FEA0B4A2490321700EEF3AD /* libglslang.a */;
-			productType = "com.apple.product-type.library.static";
-		};
 		2FEA0B4B2490322100EEF3AD /* SPIRV-Tools-tvOS */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 2FEA0CD52490322100EEF3AD /* Build configuration list for PBXNativeTarget "SPIRV-Tools-tvOS" */;
@@ -5088,40 +4125,6 @@
 			productReference = A972A82321CECBE90013AB25 /* libSPIRVTools.a */;
 			productType = "com.apple.product-type.library.static";
 		};
-		A972ABC921CED7BC0013AB25 /* glslang-iOS */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = A972ABD921CED7BC0013AB25 /* Build configuration list for PBXNativeTarget "glslang-iOS" */;
-			buildPhases = (
-				A972ABCA21CED7BC0013AB25 /* Headers */,
-				A972ABD221CED7BC0013AB25 /* Sources */,
-				A9194DF024E8854D00FB127B /* Copy to Staging */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = "glslang-iOS";
-			productName = "SPIRV-Cross-iOS";
-			productReference = A972ABDC21CED7BC0013AB25 /* libglslang.a */;
-			productType = "com.apple.product-type.library.static";
-		};
-		A972ABDD21CED7CB0013AB25 /* glslang-macOS */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = A972ABED21CED7CB0013AB25 /* Build configuration list for PBXNativeTarget "glslang-macOS" */;
-			buildPhases = (
-				A972ABDE21CED7CB0013AB25 /* Headers */,
-				A972ABE621CED7CB0013AB25 /* Sources */,
-				A9194DF224E8856E00FB127B /* Copy to Staging */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = "glslang-macOS";
-			productName = "SPIRV-Cross-macOS";
-			productReference = A972ABF021CED7CB0013AB25 /* libglslang.a */;
-			productType = "com.apple.product-type.library.static";
-		};
 		DCFD7C892A45BA7D007BBBF7 /* SPIRV-Cross-xrOS */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = DCFD7CA02A45BA7D007BBBF7 /* Build configuration list for PBXNativeTarget "SPIRV-Cross-xrOS" */;
@@ -5137,23 +4140,6 @@
 			name = "SPIRV-Cross-xrOS";
 			productName = "SPIRV-Cross-xrOS";
 			productReference = DCFD7CA32A45BA7D007BBBF7 /* libSPIRVCross.a */;
-			productType = "com.apple.product-type.library.static";
-		};
-		DCFD7CA42A45BA92007BBBF7 /* glslang-xrOS */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = DCFD7D082A45BA92007BBBF7 /* Build configuration list for PBXNativeTarget "glslang-xrOS" */;
-			buildPhases = (
-				DCFD7CA52A45BA92007BBBF7 /* Headers */,
-				DCFD7CDB2A45BA92007BBBF7 /* Sources */,
-				DCFD7D072A45BA92007BBBF7 /* Copy to Staging */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = "glslang-xrOS";
-			productName = "SPIRV-Cross-xrOS";
-			productReference = DCFD7D0B2A45BA92007BBBF7 /* libglslang.a */;
 			productType = "com.apple.product-type.library.static";
 		};
 		DCFD7D0C2A45BA9C007BBBF7 /* SPIRV-Tools-xrOS */ = {
@@ -5226,10 +4212,6 @@
 				2FEA0B4B2490322100EEF3AD /* SPIRV-Tools-tvOS */,
 				DCFD7D0C2A45BA9C007BBBF7 /* SPIRV-Tools-xrOS */,
 				A972A81021CECBE90013AB25 /* SPIRV-Tools-macOS */,
-				A972ABC921CED7BC0013AB25 /* glslang-iOS */,
-				2FEA0AE82490321700EEF3AD /* glslang-tvOS */,
-				DCFD7CA42A45BA92007BBBF7 /* glslang-xrOS */,
-				A972ABDD21CED7CB0013AB25 /* glslang-macOS */,
 			);
 		};
 /* End PBXProject section */
@@ -5355,66 +4337,6 @@
 			shellPath = /bin/sh;
 			shellScript = ". \"${SRCROOT}/Scripts/copy_ext_lib_to_staging.sh\"\n";
 		};
-		A9194DF024E8854D00FB127B /* Copy to Staging */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
-			);
-			name = "Copy to Staging";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/CopyPhaseDummyOutputFile",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/Scripts/copy_ext_lib_to_staging.sh\"\n";
-		};
-		A9194DF124E8855F00FB127B /* Copy to Staging */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
-			);
-			name = "Copy to Staging";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/CopyPhaseDummyOutputFile",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/Scripts/copy_ext_lib_to_staging.sh\"\n\n";
-		};
-		A9194DF224E8856E00FB127B /* Copy to Staging */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
-			);
-			name = "Copy to Staging";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/CopyPhaseDummyOutputFile",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/Scripts/copy_ext_lib_to_staging.sh\"\n";
-		};
 		A9194DF624E8990C00FB127B /* Package Libraries */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -5515,26 +4437,6 @@
 			shellPath = /bin/sh;
 			shellScript = ". \"${SRCROOT}/Scripts/copy_ext_lib_to_staging.sh\"\n";
 		};
-		DCFD7D072A45BA92007BBBF7 /* Copy to Staging */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a",
-			);
-			name = "Copy to Staging";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)/CopyPhaseDummyOutputFile",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/Scripts/copy_ext_lib_to_staging.sh\"\n";
-		};
 		DCFD7EBC2A45BA9C007BBBF7 /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -5578,55 +4480,6 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		2FEA0B1C2490321700EEF3AD /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A997FA6226865A560006F71B /* ParseHelper.cpp in Sources */,
-				A997FA1A26865A550006F71B /* doc.cpp in Sources */,
-				A997FABC26865A560006F71B /* attribute.cpp in Sources */,
-				A997FA9826865A560006F71B /* IntermTraverse.cpp in Sources */,
-				A997FAC826865A560006F71B /* Versions.cpp in Sources */,
-				A997FABF26865A560006F71B /* reflection.cpp in Sources */,
-				A997F9DB26865A550006F71B /* spirv_c_interface.cpp in Sources */,
-				A997FA6B26865A560006F71B /* propagateNoContraction.cpp in Sources */,
-				A997FA3526865A550006F71B /* glslang_c_interface.cpp in Sources */,
-				A997FA0E26865A550006F71B /* SPVRemapper.cpp in Sources */,
-				A997F9E126865A550006F71B /* SpvTools.cpp in Sources */,
-				A997FA1126865A550006F71B /* Logger.cpp in Sources */,
-				A997FA2926865A550006F71B /* ossource.cpp in Sources */,
-				A997F9D826865A550006F71B /* SpvPostProcess.cpp in Sources */,
-				A997FA7A26865A560006F71B /* Scan.cpp in Sources */,
-				A997FAE626865A560006F71B /* PpScanner.cpp in Sources */,
-				A997FAE326865A560006F71B /* PpContext.cpp in Sources */,
-				A997FA1D26865A550006F71B /* disassemble.cpp in Sources */,
-				A997FA8C26865A560006F71B /* SpirvIntrinsics.cpp in Sources */,
-				A997FACE26865A560006F71B /* linkValidate.cpp in Sources */,
-				A997FA8F26865A560006F71B /* parseConst.cpp in Sources */,
-				A997FB2826865A560006F71B /* Link.cpp in Sources */,
-				A997FA9E26865A560006F71B /* iomapper.cpp in Sources */,
-				A997FAE926865A560006F71B /* ParseContextBase.cpp in Sources */,
-				A997FAE026865A560006F71B /* PpTokens.cpp in Sources */,
-				A997F9FC26865A550006F71B /* GlslangToSpv.cpp in Sources */,
-				A997FA8926865A560006F71B /* limits.cpp in Sources */,
-				A997FA8626865A560006F71B /* glslang_tab.cpp in Sources */,
-				A997FACB26865A560006F71B /* Constant.cpp in Sources */,
-				A997FAAA26865A560006F71B /* InfoSink.cpp in Sources */,
-				A997FAC226865A560006F71B /* RemoveTree.cpp in Sources */,
-				A997FA9B26865A560006F71B /* intermOut.cpp in Sources */,
-				A997FAA126865A560006F71B /* PoolAlloc.cpp in Sources */,
-				A997FA8326865A560006F71B /* Initialize.cpp in Sources */,
-				A997FAA426865A560006F71B /* ShaderLang.cpp in Sources */,
-				A997FAAD26865A560006F71B /* Intermediate.cpp in Sources */,
-				A997F9E426865A550006F71B /* InReadableOrder.cpp in Sources */,
-				A997FAD426865A560006F71B /* PpAtom.cpp in Sources */,
-				A997F9F026865A550006F71B /* SpvBuilder.cpp in Sources */,
-				A997FB2526865A560006F71B /* CodeGen.cpp in Sources */,
-				A997FAB026865A560006F71B /* SymbolTable.cpp in Sources */,
-				A997FADA26865A560006F71B /* Pp.cpp in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		2FEA0C0A2490322100EEF3AD /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -6343,104 +5196,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A972ABD221CED7BC0013AB25 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A997FA6126865A560006F71B /* ParseHelper.cpp in Sources */,
-				A997FA1926865A550006F71B /* doc.cpp in Sources */,
-				A997FABB26865A560006F71B /* attribute.cpp in Sources */,
-				A997FA9726865A560006F71B /* IntermTraverse.cpp in Sources */,
-				A997FAC726865A560006F71B /* Versions.cpp in Sources */,
-				A997FABE26865A560006F71B /* reflection.cpp in Sources */,
-				A997F9DA26865A550006F71B /* spirv_c_interface.cpp in Sources */,
-				A997FA6A26865A560006F71B /* propagateNoContraction.cpp in Sources */,
-				A997FA3426865A550006F71B /* glslang_c_interface.cpp in Sources */,
-				A997FA0D26865A550006F71B /* SPVRemapper.cpp in Sources */,
-				A997F9E026865A550006F71B /* SpvTools.cpp in Sources */,
-				A997FA1026865A550006F71B /* Logger.cpp in Sources */,
-				A997FA2826865A550006F71B /* ossource.cpp in Sources */,
-				A997F9D726865A550006F71B /* SpvPostProcess.cpp in Sources */,
-				A997FA7926865A560006F71B /* Scan.cpp in Sources */,
-				A997FAE526865A560006F71B /* PpScanner.cpp in Sources */,
-				A997FAE226865A560006F71B /* PpContext.cpp in Sources */,
-				A997FA1C26865A550006F71B /* disassemble.cpp in Sources */,
-				A997FA8B26865A560006F71B /* SpirvIntrinsics.cpp in Sources */,
-				A997FACD26865A560006F71B /* linkValidate.cpp in Sources */,
-				A997FA8E26865A560006F71B /* parseConst.cpp in Sources */,
-				A997FB2726865A560006F71B /* Link.cpp in Sources */,
-				A997FA9D26865A560006F71B /* iomapper.cpp in Sources */,
-				A997FAE826865A560006F71B /* ParseContextBase.cpp in Sources */,
-				A997FADF26865A560006F71B /* PpTokens.cpp in Sources */,
-				A997F9FB26865A550006F71B /* GlslangToSpv.cpp in Sources */,
-				A997FA8826865A560006F71B /* limits.cpp in Sources */,
-				A997FA8526865A560006F71B /* glslang_tab.cpp in Sources */,
-				A997FACA26865A560006F71B /* Constant.cpp in Sources */,
-				A997FAA926865A560006F71B /* InfoSink.cpp in Sources */,
-				A997FAC126865A560006F71B /* RemoveTree.cpp in Sources */,
-				A997FA9A26865A560006F71B /* intermOut.cpp in Sources */,
-				A997FAA026865A560006F71B /* PoolAlloc.cpp in Sources */,
-				A997FA8226865A560006F71B /* Initialize.cpp in Sources */,
-				A997FAA326865A560006F71B /* ShaderLang.cpp in Sources */,
-				A997FAAC26865A560006F71B /* Intermediate.cpp in Sources */,
-				A997F9E326865A550006F71B /* InReadableOrder.cpp in Sources */,
-				A997FAD326865A560006F71B /* PpAtom.cpp in Sources */,
-				A997F9EF26865A550006F71B /* SpvBuilder.cpp in Sources */,
-				A997FB2426865A560006F71B /* CodeGen.cpp in Sources */,
-				A997FAAF26865A560006F71B /* SymbolTable.cpp in Sources */,
-				A997FAD926865A560006F71B /* Pp.cpp in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		A972ABE621CED7CB0013AB25 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A997FA6326865A560006F71B /* ParseHelper.cpp in Sources */,
-				A997FA1B26865A550006F71B /* doc.cpp in Sources */,
-				A997FABD26865A560006F71B /* attribute.cpp in Sources */,
-				A997FA9926865A560006F71B /* IntermTraverse.cpp in Sources */,
-				A997FAC926865A560006F71B /* Versions.cpp in Sources */,
-				A997FAC026865A560006F71B /* reflection.cpp in Sources */,
-				A997F9DC26865A550006F71B /* spirv_c_interface.cpp in Sources */,
-				A997FA6C26865A560006F71B /* propagateNoContraction.cpp in Sources */,
-				A997FA3626865A550006F71B /* glslang_c_interface.cpp in Sources */,
-				A997FA0F26865A550006F71B /* SPVRemapper.cpp in Sources */,
-				A997F9E226865A550006F71B /* SpvTools.cpp in Sources */,
-				A997FA1226865A550006F71B /* Logger.cpp in Sources */,
-				A997FA2A26865A550006F71B /* ossource.cpp in Sources */,
-				A997F9D926865A550006F71B /* SpvPostProcess.cpp in Sources */,
-				A997FA7B26865A560006F71B /* Scan.cpp in Sources */,
-				A997FAE726865A560006F71B /* PpScanner.cpp in Sources */,
-				A997FAE426865A560006F71B /* PpContext.cpp in Sources */,
-				A997FA1E26865A550006F71B /* disassemble.cpp in Sources */,
-				A997FA8D26865A560006F71B /* SpirvIntrinsics.cpp in Sources */,
-				A997FACF26865A560006F71B /* linkValidate.cpp in Sources */,
-				A997FA9026865A560006F71B /* parseConst.cpp in Sources */,
-				A997FB2926865A560006F71B /* Link.cpp in Sources */,
-				A997FA9F26865A560006F71B /* iomapper.cpp in Sources */,
-				A997FAEA26865A560006F71B /* ParseContextBase.cpp in Sources */,
-				A997FAE126865A560006F71B /* PpTokens.cpp in Sources */,
-				A997F9FD26865A550006F71B /* GlslangToSpv.cpp in Sources */,
-				A997FA8A26865A560006F71B /* limits.cpp in Sources */,
-				A997FA8726865A560006F71B /* glslang_tab.cpp in Sources */,
-				A997FACC26865A560006F71B /* Constant.cpp in Sources */,
-				A997FAAB26865A560006F71B /* InfoSink.cpp in Sources */,
-				A997FAC326865A560006F71B /* RemoveTree.cpp in Sources */,
-				A997FA9C26865A560006F71B /* intermOut.cpp in Sources */,
-				A997FAA226865A560006F71B /* PoolAlloc.cpp in Sources */,
-				A997FA8426865A560006F71B /* Initialize.cpp in Sources */,
-				A997FAA526865A560006F71B /* ShaderLang.cpp in Sources */,
-				A997FAAE26865A560006F71B /* Intermediate.cpp in Sources */,
-				A997F9E526865A550006F71B /* InReadableOrder.cpp in Sources */,
-				A997FAD526865A560006F71B /* PpAtom.cpp in Sources */,
-				A997F9F126865A550006F71B /* SpvBuilder.cpp in Sources */,
-				A997FB2626865A560006F71B /* CodeGen.cpp in Sources */,
-				A997FAB126865A560006F71B /* SymbolTable.cpp in Sources */,
-				A997FADB26865A560006F71B /* Pp.cpp in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		A97628FE21CC608400B52A68 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -6480,55 +5235,6 @@
 				DCFD7C9C2A45BA7D007BBBF7 /* spirv_reflect.cpp in Sources */,
 				DCFD7C9D2A45BA7D007BBBF7 /* spirv_glsl.cpp in Sources */,
 				DCFD7C9E2A45BA7D007BBBF7 /* spirv_cross_parsed_ir.cpp in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		DCFD7CDB2A45BA92007BBBF7 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				DCFD7CDC2A45BA92007BBBF7 /* ParseHelper.cpp in Sources */,
-				DCFD7CDD2A45BA92007BBBF7 /* doc.cpp in Sources */,
-				DCFD7CDE2A45BA92007BBBF7 /* attribute.cpp in Sources */,
-				DCFD7CDF2A45BA92007BBBF7 /* IntermTraverse.cpp in Sources */,
-				DCFD7CE02A45BA92007BBBF7 /* Versions.cpp in Sources */,
-				DCFD7CE12A45BA92007BBBF7 /* reflection.cpp in Sources */,
-				DCFD7CE22A45BA92007BBBF7 /* spirv_c_interface.cpp in Sources */,
-				DCFD7CE32A45BA92007BBBF7 /* propagateNoContraction.cpp in Sources */,
-				DCFD7CE42A45BA92007BBBF7 /* glslang_c_interface.cpp in Sources */,
-				DCFD7CE52A45BA92007BBBF7 /* SPVRemapper.cpp in Sources */,
-				DCFD7CE62A45BA92007BBBF7 /* SpvTools.cpp in Sources */,
-				DCFD7CE72A45BA92007BBBF7 /* Logger.cpp in Sources */,
-				DCFD7CE82A45BA92007BBBF7 /* ossource.cpp in Sources */,
-				DCFD7CE92A45BA92007BBBF7 /* SpvPostProcess.cpp in Sources */,
-				DCFD7CEA2A45BA92007BBBF7 /* Scan.cpp in Sources */,
-				DCFD7CEB2A45BA92007BBBF7 /* PpScanner.cpp in Sources */,
-				DCFD7CEC2A45BA92007BBBF7 /* PpContext.cpp in Sources */,
-				DCFD7CED2A45BA92007BBBF7 /* disassemble.cpp in Sources */,
-				DCFD7CEE2A45BA92007BBBF7 /* SpirvIntrinsics.cpp in Sources */,
-				DCFD7CEF2A45BA92007BBBF7 /* linkValidate.cpp in Sources */,
-				DCFD7CF02A45BA92007BBBF7 /* parseConst.cpp in Sources */,
-				DCFD7CF22A45BA92007BBBF7 /* Link.cpp in Sources */,
-				DCFD7CF32A45BA92007BBBF7 /* iomapper.cpp in Sources */,
-				DCFD7CF42A45BA92007BBBF7 /* ParseContextBase.cpp in Sources */,
-				DCFD7CF52A45BA92007BBBF7 /* PpTokens.cpp in Sources */,
-				DCFD7CF62A45BA92007BBBF7 /* GlslangToSpv.cpp in Sources */,
-				DCFD7CF72A45BA92007BBBF7 /* limits.cpp in Sources */,
-				DCFD7CF82A45BA92007BBBF7 /* glslang_tab.cpp in Sources */,
-				DCFD7CF92A45BA92007BBBF7 /* Constant.cpp in Sources */,
-				DCFD7CFA2A45BA92007BBBF7 /* InfoSink.cpp in Sources */,
-				DCFD7CFB2A45BA92007BBBF7 /* RemoveTree.cpp in Sources */,
-				DCFD7CFC2A45BA92007BBBF7 /* intermOut.cpp in Sources */,
-				DCFD7CFD2A45BA92007BBBF7 /* PoolAlloc.cpp in Sources */,
-				DCFD7CFE2A45BA92007BBBF7 /* Initialize.cpp in Sources */,
-				DCFD7CFF2A45BA92007BBBF7 /* ShaderLang.cpp in Sources */,
-				DCFD7D002A45BA92007BBBF7 /* Intermediate.cpp in Sources */,
-				DCFD7D012A45BA92007BBBF7 /* InReadableOrder.cpp in Sources */,
-				DCFD7D022A45BA92007BBBF7 /* PpAtom.cpp in Sources */,
-				DCFD7D032A45BA92007BBBF7 /* SpvBuilder.cpp in Sources */,
-				DCFD7D042A45BA92007BBBF7 /* CodeGen.cpp in Sources */,
-				DCFD7D052A45BA92007BBBF7 /* SymbolTable.cpp in Sources */,
-				DCFD7D062A45BA92007BBBF7 /* Pp.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -6779,11 +5485,6 @@
 			target = 2FEA0B4B2490322100EEF3AD /* SPIRV-Tools-tvOS */;
 			targetProxy = 2FEA0CF22490325400EEF3AD /* PBXContainerItemProxy */;
 		};
-		2FEA0CF52490325400EEF3AD /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 2FEA0AE82490321700EEF3AD /* glslang-tvOS */;
-			targetProxy = 2FEA0CF42490325400EEF3AD /* PBXContainerItemProxy */;
-		};
 		2FEA0CF82490344F00EEF3AD /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 2FEA0ADD2490320500EEF3AD /* ExternalDependencies-tvOS */;
@@ -6819,16 +5520,6 @@
 			target = A972A81021CECBE90013AB25 /* SPIRV-Tools-macOS */;
 			targetProxy = A972A82721CECD780013AB25 /* PBXContainerItemProxy */;
 		};
-		A972ABF221CED8BA0013AB25 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = A972ABC921CED7BC0013AB25 /* glslang-iOS */;
-			targetProxy = A972ABF121CED8BA0013AB25 /* PBXContainerItemProxy */;
-		};
-		A972ABF421CED8C20013AB25 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = A972ABDD21CED7CB0013AB25 /* glslang-macOS */;
-			targetProxy = A972ABF321CED8C20013AB25 /* PBXContainerItemProxy */;
-		};
 		DCFD7ECD2A45BC08007BBBF7 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = DCFD7C892A45BA7D007BBBF7 /* SPIRV-Cross-xrOS */;
@@ -6838,11 +5529,6 @@
 			isa = PBXTargetDependency;
 			target = DCFD7D0C2A45BA9C007BBBF7 /* SPIRV-Tools-xrOS */;
 			targetProxy = DCFD7ECE2A45BC0C007BBBF7 /* PBXContainerItemProxy */;
-		};
-		DCFD7ED12A45BC10007BBBF7 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = DCFD7CA42A45BA92007BBBF7 /* glslang-xrOS */;
-			targetProxy = DCFD7ED02A45BC10007BBBF7 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -6865,52 +5551,6 @@
 			};
 			name = Release;
 		};
-		2FEA0B482490321700EEF3AD /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"AMD_EXTENSIONS=1",
-					"NV_EXTENSIONS=1",
-				);
-				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
-				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
-				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
-				GCC_WARN_UNUSED_PARAMETER = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(inherited)",
-					"\"$(SRCROOT)/External/glslang\"",
-					"\"$(SRCROOT)/External/glslang/build/include\"",
-				);
-				PRODUCT_NAME = glslang;
-				SDKROOT = appletvos;
-			};
-			name = Debug;
-		};
-		2FEA0B492490321700EEF3AD /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"AMD_EXTENSIONS=1",
-					"NV_EXTENSIONS=1",
-				);
-				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
-				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
-				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
-				GCC_WARN_UNUSED_PARAMETER = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(inherited)",
-					"\"$(SRCROOT)/External/glslang\"",
-					"\"$(SRCROOT)/External/glslang/build/include\"",
-				);
-				PRODUCT_NAME = glslang;
-				SDKROOT = appletvos;
-			};
-			name = Release;
-		};
 		2FEA0CD62490322100EEF3AD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -6919,10 +5559,10 @@
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/include\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/external/spirv-headers/include\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/build\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/include\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/external/spirv-headers/include\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/build\"",
 				);
 				PRODUCT_NAME = SPIRVTools;
 				SDKROOT = appletvos;
@@ -6937,10 +5577,10 @@
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/include\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/external/spirv-headers/include\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/build\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/include\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/external/spirv-headers/include\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/build\"",
 				);
 				PRODUCT_NAME = SPIRVTools;
 				SDKROOT = appletvos;
@@ -7077,10 +5717,10 @@
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/include\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/external/spirv-headers/include\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/build\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/include\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/external/spirv-headers/include\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/build\"",
 				);
 				PRODUCT_NAME = SPIRVTools;
 				SDKROOT = iphoneos;
@@ -7095,10 +5735,10 @@
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/include\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/external/spirv-headers/include\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/build\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/include\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/external/spirv-headers/include\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/build\"",
 				);
 				PRODUCT_NAME = SPIRVTools;
 				SDKROOT = iphoneos;
@@ -7113,10 +5753,10 @@
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/include\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/external/spirv-headers/include\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/build\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/include\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/external/spirv-headers/include\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/build\"",
 				);
 				PRODUCT_NAME = SPIRVTools;
 				SDKROOT = macosx;
@@ -7131,104 +5771,12 @@
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/include\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/external/spirv-headers/include\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/build\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/include\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/external/spirv-headers/include\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/build\"",
 				);
 				PRODUCT_NAME = SPIRVTools;
-				SDKROOT = macosx;
-			};
-			name = Release;
-		};
-		A972ABDA21CED7BC0013AB25 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"AMD_EXTENSIONS=1",
-					"NV_EXTENSIONS=1",
-				);
-				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
-				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
-				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
-				GCC_WARN_UNUSED_PARAMETER = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(inherited)",
-					"\"$(SRCROOT)/External/glslang\"",
-					"\"$(SRCROOT)/External/glslang/build/include\"",
-				);
-				PRODUCT_NAME = glslang;
-				SDKROOT = iphoneos;
-			};
-			name = Debug;
-		};
-		A972ABDB21CED7BC0013AB25 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"AMD_EXTENSIONS=1",
-					"NV_EXTENSIONS=1",
-				);
-				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
-				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
-				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
-				GCC_WARN_UNUSED_PARAMETER = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(inherited)",
-					"\"$(SRCROOT)/External/glslang\"",
-					"\"$(SRCROOT)/External/glslang/build/include\"",
-				);
-				PRODUCT_NAME = glslang;
-				SDKROOT = iphoneos;
-			};
-			name = Release;
-		};
-		A972ABEE21CED7CB0013AB25 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"AMD_EXTENSIONS=1",
-					"NV_EXTENSIONS=1",
-				);
-				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
-				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
-				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
-				GCC_WARN_UNUSED_PARAMETER = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(inherited)",
-					"\"$(SRCROOT)/External/glslang\"",
-					"\"$(SRCROOT)/External/glslang/build/include\"",
-				);
-				PRODUCT_NAME = glslang;
-				SDKROOT = macosx;
-			};
-			name = Debug;
-		};
-		A972ABEF21CED7CB0013AB25 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"AMD_EXTENSIONS=1",
-					"NV_EXTENSIONS=1",
-				);
-				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
-				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
-				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
-				GCC_WARN_UNUSED_PARAMETER = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(inherited)",
-					"\"$(SRCROOT)/External/glslang\"",
-					"\"$(SRCROOT)/External/glslang/build/include\"",
-				);
-				PRODUCT_NAME = glslang;
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -7357,52 +5905,6 @@
 			};
 			name = Release;
 		};
-		DCFD7D092A45BA92007BBBF7 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"AMD_EXTENSIONS=1",
-					"NV_EXTENSIONS=1",
-				);
-				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
-				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
-				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
-				GCC_WARN_UNUSED_PARAMETER = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(inherited)",
-					"\"$(SRCROOT)/External/glslang\"",
-					"\"$(SRCROOT)/External/glslang/build/include\"",
-				);
-				PRODUCT_NAME = glslang;
-				SDKROOT = xros;
-			};
-			name = Debug;
-		};
-		DCFD7D0A2A45BA92007BBBF7 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"AMD_EXTENSIONS=1",
-					"NV_EXTENSIONS=1",
-				);
-				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
-				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
-				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
-				GCC_WARN_UNUSED_PARAMETER = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(inherited)",
-					"\"$(SRCROOT)/External/glslang\"",
-					"\"$(SRCROOT)/External/glslang/build/include\"",
-				);
-				PRODUCT_NAME = glslang;
-				SDKROOT = xros;
-			};
-			name = Release;
-		};
 		DCFD7EBE2A45BA9C007BBBF7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -7411,10 +5913,10 @@
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/include\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/external/spirv-headers/include\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/build\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/include\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/external/spirv-headers/include\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/build\"",
 				);
 				PRODUCT_NAME = SPIRVTools;
 				SDKROOT = xros;
@@ -7429,10 +5931,10 @@
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/include\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/external/spirv-headers/include\"",
-					"\"$(SRCROOT)/External/glslang/External/spirv-tools/build\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/include\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/external/spirv-headers/include\"",
+					"\"$(SRCROOT)/External/SPIRV-Tools/build\"",
 				);
 				PRODUCT_NAME = SPIRVTools;
 				SDKROOT = xros;
@@ -7463,15 +5965,6 @@
 			buildConfigurations = (
 				2FEA0AE62490320500EEF3AD /* Debug */,
 				2FEA0AE72490320500EEF3AD /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		2FEA0B472490321700EEF3AD /* Build configuration list for PBXNativeTarget "glslang-tvOS" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				2FEA0B482490321700EEF3AD /* Debug */,
-				2FEA0B492490321700EEF3AD /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -7557,24 +6050,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A972ABD921CED7BC0013AB25 /* Build configuration list for PBXNativeTarget "glslang-iOS" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				A972ABDA21CED7BC0013AB25 /* Debug */,
-				A972ABDB21CED7BC0013AB25 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		A972ABED21CED7CB0013AB25 /* Build configuration list for PBXNativeTarget "glslang-macOS" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				A972ABEE21CED7CB0013AB25 /* Debug */,
-				A972ABEF21CED7CB0013AB25 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		A9F55D28198BE6A7004EC31B /* Build configuration list for PBXProject "ExternalDependencies" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -7589,15 +6064,6 @@
 			buildConfigurations = (
 				DCFD7CA12A45BA7D007BBBF7 /* Debug */,
 				DCFD7CA22A45BA7D007BBBF7 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		DCFD7D082A45BA92007BBBF7 /* Build configuration list for PBXNativeTarget "glslang-xrOS" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				DCFD7D092A45BA92007BBBF7 /* Debug */,
-				DCFD7D0A2A45BA92007BBBF7 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
