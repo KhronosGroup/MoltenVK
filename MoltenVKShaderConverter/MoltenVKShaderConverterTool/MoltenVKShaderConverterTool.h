@@ -19,7 +19,6 @@
 #pragma once
 
 
-#include "GLSLConversion.h"
 #include "SPIRVToMSLConverter.h"
 #include <string>
 #include <vector>
@@ -40,14 +39,14 @@ namespace mvk {
 #pragma mark -
 #pragma mark MoltenVKShaderConverterTool
 
-	/** Converts GLSL files to SPIR-V and MSL files, and SPIR-V files to MSL files. */
+	/** Converts SPIR-V files to MSL files. */
 	class MoltenVKShaderConverterTool {
 
 	public:
 
 		/**
 		 * Called automatically during the conversion of all the files in a directory. 
-		 * Processes the specified file (which can contain either GLSL or SPIR-V code.
+		 * Processes the specified file (which contains SPIR-V code).
 		 *
 		 * Returns false if the file is of the right type to be converted, but failed
 		 * to be converted correctly. Returns true otherwise.
@@ -64,13 +63,7 @@ namespace mvk {
 		MoltenVKShaderConverterTool(int argc, const char* argv[]);
 
 	protected:
-		MVKGLSLConversionShaderStage shaderStageFromFileExtension(std::string& pathExtension);
-		bool isGLSLFileExtension(std::string& pathExtension);
 		bool isSPIRVFileExtension(std::string& pathExtension);
-		bool convertGLSL(std::string& glslInFile,
-						 std::string& spvOutFile,
-						 std::string& mslOutFile,
-						 MVKGLSLConversionShaderStage shaderStage);
 		bool convertSPIRV(std::string& spvInFile,
 						  std::string& mslOutFile);
 		bool convertSPIRV(const std::vector<uint32_t>& spv,
@@ -91,19 +84,12 @@ namespace mvk {
 
 		std::string _processName;
 		std::string _directoryPath;
-		std::string _glslInFilePath;
 		std::string _spvInFilePath;
 		std::string _spvOutFilePath;
 		std::string _mslOutFilePath;
 		std::string _hdrOutVarName;
 		std::string _origPathExtnSep;
-		std::vector<std::string> _glslVtxFileExtns;
-		std::vector<std::string> _glslTescFileExtns;
-		std::vector<std::string> _glslTeseFileExtns;
-		std::vector<std::string> _glslFragFileExtns;
-        std::vector<std::string> _glslCompFileExtns;
 		std::vector<std::string> _spvFileExtns;
-		MVKGLSLConversionShaderStage _shaderStage;
 		MVKPerformanceTracker _glslConversionPerformance;
 		MVKPerformanceTracker _spvConversionPerformance;
 		uint32_t _mslVersionMajor;
@@ -112,11 +98,9 @@ namespace mvk {
 		SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::Platform _mslPlatform;
 		bool _isActive;
 		bool _shouldUseDirectoryRecursion;
-		bool _shouldReadGLSL;
 		bool _shouldReadSPIRV;
 		bool _shouldWriteSPIRV;
 		bool _shouldWriteMSL;
-		bool _shouldCombineGLSLAndMSL;
         bool _shouldFlipVertexY;
 		bool _shouldIncludeOrigPathExtn;
 		bool _shouldLogConversions;

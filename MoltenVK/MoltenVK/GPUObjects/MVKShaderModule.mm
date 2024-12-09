@@ -365,24 +365,6 @@ bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
 	bool shouldLogCode = mvkCfg.debugMode;
 	bool shouldLogEstimatedGLSL = shouldLogCode && mvkCfg.shaderLogEstimatedGLSL;
 
-	// If the SPIR-V converter does not have any code, but the GLSL converter does,
-	// convert the GLSL code to SPIR-V and set it into the SPIR-V conveter.
-	if ( !_spvConverter.hasSPIRV() && _glslConverter.hasGLSL() ) {
-
-		GLSLToSPIRVConversionResult glslConversionResult;
-		uint64_t startTime = getPerformanceTimestamp();
-		bool wasConverted = _glslConverter.convert(getMVKGLSLConversionShaderStage(pShaderConfig), glslConversionResult, shouldLogCode, false);
-		addPerformanceInterval(getPerformanceStats().shaderCompilation.glslToSPRIV, startTime);
-
-		if (wasConverted) {
-			if (shouldLogCode) { MVKLogInfo("%s", glslConversionResult.resultLog.c_str()); }
-			_spvConverter.setSPIRV(glslConversionResult.spirv);
-		} else {
-			reportError(VK_ERROR_INVALID_SHADER_NV, "Unable to convert GLSL to SPIR-V:\n%s", glslConversionResult.resultLog.c_str());
-		}
-		shouldLogEstimatedGLSL = false;
-	}
-
 	uint64_t startTime = getPerformanceTimestamp();
 	bool wasConverted = _spvConverter.convert(*pShaderConfig, conversionResult, shouldLogCode, shouldLogCode, shouldLogEstimatedGLSL);
 	addPerformanceInterval(getPerformanceStats().shaderCompilation.spirvToMSL, startTime);
@@ -429,23 +411,6 @@ bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
 		reportError(VK_ERROR_INVALID_SHADER_NV, "Unable to convert SPIR-V to MSL:\n%s", conversionResult.resultLog.c_str());
 	}
 	return wasConverted;
-}
-
-// Returns the MVKGLSLConversionShaderStage corresponding to the shader stage in the SPIR-V conversion configuration.
-MVKGLSLConversionShaderStage MVKShaderModule::getMVKGLSLConversionShaderStage(SPIRVToMSLConversionConfiguration* pShaderConfig) {
-	switch (pShaderConfig->options.entryPointStage) {
-		case spv::ExecutionModelVertex:						return kMVKGLSLConversionShaderStageVertex;
-		case spv::ExecutionModelTessellationControl:		return kMVKGLSLConversionShaderStageTessControl;
-		case spv::ExecutionModelTessellationEvaluation:		return kMVKGLSLConversionShaderStageTessEval;
-		case spv::ExecutionModelGeometry:					return kMVKGLSLConversionShaderStageGeometry;
-		case spv::ExecutionModelFragment:					return kMVKGLSLConversionShaderStageFragment;
-		case spv::ExecutionModelGLCompute:					return kMVKGLSLConversionShaderStageCompute;
-		case spv::ExecutionModelKernel:						return kMVKGLSLConversionShaderStageCompute;
-
-		default:
-			MVKAssert(false, "Bad shader stage provided for GLSL to SPIR-V conversion.");
-			return kMVKGLSLConversionShaderStageAuto;
-	}
 }
 
 void MVKShaderModule::setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
@@ -517,19 +482,8 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 
 			break;
 		}
-		default:											// Could be GLSL source code
-			if (getEnabledExtensions().vk_NV_glsl_shader.enabled) {
-				const char* pGLSL = (char*)pCreateInfo->pCode;
-				size_t glslLen = codeSize - 1;
-
-				uint64_t startTime = getPerformanceTimestamp();
-				codeHash = mvkHash(pGLSL, codeSize);
-				addPerformanceInterval(getPerformanceStats().shaderCompilation.hashShaderCode, startTime);
-
-				_glslConverter.setGLSL(pGLSL, glslLen);
-			} else {
-				setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "vkCreateShaderModule(): The SPIR-V contains an invalid magic number %x.", magicNum));
-			}
+		default:
+			setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "vkCreateShaderModule(): The SPIR-V contains an invalid magic number %x.", magicNum));
 			break;
 	}
 
