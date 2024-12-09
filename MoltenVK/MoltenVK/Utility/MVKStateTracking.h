@@ -165,6 +165,49 @@ struct std::hash<MVKMTLDepthStencilDescriptorData> {
 	std::size_t operator()(const MVKMTLDepthStencilDescriptorData& k) const { return k.hash(); }
 };
 
+/** These buffers are dirty-tracked across draw calls, and need code to make sure they're invalidated if they ever change binding indices. */
+enum class MVKNonVolatileImplicitBuffer : uint32_t {
+	PushConstant,
+	Swizzle,
+	BufferSize,
+	DynamicOffset,
+	ViewRange,
+	Count
+};
+
+enum class MVKImplicitBuffer : uint32_t {
+	PushConstant  = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::PushConstant),
+	Swizzle       = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::Swizzle),
+	BufferSize    = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::BufferSize),
+	DynamicOffset = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::DynamicOffset),
+	ViewRange     = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::ViewRange),
+
+	// Volatile implicit buffers
+	// These buffers are updated per draw call, and are therefore always considered dirty
+	IndirectParams,
+	Output,
+	PatchOutput,
+	TessLevel,
+	DispatchBase,
+	Count,
+};
+
+typedef MVKFlagList<MVKImplicitBuffer> MVKImplicitBufferList;
+static constexpr MVKImplicitBufferList MVKNonVolatileImplicitBuffers = MVKImplicitBufferList::fromBits(MVKFlagList<MVKNonVolatileImplicitBuffer>::all().bits);
+
+struct MVKImplicitBufferBindings {
+	MVKImplicitBufferList needed;
+	MVKOnePerEnumEntry<uint8_t, MVKImplicitBuffer> ids;
+
+	void set(MVKImplicitBuffer buffer, uint8_t idx) {
+		needed.add(buffer);
+		ids[buffer] = idx;
+	}
+	void clear(MVKImplicitBuffer buffer) {
+		needed.remove(buffer);
+	}
+};
+
 /** One bit for each resource that can be bound to a pipeline stage */
 union MVKStageResourceBits {
 	struct {

@@ -101,6 +101,12 @@ public:
 	/** Overridden because pipeline descriptor sets may be marked as discrete and not use an argument buffer. */
 	bool isUsingMetalArgumentBuffers() override;
 
+	/** Returns the number of descriptor sets. */
+	size_t getDescriptorSetCount() const { return _descriptorSetLayouts.size(); }
+
+	/** Returns the size of the push constants. */
+	uint32_t getPushConstantsLength() const { return _pushConstantsLength; }
+
 	/** Constructs an instance for the specified device. */
 	MVKPipelineLayout(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
 
@@ -118,6 +124,7 @@ protected:
 	MVKShaderResourceBinding _mtlResourceCounts;
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
 	bool _canUseMetalArgumentBuffers;
+	uint32_t _pushConstantsLength;
 };
 
 
@@ -170,6 +177,9 @@ public:
 	/** Returns the pipeline cache used by this pipeline. */
 	MVKPipelineCache* getPipelineCache() { return _pipelineCache; }
 
+	/** Returns the pipeline layout used by this pipeline. */
+	MVKPipelineLayout* getLayout() const { return _layout; }
+
 	/** Returns whether the pipeline creation fail if a pipeline compile is required. */
 	bool shouldFailOnPipelineCompileRequired() {
 		return (getEnabledPipelineCreationCacheControlFeatures().pipelineCreationCacheControl &&
@@ -199,6 +209,8 @@ public:
 	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout,
 				VkPipelineCreateFlags2 flags, MVKPipeline* parent);
 
+	~MVKPipeline();
+
 protected:
 	void propagateDebugName() override {}
 	template<typename CreateInfo> void populateDescriptorSetBindingUse(MVKMTLFunction& mvkMTLFunc,
@@ -206,6 +218,7 @@ protected:
                                      mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 																	   MVKShaderStage stage);
 
+	MVKPipelineLayout* _layout;
 	MVKPipelineCache* _pipelineCache;
 	MVKShaderImplicitRezBinding _descriptorBufferCounts;
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
@@ -325,12 +338,28 @@ public:
 	/** Check if rasterization is disabled. */
 	bool isRasterizationDisabled() const { return !_isRasterizing; }
 
+	/** Returns a list of implicit buffers used by the given stage. */
+	const MVKImplicitBufferBindings& getImplicitBuffers(MVKShaderStage stage) const { return _implicitBuffers[stage]; }
+
+	/** Returns a list of which stage resources are used by the given stage. */
+	const MVKStageResourceBits& getStageResources(MVKShaderStage stage) const { return _stageResources[stage]; }
+
+	/** Returns a list of needed descriptor sets (only valid if argument buffers are in use) */
+	MVKStaticBitSet<kMVKMaxDescriptorSetCount> getDescriptorsSetsNeeded(MVKShaderStage stage) const {
+		auto res = getStageResources(stage).buffers & MVKStaticBitSet<kMVKMaxBufferCount>::range(0, kMVKMaxDescriptorSetCount);
+		return MVKStaticBitSet<kMVKMaxDescriptorSetCount>::fromBits(res.bits());
+	}
+
 	/** Returns the list of state that is needed from the command encoder */
 	const MVKRenderStateFlags& getDynamicStateFlags() const { return _dynamicStateFlags; }
 	/** Returns the list of state that is stored on the pipeline */
 	const MVKRenderStateFlags& getStaticStateFlags() const { return _staticStateFlags; }
 	/** Returns the state data that is stored on the pipeline */
 	const MVKRenderStateData& getStaticStateData() const { return _staticStateData; }
+	/** Returns a list of the vertex buffers used by this pipeline by Vulkan buffer ID */
+	const MVKStaticBitSet<kMVKMaxBufferCount>& getVkVertexBuffers() const { return _vkVertexBuffers; }
+	/** Returns a list of the vertex buffers used by this pipeline by Metal buffer ID */
+	const MVKStaticBitSet<kMVKMaxBufferCount>& getMtlVertexBuffers() const { return _mtlVertexBuffers; }
 	const VkViewport* getViewports() const { return _viewports; }
 	const VkRect2D* getScissors() const { return _scissors; }
 	const MTLSamplePosition* getSampleLocations() const { return _sampleLocations; }
@@ -401,6 +430,10 @@ protected:
 	MVKSmallVector<MVKShaderStage> _stagesUsingPhysicalStorageBufferAddressesCapability;
 	MVKSmallVector<uint32_t, kMVKDefaultAttachmentCount> _colorAttachmentLocations;
 	std::unordered_map<uint32_t, id<MTLRenderPipelineState>> _multiviewMTLPipelineStates;
+	MVKImplicitBufferBindings _implicitBuffers[kMVKShaderStageFragment + 1] = {};
+	MVKStageResourceBits _stageResources[kMVKShaderStageFragment + 1] = {};
+	MVKStaticBitSet<kMVKMaxBufferCount> _vkVertexBuffers;
+	MVKStaticBitSet<kMVKMaxBufferCount> _mtlVertexBuffers;
 
 	id<MTLComputePipelineState> _mtlTessVertexStageState = nil;
 	id<MTLComputePipelineState> _mtlTessVertexStageIndex16State = nil;
@@ -470,6 +503,30 @@ public:
 	/** Returns the array of descriptor binding use for the descriptor set. */
 	MVKBitArray& getDescriptorBindingUse(uint32_t descSetIndex, MVKShaderStage stage) override { return _descriptorBindingUse[descSetIndex]; }
 
+	/** Returns the MTLRenderPipelineState for the final stage of the pipeline */
+	id<MTLComputePipelineState> getPipelineState() const { return _mtlPipelineState; }
+
+	/** Returns a list of implicit buffers used by the given stage. */
+	const MVKImplicitBufferBindings& getImplicitBuffers(MVKShaderStage stage = kMVKShaderStageCompute) const {
+		assert(stage == kMVKShaderStageCompute && "Input is just for API compatibility with MVKGraphicsPipeline");
+		return _implicitBuffers;
+	}
+
+	/** Returns a list of which stage resources are used by the given stage. */
+	const MVKStageResourceBits& getStageResources(MVKShaderStage stage = kMVKShaderStageCompute) const {
+		assert(stage == kMVKShaderStageCompute && "Input is just for API compatibility with MVKGraphicsPipeline");
+		return _stageResources;
+	}
+
+	/** Returns a list of needed descriptor sets (only valid if argument buffers are in use) */
+	MVKStaticBitSet<kMVKMaxDescriptorSetCount> getDescriptorsSetsNeeded() const {
+		auto res = getStageResources().buffers & MVKStaticBitSet<kMVKMaxBufferCount>::range(0, kMVKMaxDescriptorSetCount);
+		return MVKStaticBitSet<kMVKMaxDescriptorSetCount>::fromBits(res.bits());
+	}
+
+	/** Returns the threadgroup size */
+	const MTLSize& getThreadgroupSize() const { return _mtlThreadgroupSize; }
+
 	bool usesPhysicalStorageBufferAddressesCapability(MVKShaderStage stage) override;
 
 	/** Constructs an instance for the device and parent (which may be NULL). */
@@ -487,6 +544,8 @@ protected:
 
     id<MTLComputePipelineState> _mtlPipelineState;
 	MVKSmallVector<MVKBitArray> _descriptorBindingUse;
+	MVKImplicitBufferBindings _implicitBuffers = {};
+	MVKStageResourceBits _stageResources = {};
     MTLSize _mtlThreadgroupSize;
     bool _needsSwizzleBuffer = false;
     bool _needsBufferSizeBuffer = false;

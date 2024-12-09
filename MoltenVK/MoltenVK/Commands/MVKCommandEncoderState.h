@@ -126,7 +126,7 @@ struct MVKVertexBufferBinder {
 	static const MVKVertexBufferBinder& Compute() { return Get(Stage::Compute); }
 };
 
-#pragma mark - MVKVulkanRenderCommandEncoderState
+#pragma mark - Vulkan Command Encoder State Structs
 
 struct MVKBindingList {
 	MVKSmallVector<MVKMTLBufferBinding, 8> bufferBindings;
