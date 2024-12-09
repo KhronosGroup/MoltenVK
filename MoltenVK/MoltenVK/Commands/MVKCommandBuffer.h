@@ -402,6 +402,10 @@ public:
     /** Returns the command encoding pool. */
     MVKCommandEncodingPool* getCommandEncodingPool();
 
+	void encodeBarrierWaits(MVKCommandUse use);
+
+	void encodeBarrierUpdates();
+
 #pragma mark Queries
 
     /** Begins an occlusion query. */
