@@ -23,7 +23,6 @@
 #include "MVKCodec.h"
 #include "MVKSmallVector.h"
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
-#include <MoltenVKShaderConverter/GLSLToSPIRVConverter.h>
 #include <mutex>
 
 #import <Metal/Metal.h>
@@ -233,11 +232,9 @@ protected:
 	friend MVKShaderCacheIterator;
 
 	void propagateDebugName() override {}
-	MVKGLSLConversionShaderStage getMVKGLSLConversionShaderStage(mvk::SPIRVToMSLConversionConfiguration* pShaderConfig);
 
 	MVKShaderLibraryCache _shaderLibraryCache;
-  mvk::SPIRVToMSLConverter _spvConverter;
-  mvk::GLSLToSPIRVConverter _glslConverter;
+	mvk::SPIRVToMSLConverter _spvConverter;
 	MVKShaderLibrary* _directMSLLibrary;
 	MVKShaderModuleKey _key;
     std::mutex _accessLock;
