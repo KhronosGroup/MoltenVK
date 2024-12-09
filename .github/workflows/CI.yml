@@ -23,8 +23,8 @@ jobs:
 
         # Legacy build. Up to 3 versions behind latest (or beta).
         include:
-          - os: "macos-12"
-            xcode: "13.4.1"
+          - os: "macos-13"
+            xcode: "14.3.1"
             platform: "macos"
             upload_artifacts: false
             select_xcode: true
