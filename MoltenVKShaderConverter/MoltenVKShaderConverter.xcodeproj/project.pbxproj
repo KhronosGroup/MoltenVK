@@ -682,8 +682,7 @@
 					"$(inherited)",
 					"\"$(SRCROOT)\"",
 					"\"$(SRCROOT)/SPIRV-Cross\"",
-					"\"$(SRCROOT)/glslang\"",
-					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
+					"\"$(SRCROOT)/SPIRV-Tools/include\"",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				MACH_O_TYPE = staticlib;
@@ -747,8 +746,7 @@
 					"$(inherited)",
 					"\"$(SRCROOT)\"",
 					"\"$(SRCROOT)/SPIRV-Cross\"",
-					"\"$(SRCROOT)/glslang\"",
-					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
+					"\"$(SRCROOT)/SPIRV-Tools/include\"",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				MACH_O_TYPE = staticlib;
