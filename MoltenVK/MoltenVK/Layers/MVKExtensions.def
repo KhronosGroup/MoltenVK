@@ -155,8 +155,7 @@ MVK_EXTENSION(GOOGLE_display_timing,                  GOOGLE_DISPLAY_TIMING,    
 MVK_EXTENSION(MVK_ios_surface,                        MVK_IOS_SURFACE,                        INSTANCE, MVK_NA, 8.0, MVK_NA)
 MVK_EXTENSION(MVK_macos_surface,                      MVK_MACOS_SURFACE,                      INSTANCE, 10.11, MVK_NA, MVK_NA)
 MVK_EXTENSION(MVK_moltenvk,                           MVK_MOLTENVK,                           INSTANCE, 10.11,  8.0,  1.0)
-MVK_EXTENSION(NV_fragment_shader_barycentric,         NV_FRAGMENT_SHADER_BARYCENTRIC,         DEVICE,   10.15, 14.0,  1.0)
-MVK_EXTENSION_LAST(NV_glsl_shader,                    NV_GLSL_SHADER,                         DEVICE,   10.11,  8.0,  1.0)
+MVK_EXTENSION_LAST(NV_fragment_shader_barycentric,    NV_FRAGMENT_SHADER_BARYCENTRIC,         DEVICE,   10.15, 14.0,  1.0)
 
 #undef MVK_EXTENSION
 #undef MVK_EXTENSION_LAST

@@ -20,6 +20,7 @@ Released TBD
 
 - Fix _SPIRV-Cross_ namespace build error on some alternate build environments.
 - Fix recent failure of `CI.yml` to upload release build artifacts to GitHub.
+- Remove support for deprecated `VK_NV_glsl_shader` extension, and GLSL conversions using _**MoltenVKShaderConverter**_.
 
 
 
