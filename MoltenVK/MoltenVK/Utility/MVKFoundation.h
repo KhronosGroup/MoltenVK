@@ -570,6 +570,8 @@ public:
 	constexpr MVKArrayRef(Type* d, size_t s) : _data(d), _size(s) {}
 	template <typename Other, std::enable_if_t<std::is_convertible_v<Other(*)[], Type(*)[]>, bool> = true>
 	constexpr MVKArrayRef(MVKArrayRef<Other> other) : _data(other.data()), _size(other.size()) {}
+	template <size_t N>
+	constexpr MVKArrayRef(Type(&arr)[N]): _data(arr), _size(N) {}
 
 protected:
 	Type* _data;
