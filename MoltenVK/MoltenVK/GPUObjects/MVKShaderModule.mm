@@ -246,7 +246,7 @@ void MVKShaderLibrary::handleCompilationError(NSError* err, const char* opDesc) 
     if (_mtlLibrary) {
         MVKLogInfo("%s succeeded with warnings (Error code %li):\n%s", opDesc, (long)err.code, err.localizedDescription.UTF8String);
     } else {
-		_owner->setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV,
+		_owner->setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED,
 												   "%s failed (Error code %li):\n%s",
 												   opDesc, (long)err.code,
 												   err.localizedDescription.UTF8String));
@@ -408,7 +408,7 @@ bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
 	if (wasConverted) {
 		if (shouldLogCode) { MVKLogInfo("%s", conversionResult.resultLog.c_str()); }
 	} else {
-		reportError(VK_ERROR_INVALID_SHADER_NV, "Unable to convert SPIR-V to MSL:\n%s", conversionResult.resultLog.c_str());
+		reportError(VK_ERROR_INITIALIZATION_FAILED, "Unable to convert SPIR-V to MSL:\n%s", conversionResult.resultLog.c_str());
 	}
 	return wasConverted;
 }
@@ -429,7 +429,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 
     // Ensure something is there.
     if ( (pCreateInfo->pCode == VK_NULL_HANDLE) || (codeSize < 4) ) {
-		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "vkCreateShaderModule(): Shader module contains no shader code."));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkCreateShaderModule(): Shader module contains no shader code."));
 		return;
 	}
 
@@ -483,7 +483,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 			break;
 		}
 		default:
-			setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "vkCreateShaderModule(): The SPIR-V contains an invalid magic number %x.", magicNum));
+			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkCreateShaderModule(): The SPIR-V contains an invalid magic number %x.", magicNum));
 			break;
 	}
 
