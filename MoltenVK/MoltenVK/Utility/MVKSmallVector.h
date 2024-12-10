@@ -312,6 +312,7 @@ public:
         Type *data()                              { return alc.ptr; }
 
   size_t      size()                       const { return alc.num_elements_used; }
+  size_t      byteSize()                   const { return size() * sizeof(Type); }
   bool        empty()                      const { return alc.num_elements_used == 0; }
   size_t      capacity()                   const { return alc.get_capacity(); }
 
