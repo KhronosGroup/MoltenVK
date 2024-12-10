@@ -108,7 +108,10 @@ VkResult MVKDeviceMemory::pullFromDevice(VkDeviceSize offset,
 #if MVK_MACOS
 	if ( !isUnifiedMemoryGPU() && pBlitEnc && _mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {
 		if ( !pBlitEnc->mtlCmdBuffer) { pBlitEnc->mtlCmdBuffer = _device->getAnyQueue()->getMTLCommandBuffer(kMVKCommandUseInvalidateMappedMemoryRanges); }
-		if ( !pBlitEnc->mtlBlitEncoder) { pBlitEnc->mtlBlitEncoder = [pBlitEnc->mtlCmdBuffer blitCommandEncoder]; }
+		if ( !pBlitEnc->mtlBlitEncoder) {
+			pBlitEnc->mtlBlitEncoder = [pBlitEnc->mtlCmdBuffer blitCommandEncoder];
+			getDevice()->barrierWait(kMVKBarrierStageHost, pBlitEnc->mtlCmdBuffer, pBlitEnc->mtlBlitEncoder);
+		}
 		[pBlitEnc->mtlBlitEncoder synchronizeResource: _mtlBuffer];
 	}
 #endif
@@ -246,7 +249,7 @@ bool MVKDeviceMemory::ensureMTLBuffer() {
 	}
 	if (!_mtlBuffer) { return false; }
 	_pMemory = isMemoryHostAccessible() ? _mtlBuffer.contents : nullptr;
-
+	getDevice()->makeResident(_mtlBuffer);
 	propagateDebugName();
 
 	return true;
@@ -425,6 +428,7 @@ MVKDeviceMemory::~MVKDeviceMemory() {
 	auto imgCopies = _imageMemoryBindings;
 	for (auto& img : imgCopies) { img->bindDeviceMemory(nullptr, 0); }
 
+	if (_mtlBuffer) getDevice()->removeResidency(_mtlBuffer);
 	[_mtlBuffer release];
 	_mtlBuffer = nil;
 

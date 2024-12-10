@@ -4507,7 +4507,10 @@ VkResult MVKDevice::invalidateMappedMemoryRanges(uint32_t memRangeCount, const V
 			VkResult r = mvkMem->pullFromDevice(pMem->offset, pMem->size, &mvkBlitEnc);
 			if (rslt == VK_SUCCESS) { rslt = r; }
 		}
-		if (mvkBlitEnc.mtlBlitEncoder) { [mvkBlitEnc.mtlBlitEncoder endEncoding]; }
+		if (mvkBlitEnc.mtlBlitEncoder) {
+			barrierUpdate(kMVKBarrierStageHost, mvkBlitEnc.mtlCmdBuffer, mvkBlitEnc.mtlBlitEncoder);
+			[mvkBlitEnc.mtlBlitEncoder endEncoding];
+		}
 		if (mvkBlitEnc.mtlCmdBuffer) {
 			[mvkBlitEnc.mtlCmdBuffer commit];
 			[mvkBlitEnc.mtlCmdBuffer waitUntilCompleted];
@@ -4789,6 +4792,134 @@ void MVKDevice::getMetalObjects(VkExportMetalObjectsInfoEXT* pMetalObjectsInfo) 
 	}
 }
 
+
+#pragma mark Barriers
+
+void MVKDevice::barrierWait(MVKBarrierStage stage, id<MTLCommandBuffer> mtlCommandBuffer, id<MTLRenderCommandEncoder> mtlEncoder, MTLRenderStages beforeStages) {
+	@synchronized (_physicalDevice->getMTLDevice()) {
+		for (auto fence: _activeBarriers[stage]) {
+			if (fence) {
+				[fence retain];
+				[mtlEncoder waitForFence:fence beforeStages:beforeStages];
+				[mtlCommandBuffer addCompletedHandler:^(id<MTLCommandBuffer> cb) {
+					[fence release];
+				}];
+			}
+		}
+	}
+}
+
+void MVKDevice::barrierWait(MVKBarrierStage stage, id<MTLCommandBuffer> mtlCommandBuffer, id<MTLBlitCommandEncoder> mtlEncoder) {
+	@synchronized (_physicalDevice->getMTLDevice()) {
+		for (auto fence: _activeBarriers[stage]) {
+			if (fence) {
+				[fence retain];
+				[mtlEncoder waitForFence:fence];
+				[mtlCommandBuffer addCompletedHandler:^(id<MTLCommandBuffer> cb) {
+					[fence release];
+				}];
+			}
+		}
+	}
+}
+
+void MVKDevice::barrierWait(MVKBarrierStage stage, id<MTLCommandBuffer> mtlCommandBuffer, id<MTLComputeCommandEncoder> mtlEncoder) {
+	@synchronized (_physicalDevice->getMTLDevice()) {
+		for (auto fence: _activeBarriers[stage]) {
+			if (fence) {
+				[fence retain];
+				[mtlEncoder waitForFence:fence];
+				[mtlCommandBuffer addCompletedHandler:^(id<MTLCommandBuffer> cb) {
+					[fence release];
+				}];
+			}
+		}
+	}
+}
+
+void MVKDevice::barrierUpdate(MVKBarrierStage stage, id<MTLCommandBuffer> mtlCommandBuffer, id<MTLRenderCommandEncoder> mtlEncoder, MTLRenderStages afterStages) {
+	@synchronized (_physicalDevice->getMTLDevice()) {
+		auto fence = [getBarrierStageFence(mtlCommandBuffer, stage) retain];
+		[mtlEncoder updateFence:fence afterStages:afterStages];
+		[mtlCommandBuffer addCompletedHandler:^(id<MTLCommandBuffer> cb) {
+			[fence release];
+		}];
+	}
+}
+
+void MVKDevice::barrierUpdate(MVKBarrierStage stage, id<MTLCommandBuffer> mtlCommandBuffer, id<MTLBlitCommandEncoder> mtlEncoder) {
+	@synchronized (_physicalDevice->getMTLDevice()) {
+		auto fence = [getBarrierStageFence(mtlCommandBuffer, stage) retain];
+		[mtlEncoder updateFence:fence];
+		[mtlCommandBuffer addCompletedHandler:^(id<MTLCommandBuffer> cb) {
+			[fence release];
+		}];
+	}
+}
+
+void MVKDevice::barrierUpdate(MVKBarrierStage stage, id<MTLCommandBuffer> mtlCommandBuffer, id<MTLComputeCommandEncoder> mtlEncoder) {
+	@synchronized (_physicalDevice->getMTLDevice()) {
+		auto fence = [getBarrierStageFence(mtlCommandBuffer, stage) retain];
+		[mtlEncoder updateFence:fence];
+		[mtlCommandBuffer addCompletedHandler:^(id<MTLCommandBuffer> cb) {
+			[fence release];
+		}];
+	}
+}
+
+
+
+id<MTLFence> MVKDevice::getBarrierStageFence(id<MTLCommandBuffer> mtlCommandBuffer, MVKBarrierStage stage) {
+	@synchronized(_physicalDevice->getMTLDevice()) {
+		auto fence = _stageBarriers[stage];
+		if (!fence || _stageBarriersDirty[stage]) {
+			_stageBarriersDirty[stage] = false;
+			[fence release];
+			_stageBarriers[stage] = fence = [_physicalDevice->getMTLDevice() newFence];
+			if (!fence) {
+				reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate a fence.");
+			}
+		}
+		return fence;
+	}
+}
+
+void MVKDevice::setBarrier(id<MTLCommandBuffer> commandBuffer, uint64_t sourceStageMask, uint64_t destStageMask) {
+	if (!commandBuffer) {
+		reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, "No command buffer!");
+		return;
+	}
+
+	@synchronized(_physicalDevice->getMTLDevice()) {
+		for (int i = 0; i < kMVKBarrierStageCount; ++i) {
+		   if (!mvkIsAnyFlagEnabled(sourceStageMask, 1ull << i)) continue;
+
+			auto newFence = _stageBarriers[i];
+			if (!newFence) continue;
+
+			for (int j = 0; j < kMVKBarrierStageCount; ++j) {
+				if (!mvkIsAnyFlagEnabled(destStageMask, 1ull << j)) continue;
+
+				auto oldFence = _activeBarriers[j][i];
+				_activeBarriers[j][i] = [newFence retain];
+
+				if (oldFence) {
+					[commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> cb) {
+						[oldFence release];
+					}];
+				}
+			}
+
+			auto oldFence = _activeBarriers[i][i];
+			_activeBarriers[i][i] = [newFence retain];
+			_stageBarriersDirty[i] = true;
+
+			[commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> cb) {
+				[oldFence release];
+			}];
+		}
+	}
+}
 
 #pragma mark Construction
 
@@ -5110,6 +5241,21 @@ void MVKDevice::enableExtensions(const VkDeviceCreateInfo* pCreateInfo) {
 
 // Create the command queues
 void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
+#if MVK_XCODE_16
+	MTLResidencySetDescriptor *setDescriptor;
+	setDescriptor = [MTLResidencySetDescriptor new];
+	setDescriptor.label = @"Primary residency set";
+	setDescriptor.initialCapacity = 256;
+
+	NSError *error;
+	_residencySet = [_physicalDevice->getMTLDevice() newResidencySetWithDescriptor:setDescriptor
+																			 error:&error];
+	if (error) {
+		reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, "Error allocating residency set: %s", error.description.UTF8String);
+	}
+	[setDescriptor release];
+#endif
+
 	auto qFams = _physicalDevice->getQueueFamilies();
 	uint32_t qrCnt = pCreateInfo->queueCreateInfoCount;
 	for (uint32_t qrIdx = 0; qrIdx < qrCnt; qrIdx++) {
@@ -5173,6 +5319,12 @@ MVKDevice::~MVKDevice() {
 
 	if (_commandResourceFactory) { _commandResourceFactory->destroy(); }
 
+	for (auto fence: _stageBarriers) [fence release];
+	for (auto &fences: _activeBarriers) for (auto fence: fences) [fence release];
+
+#if MVK_XCODE_16
+	[_residencySet release];
+#endif
     [_globalVisibilityResultMTLBuffer release];
 	[_defaultMTLSamplerState release];
 	[_dummyBlitMTLBuffer release];
