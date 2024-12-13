@@ -28,6 +28,7 @@
 #endif
 #include "mvk_datatypes.hpp"
 #include <sys/stat.h>
+#include <sstream>
 
 #ifndef MVK_USE_CEREAL
 #define MVK_USE_CEREAL (1)
