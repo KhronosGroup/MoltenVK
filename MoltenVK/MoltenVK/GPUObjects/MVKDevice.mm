@@ -4800,6 +4800,16 @@ void MVKDevice::getMetalObjects(VkExportMetalObjectsInfoEXT* pMetalObjectsInfo) 
 
 #pragma mark Construction
 
+static NSString *mvkBarrierStageName(MVKBarrierStage stage) {
+	switch (stage) {
+	case kMVKBarrierStageVertex:   return @"Vertex";
+	case kMVKBarrierStageFragment: return @"Fragment";
+	case kMVKBarrierStageCompute:  return @"Compute";
+	case kMVKBarrierStageCopy:     return @"Copy";
+	default:                       return [NSString stringWithFormat:@"Invalid (%d)", stage];
+	}
+}
+
 MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) : _enabledExtensions(this) {
 
 	// If the physical device is lost, bail.
@@ -4817,7 +4827,15 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	reservePrivateData(pCreateInfo);
 
 	// Initialize fences for execution barriers
-	for (auto &stage: _barrierFences) for (auto &fence: stage) fence = [_physicalDevice->getMTLDevice() newFence];
+	@autoreleasepool {
+		for (int stage = 0; stage < kMVKBarrierStageCount; ++stage) {
+			for (int index = 0; index < kMVKBarrierFenceCount; ++index) {
+				auto &fence = _barrierFences[stage][index];
+				fence = [_physicalDevice->getMTLDevice() newFence];
+				[fence setLabel:[NSString stringWithFormat:@"%@ Fence %d", mvkBarrierStageName((MVKBarrierStage)stage), index]];
+			}
+		}
+	}
 
 #if MVK_MACOS
 	// After enableExtensions
