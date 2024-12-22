@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXAggregateTarget section */
@@ -401,7 +401,7 @@
 		A90B2B1D1A9B6170008EE819 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				BuildIndependentTargetsInParallel = YES;
+				BuildIndependentTargetsInParallel = NO;
 				LastUpgradeCheck = 9999;
 				TargetAttributes = {
 					A9FEADBC1F3517480010240E = {
@@ -410,7 +410,6 @@
 				};
 			};
 			buildConfigurationList = A90B2B201A9B6170008EE819 /* Build configuration list for PBXProject "MoltenVKPackaging" */;
-			compatibilityVersion = "Xcode 8.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -418,6 +417,7 @@
 				Base,
 			);
 			mainGroup = A90B2B1C1A9B6170008EE819;
+			preferredProjectObjectVersion = 77;
 			productRefGroup = A9F4D9582B8E7345004AD576 /* Products */;
 			projectDirPath = "";
 			projectReferences = (
