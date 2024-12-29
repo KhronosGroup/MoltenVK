@@ -748,7 +748,7 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 	}
 
 #if MVK_XCODE_15
-	if (supportAtomics && (mtlFormat == MTLPixelFormatR32Uint || mtlFormat == MTLPixelFormatR32Sint || mtlFormat == MTLPixelFormatRG32Uint)) {
+	if (supportAtomics && (mtlFormat == MTLPixelFormatR32Uint || mtlFormat == MTLPixelFormatR32Sint)) {
 		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderAtomic);
 	}
 #endif
@@ -1542,7 +1542,6 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(const MVKMTLDeviceCapabilities
 	// Including this here so we remember to update this if support is added to Vulkan in the future.
 	bool atomic64 = noVulkanSupport && (gpuCaps.supportsApple9 || (gpuCaps.supportsApple8 && gpuCaps.supportsMac2));
 	enableMTLPixFmtCapsIf( atomic64, RG32Uint, Atomic );
-	enableMTLPixFmtCapsIf( atomic64, RG32Sint, Atomic );
 
 	setMTLPixFmtCapsIf( iosOnly8, RG32Float, RWCMB );
 	setMTLPixFmtCapsIf( iosOnly6, RG32Float, RWCB );
