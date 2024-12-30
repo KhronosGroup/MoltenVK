@@ -339,6 +339,7 @@ void MVKQueue::initExecQueue() {
 // Retrieves and initializes the Metal command queue and Xcode GPU capture scopes
 void MVKQueue::initMTLCommandQueue() {
 	_mtlQueue = _queueFamily->getMTLCommandQueue(_index);	// not retained (cached in queue family)
+	_device->addResidencySet(_mtlQueue);
 
 	_submissionCaptureScope = new MVKGPUCaptureScope(this);
 	if (_queueFamily->getIndex() == getMVKConfig().defaultGPUCaptureScopeQueueFamilyIndex &&
