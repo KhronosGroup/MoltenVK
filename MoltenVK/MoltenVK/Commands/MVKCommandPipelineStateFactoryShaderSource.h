@@ -334,14 +334,14 @@ kernel void cmdDrawIndirectPopulateIndexes(const device char* srcBuff [[buffer(0
     const device auto& src = *reinterpret_cast<const device MTLDrawPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);\n\
 	device auto& dst = destBuff[idx];                                                                           \n\
     dst.indexCount = src.vertexCount;                                                                           \n\
-	dst.indexStart = src.vertexStart;                                                                           \n\
+	dst.indexStart = 0;                                                                                         \n\
 	dst.baseVertex = 0;                                                                                         \n\
 	dst.instanceCount = src.instanceCount;                                                                      \n\
 	dst.baseInstance = src.baseInstance;                                                                        \n\
 																												\n\
     for (uint32_t idxIdx = 0; idxIdx < dst.indexCount; idxIdx++) {                                              \n\
 		uint32_t idxBuffIdx = dst.indexStart + idxIdx;															\n\
-		idxBuff[idxBuffIdx] = idxBuffIdx;                                                                       \n\
+		idxBuff[idxBuffIdx] = src.vertexStart + idxBuffIdx;                                                     \n\
     }                                                                                                           \n\
 }                                                                                                               \n\
 																												\n\
