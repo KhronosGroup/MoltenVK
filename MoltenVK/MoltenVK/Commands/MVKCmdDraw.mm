@@ -112,19 +112,20 @@ void MVKCmdDraw::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
 	auto* indirectIdxBuff = cmdEncoder->getTempMTLBuffer(indirectIdxBuffStride);
 	auto* pIndArg = (MTLDrawIndexedPrimitivesIndirectArguments*)indirectIdxBuff->getContents();
 	pIndArg->indexCount = _vertexCount;
-	pIndArg->indexStart = _firstVertex;
+	// let the indirect index point to the beginning of vertex index buffer below
+	pIndArg->indexStart = 0;
 	pIndArg->baseVertex = 0;
 	pIndArg->instanceCount = _instanceCount;
 	pIndArg->baseInstance = _firstInstance;
 
 	// Create an index buffer populated with synthetic indexes.
-	// Start populating indexes below _firstVertex so that indexes align with their corresponding vertexes
+	// Start populating indexes directly from the beginning and align with corresponding vertexes by adding _firstVertex
 	MTLIndexType mtlIdxType = MTLIndexTypeUInt32;
 	auto* vtxIdxBuff = cmdEncoder->getTempMTLBuffer(mvkMTLIndexTypeSizeInBytes(mtlIdxType) * _vertexCount);
 	auto* pIdxBuff = (uint32_t*)vtxIdxBuff->getContents();
-	uint32_t idxCnt = _firstVertex + _vertexCount;
-	for (uint32_t idx = 0; idx < idxCnt; idx++) {
-		pIdxBuff[idx] = idx;
+
+	for (uint32_t idx = 0; idx < _vertexCount; idx++) {
+		pIdxBuff[idx] = _firstVertex + idx;
 	}
 
 	MVKIndexMTLBufferBinding ibb;
