@@ -595,14 +595,6 @@ class MVKComputePipelineCompiler : public MVKMetalCompiler {
 public:
 
 	/**
-	 * Returns a new (retained) MTLComputePipelineState object compiled from the MTLFunction.
-	 *
-	 * If the Metal pipeline compiler does not return within MVKConfiguration::metalCompileTimeout
-	 * nanoseconds, an error will be generated and logged, and nil will be returned.
-	 */
-	id<MTLComputePipelineState> newMTLComputePipelineState(id<MTLFunction> mtlFunction);
-
-	/**
 	 * Returns a new (retained) MTLComputePipelineState object compiled from the MTLComputePipelineDescriptor.
 	 *
 	 * If the Metal pipeline compiler does not return within MVKConfiguration::metalCompileTimeout

@@ -2823,23 +2823,6 @@ MVKRenderPipelineCompiler::~MVKRenderPipelineCompiler() {
 #pragma mark -
 #pragma mark MVKComputePipelineCompiler
 
-id<MTLComputePipelineState> MVKComputePipelineCompiler::newMTLComputePipelineState(id<MTLFunction> mtlFunction) {
-	unique_lock<mutex> lock(_completionLock);
-
-	compile(lock, ^{
-		auto mtlDev = getMTLDevice();
-		@synchronized (mtlDev) {
-			[mtlDev newComputePipelineStateWithFunction: mtlFunction
-									  completionHandler: ^(id<MTLComputePipelineState> ps, NSError* error) {
-										  bool isLate = compileComplete(ps, error);
-										  if (isLate) { destroy(); }
-									  }];
-		}
-	});
-
-	return [_mtlComputePipelineState retain];
-}
-
 id<MTLComputePipelineState> MVKComputePipelineCompiler::newMTLComputePipelineState(MTLComputePipelineDescriptor* plDesc) {
 	unique_lock<mutex> lock(_completionLock);
 
