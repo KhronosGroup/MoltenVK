@@ -827,11 +827,11 @@ uint32_t MVKCommandEncoder::getFramebufferLayerCount() {
 void MVKCommandEncoder::bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline) {
     switch (pipelineBindPoint) {
         case VK_PIPELINE_BIND_POINT_GRAPHICS:
-            _state.bindPipeline(static_cast<MVKGraphicsPipeline*>(pipeline));
+            _state.bindGraphicsPipeline(static_cast<MVKGraphicsPipeline*>(pipeline));
             break;
 
         case VK_PIPELINE_BIND_POINT_COMPUTE:
-            _computePipelineState.bindPipeline(pipeline);
+            _state.bindComputePipeline(static_cast<MVKComputePipeline*>(pipeline));
             break;
 
         default:
@@ -890,10 +890,12 @@ void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
         // Must happen before switching encoders.
         encodeStoreActions(true);
     }
-	if (stage == kMVKGraphicsStageRasterization)
+	if (stage == kMVKGraphicsStageRasterization) {
 		prepareDraw();
-	else
+	} else {
+		getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
 		prepareRenderDispatch(stage);
+	}
     _graphicsResourcesState.encode(stage);   	// Before push constants, to allow them to override.
     _vertexPushConstants.encode(stage);
     _tessCtlPushConstants.encode(stage);
@@ -946,6 +948,7 @@ void MVKCommandEncoder::clearRenderArea(MVKCommandUse cmdUse) {
 }
 
 void MVKCommandEncoder::beginMetalComputeEncoding(MVKCommandUse cmdUse) {
+	getState().beginComputeEncoding();
 	if (cmdUse == kMVKCommandUseTessellationVertexTessCtl) {
 		_graphicsResourcesState.beginMetalComputeEncoding();
 	} else {
@@ -954,7 +957,7 @@ void MVKCommandEncoder::beginMetalComputeEncoding(MVKCommandUse cmdUse) {
 }
 
 void MVKCommandEncoder::finalizeDispatchState() {
-    _computePipelineState.encode();    		// Must do first..it sets others
+	prepareComputeDispatch();
     _computeResourcesState.encode();   		// Before push constants, to allow them to override.
     _computePushConstants.encode();
 	_gpuAddressableBuffersState.encode();	// After resources and push constants
@@ -1000,7 +1003,6 @@ void MVKCommandEncoder::endCurrentMetalEncoding() {
 	encodeBarrierUpdates();
 	endMetalRenderEncoding();
 
-	_computePipelineState.markDirty();
 	_computePushConstants.markDirty();
 	_computeResourcesState.markDirty();
 
@@ -1026,7 +1028,6 @@ id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandU
 		markCurrentComputeStateDirty = false;	// Already marked dirty above in endCurrentMetalEncoding()
 	}
 	if(markCurrentComputeStateDirty) {
-		_computePipelineState.markDirty();
 		_computePushConstants.markDirty();
 		_computeResourcesState.markDirty();
 	}
@@ -1359,7 +1360,6 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
 									 MVKPrefillMetalCommandBuffersStyle prefillStyle) : MVKBaseDeviceObject(cmdBuffer->getDevice()),
 	_cmdBuffer(cmdBuffer),
 	_graphicsResourcesState(this),
-	_computePipelineState(this),
 	_computeResourcesState(this),
 	_gpuAddressableBuffersState(this),
 	_occlusionQueryState(this),
