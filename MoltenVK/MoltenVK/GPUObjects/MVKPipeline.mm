@@ -345,49 +345,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 	if ( !_hasValidMTLPipelineStates ) { return; }
 
     id<MTLRenderCommandEncoder> mtlCmdEnc = cmdEncoder->_mtlRenderEncoder;
-	id<MTLComputeCommandEncoder> tessCtlEnc;
     if ( stage == kMVKGraphicsStageRasterization && !mtlCmdEnc ) { return; }   // Pre-renderpass. Come back later.
-
-    switch (stage) {
-
-		case kMVKGraphicsStageVertex: {
-			// Stage 1 of a tessellated draw: compute pipeline to run the vertex shader.
-			// N.B. This will prematurely terminate the current subpass. We'll have to remember to start it back up again.
-			// Due to yet another impedance mismatch between Metal and Vulkan, which pipeline
-			// state we use depends on whether or not we have an index buffer, and if we do,
-			// the kind of indices in it.
-
-            id<MTLComputePipelineState> plState;
-			const MVKIndexMTLBufferBinding& indexBuff = cmdEncoder->_graphicsResourcesState._mtlIndexBufferBinding;
-            if (!cmdEncoder->_isIndexedDraw) {
-                plState = getTessVertexStageState();
-            } else if (indexBuff.mtlIndexType == MTLIndexTypeUInt16) {
-                plState = getTessVertexStageIndex16State();
-            } else {
-                plState = getTessVertexStageIndex32State();
-            }
-
-			if ( !_hasValidMTLPipelineStates ) { return; }
-
-            tessCtlEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
-            [tessCtlEnc setComputePipelineState: plState];
-            break;
-		}
-
-        case kMVKGraphicsStageTessControl: {
-			// Stage 2 of a tessellated draw: compute pipeline to run the tess. control shader.
-			if ( !_mtlTessControlStageState ) { return; }		// Abort if pipeline could not be created.
-
-            tessCtlEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
-            [tessCtlEnc setComputePipelineState: _mtlTessControlStageState];
-            break;
-        }
-
-        case kMVKGraphicsStageRasterization:
-			// Stage 3 of a tessellated draw:
-			// All handled in pull style by the MVKGraphicsCommandEncoderState
-            break;
-    }
 
 	auto& cmdEncGRS = cmdEncoder->_graphicsResourcesState;
 	cmdEncGRS.markOverriddenBufferIndexesDirty();
