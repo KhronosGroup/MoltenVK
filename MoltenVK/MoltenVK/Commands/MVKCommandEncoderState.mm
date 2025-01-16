@@ -744,6 +744,99 @@ void MVKMetalGraphicsCommandEncoderState::prepareHelperDraw(
 	mvkEncoder._occlusionQueryState.markDirty();
 }
 
+#pragma mark - MVKMetalComputeCommandEncoderState
+
+void MVKMetalComputeCommandEncoderState::bindBuffer(id<MTLComputeCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index) {
+	_ready.buffers.set(index, false);
+	::bindBuffer(encoder, buffer, offset, index, _exists, _bindings, MVKComputeBinder());
+}
+void MVKMetalComputeCommandEncoderState::bindBytes(id<MTLComputeCommandEncoder> encoder, const void* data, size_t size, NSUInteger index) {
+	_ready.buffers.set(index, false);
+	::bindBytes(encoder, data, size, index, _exists, _bindings, MVKComputeBinder());
+}
+void MVKMetalComputeCommandEncoderState::bindTexture(id<MTLComputeCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index) {
+	_ready.textures.set(index, false);
+	::bindTexture(encoder, texture, index, _exists, _bindings, MVKComputeBinder());
+}
+void MVKMetalComputeCommandEncoderState::bindSampler(id<MTLComputeCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index) {
+	_ready.samplers.set(index, false);
+	::bindSampler(encoder, sampler, index, _exists, _bindings, MVKComputeBinder());
+}
+
+void MVKMetalComputeCommandEncoderState::prepareComputeDispatch(
+	id<MTLComputeCommandEncoder> encoder,
+	MVKCommandEncoder& mvkEncoder,
+	const MVKVulkanComputeCommandEncoderState& vk)
+{
+	MVKComputePipeline* pipeline = vk._pipeline;
+	id<MTLComputePipelineState> mtlPipeline = pipeline->getPipelineState();
+	if (!mtlPipeline) // Abort if pipeline could not be created.
+		return;
+
+	_vkPipeline = pipeline;
+
+	if (_pipeline != mtlPipeline) {
+		_pipeline = mtlPipeline;
+		[encoder setComputePipelineState:mtlPipeline];
+		pipeline->encode(&mvkEncoder);
+		pipeline->bindPushConstants(&mvkEncoder);
+	}
+
+	if (_vkStage != kMVKShaderStageCompute) {
+		memset(&_ready, 0, sizeof(_ready));
+		_vkStage = kMVKShaderStageCompute;
+	}
+}
+
+void MVKMetalComputeCommandEncoderState::prepareRenderDispatch(
+	id<MTLComputeCommandEncoder> encoder,
+	MVKCommandEncoder& mvkEncoder,
+	const MVKVulkanGraphicsCommandEncoderState& vk,
+	MVKShaderStage stage)
+{
+	MVKGraphicsPipeline* pipeline = vk._pipeline;
+	if (!pipeline->getMainPipelineState()) // Abort if pipeline could not be created.
+		return;
+
+	id<MTLComputePipelineState> mtlPipeline = nil;
+	if (stage == kMVKShaderStageVertex) {
+		if (!mvkEncoder._isIndexedDraw) {
+			mtlPipeline = pipeline->getTessVertexStageState();
+		} else if (vk._indexBuffer.mtlIndexType == MTLIndexTypeUInt16) {
+			mtlPipeline = pipeline->getTessVertexStageIndex16State();
+		} else {
+			mtlPipeline = pipeline->getTessVertexStageIndex32State();
+		}
+	} else if (stage == kMVKShaderStageTessCtl) {
+		mtlPipeline = pipeline->getTessControlStageState();
+	} else {
+		assert(0);
+	}
+
+	if (_vkPipeline != pipeline) {
+		if (_vkStage == kMVKShaderStageVertex) {
+			_ready.buffers.clearAllIn(static_cast<MVKGraphicsPipeline*>(_vkPipeline)->getMtlVertexBuffers());
+		}
+		_vkPipeline = pipeline;
+	}
+
+	if (_pipeline != mtlPipeline) {
+		_pipeline = mtlPipeline;
+		[encoder setComputePipelineState:mtlPipeline];
+		pipeline->encode(&mvkEncoder, stage);
+		pipeline->bindPushConstants(&mvkEncoder);
+	}
+
+	if (_vkStage != stage) {
+		memset(&_ready, 0, sizeof(_ready));
+		_vkStage = stage;
+	}
+}
+
+void MVKMetalComputeCommandEncoderState::reset() {
+	memset(this, 0, offsetof(MVKMetalComputeCommandEncoderState, MEMSET_RESET_LINE));
+	_vkStage = kMVKShaderStageCount;
+}
 
 #pragma mark - MVKCommandEncoderStateNew
 
@@ -789,17 +882,20 @@ bool MVKCommandEncoderStateNew::needsMetalRenderPassRestart() {
 	return res;
 }
 
-void MVKCommandEncoderStateNew::prepareRenderDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, MVKGraphicsStage stage) {
-	// Since we currently run tessellation passes by starting a new render pass each time, there's no point in trying to track dirtiness
-	_vkGraphics._pipeline->encode(&mvkEncoder, stage);
-	_vkGraphics._pipeline->bindPushConstants(&mvkEncoder);
-}
-
-void MVKCommandEncoderStateNew::bindPipeline(MVKGraphicsPipeline* pipeline) {
+void MVKCommandEncoderStateNew::bindGraphicsPipeline(MVKGraphicsPipeline* pipeline) {
 	_mtlGraphics.changePipeline(_vkGraphics._pipeline, pipeline);
 	_vkGraphics._pipeline = pipeline;
 }
 
+void MVKCommandEncoderStateNew::bindComputePipeline(MVKComputePipeline* pipeline) {
+	_vkCompute._pipeline = pipeline;
+}
+
+void MVKCommandEncoderStateNew::bindIndexBuffer(const MVKIndexMTLBufferBinding& buffer) {
+	_vkGraphics._indexBuffer = buffer;
+	if (_mtlActiveEncoder == CommandEncoderClass::Compute && _mtlCompute._vkStage == kMVKShaderStageVertex)
+		_mtlCompute._ready.buffers.clear(_vkGraphics._pipeline->getImplicitBuffers(kMVKShaderStageVertex).ids[MVKImplicitBuffer::IndirectParams]);
+}
 
 #pragma mark -
 #pragma mark MVKCommandEncoderState
@@ -1575,7 +1671,7 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
 }
 
 MVKPipeline* MVKComputeResourcesCommandEncoderState::getPipeline() {
-	return _cmdEncoder->_computePipelineState.getPipeline();
+	return _cmdEncoder->getComputePipeline();
 }
 
 void MVKComputeResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) {
