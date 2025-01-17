@@ -588,6 +588,7 @@ VkResult MVKCmdWaitEvents<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N>
 void MVKCmdWaitEvents<N>::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->endCurrentMetalEncoding();
 	for (MVKEvent* mvkEvt : _mvkEvents) {
 		mvkEvt->encodeWait(cmdEncoder->_mtlCmdBuffer);
 	}
