@@ -82,6 +82,9 @@ public:
 	/** Returns a text description of this layout. */
 	std::string getLogDescription(std::string indent = "");
 
+	/** Overridden because pipeline descriptor sets may be marked as discrete and not use an argument buffer. */
+	bool isUsingMetalArgumentBuffers() override;
+
 	/** Constructs an instance for the specified device. */
 	MVKPipelineLayout(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
 
@@ -98,6 +101,7 @@ protected:
 	MVKSmallVector<VkPushConstantRange> _pushConstants;
 	MVKShaderResourceBinding _mtlResourceCounts;
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
+	bool _canUseMetalArgumentBuffers;
 };
 
 
