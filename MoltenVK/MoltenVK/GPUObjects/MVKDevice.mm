@@ -459,6 +459,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				shaderIntDotFeatures->shaderIntegerDotProduct = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES_KHR: {
+				auto* terminateFeatures = (VkPhysicalDeviceShaderTerminateInvocationFeaturesKHR*)next;
+				terminateFeatures->shaderTerminateInvocation = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
 				auto* formatFeatures = (VkPhysicalDevice4444FormatsFeaturesEXT*)next;
 				bool canSupport4444 = _metalFeatures.tileBasedDeferredRendering &&
