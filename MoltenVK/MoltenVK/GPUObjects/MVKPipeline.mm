@@ -1868,8 +1868,13 @@ void MVKGraphicsPipeline::initReservedVertexAttributeBufferCount(const VkGraphic
 		// This value will be worst case, as some synthetic buffers may end up being shared.
 		for (uint32_t vaIdx = 0; vaIdx < vaCnt; vaIdx++) {
 			const VkVertexInputAttributeDescription* pVKVA = &pVI->pVertexAttributeDescriptions[vaIdx];
-			if ((pVKVA->binding == pVKVB->binding) && (pVKVA->offset + getPixelFormats()->getBytesPerBlock(pVKVA->format) > pVKVB->stride)) {
-				xltdBuffCnt++;
+
+			if (pVKVA->binding == pVKVB->binding) {
+				uint32_t attrSize = getPixelFormats()->getBytesPerBlock(pVKVA->format);
+				uint32_t vaOffset = pVKVA->offset;
+				if (vaOffset && vaOffset + attrSize > pVKVB->stride) {
+					xltdBuffCnt++;
+				}
 			}
 		}
 	}
