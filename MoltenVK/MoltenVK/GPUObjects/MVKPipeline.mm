@@ -1440,7 +1440,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 
     // Vertex buffer bindings
 	bool isVtxStrideStatic = !isDynamicState(VertexStride);
-	uint32_t maxBinding = 0;
+	int32_t maxBinding = -1;
 	uint32_t vbCnt = pVI->vertexBindingDescriptionCount;
     for (uint32_t i = 0; i < vbCnt; i++) {
         const VkVertexInputBindingDescription* pVKVB = &pVI->pVertexBindingDescriptions[i];
@@ -1452,7 +1452,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
                 return false;
             }
 
-			maxBinding = max(pVKVB->binding, maxBinding);
+			maxBinding = max<int32_t>(pVKVB->binding, maxBinding);
 			uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
 			_isVertexInputBindingUsed[vbIdx] = true;
 			auto vbDesc = inputDesc.layouts[vbIdx];
