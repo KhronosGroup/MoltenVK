@@ -160,7 +160,7 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 
 	// For pipeline layout compatibility (“compatible for set N”),
 	// consume the Metal resource indexes in this order:
-	//   - Fixed count of argument buffers for descriptor sets (if using Metal argument buffers).
+	//   - An argument buffer for each descriptor set (if using Metal argument buffers).
 	//   - Push constants
 	//   - Descriptor set content
 
