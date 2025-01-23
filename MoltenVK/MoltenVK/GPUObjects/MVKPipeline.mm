@@ -141,19 +141,34 @@ std::string MVKPipelineLayout::getLogDescription(std::string indent) {
 	return descStr.str();
 }
 
+bool MVKPipelineLayout::isUsingMetalArgumentBuffers() {
+	return MVKDeviceTrackingMixin::isUsingMetalArgumentBuffers() && _canUseMetalArgumentBuffers;
+}
+
 MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
                                      const VkPipelineLayoutCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 
+	_canUseMetalArgumentBuffers = false;
+	uint32_t dslCnt = pCreateInfo->setLayoutCount;
+	_descriptorSetLayouts.reserve(dslCnt);
+	for (uint32_t i = 0; i < dslCnt; i++) {
+		MVKDescriptorSetLayout* pDescSetLayout = (MVKDescriptorSetLayout*)pCreateInfo->pSetLayouts[i];
+		pDescSetLayout->retain();
+		_descriptorSetLayouts.push_back(pDescSetLayout);
+		_canUseMetalArgumentBuffers = _canUseMetalArgumentBuffers || pDescSetLayout->isUsingMetalArgumentBuffers();
+	}
+
 	// For pipeline layout compatibility (“compatible for set N”),
 	// consume the Metal resource indexes in this order:
-	//   - Fixed count of argument buffers for descriptor sets (if using Metal argument buffers).
+	//   - An argument buffer for each descriptor set (if using Metal argument buffers).
 	//   - Push constants
 	//   - Descriptor set content
 
-	// If we are using Metal argument buffers, consume a fixed number
-	// of buffer indexes for the Metal argument buffers themselves.
+	// If we are using Metal argument buffers, consume a number of
+	// buffer indexes covering all descriptor sets for the Metal
+	// argument buffers themselves.
 	if (isUsingMetalArgumentBuffers()) {
-		_mtlResourceCounts.addArgumentBuffers(kMVKMaxDescriptorSetCount);
+		_mtlResourceCounts.addArgumentBuffers(dslCnt);
 	}
 
 	// Add push constants from config
@@ -172,13 +187,8 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 
 	// Add descriptor set layouts, accumulating the resource index offsets used by the corresponding DSL,
 	// and associating the current accumulated resource index offsets with each DSL as it is added.
-	uint32_t dslCnt = pCreateInfo->setLayoutCount;
-	_descriptorSetLayouts.reserve(dslCnt);
 	for (uint32_t i = 0; i < dslCnt; i++) {
-		MVKDescriptorSetLayout* pDescSetLayout = (MVKDescriptorSetLayout*)pCreateInfo->pSetLayouts[i];
-		pDescSetLayout->retain();
-		_descriptorSetLayouts.push_back(pDescSetLayout);
-
+		MVKDescriptorSetLayout* pDescSetLayout = _descriptorSetLayouts[i];
 		MVKShaderResourceBinding adjstdDSLRezOfsts = _mtlResourceCounts;
 		MVKShaderResourceBinding adjstdDSLRezCnts = pDescSetLayout->_mtlResourceCounts;
 		if (pDescSetLayout->isUsingMetalArgumentBuffers()) {
