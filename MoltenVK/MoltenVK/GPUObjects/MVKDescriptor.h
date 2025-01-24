@@ -449,6 +449,14 @@ public:
 			   size_t srcStride,
 			   const void* pData) override;
 
+	void writeCombined(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+					   MVKDescriptorSet* mvkDescSet,
+					   uint32_t dstIdx,
+					   uint32_t srcIdx,
+					   size_t srcStride,
+					   const void* pData,
+					   uint32_t argStride);
+
 	void read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			  MVKDescriptorSet* mvkDescSet,
 			  uint32_t dstIndex,
@@ -524,7 +532,8 @@ protected:
 			   uint32_t dstIdx,
 			   uint32_t srcIdx,
 			   size_t srcStride,
-			   const void* pData);
+			   const void* pData,
+			   uint32_t argStride = 1);
 
 	void read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			  MVKDescriptorSet* mvkDescSet,
