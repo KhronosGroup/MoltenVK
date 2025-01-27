@@ -393,6 +393,14 @@ public:
     void setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder, const void* bytes,
 						 NSUInteger length, uint32_t mtlBuffIndex, bool descOverride = false);
 
+	/**
+	 * Copy bytes into the Metal encoder at a Metal compute buffer index with dynamic stride,
+	 * and optionally indicate that this binding might override a desriptor binding. If so,
+	 * the descriptor binding will be marked dirty so that it will rebind before the next usage.
+	 */
+    void setComputeBytesWithStride(id<MTLComputeCommandEncoder> mtlEncoder, const void* bytes,
+						 NSUInteger length, uint32_t mtlBuffIndex, uint32_t stride, bool descOverride = false);
+
     /** Get a temporary MTLBuffer that will be returned to a pool after the command buffer is finished. */
     const MVKMTLBufferAllocation* getTempMTLBuffer(NSUInteger length, bool isPrivate = false, bool isDedicated = false);
 

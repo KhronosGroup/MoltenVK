@@ -975,6 +975,25 @@ void MVKCommandEncoder::setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder,
 	}
 }
 
+void MVKCommandEncoder::setComputeBytesWithStride(id<MTLComputeCommandEncoder> mtlEncoder,
+                                                  const void* bytes,
+                                                  NSUInteger length,
+                                                  uint32_t mtlBuffIndex,
+                                                  uint32_t stride,
+                                                  bool descOverride) {
+	auto& mtlFeats = getMetalFeatures();
+	if (mtlFeats.dynamicMTLBufferSize && length <= mtlFeats.dynamicMTLBufferSize) {
+		[mtlEncoder setBytes: bytes length: length attributeStride: stride atIndex: mtlBuffIndex];
+	} else {
+		const MVKMTLBufferAllocation* mtlBuffAlloc = copyToTempMTLBufferAllocation(bytes, length);
+		[mtlEncoder setBuffer: mtlBuffAlloc->_mtlBuffer offset: mtlBuffAlloc->_offset attributeStride: stride atIndex: mtlBuffIndex];
+	}
+
+	if (descOverride) {
+		_computeResourcesState.markBufferIndexOverridden(mtlBuffIndex);
+	}
+}
+
 // Return the MTLBuffer allocation to the pool once the command buffer is done with it
 const MVKMTLBufferAllocation* MVKCommandEncoder::getTempMTLBuffer(NSUInteger length, bool isPrivate, bool isDedicated) {
     MVKMTLBufferAllocation* mtlBuffAlloc = getCommandEncodingPool()->acquireMTLBufferAllocation(length, isPrivate, isDedicated);
