@@ -43,6 +43,7 @@ namespace mvk {
 		spv::ExecutionMode tessPatchKind = spv::ExecutionModeMax;
 		uint32_t numTessControlPoints = 0;
 		bool shouldFlipVertexY = true;
+		bool shouldFixupClipSpace = false;
 
 		/**
 		 * Returns whether the specified options match this one.

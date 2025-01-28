@@ -107,6 +107,7 @@ MVK_EXTENSION(EXT_debug_marker,                       EXT_DEBUG_MARKER,         
 MVK_EXTENSION(EXT_debug_report,                       EXT_DEBUG_REPORT,                       INSTANCE, 10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_debug_utils,                        EXT_DEBUG_UTILS,                        INSTANCE, 10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_descriptor_indexing,                EXT_DESCRIPTOR_INDEXING,                DEVICE,   10.11,  8.0,  1.0)
+MVK_EXTENSION(EXT_depth_clip_control,                 EXT_DEPTH_CLIP_CONTROL,                 DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_extended_dynamic_state,             EXT_EXTENDED_DYNAMIC_STATE,             DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_extended_dynamic_state2,            EXT_EXTENDED_DYNAMIC_STATE_2,           DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_extended_dynamic_state3,            EXT_EXTENDED_DYNAMIC_STATE_3,           DEVICE,   10.11,  8.0,  1.0)
