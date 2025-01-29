@@ -824,9 +824,9 @@ public:
 	void getMetalObjects(VkExportMetalObjectsInfoEXT* pMetalObjectsInfo);
 
 #if !MVK_XCODE_16
-	inline void makeResident(id allocation) {}
+	void makeResident(id allocation) {}
 #else
-	inline void makeResident(id<MTLAllocation> allocation) {
+	void makeResident(id<MTLAllocation> allocation) {
 		@synchronized(_residencySet) {
 			[_residencySet addAllocation: allocation];
 			[_residencySet commit];
@@ -835,9 +835,9 @@ public:
 #endif
 
 #if !MVK_XCODE_16
-	inline void removeResidency(id allocation) {}
+	void removeResidency(id allocation) {}
 #else
-	inline void removeResidency(id<MTLAllocation> allocation) {
+	void removeResidency(id<MTLAllocation> allocation) {
 		@synchronized(_residencySet) {
 			[_residencySet removeAllocation:allocation];
 			[_residencySet commit];
@@ -845,13 +845,13 @@ public:
 	}
 #endif
 
-	inline void addResidencySet(id<MTLCommandQueue> queue) {
+	void addResidencySet(id<MTLCommandQueue> queue) {
 #if MVK_XCODE_16
 		if (_residencySet) [queue addResidencySet:_residencySet];
 #endif
 	}
 
-	inline bool hasResidencySet() {
+	bool hasResidencySet() {
 #if MVK_XCODE_16
 		return _residencySet != nil;
 #else
@@ -885,7 +885,8 @@ public:
 	/** Returns a Metal fence to update for the given barrier stage. */
 	id<MTLFence> getBarrierStageFence(id<MTLCommandBuffer> mtlCommandBuffer, MVKBarrierStage stage);
 
-	inline id<MTLFence> getFence(MVKBarrierStage stage, int index) {
+	/** Returns a Metal fence by its stage and slot index. */
+	id<MTLFence> getFence(MVKBarrierStage stage, int index) {
 		return _barrierFences[stage][index];
 	}
 
