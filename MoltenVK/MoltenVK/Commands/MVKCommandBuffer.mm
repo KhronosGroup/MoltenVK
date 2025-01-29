@@ -537,19 +537,19 @@ void MVKCommandEncoder::endMetalEncoding(T& mtlEnc) {
 
 static MVKBarrierStage commandUseToBarrierStage(MVKCommandUse use) {
 	switch (use) {
-	case kMVKCommandUseNone:                         return kMVKBarrierStageCount; /**< No use defined. */
-	case kMVKCommandUseBeginCommandBuffer:           return kMVKBarrierStageCount; /**< vkBeginCommandBuffer (prefilled VkCommandBuffer). */
-	case kMVKCommandUseQueueSubmit:                  return kMVKBarrierStageCount; /**< vkQueueSubmit. */
-	case kMVKCommandUseAcquireNextImage:             return kMVKBarrierStageCount; /**< vkAcquireNextImageKHR. */
-	case kMVKCommandUseQueuePresent:                 return kMVKBarrierStageCount; /**< vkQueuePresentKHR. */
-	case kMVKCommandUseQueueWaitIdle:                return kMVKBarrierStageCount; /**< vkQueueWaitIdle. */
-	case kMVKCommandUseDeviceWaitIdle:               return kMVKBarrierStageCount; /**< vkDeviceWaitIdle. */
-	case kMVKCommandUseInvalidateMappedMemoryRanges: return kMVKBarrierStageCount; /**< vkInvalidateMappedMemoryRanges. */
-	case kMVKCommandUseBeginRendering:               return kMVKBarrierStageCount; /**< vkCmdBeginRendering. */
-	case kMVKCommandUseBeginRenderPass:              return kMVKBarrierStageCount; /**< vkCmdBeginRenderPass. */
-	case kMVKCommandUseNextSubpass:                  return kMVKBarrierStageCount; /**< vkCmdNextSubpass. */
-	case kMVKCommandUseRestartSubpass:               return kMVKBarrierStageCount; /**< Create a new Metal renderpass due to Metal requirements. */
-	case kMVKCommandUsePipelineBarrier:              return kMVKBarrierStageCount; /**< vkCmdPipelineBarrier. */
+	case kMVKCommandUseNone:                         return kMVKBarrierStageNone; /**< No use defined. */
+	case kMVKCommandUseBeginCommandBuffer:           return kMVKBarrierStageNone; /**< vkBeginCommandBuffer (prefilled VkCommandBuffer). */
+	case kMVKCommandUseQueueSubmit:                  return kMVKBarrierStageNone; /**< vkQueueSubmit. */
+	case kMVKCommandUseAcquireNextImage:             return kMVKBarrierStageNone; /**< vkAcquireNextImageKHR. */
+	case kMVKCommandUseQueuePresent:                 return kMVKBarrierStageNone; /**< vkQueuePresentKHR. */
+	case kMVKCommandUseQueueWaitIdle:                return kMVKBarrierStageNone; /**< vkQueueWaitIdle. */
+	case kMVKCommandUseDeviceWaitIdle:               return kMVKBarrierStageNone; /**< vkDeviceWaitIdle. */
+	case kMVKCommandUseInvalidateMappedMemoryRanges: return kMVKBarrierStageNone; /**< vkInvalidateMappedMemoryRanges. */
+	case kMVKCommandUseBeginRendering:               return kMVKBarrierStageNone; /**< vkCmdBeginRendering. */
+	case kMVKCommandUseBeginRenderPass:              return kMVKBarrierStageNone; /**< vkCmdBeginRenderPass. */
+	case kMVKCommandUseNextSubpass:                  return kMVKBarrierStageNone; /**< vkCmdNextSubpass. */
+	case kMVKCommandUseRestartSubpass:               return kMVKBarrierStageNone; /**< Create a new Metal renderpass due to Metal requirements. */
+	case kMVKCommandUsePipelineBarrier:              return kMVKBarrierStageNone; /**< vkCmdPipelineBarrier. */
 	case kMVKCommandUseBlitImage:                    return kMVKBarrierStageCopy; /**< vkCmdBlitImage. */
 	case kMVKCommandUseCopyImage:                    return kMVKBarrierStageCopy; /**< vkCmdCopyImage. */
 	case kMVKCommandUseResolveImage:                 return kMVKBarrierStageCopy; /**< vkCmdResolveImage - resolve stage. */
@@ -561,7 +561,7 @@ static MVKBarrierStage commandUseToBarrierStage(MVKCommandUse use) {
 	case kMVKCommandUseCopyImageToBuffer:            return kMVKBarrierStageCopy; /**< vkCmdCopyImageToBuffer. */
 	case kMVKCommandUseFillBuffer:                   return kMVKBarrierStageCopy; /**< vkCmdFillBuffer. */
 	case kMVKCommandUseUpdateBuffer:                 return kMVKBarrierStageCopy; /**< vkCmdUpdateBuffer. */
-	case kMVKCommandUseClearAttachments:             return kMVKBarrierStageCount; /**< vkCmdClearAttachments. */
+	case kMVKCommandUseClearAttachments:             return kMVKBarrierStageNone; /**< vkCmdClearAttachments. */
 	case kMVKCommandUseClearColorImage:              return kMVKBarrierStageCopy; /**< vkCmdClearColorImage. */
 	case kMVKCommandUseClearDepthStencilImage:       return kMVKBarrierStageCopy; /**< vkCmdClearDepthStencilImage. */
 	case kMVKCommandUseResetQueryPool:               return kMVKBarrierStageCopy; /**< vkCmdResetQueryPool. */
@@ -569,8 +569,8 @@ static MVKBarrierStage commandUseToBarrierStage(MVKCommandUse use) {
 	case kMVKCommandUseTessellationVertexTessCtl:    return kMVKBarrierStageVertex; /**< vkCmdDraw* - vertex and tessellation control stages. */
 	case kMVKCommandUseDrawIndirectConvertBuffers:   return kMVKBarrierStageVertex; /**< vkCmdDrawIndirect* convert indirect buffers. */
 	case kMVKCommandUseCopyQueryPoolResults:         return kMVKBarrierStageCopy; /**< vkCmdCopyQueryPoolResults. */
-	case kMVKCommandUseAccumOcclusionQuery:          return kMVKBarrierStageCount; /**< Any command terminating a Metal render pass with active visibility buffer. */
-	case kMVKCommandUseRecordGPUCounterSample:       return kMVKBarrierStageCount; /**< Any command triggering the recording of a GPU counter sample. */
+	case kMVKCommandUseAccumOcclusionQuery:          return kMVKBarrierStageNone; /**< Any command terminating a Metal render pass with active visibility buffer. */
+	case kMVKCommandUseRecordGPUCounterSample:       return kMVKBarrierStageNone; /**< Any command triggering the recording of a GPU counter sample. */
 	}
 }
 
@@ -656,13 +656,13 @@ void MVKCommandEncoder::encodeBarrierWaits(MVKCommandUse use) {
 	}
 	if (_mtlComputeEncoder) {
 		auto stage = commandUseToBarrierStage(use);
-		if (stage != kMVKBarrierStageCount) {
+		if (stage != kMVKBarrierStageNone) {
 			barrierWait(stage, _mtlComputeEncoder);
 		}
 	}
 	if (_mtlBlitEncoder) {
 		auto stage = commandUseToBarrierStage(use);
-		if (stage != kMVKBarrierStageCount) {
+		if (stage != kMVKBarrierStageNone) {
 			barrierWait(stage, _mtlBlitEncoder);
 		}
 	}
@@ -676,14 +676,14 @@ void MVKCommandEncoder::encodeBarrierUpdates() {
 
 	if (_mtlComputeEncoder) {
 		MVKBarrierStage stage = commandUseToBarrierStage(_mtlComputeEncoderUse);
-		if (stage != kMVKBarrierStageCount) {
+		if (stage != kMVKBarrierStageNone) {
 			barrierUpdate(stage, _mtlComputeEncoder);
 		}
 	}
 
 	if (_mtlBlitEncoder) {
 		MVKBarrierStage stage = commandUseToBarrierStage(_mtlBlitEncoderUse);
-		if (stage != kMVKBarrierStageCount) {
+		if (stage != kMVKBarrierStageNone) {
 			barrierUpdate(stage, _mtlBlitEncoder);
 		}
 	}

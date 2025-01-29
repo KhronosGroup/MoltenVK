@@ -338,7 +338,8 @@ typedef enum {
 	kMVKBarrierStageFragment,
 	kMVKBarrierStageCompute,
 	kMVKBarrierStageCopy,
-	kMVKBarrierStageCount
+	kMVKBarrierStageNone,
+	kMVKBarrierStageCount = kMVKBarrierStageNone
 } MVKBarrierStage;
 
 /** Returns the Metal MTLColorWriteMask corresponding to the specified Vulkan VkColorComponentFlags. */
