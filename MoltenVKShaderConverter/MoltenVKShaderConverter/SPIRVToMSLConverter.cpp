@@ -53,6 +53,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionOptions::matches(const SPIRVToMSLConv
 	if (tessPatchKind != other.tessPatchKind) { return false; }
 	if (numTessControlPoints != other.numTessControlPoints) { return false; }
 	if (shouldFlipVertexY != other.shouldFlipVertexY) { return false; }
+	if (shouldFixupClipSpace != other.shouldFixupClipSpace) { return false; }
 	return true;
 }
 
@@ -302,6 +303,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 
 		auto scOpts = pMSLCompiler->get_common_options();
 		scOpts.vertex.flip_vert_y = shaderConfig.options.shouldFlipVertexY;
+		scOpts.vertex.fixup_clipspace = shaderConfig.options.shouldFixupClipSpace;
 		pMSLCompiler->set_common_options(scOpts);
 
 		// Add shader inputs and outputs

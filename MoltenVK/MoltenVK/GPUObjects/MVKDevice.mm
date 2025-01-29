@@ -577,6 +577,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				divisorFeatures->vertexAttributeInstanceRateZeroDivisor = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_CONTROL_FEATURES_EXT: {
+				auto* depthFeatures = (VkPhysicalDeviceDepthClipControlFeaturesEXT*)next;
+				depthFeatures->depthClipControl = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
 				auto* shaderIntFuncsFeatures = (VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL*)next;
 				shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
