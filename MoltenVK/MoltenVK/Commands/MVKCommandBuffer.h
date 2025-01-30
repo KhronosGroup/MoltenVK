@@ -48,11 +48,19 @@ typedef uint64_t MVKMTLCommandBufferID;
 #pragma mark -
 #pragma mark MVKCommandEncodingContext
 
+struct BarrierFenceSlots {
+	uint32_t updateDirtyBits = ~0;
+	int update[kMVKBarrierStageCount] = {};
+	int wait[kMVKBarrierStageCount][kMVKBarrierStageCount] = {};
+};
+
 /** Context for tracking information across multiple encodings. */
 typedef struct MVKCommandEncodingContext {
 	NSUInteger mtlVisibilityResultOffset = 0;
 	const MVKMTLBufferAllocation* visibilityResultBuffer = nullptr;
+	BarrierFenceSlots fenceSlots;
 
+	void syncFences(MVKDevice *device, id<MTLCommandBuffer> mtlCommandBuffer);
 	MVKRenderPass* getRenderPass() { return _renderPass; }
 	MVKFramebuffer* getFramebuffer() { return _framebuffer; }
 	void setRenderingContext(MVKRenderPass* renderPass, MVKFramebuffer* framebuffer);
@@ -410,6 +418,27 @@ public:
     /** Returns the command encoding pool. */
     MVKCommandEncodingPool* getCommandEncodingPool();
 
+	#pragma mark Barriers
+
+	/** Encode waits in the current command encoder for the stage that corresponds to given use. */
+	void encodeBarrierWaits(MVKCommandUse use);
+
+	/** Update fences for the currently executing pipeline stage. */
+	void encodeBarrierUpdates();
+
+	/** Insert a new execution barrier */
+	void setBarrier(uint64_t sourceStageMask, uint64_t destStageMask);
+
+	/** Encode waits for a specific stage in given encoder. */
+	void barrierWait(MVKBarrierStage stage, id<MTLRenderCommandEncoder> mtlEncoder, MTLRenderStages beforeStages);
+	void barrierWait(MVKBarrierStage stage, id<MTLBlitCommandEncoder> mtlEncoder);
+	void barrierWait(MVKBarrierStage stage, id<MTLComputeCommandEncoder> mtlEncoder);
+
+	/** Encode update for a specific stage in given encoder. */
+	void barrierUpdate(MVKBarrierStage stage, id<MTLRenderCommandEncoder> mtlEncoder, MTLRenderStages afterStages);
+	void barrierUpdate(MVKBarrierStage stage, id<MTLBlitCommandEncoder> mtlEncoder);
+	void barrierUpdate(MVKBarrierStage stage, id<MTLComputeCommandEncoder> mtlEncoder);
+
 #pragma mark Queries
 
     /** Begins an occlusion query. */
@@ -492,6 +521,7 @@ protected:
 	NSString* getMTLRenderCommandEncoderName(MVKCommandUse cmdUse);
 	template<typename T> void retainIfImmediatelyEncoding(T& mtlEnc);
 	template<typename T> void endMetalEncoding(T& mtlEnc);
+	id<MTLFence> getBarrierStageFence(MVKBarrierStage stage);
 
 	typedef struct GPUCounterQuery {
 		MVKGPUCounterQueryPool* queryPool = nullptr;

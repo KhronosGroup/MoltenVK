@@ -617,6 +617,8 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                 id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPD];
 				cmdEncoder->_cmdBuffer->setMetalObjectLabel(mtlRendEnc, mvkMTLRenderCommandEncoderLabel(commandUse));
 
+				cmdEncoder->barrierWait(kMVKBarrierStageCopy, mtlRendEnc, MTLRenderStageFragment);
+
                 float zIncr;
                 if (blitKey.srcMTLTextureType == MTLTextureType3D) {
                     // In this case, I need to interpolate along the third dimension manually.
@@ -678,7 +680,10 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
 
                 NSUInteger instanceCount = isLayeredBlit ? mtlRPD.renderTargetArrayLengthMVK : 1;
                 [mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangleStrip vertexStart: 0 vertexCount: kMVKBlitVertexCount instanceCount: instanceCount];
-                [mtlRendEnc popDebugGroup];
+
+				cmdEncoder->barrierUpdate(kMVKBarrierStageCopy, mtlRendEnc, MTLRenderStageFragment);
+
+				[mtlRendEnc popDebugGroup];
                 [mtlRendEnc endEncoding];
             }
         }
@@ -897,6 +902,10 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
 		[mtlRendEnc pushDebugGroup: @"vkCmdResolveImage"];
 		[mtlRendEnc popDebugGroup];
+
+		cmdEncoder->barrierWait(kMVKBarrierStageCopy, mtlRendEnc, MTLRenderStageFragment);
+		cmdEncoder->barrierUpdate(kMVKBarrierStageCopy, mtlRendEnc, MTLRenderStageFragment);
+
 		[mtlRendEnc endEncoding];
 	}
 }
@@ -1700,6 +1709,10 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
                 id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
 				cmdEncoder->_cmdBuffer->setMetalObjectLabel(mtlRendEnc, mtlRendEncName);
+
+				cmdEncoder->barrierWait(kMVKBarrierStageCopy, mtlRendEnc, MTLRenderStageFragment);
+				cmdEncoder->barrierUpdate(kMVKBarrierStageCopy, mtlRendEnc, MTLRenderStageFragment);
+
                 [mtlRendEnc endEncoding];
             } else {
                 for (uint32_t layer = layerStart; layer < layerEnd; layer++) {
@@ -1715,7 +1728,11 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
                     id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
 					cmdEncoder->_cmdBuffer->setMetalObjectLabel(mtlRendEnc, mtlRendEncName);
-                    [mtlRendEnc endEncoding];
+
+					cmdEncoder->barrierWait(kMVKBarrierStageCopy, mtlRendEnc, MTLRenderStageFragment);
+					cmdEncoder->barrierUpdate(kMVKBarrierStageCopy, mtlRendEnc, MTLRenderStageFragment);
+
+					[mtlRendEnc endEncoding];
                 }
             }
         }

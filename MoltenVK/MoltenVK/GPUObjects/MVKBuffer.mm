@@ -185,6 +185,7 @@ id<MTLBuffer> MVKBuffer::getMTLBuffer() {
 			_mtlBuffer = [_deviceMemory->getMTLHeap() newBufferWithLength: getByteCount()
 																  options: _deviceMemory->getMTLResourceOptions()
 																   offset: _deviceMemoryOffset];	// retained
+			getDevice()->makeResident(_mtlBuffer);
 			propagateDebugName();
 			return _mtlBuffer;
 		} else {
@@ -202,6 +203,7 @@ id<MTLBuffer> MVKBuffer::getMTLBufferCache() {
 
 		_mtlBufferCache = [getMTLDevice() newBufferWithLength: getByteCount()
 													  options: MTLResourceStorageModeManaged];    // retained
+		getDevice()->makeResident(_mtlBufferCache);
         flushToDevice(_deviceMemoryOffset, _byteCount);
     }
 #endif
@@ -268,8 +270,10 @@ void MVKBuffer::destroy() {
 void MVKBuffer::detachMemory() {
 	if (_deviceMemory) { _deviceMemory->removeBuffer(this); }
 	_deviceMemory = nullptr;
+	if (_mtlBuffer) getDevice()->removeResidency(_mtlBuffer);
 	[_mtlBuffer release];
 	_mtlBuffer = nil;
+	if (_mtlBufferCache) getDevice()->removeResidency(_mtlBufferCache);
 	[_mtlBufferCache release];
 	_mtlBufferCache = nil;
 }
@@ -327,6 +331,7 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
 		_mtlTexture = [mtlBuff newTextureWithDescriptor: mtlTexDesc
 												 offset: mtlBuffOffset
 											bytesPerRow: _mtlBytesPerRow];
+		getDevice()->makeResident(_mtlTexture);
 		propagateDebugName();
     }
     return _mtlTexture;
@@ -390,6 +395,7 @@ void MVKBufferView::destroy() {
 
 // Potentially called twice, from destroy() and destructor, so ensure everything is nulled out.
 void MVKBufferView::detachMemory() {
+	if (_mtlTexture) getDevice()->removeResidency(_mtlTexture);
 	[_mtlTexture release];
 	_mtlTexture = nil;
 }
