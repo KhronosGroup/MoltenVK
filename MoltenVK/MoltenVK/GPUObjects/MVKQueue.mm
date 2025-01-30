@@ -533,6 +533,12 @@ VkResult MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool sign
 	// to ensure a fresh one will be used by commands executing on any subsequent MTLCommandBuffers.
 	_encodingContext.visibilityResultBuffer = nullptr;
 
+	// If this is the last command buffer in the submission, we're losing the context and need synchronize
+	// current barrier fences to the ones at index 0, which will be what the next submision starts with.
+	if (isUsingMetalArgumentBuffers() && signalCompletion) {
+		_encodingContext.syncFences(getDevice(), _activeMTLCommandBuffer);
+	}
+
 	// If we need to signal completion, use getActiveMTLCommandBuffer() to ensure at least
 	// one MTLCommandBuffer is used, otherwise if this instance has no content, it will not
 	// finish(), signal the fence and semaphores, and be destroyed.

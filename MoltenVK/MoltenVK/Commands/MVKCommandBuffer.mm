@@ -52,6 +52,21 @@ void MVKCommandEncodingContext::setRenderingContext(MVKRenderPass* renderPass, M
 	_framebuffer = framebuffer;
 }
 
+void MVKCommandEncodingContext::syncFences(MVKDevice *device, id<MTLCommandBuffer> mtlCommandBuffer) {
+	if (!device->hasResidencySet()) return;
+
+	// Synchronize all stages to their fences at index 0, which will be waited on in the next command buffer.
+	for (int i = 0; i < kMVKBarrierStageCount; ++i) {
+		auto fenceIndex = fenceSlots.update[i];
+		if (!fenceIndex) continue;
+
+		auto encoder = [mtlCommandBuffer blitCommandEncoder];
+		[encoder waitForFence:device->getFence((MVKBarrierStage)i, fenceIndex)];
+		[encoder updateFence:device->getFence((MVKBarrierStage)i, 0)];
+		[encoder endEncoding];
+	}
+}
+
 // Release rendering objects in case this instance is destroyed before ending the current renderpass.
 MVKCommandEncodingContext::~MVKCommandEncodingContext() {
 	setRenderingContext(nullptr, nullptr);
@@ -198,6 +213,9 @@ void MVKCommandBuffer::checkDeferredEncoding() {
 			MVKCommandEncodingContext encodingContext;
 			MVKCommandEncoder encoder(this);
 			encoder.encode(_prefilledMTLCmdBuffer, &encodingContext);
+			if (isUsingMetalArgumentBuffers()) {
+				encodingContext.syncFences(getDevice(), _prefilledMTLCmdBuffer);
+			}
 
 			// Once encoded onto Metal, if this command buffer is not reusable, we don't need the
 			// MVKCommand instances anymore, so release them in order to reduce memory pressure.
@@ -392,19 +410,6 @@ void MVKCommandEncoder::encodeCommandsImpl(MVKCommand* command) {
 void MVKCommandEncoder::endEncoding() {
 	endCurrentMetalEncoding();
 	finishQueries();
-
-	// Synchronize all stages to their fences at index 0, which will be waited on in the next command buffer.
-	if (isUsingMetalArgumentBuffers()) {
-		for (int i = 0; i < kMVKBarrierStageCount; ++i) {
-			auto fenceIndex = _updateFenceSlots[i];
-			if (!fenceIndex) continue;
-
-			auto encoder = [_mtlCmdBuffer blitCommandEncoder];
-			[encoder waitForFence:getDevice()->getFence((MVKBarrierStage)i, fenceIndex)];
-			[encoder updateFence:getDevice()->getFence((MVKBarrierStage)i, 0)];
-			[encoder endEncoding];
-		}
-	}
 }
 
 void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
@@ -579,7 +584,7 @@ static MVKBarrierStage commandUseToBarrierStage(MVKCommandUse use) {
 void MVKCommandEncoder::barrierWait(MVKBarrierStage stage, id<MTLRenderCommandEncoder> mtlEncoder, MTLRenderStages beforeStages) {
 	if (!isUsingMetalArgumentBuffers() || !getDevice()->hasResidencySet()) return;
 	for (int i = 0; i < kMVKBarrierStageCount; ++i) {
-		auto fenceIndex = _waitFenceSlots[stage][i];
+		auto fenceIndex = _pEncodingContext->fenceSlots.wait[stage][i];
 		auto fence = _device->getFence((MVKBarrierStage)i, fenceIndex);
 		[mtlEncoder waitForFence:fence beforeStages:beforeStages];
 	}
@@ -588,7 +593,7 @@ void MVKCommandEncoder::barrierWait(MVKBarrierStage stage, id<MTLRenderCommandEn
 void MVKCommandEncoder::barrierWait(MVKBarrierStage stage, id<MTLBlitCommandEncoder> mtlEncoder) {
 	if (!isUsingMetalArgumentBuffers() || !getDevice()->hasResidencySet()) return;
 	for (int i = 0; i < kMVKBarrierStageCount; ++i) {
-		auto fenceIndex = _waitFenceSlots[stage][i];
+		auto fenceIndex = _pEncodingContext->fenceSlots.wait[stage][i];
 		auto fence = _device->getFence((MVKBarrierStage)i, fenceIndex);
 		[mtlEncoder waitForFence:fence];
 	}
@@ -597,7 +602,7 @@ void MVKCommandEncoder::barrierWait(MVKBarrierStage stage, id<MTLBlitCommandEnco
 void MVKCommandEncoder::barrierWait(MVKBarrierStage stage, id<MTLComputeCommandEncoder> mtlEncoder) {
 	if (!isUsingMetalArgumentBuffers() || !getDevice()->hasResidencySet()) return;
 	for (int i = 0; i < kMVKBarrierStageCount; ++i) {
-		auto fenceIndex = _waitFenceSlots[stage][i];
+		auto fenceIndex = _pEncodingContext->fenceSlots.wait[stage][i];
 		auto fence = _device->getFence((MVKBarrierStage)i, fenceIndex);
 		[mtlEncoder waitForFence:fence];
 	}
@@ -622,28 +627,30 @@ void MVKCommandEncoder::barrierUpdate(MVKBarrierStage stage, id<MTLComputeComman
 }
 
 id<MTLFence> MVKCommandEncoder::getBarrierStageFence(MVKBarrierStage stage) {
-	if (mvkAreAllFlagsEnabled(_updateFenceSlotDirtyBits, 1 << stage)) {
-		mvkDisableFlags(_updateFenceSlotDirtyBits, 1 << stage);
+	auto &fenceSlots = _pEncodingContext->fenceSlots;
+	if (mvkAreAllFlagsEnabled(fenceSlots.updateDirtyBits, 1 << stage)) {
+		mvkDisableFlags(fenceSlots.updateDirtyBits, 1 << stage);
 
-		_updateFenceSlots[stage] = (_updateFenceSlots[stage] + 1) % kMVKBarrierFenceCount;
-		if (_updateFenceSlots[stage] == 0) _updateFenceSlots[stage] = 1;
+		fenceSlots.update[stage] = (fenceSlots.update[stage] + 1) % kMVKBarrierFenceCount;
+		if (fenceSlots.update[stage] == 0) fenceSlots.update[stage] = 1;
 	}
 
-	return _device->getFence(stage, _updateFenceSlots[stage]);
+	return _device->getFence(stage, fenceSlots.update[stage]);
 }
 
 void MVKCommandEncoder::setBarrier(uint64_t sourceStageMask, uint64_t destStageMask) {
+	auto &fenceSlots = _pEncodingContext->fenceSlots;
 	for (int i = 0; i < kMVKBarrierStageCount; ++i) {
 	   if (!mvkIsAnyFlagEnabled(sourceStageMask, 1ull << i)) continue;
 
 		for (int j = 0; j < kMVKBarrierStageCount; ++j) {
 			if (!mvkIsAnyFlagEnabled(destStageMask, 1ull << j)) continue;
 
-			_waitFenceSlots[j][i] = _updateFenceSlots[i];
+			fenceSlots.wait[j][i] = fenceSlots.update[i];
 		}
 
-		_waitFenceSlots[i][i] = _updateFenceSlots[i];
-		mvkEnableFlags(_updateFenceSlotDirtyBits, 1 << i);
+		fenceSlots.wait[i][i] = fenceSlots.update[i];
+		mvkEnableFlags(fenceSlots.updateDirtyBits, 1 << i);
 	}
 }
 

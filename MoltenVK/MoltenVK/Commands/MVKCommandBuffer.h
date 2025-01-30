@@ -48,11 +48,19 @@ typedef uint64_t MVKMTLCommandBufferID;
 #pragma mark -
 #pragma mark MVKCommandEncodingContext
 
+struct BarrierFenceSlots {
+	uint32_t updateDirtyBits = ~0;
+	int update[kMVKBarrierStageCount] = {};
+	int wait[kMVKBarrierStageCount][kMVKBarrierStageCount] = {};
+};
+
 /** Context for tracking information across multiple encodings. */
 typedef struct MVKCommandEncodingContext {
 	NSUInteger mtlVisibilityResultOffset = 0;
 	const MVKMTLBufferAllocation* visibilityResultBuffer = nullptr;
+	BarrierFenceSlots fenceSlots;
 
+	void syncFences(MVKDevice *device, id<MTLCommandBuffer> mtlCommandBuffer);
 	MVKRenderPass* getRenderPass() { return _renderPass; }
 	MVKFramebuffer* getFramebuffer() { return _framebuffer; }
 	void setRenderingContext(MVKRenderPass* renderPass, MVKFramebuffer* framebuffer);
@@ -541,9 +549,6 @@ protected:
     uint32_t _flushCount;
 	MVKCommandUse _mtlComputeEncoderUse;
 	MVKCommandUse _mtlBlitEncoderUse;
-	uint32_t _updateFenceSlotDirtyBits = ~0;
-	int _updateFenceSlots[kMVKBarrierStageCount] = {};
-	int _waitFenceSlots[kMVKBarrierStageCount][kMVKBarrierStageCount] = {};
 	bool _isRenderingEntireAttachment;
 };
 
