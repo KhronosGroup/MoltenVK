@@ -835,7 +835,7 @@ void MVKCommandEncoder::endCurrentMetalEncoding() {
 id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandUse cmdUse, bool markCurrentComputeStateDirty) {
 	if ( !_mtlComputeEncoder ) {
 		endCurrentMetalEncoding();
-		_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoder];
+		_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoderWithDispatchType:MTLDispatchTypeConcurrent];
 		retainIfImmediatelyEncoding(_mtlComputeEncoder);
 		beginMetalComputeEncoding(cmdUse);
 		markCurrentComputeStateDirty = false;	// Already marked dirty above in endCurrentMetalEncoding()
