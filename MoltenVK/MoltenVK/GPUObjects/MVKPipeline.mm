@@ -2729,7 +2729,8 @@ namespace mvk {
 				opt.entryPointStage,
 				opt.tessPatchKind,
 				opt.numTessControlPoints,
-				opt.shouldFlipVertexY);
+				opt.shouldFlipVertexY,
+				opt.shouldFixupClipSpace);
 	}
 
 	template<class Archive>
