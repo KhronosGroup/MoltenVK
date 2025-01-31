@@ -128,6 +128,11 @@ struct MVKVertexBufferBinder {
 
 #pragma mark - Vulkan Command Encoder State Structs
 
+/** Tracks state that's shared across both render and compute bind points. */
+struct MVKVulkanSharedCommandEncoderState {
+	MVKSmallVector<uint8_t, 128> _pushConstants;
+};
+
 struct MVKBindingList {
 	MVKSmallVector<MVKMTLBufferBinding, 8> bufferBindings;
 	MVKSmallVector<MVKMTLTextureBinding, 8> textureBindings;
@@ -196,6 +201,13 @@ struct MVKStageResourceBindings {
 		bool operator!=(Buffer other) const { return !(*this == other); }
 	} buffers[kMVKMaxBufferCount];
 	id<MTLSamplerState> samplers[kMVKMaxSamplerCount];
+	MVKOnePerEnumEntry<uint8_t, MVKNonVolatileImplicitBuffer> implicitBufferIndices = {};
+	static Buffer ImplicitBuffer(MVKImplicitBuffer buffer) {
+		return { nil, static_cast<VkDeviceSize>(buffer) + 1 };
+	}
+	static Buffer ImplicitBuffer(MVKNonVolatileImplicitBuffer buffer) {
+		return ImplicitBuffer(static_cast<MVKImplicitBuffer>(buffer));
+	}
 	static Buffer NullBuffer() { return { nil, 0 }; }
 	static Buffer InvalidBuffer() { return { nil, ~0ull }; }
 };
@@ -345,6 +357,7 @@ struct MVKMetalComputeCommandEncoderState {
 
 /** Holds both Metal and Vulkan state for both compute and graphics. */
 class MVKCommandEncoderStateNew {
+	MVKVulkanSharedCommandEncoderState   _vkShared;
 	MVKVulkanGraphicsCommandEncoderState _vkGraphics;
 	MVKVulkanComputeCommandEncoderState  _vkCompute;
 	MVKMetalGraphicsCommandEncoderState  _mtlGraphics;
@@ -358,6 +371,8 @@ class MVKCommandEncoderStateNew {
 	CommandEncoderClass _mtlActiveEncoder;
 
 public:
+	/** Get a reference to the Vulkan state shared between graphics and compute.  Read-only, use methods on this class (which will invalidate associated Metal state) to modify. */
+	const MVKVulkanSharedCommandEncoderState&   vkShared()   const { return _vkShared; }
 	/** Get a reference to the Vulkan graphics state.  Read-only, use methods on this class (which will invalidate associated Metal state) to modify. */
 	const MVKVulkanGraphicsCommandEncoderState& vkGraphics() const { return _vkGraphics; }
 	/** Get a reference to the Vulkan compute state.  Read-only, use methods on this class (which will invalidate associated Metal state) to modify. */
@@ -398,6 +413,8 @@ public:
 	void bindGraphicsPipeline(MVKGraphicsPipeline* pipeline);
 	/** Bind the given compute pipeline to the Vulkan graphics state, invalidating any necessary resources. */
 	void bindComputePipeline(MVKComputePipeline* pipeline);
+	/** Bind the given push constants to the Vulkan state, invalidating any necessary resources. */
+	void pushConstants(uint32_t offset, uint32_t size, const void* data);
 	/** Bind the given descriptor sets to the Vulkan state, invalidating any necessary resources. */
 	void bindDescriptorSets(VkPipelineBindPoint bindPoint,
 	                        MVKPipelineLayout* layout,
@@ -420,6 +437,13 @@ public:
 		_mtlCompute.reset();
 		_mtlActiveEncoder = CommandEncoderClass::Compute;
 	}
+
+	/**
+	 * Call the given function on either the Metal graphics or compute state tracker, whichever one is active (or neither if neither is active).
+	 * `bindPoint` can be used to only call the function if the given Vulkan pipeline is being encoded to the active encoder.
+	 */
+	template <typename Fn>
+	void applyToActiveMTLState(VkPipelineBindPoint bindPoint, Fn&& fn);
 };
 
 #pragma mark -
@@ -546,6 +570,13 @@ protected:
 #pragma mark -
 #pragma mark MVKResourcesCommandEncoderState
 
+/** Updates a value at the given index in the given vector, resizing if needed. */
+template<class V>
+void updateImplicitBuffer(V &contents, uint32_t index, uint32_t value) {
+	if (index >= contents.size()) { contents.resize(index + 1); }
+	contents[index] = value;
+}
+
 /** Abstract resource state class for supporting encoder resources. */
 class MVKResourcesCommandEncoderState : public MVKCommandEncoderState {
 
@@ -652,13 +683,6 @@ protected:
 				}
 			}
 		}
-	}
-
-	// Updates a value at the given index in the given vector, resizing if needed.
-	template<class V>
-	void updateImplicitBuffer(V &contents, uint32_t index, uint32_t value) {
-		if (index >= contents.size()) { contents.resize(index + 1); }
-		contents[index] = value;
 	}
 
 	void assertMissingSwizzles(bool needsSwizzle, const char* stageName, MVKArrayRef<const MVKMTLTextureBinding> texBindings);
