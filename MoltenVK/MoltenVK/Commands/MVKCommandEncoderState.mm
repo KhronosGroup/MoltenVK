@@ -257,6 +257,24 @@ static void bindSampler(Encoder encoder, id<MTLSamplerState> sampler, NSUInteger
 	}
 }
 
+static void bindDescriptorSets(MVKBindingList (&target)[kMVKMaxDescriptorSetCount],
+                               MVKSmallVector<uint32_t, 8>& targetDynamicOffsets,
+                               MVKShaderStage stage,
+                               MVKPipelineLayout* layout,
+                               uint32_t firstSet, uint32_t setCount, MVKDescriptorSet*const* sets,
+                               uint32_t dynamicOffsetCount, const uint32_t* dynamicOffsets)
+{
+	[[maybe_unused]] const uint32_t* dynamicOffsetsEnd = dynamicOffsets + dynamicOffsetCount;
+	for (uint32_t i = 0; i < setCount; i++) {
+		uint32_t setIdx = firstSet + i;
+		target[setIdx].bufferBindings.clear();
+		target[setIdx].textureBindings.clear();
+		target[setIdx].samplerStateBindings.clear();
+		layout->appendDescriptorSetBindings(target[setIdx], targetDynamicOffsets, stage, setIdx, sets[i], dynamicOffsets);
+	}
+	assert(dynamicOffsets == dynamicOffsetsEnd && "All dynamic offsets should have been used, and no more than that");
+}
+
 #pragma mark - MVKVulkanGraphicsCommandEncoderState
 
 MVKArrayRef<const MTLSamplePosition> MVKVulkanGraphicsCommandEncoderState::getSamplePositions() const {
@@ -289,6 +307,41 @@ bool MVKVulkanGraphicsCommandEncoderState::isBresenhamLines() const {
 
 		default:
 			return false;
+	}
+}
+
+void MVKVulkanGraphicsCommandEncoderState::bindDescriptorSets(
+	MVKPipelineLayout* layout,
+	uint32_t firstSet,
+	uint32_t setCount,
+	MVKDescriptorSet*const* sets,
+	uint32_t dynamicOffsetCount,
+	const uint32_t* dynamicOffsets)
+{
+	for (uint32_t i = 0; i <= kMVKShaderStageFragment; i++) {
+		MVKShaderStage stage = static_cast<MVKShaderStage>(i);
+		::bindDescriptorSets(_descriptorSetBindings[stage], _dynamicOffsets[stage], stage,
+		                     layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
+	}
+	for (uint32_t i = 0; i < setCount; i++) {
+		_descriptorSets[firstSet + i] = sets[i];
+	}
+}
+
+#pragma mark - MVKVulkanComputeCommandEncoderState
+
+void MVKVulkanComputeCommandEncoderState::bindDescriptorSets(
+	MVKPipelineLayout* layout,
+	uint32_t firstSet,
+	uint32_t setCount,
+	MVKDescriptorSet*const* sets,
+	uint32_t dynamicOffsetCount,
+	const uint32_t* dynamicOffsets)
+{
+	::bindDescriptorSets(_descriptorSetBindings, _dynamicOffsets, kMVKShaderStageCompute,
+	                     layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
+	for (uint32_t i = 0; i < setCount; i++) {
+		_descriptorSets[firstSet + i] = sets[i];
 	}
 }
 
@@ -889,6 +942,22 @@ void MVKCommandEncoderStateNew::bindGraphicsPipeline(MVKGraphicsPipeline* pipeli
 
 void MVKCommandEncoderStateNew::bindComputePipeline(MVKComputePipeline* pipeline) {
 	_vkCompute._pipeline = pipeline;
+}
+
+void MVKCommandEncoderStateNew::bindDescriptorSets(
+	VkPipelineBindPoint bindPoint,
+	MVKPipelineLayout* layout,
+	uint32_t firstSet,
+	uint32_t setCount,
+	MVKDescriptorSet*const* sets,
+	uint32_t dynamicOffsetCount,
+	const uint32_t* dynamicOffsets)
+{
+	if (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
+		_vkGraphics.bindDescriptorSets(layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
+	} else if (bindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
+		_vkCompute.bindDescriptorSets(layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
+	}
 }
 
 void MVKCommandEncoderStateNew::bindIndexBuffer(const MVKIndexMTLBufferBinding& buffer) {
