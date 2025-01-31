@@ -145,6 +145,7 @@ struct MVKVulkanGraphicsCommandEncoderState {
 	MVKGraphicsPipeline* _pipeline = nullptr;
 	MVKRenderStateData _renderState;
 	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount];
+	MVKMTLBufferBinding _vertexBuffers[kMVKMaxBufferCount];
 	MVKIndexMTLBufferBinding _indexBuffer;
 	VkViewport _viewports[kMVKMaxViewportScissorCount];
 	VkRect2D _scissors[kMVKMaxViewportScissorCount];
@@ -423,6 +424,8 @@ public:
 	                        MVKDescriptorSet*const* sets,
 	                        uint32_t dynamicOffsetCount,
 	                        const uint32_t* dynamicOffsets);
+	/** Bind the given vertex buffers to the Vulkan state, invalidating any necessary resources. */
+	void bindVertexBuffers(uint32_t firstBinding, MVKArrayRef<const MVKMTLBufferBinding> buffers);
 	/** Bind the given index buffer to the Vulkan state, invalidating any necessary resources. */
 	void bindIndexBuffer(const MVKIndexMTLBufferBinding& buffer);
 

@@ -464,6 +464,40 @@ static void bindVulkanComputeToMetalCompute(
 	                   MVKResourceBinder::Compute());
 }
 
+template <bool DynamicStride>
+static void bindVertexBuffersTemplate(id<MTLCommandEncoder> encoder,
+                                      const MVKVulkanGraphicsCommandEncoderState& vkState,
+                                      MVKStageResourceBits& exists,
+                                      MVKStageResourceBindings& bindings,
+                                      const MVKVertexBufferBinder& RESTRICT binder)
+{
+	MVKGraphicsPipeline* pipeline = vkState._pipeline;
+	for (size_t vkidx : pipeline->getVkVertexBuffers()) {
+		const auto& buffer = vkState._vertexBuffers[vkidx];
+		uint32_t idx = pipeline->getMetalBufferIndexForVertexAttributeBinding(static_cast<uint32_t>(vkidx));
+		bindVertexBuffer<DynamicStride>(encoder, buffer.mtlBuffer, buffer.offset, buffer.stride,
+		                                idx, exists, bindings, binder);
+	}
+	for (const auto& xltdBuffer : pipeline->getTranslatedVertexBindings()) {
+		const auto& buffer = vkState._vertexBuffers[xltdBuffer.binding];
+		uint32_t idx = pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBuffer.translationBinding);
+		bindVertexBuffer<DynamicStride>(encoder, buffer.mtlBuffer, buffer.offset + xltdBuffer.translationOffset, buffer.stride,
+		                                idx, exists, bindings, binder);
+	}
+}
+
+static void bindVertexBuffers(id<MTLCommandEncoder> encoder,
+                              const MVKVulkanGraphicsCommandEncoderState& vkState,
+                              MVKStageResourceBits& exists,
+                              MVKStageResourceBindings& bindings,
+                              const MVKVertexBufferBinder& RESTRICT binder)
+{
+	if (vkState._pipeline->getDynamicStateFlags().has(MVKRenderStateFlag::VertexStride))
+		bindVertexBuffersTemplate<true> (encoder, vkState, exists, bindings, binder);
+	else
+		bindVertexBuffersTemplate<false>(encoder, vkState, exists, bindings, binder);
+}
+
 /** If the contents of an implicit buffer changes, call this to ensure that the contents will be rebound before the next draw. */
 static void invalidateImplicitBuffer(MVKStageResourceBindings& bindings, MVKStageResourceBits& ready, MVKNonVolatileImplicitBuffer buffer) {
 	uint32_t idx = bindings.implicitBufferIndices[buffer];
@@ -624,8 +658,10 @@ void MVKMetalGraphicsCommandEncoderState::bindVertexSampler(id<MTLRenderCommandE
 void MVKMetalGraphicsCommandEncoderState::changePipeline(MVKGraphicsPipeline* from, MVKGraphicsPipeline* to) {
 	_flags.remove(MVKMetalRenderEncoderStateFlag::PipelineReady);
 	// Everything that was static is now dirty
-	if (from)
+	if (from) {
 		markDirty(from->getStaticStateFlags());
+		_ready.vertex().buffers.clearAllIn(from->getMtlVertexBuffers());
+	}
 	if (to)
 		markDirty(to->getStaticStateFlags());
 }
@@ -1226,6 +1262,14 @@ void MVKCommandEncoderStateNew::bindDescriptorSets(
 	} else if (bindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
 		_vkCompute.bindDescriptorSets(layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
 	}
+}
+
+void MVKCommandEncoderStateNew::bindVertexBuffers(uint32_t firstBinding, MVKArrayRef<const MVKMTLBufferBinding> buffers) {
+	mvkCopy(&_vkGraphics._vertexBuffers[firstBinding], buffers.data(), buffers.size());
+	if (_mtlActiveEncoder == CommandEncoderClass::Graphics && _vkGraphics._pipeline && !_vkGraphics._pipeline->isTessellationPipeline())
+		_mtlGraphics._ready.vertex().buffers.clearAllIn(_vkGraphics._pipeline->getMtlVertexBuffers());
+	else if (_mtlActiveEncoder == CommandEncoderClass::Compute && _mtlCompute._vkStage == kMVKShaderStageVertex)
+		_mtlCompute._ready.buffers.clearAllIn(_vkGraphics._pipeline->getMtlVertexBuffers());
 }
 
 void MVKCommandEncoderStateNew::bindIndexBuffer(const MVKIndexMTLBufferBinding& buffer) {
