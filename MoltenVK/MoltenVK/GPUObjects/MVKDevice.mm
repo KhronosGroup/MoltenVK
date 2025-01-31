@@ -587,6 +587,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES_KHR: {
+				auto* terminateFeatures = (VkPhysicalDeviceShaderTerminateInvocationFeaturesKHR*)next;
+				terminateFeatures->shaderTerminateInvocation = true;
+				break;
+			}
 			default:
 				break;
 		}
