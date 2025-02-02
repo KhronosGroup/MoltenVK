@@ -55,7 +55,38 @@ private:
 /** A MVKMTLFunction indicating an invalid MTLFunction. The mtlFunction member is nil. */
 const MVKMTLFunction MVKMTLFunctionNull(nil, mvk::SPIRVToMSLConversionResultInfo(), MTLSizeMake(1, 1, 1));
 
-/** Wraps a single MTLLibrary. */
+typedef struct MVKShaderMacroValue {
+	union {
+		int8_t si8;
+		uint8_t ui8;
+		int16_t si16;
+		uint16_t ui16;
+		int32_t si32;
+		uint32_t ui32;
+		int64_t si64;
+		uint64_t ui64;
+		float f32;
+		double f64;
+	} value;
+	size_t size;
+
+	inline bool operator<(const MVKShaderMacroValue& other) const {
+		return value.ui64 < other.value.ui64 ||
+			   (value.ui64 == other.value.ui64 && size < other.size);
+	}
+} MVKShaderMacroValue;
+
+/**
+ * Wraps a single MTLLibrary or a set of MTLLibrary variants with macro-based specialization
+ *
+ * The latter case is used when Vulkan specialization constants cannot be realized with
+ * Metal function constants. Those specialization constants are turned into macros, and
+ * when specialized, we have to *recompile* the MTLLibrary from source.
+ *
+ * To keep the details transparent to users, when specialization on macro occurs,
+ * MVKShaderLibrary creates specialized variants (each one also a MVKShaderLibrary) behind
+ * the scene and cache them in a map according to the macro-value mapping.
+ */
 class MVKShaderLibrary : public MVKBaseDeviceObject {
 
 public:
@@ -84,9 +115,14 @@ public:
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 					 const mvk::SPIRVToMSLConversionResult& conversionResult);
 
+	/**
+	 * When specializationMacroDef is not null, creates a macro-specialized library
+	 * specializationMacroDef contains (specialization id, value) mappings, should be sorted
+	 */
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 					 const mvk::SPIRVToMSLConversionResultInfo& resultInfo,
-					 const MVKCompressor<std::string> compressedMSL);
+					 const MVKCompressor<std::string> compressedMSL,
+					 const std::vector<std::pair<uint32_t, MVKShaderMacroValue>>* specializationMacroDef = nullptr);
 
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 					 const void* mslCompiledCodeData,
@@ -108,7 +144,8 @@ protected:
 								  MVKShaderModule* shaderModule);
 	void handleCompilationError(NSError* err, const char* opDesc);
     MTLFunctionConstant* getFunctionConstant(NSArray<MTLFunctionConstant*>* mtlFCs, NSUInteger mtlFCID);
-	void compileLibrary(const std::string& msl);
+	void compileLibrary(const std::string& msl,
+						const std::vector<std::pair<uint32_t, MVKShaderMacroValue> >* specializationMacroDef = nullptr);
 	void compressMSL(const std::string& msl);
 	void decompressMSL(std::string& msl);
 	MVKCompressor<std::string>& getCompressedMSL() { return _compressedMSL; }
@@ -116,7 +153,12 @@ protected:
 	MVKVulkanAPIDeviceObject* _owner;
 	id<MTLLibrary> _mtlLibrary;
 	MVKCompressor<std::string> _compressedMSL;
-  mvk::SPIRVToMSLConversionResultInfo _shaderConversionResultInfo;
+	mvk::SPIRVToMSLConversionResultInfo _shaderConversionResultInfo;
+
+	/** When true, representing a library created with source, but never specialized */
+	bool _maySpecializeWithMacro;
+	/** Can only be populated when _maySpecializeWithMacro is true */
+	std::map<std::vector<std::pair<uint32_t, MVKShaderMacroValue>>, MVKShaderLibrary *> _specializationVariants;
 };
 
 
@@ -260,7 +302,8 @@ public:
 	 * nanoseconds, an error will be generated and logged, and nil will be returned.
 	 */
 	id<MTLLibrary> newMTLLibrary(NSString* mslSourceCode,
-								 const mvk::SPIRVToMSLConversionResultInfo& shaderConversionResults);
+								 const mvk::SPIRVToMSLConversionResultInfo& shaderConversionResults,
+								 const std::vector<std::pair<mvk::MSLSpecializationMacroInfo, MVKShaderMacroValue>>& macroDef);
 
 
 #pragma mark Construction
@@ -273,6 +316,7 @@ public:
 	~MVKShaderLibraryCompiler() override;
 
 protected:
+	NSNumber *getMacroValue(const mvk::MSLSpecializationMacroInfo& info, const MVKShaderMacroValue& value);
 	bool compileComplete(id<MTLLibrary> mtlLibrary, NSError *error);
 	void handleError() override;
 
