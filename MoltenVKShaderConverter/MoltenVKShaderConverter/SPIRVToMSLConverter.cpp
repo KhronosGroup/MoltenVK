@@ -556,15 +556,12 @@ void SPIRVToMSLConverter::populateSpecializationMacros(CompilerMSL* pMSLCompiler
 													   map<uint32_t, string>& specializationMacros)
 {
 	if (pMSLCompiler) {
-		uint32_t spec_macro_cnt = pMSLCompiler->get_constant_macro_count();
-		if (spec_macro_cnt == 0) {
-			return;
-		}
-		vector<uint32_t> spec_macro_ids(spec_macro_cnt);
-		pMSLCompiler->get_constant_macro_ids(spec_macro_ids.data());
-
-		for (uint32_t id: spec_macro_ids) {
-			specializationMacros[id] = pMSLCompiler->constant_value_macro_name(id);
+		auto spec_consts = pMSLCompiler->get_specialization_constants();
+		for (auto& c: spec_consts) {
+			uint32_t id = c.constant_id;
+			if (pMSLCompiler->specialization_constant_is_macro(id)) {
+				specializationMacros[id] = pMSLCompiler->constant_value_macro_name(id);
+			}
 		}
 	}
 }
