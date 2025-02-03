@@ -4896,13 +4896,13 @@ MVKBuffer* MVKDevice::removeBuffer(MVKBuffer* mvkBuff) {
 	return mvkBuff;
 }
 
-void MVKDevice::encodeGPUAddressableBuffers(MVKResourcesCommandEncoderState* rezEncState, MVKShaderStage stage) {
+void MVKDevice::encodeGPUAddressableBuffers(MVKCommandEncoder& mvkEncoder, MVKShaderStage stage) {
 	MTLResourceUsage mtlUsage = MTLResourceUsageRead | MTLResourceUsageWrite;
 	MTLRenderStages mtlRendStage = (stage == kMVKShaderStageFragment) ? MTLRenderStageFragment : MTLRenderStageVertex;
 
 	lock_guard<mutex> lock(_rezLock);
 	for (auto& buff : _gpuAddressableBuffers) {
-		rezEncState->encodeResourceUsage(stage, buff->getMTLBuffer(), mtlUsage, mtlRendStage);
+		mvkEncoder.getState().encodeResourceUsage(mvkEncoder, stage, buff->getMTLBuffer(), mtlUsage, mtlRendStage);
 	}
 }
 

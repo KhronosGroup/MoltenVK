@@ -59,7 +59,7 @@ void MVKCmdDispatch::encode(MVKCommandEncoder* cmdEncoder) {
 		}
 	}
 	[mtlEncoder dispatchThreadgroups: mtlThreadgroupCount.size
-			   threadsPerThreadgroup: cmdEncoder->_mtlThreadgroupSize];
+			   threadsPerThreadgroup: pipeline->getThreadgroupSize()];
 }
 
 
@@ -78,6 +78,6 @@ void MVKCmdDispatchIndirect::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->finalizeDispatchState();	// Ensure all updated state has been submitted to Metal
     [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) dispatchThreadgroupsWithIndirectBuffer: _mtlIndirectBuffer
 																				indirectBufferOffset: _mtlIndirectBufferOffset
-																			   threadsPerThreadgroup: cmdEncoder->_mtlThreadgroupSize];
+																			   threadsPerThreadgroup: cmdEncoder->getComputePipeline()->getThreadgroupSize()];
 }
 

@@ -342,17 +342,6 @@ void MVKGraphicsPipeline::getStages(MVKPiplineStages& stages) {
 }
 
 void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) {
-	if ( !_hasValidMTLPipelineStates ) { return; }
-
-    id<MTLRenderCommandEncoder> mtlCmdEnc = cmdEncoder->_mtlRenderEncoder;
-    if ( stage == kMVKGraphicsStageRasterization && !mtlCmdEnc ) { return; }   // Pre-renderpass. Come back later.
-
-	auto& cmdEncGRS = cmdEncoder->_graphicsResourcesState;
-	cmdEncGRS.markOverriddenBufferIndexesDirty();
-    cmdEncGRS.bindSwizzleBuffer(_swizzleBufferIndex, _needsVertexSwizzleBuffer, _needsTessCtlSwizzleBuffer, _needsTessEvalSwizzleBuffer, _needsFragmentSwizzleBuffer);
-    cmdEncGRS.bindBufferSizeBuffer(_bufferSizeBufferIndex, _needsVertexBufferSizeBuffer, _needsTessCtlBufferSizeBuffer, _needsTessEvalBufferSizeBuffer, _needsFragmentBufferSizeBuffer);
-	cmdEncGRS.bindDynamicOffsetBuffer(_dynamicOffsetBufferIndex, _needsVertexDynamicOffsetBuffer, _needsTessCtlDynamicOffsetBuffer, _needsTessEvalDynamicOffsetBuffer, _needsFragmentDynamicOffsetBuffer);
-    cmdEncGRS.bindViewRangeBuffer(_viewRangeBufferIndex, _needsVertexViewRangeBuffer, _needsFragmentViewRangeBuffer);
 }
 
 static const char vtxCompilerType[] = "Vertex stage pipeline for tessellation";
@@ -2363,15 +2352,6 @@ MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 #pragma mark MVKComputePipeline
 
 void MVKComputePipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t) {
-	if ( !_hasValidMTLPipelineStates ) { return; }
-
-	[cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setComputePipelineState: _mtlPipelineState];
-    cmdEncoder->_mtlThreadgroupSize = _mtlThreadgroupSize;
-
-	cmdEncoder->_computeResourcesState.markOverriddenBufferIndexesDirty();
-	cmdEncoder->_computeResourcesState.bindSwizzleBuffer(_swizzleBufferIndex, _needsSwizzleBuffer);
-	cmdEncoder->_computeResourcesState.bindBufferSizeBuffer(_bufferSizeBufferIndex, _needsBufferSizeBuffer);
-	cmdEncoder->_computeResourcesState.bindDynamicOffsetBuffer(_dynamicOffsetBufferIndex, _needsDynamicOffsetBuffer);
 }
 
 MVKComputePipeline::MVKComputePipeline(MVKDevice* device,

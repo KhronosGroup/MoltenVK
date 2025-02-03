@@ -1042,11 +1042,12 @@ void MVKCmdCopyBuffer<N>::encode(MVKCommandEncoder* cmdEncoder) {
 			copyInfo.size = (uint32_t)cpyRgn.size;
 
 			id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyBuffer, true);
+			MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
 			[mtlComputeEnc pushDebugGroup: @"vkCmdCopyBuffer"];
-			[mtlComputeEnc setComputePipelineState: cmdEncoder->getCommandEncodingPool()->getCmdCopyBufferBytesMTLComputePipelineState()];
-			[mtlComputeEnc setBuffer:srcMTLBuff offset: srcMTLBuffOffset atIndex: 0];
-			[mtlComputeEnc setBuffer:dstMTLBuff offset: dstMTLBuffOffset atIndex: 1];
-			[mtlComputeEnc setBytes: &copyInfo length: sizeof(copyInfo) atIndex: 2];
+			state.bindPipeline(mtlComputeEnc, cmdEncoder->getCommandEncodingPool()->getCmdCopyBufferBytesMTLComputePipelineState());
+			state.bindBuffer(mtlComputeEnc, srcMTLBuff, srcMTLBuffOffset, 0);
+			state.bindBuffer(mtlComputeEnc, dstMTLBuff, dstMTLBuffOffset, 1);
+			state.bindStructBytes(mtlComputeEnc, &copyInfo, 2);
 			[mtlComputeEnc dispatchThreadgroups: MTLSizeMake(1, 1, 1) threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
 			[mtlComputeEnc popDebugGroup];
 		} else {
@@ -1227,11 +1228,12 @@ void MVKCmdBufferImageCopy<N>::encode(MVKCommandEncoder* cmdEncoder) {
             info.offset = cpyRgn.imageOffset;
             info.extent = cpyRgn.imageExtent;
             bool needsTempBuff = mipLevel != 0;
-			id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(cmdUse, false);  // Compute state will be marked dirty on next compute encoder after Blit encoder below.
+			id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(cmdUse, false);
+			MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
             id<MTLComputePipelineState> mtlComputeState = cmdEncoder->getCommandEncodingPool()->getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(needsTempBuff);
             [mtlComputeEnc pushDebugGroup: @"vkCmdCopyBufferToImage"];
-            [mtlComputeEnc setComputePipelineState: mtlComputeState];
-            [mtlComputeEnc setBuffer: mtlBuffer offset: mtlBuffOffset atIndex: 0];
+            state.bindPipeline(mtlComputeEnc, mtlComputeState);
+            state.bindBuffer(mtlComputeEnc, mtlBuffer, mtlBuffOffset, 0);
             MVKBuffer* tempBuff;
             if (needsTempBuff) {
                 NSUInteger bytesPerDestRow = pixFmts->getBytesPerRow(mtlTexture.pixelFormat, info.extent.width);
@@ -1250,9 +1252,9 @@ void MVKCmdBufferImageCopy<N>::encode(MVKCommandEncoder* cmdEncoder) {
                 info.destRowStrideHigh = bytesPerDestRow >> 32;
                 info.destDepthStride = bytesPerDestImg & 0xffffffff;
                 info.destDepthStrideHigh = bytesPerDestImg >> 32;
-                [mtlComputeEnc setBuffer: mtlBuffer offset: mtlBuffOffset atIndex: 1];
+                state.bindBuffer(mtlComputeEnc, mtlBuffer, mtlBuffOffset, 1);
             } else {
-                [mtlComputeEnc setTexture: mtlTexture atIndex: 0];
+                state.bindTexture(mtlComputeEnc, mtlTexture, 0);
             }
             cmdEncoder->setComputeBytes(mtlComputeEnc, &info, sizeof(info), 2);
 
@@ -1548,10 +1550,10 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	state.writeDepth         = rpsKey.isAttachmentUsed(kMVKClearAttachmentDepthIndex);
 	state.writeStencil       = rpsKey.isAttachmentUsed(kMVKClearAttachmentStencilIndex);
 	cmdEncoder->getMtlGraphics().prepareHelperDraw(mtlRendEnc, *cmdEncoder, state);
-    cmdEncoder->setVertexBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0, true);
-    cmdEncoder->setFragmentBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0, true);
-    cmdEncoder->setVertexBytes(mtlRendEnc, vertices, vtxCnt * sizeof(vertices[0]),
-							   cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex), true);
+	cmdEncoder->setVertexBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0);
+	cmdEncoder->setFragmentBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0);
+	cmdEncoder->setVertexBytes(mtlRendEnc, vertices, vtxCnt * sizeof(vertices[0]),
+	                           cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex));
     [mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangle vertexStart: 0 vertexCount: vtxCnt];
     [mtlRendEnc popDebugGroup];
 
@@ -1571,9 +1573,6 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 			cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
 		}
 	}
-
-	// Return to the previous rendering state on the next render activity
-	cmdEncoder->_graphicsResourcesState.markDirty();
 }
 
 template <size_t N>
@@ -1661,10 +1660,11 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
             const bool isTextureArray = _image->getLayerCount() != 1u;
             id<MTLComputePipelineState> mtlClearState = cmdEncoder->getCommandEncodingPool()->getCmdClearColorImageMTLComputePipelineState(pixFmts->getFormatType(_image->getVkFormat()), isTextureArray);
             id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseClearColorImage, true);
+            MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
             [mtlComputeEnc pushDebugGroup: @"vkCmdClearColorImage"];
-            [mtlComputeEnc setComputePipelineState: mtlClearState];
-            [mtlComputeEnc setTexture: imgMTLTex atIndex: 0];
-            cmdEncoder->setComputeBytes(mtlComputeEnc, &_clearValue, sizeof(_clearValue), 0);
+            state.bindPipeline(mtlComputeEnc, mtlClearState);
+            state.bindTexture(mtlComputeEnc, imgMTLTex, 0);
+            state.bindStructBytes(mtlComputeEnc, &_clearValue, 0);
             MTLSize gridSize = mvkMTLSizeFromVkExtent3D(_image->getExtent3D());
             MTLSize tgSize = MTLSizeMake(mtlClearState.threadExecutionWidth, 1, 1);
             if (mtlFeats.nonUniformThreadgroups) {
@@ -1835,10 +1835,11 @@ void MVKCmdFillBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 	NSUInteger tgCount = _wordCount / tgWidth;
 
 	id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseFillBuffer, true);
+	MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
 	[mtlComputeEnc pushDebugGroup: @"vkCmdFillBuffer"];
-	[mtlComputeEnc setComputePipelineState: cps];
-	[mtlComputeEnc setBytes: &_dataValue length: sizeof(_dataValue) atIndex: 1];
-	[mtlComputeEnc setBuffer: dstMTLBuff offset: dstMTLBuffOffset atIndex: 0];
+	state.bindPipeline(mtlComputeEnc, cps);
+	state.bindStructBytes(mtlComputeEnc, &_dataValue, 1);
+	state.bindBuffer(mtlComputeEnc, dstMTLBuff, dstMTLBuffOffset, 0);
 
 	// Run as many full threadgroups as will fit into the buffer content.
 	if (tgCount > 0) {
@@ -1852,7 +1853,7 @@ void MVKCmdFillBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 	if (remainderWordCount > 0) {
 		if (tgCount > 0) {		// If we've already written full threadgroups, skip ahead to unwritten content
 			dstMTLBuffOffset += tgCount * tgWidth * sizeof(_dataValue);
-			[mtlComputeEnc setBufferOffset: dstMTLBuffOffset atIndex: 0];
+			state.bindBuffer(mtlComputeEnc, dstMTLBuff, dstMTLBuffOffset, 0);
 		}
 		[mtlComputeEnc dispatchThreadgroups: MTLSizeMake(1, 1, 1)
 					  threadsPerThreadgroup: MTLSizeMake(remainderWordCount, 1, 1)];

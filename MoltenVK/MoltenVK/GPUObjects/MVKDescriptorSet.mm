@@ -136,9 +136,6 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
 	if (!cmdEncoder) { clearConfigurationResult(); }
 	if (_isPushDescriptorLayout ) { return; }
 
-	if (cmdEncoder) { cmdEncoder->bindDescriptorSet(pipelineBindPoint, descSetIndex,
-													descSet, dslMTLRezIdxOffsets,
-													dynamicOffsets, dynamicOffsetIndex); }
 	if ( !isUsingMetalArgumentBuffers() ) {
 		for (auto& dslBind : _bindings) {
 			dslBind.bind(cmdEncoder, pipelineBindPoint, descSet, dslMTLRezIdxOffsets, dynamicOffsets, dynamicOffsetIndex);
@@ -645,10 +642,10 @@ void MVKDescriptorSet::setBufferSize(uint32_t descIdx, uint32_t value) {
 	}
 }
 
-void MVKDescriptorSet::encodeAuxBufferUsage(MVKResourcesCommandEncoderState* rezEncState, MVKShaderStage stage) {
+void MVKDescriptorSet::encodeAuxBufferUsage(MVKCommandEncoder& mvkEncoder, MVKShaderStage stage) {
 	if (_bufferSizesBuffer) {
 		MTLRenderStages mtlRendStages = MTLRenderStageVertex | MTLRenderStageFragment;
-		rezEncState->encodeResourceUsage(stage, _bufferSizesBuffer->_mtlBuffer, MTLResourceUsageRead, mtlRendStages);
+		mvkEncoder.getState().encodeResourceUsage(mvkEncoder, stage, _bufferSizesBuffer->_mtlBuffer, MTLResourceUsageRead, mtlRendStages);
 	}
 }
 

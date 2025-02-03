@@ -19,6 +19,7 @@ MoltenVK 1.4.1
 Released TBD
 
 - .
+- New state tracker implementation.
 - Update to latest SPIRV-Cross:
 
 

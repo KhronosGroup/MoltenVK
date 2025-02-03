@@ -139,6 +139,11 @@ struct MVKBindingList {
 	MVKSmallVector<MVKMTLSamplerStateBinding, 8> samplerStateBindings;
 };
 
+struct MVKDescriptorResourceUsage {
+	MVKBitArray dirtyDescriptors[kMVKMaxDescriptorSetCount];
+	MVKStaticBitSet<kMVKMaxDescriptorSetCount> dirtyAuxBuffers;
+};
+
 /** Tracks the state of a Vulkan render encoder. */
 struct MVKVulkanGraphicsCommandEncoderState {
 	MVKPipelineLayout* _layout = nullptr;
@@ -246,8 +251,8 @@ struct MVKHelperDrawState {
 	bool writeStencil;
 };
 
-/** Tracks the state of a Metal render encoder. */
-struct MVKMetalGraphicsCommandEncoderState {
+/** Subset of MVKMetalGraphicsCommandEncoderState that can be reset with memset. */
+struct MVKMetalGraphicsCommandEncoderStateQuickReset {
 	/**
 	 * If clear, ignore the binding in `bindings` and assume the Metal default value (usually nil / zero).
 	 * Allows us to quickly reset to the state of a fresh command encoder without having to zero all the bindings.
@@ -273,9 +278,13 @@ struct MVKMetalGraphicsCommandEncoderState {
 	uint8_t _frontFace;
 	MVKPolygonMode _polygonMode;
 
-	// Everything above here can be reset by a memset from the beginning of the struct to offsetof(struct, MEMSET_RESET_LINE)
+	// Memset 0 to here to clear.
+	// DO NOT memset sizeof(*this), or you'll clear padding, which is used by subclasses.
 	struct {} MEMSET_RESET_LINE;
+};
 
+/** Tracks the state of a Metal render encoder. */
+struct MVKMetalGraphicsCommandEncoderState : public MVKMetalGraphicsCommandEncoderStateQuickReset {
 	uint8_t _primitiveType;
 	uint8_t _numSamplePositions = 0;
 	MVKDepthBias _depthBias;
@@ -285,10 +294,13 @@ struct MVKMetalGraphicsCommandEncoderState {
 	MVKMTLDepthStencilDescriptorData _depthStencil;
 
 	MVKOnePerGraphicsStage<MVKStageResourceBindings> _bindings;
+	MVKDescriptorResourceUsage _descriptorSetResources;
 
 	VkViewport _viewports[kMVKMaxViewportScissorCount];
 	VkRect2D _scissors[kMVKMaxViewportScissorCount];
 	MTLSamplePosition _samplePositions[kMVKMaxSampleCount];
+
+	std::unordered_map<id<MTLResource>, MTLRenderStages> _renderUsageStages;
 
 	MTLPrimitiveType getPrimitiveType() const { return static_cast<MTLPrimitiveType>(_primitiveType); }
 
@@ -312,8 +324,7 @@ struct MVKMetalGraphicsCommandEncoderState {
 	template <typename T> void bindVertexStructBytes(id<MTLComputeCommandEncoder> encoder, const T& t, NSUInteger index) { bindVertexBytes(encoder, &t, sizeof(T), index); }
 	void bindStateData(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKRenderStateData& data, MVKRenderStateFlags flags, const VkViewport* viewports, const VkRect2D* scissors);
 	void bindState(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanGraphicsCommandEncoderState& vkState);
-	void bindResources(id<MTLRenderCommandEncoder> encoder, const MVKVulkanGraphicsCommandEncoderState& vkState);
-	void prepareDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanGraphicsCommandEncoderState& vkState);
+	void prepareDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanGraphicsCommandEncoderState& vkState, const MVKVulkanSharedCommandEncoderState& vkShared);
 	void prepareHelperDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKHelperDrawState& state);
 };
 
@@ -342,14 +353,16 @@ struct MVKMetalComputeCommandEncoderState {
 	MVKShaderStage _vkStage = kMVKShaderStageCount;
 
 	MVKStageResourceBindings _bindings;
+	MVKDescriptorResourceUsage _descriptorSetResources;
 
+	void bindPipeline(id<MTLComputeCommandEncoder> encoder, id<MTLComputePipelineState> pipeline);
 	void bindBuffer(id<MTLComputeCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index);
 	void bindBytes(id<MTLComputeCommandEncoder> encoder, const void* data, size_t size, NSUInteger index);
 	void bindTexture(id<MTLComputeCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index);
 	void bindSampler(id<MTLComputeCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index);
 	template <typename T> void bindStructBytes(id<MTLComputeCommandEncoder> encoder, const T* t, NSUInteger index) { bindBytes(encoder, t, sizeof(T), index); }
-	void prepareComputeDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanComputeCommandEncoderState& vkState);
-	void prepareRenderDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanGraphicsCommandEncoderState& vkState, MVKShaderStage stage);
+	void prepareComputeDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanComputeCommandEncoderState& vkState, const MVKVulkanSharedCommandEncoderState& vkShared);
+	void prepareRenderDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanGraphicsCommandEncoderState& vkState, const MVKVulkanSharedCommandEncoderState& vkShared, MVKShaderStage stage);
 
 	void reset();
 };
@@ -398,17 +411,17 @@ public:
 	bool needsMetalRenderPassRestart();
 	/** Bind everything needed to render with the current Vulkan graphics state on the current Metal graphics state. */
 	void prepareDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder) {
-		_mtlGraphics.prepareDraw(encoder, mvkEncoder, _vkGraphics);
+		_mtlGraphics.prepareDraw(encoder, mvkEncoder, _vkGraphics, _vkShared);
 	}
 	/** Bind everything needed to dispatch a compute-based emulation of the given stage of the current Vulkan graphics state on the current Metal compute state. */
 	void prepareRenderDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, MVKGraphicsStage stage) {
 		assert(stage == kMVKGraphicsStageVertex || stage == kMVKGraphicsStageTessControl);
 		MVKShaderStage shaderStage = stage == kMVKGraphicsStageVertex ? kMVKShaderStageVertex : kMVKShaderStageTessCtl;
-		_mtlCompute.prepareRenderDispatch(encoder, mvkEncoder, _vkGraphics, shaderStage);
+		_mtlCompute.prepareRenderDispatch(encoder, mvkEncoder, _vkGraphics, _vkShared, shaderStage);
 	}
 	/** Bind everything needed to dispatch a Vulkan compute shader on the current Metal compute state. */
 	void prepareComputeDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder) {
-		_mtlCompute.prepareComputeDispatch(encoder, mvkEncoder, _vkCompute);
+		_mtlCompute.prepareComputeDispatch(encoder, mvkEncoder, _vkCompute, _vkShared);
 	}
 	/** Bind the given graphics pipeline to the Vulkan graphics state, invalidating any necessary resources. */
 	void bindGraphicsPipeline(MVKGraphicsPipeline* pipeline);
@@ -428,6 +441,8 @@ public:
 	void bindVertexBuffers(uint32_t firstBinding, MVKArrayRef<const MVKMTLBufferBinding> buffers);
 	/** Bind the given index buffer to the Vulkan state, invalidating any necessary resources. */
 	void bindIndexBuffer(const MVKIndexMTLBufferBinding& buffer);
+	void offsetZeroDivisorVertexBuffers(MVKCommandEncoder& mvkEncoder, MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);
+	void encodeResourceUsage(MVKCommandEncoder& mvkEncoder, MVKShaderStage stage, id<MTLResource> mtlResource, MTLResourceUsage mtlUsage, MTLRenderStages mtlStages);
 
 	/** Begin tracking for a fresh MTLRenderCommandEncoder. */
 	void beginGraphicsEncoding(VkSampleCountFlags sampleCount) {

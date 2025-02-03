@@ -727,8 +727,7 @@ public:
 #pragma mark Operations
 
 	/** Tell the GPU to be ready to use any of the GPU-addressable buffers. */
-	void encodeGPUAddressableBuffers(MVKResourcesCommandEncoderState* rezEncState,
-										 MVKShaderStage stage);
+	void encodeGPUAddressableBuffers(MVKCommandEncoder& mvkEncoder, MVKShaderStage stage);
 
 	/** Adds the specified host semaphore to be woken upon device loss. */
 	void addSemaphore(MVKSemaphoreImpl* sem4);
