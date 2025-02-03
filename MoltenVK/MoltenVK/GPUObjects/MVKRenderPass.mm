@@ -423,9 +423,10 @@ void MVKRenderSubpass::resolveUnresolvableAttachments(MVKCommandEncoder* cmdEnco
 				const bool isTextureArray = raImgView->getImage()->getLayerCount() != 1u;
 				id<MTLComputePipelineState> mtlRslvState = cmdEncoder->getCommandEncodingPool()->getCmdResolveColorImageMTLComputePipelineState(mvkFmtType, isTextureArray);
 				id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseResolveImage);
-				[mtlComputeEnc setComputePipelineState: mtlRslvState];
-				[mtlComputeEnc setTexture: raImgView->getMTLTexture() atIndex: 0];
-				[mtlComputeEnc setTexture: caImgView->getMTLTexture() atIndex: 1];
+				MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
+				state.bindPipeline(mtlComputeEnc, mtlRslvState);
+				state.bindTexture(mtlComputeEnc, raImgView->getMTLTexture(), 0);
+				state.bindTexture(mtlComputeEnc, caImgView->getMTLTexture(), 1);
 				MTLSize gridSize = mvkMTLSizeFromVkExtent3D(raImgView->getExtent3D());
 				MTLSize tgSize = MTLSizeMake(mtlRslvState.threadExecutionWidth, 1, 1);
 				if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
