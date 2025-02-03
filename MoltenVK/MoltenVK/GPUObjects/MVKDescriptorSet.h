@@ -212,7 +212,7 @@ public:
 	MVKMetalArgumentBuffer& getMetalArgumentBuffer() { return _argumentBuffer; }
 
 	/** Encode the buffer sizes auxiliary buffer to the GPU. */
-	void encodeAuxBufferUsage(MVKResourcesCommandEncoderState* rezEncState, MVKShaderStage stage);
+	void encodeAuxBufferUsage(MVKCommandEncoder& mvkEncoder, MVKShaderStage stage);
 
 	MVKDescriptorSet(MVKDescriptorPool* pool);
 
