@@ -309,7 +309,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
                     if (_applyToStage[i]) {
                         bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
-                        BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
+//                        BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
                     }
                 }
                 break;
@@ -323,7 +323,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
                     if (_applyToStage[i]) {
                         bb.index = mtlIdxs.stages[i].bufferIndex;
-                        BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
+//                        BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
                     }
                 }
                 break;
@@ -348,10 +348,10 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                     for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
                         if (_applyToStage[i]) {
                             tb.index = mtlIdxs.stages[i].textureIndex + rezIdx + planeIndex;
-                            BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindTexture, pipelineBindPoint, i, tb);
+//                            BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindTexture, pipelineBindPoint, i, tb);
                             if (_info.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && !getMetalFeatures().nativeTextureAtomics) {
                                 bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
-                                BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
+//                                BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
                             }
                         }
                     }
@@ -373,10 +373,10 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
                     if (_applyToStage[i]) {
                         tb.index = mtlIdxs.stages[i].textureIndex + rezIdx;
-                        BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindTexture, pipelineBindPoint, i, tb);
+//                        BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindTexture, pipelineBindPoint, i, tb);
                         if (_info.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER && !getMetalFeatures().nativeTextureAtomics) {
                             bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
-                            BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
+//                            BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
                         }
                     }
                 }
@@ -395,7 +395,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
                     if (_applyToStage[i]) {
                         sb.index = mtlIdxs.stages[i].samplerIndex + rezIdx;
-                        BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindSamplerState, pipelineBindPoint, i, sb);
+//                        BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindSamplerState, pipelineBindPoint, i, sb);
                     }
                 }
                 break;
@@ -420,8 +420,8 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                         if (_applyToStage[i]) {
                             tb.index = mtlIdxs.stages[i].textureIndex + rezIdx + planeIndex;
                             sb.index = mtlIdxs.stages[i].samplerIndex + rezIdx;
-                            BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindTexture, pipelineBindPoint, i, tb);
-                            BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindSamplerState, pipelineBindPoint, i, sb);
+//                            BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindTexture, pipelineBindPoint, i, tb);
+//                            BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindSamplerState, pipelineBindPoint, i, sb);
                         }
                     }
                 }
@@ -852,7 +852,7 @@ void MVKBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
 		if (stages[i]) {
 			bb.index = mtlIndexes.stages[i].bufferIndex + elementIndex;
-			BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
+//			BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
 		}
 	}
 }
@@ -905,11 +905,11 @@ void MVKBufferDescriptor::reset() {
 	MVKDescriptor::reset();
 }
 
-void MVKBufferDescriptor::encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+void MVKBufferDescriptor::encodeResourceUsage(MVKCommandEncoder& mvkEncoder,
 											  MVKDescriptorSetLayoutBinding* mvkDSLBind,
 											  MVKShaderStage stage) {
 	id<MTLBuffer> mtlBuffer = _mvkBuffer ? _mvkBuffer->getMTLBuffer() : nil;
-	rezEncState->encodeResourceUsage(stage, mtlBuffer, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
+	mvkEncoder.getState().encodeResourceUsage(mvkEncoder, stage, mtlBuffer, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 }
 
 
@@ -951,7 +951,7 @@ void MVKInlineUniformBlockDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
 		if (stages[i]) {
 			bb.index = mtlIndexes.stages[i].bufferIndex;
-			BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
+//			BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
 		}
 	}
 }
@@ -1011,11 +1011,11 @@ uint32_t MVKInlineUniformBlockDescriptor::readBytes(MVKDescriptorSetLayoutBindin
 	return dataLen;
 }
 
-void MVKInlineUniformBlockDescriptor::encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+void MVKInlineUniformBlockDescriptor::encodeResourceUsage(MVKCommandEncoder& mvkEncoder,
 														  MVKDescriptorSetLayoutBinding* mvkDSLBind,
 														  MVKShaderStage stage) {
 	id<MTLBuffer> mtlBuffer = _mvkMTLBufferAllocation ? _mvkMTLBufferAllocation->_mtlBuffer : nil;
-	rezEncState->encodeResourceUsage(stage, mtlBuffer, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
+	mvkEncoder.getState().encodeResourceUsage(mvkEncoder, stage, mtlBuffer, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 }
 
 void MVKInlineUniformBlockDescriptor::reset() {
@@ -1096,10 +1096,10 @@ void MVKImageDescriptor::bind(MVKCommandEncoder* cmdEncoder,
         for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
             if (stages[i]) {
                 tb.index = mtlIndexes.stages[i].textureIndex + elementIndex + planeIndex;
-                BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindTexture, pipelineBindPoint, i, tb);
+//                BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindTexture, pipelineBindPoint, i, tb);
                 if (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && !cmdEncoder->getMetalFeatures().nativeTextureAtomics) {
                     bb.index = mtlIndexes.stages[i].bufferIndex + elementIndex + planeIndex;
-                    BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
+//                    BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
                 }
             }
         }
@@ -1157,20 +1157,20 @@ void MVKImageDescriptor::read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 	imgInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 }
 
-void MVKImageDescriptor::encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+void MVKImageDescriptor::encodeResourceUsage(MVKCommandEncoder& mvkEncoder,
 											 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 											 MVKShaderStage stage) {
 	VkDescriptorType descType = getDescriptorType();
 	uint8_t planeCount = (_mvkImageView) ? _mvkImageView->getPlaneCount() : 1;
 	for (uint8_t planeIndex = 0; planeIndex < planeCount; planeIndex++) {
 		id<MTLTexture> mtlTexture = _mvkImageView ? _mvkImageView->getMTLTexture(planeIndex) : nil;
-		rezEncState->encodeResourceUsage(stage, mtlTexture, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
+		mvkEncoder.getState().encodeResourceUsage(mvkEncoder, stage, mtlTexture, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 
 		if (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && !mvkDSLBind->getMetalFeatures().nativeTextureAtomics) {
 			id<MTLTexture> mtlTex = mtlTexture.parentTexture ? mtlTexture.parentTexture : mtlTexture;
 			id<MTLBuffer> mtlBuff = mtlTex.buffer;
 			if (mtlBuff) {
-				rezEncState->encodeResourceUsage(stage, mtlBuff, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
+				mvkEncoder.getState().encodeResourceUsage(mvkEncoder, stage, mtlBuff, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 			}
 		}
 	}
@@ -1224,7 +1224,7 @@ void MVKSamplerDescriptorMixin::bind(MVKCommandEncoder* cmdEncoder,
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
 		if (stages[i]) {
 			sb.index = mtlIndexes.stages[i].samplerIndex + elementIndex;
-			BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindSamplerState, pipelineBindPoint, i, sb);
+//			BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindSamplerState, pipelineBindPoint, i, sb);
 		}
 	}
 }
@@ -1375,10 +1375,10 @@ void MVKCombinedImageSamplerDescriptor::read(MVKDescriptorSetLayoutBinding* mvkD
 	MVKSamplerDescriptorMixin::read(mvkDSLBind, mvkDescSet, dstIndex, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
 }
 
-void MVKCombinedImageSamplerDescriptor::encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+void MVKCombinedImageSamplerDescriptor::encodeResourceUsage(MVKCommandEncoder& mvkEncoder,
 															MVKDescriptorSetLayoutBinding* mvkDSLBind,
 															MVKShaderStage stage) {
-	MVKImageDescriptor::encodeResourceUsage(rezEncState, mvkDSLBind, stage);
+	MVKImageDescriptor::encodeResourceUsage(mvkEncoder, mvkDSLBind, stage);
 }
 
 void MVKCombinedImageSamplerDescriptor::reset() {
@@ -1438,10 +1438,10 @@ void MVKTexelBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
 		if (stages[i]) {
 			tb.index = mtlIndexes.stages[i].textureIndex + elementIndex;
-			BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindTexture, pipelineBindPoint, i, tb);
+//			BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindTexture, pipelineBindPoint, i, tb);
 			if (descType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER && !cmdEncoder->getMetalFeatures().nativeTextureAtomics) {
 				bb.index = mtlIndexes.stages[i].bufferIndex + elementIndex;
-				BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
+//				BIND_GRAPHICS_OR_COMPUTE(cmdEncoder, bindBuffer, pipelineBindPoint, i, bb);
 			}
 		}
 	}
@@ -1489,17 +1489,17 @@ void MVKTexelBufferDescriptor::read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 	pTexelBufferView[dstIndex] = (VkBufferView)_mvkBufferView;
 }
 
-void MVKTexelBufferDescriptor::encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+void MVKTexelBufferDescriptor::encodeResourceUsage(MVKCommandEncoder& mvkEncoder,
 												   MVKDescriptorSetLayoutBinding* mvkDSLBind,
 												   MVKShaderStage stage) {
 	VkDescriptorType descType = getDescriptorType();
 	id<MTLTexture> mtlTexture = _mvkBufferView ? _mvkBufferView->getMTLTexture() : nil;
-	rezEncState->encodeResourceUsage(stage, mtlTexture, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
+	mvkEncoder.getState().encodeResourceUsage(mvkEncoder, stage, mtlTexture, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 
 	if (descType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER && !mvkDSLBind->getMetalFeatures().nativeTextureAtomics) {
 		id<MTLBuffer> mtlBuff = mtlTexture.buffer;
 		if (mtlBuff) {
-			rezEncState->encodeResourceUsage(stage, mtlBuff, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
+			mvkEncoder.getState().encodeResourceUsage(mvkEncoder, stage, mtlBuff, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 		}
 	}
 }

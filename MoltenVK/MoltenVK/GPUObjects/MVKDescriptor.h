@@ -277,7 +277,7 @@ public:
 					  VkWriteDescriptorSetInlineUniformBlock* inlineUniformBlock) = 0;
 
 	/** Encodes the usage of this resource to the Metal command encoder. */
-	virtual void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+	virtual void encodeResourceUsage(MVKCommandEncoder& mvkEncoder,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 MVKShaderStage stage) = 0;
 
@@ -329,7 +329,7 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlock* inlineUniformBlock) override;
 
-	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+	void encodeResourceUsage(MVKCommandEncoder& mvkEncoder,
 							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 							 MVKShaderStage stage) override;
 
@@ -438,7 +438,7 @@ public:
 					   const VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock);
 
 
-	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+	void encodeResourceUsage(MVKCommandEncoder& mvkEncoder,
 							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 							 MVKShaderStage stage) override;
 
@@ -490,7 +490,7 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlock* inlineUniformBlock) override;
 
-	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+	void encodeResourceUsage(MVKCommandEncoder& mvkEncoder,
 							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 							 MVKShaderStage stage) override;
 
@@ -573,7 +573,7 @@ protected:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlock* inlineUniformBlock);
 
-	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+	void encodeResourceUsage(MVKCommandEncoder& mvkEncoder,
 							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 							 MVKShaderStage stage) {}
 
@@ -624,7 +624,7 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlock* inlineUniformBlock) override;
 
-	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+	void encodeResourceUsage(MVKCommandEncoder& mvkEncoder,
 							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 							 MVKShaderStage stage) override {}
 
@@ -674,7 +674,7 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlock* inlineUniformBlock) override;
 
-	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+	void encodeResourceUsage(MVKCommandEncoder& mvkEncoder,
 							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 							 MVKShaderStage stage) override;
 
@@ -722,7 +722,7 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlock* inlineUniformBlock) override;
 
-	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
+	void encodeResourceUsage(MVKCommandEncoder& mvkEncoder,
 							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 							 MVKShaderStage stage) override;
 
