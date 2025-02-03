@@ -498,6 +498,52 @@ static void bindVertexBuffers(id<MTLCommandEncoder> encoder,
 		bindVertexBuffersTemplate<false>(encoder, vkState, exists, bindings, binder);
 }
 
+static void useResourcesInDescriptorSet(
+	MVKCommandEncoder& mvkEncoder,
+	MVKDescriptorSet* set,
+	MVKBitArray& bindingUse,
+	MVKDescriptorResourceUsage& descUsage,
+	MVKShaderStage vkStage,
+	MTLRenderStages mtlStages,
+	uint32_t setIdx)
+{
+	auto* dsLayout = set->getLayout();
+
+	uint32_t dslBindCnt = dsLayout->getBindingCount();
+	for (uint32_t dslBindIdx = 0; dslBindIdx < dslBindCnt; dslBindIdx++) {
+		auto* dslBind = dsLayout->getBindingAt(dslBindIdx);
+		if (dslBind->getApplyToStage(vkStage) && bindingUse.getBit(dslBindIdx)) {
+			uint32_t elemCnt = dslBind->getDescriptorCount(set->getVariableDescriptorCount());
+			for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
+				uint32_t descIdx = dslBind->getDescriptorIndex(elemIdx);
+				if (descUsage.dirtyDescriptors[setIdx].getBit(descIdx, true)) {
+					auto* mvkDesc = set->getDescriptorAt(descIdx);
+					mvkDesc->encodeResourceUsage(mvkEncoder, dslBind, vkStage);
+				}
+			}
+		}
+	}
+	if (descUsage.dirtyAuxBuffers.get(setIdx)) {
+		descUsage.dirtyAuxBuffers.clear(setIdx);
+		set->encodeAuxBufferUsage(mvkEncoder, vkStage);
+	}
+}
+
+static void useResourcesInDescriptorSets(
+	MVKCommandEncoder& mvkEncoder,
+	MVKDescriptorSet*const (&sets)[kMVKMaxDescriptorSetCount],
+	MVKPipeline* pipeline,
+	MVKDescriptorResourceUsage& dirtyDescriptors,
+	MVKShaderStage vkStage,
+	MTLRenderStages mtlStages,
+	MVKStaticBitSet<kMVKMaxDescriptorSetCount> needed)
+{
+	for (size_t idx : needed) {
+		MVKBitArray& bindingUse = pipeline->getDescriptorBindingUse(static_cast<uint32_t>(idx), vkStage);
+		useResourcesInDescriptorSet(mvkEncoder, sets[idx], bindingUse, dirtyDescriptors, vkStage, mtlStages, static_cast<uint32_t>(idx));
+	}
+}
+
 /** If the contents of an implicit buffer changes, call this to ensure that the contents will be rebound before the next draw. */
 static void invalidateImplicitBuffer(MVKStageResourceBindings& bindings, MVKStageResourceBits& ready, MVKNonVolatileImplicitBuffer buffer) {
 	uint32_t idx = bindings.implicitBufferIndices[buffer];
@@ -526,6 +572,31 @@ static void invalidateDescriptorSetImplicitBuffers(MTLState& state) {
 	invalidateImplicitBuffer(state, MVKNonVolatileImplicitBuffer::BufferSize);
 	invalidateImplicitBuffer(state, MVKNonVolatileImplicitBuffer::DynamicOffset);
 	invalidateImplicitBuffer(state, MVKNonVolatileImplicitBuffer::Swizzle);
+}
+
+static void invalidateDescriptorSets(
+	MVKStaticBitSet<kMVKMaxDescriptorSetCount>& valid,
+	MVKDescriptorSet*const (&boundSets)[kMVKMaxDescriptorSetCount],
+	MVKDescriptorSet*const* incomingSets,
+	size_t firstIncoming,
+	size_t numIncoming)
+{
+	for (size_t i = 0; i < numIncoming; i++) {
+		if (boundSets[firstIncoming + i] != boundSets[i])
+			valid.clear(i);
+	}
+}
+
+static void resetDirtyDescriptors(
+	MVKDescriptorResourceUsage& usage,
+	MVKStaticBitSet<kMVKMaxDescriptorSetCount> reset,
+	MVKDescriptorSet*const (&sets)[kMVKMaxDescriptorSetCount])
+{
+	for (size_t idx : reset) {
+		usage.dirtyAuxBuffers.set(idx);
+		usage.dirtyDescriptors[idx].resize(sets[idx]->getDescriptorCount());
+		usage.dirtyDescriptors[idx].enableAllBits();
+	}
 }
 
 static bool isGraphicsStage(MVKShaderStage stage) {
@@ -616,10 +687,11 @@ static uint32_t getSampleCount(VkSampleCountFlags vk) {
 }
 
 void MVKMetalGraphicsCommandEncoderState::reset(VkSampleCountFlags sampleCount) {
-	memset(this, 0, offsetof(MVKMetalGraphicsCommandEncoderState, MEMSET_RESET_LINE));
+	memset(static_cast<MVKMetalGraphicsCommandEncoderStateQuickReset*>(this), 0, offsetof(MVKMetalGraphicsCommandEncoderStateQuickReset, MEMSET_RESET_LINE));
 	_lineWidth = 1;
 	_sampleCount = getSampleCount(sampleCount);
 	_depthStencil.reset();
+	_renderUsageStages.clear();
 }
 
 void MVKMetalGraphicsCommandEncoderState::bindFragmentBuffer(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index) {
@@ -948,11 +1020,14 @@ void MVKMetalGraphicsCommandEncoderState::bindState(
 void MVKMetalGraphicsCommandEncoderState::prepareDraw(
 	id<MTLRenderCommandEncoder> encoder,
 	MVKCommandEncoder& mvkEncoder,
-	const MVKVulkanGraphicsCommandEncoderState& vk)
+	const MVKVulkanGraphicsCommandEncoderState& vk,
+	const MVKVulkanSharedCommandEncoderState& vkShared)
 {
 	MVKGraphicsPipeline* pipeline = vk._pipeline;
 	if (!pipeline->getMainPipelineState()) // Abort if pipeline could not be created.
 		return;
+
+	bool changedPipeline = false;
 
 	// Pipeline
 	if (!_flags.has(MVKMetalRenderEncoderStateFlag::PipelineReady)) {
@@ -967,13 +1042,38 @@ void MVKMetalGraphicsCommandEncoderState::prepareDraw(
 		if (mtlPipeline != _pipeline) {
 			_pipeline = mtlPipeline;
 			[encoder setRenderPipelineState:mtlPipeline];
+			changedPipeline = true;
 		}
-		pipeline->encode(&mvkEncoder, kMVKGraphicsStageRasterization);
-		pipeline->bindPushConstants(&mvkEncoder);
 	}
 
 	// State
 	bindState(encoder, mvkEncoder, vk);
+
+	// Resources
+	MVKStaticBitSet<kMVKMaxDescriptorSetCount> neededDirty;
+	if (mvkEncoder.isUsingMetalArgumentBuffers()) {
+		MVKStaticBitSet<kMVKMaxDescriptorSetCount> neededDS = pipeline->getDescriptorsSetsNeeded(kMVKShaderStageFragment);
+		if (pipeline->isTessellationPipeline()) {
+			neededDS |= pipeline->getDescriptorsSetsNeeded(kMVKShaderStageTessEval);
+		} else {
+			neededDS |= pipeline->getDescriptorsSetsNeeded(kMVKShaderStageVertex);
+		}
+		neededDirty = neededDS.clearingAllIn(_descriptorSetsReady);
+		resetDirtyDescriptors(_descriptorSetResources, neededDirty, vk._descriptorSets);
+		_descriptorSetsReady |= neededDS;
+		if (changedPipeline) // If we change pipelines, we need to recheck usage of all descriptors
+			neededDirty = neededDS;
+	}
+	if (pipeline->isTessellationPipeline()) {
+		bindVulkanGraphicsToMetalGraphics(encoder, mvkEncoder, vk, vkShared, *this, pipeline, kMVKShaderStageTessEval, MVKMetalGraphicsStage::Vertex);
+		useResourcesInDescriptorSets(mvkEncoder, vk._descriptorSets, pipeline, _descriptorSetResources, kMVKShaderStageTessEval, MTLRenderStageVertex, neededDirty);
+	} else {
+		bindVulkanGraphicsToMetalGraphics(encoder, mvkEncoder, vk, vkShared, *this, pipeline, kMVKShaderStageVertex,   MVKMetalGraphicsStage::Vertex);
+		bindVertexBuffers(encoder, vk, _exists.vertex(), _bindings.vertex(), MVKVertexBufferBinder::Vertex());
+		useResourcesInDescriptorSets(mvkEncoder, vk._descriptorSets, pipeline, _descriptorSetResources, kMVKShaderStageVertex, MTLRenderStageVertex, neededDirty);
+	}
+	bindVulkanGraphicsToMetalGraphics(encoder, mvkEncoder, vk, vkShared, *this, pipeline, kMVKShaderStageFragment, MVKMetalGraphicsStage::Fragment);
+	useResourcesInDescriptorSets(mvkEncoder, vk._descriptorSets, pipeline, _descriptorSetResources, kMVKShaderStageFragment, MTLRenderStageFragment, neededDirty);
 }
 
 void MVKMetalGraphicsCommandEncoderState::prepareHelperDraw(
@@ -1058,6 +1158,14 @@ void MVKMetalGraphicsCommandEncoderState::prepareHelperDraw(
 
 #pragma mark - MVKMetalComputeCommandEncoderState
 
+
+void MVKMetalComputeCommandEncoderState::bindPipeline(id<MTLComputeCommandEncoder> encoder, id<MTLComputePipelineState> pipeline) {
+	_vkPipeline = nullptr;
+	if (_pipeline != pipeline) {
+		_pipeline = pipeline;
+		[encoder setComputePipelineState:pipeline];
+	}
+}
 void MVKMetalComputeCommandEncoderState::bindBuffer(id<MTLComputeCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index) {
 	_ready.buffers.set(index, false);
 	::bindBuffer(encoder, buffer, offset, index, _exists, _bindings, MVKComputeBinder());
@@ -1078,7 +1186,8 @@ void MVKMetalComputeCommandEncoderState::bindSampler(id<MTLComputeCommandEncoder
 void MVKMetalComputeCommandEncoderState::prepareComputeDispatch(
 	id<MTLComputeCommandEncoder> encoder,
 	MVKCommandEncoder& mvkEncoder,
-	const MVKVulkanComputeCommandEncoderState& vk)
+	const MVKVulkanComputeCommandEncoderState& vk,
+	const MVKVulkanSharedCommandEncoderState& vkShared)
 {
 	MVKComputePipeline* pipeline = vk._pipeline;
 	id<MTLComputePipelineState> mtlPipeline = pipeline->getPipelineState();
@@ -1087,29 +1196,50 @@ void MVKMetalComputeCommandEncoderState::prepareComputeDispatch(
 
 	_vkPipeline = pipeline;
 
+	bool changedPipeline = false;
 	if (_pipeline != mtlPipeline) {
 		_pipeline = mtlPipeline;
 		[encoder setComputePipelineState:mtlPipeline];
-		pipeline->encode(&mvkEncoder);
-		pipeline->bindPushConstants(&mvkEncoder);
+		changedPipeline = true;
 	}
 
 	if (_vkStage != kMVKShaderStageCompute) {
 		memset(&_ready, 0, sizeof(_ready));
+		// We bind descriptor sets differently based on what stage is getting used, so reset these
+		_descriptorSetsReady.reset();
+		if (_vkStage != kMVKShaderStageCount) {
+			// Switching between graphics and compute, need to invalidate implicit buffers too
+			invalidateDescriptorSetImplicitBuffers(*this);
+		}
 		_vkStage = kMVKShaderStageCompute;
 	}
+
+	MVKStaticBitSet<kMVKMaxDescriptorSetCount> neededDirty;
+	if (mvkEncoder.isUsingMetalArgumentBuffers()) {
+		MVKStaticBitSet<kMVKMaxDescriptorSetCount> neededDS = pipeline->getDescriptorsSetsNeeded();
+		neededDirty = neededDS.clearingAllIn(_descriptorSetsReady);
+		resetDirtyDescriptors(_descriptorSetResources, neededDirty, vk._descriptorSets);
+		_descriptorSetsReady |= neededDS;
+		if (changedPipeline)
+			neededDirty = neededDS;
+	}
+	bindVulkanComputeToMetalCompute(encoder, mvkEncoder, vk, vkShared, *this, pipeline);
+	useResourcesInDescriptorSets(mvkEncoder, vk._descriptorSets, pipeline, _descriptorSetResources, kMVKShaderStageCompute, 0, neededDirty);
 }
 
 void MVKMetalComputeCommandEncoderState::prepareRenderDispatch(
 	id<MTLComputeCommandEncoder> encoder,
 	MVKCommandEncoder& mvkEncoder,
 	const MVKVulkanGraphicsCommandEncoderState& vk,
+	const MVKVulkanSharedCommandEncoderState& vkShared,
 	MVKShaderStage stage)
 {
 	MVKGraphicsPipeline* pipeline = vk._pipeline;
 	if (!pipeline->getMainPipelineState()) // Abort if pipeline could not be created.
 		return;
 
+
+	bool changedPipeline = false;
 	id<MTLComputePipelineState> mtlPipeline = nil;
 	if (stage == kMVKShaderStageVertex) {
 		if (!mvkEncoder._isIndexedDraw) {
@@ -1135,14 +1265,33 @@ void MVKMetalComputeCommandEncoderState::prepareRenderDispatch(
 	if (_pipeline != mtlPipeline) {
 		_pipeline = mtlPipeline;
 		[encoder setComputePipelineState:mtlPipeline];
-		pipeline->encode(&mvkEncoder, stage);
-		pipeline->bindPushConstants(&mvkEncoder);
+		changedPipeline = true;
 	}
 
 	if (_vkStage != stage) {
 		memset(&_ready, 0, sizeof(_ready));
+		// We bind descriptor sets differently based on what stage is getting used, so reset these
+		_descriptorSetsReady.reset();
+		if (_vkStage == kMVKShaderStageCompute) {
+			// Switching between graphics and compute, need to invalidate implicit buffers too
+			invalidateDescriptorSetImplicitBuffers(*this);
+		}
 		_vkStage = stage;
 	}
+
+	MVKStaticBitSet<kMVKMaxDescriptorSetCount> neededDirty;
+	if (mvkEncoder.isUsingMetalArgumentBuffers()) {
+		MVKStaticBitSet<kMVKMaxDescriptorSetCount> neededDS = pipeline->getDescriptorsSetsNeeded(stage);
+		neededDirty = neededDS.clearingAllIn(_descriptorSetsReady);
+		resetDirtyDescriptors(_descriptorSetResources, neededDirty, vk._descriptorSets);
+		_descriptorSetsReady |= neededDS;
+		if (changedPipeline)
+			neededDirty = neededDS;
+	}
+	bindVulkanGraphicsToMetalCompute(encoder, mvkEncoder, vk, vkShared, *this, pipeline, stage);
+	if (stage == kMVKShaderStageVertex)
+		bindVertexBuffers(encoder, vk, _exists, _bindings, MVKVertexBufferBinder::Compute());
+	useResourcesInDescriptorSets(mvkEncoder, vk._descriptorSets, pipeline, _descriptorSetResources, stage, 0, neededDirty);
 }
 
 void MVKMetalComputeCommandEncoderState::reset() {
@@ -1256,6 +1405,7 @@ void MVKCommandEncoderStateNew::bindDescriptorSets(
 	}
 	applyToActiveMTLState(bindPoint, [boundSets, sets, firstSet, setCount](auto& mtl){
 		invalidateDescriptorSetImplicitBuffers(mtl);
+		invalidateDescriptorSets(mtl._descriptorSetsReady, *boundSets, sets, firstSet, setCount);
 	});
 	if (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
 		_vkGraphics.bindDescriptorSets(layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
@@ -1276,6 +1426,64 @@ void MVKCommandEncoderStateNew::bindIndexBuffer(const MVKIndexMTLBufferBinding& 
 	_vkGraphics._indexBuffer = buffer;
 	if (_mtlActiveEncoder == CommandEncoderClass::Compute && _mtlCompute._vkStage == kMVKShaderStageVertex)
 		_mtlCompute._ready.buffers.clear(_vkGraphics._pipeline->getImplicitBuffers(kMVKShaderStageVertex).ids[MVKImplicitBuffer::IndirectParams]);
+}
+
+void MVKCommandEncoderStateNew::offsetZeroDivisorVertexBuffers(MVKCommandEncoder& mvkEncoder, MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance) {
+	for (const auto& binding : pipeline->getZeroDivisorVertexBindings()) {
+		uint32_t mtlBuffIdx = pipeline->getMetalBufferIndexForVertexAttributeBinding(binding.first);
+		auto& buffer = _vkGraphics._vertexBuffers[binding.first];
+		switch (stage) {
+			case kMVKGraphicsStageVertex:
+				[mvkEncoder.getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl) setBufferOffset: buffer.offset + firstInstance * binding.second
+				                                                                                  atIndex: mtlBuffIdx];
+				break;
+			case kMVKGraphicsStageRasterization:
+				[mvkEncoder._mtlRenderEncoder setVertexBufferOffset:buffer.offset + firstInstance * binding.second
+				                                            atIndex:mtlBuffIdx];
+				break;
+			default:
+				assert(false); // If we hit this, something went wrong.
+				break;
+		}
+	}
+}
+
+void MVKCommandEncoderStateNew::encodeResourceUsage(
+	MVKCommandEncoder& mvkEncoder,
+	MVKShaderStage stage,
+	id<MTLResource> mtlResource,
+	MTLResourceUsage mtlUsage,
+	MTLRenderStages mtlStages)
+{
+	if (mtlResource) {
+		switch (_mtlActiveEncoder) {
+			case CommandEncoderClass::Graphics:
+				if (mtlStages) {
+					if (stage == kMVKShaderStageTessCtl) {
+						auto* mtlCompEnc = mvkEncoder.getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
+						[mtlCompEnc useResource: mtlResource usage: mtlUsage];
+					} else {
+						auto* mtlRendEnc = mvkEncoder._mtlRenderEncoder;
+						if ([mtlRendEnc respondsToSelector: @selector(useResource:usage:stages:)]) {
+							// Within a renderpass, a resource may be used by multiple descriptor bindings,
+							// each of which may assign a different usage stage. Dynamically accumulate
+							// usage stages across all descriptor bindings using the resource.
+							auto& accumStages = _mtlGraphics._renderUsageStages[mtlResource];
+							accumStages |= mtlStages;
+							[mtlRendEnc useResource: mtlResource usage: mtlUsage stages: accumStages];
+						} else {
+							[mtlRendEnc useResource: mtlResource usage: mtlUsage];
+						}
+					}
+				}
+				break;
+			case CommandEncoderClass::Compute:
+				[mvkEncoder.getMTLComputeEncoder(kMVKCommandUseDispatch) useResource: mtlResource usage: mtlUsage];
+				break;
+			case CommandEncoderClass::None:
+				break;
+		}
+	}
 }
 
 template <typename Fn>
@@ -1488,13 +1696,13 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 				for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 					uint32_t descIdx = dslBind->getDescriptorIndex(elemIdx);
 					if (resourceUsageDirtyDescs.getBit(descIdx, true)) {
-						auto* mvkDesc = descSet->getDescriptorAt(descIdx);
-						mvkDesc->encodeResourceUsage(this, dslBind, stage);
+//						auto* mvkDesc = descSet->getDescriptorAt(descIdx);
+//						mvkDesc->encodeResourceUsage(this, dslBind, stage);
 					}
 				}
 			}
 		}
-		descSet->encodeAuxBufferUsage(this, stage);
+//		descSet->encodeAuxBufferUsage(this, stage);
 
 
 		// If it is needed, bind the Metal argument buffer itself to the command encoder,
@@ -1874,6 +2082,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 
     }
 
+#if 0
     if (stage == kMVKGraphicsStageRasterization) {
         encodeBindings(kMVKShaderStageFragment, "fragment", fullImageViewSwizzle,
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
@@ -1905,6 +2114,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                                                           atIndex: b.index];
                        });
     }
+#endif
 }
 
 MVKPipeline* MVKGraphicsResourcesCommandEncoderState::getPipeline() {
@@ -2115,10 +2325,7 @@ void MVKGPUAddressableBuffersCommandEncoderState::encodeImpl(uint32_t stage) {
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
 		MVKShaderStage shaderStage = MVKShaderStage(i);
 		if (_usageStages[shaderStage]) {
-			MVKResourcesCommandEncoderState* rezEncState = (shaderStage == kMVKShaderStageCompute
-															? (MVKResourcesCommandEncoderState*)&_cmdEncoder->_computeResourcesState
-															: (MVKResourcesCommandEncoderState*)&_cmdEncoder->_graphicsResourcesState);
-			mvkDev->encodeGPUAddressableBuffers(rezEncState, shaderStage);
+			mvkDev->encodeGPUAddressableBuffers(*_cmdEncoder, shaderStage);
 		}
 	}
 	mvkClear(_usageStages, kMVKShaderStageCount);
@@ -2135,20 +2342,17 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
     if ( !_hasRasterized || !vizBuff || _mtlRenderPassQueries.empty() ) { return; }  // Nothing to do.
 
 	id<MTLComputePipelineState> mtlAccumState = _cmdEncoder->getCommandEncodingPool()->getAccumulateOcclusionQueryResultsMTLComputePipelineState();
-    id<MTLComputeCommandEncoder> mtlAccumEncoder = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseAccumOcclusionQuery, true);
-    [mtlAccumEncoder setComputePipelineState: mtlAccumState];
-    for (auto& qryLoc : _mtlRenderPassQueries) {
-        // Accumulate the current results to the query pool's buffer.
-        [mtlAccumEncoder setBuffer: qryLoc.queryPool->getVisibilityResultMTLBuffer()
-                            offset: qryLoc.queryPool->getVisibilityResultOffset(qryLoc.query)
-                           atIndex: 0];
-        [mtlAccumEncoder setBuffer: vizBuff->_mtlBuffer
-                            offset: vizBuff->_offset + qryLoc.visibilityBufferOffset
-                           atIndex: 1];
-        [mtlAccumEncoder dispatchThreadgroups: MTLSizeMake(1, 1, 1)
-                        threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
-    }
-    _mtlRenderPassQueries.clear();
+	id<MTLComputeCommandEncoder> mtlAccumEncoder = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseAccumOcclusionQuery, true);
+	MVKMetalComputeCommandEncoderState& state = _cmdEncoder->getMtlCompute();
+	state.bindPipeline(mtlAccumEncoder, mtlAccumState);
+	for (auto& qryLoc : _mtlRenderPassQueries) {
+		// Accumulate the current results to the query pool's buffer.
+		state.bindBuffer(mtlAccumEncoder, qryLoc.queryPool->getVisibilityResultMTLBuffer(), qryLoc.queryPool->getVisibilityResultOffset(qryLoc.query), 0);
+		state.bindBuffer(mtlAccumEncoder, vizBuff->_mtlBuffer, vizBuff->_offset + qryLoc.visibilityBufferOffset, 1);
+		[mtlAccumEncoder dispatchThreadgroups: MTLSizeMake(1, 1, 1)
+		                threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
+	}
+	_mtlRenderPassQueries.clear();
 	_hasRasterized = false;
 }
 
