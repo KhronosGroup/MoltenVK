@@ -213,6 +213,9 @@ public:
 	/** Returns the supported time domains for calibration on this device. */
 	VkResult getCalibrateableTimeDomains(uint32_t* pTimeDomainCount, VkTimeDomainEXT* pTimeDomains);
 
+	/** Populates the specified structure with the tool properties of this device. */
+	VkResult getToolProperties(uint32_t* pToolCount, VkPhysicalDeviceToolProperties* pToolProperties);
+
 #pragma mark Surfaces
 
 	/**

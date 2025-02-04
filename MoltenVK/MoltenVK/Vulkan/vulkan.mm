@@ -2826,7 +2826,18 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyPrivateDataSlot(
 MVK_PUBLIC_VULKAN_STUB(vkGetDeviceBufferMemoryRequirements, void, VkDevice, const VkDeviceBufferMemoryRequirements*, VkMemoryRequirements2*)
 MVK_PUBLIC_VULKAN_STUB(vkGetDeviceImageMemoryRequirements, void, VkDevice, const VkDeviceImageMemoryRequirements*, VkMemoryRequirements2*)
 MVK_PUBLIC_VULKAN_STUB(vkGetDeviceImageSparseMemoryRequirements, void, VkDevice, const VkDeviceImageMemoryRequirements*, uint32_t*, VkSparseImageMemoryRequirements2*)
-MVK_PUBLIC_VULKAN_STUB_VKRESULT(vkGetPhysicalDeviceToolProperties, VkPhysicalDevice, uint32_t*, VkPhysicalDeviceToolProperties*)
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceToolProperties(
+    VkPhysicalDevice                            physicalDevice,
+    uint32_t*                                   pToolCount,
+    VkPhysicalDeviceToolProperties*             pToolProperties) {
+
+	MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	VkResult rslt = mvkPD->getToolProperties(pToolCount, pToolProperties);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkGetPrivateData(
 											   VkDevice                                    device,
@@ -4040,6 +4051,12 @@ void vkCmdSetSampleLocationsEXT(
 	MVKAddCmd(SetSampleLocations, commandBuffer, pSampleLocationsInfo);
 	MVKTraceVulkanCallEnd();
 }
+
+
+#pragma mark -
+#pragma mark VK_EXT_tooling_info extension
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceToolProperties, EXT);
 
 
 #pragma mark -

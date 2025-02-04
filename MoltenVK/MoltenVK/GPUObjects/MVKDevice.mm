@@ -1428,6 +1428,12 @@ VkResult MVKPhysicalDevice::getCalibrateableTimeDomains(uint32_t* pTimeDomainCou
 	return VK_SUCCESS;
 }
 
+VkResult MVKPhysicalDevice::getToolProperties(uint32_t* pToolCount, VkPhysicalDeviceToolProperties* pToolProperties) {
+	// Metal does not currently have a standard way to detect attached tools, so report nothing.
+	*pToolCount = 0;
+	return VK_SUCCESS;
+}
+
 
 #pragma mark Surfaces
 
