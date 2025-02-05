@@ -358,13 +358,14 @@ void MVKSwapchain::setHDRMetadataEXT(const VkHdrMetadataEXT& metadata) {
 	lightLevel.max_pic_average_light_level = OSSwapHostToBigInt16((uint16_t)metadata.maxFrameAverageLightLevel);
 	NSData* colorVolData = [[NSData alloc] initWithBytes: &colorVol length: sizeof(colorVol)];
 	NSData* lightLevelData = [[NSData alloc] initWithBytes: &lightLevel length: sizeof(lightLevel)];
-	CAEDRMetadata* caMetadata = [CAEDRMetadata HDR10MetadataWithDisplayInfo: colorVolData
-																contentInfo: lightLevelData
-														 opticalOutputScale: 1];
-	auto* mtlLayer = getCAMetalLayer();
-	mtlLayer.EDRMetadata = caMetadata;
-	mtlLayer.wantsExtendedDynamicRangeContent = YES;
-	[caMetadata release];
+    @autoreleasepool {
+        CAEDRMetadata* caMetadata = [CAEDRMetadata HDR10MetadataWithDisplayInfo: colorVolData
+                                                                    contentInfo: lightLevelData
+                                                             opticalOutputScale: 1];
+        auto* mtlLayer = getCAMetalLayer();
+        mtlLayer.EDRMetadata = caMetadata;
+        mtlLayer.wantsExtendedDynamicRangeContent = YES;
+    }
 	[colorVolData release];
 	[lightLevelData release];
 #endif
