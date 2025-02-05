@@ -818,3 +818,20 @@ struct MVKFlagList {
 	constexpr MVKFlagList operator&(MVKFlagList other) const { MVKFlagList res = *this; return res &= other; }
 	constexpr MVKFlagList operator|(MVKFlagList other) const { MVKFlagList res = *this; return res |= other; }
 };
+
+/**
+ * An array indexed by members of an `Enum`.
+ * `Enum` must have a member `Count`, which is one greater than the last value in the enum.
+ */
+template <typename Element, typename Enum>
+struct MVKOnePerEnumEntry {
+	static constexpr std::size_t Size = static_cast<std::size_t>(Enum::Count);
+	Element elements[Size];
+	constexpr       Element& operator[](Enum idx)       { return elements[static_cast<std::size_t>(idx)]; }
+	constexpr const Element& operator[](Enum idx) const { return elements[static_cast<std::size_t>(idx)]; }
+
+	      Element* begin()       { return std::begin(elements); }
+	const Element* begin() const { return std::begin(elements); }
+	      Element* end()         { return std::end(elements); }
+	const Element* end()   const { return std::end(elements); }
+};
