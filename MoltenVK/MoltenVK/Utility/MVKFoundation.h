@@ -735,3 +735,80 @@ static constexpr bool mvkIsOnlyAnyFlagEnabled(Tv value, const Tm bitMask) { retu
 template<typename Tv, typename Tm>
 static constexpr bool mvkAreOnlyAllFlagsEnabled(Tv value, const Tm bitMask) { return (value == bitMask); }
 
+/** Iterates over the set flags in a MVKFlagList. */
+template <typename Enum, typename Bits>
+struct MVKFlagListIterator {
+	Bits bits;
+	constexpr operator bool() const { return bits != 0; }
+	constexpr Enum operator*() const { return static_cast<Enum>(mvkCTZ(bits)); }
+	constexpr bool operator==(const MVKFlagListIterator& other) const { return bits == other.bits; }
+	constexpr bool operator!=(const MVKFlagListIterator& other) const { return bits != other.bits; }
+	constexpr MVKFlagListIterator& operator++() {
+		bits &= bits - 1;
+		return *this;
+	}
+	constexpr MVKFlagListIterator operator++(int) {
+		MVKFlagListIterator old = *this;
+		operator++();
+		return old;
+	}
+};
+
+/**
+ * Holds one bit for each value in `Enum`.
+ * `Enum` must have a member `Count`, which is one greater than the last value in the enum.
+ */
+template <typename Enum>
+struct MVKFlagList {
+	static_assert(static_cast<uint32_t>(Enum::Count) <= 64, "Too many flags");
+	static constexpr uint32_t NumBits = static_cast<uint32_t>(Enum::Count);
+	using Bits = std::conditional_t<(NumBits > 32), uint64_t, std::conditional_t<(NumBits > 16), uint32_t, uint16_t>>;
+	// Codegen for uint32 iteration is a bit better than smaller sizes
+	using Iter = MVKFlagListIterator<Enum, std::conditional_t<(NumBits > 32), uint64_t, uint32_t>>;
+	Bits bits;
+	MVKFlagList(const MVKFlagList&) = default;
+	constexpr MVKFlagList(): bits(0) {}
+	constexpr MVKFlagList(Enum flag, bool value = true): bits(static_cast<Bits>(value) << static_cast<uint32_t>(flag)) {}
+	constexpr MVKFlagList(std::initializer_list<Enum> flags): bits(0) {
+		for (Enum flag : flags)
+			add(flag);
+	}
+	static constexpr MVKFlagList fromBits(Bits bits) {
+		MVKFlagList res;
+		res.bits = bits;
+		return res;
+	}
+	static constexpr MVKFlagList all() {
+		MVKFlagList res;
+		res.bits = static_cast<Bits>(NumBits == 64 ? ~0ull : (1ull << NumBits) - 1);
+		return res;
+	}
+	constexpr void set(Enum flag, bool value) {
+		remove(flag);
+		bits |= static_cast<Bits>(value) << static_cast<uint32_t>(flag);
+	}
+	constexpr Iter begin() const { return {bits}; }
+	constexpr Iter end() const { return {0}; }
+	constexpr void reset() { bits = 0; }
+	constexpr void addAll(MVKFlagList list) { bits |= list.bits; }
+	constexpr void removeAll(MVKFlagList list) { bits &= ~list.bits; }
+	constexpr void flipAll(MVKFlagList list) { bits ^= list.bits; }
+	constexpr void add(Enum flag) { addAll(flag); }
+	constexpr void remove(Enum flag) { removeAll(flag); }
+	constexpr void flip(Enum flag) { flipAll(flag); }
+	constexpr bool empty() const { return bits == 0; }
+	constexpr bool has(Enum flag) const { return (bits >> static_cast<uint32_t>(flag)) & 1; }
+	constexpr bool hasAny(MVKFlagList list) const { return mvkIsAnyFlagEnabled(bits, list.bits); }
+	constexpr bool hasAll(MVKFlagList list) const { return mvkAreAllFlagsEnabled(bits, list.bits); }
+	constexpr bool operator==(MVKFlagList other) const { return bits == other.bits; }
+	constexpr MVKFlagList addingAll(MVKFlagList list) const { MVKFlagList res = *this; res.addAll(list); return res; }
+	constexpr MVKFlagList removingAll(MVKFlagList list) const { MVKFlagList res = *this; res.removeAll(list); return res; }
+	constexpr MVKFlagList flippingAll(MVKFlagList list) const { MVKFlagList res = *this; res.flipAll(list); return res; }
+	constexpr MVKFlagList adding(Enum flag) const { MVKFlagList res = *this; res.add(flag); return res; }
+	constexpr MVKFlagList removing(Enum flag) const { MVKFlagList res = *this; res.remove(flag); return res; }
+	constexpr MVKFlagList flipping(Enum flag) const { MVKFlagList res = *this; res.flip(flag); return res; }
+	constexpr MVKFlagList& operator&=(MVKFlagList other) { bits &= other.bits; return *this; }
+	constexpr MVKFlagList& operator|=(MVKFlagList other) { bits |= other.bits; return *this; }
+	constexpr MVKFlagList operator&(MVKFlagList other) const { MVKFlagList res = *this; return res &= other; }
+	constexpr MVKFlagList operator|(MVKFlagList other) const { MVKFlagList res = *this; return res |= other; }
+};
