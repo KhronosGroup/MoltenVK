@@ -46,6 +46,12 @@ typedef uint16_t MVKHalfFloat;
 /** A representation of the value of 1.0 as a 16-bit half-float. */
 #define kHalfFloat1	0x3C00
 
+/** Indicates that a function will not modify any global state (but may read passed pointers or mutable global variables). */
+#define GCC_PURE __attribute__((pure))
+/** Indicates that a function's return depends only on its inputs (and no mutable global state). */
+#define GCC_CONST __attribute__((const))
+/** Indicates that a pointer does not alias any other pointers. */
+#define RESTRICT __restrict__
 
 #pragma mark -
 #pragma mark Vertex content structures
