@@ -467,6 +467,9 @@ public:
 	/** The current Metal render encoder. */
 	id<MTLRenderCommandEncoder> _mtlRenderEncoder;
 
+	/** The current Metal compute encoder. */
+	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
+
     /** Tracks the current graphics pipeline bound to the encoder. */
 	MVKPipelineCommandEncoderState _graphicsPipelineState;
 
@@ -534,7 +537,6 @@ protected:
 	MVKSmallVector<GPUCounterQuery, 16> _timestampStageCounterQueries;
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
 	MVKSmallVector<MVKImageView*, kMVKDefaultAttachmentCount> _attachments;
-	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
 	id<MTLFence> _stageCountersMTLFence;
 	MVKPushConstantsCommandEncoderState _vertexPushConstants;
