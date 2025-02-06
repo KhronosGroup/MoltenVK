@@ -459,6 +459,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				shaderIntDotFeatures->shaderIntegerDotProduct = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES_KHR: {
+				auto* terminateFeatures = (VkPhysicalDeviceShaderTerminateInvocationFeaturesKHR*)next;
+				terminateFeatures->shaderTerminateInvocation = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
 				auto* formatFeatures = (VkPhysicalDevice4444FormatsFeaturesEXT*)next;
 				bool canSupport4444 = _metalFeatures.tileBasedDeferredRendering &&
@@ -466,6 +471,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 									   getMVKConfig().fullImageViewSwizzle);
 				formatFeatures->formatA4R4G4B4 = canSupport4444;
 				formatFeatures->formatA4B4G4R4 = canSupport4444;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_CONTROL_FEATURES_EXT: {
+				auto* depthFeatures = (VkPhysicalDeviceDepthClipControlFeaturesEXT*)next;
+				depthFeatures->depthClipControl = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
@@ -575,11 +585,6 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				auto* divisorFeatures = (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)next;
 				divisorFeatures->vertexAttributeInstanceRateDivisor = true;
 				divisorFeatures->vertexAttributeInstanceRateZeroDivisor = true;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_CONTROL_FEATURES_EXT: {
-				auto* depthFeatures = (VkPhysicalDeviceDepthClipControlFeaturesEXT*)next;
-				depthFeatures->depthClipControl = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
