@@ -76,7 +76,7 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
         }
 
         [mtlTexDesc release];                                            // temp release
-
+		_image->getDevice()->makeResident(_mtlTexture);
         propagateDebugName();
     }
     return _mtlTexture;
@@ -101,6 +101,7 @@ id<MTLTexture> MVKImagePlane::getMTLTexture(MTLPixelFormat mtlPixFmt) {
 }
 
 void MVKImagePlane::releaseMTLTexture() {
+	if (_mtlTexture) _image->getDevice()->removeResidency(_mtlTexture);
     [_mtlTexture release];
     _mtlTexture = nil;
 
@@ -436,7 +437,8 @@ VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDevi
             }
             if (!_mtlTexelBuffer) {
                 return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not create an MTLBuffer for an image that requires a buffer backing store. Images that can be used for atomic accesses must have a texel buffer backing them.");
-            }
+			}
+			getDevice()->makeResident(_mtlTexelBuffer);
             _mtlTexelBufferOffset = 0;
             _ownsTexelBuffer = true;
         }
@@ -444,7 +446,6 @@ VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDevi
         _mtlTexelBuffer = _deviceMemory->_mtlBuffer;
         _mtlTexelBufferOffset = getDeviceMemoryOffset();
     }
-
     flushToDevice(getDeviceMemoryOffset(), getByteCount());
     return _deviceMemory->addImageMemoryBinding(this);
 }
@@ -541,7 +542,10 @@ MVKImageMemoryBinding::MVKImageMemoryBinding(MVKDevice* device, MVKImage* image,
 
 MVKImageMemoryBinding::~MVKImageMemoryBinding() {
     if (_deviceMemory) { _deviceMemory->removeImageMemoryBinding(this); }
-    if (_ownsTexelBuffer) { [_mtlTexelBuffer release]; }
+	if (_ownsTexelBuffer) {
+		if (_ownsTexelBuffer) _image->getDevice()->removeResidency(_mtlTexelBuffer);
+		[_mtlTexelBuffer release];
+	}
 }
 
 

@@ -339,6 +339,7 @@ void MVKQueue::initExecQueue() {
 // Retrieves and initializes the Metal command queue and Xcode GPU capture scopes
 void MVKQueue::initMTLCommandQueue() {
 	_mtlQueue = _queueFamily->getMTLCommandQueue(_index);	// not retained (cached in queue family)
+	_device->addResidencySet(_mtlQueue);
 
 	_submissionCaptureScope = new MVKGPUCaptureScope(this);
 	if (_queueFamily->getIndex() == getMVKConfig().defaultGPUCaptureScopeQueueFamilyIndex &&
@@ -531,6 +532,12 @@ VkResult MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool sign
 	// By now, it's been submitted to the MTLCommandBuffer, so remove it from the encoding context,
 	// to ensure a fresh one will be used by commands executing on any subsequent MTLCommandBuffers.
 	_encodingContext.visibilityResultBuffer = nullptr;
+
+	// If this is the last command buffer in the submission, we're losing the context and need synchronize
+	// current barrier fences to the ones at index 0, which will be what the next submision starts with.
+	if (isUsingMetalArgumentBuffers() && signalCompletion) {
+		_encodingContext.syncFences(getDevice(), _activeMTLCommandBuffer);
+	}
 
 	// If we need to signal completion, use getActiveMTLCommandBuffer() to ensure at least
 	// one MTLCommandBuffer is used, otherwise if this instance has no content, it will not

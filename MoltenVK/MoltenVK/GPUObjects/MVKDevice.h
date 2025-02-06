@@ -491,6 +491,10 @@ typedef struct MVKMTLBlitEncoder {
 	id<MTLCommandBuffer> mtlCmdBuffer = nil;
 } MVKMTLBlitEncoder;
 
+// Arbitrary, after that many barriers with a given source pipeline stage we will wrap around
+// and potentially introduce extra synchronization on previous invocations of the same stage.
+static const uint32_t kMVKBarrierFenceCount = 64;
+
 /** Represents a Vulkan logical GPU device, associated with a physical device. */
 class MVKDevice : public MVKDispatchableVulkanAPIObject {
 
@@ -819,6 +823,41 @@ public:
 	/** Returns the Metal objects underpinning the Vulkan objects indicated in the pNext chain of pMetalObjectsInfo. */
 	void getMetalObjects(VkExportMetalObjectsInfoEXT* pMetalObjectsInfo);
 
+#if !MVK_XCODE_16
+	void makeResident(id allocation) {}
+#else
+	void makeResident(id<MTLAllocation> allocation) {
+		@synchronized(_residencySet) {
+			[_residencySet addAllocation: allocation];
+			[_residencySet commit];
+		}
+	}
+#endif
+
+#if !MVK_XCODE_16
+	void removeResidency(id allocation) {}
+#else
+	void removeResidency(id<MTLAllocation> allocation) {
+		@synchronized(_residencySet) {
+			[_residencySet removeAllocation:allocation];
+			[_residencySet commit];
+		}
+	}
+#endif
+
+	void addResidencySet(id<MTLCommandQueue> queue) {
+#if MVK_XCODE_16
+		if (_residencySet) [queue addResidencySet:_residencySet];
+#endif
+	}
+
+	bool hasResidencySet() {
+#if MVK_XCODE_16
+		return _residencySet != nil;
+#else
+		return false;
+#endif
+	}
 
 #pragma mark Construction
 
@@ -840,6 +879,16 @@ public:
     static inline MVKDevice* getMVKDevice(VkDevice vkDevice) {
         return (MVKDevice*)getDispatchableObject(vkDevice);
     }
+
+#pragma mark Barriers
+
+	/** Returns a Metal fence to update for the given barrier stage. */
+	id<MTLFence> getBarrierStageFence(id<MTLCommandBuffer> mtlCommandBuffer, MVKBarrierStage stage);
+
+	/** Returns a Metal fence by its stage and slot index. */
+	id<MTLFence> getFence(MVKBarrierStage stage, int index) {
+		return _barrierFences[stage][index];
+	}
 
 protected:
 	friend class MVKDeviceTrackingMixin;
@@ -880,6 +929,8 @@ protected:
 	VkPhysicalDevice##structName##Features##extnSfx _enabled##structName##Features;
 #include "MVKDeviceFeatureStructs.def"
 
+	id<MTLFence> _barrierFences[kMVKBarrierStageCount][kMVKBarrierFenceCount];
+
 	MVKPerformanceStatistics _performanceStats;
     MVKCommandResourceFactory* _commandResourceFactory = nullptr;
 	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
@@ -897,6 +948,9 @@ protected:
     id<MTLBuffer> _globalVisibilityResultMTLBuffer = nil;
 	id<MTLSamplerState> _defaultMTLSamplerState = nil;
 	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
+#if MVK_XCODE_16
+	id<MTLResidencySet> _residencySet = nil;
+#endif
     uint32_t _globalVisibilityQueryCount = 0;
 	int _capturePipeFileDesc = -1;
 	bool _isPerformanceTracking = false;

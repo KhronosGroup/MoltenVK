@@ -681,6 +681,7 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 			auto* dslBind = dsLayout->getBindingAt(dslBindIdx);
 			if (dslBind->getApplyToStage(stage) && shaderBindingUsage.getBit(dslBindIdx)) {
 				shouldBindArgBuffToStage = true;
+				if (getDevice()->hasResidencySet()) continue;
 				uint32_t elemCnt = dslBind->getDescriptorCount(descSet->getVariableDescriptorCount());
 				for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 					uint32_t descIdx = dslBind->getDescriptorIndex(elemIdx);

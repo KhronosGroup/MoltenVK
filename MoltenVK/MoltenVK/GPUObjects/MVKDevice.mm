@@ -2511,6 +2511,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	}
 #endif
 
+#if MVK_XCODE_16 && MVK_MACOS
+    _metalFeatures.residencySets = mvkOSVersionIsAtLeast(15) && supportsMTLGPUFamily(Apple6);
+#endif
 }
 
 // Initializes the physical device features of this instance.
@@ -4802,6 +4805,16 @@ void MVKDevice::getMetalObjects(VkExportMetalObjectsInfoEXT* pMetalObjectsInfo) 
 
 #pragma mark Construction
 
+static NSString *mvkBarrierStageName(MVKBarrierStage stage) {
+	switch (stage) {
+	case kMVKBarrierStageVertex:   return @"Vertex";
+	case kMVKBarrierStageFragment: return @"Fragment";
+	case kMVKBarrierStageCompute:  return @"Compute";
+	case kMVKBarrierStageCopy:     return @"Copy";
+	default:                       return [NSString stringWithFormat:@"Invalid (%d)", stage];
+	}
+}
+
 MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) : _enabledExtensions(this) {
 
 	// If the physical device is lost, bail.
@@ -4817,6 +4830,17 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	enableFeatures(pCreateInfo);
 	initQueues(pCreateInfo);
 	reservePrivateData(pCreateInfo);
+
+	// Initialize fences for execution barriers
+	@autoreleasepool {
+		for (int stage = 0; stage < kMVKBarrierStageCount; ++stage) {
+			for (int index = 0; index < kMVKBarrierFenceCount; ++index) {
+				auto &fence = _barrierFences[stage][index];
+				fence = [_physicalDevice->getMTLDevice() newFence];
+				[fence setLabel:[NSString stringWithFormat:@"%@ Fence %d", mvkBarrierStageName((MVKBarrierStage)stage), index]];
+			}
+		}
+	}
 
 #if MVK_MACOS
 	// After enableExtensions
@@ -5120,6 +5144,23 @@ void MVKDevice::enableExtensions(const VkDeviceCreateInfo* pCreateInfo) {
 
 // Create the command queues
 void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
+#if MVK_XCODE_16
+	if (_physicalDevice->_isUsingMetalArgumentBuffers && _physicalDevice->_metalFeatures.residencySets) {
+		MTLResidencySetDescriptor *setDescriptor;
+		setDescriptor = [MTLResidencySetDescriptor new];
+		setDescriptor.label = @"Primary residency set";
+		setDescriptor.initialCapacity = 256;
+
+		NSError *error;
+		_residencySet = [_physicalDevice->getMTLDevice() newResidencySetWithDescriptor:setDescriptor
+																				 error:&error];
+		if (error) {
+			reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, "Error allocating residency set: %s", error.description.UTF8String);
+		}
+		[setDescriptor release];
+	}
+#endif
+
 	auto qFams = _physicalDevice->getQueueFamilies();
 	uint32_t qrCnt = pCreateInfo->queueCreateInfoCount;
 	for (uint32_t qrIdx = 0; qrIdx < qrCnt; qrIdx++) {
@@ -5183,6 +5224,11 @@ MVKDevice::~MVKDevice() {
 
 	if (_commandResourceFactory) { _commandResourceFactory->destroy(); }
 
+	for (auto &fences: _barrierFences) for (auto fence: fences) [fence release];
+
+#if MVK_XCODE_16
+	[_residencySet release];
+#endif
     [_globalVisibilityResultMTLBuffer release];
 	[_defaultMTLSamplerState release];
 	[_dummyBlitMTLBuffer release];

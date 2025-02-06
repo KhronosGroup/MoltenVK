@@ -46,6 +46,7 @@ MVKMTLBufferAllocation* MVKMTLBufferAllocationPool::newObject() {
 void MVKMTLBufferAllocationPool::addMTLBuffer() {
     MTLResourceOptions mbOpts = (_mtlStorageMode << MTLResourceStorageModeShift) | MTLResourceCPUCacheModeDefaultCache;
     _mtlBuffers.push_back({ [getMTLDevice() newBufferWithLength: _mtlBufferLength options: mbOpts], 0 });
+	getDevice()->makeResident(_mtlBuffers.back().mtlBuffer);
     _nextOffset = 0;
 }
 
@@ -106,6 +107,7 @@ uint32_t MVKMTLBufferAllocationPool::calcMTLBufferAllocationCount() {
 
 MVKMTLBufferAllocationPool::~MVKMTLBufferAllocationPool() {
     for (uint32_t bufferIndex = 0; bufferIndex < _mtlBuffers.size(); ++bufferIndex) {
+		getDevice()->removeResidency(_mtlBuffers[bufferIndex].mtlBuffer);
         [_mtlBuffers[bufferIndex].mtlBuffer release];
     }
     _mtlBuffers.clear();
