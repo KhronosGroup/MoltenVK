@@ -349,6 +349,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
   - *Requires Metal 2.0.*
 - `VK_EXT_texture_compression_astc_hdr`
   - *iOS and macOS, requires family 6 (A13) or better Apple GPU.*
+- `VK_EXT_tooling_info`
 - `VK_MVK_ios_surface`
   - *Obsolete. Use `VK_EXT_metal_surface` instead.*
 - `VK_MVK_macos_surface`
