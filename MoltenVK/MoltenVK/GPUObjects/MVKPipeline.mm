@@ -49,27 +49,6 @@ using namespace SPIRV_CROSS_NAMESPACE;
 #pragma mark MVKPipelineLayout
 
 // A null cmdEncoder can be passed to perform a validation pass
-void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
-										   VkPipelineBindPoint pipelineBindPoint,
-                                           MVKArrayRef<MVKDescriptorSet*> descriptorSets,
-                                           uint32_t firstSet,
-                                           MVKArrayRef<uint32_t> dynamicOffsets) {
-	if (!cmdEncoder) { clearConfigurationResult(); }
-	uint32_t dynamicOffsetIndex = 0;
-	size_t dsCnt = descriptorSets.size();
-	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
-		MVKDescriptorSet* descSet = descriptorSets[dsIdx];
-		uint32_t dslIdx = firstSet + dsIdx;
-		MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[dslIdx];
-		dsl->bindDescriptorSet(cmdEncoder, pipelineBindPoint,
-							   dslIdx, descSet,
-							   _dslMTLResourceIndexOffsets[dslIdx],
-							   dynamicOffsets, dynamicOffsetIndex);
-		if (!cmdEncoder) { setConfigurationResult(dsl->getConfigurationResult()); }
-	}
-}
-
-// A null cmdEncoder can be passed to perform a validation pass
 void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                           VkPipelineBindPoint pipelineBindPoint,
                                           MVKArrayRef<VkWriteDescriptorSet> descriptorWrites,
@@ -217,15 +196,6 @@ MVKPipelineLayout::~MVKPipelineLayout() {
 #pragma mark -
 #pragma mark MVKPipeline
 
-void MVKPipeline::bindPushConstants(MVKCommandEncoder* cmdEncoder) {
-	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
-		if (cmdEncoder) {
-			auto* pcState = cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(stage)));
-			pcState->setMTLBufferIndex(_pushConstantsBufferIndex.stages[stage], _stageUsesPushConstants[stage]);
-		}
-	}
-}
-
 // For each descriptor set, populate the descriptor bindings used by the shader for this stage.
 template<typename CreateInfo>
 void MVKPipeline::populateDescriptorSetBindingUse(MVKMTLFunction& mvkMTLFunc,
@@ -327,19 +297,12 @@ static void populateResourceUsage(MVKStageResourceBits& dst, SPIRVToMSLConversio
 	}
 }
 
-// Set retrieve-only rendering state when pipeline is bound, as it's too late at draw command.
-void MVKGraphicsPipeline::wasBound(MVKCommandEncoder* cmdEncoder) {
-}
-
 void MVKGraphicsPipeline::getStages(MVKPiplineStages& stages) {
     if (isTessellationPipeline()) {
         stages.push_back(kMVKGraphicsStageVertex);
         stages.push_back(kMVKGraphicsStageTessControl);
     }
     stages.push_back(kMVKGraphicsStageRasterization);
-}
-
-void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) {
 }
 
 static const char vtxCompilerType[] = "Vertex stage pipeline for tessellation";
@@ -2312,9 +2275,6 @@ MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 
 #pragma mark -
 #pragma mark MVKComputePipeline
-
-void MVKComputePipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t) {
-}
 
 MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 									   MVKPipelineCache* pipelineCache,
