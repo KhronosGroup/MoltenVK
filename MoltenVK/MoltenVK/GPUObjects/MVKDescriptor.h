@@ -128,14 +128,6 @@ public:
 	                    const MVKShaderStageResourceBinding& indexOffsets,
 	                    const uint32_t*& dynamicOffsets);
 
-	/** Encodes the descriptors in the descriptor set that are specified by this layout, */
-	void bind(MVKCommandEncoder* cmdEncoder,
-			  VkPipelineBindPoint pipelineBindPoint,
-			  MVKDescriptorSet* descSet,
-			  MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-			  MVKArrayRef<uint32_t> dynamicOffsets,
-			  uint32_t& dynamicOffsetIndex);
-
     /** Encodes this binding layout and the specified descriptor on the specified command encoder immediately. */
     void push(MVKCommandEncoder* cmdEncoder,
               VkPipelineBindPoint pipelineBindPoint,
@@ -235,16 +227,6 @@ public:
 	                            const MVKShaderStageResourceBinding& indexOffsets,
 	                            const uint32_t*& dynamicOffsets) = 0;
 
-	/** Encodes this descriptor (based on its layout binding index) on the the command encoder. */
-	virtual void bind(MVKCommandEncoder* cmdEncoder,
-					  VkPipelineBindPoint pipelineBindPoint,
-					  MVKDescriptorSetLayoutBinding* mvkDSLBind,
-					  uint32_t elementIndex,
-					  bool stages[],
-					  MVKShaderResourceBinding& mtlIndexes,
-					  MVKArrayRef<uint32_t> dynamicOffsets,
-					  uint32_t& dynamicOffsetIndex) = 0;
-
 	/**
 	 * Updates the internal binding from the specified content. The format of the content depends
 	 * on the descriptor type, and is extracted from pData at the location given by index * stride.
@@ -304,15 +286,6 @@ public:
 	                    MVKDescriptorSetLayoutBinding* layout,
 	                    const MVKShaderStageResourceBinding& indexOffsets,
 	                    const uint32_t*& dynamicOffsets) override;
-
-	void bind(MVKCommandEncoder* cmdEncoder,
-			  VkPipelineBindPoint pipelineBindPoint,
-			  MVKDescriptorSetLayoutBinding* mvkDSLBind,
-			  uint32_t elementIndex,
-			  bool stages[],
-			  MVKShaderResourceBinding& mtlIndexes,
-			  MVKArrayRef<uint32_t> dynamicOffsets,
-			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
@@ -399,15 +372,6 @@ public:
 	                    const MVKShaderStageResourceBinding& indexOffsets,
 	                    const uint32_t*& dynamicOffsets) override;
 
-	void bind(MVKCommandEncoder* cmdEncoder,
-			  VkPipelineBindPoint pipelineBindPoint,
-			  MVKDescriptorSetLayoutBinding* mvkDSLBind,
-			  uint32_t elementIndex,
-			  bool stages[],
-			  MVKShaderResourceBinding& mtlIndexes,
-			  MVKArrayRef<uint32_t> dynamicOffsets,
-			  uint32_t& dynamicOffsetIndex) override;
-
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
 			   uint32_t dstIdx,
@@ -465,15 +429,6 @@ public:
 	                    MVKDescriptorSetLayoutBinding* layout,
 	                    const MVKShaderStageResourceBinding& indexOffsets,
 	                    const uint32_t*& dynamicOffsets) override;
-
-	void bind(MVKCommandEncoder* cmdEncoder,
-			  VkPipelineBindPoint pipelineBindPoint,
-			  MVKDescriptorSetLayoutBinding* mvkDSLBind,
-			  uint32_t elementIndex,
-			  bool stages[],
-			  MVKShaderResourceBinding& mtlIndexes,
-			  MVKArrayRef<uint32_t> dynamicOffsets,
-			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
@@ -549,15 +504,6 @@ protected:
 	                    const MVKShaderStageResourceBinding& indexOffsets,
 	                    const uint32_t*& dynamicOffsets);
 
-	void bind(MVKCommandEncoder* cmdEncoder,
-			  VkPipelineBindPoint pipelineBindPoint,
-			  MVKDescriptorSetLayoutBinding* mvkDSLBind,
-			  uint32_t elementIndex,
-			  bool stages[],
-			  MVKShaderResourceBinding& mtlIndexes,
-			  MVKArrayRef<uint32_t> dynamicOffsets,
-			  uint32_t& dynamicOffsetIndex);
-
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
 			   uint32_t dstIdx,
@@ -600,15 +546,6 @@ public:
 	                    const MVKShaderStageResourceBinding& indexOffsets,
 	                    const uint32_t*& dynamicOffsets) override;
 
-	void bind(MVKCommandEncoder* cmdEncoder,
-			  VkPipelineBindPoint pipelineBindPoint,
-			  MVKDescriptorSetLayoutBinding* mvkDSLBind,
-			  uint32_t elementIndex,
-			  bool stages[],
-			  MVKShaderResourceBinding& mtlIndexes,
-			  MVKArrayRef<uint32_t> dynamicOffsets,
-			  uint32_t& dynamicOffsetIndex) override;
-
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
 			   uint32_t dstIdx,
@@ -650,15 +587,6 @@ public:
 	                    const MVKShaderStageResourceBinding& indexOffsets,
 	                    const uint32_t*& dynamicOffsets) override;
 
-	void bind(MVKCommandEncoder* cmdEncoder,
-			  VkPipelineBindPoint pipelineBindPoint,
-			  MVKDescriptorSetLayoutBinding* mvkDSLBind,
-			  uint32_t elementIndex,
-			  bool stages[],
-			  MVKShaderResourceBinding& mtlIndexes,
-			  MVKArrayRef<uint32_t> dynamicOffsets,
-			  uint32_t& dynamicOffsetIndex) override;
-
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
 			   uint32_t dstIdx,
@@ -697,15 +625,6 @@ public:
 	                    MVKDescriptorSetLayoutBinding* layout,
 	                    const MVKShaderStageResourceBinding& indexOffsets,
 	                    const uint32_t*& dynamicOffsets) override;
-
-	void bind(MVKCommandEncoder* cmdEncoder,
-			  VkPipelineBindPoint pipelineBindPoint,
-			  MVKDescriptorSetLayoutBinding* mvkDSLBind,
-			  uint32_t elementIndex,
-			  bool stages[],
-			  MVKShaderResourceBinding& mtlIndexes,
-			  MVKArrayRef<uint32_t> dynamicOffsets,
-			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
