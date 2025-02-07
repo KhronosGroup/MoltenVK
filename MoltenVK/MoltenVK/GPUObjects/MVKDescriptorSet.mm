@@ -125,24 +125,6 @@ void MVKDescriptorSetLayout::appendDescriptorSetBindings(
 	}
 }
 
-// A null cmdEncoder can be passed to perform a validation pass
-void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
-											   VkPipelineBindPoint pipelineBindPoint,
-											   uint32_t descSetIndex,
-											   MVKDescriptorSet* descSet,
-											   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-											   MVKArrayRef<uint32_t> dynamicOffsets,
-											   uint32_t& dynamicOffsetIndex) {
-	if (!cmdEncoder) { clearConfigurationResult(); }
-	if (_isPushDescriptorLayout ) { return; }
-
-	if ( !isUsingMetalArgumentBuffers() ) {
-		for (auto& dslBind : _bindings) {
-			dslBind.bind(cmdEncoder, pipelineBindPoint, descSet, dslMTLRezIdxOffsets, dynamicOffsets, dynamicOffsetIndex);
-		}
-	}
-}
-
 static const void* getWriteParameters(VkDescriptorType type, const VkDescriptorImageInfo* pImageInfo,
                                       const VkDescriptorBufferInfo* pBufferInfo, const VkBufferView* pTexelBufferView,
                                       const VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock,

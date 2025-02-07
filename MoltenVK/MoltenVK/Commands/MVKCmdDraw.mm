@@ -36,14 +36,12 @@ VkResult MVKCmdBindVertexBuffers<N>::setContent(MVKCommandBuffer* cmdBuff,
 												const VkDeviceSize* pOffsets,
 												const VkDeviceSize* pSizes,
 												const VkDeviceSize* pStrides) {
-	MVKDevice* mvkDvc = cmdBuff->getDevice();
 	_firstBinding = firstBinding;
 	_bindings.clear();	// Clear for reuse
     _bindings.reserve(bindingCount);
-    MVKMTLBufferBinding b;
+    MVKVertexMTLBufferBinding b;
     for (uint32_t bindIdx = 0; bindIdx < bindingCount; bindIdx++) {
         MVKBuffer* mvkBuffer = (MVKBuffer*)pBuffers[bindIdx];
-        b.index = mvkDvc->getMetalBufferIndexForVertexAttributeBinding(firstBinding + bindIdx);
         b.mtlBuffer = mvkBuffer->getMTLBuffer();
         b.offset = mvkBuffer->getMTLBufferOffset() + pOffsets[bindIdx];
 		b.size = pSizes ? uint32_t(pSizes[bindIdx] == VK_WHOLE_SIZE ? mvkBuffer->getByteCount() - pOffsets[bindIdx] : pSizes[bindIdx]) : 0;

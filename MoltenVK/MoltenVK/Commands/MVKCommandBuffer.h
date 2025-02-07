@@ -364,8 +364,7 @@ public:
 	 * optionally be marked dirty. Otherwise, if the current encoder is not a compute
 	 * encoder, this function ends the current encoder before beginning compute encoding.
 	 */
-	id<MTLComputeCommandEncoder> getMTLComputeEncoder(MVKCommandUse cmdUse,
-													  bool markCurrentComputeStateDirty = false);
+	id<MTLComputeCommandEncoder> getMTLComputeEncoder(MVKCommandUse cmdUse);
 
 	/**
 	 * Returns the current Metal BLIT encoder for the specified use,
@@ -412,12 +411,6 @@ public:
 	/** Returns the compute pipeline. */
 	MVKComputePipeline* getComputePipeline() { return getVkCompute()._pipeline; }
 
-	/** Returns the push constants associated with the specified shader stage. */
-	MVKPushConstantsCommandEncoderState* getPushConstants(VkShaderStageFlagBits shaderStage);
-
-	/** Encode the buffer binding as a vertex attribute buffer. */
-	void encodeVertexAttributeBuffer(MVKMTLBufferBinding& b, bool isDynamicStride);
-
     /**
 	 * Copy bytes into the Metal encoder at a Metal vertex buffer index, and optionally indicate
 	 * that this binding might override a desriptor binding. If so, the descriptor binding will
@@ -441,14 +434,6 @@ public:
 	 */
 	void setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder, const void* bytes,
 	                     NSUInteger length, uint32_t mtlBuffIndex);
-
-	/**
-	 * Copy bytes into the Metal encoder at a Metal compute buffer index with dynamic stride,
-	 * and optionally indicate that this binding might override a desriptor binding. If so,
-	 * the descriptor binding will be marked dirty so that it will rebind before the next usage.
-	 */
-	void setComputeBytesWithStride(id<MTLComputeCommandEncoder> mtlEncoder, const void* bytes,
-	                               NSUInteger length, uint32_t mtlBuffIndex, uint32_t stride);
 
     /** Get a temporary MTLBuffer that will be returned to a pool after the command buffer is finished. */
     const MVKMTLBufferAllocation* getTempMTLBuffer(NSUInteger length, bool isPrivate = false, bool isDedicated = false);
@@ -511,9 +496,6 @@ public:
 	/** Tracks the state of command encoding. */
 	MVKCommandEncoderStateNew _state;
 
-	/** Tracks whether the GPU-addressable buffers need to be used. */
-	MVKGPUAddressableBuffersCommandEncoderState _gpuAddressableBuffersState;
-
 	/** Tracks the occlusion query state of the encoder. */
 	MVKOcclusionQueryCommandEncoderState _occlusionQueryState;
 
@@ -566,11 +548,6 @@ protected:
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
 	id<MTLFence> _stageCountersMTLFence;
-	MVKPushConstantsCommandEncoderState _vertexPushConstants;
-	MVKPushConstantsCommandEncoderState _tessCtlPushConstants;
-	MVKPushConstantsCommandEncoderState _tessEvalPushConstants;
-	MVKPushConstantsCommandEncoderState _fragmentPushConstants;
-	MVKPushConstantsCommandEncoderState _computePushConstants;
 	MVKPrefillMetalCommandBuffersStyle _prefillStyle;
 	VkSubpassContents _subpassContents;
 	uint32_t _renderSubpassIndex;
