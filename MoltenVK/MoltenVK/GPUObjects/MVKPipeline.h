@@ -150,15 +150,6 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT; }
 
-	/** Called when the pipeline has been bound to the command encoder. */
-	virtual void wasBound(MVKCommandEncoder* cmdEncoder) {}
-
-	/** Encodes this pipeline to the command encoder. */
-	virtual void encode(MVKCommandEncoder* cmdEncoder, uint32_t stage = 0) = 0;
-
-	/** Binds the push constants to a command encoder. */
-	void bindPushConstants(MVKCommandEncoder* cmdEncoder);
-
 	/** Returns the current indirect parameter buffer bindings. */
 	const MVKShaderImplicitRezBinding& getIndirectParamsIndex() { return _indirectParamsIndex; }
 
@@ -263,9 +254,8 @@ public:
 	/** Returns the number and order of stages in this pipeline. Draws commands must encode this pipeline once per stage. */
 	void getStages(MVKPiplineStages& stages);
 
-	virtual void wasBound(MVKCommandEncoder* cmdEncoder) override;
-
-	void encode(MVKCommandEncoder* cmdEncoder, uint32_t stage = 0) override;
+	/** Called when the pipeline is bound to a command encoder. */
+	void wasBound(MVKCommandEncoder* cmdEncoder);
 
 	/** Returns whether this pipeline has tessellation shaders. */
 	bool isTessellationPipeline() { return _isTessellationPipeline; }
@@ -494,9 +484,6 @@ protected:
 class MVKComputePipeline : public MVKPipeline {
 
 public:
-
-	void encode(MVKCommandEncoder* cmdEncoder, uint32_t = 0) override;
-
 	/** Returns if this pipeline allows non-zero dispatch bases in vkCmdDispatchBase(). */
 	bool allowsDispatchBase() { return _allowsDispatchBase; }
 
