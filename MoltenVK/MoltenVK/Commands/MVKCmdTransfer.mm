@@ -1041,7 +1041,7 @@ void MVKCmdCopyBuffer<N>::encode(MVKCommandEncoder* cmdEncoder) {
 			copyInfo.dstOffset = (uint32_t)cpyRgn.dstOffset;
 			copyInfo.size = (uint32_t)cpyRgn.size;
 
-			id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyBuffer, true);
+			id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyBuffer);
 			MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
 			[mtlComputeEnc pushDebugGroup: @"vkCmdCopyBuffer"];
 			state.bindPipeline(mtlComputeEnc, cmdEncoder->getCommandEncodingPool()->getCmdCopyBufferBytesMTLComputePipelineState());
@@ -1228,7 +1228,7 @@ void MVKCmdBufferImageCopy<N>::encode(MVKCommandEncoder* cmdEncoder) {
             info.offset = cpyRgn.imageOffset;
             info.extent = cpyRgn.imageExtent;
             bool needsTempBuff = mipLevel != 0;
-			id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(cmdUse, false);
+			id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(cmdUse);
 			MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
             id<MTLComputePipelineState> mtlComputeState = cmdEncoder->getCommandEncodingPool()->getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(needsTempBuff);
             [mtlComputeEnc pushDebugGroup: @"vkCmdCopyBufferToImage"];
@@ -1659,7 +1659,7 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
             assert( !isDS );
             const bool isTextureArray = _image->getLayerCount() != 1u;
             id<MTLComputePipelineState> mtlClearState = cmdEncoder->getCommandEncodingPool()->getCmdClearColorImageMTLComputePipelineState(pixFmts->getFormatType(_image->getVkFormat()), isTextureArray);
-            id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseClearColorImage, true);
+            id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseClearColorImage);
             MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
             [mtlComputeEnc pushDebugGroup: @"vkCmdClearColorImage"];
             state.bindPipeline(mtlComputeEnc, mtlClearState);
@@ -1834,7 +1834,7 @@ void MVKCmdFillBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 	NSUInteger tgWidth = std::min(cps.maxTotalThreadsPerThreadgroup, cmdEncoder->getMTLDevice().maxThreadsPerThreadgroup.width);
 	NSUInteger tgCount = _wordCount / tgWidth;
 
-	id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseFillBuffer, true);
+	id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseFillBuffer);
 	MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
 	[mtlComputeEnc pushDebugGroup: @"vkCmdFillBuffer"];
 	state.bindPipeline(mtlComputeEnc, cps);

@@ -50,7 +50,7 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	uint32_t _firstBinding;
-    MVKSmallVector<MVKMTLBufferBinding, N> _bindings;
+    MVKSmallVector<MVKVertexMTLBufferBinding, N> _bindings;
 };
 
 // Concrete template class implementations.

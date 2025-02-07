@@ -80,15 +80,6 @@ public:
 	                                 const MVKShaderStageResourceBinding& indexOffsets,
 	                                 const uint32_t*& dynamicOffsets);
 
-	/** Encodes this descriptor set layout and the specified descriptor set on the specified command encoder. */
-	void bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
-						   VkPipelineBindPoint pipelineBindPoint,
-						   uint32_t descSetIndex,
-						   MVKDescriptorSet* descSet,
-						   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-						   MVKArrayRef<uint32_t> dynamicOffsets,
-						   uint32_t& dynamicOffsetIndex);
-
 	/** Encodes this descriptor set layout and the specified descriptor updates on the specified command encoder immediately. */
 	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
 						   VkPipelineBindPoint pipelineBindPoint,
