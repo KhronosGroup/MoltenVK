@@ -429,6 +429,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				vmmFeatures->vulkanMemoryModelAvailabilityVisibilityChains = supportedFeats12.vulkanMemoryModelAvailabilityVisibilityChains;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES: {
+				auto* zeroInitWorkgroupMemFeatures = (VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures*)next;
+				zeroInitWorkgroupMemFeatures->shaderZeroInitializeWorkgroupMemory = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR: {
 				auto* barycentricFeatures = (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)next;
 				barycentricFeatures->fragmentShaderBarycentric = true;
