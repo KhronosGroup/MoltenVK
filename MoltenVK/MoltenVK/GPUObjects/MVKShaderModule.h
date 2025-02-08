@@ -86,7 +86,8 @@ public:
 
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 					 const mvk::SPIRVToMSLConversionResultInfo& resultInfo,
-					 const MVKCompressor<std::string> compressedMSL);
+					 const MVKCompressor<std::string> compressedMSL,
+					 const std::vector<std::pair<uint32_t, uint32_t> >* spec_list = nullptr);
 
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 					 const void* mslCompiledCodeData,
@@ -108,7 +109,8 @@ protected:
 								  MVKShaderModule* shaderModule);
 	void handleCompilationError(NSError* err, const char* opDesc);
     MTLFunctionConstant* getFunctionConstant(NSArray<MTLFunctionConstant*>* mtlFCs, NSUInteger mtlFCID);
-	void compileLibrary(const std::string& msl);
+	void compileLibrary(const std::string& msl,
+						const std::vector<std::pair<uint32_t, uint32_t> >* spec_list = nullptr);
 	void compressMSL(const std::string& msl);
 	void decompressMSL(std::string& msl);
 	MVKCompressor<std::string>& getCompressedMSL() { return _compressedMSL; }
@@ -117,6 +119,9 @@ protected:
 	id<MTLLibrary> _mtlLibrary;
 	MVKCompressor<std::string> _compressedMSL;
   mvk::SPIRVToMSLConversionResultInfo _shaderConversionResultInfo;
+
+	bool _specialized;
+	std::map<std::vector<std::pair<uint32_t, uint32_t> >, MVKShaderLibrary *> _spec_variants;
 };
 
 
@@ -260,7 +265,8 @@ public:
 	 * nanoseconds, an error will be generated and logged, and nil will be returned.
 	 */
 	id<MTLLibrary> newMTLLibrary(NSString* mslSourceCode,
-								 const mvk::SPIRVToMSLConversionResultInfo& shaderConversionResults);
+								 const mvk::SPIRVToMSLConversionResultInfo& shaderConversionResults,
+								 const std::vector<std::pair<uint32_t, uint32_t> >* spec_list = nullptr);
 
 
 #pragma mark Construction
