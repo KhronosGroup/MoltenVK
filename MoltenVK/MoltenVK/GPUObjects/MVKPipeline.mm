@@ -2068,14 +2068,14 @@ bool MVKGraphicsPipeline::isRasterizationDisabled(const VkGraphicsPipelineCreate
 
 // We ask SPIRV-Cross to fix up the clip space from [-w, w] to [0, w] if a
 // VkPipelineViewportDepthClipControlCreateInfoEXT is provided with negativeOneToOne enabled.
+// Must ignore allowed bad pViewportState pointer if rasterization is disabled.
 bool MVKGraphicsPipeline::isDepthClipNegativeOneToOne(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
-	if (!pCreateInfo->pViewportState) {
-		return false;
-	}
-	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pViewportState->pNext; next; next = next->pNext) {
-		switch (next->sType) {
-			case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT: return ((VkPipelineViewportDepthClipControlCreateInfoEXT*)next)->negativeOneToOne;
-			default: break;
+	if (_isRasterizing && pCreateInfo->pViewportState ) {
+		for (const auto* next = (VkBaseInStructure*)pCreateInfo->pViewportState->pNext; next; next = next->pNext) {
+			switch (next->sType) {
+				case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT: return ((VkPipelineViewportDepthClipControlCreateInfoEXT*)next)->negativeOneToOne;
+				default: break;
+			}
 		}
 	}
 	return false;
