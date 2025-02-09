@@ -23,6 +23,7 @@
 #include <spirv_msl.hpp>
 #include <string>
 #include <vector>
+#include <map>
 
 
 namespace mvk {
@@ -246,6 +247,7 @@ namespace mvk {
 		bool needsDispatchBaseBuffer = false;
 		bool needsViewRangeBuffer = false;
 		bool usesPhysicalStorageBufferAddressesCapability = false;
+		std::map<uint32_t, std::string> specializationMacros;
 
 	} SPIRVToMSLConversionResultInfo;
 
@@ -303,6 +305,7 @@ namespace mvk {
 		void populateWorkgroupDimension(SPIRVWorkgroupSizeDimension& wgDim, uint32_t size, SPIRV_CROSS_NAMESPACE::SpecializationConstant& spvSpecConst);
 		void populateEntryPoint(SPIRV_CROSS_NAMESPACE::Compiler* pCompiler, SPIRVToMSLConversionOptions& options, SPIRVEntryPoint& entryPoint);
 		bool usesPhysicalStorageBufferAddressesCapability(SPIRV_CROSS_NAMESPACE::Compiler* pCompiler);
+		void populateSpecializationMacros(SPIRV_CROSS_NAMESPACE::CompilerMSL* pMSLCompiler, std::map<uint32_t, std::string>& specializationMacros);
 
 		std::vector<uint32_t> _spirv;
 	};
