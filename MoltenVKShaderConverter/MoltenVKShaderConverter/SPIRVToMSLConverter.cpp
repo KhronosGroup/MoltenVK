@@ -370,6 +370,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	conversionResult.resultInfo.needsDispatchBaseBuffer = pMSLCompiler && pMSLCompiler->needs_dispatch_base_buffer();
 	conversionResult.resultInfo.needsViewRangeBuffer = pMSLCompiler && pMSLCompiler->needs_view_mask_buffer();
 	conversionResult.resultInfo.usesPhysicalStorageBufferAddressesCapability = usesPhysicalStorageBufferAddressesCapability(pMSLCompiler);
+	populateSpecializationMacros(pMSLCompiler, conversionResult.resultInfo.specializationMacros);
 
 	// When using Metal argument buffers, if the shader is provided with dynamic buffer offsets,
 	// then it needs a buffer to hold these dynamic offsets.
@@ -549,4 +550,48 @@ bool SPIRVToMSLConverter::usesPhysicalStorageBufferAddressesCapability(Compiler*
 		}
 	}
 	return false;
+}
+
+void SPIRVToMSLConverter::populateSpecializationMacros(CompilerMSL* pMSLCompiler,
+													   map<uint32_t, MSLSpecializationMacroInfo>& specializationMacros)
+{
+	if (pMSLCompiler) {
+		auto spec_consts = pMSLCompiler->get_specialization_constants();
+		for (auto& c: spec_consts) {
+			uint32_t id = c.constant_id;
+			if (pMSLCompiler->specialization_constant_is_macro(id)) {
+				const SPIRConstant& constant = pMSLCompiler->get_constant(c.id);
+				const SPIRType& type = pMSLCompiler->get_type(constant.constant_type);
+				MSLSpecializationMacroInfo info;
+
+				switch (type.basetype) {
+					case SPIRType::SByte:
+					case SPIRType::Short:
+					case SPIRType::Int:
+					case SPIRType::Int64:
+						info.isFloat = false;
+						info.isSigned = true;
+						break;
+					case SPIRType::UByte:
+					case SPIRType::UShort:
+					case SPIRType::UInt:
+					case SPIRType::UInt64:
+					case SPIRType::Boolean:
+						info.isFloat = false;
+						info.isSigned = false;
+						break;
+					case SPIRType::Half:
+					case SPIRType::Float:
+					case SPIRType::Double:
+						info.isFloat = true;
+						info.isSigned = false;
+						break;
+					default:
+						continue;  // Ignore unsupported types
+				}
+				info.name = pMSLCompiler->constant_value_macro_name(id);
+				specializationMacros[id] = info;
+			}
+		}
+	}
 }
