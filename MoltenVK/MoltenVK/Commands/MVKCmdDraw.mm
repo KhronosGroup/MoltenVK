@@ -263,7 +263,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                     vtxOutBuff = cmdEncoder->getTempMTLBuffer(_vertexCount * _instanceCount * 4 * dvcLimits.maxVertexOutputComponents, true);
                     [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                           offset: vtxOutBuff->_offset
-                                         atIndex: pipeline->getOutputBufferIndex().stages[kMVKShaderStageVertex]];
+                                         atIndex: pipeline->getImplicitBuffers(kMVKShaderStageVertex).ids[MVKImplicitBuffer::Output]];
                 }
 				[mtlTessCtlEncoder setStageInRegion: MTLRegionMake2D(_firstVertex, _firstInstance, _vertexCount, _instanceCount)];
 				// If there are vertex bindings with a zero vertex divisor, I need to offset them by
@@ -287,22 +287,22 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                     tcOutBuff = cmdEncoder->getTempMTLBuffer(outControlPointCount * tessParams.patchCount * 4 * dvcLimits.maxTessellationControlPerVertexOutputComponents, true);
                     [mtlTessCtlEncoder setBuffer: tcOutBuff->_mtlBuffer
                                           offset: tcOutBuff->_offset
-                                         atIndex: pipeline->getOutputBufferIndex().stages[kMVKShaderStageTessCtl]];
+                                         atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessCtl).ids[MVKImplicitBuffer::Output]];
                 }
                 if (pipeline->needsTessCtlPatchOutputBuffer()) {
                     tcPatchOutBuff = cmdEncoder->getTempMTLBuffer(tessParams.patchCount * 4 * dvcLimits.maxTessellationControlPerPatchOutputComponents, true);
                     [mtlTessCtlEncoder setBuffer: tcPatchOutBuff->_mtlBuffer
                                           offset: tcPatchOutBuff->_offset
-                                         atIndex: pipeline->getTessCtlPatchOutputBufferIndex()];
+                                         atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessCtl).ids[MVKImplicitBuffer::PatchOutput]];
                 }
                 tcLevelBuff = cmdEncoder->getTempMTLBuffer(tessParams.patchCount * sizeof(MTLQuadTessellationFactorsHalf), true);
                 [mtlTessCtlEncoder setBuffer: tcLevelBuff->_mtlBuffer
                                       offset: tcLevelBuff->_offset
-                                     atIndex: pipeline->getTessCtlLevelBufferIndex()];
+                                     atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessCtl).ids[MVKImplicitBuffer::TessLevel]];
                 cmdEncoder->setComputeBytes(mtlTessCtlEncoder,
                                             &tessParams,
                                             sizeof(tessParams),
-                                            pipeline->getIndirectParamsIndex().stages[kMVKShaderStageTessCtl]);
+                                            pipeline->getImplicitBuffers(kMVKShaderStageTessCtl).ids[MVKImplicitBuffer::IndirectParams]);
                 if (pipeline->needsVertexOutputBuffer()) {
                     [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                           offset: vtxOutBuff->_offset
@@ -481,11 +481,11 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                     vtxOutBuff = cmdEncoder->getTempMTLBuffer(_indexCount * _instanceCount * 4 * dvcLimits.maxVertexOutputComponents, true);
                     [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                           offset: vtxOutBuff->_offset
-                                         atIndex: pipeline->getOutputBufferIndex().stages[kMVKShaderStageVertex]];
+                                         atIndex: pipeline->getImplicitBuffers(kMVKShaderStageVertex).ids[MVKImplicitBuffer::Output]];
                 }
 				[mtlTessCtlEncoder setBuffer: ibb.mtlBuffer
                                       offset: idxBuffOffset
-                                     atIndex: pipeline->getIndirectParamsIndex().stages[kMVKShaderStageVertex]];
+                                     atIndex: pipeline->getImplicitBuffers(kMVKShaderStageVertex).ids[MVKImplicitBuffer::Index]];
 				[mtlTessCtlEncoder setStageInRegion: MTLRegionMake2D(_vertexOffset, _firstInstance, _indexCount, _instanceCount)];
 				// If there are vertex bindings with a zero vertex divisor, I need to offset them by
 				// _firstInstance * stride, since that is the expected behaviour for a divisor of 0.
@@ -508,22 +508,22 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                     tcOutBuff = cmdEncoder->getTempMTLBuffer(outControlPointCount * tessParams.patchCount * 4 * dvcLimits.maxTessellationControlPerVertexOutputComponents, true);
                     [mtlTessCtlEncoder setBuffer: tcOutBuff->_mtlBuffer
                                           offset: tcOutBuff->_offset
-                                         atIndex: pipeline->getOutputBufferIndex().stages[kMVKShaderStageTessCtl]];
+                                         atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessCtl).ids[MVKImplicitBuffer::Output]];
                 }
                 if (pipeline->needsTessCtlPatchOutputBuffer()) {
                     tcPatchOutBuff = cmdEncoder->getTempMTLBuffer(tessParams.patchCount * 4 * dvcLimits.maxTessellationControlPerPatchOutputComponents, true);
                     [mtlTessCtlEncoder setBuffer: tcPatchOutBuff->_mtlBuffer
                                           offset: tcPatchOutBuff->_offset
-                                         atIndex: pipeline->getTessCtlPatchOutputBufferIndex()];
+                                         atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessCtl).ids[MVKImplicitBuffer::PatchOutput]];
                 }
                 tcLevelBuff = cmdEncoder->getTempMTLBuffer(tessParams.patchCount * sizeof(MTLQuadTessellationFactorsHalf), true);
                 [mtlTessCtlEncoder setBuffer: tcLevelBuff->_mtlBuffer
                                       offset: tcLevelBuff->_offset
-                                     atIndex: pipeline->getTessCtlLevelBufferIndex()];
+                                     atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessCtl).ids[MVKImplicitBuffer::TessLevel]];
                 cmdEncoder->setComputeBytes(mtlTessCtlEncoder,
                                             &tessParams,
                                             sizeof(tessParams),
-                                            pipeline->getIndirectParamsIndex().stages[kMVKShaderStageTessCtl]);
+                                            pipeline->getImplicitBuffers(kMVKShaderStageTessCtl).ids[MVKImplicitBuffer::IndirectParams]);
                 if (pipeline->needsVertexOutputBuffer()) {
                     [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                           offset: vtxOutBuff->_offset
@@ -845,7 +845,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                     if (pipeline->needsVertexOutputBuffer()) {
                         [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                               offset: vtxOutBuff->_offset
-                                             atIndex: pipeline->getOutputBufferIndex().stages[kMVKShaderStageVertex]];
+                                             atIndex: pipeline->getImplicitBuffers(kMVKShaderStageVertex).ids[MVKImplicitBuffer::Output]];
                     }
 					// We must assume we can read up to the maximum number of vertices.
 					[mtlTessCtlEncoder setStageInRegion: MTLRegionMake2D(0, 0, vertexCount, vertexCount)];
@@ -864,19 +864,19 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                     if (pipeline->needsTessCtlOutputBuffer()) {
                         [mtlTessCtlEncoder setBuffer: tcOutBuff->_mtlBuffer
                                               offset: tcOutBuff->_offset
-                                             atIndex: pipeline->getOutputBufferIndex().stages[kMVKShaderStageTessCtl]];
+                                             atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessCtl).ids[MVKImplicitBuffer::Output]];
                     }
                     if (pipeline->needsTessCtlPatchOutputBuffer()) {
                         [mtlTessCtlEncoder setBuffer: tcPatchOutBuff->_mtlBuffer
                                               offset: tcPatchOutBuff->_offset
-                                             atIndex: pipeline->getTessCtlPatchOutputBufferIndex()];
+                                             atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessCtl).ids[MVKImplicitBuffer::PatchOutput]];
                     }
                     [mtlTessCtlEncoder setBuffer: tcLevelBuff->_mtlBuffer
                                           offset: tcLevelBuff->_offset
-                                         atIndex: pipeline->getTessCtlLevelBufferIndex()];
+                                         atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessCtl).ids[MVKImplicitBuffer::TessLevel]];
 					[mtlTessCtlEncoder setBuffer: tcParamsBuff->_mtlBuffer
 										  offset: mtlParmBuffOfst
-										 atIndex: pipeline->getIndirectParamsIndex().stages[kMVKShaderStageTessCtl]];
+										 atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessCtl).ids[MVKImplicitBuffer::IndirectParams]];
 					mtlParmBuffOfst += paramsIncr;
                     if (pipeline->needsVertexOutputBuffer()) {
                         [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
@@ -1163,11 +1163,11 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
                     if (pipeline->needsVertexOutputBuffer()) {
                         [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                              offset: vtxOutBuff->_offset
-                                            atIndex: pipeline->getOutputBufferIndex().stages[kMVKShaderStageVertex]];
+                                            atIndex: pipeline->getImplicitBuffers(kMVKShaderStageVertex).ids[MVKImplicitBuffer::Output]];
                     }
 					[mtlTessCtlEncoder setBuffer: vtxIndexBuff->_mtlBuffer
 										  offset: vtxIndexBuff->_offset
-										 atIndex: pipeline->getIndirectParamsIndex().stages[kMVKShaderStageVertex]];
+										 atIndex: pipeline->getImplicitBuffers(kMVKShaderStageVertex).ids[MVKImplicitBuffer::Index]];
 					[mtlTessCtlEncoder setStageInRegion: MTLRegionMake2D(0, 0, vertexCount, vertexCount)];
 					if ([mtlTessCtlEncoder respondsToSelector: @selector(setStageInRegionWithIndirectBuffer:indirectBufferOffset:)]) {
 						[mtlTessCtlEncoder setStageInRegionWithIndirectBuffer: mtlIndBuff
@@ -1187,19 +1187,19 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
                     if (pipeline->needsTessCtlOutputBuffer()) {
                         [mtlTessCtlEncoder setBuffer: tcOutBuff->_mtlBuffer
                                               offset: tcOutBuff->_offset
-                                             atIndex: pipeline->getOutputBufferIndex().stages[kMVKShaderStageTessCtl]];
+                                             atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessCtl).ids[MVKImplicitBuffer::Output]];
                     }
                     if (pipeline->needsTessCtlPatchOutputBuffer()) {
                         [mtlTessCtlEncoder setBuffer: tcPatchOutBuff->_mtlBuffer
                                               offset: tcPatchOutBuff->_offset
-                                             atIndex: pipeline->getTessCtlPatchOutputBufferIndex()];
+                                             atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessCtl).ids[MVKImplicitBuffer::PatchOutput]];
                     }
                     [mtlTessCtlEncoder setBuffer: tcLevelBuff->_mtlBuffer
                                           offset: tcLevelBuff->_offset
-                                         atIndex: pipeline->getTessCtlLevelBufferIndex()];
+                                         atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessCtl).ids[MVKImplicitBuffer::TessLevel]];
 					[mtlTessCtlEncoder setBuffer: tcParamsBuff->_mtlBuffer
 										  offset: mtlParmBuffOfst
-										 atIndex: pipeline->getIndirectParamsIndex().stages[kMVKShaderStageTessCtl]];
+										 atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessCtl).ids[MVKImplicitBuffer::IndirectParams]];
 					mtlParmBuffOfst += paramsIncr;
                     if (pipeline->needsVertexOutputBuffer()) {
                         [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
