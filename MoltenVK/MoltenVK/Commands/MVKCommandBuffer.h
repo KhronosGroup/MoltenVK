@@ -360,7 +360,7 @@ public:
 	id<MTLCommandEncoder> getMTLEncoder();
 
 	/** Returns the graphics encoder state */
-	MVKCommandEncoderStateNew& getState() { return _state; }
+	MVKCommandEncoderState& getState() { return _state; }
 
 	/** Returns the Vulkan graphics encoder state */
 	const MVKVulkanGraphicsCommandEncoderState& getVkGraphics() const { return _state.vkGraphics(); }
@@ -472,7 +472,7 @@ public:
 	id<MTLRenderCommandEncoder> _mtlRenderEncoder;
 
 	/** Tracks the state of the encoding */
-	MVKCommandEncoderStateNew _state;
+	MVKCommandEncoderState _state;
 
 	/** Tracks the occlusion query state of the encoder. */
 	MVKOcclusionQueryCommandEncoderState _occlusionQueryState;
