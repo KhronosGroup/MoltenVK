@@ -188,6 +188,7 @@ enum class MVKImplicitBuffer : uint32_t {
 	Output,
 	PatchOutput,
 	TessLevel,
+	Index,
 	DispatchBase,
 	Count,
 };
