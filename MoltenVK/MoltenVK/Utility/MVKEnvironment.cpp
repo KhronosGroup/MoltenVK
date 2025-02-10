@@ -26,10 +26,9 @@
 // Return the expected size of MVKConfiguration, based on contents of MVKConfigMembers.def.
 static constexpr uint32_t getExpectedMVKConfigurationSize() {
 #define MVK_CONFIG_MEMBER(member, mbrType, name)         cfgSize += sizeof(mbrType);
-	uint32_t cfgSize = 0;
+	size_t cfgSize = 0;
 #include "MVKConfigMembers.def"
-	cfgSize += kMVKConfigurationInternalPaddingByteCount;
-	return cfgSize;
+	return (uint32_t)((cfgSize + (alignof(MVKConfiguration) - 1)) & ~(alignof(MVKConfiguration) - 1));
 }
 
 // Return the expected number of string members in MVKConfiguration, based on contents of MVKConfigMembers.def.
