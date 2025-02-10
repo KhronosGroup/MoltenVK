@@ -223,7 +223,6 @@ MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVK
 		// Establish descriptor counts and push constants use.
 		for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
 			_descriptorBufferCounts.stages[stage] = layout->_mtlResourceCounts.stages[stage].bufferIndex;
-			_pushConstantsBufferIndex.stages[stage] = layout->_pushConstantsMTLResourceIndexes.stages[stage].bufferIndex;
 			_stageUsesPushConstants[stage] = layout->stageUsesPushConstants((MVKShaderStage)stage);
 		}
 	}
@@ -248,7 +247,7 @@ static void populateImplicitBufferUsage(MVKImplicitBufferBindings& dst, SPIRVToM
 }
 
 /** Populate a MVKStageResourceBits based on the resources used by the given shader info. */
-static void populateResourceUsage(MVKStageResourceBits& dst, SPIRVToMSLConversionConfiguration& src, spv::ExecutionModel stage) {
+static void populateResourceUsage(MVKStageResourceBits& dst, MVKImplicitBufferBindings& implicitBuffers, SPIRVToMSLConversionConfiguration& src, spv::ExecutionModel stage) {
 	typedef SPIRV_CROSS_NAMESPACE::SPIRType SPIRType;
 	bool isArgBuf[kMVKMaxDescriptorSetCount] = {};
 	bool isUsed[kMVKMaxDescriptorSetCount] = {};
@@ -262,8 +261,10 @@ static void populateResourceUsage(MVKStageResourceBits& dst, SPIRVToMSLConversio
 			continue;
 		if (binding.resourceBinding.stage != stage)
 			continue;
-		if (binding.resourceBinding.desc_set == kPushConstDescSet)
+		if (binding.resourceBinding.desc_set == kPushConstDescSet) {
+			implicitBuffers.needed.add(MVKImplicitBuffer::PushConstant);
 			continue;
+		}
 		assert(binding.resourceBinding.desc_set < kMVKMaxDescriptorSetCount);
 		isUsed[binding.resourceBinding.desc_set] = true;
 		if (isArgBuf[binding.resourceBinding.desc_set])
@@ -739,8 +740,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	_dynamicStateFlags &= needed;
 
 	for (uint32_t stage = kMVKShaderStageVertex; stage < std::size(_implicitBuffers); stage++) {
-		_implicitBuffers[stage].ids[MVKImplicitBuffer::PushConstant] = _pushConstantsBufferIndex.stages[stage];
-		_implicitBuffers[stage].needed |= MVKImplicitBufferList(MVKImplicitBuffer::PushConstant, _stageUsesPushConstants[stage]);
+		_implicitBuffers[stage].ids[MVKImplicitBuffer::PushConstant] = _layout->getPushConstantResourceIndex(static_cast<MVKShaderStage>(stage));
 	}
 }
 
@@ -1037,7 +1037,7 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessVertexStageDescript
 	// Vertex input
 	plDesc.stageInputDescriptor = [MTLStageInputOutputDescriptor stageInputOutputDescriptor];
 	if (!addVertexInputToPipeline(plDesc.stageInputDescriptor, pCreateInfo->pVertexInputState, shaderConfig)) { return nil; }
-	plDesc.stageInputDescriptor.indexBufferIndex = _indirectParamsIndex.stages[kMVKShaderStageVertex];
+	plDesc.stageInputDescriptor.indexBufferIndex = _implicitBuffers[kMVKShaderStageVertex].ids[MVKImplicitBuffer::Index];
 
 	plDesc.threadGroupSizeIsMultipleOfThreadExecutionWidth = YES;
 
@@ -1236,18 +1236,51 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 	return plDesc;
 }
 
-bool MVKGraphicsPipeline::verifyImplicitBuffer(bool needsBuffer, MVKShaderImplicitRezBinding& index, MVKShaderStage stage, const char* name) {
+static constexpr const char* getImplicitBufferName(MVKImplicitBuffer buffer) {
+	switch (buffer) {
+		case MVKImplicitBuffer::PushConstant:   return "push constant";
+		case MVKImplicitBuffer::Swizzle:        return "swizzle";
+		case MVKImplicitBuffer::BufferSize:     return "buffer size";
+		case MVKImplicitBuffer::DynamicOffset:  return "dynamic offset";
+		case MVKImplicitBuffer::ViewRange:      return "view range";
+		case MVKImplicitBuffer::IndirectParams: return "indirect parameter";
+		case MVKImplicitBuffer::Output:         return "per-vertex output";
+		case MVKImplicitBuffer::PatchOutput:    return "per-patch output";
+		case MVKImplicitBuffer::TessLevel:      return "tessellation level";
+		case MVKImplicitBuffer::Index:          return "index";
+		case MVKImplicitBuffer::DispatchBase:   return "dispatch base";
+		case MVKImplicitBuffer::Count:          break;
+	}
+	assert(0);
+	return "unknown";
+}
+
+static bool verifyImplicitBuffers(MVKImplicitBufferBindings& buffers, const char* stageName, uint32_t limit, MVKPipeline* pipeline) {
+	static constexpr MVKImplicitBufferList ignored = MVKImplicitBuffer::PushConstant; // Push constants are in the main buffer area
+	for (MVKImplicitBuffer needed : buffers.needed.removingAll(ignored)) {
+		if (buffers.ids[needed] < limit) {
+			pipeline->setConfigurationResult(pipeline->reportError(VK_ERROR_INITIALIZATION_FAILED, "%s shader requires %s buffer, but there is no free slot to pass it.", stageName, getImplicitBufferName(needed)));
+			return false;
+		}
+	}
+	return true;
+}
+
+static void addCommonImplicitBuffersToShaderConfig(SPIRVToMSLConversionConfiguration& dst, const MVKOnePerEnumEntry<uint8_t, MVKImplicitBuffer>& src) {
+	dst.options.mslOptions.swizzle_buffer_index = src[MVKImplicitBuffer::Swizzle];
+	dst.options.mslOptions.buffer_size_buffer_index = src[MVKImplicitBuffer::BufferSize];
+	dst.options.mslOptions.dynamic_offsets_buffer_index = src[MVKImplicitBuffer::DynamicOffset];
+}
+
+bool MVKGraphicsPipeline::verifyImplicitBuffers(MVKShaderStage stage) {
 	const char* stageNames[] = {
 		"Vertex",
 		"Tessellation control",
 		"Tessellation evaluation",
 		"Fragment"
 	};
-	if (needsBuffer && index.stages[stage] < _descriptorBufferCounts.stages[stage]) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "%s shader requires %s buffer, but there is no free slot to pass it.", stageNames[stage], name));
-		return false;
-	}
-	return true;
+
+	return ::verifyImplicitBuffers(_implicitBuffers[stage], stageNames[stage], _descriptorBufferCounts.stages[stage], this);
 }
 
 // Adds a vertex shader to the pipeline description.
@@ -1257,14 +1290,12 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 													const VkPipelineShaderStageCreateInfo* pVertexSS,
 													VkPipelineCreationFeedback* pVertexFB,
 													const VkPipelineShaderStageCreateInfo*& pFragmentSS) {
+	const auto& implicit = _implicitBuffers[kMVKShaderStageVertex].ids;
 	shaderConfig.options.entryPointStage = spv::ExecutionModelVertex;
 	shaderConfig.options.entryPointName = pVertexSS->pName;
-	shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageVertex];
-	shaderConfig.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageVertex];
-	shaderConfig.options.mslOptions.shader_output_buffer_index = _outputBufferIndex.stages[kMVKShaderStageVertex];
-	shaderConfig.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageVertex];
-	shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageVertex];
-	shaderConfig.options.mslOptions.view_mask_buffer_index = _viewRangeBufferIndex.stages[kMVKShaderStageVertex];
+	addCommonImplicitBuffersToShaderConfig(shaderConfig, implicit);
+	shaderConfig.options.mslOptions.shader_output_buffer_index = implicit[MVKImplicitBuffer::Output];
+	shaderConfig.options.mslOptions.view_mask_buffer_index = implicit[MVKImplicitBuffer::ViewRange];
 	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
     addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
@@ -1276,13 +1307,8 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 
 	auto& funcRslts = func.shaderConversionResults;
 	plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled;
-	_needsVertexSwizzleBuffer = funcRslts.needsSwizzleBuffer;
-	_needsVertexBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
-	_needsVertexDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
-	_needsVertexViewRangeBuffer = funcRslts.needsViewRangeBuffer;
-	_needsVertexOutputBuffer = funcRslts.needsOutputBuffer;
 	populateImplicitBufferUsage(_implicitBuffers[kMVKShaderStageVertex], funcRslts);
-	populateResourceUsage(_stageResources[kMVKShaderStageVertex], shaderConfig, spv::ExecutionModelVertex);
+	populateResourceUsage(_stageResources[kMVKShaderStageVertex], _implicitBuffers[kMVKShaderStageVertex], shaderConfig, spv::ExecutionModelVertex);
 	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageVertex);
 
 	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageVertex);
@@ -1291,29 +1317,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 		pFragmentSS = nullptr;
 	}
 
-	// If we need the swizzle buffer and there's no place to put it, we're in serious trouble.
-	if (!verifyImplicitBuffer(_needsVertexSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageVertex, "swizzle")) {
-		return false;
-	}
-	// Ditto buffer size buffer.
-	if (!verifyImplicitBuffer(_needsVertexBufferSizeBuffer, _bufferSizeBufferIndex, kMVKShaderStageVertex, "buffer size")) {
-		return false;
-	}
-	// Ditto dynamic offset buffer.
-	if (!verifyImplicitBuffer(_needsVertexDynamicOffsetBuffer, _dynamicOffsetBufferIndex, kMVKShaderStageVertex, "dynamic offset")) {
-		return false;
-	}
-	// Ditto captured output buffer.
-	if (!verifyImplicitBuffer(_needsVertexOutputBuffer, _outputBufferIndex, kMVKShaderStageVertex, "output")) {
-		return false;
-	}
-	if (!verifyImplicitBuffer(_needsVertexOutputBuffer, _indirectParamsIndex, kMVKShaderStageVertex, "indirect parameters")) {
-		return false;
-	}
-	if (!verifyImplicitBuffer(_needsVertexViewRangeBuffer, _viewRangeBufferIndex, kMVKShaderStageVertex, "view range")) {
-		return false;
-	}
-	return true;
+	return verifyImplicitBuffers(kMVKShaderStageVertex);
 }
 
 // Adds a vertex shader compiled as a compute kernel to the pipeline description.
@@ -1324,13 +1328,12 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 													const VkPipelineShaderStageCreateInfo* pVertexSS,
 													VkPipelineCreationFeedback* pVertexFB,
 													MVKMTLFunction* pVtxFunctions) {
+	const auto& implicit = _implicitBuffers[kMVKShaderStageVertex].ids;
 	shaderConfig.options.entryPointStage = spv::ExecutionModelVertex;
 	shaderConfig.options.entryPointName = pVertexSS->pName;
-	shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageVertex];
-	shaderConfig.options.mslOptions.shader_index_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageVertex];
-	shaderConfig.options.mslOptions.shader_output_buffer_index = _outputBufferIndex.stages[kMVKShaderStageVertex];
-	shaderConfig.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageVertex];
-	shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageVertex];
+	addCommonImplicitBuffersToShaderConfig(shaderConfig, implicit);
+	shaderConfig.options.mslOptions.shader_index_buffer_index = implicit[MVKImplicitBuffer::Index];
+	shaderConfig.options.mslOptions.shader_output_buffer_index = implicit[MVKImplicitBuffer::Output];
 	shaderConfig.options.mslOptions.capture_output_to_buffer = true;
 	shaderConfig.options.mslOptions.vertex_for_tessellation = true;
 	shaderConfig.options.mslOptions.disable_rasterization = true;
@@ -1352,37 +1355,15 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 		pVtxFunctions[i] = func;
 
 		auto& funcRslts = func.shaderConversionResults;
-		_needsVertexSwizzleBuffer = funcRslts.needsSwizzleBuffer;
-		_needsVertexBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
-		_needsVertexDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
-		_needsVertexOutputBuffer = funcRslts.needsOutputBuffer;
 		populateImplicitBufferUsage(_implicitBuffers[kMVKShaderStageVertex], funcRslts);
-		populateResourceUsage(_stageResources[kMVKShaderStageVertex], shaderConfig, spv::ExecutionModelVertex);
+		populateResourceUsage(_stageResources[kMVKShaderStageVertex], _implicitBuffers[kMVKShaderStageVertex], shaderConfig, spv::ExecutionModelVertex);
 		markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageVertex);
 	}
 
 	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageVertex);
 
-	// If we need the swizzle buffer and there's no place to put it, we're in serious trouble.
-	if (!verifyImplicitBuffer(_needsVertexSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageVertex, "swizzle")) {
-		return false;
-	}
-	// Ditto buffer size buffer.
-	if (!verifyImplicitBuffer(_needsVertexBufferSizeBuffer, _bufferSizeBufferIndex, kMVKShaderStageVertex, "buffer size")) {
-		return false;
-	}
-	// Ditto dynamic offset buffer.
-	if (!verifyImplicitBuffer(_needsVertexDynamicOffsetBuffer, _dynamicOffsetBufferIndex, kMVKShaderStageVertex, "dynamic offset")) {
-		return false;
-	}
-	// Ditto captured output buffer.
-	if (!verifyImplicitBuffer(_needsVertexOutputBuffer, _outputBufferIndex, kMVKShaderStageVertex, "output")) {
-		return false;
-	}
-	if (!verifyImplicitBuffer(!shaderConfig.shaderInputs.empty(), _indirectParamsIndex, kMVKShaderStageVertex, "index")) {
-		return false;
-	}
-	return true;
+	_implicitBuffers[kMVKShaderStageVertex].needed.set(MVKImplicitBuffer::Index, !shaderConfig.shaderInputs.empty());
+	return verifyImplicitBuffers(kMVKShaderStageVertex);
 }
 
 bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescriptor* plDesc,
@@ -1392,16 +1373,15 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 													 SPIRVShaderInputs& teInputs,
 													 const VkPipelineShaderStageCreateInfo* pTessCtlSS,
 													 VkPipelineCreationFeedback* pTessCtlFB) {
+	const auto& implicit = _implicitBuffers[kMVKShaderStageTessCtl].ids;
 	shaderConfig.options.entryPointStage = spv::ExecutionModelTessellationControl;
 	shaderConfig.options.entryPointName = pTessCtlSS->pName;
-	shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageTessCtl];
-	shaderConfig.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageTessCtl];
+	addCommonImplicitBuffersToShaderConfig(shaderConfig, implicit);
+	shaderConfig.options.mslOptions.indirect_params_buffer_index = implicit[MVKImplicitBuffer::IndirectParams];
 	shaderConfig.options.mslOptions.shader_input_buffer_index = getMetalBufferIndexForVertexAttributeBinding(kMVKTessCtlInputBufferBinding);
-	shaderConfig.options.mslOptions.shader_output_buffer_index = _outputBufferIndex.stages[kMVKShaderStageTessCtl];
-	shaderConfig.options.mslOptions.shader_patch_output_buffer_index = _tessCtlPatchOutputBufferIndex;
-	shaderConfig.options.mslOptions.shader_tess_factor_buffer_index = _tessCtlLevelBufferIndex;
-	shaderConfig.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageTessCtl];
-	shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageTessCtl];
+	shaderConfig.options.mslOptions.shader_output_buffer_index = implicit[MVKImplicitBuffer::Output];
+	shaderConfig.options.mslOptions.shader_patch_output_buffer_index = implicit[MVKImplicitBuffer::PatchOutput];
+	shaderConfig.options.mslOptions.shader_tess_factor_buffer_index = implicit[MVKImplicitBuffer::TessLevel];
 	shaderConfig.options.mslOptions.capture_output_to_buffer = true;
 	shaderConfig.options.mslOptions.multi_patch_workgroup = true;
 	shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pTessCtlSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT) ? 0 : getMetalFeatures().maxSubgroupSize;
@@ -1414,46 +1394,17 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	plDesc.computeFunction = mtlFunc;
 
 	auto& funcRslts = func.shaderConversionResults;
-	_needsTessCtlSwizzleBuffer = funcRslts.needsSwizzleBuffer;
-	_needsTessCtlBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
-	_needsTessCtlDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
-	_needsTessCtlOutputBuffer = funcRslts.needsOutputBuffer;
-	_needsTessCtlPatchOutputBuffer = funcRslts.needsPatchOutputBuffer;
-	_needsTessCtlInputBuffer = funcRslts.needsInputThreadgroupMem;
 	_implicitBuffers[kMVKShaderStageTessCtl].needed.addAll({ // Always needed
 		MVKImplicitBuffer::IndirectParams,
 		MVKImplicitBuffer::TessLevel,
 	});
 	populateImplicitBufferUsage(_implicitBuffers[kMVKShaderStageTessCtl], funcRslts);
-	populateResourceUsage(_stageResources[kMVKShaderStageTessCtl], shaderConfig, spv::ExecutionModelTessellationControl);
+	populateResourceUsage(_stageResources[kMVKShaderStageTessCtl], _implicitBuffers[kMVKShaderStageTessCtl], shaderConfig, spv::ExecutionModelTessellationControl);
 	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageTessCtl);
 
 	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageTessCtl);
 
-	if (!verifyImplicitBuffer(_needsTessCtlSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageTessCtl, "swizzle")) {
-		return false;
-	}
-	if (!verifyImplicitBuffer(_needsTessCtlBufferSizeBuffer, _bufferSizeBufferIndex, kMVKShaderStageTessCtl, "buffer size")) {
-		return false;
-	}
-	if (!verifyImplicitBuffer(_needsTessCtlDynamicOffsetBuffer, _dynamicOffsetBufferIndex, kMVKShaderStageTessCtl, "dynamic offset")) {
-		return false;
-	}
-	if (!verifyImplicitBuffer(true, _indirectParamsIndex, kMVKShaderStageTessCtl, "indirect parameters")) {
-		return false;
-	}
-	if (!verifyImplicitBuffer(_needsTessCtlOutputBuffer, _outputBufferIndex, kMVKShaderStageTessCtl, "per-vertex output")) {
-		return false;
-	}
-	if (_needsTessCtlPatchOutputBuffer && _tessCtlPatchOutputBufferIndex < _descriptorBufferCounts.stages[kMVKShaderStageTessCtl]) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader requires per-patch output buffer, but there is no free slot to pass it."));
-		return false;
-	}
-	if (_tessCtlLevelBufferIndex < _descriptorBufferCounts.stages[kMVKShaderStageTessCtl]) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader requires tessellation level output buffer, but there is no free slot to pass it."));
-		return false;
-	}
-	return true;
+	return verifyImplicitBuffers(kMVKShaderStageTessCtl);
 }
 
 bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescriptor* plDesc,
@@ -1463,14 +1414,13 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 													  const VkPipelineShaderStageCreateInfo* pTessEvalSS,
 													  VkPipelineCreationFeedback* pTessEvalFB,
 													  const VkPipelineShaderStageCreateInfo*& pFragmentSS) {
+	const auto& implicit = _implicitBuffers[kMVKShaderStageTessEval].ids;
 	shaderConfig.options.entryPointStage = spv::ExecutionModelTessellationEvaluation;
 	shaderConfig.options.entryPointName = pTessEvalSS->pName;
-	shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageTessEval];
+	addCommonImplicitBuffersToShaderConfig(shaderConfig, implicit);
 	shaderConfig.options.mslOptions.shader_input_buffer_index = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalInputBufferBinding);
 	shaderConfig.options.mslOptions.shader_patch_input_buffer_index = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalPatchInputBufferBinding);
 	shaderConfig.options.mslOptions.shader_tess_factor_buffer_index = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalLevelBufferBinding);
-	shaderConfig.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageTessEval];
-	shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageTessEval];
 	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 	shaderConfig.options.mslOptions.raw_buffer_tese_input = true;
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
@@ -1483,11 +1433,8 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 
 	auto& funcRslts = func.shaderConversionResults;
 	plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled;
-	_needsTessEvalSwizzleBuffer = funcRslts.needsSwizzleBuffer;
-	_needsTessEvalBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
-	_needsTessEvalDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
 	populateImplicitBufferUsage(_implicitBuffers[kMVKShaderStageTessEval], funcRslts);
-	populateResourceUsage(_stageResources[kMVKShaderStageTessEval], shaderConfig, spv::ExecutionModelTessellationEvaluation);
+	populateResourceUsage(_stageResources[kMVKShaderStageTessEval], _implicitBuffers[kMVKShaderStageTessEval], shaderConfig, spv::ExecutionModelTessellationEvaluation);
 	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageTessEval);
 
 	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageTessEval);
@@ -1496,16 +1443,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 		pFragmentSS = nullptr;
 	}
 
-	if (!verifyImplicitBuffer(_needsTessEvalSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageTessEval, "swizzle")) {
-		return false;
-	}
-	if (!verifyImplicitBuffer(_needsTessEvalBufferSizeBuffer, _bufferSizeBufferIndex, kMVKShaderStageTessEval, "buffer size")) {
-		return false;
-	}
-	if (!verifyImplicitBuffer(_needsTessEvalDynamicOffsetBuffer, _dynamicOffsetBufferIndex, kMVKShaderStageTessEval, "dynamic offset")) {
-		return false;
-	}
-	return true;
+	return verifyImplicitBuffers(kMVKShaderStageTessEval);
 }
 
 bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescriptor* plDesc,
@@ -1514,13 +1452,12 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 													  SPIRVShaderOutputs& shaderOutputs,
 													  const VkPipelineShaderStageCreateInfo* pFragmentSS,
 													  VkPipelineCreationFeedback* pFragmentFB) {
+	const auto& implicit = _implicitBuffers[kMVKShaderStageFragment].ids;
 	auto& mtlFeats = getMetalFeatures();
 	if (pFragmentSS) {
 		shaderConfig.options.entryPointStage = spv::ExecutionModelFragment;
-		shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageFragment];
-		shaderConfig.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageFragment];
-		shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageFragment];
-		shaderConfig.options.mslOptions.view_mask_buffer_index = _viewRangeBufferIndex.stages[kMVKShaderStageFragment];
+		addCommonImplicitBuffersToShaderConfig(shaderConfig, implicit);
+		shaderConfig.options.mslOptions.view_mask_buffer_index = implicit[MVKImplicitBuffer::ViewRange];
 		shaderConfig.options.entryPointName = pFragmentSS->pName;
 		shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 		shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pFragmentSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT) ? 0 : mtlFeats.maxSubgroupSize;
@@ -1554,30 +1491,13 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		if ( !mtlFunc ) { return false; }
 
 		auto& funcRslts = func.shaderConversionResults;
-		_needsFragmentSwizzleBuffer = funcRslts.needsSwizzleBuffer;
-		_needsFragmentBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
-		_needsFragmentDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
-		_needsFragmentViewRangeBuffer = funcRslts.needsViewRangeBuffer;
 		populateImplicitBufferUsage(_implicitBuffers[kMVKShaderStageFragment], funcRslts);
-		populateResourceUsage(_stageResources[kMVKShaderStageFragment], shaderConfig, spv::ExecutionModelFragment);
+		populateResourceUsage(_stageResources[kMVKShaderStageFragment], _implicitBuffers[kMVKShaderStageFragment], shaderConfig, spv::ExecutionModelFragment);
 		markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageFragment);
 
 		populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageFragment);
-
-		if (!verifyImplicitBuffer(_needsFragmentSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageFragment, "swizzle")) {
-			return false;
-		}
-		if (!verifyImplicitBuffer(_needsFragmentBufferSizeBuffer, _bufferSizeBufferIndex, kMVKShaderStageFragment, "buffer size")) {
-			return false;
-		}
-		if (!verifyImplicitBuffer(_needsFragmentDynamicOffsetBuffer, _dynamicOffsetBufferIndex, kMVKShaderStageFragment, "dynamic offset")) {
-			return false;
-		}
-		if (!verifyImplicitBuffer(_needsFragmentViewRangeBuffer, _viewRangeBufferIndex, kMVKShaderStageFragment, "view range")) {
-			return false;
-		}
 	}
-	return true;
+	return verifyImplicitBuffers(kMVKShaderStageFragment);
 }
 
 #if !MVK_XCODE_15
@@ -1616,7 +1536,6 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 
 			maxBinding = max<int32_t>(pVKVB->binding, maxBinding);
 			uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
-			_isVertexInputBindingUsed[vbIdx] = true;
 			_mtlVertexBuffers.set(vbIdx);
 			_vkVertexBuffers.set(pVKVB->binding);
 			auto vbDesc = inputDesc.layouts[vbIdx];
@@ -1958,46 +1877,36 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	// present--or at least, we should move the ones that are down to avoid running over
 	// the limit of available buffers. But we can't know that until we compile the shaders.
 	initReservedVertexAttributeBufferCount(pCreateInfo);
-	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
+	for (uint32_t i = 0; i < std::size(_implicitBuffers); i++) {
 		MVKShaderStage stage = (MVKShaderStage)i;
-		_dynamicOffsetBufferIndex.stages[stage] = getImplicitBufferIndex(stage, 0);
-		_bufferSizeBufferIndex.stages[stage] = getImplicitBufferIndex(stage, 1);
-		_swizzleBufferIndex.stages[stage] = getImplicitBufferIndex(stage, 2);
-		_indirectParamsIndex.stages[stage] = getImplicitBufferIndex(stage, 3);
-		_outputBufferIndex.stages[stage] = getImplicitBufferIndex(stage, 4);
+		_implicitBuffers[stage].ids[MVKImplicitBuffer::DynamicOffset]  = getImplicitBufferIndex(stage, 0);
+		_implicitBuffers[stage].ids[MVKImplicitBuffer::BufferSize]     = getImplicitBufferIndex(stage, 1);
+		_implicitBuffers[stage].ids[MVKImplicitBuffer::Swizzle]        = getImplicitBufferIndex(stage, 2);
+		_implicitBuffers[stage].ids[MVKImplicitBuffer::Output]         = getImplicitBufferIndex(stage, 4);
+		uint32_t extra = getImplicitBufferIndex(stage, 3);
 		switch (stage) {
 			case kMVKShaderStageVertex:
-				_implicitBuffers[stage].ids[MVKImplicitBuffer::ViewRange]      = _indirectParamsIndex.stages[stage];
-				// Used by tesselation vertex shaders for the index buffer
-				_implicitBuffers[stage].ids[MVKImplicitBuffer::IndirectParams] = _indirectParamsIndex.stages[stage];
+				// Since we currently can't use multiview with tessellation or geometry shaders,
+				// to conserve the number of buffer bindings, use the same bindings for the
+				// view range buffer as for the tessellation index buffer.
+				_implicitBuffers[stage].ids[MVKImplicitBuffer::ViewRange] = extra;
+				_implicitBuffers[stage].ids[MVKImplicitBuffer::Index]     = extra;
 				break;
 			case kMVKShaderStageFragment:
-				_implicitBuffers[stage].ids[MVKImplicitBuffer::ViewRange] = _indirectParamsIndex.stages[stage];
+				_implicitBuffers[stage].ids[MVKImplicitBuffer::ViewRange] = extra;
 				break;
 			case kMVKShaderStageTessCtl:
-				_tessCtlPatchOutputBufferIndex = getImplicitBufferIndex(stage, 5);
-				_tessCtlLevelBufferIndex = getImplicitBufferIndex(stage, 6);
-				_implicitBuffers[stage].ids[MVKImplicitBuffer::PatchOutput]    = _tessCtlPatchOutputBufferIndex;
-				_implicitBuffers[stage].ids[MVKImplicitBuffer::TessLevel]      = _tessCtlLevelBufferIndex;
-				_implicitBuffers[stage].ids[MVKImplicitBuffer::IndirectParams] = _indirectParamsIndex.stages[stage];
+				_implicitBuffers[stage].ids[MVKImplicitBuffer::PatchOutput]    = getImplicitBufferIndex(stage, 5);
+				_implicitBuffers[stage].ids[MVKImplicitBuffer::TessLevel]      = getImplicitBufferIndex(stage, 6);
+				_implicitBuffers[stage].ids[MVKImplicitBuffer::IndirectParams] = extra;
 				break;
 			case kMVKShaderStageTessEval:
-				_implicitBuffers[stage].ids[MVKImplicitBuffer::IndirectParams] = _indirectParamsIndex.stages[stage];
+				_implicitBuffers[stage].ids[MVKImplicitBuffer::IndirectParams] = extra;
 				break;
 			default:
 				break;
 		}
-		if (stage < std::size(_implicitBuffers)) {
-			_implicitBuffers[stage].ids[MVKImplicitBuffer::DynamicOffset]  = _dynamicOffsetBufferIndex.stages[stage];
-			_implicitBuffers[stage].ids[MVKImplicitBuffer::BufferSize]     = _bufferSizeBufferIndex.stages[stage];
-			_implicitBuffers[stage].ids[MVKImplicitBuffer::Swizzle]        = _swizzleBufferIndex.stages[stage];
-			_implicitBuffers[stage].ids[MVKImplicitBuffer::Output]         = _outputBufferIndex.stages[stage];
-		}
 	}
-	// Since we currently can't use multiview with tessellation or geometry shaders,
-	// to conserve the number of buffer bindings, use the same bindings for the
-	// view range buffer as for the indirect paramters buffer.
-	_viewRangeBufferIndex = _indirectParamsIndex;
 
 	const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
 	MVKPixelFormats* pixFmts = getPixelFormats();
@@ -2087,10 +1996,6 @@ void MVKGraphicsPipeline::initReservedVertexAttributeBufferCount(const VkGraphic
 	_reservedVertexAttributeBufferCount.stages[kMVKShaderStageVertex] = (maxBinding + 1) + xltdBuffCnt;
 	_reservedVertexAttributeBufferCount.stages[kMVKShaderStageTessCtl] = kMVKTessCtlNumReservedBuffers;
 	_reservedVertexAttributeBufferCount.stages[kMVKShaderStageTessEval] = kMVKTessEvalNumReservedBuffers;
-}
-
-bool MVKGraphicsPipeline::isValidVertexBufferIndex(MVKShaderStage stage, uint32_t mtlBufferIndex) {
-	return _isVertexInputBindingUsed[mtlBufferIndex] || mtlBufferIndex < _descriptorBufferCounts.stages[stage] || mtlBufferIndex > getImplicitBufferIndex(stage, 0);
 }
 
 // Initializes the vertex attributes in a shader conversion configuration.
@@ -2392,22 +2297,8 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 		pPipelineFB->duration = mvkGetElapsedNanoseconds(pipelineStart);
 	}
 
-	auto& mtlFeats = getMetalFeatures();
-	if (_needsSwizzleBuffer && _swizzleBufferIndex.stages[kMVKShaderStageCompute] > mtlFeats.maxPerStageBufferCount) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Compute shader requires swizzle buffer, but there is no free slot to pass it."));
-	}
-	if (_needsBufferSizeBuffer && _bufferSizeBufferIndex.stages[kMVKShaderStageCompute] > mtlFeats.maxPerStageBufferCount) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Compute shader requires buffer size buffer, but there is no free slot to pass it."));
-	}
-	if (_needsDynamicOffsetBuffer && _dynamicOffsetBufferIndex.stages[kMVKShaderStageCompute] > mtlFeats.maxPerStageBufferCount) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Compute shader requires dynamic offset buffer, but there is no free slot to pass it."));
-	}
-	if (_needsDispatchBaseBuffer && _indirectParamsIndex.stages[kMVKShaderStageCompute] > mtlFeats.maxPerStageBufferCount) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Compute shader requires dispatch base buffer, but there is no free slot to pass it."));
-	}
-
-	_implicitBuffers.ids[MVKImplicitBuffer::PushConstant] = _pushConstantsBufferIndex.stages[kMVKShaderStageCompute];
-	_implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::PushConstant, _stageUsesPushConstants[kMVKShaderStageCompute]);
+	_implicitBuffers.ids[MVKImplicitBuffer::PushConstant] = _layout->getPushConstantResourceIndex(kMVKShaderStageCompute);
+	verifyImplicitBuffers(_implicitBuffers, "Compute", _descriptorBufferCounts.stages[kMVKShaderStageCompute], this);
 }
 
 // Returns a MTLFunction to use when creating the MTLComputePipelineState.
@@ -2456,23 +2347,13 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	// FIXME: Many of these are optional. We shouldn't set the ones that aren't
 	// present--or at least, we should move the ones that are down to avoid running over
 	// the limit of available buffers. But we can't know that until we compile the shaders.
-	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
-		MVKShaderStage stage = (MVKShaderStage)i;
-		_dynamicOffsetBufferIndex.stages[stage] = getImplicitBufferIndex(0);
-		_bufferSizeBufferIndex.stages[stage] = getImplicitBufferIndex(1);
-		_swizzleBufferIndex.stages[stage] = getImplicitBufferIndex(2);
-		_indirectParamsIndex.stages[stage] = getImplicitBufferIndex(3);
-	}
+	_implicitBuffers.ids[MVKImplicitBuffer::DynamicOffset] = getImplicitBufferIndex(0);
+	_implicitBuffers.ids[MVKImplicitBuffer::BufferSize]    = getImplicitBufferIndex(1);
+	_implicitBuffers.ids[MVKImplicitBuffer::Swizzle]       = getImplicitBufferIndex(2);
+	_implicitBuffers.ids[MVKImplicitBuffer::DispatchBase]  = getImplicitBufferIndex(3);
 
-	_implicitBuffers.ids[MVKImplicitBuffer::DynamicOffset] = _dynamicOffsetBufferIndex.stages[kMVKShaderStageCompute];
-	_implicitBuffers.ids[MVKImplicitBuffer::BufferSize]    = _bufferSizeBufferIndex.stages[kMVKShaderStageCompute];
-	_implicitBuffers.ids[MVKImplicitBuffer::Swizzle]       = _swizzleBufferIndex.stages[kMVKShaderStageCompute];
-	_implicitBuffers.ids[MVKImplicitBuffer::DispatchBase]  = _indirectParamsIndex.stages[kMVKShaderStageCompute];
-
-    shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageCompute];
-    shaderConfig.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageCompute];
-	shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageCompute];
-    shaderConfig.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageCompute];
+	addCommonImplicitBuffersToShaderConfig(shaderConfig, _implicitBuffers.ids);
+	shaderConfig.options.mslOptions.indirect_params_buffer_index = _implicitBuffers.ids[MVKImplicitBuffer::DispatchBase];
 	shaderConfig.options.mslOptions.replace_recursive_inputs = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0);
 
     MVKMTLFunction func = _module->getMTLFunction(&shaderConfig, pSS->pSpecializationInfo, this, pStageFB);
@@ -2484,12 +2365,8 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 		}
 	}
 	auto& funcRslts = func.shaderConversionResults;
-	_needsSwizzleBuffer = funcRslts.needsSwizzleBuffer;
-    _needsBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
-	_needsDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
-    _needsDispatchBaseBuffer = funcRslts.needsDispatchBaseBuffer;
 	populateImplicitBufferUsage(_implicitBuffers, funcRslts);
-	populateResourceUsage(_stageResources, shaderConfig, spv::ExecutionModelGLCompute);
+	populateResourceUsage(_stageResources, _implicitBuffers, shaderConfig, spv::ExecutionModelGLCompute);
 	_usesPhysicalStorageBufferAddressesCapability = funcRslts.usesPhysicalStorageBufferAddressesCapability;
 
 	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageCompute);
