@@ -1304,7 +1304,7 @@ void MVKMetalComputeCommandEncoderState::reset() {
 	_vkStage = kMVKShaderStageCount;
 }
 
-#pragma mark - MVKCommandEncoderStateNew
+#pragma mark - MVKCommandEncoderState
 
 static constexpr MVKRenderStateFlags SampleLocationFlags {
 	MVKRenderStateFlag::SampleLocations,
@@ -1321,7 +1321,7 @@ static MVKArrayRef<const MTLSamplePosition> getSamplePositions(const MVKVulkanGr
 	return vk.getSamplePositions();
 }
 
-MVKArrayRef<const MTLSamplePosition> MVKCommandEncoderStateNew::updateSamplePositions() {
+MVKArrayRef<const MTLSamplePosition> MVKCommandEncoderState::updateSamplePositions() {
 	// Multisample Bresenham lines require sampling from the pixel center.
 	bool locOverride = _mtlGraphics._sampleCount > 1 && _vkGraphics.isBresenhamLines();
 	if (locOverride == _mtlGraphics._flags.has(MVKMetalRenderEncoderStateFlag::SamplePositionsOverridden) && _mtlGraphics._stateReady.hasAll(SampleLocationFlags))
@@ -1335,7 +1335,7 @@ MVKArrayRef<const MTLSamplePosition> MVKCommandEncoderStateNew::updateSamplePosi
 	return res;
 }
 
-bool MVKCommandEncoderStateNew::needsMetalRenderPassRestart() {
+bool MVKCommandEncoderState::needsMetalRenderPassRestart() {
 	// Multisample Bresenham lines require sampling from the pixel center.
 	bool locOverride = _mtlGraphics._sampleCount > 1 && _vkGraphics.isBresenhamLines();
 	if (locOverride == _mtlGraphics._flags.has(MVKMetalRenderEncoderStateFlag::SamplePositionsOverridden) && _mtlGraphics._stateReady.hasAll(SampleLocationFlags))
@@ -1351,11 +1351,11 @@ bool MVKCommandEncoderStateNew::needsMetalRenderPassRestart() {
 /** Used by applyToActiveMTLState to indicate that you want to apply to whichever state is active. */
 static constexpr VkPipelineBindPoint VK_PIPELINE_BIND_POINT_ALL = VK_PIPELINE_BIND_POINT_MAX_ENUM;
 
-static void invalidateImplicitBuffer(MVKCommandEncoderStateNew& state, VkPipelineBindPoint bindPoint, MVKNonVolatileImplicitBuffer buffer) {
+static void invalidateImplicitBuffer(MVKCommandEncoderState& state, VkPipelineBindPoint bindPoint, MVKNonVolatileImplicitBuffer buffer) {
 	state.applyToActiveMTLState(bindPoint, [buffer](auto& mtl){ invalidateImplicitBuffer(mtl, buffer); });
 }
 
-void MVKCommandEncoderStateNew::bindGraphicsPipeline(MVKGraphicsPipeline* pipeline) {
+void MVKCommandEncoderState::bindGraphicsPipeline(MVKGraphicsPipeline* pipeline) {
 	_mtlGraphics.changePipeline(_vkGraphics._pipeline, pipeline);
 	_vkGraphics._pipeline = pipeline;
 	MVKPipelineLayout* layout = pipeline->getLayout();
@@ -1371,7 +1371,7 @@ void MVKCommandEncoderStateNew::bindGraphicsPipeline(MVKGraphicsPipeline* pipeli
 	_mtlCompute._descriptorSetsReady.reset();
 }
 
-void MVKCommandEncoderStateNew::bindComputePipeline(MVKComputePipeline* pipeline) {
+void MVKCommandEncoderState::bindComputePipeline(MVKComputePipeline* pipeline) {
 	_vkCompute._pipeline = pipeline;
 	MVKPipelineLayout* layout = pipeline->getLayout();
 	if (_vkCompute._layout != layout) {
@@ -1385,13 +1385,13 @@ void MVKCommandEncoderStateNew::bindComputePipeline(MVKComputePipeline* pipeline
 	_mtlCompute._descriptorSetsReady.reset();
 }
 
-void MVKCommandEncoderStateNew::pushConstants(uint32_t offset, uint32_t size, const void* data) {
+void MVKCommandEncoderState::pushConstants(uint32_t offset, uint32_t size, const void* data) {
 	mvkEnsureSize(_vkShared._pushConstants, offset + size);
 	memcpy(_vkShared._pushConstants.data() + offset, data, size);
 	invalidateImplicitBuffer(*this, VK_PIPELINE_BIND_POINT_ALL, MVKNonVolatileImplicitBuffer::PushConstant);
 }
 
-void MVKCommandEncoderStateNew::bindDescriptorSets(
+void MVKCommandEncoderState::bindDescriptorSets(
 	VkPipelineBindPoint bindPoint,
 	MVKPipelineLayout* layout,
 	uint32_t firstSet,
@@ -1419,7 +1419,7 @@ void MVKCommandEncoderStateNew::bindDescriptorSets(
 	}
 }
 
-void MVKCommandEncoderStateNew::bindVertexBuffers(uint32_t firstBinding, MVKArrayRef<const MVKVertexMTLBufferBinding> buffers) {
+void MVKCommandEncoderState::bindVertexBuffers(uint32_t firstBinding, MVKArrayRef<const MVKVertexMTLBufferBinding> buffers) {
 	mvkCopy(&_vkGraphics._vertexBuffers[firstBinding], buffers.data(), buffers.size());
 	if (_mtlActiveEncoder == CommandEncoderClass::Graphics && _vkGraphics._pipeline && !_vkGraphics._pipeline->isTessellationPipeline())
 		_mtlGraphics._ready.vertex().buffers.clearAllIn(_vkGraphics._pipeline->getMtlVertexBuffers());
@@ -1427,13 +1427,13 @@ void MVKCommandEncoderStateNew::bindVertexBuffers(uint32_t firstBinding, MVKArra
 		_mtlCompute._ready.buffers.clearAllIn(_vkGraphics._pipeline->getMtlVertexBuffers());
 }
 
-void MVKCommandEncoderStateNew::bindIndexBuffer(const MVKIndexMTLBufferBinding& buffer) {
+void MVKCommandEncoderState::bindIndexBuffer(const MVKIndexMTLBufferBinding& buffer) {
 	_vkGraphics._indexBuffer = buffer;
 	if (_mtlActiveEncoder == CommandEncoderClass::Compute && _mtlCompute._vkStage == kMVKShaderStageVertex)
 		_mtlCompute._ready.buffers.clear(_vkGraphics._pipeline->getImplicitBuffers(kMVKShaderStageVertex).ids[MVKImplicitBuffer::IndirectParams]);
 }
 
-void MVKCommandEncoderStateNew::offsetZeroDivisorVertexBuffers(MVKCommandEncoder& mvkEncoder, MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance) {
+void MVKCommandEncoderState::offsetZeroDivisorVertexBuffers(MVKCommandEncoder& mvkEncoder, MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance) {
 	for (const auto& binding : pipeline->getZeroDivisorVertexBindings()) {
 		uint32_t mtlBuffIdx = pipeline->getMetalBufferIndexForVertexAttributeBinding(binding.first);
 		auto& buffer = _vkGraphics._vertexBuffers[binding.first];
@@ -1453,7 +1453,7 @@ void MVKCommandEncoderStateNew::offsetZeroDivisorVertexBuffers(MVKCommandEncoder
 	}
 }
 
-void MVKCommandEncoderStateNew::encodeResourceUsage(
+void MVKCommandEncoderState::encodeResourceUsage(
 	MVKCommandEncoder& mvkEncoder,
 	MVKShaderStage stage,
 	id<MTLResource> mtlResource,
@@ -1492,7 +1492,7 @@ void MVKCommandEncoderStateNew::encodeResourceUsage(
 }
 
 template <typename Fn>
-void MVKCommandEncoderStateNew::applyToActiveMTLState(VkPipelineBindPoint bindPoint, Fn&& fn) {
+void MVKCommandEncoderState::applyToActiveMTLState(VkPipelineBindPoint bindPoint, Fn&& fn) {
 	switch (_mtlActiveEncoder) {
 		case CommandEncoderClass::Graphics:
 			if (bindPoint != VK_PIPELINE_BIND_POINT_COMPUTE)
