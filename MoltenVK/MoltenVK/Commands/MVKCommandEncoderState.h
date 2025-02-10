@@ -367,10 +367,10 @@ struct MVKMetalComputeCommandEncoderState {
 	void reset();
 };
 
-#pragma mark - MVKCommandEncoderStateNew
+#pragma mark - MVKCommandEncoderState
 
 /** Class that holds both Metal and Vulkan state for both compute and graphics */
-class MVKCommandEncoderStateNew {
+class MVKCommandEncoderState {
 	MVKVulkanSharedCommandEncoderState   _vkShared;
 	MVKVulkanGraphicsCommandEncoderState _vkGraphics;
 	MVKVulkanComputeCommandEncoderState  _vkCompute;
