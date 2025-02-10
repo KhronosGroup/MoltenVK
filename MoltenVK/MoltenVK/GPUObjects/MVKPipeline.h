@@ -112,6 +112,8 @@ public:
 
 	~MVKPipelineLayout() override;
 
+	uint32_t getPushConstantResourceIndex(MVKShaderStage stage) const { return _pushConstantsMTLResourceIndexes.stages[stage].bufferIndex; }
+
 protected:
 	friend class MVKPipeline;
 
@@ -149,9 +151,6 @@ public:
 
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT; }
-
-	/** Returns the current indirect parameter buffer bindings. */
-	const MVKShaderImplicitRezBinding& getIndirectParamsIndex() { return _indirectParamsIndex; }
 
 	/** Returns whether or not full image view swizzling is enabled for this pipeline. */
 	bool fullImageViewSwizzle() const { return _fullImageViewSwizzle; }
@@ -212,11 +211,6 @@ protected:
 	MVKPipelineLayout* _layout;
 	MVKPipelineCache* _pipelineCache;
 	MVKShaderImplicitRezBinding _descriptorBufferCounts;
-	MVKShaderImplicitRezBinding _swizzleBufferIndex;
-	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
-	MVKShaderImplicitRezBinding _dynamicOffsetBufferIndex;
-	MVKShaderImplicitRezBinding _indirectParamsIndex;
-	MVKShaderImplicitRezBinding _pushConstantsBufferIndex;
 	VkPipelineCreateFlags2 _flags;
 	uint32_t _descriptorSetCount;
 	bool _stageUsesPushConstants[kMVKShaderStageCount];
@@ -263,15 +257,6 @@ public:
 	/** Returns the number of output tessellation patch control points. */
 	uint32_t getOutputControlPointCount() { return _outputControlPointCount; }
 
-	/** Returns the current captured output buffer bindings. */
-	const MVKShaderImplicitRezBinding& getOutputBufferIndex() { return _outputBufferIndex; }
-
-	/** Returns the current captured per-patch output buffer binding for the tess. control shader. */
-	uint32_t getTessCtlPatchOutputBufferIndex() { return _tessCtlPatchOutputBufferIndex; }
-
-	/** Returns the current tessellation level buffer binding for the tess. control shader. */
-	uint32_t getTessCtlLevelBufferIndex() { return _tessCtlLevelBufferIndex; }
-
 	/** Returns the MTLRenderPipelineState for the final stage of the pipeline */
 	id<MTLRenderPipelineState> getMainPipelineState() const { return _mtlPipelineState; }
 
@@ -293,25 +278,18 @@ public:
 	id<MTLComputePipelineState> getTessControlStageState() { return _mtlTessControlStageState; }
 
 	/** Returns true if the vertex shader needs a buffer to store its output. */
-	bool needsVertexOutputBuffer() { return _needsVertexOutputBuffer; }
+	bool needsVertexOutputBuffer() const { return _implicitBuffers[kMVKShaderStageVertex].needed.has(MVKImplicitBuffer::Output); }
 
 	/** Returns true if the tessellation control shader needs a buffer to store its per-vertex output. */
-	bool needsTessCtlOutputBuffer() { return _needsTessCtlOutputBuffer; }
+	bool needsTessCtlOutputBuffer() const { return _implicitBuffers[kMVKShaderStageTessCtl].needed.has(MVKImplicitBuffer::Output); }
 
 	/** Returns true if the tessellation control shader needs a buffer to store its per-patch output. */
-	bool needsTessCtlPatchOutputBuffer() { return _needsTessCtlPatchOutputBuffer; }
+	bool needsTessCtlPatchOutputBuffer() const { return _implicitBuffers[kMVKShaderStageTessCtl].needed.has(MVKImplicitBuffer::PatchOutput); }
 
 	/** Returns the Vulkan primitive topology. */
 	VkPrimitiveTopology getVkPrimitiveTopology() { return _vkPrimitiveTopology; }
 
 	bool usesPhysicalStorageBufferAddressesCapability(MVKShaderStage stage) override;
-
-	/**
-	 * Returns whether the MTLBuffer vertex shader buffer index is valid for a stage of this pipeline.
-	 * It is if it is a descriptor binding within the descriptor binding range,
-	 * or a vertex attribute binding above any implicit buffer bindings.
-	 */
-	bool isValidVertexBufferIndex(MVKShaderStage stage, uint32_t mtlBufferIndex);
 
 	/** Returns the Metal vertex buffer index to use for the specified vertex attribute binding number.  */
 	uint32_t getMetalBufferIndexForVertexAttributeBinding(uint32_t binding) { return _device->getMetalBufferIndexForVertexAttributeBinding(binding); }
@@ -396,7 +374,7 @@ protected:
     bool isRenderingPoints();
     bool isRasterizationDisabled(const VkGraphicsPipelineCreateInfo* pCreateInfo);
     bool isDepthClipNegativeOneToOne(const VkGraphicsPipelineCreateInfo* pCreateInfo);
-	bool verifyImplicitBuffer(bool needsBuffer, MVKShaderImplicitRezBinding& index, MVKShaderStage stage, const char* name);
+	bool verifyImplicitBuffers(MVKShaderStage stage);
 	uint32_t getTranslatedVertexBinding(uint32_t binding, uint32_t translationOffset, uint32_t maxBinding);
 	uint32_t getImplicitBufferIndex(MVKShaderStage stage, uint32_t bufferIndexOffset);
 	MVKMTLFunction getMTLFunction(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
@@ -432,43 +410,19 @@ protected:
 	id<MTLRenderPipelineState> _mtlPipelineState = nil;
 
 	MVKShaderImplicitRezBinding _reservedVertexAttributeBufferCount;
-	MVKShaderImplicitRezBinding _viewRangeBufferIndex;
-	MVKShaderImplicitRezBinding _outputBufferIndex;
 	VkPrimitiveTopology _vkPrimitiveTopology;
 	uint32_t _outputControlPointCount;
-	uint32_t _tessCtlPatchOutputBufferIndex = 0;
-	uint32_t _tessCtlLevelBufferIndex = 0;
 
 	MVKShaderModule* _vertexModule = nullptr;
-	bool _ownsVertexModule = false;
 	MVKShaderModule* _tessCtlModule = nullptr;
-	bool _ownsTessCtlModule = false;
 	MVKShaderModule* _tessEvalModule = nullptr;
-	bool _ownsTessEvalModule = false;
 	MVKShaderModule* _fragmentModule = nullptr;
+	bool _ownsVertexModule = false;
+	bool _ownsTessCtlModule = false;
+	bool _ownsTessEvalModule = false;
 	bool _ownsFragmentModule = false;
 
-	static constexpr uint32_t kMVKMaxVertexInputBindingBufferCount = 31u; // Taken from Metal Feature Set Table. Highest value out of all present GPUs
 	uint8_t _primitiveTopologyClass;
-	bool _isVertexInputBindingUsed[kMVKMaxVertexInputBindingBufferCount] = { false };
-	bool _needsVertexSwizzleBuffer = false;
-	bool _needsVertexBufferSizeBuffer = false;
-	bool _needsVertexDynamicOffsetBuffer = false;
-	bool _needsVertexViewRangeBuffer = false;
-	bool _needsVertexOutputBuffer = false;
-	bool _needsTessCtlSwizzleBuffer = false;
-	bool _needsTessCtlBufferSizeBuffer = false;
-	bool _needsTessCtlDynamicOffsetBuffer = false;
-	bool _needsTessCtlOutputBuffer = false;
-	bool _needsTessCtlPatchOutputBuffer = false;
-	bool _needsTessCtlInputBuffer = false;
-	bool _needsTessEvalSwizzleBuffer = false;
-	bool _needsTessEvalBufferSizeBuffer = false;
-	bool _needsTessEvalDynamicOffsetBuffer = false;
-	bool _needsFragmentSwizzleBuffer = false;
-	bool _needsFragmentBufferSizeBuffer = false;
-	bool _needsFragmentDynamicOffsetBuffer = false;
-	bool _needsFragmentViewRangeBuffer = false;
 	bool _isRasterizing = false;
 	bool _isRasterizingColor = false;
 	bool _isTessellationPipeline = false;
@@ -534,11 +488,7 @@ protected:
 	MVKImplicitBufferBindings _implicitBuffers = {};
 	MVKStageResourceBits _stageResources = {};
     MTLSize _mtlThreadgroupSize;
-    bool _needsSwizzleBuffer = false;
-    bool _needsBufferSizeBuffer = false;
-	bool _needsDynamicOffsetBuffer = false;
-    bool _needsDispatchBaseBuffer = false;
-    bool _allowsDispatchBase = false;
+	bool _allowsDispatchBase = false;
 	bool _usesPhysicalStorageBufferAddressesCapability = false;
 
 	MVKShaderModule* _module = nullptr;
