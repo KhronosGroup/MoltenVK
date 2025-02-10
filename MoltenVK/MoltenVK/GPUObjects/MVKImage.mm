@@ -836,7 +836,7 @@ void MVKImage::getTransferDescriptorData(MVKImageDescriptorData& imgData) {
     imgData.usage = getCombinedUsage();
 }
 
-MTLTextureDescriptor* MVKImage::getTextureDescriptor(uint32_t planeIndex) {
+MTLTextureDescriptor* MVKImage::newMTLTextureDescriptor(uint32_t planeIndex) {
     return _planes[planeIndex]->newMTLTextureDescriptor();
 }
 
@@ -1112,7 +1112,9 @@ MTLTextureUsage MVKImage::getMTLTextureUsage(MTLPixelFormat mtlPixFmt) {
 
 	// Metal before 3.0 doesn't support 3D compressed textures, so we'll
 	// decompress the texture ourselves, and we need to be able to write to it.
-	bool makeWritable = MVK_MACOS && _is3DCompressed;
+	// Additionally, the ability to create 2D alias over 3D image is dependent
+	// on write capability to synchronize correctly.
+	bool makeWritable = (MVK_MACOS && _is3DCompressed) || _is2DViewOn3DImageCompatible;
 	if (makeWritable) {
 		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderWrite);
 	}
@@ -1277,7 +1279,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 		setConfigurationResult(useIOSurface(nil));
 	}
 
-    _is2DViewOn3DImageCompatible = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_2D_VIEW_COMPATIBLE_BIT_EXT);
+	_is2DViewOn3DImageCompatible = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_2D_VIEW_COMPATIBLE_BIT_EXT);
 }
 
 VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
@@ -1825,6 +1827,7 @@ id<MTLTexture> MVKImageViewPlane::newMTLTexture() {
     MTLTextureType mtlTextureType = _imageView->_mtlTextureType;
     NSRange sliceRange = NSMakeRange(_imageView->_subresourceRange.baseArrayLayer, _imageView->_subresourceRange.layerCount);
     // Fake support for 2D views of 3D textures.
+    id<MTLTexture> aliasTex = nil;
     auto* image = _imageView->_image;
     id<MTLTexture> mtlTex = image->getMTLTexture(_planeIndex);
     if (image->getImageType() == VK_IMAGE_TYPE_3D &&
@@ -1833,38 +1836,42 @@ id<MTLTexture> MVKImageViewPlane::newMTLTexture() {
             mtlTextureType = MTLTextureType3D;
             sliceRange = NSMakeRange(0, 1);
         } else {
-            if (!_mtlTexture) {
-                const auto heapAllocation = image->getHeapAllocation(_planeIndex);
-                MVKAssert(heapAllocation, "Attempting to create a 2D view of a 3D texture without a placement heap");
-                // TODO (ncesario-lunarg) untested where _imageView->subresourceRange.layerCount > 1, but VK_EXT_image_2d_view_of_3d
-                //      allows for 2D_ARRAY views of 3D textures.
-                const auto relativeSliceOffset = _imageView->_subresourceRange.baseArrayLayer * (heapAllocation->size / image->_extent.depth);
-                MTLTextureDescriptor* mtlTexDesc = image->getTextureDescriptor(_planeIndex);
+            const auto heapAllocation = image->getHeapAllocation(_planeIndex);
+            MVKAssert(heapAllocation, "Attempting to create a 2D view of a 3D texture without a placement heap");
 
-                mtlTexDesc.depth = _imageView->_subresourceRange.layerCount;
-                mtlTexDesc.textureType = mtlTextureType;
+            const auto relativeSliceOffset = _imageView->_subresourceRange.baseArrayLayer * (heapAllocation->size / image->_extent.depth);
+            MTLTextureDescriptor* mtlTexDesc = image->newMTLTextureDescriptor(_planeIndex); // temp retain
 
-                // Create a temporary texture that is backed by the 3D texture's memory
-                _mtlTexture = [heapAllocation->heap
-                                     newTextureWithDescriptor: mtlTexDesc
-                                     offset: heapAllocation->offset + relativeSliceOffset];
-            }
-            mtlTex = _mtlTexture;
+            mtlTexDesc.depth = 1;
+            mtlTexDesc.arrayLength = _imageView->_subresourceRange.layerCount;
+            mtlTexDesc.textureType = mtlTextureType;
+
+            // Create a temporary texture that is backed by the 3D texture's memory
+            aliasTex = [heapAllocation->heap
+                              newTextureWithDescriptor: mtlTexDesc
+                              offset: heapAllocation->offset + relativeSliceOffset];
+
+            [mtlTexDesc release]; // temp release
+
+            mtlTex = aliasTex;
             sliceRange = NSMakeRange(0, _imageView->_subresourceRange.layerCount);
         }
     }
+    id<MTLTexture> texView;
     if (_useNativeSwizzle) {
-        return [mtlTex newTextureViewWithPixelFormat: _mtlPixFmt
-                                         textureType: mtlTextureType
-                                              levels: NSMakeRange(_imageView->_subresourceRange.baseMipLevel, _imageView->_subresourceRange.levelCount)
-                                              slices: sliceRange
-                                             swizzle: mvkMTLTextureSwizzleChannelsFromVkComponentMapping(_componentSwizzle)];    // retained
+        texView = [mtlTex newTextureViewWithPixelFormat: _mtlPixFmt
+                                            textureType: mtlTextureType
+                                                 levels: NSMakeRange(_imageView->_subresourceRange.baseMipLevel, _imageView->_subresourceRange.levelCount)
+                                                 slices: sliceRange
+                                                swizzle: mvkMTLTextureSwizzleChannelsFromVkComponentMapping(_componentSwizzle)];    // retained
     } else {
-        return [mtlTex newTextureViewWithPixelFormat: _mtlPixFmt
-                                         textureType: mtlTextureType
-                                              levels: NSMakeRange(_imageView->_subresourceRange.baseMipLevel, _imageView->_subresourceRange.levelCount)
-                                              slices: sliceRange];    // retained
+        texView = [mtlTex newTextureViewWithPixelFormat: _mtlPixFmt
+                                            textureType: mtlTextureType
+                                                 levels: NSMakeRange(_imageView->_subresourceRange.baseMipLevel, _imageView->_subresourceRange.levelCount)
+                                                 slices: sliceRange];    // retained
     }
+    [aliasTex release];
+    return texView;
 }
 
 

@@ -441,7 +441,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->imageViewFormatReinterpretation = true;
 				portabilityFeatures->imageViewFormatSwizzle = (_metalFeatures.nativeTextureSwizzle ||
 															   getMVKConfig().fullImageViewSwizzle);
-				portabilityFeatures->imageView2DOn3DImage = true;
+				portabilityFeatures->imageView2DOn3DImage = getMVKConfig().useMTLHeap;
 				portabilityFeatures->multisampleArrayImage = _metalFeatures.multisampleArrayTextures;
 				portabilityFeatures->mutableComparisonSamplers = _metalFeatures.depthSampleCompare;
 				portabilityFeatures->pointPolygons = false;
@@ -537,6 +537,14 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				hostImageCopyFeatures->hostImageCopy = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT: {
+				if (getMVKConfig().useMTLHeap) {
+					auto* extFeatures = (VkPhysicalDeviceImage2DViewOf3DFeaturesEXT*)next;
+					extFeatures->image2DViewOf3D = true;
+					extFeatures->sampler2DViewOf3D = true;
+				}
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT: {
 				auto* pipelineCreationCacheControlFeatures = (VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT*)next;
 				pipelineCreationCacheControlFeatures->pipelineCreationCacheControl = true;
@@ -590,12 +598,6 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
 				auto* shaderIntFuncsFeatures = (VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL*)next;
 				shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
-				break;
-            }
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT: {
-				auto* extFeatures = (VkPhysicalDeviceImage2DViewOf3DFeaturesEXT*)next;
-                extFeatures->image2DViewOf3D = true;
-                extFeatures->sampler2DViewOf3D = true;
 				break;
 			}
 			default:
@@ -3397,6 +3399,9 @@ void MVKPhysicalDevice::initExtensions() {
 	}
 	if (!_metalFeatures.arrayOfTextures || !_metalFeatures.arrayOfSamplers) {
 		pWritableExtns->vk_EXT_descriptor_indexing.enabled = false;
+	}
+	if (!getMVKConfig().useMTLHeap) {
+		pWritableExtns->vk_EXT_image_2d_view_of_3d.enabled = false;
 	}
     
     // The relevant functions are not available if not built with Xcode 14.

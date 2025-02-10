@@ -188,11 +188,11 @@ bool MVKDeviceMemory::ensureMTLHeap() {
 	// Can't create MTLHeaps of zero size.
 	if (_allocationSize == 0) { return true; }
 
-    if (getPhysicalDevice()->getMTLDeviceCapabilities().isAppleGPU) {
-        // MTLHeaps on Apple silicon must use private or shared storage for now.
-        if ( !(_mtlStorageMode == MTLStorageModePrivate ||
-               _mtlStorageMode == MTLStorageModeShared) ) { return true; }
-    }
+	if (getPhysicalDevice()->getMTLDeviceCapabilities().isAppleGPU) {
+		// MTLHeaps on Apple silicon must use private or shared storage for now.
+		if ( !(_mtlStorageMode == MTLStorageModePrivate ||
+		       _mtlStorageMode == MTLStorageModeShared) ) { return true; }
+	}
 
 	MTLHeapDescriptor* heapDesc = [MTLHeapDescriptor new];
 	heapDesc.type = MTLHeapTypePlacement;
