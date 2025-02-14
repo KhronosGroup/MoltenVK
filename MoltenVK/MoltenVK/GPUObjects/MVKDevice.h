@@ -395,6 +395,12 @@ public:
 	/** Returns the MTLDevice capabilities. */
 	const MVKMTLDeviceCapabilities getMTLDeviceCapabilities() { return _gpuCapabilities; }
 
+	/** Adds the global residency set to a Metal queue. */
+	void addResidencySet(id<MTLCommandQueue> queue) {
+#if MVK_XCODE_16
+		if (_mtlResidencySet) [queue addResidencySet:_mtlResidencySet];
+#endif
+	}
 
 #pragma mark Construction
 
@@ -464,6 +470,9 @@ protected:
 	VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT _texelBuffAlignProperties;
 	VkPhysicalDeviceMemoryProperties _memoryProperties;
 	MVKSmallVector<MVKQueueFamily*, kMVKQueueFamilyCount> _queueFamilies;
+#if MVK_XCODE_16
+	id<MTLResidencySet> _mtlResidencySet = nil;
+#endif
 	VkExternalMemoryProperties _hostPointerExternalMemoryProperties;
 	VkExternalMemoryProperties _mtlBufferExternalMemoryProperties;
 	VkExternalMemoryProperties _mtlTextureExternalMemoryProperties;
@@ -830,9 +839,9 @@ public:
 	void makeResident(id allocation) {}
 #else
 	void makeResident(id<MTLAllocation> allocation) {
-		@synchronized(_residencySet) {
-			[_residencySet addAllocation: allocation];
-			[_residencySet commit];
+		@synchronized(_physicalDevice->_mtlResidencySet) {
+			[_physicalDevice->_mtlResidencySet addAllocation: allocation];
+			[_physicalDevice->_mtlResidencySet commit];
 		}
 	}
 #endif
@@ -841,22 +850,16 @@ public:
 	void removeResidency(id allocation) {}
 #else
 	void removeResidency(id<MTLAllocation> allocation) {
-		@synchronized(_residencySet) {
-			[_residencySet removeAllocation:allocation];
-			[_residencySet commit];
+		@synchronized(_physicalDevice->_mtlResidencySet) {
+			[_physicalDevice->_mtlResidencySet removeAllocation:allocation];
+			[_physicalDevice->_mtlResidencySet commit];
 		}
 	}
 #endif
 
-	void addResidencySet(id<MTLCommandQueue> queue) {
-#if MVK_XCODE_16
-		if (_residencySet) [queue addResidencySet:_residencySet];
-#endif
-	}
-
 	bool hasResidencySet() {
 #if MVK_XCODE_16
-		return _residencySet != nil;
+		return _physicalDevice->_mtlResidencySet != nil;
 #else
 		return false;
 #endif
@@ -951,9 +954,6 @@ protected:
     id<MTLBuffer> _globalVisibilityResultMTLBuffer = nil;
 	id<MTLSamplerState> _defaultMTLSamplerState = nil;
 	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
-#if MVK_XCODE_16
-	id<MTLResidencySet> _residencySet = nil;
-#endif
     uint32_t _globalVisibilityQueryCount = 0;
 	int _capturePipeFileDesc = -1;
 	bool _isPerformanceTracking = false;
