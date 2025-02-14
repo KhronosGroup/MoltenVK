@@ -370,6 +370,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	conversionResult.resultInfo.needsDispatchBaseBuffer = pMSLCompiler && pMSLCompiler->needs_dispatch_base_buffer();
 	conversionResult.resultInfo.needsViewRangeBuffer = pMSLCompiler && pMSLCompiler->needs_view_mask_buffer();
 	conversionResult.resultInfo.usesPhysicalStorageBufferAddressesCapability = usesPhysicalStorageBufferAddressesCapability(pMSLCompiler);
+	populateSpecializationMacros(pMSLCompiler, conversionResult.resultInfo.specializationMacros);
 
 	// When using Metal argument buffers, if the shader is provided with dynamic buffer offsets,
 	// then it needs a buffer to hold these dynamic offsets.
@@ -549,4 +550,18 @@ bool SPIRVToMSLConverter::usesPhysicalStorageBufferAddressesCapability(Compiler*
 		}
 	}
 	return false;
+}
+
+void SPIRVToMSLConverter::populateSpecializationMacros(CompilerMSL* pMSLCompiler,
+													   map<uint32_t, string>& specializationMacros)
+{
+	if (pMSLCompiler) {
+		auto spec_consts = pMSLCompiler->get_specialization_constants();
+		for (auto& c: spec_consts) {
+			uint32_t id = c.constant_id;
+			if (pMSLCompiler->specialization_constant_is_macro(id)) {
+				specializationMacros[id] = pMSLCompiler->constant_value_macro_name(id);
+			}
+		}
+	}
 }
