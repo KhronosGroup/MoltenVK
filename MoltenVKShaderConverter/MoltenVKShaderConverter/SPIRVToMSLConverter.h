@@ -23,6 +23,7 @@
 #include <spirv_msl.hpp>
 #include <string>
 #include <vector>
+#include <map>
 
 
 namespace mvk {
@@ -227,6 +228,12 @@ namespace mvk {
 		bool supportsFastMath = true;
 	} SPIRVEntryPoint;
 
+	typedef struct MSLSpecializationMacroInfo {
+		std::string name;
+		bool isFloat;
+		bool isSigned;
+	} MSLSpecializationMacroInfo;
+
 	/**
 	 * Contains information about a shader conversion that can be used to populate a pipeline.
 	 *
@@ -246,6 +253,7 @@ namespace mvk {
 		bool needsDispatchBaseBuffer = false;
 		bool needsViewRangeBuffer = false;
 		bool usesPhysicalStorageBufferAddressesCapability = false;
+		std::map<uint32_t, MSLSpecializationMacroInfo> specializationMacros;
 
 	} SPIRVToMSLConversionResultInfo;
 
@@ -303,6 +311,7 @@ namespace mvk {
 		void populateWorkgroupDimension(SPIRVWorkgroupSizeDimension& wgDim, uint32_t size, SPIRV_CROSS_NAMESPACE::SpecializationConstant& spvSpecConst);
 		void populateEntryPoint(SPIRV_CROSS_NAMESPACE::Compiler* pCompiler, SPIRVToMSLConversionOptions& options, SPIRVEntryPoint& entryPoint);
 		bool usesPhysicalStorageBufferAddressesCapability(SPIRV_CROSS_NAMESPACE::Compiler* pCompiler);
+		void populateSpecializationMacros(SPIRV_CROSS_NAMESPACE::CompilerMSL* pMSLCompiler, std::map<uint32_t, MSLSpecializationMacroInfo>& specializationMacros);
 
 		std::vector<uint32_t> _spirv;
 	};

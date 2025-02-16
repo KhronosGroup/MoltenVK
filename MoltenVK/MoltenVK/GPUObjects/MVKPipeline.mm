@@ -36,6 +36,7 @@
 
 #if MVK_USE_CEREAL
 #include <cereal/archives/binary.hpp>
+#include <cereal/types/map.hpp>
 #include <cereal/types/string.hpp>
 #include <cereal/types/vector.hpp>
 #endif
@@ -2783,7 +2784,15 @@ namespace mvk {
 				scr.needsInputThreadgroupMem,
 				scr.needsDispatchBaseBuffer,
 				scr.needsViewRangeBuffer,
-				scr.usesPhysicalStorageBufferAddressesCapability);
+				scr.usesPhysicalStorageBufferAddressesCapability,
+				scr.specializationMacros);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, MSLSpecializationMacroInfo& info) {
+		archive(info.name,
+				info.isFloat,
+				info.isSigned);
 	}
 
 }
