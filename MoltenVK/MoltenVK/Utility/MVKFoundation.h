@@ -354,6 +354,24 @@ static constexpr uint32_t mvkCTZ(T t) {
 
 #pragma mark - Vulkan structure support functions
 
+template <typename T, typename U>
+static const T* mvkFindStructInChain(const U* base, VkStructureType type) {
+	for (auto* cur = static_cast<const VkBaseInStructure*>(base->pNext); cur; cur = cur->pNext) {
+		if (cur->sType == type)
+			return reinterpret_cast<const T*>(cur);
+	}
+	return nullptr;
+}
+
+template <typename T, typename U>
+static T* mvkFindStructInChain(U* base, VkStructureType type) {
+	for (auto* cur = static_cast<const VkBaseOutStructure*>(base->pNext); cur; cur = cur->pNext) {
+		if (cur->sType == type)
+			return reinterpret_cast<T*>(cur);
+	}
+	return nullptr;
+}
+
 /** Returns a VkExtent2D created from the width and height of a VkExtent3D. */
 static constexpr VkExtent2D mvkVkExtent2DFromVkExtent3D(VkExtent3D e) { return {e.width, e.height }; }
 
