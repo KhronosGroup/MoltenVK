@@ -566,6 +566,8 @@ public:
 	constexpr size_t size() const { return _size; }
 	constexpr size_t byteSize() const { return _size * sizeof(Type); }
 	constexpr Type& operator[]( const size_t i ) const { return _data[i]; }
+	constexpr Type& front() const { return _data[0]; }
+	constexpr Type& back() const { return _data[_size - 1]; }
 	constexpr MVKArrayRef() : MVKArrayRef(nullptr, 0) {}
 	constexpr MVKArrayRef(Type* d, size_t s) : _data(d), _size(s) {}
 	template <typename Other, std::enable_if_t<std::is_convertible_v<Other(*)[], Type(*)[]>, bool> = true>
