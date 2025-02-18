@@ -353,6 +353,7 @@ void MVKQueue::initMTLCommandQueue() {
 MVKQueue::~MVKQueue() {
 	destroyExecQueue();
 	_submissionCaptureScope->destroy();
+	_device->removeResidencySet(_mtlQueue);
 
 	[_mtlCmdBuffLabelBeginCommandBuffer release];
 	[_mtlCmdBuffLabelQueueSubmit release];

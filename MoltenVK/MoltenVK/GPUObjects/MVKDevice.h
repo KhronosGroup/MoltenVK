@@ -854,6 +854,12 @@ public:
 #endif
 	}
 
+	void removeResidencySet(id<MTLCommandQueue> queue) {
+#if MVK_XCODE_16
+		if (_residencySet) [queue removeResidencySet:_residencySet];
+#endif
+	}
+
 	bool hasResidencySet() {
 #if MVK_XCODE_16
 		return _residencySet != nil;
