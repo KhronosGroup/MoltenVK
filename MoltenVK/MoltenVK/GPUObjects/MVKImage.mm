@@ -1832,10 +1832,7 @@ id<MTLTexture> MVKImageViewPlane::newMTLTexture() {
     id<MTLTexture> mtlTex = image->getMTLTexture(_planeIndex);
     if (image->getImageType() == VK_IMAGE_TYPE_3D &&
         (mtlTextureType == MTLTextureType2D || mtlTextureType == MTLTextureType2DArray)) {
-        if (!image->_is2DViewOn3DImageCompatible) {
-            mtlTextureType = MTLTextureType3D;
-            sliceRange = NSMakeRange(0, 1);
-        } else {
+        if (image->_is2DViewOn3DImageCompatible) {
             const auto heapAllocation = image->getHeapAllocation(_planeIndex);
             MVKAssert(heapAllocation, "Attempting to create a 2D view of a 3D texture without a placement heap");
 
@@ -1855,9 +1852,12 @@ id<MTLTexture> MVKImageViewPlane::newMTLTexture() {
 
             mtlTex = aliasTex;
             sliceRange = NSMakeRange(0, _imageView->_subresourceRange.layerCount);
+        } else {
+            mtlTextureType = MTLTextureType3D;
+            sliceRange = NSMakeRange(0, 1);
         }
     }
-    id<MTLTexture> texView;
+    id<MTLTexture> texView = nil;
     if (_useNativeSwizzle) {
         texView = [mtlTex newTextureViewWithPixelFormat: _mtlPixFmt
                                             textureType: mtlTextureType

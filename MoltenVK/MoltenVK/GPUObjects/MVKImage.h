@@ -91,7 +91,6 @@ protected:
     id<MTLTexture> _mtlTexture;
     std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
     MVKSmallVector<MVKImageSubresource, 1> _subresources;
-
     HeapAllocation _heapAllocation;
 };
 
