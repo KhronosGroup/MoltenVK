@@ -192,6 +192,9 @@ bool MVKDeviceMemory::ensureMTLHeap() {
 		// MTLHeaps on Apple silicon must use private or shared storage for now.
 		if ( !(_mtlStorageMode == MTLStorageModePrivate ||
 		       _mtlStorageMode == MTLStorageModeShared) ) { return true; }
+	} else {
+		// MTLHeaps with immediate-mode GPUs must use private storage for now.
+		if (_mtlStorageMode != MTLStorageModePrivate) { return true; }
 	}
 
 	MTLHeapDescriptor* heapDesc = [MTLHeapDescriptor new];
