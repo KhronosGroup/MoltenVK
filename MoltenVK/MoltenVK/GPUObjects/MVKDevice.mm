@@ -4123,6 +4123,32 @@ MVKPhysicalDevice::~MVKPhysicalDevice() {
 	MVKLogInfo("Destroyed VkPhysicalDevice for GPU %s with %llu MB of GPU memory still allocated.", getName(), memUsed / MEBI);
 }
 
+#pragma mark - MVKLiveResourceSet
+
+void MVKLiveResourceSet::add(std::unordered_map<id, uint32_t>& map, id object) {
+	std::lock_guard<std::shared_mutex> guard(lock);
+	map[object]++;
+}
+
+void MVKLiveResourceSet::remove(std::unordered_map<id, uint32_t>& map, id object) {
+	std::lock_guard<std::shared_mutex> guard(lock);
+	auto it = map.find(object);
+	if (it == map.end())
+		return;
+	if (it->second <= 1)
+		map.erase(it);
+	else
+		it->second--;
+}
+
+bool MVKLiveResourceSet::isLive(const std::unordered_map<id, uint32_t>& map, id object) const {
+	std::shared_lock<std::shared_mutex> guard(lock);
+	return isLiveHoldingLock(map, object);
+}
+
+bool MVKLiveResourceSet::isLiveHoldingLock(const std::unordered_map<id, uint32_t>& map, id object) {
+	return map.find(object) != map.end();
+}
 
 #pragma mark -
 #pragma mark MVKDevice
