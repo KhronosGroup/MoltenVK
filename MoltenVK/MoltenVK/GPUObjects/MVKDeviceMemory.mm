@@ -227,28 +227,32 @@ bool MVKDeviceMemory::ensureMTLBuffer() {
 
 	if (memLen > getMetalFeatures().maxMTLBufferSize) { return false; }
 
+	id<MTLBuffer> buf;
 	// If host memory was already allocated, it is copied into the new MTLBuffer, and then released.
 	if (_mtlHeap) {
-		_mtlBuffer = [_mtlHeap newBufferWithLength: memLen options: getMTLResourceOptions() offset: 0];	// retained
+		buf = [_mtlHeap newBufferWithLength: memLen options: getMTLResourceOptions() offset: 0];	// retained
 		if (_pHostMemory) {
-			memcpy(_mtlBuffer.contents, _pHostMemory, memLen);
+			memcpy(buf.contents, _pHostMemory, memLen);
 			freeHostMemory();
 		}
-		[_mtlBuffer makeAliasable];
+		[buf makeAliasable];
 	} else if (_pHostMemory) {
 		auto rezOpts = getMTLResourceOptions();
 		if (_isHostMemImported) {
-			_mtlBuffer = [getMTLDevice() newBufferWithBytesNoCopy: _pHostMemory length: memLen options: rezOpts deallocator: nil];	// retained
+			buf = [getMTLDevice() newBufferWithBytesNoCopy: _pHostMemory length: memLen options: rezOpts deallocator: nil];	// retained
 		} else {
-			_mtlBuffer = [getMTLDevice() newBufferWithBytes: _pHostMemory length: memLen options: rezOpts];     // retained
+			buf = [getMTLDevice() newBufferWithBytes: _pHostMemory length: memLen options: rezOpts];     // retained
 		}
 		freeHostMemory();
 	} else {
-		_mtlBuffer = [getMTLDevice() newBufferWithLength: memLen options: getMTLResourceOptions()];     // retained
+		buf = [getMTLDevice() newBufferWithLength: memLen options: getMTLResourceOptions()];     // retained
 	}
-	if (!_mtlBuffer) { return false; }
-	_pMemory = isMemoryHostAccessible() ? _mtlBuffer.contents : nullptr;
-	getDevice()->makeResident(_mtlBuffer);
+	if (!buf) { return false; }
+	_device->makeResident(buf);
+	_device->editLiveResources().add(buf);
+	_pMemory = isMemoryHostAccessible() ? buf.contents : nullptr;
+	_mtlBuffer = buf;
+
 	propagateDebugName();
 
 	return true;
@@ -330,7 +334,10 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 				// Setting Metal objects directly will override Vulkan settings.
 				// It is responsibility of app to ensure these are consistent. Not doing so results in undefined behavior.
 				const auto* pMTLBuffInfo = (VkImportMetalBufferInfoEXT*)next;
+				if (_mtlBuffer)
+					_device->editLiveResources().remove(_mtlBuffer);
 				[_mtlBuffer release];							// guard against dups
+				_device->editLiveResources().add(pMTLBuffInfo->mtlBuffer);
 				_mtlBuffer = [pMTLBuffInfo->mtlBuffer retain];	// retained
 				_mtlStorageMode = _mtlBuffer.storageMode;
 				_mtlCPUCacheMode = _mtlBuffer.cpuCacheMode;
@@ -358,7 +365,10 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 					_allocationSize = _mtlHeap.size;
 				}
 				else if (pImportInfo->handleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT) {
+					if (_mtlBuffer)
+						_device->editLiveResources().remove(_mtlBuffer);
 					[_mtlBuffer release];							// guard against dups
+					_device->editLiveResources().add(((id<MTLBuffer>)pImportInfo->handle));
 					_mtlBuffer = [((id<MTLBuffer>)pImportInfo->handle) retain];	// retained
 					_mtlStorageMode = _mtlBuffer.storageMode;
 					_mtlCPUCacheMode = _mtlBuffer.cpuCacheMode;
@@ -473,10 +483,11 @@ MVKDeviceMemory::~MVKDeviceMemory() {
 	if (_externalMemoryHandleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT) {
 		[_mtlTexture release];
 		_mtlTexture = nil;
-	} else {
-		if (_mtlBuffer) getDevice()->removeResidency(_mtlBuffer);
-		[_mtlBuffer release];
+	} else if (id<MTLBuffer> buf = _mtlBuffer) {
 		_mtlBuffer = nil;
+		_device->removeResidency(buf);
+		_device->editLiveResources().remove(buf);
+		[buf release];
 	}
 
 	[_mtlHeap release];
