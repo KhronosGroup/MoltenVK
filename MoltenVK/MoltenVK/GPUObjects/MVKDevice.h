@@ -27,6 +27,7 @@
 #include "MVKPixelFormats.h"
 #include "MVKOSExtensions.h"
 #include "mvk_datatypes.hpp"
+#include <shared_mutex>
 #include <string>
 #include <mutex>
 
@@ -512,6 +513,36 @@ typedef struct MVKMTLBlitEncoder {
 // and potentially introduce extra synchronization on previous invocations of the same stage.
 static const uint32_t kMVKBarrierFenceCount = 64;
 
+struct MVKLiveResourceSet {
+private:
+	void add(std::unordered_map<id, uint32_t>& map, id object);
+	void remove(std::unordered_map<id, uint32_t>& map, id object);
+	bool isLive(const std::unordered_map<id, uint32_t>& map, id object) const;
+	static bool isLiveHoldingLock(const std::unordered_map<id, uint32_t>& map, id object);
+
+public:
+	mutable std::shared_mutex lock;
+
+private:
+	std::unordered_map<id, uint32_t> textures;
+	std::unordered_map<id, uint32_t> buffers;
+	std::unordered_map<id, uint32_t> samplers;
+
+public:
+	void add(id<MTLTexture> tex)       { add(textures, tex); }
+	void add(id<MTLBuffer> buf)        { add(buffers,  buf); }
+	void add(id<MTLSamplerState> samp) { add(samplers, samp); }
+	void remove(id<MTLTexture> tex)       { remove(textures, tex); }
+	void remove(id<MTLBuffer> buf)        { remove(buffers,  buf); }
+	void remove(id<MTLSamplerState> samp) { remove(samplers, samp); }
+	bool isLive(id<MTLTexture> tex)       const { return isLive(textures, tex); }
+	bool isLive(id<MTLBuffer> buf)        const { return isLive(buffers,  buf); }
+	bool isLive(id<MTLSamplerState> samp) const { return isLive(samplers, samp); }
+	bool isLiveHoldingLock(id<MTLTexture> tex)       const { return isLiveHoldingLock(textures, tex); }
+	bool isLiveHoldingLock(id<MTLBuffer> buf)        const { return isLiveHoldingLock(buffers,  buf); }
+	bool isLiveHoldingLock(id<MTLSamplerState> samp) const { return isLiveHoldingLock(samplers, samp); }
+};
+
 /** Represents a Vulkan logical GPU device, associated with a physical device. */
 class MVKDevice : public MVKDispatchableVulkanAPIObject {
 
@@ -530,6 +561,12 @@ public:
 
 	/** Returns the name of this device. */
 	const char* getName() { return _physicalDevice->_properties.deviceName; }
+
+	/** Returns the list of live resources, for reading. */
+	const MVKLiveResourceSet& getLiveResources() const { return _liveResources; }
+
+	/** Returns the list of live resources, for writing. */
+	MVKLiveResourceSet& editLiveResources() { return _liveResources; }
 
     /** Returns the common resource factory for creating command resources. */
     MVKCommandResourceFactory* getCommandResourceFactory() { return _commandResourceFactory; }
@@ -969,6 +1006,7 @@ protected:
 	MVKSmallVector<bool> _privateDataSlotsAvailability;
 	MVKSmallVector<MVKSemaphoreImpl*> _awaitingSemaphores;
 	MVKSmallVector<std::pair<MVKTimelineSemaphore*, uint64_t>> _awaitingTimelineSem4s;
+	MVKLiveResourceSet _liveResources;
 	std::mutex _rezLock;
 	std::mutex _sem4Lock;
     std::mutex _perfLock;
