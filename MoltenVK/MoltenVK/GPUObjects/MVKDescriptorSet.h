@@ -115,7 +115,7 @@ public:
 	MVKDescriptorSetLayoutBinding* getBindingAt(uint32_t index) { return &_bindings[index]; }
 
 	/** Overridden because descriptor sets may be marked as discrete and not use an argument buffer. */
-	bool isUsingMetalArgumentBuffers() override;
+	bool isUsingMetalArgumentBuffers() const override;
 
 	/** Returns whether descriptor sets from this layout requires an auxilliary buffer-size buffer. */
 	bool needsBufferSizeAuxBuffer() { return _maxBufferIndex >= 0; }

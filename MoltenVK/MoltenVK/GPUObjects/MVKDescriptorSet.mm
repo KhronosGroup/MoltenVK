@@ -314,7 +314,7 @@ bool MVKDescriptorSetLayout::populateBindingUse(MVKBitArray& bindingUse,
 	return descSetIsUsed;
 }
 
-bool MVKDescriptorSetLayout::isUsingMetalArgumentBuffers() {
+bool MVKDescriptorSetLayout::isUsingMetalArgumentBuffers() const {
 	return MVKDeviceTrackingMixin::isUsingMetalArgumentBuffers() && _canUseMetalArgumentBuffer;
 };
 
