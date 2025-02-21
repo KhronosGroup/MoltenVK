@@ -44,6 +44,7 @@ MVK_DEVICE_FEATURE(HostQueryReset,                    HOST_QUERY_RESET,         
 MVK_DEVICE_FEATURE(ImagelessFramebuffer,              IMAGELESS_FRAMEBUFFER,                  1)
 MVK_DEVICE_FEATURE(ImageRobustness,                   IMAGE_ROBUSTNESS,                       1)
 MVK_DEVICE_FEATURE(InlineUniformBlock,                INLINE_UNIFORM_BLOCK,                   2)
+MVK_DEVICE_FEATURE(Maintenance4,                      MAINTENANCE_4,                          1)
 MVK_DEVICE_FEATURE(Multiview,                         MULTIVIEW,                              3)
 MVK_DEVICE_FEATURE(PrivateData,                       PRIVATE_DATA,                           1)
 MVK_DEVICE_FEATURE(ProtectedMemory,                   PROTECTED_MEMORY,                       1)
