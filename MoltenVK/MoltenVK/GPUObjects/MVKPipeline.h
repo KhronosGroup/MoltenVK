@@ -99,7 +99,7 @@ public:
 	std::string getLogDescription(std::string indent = "");
 
 	/** Overridden because pipeline descriptor sets may be marked as discrete and not use an argument buffer. */
-	bool isUsingMetalArgumentBuffers() override;
+	bool isUsingMetalArgumentBuffers() const override;
 
 	/** Returns the number of descriptor sets. */
 	size_t getDescriptorSetCount() const { return _descriptorSetLayouts.size(); }

@@ -389,13 +389,16 @@ public:
 #pragma mark Metal
 
 	/** Populates the specified structure with the Metal-specific features of this device. */
-	const MVKPhysicalDeviceMetalFeatures* getMetalFeatures() { return &_metalFeatures; }
+	const MVKPhysicalDeviceMetalFeatures* getMetalFeatures() const { return &_metalFeatures; }
+
+	/** Returns whether argument buffers are in use. */
+	bool isUsingMetalArgumentBuffers() const { return _isUsingMetalArgumentBuffers; }
 
 	/** Returns whether or not vertex instancing can be used to implement multiview. */
 	bool canUseInstancingForMultiview() { return _metalFeatures.layeredRendering && _metalFeatures.deferredStoreActions; }
 
 	/** Returns the underlying Metal device. */
-	id<MTLDevice> getMTLDevice() { return _mtlDevice; }
+	id<MTLDevice> getMTLDevice() const { return _mtlDevice; }
 
 	/** Returns whether the MSL version is supported on this device. */
 	bool mslVersionIsAtLeast(MTLLanguageVersion minVer) { return _metalFeatures.mslVersionEnum >= minVer; }
@@ -1041,34 +1044,34 @@ class MVKDeviceTrackingMixin {
 public:
 
 	/** Returns the device for which this object was created. */
-	MVKDevice* getDevice() { return _device; }
+	MVKDevice* getDevice() const { return _device; }
 
 	/** Returns the physical device underlying this logical device. */
-	MVKPhysicalDevice* getPhysicalDevice() { return _device->_physicalDevice; }
+	MVKPhysicalDevice* getPhysicalDevice() const { return _device->_physicalDevice; }
 
 	/** Returns the underlying Metal device. */
-	id<MTLDevice> getMTLDevice() { return _device->_physicalDevice->_mtlDevice; }
+	id<MTLDevice> getMTLDevice() const { return _device->_physicalDevice->_mtlDevice; }
 
 	/** Returns whether the GPU is a unified memory device. */
-	bool isUnifiedMemoryGPU() { return _device->_physicalDevice->_hasUnifiedMemory; }
+	bool isUnifiedMemoryGPU() const { return _device->_physicalDevice->_hasUnifiedMemory; }
 
 	/** Returns whether the GPU is Apple Silicon. */
-	bool isAppleGPU() { return _device->_physicalDevice->_gpuCapabilities.isAppleGPU; }
+	bool isAppleGPU() const { return _device->_physicalDevice->_gpuCapabilities.isAppleGPU; }
 
 	/** Returns whether this device is using one Metal argument buffer for each descriptor set, on multiple pipeline and pipeline stages. */
-	virtual bool isUsingMetalArgumentBuffers() { return _device->_physicalDevice->_isUsingMetalArgumentBuffers; };
+	virtual bool isUsingMetalArgumentBuffers() const { return _device->_physicalDevice->_isUsingMetalArgumentBuffers; };
 
 	/** Returns whether this device needs Metal argument buffer encoders to populate argument buffer content. */
-	bool needsMetalArgumentBufferEncoders() { return _device->_physicalDevice->_metalFeatures.needsArgumentBufferEncoders; };
+	bool needsMetalArgumentBufferEncoders() const { return _device->_physicalDevice->_metalFeatures.needsArgumentBufferEncoders; };
 
 	/** Returns info about the pixel format supported by the physical device. */
 	MVKPixelFormats* getPixelFormats() { return &_device->_physicalDevice->_pixelFormats; }
 
 	/** The list of Vulkan extensions, indicating whether each has been enabled by the app for this device. */
-	MVKExtensionList& getEnabledExtensions() { return _device->_enabledExtensions; }
+	const MVKExtensionList& getEnabledExtensions() const { return _device->_enabledExtensions; }
 
 	/** Device features available and enabled. */
-	VkPhysicalDeviceFeatures& getEnabledFeatures() { return _device->_enabledFeatures; }
+	const VkPhysicalDeviceFeatures& getEnabledFeatures() const { return _device->_enabledFeatures; }
 
 	// List of extended device feature enabling structures, as getEnabledXXXFeatures() functions.
 #define MVK_DEVICE_FEATURE(structName, enumName, flagCount) \
@@ -1078,13 +1081,13 @@ public:
 #include "MVKDeviceFeatureStructs.def"
 
 	/** Pointer to the Metal-specific features of the underlying physical device. */
-	const MVKPhysicalDeviceMetalFeatures& getMetalFeatures() { return _device->_physicalDevice->_metalFeatures; }
+	const MVKPhysicalDeviceMetalFeatures& getMetalFeatures() const { return _device->_physicalDevice->_metalFeatures; }
 
 	/** Pointer to the properties of the underlying physical device. */
-	const VkPhysicalDeviceProperties& getDeviceProperties() { return _device->_physicalDevice->_properties; }
+	const VkPhysicalDeviceProperties& getDeviceProperties() const { return _device->_physicalDevice->_properties; }
 
 	/** Pointer to the memory properties of the underlying physical device. */
-	const VkPhysicalDeviceMemoryProperties& getDeviceMemoryProperties() { return _device->_physicalDevice->_memoryProperties; }
+	const VkPhysicalDeviceMemoryProperties& getDeviceMemoryProperties() const { return _device->_physicalDevice->_memoryProperties; }
 
 	/** Performance statistics. */
 	MVKPerformanceStatistics& getPerformanceStats() { return _device->_performanceStats; }
