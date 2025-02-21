@@ -1,7 +1,7 @@
 /*
  * MTLRenderPipelineDescriptor+MoltenVK.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,5 +32,14 @@
  * read and does nothing when set.
  */
 @property(nonatomic, readwrite) MTLPrimitiveTopologyClass inputPrimitiveTopologyMVK;
+
+/**
+ * Replacement for the sampleMask property.
+ *
+ * This property allows support under all OS versions. Delegates to the sampleMask
+ * property if it is available. otherwise, returns 0xFFFFFFFF when
+ * read and does nothing when set.
+ */
+@property(nonatomic, readwrite) NSUInteger sampleMaskMVK;
 
 @end

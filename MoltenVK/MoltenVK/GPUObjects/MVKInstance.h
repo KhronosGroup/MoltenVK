@@ -1,7 +1,7 @@
 /*
  * MVKInstance.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -159,9 +159,6 @@ public:
 	/** Returns whether debug callbacks are being used. */
 	bool hasDebugCallbacks() { return _hasDebugReportCallbacks || _hasDebugUtilsMessengers; }
 
-	/** The list of Vulkan extensions, indicating whether each has been enabled by the app. */
-	const MVKExtensionList _enabledExtensions;
-
 
 #pragma mark Object Creation
 
@@ -198,6 +195,7 @@ protected:
     void logVersions();
 	VkResult verifyLayers(uint32_t count, const char* const* names);
 
+	MVKExtensionList _enabledExtensions;
 	MVKConfiguration _mvkConfig;
 	VkApplicationInfo _appInfo;
 	MVKSmallVector<MVKPhysicalDevice*, 2> _physicalDevices;

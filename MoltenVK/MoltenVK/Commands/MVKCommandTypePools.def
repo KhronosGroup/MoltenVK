@@ -1,7 +1,7 @@
 /*
  * MVKCommandTypePools.def
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -90,6 +90,8 @@ MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(SetScissor, 1)
 MVK_CMD_TYPE_POOL(SetBlendConstants)
 MVK_CMD_TYPE_POOL(SetDepthBias)
 MVK_CMD_TYPE_POOL(SetDepthBiasEnable)
+MVK_CMD_TYPE_POOL(SetDepthBounds)
+MVK_CMD_TYPE_POOL(SetDepthBoundsTestEnable)
 MVK_CMD_TYPE_POOL(SetDepthTestEnable)
 MVK_CMD_TYPE_POOL(SetDepthWriteEnable)
 MVK_CMD_TYPE_POOL(SetDepthClipEnable)
@@ -104,6 +106,7 @@ MVK_CMD_TYPE_POOL(SetFrontFace)
 MVK_CMD_TYPE_POOL(SetPrimitiveTopology)
 MVK_CMD_TYPE_POOL(SetPrimitiveRestartEnable)
 MVK_CMD_TYPE_POOL(SetPolygonMode)
+MVK_CMD_TYPE_POOL(SetLineWidth)
 MVK_CMD_TYPE_POOL(SetPatchControlPoints)
 MVK_CMD_TYPE_POOL(SetRasterizerDiscardEnable)
 MVK_CMD_TYPE_POOLS_FROM_2_THRESHOLDS(BindVertexBuffers, 1, 2)

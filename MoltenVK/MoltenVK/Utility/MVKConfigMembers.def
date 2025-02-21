@@ -1,7 +1,7 @@
 /*
  * MVKConfigMembers.def
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License", Int64)
  * you may not use this file except in compliance with the License.
@@ -16,24 +16,25 @@
  * limitations under the License.
  */
 
-// The items in the list below describe the members of the MVKConfiguration struct.
-// When a new member is added to the MVKConfiguration struct, a corresponding description
-// must be added here.
-//
-// To use this file, define the macro:
-//
-//   MVK_CONFIG_MEMBER(member, mbrType, name)
-//
-// and if strings are handled differently:
-//
-//   MVK_CONFIG_MEMBER_STRING(member, mbrType,  name)
-//
-// then #include this file inline with your code.
-//
-// The name prameter is the name of the configuration parameter, which is used as the name
-// of the environment variable, and build setting, that sets the config value, and is entered
-// here without the "MVK_CONFIG_" prefix.
-
+/**
+ * The items in the list below describe the members of the MVKConfiguration struct.
+ * When a new member is added to the MVKConfiguration struct, a corresponding description
+ * must be added here.
+ *
+ * To use this file, define the macro:
+ *
+ *   MVK_CONFIG_MEMBER(member, mbrType, name)
+ *
+ * and if strings are handled differently:
+ *
+ *   MVK_CONFIG_MEMBER_STRING(member, mbrType,  name)
+ *
+ * then #include this file inline with your code.
+ *
+ * The name prameter is the name of the configuration parameter, which is used as the name
+ * of the environment variable, and build setting, that sets the config value, and is entered
+ * here without the "MVK_CONFIG_" prefix.
+ */
 
 #ifndef MVK_CONFIG_MEMBER
 #error MVK_CONFIG_MEMBER must be defined before including this file
@@ -71,16 +72,33 @@ MVK_CONFIG_MEMBER(semaphoreSupportStyle,                  MVKVkSemaphoreSupportS
 MVK_CONFIG_MEMBER(autoGPUCaptureScope,                    MVKConfigAutoGPUCaptureScope,             AUTO_GPU_CAPTURE_SCOPE)
 MVK_CONFIG_MEMBER_STRING(autoGPUCaptureOutputFilepath,    const char*,                              AUTO_GPU_CAPTURE_OUTPUT_FILE)
 MVK_CONFIG_MEMBER(texture1DAs2D,                          VkBool32,                                 TEXTURE_1D_AS_2D)
-MVK_CONFIG_MEMBER(preallocateDescriptors,                 VkBool32,                                 PREALLOCATE_DESCRIPTORS)
+MVK_CONFIG_MEMBER(preallocateDescriptors,                 VkBool32,                                 PREALLOCATE_DESCRIPTORS)			// Deprecated legacy
 MVK_CONFIG_MEMBER(useCommandPooling,                      VkBool32,                                 USE_COMMAND_POOLING)
 MVK_CONFIG_MEMBER(useMTLHeap,                             VkBool32,                                 USE_MTLHEAP)
 MVK_CONFIG_MEMBER(apiVersionToAdvertise,                  uint32_t,                                 API_VERSION_TO_ADVERTISE)
 MVK_CONFIG_MEMBER(advertiseExtensions,                    uint32_t,                                 ADVERTISE_EXTENSIONS)
 MVK_CONFIG_MEMBER(resumeLostDevice,                       VkBool32,                                 RESUME_LOST_DEVICE)
-MVK_CONFIG_MEMBER(useMetalArgumentBuffers,                MVKUseMetalArgumentBuffers,               USE_METAL_ARGUMENT_BUFFERS)
+MVK_CONFIG_MEMBER(useMetalArgumentBuffers,                VkBool32,                                 USE_METAL_ARGUMENT_BUFFERS)
 MVK_CONFIG_MEMBER(shaderSourceCompressionAlgorithm,       MVKConfigCompressionAlgorithm,            SHADER_COMPRESSION_ALGORITHM)
 MVK_CONFIG_MEMBER(shouldMaximizeConcurrentCompilation,    VkBool32,                                 SHOULD_MAXIMIZE_CONCURRENT_COMPILATION)
 MVK_CONFIG_MEMBER(timestampPeriodLowPassAlpha,            float,                                    TIMESTAMP_PERIOD_LOWPASS_ALPHA)
+MVK_CONFIG_MEMBER(useMetalPrivateAPI,                     VkBool32,                                 USE_METAL_PRIVATE_API)
+MVK_CONFIG_MEMBER_STRING(shaderDumpDir,                   char*,                                    SHADER_DUMP_DIR)
+MVK_CONFIG_MEMBER(shaderLogEstimatedGLSL,                 VkBool32,                                 SHADER_LOG_ESTIMATED_GLSL)
 
 #undef MVK_CONFIG_MEMBER
 #undef MVK_CONFIG_MEMBER_STRING
+
+/**
+ * Specifies the total number of bytes of padding internal to the MVKConfiguration structure.
+ *
+ * This value is the natural difference between sizeof(MVKConfiguration) and the sum of 
+ * the number of bytes in the corresponding members declared above. If a change is made
+ * to MVKConfiguration without a corresponding change above, a static assertion will be
+ * raised at build time, based on the difference between those two size values.
+ *
+ * Once  MVKConfiguration and the list above are in agreement, it may be necessary to modify
+ * this value if the internal padding has changed as a result of new MVKConfiguration members.
+ */
+#define kMVKConfigurationInternalPaddingByteCount  8
+

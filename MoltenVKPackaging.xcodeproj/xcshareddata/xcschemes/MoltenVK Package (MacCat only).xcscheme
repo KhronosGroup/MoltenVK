@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "1410"
+   LastUpgradeVersion = "9999"
    version = "2.0">
    <BuildAction
-      parallelizeBuildables = "YES"
-      buildImplicitDependencies = "YES">
+      parallelizeBuildables = "NO"
+      buildImplicitDependencies = "NO">
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"
@@ -14,10 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A972ABDD21CED7CB0013AB25"
-               BuildableName = "libglslang.a"
-               BlueprintName = "glslang-macOS"
-               ReferencedContainer = "container:ExternalDependencies.xcodeproj">
+               BlueprintIdentifier = "A91170FD2B9110050057AD37"
+               BuildableName = "MoltenVK-MacCat"
+               BlueprintName = "MoltenVK-MacCat"
+               ReferencedContainer = "container:MoltenVKPackaging.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -31,7 +31,7 @@
       </Testables>
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Debug"
+      buildConfiguration = "Release"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       disableMainThreadChecker = "YES"
@@ -45,15 +45,6 @@
       enableGPUValidationMode = "1"
       allowLocationSimulation = "NO"
       queueDebuggingEnabled = "No">
-      <MacroExpansion>
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "A972ABDD21CED7CB0013AB25"
-            BuildableName = "libglslang.a"
-            BlueprintName = "glslang-macOS"
-            ReferencedContainer = "container:ExternalDependencies.xcodeproj">
-         </BuildableReference>
-      </MacroExpansion>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -61,15 +52,6 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
-      <MacroExpansion>
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "A972ABDD21CED7CB0013AB25"
-            BuildableName = "libglslang.a"
-            BlueprintName = "glslang-macOS"
-            ReferencedContainer = "container:ExternalDependencies.xcodeproj">
-         </BuildableReference>
-      </MacroExpansion>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">

@@ -1,7 +1,7 @@
 /*
  * OSSupport.mm
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,6 +71,11 @@ bool mvk::compile(const string& mslSourceCode,
 #define mslVer(MJ, MN, PT)	mslVersionMajor == MJ && mslVersionMinor == MN && mslVersionPoint == PT
 
 	MTLLanguageVersion mslVerEnum = (MTLLanguageVersion)0;
+#if MVK_XCODE_16
+	if (mslVer(3, 2, 0)) {
+		mslVerEnum = MTLLanguageVersion3_2;
+	} else
+		#endif
 #if MVK_XCODE_15
     if (mslVer(3, 1, 0)) {
         mslVerEnum = MTLLanguageVersion3_1;
@@ -103,13 +108,13 @@ bool mvk::compile(const string& mslSourceCode,
 		mslVerEnum = MTLLanguageVersion1_1;
 	}
 
-	if ( !mslVerEnum ) {
-		errMsg = [NSString stringWithFormat: @"%d.%d.%d is not a valid MSL version number on this device",
-				  mslVersionMajor, mslVersionMinor, mslVersionPoint].UTF8String;
-		return false;
-	}
-
 	@autoreleasepool {
+		if ( !mslVerEnum ) {
+			errMsg = [NSString stringWithFormat: @"%d.%d.%d is not a valid MSL version number on this device",
+					  mslVersionMajor, mslVersionMinor, mslVersionPoint].UTF8String;
+			return false;
+		}
+
 		NSArray* mtlDevs = [MTLCopyAllDevices() autorelease];
 		if (mtlDevs.count == 0) {
 			errMsg = "Could not retrieve MTLDevice to compile shader.";

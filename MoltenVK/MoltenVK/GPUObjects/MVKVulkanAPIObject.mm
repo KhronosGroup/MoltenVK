@@ -1,7 +1,7 @@
 /*
  * MVKVulkanAPIObject.mm
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,20 @@ VkResult MVKVulkanAPIObject::setDebugName(const char* pObjectName) {
 	}
 	return VK_SUCCESS;
 }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wobjc-method-access"
+void MVKVulkanAPIObject::setMetalObjectLabel(id mtlObj, NSString* label) {
+	if ( !label ) { return; }
+
+	// If debug mode is enabled, append the object address.
+	if (getMVKConfig().debugMode) {
+		[mtlObj setLabel: [label stringByAppendingFormat: @" (%p)", mtlObj]];
+	} else {
+		[mtlObj setLabel: label];
+	}
+}
+#pragma clang diagnostic pop
 
 MVKVulkanAPIObject* MVKVulkanAPIObject::getMVKVulkanAPIObject(VkDebugReportObjectTypeEXT objType, uint64_t object) {
 	void* pVkObj = (void*)object;

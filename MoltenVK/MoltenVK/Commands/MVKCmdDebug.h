@@ -1,7 +1,7 @@
 /*
  * MVKCmdDebug.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdDebugMarkerBegin
 
-/** Vulkan command to begin a marker region into the command buffer. */
 class MVKCmdDebugMarkerBegin : public MVKCmdDebugMarker {
 
 public:
@@ -57,7 +56,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdDebugMarkerEnd
 
-/** Vulkan command to end an open marker region in the command buffer. */
 class MVKCmdDebugMarkerEnd : public MVKCommand {
 
 public:
@@ -74,7 +72,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdDebugMarkerInsert
 
-/** Vulkan command to insert a debug marker into the command encoder. */
 class MVKCmdDebugMarkerInsert : public MVKCmdDebugMarker {
 
 public:

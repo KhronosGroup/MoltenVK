@@ -1,7 +1,7 @@
 /*
  * MVKCmdPipeline.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -119,7 +119,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdBindGraphicsPipeline
 
-/** Vulkan command to bind a graphics pipeline. */
 class MVKCmdBindGraphicsPipeline : public MVKCmdBindPipeline {
 
 public:
@@ -136,7 +135,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdBindComputePipeline
 
-/** Vulkan command to bind a compute pipeline. */
 class MVKCmdBindComputePipeline : public MVKCmdBindPipeline {
 
 public:
@@ -256,7 +254,6 @@ typedef MVKCmdPushConstants<512> MVKCmdPushConstantsMulti;
 #pragma mark -
 #pragma mark MVKCmdPushDescriptorSet
 
-/** Vulkan command to update a descriptor set. */
 class MVKCmdPushDescriptorSet : public MVKCommand {
 
 public:
@@ -285,7 +282,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdPushDescriptorSetWithTemplate
 
-/** Vulkan command to update a descriptor set from a template. */
 class MVKCmdPushDescriptorSetWithTemplate : public MVKCommand {
 
 public:
@@ -302,17 +298,17 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKDescriptorUpdateTemplate* _descUpdateTemplate;
+	MVKDescriptorUpdateTemplate* _descUpdateTemplate = nullptr;
 	MVKPipelineLayout* _pipelineLayout = nullptr;
 	void* _pData = nullptr;
-	uint32_t _set;
+	size_t _dataSize = 0;
+	uint32_t _set = 0;
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdSetEvent
 
-/** Vulkan command to set an event. */
 class MVKCmdSetEvent : public MVKCommand {
 
 public:
@@ -336,7 +332,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdResetEvent
 
-/** Vulkan command to reset an event. */
 class MVKCmdResetEvent : public MVKCommand {
 
 public:

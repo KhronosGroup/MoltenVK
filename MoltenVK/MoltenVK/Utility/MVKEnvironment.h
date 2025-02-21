@@ -1,7 +1,7 @@
 /*
  * MVKEnvironment.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,9 @@
 #include "mvk_vulkan.h"
 #include "mvk_private_api.h"
 #include "MVKLogging.h"
+#ifdef __cplusplus
 #include <string>
+#endif
 
 
 // Expose MoltenVK Apple surface extension functionality
@@ -73,12 +75,18 @@
 #	define MVK_SUPPORT_IOSURFACE_BOOL (__TV_OS_VERSION_MIN_REQUIRED >= __TVOS_11_0)
 #endif
 
+#if MVK_VISIONOS
+#    define MVK_SUPPORT_IOSURFACE_BOOL   1
+#endif
+
 
 #pragma mark -
 #pragma mark MoltenVK Configuration
 
+#ifdef __cplusplus
+
 /** The number of members of MVKConfiguration that are strings. */
-static constexpr uint32_t kMVKConfigurationStringCount = 1;
+static constexpr uint32_t kMVKConfigurationStringCount = 2;
 
 /** Global function to access MoltenVK configuration info. */
 const MVKConfiguration& getGlobalMVKConfig();
@@ -91,6 +99,8 @@ void mvkSetGlobalConfig(const MVKConfiguration& srcMVKConfig);
  * config, while using the string object to retain string content.
  */
 void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVKConfig, std::string* stringHolders);
+
+#endif
 
 /**
  * Enable debug mode.
@@ -107,7 +117,7 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 
 /**
  * Process command queue submissions on the same thread on which the submission call was made.
- * The default value actually depends on whether MTLEvents are supported, becuase if MTLEvents
+ * The default value actually depends on whether MTLEvents are supported, because if MTLEvents
  * are not supported, then synchronous queues should be turned off by default to ensure the
  * CPU emulation of VkEvent behaviour does not deadlock a queue submission, whereas if MTLEvents
  * are supported, we want sychronous queues for better, and more performant, behaviour.
@@ -119,6 +129,9 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #endif
 #if MVK_IOS_OR_TVOS
 #   define MVK_CONFIG_MTLEVENT_MIN_OS  12.0
+#endif
+#if MVK_VISIONOS
+#   define MVK_CONFIG_MTLEVENT_MIN_OS  1.0
 #endif
 #ifndef MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS
 #   define MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS    mvkOSVersionIsAtLeast(MVK_CONFIG_MTLEVENT_MIN_OS)
@@ -280,7 +293,7 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #   define MVK_CONFIG_TEXTURE_1D_AS_2D    1
 #endif
 
-/** Preallocate descriptors when creating VkDescriptorPool. Enabled by default. */
+/** Obsolete, deprecated, and ignored. */
 #ifndef MVK_CONFIG_PREALLOCATE_DESCRIPTORS
 #   define MVK_CONFIG_PREALLOCATE_DESCRIPTORS    1
 #endif
@@ -310,9 +323,9 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #   define MVK_CONFIG_RESUME_LOST_DEVICE    0
 #endif
 
-/** Support Metal argument buffers. Disabled by default. */
+/** Support Metal argument buffers. Enabled by default. */
 #ifndef MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS
-#   define MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS    MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS_NEVER
+#   define MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS    1
 #endif
 
 /** Compress MSL shader source code in a pipeline cache. Defaults to no compression. */
@@ -335,3 +348,25 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #ifndef MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA
 #  	define MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA    1.0
 #endif
+
+/**
+ * Enable the use of Metal private interfaces, also known as "Service Provider Interfaces" (SPIs),
+ * to support Vulkan features. Enabled by default if support is included.
+ */
+#ifndef MVK_CONFIG_USE_METAL_PRIVATE_API
+#	define MVK_CONFIG_USE_METAL_PRIVATE_API MVK_USE_METAL_PRIVATE_API
+#endif
+
+/** If set, MVK will dump spirv input, translated msl, and pipelines into the given directory. */
+#ifndef MVK_CONFIG_SHADER_DUMP_DIR
+#   define MVK_CONFIG_SHADER_DUMP_DIR ""
+#endif
+
+/**
+ * Enable logging estimated GLSL code during shader conversion.
+ * Disabled by default.
+ */
+#ifndef MVK_CONFIG_SHADER_LOG_ESTIMATED_GLSL
+#	define MVK_CONFIG_SHADER_LOG_ESTIMATED_GLSL		0
+#endif
+

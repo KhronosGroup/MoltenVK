@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2016-2023 The Brenwill Workshop Ltd.
+# Copyright (c) 2016-2024 The Brenwill Workshop Ltd.
 #
 # runcts - This script simplifies running Vulkan CTS tests on MoltenVK.
 #
@@ -25,6 +25,11 @@
 #         case_list_file, with "-results.txt" appended. CTS will also output several
 #         working temporary files into the directory holding this script.
 #
+#     -fo path
+#         The path to the file to write a list of the failed CTS tests. If this option
+#         is not provided, the list of failed tests will be written to an output text
+#         file with the same name as the case_list_file, with "-fails.txt" appended.
+#
 #     --cts path
 #         The path to the directory containing the built CTS executable.
 #         If this parameter is not provided, it defaults to:
@@ -44,12 +49,17 @@
 cts_vk_dir="../../VK-GL-CTS/build/external/vulkancts/modules/vulkan/Debug"
 caselist_file=""
 results_file=""
+failures_file=""
 is_portability=""
 
 while (( "$#" )); do
   case "$1" in
        -o)
          results_file="${2}"
+         shift 2
+         ;;
+       -fo)
+         failures_file="${2}"
          shift 2
          ;;
        --cts)
@@ -78,6 +88,10 @@ fi
 
 if [ "${results_file}" == "" ]; then
 	results_file="${caselist_file}-results.txt"
+fi
+
+if [ "${failures_file}" == "" ]; then
+	failures_file="${caselist_file}-fails.txt"
 fi
 
 
@@ -109,7 +123,7 @@ export MVK_CONFIG_DEBUG=0
 export MVK_CONFIG_RESUME_LOST_DEVICE=1
 export MVK_CONFIG_FAST_MATH_ENABLED=1
 export MVK_CONFIG_FORCE_LOW_POWER_GPU=0
-export MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0          #(2 = VK_EXT_descriptor_indexing enabled)
+export MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=1
 export MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE=2          #(2 = MTLEvents always)
 export MVK_CONFIG_SHADER_COMPRESSION_ALGORITHM=0        #(2 = ZLIB, 3 = LZ4)
 export MVK_CONFIG_PERFORMANCE_TRACKING=0
@@ -131,4 +145,6 @@ start_time=${SECONDS}
 --deqp-caselist-file="${caselist_file}"    \
 &> "${results_file}"
 
-echo Testing complete in $(($SECONDS - $start_time)) seconds
+python3 ./get_failing_cts_tests.py -q -o "${failures_file}" "${results_file}"
+
+echo Testing complete in $(($SECONDS - $start_time)) seconds at `date +%r`

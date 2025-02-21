@@ -7,7 +7,7 @@
 MoltenVK
 ========
 
-Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
+Copyright (c) 2015-2024 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 [comment]: # "This document is written in Markdown (http://en.wikipedia.org/wiki/Markdown) format."
 [comment]: # "For best results, use a Markdown reader."
@@ -24,6 +24,11 @@ Table of Contents
 	- [Using MoltenVK Directly](#download)
 - [Fetching **MoltenVK** Source Code](#install)
 - [Building **MoltenVK**](#building)
+	- [Building With _Xcode_](#xcode_build)
+	- [Building From the Command Line](#command_line_build)
+	- [Hiding _Vulkan_ API Symbols](#hiding_vulkan_symbols)
+	- [Accessing _Metal_ Private API Calls](#metal_private_api)
+	- [Install *MoltenVK* to Replace The _Vulkan SDK_ `libMoltenVK.dylib`](#install_vksdk)
 - [Running **MoltenVK** Demo Applications](#demos)
 - [Using **MoltenVK** in Your Application](#using)
 - [**MoltenVK** and *Vulkan* Compliance](#compliance)
@@ -59,10 +64,9 @@ The **MoltenVK** runtime package contains two products:
   [*Vulkan 1.2*](https://www.khronos.org/vulkan) graphics and compute API.
 
 - **MoltenVKShaderConverter** converts *SPIR-V* shader code to *Metal Shading Language (MSL)*
-  shader code, and converts *GLSL* shader source code to *SPIR-V* shader code and/or
-  *Metal Shading Language (MSL)* shader code. The converter is embedded in the **MoltenVK**
-  runtime to automatically convert *SPIR-V* shaders to their *MSL* equivalents. In addition,
-  both the *SPIR-V* and *GLSL* converters are packaged into a stand-alone command-line
+  shader code, and converts *SPIR-V* shader code to *Metal Shading Language (MSL)* shader code.
+  The converter is embedded in the **MoltenVK** runtime to automatically convert *SPIR-V* shaders
+  to their *MSL* equivalents. In addition, the *SPIR-V* converter is packaged into a stand-alone command-line
   `MoltenVKShaderConverter` *macOS* tool for converting shaders at development time from the command line.
 
 
@@ -186,26 +190,18 @@ to your app or game, first add the value `-fno-objc-msgsend-selector-stubs` to t
 projects, build **MoltenVK** with *Xcode 14* or later, and then link `MoltenVK.xcframework`
 to your app or game using *Xcode 13* or earlier.
 
-**MoltenVK** can be built to support at least *macOS 10.11*, *iOS 9*, or *tvOS 9*, but the default
-_Xcode_ build settings in the included _Xcode_ projects are set to a minimum deployment target of 
-*macOS 10.13*, *iOS 11*, and *tvOS 11*, which are the oldest OS versions supported by the current
-_Xcode_ version. If you require support for earlier OS versions, modify the `MACOSX_DEPLOYMENT_TARGET`,
-`IPHONEOS_DEPLOYMENT_TARGET`, or `TVOS_DEPLOYMENT_TARGET` build settings in _Xcode_ before building **MoltenVK**.
-
->***Note:*** To support `IOSurfaces` on *iOS* or *tvOS*, **MoltenVK**, and any app that uses
-**MoltenVK**, must be built with a minimum **iOS Deployment Target** (aka `IPHONEOS_DEPLOYMENT_TARGET `)
-build setting of `iOS 11.0` or greater, or a minimum **tvOS Deployment Target** (aka `TVOS_DEPLOYMENT_TARGET `)
-build setting of `tvOS 11.0` or greater.
-
 Once built, the **MoltenVK** libraries can be run on *macOS*, *iOS*, *tvOS*, or *visionOS* devices
 that support *Metal*,or on the *Xcode* *iOS Simulator*, *tvOS Simulator*, or *visionOS Simulator*.
 
-- At runtime, **MoltenVK** requires at least *macOS 10.11*, *iOS 9.0*, *tvOS 9.0*,
-  or *visionOS 1.0* (or *iOS 11* or *tvOS 11* if using `IOSurfaces`).
+- The minimum runtime OS versions are indicated in the _Deployment Target_ build settings in `MoltenVK.xcodeproj`.
 - Information on *macOS* devices that are compatible with *Metal* can be found in
   [this article](http://www.idownloadblog.com/2015/06/22/how-to-find-mac-el-capitan-metal-compatible).
 - Information on *iOS* devices that are compatible with *Metal* can be found in
   [this article](https://developer.apple.com/library/content/documentation/DeviceInformation/Reference/iOSDeviceCompatibility/HardwareGPUInformation/HardwareGPUInformation.html).
+
+
+<a name="xcode_build"></a>
+### Building With _Xcode_
 
 The `MoltenVKPackaging.xcodeproj` *Xcode* project contains targets and schemes to build
 and package the entire **MoltenVK** runtime distribution package, or to build individual
@@ -227,6 +223,9 @@ Each of these`MoltenVKPackaging.xcodeproj` *Xcode* project *Schemes* puts the re
 `Package` directory, creating it if necessary. This directory contains separate `Release` and `Debug`
 directories, holding the most recent **_Release_** and **_Debug_** builds, respectively.
 
+_**Note:**_ Due to technical limitations in the dynamic library build tools, dynamic frameworks and libraries cannot be created
+for the _tvOS Simulator_, or _MacCatalyst_ platforms. Static frameworks are created for these, and all other, platforms.
+
 A separate `Latest` directory links to  the most recent build, regardless of whether it was a **_Release_**
 or **_Debug_** build. Effectively, the `Package/Latest` directory points to whichever of the `Package/Release`
 or `Package/Debug` directories was most recently updated.
@@ -236,7 +235,8 @@ to the **MoltenVK** libraries and frameworks in the `Package/Latest` directory, 
 to test your app with either a **_Debug_** build, or a higher-performance **_Release_** build.
 
 
-### Building from the Command Line
+<a name="command_line_build"></a>
+### Building From the Command Line
 
 If you prefer to build **MoltenVK** from the command line, or to include the activity in a larger build script,
 you can do so by executing a command similar to the following command within the `MoltenVK` repository folder,
@@ -272,13 +272,14 @@ from the command line. The following `make` targets are provided:
 - The `all` target executes all platform targets.
 - The `all` target is the default target. Running `make` with no arguments is the same as running `make all`.
 - The `*-debug` targets build the binaries using the **_Debug_** configuration.
-- The `install` target will copy the most recently built `MoltenVK.xcframework` into the
-  `/Library/Frameworks` folder of your computer. Since `/Library/Frameworks` is protected,
-  you will generally need to run it as `sudo make install` and enter your password.
-  The `install` target just installs the built framework, it does not first build the framework.
-  You will first need to at least run `make macos` first.
+- The `install` target will copy the most recently built `Package/Latest/MoltenVK/dynamic/dylib/macOS/libMoltenVK.dylib`
+  into the `/usr/local/lib` system directory on your computer. Since `/usr/local/lib` is protected, you will generally
+  need to run it as `sudo make install` and enter your password. The `install` target does not build **MoltenVK**,
+  and you need to run `make macos` or `make macos-debug` first.
 
 The `make` targets all require that *Xcode* is installed on your system.
+
+_**Note:**_ Due to technical limitations within _Xcode_, a dynamic framework is not created for the _MacCatalyst_ platform.
 
 Building from the command line creates the same `Package` folder structure described above when
 building from within *Xcode*.
@@ -289,27 +290,69 @@ as in the following examples:
 
 	make MVK_CONFIG_LOG_LEVEL=0
 or
-
-	make macos MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=2
-
-...etc.
-
-
-### Hiding Vulkan API Symbols
-
-You can optionally build MoltenVK with the Vulkan API static call symbols (`vk*`) hidden,
-to avoid library linking conflicts when bound to a Vulkan Loader that also exports identical symbols.
-
-To do so, when building MoltenVK, set the build setting `MVK_HIDE_VULKAN_SYMBOLS=1`.
-This build setting can be set in the `MoltenVK.xcodeproj` *Xcode* project,
-or it can be included in any of the `make` build commands. For example:
-
-	make MVK_HIDE_VULKAN_SYMBOLS=1
-or
-
-	make macos MVK_HIDE_VULKAN_SYMBOLS=1
+	make macos MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=1
 
 ...etc.
+
+
+<a name="hiding_vulkan_symbols"></a>
+### Hiding _Vulkan_ API Symbols
+
+You can optionally build **MoltenVK** with the _Vulkan_ API static call symbols (`vk*`) hidden, to avoid 
+library linking conflicts when statically bound to a _Vulkan_ loader that also exports identical symbols.
+
+To do so, when building **MoltenVK**, set the build setting `MVK_HIDE_VULKAN_SYMBOLS=1`.
+This build setting can be set in the `MoltenVK.xcodeproj` *Xcode* project, or it can be 
+included in any of the `make` command-line build commands [mentioned above](#command_line_build).
+
+With `MVK_HIDE_VULKAN_SYMBOLS=1`, the _Vulkan_ `vkGetInstanceProcAddr()` call remains
+statically bound, to provide the application with the ability to retrieve the remaining
+_Vulkan_ API calls as function pointers.
+
+
+<a name="metal_private_api"></a>
+### Accessing _Metal_ Private API Calls
+
+You can optionally build **MoltenVK** with access to private _Metal_ API calls, also known
+as "Service Provider Interfaces" (SPIs). Doing so will allow **MoltenVK** to extend its
+functionality by using certain private _Metal_ API calls, but it will also disqualify the
+app from being distributed via _Apple_ App Stores.
+
+To do so, when building **MoltenVK**, set the build setting `MVK_USE_METAL_PRIVATE_API=1`.
+This build setting can be set in the `MoltenVK.xcodeproj` *Xcode* project, or it can be 
+included in any of the `make` command-line build commands [mentioned above](#command_line_build).
+
+Functionality added with `MVK_USE_METAL_PRIVATE_API` enabled includes:
+- `VkPhysicalDeviceFeatures::wideLines`
+- `VkPhysicalDeviceFeatures::logicOp`
+- `VkPhysicalDeviceFeatures::depthBounds` *(requires an AMD GPU)*
+- `VkPhysicalDevicePortabilitySubsetFeaturesKHR::samplerMipLodBias`
+- `VkGraphicsPipelineRasterizationCreateInfo::sampleMask`, using `MTLRenderPipelineDescriptor.sampleMask` instead of emulating it in the fragment shader
+
+
+<a name="install_vksdk"></a>
+### Install **MoltenVK** to Replace the _Vulkan SDK_ `libMoltenVK.dylib`
+
+To replace the version of the **MoltenVK** installed on _macOS_ via the 
+*[Vulkan SDK](https://vulkan.lunarg.com/sdk/home)* standard install process, 
+perform the following steps:
+
+1. Build a _macOS_ version of **MoltenVK**, as described [above](#building).
+   The default config for command-line **MoltenVK** build has verbose logging info turned on. 
+   If you want **MoltenVK** to log like the original _Vulkan SDK_ install, use this command when building **MoltenVK**:
+
+   ```bash
+   $ make macos MVK_CONFIG_LOG_LEVEL=1
+   ```
+
+2. From a command line terminal, execute the following command:
+
+   ```bash
+   $ sudo make install
+   ```
+
+This will copy your latest _macOS_ build of **MoltenVK** into `/usr/local/lib/libMoltenVK.dylib`,
+overwriting the file installed by the _Vulkan SDK_ install process.
 
 
 <a name="demos"></a>
@@ -358,7 +401,7 @@ compliance may fall into one of the following categories:
 
 - Direct mapping between *Vulkan* capabilities and *Metal* capabilities. Within **MoltenVK**, the vast
   majority of *Vulkan* capability is the result of this type of direct mapping.
- 
+
 - Synthesized compliance through alternate implementation. A small amount of capability is provided using
   this mechanism, such as via an extra render or compute shader stage.
 

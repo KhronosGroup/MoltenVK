@@ -1,7 +1,7 @@
 /*
  * MTLRenderPipelineDescriptor+MoltenVK.m
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,16 @@
 #include "MTLRenderPipelineDescriptor+MoltenVK.h"
 #include "MVKCommonEnvironment.h"
 
+#if MVK_USE_METAL_PRIVATE_API
+// These properties aren't public yet.
+@interface MTLRenderPipelineDescriptor ()
+
+@property(nonatomic, readwrite) NSUInteger sampleMask;
+@property(nonatomic, readwrite) float sampleCoverage;
+
+@end
+#endif
+
 @implementation MTLRenderPipelineDescriptor (MoltenVK)
 
 -(MTLPrimitiveTopologyClass) inputPrimitiveTopologyMVK {
@@ -29,6 +39,19 @@
 
 -(void) setInputPrimitiveTopologyMVK: (MTLPrimitiveTopologyClass) topology {
 	if ([self respondsToSelector: @selector(setInputPrimitiveTopology:)]) { [self setInputPrimitiveTopology:topology]; }
+}
+
+-(NSUInteger) sampleMaskMVK {
+#if MVK_USE_METAL_PRIVATE_API
+	if ( [self respondsToSelector: @selector(sampleMask)] ) { return self.sampleMask; }
+#endif
+	return 0xFFFFFFFFFFFFFFFFULL;
+}
+
+-(void) setSampleMaskMVK: (NSUInteger) mask {
+#if MVK_USE_METAL_PRIVATE_API
+	if ([self respondsToSelector: @selector(setSampleMask:)]) { self.sampleMask = mask; }
+#endif
 }
 
 @end

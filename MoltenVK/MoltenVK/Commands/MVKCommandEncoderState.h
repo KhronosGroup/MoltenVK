@@ -1,7 +1,7 @@
 /*
  * MVKCommandEncoderState.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -129,8 +129,6 @@ public:
 	void bindPipeline(MVKPipeline* pipeline);
 
     MVKPipeline* getPipeline();
-	MVKGraphicsPipeline* getGraphicsPipeline() { return (MVKGraphicsPipeline*)getPipeline(); }
-	MVKComputePipeline* getComputePipeline() { return (MVKComputePipeline*)getPipeline(); }
 
     MVKPipelineCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKCommandEncoderState(cmdEncoder) {}
 
@@ -237,8 +235,13 @@ protected:
 
 struct MVKDepthBias {
 	float depthBiasConstantFactor;
-	float depthBiasSlopeFactor;
 	float depthBiasClamp;
+	float depthBiasSlopeFactor;
+};
+
+struct MVKDepthBounds {
+	float minDepthBound;
+	float maxDepthBound;
 };
 
 struct MVKStencilReference {
@@ -265,13 +268,16 @@ public:
 
 	void setPolygonMode(VkPolygonMode polygonMode, bool isDynamic);
 
-	void setBlendConstants(float blendConstants[4], bool isDynamic);
+	void setLineWidth(float lineWidth, bool isDynamic);
+
+	void setBlendConstants(MVKColor32 blendConstants, bool isDynamic);
 
 	void setDepthBias(const VkPipelineRasterizationStateCreateInfo& vkRasterInfo);
-	void setDepthBias(float depthBiasConstantFactor, float depthBiasSlopeFactor, float depthBiasClamp);
-	void setDepthBiasEnable(VkBool32 depthBiasEnable);
+	void setDepthBias(MVKDepthBias depthBias, bool isDynamic);
+	void setDepthBiasEnable(VkBool32 depthBiasEnable, bool isDynamic);
 	void setDepthClipEnable(bool depthClip, bool isDynamic);
-
+	void setDepthBounds(MVKDepthBounds depthBounds, bool isDynamic);
+	void setDepthBoundsTestEnable(VkBool32 depthBoundsTestEnable, bool isDynamic);
 	void setStencilReferenceValues(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo);
 	void setStencilReferenceValues(VkStencilFaceFlags faceMask, uint32_t stencilReference);
 
@@ -303,7 +309,7 @@ public:
 protected:
 	void encodeImpl(uint32_t stage) override;
 	bool isDrawingTriangles();
-	template <typename T> void setContent(T* iVarAry, T* pVal, MVKRenderStateType state, bool isDynamic) {
+	template <typename T> void setContent(MVKRenderStateType state, T* iVarAry, T* pVal, bool isDynamic) {
 		auto* pIVar = &iVarAry[isDynamic ? StateScope::Dynamic : StateScope::Static];
 		if( !mvkAreEqual(pVal, pIVar) ) {
 			*pIVar = *pVal;
@@ -312,25 +318,31 @@ protected:
 			MVKCommandEncoderState::markDirty();	// Avoid local markDirty() as it marks all states dirty.
 		}
 	}
+	template <typename T> void setContent(MVKRenderStateType state, T* iVarAry, T val, bool isDynamic) {
+		setContent(state, iVarAry, &val, isDynamic);
+	}
 
 	MVKSmallVector<MTLSamplePosition, kMVKMaxSampleCount> _mtlSampleLocations[StateScope::Count] = {};
 	MVKMTLViewports _mtlViewports[StateScope::Count] = {};
 	MVKMTLScissors _mtlScissors[StateScope::Count] = {};
 	MVKColor32 _mtlBlendConstants[StateScope::Count] = {};
 	MVKDepthBias _mtlDepthBias[StateScope::Count] = {};
+	MVKDepthBounds _mtlDepthBounds[StateScope::Count] = {};
 	MVKStencilReference _mtlStencilReference[StateScope::Count] = {};
 	MTLCullMode _mtlCullMode[StateScope::Count] = { MTLCullModeNone, MTLCullModeNone };
 	MTLWinding _mtlFrontFace[StateScope::Count] = { MTLWindingClockwise, MTLWindingClockwise };
 	MTLPrimitiveType _mtlPrimitiveTopology[StateScope::Count] = { MTLPrimitiveTypePoint, MTLPrimitiveTypePoint };
 	MTLDepthClipMode _mtlDepthClipEnable[StateScope::Count] = { MTLDepthClipModeClip, MTLDepthClipModeClip };
 	MTLTriangleFillMode _mtlPolygonMode[StateScope::Count] = { MTLTriangleFillModeFill, MTLTriangleFillModeFill };
-	uint32_t _mtlPatchControlPoints[StateScope::Count] = {};
+	float _mtlLineWidth[StateScope::Count] = { 1, 1 };
+	uint32_t _mtlPatchControlPoints[StateScope::Count] = { 0, 0 };
 	MVKRenderStateFlags _dirtyStates;
 	MVKRenderStateFlags _modifiedStates;
 	bool _mtlSampleLocationsEnable[StateScope::Count] = {};
 	bool _mtlDepthBiasEnable[StateScope::Count] = {};
 	bool _mtlPrimitiveRestartEnable[StateScope::Count] = {};
 	bool _mtlRasterizerDiscardEnable[StateScope::Count] = {};
+	bool _mtlDepthBoundsTestEnable[StateScope::Count] = {};
 	bool _cullBothFaces[StateScope::Count] = {};
 	bool _isPolygonModePoint[StateScope::Count] = {};
 };
@@ -638,6 +650,26 @@ protected:
 	void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) override;
 
 	ResourceBindings<4> _resourceBindings;
+};
+
+
+#pragma mark -
+#pragma mark MVKGPUAddressableBuffersCommandEncoderState
+
+/** Tracks whether the GPU-addressable buffers need to be used. */
+class MVKGPUAddressableBuffersCommandEncoderState : public MVKCommandEncoderState {
+
+public:
+
+	/** Marks that GPU addressable buffers may be needed in the specified shader stage. */
+	void useGPUAddressableBuffersInStage(MVKShaderStage shaderStage);
+
+	MVKGPUAddressableBuffersCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKCommandEncoderState(cmdEncoder) {}
+
+protected:
+	void encodeImpl(uint32_t stage) override;
+
+	bool _usageStages[kMVKShaderStageCount] = {};
 };
 
 

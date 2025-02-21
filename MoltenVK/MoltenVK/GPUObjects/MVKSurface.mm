@@ -1,7 +1,7 @@
 /*
  * MVKSurface.mm
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,11 @@
 #define STR_PLATFORM(NAME) #NAME
 #define STR(NAME) STR_PLATFORM(NAME)
 
+// As defined in the Vulkan spec, represents an undefined extent.
+// Spec is currently somewhat ambiguous about whether an undefined surface extent should be updated
+// once a swapchain is attached, but consensus amoung the spec authors is that it should not.
+static constexpr VkExtent2D kMVKUndefinedExtent = {0xFFFFFFFF, 0xFFFFFFFF};
+
 
 #pragma mark MVKSurface
 
@@ -50,17 +55,15 @@ CAMetalLayer* MVKSurface::getCAMetalLayer() {
 }
 
 VkExtent2D MVKSurface::getExtent() {
-	return _mtlCAMetalLayer ? mvkVkExtent2DFromCGSize(_mtlCAMetalLayer.drawableSize) : _headlessExtent;
+	return _mtlCAMetalLayer ? mvkVkExtent2DFromCGSize(_mtlCAMetalLayer.drawableSize) : kMVKUndefinedExtent;
 }
 
 VkExtent2D MVKSurface::getNaturalExtent() {
-	return _mtlCAMetalLayer ? mvkVkExtent2DFromCGSize(_mtlCAMetalLayer.naturalDrawableSizeMVK) : _headlessExtent;
+	return _mtlCAMetalLayer ? mvkVkExtent2DFromCGSize(_mtlCAMetalLayer.naturalDrawableSizeMVK) : kMVKUndefinedExtent;
 }
 
-// Per spec, headless surface extent is set from the swapchain.
 void MVKSurface::setActiveSwapchain(MVKSwapchain* swapchain) {
 	_activeSwapchain = swapchain;
-	_headlessExtent = swapchain->getImageExtent();
 }
 
 MVKSurface::MVKSurface(MVKInstance* mvkInstance,

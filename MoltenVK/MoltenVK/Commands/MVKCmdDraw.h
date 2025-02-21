@@ -1,7 +1,7 @@
 /*
  * MVKCmdDraw.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,7 +61,6 @@ typedef MVKCmdBindVertexBuffers<8> MVKCmdBindVertexBuffersMulti;
 #pragma mark -
 #pragma mark MVKCmdBindIndexBuffer
 
-/** Vulkan command to bind a vertex index buffer. */
 class MVKCmdBindIndexBuffer : public MVKCommand {
 
 public:
@@ -82,7 +81,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdDraw
 
-/** Vulkan command to draw vertices. */
 class MVKCmdDraw : public MVKCommand {
 
 public:
@@ -108,7 +106,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdDrawIndexed
 
-/** Vulkan command to draw indexed vertices. */
 class MVKCmdDrawIndexed : public MVKCommand {
 
 public:
@@ -136,7 +133,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdDrawIndirect
 
-/** Vulkan command to draw vertices indirectly. */
 class MVKCmdDrawIndirect : public MVKCommand {
 
 public:
@@ -162,7 +158,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdDrawIndexedIndirect
 
-/** Vulkan command to draw indexed vertices indirectly. */
 class MVKCmdDrawIndexedIndirect : public MVKCommand {
 
 public:

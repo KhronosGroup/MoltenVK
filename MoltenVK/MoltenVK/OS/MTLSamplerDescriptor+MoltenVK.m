@@ -1,7 +1,7 @@
 /*
  * MTLSamplerDescriptor+MoltenVK.m
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,15 @@
 #include "MTLSamplerDescriptor+MoltenVK.h"
 #include "MVKCommonEnvironment.h"
 
+
+#if MVK_USE_METAL_PRIVATE_API
+/** Additional methods not necessarily declared in <Metal/MTLSampler.h>. */
+@interface MTLSamplerDescriptor ()
+
+@property(nonatomic, readwrite) float lodBias;
+
+@end
+#endif
 
 @implementation MTLSamplerDescriptor (MoltenVK)
 
@@ -42,6 +51,19 @@
 -(void) setBorderColorMVK: (NSUInteger) color {
 #if MVK_MACOS_OR_IOS
 	if ( [self respondsToSelector: @selector(setBorderColor:)] ) { self.borderColor = (MTLSamplerBorderColor) color; }
+#endif
+}
+
+-(float) lodBiasMVK {
+#if MVK_USE_METAL_PRIVATE_API
+	if ( [self respondsToSelector: @selector(lodBias)] ) { return self.lodBias; }
+#endif
+	return 0.0f;
+}
+
+-(void) setLodBiasMVK: (float) bias {
+#if MVK_USE_METAL_PRIVATE_API
+	if ( [self respondsToSelector: @selector(setLodBias:)] ) { self.lodBias = bias; }
 #endif
 }
 

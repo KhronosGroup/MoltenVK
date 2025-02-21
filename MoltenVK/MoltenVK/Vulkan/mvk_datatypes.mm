@@ -1,7 +1,7 @@
 /*
  * mvk_datatypes.mm
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -433,6 +433,52 @@ MVK_PUBLIC_SYMBOL MTLBlendFactor mvkMTLBlendFactorFromVkBlendFactor(VkBlendFacto
 	}
 }
 
+#if MVK_USE_METAL_PRIVATE_API
+
+// This isn't in any public header yet. I'm really just guessing based on the D3D11 values here.
+typedef NS_ENUM(NSUInteger, MTLLogicOperation) {
+	MTLLogicOperationClear,
+	MTLLogicOperationSet,
+	MTLLogicOperationCopy,
+	MTLLogicOperationCopyInverted,
+	MTLLogicOperationNoop,
+	MTLLogicOperationInvert,
+	MTLLogicOperationAnd,
+	MTLLogicOperationNand,
+	MTLLogicOperationOr,
+	MTLLogicOperationNor,
+	MTLLogicOperationXor,
+	MTLLogicOperationEquivalence,
+	MTLLogicOperationAndReverse,
+	MTLLogicOperationAndInverted,
+	MTLLogicOperationOrReverse,
+	MTLLogicOperationOrInverted,
+};
+
+MVK_PUBLIC_SYMBOL NSUInteger mvkMTLLogicOperationFromVkLogicOp(VkLogicOp vkLogicOp) {
+	switch (vkLogicOp) {
+		case VK_LOGIC_OP_CLEAR:			return MTLLogicOperationClear;
+		case VK_LOGIC_OP_AND:			return MTLLogicOperationAnd;
+		case VK_LOGIC_OP_AND_REVERSE:	return MTLLogicOperationAndReverse;
+		case VK_LOGIC_OP_COPY:			return MTLLogicOperationCopy;
+		case VK_LOGIC_OP_AND_INVERTED:	return MTLLogicOperationAndInverted;
+		case VK_LOGIC_OP_NO_OP:			return MTLLogicOperationNoop;
+		case VK_LOGIC_OP_XOR:			return MTLLogicOperationXor;
+		case VK_LOGIC_OP_OR:			return MTLLogicOperationOr;
+		case VK_LOGIC_OP_NOR:			return MTLLogicOperationNor;
+		case VK_LOGIC_OP_EQUIVALENT:	return MTLLogicOperationEquivalence;
+		case VK_LOGIC_OP_INVERT:		return MTLLogicOperationInvert;
+		case VK_LOGIC_OP_OR_REVERSE:	return MTLLogicOperationOrReverse;
+		case VK_LOGIC_OP_COPY_INVERTED:	return MTLLogicOperationCopyInverted;
+		case VK_LOGIC_OP_OR_INVERTED:	return MTLLogicOperationOrInverted;
+		case VK_LOGIC_OP_NAND:			return MTLLogicOperationNand;
+		case VK_LOGIC_OP_SET:			return MTLLogicOperationSet;
+		default:						return MTLLogicOperationCopy;
+	}
+}
+
+#endif
+
 MVK_PUBLIC_SYMBOL MTLVertexStepFunction mvkMTLVertexStepFunctionFromVkVertexInputRate(VkVertexInputRate vkVtxStep) {
 	switch (vkVtxStep) {
 		case VK_VERTEX_INPUT_RATE_VERTEX:		return MTLVertexStepFunctionPerVertex;
@@ -562,8 +608,13 @@ MVK_PUBLIC_SYMBOL MTLStoreAction mvkMTLStoreActionFromVkAttachmentStoreOp(VkAtta
 // If we need to resolve, but the format doesn't support it, we must store the attachment so we can run a post-renderpass compute shader to perform the resolve.
 MTLStoreAction mvkMTLStoreActionFromVkAttachmentStoreOpInObj(VkAttachmentStoreOp vkStoreOp, bool hasResolveAttachment, bool canResolveFormat, MVKBaseObject* mvkObj) {
 	switch (vkStoreOp) {
-		case VK_ATTACHMENT_STORE_OP_STORE:		return hasResolveAttachment && canResolveFormat ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionStore;
-		case VK_ATTACHMENT_STORE_OP_DONT_CARE:	return hasResolveAttachment ? (canResolveFormat ? MTLStoreActionMultisampleResolve : MTLStoreActionStore) : MTLStoreActionDontCare;
+		// Metal does not support VK_ATTACHMENT_STORE_OP_NONE. Next best option is store.
+		case VK_ATTACHMENT_STORE_OP_NONE:
+		case VK_ATTACHMENT_STORE_OP_STORE:
+			return hasResolveAttachment && canResolveFormat ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionStore;
+
+		case VK_ATTACHMENT_STORE_OP_DONT_CARE:
+			return hasResolveAttachment ? (canResolveFormat ? MTLStoreActionMultisampleResolve : MTLStoreActionStore) : MTLStoreActionDontCare;
 
 		default:
 			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "VkAttachmentStoreOp value %d is not supported.", vkStoreOp);
@@ -835,31 +886,6 @@ MVK_PUBLIC_SYMBOL CGRect mvkCGRectFromVkRectLayerKHR(VkRectLayerKHR vkRect) {
 
 #pragma mark -
 #pragma mark Memory options
-
-MVK_PUBLIC_SYMBOL MTLStorageMode mvkMTLStorageModeFromVkMemoryPropertyFlags(VkMemoryPropertyFlags vkFlags) {
-
-	// If not visible to the host, use Private, or Memoryless if available and lazily allocated.
-	if ( !mvkAreAllFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ) {
-#if MVK_APPLE_SILICON
-		if (mvkAreAllFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT)) {
-			return MTLStorageModeMemoryless;
-		}
-#endif
-		return MTLStorageModePrivate;
-	}
-
-	// If visible to the host and coherent: Shared
-	if (mvkAreAllFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
-		return MTLStorageModeShared;
-	}
-
-	// If visible to the host, and not coherent: Managed on macOS, Shared on iOS
-#if MVK_MACOS
-	return MTLStorageModeManaged;
-#else
-	return MTLStorageModeShared;
-#endif
-}
 
 MVK_PUBLIC_SYMBOL MTLCPUCacheMode mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(VkMemoryPropertyFlags vkFlags) {
 	return MTLCPUCacheModeDefaultCache;

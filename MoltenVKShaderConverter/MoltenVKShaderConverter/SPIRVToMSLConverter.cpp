@@ -1,7 +1,7 @@
 /*
  * SPIRVToMSLConverter.cpp
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,6 +53,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionOptions::matches(const SPIRVToMSLConv
 	if (tessPatchKind != other.tessPatchKind) { return false; }
 	if (numTessControlPoints != other.numTessControlPoints) { return false; }
 	if (shouldFlipVertexY != other.shouldFlipVertexY) { return false; }
+	if (shouldFixupClipSpace != other.shouldFixupClipSpace) { return false; }
 	return true;
 }
 
@@ -302,6 +303,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 
 		auto scOpts = pMSLCompiler->get_common_options();
 		scOpts.vertex.flip_vert_y = shaderConfig.options.shouldFlipVertexY;
+		scOpts.vertex.fixup_clipspace = shaderConfig.options.shouldFixupClipSpace;
 		pMSLCompiler->set_common_options(scOpts);
 
 		// Add shader inputs and outputs
@@ -316,10 +318,11 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 		// Add resource bindings and hardcoded constexpr samplers
 		for (auto& rb : shaderConfig.resourceBindings) {
 			auto& rbb = rb.resourceBinding;
-			pMSLCompiler->add_msl_resource_binding(rbb);
-
-			if (rb.requiresConstExprSampler) {
-				pMSLCompiler->remap_constexpr_sampler_by_binding(rbb.desc_set, rbb.binding, rb.constExprSampler);
+			if (rbb.stage == shaderConfig.options.entryPointStage) {
+				pMSLCompiler->add_msl_resource_binding(rbb);
+				if (rb.requiresConstExprSampler) {
+					pMSLCompiler->remap_constexpr_sampler_by_binding(rbb.desc_set, rbb.binding, rb.constExprSampler);
+				}
 			}
 		}
 
@@ -367,6 +370,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	conversionResult.resultInfo.needsDispatchBaseBuffer = pMSLCompiler && pMSLCompiler->needs_dispatch_base_buffer();
 	conversionResult.resultInfo.needsViewRangeBuffer = pMSLCompiler && pMSLCompiler->needs_view_mask_buffer();
 	conversionResult.resultInfo.usesPhysicalStorageBufferAddressesCapability = usesPhysicalStorageBufferAddressesCapability(pMSLCompiler);
+	populateSpecializationMacros(pMSLCompiler, conversionResult.resultInfo.specializationMacros);
 
 	// When using Metal argument buffers, if the shader is provided with dynamic buffer offsets,
 	// then it needs a buffer to hold these dynamic offsets.
@@ -546,4 +550,48 @@ bool SPIRVToMSLConverter::usesPhysicalStorageBufferAddressesCapability(Compiler*
 		}
 	}
 	return false;
+}
+
+void SPIRVToMSLConverter::populateSpecializationMacros(CompilerMSL* pMSLCompiler,
+													   map<uint32_t, MSLSpecializationMacroInfo>& specializationMacros)
+{
+	if (pMSLCompiler) {
+		auto spec_consts = pMSLCompiler->get_specialization_constants();
+		for (auto& c: spec_consts) {
+			uint32_t id = c.constant_id;
+			if (pMSLCompiler->specialization_constant_is_macro(id)) {
+				const SPIRConstant& constant = pMSLCompiler->get_constant(c.id);
+				const SPIRType& type = pMSLCompiler->get_type(constant.constant_type);
+				MSLSpecializationMacroInfo info;
+
+				switch (type.basetype) {
+					case SPIRType::SByte:
+					case SPIRType::Short:
+					case SPIRType::Int:
+					case SPIRType::Int64:
+						info.isFloat = false;
+						info.isSigned = true;
+						break;
+					case SPIRType::UByte:
+					case SPIRType::UShort:
+					case SPIRType::UInt:
+					case SPIRType::UInt64:
+					case SPIRType::Boolean:
+						info.isFloat = false;
+						info.isSigned = false;
+						break;
+					case SPIRType::Half:
+					case SPIRType::Float:
+					case SPIRType::Double:
+						info.isFloat = true;
+						info.isSigned = false;
+						break;
+					default:
+						continue;  // Ignore unsupported types
+				}
+				info.name = pMSLCompiler->constant_value_macro_name(id);
+				specializationMacros[id] = info;
+			}
+		}
+	}
 }

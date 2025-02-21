@@ -1,7 +1,7 @@
 /*
  * MVKCommandBuffer.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,11 +48,19 @@ typedef uint64_t MVKMTLCommandBufferID;
 #pragma mark -
 #pragma mark MVKCommandEncodingContext
 
+struct BarrierFenceSlots {
+	uint32_t updateDirtyBits = ~0;
+	int update[kMVKBarrierStageCount] = {};
+	int wait[kMVKBarrierStageCount][kMVKBarrierStageCount] = {};
+};
+
 /** Context for tracking information across multiple encodings. */
 typedef struct MVKCommandEncodingContext {
 	NSUInteger mtlVisibilityResultOffset = 0;
 	const MVKMTLBufferAllocation* visibilityResultBuffer = nullptr;
+	BarrierFenceSlots fenceSlots;
 
+	void syncFences(MVKDevice *device, id<MTLCommandBuffer> mtlCommandBuffer);
 	MVKRenderPass* getRenderPass() { return _renderPass; }
 	MVKFramebuffer* getFramebuffer() { return _framebuffer; }
 	void setRenderingContext(MVKRenderPass* renderPass, MVKFramebuffer* framebuffer);
@@ -357,6 +365,12 @@ public:
 	 */
 	id<MTLCommandEncoder> getMTLEncoder();
 
+	/** Returns the graphics pipeline. */
+	MVKGraphicsPipeline* getGraphicsPipeline() { return (MVKGraphicsPipeline*)_graphicsPipelineState.getPipeline(); }
+
+	/** Returns the compute pipeline. */
+	MVKComputePipeline* getComputePipeline() { return (MVKComputePipeline*)_computePipelineState.getPipeline(); }
+
 	/** Returns the push constants associated with the specified shader stage. */
 	MVKPushConstantsCommandEncoderState* getPushConstants(VkShaderStageFlagBits shaderStage);
 
@@ -387,6 +401,14 @@ public:
     void setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder, const void* bytes,
 						 NSUInteger length, uint32_t mtlBuffIndex, bool descOverride = false);
 
+	/**
+	 * Copy bytes into the Metal encoder at a Metal compute buffer index with dynamic stride,
+	 * and optionally indicate that this binding might override a desriptor binding. If so,
+	 * the descriptor binding will be marked dirty so that it will rebind before the next usage.
+	 */
+    void setComputeBytesWithStride(id<MTLComputeCommandEncoder> mtlEncoder, const void* bytes,
+						 NSUInteger length, uint32_t mtlBuffIndex, uint32_t stride, bool descOverride = false);
+
     /** Get a temporary MTLBuffer that will be returned to a pool after the command buffer is finished. */
     const MVKMTLBufferAllocation* getTempMTLBuffer(NSUInteger length, bool isPrivate = false, bool isDedicated = false);
 
@@ -395,6 +417,27 @@ public:
 
     /** Returns the command encoding pool. */
     MVKCommandEncodingPool* getCommandEncodingPool();
+
+	#pragma mark Barriers
+
+	/** Encode waits in the current command encoder for the stage that corresponds to given use. */
+	void encodeBarrierWaits(MVKCommandUse use);
+
+	/** Update fences for the currently executing pipeline stage. */
+	void encodeBarrierUpdates();
+
+	/** Insert a new execution barrier */
+	void setBarrier(uint64_t sourceStageMask, uint64_t destStageMask);
+
+	/** Encode waits for a specific stage in given encoder. */
+	void barrierWait(MVKBarrierStage stage, id<MTLRenderCommandEncoder> mtlEncoder, MTLRenderStages beforeStages);
+	void barrierWait(MVKBarrierStage stage, id<MTLBlitCommandEncoder> mtlEncoder);
+	void barrierWait(MVKBarrierStage stage, id<MTLComputeCommandEncoder> mtlEncoder);
+
+	/** Encode update for a specific stage in given encoder. */
+	void barrierUpdate(MVKBarrierStage stage, id<MTLRenderCommandEncoder> mtlEncoder, MTLRenderStages afterStages);
+	void barrierUpdate(MVKBarrierStage stage, id<MTLBlitCommandEncoder> mtlEncoder);
+	void barrierUpdate(MVKBarrierStage stage, id<MTLComputeCommandEncoder> mtlEncoder);
 
 #pragma mark Queries
 
@@ -415,18 +458,6 @@ public:
 	/** Context for tracking information across multiple encodings. */
 	MVKCommandEncodingContext* _pEncodingContext;
 
-    /** A reference to the Metal features supported by the device. */
-    const MVKPhysicalDeviceMetalFeatures* _pDeviceMetalFeatures;
-
-    /** A reference to the Vulkan features supported by the device. */
-    const VkPhysicalDeviceFeatures* _pDeviceFeatures;
-
-    /** Pointer to the properties of the device. */
-    const VkPhysicalDeviceProperties* _pDeviceProperties;
-
-    /** Pointer to the memory properties of the device. */
-    const VkPhysicalDeviceMemoryProperties* _pDeviceMemoryProperties;
-
 	/** The command buffer whose commands are being encoded. */
 	MVKCommandBuffer* _cmdBuffer;
 
@@ -435,6 +466,9 @@ public:
 
 	/** The current Metal render encoder. */
 	id<MTLRenderCommandEncoder> _mtlRenderEncoder;
+
+	/** The current Metal compute encoder. */
+	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 
     /** Tracks the current graphics pipeline bound to the encoder. */
 	MVKPipelineCommandEncoderState _graphicsPipelineState;
@@ -447,6 +481,9 @@ public:
 
 	/** Tracks the current compute resources state of the encoder. */
 	MVKComputeResourcesCommandEncoderState _computeResourcesState;
+
+	/** Tracks whether the GPU-addressable buffers need to be used. */
+	MVKGPUAddressableBuffersCommandEncoderState _gpuAddressableBuffersState;
 
     /** Tracks the current depth stencil state of the encoder. */
     MVKDepthStencilCommandEncoderState _depthStencilState;
@@ -487,6 +524,7 @@ protected:
 	NSString* getMTLRenderCommandEncoderName(MVKCommandUse cmdUse);
 	template<typename T> void retainIfImmediatelyEncoding(T& mtlEnc);
 	template<typename T> void endMetalEncoding(T& mtlEnc);
+	id<MTLFence> getBarrierStageFence(MVKBarrierStage stage);
 
 	typedef struct GPUCounterQuery {
 		MVKGPUCounterQueryPool* queryPool = nullptr;
@@ -499,7 +537,6 @@ protected:
 	MVKSmallVector<GPUCounterQuery, 16> _timestampStageCounterQueries;
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
 	MVKSmallVector<MVKImageView*, kMVKDefaultAttachmentCount> _attachments;
-	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
 	id<MTLFence> _stageCountersMTLFence;
 	MVKPushConstantsCommandEncoderState _vertexPushConstants;

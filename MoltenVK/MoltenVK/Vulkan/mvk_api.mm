@@ -1,7 +1,7 @@
 /*
  * mvk_api.mm
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ VkResult mvkCopyGrowingStruct(S* pDst, const S* pSrc, size_t* pCopySize) {
 		size_t origSize = *pCopySize;
 		*pCopySize = std::min(origSize, sizeof(S));
 		memcpy(pDst, pSrc, *pCopySize);
-		return (*pCopySize == origSize) ? VK_SUCCESS : VK_INCOMPLETE;
+		return (sizeof(S) == origSize) ? VK_SUCCESS : VK_INCOMPLETE;
 	} else {
 		*pCopySize = sizeof(S);
 		return VK_SUCCESS;
@@ -106,7 +106,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkGetVersionStringsMVK(
 
 	size_t len;
 
-	string mvkVer = mvkGetMoltenVKVersionString(MVK_VERSION);
+	string mvkVer = MVK_VERSION_STRING;
 	len = mvkVer.copy(pMoltenVersionStringBuffer, moltenVersionStringBufferLength - 1);
 	pMoltenVersionStringBuffer[len] = 0;    // terminator
 

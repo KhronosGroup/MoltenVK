@@ -1,7 +1,7 @@
 /*
  * MVKSwapchain.mm
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,9 +42,7 @@ void MVKSwapchain::propagateDebugName() {
 	if (_debugName) {
 		size_t imgCnt = _presentableImages.size();
 		for (size_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
-			NSString* nsName = [[NSString alloc] initWithFormat: @"%@(%lu)", _debugName, imgIdx];	// temp retain
-			_presentableImages[imgIdx]->setDebugName(nsName.UTF8String);
-			[nsName release];																		// release temp string
+			_presentableImages[imgIdx]->setDebugName([NSString stringWithFormat: @"%@(%lu)", _debugName, imgIdx].UTF8String);
 		}
 	}
 }
@@ -128,11 +126,11 @@ VkResult MVKSwapchain::getSurfaceStatus() {
 	return VK_SUCCESS;
 }
 
-// This swapchain is optimally sized for the surface if the app has specified 
-// deliberate swapchain scaling, or the surface extent has not changed since the
-// swapchain was created, and the surface will not need to be scaled when composited.
+// This swapchain is optimally sized for the surface if the app has specified deliberate
+// swapchain scaling, or if the surface is headless, or if the surface extent has not changed 
+// since the swapchain was created, and the surface will not need to be scaled when composited.
 bool MVKSwapchain::hasOptimalSurface() {
-	if (_isDeliberatelyScaled) { return true; }
+	if (_isDeliberatelyScaled || isHeadless()) { return true; }
 
 	VkExtent2D surfExtent = _surface->getExtent();
 	return (mvkVkExtent2DsAreEqual(surfExtent, _imageExtent) &&
@@ -171,7 +169,7 @@ void MVKSwapchain::markFrameInterval() {
 
 	if (prevFrameTime == 0) { return; }		// First frame starts at first presentation
 
-	_device->updateActivityPerformance(_device->_performanceStatistics.queue.frameInterval, mvkGetElapsedMilliseconds(prevFrameTime, _lastFrameTime));
+	addPerformanceInterval(getPerformanceStats().queue.frameInterval, prevFrameTime, _lastFrameTime, true);
 
 	auto& mvkCfg = getMVKConfig();
 	bool shouldLogOnFrames = mvkCfg.performanceTracking && mvkCfg.activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT;
@@ -179,7 +177,7 @@ void MVKSwapchain::markFrameInterval() {
 		_currentPerfLogFrameCount = 0;
 		MVKLogInfo("Performance statistics reporting every: %d frames, avg FPS: %.2f, elapsed time: %.3f seconds:",
 				   mvkCfg.performanceLoggingFrameCount,
-				   (1000.0 / _device->_performanceStatistics.queue.frameInterval.average),
+				   (1000.0 / getPerformanceStats().queue.frameInterval.average),
 				   mvkGetElapsedMilliseconds() / 1000.0);
 		if (getMVKConfig().activityPerformanceLoggingStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_FRAME_COUNT) {
 			_device->logPerformanceSummary();
@@ -190,8 +188,8 @@ void MVKSwapchain::markFrameInterval() {
 VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRefreshCycleDuration) {
 	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 
-	auto* screen = getCAMetalLayer().screenMVK;		// Will be nil if headless
 #if MVK_MACOS && !MVK_MACCAT
+    auto* screen = getCAMetalLayer().screenMVK;        // Will be nil if headless
 	double framesPerSecond = 60;
 	if (screen) {
 		CGDirectDisplayID displayId = [[[screen deviceDescription] objectForKey:@"NSScreenNumber"] unsignedIntValue];
@@ -207,6 +205,7 @@ VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRe
 			framesPerSecond = 60.0;
 	}
 #elif MVK_IOS_OR_TVOS || MVK_MACCAT
+    auto* screen = getCAMetalLayer().screenMVK;        // Will be nil if headless
 	NSInteger framesPerSecond = 60;
 	if ([screen respondsToSelector: @selector(maximumFramesPerSecond)]) {
 		framesPerSecond = screen.maximumFramesPerSecond;
@@ -250,7 +249,7 @@ void MVKSwapchain::beginPresentation(const MVKImagePresentInfo& presentInfo) {
 	_unpresentedImageCount++;
 }
 
-void MVKSwapchain::endPresentation(const MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime) {
+void MVKSwapchain::endPresentation(const MVKImagePresentInfo& presentInfo, uint64_t beginPresentTime, uint64_t actualPresentTime) {
 	_unpresentedImageCount--;
 
 	std::lock_guard<std::mutex> lock(_presentHistoryLock);
@@ -265,9 +264,9 @@ void MVKSwapchain::endPresentation(const MVKImagePresentInfo& presentInfo, uint6
 	_presentTimingHistory[_presentHistoryIndex].presentID = presentInfo.presentID;
 	_presentTimingHistory[_presentHistoryIndex].desiredPresentTime = presentInfo.desiredPresentTime;
 	_presentTimingHistory[_presentHistoryIndex].actualPresentTime = actualPresentTime;
-	// These details are not available in Metal
+	// These details are not available in Metal, but can estimate earliestPresentTime by using actualPresentTime instead
 	_presentTimingHistory[_presentHistoryIndex].earliestPresentTime = actualPresentTime;
-	_presentTimingHistory[_presentHistoryIndex].presentMargin = 0;
+	_presentTimingHistory[_presentHistoryIndex].presentMargin = actualPresentTime > beginPresentTime ? actualPresentTime - beginPresentTime : 0;
 	_presentHistoryIndex = (_presentHistoryIndex + 1) % kMaxPresentationHistory;
 }
 
@@ -357,15 +356,16 @@ void MVKSwapchain::setHDRMetadataEXT(const VkHdrMetadataEXT& metadata) {
 	colorVol.min_display_mastering_luminance = OSSwapHostToBigInt32((uint32_t)(metadata.minLuminance * 10000));
 	lightLevel.max_content_light_level = OSSwapHostToBigInt16((uint16_t)metadata.maxContentLightLevel);
 	lightLevel.max_pic_average_light_level = OSSwapHostToBigInt16((uint16_t)metadata.maxFrameAverageLightLevel);
-	NSData* colorVolData = [NSData dataWithBytes: &colorVol length: sizeof(colorVol)];
-	NSData* lightLevelData = [NSData dataWithBytes: &lightLevel length: sizeof(lightLevel)];
-	CAEDRMetadata* caMetadata = [CAEDRMetadata HDR10MetadataWithDisplayInfo: colorVolData
-																contentInfo: lightLevelData
-														 opticalOutputScale: 1];
-	auto* mtlLayer = getCAMetalLayer();
-	mtlLayer.EDRMetadata = caMetadata;
-	mtlLayer.wantsExtendedDynamicRangeContent = YES;
-	[caMetadata release];
+	NSData* colorVolData = [[NSData alloc] initWithBytes: &colorVol length: sizeof(colorVol)];
+	NSData* lightLevelData = [[NSData alloc] initWithBytes: &lightLevel length: sizeof(lightLevel)];
+    @autoreleasepool {
+        CAEDRMetadata* caMetadata = [CAEDRMetadata HDR10MetadataWithDisplayInfo: colorVolData
+                                                                    contentInfo: lightLevelData
+                                                             opticalOutputScale: 1];
+        auto* mtlLayer = getCAMetalLayer();
+        mtlLayer.EDRMetadata = caMetadata;
+        mtlLayer.wantsExtendedDynamicRangeContent = YES;
+    }
 	[colorVolData release];
 	[lightLevelData release];
 #endif
@@ -418,9 +418,10 @@ MVKSwapchain::MVKSwapchain(MVKDevice* device, const VkSwapchainCreateInfoKHR* pC
 		}
 	}
 
+	auto& mtlFeats = getMetalFeatures();
 	uint32_t imgCnt = mvkClamp(pCreateInfo->minImageCount,
-							   _device->_pMetalFeatures->minSwapchainImageCount,
-							   _device->_pMetalFeatures->maxSwapchainImageCount);
+							   mtlFeats.minSwapchainImageCount,
+							   mtlFeats.maxSwapchainImageCount);
 	initCAMetalLayer(pCreateInfo, pScalingInfo, imgCnt);
     initSurfaceImages(pCreateInfo, imgCnt);		// After initCAMetalLayer()
 }
@@ -614,9 +615,12 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 	if (mtlLayer) {
 		NSString* screenName = @"Main Screen";
 #if MVK_MACOS && !MVK_MACCAT
-		auto* screen = mtlLayer.screenMVK;
-		if ([screen respondsToSelector:@selector(localizedName)]) {
-			screenName = screen.localizedName;
+		// To prevent deadlocks, avoid dispatching screenMVK to the main thread at the cost of a less informative log.
+		if (NSThread.isMainThread) {
+			auto* screen = mtlLayer.screenMVK;
+			if ([screen respondsToSelector:@selector(localizedName)]) {
+				screenName = screen.localizedName;
+			}
 		}
 #endif
 		MVKLogInfo("Created %d swapchain images with size (%d, %d) and contents scale %.1f in layer %s (%p) on screen %s.",

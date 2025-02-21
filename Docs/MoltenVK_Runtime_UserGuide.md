@@ -7,7 +7,7 @@
 MoltenVK Runtime User Guide
 ===========================
 
-Copyright (c) 2015-2023 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
+Copyright (c) 2015-2024 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 [comment]: # "This document is written in Markdown (http://en.wikipedia.org/wiki/Markdown) format."
 [comment]: # "For best results, use a Markdown reader."
@@ -21,12 +21,13 @@ Table of Contents
 - [About **MoltenVK**](#about_moltenvk)
 - [Installing **MoltenVK** in Your *Vulkan* Application](#install)
 	- [Install *MoltenVK* as a Universal `XCFramework`](#install_xcfwk)
-	- [Install *MoltenVK* as a Dynamic Library](#install_dylib)
-	- [Install *MoltenVK* replacing the Vulkan SDK `libMoltenVK.dylib`](#install_vksdk)
+	- [Install *MoltenVK* as a Dynamic Library on _macOS_](#install_dylib)
+	- [Optionally Link to Required System Libraries](#system_libs)
 	- [Build and Runtime Requirements](#requirements)
 - [Interacting with the **MoltenVK** Runtime](#interaction)
 	- [MoltenVK Header Files](#moltenvk_headers)
 	- [Configuring MoltenVK](#moltenvk_config)
+- [Debugging Your **MoltenVK** Application using _Metal Frame Capture_](#gpu-capture)
 - [*Metal Shading Language* Shaders](#shaders)
 	- [Troubleshooting Shader Conversion](#spv_vs_msl)
 - [Performance Considerations](#performance)
@@ -60,7 +61,7 @@ graphics and compute functionality, that is built on Apple's [*Metal*](https://d
 graphics and compute framework on *macOS*, *iOS*, and *tvOS*. **MoltenVK** allows you to use *Vulkan*
 graphics and compute functionality to develop modern, cross-platform, high-performance graphical games
 and applications, and to run them across many platforms, including *macOS*, *iOS*, *tvOS*, *Simulators*,
-and *Mac Catalyst* on *macOS 11.0+*.
+and *Mac Catalyst*.
 
 *Metal* uses a different shading language, the *Metal Shading Language (MSL)*, than
 *Vulkan*, which uses *SPIR-V*. **MoltenVK** automatically converts your *SPIR-V* shaders
@@ -79,11 +80,7 @@ Installing **MoltenVK** in Your *Vulkan* Application
 Installation of **MoltenVK** in your application is straightforward and easy!
 
 Depending on your build and deployment needs, you can link **MoltenVK** to your application either
-as a universal `XCFramework` or as a *dynamic library* (`.dylib`). Distributing an app containing
-a dynamic library via the *iOS App Store* or *tvOS App Store* can require specialized bundling.
-If you are unsure about which linking and deployment option you need, or on *iOS* or *tvOS*,
-unless you have specific needs for dynamic libraries, follow the steps for linking **MoltenVK**
-as an `XCFramework`, as it is the simpler option, and encompasses the largest set of supported platforms.
+as either a static or dynamic universal `XCFramework`, or on _macOS_, as a *dynamic library* (`.dylib`).
 
 
 <a name="install_xcfwk"></a>
@@ -96,54 +93,49 @@ also use *Xcode 14* or later to link it to your app or game.
 > If you need to use *Xcode 13* or earlier to link `MoltenVK.xcframework` to your app or game,
 first [build](../README.md#building) **MoltenVK** with *Xcode 13* or earlier.
 >
-> Or, if you want to use *Xcode 14* or later to [build](../README.md#building) **MoltenVK**, in order to be able to use the latest
-*Metal* capabilities, but need to use *Xcode 13* or earlier to link `MoltenVK.xcframework` to your
-app or game, first add the value `-fno-objc-msgsend-selector-stubs` to the `OTHER_CFLAGS`
-*Xcode* build setting in the `MoltenVK.xcodeproj` and `MoltenVKShaderConverter.xcodeproj` *Xcode*
-projects, [build](../README.md#building) **MoltenVK** with *Xcode 14* or later, and then link `MoltenVK.xcframework`
-to your app or game using *Xcode 13* or earlier.
+> Or, if you want to use *Xcode 14* or later to [build](../README.md#building) **MoltenVK**, in order to be able
+to use the latest *Metal* capabilities, but need to use *Xcode 13* or earlier to link `MoltenVK.xcframework`
+to your app or game, first add the value `-fno-objc-msgsend-selector-stubs` to the `OTHER_CFLAGS` *Xcode* build
+setting in the `MoltenVK.xcodeproj` and `MoltenVKShaderConverter.xcodeproj` *Xcode* projects, [build](../README.md#building)
+**MoltenVK** with *Xcode 14* or later, and then link `MoltenVK.xcframework`to your app or game using *Xcode 13* or earlier.
 
-To link **MoltenVK** to your application as an `XCFramework`, follow these steps:
+To link **MoltenVK** to your application as either a static or dynamic `XCFramework`, follow these steps:
 
-1. Open your application in *Xcode* and select your application's target in the
-   *Project Navigator* panel.
+1. Open your application in *Xcode* and select your application's target in the *Project Navigator* panel.
 
 2. Open the *Build Settings* tab.
 
 	1. In the **Header Search Paths** (aka `HEADER_SEARCH_PATHS`) setting,
-           add an entry that points to the `MoltenVK/include` folder.
+       add an entry that points to the `MoltenVK/include` folder.
 
-	2. If using `IOSurfaces` on *iOS*, open the **iOS Deployment Target** (aka `IPHONEOS_DEPLOYMENT_TARGET`)
-	   setting, and ensure it is set to a value of `iOS 11.0` or greater,  or if using `IOSurfaces` on *tvOS*,
-	   open the **tvOS Deployment Target** (aka `TVOS_DEPLOYMENT_TARGET`) setting, and ensure it is set to a
-	   value of `tvOS 11.0` or greater.
+	2. _(**Note:** This step is not required if linking to the static XCFramework)_ If linking to the _dynamic XCFramework_,
+	in the **Runpath Search Paths** (aka `LD_RUNPATH_SEARCH_PATHS`) setting, add entries that match where the
+	framework will be located in your runtime environment. If the dynamic library is to be embedded within your
+	application, you would typically add one or both of the following entries for a _macOS_ platform target:
 
-3. Open the *Build Phases* tab and open the *Link Binary With Libraries* list.
-  
-	1. Drag `MoltenVK/MoltenVK.xcframework` to the *Link Binary With Libraries* list.
+        ```
+        @executable_path/../Frameworks
+        @executable_path/../Frameworks/MoltenVK.framework
+        ```
 
-	2. If your application does **_not_** use use `C++`, click the **+** button,
-	   and add `libc++.tbd` by selecting it from the list of system frameworks.
-	   This is needed because **MoltenVK** uses `C++` system libraries internally.
-     
-	3. If you do **_not_** have the **Link Frameworks Automatically** (aka `CLANG_MODULES_AUTOLINK`) and
-       **Enable Modules (C and Objective-C)** (aka `CLANG_ENABLE_MODULES`) settings enabled, click the
-       **+** button, and add the following items by selecting them from the list of system frameworks:
-	   - `libc++.tbd` *(if not already done in Step 2)*
-	   - `Metal.framework`
-	   - `Foundation.framework`.
-	   - `QuartzCore.framework`
-	   - `IOKit.framework` (*macOS*)
-	   - `UIKit.framework` (*iOS* or *tvOS*)
-	   - `IOSurface.framework` (*macOS*, or *iOS* if `IPHONEOS_DEPLOYMENT_TARGET` is at least `iOS 11.0`,
-	      or *tvOS* if `TVOS_DEPLOYMENT_TARGET` is at least `tvOS 11.0`)
+       or for a platform target other than _macOS_ add one or both of the following entries:
 
+        ```
+        @executable_path/Frameworks
+        @executable_path/Frameworks/MoltenVK.framework
+        ```
+
+       `MoltenVK.framework` is internally configured to be located at `@rpath/MoltenVK.framework/MoltenVK`.
+
+3. Open the *General* tab and drag either `Package/Latest/MoltenVK/static/MoltenVK.xcframework` or 
+    `Package/Latest/MoltenVK/dynamic/MoltenVK.xcframework` to the *Embed Frameworks* (sometimes labeled 
+    *Frameworks, Libraries, and Embedded Content*) list, and ensure the _Embed & Sign_ options is selected.
 
 
 <a name="install_dylib"></a>
-### Install *MoltenVK* as a Dynamic Library
+### Install *MoltenVK* as a Dynamic Library on _macOS_
 
-To link **MoltenVK** to your application as a dynamic library (`.dylib`), follow these steps:
+To link **MoltenVK** to your _macOS_ application as a dynamic library (`.dylib`), follow these steps:
 
 1. Open your application in *Xcode* and select your application's target in the
    *Project Navigator* panel.
@@ -154,106 +146,40 @@ To link **MoltenVK** to your application as a dynamic library (`.dylib`), follow
     1. In the **Header Search Paths** (aka `HEADER_SEARCH_PATHS`) setting,
        add an entry that points to the `MoltenVK/include` folder.
       
-    2. In the **Library Search Paths** (aka `LIBRARY_SEARCH_PATHS`) setting,
-       add an entry that points to **_one_** of the following folders:
-          - `MoltenVK/dylib/macOS` *(macOS)*
-          - `MoltenVK/dylib/iOS` *(iOS)*
-          - `MoltenVK/dylib/tvOS` *(tvOS)*
-      
-    3. In the **Runpath Search Paths** (aka `LD_RUNPATH_SEARCH_PATHS`) setting,
+    2. In the **Runpath Search Paths** (aka `LD_RUNPATH_SEARCH_PATHS`) setting,
        add an entry that matches where the dynamic library will be located in your runtime
        environment. If the dynamic library is to be embedded within your application,
-       you would typically set this to  **_one_** of these values:
+       you would typically set this to `@executable_path/../Frameworks`.
 
-       - `@executable_path/../Frameworks` *(macOS)*
-       - `@executable_path/Frameworks` *(iOS or tvOS)*
-      
-       The `libMoltenVK.dylib` library is internally configured to be located at
-       `@rpath/libMoltenVK.dylib`.
+       The `libMoltenVK.dylib` library in `MoltenVK.framework` is internally configured
+       to be located at `@rpath/libMoltenVK.dylib`.
 
-	3. If using `IOSurfaces` on *iOS*, open the **iOS Deployment Target** (aka `IPHONEOS_DEPLOYMENT_TARGET`)
-	   setting, and ensure it is set to a value of `iOS 11.0` or greater,  or if using `IOSurfaces` on *tvOS*,
-	   open the **tvOS Deployment Target** (aka `TVOS_DEPLOYMENT_TARGET`) setting, and ensure it is set to a
-	   value of `tvOS 11.0` or greater.
+3. Open the *General* tab and drag `Package/Latest/MoltenVK/dynamic/dylib/macOS/libMoltenVK.dylib` 
+   to the *Embed Frameworks* (sometimes labeled *Frameworks, Libraries, and Embedded Content*) list, 
+   and ensure the _Embed & Sign_ options is selected.
 
-3. Open the *Build Phases* tab and open the *Link Binary With Libraries* list.
-  
-	1. Drag **_one_** of the following files to the *Link Binary With Libraries* list:
-      - `MoltenVK/dylib/macOS/libMoltenVK.dylib` *(macOS)*
-      - `MoltenVK/dylib/iOS/libMoltenVK.dylib` *(iOS)*
-      - `MoltenVK/dylib/tvOS/libMoltenVK.dylib` *(tvOS)*
 
-	2. If your application does **_not_** use use `C++`, click the **+** button,
-	   and add `libc++.tbd` by selecting it from the list of system frameworks.
-	   This is needed because **MoltenVK** uses `C++` system libraries internally.
-     
-	3. If you do **_not_** have the **Link Frameworks Automatically** (aka `CLANG_MODULES_AUTOLINK`) and
-       **Enable Modules (C and Objective-C)** (aka `CLANG_ENABLE_MODULES`) settings enabled, click the
-       **+** button, and add the following items by selecting them from the list of system frameworks:
-	   - `libc++.tbd` *(if not already done in Step 2)*
-	   - `Metal.framework`
-	   - `Foundation.framework`.
-	   - `QuartzCore.framework`
-	   - `IOKit.framework` (*macOS*)
-	   - `UIKit.framework` (*iOS* or *tvOS*)
-	   - `IOSurface.framework` (*macOS*, or *iOS* if `IPHONEOS_DEPLOYMENT_TARGET` is at least `iOS 11.0`,
-	      or *tvOS* if `TVOS_DEPLOYMENT_TARGET` is at least `tvOS 11.0`)
+<a name="system_libs"></a>
+### Optionally Link to Required System Libraries
 
-4. Arrange to install the `libMoltenVK.dylib` file in your application environment:
+Open the *Build Phases* tab and open the *Link Binary With Libraries* list.
 
-   - To copy the `libMoltenVK.dylib` file into your application or component library:
-  
-	   1. On the *Build Phases* tab, add a new *Copy Files* build phase.
-	  
-	   2. Set the *Destination* into which you want to place  the `libMoltenVK.dylib` file.
-	      Typically this will be *Frameworks* (and it should match the **Runpath Search Paths**
-	      (aka `LD_RUNPATH_SEARCH_PATHS`) build setting you added above).
-	  
-	   3. Drag **_one_** of the following files to the *Copy Files* list in this new build phase:
-	     - `MoltenVK/dylib/macOS/libMoltenVK.dylib` *(macOS)*
-	     - `MoltenVK/dylib/iOS/libMoltenVK.dylib` *(iOS)*
-	     - `MoltenVK/dylib/tvOS/libMoltenVK.dylib` *(tvOS)*
-  
-   - Alternately, you may create your own installation mechanism to install one of the following
-     files into a standard *macOS*, *iOS*, or  *tvOS* system library folder on the user's device:
-      - `MoltenVK/dylib/macOS/libMoltenVK.dylib` *(macOS)*
-      - `MoltenVK/dylib/iOS/libMoltenVK.dylib` *(iOS)*
-      - `MoltenVK/dylib/tvOS/libMoltenVK.dylib` *(tvOS)*
-    
+1. If your application does **_not_** use use `C++`, click the **+** button,
+   and add `libc++.tbd` by selecting it from the list of system frameworks.
+   This is needed because **MoltenVK** uses `C++` system libraries internally.
+ 
+2. If you do **_not_** have the **Link Frameworks Automatically** (aka `CLANG_MODULES_AUTOLINK`) and
+   **Enable Modules (C and Objective-C)** (aka `CLANG_ENABLE_MODULES`) settings enabled, click the
+   **+** button, and add the following items by selecting them from the list of system frameworks:
+   - `Metal.framework`
+   - `Foundation.framework`.
+   - `QuartzCore.framework`
+   - `CoreGraphics.framework`
+   - `IOSurface.framework`
+   - `IOKit.framework` (*macOS*)
+   - `AppKit.framework` (*macOS*)
+   - `UIKit.framework` (*iOS* or *tvOS*)
 
-<a name="install_vksdk"></a>
-### Install *MoltenVK* replacing the Vulkan SDK `libMoltenVK.dylib`
-
-There are a few potential issues when building **MoltenVK** to replace the version installed via
-the *[Vulkan SDK](https://vulkan.lunarg.com/sdk/home)* standard install process, which lives in
-`/usr/local/lib/libMoltenVK.dylib`.
-
-1. You must *remove* the existing `.dylib` file before copying the new one, because of the way
-that the gatekeeper system works to prevent malicious overwriting of files in standard locations
-such as `/usr/local`:
-
-```bash
-$ sudo rm /usr/local/lib/libMoltenVK.dylib
-$ sudo cp Package/Release/MoltenVK/dylib/macOS/libMoltenVK.dylib /usr/local/lib
-```
-
-If you do not do the remove first, your application will terminate immediately with a
-singularly unhelpful `Killed: 9` message.  Alternatively, moving the existing `.dylib` to a
-backup name and making a symbolic link to the Package location above is particularly useful
-for repeated building and testing.
-
-2. Do *not* copy the `MoltenVK_icd.json` file from the newly-built package to
-`/usr/local/share/vulkan/icd.d` -- it will not work and will result in errors about not being
-able to initialize the instance.  The one installed by Vulkan SDK uses a relative path to
-specify the location of the `.dylib`, whereas the one in the package specifies it in the same
-directory.
-
-3. The default config for command-line build has verbose logging info turned on -- if you want
-it to be like the original, use this command for building:
-
-```bash
-$ make macos MVK_CONFIG_LOG_LEVEL=1
-```
 
 <a name="requirements"></a>
 ### Build and Runtime Requirements
@@ -261,16 +187,10 @@ $ make macos MVK_CONFIG_LOG_LEVEL=1
 **MoltenVK** references the latest *Apple SDK* frameworks. To access these frameworks when building
 your app, and to avoid build errors, be sure to use the latest publicly available version of *Xcode*.
 
->***Note:*** To support `IOSurfaces` on *iOS* or *tvOS*, any app that uses **MoltenVK** must be
-built with a minimum **iOS Deployment Target** (aka `IPHONEOS_DEPLOYMENT_TARGET `) build setting
-of `iOS 11.0` or greater, or a minimum **tvOS Deployment Target** (aka `TVOS_DEPLOYMENT_TARGET `)
-build setting of `tvOS 11.0` or greater.
-
 Once built, your app integrating the **MoltenVK** libraries can be run on *macOS*, *iOS* or *tvOS*
 devices that support *Metal*, or on the *Xcode* *iOS Simulator* or *tvOS Simulator*.
 
-- At runtime, **MoltenVK** requires at least *macOS 10.11*, *iOS 9*, or *tvOS 9*
-  (or *iOS 11* or *tvOS 11* if using `IOSurfaces`).
+- At runtime, **MoltenVK** requires at least *macOS 10.15*, *iOS 13*, or *tvOS 13*.
 - Information on *macOS* devices that are compatible with *Metal* can be found in
   [this article](http://www.idownloadblog.com/2015/06/22/how-to-find-mac-el-capitan-metal-compatible).
 - Information on *iOS* devices that are compatible with *Metal* can be found in
@@ -332,6 +252,8 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_get_physical_device_properties2`
 - `VK_KHR_get_surface_capabilities2`
 - `VK_KHR_imageless_framebuffer`
+- `VK_EXT_image_2d_view_of_3d`
+  - *Requires MVK_CONFIG_USE_MTLHEAP to be enabled.*
 - `VK_KHR_image_format_list`
 - `VK_KHR_incremental_present`
 - `VK_KHR_maintenance1`
@@ -350,9 +272,11 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_shader_draw_parameters`
 - `VK_KHR_shader_float_controls`
 - `VK_KHR_shader_float16_int8`
+- `VK_KHR_shader_integer_dot_product`
 - `VK_KHR_shader_non_semantic_info`
 - `VK_KHR_shader_subgroup_extended_types`
   - *Requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS.*
+- `VK_KHR_shader_terminate_invocation`
 - `VK_KHR_spirv_1_4`
 - `VK_KHR_storage_buffer_storage_class`
 - `VK_KHR_surface`
@@ -363,6 +287,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_uniform_buffer_standard_layout`
 - `VK_KHR_variable_pointers`
 - `VK_KHR_vertex_attribute_divisor`
+- `VK_KHR_zero_initialize_workgroup_memory`
 - `VK_EXT_4444_formats`
   - *Requires 16-bit formats and either native texture swizzling or manual swizzling to be enabled.*
 - `VK_EXT_buffer_device_address`
@@ -372,6 +297,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_debug_marker`
 - `VK_EXT_debug_report`
 - `VK_EXT_debug_utils`
+- `VK_EXT_depth_clip_control`
 - `VK_EXT_descriptor_indexing`
   - *Initial release limited to Metal Tier 1: 96/128 textures,
     16 samplers, except macOS 11.0 (Big Sur) or later, or on older versions of macOS using
@@ -388,6 +314,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_hdr_metadata`
   - *macOS only.*
 - `VK_EXT_headless_surface`
+- `VK_EXT_host_image_copy`
 - `VK_EXT_host_query_reset`
 - `VK_EXT_image_robustness`
 - `VK_EXT_inline_uniform_block`
@@ -426,6 +353,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
   - *Requires Metal 2.0.*
 - `VK_EXT_texture_compression_astc_hdr`
   - *iOS and macOS, requires family 6 (A13) or better Apple GPU.*
+- `VK_EXT_tooling_info`
 - `VK_MVK_ios_surface`
   - *Obsolete. Use `VK_EXT_metal_surface` instead.*
 - `VK_MVK_macos_surface`
@@ -441,7 +369,6 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_INTEL_shader_integer_functions2`
 - `VK_NV_fragment_shader_barycentric`
   - *Requires Metal 2.2 on Mac or Metal 2.3 on iOS.*
-- `VK_NV_glsl_shader`
 
 In order to visibly display your content on *macOS*, *iOS*, or *tvOS*, you must enable the
 `VK_EXT_metal_surface` extension, and use the function defined in that extension to create a
@@ -490,7 +417,7 @@ where `HEADER_FILE` is one of the following:
 
 - `mvk_vulkan.h` - This is a convenience header file that loads the `<vulkan/vulkan.h>` header file
   with platform settings to enable the appropriate _Vulkan_ WSI surface and portability extensions.
- 
+
 - `mvk_private_api.h` - Contains private structures and functions to query **MoltenVK** about
   **MoltenVK** version and configuration, runtime performance information, and available
   _Metal_ capabilities.
@@ -540,6 +467,35 @@ creation via the _Vulkan_ `VK_EXT_layer_settings` extension).
 
 A description of each configuration parameter supported by **MoltenVK** can be found in the
 [`MoltenVK_Configuration_Parameters.md`](MoltenVK_Configuration_Parameters.md) document in the `Docs` directory.
+
+
+
+<a name="gpu-capture"></a>
+Debugging Your MoltenVK Application using _Metal Frame Capture_
+-----------------------------------------------------------------
+
+Since **MoltenVK** translates _Vulkan API_ calls to _Metal_, you can use _Apple's_
+[Metal Frame Capture](https://developer.apple.com/documentation/xcode/capturing-a-metal-workload-in-xcode)
+to help debug your application. You can configure **MoltenVK** to automatically write to a GPU trace file,
+without manual intervention, by using the following environment variables and configuration parameters:
+
+1. `METAL_CAPTURE_ENABLED=1`, to enable Metal GPU capture. This must be set as an environment variable,
+   or in _Xcode_ as an _Option_ in the _Scheme_ you use to launch your app from _Xcode_.
+2. `MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE=n`, this defines the scope of the capture.
+   You can set `n` to:
+	- `0` to disable capturing,
+	- `1` to capture all frames created between the creation of a `VkDevice` to its destruction, or
+	- `2` to capture only the first frame.
+3. `MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE=filename.gputrace`, to set where the capture file
+   should be saved to. Note that `filename.gputrace` must not already exist, otherwise the file
+   will not be written, and an error will be logged.
+
+Except for `METAL_CAPTURE_ENABLED=1`, the other parameters can be set as configuration parameters, as described
+in the [Configuring MoltenVK](#moltenvk_config) section above (including as environment variables).
+
+The created capture file can then be opened with _Xcode_ for investigation. You do not need to launch
+your app from _Xcode_ to capture and generate the trace file.
+
 
 
 <a name="shaders"></a>

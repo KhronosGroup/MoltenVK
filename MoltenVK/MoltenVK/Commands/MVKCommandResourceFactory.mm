@@ -1,7 +1,7 @@
 /*
  * MVKCommandResourceFactory.mm
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,11 +32,11 @@ using namespace std;
 
 id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPipelineState(MVKRPSKeyBlitImg& blitKey,
 																							MVKVulkanAPIDeviceObject* owner) {
-	bool isLayeredBlit = blitKey.dstSampleCount > 1 ? _device->_pMetalFeatures->multisampleLayeredRendering : _device->_pMetalFeatures->layeredRendering;
+	bool isLayeredBlit = blitKey.dstSampleCount > 1 ? getMetalFeatures().multisampleLayeredRendering : getMetalFeatures().layeredRendering;
 	id<MTLFunction> vtxFunc = newFunctionNamed(isLayeredBlit ? "vtxCmdBlitImageLayered" : "vtxCmdBlitImage");	// temp retain
 	id<MTLFunction> fragFunc = newBlitFragFunction(blitKey);													// temp retain
     MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];									// temp retain
-    plDesc.label = @"vkCmdBlitImage";
+	owner->setMetalObjectLabel(plDesc, @"vkCmdBlitImage");
 
 	plDesc.vertexFunction = vtxFunc;
 	plDesc.fragmentFunction = fragFunc;
@@ -118,7 +118,7 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipeli
 	id<MTLFunction> vtxFunc = newClearVertFunction(attKey);						// temp retain
 	id<MTLFunction> fragFunc = newClearFragFunction(attKey);					// temp retain
 	MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];	// temp retain
-    plDesc.label = @"ClearRenderAttachments";
+	owner->setMetalObjectLabel(plDesc, @"ClearRenderAttachments");
 	plDesc.vertexFunction = vtxFunc;
     plDesc.fragmentFunction = fragFunc;
 	plDesc.sampleCount = attKey.mtlSampleCount;
@@ -188,7 +188,7 @@ static void getSwizzleString(char swizzleStr[4], VkComponentMapping vkMapping) {
 
 id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg& blitKey) {
 	@autoreleasepool {
-		bool isLayeredBlit = blitKey.dstSampleCount > 1 ? _device->_pMetalFeatures->multisampleLayeredRendering : _device->_pMetalFeatures->layeredRendering;
+		bool isLayeredBlit = blitKey.dstSampleCount > 1 ? getMetalFeatures().multisampleLayeredRendering : getMetalFeatures().layeredRendering;
 		NSString* typeStr = getMTLFormatTypeString(blitKey.getSrcMTLPixelFormat());
 
 		bool isArrayType = blitKey.isSrcArrayType();
@@ -228,7 +228,7 @@ id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg&
 		}
 		NSString* sliceArg = isArrayType ? (isLayeredBlit ? @", subRez.slice + varyings.v_layer" : @", subRez.slice") : @"";
 		NSString* srcFilter = isLinearFilter ? @"linear" : @"nearest";
-		if (!getDevice()->_pMetalFeatures->nativeTextureSwizzle) {
+		if (!getMetalFeatures().nativeTextureSwizzle) {
 			getSwizzleString(swizzleArg, blitKey.getSrcSwizzle());
 		}
 
@@ -523,22 +523,23 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdFillBufferMTLComput
 }
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdClearColorImageMTLComputePipelineState(MVKFormatType type,
-					MVKVulkanAPIDeviceObject* owner) {
+					MVKVulkanAPIDeviceObject* owner,
+					bool isTextureArray) {
 	const char* funcName;
 	switch (type) {
 		case kMVKFormatColorHalf:
 		case kMVKFormatColorFloat:
-			funcName = "cmdClearColorImage2DFloat";
+			funcName = isTextureArray ? "cmdClearColorImage2DFloatArray" : "cmdClearColorImage2DFloat";
 			break;
 		case kMVKFormatColorInt8:
 		case kMVKFormatColorInt16:
 		case kMVKFormatColorInt32:
-			funcName = "cmdClearColorImage2DInt";
+			funcName = isTextureArray ? "cmdClearColorImage2DIntArray" : "cmdClearColorImage2DInt";
 			break;
 		case kMVKFormatColorUInt8:
 		case kMVKFormatColorUInt16:
 		case kMVKFormatColorUInt32:
-			funcName = "cmdClearColorImage2DUInt";
+			funcName = isTextureArray ? "cmdClearColorImage2DUIntArray" : "cmdClearColorImage2DUInt";
 			break;
 		default:
 			owner->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "Format type %u is not supported for clearing with a compute shader.", type);
@@ -548,22 +549,23 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdClearColorImageMTLC
 }
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdResolveColorImageMTLComputePipelineState(MVKFormatType type,
-																									  MVKVulkanAPIDeviceObject* owner) {
+																									  MVKVulkanAPIDeviceObject* owner,
+																									  bool isTextureArray) {
 	const char* funcName;
 	switch (type) {
 		case kMVKFormatColorHalf:
 		case kMVKFormatColorFloat:
-			funcName = "cmdResolveColorImage2DFloat";
+			funcName = isTextureArray ? "cmdResolveColorImage2DFloatArray" : "cmdResolveColorImage2DFloat";
 			break;
 		case kMVKFormatColorInt8:
 		case kMVKFormatColorInt16:
 		case kMVKFormatColorInt32:
-			funcName = "cmdResolveColorImage2DInt";
+			funcName = isTextureArray ? "cmdResolveColorImage2DIntArray" : "cmdResolveColorImage2DInt";
 			break;
 		case kMVKFormatColorUInt8:
 		case kMVKFormatColorUInt16:
 		case kMVKFormatColorUInt32:
-			funcName = "cmdResolveColorImage2DUInt";
+			funcName = isTextureArray ? "cmdResolveColorImage2DUIntArray" : "cmdResolveColorImage2DUInt";
 			break;
 		default:
 			owner->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "Format type %u is not supported for resolving with a compute shader.", type);
@@ -618,11 +620,11 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newAccumulateOcclusionQue
 // Returns the retained MTLFunction with the name.
 // The caller is responsible for releasing the returned function object.
 id<MTLFunction> MVKCommandResourceFactory::newFunctionNamed(const char* funcName) {
-	uint64_t startTime = _device->getPerformanceTimestamp();
+	uint64_t startTime = getPerformanceTimestamp();
 	NSString* nsFuncName = [[NSString alloc] initWithUTF8String: funcName];		// temp retained
 	id<MTLFunction> mtlFunc = [_mtlLibrary newFunctionWithName: nsFuncName];	// retained
 	[nsFuncName release];														// temp release
-	_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
+	addPerformanceInterval(getPerformanceStats().shaderCompilation.functionRetrieval, startTime);
 	return mtlFunc;
 }
 
@@ -631,20 +633,20 @@ id<MTLFunction> MVKCommandResourceFactory::newMTLFunction(NSString* mslSrcCode, 
 		id<MTLFunction> mtlFunc = nil;
 		NSError* err = nil;
 
-		uint64_t startTime = _device->getPerformanceTimestamp();
+		uint64_t startTime = getPerformanceTimestamp();
 		id<MTLLibrary> mtlLib = [getMTLDevice() newLibraryWithSource: mslSrcCode
 															 options: getDevice()->getMTLCompileOptions()
 															   error: &err];	// temp retain
-		_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
+		addPerformanceInterval(getPerformanceStats().shaderCompilation.mslCompile, startTime);
 
 		if (err) {
 			reportError(VK_ERROR_INITIALIZATION_FAILED,
 						"Could not compile support shader from MSL source (Error code %li):\n%s\n%s",
 						(long)err.code, mslSrcCode.UTF8String, err.localizedDescription.UTF8String);
 		} else {
-			startTime = _device->getPerformanceTimestamp();
+			startTime = getPerformanceTimestamp();
 			mtlFunc = [mtlLib newFunctionWithName: funcName];
-			_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
+			addPerformanceInterval(getPerformanceStats().shaderCompilation.functionRetrieval, startTime);
 		}
 
 		[mtlLib release];														// temp release
@@ -664,9 +666,14 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newMTLRenderPipelineState(
 id<MTLComputePipelineState> MVKCommandResourceFactory::newMTLComputePipelineState(const char* funcName,
 																				  MVKVulkanAPIDeviceObject* owner) {
 	id<MTLFunction> mtlFunc = newFunctionNamed(funcName);							// temp retain
+	// Providing a function directly may cause issues with Metal shader validation layer object
+	// management for some reason, so create a temporary pipeline descriptor to provide instead.
+	MTLComputePipelineDescriptor* plDesc = [MTLComputePipelineDescriptor new];		// temp retain
+	plDesc.computeFunction = mtlFunc;
 	MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(owner);
-	id<MTLComputePipelineState> cps = plc->newMTLComputePipelineState(mtlFunc);		// retained
+	id<MTLComputePipelineState> cps = plc->newMTLComputePipelineState(plDesc);		// retained
 	plc->destroy();
+	[plDesc release];																// temp release
 	[mtlFunc release];																// temp release
     return cps;
 }
@@ -683,12 +690,12 @@ MVKCommandResourceFactory::MVKCommandResourceFactory(MVKDevice* device) : MVKBas
 void MVKCommandResourceFactory::initMTLLibrary() {
     @autoreleasepool {
         NSError* err = nil;
-		uint64_t startTime = _device->getPerformanceTimestamp();
+		uint64_t startTime = getPerformanceTimestamp();
         _mtlLibrary = [getMTLDevice() newLibraryWithSource: _MVKStaticCmdShaderSource
                                                    options: getDevice()->getMTLCompileOptions()
                                                      error: &err];    // retained
 		MVKAssert( !err, "Could not compile command shaders (Error code %li):\n%s", (long)err.code, err.localizedDescription.UTF8String);
-		_device->addPerformanceInterval(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
+		addPerformanceInterval(getPerformanceStats().shaderCompilation.mslCompile, startTime);
     }
 }
 

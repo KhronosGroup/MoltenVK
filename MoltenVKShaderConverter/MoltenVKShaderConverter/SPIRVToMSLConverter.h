@@ -1,7 +1,7 @@
 /*
  * SPIRVToMSLConverter.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
 #include <spirv_msl.hpp>
 #include <string>
 #include <vector>
+#include <map>
 
 
 namespace mvk {
@@ -43,6 +44,7 @@ namespace mvk {
 		spv::ExecutionMode tessPatchKind = spv::ExecutionModeMax;
 		uint32_t numTessControlPoints = 0;
 		bool shouldFlipVertexY = true;
+		bool shouldFixupClipSpace = false;
 
 		/**
 		 * Returns whether the specified options match this one.
@@ -226,6 +228,12 @@ namespace mvk {
 		bool supportsFastMath = true;
 	} SPIRVEntryPoint;
 
+	typedef struct MSLSpecializationMacroInfo {
+		std::string name;
+		bool isFloat;
+		bool isSigned;
+	} MSLSpecializationMacroInfo;
+
 	/**
 	 * Contains information about a shader conversion that can be used to populate a pipeline.
 	 *
@@ -245,6 +253,7 @@ namespace mvk {
 		bool needsDispatchBaseBuffer = false;
 		bool needsViewRangeBuffer = false;
 		bool usesPhysicalStorageBufferAddressesCapability = false;
+		std::map<uint32_t, MSLSpecializationMacroInfo> specializationMacros;
 
 	} SPIRVToMSLConversionResultInfo;
 
@@ -302,6 +311,7 @@ namespace mvk {
 		void populateWorkgroupDimension(SPIRVWorkgroupSizeDimension& wgDim, uint32_t size, SPIRV_CROSS_NAMESPACE::SpecializationConstant& spvSpecConst);
 		void populateEntryPoint(SPIRV_CROSS_NAMESPACE::Compiler* pCompiler, SPIRVToMSLConversionOptions& options, SPIRVEntryPoint& entryPoint);
 		bool usesPhysicalStorageBufferAddressesCapability(SPIRV_CROSS_NAMESPACE::Compiler* pCompiler);
+		void populateSpecializationMacros(SPIRV_CROSS_NAMESPACE::CompilerMSL* pMSLCompiler, std::map<uint32_t, MSLSpecializationMacroInfo>& specializationMacros);
 
 		std::vector<uint32_t> _spirv;
 	};

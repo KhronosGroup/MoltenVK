@@ -1,7 +1,7 @@
 /*
  * MVKEnvironment.cpp
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ static constexpr uint32_t getExpectedMVKConfigurationSize() {
 #define MVK_CONFIG_MEMBER(member, mbrType, name)         cfgSize += sizeof(mbrType);
 	uint32_t cfgSize = 0;
 #include "MVKConfigMembers.def"
+	cfgSize += kMVKConfigurationInternalPaddingByteCount;
 	return cfgSize;
 }
 
@@ -65,6 +66,9 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 
 	// Clamp timestampPeriodLowPassAlpha between 0.0 and 1.0.
 	dstMVKConfig.timestampPeriodLowPassAlpha = mvkClamp(dstMVKConfig.timestampPeriodLowPassAlpha, 0.0f, 1.0f);
+
+	// Only allow useMetalPrivateAPI to be enabled if we were built with support for it.
+	dstMVKConfig.useMetalPrivateAPI = dstMVKConfig.useMetalPrivateAPI && MVK_USE_METAL_PRIVATE_API;
 
 	// For each string member of the destination MVKConfiguration, store the contents
 	// in a std::string, then repoint the member to the contents of the std::string.

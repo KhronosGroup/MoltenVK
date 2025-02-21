@@ -1,7 +1,7 @@
 /*
  * MVKPixelFormats.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 
 #include "MVKBaseObject.h"
 #include "MVKOSExtensions.h"
+#include "MVKInflectionMap.h"
 #include "mvk_datatypes.hpp"
 #include <spirv_msl.hpp>
 #include <unordered_map>
@@ -27,14 +28,7 @@
 #import <Metal/Metal.h>
 
 class MVKPhysicalDevice;
-
-
-// Validate these values periodically as new formats are added over time.
-static const uint32_t _vkFormatCount = 256;
-static const uint32_t _vkFormatCoreCount = VK_FORMAT_ASTC_12x12_SRGB_BLOCK + 1;
-static const uint32_t _mtlPixelFormatCount = 256;
-static const uint32_t _mtlPixelFormatCoreCount = MTLPixelFormatX32_Stencil8 + 2;     // The actual last enum value is not available on iOS
-static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 3;     // The actual last enum value is not available before Xcode 15
+struct MVKMTLDeviceCapabilities;
 
 
 #pragma mark -
@@ -161,10 +155,10 @@ typedef struct MVKVkFormatDesc {
 	inline bool vertexIsSupportedOrSubstitutable() const { return vertexIsSupported() || (mtlVertexFormatSubstitute != MTLVertexFormatInvalid); };
 
 	bool needsSwizzle() const {
-		return componentMapping.r != VK_COMPONENT_SWIZZLE_IDENTITY ||
-			componentMapping.g != VK_COMPONENT_SWIZZLE_IDENTITY ||
-			componentMapping.b != VK_COMPONENT_SWIZZLE_IDENTITY ||
-			componentMapping.a != VK_COMPONENT_SWIZZLE_IDENTITY;
+		return (componentMapping.r != VK_COMPONENT_SWIZZLE_IDENTITY ||
+				componentMapping.g != VK_COMPONENT_SWIZZLE_IDENTITY ||
+				componentMapping.b != VK_COMPONENT_SWIZZLE_IDENTITY ||
+				componentMapping.a != VK_COMPONENT_SWIZZLE_IDENTITY);
 	}
 } MVKVkFormatDesc;
 
@@ -395,7 +389,8 @@ public:
 									   VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT,
                                        bool isLinear = false,
                                        bool needsReinterpretation = true,
-                                       bool isExtended = false);
+                                       bool isExtended = false,
+									   bool supportAtomics = false);
 
 	/** Enumerates all formats that support the given features, calling a specified function for each one. */
 	void enumerateSupportedFormats(const VkFormatProperties3& properties, bool any, std::function<bool(VkFormat)> func);
@@ -415,51 +410,24 @@ protected:
 	MVKVkFormatDesc& getVkFormatDesc(VkFormat vkFormat);
 	MVKVkFormatDesc& getVkFormatDesc(MTLPixelFormat mtlFormat);
 	MVKMTLFormatDesc& getMTLPixelFormatDesc(MTLPixelFormat mtlFormat);
+	MVKMTLFmtCaps& getMTLPixelFormatCapsIf(MTLPixelFormat mtlPixFmt, bool cond);
 	MVKMTLFormatDesc& getMTLVertexFormatDesc(MTLVertexFormat mtlFormat);
+	id<MTLDevice> getMTLDevice();
 	void initVkFormatCapabilities();
-	void initMTLPixelFormatCapabilities();
-	void initMTLVertexFormatCapabilities();
-	void buildMTLFormatMaps();
-	void buildVkFormatMaps();
-	void setFormatProperties(MVKVkFormatDesc& vkDesc);
-	void modifyMTLFormatCapabilities();
-	void modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice);
-	void addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
-									   MTLFeatureSet mtlFeatSet,
-									   MTLPixelFormat mtlPixFmt,
-									   MVKMTLFmtCaps mtlFmtCaps);
-	void addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
-									   MTLGPUFamily gpuFamily,
-									   MVKOSVersion minOSVer,
-									   MTLPixelFormat mtlPixFmt,
-									   MVKMTLFmtCaps mtlFmtCaps);
-	void disableMTLPixelFormatCapabilities(MTLPixelFormat mtlPixFmt,
-										   MVKMTLFmtCaps mtlFmtCaps);
-	void disableAllMTLPixelFormatCapabilities(MTLPixelFormat mtlPixFmt);
-	void addMTLVertexFormatCapabilities(id<MTLDevice> mtlDevice,
-										MTLFeatureSet mtlFeatSet,
-										MTLVertexFormat mtlVtxFmt,
-										MVKMTLFmtCaps mtlFmtCaps);
-	void addMTLVertexFormatCapabilities(id<MTLDevice> mtlDevice,
-										MTLGPUFamily gpuFamily,
-										MVKOSVersion minOSVer,
-										MTLVertexFormat mtlVtxFmt,
-										MVKMTLFmtCaps mtlFmtCaps);
+	void initMTLPixelFormatCapabilities(const MVKMTLDeviceCapabilities& gpuCaps);
+	void initMTLVertexFormatCapabilities(const MVKMTLDeviceCapabilities& gpuCaps);
+	void modifyMTLFormatCapabilities(const MVKMTLDeviceCapabilities& gpuCaps);
+	void buildVkFormatMaps(const MVKMTLDeviceCapabilities& gpuCaps);
+	void setFormatProperties(MVKVkFormatDesc& vkDesc, const MVKMTLDeviceCapabilities& gpuCaps);
+	void addMTLPixelFormatDescImpl(MTLPixelFormat mtlPixFmt, MTLPixelFormat mtlPixFmtLinear,
+								   MVKMTLViewClass viewClass, MVKMTLFmtCaps fmtCaps, const char* name);
+	void addValidatedMTLPixelFormatDesc(MTLPixelFormat mtlPixFmt, MTLPixelFormat mtlPixFmtLinear,
+										MVKMTLViewClass viewClass, MVKMTLFmtCaps appleGPUCaps, MVKMTLFmtCaps macGPUCaps,
+										const MVKMTLDeviceCapabilities& mtlDevCaps, const char* name);
+	void addMTLVertexFormatDescImpl(MTLVertexFormat mtlVtxFmt, MVKMTLFmtCaps vtxCap, const char* name);
 
 	MVKPhysicalDevice* _physicalDevice;
-	MVKVkFormatDesc _vkFormatDescriptions[_vkFormatCount];
-	MVKMTLFormatDesc _mtlPixelFormatDescriptions[_mtlPixelFormatCount];
-	MVKMTLFormatDesc _mtlVertexFormatDescriptions[_mtlVertexFormatCount];
-
-	// Vulkan core formats have small values and are mapped by simple lookup array.
-	// Vulkan extension formats have larger values and are mapped by a map.
-	uint16_t _vkFormatDescIndicesByVkFormatsCore[_vkFormatCoreCount];
-	std::unordered_map<uint32_t, uint32_t> _vkFormatDescIndicesByVkFormatsExt;
-
-	// Most Metal formats have small values and are mapped by simple lookup array.
-	// Outliers are mapped by a map.
-	uint16_t _mtlFormatDescIndicesByMTLPixelFormatsCore[_mtlPixelFormatCoreCount];
-	std::unordered_map<NSUInteger, uint32_t> _mtlFormatDescIndicesByMTLPixelFormatsExt;
-
-	uint16_t _mtlFormatDescIndicesByMTLVertexFormats[_mtlVertexFormatCount];
+	MVKInflectionMap<VkFormat, MVKVkFormatDesc, VK_FORMAT_ASTC_12x12_SRGB_BLOCK + 1> _vkFormatDescriptions;
+	MVKInflectionMap<uint16_t, MVKMTLFormatDesc, MTLPixelFormatX32_Stencil8 + 2> _mtlPixelFormatDescriptions;  // The actual last enum value is not available on iOS
+	MVKSmallVector<MVKMTLFormatDesc> _mtlVertexFormatDescriptions;
 };

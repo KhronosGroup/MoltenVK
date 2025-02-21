@@ -1,7 +1,7 @@
 /*
  * MVKDeviceMemory.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,16 @@ typedef struct MVKMappedMemoryRange {
 	VkDeviceSize size = 0;
 } MVKMappedMemoryRange;
 
+struct HeapAllocation {
+    id<MTLHeap> heap = nil; // Reference to the heap containing this allocation
+    size_t offset = 0; // Offset into the heap
+    size_t size = 0; // Total size of this allocation
+    size_t align = 0; // Allocation alignment requirement
+
+    bool isValid() const {
+        return (heap != nil) && (size != 0);
+    }
+};
 
 /** Represents a Vulkan device-space memory allocation. */
 class MVKDeviceMemory : public MVKVulkanAPIDeviceObject {
@@ -69,8 +79,8 @@ public:
     inline VkDeviceSize getDeviceMemoryCommitment() { return _allocationSize; }
 
 	/**
-	 * Returns the host memory address of this memory, or NULL if the memory
-	 * is marked as device-only and cannot be mapped to a host address.
+	 * Returns the host memory address of this memory, or NULL if the memory has not been
+	 * mapped yet, or is marked as device-only and cannot be mapped to a host address.
 	 */
 	inline void* getHostMemoryAddress() { return _pMemory; }
 

@@ -1,7 +1,7 @@
 /*
  * MVKDescriptorSet.mm
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,67 @@
 #include "MVKPipeline.h"
 #include "MVKInstance.h"
 #include "MVKOSExtensions.h"
+#include <sstream>
+
+
+// The size of one Metal3 Argument Buffer slot in bytes.
+static const size_t kMVKMetal3ArgBuffSlotSizeInBytes = sizeof(uint64_t);
+
+
+#pragma mark -
+#pragma mark MVKMetalArgumentBuffer
+
+void MVKMetalArgumentBuffer::setArgumentBuffer(id<MTLBuffer> mtlArgBuff,
+											   NSUInteger mtlArgBuffOfst,
+											   NSUInteger mtlArgBuffEncSize,
+											   id<MTLArgumentEncoder> mtlArgEnc) {
+	_mtlArgumentBuffer = mtlArgBuff;
+	_mtlArgumentBufferOffset = mtlArgBuffOfst;
+	_mtlArgumentBufferEncodedSize = mtlArgBuffEncSize;
+
+	auto* oldArgEnc = _mtlArgumentEncoder;
+	_mtlArgumentEncoder = [mtlArgEnc retain];	// retained
+	[_mtlArgumentEncoder setArgumentBuffer: _mtlArgumentBuffer offset: _mtlArgumentBufferOffset];
+	[oldArgEnc release];
+}
+
+void MVKMetalArgumentBuffer::setBuffer(id<MTLBuffer> mtlBuff, NSUInteger offset, uint32_t index) {
+	if (_mtlArgumentEncoder) {
+		[_mtlArgumentEncoder setBuffer: mtlBuff offset: offset atIndex: index];
+	} else {
+#if MVK_XCODE_14
+		*(uint64_t*)getArgumentPointer(index) = mtlBuff.gpuAddress + offset;
+#endif
+	}
+}
+
+void MVKMetalArgumentBuffer::setTexture(id<MTLTexture> mtlTex, uint32_t index) {
+	if (_mtlArgumentEncoder) {
+		[_mtlArgumentEncoder setTexture: mtlTex atIndex: index];
+	} else {
+#if MVK_XCODE_14
+		*(MTLResourceID*)getArgumentPointer(index) = mtlTex.gpuResourceID;
+#endif
+	}
+}
+
+void MVKMetalArgumentBuffer::setSamplerState(id<MTLSamplerState> mtlSamp, uint32_t index) {
+	if (_mtlArgumentEncoder) {
+		[_mtlArgumentEncoder setSamplerState: mtlSamp atIndex: index];
+	} else {
+#if MVK_XCODE_14
+		*(MTLResourceID*)getArgumentPointer(index) = mtlSamp.gpuResourceID;
+#endif
+	}
+}
+
+// Returns the address of the slot at the index within the Metal argument buffer.
+// This is based on the Metal 3 design that all arg buffer slots are 64 bits.
+void* MVKMetalArgumentBuffer::getArgumentPointer(uint32_t index) const {
+	return (void*)((uintptr_t)_mtlArgumentBuffer.contents + _mtlArgumentBufferOffset + (index * kMVKMetal3ArgBuffSlotSizeInBytes));
+}
+
+MVKMetalArgumentBuffer::~MVKMetalArgumentBuffer() { [_mtlArgumentEncoder release]; }
 
 
 #pragma mark -
@@ -98,7 +159,9 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
     if (!_isPushDescriptorLayout) return;
 
 	if (!cmdEncoder) { clearConfigurationResult(); }
-    for (const VkWriteDescriptorSet& descWrite : descriptorWrites) {
+
+	auto& enabledExtns = getEnabledExtensions();
+	for (const VkWriteDescriptorSet& descWrite : descriptorWrites) {
         uint32_t dstBinding = descWrite.dstBinding;
         uint32_t dstArrayElement = descWrite.dstArrayElement;
         uint32_t descriptorCount = descWrite.descriptorCount;
@@ -106,7 +169,7 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
         const VkDescriptorBufferInfo* pBufferInfo = descWrite.pBufferInfo;
         const VkBufferView* pTexelBufferView = descWrite.pTexelBufferView;
         const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
-        if (_device->_enabledExtensions.vk_EXT_inline_uniform_block.enabled) {
+        if (enabledExtns.vk_EXT_inline_uniform_block.enabled) {
 			for (const auto* next = (VkBaseInStructure*)descWrite.pNext; next; next = next->pNext) {
                 switch (next->sType) {
                 case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
@@ -171,6 +234,24 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
     }
 }
 
+static void populateAuxBuffer(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
+							  MVKShaderStageResourceBinding buffBinding,
+							  uint32_t descSetIndex,
+							  uint32_t descBinding,
+							  bool usingNativeTextureAtomics) {
+	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
+		mvkPopulateShaderConversionConfig(shaderConfig,
+										  buffBinding,
+										  MVKShaderStage(stage),
+										  descSetIndex,
+										  descBinding,
+										  1,
+										  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+										  nullptr,
+										  usingNativeTextureAtomics);
+	}
+}
+
 void MVKDescriptorSetLayout::populateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
                                                             MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 															uint32_t descSetIndex) {
@@ -179,16 +260,26 @@ void MVKDescriptorSetLayout::populateShaderConversionConfig(mvk::SPIRVToMSLConve
 		_bindings[bindIdx].populateShaderConversionConfig(shaderConfig, dslMTLRezIdxOffsets, descSetIndex);
 	}
 
-	// Mark if Metal argument buffers are in use, but this descriptor set layout is not using them.
-	if (isUsingMetalArgumentBuffers() && !isUsingMetalArgumentBuffer()) {
+	// If this descriptor set is using an argument buffer, and needs a buffer size auxiliary buffer, add it.
+	if (isUsingMetalArgumentBuffers() && needsBufferSizeAuxBuffer()) {
+		MVKShaderStageResourceBinding buffBinding;
+		buffBinding.bufferIndex = getBufferSizeBufferArgBuferIndex();
+		populateAuxBuffer(shaderConfig, buffBinding, descSetIndex,
+						  SPIRV_CROSS_NAMESPACE::kBufferSizeBufferBinding,
+						  getMetalFeatures().nativeTextureAtomics);
+	}
+
+	// If the app is using argument buffers, but this descriptor set is 
+	// not, because this is a discrete descriptor set, mark it as such.
+	if(MVKDeviceTrackingMixin::isUsingMetalArgumentBuffers() && !isUsingMetalArgumentBuffers()) {
 		shaderConfig.discreteDescriptorSets.push_back(descSetIndex);
 	}
 }
 
 bool MVKDescriptorSetLayout::populateBindingUse(MVKBitArray& bindingUse,
-												SPIRVToMSLConversionConfiguration& context,
-												MVKShaderStage stage,
-												uint32_t descSetIndex) {
+                                                mvk::SPIRVToMSLConversionConfiguration& context,
+                                                MVKShaderStage stage,
+                                                uint32_t descSetIndex) {
 	static const spv::ExecutionModel spvExecModels[] = {
 		spv::ExecutionModelVertex,
 		spv::ExecutionModelTessellationControl,
@@ -203,20 +294,96 @@ bool MVKDescriptorSetLayout::populateBindingUse(MVKBitArray& bindingUse,
 	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		auto& dslBind = _bindings[bindIdx];
 		if (context.isResourceUsed(spvExecModels[stage], descSetIndex, dslBind.getBinding())) {
-			bindingUse.setBit(bindIdx);
+			bindingUse.enableBit(bindIdx);
 			descSetIsUsed = true;
 		}
 	}
 	return descSetIsUsed;
 }
 
+bool MVKDescriptorSetLayout::isUsingMetalArgumentBuffers() {
+	return MVKDeviceTrackingMixin::isUsingMetalArgumentBuffers() && _canUseMetalArgumentBuffer;
+};
+
+// Returns an autoreleased MTLArgumentDescriptor suitable for adding an auxiliary buffer to the argument buffer.
+static MTLArgumentDescriptor* getAuxBufferArgumentDescriptor(uint32_t argIndex) {
+	auto* argDesc = [MTLArgumentDescriptor argumentDescriptor];
+	argDesc.dataType = MTLDataTypePointer;
+	argDesc.access = MTLArgumentAccessReadWrite;
+	argDesc.index = argIndex;
+	argDesc.arrayLength = 1;
+	return argDesc;
+}
+
+// Returns an autoreleased MTLArgumentEncoder for a descriptor set, or nil if not needed.
+// Make sure any call to this function is wrapped in @autoreleasepool.
+id <MTLArgumentEncoder> MVKDescriptorSetLayout::getMTLArgumentEncoder(uint32_t variableDescriptorCount) {
+	auto* encoderArgs = [NSMutableArray arrayWithCapacity: _bindings.size() * 2];	// Double it to cover potential multi-resource descriptors (combo image/samp, multi-planar, etc).
+
+	// Buffer sizes buffer at front
+	if (needsBufferSizeAuxBuffer()) {
+		[encoderArgs addObject: getAuxBufferArgumentDescriptor(getBufferSizeBufferArgBuferIndex())];
+	}
+	for (auto& dslBind : _bindings) {
+		dslBind.addMTLArgumentDescriptors(encoderArgs, variableDescriptorCount);
+	}
+	return encoderArgs.count ? [[getMTLDevice() newArgumentEncoderWithArguments: encoderArgs] autorelease] : nil;
+}
+
+// Returns the encoded byte length of the resources from a descriptor set in an argument buffer.
+size_t MVKDescriptorSetLayout::getMetal3ArgumentBufferEncodedLength(uint32_t variableDescriptorCount) {
+	size_t encodedLen =  0;
+
+	// Buffer sizes buffer at front
+	if (needsBufferSizeAuxBuffer()) {
+		encodedLen += kMVKMetal3ArgBuffSlotSizeInBytes;
+	}
+	for (auto& dslBind : _bindings) {
+		encodedLen += dslBind.getMTLResourceCount(variableDescriptorCount) * kMVKMetal3ArgBuffSlotSizeInBytes;
+	}
+	return encodedLen;
+}
+
+uint32_t MVKDescriptorSetLayout::getDescriptorCount(uint32_t variableDescriptorCount) {
+	uint32_t descCnt =  0;
+	for (auto& dslBind : _bindings) {
+		descCnt += dslBind.getDescriptorCount(variableDescriptorCount);
+	}
+	return descCnt;
+}
+
+MVKDescriptorSetLayoutBinding* MVKDescriptorSetLayout::getBinding(uint32_t binding, uint32_t bindingIndexOffset) {
+	auto itr = _bindingToIndex.find(binding);
+	if (itr != _bindingToIndex.end()) {
+		uint32_t bindIdx = itr->second + bindingIndexOffset;
+		if (bindIdx < _bindings.size()) {
+			return &_bindings[bindIdx];
+		}
+	}
+	return nullptr;
+}
+
 MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
                                                const VkDescriptorSetLayoutCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
+	const VkDescriptorBindingFlags* pBindingFlags = nullptr;
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO: {
+				auto* pDescSetLayoutBindingFlags = (VkDescriptorSetLayoutBindingFlagsCreateInfo*)next;
+				if (pDescSetLayoutBindingFlags->bindingCount) {
+					pBindingFlags = pDescSetLayoutBindingFlags->pBindingFlags;
+				}
+				break;
+			}
+			default:
+				break;
+		}
+	}
 
-	uint32_t bindCnt = pCreateInfo->bindingCount;
-	const auto* pBindingFlags = getBindingFlags(pCreateInfo);
+	_isPushDescriptorLayout = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+	_canUseMetalArgumentBuffer = checkCanUseArgumentBuffers(pCreateInfo);	// After _isPushDescriptorLayout
 
-	// The bindings in VkDescriptorSetLayoutCreateInfo do not need to provided in order of binding number.
+	// The bindings in VkDescriptorSetLayoutCreateInfo do not need to be provided in order of binding number.
 	// However, several subsequent operations, such as the dynamic offsets in vkCmdBindDescriptorSets()
 	// are ordered by binding number. To prepare for this, sort the bindings by binding number.
 	struct BindInfo {
@@ -224,52 +391,62 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 		VkDescriptorBindingFlags bindingFlags;
 	};
 	MVKSmallVector<BindInfo, 64> sortedBindings;
+
+	bool needsBuffSizeAuxBuff = false;
+	uint32_t bindCnt = pCreateInfo->bindingCount;
 	sortedBindings.reserve(bindCnt);
 	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
-		sortedBindings.push_back( { &pCreateInfo->pBindings[bindIdx], pBindingFlags ? pBindingFlags[bindIdx] : 0 } );
+		auto* pBind = &pCreateInfo->pBindings[bindIdx];
+		sortedBindings.push_back( { pBind, pBindingFlags ? pBindingFlags[bindIdx] : 0 } );
+		needsBuffSizeAuxBuff = needsBuffSizeAuxBuff || mvkNeedsBuffSizeAuxBuffer(pBind);
 	}
 	std::sort(sortedBindings.begin(), sortedBindings.end(), [](BindInfo bindInfo1, BindInfo bindInfo2) {
 		return bindInfo1.pBinding->binding < bindInfo2.pBinding->binding;
 	});
 
-	_descriptorCount = 0;
-	_isPushDescriptorLayout = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
-
+	// Create bindings. Must be done after _isPushDescriptorLayout & _canUseMetalArgumentBuffer are set.
+	uint32_t dslDescCnt = 0;
+	uint32_t dslMTLRezCnt = needsBuffSizeAuxBuff ? 1 : 0;	// If needed, leave a slot for the buffer sizes buffer at front.
 	_bindings.reserve(bindCnt);
     for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		BindInfo& bindInfo = sortedBindings[bindIdx];
-        _bindings.emplace_back(_device, this, bindInfo.pBinding, bindInfo.bindingFlags, _descriptorCount);
+        _bindings.emplace_back(_device, this, bindInfo.pBinding, bindInfo.bindingFlags, dslDescCnt, dslMTLRezCnt);
 		_bindingToIndex[bindInfo.pBinding->binding] = bindIdx;
-		_descriptorCount += _bindings.back().getDescriptorCount();
 	}
 
-	initMTLArgumentEncoder();
+	MVKLogDebugIf(getMVKConfig().debugMode, "Created %s\n", getLogDescription().c_str());
 }
 
-// Find and return an array of binding flags from the pNext chain of pCreateInfo,
-// or return nullptr if the chain does not include binding flags.
-const VkDescriptorBindingFlags* MVKDescriptorSetLayout::getBindingFlags(const VkDescriptorSetLayoutCreateInfo* pCreateInfo) {
-	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
-		switch (next->sType) {
-			case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO: {
-				auto* pDescSetLayoutBindingFlags = (VkDescriptorSetLayoutBindingFlagsCreateInfo*)next;
-				return pDescSetLayoutBindingFlags->bindingCount ? pDescSetLayoutBindingFlags->pBindingFlags : nullptr;
+std::string MVKDescriptorSetLayout::getLogDescription(std::string indent) {
+	std::stringstream descStr;
+	descStr << "VkDescriptorSetLayout with " << _bindings.size() << " bindings:";
+	auto bindIndent = indent + "\t";
+	for (auto& dlb : _bindings) {
+		descStr << "\n" << bindIndent << dlb.getLogDescription(bindIndent);
+	}
+	return descStr.str();
+}
+
+// Check if argument buffers can be used, and return findings.
+// Must be called after setting _isPushDescriptorLayout.
+bool MVKDescriptorSetLayout::checkCanUseArgumentBuffers(const VkDescriptorSetLayoutCreateInfo* pCreateInfo) {
+
+// iOS Tier 1 argument buffers do not support writable images.
+#if MVK_IOS_OR_TVOS
+	if (getMetalFeatures().argumentBuffersTier < MTLArgumentBuffersTier2) {
+		for (uint32_t bindIdx = 0; bindIdx < pCreateInfo->bindingCount; bindIdx++) {
+			switch (pCreateInfo->pBindings[bindIdx].descriptorType) {
+				case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+				case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+					return false;
+				default:
+					break;
 			}
-			default:
-				break;
 		}
 	}
-	return nullptr;
-}
+#endif
 
-void MVKDescriptorSetLayout::initMTLArgumentEncoder() {
-	if (isUsingDescriptorSetMetalArgumentBuffers() && isUsingMetalArgumentBuffer()) {
-		@autoreleasepool {
-			NSMutableArray<MTLArgumentDescriptor*>* args = [NSMutableArray arrayWithCapacity: _bindings.size()];
-			for (auto& dslBind : _bindings) { dslBind.addMTLArgumentDescriptors(args); }
-			_mtlArgumentEncoder.init(args.count ? [getMTLDevice() newArgumentEncoderWithArguments: args] : nil);
-		}
-	}
+	return !_isPushDescriptorLayout;	// Push descriptors don't use argument buffers
 }
 
 
@@ -284,33 +461,37 @@ MVKDescriptor* MVKDescriptorSet::getDescriptor(uint32_t binding, uint32_t elemen
 	return _descriptors[_layout->getDescriptorIndex(binding, elementIndex)];
 }
 
-id<MTLBuffer> MVKDescriptorSet::getMetalArgumentBuffer() { return _pool->_metalArgumentBuffer; }
-
 template<typename DescriptorAction>
 void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
-							 size_t stride,
+							 size_t srcStride,
 							 const void* pData) {
-#define writeDescriptorAt(IDX)                                    \
-	do {                                                          \
-		MVKDescriptor* mvkDesc = _descriptors[descIdx];           \
-		if (mvkDesc->getDescriptorType() == descType) {           \
-			mvkDesc->write(mvkDSLBind, this, IDX, stride, pData); \
-			_metalArgumentBufferDirtyDescriptors.setBit(descIdx); \
-		}                                                         \
-	} while(false)
 
-	MVKDescriptorSetLayoutBinding* mvkDSLBind = _layout->getBinding(pDescriptorAction->dstBinding);
-	VkDescriptorType descType = mvkDSLBind->getDescriptorType();
-	if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
-		// For inline buffers dstArrayElement is a byte offset
-		uint32_t descIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding);
-		writeDescriptorAt(pDescriptorAction->dstArrayElement);
+	auto* mvkDSLBind = _layout->getBinding(pDescriptorAction->dstBinding);
+	if (mvkDSLBind->getDescriptorType() == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+		// For inline buffers, descriptorCount is a byte count and dstArrayElement is a byte offset.
+		// If needed, Vulkan allows updates to extend into subsequent bindings that are of the same type,
+		// so iterate layout bindings and their associated descriptors, until all bytes are updated.
+		const auto* pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlockEXT*)pData;
+		uint32_t numBytesToCopy = pDescriptorAction->descriptorCount;
+		uint32_t dstOffset = pDescriptorAction->dstArrayElement;
+		uint32_t srcOffset = 0;
+		while (mvkDSLBind && numBytesToCopy > 0 && srcOffset < pInlineUniformBlock->dataSize) {
+			auto* mvkDesc = (MVKInlineUniformBlockDescriptor*)_descriptors[mvkDSLBind->_descriptorIndex];
+			auto numBytesMoved = mvkDesc->writeBytes(mvkDSLBind, this, dstOffset, srcOffset, numBytesToCopy, pInlineUniformBlock);
+			numBytesToCopy -= numBytesMoved;
+			dstOffset = 0;
+			srcOffset += numBytesMoved;
+			mvkDSLBind = _layout->getBinding(mvkDSLBind->getBinding(), 1);	// Next binding if needed
+		}
 	} else {
-		uint32_t descStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding, pDescriptorAction->dstArrayElement);
-		uint32_t elemCnt = std::min(pDescriptorAction->descriptorCount, (uint32_t)_descriptors.size() - descStartIdx);
-		for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
-			uint32_t descIdx = descStartIdx + elemIdx;
-			writeDescriptorAt(elemIdx);
+		// We don't test against the descriptor count of the binding, because Vulkan allows
+		// updates to extend into subsequent bindings that are of the same type, if needed.
+		uint32_t srcElemIdx = 0;
+		uint32_t dstElemIdx = pDescriptorAction->dstArrayElement;
+		uint32_t descIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding, dstElemIdx);
+		uint32_t descCnt = pDescriptorAction->descriptorCount;
+		while (srcElemIdx < descCnt) {
+			_descriptors[descIdx++]->write(mvkDSLBind, this, dstElemIdx++, srcElemIdx++, srcStride, pData);
 		}
 	}
 }
@@ -324,113 +505,169 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
 	MVKDescriptorSetLayoutBinding* mvkDSLBind = _layout->getBinding(pDescriptorCopy->srcBinding);
 	VkDescriptorType descType = mvkDSLBind->getDescriptorType();
     if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
-		// For inline buffers srcArrayElement is a byte offset
-		MVKDescriptor* mvkDesc = getDescriptor(pDescriptorCopy->srcBinding);
-		if (mvkDesc->getDescriptorType() == descType) {
-			mvkDesc->read(mvkDSLBind, this, pDescriptorCopy->srcArrayElement, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
+		// For inline buffers, descriptorCount is a byte count and dstArrayElement is a byte offset.
+		// If needed, Vulkan allows updates to extend into subsequent bindings that are of the same type,
+		// so iterate layout bindings and their associated descriptors, until all bytes are updated.
+		uint32_t numBytesToCopy = pDescriptorCopy->descriptorCount;
+		uint32_t dstOffset = 0;
+		uint32_t srcOffset = pDescriptorCopy->srcArrayElement;
+		while (mvkDSLBind && numBytesToCopy > 0 && dstOffset < pInlineUniformBlock->dataSize) {
+			auto* mvkDesc = (MVKInlineUniformBlockDescriptor*)_descriptors[mvkDSLBind->_descriptorIndex];
+			auto numBytesMoved = mvkDesc->readBytes(mvkDSLBind, this, dstOffset, srcOffset, numBytesToCopy, pInlineUniformBlock);
+			numBytesToCopy -= numBytesMoved;
+			dstOffset += numBytesMoved;
+			srcOffset = 0;
+			mvkDSLBind = _layout->getBinding(mvkDSLBind->getBinding(), 1);	// Next binding if needed
 		}
     } else {
-        uint32_t srcStartIdx = _layout->getDescriptorIndex(pDescriptorCopy->srcBinding, pDescriptorCopy->srcArrayElement);
-		uint32_t descCnt = std::min(pDescriptorCopy->descriptorCount, (uint32_t)_descriptors.size() - srcStartIdx);
-        for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-			MVKDescriptor* mvkDesc = _descriptors[srcStartIdx + descIdx];
-			if (mvkDesc->getDescriptorType() == descType) {
-				mvkDesc->read(mvkDSLBind, this, descIdx, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
-			}
-        }
+		// We don't test against the descriptor count of the binding, because Vulkan allows
+		// updates to extend into subsequent bindings that are of the same type, if needed.
+		uint32_t srcElemIdx = pDescriptorCopy->srcArrayElement;
+		uint32_t dstElemIdx = 0;
+		uint32_t descIdx = _layout->getDescriptorIndex(pDescriptorCopy->srcBinding, srcElemIdx);
+		uint32_t descCnt = pDescriptorCopy->descriptorCount;
+		while (dstElemIdx < descCnt) {
+			_descriptors[descIdx++]->read(mvkDSLBind, this, dstElemIdx++, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
+		}
     }
 }
 
 MVKMTLBufferAllocation* MVKDescriptorSet::acquireMTLBufferRegion(NSUInteger length) {
-	return _pool->_inlineBlockMTLBufferAllocator.acquireMTLBufferRegion(length);
+	return _pool->_mtlBufferAllocator.acquireMTLBufferRegion(length);
 }
 
 VkResult MVKDescriptorSet::allocate(MVKDescriptorSetLayout* layout,
 									uint32_t variableDescriptorCount,
-									NSUInteger mtlArgBufferOffset) {
+									NSUInteger mtlArgBuffOffset,
+									NSUInteger mtlArgBuffEncSize,
+									id<MTLArgumentEncoder> mtlArgEnc) {
 	_layout = layout;
+	_layout->retain();
 	_variableDescriptorCount = variableDescriptorCount;
+	_argumentBuffer.setArgumentBuffer(_pool->_metalArgumentBuffer, mtlArgBuffOffset, mtlArgBuffEncSize, mtlArgEnc);
 
-	// If the Metal argument buffer offset has not been set yet, set it now.
-	if ( !_metalArgumentBufferOffset ) { _metalArgumentBufferOffset = mtlArgBufferOffset; }
-
-	uint32_t descCnt = layout->getDescriptorCount();
+	uint32_t descCnt = layout->getDescriptorCount(variableDescriptorCount);
 	_descriptors.reserve(descCnt);
-	_metalArgumentBufferDirtyDescriptors.resize(descCnt);
 
 	uint32_t bindCnt = (uint32_t)layout->_bindings.size();
 	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		MVKDescriptorSetLayoutBinding* mvkDSLBind = &layout->_bindings[bindIdx];
-		uint32_t elemCnt = mvkDSLBind->getDescriptorCount(this);
+		uint32_t elemCnt = mvkDSLBind->getDescriptorCount(variableDescriptorCount);
 		for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 			VkDescriptorType descType = mvkDSLBind->getDescriptorType();
-			uint32_t descIdx = (uint32_t)_descriptors.size();
 			MVKDescriptor* mvkDesc = nullptr;
-			setConfigurationResult(_pool->allocateDescriptor(descType, &mvkDesc));
+			bool dynamicAllocation = true;
+			setConfigurationResult(_pool->allocateDescriptor(descType, &mvkDesc, dynamicAllocation));	// Modifies dynamicAllocation.
+			if (dynamicAllocation) { _allDescriptorsAreFromPool = false; }
 			if ( !wasConfigurationSuccessful() ) { return getConfigurationResult(); }
 			if (mvkDesc->usesDynamicBufferOffsets()) { _dynamicOffsetDescriptorCount++; }
-			if (mvkDSLBind->usesImmutableSamplers()) { _metalArgumentBufferDirtyDescriptors.setBit(descIdx); }
 			_descriptors.push_back(mvkDesc);
 		}
+		mvkDSLBind->encodeImmutableSamplersToMetalArgumentBuffer(this);
 	}
+
+	// If needed, allocate a MTLBuffer to track buffer sizes, and add it to the argument buffer.
+	if (hasMetalArgumentBuffer() && _layout->needsBufferSizeAuxBuffer()) {
+		uint32_t buffSizesSlotCount = _layout->_maxBufferIndex + 1;
+		_bufferSizesBuffer = acquireMTLBufferRegion(buffSizesSlotCount * sizeof(uint32_t));
+		_argumentBuffer.setBuffer(_bufferSizesBuffer->_mtlBuffer,
+								  _bufferSizesBuffer->_offset,
+								  _layout->getBufferSizeBufferArgBuferIndex());
+	}
+
 	return getConfigurationResult();
 }
 
 void MVKDescriptorSet::free(bool isPoolReset) {
+	if(_layout) { _layout->release(); }
 	_layout = nullptr;
 	_dynamicOffsetDescriptorCount = 0;
 	_variableDescriptorCount = 0;
 
-	// Only reset the Metal arg buffer offset if the entire pool is being reset
-	if (isPoolReset) { _metalArgumentBufferOffset = 0; }
+	if (isPoolReset) { _argumentBuffer.setArgumentBuffer(_pool->_metalArgumentBuffer, 0, 0, nil); }
 
-	// Pooled descriptors don't need to be individually freed under pool resets.
-	if ( !(_pool->_hasPooledDescriptors && isPoolReset) ) {
+	// If this is a pool reset, and all desciptors are from the pool, we don't need to free them.
+	if ( !(isPoolReset && _allDescriptorsAreFromPool) ) {
 		for (auto mvkDesc : _descriptors) { _pool->freeDescriptor(mvkDesc); }
 	}
 	_descriptors.clear();
 	_descriptors.shrink_to_fit();
-	_metalArgumentBufferDirtyDescriptors.resize(0);
+	_allDescriptorsAreFromPool = true;
+
+	if (_bufferSizesBuffer) {
+		_bufferSizesBuffer->returnToPool();
+		_bufferSizesBuffer = nullptr;
+	}
 
 	clearConfigurationResult();
+}
+
+void MVKDescriptorSet::setBufferSize(uint32_t descIdx, uint32_t value) {
+	if (_bufferSizesBuffer) {
+		*(uint32_t*)((uintptr_t)_bufferSizesBuffer->getContents() + (descIdx * sizeof(uint32_t))) = value;
+	}
+}
+
+void MVKDescriptorSet::encodeAuxBufferUsage(MVKResourcesCommandEncoderState* rezEncState, MVKShaderStage stage) {
+	if (_bufferSizesBuffer) {
+		MTLRenderStages mtlRendStages = MTLRenderStageVertex | MTLRenderStageFragment;
+		rezEncState->encodeResourceUsage(stage, _bufferSizesBuffer->_mtlBuffer, MTLResourceUsageRead, mtlRendStages);
+	}
 }
 
 MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorPool* pool) : MVKVulkanAPIDeviceObject(pool->_device), _pool(pool) {
 	free(true);
 }
 
+MVKDescriptorSet::~MVKDescriptorSet() {
+	if(_layout) { _layout->release(); }
+}
+
 
 #pragma mark -
 #pragma mark MVKDescriptorTypePool
 
-// If preallocated, find the next availalble descriptor.
-// If not preallocated, create one on the fly.
+// Find the next availalble descriptor in the pool. or if the pool is exhausted, optionally create one on the fly.
+// The dynamicAllocation parameter is both an input and output parameter. Incoming, dynamicAllocation indicates that,
+// if there are no more descriptors in this pool, a new descriptor should be created and returned.
+// On return, dynamicAllocation indicates back to the caller whether a descriptor was dynamically created.
+// If a descriptor could not be found in the pool and was not created dynamically, a null descriptor is returned.
 template<class DescriptorClass>
-VkResult MVKDescriptorTypePool<DescriptorClass>::allocateDescriptor(MVKDescriptor** pMVKDesc,
+VkResult MVKDescriptorTypePool<DescriptorClass>::allocateDescriptor(VkDescriptorType descType,
+																	MVKDescriptor** pMVKDesc,
+																	bool& dynamicAllocation,
 																	MVKDescriptorPool* pool) {
-	DescriptorClass* mvkDesc;
-	if (pool->_hasPooledDescriptors) {
-		size_t availDescIdx = _availability.getIndexOfFirstSetBit(true);
-		if (availDescIdx >= _availability.size()) { return VK_ERROR_OUT_OF_POOL_MEMORY; }
-		mvkDesc = &_descriptors[availDescIdx];
-		mvkDesc->reset();		// Clear before reusing.
+	VkResult errRslt = VK_ERROR_OUT_OF_POOL_MEMORY;
+	size_t availDescIdx = _availability.getIndexOfFirstEnabledBit();
+	if (availDescIdx < size()) {
+		_availability.disableBit(availDescIdx);		// Mark the descriptor as taken
+		*pMVKDesc = &_descriptors[availDescIdx];
+		(*pMVKDesc)->reset();						// Reset descriptor before reusing.
+		dynamicAllocation = false;
+		return VK_SUCCESS;
+	} else if (dynamicAllocation) {
+		*pMVKDesc = new DescriptorClass();
+		reportWarning(errRslt, "VkDescriptorPool exhausted pool of %zu %s descriptors. Allocating descriptor dynamically.", size(), mvkVkDescriptorTypeName(descType));
+		return VK_SUCCESS;
 	} else {
-		mvkDesc = new DescriptorClass();
+		*pMVKDesc = nullptr;
+		dynamicAllocation = false;
+		return reportError(errRslt, "VkDescriptorPool exhausted pool of %zu %s descriptors.", size(), mvkVkDescriptorTypeName(descType));
 	}
-	*pMVKDesc = mvkDesc;
-	return VK_SUCCESS;
 }
 
-// If preallocated, descriptors are held in contiguous memory, so the index of the returning
-// descriptor can be calculated by pointer differences, and it can be marked as available.
-// The descriptor will be reset when it is re-allocated. This streamlines the reset() of this pool.
-// If not preallocated, simply destroy returning descriptor.
+// If the descriptor is from the pool, mark it as available, otherwise destroy it.
+// Pooled descriptors are held in contiguous memory, so the index of the returning
+// descriptor can be calculated by typed pointer differences. The descriptor will
+// be reset when it is re-allocated. This streamlines a pool reset().
 template<typename DescriptorClass>
 void MVKDescriptorTypePool<DescriptorClass>::freeDescriptor(MVKDescriptor* mvkDesc,
 															MVKDescriptorPool* pool) {
-	if (pool->_hasPooledDescriptors) {
-		size_t descIdx = (DescriptorClass*)mvkDesc - _descriptors.data();
-		_availability.setBit(descIdx);
+	DescriptorClass* pDesc = (DescriptorClass*)mvkDesc;
+	DescriptorClass* pFirstDesc = _descriptors.data();
+	int64_t descIdx = pDesc >= pFirstDesc ? pDesc - pFirstDesc : pFirstDesc - pDesc;
+	if (descIdx >= 0 && descIdx < size()) {
+		_availability.enableBit(descIdx);
 	} else {
 		mvkDesc->destroy();
 	}
@@ -439,7 +676,14 @@ void MVKDescriptorTypePool<DescriptorClass>::freeDescriptor(MVKDescriptor* mvkDe
 // Preallocated descriptors will be reset when they are reused
 template<typename DescriptorClass>
 void MVKDescriptorTypePool<DescriptorClass>::reset() {
-	_availability.setAllBits();
+	_availability.enableAllBits();
+}
+
+template<typename DescriptorClass>
+size_t MVKDescriptorTypePool<DescriptorClass>::getRemainingDescriptorCount() {
+	size_t enabledCount = 0;
+	_availability.enumerateEnabledBits([&](size_t bitIdx) { enabledCount++; return true; });
+	return enabledCount;
 }
 
 template<typename DescriptorClass>
@@ -453,82 +697,98 @@ MVKDescriptorTypePool<DescriptorClass>::MVKDescriptorTypePool(size_t poolSize) :
 
 VkResult MVKDescriptorPool::allocateDescriptorSets(const VkDescriptorSetAllocateInfo* pAllocateInfo,
 												   VkDescriptorSet* pDescriptorSets) {
-	VkResult rslt = VK_SUCCESS;
-	const auto* pVarDescCounts = getVariableDecriptorCounts(pAllocateInfo);
-	for (uint32_t dsIdx = 0; dsIdx < pAllocateInfo->descriptorSetCount; dsIdx++) {
-		MVKDescriptorSetLayout* mvkDSL = (MVKDescriptorSetLayout*)pAllocateInfo->pSetLayouts[dsIdx];
-		if ( !mvkDSL->isPushDescriptorLayout() ) {
-			rslt = allocateDescriptorSet(mvkDSL, (pVarDescCounts ? pVarDescCounts[dsIdx] : 0), &pDescriptorSets[dsIdx]);
-			if (rslt) { return rslt; }
-		}
-	}
-	return rslt;
-}
-
-// Find and return an array of variable descriptor counts from the pNext chain of pCreateInfo,
-// or return nullptr if the chain does not include variable descriptor counts.
-const uint32_t* MVKDescriptorPool::getVariableDecriptorCounts(const VkDescriptorSetAllocateInfo* pAllocateInfo) {
+	const uint32_t* pVarDescCounts = nullptr;
 	for (const auto* next = (VkBaseInStructure*)pAllocateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO: {
 				auto* pVarDescSetVarCounts = (VkDescriptorSetVariableDescriptorCountAllocateInfo*)next;
-				return pVarDescSetVarCounts->descriptorSetCount ? pVarDescSetVarCounts->pDescriptorCounts : nullptr;
+				pVarDescCounts = pVarDescSetVarCounts->descriptorSetCount ? pVarDescSetVarCounts->pDescriptorCounts : nullptr;
 			}
 			default:
 				break;
 		}
 	}
-	return nullptr;
+
+	@autoreleasepool {
+		auto dsCnt = pAllocateInfo->descriptorSetCount;
+		for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
+			MVKDescriptorSetLayout* mvkDSL = (MVKDescriptorSetLayout*)pAllocateInfo->pSetLayouts[dsIdx];
+			if ( !mvkDSL->_isPushDescriptorLayout ) {
+				VkResult rslt = allocateDescriptorSet(mvkDSL, (pVarDescCounts ? pVarDescCounts[dsIdx] : 0), &pDescriptorSets[dsIdx]);
+				if (rslt) {
+					// Per Vulkan spec, if any descriptor set allocation fails, free any successful
+					// allocations, and populate all descriptor set pointers with VK_NULL_HANDLE.
+					freeDescriptorSets(dsIdx, pDescriptorSets);
+					for (uint32_t i = 0; i < dsCnt; i++) { pDescriptorSets[i] = VK_NULL_HANDLE; }
+					return rslt;
+				}
+			} else {
+				pDescriptorSets[dsIdx] = VK_NULL_HANDLE;
+			}
+		}
+	}
+
+	return VK_SUCCESS;
 }
 
-// Retieves the first available descriptor set from the pool, and configures it.
+// Retrieves the first available descriptor set from the pool, and configures it.
 // If none are available, returns an error.
 VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL,
 												  uint32_t variableDescriptorCount,
 												  VkDescriptorSet* pVKDS) {
-	VkResult rslt = VK_ERROR_OUT_OF_POOL_MEMORY;
-	NSUInteger mtlArgBuffAllocSize = mvkDSL->getMTLArgumentEncoder().mtlArgumentEncoderSize;
-	NSUInteger mtlArgBuffAlignedSize = mvkAlignByteCount(mtlArgBuffAllocSize,
-														 getDevice()->_pMetalFeatures->mtlBufferAlignment);
+	VkResult rslt = VK_ERROR_FRAGMENTED_POOL;
+	size_t mtlArgBuffEncSize = 0;
+	id<MTLArgumentEncoder> mtlArgEnc = nil;
+	bool isUsingMetalArgBuff = mvkDSL->isUsingMetalArgumentBuffers();
 
-	size_t dsCnt = _descriptorSetAvailablility.size();
-	_descriptorSetAvailablility.enumerateEnabledBits(true, [&](size_t dsIdx) {
+	if (isUsingMetalArgBuff) {
+		if (needsMetalArgumentBufferEncoders()) {
+			mtlArgEnc = mvkDSL->getMTLArgumentEncoder(variableDescriptorCount);
+			mtlArgBuffEncSize = mtlArgEnc.encodedLength;
+		} else {
+			mtlArgBuffEncSize = mvkDSL->getMetal3ArgumentBufferEncodedLength(variableDescriptorCount);
+		}
+	}
+
+	_descriptorSetAvailablility.enumerateEnabledBits([&](size_t dsIdx) {
 		bool isSpaceAvail = true;		// If not using Metal arg buffers, space will always be available.
 		MVKDescriptorSet* mvkDS = &_descriptorSets[dsIdx];
-		NSUInteger mtlArgBuffOffset = mvkDS->_metalArgumentBufferOffset;
+		NSUInteger mtlArgBuffOffset = 0;
 
-		// If the desc set is using a Metal argument buffer, we also need to see if the desc set
-		// will fit in the slot that might already have been allocated for it in the Metal argument
-		// buffer from a previous allocation that was returned. If this pool has been reset recently,
-		// then the desc sets will not have had a Metal argument buffer allocation assigned yet.
-		if (isUsingDescriptorSetMetalArgumentBuffers() && mvkDSL->isUsingMetalArgumentBuffer()) {
+		// If the desc set is using a Metal argument buffer, we must check if the desc set will fit in the slot
+		// in the Metal argument buffer, if that slot was previously allocated for a returned descriptor set.
+		if (isUsingMetalArgBuff) {
+			mtlArgBuffOffset = mvkDS->getMetalArgumentBuffer().getMetalArgumentBufferOffset();
 
-			// If the offset has not been set (and it's not the first desc set except
-			// on a reset pool), set the offset and update the next available offset value.
-			if ( !mtlArgBuffOffset && (dsIdx || !_nextMetalArgumentBufferOffset)) {
-				mtlArgBuffOffset = _nextMetalArgumentBufferOffset;
-				_nextMetalArgumentBufferOffset += mtlArgBuffAlignedSize;
+			// If the offset has not been set, and this is not the first desc set,
+			// set the offset to align with the end of the previous desc set.
+			if ( !mtlArgBuffOffset && dsIdx ) {
+				auto& prevArgBuff = _descriptorSets[dsIdx - 1].getMetalArgumentBuffer();
+				mtlArgBuffOffset = (prevArgBuff.getMetalArgumentBufferOffset() +
+									mvkAlignByteCount(prevArgBuff.getMetalArgumentBufferEncodedSize(),
+													  getMetalFeatures().mtlBufferAlignment));
 			}
 
 			// Get the offset of the next desc set, if one exists and
 			// its offset has been set, or the end of the arg buffer.
 			size_t nextDSIdx = dsIdx + 1;
-			NSUInteger nextOffset = (nextDSIdx < dsCnt ? _descriptorSets[nextDSIdx]._metalArgumentBufferOffset : 0);
+			NSUInteger nextOffset = (nextDSIdx < _allocatedDescSetCount ? _descriptorSets[nextDSIdx].getMetalArgumentBuffer().getMetalArgumentBufferOffset() : 0);
 			if ( !nextOffset ) { nextOffset = _metalArgumentBuffer.length; }
 
-			isSpaceAvail = (mtlArgBuffOffset + mtlArgBuffAllocSize) <= nextOffset;
+			isSpaceAvail = (mtlArgBuffOffset + mtlArgBuffEncSize) <= nextOffset;
 		}
 
 		if (isSpaceAvail) {
-			rslt = mvkDS->allocate(mvkDSL, variableDescriptorCount, mtlArgBuffOffset);
+			rslt = mvkDS->allocate(mvkDSL, variableDescriptorCount, mtlArgBuffOffset, mtlArgBuffEncSize, mtlArgEnc);
 			if (rslt) {
 				freeDescriptorSet(mvkDS, false);
 			} else {
+				_descriptorSetAvailablility.disableBit(dsIdx);
+				_allocatedDescSetCount = std::max(_allocatedDescSetCount, dsIdx + 1);
 				*pVKDS = (VkDescriptorSet)mvkDS;
 			}
 			return false;
 		} else {
-			_descriptorSetAvailablility.setBit(dsIdx);	// We didn't consume this one after all, so it's still available
 			return true;
 		}
 	});
@@ -552,7 +812,7 @@ void MVKDescriptorPool::freeDescriptorSet(MVKDescriptorSet* mvkDS, bool isPoolRe
 		mvkDS->free(isPoolReset);
 		if ( !isPoolReset ) {
 			size_t dsIdx = mvkDS - _descriptorSets.data();
-			_descriptorSetAvailablility.setBit(dsIdx);
+			_descriptorSetAvailablility.enableBit(dsIdx);
 		}
 	} else {
 		reportError(VK_ERROR_INITIALIZATION_FAILED, "A descriptor set is being returned to a descriptor pool that did not allocate it.");
@@ -562,11 +822,10 @@ void MVKDescriptorPool::freeDescriptorSet(MVKDescriptorSet* mvkDS, bool isPoolRe
 // Free allocated descriptor sets and reset descriptor pools.
 // Don't waste time freeing desc sets that were never allocated.
 VkResult MVKDescriptorPool::reset(VkDescriptorPoolResetFlags flags) {
-	size_t dsCnt = _descriptorSetAvailablility.getLowestNeverClearedBitIndex();
-	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
+	for (uint32_t dsIdx = 0; dsIdx < _allocatedDescSetCount; dsIdx++) {
 		freeDescriptorSet(&_descriptorSets[dsIdx], true);
 	}
-	_descriptorSetAvailablility.setAllBits();
+	_descriptorSetAvailablility.enableAllBits();
 
 	_uniformBufferDescriptors.reset();
 	_storageBufferDescriptors.reset();
@@ -581,50 +840,51 @@ VkResult MVKDescriptorPool::reset(VkDescriptorPoolResetFlags flags) {
 	_uniformTexelBufferDescriptors.reset();
 	_storageTexelBufferDescriptors.reset();
 
-	_nextMetalArgumentBufferOffset = 0;
+	_allocatedDescSetCount = 0;
 
 	return VK_SUCCESS;
 }
 
 // Allocate a descriptor of the specified type
 VkResult MVKDescriptorPool::allocateDescriptor(VkDescriptorType descriptorType,
-											   MVKDescriptor** pMVKDesc) {
+											   MVKDescriptor** pMVKDesc,
+											   bool& dynamicAllocation) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-			return _uniformBufferDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _uniformBufferDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-			return _storageBufferDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _storageBufferDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-			return _uniformBufferDynamicDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _uniformBufferDynamicDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-			return _storageBufferDynamicDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _storageBufferDynamicDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
-			return _inlineUniformBlockDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _inlineUniformBlockDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-			return _sampledImageDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _sampledImageDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-			return _storageImageDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _storageImageDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-			return _inputAttachmentDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _inputAttachmentDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
-			return _samplerDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _samplerDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-			return _combinedImageSamplerDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _combinedImageSamplerDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-			return _uniformTexelBufferDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _uniformTexelBufferDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-			return _storageTexelBufferDescriptors.allocateDescriptor(pMVKDesc, this);
+			return _storageTexelBufferDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		default:
 			return reportError(VK_ERROR_INITIALIZATION_FAILED, "Unrecognized VkDescriptorType %d.", descriptorType);
@@ -675,17 +935,12 @@ void MVKDescriptorPool::freeDescriptor(MVKDescriptor* mvkDesc) {
 	}
 }
 
-// Return the size of the preallocated pool for descriptors of the specified type,
-// or zero if we are not preallocating descriptors in the pool.
+// Return the size of the preallocated pool for descriptors of the specified type.
 // There may be more than one poolSizeCount instance for the desired VkDescriptorType.
 // Accumulate the descriptor count for the desired VkDescriptorType accordingly.
 // For descriptors of the VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT type,
 // we accumulate the count via the pNext chain.
-size_t MVKDescriptorPool::getPoolSize(const VkDescriptorPoolCreateInfo* pCreateInfo,
-									  VkDescriptorType descriptorType) {
-
-	if ( !_hasPooledDescriptors ) { return 0; }
-
+size_t MVKDescriptorPool::getPoolSize(const VkDescriptorPoolCreateInfo* pCreateInfo, VkDescriptorType descriptorType) {
 	uint32_t descCnt = 0;
 	if (descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
 		for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
@@ -708,12 +963,39 @@ size_t MVKDescriptorPool::getPoolSize(const VkDescriptorPoolCreateInfo* pCreateI
 	return descCnt;
 }
 
+std::string MVKDescriptorPool::getLogDescription(std::string indent) {
+#define STR(name) #name
+#define printDescCnt(descType, spacing, descPool)  \
+	if (_##descPool##Descriptors.size()) {  \
+		descStr << "\n" << descCntIndent << STR(VK_DESCRIPTOR_TYPE_##descType) ": " spacing << _##descPool##Descriptors.size()  \
+		<< "  (" << _##descPool##Descriptors.getRemainingDescriptorCount() << " remaining)"; }
+
+	std::stringstream descStr;
+	descStr << "VkDescriptorPool with " << _descriptorSetAvailablility.size() << " descriptor sets";
+	descStr << " (reset " << (mvkIsAnyFlagEnabled(_flags, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) ? "or free" : "only") << ")";
+	descStr << ", and pooled descriptors:";
+
+	auto descCntIndent = indent + "\t";
+	printDescCnt(UNIFORM_BUFFER, "          ", uniformBuffer);
+	printDescCnt(STORAGE_BUFFER, "          ", storageBuffer);
+	printDescCnt(UNIFORM_BUFFER_DYNAMIC, "  ", uniformBufferDynamic);
+	printDescCnt(STORAGE_BUFFER_DYNAMIC, "  ", storageBufferDynamic);
+	printDescCnt(INLINE_UNIFORM_BLOCK_EXT, "", inlineUniformBlock);
+	printDescCnt(SAMPLED_IMAGE, "           ", sampledImage);
+	printDescCnt(STORAGE_IMAGE, "           ", storageImage);
+	printDescCnt(INPUT_ATTACHMENT, "        ", inputAttachment);
+	printDescCnt(SAMPLER, "                 ", sampler);
+	printDescCnt(COMBINED_IMAGE_SAMPLER, "  ", combinedImageSampler);
+	printDescCnt(UNIFORM_TEXEL_BUFFER, "    ", uniformTexelBuffer);
+	printDescCnt(STORAGE_TEXEL_BUFFER, "    ", storageTexelBuffer);
+	return descStr.str();
+}
+
 MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo) :
 	MVKVulkanAPIDeviceObject(device),
-    _hasPooledDescriptors(getMVKConfig().preallocateDescriptors),		// Set this first! Accessed by MVKDescriptorSet constructor and getPoolSize() in following lines.
 	_descriptorSets(pCreateInfo->maxSets, MVKDescriptorSet(this)),
 	_descriptorSetAvailablility(pCreateInfo->maxSets, true),
-	_inlineBlockMTLBufferAllocator(device, device->_pMetalFeatures->dynamicMTLBufferSize, true),
+	_mtlBufferAllocator(_device, getMetalFeatures().maxMTLBufferSize, true),
 	_uniformBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)),
 	_storageBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)),
 	_uniformBufferDynamicDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)),
@@ -725,16 +1007,17 @@ MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCr
 	_samplerDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_SAMPLER)),
 	_combinedImageSamplerDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)),
 	_uniformTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)),
-    _storageTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)) {
+    _storageTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)),
+    _flags(pCreateInfo->flags) {
+
 		initMetalArgumentBuffer(pCreateInfo);
+		MVKLogDebugIf(getMVKConfig().debugMode, "Created %s\n", getLogDescription().c_str());
 	}
 
 void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo* pCreateInfo) {
-	_metalArgumentBuffer = nil;
-	_nextMetalArgumentBufferOffset = 0;
+	if ( !isUsingMetalArgumentBuffers() ) { return; }
 
-	if ( !isUsingDescriptorSetMetalArgumentBuffers() ) { return; }
-
+	auto& mtlFeats = getMetalFeatures();
 	@autoreleasepool {
 		NSUInteger mtlBuffCnt = 0;
 		NSUInteger mtlTexCnt = 0;
@@ -761,7 +1044,8 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 				case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 				case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 					mtlTexCnt += poolSize.descriptorCount;
-					mtlBuffCnt += poolSize.descriptorCount;
+					if (!getMetalFeatures().nativeTextureAtomics)
+						mtlBuffCnt += poolSize.descriptorCount;
 					break;
 
 				case VK_DESCRIPTOR_TYPE_SAMPLER:
@@ -791,40 +1075,55 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 			}
 		}
 
-		// Each descriptor set uses a separate Metal argument buffer, but all of these descriptor set
-		// Metal argument buffers share a single MTLBuffer. This single MTLBuffer needs to be large enough
-		// to hold all of the Metal resources for the descriptors. In addition, depending on the platform,
-		// a Metal argument buffer may have a fixed overhead storage, in addition to the storage required
-		// to hold the resources. This overhead per descriptor set is conservatively calculated by measuring
-		// the size of a Metal argument buffer containing one of each type of resource (S1), and the size
-		// of a Metal argument buffer containing two of each type of resource (S2), and then calculating
-		// the fixed overhead per argument buffer as (2 * S1 - S2). To this is added the overhead due to
-		// the alignment of each descriptor set Metal argument buffer offset.
-		NSUInteger overheadPerDescSet = (2 * getMetalArgumentBufferResourceStorageSize(1, 1, 1) -
-										 getMetalArgumentBufferResourceStorageSize(2, 2, 2) +
-										 _device->_pMetalFeatures->mtlBufferAlignment);
+		// To support the SPIR-V OpArrayLength operation, for each descriptor set that 
+		// contain buffers, we add an additional buffer at the end to track buffer sizes.
+		mtlBuffCnt += std::min<NSUInteger>(mtlBuffCnt, pCreateInfo->maxSets);
 
-		// Measure the size of an argument buffer that would hold all of the resources
-		// managed in this pool, then add any overhead for all the descriptor sets.
-		NSUInteger metalArgBuffSize = getMetalArgumentBufferResourceStorageSize(mtlBuffCnt, mtlTexCnt, mtlSampCnt);
-		metalArgBuffSize += (overheadPerDescSet * (pCreateInfo->maxSets - 1));	// metalArgBuffSize already includes overhead for one descriptor set
+		// Each descriptor set uses a separate Metal argument buffer, but all of these
+		// descriptor set Metal argument buffers share a single MTLBuffer. This single
+		// MTLBuffer needs to be large enough to hold all of the encoded resources for the
+		// descriptors, plus additional buffer offset alignment space for each descriptor set.
+		NSUInteger metalArgBuffSize = 0;
+		if (needsMetalArgumentBufferEncoders()) {
+			// If argument buffer encoders are required, depending on the platform, a Metal argument
+			// buffer may have a fixed overhead storage, in addition to the storage required to hold
+			// the resources. This overhead per descriptor set is conservatively calculated by measuring
+			// the size of a Metal argument buffer containing one of each type of resource (S1), and
+			// the size of a Metal argument buffer containing two of each type of resource (S2), and
+			// then calculating the fixed overhead per argument buffer as (2 * S1 - S2). To this is
+			// added the overhead due to the alignment of each descriptor set Metal argument buffer offset.
+			NSUInteger overheadPerDescSet = (2 * getMetalArgumentBufferEncodedResourceStorageSize(1, 1, 1) -
+											 getMetalArgumentBufferEncodedResourceStorageSize(2, 2, 2) +
+											 mtlFeats.mtlBufferAlignment);
+
+			// Measure the size of an argument buffer that would hold all of the encoded resources
+			// managed in this pool, then add any overhead for all the descriptor sets.
+			metalArgBuffSize = getMetalArgumentBufferEncodedResourceStorageSize(mtlBuffCnt, mtlTexCnt, mtlSampCnt);
+			metalArgBuffSize += (overheadPerDescSet * (pCreateInfo->maxSets - 1));	// metalArgBuffSize already includes overhead for one descriptor set
+		} else {
+			// For Metal 3, encoders are not required, and each arg buffer entry fits into 64 bits.
+			metalArgBuffSize = (mtlBuffCnt + mtlTexCnt + mtlSampCnt) * kMVKMetal3ArgBuffSlotSizeInBytes;
+			metalArgBuffSize += (mtlFeats.mtlBufferAlignment * pCreateInfo->maxSets);
+		}
+
 		if (metalArgBuffSize) {
-			NSUInteger maxMTLBuffSize = _device->_pMetalFeatures->maxMTLBufferSize;
+			NSUInteger maxMTLBuffSize = mtlFeats.maxMTLBufferSize;
 			if (metalArgBuffSize > maxMTLBuffSize) {
 				setConfigurationResult(reportError(VK_ERROR_FRAGMENTATION, "vkCreateDescriptorPool(): The requested descriptor storage of %d MB is larger than the maximum descriptor storage of %d MB per VkDescriptorPool.", (uint32_t)(metalArgBuffSize / MEBI), (uint32_t)(maxMTLBuffSize / MEBI)));
 				metalArgBuffSize = maxMTLBuffSize;
 			}
 			_metalArgumentBuffer = [getMTLDevice() newBufferWithLength: metalArgBuffSize options: MTLResourceStorageModeShared];	// retained
-			_metalArgumentBuffer.label = @"Argument buffer";
+			setMetalObjectLabel(_metalArgumentBuffer, @"Descriptor set argument buffer");
 		}
 	}
 }
 
-// Returns the size of a Metal argument buffer containing the number of various types.
+// Returns the size of a Metal argument buffer containing the number of various types
+// of encoded resources. This is only required if argument buffers are required.
 // Make sure any call to this function is wrapped in @autoreleasepool.
-NSUInteger MVKDescriptorPool::getMetalArgumentBufferResourceStorageSize(NSUInteger bufferCount,
-																		NSUInteger textureCount,
-																		NSUInteger samplerCount) {
+NSUInteger MVKDescriptorPool::getMetalArgumentBufferEncodedResourceStorageSize(NSUInteger bufferCount,
+																			   NSUInteger textureCount,
+																			   NSUInteger samplerCount) {
 	NSMutableArray<MTLArgumentDescriptor*>* args = [NSMutableArray arrayWithCapacity: 3];
 
 	NSUInteger argIdx = 0;
@@ -878,10 +1177,45 @@ VkDescriptorUpdateTemplateType MVKDescriptorUpdateTemplate::getType() const {
 
 MVKDescriptorUpdateTemplate::MVKDescriptorUpdateTemplate(MVKDevice* device,
 														 const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo) :
-	MVKVulkanAPIDeviceObject(device), _pipelineBindPoint(pCreateInfo->pipelineBindPoint), _type(pCreateInfo->templateType) {
+MVKVulkanAPIDeviceObject(device), _pipelineBindPoint(pCreateInfo->pipelineBindPoint), _type(pCreateInfo->templateType) {
 
-	for (uint32_t i = 0; i < pCreateInfo->descriptorUpdateEntryCount; i++)
-		_entries.push_back(pCreateInfo->pDescriptorUpdateEntries[i]);
+	for (uint32_t i = 0; i < pCreateInfo->descriptorUpdateEntryCount; i++) {
+		const auto& entry = pCreateInfo->pDescriptorUpdateEntries[i];
+		_entries.push_back(entry);
+
+		// Accumulate the size of the template. If we were given a stride, use that;
+		// otherwise, assume only one info struct of the appropriate type.
+		size_t entryEnd = entry.offset;
+		if (entry.stride) {
+			entryEnd += entry.stride * entry.descriptorCount;
+		} else {
+			switch (entry.descriptorType) {
+				case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+				case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+				case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+				case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+					entryEnd += sizeof(VkDescriptorBufferInfo);
+					break;
+
+				case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+				case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+				case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+				case VK_DESCRIPTOR_TYPE_SAMPLER:
+				case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+					entryEnd += sizeof(VkDescriptorImageInfo);
+					break;
+
+				case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+				case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+					entryEnd += sizeof(VkBufferView);
+					break;
+
+				default:
+					break;
+			}
+		}
+		_size = std::max(_size, entryEnd);
+	}
 }
 
 
@@ -900,8 +1234,10 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 		size_t stride;
 		MVKDescriptorSet* dstSet = (MVKDescriptorSet*)pDescWrite->dstSet;
 
+		if( !dstSet ) { continue; }		// Nulls are permitted
+
 		const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
-		if (dstSet->getDevice()->_enabledExtensions.vk_EXT_inline_uniform_block.enabled) {
+		if (dstSet->getEnabledExtensions().vk_EXT_inline_uniform_block.enabled) {
 			for (const auto* next = (VkBaseInStructure*)pDescWrite->pNext; next; next = next->pNext) {
 				switch (next->sType) {
 				case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
@@ -938,9 +1274,10 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 		inlineUniformBlock.dataSize = descCnt;
 
 		MVKDescriptorSet* srcSet = (MVKDescriptorSet*)pDescCopy->srcSet;
-		srcSet->read(pDescCopy, imgInfos, buffInfos, texelBuffInfos, &inlineUniformBlock);
-
 		MVKDescriptorSet* dstSet = (MVKDescriptorSet*)pDescCopy->dstSet;
+		if( !srcSet || !dstSet ) { continue; }		// Nulls are permitted
+
+		srcSet->read(pDescCopy, imgInfos, buffInfos, texelBuffInfos, &inlineUniformBlock);
 		VkDescriptorType descType = dstSet->getDescriptorType(pDescCopy->dstBinding);
 		size_t stride;
 		const void* pData = getWriteParameters(descType, imgInfos, buffInfos, texelBuffInfos, &inlineUniformBlock, stride);

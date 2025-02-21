@@ -1,7 +1,7 @@
 /*
  * MVKCmdRendering.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 #include "MVKCommand.h"
 #include "MVKDevice.h"
 #include "MVKSmallVector.h"
+#include "MVKCommandEncoderState.h"
 
 #import <Metal/Metal.h>
 
@@ -99,7 +100,6 @@ typedef MVKCmdBeginRenderPass<9, 9> MVKCmdBeginRenderPassMultiMulti;
 #pragma mark -
 #pragma mark MVKCmdNextSubpass
 
-/** Vulkan command to begin a render pass. */
 class MVKCmdNextSubpass : public MVKCommand {
 
 public:
@@ -121,7 +121,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdEndRenderPass
 
-/** Vulkan command to end the current render pass. */
 class MVKCmdEndRenderPass : public MVKCommand {
 
 public:
@@ -173,7 +172,6 @@ typedef MVKCmdBeginRendering<8> MVKCmdBeginRenderingMulti;
 #pragma mark -
 #pragma mark MVKCmdEndRendering
 
-/** Vulkan command to end the current dynamic rendering. */
 class MVKCmdEndRendering : public MVKCommand {
 
 public:
@@ -190,7 +188,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdSetSampleLocations
 
-/** Vulkan command to dynamically set custom sample locations. */
 class MVKCmdSetSampleLocations : public MVKCommand {
 
 public:
@@ -209,19 +206,13 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdSetSampleLocationsEnable
 
-/** Vulkan command to dynamically enable custom sample locations. */
-class MVKCmdSetSampleLocationsEnable : public MVKCommand {
+class MVKCmdSetSampleLocationsEnable : public MVKSingleValueCommand<VkBool32> {
 
 public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkBool32 sampleLocationsEnable);
-
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	VkBool32 _sampleLocationsEnable;
 };
 
 
@@ -288,163 +279,136 @@ typedef MVKCmdSetScissor<kMVKMaxViewportScissorCount> MVKCmdSetScissorMulti;
 #pragma mark -
 #pragma mark MVKCmdSetDepthBias
 
-/** Vulkan command to set the depth bias. */
-class MVKCmdSetDepthBias : public MVKCommand {
+class MVKCmdSetDepthBias : public MVKSingleValueCommand<MVKDepthBias> {
 
 public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						float depthBiasConstantFactor,
-						float depthBiasClamp,
-						float depthBiasSlopeFactor);
-
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-    float _depthBiasConstantFactor;
-    float _depthBiasClamp;
-    float _depthBiasSlopeFactor;
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdSetDepthBiasEnable
 
-/** Vulkan command to dynamically enable or disable depth bias. */
-class MVKCmdSetDepthBiasEnable : public MVKCommand {
+class MVKCmdSetDepthBiasEnable : public MVKSingleValueCommand<VkBool32> {
 
 public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkBool32 depthBiasEnable);
-
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	VkBool32 _depthBiasEnable;
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdSetBlendConstants
 
-/** Vulkan command to set the blend constants. */
-class MVKCmdSetBlendConstants : public MVKCommand {
+class MVKCmdSetBlendConstants : public MVKSingleValueCommand<MVKColor32> {
 
 public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						const float blendConst[4]);
-
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	float _blendConstants[4] = {};
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdSetDepthTestEnable
 
-/** Vulkan command to dynamically enable depth testing. */
-class MVKCmdSetDepthTestEnable : public MVKCommand {
+class MVKCmdSetDepthTestEnable : public MVKSingleValueCommand<VkBool32> {
 
 public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkBool32 depthTestEnable);
-
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	VkBool32 _depthTestEnable;
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdSetDepthWriteEnable
 
-/** Vulkan command to dynamically enable depth writing. */
-class MVKCmdSetDepthWriteEnable : public MVKCommand {
+class MVKCmdSetDepthWriteEnable : public MVKSingleValueCommand<VkBool32> {
 
 public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkBool32 depthWriteEnable);
-
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	VkBool32 _depthWriteEnable;
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdSetDepthClipEnable
 
-/** Vulkan command to dynamically enable depth clip. */
-class MVKCmdSetDepthClipEnable : public MVKCommand {
+class MVKCmdSetDepthClipEnable : public MVKSingleValueCommand<VkBool32> {
 
 public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkBool32 depthClipEnable);
-
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	VkBool32 _depthClipEnable;
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdSetDepthCompareOp
 
-/** Vulkan command to dynamically set the depth compare operation. */
-class MVKCmdSetDepthCompareOp : public MVKCommand {
+class MVKCmdSetDepthCompareOp : public MVKSingleValueCommand<VkCompareOp> {
 
 public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkCompareOp depthCompareOp);
-
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};
 
-	VkCompareOp _depthCompareOp;
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthBounds
+
+class MVKCmdSetDepthBounds : public MVKSingleValueCommand<MVKDepthBounds> {
+
+public:
+    void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+    MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthBoundsTestEnable
+
+class MVKCmdSetDepthBoundsTestEnable : public MVKSingleValueCommand<VkBool32> {
+
+public:
+    void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+    MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdSetStencilTestEnable
 
-/** Vulkan command to dynamically enable stencil testing. */
-class MVKCmdSetStencilTestEnable : public MVKCommand {
+class MVKCmdSetStencilTestEnable : public MVKSingleValueCommand<VkBool32> {
 
 public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkBool32 stencilTestEnable);
-
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	VkBool32 _stencilTestEnable;
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdSetStencilOp
 
-/** Vulkan command to dynamically set the stencil operations. */
 class MVKCmdSetStencilOp : public MVKCommand {
 
 public:
@@ -471,7 +435,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdSetStencilCompareMask
 
-/** Vulkan command to set the stencil compare mask. */
 class MVKCmdSetStencilCompareMask : public MVKCommand {
 
 public:
@@ -492,7 +455,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdSetStencilWriteMask
 
-/** Vulkan command to set the stencil write mask. */
 class MVKCmdSetStencilWriteMask : public MVKCommand {
 
 public:
@@ -513,7 +475,6 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdSetStencilReference
 
-/** Vulkan command to set the stencil reference value. */
 class MVKCmdSetStencilReference : public MVKCommand {
 
 public:
@@ -534,132 +495,103 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdSetCullMode
 
-/** Vulkan command to dynamically set the cull mode. */
-class MVKCmdSetCullMode : public MVKCommand {
+class MVKCmdSetCullMode : public MVKSingleValueCommand<VkCullModeFlags> {
 
 public:
-    VkResult setContent(MVKCommandBuffer* cmdBuff,
-                        VkCullModeFlags cullMode);
-
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
     MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	VkCullModeFlags _cullMode;
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdSetFrontFace
 
-/** Vulkan command to dynamically set the front facing winding order. */
-class MVKCmdSetFrontFace : public MVKCommand {
+class MVKCmdSetFrontFace : public MVKSingleValueCommand<VkFrontFace> {
 
 public:
-    VkResult setContent(MVKCommandBuffer* cmdBuff,
-                        VkFrontFace frontFace);
-
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
     MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	VkFrontFace _frontFace;
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdSetPatchControlPoints
 
-/** Vulkan command to dynamically set the number of patch control points. */
-class MVKCmdSetPatchControlPoints : public MVKCommand {
+class MVKCmdSetPatchControlPoints : public MVKSingleValueCommand<uint32_t> {
 
 public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						uint32_t patchControlPoints);
-
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	uint32_t _patchControlPoints;
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdSetPolygonMode
 
-/** Vulkan command to dynamically set the polygon mode. */
-class MVKCmdSetPolygonMode : public MVKCommand {
+class MVKCmdSetPolygonMode : public MVKSingleValueCommand<VkPolygonMode> {
 
 public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkPolygonMode polygonMode);
-
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};
 
-	VkPolygonMode _polygonMode;
+
+#pragma mark -
+#pragma mark MVKCmdSetLineWidth
+
+class MVKCmdSetLineWidth : public MVKSingleValueCommand<float> {
+
+public:
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdSetPrimitiveTopology
 
-/** Vulkan command to dynamically set the primitive topology. */
-class MVKCmdSetPrimitiveTopology : public MVKCommand {
+class MVKCmdSetPrimitiveTopology : public MVKSingleValueCommand<VkPrimitiveTopology> {
 
 public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkPrimitiveTopology primitiveTopology);
-
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	VkPrimitiveTopology _primitiveTopology;
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdSetPrimitiveRestartEnable
 
-/** Vulkan command to dynamically enable or disable primitive restart functionality. */
-class MVKCmdSetPrimitiveRestartEnable : public MVKCommand {
+class MVKCmdSetPrimitiveRestartEnable : public MVKSingleValueCommand<VkBool32> {
 
 public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkBool32 primitiveRestartEnable);
-
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	VkBool32 _primitiveRestartEnable;
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdSetRasterizerDiscardEnable
 
-/** Vulkan command to dynamically enable or disable rasterization. */
-class MVKCmdSetRasterizerDiscardEnable : public MVKCommand {
+class MVKCmdSetRasterizerDiscardEnable : public MVKSingleValueCommand<VkBool32> {
 
 public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkBool32 rasterizerDiscardEnable);
-
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-
-	VkBool32 _rasterizerDiscardEnable;
 };
 

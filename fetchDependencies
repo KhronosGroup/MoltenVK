@@ -1,13 +1,13 @@
 #!/bin/bash
 #
-# Copyright (c) 2016-2023 The Brenwill Workshop Ltd.
+# Copyright (c) 2016-2024 The Brenwill Workshop Ltd.
 #
 # fetchDependencies - Retrieves the correct versions of all dependencies
 #
-# macOS usage: ./fetchDependencies [--macos] [--ios] [--iossim] [--tvos] [--tvossim]
+# macOS usage: ./fetchDependencies [--macos] [--ios] [--iossim] [--maccat] [--tvos] [--tvossim]
 #                                  [--visionos] [--visionossim] [--all] [--none]
 #                                  [-v] [--debug] [--build-spirv-tools]
-#                                  [--v-headers-root path] [--spirv-cross-root path] [--glslang-root path]
+#                                  [--v-headers-root path] [--spirv-cross-root path] [--spirv-tools-root path]
 #
 #      --macos
 #              Build the external libraries for the macOS platform.
@@ -73,8 +73,8 @@
 #              build, and is the default behaviour. Use this option if you intend to run this
 #              script repeatedly to incrementally build one platform at a time.
 #
-#      --glslang-root path
-#              "path" specifies a directory path to a KhronosGroup/glslang repository.
+#      --spirv-tools-root path
+#              "path" specifies a directory path to a KhronosGroup/SPIRV-tools repository.
 #              This repository does need to be built and the build directory must be in the
 #              specified directory. It should be built the same way this script builds it.
 #
@@ -121,7 +121,7 @@ XC_USE_TSAN="NO"
 XC_USE_UBSAN="NO"
 V_HEADERS_ROOT=""
 SPIRV_CROSS_ROOT=""
-GLSLANG_ROOT=""
+SPIRV_TOOLS_ROOT=""
 BLD_SPV_TLS=""
 export KEEP_CACHE=""
 
@@ -222,11 +222,11 @@ while (( "$#" )); do
          SPIRV_CROSS_ROOT=$2
          shift 2
          ;;
-       --glslang-root)
-         GLSLANG_ROOT=$2
+       --spirv-tools-root)
+         SPIRV_TOOLS_ROOT=$2
          shift 2
          ;;
-       -*|--*=)
+       *)
          echo "Error: Unsupported option $1" >&2
          exit 1
          ;;
@@ -343,45 +343,37 @@ else
 fi
 
 
-
-# ----------------- glslang -------------------
+# ----------------- SPIRV-Tools -------------------
 
 echo
-echo ========== glslang and SPIRV-Tools ==========
+echo ========== SPIRV-Tools and SPIRV-Headers ==========
 echo
 
 # When MoltenVK is built by something that already has
 # a copy of this repo, use it by creating a symlink.
 
-REPO_NAME=glslang
+REPO_NAME=SPIRV-Tools
 
-if [ ! "$GLSLANG_ROOT" = "" ]; then
+if [ ! "$SPIRV_TOOLS_ROOT" = "" ]; then
 	rm -rf ${REPO_NAME}
-	ln -sfn ${GLSLANG_ROOT} ${REPO_NAME}
+	ln -sfn ${SPIRV_TOOLS_ROOT} ${REPO_NAME}
 else
 	REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
 	REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
 	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
-	cd ${REPO_NAME}
-	./update_glslang_sources.py
-	rm -rf build
-	./build_info.py .        \
-		-i build_info.h.tmpl  \
-		-o build/include/glslang/build_info.h
-	cd -  > /dev/null
-fi
+	SPIRV_HEADERS_REV=$(cat "${EXT_REV_DIR}/SPIRV-Headers_repo_revision")
+	update_repo SPIRV-Tools/external/spirv-headers "https://github.com/KhronosGroup/SPIRV-Headers.git" ${SPIRV_HEADERS_REV}
 
-# Build the embedded spirv-tools, or use option of pre-generated headers
-SPV_TLS_DIR="${REPO_NAME}/External/spirv-tools"
-if [ "$BLD_SPV_TLS" = "Y" ]; then
-	build_repo "${SPV_TLS_DIR}"
-else
-	unzip -o -q -d "${SPV_TLS_DIR}" ../Templates/spirv-tools/build.zip
-	rm -rf "${SPV_TLS_DIR}/__MACOSX"
+	# Build spirv-tools, or use option of pre-generated headers
+	if [ "$BLD_SPV_TLS" = "Y" ]; then
+		build_repo "${REPO_NAME}"
+	else
+		unzip -o -q -d "${REPO_NAME}" ../Templates/spirv-tools/build.zip
+		rm -rf "${REPO_NAME}/__MACOSX"
+	fi
 fi
-
 
 
 # ----------------- Vulkan-Tools -------------------
@@ -392,6 +384,19 @@ echo
 
 REPO_NAME=Vulkan-Tools
 REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
+REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+
+update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+
+
+# ----------------- Volk -------------------
+
+echo
+echo ========== Volk ==========
+echo
+
+REPO_NAME=Volk
+REPO_URL="https://github.com/zeux/${REPO_NAME}.git"
 REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
 update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}

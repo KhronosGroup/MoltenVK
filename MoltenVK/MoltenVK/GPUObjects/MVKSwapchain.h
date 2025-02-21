@@ -1,7 +1,7 @@
 /*
  * MVKSwapchain.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -119,7 +119,7 @@ protected:
     void renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void markFrameInterval();
 	void beginPresentation(const MVKImagePresentInfo& presentInfo);
-	void endPresentation(const MVKImagePresentInfo& presentInfo, uint64_t actualPresentTime = 0);
+	void endPresentation(const MVKImagePresentInfo& presentInfo, uint64_t beginPresentTime, uint64_t actualPresentTime = 0);
 	void forceUnpresentedImageCompletion();
 
 	MVKSurface* _surface = nullptr;

@@ -1,7 +1,7 @@
 /*
  * MVKBaseObject.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -223,4 +223,15 @@ protected:
  */
 static inline const MVKConfiguration& mvkGetMVKConfig(MVKBaseObject* mvkObj) {
 	return mvkObj ? mvkObj->getMVKConfig() : getGlobalMVKConfig();
+}
+
+/** Returns the reporting level string associated with the specified MoltenVK log level. */
+static inline const char* mvkGetReportingLevelString(MVKConfigLogLevel logLevel) {
+	switch (logLevel) {
+		case MVK_CONFIG_LOG_LEVEL_ERROR:    return "mvk-error";
+		case MVK_CONFIG_LOG_LEVEL_WARNING:  return "mvk-warn";
+		case MVK_CONFIG_LOG_LEVEL_INFO:     return "mvk-info";
+		case MVK_CONFIG_LOG_LEVEL_DEBUG:    return "mvk-debug";
+		default:                            return "mvk-unknown";
+	}
 }

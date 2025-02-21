@@ -1,7 +1,7 @@
 /*
  * MVKExtensions.def
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,8 +87,10 @@ MVK_EXTENSION(KHR_shader_atomic_int64,                KHR_SHADER_ATOMIC_INT64,  
 MVK_EXTENSION(KHR_shader_draw_parameters,             KHR_SHADER_DRAW_PARAMETERS,             DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_shader_float_controls,              KHR_SHADER_FLOAT_CONTROLS,              DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_shader_float16_int8,                KHR_SHADER_FLOAT16_INT8,                DEVICE,   10.11,  8.0,  1.0)
+MVK_EXTENSION(KHR_shader_integer_dot_product,         KHR_SHADER_INTEGER_DOT_PRODUCT,         DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_shader_non_semantic_info,           KHR_SHADER_NON_SEMANTIC_INFO,           DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_shader_subgroup_extended_types,     KHR_SHADER_SUBGROUP_EXTENDED_TYPES,     DEVICE,   10.14, 13.0,  1.0)
+MVK_EXTENSION(KHR_shader_terminate_invocation,        KHR_SHADER_TERMINATE_INVOCATION,        DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_spirv_1_4,                          KHR_SPIRV_1_4,                          DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_storage_buffer_storage_class,       KHR_STORAGE_BUFFER_STORAGE_CLASS,       DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_surface,                            KHR_SURFACE,                            INSTANCE, 10.11,  8.0,  1.0)
@@ -100,6 +102,7 @@ MVK_EXTENSION(KHR_uniform_buffer_standard_layout,     KHR_UNIFORM_BUFFER_STANDAR
 MVK_EXTENSION(KHR_variable_pointers,                  KHR_VARIABLE_POINTERS,                  DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_vertex_attribute_divisor,           KHR_VERTEX_ATTRIBUTE_DIVISOR,           DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_vulkan_memory_model,                KHR_VULKAN_MEMORY_MODEL,                DEVICE,   MVK_NA, MVK_NA, MVK_NA)
+MVK_EXTENSION(KHR_zero_initialize_workgroup_memory,   KHR_ZERO_INITIALIZE_WORKGROUP_MEMORY,   DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_4444_formats,                       EXT_4444_FORMATS,                       DEVICE,   11.0,  13.0,  1.0)
 MVK_EXTENSION(EXT_buffer_device_address,              EXT_BUFFER_DEVICE_ADDRESS,              DEVICE,   13.0,  16.0,  1.0)
 MVK_EXTENSION(EXT_calibrated_timestamps,              EXT_CALIBRATED_TIMESTAMPS,              DEVICE,   10.15, 14.0,  1.0)
@@ -107,6 +110,7 @@ MVK_EXTENSION(EXT_debug_marker,                       EXT_DEBUG_MARKER,         
 MVK_EXTENSION(EXT_debug_report,                       EXT_DEBUG_REPORT,                       INSTANCE, 10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_debug_utils,                        EXT_DEBUG_UTILS,                        INSTANCE, 10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_descriptor_indexing,                EXT_DESCRIPTOR_INDEXING,                DEVICE,   10.11,  8.0,  1.0)
+MVK_EXTENSION(EXT_depth_clip_control,                 EXT_DEPTH_CLIP_CONTROL,                 DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_extended_dynamic_state,             EXT_EXTENDED_DYNAMIC_STATE,             DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_extended_dynamic_state2,            EXT_EXTENDED_DYNAMIC_STATE_2,           DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_extended_dynamic_state3,            EXT_EXTENDED_DYNAMIC_STATE_3,           DEVICE,   10.11,  8.0,  1.0)
@@ -114,7 +118,9 @@ MVK_EXTENSION(EXT_external_memory_host,               EXT_EXTERNAL_MEMORY_HOST, 
 MVK_EXTENSION(EXT_fragment_shader_interlock,          EXT_FRAGMENT_SHADER_INTERLOCK,          DEVICE,   10.13, 11.0,  1.0)
 MVK_EXTENSION(EXT_hdr_metadata,                       EXT_HDR_METADATA,                       DEVICE,   10.15, MVK_NA, MVK_NA)
 MVK_EXTENSION(EXT_headless_surface,                   EXT_HEADLESS_SURFACE,                   INSTANCE, 10.11,  8.0,  1.0)
+MVK_EXTENSION(EXT_host_image_copy,                    EXT_HOST_IMAGE_COPY,                    DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_host_query_reset,                   EXT_HOST_QUERY_RESET,                   DEVICE,   10.11,  8.0,  1.0)
+MVK_EXTENSION(EXT_image_2d_view_of_3d,                EXT_IMAGE_2D_VIEW_OF_3D,                DEVICE,   10.15, 13.0,  1.0)
 MVK_EXTENSION(EXT_image_robustness,                   EXT_IMAGE_ROBUSTNESS,                   DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_inline_uniform_block,               EXT_INLINE_UNIFORM_BLOCK,               DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_layer_settings,                     EXT_LAYER_SETTINGS,                     INSTANCE, 10.11,  8.0,  1.0)
@@ -142,6 +148,7 @@ MVK_EXTENSION(EXT_swapchain_colorspace,               EXT_SWAPCHAIN_COLOR_SPACE,
 MVK_EXTENSION(EXT_swapchain_maintenance1,             EXT_SWAPCHAIN_MAINTENANCE_1,            DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_texel_buffer_alignment,             EXT_TEXEL_BUFFER_ALIGNMENT,             DEVICE,   10.13, 11.0,  1.0)
 MVK_EXTENSION(EXT_texture_compression_astc_hdr,       EXT_TEXTURE_COMPRESSION_ASTC_HDR,       DEVICE,   11.0,  13.0,  1.0)
+MVK_EXTENSION(EXT_tooling_info,                       EXT_TOOLING_INFO,                       DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_vertex_attribute_divisor,           EXT_VERTEX_ATTRIBUTE_DIVISOR,           DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(AMD_draw_indirect_count,                AMD_DRAW_INDIRECT_COUNT,                DEVICE,   MVK_NA, MVK_NA, MVK_NA)
 MVK_EXTENSION(AMD_gpu_shader_half_float,              AMD_GPU_SHADER_HALF_FLOAT,              DEVICE,   10.11,  8.0,  1.0)
@@ -154,8 +161,7 @@ MVK_EXTENSION(GOOGLE_display_timing,                  GOOGLE_DISPLAY_TIMING,    
 MVK_EXTENSION(MVK_ios_surface,                        MVK_IOS_SURFACE,                        INSTANCE, MVK_NA, 8.0, MVK_NA)
 MVK_EXTENSION(MVK_macos_surface,                      MVK_MACOS_SURFACE,                      INSTANCE, 10.11, MVK_NA, MVK_NA)
 MVK_EXTENSION(MVK_moltenvk,                           MVK_MOLTENVK,                           INSTANCE, 10.11,  8.0,  1.0)
-MVK_EXTENSION(NV_fragment_shader_barycentric,         NV_FRAGMENT_SHADER_BARYCENTRIC,         DEVICE,   10.15, 14.0,  1.0)
-MVK_EXTENSION_LAST(NV_glsl_shader,                    NV_GLSL_SHADER,                         DEVICE,   10.11,  8.0,  1.0)
+MVK_EXTENSION_LAST(NV_fragment_shader_barycentric,    NV_FRAGMENT_SHADER_BARYCENTRIC,         DEVICE,   10.15, 14.0,  1.0)
 
 #undef MVK_EXTENSION
 #undef MVK_EXTENSION_LAST

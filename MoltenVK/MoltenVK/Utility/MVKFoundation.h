@@ -1,7 +1,7 @@
 /*
  * MVKFoundation.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -83,6 +83,7 @@ typedef enum : uint8_t {
     kMVKCommandUseResolveImage,                 /**< vkCmdResolveImage - resolve stage. */
     kMVKCommandUseResolveExpandImage,           /**< vkCmdResolveImage - expand stage. */
     kMVKCommandUseResolveCopyImage,             /**< vkCmdResolveImage - copy stage. */
+	kMVKCommandUseCopyImageToMemory,            /**< vkCopyImageToMemoryEXT host sync. */
     kMVKCommandUseCopyBuffer,                   /**< vkCmdCopyBuffer. */
     kMVKCommandUseCopyBufferToImage,            /**< vkCmdCopyBufferToImage. */
     kMVKCommandUseCopyImageToBuffer,            /**< vkCmdCopyImageToBuffer. */
@@ -124,17 +125,6 @@ static inline std::string mvkGetVulkanVersionString(uint32_t vkVersion) {
 	verStr += std::to_string(VK_VERSION_MINOR(vkVersion));
 	verStr += ".";
 	verStr += std::to_string(VK_VERSION_PATCH(vkVersion));
-	return verStr;
-}
-
-/** Returns the MoltenVK API version number as a string. */
-static inline std::string mvkGetMoltenVKVersionString(uint32_t mvkVersion) {
-	std::string verStr;
-	verStr += std::to_string(mvkVersion / 10000);
-	verStr += ".";
-	verStr += std::to_string((mvkVersion % 10000) / 100);
-	verStr += ".";
-	verStr += std::to_string(mvkVersion % 100);
 	return verStr;
 }
 
@@ -553,11 +543,10 @@ static void mvkRemoveAllOccurances(C& container, T val) {
 /** Selects and returns one of the values, based on the platform OS. */
 template<typename T>
 static constexpr const T& mvkSelectPlatformValue(const T& macOSVal, const T& iOSVal) {
-#if MVK_IOS_OR_TVOS
-	return iOSVal;
-#endif
 #if MVK_MACOS
 	return macOSVal;
+#else
+    return iOSVal;
 #endif
 }
 
@@ -582,13 +571,22 @@ static void mvkClear(const T* pVal, size_t count = 1) { mvkClear((T*)pVal, count
 /**
  * If pSrc and pDst are both not null, copies the contents of the source value to the
  * destination value. The optional count allows copying of multiple elements in an array.
+ * Supports void pointers, and copies single values via direct assignment.
  */
 template<typename T>
 static void mvkCopy(T* pDst, const T* pSrc, size_t count = 1) {
-	if ( !pDst || !pSrc ) { return; }			// Bad pointers
-	if (pDst == pSrc) { return; }				// Same object
-	if constexpr(std::is_arithmetic_v<T>) { if (count == 1) { *pDst = *pSrc; } }  // Fast copy of a single primitive
-	memcpy(pDst, pSrc, sizeof(T) * count);		// Memory copy of complex content or array
+	if ( !pDst || !pSrc ) { return; }				// Bad pointers
+	if (pDst == pSrc) { return; }					// Same object
+
+	if constexpr(std::is_void_v<T>) {
+		memcpy(pDst, pSrc, count);					// Copy as bytes
+	} else {
+		if (count == 1) {
+			*pDst = *pSrc;  						// Fast copy of a single value
+		} else {
+			memcpy(pDst, pSrc, sizeof(T) * count);	// Memory copy of value array
+		}
+	}
 }
 
 /**

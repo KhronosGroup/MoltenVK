@@ -1,7 +1,7 @@
 /*
  * MVKFramebuffer.mm
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ id<MTLTexture> MVKFramebuffer::getDummyAttachmentMTLTexture(MVKRenderSubpass* su
 	MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatR8Unorm width: fbExtent.width height: fbExtent.height mipmapped: NO];
 	if (subpass->isMultiview()) {
 #if MVK_MACOS_OR_IOS
-		if (sampleCount > 1 && getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
+		if (sampleCount > 1 && getMetalFeatures().multisampleLayeredRendering) {
 			mtlTexDesc.textureType = MTLTextureType2DMultisampleArray;
 			mtlTexDesc.sampleCount = sampleCount;
 		} else {
@@ -49,7 +49,7 @@ id<MTLTexture> MVKFramebuffer::getDummyAttachmentMTLTexture(MVKRenderSubpass* su
 		mtlTexDesc.arrayLength = subpass->getViewCountInMetalPass(passIdx);
 	} else if (fbLayerCount > 1) {
 #if MVK_MACOS
-		if (sampleCount > 1 && getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
+		if (sampleCount > 1 && getMetalFeatures().multisampleLayeredRendering) {
 			mtlTexDesc.textureType = MTLTextureType2DMultisampleArray;
 			mtlTexDesc.sampleCount = sampleCount;
 		} else {
@@ -63,12 +63,8 @@ id<MTLTexture> MVKFramebuffer::getDummyAttachmentMTLTexture(MVKRenderSubpass* su
 		mtlTexDesc.textureType = MTLTextureType2DMultisample;
 		mtlTexDesc.sampleCount = sampleCount;
 	}
-#if MVK_IOS
-	if ([getMTLDevice() supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3]) {
-		mtlTexDesc.storageMode = MTLStorageModeMemoryless;
-	} else {
-		mtlTexDesc.storageMode = MTLStorageModePrivate;
-	}
+#if !MVK_MACOS || MVK_XCODE_12
+	mtlTexDesc.storageMode = MTLStorageModeMemoryless;
 #else
 	mtlTexDesc.storageMode = MTLStorageModePrivate;
 #endif

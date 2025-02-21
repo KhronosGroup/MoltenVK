@@ -1,7 +1,7 @@
 /*
  * MVKBaseObject.mm
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,16 +28,6 @@ using namespace std;
 
 #pragma mark -
 #pragma mark MVKBaseObject
-
-static const char* getReportingLevelString(MVKConfigLogLevel logLevel) {
-	switch (logLevel) {
-		case MVK_CONFIG_LOG_LEVEL_ERROR:    return "mvk-error";
-		case MVK_CONFIG_LOG_LEVEL_WARNING:  return "mvk-warn";
-		case MVK_CONFIG_LOG_LEVEL_INFO:     return "mvk-info";
-		case MVK_CONFIG_LOG_LEVEL_DEBUG:    return "mvk-debug";
-		default:                            return "mvk-unknown";
-	}
-}
 
 string MVKBaseObject::getClassName() { return mvk::getTypeName(this); }
 
@@ -95,7 +85,7 @@ void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, MVKConfigLogLevel logLe
 	va_end(origArgs);
 
 	// Log the message to the standard error stream
-	if (shouldLog) { fprintf(stderr, "[%s] %s\n", getReportingLevelString(logLevel), pMessage); }
+	if (shouldLog) { fprintf(stderr, "[%s] %s\n", mvkGetReportingLevelString(logLevel), pMessage); }
 
 	// Broadcast the message to any Vulkan debug report callbacks
 	if (hasDebugCallbacks) { mvkInst->debugReportMessage(mvkAPIObj, logLevel, pMessage); }

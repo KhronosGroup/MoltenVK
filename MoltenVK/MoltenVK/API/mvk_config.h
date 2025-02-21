@@ -1,7 +1,7 @@
 /*
  * mvk_config.h
  *
- * Copyright (c) 2015-2023 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ extern "C" {
 /**
  * This header is obsolete and deprecated, and is provided for legacy compatibility only.
  *
- * To configure MoltenVK, use one of the following mechanisms, 
+ * To configure MoltenVK, use one of the following mechanisms,
  * as documented in MoltenVK_Configuration_Parameters.md:
  *
  *   - The standard Vulkan VK_EXT_layer_settings extension (layer name "MoltenVK").
