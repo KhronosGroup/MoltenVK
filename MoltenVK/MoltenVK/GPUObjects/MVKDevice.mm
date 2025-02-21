@@ -336,6 +336,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				inlineUniformBlockFeatures->descriptorBindingInlineUniformBlockUpdateAfterBind = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES: {
+				auto* maintenace4Features = (VkPhysicalDeviceMaintenance4Features*)next;
+				maintenace4Features->maintenance4 = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
 				auto* multiviewFeatures = (VkPhysicalDeviceMultiviewFeatures*)next;
 				multiviewFeatures->multiview = supportedFeats11.multiview;
@@ -757,7 +762,11 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				maint3Props->maxMemoryAllocationSize = supportedProps11.maxMemoryAllocationSize;
 				break;
 			}
-
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES: {
+				auto* maintenance4Props = (VkPhysicalDeviceMaintenance4Properties*)next;
+				maintenance4Props->maxBufferSize = _metalFeatures.maxMTLBufferSize;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
 				auto* depthStencilResolveProps = (VkPhysicalDeviceDepthStencilResolveProperties*)next;
 				depthStencilResolveProps->supportedDepthResolveModes = supportedProps12.supportedDepthResolveModes;
@@ -3843,6 +3852,7 @@ void MVKDevice::getCalibratedTimestamps(uint32_t timestampCount,
 	}
 	*pMaxDeviation = cpuEnd - cpuStart;
 }
+
 
 #pragma mark Object lifecycle
 
