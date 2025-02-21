@@ -121,7 +121,7 @@ std::string MVKPipelineLayout::getLogDescription(std::string indent) {
 	return descStr.str();
 }
 
-bool MVKPipelineLayout::isUsingMetalArgumentBuffers() {
+bool MVKPipelineLayout::isUsingMetalArgumentBuffers() const {
 	return MVKDeviceTrackingMixin::isUsingMetalArgumentBuffers() && _canUseMetalArgumentBuffers;
 }
 
