@@ -570,6 +570,8 @@ public:
 	constexpr Type& back() const { return _data[_size - 1]; }
 	constexpr MVKArrayRef() : MVKArrayRef(nullptr, 0) {}
 	constexpr MVKArrayRef(Type* d, size_t s) : _data(d), _size(s) {}
+	constexpr MVKArrayRef(std::vector<Type>& vec) : _data(vec.data()), _size(vec.size()) {}
+	constexpr MVKArrayRef(const std::vector<std::remove_cv_t<Type>>& vec) : _data(vec.data()), _size(vec.size()) {}
 	template <typename Other, std::enable_if_t<std::is_convertible_v<Other(*)[], Type(*)[]>, bool> = true>
 	constexpr MVKArrayRef(MVKArrayRef<Other> other) : _data(other.data()), _size(other.size()) {}
 	template <size_t N>
@@ -579,6 +581,9 @@ protected:
 	Type* _data;
 	size_t _size;
 };
+
+template <typename T>
+MVKArrayRef(const std::vector<T>&) -> MVKArrayRef<const T>;
 
 /** Ensures the size of the specified container is at least the specified size. */
 template<typename C, typename S>
