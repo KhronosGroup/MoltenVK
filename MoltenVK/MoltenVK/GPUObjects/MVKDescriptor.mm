@@ -34,32 +34,6 @@
 		} \
 	} while (0)
 
-#pragma mark MVKShaderStageResourceBinding
-
-MVKShaderStageResourceBinding MVKShaderStageResourceBinding::operator+ (const MVKShaderStageResourceBinding& rhs) {
-	MVKShaderStageResourceBinding rslt;
-	rslt.bufferIndex = this->bufferIndex + rhs.bufferIndex;
-	rslt.textureIndex = this->textureIndex + rhs.textureIndex;
-	rslt.samplerIndex = this->samplerIndex + rhs.samplerIndex;
-	rslt.dynamicOffsetBufferIndex = this->dynamicOffsetBufferIndex + rhs.dynamicOffsetBufferIndex;
-	return rslt;
-}
-
-MVKShaderStageResourceBinding& MVKShaderStageResourceBinding::operator+= (const MVKShaderStageResourceBinding& rhs) {
-	this->bufferIndex += rhs.bufferIndex;
-	this->textureIndex += rhs.textureIndex;
-	this->samplerIndex += rhs.samplerIndex;
-	this->dynamicOffsetBufferIndex += rhs.dynamicOffsetBufferIndex;
-	return *this;
-}
-
-void MVKShaderStageResourceBinding::clearArgumentBufferResources() {
-	bufferIndex = 0;
-	textureIndex = 0;
-	samplerIndex = 0;
-}
-
-
 #pragma mark MVKShaderResourceBinding
 
 uint32_t MVKShaderResourceBinding::getMaxBufferIndex() {
