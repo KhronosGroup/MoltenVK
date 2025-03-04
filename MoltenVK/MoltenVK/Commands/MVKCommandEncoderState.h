@@ -139,6 +139,37 @@ struct MVKBindingList {
 	MVKSmallVector<MVKMTLSamplerStateBinding, 8> samplerStateBindings;
 };
 
+struct MVKImplicitBufferData {
+	MVKSmallVector<uint32_t, 8> textureSwizzles;
+	MVKSmallVector<uint32_t, 8> bufferSizes;
+	MVKSmallVector<uint32_t, 8> dynamicOffsets;
+};
+
+enum class MVKResourceUsageStages : uint8_t {
+	Vertex   = static_cast<uint32_t>(MVKMetalGraphicsStage::Vertex),
+	Fragment = static_cast<uint32_t>(MVKMetalGraphicsStage::Fragment),
+	All      = static_cast<uint32_t>(MVKMetalGraphicsStage::Count),
+	Count,
+	Compute  = 0, // Aliases with Render stages
+};
+
+struct MVKUseResourceHelper {
+	struct Entry {
+		MVKSmallVector<id<MTLResource>> read;
+		MVKSmallVector<id<MTLResource>> readWrite;
+		MVKSmallVector<id<MTLResource>>& get(bool write) { return write ? readWrite : read; }
+	};
+	struct ResourceInfo {
+		MVKResourceUsageStages stages;
+		bool write;
+	};
+	MVKOnePerEnumEntry<Entry, MVKResourceUsageStages> entries;
+	std::unordered_map<id<MTLResource>, ResourceInfo> used;
+	void add(id<MTLResource> resource, MVKResourceUsageStages stage, bool write);
+	void bindAndResetGraphics(id<MTLRenderCommandEncoder> encoder);
+	void bindAndResetCompute(id<MTLComputeCommandEncoder> encoder);
+};
+
 struct MVKDescriptorResourceUsage {
 	MVKBitArray dirtyDescriptors[kMVKMaxDescriptorSetCount];
 	MVKStaticBitSet<kMVKMaxDescriptorSetCount> dirtyAuxBuffers;
@@ -157,7 +188,7 @@ struct MVKVulkanGraphicsCommandEncoderState {
 	MTLSamplePosition _sampleLocations[kMVKMaxSampleCount];
 	/** Bindings collected from all the sets in `_descriptorSets` */
 	MVKBindingList _descriptorSetBindings[kMVKShaderStageFragment + 1][kMVKMaxDescriptorSetCount];
-	MVKSmallVector<uint32_t, 8> _dynamicOffsets[kMVKShaderStageFragment + 1];
+	MVKImplicitBufferData _implicitBufferData[kMVKShaderStageFragment + 1];
 
 	/** Choose between the dynamic and pipeline render states based on whether the given state flag is marked dynamic on the pipeline. */
 	const MVKRenderStateData& pickRenderState(MVKRenderStateFlag state) const {
@@ -185,7 +216,7 @@ struct MVKVulkanComputeCommandEncoderState {
 	MVKComputePipeline* _pipeline = nullptr;
 	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount];
 	MVKBindingList _descriptorSetBindings[kMVKMaxDescriptorSetCount];
-	MVKSmallVector<uint32_t, 8> _dynamicOffsets;
+	MVKImplicitBufferData _implicitBufferData;
 
 	/** Bind the given descriptor sets, placing their bindings into `_descriptorSetBindings`. */
 	void bindDescriptorSets(MVKPipelineLayout* layout,
@@ -194,6 +225,16 @@ struct MVKVulkanComputeCommandEncoderState {
 	                        MVKDescriptorSet*const* sets,
 	                        uint32_t dynamicOffsetCount,
 	                        const uint32_t* dynamicOffsets);
+};
+
+struct MVKMetalSharedCommandEncoderState {
+	/** Storage space for use by various methods to reduce alloc/free. */
+	MVKSmallVector<uint32_t, 8> _scratch;
+
+	/** Storage for tracking which objects need to have useResource called on them. */
+	MVKUseResourceHelper _useResource;
+
+	void reset() { _useResource.used.clear(); }
 };
 
 #pragma mark - MVKMetalRenderCommandEncoderState
@@ -374,6 +415,7 @@ class MVKCommandEncoderState {
 	MVKVulkanSharedCommandEncoderState   _vkShared;
 	MVKVulkanGraphicsCommandEncoderState _vkGraphics;
 	MVKVulkanComputeCommandEncoderState  _vkCompute;
+	MVKMetalSharedCommandEncoderState    _mtlShared;
 	MVKMetalGraphicsCommandEncoderState  _mtlGraphics;
 	MVKMetalComputeCommandEncoderState   _mtlCompute;
 	enum class CommandEncoderClass {
@@ -391,6 +433,8 @@ public:
 	const MVKVulkanGraphicsCommandEncoderState& vkGraphics() const { return _vkGraphics; }
 	/** Get a reference to the Vulkan compute state.  Read-only, use methods on this class (which will invalidate associated Metal state) to modify. */
 	const MVKVulkanComputeCommandEncoderState&  vkCompute()  const { return _vkCompute; }
+	/** Get a reference to the Metal state shared between graphics and compute. */
+	MVKMetalSharedCommandEncoderState&   mtlShared()   { return _mtlShared; }
 	/** Get a reference to the Metal graphics state. */
 	MVKMetalGraphicsCommandEncoderState& mtlGraphics() { return _mtlGraphics; }
 	/** Get a reference to the Metal compute state. */
@@ -445,16 +489,9 @@ public:
 	void encodeResourceUsage(MVKCommandEncoder& mvkEncoder, MVKShaderStage stage, id<MTLResource> mtlResource, MTLResourceUsage mtlUsage, MTLRenderStages mtlStages);
 
 	/** Begin tracking for a fresh MTLRenderCommandEncoder. */
-	void beginGraphicsEncoding(VkSampleCountFlags sampleCount) {
-		_mtlGraphics.reset(sampleCount);
-		_mtlActiveEncoder = CommandEncoderClass::Graphics;
-	}
-
+	void beginGraphicsEncoding(VkSampleCountFlags sampleCount);
 	/** Begin tracking for a fresh MTLComputeCommandEncoder. */
-	void beginComputeEncoding() {
-		_mtlCompute.reset();
-		_mtlActiveEncoder = CommandEncoderClass::Compute;
-	}
+	void beginComputeEncoding();
 
 	/**
 	 * Call the given function on either the Metal graphics or compute state tracker, whichever one is active (or neither if neither is active).

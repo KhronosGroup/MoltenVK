@@ -499,9 +499,6 @@ public:
 	/** Tracks the occlusion query state of the encoder. */
 	MVKOcclusionQueryCommandEncoderState _occlusionQueryState;
 
-	/** Storage space for use by various methods to reduce alloc/free. */
-	MVKSmallVector<uint32_t, 8> _scratch;
-
     /** The size of the threadgroup for the compute shader. */
     MTLSize _mtlThreadgroupSize;
 

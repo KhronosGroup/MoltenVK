@@ -26,6 +26,7 @@
 #include "MVKSync.h"
 #include "MVKSmallVector.h"
 #include "MVKBitArray.h"
+#include "MVKInlineArray.h"
 #include <MoltenVKShaderConverter/SPIRVReflection.h>
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 #include <unordered_map>
@@ -129,6 +130,94 @@ protected:
 	uint32_t _pushConstantsLength;
 };
 
+#pragma mark - MVKDescriptorBindOperation
+
+enum class MVKDescriptorBindOperationCode : uint8_t {
+	BindSet,
+	BindBytes,
+	BindBuffer,
+	BindBufferDynamic,
+	BindTexture,
+	BindSampler,
+	BindImmutableSampler,
+	BindBufferWithLiveCheck,
+	BindBufferDynamicWithLiveCheck,
+	BindTextureWithLiveCheck,
+	BindSamplerWithLiveCheck,
+	UseResource,
+	UseBufferWithLiveCheck,
+	UseTextureWithLiveCheck,
+};
+
+struct MVKDescriptorBindOperation {
+	MVKDescriptorBindOperationCode opcode;
+	uint8_t set : 4;
+	uint8_t _offset : 4; /**< Offset into the first descriptor */
+	uint8_t target;      /**< For BindX, the target bind index.  For UseX, whether the resource can be written or not */
+	uint8_t target2;     /**< For BindBufferDynamic, the index of the dynamic offset */
+	uint32_t bindingIdx; /**< The index of the MVKDescriptorBinding in the layout */
+	MVKDescriptorBindOperation() = default;
+	constexpr MVKDescriptorBindOperation(MVKDescriptorBindOperationCode opcode_, uint32_t set_, uint32_t target_, uint32_t bindingIdx_, size_t offset_ = 0, uint32_t target2_ = 0)
+		: opcode(opcode_), set(set_), _offset(offset_ / sizeof(id)), target(target_), target2(target2_), bindingIdx(bindingIdx_)
+	{
+		assert(offset_ % sizeof(id) == 0);
+		assert((offset_ / sizeof(id)) <= 15);
+		assert(set_    <= 15);
+		assert(target_ <= UINT8_MAX);
+		assert(target2_ <= UINT8_MAX);
+	}
+	uint32_t offset() const { return _offset * sizeof(id); }
+};
+
+struct MVKPipelineBindScript {
+	MVKSmallVector<MVKDescriptorBindOperation> ops;
+};
+
+#pragma mark - MVKPipelineLayoutNew
+
+class MVKPipelineLayoutNew : public MVKVulkanAPIDeviceObject, public MVKInlineConstructible {
+public:
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_PIPELINE_LAYOUT; }
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT; }
+
+	/** Returns the descriptor set layout. */
+	MVKDescriptorSetLayoutNew* getDescriptorSetLayout(uint32_t descSetIndex) const { return _descriptorSetLayouts[descSetIndex]; }
+	/** Returns the starting offsets for the given descriptor set. */
+	const MVKShaderResourceBinding& getResourceBindingOffsets(uint32_t descSetIndex) const { return _resourceIndexOffsets[descSetIndex]; }
+	/** Returns the number of resurces for all descriptor sets combined. */
+	const MVKShaderResourceBinding& getResourceCounts() const { return _mtlResourceCounts; }
+	/** Returns the number of descriptor sets. */
+	size_t getDescriptorSetCount() const { return _descriptorSetLayouts.size(); }
+	/** Returns the list of descriptor set layouts. */
+	MVKArrayRef<MVKDescriptorSetLayoutNew*const> getDescriptorSetLayouts() const { return _descriptorSetLayouts; }
+	/** Returns the size of the push constants. */
+	uint32_t getPushConstantsLength() const { return _pushConstantsLength; }
+	/** Returns the buffer binding index for the given push constants. */
+	uint32_t getPushConstantResourceIndex(MVKShaderStage stage) const { return _pushConstantResourceIndices[stage]; }
+	/** Check whether the given stage uses push constants. */
+	bool stageUsesPushConstants(MVKShaderStage stage) const;
+	/** Populates the specified shader conversion config. */
+	void populateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig) const;
+	/** Adds all used bindings to the given bind script. */
+	void populateBindOperations(MVKPipelineBindScript& script, const mvk::SPIRVToMSLConversionConfiguration& shaderConfig, spv::ExecutionModel execModel);
+
+	/** Constructs an instance for the specified device. */
+	static MVKPipelineLayoutNew* Create(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
+	~MVKPipelineLayoutNew();
+
+private:
+	MVKInlineArray<MVKDescriptorSetLayoutNew*> _descriptorSetLayouts;
+	MVKInlineArray<MVKShaderResourceBinding> _resourceIndexOffsets;
+	uint32_t _pushConstantsLength = 0;
+	VkShaderStageFlags _pushConstantStages = 0;
+	MVKShaderResourceBinding _mtlResourceCounts;
+	uint8_t _pushConstantResourceIndices[kMVKShaderStageCount];
+	void propagateDebugName() override {}
+	friend class MVKInlineObjectConstructor<MVKPipelineLayoutNew>;
+	MVKPipelineLayoutNew(MVKDevice* device);
+};
 
 #pragma mark -
 #pragma mark MVKPipeline
