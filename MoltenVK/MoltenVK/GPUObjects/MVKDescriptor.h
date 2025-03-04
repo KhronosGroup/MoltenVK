@@ -42,10 +42,19 @@ typedef struct MVKShaderStageResourceBinding {
 	uint32_t samplerIndex = 0;
 	uint32_t dynamicOffsetBufferIndex = 0;
 
-	MVKShaderStageResourceBinding operator+ (const MVKShaderStageResourceBinding& rhs);
-	MVKShaderStageResourceBinding& operator+= (const MVKShaderStageResourceBinding& rhs);
-	void clearArgumentBufferResources();
-
+	MVKShaderStageResourceBinding operator+(const MVKShaderStageResourceBinding& rhs) const { auto tmp = *this; tmp += rhs; return tmp;}
+	MVKShaderStageResourceBinding& operator+=(const MVKShaderStageResourceBinding& rhs) {
+		bufferIndex += rhs.bufferIndex;
+		textureIndex += rhs.textureIndex;
+		samplerIndex += rhs.samplerIndex;
+		dynamicOffsetBufferIndex += rhs.dynamicOffsetBufferIndex;
+		return *this;
+	}
+	void clearArgumentBufferResources() {
+		bufferIndex = 0;
+		textureIndex = 0;
+		samplerIndex = 0;
+	}
 } MVKShaderStageResourceBinding;
 
 
