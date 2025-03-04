@@ -153,6 +153,22 @@ typedef struct MVKPhysicalDeviceVulkan14NoExtFeatures {
 	VkBool32 pushDescriptor;
 } MVKPhysicalDeviceVulkan14NoExtFeatures;
 
+/**
+ * The size of each type of struct in an argument buffer.
+ *
+ * Note: On devices with tier 1 argument buffers, the size of an array of `n` of the given item may be smaller than the size of `n * size`.
+ * (Some tier 1 devices include metadata that's shared among multiple elements).
+ */
+struct MVKPhysicalDeviceArgumentBufferSizes {
+	struct Entry {
+		uint16_t size;
+		uint16_t align;
+	};
+	Entry texture;
+	Entry sampler;
+	Entry pointer;
+};
+
 /** Represents a Vulkan physical GPU device. */
 class MVKPhysicalDevice : public MVKDispatchableVulkanAPIObject {
 
@@ -409,6 +425,9 @@ public:
 	/** Returns the MTLDevice capabilities. */
 	const MVKMTLDeviceCapabilities getMTLDeviceCapabilities() { return _gpuCapabilities; }
 
+	/** Returns info on the sizes of argument buffers. */
+	const MVKPhysicalDeviceArgumentBufferSizes& getArgumentBufferSizes() const { return _argumentBufferSizes; }
+
 
 #pragma mark Construction
 
@@ -494,6 +513,7 @@ protected:
 	uint32_t _hostCoherentMemoryTypes;
 	uint32_t _privateMemoryTypes;
 	uint32_t _lazilyAllocatedMemoryTypes;
+	MVKPhysicalDeviceArgumentBufferSizes _argumentBufferSizes;
 	bool _hasUnifiedMemory = true;
 	bool _isUsingMetalArgumentBuffers = true;
 };
