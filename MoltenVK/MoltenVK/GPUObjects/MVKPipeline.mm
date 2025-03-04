@@ -18,6 +18,7 @@
 
 #include "MVKPipeline.h"
 #include "MVKCommandBuffer.h"
+#include "MVKInlineObjectConstructor.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
 #include "MVKStrings.h"
@@ -191,6 +192,348 @@ MVKPipelineLayout::~MVKPipelineLayout() {
 	for (auto dsl : _descriptorSetLayouts) { dsl->release(); }
 }
 
+#pragma mark - MVKPipelineLayoutNew
+
+bool MVKPipelineLayoutNew::stageUsesPushConstants(MVKShaderStage stage) const {
+	return mvkIsAnyFlagEnabled(_pushConstantStages, mvkVkShaderStageFlagBitsFromMVKShaderStage(stage));
+}
+
+/** Gets the layout for use with the Metal binding API (rather than argument buffers). */
+static MVKDescriptorGPULayout getBindingLayout(const MVKDescriptorBinding& binding) {
+	bool hasSampler = (binding.perDescriptorResourceCount.sampler > 0) | binding.hasImmutableSamplers();
+	bool hasTexture = binding.perDescriptorResourceCount.texture > 0;
+	bool hasBuffer = binding.perDescriptorResourceCount.buffer > 0;
+	if (hasSampler) {
+		return hasTexture ? MVKDescriptorGPULayout::TexSampSoA : MVKDescriptorGPULayout::Sampler;
+	} else if (hasBuffer) {
+		return hasTexture ? MVKDescriptorGPULayout::TexBufSoA  : MVKDescriptorGPULayout::Buffer;
+	} else  {
+		return hasTexture ? MVKDescriptorGPULayout::Texture    : MVKDescriptorGPULayout::None;
+	}
+}
+
+static spv::ExecutionModel spvExecModelForStage(MVKShaderStage stage) {
+	switch (stage) {
+		case kMVKShaderStageVertex:   return spv::ExecutionModelVertex;
+		case kMVKShaderStageTessCtl:  return spv::ExecutionModelTessellationControl;
+		case kMVKShaderStageTessEval: return spv::ExecutionModelTessellationEvaluation;
+		case kMVKShaderStageFragment: return spv::ExecutionModelFragment;
+		case kMVKShaderStageCompute:  return spv::ExecutionModelGLCompute;
+		case kMVKShaderStageCount:
+			break;
+	}
+	assert(!"Invalid stage");
+	return spv::ExecutionModelMax;
+}
+
+static mvk::MSLResourceBinding makeResourceBinding(const MVKShaderStageResourceBinding& binding,
+                                                   MVKShaderStage stage,
+                                                   uint32_t descriptorSetIndex,
+                                                   uint32_t bindingIndex,
+                                                   uint32_t count,
+                                                   SPIRV_CROSS_NAMESPACE::SPIRType::BaseType type,
+                                                   MVKSampler* immutableSampler)
+{
+	mvk::MSLResourceBinding rb;
+	auto& rbb = rb.resourceBinding;
+	rbb.stage = spvExecModelForStage(stage);
+	rbb.basetype = type;
+	rbb.desc_set = descriptorSetIndex;
+	rbb.binding = bindingIndex;
+	rbb.count = count;
+	rbb.msl_buffer = binding.bufferIndex;
+	rbb.msl_texture = binding.textureIndex;
+	rbb.msl_sampler = binding.samplerIndex;
+	if (immutableSampler) { immutableSampler->getConstexprSampler(rb); }
+	return rb;
+}
+
+static mvk::DescriptorBinding makeDescriptorBinding(MVKShaderStage stage, uint32_t descriptorSetIndex, uint32_t bindingIndex, uint32_t dynamicOffsetIndex) {
+	mvk::DescriptorBinding db;
+	db.stage = spvExecModelForStage(stage);
+	db.descriptorSet = descriptorSetIndex;
+	db.binding = bindingIndex;
+	db.index = dynamicOffsetIndex;
+	return db;
+}
+
+static void addResourceBindingToShaderConfig(SPIRVToMSLConversionConfiguration& shaderConfig,
+                                             const MVKShaderStageResourceBinding& binding,
+                                             MVKShaderStage stage,
+                                             uint32_t descriptorSetIndex,
+                                             uint32_t bindingIndex,
+                                             uint32_t count,
+                                             MVKDescriptorGPULayout layout,
+                                             MVKSampler* immutableSampler = nullptr)
+{
+	using SPIRV_CROSS_NAMESPACE::SPIRType;
+	if (count == 0) { return; }
+
+	switch (layout) {
+		case MVKDescriptorGPULayout::Texture:
+			shaderConfig.resourceBindings.push_back(makeResourceBinding(binding, stage, descriptorSetIndex, bindingIndex, count, SPIRType::Image, immutableSampler));
+			break;
+		case MVKDescriptorGPULayout::Sampler:
+			shaderConfig.resourceBindings.push_back(makeResourceBinding(binding, stage, descriptorSetIndex, bindingIndex, count, SPIRType::Sampler, immutableSampler));
+			break;
+		case MVKDescriptorGPULayout::Buffer:
+		case MVKDescriptorGPULayout::BufferAuxSize:
+			shaderConfig.resourceBindings.push_back(makeResourceBinding(binding, stage, descriptorSetIndex, bindingIndex, count, SPIRType::Void, immutableSampler));
+			break;
+		case MVKDescriptorGPULayout::OutlinedData:
+			shaderConfig.resourceBindings.push_back(makeResourceBinding(binding, stage, descriptorSetIndex, bindingIndex, 1, SPIRType::Void, immutableSampler));
+			break;
+		case MVKDescriptorGPULayout::TexBufSoA:
+			shaderConfig.resourceBindings.push_back(makeResourceBinding(binding, stage, descriptorSetIndex, bindingIndex, count, SPIRType::Image, immutableSampler));
+			shaderConfig.resourceBindings.push_back(makeResourceBinding(binding, stage, descriptorSetIndex, bindingIndex, count, SPIRType::Void,  immutableSampler));
+			break;
+		case MVKDescriptorGPULayout::TexSampSoA:
+		case MVKDescriptorGPULayout::Tex2SampSoA:
+		case MVKDescriptorGPULayout::Tex3SampSoA:
+			shaderConfig.resourceBindings.push_back(makeResourceBinding(binding, stage, descriptorSetIndex, bindingIndex, count, SPIRType::SampledImage, immutableSampler));
+			break;
+
+		case MVKDescriptorGPULayout::None:
+			return;
+
+		case MVKDescriptorGPULayout::InlineData:
+			assert(!"SPIRV-Cross doesn't currently support inline data");
+			return;
+	}
+}
+
+void MVKPipelineLayoutNew::populateShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig) const {
+	shaderConfig.resourceBindings.clear();
+	shaderConfig.discreteDescriptorSets.clear();
+	shaderConfig.dynamicBufferDescriptors.clear();
+
+	// Add any resource bindings used by push-constants.
+	for (uint32_t i = 0; i < kMVKShaderStageCount; i++) {
+		auto stage = static_cast<MVKShaderStage>(i);
+		if (stageUsesPushConstants(stage)) {
+			MVKShaderStageResourceBinding binding = {};
+			binding.bufferIndex = getPushConstantResourceIndex(stage);
+			addResourceBindingToShaderConfig(shaderConfig, binding, stage, kPushConstDescSet, kPushConstBinding, 1, MVKDescriptorGPULayout::Buffer);
+		}
+	}
+
+	for (uint32_t dslIdx = 0; dslIdx < _descriptorSetLayouts.size(); dslIdx++) {
+		MVKDescriptorSetLayoutNew* layout = _descriptorSetLayouts[dslIdx];
+		MVKShaderResourceBinding binding = _resourceIndexOffsets[dslIdx];
+		uint32_t argBufResIdx = 0;
+		bool argbuf = layout->argBufMode() != MVKArgumentBufferMode::Off;
+		if (argbuf) {
+			if (layout->needsSizeBuf()) {
+				argBufResIdx++;
+				for (uint32_t i = 0; i < kMVKShaderStageCount; i++) {
+					auto stage = static_cast<MVKShaderStage>(i);
+					addResourceBindingToShaderConfig(shaderConfig, {}, stage, dslIdx, kBufferSizeBufferBinding, 1, MVKDescriptorGPULayout::Buffer);
+				}
+			}
+		}
+		for (const MVKDescriptorBinding& desc : layout->bindings()) {
+			MVKShaderStageResourceBinding resCount = desc.totalResourceCount();
+			for (uint32_t i = 0; i < kMVKShaderStageCount; i++) {
+				auto stage = static_cast<MVKShaderStage>(i);
+				bool used = mvkIsAnyFlagEnabled(desc.stageFlags, mvkVkShaderStageFlagBitsFromMVKShaderStage(stage));
+				if (argbuf) {
+					binding.stages[stage].textureIndex = argBufResIdx;
+					binding.stages[stage].bufferIndex = argBufResIdx + resCount.textureIndex;
+					binding.stages[stage].samplerIndex = argBufResIdx + resCount.textureIndex;
+				} else if (!used) {
+					continue;
+				}
+
+				MVKSampler*const* immSamp = layout->getImmutableSampler(desc);
+				MVKDescriptorGPULayout gpuLayout = argbuf ? desc.gpuLayout : getBindingLayout(desc);
+				addResourceBindingToShaderConfig(shaderConfig, binding.stages[stage], stage, dslIdx, desc.binding, desc.descriptorCount, gpuLayout, immSamp ? *immSamp : nullptr);
+				if (desc.perDescriptorResourceCount.dynamicOffset != 0 && used) {
+					shaderConfig.dynamicBufferDescriptors.push_back(makeDescriptorBinding(stage, dslIdx, desc.binding, binding.stages[stage].dynamicOffsetBufferIndex));
+				}
+				if (argbuf) {
+					if (used && desc.perDescriptorResourceCount.dynamicOffset)
+						binding.stages[stage].dynamicOffsetBufferIndex += desc.descriptorCount;
+				} else {
+					binding.stages[stage] += resCount;
+				}
+			}
+			argBufResIdx += resCount.textureIndex + resCount.bufferIndex + resCount.samplerIndex;
+		}
+		if (isUsingMetalArgumentBuffers() && !argbuf) {
+			shaderConfig.discreteDescriptorSets.push_back(dslIdx);
+		}
+	}
+}
+
+static bool hasDynamicBuffer(VkDescriptorType type) {
+	switch (type) {
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+			return true;
+		default:
+			return false;
+	}
+}
+
+static bool hasBuffer(MVKDescriptorGPULayout layout) {
+	switch (layout) {
+		case MVKDescriptorGPULayout::Buffer:
+		case MVKDescriptorGPULayout::BufferAuxSize:
+		case MVKDescriptorGPULayout::TexBufSoA:
+			return true;
+		default:
+			return false;
+	}
+}
+
+static bool isWriteable(VkDescriptorType type) {
+	switch (type) {
+		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+			return true;
+		default:
+			return false;
+	}
+}
+
+void MVKPipelineLayoutNew::populateBindOperations(MVKPipelineBindScript& script, const SPIRVToMSLConversionConfiguration& shaderConfig, spv::ExecutionModel execModel) {
+	bool setsBound[kMVKMaxDescriptorSetCount] = {};
+	assert(script.ops.empty());
+
+	for (const auto& mslBinding : shaderConfig.resourceBindings) {
+		if (mslBinding.resourceBinding.stage != execModel || !mslBinding.outIsUsedByShader) { continue; }
+		uint32_t set = mslBinding.resourceBinding.desc_set;
+		uint32_t binding = mslBinding.resourceBinding.binding;
+		if (set >= _descriptorSetLayouts.size()) { assert(set == kPushConstDescSet); continue; }
+		// Aux buffers are always allocated out of the same buffer as the descriptor set itself, so they'll already be resident
+		if (binding == kBufferSizeBufferBinding) { continue; }
+		MVKDescriptorSetLayoutNew* layout = _descriptorSetLayouts[set];
+		uint32_t descIdx = layout->getBindingIndex(binding);
+		if (descIdx >= layout->bindings().size()) { assert(!"Binding missing from layout"); continue; }
+		const MVKDescriptorBinding& desc = layout->bindings()[descIdx];
+		auto counts = desc.perDescriptorResourceCount;
+		uint32_t nonTexOffset = counts.texture * sizeof(id);
+		if (!desc.descriptorCount) { continue; }
+
+		if (layout->argBufMode() == MVKArgumentBufferMode::Off) {
+			if (desc.cpuLayout == MVKDescriptorCPULayout::InlineData) {
+				script.ops.push_back({ MVKDescriptorBindOperationCode::BindBytes, set, mslBinding.resourceBinding.msl_buffer, descIdx });
+			} else {
+				bool partiallyBound = mvkIsAnyFlagEnabled(desc.flags, MVK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
+				MVKDescriptorBindOperationCode bindTex  = partiallyBound ? MVKDescriptorBindOperationCode::BindTextureWithLiveCheck : MVKDescriptorBindOperationCode::BindTexture;
+				MVKDescriptorBindOperationCode bindBuf  = partiallyBound ? MVKDescriptorBindOperationCode::BindBufferWithLiveCheck  : MVKDescriptorBindOperationCode::BindBuffer ;
+				MVKDescriptorBindOperationCode bindSamp = partiallyBound ? MVKDescriptorBindOperationCode::BindSamplerWithLiveCheck : MVKDescriptorBindOperationCode::BindSampler;
+				MVKDescriptorBindOperationCode bindBufDyn = partiallyBound ? MVKDescriptorBindOperationCode::BindBufferDynamicWithLiveCheck : MVKDescriptorBindOperationCode::BindBufferDynamic;
+				uint32_t nbind = desc.descriptorCount;
+				for (uint32_t i = 0; i < counts.texture; i++) {
+					script.ops.push_back({ bindTex, set, mslBinding.resourceBinding.msl_texture + i * nbind, descIdx, sizeof(id) * i });
+				}
+
+				if (hasDynamicBuffer(desc.descriptorType)) {
+					uint32_t dynOffset = 0;
+					auto it = std::find_if(shaderConfig.dynamicBufferDescriptors.begin(), shaderConfig.dynamicBufferDescriptors.end(), [&](auto& dynBuf){
+						return dynBuf.stage == execModel && dynBuf.descriptorSet == set && dynBuf.binding == binding;
+					});
+					if (it == shaderConfig.dynamicBufferDescriptors.end()) {
+						assert(0);
+					} else {
+						dynOffset = it->index;
+					}
+					script.ops.push_back({ bindBufDyn, set, mslBinding.resourceBinding.msl_buffer, descIdx, nonTexOffset, dynOffset });
+				} else if (counts.buffer > 0) {
+					script.ops.push_back({ bindBuf, set, mslBinding.resourceBinding.msl_buffer, descIdx, nonTexOffset });
+				}
+				if (counts.sampler > 0) {
+					if (desc.hasImmutableSamplers())
+						bindSamp = MVKDescriptorBindOperationCode::BindImmutableSampler;
+					script.ops.push_back({ bindSamp, set, mslBinding.resourceBinding.msl_sampler, descIdx, nonTexOffset });
+				}
+			}
+		} else {
+			if (!setsBound[set]) {
+				script.ops.push_back({ MVKDescriptorBindOperationCode::BindSet, set, set, 0 });
+				setsBound[set] = true;
+			}
+
+			if (!_device->hasResidencySet()) {
+				bool partiallyBound = mvkIsAnyFlagEnabled(desc.flags, MVK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
+				MVKDescriptorBindOperationCode useTex = partiallyBound ? MVKDescriptorBindOperationCode::UseTextureWithLiveCheck : MVKDescriptorBindOperationCode::UseResource;
+				MVKDescriptorBindOperationCode useBuf = partiallyBound ? MVKDescriptorBindOperationCode::UseBufferWithLiveCheck  : MVKDescriptorBindOperationCode::UseResource;
+				MVKDescriptorGPULayout gpuLayout = desc.gpuLayout;
+				uint32_t target = isWriteable(desc.descriptorType);
+				for (uint32_t i = 0, n = descriptorTextureCount(gpuLayout); i < n; i++) {
+					script.ops.push_back({ useTex, set, target, descIdx, sizeof(id) * i });
+				}
+				if (hasBuffer(gpuLayout)) {
+					script.ops.push_back({ useBuf, set, target, descIdx, nonTexOffset });
+				}
+			}
+		}
+	}
+}
+
+MVKPipelineLayoutNew::MVKPipelineLayoutNew(MVKDevice* device): MVKVulkanAPIDeviceObject(device) {}
+
+MVKPipelineLayoutNew* MVKPipelineLayoutNew::Create(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo) {
+	using Constructor = MVKInlineObjectConstructor<MVKPipelineLayoutNew>;
+	MVKArrayRef layouts(reinterpret_cast<MVKDescriptorSetLayoutNew*const*>(pCreateInfo->pSetLayouts), pCreateInfo->setLayoutCount);
+
+	MVKPipelineLayoutNew* ret = Constructor::Create(
+		std::tuple {
+			Constructor::Copy(&MVKPipelineLayoutNew::_descriptorSetLayouts, layouts),
+			Constructor::Uninit(&MVKPipelineLayoutNew::_resourceIndexOffsets, layouts.size()),
+		},
+		device
+	);
+
+	for (const VkPushConstantRange& range : MVKArrayRef(pCreateInfo->pPushConstantRanges, pCreateInfo->pushConstantRangeCount)) {
+		ret->_pushConstantStages |= range.stageFlags;
+		ret->_pushConstantsLength = std::max(ret->_pushConstantsLength, range.offset + range.size);
+	}
+
+	// MSL structs can have a larger size than the equivalent C struct due to MSL alignment needs.
+	// Typically any MSL struct that contains a float4 will also have a size that is rounded up to a multiple of a float4 size.
+	// Ensure that we pass along enough content to cover this extra space even if it is never actually accessed by the shader.
+	ret->_pushConstantsLength = static_cast<uint32_t>(mvkAlignByteCount(ret->_pushConstantsLength, 16));
+
+	// We do not need to do anything special for pipeline layout compatibility, as the state tracker handles rebinding as necessary.
+	// However, if we try to bind things in a way that would support direct layout compatibility, the state tracker will need to do less rebinding of buffers.
+	// So consume the Metal resource indexes in this order:
+	//   - Fixed count of argument buffers for descriptor sets (if using Metal argument buffers).
+	//   - Push constants
+	//   - Descriptor set content
+
+	// If we are using Metal argument buffers, consume a fixed number of buffer indices for the Metal argument buffers themselves.
+	for (const MVKDescriptorSetLayoutNew* layout : layouts) {
+		if (layout->argBufMode() != MVKArgumentBufferMode::Off) {
+			ret->_mtlResourceCounts.addArgumentBuffers(kMVKMaxDescriptorSetCount);
+			break;
+		}
+	}
+
+	for (uint32_t stage = 0; stage < kMVKShaderStageCount; stage++) {
+		ret->_pushConstantResourceIndices[stage] = static_cast<uint8_t>(ret->_mtlResourceCounts.stages[stage].bufferIndex);
+		if (ret->stageUsesPushConstants(static_cast<MVKShaderStage>(stage)))
+			++ret->_mtlResourceCounts.stages[stage].bufferIndex;
+	}
+
+	for (size_t i = 0; i < layouts.size(); i++) {
+		layouts[i]->retain();
+		ret->_resourceIndexOffsets[i] = ret->_mtlResourceCounts;
+		MVKShaderResourceBinding count = layouts[i]->totalResourceCount();
+		if (layouts[i]->argBufMode() != MVKArgumentBufferMode::Off)
+			count.clearArgumentBufferResources();
+		ret->_mtlResourceCounts += count;
+	}
+
+	return ret;
+}
+
+MVKPipelineLayoutNew::~MVKPipelineLayoutNew() {
+	for (auto dsl : _descriptorSetLayouts) { dsl->release(); }
+}
 
 #pragma mark -
 #pragma mark MVKPipeline
