@@ -252,6 +252,8 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_get_physical_device_properties2`
 - `VK_KHR_get_surface_capabilities2`
 - `VK_KHR_imageless_framebuffer`
+- `VK_EXT_image_2d_view_of_3d`
+  - *Requires MVK_CONFIG_USE_MTLHEAP to be enabled.*
 - `VK_KHR_image_format_list`
 - `VK_KHR_incremental_present`
 - `VK_KHR_maintenance1`
@@ -273,6 +275,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_shader_non_semantic_info`
 - `VK_KHR_shader_subgroup_extended_types`
   - *Requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS.*
+- `VK_KHR_shader_terminate_invocation`
 - `VK_KHR_spirv_1_4`
 - `VK_KHR_storage_buffer_storage_class`
 - `VK_KHR_surface`
@@ -283,6 +286,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_uniform_buffer_standard_layout`
 - `VK_KHR_variable_pointers`
 - `VK_KHR_vertex_attribute_divisor`
+- `VK_KHR_zero_initialize_workgroup_memory`
 - `VK_EXT_4444_formats`
   - *Requires 16-bit formats and either native texture swizzling or manual swizzling to be enabled.*
 - `VK_EXT_buffer_device_address`
@@ -292,6 +296,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_debug_marker`
 - `VK_EXT_debug_report`
 - `VK_EXT_debug_utils`
+- `VK_EXT_depth_clip_control`
 - `VK_EXT_descriptor_indexing`
   - *Initial release limited to Metal Tier 1: 96/128 textures,
     16 samplers, except macOS 11.0 (Big Sur) or later, or on older versions of macOS using
@@ -347,6 +352,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
   - *Requires Metal 2.0.*
 - `VK_EXT_texture_compression_astc_hdr`
   - *iOS and macOS, requires family 6 (A13) or better Apple GPU.*
+- `VK_EXT_tooling_info`
 - `VK_MVK_ios_surface`
   - *Obsolete. Use `VK_EXT_metal_surface` instead.*
 - `VK_MVK_macos_surface`
@@ -362,7 +368,6 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_INTEL_shader_integer_functions2`
 - `VK_NV_fragment_shader_barycentric`
   - *Requires Metal 2.2 on Mac or Metal 2.3 on iOS.*
-- `VK_NV_glsl_shader`
 
 In order to visibly display your content on *macOS*, *iOS*, or *tvOS*, you must enable the
 `VK_EXT_metal_surface` extension, and use the function defined in that extension to create a

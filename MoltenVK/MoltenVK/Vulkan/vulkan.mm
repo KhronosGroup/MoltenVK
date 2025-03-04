@@ -340,6 +340,10 @@ MVK_PUBLIC_VULKAN_SYMBOL PFN_vkVoidFunction vkGetDeviceProcAddr(
 	return func;
 }
 
+static MVKDevice* createMVKDevice(MVKPhysicalDevice* mvkPD, const VkDeviceCreateInfo* pCreateInfo) {
+	@autoreleasepool { return new MVKDevice(mvkPD, pCreateInfo); }
+}
+
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateDevice(
     VkPhysicalDevice                            physicalDevice,
     const VkDeviceCreateInfo*                   pCreateInfo,
@@ -348,7 +352,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateDevice(
 
 	MVKTraceVulkanCallStart();
 	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-	MVKDevice* mvkDev = new MVKDevice(mvkPD, pCreateInfo);
+	MVKDevice* mvkDev = createMVKDevice(mvkPD, pCreateInfo);
 	*pDevice = mvkDev->getVkDevice();
 	VkResult rslt = mvkDev->getConfigurationResult();
 	if (rslt < 0) { *pDevice = nullptr; mvkDev->destroy(); }
@@ -2822,7 +2826,18 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyPrivateDataSlot(
 MVK_PUBLIC_VULKAN_STUB(vkGetDeviceBufferMemoryRequirements, void, VkDevice, const VkDeviceBufferMemoryRequirements*, VkMemoryRequirements2*)
 MVK_PUBLIC_VULKAN_STUB(vkGetDeviceImageMemoryRequirements, void, VkDevice, const VkDeviceImageMemoryRequirements*, VkMemoryRequirements2*)
 MVK_PUBLIC_VULKAN_STUB(vkGetDeviceImageSparseMemoryRequirements, void, VkDevice, const VkDeviceImageMemoryRequirements*, uint32_t*, VkSparseImageMemoryRequirements2*)
-MVK_PUBLIC_VULKAN_STUB_VKRESULT(vkGetPhysicalDeviceToolProperties, VkPhysicalDevice, uint32_t*, VkPhysicalDeviceToolProperties*)
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceToolProperties(
+    VkPhysicalDevice                            physicalDevice,
+    uint32_t*                                   pToolCount,
+    VkPhysicalDeviceToolProperties*             pToolProperties) {
+
+	MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	VkResult rslt = mvkPD->getToolProperties(pToolCount, pToolProperties);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkGetPrivateData(
 											   VkDevice                                    device,
@@ -3146,7 +3161,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSetKHR(
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSetWithTemplateKHR(
     VkCommandBuffer                            commandBuffer,
-    VkDescriptorUpdateTemplate              descriptorUpdateTemplate,
+    VkDescriptorUpdateTemplate                 descriptorUpdateTemplate,
     VkPipelineLayout                           layout,
     uint32_t                                   set,
     const void*                                pData) {
@@ -3497,13 +3512,17 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkDebugMarkerSetObjectTagEXT(
 	return rslt;
 }
 
+static VkResult setDebugName(MVKVulkanAPIObject* mvkObj, const char* pObjectName) {
+	@autoreleasepool { return mvkObj ? mvkObj->setDebugName(pObjectName) : VK_SUCCESS; }
+}
+
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkDebugMarkerSetObjectNameEXT(
 	VkDevice                                    device,
 	const VkDebugMarkerObjectNameInfoEXT*       pNameInfo) {
 
 	MVKTraceVulkanCallStart();
 	MVKVulkanAPIObject* mvkObj = MVKVulkanAPIObject::getMVKVulkanAPIObject(pNameInfo->objectType, pNameInfo->object);
-	VkResult rslt = mvkObj ? mvkObj->setDebugName(pNameInfo->pObjectName) : VK_SUCCESS;
+	VkResult rslt = setDebugName(mvkObj, pNameInfo->pObjectName);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -3544,7 +3563,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetDebugUtilsObjectNameEXT(
 
 	MVKTraceVulkanCallStart();
 	MVKVulkanAPIObject* mvkObj = MVKVulkanAPIObject::getMVKVulkanAPIObject(pNameInfo->objectType, pNameInfo->objectHandle);
-	VkResult rslt = mvkObj ? mvkObj->setDebugName(pNameInfo->pObjectName) : VK_SUCCESS;
+	VkResult rslt = setDebugName(mvkObj, pNameInfo->pObjectName);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -4061,6 +4080,12 @@ void vkCmdSetSampleLocationsEXT(
 	MVKAddCmd(SetSampleLocations, commandBuffer, pSampleLocationsInfo);
 	MVKTraceVulkanCallEnd();
 }
+
+
+#pragma mark -
+#pragma mark VK_EXT_tooling_info extension
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceToolProperties, EXT);
 
 
 #pragma mark -

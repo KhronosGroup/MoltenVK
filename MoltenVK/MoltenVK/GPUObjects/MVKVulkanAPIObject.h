@@ -61,6 +61,9 @@ public:
 	/** Sets the debug object name of this instance. */
 	VkResult setDebugName(const char* pObjectName);
 
+	/** Sets the label of the Metal object. */
+	void setMetalObjectLabel(id mtlObj, NSString* label);
+
 	/** Returns the MVKVulkanAPIObject instance referenced by the object of the given type. */
 	static MVKVulkanAPIObject* getMVKVulkanAPIObject(VkDebugReportObjectTypeEXT objType, uint64_t object);
 
@@ -119,14 +122,3 @@ protected:
     MVKDispatchableObjectICDRef _icdRef = { 0, this };
 
 };
-
-#pragma mark -
-#pragma mark Support functions
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wobjc-method-access"
-/** Generically avoids setting a label to nil, which many objects don't like. */
-static inline void setLabelIfNotNil(id object, NSString* label) { if (label) { [object setLabel: label]; } }
-#pragma clang diagnostic pop
-
-

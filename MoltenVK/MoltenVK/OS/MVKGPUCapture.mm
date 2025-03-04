@@ -69,7 +69,7 @@ MVKGPUCaptureScope::MVKGPUCaptureScope(MVKQueue* mvkQueue) {
 	_mtlQueue = [mvkQueue->getMTLCommandQueue() retain];	// retained
 	if (mvkOSVersionIsAtLeast(10.13, 11.0, 1.0)) {
 		_mtlCaptureScope = [[MTLCaptureManager sharedCaptureManager] newCaptureScopeWithCommandQueue: _mtlQueue];	// retained
-		_mtlCaptureScope.label = @(mvkQueue->getName().c_str());
+		mvkQueue->setMetalObjectLabel(_mtlCaptureScope, @(mvkQueue->getName().c_str()));
 
 		// Due to an retain bug in Metal when the capture layer is installed, capture scopes
 		// on older OS versions can have too many references on them. If so, release the excess

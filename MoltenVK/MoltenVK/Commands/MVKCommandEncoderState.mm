@@ -645,7 +645,7 @@ void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 		if (dsChanged) {
 			auto& usageDirty = _metalUsageDirtyDescriptors[descSetIndex];
 			usageDirty.resize(descSet->getDescriptorCount());
-			usageDirty.setAllBits();
+			usageDirty.enableAllBits();
 		}
 
 		// Update dynamic buffer offsets
@@ -681,6 +681,7 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 			auto* dslBind = dsLayout->getBindingAt(dslBindIdx);
 			if (dslBind->getApplyToStage(stage) && shaderBindingUsage.getBit(dslBindIdx)) {
 				shouldBindArgBuffToStage = true;
+				if (getDevice()->hasResidencySet()) continue;
 				uint32_t elemCnt = dslBind->getDescriptorCount(descSet->getVariableDescriptorCount());
 				for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 					uint32_t descIdx = dslBind->getDescriptorIndex(elemIdx);
@@ -717,7 +718,7 @@ void MVKResourcesCommandEncoderState::markDirty() {
 	MVKCommandEncoderState::markDirty();
 	if (_cmdEncoder->isUsingMetalArgumentBuffers()) {
 		for (uint32_t dsIdx = 0; dsIdx < kMVKMaxDescriptorSetCount; dsIdx++) {
-			_metalUsageDirtyDescriptors[dsIdx].setAllBits();
+			_metalUsageDirtyDescriptors[dsIdx].enableAllBits();
 		}
 	}
 }
@@ -907,24 +908,47 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 	auto* pipeline = _cmdEncoder->getGraphicsPipeline();
     bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle() || _cmdEncoder->getMetalFeatures().nativeTextureSwizzle;
     bool forTessellation = pipeline->isTessellationPipeline();
-	bool isDynamicVertexStride = pipeline->isDynamicState(VertexStride);
+	bool isDynamicVertexStride = pipeline->isDynamicState(VertexStride) && _cmdEncoder->getMetalFeatures().dynamicVertexStride;
 
 	if (stage == kMVKGraphicsStageVertex) {
         encodeBindings(kMVKShaderStageVertex, "vertex", fullImageViewSwizzle,
-                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
-                           if (b.isInline)
-                               cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
-                                                           b.mtlBytes,
-                                                           b.size,
-                                                           b.index);
-                           else if (b.justOffset)
-                               [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl)
-                                            setBufferOffset: b.offset
-                                            atIndex: b.index];
-                           else
-                               [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl) setBuffer: b.mtlBuffer
-                                                                                                             offset: b.offset
-                                                                                                            atIndex: b.index];
+                       [isDynamicVertexStride](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
+                           if (isDynamicVertexStride) {
+#if MVK_XCODE_15
+                               if (b.isInline)
+                                   cmdEncoder->setComputeBytesWithStride(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
+                                                                         b.mtlBytes,
+                                                                         b.size,
+                                                                         b.index,
+                                                                         b.stride);
+                               else if (b.justOffset)
+                                   [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl)
+                                                setBufferOffset: b.offset
+                                                attributeStride: b.stride
+                                                atIndex: b.index];
+                               else
+                                   [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl)
+                                                setBuffer: b.mtlBuffer
+                                                   offset: b.offset
+                                          attributeStride: b.stride
+                                                  atIndex: b.index];
+#endif
+                           } else {
+                               if (b.isInline)
+                                   cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
+                                                               b.mtlBytes,
+                                                               b.size,
+                                                               b.index);
+                               else if (b.justOffset)
+                                   [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl)
+                                                setBufferOffset: b.offset
+                                                atIndex: b.index];
+                               else
+                                   [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl)
+                                                setBuffer: b.mtlBuffer
+                                                   offset: b.offset
+                                                  atIndex: b.index];
+                           }
                        },
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKArrayRef<const uint32_t> s)->void {
                            cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
@@ -942,6 +966,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                        });
 
 	} else if (!forTessellation && stage == kMVKGraphicsStageRasterization) {
+        auto& shaderStage = _shaderStageResourceBindings[kMVKShaderStageVertex];
         encodeBindings(kMVKShaderStageVertex, "vertex", fullImageViewSwizzle,
 					   [pipeline, isDynamicVertexStride](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
                            // The app may have bound more vertex attribute buffers than used by the pipeline.
@@ -968,11 +993,18 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                b.isDirty = true;	// We haven't written it out, so leave dirty until next time.
 						   }
                        },
-                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKArrayRef<const uint32_t> s)->void {
+                       [&shaderStage](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKArrayRef<const uint32_t> s)->void {
                            cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
                                                       s.data(),
                                                       s.byteSize(),
                                                       b.index);
+                           for (auto& bufb : shaderStage.bufferBindings) {
+                               if (bufb.index == b.index) {
+                                   // Vertex attribute occupying the same index should be marked dirty
+                                   // so it will be updated when enabled
+                                   bufb.markDirty();
+                               }
+                           }
                        },
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {
                            [cmdEncoder->_mtlRenderEncoder setVertexTexture: b.mtlTexture

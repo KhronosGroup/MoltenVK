@@ -2561,6 +2561,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_DYLIB_INSTALL_NAME = "@rpath/${PRODUCT_NAME}.framework/${PRODUCT_NAME}";
 				OTHER_LDFLAGS = (
+					"-ld_classic",
 					"-all_load",
 					"-w",
 				);
@@ -2574,6 +2575,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_DYLIB_INSTALL_NAME = "@rpath/${PRODUCT_NAME}.framework/${PRODUCT_NAME}";
 				OTHER_LDFLAGS = (
+					"-ld_classic",
 					"-all_load",
 					"-w",
 				);
@@ -2658,7 +2660,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1.2.11;
+				CURRENT_PROJECT_VERSION = 1.2.12;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -2700,7 +2702,11 @@
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
 				TVOS_DEPLOYMENT_TARGET = 13.0;
-				WARNING_CFLAGS = "-Wreorder";
+				WARNING_CFLAGS = (
+					"-Wreorder",
+					"-Wheader-hygiene",
+					"-Wunused-but-set-variable",
+				);
 			};
 			name = Debug;
 		};
@@ -2729,7 +2735,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 1.2.11;
+				CURRENT_PROJECT_VERSION = 1.2.12;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -2774,7 +2780,11 @@
 				SKIP_INSTALL = YES;
 				TVOS_DEPLOYMENT_TARGET = 13.0;
 				VALIDATE_PRODUCT = YES;
-				WARNING_CFLAGS = "-Wreorder";
+				WARNING_CFLAGS = (
+					"-Wreorder",
+					"-Wheader-hygiene",
+					"-Wunused-but-set-variable",
+				);
 			};
 			name = Release;
 		};

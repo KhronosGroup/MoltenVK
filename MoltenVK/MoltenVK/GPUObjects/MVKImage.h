@@ -91,6 +91,7 @@ protected:
     id<MTLTexture> _mtlTexture;
     std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
     MVKSmallVector<MVKImageSubresource, 1> _subresources;
+    HeapAllocation _heapAllocation;
 };
 
 
@@ -233,6 +234,7 @@ public:
     /** Populates the specified transfer image descriptor data structure. */
     void getTransferDescriptorData(MVKImageDescriptorData& imgData);
 
+    MTLTextureDescriptor* newMTLTextureDescriptor(uint32_t planeIndex);
 
 #pragma mark Resource memory
 
@@ -334,6 +336,8 @@ public:
 	/** Returns the Metal CPU cache mode used by this image. */
 	MTLCPUCacheMode getMTLCPUCacheMode();
 
+	HeapAllocation* getHeapAllocation(uint32_t planeIndex);
+
 
 #pragma mark Construction
 
@@ -395,6 +399,7 @@ protected:
 	bool _hasMutableFormat;
 	bool _shouldSupportAtomics;
 	bool _isLinearForAtomics;
+	bool _is2DViewOn3DImageCompatible = false;
 };
 
 

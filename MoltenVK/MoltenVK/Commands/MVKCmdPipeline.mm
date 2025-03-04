@@ -79,6 +79,35 @@ VkResult MVKCmdPipelineBarrier<N>::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
+static uint64_t mvkPipelineStageFlagsToBarrierStages(VkPipelineStageFlags2 flags) {
+	uint64_t result = 0;
+
+	if (mvkIsAnyFlagEnabled(flags, VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
+							VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT | VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT |
+							VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT | VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT |
+							VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT | VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT | VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT |
+							VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT))
+		result |= 1 << kMVKBarrierStageVertex;
+
+	if (mvkIsAnyFlagEnabled(flags, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT |
+							VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT |
+							VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR | VK_PIPELINE_STAGE_2_FRAGMENT_DENSITY_PROCESS_BIT_EXT |
+							VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT))
+		result |= 1 << kMVKBarrierStageFragment;
+
+	if (mvkIsAnyFlagEnabled(flags, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT | VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT |
+							VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT))
+		result |= 1 << kMVKBarrierStageCompute;
+
+	if (mvkIsAnyFlagEnabled(flags, VK_PIPELINE_STAGE_2_BLIT_BIT | VK_PIPELINE_STAGE_2_COPY_BIT | VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT |
+							VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT | VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT |
+							VK_PIPELINE_STAGE_2_CLEAR_BIT | VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR | VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT |
+							VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT))
+		result |= 1 << kMVKBarrierStageCopy;
+
+	return result;
+}
+
 template <size_t N>
 VkResult MVKCmdPipelineBarrier<N>::setContent(MVKCommandBuffer* cmdBuff,
 											  VkPipelineStageFlags srcStageMask,
@@ -112,6 +141,40 @@ template <size_t N>
 void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	
 	auto& mtlFeats = cmdEncoder->getMetalFeatures();
+
+	if (cmdEncoder->_mtlComputeEncoder) {
+		for (auto& b : _barriers) {
+			const uint64_t stages = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT|VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT
+				|VK_PIPELINE_STAGE_2_TRANSFER_BIT|VK_PIPELINE_STAGE_2_COPY_BIT|VK_PIPELINE_STAGE_2_BLIT_BIT|VK_PIPELINE_STAGE_2_CLEAR_BIT;
+
+			if (!(b.srcStageMask & stages) || !(b.dstStageMask & stages))
+				continue;
+
+			switch (b.type) {
+			case MVKPipelineBarrier::Memory: {
+				[cmdEncoder->_mtlComputeEncoder memoryBarrierWithScope:MTLBarrierScopeBuffers|MTLBarrierScopeTextures];
+				break;
+			}
+
+			case MVKPipelineBarrier::Buffer: {
+				id<MTLResource> mtlRez = b.mvkBuffer->getMTLBuffer();
+				[cmdEncoder->_mtlComputeEncoder memoryBarrierWithResources:&mtlRez count:1];
+				break;
+			}
+			case MVKPipelineBarrier::Image: {
+				uint32_t plnCnt = b.mvkImage->getPlaneCount();
+				id<MTLResource> mtlRezs[plnCnt];
+				for (uint8_t plnIdx = 0; plnIdx < plnCnt; plnIdx++) {
+					mtlRezs[plnIdx] = b.mvkImage->getMTLTexture(plnIdx);
+				}
+				[cmdEncoder->_mtlComputeEncoder memoryBarrierWithResources:mtlRezs count:plnCnt];
+				break;
+			}
+			default:
+				break;
+			}
+		}
+	}
 
 #if MVK_MACOS
 	// Calls below invoke MTLBlitCommandEncoder so must apply this first.
@@ -156,6 +219,15 @@ void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		}
 	}
 #endif
+
+	if (!cmdEncoder->_mtlRenderEncoder && cmdEncoder->isUsingMetalArgumentBuffers() && cmdEncoder->getDevice()->hasResidencySet()) {
+		cmdEncoder->endCurrentMetalEncoding();
+
+		for (auto& b : _barriers) {
+			uint64_t sourceStageMask = mvkPipelineStageFlagsToBarrierStages(b.srcStageMask), destStageMask = mvkPipelineStageFlagsToBarrierStages(b.dstStageMask);
+			cmdEncoder->setBarrier(sourceStageMask, destStageMask);
+		}
+	}
 
 	// Apple GPUs do not support renderpass barriers, and do not support rendering/writing
 	// to an attachment and then reading from that attachment within a single renderpass.
@@ -478,49 +550,20 @@ VkResult MVKCmdPushDescriptorSetWithTemplate::setContent(MVKCommandBuffer* cmdBu
 														 uint32_t set,
 														 const void* pData) {
 	if (_pipelineLayout) { _pipelineLayout->release(); }
-
-	_descUpdateTemplate = (MVKDescriptorUpdateTemplate*)descUpdateTemplate;
 	_pipelineLayout = (MVKPipelineLayout*)layout;
-	_set = set;
-
 	_pipelineLayout->retain();
+	_set = set;
+	_descUpdateTemplate = (MVKDescriptorUpdateTemplate*)descUpdateTemplate;
 
-	if (_pData) delete[] (char*)_pData;
-	// Work out how big the memory block in pData is.
-	const VkDescriptorUpdateTemplateEntry* pEntry =
-		_descUpdateTemplate->getEntry(_descUpdateTemplate->getNumberOfEntries()-1);
-	size_t size = pEntry->offset;
-	// If we were given a stride, use that; otherwise, assume only one info
-	// struct of the appropriate type.
-	if (pEntry->stride)
-		size += pEntry->stride * pEntry->descriptorCount;
-	else switch (pEntry->descriptorType) {
-
-		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-			size += sizeof(VkDescriptorBufferInfo);
-			break;
-
-		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-		case VK_DESCRIPTOR_TYPE_SAMPLER:
-		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-			size += sizeof(VkDescriptorImageInfo);
-			break;
-
-		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-			size += sizeof(VkBufferView);
-			break;
-
-		default:
-			break;
+	size_t oldSize = _dataSize;
+	_dataSize = _descUpdateTemplate->getSize();
+	if (_dataSize > oldSize) {
+		free(_pData);
+		_pData = malloc(_dataSize);
 	}
-	_pData = new char[size];
-	memcpy(_pData, pData, size);
+	if (_pData && pData) {
+		mvkCopy(_pData, pData, _dataSize);
+	}
 
 	// Validate by encoding on a null encoder
 	encode(nullptr);
@@ -533,7 +576,7 @@ void MVKCmdPushDescriptorSetWithTemplate::encode(MVKCommandEncoder* cmdEncoder) 
 
 MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
 	if (_pipelineLayout) { _pipelineLayout->release(); }
-	if (_pData) delete[] (char*)_pData;
+	free(_pData);
 }
 
 
@@ -617,6 +660,7 @@ VkResult MVKCmdWaitEvents<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N>
 void MVKCmdWaitEvents<N>::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->endCurrentMetalEncoding();
 	for (MVKEvent* mvkEvt : _mvkEvents) {
 		mvkEvt->encodeWait(cmdEncoder->_mtlCmdBuffer);
 	}

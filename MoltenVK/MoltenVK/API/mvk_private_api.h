@@ -44,7 +44,7 @@ typedef unsigned long MTLArgumentBuffersTier;
  */
 
 
-#define MVK_PRIVATE_API_VERSION   42
+#define MVK_PRIVATE_API_VERSION   43
 
 
 #pragma mark -
@@ -64,7 +64,7 @@ typedef unsigned long MTLArgumentBuffersTier;
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   2
-#define MVK_VERSION_PATCH   11
+#define MVK_VERSION_PATCH   12
 
 #define MVK_MAKE_VERSION(major, minor, patch)  (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION                            MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
@@ -238,6 +238,7 @@ typedef struct {
 	float timestampPeriodLowPassAlpha;                                         /**< MVK_CONFIG_TIMESTAMP_PERIOD_LOWPASS_ALPHA */
 	VkBool32 useMetalPrivateAPI;                                               /**< MVK_CONFIG_USE_METAL_PRIVATE_API */
 	const char* shaderDumpDir;                                                 /**< MVK_CONFIG_SHADER_DUMP_DIR */
+	VkBool32 shaderLogEstimatedGLSL;                                           /**< MVK_CONFIG_SHADER_LOG_ESTIMATED_GLSL */
 } MVKConfiguration;
 
 // Legacy support for renamed struct elements.
@@ -357,6 +358,7 @@ typedef struct {
 	VkBool32 needsCubeGradWorkaround;				/**< If true, sampling from cube textures with explicit gradients is broken and needs a workaround. */
 	VkBool32 nativeTextureAtomics;                  /**< If true, atomic operations on textures are supported natively. */
 	VkBool32 needsArgumentBufferEncoders;			/**< If true, Metal argument buffer encoders are needed to populate argument buffer content. */
+    VkBool32 residencySets;                         /**< If true, the device supports creating residency sets. */
 } MVKPhysicalDeviceMetalFeatures;
 
 

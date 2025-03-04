@@ -19,7 +19,6 @@
 #include "MoltenVKShaderConverterTool.h"
 #include "FileSupport.h"
 #include "OSSupport.h"
-#include "GLSLToSPIRVConverter.h"
 #include "SPIRVToMSLConverter.h"
 #include "SPIRVSupport.h"
 #include "MVKOSExtensions.h"
@@ -71,9 +70,7 @@ int MoltenVKShaderConverterTool::run() {
 		success = iterateDirectory(_directoryPath, *this, _shouldUseDirectoryRecursion, errMsg);
 		if ( !success ) { log(errMsg.data()); }
 	} else {
-		if (_shouldReadGLSL) {
-			success = convertGLSL(_glslInFilePath, _spvOutFilePath, _mslOutFilePath, _shaderStage);
-		} else if (_shouldReadSPIRV) {
+		if (_shouldReadSPIRV) {
 			success = convertSPIRV(_spvInFilePath, _mslOutFilePath);
 		} else {
 			showUsage();
@@ -89,94 +86,11 @@ bool MoltenVKShaderConverterTool::processFile(string filePath) {
 	string emptyPath;
 
 	string pathExtn = pathExtension(absPath);
-	if (_shouldReadGLSL && isGLSLFileExtension(pathExtn)) {
-		return convertGLSL(absPath, emptyPath, emptyPath, kMVKGLSLConversionShaderStageAuto);
-	} else if (_shouldReadSPIRV && isSPIRVFileExtension(pathExtn)) {
+	if (_shouldReadSPIRV && isSPIRVFileExtension(pathExtn)) {
 		return convertSPIRV(absPath, emptyPath);
 	}
 
 	return true;
-}
-
-// Read GLSL code from a GLSL file, convert to SPIR-V, and optionally MSL,
-// and write the SPIR-V and/or MSL code to files.
-bool MoltenVKShaderConverterTool::convertGLSL(string& glslInFile,
-											string& spvOutFile,
-											string& mslOutFile,
-											MVKGLSLConversionShaderStage shaderStage) {
-	string path;
-	vector<char> fileContents;
-	string glslCode;
-	string errMsg;
-
-	// Read the GLSL
-	if (glslInFile.empty()) {
-		log("The GLSL file to read from was not specified");
-		return false;
-	}
-
-	path = glslInFile;
-	if (readFile(path, fileContents, errMsg)) {
-		string logMsg = "Read GLSL from file: " + fileName(path);
-		log(logMsg.data());
-	} else {
-		errMsg = "Could not read GLSL file. " + errMsg;
-		log(errMsg.data());
-		return false;
-	}
-	glslCode.append(fileContents.begin(), fileContents.end());
-
-	if (shaderStage == kMVKGLSLConversionShaderStageAuto) {
-		string pathExtn = pathExtension(glslInFile);
-		shaderStage = shaderStageFromFileExtension(pathExtn);
-	}
-	if (shaderStage == kMVKGLSLConversionShaderStageAuto) {
-		errMsg = "Could not determine shader type from GLSL file: " + absolutePath(path);
-		log(errMsg.data());
-		return false;
-	}
-
-	// Convert GLSL to SPIR-V
-	GLSLToSPIRVConversionResult conversionResult;
-	GLSLToSPIRVConverter glslConverter;
-	glslConverter.setGLSL(glslCode);
-
-	uint64_t startTime = _glslConversionPerformance.getTimestamp();
-	bool wasConverted = glslConverter.convert(shaderStage, conversionResult, _shouldLogConversions, _shouldLogConversions);
-	_glslConversionPerformance.accumulate(startTime);
-
-	if (wasConverted) {
-		if (_shouldLogConversions) { log(conversionResult.resultLog.data()); }
-	} else {
-		string logMsg = "Could not convert GLSL in file: " + absolutePath(path);
-		log(logMsg.data());
-		log(conversionResult.resultLog.data());
-		return false;
-	}
-
-	// Write the SPIR-V code to a file.
-	// If no file has been supplied, create one from the GLSL file name.
-	if (_shouldWriteSPIRV) {
-		path = spvOutFile;
-		if (path.empty()) { path = pathWithExtension(glslInFile, _shouldOutputAsHeaders ? "h" : "spv",
-													 _shouldIncludeOrigPathExtn, _origPathExtnSep); }
-		if (_shouldOutputAsHeaders) {
-			spirvToHeaderBytes(conversionResult.spirv, fileContents, fileName(path, false));
-		} else {
-			spirvToBytes(conversionResult.spirv, fileContents);
-		}
-
-		if (writeFile(path, fileContents, errMsg)) {
-			string logMsg = "Saved SPIR-V to file: " + fileName(path);
-			log(logMsg.data());
-		} else {
-			errMsg = "Could not write SPIR-V file. " + errMsg;
-			log(errMsg.data());
-			return false;
-		}
-	}
-
-	return convertSPIRV(conversionResult.spirv, glslInFile, mslOutFile, false);
 }
 
 // Read SPIR-V code from a SPIR-V file, convert to MSL, and write the MSL code to files.
@@ -269,24 +183,6 @@ bool MoltenVKShaderConverterTool::convertSPIRV(const vector<uint32_t>& spv,
 	}
 }
 
-MVKGLSLConversionShaderStage MoltenVKShaderConverterTool::shaderStageFromFileExtension(string& pathExtension) {
-    for (auto& fx : _glslVtxFileExtns) { if (fx == pathExtension) { return kMVKGLSLConversionShaderStageVertex; } }
-	for (auto& fx : _glslTescFileExtns) { if (fx == pathExtension) { return kMVKGLSLConversionShaderStageTessControl; } }
-	for (auto& fx : _glslTeseFileExtns) { if (fx == pathExtension) { return kMVKGLSLConversionShaderStageTessEval; } }
-    for (auto& fx : _glslFragFileExtns) { if (fx == pathExtension) { return kMVKGLSLConversionShaderStageFragment; } }
-    for (auto& fx : _glslCompFileExtns) { if (fx == pathExtension) { return kMVKGLSLConversionShaderStageCompute; } }
-	return kMVKGLSLConversionShaderStageAuto;
-}
-
-bool MoltenVKShaderConverterTool::isGLSLFileExtension(string& pathExtension) {
-    for (auto& fx : _glslVtxFileExtns) { if (fx == pathExtension) { return true; } }
-	for (auto& fx : _glslTescFileExtns) { if (fx == pathExtension) { return true; } }
-	for (auto& fx : _glslTeseFileExtns) { if (fx == pathExtension) { return true; } }
-    for (auto& fx : _glslFragFileExtns) { if (fx == pathExtension) { return true; } }
-    for (auto& fx : _glslCompFileExtns) { if (fx == pathExtension) { return true; } }
-	return false;
-}
-
 bool MoltenVKShaderConverterTool::isSPIRVFileExtension(string& pathExtension) {
     for (auto& fx : _spvFileExtns) { if (fx == pathExtension) { return true; } }
 	return false;
@@ -302,25 +198,19 @@ void MoltenVKShaderConverterTool::showUsage() {
 	bool qm = _quietMode;
 	_quietMode = false;
 
-	string line = "\n\e[1m" + _processName + "\e[0m converts OpenGL Shading Language (GLSL) source code to";
+	string line = "\n\e[1m" + _processName + "\e[0m converts SPIR-V code to Metal Shading Language source code.";
 	log((const char*)line.c_str());
-	log("SPIR-V code, and/or to Metal Shading Language (MSL) source code, or converts");
-	log("SPIR-V code to Metal Shading Language source code.");
-	log("\nTo convert a single GLSL or SPIR-V file, include a file reference with the -gi");
-	log("or -si option, respectively. To convert an entire directory of shader files,");
-	log("use the -d option, along with the -gi or -si option. When using the -d option,");
-	log("any file name supplied with the -gi or -si option will be ignored.");
-    log("\nUse the -so or -mo option to indicate the desired type of output");
-    log("(SPIR-V or MSL, respectively).");
+	log("\nTo convert a single SPIR-V file, include a file reference with the -si");
+	log("option. To convert an entire directory of shader files, use the -d option");
+	log("along with the -si option. When using the -d option, any file name supplied");
+	log("with the -si option will be ignored.");
+	log("\nUse the -so or -mo option to indicate the desired type of output");
+	log("(SPIR-V or MSL, respectively).");
 	log("\nUsage:");
 	log("  -d [\"dirPath\"]     - Path to a directory containing GLSL or SPIR-V shader");
 	log("                       source code files. The dirPath may be omitted to use");
 	log("                       the current working directory.");
 	log("  -r                 - (when using -d) Process directories recursively.");
-	log("  -gi [\"glslInFile\"] - Indicates that GLSL shader code should be input.");
-	log("                       The optional glslInFile parameter specifies the path to a");
-	log("                       single file containing GLSL source code to be converted.");
-	log("                       When using the -d option, the glslInFile parameter is ignored.");
 	log("  -si [\"spvInFile\"]  - Indicates that SPIR-V shader code should be input.");
 	log("                       The optional spvInFile parameter specifies the path to a");
 	log("                       single file containing SPIR-V code to be converted.");
@@ -339,10 +229,6 @@ void MoltenVKShaderConverterTool::showUsage() {
 	log("                       on which this tool is executed.");
 	log("  -mp mslPlatform    - MSL platform. Must be one of macos or ios.");
 	log("                       Defaults to the platform on which this tool is executed (macos).");
-	log("  -t shaderType      - Shader type: vertex or fragment. Must be one of v, f, or c.");
-	log("                       May be omitted to auto-detect.");
-	log("  -c                 - Combine the GLSL and converted Metal Shader source code");
-	log("                       into a single ouput file.");
 	log("  -oh [varName]      - Save the output as header (.h) files.");
 	log("                       Affects the output of the -so option.");
 	log("                       The optional varName parameter specifies the name of the");
@@ -356,16 +242,6 @@ void MoltenVKShaderConverterTool::showUsage() {
 	log("  -XS                - Disable including file extension of original code");
 	log("                       file name in derived converted code file name");
 	log("                       (myshdr.vsh -> myshdr.metal).");
-	log("  -vx \"fileExtns\"    - List of GLSL vertex shader file extensions.");
-	log("                       May be omitted for defaults (\"vs vsh vert vertex\").");
-	log("  -tcx \"fileExtns\"   - List of GLSL tessellation control shader file extensions.");
-	log("                       May be omitted for defaults (\"tcs tcsh tesc\").");
-	log("  -tex \"fileExtns\"   - List of GLSL tessellation evaluation shader file extensions.");
-	log("                       May be omitted for defaults (\"tes tesh tese\").");
-	log("  -fx \"fileExtns\"    - List of GLSL fragment shader file extensions.");
-	log("                       May be omitted for defaults (\"fs fsh frag fragment\").");
-    log("  -cx \"fileExtns\"    - List of GLSL compute shader file extensions.");
-    log("                       May be omitted for defaults (\"cp cmp comp compute kn kl krn kern kernel\").");
 	log("  -sx \"fileExtns\"    - List of SPIR-V shader file extensions.");
 	log("                       May be omitted for defaults (\"spv spirv\").");
 	log("  -mab               - Use Metal Argument Buffers to hold resources in the shaders.");
@@ -380,7 +256,6 @@ void MoltenVKShaderConverterTool::showUsage() {
 void MoltenVKShaderConverterTool::reportPerformance() {
 	if ( !_shouldReportPerformance ) { return; }
 
-	if (_shouldReadGLSL) { reportPerformance(_glslConversionPerformance, "GLSL to SPIR-V"); }
 	reportPerformance(_spvConversionPerformance, "SPIR-V to MSL");
 }
 
@@ -404,20 +279,12 @@ void MoltenVKShaderConverterTool::reportPerformance(MVKPerformanceTracker& shade
 #pragma mark Construction
 
 MoltenVKShaderConverterTool::MoltenVKShaderConverterTool(int argc, const char* argv[]) {
-	extractTokens(_defaultVertexShaderExtns, _glslVtxFileExtns);
-	extractTokens(_defaultTescShaderExtns, _glslTescFileExtns);
-	extractTokens(_defaultTeseShaderExtns, _glslTeseFileExtns);
-	extractTokens(_defaultFragShaderExtns, _glslFragFileExtns);
-    extractTokens(_defaultCompShaderExtns, _glslCompFileExtns);
 	extractTokens(_defaultSPIRVShaderExtns, _spvFileExtns);
 	_origPathExtnSep = "_";
-	_shaderStage = kMVKGLSLConversionShaderStageAuto;
 	_shouldUseDirectoryRecursion = false;
-	_shouldReadGLSL = false;
 	_shouldReadSPIRV = false;
 	_shouldWriteSPIRV = false;
 	_shouldWriteMSL = false;
-	_shouldCombineGLSLAndMSL = false;
     _shouldFlipVertexY = true;
 	_shouldIncludeOrigPathExtn = true;
 	_shouldLogConversions = false;
@@ -487,12 +354,6 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 			continue;
 		}
 
-		if (equal(arg, "-gi", true)) {
-			_shouldReadGLSL = true;
-			argIdx = optionalParam(_glslInFilePath, argIdx, argc, argv);
-			continue;
-		}
-
 		if (equal(arg, "-si", true)) {
 			_shouldReadSPIRV = true;
 			argIdx = optionalParam(_spvInFilePath, argIdx, argc, argv);
@@ -544,33 +405,6 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 			continue;
 		}
 
-		if (equal(arg, "-t", true)) {
-			int optIdx = argIdx;
-			string shdrTypeStr;
-			argIdx = optionalParam(shdrTypeStr, argIdx, argc, argv);
-			if (argIdx == optIdx || shdrTypeStr.length() == 0) { return false; }
-
-			switch (shdrTypeStr.front()) {
-				case 'v':
-					_shaderStage = kMVKGLSLConversionShaderStageVertex;
-					break;
-				case 'f':
-					_shaderStage = kMVKGLSLConversionShaderStageFragment;
-					break;
-				case 'c':
-					_shaderStage = kMVKGLSLConversionShaderStageCompute;
-					break;
-				default:
-					return false;
-			}
-			continue;
-		}
-
-		if(equal(arg, "-c", true)) {
-			_shouldCombineGLSLAndMSL = true;
-			continue;
-		}
-
 		if(equal(arg, "-oh", true)) {
 			_shouldOutputAsHeaders = true;
 			argIdx = optionalParam(_hdrOutVarName, argIdx, argc, argv);
@@ -593,51 +427,6 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 			_shouldIncludeOrigPathExtn = false;
 			continue;
 		}
-
-		if (equal(arg, "-vx", true)) {
-			int optIdx = argIdx;
-			string shdrExtnStr;
-			argIdx = optionalParam(shdrExtnStr, argIdx, argc, argv);
-			if (argIdx == optIdx || shdrExtnStr.length() == 0) { return false; }
-			extractTokens(shdrExtnStr, _glslVtxFileExtns);
-			continue;
-		}
-
-		if (equal(arg, "-tcx", true)) {
-			int optIdx = argIdx;
-			string shdrExtnStr;
-			argIdx = optionalParam(shdrExtnStr, argIdx, argc, argv);
-			if (argIdx == optIdx || shdrExtnStr.length() == 0) { return false; }
-			extractTokens(shdrExtnStr, _glslTescFileExtns);
-			continue;
-		}
-
-		if (equal(arg, "-tex", true)) {
-			int optIdx = argIdx;
-			string shdrExtnStr;
-			argIdx = optionalParam(shdrExtnStr, argIdx, argc, argv);
-			if (argIdx == optIdx || shdrExtnStr.length() == 0) { return false; }
-			extractTokens(shdrExtnStr, _glslTeseFileExtns);
-			continue;
-		}
-
-		if (equal(arg, "-fx", true)) {
-			int optIdx = argIdx;
-			string shdrExtnStr;
-			argIdx = optionalParam(shdrExtnStr, argIdx, argc, argv);
-			if (argIdx == optIdx || shdrExtnStr.length() == 0) { return false; }
-			extractTokens(shdrExtnStr, _glslFragFileExtns);
-			continue;
-		}
-
-        if (equal(arg, "-cx", true)) {
-            int optIdx = argIdx;
-            string shdrExtnStr;
-            argIdx = optionalParam(shdrExtnStr, argIdx, argc, argv);
-            if (argIdx == optIdx || shdrExtnStr.length() == 0) { return false; }
-            extractTokens(shdrExtnStr, _glslCompFileExtns);
-            continue;
-        }
 
 		if (equal(arg, "-sx", true)) {
 			int optIdx = argIdx;

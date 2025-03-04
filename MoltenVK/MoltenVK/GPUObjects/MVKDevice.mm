@@ -128,7 +128,7 @@ MVKMTLDeviceCapabilities::MVKMTLDeviceCapabilities(id<MTLDevice> mtlDev) {
 	supportsApple8 = supportsGPUFam(Apple8, mtlDev);
 	supportsMetal3 = supportsGPUFam(Metal3, mtlDev);
 #endif
-#if MVK_XCODE_15 && !MVK_TVOS
+#if MVK_XCODE_15 && !MVK_TVOS && !MVK_VISIONOS
 	supportsApple9 = supportsGPUFam(Apple9, mtlDev);
 #endif
 	supportsMac1 = MVK_MACOS;	// Incl Mac1 & MacCatalyst1
@@ -429,6 +429,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				vmmFeatures->vulkanMemoryModelAvailabilityVisibilityChains = supportedFeats12.vulkanMemoryModelAvailabilityVisibilityChains;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES: {
+				auto* zeroInitWorkgroupMemFeatures = (VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures*)next;
+				zeroInitWorkgroupMemFeatures->shaderZeroInitializeWorkgroupMemory = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR: {
 				auto* barycentricFeatures = (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)next;
 				barycentricFeatures->fragmentShaderBarycentric = true;
@@ -441,7 +446,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->imageViewFormatReinterpretation = true;
 				portabilityFeatures->imageViewFormatSwizzle = (_metalFeatures.nativeTextureSwizzle ||
 															   getMVKConfig().fullImageViewSwizzle);
-				portabilityFeatures->imageView2DOn3DImage = false;
+				portabilityFeatures->imageView2DOn3DImage = getMVKConfig().useMTLHeap;
 				portabilityFeatures->multisampleArrayImage = _metalFeatures.multisampleArrayTextures;
 				portabilityFeatures->mutableComparisonSamplers = _metalFeatures.depthSampleCompare;
 				portabilityFeatures->pointPolygons = false;
@@ -459,6 +464,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				shaderIntDotFeatures->shaderIntegerDotProduct = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES_KHR: {
+				auto* terminateFeatures = (VkPhysicalDeviceShaderTerminateInvocationFeaturesKHR*)next;
+				terminateFeatures->shaderTerminateInvocation = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
 				auto* formatFeatures = (VkPhysicalDevice4444FormatsFeaturesEXT*)next;
 				bool canSupport4444 = _metalFeatures.tileBasedDeferredRendering &&
@@ -466,6 +476,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 									   getMVKConfig().fullImageViewSwizzle);
 				formatFeatures->formatA4R4G4B4 = canSupport4444;
 				formatFeatures->formatA4B4G4R4 = canSupport4444;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_CONTROL_FEATURES_EXT: {
+				auto* depthFeatures = (VkPhysicalDeviceDepthClipControlFeaturesEXT*)next;
+				depthFeatures->depthClipControl = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
@@ -525,6 +540,14 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES_EXT: {
 				auto* hostImageCopyFeatures = (VkPhysicalDeviceHostImageCopyFeaturesEXT*)next;
 				hostImageCopyFeatures->hostImageCopy = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT: {
+				if (getMVKConfig().useMTLHeap) {
+					auto* extFeatures = (VkPhysicalDeviceImage2DViewOf3DFeaturesEXT*)next;
+					extFeatures->image2DViewOf3D = true;
+					extFeatures->sampler2DViewOf3D = true;
+				}
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT: {
@@ -1457,6 +1480,12 @@ VkResult MVKPhysicalDevice::getCalibrateableTimeDomains(uint32_t* pTimeDomainCou
 	return VK_SUCCESS;
 }
 
+VkResult MVKPhysicalDevice::getToolProperties(uint32_t* pToolCount, VkPhysicalDeviceToolProperties* pToolProperties) {
+	// Metal does not currently have a standard way to detect attached tools, so report nothing.
+	*pToolCount = 0;
+	return VK_SUCCESS;
+}
+
 
 #pragma mark Surfaces
 
@@ -1627,11 +1656,9 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	addSurfFmt(BGRA8Unorm);
 	addSurfFmt(BGRA8Unorm_sRGB);
 	addSurfFmt(RGBA16Float);
-#if MVK_MACOS
 	addSurfFmt(RGB10A2Unorm);
 	addSurfFmt(BGR10A2Unorm);
-#endif
-#if MVK_APPLE_SILICON
+#if MVK_APPLE_SILICON && !MVK_OS_SIMULATOR
 	addSurfFmt(BGRA10_XR);
 	addSurfFmt(BGRA10_XR_sRGB);
 	addSurfFmt(BGR10_XR);
@@ -2182,11 +2209,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.placementHeaps = getMVKConfig().useMTLHeap;
-#if MVK_OS_SIMULATOR
-		_metalFeatures.nativeTextureSwizzle = false;
-#else
 		_metalFeatures.nativeTextureSwizzle = true;
-#endif
+
 		if (supportsMTLGPUFamily(Apple3)) {
 			_metalFeatures.native3DCompressedTextures = true;
 		}
@@ -2484,9 +2508,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #endif
 	}
 
-// iOS and tvOS adjustments necessary when running on the simulator.
+// iOS, tvOS and visionOS adjustments necessary when running on the simulator.
 #if MVK_OS_SIMULATOR
 	_metalFeatures.mtlBufferAlignment = 256;	// Even on Apple Silicon
+	_metalFeatures.nativeTextureSwizzle = false;
 #endif
 
 	// Argument buffers
@@ -2530,11 +2555,18 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #if MVK_MACOS
 	// On macOS, if we couldn't query supported sample points (on macOS 11),
 	// but the platform can support immediate-mode sample points, indicate that here.
-	if (!_metalFeatures.counterSamplingPoints && mvkOSVersionIsAtLeast(10.15) && !supportsMTLGPUFamily(Apple1)) {  \
-		_metalFeatures.counterSamplingPoints = MVK_COUNTER_SAMPLING_AT_DRAW | MVK_COUNTER_SAMPLING_AT_DISPATCH | MVK_COUNTER_SAMPLING_AT_BLIT;  \
+	if (!_metalFeatures.counterSamplingPoints && mvkOSVersionIsAtLeast(10.15) && !supportsMTLGPUFamily(Apple1)) {
+		_metalFeatures.counterSamplingPoints = MVK_COUNTER_SAMPLING_AT_DRAW | MVK_COUNTER_SAMPLING_AT_DISPATCH | MVK_COUNTER_SAMPLING_AT_BLIT;
+	}
+	// The macOS 10.15 AMD Metal driver crashes if you attempt to sample on an empty blit encoder
+	if ((_metalFeatures.counterSamplingPoints & MVK_COUNTER_SAMPLING_AT_BLIT) && _properties.vendorID == kAMDVendorId && !mvkOSVersionIsAtLeast(11)) {
+		_metalFeatures.counterSamplingPoints &= ~MVK_COUNTER_SAMPLING_AT_BLIT;
 	}
 #endif
 
+#if MVK_XCODE_16 && MVK_MACOS
+    _metalFeatures.residencySets = mvkOSVersionIsAtLeast(15) && supportsMTLGPUFamily(Apple6);
+#endif
 }
 
 // Initializes the physical device features of this instance.
@@ -2579,6 +2611,7 @@ void MVKPhysicalDevice::initFeatures() {
     _features.textureCompressionASTC_LDR = true;
 
 	_features.dualSrcBlend = true;
+	_features.depthClamp = true;
 
     if (supportsMTLGPUFamily(Apple3)) {
         _features.occlusionQueryPrecise = true;
@@ -2586,6 +2619,7 @@ void MVKPhysicalDevice::initFeatures() {
 
 	if (supportsMTLGPUFamily(Apple3)) {
 		_features.tessellationShader = true;
+		_features.shaderTessellationAndGeometryPointSize = true;
 	}
 #endif
 
@@ -2602,13 +2636,9 @@ void MVKPhysicalDevice::initFeatures() {
 
 	_features.dualSrcBlend = true;
 
-#if MVK_OS_SIMULATOR
-	_features.depthClamp = false;
-#else
 	if (supportsMTLGPUFamily(Apple2)) {
 		_features.depthClamp = true;
 	}
-#endif
 
 	if (supportsMTLGPUFamily(Apple3)) {
 		_features.tessellationShader = true;
@@ -2626,6 +2656,11 @@ void MVKPhysicalDevice::initFeatures() {
 	if (supportsMTLGPUFamily(Apple6)) {
         _features.shaderResourceMinLod = true;
 	}
+#endif
+
+// iOS, tvOS and visionOS adjustments necessary when running on the simulator.
+#if MVK_OS_SIMULATOR
+	_features.depthClamp = false;
 #endif
 
 #if MVK_MACOS
@@ -3322,7 +3357,7 @@ uint64_t MVKPhysicalDevice::getRecommendedMaxWorkingSetSize() {
 }
 
 // If possible, retrieve from the MTLDevice, otherwise use the current memory used by this process.
-uint64_t MVKPhysicalDevice::getCurrentAllocatedSize() {
+size_t MVKPhysicalDevice::getCurrentAllocatedSize() {
 	if ( [_mtlDevice respondsToSelector: @selector(currentAllocatedSize)] ) {
 		return _mtlDevice.currentAllocatedSize;
 	}
@@ -3411,6 +3446,9 @@ void MVKPhysicalDevice::initExtensions() {
 	}
 	if (!_metalFeatures.arrayOfTextures || !_metalFeatures.arrayOfSamplers) {
 		pWritableExtns->vk_EXT_descriptor_indexing.enabled = false;
+	}
+	if (!getMVKConfig().useMTLHeap) {
+		pWritableExtns->vk_EXT_image_2d_view_of_3d.enabled = false;
 	}
     
     // The relevant functions are not available if not built with Xcode 14.
@@ -3572,9 +3610,9 @@ void MVKPhysicalDevice::logGPUInfo() {
 
 	NSUUID* nsUUID = [[NSUUID alloc] initWithUUIDBytes: _properties.pipelineCacheUUID];		// temp retain
 	MVKLogInfo(logMsg.c_str(), getName(), devTypeStr.c_str(),
-			   _properties.vendorID, _properties.deviceID, nsUUID.UUIDString.UTF8String,
-			   getRecommendedMaxWorkingSetSize() / MEBI, getCurrentAllocatedSize() / MEBI,
-			   SPIRVToMSLConversionOptions::printMSLVersion(_metalFeatures.mslVersion).c_str());
+             _properties.vendorID, _properties.deviceID, nsUUID.UUIDString.UTF8String,
+             getRecommendedMaxWorkingSetSize() / MEBI, getCurrentAllocatedSize() / MEBI,
+             mvk::SPIRVToMSLConversionOptions::printMSLVersion(_metalFeatures.mslVersion).c_str());
 	[nsUUID release];																		// temp release
 }
 
@@ -4113,39 +4151,41 @@ VkResult MVKDevice::createPipelines(VkPipelineCache pipelineCache,
     VkResult rslt = VK_SUCCESS;
     MVKPipelineCache* mvkPLC = (MVKPipelineCache*)pipelineCache;
 
-    for (uint32_t plIdx = 0; plIdx < count; plIdx++) {
+	@autoreleasepool {
+		for (uint32_t plIdx = 0; plIdx < count; plIdx++) {
 
-		// Ensure all slots are purposefully set.
-		pPipelines[plIdx] = VK_NULL_HANDLE;
-		if (ignoreFurtherPipelines) { continue; }
+			// Ensure all slots are purposefully set.
+			pPipelines[plIdx] = VK_NULL_HANDLE;
+			if (ignoreFurtherPipelines) { continue; }
 
-        const PipelineInfoType* pCreateInfo = &pCreateInfos[plIdx];
+			const PipelineInfoType* pCreateInfo = &pCreateInfos[plIdx];
 
-        // See if this pipeline has a parent. This can come either directly
-        // via basePipelineHandle or indirectly via basePipelineIndex.
-        MVKPipeline* parentPL = VK_NULL_HANDLE;
-        if ( mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DERIVATIVE_BIT) ) {
-            VkPipeline vkParentPL = pCreateInfo->basePipelineHandle;
-            int32_t parentPLIdx = pCreateInfo->basePipelineIndex;
-            if ( !vkParentPL && (parentPLIdx >= 0)) { vkParentPL = pPipelines[parentPLIdx]; }
-            parentPL = vkParentPL ? (MVKPipeline*)vkParentPL : VK_NULL_HANDLE;
-        }
+			// See if this pipeline has a parent. This can come either directly
+			// via basePipelineHandle or indirectly via basePipelineIndex.
+			MVKPipeline* parentPL = VK_NULL_HANDLE;
+			if ( mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DERIVATIVE_BIT) ) {
+				VkPipeline vkParentPL = pCreateInfo->basePipelineHandle;
+				int32_t parentPLIdx = pCreateInfo->basePipelineIndex;
+				if ( !vkParentPL && (parentPLIdx >= 0)) { vkParentPL = pPipelines[parentPLIdx]; }
+				parentPL = vkParentPL ? (MVKPipeline*)vkParentPL : VK_NULL_HANDLE;
+			}
 
-        // Create the pipeline and if creation was successful, insert the new pipeline in the return array.
-        MVKPipeline* mvkPL = new PipelineType(this, mvkPLC, parentPL, pCreateInfo);
-        VkResult plRslt = mvkPL->getConfigurationResult();
-        if (plRslt == VK_SUCCESS) {
-            pPipelines[plIdx] = (VkPipeline)mvkPL;
-        } else {
-			// If creation was unsuccessful, destroy the broken pipeline, change the result
-			// code of this function, and if the VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT
-			// flag is set, don't build any further pipelines.
-			mvkPL->destroy();
-			if (rslt == VK_SUCCESS) { rslt = plRslt; }
-			ignoreFurtherPipelines = (_enabledPipelineCreationCacheControlFeatures.pipelineCreationCacheControl &&
-									  mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT));
-        }
-    }
+			// Create the pipeline and if creation was successful, insert the new pipeline in the return array.
+			MVKPipeline* mvkPL = new PipelineType(this, mvkPLC, parentPL, pCreateInfo);
+			VkResult plRslt = mvkPL->getConfigurationResult();
+			if (plRslt == VK_SUCCESS) {
+				pPipelines[plIdx] = (VkPipeline)mvkPL;
+			} else {
+				// If creation was unsuccessful, destroy the broken pipeline, change the result
+				// code of this function, and if the VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT
+				// flag is set, don't build any further pipelines.
+				mvkPL->destroy();
+				if (rslt == VK_SUCCESS) { rslt = plRslt; }
+				ignoreFurtherPipelines = (_enabledPipelineCreationCacheControlFeatures.pipelineCreationCacheControl &&
+										  mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT));
+			}
+		}
+	}
 
     return rslt;
 }
@@ -4576,7 +4616,7 @@ uint32_t MVKDevice::getFirstViewIndexInMetalPass(uint32_t viewMask, uint32_t pas
 	uint32_t mask = viewMask;
 	uint32_t startView = 0, viewCount = 0;
 	if ( !_physicalDevice->canUseInstancingForMultiview() ) {
-		for (uint32_t i = 0; mask != 0; ++i) {
+		while (mask != 0) {
 			mask = mvkGetNextViewMaskGroup(mask, &startView, &viewCount);
 			while (passIdx-- > 0 && viewCount-- > 0) {
 				startView++;
@@ -4848,6 +4888,16 @@ void* MVKDevice::getResourceIdFromHandle(const VkMemoryGetMetalHandleInfoEXT* pG
 
 #pragma mark Construction
 
+static NSString *mvkBarrierStageName(MVKBarrierStage stage) {
+	switch (stage) {
+	case kMVKBarrierStageVertex:   return @"Vertex";
+	case kMVKBarrierStageFragment: return @"Fragment";
+	case kMVKBarrierStageCompute:  return @"Compute";
+	case kMVKBarrierStageCopy:     return @"Copy";
+	default:                       return [NSString stringWithFormat:@"Invalid (%d)", stage];
+	}
+}
+
 MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) : _enabledExtensions(this) {
 
 	// If the physical device is lost, bail.
@@ -4863,6 +4913,17 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	enableFeatures(pCreateInfo);
 	initQueues(pCreateInfo);
 	reservePrivateData(pCreateInfo);
+
+	// Initialize fences for execution barriers
+	@autoreleasepool {
+		for (int stage = 0; stage < kMVKBarrierStageCount; ++stage) {
+			for (int index = 0; index < kMVKBarrierFenceCount; ++index) {
+				auto &fence = _barrierFences[stage][index];
+				fence = [_physicalDevice->getMTLDevice() newFence];
+				[fence setLabel:[NSString stringWithFormat:@"%@ Fence %d", mvkBarrierStageName((MVKBarrierStage)stage), index]];
+			}
+		}
+	}
 
 #if MVK_MACOS
 	// After enableExtensions
@@ -5166,6 +5227,23 @@ void MVKDevice::enableExtensions(const VkDeviceCreateInfo* pCreateInfo) {
 
 // Create the command queues
 void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
+#if MVK_XCODE_16
+	if (_physicalDevice->_isUsingMetalArgumentBuffers && _physicalDevice->_metalFeatures.residencySets) {
+		MTLResidencySetDescriptor *setDescriptor;
+		setDescriptor = [MTLResidencySetDescriptor new];
+		setDescriptor.label = @"Primary residency set";
+		setDescriptor.initialCapacity = 256;
+
+		NSError *error;
+		_residencySet = [_physicalDevice->getMTLDevice() newResidencySetWithDescriptor:setDescriptor
+																				 error:&error];
+		if (error) {
+			reportMessage(MVK_CONFIG_LOG_LEVEL_ERROR, "Error allocating residency set: %s", error.description.UTF8String);
+		}
+		[setDescriptor release];
+	}
+#endif
+
 	auto qFams = _physicalDevice->getQueueFamilies();
 	uint32_t qrCnt = pCreateInfo->queueCreateInfoCount;
 	for (uint32_t qrIdx = 0; qrIdx < qrCnt; qrIdx++) {
@@ -5229,6 +5307,11 @@ MVKDevice::~MVKDevice() {
 
 	if (_commandResourceFactory) { _commandResourceFactory->destroy(); }
 
+	for (auto &fences: _barrierFences) for (auto fence: fences) [fence release];
+
+#if MVK_XCODE_16
+	[_residencySet release];
+#endif
     [_globalVisibilityResultMTLBuffer release];
 	[_defaultMTLSamplerState release];
 	[_dummyBlitMTLBuffer release];

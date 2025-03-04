@@ -62,7 +62,7 @@ MVKQueueFamily::~MVKQueueFamily() {
 #pragma mark -
 #pragma mark MVKQueue
 
-void MVKQueue::propagateDebugName() { setLabelIfNotNil(_mtlQueue, _debugName); }
+void MVKQueue::propagateDebugName() { setMetalObjectLabel(_mtlQueue, _debugName); }
 
 
 #pragma mark Queue submissions
@@ -190,7 +190,7 @@ id<MTLCommandBuffer> MVKQueue::getMTLCommandBuffer(MVKCommandUse cmdUse, bool re
 	}
 	addPerformanceInterval(getPerformanceStats().queue.retrieveMTLCommandBuffer, startTime);
 	NSString* mtlCmdBuffLabel = getMTLCommandBufferLabel(cmdUse);
-	setLabelIfNotNil(mtlCmdBuff, mtlCmdBuffLabel);
+	setMetalObjectLabel(mtlCmdBuff, mtlCmdBuffLabel);
 	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) { handleMTLCommandBufferError(mtlCB); }];
 
 	if ( !mtlCmdBuff ) { reportError(VK_ERROR_OUT_OF_POOL_MEMORY, "%s could not be acquired.", mtlCmdBuffLabel.UTF8String); }
@@ -264,10 +264,15 @@ void MVKQueue::handleMTLCommandBufferError(id<MTLCommandBuffer> mtlCmdBuff) {
 			vkErr = VK_ERROR_OUT_OF_DEVICE_MEMORY;
 			break;
 	}
-	reportError(vkErr, "MTLCommandBuffer \"%s\" execution failed (code %li): %s",
-				mtlCmdBuff.label ? mtlCmdBuff.label.UTF8String : "",
-				mtlCmdBuff.error.code, mtlCmdBuff.error.localizedDescription.UTF8String);
-	if (markDeviceLoss) { getDevice()->markLost(markPhysicalDeviceLoss); }
+	if (markDeviceLoss) {
+		getDevice()->stopAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE);
+		getDevice()->markLost(markPhysicalDeviceLoss);
+	}
+	reportResult(vkErr, (markDeviceLoss ? MVK_CONFIG_LOG_LEVEL_ERROR : MVK_CONFIG_LOG_LEVEL_WARNING),
+				 "%s VkDevice after MTLCommandBuffer \"%s\" execution failed (code %li): %s",
+				 (markDeviceLoss ? "Lost" : "Resumed"),
+				 (mtlCmdBuff.label ? mtlCmdBuff.label.UTF8String : ""),
+				 mtlCmdBuff.error.code, mtlCmdBuff.error.localizedDescription.UTF8String);
 
 #if MVK_XCODE_12
 	if (&MTLCommandBufferEncoderInfoErrorKey != nullptr) {
@@ -334,6 +339,7 @@ void MVKQueue::initExecQueue() {
 // Retrieves and initializes the Metal command queue and Xcode GPU capture scopes
 void MVKQueue::initMTLCommandQueue() {
 	_mtlQueue = _queueFamily->getMTLCommandQueue(_index);	// not retained (cached in queue family)
+	_device->addResidencySet(_mtlQueue);
 
 	_submissionCaptureScope = new MVKGPUCaptureScope(this);
 	if (_queueFamily->getIndex() == getMVKConfig().defaultGPUCaptureScopeQueueFamilyIndex &&
@@ -347,6 +353,7 @@ void MVKQueue::initMTLCommandQueue() {
 MVKQueue::~MVKQueue() {
 	destroyExecQueue();
 	_submissionCaptureScope->destroy();
+	_device->removeResidencySet(_mtlQueue);
 
 	[_mtlCmdBuffLabelBeginCommandBuffer release];
 	[_mtlCmdBuffLabelQueueSubmit release];
@@ -526,6 +533,12 @@ VkResult MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool sign
 	// By now, it's been submitted to the MTLCommandBuffer, so remove it from the encoding context,
 	// to ensure a fresh one will be used by commands executing on any subsequent MTLCommandBuffers.
 	_encodingContext.visibilityResultBuffer = nullptr;
+
+	// If this is the last command buffer in the submission, we're losing the context and need synchronize
+	// current barrier fences to the ones at index 0, which will be what the next submision starts with.
+	if (isUsingMetalArgumentBuffers() && signalCompletion) {
+		_encodingContext.syncFences(getDevice(), _activeMTLCommandBuffer);
+	}
 
 	// If we need to signal completion, use getActiveMTLCommandBuffer() to ensure at least
 	// one MTLCommandBuffer is used, otherwise if this instance has no content, it will not

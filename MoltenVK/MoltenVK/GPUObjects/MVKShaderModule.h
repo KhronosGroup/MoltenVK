@@ -23,7 +23,6 @@
 #include "MVKCodec.h"
 #include "MVKSmallVector.h"
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
-#include <MoltenVKShaderConverter/GLSLToSPIRVConverter.h>
 #include <mutex>
 
 #import <Metal/Metal.h>
@@ -33,19 +32,16 @@ class MVKShaderCacheIterator;
 class MVKShaderLibraryCache;
 class MVKShaderModule;
 
-using namespace mvk;
-
-
 #pragma mark -
 #pragma mark MVKShaderLibrary
 
 /** A MTLFunction and corresponding result information resulting from a shader conversion. */
 typedef struct MVKMTLFunction {
-	SPIRVToMSLConversionResultInfo shaderConversionResults;
+  mvk::SPIRVToMSLConversionResultInfo shaderConversionResults;
 	MTLSize threadGroupSize;
 	id<MTLFunction> getMTLFunction() { return _mtlFunction; }
 
-	MVKMTLFunction(id<MTLFunction> mtlFunc, const SPIRVToMSLConversionResultInfo scRslts, MTLSize tgSize);
+	MVKMTLFunction(id<MTLFunction> mtlFunc, const mvk::SPIRVToMSLConversionResultInfo scRslts, MTLSize tgSize);
 	MVKMTLFunction(const MVKMTLFunction& other);
 	MVKMTLFunction& operator=(const MVKMTLFunction& other);
 	MVKMTLFunction() {}
@@ -57,9 +53,40 @@ private:
 } MVKMTLFunction;
 
 /** A MVKMTLFunction indicating an invalid MTLFunction. The mtlFunction member is nil. */
-const MVKMTLFunction MVKMTLFunctionNull(nil, SPIRVToMSLConversionResultInfo(), MTLSizeMake(1, 1, 1));
+const MVKMTLFunction MVKMTLFunctionNull(nil, mvk::SPIRVToMSLConversionResultInfo(), MTLSizeMake(1, 1, 1));
 
-/** Wraps a single MTLLibrary. */
+typedef struct MVKShaderMacroValue {
+	union {
+		int8_t si8;
+		uint8_t ui8;
+		int16_t si16;
+		uint16_t ui16;
+		int32_t si32;
+		uint32_t ui32;
+		int64_t si64;
+		uint64_t ui64;
+		float f32;
+		double f64;
+	} value;
+	size_t size;
+
+	inline bool operator<(const MVKShaderMacroValue& other) const {
+		return value.ui64 < other.value.ui64 ||
+			   (value.ui64 == other.value.ui64 && size < other.size);
+	}
+} MVKShaderMacroValue;
+
+/**
+ * Wraps a single MTLLibrary or a set of MTLLibrary variants with macro-based specialization
+ *
+ * The latter case is used when Vulkan specialization constants cannot be realized with
+ * Metal function constants. Those specialization constants are turned into macros, and
+ * when specialized, we have to *recompile* the MTLLibrary from source.
+ *
+ * To keep the details transparent to users, when specialization on macro occurs,
+ * MVKShaderLibrary creates specialized variants (each one also a MVKShaderLibrary) behind
+ * the scene and cache them in a map according to the macro-value mapping.
+ */
 class MVKShaderLibrary : public MVKBaseDeviceObject {
 
 public:
@@ -86,11 +113,16 @@ public:
     void setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z);
     
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
-					 const SPIRVToMSLConversionResult& conversionResult);
+					 const mvk::SPIRVToMSLConversionResult& conversionResult);
 
+	/**
+	 * When specializationMacroDef is not null, creates a macro-specialized library
+	 * specializationMacroDef contains (specialization id, value) mappings, should be sorted
+	 */
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
-					 const SPIRVToMSLConversionResultInfo& resultInfo,
-					 const MVKCompressor<std::string> compressedMSL);
+					 const mvk::SPIRVToMSLConversionResultInfo& resultInfo,
+					 const MVKCompressor<std::string> compressedMSL,
+					 const std::vector<std::pair<uint32_t, MVKShaderMacroValue>>* specializationMacroDef = nullptr);
 
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 					 const void* mslCompiledCodeData,
@@ -112,7 +144,8 @@ protected:
 								  MVKShaderModule* shaderModule);
 	void handleCompilationError(NSError* err, const char* opDesc);
     MTLFunctionConstant* getFunctionConstant(NSArray<MTLFunctionConstant*>* mtlFCs, NSUInteger mtlFCID);
-	void compileLibrary(const std::string& msl);
+	void compileLibrary(const std::string& msl,
+						const std::vector<std::pair<uint32_t, MVKShaderMacroValue> >* specializationMacroDef = nullptr);
 	void compressMSL(const std::string& msl);
 	void decompressMSL(std::string& msl);
 	MVKCompressor<std::string>& getCompressedMSL() { return _compressedMSL; }
@@ -120,7 +153,12 @@ protected:
 	MVKVulkanAPIDeviceObject* _owner;
 	id<MTLLibrary> _mtlLibrary;
 	MVKCompressor<std::string> _compressedMSL;
-	SPIRVToMSLConversionResultInfo _shaderConversionResultInfo;
+	mvk::SPIRVToMSLConversionResultInfo _shaderConversionResultInfo;
+
+	/** When true, representing a library created with source, but never specialized */
+	bool _maySpecializeWithMacro;
+	/** Can only be populated when _maySpecializeWithMacro is true */
+	std::map<std::vector<std::pair<uint32_t, MVKShaderMacroValue>>, MVKShaderLibrary *> _specializationVariants;
 };
 
 
@@ -144,7 +182,7 @@ public:
 	 * If pWasAdded is not nil, this function will set it to true if a new shader library was created,
 	 * and to false if an existing shader library was found and returned.
 	 */
-	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig,
+	MVKShaderLibrary* getShaderLibrary(mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
 									   MVKShaderModule* shaderModule, MVKPipeline* pipeline,
 									   bool* pWasAdded, VkPipelineCreationFeedback* pShaderFeedback,
 									   uint64_t startTime = 0);
@@ -158,18 +196,18 @@ protected:
 	friend MVKPipelineCache;
 	friend MVKShaderModule;
 
-	MVKShaderLibrary* findShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig,
+	MVKShaderLibrary* findShaderLibrary(mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
 										VkPipelineCreationFeedback* pShaderFeedback = nullptr,
 										uint64_t startTime = 0);
-	MVKShaderLibrary* addShaderLibrary(const SPIRVToMSLConversionConfiguration* pShaderConfig,
-									   const SPIRVToMSLConversionResult& conversionResult);
-	MVKShaderLibrary* addShaderLibrary(const SPIRVToMSLConversionConfiguration* pShaderConfig,
-									   const SPIRVToMSLConversionResultInfo& resultInfo,
+	MVKShaderLibrary* addShaderLibrary(const mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
+									   const mvk::SPIRVToMSLConversionResult& conversionResult);
+	MVKShaderLibrary* addShaderLibrary(const mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
+									   const mvk::SPIRVToMSLConversionResultInfo& resultInfo,
 									   const MVKCompressor<std::string> compressedMSL);
 	void merge(MVKShaderLibraryCache* other);
 
 	MVKVulkanAPIDeviceObject* _owner;
-	MVKSmallVector<std::pair<SPIRVToMSLConversionConfiguration, MVKShaderLibrary*>> _shaderLibraries;
+	MVKSmallVector<std::pair<mvk::SPIRVToMSLConversionConfiguration, MVKShaderLibrary*>> _shaderLibraries;
 };
 
 
@@ -210,14 +248,14 @@ public:
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT; }
 
 	/** Returns the Metal shader function, possibly specialized. */
-	MVKMTLFunction getMTLFunction(SPIRVToMSLConversionConfiguration* pShaderConfig,
+	MVKMTLFunction getMTLFunction(mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
 								  const VkSpecializationInfo* pSpecializationInfo,
 								  MVKPipeline* pipeline,
 								  VkPipelineCreationFeedback* pShaderFeedback);
 
 	/** Convert the SPIR-V to MSL, using the specified shader conversion configuration. */
-	bool convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
-				 SPIRVToMSLConversionResult& conversionResult);
+	bool convert(mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
+               mvk::SPIRVToMSLConversionResult& conversionResult);
 
 	/** Returns the original SPIR-V code that was specified when this object was created. */
 	const std::vector<uint32_t>& getSPIRV() { return _spvConverter.getSPIRV(); }
@@ -236,11 +274,9 @@ protected:
 	friend MVKShaderCacheIterator;
 
 	void propagateDebugName() override {}
-	MVKGLSLConversionShaderStage getMVKGLSLConversionShaderStage(SPIRVToMSLConversionConfiguration* pShaderConfig);
 
 	MVKShaderLibraryCache _shaderLibraryCache;
-	SPIRVToMSLConverter _spvConverter;
-	GLSLToSPIRVConverter _glslConverter;
+	mvk::SPIRVToMSLConverter _spvConverter;
 	MVKShaderLibrary* _directMSLLibrary;
 	MVKShaderModuleKey _key;
     std::mutex _accessLock;
@@ -266,7 +302,8 @@ public:
 	 * nanoseconds, an error will be generated and logged, and nil will be returned.
 	 */
 	id<MTLLibrary> newMTLLibrary(NSString* mslSourceCode,
-								 const SPIRVToMSLConversionResultInfo& shaderConversionResults);
+								 const mvk::SPIRVToMSLConversionResultInfo& shaderConversionResults,
+								 const std::vector<std::pair<mvk::MSLSpecializationMacroInfo, MVKShaderMacroValue>>& macroDef);
 
 
 #pragma mark Construction
@@ -279,6 +316,7 @@ public:
 	~MVKShaderLibraryCompiler() override;
 
 protected:
+	NSNumber *getMacroValue(const mvk::MSLSpecializationMacroInfo& info, const MVKShaderMacroValue& value);
 	bool compileComplete(id<MTLLibrary> mtlLibrary, NSError *error);
 	void handleError() override;
 

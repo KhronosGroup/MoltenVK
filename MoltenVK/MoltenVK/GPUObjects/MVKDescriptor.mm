@@ -587,7 +587,7 @@ MTLRenderStages MVKDescriptorSetLayoutBinding::getMTLRenderStages() {
 	return mtlStages;
 }
 
-std::string MVKDescriptorSetLayoutBinding::getLogDescription() {
+std::string MVKDescriptorSetLayoutBinding::getLogDescription(std::string indent) {
 	uint32_t elemCnt = getDescriptorCount();
 	std::stringstream descStr;
 	descStr << getDescriptorIndex() << ": ";
@@ -723,13 +723,6 @@ if (isUsingMtlArgBuff) {									\
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 			setResourceIndexOffset(textureIndex, 1);
 			if (!getMetalFeatures().nativeTextureAtomics) { setResourceIndexOffset(bufferIndex, 1); }
-
-#if MVK_IOS_OR_TVOS
-			// iOS Tier 1 argument buffers do not support writable images.
-			if (getMetalFeatures().argumentBuffersTier < MTLArgumentBuffersTier2) {
-				_layout->_canUseMetalArgumentBuffer = false;
-			}
-#endif
 
 			if (pBinding->descriptorCount > 1 && !mtlFeats.arrayOfTextures) {
 				_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of textures.", _device->getName()));

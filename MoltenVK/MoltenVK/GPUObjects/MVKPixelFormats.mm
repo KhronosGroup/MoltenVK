@@ -154,6 +154,21 @@ using namespace std;
 #       define MTLPixelFormatASTC_12x12_HDR         MTLPixelFormatInvalid
 #endif
 
+#if MVK_OS_SIMULATOR
+#   define MTLPixelFormatR8Unorm_sRGB               MTLPixelFormatInvalid
+#   define MTLPixelFormatRG8Unorm_sRGB              MTLPixelFormatInvalid
+#   define MTLPixelFormatB5G6R5Unorm                MTLPixelFormatInvalid
+#   define MTLPixelFormatA1BGR5Unorm                MTLPixelFormatInvalid
+#   define MTLPixelFormatABGR4Unorm                 MTLPixelFormatInvalid
+#   define MTLPixelFormatBGR5A1Unorm                MTLPixelFormatInvalid
+#   define MTLPixelFormatBGR10_XR                   MTLPixelFormatInvalid
+#   define MTLPixelFormatBGR10_XR_sRGB              MTLPixelFormatInvalid
+#   define MTLPixelFormatBGRA10_XR                  MTLPixelFormatInvalid
+#   define MTLPixelFormatBGRA10_XR_sRGB             MTLPixelFormatInvalid
+#   define MTLPixelFormatGBGR422                    MTLPixelFormatInvalid
+#   define MTLPixelFormatBGRG422                    MTLPixelFormatInvalid
+#endif
+
 #if !MVK_XCODE_15
 #   define MTLVertexFormatFloatRG11B10              MTLVertexFormatInvalid
 #   define MTLVertexFormatFloatRGB9E5               MTLVertexFormatInvalid
@@ -558,11 +573,13 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 						OFFSET_UNORM(alpha, 4)
 						break;
 					case VK_FORMAT_R5G6B5_UNORM_PACK16:
+					case VK_FORMAT_B5G6R5_UNORM_PACK16:
 						OFFSET_UNORM(red, 5)
 						OFFSET_UNORM(green, 6)
 						OFFSET_UNORM(blue, 5)
 						break;
 					case VK_FORMAT_R5G5B5A1_UNORM_PACK16:
+					case VK_FORMAT_B5G5R5A1_UNORM_PACK16:
 					case VK_FORMAT_A1R5G5B5_UNORM_PACK16:
 						OFFSET_UNORM(red, 5)
 						OFFSET_UNORM(green, 5)
@@ -584,6 +601,9 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 						break;
 					case VK_FORMAT_R8G8B8A8_UNORM:
 					case VK_FORMAT_B8G8R8A8_UNORM:
+					case VK_FORMAT_B8G8R8A8_SNORM:
+					case VK_FORMAT_B8G8R8A8_UINT:
+					case VK_FORMAT_B8G8R8A8_SINT:
 					case VK_FORMAT_A8B8G8R8_UNORM_PACK32:
 						OFFSET_UNORM(red, 8)
 						OFFSET_UNORM(green, 8)
@@ -728,7 +748,7 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 	}
 
 #if MVK_XCODE_15
-	if (supportAtomics && (mtlFormat == MTLPixelFormatR32Uint || mtlFormat == MTLPixelFormatR32Sint || mtlFormat == MTLPixelFormatRG32Uint)) {
+	if (supportAtomics && (mtlFormat == MTLPixelFormatR32Uint || mtlFormat == MTLPixelFormatR32Sint)) {
 		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderAtomic);
 	}
 #endif
@@ -873,9 +893,9 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	addVkFormatDescSwizzled( A4B4G4R4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, A, B, G, R );
 
 	addVkFormatDesc( R5G6B5_UNORM_PACK16, B5G6R5Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( B5G6R5_UNORM_PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDescSwizzled( B5G6R5_UNORM_PACK16, B5G6R5Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, B, G, R, A );
 	addVkFormatDesc( R5G5B5A1_UNORM_PACK16, A1BGR5Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( B5G5R5A1_UNORM_PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDescSwizzled( B5G5R5A1_UNORM_PACK16, A1BGR5Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, B, G, R, A );
 	addVkFormatDesc( A1R5G5B5_UNORM_PACK16, BGR5A1Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
 
 	addVkFormatDesc( R8_UNORM, R8Unorm, Invalid, UCharNormalized, UChar2Normalized, 1, 1, 1, ColorFloat );
@@ -919,11 +939,11 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	addVkFormatDesc( R8G8B8A8_SRGB, RGBA8Unorm_sRGB, Invalid, UChar4Normalized, Invalid, 1, 1, 4, ColorFloat );
 
 	addVkFormatDesc( B8G8R8A8_UNORM, BGRA8Unorm, Invalid, UChar4Normalized_BGRA, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( B8G8R8A8_SNORM, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDescSwizzled( B8G8R8A8_SNORM, RGBA8Snorm, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, B, G, R, A );
 	addVkFormatDesc( B8G8R8A8_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
 	addVkFormatDesc( B8G8R8A8_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( B8G8R8A8_UINT, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorUInt8 );
-	addVkFormatDesc( B8G8R8A8_SINT, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorInt8 );
+	addVkFormatDescSwizzled( B8G8R8A8_UINT, RGBA8Uint, Invalid, Invalid, Invalid, 1, 1, 4, ColorUInt8, B, G, R, A );
+	addVkFormatDescSwizzled( B8G8R8A8_SINT, RGBA8Sint, Invalid, Invalid, Invalid, 1, 1, 4, ColorInt8, B, G, R, A );
 	addVkFormatDesc( B8G8R8A8_SRGB, BGRA8Unorm_sRGB, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
 
 	addVkFormatDesc( A8B8G8R8_UNORM_PACK32, RGBA8Unorm, Invalid, UChar4Normalized, Invalid, 1, 1, 4, ColorFloat );
@@ -1179,13 +1199,17 @@ void MVKPixelFormats::addValidatedMTLPixelFormatDesc(MTLPixelFormat mtlPixFmt, M
 
 #define addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, appleGPUCaps, macGPUCaps)  \
 	addValidatedMTLPixelFormatDesc(MTLPixelFormat ##mtlFmt, MTLPixelFormat ##mtlFmtLinear, MVKMTLViewClass:: viewClass,  \
-								   kMVKMTLFmtCaps ##appleGPUCaps, kMVKMTLFmtCaps ##macGPUCaps, gpuCaps, "MTLPixelFormat" #mtlFmt)
+	                               appleGPUCaps, macGPUCaps, gpuCaps, "MTLPixelFormat" #mtlFmt)
 
 #define addMTLPixelFormatDesc(mtlFmt, viewClass, appleGPUCaps, macGPUCaps)  \
-	addMTLPixelFormatDescFull(mtlFmt, mtlFmt, viewClass, appleGPUCaps, macGPUCaps)
+	addMTLPixelFormatDescFull(mtlFmt, mtlFmt, viewClass, kMVKMTLFmtCaps ##appleGPUCaps, kMVKMTLFmtCaps ##macGPUCaps)
 
 #define addMTLPixelFormatDescSRGB(mtlFmt, viewClass, appleGPUCaps, macGPUCaps, mtlFmtLinear)  \
-	addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, appleGPUCaps, macGPUCaps)
+	/* Cannot write to sRGB textures in the simulator */  \
+	if(MVK_OS_SIMULATOR) { MVKMTLFmtCaps appleFmtCaps = kMVKMTLFmtCaps ##appleGPUCaps;  \
+	                       mvkDisableFlags(appleFmtCaps, kMVKMTLFmtCapsWrite);  \
+	                       addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, appleFmtCaps, kMVKMTLFmtCaps ##macGPUCaps); }  \
+	else                 { addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, kMVKMTLFmtCaps ##appleGPUCaps, kMVKMTLFmtCaps ##macGPUCaps); }
 
 void MVKPixelFormats::initMTLPixelFormatCapabilities(const MVKMTLDeviceCapabilities& gpuCaps) {
 	_mtlPixelFormatDescriptions.reserve(KIBI);	// High estimate to future-proof against allocations as elements are added. shrink_to_fit() below will collapse.
@@ -1508,6 +1532,9 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(const MVKMTLDeviceCapabilities
 	// on macOS is the least-intrusive way to handle this in a Vulkan-friendly way.
 	disableMTLPixFmtCapsIfGPU( Mac1, RGB9E5Float, Blend);
 
+	// RGB9E5Float cannot be used as a render target on the simulator
+	disableMTLPixFmtCapsIf( MVK_OS_SIMULATOR, RGB9E5Float, ColorAtt );
+
 	setMTLPixFmtCapsIf( iosOnly6, RG32Uint, RWC );
 	setMTLPixFmtCapsIf( iosOnly6, RG32Sint, RWC );
 
@@ -1515,7 +1542,6 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(const MVKMTLDeviceCapabilities
 	// Including this here so we remember to update this if support is added to Vulkan in the future.
 	bool atomic64 = noVulkanSupport && (gpuCaps.supportsApple9 || (gpuCaps.supportsApple8 && gpuCaps.supportsMac2));
 	enableMTLPixFmtCapsIf( atomic64, RG32Uint, Atomic );
-	enableMTLPixFmtCapsIf( atomic64, RG32Sint, Atomic );
 
 	setMTLPixFmtCapsIf( iosOnly8, RG32Float, RWCMB );
 	setMTLPixFmtCapsIf( iosOnly6, RG32Float, RWCB );
@@ -1648,7 +1674,9 @@ typedef enum : VkFormatFeatureFlags2 {
                                                     VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT_KHR |
                                                     VK_FORMAT_FEATURE_2_DISJOINT_BIT_KHR),
 	kMVKVkFormatFeatureFlagsBufRead     = (VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT),
-	kMVKVkFormatFeatureFlagsBufWrite    = (VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT),
+	kMVKVkFormatFeatureFlagsBufWrite    = (VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT |
+                                                                                   VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
+                                                                                   VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT),
 	kMVKVkFormatFeatureFlagsBufAtomic   = (VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT),
 	kMVKVkFormatFeatureFlagsBufVertex   = (VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT),
 } MVKVkFormatFeatureFlags;

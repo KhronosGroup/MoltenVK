@@ -31,8 +31,8 @@ using namespace std;
 #pragma mark MVKDeviceMemory
 
 void MVKDeviceMemory::propagateDebugName() {
-	setLabelIfNotNil(_mtlHeap, _debugName);
-	setLabelIfNotNil(_mtlBuffer, _debugName);
+	setMetalObjectLabel(_mtlHeap, _debugName);
+	setMetalObjectLabel(_mtlBuffer, _debugName);
 }
 
 VkResult MVKDeviceMemory::map(const VkMemoryMapInfoKHR* pMemoryMapInfo, void** ppData) {
@@ -188,15 +188,14 @@ bool MVKDeviceMemory::ensureMTLHeap() {
 	// Can't create MTLHeaps of zero size.
 	if (_allocationSize == 0) { return true; }
 
-#if MVK_MACOS
-	// MTLHeaps on macOS must use private storage for now.
-	if (_mtlStorageMode != MTLStorageModePrivate) { return true; }
-#endif
-#if MVK_IOS
-	// MTLHeaps on iOS must use private or shared storage for now.
-	if ( !(_mtlStorageMode == MTLStorageModePrivate ||
-		   _mtlStorageMode == MTLStorageModeShared) ) { return true; }
-#endif
+	if (getPhysicalDevice()->getMTLDeviceCapabilities().isAppleGPU) {
+		// MTLHeaps on Apple silicon must use private or shared storage for now.
+		if ( !(_mtlStorageMode == MTLStorageModePrivate ||
+		       _mtlStorageMode == MTLStorageModeShared) ) { return true; }
+	} else {
+		// MTLHeaps with immediate-mode GPUs must use private storage for now.
+		if (_mtlStorageMode != MTLStorageModePrivate) { return true; }
+	}
 
 	MTLHeapDescriptor* heapDesc = [MTLHeapDescriptor new];
 	heapDesc.type = MTLHeapTypePlacement;
@@ -246,7 +245,7 @@ bool MVKDeviceMemory::ensureMTLBuffer() {
 	}
 	if (!_mtlBuffer) { return false; }
 	_pMemory = isMemoryHostAccessible() ? _mtlBuffer.contents : nullptr;
-
+	getDevice()->makeResident(_mtlBuffer);
 	propagateDebugName();
 
 	return true;
@@ -472,6 +471,7 @@ MVKDeviceMemory::~MVKDeviceMemory() {
 		[_mtlTexture release];
 		_mtlTexture = nil;
 	} else {
+		if (_mtlBuffer) getDevice()->removeResidency(_mtlBuffer);
 		[_mtlBuffer release];
 		_mtlBuffer = nil;
 	}

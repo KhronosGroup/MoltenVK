@@ -44,13 +44,15 @@ typedef struct MVKMetalArgumentBuffer {
 	void setSamplerState(id<MTLSamplerState> mtlSamp, uint32_t index);
 	id<MTLBuffer> getMetalArgumentBuffer() { return _mtlArgumentBuffer; }
 	NSUInteger getMetalArgumentBufferOffset() { return _mtlArgumentBufferOffset; }
-	void setArgumentBuffer(id<MTLBuffer> mtlArgBuff, NSUInteger mtlArgBuffOfst, id<MTLArgumentEncoder> mtlArgEnc);
+	NSUInteger getMetalArgumentBufferEncodedSize() { return _mtlArgumentBufferEncodedSize; }
+	void setArgumentBuffer(id<MTLBuffer> mtlArgBuff, NSUInteger mtlArgBuffOfst, NSUInteger mtlArgBuffEncSize, id<MTLArgumentEncoder> mtlArgEnc);
 	~MVKMetalArgumentBuffer();
 protected:
 	void* getArgumentPointer(uint32_t index) const;
 	id<MTLArgumentEncoder> _mtlArgumentEncoder = nil;
 	id<MTLBuffer> _mtlArgumentBuffer = nil;
 	NSUInteger _mtlArgumentBufferOffset = 0;
+	NSUInteger _mtlArgumentBufferEncodedSize = 0;
 } MVKMetalArgumentBuffer;
 
 
@@ -117,6 +119,9 @@ public:
 	/** Returns whether descriptor sets from this layout requires an auxilliary buffer-size buffer. */
 	bool needsBufferSizeAuxBuffer() { return _maxBufferIndex >= 0; }
 
+	/** Returns a text description of this layout. */
+	std::string getLogDescription(std::string indent = "");
+
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
 protected:
@@ -132,8 +137,8 @@ protected:
 	MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding, uint32_t bindingIndexOffset = 0);
 	uint32_t getBufferSizeBufferArgBuferIndex() { return 0; }
 	id <MTLArgumentEncoder> getMTLArgumentEncoder(uint32_t variableDescriptorCount);
-	uint64_t getMetal3ArgumentBufferEncodedLength(uint32_t variableDescriptorCount);
-	std::string getLogDescription();
+	size_t getMetal3ArgumentBufferEncodedLength(uint32_t variableDescriptorCount);
+	bool checkCanUseArgumentBuffers(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
@@ -201,6 +206,8 @@ public:
 
 	MVKDescriptorSet(MVKDescriptorPool* pool);
 
+	~MVKDescriptorSet() override;
+
 protected:
 	friend class MVKDescriptorSetLayoutBinding;
 	friend class MVKDescriptorPool;
@@ -211,7 +218,8 @@ protected:
 	MVKDescriptor* getDescriptor(uint32_t binding, uint32_t elementIndex = 0);
 	VkResult allocate(MVKDescriptorSetLayout* layout,
 					  uint32_t variableDescriptorCount,
-					  NSUInteger mtlArgBufferOffset,
+					  NSUInteger mtlArgBuffOffset,
+					  NSUInteger mtlArgBuffEncSize,
 					  id<MTLArgumentEncoder> mtlArgEnc);
 	void free(bool isPoolReset);
 	MVKMTLBufferAllocation* acquireMTLBufferRegion(NSUInteger length);
@@ -279,6 +287,9 @@ public:
 	/** Destroys all currently allocated descriptor sets. */
 	VkResult reset(VkDescriptorPoolResetFlags flags);
 
+	/** Returns a text description of this pool. */
+	std::string getLogDescription(std::string indent = "");
+
 	MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo);
 
 	~MVKDescriptorPool() override;
@@ -296,13 +307,11 @@ protected:
 	NSUInteger getMetalArgumentBufferEncodedResourceStorageSize(NSUInteger bufferCount, NSUInteger textureCount, NSUInteger samplerCount);
 	MTLArgumentDescriptor* getMTLArgumentDescriptor(MTLDataType resourceType, NSUInteger argIndex, NSUInteger count);
 	size_t getPoolSize(const VkDescriptorPoolCreateInfo* pCreateInfo, VkDescriptorType descriptorType);
-	std::string getLogDescription();
 
 	MVKSmallVector<MVKDescriptorSet> _descriptorSets;
 	MVKBitArray _descriptorSetAvailablility;
-	id<MTLBuffer> _metalArgumentBuffer;
-	NSUInteger _nextMetalArgumentBufferOffset;
 	MVKMTLBufferAllocator _mtlBufferAllocator;
+	id<MTLBuffer> _metalArgumentBuffer = nil;
 
 	MVKDescriptorTypePool<MVKUniformBufferDescriptor> _uniformBufferDescriptors;
 	MVKDescriptorTypePool<MVKStorageBufferDescriptor> _storageBufferDescriptors;
@@ -316,6 +325,9 @@ protected:
 	MVKDescriptorTypePool<MVKCombinedImageSamplerDescriptor> _combinedImageSamplerDescriptors;
 	MVKDescriptorTypePool<MVKUniformTexelBufferDescriptor> _uniformTexelBufferDescriptors;
 	MVKDescriptorTypePool<MVKStorageTexelBufferDescriptor> _storageTexelBufferDescriptors;
+
+	VkDescriptorPoolCreateFlags _flags = 0;
+	size_t _allocatedDescSetCount = 0;
 };
 
 
@@ -339,6 +351,9 @@ public:
 	/** Get the total number of entries. */
 	uint32_t getNumberOfEntries() const;
 
+	/** Get the total number of bytes of data requried by this template. */
+	size_t getSize() const { return _size; }
+
 	/** Get the type of this template. */
 	VkDescriptorUpdateTemplateType getType() const;
 
@@ -354,9 +369,10 @@ public:
 protected:
 	void propagateDebugName() override {}
 
+	MVKSmallVector<VkDescriptorUpdateTemplateEntry, 1> _entries;
+	size_t _size = 0;
 	VkPipelineBindPoint _pipelineBindPoint;
 	VkDescriptorUpdateTemplateType _type;
-	MVKSmallVector<VkDescriptorUpdateTemplateEntry, 1> _entries;
 };
 
 #pragma mark -

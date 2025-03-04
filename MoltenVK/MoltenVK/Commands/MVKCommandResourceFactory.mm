@@ -36,7 +36,7 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPi
 	id<MTLFunction> vtxFunc = newFunctionNamed(isLayeredBlit ? "vtxCmdBlitImageLayered" : "vtxCmdBlitImage");	// temp retain
 	id<MTLFunction> fragFunc = newBlitFragFunction(blitKey);													// temp retain
     MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];									// temp retain
-    plDesc.label = @"vkCmdBlitImage";
+	owner->setMetalObjectLabel(plDesc, @"vkCmdBlitImage");
 
 	plDesc.vertexFunction = vtxFunc;
 	plDesc.fragmentFunction = fragFunc;
@@ -118,7 +118,7 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipeli
 	id<MTLFunction> vtxFunc = newClearVertFunction(attKey);						// temp retain
 	id<MTLFunction> fragFunc = newClearFragFunction(attKey);					// temp retain
 	MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];	// temp retain
-    plDesc.label = @"ClearRenderAttachments";
+	owner->setMetalObjectLabel(plDesc, @"ClearRenderAttachments");
 	plDesc.vertexFunction = vtxFunc;
     plDesc.fragmentFunction = fragFunc;
 	plDesc.sampleCount = attKey.mtlSampleCount;
@@ -666,9 +666,14 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newMTLRenderPipelineState(
 id<MTLComputePipelineState> MVKCommandResourceFactory::newMTLComputePipelineState(const char* funcName,
 																				  MVKVulkanAPIDeviceObject* owner) {
 	id<MTLFunction> mtlFunc = newFunctionNamed(funcName);							// temp retain
+	// Providing a function directly may cause issues with Metal shader validation layer object
+	// management for some reason, so create a temporary pipeline descriptor to provide instead.
+	MTLComputePipelineDescriptor* plDesc = [MTLComputePipelineDescriptor new];		// temp retain
+	plDesc.computeFunction = mtlFunc;
 	MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(owner);
-	id<MTLComputePipelineState> cps = plc->newMTLComputePipelineState(mtlFunc);		// retained
+	id<MTLComputePipelineState> cps = plc->newMTLComputePipelineState(plDesc);		// retained
 	plc->destroy();
+	[plDesc release];																// temp release
 	[mtlFunc release];																// temp release
     return cps;
 }
