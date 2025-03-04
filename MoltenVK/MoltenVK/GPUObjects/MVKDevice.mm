@@ -2376,6 +2376,22 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 	logGPUInfo();
 }
 
+static MVKPhysicalDeviceArgumentBufferSizes::Entry getArgumentBufferSize(id<MTLDevice> dev, MTLDataType type) {
+	MTLArgumentDescriptor* desc = [MTLArgumentDescriptor argumentDescriptor];
+	[desc setIndex:0];
+	[desc setDataType:type];
+	[desc setArrayLength:0];
+	[desc setAccess:type == MTLDataTypeSampler ? MTLArgumentAccessReadOnly : MTLArgumentAccessReadWrite];
+	if (type == MTLDataTypeTexture)
+		[desc setTextureType:MTLTextureType2D];
+	id<MTLArgumentEncoder> enc = [dev newArgumentEncoderWithArguments:@[desc]];
+	MVKPhysicalDeviceArgumentBufferSizes::Entry res;
+	res.size = static_cast<uint16_t>([enc encodedLength]);
+	res.align = static_cast<uint16_t>([enc alignment]);
+	[enc release];
+	return res;
+}
+
 void MVKPhysicalDevice::initMTLDevice() {
 #if MVK_MACOS
 	// Apple Silicon will respond false to isLowPower, but never hits it.
@@ -2984,6 +3000,14 @@ void MVKPhysicalDevice::initMetalFeatures() {
     _metalFeatures.subgroupUniformControlFlow = _gpuCapabilities.isAppleGPU;
     _metalFeatures.maximalReconvergence = _gpuCapabilities.isAppleGPU && _metalFeatures.subgroupUniformControlFlow;
     _metalFeatures.quadControlFlow = _gpuCapabilities.isAppleGPU && _metalFeatures.maximalReconvergence;
+
+	if (_isUsingMetalArgumentBuffers) {
+		_argumentBufferSizes.texture = getArgumentBufferSize(_mtlDevice, MTLDataTypeTexture);
+		_argumentBufferSizes.sampler = getArgumentBufferSize(_mtlDevice, MTLDataTypeSampler);
+		_argumentBufferSizes.pointer = getArgumentBufferSize(_mtlDevice, MTLDataTypePointer);
+	} else {
+		_argumentBufferSizes = {};
+	}
 
 	// Set features for all platforms based on previous settings.
 	// Bump resources up for Tier2 GPU, to meet Vulkan conformance.
