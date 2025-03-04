@@ -1396,7 +1396,7 @@ VkExternalMemoryProperties& MVKPhysicalDevice::getExternalImageProperties(VkForm
 }
 
 uint32_t MVKPhysicalDevice::getExternalResourceMemoryTypeBits(VkExternalMemoryHandleTypeFlagBits handleType,
-															  void* handle) const {
+															  const void* handle) const {
 	// MTLBuffer and MTLTextures are resources. MTLHeap is not according to Metal
 	const bool isResource = handleType != VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT;
 	const MTLStorageMode storageMode = isResource ? ((id<MTLResource>)handle).storageMode : ((id<MTLHeap>)handle).storageMode;

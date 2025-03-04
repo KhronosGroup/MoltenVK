@@ -368,7 +368,7 @@ public:
 	/** Returns the external memory properties supported for images for the handle type. */
 	VkExternalMemoryProperties& getExternalImageProperties(VkFormat format, VkExternalMemoryHandleTypeFlagBits handleType);
 
-	uint32_t getExternalResourceMemoryTypeBits(VkExternalMemoryHandleTypeFlagBits handleType, void* handle) const;
+	uint32_t getExternalResourceMemoryTypeBits(VkExternalMemoryHandleTypeFlagBits handleType, const void* handle) const;
 
 	
 #pragma mark Metal

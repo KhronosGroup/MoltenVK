@@ -314,7 +314,7 @@ if [ ! "$V_HEADERS_ROOT" = "" ]; then
 	rm -rf ${REPO_NAME}
 	ln -sfn ${V_HEADERS_ROOT} ${REPO_NAME}
 else
-	REPO_URL="https://github.com/aitor-lunarg/${REPO_NAME}.git"
+	REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
 	REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
 	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}

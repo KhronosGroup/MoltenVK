@@ -3052,7 +3052,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMemoryMetalHandleEXT(
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMemoryMetalHandlePropertiesEXT(
 																	  VkDevice                              device,
 																	  VkExternalMemoryHandleTypeFlagBits    handleType,
-																	  void*        			                handle,
+																	  const void*                           handle,
 																	  VkMemoryMetalHandlePropertiesEXT*     pMemoryMetalHandleProperties) {
 
 	MVKTraceVulkanCallStart();
