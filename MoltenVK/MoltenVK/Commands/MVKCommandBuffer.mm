@@ -1017,7 +1017,7 @@ id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandU
 	if ( !_mtlComputeEncoder ) {
 		needWaits = true;
 		endCurrentMetalEncoding();
-		_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoderWithDispatchType:MTLDispatchTypeConcurrent];
+		_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoder];
 		retainIfImmediatelyEncoding(_mtlComputeEncoder);
 		beginMetalComputeEncoding(cmdUse);
 		markCurrentComputeStateDirty = false;	// Already marked dirty above in endCurrentMetalEncoding()
