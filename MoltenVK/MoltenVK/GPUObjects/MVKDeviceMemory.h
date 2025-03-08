@@ -119,22 +119,22 @@ public:
 #pragma mark Metal
 
 	/** Returns the Metal buffer underlying this memory allocation. */
-	inline id<MTLBuffer> getMTLBuffer() { return _mtlBuffer; }
+	id<MTLBuffer> getMTLBuffer() { return _mtlBuffer; }
 
 	/** Returns the Metal heap underlying this memory allocation. */
-	inline id<MTLHeap> getMTLHeap() { return _mtlHeap; }
+	id<MTLHeap> getMTLHeap() { return _mtlHeap; }
 
 	/** Returns the Metal storage mode used by this memory allocation. */
-	inline MTLStorageMode getMTLStorageMode() { return _mtlStorageMode; }
+	MTLStorageMode getMTLStorageMode() { return _mtlStorageMode; }
 
 	/** Returns the Metal CPU cache mode used by this memory allocation. */
-	inline MTLCPUCacheMode getMTLCPUCacheMode() { return _mtlCPUCacheMode; }
+	MTLCPUCacheMode getMTLCPUCacheMode() { return _mtlCPUCacheMode; }
 
 	/** Returns the Metal resource options used by this memory allocation. */
-	inline MTLResourceOptions getMTLResourceOptions() { return mvkMTLResourceOptions(_mtlStorageMode, _mtlCPUCacheMode); }
+	MTLResourceOptions getMTLResourceOptions() { return mvkMTLResourceOptions(_mtlStorageMode, _mtlCPUCacheMode); }
 
 	/** Returns the Metal texture underlying this memory allocation. */
-	inline id<MTLTexture> getMTLTexture() { return _mtlTexture; }
+	id<MTLTexture> getMTLTexture() { return _mtlTexture; }
 
 #pragma mark Construction
 
