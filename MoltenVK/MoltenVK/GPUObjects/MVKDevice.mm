@@ -1335,7 +1335,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
 				for (auto* nextProps = (VkBaseOutStructure*)pImageFormatProperties->pNext; nextProps; nextProps = nextProps->pNext) {
 					if (nextProps->sType == VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES) {
 						auto* pExtImgFmtProps = (VkExternalImageFormatProperties*)nextProps;
-						pExtImgFmtProps->externalMemoryProperties = getExternalImageProperties(pExtImgFmtInfo->handleType);
+						pExtImgFmtProps->externalMemoryProperties = getExternalImageProperties(pImageFormatInfo->format, pExtImgFmtInfo->handleType);
 					}
 				}
 				break;
@@ -1393,23 +1393,57 @@ VkExternalMemoryProperties& MVKPhysicalDevice::getExternalBufferProperties(VkExt
 		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
 		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT:
 			return _hostPointerExternalMemoryProperties;
-		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR:
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT:
 			return _mtlBufferExternalMemoryProperties;
 		default:
 			return _emptyExtMemProps;
 	}
 }
 
-VkExternalMemoryProperties& MVKPhysicalDevice::getExternalImageProperties(VkExternalMemoryHandleTypeFlagBits handleType) {
+VkExternalMemoryProperties& MVKPhysicalDevice::getExternalImageProperties(VkFormat format, VkExternalMemoryHandleTypeFlagBits handleType) {
 	switch (handleType) {
 		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
 		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT:
 			return _hostPointerExternalMemoryProperties;
-		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR:
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT:
+			// We cannot export images that have no Metal counterparts. This is because we are emulating them via multiple MTLTextures
+			// and we would require to export multiple MTLTextures. We let them export them as a heap whenever possible.
+			if (_pixelFormats.getChromaSubsamplingPlaneCount(format) > 1u)
+				return _mtlTextureHeapExternalMemoryProperties;
 			return _mtlTextureExternalMemoryProperties;
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT:
+			return _mtlTextureHeapExternalMemoryProperties;
 		default:
 			return _emptyExtMemProps;
 	}
+}
+
+uint32_t MVKPhysicalDevice::getExternalResourceMemoryTypeBits(VkExternalMemoryHandleTypeFlagBits handleType,
+															  const void* handle) const {
+	// MTLBuffer and MTLTextures are resources. MTLHeap is not according to Metal
+	const bool isResource = handleType != VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT;
+	const MTLStorageMode storageMode = isResource ? ((id<MTLResource>)handle).storageMode : ((id<MTLHeap>)handle).storageMode;
+	uint32_t memoryTypeBits = 0u;
+	switch (storageMode) {
+	case MTLStorageModeShared:
+		memoryTypeBits = _hostCoherentMemoryTypes;
+		break;
+#if !MVK_IOS && !MVK_TVOS
+	case MTLStorageModeManaged:
+		memoryTypeBits = _hostVisibleMemoryTypes;
+		break;
+#endif
+	case MTLStorageModePrivate:
+		memoryTypeBits = _privateMemoryTypes;
+		break;
+	case MTLStorageModeMemoryless:
+		memoryTypeBits = _lazilyAllocatedMemoryTypes;
+		break;
+	default:
+		// This should never be reached, but just to be future-proof
+		break;
+	};
+	return memoryTypeBits;
 }
 
 static const VkExternalFenceProperties _emptyExtFenceProps = {VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES, nullptr, 0, 0, 0};
@@ -3360,15 +3394,23 @@ void MVKPhysicalDevice::initExternalMemoryProperties() {
 	// Buffers
 	_mtlBufferExternalMemoryProperties.externalMemoryFeatures = (VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
 																 VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT);
-	_mtlBufferExternalMemoryProperties.exportFromImportedHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR;
-	_mtlBufferExternalMemoryProperties.compatibleHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR;
+	_mtlBufferExternalMemoryProperties.exportFromImportedHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT;
+	_mtlBufferExternalMemoryProperties.compatibleHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT;
 
 	// Images
 	_mtlTextureExternalMemoryProperties.externalMemoryFeatures = (VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
 																  VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT |
 																  VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
-	_mtlTextureExternalMemoryProperties.exportFromImportedHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR;
-	_mtlTextureExternalMemoryProperties.compatibleHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR;
+	_mtlTextureExternalMemoryProperties.exportFromImportedHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT;
+	_mtlTextureExternalMemoryProperties.compatibleHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT;
+
+	if (_metalFeatures.placementHeaps) {
+		_mtlTextureHeapExternalMemoryProperties = _mtlTextureExternalMemoryProperties;
+		_mtlTextureHeapExternalMemoryProperties.exportFromImportedHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT;
+		_mtlTextureHeapExternalMemoryProperties.compatibleHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT;
+	} else {
+		_mtlTextureHeapExternalMemoryProperties = _emptyExtMemProps;
+	}
 }
 
 void MVKPhysicalDevice::initExtensions() {
@@ -4822,6 +4864,25 @@ void MVKDevice::getMetalObjects(VkExportMetalObjectsInfoEXT* pMetalObjectsInfo) 
 				break;
 		}
 	}
+}
+
+void* MVKDevice::getResourceIdFromHandle(const VkMemoryGetMetalHandleInfoEXT* pGetMetalHandleInfo) const
+{
+	void* handle = nil;
+	MVKDeviceMemory* memory = (MVKDeviceMemory*)pGetMetalHandleInfo->memory;
+	switch (pGetMetalHandleInfo->handleType) {
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT:
+			handle = memory->getMTLBuffer();
+			break;
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT:
+			handle = memory->getMTLTexture();
+			break;
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT:
+			handle = memory->getMTLHeap();
+		default:
+			break;
+	}
+	return handle;
 }
 
 

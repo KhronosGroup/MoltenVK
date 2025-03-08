@@ -52,7 +52,10 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
             MVKAssert(0, "Creating a 2D view of a 3D texture currently requires a placement heap, which is not available.");
         }
 
-        if (_image->_ioSurface) {
+        // Use imported texture if we are binding to a VkDeviceMemory that was created with an import operation
+        if (dvcMem && (dvcMem->_externalMemoryHandleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT) && dvcMem->_mtlTexture) {
+            _mtlTexture = dvcMem->_mtlTexture;
+        } else if (_image->_ioSurface) {
             _mtlTexture = [_image->getMTLDevice()
                            newTextureWithDescriptor: mtlTexDesc
                            iosurface: _image->_ioSurface
@@ -1409,14 +1412,20 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttac
 
 void MVKImage::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
 	if ( !handleTypes ) { return; }
-	if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR)) {
-        auto& xmProps = getPhysicalDevice()->getExternalImageProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR);
-        for(auto& memoryBinding : _memoryBindings) {
-            memoryBinding->_externalMemoryHandleTypes = handleTypes;
-            memoryBinding->_requiresDedicatedMemoryAllocation = memoryBinding->_requiresDedicatedMemoryAllocation || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
-        }
+	if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT)) {
+		auto& xmProps = getPhysicalDevice()->getExternalImageProperties(_vkFormat, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT);
+		for(auto& memoryBinding : _memoryBindings) {
+			memoryBinding->_externalMemoryHandleTypes = handleTypes;
+			memoryBinding->_requiresDedicatedMemoryAllocation = memoryBinding->_requiresDedicatedMemoryAllocation || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
+		}
+	} else if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT)) {
+		auto& xmProps = getPhysicalDevice()->getExternalImageProperties(_vkFormat, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT);
+		for(auto& memoryBinding : _memoryBindings) {
+			memoryBinding->_externalMemoryHandleTypes = handleTypes;
+			memoryBinding->_requiresDedicatedMemoryAllocation = memoryBinding->_requiresDedicatedMemoryAllocation || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
+		}
 	} else {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage(): Only external memory handle type VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR is supported."));
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage(): Only external memory handle type VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT and VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT are supported."));
 	}
 }
 

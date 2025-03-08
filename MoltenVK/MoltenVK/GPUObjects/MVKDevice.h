@@ -339,37 +339,39 @@ public:
 	 * Returns a bit mask of all memory type indices. 
 	 * Each bit [0..31] in the returned bit mask indicates a distinct memory type.
 	 */
-	uint32_t getAllMemoryTypes() { return _allMemoryTypes; }
+	uint32_t getAllMemoryTypes() const { return _allMemoryTypes; }
 
 	/**
 	 * Returns a bit mask of all memory type indices that allow host visibility to the memory. 
 	 * Each bit [0..31] in the returned bit mask indicates a distinct memory type.
 	 */
-	uint32_t getHostVisibleMemoryTypes() { return _hostVisibleMemoryTypes; }
+	uint32_t getHostVisibleMemoryTypes() const { return _hostVisibleMemoryTypes; }
 
 	/**
 	 * Returns a bit mask of all memory type indices that are coherent between host and device.
 	 * Each bit [0..31] in the returned bit mask indicates a distinct memory type.
 	 */
-	uint32_t getHostCoherentMemoryTypes() { return _hostCoherentMemoryTypes; }
+	uint32_t getHostCoherentMemoryTypes() const { return _hostCoherentMemoryTypes; }
 
 	/**
 	 * Returns a bit mask of all memory type indices that do NOT allow host visibility to the memory.
 	 * Each bit [0..31] in the returned bit mask indicates a distinct memory type.
 	 */
-	uint32_t getPrivateMemoryTypes() { return _privateMemoryTypes; }
+	uint32_t getPrivateMemoryTypes() const { return _privateMemoryTypes; }
 
 	/**
 	 * Returns a bit mask of all memory type indices that are lazily allocated.
 	 * Each bit [0..31] in the returned bit mask indicates a distinct memory type.
 	 */
-	uint32_t getLazilyAllocatedMemoryTypes() { return _lazilyAllocatedMemoryTypes; }
+	uint32_t getLazilyAllocatedMemoryTypes() const { return _lazilyAllocatedMemoryTypes; }
 
 	/** Returns the external memory properties supported for buffers for the handle type. */
 	VkExternalMemoryProperties& getExternalBufferProperties(VkExternalMemoryHandleTypeFlagBits handleType);
 
 	/** Returns the external memory properties supported for images for the handle type. */
-	VkExternalMemoryProperties& getExternalImageProperties(VkExternalMemoryHandleTypeFlagBits handleType);
+	VkExternalMemoryProperties& getExternalImageProperties(VkFormat format, VkExternalMemoryHandleTypeFlagBits handleType);
+
+	uint32_t getExternalResourceMemoryTypeBits(VkExternalMemoryHandleTypeFlagBits handleType, const void* handle) const;
 
 	/** Returns the amount of memory currently consumed by the GPU. */
 	size_t getCurrentAllocatedSize();
@@ -467,6 +469,7 @@ protected:
 	VkExternalMemoryProperties _hostPointerExternalMemoryProperties;
 	VkExternalMemoryProperties _mtlBufferExternalMemoryProperties;
 	VkExternalMemoryProperties _mtlTextureExternalMemoryProperties;
+	VkExternalMemoryProperties _mtlTextureHeapExternalMemoryProperties;
 	id<MTLCounterSet> _timestampMTLCounterSet;
 	MVKSemaphoreStyle _vkSemaphoreStyle;
 	MTLTimestamp _prevCPUTimestamp = 0;
@@ -511,6 +514,8 @@ public:
 
 	/** Returns a pointer to the Vulkan instance. */
 	MVKInstance* getInstance() override { return _physicalDevice->_mvkInstance; }
+
+	const MVKPhysicalDevice* getPhysicalDevice() const { return _physicalDevice; }
 
 	/** Returns the name of this device. */
 	const char* getName() { return _physicalDevice->_properties.deviceName; }
@@ -825,6 +830,8 @@ public:
 
 	/** Returns the Metal objects underpinning the Vulkan objects indicated in the pNext chain of pMetalObjectsInfo. */
 	void getMetalObjects(VkExportMetalObjectsInfoEXT* pMetalObjectsInfo);
+
+	void* getResourceIdFromHandle(const VkMemoryGetMetalHandleInfoEXT* pGetMetalHandleInfo) const;
 
 #if !MVK_XCODE_16
 	void makeResident(id allocation) {}

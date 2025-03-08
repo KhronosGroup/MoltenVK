@@ -10,7 +10,7 @@
 set -e
 
 EXT_DIR=../External
-SPV_TLS_BLD_DIR="${EXT_DIR}/glslang/External/spirv-tools/build"
+SPV_TLS_BLD_DIR="${EXT_DIR}/SPIRV-Tools/build"
 TPLT_DIR=../Templates/spirv-tools
 TPLT_BLD_DIR="${TPLT_DIR}/build"
 

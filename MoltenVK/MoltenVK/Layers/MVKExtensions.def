@@ -114,6 +114,7 @@ MVK_EXTENSION(EXT_extended_dynamic_state,             EXT_EXTENDED_DYNAMIC_STATE
 MVK_EXTENSION(EXT_extended_dynamic_state2,            EXT_EXTENDED_DYNAMIC_STATE_2,           DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_extended_dynamic_state3,            EXT_EXTENDED_DYNAMIC_STATE_3,           DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_external_memory_host,               EXT_EXTERNAL_MEMORY_HOST,               DEVICE,   10.11,  8.0,  1.0)
+MVK_EXTENSION(EXT_external_memory_metal,              EXT_EXTERNAL_MEMORY_METAL,              DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_fragment_shader_interlock,          EXT_FRAGMENT_SHADER_INTERLOCK,          DEVICE,   10.13, 11.0,  1.0)
 MVK_EXTENSION(EXT_hdr_metadata,                       EXT_HDR_METADATA,                       DEVICE,   10.15, MVK_NA, MVK_NA)
 MVK_EXTENSION(EXT_headless_surface,                   EXT_HEADLESS_SURFACE,                   INSTANCE, 10.11,  8.0,  1.0)

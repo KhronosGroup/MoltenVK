@@ -770,6 +770,8 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_EXT_ENTRY_POINT(vkCopyMemoryToImageEXT, EXT_HOST_IMAGE_COPY);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetImageSubresourceLayout2EXT, EXT_HOST_IMAGE_COPY);
 	ADD_DVC_EXT_ENTRY_POINT(vkTransitionImageLayoutEXT, EXT_HOST_IMAGE_COPY);
+	ADD_DVC_EXT_ENTRY_POINT(vkGetMemoryMetalHandleEXT, EXT_EXTERNAL_MEMORY_METAL);
+	ADD_DVC_EXT_ENTRY_POINT(vkGetMemoryMetalHandlePropertiesEXT, EXT_EXTERNAL_MEMORY_METAL);
 }
 
 void MVKInstance::logVersions() {

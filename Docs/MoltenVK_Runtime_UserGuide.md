@@ -368,6 +368,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_INTEL_shader_integer_functions2`
 - `VK_NV_fragment_shader_barycentric`
   - *Requires Metal 2.2 on Mac or Metal 2.3 on iOS.*
+- `VK_EXT_external_memory_metal`
 
 In order to visibly display your content on *macOS*, *iOS*, or *tvOS*, you must enable the
 `VK_EXT_metal_surface` extension, and use the function defined in that extension to create a

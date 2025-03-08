@@ -26,11 +26,6 @@
 
 class MVKImageMemoryBinding;
 
-// TODO: These are inoperable placeholders until VK_KHR_external_memory_metal defines them properly
-static const VkExternalMemoryHandleTypeFlagBits VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR = VK_EXTERNAL_MEMORY_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
-static const VkExternalMemoryHandleTypeFlagBits VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR = VK_EXTERNAL_MEMORY_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
-
-
 #pragma mark MVKDeviceMemory
 
 typedef struct MVKMappedMemoryRange {
@@ -124,20 +119,22 @@ public:
 #pragma mark Metal
 
 	/** Returns the Metal buffer underlying this memory allocation. */
-	inline id<MTLBuffer> getMTLBuffer() { return _mtlBuffer; }
+	id<MTLBuffer> getMTLBuffer() { return _mtlBuffer; }
 
 	/** Returns the Metal heap underlying this memory allocation. */
-	inline id<MTLHeap> getMTLHeap() { return _mtlHeap; }
+	id<MTLHeap> getMTLHeap() { return _mtlHeap; }
 
 	/** Returns the Metal storage mode used by this memory allocation. */
-	inline MTLStorageMode getMTLStorageMode() { return _mtlStorageMode; }
+	MTLStorageMode getMTLStorageMode() { return _mtlStorageMode; }
 
 	/** Returns the Metal CPU cache mode used by this memory allocation. */
-	inline MTLCPUCacheMode getMTLCPUCacheMode() { return _mtlCPUCacheMode; }
+	MTLCPUCacheMode getMTLCPUCacheMode() { return _mtlCPUCacheMode; }
 
 	/** Returns the Metal resource options used by this memory allocation. */
-	inline MTLResourceOptions getMTLResourceOptions() { return mvkMTLResourceOptions(_mtlStorageMode, _mtlCPUCacheMode); }
+	MTLResourceOptions getMTLResourceOptions() { return mvkMTLResourceOptions(_mtlStorageMode, _mtlCPUCacheMode); }
 
+	/** Returns the Metal texture underlying this memory allocation. */
+	id<MTLTexture> getMTLTexture() { return _mtlTexture; }
 
 #pragma mark Construction
 
@@ -150,6 +147,7 @@ public:
 
 protected:
 	friend class MVKBuffer;
+	friend class MVKImage;
     friend class MVKImageMemoryBinding;
     friend class MVKImagePlane;
 
@@ -164,14 +162,22 @@ protected:
 	bool ensureHostMemory();
 	void freeHostMemory();
 	MVKResource* getDedicatedResource();
-	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
+	void initExternalMemory(MVKImage* dedicatedImage);
 
 	MVKSmallVector<MVKBuffer*, 4> _buffers;
 	MVKSmallVector<MVKImageMemoryBinding*, 4> _imageMemoryBindings;
 	std::mutex _rezLock;
     VkDeviceSize _allocationSize = 0;
 	MVKMappedMemoryRange _mappedRange;
-	id<MTLBuffer> _mtlBuffer = nil;
+	// Resource object that spans the whole VkDeviceMemory or supposedly does for the user.
+	// Due to MVKImages allocating the memory they'll use differently based on some criteria,
+	// we have no access to that memory unless we store a reference to that MTLTexture.
+	// This allows us to be able to export said texture when the user requests so from a
+	// VkDeviceMemory object.
+	union {
+		id<MTLBuffer> _mtlBuffer = nil;
+		id<MTLTexture> _mtlTexture;
+	};
 	id<MTLHeap> _mtlHeap = nil;
 	void* _pMemory = nullptr;
 	void* _pHostMemory = nullptr;
@@ -181,6 +187,6 @@ protected:
 	MTLCPUCacheMode _mtlCPUCacheMode;
 	bool _isDedicated = false;
 	bool _isHostMemImported = false;
-
+	VkExternalMemoryHandleTypeFlags _externalMemoryHandleType = 0u;
 };
 
