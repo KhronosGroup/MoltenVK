@@ -485,6 +485,16 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 																			  VK_IMAGE_USAGE_SAMPLED_BIT |
 																			  VK_IMAGE_USAGE_STORAGE_BIT));
 
+	// Texture view creation is not allowed from framebufferOnly textures.
+	if (mtlLayer.framebufferOnly) {
+		for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+			if (next->sType == VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO) {
+				mtlLayer.framebufferOnly = false;
+				break;
+			}
+		}
+	}
+
 	// Because of a regression in Metal, the most recent one or two presentations may not
 	// complete and call back. Changing the CAMetalLayer drawableSize will force any incomplete
 	// presentations on the oldSwapchain to complete and call back, but if the drawableSize
