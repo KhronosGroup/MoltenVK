@@ -652,16 +652,15 @@ This option is not available unless **MoltenVK** was built with `MVK_USE_METAL_P
 #### MVK_CONFIG_USE_MTLHEAP
 
 ##### Type: Boolean
-##### Default: `0`
+##### Default: `1`
 
 Controls whether **MoltenVK** should use `MTLHeaps` for allocating textures and buffers from device memory.
 If this setting is enabled, and placement `MTLHeaps` are available on the platform, **MoltenVK** will allocate a
 placement `MTLHeap` for each `VkDeviceMemory` instance, and allocate textures and buffers from that placement heap.
 If this parameter is disabled, **MoltenVK** will allocate textures and buffers from general device memory.
 
-Apple recommends that `MTLHeaps` should only be used for specific requirements such as aliasing or hazard tracking,
-and **MoltenVK** testing has shown that allocating multiple textures of different types or usages from one `MTLHeap`
-can occassionally cause corruption issues under certain circumstances.
+Vulkan extension `VK_EXT_image_2d_view_of_3d` requires this parameter to be enabled, 
+to allow aliasing of texture memory between the 3D image and the 2D view.
 
 
 ---------------------------------------
@@ -680,7 +679,6 @@ can occassionally cause corruption issues under certain circumstances.
 ##### Default: `1`
 
 Determines the style used to implement _Vulkan_ semaphore (`VkSemaphore`) functionality in _Metal_.
-
 
 In the special case of `VK_SEMAPHORE_TYPE_TIMELINE` semaphores, **MoltenVK** will always use
 `MTLSharedEvent` if it is available on the platform, regardless of the value of this parameter.

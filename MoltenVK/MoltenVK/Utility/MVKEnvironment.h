@@ -303,9 +303,9 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #  	define MVK_CONFIG_USE_COMMAND_POOLING    1
 #endif
 
-/** Use MTLHeaps where possible when allocating MTLBuffers and MTLTextures. Disabled by default. */
+/** Use MTLHeaps where possible when allocating MTLBuffers and MTLTextures. Enabled by default. */
 #ifndef MVK_CONFIG_USE_MTLHEAP
-#  	define MVK_CONFIG_USE_MTLHEAP    0
+#  	define MVK_CONFIG_USE_MTLHEAP    1
 #endif
 
 /** The Vulkan API version to advertise. Defaults to MVK_VULKAN_API_VERSION. */
