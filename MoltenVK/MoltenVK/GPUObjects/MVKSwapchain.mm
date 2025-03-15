@@ -483,7 +483,8 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 	mtlLayer.framebufferOnly = !mvkIsAnyFlagEnabled(pCreateInfo->imageUsage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
 																			  VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 																			  VK_IMAGE_USAGE_SAMPLED_BIT |
-																			  VK_IMAGE_USAGE_STORAGE_BIT));
+																			  VK_IMAGE_USAGE_STORAGE_BIT)) &&
+								!mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR);
 
 	// Because of a regression in Metal, the most recent one or two presentations may not
 	// complete and call back. Changing the CAMetalLayer drawableSize will force any incomplete

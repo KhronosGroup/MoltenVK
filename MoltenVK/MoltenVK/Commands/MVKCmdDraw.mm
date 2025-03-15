@@ -243,7 +243,6 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                     [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                           offset: vtxOutBuff->_offset
                                          atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessCtlInputBufferBinding)];
-					[mtlTessCtlEncoder memoryBarrierWithResources:&vtxOutBuff->_mtlBuffer count:1];
                 }
 				
 				NSUInteger sgSize = pipeline->getTessControlStageState().threadExecutionWidth;
@@ -476,7 +475,6 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                     [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                           offset: vtxOutBuff->_offset
                                          atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessCtlInputBufferBinding)];
-					[mtlTessCtlEncoder memoryBarrierWithResources:&vtxOutBuff->_mtlBuffer count:1];
                 }
 				// The vertex shader produced output in the correct order, so there's no need to use
 				// an index buffer here.
@@ -794,8 +792,6 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 					[mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(_drawCount, mtlConvertState.threadExecutionWidth), 1, 1)
 									  threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
 				}
-				id<MTLBuffer> barrierBuffers[] = {tempIndirectBuff->_mtlBuffer, tcParamsBuff->_mtlBuffer};
-				[mtlTessCtlEncoder memoryBarrierWithResources:barrierBuffers count:2];
                 // Mark pipelines, resources, and vertex push constants as dirty
                 // so I apply them during the next stage.
                 cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
@@ -895,7 +891,6 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                         [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                               offset: vtxOutBuff->_offset
                                              atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessCtlInputBufferBinding)];
-						[mtlTessCtlEncoder memoryBarrierWithResources:&vtxOutBuff->_mtlBuffer count:1];
                     }
                     [mtlTessCtlEncoder dispatchThreadgroupsWithIndirectBuffer: mtlIndBuff
                                                          indirectBufferOffset: mtlIndBuffOfst
@@ -1242,7 +1237,6 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 					[mtlTessCtlEncoder setBuffer: vtxIndexBuff->_mtlBuffer
 										  offset: vtxIndexBuff->_offset
 										 atIndex: pipeline->getIndirectParamsIndex().stages[kMVKShaderStageVertex]];
-					[mtlTessCtlEncoder memoryBarrierWithResources:&vtxIndexBuff->_mtlBuffer count:1];
 					[mtlTessCtlEncoder setStageInRegion: MTLRegionMake2D(0, 0, vertexCount, vertexCount)];
 					if ([mtlTessCtlEncoder respondsToSelector: @selector(setStageInRegionWithIndirectBuffer:indirectBufferOffset:)]) {
 						[mtlTessCtlEncoder setStageInRegionWithIndirectBuffer: mtlIndBuff
@@ -1281,13 +1275,11 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 					[mtlTessCtlEncoder setBuffer: tcParamsBuff->_mtlBuffer
 										  offset: mtlParmBuffOfst
 										 atIndex: pipeline->getIndirectParamsIndex().stages[kMVKShaderStageTessCtl]];
-					if (drawIdx == 0) [mtlTessCtlEncoder memoryBarrierWithResources:&tcParamsBuff->_mtlBuffer count:1];
 					mtlParmBuffOfst += paramsIncr;
                     if (pipeline->needsVertexOutputBuffer()) {
                         [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                               offset: vtxOutBuff->_offset
                                              atIndex: cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKTessCtlInputBufferBinding)];
-						[mtlTessCtlEncoder memoryBarrierWithResources:&vtxOutBuff->_mtlBuffer count:1];
                     }
                     [mtlTessCtlEncoder dispatchThreadgroupsWithIndirectBuffer: mtlIndBuff
                                                          indirectBufferOffset: mtlTempIndBuffOfst

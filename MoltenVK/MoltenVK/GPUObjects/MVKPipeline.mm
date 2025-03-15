@@ -161,7 +161,7 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 
 	// For pipeline layout compatibility (“compatible for set N”),
 	// consume the Metal resource indexes in this order:
-	//   - An argument buffer for each descriptor set (if using Metal argument buffers).
+	//   - Fixed count of argument buffers for descriptor sets (if using Metal argument buffers).
 	//   - Push constants
 	//   - Descriptor set content
 
@@ -169,7 +169,7 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 	// buffer indexes covering all descriptor sets for the Metal
 	// argument buffers themselves.
 	if (isUsingMetalArgumentBuffers()) {
-		_mtlResourceCounts.addArgumentBuffers(dslCnt);
+		_mtlResourceCounts.addArgumentBuffers(kMVKMaxDescriptorSetCount);
 	}
 
 	// Add push constants from config

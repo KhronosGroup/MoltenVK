@@ -20,11 +20,60 @@ Released TBD
 
 - Add support for extensions:
 	- `VK_KHR_zero_initialize_workgroup_memory`
+	- `VK_KHR_shader_terminate_invocation`
+	- `VK_EXT_depth_clip_control`
+	- `VK_EXT_external_memory_metal`.
+	- `VK_EXT_image_2d_view_of_3d`
+	- `VK_EXT_tooling_info`
+- Add support for `B5G6R5_UNORM_PACK16` `B5G5R5A1_UNORM_PACK16`, and `B8G8R8A8` formats using swizzle.
+- Enable `MVK_CONFIG_USE_MTLHEAP` by default to support `VK_EXT_image_2d_view_of_3d`.
+- Fixes to managing descriptor set allocation in a Metal argument buffer.
 - Fix _SPIRV-Cross_ namespace build error on some alternate build environments.
 - Fix recent failure of `CI.yml` to upload release build artifacts to GitHub.
+- Fix memory management issue in `MVKSwapchain`.
+- Fix indirect index for triangle fan topology.
+- Fix crash when shader validation is enabled.
+- Fix dynamic vertex stride with tessellation.
+- Fix Metal API violation when using `VK_KHR_swapchain_mutable_format`.
+- Fix designation of `vkGetPhysicalDeviceToolProperties` as a device entry-point.
+- Fix memory leak of `CAEDRMetadata` in `MVKSwapchain`.
+- Fix not saving `shouldFixupClipSpace` when serializing a pipeline.
+- Remove atomic usage for `RG32Uint`.
+- Handle shader specializtion with macros.
+- Improved estimation of vertex attribute buffer count when reserving for implicit buffer.
+- Use Metal residency sets when available.
+- Implement barriers using Metal fences.
+- `vkCmdWaitEvents` end current encoder before `encodeWait`.
 - Remove support for deprecated `VK_NV_glsl_shader` extension, and GLSL conversions using _**MoltenVKShaderConverter**_.
+- Remove use of `VK_ERROR_INVALID_SHADER_NV` error code.
+- Reduce number of unused pipeline bindings reserved for argument buffers.
+- Disable unsupported Metal Pixel formats for _iOS/tvOS Simulator_.
+- Revert to fixed number of argument buffer binding reservations.
+- Ignore allowed bad `pViewportState` pointer if rasterization is disabled.
+- Improved estimation of vertex attribute buffer count when reserving for implicit buffer.
+- Fix header-hygiene warning violations.
+- `MVKCmdWaitEvents`: end current encoder before `encodeWait`.
+- Add missing `depthClamp` and `shaderTessellationAndGeometryPointSize` features to _tvOS_.
+- Update features overrides to all Simulators: _iOS, tvOS, visionOS_.
+- Fix a crash when searching the first enabled bit in a completely disabled bit array.
+- When logging a pipeline layout, log contained descriptor set layouts.
+- Add debug labels to barrier fences.
+- GitHub CI update legacy build to _macOS 13 / Xcode 14_.
+- Fix compile with `MVK_USE_CEREAL=0`.
 - Update to latest SPIRV-Cross:
   - MSL: Pad array elements in Metal argument buffer when shader declares scalar.
+  - MSL: Expose information about specialization constants - macro mapping
+  - MSL: Use unpacked arguments in texture arguments.
+  - MSL: Fix emission of bindless helper template for bindless SSBO.
+  - MSL: Use actual result type member as cast type for mulhi.
+  - MSL: Allow Centroid and Sample decorations on bary coord.
+  - MSL: Terminate function with return value using return if ending in unreachable.
+  - MSL: Add option to disable rasterization depending on usage.
+  - MSL: Always pass BDA by value into functions.
+  - MSL: Apply input override on all flattened members in interface block.
+  - GLSL/MSL: Support `VK_KHR_zero_initialize_workgroup_memory`
+  - MSL: Treat pointer to vector as scalar type when bitcasting.
+  - MSL: Use the more proper pointer typing.
 
 
 

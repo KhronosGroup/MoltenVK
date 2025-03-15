@@ -309,6 +309,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_extended_dynamic_state3`
   - *Metal does not support `VK_POLYGON_MODE_POINT`*
 - `VK_EXT_external_memory_host`
+- `VK_EXT_external_memory_metal`
 - `VK_EXT_fragment_shader_interlock`
   - *Requires Metal 2.0 and Raster Order Groups.*
 - `VK_EXT_hdr_metadata`
