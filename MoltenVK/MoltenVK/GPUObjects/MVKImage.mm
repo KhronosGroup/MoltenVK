@@ -399,7 +399,7 @@ VkResult MVKImageMemoryBinding::getMemoryRequirements(VkMemoryRequirements* pMem
     return VK_SUCCESS;
 }
 
-VkResult MVKImageMemoryBinding::getMemoryRequirements(const void*, VkMemoryRequirements2* pMemoryRequirements) {
+VkResult MVKImageMemoryBinding::getMemoryRequirements(VkMemoryRequirements2* pMemoryRequirements) {
 	auto& mtlFeats = getMetalFeatures();
     pMemoryRequirements->sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
     for (auto* next = (VkBaseOutStructure*)pMemoryRequirements->pNext; next; next = next->pNext) {
@@ -903,10 +903,9 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
     return getMemoryBinding(planeIndex)->getMemoryRequirements(pMemoryRequirements);
 }
 
-VkResult MVKImage::getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements) {
+VkResult MVKImage::getMemoryRequirements(const VkImageMemoryRequirementsInfo2* pInfo, VkMemoryRequirements2* pMemoryRequirements) {
     uint8_t planeIndex = 0;
-	const auto* pImageInfo = (const VkImageMemoryRequirementsInfo2*)pInfo;
-	for (const auto* next = (const VkBaseInStructure*)pImageInfo->pNext; next; next = next->pNext) {
+	for (const auto* next = (const VkBaseInStructure*)pInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
 		case VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: {
 			const auto* planeReqs = (const VkImagePlaneMemoryRequirementsInfo*)next;
@@ -917,15 +916,13 @@ VkResult MVKImage::getMemoryRequirements(const void* pInfo, VkMemoryRequirements
 			break;
 		}
 	}
-    VkResult rslt = getMemoryRequirements(&pMemoryRequirements->memoryRequirements, planeIndex);
-    if (rslt != VK_SUCCESS) { return rslt; }
-    return getMemoryBinding(planeIndex)->getMemoryRequirements(pInfo, pMemoryRequirements);
+	return getMemoryRequirements(pMemoryRequirements, planeIndex);
 }
 
 VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements2 *pMemoryRequirements, uint8_t planeIndex) {
 	VkResult rslt = getMemoryRequirements(&pMemoryRequirements->memoryRequirements, planeIndex);
 	if (rslt != VK_SUCCESS) { return rslt; }
-	return _memoryBindings[planeIndex]->getMemoryRequirements(nullptr, pMemoryRequirements);
+	return getMemoryBinding(planeIndex)->getMemoryRequirements(pMemoryRequirements);
 }
 
 VkResult MVKImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset, uint8_t planeIndex) {
