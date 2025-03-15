@@ -2208,7 +2208,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkGetBufferMemoryRequirements2(
 
 	MVKTraceVulkanCallStart();
     MVKBuffer* mvkBuff = (MVKBuffer*)pInfo->buffer;
-    mvkBuff->getMemoryRequirements(pInfo, pMemoryRequirements);
+    mvkBuff->getMemoryRequirements(pMemoryRequirements);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2830,9 +2830,8 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkGetDeviceBufferMemoryRequirements(
 	
 	MVKTraceVulkanCallStart();
 	auto* mvkDev = MVKDevice::getMVKDevice(device);
-	auto* buffer = new MVKBuffer(mvkDev, pInfo->pCreateInfo);
-	buffer->getMemoryRequirements(nullptr, pMemoryRequirements);
-	buffer->destroy();
+	MVKBuffer mvkBuff(mvkDev, pInfo->pCreateInfo);
+	mvkBuff.getMemoryRequirements(pMemoryRequirements);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2843,9 +2842,8 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkGetDeviceImageMemoryRequirements(
 	
 	MVKTraceVulkanCallStart();
 	auto* mvkDev = MVKDevice::getMVKDevice(device);
-	auto* image = new MVKImage(mvkDev, pInfo->pCreateInfo);
-	image->getMemoryRequirements(pMemoryRequirements, MVKImage::getPlaneFromVkImageAspectFlags(pInfo->planeAspect));
-	image->destroy();
+	MVKImage mvkImg(mvkDev, pInfo->pCreateInfo);
+	mvkImg.getMemoryRequirements(pMemoryRequirements, MVKImage::getPlaneFromVkImageAspectFlags(pInfo->planeAspect));
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2856,7 +2854,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkGetDeviceImageSparseMemoryRequirements(
 	VkSparseImageMemoryRequirements2*           pSparseMemoryRequirements) {
 	
 	MVKTraceVulkanCallStart();
-	// Metal does not support sparse images
+	// Sparse images are not currently supported
 	*pSparseMemoryRequirementCount = 0;
 	MVKTraceVulkanCallEnd();
 }
