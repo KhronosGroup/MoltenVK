@@ -170,8 +170,8 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 
 			auto& wgSize = _shaderConversionResultInfo.entryPoint.workgroupSize;
 			return MVKMTLFunction(mtlFunc, _shaderConversionResultInfo, MTLSizeMake(getWorkgroupDimensionSize(wgSize.width, pSpecializationInfo),
-																				 getWorkgroupDimensionSize(wgSize.height, pSpecializationInfo),
-																				 getWorkgroupDimensionSize(wgSize.depth, pSpecializationInfo)));
+																					getWorkgroupDimensionSize(wgSize.height, pSpecializationInfo),
+																					getWorkgroupDimensionSize(wgSize.depth, pSpecializationInfo)));
 		}
 	}
 }
