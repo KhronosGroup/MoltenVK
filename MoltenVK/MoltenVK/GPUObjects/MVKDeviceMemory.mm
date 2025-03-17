@@ -188,11 +188,14 @@ bool MVKDeviceMemory::ensureMTLHeap() {
 	// Can't create MTLHeaps of zero size.
 	if (_allocationSize == 0) { return true; }
 
+#if !MVK_OS_SIMULATOR
 	if (getPhysicalDevice()->getMTLDeviceCapabilities().isAppleGPU) {
 		// MTLHeaps on Apple silicon must use private or shared storage for now.
 		if ( !(_mtlStorageMode == MTLStorageModePrivate ||
 		       _mtlStorageMode == MTLStorageModeShared) ) { return true; }
-	} else {
+	} else
+#endif
+	{
 		// MTLHeaps with immediate-mode GPUs must use private storage for now.
 		if (_mtlStorageMode != MTLStorageModePrivate) { return true; }
 	}
