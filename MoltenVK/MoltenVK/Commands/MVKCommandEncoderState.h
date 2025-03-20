@@ -177,10 +177,10 @@ struct MVKDescriptorResourceUsage {
 
 /** Tracks the state of a Vulkan render encoder. */
 struct MVKVulkanGraphicsCommandEncoderState {
-	MVKPipelineLayout* _layout = nullptr;
+	MVKPipelineLayoutNew* _layout = nullptr;
 	MVKGraphicsPipeline* _pipeline = nullptr;
 	MVKRenderStateData _renderState;
-	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount];
+	MVKDescriptorSetNew* _descriptorSets[kMVKMaxDescriptorSetCount];
 	MVKVertexMTLBufferBinding _vertexBuffers[kMVKMaxBufferCount];
 	MVKIndexMTLBufferBinding _indexBuffer;
 	VkViewport _viewports[kMVKMaxViewportScissorCount];
@@ -202,27 +202,27 @@ struct MVKVulkanGraphicsCommandEncoderState {
 	}
 
 	/** Bind the given descriptor sets, placing their bindings into `_descriptorSetBindings`. */
-	void bindDescriptorSets(MVKPipelineLayout* layout,
+	void bindDescriptorSets(MVKPipelineLayoutNew* layout,
 	                        uint32_t firstSet,
 	                        uint32_t setCount,
-	                        MVKDescriptorSet*const* sets,
+	                        MVKDescriptorSetNew*const* sets,
 	                        uint32_t dynamicOffsetCount,
 	                        const uint32_t* dynamicOffsets);
 };
 
 /** Tracks the state of a Vulkan compute encoder. */
 struct MVKVulkanComputeCommandEncoderState {
-	MVKPipelineLayout* _layout = nullptr;
+	MVKPipelineLayoutNew* _layout = nullptr;
 	MVKComputePipeline* _pipeline = nullptr;
-	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount];
+	MVKDescriptorSetNew* _descriptorSets[kMVKMaxDescriptorSetCount];
 	MVKBindingList _descriptorSetBindings[kMVKMaxDescriptorSetCount];
 	MVKImplicitBufferData _implicitBufferData;
 
 	/** Bind the given descriptor sets, placing their bindings into `_descriptorSetBindings`. */
-	void bindDescriptorSets(MVKPipelineLayout* layout,
+	void bindDescriptorSets(MVKPipelineLayoutNew* layout,
 	                        uint32_t firstSet,
 	                        uint32_t setCount,
-	                        MVKDescriptorSet*const* sets,
+	                        MVKDescriptorSetNew*const* sets,
 	                        uint32_t dynamicOffsetCount,
 	                        const uint32_t* dynamicOffsets);
 };
@@ -308,7 +308,6 @@ struct MVKMetalGraphicsCommandEncoderStateQuickReset {
 	MVKRenderStateFlags _stateReady;
 	/** Other single-bit flags. */
 	MVKMetalRenderEncoderStateFlags _flags;
-	MVKStaticBitSet<kMVKMaxDescriptorSetCount> _descriptorSetsReady;
 
 	MVKStencilReference _stencilReference;
 	MVKColor32 _blendConstants;
@@ -380,8 +379,6 @@ struct MVKMetalComputeCommandEncoderState {
 	MVKStageResourceBits _exists;
 	/** If set, the resource matches what is needed by the current pipeline + descriptor set. */
 	MVKStageResourceBits _ready;
-
-	MVKStaticBitSet<kMVKMaxDescriptorSetCount> _descriptorSetsReady;
 
 	id<MTLComputePipelineState> _pipeline;
 
@@ -475,10 +472,10 @@ public:
 	void pushConstants(uint32_t offset, uint32_t size, const void* data);
 	/** Bind the given descriptor sets to the Vulkan state, invalidating any necessary resources. */
 	void bindDescriptorSets(VkPipelineBindPoint bindPoint,
-	                        MVKPipelineLayout* layout,
+	                        MVKPipelineLayoutNew* layout,
 	                        uint32_t firstSet,
 	                        uint32_t setCount,
-	                        MVKDescriptorSet*const* sets,
+	                        MVKDescriptorSetNew*const* sets,
 	                        uint32_t dynamicOffsetCount,
 	                        const uint32_t* dynamicOffsets);
 	/** Bind the given vertex buffers to the Vulkan state, invalidating any necessary resources. */

@@ -1720,11 +1720,8 @@ public:
 	}
 };
 
-void mvkUpdateDescriptorSetsNew(uint32_t numWrites, const VkWriteDescriptorSet* pDescriptorWrites,
-                                uint32_t numCopies, const VkCopyDescriptorSet* pDescriptorCopies);
-
-void mvkUpdateDescriptorSetsNew(uint32_t numWrites, const VkWriteDescriptorSet* pDescriptorWrites,
-                                uint32_t numCopies, const VkCopyDescriptorSet* pDescriptorCopies)
+void mvkUpdateDescriptorSets(uint32_t numWrites, const VkWriteDescriptorSet* pDescriptorWrites,
+                             uint32_t numCopies, const VkCopyDescriptorSet* pDescriptorCopies)
 {
 	DescriptorSetUpdateLockTracker locks;
 	MVKDescriptorSetNew* lastDstSet = nullptr;
@@ -1818,10 +1815,8 @@ public:
 	}
 };
 
-void mvkUpdateDescriptorSetWithTemplateNew(VkDescriptorSet set, VkDescriptorUpdateTemplate updateTemplate, const void* pData);
-
 /** Updates the resource bindings in the given descriptor set from the specified template. */
-void mvkUpdateDescriptorSetWithTemplateNew(VkDescriptorSet set, VkDescriptorUpdateTemplate updateTemplate, const void* pData) {
+void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet set, VkDescriptorUpdateTemplate updateTemplate, const void* pData) {
 
 	auto* dstSet = reinterpret_cast<MVKDescriptorSetNew*>(set);
 	auto* pTemplate = reinterpret_cast<MVKDescriptorUpdateTemplate*>(updateTemplate);
@@ -3461,6 +3456,7 @@ MVKVulkanAPIDeviceObject(device), _pipelineBindPoint(pCreateInfo->pipelineBindPo
 #pragma mark -
 #pragma mark Support functions
 
+#if 0
 // Updates the resource bindings in the descriptor sets inditified in the specified content.
 void mvkUpdateDescriptorSets(uint32_t writeCount,
 							 const VkWriteDescriptorSet* pDescriptorWrites,
@@ -3550,3 +3546,4 @@ void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet descriptorSet,
 		dstSet->write(pEntry, pEntry->stride, pCurData);
 	}
 }
+#endif

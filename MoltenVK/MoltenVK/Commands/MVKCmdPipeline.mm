@@ -308,7 +308,7 @@ VkResult MVKCmdBindDescriptorSetsStatic<N>::setContent(MVKCommandBuffer* cmdBuff
 	if (_pipelineLayout) { _pipelineLayout->release(); }
 
 	_pipelineBindPoint = pipelineBindPoint;
-	_pipelineLayout = (MVKPipelineLayout*)layout;
+	_pipelineLayout = (MVKPipelineLayoutNew*)layout;
 	_firstSet = firstSet;
 
 	_pipelineLayout->retain();
@@ -317,7 +317,7 @@ VkResult MVKCmdBindDescriptorSetsStatic<N>::setContent(MVKCommandBuffer* cmdBuff
 	_descriptorSets.clear();	// Clear for reuse
 	_descriptorSets.reserve(setCount);
 	for (uint32_t dsIdx = 0; dsIdx < setCount; dsIdx++) {
-		_descriptorSets.push_back((MVKDescriptorSet*)pDescriptorSets[dsIdx]);
+		_descriptorSets.push_back((MVKDescriptorSetNew*)pDescriptorSets[dsIdx]);
 	}
 
 	return VK_SUCCESS;
@@ -419,7 +419,7 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 	if (_pipelineLayout) { _pipelineLayout->release(); }
 
 	_pipelineBindPoint = pipelineBindPoint;
-	_pipelineLayout = (MVKPipelineLayout*)layout;
+	_pipelineLayout = (MVKPipelineLayoutNew*)layout;
 	_set = set;
 
 	_pipelineLayout->retain();
@@ -470,7 +470,7 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdPushDescriptorSet::encode(MVKCommandEncoder* cmdEncoder) {
-	_pipelineLayout->pushDescriptorSet(cmdEncoder, _pipelineBindPoint, _descriptorWrites.contents(), _set);
+//	_pipelineLayout->pushDescriptorSet(cmdEncoder, _pipelineBindPoint, _descriptorWrites.contents(), _set);
 }
 
 MVKCmdPushDescriptorSet::~MVKCmdPushDescriptorSet() {
@@ -510,7 +510,7 @@ VkResult MVKCmdPushDescriptorSetWithTemplate::setContent(MVKCommandBuffer* cmdBu
 														 uint32_t set,
 														 const void* pData) {
 	if (_pipelineLayout) { _pipelineLayout->release(); }
-	_pipelineLayout = (MVKPipelineLayout*)layout;
+	_pipelineLayout = (MVKPipelineLayoutNew*)layout;
 	_pipelineLayout->retain();
 	_set = set;
 	_descUpdateTemplate = (MVKDescriptorUpdateTemplate*)descUpdateTemplate;
@@ -531,7 +531,7 @@ VkResult MVKCmdPushDescriptorSetWithTemplate::setContent(MVKCommandBuffer* cmdBu
 }
 
 void MVKCmdPushDescriptorSetWithTemplate::encode(MVKCommandEncoder* cmdEncoder) {
-	_pipelineLayout->pushDescriptorSet(cmdEncoder, _descUpdateTemplate, _set, _pData);
+//	_pipelineLayout->pushDescriptorSet(cmdEncoder, _descUpdateTemplate, _set, _pData);
 }
 
 MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
