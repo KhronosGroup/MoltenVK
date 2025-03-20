@@ -544,28 +544,28 @@ void MVKPipeline::populateDescriptorSetBindingUse(MVKMTLFunction& mvkMTLFunc,
 												  const CreateInfo* pCreateInfo,
 												  SPIRVToMSLConversionConfiguration& shaderConfig,
 												  MVKShaderStage stage) {
-	if (isUsingMetalArgumentBuffers()) {
-		for (uint32_t dsIdx = 0; dsIdx < _descriptorSetCount; dsIdx++) {
-			auto* dsLayout = ((MVKPipelineLayout*)pCreateInfo->layout)->getDescriptorSetLayout(dsIdx);
-			dsLayout->populateBindingUse(getDescriptorBindingUse(dsIdx, stage), shaderConfig, stage, dsIdx);
-		}
-	}
+//	if (isUsingMetalArgumentBuffers()) {
+//		for (uint32_t dsIdx = 0; dsIdx < _descriptorSetCount; dsIdx++) {
+//			auto* dsLayout = ((MVKPipelineLayout*)pCreateInfo->layout)->getDescriptorSetLayout(dsIdx);
+//			dsLayout->populateBindingUse(getDescriptorBindingUse(dsIdx, stage), shaderConfig, stage, dsIdx);
+//		}
+//	}
 }
 
-MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout,
+MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayoutNew* layout,
 						 VkPipelineCreateFlags2 flags, MVKPipeline* parent) :
 	MVKVulkanAPIDeviceObject(device),
 	_layout(layout),
 	_pipelineCache(pipelineCache),
 	_flags(flags),
-	_descriptorSetCount(uint32_t(layout->_descriptorSetLayouts.size())),
+	_descriptorSetCount(static_cast<uint32_t>(layout->getDescriptorSetCount())),
 	_fullImageViewSwizzle(getMVKConfig().fullImageViewSwizzle) {
 
 		layout->retain();
 
 		// Establish descriptor counts and push constants use.
 		for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
-			_descriptorBufferCounts.stages[stage] = layout->_mtlResourceCounts.stages[stage].bufferIndex;
+			_descriptorBufferCounts.stages[stage] = layout->getResourceCounts().stages[stage].bufferIndex;
 			_stageUsesPushConstants[stage] = layout->stageUsesPushConstants((MVKShaderStage)stage);
 		}
 	}
@@ -857,7 +857,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 										 MVKPipelineCache* pipelineCache,
 										 MVKPipeline* parent,
 										 const VkGraphicsPipelineCreateInfo* pCreateInfo) :
-	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, getPipelineCreateFlags(pCreateInfo), parent)
+	MVKPipeline(device, pipelineCache, (MVKPipelineLayoutNew*)pCreateInfo->layout, getPipelineCreateFlags(pCreateInfo), parent)
 {
 	// Extract dynamic state first, as it can affect many configurations.
 	initDynamicState(pCreateInfo);
@@ -1345,7 +1345,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLRenderPipelineDescriptor
 	// Metal does not allow the name of the pipeline to be changed after it has been created,
 	// and we need to create the Metal pipeline immediately to provide error feedback to app.
 	// The best we can do at this point is set the pipeline name from the layout.
-	setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
+	setMetalObjectLabel(plDesc, ((MVKPipelineLayoutNew*)pCreateInfo->layout)->getDebugName());
 
 	return plDesc;
 }
@@ -1387,7 +1387,7 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessVertexStageDescript
 	// Metal does not allow the name of the pipeline to be changed after it has been created,
 	// and we need to create the Metal pipeline immediately to provide error feedback to app.
 	// The best we can do at this point is set the pipeline name from the layout.
-	setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
+	setMetalObjectLabel(plDesc, ((MVKPipelineLayoutNew*)pCreateInfo->layout)->getDebugName());
 
 	return plDesc;
 }
@@ -1529,7 +1529,7 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessControlStageDescrip
 	// Metal does not allow the name of the pipeline to be changed after it has been created,
 	// and we need to create the Metal pipeline immediately to provide error feedback to app.
 	// The best we can do at this point is set the pipeline name from the layout.
-	setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
+	setMetalObjectLabel(plDesc, ((MVKPipelineLayoutNew*)pCreateInfo->layout)->getDebugName());
 
 	return plDesc;
 }
@@ -1652,6 +1652,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled;
 	populateImplicitBufferUsage(_implicitBuffers[kMVKShaderStageVertex], funcRslts);
 	populateResourceUsage(_stageResources[kMVKShaderStageVertex], _implicitBuffers[kMVKShaderStageVertex], shaderConfig, spv::ExecutionModelVertex);
+	_layout->populateBindOperations(_bindScripts[kMVKShaderStageVertex], shaderConfig, spv::ExecutionModelVertex);
 	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageVertex);
 
 	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageVertex);
@@ -1703,6 +1704,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 		markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageVertex);
 	}
 
+	_layout->populateBindOperations(_bindScripts[kMVKShaderStageVertex], shaderConfig, spv::ExecutionModelVertex);
 	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageVertex);
 
 	_implicitBuffers[kMVKShaderStageVertex].needed.set(MVKImplicitBuffer::Index, !shaderConfig.shaderInputs.empty());
@@ -1743,6 +1745,7 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	});
 	populateImplicitBufferUsage(_implicitBuffers[kMVKShaderStageTessCtl], funcRslts);
 	populateResourceUsage(_stageResources[kMVKShaderStageTessCtl], _implicitBuffers[kMVKShaderStageTessCtl], shaderConfig, spv::ExecutionModelTessellationControl);
+	_layout->populateBindOperations(_bindScripts[kMVKShaderStageTessCtl], shaderConfig, spv::ExecutionModelTessellationControl);
 	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageTessCtl);
 
 	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageTessCtl);
@@ -1778,6 +1781,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled;
 	populateImplicitBufferUsage(_implicitBuffers[kMVKShaderStageTessEval], funcRslts);
 	populateResourceUsage(_stageResources[kMVKShaderStageTessEval], _implicitBuffers[kMVKShaderStageTessEval], shaderConfig, spv::ExecutionModelTessellationEvaluation);
+	_layout->populateBindOperations(_bindScripts[kMVKShaderStageTessEval], shaderConfig, spv::ExecutionModelTessellationEvaluation);
 	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageTessEval);
 
 	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageTessEval);
@@ -1836,6 +1840,7 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		auto& funcRslts = func.shaderConversionResults;
 		populateImplicitBufferUsage(_implicitBuffers[kMVKShaderStageFragment], funcRslts);
 		populateResourceUsage(_stageResources[kMVKShaderStageFragment], _implicitBuffers[kMVKShaderStageFragment], shaderConfig, spv::ExecutionModelFragment);
+		_layout->populateBindOperations(_bindScripts[kMVKShaderStageFragment], shaderConfig, spv::ExecutionModelFragment);
 		markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageFragment);
 
 		populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageFragment);
@@ -2212,8 +2217,8 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	shaderConfig.options.mslOptions.argument_buffers_tier = (SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::ArgumentBuffersTier)getMetalFeatures().argumentBuffersTier;
 	shaderConfig.options.mslOptions.agx_manual_cube_grad_fixup = mtlFeats.needsCubeGradWorkaround;
 
-    MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
-    layout->populateShaderConversionConfig(shaderConfig);
+	MVKPipelineLayoutNew* layout = (MVKPipelineLayoutNew*)pCreateInfo->layout;
+	layout->populateShaderConversionConfig(shaderConfig);
 
 	// Set implicit buffer indices
 	// FIXME: Many of these are optional. We shouldn't set the ones that aren't
@@ -2570,7 +2575,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 									   MVKPipelineCache* pipelineCache,
 									   MVKPipeline* parent,
 									   const VkComputePipelineCreateInfo* pCreateInfo) :
-	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, getPipelineCreateFlags(pCreateInfo), parent) {
+	MVKPipeline(device, pipelineCache, (MVKPipelineLayoutNew*)pCreateInfo->layout, getPipelineCreateFlags(pCreateInfo), parent) {
 
 	_allowsDispatchBase = mvkAreAllFlagsEnabled(_flags, VK_PIPELINE_CREATE_2_DISPATCH_BASE_BIT);
 
@@ -2624,7 +2629,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 		// Metal does not allow the name of the pipeline to be changed after it has been created,
 		// and we need to create the Metal pipeline immediately to provide error feedback to app.
 		// The best we can do at this point is set the pipeline name from the layout.
-		setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
+		setMetalObjectLabel(plDesc, ((MVKPipelineLayoutNew*)pCreateInfo->layout)->getDebugName());
 
 		MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(this);
 		_mtlPipelineState = plc->newMTLComputePipelineState(plDesc);	// retained
@@ -2683,8 +2688,8 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     shaderConfig.options.mslOptions.ios_use_simdgroup_functions = !!mtlFeats.simdPermute;
 #endif
 
-    MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
-    layout->populateShaderConversionConfig(shaderConfig);
+	MVKPipelineLayoutNew* layout = (MVKPipelineLayoutNew*)pCreateInfo->layout;
+	layout->populateShaderConversionConfig(shaderConfig);
 
 	// Set implicit buffer indices
 	// FIXME: Many of these are optional. We shouldn't set the ones that aren't
@@ -2710,6 +2715,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	auto& funcRslts = func.shaderConversionResults;
 	populateImplicitBufferUsage(_implicitBuffers, funcRslts);
 	populateResourceUsage(_stageResources, _implicitBuffers, shaderConfig, spv::ExecutionModelGLCompute);
+	_layout->populateBindOperations(_bindScript, shaderConfig, spv::ExecutionModelGLCompute);
 	_usesPhysicalStorageBufferAddressesCapability = funcRslts.usesPhysicalStorageBufferAddressesCapability;
 
 	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageCompute);
