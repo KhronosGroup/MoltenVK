@@ -56,12 +56,12 @@ class MVKEvent;
 class MVKQueryPool;
 class MVKShaderModule;
 class MVKPipelineCache;
-class MVKPipelineLayout;
+class MVKPipelineLayoutNew;
 class MVKPipeline;
 class MVKSampler;
 class MVKSamplerYcbcrConversion;
-class MVKDescriptorSetLayout;
-class MVKDescriptorPool;
+class MVKDescriptorSetLayoutNew;
+class MVKDescriptorPoolNew;
 class MVKDescriptorUpdateTemplate;
 class MVKResourcesCommandEncoderState;
 class MVKFramebuffer;
@@ -706,9 +706,9 @@ public:
 	void destroyPipelineCache(MVKPipelineCache* mvkPLC,
 							  const VkAllocationCallbacks* pAllocator);
 
-	MVKPipelineLayout* createPipelineLayout(const VkPipelineLayoutCreateInfo* pCreateInfo,
-											const VkAllocationCallbacks* pAllocator);
-	void destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
+	MVKPipelineLayoutNew* createPipelineLayout(const VkPipelineLayoutCreateInfo* pCreateInfo,
+	                                           const VkAllocationCallbacks* pAllocator);
+	void destroyPipelineLayout(MVKPipelineLayoutNew* mvkPLL,
 							   const VkAllocationCallbacks* pAllocator);
 
     /**
@@ -735,14 +735,14 @@ public:
 	void destroySamplerYcbcrConversion(MVKSamplerYcbcrConversion* mvkSampConv,
 								       const VkAllocationCallbacks* pAllocator);
 
-	MVKDescriptorSetLayout* createDescriptorSetLayout(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
-													  const VkAllocationCallbacks* pAllocator);
-	void destroyDescriptorSetLayout(MVKDescriptorSetLayout* mvkDSL,
+	MVKDescriptorSetLayoutNew* createDescriptorSetLayout(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
+	                                                     const VkAllocationCallbacks* pAllocator);
+	void destroyDescriptorSetLayout(MVKDescriptorSetLayoutNew* mvkDSL,
 									const VkAllocationCallbacks* pAllocator);
 
-	MVKDescriptorPool* createDescriptorPool(const VkDescriptorPoolCreateInfo* pCreateInfo,
-											const VkAllocationCallbacks* pAllocator);
-	void destroyDescriptorPool(MVKDescriptorPool* mvkDP,
+	MVKDescriptorPoolNew* createDescriptorPool(const VkDescriptorPoolCreateInfo* pCreateInfo,
+	                                           const VkAllocationCallbacks* pAllocator);
+	void destroyDescriptorPool(MVKDescriptorPoolNew* mvkDP,
 							   const VkAllocationCallbacks* pAllocator);
 
 	MVKDescriptorUpdateTemplate* createDescriptorUpdateTemplate(const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo,
