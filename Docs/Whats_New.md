@@ -20,6 +20,9 @@ Released TBD
 
 - .
 - New state tracker implementation.
+- New descriptor set/pool implementation.
+	- The new implementation is less forgiving of applications that don't properly manage the lifetime of their descriptors
+	  (and bind them after the objects they point to have been destroyed).
 - Update to latest SPIRV-Cross:
 
 

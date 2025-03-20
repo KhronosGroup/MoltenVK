@@ -257,7 +257,7 @@ public:
 	MVKPipelineCache* getPipelineCache() { return _pipelineCache; }
 
 	/** Returns the pipeline layout used by this pipeline. */
-	MVKPipelineLayout* getLayout() const { return _layout; }
+	MVKPipelineLayoutNew* getLayout() const { return _layout; }
 
 	/** Returns whether the pipeline creation fail if a pipeline compile is required. */
 	bool shouldFailOnPipelineCompileRequired() {
@@ -285,7 +285,7 @@ public:
 	}
 
 	/** Constructs an instance for the device. layout, and parent (which may be NULL). */
-	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout,
+	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayoutNew* layout,
 				VkPipelineCreateFlags2 flags, MVKPipeline* parent);
 
 	~MVKPipeline();
@@ -297,7 +297,7 @@ protected:
                                      mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 																	   MVKShaderStage stage);
 
-	MVKPipelineLayout* _layout;
+	MVKPipelineLayoutNew* _layout;
 	MVKPipelineCache* _pipelineCache;
 	MVKShaderImplicitRezBinding _descriptorBufferCounts;
 	VkPipelineCreateFlags2 _flags;
@@ -401,12 +401,6 @@ public:
 	/** Returns a list of which stage resources are used by the given stage. */
 	const MVKStageResourceBits& getStageResources(MVKShaderStage stage) const { return _stageResources[stage]; }
 
-	/** Returns a list of needed descriptor sets (only valid if argument buffers are in use) */
-	MVKStaticBitSet<kMVKMaxDescriptorSetCount> getDescriptorsSetsNeeded(MVKShaderStage stage) const {
-		auto res = getStageResources(stage).buffers & MVKStaticBitSet<kMVKMaxBufferCount>::range(0, kMVKMaxDescriptorSetCount);
-		return MVKStaticBitSet<kMVKMaxDescriptorSetCount>::fromBits(res.bits());
-	}
-
 	/** Returns the list of state that is needed from the command encoder */
 	const MVKRenderStateFlags& getDynamicStateFlags() const { return _dynamicStateFlags; }
 	/** Returns the list of state that is stored on the pipeline */
@@ -421,6 +415,7 @@ public:
 	const VkRect2D* getScissors() const { return _scissors; }
 	const MTLSamplePosition* getSampleLocations() const { return _sampleLocations; }
 	const MTLPrimitiveTopologyClass getPrimitiveTopologyClass() const { return static_cast<MTLPrimitiveTopologyClass>(_primitiveTopologyClass); }
+	const MVKPipelineBindScript& getBindScript(MVKShaderStage stage) const { return _bindScripts[stage]; }
 
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKGraphicsPipeline(MVKDevice* device,
@@ -491,6 +486,7 @@ protected:
 	MVKStageResourceBits _stageResources[kMVKShaderStageFragment + 1] = {};
 	MVKStaticBitSet<kMVKMaxBufferCount> _vkVertexBuffers;
 	MVKStaticBitSet<kMVKMaxBufferCount> _mtlVertexBuffers;
+	MVKPipelineBindScript _bindScripts[kMVKShaderStageFragment + 1];
 
 	id<MTLComputePipelineState> _mtlTessVertexStageState = nil;
 	id<MTLComputePipelineState> _mtlTessVertexStageIndex16State = nil;
@@ -548,10 +544,9 @@ public:
 		return _stageResources;
 	}
 
-	/** Returns a list of needed descriptor sets (only valid if argument buffers are in use) */
-	MVKStaticBitSet<kMVKMaxDescriptorSetCount> getDescriptorsSetsNeeded() const {
-		auto res = getStageResources().buffers & MVKStaticBitSet<kMVKMaxBufferCount>::range(0, kMVKMaxDescriptorSetCount);
-		return MVKStaticBitSet<kMVKMaxDescriptorSetCount>::fromBits(res.bits());
+	const MVKPipelineBindScript& getBindScript(MVKShaderStage stage = kMVKShaderStageCompute) const {
+		assert(stage == kMVKShaderStageCompute && "Input is just for API compatibility with MVKGraphicsPipeline");
+		return _bindScript;
 	}
 
 	/** Returns the threadgroup size */
@@ -576,6 +571,7 @@ protected:
 	MVKSmallVector<MVKBitArray> _descriptorBindingUse;
 	MVKImplicitBufferBindings _implicitBuffers = {};
 	MVKStageResourceBits _stageResources = {};
+	MVKPipelineBindScript _bindScript;
     MTLSize _mtlThreadgroupSize;
 	bool _allowsDispatchBase = false;
 	bool _usesPhysicalStorageBufferAddressesCapability = false;
