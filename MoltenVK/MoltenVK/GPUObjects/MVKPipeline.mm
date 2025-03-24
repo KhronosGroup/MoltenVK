@@ -46,9 +46,9 @@ using namespace mvk;
 using namespace SPIRV_CROSS_NAMESPACE;
 
 
-#pragma mark - MVKPipelineLayoutNew
+#pragma mark - MVKPipelineLayout
 
-bool MVKPipelineLayoutNew::stageUsesPushConstants(MVKShaderStage stage) const {
+bool MVKPipelineLayout::stageUsesPushConstants(MVKShaderStage stage) const {
 	return mvkIsAnyFlagEnabled(_pushConstantStages, mvkVkShaderStageFlagBitsFromMVKShaderStage(stage));
 }
 
@@ -156,7 +156,7 @@ static void addResourceBindingToShaderConfig(SPIRVToMSLConversionConfiguration& 
 	}
 }
 
-void MVKPipelineLayoutNew::populateShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig) const {
+void MVKPipelineLayout::populateShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig) const {
 	shaderConfig.resourceBindings.clear();
 	shaderConfig.discreteDescriptorSets.clear();
 	shaderConfig.dynamicBufferDescriptors.clear();
@@ -172,7 +172,7 @@ void MVKPipelineLayoutNew::populateShaderConversionConfig(SPIRVToMSLConversionCo
 	}
 
 	for (uint32_t dslIdx = 0; dslIdx < _descriptorSetLayouts.size(); dslIdx++) {
-		MVKDescriptorSetLayoutNew* layout = _descriptorSetLayouts[dslIdx];
+		MVKDescriptorSetLayout* layout = _descriptorSetLayouts[dslIdx];
 		MVKShaderResourceBinding binding = _resourceIndexOffsets[dslIdx];
 		uint32_t argBufResIdx = 0;
 		bool argbuf = layout->argBufMode() != MVKArgumentBufferMode::Off;
@@ -252,7 +252,7 @@ static bool isWriteable(VkDescriptorType type) {
 	}
 }
 
-void MVKPipelineLayoutNew::populateBindOperations(MVKPipelineBindScript& script, const SPIRVToMSLConversionConfiguration& shaderConfig, spv::ExecutionModel execModel) {
+void MVKPipelineLayout::populateBindOperations(MVKPipelineBindScript& script, const SPIRVToMSLConversionConfiguration& shaderConfig, spv::ExecutionModel execModel) {
 	bool setsBound[kMVKMaxDescriptorSetCount] = {};
 	assert(script.ops.empty());
 
@@ -263,7 +263,7 @@ void MVKPipelineLayoutNew::populateBindOperations(MVKPipelineBindScript& script,
 		if (set >= _descriptorSetLayouts.size()) { assert(set == kPushConstDescSet); continue; }
 		// Aux buffers are always allocated out of the same buffer as the descriptor set itself, so they'll already be resident
 		if (binding == kBufferSizeBufferBinding) { continue; }
-		MVKDescriptorSetLayoutNew* layout = _descriptorSetLayouts[set];
+		MVKDescriptorSetLayout* layout = _descriptorSetLayouts[set];
 		uint32_t descIdx = layout->getBindingIndex(binding);
 		if (descIdx >= layout->bindings().size()) { assert(!"Binding missing from layout"); continue; }
 		const MVKDescriptorBinding& desc = layout->bindings()[descIdx];
@@ -328,16 +328,16 @@ void MVKPipelineLayoutNew::populateBindOperations(MVKPipelineBindScript& script,
 	}
 }
 
-MVKPipelineLayoutNew::MVKPipelineLayoutNew(MVKDevice* device): MVKVulkanAPIDeviceObject(device) {}
+MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device): MVKVulkanAPIDeviceObject(device) {}
 
-MVKPipelineLayoutNew* MVKPipelineLayoutNew::Create(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo) {
-	using Constructor = MVKInlineObjectConstructor<MVKPipelineLayoutNew>;
-	MVKArrayRef layouts(reinterpret_cast<MVKDescriptorSetLayoutNew*const*>(pCreateInfo->pSetLayouts), pCreateInfo->setLayoutCount);
+MVKPipelineLayout* MVKPipelineLayout::Create(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo) {
+	using Constructor = MVKInlineObjectConstructor<MVKPipelineLayout>;
+	MVKArrayRef layouts(reinterpret_cast<MVKDescriptorSetLayout*const*>(pCreateInfo->pSetLayouts), pCreateInfo->setLayoutCount);
 
-	MVKPipelineLayoutNew* ret = Constructor::Create(
+	MVKPipelineLayout* ret = Constructor::Create(
 		std::tuple {
-			Constructor::Copy(&MVKPipelineLayoutNew::_descriptorSetLayouts, layouts),
-			Constructor::Uninit(&MVKPipelineLayoutNew::_resourceIndexOffsets, layouts.size()),
+			Constructor::Copy(&MVKPipelineLayout::_descriptorSetLayouts, layouts),
+			Constructor::Uninit(&MVKPipelineLayout::_resourceIndexOffsets, layouts.size()),
 		},
 		device
 	);
@@ -360,7 +360,7 @@ MVKPipelineLayoutNew* MVKPipelineLayoutNew::Create(MVKDevice* device, const VkPi
 	//   - Descriptor set content
 
 	// If we are using Metal argument buffers, consume a fixed number of buffer indices for the Metal argument buffers themselves.
-	for (const MVKDescriptorSetLayoutNew* layout : layouts) {
+	for (const MVKDescriptorSetLayout* layout : layouts) {
 		if (layout->argBufMode() != MVKArgumentBufferMode::Off) {
 			ret->_mtlResourceCounts.addArgumentBuffers(kMVKMaxDescriptorSetCount);
 			break;
@@ -385,14 +385,14 @@ MVKPipelineLayoutNew* MVKPipelineLayoutNew::Create(MVKDevice* device, const VkPi
 	return ret;
 }
 
-MVKPipelineLayoutNew::~MVKPipelineLayoutNew() {
+MVKPipelineLayout::~MVKPipelineLayout() {
 	for (auto dsl : _descriptorSetLayouts) { dsl->release(); }
 }
 
 #pragma mark -
 #pragma mark MVKPipeline
 
-MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayoutNew* layout,
+MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout,
 						 VkPipelineCreateFlags2 flags, MVKPipeline* parent) :
 	MVKVulkanAPIDeviceObject(device),
 	_layout(layout),
@@ -697,7 +697,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 										 MVKPipelineCache* pipelineCache,
 										 MVKPipeline* parent,
 										 const VkGraphicsPipelineCreateInfo* pCreateInfo) :
-	MVKPipeline(device, pipelineCache, (MVKPipelineLayoutNew*)pCreateInfo->layout, getPipelineCreateFlags(pCreateInfo), parent)
+	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, getPipelineCreateFlags(pCreateInfo), parent)
 {
 	// Extract dynamic state first, as it can affect many configurations.
 	initDynamicState(pCreateInfo);
@@ -1183,7 +1183,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLRenderPipelineDescriptor
 	// Metal does not allow the name of the pipeline to be changed after it has been created,
 	// and we need to create the Metal pipeline immediately to provide error feedback to app.
 	// The best we can do at this point is set the pipeline name from the layout.
-	setMetalObjectLabel(plDesc, ((MVKPipelineLayoutNew*)pCreateInfo->layout)->getDebugName());
+	setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
 
 	return plDesc;
 }
@@ -1225,7 +1225,7 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessVertexStageDescript
 	// Metal does not allow the name of the pipeline to be changed after it has been created,
 	// and we need to create the Metal pipeline immediately to provide error feedback to app.
 	// The best we can do at this point is set the pipeline name from the layout.
-	setMetalObjectLabel(plDesc, ((MVKPipelineLayoutNew*)pCreateInfo->layout)->getDebugName());
+	setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
 
 	return plDesc;
 }
@@ -1367,7 +1367,7 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessControlStageDescrip
 	// Metal does not allow the name of the pipeline to be changed after it has been created,
 	// and we need to create the Metal pipeline immediately to provide error feedback to app.
 	// The best we can do at this point is set the pipeline name from the layout.
-	setMetalObjectLabel(plDesc, ((MVKPipelineLayoutNew*)pCreateInfo->layout)->getDebugName());
+	setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
 
 	return plDesc;
 }
@@ -2046,7 +2046,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	shaderConfig.options.mslOptions.argument_buffers_tier = (SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::ArgumentBuffersTier)getMetalFeatures().argumentBuffersTier;
 	shaderConfig.options.mslOptions.agx_manual_cube_grad_fixup = mtlFeats.needsCubeGradWorkaround;
 
-	MVKPipelineLayoutNew* layout = (MVKPipelineLayoutNew*)pCreateInfo->layout;
+	MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
 	layout->populateShaderConversionConfig(shaderConfig);
 
 	// Set implicit buffer indices
@@ -2404,7 +2404,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 									   MVKPipelineCache* pipelineCache,
 									   MVKPipeline* parent,
 									   const VkComputePipelineCreateInfo* pCreateInfo) :
-	MVKPipeline(device, pipelineCache, (MVKPipelineLayoutNew*)pCreateInfo->layout, getPipelineCreateFlags(pCreateInfo), parent) {
+	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, getPipelineCreateFlags(pCreateInfo), parent) {
 
 	_allowsDispatchBase = mvkAreAllFlagsEnabled(_flags, VK_PIPELINE_CREATE_2_DISPATCH_BASE_BIT);
 
@@ -2456,7 +2456,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 		// Metal does not allow the name of the pipeline to be changed after it has been created,
 		// and we need to create the Metal pipeline immediately to provide error feedback to app.
 		// The best we can do at this point is set the pipeline name from the layout.
-		setMetalObjectLabel(plDesc, ((MVKPipelineLayoutNew*)pCreateInfo->layout)->getDebugName());
+		setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
 
 		MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(this);
 		_mtlPipelineState = plc->newMTLComputePipelineState(plDesc);	// retained
@@ -2515,7 +2515,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     shaderConfig.options.mslOptions.ios_use_simdgroup_functions = !!mtlFeats.simdPermute;
 #endif
 
-	MVKPipelineLayoutNew* layout = (MVKPipelineLayoutNew*)pCreateInfo->layout;
+	MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
 	layout->populateShaderConversionConfig(shaderConfig);
 
 	// Set implicit buffer indices
