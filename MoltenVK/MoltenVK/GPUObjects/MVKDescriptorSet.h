@@ -208,7 +208,7 @@ struct MVKDescriptorBinding {
 	bool isVariable() const { return mvkIsAnyFlagEnabled(flags, MVK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT); }
 };
 
-#pragma mark - MVKDescriptorSetLayoutNew
+#pragma mark - MVKDescriptorSetLayout
 
 /** Holds and manages the lifecycle of a MTLArgumentEncoder. */
 struct MVKMTLArgumentEncoder {
@@ -222,7 +222,7 @@ struct MVKMTLArgumentEncoder {
 	}
 
 private:
-	friend class MVKDescriptorSetLayoutNew;
+	friend class MVKDescriptorSetLayout;
 	void init(id<MTLArgumentEncoder> encoder, std::memory_order order) {
 		_encodedLength = [encoder encodedLength];
 		_encoder.store(encoder, order);
@@ -244,7 +244,7 @@ public:
 };
 
 /** Represents a Vulkan descriptor set layout. */
-class MVKDescriptorSetLayoutNew : public MVKVulkanAPIDeviceObject, public MVKInlineConstructible {
+class MVKDescriptorSetLayout : public MVKVulkanAPIDeviceObject, public MVKInlineConstructible {
 public:
 	/** Returns the Vulkan type of this object. */
 	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT; }
@@ -253,7 +253,7 @@ public:
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT; }
 
 	/** Construtor */
-	static MVKDescriptorSetLayoutNew* Create(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
+	static MVKDescriptorSetLayout* Create(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
 	/** Whether this was created with `VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR` */
 	bool isPushDescriptorSetLayout() const { return _flags.has(Flag::IsPushDescriptorSetLayout); }
@@ -379,17 +379,17 @@ private:
 	MVKArgumentBufferMode _argBufMode = MVKArgumentBufferMode::Off;
 	/** Boolean flags. */
 	MVKFlagList<Flag> _flags;
-	friend class MVKInlineObjectConstructor<MVKDescriptorSetLayoutNew>;
-	MVKDescriptorSetLayoutNew(MVKDevice* device);
+	friend class MVKInlineObjectConstructor<MVKDescriptorSetLayout>;
+	MVKDescriptorSetLayout(MVKDevice* device);
 	void propagateDebugName() override {}
 };
 
-#pragma mark - MVKDescriptorSetNew
+#pragma mark - MVKDescriptorSet
 
 /** Represents a Vulkan descriptor set. */
-struct MVKDescriptorSetNew {
+struct MVKDescriptorSet {
 	/** The layout this descriptor set uses */
-	const MVKDescriptorSetLayoutNew* layout;
+	const MVKDescriptorSetLayout* layout;
 	/** The argument encoder, if needed */
 	MVKMTLArgumentEncoder* argEnc;
 	/** CPU descriptor buffer */
@@ -422,7 +422,7 @@ struct MVKDescriptorSetNew {
 	}
 };
 
-#pragma mark - MVKDescriptorPoolNew
+#pragma mark - MVKDescriptorPool
 
 union MVKDescriptorSetListItem;
 
@@ -432,12 +432,12 @@ struct MVKFreedDescriptorSet {
 };
 
 union MVKDescriptorSetListItem {
-	MVKDescriptorSetNew allocated;
+	MVKDescriptorSet allocated;
 	MVKFreedDescriptorSet freed;
 };
 
 /**
- * Free list used internally by MVKDescriptorPoolNew
+ * Free list used internally by MVKDescriptorPool
  * Kind of terrible, never resizes allocations.  Once an allocation has been made of a specific size, it's forever that size.
  * Hope: Games will allocate the same set of descriptor sets (and therefore the same sizes) over and over again, so this will work out fine
  */
@@ -461,7 +461,7 @@ private:
 };
 
 /** Represents a Vulkan descriptor pool. */
-class MVKDescriptorPoolNew final : public MVKVulkanAPIDeviceObject, public MVKInlineConstructible {
+class MVKDescriptorPool final : public MVKVulkanAPIDeviceObject, public MVKInlineConstructible {
 public:
 	/** Returns the Vulkan type of this object. */
 	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_DESCRIPTOR_POOL; }
@@ -470,7 +470,7 @@ public:
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT; }
 
 	/** Constructor */
-	static MVKDescriptorPoolNew* Create(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo);
+	static MVKDescriptorPool* Create(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo);
 
 	/** Allocates descriptor sets. */
 	VkResult allocateDescriptorSets(const VkDescriptorSetAllocateInfo* pAllocateInfo,
@@ -486,10 +486,10 @@ public:
 	bool freeAllowed() const { return _freeAllowed; }
 
 protected:
-	MVKDescriptorSetNew* allocateDescriptorSet();
-	VkResult initDescriptorSet(MVKDescriptorSetLayoutNew* mvkDSL, uint32_t variableDescriptorCount, MVKDescriptorSetNew* set);
+	MVKDescriptorSet* allocateDescriptorSet();
+	VkResult initDescriptorSet(MVKDescriptorSetLayout* mvkDSL, uint32_t variableDescriptorCount, MVKDescriptorSet* set);
 
-	~MVKDescriptorPoolNew() override;
+	~MVKDescriptorPool() override;
 
 	void propagateDebugName() override {}
 
@@ -509,8 +509,8 @@ private:
 	MVKDescriptorPoolFreeList _cpuBufferFreeList;
 	MVKDescriptorPoolFreeList _gpuBufferFreeList;
 
-	friend class MVKInlineObjectConstructor<MVKDescriptorPoolNew>;
-	MVKDescriptorPoolNew(MVKDevice* device);
+	friend class MVKInlineObjectConstructor<MVKDescriptorPool>;
+	MVKDescriptorPool(MVKDevice* device);
 };
 
 

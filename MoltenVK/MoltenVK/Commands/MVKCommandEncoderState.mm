@@ -297,7 +297,7 @@ static bool isImage(VkDescriptorType type) {
 }
 
 template <ImplicitBufferData DataType>
-static void bindImplicitBufferData(uint32_t* target, MVKDescriptorSetLayoutNew* layout, const void* descriptor, VkShaderStageFlags stage, uint32_t variableCount) {
+static void bindImplicitBufferData(uint32_t* target, MVKDescriptorSetLayout* layout, const void* descriptor, VkShaderStageFlags stage, uint32_t variableCount) {
 	for (const auto& binding : layout->bindings()) {
 		uint32_t count = binding.isVariable() ? variableCount : binding.descriptorCount;
 		assert(count <= binding.descriptorCount);
@@ -349,15 +349,15 @@ static void bindImplicitBufferData(uint32_t* target, MVKDescriptorSetLayoutNew* 
 
 static void bindDescriptorSets(MVKImplicitBufferData& target,
                                MVKShaderStage stage,
-                               MVKPipelineLayoutNew* layout,
-                               uint32_t firstSet, uint32_t setCount, MVKDescriptorSetNew*const* sets,
+                               MVKPipelineLayout* layout,
+                               uint32_t firstSet, uint32_t setCount, MVKDescriptorSet*const* sets,
                                uint32_t dynamicOffsetCount, const uint32_t* dynamicOffsets)
 {
 	[[maybe_unused]] const uint32_t* dynamicOffsetsEnd = dynamicOffsets + dynamicOffsetCount;
 	VkShaderStageFlags vkStage = mvkVkShaderStageFlagBitsFromMVKShaderStage(stage);
 	for (uint32_t i = 0; i < setCount; i++) {
-		MVKDescriptorSetNew* set = sets[i];
-		MVKDescriptorSetLayoutNew* setLayout = layout->getDescriptorSetLayout(firstSet + i);
+		MVKDescriptorSet* set = sets[i];
+		MVKDescriptorSetLayout* setLayout = layout->getDescriptorSetLayout(firstSet + i);
 		const MVKShaderStageResourceBinding& offsets = layout->getResourceBindingOffsets(firstSet + i).stages[stage];
 		const MVKShaderStageResourceBinding& stride = setLayout->totalResourceCount().stages[stage];
 		uint32_t varCount = set->variableDescriptorCount;
@@ -574,8 +574,8 @@ static void executeBindOp(id<MTLCommandEncoder> encoder,
 
 static void executeBindOps(id<MTLCommandEncoder> encoder,
                            MVKCommandEncoder& mvkEncoder,
-                           MVKPipelineLayoutNew* layout,
-                           MVKDescriptorSetNew*const* sets,
+                           MVKPipelineLayout* layout,
+                           MVKDescriptorSet*const* sets,
                            const MVKImplicitBufferData& implicitBufferData,
                            MVKArrayRef<const MVKDescriptorBindOperation> ops,
                            LiveResourceLock& resourceLock,
@@ -585,14 +585,14 @@ static void executeBindOps(id<MTLCommandEncoder> encoder,
                            const MVKResourceBinder& RESTRICT binder)
 {
 	for (const MVKDescriptorBindOperation& op : ops) {
-		MVKDescriptorSetNew* set = sets[op.set];
+		MVKDescriptorSet* set = sets[op.set];
 		uint32_t target = op.target;
 		if (op.opcode == MVKDescriptorBindOperationCode::BindSet) {
 			bindBuffer(encoder, set->gpuBufferObject, set->gpuBufferOffset, target, exists, bindings, binder);
 			continue;
 		}
 
-		MVKDescriptorSetLayoutNew* setLayout = layout->getDescriptorSetLayout(op.set);
+		MVKDescriptorSetLayout* setLayout = layout->getDescriptorSetLayout(op.set);
 		const MVKDescriptorBinding& binding = setLayout->bindings()[op.bindingIdx];
 		const char* src = set->cpuBuffer + binding.cpuOffset + op.offset();
 		const uint32_t* dynOffs = implicitBufferData.dynamicOffsets.data() + op.target2;
@@ -640,8 +640,8 @@ static MVKResourceUsageStages getUseResourceStage(MVKMetalGraphicsStage stage) {
 
 static void bindMetalResources(id<MTLCommandEncoder> encoder,
                                MVKCommandEncoder& mvkEncoder,
-                               MVKPipelineLayoutNew* layout,
-                               MVKDescriptorSetNew*const* sets,
+                               MVKPipelineLayout* layout,
+                               MVKDescriptorSet*const* sets,
                                MVKArrayRef<const MVKDescriptorBindOperation> ops,
                                const MVKImplicitBufferData& implicitBufferData,
                                const uint8_t* pushConstants,
@@ -981,10 +981,10 @@ bool MVKVulkanGraphicsCommandEncoderState::isBresenhamLines() const {
 }
 
 void MVKVulkanGraphicsCommandEncoderState::bindDescriptorSets(
-	MVKPipelineLayoutNew* layout,
+	MVKPipelineLayout* layout,
 	uint32_t firstSet,
 	uint32_t setCount,
-	MVKDescriptorSetNew*const* sets,
+	MVKDescriptorSet*const* sets,
 	uint32_t dynamicOffsetCount,
 	const uint32_t* dynamicOffsets)
 {
@@ -1000,10 +1000,10 @@ void MVKVulkanGraphicsCommandEncoderState::bindDescriptorSets(
 #pragma mark - MVKVulkanComputeCommandEncoderState
 
 void MVKVulkanComputeCommandEncoderState::bindDescriptorSets(
-	MVKPipelineLayoutNew* layout,
+	MVKPipelineLayout* layout,
 	uint32_t firstSet,
 	uint32_t setCount,
-	MVKDescriptorSetNew*const* sets,
+	MVKDescriptorSet*const* sets,
 	uint32_t dynamicOffsetCount,
 	const uint32_t* dynamicOffsets)
 {
@@ -1646,7 +1646,7 @@ static void invalidateImplicitBuffer(MVKCommandEncoderState& state, VkPipelineBi
 void MVKCommandEncoderState::bindGraphicsPipeline(MVKGraphicsPipeline* pipeline) {
 	_mtlGraphics.changePipeline(_vkGraphics._pipeline, pipeline);
 	_vkGraphics._pipeline = pipeline;
-	MVKPipelineLayoutNew* layout = pipeline->getLayout();
+	MVKPipelineLayout* layout = pipeline->getLayout();
 	if (_vkGraphics._layout != layout) {
 		if (!_vkGraphics._layout || _vkGraphics._layout->getPushConstantsLength() < layout->getPushConstantsLength()) {
 			mvkEnsureSize(_vkShared._pushConstants, layout->getPushConstantsLength());
@@ -1658,7 +1658,7 @@ void MVKCommandEncoderState::bindGraphicsPipeline(MVKGraphicsPipeline* pipeline)
 
 void MVKCommandEncoderState::bindComputePipeline(MVKComputePipeline* pipeline) {
 	_vkCompute._pipeline = pipeline;
-	MVKPipelineLayoutNew* layout = pipeline->getLayout();
+	MVKPipelineLayout* layout = pipeline->getLayout();
 	if (_vkCompute._layout != layout) {
 		if (!_vkCompute._layout || _vkCompute._layout->getPushConstantsLength() < layout->getPushConstantsLength()) {
 			mvkEnsureSize(_vkShared._pushConstants, layout->getPushConstantsLength());
@@ -1676,10 +1676,10 @@ void MVKCommandEncoderState::pushConstants(uint32_t offset, uint32_t size, const
 
 void MVKCommandEncoderState::bindDescriptorSets(
 	VkPipelineBindPoint bindPoint,
-	MVKPipelineLayoutNew* layout,
+	MVKPipelineLayout* layout,
 	uint32_t firstSet,
 	uint32_t setCount,
-	MVKDescriptorSetNew*const* sets,
+	MVKDescriptorSet*const* sets,
 	uint32_t dynamicOffsetCount,
 	const uint32_t* dynamicOffsets)
 {
