@@ -133,12 +133,6 @@ struct MVKVulkanSharedCommandEncoderState {
 	MVKSmallVector<uint8_t, 128> _pushConstants;
 };
 
-struct MVKBindingList {
-	MVKSmallVector<MVKMTLBufferBinding, 8> bufferBindings;
-	MVKSmallVector<MVKMTLTextureBinding, 8> textureBindings;
-	MVKSmallVector<MVKMTLSamplerStateBinding, 8> samplerStateBindings;
-};
-
 struct MVKImplicitBufferData {
 	MVKSmallVector<uint32_t, 8> textureSwizzles;
 	MVKSmallVector<uint32_t, 8> bufferSizes;
@@ -170,10 +164,6 @@ struct MVKUseResourceHelper {
 	void bindAndResetCompute(id<MTLComputeCommandEncoder> encoder);
 };
 
-struct MVKDescriptorResourceUsage {
-	MVKBitArray dirtyDescriptors[kMVKMaxDescriptorSetCount];
-	MVKStaticBitSet<kMVKMaxDescriptorSetCount> dirtyAuxBuffers;
-};
 
 /** Tracks the state of a Vulkan render encoder. */
 struct MVKVulkanGraphicsCommandEncoderState {
@@ -186,8 +176,6 @@ struct MVKVulkanGraphicsCommandEncoderState {
 	VkViewport _viewports[kMVKMaxViewportScissorCount];
 	VkRect2D _scissors[kMVKMaxViewportScissorCount];
 	MTLSamplePosition _sampleLocations[kMVKMaxSampleCount];
-	/** Bindings collected from all the sets in `_descriptorSets` */
-	MVKBindingList _descriptorSetBindings[kMVKShaderStageFragment + 1][kMVKMaxDescriptorSetCount];
 	MVKImplicitBufferData _implicitBufferData[kMVKShaderStageFragment + 1];
 
 	/** Choose between the dynamic and pipeline render states based on whether the given state flag is marked dynamic on the pipeline. */
@@ -215,7 +203,6 @@ struct MVKVulkanComputeCommandEncoderState {
 	MVKPipelineLayoutNew* _layout = nullptr;
 	MVKComputePipeline* _pipeline = nullptr;
 	MVKDescriptorSetNew* _descriptorSets[kMVKMaxDescriptorSetCount];
-	MVKBindingList _descriptorSetBindings[kMVKMaxDescriptorSetCount];
 	MVKImplicitBufferData _implicitBufferData;
 
 	/** Bind the given descriptor sets, placing their bindings into `_descriptorSetBindings`. */
@@ -334,7 +321,6 @@ struct MVKMetalGraphicsCommandEncoderState : public MVKMetalGraphicsCommandEncod
 	MVKMTLDepthStencilDescriptorData _depthStencil;
 
 	MVKOnePerGraphicsStage<MVKStageResourceBindings> _bindings;
-	MVKDescriptorResourceUsage _descriptorSetResources;
 
 	VkViewport _viewports[kMVKMaxViewportScissorCount];
 	VkRect2D _scissors[kMVKMaxViewportScissorCount];
@@ -391,7 +377,6 @@ struct MVKMetalComputeCommandEncoderState {
 	MVKShaderStage _vkStage = kMVKShaderStageCount;
 
 	MVKStageResourceBindings _bindings;
-	MVKDescriptorResourceUsage _descriptorSetResources;
 
 	void bindPipeline(id<MTLComputeCommandEncoder> encoder, id<MTLComputePipelineState> pipeline);
 	void bindBuffer(id<MTLComputeCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index);
