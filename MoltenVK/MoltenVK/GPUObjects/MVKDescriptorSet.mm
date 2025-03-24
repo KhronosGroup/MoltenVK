@@ -529,12 +529,12 @@ void MVKDescriptorBinding::populate(const VkDescriptorSetLayoutBinding& vk) {
 	flags = canUseImmutableSamplers(descriptorType) && vk.pImmutableSamplers ? MVK_DESCRIPTOR_BINDING_USES_IMMUTABLE_SAMPLERS_BIT : 0;
 }
 
-#pragma mark - MVKDescriptorSetLayoutNew
+#pragma mark - MVKDescriptorSetLayout
 
-MVKDescriptorSetLayoutNew::MVKDescriptorSetLayoutNew(MVKDevice* device): MVKVulkanAPIDeviceObject(device) {}
+MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device): MVKVulkanAPIDeviceObject(device) {}
 
-MVKDescriptorSetLayoutNew* MVKDescriptorSetLayoutNew::Create(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo) {
-	using Constructor = MVKInlineObjectConstructor<MVKDescriptorSetLayoutNew>;
+MVKDescriptorSetLayout* MVKDescriptorSetLayout::Create(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo) {
+	using Constructor = MVKInlineObjectConstructor<MVKDescriptorSetLayout>;
 	const VkDescriptorBindingFlags* flagList = getBindingFlags(pCreateInfo);
 	uint32_t numBindings = pCreateInfo->bindingCount;
 	uint32_t numImmutableSamplers = 0;
@@ -566,12 +566,12 @@ MVKDescriptorSetLayoutNew* MVKDescriptorSetLayoutNew::Create(MVKDevice* device, 
 	bool isVariable = variableDesc && pickGPULayout(variableDesc->descriptorType, 1, argBufMode, device) != MVKDescriptorGPULayout::OutlinedData;
 	void* auxOffsets;
 
-	MVKDescriptorSetLayoutNew* ret = Constructor::Create(
+	MVKDescriptorSetLayout* ret = Constructor::Create(
 		std::tuple {
-			Constructor::Init(&MVKDescriptorSetLayoutNew::_mtlArgumentEncoder, argBufMode == MVKArgumentBufferMode::ArgEncoder && !isVariable),
-			Constructor::Init(&MVKDescriptorSetLayoutNew::_mtlArgumentEncoderVariable, argBufMode == MVKArgumentBufferMode::ArgEncoder && isVariable),
-			Constructor::Uninit(&MVKDescriptorSetLayoutNew::_bindings, numBindings),
-			Constructor::Uninit(&MVKDescriptorSetLayoutNew::_immutableSamplers, numImmutableSamplers),
+			Constructor::Init(&MVKDescriptorSetLayout::_mtlArgumentEncoder, argBufMode == MVKArgumentBufferMode::ArgEncoder && !isVariable),
+			Constructor::Init(&MVKDescriptorSetLayout::_mtlArgumentEncoderVariable, argBufMode == MVKArgumentBufferMode::ArgEncoder && isVariable),
+			Constructor::Uninit(&MVKDescriptorSetLayout::_bindings, numBindings),
+			Constructor::Uninit(&MVKDescriptorSetLayout::_immutableSamplers, numImmutableSamplers),
 			Constructor::Allocate(&auxOffsets, isVariable ? 0 : numAuxOffsets * sizeof(uint32_t), alignof(uint32_t)),
 		},
 		device
@@ -727,7 +727,7 @@ MVKDescriptorSetLayoutNew* MVKDescriptorSetLayoutNew::Create(MVKDevice* device, 
 	return ret;
 }
 
-uint32_t MVKDescriptorSetLayoutNew::getBindingIndex(uint32_t binding) const {
+uint32_t MVKDescriptorSetLayout::getBindingIndex(uint32_t binding) const {
 	if (binding < _numLinearBindings)
 		return binding;
 	uint32_t begin = _numLinearBindings;
@@ -745,7 +745,7 @@ uint32_t MVKDescriptorSetLayoutNew::getBindingIndex(uint32_t binding) const {
 	return static_cast<uint32_t>(_bindings.size());
 }
 
-MVKMTLArgumentEncoder& MVKDescriptorSetLayoutNew::getVariableArgumentEncoder(uint32_t variableCount) const {
+MVKMTLArgumentEncoder& MVKDescriptorSetLayout::getVariableArgumentEncoder(uint32_t variableCount) const {
 	assert(_argBufMode == MVKArgumentBufferMode::ArgEncoder);
 	assert(isGPUAllocationVariable());
 	MVKMTLArgumentEncoder& enc = (*_mtlArgumentEncoderVariable)[variableCount];
@@ -1047,7 +1047,7 @@ static void advanceBinding(const MVKDescriptorBinding** binding) {
 
 template <MVKArgumentBufferMode ArgBufMode>
 static void writeDescriptorSetGPUBuffer(
-	const MVKDescriptorBinding* binding, const MVKDescriptorSetNew* set,
+	const MVKDescriptorBinding* binding, const MVKDescriptorSet* set,
 	const void* src, size_t srcStride, MVKDescriptorUpdateSourceType srcType,
 	id<MTLArgumentEncoder> enc,
 	uint32_t start, uint32_t count)
@@ -1121,7 +1121,7 @@ static void writeDescriptorSetGPUBuffer(
 
 template <MVKDescriptorCPULayout Layout>
 static void writeDescriptorSetCPUBuffer(
-	const MVKDescriptorSetLayoutNew* layout,
+	const MVKDescriptorSetLayout* layout,
 	const MVKDescriptorBinding& binding,
 	char* dst,
 	const void* src, size_t srcStride, MVKDescriptorUpdateSourceType srcType,
@@ -1302,8 +1302,8 @@ static void writeDescriptorSetCPUBuffer(
 }
 
 static void writeDescriptorSetBinding(
-	const MVKDescriptorSetLayoutNew* layout,
-	const MVKDescriptorBinding* binding, const MVKDescriptorSetNew* set, id<MTLArgumentEncoder> enc,
+	const MVKDescriptorSetLayout* layout,
+	const MVKDescriptorBinding* binding, const MVKDescriptorSet* set, id<MTLArgumentEncoder> enc,
 	const void* src, MVKDescriptorUpdateSourceType type, size_t stride,
 	uint32_t start, uint32_t count)
 {
@@ -1367,9 +1367,9 @@ static void copyArgBuf(MVKDevice* device, id<MTLArgumentEncoder> enc,
 }
 
 static void copyDescriptorSetBinding(
-	const MVKDescriptorSetLayoutNew* dstLayout,
-	const MVKDescriptorBinding* srcBinding, const MVKDescriptorSetNew* srcSet, id<MTLArgumentEncoder> srcEnc,
-	const MVKDescriptorBinding* dstBinding, const MVKDescriptorSetNew* dstSet, id<MTLArgumentEncoder> dstEnc,
+	const MVKDescriptorSetLayout* dstLayout,
+	const MVKDescriptorBinding* srcBinding, const MVKDescriptorSet* srcSet, id<MTLArgumentEncoder> srcEnc,
+	const MVKDescriptorBinding* dstBinding, const MVKDescriptorSet* dstSet, id<MTLArgumentEncoder> dstEnc,
 	uint32_t srcArrayElement, uint32_t dstArrayElement, uint32_t count)
 {
 	assert(srcBinding->cpuLayout == dstBinding->cpuLayout);
@@ -1724,8 +1724,8 @@ void mvkUpdateDescriptorSets(uint32_t numWrites, const VkWriteDescriptorSet* pDe
                              uint32_t numCopies, const VkCopyDescriptorSet* pDescriptorCopies)
 {
 	DescriptorSetUpdateLockTracker locks;
-	MVKDescriptorSetNew* lastDstSet = nullptr;
-	MVKDescriptorSetNew* lastSrcSet = nullptr;
+	MVKDescriptorSet* lastDstSet = nullptr;
+	MVKDescriptorSet* lastSrcSet = nullptr;
 	for (const auto& write : MVKArrayRef(pDescriptorWrites, numWrites)) {
 		MVKDescriptorUpdateSourceType type = getDescriptorUpdateSourceType(write.descriptorType);
 		uint32_t stride = getDescriptorUpdateStride(type);
@@ -1748,8 +1748,8 @@ void mvkUpdateDescriptorSets(uint32_t numWrites, const VkWriteDescriptorSet* pDe
 			case MVKDescriptorUpdateSourceType::Unsupported:
 				return;
 		}
-		MVKDescriptorSetNew* set = reinterpret_cast<MVKDescriptorSetNew*>(write.dstSet);
-		const MVKDescriptorSetLayoutNew* layout = set->layout;
+		MVKDescriptorSet* set = reinterpret_cast<MVKDescriptorSet*>(write.dstSet);
+		const MVKDescriptorSetLayout* layout = set->layout;
 		const MVKDescriptorBinding* binding = layout->getBinding(write.dstBinding);
 		id<MTLArgumentEncoder> enc = nullptr;
 		if (layout->argBufMode() == MVKArgumentBufferMode::ArgEncoder) {
@@ -1763,11 +1763,11 @@ void mvkUpdateDescriptorSets(uint32_t numWrites, const VkWriteDescriptorSet* pDe
 		writeDescriptorSetBinding(layout, binding, set, enc, src, type, stride, write.dstArrayElement, write.descriptorCount);
 	}
 	for (const auto& copy : MVKArrayRef(pDescriptorCopies, numCopies)) {
-		MVKDescriptorSetNew* srcSet = reinterpret_cast<MVKDescriptorSetNew*>(copy.srcSet);
-		MVKDescriptorSetNew* dstSet = reinterpret_cast<MVKDescriptorSetNew*>(copy.dstSet);
+		MVKDescriptorSet* srcSet = reinterpret_cast<MVKDescriptorSet*>(copy.srcSet);
+		MVKDescriptorSet* dstSet = reinterpret_cast<MVKDescriptorSet*>(copy.dstSet);
 		assert(srcSet->layout->argBufMode() == dstSet->layout->argBufMode());
-		const MVKDescriptorSetLayoutNew* srcLayout = srcSet->layout;
-		const MVKDescriptorSetLayoutNew* dstLayout = dstSet->layout;
+		const MVKDescriptorSetLayout* srcLayout = srcSet->layout;
+		const MVKDescriptorSetLayout* dstLayout = dstSet->layout;
 		const MVKDescriptorBinding* srcBinding = srcLayout->getBinding(copy.srcBinding);
 		const MVKDescriptorBinding* dstBinding = dstLayout->getBinding(copy.dstBinding);
 		id<MTLArgumentEncoder> srcEnc = nullptr;
@@ -1818,7 +1818,7 @@ public:
 /** Updates the resource bindings in the given descriptor set from the specified template. */
 void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet set, VkDescriptorUpdateTemplate updateTemplate, const void* pData) {
 
-	auto* dstSet = reinterpret_cast<MVKDescriptorSetNew*>(set);
+	auto* dstSet = reinterpret_cast<MVKDescriptorSet*>(set);
 	auto* pTemplate = reinterpret_cast<MVKDescriptorUpdateTemplate*>(updateTemplate);
 	auto* layout = dstSet->layout;
 	id<MTLArgumentEncoder> enc = nullptr;
@@ -1875,7 +1875,7 @@ std::vector<MVKDescriptorPoolFreeList::Entry>::iterator MVKDescriptorPoolFreeLis
 	return std::lower_bound(entries.begin(), entries.end(), size, [](const Entry& lhs, const size_t& rhs){ return lhs.size < rhs; });
 }
 
-#pragma mark - MVKDescriptorPoolNew
+#pragma mark - MVKDescriptorPool
 
 static uint32_t maxGPUSize(MVKDescriptorGPULayout layout, const MVKPhysicalDeviceArgumentBufferSizes& sizes) {
 	switch (layout) {
@@ -1905,10 +1905,10 @@ static uint32_t calcGroupSizeWithPadding(uint32_t size, uint32_t groups, uint32_
 	return size & ~(groupAlign - 1);
 }
 
-MVKDescriptorPoolNew::MVKDescriptorPoolNew(MVKDevice* device): MVKVulkanAPIDeviceObject(device) {}
+MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device): MVKVulkanAPIDeviceObject(device) {}
 
-MVKDescriptorPoolNew* MVKDescriptorPoolNew::Create(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo) {
-	using Constructor = MVKInlineObjectConstructor<MVKDescriptorPoolNew>;
+MVKDescriptorPool* MVKDescriptorPool::Create(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo) {
+	using Constructor = MVKInlineObjectConstructor<MVKDescriptorPool>;
 	MVKArrayRef pools(pCreateInfo->pPoolSizes, pCreateInfo->poolSizeCount);
 	MVKArgumentBufferMode argBufMode = pickArgumentBufferMode(device);
 	const MVKPhysicalDeviceArgumentBufferSizes& sizes = device->getPhysicalDevice()->getArgumentBufferSizes();
@@ -1972,9 +1972,9 @@ MVKDescriptorPoolNew* MVKDescriptorPoolNew::Create(MVKDevice* device, const VkDe
 	// Pad ourselves to reduce the amount of space wasted in driver padding
 	gpuSize = alignDescriptorOffset(gpuSize, hostOnly ? gpuAlign : gpuSize < 16384 ? 256 : 16384);
 
-	MVKDescriptorPoolNew* ret = Constructor::Create(
+	MVKDescriptorPool* ret = Constructor::Create(
 		std::tuple {
-			Constructor::Uninit(&MVKDescriptorPoolNew::_descriptorSets, pCreateInfo->maxSets),
+			Constructor::Uninit(&MVKDescriptorPool::_descriptorSets, pCreateInfo->maxSets),
 			Constructor::Allocate(&cpuBuffer, cpuSize, cpuAlign),
 			Constructor::Allocate(&hostOnlyGPUBuffer, hostOnly ? gpuSize : 0, gpuAlign)
 		},
@@ -2001,7 +2001,7 @@ MVKDescriptorPoolNew* MVKDescriptorPoolNew::Create(MVKDevice* device, const VkDe
 	return ret;
 }
 
-MVKDescriptorPoolNew::~MVKDescriptorPoolNew() {
+MVKDescriptorPool::~MVKDescriptorPool() {
 	[_gpuBufferObject release];
 }
 
@@ -2012,15 +2012,15 @@ static const uint32_t* getVariableDecriptorCounts(const VkDescriptorSetAllocateI
 	return counts && counts->descriptorSetCount ? counts->pDescriptorCounts : nullptr;
 }
 
-VkResult MVKDescriptorPoolNew::allocateDescriptorSets(const VkDescriptorSetAllocateInfo* pAllocateInfo,
-                                                      VkDescriptorSet* pDescriptorSets)
+VkResult MVKDescriptorPool::allocateDescriptorSets(const VkDescriptorSetAllocateInfo* pAllocateInfo,
+                                                   VkDescriptorSet* pDescriptorSets)
 {
 	const uint32_t* pVarDescCounts = getVariableDecriptorCounts(pAllocateInfo);
 	const VkDescriptorSetLayout* pSetLayouts = pAllocateInfo->pSetLayouts;
 	for (uint32_t dsIdx = 0, end = pAllocateInfo->descriptorSetCount; dsIdx < end; dsIdx++) {
-		MVKDescriptorSetLayoutNew* mvkDSL = reinterpret_cast<MVKDescriptorSetLayoutNew*>(pSetLayouts[dsIdx]);
+		MVKDescriptorSetLayout* mvkDSL = reinterpret_cast<MVKDescriptorSetLayout*>(pSetLayouts[dsIdx]);
 		if (!mvkDSL->isPushDescriptorSetLayout()) {
-			if (MVKDescriptorSetNew* set = allocateDescriptorSet()) {
+			if (MVKDescriptorSet* set = allocateDescriptorSet()) {
 				pDescriptorSets[dsIdx] = reinterpret_cast<VkDescriptorSet>(set);
 				VkResult res = initDescriptorSet(mvkDSL, (pVarDescCounts ? pVarDescCounts[dsIdx] : 0), set);
 				if (res != VK_SUCCESS) {
@@ -2060,7 +2060,7 @@ static VkResult pickOOMError(const MVKDescriptorPoolFreeList& free, MVKArrayRef<
 	return totalFree >= needed ? VK_ERROR_FRAGMENTED_POOL : VK_ERROR_OUT_OF_POOL_MEMORY;
 }
 
-MVKDescriptorSetNew* MVKDescriptorPoolNew::allocateDescriptorSet() {
+MVKDescriptorSet* MVKDescriptorPool::allocateDescriptorSet() {
 	if (_firstFreeDescriptorSet) {
 		static_assert(offsetof(MVKDescriptorSetListItem, allocated) == 0);
 		static_assert(offsetof(MVKDescriptorSetListItem, freed) == 0);
@@ -2074,7 +2074,7 @@ MVKDescriptorSetNew* MVKDescriptorPoolNew::allocateDescriptorSet() {
 	}
 }
 
-VkResult MVKDescriptorPoolNew::initDescriptorSet(MVKDescriptorSetLayoutNew* mvkDSL, uint32_t variableDescriptorCount, MVKDescriptorSetNew* set) {
+VkResult MVKDescriptorPool::initDescriptorSet(MVKDescriptorSetLayout* mvkDSL, uint32_t variableDescriptorCount, MVKDescriptorSet* set) {
 	assert(mvkDSL->gpuAlignment() <= _gpuBufferAlignment);
 	assert(mvkDSL->cpuAlignment() <= _cpuBufferAlignment);
 	uint32_t auxOffsetSize = 0;
@@ -2184,13 +2184,13 @@ VkResult MVKDescriptorPoolNew::initDescriptorSet(MVKDescriptorSetLayoutNew* mvkD
 	return VK_SUCCESS;
 }
 
-VkResult MVKDescriptorPoolNew::freeDescriptorSets(uint32_t count, const VkDescriptorSet* pDescriptorSets) {
+VkResult MVKDescriptorPool::freeDescriptorSets(uint32_t count, const VkDescriptorSet* pDescriptorSets) {
 	if (_freeAllowed) {
 		for (uint32_t i = 0; i < count; i++) {
 			if (pDescriptorSets[i] == VK_NULL_HANDLE)
 				continue;
 			MVKDescriptorSetListItem* setItem = reinterpret_cast<MVKDescriptorSetListItem*>(pDescriptorSets[i]);
-			MVKDescriptorSetNew* set = &setItem->allocated;
+			MVKDescriptorSet* set = &setItem->allocated;
 			if (set->cpuBufferSize)
 				_cpuBufferFreeList.add(set->cpuBuffer - _cpuBuffer.data(), set->cpuBufferSize);
 			if (set->gpuBufferSize)
@@ -2202,7 +2202,7 @@ VkResult MVKDescriptorPoolNew::freeDescriptorSets(uint32_t count, const VkDescri
 		// This should only be called by our own allocate functions running out of memory, in which case this is the most recent allocation.
 		// Just rewind all the bump allocators.
 		for (uint32_t i = 0; i < count; i++) {
-			MVKDescriptorSetNew* set = reinterpret_cast<MVKDescriptorSetNew*>(pDescriptorSets[i]);
+			MVKDescriptorSet* set = reinterpret_cast<MVKDescriptorSet*>(pDescriptorSets[i]);
 			assert(set == &_descriptorSets[_numAllocatedDescriptorSets - count + i].allocated);
 			_gpuBufferUsed -= set->gpuBufferSize;
 			_cpuBufferUsed -= set->cpuBufferSize;
@@ -2212,7 +2212,7 @@ VkResult MVKDescriptorPoolNew::freeDescriptorSets(uint32_t count, const VkDescri
 	return VK_SUCCESS;
 }
 
-VkResult MVKDescriptorPoolNew::reset(VkDescriptorPoolResetFlags flags) {
+VkResult MVKDescriptorPool::reset(VkDescriptorPoolResetFlags flags) {
 	if (_freeAllowed) {
 		_firstFreeDescriptorSet = nullptr;
 		_cpuBufferFreeList.reset();

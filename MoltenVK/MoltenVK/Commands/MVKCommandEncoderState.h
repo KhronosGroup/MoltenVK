@@ -167,10 +167,10 @@ struct MVKUseResourceHelper {
 
 /** Tracks the state of a Vulkan render encoder. */
 struct MVKVulkanGraphicsCommandEncoderState {
-	MVKPipelineLayoutNew* _layout = nullptr;
+	MVKPipelineLayout* _layout = nullptr;
 	MVKGraphicsPipeline* _pipeline = nullptr;
 	MVKRenderStateData _renderState;
-	MVKDescriptorSetNew* _descriptorSets[kMVKMaxDescriptorSetCount];
+	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount];
 	MVKVertexMTLBufferBinding _vertexBuffers[kMVKMaxBufferCount];
 	MVKIndexMTLBufferBinding _indexBuffer;
 	VkViewport _viewports[kMVKMaxViewportScissorCount];
@@ -190,26 +190,26 @@ struct MVKVulkanGraphicsCommandEncoderState {
 	}
 
 	/** Bind the given descriptor sets, placing their bindings into `_descriptorSetBindings`. */
-	void bindDescriptorSets(MVKPipelineLayoutNew* layout,
+	void bindDescriptorSets(MVKPipelineLayout* layout,
 	                        uint32_t firstSet,
 	                        uint32_t setCount,
-	                        MVKDescriptorSetNew*const* sets,
+	                        MVKDescriptorSet*const* sets,
 	                        uint32_t dynamicOffsetCount,
 	                        const uint32_t* dynamicOffsets);
 };
 
 /** Tracks the state of a Vulkan compute encoder. */
 struct MVKVulkanComputeCommandEncoderState {
-	MVKPipelineLayoutNew* _layout = nullptr;
+	MVKPipelineLayout* _layout = nullptr;
 	MVKComputePipeline* _pipeline = nullptr;
-	MVKDescriptorSetNew* _descriptorSets[kMVKMaxDescriptorSetCount];
+	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount];
 	MVKImplicitBufferData _implicitBufferData;
 
 	/** Bind the given descriptor sets, placing their bindings into `_descriptorSetBindings`. */
-	void bindDescriptorSets(MVKPipelineLayoutNew* layout,
+	void bindDescriptorSets(MVKPipelineLayout* layout,
 	                        uint32_t firstSet,
 	                        uint32_t setCount,
-	                        MVKDescriptorSetNew*const* sets,
+	                        MVKDescriptorSet*const* sets,
 	                        uint32_t dynamicOffsetCount,
 	                        const uint32_t* dynamicOffsets);
 };
@@ -457,10 +457,10 @@ public:
 	void pushConstants(uint32_t offset, uint32_t size, const void* data);
 	/** Bind the given descriptor sets to the Vulkan state, invalidating any necessary resources. */
 	void bindDescriptorSets(VkPipelineBindPoint bindPoint,
-	                        MVKPipelineLayoutNew* layout,
+	                        MVKPipelineLayout* layout,
 	                        uint32_t firstSet,
 	                        uint32_t setCount,
-	                        MVKDescriptorSetNew*const* sets,
+	                        MVKDescriptorSet*const* sets,
 	                        uint32_t dynamicOffsetCount,
 	                        const uint32_t* dynamicOffsets);
 	/** Bind the given vertex buffers to the Vulkan state, invalidating any necessary resources. */

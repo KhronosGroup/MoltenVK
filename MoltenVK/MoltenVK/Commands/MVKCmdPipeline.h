@@ -25,8 +25,8 @@
 
 class MVKCommandBuffer;
 class MVKPipeline;
-class MVKPipelineLayoutNew;
-class MVKDescriptorSetNew;
+class MVKPipelineLayout;
+class MVKDescriptorSet;
 class MVKDescriptorUpdateTemplate;
 
 
@@ -172,8 +172,8 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	void encode(MVKCommandEncoder* cmdEncoder, MVKArrayRef<uint32_t> dynamicOffsets);
 
-	MVKSmallVector<MVKDescriptorSetNew*, N> _descriptorSets;
-	MVKPipelineLayoutNew* _pipelineLayout = nullptr;
+	MVKSmallVector<MVKDescriptorSet*, N> _descriptorSets;
+	MVKPipelineLayout* _pipelineLayout = nullptr;
 	VkPipelineBindPoint _pipelineBindPoint;
 	uint32_t _firstSet;
 };
@@ -273,7 +273,7 @@ protected:
 	void clearDescriptorWrites();
 
 	MVKSmallVector<VkWriteDescriptorSet, 1> _descriptorWrites;
-	MVKPipelineLayoutNew* _pipelineLayout = nullptr;
+	MVKPipelineLayout* _pipelineLayout = nullptr;
 	VkPipelineBindPoint _pipelineBindPoint;
 	uint32_t _set;
 };
@@ -299,7 +299,7 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	MVKDescriptorUpdateTemplate* _descUpdateTemplate = nullptr;
-	MVKPipelineLayoutNew* _pipelineLayout = nullptr;
+	MVKPipelineLayout* _pipelineLayout = nullptr;
 	void* _pData = nullptr;
 	size_t _dataSize = 0;
 	uint32_t _set = 0;

@@ -85,9 +85,9 @@ struct MVKPipelineBindScript {
 	MVKSmallVector<MVKDescriptorBindOperation> ops;
 };
 
-#pragma mark - MVKPipelineLayoutNew
+#pragma mark - MVKPipelineLayout
 
-class MVKPipelineLayoutNew : public MVKVulkanAPIDeviceObject, public MVKInlineConstructible {
+class MVKPipelineLayout : public MVKVulkanAPIDeviceObject, public MVKInlineConstructible {
 public:
 	/** Returns the Vulkan type of this object. */
 	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_PIPELINE_LAYOUT; }
@@ -95,7 +95,7 @@ public:
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT; }
 
 	/** Returns the descriptor set layout. */
-	MVKDescriptorSetLayoutNew* getDescriptorSetLayout(uint32_t descSetIndex) const { return _descriptorSetLayouts[descSetIndex]; }
+	MVKDescriptorSetLayout* getDescriptorSetLayout(uint32_t descSetIndex) const { return _descriptorSetLayouts[descSetIndex]; }
 	/** Returns the starting offsets for the given descriptor set. */
 	const MVKShaderResourceBinding& getResourceBindingOffsets(uint32_t descSetIndex) const { return _resourceIndexOffsets[descSetIndex]; }
 	/** Returns the number of resurces for all descriptor sets combined. */
@@ -103,7 +103,7 @@ public:
 	/** Returns the number of descriptor sets. */
 	size_t getDescriptorSetCount() const { return _descriptorSetLayouts.size(); }
 	/** Returns the list of descriptor set layouts. */
-	MVKArrayRef<MVKDescriptorSetLayoutNew*const> getDescriptorSetLayouts() const { return _descriptorSetLayouts; }
+	MVKArrayRef<MVKDescriptorSetLayout*const> getDescriptorSetLayouts() const { return _descriptorSetLayouts; }
 	/** Returns the size of the push constants. */
 	uint32_t getPushConstantsLength() const { return _pushConstantsLength; }
 	/** Returns the buffer binding index for the given push constants. */
@@ -116,19 +116,19 @@ public:
 	void populateBindOperations(MVKPipelineBindScript& script, const mvk::SPIRVToMSLConversionConfiguration& shaderConfig, spv::ExecutionModel execModel);
 
 	/** Constructs an instance for the specified device. */
-	static MVKPipelineLayoutNew* Create(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
-	~MVKPipelineLayoutNew();
+	static MVKPipelineLayout* Create(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
+	~MVKPipelineLayout();
 
 private:
-	MVKInlineArray<MVKDescriptorSetLayoutNew*> _descriptorSetLayouts;
+	MVKInlineArray<MVKDescriptorSetLayout*> _descriptorSetLayouts;
 	MVKInlineArray<MVKShaderResourceBinding> _resourceIndexOffsets;
 	uint32_t _pushConstantsLength = 0;
 	VkShaderStageFlags _pushConstantStages = 0;
 	MVKShaderResourceBinding _mtlResourceCounts;
 	uint8_t _pushConstantResourceIndices[kMVKShaderStageCount];
 	void propagateDebugName() override {}
-	friend class MVKInlineObjectConstructor<MVKPipelineLayoutNew>;
-	MVKPipelineLayoutNew(MVKDevice* device);
+	friend class MVKInlineObjectConstructor<MVKPipelineLayout>;
+	MVKPipelineLayout(MVKDevice* device);
 };
 
 #pragma mark -
@@ -166,7 +166,7 @@ public:
 	MVKPipelineCache* getPipelineCache() { return _pipelineCache; }
 
 	/** Returns the pipeline layout used by this pipeline. */
-	MVKPipelineLayoutNew* getLayout() const { return _layout; }
+	MVKPipelineLayout* getLayout() const { return _layout; }
 
 	/** Returns whether the pipeline creation fail if a pipeline compile is required. */
 	bool shouldFailOnPipelineCompileRequired() {
@@ -194,7 +194,7 @@ public:
 	}
 
 	/** Constructs an instance for the device. layout, and parent (which may be NULL). */
-	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayoutNew* layout,
+	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout,
 				VkPipelineCreateFlags2 flags, MVKPipeline* parent);
 
 	~MVKPipeline();
@@ -202,7 +202,7 @@ public:
 protected:
 	void propagateDebugName() override {}
 
-	MVKPipelineLayoutNew* _layout;
+	MVKPipelineLayout* _layout;
 	MVKPipelineCache* _pipelineCache;
 	MVKShaderImplicitRezBinding _descriptorBufferCounts;
 	VkPipelineCreateFlags2 _flags;

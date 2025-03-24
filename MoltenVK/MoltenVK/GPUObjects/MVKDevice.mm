@@ -4690,12 +4690,12 @@ void MVKDevice::destroyPipelineCache(MVKPipelineCache* mvkPLC,
 	if (mvkPLC) { mvkPLC->destroy(); }
 }
 
-MVKPipelineLayoutNew* MVKDevice::createPipelineLayout(const VkPipelineLayoutCreateInfo* pCreateInfo,
-                                                      const VkAllocationCallbacks* pAllocator) {
-	return MVKPipelineLayoutNew::Create(this, pCreateInfo);
+MVKPipelineLayout* MVKDevice::createPipelineLayout(const VkPipelineLayoutCreateInfo* pCreateInfo,
+                                                   const VkAllocationCallbacks* pAllocator) {
+	return MVKPipelineLayout::Create(this, pCreateInfo);
 }
 
-void MVKDevice::destroyPipelineLayout(MVKPipelineLayoutNew* mvkPLL,
+void MVKDevice::destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
 									  const VkAllocationCallbacks* pAllocator) {
 	if (mvkPLL) { mvkPLL->destroy(); }
 }
@@ -4791,22 +4791,22 @@ void MVKDevice::destroySamplerYcbcrConversion(MVKSamplerYcbcrConversion* mvkSamp
 	mvkSampConv->destroy();
 }
 
-MVKDescriptorSetLayoutNew* MVKDevice::createDescriptorSetLayout(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
-                                                                const VkAllocationCallbacks* pAllocator) {
-	return MVKDescriptorSetLayoutNew::Create(this, pCreateInfo);
+MVKDescriptorSetLayout* MVKDevice::createDescriptorSetLayout(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
+                                                             const VkAllocationCallbacks* pAllocator) {
+	return MVKDescriptorSetLayout::Create(this, pCreateInfo);
 }
 
-void MVKDevice::destroyDescriptorSetLayout(MVKDescriptorSetLayoutNew* mvkDSL,
+void MVKDevice::destroyDescriptorSetLayout(MVKDescriptorSetLayout* mvkDSL,
 										   const VkAllocationCallbacks* pAllocator) {
 	if (mvkDSL) { mvkDSL->destroy(); }
 }
 
-MVKDescriptorPoolNew* MVKDevice::createDescriptorPool(const VkDescriptorPoolCreateInfo* pCreateInfo,
-                                                      const VkAllocationCallbacks* pAllocator) {
-	return MVKDescriptorPoolNew::Create(this, pCreateInfo);
+MVKDescriptorPool* MVKDevice::createDescriptorPool(const VkDescriptorPoolCreateInfo* pCreateInfo,
+                                                   const VkAllocationCallbacks* pAllocator) {
+	return MVKDescriptorPool::Create(this, pCreateInfo);
 }
 
-void MVKDevice::destroyDescriptorPool(MVKDescriptorPoolNew* mvkDP,
+void MVKDevice::destroyDescriptorPool(MVKDescriptorPool* mvkDP,
 									  const VkAllocationCallbacks* pAllocator) {
 	if (mvkDP) { mvkDP->destroy(); }
 }
