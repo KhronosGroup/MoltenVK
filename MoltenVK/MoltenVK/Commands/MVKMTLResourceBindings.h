@@ -28,28 +28,6 @@ class MVKBuffer;
 class MVKImage;
 
 
-/** Describes a MTLTexture resource binding. */
-typedef struct MVKMTLTextureBinding {
-    union { id<MTLTexture> mtlTexture = nil; id<MTLTexture> mtlResource; }; // aliases
-    uint32_t swizzle = 0;
-	uint16_t index = 0;
-} MVKMTLTextureBinding;
-
-/** Describes a MTLSamplerState resource binding. */
-typedef struct MVKMTLSamplerStateBinding {
-    union { id<MTLSamplerState> mtlSamplerState = nil; id<MTLSamplerState> mtlResource; }; // aliases
-    uint16_t index = 0;
-} MVKMTLSamplerStateBinding;
-
-/** Describes a MTLBuffer resource binding. */
-typedef struct MVKMTLBufferBinding {
-    union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; const void* mtlBytes; }; // aliases
-    VkDeviceSize offset = 0;
-    uint32_t size = 0;
-	uint16_t index = 0;
-    bool isInline = false;
-} MVKMTLBufferBinding;
-
 /** Describes a MTLBuffer resource binding used for a vertex buffer. */
 typedef struct MVKVertexMTLBufferBinding {
 	union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; }; // aliases

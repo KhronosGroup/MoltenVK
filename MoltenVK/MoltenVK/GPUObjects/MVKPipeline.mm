@@ -46,152 +46,6 @@ using namespace mvk;
 using namespace SPIRV_CROSS_NAMESPACE;
 
 
-#pragma mark MVKPipelineLayout
-
-// A null cmdEncoder can be passed to perform a validation pass
-void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-                                          VkPipelineBindPoint pipelineBindPoint,
-                                          MVKArrayRef<VkWriteDescriptorSet> descriptorWrites,
-                                          uint32_t set) {
-	if (!cmdEncoder) { clearConfigurationResult(); }
-	MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[set];
-	dsl->pushDescriptorSet(cmdEncoder, pipelineBindPoint, descriptorWrites, _dslMTLResourceIndexOffsets[set]);
-	if (!cmdEncoder) { setConfigurationResult(dsl->getConfigurationResult()); }
-}
-
-// A null cmdEncoder can be passed to perform a validation pass
-void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-                                          MVKDescriptorUpdateTemplate* descUpdateTemplate,
-                                          uint32_t set,
-                                          const void* pData) {
-	if (!cmdEncoder) { clearConfigurationResult(); }
-	MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[set];
-	dsl->pushDescriptorSet(cmdEncoder, descUpdateTemplate, pData, _dslMTLResourceIndexOffsets[set]);
-	if (!cmdEncoder) { setConfigurationResult(dsl->getConfigurationResult()); }
-}
-
-void MVKPipelineLayout::populateShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig) {
-	shaderConfig.resourceBindings.clear();
-	shaderConfig.discreteDescriptorSets.clear();
-	shaderConfig.dynamicBufferDescriptors.clear();
-
-	// Add any resource bindings used by push-constants.
-	// Use VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK descriptor type as compatible with push constants in Metal.
-	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
-		if (stageUsesPushConstants((MVKShaderStage)stage)) {
-			mvkPopulateShaderConversionConfig(shaderConfig,
-											  _pushConstantsMTLResourceIndexes.stages[stage],
-											  MVKShaderStage(stage),
-											  kPushConstDescSet,
-											  kPushConstBinding,
-											  1,
-											  VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK,
-											  nullptr,
-											  getMetalFeatures().nativeTextureAtomics);
-		}
-	}
-
-    // Add resource bindings defined in the descriptor set layouts
-	auto dslCnt = _descriptorSetLayouts.size();
-	for (uint32_t dslIdx = 0; dslIdx < dslCnt; dslIdx++) {
-		_descriptorSetLayouts[dslIdx]->populateShaderConversionConfig(shaderConfig,
-																	  _dslMTLResourceIndexOffsets[dslIdx],
-																	  dslIdx);
-	}
-}
-
-bool MVKPipelineLayout::stageUsesPushConstants(MVKShaderStage mvkStage) {
-	VkShaderStageFlagBits vkStage = mvkVkShaderStageFlagBitsFromMVKShaderStage(mvkStage);
-	for (auto pushConst : _pushConstants) {
-		if (mvkIsAnyFlagEnabled(pushConst.stageFlags, vkStage)) {
-			return true;
-		}
-	}
-	return false;
-}
-
-std::string MVKPipelineLayout::getLogDescription(std::string indent) {
-	std::stringstream descStr;
-	size_t dslCnt = _descriptorSetLayouts.size();
-	descStr << "VkPipelineLayout with " << dslCnt << " descriptor set layouts:";
-	auto descLayoutIndent = indent + "\t";
-	for (uint32_t dslIdx = 0; dslIdx < dslCnt; dslIdx++) {
-		descStr << "\n" << descLayoutIndent << dslIdx << ": " << _descriptorSetLayouts[dslIdx]->getLogDescription(descLayoutIndent);
-	}
-	return descStr.str();
-}
-
-bool MVKPipelineLayout::isUsingMetalArgumentBuffers() const {
-	return MVKDeviceTrackingMixin::isUsingMetalArgumentBuffers() && _canUseMetalArgumentBuffers;
-}
-
-MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
-                                     const VkPipelineLayoutCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
-
-	_canUseMetalArgumentBuffers = false;
-	uint32_t dslCnt = pCreateInfo->setLayoutCount;
-	_descriptorSetLayouts.reserve(dslCnt);
-	for (uint32_t i = 0; i < dslCnt; i++) {
-		MVKDescriptorSetLayout* pDescSetLayout = (MVKDescriptorSetLayout*)pCreateInfo->pSetLayouts[i];
-		pDescSetLayout->retain();
-		_descriptorSetLayouts.push_back(pDescSetLayout);
-		_canUseMetalArgumentBuffers = _canUseMetalArgumentBuffers || pDescSetLayout->isUsingMetalArgumentBuffers();
-	}
-
-	// For pipeline layout compatibility (“compatible for set N”),
-	// consume the Metal resource indexes in this order:
-	//   - Fixed count of argument buffers for descriptor sets (if using Metal argument buffers).
-	//   - Push constants
-	//   - Descriptor set content
-
-	// If we are using Metal argument buffers, consume a number of
-	// buffer indexes covering all descriptor sets for the Metal
-	// argument buffers themselves.
-	if (isUsingMetalArgumentBuffers()) {
-		_mtlResourceCounts.addArgumentBuffers(kMVKMaxDescriptorSetCount);
-	}
-
-	// Add push constants from config
-	_pushConstantsLength = 0;
-	_pushConstants.reserve(pCreateInfo->pushConstantRangeCount);
-	for (const VkPushConstantRange& range : MVKArrayRef(pCreateInfo->pPushConstantRanges, pCreateInfo->pushConstantRangeCount)) {
-		_pushConstants.push_back(range);
-		_pushConstantsLength = std::max(_pushConstantsLength, range.offset + range.size);
-	}
-	// MSL structs can have a larger size than the equivalent C struct due to MSL alignment needs.
-	// Typically any MSL struct that contains a float4 will also have a size that is rounded up to a multiple of a float4 size.
-	// Ensure that we pass along enough content to cover this extra space even if it is never actually accessed by the shader.
-	_pushConstantsLength = static_cast<uint32_t>(mvkAlignByteCount(_pushConstantsLength, 16));
-
-	// Set push constant resource indexes, and consume a buffer index for any stage that uses a push constant buffer.
-	_pushConstantsMTLResourceIndexes = _mtlResourceCounts;
-	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
-		if (stageUsesPushConstants((MVKShaderStage)stage)) {
-			_mtlResourceCounts.stages[stage].bufferIndex++;
-		}
-	}
-
-	// Add descriptor set layouts, accumulating the resource index offsets used by the corresponding DSL,
-	// and associating the current accumulated resource index offsets with each DSL as it is added.
-	for (uint32_t i = 0; i < dslCnt; i++) {
-		MVKDescriptorSetLayout* pDescSetLayout = _descriptorSetLayouts[i];
-		MVKShaderResourceBinding adjstdDSLRezOfsts = _mtlResourceCounts;
-		MVKShaderResourceBinding adjstdDSLRezCnts = pDescSetLayout->_mtlResourceCounts;
-		if (pDescSetLayout->isUsingMetalArgumentBuffers()) {
-			adjstdDSLRezOfsts.clearArgumentBufferResources();
-			adjstdDSLRezCnts.clearArgumentBufferResources();
-		}
-		_dslMTLResourceIndexOffsets.push_back(adjstdDSLRezOfsts);
-		_mtlResourceCounts += adjstdDSLRezCnts;
-	}
-
-	MVKLogDebugIf(getMVKConfig().debugMode, "Created %s\n", getLogDescription().c_str());
-}
-
-MVKPipelineLayout::~MVKPipelineLayout() {
-	for (auto dsl : _descriptorSetLayouts) { dsl->release(); }
-}
-
 #pragma mark - MVKPipelineLayoutNew
 
 bool MVKPipelineLayoutNew::stageUsesPushConstants(MVKShaderStage stage) const {
@@ -537,20 +391,6 @@ MVKPipelineLayoutNew::~MVKPipelineLayoutNew() {
 
 #pragma mark -
 #pragma mark MVKPipeline
-
-// For each descriptor set, populate the descriptor bindings used by the shader for this stage.
-template<typename CreateInfo>
-void MVKPipeline::populateDescriptorSetBindingUse(MVKMTLFunction& mvkMTLFunc,
-												  const CreateInfo* pCreateInfo,
-												  SPIRVToMSLConversionConfiguration& shaderConfig,
-												  MVKShaderStage stage) {
-//	if (isUsingMetalArgumentBuffers()) {
-//		for (uint32_t dsIdx = 0; dsIdx < _descriptorSetCount; dsIdx++) {
-//			auto* dsLayout = ((MVKPipelineLayout*)pCreateInfo->layout)->getDescriptorSetLayout(dsIdx);
-//			dsLayout->populateBindingUse(getDescriptorBindingUse(dsIdx, stage), shaderConfig, stage, dsIdx);
-//		}
-//	}
-}
 
 MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayoutNew* layout,
 						 VkPipelineCreateFlags2 flags, MVKPipeline* parent) :
@@ -1210,8 +1050,6 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 		pipelineStart = mvkGetTimestamp();
 	}
 
-	if (isUsingMetalArgumentBuffers()) { _descriptorBindingUse.resize(_descriptorSetCount); }
-
 	const char* dumpDir = getMVKConfig().shaderDumpDir;
 	if (dumpDir && *dumpDir) {
 		char filename[PATH_MAX];
@@ -1655,8 +1493,6 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	_layout->populateBindOperations(_bindScripts[kMVKShaderStageVertex], shaderConfig, spv::ExecutionModelVertex);
 	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageVertex);
 
-	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageVertex);
-
 	if (funcRslts.isRasterizationDisabled) {
 		pFragmentSS = nullptr;
 	}
@@ -1705,7 +1541,6 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 	}
 
 	_layout->populateBindOperations(_bindScripts[kMVKShaderStageVertex], shaderConfig, spv::ExecutionModelVertex);
-	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageVertex);
 
 	_implicitBuffers[kMVKShaderStageVertex].needed.set(MVKImplicitBuffer::Index, !shaderConfig.shaderInputs.empty());
 	return verifyImplicitBuffers(kMVKShaderStageVertex);
@@ -1748,8 +1583,6 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	_layout->populateBindOperations(_bindScripts[kMVKShaderStageTessCtl], shaderConfig, spv::ExecutionModelTessellationControl);
 	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageTessCtl);
 
-	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageTessCtl);
-
 	return verifyImplicitBuffers(kMVKShaderStageTessCtl);
 }
 
@@ -1783,8 +1616,6 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	populateResourceUsage(_stageResources[kMVKShaderStageTessEval], _implicitBuffers[kMVKShaderStageTessEval], shaderConfig, spv::ExecutionModelTessellationEvaluation);
 	_layout->populateBindOperations(_bindScripts[kMVKShaderStageTessEval], shaderConfig, spv::ExecutionModelTessellationEvaluation);
 	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageTessEval);
-
-	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageTessEval);
 
 	if (funcRslts.isRasterizationDisabled) {
 		pFragmentSS = nullptr;
@@ -1842,8 +1673,6 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		populateResourceUsage(_stageResources[kMVKShaderStageFragment], _implicitBuffers[kMVKShaderStageFragment], shaderConfig, spv::ExecutionModelFragment);
 		_layout->populateBindOperations(_bindScripts[kMVKShaderStageFragment], shaderConfig, spv::ExecutionModelFragment);
 		markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageFragment);
-
-		populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageFragment);
 	}
 	return verifyImplicitBuffers(kMVKShaderStageFragment);
 }
@@ -2579,8 +2408,6 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 
 	_allowsDispatchBase = mvkAreAllFlagsEnabled(_flags, VK_PIPELINE_CREATE_2_DISPATCH_BASE_BIT);
 
-	if (isUsingMetalArgumentBuffers()) { _descriptorBindingUse.resize(_descriptorSetCount); }
-
 	const VkPipelineCreationFeedbackCreateInfo* pFeedbackInfo = nullptr;
 	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
@@ -2717,8 +2544,6 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	populateResourceUsage(_stageResources, _implicitBuffers, shaderConfig, spv::ExecutionModelGLCompute);
 	_layout->populateBindOperations(_bindScript, shaderConfig, spv::ExecutionModelGLCompute);
 	_usesPhysicalStorageBufferAddressesCapability = funcRslts.usesPhysicalStorageBufferAddressesCapability;
-
-	populateDescriptorSetBindingUse(func, pCreateInfo, shaderConfig, kMVKShaderStageCompute);
 
 	return func;
 }

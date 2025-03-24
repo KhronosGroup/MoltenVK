@@ -395,24 +395,6 @@ static void bindDescriptorSets(MVKImplicitBufferData& target,
 	assert(dynamicOffsets == dynamicOffsetsEnd && "All dynamic offsets should have been used, and no more than that");
 }
 
-static void bindDescriptorSets(MVKBindingList (&target)[kMVKMaxDescriptorSetCount],
-                               MVKSmallVector<uint32_t, 8>& targetDynamicOffsets,
-                               MVKShaderStage stage,
-                               MVKPipelineLayout* layout,
-                               uint32_t firstSet, uint32_t setCount, MVKDescriptorSet*const* sets,
-                               uint32_t dynamicOffsetCount, const uint32_t* dynamicOffsets)
-{
-	[[maybe_unused]] const uint32_t* dynamicOffsetsEnd = dynamicOffsets + dynamicOffsetCount;
-	for (uint32_t i = 0; i < setCount; i++) {
-		uint32_t setIdx = firstSet + i;
-		target[setIdx].bufferBindings.clear();
-		target[setIdx].textureBindings.clear();
-		target[setIdx].samplerStateBindings.clear();
-		layout->appendDescriptorSetBindings(target[setIdx], targetDynamicOffsets, stage, setIdx, sets[i], dynamicOffsets);
-	}
-	assert(dynamicOffsets == dynamicOffsetsEnd && "All dynamic offsets should have been used, and no more than that");
-}
-
 static void bindImmediateData(id<MTLCommandEncoder> encoder,
                               MVKCommandEncoder& mvkEncoder,
                               const uint8_t* data, size_t size,
@@ -726,95 +708,6 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 	}
 }
 
-static void bindMetalResources(id<MTLCommandEncoder> encoder,
-                               MVKCommandEncoder& mvkEncoder,
-                               MVKPipelineLayout* layout,
-                               const MVKBindingList* resources,
-                               const MVKSmallVector<uint32_t, 8>& dynamicOffsets,
-                               const uint8_t* pushConstants,
-                               const MVKImplicitBufferBindings& implicitBuffers,
-                               const MVKStageResourceBits& needed,
-                               MVKStageResourceBits& exists,
-                               MVKStageResourceBindings& bindings,
-                               const MVKResourceBinder& RESTRICT binder)
-{
-	auto& scratch = mvkEncoder.getState().mtlShared()._scratch;
-	MVKArrayRef bindingLists(resources, layout->getDescriptorSetCount());
-	for (const MVKBindingList& list : bindingLists) {
-		for (const MVKMTLBufferBinding& b : list.bufferBindings) {
-			if (!needed.buffers.get(b.index)) { continue; }
-			bindBuffer(encoder, b.mtlBuffer, b.offset, b.index, exists, bindings, binder);
-		}
-		for (const MVKMTLTextureBinding& t : list.textureBindings) {
-			if (!needed.textures.get(t.index)) { continue; }
-			bindTexture(encoder, t.mtlTexture, t.index, exists, bindings, binder);
-		}
-		for (const MVKMTLSamplerStateBinding& s : list.samplerStateBindings) {
-			if (!needed.samplers.get(s.index)) { continue; }
-			bindSampler(encoder, s.mtlSamplerState, s.index, exists, bindings, binder);
-		}
-	}
-	for (MVKImplicitBuffer buffer : implicitBuffers.needed & MVKNonVolatileImplicitBuffers) {
-		assert(buffer < static_cast<MVKImplicitBuffer>(MVKNonVolatileImplicitBuffer::Count));
-		MVKNonVolatileImplicitBuffer nvbuffer = static_cast<MVKNonVolatileImplicitBuffer>(buffer);
-		uint32_t idx = implicitBuffers.ids[buffer];
-		if (exists.buffers.get(idx) && bindings.buffers[idx] == MVKStageResourceBindings::ImplicitBuffer(buffer))
-			continue;
-		if (bindings.implicitBufferIndices[nvbuffer] != idx) {
-			// Index is changing, invalidate the old buffer since it will no longer get updated by other invalidations
-			uint32_t oldIndex = bindings.implicitBufferIndices[nvbuffer];
-			bindings.implicitBufferIndices[nvbuffer] = idx;
-			if (bindings.buffers[oldIndex] == MVKStageResourceBindings::ImplicitBuffer(buffer))
-				bindings.buffers[oldIndex] = MVKStageResourceBindings::InvalidBuffer();
-		}
-		exists.buffers.set(implicitBuffers.ids[buffer]);
-		bindings.buffers[idx] = MVKStageResourceBindings::ImplicitBuffer(buffer);
-		switch (nvbuffer) {
-			case MVKNonVolatileImplicitBuffer::PushConstant:
-				bindImmediateData(encoder, mvkEncoder, pushConstants, layout->getPushConstantsLength(), idx, binder);
-				break;
-			case MVKNonVolatileImplicitBuffer::Swizzle:
-				scratch.clear();
-				for (const MVKBindingList& list : bindingLists) {
-					for (auto& b : list.textureBindings) {
-						updateImplicitBuffer(scratch, b.index, b.swizzle);
-					}
-				}
-				bindImmediateData(encoder, mvkEncoder, scratch.contents(), idx, binder);
-				break;
-			case MVKNonVolatileImplicitBuffer::BufferSize:
-				scratch.clear();
-				for (const MVKBindingList& list : bindingLists) {
-					for (auto& b : list.bufferBindings) {
-						updateImplicitBuffer(scratch, b.index, b.size);
-					}
-				}
-				bindImmediateData(encoder, mvkEncoder, scratch.contents(), idx, binder);
-				break;
-			case MVKNonVolatileImplicitBuffer::DynamicOffset:
-				bindImmediateData(encoder, mvkEncoder, dynamicOffsets.contents(), idx, binder);
-				break;
-			case MVKNonVolatileImplicitBuffer::ViewRange: {
-				uint32_t viewRange[] = {
-					mvkEncoder.getSubpass()->getFirstViewIndexInMetalPass(mvkEncoder.getMultiviewPassIndex()),
-					mvkEncoder.getSubpass()->getViewCountInMetalPass(mvkEncoder.getMultiviewPassIndex())
-				};
-				binder.setBytes(encoder, viewRange, sizeof(viewRange), idx);
-				break;
-			}
-			case MVKNonVolatileImplicitBuffer::Count:
-				assert(0);
-				break;
-		}
-	}
-	for (MVKImplicitBuffer buffer : implicitBuffers.needed.removingAll(MVKNonVolatileImplicitBuffers)) {
-		// Mark needed volatile implicit buffers used in buffer tracking, they'll get set during the draw
-		size_t idx = implicitBuffers.ids[buffer];
-		exists.buffers.set(idx);
-		bindings.buffers[idx] = MVKStageResourceBindings::InvalidBuffer();
-	}
-}
-
 /**
  * Bind resources for running Vulkan graphics commands on a Metal render command encoder
  *
@@ -933,52 +826,6 @@ static void bindVertexBuffers(id<MTLCommandEncoder> encoder,
 		bindVertexBuffersTemplate<true> (encoder, vkState, exists, bindings, binder);
 	else
 		bindVertexBuffersTemplate<false>(encoder, vkState, exists, bindings, binder);
-}
-
-static void useResourcesInDescriptorSet(
-	MVKCommandEncoder& mvkEncoder,
-	MVKDescriptorSet* set,
-	MVKBitArray& bindingUse,
-	MVKDescriptorResourceUsage& descUsage,
-	MVKShaderStage vkStage,
-	MTLRenderStages mtlStages,
-	uint32_t setIdx)
-{
-	auto* dsLayout = set->getLayout();
-
-	uint32_t dslBindCnt = dsLayout->getBindingCount();
-	for (uint32_t dslBindIdx = 0; dslBindIdx < dslBindCnt; dslBindIdx++) {
-		auto* dslBind = dsLayout->getBindingAt(dslBindIdx);
-		if (dslBind->getApplyToStage(vkStage) && bindingUse.getBit(dslBindIdx)) {
-			uint32_t elemCnt = dslBind->getDescriptorCount(set->getVariableDescriptorCount());
-			for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
-				uint32_t descIdx = dslBind->getDescriptorIndex(elemIdx);
-				if (descUsage.dirtyDescriptors[setIdx].getBit(descIdx, true)) {
-					auto* mvkDesc = set->getDescriptorAt(descIdx);
-					mvkDesc->encodeResourceUsage(mvkEncoder, dslBind, vkStage);
-				}
-			}
-		}
-	}
-	if (descUsage.dirtyAuxBuffers.get(setIdx)) {
-		descUsage.dirtyAuxBuffers.clear(setIdx);
-		set->encodeAuxBufferUsage(mvkEncoder, vkStage);
-	}
-}
-
-static void useResourcesInDescriptorSets(
-	MVKCommandEncoder& mvkEncoder,
-	MVKDescriptorSet*const (&sets)[kMVKMaxDescriptorSetCount],
-	MVKPipeline* pipeline,
-	MVKDescriptorResourceUsage& dirtyDescriptors,
-	MVKShaderStage vkStage,
-	MTLRenderStages mtlStages,
-	MVKStaticBitSet<kMVKMaxDescriptorSetCount> needed)
-{
-	for (size_t idx : needed) {
-		MVKBitArray& bindingUse = pipeline->getDescriptorBindingUse(static_cast<uint32_t>(idx), vkStage);
-		useResourcesInDescriptorSet(mvkEncoder, sets[idx], bindingUse, dirtyDescriptors, vkStage, mtlStages, static_cast<uint32_t>(idx));
-	}
 }
 
 /** If the contents of an implicit buffer changes, call this to ensure that the contents will be rebound before the next draw. */

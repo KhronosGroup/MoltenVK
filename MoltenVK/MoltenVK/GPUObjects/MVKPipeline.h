@@ -37,97 +37,9 @@
 
 class MVKCommandEncoder;
 class MVKPipelineCache;
-struct MVKBindingList;
-
-
-#pragma mark -
-#pragma mark MVKPipelineLayout
 
 struct MVKShaderImplicitRezBinding {
 	uint32_t stages[kMVKShaderStageCount];
-};
-
-/** Represents a Vulkan pipeline layout. */
-class MVKPipelineLayout : public MVKVulkanAPIDeviceObject {
-
-public:
-
-	/** Returns the Vulkan type of this object. */
-	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_PIPELINE_LAYOUT; }
-
-	/** Returns the debug report object type of this object. */
-	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT; }
-
-	/** Appends the bindings from the given descriptor set to a list */
-	void appendDescriptorSetBindings(MVKBindingList& target,
-	                                 MVKSmallVector<uint32_t, 8>& targetDynamicOffsets,
-	                                 MVKShaderStage stage,
-	                                 uint32_t index,
-	                                 MVKDescriptorSet* set,
-	                                 const uint32_t*& dynamicOffsets)
-	{
-		MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[index];
-		const MVKShaderStageResourceBinding& indexOffsets = _dslMTLResourceIndexOffsets[index].stages[stage];
-		dsl->appendDescriptorSetBindings(target, targetDynamicOffsets, stage, index, set, indexOffsets, dynamicOffsets);
-	}
-
-	/** Binds descriptor sets to a command encoder. */
-    void bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
-							VkPipelineBindPoint pipelineBindPoint,
-                            MVKArrayRef<MVKDescriptorSet*> descriptorSets,
-                            uint32_t firstSet,
-                            MVKArrayRef<uint32_t> dynamicOffsets);
-
-	/** Updates a descriptor set in a command encoder. */
-	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-						   VkPipelineBindPoint pipelineBindPoint,
-						   MVKArrayRef<VkWriteDescriptorSet> descriptorWrites,
-						   uint32_t set);
-
-	/** Updates a descriptor set from a template in a command encoder. */
-	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-						   MVKDescriptorUpdateTemplate* descriptorUpdateTemplate,
-						   uint32_t set,
-						   const void* pData);
-
-	/** Populates the specified shader conversion config. */
-	void populateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig);
-
-	/** Returns the descriptor set layout. */
-	MVKDescriptorSetLayout* getDescriptorSetLayout(uint32_t descSetIndex) { return _descriptorSetLayouts[descSetIndex]; }
-
-	/** Returns a text description of this layout. */
-	std::string getLogDescription(std::string indent = "");
-
-	/** Overridden because pipeline descriptor sets may be marked as discrete and not use an argument buffer. */
-	bool isUsingMetalArgumentBuffers() const override;
-
-	/** Returns the number of descriptor sets. */
-	size_t getDescriptorSetCount() const { return _descriptorSetLayouts.size(); }
-
-	/** Returns the size of the push constants. */
-	uint32_t getPushConstantsLength() const { return _pushConstantsLength; }
-
-	/** Constructs an instance for the specified device. */
-	MVKPipelineLayout(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
-
-	~MVKPipelineLayout() override;
-
-	uint32_t getPushConstantResourceIndex(MVKShaderStage stage) const { return _pushConstantsMTLResourceIndexes.stages[stage].bufferIndex; }
-
-protected:
-	friend class MVKPipeline;
-
-	void propagateDebugName() override {}
-	bool stageUsesPushConstants(MVKShaderStage mvkStage);
-
-	MVKSmallVector<MVKDescriptorSetLayout*, 1> _descriptorSetLayouts;
-	MVKSmallVector<MVKShaderResourceBinding, 1> _dslMTLResourceIndexOffsets;
-	MVKSmallVector<VkPushConstantRange> _pushConstants;
-	MVKShaderResourceBinding _mtlResourceCounts;
-	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
-	bool _canUseMetalArgumentBuffers;
-	uint32_t _pushConstantsLength;
 };
 
 #pragma mark - MVKDescriptorBindOperation
@@ -247,9 +159,6 @@ public:
 	/** Returns whether all internal Metal pipeline states are valid. */
 	bool hasValidMTLPipelineStates() { return _hasValidMTLPipelineStates; }
 
-	/** Returns the array of descriptor binding use for the descriptor set. */
-	virtual MVKBitArray& getDescriptorBindingUse(uint32_t descSetIndex, MVKShaderStage stage) = 0;
-
 	/** Returns the number of descriptor sets in this pipeline layout. */
 	uint32_t getDescriptorSetCount() { return _descriptorSetCount; }
 
@@ -292,10 +201,6 @@ public:
 
 protected:
 	void propagateDebugName() override {}
-	template<typename CreateInfo> void populateDescriptorSetBindingUse(MVKMTLFunction& mvkMTLFunc,
-																	   const CreateInfo* pCreateInfo,
-                                     mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
-																	   MVKShaderStage stage);
 
 	MVKPipelineLayoutNew* _layout;
 	MVKPipelineCache* _pipelineCache;
@@ -325,9 +230,6 @@ typedef std::pair<uint32_t, uint32_t> MVKZeroDivisorVertexBinding;
 
 typedef MVKSmallVector<MVKGraphicsStage, 4> MVKPiplineStages;
 
-struct MVKStagedDescriptorBindingUse {
-	MVKBitArray stages[4] = {};
-};
 
 /** Represents an Vulkan graphics pipeline. */
 class MVKGraphicsPipeline : public MVKPipeline {
@@ -388,9 +290,6 @@ public:
 
 	/** Returns the collection of instance-rate vertex bindings whose divisor is zero, along with their strides. */
 	MVKArrayRef<MVKZeroDivisorVertexBinding> getZeroDivisorVertexBindings() { return _zeroDivisorVertexBindings.contents(); }
-
-	/** Returns the array of descriptor binding use for the descriptor set. */
-	MVKBitArray& getDescriptorBindingUse(uint32_t descSetIndex, MVKShaderStage stage) override { return _descriptorBindingUse[descSetIndex].stages[stage]; }
 
 	/** Check if rasterization is disabled. */
 	bool isRasterizationDisabled() const { return !_isRasterizing; }
@@ -478,7 +377,6 @@ protected:
 	MTLSamplePosition _sampleLocations[kMVKMaxSampleCount];
 	MVKSmallVector<MVKTranslatedVertexBinding> _translatedVertexBindings;
 	MVKSmallVector<MVKZeroDivisorVertexBinding> _zeroDivisorVertexBindings;
-	MVKSmallVector<MVKStagedDescriptorBindingUse> _descriptorBindingUse;
 	MVKSmallVector<MVKShaderStage> _stagesUsingPhysicalStorageBufferAddressesCapability;
 	MVKSmallVector<uint32_t, kMVKDefaultAttachmentCount> _colorAttachmentLocations;
 	std::unordered_map<uint32_t, id<MTLRenderPipelineState>> _multiviewMTLPipelineStates;
@@ -526,9 +424,6 @@ public:
 	/** Returns if this pipeline allows non-zero dispatch bases in vkCmdDispatchBase(). */
 	bool allowsDispatchBase() { return _allowsDispatchBase; }
 
-	/** Returns the array of descriptor binding use for the descriptor set. */
-	MVKBitArray& getDescriptorBindingUse(uint32_t descSetIndex, MVKShaderStage stage) override { return _descriptorBindingUse[descSetIndex]; }
-
 	/** Returns the MTLRenderPipelineState for the final stage of the pipeline */
 	id<MTLComputePipelineState> getPipelineState() const { return _mtlPipelineState; }
 
@@ -568,7 +463,6 @@ protected:
 	uint32_t getImplicitBufferIndex(uint32_t bufferIndexOffset);
 
     id<MTLComputePipelineState> _mtlPipelineState;
-	MVKSmallVector<MVKBitArray> _descriptorBindingUse;
 	MVKImplicitBufferBindings _implicitBuffers = {};
 	MVKStageResourceBits _stageResources = {};
 	MVKPipelineBindScript _bindScript;
