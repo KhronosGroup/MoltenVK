@@ -1115,7 +1115,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreatePipelineLayout(
 
 	MVKTraceVulkanCallStart();
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	MVKPipelineLayoutNew* mvkPLL = mvkDev->createPipelineLayout(pCreateInfo, pAllocator);
+	MVKPipelineLayout* mvkPLL = mvkDev->createPipelineLayout(pCreateInfo, pAllocator);
 	*pPipelineLayout = (VkPipelineLayout)mvkPLL;
 	VkResult rslt = mvkPLL->getConfigurationResult();
 	if (rslt < 0) { *pPipelineLayout = VK_NULL_HANDLE; mvkDev->destroyPipelineLayout(mvkPLL, pAllocator); }
@@ -1130,7 +1130,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyPipelineLayout(
 
 	MVKTraceVulkanCallStart();
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	mvkDev->destroyPipelineLayout((MVKPipelineLayoutNew*)pipelineLayout, pAllocator);
+	mvkDev->destroyPipelineLayout((MVKPipelineLayout*)pipelineLayout, pAllocator);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1169,7 +1169,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateDescriptorSetLayout(
 
 	MVKTraceVulkanCallStart();
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	MVKDescriptorSetLayoutNew* mvkDSL = mvkDev->createDescriptorSetLayout(pCreateInfo, pAllocator);
+	MVKDescriptorSetLayout* mvkDSL = mvkDev->createDescriptorSetLayout(pCreateInfo, pAllocator);
 	*pSetLayout = (VkDescriptorSetLayout)mvkDSL;
 	VkResult rslt = mvkDSL->getConfigurationResult();
 	if (rslt < 0) { *pSetLayout = VK_NULL_HANDLE; mvkDev->destroyDescriptorSetLayout(mvkDSL, pAllocator); }
@@ -1184,7 +1184,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyDescriptorSetLayout(
 
 	MVKTraceVulkanCallStart();
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	mvkDev->destroyDescriptorSetLayout((MVKDescriptorSetLayoutNew*)descriptorSetLayout, pAllocator);
+	mvkDev->destroyDescriptorSetLayout((MVKDescriptorSetLayout*)descriptorSetLayout, pAllocator);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1196,7 +1196,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateDescriptorPool(
 	
 	MVKTraceVulkanCallStart();
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	MVKDescriptorPoolNew* mvkDP = mvkDev->createDescriptorPool(pCreateInfo, pAllocator);
+	MVKDescriptorPool* mvkDP = mvkDev->createDescriptorPool(pCreateInfo, pAllocator);
 	*pDescriptorPool = (VkDescriptorPool)mvkDP;
 	VkResult rslt = mvkDP->getConfigurationResult();
 	if (rslt < 0) { *pDescriptorPool = VK_NULL_HANDLE; mvkDev->destroyDescriptorPool(mvkDP, pAllocator); }
@@ -1211,7 +1211,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyDescriptorPool(
 
 	MVKTraceVulkanCallStart();
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	mvkDev->destroyDescriptorPool((MVKDescriptorPoolNew*)descriptorPool, pAllocator);
+	mvkDev->destroyDescriptorPool((MVKDescriptorPool*)descriptorPool, pAllocator);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1221,7 +1221,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkResetDescriptorPool(
 	VkDescriptorPoolResetFlags                  flags) {
 
 	MVKTraceVulkanCallStart();
-	MVKDescriptorPoolNew* mvkDP = (MVKDescriptorPoolNew*)descriptorPool;
+	MVKDescriptorPool* mvkDP = (MVKDescriptorPool*)descriptorPool;
 	VkResult rslt = mvkDP->reset(flags);
 	MVKTraceVulkanCallEnd();
 	return rslt;
@@ -1233,7 +1233,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkAllocateDescriptorSets(
 	VkDescriptorSet*                            pDescriptorSets) {
 
 	MVKTraceVulkanCallStart();
-	MVKDescriptorPoolNew* mvkDP = (MVKDescriptorPoolNew*)pAllocateInfo->descriptorPool;
+	MVKDescriptorPool* mvkDP = (MVKDescriptorPool*)pAllocateInfo->descriptorPool;
 	VkResult rslt = mvkDP->allocateDescriptorSets(pAllocateInfo, pDescriptorSets);
 	MVKTraceVulkanCallEnd();
 	return rslt;
@@ -1246,7 +1246,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkFreeDescriptorSets(
 	const VkDescriptorSet*                      pDescriptorSets) {
 
 	MVKTraceVulkanCallStart();
-	MVKDescriptorPoolNew* mvkDP = (MVKDescriptorPoolNew*)descriptorPool;
+	MVKDescriptorPool* mvkDP = (MVKDescriptorPool*)descriptorPool;
 	VkResult rslt = mvkDP->freeDescriptorSets(count, pDescriptorSets);
 	MVKTraceVulkanCallEnd();
 	return rslt;
