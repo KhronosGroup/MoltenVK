@@ -571,3 +571,11 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet descriptorSet,
 										VkDescriptorUpdateTemplate updateTemplate,
 										const void* pData);
+
+/** Updates the resource bindings in the given descriptor set with the given writes, ignoring their dstSet parameter and using the given dst cpu buffer instead. */
+void mvkPushDescriptorSet(void* dst, MVKDescriptorSetLayout* layout,
+                          uint32_t writeCount, const VkWriteDescriptorSet* pDescriptorWrites);
+
+/** Updates the resource bindings in the given descriptor set with the given template. */
+void mvkPushDescriptorSetTemplate(void* dst, MVKDescriptorSetLayout* layout,
+                                  MVKDescriptorUpdateTemplate* updateTemplate, const void* pData);
