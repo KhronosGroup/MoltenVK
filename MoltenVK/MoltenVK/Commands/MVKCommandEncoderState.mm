@@ -574,8 +574,7 @@ static void executeBindOp(id<MTLCommandEncoder> encoder,
 
 static void executeBindOps(id<MTLCommandEncoder> encoder,
                            MVKCommandEncoder& mvkEncoder,
-                           MVKPipelineLayout* layout,
-                           MVKDescriptorSet*const* sets,
+                           const MVKVulkanCommonEncoderState& common,
                            const MVKImplicitBufferData& implicitBufferData,
                            MVKArrayRef<const MVKDescriptorBindOperation> ops,
                            LiveResourceLock& resourceLock,
@@ -585,14 +584,14 @@ static void executeBindOps(id<MTLCommandEncoder> encoder,
                            const MVKResourceBinder& RESTRICT binder)
 {
 	for (const MVKDescriptorBindOperation& op : ops) {
-		MVKDescriptorSet* set = sets[op.set];
+		MVKDescriptorSet* set = common._descriptorSets[op.set];
 		uint32_t target = op.target;
 		if (op.opcode == MVKDescriptorBindOperationCode::BindSet) {
 			bindBuffer(encoder, set->gpuBufferObject, set->gpuBufferOffset, target, exists, bindings, binder);
 			continue;
 		}
 
-		MVKDescriptorSetLayout* setLayout = layout->getDescriptorSetLayout(op.set);
+		MVKDescriptorSetLayout* setLayout = common._layout->getDescriptorSetLayout(op.set);
 		const MVKDescriptorBinding& binding = setLayout->bindings()[op.bindingIdx];
 		const char* src = set->cpuBuffer + binding.cpuOffset + op.offset();
 		const uint32_t* dynOffs = implicitBufferData.dynamicOffsets.data() + op.target2;
@@ -640,8 +639,7 @@ static MVKResourceUsageStages getUseResourceStage(MVKMetalGraphicsStage stage) {
 
 static void bindMetalResources(id<MTLCommandEncoder> encoder,
                                MVKCommandEncoder& mvkEncoder,
-                               MVKPipelineLayout* layout,
-                               MVKDescriptorSet*const* sets,
+                               const MVKVulkanCommonEncoderState& common,
                                MVKArrayRef<const MVKDescriptorBindOperation> ops,
                                const MVKImplicitBufferData& implicitBufferData,
                                const uint8_t* pushConstants,
@@ -655,10 +653,10 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 {
 	{
 		LiveResourceLock lock;
-		executeBindOps(encoder, mvkEncoder, layout, sets, implicitBufferData, ops, lock, useResourceStage, exists, bindings, binder);
+		executeBindOps(encoder, mvkEncoder, common, implicitBufferData, ops, lock, useResourceStage, exists, bindings, binder);
 	}
 
-	const MVKShaderStageResourceBinding& resourceCounts = layout->getResourceCounts().stages[vkStage];
+	const MVKShaderStageResourceBinding& resourceCounts = common._layout->getResourceCounts().stages[vkStage];
 	for (MVKImplicitBuffer buffer : implicitBuffers.needed & MVKNonVolatileImplicitBuffers) {
 		assert(buffer < static_cast<MVKImplicitBuffer>(MVKNonVolatileImplicitBuffer::Count));
 		MVKNonVolatileImplicitBuffer nvbuffer = static_cast<MVKNonVolatileImplicitBuffer>(buffer);
@@ -676,7 +674,7 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 		bindings.buffers[idx] = MVKStageResourceBindings::ImplicitBuffer(buffer);
 		switch (nvbuffer) {
 			case MVKNonVolatileImplicitBuffer::PushConstant:
-				bindImmediateData(encoder, mvkEncoder, pushConstants, layout->getPushConstantsLength(), idx, binder);
+				bindImmediateData(encoder, mvkEncoder, pushConstants, common._layout->getPushConstantsLength(), idx, binder);
 				break;
 			case MVKNonVolatileImplicitBuffer::Swizzle:
 				bindImmediateData(encoder, mvkEncoder, getImplicitBindingData(implicitBufferData.textureSwizzles, resourceCounts.textureIndex), idx, binder);
@@ -725,8 +723,7 @@ static void bindVulkanGraphicsToMetalGraphics(
 {
 	bindMetalResources(encoder,
 	                   mvkEncoder,
-	                   vkState._layout,
-	                   vkState._descriptorSets,
+	                   vkState,
 	                   pipeline->getBindScript(vkStage).ops.contents(),
 	                   vkState._implicitBufferData[vkStage],
 	                   vkShared._pushConstants.data(),
@@ -755,8 +752,7 @@ static void bindVulkanGraphicsToMetalCompute(
 {
 	bindMetalResources(encoder,
 	                   mvkEncoder,
-	                   vkState._layout,
-	                   vkState._descriptorSets,
+	                   vkState,
 	                   pipeline->getBindScript(vkStage).ops.contents(),
 	                   vkState._implicitBufferData[vkStage],
 	                   vkShared._pushConstants.data(),
@@ -780,8 +776,7 @@ static void bindVulkanComputeToMetalCompute(
 {
 	bindMetalResources(encoder,
 	                   mvkEncoder,
-	                   vkState._layout,
-	                   vkState._descriptorSets,
+	                   vkState,
 	                   pipeline->getBindScript().ops.contents(),
 	                   vkState._implicitBufferData,
 	                   vkShared._pushConstants.data(),
@@ -943,6 +938,42 @@ void MVKUseResourceHelper::bindAndResetCompute(id<MTLComputeCommandEncoder> enco
 		assert(entries.elements[i].read.empty());
 		assert(entries.elements[i].readWrite.empty());
 	}
+}
+
+#pragma mark - MVKVulkanCommonCommandEncoderState
+
+void MVKVulkanCommonEncoderState::ensurePushDescriptorSize(uint32_t size) {
+	if (size > _pushDescData.size()) {
+		_pushDescData.resize(size);
+		_pushDescriptor.cpuBuffer = reinterpret_cast<char*>(_pushDescData.data());
+	}
+}
+
+void MVKVulkanCommonEncoderState::setLayout(MVKPipelineLayout* layout) {
+	_layout = layout;
+	if (layout && layout->hasPushDescriptor()) {
+		size_t idx = layout->pushDescriptor();
+		_descriptorSets[idx] = &_pushDescriptor;
+		MVKDescriptorSetLayout* dsl = layout->getDescriptorSetLayout(idx);
+		uint32_t size = dsl->cpuSize();
+		_pushDescriptor.cpuBufferSize = size;
+		ensurePushDescriptorSize(size);
+	}
+}
+
+MVKVulkanCommonEncoderState::MVKVulkanCommonEncoderState(const MVKVulkanCommonEncoderState& other) {
+	memcpy(_descriptorSets, other._descriptorSets, sizeof(_descriptorSets));
+	_pushDescriptor = other._pushDescriptor;
+	setLayout(other._layout);
+	memcpy(_pushDescriptor.cpuBuffer, other._pushDescriptor.cpuBuffer, _pushDescriptor.cpuBufferSize);
+}
+
+MVKVulkanCommonEncoderState& MVKVulkanCommonEncoderState::operator=(const MVKVulkanCommonEncoderState& other) {
+	memmove(_descriptorSets, other._descriptorSets, sizeof(_descriptorSets));
+	_pushDescriptor = other._pushDescriptor;
+	setLayout(other._layout);
+	memmove(_pushDescriptor.cpuBuffer, other._pushDescriptor.cpuBuffer, _pushDescriptor.cpuBufferSize);
+	return *this;
 }
 
 #pragma mark - MVKVulkanGraphicsCommandEncoderState
@@ -1652,7 +1683,7 @@ void MVKCommandEncoderState::bindGraphicsPipeline(MVKGraphicsPipeline* pipeline)
 			mvkEnsureSize(_vkShared._pushConstants, layout->getPushConstantsLength());
 			invalidateImplicitBuffer(*this, VK_PIPELINE_BIND_POINT_GRAPHICS, MVKNonVolatileImplicitBuffer::PushConstant);
 		}
-		_vkGraphics._layout = layout;
+		_vkGraphics.setLayout(layout);
 	}
 }
 
@@ -1664,7 +1695,7 @@ void MVKCommandEncoderState::bindComputePipeline(MVKComputePipeline* pipeline) {
 			mvkEnsureSize(_vkShared._pushConstants, layout->getPushConstantsLength());
 			invalidateImplicitBuffer(*this, VK_PIPELINE_BIND_POINT_COMPUTE, MVKNonVolatileImplicitBuffer::PushConstant);
 		}
-		_vkCompute._layout = layout;
+		_vkCompute.setLayout(layout);
 	}
 }
 
@@ -1690,6 +1721,32 @@ void MVKCommandEncoderState::bindDescriptorSets(
 		_vkGraphics.bindDescriptorSets(layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
 	} else if (bindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
 		_vkCompute.bindDescriptorSets(layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
+	}
+}
+
+MVKVulkanCommonEncoderState* MVKCommandEncoderState::getVkEncoderState(VkPipelineBindPoint bindPoint) {
+	switch (bindPoint) {
+		case VK_PIPELINE_BIND_POINT_GRAPHICS: return &_vkGraphics;
+		case VK_PIPELINE_BIND_POINT_COMPUTE:  return &_vkCompute;
+		default: return nullptr;
+	}
+}
+
+void MVKCommandEncoderState::pushDescriptorSet(VkPipelineBindPoint bindPoint, MVKPipelineLayout* layout, uint32_t set, uint32_t writeCount, const VkWriteDescriptorSet* writes) {
+	assert(layout->pushDescriptor() == set);
+	if (MVKVulkanCommonEncoderState* state = getVkEncoderState(bindPoint)) [[likely]] {
+		MVKDescriptorSetLayout* dsl = layout->getDescriptorSetLayout(set);
+		state->ensurePushDescriptorSize(dsl->cpuSize());
+		mvkPushDescriptorSet(state->_pushDescriptor.cpuBuffer, dsl, writeCount, writes);
+	}
+}
+
+void MVKCommandEncoderState::pushDescriptorSet(MVKDescriptorUpdateTemplate* updateTemplate, MVKPipelineLayout* layout, uint32_t set, const void* data) {
+	assert(layout->pushDescriptor() == set);
+	if (MVKVulkanCommonEncoderState* state = getVkEncoderState(updateTemplate->getBindPoint())) [[likely]] {
+		MVKDescriptorSetLayout* dsl = layout->getDescriptorSetLayout(set);
+		state->ensurePushDescriptorSize(dsl->cpuSize());
+		mvkPushDescriptorSetTemplate(state->_pushDescriptor.cpuBuffer, dsl, updateTemplate, data);
 	}
 }
 
