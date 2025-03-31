@@ -380,6 +380,8 @@ MVKPipelineLayout* MVKPipelineLayout::Create(MVKDevice* device, const VkPipeline
 		if (layouts[i]->argBufMode() != MVKArgumentBufferMode::Off)
 			count.clearArgumentBufferResources();
 		ret->_mtlResourceCounts += count;
+		if (layouts[i]->isPushDescriptorSetLayout())
+			ret->_pushDescriptor = i;
 	}
 
 	return ret;

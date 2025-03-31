@@ -802,6 +802,23 @@ static MVKDescriptorUpdateSourceType getDescriptorUpdateSourceType(VkDescriptorT
 	return MVKDescriptorUpdateSourceType::Unsupported;
 }
 
+static const void* getDescriptorWriteSource(const VkWriteDescriptorSet& write, MVKDescriptorUpdateSourceType type) {
+	switch (type) {
+		case MVKDescriptorUpdateSourceType::Sampler:
+		case MVKDescriptorUpdateSourceType::ImageSampler:
+		case MVKDescriptorUpdateSourceType::Image:
+			return write.pImageInfo;
+		case MVKDescriptorUpdateSourceType::Buffer:
+			return write.pBufferInfo;
+		case MVKDescriptorUpdateSourceType::TexelBuffer:
+			return write.pTexelBufferView;
+		case MVKDescriptorUpdateSourceType::InlineUniform:
+			return mvkFindStructInChain<VkWriteDescriptorSetInlineUniformBlock>(&write, VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK)->pData;
+		case MVKDescriptorUpdateSourceType::Unsupported:
+			return nullptr;
+	}
+}
+
 static uint32_t getDescriptorUpdateStride(MVKDescriptorUpdateSourceType type) {
 	switch (type) {
 		case MVKDescriptorUpdateSourceType::Image:         return sizeof(VkDescriptorImageInfo);
@@ -1301,17 +1318,17 @@ static void writeDescriptorSetCPUBuffer(
 	}
 }
 
-static void writeDescriptorSetBinding(
+static void writeDescriptorSetCPUBufferDispatch(
 	const MVKDescriptorSetLayout* layout,
-	const MVKDescriptorBinding* binding, const MVKDescriptorSet* set, id<MTLArgumentEncoder> enc,
-	const void* src, MVKDescriptorUpdateSourceType type, size_t stride,
+	const MVKDescriptorBinding& binding,
+	char* dst,
+	const void* src, size_t srcStride, MVKDescriptorUpdateSourceType srcType,
 	uint32_t start, uint32_t count)
 {
-	char* cpuBuffer = set->cpuBuffer + binding->cpuOffset;
-	switch (binding->cpuLayout) {
+	switch (binding.cpuLayout) {
 #define CASE(x) case MVKDescriptorCPULayout::x: \
 			writeDescriptorSetCPUBuffer<MVKDescriptorCPULayout::x>( \
-				layout, *binding, cpuBuffer, src, stride, type, start, count); \
+				layout, binding, dst, src, srcStride, srcType, start, count); \
 			break;
 		case MVKDescriptorCPULayout::None: break;
 		CASE(OneID)
@@ -1322,6 +1339,16 @@ static void writeDescriptorSetBinding(
 		CASE(InlineData)
 #undef CASE
 	}
+}
+
+static void writeDescriptorSetBinding(
+	const MVKDescriptorSetLayout* layout,
+	const MVKDescriptorBinding* binding, const MVKDescriptorSet* set, id<MTLArgumentEncoder> enc,
+	const void* src, MVKDescriptorUpdateSourceType type, size_t stride,
+	uint32_t start, uint32_t count)
+{
+	char* cpuBuffer = set->cpuBuffer + binding->cpuOffset;
+	writeDescriptorSetCPUBufferDispatch(layout, *binding, cpuBuffer, src, stride, type, start, count);
 	switch (layout->argBufMode()) {
 		case MVKArgumentBufferMode::Off:
 			break; // No GPU buffer
@@ -1729,25 +1756,9 @@ void mvkUpdateDescriptorSets(uint32_t numWrites, const VkWriteDescriptorSet* pDe
 	for (const auto& write : MVKArrayRef(pDescriptorWrites, numWrites)) {
 		MVKDescriptorUpdateSourceType type = getDescriptorUpdateSourceType(write.descriptorType);
 		uint32_t stride = getDescriptorUpdateStride(type);
-		const void* src;
-		switch (type) {
-			case MVKDescriptorUpdateSourceType::Sampler:
-			case MVKDescriptorUpdateSourceType::ImageSampler:
-			case MVKDescriptorUpdateSourceType::Image:
-				src = write.pImageInfo;
-				break;
-			case MVKDescriptorUpdateSourceType::Buffer:
-				src = write.pBufferInfo;
-				break;
-			case MVKDescriptorUpdateSourceType::TexelBuffer:
-				src = write.pTexelBufferView;
-				break;
-			case MVKDescriptorUpdateSourceType::InlineUniform:
-				src = mvkFindStructInChain<VkWriteDescriptorSetInlineUniformBlock>(&write, VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK)->pData;
-				break;
-			case MVKDescriptorUpdateSourceType::Unsupported:
-				return;
-		}
+		const void* src = getDescriptorWriteSource(write, type);
+		if (!src)
+			continue;
 		MVKDescriptorSet* set = reinterpret_cast<MVKDescriptorSet*>(write.dstSet);
 		const MVKDescriptorSetLayout* layout = set->layout;
 		const MVKDescriptorBinding* binding = layout->getBinding(write.dstBinding);
@@ -1837,6 +1848,36 @@ void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet set, VkDescriptorUpdateT
 		const MVKDescriptorBinding* binding = layout->getBinding(pEntry->dstBinding);
 		MVKDescriptorUpdateSourceType type = getDescriptorUpdateSourceType(pEntry->descriptorType);
 		writeDescriptorSetBinding(layout, binding, dstSet, enc, pCurData, type, pEntry->stride, pEntry->dstArrayElement, pEntry->descriptorCount);
+	}
+}
+
+void mvkPushDescriptorSet(void* dst, MVKDescriptorSetLayout* layout, uint32_t writeCount, const VkWriteDescriptorSet* pDescriptorWrites) {
+	assert(layout->argBufMode() == MVKArgumentBufferMode::Off);
+	for (uint32_t i = 0; i < writeCount; i++) {
+		const VkWriteDescriptorSet& write = pDescriptorWrites[i];
+		MVKDescriptorUpdateSourceType type = getDescriptorUpdateSourceType(write.descriptorType);
+		uint32_t stride = getDescriptorUpdateStride(type);
+		const void* src = getDescriptorWriteSource(write, type);
+		if (!src)
+			continue;
+
+		const MVKDescriptorBinding* binding = layout->getBinding(write.dstBinding);
+		char* target = static_cast<char*>(dst) + binding->cpuOffset;
+		writeDescriptorSetCPUBufferDispatch(layout, *binding, target, src, stride, type, write.dstArrayElement, write.descriptorCount);
+	}
+}
+
+void mvkPushDescriptorSetTemplate(void* dst, MVKDescriptorSetLayout* layout, MVKDescriptorUpdateTemplate* updateTemplate, const void* pData) {
+	assert(layout->argBufMode() == MVKArgumentBufferMode::Off);
+
+	for (uint32_t i = 0; i < updateTemplate->getNumberOfEntries(); i++) {
+		const VkDescriptorUpdateTemplateEntry* pEntry = updateTemplate->getEntry(i);
+		const char* pCurData = static_cast<const char*>(pData) + pEntry->offset;
+
+		const MVKDescriptorBinding* binding = layout->getBinding(pEntry->dstBinding);
+		MVKDescriptorUpdateSourceType type = getDescriptorUpdateSourceType(pEntry->descriptorType);
+		char* target = static_cast<char*>(dst) + binding->cpuOffset;
+		writeDescriptorSetCPUBufferDispatch(layout, *binding, target, pCurData, pEntry->stride, type, pEntry->dstArrayElement, pEntry->descriptorCount);
 	}
 }
 

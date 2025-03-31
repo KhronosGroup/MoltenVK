@@ -95,7 +95,7 @@ public:
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT; }
 
 	/** Returns the descriptor set layout. */
-	MVKDescriptorSetLayout* getDescriptorSetLayout(uint32_t descSetIndex) const { return _descriptorSetLayouts[descSetIndex]; }
+	MVKDescriptorSetLayout* getDescriptorSetLayout(size_t descSetIndex) const { return _descriptorSetLayouts[descSetIndex]; }
 	/** Returns the starting offsets for the given descriptor set. */
 	const MVKShaderResourceBinding& getResourceBindingOffsets(uint32_t descSetIndex) const { return _resourceIndexOffsets[descSetIndex]; }
 	/** Returns the number of resurces for all descriptor sets combined. */
@@ -114,6 +114,10 @@ public:
 	void populateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig) const;
 	/** Adds all used bindings to the given bind script. */
 	void populateBindOperations(MVKPipelineBindScript& script, const mvk::SPIRVToMSLConversionConfiguration& shaderConfig, spv::ExecutionModel execModel);
+	/** Does this pipeline layout have a push descriptor? */
+	bool hasPushDescriptor() const { return _pushDescriptor >= 0; }
+	/** If this pipeline layout has a push descriptor, returns the set ID of that descriptor. */
+	size_t pushDescriptor() const { assert(hasPushDescriptor()); return _pushDescriptor; }
 
 	/** Constructs an instance for the specified device. */
 	static MVKPipelineLayout* Create(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
@@ -126,6 +130,7 @@ private:
 	VkShaderStageFlags _pushConstantStages = 0;
 	MVKShaderResourceBinding _mtlResourceCounts;
 	uint8_t _pushConstantResourceIndices[kMVKShaderStageCount];
+	int8_t _pushDescriptor = -1;
 	void propagateDebugName() override {}
 	friend class MVKInlineObjectConstructor<MVKPipelineLayout>;
 	MVKPipelineLayout(MVKDevice* device);

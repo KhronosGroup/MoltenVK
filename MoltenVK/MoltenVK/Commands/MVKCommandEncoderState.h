@@ -164,13 +164,26 @@ struct MVKUseResourceHelper {
 	void bindAndResetCompute(id<MTLComputeCommandEncoder> encoder);
 };
 
+/**
+ * Tracks state that is needed by all Vulkan command encoder state trackers but is independent.
+ * (Commands that update these take a VkPipelineBindPoint to specify which state to update.)
+ */
+struct MVKVulkanCommonEncoderState {
+	MVKPipelineLayout* _layout = nullptr;
+	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount];
+	MVKDescriptorSet _pushDescriptor = {};
+	MVKSmallVector<uint8_t, 16> _pushDescData;
+	void ensurePushDescriptorSize(uint32_t size);
+	void setLayout(MVKPipelineLayout* layout);
+	MVKVulkanCommonEncoderState() = default;
+	MVKVulkanCommonEncoderState(const MVKVulkanCommonEncoderState& other);
+	MVKVulkanCommonEncoderState& operator=(const MVKVulkanCommonEncoderState& other);
+};
 
 /** Tracks the state of a Vulkan render encoder. */
-struct MVKVulkanGraphicsCommandEncoderState {
-	MVKPipelineLayout* _layout = nullptr;
+struct MVKVulkanGraphicsCommandEncoderState: public MVKVulkanCommonEncoderState {
 	MVKGraphicsPipeline* _pipeline = nullptr;
 	MVKRenderStateData _renderState;
-	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount];
 	MVKVertexMTLBufferBinding _vertexBuffers[kMVKMaxBufferCount];
 	MVKIndexMTLBufferBinding _indexBuffer;
 	VkViewport _viewports[kMVKMaxViewportScissorCount];
@@ -199,10 +212,8 @@ struct MVKVulkanGraphicsCommandEncoderState {
 };
 
 /** Tracks the state of a Vulkan compute encoder. */
-struct MVKVulkanComputeCommandEncoderState {
-	MVKPipelineLayout* _layout = nullptr;
+struct MVKVulkanComputeCommandEncoderState: public MVKVulkanCommonEncoderState {
 	MVKComputePipeline* _pipeline = nullptr;
-	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount];
 	MVKImplicitBufferData _implicitBufferData;
 
 	/** Bind the given descriptor sets, placing their bindings into `_descriptorSetBindings`. */
@@ -408,6 +419,9 @@ class MVKCommandEncoderState {
 	/** The type of Metal encoder, if any, that is currently active. */
 	CommandEncoderClass _mtlActiveEncoder;
 
+	/** Get the encoder state associated with the given bind point, or nullptr if the bindPoint isn't supported. */
+	MVKVulkanCommonEncoderState* getVkEncoderState(VkPipelineBindPoint bindPoint);
+
 public:
 	/** Get a reference to the Vulkan state shared between graphics and compute.  Read-only, use methods on this class (which will invalidate associated Metal state) to modify. */
 	const MVKVulkanSharedCommandEncoderState&   vkShared()   const { return _vkShared; }
@@ -463,6 +477,10 @@ public:
 	                        MVKDescriptorSet*const* sets,
 	                        uint32_t dynamicOffsetCount,
 	                        const uint32_t* dynamicOffsets);
+	/** Apply the given descriptor set writes to the push descriptor set on bindPoint. */
+	void pushDescriptorSet(VkPipelineBindPoint bindPoint, MVKPipelineLayout* layout, uint32_t set, uint32_t writeCount, const VkWriteDescriptorSet* writes);
+	/** Apply the given descriptor update template to the push descriptor to its specified bindPoint. */
+	void pushDescriptorSet(MVKDescriptorUpdateTemplate* updateTemplate, MVKPipelineLayout* layout, uint32_t set, const void* data);
 	/** Bind the given vertex buffers to the Vulkan state, invalidating any necessary resources. */
 	void bindVertexBuffers(uint32_t firstBinding, MVKArrayRef<const MVKVertexMTLBufferBinding> buffers);
 	/** Bind the given index buffer to the Vulkan state, invalidating any necessary resources. */
