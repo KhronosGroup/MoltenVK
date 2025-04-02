@@ -236,6 +236,12 @@ typedef std::pair<uint32_t, uint32_t> MVKZeroDivisorVertexBinding;
 typedef MVKSmallVector<MVKGraphicsStage, 4> MVKPiplineStages;
 
 
+struct MVKPipelineStageResourceInfo {
+	MVKPipelineBindScript bindScript;
+	MVKImplicitBufferBindings implicitBuffers;
+	MVKStageResourceBits resources;
+};
+
 /** Represents an Vulkan graphics pipeline. */
 class MVKGraphicsPipeline : public MVKPipeline {
 
@@ -274,13 +280,13 @@ public:
 	id<MTLComputePipelineState> getTessControlStageState() { return _mtlTessControlStageState; }
 
 	/** Returns true if the vertex shader needs a buffer to store its output. */
-	bool needsVertexOutputBuffer() const { return _implicitBuffers[kMVKShaderStageVertex].needed.has(MVKImplicitBuffer::Output); }
+	bool needsVertexOutputBuffer() const { return _stageResources[kMVKShaderStageVertex].implicitBuffers.needed.has(MVKImplicitBuffer::Output); }
 
 	/** Returns true if the tessellation control shader needs a buffer to store its per-vertex output. */
-	bool needsTessCtlOutputBuffer() const { return _implicitBuffers[kMVKShaderStageTessCtl].needed.has(MVKImplicitBuffer::Output); }
+	bool needsTessCtlOutputBuffer() const { return _stageResources[kMVKShaderStageTessCtl].implicitBuffers.needed.has(MVKImplicitBuffer::Output); }
 
 	/** Returns true if the tessellation control shader needs a buffer to store its per-patch output. */
-	bool needsTessCtlPatchOutputBuffer() const { return _implicitBuffers[kMVKShaderStageTessCtl].needed.has(MVKImplicitBuffer::PatchOutput); }
+	bool needsTessCtlPatchOutputBuffer() const { return _stageResources[kMVKShaderStageTessCtl].implicitBuffers.needed.has(MVKImplicitBuffer::PatchOutput); }
 
 	/** Returns the Vulkan primitive topology. */
 	VkPrimitiveTopology getVkPrimitiveTopology() { return _vkPrimitiveTopology; }
@@ -300,10 +306,10 @@ public:
 	bool isRasterizationDisabled() const { return !_isRasterizing; }
 
 	/** Returns a list of implicit buffers used by the given stage. */
-	const MVKImplicitBufferBindings& getImplicitBuffers(MVKShaderStage stage) const { return _implicitBuffers[stage]; }
+	const MVKImplicitBufferBindings& getImplicitBuffers(MVKShaderStage stage) const { return getStageResources(stage).implicitBuffers; }
 
-	/** Returns a list of which stage resources are used by the given stage. */
-	const MVKStageResourceBits& getStageResources(MVKShaderStage stage) const { return _stageResources[stage]; }
+	/** Returns info about the given stage's bindings. */
+	const MVKPipelineStageResourceInfo& getStageResources(MVKShaderStage stage) const { return _stageResources[stage]; }
 
 	/** Returns the list of state that is needed from the command encoder */
 	const MVKRenderStateFlags& getDynamicStateFlags() const { return _dynamicStateFlags; }
@@ -319,7 +325,6 @@ public:
 	const VkRect2D* getScissors() const { return _scissors; }
 	const MTLSamplePosition* getSampleLocations() const { return _sampleLocations; }
 	const MTLPrimitiveTopologyClass getPrimitiveTopologyClass() const { return static_cast<MTLPrimitiveTopologyClass>(_primitiveTopologyClass); }
-	const MVKPipelineBindScript& getBindScript(MVKShaderStage stage) const { return _bindScripts[stage]; }
 
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKGraphicsPipeline(MVKDevice* device,
@@ -385,11 +390,9 @@ protected:
 	MVKSmallVector<MVKShaderStage> _stagesUsingPhysicalStorageBufferAddressesCapability;
 	MVKSmallVector<uint32_t, kMVKDefaultAttachmentCount> _colorAttachmentLocations;
 	std::unordered_map<uint32_t, id<MTLRenderPipelineState>> _multiviewMTLPipelineStates;
-	MVKImplicitBufferBindings _implicitBuffers[kMVKShaderStageFragment + 1] = {};
-	MVKStageResourceBits _stageResources[kMVKShaderStageFragment + 1] = {};
 	MVKStaticBitSet<kMVKMaxBufferCount> _vkVertexBuffers;
 	MVKStaticBitSet<kMVKMaxBufferCount> _mtlVertexBuffers;
-	MVKPipelineBindScript _bindScripts[kMVKShaderStageFragment + 1];
+	MVKPipelineStageResourceInfo _stageResources[kMVKShaderStageFragment + 1] = {};
 
 	id<MTLComputePipelineState> _mtlTessVertexStageState = nil;
 	id<MTLComputePipelineState> _mtlTessVertexStageIndex16State = nil;
@@ -433,20 +436,12 @@ public:
 	id<MTLComputePipelineState> getPipelineState() const { return _mtlPipelineState; }
 
 	/** Returns a list of implicit buffers used by the given stage. */
-	const MVKImplicitBufferBindings& getImplicitBuffers(MVKShaderStage stage = kMVKShaderStageCompute) const {
-		assert(stage == kMVKShaderStageCompute && "Input is just for API compatibility with MVKGraphicsPipeline");
-		return _implicitBuffers;
-	}
+	const MVKImplicitBufferBindings& getImplicitBuffers(MVKShaderStage stage = kMVKShaderStageCompute) const { return getStageResources(stage).implicitBuffers; }
 
 	/** Returns a list of which stage resources are used by the given stage. */
-	const MVKStageResourceBits& getStageResources(MVKShaderStage stage = kMVKShaderStageCompute) const {
+	const MVKPipelineStageResourceInfo& getStageResources(MVKShaderStage stage = kMVKShaderStageCompute) const {
 		assert(stage == kMVKShaderStageCompute && "Input is just for API compatibility with MVKGraphicsPipeline");
 		return _stageResources;
-	}
-
-	const MVKPipelineBindScript& getBindScript(MVKShaderStage stage = kMVKShaderStageCompute) const {
-		assert(stage == kMVKShaderStageCompute && "Input is just for API compatibility with MVKGraphicsPipeline");
-		return _bindScript;
 	}
 
 	/** Returns the threadgroup size */
@@ -468,9 +463,7 @@ protected:
 	uint32_t getImplicitBufferIndex(uint32_t bufferIndexOffset);
 
     id<MTLComputePipelineState> _mtlPipelineState;
-	MVKImplicitBufferBindings _implicitBuffers = {};
-	MVKStageResourceBits _stageResources = {};
-	MVKPipelineBindScript _bindScript;
+	MVKPipelineStageResourceInfo _stageResources = {};
     MTLSize _mtlThreadgroupSize;
 	bool _allowsDispatchBase = false;
 	bool _usesPhysicalStorageBufferAddressesCapability = false;
