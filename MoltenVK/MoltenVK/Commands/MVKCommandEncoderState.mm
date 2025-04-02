@@ -640,11 +640,9 @@ static MVKResourceUsageStages getUseResourceStage(MVKMetalGraphicsStage stage) {
 static void bindMetalResources(id<MTLCommandEncoder> encoder,
                                MVKCommandEncoder& mvkEncoder,
                                const MVKVulkanCommonEncoderState& common,
-                               MVKArrayRef<const MVKDescriptorBindOperation> ops,
+                               const MVKPipelineStageResourceInfo& resources,
                                const MVKImplicitBufferData& implicitBufferData,
                                const uint8_t* pushConstants,
-                               const MVKImplicitBufferBindings& implicitBuffers,
-                               const MVKStageResourceBits& needed,
                                MVKShaderStage vkStage,
                                MVKResourceUsageStages useResourceStage,
                                MVKStageResourceBits& exists,
@@ -653,14 +651,14 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 {
 	{
 		LiveResourceLock lock;
-		executeBindOps(encoder, mvkEncoder, common, implicitBufferData, ops, lock, useResourceStage, exists, bindings, binder);
+		executeBindOps(encoder, mvkEncoder, common, implicitBufferData, resources.bindScript.ops.contents(), lock, useResourceStage, exists, bindings, binder);
 	}
 
 	const MVKShaderStageResourceBinding& resourceCounts = common._layout->getResourceCounts().stages[vkStage];
-	for (MVKImplicitBuffer buffer : implicitBuffers.needed & MVKNonVolatileImplicitBuffers) {
+	for (MVKImplicitBuffer buffer : resources.implicitBuffers.needed & MVKNonVolatileImplicitBuffers) {
 		assert(buffer < static_cast<MVKImplicitBuffer>(MVKNonVolatileImplicitBuffer::Count));
 		MVKNonVolatileImplicitBuffer nvbuffer = static_cast<MVKNonVolatileImplicitBuffer>(buffer);
-		uint32_t idx = implicitBuffers.ids[buffer];
+		uint32_t idx = resources.implicitBuffers.ids[buffer];
 		if (exists.buffers.get(idx) && bindings.buffers[idx] == MVKStageResourceBindings::ImplicitBuffer(buffer))
 			continue;
 		if (bindings.implicitBufferIndices[nvbuffer] != idx) {
@@ -670,7 +668,7 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 			if (bindings.buffers[oldIndex] == MVKStageResourceBindings::ImplicitBuffer(buffer))
 				bindings.buffers[oldIndex] = MVKStageResourceBindings::InvalidBuffer();
 		}
-		exists.buffers.set(implicitBuffers.ids[buffer]);
+		exists.buffers.set(resources.implicitBuffers.ids[buffer]);
 		bindings.buffers[idx] = MVKStageResourceBindings::ImplicitBuffer(buffer);
 		switch (nvbuffer) {
 			case MVKNonVolatileImplicitBuffer::PushConstant:
@@ -698,9 +696,9 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 				break;
 		}
 	}
-	for (MVKImplicitBuffer buffer : implicitBuffers.needed.removingAll(MVKNonVolatileImplicitBuffers)) {
+	for (MVKImplicitBuffer buffer : resources.implicitBuffers.needed.removingAll(MVKNonVolatileImplicitBuffers)) {
 		// Mark needed volatile implicit buffers used in buffer tracking, they'll get set during the draw
-		size_t idx = implicitBuffers.ids[buffer];
+		size_t idx = resources.implicitBuffers.ids[buffer];
 		exists.buffers.set(idx);
 		bindings.buffers[idx] = MVKStageResourceBindings::InvalidBuffer();
 	}
@@ -724,11 +722,9 @@ static void bindVulkanGraphicsToMetalGraphics(
 	bindMetalResources(encoder,
 	                   mvkEncoder,
 	                   vkState,
-	                   pipeline->getBindScript(vkStage).ops.contents(),
+	                   pipeline->getStageResources(vkStage),
 	                   vkState._implicitBufferData[vkStage],
 	                   vkShared._pushConstants.data(),
-	                   pipeline->getImplicitBuffers(vkStage),
-	                   pipeline->getStageResources(vkStage),
 	                   vkStage,
 	                   getUseResourceStage(mtlStage),
 	                   mtlState._exists[mtlStage],
@@ -753,11 +749,9 @@ static void bindVulkanGraphicsToMetalCompute(
 	bindMetalResources(encoder,
 	                   mvkEncoder,
 	                   vkState,
-	                   pipeline->getBindScript(vkStage).ops.contents(),
+	                   pipeline->getStageResources(vkStage),
 	                   vkState._implicitBufferData[vkStage],
 	                   vkShared._pushConstants.data(),
-	                   pipeline->getImplicitBuffers(vkStage),
-	                   pipeline->getStageResources(vkStage),
 	                   vkStage,
 	                   MVKResourceUsageStages::Compute,
 	                   mtlState._exists,
@@ -777,11 +771,9 @@ static void bindVulkanComputeToMetalCompute(
 	bindMetalResources(encoder,
 	                   mvkEncoder,
 	                   vkState,
-	                   pipeline->getBindScript().ops.contents(),
+	                   pipeline->getStageResources(),
 	                   vkState._implicitBufferData,
 	                   vkShared._pushConstants.data(),
-	                   pipeline->getImplicitBuffers(),
-	                   pipeline->getStageResources(),
 	                   kMVKShaderStageCompute,
 	                   MVKResourceUsageStages::Compute,
 	                   mtlState._exists,
