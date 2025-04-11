@@ -186,6 +186,8 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	_isExecutingNonConcurrently.clear();
 	_commandCount = 0;
     _icbIfSecondary = nil;
+    _icbIBB = {};
+    _icbVBB = {};
 	_currentSubpassInfo = {};
 	_needsVisibilityResultMTLBuffer = false;
 	_hasStageCounterTimestampCommand = false;

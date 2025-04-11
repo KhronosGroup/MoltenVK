@@ -2839,7 +2839,6 @@ id<MTLRenderPipelineState> MVKRenderPipelineCompiler::newMTLRenderPipelineState(
 	compile(lock, ^{
 		auto mtlDev = getMTLDevice();
 		@synchronized (mtlDev) {
-            mtlRPLDesc.fr
             mtlRPLDesc.supportIndirectCommandBuffers = YES;
 			[mtlDev newRenderPipelineStateWithDescriptor: mtlRPLDesc
 									   completionHandler: ^(id<MTLRenderPipelineState> ps, NSError* error) {
