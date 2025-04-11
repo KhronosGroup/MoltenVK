@@ -185,6 +185,7 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	_wasExecuted = false;
 	_isExecutingNonConcurrently.clear();
 	_commandCount = 0;
+    _icbIfSecondary = nil;
 	_currentSubpassInfo = {};
 	_needsVisibilityResultMTLBuffer = false;
 	_hasStageCounterTimestampCommand = false;
@@ -200,9 +201,39 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 
 VkResult MVKCommandBuffer::end() {
 	_canAcceptCommands = false;
-    
+
+    if (_isSecondary) {
+        MTLIndirectCommandBufferDescriptor* icbDescriptor = [MTLIndirectCommandBufferDescriptor new];
+        icbDescriptor.commandTypes = MTLIndirectCommandTypeDrawIndexed;
+        icbDescriptor.inheritBuffers = YES;
+        icbDescriptor.maxVertexBufferBindCount = 0;
+        icbDescriptor.maxFragmentBufferBindCount = 0;
+        icbDescriptor.inheritPipelineState = YES;
+        auto device = getMTLDevice();
+        _icbIfSecondary = [device newIndirectCommandBufferWithDescriptor:icbDescriptor
+                                                       maxCommandCount:_commandCount
+                                                               options:0];
+
+        MVKCommand* cmd = _head;
+        uint32_t i = 0;
+
+        while (cmd) {
+            if (auto bindIndexBuffer = dynamic_cast<MVKCmdBindIndexBuffer*>(cmd)) {
+                _icbIBB = bindIndexBuffer->getBufferBinding();
+            } else if (auto bindVertexBuffer = dynamic_cast<MVKCmdBindVertexBuffersMulti*>(cmd)) {
+                _icbVBB = bindVertexBuffer->getBufferBindings();
+            } else if (auto drawIndexed = dynamic_cast<MVKCmdDrawIndexed*>(cmd)) {
+                // TODO: Support other things? nah..
+                auto drawCmd = (MVKCmdDrawIndexed*) cmd;
+                id<MTLIndirectRenderCommand> ICBCommand = [_icbIfSecondary indirectRenderCommandAtIndex:i++];
+                drawCmd->encodeToICB(ICBCommand, _icbIBB);
+            }
+            cmd = cmd->_next;
+        }
+    }
+
     flushImmediateCmdEncoder();
-	checkDeferredEncoding();
+    checkDeferredEncoding();
 
 	return getConfigurationResult();
 }
@@ -413,11 +444,14 @@ void MVKCommandEncoder::endEncoding() {
 }
 
 void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
-	MVKCommand* cmd = secondaryCmdBuffer->_head;
-	while (cmd) {
-		cmd->encode(this);
-		cmd = cmd->_next;
-	}
+    auto icb = secondaryCmdBuffer->_icbIfSecondary;
+    [_mtlRenderEncoder useResource:secondaryCmdBuffer->_icbIBB.mtlBuffer usage:MTLResourceUsageRead stages:MTLRenderStageVertex];
+
+    for (const auto& vbb : secondaryCmdBuffer->_icbVBB) {
+        [_mtlRenderEncoder setVertexBuffer:vbb.mtlBuffer offset:vbb.offset atIndex:vbb.index];
+        [_mtlRenderEncoder useResource:vbb.mtlBuffer usage:MTLResourceUsageRead stages:MTLRenderStageVertex | MTLRenderStageFragment];
+    }
+    [_mtlRenderEncoder executeCommandsInBuffer:icb withRange:NSMakeRange(0, secondaryCmdBuffer->getCommandCount())];
 }
 
 void MVKCommandEncoder::beginRendering(MVKCommand* rendCmd, const VkRenderingInfo* pRenderingInfo) {

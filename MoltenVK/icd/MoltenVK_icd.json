@@ -1,7 +1,7 @@
 {
     "file_format_version" : "1.0.0",
     "ICD": {
-        "library_path": "./libMoltenVK.dylib",
+        "library_path": "/Users/oconnee/Library/Developer/Xcode/DerivedData/MoltenVKPackaging-eyiryupfgmhbbobgdgoqnimnvryt/Build/Products/Debug/libMoltenVK.dylib",
         "api_version" : "1.2.0",
         "is_portability_driver" : true
     }

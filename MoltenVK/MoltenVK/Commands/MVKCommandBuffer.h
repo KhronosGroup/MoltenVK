@@ -217,6 +217,10 @@ protected:
 	bool _supportsConcurrentExecution;
 	bool _wasExecuted;
 	bool _hasStageCounterTimestampCommand;
+    id<MTLIndirectCommandBuffer> _icbIfSecondary = nil;
+                             MVKIndexMTLBufferBinding _icbIBB;
+                             MVKSmallVector<MVKMTLBufferBinding, 8> _icbVBB;
+
 };
 
 
