@@ -156,7 +156,6 @@ public:
 	/** Called when a timestamp command is added. */
 	void recordTimestampCommand();
 
-
 #pragma mark Tessellation constituent command management
 
 	/** Update the last recorded pipeline with tessellation shaders */
@@ -553,6 +552,8 @@ protected:
 	MVKCommandUse _mtlComputeEncoderUse;
 	MVKCommandUse _mtlBlitEncoderUse;
 	bool _isRenderingEntireAttachment;
+    /** The most recent recorded graphics pipeline */
+    MVKGraphicsPipeline* _lastGraphicsPipeline;
 };
 
 

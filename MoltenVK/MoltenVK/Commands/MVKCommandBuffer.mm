@@ -446,6 +446,10 @@ void MVKCommandEncoder::endEncoding() {
 }
 
 void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
+    if (_lastGraphicsPipeline) {
+        _lastGraphicsPipeline->encode(this, kMVKGraphicsStageRasterization);
+    }
+
     auto icb = secondaryCmdBuffer->_icbIfSecondary;
     [_mtlRenderEncoder useResource:secondaryCmdBuffer->_icbIBB.mtlBuffer usage:MTLResourceUsageRead stages:MTLRenderStageVertex];
 
@@ -858,6 +862,7 @@ uint32_t MVKCommandEncoder::getFramebufferLayerCount() {
 void MVKCommandEncoder::bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline) {
     switch (pipelineBindPoint) {
         case VK_PIPELINE_BIND_POINT_GRAPHICS:
+            _lastGraphicsPipeline = (MVKGraphicsPipeline*)pipeline;
             _graphicsPipelineState.bindPipeline(pipeline);
             break;
 

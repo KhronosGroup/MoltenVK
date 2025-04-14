@@ -792,6 +792,7 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 					}
 				}
 			} else {
+                plDesc.supportIndirectCommandBuffers = YES;
 				getOrCompilePipeline(plDesc, _mtlPipelineState);
 			}
 			[plDesc release];																				// temp release
@@ -2839,7 +2840,7 @@ id<MTLRenderPipelineState> MVKRenderPipelineCompiler::newMTLRenderPipelineState(
 	compile(lock, ^{
 		auto mtlDev = getMTLDevice();
 		@synchronized (mtlDev) {
-            mtlRPLDesc.supportIndirectCommandBuffers = YES;
+//            mtlRPLDesc.supportIndirectCommandBuffers = YES;
 			[mtlDev newRenderPipelineStateWithDescriptor: mtlRPLDesc
 									   completionHandler: ^(id<MTLRenderPipelineState> ps, NSError* error) {
 										   bool isLate = compileComplete(ps, error);
