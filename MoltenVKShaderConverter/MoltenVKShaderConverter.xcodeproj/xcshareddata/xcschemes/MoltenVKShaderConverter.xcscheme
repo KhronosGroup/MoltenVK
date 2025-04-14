@@ -56,11 +56,11 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "-gi"
+            argument = "-si"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "path-to-glsl-file"
+            argument = "path-to-spirv-file"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument

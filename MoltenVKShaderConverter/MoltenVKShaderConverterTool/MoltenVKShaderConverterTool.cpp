@@ -137,6 +137,7 @@ bool MoltenVKShaderConverterTool::convertSPIRV(const vector<uint32_t>& spv,
 	mslContext.options.mslOptions.pad_argument_buffer_resources = false;
 	mslContext.options.mslOptions.argument_buffers_tier = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::ArgumentBuffersTier::Tier2;
 	mslContext.options.mslOptions.replace_recursive_inputs = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0);
+	mslContext.options.mslOptions.multi_patch_workgroup = true;
 
 	SPIRVToMSLConverter spvConverter;
 	spvConverter.setSPIRV(spv);
