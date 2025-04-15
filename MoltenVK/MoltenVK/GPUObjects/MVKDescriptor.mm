@@ -532,9 +532,11 @@ void MVKDescriptorSetLayoutBinding::populateShaderConversionConfig(mvk::SPIRVToM
                                                                    MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                                                    uint32_t dslIndex) {
 	bool isUsingMtlArgBuff = _layout->isUsingMetalArgumentBuffers();
-	// Previously this would set variable length array sizes to 1 for argument buffers.
-	// However, this no longer works on M1 and M2 GPUs, so use the full length.
-	uint32_t descCnt = getDescriptorCount();
+	// GPUs prior to M3 & A17 cannot support true runtime arrays, so use full binding array size.
+	// However, in doing so, it may be necessary to disable Apple shader validation errors on those systems,
+	// when descriptors contain smaller runtime arrays than declared in the binding.
+	bool useRuntimeArray = isUsingMtlArgBuff && getPhysicalDevice()->getMTLDeviceCapabilities().supportsApple9;
+	uint32_t descCnt = useRuntimeArray ? getDescriptorCount(1) : getDescriptorCount();
 
 	// Establish the resource indices to use, by combining the offsets of the DSL and this DSL binding.
     MVKShaderResourceBinding mtlIdxs = _mtlResourceIndexOffsets + dslMTLRezIdxOffsets;
