@@ -503,7 +503,7 @@ void SPIRVToMSLConverter::logSource(string& log, string& src, const char* srcLan
 }
 
 // Extracts the workgroup dimension from either the LocalSizeId, LocalSize, or WorkgroupSize Builtin.
-// Although LocalSizeId is the modern mechanism, the Builtin takes precedence if it is presidence.
+// Although LocalSizeId is the modern mechanism, the Builtin takes precedence if it is present.
 static void getWorkgroupSize(Compiler* pCompiler, SPIREntryPoint& spvEP, uint32_t& x, uint32_t& y, uint32_t& z) {
 	auto& wgSz = spvEP.workgroup_size;
 	if (spvEP.flags.get(ExecutionModeLocalSizeId) && !wgSz.constant) {
