@@ -19,8 +19,9 @@ MoltenVK 1.2.12
 Released TBD
 
 - Add support for extensions:
-	- `VK_KHR_zero_initialize_workgroup_memory`
+	- `VK_KHR_maintenance4`
 	- `VK_KHR_shader_terminate_invocation`
+	- `VK_KHR_zero_initialize_workgroup_memory`
 	- `VK_EXT_depth_clip_control`
 	- `VK_EXT_external_memory_metal`.
 	- `VK_EXT_image_2d_view_of_3d`
@@ -61,6 +62,7 @@ Released TBD
 - GitHub CI update legacy build to _macOS 13 / Xcode 14_.
 - Fix compile with `MVK_USE_CEREAL=0`.
 - Update to latest SPIRV-Cross:
+  - MSL: Support broader tessellation I/O matching for VK_KHR_maintenance4.
   - MSL: Pad array elements in Metal argument buffer when shader declares scalar.
   - MSL: Expose information about specialization constants - macro mapping
   - MSL: Use unpacked arguments in texture arguments.
@@ -74,6 +76,9 @@ Released TBD
   - GLSL/MSL: Support `VK_KHR_zero_initialize_workgroup_memory`
   - MSL: Treat pointer to vector as scalar type when bitcasting.
   - MSL: Use the more proper pointer typing.
+  - MSL: Use decltype for getting return of gather.
+  - MSL: Remove spvForward.
+  - MSL: Fix gather functions on Sequoia.
 
 
 

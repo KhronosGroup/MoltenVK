@@ -1924,11 +1924,11 @@ void MVKGraphicsPipeline::addVertexInputToShaderConversionConfig(SPIRVToMSLConve
         // declared type. Programs that try to invoke undefined behavior are on their own.
         switch (getPixelFormats()->getFormatType(pVKVA->format) ) {
         case kMVKFormatColorUInt8:
-            si.shaderVar.format = MSL_VERTEX_FORMAT_UINT8;
+            si.shaderVar.format = MSL_SHADER_VARIABLE_FORMAT_UINT8;
             break;
 
         case kMVKFormatColorUInt16:
-            si.shaderVar.format = MSL_VERTEX_FORMAT_UINT16;
+            si.shaderVar.format = MSL_SHADER_VARIABLE_FORMAT_UINT16;
             break;
 
         case kMVKFormatDepthStencil:
@@ -1938,7 +1938,7 @@ void MVKGraphicsPipeline::addVertexInputToShaderConversionConfig(SPIRVToMSLConve
             case VK_FORMAT_D16_UNORM_S8_UINT:
             case VK_FORMAT_D24_UNORM_S8_UINT:
             case VK_FORMAT_D32_SFLOAT_S8_UINT:
-                si.shaderVar.format = MSL_VERTEX_FORMAT_UINT8;
+                si.shaderVar.format = MSL_SHADER_VARIABLE_FORMAT_UINT8;
                 break;
 
             default:
@@ -1958,40 +1958,41 @@ void MVKGraphicsPipeline::addVertexInputToShaderConversionConfig(SPIRVToMSLConve
 // Initializes the shader outputs in a shader conversion config from the next stage input.
 void MVKGraphicsPipeline::addNextStageInputToShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig,
                                                                     SPIRVShaderInputs& shaderInputs) {
-    // Set the shader conversion configuration output variable information
     shaderConfig.shaderOutputs.clear();
-    uint32_t soCnt = (uint32_t)shaderInputs.size();
-    for (uint32_t soIdx = 0; soIdx < soCnt; soIdx++) {
-		if (!shaderInputs[soIdx].isUsed) { continue; }
 
-        mvk::MSLShaderInterfaceVariable so;
-        so.shaderVar.location = shaderInputs[soIdx].location;
-		so.shaderVar.component = shaderInputs[soIdx].component;
-        so.shaderVar.builtin = shaderInputs[soIdx].builtin;
-        so.shaderVar.vecsize = shaderInputs[soIdx].vecWidth;
-		so.shaderVar.rate = shaderInputs[soIdx].perPatch ? MSL_SHADER_VARIABLE_RATE_PER_PATCH : MSL_SHADER_VARIABLE_RATE_PER_VERTEX;
+	mvk::MSLShaderInterfaceVariable so;
+	auto& sosv = so.shaderVar;
+	for (auto& si : shaderInputs) {
+		if ( !si.isUsed ) { continue; }
 
-        switch (getPixelFormats()->getFormatType(mvkFormatFromOutput(shaderInputs[soIdx]) ) ) {
+        sosv.location = si.location;
+		sosv.component = si.component;
+        sosv.builtin = si.builtin;
+        sosv.vecsize = si.vecWidth;
+		sosv.rate = si.perPatch ? MSL_SHADER_VARIABLE_RATE_PER_PATCH : MSL_SHADER_VARIABLE_RATE_PER_VERTEX;
+
+        switch (getPixelFormats()->getFormatType(mvkFormatFromOutput(si) ) ) {
             case kMVKFormatColorUInt8:
-                so.shaderVar.format = MSL_SHADER_INPUT_FORMAT_UINT8;
+                sosv.format = MSL_SHADER_VARIABLE_FORMAT_UINT8;
                 break;
 
             case kMVKFormatColorUInt16:
-                so.shaderVar.format = MSL_SHADER_INPUT_FORMAT_UINT16;
+                sosv.format = MSL_SHADER_VARIABLE_FORMAT_UINT16;
                 break;
 
 			case kMVKFormatColorHalf:
 			case kMVKFormatColorInt16:
-				so.shaderVar.format = MSL_SHADER_INPUT_FORMAT_ANY16;
+				sosv.format = MSL_SHADER_VARIABLE_FORMAT_ANY16;
 				break;
 
 			case kMVKFormatColorFloat:
 			case kMVKFormatColorInt32:
 			case kMVKFormatColorUInt32:
-				so.shaderVar.format = MSL_SHADER_INPUT_FORMAT_ANY32;
+				sosv.format = MSL_SHADER_VARIABLE_FORMAT_ANY32;
 				break;
 
             default:
+				sosv.format = MSL_SHADER_VARIABLE_FORMAT_OTHER;
                 break;
         }
 
@@ -2002,40 +2003,41 @@ void MVKGraphicsPipeline::addNextStageInputToShaderConversionConfig(SPIRVToMSLCo
 // Initializes the shader inputs in a shader conversion config from the previous stage output.
 void MVKGraphicsPipeline::addPrevStageOutputToShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig,
                                                                      SPIRVShaderOutputs& shaderOutputs) {
-    // Set the shader conversion configuration input variable information
     shaderConfig.shaderInputs.clear();
-    uint32_t siCnt = (uint32_t)shaderOutputs.size();
-    for (uint32_t siIdx = 0; siIdx < siCnt; siIdx++) {
-		if (!shaderOutputs[siIdx].isUsed) { continue; }
 
-        mvk::MSLShaderInput si;
-        si.shaderVar.location = shaderOutputs[siIdx].location;
-		si.shaderVar.component = shaderOutputs[siIdx].component;
-        si.shaderVar.builtin = shaderOutputs[siIdx].builtin;
-        si.shaderVar.vecsize = shaderOutputs[siIdx].vecWidth;
-		si.shaderVar.rate = shaderOutputs[siIdx].perPatch ? MSL_SHADER_VARIABLE_RATE_PER_PATCH : MSL_SHADER_VARIABLE_RATE_PER_VERTEX;
+	mvk::MSLShaderInput si;
+	auto& sisv = si.shaderVar;
+	for (auto& so : shaderOutputs) {
+		if ( !so.isUsed ) { continue; }
 
-        switch (getPixelFormats()->getFormatType(mvkFormatFromOutput(shaderOutputs[siIdx]) ) ) {
+        sisv.location = so.location;
+		sisv.component = so.component;
+        sisv.builtin = so.builtin;
+        sisv.vecsize = so.vecWidth;
+		sisv.rate = so.perPatch ? MSL_SHADER_VARIABLE_RATE_PER_PATCH : MSL_SHADER_VARIABLE_RATE_PER_VERTEX;
+
+        switch (getPixelFormats()->getFormatType(mvkFormatFromOutput(so) ) ) {
             case kMVKFormatColorUInt8:
-                si.shaderVar.format = MSL_SHADER_INPUT_FORMAT_UINT8;
+                sisv.format = MSL_SHADER_VARIABLE_FORMAT_UINT8;
                 break;
 
             case kMVKFormatColorUInt16:
-                si.shaderVar.format = MSL_SHADER_INPUT_FORMAT_UINT16;
+                sisv.format = MSL_SHADER_VARIABLE_FORMAT_UINT16;
                 break;
 
 			case kMVKFormatColorHalf:
 			case kMVKFormatColorInt16:
-				si.shaderVar.format = MSL_SHADER_INPUT_FORMAT_ANY16;
+				sisv.format = MSL_SHADER_VARIABLE_FORMAT_ANY16;
 				break;
 
 			case kMVKFormatColorFloat:
 			case kMVKFormatColorInt32:
 			case kMVKFormatColorUInt32:
-				si.shaderVar.format = MSL_SHADER_INPUT_FORMAT_ANY32;
+				sisv.format = MSL_SHADER_VARIABLE_FORMAT_ANY32;
 				break;
 
             default:
+				sisv.format = MSL_SHADER_VARIABLE_FORMAT_OTHER;
                 break;
         }
 

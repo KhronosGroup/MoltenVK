@@ -2208,7 +2208,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkGetBufferMemoryRequirements2(
 
 	MVKTraceVulkanCallStart();
     MVKBuffer* mvkBuff = (MVKBuffer*)pInfo->buffer;
-    mvkBuff->getMemoryRequirements(pInfo, pMemoryRequirements);
+    mvkBuff->getMemoryRequirements(pMemoryRequirements);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2823,9 +2823,41 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyPrivateDataSlot(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_VULKAN_STUB(vkGetDeviceBufferMemoryRequirements, void, VkDevice, const VkDeviceBufferMemoryRequirements*, VkMemoryRequirements2*)
-MVK_PUBLIC_VULKAN_STUB(vkGetDeviceImageMemoryRequirements, void, VkDevice, const VkDeviceImageMemoryRequirements*, VkMemoryRequirements2*)
-MVK_PUBLIC_VULKAN_STUB(vkGetDeviceImageSparseMemoryRequirements, void, VkDevice, const VkDeviceImageMemoryRequirements*, uint32_t*, VkSparseImageMemoryRequirements2*)
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetDeviceBufferMemoryRequirements(
+	VkDevice                                    device,
+	const VkDeviceBufferMemoryRequirements*     pInfo,
+	VkMemoryRequirements2*                      pMemoryRequirements) {
+	
+	MVKTraceVulkanCallStart();
+	auto* mvkDev = MVKDevice::getMVKDevice(device);
+	MVKBuffer mvkBuff(mvkDev, pInfo->pCreateInfo);
+	mvkBuff.getMemoryRequirements(pMemoryRequirements);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetDeviceImageMemoryRequirements(
+	VkDevice                                    device,
+	const VkDeviceImageMemoryRequirements*      pInfo,
+	VkMemoryRequirements2*                      pMemoryRequirements) {
+	
+	MVKTraceVulkanCallStart();
+	auto* mvkDev = MVKDevice::getMVKDevice(device);
+	MVKImage mvkImg(mvkDev, pInfo->pCreateInfo);
+	mvkImg.getMemoryRequirements(pMemoryRequirements, MVKImage::getPlaneFromVkImageAspectFlags(pInfo->planeAspect));
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetDeviceImageSparseMemoryRequirements(
+	VkDevice                                    device,
+	const VkDeviceImageMemoryRequirements*      pInfo,
+	uint32_t*                                   pSparseMemoryRequirementCount,
+	VkSparseImageMemoryRequirements2*           pSparseMemoryRequirements) {
+	
+	MVKTraceVulkanCallStart();
+	// Sparse images are not currently supported
+	*pSparseMemoryRequirementCount = 0;
+	MVKTraceVulkanCallEnd();
+}
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceToolProperties(
     VkPhysicalDevice                            physicalDevice,
@@ -3114,6 +3146,14 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkTrimCommandPool, KHR);
 #pragma mark VK_KHR_maintenance3 extension
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetDescriptorSetLayoutSupport, KHR);
+
+
+#pragma mark -
+#pragma mark VK_KHR_maintenance4 extension
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetDeviceBufferMemoryRequirements, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetDeviceImageMemoryRequirements, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetDeviceImageSparseMemoryRequirements, KHR);
 
 
 #pragma mark -
