@@ -63,8 +63,9 @@ The **MoltenVK** runtime package contains two products:
 - **MoltenVK** is a implementation of an almost-complete subset of the
   [*Vulkan 1.2*](https://www.khronos.org/vulkan) graphics and compute API.
 
-- **MoltenVKShaderConverter** converts *SPIR-V* shader code to *Metal Shading Language (MSL)*
-  shader code, and converts *SPIR-V* shader code to *Metal Shading Language (MSL)* shader code.
+- **MoltenVKShaderConverter** converts *OpenGL Shading Language (GLSL)* source code to
+  *SPIR-V* code, and/or to *Metal Shading Language (MSL)* source code, or converts
+  *SPIR-V* code to *Metal Shading Language* source code.
   The converter is embedded in the **MoltenVK** runtime to automatically convert *SPIR-V* shaders
   to their *MSL* equivalents. In addition, the *SPIR-V* converter is packaged into a stand-alone command-line
   `MoltenVKShaderConverter` *macOS* tool for converting shaders at development time from the command line.
