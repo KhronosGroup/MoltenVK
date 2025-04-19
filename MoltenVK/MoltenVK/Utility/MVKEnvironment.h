@@ -39,10 +39,13 @@
 #	define Vk_PLATFORM_SurfaceCreateInfoMVK		VkMacOSSurfaceCreateInfoMVK
 #endif
 
+/** Macro to adjust the specified Vulkan to include the VK_HEADER_VERSION patch value. */
+#define MVK_VULKAN_API_VERSION_HEADER(api_ver)		VK_MAKE_VERSION(VK_VERSION_MAJOR(api_ver),	\
+                                                                    VK_VERSION_MINOR(api_ver),	\
+                                                                    VK_HEADER_VERSION)
+
 /** Macro to determine the Vulkan version supported by MoltenVK. */
-#define MVK_VULKAN_API_VERSION		VK_MAKE_VERSION(VK_VERSION_MAJOR(VK_API_VERSION_1_2),	\
-													VK_VERSION_MINOR(VK_API_VERSION_1_2),	\
-													VK_HEADER_VERSION)
+#define MVK_VULKAN_API_VERSION						MVK_VULKAN_API_VERSION_HEADER(VK_API_VERSION_1_3)
 
 /** 
  * Macro to adjust the specified Vulkan version to a value that can be compared for conformance 

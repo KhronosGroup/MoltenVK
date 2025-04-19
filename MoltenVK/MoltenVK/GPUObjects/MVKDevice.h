@@ -463,7 +463,7 @@ protected:
 	MVKPhysicalDeviceVulkan12FeaturesNoExt _vulkan12FeaturesNoExt;
 	MVKPhysicalDeviceMetalFeatures _metalFeatures;
 	VkPhysicalDeviceProperties _properties;
-	VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT _texelBuffAlignProperties;
+	VkPhysicalDeviceTexelBufferAlignmentProperties _texelBuffAlignProperties;
 	VkPhysicalDeviceMemoryProperties _memoryProperties;
 	MVKSmallVector<MVKQueueFamily*, kMVKQueueFamilyCount> _queueFamilies;
 	VkExternalMemoryProperties _hostPointerExternalMemoryProperties;

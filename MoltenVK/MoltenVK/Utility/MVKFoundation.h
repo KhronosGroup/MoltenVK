@@ -117,6 +117,9 @@ const char* mvkVkResultName(VkResult vkResult);
 /** Returns the name of the component swizzle. */
 const char* mvkVkComponentSwizzleName(VkComponentSwizzle swizzle);
 
+/** Returns whether this platform supports buffer device address. */
+bool mvkSupportsBufferDeviceAddress();
+
 /** Returns the Vulkan API version number as a string. */
 static inline std::string mvkGetVulkanVersionString(uint32_t vkVersion) {
 	std::string verStr;
