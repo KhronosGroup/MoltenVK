@@ -835,7 +835,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				subgroupSizeProps->minSubgroupSize = _metalFeatures.minSubgroupSize;
 				subgroupSizeProps->maxSubgroupSize = _metalFeatures.maxSubgroupSize;
 				subgroupSizeProps->maxComputeWorkgroupSubgroups = _properties.limits.maxComputeWorkGroupInvocations / _metalFeatures.minSubgroupSize;
-				subgroupSizeProps->requiredSubgroupSizeStages = 0;
+				subgroupSizeProps->requiredSubgroupSizeStages = VK_SHADER_STAGE_COMPUTE_BIT;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES: {
