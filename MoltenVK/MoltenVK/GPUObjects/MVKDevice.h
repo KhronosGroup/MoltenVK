@@ -463,7 +463,7 @@ protected:
 	MVKPhysicalDeviceVulkan12FeaturesNoExt _vulkan12FeaturesNoExt;
 	MVKPhysicalDeviceMetalFeatures _metalFeatures;
 	VkPhysicalDeviceProperties _properties;
-	VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT _texelBuffAlignProperties;
+	VkPhysicalDeviceTexelBufferAlignmentProperties _texelBuffAlignProperties;
 	VkPhysicalDeviceMemoryProperties _memoryProperties;
 	MVKSmallVector<MVKQueueFamily*, kMVKQueueFamilyCount> _queueFamilies;
 	VkExternalMemoryProperties _hostPointerExternalMemoryProperties;
@@ -704,9 +704,9 @@ public:
 
 	VkResult createPrivateDataSlot(const VkPrivateDataSlotCreateInfoEXT* pCreateInfo,
 								   const VkAllocationCallbacks* pAllocator,
-								   VkPrivateDataSlotEXT* pPrivateDataSlot);
+								   VkPrivateDataSlot* pPrivateDataSlot);
 
-	void destroyPrivateDataSlot(VkPrivateDataSlotEXT privateDataSlot,
+	void destroyPrivateDataSlot(VkPrivateDataSlot privateDataSlot,
 								const VkAllocationCallbacks* pAllocator);
 
 
@@ -1108,7 +1108,7 @@ class MVKPrivateDataSlot : public MVKVulkanAPIDeviceObject {
 public:
 
 	/** Returns the Vulkan type of this object. */
-	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_PRIVATE_DATA_SLOT_EXT; }
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_PRIVATE_DATA_SLOT; }
 
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT; }

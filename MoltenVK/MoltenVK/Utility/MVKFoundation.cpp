@@ -17,6 +17,7 @@
  */
 
 #include "MVKFoundation.h"
+#include "MVKOSExtensions.h"
 
 
 #define CASE_STRINGIFY(V)  case V: return #V
@@ -132,6 +133,8 @@ const char* mvkVkComponentSwizzleName(VkComponentSwizzle swizzle) {
 		default: return "VK_UNKNOWN_VKComponentSwizzle";
 	}
 }
+
+bool mvkSupportsBufferDeviceAddress() { return mvkOSVersionIsAtLeast(13.0, 16.0, 1.0); }
 
 
 #pragma mark -

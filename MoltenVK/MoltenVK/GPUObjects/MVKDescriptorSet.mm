@@ -111,7 +111,7 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
 
 static const void* getWriteParameters(VkDescriptorType type, const VkDescriptorImageInfo* pImageInfo,
                                       const VkDescriptorBufferInfo* pBufferInfo, const VkBufferView* pTexelBufferView,
-                                      const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock,
+                                      const VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock,
                                       size_t& stride) {
     const void* pData;
     switch (type) {
@@ -138,9 +138,9 @@ static const void* getWriteParameters(VkDescriptorType type, const VkDescriptorI
         stride = sizeof(MVKBufferView*);
         break;
 
-    case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+    case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
         pData = pInlineUniformBlock;
-        stride = sizeof(VkWriteDescriptorSetInlineUniformBlockEXT);
+        stride = sizeof(VkWriteDescriptorSetInlineUniformBlock);
         break;
 
     default:
@@ -160,7 +160,6 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
 
 	if (!cmdEncoder) { clearConfigurationResult(); }
 
-	auto& enabledExtns = getEnabledExtensions();
 	for (const VkWriteDescriptorSet& descWrite : descriptorWrites) {
         uint32_t dstBinding = descWrite.dstBinding;
         uint32_t dstArrayElement = descWrite.dstArrayElement;
@@ -168,19 +167,17 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
         const VkDescriptorImageInfo* pImageInfo = descWrite.pImageInfo;
         const VkDescriptorBufferInfo* pBufferInfo = descWrite.pBufferInfo;
         const VkBufferView* pTexelBufferView = descWrite.pTexelBufferView;
-        const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
-        if (enabledExtns.vk_EXT_inline_uniform_block.enabled) {
-			for (const auto* next = (VkBaseInStructure*)descWrite.pNext; next; next = next->pNext) {
-                switch (next->sType) {
-                case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
-					pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlockEXT*)next;
-                    break;
-                }
-                default:
-                    break;
-                }
-            }
-        }
+        const VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock = nullptr;
+		for (const auto* next = (VkBaseInStructure*)descWrite.pNext; next; next = next->pNext) {
+			switch (next->sType) {
+				case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK: {
+					pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlock*)next;
+					break;
+				}
+				default:
+					break;
+			}
+		}
         if (!_bindingToIndex.count(dstBinding)) continue;
         // Note: This will result in us walking off the end of the array
         // in case there are too many updates... but that's ill-defined anyway.
@@ -467,11 +464,11 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
 							 const void* pData) {
 
 	auto* mvkDSLBind = _layout->getBinding(pDescriptorAction->dstBinding);
-	if (mvkDSLBind->getDescriptorType() == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+	if (mvkDSLBind->getDescriptorType() == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
 		// For inline buffers, descriptorCount is a byte count and dstArrayElement is a byte offset.
 		// If needed, Vulkan allows updates to extend into subsequent bindings that are of the same type,
 		// so iterate layout bindings and their associated descriptors, until all bytes are updated.
-		const auto* pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlockEXT*)pData;
+		const auto* pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlock*)pData;
 		uint32_t numBytesToCopy = pDescriptorAction->descriptorCount;
 		uint32_t dstOffset = pDescriptorAction->dstArrayElement;
 		uint32_t srcOffset = 0;
@@ -500,11 +497,11 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
 							VkDescriptorImageInfo* pImageInfo,
 							VkDescriptorBufferInfo* pBufferInfo,
 							VkBufferView* pTexelBufferView,
-							VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+							VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock) {
 
 	MVKDescriptorSetLayoutBinding* mvkDSLBind = _layout->getBinding(pDescriptorCopy->srcBinding);
 	VkDescriptorType descType = mvkDSLBind->getDescriptorType();
-    if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+    if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
 		// For inline buffers, descriptorCount is a byte count and dstArrayElement is a byte offset.
 		// If needed, Vulkan allows updates to extend into subsequent bindings that are of the same type,
 		// so iterate layout bindings and their associated descriptors, until all bytes are updated.
@@ -862,7 +859,7 @@ VkResult MVKDescriptorPool::allocateDescriptor(VkDescriptorType descriptorType,
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 			return _storageBufferDynamicDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
-		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
 			return _inlineUniformBlockDescriptors.allocateDescriptor(descriptorType, pMVKDesc, dynamicAllocation, this);
 
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
@@ -906,7 +903,7 @@ void MVKDescriptorPool::freeDescriptor(MVKDescriptor* mvkDesc) {
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 			return _storageBufferDynamicDescriptors.freeDescriptor(mvkDesc, this);
 
-		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
 			return _inlineUniformBlockDescriptors.freeDescriptor(mvkDesc, this);
 
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
@@ -938,15 +935,15 @@ void MVKDescriptorPool::freeDescriptor(MVKDescriptor* mvkDesc) {
 // Return the size of the preallocated pool for descriptors of the specified type.
 // There may be more than one poolSizeCount instance for the desired VkDescriptorType.
 // Accumulate the descriptor count for the desired VkDescriptorType accordingly.
-// For descriptors of the VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT type,
+// For descriptors of the VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK type,
 // we accumulate the count via the pNext chain.
 size_t MVKDescriptorPool::getPoolSize(const VkDescriptorPoolCreateInfo* pCreateInfo, VkDescriptorType descriptorType) {
 	uint32_t descCnt = 0;
-	if (descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+	if (descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
 		for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 			switch (next->sType) {
-				case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO_EXT: {
-					auto* pDescPoolInlineBlockCreateInfo = (VkDescriptorPoolInlineUniformBlockCreateInfoEXT*)next;
+				case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO: {
+					auto* pDescPoolInlineBlockCreateInfo = (VkDescriptorPoolInlineUniformBlockCreateInfo*)next;
 					descCnt += pDescPoolInlineBlockCreateInfo->maxInlineUniformBlockBindings;
 					break;
 				}
@@ -1000,7 +997,7 @@ MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCr
 	_storageBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)),
 	_uniformBufferDynamicDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)),
 	_storageBufferDynamicDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)),
-	_inlineUniformBlockDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT)),
+	_inlineUniformBlockDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK)),
 	_sampledImageDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE)),
 	_storageImageDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)),
 	_inputAttachmentDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)),
@@ -1027,7 +1024,7 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 		for (uint32_t poolIdx = 0; poolIdx < poolCnt; poolIdx++) {
 			auto& poolSize = pCreateInfo->pPoolSizes[poolIdx];
 			switch (poolSize.type) {
-				// VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT counts handled separately below
+				// VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK counts handled separately below
 				case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 				case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 				case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
@@ -1062,11 +1059,11 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 			}
 		}
 
-		// VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT counts pulled separately
+		// VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK counts pulled separately
 		for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 			switch (next->sType) {
-				case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO_EXT: {
-					auto* pDescPoolInlineBlockCreateInfo = (VkDescriptorPoolInlineUniformBlockCreateInfoEXT*)next;
+				case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO: {
+					auto* pDescPoolInlineBlockCreateInfo = (VkDescriptorPoolInlineUniformBlockCreateInfo*)next;
 					mtlBuffCnt += pDescPoolInlineBlockCreateInfo->maxInlineUniformBlockBindings;
 					break;
 				}
@@ -1236,17 +1233,15 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 
 		if( !dstSet ) { continue; }		// Nulls are permitted
 
-		const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
-		if (dstSet->getEnabledExtensions().vk_EXT_inline_uniform_block.enabled) {
-			for (const auto* next = (VkBaseInStructure*)pDescWrite->pNext; next; next = next->pNext) {
-				switch (next->sType) {
-				case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
-					pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlockEXT*)next;
+		const VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock = nullptr;
+		for (const auto* next = (VkBaseInStructure*)pDescWrite->pNext; next; next = next->pNext) {
+			switch (next->sType) {
+				case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK: {
+					pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlock*)next;
 					break;
 				}
 				default:
 					break;
-				}
 			}
 		}
 
@@ -1267,8 +1262,8 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 
 		// For inline block create a temp buffer of descCnt bytes to hold data during copy.
 		uint8_t dstBuffer[descCnt];
-		VkWriteDescriptorSetInlineUniformBlockEXT inlineUniformBlock;
-		inlineUniformBlock.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT;
+		VkWriteDescriptorSetInlineUniformBlock inlineUniformBlock;
+		inlineUniformBlock.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK;
 		inlineUniformBlock.pNext = nullptr;
 		inlineUniformBlock.pData = dstBuffer;
 		inlineUniformBlock.dataSize = descCnt;
@@ -1302,9 +1297,9 @@ void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet descriptorSet,
 		const void* pCurData = (const char*)pData + pEntry->offset;
 
 		// For inline block, wrap the raw data in in inline update struct.
-		VkWriteDescriptorSetInlineUniformBlockEXT inlineUniformBlock;
-		if (pEntry->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
-			inlineUniformBlock.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT;
+		VkWriteDescriptorSetInlineUniformBlock inlineUniformBlock;
+		if (pEntry->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
+			inlineUniformBlock.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK;
 			inlineUniformBlock.pNext = nullptr;
 			inlineUniformBlock.pData = pCurData;
 			inlineUniformBlock.dataSize = pEntry->descriptorCount;

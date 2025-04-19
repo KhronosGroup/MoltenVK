@@ -181,7 +181,7 @@ public:
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
-			  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
+			  VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock);
 
 	/** Returns the descriptor at an index. */
 	MVKDescriptor* getDescriptorAt(uint32_t descIndex) { return _descriptors[descIndex]; }

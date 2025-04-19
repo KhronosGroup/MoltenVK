@@ -296,6 +296,13 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 												  getDriverLayer()->getSupportedInstanceExtensions()));
 
 	initMVKConfig(pCreateInfo);		// After extensions enabled.
+
+	// If a maximum API version has been configured, honor it.
+	auto cfgAPIVer = getMVKConfig().apiVersionToAdvertise;
+	if (MVK_VULKAN_API_VERSION_CONFORM(_appInfo.apiVersion) > MVK_VULKAN_API_VERSION_CONFORM(cfgAPIVer)) {
+		_appInfo.apiVersion = cfgAPIVer;
+	}
+
 	initProcAddrs();				// Init function pointers
 	logVersions();					// Log the MoltenVK and Vulkan versions. After config.
 
@@ -316,6 +323,11 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 
 	if (MVK_MACCAT && !mvkOSVersionIsAtLeast(11.0)) {
 		setConfigurationResult(reportError(VK_ERROR_INCOMPATIBLE_DRIVER, "To support Mac Catalyst, MoltenVK requires macOS 11.0 or above."));
+	}
+
+	// Warn if the Vulkan version requires buffer device address, but it is not available.
+	if ( !mvkSupportsBufferDeviceAddress() && (MVK_VULKAN_API_VERSION_CONFORM(_appInfo.apiVersion) >= MVK_VULKAN_API_VERSION_CONFORM(VK_API_VERSION_1_3)) ) {
+		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "VkPhysicalDeviceVulkan12Features::bufferDeviceAddress is a mandatory feature as of Vulkan 1.3, but is not supported on this platform.");
 	}
 
 	MVKLogInfo("Created VkInstance for Vulkan version %s, as requested by app, with the following %d Vulkan extensions enabled:%s",

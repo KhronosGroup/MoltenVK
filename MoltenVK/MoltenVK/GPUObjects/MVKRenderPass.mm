@@ -812,7 +812,7 @@ MTLStoreAction MVKAttachmentDescription::getMTLStoreAction(MVKRenderSubpass* sub
 bool MVKAttachmentDescription::shouldClearAttachment(MVKRenderSubpass* subpass, bool isStencil) {
 
 	// If the renderpass is being resumed after being suspended, don't clear this attachment.
-	if (mvkIsAnyFlagEnabled(_renderPass->getRenderingFlags(), VK_RENDERING_RESUMING_BIT_KHR)) { return false; }
+	if (mvkIsAnyFlagEnabled(_renderPass->getRenderingFlags(), VK_RENDERING_RESUMING_BIT)) { return false; }
 
 	// If the subpass is not the first subpass to use this attachment, don't clear this attachment.
 	if (subpass->isMultiview()) {
