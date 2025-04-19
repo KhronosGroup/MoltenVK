@@ -56,7 +56,7 @@ distribution package, see the main [`README.md`](../README.md) document in the `
 About **MoltenVK**
 ------------------
 
-**MoltenVK** is a layered implementation of [*Vulkan 1.2*](https://www.khronos.org/vulkan)
+**MoltenVK** is a layered implementation of [*Vulkan 1.3*](https://www.khronos.org/vulkan)
 graphics and compute functionality, that is built on Apple's [*Metal*](https://developer.apple.com/metal)
 graphics and compute framework on *macOS*, *iOS*, and *tvOS*. **MoltenVK** allows you to use *Vulkan*
 graphics and compute functionality to develop modern, cross-platform, high-performance graphical games
@@ -287,6 +287,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_uniform_buffer_standard_layout`
 - `VK_KHR_variable_pointers`
 - `VK_KHR_vertex_attribute_divisor`
+- `VK_KHR_vulkan_memory_model`
 - `VK_KHR_zero_initialize_workgroup_memory`
 - `VK_EXT_4444_formats`
   - *Requires 16-bit formats and either native texture swizzling or manual swizzling to be enabled.*

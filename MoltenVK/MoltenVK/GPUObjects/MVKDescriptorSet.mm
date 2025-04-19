@@ -160,7 +160,6 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
 
 	if (!cmdEncoder) { clearConfigurationResult(); }
 
-	auto& enabledExtns = getEnabledExtensions();
 	for (const VkWriteDescriptorSet& descWrite : descriptorWrites) {
         uint32_t dstBinding = descWrite.dstBinding;
         uint32_t dstArrayElement = descWrite.dstArrayElement;
@@ -169,18 +168,16 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
         const VkDescriptorBufferInfo* pBufferInfo = descWrite.pBufferInfo;
         const VkBufferView* pTexelBufferView = descWrite.pTexelBufferView;
         const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
-        if (enabledExtns.vk_EXT_inline_uniform_block.enabled) {
-			for (const auto* next = (VkBaseInStructure*)descWrite.pNext; next; next = next->pNext) {
-                switch (next->sType) {
-                case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
+		for (const auto* next = (VkBaseInStructure*)descWrite.pNext; next; next = next->pNext) {
+			switch (next->sType) {
+				case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
 					pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlockEXT*)next;
-                    break;
-                }
-                default:
-                    break;
-                }
-            }
-        }
+					break;
+				}
+				default:
+					break;
+			}
+		}
         if (!_bindingToIndex.count(dstBinding)) continue;
         // Note: This will result in us walking off the end of the array
         // in case there are too many updates... but that's ill-defined anyway.
@@ -1237,16 +1234,14 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 		if( !dstSet ) { continue; }		// Nulls are permitted
 
 		const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
-		if (dstSet->getEnabledExtensions().vk_EXT_inline_uniform_block.enabled) {
-			for (const auto* next = (VkBaseInStructure*)pDescWrite->pNext; next; next = next->pNext) {
-				switch (next->sType) {
+		for (const auto* next = (VkBaseInStructure*)pDescWrite->pNext; next; next = next->pNext) {
+			switch (next->sType) {
 				case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
 					pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlockEXT*)next;
 					break;
 				}
 				default:
 					break;
-				}
 			}
 		}
 

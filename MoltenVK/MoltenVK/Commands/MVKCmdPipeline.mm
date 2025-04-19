@@ -428,7 +428,6 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 	_pipelineLayout->retain();
 
 	// Add the descriptor writes
-	auto& enabledExtns = cmdBuff->getEnabledExtensions();
 	clearDescriptorWrites();	// Clear for reuse
 	_descriptorWrites.reserve(descriptorWriteCount);
 	for (uint32_t dwIdx = 0; dwIdx < descriptorWriteCount; dwIdx++) {
@@ -450,24 +449,22 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 			std::copy_n(descWrite.pTexelBufferView, descWrite.descriptorCount, pNewTexelBufferView);
 			descWrite.pTexelBufferView = pNewTexelBufferView;
 		}
-        if (enabledExtns.vk_EXT_inline_uniform_block.enabled) {
-            const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
-			for (const auto* next = (VkBaseInStructure*)descWrite.pNext; next; next = next->pNext) {
-                switch (next->sType) {
-                case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
-                    pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlockEXT*)next;
-                    break;
-                }
-                default:
-                    break;
-                }
-            }
-            if (pInlineUniformBlock) {
-                auto *pNewInlineUniformBlock = new VkWriteDescriptorSetInlineUniformBlockEXT(*pInlineUniformBlock);
-                pNewInlineUniformBlock->pNext = nullptr; // clear pNext just in case, no other extensions are supported at this time
-                descWrite.pNext = pNewInlineUniformBlock;
-            }
-        }
+		const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
+		for (const auto* next = (VkBaseInStructure*)descWrite.pNext; next; next = next->pNext) {
+			switch (next->sType) {
+				case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
+					pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlockEXT*)next;
+					break;
+				}
+				default:
+					break;
+			}
+		}
+		if (pInlineUniformBlock) {
+			auto *pNewInlineUniformBlock = new VkWriteDescriptorSetInlineUniformBlockEXT(*pInlineUniformBlock);
+			pNewInlineUniformBlock->pNext = nullptr; // clear pNext just in case, no other extensions are supported at this time
+			descWrite.pNext = pNewInlineUniformBlock;
+		}
 	}
 
 	// Validate by encoding on a null encoder

@@ -13,14 +13,16 @@ Copyright (c) 2015-2024 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
-MoltenVK 1.2.12
+MoltenVK 1.3.0
 ---------------
 
 Released TBD
 
+- Add support for _Vulkan 1.3_.
 - Add support for extensions:
 	- `VK_KHR_maintenance4`
 	- `VK_KHR_shader_terminate_invocation`
+	- `VK_KHR_vulkan_memory_model`
 	- `VK_KHR_zero_initialize_workgroup_memory`
 	- `VK_EXT_depth_clip_control`
 	- `VK_EXT_external_memory_metal`.
