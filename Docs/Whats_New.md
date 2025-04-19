@@ -59,6 +59,7 @@ Released TBD
 - Fix a crash when searching the first enabled bit in a completely disabled bit array.
 - When logging a pipeline layout, log contained descriptor set layouts.
 - Add debug labels to barrier fences.
+- Allow the proc address of `vkGetMoltenVKConfigurationMVK()` to be retrieved before a `VkInstance` has been created.
 - GitHub CI update legacy build to _macOS 13 / Xcode 14_.
 - Fix compile with `MVK_USE_CEREAL=0`.
 - Update to latest SPIRV-Cross:
