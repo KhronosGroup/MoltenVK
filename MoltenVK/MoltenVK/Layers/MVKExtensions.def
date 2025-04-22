@@ -85,6 +85,7 @@ MVK_EXTENSION(KHR_sampler_ycbcr_conversion,           KHR_SAMPLER_YCBCR_CONVERSI
 MVK_EXTENSION(KHR_separate_depth_stencil_layouts,     KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS,     DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_shader_atomic_int64,                KHR_SHADER_ATOMIC_INT64,                DEVICE,   MVK_NA, MVK_NA, MVK_NA)
 MVK_EXTENSION(KHR_shader_draw_parameters,             KHR_SHADER_DRAW_PARAMETERS,             DEVICE,   10.11,  8.0,  1.0)
+MVK_EXTENSION(KHR_shader_expect_assume,               KHR_SHADER_EXPECT_ASSUME,               DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_shader_float_controls,              KHR_SHADER_FLOAT_CONTROLS,              DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_shader_float16_int8,                KHR_SHADER_FLOAT16_INT8,                DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_shader_integer_dot_product,         KHR_SHADER_INTEGER_DOT_PRODUCT,         DEVICE,   10.11,  8.0,  1.0)

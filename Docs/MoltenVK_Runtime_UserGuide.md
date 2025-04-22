@@ -270,6 +270,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_sampler_ycbcr_conversion`
 - `VK_KHR_separate_depth_stencil_layouts`
 - `VK_KHR_shader_draw_parameters`
+- `VK_KHR_shader_expect_assume`
 - `VK_KHR_shader_float_controls`
 - `VK_KHR_shader_float16_int8`
 - `VK_KHR_shader_integer_dot_product`
