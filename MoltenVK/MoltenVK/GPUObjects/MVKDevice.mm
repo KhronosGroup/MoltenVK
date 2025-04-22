@@ -232,15 +232,36 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 		.separateDepthStencilLayouts = true,
 		.hostQueryReset = true,
 		.timelineSemaphore = true,
-		.bufferDeviceAddress = mvkOSVersionIsAtLeast(13.0, 16.0, 1.0),
+		.bufferDeviceAddress = mvkSupportsBufferDeviceAddress(),
 		.bufferDeviceAddressCaptureReplay = false,
 		.bufferDeviceAddressMultiDevice = false,
-		.vulkanMemoryModel = false,
-		.vulkanMemoryModelDeviceScope = false,
+		.vulkanMemoryModel = true,
+		.vulkanMemoryModelDeviceScope = true,
 		.vulkanMemoryModelAvailabilityVisibilityChains = false,
 		.shaderOutputViewportIndex = _vulkan12FeaturesNoExt.shaderOutputViewportIndex,
 		.shaderOutputLayer = _vulkan12FeaturesNoExt.shaderOutputLayer,
 		.subgroupBroadcastDynamicId = _vulkan12FeaturesNoExt.subgroupBroadcastDynamicId,
+	};
+
+	// Create a SSOT for these Vulkan 1.3 features, which can be queried via two mechanisms here.
+	VkPhysicalDeviceVulkan13Features supportedFeats13 = {
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+		.pNext = nullptr,
+		.robustImageAccess = true,
+		.inlineUniformBlock = true,
+		.descriptorBindingInlineUniformBlockUpdateAfterBind = true,
+		.pipelineCreationCacheControl = true,
+		.privateData = true,
+		.shaderDemoteToHelperInvocation = mvkOSVersionIsAtLeast(11.0, 14.0, 1.0),
+		.shaderTerminateInvocation = true,
+		.subgroupSizeControl = _metalFeatures.simdPermute || _metalFeatures.quadPermute,
+		.computeFullSubgroups = _metalFeatures.simdPermute || _metalFeatures.quadPermute,
+		.synchronization2 = true,
+		.textureCompressionASTC_HDR = _metalFeatures.astcHDRTextures,
+		.shaderZeroInitializeWorkgroupMemory = true,
+		.dynamicRendering = true,
+		.shaderIntegerDotProduct = true,
+		.maintenance4 = true,
 	};
 
 	features->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -259,6 +280,13 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				auto* pFeats12 = (VkPhysicalDeviceVulkan12Features*)next;
 				supportedFeats12.pNext = pFeats12->pNext;
 				*pFeats12 = supportedFeats12;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES: {
+				// Copy from supportedFeats13, but keep pNext as is.
+				auto* pFeats13 = (VkPhysicalDeviceVulkan13Features*)next;
+				supportedFeats13.pNext = pFeats13->pNext;
+				*pFeats13 = supportedFeats13;
 				break;
 			}
 
@@ -312,7 +340,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES: {
 				auto* dynamicRenderingFeatures = (VkPhysicalDeviceDynamicRenderingFeatures*)next;
-				dynamicRenderingFeatures->dynamicRendering = true;
+				dynamicRenderingFeatures->dynamicRendering = supportedFeats13.dynamicRendering;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES: {
@@ -327,18 +355,18 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES: {
 				auto *imageRobustnessFeatures = (VkPhysicalDeviceImageRobustnessFeatures*)next;
-				imageRobustnessFeatures->robustImageAccess = true;
+				imageRobustnessFeatures->robustImageAccess = supportedFeats13.robustImageAccess;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES: {
 				auto* inlineUniformBlockFeatures = (VkPhysicalDeviceInlineUniformBlockFeatures*)next;
-				inlineUniformBlockFeatures->inlineUniformBlock = true;
-				inlineUniformBlockFeatures->descriptorBindingInlineUniformBlockUpdateAfterBind = true;
+				inlineUniformBlockFeatures->inlineUniformBlock = supportedFeats13.inlineUniformBlock;
+				inlineUniformBlockFeatures->descriptorBindingInlineUniformBlockUpdateAfterBind = supportedFeats13.descriptorBindingInlineUniformBlockUpdateAfterBind;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES: {
 				auto* maintenace4Features = (VkPhysicalDeviceMaintenance4Features*)next;
-				maintenace4Features->maintenance4 = true;
+				maintenace4Features->maintenance4 = supportedFeats13.maintenance4;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
@@ -350,7 +378,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES: {
 				auto* privateDataFeatures = (VkPhysicalDevicePrivateDataFeatures*)next;
-				privateDataFeatures->privateData = true;
+				privateDataFeatures->privateData = supportedFeats13.privateData;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
@@ -397,18 +425,18 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES: {
 				auto* subgroupSizeFeatures = (VkPhysicalDeviceSubgroupSizeControlFeatures*)next;
-				subgroupSizeFeatures->subgroupSizeControl = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
-				subgroupSizeFeatures->computeFullSubgroups = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
+				subgroupSizeFeatures->subgroupSizeControl = supportedFeats13.subgroupSizeControl;
+				subgroupSizeFeatures->computeFullSubgroups = supportedFeats13.computeFullSubgroups;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES: {
 				auto* synch2Features = (VkPhysicalDeviceSynchronization2Features*)next;
-				synch2Features->synchronization2 = true;
+				synch2Features->synchronization2 = supportedFeats13.synchronization2;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES: {
 				auto* astcHDRFeatures = (VkPhysicalDeviceTextureCompressionASTCHDRFeatures*)next;
-				astcHDRFeatures->textureCompressionASTC_HDR = _metalFeatures.astcHDRTextures;
+				astcHDRFeatures->textureCompressionASTC_HDR = supportedFeats13.textureCompressionASTC_HDR;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
@@ -436,7 +464,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES: {
 				auto* zeroInitWorkgroupMemFeatures = (VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures*)next;
-				zeroInitWorkgroupMemFeatures->shaderZeroInitializeWorkgroupMemory = true;
+				zeroInitWorkgroupMemFeatures->shaderZeroInitializeWorkgroupMemory = supportedFeats13.shaderZeroInitializeWorkgroupMemory;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR: {
@@ -466,12 +494,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_FEATURES: {
 				auto* shaderIntDotFeatures = (VkPhysicalDeviceShaderIntegerDotProductFeatures*)next;
-				shaderIntDotFeatures->shaderIntegerDotProduct = true;
+				shaderIntDotFeatures->shaderIntegerDotProduct = supportedFeats13.shaderIntegerDotProduct;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES_KHR: {
-				auto* terminateFeatures = (VkPhysicalDeviceShaderTerminateInvocationFeaturesKHR*)next;
-				terminateFeatures->shaderTerminateInvocation = true;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES: {
+				auto* terminateFeatures = (VkPhysicalDeviceShaderTerminateInvocationFeatures*)next;
+				terminateFeatures->shaderTerminateInvocation = supportedFeats13.shaderTerminateInvocation;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
@@ -555,9 +583,9 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				}
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT: {
-				auto* pipelineCreationCacheControlFeatures = (VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT*)next;
-				pipelineCreationCacheControlFeatures->pipelineCreationCacheControl = true;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES: {
+				auto* pipelineCreationCacheControlFeatures = (VkPhysicalDevicePipelineCreationCacheControlFeatures*)next;
+				pipelineCreationCacheControlFeatures->pipelineCreationCacheControl = supportedFeats13.pipelineCreationCacheControl;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
@@ -584,9 +612,9 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				atomicFloatFeatures->sparseImageFloat32AtomicAdd = false;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT: {
-				auto* demoteFeatures = (VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT*)next;
-				demoteFeatures->shaderDemoteToHelperInvocation = mvkOSVersionIsAtLeast(11.0, 14.0, 1.0);
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES: {
+				auto* demoteFeatures = (VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures*)next;
+				demoteFeatures->shaderDemoteToHelperInvocation = supportedFeats13.shaderDemoteToHelperInvocation;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT: {
@@ -645,6 +673,8 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps11.maxPerSetDescriptors = getMaxPerSetDescriptorCount();
 	supportedProps11.maxMemoryAllocationSize = _metalFeatures.maxMTLBufferSize;
 
+	static constexpr VkConformanceVersion testedCTSVer = { 1, 3, 8, 0 };	// Latest version of CTS used to test
+
 	// Create a SSOT for these Vulkan 1.2 properties, which can be queried via two mechanisms here.
 	VkPhysicalDeviceVulkan12Properties supportedProps12;
 	supportedProps12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
@@ -652,10 +682,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps12.driverID = VK_DRIVER_ID_MOLTENVK;
 	strcpy(supportedProps12.driverName, kMVKMoltenVKDriverLayerName);
 	strcpy(supportedProps12.driverInfo, MVK_VERSION_STRING);
-	supportedProps12.conformanceVersion.major = 0;
-	supportedProps12.conformanceVersion.minor = 0;
-	supportedProps12.conformanceVersion.subminor = 0;
-	supportedProps12.conformanceVersion.patch = 0;
+	supportedProps12.conformanceVersion = testedCTSVer;
 	supportedProps12.denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_NONE;
 	supportedProps12.roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_NONE;
 	supportedProps12.shaderSignedZeroInfNanPreserveFloat16 = true;
@@ -707,6 +734,56 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps12.maxTimelineSemaphoreValueDifference = std::numeric_limits<uint64_t>::max();
 	supportedProps12.framebufferIntegerColorSampleCounts = _metalFeatures.supportedSampleCounts;
 
+	// Create a SSOT for these Vulkan 1.3 properties, which can be queried via two mechanisms here.
+	VkPhysicalDeviceVulkan13Properties supportedProps13;
+	supportedProps13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
+	supportedProps13.pNext = nullptr;
+	supportedProps13.minSubgroupSize = _metalFeatures.minSubgroupSize;
+	supportedProps13.maxSubgroupSize = _metalFeatures.maxSubgroupSize;
+	supportedProps13.maxComputeWorkgroupSubgroups = _properties.limits.maxComputeWorkGroupInvocations / _metalFeatures.minSubgroupSize;
+	supportedProps13.requiredSubgroupSizeStages = 0;
+	supportedProps13.maxInlineUniformBlockSize = _metalFeatures.dynamicMTLBufferSize;
+	supportedProps13.maxPerStageDescriptorInlineUniformBlocks = _metalFeatures.dynamicMTLBufferSize ? _metalFeatures.maxPerStageDynamicMTLBufferCount - 1 : 0;    // Less one for push constants
+	supportedProps13.maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = supportedProps13.maxPerStageDescriptorInlineUniformBlocks;
+	supportedProps13.maxDescriptorSetInlineUniformBlocks = supportedProps13.maxPerStageDescriptorInlineUniformBlocks * 4;
+	supportedProps13.maxDescriptorSetUpdateAfterBindInlineUniformBlocks = supportedProps13.maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks * 4;
+	supportedProps13.maxInlineUniformTotalSize = kMVKUndefinedLargeUInt32;
+	supportedProps13.integerDotProduct8BitUnsignedAccelerated = false;
+	supportedProps13.integerDotProduct8BitSignedAccelerated = false;
+	supportedProps13.integerDotProduct8BitMixedSignednessAccelerated = false;
+	supportedProps13.integerDotProduct4x8BitPackedUnsignedAccelerated = false;
+	supportedProps13.integerDotProduct4x8BitPackedSignedAccelerated = false;
+	supportedProps13.integerDotProduct4x8BitPackedMixedSignednessAccelerated = false;
+	supportedProps13.integerDotProduct16BitUnsignedAccelerated = false;
+	supportedProps13.integerDotProduct16BitSignedAccelerated = false;
+	supportedProps13.integerDotProduct16BitMixedSignednessAccelerated = false;
+	supportedProps13.integerDotProduct32BitUnsignedAccelerated = false;
+	supportedProps13.integerDotProduct32BitSignedAccelerated = false;
+	supportedProps13.integerDotProduct32BitMixedSignednessAccelerated = false;
+	supportedProps13.integerDotProduct64BitUnsignedAccelerated = false;
+	supportedProps13.integerDotProduct64BitSignedAccelerated = false;
+	supportedProps13.integerDotProduct64BitMixedSignednessAccelerated = false;
+	supportedProps13.integerDotProductAccumulatingSaturating8BitUnsignedAccelerated = false;
+	supportedProps13.integerDotProductAccumulatingSaturating8BitSignedAccelerated = false;
+	supportedProps13.integerDotProductAccumulatingSaturating8BitMixedSignednessAccelerated = false;
+	supportedProps13.integerDotProductAccumulatingSaturating4x8BitPackedUnsignedAccelerated = false;
+	supportedProps13.integerDotProductAccumulatingSaturating4x8BitPackedSignedAccelerated = false;
+	supportedProps13.integerDotProductAccumulatingSaturating4x8BitPackedMixedSignednessAccelerated = false;
+	supportedProps13.integerDotProductAccumulatingSaturating16BitUnsignedAccelerated = false;
+	supportedProps13.integerDotProductAccumulatingSaturating16BitSignedAccelerated = false;
+	supportedProps13.integerDotProductAccumulatingSaturating16BitMixedSignednessAccelerated = false;
+	supportedProps13.integerDotProductAccumulatingSaturating32BitUnsignedAccelerated = false;
+	supportedProps13.integerDotProductAccumulatingSaturating32BitSignedAccelerated = false;
+	supportedProps13.integerDotProductAccumulatingSaturating32BitMixedSignednessAccelerated = false;
+	supportedProps13.integerDotProductAccumulatingSaturating64BitUnsignedAccelerated = false;
+	supportedProps13.integerDotProductAccumulatingSaturating64BitSignedAccelerated = false;
+	supportedProps13.integerDotProductAccumulatingSaturating64BitMixedSignednessAccelerated = false;
+	supportedProps13.storageTexelBufferOffsetAlignmentBytes = _texelBuffAlignProperties.storageTexelBufferOffsetAlignmentBytes;
+	supportedProps13.storageTexelBufferOffsetSingleTexelAlignment = _texelBuffAlignProperties.storageTexelBufferOffsetSingleTexelAlignment;
+	supportedProps13.uniformTexelBufferOffsetAlignmentBytes = _texelBuffAlignProperties.uniformTexelBufferOffsetAlignmentBytes;
+	supportedProps13.uniformTexelBufferOffsetSingleTexelAlignment = _texelBuffAlignProperties.uniformTexelBufferOffsetSingleTexelAlignment;
+	supportedProps13.maxBufferSize = _metalFeatures.maxMTLBufferSize;
+
 	for (auto* next = (VkBaseOutStructure*)properties->pNext; next; next = next->pNext) {
 		switch ((uint32_t)next->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES: {
@@ -721,6 +798,13 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				auto* pProps12 = (VkPhysicalDeviceVulkan12Properties*)next;
 				supportedProps12.pNext = pProps12->pNext;
 				*pProps12 = supportedProps12;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES: {
+				// Copy from supportedProps13, but keep pNext as is.
+				auto* pProps13 = (VkPhysicalDeviceVulkan13Properties*)next;
+				supportedProps13.pNext = pProps13->pNext;
+				*pProps13 = supportedProps13;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
@@ -823,19 +907,19 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 			}
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES: {
 				auto* inlineUniformBlockProps = (VkPhysicalDeviceInlineUniformBlockProperties*)next;
-				inlineUniformBlockProps->maxInlineUniformBlockSize = _metalFeatures.dynamicMTLBufferSize;
-                inlineUniformBlockProps->maxPerStageDescriptorInlineUniformBlocks = _metalFeatures.dynamicMTLBufferSize ? _metalFeatures.maxPerStageDynamicMTLBufferCount - 1 : 0;    // Less one for push constants
-                inlineUniformBlockProps->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = inlineUniformBlockProps->maxPerStageDescriptorInlineUniformBlocks;
-                inlineUniformBlockProps->maxDescriptorSetInlineUniformBlocks = (inlineUniformBlockProps->maxPerStageDescriptorInlineUniformBlocks * 4);
-                inlineUniformBlockProps->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = (inlineUniformBlockProps->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks * 4);
+				inlineUniformBlockProps->maxInlineUniformBlockSize = supportedProps13.maxInlineUniformBlockSize;
+				inlineUniformBlockProps->maxPerStageDescriptorInlineUniformBlocks = supportedProps13.maxPerStageDescriptorInlineUniformBlocks;
+				inlineUniformBlockProps->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = supportedProps13.maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks;
+				inlineUniformBlockProps->maxDescriptorSetInlineUniformBlocks = supportedProps13.maxDescriptorSetInlineUniformBlocks;
+				inlineUniformBlockProps->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = supportedProps13.maxDescriptorSetUpdateAfterBindInlineUniformBlocks;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES: {
 				auto* subgroupSizeProps = (VkPhysicalDeviceSubgroupSizeControlProperties*)next;
-				subgroupSizeProps->minSubgroupSize = _metalFeatures.minSubgroupSize;
-				subgroupSizeProps->maxSubgroupSize = _metalFeatures.maxSubgroupSize;
-				subgroupSizeProps->maxComputeWorkgroupSubgroups = _properties.limits.maxComputeWorkGroupInvocations / _metalFeatures.minSubgroupSize;
-				subgroupSizeProps->requiredSubgroupSizeStages = 0;
+				subgroupSizeProps->minSubgroupSize = supportedProps13.minSubgroupSize;
+				subgroupSizeProps->maxSubgroupSize = supportedProps13.maxSubgroupSize;
+				subgroupSizeProps->maxComputeWorkgroupSubgroups = supportedProps13.maxComputeWorkgroupSubgroups;
+				subgroupSizeProps->requiredSubgroupSizeStages = supportedProps13.requiredSubgroupSizeStages;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES: {
@@ -875,36 +959,36 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
             }
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_PROPERTIES: {
 				auto* shaderIntDotProperties = (VkPhysicalDeviceShaderIntegerDotProductProperties*)next;
-				shaderIntDotProperties->integerDotProduct8BitUnsignedAccelerated = false;
-				shaderIntDotProperties->integerDotProduct8BitSignedAccelerated = false;
-				shaderIntDotProperties->integerDotProduct8BitMixedSignednessAccelerated = false;
-				shaderIntDotProperties->integerDotProduct4x8BitPackedUnsignedAccelerated = false;
-				shaderIntDotProperties->integerDotProduct4x8BitPackedSignedAccelerated = false;
-				shaderIntDotProperties->integerDotProduct4x8BitPackedMixedSignednessAccelerated = false;
-				shaderIntDotProperties->integerDotProduct16BitUnsignedAccelerated = false;
-				shaderIntDotProperties->integerDotProduct16BitSignedAccelerated = false;
-				shaderIntDotProperties->integerDotProduct16BitMixedSignednessAccelerated = false;
-				shaderIntDotProperties->integerDotProduct32BitUnsignedAccelerated = false;
-				shaderIntDotProperties->integerDotProduct32BitSignedAccelerated = false;
-				shaderIntDotProperties->integerDotProduct32BitMixedSignednessAccelerated = false;
-				shaderIntDotProperties->integerDotProduct64BitUnsignedAccelerated = false;
-				shaderIntDotProperties->integerDotProduct64BitSignedAccelerated = false;
-				shaderIntDotProperties->integerDotProduct64BitMixedSignednessAccelerated = false;
-				shaderIntDotProperties->integerDotProductAccumulatingSaturating8BitUnsignedAccelerated = false;
-				shaderIntDotProperties->integerDotProductAccumulatingSaturating8BitSignedAccelerated = false;
-				shaderIntDotProperties->integerDotProductAccumulatingSaturating8BitMixedSignednessAccelerated = false;
-				shaderIntDotProperties->integerDotProductAccumulatingSaturating4x8BitPackedUnsignedAccelerated = false;
-				shaderIntDotProperties->integerDotProductAccumulatingSaturating4x8BitPackedSignedAccelerated = false;
-				shaderIntDotProperties->integerDotProductAccumulatingSaturating4x8BitPackedMixedSignednessAccelerated = false;
-				shaderIntDotProperties->integerDotProductAccumulatingSaturating16BitUnsignedAccelerated = false;
-				shaderIntDotProperties->integerDotProductAccumulatingSaturating16BitSignedAccelerated = false;
-				shaderIntDotProperties->integerDotProductAccumulatingSaturating16BitMixedSignednessAccelerated = false;
-				shaderIntDotProperties->integerDotProductAccumulatingSaturating32BitUnsignedAccelerated = false;
-				shaderIntDotProperties->integerDotProductAccumulatingSaturating32BitSignedAccelerated = false;
-				shaderIntDotProperties->integerDotProductAccumulatingSaturating32BitMixedSignednessAccelerated = false;
-				shaderIntDotProperties->integerDotProductAccumulatingSaturating64BitUnsignedAccelerated = false;
-				shaderIntDotProperties->integerDotProductAccumulatingSaturating64BitSignedAccelerated = false;
-				shaderIntDotProperties->integerDotProductAccumulatingSaturating64BitMixedSignednessAccelerated = false;
+				shaderIntDotProperties->integerDotProduct8BitUnsignedAccelerated = supportedProps13.integerDotProduct8BitUnsignedAccelerated;
+				shaderIntDotProperties->integerDotProduct8BitSignedAccelerated = supportedProps13.integerDotProduct8BitSignedAccelerated;
+				shaderIntDotProperties->integerDotProduct8BitMixedSignednessAccelerated = supportedProps13.integerDotProduct8BitMixedSignednessAccelerated;
+				shaderIntDotProperties->integerDotProduct4x8BitPackedUnsignedAccelerated = supportedProps13.integerDotProduct4x8BitPackedUnsignedAccelerated;
+				shaderIntDotProperties->integerDotProduct4x8BitPackedSignedAccelerated = supportedProps13.integerDotProduct4x8BitPackedSignedAccelerated;
+				shaderIntDotProperties->integerDotProduct4x8BitPackedMixedSignednessAccelerated = supportedProps13.integerDotProduct4x8BitPackedMixedSignednessAccelerated;
+				shaderIntDotProperties->integerDotProduct16BitUnsignedAccelerated = supportedProps13.integerDotProduct16BitUnsignedAccelerated;
+				shaderIntDotProperties->integerDotProduct16BitSignedAccelerated = supportedProps13.integerDotProduct16BitSignedAccelerated;
+				shaderIntDotProperties->integerDotProduct16BitMixedSignednessAccelerated = supportedProps13.integerDotProduct16BitMixedSignednessAccelerated;
+				shaderIntDotProperties->integerDotProduct32BitUnsignedAccelerated = supportedProps13.integerDotProduct32BitUnsignedAccelerated;
+				shaderIntDotProperties->integerDotProduct32BitSignedAccelerated = supportedProps13.integerDotProduct32BitSignedAccelerated;
+				shaderIntDotProperties->integerDotProduct32BitMixedSignednessAccelerated = supportedProps13.integerDotProduct32BitMixedSignednessAccelerated;
+				shaderIntDotProperties->integerDotProduct64BitUnsignedAccelerated = supportedProps13.integerDotProduct64BitUnsignedAccelerated;
+				shaderIntDotProperties->integerDotProduct64BitSignedAccelerated = supportedProps13.integerDotProduct64BitSignedAccelerated;
+				shaderIntDotProperties->integerDotProduct64BitMixedSignednessAccelerated = supportedProps13.integerDotProduct64BitMixedSignednessAccelerated;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating8BitUnsignedAccelerated = supportedProps13.integerDotProductAccumulatingSaturating8BitUnsignedAccelerated;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating8BitSignedAccelerated = supportedProps13.integerDotProductAccumulatingSaturating8BitSignedAccelerated;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating8BitMixedSignednessAccelerated = supportedProps13.integerDotProductAccumulatingSaturating8BitMixedSignednessAccelerated;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating4x8BitPackedUnsignedAccelerated = supportedProps13.integerDotProductAccumulatingSaturating4x8BitPackedUnsignedAccelerated;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating4x8BitPackedSignedAccelerated = supportedProps13.integerDotProductAccumulatingSaturating4x8BitPackedSignedAccelerated;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating4x8BitPackedMixedSignednessAccelerated = supportedProps13.integerDotProductAccumulatingSaturating4x8BitPackedMixedSignednessAccelerated;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating16BitUnsignedAccelerated = supportedProps13.integerDotProductAccumulatingSaturating16BitUnsignedAccelerated;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating16BitSignedAccelerated = supportedProps13.integerDotProductAccumulatingSaturating16BitSignedAccelerated;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating16BitMixedSignednessAccelerated = supportedProps13.integerDotProductAccumulatingSaturating16BitMixedSignednessAccelerated;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating32BitUnsignedAccelerated = supportedProps13.integerDotProductAccumulatingSaturating32BitUnsignedAccelerated;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating32BitSignedAccelerated = supportedProps13.integerDotProductAccumulatingSaturating32BitSignedAccelerated;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating32BitMixedSignednessAccelerated = supportedProps13.integerDotProductAccumulatingSaturating32BitMixedSignednessAccelerated;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating64BitUnsignedAccelerated = supportedProps13.integerDotProductAccumulatingSaturating64BitUnsignedAccelerated;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating64BitSignedAccelerated = supportedProps13.integerDotProductAccumulatingSaturating64BitSignedAccelerated;
+				shaderIntDotProperties->integerDotProductAccumulatingSaturating64BitMixedSignednessAccelerated = supportedProps13.integerDotProductAccumulatingSaturating64BitMixedSignednessAccelerated;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
@@ -1127,7 +1211,7 @@ void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties2
 
     for (auto* next = (VkBaseOutStructure*)pFormatProperties->pNext; next; next = next->pNext) {
         switch (next->sType) {
-            case VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR: {
+            case VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3: {
                 auto* properties3 = (VkFormatProperties3*)next;
                 auto& properties = _pixelFormats.getVkFormatProperties3(format);
                 properties3->linearTilingFeatures = properties.linearTilingFeatures;
@@ -2014,7 +2098,7 @@ void MVKPhysicalDevice::initMTLDevice() {
 void MVKPhysicalDevice::initProperties() {
 	mvkClear(&_properties);	// Start with everything cleared
 
-	_properties.apiVersion = getMVKConfig().apiVersionToAdvertise;
+	_properties.apiVersion = getInstance()->getAPIVersion();
 	_properties.driverVersion = MVK_VERSION;
 
 	initGPUInfoProperties();
@@ -2820,7 +2904,7 @@ void MVKPhysicalDevice::initLimits() {
     if ([_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)]) {
         // Figure out the greatest alignment required by all supported formats, and whether
 		// or not they only require alignment to a single texel. We'll use this information
-		// to fill out the VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT struct.
+		// to fill out the VkPhysicalDeviceTexelBufferAlignmentProperties struct.
         uint32_t maxStorage = 0, maxUniform = 0;
         bool singleTexelStorage = true, singleTexelUniform = true;
 		
@@ -2875,7 +2959,7 @@ void MVKPhysicalDevice::initLimits() {
             }
             return true;
         });
-        _texelBuffAlignProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT;
+        _texelBuffAlignProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES;
         _texelBuffAlignProperties.storageTexelBufferOffsetAlignmentBytes = maxStorage;
         _texelBuffAlignProperties.storageTexelBufferOffsetSingleTexelAlignment = singleTexelStorage;
         _texelBuffAlignProperties.uniformTexelBufferOffsetAlignmentBytes = maxUniform;
@@ -3786,7 +3870,7 @@ void MVKDevice::getDescriptorVariableDescriptorCountLayoutSupport(const VkDescri
 					mtlBuffCnt += pBind->descriptorCount;
 					maxVarDescCount = mtlFeats.maxPerStageBufferCount - mtlBuffCnt;
 					break;
-				case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+				case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
 					maxVarDescCount = (uint32_t)min<VkDeviceSize>(mtlFeats.maxMTLBufferSize, numeric_limits<uint32_t>::max());
 					break;
 				case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
@@ -4331,7 +4415,7 @@ void MVKDevice::freeMemory(MVKDeviceMemory* mvkDevMem,
 // Otherwise create a new instance and return it.
 VkResult MVKDevice::createPrivateDataSlot(const VkPrivateDataSlotCreateInfoEXT* pCreateInfo,
 										  const VkAllocationCallbacks* pAllocator,
-										  VkPrivateDataSlotEXT* pPrivateDataSlot) {
+										  VkPrivateDataSlot* pPrivateDataSlot) {
 	MVKPrivateDataSlot* mvkPDS = nullptr;
 
 	size_t slotCnt = _privateDataSlots.size();
@@ -4345,13 +4429,13 @@ VkResult MVKDevice::createPrivateDataSlot(const VkPrivateDataSlotCreateInfoEXT* 
 
 	if ( !mvkPDS ) { mvkPDS = new MVKPrivateDataSlot(this); }
 
-	*pPrivateDataSlot = (VkPrivateDataSlotEXT)mvkPDS;
+	*pPrivateDataSlot = (VkPrivateDataSlot)mvkPDS;
 	return VK_SUCCESS;
 }
 
 // If the private data slot is one of the pre-reserved slots, clear it and mark it as available.
 // Otherwise destroy it.
-void MVKDevice::destroyPrivateDataSlot(VkPrivateDataSlotEXT privateDataSlot,
+void MVKDevice::destroyPrivateDataSlot(VkPrivateDataSlot privateDataSlot,
 									   const VkAllocationCallbacks* pAllocator) {
 
 	MVKPrivateDataSlot* mvkPDS = (MVKPrivateDataSlot*)privateDataSlot;
@@ -5183,6 +5267,62 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 							   &pdvulkan12FeaturesNoExt.shaderOutputViewportIndex, 3);
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES: {
+				auto* requestedFeatures = (VkPhysicalDeviceVulkan13Features*)next;
+				enableFeatures(requestedFeatures,
+							   &_enabledImageRobustnessFeatures.robustImageAccess,
+							   &requestedFeatures->robustImageAccess,
+							   &pdImageRobustnessFeatures.robustImageAccess, 1);
+				enableFeatures(requestedFeatures,
+							   &_enabledInlineUniformBlockFeatures.inlineUniformBlock,
+							   &requestedFeatures->inlineUniformBlock,
+							   &pdInlineUniformBlockFeatures.inlineUniformBlock, 2);
+				enableFeatures(requestedFeatures,
+							   &_enabledPipelineCreationCacheControlFeatures.pipelineCreationCacheControl,
+							   &requestedFeatures->pipelineCreationCacheControl,
+							   &pdPipelineCreationCacheControlFeatures.pipelineCreationCacheControl, 1);
+				enableFeatures(requestedFeatures,
+							   &_enabledPrivateDataFeatures.privateData,
+							   &requestedFeatures->privateData,
+							   &pdPrivateDataFeatures.privateData, 1);
+				enableFeatures(requestedFeatures,
+							   &_enabledShaderDemoteToHelperInvocationFeatures.shaderDemoteToHelperInvocation,
+							   &requestedFeatures->shaderDemoteToHelperInvocation,
+							   &pdShaderDemoteToHelperInvocationFeatures.shaderDemoteToHelperInvocation, 1);
+				enableFeatures(requestedFeatures,
+							   &_enabledShaderTerminateInvocationFeatures.shaderTerminateInvocation,
+							   &requestedFeatures->shaderTerminateInvocation,
+							   &pdShaderTerminateInvocationFeatures.shaderTerminateInvocation, 1);
+				enableFeatures(requestedFeatures,
+							   &_enabledSubgroupSizeControlFeatures.subgroupSizeControl,
+							   &requestedFeatures->subgroupSizeControl,
+							   &pdSubgroupSizeControlFeatures.subgroupSizeControl, 2);
+				enableFeatures(requestedFeatures,
+							   &_enabledSynchronization2Features.synchronization2,
+							   &requestedFeatures->synchronization2,
+							   &pdSynchronization2Features.synchronization2, 1);
+				enableFeatures(requestedFeatures,
+							   &_enabledTextureCompressionASTCHDRFeatures.textureCompressionASTC_HDR,
+							   &requestedFeatures->textureCompressionASTC_HDR,
+							   &pdTextureCompressionASTCHDRFeatures.textureCompressionASTC_HDR, 1);
+				enableFeatures(requestedFeatures,
+							   &_enabledZeroInitializeWorkgroupMemoryFeatures.shaderZeroInitializeWorkgroupMemory,
+							   &requestedFeatures->shaderZeroInitializeWorkgroupMemory,
+							   &pdZeroInitializeWorkgroupMemoryFeatures.shaderZeroInitializeWorkgroupMemory, 1);
+				enableFeatures(requestedFeatures,
+							   &_enabledDynamicRenderingFeatures.dynamicRendering,
+							   &requestedFeatures->dynamicRendering,
+							   &pdDynamicRenderingFeatures.dynamicRendering, 1);
+				enableFeatures(requestedFeatures,
+							   &_enabledShaderIntegerDotProductFeatures.shaderIntegerDotProduct,
+							   &requestedFeatures->shaderIntegerDotProduct,
+							   &pdShaderIntegerDotProductFeatures.shaderIntegerDotProduct, 1);
+				enableFeatures(requestedFeatures,
+							   &_enabledMaintenance4Features.maintenance4,
+							   &requestedFeatures->maintenance4,
+							   &pdMaintenance4Features.maintenance4, 1);
+				break;
+			}
 
 #define MVK_DEVICE_FEATURE(structName, enumName, flagCount) \
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_##enumName##_FEATURES: { \
@@ -5280,8 +5420,8 @@ void MVKDevice::reservePrivateData(const VkDeviceCreateInfo* pCreateInfo) {
 	size_t slotCnt = 0;
 	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
-			case VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO_EXT: {
-				auto* pPDCreateInfo = (const VkDevicePrivateDataCreateInfoEXT*)next;
+			case VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO: {
+				auto* pPDCreateInfo = (const VkDevicePrivateDataCreateInfo*)next;
 				slotCnt += pPDCreateInfo->privateDataSlotRequestCount;
 				break;
 			}

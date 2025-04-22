@@ -2805,7 +2805,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreatePrivateDataSlot(
 	VkDevice                                    device,
 	const VkPrivateDataSlotCreateInfoEXT*       pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
-	VkPrivateDataSlotEXT*                       pPrivateDataSlot) {
+	VkPrivateDataSlot*                          pPrivateDataSlot) {
 
 	MVKTraceVulkanCallStart();
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
@@ -2816,7 +2816,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreatePrivateDataSlot(
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyPrivateDataSlot(
 	VkDevice                                    device,
-	VkPrivateDataSlotEXT                        privateDataSlot,
+	VkPrivateDataSlot                           privateDataSlot,
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
@@ -2874,11 +2874,11 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceToolProperties(
 }
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkGetPrivateData(
-											   VkDevice                                    device,
-											   VkObjectType                                objectType,
-											   uint64_t                                    objectHandle,
-											   VkPrivateDataSlotEXT                        privateDataSlot,
-											   uint64_t*                                   pData) {
+    VkDevice                                    device,
+    VkObjectType                                objectType,
+    uint64_t                                    objectHandle,
+    VkPrivateDataSlot                           privateDataSlot,
+    uint64_t*                                   pData) {
 
 	MVKTraceVulkanCallStart();
 	MVKPrivateDataSlot* mvkPDS = (MVKPrivateDataSlot*)privateDataSlot;
@@ -2903,7 +2903,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetPrivateData(
 	VkDevice                                    device,
 	VkObjectType                                objectType,
 	uint64_t                                    objectHandle,
-	VkPrivateDataSlotEXT                        privateDataSlot,
+	VkPrivateDataSlot                           privateDataSlot,
 	uint64_t                                    data) {
 
 	MVKTraceVulkanCallStart();

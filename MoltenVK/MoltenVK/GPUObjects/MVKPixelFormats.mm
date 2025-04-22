@@ -1084,46 +1084,46 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	addVkFormatDesc( EAC_R11G11_SNORM_BLOCK, EAC_RG11Snorm, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
 
 	addVkFormatDesc( ASTC_4x4_UNORM_BLOCK, ASTC_4x4_LDR, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
-	addVkFormatDesc( ASTC_4x4_SFLOAT_BLOCK_EXT, ASTC_4x4_HDR, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
+	addVkFormatDesc( ASTC_4x4_SFLOAT_BLOCK, ASTC_4x4_HDR, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
 	addVkFormatDesc( ASTC_4x4_SRGB_BLOCK, ASTC_4x4_sRGB, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
 	addVkFormatDesc( ASTC_5x4_UNORM_BLOCK, ASTC_5x4_LDR, Invalid, Invalid, Invalid, 5, 4, 16, Compressed );
-	addVkFormatDesc( ASTC_5x4_SFLOAT_BLOCK_EXT, ASTC_5x4_HDR, Invalid, Invalid, Invalid, 5, 4, 16, Compressed );
+	addVkFormatDesc( ASTC_5x4_SFLOAT_BLOCK, ASTC_5x4_HDR, Invalid, Invalid, Invalid, 5, 4, 16, Compressed );
 	addVkFormatDesc( ASTC_5x4_SRGB_BLOCK, ASTC_5x4_sRGB, Invalid, Invalid, Invalid, 5, 4, 16, Compressed );
 	addVkFormatDesc( ASTC_5x5_UNORM_BLOCK, ASTC_5x5_LDR, Invalid, Invalid, Invalid, 5, 5, 16, Compressed );
-	addVkFormatDesc( ASTC_5x5_SFLOAT_BLOCK_EXT, ASTC_5x5_HDR, Invalid, Invalid, Invalid, 5, 5, 16, Compressed );
+	addVkFormatDesc( ASTC_5x5_SFLOAT_BLOCK, ASTC_5x5_HDR, Invalid, Invalid, Invalid, 5, 5, 16, Compressed );
 	addVkFormatDesc( ASTC_5x5_SRGB_BLOCK, ASTC_5x5_sRGB, Invalid, Invalid, Invalid, 5, 5, 16, Compressed );
 	addVkFormatDesc( ASTC_6x5_UNORM_BLOCK, ASTC_6x5_LDR, Invalid, Invalid, Invalid, 6, 5, 16, Compressed );
-	addVkFormatDesc( ASTC_6x5_SFLOAT_BLOCK_EXT, ASTC_6x5_HDR, Invalid, Invalid, Invalid, 6, 5, 16, Compressed );
+	addVkFormatDesc( ASTC_6x5_SFLOAT_BLOCK, ASTC_6x5_HDR, Invalid, Invalid, Invalid, 6, 5, 16, Compressed );
 	addVkFormatDesc( ASTC_6x5_SRGB_BLOCK, ASTC_6x5_sRGB, Invalid, Invalid, Invalid, 6, 5, 16, Compressed );
 	addVkFormatDesc( ASTC_6x6_UNORM_BLOCK, ASTC_6x6_LDR, Invalid, Invalid, Invalid, 6, 6, 16, Compressed );
-	addVkFormatDesc( ASTC_6x6_SFLOAT_BLOCK_EXT, ASTC_6x6_HDR, Invalid, Invalid, Invalid, 6, 6, 16, Compressed );
+	addVkFormatDesc( ASTC_6x6_SFLOAT_BLOCK, ASTC_6x6_HDR, Invalid, Invalid, Invalid, 6, 6, 16, Compressed );
 	addVkFormatDesc( ASTC_6x6_SRGB_BLOCK, ASTC_6x6_sRGB, Invalid, Invalid, Invalid, 6, 6, 16, Compressed );
 	addVkFormatDesc( ASTC_8x5_UNORM_BLOCK, ASTC_8x5_LDR, Invalid, Invalid, Invalid, 8, 5, 16, Compressed );
-	addVkFormatDesc( ASTC_8x5_SFLOAT_BLOCK_EXT, ASTC_8x5_HDR, Invalid, Invalid, Invalid, 8, 5, 16, Compressed );
+	addVkFormatDesc( ASTC_8x5_SFLOAT_BLOCK, ASTC_8x5_HDR, Invalid, Invalid, Invalid, 8, 5, 16, Compressed );
 	addVkFormatDesc( ASTC_8x5_SRGB_BLOCK, ASTC_8x5_sRGB, Invalid, Invalid, Invalid, 8, 5, 16, Compressed );
 	addVkFormatDesc( ASTC_8x6_UNORM_BLOCK, ASTC_8x6_LDR, Invalid, Invalid, Invalid, 8, 6, 16, Compressed );
-	addVkFormatDesc( ASTC_8x6_SFLOAT_BLOCK_EXT, ASTC_8x6_HDR, Invalid, Invalid, Invalid, 8, 6, 16, Compressed );
+	addVkFormatDesc( ASTC_8x6_SFLOAT_BLOCK, ASTC_8x6_HDR, Invalid, Invalid, Invalid, 8, 6, 16, Compressed );
 	addVkFormatDesc( ASTC_8x6_SRGB_BLOCK, ASTC_8x6_sRGB, Invalid, Invalid, Invalid, 8, 6, 16, Compressed );
 	addVkFormatDesc( ASTC_8x8_UNORM_BLOCK, ASTC_8x8_LDR, Invalid, Invalid, Invalid, 8, 8, 16, Compressed );
-	addVkFormatDesc( ASTC_8x8_SFLOAT_BLOCK_EXT, ASTC_8x8_HDR, Invalid, Invalid, Invalid, 8, 8, 16, Compressed );
+	addVkFormatDesc( ASTC_8x8_SFLOAT_BLOCK, ASTC_8x8_HDR, Invalid, Invalid, Invalid, 8, 8, 16, Compressed );
 	addVkFormatDesc( ASTC_8x8_SRGB_BLOCK, ASTC_8x8_sRGB, Invalid, Invalid, Invalid, 8, 8, 16, Compressed );
 	addVkFormatDesc( ASTC_10x5_UNORM_BLOCK, ASTC_10x5_LDR, Invalid, Invalid, Invalid, 10, 5, 16, Compressed );
-	addVkFormatDesc( ASTC_10x5_SFLOAT_BLOCK_EXT, ASTC_10x5_HDR, Invalid, Invalid, Invalid, 10, 5, 16, Compressed );
+	addVkFormatDesc( ASTC_10x5_SFLOAT_BLOCK, ASTC_10x5_HDR, Invalid, Invalid, Invalid, 10, 5, 16, Compressed );
 	addVkFormatDesc( ASTC_10x5_SRGB_BLOCK, ASTC_10x5_sRGB, Invalid, Invalid, Invalid, 10, 5, 16, Compressed );
 	addVkFormatDesc( ASTC_10x6_UNORM_BLOCK, ASTC_10x6_LDR, Invalid, Invalid, Invalid, 10, 6, 16, Compressed );
-	addVkFormatDesc( ASTC_10x6_SFLOAT_BLOCK_EXT, ASTC_10x6_HDR, Invalid, Invalid, Invalid, 10, 6, 16, Compressed );
+	addVkFormatDesc( ASTC_10x6_SFLOAT_BLOCK, ASTC_10x6_HDR, Invalid, Invalid, Invalid, 10, 6, 16, Compressed );
 	addVkFormatDesc( ASTC_10x6_SRGB_BLOCK, ASTC_10x6_sRGB, Invalid, Invalid, Invalid, 10, 6, 16, Compressed );
 	addVkFormatDesc( ASTC_10x8_UNORM_BLOCK, ASTC_10x8_LDR, Invalid, Invalid, Invalid, 10, 8, 16, Compressed );
-	addVkFormatDesc( ASTC_10x8_SFLOAT_BLOCK_EXT, ASTC_10x8_HDR, Invalid, Invalid, Invalid, 10, 8, 16, Compressed );
+	addVkFormatDesc( ASTC_10x8_SFLOAT_BLOCK, ASTC_10x8_HDR, Invalid, Invalid, Invalid, 10, 8, 16, Compressed );
 	addVkFormatDesc( ASTC_10x8_SRGB_BLOCK, ASTC_10x8_sRGB, Invalid, Invalid, Invalid, 10, 8, 16, Compressed );
 	addVkFormatDesc( ASTC_10x10_UNORM_BLOCK, ASTC_10x10_LDR, Invalid, Invalid, Invalid, 10, 10, 16, Compressed );
-	addVkFormatDesc( ASTC_10x10_SFLOAT_BLOCK_EXT, ASTC_10x10_HDR, Invalid, Invalid, Invalid, 10, 10, 16, Compressed );
+	addVkFormatDesc( ASTC_10x10_SFLOAT_BLOCK, ASTC_10x10_HDR, Invalid, Invalid, Invalid, 10, 10, 16, Compressed );
 	addVkFormatDesc( ASTC_10x10_SRGB_BLOCK, ASTC_10x10_sRGB, Invalid, Invalid, Invalid, 10, 10, 16, Compressed );
 	addVkFormatDesc( ASTC_12x10_UNORM_BLOCK, ASTC_12x10_LDR, Invalid, Invalid, Invalid, 12, 10, 16, Compressed );
-	addVkFormatDesc( ASTC_12x10_SFLOAT_BLOCK_EXT, ASTC_12x10_HDR, Invalid, Invalid, Invalid, 12, 10, 16, Compressed );
+	addVkFormatDesc( ASTC_12x10_SFLOAT_BLOCK, ASTC_12x10_HDR, Invalid, Invalid, Invalid, 12, 10, 16, Compressed );
 	addVkFormatDesc( ASTC_12x10_SRGB_BLOCK, ASTC_12x10_sRGB, Invalid, Invalid, Invalid, 12, 10, 16, Compressed );
 	addVkFormatDesc( ASTC_12x12_UNORM_BLOCK, ASTC_12x12_LDR, Invalid, Invalid, Invalid, 12, 12, 16, Compressed );
-	addVkFormatDesc( ASTC_12x12_SFLOAT_BLOCK_EXT, ASTC_12x12_HDR, Invalid, Invalid, Invalid, 12, 12, 16, Compressed );
+	addVkFormatDesc( ASTC_12x12_SFLOAT_BLOCK, ASTC_12x12_HDR, Invalid, Invalid, Invalid, 12, 12, 16, Compressed );
 	addVkFormatDesc( ASTC_12x12_SRGB_BLOCK, ASTC_12x12_sRGB, Invalid, Invalid, Invalid, 12, 12, 16, Compressed );
 
 	// Extension VK_IMG_format_pvrtc
@@ -1666,13 +1666,13 @@ typedef enum : VkFormatFeatureFlags2 {
 	kMVKVkFormatFeatureFlagsTexDSAtt    = (VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT |
 										   VK_FORMAT_FEATURE_2_BLIT_DST_BIT),
 	kMVKVkFormatFeatureFlagsTexBlend    = (VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT),
-    kMVKVkFormatFeatureFlagsTexChromaSubsampling = (VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT_KHR),
-    kMVKVkFormatFeatureFlagsTexMultiPlanar       = (VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_2_DISJOINT_BIT_KHR),
+    kMVKVkFormatFeatureFlagsTexChromaSubsampling = (VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT |
+                                                    VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT),
+    kMVKVkFormatFeatureFlagsTexMultiPlanar       = (VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT |
+                                                    VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT |
+                                                    VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT |
+                                                    VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT |
+                                                    VK_FORMAT_FEATURE_2_DISJOINT_BIT),
 	kMVKVkFormatFeatureFlagsBufRead     = (VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT),
 	kMVKVkFormatFeatureFlagsBufWrite    = (VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT |
                                                                                    VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |

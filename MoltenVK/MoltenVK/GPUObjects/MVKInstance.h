@@ -75,10 +75,10 @@ public:
 	const MVKConfiguration& getMVKConfig() override { return _enabledExtensions.vk_EXT_layer_settings.enabled ? _mvkConfig : getGlobalMVKConfig(); }
 
 	/** Returns the maximum version of Vulkan the application supports. */
-	inline uint32_t getAPIVersion() { return _appInfo.apiVersion; }
+	uint32_t getAPIVersion() { return _appInfo.apiVersion; }
 
 	/** Returns a pointer to the layer manager. */
-	inline MVKLayerManager* getLayerManager() { return MVKLayerManager::globalManager(); }
+	MVKLayerManager* getLayerManager() { return MVKLayerManager::globalManager(); }
 
 	/** Returns the function pointer corresponding to the named entry point, or NULL if it doesn't exist. */
 	PFN_vkVoidFunction getProcAddr(const char* pName);
@@ -171,7 +171,7 @@ public:
      * Returns a reference to this object suitable for use as a Vulkan API handle.
      * This is the compliment of the getMVKInstance() method.
      */
-    inline VkInstance getVkInstance() { return (VkInstance)getVkHandle(); }
+    VkInstance getVkInstance() { return (VkInstance)getVkHandle(); }
 
     /**
      * Retrieves the MVKInstance instance referenced by the VkInstance handle.
