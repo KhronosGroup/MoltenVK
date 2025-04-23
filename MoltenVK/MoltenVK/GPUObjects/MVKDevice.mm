@@ -492,6 +492,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->vertexAttributeAccessBeyondStride = true;	// Costs additional buffers. Should make configuration switch.
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_ROTATE_FEATURES_KHR: {
+				auto* shaderSGRotateFeatures = (VkPhysicalDeviceShaderSubgroupRotateFeaturesKHR*)next;
+				shaderSGRotateFeatures->shaderSubgroupRotate = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
+				shaderSGRotateFeatures->shaderSubgroupRotateClustered = false; // MSL does not have cluster size option.
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_FEATURES: {
 				auto* shaderIntDotFeatures = (VkPhysicalDeviceShaderIntegerDotProductFeatures*)next;
 				shaderIntDotFeatures->shaderIntegerDotProduct = supportedFeats13.shaderIntegerDotProduct;
@@ -1191,7 +1197,8 @@ void MVKPhysicalDevice::populateSubgroupProperties(VkPhysicalDeviceVulkan11Prope
 		pVk11Props->subgroupSupportedOperations |= (VK_SUBGROUP_FEATURE_VOTE_BIT |
 													VK_SUBGROUP_FEATURE_BALLOT_BIT |
 													VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
-													VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT);
+													VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT |
+													VK_SUBGROUP_FEATURE_ROTATE_BIT_KHR);
 	}
 	if (_metalFeatures.simdReduction) {
 		pVk11Props->subgroupSupportedOperations |= VK_SUBGROUP_FEATURE_ARITHMETIC_BIT;

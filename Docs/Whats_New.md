@@ -21,6 +21,7 @@ Released TBD
 - Add support for _Vulkan 1.3_.
 - Add support for extensions:
 	- `VK_KHR_maintenance4`
+	- `VK_KHR_shader_subgroup_rotate`
 	- `VK_KHR_shader_terminate_invocation`
 	- `VK_KHR_vulkan_memory_model`
 	- `VK_KHR_zero_initialize_workgroup_memory`

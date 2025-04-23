@@ -276,6 +276,8 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_shader_non_semantic_info`
 - `VK_KHR_shader_subgroup_extended_types`
   - *Requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS.*
+- `VK_KHR_shader_subgroup_rotate`
+  - *Requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS.*
 - `VK_KHR_shader_terminate_invocation`
 - `VK_KHR_spirv_1_4`
 - `VK_KHR_storage_buffer_storage_class`
