@@ -495,7 +495,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_ROTATE_FEATURES_KHR: {
 				auto* shaderSGRotateFeatures = (VkPhysicalDeviceShaderSubgroupRotateFeaturesKHR*)next;
 				shaderSGRotateFeatures->shaderSubgroupRotate = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
-				shaderSGRotateFeatures->shaderSubgroupRotateClustered = false; // MSL does not have cluster size option.
+				shaderSGRotateFeatures->shaderSubgroupRotateClustered = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_FEATURES: {
@@ -1198,7 +1198,12 @@ void MVKPhysicalDevice::populateSubgroupProperties(VkPhysicalDeviceVulkan11Prope
 													VK_SUBGROUP_FEATURE_BALLOT_BIT |
 													VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
 													VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT |
-													VK_SUBGROUP_FEATURE_ROTATE_BIT_KHR);
+													VK_SUBGROUP_FEATURE_ROTATE_BIT_KHR |
+													VK_SUBGROUP_FEATURE_ROTATE_CLUSTERED_BIT_KHR);
+	}
+	if (_metalFeatures.quadPermute && _metalFeatures.simdReduction) {
+		// Note: Only quad clusters are currently supported by SPIRV-Cross for reduce.
+		pVk11Props->subgroupSupportedOperations |= VK_SUBGROUP_FEATURE_CLUSTERED_BIT;
 	}
 	if (_metalFeatures.simdReduction) {
 		pVk11Props->subgroupSupportedOperations |= VK_SUBGROUP_FEATURE_ARITHMETIC_BIT;
