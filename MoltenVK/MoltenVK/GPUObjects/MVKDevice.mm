@@ -492,6 +492,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->vertexAttributeAccessBeyondStride = true;	// Costs additional buffers. Should make configuration switch.
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_ROTATE_FEATURES_KHR: {
+				auto* shaderSGRotateFeatures = (VkPhysicalDeviceShaderSubgroupRotateFeaturesKHR*)next;
+				shaderSGRotateFeatures->shaderSubgroupRotate = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
+				shaderSGRotateFeatures->shaderSubgroupRotateClustered = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_FEATURES: {
 				auto* shaderIntDotFeatures = (VkPhysicalDeviceShaderIntegerDotProductFeatures*)next;
 				shaderIntDotFeatures->shaderIntegerDotProduct = supportedFeats13.shaderIntegerDotProduct;
@@ -1191,7 +1197,13 @@ void MVKPhysicalDevice::populateSubgroupProperties(VkPhysicalDeviceVulkan11Prope
 		pVk11Props->subgroupSupportedOperations |= (VK_SUBGROUP_FEATURE_VOTE_BIT |
 													VK_SUBGROUP_FEATURE_BALLOT_BIT |
 													VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
-													VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT);
+													VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT |
+													VK_SUBGROUP_FEATURE_ROTATE_BIT_KHR |
+													VK_SUBGROUP_FEATURE_ROTATE_CLUSTERED_BIT_KHR);
+	}
+	if (_metalFeatures.quadPermute && _metalFeatures.simdReduction) {
+		// Note: Only quad clusters are currently supported by SPIRV-Cross for reduce.
+		pVk11Props->subgroupSupportedOperations |= VK_SUBGROUP_FEATURE_CLUSTERED_BIT;
 	}
 	if (_metalFeatures.simdReduction) {
 		pVk11Props->subgroupSupportedOperations |= VK_SUBGROUP_FEATURE_ARITHMETIC_BIT;
