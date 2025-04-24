@@ -2373,6 +2373,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDispatchBase(
 	MVKTraceVulkanCallEnd();
 }
 
+
 #pragma mark -
 #pragma mark Vulkan 1.2 calls
 
@@ -2521,6 +2522,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkWaitSemaphores(
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
+
 
 #pragma mark -
 #pragma mark Vulkan 1.3 calls
