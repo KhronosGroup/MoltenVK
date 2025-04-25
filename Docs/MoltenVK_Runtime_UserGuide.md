@@ -256,6 +256,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
   - *Requires MVK_CONFIG_USE_MTLHEAP to be enabled.*
 - `VK_KHR_image_format_list`
 - `VK_KHR_incremental_present`
+- `VK_KHR_load_store_op_none`
 - `VK_KHR_maintenance1`
 - `VK_KHR_maintenance2`
 - `VK_KHR_maintenance3`
@@ -270,6 +271,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_sampler_ycbcr_conversion`
 - `VK_KHR_separate_depth_stencil_layouts`
 - `VK_KHR_shader_draw_parameters`
+- `VK_KHR_shader_expect_assume`
 - `VK_KHR_shader_float_controls`
 - `VK_KHR_shader_float16_int8`
 - `VK_KHR_shader_integer_dot_product`
@@ -323,6 +325,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_image_robustness`
 - `VK_EXT_inline_uniform_block`
 - `VK_EXT_layer_settings`
+- `VK_EXT_load_store_op_none`
 - `VK_EXT_memory_budget`
   - *Requires Metal 2.0.*
 - `VK_EXT_metal_objects`

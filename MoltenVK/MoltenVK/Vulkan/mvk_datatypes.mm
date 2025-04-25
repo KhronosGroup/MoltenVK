@@ -590,6 +590,8 @@ MVK_PUBLIC_SYMBOL MTLLoadAction mvkMTLLoadActionFromVkAttachmentLoadOp(VkAttachm
 
 MTLLoadAction mvkMTLLoadActionFromVkAttachmentLoadOpInObj(VkAttachmentLoadOp vkLoadOp, MVKBaseObject* mvkObj) {
 	switch (vkLoadOp) {
+		// Metal does not support VK_ATTACHMENT_LOAD_OP_NONE. Next best option is load.
+		case VK_ATTACHMENT_LOAD_OP_NONE:
 		case VK_ATTACHMENT_LOAD_OP_LOAD:		return MTLLoadActionLoad;
 		case VK_ATTACHMENT_LOAD_OP_CLEAR:		return MTLLoadActionClear;
 		case VK_ATTACHMENT_LOAD_OP_DONT_CARE:	return MTLLoadActionDontCare;
