@@ -332,6 +332,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_metal_surface`
 - `VK_EXT_pipeline_creation_cache_control`
 - `VK_EXT_pipeline_creation_feedback`
+- `VK_EXT_pipeline_robustness`
 - `VK_EXT_post_depth_coverage`
   - *iOS and macOS, requires family 4 (A11) or better Apple GPU.*
 - `VK_EXT_private_data `

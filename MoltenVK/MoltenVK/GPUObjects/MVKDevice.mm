@@ -604,6 +604,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				}
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES_EXT: {
+				auto* pipelineRobustnessFeatures = (VkPhysicalDevicePipelineRobustnessFeaturesEXT*)next;
+				pipelineRobustnessFeatures->pipelineRobustness = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
 				auto* robustness2Features = (VkPhysicalDeviceRobustness2FeaturesEXT*)next;
 				robustness2Features->robustBufferAccess2 = false;
@@ -1030,6 +1035,14 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES_EXT: {
 				populateHostImageCopyProperties((VkPhysicalDeviceHostImageCopyPropertiesEXT*)next);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_PROPERTIES_EXT: {
+				auto* pipelineRobustnessProps = (VkPhysicalDevicePipelineRobustnessPropertiesEXT*)next;
+				pipelineRobustnessProps->defaultRobustnessStorageBuffers = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT;
+				pipelineRobustnessProps->defaultRobustnessUniformBuffers = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT;
+				pipelineRobustnessProps->defaultRobustnessVertexInputs = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT;
+				pipelineRobustnessProps->defaultRobustnessImages = VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_ROBUST_IMAGE_ACCESS_2_EXT;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
@@ -5024,6 +5037,10 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	enableFeatures(pCreateInfo);
 	initQueues(pCreateInfo);
 	reservePrivateData(pCreateInfo);
+
+	if (_enabledFeatures.robustBufferAccess || _enabledRobustness2Features.robustBufferAccess2) {
+		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support buffer robustness.");
+	}
 
 	// Initialize fences for execution barriers
 	@autoreleasepool {
