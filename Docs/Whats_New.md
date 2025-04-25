@@ -28,6 +28,7 @@ Released TBD
 	- `VK_EXT_depth_clip_control`
 	- `VK_EXT_external_memory_metal`.
 	- `VK_EXT_image_2d_view_of_3d`
+	- `VK_EXT_pipeline_robustness`
 	- `VK_EXT_tooling_info`
 - Add support for `B5G6R5_UNORM_PACK16` `B5G5R5A1_UNORM_PACK16`, and `B8G8R8A8` formats using swizzle.
 - Enable `MVK_CONFIG_USE_MTLHEAP` by default to support `VK_EXT_image_2d_view_of_3d`.

@@ -424,6 +424,40 @@ static const VkPipelineRenderingCreateInfo* getRenderingCreateInfo(const VkGraph
 	return &emptyRendInfo;
 }
 
+static bool isBufferRobustnessEnabled(const VkPipelineRobustnessBufferBehavior behavior) {
+	return behavior == VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS ||
+		   behavior == VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS_2;
+}
+
+template <typename T>
+static const VkPipelineRobustnessCreateInfo* getRobustnessCreateInfo(const T* pCreateInfo) {
+	const VkPipelineRobustnessCreateInfo* pRobustnessInfo = nullptr;
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO:
+				pRobustnessInfo = (VkPipelineRobustnessCreateInfo*)next;
+				break;
+			default:
+				break;
+		}
+	}
+	return pRobustnessInfo;
+}
+
+template <typename T>
+static void warnIfBufferRobustnessEnabled(MVKPipeline* pipeline, const T* pCreateInfo) {
+	if (!pCreateInfo) return;
+
+	const VkPipelineRobustnessCreateInfo* pRobustnessInfo = getRobustnessCreateInfo(pCreateInfo);
+	if (!pRobustnessInfo) return;
+
+	if (isBufferRobustnessEnabled(pRobustnessInfo->storageBuffers) ||
+		isBufferRobustnessEnabled(pRobustnessInfo->uniformBuffers) ||
+		isBufferRobustnessEnabled(pRobustnessInfo->vertexInputs)) {
+		pipeline->reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support buffer robustness.");
+	}
+}
+
 MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 										 MVKPipelineCache* pipelineCache,
 										 MVKPipeline* parent,
@@ -449,6 +483,8 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 				break;
 		}
 	}
+
+	warnIfBufferRobustnessEnabled(this, pCreateInfo);
 
 	// Initialize feedback. The VALID bit must be initialized, either set or cleared.
 	// We'll set the VALID bits later, after successful compilation.
@@ -505,6 +541,11 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 				break;
 		}
 	}
+
+	warnIfBufferRobustnessEnabled(this, pVertexSS);
+	warnIfBufferRobustnessEnabled(this, pTessCtlSS);
+	warnIfBufferRobustnessEnabled(this, pTessEvalSS);
+	warnIfBufferRobustnessEnabled(this, pFragmentSS);
 
 	// Get the tessellation parameters from the shaders.
 	SPIRVTessReflectionData reflectData;
@@ -2161,6 +2202,8 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 		}
 	}
 
+	warnIfBufferRobustnessEnabled(this, pCreateInfo);
+
 	// Initialize feedback. The VALID bit must be initialized, either set or cleared.
 	// We'll set the VALID bit on the stage feedback when we compile it.
 	VkPipelineCreationFeedback* pPipelineFB = nullptr;
@@ -2233,6 +2276,8 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 
     const VkPipelineShaderStageCreateInfo* pSS = &pCreateInfo->stage;
     if ( !mvkAreAllFlagsEnabled(pSS->stage, VK_SHADER_STAGE_COMPUTE_BIT) ) { return MVKMTLFunctionNull; }
+
+	warnIfBufferRobustnessEnabled(this, pSS);
 
 	auto& mtlFeats = getMetalFeatures();
     SPIRVToMSLConversionConfiguration shaderConfig;
