@@ -20,6 +20,7 @@ Released TBD
 
 - Add support for _Vulkan 1.3_.
 - Add support for extensions:
+	- `VK_KHR_load_store_op_none`
 	- `VK_KHR_maintenance4`
 	- `VK_KHR_shader_expect_assume`
 	- `VK_KHR_shader_subgroup_rotate`
@@ -29,6 +30,7 @@ Released TBD
 	- `VK_EXT_depth_clip_control`
 	- `VK_EXT_external_memory_metal`.
 	- `VK_EXT_image_2d_view_of_3d`
+	- `VK_EXT_load_store_op_none`
 	- `VK_EXT_tooling_info`
 - Add support for `B5G6R5_UNORM_PACK16` `B5G5R5A1_UNORM_PACK16`, and `B8G8R8A8` formats using swizzle.
 - Enable `MVK_CONFIG_USE_MTLHEAP` by default to support `VK_EXT_image_2d_view_of_3d`.
