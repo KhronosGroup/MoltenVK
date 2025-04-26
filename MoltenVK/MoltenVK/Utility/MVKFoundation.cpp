@@ -56,6 +56,7 @@ const char* mvkVkCommandName(MVKCommandUse cmdUse) {
 		case kMVKCommandUseDrawIndirectConvertBuffers:   return "vkCmdDrawIndirect (convert indirect buffers)";
 		case kMVKCommandUseCopyQueryPoolResults:         return "vkCmdCopyQueryPoolResults";
 		case kMVKCommandUseAccumOcclusionQuery:          return "Post-render-pass occlusion query accumulation";
+		case kMVKCommandConvertUint8Indices:             return "Convert Uint8 indices to Uint16";
 		case kMVKCommandUseRecordGPUCounterSample:       return "Record GPU Counter Sample";
 		default:                                         return "Unknown Vulkan command";
 	}

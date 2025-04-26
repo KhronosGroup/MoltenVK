@@ -358,6 +358,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				imageRobustnessFeatures->robustImageAccess = supportedFeats13.robustImageAccess;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES: {
+				auto* indexTypeUint8Features = (VkPhysicalDeviceIndexTypeUint8Features*)next;
+				indexTypeUint8Features->indexTypeUint8 = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES: {
 				auto* inlineUniformBlockFeatures = (VkPhysicalDeviceInlineUniformBlockFeatures*)next;
 				inlineUniformBlockFeatures->inlineUniformBlock = supportedFeats13.inlineUniformBlock;

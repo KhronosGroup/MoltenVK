@@ -547,5 +547,12 @@ kernel void accumulateOcclusionQueryResults(device VisibilityBuffer& dest [[buff
     if (dest.count < max(oldDestCount, src.count)) { dest.countHigh++; }                                        \n\
 }                                                                                                               \n\
                                                                                                                 \n\
+kernel void convertUint8Indices(device uint8_t* src [[ buffer(0) ]],                                            \n\
+                                device uint16_t* dst [[ buffer(1) ]],                                           \n\
+                                uint pos [[thread_position_in_grid]]) {                                         \n\
+    uint8_t idx = src[pos];                                                                                     \n\
+    dst[pos] = idx == 0xFF ? 0xFFFF : idx;                                                                      \n\
+}                                                                                                               \n\
+                                                                                                                \n\
 ";
 

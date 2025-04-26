@@ -614,6 +614,10 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newAccumulateOcclusionQue
 	return newMTLComputePipelineState("accumulateOcclusionQueryResults", owner);
 }
 
+id<MTLComputePipelineState> MVKCommandResourceFactory::newConvertUint8IndicesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("convertUint8Indices", owner);
+}
+
 
 #pragma mark Support methods
 

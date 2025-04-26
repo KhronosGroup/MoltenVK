@@ -256,6 +256,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
   - *Requires MVK_CONFIG_USE_MTLHEAP to be enabled.*
 - `VK_KHR_image_format_list`
 - `VK_KHR_incremental_present`
+- `VK_KHR_index_type_uint8`
 - `VK_KHR_load_store_op_none`
 - `VK_KHR_maintenance1`
 - `VK_KHR_maintenance2`
@@ -325,6 +326,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_host_image_copy`
 - `VK_EXT_host_query_reset`
 - `VK_EXT_image_robustness`
+- `VK_EXT_index_type_uint8`
 - `VK_EXT_inline_uniform_block`
 - `VK_EXT_layer_settings`
 - `VK_EXT_load_store_op_none`
