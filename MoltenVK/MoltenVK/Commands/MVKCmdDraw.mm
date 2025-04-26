@@ -91,7 +91,9 @@ void MVKCmdBindIndexBuffer::encode(MVKCommandEncoder* cmdEncoder) {
         // In the null buffer case, offset must be 0, and since we don't support nullDescriptor, the indices are undefined.
         // Thus, we can use a simple temporary buffer to stand in for the index buffer here.
         const auto idxSize = mvkMTLIndexTypeSizeInBytes((MTLIndexType)_binding.mtlIndexType);
-        _binding.mtlBuffer = cmdEncoder->getTempMTLBuffer(idxSize)->_mtlBuffer;
+        const auto* placeholderBuffer = cmdEncoder->getTempMTLBuffer(idxSize);
+        _binding.mtlBuffer = placeholderBuffer->_mtlBuffer;
+        _binding.offset = placeholderBuffer->_offset;
     } else if (_isUint8) {
         // Copy 8-bit indices into 16-bit index buffer compatible with Metal.
         const uint32_t numIndices = (uint32_t)_binding.mtlBuffer.length - (uint32_t)_binding.offset;
@@ -119,7 +121,7 @@ void MVKCmdBindIndexBuffer::encode(MVKCommandEncoder* cmdEncoder) {
             id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandConvertUint8Indices, true);
             [mtlComputeEnc setComputePipelineState: cps];
             [mtlComputeEnc setBuffer: _binding.mtlBuffer offset: _binding.offset atIndex: 0];
-            [mtlComputeEnc setBuffer: uint16Buf->_mtlBuffer offset: 0 atIndex: 1];
+            [mtlComputeEnc setBuffer: uint16Buf->_mtlBuffer offset: uint16Buf->_offset atIndex: 1];
 
             // Run as many full threadgroups as will fit into the buffer content.
             if (tgCount > 0) {
@@ -134,7 +136,7 @@ void MVKCmdBindIndexBuffer::encode(MVKCommandEncoder* cmdEncoder) {
                 if (tgCount > 0) {
                     const auto indicesConverted = tgCount * tgWidth;
                     [mtlComputeEnc setBufferOffset: _binding.offset + indicesConverted atIndex: 0];
-                    [mtlComputeEnc setBufferOffset: indicesConverted * 2 atIndex: 1];
+                    [mtlComputeEnc setBufferOffset: uint16Buf->_offset + indicesConverted * 2 atIndex: 1];
                 }
                 [mtlComputeEnc dispatchThreadgroups: MTLSizeMake(1, 1, 1)
                               threadsPerThreadgroup: MTLSizeMake(remainderIndexCount, 1, 1)];
@@ -145,7 +147,7 @@ void MVKCmdBindIndexBuffer::encode(MVKCommandEncoder* cmdEncoder) {
         }
 
         _binding.mtlBuffer = uint16Buf->_mtlBuffer;
-        _binding.offset = 0;
+        _binding.offset = uint16Buf->_offset;
     }
 
     cmdEncoder->_graphicsResourcesState.bindIndexBuffer(_binding);
@@ -173,20 +175,8 @@ VkResult MVKCmdDraw::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-// Populates and encodes a MVKCmdDrawIndexedIndirect command, after populating indexed indirect buffers.
-void MVKCmdDraw::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
-
-	// Create an indexed indirect buffer and populate it from the draw arguments.
-	uint32_t indirectIdxBuffStride = sizeof(MTLDrawIndexedPrimitivesIndirectArguments);
-	auto* indirectIdxBuff = cmdEncoder->getTempMTLBuffer(indirectIdxBuffStride);
-	auto* pIndArg = (MTLDrawIndexedPrimitivesIndirectArguments*)indirectIdxBuff->getContents();
-	pIndArg->indexCount = _vertexCount;
-	// let the indirect index point to the beginning of vertex index buffer below
-	pIndArg->indexStart = 0;
-	pIndArg->baseVertex = 0;
-	pIndArg->instanceCount = _instanceCount;
-	pIndArg->baseInstance = _firstInstance;
-
+// Populates and encodes a MVKCmdDrawIndexed command.
+void MVKCmdDraw::encodeIndexed(MVKCommandEncoder* cmdEncoder) {
 	// Create an index buffer populated with synthetic indexes.
 	// Start populating indexes directly from the beginning and align with corresponding vertexes by adding _firstVertex
 	MTLIndexType mtlIdxType = MTLIndexTypeUInt32;
@@ -194,7 +184,7 @@ void MVKCmdDraw::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
 	auto* pIdxBuff = (uint32_t*)vtxIdxBuff->getContents();
 
 	for (uint32_t idx = 0; idx < _vertexCount; idx++) {
-		pIdxBuff[idx] = _firstVertex + idx;
+		pIdxBuff[idx] = idx;
 	}
 
 	MVKIndexMTLBufferBinding ibb;
@@ -202,14 +192,14 @@ void MVKCmdDraw::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
 	ibb.mtlBuffer = vtxIdxBuff->_mtlBuffer;
 	ibb.offset = vtxIdxBuff->_offset;
 
-	MVKCmdDrawIndexedIndirect diiCmd;
-	diiCmd.setContent(cmdEncoder->_cmdBuffer,
-					  indirectIdxBuff->_mtlBuffer,
-					  indirectIdxBuff->_offset,
-					  1,
-					  indirectIdxBuffStride,
-					  _firstInstance);
-	diiCmd.encode(cmdEncoder, ibb);
+	MVKCmdDrawIndexed diCmd;
+	diCmd.setContent(cmdEncoder->_cmdBuffer,
+					 _vertexCount,
+					 _instanceCount,
+					 0,
+					 _firstVertex,
+					 _firstInstance);
+	diCmd.encode(cmdEncoder, ibb);
 }
 
 void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
@@ -222,9 +212,9 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 	auto& mtlFeats = cmdEncoder->getMetalFeatures();
 	auto& dvcLimits = cmdEncoder->getDeviceProperties().limits;
 
-	// Metal doesn't support triangle fans, so encode it as triangles via an indexed indirect triangles command instead.
+	// Metal doesn't support triangle fans, so encode it as triangles via an indexed triangles command instead.
 	if (pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
-		encodeIndexedIndirect(cmdEncoder);
+		encodeIndexed(cmdEncoder);
 		return;
 	}
 
@@ -438,7 +428,50 @@ void MVKCmdDrawIndexed::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
 	diiCmd.encode(cmdEncoder);
 }
 
+// Populates triangle vertex indexes for a triangle fan.
+template <typename T>
+static inline void populateTriIndxsFromTriFan(T* triIdxs,
+                                              const T* triFanIdxs,
+                                              uint32_t& triIdxCount,
+                                              const uint32_t triFanIdxCnt) {
+    T primRestartSentinel = (T) 0xFFFFFFFF;
+    triIdxCount = 0;
+    uint32_t triFanBaseIdx = 0;
+    uint32_t triFanIdxIdx = triFanBaseIdx + 2;
+    while (triFanIdxIdx < triFanIdxCnt) {
+        uint32_t triFanBaseIdxCurr = triFanBaseIdx;
+
+        // Detect primitive restart on any index, to catch possible consecutive restarts
+        T triIdx0 = triFanIdxs[triFanBaseIdx];
+        if (triIdx0 == primRestartSentinel)
+            triFanBaseIdx++;
+
+        T triIdx1 = triFanIdxs[triFanIdxIdx - 1];
+        if (triIdx1 == primRestartSentinel)
+            triFanBaseIdx = triFanIdxIdx;
+
+        T triIdx2 = triFanIdxs[triFanIdxIdx];
+        if (triIdx2 == primRestartSentinel)
+            triFanBaseIdx = triFanIdxIdx + 1;
+
+        if (triFanBaseIdx != triFanBaseIdxCurr) {
+            // Restart the triangle fan
+            triFanIdxIdx = triFanBaseIdx + 2;
+        } else {
+            // Provoking vertex is 1 in triangle fan but 0 in triangle list
+            triIdxs[triIdxCount++] = triIdx1;
+            triIdxs[triIdxCount++] = triIdx2;
+            triIdxs[triIdxCount++] = triIdx0;
+            triFanIdxIdx++;
+        }
+    }
+}
+
 void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
+	encode(cmdEncoder, cmdEncoder->_graphicsResourcesState._mtlIndexBufferBinding);
+}
+
+void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder, const MVKIndexMTLBufferBinding& ibbOrig) {
 
 	if (_indexCount == 0 || _instanceCount == 0) { return; }	// Nothing to do.
 
@@ -448,20 +481,42 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 	auto& mtlFeats = cmdEncoder->getMetalFeatures();
 	auto& dvcLimits = cmdEncoder->getDeviceProperties().limits;
 
-	// Metal doesn't support triangle fans, so encode it as triangles via an indexed indirect triangles command instead.
+	MVKIndexMTLBufferBinding ibb = ibbOrig;
+	size_t idxSize = mvkMTLIndexTypeSizeInBytes((MTLIndexType)ibb.mtlIndexType);
+	VkDeviceSize idxBuffOffset = ibb.offset + (_firstIndex * idxSize);
+	uint32_t indexCount = _indexCount;
+
+	// Metal doesn't support triangle fans, so the index buffer must be transformed.
 	if (pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
-		encodeIndexedIndirect(cmdEncoder);
-		return;
+		if (ibb.mtlBuffer.storageMode == MTLStorageModePrivate) {
+			// Index buffer is GPU-private, so we need to transform on the GPU.
+			// Encode it as triangles via an indexed indirect triangles command instead.
+			encodeIndexedIndirect(cmdEncoder);
+			return;
+		}
+
+		// Index buffer is CPU-visible, so we can do a CPU transform without breaking the render pass.
+		// Index count is multiplied by 2 to make sure we have enough space without knowing yet
+		// how many triangles there will be due to primitive restart.
+		auto* convertedBuf = cmdEncoder->getTempMTLBuffer((_indexCount * 2) * idxSize);
+		auto* convertedBufPtr = convertedBuf->getContents();
+		const auto* originalBufPtr = (uint8_t*)[ibb.mtlBuffer contents] + idxBuffOffset;
+		uint32_t triIdxCount = 0;
+		if (ibb.mtlIndexType == MTLIndexTypeUInt16) {
+			populateTriIndxsFromTriFan((uint16_t*)convertedBufPtr, (uint16_t*)originalBufPtr, triIdxCount, _indexCount);
+		} else {
+			populateTriIndxsFromTriFan((uint32_t*)convertedBufPtr, (uint32_t*)originalBufPtr, triIdxCount, _indexCount);
+		}
+
+		ibb.mtlBuffer = convertedBuf->_mtlBuffer;
+		ibb.offset = idxBuffOffset = convertedBuf->_offset;
+		indexCount = triIdxCount;
 	}
 
     cmdEncoder->_isIndexedDraw = true;
 
 	MVKPiplineStages stages;
     pipeline->getStages(stages);
-
-    MVKIndexMTLBufferBinding& ibb = cmdEncoder->_graphicsResourcesState._mtlIndexBufferBinding;
-    size_t idxSize = mvkMTLIndexTypeSizeInBytes((MTLIndexType)ibb.mtlIndexType);
-    VkDeviceSize idxBuffOffset = ibb.offset + (_firstIndex * idxSize);
 
     const MVKMTLBufferAllocation* vtxOutBuff = nullptr;
     const MVKMTLBufferAllocation* tcOutBuff = nullptr;
@@ -475,7 +530,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
     if (pipeline->isTessellationPipeline()) {
         tessParams.inControlPointCount = cmdEncoder->_renderingState.getPatchControlPoints();
         outControlPointCount = pipeline->getOutputControlPointCount();
-        tessParams.patchCount = mvkCeilingDivide(_indexCount, tessParams.inControlPointCount) * _instanceCount;
+        tessParams.patchCount = mvkCeilingDivide(indexCount, tessParams.inControlPointCount) * _instanceCount;
     }
     for (uint32_t s : stages) {
         auto stage = MVKGraphicsStage(s);
@@ -488,7 +543,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
             case kMVKGraphicsStageVertex: {
                 mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                 if (pipeline->needsVertexOutputBuffer()) {
-                    vtxOutBuff = cmdEncoder->getTempMTLBuffer(_indexCount * _instanceCount * 4 * dvcLimits.maxVertexOutputComponents, true);
+                    vtxOutBuff = cmdEncoder->getTempMTLBuffer(indexCount * _instanceCount * 4 * dvcLimits.maxVertexOutputComponents, true);
                     [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                           offset: vtxOutBuff->_offset
                                          atIndex: pipeline->getOutputBufferIndex().stages[kMVKShaderStageVertex]];
@@ -496,18 +551,18 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 				[mtlTessCtlEncoder setBuffer: ibb.mtlBuffer
                                       offset: idxBuffOffset
                                      atIndex: pipeline->getIndirectParamsIndex().stages[kMVKShaderStageVertex]];
-				[mtlTessCtlEncoder setStageInRegion: MTLRegionMake2D(_vertexOffset, _firstInstance, _indexCount, _instanceCount)];
+				[mtlTessCtlEncoder setStageInRegion: MTLRegionMake2D(_vertexOffset, _firstInstance, indexCount, _instanceCount)];
 				// If there are vertex bindings with a zero vertex divisor, I need to offset them by
 				// _firstInstance * stride, since that is the expected behaviour for a divisor of 0.
                 cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _firstInstance);
 				id<MTLComputePipelineState> vtxState = ibb.mtlIndexType == MTLIndexTypeUInt16 ? pipeline->getTessVertexStageIndex16State() : pipeline->getTessVertexStageIndex32State();
 				if (mtlFeats.nonUniformThreadgroups) {
 #if MVK_MACOS_OR_IOS
-					[mtlTessCtlEncoder dispatchThreads: MTLSizeMake(_indexCount, _instanceCount, 1)
+					[mtlTessCtlEncoder dispatchThreads: MTLSizeMake(indexCount, _instanceCount, 1)
                                  threadsPerThreadgroup: MTLSizeMake(vtxState.threadExecutionWidth, 1, 1)];
 #endif
 				} else {
-					[mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide(_indexCount, vtxState.threadExecutionWidth), _instanceCount, 1)
+					[mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide(indexCount, vtxState.threadExecutionWidth), _instanceCount, 1)
                                       threadsPerThreadgroup: MTLSizeMake(vtxState.threadExecutionWidth, 1, 1)];
 				}
                 // Mark pipeline, resources, and tess control push constants as dirty
@@ -606,7 +661,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                     cmdEncoder->_graphicsResourcesState.offsetZeroDivisorVertexBuffers(stage, pipeline, _firstInstance);
                     if (mtlFeats.baseVertexInstanceDrawing) {
                         [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_renderingState.getPrimitiveType()
-                                                                  indexCount: _indexCount
+                                                                  indexCount: indexCount
                                                                    indexType: (MTLIndexType)ibb.mtlIndexType
                                                                  indexBuffer: ibb.mtlBuffer
                                                            indexBufferOffset: idxBuffOffset
@@ -615,7 +670,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                                                                 baseInstance: _firstInstance];
                     } else {
                         [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_renderingState.getPrimitiveType()
-                                                                  indexCount: _indexCount
+                                                                  indexCount: indexCount
                                                                    indexType: (MTLIndexType)ibb.mtlIndexType
                                                                  indexBuffer: ibb.mtlBuffer
                                                            indexBufferOffset: idxBuffOffset

@@ -92,7 +92,7 @@ public:
 						uint32_t firstInstance);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
-	void encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder);
+	void encodeIndexed(MVKCommandEncoder* cmdEncoder);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -118,6 +118,7 @@ public:
 						uint32_t firstInstance);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	void encode(MVKCommandEncoder* cmdEncoder, const MVKIndexMTLBufferBinding& ibb);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
