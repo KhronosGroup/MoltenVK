@@ -71,14 +71,26 @@ VkResult MVKCmdBindIndexBuffer::setContent(MVKCommandBuffer* cmdBuff,
 										   VkDeviceSize offset,
 										   VkIndexType indexType) {
 	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
-	_binding.mtlBuffer = mvkBuffer->getMTLBuffer();
-	_binding.offset = mvkBuffer->getMTLBufferOffset() + offset;
+	if (mvkBuffer) {
+		_binding.mtlBuffer = mvkBuffer->getMTLBuffer();
+		_binding.offset = mvkBuffer->getMTLBufferOffset() + offset;
+	} else {
+		_binding.mtlBuffer = nullptr;
+		// Must be 0 for null buffer.
+		_binding.offset = 0;
+	}
 	_binding.mtlIndexType = mvkMTLIndexTypeFromVkIndexType(indexType);
 
 	return VK_SUCCESS;
 }
 
 void MVKCmdBindIndexBuffer::encode(MVKCommandEncoder* cmdEncoder) {
+    if (_binding.mtlBuffer == nullptr) {
+        // In the null buffer case, offset must be 0, and since we don't support nullDescriptor, the indices are undefined.
+        // Thus, we can use a simple temporary buffer to stand in for the index buffer here.
+        const auto idxSize = mvkMTLIndexTypeSizeInBytes((MTLIndexType)_binding.mtlIndexType);
+        _binding.mtlBuffer = cmdEncoder->getTempMTLBuffer(idxSize)->_mtlBuffer;
+    }
     cmdEncoder->_graphicsResourcesState.bindIndexBuffer(_binding);
 }
 

@@ -96,7 +96,19 @@ VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOf
 }
 
 VkResult MVKBuffer::bindDeviceMemory2(const VkBindBufferMemoryInfo* pBindInfo) {
-	return bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset);
+	VkResult res = bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset);
+	for (const auto* next = (const VkBaseInStructure*)pBindInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_BIND_MEMORY_STATUS: {
+				auto* pBindMemoryStatus = (const VkBindMemoryStatus*)next;
+				*(pBindMemoryStatus->pResult) = res;
+				break;
+			}
+			default:
+				break;
+		}
+	}
+	return res;
 }
 
 void MVKBuffer::applyMemoryBarrier(MVKPipelineBarrier& barrier,

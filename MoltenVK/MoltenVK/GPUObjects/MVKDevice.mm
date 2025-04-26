@@ -492,6 +492,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				barycentricFeatures->fragmentShaderBarycentric = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR: {
+				auto* maintenance6Features = (VkPhysicalDeviceMaintenance6FeaturesKHR*)next;
+				maintenance6Features->maintenance6 = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR: {
 				auto* portabilityFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesKHR*)next;
 				portabilityFeatures->constantAlphaColorBlendFactors = true;
@@ -971,6 +976,13 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_PROPERTIES_KHR: {
                 auto* barycentricProperties = (VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR*)next;
                 barycentricProperties->triStripVertexOrderIndependentOfProvokingVertex = false;
+                break;
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_PROPERTIES_KHR: {
+                auto* maintenance6Properties = (VkPhysicalDeviceMaintenance6PropertiesKHR*)next;
+                maintenance6Properties->blockTexelViewCompatibleMultipleLayers = false;
+                maintenance6Properties->maxCombinedImageSamplerDescriptorCount = 3;
+                maintenance6Properties->fragmentShadingRateClampCombinerInputs = false;
                 break;
             }
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_PROPERTIES: {
