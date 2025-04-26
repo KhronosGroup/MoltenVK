@@ -2921,7 +2921,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetPrivateData(
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkMapMemory2(
     VkDevice device,
-    const VkMemoryMapInfoKHR* pMemoryMapInfo,
+    const VkMemoryMapInfo* pMemoryMapInfo,
     void** ppData) {
 
     MVKTraceVulkanCallStart();
@@ -2933,7 +2933,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkMapMemory2(
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkUnmapMemory2(
     VkDevice device,
-    const VkMemoryUnmapInfoKHR* pMemoryUnmapInfo) {
+    const VkMemoryUnmapInfo* pMemoryUnmapInfo) {
 
     MVKTraceVulkanCallStart();
     MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMemoryUnmapInfo->memory;
@@ -3043,7 +3043,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSetWithTemplate(
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyImageToImage(
     VkDevice                                    device,
-    const VkCopyImageToImageInfoEXT*            pCopyImageToImageInfo) {
+    const VkCopyImageToImageInfo*               pCopyImageToImageInfo) {
 
 	MVKTraceVulkanCallStart();
 	VkResult rslt = MVKImage::copyImageToImage(pCopyImageToImageInfo);
@@ -3053,7 +3053,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyImageToImage(
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyImageToMemory(
     VkDevice                                    device,
-    const VkCopyImageToMemoryInfoEXT*           pCopyImageToMemoryInfo) {
+    const VkCopyImageToMemoryInfo*              pCopyImageToMemoryInfo) {
 
 	MVKTraceVulkanCallStart();
 	MVKImage* srcImg = (MVKImage*)pCopyImageToMemoryInfo->srcImage;
@@ -3064,7 +3064,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyImageToMemory(
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyMemoryToImage(
     VkDevice                                    device,
-	const VkCopyMemoryToImageInfoEXT*           pCopyMemoryToImageInfo) {
+	const VkCopyMemoryToImageInfo*              pCopyMemoryToImageInfo) {
 
 	MVKTraceVulkanCallStart();
 	MVKImage* dstImg = (MVKImage*)pCopyMemoryToImageInfo->dstImage;
@@ -3076,8 +3076,8 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyMemoryToImage(
 MVK_PUBLIC_VULKAN_SYMBOL void  vkGetImageSubresourceLayout2(
     VkDevice                                    device,
     VkImage                                     image,
-    const VkImageSubresource2KHR*               pSubresource,
-    VkSubresourceLayout2KHR*                    pLayout) {
+    const VkImageSubresource2*                  pSubresource,
+    VkSubresourceLayout2*                       pLayout) {
 
 	MVKTraceVulkanCallStart();
 	MVKImage* mvkImg = (MVKImage*)image;
@@ -3088,7 +3088,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void  vkGetImageSubresourceLayout2(
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkTransitionImageLayout(
     VkDevice                                    device,
     uint32_t                                    transitionCount,
-    const VkHostImageLayoutTransitionInfoEXT*   pTransitions) {
+    const VkHostImageLayoutTransitionInfo*      pTransitions) {
 
 	MVKTraceVulkanCallStart();
 	// Metal lacks the concept of image layouts, so nothing to do.
