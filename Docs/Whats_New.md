@@ -20,6 +20,7 @@ Released 2025-04-27
 
 - Add support for _Vulkan 1.3_.
 - Add support for extensions:
+	- `VK_KHR_index_type_uint8`
 	- `VK_KHR_load_store_op_none`
 	- `VK_KHR_maintenance4`
 	- `VK_KHR_maintenance6`
@@ -32,6 +33,7 @@ Released 2025-04-27
 	- `VK_EXT_depth_clip_control`
 	- `VK_EXT_external_memory_metal`.
 	- `VK_EXT_image_2d_view_of_3d`
+	- `VK_EXT_index_type_uint8`
 	- `VK_EXT_load_store_op_none`
 	- `VK_EXT_pipeline_robustness`
 	- `VK_EXT_tooling_info`

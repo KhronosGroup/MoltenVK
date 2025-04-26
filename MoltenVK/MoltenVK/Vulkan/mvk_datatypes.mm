@@ -735,6 +735,8 @@ MVK_PUBLIC_SYMBOL MTLWinding mvkMTLWindingFromVkFrontFace(VkFrontFace vkWinding)
 MVK_PUBLIC_SYMBOL MTLIndexType mvkMTLIndexTypeFromVkIndexType(VkIndexType vkIdxType) {
 	switch (vkIdxType) {
 		case VK_INDEX_TYPE_UINT32:	return MTLIndexTypeUInt32;
+		// Converted to Uint16 internally.
+		case VK_INDEX_TYPE_UINT8:
 		case VK_INDEX_TYPE_UINT16:	return MTLIndexTypeUInt16;
 		default:					return MTLIndexTypeUInt16;
 	}

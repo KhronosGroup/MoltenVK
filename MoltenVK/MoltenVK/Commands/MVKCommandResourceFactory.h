@@ -487,6 +487,9 @@ public:
 	/** Returns a new MTLComputePipelineState for accumulating occlusion query results to a buffer. */
 	id<MTLComputePipelineState> newAccumulateOcclusionQueryResultsMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 
+	/** Returns a new MTLComputePipelineState for converting a Uint8 index buffer to Uint16. */
+	id<MTLComputePipelineState> newConvertUint8IndicesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+
 
 #pragma mark Construction
 

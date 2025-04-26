@@ -96,8 +96,9 @@ typedef enum : uint8_t {
     kMVKCommandUseDispatch,                     /**< vkCmdDispatch. */
     kMVKCommandUseTessellationVertexTessCtl,    /**< vkCmdDraw* - vertex and tessellation control stages. */
 	kMVKCommandUseDrawIndirectConvertBuffers,   /**< vkCmdDrawIndirect* convert indirect buffers. */
-    kMVKCommandUseCopyQueryPoolResults,         /**< vkCmdCopyQueryPoolResults. */
-    kMVKCommandUseAccumOcclusionQuery,          /**< Any command terminating a Metal render pass with active visibility buffer. */
+	kMVKCommandUseCopyQueryPoolResults,         /**< vkCmdCopyQueryPoolResults. */
+	kMVKCommandUseAccumOcclusionQuery,          /**< Any command terminating a Metal render pass with active visibility buffer. */
+	kMVKCommandConvertUint8Indices,             /**< Converting a Uint8 index buffer to Uint16. */
 	kMVKCommandUseRecordGPUCounterSample        /**< Any command triggering the recording of a GPU counter sample. */
 } MVKCommandUse;
 
