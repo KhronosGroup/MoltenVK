@@ -495,6 +495,10 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR: {
 				auto* maintenance6Features = (VkPhysicalDeviceMaintenance6FeaturesKHR*)next;
 				maintenance6Features->maintenance6 = true;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR: {
+				auto* maintenance7Features = (VkPhysicalDeviceMaintenance7FeaturesKHR*)next;
+				maintenance7Features->maintenance7 = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR: {
@@ -978,11 +982,43 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 barycentricProperties->triStripVertexOrderIndependentOfProvokingVertex = false;
                 break;
             }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_API_PROPERTIES_LIST_KHR: {
+                auto* layeredApiPropertiesList = (VkPhysicalDeviceLayeredApiPropertiesListKHR*)next;
+                if (layeredApiPropertiesList->pLayeredApis == nullptr) {
+                    // Populate with the total number of layered APIs.
+                    layeredApiPropertiesList->layeredApiCount = 1;
+                } else {
+                    // Populate with all layered APIs that will fit.
+                    layeredApiPropertiesList->layeredApiCount = std::min(layeredApiPropertiesList->layeredApiCount, 1u);
+                    if (layeredApiPropertiesList->layeredApiCount >= 1) {
+                        auto& layeredApiProperties = layeredApiPropertiesList->pLayeredApis[0];
+                        layeredApiProperties.vendorID = _properties.vendorID;
+                        layeredApiProperties.deviceID = _properties.deviceID;
+                        layeredApiProperties.layeredAPI = VK_PHYSICAL_DEVICE_LAYERED_API_METAL_KHR;
+                        strlcpy(layeredApiProperties.deviceName, _properties.deviceName, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
+                    }
+                }
+                break;
+            }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_PROPERTIES_KHR: {
                 auto* maintenance6Properties = (VkPhysicalDeviceMaintenance6PropertiesKHR*)next;
                 maintenance6Properties->blockTexelViewCompatibleMultipleLayers = false;
                 maintenance6Properties->maxCombinedImageSamplerDescriptorCount = 3;
                 maintenance6Properties->fragmentShadingRateClampCombinerInputs = false;
+                break;
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_PROPERTIES_KHR: {
+                auto* maintenance7Properties = (VkPhysicalDeviceMaintenance7PropertiesKHR*)next;
+                maintenance7Properties->robustFragmentShadingRateAttachmentAccess = false;
+                maintenance7Properties->separateDepthStencilAttachmentAccess = true;
+                maintenance7Properties->maxDescriptorSetTotalUniformBuffersDynamic = _properties.limits.maxDescriptorSetUniformBuffersDynamic;
+                maintenance7Properties->maxDescriptorSetTotalStorageBuffersDynamic = _properties.limits.maxDescriptorSetStorageBuffersDynamic;
+                maintenance7Properties->maxDescriptorSetTotalBuffersDynamic =
+                        _properties.limits.maxDescriptorSetUniformBuffersDynamic + _properties.limits.maxDescriptorSetStorageBuffersDynamic;
+                maintenance7Properties->maxDescriptorSetUpdateAfterBindTotalUniformBuffersDynamic = supportedProps12.maxDescriptorSetUpdateAfterBindUniformBuffersDynamic;
+                maintenance7Properties->maxDescriptorSetUpdateAfterBindTotalStorageBuffersDynamic = supportedProps12.maxDescriptorSetUpdateAfterBindStorageBuffersDynamic;
+                maintenance7Properties->maxDescriptorSetUpdateAfterBindTotalBuffersDynamic =
+                        supportedProps12.maxDescriptorSetUpdateAfterBindUniformBuffersDynamic + supportedProps12.maxDescriptorSetUpdateAfterBindStorageBuffersDynamic;
                 break;
             }
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_PROPERTIES: {

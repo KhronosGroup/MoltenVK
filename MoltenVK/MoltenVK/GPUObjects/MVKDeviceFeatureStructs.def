@@ -69,6 +69,7 @@ MVK_DEVICE_FEATURE(VulkanMemoryModel,                 VULKAN_MEMORY_MODEL,      
 MVK_DEVICE_FEATURE(ZeroInitializeWorkgroupMemory,     ZERO_INITIALIZE_WORKGROUP_MEMORY,       1)
 MVK_DEVICE_FEATURE_EXTN(FragmentShaderBarycentric,    FRAGMENT_SHADER_BARYCENTRIC,     KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(Maintenance6,                 MAINTENANCE_6,                   KHR,   1)
+MVK_DEVICE_FEATURE_EXTN(Maintenance7,                 MAINTENANCE_7,                   KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(PortabilitySubset,            PORTABILITY_SUBSET,              KHR,  15)
 MVK_DEVICE_FEATURE_EXTN(ShaderExpectAssume,           SHADER_EXPECT_ASSUME,            KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(ShaderSubgroupRotate,         SHADER_SUBGROUP_ROTATE,          KHR,   2)
