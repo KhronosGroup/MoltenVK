@@ -2917,6 +2917,187 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetPrivateData(
 
 
 #pragma mark -
+#pragma mark Vulkan 1.4 calls
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkMapMemory2(
+    VkDevice device,
+    const VkMemoryMapInfoKHR* pMemoryMapInfo,
+    void** ppData) {
+
+    MVKTraceVulkanCallStart();
+    MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMemoryMapInfo->memory;
+    VkResult rslt = mvkMem->map(pMemoryMapInfo, ppData);
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkUnmapMemory2(
+    VkDevice device,
+    const VkMemoryUnmapInfoKHR* pMemoryUnmapInfo) {
+
+    MVKTraceVulkanCallStart();
+    MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMemoryUnmapInfo->memory;
+    VkResult rslt = mvkMem->unmap(pMemoryUnmapInfo);
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindDescriptorSets2(
+    VkCommandBuffer                             commandBuffer,
+    const VkBindDescriptorSetsInfo*             pBindDescriptorSetsInfo) {
+
+	MVKTraceVulkanCallStart();
+	// If stageFlags specifies a subset of all stages corresponding to one or more pipeline bind points,
+	// the binding operation still affects all stages corresponding to the given pipeline bind point(s)
+	// as if the equivalent original version of this command had been called with the same parameters.
+	if (pBindDescriptorSetsInfo->stageFlags & VK_SHADER_STAGE_ALL_GRAPHICS) {
+		if (pBindDescriptorSetsInfo->dynamicOffsetCount) {
+			MVKAddCmdFromThreshold(BindDescriptorSetsDynamic, pBindDescriptorSetsInfo->descriptorSetCount, 4, commandBuffer,
+					VK_PIPELINE_BIND_POINT_GRAPHICS, pBindDescriptorSetsInfo->layout, pBindDescriptorSetsInfo->firstSet,
+					pBindDescriptorSetsInfo->descriptorSetCount, pBindDescriptorSetsInfo->pDescriptorSets, pBindDescriptorSetsInfo->dynamicOffsetCount,
+					pBindDescriptorSetsInfo->pDynamicOffsets);
+		} else {
+			MVKAddCmdFrom2Thresholds(BindDescriptorSetsStatic, pBindDescriptorSetsInfo->descriptorSetCount, 1, 4, commandBuffer,
+					VK_PIPELINE_BIND_POINT_GRAPHICS, pBindDescriptorSetsInfo->layout, pBindDescriptorSetsInfo->firstSet,
+					pBindDescriptorSetsInfo->descriptorSetCount, pBindDescriptorSetsInfo->pDescriptorSets);
+		}
+	}
+	if (pBindDescriptorSetsInfo->stageFlags & VK_SHADER_STAGE_COMPUTE_BIT) {
+		if (pBindDescriptorSetsInfo->dynamicOffsetCount) {
+			MVKAddCmdFromThreshold(BindDescriptorSetsDynamic, pBindDescriptorSetsInfo->descriptorSetCount, 4, commandBuffer,
+					VK_PIPELINE_BIND_POINT_COMPUTE, pBindDescriptorSetsInfo->layout, pBindDescriptorSetsInfo->firstSet,
+					pBindDescriptorSetsInfo->descriptorSetCount, pBindDescriptorSetsInfo->pDescriptorSets, pBindDescriptorSetsInfo->dynamicOffsetCount,
+					pBindDescriptorSetsInfo->pDynamicOffsets);
+		} else {
+			MVKAddCmdFrom2Thresholds(BindDescriptorSetsStatic, pBindDescriptorSetsInfo->descriptorSetCount, 1, 4, commandBuffer,
+					VK_PIPELINE_BIND_POINT_COMPUTE, pBindDescriptorSetsInfo->layout, pBindDescriptorSetsInfo->firstSet,
+					pBindDescriptorSetsInfo->descriptorSetCount, pBindDescriptorSetsInfo->pDescriptorSets);
+		}
+	}
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushConstants2(
+    VkCommandBuffer                             commandBuffer,
+    const VkPushConstantsInfo*                  pPushConstantsInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmdFrom2Thresholds(PushConstants, pPushConstantsInfo->size, 64, 128, commandBuffer, pPushConstantsInfo->layout,
+				  pPushConstantsInfo->stageFlags, pPushConstantsInfo->offset, pPushConstantsInfo->size, pPushConstantsInfo->pValues);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSet2(
+    VkCommandBuffer                             commandBuffer,
+    const VkPushDescriptorSetInfo*              pPushDescriptorSetInfo) {
+
+	MVKTraceVulkanCallStart();
+	// If stageFlags specifies a subset of all stages corresponding to one or more pipeline bind points,
+	// the binding operation still affects all stages corresponding to the given pipeline bind point(s)
+	// as if the equivalent original version of this command had been called with the same parameters.
+	if (pPushDescriptorSetInfo->stageFlags & VK_SHADER_STAGE_ALL_GRAPHICS) {
+		MVKAddCmd(PushDescriptorSet, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pPushDescriptorSetInfo->layout,
+				pPushDescriptorSetInfo->set, pPushDescriptorSetInfo->descriptorWriteCount, pPushDescriptorSetInfo->pDescriptorWrites);
+	}
+	if (pPushDescriptorSetInfo->stageFlags & VK_SHADER_STAGE_COMPUTE_BIT) {
+		MVKAddCmd(PushDescriptorSet, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pPushDescriptorSetInfo->layout,
+				pPushDescriptorSetInfo->set, pPushDescriptorSetInfo->descriptorWriteCount, pPushDescriptorSetInfo->pDescriptorWrites);
+	}
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSetWithTemplate2(
+    VkCommandBuffer                             commandBuffer,
+    const VkPushDescriptorSetWithTemplateInfo*  pPushDescriptorSetWithTemplateInfo) {
+
+	MVKTraceVulkanCallStart();
+    MVKAddCmd(PushDescriptorSetWithTemplate, commandBuffer, pPushDescriptorSetWithTemplateInfo->descriptorUpdateTemplate,
+				  pPushDescriptorSetWithTemplateInfo->layout, pPushDescriptorSetWithTemplateInfo->set, pPushDescriptorSetWithTemplateInfo->pData);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSet(
+    VkCommandBuffer                             commandBuffer,
+    VkPipelineBindPoint                         pipelineBindPoint,
+    VkPipelineLayout                            layout,
+    uint32_t                                    set,
+    uint32_t                                    descriptorWriteCount,
+    const VkWriteDescriptorSet*                 pDescriptorWrites) {
+
+	MVKTraceVulkanCallStart();
+    MVKAddCmd(PushDescriptorSet, commandBuffer, pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSetWithTemplate(
+    VkCommandBuffer                            commandBuffer,
+    VkDescriptorUpdateTemplate                 descriptorUpdateTemplate,
+    VkPipelineLayout                           layout,
+    uint32_t                                   set,
+    const void*                                pData) {
+
+	MVKTraceVulkanCallStart();
+    MVKAddCmd(PushDescriptorSetWithTemplate, commandBuffer, descriptorUpdateTemplate, layout, set, pData);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyImageToImage(
+    VkDevice                                    device,
+    const VkCopyImageToImageInfoEXT*            pCopyImageToImageInfo) {
+
+	MVKTraceVulkanCallStart();
+	VkResult rslt = MVKImage::copyImageToImage(pCopyImageToImageInfo);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyImageToMemory(
+    VkDevice                                    device,
+    const VkCopyImageToMemoryInfoEXT*           pCopyImageToMemoryInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKImage* srcImg = (MVKImage*)pCopyImageToMemoryInfo->srcImage;
+	VkResult rslt = srcImg->copyImageToMemory(pCopyImageToMemoryInfo);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyMemoryToImage(
+    VkDevice                                    device,
+	const VkCopyMemoryToImageInfoEXT*           pCopyMemoryToImageInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKImage* dstImg = (MVKImage*)pCopyMemoryToImageInfo->dstImage;
+	VkResult rslt = dstImg->copyMemoryToImage(pCopyMemoryToImageInfo);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void  vkGetImageSubresourceLayout2(
+    VkDevice                                    device,
+    VkImage                                     image,
+    const VkImageSubresource2KHR*               pSubresource,
+    VkSubresourceLayout2KHR*                    pLayout) {
+
+	MVKTraceVulkanCallStart();
+	MVKImage* mvkImg = (MVKImage*)image;
+	mvkImg->getSubresourceLayout(pSubresource, pLayout);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkTransitionImageLayout(
+    VkDevice                                    device,
+    uint32_t                                    transitionCount,
+    const VkHostImageLayoutTransitionInfoEXT*   pTransitions) {
+
+	MVKTraceVulkanCallStart();
+	// Metal lacks the concept of image layouts, so nothing to do.
+	MVKTraceVulkanCallEnd();
+	return VK_SUCCESS;
+}
+
+
+#pragma mark -
 #pragma mark VK_KHR_bind_memory2 extension
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkBindBufferMemory2, KHR);
@@ -3161,59 +3342,26 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetDeviceImageSparseMemoryRequirements, KHR);
 
 
 #pragma mark -
+#pragma mark VK_KHR_maintenance6 extension
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdBindDescriptorSets2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdPushConstants2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdPushDescriptorSet2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdPushDescriptorSetWithTemplate2, KHR);
+
+
+#pragma mark -
 #pragma mark VK_KHR_map_memory2 extension
 
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkMapMemory2KHR(
-    VkDevice device,
-    const VkMemoryMapInfoKHR* pMemoryMapInfo,
-    void** ppData) {
-	
-    MVKTraceVulkanCallStart();
-    MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMemoryMapInfo->memory;
-    VkResult rslt = mvkMem->map(pMemoryMapInfo, ppData);
-    MVKTraceVulkanCallEnd();
-    return rslt;
-}
-
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkUnmapMemory2KHR(
-    VkDevice device,
-    const VkMemoryUnmapInfoKHR* pMemoryUnmapInfo) {
-
-    MVKTraceVulkanCallStart();
-    MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMemoryUnmapInfo->memory;
-    VkResult rslt = mvkMem->unmap(pMemoryUnmapInfo);
-    MVKTraceVulkanCallEnd();
-    return rslt;
-}
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkMapMemory2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkUnmapMemory2, KHR);
 
 
 #pragma mark -
 #pragma mark VK_KHR_push_descriptor extension
 
-MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSetKHR(
-    VkCommandBuffer                             commandBuffer,
-    VkPipelineBindPoint                         pipelineBindPoint,
-    VkPipelineLayout                            layout,
-    uint32_t                                    set,
-    uint32_t                                    descriptorWriteCount,
-    const VkWriteDescriptorSet*                 pDescriptorWrites) {
-
-	MVKTraceVulkanCallStart();
-    MVKAddCmd(PushDescriptorSet, commandBuffer, pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
-	MVKTraceVulkanCallEnd();
-}
-
-MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSetWithTemplateKHR(
-    VkCommandBuffer                            commandBuffer,
-    VkDescriptorUpdateTemplate                 descriptorUpdateTemplate,
-    VkPipelineLayout                           layout,
-    uint32_t                                   set,
-    const void*                                pData) {
-
-	MVKTraceVulkanCallStart();
-    MVKAddCmd(PushDescriptorSetWithTemplate, commandBuffer, descriptorUpdateTemplate, layout, set, pData);
-	MVKTraceVulkanCallEnd();
-}
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdPushDescriptorSet, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdPushDescriptorSetWithTemplate, KHR);
 
 
 #pragma mark -
@@ -3996,60 +4144,11 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateHeadlessSurfaceEXT(
 #pragma mark -
 #pragma mark VK_EXT_host_image_copy extension
 
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyImageToImageEXT(
-    VkDevice                                    device,
-    const VkCopyImageToImageInfoEXT*            pCopyImageToImageInfo) {
-
-	MVKTraceVulkanCallStart();
-	VkResult rslt = MVKImage::copyImageToImage(pCopyImageToImageInfo);
-	MVKTraceVulkanCallEnd();
-	return rslt;
-}
-
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyImageToMemoryEXT(
-    VkDevice                                    device,
-    const VkCopyImageToMemoryInfoEXT*           pCopyImageToMemoryInfo) {
-
-	MVKTraceVulkanCallStart();
-	MVKImage* srcImg = (MVKImage*)pCopyImageToMemoryInfo->srcImage;
-	VkResult rslt = srcImg->copyImageToMemory(pCopyImageToMemoryInfo);
-	MVKTraceVulkanCallEnd();
-	return rslt;
-}
-
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyMemoryToImageEXT(
-    VkDevice                                    device,
-	const VkCopyMemoryToImageInfoEXT*           pCopyMemoryToImageInfo) {
-
-	MVKTraceVulkanCallStart();
-	MVKImage* dstImg = (MVKImage*)pCopyMemoryToImageInfo->dstImage;
-	VkResult rslt = dstImg->copyMemoryToImage(pCopyMemoryToImageInfo);
-	MVKTraceVulkanCallEnd();
-	return rslt;
-}
-
-MVK_PUBLIC_VULKAN_SYMBOL void  vkGetImageSubresourceLayout2EXT(
-    VkDevice                                    device,
-    VkImage                                     image,
-    const VkImageSubresource2KHR*               pSubresource,
-    VkSubresourceLayout2KHR*                    pLayout) {
-
-	MVKTraceVulkanCallStart();
-	MVKImage* mvkImg = (MVKImage*)image;
-	mvkImg->getSubresourceLayout(pSubresource, pLayout);
-	MVKTraceVulkanCallEnd();
-}
-
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkTransitionImageLayoutEXT(
-    VkDevice                                    device,
-    uint32_t                                    transitionCount,
-    const VkHostImageLayoutTransitionInfoEXT*   pTransitions) {
-
-	MVKTraceVulkanCallStart();
-	// Metal lacks the concept of image layouts, so nothing to do.
-	MVKTraceVulkanCallEnd();
-	return VK_SUCCESS;
-}
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCopyImageToImage, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCopyImageToMemory, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCopyMemoryToImage, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetImageSubresourceLayout2, EXT);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkTransitionImageLayout, EXT);
 
 
 #pragma mark -

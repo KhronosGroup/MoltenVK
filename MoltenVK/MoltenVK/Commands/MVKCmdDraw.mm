@@ -71,8 +71,14 @@ VkResult MVKCmdBindIndexBuffer::setContent(MVKCommandBuffer* cmdBuff,
 										   VkDeviceSize offset,
 										   VkIndexType indexType) {
 	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
-	_binding.mtlBuffer = mvkBuffer->getMTLBuffer();
-	_binding.offset = mvkBuffer->getMTLBufferOffset() + offset;
+	if (mvkBuffer) {
+		_binding.mtlBuffer = mvkBuffer->getMTLBuffer();
+		_binding.offset = mvkBuffer->getMTLBufferOffset() + offset;
+	} else {
+		_binding.mtlBuffer = nullptr;
+		// Must be 0 for null buffer.
+		_binding.offset = 0;
+	}
 	_binding.mtlIndexType = mvkMTLIndexTypeFromVkIndexType(indexType);
 
 	return VK_SUCCESS;
@@ -390,9 +396,14 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 	MVKPiplineStages stages;
     pipeline->getStages(stages);
 
-    MVKIndexMTLBufferBinding& ibb = cmdEncoder->_graphicsResourcesState._mtlIndexBufferBinding;
+    MVKIndexMTLBufferBinding ibb = cmdEncoder->_graphicsResourcesState._mtlIndexBufferBinding;
     size_t idxSize = mvkMTLIndexTypeSizeInBytes((MTLIndexType)ibb.mtlIndexType);
     VkDeviceSize idxBuffOffset = ibb.offset + (_firstIndex * idxSize);
+    // In the null buffer case, offset must be 0, and since we don't support nullDescriptor, the indices are undefined.
+    // Thus, we can use a simple temporary buffer to stand in for the index buffer here.
+    if (!ibb.mtlBuffer) {
+        ibb.mtlBuffer = cmdEncoder->getTempMTLBuffer(idxSize)->_mtlBuffer;
+    }
 
     const MVKMTLBufferAllocation* vtxOutBuff = nullptr;
     const MVKMTLBufferAllocation* tcOutBuff = nullptr;
@@ -1006,6 +1017,13 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
     cmdEncoder->_isIndexedDraw = true;
 
     MVKIndexMTLBufferBinding ibb = ibbOrig;
+    size_t idxSize = mvkMTLIndexTypeSizeInBytes((MTLIndexType)ibb.mtlIndexType);
+    // In the null buffer case, offset must be 0, and since we don't support nullDescriptor, the indices are undefined.
+    // Thus, we can use a simple temporary buffer to stand in for the index buffer here.
+    if (!ibb.mtlBuffer) {
+        ibb.mtlBuffer = cmdEncoder->getTempMTLBuffer(idxSize)->_mtlBuffer;
+    }
+
 	MVKIndexMTLBufferBinding ibbTriFan = ibb;
     auto* pipeline = cmdEncoder->getGraphicsPipeline();
 	auto& mtlFeats = cmdEncoder->getMetalFeatures();
@@ -1088,7 +1106,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
         mtlIndBuff = tempIndirectBuff->_mtlBuffer;
         mtlTempIndBuffOfst = tempIndirectBuff->_offset;
 		if (vtxAdjmts.isTriangleFan) {
-			auto* triVtxBuff = cmdEncoder->getTempMTLBuffer(mvkMTLIndexTypeSizeInBytes((MTLIndexType)ibb.mtlIndexType) * kMVKMaxDrawIndirectVertexCount, true);
+			auto* triVtxBuff = cmdEncoder->getTempMTLBuffer(idxSize * kMVKMaxDrawIndirectVertexCount, true);
 			ibb.mtlBuffer = triVtxBuff->_mtlBuffer;
 			ibb.offset = triVtxBuff->_offset;
 		}

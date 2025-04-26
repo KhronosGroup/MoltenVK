@@ -942,7 +942,19 @@ VkResult MVKImage::bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo) {
                 break;
         }
     }
-    return bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset, planeIndex);
+    VkResult res = bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset, planeIndex);
+    for (const auto* next = (const VkBaseInStructure*)pBindInfo->pNext; next; next = next->pNext) {
+        switch (next->sType) {
+            case VK_STRUCTURE_TYPE_BIND_MEMORY_STATUS: {
+                auto* pBindMemoryStatus = (const VkBindMemoryStatus*)next;
+                *(pBindMemoryStatus->pResult) = res;
+                break;
+            }
+            default:
+                break;
+        }
+    }
+    return res;
 }
 
 

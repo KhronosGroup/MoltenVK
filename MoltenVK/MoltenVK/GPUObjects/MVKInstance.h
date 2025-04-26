@@ -38,13 +38,15 @@ typedef struct MVKEntryPoint {
 	uint32_t apiVersion;
 	const char* ext1Name;
 	const char* ext2Name;
+	const char* ext3Name;
 	bool isDevice;
 
-	bool isCore() { return !ext1Name && !ext2Name; }
+	bool isCore() { return !ext1Name && !ext2Name && !ext3Name; }
 	bool isEnabled(uint32_t enabledVersion, const MVKExtensionList& extList, const MVKExtensionList* instExtList = nullptr) {
 		bool isAPISupported = MVK_VULKAN_API_VERSION_CONFORM(enabledVersion) >= apiVersion;
 		auto isExtnSupported = [this, isAPISupported](const MVKExtensionList& extList) {
-			return extList.isEnabled(this->ext1Name) && (isAPISupported || !this->ext2Name || extList.isEnabled(this->ext2Name));
+			return extList.isEnabled(this->ext1Name) && (isAPISupported ||
+					((!this->ext2Name || extList.isEnabled(this->ext2Name)) && (!this->ext3Name || extList.isEnabled(this->ext3Name))));
 		};
 		return ((isCore() && isAPISupported) ||
 				isExtnSupported(extList) ||
