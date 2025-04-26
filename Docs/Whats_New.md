@@ -6,7 +6,7 @@
 
 # What's New in MoltenVK
 
-Copyright (c) 2015-2024 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
+Copyright (c) 2015-2025 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 [comment]: # "This document is written in Markdown (http://en.wikipedia.org/wiki/Markdown) format."
 [comment]: # "For best results, use a Markdown reader."
@@ -69,6 +69,7 @@ Released TBD
 - Allow the proc address of `vkGetMoltenVKConfigurationMVK()` to be retrieved before a `VkInstance` has been created.
 - GitHub CI update legacy build to _macOS 13 / Xcode 14_.
 - Fix compile with `MVK_USE_CEREAL=0`.
+- Update copyright notices to year 2025.
 - Update to latest SPIRV-Cross:
   - MSL: Support broader tessellation I/O matching for VK_KHR_maintenance4.
   - MSL: Pad array elements in Metal argument buffer when shader declares scalar.
