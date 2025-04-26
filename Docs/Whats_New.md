@@ -16,7 +16,7 @@ Copyright (c) 2015-2025 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.3.0
 ---------------
 
-Released TBD
+Released 2025-04-27
 
 - Add support for _Vulkan 1.3_.
 - Add support for extensions:
@@ -35,6 +35,8 @@ Released TBD
 	- `VK_EXT_tooling_info`
 - Add support for `B5G6R5_UNORM_PACK16` `B5G5R5A1_UNORM_PACK16`, and `B8G8R8A8` formats using swizzle.
 - Enable `MVK_CONFIG_USE_MTLHEAP` by default to support `VK_EXT_image_2d_view_of_3d`.
+- Remove `glslang` as dependency library.
+- `MoltenVKShaderConverter` no longer accepts GLSL` shaders as input.
 - Fixes to managing descriptor set allocation in a Metal argument buffer.
 - Fix _SPIRV-Cross_ namespace build error on some alternate build environments.
 - Fix recent failure of `CI.yml` to upload release build artifacts to GitHub.
@@ -46,9 +48,12 @@ Released TBD
 - Fix designation of `vkGetPhysicalDeviceToolProperties` as a device entry-point.
 - Fix memory leak of `CAEDRMetadata` in `MVKSwapchain`.
 - Fix not saving `shouldFixupClipSpace` when serializing a pipeline.
+- Fix header namespace pollution.
+- Revert use of size 1 for variable length arrays in shader.
+- Add `MTLHeaps` export/import for emulated textures.
+- `MTLHeaps` on Apple Device Simulator must use private storage.
 - Remove atomic usage for `RG32Uint`.
 - Handle shader specializtion with macros.
-- Improved estimation of vertex attribute buffer count when reserving for implicit buffer.
 - Use Metal residency sets when available.
 - Implement barriers using Metal fences.
 - `vkCmdWaitEvents` end current encoder before `encodeWait`.
@@ -64,20 +69,24 @@ Released TBD
 - Add missing `depthClamp` and `shaderTessellationAndGeometryPointSize` features to _tvOS_.
 - Update features overrides to all Simulators: _iOS, tvOS, visionOS_.
 - Fix a crash when searching the first enabled bit in a completely disabled bit array.
+- When shader specifies both WorkgroupSize builtin and LocalSizeId, the builtin takes precedence.
 - When logging a pipeline layout, log contained descriptor set layouts.
 - Add debug labels to barrier fences.
 - Allow the proc address of `vkGetMoltenVKConfigurationMVK()` to be retrieved before a `VkInstance` has been created.
+- Work around 10.15 AMD driver's broken blit encoder timestamp sampling.
 - GitHub CI update legacy build to _macOS 13 / Xcode 14_.
 - Fix compile with `MVK_USE_CEREAL=0`.
 - Update copyright notices to year 2025.
 - Update to latest SPIRV-Cross:
-  - MSL: Support broader tessellation I/O matching for VK_KHR_maintenance4.
+  - MSL: Support broader tessellation I/O matching for `VK_KHR_maintenance4`.
+  - MSL: Add support for `SPV_KHR_expect_assume`.
+  - GLSL/MSL: Implement `SPV_KHR_subgroup_rotate`.
+  - MSL: Implement subgroup clustered rotate.
   - MSL: Pad array elements in Metal argument buffer when shader declares scalar.
   - MSL: Expose information about specialization constants - macro mapping
   - MSL: Use unpacked arguments in texture arguments.
   - MSL: Fix emission of bindless helper template for bindless SSBO.
   - MSL: Use actual result type member as cast type for mulhi.
-  - MSL: Allow Centroid and Sample decorations on bary coord.
   - MSL: Terminate function with return value using return if ending in unreachable.
   - MSL: Add option to disable rasterization depending on usage.
   - MSL: Always pass BDA by value into functions.
@@ -86,8 +95,9 @@ Released TBD
   - MSL: Treat pointer to vector as scalar type when bitcasting.
   - MSL: Use the more proper pointer typing.
   - MSL: Use decltype for getting return of gather.
-  - MSL: Remove spvForward.
+  - MSL: Remove `spvForward()`.
   - MSL: Fix gather functions on Sequoia.
+  - MSL: Fix crash when per-primitive variables are not used.
 
 
 

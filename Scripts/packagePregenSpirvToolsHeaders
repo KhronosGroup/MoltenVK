@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2016-2022 The Brenwill Workshop Ltd.
 #
-# packagePregenSpirvToolsHeaders - Packages Spirv-Tools headers to simplify building glslang
+# packagePregenSpirvToolsHeaders - Packages Spirv-Tools headers to simplify building SPIRV-Tools.
 #
 # macOS usage: ./packagePregenSpirvToolsHeaders
 #
