@@ -100,6 +100,7 @@ typedef struct MVKMTLBufferBinding {
 typedef struct MVKIndexMTLBufferBinding {
     union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; }; // aliases
     VkDeviceSize offset = 0;
+    VkDeviceSize size = 0;
     uint8_t mtlIndexType = 0;		// MTLIndexType
     bool isDirty = true;
 } MVKIndexMTLBufferBinding;

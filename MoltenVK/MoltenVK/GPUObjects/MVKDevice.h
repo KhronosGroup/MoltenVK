@@ -565,6 +565,9 @@ public:
 								 uint64_t* pTimestamps,
 								 uint64_t* pMaxDeviation);
 
+    /** Returns the granularity of the dynamic rendering optimal render area.  */
+    VkExtent2D getDynamicRenderAreaGranularity();
+
 #pragma mark Object lifecycle
 
 	MVKBuffer* createBuffer(const VkBufferCreateInfo* pCreateInfo,

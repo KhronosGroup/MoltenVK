@@ -6,9 +6,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -235,7 +235,7 @@ void MVKPipeline::populateDescriptorSetBindingUse(MVKMTLFunction& mvkMTLFunc,
 }
 
 MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout,
-						 VkPipelineCreateFlags flags, MVKPipeline* parent) :
+						 VkPipelineCreateFlags2 flags, MVKPipeline* parent) :
 	MVKVulkanAPIDeviceObject(device),
 	_pipelineCache(pipelineCache),
 	_flags(flags),
@@ -458,11 +458,28 @@ static void warnIfBufferRobustnessEnabled(MVKPipeline* pipeline, const T* pCreat
 	}
 }
 
+static MVKShaderModule* getOrCreateShaderModule(MVKDevice* device, const VkPipelineShaderStageCreateInfo* pCreateInfo,
+                                                   bool& ownsShaderModule) {
+	if (pCreateInfo && pCreateInfo->module == VK_NULL_HANDLE) {
+		for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+			switch (next->sType) {
+				case VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO:
+					ownsShaderModule = true;
+					return new MVKShaderModule(device, (VkShaderModuleCreateInfo*)next);
+				default:
+					break;
+			}
+		}
+	}
+	ownsShaderModule = false;
+	return pCreateInfo ? (MVKShaderModule*)pCreateInfo->module : nullptr;
+}
+
 MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 										 MVKPipelineCache* pipelineCache,
 										 MVKPipeline* parent,
 										 const VkGraphicsPipelineCreateInfo* pCreateInfo) :
-	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, pCreateInfo->flags, parent) {
+	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, getPipelineCreateFlags(pCreateInfo), parent) {
 
 
 	// Extract dynamic state first, as it can affect many configurations.
@@ -542,6 +559,11 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 		}
 	}
 
+	_vertexModule = getOrCreateShaderModule(device, pVertexSS, _ownsVertexModule);
+	_tessCtlModule = getOrCreateShaderModule(device, pTessCtlSS, _ownsTessCtlModule);
+	_tessEvalModule = getOrCreateShaderModule(device, pTessEvalSS, _ownsTessEvalModule);
+	_fragmentModule = getOrCreateShaderModule(device, pFragmentSS, _ownsFragmentModule);
+
 	warnIfBufferRobustnessEnabled(this, pVertexSS);
 	warnIfBufferRobustnessEnabled(this, pTessCtlSS);
 	warnIfBufferRobustnessEnabled(this, pTessEvalSS);
@@ -553,7 +575,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	if (pTessCtlSS && pTessEvalSS) {
 		_isTessellationPipeline = true;
 
-		if (!getTessReflectionData(((MVKShaderModule*)pTessCtlSS->module)->getSPIRV(), pTessCtlSS->pName, ((MVKShaderModule*)pTessEvalSS->module)->getSPIRV(), pTessEvalSS->pName, reflectData, reflectErrorLog) ) {
+		if (!getTessReflectionData(_tessCtlModule->getSPIRV(), pTessCtlSS->pName, _tessEvalModule->getSPIRV(), pTessEvalSS->pName, reflectData, reflectErrorLog) ) {
 			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to reflect tessellation shaders: %s", reflectErrorLog.c_str()));
 			return;
 		}
@@ -781,18 +803,18 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 		char* ptext = text;
 		size_t full_hash = 0;
 		const char* type = pTessCtlSS && pTessEvalSS ? "-tess" : "";
-		auto addShader = [&](const char* type, const VkPipelineShaderStageCreateInfo* ss) {
-			if (!ss) {
+		auto addShader = [&](const char* type, MVKShaderModule* module) {
+			if (!module) {
 				return;
 			}
-			size_t hash = reinterpret_cast<MVKShaderModule*>(ss->module)->getKey().codeHash;
+			size_t hash = module->getKey().codeHash;
 			full_hash = full_hash * 33 ^ hash;
 			ptext = std::min(ptext + snprintf(ptext, std::end(text) - ptext, "%s: %016zx\n", type, hash), std::end(text) - 1);
 		};
-		addShader(" VS", pVertexSS);
-		addShader("TCS", pTessCtlSS);
-		addShader("TES", pTessEvalSS);
-		addShader(" FS", pFragmentSS);
+		addShader(" VS", _vertexModule);
+		addShader("TCS", _tessCtlModule);
+		addShader("TES", _tessEvalModule);
+		addShader(" FS", _fragmentModule);
 		mkdir(dumpDir, 0755);
 		snprintf(filename, sizeof(filename), "%s/pipeline%s-%016zx.txt", dumpDir, type, full_hash);
 		FILE* file = fopen(filename, "w");
@@ -885,7 +907,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLRenderPipelineDescriptor
 
 	SPIRVShaderOutputs vtxOutputs;
 	std::string errorLog;
-	if (!getShaderOutputs(((MVKShaderModule*)pVertexSS->module)->getSPIRV(), spv::ExecutionModelVertex, pVertexSS->pName, vtxOutputs, errorLog) ) {
+	if (!getShaderOutputs(_vertexModule->getSPIRV(), spv::ExecutionModelVertex, pVertexSS->pName, vtxOutputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get vertex outputs: %s", errorLog.c_str()));
 		return nil;
 	}
@@ -924,7 +946,7 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessVertexStageDescript
 
 	SPIRVShaderInputs tcInputs;
 	std::string errorLog;
-	if (!getShaderInputs(((MVKShaderModule*)pTessCtlSS->module)->getSPIRV(), spv::ExecutionModelTessellationControl, pTessCtlSS->pName, tcInputs, errorLog) ) {
+	if (!getShaderInputs(_tessCtlModule->getSPIRV(), spv::ExecutionModelTessellationControl, pTessCtlSS->pName, tcInputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation control inputs: %s", errorLog.c_str()));
 		return nil;
 	}
@@ -1066,11 +1088,11 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessControlStageDescrip
 	SPIRVShaderOutputs vtxOutputs;
 	SPIRVShaderInputs teInputs;
 	std::string errorLog;
-	if (!getShaderOutputs(((MVKShaderModule*)pVertexSS->module)->getSPIRV(), spv::ExecutionModelVertex, pVertexSS->pName, vtxOutputs, errorLog) ) {
+	if (!getShaderOutputs(_vertexModule->getSPIRV(), spv::ExecutionModelVertex, pVertexSS->pName, vtxOutputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get vertex outputs: %s", errorLog.c_str()));
 		return nil;
 	}
-	if (!getShaderInputs(((MVKShaderModule*)pTessEvalSS->module)->getSPIRV(), spv::ExecutionModelTessellationEvaluation, pTessEvalSS->pName, teInputs, errorLog) ) {
+	if (!getShaderInputs(_tessEvalModule->getSPIRV(), spv::ExecutionModelTessellationEvaluation, pTessEvalSS->pName, teInputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation evaluation inputs: %s", errorLog.c_str()));
 		return nil;
 	}
@@ -1110,11 +1132,11 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 	SPIRVShaderOutputs tcOutputs, teOutputs;
 	SPIRVShaderInputs teInputs;
 	std::string errorLog;
-	if (!getShaderOutputs(((MVKShaderModule*)pTessCtlSS->module)->getSPIRV(), spv::ExecutionModelTessellationControl, pTessCtlSS->pName, tcOutputs, errorLog) ) {
+	if (!getShaderOutputs(_tessCtlModule->getSPIRV(), spv::ExecutionModelTessellationControl, pTessCtlSS->pName, tcOutputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation control outputs: %s", errorLog.c_str()));
 		return nil;
 	}
-	if (!getShaderOutputs(((MVKShaderModule*)pTessEvalSS->module)->getSPIRV(), spv::ExecutionModelTessellationEvaluation, pTessEvalSS->pName, teOutputs, errorLog) ) {
+	if (!getShaderOutputs(_tessEvalModule->getSPIRV(), spv::ExecutionModelTessellationEvaluation, pTessEvalSS->pName, teOutputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation evaluation outputs: %s", errorLog.c_str()));
 		return nil;
 	}
@@ -1173,7 +1195,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
     addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
 
-	MVKMTLFunction func = getMTLFunction(shaderConfig, pVertexSS, pVertexFB, "Vertex");
+	MVKMTLFunction func = getMTLFunction(shaderConfig, pVertexSS, pVertexFB, _vertexModule, "Vertex");
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
 	plDesc.vertexFunction = mtlFunc;
 	if ( !mtlFunc ) { return false; }
@@ -1248,7 +1270,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 	MVKMTLFunction func;
 	for (uint32_t i = 0; i < sizeof(indexTypes)/sizeof(indexTypes[0]); i++) {
 		shaderConfig.options.mslOptions.vertex_index_type = indexTypes[i];
-		func = getMTLFunction(shaderConfig, pVertexSS, pVertexFB, "Vertex");
+		func = getMTLFunction(shaderConfig, pVertexSS, pVertexFB, _vertexModule, "Vertex");
 		if ( !func.getMTLFunction() ) { return false; }
 
 		pVtxFunctions[i] = func;
@@ -1308,7 +1330,7 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	addPrevStageOutputToShaderConversionConfig(shaderConfig, vtxOutputs);
 	addNextStageInputToShaderConversionConfig(shaderConfig, teInputs);
 
-	MVKMTLFunction func = getMTLFunction(shaderConfig, pTessCtlSS, pTessCtlFB, "Tessellation control");
+	MVKMTLFunction func = getMTLFunction(shaderConfig, pTessCtlSS, pTessCtlFB, _tessCtlModule, "Tessellation control");
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
 	if ( !mtlFunc ) { return false; }
 	plDesc.computeFunction = mtlFunc;
@@ -1370,7 +1392,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
 	addPrevStageOutputToShaderConversionConfig(shaderConfig, tcOutputs);
 
-	MVKMTLFunction func = getMTLFunction(shaderConfig, pTessEvalSS, pTessEvalFB, "Tessellation evaluation");
+	MVKMTLFunction func = getMTLFunction(shaderConfig, pTessEvalSS, pTessEvalFB, _tessEvalModule, "Tessellation evaluation");
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
 	plDesc.vertexFunction = mtlFunc;	// Yeah, you read that right. Tess. eval functions are a kind of vertex function in Metal.
 	if ( !mtlFunc ) { return false; }
@@ -1440,7 +1462,7 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		}
 		addPrevStageOutputToShaderConversionConfig(shaderConfig, shaderOutputs);
 
-		MVKMTLFunction func = getMTLFunction(shaderConfig, pFragmentSS, pFragmentFB, "Fragment");
+		MVKMTLFunction func = getMTLFunction(shaderConfig, pFragmentSS, pFragmentFB, _fragmentModule, "Fragment");
 		id<MTLFunction> mtlFunc = func.getMTLFunction();
 		plDesc.fragmentFunction = mtlFunc;
 		if ( !mtlFunc ) { return false; }
@@ -1872,7 +1894,9 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 
 	shaderConfig.options.mslOptions.ios_support_base_vertex_instance = mtlFeats.baseVertexInstanceDrawing;
 	shaderConfig.options.mslOptions.texture_1D_as_2D = getMVKConfig().texture1DAs2D;
-    shaderConfig.options.mslOptions.enable_point_size_builtin = isRenderingPoints(pCreateInfo) || reflectData.pointMode;
+	shaderConfig.options.mslOptions.enable_point_size_builtin = isRenderingPoints(pCreateInfo) || reflectData.pointMode;
+	shaderConfig.options.mslOptions.enable_point_size_default = shaderConfig.options.mslOptions.enable_point_size_builtin;
+	shaderConfig.options.mslOptions.default_point_size = 1.0f; // See VK_KHR_maintenance5
 	shaderConfig.options.mslOptions.enable_frag_depth_builtin = pixFmts->isDepthFormat(pixFmts->getMTLPixelFormat(pRendInfo->depthAttachmentFormat));
 	shaderConfig.options.mslOptions.enable_frag_stencil_ref_builtin = pixFmts->isStencilFormat(pixFmts->getMTLPixelFormat(pRendInfo->stencilAttachmentFormat));
     shaderConfig.options.shouldFlipVertexY = getMVKConfig().shaderConversionFlipVertexY;
@@ -1881,7 +1905,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
     shaderConfig.options.mslOptions.tess_domain_origin_lower_left = pTessDomainOriginState && pTessDomainOriginState->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
     shaderConfig.options.mslOptions.multiview = mvkIsMultiview(pRendInfo->viewMask);
     shaderConfig.options.mslOptions.multiview_layered_rendering = getPhysicalDevice()->canUseInstancingForMultiview();
-    shaderConfig.options.mslOptions.view_index_from_device_index = mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT);
+    shaderConfig.options.mslOptions.view_index_from_device_index = mvkAreAllFlagsEnabled(_flags, VK_PIPELINE_CREATE_2_VIEW_INDEX_FROM_DEVICE_INDEX_BIT);
 	shaderConfig.options.mslOptions.replace_recursive_inputs = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0);
 #if MVK_MACOS
     shaderConfig.options.mslOptions.emulate_subgroups = !mtlFeats.simdPermute;
@@ -2096,7 +2120,7 @@ void MVKGraphicsPipeline::addPrevStageOutputToShaderConversionConfig(SPIRVToMSLC
 bool MVKGraphicsPipeline::isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
 	return ((pCreateInfo->pInputAssemblyState &&
 			 (pCreateInfo->pInputAssemblyState->topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST)) ||
-			(pCreateInfo->pRasterizationState && 
+			(pCreateInfo->pRasterizationState &&
 			 (pCreateInfo->pRasterizationState->polygonMode == VK_POLYGON_MODE_POINT) &&
 			 !isDynamicState(PolygonMode)));
 }
@@ -2128,12 +2152,12 @@ bool MVKGraphicsPipeline::isDepthClipNegativeOneToOne(const VkGraphicsPipelineCr
 MVKMTLFunction MVKGraphicsPipeline::getMTLFunction(SPIRVToMSLConversionConfiguration& shaderConfig,
 												   const VkPipelineShaderStageCreateInfo* pShaderStage,
 												   VkPipelineCreationFeedback* pStageFB,
+												   MVKShaderModule* pShaderModule,
 												   const char* pStageName) {
-	MVKShaderModule* shaderModule = (MVKShaderModule*)pShaderStage->module;
-	MVKMTLFunction func = shaderModule->getMTLFunction(&shaderConfig,
-													   pShaderStage->pSpecializationInfo,
-													   this,
-													   pStageFB);
+	MVKMTLFunction func = pShaderModule->getMTLFunction(&shaderConfig,
+													    pShaderStage->pSpecializationInfo,
+													    this,
+													    pStageFB);
 	if ( !func.getMTLFunction() ) {
 		if (shouldFailOnPipelineCompileRequired()) {
 			setConfigurationResult(VK_PIPELINE_COMPILE_REQUIRED);
@@ -2162,6 +2186,10 @@ MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 		[_mtlTessVertexStageIndex32State release];
 		[_mtlTessControlStageState release];
 		[_mtlPipelineState release];
+		if (_ownsVertexModule) delete _vertexModule;
+		if (_ownsTessCtlModule) delete _tessCtlModule;
+		if (_ownsTessEvalModule) delete _tessEvalModule;
+		if (_ownsFragmentModule) delete _fragmentModule;
 	}
 }
 
@@ -2185,9 +2213,9 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 									   MVKPipelineCache* pipelineCache,
 									   MVKPipeline* parent,
 									   const VkComputePipelineCreateInfo* pCreateInfo) :
-	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, pCreateInfo->flags, parent) {
+	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, getPipelineCreateFlags(pCreateInfo), parent) {
 
-	_allowsDispatchBase = mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DISPATCH_BASE_BIT);
+	_allowsDispatchBase = mvkAreAllFlagsEnabled(_flags, VK_PIPELINE_CREATE_2_DISPATCH_BASE_BIT);
 
 	if (isUsingMetalArgumentBuffers()) { _descriptorBindingUse.resize(_descriptorSetCount); }
 
@@ -2277,6 +2305,8 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     const VkPipelineShaderStageCreateInfo* pSS = &pCreateInfo->stage;
     if ( !mvkAreAllFlagsEnabled(pSS->stage, VK_SHADER_STAGE_COMPUTE_BIT) ) { return MVKMTLFunctionNull; }
 
+	_module = getOrCreateShaderModule(_device, pSS, _ownsModule);
+
 	warnIfBufferRobustnessEnabled(this, pSS);
 
 	auto& mtlFeats = getMetalFeatures();
@@ -2327,7 +2357,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     shaderConfig.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageCompute];
 	shaderConfig.options.mslOptions.replace_recursive_inputs = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0);
 
-    MVKMTLFunction func = ((MVKShaderModule*)pSS->module)->getMTLFunction(&shaderConfig, pSS->pSpecializationInfo, this, pStageFB);
+    MVKMTLFunction func = _module->getMTLFunction(&shaderConfig, pSS->pSpecializationInfo, this, pStageFB);
 	if ( !func.getMTLFunction() ) {
 		if (shouldFailOnPipelineCompileRequired()) {
 			setConfigurationResult(VK_PIPELINE_COMPILE_REQUIRED);
@@ -2358,6 +2388,7 @@ bool MVKComputePipeline::usesPhysicalStorageBufferAddressesCapability(MVKShaderS
 MVKComputePipeline::~MVKComputePipeline() {
 	@synchronized (getMTLDevice()) {
 		[_mtlPipelineState release];
+		if (_ownsModule) delete _module;
 	}
 }
 

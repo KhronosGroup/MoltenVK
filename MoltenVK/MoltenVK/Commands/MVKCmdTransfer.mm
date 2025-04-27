@@ -196,6 +196,9 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             // If copies can be performed using direct texture-texture copying, do so
             uint32_t srcLevel = vkIC.srcSubresource.mipLevel;
             uint32_t srcBaseLayer = vkIC.srcSubresource.baseArrayLayer;
+            uint32_t srcLayerCount = vkIC.srcSubresource.layerCount == VK_REMAINING_ARRAY_LAYERS ?
+                _srcImage->getLayerCount() - srcBaseLayer :
+                vkIC.srcSubresource.layerCount;
             VkExtent3D srcExtent = _srcImage->getExtent3D(srcPlaneIndex, srcLevel);
             uint32_t dstLevel = vkIC.dstSubresource.mipLevel;
             uint32_t dstBaseLayer = vkIC.dstSubresource.baseArrayLayer;
@@ -211,7 +214,7 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                                   toTexture: dstMTLTex
                            destinationSlice: dstBaseLayer
                            destinationLevel: dstLevel
-                                 sliceCount: vkIC.srcSubresource.layerCount
+                                 sliceCount: srcLayerCount
                                  levelCount: 1];
             } else {
                 MTLOrigin srcOrigin = mvkMTLOriginFromVkOffset3D(vkIC.srcOffset);
@@ -226,7 +229,7 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                                               mvkMTLSizeFromVkExtent3D(srcExtent));
                     srcSize.depth = 1;
                 } else {
-                    layCnt = vkIC.srcSubresource.layerCount;
+                    layCnt = srcLayerCount;
                     srcSize = mvkClampMTLSize(mvkMTLSizeFromVkExtent3D(vkIC.extent),
                                               srcOrigin,
                                               mvkMTLSizeFromVkExtent3D(srcExtent));
@@ -583,8 +586,10 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             mtlStencilAttDesc.level = mvkIBR.region.dstSubresource.mipLevel;
 
             bool isLayeredBlit = blitKey.dstSampleCount > 1 ? mtlFeats.multisampleLayeredRendering : mtlFeats.layeredRendering;
-            
-            uint32_t layCnt = mvkIBR.region.srcSubresource.layerCount;
+
+            uint32_t layCnt = mvkIBR.region.srcSubresource.layerCount == VK_REMAINING_ARRAY_LAYERS ?
+                _srcImage->getLayerCount() - mvkIBR.region.srcSubresource.baseArrayLayer :
+                 mvkIBR.region.srcSubresource.layerCount;
             if (_dstImage->getMTLTextureType() == MTLTextureType3D) {
                 layCnt = mvkAbsDiff(mvkIBR.region.dstOffsets[1].z, mvkIBR.region.dstOffsets[0].z);
             }
@@ -777,7 +782,12 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	if (mtlFeats.multisampleLayeredRendering) {
 		layerCnt = (uint32_t)_vkImageResolves.size();
 	} else {
-		for (VkImageResolve2& vkIR : _vkImageResolves) { layerCnt += vkIR.dstSubresource.layerCount; }
+		for (VkImageResolve2& vkIR : _vkImageResolves) {
+			uint32_t dstLayCnt = vkIR.dstSubresource.layerCount == VK_REMAINING_ARRAY_LAYERS ?
+				_dstImage->getLayerCount() - vkIR.dstSubresource.baseArrayLayer :
+				vkIR.dstSubresource.layerCount;
+			layerCnt += dstLayCnt;
+		}
 	}
 	MVKMetalResolveSlice mtlResolveSlices[layerCnt];
 
@@ -830,7 +840,9 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		if (mtlFeats.multisampleLayeredRendering) {
 			sliceCnt++;
 		} else {
-			uint32_t layCnt = vkIR.dstSubresource.layerCount;
+			uint32_t layCnt = vkIR.dstSubresource.layerCount == VK_REMAINING_ARRAY_LAYERS ?
+				_dstImage->getLayerCount() - vkIR.dstSubresource.baseArrayLayer :
+				vkIR.dstSubresource.layerCount;
 			mtlResolveSlices[sliceCnt].dstSubresource.layerCount = 1;
 			mtlResolveSlices[sliceCnt].srcSubresource.layerCount = 1;
 			sliceCnt++;
@@ -895,7 +907,9 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		mtlColorAttDesc.resolveLevel = rslvSlice.dstSubresource.mipLevel;
 		mtlColorAttDesc.resolveSlice = rslvSlice.dstSubresource.baseArrayLayer;
 		if (rslvSlice.dstSubresource.layerCount > 1) {
-			mtlRPD.renderTargetArrayLengthMVK = rslvSlice.dstSubresource.layerCount;
+			mtlRPD.renderTargetArrayLengthMVK = rslvSlice.dstSubresource.layerCount == VK_REMAINING_ARRAY_LAYERS ?
+				_dstImage->getLayerCount() - rslvSlice.dstSubresource.baseArrayLayer :
+				rslvSlice.dstSubresource.layerCount;
 		}
 		id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPD];
 		cmdEncoder->_cmdBuffer->setMetalObjectLabel(mtlRendEnc, mvkMTLRenderCommandEncoderLabel(kMVKCommandUseResolveImage));
@@ -1232,7 +1246,10 @@ void MVKCmdBufferImageCopy<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
         id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(cmdUse);
 
-        for (uint32_t lyrIdx = 0; lyrIdx < cpyRgn.imageSubresource.layerCount; lyrIdx++) {
+        uint32_t layCnt = cpyRgn.imageSubresource.layerCount == VK_REMAINING_ARRAY_LAYERS ?
+            _image->getLayerCount() - cpyRgn.imageSubresource.baseArrayLayer :
+            cpyRgn.imageSubresource.layerCount;
+        for (uint32_t lyrIdx = 0; lyrIdx < layCnt; lyrIdx++) {
             if (_toImage) {
                 [mtlBlitEnc copyFromBuffer: mtlBuffer
                               sourceOffset: (mtlBuffOffset + (bytesPerImg * lyrIdx))

@@ -6,9 +6,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -501,6 +501,10 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				auto* barycentricFeatures = (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)next;
 				barycentricFeatures->fragmentShaderBarycentric = true;
 				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR: {
+				auto* maintenance5Features = (VkPhysicalDeviceMaintenance5FeaturesKHR*)next;
+				maintenance5Features->maintenance5 = true;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR: {
 				auto* maintenance6Features = (VkPhysicalDeviceMaintenance6FeaturesKHR*)next;
@@ -1013,6 +1017,16 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 }
                 break;
             }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_PROPERTIES_KHR: {
+                auto* maintenance5Properties = (VkPhysicalDeviceMaintenance5PropertiesKHR*)next;
+                maintenance5Properties->earlyFragmentMultisampleCoverageAfterSampleCounting = true;
+                maintenance5Properties->earlyFragmentSampleMaskTestBeforeSampleCounting = false;
+                maintenance5Properties->depthStencilSwizzleOneSupport = true;
+                maintenance5Properties->polygonModePointSize = true;
+                maintenance5Properties->nonStrictSinglePixelWideLinesUseParallelogram = false;
+                maintenance5Properties->nonStrictWideLinesUseParallelogram = false;
+                break;
+            }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_PROPERTIES_KHR: {
                 auto* maintenance6Properties = (VkPhysicalDeviceMaintenance6PropertiesKHR*)next;
                 maintenance6Properties->blockTexelViewCompatibleMultipleLayers = false;
@@ -1136,7 +1150,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 
 void MVKPhysicalDevice::populateHostImageCopyProperties(VkPhysicalDeviceHostImageCopyPropertiesEXT* pHostImageCopyProps) {
 
-	// Metal lacks the concept of image layouts, and so does not restrict 
+	// Metal lacks the concept of image layouts, and so does not restrict
 	// host copy transfers based on them. Assume all image layouts are supported.
 	// TODO: As extensions that add layouts are implemented, this list should be extended.
 	VkImageLayout supportedImgLayouts[] =  {
@@ -1339,6 +1353,14 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 	if ( !pImageFormatProperties ) { return VK_SUCCESS; }
 
 	mvkClear(pImageFormatProperties);
+
+	// Usage flags not recognized by MoltenVK should result in VK_ERROR_FORMAT_NOT_SUPPORTED.
+	constexpr VkImageUsageFlags supportedUsageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_HOST_TRANSFER_BIT;
+	if (usage & ~supportedUsageFlags) {
+		return VK_ERROR_FORMAT_NOT_SUPPORTED;
+	}
 
 	// Metal does not support creating uncompressed views of compressed formats.
 	// Metal does not support split-instance images.
@@ -1681,7 +1703,7 @@ VkResult MVKPhysicalDevice::getSurfaceSupport(uint32_t queueFamilyIndex,
 #if MVK_MACOS
     isHeadless = _mtlDevice.isHeadless;
 #endif
-    
+
 	// If this device is headless, the surface must be headless.
 	*pSupported = isHeadless ? surface->isHeadless() : wasConfigurationSuccessful();
 	return *pSupported ? VK_SUCCESS : surface->getConfigurationResult();
@@ -2851,7 +2873,7 @@ void MVKPhysicalDevice::initFeatures() {
 	if (supportsMTLGPUFamily(Apple4)) {
 		_features.imageCubeArray = true;
 	}
-  
+
 	if (supportsMTLGPUFamily(Apple5)) {
 		_features.multiViewport = true;
 	}
@@ -3017,10 +3039,10 @@ void MVKPhysicalDevice::initLimits() {
 		// to fill out the VkPhysicalDeviceTexelBufferAlignmentProperties struct.
         uint32_t maxStorage = 0, maxUniform = 0;
         bool singleTexelStorage = true, singleTexelUniform = true;
-		
+
 		VkFormatProperties3 fmtProps = {}; // We don't initialize sType as enumerateSupportedFormats doesn't care.
 		fmtProps.bufferFeatures = VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT | VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT;
-		
+
         _pixelFormats.enumerateSupportedFormats(fmtProps, true, [&](VkFormat vk) {
 			MTLPixelFormat mtlFmt = _pixelFormats.getMTLPixelFormat(vk);
 			if ( !mtlFmt ) { return false; }	// If format is invalid, avoid validation errors on MTLDevice format alignment calls
@@ -3654,7 +3676,7 @@ void MVKPhysicalDevice::initExtensions() {
 	if (!_metalFeatures.placementHeaps) {
 		pWritableExtns->vk_EXT_image_2d_view_of_3d.enabled = false;
 	}
-    
+
     // The relevant functions are not available if not built with Xcode 14.
 #if MVK_XCODE_14
     // gpuAddress requires Tier2 argument buffer support (per feedback from Apple engineers).
@@ -3705,7 +3727,7 @@ void MVKPhysicalDevice::initCounterSets() {
 // to a queue will give the same result as if they had been run in submission order.
 // MTLEvents for semaphores are preferred, but can sometimes prove troublesome on some platforms,
 // and so may be disabled on those platforms, unless explicitly requested. If MTLEvents are
-// unusable, 
+// unusable,
 void MVKPhysicalDevice::initVkSemaphoreStyle() {
 
 	// Default to single queue if other options unavailable.
@@ -4090,6 +4112,16 @@ void MVKDevice::getCalibratedTimestamps(uint32_t timestampCount,
 	*pMaxDeviation = cpuEnd - cpuStart;
 }
 
+VkExtent2D MVKDevice::getDynamicRenderAreaGranularity() {
+    if (_physicalDevice->_metalFeatures.tileBasedDeferredRendering) {
+        // This is the tile area.
+        // FIXME: We really ought to use MTLRenderCommandEncoder.tile{Width,Height}, but that requires
+        // creating a command buffer.
+        return { 32, 32 };
+    }
+    return { 1, 1 };
+}
+
 
 #pragma mark Object lifecycle
 
@@ -4364,11 +4396,12 @@ VkResult MVKDevice::createPipelines(VkPipelineCache pipelineCache,
 			if (ignoreFurtherPipelines) { continue; }
 
 			const PipelineInfoType* pCreateInfo = &pCreateInfos[plIdx];
+			const VkPipelineCreateFlags2 createFlags = MVKPipeline::getPipelineCreateFlags(pCreateInfo);
 
 			// See if this pipeline has a parent. This can come either directly
 			// via basePipelineHandle or indirectly via basePipelineIndex.
 			MVKPipeline* parentPL = VK_NULL_HANDLE;
-			if ( mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DERIVATIVE_BIT) ) {
+			if ( mvkAreAllFlagsEnabled(createFlags, VK_PIPELINE_CREATE_2_DERIVATIVE_BIT) ) {
 				VkPipeline vkParentPL = pCreateInfo->basePipelineHandle;
 				int32_t parentPLIdx = pCreateInfo->basePipelineIndex;
 				if ( !vkParentPL && (parentPLIdx >= 0)) { vkParentPL = pPipelines[parentPLIdx]; }
@@ -4387,7 +4420,7 @@ VkResult MVKDevice::createPipelines(VkPipelineCache pipelineCache,
 				mvkPL->destroy();
 				if (rslt == VK_SUCCESS) { rslt = plRslt; }
 				ignoreFurtherPipelines = (_enabledPipelineCreationCacheControlFeatures.pipelineCreationCacheControl &&
-										  mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT));
+										  mvkIsAnyFlagEnabled(createFlags, VK_PIPELINE_CREATE_2_EARLY_RETURN_ON_FAILURE_BIT));
 			}
 		}
 	}
@@ -4574,7 +4607,7 @@ MVKBuffer* MVKDevice::addBuffer(MVKBuffer* mvkBuff) {
 
 	lock_guard<mutex> lock(_rezLock);
 	_resources.push_back(mvkBuff);
-	if (mvkIsAnyFlagEnabled(mvkBuff->getUsage(), VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)) {
+	if (mvkIsAnyFlagEnabled(mvkBuff->getUsage(), VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT)) {
 		_gpuAddressableBuffers.push_back(mvkBuff);
 	}
 	return mvkBuff;
@@ -4585,7 +4618,7 @@ MVKBuffer* MVKDevice::removeBuffer(MVKBuffer* mvkBuff) {
 
 	lock_guard<mutex> lock(_rezLock);
 	mvkRemoveFirstOccurance(_resources, mvkBuff);
-	if (mvkIsAnyFlagEnabled(mvkBuff->getUsage(), VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)) {
+	if (mvkIsAnyFlagEnabled(mvkBuff->getUsage(), VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT)) {
 		mvkRemoveFirstOccurance(_gpuAddressableBuffers, mvkBuff);
 	}
 	return mvkBuff;
