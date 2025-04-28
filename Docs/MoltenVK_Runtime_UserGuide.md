@@ -253,7 +253,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_get_surface_capabilities2`
 - `VK_KHR_imageless_framebuffer`
 - `VK_EXT_image_2d_view_of_3d`
-  - *Requires MVK_CONFIG_USE_MTLHEAP to be enabled.*
+  - *Requires `MVK_CONFIG_USE_MTLHEAP` to be active.*
 - `VK_KHR_image_format_list`
 - `VK_KHR_incremental_present`
 - `VK_KHR_index_type_uint8`

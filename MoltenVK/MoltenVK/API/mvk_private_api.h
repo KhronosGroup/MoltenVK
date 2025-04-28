@@ -185,6 +185,14 @@ typedef enum MVKConfigActivityPerformanceLoggingStyle {
 	MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_MAX_ENUM                   = 0x7FFFFFFF,
 } MVKConfigActivityPerformanceLoggingStyle;
 
+/** Identifies when MTLHeap is used to allocate buffer and image resources. */
+typedef enum MVKConfigUseMTLHeap {
+	MVK_CONFIG_USE_MTLHEAP_NEVER      = 0,  /**< Do not use MTLHeap for allocating resources. */
+	MVK_CONFIG_USE_MTLHEAP_WHERE_SAFE = 1,  /**< Use MTLHeap for allocating resources, where safe to do so. On AMD GPUs, this is the same as MVK_CONFIG_USE_MTLHEAP_NEVER, due to potential challenges with MTLHeap usage on those platforms. On other GPUs this is the same as MVK_CONFIG_USE_MTLHEAP_ALWAYS. */
+	MVK_CONFIG_USE_MTLHEAP_ALWAYS     = 2,  /**< Use MTLHeap for allocating resources. */
+	MVK_CONFIG_USE_MTLHEAP_MAX_ENUM   = 0x7FFFFFFF
+} MVKConfigUseMTLHeap;
+
 /**
  * MoltenVK configuration. You can retrieve a copy of this structure using the vkGetMoltenVKConfigurationMVK() function.
  *
@@ -227,7 +235,7 @@ typedef struct {
 	VkBool32 texture1DAs2D;                                                    /**< MVK_CONFIG_TEXTURE_1D_AS_2D */
 	VkBool32 preallocateDescriptors;                                           /**< Obsolete, deprecated, and ignored. */
 	VkBool32 useCommandPooling;                                                /**< MVK_CONFIG_USE_COMMAND_POOLING */
-	VkBool32 useMTLHeap;                                                       /**< MVK_CONFIG_USE_MTLHEAP */
+	MVKConfigUseMTLHeap useMTLHeap;                                            /**< MVK_CONFIG_USE_MTLHEAP */
 	MVKConfigActivityPerformanceLoggingStyle activityPerformanceLoggingStyle;  /**< MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE */
 	uint32_t apiVersionToAdvertise;                                            /**< MVK_CONFIG_API_VERSION_TO_ADVERTISE */
 	MVKConfigAdvertiseExtensions advertiseExtensions;                          /**< MVK_CONFIG_ADVERTISE_EXTENSIONS */
