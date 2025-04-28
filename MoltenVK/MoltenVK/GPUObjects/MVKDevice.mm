@@ -513,7 +513,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->imageViewFormatReinterpretation = true;
 				portabilityFeatures->imageViewFormatSwizzle = (_metalFeatures.nativeTextureSwizzle ||
 															   getMVKConfig().fullImageViewSwizzle);
-				portabilityFeatures->imageView2DOn3DImage = getMVKConfig().useMTLHeap;
+				portabilityFeatures->imageView2DOn3DImage = _metalFeatures.placementHeaps;
 				portabilityFeatures->multisampleArrayImage = _metalFeatures.multisampleArrayTextures;
 				portabilityFeatures->mutableComparisonSamplers = _metalFeatures.depthSampleCompare;
 				portabilityFeatures->pointPolygons = false;
@@ -611,11 +611,9 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT: {
-				if (getMVKConfig().useMTLHeap) {
-					auto* extFeatures = (VkPhysicalDeviceImage2DViewOf3DFeaturesEXT*)next;
-					extFeatures->image2DViewOf3D = true;
-					extFeatures->sampler2DViewOf3D = true;
-				}
+				auto* extFeatures = (VkPhysicalDeviceImage2DViewOf3DFeaturesEXT*)next;
+				extFeatures->image2DViewOf3D = _metalFeatures.placementHeaps;
+				extFeatures->sampler2DViewOf3D = _metalFeatures.placementHeaps;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES_EXT: {
@@ -2244,6 +2242,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			break;
 	}
 
+	// AMD support for MTLHeap is buggy.
+	auto cfgUseMTLHeap = getMVKConfig().useMTLHeap;
+	bool useMTLHeap = (_properties.vendorID == kAMDVendorId
+					   ? cfgUseMTLHeap == MVK_CONFIG_USE_MTLHEAP_ALWAYS
+					   : cfgUseMTLHeap != MVK_CONFIG_USE_MTLHEAP_NEVER);
+
 #if MVK_TVOS
 	_metalFeatures.mslVersionEnum = MTLLanguageVersion2_0;
     _metalFeatures.mtlBufferAlignment = 64;
@@ -2282,7 +2286,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
-		_metalFeatures.placementHeaps = getMVKConfig().useMTLHeap;
+		_metalFeatures.placementHeaps = useMTLHeap;
 		_metalFeatures.nativeTextureSwizzle = true;
 		if (supportsMTLGPUFamily(Apple3)) {
 			_metalFeatures.native3DCompressedTextures = true;
@@ -2384,7 +2388,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
-		_metalFeatures.placementHeaps = getMVKConfig().useMTLHeap;
+		_metalFeatures.placementHeaps = useMTLHeap;
 		_metalFeatures.nativeTextureSwizzle = true;
 
 		if (supportsMTLGPUFamily(Apple3)) {
@@ -2495,7 +2499,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
         }
 		if (supportsMTLGPUFamily(Mac2)) {
 			_metalFeatures.nativeTextureSwizzle = true;
-			_metalFeatures.placementHeaps = getMVKConfig().useMTLHeap;
+			_metalFeatures.placementHeaps = useMTLHeap;
 			_metalFeatures.renderWithoutAttachments = true;
 		}
 	}
@@ -3623,7 +3627,7 @@ void MVKPhysicalDevice::initExtensions() {
 	if (!_metalFeatures.arrayOfTextures || !_metalFeatures.arrayOfSamplers) {
 		pWritableExtns->vk_EXT_descriptor_indexing.enabled = false;
 	}
-	if (!getMVKConfig().useMTLHeap) {
+	if (!_metalFeatures.placementHeaps) {
 		pWritableExtns->vk_EXT_image_2d_view_of_3d.enabled = false;
 	}
     

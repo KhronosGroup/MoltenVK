@@ -38,7 +38,8 @@ Released 2025-04-27
 	- `VK_EXT_pipeline_robustness`
 	- `VK_EXT_tooling_info`
 - Add support for `B5G6R5_UNORM_PACK16` `B5G5R5A1_UNORM_PACK16`, and `B8G8R8A8` formats using swizzle.
-- Enable `MVK_CONFIG_USE_MTLHEAP` by default to support `VK_EXT_image_2d_view_of_3d`.
+- Convert `MVK_CONFIG_USE_MTLHEAP` to enumeration, and set active by default to support 
+  `VK_EXT_image_2d_view_of_3d`, except on _AMD_ devices.
 - Remove `glslang` as dependency library.
 - `MoltenVKShaderConverter` no longer accepts GLSL` shaders as input.
 - Fixes to managing descriptor set allocation in a Metal argument buffer.
