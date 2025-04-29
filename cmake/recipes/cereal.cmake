@@ -11,7 +11,6 @@ file(READ "${PROJECT_SOURCE_DIR}/ExternalRevisions/cereal_repo_revision" CEREAL_
 string(STRIP "${CEREAL_COMMIT_HASH}" CEREAL_COMMIT_HASH)
 
 include(CPM)
-CPMAddPackage("gh:USCiLab/cereal#${CEREAL_COMMIT_HASH}")
 CPMAddPackage(
   NAME cereal
   GITHUB_REPOSITORY USCiLab/cereal
