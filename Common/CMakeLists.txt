@@ -44,5 +44,5 @@ set(MOLTEN_VK_WARNING_FLAGS
 )
 
 include(MoltenVK_Filter_Flags)
-MoltenVK_Filter_Flags(IPC_TOOLKIT_WARNING_FLAGS)
+MoltenVK_Filter_Flags(MOLTEN_VK_WARNING_FLAGS)
 target_compile_options(MoltenVK_Common INTERFACE ${MOLTEN_VK_WARNING_FLAGS})
