@@ -6,5 +6,9 @@ endif()
 
 message(STATUS "External: creating target 'volk::volk'")
 
+# Read Git commit hash from ExternalRevisions file
+file(READ "ExternalRevisions/Volk_repo_revision" VOLK_COMMIT_HASH)
+string(STRIP "${VOLK_COMMIT_HASH}" VOLK_COMMIT_HASH)
+
 include(CPM)
-CPMAddPackage("gh:zeux/Volk#58689c063427f5bad4f133625049b1a3c5dd8287")
+CPMAddPackage("gh:zeux/Volk#${VOLK_COMMIT_HASH}")

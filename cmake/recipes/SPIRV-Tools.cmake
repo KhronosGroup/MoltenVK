@@ -12,7 +12,11 @@ include(SPIRV-Headers)
 
 set(SPIRV_TOOLS_BUILD_STATIC ON)
 
+# Read Git commit hash from ExternalRevisions file
+file(READ "ExternalRevisions/SPIRV-Tools_repo_revision" SPIRV_TOOLS_COMMIT_HASH)
+string(STRIP "${SPIRV_TOOLS_COMMIT_HASH}" SPIRV_TOOLS_COMMIT_HASH)
+
 include(CPM)
-CPMAddPackage("gh:KhronosGroup/SPIRV-Tools#f289d047f49fb60488301ec62bafab85573668cc")
+CPMAddPackage("gh:KhronosGroup/SPIRV-Tools#${SPIRV_TOOLS_COMMIT_HASH}")
 
 add_library(SPIRV-Tools::SPIRV-Tools ALIAS SPIRV-Tools-static)

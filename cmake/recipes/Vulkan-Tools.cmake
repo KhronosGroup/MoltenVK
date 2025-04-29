@@ -6,5 +6,9 @@ endif()
 
 message(STATUS "External: creating target 'Vulkan::Tools'")
 
+# Read Git commit hash from ExternalRevisions file
+file(READ "ExternalRevisions/Vulkan-Tools_repo_revision" VULKAN_TOOLS_COMMIT_HASH)
+string(STRIP "${VULKAN_TOOLS_COMMIT_HASH}" VULKAN_TOOLS_COMMIT_HASH)
+
 include(CPM)
-CPMAddPackage("gh:KhronosGroup/Vulkan-Tools#fb8f5a5d69f4590ff1f5ecacb5e3957b6d11daee")
+CPMAddPackage("gh:KhronosGroup/Vulkan-Tools#${VULKAN_TOOLS_COMMIT_HASH}")
