@@ -1,7 +1,7 @@
 /*
  * MVKPipeline.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2025 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -97,7 +97,7 @@ void MVKPipelineLayout::populateShaderConversionConfig(SPIRVToMSLConversionConfi
 	shaderConfig.dynamicBufferDescriptors.clear();
 
 	// Add any resource bindings used by push-constants.
-	// Use VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT descriptor type as compatible with push constants in Metal.
+	// Use VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK descriptor type as compatible with push constants in Metal.
 	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
 		if (stageUsesPushConstants((MVKShaderStage)stage)) {
 			mvkPopulateShaderConversionConfig(shaderConfig,
@@ -106,7 +106,7 @@ void MVKPipelineLayout::populateShaderConversionConfig(SPIRVToMSLConversionConfi
 											  kPushConstDescSet,
 											  kPushConstBinding,
 											  1,
-											  VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT,
+											  VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK,
 											  nullptr,
 											  getMetalFeatures().nativeTextureAtomics);
 		}
@@ -424,6 +424,40 @@ static const VkPipelineRenderingCreateInfo* getRenderingCreateInfo(const VkGraph
 	return &emptyRendInfo;
 }
 
+static bool isBufferRobustnessEnabled(const VkPipelineRobustnessBufferBehavior behavior) {
+	return behavior == VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS ||
+		   behavior == VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS_2;
+}
+
+template <typename T>
+static const VkPipelineRobustnessCreateInfo* getRobustnessCreateInfo(const T* pCreateInfo) {
+	const VkPipelineRobustnessCreateInfo* pRobustnessInfo = nullptr;
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO:
+				pRobustnessInfo = (VkPipelineRobustnessCreateInfo*)next;
+				break;
+			default:
+				break;
+		}
+	}
+	return pRobustnessInfo;
+}
+
+template <typename T>
+static void warnIfBufferRobustnessEnabled(MVKPipeline* pipeline, const T* pCreateInfo) {
+	if (!pCreateInfo) return;
+
+	const VkPipelineRobustnessCreateInfo* pRobustnessInfo = getRobustnessCreateInfo(pCreateInfo);
+	if (!pRobustnessInfo) return;
+
+	if (isBufferRobustnessEnabled(pRobustnessInfo->storageBuffers) ||
+		isBufferRobustnessEnabled(pRobustnessInfo->uniformBuffers) ||
+		isBufferRobustnessEnabled(pRobustnessInfo->vertexInputs)) {
+		pipeline->reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support buffer robustness.");
+	}
+}
+
 MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 										 MVKPipelineCache* pipelineCache,
 										 MVKPipeline* parent,
@@ -449,6 +483,8 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 				break;
 		}
 	}
+
+	warnIfBufferRobustnessEnabled(this, pCreateInfo);
 
 	// Initialize feedback. The VALID bit must be initialized, either set or cleared.
 	// We'll set the VALID bits later, after successful compilation.
@@ -505,6 +541,11 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 				break;
 		}
 	}
+
+	warnIfBufferRobustnessEnabled(this, pVertexSS);
+	warnIfBufferRobustnessEnabled(this, pTessCtlSS);
+	warnIfBufferRobustnessEnabled(this, pTessEvalSS);
+	warnIfBufferRobustnessEnabled(this, pFragmentSS);
 
 	// Get the tessellation parameters from the shaders.
 	SPIRVTessReflectionData reflectData;
@@ -1263,7 +1304,7 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageTessCtl];
 	shaderConfig.options.mslOptions.capture_output_to_buffer = true;
 	shaderConfig.options.mslOptions.multi_patch_workgroup = true;
-	shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pTessCtlSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : getMetalFeatures().maxSubgroupSize;
+	shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pTessCtlSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT) ? 0 : getMetalFeatures().maxSubgroupSize;
 	addPrevStageOutputToShaderConversionConfig(shaderConfig, vtxOutputs);
 	addNextStageInputToShaderConversionConfig(shaderConfig, teInputs);
 
@@ -1374,7 +1415,7 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		shaderConfig.options.mslOptions.view_mask_buffer_index = _viewRangeBufferIndex.stages[kMVKShaderStageFragment];
 		shaderConfig.options.entryPointName = pFragmentSS->pName;
 		shaderConfig.options.mslOptions.capture_output_to_buffer = false;
-		shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pFragmentSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : mtlFeats.maxSubgroupSize;
+		shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pFragmentSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT) ? 0 : mtlFeats.maxSubgroupSize;
 		shaderConfig.options.mslOptions.check_discarded_frag_stores = true;
 		/* Enabling makes dEQP-VK.fragment_shader_interlock.basic.discard.image.pixel_ordered.1xaa.no_sample_shading.1024x1024 and similar tests fail. Requires investigation */
 		shaderConfig.options.mslOptions.force_fragment_with_side_effects_execution = false;
@@ -2161,6 +2202,8 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 		}
 	}
 
+	warnIfBufferRobustnessEnabled(this, pCreateInfo);
+
 	// Initialize feedback. The VALID bit must be initialized, either set or cleared.
 	// We'll set the VALID bit on the stage feedback when we compile it.
 	VkPipelineCreationFeedback* pPipelineFB = nullptr;
@@ -2191,7 +2234,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 		if ([plDesc respondsToSelector:@selector(setMaxTotalThreadsPerThreadgroup:)]) {
 			plDesc.maxTotalThreadsPerThreadgroup = _mtlThreadgroupSize.width * _mtlThreadgroupSize.height * _mtlThreadgroupSize.depth;
 		}
-		plDesc.threadGroupSizeIsMultipleOfThreadExecutionWidth = mvkIsAnyFlagEnabled(pCreateInfo->stage.flags, VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT);
+		plDesc.threadGroupSizeIsMultipleOfThreadExecutionWidth = mvkIsAnyFlagEnabled(pCreateInfo->stage.flags, VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT);
 
 		// Metal does not allow the name of the pipeline to be changed after it has been created,
 		// and we need to create the Metal pipeline immediately to provide error feedback to app.
@@ -2234,6 +2277,8 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     const VkPipelineShaderStageCreateInfo* pSS = &pCreateInfo->stage;
     if ( !mvkAreAllFlagsEnabled(pSS->stage, VK_SHADER_STAGE_COMPUTE_BIT) ) { return MVKMTLFunctionNull; }
 
+	warnIfBufferRobustnessEnabled(this, pSS);
+
 	auto& mtlFeats = getMetalFeatures();
     SPIRVToMSLConversionConfiguration shaderConfig;
 	shaderConfig.options.entryPointName = pCreateInfo->stage.pName;
@@ -2245,7 +2290,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderConfig.options.mslOptions.texture_buffer_native = mtlFeats.textureBuffers;
 	shaderConfig.options.mslOptions.dispatch_base = _allowsDispatchBase;
 	shaderConfig.options.mslOptions.texture_1D_as_2D = getMVKConfig().texture1DAs2D;
-    shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : mtlFeats.maxSubgroupSize;
+    shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT) ? 0 : mtlFeats.maxSubgroupSize;
 
 	bool useMetalArgBuff = isUsingMetalArgumentBuffers();
 	shaderConfig.options.mslOptions.argument_buffers = useMetalArgBuff;

@@ -1,7 +1,7 @@
 /*
  * MVKEnvironment.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2025 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,10 +39,14 @@
 #	define Vk_PLATFORM_SurfaceCreateInfoMVK		VkMacOSSurfaceCreateInfoMVK
 #endif
 
-/** Macro to determine the Vulkan version supported by MoltenVK. */
-#define MVK_VULKAN_API_VERSION		VK_MAKE_VERSION(VK_VERSION_MAJOR(VK_API_VERSION_1_2),	\
-													VK_VERSION_MINOR(VK_API_VERSION_1_2),	\
-													VK_HEADER_VERSION)
+/** Standard Vulkan variant. */
+#define MVK_VULKAN_VARIANT						0
+
+/** Macro to adjust the specified Vulkan to include the VK_HEADER_VERSION patch value. */
+#define MVK_VULKAN_API_VERSION_HEADER(api_ver)	VK_MAKE_API_VERSION(MVK_VULKAN_VARIANT,  \
+                                                                    VK_VERSION_MAJOR(api_ver),	\
+                                                                    VK_VERSION_MINOR(api_ver),	\
+                                                                    VK_HEADER_VERSION)
 
 /** 
  * Macro to adjust the specified Vulkan version to a value that can be compared for conformance 
@@ -52,9 +56,13 @@
  * In particular, by definition, a Vulkan version is conformant with another Vulkan version that
  * has a larger patch number, as long as it has a same or greater major and minor value.
  */
-#define MVK_VULKAN_API_VERSION_CONFORM(api_ver)		VK_MAKE_VERSION(VK_VERSION_MAJOR(api_ver),	\
+#define MVK_VULKAN_API_VERSION_CONFORM(api_ver)	VK_MAKE_API_VERSION(MVK_VULKAN_VARIANT,  \
+                                                                    VK_VERSION_MAJOR(api_ver),	\
                                                                     VK_VERSION_MINOR(api_ver),	\
                                                                     0)
+
+/** Macro to determine the Vulkan version supported by MoltenVK. */
+#define MVK_VULKAN_API_VERSION					MVK_VULKAN_API_VERSION_HEADER(VK_API_VERSION_1_3)
 
 /**
  * IOSurfaces are supported on macOS, and on iOS starting with iOS 11.
@@ -303,9 +311,12 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #  	define MVK_CONFIG_USE_COMMAND_POOLING    1
 #endif
 
-/** Use MTLHeaps where possible when allocating MTLBuffers and MTLTextures. Enabled by default. */
+/**
+ * Use MTLHeap when allocating MTLBuffers and MTLTextures.
+ * Enabled by default where safe to use MTLHeap on the platform.
+ */
 #ifndef MVK_CONFIG_USE_MTLHEAP
-#  	define MVK_CONFIG_USE_MTLHEAP    1
+#  	define MVK_CONFIG_USE_MTLHEAP    MVK_CONFIG_USE_MTLHEAP_WHERE_SAFE
 #endif
 
 /** The Vulkan API version to advertise. Defaults to MVK_VULKAN_API_VERSION. */

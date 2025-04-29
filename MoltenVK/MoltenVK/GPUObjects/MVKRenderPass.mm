@@ -1,7 +1,7 @@
 /*
  * MVKRenderPass.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2025 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -812,7 +812,7 @@ MTLStoreAction MVKAttachmentDescription::getMTLStoreAction(MVKRenderSubpass* sub
 bool MVKAttachmentDescription::shouldClearAttachment(MVKRenderSubpass* subpass, bool isStencil) {
 
 	// If the renderpass is being resumed after being suspended, don't clear this attachment.
-	if (mvkIsAnyFlagEnabled(_renderPass->getRenderingFlags(), VK_RENDERING_RESUMING_BIT_KHR)) { return false; }
+	if (mvkIsAnyFlagEnabled(_renderPass->getRenderingFlags(), VK_RENDERING_RESUMING_BIT)) { return false; }
 
 	// If the subpass is not the first subpass to use this attachment, don't clear this attachment.
 	if (subpass->isMultiview()) {

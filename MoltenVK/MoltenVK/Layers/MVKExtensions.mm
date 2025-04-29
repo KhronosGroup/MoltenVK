@@ -1,7 +1,7 @@
 /*
  * MVKExtensions.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2025 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -167,7 +167,7 @@ VkResult MVKExtensionList::enable(uint32_t count, const char* const* names, cons
 			enable(extnName);
 			if (mvkStringsAreEqual(extnName, VK_MVK_MOLTENVK_EXTENSION_NAME)) {
 				reportMessage(MVK_CONFIG_LOG_LEVEL_WARNING, "Extension %s is deprecated. For access to Metal objects, use extension %s. "
-							  "For MoltenVK configuration, use the global vkGetMoltenVKConfigurationMVK() and vkSetMoltenVKConfigurationMVK() functions.",
+							  "For MoltenVK configuration, use the VK_EXT_layer_settings extension or environment variables.",
 							  VK_MVK_MOLTENVK_EXTENSION_NAME, VK_EXT_METAL_OBJECTS_EXTENSION_NAME);
 			}
 		}

@@ -1,7 +1,7 @@
 /*
  * MVKEnvironment.cpp
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2025 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,17 +44,26 @@ static constexpr uint32_t getExpectedMVKConfigurationStringCount() {
 
 #pragma mark Set configuration values
 
+// Expand the shortcut versions, Add the VK_HEADER_VERSION.
+static uint32_t expandAPIVersion(uint32_t apiVer) {
+	switch (apiVer) {
+		case  0:  return VK_API_VERSION_1_0;
+		case 10:  return VK_API_VERSION_1_0;
+		case 11:  return VK_API_VERSION_1_1;
+		case 12:  return VK_API_VERSION_1_2;
+		case 13:  return VK_API_VERSION_1_3;
+		default:  return std::min(apiVer, MVK_VULKAN_API_VERSION);
+	}
+}
+
 // Sets destination config content from the source content, validates content,
 // and ensures the content of any string members of MVKConfiguration are copied locally.
 void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVKConfig, std::string* stringHolders) {
 
 	dstMVKConfig = srcMVKConfig;
 
-	// Ensure the API version is supported, and add the VK_HEADER_VERSION.
-	dstMVKConfig.apiVersionToAdvertise = std::min(dstMVKConfig.apiVersionToAdvertise, MVK_VULKAN_API_VERSION);
-	dstMVKConfig.apiVersionToAdvertise = VK_MAKE_VERSION(VK_VERSION_MAJOR(dstMVKConfig.apiVersionToAdvertise),
-														 VK_VERSION_MINOR(dstMVKConfig.apiVersionToAdvertise),
-														 VK_HEADER_VERSION);
+	// Expand the shortcut versions, and add the VK_HEADER_VERSION.
+	dstMVKConfig.apiVersionToAdvertise = MVK_VULKAN_API_VERSION_HEADER(expandAPIVersion(dstMVKConfig.apiVersionToAdvertise));
 
 	// Deprecated legacy support for specific case where both legacy semaphoreUseMTLEvent
 	// (now aliased to semaphoreSupportStyle) and legacy semaphoreUseMTLFence are explicitly

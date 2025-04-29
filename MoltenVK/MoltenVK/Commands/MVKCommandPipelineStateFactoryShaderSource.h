@@ -1,7 +1,7 @@
 /*
  * MVKCommandPipelineStateFactoryShaderSource.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2025 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -545,6 +545,13 @@ kernel void accumulateOcclusionQueryResults(device VisibilityBuffer& dest [[buff
     dest.count += src.count;                                                                                    \n\
     dest.countHigh += src.countHigh;                                                                            \n\
     if (dest.count < max(oldDestCount, src.count)) { dest.countHigh++; }                                        \n\
+}                                                                                                               \n\
+                                                                                                                \n\
+kernel void convertUint8Indices(device uint8_t* src [[ buffer(0) ]],                                            \n\
+                                device uint16_t* dst [[ buffer(1) ]],                                           \n\
+                                uint pos [[thread_position_in_grid]]) {                                         \n\
+    uint8_t idx = src[pos];                                                                                     \n\
+    dst[pos] = idx == 0xFF ? 0xFFFF : idx;                                                                      \n\
 }                                                                                                               \n\
                                                                                                                 \n\
 ";

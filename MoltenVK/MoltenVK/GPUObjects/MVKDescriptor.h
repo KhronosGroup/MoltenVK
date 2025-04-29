@@ -1,7 +1,7 @@
 /*
  * MVKDescriptor.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2025 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -259,7 +259,7 @@ public:
 					  VkDescriptorImageInfo* pImageInfo,
 					  VkDescriptorBufferInfo* pBufferInfo,
 					  VkBufferView* pTexelBufferView,
-					  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) = 0;
+					  VkWriteDescriptorSetInlineUniformBlock* inlineUniformBlock) = 0;
 
 	/** Encodes the usage of this resource to the Metal command encoder. */
 	virtual void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
@@ -306,7 +306,7 @@ public:
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
-			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
+			  VkWriteDescriptorSetInlineUniformBlock* inlineUniformBlock) override;
 
 	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
 							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -370,7 +370,7 @@ public:
 class MVKInlineUniformBlockDescriptor : public MVKDescriptor {
 
 public:
-	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT; }
+	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK; }
 
 	void bind(MVKCommandEncoder* cmdEncoder,
 			  VkPipelineBindPoint pipelineBindPoint,
@@ -394,21 +394,21 @@ public:
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
-			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override {}
+			  VkWriteDescriptorSetInlineUniformBlock* inlineUniformBlock) override {}
 
 	uint32_t writeBytes(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 						MVKDescriptorSet* mvkDescSet,
 						uint32_t dstOffset,
 						uint32_t srcOffset,
 						uint32_t byteCount,
-						const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
+						const VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock);
 
 	uint32_t readBytes(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 					   MVKDescriptorSet* mvkDescSet,
 					   uint32_t dstOffset,
 					   uint32_t srcOffset,
 					   uint32_t byteCount,
-					   const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
+					   const VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock);
 
 
 	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
@@ -455,7 +455,7 @@ public:
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
-			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
+			  VkWriteDescriptorSetInlineUniformBlock* inlineUniformBlock) override;
 
 	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
 							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -532,7 +532,7 @@ protected:
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
-			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock);
+			  VkWriteDescriptorSetInlineUniformBlock* inlineUniformBlock);
 
 	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
 							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -577,7 +577,7 @@ public:
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
-			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
+			  VkWriteDescriptorSetInlineUniformBlock* inlineUniformBlock) override;
 
 	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
 							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -621,7 +621,7 @@ public:
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
-			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
+			  VkWriteDescriptorSetInlineUniformBlock* inlineUniformBlock) override;
 
 	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
 							 MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -663,7 +663,7 @@ public:
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
-			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
+			  VkWriteDescriptorSetInlineUniformBlock* inlineUniformBlock) override;
 
 	void encodeResourceUsage(MVKResourcesCommandEncoderState* rezEncState,
 							 MVKDescriptorSetLayoutBinding* mvkDSLBind,

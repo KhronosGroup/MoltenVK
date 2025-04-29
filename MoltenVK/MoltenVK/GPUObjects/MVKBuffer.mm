@@ -1,7 +1,7 @@
 /*
  * MVKBuffer.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2025 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,7 +96,19 @@ VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOf
 }
 
 VkResult MVKBuffer::bindDeviceMemory2(const VkBindBufferMemoryInfo* pBindInfo) {
-	return bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset);
+	VkResult res = bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset);
+	for (const auto* next = (const VkBaseInStructure*)pBindInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_BIND_MEMORY_STATUS: {
+				auto* pBindMemoryStatus = (const VkBindMemoryStatus*)next;
+				*(pBindMemoryStatus->pResult) = res;
+				break;
+			}
+			default:
+				break;
+		}
+	}
+	return res;
 }
 
 void MVKBuffer::applyMemoryBarrier(MVKPipelineBarrier& barrier,

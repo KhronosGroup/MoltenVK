@@ -1,7 +1,7 @@
 /*
  * MVKDescriptor.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2025 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -139,7 +139,7 @@ void mvkPopulateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& s
 	switch (descType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
 			addResourceBinding(Void);
 			break;
 
@@ -191,7 +191,7 @@ void mvkPopulateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& s
 MVKVulkanAPIObject* MVKDescriptorSetLayoutBinding::getVulkanAPIObject() { return _layout; };
 
 uint32_t MVKDescriptorSetLayoutBinding::getDescriptorCount(uint32_t variableDescriptorCount) const {
-	if (_info.descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+	if (_info.descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
 		return 1;
 	}
 	if (hasVariableDescriptorCount()) {
@@ -286,8 +286,8 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 break;
             }
 
-            case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: {
-                const auto& inlineUniformBlock = *(VkWriteDescriptorSetInlineUniformBlockEXT*)pData;
+            case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK: {
+                const auto& inlineUniformBlock = *(VkWriteDescriptorSetInlineUniformBlock*)pData;
                 bb.mtlBytes = inlineUniformBlock.pData;
                 bb.size = inlineUniformBlock.dataSize;
                 bb.isInline = true;
@@ -420,7 +420,7 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptors(NSMutableArray<MTL
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
 			addMTLArgumentDescriptor(args, variableDescriptorCount, getMetalResourceIndexOffsets().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadOnly);
 			break;
 
@@ -734,7 +734,7 @@ if (isUsingMtlArgBuff) {									\
 
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
 			setResourceIndexOffset(bufferIndex, 1);
             break;
 
@@ -844,7 +844,7 @@ void MVKBufferDescriptor::read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 							   VkDescriptorImageInfo* pImageInfo,
 							   VkDescriptorBufferInfo* pBufferInfo,
 							   VkBufferView* pTexelBufferView,
-							   VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+							   VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock) {
 	auto& buffInfo = pBufferInfo[dstIndex];
 	buffInfo.buffer = (VkBuffer)_mvkBuffer;
 	buffInfo.offset = _buffOffset;
@@ -899,7 +899,7 @@ uint32_t MVKInlineUniformBlockDescriptor::writeBytes(MVKDescriptorSetLayoutBindi
 													 uint32_t dstOffset,
 													 uint32_t srcOffset,
 													 uint32_t byteCount,
-													 const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+													 const VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock) {
 	uint32_t dataLen = 0;
 	uint32_t dstBuffSize = mvkDSLBind->_info.descriptorCount;
 	uint32_t srcBuffSize = pInlineUniformBlock->dataSize;
@@ -933,7 +933,7 @@ uint32_t MVKInlineUniformBlockDescriptor::readBytes(MVKDescriptorSetLayoutBindin
 													uint32_t dstOffset,
 													uint32_t srcOffset,
 													uint32_t byteCount,
-													const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+													const VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock) {
 	uint32_t dataLen = 0;
 	uint32_t dstBuffSize = pInlineUniformBlock->dataSize;
 	uint32_t srcBuffSize = mvkDSLBind->_info.descriptorCount;
@@ -1053,7 +1053,7 @@ void MVKImageDescriptor::read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 							  VkDescriptorImageInfo* pImageInfo,
 							  VkDescriptorBufferInfo* pBufferInfo,
 							  VkBufferView* pTexelBufferView,
-							  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+							  VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock) {
 	auto& imgInfo = pImageInfo[dstIndex];
 	imgInfo.imageView = (VkImageView)_mvkImageView;
 	imgInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -1154,7 +1154,7 @@ void MVKSamplerDescriptorMixin::read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 VkDescriptorImageInfo* pImageInfo,
 									 VkDescriptorBufferInfo* pBufferInfo,
 									 VkBufferView* pTexelBufferView,
-									 VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+									 VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock) {
 	auto& imgInfo = pImageInfo[dstIndex];
 	imgInfo.sampler = (VkSampler)_mvkSampler;
 }
@@ -1195,7 +1195,7 @@ void MVKSamplerDescriptor::read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 								VkDescriptorImageInfo* pImageInfo,
 								VkDescriptorBufferInfo* pBufferInfo,
 								VkBufferView* pTexelBufferView,
-								VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+								VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock) {
 	MVKSamplerDescriptorMixin::read(mvkDSLBind, mvkDescSet, dstIndex, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
 }
 
@@ -1237,7 +1237,7 @@ void MVKCombinedImageSamplerDescriptor::read(MVKDescriptorSetLayoutBinding* mvkD
 											 VkDescriptorImageInfo* pImageInfo,
 											 VkDescriptorBufferInfo* pBufferInfo,
 											 VkBufferView* pTexelBufferView,
-											 VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+											 VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock) {
 	MVKImageDescriptor::read(mvkDSLBind, mvkDescSet, dstIndex, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
 	MVKSamplerDescriptorMixin::read(mvkDSLBind, mvkDescSet, dstIndex, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
 }
@@ -1328,7 +1328,7 @@ void MVKTexelBufferDescriptor::read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									VkDescriptorImageInfo* pImageInfo,
 									VkDescriptorBufferInfo* pBufferInfo,
 									VkBufferView* pTexelBufferView,
-									VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+									VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock) {
 	pTexelBufferView[dstIndex] = (VkBufferView)_mvkBufferView;
 }
 
@@ -1366,7 +1366,7 @@ bool mvkNeedsBuffSizeAuxBuffer(const VkDescriptorSetLayoutBinding* pBinding) {
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 			return pBinding->descriptorCount > 0;
 
-		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
 			return true;
 		
 		default:

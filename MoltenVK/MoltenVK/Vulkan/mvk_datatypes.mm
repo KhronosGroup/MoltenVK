@@ -1,7 +1,7 @@
 /*
  * mvk_datatypes.mm
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2025 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -590,6 +590,8 @@ MVK_PUBLIC_SYMBOL MTLLoadAction mvkMTLLoadActionFromVkAttachmentLoadOp(VkAttachm
 
 MTLLoadAction mvkMTLLoadActionFromVkAttachmentLoadOpInObj(VkAttachmentLoadOp vkLoadOp, MVKBaseObject* mvkObj) {
 	switch (vkLoadOp) {
+		// Metal does not support VK_ATTACHMENT_LOAD_OP_NONE. Next best option is load.
+		case VK_ATTACHMENT_LOAD_OP_NONE:
 		case VK_ATTACHMENT_LOAD_OP_LOAD:		return MTLLoadActionLoad;
 		case VK_ATTACHMENT_LOAD_OP_CLEAR:		return MTLLoadActionClear;
 		case VK_ATTACHMENT_LOAD_OP_DONT_CARE:	return MTLLoadActionDontCare;
@@ -733,6 +735,8 @@ MVK_PUBLIC_SYMBOL MTLWinding mvkMTLWindingFromVkFrontFace(VkFrontFace vkWinding)
 MVK_PUBLIC_SYMBOL MTLIndexType mvkMTLIndexTypeFromVkIndexType(VkIndexType vkIdxType) {
 	switch (vkIdxType) {
 		case VK_INDEX_TYPE_UINT32:	return MTLIndexTypeUInt32;
+		// Converted to Uint16 internally.
+		case VK_INDEX_TYPE_UINT8:
 		case VK_INDEX_TYPE_UINT16:	return MTLIndexTypeUInt16;
 		default:					return MTLIndexTypeUInt16;
 	}

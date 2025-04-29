@@ -1,7 +1,7 @@
 /*
  * MVKFoundation.h
  *
- * Copyright (c) 2015-2024 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2015-2025 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,8 +96,9 @@ typedef enum : uint8_t {
     kMVKCommandUseDispatch,                     /**< vkCmdDispatch. */
     kMVKCommandUseTessellationVertexTessCtl,    /**< vkCmdDraw* - vertex and tessellation control stages. */
 	kMVKCommandUseDrawIndirectConvertBuffers,   /**< vkCmdDrawIndirect* convert indirect buffers. */
-    kMVKCommandUseCopyQueryPoolResults,         /**< vkCmdCopyQueryPoolResults. */
-    kMVKCommandUseAccumOcclusionQuery,          /**< Any command terminating a Metal render pass with active visibility buffer. */
+	kMVKCommandUseCopyQueryPoolResults,         /**< vkCmdCopyQueryPoolResults. */
+	kMVKCommandUseAccumOcclusionQuery,          /**< Any command terminating a Metal render pass with active visibility buffer. */
+	kMVKCommandConvertUint8Indices,             /**< Converting a Uint8 index buffer to Uint16. */
 	kMVKCommandUseRecordGPUCounterSample        /**< Any command triggering the recording of a GPU counter sample. */
 } MVKCommandUse;
 
@@ -116,6 +117,9 @@ const char* mvkVkResultName(VkResult vkResult);
 
 /** Returns the name of the component swizzle. */
 const char* mvkVkComponentSwizzleName(VkComponentSwizzle swizzle);
+
+/** Returns whether this platform supports buffer device address. */
+bool mvkSupportsBufferDeviceAddress();
 
 /** Returns the Vulkan API version number as a string. */
 static inline std::string mvkGetVulkanVersionString(uint32_t vkVersion) {
