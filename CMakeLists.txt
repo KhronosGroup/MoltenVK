@@ -60,7 +60,7 @@ cmake_policy(SET CMP0114 NEW) # Support the Xcode "new build system"
 project(MoltenVK
 	DESCRIPTION "MoltenVK is a Vulkan Portability implementation. It layers a subset of the high-performance, industry-standard Vulkan graphics and compute API over Apple's Metal graphics framework, enabling Vulkan applications to run on macOS, iOS and tvOS."
 	LANGUAGES OBJCXX CXX C
-	VERSION "1.2.12")
+	VERSION "1.3.0")
 
 # Set default minimum C++ standard
 if(MOLTEN_VK_TOPLEVEL_PROJECT)
