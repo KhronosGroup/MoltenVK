@@ -102,15 +102,26 @@ VkResult MVKCmdCopyImage<N>::setContent(MVKCommandBuffer* cmdBuff,
     return VK_SUCCESS;
 }
 
+static inline MTLPixelFormat getDepthStencilAspectFormat(const MTLPixelFormat format, const VkImageAspectFlags aspectMask) {
+    if (format == MTLPixelFormatDepth32Float_Stencil8) {
+        if (aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) return MTLPixelFormatDepth32Float;
+        if (aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) return MTLPixelFormatStencil8;
+    }
+    return format;
+}
+
 template <size_t N>
 inline VkResult MVKCmdCopyImage<N>::validate(MVKCommandBuffer* cmdBuff, const VkImageCopy2* region) {
     uint8_t srcPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(region->srcSubresource.aspectMask);
     uint8_t dstPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(region->dstSubresource.aspectMask);
 
+    auto srcFormat = getDepthStencilAspectFormat(_srcImage->getMTLPixelFormat(srcPlaneIndex), region->srcSubresource.aspectMask);
+    auto dstFormat = getDepthStencilAspectFormat(_dstImage->getMTLPixelFormat(dstPlaneIndex), region->dstSubresource.aspectMask);
+
     // Validate
     MVKPixelFormats* pixFmts = cmdBuff->getPixelFormats();
     if ((_dstImage->getSampleCount() != _srcImage->getSampleCount()) ||
-        (pixFmts->getBytesPerBlock(_dstImage->getMTLPixelFormat(dstPlaneIndex)) != pixFmts->getBytesPerBlock(_srcImage->getMTLPixelFormat(srcPlaneIndex)))) {
+        (pixFmts->getBytesPerBlock(srcFormat) != pixFmts->getBytesPerBlock(dstFormat))) {
         return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Cannot copy between incompatible formats, such as formats of different pixel sizes, or between images with different sample counts.");
     }
     return VK_SUCCESS;
@@ -133,17 +144,20 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
         
         MTLPixelFormat srcMTLPixFmt = _srcImage->getMTLPixelFormat(srcPlaneIndex);
         bool isSrcCompressed = _srcImage->getIsCompressed();
+        bool isSrcCombinedDepthStencil = srcMTLPixFmt == MTLPixelFormatDepth32Float_Stencil8;
         bool canReinterpretSrc = _srcImage->hasPixelFormatView(srcPlaneIndex);
 
         MTLPixelFormat dstMTLPixFmt = _dstImage->getMTLPixelFormat(dstPlaneIndex);
         bool isDstCompressed = _dstImage->getIsCompressed();
+        bool isDstCombinedDepthStencil = dstMTLPixFmt == MTLPixelFormatDepth32Float_Stencil8;
         bool canReinterpretDst = _dstImage->hasPixelFormatView(dstPlaneIndex);
 
         bool isEitherCompressed = isSrcCompressed || isDstCompressed;
+        bool isOneCombinedDepthStencil = isSrcCombinedDepthStencil != isDstCombinedDepthStencil;
         bool canReinterpret = canReinterpretSrc || canReinterpretDst;
 
         // If source and destination can't be reinterpreted to matching formats use a temporary intermediary buffer
-        bool useTempBuffer = (srcMTLPixFmt != dstMTLPixFmt) && (isEitherCompressed || !canReinterpret);
+        bool useTempBuffer = (srcMTLPixFmt != dstMTLPixFmt) && (isEitherCompressed || isOneCombinedDepthStencil || !canReinterpret);
 
         if (useTempBuffer) {
             // Add copy from source image to temp buffer.
@@ -587,11 +601,23 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
 
             bool isLayeredBlit = blitKey.dstSampleCount > 1 ? mtlFeats.multisampleLayeredRendering : mtlFeats.layeredRendering;
 
-            uint32_t layCnt = mvkIBR.region.srcSubresource.layerCount == VK_REMAINING_ARRAY_LAYERS ?
+            uint32_t srcLayCnt = mvkIBR.region.srcSubresource.layerCount == VK_REMAINING_ARRAY_LAYERS ?
                 _srcImage->getLayerCount() - mvkIBR.region.srcSubresource.baseArrayLayer :
                  mvkIBR.region.srcSubresource.layerCount;
+            uint32_t dstLayCnt = mvkIBR.region.dstSubresource.layerCount == VK_REMAINING_ARRAY_LAYERS ?
+                _dstImage->getLayerCount() - mvkIBR.region.dstSubresource.baseArrayLayer :
+                 mvkIBR.region.dstSubresource.layerCount;
+            uint32_t layCnt;
+            // If either image is 3D, the difference in z offset must:
+            // - Equal the difference in z offset of the other subresource, if it is also 3D.
+            // - Equal the number of layers in the other subresource, if it is not 3D.
+            // Otherwise, the number of layers should be the same.
             if (_dstImage->getMTLTextureType() == MTLTextureType3D) {
                 layCnt = mvkAbsDiff(mvkIBR.region.dstOffsets[1].z, mvkIBR.region.dstOffsets[0].z);
+            } else if (blitKey.srcMTLTextureType == MTLTextureType3D) {
+                layCnt = mvkAbsDiff(mvkIBR.region.srcOffsets[1].z, mvkIBR.region.srcOffsets[0].z);
+            } else {
+                layCnt = srcLayCnt;
             }
             if (isLayeredBlit) {
                 // In this case, I can blit all layers at once with a layered draw.
@@ -629,14 +655,19 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                     // In this case, I need to interpolate along the third dimension manually.
                     VkExtent3D srcExtent = _srcImage->getExtent3D(srcPlaneIndex, mvkIBR.region.dstSubresource.mipLevel);
                     VkOffset3D so0 = mvkIBR.region.srcOffsets[0], so1 = mvkIBR.region.srcOffsets[1];
-                    VkOffset3D do0 = mvkIBR.region.dstOffsets[0], do1 = mvkIBR.region.dstOffsets[1];
+                    // If the dst is also 3D use the z offsets, otherwise use the layers.
+                    float do0z = mvkIBR.region.dstOffsets[0].z, do1z = mvkIBR.region.dstOffsets[1].z;
+                    if (_dstImage->getMTLTextureType() != MTLTextureType3D) {
+                        do0z = mvkIBR.region.dstSubresource.baseArrayLayer;
+                        do1z = do0z + dstLayCnt;
+                    }
                     float startZ = (float)so0.z / (float)srcExtent.depth;
                     float endZ = (float)so1.z / (float)srcExtent.depth;
-                    if (isLayeredBlit && do0.z > do1.z) {
+                    if (isLayeredBlit && do0z > do1z) {
                         // Swap start and end points so interpolation moves in the right direction.
                         std::swap(startZ, endZ);
                     }
-                    zIncr = (endZ - startZ) / mvkAbsDiff(do1.z, do0.z);
+                    zIncr = (endZ - startZ) / mvkAbsDiff(do1z, do0z);
                     float z = startZ + (isLayeredBlit ? 0.0 : (layIdx + 0.5)) * zIncr;
                     for (uint32_t i = 0; i < kMVKBlitVertexCount; ++i) {
                         mvkIBR.vertices[i].texCoord.z = z;

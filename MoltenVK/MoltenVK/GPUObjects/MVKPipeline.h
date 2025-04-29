@@ -576,6 +576,7 @@ protected:
 	size_t _dataSize = 0;
 	std::mutex _shaderCacheLock;
 	bool _isExternallySynchronized = false;
+	bool _isMergeInternallySynchronized = false;
 };
 
 
