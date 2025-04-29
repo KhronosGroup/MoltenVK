@@ -7,7 +7,7 @@ endif()
 message(STATUS "External: creating target 'SPIRV-Headers::SPIRV-Headers'")
 
 # Read Git commit hash from ExternalRevisions file
-file(READ "ExternalRevisions/SPIRV-Headers_repo_revision" SPIRV_HEADERS_COMMIT_HASH)
+file(READ "${PROJECT_SOURCE_DIR}/ExternalRevisions/SPIRV-Headers_repo_revision" SPIRV_HEADERS_COMMIT_HASH)
 string(STRIP "${SPIRV_HEADERS_COMMIT_HASH}" SPIRV_HEADERS_COMMIT_HASH)
 
 include(CPM)

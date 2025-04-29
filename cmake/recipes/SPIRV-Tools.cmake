@@ -6,14 +6,13 @@ endif()
 
 message(STATUS "External: creating target 'SPIRV-Tools::SPIRV-Tools'")
 
-
 # SPIRV-Tools requires SPIRV-Headers
 include(SPIRV-Headers)
 
 set(SPIRV_TOOLS_BUILD_STATIC ON)
 
 # Read Git commit hash from ExternalRevisions file
-file(READ "ExternalRevisions/SPIRV-Tools_repo_revision" SPIRV_TOOLS_COMMIT_HASH)
+file(READ "${PROJECT_SOURCE_DIR}/ExternalRevisions/SPIRV-Tools_repo_revision" SPIRV_TOOLS_COMMIT_HASH)
 string(STRIP "${SPIRV_TOOLS_COMMIT_HASH}" SPIRV_TOOLS_COMMIT_HASH)
 
 include(CPM)
