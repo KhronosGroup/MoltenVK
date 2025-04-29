@@ -11,14 +11,25 @@
 #
 function(MoltenVK_Filter_Flags flags)
   include(CheckCXXCompilerFlag)
+  include(CheckOBJCXXCompilerFlag)
   set(output_flags)
   foreach(FLAG IN ITEMS ${${flags}})
     string(REPLACE "=" "-" FLAG_VAR "${FLAG}")
-    if(NOT DEFINED IS_SUPPORTED_${FLAG_VAR})
-      check_cxx_compiler_flag("${FLAG}" IS_SUPPORTED_${FLAG_VAR})
+
+    # Check if the flag is supported by the C++ compiler
+    if(NOT DEFINED IS_SUPPORTED_${FLAG_VAR}_CXX)
+      check_cxx_compiler_flag("${FLAG}" IS_SUPPORTED_${FLAG_VAR}_CXX)
     endif()
-    if(IS_SUPPORTED_${FLAG_VAR})
+    if(IS_SUPPORTED_${FLAG_VAR}_CXX)
       list(APPEND output_flags $<$<COMPILE_LANGUAGE:CXX>:${FLAG}>)
+    endif()
+
+    # Check if the flag is supported by the Objective-C++ compiler
+    if(NOT DEFINED IS_SUPPORTED_${FLAG_VAR}_OBJCXX)
+      check_objcxx_compiler_flag("${FLAG}" IS_SUPPORTED_${FLAG_VAR}_OBJCXX)
+    endif()
+    if(IS_SUPPORTED_${FLAG_VAR}_OBJCXX)
+      list(APPEND output_flags $<$<COMPILE_LANGUAGE:OBJCXX>:${FLAG}>)
     endif()
   endforeach()
   set(${flags} ${output_flags} PARENT_SCOPE)
