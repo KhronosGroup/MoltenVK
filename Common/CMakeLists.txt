@@ -38,7 +38,11 @@ target_link_libraries(MoltenVK_Common PUBLIC
 target_compile_features(MoltenVK_Common PUBLIC cxx_std_17)
 
 # Disable annoying warnings
-target_compile_options(MoltenVK_Common PUBLIC
+set(MOLTEN_VK_WARNING_FLAGS
 	"-Wno-deprecated-declarations" # deprecated metal API
 	"-Wno-vla-cxx-extension" # variable length arrays in C++ are a Clang extension
 )
+
+include(MoltenVK_Filter_Flags)
+MoltenVK_Filter_Flags(IPC_TOOLKIT_WARNING_FLAGS)
+target_compile_options(MoltenVK_Common INTERFACE ${MOLTEN_VK_WARNING_FLAGS})
