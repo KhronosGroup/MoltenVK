@@ -132,7 +132,7 @@ jobs:
       - name: Dependencies
         if: runner.os == 'macOS'
         run: |
-          brew install ccache
+          brew install ccache boost
           echo 'CACHE_PATH=~/Library/Caches/ccache' >> "$GITHUB_ENV"
 
       - name: Get number of CPU cores
