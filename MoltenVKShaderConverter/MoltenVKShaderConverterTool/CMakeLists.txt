@@ -6,9 +6,9 @@
 # easier to maintain in conjunction with the Xcode project file.
 file(GLOB_RECURSE SOURCES "*.c" "*.cpp" "*.m" "*.mm")
 
-add_executable(MoltenVKShaderConverter_bin ${SOURCES})
+add_executable(MoltenVKShaderConverter ${SOURCES})
 
-target_include_directories(MoltenVK_ShaderConverter PUBLIC
+target_include_directories(MoltenVKShaderConverter PUBLIC
 	"${CMAKE_CURRENT_SOURCE_DIR}/../MoltenVKShaderConverter"
 )
 
@@ -16,4 +16,4 @@ target_include_directories(MoltenVK_ShaderConverter PUBLIC
 # Dependencies
 ################################################################################
 
-target_link_libraries(MoltenVKShaderConverter_bin PRIVATE MoltenVK::MoltenVK)
+target_link_libraries(MoltenVKShaderConverter PRIVATE MoltenVK::MoltenVK)
