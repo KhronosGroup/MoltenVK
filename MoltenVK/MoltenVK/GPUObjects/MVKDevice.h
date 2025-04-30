@@ -70,6 +70,8 @@ class MVKCommandPool;
 class MVKCommandEncoder;
 class MVKCommandResourceFactory;
 class MVKPrivateDataSlot;
+struct MVKUseResourceHelper;
+enum class MVKResourceUsageStages : uint8_t;
 
 
 /** The buffer index to use for vertex content. */
@@ -787,7 +789,7 @@ public:
 #pragma mark Operations
 
 	/** Tell the GPU to be ready to use any of the GPU-addressable buffers. */
-	void encodeGPUAddressableBuffers(MVKCommandEncoder& mvkEncoder, MVKShaderStage stage);
+	void encodeGPUAddressableBuffers(MVKUseResourceHelper& resources, MVKResourceUsageStages stage);
 
 	/** Adds the specified host semaphore to be woken upon device loss. */
 	void addSemaphore(MVKSemaphoreImpl* sem4);

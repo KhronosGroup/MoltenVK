@@ -145,6 +145,7 @@ enum class MVKResourceUsageStages : uint8_t {
 	All      = static_cast<uint32_t>(MVKMetalGraphicsStage::Count),
 	Count,
 	Compute  = 0, // Aliases with Render stages
+	None     = Count, // Should not be passed to MVKUseResourceHelper
 };
 
 struct MVKUseResourceHelper {
@@ -232,7 +233,13 @@ struct MVKMetalSharedCommandEncoderState {
 	/** Storage for tracking which objects need to have useResource called on them. */
 	MVKUseResourceHelper _useResource;
 
-	void reset() { _useResource.used.clear(); }
+	/** Which GPU addressable resources have been added to `_useResource`. */
+	MVKResourceUsageStages _gpuAddressableResourceStages;
+
+	void reset() {
+		_gpuAddressableResourceStages = MVKResourceUsageStages::None;
+		_useResource.used.clear();
+	}
 };
 
 #pragma mark - MVKMetalRenderCommandEncoderState
@@ -336,8 +343,6 @@ struct MVKMetalGraphicsCommandEncoderState : public MVKMetalGraphicsCommandEncod
 	VkViewport _viewports[kMVKMaxViewportScissorCount];
 	VkRect2D _scissors[kMVKMaxViewportScissorCount];
 	MTLSamplePosition _samplePositions[kMVKMaxSampleCount];
-
-	std::unordered_map<id<MTLResource>, MTLRenderStages> _renderUsageStages;
 
 	MTLPrimitiveType getPrimitiveType() const { return static_cast<MTLPrimitiveType>(_primitiveType); }
 
@@ -486,7 +491,6 @@ public:
 	/** Bind the given index buffer to the Vulkan state, invalidating any necessary resources. */
 	void bindIndexBuffer(const MVKIndexMTLBufferBinding& buffer);
 	void offsetZeroDivisorVertexBuffers(MVKCommandEncoder& mvkEncoder, MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);
-	void encodeResourceUsage(MVKCommandEncoder& mvkEncoder, MVKShaderStage stage, id<MTLResource> mtlResource, MTLResourceUsage mtlUsage, MTLRenderStages mtlStages);
 
 	/** Begin tracking for a fresh MTLRenderCommandEncoder. */
 	void beginGraphicsEncoding(VkSampleCountFlags sampleCount);

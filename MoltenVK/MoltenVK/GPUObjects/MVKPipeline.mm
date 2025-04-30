@@ -422,6 +422,7 @@ MVKPipeline::~MVKPipeline() {
 
 /** Populate a MVKStageResourceBits based on the resources used by the given shader info. */
 static void populateResourceUsage(MVKPipelineStageResourceInfo& dst, SPIRVToMSLConversionConfiguration& src, SPIRVToMSLConversionResultInfo& results, spv::ExecutionModel stage) {
+	dst.usesPhysicalStorageBufferAddresses = results.usesPhysicalStorageBufferAddressesCapability;
 	dst.implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::Swizzle,       results.needsSwizzleBuffer);
 	dst.implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::Output,        results.needsOutputBuffer);
 	dst.implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::PatchOutput,   results.needsPatchOutputBuffer);
@@ -1489,7 +1490,6 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled;
 	populateResourceUsage(_stageResources[kMVKShaderStageVertex], shaderConfig, funcRslts, spv::ExecutionModelVertex);
 	_layout->populateBindOperations(_stageResources[kMVKShaderStageVertex].bindScript, shaderConfig, spv::ExecutionModelVertex);
-	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageVertex);
 
 	if (funcRslts.isRasterizationDisabled) {
 		pFragmentSS = nullptr;
@@ -1534,7 +1534,6 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 
 		auto& funcRslts = func.shaderConversionResults;
 		populateResourceUsage(_stageResources[kMVKShaderStageVertex], shaderConfig, funcRslts, spv::ExecutionModelVertex);
-		markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageVertex);
 	}
 
 	_layout->populateBindOperations(_stageResources[kMVKShaderStageVertex].bindScript, shaderConfig, spv::ExecutionModelVertex);
@@ -1577,7 +1576,6 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	});
 	populateResourceUsage(_stageResources[kMVKShaderStageTessCtl], shaderConfig, funcRslts, spv::ExecutionModelTessellationControl);
 	_layout->populateBindOperations(_stageResources[kMVKShaderStageTessCtl].bindScript, shaderConfig, spv::ExecutionModelTessellationControl);
-	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageTessCtl);
 
 	return verifyImplicitBuffers(kMVKShaderStageTessCtl);
 }
@@ -1610,7 +1608,6 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled;
 	populateResourceUsage(_stageResources[kMVKShaderStageTessEval], shaderConfig, funcRslts, spv::ExecutionModelTessellationEvaluation);
 	_layout->populateBindOperations(_stageResources[kMVKShaderStageTessEval].bindScript, shaderConfig, spv::ExecutionModelTessellationEvaluation);
-	markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageTessEval);
 
 	if (funcRslts.isRasterizationDisabled) {
 		pFragmentSS = nullptr;
@@ -1666,7 +1663,6 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		auto& funcRslts = func.shaderConversionResults;
 		populateResourceUsage(_stageResources[kMVKShaderStageFragment], shaderConfig, funcRslts, spv::ExecutionModelFragment);
 		_layout->populateBindOperations(_stageResources[kMVKShaderStageFragment].bindScript, shaderConfig, spv::ExecutionModelFragment);
-		markIfUsingPhysicalStorageBufferAddressesCapability(funcRslts, kMVKShaderStageFragment);
 	}
 	return verifyImplicitBuffers(kMVKShaderStageFragment);
 }
@@ -2365,17 +2361,6 @@ MVKMTLFunction MVKGraphicsPipeline::getMTLFunction(SPIRVToMSLConversionConfigura
 	return func;
 }
 
-void MVKGraphicsPipeline::markIfUsingPhysicalStorageBufferAddressesCapability(SPIRVToMSLConversionResultInfo& resultsInfo,
-																			  MVKShaderStage stage) {
-	if (resultsInfo.usesPhysicalStorageBufferAddressesCapability) {
-		_stagesUsingPhysicalStorageBufferAddressesCapability.push_back(stage);
-	}
-}
-
-bool MVKGraphicsPipeline::usesPhysicalStorageBufferAddressesCapability(MVKShaderStage stage) {
-	return mvkContains(_stagesUsingPhysicalStorageBufferAddressesCapability, stage);
-}
-
 MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 	@synchronized (getMTLDevice()) {
 		[_mtlTessVertexStageState release];
@@ -2536,17 +2521,12 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	auto& funcRslts = func.shaderConversionResults;
 	populateResourceUsage(_stageResources, shaderConfig, funcRslts, spv::ExecutionModelGLCompute);
 	_layout->populateBindOperations(_stageResources.bindScript, shaderConfig, spv::ExecutionModelGLCompute);
-	_usesPhysicalStorageBufferAddressesCapability = funcRslts.usesPhysicalStorageBufferAddressesCapability;
 
 	return func;
 }
 
 uint32_t MVKComputePipeline::getImplicitBufferIndex(uint32_t bufferIndexOffset) {
 	return getMetalFeatures().maxPerStageBufferCount - (bufferIndexOffset + 1);
-}
-
-bool MVKComputePipeline::usesPhysicalStorageBufferAddressesCapability(MVKShaderStage stage) {
-	return _usesPhysicalStorageBufferAddressesCapability;
 }
 
 MVKComputePipeline::~MVKComputePipeline() {
