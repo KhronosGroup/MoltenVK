@@ -6,14 +6,29 @@ endif()
 
 message(STATUS "External: creating target 'SPRIV-Cross::SPRIV-Cross'")
 
-set(SPIRV_CROSS_NAMESPACE_OVERRIDE "MVK_spirv_cross")
-
 # Read Git commit hash from ExternalRevisions file
 file(READ "${PROJECT_SOURCE_DIR}/ExternalRevisions/SPIRV-Cross_repo_revision" SPIRV_CROSS_COMMIT_HASH)
 string(STRIP "${SPIRV_CROSS_COMMIT_HASH}" SPIRV_CROSS_COMMIT_HASH)
 
 include(CPM)
-CPMAddPackage("gh:KhronosGroup/SPIRV-Cross#${SPIRV_CROSS_COMMIT_HASH}")
+CPMAddPackage(
+  NAME SPIRV-Cross
+  GITHUB_REPOSITORY KhronosGroup/SPIRV-Cross
+  GIT_TAG ${SPIRV_CROSS_COMMIT_HASH}
+  GIT_SHALLOW TRUE
+  SYSTEM TRUE
+  OPTIONS
+    "SPIRV_CROSS_CLI OFF"
+    "SPIRV_CROSS_ENABLE_TESTS OFF"
+    "SPIRV_CROSS_ENABLE_GLSL ON"
+    "SPIRV_CROSS_ENABLE_HLSL OFF"
+    "SPIRV_CROSS_ENABLE_MSL ON"
+    "SPIRV_CROSS_ENABLE_CPP OFF"
+    "SPIRV_CROSS_ENABLE_REFLECT ON"
+    "SPIRV_CROSS_ENABLE_C_API OFF"
+    "SPIRV_CROSS_ENABLE_UTIL OFF"
+    "SPIRV_CROSS_NAMESPACE_OVERRIDE MVK_spirv_cross"
+)
 
 add_library(SPRIV-Cross::Core ALIAS spirv-cross-core)
 add_library(SPRIV-Cross::Reflect ALIAS spirv-cross-reflect)
