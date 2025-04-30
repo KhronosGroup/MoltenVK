@@ -536,6 +536,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				shaderExpectAssume->shaderExpectAssume = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_RELAXED_EXTENDED_INSTRUCTION_FEATURES_KHR: {
+				auto* shaderRelaxedFeatures = (VkPhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR*)next;
+				shaderRelaxedFeatures->shaderRelaxedExtendedInstruction = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_ROTATE_FEATURES_KHR: {
 				auto* shaderSGRotateFeatures = (VkPhysicalDeviceShaderSubgroupRotateFeaturesKHR*)next;
 				shaderSGRotateFeatures->shaderSubgroupRotate = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
@@ -3635,6 +3640,7 @@ void MVKPhysicalDevice::initExtensions() {
 	}
 	if (!_metalFeatures.simdPermute && !_metalFeatures.quadPermute) {
 		pWritableExtns->vk_KHR_shader_subgroup_extended_types.enabled = false;
+		pWritableExtns->vk_KHR_shader_subgroup_rotate.enabled = false;
 		pWritableExtns->vk_EXT_shader_subgroup_ballot.enabled = false;
 		pWritableExtns->vk_EXT_shader_subgroup_vote.enabled = false;
 	}
