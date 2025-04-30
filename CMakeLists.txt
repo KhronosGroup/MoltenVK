@@ -62,6 +62,9 @@ project(MoltenVK
 	LANGUAGES C CXX OBJC OBJCXX
 	VERSION "1.3.0")
 
+set(MVK_CONFIG_LOG_LEVEL "info" CACHE STRING "Set the default log level for MoltenVK. Options are: debug, info, warn, error, off. Default is 'info'.")
+set_property(CACHE MVK_CONFIG_LOG_LEVEL PROPERTY STRINGS "debug" "info" "warn" "error" "off")
+
 # Set default minimum C++ standard
 if(MOLTEN_VK_TOPLEVEL_PROJECT)
 	set(CMAKE_CXX_STANDARD 17)

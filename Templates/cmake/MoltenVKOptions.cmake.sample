@@ -29,6 +29,8 @@
 # MoltenVK Options
 ################################################################################
 
+# set(MVK_CONFIG_LOG_LEVEL "info" CACHE STRING "Set the default log level for MoltenVK. Options are: debug, info, warn, error, off. Default is 'info'.")
+
 # set(CPM_cereal_SOURCE "" CACHE PATH "Path to Cereal library to override CPM download")
 # set(CPM_SPIRV-Cross_SOURCE "" CACHE PATH "Path to SPIRV-Cross library to override CPM download")
 # set(CPM_SPIRV-Headers_SOURCE "" CACHE PATH "Path to SPIRV-Headers library to override CPM download")

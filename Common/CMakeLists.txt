@@ -46,3 +46,21 @@ set(MOLTEN_VK_WARNING_FLAGS
 include(MoltenVK_Filter_Flags)
 MoltenVK_Filter_Flags(MOLTEN_VK_WARNING_FLAGS)
 target_compile_options(MoltenVK_Common PUBLIC ${MOLTEN_VK_WARNING_FLAGS})
+
+# Convert the log level to a number: off=0, error=1, warning=2, info=3, debug=4
+if(MVK_CONFIG_LOG_LEVEL STREQUAL "off")
+	set(MVK_CONFIG_LOG_LEVEL_NUM 0)
+elseif(MVK_CONFIG_LOG_LEVEL STREQUAL "error")
+	set(MVK_CONFIG_LOG_LEVEL_NUM 1)
+elseif(MVK_CONFIG_LOG_LEVEL STREQUAL "warn")
+	set(MVK_CONFIG_LOG_LEVEL_NUM 2)
+elseif(MVK_CONFIG_LOG_LEVEL STREQUAL "info")
+	set(MVK_CONFIG_LOG_LEVEL_NUM 3)
+elseif(MVK_CONFIG_LOG_LEVEL STREQUAL "debug")
+	set(MVK_CONFIG_LOG_LEVEL_NUM 4)
+else()
+	message(FATAL_ERROR "Invalid MVK_CONFIG_LOG_LEVEL: ${MVK_CONFIG_LOG_LEVEL}")
+endif()
+target_compile_definitions(MoltenVK_Common PUBLIC
+	MVK_CONFIG_LOG_LEVEL=${MVK_CONFIG_LOG_LEVEL_NUM}
+)
