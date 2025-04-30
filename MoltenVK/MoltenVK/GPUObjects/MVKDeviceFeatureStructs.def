@@ -40,6 +40,7 @@ MVK_DEVICE_FEATURE(8BitStorage,                       8BIT_STORAGE,             
 MVK_DEVICE_FEATURE(BufferDeviceAddress,               BUFFER_DEVICE_ADDRESS,                  3)
 MVK_DEVICE_FEATURE(DescriptorIndexing,                DESCRIPTOR_INDEXING,                   20)
 MVK_DEVICE_FEATURE(DynamicRendering,                  DYNAMIC_RENDERING,                      1)
+MVK_DEVICE_FEATURE(GlobalPriorityQuery,               GLOBAL_PRIORITY_QUERY,                  1)
 MVK_DEVICE_FEATURE(HostQueryReset,                    HOST_QUERY_RESET,                       1)
 MVK_DEVICE_FEATURE(ImagelessFramebuffer,              IMAGELESS_FRAMEBUFFER,                  1)
 MVK_DEVICE_FEATURE(ImageRobustness,                   IMAGE_ROBUSTNESS,                       1)

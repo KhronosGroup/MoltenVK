@@ -343,6 +343,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				dynamicRenderingFeatures->dynamicRendering = supportedFeats13.dynamicRendering;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES: {
+				auto* globalPriorityFeatures = (VkPhysicalDeviceGlobalPriorityQueryFeatures*)next;
+				globalPriorityFeatures->globalPriorityQuery = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES: {
 				auto* hostQueryResetFeatures = (VkPhysicalDeviceHostQueryResetFeatures*)next;
 				hostQueryResetFeatures->hostQueryReset = supportedFeats12.hostQueryReset;
@@ -2065,9 +2070,22 @@ VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 		rslt = getQueueFamilyProperties(pCount, qProps);
 		for (uint32_t qpIdx = 0; qpIdx < *pCount; qpIdx++) {
 			auto pQP = &pQueueFamilyProperties[qpIdx];
-			pQP->sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2_KHR;
-			pQP->pNext = nullptr;
 			pQP->queueFamilyProperties = qProps[qpIdx];
+			for (const auto* next = (VkBaseInStructure*)pQP->pNext; next; next = next->pNext) {
+				switch (next->sType) {
+					case VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES: {
+						auto* pGlobalPriorityProps = (VkQueueFamilyGlobalPriorityProperties*)next;
+						// For all queue families, we support three priorities: low, medium (default), and high.
+						pGlobalPriorityProps->priorityCount = 3;
+						pGlobalPriorityProps->priorities[0] = VK_QUEUE_GLOBAL_PRIORITY_LOW;
+						pGlobalPriorityProps->priorities[1] = VK_QUEUE_GLOBAL_PRIORITY_MEDIUM;
+						pGlobalPriorityProps->priorities[2] = VK_QUEUE_GLOBAL_PRIORITY_HIGH;
+						break;
+					}
+					default:
+						break;
+				}
+			}
 		}
 	} else {
 		rslt = getQueueFamilyProperties(pCount, (VkQueueFamilyProperties*)nullptr);
@@ -5494,6 +5512,28 @@ void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
 		VkQueueFamilyProperties qfProps;
 		qFam->getProperties(&qfProps);
 
+		auto globalPriority = VK_QUEUE_GLOBAL_PRIORITY_MEDIUM; // Required to default to medium.
+		for (const auto* next = (VkBaseInStructure*)pQFInfo->pNext; next; next = next->pNext) {
+			switch (next->sType) {
+				case VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO: {
+					auto* pGlobalPriorityInfo = (VkDeviceQueueGlobalPriorityCreateInfo*)next;
+					globalPriority = pGlobalPriorityInfo->globalPriority;
+					break;
+				}
+				default:
+					break;
+			}
+		}
+
+		if (globalPriority != VK_QUEUE_GLOBAL_PRIORITY_LOW && globalPriority != VK_QUEUE_GLOBAL_PRIORITY_MEDIUM &&
+			globalPriority != VK_QUEUE_GLOBAL_PRIORITY_HIGH) {
+			// Must report VK_ERROR_INITIALIZATION_FAILED only when globalPriorityQuery is enabled,
+			// otherwise we can report VK_ERROR_NOT_PERMITTED instead.
+			auto error = _enabledGlobalPriorityQueryFeatures.globalPriorityQuery ? VK_ERROR_INITIALIZATION_FAILED : VK_ERROR_NOT_PERMITTED;
+			setConfigurationResult(reportError(error, "vkCreateDevice(): Unsupported global queue priority %u", globalPriority));
+			return;
+		}
+
 		// Ensure an entry for this queue family exists
 		uint32_t qfCntMin = qfIdx + 1;
 		if (_queuesByQueueFamilyIndex.size() < qfCntMin) {
@@ -5502,7 +5542,7 @@ void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
 		auto& queues = _queuesByQueueFamilyIndex[qfIdx];
 		uint32_t qCnt = min(pQFInfo->queueCount, qfProps.queueCount);
 		for (uint32_t qIdx = 0; qIdx < qCnt; qIdx++) {
-			queues.push_back(new MVKQueue(this, qFam, qIdx, pQFInfo->pQueuePriorities[qIdx]));
+			queues.push_back(new MVKQueue(this, qFam, qIdx, pQFInfo->pQueuePriorities[qIdx], globalPriority));
 		}
 	}
 }
