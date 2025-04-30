@@ -637,6 +637,21 @@ static MVKResourceUsageStages getUseResourceStage(MVKMetalGraphicsStage stage) {
 	return static_cast<MVKResourceUsageStages>(stage);
 }
 
+/** Check if `add` is a subset of `current` */
+static bool isCompatible(MVKResourceUsageStages current, MVKResourceUsageStages add) {
+	if (current == add)
+		return true;
+	if (current == MVKResourceUsageStages::All)
+		return true;
+	return false;
+}
+
+static MVKResourceUsageStages combineStages(MVKResourceUsageStages a, MVKResourceUsageStages b) {
+	if (a == b)
+		return a;
+	return MVKResourceUsageStages::All;
+}
+
 static void bindMetalResources(id<MTLCommandEncoder> encoder,
                                MVKCommandEncoder& mvkEncoder,
                                const MVKVulkanCommonEncoderState& common,
@@ -652,6 +667,15 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 	{
 		LiveResourceLock lock;
 		executeBindOps(encoder, mvkEncoder, common, implicitBufferData, resources.bindScript.ops.contents(), lock, useResourceStage, exists, bindings, binder);
+	}
+
+	MVKMetalSharedCommandEncoderState& mtlShared = mvkEncoder.getState().mtlShared();
+	if (resources.usesPhysicalStorageBufferAddresses && !isCompatible(mtlShared._gpuAddressableResourceStages, useResourceStage)) {
+		if (mtlShared._gpuAddressableResourceStages == MVKResourceUsageStages::None)
+			mtlShared._gpuAddressableResourceStages = useResourceStage;
+		else
+			mtlShared._gpuAddressableResourceStages = combineStages(mtlShared._gpuAddressableResourceStages, useResourceStage);
+		mvkEncoder.getDevice()->encodeGPUAddressableBuffers(mtlShared._useResource, useResourceStage);
 	}
 
 	const MVKShaderStageResourceBinding& resourceCounts = common._layout->getResourceCounts().stages[vkStage];
@@ -865,17 +889,7 @@ static constexpr MTLResourceUsage MTLResourceUsageReadWrite = MTLResourceUsageRe
 static bool isCompatible(MVKUseResourceHelper::ResourceInfo current, MVKUseResourceHelper::ResourceInfo add) {
 	if (!current.write && add.write)
 		return false;
-	if (current.stages == add.stages)
-		return true;
-	if (current.stages == MVKResourceUsageStages::All)
-		return true;
-	return false;
-}
-
-static MVKResourceUsageStages combineStages(MVKResourceUsageStages a, MVKResourceUsageStages b) {
-	if (a == b)
-		return a;
-	return MVKResourceUsageStages::All;
+	return isCompatible(current.stages, add.stages);
 }
 
 void MVKUseResourceHelper::add(id<MTLResource> resource, MVKResourceUsageStages stage, bool write) {
@@ -1054,7 +1068,6 @@ void MVKMetalGraphicsCommandEncoderState::reset(VkSampleCountFlags sampleCount) 
 	_lineWidth = 1;
 	_sampleCount = getSampleCount(sampleCount);
 	_depthStencil.reset();
-	_renderUsageStages.clear();
 }
 
 void MVKMetalGraphicsCommandEncoderState::bindFragmentBuffer(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index) {
@@ -1771,44 +1784,6 @@ void MVKCommandEncoderState::offsetZeroDivisorVertexBuffers(MVKCommandEncoder& m
 				break;
 			default:
 				assert(false); // If we hit this, something went wrong.
-				break;
-		}
-	}
-}
-
-void MVKCommandEncoderState::encodeResourceUsage(
-	MVKCommandEncoder& mvkEncoder,
-	MVKShaderStage stage,
-	id<MTLResource> mtlResource,
-	MTLResourceUsage mtlUsage,
-	MTLRenderStages mtlStages)
-{
-	if (mtlResource) {
-		switch (_mtlActiveEncoder) {
-			case CommandEncoderClass::Graphics:
-				if (mtlStages) {
-					if (stage == kMVKShaderStageTessCtl) {
-						auto* mtlCompEnc = mvkEncoder.getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
-						[mtlCompEnc useResource: mtlResource usage: mtlUsage];
-					} else {
-						auto* mtlRendEnc = mvkEncoder._mtlRenderEncoder;
-						if ([mtlRendEnc respondsToSelector: @selector(useResource:usage:stages:)]) {
-							// Within a renderpass, a resource may be used by multiple descriptor bindings,
-							// each of which may assign a different usage stage. Dynamically accumulate
-							// usage stages across all descriptor bindings using the resource.
-							auto& accumStages = _mtlGraphics._renderUsageStages[mtlResource];
-							accumStages |= mtlStages;
-							[mtlRendEnc useResource: mtlResource usage: mtlUsage stages: accumStages];
-						} else {
-							[mtlRendEnc useResource: mtlResource usage: mtlUsage];
-						}
-					}
-				}
-				break;
-			case CommandEncoderClass::Compute:
-				[mvkEncoder.getMTLComputeEncoder(kMVKCommandUseDispatch) useResource: mtlResource usage: mtlUsage];
-				break;
-			case CommandEncoderClass::None:
 				break;
 		}
 	}
