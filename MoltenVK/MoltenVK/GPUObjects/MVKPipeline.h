@@ -179,9 +179,6 @@ public:
 				mvkIsAnyFlagEnabled(_flags, VK_PIPELINE_CREATE_2_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT));
 	}
 
-	/** Returns whether the shader for the stage uses physical storage buffer addresses. */
-	virtual bool usesPhysicalStorageBufferAddressesCapability(MVKShaderStage stage) = 0;
-
 	/** Returns the pipeline create flags from a pipeline create info. */
 	template <typename PipelineInfoType>
 	static VkPipelineCreateFlags2 getPipelineCreateFlags(const PipelineInfoType* pCreateInfo) {
@@ -239,6 +236,7 @@ typedef MVKSmallVector<MVKGraphicsStage, 4> MVKPiplineStages;
 struct MVKPipelineStageResourceInfo {
 	MVKPipelineBindScript bindScript;
 	MVKImplicitBufferBindings implicitBuffers;
+	bool usesPhysicalStorageBufferAddresses;
 	MVKStageResourceBits resources;
 };
 
@@ -290,8 +288,6 @@ public:
 
 	/** Returns the Vulkan primitive topology. */
 	VkPrimitiveTopology getVkPrimitiveTopology() { return _vkPrimitiveTopology; }
-
-	bool usesPhysicalStorageBufferAddressesCapability(MVKShaderStage stage) override;
 
 	/** Returns the Metal vertex buffer index to use for the specified vertex attribute binding number.  */
 	uint32_t getMetalBufferIndexForVertexAttributeBinding(uint32_t binding) { return _device->getMetalBufferIndexForVertexAttributeBinding(binding); }
@@ -375,7 +371,6 @@ protected:
 								  VkPipelineCreationFeedback* pStageFB,
 								  MVKShaderModule* pShaderModule,
 								  const char* pStageName);
-	void markIfUsingPhysicalStorageBufferAddressesCapability(mvk::SPIRVToMSLConversionResultInfo& resultsInfo, MVKShaderStage stage);
 	void populateRenderingAttachmentInfo(const VkGraphicsPipelineCreateInfo* pCreateInfo);
 
 	MVKRenderStateFlags _dynamicStateFlags;
@@ -447,8 +442,6 @@ public:
 	/** Returns the threadgroup size */
 	const MTLSize& getThreadgroupSize() const { return _mtlThreadgroupSize; }
 
-	bool usesPhysicalStorageBufferAddressesCapability(MVKShaderStage stage) override;
-
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKComputePipeline(MVKDevice* device,
 					   MVKPipelineCache* pipelineCache,
@@ -466,7 +459,6 @@ protected:
 	MVKPipelineStageResourceInfo _stageResources = {};
     MTLSize _mtlThreadgroupSize;
 	bool _allowsDispatchBase = false;
-	bool _usesPhysicalStorageBufferAddressesCapability = false;
 
 	MVKShaderModule* _module = nullptr;
 	bool _ownsModule = false;
