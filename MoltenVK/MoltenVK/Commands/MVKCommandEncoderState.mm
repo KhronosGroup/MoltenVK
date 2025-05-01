@@ -439,6 +439,17 @@ static bool needsLiveCheck(MVKDescriptorBindOperationCode op) {
 	}
 }
 
+static constexpr bool isUseResource(MVKDescriptorBindOperationCode op) {
+	switch (op) {
+		case MVKDescriptorBindOperationCode::UseBufferWithLiveCheck:
+		case MVKDescriptorBindOperationCode::UseTextureWithLiveCheck:
+		case MVKDescriptorBindOperationCode::UseResource:
+			return true;
+		default:
+			return false;
+	}
+}
+
 template <MVKDescriptorBindOperationCode Op>
 static bool liveCheck(MVKDevice* dev, id resource) {
 	switch (Op) {
@@ -489,7 +500,6 @@ static void executeBindOp(id<MTLCommandEncoder> encoder,
                           MVKStageResourceBindings& bindings,
                           const MVKResourceBinder& RESTRICT binder)
 {
-	static_assert(Op != MVKDescriptorBindOperationCode::BindSet, "Handled elsewhere");
 	if (Op == MVKDescriptorBindOperationCode::BindBytes) {
 		MVKStageResourceBindings::Buffer buffer = { reinterpret_cast<id<MTLBuffer>>(src), 0 };
 		if (!exists.buffers.get(target) || bindings.buffers[target].buffer != buffer.buffer) {
@@ -536,7 +546,6 @@ static void executeBindOp(id<MTLCommandEncoder> encoder,
 		}
 		switch (Op) {
 			case MVKDescriptorBindOperationCode::BindBytes:
-			case MVKDescriptorBindOperationCode::BindSet:
 				assert(0); // Handled above
 				break;
 			case MVKDescriptorBindOperationCode::BindBuffer:
@@ -586,11 +595,6 @@ static void executeBindOps(id<MTLCommandEncoder> encoder,
 	for (const MVKDescriptorBindOperation& op : ops) {
 		MVKDescriptorSet* set = common._descriptorSets[op.set];
 		uint32_t target = op.target;
-		if (op.opcode == MVKDescriptorBindOperationCode::BindSet) {
-			bindBuffer(encoder, set->gpuBufferObject, set->gpuBufferOffset, target, exists, bindings, binder);
-			continue;
-		}
-
 		MVKDescriptorSetLayout* setLayout = common._layout->getDescriptorSetLayout(op.set);
 		const MVKDescriptorBinding& binding = setLayout->bindings()[op.bindingIdx];
 		const char* src = set->cpuBuffer + binding.cpuOffset + op.offset();
@@ -598,8 +602,15 @@ static void executeBindOps(id<MTLCommandEncoder> encoder,
 		uint32_t count = binding.isVariable() ? set->variableDescriptorCount : binding.descriptorCount;
 		size_t stride = descriptorCPUSize(binding.cpuLayout);
 
+		if (isUseResource(op.opcode)) {
+			// Unlike binds, useResource can't be undone by binding something else
+			// So we can store a list of which resources have been used in a bit array and use that to early exit on repeat binds
+			if (bindings.descriptorSetResourceUse[op.set].get(op.bindingIdx))
+				continue;
+			bindings.descriptorSetResourceUse[op.set].set(op.bindingIdx);
+		}
+
 		switch (op.opcode) {
-			case MVKDescriptorBindOperationCode::BindSet: break; // Handled above
 #define CASE(x) case MVKDescriptorBindOperationCode::x: \
 				executeBindOp<MVKDescriptorBindOperationCode::x>( \
 					encoder, mvkEncoder, resourceLock, src, count, stride, target, dynOffs, useResourceStage, exists, bindings, binder); \
@@ -664,6 +675,16 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
                                MVKStageResourceBindings& bindings,
                                const MVKResourceBinder& RESTRICT binder)
 {
+	// Clear descriptor set resource use bitarray for new sets and bind them
+	MVKStaticBitSet<kMVKMaxDescriptorSetCount> setsNeeded = resources.resources.descriptorSetData.clearingAllIn(exists.descriptorSetData);
+	exists.descriptorSetData |= resources.resources.descriptorSetData;
+	for (size_t idx : setsNeeded) {
+		MVKDescriptorSet* set = common._descriptorSets[idx];
+		const MVKDescriptorSetLayout* layout = common._layout->getDescriptorSetLayout(idx);
+		bindings.descriptorSetResourceUse[idx].resizeAndClear(layout->bindings().size());
+		bindBuffer(encoder, set->gpuBufferObject, set->gpuBufferOffset, idx, exists, bindings, binder);
+	}
+
 	{
 		LiveResourceLock lock;
 		executeBindOps(encoder, mvkEncoder, common, implicitBufferData, resources.bindScript.ops, lock, useResourceStage, exists, bindings, binder);
@@ -1559,6 +1580,7 @@ void MVKMetalComputeCommandEncoderState::prepareComputeDispatch(
 		if (_vkStage != kMVKShaderStageCount) {
 			// Switching between graphics and compute, need to invalidate implicit buffers too
 			invalidateDescriptorSetImplicitBuffers(*this);
+			_exists.descriptorSetData.reset();
 		}
 		_vkStage = kMVKShaderStageCompute;
 	}
@@ -1611,6 +1633,7 @@ void MVKMetalComputeCommandEncoderState::prepareRenderDispatch(
 		if (_vkStage == kMVKShaderStageCompute) {
 			// Switching between graphics and compute, need to invalidate implicit buffers too
 			invalidateDescriptorSetImplicitBuffers(*this);
+			_exists.descriptorSetData.reset();
 		}
 		_vkStage = stage;
 	}
@@ -1717,8 +1740,12 @@ void MVKCommandEncoderState::bindDescriptorSets(
 	uint32_t dynamicOffsetCount,
 	const uint32_t* dynamicOffsets)
 {
-	applyToActiveMTLState(bindPoint, [](auto& mtl){
+	auto affected = MVKStaticBitSet<kMVKMaxDescriptorSetCount>::range(firstSet, firstSet + setCount);
+	applyToActiveMTLState(bindPoint, [affected](auto& mtl){
 		invalidateDescriptorSetImplicitBuffers(mtl);
+		for (MVKStageResourceBits& exists : mtl.exists()) {
+			exists.descriptorSetData.clearAllIn(affected);
+		}
 	});
 	if (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
 		_vkGraphics.bindDescriptorSets(layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
