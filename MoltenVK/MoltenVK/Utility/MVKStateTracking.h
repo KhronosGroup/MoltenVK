@@ -215,6 +215,7 @@ union MVKStageResourceBits {
 		MVKStaticBitSet<kMVKMaxTextureCount> textures;
 		MVKStaticBitSet<kMVKMaxBufferCount>  buffers;
 		MVKStaticBitSet<kMVKMaxSamplerCount> samplers;
+		MVKStaticBitSet<kMVKMaxDescriptorSetCount> descriptorSetData;
 	};
 	MVKStaticBitSet<192> allBits;
 	constexpr MVKStageResourceBits(): allBits{} {}
