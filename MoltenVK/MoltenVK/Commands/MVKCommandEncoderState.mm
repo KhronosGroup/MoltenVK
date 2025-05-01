@@ -870,11 +870,10 @@ static void bindVertexBuffers(id<MTLCommandEncoder> encoder,
 }
 
 /** If the contents of an implicit buffer changes, call this to ensure that the contents will be rebound before the next draw. */
-static void invalidateImplicitBuffer(MVKStageResourceBindings& bindings, MVKStageResourceBits& ready, MVKNonVolatileImplicitBuffer buffer) {
+static void invalidateImplicitBuffer(MVKStageResourceBindings& bindings, MVKNonVolatileImplicitBuffer buffer) {
 	uint32_t idx = bindings.implicitBufferIndices[buffer];
 	if (bindings.buffers[idx] == MVKStageResourceBindings::ImplicitBuffer(buffer)) {
 		bindings.buffers[idx] = MVKStageResourceBindings::NullBuffer();
-		ready.buffers.clear(idx);
 	}
 }
 
@@ -882,13 +881,13 @@ static void invalidateImplicitBuffer(MVKStageResourceBindings& bindings, MVKStag
 static void invalidateImplicitBuffer(MVKMetalGraphicsCommandEncoderState& state, MVKNonVolatileImplicitBuffer buffer) {
 	for (uint32_t i = 0; i < static_cast<uint32_t>(MVKMetalGraphicsStage::Count); i++) {
 		MVKMetalGraphicsStage stage = static_cast<MVKMetalGraphicsStage>(i);
-		invalidateImplicitBuffer(state._bindings[stage], state._ready[stage], buffer);
+		invalidateImplicitBuffer(state._bindings[stage], buffer);
 	}
 }
 
 /** If the contents of an implicit buffer changes, call this to ensure that the contents will be rebound before the next draw. */
 static void invalidateImplicitBuffer(MVKMetalComputeCommandEncoderState& state, MVKNonVolatileImplicitBuffer buffer) {
-	invalidateImplicitBuffer(state._bindings, state._ready, buffer);
+	invalidateImplicitBuffer(state._bindings, buffer);
 }
 
 /** Invalidate the implicit buffers that depend on the contents of the bound descriptor sets. */
@@ -1101,35 +1100,27 @@ void MVKMetalGraphicsCommandEncoderState::reset(VkSampleCountFlags sampleCount) 
 }
 
 void MVKMetalGraphicsCommandEncoderState::bindFragmentBuffer(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index) {
-	_ready.fragment().buffers.set(index, false);
 	bindBuffer(encoder, buffer, offset, index, _exists.fragment(), _bindings.fragment(), MVKFragmentBinder());
 }
 void MVKMetalGraphicsCommandEncoderState::bindFragmentBytes(id<MTLRenderCommandEncoder> encoder, const void* data, size_t size, NSUInteger index) {
-	_ready.fragment().buffers.set(index, false);
 	bindBytes(encoder, data, size, index, _exists.fragment(), _bindings.fragment(), MVKFragmentBinder());
 }
 void MVKMetalGraphicsCommandEncoderState::bindFragmentTexture(id<MTLRenderCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index) {
-	_ready.fragment().textures.set(index, false);
 	bindTexture(encoder, texture, index, _exists.fragment(), _bindings.fragment(), MVKFragmentBinder());
 }
 void MVKMetalGraphicsCommandEncoderState::bindFragmentSampler(id<MTLRenderCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index) {
-	_ready.fragment().samplers.set(index, false);
 	bindSampler(encoder, sampler, index, _exists.fragment(), _bindings.fragment(), MVKFragmentBinder());
 }
 void MVKMetalGraphicsCommandEncoderState::bindVertexBuffer(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index) {
-	_ready.vertex().buffers.set(index, false);
 	bindBuffer(encoder, buffer, offset, index, _exists.vertex(), _bindings.vertex(), MVKVertexBinder());
 }
 void MVKMetalGraphicsCommandEncoderState::bindVertexBytes(id<MTLRenderCommandEncoder> encoder, const void* data, size_t size, NSUInteger index) {
-	_ready.vertex().buffers.set(index, false);
 	bindBytes(encoder, data, size, index, _exists.vertex(), _bindings.vertex(), MVKVertexBinder());
 }
 void MVKMetalGraphicsCommandEncoderState::bindVertexTexture(id<MTLRenderCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index) {
-	_ready.vertex().textures.set(index, false);
 	bindTexture(encoder, texture, index, _exists.vertex(), _bindings.vertex(), MVKVertexBinder());
 }
 void MVKMetalGraphicsCommandEncoderState::bindVertexSampler(id<MTLRenderCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index) {
-	_ready.vertex().samplers.set(index, false);
 	bindSampler(encoder, sampler, index, _exists.vertex(), _bindings.vertex(), MVKVertexBinder());
 }
 
@@ -1138,7 +1129,6 @@ void MVKMetalGraphicsCommandEncoderState::changePipeline(MVKGraphicsPipeline* fr
 	// Everything that was static is now dirty
 	if (from) {
 		markDirty(from->getStaticStateFlags());
-		_ready.vertex().buffers.clearAllIn(from->getMtlVertexBuffers());
 	}
 	if (to)
 		markDirty(to->getStaticStateFlags());
@@ -1552,19 +1542,15 @@ void MVKMetalComputeCommandEncoderState::bindPipeline(id<MTLComputeCommandEncode
 	}
 }
 void MVKMetalComputeCommandEncoderState::bindBuffer(id<MTLComputeCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index) {
-	_ready.buffers.set(index, false);
 	::bindBuffer(encoder, buffer, offset, index, _exists, _bindings, MVKComputeBinder());
 }
 void MVKMetalComputeCommandEncoderState::bindBytes(id<MTLComputeCommandEncoder> encoder, const void* data, size_t size, NSUInteger index) {
-	_ready.buffers.set(index, false);
 	::bindBytes(encoder, data, size, index, _exists, _bindings, MVKComputeBinder());
 }
 void MVKMetalComputeCommandEncoderState::bindTexture(id<MTLComputeCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index) {
-	_ready.textures.set(index, false);
 	::bindTexture(encoder, texture, index, _exists, _bindings, MVKComputeBinder());
 }
 void MVKMetalComputeCommandEncoderState::bindSampler(id<MTLComputeCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index) {
-	_ready.samplers.set(index, false);
 	::bindSampler(encoder, sampler, index, _exists, _bindings, MVKComputeBinder());
 }
 
@@ -1587,7 +1573,6 @@ void MVKMetalComputeCommandEncoderState::prepareComputeDispatch(
 	}
 
 	if (_vkStage != kMVKShaderStageCompute) {
-		memset(&_ready, 0, sizeof(_ready));
 		if (_vkStage != kMVKShaderStageCount) {
 			// Switching between graphics and compute, need to invalidate implicit buffers too
 			invalidateDescriptorSetImplicitBuffers(*this);
@@ -1628,9 +1613,6 @@ void MVKMetalComputeCommandEncoderState::prepareRenderDispatch(
 	}
 
 	if (_vkPipeline != pipeline) {
-		if (_vkStage == kMVKShaderStageVertex) {
-			_ready.buffers.clearAllIn(static_cast<MVKGraphicsPipeline*>(_vkPipeline)->getMtlVertexBuffers());
-		}
 		_vkPipeline = pipeline;
 	}
 
@@ -1640,7 +1622,6 @@ void MVKMetalComputeCommandEncoderState::prepareRenderDispatch(
 	}
 
 	if (_vkStage != stage) {
-		memset(&_ready, 0, sizeof(_ready));
 		if (_vkStage == kMVKShaderStageCompute) {
 			// Switching between graphics and compute, need to invalidate implicit buffers too
 			invalidateDescriptorSetImplicitBuffers(*this);
@@ -1793,16 +1774,10 @@ void MVKCommandEncoderState::pushDescriptorSet(MVKDescriptorUpdateTemplate* upda
 
 void MVKCommandEncoderState::bindVertexBuffers(uint32_t firstBinding, MVKArrayRef<const MVKVertexMTLBufferBinding> buffers) {
 	mvkCopy(&_vkGraphics._vertexBuffers[firstBinding], buffers.data(), buffers.size());
-	if (_mtlActiveEncoder == CommandEncoderClass::Graphics && _vkGraphics._pipeline && !_vkGraphics._pipeline->isTessellationPipeline())
-		_mtlGraphics._ready.vertex().buffers.clearAllIn(_vkGraphics._pipeline->getMtlVertexBuffers());
-	else if (_mtlActiveEncoder == CommandEncoderClass::Compute && _mtlCompute._vkStage == kMVKShaderStageVertex)
-		_mtlCompute._ready.buffers.clearAllIn(_vkGraphics._pipeline->getMtlVertexBuffers());
 }
 
 void MVKCommandEncoderState::bindIndexBuffer(const MVKIndexMTLBufferBinding& buffer) {
 	_vkGraphics._indexBuffer = buffer;
-	if (_mtlActiveEncoder == CommandEncoderClass::Compute && _mtlCompute._vkStage == kMVKShaderStageVertex)
-		_mtlCompute._ready.buffers.clear(_vkGraphics._pipeline->getImplicitBuffers(kMVKShaderStageVertex).ids[MVKImplicitBuffer::IndirectParams]);
 }
 
 void MVKCommandEncoderState::offsetZeroDivisorVertexBuffers(MVKCommandEncoder& mvkEncoder, MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance) {

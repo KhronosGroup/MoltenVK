@@ -305,8 +305,6 @@ struct MVKMetalGraphicsCommandEncoderStateQuickReset {
 	 * Allows us to quickly reset to the state of a fresh command encoder without having to zero all the bindings.
 	 */
 	MVKOnePerGraphicsStage<MVKStageResourceBits> _exists;
-	/** If set, the resource matches what is needed by the current pipeline + descriptor set. */
-	MVKOnePerGraphicsStage<MVKStageResourceBits> _ready;
 
 	id<MTLRenderPipelineState> _pipeline;
 
@@ -383,8 +381,6 @@ struct MVKMetalComputeCommandEncoderState {
 	 * Allows us to quickly reset to the state of a fresh command encoder without having to zero all the bindings.
 	 */
 	MVKStageResourceBits _exists;
-	/** If set, the resource matches what is needed by the current pipeline + descriptor set. */
-	MVKStageResourceBits _ready;
 
 	id<MTLComputePipelineState> _pipeline;
 
