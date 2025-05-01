@@ -253,6 +253,7 @@ struct MVKStageResourceBindings {
 		bool operator!=(Buffer other) const { return !(*this == other); }
 	} buffers[kMVKMaxBufferCount];
 	id<MTLSamplerState> samplers[kMVKMaxSamplerCount];
+	MVKBitArray descriptorSetResourceUse[kMVKMaxDescriptorSetCount];
 	MVKOnePerEnumEntry<uint8_t, MVKNonVolatileImplicitBuffer> implicitBufferIndices = {};
 	static Buffer ImplicitBuffer(MVKImplicitBuffer buffer) {
 		return { nil, static_cast<VkDeviceSize>(buffer) + 1 };
@@ -346,6 +347,9 @@ struct MVKMetalGraphicsCommandEncoderState : public MVKMetalGraphicsCommandEncod
 
 	MTLPrimitiveType getPrimitiveType() const { return static_cast<MTLPrimitiveType>(_primitiveType); }
 
+	/** For API compatibility with MVKMetalComputeCommandEncoderState. */
+	MVKArrayRef<MVKStageResourceBits> exists() { return _exists.elements; }
+
 	/** Reset to the state of a fresh Metal render encoder. */
 	void reset(VkSampleCountFlags sampleCount);
 
@@ -402,6 +406,9 @@ struct MVKMetalComputeCommandEncoderState {
 	template <typename T> void bindStructBytes(id<MTLComputeCommandEncoder> encoder, const T* t, NSUInteger index) { bindBytes(encoder, t, sizeof(T), index); }
 	void prepareComputeDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanComputeCommandEncoderState& vkState, const MVKVulkanSharedCommandEncoderState& vkShared);
 	void prepareRenderDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanGraphicsCommandEncoderState& vkState, const MVKVulkanSharedCommandEncoderState& vkShared, MVKShaderStage stage);
+
+	/** For API compatibility with MVKMetalGraphicsCommandEncoderState. */
+	MVKArrayRef<MVKStageResourceBits> exists() { return {&_exists, 1}; }
 
 	void reset();
 };

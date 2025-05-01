@@ -253,7 +253,6 @@ static bool isWriteable(VkDescriptorType type) {
 }
 
 void MVKPipelineLayout::populateBindOperations(MVKPipelineBindScript& script, const SPIRVToMSLConversionConfiguration& shaderConfig, spv::ExecutionModel execModel) {
-	bool setsBound[kMVKMaxDescriptorSetCount] = {};
 	assert(script.ops.empty());
 
 	for (const auto& mslBinding : shaderConfig.resourceBindings) {
@@ -305,24 +304,17 @@ void MVKPipelineLayout::populateBindOperations(MVKPipelineBindScript& script, co
 					script.ops.push_back({ bindSamp, set, mslBinding.resourceBinding.msl_sampler, descIdx, nonTexOffset });
 				}
 			}
-		} else {
-			if (!setsBound[set]) {
-				script.ops.push_back({ MVKDescriptorBindOperationCode::BindSet, set, set, 0 });
-				setsBound[set] = true;
+		} else if (!_device->hasResidencySet()) {
+			bool partiallyBound = mvkIsAnyFlagEnabled(desc.flags, MVK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
+			MVKDescriptorBindOperationCode useTex = partiallyBound ? MVKDescriptorBindOperationCode::UseTextureWithLiveCheck : MVKDescriptorBindOperationCode::UseResource;
+			MVKDescriptorBindOperationCode useBuf = partiallyBound ? MVKDescriptorBindOperationCode::UseBufferWithLiveCheck  : MVKDescriptorBindOperationCode::UseResource;
+			MVKDescriptorGPULayout gpuLayout = desc.gpuLayout;
+			uint32_t target = isWriteable(desc.descriptorType);
+			for (uint32_t i = 0, n = descriptorTextureCount(gpuLayout); i < n; i++) {
+				script.ops.push_back({ useTex, set, target, descIdx, sizeof(id) * i });
 			}
-
-			if (!_device->hasResidencySet()) {
-				bool partiallyBound = mvkIsAnyFlagEnabled(desc.flags, MVK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
-				MVKDescriptorBindOperationCode useTex = partiallyBound ? MVKDescriptorBindOperationCode::UseTextureWithLiveCheck : MVKDescriptorBindOperationCode::UseResource;
-				MVKDescriptorBindOperationCode useBuf = partiallyBound ? MVKDescriptorBindOperationCode::UseBufferWithLiveCheck  : MVKDescriptorBindOperationCode::UseResource;
-				MVKDescriptorGPULayout gpuLayout = desc.gpuLayout;
-				uint32_t target = isWriteable(desc.descriptorType);
-				for (uint32_t i = 0, n = descriptorTextureCount(gpuLayout); i < n; i++) {
-					script.ops.push_back({ useTex, set, target, descIdx, sizeof(id) * i });
-				}
-				if (hasBuffer(gpuLayout)) {
-					script.ops.push_back({ useBuf, set, target, descIdx, nonTexOffset });
-				}
+			if (hasBuffer(gpuLayout)) {
+				script.ops.push_back({ useBuf, set, target, descIdx, nonTexOffset });
 			}
 		}
 	}
@@ -475,8 +467,10 @@ static void populateResourceUsage(MVKPipelineStageResourceInfo& dst, SPIRVToMSLC
 		}
 	}
 	for (uint32_t i = 0; i < kMVKMaxDescriptorSetCount; i++) {
-		if (isArgBuf[i] && isUsed[i])
+		if (isArgBuf[i] && isUsed[i]) {
 			dst.resources.buffers.set(i);
+			dst.resources.descriptorSetData.set(i);
+		}
 	}
 }
 
