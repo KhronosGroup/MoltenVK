@@ -44,7 +44,6 @@ struct MVKShaderImplicitRezBinding {
 #pragma mark - MVKDescriptorBindOperation
 
 enum class MVKDescriptorBindOperationCode : uint8_t {
-	BindSet,
 	BindBytes,
 	BindBuffer,
 	BindBufferDynamic,
