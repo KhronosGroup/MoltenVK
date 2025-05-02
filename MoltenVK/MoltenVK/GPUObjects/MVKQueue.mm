@@ -304,12 +304,11 @@ void MVKQueue::handleMTLCommandBufferError(id<MTLCommandBuffer> mtlCmdBuff) {
 
 #pragma mark Construction
 
-#define MVK_DISPATCH_QUEUE_QOS_CLASS		QOS_CLASS_USER_INITIATED
-
-MVKQueue::MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t index, float priority) : MVKDeviceTrackingMixin(device) {
+MVKQueue::MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t index, float priority, VkQueueGlobalPriority globalPriority) : MVKDeviceTrackingMixin(device) {
 	_queueFamily = queueFamily;
 	_index = index;
 	_priority = priority;
+	_globalPriority = globalPriority;
 
 	initName();
 	initExecQueue();
@@ -327,7 +326,19 @@ void MVKQueue::initExecQueue() {
 	_execQueue = nil;
 	if ( !getMVKConfig().synchronousQueueSubmits ) {
 		// Determine the dispatch queue priority
-		dispatch_qos_class_t dqQOS = MVK_DISPATCH_QUEUE_QOS_CLASS;
+		dispatch_qos_class_t dqQOS;
+		switch (_globalPriority) {
+			case VK_QUEUE_GLOBAL_PRIORITY_LOW:
+				dqQOS = QOS_CLASS_UTILITY;
+				break;
+			case VK_QUEUE_GLOBAL_PRIORITY_HIGH:
+				dqQOS = QOS_CLASS_USER_INTERACTIVE;
+				break;
+			case VK_QUEUE_GLOBAL_PRIORITY_MEDIUM:
+			default: // Fall back to default (medium)
+				dqQOS = QOS_CLASS_USER_INITIATED;
+				break;
+		}
 		int dqPriority = (1.0 - _priority) * QOS_MIN_RELATIVE_PRIORITY;
 		dispatch_queue_attr_t dqAttr = dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, dqQOS, dqPriority);
 

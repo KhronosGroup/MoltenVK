@@ -113,7 +113,7 @@ public:
 #pragma mark Construction
 	
 	/** Constructs an instance for the device and queue family. */
-	MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t index, float priority);
+	MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t index, float priority, VkQueueGlobalPriority globalPriority);
 
 	~MVKQueue() override;
 
@@ -162,6 +162,7 @@ protected:
 	NSString* _mtlCmdBuffLabelCopyImageToMemory = nil;
 	MVKGPUCaptureScope* _submissionCaptureScope = nil;
 	float _priority;
+	VkQueueGlobalPriority _globalPriority;
 	uint32_t _index;
 };
 

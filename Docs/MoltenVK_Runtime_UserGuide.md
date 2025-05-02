@@ -251,6 +251,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_get_memory_requirements2`
 - `VK_KHR_get_physical_device_properties2`
 - `VK_KHR_get_surface_capabilities2`
+- `VK_KHR_global_priority`
 - `VK_KHR_imageless_framebuffer`
 - `VK_EXT_image_2d_view_of_3d`
   - *Requires `MVK_CONFIG_USE_MTLHEAP` to be active.*
