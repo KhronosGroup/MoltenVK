@@ -20,6 +20,7 @@
 #include "MVKRenderPass.h"
 #include "MVKCommandBuffer.h"
 #include "MVKInlineObjectConstructor.h"
+#include "MVKImage.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
 #include "MVKStrings.h"
