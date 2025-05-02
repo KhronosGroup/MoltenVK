@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include "MVKDescriptor.h"
+#include "MVKDevice.h"
 #include "MVKSmallVector.h"
 #include "MVKBitArray.h"
 #include "MVKInlineArray.h"
@@ -30,6 +30,57 @@ class MVKDescriptorPool;
 class MVKPipelineLayout;
 class MVKCommandEncoder;
 class MVKResourcesCommandEncoderState;
+
+#pragma mark MVKShaderStageResourceBinding
+
+/** Indicates the Metal resource indexes used by a single shader stage in a descriptor. */
+struct MVKShaderStageResourceBinding {
+	uint32_t bufferIndex = 0;
+	uint32_t textureIndex = 0;
+	uint32_t samplerIndex = 0;
+	uint32_t dynamicOffsetBufferIndex = 0;
+
+	MVKShaderStageResourceBinding operator+(const MVKShaderStageResourceBinding& rhs) const { auto tmp = *this; tmp += rhs; return tmp; }
+	MVKShaderStageResourceBinding& operator+=(const MVKShaderStageResourceBinding& rhs) {
+		bufferIndex += rhs.bufferIndex;
+		textureIndex += rhs.textureIndex;
+		samplerIndex += rhs.samplerIndex;
+		dynamicOffsetBufferIndex += rhs.dynamicOffsetBufferIndex;
+		return *this;
+	}
+	void clearArgumentBufferResources() {
+		bufferIndex = 0;
+		textureIndex = 0;
+		samplerIndex = 0;
+	}
+};
+
+#pragma mark MVKShaderResourceBinding
+
+/** Indicates the Metal resource indexes used by each shader stage in a descriptor. */
+struct MVKShaderResourceBinding {
+	MVKShaderStageResourceBinding stages[kMVKShaderStageCount];
+
+	MVKShaderResourceBinding operator+(const MVKShaderResourceBinding& rhs) const { auto tmp = *this; tmp += rhs; return tmp; }
+	MVKShaderResourceBinding& operator+=(const MVKShaderResourceBinding& rhs) {
+		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
+			this->stages[i] += rhs.stages[i];
+		}
+		return *this;
+	}
+
+	void clearArgumentBufferResources() {
+		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
+			stages[i].clearArgumentBufferResources();
+		}
+	}
+
+	void addArgumentBuffers(uint32_t count) {
+		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
+			stages[i].bufferIndex += count;
+		}
+	}
+};
 
 #pragma mark - Descriptor Layout
 
