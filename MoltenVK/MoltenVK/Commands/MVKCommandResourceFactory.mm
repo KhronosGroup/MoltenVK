@@ -18,6 +18,7 @@
 
 #include "MVKCommandResourceFactory.h"
 #include "MVKCommandPipelineStateFactoryShaderSource.h"
+#include "MVKImage.h"
 #include "MVKPipeline.h"
 #include "MVKFoundation.h"
 #include "MVKBuffer.h"

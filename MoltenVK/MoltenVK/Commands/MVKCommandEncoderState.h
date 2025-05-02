@@ -22,7 +22,6 @@
 #include "MVKCommandResourceFactory.h"
 #include "MVKDevice.h"
 #include "MVKPipeline.h"
-#include "MVKDescriptor.h"
 #include "MVKSmallVector.h"
 #include "MVKBitArray.h"
 #include <unordered_map>

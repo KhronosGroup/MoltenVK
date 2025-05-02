@@ -19,6 +19,7 @@
 #include "MVKCommandEncoderState.h"
 #include "MVKCommandEncodingPool.h"
 #include "MVKCommandBuffer.h"
+#include "MVKImage.h"
 #include "MVKRenderPass.h"
 #include "MVKPipeline.h"
 #include "MVKQueryPool.h"

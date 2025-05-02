@@ -23,6 +23,7 @@
 #include "MVKPipeline.h"
 #include "MVKInlineObjectConstructor.h"
 #include "MVKInstance.h"
+#include "MVKImage.h"
 #include "MVKOSExtensions.h"
 #include <sstream>
 
