@@ -280,6 +280,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_shader_float16_int8`
 - `VK_KHR_shader_integer_dot_product`
 - `VK_KHR_shader_non_semantic_info`
+- `VK_KHR_shader_relaxed_extended_instruction`
 - `VK_KHR_shader_subgroup_extended_types`
   - *Requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS.*
 - `VK_KHR_shader_subgroup_rotate`
