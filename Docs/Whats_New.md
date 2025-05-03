@@ -13,6 +13,24 @@ Copyright (c) 2015-2025 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.3.1
+---------------
+
+Released TBD
+
+- Add support for extensions:
+	- `VK_KHR_global_priority`
+	- `VK_KHR_maintenance5`
+	- `VK_KHR_present_id`
+	- `VK_KHR_present_wait`
+	- `VK_KHR_shader_relaxed_extended_instruction`
+- Update to latest SPIRV-Cross:
+  - MSL: Add support for `DebugPrintf`.
+  - MSL: Fix crash due to regression caused by recent changes to location calculations.
+  - MSL: Add option to provide a default point size.
+
+
+
 MoltenVK 1.3.0
 ---------------
 
