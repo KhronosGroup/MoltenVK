@@ -1772,6 +1772,11 @@ VkResult MVKPhysicalDevice::getSurfaceCapabilities(	const VkPhysicalDeviceSurfac
 				pCompatibility = (VkSurfacePresentModeCompatibilityEXT*)next;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_SURFACE_PROTECTED_CAPABILITIES_KHR: {
+				// Not supported.
+				((VkSurfaceProtectedCapabilitiesKHR*)next)->supportsProtected = false;
+				break;
+			}
 			default:
 				break;
 		}

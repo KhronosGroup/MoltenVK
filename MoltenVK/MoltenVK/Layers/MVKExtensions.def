@@ -106,6 +106,7 @@ MVK_EXTENSION(KHR_shader_terminate_invocation,         KHR_SHADER_TERMINATE_INVO
 MVK_EXTENSION(KHR_spirv_1_4,                           KHR_SPIRV_1_4,                           DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_storage_buffer_storage_class,        KHR_STORAGE_BUFFER_STORAGE_CLASS,        DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_surface,                             KHR_SURFACE,                             INSTANCE, 10.11,  8.0,  1.0)
+MVK_EXTENSION(KHR_surface_protected_capabilities,      KHR_SURFACE_PROTECTED_CAPABILITIES,      INSTANCE, 10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_swapchain,                           KHR_SWAPCHAIN,                           DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_swapchain_mutable_format,            KHR_SWAPCHAIN_MUTABLE_FORMAT,            DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_synchronization2,                    KHR_SYNCHRONIZATION_2,                   DEVICE,   10.11,  8.0,  1.0)

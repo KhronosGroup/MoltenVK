@@ -25,6 +25,7 @@ Released TBD
 	- `VK_KHR_present_id`
 	- `VK_KHR_present_wait`
 	- `VK_KHR_shader_relaxed_extended_instruction`
+	- `VK_KHR_surface_protected_capabilities`
 - Update to latest SPIRV-Cross:
   - MSL: Add support for `DebugPrintf`.
   - MSL: Fix crash due to regression caused by recent changes to location calculations.
