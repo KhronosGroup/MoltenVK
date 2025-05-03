@@ -653,7 +653,10 @@ VkResult MVKImage::copyContent(const CopyInfo* pCopyInfo) {
 		size_t depthPitch = pixFmts->getBytesPerLayer(mtlPixFmt, rowPitch, texelsHeight);
 		size_t arrayPitch = depthPitch * texelsDepth;
 
-		for (uint32_t imgLyrIdx = 0; imgLyrIdx < imgSubRez.layerCount; imgLyrIdx++) {
+		uint32_t layCnt = imgSubRez.layerCount == VK_REMAINING_ARRAY_LAYERS ?
+			_arrayLayers - imgSubRez.baseArrayLayer :
+			imgSubRez.layerCount;
+		for (uint32_t imgLyrIdx = 0; imgLyrIdx < layCnt; imgLyrIdx++) {
 			VkResult rslt = copyContent(mtlTex,
 										imgRgn,
 										imgSubRez.mipLevel,
@@ -680,7 +683,10 @@ VkResult MVKImage::copyImageToImage(const VkCopyImageToImageInfoEXT* pCopyImageT
 		size_t rowPitch = pixFmts->getBytesPerRow(srcMTLPixFmt, imgRgn.extent.width);
 		size_t depthPitch = pixFmts->getBytesPerLayer(srcMTLPixFmt, rowPitch, imgRgn.extent.height);
 		size_t arrayPitch = depthPitch * imgRgn.extent.depth;
-		size_t rgnSizeInBytes = arrayPitch * imgRgn.srcSubresource.layerCount;
+		uint32_t layCnt = imgRgn.srcSubresource.layerCount == VK_REMAINING_ARRAY_LAYERS ?
+			srcMVKImg->getLayerCount() - imgRgn.srcSubresource.baseArrayLayer :
+			imgRgn.srcSubresource.layerCount;
+		size_t rgnSizeInBytes = arrayPitch * layCnt;
 		auto xfrBuffer = unique_ptr<char[]>(new char[rgnSizeInBytes]);
 		void* pImgBytes = xfrBuffer.get();
 
@@ -744,8 +750,11 @@ VkResult MVKImage::copyImageToMemory(const VkCopyImageToMemoryInfoEXT* pCopyImag
 			for (uint32_t imgRgnIdx = 0; imgRgnIdx < pCopyImageToMemoryInfo->regionCount; imgRgnIdx++) {
 				auto& imgRgn = pCopyImageToMemoryInfo->pRegions[imgRgnIdx];
 				auto& imgSubRez = imgRgn.imageSubresource;
+				uint32_t layCnt = imgSubRez.layerCount == VK_REMAINING_ARRAY_LAYERS ?
+					_arrayLayers - imgSubRez.baseArrayLayer :
+					imgSubRez.layerCount;
 				id<MTLTexture> mtlTex = getMTLTexture(getPlaneFromVkImageAspectFlags(imgSubRez.aspectMask));
-				for (uint32_t imgLyrIdx = 0; imgLyrIdx < imgSubRez.layerCount; imgLyrIdx++) {
+				for (uint32_t imgLyrIdx = 0; imgLyrIdx < layCnt; imgLyrIdx++) {
 					[mtlBlitEnc synchronizeTexture: mtlTex
 											 slice: imgSubRez.baseArrayLayer + imgLyrIdx
 											 level: imgSubRez.mipLevel];
@@ -1991,6 +2000,7 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 		case VK_FORMAT_B4G4R4A4_UNORM_PACK16:
 		case VK_FORMAT_B5G6R5_UNORM_PACK16:
 		case VK_FORMAT_B5G5R5A1_UNORM_PACK16:
+		case VK_FORMAT_A1B5G5R5_UNORM_PACK16:
 		case VK_FORMAT_B8G8R8A8_SNORM:
 		case VK_FORMAT_B8G8R8A8_UINT:
 		case VK_FORMAT_B8G8R8A8_SINT:

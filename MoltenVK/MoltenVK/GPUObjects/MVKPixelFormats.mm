@@ -581,9 +581,14 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 					case VK_FORMAT_R5G5B5A1_UNORM_PACK16:
 					case VK_FORMAT_B5G5R5A1_UNORM_PACK16:
 					case VK_FORMAT_A1R5G5B5_UNORM_PACK16:
+					case VK_FORMAT_A1B5G5R5_UNORM_PACK16:
 						OFFSET_UNORM(red, 5)
 						OFFSET_UNORM(green, 5)
 						OFFSET_UNORM(blue, 5)
+						OFFSET_UNORM(alpha, 1)
+						break;
+					case VK_FORMAT_A8_UNORM:
+						OFFSET_UNORM(alpha, 8)
 						break;
 					case VK_FORMAT_R8_UNORM:
 						OFFSET_UNORM(red, 8)
@@ -897,6 +902,9 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	addVkFormatDesc( R5G5B5A1_UNORM_PACK16, A1BGR5Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
 	addVkFormatDescSwizzled( B5G5R5A1_UNORM_PACK16, A1BGR5Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, B, G, R, A );
 	addVkFormatDesc( A1R5G5B5_UNORM_PACK16, BGR5A1Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDescSwizzled( A1B5G5R5_UNORM_PACK16, BGR5A1Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, B, G, R, A );
+
+	addVkFormatDesc( A8_UNORM, A8Unorm, Invalid, UCharNormalized, UChar2Normalized, 1, 1, 1, ColorFloat );
 
 	addVkFormatDesc( R8_UNORM, R8Unorm, Invalid, UCharNormalized, UChar2Normalized, 1, 1, 1, ColorFloat );
 	addVkFormatDesc( R8_SNORM, R8Snorm, Invalid, CharNormalized, Char2Normalized, 1, 1, 1, ColorFloat );
@@ -1750,9 +1758,10 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc, const MVKMTLD
 	}
 
 	// Texel buffers are not available to depth/stencil, compressed, or chroma subsampled formats.
+	// Additionally, format swizzles are not applied to texel buffers yet.
 	vkProps.bufferFeatures = kMVKVkFormatFeatureFlagsTexNone;
 	if ( !(vkDesc.formatType == kMVKFormatDepthStencil || vkDesc.formatType == kMVKFormatCompressed ||
-		   chromaSubsamplingComponentBits > 0) ) {
+		   chromaSubsamplingComponentBits > 0 || vkDesc.needsSwizzle()) ) {
 		enableFormatFeatures(Read, Buf, mtlPixFmtCaps, vkProps.bufferFeatures);
 		enableFormatFeatures(Write, Buf, mtlPixFmtCaps, vkProps.bufferFeatures);
 		enableFormatFeatures(Atomic, Buf, mtlPixFmtCaps, vkProps.bufferFeatures);

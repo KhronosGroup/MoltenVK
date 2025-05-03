@@ -69,6 +69,12 @@ public:
 						VkDeviceSize offset,
 						VkIndexType indexType);
 
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkBuffer buffer,
+						VkDeviceSize offset,
+						VkDeviceSize size,
+						VkIndexType indexType);
+
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
