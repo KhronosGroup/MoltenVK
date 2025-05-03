@@ -719,9 +719,8 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 		mtlRPDesc.visibilityResultBuffer = _pEncodingContext->visibilityResultBuffer->_mtlBuffer;
 	}
 
-	VkExtent2D fbExtent = getFramebufferExtent();
-    mtlRPDesc.renderTargetWidthMVK = max(min(_renderArea.offset.x + _renderArea.extent.width, fbExtent.width), 1u);
-    mtlRPDesc.renderTargetHeightMVK = max(min(_renderArea.offset.y + _renderArea.extent.height, fbExtent.height), 1u);
+    mtlRPDesc.renderTargetWidthMVK = _renderArea.offset.x + _renderArea.extent.width;
+    mtlRPDesc.renderTargetHeightMVK = _renderArea.offset.y + _renderArea.extent.height;
     if (_canUseLayeredRendering) {
         uint32_t renderTargetArrayLength;
         bool found3D = false, found2D = false;
