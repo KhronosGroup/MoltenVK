@@ -45,7 +45,7 @@ VkResult MVKCmdBindVertexBuffers<N>::setContent(MVKCommandBuffer* cmdBuff,
         b.index = mvkDvc->getMetalBufferIndexForVertexAttributeBinding(firstBinding + bindIdx);
         b.mtlBuffer = mvkBuffer->getMTLBuffer();
         b.offset = mvkBuffer->getMTLBufferOffset() + pOffsets[bindIdx];
-		b.size = pSizes ? (uint32_t)pSizes[bindIdx] : 0;
+		b.size = pSizes ? pSizes[bindIdx] == VK_WHOLE_SIZE ? mvkBuffer->getByteCount() - pOffsets[bindIdx] : (uint32_t)pSizes[bindIdx] : 0;
 		b.stride = pStrides ? (uint32_t)pStrides[bindIdx] : 0;
         _bindings.push_back(b);
     }
@@ -70,18 +70,28 @@ VkResult MVKCmdBindIndexBuffer::setContent(MVKCommandBuffer* cmdBuff,
 										   VkBuffer buffer,
 										   VkDeviceSize offset,
 										   VkIndexType indexType) {
+	return setContent(cmdBuff, buffer, offset, VK_WHOLE_SIZE, indexType);
+}
+
+VkResult MVKCmdBindIndexBuffer::setContent(MVKCommandBuffer* cmdBuff,
+										   VkBuffer buffer,
+										   VkDeviceSize offset,
+										   VkDeviceSize size,
+										   VkIndexType indexType) {
+	_isUint8 = indexType == VK_INDEX_TYPE_UINT8;
+	_binding.mtlIndexType = mvkMTLIndexTypeFromVkIndexType(indexType);
+
 	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
 	if (mvkBuffer) {
 		_binding.mtlBuffer = mvkBuffer->getMTLBuffer();
 		_binding.offset = mvkBuffer->getMTLBufferOffset() + offset;
+		_binding.size = size == VK_WHOLE_SIZE ? mvkBuffer->getByteCount() - offset : size;
 	} else {
 		_binding.mtlBuffer = nullptr;
 		// Must be 0 for null buffer.
 		_binding.offset = 0;
+		_binding.size = size == VK_WHOLE_SIZE ? mvkMTLIndexTypeSizeInBytes((MTLIndexType)_binding.mtlIndexType) : size;
 	}
-
-	_isUint8 = indexType == VK_INDEX_TYPE_UINT8;
-	_binding.mtlIndexType = mvkMTLIndexTypeFromVkIndexType(indexType);
 
 	return VK_SUCCESS;
 }
@@ -90,13 +100,12 @@ void MVKCmdBindIndexBuffer::encode(MVKCommandEncoder* cmdEncoder) {
     if (_binding.mtlBuffer == nullptr) {
         // In the null buffer case, offset must be 0, and since we don't support nullDescriptor, the indices are undefined.
         // Thus, we can use a simple temporary buffer to stand in for the index buffer here.
-        const auto idxSize = mvkMTLIndexTypeSizeInBytes((MTLIndexType)_binding.mtlIndexType);
-        const auto* placeholderBuffer = cmdEncoder->getTempMTLBuffer(idxSize);
+        const auto* placeholderBuffer = cmdEncoder->getTempMTLBuffer(_binding.size);
         _binding.mtlBuffer = placeholderBuffer->_mtlBuffer;
         _binding.offset = placeholderBuffer->_offset;
     } else if (_isUint8) {
         // Copy 8-bit indices into 16-bit index buffer compatible with Metal.
-        const uint32_t numIndices = (uint32_t)_binding.mtlBuffer.length - (uint32_t)_binding.offset;
+        const uint32_t numIndices = _binding.size;
         auto* uint16Buf = cmdEncoder->getTempMTLBuffer(numIndices * 2);
 
         cmdEncoder->encodeStoreActions(true);
@@ -192,6 +201,7 @@ void MVKCmdDraw::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
 	ibb.mtlIndexType = mtlIdxType;
 	ibb.mtlBuffer = vtxIdxBuff->_mtlBuffer;
 	ibb.offset = vtxIdxBuff->_offset;
+	ibb.size = vtxIdxBuff->_length;
 
 	MVKCmdDrawIndexedIndirect diiCmd;
 	diiCmd.setContent(cmdEncoder->_cmdBuffer,
@@ -665,6 +675,7 @@ void MVKCmdDrawIndirect::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
 	ibb.mtlIndexType = mtlIdxType;
 	ibb.mtlBuffer = vtxIdxBuff->_mtlBuffer;
 	ibb.offset = vtxIdxBuff->_offset;
+	ibb.size = vtxIdxBuff->_length;
 
 	// Schedule a compute action to populate indexed buffers from non-indexed buffers.
 	cmdEncoder->encodeStoreActions(true);
@@ -1129,7 +1140,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
             tcPatchOutBuff = cmdEncoder->getTempMTLBuffer(patchCount * 4 * dvcLimits.maxTessellationControlPerPatchOutputComponents, true);
         }
         tcLevelBuff = cmdEncoder->getTempMTLBuffer(patchCount * sizeof(MTLQuadTessellationFactorsHalf), true);
-        vtxIndexBuff = cmdEncoder->getTempMTLBuffer(ibb.mtlBuffer.length, true);
+        vtxIndexBuff = cmdEncoder->getTempMTLBuffer(ibb.size, true);
 
         id<MTLComputePipelineState> vtxState;
         vtxState = ibb.mtlIndexType == MTLIndexTypeUInt16 ? pipeline->getTessVertexStageIndex16State() : pipeline->getTessVertexStageIndex32State();

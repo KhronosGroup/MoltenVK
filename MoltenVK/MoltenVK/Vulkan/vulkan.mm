@@ -2919,27 +2919,51 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetPrivateData(
 #pragma mark -
 #pragma mark Vulkan 1.4 calls
 
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkMapMemory2(
-    VkDevice device,
-    const VkMemoryMapInfo* pMemoryMapInfo,
-    void** ppData) {
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindIndexBuffer2(
+    VkCommandBuffer                             commandBuffer,
+    VkBuffer                                    buffer,
+    VkDeviceSize                                offset,
+    VkDeviceSize                                size,
+    VkIndexType                                 indexType) {
 
-    MVKTraceVulkanCallStart();
-    MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMemoryMapInfo->memory;
-    VkResult rslt = mvkMem->map(pMemoryMapInfo, ppData);
-    MVKTraceVulkanCallEnd();
-    return rslt;
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(BindIndexBuffer, commandBuffer, buffer, offset, size, indexType);
+	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkUnmapMemory2(
-    VkDevice device,
-    const VkMemoryUnmapInfo* pMemoryUnmapInfo) {
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetRenderingAreaGranularity(
+    VkDevice                                    device,
+    const VkRenderingAreaInfo*                  pRenderingAreaInfo,
+    VkExtent2D*                                 pGranularity) {
 
-    MVKTraceVulkanCallStart();
-    MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMemoryUnmapInfo->memory;
-    VkResult rslt = mvkMem->unmap(pMemoryUnmapInfo);
-    MVKTraceVulkanCallEnd();
-    return rslt;
+	MVKTraceVulkanCallStart();
+	auto* mvkDev = MVKDevice::getMVKDevice(device);
+	*pGranularity = mvkDev->getDynamicRenderAreaGranularity();
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void  vkGetImageSubresourceLayout2(
+    VkDevice                                    device,
+    VkImage                                     image,
+    const VkImageSubresource2*                  pSubresource,
+    VkSubresourceLayout2*                       pLayout) {
+
+	MVKTraceVulkanCallStart();
+	MVKImage* mvkImg = (MVKImage*)image;
+	mvkImg->getSubresourceLayout(pSubresource, pLayout);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void  vkGetDeviceImageSubresourceLayout(
+    VkDevice                                    device,
+    const VkDeviceImageSubresourceInfo*         pInfo,
+    VkSubresourceLayout2*                       pLayout) {
+
+	MVKTraceVulkanCallStart();
+	auto* mvkDev = MVKDevice::getMVKDevice(device);
+	MVKImage mvkImg(mvkDev, pInfo->pCreateInfo);
+	mvkImg.getSubresourceLayout(pInfo->pSubresource, pLayout);
+	MVKTraceVulkanCallEnd();
 }
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindDescriptorSets2(
@@ -3016,6 +3040,29 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSetWithTemplate2(
 	MVKTraceVulkanCallEnd();
 }
 
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkMapMemory2(
+    VkDevice device,
+    const VkMemoryMapInfo* pMemoryMapInfo,
+    void** ppData) {
+
+    MVKTraceVulkanCallStart();
+    MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMemoryMapInfo->memory;
+    VkResult rslt = mvkMem->map(pMemoryMapInfo, ppData);
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkUnmapMemory2(
+    VkDevice device,
+    const VkMemoryUnmapInfo* pMemoryUnmapInfo) {
+
+    MVKTraceVulkanCallStart();
+    MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMemoryUnmapInfo->memory;
+    VkResult rslt = mvkMem->unmap(pMemoryUnmapInfo);
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
+
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSet(
     VkCommandBuffer                             commandBuffer,
     VkPipelineBindPoint                         pipelineBindPoint,
@@ -3071,18 +3118,6 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCopyMemoryToImage(
 	VkResult rslt = dstImg->copyMemoryToImage(pCopyMemoryToImageInfo);
 	MVKTraceVulkanCallEnd();
 	return rslt;
-}
-
-MVK_PUBLIC_VULKAN_SYMBOL void  vkGetImageSubresourceLayout2(
-    VkDevice                                    device,
-    VkImage                                     image,
-    const VkImageSubresource2*                  pSubresource,
-    VkSubresourceLayout2*                       pLayout) {
-
-	MVKTraceVulkanCallStart();
-	MVKImage* mvkImg = (MVKImage*)image;
-	mvkImg->getSubresourceLayout(pSubresource, pLayout);
-	MVKTraceVulkanCallEnd();
 }
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkTransitionImageLayout(
@@ -3342,6 +3377,15 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetDeviceImageSparseMemoryRequirements, KHR);
 
 
 #pragma mark -
+#pragma mark VK_KHR_maintenance5 extension
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdBindIndexBuffer2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetRenderingAreaGranularity, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetImageSubresourceLayout2, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetDeviceImageSubresourceLayout, KHR);
+
+
+#pragma mark -
 #pragma mark VK_KHR_maintenance6 extension
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdBindDescriptorSets2, KHR);
@@ -3355,6 +3399,23 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdPushDescriptorSetWithTemplate2, KHR);
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkMapMemory2, KHR);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkUnmapMemory2, KHR);
+
+
+#pragma mark -
+#pragma mark VK_KHR_present_wait extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkWaitForPresentKHR(
+    VkDevice                                    device,
+    VkSwapchainKHR                              swapchain,
+    uint64_t                                    presentId,
+    uint64_t                                    timeout) {
+
+	MVKTraceVulkanCallStart();
+	MVKSwapchain* mvkSC = (MVKSwapchain*)swapchain;
+	VkResult rslt = mvkSC->waitForPresent(presentId, timeout);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
 
 
 #pragma mark -
