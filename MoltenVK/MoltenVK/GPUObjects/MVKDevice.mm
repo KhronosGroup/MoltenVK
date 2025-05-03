@@ -535,6 +535,16 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->vertexAttributeAccessBeyondStride = true;	// Costs additional buffers. Should make configuration switch.
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR: {
+				auto* presentIdFeatures = (VkPhysicalDevicePresentIdFeaturesKHR*)next;
+				presentIdFeatures->presentId = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR: {
+				auto* presentWaitFeatures = (VkPhysicalDevicePresentWaitFeaturesKHR*)next;
+				presentWaitFeatures->presentWait = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EXPECT_ASSUME_FEATURES: {
 				auto* shaderExpectAssume = (VkPhysicalDeviceShaderExpectAssumeFeatures*)next;
 				shaderExpectAssume->shaderExpectAssume = true;

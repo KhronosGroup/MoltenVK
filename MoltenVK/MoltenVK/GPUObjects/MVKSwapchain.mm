@@ -245,6 +245,15 @@ VkResult MVKSwapchain::getPastPresentationTiming(uint32_t *pCount, VkPastPresent
 	return res;
 }
 
+VkResult MVKSwapchain::waitForPresent(uint64_t presentId, uint64_t timeout) {
+	std::unique_lock lock(_currentPresentIdMutex);
+	const auto success = _currentPresentIdCondVar.wait_for(lock, std::chrono::nanoseconds(timeout), [this, presentId] {
+		return _currentPresentId >= presentId || getConfigurationResult() == VK_ERROR_OUT_OF_DATE_KHR;
+	});
+	if (getConfigurationResult() == VK_ERROR_OUT_OF_DATE_KHR) return VK_ERROR_OUT_OF_DATE_KHR;
+	return success ? VK_SUCCESS : VK_TIMEOUT;
+}
+
 void MVKSwapchain::beginPresentation(const MVKImagePresentInfo& presentInfo) {
 	_unpresentedImageCount++;
 }
@@ -261,13 +270,19 @@ void MVKSwapchain::endPresentation(const MVKImagePresentInfo& presentInfo, uint6
 		_presentHistoryHeadIndex = (_presentHistoryHeadIndex + 1) % kMaxPresentationHistory;
 	}
 
-	_presentTimingHistory[_presentHistoryIndex].presentID = presentInfo.presentID;
+	_presentTimingHistory[_presentHistoryIndex].presentID = presentInfo.presentIDGoogle;
 	_presentTimingHistory[_presentHistoryIndex].desiredPresentTime = presentInfo.desiredPresentTime;
 	_presentTimingHistory[_presentHistoryIndex].actualPresentTime = actualPresentTime;
 	// These details are not available in Metal, but can estimate earliestPresentTime by using actualPresentTime instead
 	_presentTimingHistory[_presentHistoryIndex].earliestPresentTime = actualPresentTime;
 	_presentTimingHistory[_presentHistoryIndex].presentMargin = actualPresentTime > beginPresentTime ? actualPresentTime - beginPresentTime : 0;
 	_presentHistoryIndex = (_presentHistoryIndex + 1) % kMaxPresentationHistory;
+
+	if (presentInfo.presentId != 0) {
+		std::unique_lock lock(_currentPresentIdMutex);
+		_currentPresentId = std::max(_currentPresentId, presentInfo.presentId);
+		_currentPresentIdCondVar.notify_all();
+	}
 }
 
 // Because of a regression in Metal, the most recent one or two presentations may not complete

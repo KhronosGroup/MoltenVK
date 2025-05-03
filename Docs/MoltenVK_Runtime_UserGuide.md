@@ -269,6 +269,8 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_map_memory2`
 - `VK_KHR_multiview`
 - `VK_KHR_portability_subset`
+- `VK_KHR_present_id`
+- `VK_KHR_present_wait`
 - `VK_KHR_push_descriptor`
 - `VK_KHR_relaxed_block_layout`
 - `VK_KHR_sampler_mirror_clamp_to_edge`

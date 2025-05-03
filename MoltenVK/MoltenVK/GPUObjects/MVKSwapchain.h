@@ -94,6 +94,9 @@ public:
 	/** VK_GOOGLE_display_timing - returns past presentation times */
 	VkResult getPastPresentationTiming(uint32_t *pCount, VkPastPresentationTimingGOOGLE *pPresentationTimings);
 
+	/** Waits for the swapchain present ID to meet or exceed the provided ID. */
+	VkResult waitForPresent(uint64_t presentId, uint64_t timeout);
+
 	/** Marks parts of the underlying CAMetalLayer as needing update. */
 	void setLayerNeedsDisplay(const VkPresentRegionKHR* pRegion);
 
@@ -138,4 +141,7 @@ protected:
 	uint32_t _presentHistoryIndex = 0;
 	uint32_t _presentHistoryHeadIndex = 0;
 	bool _isDeliberatelyScaled = false;
+	uint64_t _currentPresentId = 0;
+	std::mutex _currentPresentIdMutex;
+	std::condition_variable _currentPresentIdCondVar;
 };
