@@ -788,10 +788,14 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 	const VkSwapchainPresentFenceInfoEXT* pPresentFenceInfo = nullptr;
 	const VkSwapchainPresentModeInfoEXT* pPresentModeInfo = nullptr;
 	const VkPresentRegionsKHR* pPresentRegions = nullptr;
+	const VkPresentIdKHR* pPresentId = nullptr;
 	for (auto* next = (const VkBaseInStructure*)pPresentInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_PRESENT_REGIONS_KHR:
 				pPresentRegions = (const VkPresentRegionsKHR*) next;
+				break;
+			case VK_STRUCTURE_TYPE_PRESENT_ID_KHR:
+				pPresentId = (const VkPresentIdKHR*) next;
 				break;
 			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT:
 				pPresentFenceInfo = (const VkSwapchainPresentFenceInfoEXT*) next;
@@ -828,6 +832,10 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 	if (pPresentRegions) {
 		pRegions = pPresentRegions->pRegions;
 	}
+	const uint64_t* pPresentIds = nullptr;
+	if (pPresentId) {
+		pPresentIds = pPresentId->pPresentIds;
+	}
 
 	VkResult* pSCRslts = pPresentInfo->pResults;
 	_presentInfo.reserve(scCnt);
@@ -838,8 +846,9 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 		presentInfo.presentableImage = mvkSC->getPresentableImage(pPresentInfo->pImageIndices[scIdx]);
 		presentInfo.presentMode = pPresentModes ? pPresentModes[scIdx] : VK_PRESENT_MODE_MAX_ENUM_KHR;
 		presentInfo.fence = pFences ? (MVKFence*)pFences[scIdx] : nullptr;
+		presentInfo.presentId = pPresentIds ? pPresentIds[scIdx] : 0;
 		if (pPresentTimes) {
-			presentInfo.presentID = pPresentTimes[scIdx].presentID;
+			presentInfo.presentIDGoogle = pPresentTimes[scIdx].presentID;
 			presentInfo.desiredPresentTime = pPresentTimes[scIdx].desiredPresentTime;
 		}
 		mvkSC->setLayerNeedsDisplay(pRegions ? &pRegions[scIdx] : nullptr);

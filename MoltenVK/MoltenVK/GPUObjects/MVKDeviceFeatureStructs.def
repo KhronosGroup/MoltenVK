@@ -74,6 +74,8 @@ MVK_DEVICE_FEATURE_EXTN(Maintenance5,                     MAINTENANCE_5,        
 MVK_DEVICE_FEATURE_EXTN(Maintenance6,                     MAINTENANCE_6,                       KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(Maintenance7,                     MAINTENANCE_7,                       KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(PortabilitySubset,                PORTABILITY_SUBSET,                  KHR,  15)
+MVK_DEVICE_FEATURE_EXTN(PresentId,                        PRESENT_ID,                          KHR,   1)
+MVK_DEVICE_FEATURE_EXTN(PresentWait,                      PRESENT_WAIT,                        KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(ShaderExpectAssume,               SHADER_EXPECT_ASSUME,                KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(ShaderRelaxedExtendedInstruction, SHADER_RELAXED_EXTENDED_INSTRUCTION, KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(ShaderSubgroupRotate,             SHADER_SUBGROUP_ROTATE,              KHR,   2)

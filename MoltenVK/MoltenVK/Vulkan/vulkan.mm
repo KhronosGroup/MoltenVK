@@ -3402,6 +3402,23 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkUnmapMemory2, KHR);
 
 
 #pragma mark -
+#pragma mark VK_KHR_present_wait extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkWaitForPresentKHR(
+    VkDevice                                    device,
+    VkSwapchainKHR                              swapchain,
+    uint64_t                                    presentId,
+    uint64_t                                    timeout) {
+
+	MVKTraceVulkanCallStart();
+	MVKSwapchain* mvkSC = (MVKSwapchain*)swapchain;
+	VkResult rslt = mvkSC->waitForPresent(presentId, timeout);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+
+#pragma mark -
 #pragma mark VK_KHR_push_descriptor extension
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdPushDescriptorSet, KHR);

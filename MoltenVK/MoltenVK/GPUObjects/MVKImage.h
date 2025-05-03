@@ -452,8 +452,9 @@ typedef struct  {
 	MVKPresentableSwapchainImage* presentableImage;
 	MVKQueue* queue;				// The queue on which the vkQueuePresentKHR() command was executed.
 	MVKFence* fence;				// VK_EXT_swapchain_maintenance1 fence signaled when resources can be destroyed
-	uint64_t desiredPresentTime;  	// VK_GOOGLE_display_timing desired presentation time in nanoseconds
-	uint32_t presentID;           	// VK_GOOGLE_display_timing presentID
+	uint64_t presentId;				// VK_KHR_present_id presentId
+	uint64_t desiredPresentTime;	// VK_GOOGLE_display_timing desired presentation time in nanoseconds
+	uint32_t presentIDGoogle;	// VK_GOOGLE_display_timing presentID
 	VkPresentModeKHR presentMode;	// VK_EXT_swapchain_maintenance1 present mode specialization
 } MVKImagePresentInfo;
 
