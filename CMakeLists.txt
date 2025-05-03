@@ -102,4 +102,16 @@ add_subdirectory("MoltenVKShaderConverter/MoltenVKShaderConverterTool")
 # Install
 ################################################################################
 
-# TODO: Add install rules
+if(MOLTEN_VK_TOPLEVEL_PROJECT)
+	include(GNUInstallDirs)
+
+	install(TARGETS MoltenVK
+			LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+			PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/MoltenVK")
+
+	configure_file("${PROJECT_SOURCE_DIR}/Templates/cmake/MoltenVK.pc.in" MoltenVK.pc @ONLY)
+	install(FILES ${CMAKE_BINARY_DIR}/MoltenVK.pc
+			DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig)
+
+	install(TARGETS MoltenVKShaderConverter)
+endif()

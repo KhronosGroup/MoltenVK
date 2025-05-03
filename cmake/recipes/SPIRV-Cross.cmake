@@ -28,6 +28,7 @@ CPMAddPackage(
     "SPIRV_CROSS_ENABLE_C_API OFF"
     "SPIRV_CROSS_ENABLE_UTIL OFF"
     "SPIRV_CROSS_NAMESPACE_OVERRIDE MVK_spirv_cross"
+    "SPIRV_CROSS_SKIP_INSTALL ON"
 )
 
 add_library(SPRIV-Cross::Core ALIAS spirv-cross-core)
