@@ -251,6 +251,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_get_memory_requirements2`
 - `VK_KHR_get_physical_device_properties2`
 - `VK_KHR_get_surface_capabilities2`
+- `VK_KHR_global_priority`
 - `VK_KHR_imageless_framebuffer`
 - `VK_EXT_image_2d_view_of_3d`
   - *Requires `MVK_CONFIG_USE_MTLHEAP` to be active.*
@@ -279,6 +280,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_shader_float16_int8`
 - `VK_KHR_shader_integer_dot_product`
 - `VK_KHR_shader_non_semantic_info`
+- `VK_KHR_shader_relaxed_extended_instruction`
 - `VK_KHR_shader_subgroup_extended_types`
   - *Requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS.*
 - `VK_KHR_shader_subgroup_rotate`
