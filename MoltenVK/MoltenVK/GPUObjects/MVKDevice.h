@@ -134,7 +134,7 @@ typedef enum {
 } MVKSemaphoreStyle;
 
 /** VkPhysicalDeviceVulkan12Features entries that did not originate in a prior extension. */
-typedef struct MVKPhysicalDeviceVulkan12FeaturesNoExt {
+typedef struct MVKPhysicalDeviceVulkan12NoExtFeatures {
 	VkBool32 samplerMirrorClampToEdge;
 	VkBool32 drawIndirectCount;
 	VkBool32 descriptorIndexing;
@@ -142,7 +142,12 @@ typedef struct MVKPhysicalDeviceVulkan12FeaturesNoExt {
 	VkBool32 shaderOutputViewportIndex;
 	VkBool32 shaderOutputLayer;
 	VkBool32 subgroupBroadcastDynamicId;
-} MVKPhysicalDeviceVulkan12FeaturesNoExt;
+} MVKPhysicalDeviceVulkan12NoExtFeatures;
+
+/** VkPhysicalDeviceVulkan14Features entries that did not originate in a prior extension. */
+typedef struct MVKPhysicalDeviceVulkan14NoExtFeatures {
+	VkBool32 pushDescriptor;
+} MVKPhysicalDeviceVulkan14NoExtFeatures;
 
 /** Represents a Vulkan physical GPU device. */
 class MVKPhysicalDevice : public MVKDispatchableVulkanAPIObject {
@@ -451,7 +456,7 @@ protected:
 	uint32_t getMoltenVKGitRevision();
 	void populateDeviceIDProperties(VkPhysicalDeviceVulkan11Properties* pVk11Props);
 	void populateSubgroupProperties(VkPhysicalDeviceVulkan11Properties* pVk11Props);
-	void populateHostImageCopyProperties(VkPhysicalDeviceHostImageCopyPropertiesEXT* pHostImageCopyProps);
+	template<typename HostImageCopyProps> void populateHostImageCopyProperties(HostImageCopyProps* pHostImageCopyProps);
 	void logGPUInfo();
 
 	MVKInstance* _mvkInstance;
@@ -460,7 +465,8 @@ protected:
 	const MVKExtensionList _supportedExtensions;
 	MVKPixelFormats _pixelFormats;
 	VkPhysicalDeviceFeatures _features;
-	MVKPhysicalDeviceVulkan12FeaturesNoExt _vulkan12NoExtFeatures;
+	MVKPhysicalDeviceVulkan12NoExtFeatures _vulkan12NoExtFeatures;
+	MVKPhysicalDeviceVulkan14NoExtFeatures _vulkan14NoExtFeatures;
 	MVKPhysicalDeviceMetalFeatures _metalFeatures;
 	VkPhysicalDeviceProperties _properties;
 	VkPhysicalDeviceTexelBufferAlignmentProperties _texelBuffAlignProperties;
@@ -939,7 +945,8 @@ protected:
 	MVKPhysicalDevice* _physicalDevice = nullptr;
 	MVKExtensionList _enabledExtensions;
 	VkPhysicalDeviceFeatures _enabledFeatures;
-	MVKPhysicalDeviceVulkan12FeaturesNoExt _enabledVulkan12NoExtFeatures;
+	MVKPhysicalDeviceVulkan12NoExtFeatures _enabledVulkan12NoExtFeatures;
+	MVKPhysicalDeviceVulkan14NoExtFeatures _enabledVulkan14NoExtFeatures;
 
 	// List of extended device feature enabling structures, as member variables.
 #define MVK_DEVICE_FEATURE(structName, enumName, flagCount) \

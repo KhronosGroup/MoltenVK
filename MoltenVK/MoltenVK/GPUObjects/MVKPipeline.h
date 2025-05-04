@@ -169,7 +169,7 @@ public:
 		auto flags = pCreateInfo->flags;
 		for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 			switch (next->sType) {
-				case VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO_KHR:
+				case VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO:
 					flags |= ((VkPipelineCreateFlags2CreateInfo*)next)->flags;
 					break;
 				default:

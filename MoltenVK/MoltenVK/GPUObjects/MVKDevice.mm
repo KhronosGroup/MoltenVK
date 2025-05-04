@@ -264,6 +264,33 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 		.maintenance4 = true,
 	};
 
+	// Create a SSOT for these Vulkan 1.4 features, which can be queried via two mechanisms here.
+	VkPhysicalDeviceVulkan14Features supportedFeats14 = {
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES,
+		.pNext = nullptr,
+		.globalPriorityQuery = true,
+		.shaderSubgroupRotate = _metalFeatures.simdPermute || _metalFeatures.quadPermute,
+		.shaderSubgroupRotateClustered = _metalFeatures.simdPermute || _metalFeatures.quadPermute,
+		.shaderFloatControls2 = false,
+		.shaderExpectAssume = true,
+		.rectangularLines = false,
+		.bresenhamLines = false,
+		.smoothLines = false,
+		.stippledRectangularLines = false,
+		.stippledBresenhamLines = false,
+		.stippledSmoothLines = false,
+		.vertexAttributeInstanceRateDivisor = true,
+		.vertexAttributeInstanceRateZeroDivisor = true,
+		.indexTypeUint8 = true,
+		.dynamicRenderingLocalRead = false,
+		.maintenance5 = true,
+		.maintenance6 = true,
+		.pipelineProtectedAccess = false,	// Required only if VkPhysicalDeviceVulkan11Features::protectedMemory is enabled
+		.pipelineRobustness = true,
+		.hostImageCopy = true,
+		.pushDescriptor = true,
+	};
+
 	features->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 	features->features = _features;
 	for (auto* next = (VkBaseOutStructure*)features->pNext; next; next = next->pNext) {
@@ -271,22 +298,33 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: {
 				// Copy from supportedFeats11, but keep pNext as is.
 				auto* pFeats11 = (VkPhysicalDeviceVulkan11Features*)next;
-				supportedFeats11.pNext = pFeats11->pNext;
+				auto* pNext = pFeats11->pNext;
 				*pFeats11 = supportedFeats11;
+				pFeats11->pNext = pNext;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
 				// Copy from supportedFeats12, but keep pNext as is.
 				auto* pFeats12 = (VkPhysicalDeviceVulkan12Features*)next;
-				supportedFeats12.pNext = pFeats12->pNext;
+				auto* pNext = pFeats12->pNext;
 				*pFeats12 = supportedFeats12;
+				pFeats12->pNext = pNext;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES: {
 				// Copy from supportedFeats13, but keep pNext as is.
 				auto* pFeats13 = (VkPhysicalDeviceVulkan13Features*)next;
-				supportedFeats13.pNext = pFeats13->pNext;
+				auto* pNext = pFeats13->pNext;
 				*pFeats13 = supportedFeats13;
+				pFeats13->pNext = pNext;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES: {
+				// Copy from supportedFeats14, but keep pNext as is.
+				auto* pFeats14 = (VkPhysicalDeviceVulkan14Features*)next;
+				auto* pNext = pFeats14->pNext;
+				*pFeats14 = supportedFeats14;
+				pFeats14->pNext = pNext;
 				break;
 			}
 
@@ -345,7 +383,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES: {
 				auto* globalPriorityFeatures = (VkPhysicalDeviceGlobalPriorityQueryFeatures*)next;
-				globalPriorityFeatures->globalPriorityQuery = true;
+				globalPriorityFeatures->globalPriorityQuery = supportedFeats14.globalPriorityQuery;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES: {
+				auto* hostImageCopyFeatures = (VkPhysicalDeviceHostImageCopyFeatures*)next;
+				hostImageCopyFeatures->hostImageCopy = supportedFeats14.hostImageCopy;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES: {
@@ -365,7 +408,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES: {
 				auto* indexTypeUint8Features = (VkPhysicalDeviceIndexTypeUint8Features*)next;
-				indexTypeUint8Features->indexTypeUint8 = true;
+				indexTypeUint8Features->indexTypeUint8 = supportedFeats14.indexTypeUint8;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES: {
@@ -379,6 +422,14 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				maintenace4Features->maintenance4 = supportedFeats13.maintenance4;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES: {
+				auto* maintenance5Features = (VkPhysicalDeviceMaintenance5Features*)next;
+				maintenance5Features->maintenance5 = supportedFeats14.maintenance5;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES: {
+				auto* maintenance6Features = (VkPhysicalDeviceMaintenance6Features*)next;
+				maintenance6Features->maintenance6 = supportedFeats14.maintenance6;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
 				auto* multiviewFeatures = (VkPhysicalDeviceMultiviewFeatures*)next;
 				multiviewFeatures->multiview = supportedFeats11.multiview;
@@ -389,6 +440,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES: {
 				auto* pipelineCreationCacheControlFeatures = (VkPhysicalDevicePipelineCreationCacheControlFeatures*)next;
 				pipelineCreationCacheControlFeatures->pipelineCreationCacheControl = supportedFeats13.pipelineCreationCacheControl;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES: {
+				auto* pipelineRobustnessFeatures = (VkPhysicalDevicePipelineRobustnessFeatures*)next;
+				pipelineRobustnessFeatures->pipelineRobustness = supportedFeats14.pipelineRobustness;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES: {
@@ -416,6 +472,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				separateDepthStencilLayoutsFeatures->separateDepthStencilLayouts = supportedFeats12.separateDepthStencilLayouts;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES: {
+				auto* i64Features = (VkPhysicalDeviceShaderAtomicInt64Features*)next;
+				i64Features->shaderBufferInt64Atomics = supportedFeats12.shaderBufferInt64Atomics;
+				i64Features->shaderSharedInt64Atomics = supportedFeats12.shaderSharedInt64Atomics;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES: {
 				auto* demoteFeatures = (VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures*)next;
 				demoteFeatures->shaderDemoteToHelperInvocation = supportedFeats13.shaderDemoteToHelperInvocation;
@@ -426,10 +488,9 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				shaderDrawParamsFeatures->shaderDrawParameters = supportedFeats11.shaderDrawParameters;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES: {
-				auto* i64Features = (VkPhysicalDeviceShaderAtomicInt64Features*)next;
-				i64Features->shaderBufferInt64Atomics = supportedFeats12.shaderBufferInt64Atomics;
-				i64Features->shaderSharedInt64Atomics = supportedFeats12.shaderSharedInt64Atomics;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EXPECT_ASSUME_FEATURES: {
+				auto* shaderExpectAssumeFeatures = (VkPhysicalDeviceShaderExpectAssumeFeatures*)next;
+				shaderExpectAssumeFeatures->shaderExpectAssume = supportedFeats14.shaderExpectAssume;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES: {
@@ -446,6 +507,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES: {
 				auto* shaderSGTypesFeatures = (VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures*)next;
 				shaderSGTypesFeatures->shaderSubgroupExtendedTypes = supportedFeats12.shaderSubgroupExtendedTypes;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_ROTATE_FEATURES: {
+				auto* shaderSGRotateFeatures = (VkPhysicalDeviceShaderSubgroupRotateFeatures*)next;
+				shaderSGRotateFeatures->shaderSubgroupRotate = supportedFeats14.shaderSubgroupRotate;
+				shaderSGRotateFeatures->shaderSubgroupRotateClustered = supportedFeats14.shaderSubgroupRotateClustered;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES: {
@@ -485,6 +552,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				varPtrFeatures->variablePointers = supportedFeats11.variablePointers;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES: {
+				auto* divisorFeatures = (VkPhysicalDeviceVertexAttributeDivisorFeatures*)next;
+				divisorFeatures->vertexAttributeInstanceRateDivisor = supportedFeats14.vertexAttributeInstanceRateDivisor;
+				divisorFeatures->vertexAttributeInstanceRateZeroDivisor = supportedFeats14.vertexAttributeInstanceRateZeroDivisor;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES: {
 				auto* vmmFeatures = (VkPhysicalDeviceVulkanMemoryModelFeatures*)next;
 				vmmFeatures->vulkanMemoryModel = supportedFeats12.vulkanMemoryModel;
@@ -501,14 +574,6 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				auto* barycentricFeatures = (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)next;
 				barycentricFeatures->fragmentShaderBarycentric = true;
 				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR: {
-				auto* maintenance5Features = (VkPhysicalDeviceMaintenance5FeaturesKHR*)next;
-				maintenance5Features->maintenance5 = true;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR: {
-				auto* maintenance6Features = (VkPhysicalDeviceMaintenance6FeaturesKHR*)next;
-				maintenance6Features->maintenance6 = true;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR: {
 				auto* maintenance7Features = (VkPhysicalDeviceMaintenance7FeaturesKHR*)next;
@@ -550,11 +615,6 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				presentWaitFeatures->presentWait = true;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EXPECT_ASSUME_FEATURES: {
-				auto* shaderExpectAssume = (VkPhysicalDeviceShaderExpectAssumeFeatures*)next;
-				shaderExpectAssume->shaderExpectAssume = true;
-				break;
-			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MAXIMAL_RECONVERGENCE_FEATURES_KHR: {
 				auto* shaderReconvergenceFeatures = (VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR*)next;
 				shaderReconvergenceFeatures->shaderMaximalReconvergence = _gpuCapabilities.isAppleGPU;
@@ -563,12 +623,6 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_RELAXED_EXTENDED_INSTRUCTION_FEATURES_KHR: {
 				auto* shaderRelaxedFeatures = (VkPhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR*)next;
 				shaderRelaxedFeatures->shaderRelaxedExtendedInstruction = true;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_ROTATE_FEATURES_KHR: {
-				auto* shaderSGRotateFeatures = (VkPhysicalDeviceShaderSubgroupRotateFeaturesKHR*)next;
-				shaderSGRotateFeatures->shaderSubgroupRotate = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
-				shaderSGRotateFeatures->shaderSubgroupRotateClustered = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_UNIFORM_CONTROL_FLOW_FEATURES_KHR: {
@@ -644,20 +698,10 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				interlockFeatures->fragmentShaderShadingRateInterlock = false;    // Requires variable rate shading; not supported yet in Metal
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES_EXT: {
-				auto* hostImageCopyFeatures = (VkPhysicalDeviceHostImageCopyFeaturesEXT*)next;
-				hostImageCopyFeatures->hostImageCopy = true;
-				break;
-			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT: {
 				auto* extFeatures = (VkPhysicalDeviceImage2DViewOf3DFeaturesEXT*)next;
 				extFeatures->image2DViewOf3D = _metalFeatures.placementHeaps;
 				extFeatures->sampler2DViewOf3D = _metalFeatures.placementHeaps;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES_EXT: {
-				auto* pipelineRobustnessFeatures = (VkPhysicalDevicePipelineRobustnessFeaturesEXT*)next;
-				pipelineRobustnessFeatures->pipelineRobustness = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
@@ -692,12 +736,6 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
 				auto* texelBuffAlignFeatures = (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)next;
 				texelBuffAlignFeatures->texelBufferAlignment = _metalFeatures.texelBuffers && [_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)];
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
-				auto* divisorFeatures = (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)next;
-				divisorFeatures->vertexAttributeInstanceRateDivisor = true;
-				divisorFeatures->vertexAttributeInstanceRateZeroDivisor = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
@@ -851,27 +889,67 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps13.uniformTexelBufferOffsetSingleTexelAlignment = _texelBuffAlignProperties.uniformTexelBufferOffsetSingleTexelAlignment;
 	supportedProps13.maxBufferSize = _metalFeatures.maxMTLBufferSize;
 
+	// Create a SSOT for these Vulkan 1.4 properties, which can be queried via two mechanisms here.
+	VkPhysicalDeviceVulkan14Properties supportedProps14;
+	supportedProps14.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_PROPERTIES;
+	supportedProps14.pNext = nullptr;
+	supportedProps14.lineSubPixelPrecisionBits = 0;
+	supportedProps14.maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
+	supportedProps14.supportsNonZeroFirstInstance = true;
+	supportedProps14.maxPushDescriptors = _properties.limits.maxPerStageResources;
+	supportedProps14.dynamicRenderingLocalReadDepthStencilAttachments = false;
+	supportedProps14.dynamicRenderingLocalReadMultisampledAttachments = false;
+	supportedProps14.earlyFragmentMultisampleCoverageAfterSampleCounting = true;
+	supportedProps14.earlyFragmentSampleMaskTestBeforeSampleCounting = false;
+	supportedProps14.depthStencilSwizzleOneSupport = true;
+	supportedProps14.polygonModePointSize = true;
+	supportedProps14.nonStrictSinglePixelWideLinesUseParallelogram = false;
+	supportedProps14.nonStrictWideLinesUseParallelogram = false;
+	supportedProps14.blockTexelViewCompatibleMultipleLayers = false;
+	supportedProps14.maxCombinedImageSamplerDescriptorCount = 3;
+	supportedProps14.fragmentShadingRateClampCombinerInputs = false;
+	supportedProps14.defaultRobustnessStorageBuffers = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED;
+	supportedProps14.defaultRobustnessUniformBuffers = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED;
+	supportedProps14.defaultRobustnessVertexInputs = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED;
+	supportedProps14.defaultRobustnessImages = VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_ROBUST_IMAGE_ACCESS_2;
+	populateHostImageCopyProperties(&supportedProps14);
+
 	for (auto* next = (VkBaseOutStructure*)properties->pNext; next; next = next->pNext) {
 		switch ((uint32_t)next->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES: {
 				// Copy from supportedProps11, but keep pNext as is.
 				auto* pProps11 = (VkPhysicalDeviceVulkan11Properties*)next;
-				supportedProps11.pNext = pProps11->pNext;
+				auto* pNext = pProps11->pNext;
 				*pProps11 = supportedProps11;
+				pProps11->pNext = pNext;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES: {
 				// Copy from supportedProps12, but keep pNext as is.
 				auto* pProps12 = (VkPhysicalDeviceVulkan12Properties*)next;
-				supportedProps12.pNext = pProps12->pNext;
+				auto* pNext = pProps12->pNext;
 				*pProps12 = supportedProps12;
+				pProps12->pNext = pNext;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES: {
 				// Copy from supportedProps13, but keep pNext as is.
 				auto* pProps13 = (VkPhysicalDeviceVulkan13Properties*)next;
-				supportedProps13.pNext = pProps13->pNext;
+				auto* pNext = pProps13->pNext;
 				*pProps13 = supportedProps13;
+				pProps13->pNext = pNext;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_PROPERTIES: {
+				// Copy from supportedProps14, but keep pNext as is.
+				auto* pProps14 = (VkPhysicalDeviceVulkan14Properties*)next;
+				auto* pNext = pProps14->pNext;
+				*pProps14 = supportedProps14;
+				pProps14->pNext = pNext;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES: {
+				populateHostImageCopyProperties((VkPhysicalDeviceHostImageCopyProperties*)next);
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
@@ -916,6 +994,36 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES: {
 				auto* maintenance4Props = (VkPhysicalDeviceMaintenance4Properties*)next;
 				maintenance4Props->maxBufferSize = _metalFeatures.maxMTLBufferSize;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_PROPERTIES: {
+				auto* maintenance5Properties = (VkPhysicalDeviceMaintenance5Properties*)next;
+				maintenance5Properties->earlyFragmentMultisampleCoverageAfterSampleCounting = supportedProps14.earlyFragmentMultisampleCoverageAfterSampleCounting;
+				maintenance5Properties->earlyFragmentSampleMaskTestBeforeSampleCounting = supportedProps14.earlyFragmentSampleMaskTestBeforeSampleCounting;
+				maintenance5Properties->depthStencilSwizzleOneSupport = supportedProps14.depthStencilSwizzleOneSupport;
+				maintenance5Properties->polygonModePointSize = supportedProps14.polygonModePointSize;
+				maintenance5Properties->nonStrictSinglePixelWideLinesUseParallelogram = supportedProps14.nonStrictSinglePixelWideLinesUseParallelogram;
+				maintenance5Properties->nonStrictWideLinesUseParallelogram = supportedProps14.nonStrictWideLinesUseParallelogram;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_PROPERTIES: {
+				auto* maintenance6Properties = (VkPhysicalDeviceMaintenance6Properties*)next;
+				maintenance6Properties->blockTexelViewCompatibleMultipleLayers = supportedProps14.blockTexelViewCompatibleMultipleLayers;
+				maintenance6Properties->maxCombinedImageSamplerDescriptorCount = supportedProps14.maxCombinedImageSamplerDescriptorCount;
+				maintenance6Properties->fragmentShadingRateClampCombinerInputs = supportedProps14.fragmentShadingRateClampCombinerInputs;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_PROPERTIES: {
+				auto* pipelineRobustnessProps = (VkPhysicalDevicePipelineRobustnessProperties*)next;
+				pipelineRobustnessProps->defaultRobustnessStorageBuffers = supportedProps14.defaultRobustnessStorageBuffers;
+				pipelineRobustnessProps->defaultRobustnessUniformBuffers = supportedProps14.defaultRobustnessUniformBuffers;
+				pipelineRobustnessProps->defaultRobustnessVertexInputs = supportedProps14.defaultRobustnessVertexInputs;
+				pipelineRobustnessProps->defaultRobustnessImages = supportedProps14.defaultRobustnessImages;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES: {
+				auto* pushDescProps = (VkPhysicalDevicePushDescriptorProperties*)next;
+				pushDescProps->maxPushDescriptors = supportedProps14.maxPushDescriptors;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
@@ -1042,23 +1150,6 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 }
                 break;
             }
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_PROPERTIES_KHR: {
-                auto* maintenance5Properties = (VkPhysicalDeviceMaintenance5PropertiesKHR*)next;
-                maintenance5Properties->earlyFragmentMultisampleCoverageAfterSampleCounting = true;
-                maintenance5Properties->earlyFragmentSampleMaskTestBeforeSampleCounting = false;
-                maintenance5Properties->depthStencilSwizzleOneSupport = true;
-                maintenance5Properties->polygonModePointSize = true;
-                maintenance5Properties->nonStrictSinglePixelWideLinesUseParallelogram = false;
-                maintenance5Properties->nonStrictWideLinesUseParallelogram = false;
-                break;
-            }
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_PROPERTIES_KHR: {
-                auto* maintenance6Properties = (VkPhysicalDeviceMaintenance6PropertiesKHR*)next;
-                maintenance6Properties->blockTexelViewCompatibleMultipleLayers = false;
-                maintenance6Properties->maxCombinedImageSamplerDescriptorCount = 3;
-                maintenance6Properties->fragmentShadingRateClampCombinerInputs = false;
-                break;
-            }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_PROPERTIES_KHR: {
                 auto* maintenance7Properties = (VkPhysicalDeviceMaintenance7PropertiesKHR*)next;
                 maintenance7Properties->robustFragmentShadingRateAttachmentAccess = false;
@@ -1107,20 +1198,15 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				shaderIntDotProperties->integerDotProductAccumulatingSaturating64BitMixedSignednessAccelerated = supportedProps13.integerDotProductAccumulatingSaturating64BitMixedSignednessAccelerated;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
-				auto* pushDescProps = (VkPhysicalDevicePushDescriptorPropertiesKHR*)next;
-				pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES: {
+				auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorProperties*)next;
+				divisorProps->maxVertexAttribDivisor = supportedProps14.maxVertexAttribDivisor;
+				divisorProps->supportsNonZeroFirstInstance = supportedProps14.supportsNonZeroFirstInstance;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_KHR: {
 				auto* portabilityProps = (VkPhysicalDevicePortabilitySubsetPropertiesKHR*)next;
 				portabilityProps->minVertexInputBindingStrideAlignment = (uint32_t)_metalFeatures.vertexStrideAlignment;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_KHR: {
-				auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorPropertiesKHR*)next;
-				divisorProps->maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
-				divisorProps->supportsNonZeroFirstInstance = VK_TRUE;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT: {
@@ -1131,18 +1217,6 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT: {
 				auto* extMemHostProps = (VkPhysicalDeviceExternalMemoryHostPropertiesEXT*)next;
 				extMemHostProps->minImportedHostPointerAlignment = _metalFeatures.hostMemoryPageSize;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES_EXT: {
-				populateHostImageCopyProperties((VkPhysicalDeviceHostImageCopyPropertiesEXT*)next);
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_PROPERTIES_EXT: {
-				auto* pipelineRobustnessProps = (VkPhysicalDevicePipelineRobustnessPropertiesEXT*)next;
-				pipelineRobustnessProps->defaultRobustnessStorageBuffers = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT;
-				pipelineRobustnessProps->defaultRobustnessUniformBuffers = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT;
-				pipelineRobustnessProps->defaultRobustnessVertexInputs = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT;
-				pipelineRobustnessProps->defaultRobustnessImages = VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_ROBUST_IMAGE_ACCESS_2_EXT;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
@@ -1163,8 +1237,9 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
+				// VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT is different than the promoted VkPhysicalDeviceVertexAttributeDivisorProperties.
 				auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)next;
-				divisorProps->maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
+				divisorProps->maxVertexAttribDivisor = supportedProps14.maxVertexAttribDivisor;
 				break;
 			}
 			default:
@@ -1173,7 +1248,8 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	}
 }
 
-void MVKPhysicalDevice::populateHostImageCopyProperties(VkPhysicalDeviceHostImageCopyPropertiesEXT* pHostImageCopyProps) {
+template<typename HostImageCopyProps>
+void MVKPhysicalDevice::populateHostImageCopyProperties(HostImageCopyProps* pHostImageCopyProps) {
 
 	// Metal lacks the concept of image layouts, and so does not restrict
 	// host copy transfers based on them. Assume all image layouts are supported.
@@ -1316,8 +1392,8 @@ void MVKPhysicalDevice::populateSubgroupProperties(VkPhysicalDeviceVulkan11Prope
 													VK_SUBGROUP_FEATURE_BALLOT_BIT |
 													VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
 													VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT |
-													VK_SUBGROUP_FEATURE_ROTATE_BIT_KHR |
-													VK_SUBGROUP_FEATURE_ROTATE_CLUSTERED_BIT_KHR);
+													VK_SUBGROUP_FEATURE_ROTATE_BIT |
+													VK_SUBGROUP_FEATURE_ROTATE_CLUSTERED_BIT);
 	}
 	if (_metalFeatures.quadPermute && _metalFeatures.simdReduction) {
 		// Note: Only quad clusters are currently supported by SPIRV-Cross for reduce.
@@ -1590,11 +1666,11 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
                 samplerYcbcrConvProps->combinedImageSamplerDescriptorCount = std::max(_pixelFormats.getChromaSubsamplingPlaneCount(pImageFormatInfo->format), (uint8_t)1u);
                 break;
             }
-			case VK_STRUCTURE_TYPE_HOST_IMAGE_COPY_DEVICE_PERFORMANCE_QUERY_EXT: {
-				// Under Metal, VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT does not affect either memory layout
+			case VK_STRUCTURE_TYPE_HOST_IMAGE_COPY_DEVICE_PERFORMANCE_QUERY: {
+				// Under Metal, VK_IMAGE_USAGE_HOST_TRANSFER_BIT does not affect either memory layout
 				// or access, therefore, both identicalMemoryLayout and optimalDeviceAccess should be VK_TRUE.
 				// Also, per Vulkan spec, if identicalMemoryLayout is VK_TRUE, optimalDeviceAccess must also be VK_TRUE.
-				auto* hostImgCopyPerfQry = (VkHostImageCopyDevicePerformanceQueryEXT*)nextProps;
+				auto* hostImgCopyPerfQry = (VkHostImageCopyDevicePerformanceQuery*)nextProps;
 				hostImgCopyPerfQry->optimalDeviceAccess = VK_TRUE;
 				hostImgCopyPerfQry->identicalMemoryLayout = VK_TRUE;
 				break;
@@ -5403,6 +5479,25 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				enablePromotedFeatures(DynamicRendering, dynamicRendering, 1);
 				enablePromotedFeatures(ShaderIntegerDotProduct, shaderIntegerDotProduct, 1);
 				enablePromotedFeatures(Maintenance4, maintenance4, 1);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES: {
+				auto& pdVulkan14NoExtFeatures = _physicalDevice->_vulkan14NoExtFeatures;
+				auto* requestedFeatures = (VkPhysicalDeviceVulkan14Features*)next;
+				enablePromotedFeatures(GlobalPriorityQuery, globalPriorityQuery, 1);
+				enablePromotedFeatures(ShaderSubgroupRotate, shaderSubgroupRotate, 2);
+//				enablePromotedFeatures(ShaderFloatControls2, shaderFloatControls2, 1);
+				enablePromotedFeatures(ShaderExpectAssume, shaderExpectAssume, 1);
+//				enablePromotedFeatures(LineRasterization, rectangularLines, 6);
+				enablePromotedFeatures(VertexAttributeDivisor, vertexAttributeInstanceRateDivisor, 2);
+				enablePromotedFeatures(IndexTypeUint8, indexTypeUint8, 1);
+//				enablePromotedFeatures(DynamicRenderingLocalRead, dynamicRenderingLocalRead, 1);
+				enablePromotedFeatures(Maintenance5, maintenance5, 1);
+				enablePromotedFeatures(Maintenance6, maintenance6, 1);
+//				enablePromotedFeatures(PipelineProtectedAccess, pipelineProtectedAccess, 1);
+				enablePromotedFeatures(PipelineRobustness, pipelineRobustness, 1);
+				enablePromotedFeatures(HostImageCopy, hostImageCopy, 1);
+				enablePromotedFeatures(Vulkan14NoExt, pushDescriptor, 1);
 				break;
 			}
 
