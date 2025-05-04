@@ -460,7 +460,7 @@ protected:
 	const MVKExtensionList _supportedExtensions;
 	MVKPixelFormats _pixelFormats;
 	VkPhysicalDeviceFeatures _features;
-	MVKPhysicalDeviceVulkan12FeaturesNoExt _vulkan12FeaturesNoExt;
+	MVKPhysicalDeviceVulkan12FeaturesNoExt _vulkan12NoExtFeatures;
 	MVKPhysicalDeviceMetalFeatures _metalFeatures;
 	VkPhysicalDeviceProperties _properties;
 	VkPhysicalDeviceTexelBufferAlignmentProperties _texelBuffAlignProperties;
@@ -939,7 +939,7 @@ protected:
 	MVKPhysicalDevice* _physicalDevice = nullptr;
 	MVKExtensionList _enabledExtensions;
 	VkPhysicalDeviceFeatures _enabledFeatures;
-	MVKPhysicalDeviceVulkan12FeaturesNoExt _enabledVulkan12FeaturesNoExt;
+	MVKPhysicalDeviceVulkan12FeaturesNoExt _enabledVulkan12NoExtFeatures;
 
 	// List of extended device feature enabling structures, as member variables.
 #define MVK_DEVICE_FEATURE(structName, enumName, flagCount) \
