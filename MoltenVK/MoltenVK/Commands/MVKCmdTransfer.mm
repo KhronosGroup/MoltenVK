@@ -107,6 +107,10 @@ static inline MTLPixelFormat getDepthStencilAspectFormat(const MTLPixelFormat fo
         if (aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) return MTLPixelFormatDepth32Float;
         if (aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) return MTLPixelFormatStencil8;
     }
+#if MVK_MACOS
+    if (format == MTLPixelFormatDepth24Unorm_Stencil8 && (aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT))
+        return MTLPixelFormatStencil8;
+#endif
     return format;
 }
 
@@ -115,6 +119,7 @@ inline VkResult MVKCmdCopyImage<N>::validate(MVKCommandBuffer* cmdBuff, const Vk
     uint8_t srcPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(region->srcSubresource.aspectMask);
     uint8_t dstPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(region->dstSubresource.aspectMask);
 
+    // If the format is combined depth-stencil, use the format based on the aspect for the following checks.
     auto srcFormat = getDepthStencilAspectFormat(_srcImage->getMTLPixelFormat(srcPlaneIndex), region->srcSubresource.aspectMask);
     auto dstFormat = getDepthStencilAspectFormat(_dstImage->getMTLPixelFormat(dstPlaneIndex), region->dstSubresource.aspectMask);
 
@@ -144,20 +149,20 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
         
         MTLPixelFormat srcMTLPixFmt = _srcImage->getMTLPixelFormat(srcPlaneIndex);
         bool isSrcCompressed = _srcImage->getIsCompressed();
-        bool isSrcCombinedDepthStencil = srcMTLPixFmt == MTLPixelFormatDepth32Float_Stencil8;
+        bool isSrcCombinedDepthStencilAspect = getDepthStencilAspectFormat(srcMTLPixFmt, vkIC.srcSubresource.aspectMask) != srcMTLPixFmt;
         bool canReinterpretSrc = _srcImage->hasPixelFormatView(srcPlaneIndex);
 
         MTLPixelFormat dstMTLPixFmt = _dstImage->getMTLPixelFormat(dstPlaneIndex);
         bool isDstCompressed = _dstImage->getIsCompressed();
-        bool isDstCombinedDepthStencil = dstMTLPixFmt == MTLPixelFormatDepth32Float_Stencil8;
+        bool isDstCombinedDepthStencilAspect = getDepthStencilAspectFormat(dstMTLPixFmt, vkIC.dstSubresource.aspectMask) != dstMTLPixFmt;
         bool canReinterpretDst = _dstImage->hasPixelFormatView(dstPlaneIndex);
 
         bool isEitherCompressed = isSrcCompressed || isDstCompressed;
-        bool isOneCombinedDepthStencil = isSrcCombinedDepthStencil != isDstCombinedDepthStencil;
+        bool isOneCombinedDepthStencilAspect = isSrcCombinedDepthStencilAspect != isDstCombinedDepthStencilAspect;
         bool canReinterpret = canReinterpretSrc || canReinterpretDst;
 
         // If source and destination can't be reinterpreted to matching formats use a temporary intermediary buffer
-        bool useTempBuffer = (srcMTLPixFmt != dstMTLPixFmt) && (isEitherCompressed || isOneCombinedDepthStencil || !canReinterpret);
+        bool useTempBuffer = (srcMTLPixFmt != dstMTLPixFmt) && (isEitherCompressed || isOneCombinedDepthStencilAspect || !canReinterpret);
 
         if (useTempBuffer) {
             // Add copy from source image to temp buffer.
