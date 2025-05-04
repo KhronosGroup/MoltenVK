@@ -2645,7 +2645,7 @@ void MVKPipelineCache::markDirty() {
 }
 
 VkResult MVKPipelineCache::mergePipelineCaches(uint32_t srcCacheCount, const VkPipelineCache* pSrcCaches) {
-	if (_isExternallySynchronized) {
+	if (!_isMergeInternallySynchronized) {
 		return mergePipelineCachesImpl(srcCacheCount, pSrcCaches);
 	} else {
 		lock_guard<mutex> lock(_shaderCacheLock);
@@ -2894,7 +2894,9 @@ void serialize(Archive & archive, MVKCompressor<C>& comp) {
 MVKPipelineCache::MVKPipelineCache(MVKDevice* device, const VkPipelineCacheCreateInfo* pCreateInfo) :
 	MVKVulkanAPIDeviceObject(device),
 	_isExternallySynchronized(getEnabledPipelineCreationCacheControlFeatures().pipelineCreationCacheControl &&
-							  mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT)) {
+							  mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT)),
+	_isMergeInternallySynchronized(getEnabledPipelineCreationCacheControlFeatures().pipelineCreationCacheControl &&
+								   mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_PIPELINE_CACHE_CREATE_INTERNALLY_SYNCHRONIZED_MERGE_BIT_KHR)) {
 
 	readData(pCreateInfo);
 }

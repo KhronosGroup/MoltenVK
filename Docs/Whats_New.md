@@ -21,6 +21,7 @@ Released TBD
 - Add support for extensions:
 	- `VK_KHR_global_priority`
 	- `VK_KHR_maintenance5`
+	- `VK_KHR_maintenance8`
 	- `VK_KHR_present_id`
 	- `VK_KHR_present_wait`
 	- `VK_KHR_shader_relaxed_extended_instruction`

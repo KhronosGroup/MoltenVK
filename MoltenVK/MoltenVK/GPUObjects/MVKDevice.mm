@@ -515,6 +515,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				maintenance7Features->maintenance7 = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_8_FEATURES_KHR: {
+				auto* maintenance8Features = (VkPhysicalDeviceMaintenance8FeaturesKHR*)next;
+				maintenance8Features->maintenance8 = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR: {
 				auto* portabilityFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesKHR*)next;
 				portabilityFeatures->constantAlphaColorBlendFactors = true;

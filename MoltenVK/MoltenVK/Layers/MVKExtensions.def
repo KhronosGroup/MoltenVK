@@ -81,6 +81,7 @@ MVK_EXTENSION(KHR_maintenance4,                        KHR_MAINTENANCE_4,       
 MVK_EXTENSION(KHR_maintenance5,                        KHR_MAINTENANCE_5,                       DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_maintenance6,                        KHR_MAINTENANCE_6,                       DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_maintenance7,                        KHR_MAINTENANCE_7,                       DEVICE,   10.11,  8.0,  1.0)
+MVK_EXTENSION(KHR_maintenance8,                        KHR_MAINTENANCE_8,                       DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_map_memory2,                         KHR_MAP_MEMORY_2,                        DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_multiview,                           KHR_MULTIVIEW,                           DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_portability_subset,                  KHR_PORTABILITY_SUBSET,                  DEVICE,   10.11,  8.0,  1.0)
