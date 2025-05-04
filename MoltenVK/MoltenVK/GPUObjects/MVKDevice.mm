@@ -555,6 +555,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				shaderExpectAssume->shaderExpectAssume = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MAXIMAL_RECONVERGENCE_FEATURES_KHR: {
+				auto* shaderReconvergenceFeatures = (VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR*)next;
+				shaderReconvergenceFeatures->shaderMaximalReconvergence = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_RELAXED_EXTENDED_INSTRUCTION_FEATURES_KHR: {
 				auto* shaderRelaxedFeatures = (VkPhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR*)next;
 				shaderRelaxedFeatures->shaderRelaxedExtendedInstruction = true;
