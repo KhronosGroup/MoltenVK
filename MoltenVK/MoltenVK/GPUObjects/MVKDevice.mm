@@ -557,7 +557,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MAXIMAL_RECONVERGENCE_FEATURES_KHR: {
 				auto* shaderReconvergenceFeatures = (VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR*)next;
-				shaderReconvergenceFeatures->shaderMaximalReconvergence = true;
+				shaderReconvergenceFeatures->shaderMaximalReconvergence = _gpuCapabilities.isAppleGPU;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_RELAXED_EXTENDED_INSTRUCTION_FEATURES_KHR: {
@@ -573,7 +573,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_UNIFORM_CONTROL_FLOW_FEATURES_KHR: {
 				auto* shaderSGUniformFeatures = (VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR*)next;
-				shaderSGUniformFeatures->shaderSubgroupUniformControlFlow = true;
+				shaderSGUniformFeatures->shaderSubgroupUniformControlFlow = _gpuCapabilities.isAppleGPU;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
@@ -3672,6 +3672,10 @@ void MVKPhysicalDevice::initExtensions() {
 	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_supportedExtensions;
 	pWritableExtns->disableAllButEnabledDeviceExtensions();
 
+	if (!_gpuCapabilities.isAppleGPU) {
+		pWritableExtns->vk_KHR_shader_subgroup_uniform_control_flow.enabled = false;
+		pWritableExtns->vk_KHR_shader_maximal_reconvergence.enabled = false;
+	}
 	if (!_metalFeatures.samplerMirrorClampToEdge) {
 		pWritableExtns->vk_KHR_sampler_mirror_clamp_to_edge.enabled = false;
 	}
