@@ -618,6 +618,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				shaderReconvergenceFeatures->shaderMaximalReconvergence = _gpuCapabilities.isAppleGPU;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_QUAD_CONTROL_FEATURES_KHR: {
+				auto* shaderQuadControlFeatures = (VkPhysicalDeviceShaderQuadControlFeaturesKHR*)next;
+				shaderQuadControlFeatures->shaderQuadControl = _gpuCapabilities.isAppleGPU && _metalFeatures.quadPermute;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_RELAXED_EXTENDED_INSTRUCTION_FEATURES_KHR: {
 				auto* shaderRelaxedFeatures = (VkPhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR*)next;
 				shaderRelaxedFeatures->shaderRelaxedExtendedInstruction = true;
@@ -3755,6 +3760,9 @@ void MVKPhysicalDevice::initExtensions() {
 	if (!_gpuCapabilities.isAppleGPU) {
 		pWritableExtns->vk_KHR_shader_subgroup_uniform_control_flow.enabled = false;
 		pWritableExtns->vk_KHR_shader_maximal_reconvergence.enabled = false;
+	}
+	if (!_gpuCapabilities.isAppleGPU || !_metalFeatures.quadPermute) {
+		pWritableExtns->vk_KHR_shader_quad_control.enabled = false;
 	}
 	if (!_metalFeatures.samplerMirrorClampToEdge) {
 		pWritableExtns->vk_KHR_sampler_mirror_clamp_to_edge.enabled = false;
