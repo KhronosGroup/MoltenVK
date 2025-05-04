@@ -279,7 +279,7 @@ void MVKSwapchain::endPresentation(const MVKImagePresentInfo& presentInfo, uint6
 	_presentHistoryIndex = (_presentHistoryIndex + 1) % kMaxPresentationHistory;
 
 	if (presentInfo.presentId != 0) {
-		std::unique_lock lock(_currentPresentIdMutex);
+		std::unique_lock pidLock(_currentPresentIdMutex);
 		_currentPresentId = std::max(_currentPresentId, presentInfo.presentId);
 		_currentPresentIdCondVar.notify_all();
 	}
