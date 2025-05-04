@@ -194,8 +194,8 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 	VkPhysicalDeviceVulkan12Features supportedFeats12 = {
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
 		.pNext = nullptr,
-		.samplerMirrorClampToEdge = _vulkan12FeaturesNoExt.samplerMirrorClampToEdge,
-		.drawIndirectCount = _vulkan12FeaturesNoExt.drawIndirectCount,
+		.samplerMirrorClampToEdge = _vulkan12NoExtFeatures.samplerMirrorClampToEdge,
+		.drawIndirectCount = _vulkan12NoExtFeatures.drawIndirectCount,
 		.storageBuffer8BitAccess = true,
 		.uniformAndStorageBuffer8BitAccess = true,
 		.storagePushConstant8 = true,
@@ -203,7 +203,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 		.shaderSharedInt64Atomics = false,
 		.shaderFloat16 = true,
 		.shaderInt8 = true,
-		.descriptorIndexing = _vulkan12FeaturesNoExt.descriptorIndexing,
+		.descriptorIndexing = _vulkan12NoExtFeatures.descriptorIndexing,
 		.shaderInputAttachmentArrayDynamicIndexing = _metalFeatures.arrayOfTextures,
 		.shaderUniformTexelBufferArrayDynamicIndexing = _metalFeatures.arrayOfTextures,
 		.shaderStorageTexelBufferArrayDynamicIndexing = _metalFeatures.arrayOfTextures,
@@ -224,7 +224,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 		.descriptorBindingPartiallyBound = true,
 		.descriptorBindingVariableDescriptorCount = true,
 		.runtimeDescriptorArray = true,
-		.samplerFilterMinmax = _vulkan12FeaturesNoExt.samplerFilterMinmax,
+		.samplerFilterMinmax = _vulkan12NoExtFeatures.samplerFilterMinmax,
 		.scalarBlockLayout = true,
 		.imagelessFramebuffer = true,
 		.uniformBufferStandardLayout = true,
@@ -238,9 +238,9 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 		.vulkanMemoryModel = true,
 		.vulkanMemoryModelDeviceScope = true,
 		.vulkanMemoryModelAvailabilityVisibilityChains = false,
-		.shaderOutputViewportIndex = _vulkan12FeaturesNoExt.shaderOutputViewportIndex,
-		.shaderOutputLayer = _vulkan12FeaturesNoExt.shaderOutputLayer,
-		.subgroupBroadcastDynamicId = _vulkan12FeaturesNoExt.subgroupBroadcastDynamicId,
+		.shaderOutputViewportIndex = _vulkan12NoExtFeatures.shaderOutputViewportIndex,
+		.shaderOutputLayer = _vulkan12NoExtFeatures.shaderOutputLayer,
+		.subgroupBroadcastDynamicId = _vulkan12NoExtFeatures.subgroupBroadcastDynamicId,
 	};
 
 	// Create a SSOT for these Vulkan 1.3 features, which can be queried via two mechanisms here.
@@ -2927,14 +2927,14 @@ void MVKPhysicalDevice::initFeatures() {
 #endif
 
 	// Additional non-extension Vulkan 1.2 features.
-	mvkClear(&_vulkan12FeaturesNoExt);		// Start with everything cleared
-	_vulkan12FeaturesNoExt.samplerMirrorClampToEdge = _metalFeatures.samplerMirrorClampToEdge;
-	_vulkan12FeaturesNoExt.drawIndirectCount = false;
-	_vulkan12FeaturesNoExt.descriptorIndexing = _metalFeatures.arrayOfTextures && _metalFeatures.arrayOfSamplers;
-	_vulkan12FeaturesNoExt.samplerFilterMinmax = false;
-	_vulkan12FeaturesNoExt.shaderOutputViewportIndex = _features.multiViewport;
-	_vulkan12FeaturesNoExt.shaderOutputLayer = _metalFeatures.layeredRendering;
-	_vulkan12FeaturesNoExt.subgroupBroadcastDynamicId = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
+	mvkClear(&_vulkan12NoExtFeatures);		// Start with everything cleared
+	_vulkan12NoExtFeatures.samplerMirrorClampToEdge = _metalFeatures.samplerMirrorClampToEdge;
+	_vulkan12NoExtFeatures.drawIndirectCount = false;
+	_vulkan12NoExtFeatures.descriptorIndexing = _metalFeatures.arrayOfTextures && _metalFeatures.arrayOfSamplers;
+	_vulkan12NoExtFeatures.samplerFilterMinmax = false;
+	_vulkan12NoExtFeatures.shaderOutputViewportIndex = _features.multiViewport;
+	_vulkan12NoExtFeatures.shaderOutputLayer = _metalFeatures.layeredRendering;
+	_vulkan12NoExtFeatures.subgroupBroadcastDynamicId = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
 
 }
 
@@ -5295,7 +5295,7 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 
 #include "MVKDeviceFeatureStructs.def"
 
-	mvkClear(&_enabledVulkan12FeaturesNoExt);
+	mvkClear(&_enabledVulkan12NoExtFeatures);
 
 	sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 	mvkClear(&_enabledFeatures);
@@ -5324,164 +5324,65 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 							   &pdFeats2.features.robustBufferAccess, 55);
 				break;
 			}
+
+	// Enable promoted Vulkan version features.
+#define enablePromotedFeatures(structName, startFeat, count)  \
+    enableFeatures(requestedFeatures,  \
+                   &_enabled##structName##Features.startFeat,  \
+                   &requestedFeatures->startFeat,  \
+                   &pd##structName##Features.startFeat, count)
+
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: {
 				auto* requestedFeatures = (VkPhysicalDeviceVulkan11Features*)next;
-				enableFeatures(requestedFeatures,
-							   &_enabled16BitStorageFeatures.storageBuffer16BitAccess,
-							   &requestedFeatures->storageBuffer16BitAccess,
-							   &pd16BitStorageFeatures.storageBuffer16BitAccess, 4);
-				enableFeatures(requestedFeatures,
-							   &_enabledMultiviewFeatures.multiview,
-							   &requestedFeatures->multiview,
-							   &pdMultiviewFeatures.multiview, 3);
-				enableFeatures(requestedFeatures,
-							   &_enabledVariablePointerFeatures.variablePointersStorageBuffer,
-							   &requestedFeatures->variablePointersStorageBuffer,
-							   &pdVariablePointerFeatures.variablePointersStorageBuffer, 2);
-				enableFeatures(requestedFeatures,
-							   &_enabledProtectedMemoryFeatures.protectedMemory,
-							   &requestedFeatures->protectedMemory,
-							   &pdProtectedMemoryFeatures.protectedMemory, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledSamplerYcbcrConversionFeatures.samplerYcbcrConversion,
-							   &requestedFeatures->samplerYcbcrConversion,
-							   &pdSamplerYcbcrConversionFeatures.samplerYcbcrConversion, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledShaderDrawParametersFeatures.shaderDrawParameters,
-							   &requestedFeatures->shaderDrawParameters,
-							   &pdShaderDrawParametersFeatures.shaderDrawParameters, 1);
+				enablePromotedFeatures(16BitStorage, storageBuffer16BitAccess, 4);
+				enablePromotedFeatures(Multiview, multiview, 3);
+				enablePromotedFeatures(VariablePointer, variablePointersStorageBuffer, 2);
+				enablePromotedFeatures(ProtectedMemory, protectedMemory, 1);
+				enablePromotedFeatures(SamplerYcbcrConversion, samplerYcbcrConversion, 1);
+				enablePromotedFeatures(ShaderDrawParameters, shaderDrawParameters, 1);
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
-				auto& pdvulkan12FeaturesNoExt = _physicalDevice->_vulkan12FeaturesNoExt;
+				auto& pdVulkan12NoExtFeatures = _physicalDevice->_vulkan12NoExtFeatures;
 				auto* requestedFeatures = (VkPhysicalDeviceVulkan12Features*)next;
-				enableFeatures(requestedFeatures,
-							   &_enabledVulkan12FeaturesNoExt.samplerMirrorClampToEdge,
-							   &requestedFeatures->samplerMirrorClampToEdge,
-							   &pdvulkan12FeaturesNoExt.samplerMirrorClampToEdge, 2);
-				enableFeatures(requestedFeatures,
-							   &_enabled8BitStorageFeatures.storageBuffer8BitAccess,
-							   &requestedFeatures->storageBuffer8BitAccess,
-							   &pd8BitStorageFeatures.storageBuffer8BitAccess, 3);
-				enableFeatures(requestedFeatures,
-							   &_enabledShaderAtomicInt64Features.shaderBufferInt64Atomics,
-							   &requestedFeatures->shaderBufferInt64Atomics,
-							   &pdShaderAtomicInt64Features.shaderBufferInt64Atomics, 2);
-				enableFeatures(requestedFeatures,
-							   &_enabledShaderFloat16Int8Features.shaderFloat16,
-							   &requestedFeatures->shaderFloat16,
-							   &pdShaderFloat16Int8Features.shaderFloat16, 2);
-				enableFeatures(requestedFeatures,
-							   &_enabledVulkan12FeaturesNoExt.descriptorIndexing,
-							   &requestedFeatures->descriptorIndexing,
-							   &pdvulkan12FeaturesNoExt.descriptorIndexing, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledDescriptorIndexingFeatures.shaderInputAttachmentArrayDynamicIndexing,
-							   &requestedFeatures->shaderInputAttachmentArrayDynamicIndexing,
-							   &pdDescriptorIndexingFeatures.shaderInputAttachmentArrayDynamicIndexing, 20);
-				enableFeatures(requestedFeatures,
-							   &_enabledVulkan12FeaturesNoExt.samplerFilterMinmax,
-							   &requestedFeatures->samplerFilterMinmax,
-							   &pdvulkan12FeaturesNoExt.samplerFilterMinmax, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledScalarBlockLayoutFeatures.scalarBlockLayout,
-							   &requestedFeatures->scalarBlockLayout,
-							   &pdScalarBlockLayoutFeatures.scalarBlockLayout, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledImagelessFramebufferFeatures.imagelessFramebuffer,
-							   &requestedFeatures->imagelessFramebuffer,
-							   &pdImagelessFramebufferFeatures.imagelessFramebuffer, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledUniformBufferStandardLayoutFeatures.uniformBufferStandardLayout,
-							   &requestedFeatures->uniformBufferStandardLayout,
-							   &pdUniformBufferStandardLayoutFeatures.uniformBufferStandardLayout, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledShaderSubgroupExtendedTypesFeatures.shaderSubgroupExtendedTypes,
-							   &requestedFeatures->shaderSubgroupExtendedTypes,
-							   &pdShaderSubgroupExtendedTypesFeatures.shaderSubgroupExtendedTypes, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledSeparateDepthStencilLayoutsFeatures.separateDepthStencilLayouts,
-							   &requestedFeatures->separateDepthStencilLayouts,
-							   &pdSeparateDepthStencilLayoutsFeatures.separateDepthStencilLayouts, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledHostQueryResetFeatures.hostQueryReset,
-							   &requestedFeatures->hostQueryReset,
-							   &pdHostQueryResetFeatures.hostQueryReset, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledTimelineSemaphoreFeatures.timelineSemaphore,
-							   &requestedFeatures->timelineSemaphore,
-							   &pdTimelineSemaphoreFeatures.timelineSemaphore, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledBufferDeviceAddressFeatures.bufferDeviceAddress,
-							   &requestedFeatures->bufferDeviceAddress,
-							   &pdBufferDeviceAddressFeatures.bufferDeviceAddress, 3);
-				enableFeatures(requestedFeatures,
-							   &_enabledVulkanMemoryModelFeatures.vulkanMemoryModel,
-							   &requestedFeatures->vulkanMemoryModel,
-							   &pdVulkanMemoryModelFeatures.vulkanMemoryModel, 3);
-				enableFeatures(requestedFeatures,
-							   &_enabledVulkan12FeaturesNoExt.shaderOutputViewportIndex,
-							   &requestedFeatures->shaderOutputViewportIndex,
-							   &pdvulkan12FeaturesNoExt.shaderOutputViewportIndex, 3);
+				enablePromotedFeatures(Vulkan12NoExt, samplerMirrorClampToEdge, 2);
+				enablePromotedFeatures(8BitStorage, storageBuffer8BitAccess, 3);
+				enablePromotedFeatures(ShaderAtomicInt64, shaderBufferInt64Atomics, 2);
+				enablePromotedFeatures(ShaderFloat16Int8, shaderFloat16, 2);
+				enablePromotedFeatures(Vulkan12NoExt, descriptorIndexing, 1);
+				enablePromotedFeatures(DescriptorIndexing, shaderInputAttachmentArrayDynamicIndexing, 20);
+				enablePromotedFeatures(Vulkan12NoExt, samplerFilterMinmax, 1);
+				enablePromotedFeatures(ScalarBlockLayout, scalarBlockLayout, 1);
+				enablePromotedFeatures(ImagelessFramebuffer, imagelessFramebuffer, 1);
+				enablePromotedFeatures(UniformBufferStandardLayout, uniformBufferStandardLayout, 1);
+				enablePromotedFeatures(ShaderSubgroupExtendedTypes, shaderSubgroupExtendedTypes, 1);
+				enablePromotedFeatures(SeparateDepthStencilLayouts, separateDepthStencilLayouts, 1);
+				enablePromotedFeatures(HostQueryReset, hostQueryReset, 1);
+				enablePromotedFeatures(TimelineSemaphore, timelineSemaphore, 1);
+				enablePromotedFeatures(BufferDeviceAddress, bufferDeviceAddress, 3);
+				enablePromotedFeatures(VulkanMemoryModel, vulkanMemoryModel, 3);
+				enablePromotedFeatures(Vulkan12NoExt, shaderOutputViewportIndex, 3);
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES: {
 				auto* requestedFeatures = (VkPhysicalDeviceVulkan13Features*)next;
-				enableFeatures(requestedFeatures,
-							   &_enabledImageRobustnessFeatures.robustImageAccess,
-							   &requestedFeatures->robustImageAccess,
-							   &pdImageRobustnessFeatures.robustImageAccess, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledInlineUniformBlockFeatures.inlineUniformBlock,
-							   &requestedFeatures->inlineUniformBlock,
-							   &pdInlineUniformBlockFeatures.inlineUniformBlock, 2);
-				enableFeatures(requestedFeatures,
-							   &_enabledPipelineCreationCacheControlFeatures.pipelineCreationCacheControl,
-							   &requestedFeatures->pipelineCreationCacheControl,
-							   &pdPipelineCreationCacheControlFeatures.pipelineCreationCacheControl, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledPrivateDataFeatures.privateData,
-							   &requestedFeatures->privateData,
-							   &pdPrivateDataFeatures.privateData, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledShaderDemoteToHelperInvocationFeatures.shaderDemoteToHelperInvocation,
-							   &requestedFeatures->shaderDemoteToHelperInvocation,
-							   &pdShaderDemoteToHelperInvocationFeatures.shaderDemoteToHelperInvocation, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledShaderTerminateInvocationFeatures.shaderTerminateInvocation,
-							   &requestedFeatures->shaderTerminateInvocation,
-							   &pdShaderTerminateInvocationFeatures.shaderTerminateInvocation, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledSubgroupSizeControlFeatures.subgroupSizeControl,
-							   &requestedFeatures->subgroupSizeControl,
-							   &pdSubgroupSizeControlFeatures.subgroupSizeControl, 2);
-				enableFeatures(requestedFeatures,
-							   &_enabledSynchronization2Features.synchronization2,
-							   &requestedFeatures->synchronization2,
-							   &pdSynchronization2Features.synchronization2, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledTextureCompressionASTCHDRFeatures.textureCompressionASTC_HDR,
-							   &requestedFeatures->textureCompressionASTC_HDR,
-							   &pdTextureCompressionASTCHDRFeatures.textureCompressionASTC_HDR, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledZeroInitializeWorkgroupMemoryFeatures.shaderZeroInitializeWorkgroupMemory,
-							   &requestedFeatures->shaderZeroInitializeWorkgroupMemory,
-							   &pdZeroInitializeWorkgroupMemoryFeatures.shaderZeroInitializeWorkgroupMemory, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledDynamicRenderingFeatures.dynamicRendering,
-							   &requestedFeatures->dynamicRendering,
-							   &pdDynamicRenderingFeatures.dynamicRendering, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledShaderIntegerDotProductFeatures.shaderIntegerDotProduct,
-							   &requestedFeatures->shaderIntegerDotProduct,
-							   &pdShaderIntegerDotProductFeatures.shaderIntegerDotProduct, 1);
-				enableFeatures(requestedFeatures,
-							   &_enabledMaintenance4Features.maintenance4,
-							   &requestedFeatures->maintenance4,
-							   &pdMaintenance4Features.maintenance4, 1);
+				enablePromotedFeatures(ImageRobustness, robustImageAccess, 1);
+				enablePromotedFeatures(InlineUniformBlock, inlineUniformBlock, 2);
+				enablePromotedFeatures(PipelineCreationCacheControl, pipelineCreationCacheControl, 1);
+				enablePromotedFeatures(PrivateData, privateData, 1);
+				enablePromotedFeatures(ShaderDemoteToHelperInvocation, shaderDemoteToHelperInvocation, 1);
+				enablePromotedFeatures(ShaderTerminateInvocation, shaderTerminateInvocation, 1);
+				enablePromotedFeatures(SubgroupSizeControl, subgroupSizeControl, 2);
+				enablePromotedFeatures(Synchronization2, synchronization2, 1);
+				enablePromotedFeatures(TextureCompressionASTCHDR, textureCompressionASTC_HDR, 1);
+				enablePromotedFeatures(ZeroInitializeWorkgroupMemory, shaderZeroInitializeWorkgroupMemory, 1);
+				enablePromotedFeatures(DynamicRendering, dynamicRendering, 1);
+				enablePromotedFeatures(ShaderIntegerDotProduct, shaderIntegerDotProduct, 1);
+				enablePromotedFeatures(Maintenance4, maintenance4, 1);
 				break;
 			}
 
+    // Enable extension features.
 #define MVK_DEVICE_FEATURE(structName, enumName, flagCount) \
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_##enumName##_FEATURES: { \
 				enableFeatures(&_enabled##structName##Features, \
