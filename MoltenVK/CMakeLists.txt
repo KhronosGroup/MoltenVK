@@ -33,7 +33,7 @@ if(GIT_FOUND)
 		OUTPUT_STRIP_TRAILING_WHITESPACE
 	)
 	configure_file(
-		"${PROJECT_SOURCE_DIR}/Templates/cmake/mvkGitRevDerived.h.in"
+		"${CMAKE_CURRENT_SOURCE_DIR}/../Templates/cmake/mvkGitRevDerived.h.in"
 		"${CMAKE_CURRENT_BINARY_DIR}/mvkGitRevDerived.h"
 	)
 else()

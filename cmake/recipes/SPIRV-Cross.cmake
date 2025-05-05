@@ -7,7 +7,7 @@ endif()
 message(STATUS "External: creating target 'SPRIV-Cross::SPRIV-Cross'")
 
 # Read Git commit hash from ExternalRevisions file
-file(READ "${PROJECT_SOURCE_DIR}/ExternalRevisions/SPIRV-Cross_repo_revision" SPIRV_CROSS_COMMIT_HASH)
+file(READ "${MOLTEN_VK_EXTERNAL_REVISIONS_DIR}/SPIRV-Cross_repo_revision" SPIRV_CROSS_COMMIT_HASH)
 string(STRIP "${SPIRV_CROSS_COMMIT_HASH}" SPIRV_CROSS_COMMIT_HASH)
 
 include(CPM)

@@ -7,7 +7,7 @@ endif()
 message(STATUS "External: creating target 'Vulkan::Headers'")
 
 # Read Git commit hash from ExternalRevisions file
-file(READ "${PROJECT_SOURCE_DIR}/ExternalRevisions/Vulkan-Headers_repo_revision" VULKAN_HEADERS_COMMIT_HASH)
+file(READ "${MOLTEN_VK_EXTERNAL_REVISIONS_DIR}/Vulkan-Headers_repo_revision" VULKAN_HEADERS_COMMIT_HASH)
 string(STRIP "${VULKAN_HEADERS_COMMIT_HASH}" VULKAN_HEADERS_COMMIT_HASH)
 
 include(CPM)

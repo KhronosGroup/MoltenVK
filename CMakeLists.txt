@@ -73,14 +73,18 @@ if(MOLTEN_VK_TOPLEVEL_PROJECT)
 endif()
 
 ### Configuration
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/MoltenVK/")
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/recipes/")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/MoltenVK/")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/recipes/")
 
 # General CMake utils
 include(MoltenVK_CPM_Cache)
 
 # Generate position-independent code by default
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+if(NOT DEFINED MOLTEN_VK_EXTERNAL_REVISIONS_DIR)
+	set(MOLTEN_VK_EXTERNAL_REVISIONS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ExternalRevisions")
+endif()
 
 ################################################################################
 # MoltenVK Libraries
@@ -109,7 +113,7 @@ if(MOLTEN_VK_TOPLEVEL_PROJECT)
 			LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 			PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/MoltenVK")
 
-	configure_file("${PROJECT_SOURCE_DIR}/Templates/cmake/MoltenVK.pc.in" MoltenVK.pc @ONLY)
+	configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Templates/cmake/MoltenVK.pc.in" MoltenVK.pc @ONLY)
 	install(FILES ${CMAKE_BINARY_DIR}/MoltenVK.pc
 			DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig)
 
