@@ -719,6 +719,12 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 		mtlRPDesc.visibilityResultBuffer = _pEncodingContext->visibilityResultBuffer->_mtlBuffer;
 	}
 
+	// Metal uses MTLRenderPassDescriptor properties renderTargetWidth, renderTargetHeight,
+	// and renderTargetArrayLength to preallocate tile memory storage on machines using tiled
+	// rendering. This memory preallocation is not necessary if we are not rendering to
+	// attachments, and some apps actively define extremely oversized framebuffers when they
+	// know they are not rendering to actual attachments, making this internal tile memory
+	// allocation even more wasteful, occasionally to the point of triggering OOM crashes.
 	VkExtent2D fbExtent = getFramebufferExtent();
     mtlRPDesc.renderTargetWidthMVK = max(min(_renderArea.offset.x + _renderArea.extent.width, fbExtent.width), 1u);
     mtlRPDesc.renderTargetHeightMVK = max(min(_renderArea.offset.y + _renderArea.extent.height, fbExtent.height), 1u);

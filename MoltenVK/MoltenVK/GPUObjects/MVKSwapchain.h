@@ -133,6 +133,9 @@ protected:
 	VkPastPresentationTimingGOOGLE _presentTimingHistory[kMaxPresentationHistory];
 	std::atomic<uint64_t> _currentAcquisitionID = 0;
 	std::mutex _presentHistoryLock;
+	std::mutex _currentPresentIdMutex;
+	std::condition_variable _currentPresentIdCondVar;
+	uint64_t _currentPresentId = 0;
 	uint64_t _lastFrameTime = 0;
 	VkExtent2D _imageExtent = {0, 0};
 	std::atomic<uint32_t> _unpresentedImageCount = 0;
@@ -141,7 +144,4 @@ protected:
 	uint32_t _presentHistoryIndex = 0;
 	uint32_t _presentHistoryHeadIndex = 0;
 	bool _isDeliberatelyScaled = false;
-	uint64_t _currentPresentId = 0;
-	std::mutex _currentPresentIdMutex;
-	std::condition_variable _currentPresentIdCondVar;
 };

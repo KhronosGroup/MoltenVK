@@ -45,7 +45,7 @@ VkResult MVKCmdBindVertexBuffers<N>::setContent(MVKCommandBuffer* cmdBuff,
         b.index = mvkDvc->getMetalBufferIndexForVertexAttributeBinding(firstBinding + bindIdx);
         b.mtlBuffer = mvkBuffer->getMTLBuffer();
         b.offset = mvkBuffer->getMTLBufferOffset() + pOffsets[bindIdx];
-		b.size = pSizes ? pSizes[bindIdx] == VK_WHOLE_SIZE ? mvkBuffer->getByteCount() - pOffsets[bindIdx] : (uint32_t)pSizes[bindIdx] : 0;
+		b.size = pSizes ? uint32_t(pSizes[bindIdx] == VK_WHOLE_SIZE ? mvkBuffer->getByteCount() - pOffsets[bindIdx] : pSizes[bindIdx]) : 0;
 		b.stride = pStrides ? (uint32_t)pStrides[bindIdx] : 0;
         _bindings.push_back(b);
     }
@@ -105,7 +105,7 @@ void MVKCmdBindIndexBuffer::encode(MVKCommandEncoder* cmdEncoder) {
         _binding.offset = placeholderBuffer->_offset;
     } else if (_isUint8) {
         // Copy 8-bit indices into 16-bit index buffer compatible with Metal.
-        const uint32_t numIndices = _binding.size;
+        const auto numIndices = _binding.size;
         auto* uint16Buf = cmdEncoder->getTempMTLBuffer(numIndices * 2);
 
         cmdEncoder->encodeStoreActions(true);
@@ -130,7 +130,7 @@ void MVKCmdBindIndexBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 
         // If there is left-over buffer content after running full threadgroups, or if the buffer content
         // fits within a single threadgroup, run a single partial threadgroup of the appropriate size.
-        uint32_t remainderIndexCount = numIndices % tgWidth;
+        auto remainderIndexCount = numIndices % tgWidth;
         if (remainderIndexCount > 0) {
             if (tgCount > 0) {
                 const auto indicesConverted = tgCount * tgWidth;
