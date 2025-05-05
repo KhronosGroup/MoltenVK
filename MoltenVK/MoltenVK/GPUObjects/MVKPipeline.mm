@@ -1501,11 +1501,11 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 												   const VkPipelineVertexInputStateCreateInfo* pVI,
 												   const SPIRVToMSLConversionConfiguration& shaderConfig) {
     // Collect extension structures
-    VkPipelineVertexInputDivisorStateCreateInfoEXT* pVertexInputDivisorState = nullptr;
+    VkPipelineVertexInputDivisorStateCreateInfo* pVertexInputDivisorState = nullptr;
 	for (const auto* next = (VkBaseInStructure*)pVI->pNext; next; next = next->pNext) {
         switch (next->sType) {
-        case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT:
-            pVertexInputDivisorState = (VkPipelineVertexInputDivisorStateCreateInfoEXT*)next;
+        case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO:
+            pVertexInputDivisorState = (VkPipelineVertexInputDivisorStateCreateInfo*)next;
             break;
         default:
             break;
@@ -1549,7 +1549,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
     if (pVertexInputDivisorState) {
         uint32_t vbdCnt = pVertexInputDivisorState->vertexBindingDivisorCount;
         for (uint32_t i = 0; i < vbdCnt; i++) {
-            const VkVertexInputBindingDivisorDescriptionEXT* pVKVB = &pVertexInputDivisorState->pVertexBindingDivisors[i];
+            const VkVertexInputBindingDivisorDescription* pVKVB = &pVertexInputDivisorState->pVertexBindingDivisors[i];
             if (shaderConfig.isVertexBufferUsed(pVKVB->binding)) {
                 uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
                 if ((NSUInteger)inputDesc.layouts[vbIdx].stepFunction == MTLStepFunctionPerInstance ||

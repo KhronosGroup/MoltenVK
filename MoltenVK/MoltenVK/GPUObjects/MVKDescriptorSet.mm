@@ -205,7 +205,7 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                                MVKShaderResourceBinding& dslMTLRezIdxOffsets) {
 
     if (!_isPushDescriptorLayout ||
-        descUpdateTemplate->getType() != VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR)
+        descUpdateTemplate->getType() != VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS)
         return;
 
 	if (!cmdEncoder) { clearConfigurationResult(); }
@@ -377,7 +377,7 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 		}
 	}
 
-	_isPushDescriptorLayout = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+	_isPushDescriptorLayout = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT);
 	_canUseMetalArgumentBuffer = checkCanUseArgumentBuffers(pCreateInfo);	// After _isPushDescriptorLayout
 
 	// The bindings in VkDescriptorSetLayoutCreateInfo do not need to be provided in order of binding number.

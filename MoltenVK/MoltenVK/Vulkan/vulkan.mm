@@ -498,8 +498,8 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkMapMemory(
    void**                                      ppData) {
 
 	MVKTraceVulkanCallStart();
-	VkMemoryMapInfoKHR mapInfo = {};
-	mapInfo.sType = VK_STRUCTURE_TYPE_MEMORY_MAP_INFO_KHR;
+	VkMemoryMapInfo mapInfo = {};
+	mapInfo.sType = VK_STRUCTURE_TYPE_MEMORY_MAP_INFO;
 	mapInfo.pNext = nullptr;
 	mapInfo.flags = flags;
 	mapInfo.memory = mem;
@@ -517,8 +517,8 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkUnmapMemory(
     VkDeviceMemory                              mem) {
 	
 	MVKTraceVulkanCallStart();
-	VkMemoryUnmapInfoKHR unmapInfo = {};
-	unmapInfo.sType = VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO_KHR;
+	VkMemoryUnmapInfo unmapInfo = {};
+	unmapInfo.sType = VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO;
 	unmapInfo.pNext = nullptr;
 	unmapInfo.flags = 0;
 	unmapInfo.memory = mem;

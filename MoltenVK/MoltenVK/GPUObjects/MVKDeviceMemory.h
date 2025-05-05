@@ -83,10 +83,10 @@ public:
 	 * Maps the memory address at the specified offset from the start of this memory allocation,
 	 * and returns the address in the specified data reference.
 	 */
-	VkResult map(const VkMemoryMapInfoKHR* mapInfo, void** ppData);
+	VkResult map(const VkMemoryMapInfo* mapInfo, void** ppData);
 	
 	/** Unmaps a previously mapped memory range. */
-	VkResult unmap(const VkMemoryUnmapInfoKHR* unmapInfo);
+	VkResult unmap(const VkMemoryUnmapInfo* unmapInfo);
 
 	/**
 	 * If this device memory is currently mapped to host memory, returns the range within

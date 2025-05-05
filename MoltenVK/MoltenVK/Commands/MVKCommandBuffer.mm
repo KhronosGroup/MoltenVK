@@ -560,7 +560,7 @@ static MVKBarrierStage commandUseToBarrierStage(MVKCommandUse use) {
 	case kMVKCommandUseResolveImage:                 return kMVKBarrierStageCopy; /**< vkCmdResolveImage - resolve stage. */
 	case kMVKCommandUseResolveExpandImage:           return kMVKBarrierStageCopy; /**< vkCmdResolveImage - expand stage. */
 	case kMVKCommandUseResolveCopyImage:             return kMVKBarrierStageCopy; /**< vkCmdResolveImage - copy stage. */
-	case kMVKCommandUseCopyImageToMemory:            return kMVKBarrierStageCopy; /**< vkCopyImageToMemoryEXT host sync. */
+	case kMVKCommandUseCopyImageToMemory:            return kMVKBarrierStageCopy; /**< vkCopyImageToMemory host sync. */
 	case kMVKCommandUseCopyBuffer:                   return kMVKBarrierStageCopy; /**< vkCmdCopyBuffer. */
 	case kMVKCommandUseCopyBufferToImage:            return kMVKBarrierStageCopy; /**< vkCmdCopyBufferToImage. */
 	case kMVKCommandUseCopyImageToBuffer:            return kMVKBarrierStageCopy; /**< vkCmdCopyImageToBuffer. */

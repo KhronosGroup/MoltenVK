@@ -589,7 +589,7 @@ static MTLRegion getMTLRegion(const ImgRgn& imgRgn) {
 
 // Host-copy from a MTLTexture to memory.
 VkResult MVKImage::copyContent(id<MTLTexture> mtlTex,
-							   VkImageToMemoryCopyEXT imgRgn, uint32_t mipLevel, uint32_t slice,
+							   VkImageToMemoryCopy imgRgn, uint32_t mipLevel, uint32_t slice,
 							   void* pImgBytes, size_t rowPitch, size_t depthPitch) {
 	[mtlTex getBytes: pImgBytes
 		 bytesPerRow: rowPitch
@@ -602,7 +602,7 @@ VkResult MVKImage::copyContent(id<MTLTexture> mtlTex,
 
 // Host-copy from memory to a MTLTexture.
 VkResult MVKImage::copyContent(id<MTLTexture> mtlTex,
-							   VkMemoryToImageCopyEXT imgRgn, uint32_t mipLevel, uint32_t slice,
+							   VkMemoryToImageCopy imgRgn, uint32_t mipLevel, uint32_t slice,
 							   void* pImgBytes, size_t rowPitch, size_t depthPitch) {
 	VkSubresourceLayout imgLayout = { 0, 0, rowPitch, 0, depthPitch};
 #if MVK_MACOS
@@ -672,7 +672,7 @@ VkResult MVKImage::copyContent(const CopyInfo* pCopyInfo) {
 
 // Host-copy content between images by allocating a temporary memory buffer, copying into it from the
 // source image, and then copying from the memory buffer into the destination image, all using the CPU.
-VkResult MVKImage::copyImageToImage(const VkCopyImageToImageInfoEXT* pCopyImageToImageInfo) {
+VkResult MVKImage::copyImageToImage(const VkCopyImageToImageInfo* pCopyImageToImageInfo) {
 	for (uint32_t imgRgnIdx = 0; imgRgnIdx < pCopyImageToImageInfo->regionCount; imgRgnIdx++) {
 		auto& imgRgn = pCopyImageToImageInfo->pRegions[imgRgnIdx];
 
@@ -691,8 +691,8 @@ VkResult MVKImage::copyImageToImage(const VkCopyImageToImageInfoEXT* pCopyImageT
 		void* pImgBytes = xfrBuffer.get();
 
 		// Host-copy the source image content into the memory buffer using the CPU.
-		VkImageToMemoryCopyEXT srcCopy = {
-			VK_STRUCTURE_TYPE_IMAGE_TO_MEMORY_COPY_EXT,
+		VkImageToMemoryCopy srcCopy = {
+			VK_STRUCTURE_TYPE_IMAGE_TO_MEMORY_COPY,
 			nullptr,
 			pImgBytes,
 			0,
@@ -701,8 +701,8 @@ VkResult MVKImage::copyImageToImage(const VkCopyImageToImageInfoEXT* pCopyImageT
 			imgRgn.srcOffset,
 			imgRgn.extent
 		};
-		VkCopyImageToMemoryInfoEXT srcCopyInfo = {
-			VK_STRUCTURE_TYPE_COPY_IMAGE_TO_MEMORY_INFO_EXT,
+		VkCopyImageToMemoryInfo srcCopyInfo = {
+			VK_STRUCTURE_TYPE_COPY_IMAGE_TO_MEMORY_INFO,
 			nullptr,
 			pCopyImageToImageInfo->flags,
 			pCopyImageToImageInfo->srcImage,
@@ -714,8 +714,8 @@ VkResult MVKImage::copyImageToImage(const VkCopyImageToImageInfoEXT* pCopyImageT
 
 		// Host-copy the image content from the memory buffer into the destination image using the CPU.
 		MVKImage* dstMVKImg = (MVKImage*)pCopyImageToImageInfo->dstImage;
-		VkMemoryToImageCopyEXT dstCopy = {
-			VK_STRUCTURE_TYPE_MEMORY_TO_IMAGE_COPY_EXT,
+		VkMemoryToImageCopy dstCopy = {
+			VK_STRUCTURE_TYPE_MEMORY_TO_IMAGE_COPY,
 			nullptr,
 			pImgBytes,
 			0,
@@ -724,8 +724,8 @@ VkResult MVKImage::copyImageToImage(const VkCopyImageToImageInfoEXT* pCopyImageT
 			imgRgn.dstOffset,
 			imgRgn.extent
 		};
-		VkCopyMemoryToImageInfoEXT dstCopyInfo = {
-			VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INFO_EXT,
+		VkCopyMemoryToImageInfo dstCopyInfo = {
+			VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INFO,
 			nullptr,
 			pCopyImageToImageInfo->flags,
 			pCopyImageToImageInfo->dstImage,
@@ -738,7 +738,7 @@ VkResult MVKImage::copyImageToImage(const VkCopyImageToImageInfoEXT* pCopyImageT
 	return VK_SUCCESS;
 }
 
-VkResult MVKImage::copyImageToMemory(const VkCopyImageToMemoryInfoEXT* pCopyImageToMemoryInfo) {
+VkResult MVKImage::copyImageToMemory(const VkCopyImageToMemoryInfo* pCopyImageToMemoryInfo) {
 #if MVK_MACOS
 	// On macOS, if the device doesn't have unified memory, and the texture is using managed memory, we need
 	// to sync the managed memory from the GPU, so the texture content is accessible to be copied by the CPU.
@@ -771,7 +771,7 @@ VkResult MVKImage::copyImageToMemory(const VkCopyImageToMemoryInfoEXT* pCopyImag
 	return copyContent(pCopyImageToMemoryInfo);
 }
 
-VkResult MVKImage::copyMemoryToImage(const VkCopyMemoryToImageInfoEXT* pCopyMemoryToImageInfo) {
+VkResult MVKImage::copyMemoryToImage(const VkCopyMemoryToImageInfo* pCopyMemoryToImageInfo) {
 	return copyContent(pCopyMemoryToImageInfo);
 }
 
@@ -803,21 +803,21 @@ VkDeviceSize MVKImage::getBytesPerLayer(uint8_t planeIndex, VkExtent3D mipExtent
 
 VkResult MVKImage::getSubresourceLayout(const VkImageSubresource* pSubresource,
 										VkSubresourceLayout* pLayout) {
-	VkImageSubresource2KHR subresource2 = { VK_STRUCTURE_TYPE_IMAGE_SUBRESOURCE_2_KHR, nullptr, *pSubresource};
-	VkSubresourceLayout2KHR layout2 = { VK_STRUCTURE_TYPE_SUBRESOURCE_LAYOUT_2_KHR, nullptr, *pLayout};
+	VkImageSubresource2 subresource2 = { VK_STRUCTURE_TYPE_IMAGE_SUBRESOURCE_2, nullptr, *pSubresource};
+	VkSubresourceLayout2 layout2 = { VK_STRUCTURE_TYPE_SUBRESOURCE_LAYOUT_2, nullptr, *pLayout};
 	VkResult rslt = getSubresourceLayout(&subresource2, &layout2);
 	*pLayout = layout2.subresourceLayout;
 	return rslt;
 }
 
-VkResult MVKImage::getSubresourceLayout(const VkImageSubresource2KHR* pSubresource,
-										VkSubresourceLayout2KHR* pLayout) {
-	pLayout->sType = VK_STRUCTURE_TYPE_SUBRESOURCE_LAYOUT_2_KHR;
-	VkSubresourceHostMemcpySizeEXT* pMemcpySize = nullptr;
+VkResult MVKImage::getSubresourceLayout(const VkImageSubresource2* pSubresource,
+										VkSubresourceLayout2* pLayout) {
+	pLayout->sType = VK_STRUCTURE_TYPE_SUBRESOURCE_LAYOUT_2;
+	VkSubresourceHostMemcpySize* pMemcpySize = nullptr;
 	for (auto* next = (VkBaseOutStructure*)pLayout->pNext; next; next = next->pNext) {
 		switch (next->sType) {
-			case VK_STRUCTURE_TYPE_SUBRESOURCE_HOST_MEMCPY_SIZE_EXT: {
-				pMemcpySize = (VkSubresourceHostMemcpySizeEXT*)next;
+			case VK_STRUCTURE_TYPE_SUBRESOURCE_HOST_MEMCPY_SIZE: {
+				pMemcpySize = (VkSubresourceHostMemcpySize*)next;
 				break;
 			}
 			default:
@@ -897,7 +897,7 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 #endif
 
 	// If the image can be used in a host-copy transfer, the memory cannot be private.
-	if (mvkIsAnyFlagEnabled(combinedUsage, VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT)) {
+	if (mvkIsAnyFlagEnabled(combinedUsage, VK_IMAGE_USAGE_HOST_TRANSFER_BIT)) {
 		mvkDisableFlags(pMemoryRequirements->memoryTypeBits, mvkPD->getPrivateMemoryTypes());
 	}
 
