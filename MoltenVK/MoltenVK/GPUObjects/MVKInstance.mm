@@ -394,68 +394,62 @@ void MVKInstance::initMVKConfig(const VkInstanceCreateInfo* pCreateInfo) {
 	mvkSetConfig(_mvkConfig, _mvkConfig, _mvkConfigStringHolders);
 }
 
-#define ADD_ENTRY_POINT_MAP(name, func, api, ext1, ext2, ext3, isDev)	\
-	_entryPoints[""#name] = { (PFN_vkVoidFunction)&func, api, ext1,  ext2,  ext3,  isDev }
+#define ADD_ENTRY_POINT_MAP(name, func, api, ext, isDev)  \
+	_entryPoints[""#name] = { (PFN_vkVoidFunction)&func, ext, api,  isDev }
 
-#define ADD_ENTRY_POINT(func, api, ext1, ext2, ext3, isDev)	ADD_ENTRY_POINT_MAP(func, func, api, ext1, ext2, ext3, isDev)
+#define ADD_ENTRY_POINT(func, api, ext, isDev)	ADD_ENTRY_POINT_MAP(func, func, api, ext, isDev)
 
-#define ADD_INST_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, VK_API_VERSION_1_0, nullptr, nullptr, nullptr, false)
-#define ADD_DVC_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, VK_API_VERSION_1_0, nullptr, nullptr, nullptr, true)
+#define ADD_INST_ENTRY_POINT(func)				ADD_ENTRY_POINT(func, VK_API_VERSION_1_0, nullptr, false)
+#define ADD_DVC_ENTRY_POINT(func)				ADD_ENTRY_POINT(func, VK_API_VERSION_1_0, nullptr, true)
 
 // Add a core function.
-#define ADD_INST_1_1_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, VK_API_VERSION_1_1, nullptr, nullptr, nullptr, false)
-#define ADD_INST_1_3_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, VK_API_VERSION_1_3, nullptr, nullptr, nullptr, false)
-#define ADD_DVC_1_1_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, VK_API_VERSION_1_1, nullptr, nullptr, nullptr, true)
-#define ADD_DVC_1_2_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, VK_API_VERSION_1_2, nullptr, nullptr, nullptr, true)
-#define ADD_DVC_1_3_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, VK_API_VERSION_1_3, nullptr, nullptr, nullptr, true)
-#define ADD_DVC_1_4_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, VK_API_VERSION_1_4, nullptr, nullptr, nullptr, true)
+#define ADD_INST_1_1_ENTRY_POINT(func)			ADD_ENTRY_POINT(func, VK_API_VERSION_1_1, nullptr, false)
+#define ADD_INST_1_3_ENTRY_POINT(func)			ADD_ENTRY_POINT(func, VK_API_VERSION_1_3, nullptr, false)
+#define ADD_DVC_1_1_ENTRY_POINT(func)			ADD_ENTRY_POINT(func, VK_API_VERSION_1_1, nullptr, true)
+#define ADD_DVC_1_2_ENTRY_POINT(func)			ADD_ENTRY_POINT(func, VK_API_VERSION_1_2, nullptr, true)
+#define ADD_DVC_1_3_ENTRY_POINT(func)			ADD_ENTRY_POINT(func, VK_API_VERSION_1_3, nullptr, true)
+#define ADD_DVC_1_4_ENTRY_POINT(func)			ADD_ENTRY_POINT(func, VK_API_VERSION_1_4, nullptr, true)
 
-// Add both the promoted core function and the extension function.
+// Add both the promoted core function under the promoted name, and the extension function under its original name.
 #define ADD_INST_1_1_PROMOTED_ENTRY_POINT(func, EXT)	\
 	ADD_INST_1_1_ENTRY_POINT(func);	\
-	ADD_ENTRY_POINT_MAP(func##KHR, func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, nullptr, false)
+	ADD_ENTRY_POINT_MAP(func##KHR, func, 0, VK_##EXT##_EXTENSION_NAME, false)
 
 #define ADD_DVC_1_1_PROMOTED_ENTRY_POINT(func, EXT)	\
 	ADD_DVC_1_1_ENTRY_POINT(func);	\
-	ADD_ENTRY_POINT_MAP(func##KHR, func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, nullptr, true)
+	ADD_ENTRY_POINT_MAP(func##KHR, func, 0, VK_##EXT##_EXTENSION_NAME, true)
 
-#define ADD_DVC_1_2_PROMOTED_ENTRY_POINT(func, suffix, EXT) \
+#define ADD_DVC_1_2_PROMOTED_ENTRY_POINT(func, extSuffix, EXT) \
 	ADD_DVC_1_2_ENTRY_POINT(func); \
-	ADD_ENTRY_POINT_MAP(func##suffix, func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, nullptr, true)
+	ADD_ENTRY_POINT_MAP(func##extSuffix, func, 0, VK_##EXT##_EXTENSION_NAME, true)
 
 #define ADD_INST_1_3_PROMOTED_ENTRY_POINT(func, EXT)	\
 	ADD_INST_1_3_ENTRY_POINT(func);	\
-	ADD_ENTRY_POINT_MAP(func##KHR, func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, nullptr, false)
+	ADD_ENTRY_POINT_MAP(func##KHR, func, 0, VK_##EXT##_EXTENSION_NAME, false)
 
-#define ADD_DVC_1_3_PROMOTED_ENTRY_POINT(func, suffix, EXT) \
+#define ADD_DVC_1_3_PROMOTED_ENTRY_POINT(func, extSuffix, EXT) \
 	ADD_DVC_1_3_ENTRY_POINT(func); \
-	ADD_ENTRY_POINT_MAP(func##suffix, func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, nullptr, true)
+	ADD_ENTRY_POINT_MAP(func##extSuffix, func, 0, VK_##EXT##_EXTENSION_NAME, true)
 
-#define ADD_DVC_1_4_PROMOTED_ENTRY_POINT(func, suffix, EXT) \
+#define ADD_DVC_1_4_PROMOTED_ENTRY_POINT(func, extSuffix, EXT) \
 	ADD_DVC_1_4_ENTRY_POINT(func); \
-	ADD_ENTRY_POINT_MAP(func##suffix, func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, nullptr, true)
-
-#define ADD_DVC_1_4_PROMOTED2_ENTRY_POINT(func, suffix, EXT1, EXT2) \
-	ADD_DVC_1_4_ENTRY_POINT(func); \
-	ADD_ENTRY_POINT_MAP(func##suffix, func, 0, VK_##EXT1##_EXTENSION_NAME, VK_##EXT2##_EXTENSION_NAME, nullptr, true)
-
-#define ADD_DVC_1_4_PROMOTED3_ENTRY_POINT(func, suffix, EXT1, EXT2, EXT3) \
-	ADD_DVC_1_4_ENTRY_POINT(func); \
-	ADD_ENTRY_POINT_MAP(func##suffix, func, 0, VK_##EXT1##_EXTENSION_NAME, VK_##EXT2##_EXTENSION_NAME, VK_##EXT3##_EXTENSION_NAME, true)
+	ADD_ENTRY_POINT_MAP(func##extSuffix, func, 0, VK_##EXT##_EXTENSION_NAME, true)
 
 // Add an extension function.
-#define ADD_INST_EXT_ENTRY_POINT(func, EXT)					ADD_ENTRY_POINT(func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, nullptr, false)
-#define ADD_DVC_EXT_ENTRY_POINT(func, EXT)					ADD_ENTRY_POINT(func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, nullptr, true)
+#define ADD_INST_EXT_ENTRY_POINT(func, EXT)					ADD_ENTRY_POINT(func, 0, VK_##EXT##_EXTENSION_NAME, false)
+#define ADD_DVC_EXT_ENTRY_POINT(func, EXT)					ADD_ENTRY_POINT(func, 0, VK_##EXT##_EXTENSION_NAME, true)
 
-#define ADD_INST_EXT2_ENTRY_POINT(func, API, EXT1, EXT2)	ADD_ENTRY_POINT(func, VK_API_VERSION_##API, VK_##EXT1##_EXTENSION_NAME, VK_##EXT2##_EXTENSION_NAME, nullptr, false)
-#define ADD_DVC_EXT2_ENTRY_POINT(func, API, EXT1, EXT2)		ADD_ENTRY_POINT(func, VK_API_VERSION_##API, VK_##EXT1##_EXTENSION_NAME, VK_##EXT2##_EXTENSION_NAME, nullptr, true)
+// Add an extension function that aliases to another function from core or another extension.
+#define ADD_INST_EXT_ENTRY_POINT_ALIAS(alias, func, EXT)	ADD_ENTRY_POINT_MAP(alias, func, 0, VK_##EXT##_EXTENSION_NAME, false)
+#define ADD_DVC_EXT_ENTRY_POINT_ALIAS(alias, func, EXT)		ADD_ENTRY_POINT_MAP(alias, func, 0, VK_##EXT##_EXTENSION_NAME, true)
 
-#define ADD_INST_EXT_ENTRY_POINT_ALIAS(alias, func, EXT)	ADD_ENTRY_POINT_MAP(alias, func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, nullptr, false)
-#define ADD_DVC_EXT_ENTRY_POINT_ALIAS(alias, func, EXT)		ADD_ENTRY_POINT_MAP(alias, func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, nullptr, true)
+// Add a function that exists in both core and an extension. The function may have been promoted, without changing the function name.
+#define ADD_INST_VER_OR_EXT_ENTRY_POINT(func, API, EXT1)	ADD_ENTRY_POINT(func, VK_API_VERSION_##API, VK_##EXT1##_EXTENSION_NAME, false)
+#define ADD_DVC_VER_OR_EXT_ENTRY_POINT(func, API, EXT1)		ADD_ENTRY_POINT(func, VK_API_VERSION_##API, VK_##EXT1##_EXTENSION_NAME, true)
 
 // Add an open function, not tied to core or an extension.
-#define ADD_INST_OPEN_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, 0, nullptr, nullptr, nullptr, false)
-#define ADD_DVC_OPEN_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, 0, nullptr, nullptr, nullptr, true)
+#define ADD_INST_OPEN_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, 0, nullptr, false)
+#define ADD_DVC_OPEN_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, 0, nullptr, true)
 
 // Initializes the function pointer map.
 void MVKInstance::initProcAddrs() {
@@ -676,6 +670,10 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkTrimCommandPool, KHR_MAINTENANCE1);
 	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkCmdSetDeviceMask, KHR_DEVICE_GROUP);
 	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkCmdDispatchBase, KHR_DEVICE_GROUP);
+	ADD_DVC_VER_OR_EXT_ENTRY_POINT(vkGetDeviceGroupPresentCapabilitiesKHR, 1_1, KHR_DEVICE_GROUP);	// Promoted to Vulkan 1.1 under same name
+	ADD_DVC_VER_OR_EXT_ENTRY_POINT(vkGetDeviceGroupSurfacePresentModesKHR, 1_1, KHR_DEVICE_GROUP);	// Promoted to Vulkan 1.1 under same name
+	ADD_DVC_VER_OR_EXT_ENTRY_POINT(vkGetPhysicalDevicePresentRectanglesKHR, 1_1, KHR_DEVICE_GROUP);	// Promoted to Vulkan 1.1 under same name
+	ADD_DVC_VER_OR_EXT_ENTRY_POINT(vkAcquireNextImage2KHR, 1_1, KHR_DEVICE_GROUP);					// Promoted to Vulkan 1.1 under same name
 
 	ADD_DVC_1_2_PROMOTED_ENTRY_POINT(vkCmdBeginRenderPass2, KHR, KHR_CREATE_RENDERPASS_2);
 	ADD_DVC_1_2_PROMOTED_ENTRY_POINT(vkCmdDrawIndexedIndirectCount, KHR, KHR_DRAW_INDIRECT_COUNT);
@@ -736,16 +734,16 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_1_4_PROMOTED_ENTRY_POINT(vkGetDeviceImageSubresourceLayout, KHR, KHR_MAINTENANCE_5);
 	ADD_DVC_1_4_PROMOTED_ENTRY_POINT(vkCmdBindDescriptorSets2, KHR, KHR_MAINTENANCE_6);
 	ADD_DVC_1_4_PROMOTED_ENTRY_POINT(vkCmdPushConstants2, KHR, KHR_MAINTENANCE_6);
-	ADD_DVC_1_4_PROMOTED2_ENTRY_POINT(vkCmdPushDescriptorSet2, KHR, KHR_MAINTENANCE_6, KHR_PUSH_DESCRIPTOR);
-	ADD_DVC_1_4_PROMOTED3_ENTRY_POINT(vkCmdPushDescriptorSetWithTemplate2, KHR, KHR_MAINTENANCE_6, KHR_PUSH_DESCRIPTOR, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
+	ADD_DVC_1_4_PROMOTED_ENTRY_POINT(vkCmdPushDescriptorSet2, KHR, KHR_MAINTENANCE_6);
+	ADD_DVC_1_4_PROMOTED_ENTRY_POINT(vkCmdPushDescriptorSetWithTemplate2, KHR, KHR_MAINTENANCE_6);
 	ADD_DVC_1_4_PROMOTED_ENTRY_POINT(vkMapMemory2, KHR, KHR_MAP_MEMORY_2);
 	ADD_DVC_1_4_PROMOTED_ENTRY_POINT(vkUnmapMemory2, KHR, KHR_MAP_MEMORY_2);
 	ADD_DVC_1_4_PROMOTED_ENTRY_POINT(vkCmdPushDescriptorSet, KHR, KHR_PUSH_DESCRIPTOR);
-	ADD_DVC_1_4_PROMOTED2_ENTRY_POINT(vkCmdPushDescriptorSetWithTemplate, KHR, KHR_PUSH_DESCRIPTOR, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
+	ADD_DVC_1_4_PROMOTED_ENTRY_POINT(vkCmdPushDescriptorSetWithTemplate, KHR, KHR_PUSH_DESCRIPTOR);
 	ADD_DVC_1_4_PROMOTED_ENTRY_POINT(vkCopyImageToImage, EXT, EXT_HOST_IMAGE_COPY);
 	ADD_DVC_1_4_PROMOTED_ENTRY_POINT(vkCopyImageToMemory, EXT, EXT_HOST_IMAGE_COPY);
 	ADD_DVC_1_4_PROMOTED_ENTRY_POINT(vkCopyMemoryToImage, EXT, EXT_HOST_IMAGE_COPY);
-	ADD_DVC_EXT_ENTRY_POINT_ALIAS(vkGetImageSubresourceLayout2EXT, vkGetImageSubresourceLayout2KHR, EXT_HOST_IMAGE_COPY);
+	ADD_DVC_EXT_ENTRY_POINT_ALIAS(vkGetImageSubresourceLayout2EXT, vkGetImageSubresourceLayout2, EXT_HOST_IMAGE_COPY);
 	ADD_DVC_1_4_PROMOTED_ENTRY_POINT(vkTransitionImageLayout, EXT, EXT_HOST_IMAGE_COPY);
 
 	// Device extension functions.
@@ -762,10 +760,6 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_EXT_ENTRY_POINT(vkAcquireNextImageKHR, KHR_SWAPCHAIN);
 	ADD_DVC_EXT_ENTRY_POINT(vkQueuePresentKHR, KHR_SWAPCHAIN);
 	ADD_DVC_EXT_ENTRY_POINT(vkWaitForPresentKHR, KHR_PRESENT_WAIT);
-	ADD_DVC_EXT2_ENTRY_POINT(vkGetDeviceGroupPresentCapabilitiesKHR, 1_1, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
-	ADD_DVC_EXT2_ENTRY_POINT(vkGetDeviceGroupSurfacePresentModesKHR, 1_1, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
-	ADD_DVC_EXT2_ENTRY_POINT(vkGetPhysicalDevicePresentRectanglesKHR, 1_1, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
-	ADD_DVC_EXT2_ENTRY_POINT(vkAcquireNextImage2KHR, 1_1, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
 	ADD_DVC_EXT_ENTRY_POINT_ALIAS(vkGetCalibratedTimestampsEXT, vkGetCalibratedTimestampsKHR, EXT_CALIBRATED_TIMESTAMPS);
 	ADD_DVC_EXT_ENTRY_POINT_ALIAS(vkGetPhysicalDeviceCalibrateableTimeDomainsEXT, vkGetPhysicalDeviceCalibrateableTimeDomainsKHR, EXT_CALIBRATED_TIMESTAMPS);
 	ADD_DVC_EXT_ENTRY_POINT(vkDebugMarkerSetObjectTagEXT, EXT_DEBUG_MARKER);
