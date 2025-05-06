@@ -288,7 +288,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 		.pipelineProtectedAccess = false,	// Required only if VkPhysicalDeviceVulkan11Features::protectedMemory is enabled
 		.pipelineRobustness = true,
 		.hostImageCopy = true,
-		.pushDescriptor = true,
+		.pushDescriptor = _vulkan14NoExtFeatures.pushDescriptor,
 	};
 
 	features->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -298,33 +298,29 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: {
 				// Copy from supportedFeats11, but keep pNext as is.
 				auto* pFeats11 = (VkPhysicalDeviceVulkan11Features*)next;
-				auto* pNext = pFeats11->pNext;
+				supportedFeats11.pNext = pFeats11->pNext;
 				*pFeats11 = supportedFeats11;
-				pFeats11->pNext = pNext;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
 				// Copy from supportedFeats12, but keep pNext as is.
 				auto* pFeats12 = (VkPhysicalDeviceVulkan12Features*)next;
-				auto* pNext = pFeats12->pNext;
+				supportedFeats12.pNext = pFeats12->pNext;
 				*pFeats12 = supportedFeats12;
-				pFeats12->pNext = pNext;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES: {
 				// Copy from supportedFeats13, but keep pNext as is.
 				auto* pFeats13 = (VkPhysicalDeviceVulkan13Features*)next;
-				auto* pNext = pFeats13->pNext;
+				supportedFeats13.pNext = pFeats13->pNext;
 				*pFeats13 = supportedFeats13;
-				pFeats13->pNext = pNext;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES: {
 				// Copy from supportedFeats14, but keep pNext as is.
 				auto* pFeats14 = (VkPhysicalDeviceVulkan14Features*)next;
-				auto* pNext = pFeats14->pNext;
+				supportedFeats14.pNext = pFeats14->pNext;
 				*pFeats14 = supportedFeats14;
-				pFeats14->pNext = pNext;
 				break;
 			}
 
@@ -425,10 +421,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES: {
 				auto* maintenance5Features = (VkPhysicalDeviceMaintenance5Features*)next;
 				maintenance5Features->maintenance5 = supportedFeats14.maintenance5;
+				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES: {
 				auto* maintenance6Features = (VkPhysicalDeviceMaintenance6Features*)next;
 				maintenance6Features->maintenance6 = supportedFeats14.maintenance6;
+				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
 				auto* multiviewFeatures = (VkPhysicalDeviceMultiviewFeatures*)next;
@@ -912,40 +910,41 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps14.defaultRobustnessUniformBuffers = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED;
 	supportedProps14.defaultRobustnessVertexInputs = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED;
 	supportedProps14.defaultRobustnessImages = VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_ROBUST_IMAGE_ACCESS_2;
-	populateHostImageCopyProperties(&supportedProps14);
 
 	for (auto* next = (VkBaseOutStructure*)properties->pNext; next; next = next->pNext) {
 		switch ((uint32_t)next->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES: {
 				// Copy from supportedProps11, but keep pNext as is.
 				auto* pProps11 = (VkPhysicalDeviceVulkan11Properties*)next;
-				auto* pNext = pProps11->pNext;
+				supportedProps11.pNext = pProps11->pNext;
 				*pProps11 = supportedProps11;
-				pProps11->pNext = pNext;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES: {
 				// Copy from supportedProps12, but keep pNext as is.
 				auto* pProps12 = (VkPhysicalDeviceVulkan12Properties*)next;
-				auto* pNext = pProps12->pNext;
+				supportedProps12.pNext = pProps12->pNext;
 				*pProps12 = supportedProps12;
-				pProps12->pNext = pNext;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES: {
 				// Copy from supportedProps13, but keep pNext as is.
 				auto* pProps13 = (VkPhysicalDeviceVulkan13Properties*)next;
-				auto* pNext = pProps13->pNext;
+				supportedProps13.pNext = pProps13->pNext;
 				*pProps13 = supportedProps13;
-				pProps13->pNext = pNext;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_PROPERTIES: {
 				// Copy from supportedProps14, but keep pNext as is.
+				// Also keep layout allocations as they are, and populate them dynamically.
 				auto* pProps14 = (VkPhysicalDeviceVulkan14Properties*)next;
-				auto* pNext = pProps14->pNext;
+				supportedProps14.pNext = pProps14->pNext;
+				supportedProps14.copySrcLayoutCount = pProps14->copySrcLayoutCount;
+				supportedProps14.pCopySrcLayouts = pProps14->pCopySrcLayouts;
+				supportedProps14.copyDstLayoutCount = pProps14->copyDstLayoutCount;
+				supportedProps14.pCopyDstLayouts = pProps14->pCopyDstLayouts;
+				populateHostImageCopyProperties(&supportedProps14);
 				*pProps14 = supportedProps14;
-				pProps14->pNext = pNext;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES: {
@@ -3031,6 +3030,10 @@ void MVKPhysicalDevice::initFeatures() {
 	_vulkan12NoExtFeatures.shaderOutputViewportIndex = _features.multiViewport;
 	_vulkan12NoExtFeatures.shaderOutputLayer = _metalFeatures.layeredRendering;
 	_vulkan12NoExtFeatures.subgroupBroadcastDynamicId = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
+
+	// Additional non-extension Vulkan 1.4 features.
+	mvkClear(&_vulkan14NoExtFeatures);		// Start with everything cleared
+	_vulkan14NoExtFeatures.pushDescriptor = true;
 
 }
 
@@ -5396,6 +5399,7 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 #include "MVKDeviceFeatureStructs.def"
 
 	mvkClear(&_enabledVulkan12NoExtFeatures);
+	mvkClear(&_enabledVulkan14NoExtFeatures);
 
 	sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 	mvkClear(&_enabledFeatures);
