@@ -35,22 +35,15 @@ class MVKDebugUtilsMessenger;
 /** Tracks info about entry point function pointer addresses. */
 typedef struct MVKEntryPoint {
 	PFN_vkVoidFunction functionPointer;
+	const char* extName;
 	uint32_t apiVersion;
-	const char* ext1Name;
-	const char* ext2Name;
-	const char* ext3Name;
 	bool isDevice;
 
-	bool isCore() { return !ext1Name && !ext2Name && !ext3Name; }
+	bool isCore() { return apiVersion > 0; }
 	bool isEnabled(uint32_t enabledVersion, const MVKExtensionList& extList, const MVKExtensionList* instExtList = nullptr) {
-		bool isAPISupported = MVK_VULKAN_API_VERSION_CONFORM(enabledVersion) >= apiVersion;
-		auto isExtnSupported = [this, isAPISupported](const MVKExtensionList& extList) {
-			return extList.isEnabled(this->ext1Name) && (isAPISupported ||
-					((!this->ext2Name || extList.isEnabled(this->ext2Name)) && (!this->ext3Name || extList.isEnabled(this->ext3Name))));
-		};
-		return ((isCore() && isAPISupported) ||
-				isExtnSupported(extList) ||
-				(instExtList && isExtnSupported(*instExtList)));
+		return ((isCore() && MVK_VULKAN_API_VERSION_CONFORM(enabledVersion) >= apiVersion) ||
+				extList.isEnabled(this->extName) ||
+				(instExtList && instExtList->isEnabled(this->extName)));
 	}
 
 } MVKEntryPoint;
