@@ -615,7 +615,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MAXIMAL_RECONVERGENCE_FEATURES_KHR: {
 				auto* shaderReconvergenceFeatures = (VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR*)next;
-				shaderReconvergenceFeatures->shaderMaximalReconvergence = _gpuCapabilities.isAppleGPU;
+				shaderReconvergenceFeatures->shaderMaximalReconvergence = _metalFeatures.maximalReconvergence;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_QUAD_CONTROL_FEATURES_KHR: {
+				auto* shaderQuadControlFeatures = (VkPhysicalDeviceShaderQuadControlFeaturesKHR*)next;
+				shaderQuadControlFeatures->shaderQuadControl = _metalFeatures.quadControlFlow && _metalFeatures.quadPermute;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_RELAXED_EXTENDED_INSTRUCTION_FEATURES_KHR: {
@@ -625,7 +630,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_UNIFORM_CONTROL_FLOW_FEATURES_KHR: {
 				auto* shaderSGUniformFeatures = (VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR*)next;
-				shaderSGUniformFeatures->shaderSubgroupUniformControlFlow = _gpuCapabilities.isAppleGPU;
+				shaderSGUniformFeatures->shaderSubgroupUniformControlFlow = _metalFeatures.subgroupUniformControlFlow;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
@@ -2898,6 +2903,14 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #if MVK_XCODE_16 && MVK_MACOS
     _metalFeatures.residencySets = mvkOSVersionIsAtLeast(15) && supportsMTLGPUFamily(Apple6);
 #endif
+
+    // From testing, these guarantees are only true on Apple GPUs.
+    // These conditions are intentionally redundant to indicate that, not only do they depend on
+    // each other, they also have their own unique conditions that are only true with certain GPUs.
+    // Even if one changes in the future, the others still need to be independently validated.
+    _metalFeatures.subgroupUniformControlFlow = _gpuCapabilities.isAppleGPU;
+    _metalFeatures.maximalReconvergence = _gpuCapabilities.isAppleGPU && _metalFeatures.subgroupUniformControlFlow;
+    _metalFeatures.quadControlFlow = _gpuCapabilities.isAppleGPU && _metalFeatures.maximalReconvergence;
 }
 
 // Initializes the physical device features of this instance.
@@ -3752,9 +3765,14 @@ void MVKPhysicalDevice::initExtensions() {
 	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_supportedExtensions;
 	pWritableExtns->disableAllButEnabledDeviceExtensions();
 
-	if (!_gpuCapabilities.isAppleGPU) {
+	if (!_metalFeatures.subgroupUniformControlFlow) {
 		pWritableExtns->vk_KHR_shader_subgroup_uniform_control_flow.enabled = false;
+	}
+	if (!_metalFeatures.maximalReconvergence) {
 		pWritableExtns->vk_KHR_shader_maximal_reconvergence.enabled = false;
+	}
+	if (!_metalFeatures.quadControlFlow || !_metalFeatures.quadPermute) {
+		pWritableExtns->vk_KHR_shader_quad_control.enabled = false;
 	}
 	if (!_metalFeatures.samplerMirrorClampToEdge) {
 		pWritableExtns->vk_KHR_sampler_mirror_clamp_to_edge.enabled = false;

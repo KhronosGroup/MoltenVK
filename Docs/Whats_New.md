@@ -25,6 +25,7 @@ Released TBD
 	- `VK_KHR_present_id`
 	- `VK_KHR_present_wait`
 	- `VK_KHR_shader_maximal_reconvergence`
+	- `VK_KHR_shader_quad_control`
 	- `VK_KHR_shader_relaxed_extended_instruction`
 	- `VK_KHR_shader_subgroup_uniform_control_flow`
 	- `VK_KHR_surface_protected_capabilities`

@@ -100,6 +100,7 @@ MVK_EXTENSION(KHR_shader_float_controls,                KHR_SHADER_FLOAT_CONTROL
 MVK_EXTENSION(KHR_shader_integer_dot_product,           KHR_SHADER_INTEGER_DOT_PRODUCT,           DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_shader_maximal_reconvergence,         KHR_SHADER_MAXIMAL_RECONVERGENCE,         DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_shader_non_semantic_info,             KHR_SHADER_NON_SEMANTIC_INFO,             DEVICE,   10.11,  8.0,  1.0)
+MVK_EXTENSION(KHR_shader_quad_control,                  KHR_SHADER_QUAD_CONTROL,                  DEVICE,   10.14, 13.0,  1.0)
 MVK_EXTENSION(KHR_shader_relaxed_extended_instruction,  KHR_SHADER_RELAXED_EXTENDED_INSTRUCTION,  DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_shader_subgroup_extended_types,       KHR_SHADER_SUBGROUP_EXTENDED_TYPES,       DEVICE,   10.14, 13.0,  1.0)
 MVK_EXTENSION(KHR_shader_subgroup_rotate,               KHR_SHADER_SUBGROUP_ROTATE,               DEVICE,   10.14, 13.0,  1.0)
