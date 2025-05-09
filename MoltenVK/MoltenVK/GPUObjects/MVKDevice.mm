@@ -702,8 +702,8 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				extFeatures->sampler2DViewOf3D = _metalFeatures.placementHeaps;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
-				auto* robustness2Features = (VkPhysicalDeviceRobustness2FeaturesEXT*)next;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR: {
+				auto* robustness2Features = (VkPhysicalDeviceRobustness2FeaturesKHR*)next;
 				robustness2Features->robustBufferAccess2 = false;
 				robustness2Features->robustImageAccess2 = true;
 				robustness2Features->nullDescriptor = false;
@@ -1218,9 +1218,9 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				extMemHostProps->minImportedHostPointerAlignment = _metalFeatures.hostMemoryPageSize;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_KHR: {
 				// This isn't implemented yet, but when it is, it is expected that we'll wind up doing it manually.
-				auto* robustness2Props = (VkPhysicalDeviceRobustness2PropertiesEXT*)next;
+				auto* robustness2Props = (VkPhysicalDeviceRobustness2PropertiesKHR*)next;
 				robustness2Props->robustStorageBufferAccessSizeAlignment = 1;
 				robustness2Props->robustUniformBufferAccessSizeAlignment = 1;
 				break;

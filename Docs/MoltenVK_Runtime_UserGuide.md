@@ -274,6 +274,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_present_wait`
 - `VK_KHR_push_descriptor`
 - `VK_KHR_relaxed_block_layout`
+- `VK_KHR_robustness2`
 - `VK_KHR_sampler_mirror_clamp_to_edge`
   - *Requires a Mac GPU or Apple family 7 GPU.*
 - `VK_KHR_sampler_ycbcr_conversion`
