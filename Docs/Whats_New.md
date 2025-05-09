@@ -48,6 +48,7 @@ Released 2025-04-27
 	- `VK_KHR_maintenance4`
 	- `VK_KHR_maintenance6`
 	- `VK_KHR_maintenance7`
+	- `VK_KHR_robustness2`
 	- `VK_KHR_shader_expect_assume`
 	- `VK_KHR_shader_subgroup_rotate`
 	- `VK_KHR_shader_terminate_invocation`
