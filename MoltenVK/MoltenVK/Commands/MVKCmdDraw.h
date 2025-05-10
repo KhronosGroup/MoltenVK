@@ -46,6 +46,10 @@ public:
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
+    MVKSmallVector<MVKMTLBufferBinding, N> getBufferBindings() {
+        return _bindings;
+    }
+
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
@@ -76,6 +80,10 @@ public:
 						VkIndexType indexType);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+    MVKIndexMTLBufferBinding getBufferBinding() {
+        return _binding;
+    }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -124,6 +132,7 @@ public:
 						uint32_t firstInstance);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+    void encodeToICB(id<MTLIndirectRenderCommand> command, MVKIndexMTLBufferBinding ibb);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
