@@ -288,7 +288,7 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
         _appInfo.apiVersion = MVK_VULKAN_API_VERSION;
     }
 
-	// Enable extensions before setting config.
+	// Enable extensions before setting config or proc addrs.
 	setConfigurationResult(verifyLayers(pCreateInfo->enabledLayerCount, pCreateInfo->ppEnabledLayerNames));
 	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_enabledExtensions;
 	setConfigurationResult(pWritableExtns->enable(pCreateInfo->enabledExtensionCount,
@@ -303,7 +303,7 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 		_appInfo.apiVersion = cfgAPIVer;
 	}
 
-	initProcAddrs();				// Init function pointers
+	initProcAddrs();				// Init function pointers. After extensions enabled.
 	logVersions();					// Log the MoltenVK and Vulkan versions. After config.
 
 	// Populate the array of physical GPU devices.
@@ -447,10 +447,6 @@ void MVKInstance::initMVKConfig(const VkInstanceCreateInfo* pCreateInfo) {
 #define ADD_INST_VER_OR_EXT_ENTRY_POINT(func, API, EXT1)	ADD_ENTRY_POINT(func, VK_API_VERSION_##API, VK_##EXT1##_EXTENSION_NAME, false)
 #define ADD_DVC_VER_OR_EXT_ENTRY_POINT(func, API, EXT1)		ADD_ENTRY_POINT(func, VK_API_VERSION_##API, VK_##EXT1##_EXTENSION_NAME, true)
 
-// Add an open function, not tied to core or an extension.
-#define ADD_INST_OPEN_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, 0, nullptr, false)
-#define ADD_DVC_OPEN_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, 0, nullptr, true)
-
 // Initializes the function pointer map.
 void MVKInstance::initProcAddrs() {
 
@@ -513,14 +509,12 @@ void MVKInstance::initProcAddrs() {
 	ADD_INST_EXT_ENTRY_POINT(vkCreateMacOSSurfaceMVK, MVK_MACOS_SURFACE);
 #endif
 
-	// MoltenVK-specific instannce functions, not tied to a Vulkan API version or an extension.
-	ADD_INST_OPEN_ENTRY_POINT(vkGetPhysicalDeviceMetalFeaturesMVK);
-	ADD_INST_OPEN_ENTRY_POINT(vkGetPerformanceStatisticsMVK);
-
 	// For deprecated MoltenVK-specific functions, suppress compiler deprecation warning.
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-	ADD_INST_OPEN_ENTRY_POINT(vkSetMoltenVKConfigurationMVK);
+	ADD_INST_ENTRY_POINT(vkGetPerformanceStatisticsMVK);	// If VK_KHR_performance_query added, deprecate via ADD_INST_EXT_ENTRY_POINT(vkGetPerformanceStatisticsMVK, MVK_MOLTENVK).
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceMetalFeaturesMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkSetMoltenVKConfigurationMVK, MVK_MOLTENVK);
 	ADD_INST_EXT_ENTRY_POINT(vkGetVersionStringsMVK, MVK_MOLTENVK);
 	ADD_INST_EXT_ENTRY_POINT(vkGetMTLDeviceMVK, MVK_MOLTENVK);
 	ADD_INST_EXT_ENTRY_POINT(vkSetMTLTextureMVK, MVK_MOLTENVK);

@@ -21,7 +21,7 @@
 
 #include "MVKCommonEnvironment.h"
 #include "mvk_vulkan.h"
-#include "mvk_private_api.h"
+#include "mvk_deprecated_api.h"
 #include "MVKLogging.h"
 #ifdef __cplusplus
 #include <string>

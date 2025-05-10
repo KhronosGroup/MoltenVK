@@ -166,9 +166,13 @@ VkResult MVKExtensionList::enable(uint32_t count, const char* const* names, cons
 		} else {
 			enable(extnName);
 			if (mvkStringsAreEqual(extnName, VK_MVK_MOLTENVK_EXTENSION_NAME)) {
-				reportMessage(MVK_CONFIG_LOG_LEVEL_WARNING, "Extension %s is deprecated. For access to Metal objects, use extension %s. "
-							  "For MoltenVK configuration, use the VK_EXT_layer_settings extension or environment variables.",
-							  VK_MVK_MOLTENVK_EXTENSION_NAME, VK_EXT_METAL_OBJECTS_EXTENSION_NAME);
+				reportMessage(MVK_CONFIG_LOG_LEVEL_WARNING, "Extension %s is deprecated."
+							  " For access to Metal objects, use extension %s."
+							  " For MoltenVK configuration, use extension %s,  or environment variables."
+							  " For other %s functions, use with extreme caution. Calling these functions with"
+							  " handles and objects retrieved from other Vulkan layers will cause crashes.",
+							  VK_MVK_MOLTENVK_EXTENSION_NAME, VK_EXT_METAL_OBJECTS_EXTENSION_NAME,
+							  VK_EXT_LAYER_SETTINGS_EXTENSION_NAME, VK_MVK_MOLTENVK_EXTENSION_NAME);
 			}
 		}
 	}
