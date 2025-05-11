@@ -665,6 +665,7 @@ void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage stage) {
 	if ( !_cmdEncoder->isUsingMetalArgumentBuffers() ) { return; }
 
+	bool isUsingResidencySet = getDevice()->hasResidencySet();
 	MVKPipeline* pipeline = getPipeline();
 	uint32_t dsCnt = pipeline->getDescriptorSetCount();
 	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
@@ -676,12 +677,15 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 		auto& shaderBindingUsage = pipeline->getDescriptorBindingUse(dsIdx, stage);
 		bool shouldBindArgBuffToStage = false;
 		
+		// Iterate the bindings. If we're using a residency set, the only thing we need to determine
+		// is whether to bind the Metal arg buffer for the desc set. Once we know that, we can abort fast.
+		// Otherwise, we have to labouriously set the residency usage for each resource.
 		uint32_t dslBindCnt = dsLayout->getBindingCount();
 		for (uint32_t dslBindIdx = 0; dslBindIdx < dslBindCnt; dslBindIdx++) {
 			auto* dslBind = dsLayout->getBindingAt(dslBindIdx);
 			if (dslBind->getApplyToStage(stage) && shaderBindingUsage.getBit(dslBindIdx)) {
 				shouldBindArgBuffToStage = true;
-				if (getDevice()->hasResidencySet()) continue;
+				if (isUsingResidencySet) break;	// Now that we know we need to bind arg buffer, we're done with this desc layout.
 				uint32_t elemCnt = dslBind->getDescriptorCount(descSet->getVariableDescriptorCount());
 				for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 					uint32_t descIdx = dslBind->getDescriptorIndex(elemIdx);
