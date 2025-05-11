@@ -2706,6 +2706,7 @@
 					"-Wreorder",
 					"-Wheader-hygiene",
 					"-Wunused-but-set-variable",
+					"-Wno-vla-cxx-extension",
 				);
 			};
 			name = Debug;
@@ -2784,6 +2785,7 @@
 					"-Wreorder",
 					"-Wheader-hygiene",
 					"-Wunused-but-set-variable",
+					"-Wno-vla-cxx-extension",
 				);
 			};
 			name = Release;
