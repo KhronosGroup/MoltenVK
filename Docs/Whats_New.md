@@ -29,6 +29,9 @@ Released TBD
 	- `VK_KHR_shader_relaxed_extended_instruction`
 	- `VK_KHR_shader_subgroup_uniform_control_flow`
 	- `VK_KHR_surface_protected_capabilities`
+- For behaviouraly consistency, require deprecated unofficial extension `VK_MVK_moltenvk` be enabled to access 
+  the proc addrs for functions `vkSetMoltenVKConfigurationMVK()` and `vkGetPhysicalDeviceMetalFeaturesMVK()`. 
+- Move `vkGetPhysicalDeviceMetalFeaturesMVK()` from `mvk_private_api.h` to `mvk_deprecated_api.h`.
 - Update to latest SPIRV-Cross:
   - MSL: Add support for `DebugPrintf`.
   - MSL: Fix crash due to regression caused by recent changes to location calculations.
