@@ -1629,8 +1629,9 @@ VkResult MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffe
 	// Ensure this image, the drawable, and the present fence are not destroyed while
 	// awaiting MTLCommandBuffer completion. We retain the drawable separately because
 	// a new drawable might be acquired by this image by then.
-	// Signal the fence from this callback, because the last one or two presentation
-	// completion callbacks can occasionally stall.
+	// Signal the fence and notify the swapchain that the present has completed
+	// from this callback, because the last one or two presentation completion
+	// callbacks can occasionally stall.
 	retain();
 	[mtlDrwbl retain];
 	auto* fence = presentInfo.fence;
@@ -1640,6 +1641,7 @@ VkResult MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffe
 		if (fence) { fence->release(); }
 		[mtlDrwbl release];
 		release();
+		if (_swapchain) { _swapchain->notifyPresentComplete(presentInfo); }
 	}];
 
 	signal(signaler.semaphore, signaler.semaphoreSignalToken, mtlCmdBuff);

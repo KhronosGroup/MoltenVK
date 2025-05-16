@@ -123,6 +123,7 @@ protected:
     void markFrameInterval();
 	void beginPresentation(const MVKImagePresentInfo& presentInfo);
 	void endPresentation(const MVKImagePresentInfo& presentInfo, uint64_t beginPresentTime, uint64_t actualPresentTime = 0);
+	void notifyPresentComplete(const MVKImagePresentInfo& presentInfo);
 	void forceUnpresentedImageCompletion();
 
 	MVKSurface* _surface = nullptr;
