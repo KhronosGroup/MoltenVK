@@ -729,6 +729,7 @@ id<MTLRenderPipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLRenderPi
 																	 id<MTLRenderPipelineState>& plState) {
 	if ( !plState ) {
 		MVKRenderPipelineCompiler* plc = new MVKRenderPipelineCompiler(this);
+        plDesc.supportIndirectCommandBuffers = YES;
 		plState = plc->newMTLRenderPipelineState(plDesc);	// retained
 		plc->destroy();
 		if ( !plState ) { _hasValidMTLPipelineStates = false; }
@@ -827,6 +828,7 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 	if (!isTessellationPipeline()) {
 		MTLRenderPipelineDescriptor* plDesc = newMTLRenderPipelineDescriptor(pCreateInfo, reflectData, pVertexSS, pVertexFB, pFragmentSS, pFragmentFB);	// temp retain
 		if (plDesc) {
+            plDesc.supportIndirectCommandBuffers = YES;
 			const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
 			if (pRendInfo && mvkIsMultiview(pRendInfo->viewMask)) {
 				// We need to adjust the step rate for per-instance attributes to account for the
@@ -853,6 +855,7 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 					}
 				}
 			} else {
+                plDesc.supportIndirectCommandBuffers = YES;
 				getOrCompilePipeline(plDesc, _mtlPipelineState);
 			}
 			[plDesc release];																				// temp release
@@ -904,8 +907,9 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLRenderPipelineDescriptor
 	initShaderConversionConfig(shaderConfig, pCreateInfo, reflectData);
 
 	MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];	// retained
+    plDesc.supportIndirectCommandBuffers = YES;
 
-	SPIRVShaderOutputs vtxOutputs;
+    SPIRVShaderOutputs vtxOutputs;
 	std::string errorLog;
 	if (!getShaderOutputs(_vertexModule->getSPIRV(), spv::ExecutionModelVertex, pVertexSS->pName, vtxOutputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get vertex outputs: %s", errorLog.c_str()));
@@ -2916,6 +2920,7 @@ id<MTLRenderPipelineState> MVKRenderPipelineCompiler::newMTLRenderPipelineState(
 	compile(lock, ^{
 		auto mtlDev = getMTLDevice();
 		@synchronized (mtlDev) {
+//            mtlRPLDesc.supportIndirectCommandBuffers = YES;
 			[mtlDev newRenderPipelineStateWithDescriptor: mtlRPLDesc
 									   completionHandler: ^(id<MTLRenderPipelineState> ps, NSError* error) {
 										   bool isLate = compileComplete(ps, error);

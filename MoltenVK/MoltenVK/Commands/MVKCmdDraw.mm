@@ -628,6 +628,17 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
     }
 }
 
+void MVKCmdDrawIndexed::encodeToICB(id<MTLIndirectRenderCommand> command, MVKIndexMTLBufferBinding ibb) {
+    [command drawIndexedPrimitives:MTLPrimitiveTypeTriangle
+                       indexCount:_indexCount
+                         indexType:(MTLIndexType)ibb.mtlIndexType
+                       indexBuffer:ibb.mtlBuffer
+                 indexBufferOffset:ibb.offset
+                     instanceCount:_instanceCount
+                        baseVertex:_vertexOffset
+                      baseInstance:_firstInstance];
+
+}
 
 // This is totally arbitrary, but we're forced to do this because we don't know how many vertices
 // there are at encoding time. And this will probably be inadequate for large instanced draws.
