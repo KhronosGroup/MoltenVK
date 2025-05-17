@@ -239,6 +239,7 @@ public:
 
 	MVKAttachmentDescription(MVKRenderPass* renderPass,
 							const VkRenderingAttachmentInfo* pAttInfo,
+							VkImageAspectFlagBits aspect,
 							bool isResolveAttachment);
 
 protected:
