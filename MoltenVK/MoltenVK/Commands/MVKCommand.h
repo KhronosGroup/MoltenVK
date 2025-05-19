@@ -67,6 +67,10 @@ public:
 	/** Encodes this command on the specified command encoder. */
 	virtual void encode(MVKCommandEncoder* cmdEncoder) = 0;
 
+    virtual void encodeToICB(id<MTLIndirectCommandBuffer> icb) {
+        throw "Kablooie!";
+    }
+
 protected:
 	friend MVKCommandBuffer;
 
