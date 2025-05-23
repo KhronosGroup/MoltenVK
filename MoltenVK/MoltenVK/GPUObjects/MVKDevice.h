@@ -30,6 +30,7 @@
 #include <shared_mutex>
 #include <string>
 #include <mutex>
+#include <os/lock.h>
 
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
@@ -538,34 +539,60 @@ typedef struct MVKMTLBlitEncoder {
 // and potentially introduce extra synchronization on previous invocations of the same stage.
 static const uint32_t kMVKBarrierFenceCount = 64;
 
+class MVKLiveList {
+	// std::mutex is kind of massive and we're making a lot of these...
+	class Lock {
+		os_unfair_lock _mtx = OS_UNFAIR_LOCK_INIT;
+	public:
+		Lock() = default;
+		Lock(Lock&&) = delete;
+		void lock()   { os_unfair_lock_lock(&_mtx); }
+		void unlock() { os_unfair_lock_unlock(&_mtx); }
+	};
+
+	struct alignas(64) Group {
+		Lock lock;
+		std::unordered_map<id, uint32_t> entries;
+	};
+
+	static constexpr size_t GROUP_BITS = 4;
+	Group groups[1 << GROUP_BITS];
+	Group* getGroup(id object);
+
+public:
+	class IsLiveResult {
+		friend class MVKLiveList;
+		Lock* lock;
+		bool value;
+		IsLiveResult(std::pair<Lock*, bool> res): lock(res.first), value(res.second) {}
+		IsLiveResult(IsLiveResult&&) = delete;
+	public:
+		~IsLiveResult() { lock->unlock(); }
+		operator bool() const { return value; }
+	};
+
+	void add(id object);
+	void remove(id object);
+	IsLiveResult isLive(id object) { return isLive_(object); }
+
+private:
+	std::pair<Lock*, bool> isLive_(id object);
+};
+
 struct MVKLiveResourceSet {
-private:
-	void add(std::unordered_map<id, uint32_t>& map, id object);
-	void remove(std::unordered_map<id, uint32_t>& map, id object);
-	bool isLive(const std::unordered_map<id, uint32_t>& map, id object) const;
-	static bool isLiveHoldingLock(const std::unordered_map<id, uint32_t>& map, id object);
+	MVKLiveList textures;
+	MVKLiveList buffers;
+	MVKLiveList samplers;
 
-public:
-	mutable std::shared_mutex lock;
-
-private:
-	std::unordered_map<id, uint32_t> textures;
-	std::unordered_map<id, uint32_t> buffers;
-	std::unordered_map<id, uint32_t> samplers;
-
-public:
-	void add(id<MTLTexture> tex)       { add(textures, tex); }
-	void add(id<MTLBuffer> buf)        { add(buffers,  buf); }
-	void add(id<MTLSamplerState> samp) { add(samplers, samp); }
-	void remove(id<MTLTexture> tex)       { remove(textures, tex); }
-	void remove(id<MTLBuffer> buf)        { remove(buffers,  buf); }
-	void remove(id<MTLSamplerState> samp) { remove(samplers, samp); }
-	bool isLive(id<MTLTexture> tex)       const { return isLive(textures, tex); }
-	bool isLive(id<MTLBuffer> buf)        const { return isLive(buffers,  buf); }
-	bool isLive(id<MTLSamplerState> samp) const { return isLive(samplers, samp); }
-	bool isLiveHoldingLock(id<MTLTexture> tex)       const { return isLiveHoldingLock(textures, tex); }
-	bool isLiveHoldingLock(id<MTLBuffer> buf)        const { return isLiveHoldingLock(buffers,  buf); }
-	bool isLiveHoldingLock(id<MTLSamplerState> samp) const { return isLiveHoldingLock(samplers, samp); }
+	void add(id<MTLTexture> tex)       { textures.add(tex); }
+	void add(id<MTLBuffer> buf)        { buffers .add(buf); }
+	void add(id<MTLSamplerState> samp) { samplers.add(samp); }
+	void remove(id<MTLTexture> tex)       { textures.remove(tex); }
+	void remove(id<MTLBuffer> buf)        { buffers .remove(buf); }
+	void remove(id<MTLSamplerState> samp) { samplers.remove(samp); }
+	MVKLiveList::IsLiveResult isLive(id<MTLTexture> tex)       { return textures.isLive(tex); }
+	MVKLiveList::IsLiveResult isLive(id<MTLBuffer> buf)        { return buffers .isLive(buf); }
+	MVKLiveList::IsLiveResult isLive(id<MTLSamplerState> samp) { return samplers.isLive(samp); }
 };
 
 /** Represents a Vulkan logical GPU device, associated with a physical device. */
@@ -587,11 +614,8 @@ public:
 	/** Returns the name of this device. */
 	const char* getName() { return _physicalDevice->_properties.deviceName; }
 
-	/** Returns the list of live resources, for reading. */
-	const MVKLiveResourceSet& getLiveResources() const { return _liveResources; }
-
-	/** Returns the list of live resources, for writing. */
-	MVKLiveResourceSet& editLiveResources() { return _liveResources; }
+	/** Returns the list of live resources. */
+	MVKLiveResourceSet& getLiveResources() { return _liveResources; }
 
     /** Returns the common resource factory for creating command resources. */
     MVKCommandResourceFactory* getCommandResourceFactory() { return _commandResourceFactory; }
