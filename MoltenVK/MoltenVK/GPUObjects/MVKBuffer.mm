@@ -198,7 +198,7 @@ id<MTLBuffer> MVKBuffer::getMTLBuffer() {
 			                                                             options: _deviceMemory->getMTLResourceOptions()
 			                                                              offset: _deviceMemoryOffset];	// retained
 			_device->makeResident(buf);
-			_device->editLiveResources().add(buf);
+			_device->getLiveResources().add(buf);
 			_mtlBuffer = buf;
 			propagateDebugName();
 			return _mtlBuffer;
@@ -218,7 +218,7 @@ id<MTLBuffer> MVKBuffer::getMTLBufferCache() {
 		id<MTLBuffer> buf = [getMTLDevice() newBufferWithLength: getByteCount()
 		                                                options: MTLResourceStorageModeManaged];    // retained
 		_device->makeResident(buf);
-		_device->editLiveResources().add(buf);
+		_device->getLiveResources().add(buf);
 		_mtlBufferCache = buf;
         flushToDevice(_deviceMemoryOffset, _byteCount);
     }
@@ -301,7 +301,7 @@ void MVKBuffer::detachMemory() {
 	if (_deviceMemory) { _deviceMemory->removeBuffer(this); }
 	_deviceMemory = nullptr;
 
-	MVKLiveResourceSet& live = _device->editLiveResources();
+	MVKLiveResourceSet& live = _device->getLiveResources();
 	if (id<MTLBuffer> buf = _mtlBuffer) {
 		_mtlBuffer = nil;
 		_device->removeResidency(buf);
@@ -370,7 +370,7 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
 		                                                offset: mtlBuffOffset
 		                                           bytesPerRow: _mtlBytesPerRow];
 		_device->makeResident(tex);
-		_device->editLiveResources().add(tex);
+		_device->getLiveResources().add(tex);
 		_mtlTexture = tex;
 		propagateDebugName();
     }
@@ -448,7 +448,7 @@ void MVKBufferView::destroy() {
 // Potentially called twice, from destroy() and destructor, so ensure everything is nulled out.
 void MVKBufferView::detachMemory() {
 	if (id<MTLTexture> tex = _mtlTexture) {
-		_device->editLiveResources().remove(tex);
+		_device->getLiveResources().remove(tex);
 		_device->removeResidency(tex);
 		[tex release];
 		_mtlTexture = nil;
