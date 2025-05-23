@@ -4147,31 +4147,37 @@ MVKPhysicalDevice::~MVKPhysicalDevice() {
 	MVKLogInfo("Destroyed VkPhysicalDevice for GPU %s with %llu MB of GPU memory still allocated.", getName(), memUsed / MEBI);
 }
 
-#pragma mark - MVKLiveResourceSet
+#pragma mark - MVKLiveList
 
-void MVKLiveResourceSet::add(std::unordered_map<id, uint32_t>& map, id object) {
-	std::lock_guard<std::shared_mutex> guard(lock);
-	map[object]++;
+MVKLiveList::Group* MVKLiveList::getGroup(id object) {
+	static constexpr size_t GOLDEN_RATIO = 0x9e3779b97f4a7c16ull;
+	size_t idx = reinterpret_cast<size_t>(object) * GOLDEN_RATIO;
+	idx >>= sizeof(size_t) * CHAR_BIT - GROUP_BITS;
+	return &groups[idx];
 }
 
-void MVKLiveResourceSet::remove(std::unordered_map<id, uint32_t>& map, id object) {
-	std::lock_guard<std::shared_mutex> guard(lock);
-	auto it = map.find(object);
-	if (it == map.end())
+void MVKLiveList::add(id object) {
+	Group* group = getGroup(object);
+	std::lock_guard<Lock> guard(group->lock);
+	group->entries[object]++;
+}
+
+void MVKLiveList::remove(id object) {
+	Group* group = getGroup(object);
+	std::lock_guard<Lock> guard(group->lock);
+	auto it = group->entries.find(object);
+	if (it == group->entries.end())
 		return;
 	if (it->second <= 1)
-		map.erase(it);
+		group->entries.erase(it);
 	else
 		it->second--;
 }
 
-bool MVKLiveResourceSet::isLive(const std::unordered_map<id, uint32_t>& map, id object) const {
-	std::shared_lock<std::shared_mutex> guard(lock);
-	return isLiveHoldingLock(map, object);
-}
-
-bool MVKLiveResourceSet::isLiveHoldingLock(const std::unordered_map<id, uint32_t>& map, id object) {
-	return map.find(object) != map.end();
+std::pair<MVKLiveList::Lock*, bool> MVKLiveList::isLive_(id object) {
+	Group* group = getGroup(object);
+	group->lock.lock();
+	return { &group->lock, group->entries.find(object) != group->entries.end() };
 }
 
 #pragma mark -

@@ -249,7 +249,7 @@ bool MVKDeviceMemory::ensureMTLBuffer() {
 	}
 	if (!buf) { return false; }
 	_device->makeResident(buf);
-	_device->editLiveResources().add(buf);
+	_device->getLiveResources().add(buf);
 	_pMemory = isMemoryHostAccessible() ? buf.contents : nullptr;
 	_mtlBuffer = buf;
 
@@ -335,9 +335,9 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 				// It is responsibility of app to ensure these are consistent. Not doing so results in undefined behavior.
 				const auto* pMTLBuffInfo = (VkImportMetalBufferInfoEXT*)next;
 				if (_mtlBuffer)
-					_device->editLiveResources().remove(_mtlBuffer);
+					_device->getLiveResources().remove(_mtlBuffer);
 				[_mtlBuffer release];							// guard against dups
-				_device->editLiveResources().add(pMTLBuffInfo->mtlBuffer);
+				_device->getLiveResources().add(pMTLBuffInfo->mtlBuffer);
 				_mtlBuffer = [pMTLBuffInfo->mtlBuffer retain];	// retained
 				_mtlStorageMode = _mtlBuffer.storageMode;
 				_mtlCPUCacheMode = _mtlBuffer.cpuCacheMode;
@@ -366,9 +366,9 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 				}
 				else if (pImportInfo->handleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT) {
 					if (_mtlBuffer)
-						_device->editLiveResources().remove(_mtlBuffer);
+						_device->getLiveResources().remove(_mtlBuffer);
 					[_mtlBuffer release];							// guard against dups
-					_device->editLiveResources().add(((id<MTLBuffer>)pImportInfo->handle));
+					_device->getLiveResources().add(((id<MTLBuffer>)pImportInfo->handle));
 					_mtlBuffer = [((id<MTLBuffer>)pImportInfo->handle) retain];	// retained
 					_mtlStorageMode = _mtlBuffer.storageMode;
 					_mtlCPUCacheMode = _mtlBuffer.cpuCacheMode;
@@ -486,7 +486,7 @@ MVKDeviceMemory::~MVKDeviceMemory() {
 	} else if (id<MTLBuffer> buf = _mtlBuffer) {
 		_mtlBuffer = nil;
 		_device->removeResidency(buf);
-		_device->editLiveResources().remove(buf);
+		_device->getLiveResources().remove(buf);
 		[buf release];
 	}
 
