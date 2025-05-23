@@ -41,12 +41,32 @@ using namespace std;
 
 #pragma mark - Resource Binder Structs
 
+static MTLRenderStages getMTLStages(MVKResourceUsageStages stages) {
+	switch (stages) {
+		case MVKResourceUsageStages::Vertex:   return MTLRenderStageVertex;
+		case MVKResourceUsageStages::Fragment: return MTLRenderStageFragment;
+		case MVKResourceUsageStages::All:      return MTLRenderStageVertex | MTLRenderStageFragment;
+		case MVKResourceUsageStages::Count:    break;
+	}
+	assert(0);
+	return 0;
+}
+
+static void useResourceGraphics(id<MTLCommandEncoder> encoder, id<MTLResource> resource, MTLResourceUsage usage, MVKResourceUsageStages stages) {
+	[static_cast<id<MTLRenderCommandEncoder>>(encoder) useResource:resource usage:usage stages:getMTLStages(stages)];
+}
+
+static void useResourceCompute(id<MTLCommandEncoder> encoder, id<MTLResource> resource, MTLResourceUsage usage, MVKResourceUsageStages stages) {
+	[static_cast<id<MTLComputeCommandEncoder>>(encoder) useResource:resource usage:usage];
+}
+
 struct MVKFragmentBinder {
 	static SEL selSetBytes()   { return @selector(setFragmentBytes:length:atIndex:); }
 	static SEL selSetBuffer()  { return @selector(setFragmentBuffer:offset:atIndex:); }
 	static SEL selSetOffset()  { return @selector(setFragmentBufferOffset:atIndex:); }
 	static SEL selSetTexture() { return @selector(setFragmentTexture:atIndex:); }
 	static SEL selSetSampler() { return @selector(setFragmentSamplerState:atIndex:); }
+	static MVKResourceBinder::UseResource useResource() { return useResourceGraphics; }
 	static void setBuffer(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger index) {
 		[encoder setFragmentBuffer:buffer offset:offset atIndex:index];
 	}
@@ -70,6 +90,7 @@ struct MVKVertexBinder {
 	static SEL selSetOffset()  { return @selector(setVertexBufferOffset:atIndex:); }
 	static SEL selSetTexture() { return @selector(setVertexTexture:atIndex:); }
 	static SEL selSetSampler() { return @selector(setVertexSamplerState:atIndex:); }
+	static MVKResourceBinder::UseResource useResource() { return useResourceGraphics; }
 #if MVK_XCODE_15
 	static SEL selSetBufferDynamic() { return @selector(setVertexBuffer:offset:attributeStride:atIndex:); }
 	static SEL selSetOffsetDynamic() { return @selector(setVertexBufferOffset:attributeStride:atIndex:); }
@@ -111,6 +132,7 @@ struct MVKComputeBinder {
 	static SEL selSetOffset()  { return @selector(setBufferOffset:atIndex:); }
 	static SEL selSetTexture() { return @selector(setTexture:atIndex:); }
 	static SEL selSetSampler() { return @selector(setSamplerState:atIndex:); }
+	static MVKResourceBinder::UseResource useResource() { return useResourceCompute; }
 #if MVK_XCODE_15
 	static SEL selSetBufferDynamic() { return @selector(setBuffer:offset:attributeStride:atIndex:); }
 	static SEL selSetOffsetDynamic() { return @selector(setBufferOffset:attributeStride:atIndex:); }
@@ -426,20 +448,6 @@ static void updateImplicitBuffer(V &contents, uint32_t index, uint32_t value) {
 	contents[index] = value;
 }
 
-static bool needsLiveCheck(MVKDescriptorBindOperationCode op) {
-	switch (op) {
-		case MVKDescriptorBindOperationCode::UseBufferWithLiveCheck:
-		case MVKDescriptorBindOperationCode::UseTextureWithLiveCheck:
-		case MVKDescriptorBindOperationCode::BindBufferWithLiveCheck:
-		case MVKDescriptorBindOperationCode::BindTextureWithLiveCheck:
-		case MVKDescriptorBindOperationCode::BindSamplerWithLiveCheck:
-		case MVKDescriptorBindOperationCode::BindBufferDynamicWithLiveCheck:
-			return true;
-		default:
-			return false;
-	}
-}
-
 static constexpr bool isUseResource(MVKDescriptorBindOperationCode op) {
 	switch (op) {
 		case MVKDescriptorBindOperationCode::UseBufferWithLiveCheck:
@@ -452,48 +460,8 @@ static constexpr bool isUseResource(MVKDescriptorBindOperationCode op) {
 }
 
 template <MVKDescriptorBindOperationCode Op>
-static bool liveCheck(MVKDevice* dev, id resource) {
-	switch (Op) {
-		case MVKDescriptorBindOperationCode::UseBufferWithLiveCheck:
-		case MVKDescriptorBindOperationCode::BindBufferWithLiveCheck:
-		case MVKDescriptorBindOperationCode::BindBufferDynamicWithLiveCheck:
-			return dev->getLiveResources().isLiveHoldingLock(static_cast<id<MTLBuffer>>(resource));
-
-		case MVKDescriptorBindOperationCode::UseTextureWithLiveCheck:
-		case MVKDescriptorBindOperationCode::BindTextureWithLiveCheck:
-			return dev->getLiveResources().isLiveHoldingLock(static_cast<id<MTLTexture>>(resource));
-
-		case MVKDescriptorBindOperationCode::BindSamplerWithLiveCheck:
-			return dev->getLiveResources().isLiveHoldingLock(static_cast<id<MTLSamplerState>>(resource));
-
-		default:
-			return true;
-	}
-}
-
-class LiveResourceLock {
-	std::shared_mutex* mtx = nullptr;
-public:
-	LiveResourceLock(LiveResourceLock&&) = delete;
-	LiveResourceLock() = default;
-	void lock(MVKDevice* dev) {
-		if (!mtx) {
-			mtx = &dev->getLiveResources().lock;
-			mtx->lock_shared();
-		} else {
-			assert(mtx == &dev->getLiveResources().lock);
-		}
-	}
-	~LiveResourceLock() {
-		if (mtx)
-			mtx->unlock_shared();
-	}
-};
-
-template <MVKDescriptorBindOperationCode Op>
 static void executeBindOp(id<MTLCommandEncoder> encoder,
                           MVKCommandEncoder& mvkEncoder,
-                          LiveResourceLock& resourceLock,
                           const char* src, uint32_t count, size_t stride,
                           uint32_t target, const uint32_t* dynOffsets,
                           MVKResourceUsageStages useResourceStage,
@@ -513,38 +481,6 @@ static void executeBindOp(id<MTLCommandEncoder> encoder,
 	MVKDevice* dev = mvkEncoder.getDevice();
 	for (uint32_t i = 0; i < count; i++, src += stride) {
 		id resource = *reinterpret_cast<const id*>(src);
-		if (needsLiveCheck(Op) && resource) {
-			// Early check (if it's already bound, we don't need to live check)
-			switch (Op) {
-				case MVKDescriptorBindOperationCode::BindBufferDynamicWithLiveCheck:
-				case MVKDescriptorBindOperationCode::BindBufferWithLiveCheck:
-					if (exists.buffers.get(target + i) && bindings.buffers[target + i].buffer == resource) {
-						uint64_t offset = *reinterpret_cast<const uint64_t*>(src + sizeof(id));
-						if (Op == MVKDescriptorBindOperationCode::BindBufferDynamicWithLiveCheck)
-							offset += dynOffsets[i];
-						if (offset != bindings.buffers[target + i].offset) {
-							bindings.buffers[target + i].offset = offset;
-							binder.setBufferOffset(encoder, offset, target + i);
-						}
-						continue;
-					}
-					break;
-				case MVKDescriptorBindOperationCode::BindTextureWithLiveCheck:
-					if (exists.textures.get(target + i) && bindings.textures[target + i] == resource)
-						continue;
-					break;
-				case MVKDescriptorBindOperationCode::BindSamplerWithLiveCheck:
-					if (exists.samplers.get(target + i) && bindings.samplers[target + i] == resource)
-						continue;
-					break;
-				default:
-					break;
-			}
-			// If we need to live check, make sure the live resources lock is locked
-			resourceLock.lock(dev);
-			if (!liveCheck<Op>(dev, resource))
-				resource = nullptr;
-		}
 		switch (Op) {
 			case MVKDescriptorBindOperationCode::BindBytes:
 				assert(0); // Handled above
@@ -558,25 +494,72 @@ static void executeBindOp(id<MTLCommandEncoder> encoder,
 				uint64_t offset = *reinterpret_cast<const uint64_t*>(src + sizeof(id));
 				if (Op == MVKDescriptorBindOperationCode::BindBufferDynamic || Op == MVKDescriptorBindOperationCode::BindBufferDynamicWithLiveCheck)
 					offset += dynOffsets[i];
-				bindBuffer(encoder, static_cast<id<MTLBuffer>>(resource), offset, target + i, exists, bindings, binder);
+				if ((Op == MVKDescriptorBindOperationCode::BindBufferWithLiveCheck || Op == MVKDescriptorBindOperationCode::BindBufferDynamicWithLiveCheck) && resource) {
+					id<MTLBuffer> buffer = resource;
+					if (exists.buffers.get(target + i) && bindings.buffers[target + i].buffer == buffer) {
+						if (offset != bindings.buffers[target + i].offset) {
+							bindings.buffers[target + i].offset = offset;
+							binder.setBufferOffset(encoder, offset, target + i);
+						}
+					} else if (auto live = dev->getLiveResources().isLive(buffer)) {
+						exists.buffers.set(target + i);
+						bindings.buffers[target + i] = { buffer, offset };
+						binder.setBuffer(encoder, buffer, offset, target + i);
+					}
+				} else {
+					bindBuffer(encoder, static_cast<id<MTLBuffer>>(resource), offset, target + i, exists, bindings, binder);
+				}
 				break;
 			}
 
 			case MVKDescriptorBindOperationCode::BindTexture:
-			case MVKDescriptorBindOperationCode::BindTextureWithLiveCheck:
 				bindTexture(encoder, static_cast<id<MTLTexture>>(resource), target + i, exists, bindings, binder);
 				break;
 
+			case MVKDescriptorBindOperationCode::BindTextureWithLiveCheck:
+				if (id<MTLTexture> tex = resource) {
+					if (exists.textures.get(target + i) && bindings.textures[target + i] == resource) {
+						// Already bound
+					} else if (auto live = dev->getLiveResources().isLive(tex)) {
+						exists.textures.set(target + i);
+						bindings.textures[target + i] = tex;
+						binder.setTexture(encoder, tex, target + i);
+					}
+				} else {
+					bindTexture(encoder, nullptr, target + i, exists, bindings, binder);
+				}
+				break;
+
 			case MVKDescriptorBindOperationCode::BindSampler:
-			case MVKDescriptorBindOperationCode::BindSamplerWithLiveCheck:
 				bindSampler(encoder, static_cast<id<MTLSamplerState>>(resource), target + i, exists, bindings, binder);
 				break;
 
+			case MVKDescriptorBindOperationCode::BindSamplerWithLiveCheck:
+				if (id<MTLSamplerState> samp = resource) {
+					if (exists.samplers.get(target + i) && bindings.samplers[target + i] == resource) {
+						// Already bound
+					} else if (auto live = dev->getLiveResources().isLive(samp)) {
+						exists.samplers.set(target + i);
+						bindings.samplers[target + i] = samp;
+						binder.setSampler(encoder, samp, target + i);
+					}
+				} else {
+					bindSampler(encoder, nullptr, target + i, exists, bindings, binder);
+				}
+				break;
+
 			case MVKDescriptorBindOperationCode::UseResource:
-			case MVKDescriptorBindOperationCode::UseBufferWithLiveCheck:
-			case MVKDescriptorBindOperationCode::UseTextureWithLiveCheck:
 				if (resource)
 					mvkEncoder.getState().mtlShared()._useResource.add(resource, useResourceStage, target);
+				break;
+
+			case MVKDescriptorBindOperationCode::UseBufferWithLiveCheck:
+			case MVKDescriptorBindOperationCode::UseTextureWithLiveCheck:
+				if (resource) {
+					MVKLiveList& list = Op == MVKDescriptorBindOperationCode::UseBufferWithLiveCheck ? dev->getLiveResources().buffers : dev->getLiveResources().textures;
+					if (auto live = list.isLive(resource))
+						mvkEncoder.getState().mtlShared()._useResource.addImmediate(resource, encoder, binder.useResource, useResourceStage, target);
+				}
 				break;
 		}
 	}
@@ -587,7 +570,6 @@ static void executeBindOps(id<MTLCommandEncoder> encoder,
                            const MVKVulkanCommonEncoderState& common,
                            const MVKImplicitBufferData& implicitBufferData,
                            MVKArrayRef<const MVKDescriptorBindOperation> ops,
-                           LiveResourceLock& resourceLock,
                            MVKResourceUsageStages useResourceStage,
                            MVKStageResourceBits& exists,
                            MVKStageResourceBindings& bindings,
@@ -616,7 +598,7 @@ static void executeBindOps(id<MTLCommandEncoder> encoder,
 		switch (op.opcode) {
 #define CASE(x) case MVKDescriptorBindOperationCode::x: \
 				executeBindOp<MVKDescriptorBindOperationCode::x>( \
-					encoder, mvkEncoder, resourceLock, src, count, stride, target, dynOffs, useResourceStage, exists, bindings, binder); \
+					encoder, mvkEncoder, src, count, stride, target, dynOffs, useResourceStage, exists, bindings, binder); \
 				break;
 			CASE(BindBytes)
 			CASE(BindBuffer)
@@ -695,10 +677,7 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 		bindBuffer(encoder, set->gpuBufferObject, set->gpuBufferOffset, idx, exists, bindings, binder);
 	}
 
-	{
-		LiveResourceLock lock;
-		executeBindOps(encoder, mvkEncoder, common, implicitBufferData, resources.bindScript.ops.contents(), lock, useResourceStage, exists, bindings, binder);
-	}
+	executeBindOps(encoder, mvkEncoder, common, implicitBufferData, resources.bindScript.ops.contents(), useResourceStage, exists, bindings, binder);
 
 	MVKMetalSharedCommandEncoderState& mtlShared = mvkEncoder.getState().mtlShared();
 	if (resources.usesPhysicalStorageBufferAddresses && !isCompatible(mtlShared._gpuAddressableResourceStages, useResourceStage)) {
@@ -905,15 +884,6 @@ static bool isGraphicsStage(MVKShaderStage stage) {
 
 #pragma mark - MVKUseResourceHelper
 
-static MTLRenderStages getMTLStages(MVKResourceUsageStages stages) {
-	switch (stages) {
-		case MVKResourceUsageStages::Vertex:   return MTLRenderStageVertex;
-		case MVKResourceUsageStages::Fragment: return MTLRenderStageFragment;
-		case MVKResourceUsageStages::All:      return MTLRenderStageVertex | MTLRenderStageFragment;
-		case MVKResourceUsageStages::Count:    assert(0); return 0;
-	}
-}
-
 static constexpr MTLResourceUsage MTLResourceUsageReadWrite = MTLResourceUsageRead | MTLResourceUsageWrite;
 
 static bool isCompatible(MVKUseResourceHelper::ResourceInfo current, MVKUseResourceHelper::ResourceInfo add) {
@@ -923,7 +893,21 @@ static bool isCompatible(MVKUseResourceHelper::ResourceInfo current, MVKUseResou
 }
 
 void MVKUseResourceHelper::add(id<MTLResource> resource, MVKResourceUsageStages stage, bool write) {
-	ResourceInfo info { stage, write };
+	ResourceInfo info { stage, write, true };
+	auto res = used.emplace(resource, info);
+	if (res.second || !isCompatible(res.first->second, info)) {
+		ResourceInfo& stored = res.first->second;
+		if (!res.second) {
+			stored.deferred = true;
+			stored.write |= info.write;
+			stored.stages = combineStages(stored.stages, info.stages);
+		}
+		entries[stored.stages].get(stored.write).push_back(resource);
+	}
+}
+
+void MVKUseResourceHelper::addImmediate(id<MTLResource> resource, id<MTLCommandEncoder> enc, MVKResourceBinder::UseResource func, MVKResourceUsageStages stage, bool write) {
+	ResourceInfo info { stage, write, false };
 	auto res = used.emplace(resource, info);
 	if (res.second || !isCompatible(res.first->second, info)) {
 		ResourceInfo& stored = res.first->second;
@@ -931,7 +915,13 @@ void MVKUseResourceHelper::add(id<MTLResource> resource, MVKResourceUsageStages 
 			stored.write |= info.write;
 			stored.stages = combineStages(stored.stages, info.stages);
 		}
-		entries[stored.stages].get(stored.write).push_back(resource);
+		// For ordering reasons, if it's deferred, we need to do this write deferred as well.
+		// Otherwise a deferred useResource for a narrower usage could overwrite this one.
+		// Conveniently, if it was deferred once, it must be staying alive, so no problems there.
+		if (stored.deferred)
+			entries[stored.stages].get(stored.write).push_back(resource);
+		else
+			func(enc, resource, write ? MTLResourceUsageReadWrite : MTLResourceUsageRead, stored.stages);
 	}
 }
 

@@ -1376,18 +1376,19 @@ static void copyArgBuf(MVKDevice* device, id<MTLArgumentEncoder> enc,
 	for (uint32_t i = 0; i < count; i++, src += srcStride) {
 		if constexpr (Layout == MVKDescriptorGPULayout::Texture) {
 			id<MTLTexture> tex = *reinterpret_cast<const id<MTLTexture>*>(src);
-			[enc setTexture:tex && device->getLiveResources().isLiveHoldingLock(tex) ? tex : nil atIndex:start + i];
+			[enc setTexture:tex && device->getLiveResources().isLive(tex) ? tex : nil atIndex:start + i];
 		} else if constexpr (Layout == MVKDescriptorGPULayout::Sampler) {
 			id<MTLSamplerState> samp = *reinterpret_cast<const id<MTLSamplerState>*>(src);
-			[enc setSamplerState:samp && device->getLiveResources().isLiveHoldingLock(samp) ? samp : nil atIndex:start + i];
+			[enc setSamplerState:samp && device->getLiveResources().isLive(samp) ? samp : nil atIndex:start + i];
 		} else if constexpr (Layout == MVKDescriptorGPULayout::Buffer) {
 			id<MTLBuffer> buf = *reinterpret_cast<const id<MTLBuffer>*>(src);
 			uint64_t offset = *reinterpret_cast<const uint64_t*>(src + bufferOffsetOffset);
-			if (buf && !device->getLiveResources().isLiveHoldingLock(buf)) {
-				buf = nil;
-				offset = 0;
+			if (buf) {
+				auto live = device->getLiveResources().isLive(buf);
+				[enc setBuffer:live ? buf : nil offset:live ? offset : 0 atIndex:start + i];
+			} else {
+				[enc setBuffer:nil offset:0 atIndex:start + i];
 			}
-			[enc setBuffer:buf offset:offset atIndex:start + i];
 		} else {
 			static_assert(Layout != Layout, "Other layouts are unsupported");
 		}
@@ -1590,25 +1591,6 @@ static void copyDescriptorSetBinding(
 	}
 }
 
-static bool needsLiveCheckForArgBufCopy(const MVKDescriptorBinding* binding) {
-	switch (binding->gpuLayout) {
-		case MVKDescriptorGPULayout::Sampler:
-			return !binding->hasImmutableSamplers();
-		case MVKDescriptorGPULayout::Texture:
-		case MVKDescriptorGPULayout::Buffer:
-		case MVKDescriptorGPULayout::BufferAuxSize:
-		case MVKDescriptorGPULayout::TexBufSoA:
-		case MVKDescriptorGPULayout::TexSampSoA:
-		case MVKDescriptorGPULayout::Tex2SampSoA:
-		case MVKDescriptorGPULayout::Tex3SampSoA:
-			return true;
-		case MVKDescriptorGPULayout::OutlinedData:
-		case MVKDescriptorGPULayout::InlineData:
-		case MVKDescriptorGPULayout::None:
-			return false;
-	}
-}
-
 static bool needsSourceArgumentEncoderToCopy(const MVKDescriptorBinding* binding) {
 	return binding->gpuLayout == MVKDescriptorGPULayout::InlineData;
 }
@@ -1617,17 +1599,6 @@ static bool needsSourceArgumentEncoderToCopy(const MVKDescriptorBinding* binding
 class DescriptorSetUpdateLockTracker {
 	MVKMTLArgumentEncoder* dstEnc = nullptr;
 	MVKMTLArgumentEncoder* srcEnc = nullptr;
-	MVKDevice* liveResourceLockDevice = nullptr;
-
-	// Texel buffers lazily create their textures, which means writes may exclusive lock the live resource lock with arg encoder locks held.
-	// So the live resources lock must be taken last (and be unlocked if any new argument encoders need to be locked).
-
-	void unlockAndNullLiveResourceLock() {
-		if (auto* dev = liveResourceLockDevice) {
-			liveResourceLockDevice = nullptr;
-			dev->getLiveResources().lock.unlock_shared();
-		}
-	}
 
 	static void unlock(MVKMTLArgumentEncoder** stored) {
 		if (*stored)
@@ -1660,7 +1631,6 @@ public:
 	/** Lock the dst encoder, assuming the src and live locks have not been taken */
 	void lockDstForWrite(MVKMTLArgumentEncoder* enc) {
 		assert(!srcEnc);
-		assert(!liveResourceLockDevice);
 		if (dstEnc == enc)
 			return;
 		unlockAndReplace(&dstEnc, enc);
@@ -1670,9 +1640,8 @@ public:
 	void lockDst(MVKMTLArgumentEncoder* enc) {
 		if (dstEnc == enc)
 			return;
-		if ((liveResourceLockDevice || srcEnc) && tryLock(&dstEnc, enc))
+		if (srcEnc && tryLock(&dstEnc, enc))
 			return;
-		unlockAndNullLiveResourceLock();
 		unlockAndNull(&srcEnc);
 		unlockAndReplace(&dstEnc, enc);
 	}
@@ -1701,14 +1670,10 @@ public:
 		} else if (srcEnc == src) {
 			if (tryLock(&dstEnc, dst))
 				return;
-		} else if (liveResourceLockDevice) {
-			if (tryLock(targetL, encoderL) && tryLock(targetH, encoderH))
-				return;
 		}
 
 		if (*targetL != encoderL) {
 			// Failed to lock the lower encoder, so everything needs to be unlocked and then relocked
-			unlockAndNullLiveResourceLock();
 			unlock(targetH); // Can't use unlockAndReplace because we need to unlock both old encoders before locking either new one
 			unlock(targetL);
 			*targetL = encoderL;
@@ -1717,33 +1682,17 @@ public:
 			encoderH->_lock.lock();
 		} else {
 			// Lower encoder can stay locked, just need to lock upper.
-			unlockAndNullLiveResourceLock();
 			unlockAndReplace(targetH, encoderH);
 		}
 	}
-
-	void lockLiveResourceLock(MVKDevice* dev) {
-		if (liveResourceLockDevice) {
-			// We should always use the same device
-			assert(liveResourceLockDevice == dev);
-		} else {
-			liveResourceLockDevice = dev;
-			liveResourceLockDevice->getLiveResources().lock.lock_shared();
-		}
-	}
-
-	bool hasLiveResourceLock() const { return liveResourceLockDevice; }
 
 	~DescriptorSetUpdateLockTracker() {
 		if (dstEnc) {
 			dstEnc->_lock.unlock();
 			if (srcEnc)
 				srcEnc->_lock.unlock();
-			if (liveResourceLockDevice)
-				liveResourceLockDevice->getLiveResources().lock.unlock_shared();
 		} else {
 			assert(!srcEnc);
-			assert(!liveResourceLockDevice);
 		}
 	}
 };
@@ -1805,8 +1754,6 @@ void mvkUpdateDescriptorSets(uint32_t numWrites, const VkWriteDescriptorSet* pDe
 					[dstEnc setArgumentBuffer:dstSet->gpuBufferObject offset:dstSet->gpuBufferOffset];
 				}
 			}
-			if (!locks.hasLiveResourceLock() && needsLiveCheckForArgBufCopy(dstBinding))
-				locks.lockLiveResourceLock(dstLayout->getDevice());
 		}
 		copyDescriptorSetBinding(dstLayout, srcBinding, srcSet, srcEnc, dstBinding, dstSet, dstEnc, copy.srcArrayElement, copy.dstArrayElement, copy.descriptorCount);
 	}

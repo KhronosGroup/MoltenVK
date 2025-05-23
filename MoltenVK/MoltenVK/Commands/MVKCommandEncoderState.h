@@ -44,13 +44,15 @@ enum class MVKMetalGraphicsStage {
 
 /** Provides dynamic dispatch for binding resources to an encoder. */
 struct MVKResourceBinder {
+	typedef void (*UseResource)(id<MTLCommandEncoder> encoder, id<MTLResource> resource, MTLResourceUsage usage, MVKResourceUsageStages stages);
 	SEL _setBytes;
 	SEL _setBuffer;
 	SEL _setOffset;
 	SEL _setTexture;
 	SEL _setSampler;
+	UseResource useResource;
 	template <typename T> static MVKResourceBinder Create() {
-		return { T::selSetBytes(), T::selSetBuffer(), T::selSetOffset(), T::selSetTexture(), T::selSetSampler() };
+		return { T::selSetBytes(), T::selSetBuffer(), T::selSetOffset(), T::selSetTexture(), T::selSetSampler(), T::useResource() };
 	}
 	void setBytes(id<MTLCommandEncoder> encoder, const void* bytes, NSUInteger length, NSUInteger index) const {
 		reinterpret_cast<void(*)(id, SEL, const void*, NSUInteger, NSUInteger)>(objc_msgSend)(encoder, _setBytes, bytes, length, index);
@@ -156,10 +158,17 @@ struct MVKUseResourceHelper {
 	struct ResourceInfo {
 		MVKResourceUsageStages stages;
 		bool write;
+		bool deferred;
 	};
 	MVKOnePerEnumEntry<Entry, MVKResourceUsageStages> entries;
 	std::unordered_map<id<MTLResource>, ResourceInfo> used;
+	/** Add a resource to the list of resources to use. */
 	void add(id<MTLResource> resource, MVKResourceUsageStages stage, bool write);
+	/**
+	 * Immediately use the given resource.
+	 * (Important if you're holding a live resources lock and need to useResource before releasing the lock.)
+	 */
+	void addImmediate(id<MTLResource> resource, id<MTLCommandEncoder> enc, MVKResourceBinder::UseResource func, MVKResourceUsageStages stage, bool write);
 	void bindAndResetGraphics(id<MTLRenderCommandEncoder> encoder);
 	void bindAndResetCompute(id<MTLComputeCommandEncoder> encoder);
 };
