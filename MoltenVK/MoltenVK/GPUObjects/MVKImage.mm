@@ -88,7 +88,7 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
             tex = [_image->getMTLDevice() newTextureWithDescriptor: mtlTexDesc];
         }
         _image->_device->makeResident(tex);
-        _image->_device->editLiveResources().add(tex);
+        _image->_device->getLiveResources().add(tex);
         _mtlTexture = tex;
 
         [mtlTexDesc release];                                            // temp release
@@ -109,7 +109,7 @@ id<MTLTexture> MVKImagePlane::getMTLTexture(MTLPixelFormat mtlPixFmt) {
         mtlTex = _mtlTextureViews[mtlPixFmt];
         if ( !mtlTex ) {
             mtlTex = [baseTexture newTextureViewWithPixelFormat: mtlPixFmt];    // retained
-            _image->_device->editLiveResources().add(mtlTex);
+            _image->_device->getLiveResources().add(mtlTex);
             _mtlTextureViews[mtlPixFmt] = mtlTex;
         }
     }
@@ -118,7 +118,7 @@ id<MTLTexture> MVKImagePlane::getMTLTexture(MTLPixelFormat mtlPixFmt) {
 
 void MVKImagePlane::releaseMTLTexture() {
     MVKDevice* dev = _image->_device;
-    MVKLiveResourceSet& live = dev->editLiveResources();
+    MVKLiveResourceSet& live = dev->getLiveResources();
     if (id<MTLTexture> tex = _mtlTexture) {
         dev->removeResidency(tex);
         live.remove(tex);
@@ -461,7 +461,7 @@ VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDevi
                 return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not create an MTLBuffer for an image that requires a buffer backing store. Images that can be used for atomic accesses must have a texel buffer backing them.");
             }
             _device->makeResident(_mtlTexelBuffer);
-            _device->editLiveResources().add(_mtlTexelBuffer);
+            _device->getLiveResources().add(_mtlTexelBuffer);
             _mtlTexelBufferOffset = 0;
             _ownsTexelBuffer = true;
         }
@@ -567,7 +567,7 @@ MVKImageMemoryBinding::~MVKImageMemoryBinding() {
 	if (_deviceMemory) { _deviceMemory->removeImageMemoryBinding(this); }
 	if (_ownsTexelBuffer) {
 		_device->removeResidency(_mtlTexelBuffer);
-		_device->editLiveResources().remove(_mtlTexelBuffer);
+		_device->getLiveResources().remove(_mtlTexelBuffer);
 		[_mtlTexelBuffer release];
 	}
 }
@@ -1856,7 +1856,7 @@ id<MTLTexture> MVKImageViewPlane::getMTLTexture() {
             if (_mtlTexture) { return _mtlTexture; }
 
             id<MTLTexture> tex = newMTLTexture(); // retained
-            getDevice()->editLiveResources().add(tex);
+            getDevice()->getLiveResources().add(tex);
             _mtlTexture = tex;
 
             propagateDebugName();
@@ -2245,7 +2245,7 @@ bool MVKImageViewPlane::enableSwizzling() {
 
 MVKImageViewPlane::~MVKImageViewPlane() {
 	if (id<MTLTexture> tex = _mtlTexture) {
-		getDevice()->editLiveResources().remove(tex);
+		getDevice()->getLiveResources().remove(tex);
 		[tex release];
 	}
 }
@@ -2600,7 +2600,7 @@ MVKSampler::MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo
 		}
 	}
 
-	device->editLiveResources().add(_mtlSamplerState);
+	device->getLiveResources().add(_mtlSamplerState);
 
 	initConstExprSampler(pCreateInfo);
 }
@@ -2701,7 +2701,7 @@ void MVKSampler::destroy() {
 void MVKSampler::detachMemory() {
 	@synchronized (getMTLDevice()) {
 		if (_mtlSamplerState)
-			_device->editLiveResources().remove(_mtlSamplerState);
+			_device->getLiveResources().remove(_mtlSamplerState);
 		[_mtlSamplerState release];
 		_mtlSamplerState = nil;
 	}
