@@ -270,12 +270,12 @@ void MVKPipelineLayout::populateBindOperations(MVKPipelineBindScript& script, co
 		auto counts = desc.perDescriptorResourceCount;
 		uint32_t nonTexOffset = counts.texture * sizeof(id);
 		if (!desc.descriptorCount) { continue; }
+		bool partiallyBound = mvkIsAnyFlagEnabled(desc.flags, MVK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT) || getMVKConfig().liveCheckAllResources;
 
 		if (layout->argBufMode() == MVKArgumentBufferMode::Off) {
 			if (desc.cpuLayout == MVKDescriptorCPULayout::InlineData) {
 				script.ops.push_back({ MVKDescriptorBindOperationCode::BindBytes, set, mslBinding.resourceBinding.msl_buffer, descIdx });
 			} else {
-				bool partiallyBound = mvkIsAnyFlagEnabled(desc.flags, MVK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
 				MVKDescriptorBindOperationCode bindTex  = partiallyBound ? MVKDescriptorBindOperationCode::BindTextureWithLiveCheck : MVKDescriptorBindOperationCode::BindTexture;
 				MVKDescriptorBindOperationCode bindBuf  = partiallyBound ? MVKDescriptorBindOperationCode::BindBufferWithLiveCheck  : MVKDescriptorBindOperationCode::BindBuffer ;
 				MVKDescriptorBindOperationCode bindSamp = partiallyBound ? MVKDescriptorBindOperationCode::BindSamplerWithLiveCheck : MVKDescriptorBindOperationCode::BindSampler;
@@ -306,7 +306,6 @@ void MVKPipelineLayout::populateBindOperations(MVKPipelineBindScript& script, co
 				}
 			}
 		} else if (!_device->hasResidencySet()) {
-			bool partiallyBound = mvkIsAnyFlagEnabled(desc.flags, MVK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
 			MVKDescriptorBindOperationCode useTex = partiallyBound ? MVKDescriptorBindOperationCode::UseTextureWithLiveCheck : MVKDescriptorBindOperationCode::UseResource;
 			MVKDescriptorBindOperationCode useBuf = partiallyBound ? MVKDescriptorBindOperationCode::UseBufferWithLiveCheck  : MVKDescriptorBindOperationCode::UseResource;
 			MVKDescriptorGPULayout gpuLayout = desc.gpuLayout;
