@@ -652,3 +652,10 @@ protected:
 
 	id<MTLComputePipelineState> _mtlComputePipelineState = nil;
 };
+
+
+#pragma mark -
+#pragma mark Support functions
+
+/** Validate the definitions of the Cereal Archives. */
+void mvkValidateCeralArchiveDefinitions();

@@ -2676,6 +2676,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.msl_version,
 				opt.texel_buffer_texture_width,
 				opt.r32ui_linear_texture_alignment,
+				opt.r32ui_alignment_constant_id,
 				opt.swizzle_buffer_index,
 				opt.indirect_params_buffer_index,
 				opt.shader_output_buffer_index,
@@ -2691,8 +2692,9 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.device_index,
 				opt.enable_frag_output_mask,
 				opt.additional_fixed_sample_mask,
-				opt.fixed_subgroup_size,
 				opt.enable_point_size_builtin,
+				opt.enable_point_size_default,
+				opt.default_point_size,
 				opt.enable_frag_depth_builtin,
 				opt.enable_frag_stencil_ref_builtin,
 				opt.disable_rasterization,
@@ -2705,6 +2707,8 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.dispatch_base,
 				opt.texture_1D_as_2D,
 				opt.argument_buffers,
+				opt.argument_buffers_tier,
+				opt.runtime_array_rich_descriptor,
 				opt.enable_base_index_zero,
 				opt.pad_fragment_output_components,
 				opt.ios_support_base_vertex_instance,
@@ -2715,7 +2719,6 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.texture_buffer_native,
 				opt.force_active_argument_buffer_resources,
 				opt.pad_argument_buffer_resources,
-				opt.argument_buffers_tier,
 				opt.force_native_arrays,
 				opt.enable_clip_distance_user_varying,
 				opt.multi_patch_workgroup,
@@ -2724,15 +2727,18 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.arrayed_subpass_input,
 				opt.ios_use_simdgroup_functions,
 				opt.emulate_subgroups,
+				opt.fixed_subgroup_size,
 				opt.vertex_index_type,
 				opt.force_sample_rate_shading,
 				opt.manual_helper_invocation_updates,
 				opt.check_discarded_frag_stores,
+				opt.sample_dref_lod_array_as_grad,
+				opt.readwrite_texture_fences,
+				opt.replace_recursive_inputs,
+				opt.agx_manual_cube_grad_fixup,
 				opt.force_fragment_with_side_effects_execution,
 				opt.input_attachment_is_ds_attachment,
-				opt.sample_dref_lod_array_as_grad,
-				opt.replace_recursive_inputs,
-				opt.agx_manual_cube_grad_fixup);
+				opt.auto_disable_rasterization);
 	}
 
 	template<class Archive>
@@ -2841,17 +2847,19 @@ namespace mvk {
 	}
 
 	template<class Archive>
-	void serialize(Archive & archive, SPIRVToMSLConversionConfiguration& ctx) {
-		archive(ctx.options,
-				ctx.shaderInputs,
-				ctx.shaderOutputs,
-				ctx.resourceBindings,
-				ctx.discreteDescriptorSets);
+	void serialize(Archive & archive, SPIRVToMSLConversionConfiguration& cfg) {
+		archive(cfg.options,
+				cfg.shaderInputs,
+				cfg.shaderOutputs,
+				cfg.resourceBindings,
+				cfg.discreteDescriptorSets,
+				cfg.dynamicBufferDescriptors);
 	}
 
 	template<class Archive>
 	void serialize(Archive & archive, SPIRVToMSLConversionResultInfo& scr) {
 		archive(scr.entryPoint,
+				scr.specializationMacros,
 				scr.isRasterizationDisabled,
 				scr.isPositionInvariant,
 				scr.needsSwizzleBuffer,
@@ -2862,8 +2870,7 @@ namespace mvk {
 				scr.needsInputThreadgroupMem,
 				scr.needsDispatchBaseBuffer,
 				scr.needsViewRangeBuffer,
-				scr.usesPhysicalStorageBufferAddressesCapability,
-				scr.specializationMacros);
+				scr.usesPhysicalStorageBufferAddressesCapability);
 	}
 
 	template<class Archive>
@@ -2975,3 +2982,54 @@ MVKComputePipelineCompiler::~MVKComputePipelineCompiler() {
 	[_mtlComputePipelineState release];
 }
 
+
+#pragma mark -
+#pragma mark Support functions
+
+// Validate that the Cereal Archive covers the entire struct, to ensure consistency and accuracy.
+// Ideally this should be a compile-time validation, but that doesn't appear to be possible, so we
+// validate by serializing a struct and seeing if all the bytes of the struct have been serialized.
+// Since sizeof() also includes gaps between the struct members, padByteCnt can be used to specify
+// the amount of padding in the struct. This function works best for simple data structs. Care should
+// be taken with structs that contain strings or collections, as streaming size depends on contents,
+// and potentially an upgrade to the stdc++ library. Changes to basic struct sizes may affect the
+// padding of aggregate structs that contain them.
+template<class C>
+static size_t mvkValidateCerealArchiveSize(size_t padByteCnt = 0) {
+	int64_t missingBytes = 0;
+#if MVK_USE_CEREAL
+	mvk::countbuf cb;
+	ostream outStream(&cb);
+	cereal::BinaryOutputArchive writer(outStream);
+	C obj = C();
+	writer(obj);
+	missingBytes = int64_t(sizeof(C)) - int64_t(cb.buffSize + padByteCnt);
+	if (missingBytes) {
+		printf("[MVK-BUILD-ERROR] Cereal serialization Archive for %s is not completely defined."
+			   " Missing %lld bytes. Struct size is %zu (including an expected %zu bytes of padding)"
+			   " and Cereal Archive size is %zu. The Cereal Archive definition may be missing members.\n",
+			   mvk::getTypeName(&obj).c_str(), missingBytes, sizeof(C), padByteCnt, cb.buffSize);
+	}
+#endif
+	return missingBytes;
+}
+
+void mvkValidateCeralArchiveDefinitions() {
+	[[maybe_unused]] size_t missingBytes = 0;
+	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::CompilerMSL::Options>(5);
+	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::MSLShaderInterfaceVariable>();
+	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::MSLResourceBinding>();
+	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::MSLConstexprSampler>();
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVWorkgroupSizeDimension>(3);
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVEntryPoint>(23);						// Contains string
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionOptions>(23);			// Contains string
+	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLShaderInterfaceVariable>(3);
+	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLResourceBinding>(2);
+	missingBytes += mvkValidateCerealArchiveSize<mvk::DescriptorBinding>();
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionConfiguration>(103);	// Contains collection
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionResultInfo>(44);		// Contains collection
+	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLSpecializationMacroInfo>(22);			// Contains string
+	missingBytes += mvkValidateCerealArchiveSize<MVKShaderModuleKey>();
+	missingBytes += mvkValidateCerealArchiveSize<MVKCompressor<std::string>>(20);					// Contains collection
+	assert(missingBytes == 0 && "Cereal Archive definitions incomplete. See previous logged errors.");
+}
