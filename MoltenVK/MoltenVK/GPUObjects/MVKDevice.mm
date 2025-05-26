@@ -52,25 +52,19 @@ using namespace std;
 #	define MVKViewClass		NSView
 #endif
 
-// Suppress unused variable warnings to allow us to define these all in one place,
-// but use them in platform-conditional code blocks.
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-variable"
-
 static const uint32_t kAMDVendorId = 0x1002;
 static const uint32_t kAppleVendorId = 0x106b;
 static const uint32_t kIntelVendorId = 0x8086;
 static const uint32_t kNVVendorId = 0x10de;
 
-static const uint32_t kAMDRadeonRX5700DeviceId = 0x731f;
-static const uint32_t kAMDRadeonRX5500DeviceId = 0x7340;
-static const uint32_t kAMDRadeonRX6800DeviceId = 0x73bf;
-static const uint32_t kAMDRadeonRX6700DeviceId = 0x73df;
-static const uint32_t kAMDRadeonRX6600DeviceId = 0x73ff;
+// These appear in conditional code, and may be unused on some platform builds.
+[[maybe_unused]] static const uint32_t kAMDRadeonRX5700DeviceId = 0x731f;
+[[maybe_unused]] static const uint32_t kAMDRadeonRX5500DeviceId = 0x7340;
+[[maybe_unused]] static const uint32_t kAMDRadeonRX6800DeviceId = 0x73bf;
+[[maybe_unused]] static const uint32_t kAMDRadeonRX6700DeviceId = 0x73df;
+[[maybe_unused]] static const uint32_t kAMDRadeonRX6600DeviceId = 0x73ff;
 
 static const uint32_t kMaxTimeDomains = 2;
-
-#pragma clang diagnostic pop
 
 
 #pragma mark -

@@ -21,6 +21,7 @@
 #include "MVKDevice.h"
 #include "MVKFoundation.h"
 #include "MVKSurface.h"
+#include "MVKPipeline.h"
 #include "MVKOSExtensions.h"
 #include "mvk_deprecated_api.h"
 
@@ -277,6 +278,7 @@ VkDebugUtilsMessageTypeFlagsEXT MVKInstance::getVkDebugUtilsMessageTypesFlagBits
 #pragma mark Object Creation
 
 MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExtensions(this) {
+	mvkValidateCeralArchiveDefinitions();
 
 	initDebugCallbacks(pCreateInfo);	// Do before any creation activities
 
