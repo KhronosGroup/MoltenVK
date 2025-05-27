@@ -1410,7 +1410,6 @@ void MVKPhysicalDevice::populateSubgroupProperties(VkPhysicalDeviceVulkan11Prope
 													VK_SUBGROUP_FEATURE_ROTATE_CLUSTERED_BIT);
 	}
 	if (_metalFeatures.quadPermute && _metalFeatures.simdReduction) {
-		// Note: Only quad clusters are currently supported by SPIRV-Cross for reduce.
 		pVk11Props->subgroupSupportedOperations |= VK_SUBGROUP_FEATURE_CLUSTERED_BIT;
 	}
 	if (_metalFeatures.simdReduction) {
