@@ -60,6 +60,7 @@ static const uint32_t kNVVendorId = 0x10de;
 // These appear in conditional code, and may be unused on some platform builds.
 [[maybe_unused]] static const uint32_t kAMDRadeonRX5700DeviceId = 0x731f;
 [[maybe_unused]] static const uint32_t kAMDRadeonRX5500DeviceId = 0x7340;
+[[maybe_unused]] static const uint32_t kAMDRadeonPROW6800XDeviceId = 0x73ab;
 [[maybe_unused]] static const uint32_t kAMDRadeonRX6800DeviceId = 0x73bf;
 [[maybe_unused]] static const uint32_t kAMDRadeonRX6700DeviceId = 0x73df;
 [[maybe_unused]] static const uint32_t kAMDRadeonRX6600DeviceId = 0x73ff;
@@ -2758,6 +2759,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
                 switch (_properties.deviceID) {
                     case kAMDRadeonRX5700DeviceId:
                     case kAMDRadeonRX5500DeviceId:
+                    case kAMDRadeonPROW6800XDeviceId:
                     case kAMDRadeonRX6800DeviceId:
                     case kAMDRadeonRX6700DeviceId:
                     case kAMDRadeonRX6600DeviceId:
