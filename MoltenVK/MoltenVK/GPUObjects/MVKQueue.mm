@@ -150,23 +150,17 @@ VkResult MVKQueue::submit(const VkPresentInfoKHR* pPresentInfo) {
 }
 
 VkResult MVKQueue::waitIdle(MVKCommandUse cmdUse) {
-
-	VkResult rslt = _device->getConfigurationResult();
-	if (rslt != VK_SUCCESS) { return rslt; }
-
 	if (_execQueue) {
 		std::unique_lock lock(_execQueueMutex);
 		while (_execQueueJobCount)
 			_execQueueConditionVariable.wait(lock);
 	}
-
 	@autoreleasepool {
 		auto* mtlCmdBuff = getMTLCommandBuffer(cmdUse);
 		[mtlCmdBuff commit];
 		[mtlCmdBuff waitUntilCompleted];
 	}
-
-	return VK_SUCCESS;
+	return _device->getConfigurationResult();
 }
 
 id<MTLCommandBuffer> MVKQueue::getMTLCommandBuffer(MVKCommandUse cmdUse, bool retainRefs) {

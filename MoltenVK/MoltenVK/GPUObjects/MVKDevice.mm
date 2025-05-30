@@ -4018,10 +4018,11 @@ VkResult MVKDevice::waitIdle() {
 	VkResult rslt = VK_SUCCESS;
 	for (auto& queues : _queuesByQueueFamilyIndex) {
 		for (MVKQueue* q : queues) {
-			if ((rslt = q->waitIdle(kMVKCommandUseDeviceWaitIdle)) != VK_SUCCESS) { return rslt; }
+			auto qRslt = q->waitIdle(kMVKCommandUseDeviceWaitIdle);
+			if(rslt == VK_SUCCESS) { rslt = qRslt; }
 		}
 	}
-	return VK_SUCCESS;
+	return rslt;
 }
 
 VkResult MVKDevice::markLost(bool alsoMarkPhysicalDevice) {
