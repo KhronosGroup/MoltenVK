@@ -29,6 +29,7 @@ Released TBD
 	- `VK_KHR_shader_relaxed_extended_instruction`
 	- `VK_KHR_shader_subgroup_uniform_control_flow`
 	- `VK_KHR_surface_protected_capabilities`
+- `vkDeviceWaitIdle()` & `vkQueueWaitIdle()` now wait even when `VK_ERROR_DEVICE_LOST` error is encountered.
 - For behaviouraly consistency, require deprecated unofficial extension `VK_MVK_moltenvk` be enabled to access 
   the proc addrs for functions `vkSetMoltenVKConfigurationMVK()` and `vkGetPhysicalDeviceMetalFeaturesMVK()`. 
 - Move `vkGetPhysicalDeviceMetalFeaturesMVK()` from `mvk_private_api.h` to `mvk_deprecated_api.h`.
