@@ -284,6 +284,9 @@ public:
 	/** Returns the render subpass that is currently active. */
 	MVKRenderSubpass* getSubpass();
 
+	/** Returns the sample count of the current render subpass. */
+	VkSampleCountFlagBits getSampleCount() { return getSubpass()->getSampleCount(); }
+
 	/** The extent of current framebuffer.*/
 	VkExtent2D getFramebufferExtent();
 

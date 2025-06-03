@@ -240,6 +240,8 @@ enum MVKRenderStateType {
 	DepthTestEnable,
 	DepthWriteEnable,
 	FrontFace,
+	LineRasterizationMode,
+	LineStippleEnable,
 	LineWidth,
 	LogicOp,
 	LogicOpEnable,
@@ -405,6 +407,8 @@ protected:
 
 	VkPipelineTessellationStateCreateInfo _tessInfo;
 	VkPipelineRasterizationStateCreateInfo _rasterInfo;
+	VkPipelineRasterizationLineStateCreateInfo _rasterLineInfo;
+
 	VkPipelineDepthStencilStateCreateInfo _depthStencilInfo;
 	MVKRenderStateFlags _dynamicState;
 
@@ -445,6 +449,7 @@ protected:
 	bool _isVertexInputBindingUsed[kMVKMaxVertexInputBindingBufferCount] = { false };
 	bool _primitiveRestartEnable = true;
 	bool _hasRasterInfo = false;
+	bool _hasRasterLineInfo = false;
 	bool _needsVertexSwizzleBuffer = false;
 	bool _needsVertexBufferSizeBuffer = false;
 	bool _needsVertexDynamicOffsetBuffer = false;

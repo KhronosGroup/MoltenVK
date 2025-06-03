@@ -254,11 +254,20 @@ MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVK
 #pragma mark -
 #pragma mark MVKGraphicsPipeline
 
-// Set retrieve-only rendering state when pipeline is bound, as it's too late at draw command.
+// When pipeline is bound, set any rendering state that affects the Metal render pass,
+// as it's too late at draw command time.
 void MVKGraphicsPipeline::wasBound(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setPatchControlPoints(_tessInfo.patchControlPoints, false);
-	cmdEncoder->_renderingState.setSampleLocations(_sampleLocations.contents(), false);
-	cmdEncoder->_renderingState.setSampleLocationsEnable(_sampleLocationsEnable, false);
+	auto& cmdEncRS = cmdEncoder->_renderingState;
+	cmdEncRS.setPatchControlPoints(_tessInfo.patchControlPoints, false);
+	cmdEncRS.setSampleLocations(_sampleLocations.contents(), false);
+	cmdEncRS.setSampleLocationsEnable(_sampleLocationsEnable, false);
+	cmdEncRS.setPrimitiveTopology(_vkPrimitiveTopology, false);
+	if (_hasRasterInfo) {
+		cmdEncRS.setPolygonMode(_rasterInfo.polygonMode, false);
+	}
+	if (_hasRasterLineInfo) {
+		cmdEncRS.setLineRasterizationMode(_rasterLineInfo.lineRasterizationMode, false);
+	}
 }
 
 void MVKGraphicsPipeline::getStages(MVKPiplineStages& stages) {
@@ -326,29 +335,29 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 			cmdEncoder->_depthStencilState.setDepthStencilState(_depthStencilInfo);
 
             // Rasterization
-			cmdEncoder->_renderingState.setPrimitiveTopology(_vkPrimitiveTopology, false);
-			cmdEncoder->_renderingState.setPrimitiveRestartEnable(_primitiveRestartEnable, false);
-			cmdEncoder->_renderingState.setBlendConstants(_blendConstants, false);
-			cmdEncoder->_renderingState.setDepthBounds({_depthStencilInfo.minDepthBounds, _depthStencilInfo.maxDepthBounds}, false);
-			cmdEncoder->_renderingState.setStencilReferenceValues(_depthStencilInfo);
-            cmdEncoder->_renderingState.setViewports(_viewports.contents(), 0, false);
-            cmdEncoder->_renderingState.setScissors(_scissors.contents(), 0, false);
+			auto& cmdEncRS = cmdEncoder->_renderingState;
+			cmdEncRS.setPrimitiveRestartEnable(_primitiveRestartEnable, false);
+			cmdEncRS.setBlendConstants(_blendConstants, false);
+			cmdEncRS.setDepthBounds({_depthStencilInfo.minDepthBounds, _depthStencilInfo.maxDepthBounds}, false);
+			cmdEncRS.setStencilReferenceValues(_depthStencilInfo);
+            cmdEncRS.setViewports(_viewports.contents(), 0, false);
+            cmdEncRS.setScissors(_scissors.contents(), 0, false);
 			if (_hasRasterInfo) {
-				cmdEncoder->_renderingState.setCullMode(_rasterInfo.cullMode, false);
-				cmdEncoder->_renderingState.setFrontFace(_rasterInfo.frontFace, false);
-				cmdEncoder->_renderingState.setPolygonMode(_rasterInfo.polygonMode, false);
-				cmdEncoder->_renderingState.setLineWidth(_rasterInfo.lineWidth, false);
-				cmdEncoder->_renderingState.setDepthBias(_rasterInfo);
-				cmdEncoder->_renderingState.setDepthClipEnable( !_rasterInfo.depthClampEnable, false );
+				cmdEncRS.setCullMode(_rasterInfo.cullMode, false);
+				cmdEncRS.setFrontFace(_rasterInfo.frontFace, false);
+				cmdEncRS.setLineWidth(_rasterInfo.lineWidth, false);
+				cmdEncRS.setDepthBias(_rasterInfo);
+				cmdEncRS.setDepthClipEnable( !_rasterInfo.depthClampEnable, false );
 			}
             break;
     }
 
-	cmdEncoder->_graphicsResourcesState.markOverriddenBufferIndexesDirty();
-    cmdEncoder->_graphicsResourcesState.bindSwizzleBuffer(_swizzleBufferIndex, _needsVertexSwizzleBuffer, _needsTessCtlSwizzleBuffer, _needsTessEvalSwizzleBuffer, _needsFragmentSwizzleBuffer);
-    cmdEncoder->_graphicsResourcesState.bindBufferSizeBuffer(_bufferSizeBufferIndex, _needsVertexBufferSizeBuffer, _needsTessCtlBufferSizeBuffer, _needsTessEvalBufferSizeBuffer, _needsFragmentBufferSizeBuffer);
-	cmdEncoder->_graphicsResourcesState.bindDynamicOffsetBuffer(_dynamicOffsetBufferIndex, _needsVertexDynamicOffsetBuffer, _needsTessCtlDynamicOffsetBuffer, _needsTessEvalDynamicOffsetBuffer, _needsFragmentDynamicOffsetBuffer);
-    cmdEncoder->_graphicsResourcesState.bindViewRangeBuffer(_viewRangeBufferIndex, _needsVertexViewRangeBuffer, _needsFragmentViewRangeBuffer);
+	auto& cmdEncGRS = cmdEncoder->_graphicsResourcesState;
+	cmdEncGRS.markOverriddenBufferIndexesDirty();
+    cmdEncGRS.bindSwizzleBuffer(_swizzleBufferIndex, _needsVertexSwizzleBuffer, _needsTessCtlSwizzleBuffer, _needsTessEvalSwizzleBuffer, _needsFragmentSwizzleBuffer);
+    cmdEncGRS.bindBufferSizeBuffer(_bufferSizeBufferIndex, _needsVertexBufferSizeBuffer, _needsTessCtlBufferSizeBuffer, _needsTessEvalBufferSizeBuffer, _needsFragmentBufferSizeBuffer);
+	cmdEncGRS.bindDynamicOffsetBuffer(_dynamicOffsetBufferIndex, _needsVertexDynamicOffsetBuffer, _needsTessCtlDynamicOffsetBuffer, _needsTessEvalDynamicOffsetBuffer, _needsFragmentDynamicOffsetBuffer);
+    cmdEncGRS.bindViewRangeBuffer(_viewRangeBufferIndex, _needsVertexViewRangeBuffer, _needsFragmentViewRangeBuffer);
 }
 
 static const char vtxCompilerType[] = "Vertex stage pipeline for tessellation";
@@ -635,6 +644,18 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	// Rasterization
 	_hasRasterInfo = mvkSetOrClear(&_rasterInfo, pCreateInfo->pRasterizationState);
 
+	VkPipelineRasterizationLineStateCreateInfo* pRasterizationLineState = nullptr;
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pRasterizationState; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO:
+				pRasterizationLineState = (VkPipelineRasterizationLineStateCreateInfo*)next;
+				break;
+			default:
+				break;
+		}
+	}
+	_hasRasterLineInfo = mvkSetOrClear(&_rasterLineInfo, pRasterizationLineState);
+
 	// Must run after _isRasterizing and _dynamicState are populated
 	initSampleLocations(pCreateInfo);
 
@@ -677,6 +698,8 @@ static MVKRenderStateType getRenderStateType(VkDynamicState vkDynamicState) {
 		case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE:           return DepthTestEnable;
 		case VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE:          return DepthWriteEnable;
 		case VK_DYNAMIC_STATE_FRONT_FACE:                  return FrontFace;
+		case VK_DYNAMIC_STATE_LINE_RASTERIZATION_MODE_EXT: return LineRasterizationMode;
+		case VK_DYNAMIC_STATE_LINE_STIPPLE_ENABLE_EXT:     return LineStippleEnable;
 		case VK_DYNAMIC_STATE_LINE_WIDTH:                  return LineWidth;
 		case VK_DYNAMIC_STATE_LOGIC_OP_EXT:                return LogicOp;
 		case VK_DYNAMIC_STATE_LOGIC_OP_ENABLE_EXT:         return LogicOpEnable;

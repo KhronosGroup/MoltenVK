@@ -302,7 +302,10 @@ void MVKDepthStencilCommandEncoderState::encodeImpl(uint32_t stage) {
 #pragma mark -
 #pragma mark MVKRenderingCommandEncoderState
 
+#define getVkContent(state)   getContent(_vk##state,  state)
 #define getMTLContent(state)  getContent(_mtl##state, state)
+
+#define setVkContent(state, val)   setContent(state, _vk##state,  val, isDynamic)
 #define setMTLContent(state, val)  setContent(state, _mtl##state, val, isDynamic)
 
 void MVKRenderingCommandEncoderState::setCullMode(VkCullModeFlags cullMode, bool isDynamic) {
@@ -317,10 +320,16 @@ void MVKRenderingCommandEncoderState::setFrontFace(VkFrontFace frontFace, bool i
 void MVKRenderingCommandEncoderState::setPolygonMode(VkPolygonMode polygonMode, bool isDynamic) {
 	setMTLContent(PolygonMode, mvkMTLTriangleFillModeFromVkPolygonMode(polygonMode));
 	getContent(_isPolygonModePoint, isDynamic) = (polygonMode == VK_POLYGON_MODE_POINT);
+	_shouldCheckSamplePositionOverride = true;
 }
 
 void MVKRenderingCommandEncoderState::setLineWidth(float lineWidth, bool isDynamic) {
 	setMTLContent(LineWidth, lineWidth);
+}
+
+void MVKRenderingCommandEncoderState::setLineRasterizationMode(VkLineRasterizationMode lineRasterizationMode, bool isDynamic) {
+	setVkContent(LineRasterizationMode, lineRasterizationMode);
+	_shouldCheckSamplePositionOverride = true;
 }
 
 void MVKRenderingCommandEncoderState::setBlendConstants(MVKColor32 blendConstants, bool isDynamic) {
@@ -407,6 +416,7 @@ void MVKRenderingCommandEncoderState::setRasterizerDiscardEnable(VkBool32 raster
 // This value is retrieved, not encoded, so don't mark this encoder as dirty.
 void MVKRenderingCommandEncoderState::setPrimitiveTopology(VkPrimitiveTopology topology, bool isDynamic) {
 	getContent(_mtlPrimitiveTopology, isDynamic) = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(topology);
+	_shouldCheckSamplePositionOverride = true;
 }
 
 // Metal does not support VK_POLYGON_MODE_POINT, but it can be emulated if the polygon mode
@@ -427,9 +437,24 @@ MTLPrimitiveType MVKRenderingCommandEncoderState::getPrimitiveType() {
 
 bool MVKRenderingCommandEncoderState::isDrawingTriangles() {
 	switch (getPrimitiveType()) {
-		case MTLPrimitiveTypeTriangle:      return true;
-		case MTLPrimitiveTypeTriangleStrip: return true;
-		default:                            return false;
+		case MTLPrimitiveTypeTriangle:
+		case MTLPrimitiveTypeTriangleStrip:
+			return true;
+		default:
+			return false;
+	}
+}
+
+bool MVKRenderingCommandEncoderState::isDrawingLines() {
+	switch (getPrimitiveType()) {
+		case MTLPrimitiveTypeLine:
+		case MTLPrimitiveTypeLineStrip:
+			return true;
+		case MTLPrimitiveTypeTriangle:
+		case MTLPrimitiveTypeTriangleStrip:
+			return getMTLContent(PolygonMode) == MTLTriangleFillModeLines;
+		default:
+			return false;
 	}
 }
 
@@ -476,7 +501,39 @@ void MVKRenderingCommandEncoderState::setSampleLocations(MVKArrayRef<VkSampleLoc
 	_dirtyStates.enable(SampleLocations);
 }
 
+// If needed, check if sample positions need to be overridden.
+// Multisample Bresenham lines require sampling from the pixel center.
+// Additional sample position overrides based on other rendering requirements could be added here too.
+void MVKRenderingCommandEncoderState::checkSamplePositionsOverride() {
+	if ( !_shouldCheckSamplePositionOverride ) { return; }
+
+	_shouldCheckSamplePositionOverride = false;
+
+	auto oldSamplePositionsOverride = _samplePositionsOverride;
+	_samplePositionsOverride = None;
+
+	// Multisample Bresenham lines require sampling from the pixel center.
+	if (isDrawingLines() &&
+		getVkContent(LineRasterizationMode) == VK_LINE_RASTERIZATION_MODE_BRESENHAM &&
+		_cmdEncoder->getSampleCount() > VK_SAMPLE_COUNT_1_BIT) {
+		_samplePositionsOverride = Centered;
+	}
+
+	if (_samplePositionsOverride != oldSamplePositionsOverride) {
+		_dirtyStates.enable(SampleLocations);	// Sample Positions are retrieved, not encoded, so don't mark this encoder as dirty.
+	}
+}
+
+static constexpr MTLSamplePosition kSampPosCenter = {0.5, 0.5};
+static MTLSamplePosition kSamplePositionsAllCenter[] = { kSampPosCenter, kSampPosCenter, kSampPosCenter, kSampPosCenter, kSampPosCenter, kSampPosCenter, kSampPosCenter, kSampPosCenter };
+static_assert(sizeof(kSamplePositionsAllCenter) / sizeof(MTLSamplePosition) == kMVKMaxSampleCount, "kSamplePositionsAllCenter is not competely populated.");
+
+// Sample positions may be overridden if rendering conditions require.
+// Otherwise, use the sample positions set by the application.
 MVKArrayRef<MTLSamplePosition> MVKRenderingCommandEncoderState::getSamplePositions() {
+	if (_samplePositionsOverride == Centered) {
+		return MVKArrayRef<MTLSamplePosition>(kSamplePositionsAllCenter, _cmdEncoder->getSampleCount());
+	}
 	return getMTLContent(SampleLocationsEnable) ? getMTLContent(SampleLocations).contents() : MVKArrayRef<MTLSamplePosition>();
 }
 
@@ -512,6 +569,7 @@ void MVKRenderingCommandEncoderState::beginMetalRenderPass() {
 
 // Don't use || on isDirty calls, to ensure they both get called, so that the dirty flag of each will be cleared.
 bool MVKRenderingCommandEncoderState::needsMetalRenderPassRestart() {
+	checkSamplePositionsOverride();
 	bool isSLDirty = isDirty(SampleLocations);
 	bool isSLEnblDirty = isDirty(SampleLocationsEnable);
 	return isSLDirty || isSLEnblDirty;

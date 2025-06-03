@@ -545,6 +545,19 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKCmdSetLineRasterizationMode
+
+class MVKCmdSetLineRasterizationMode : public MVKSingleValueCommand<VkLineRasterizationMode> {
+
+public:
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};
+
+
+#pragma mark -
 #pragma mark MVKCmdSetLineWidth
 
 class MVKCmdSetLineWidth : public MVKSingleValueCommand<float> {
