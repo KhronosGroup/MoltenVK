@@ -269,6 +269,7 @@ public:
 	void setPolygonMode(VkPolygonMode polygonMode, bool isDynamic);
 
 	void setLineWidth(float lineWidth, bool isDynamic);
+	void setLineRasterizationMode(VkLineRasterizationMode lineRasterizationMode, bool isDynamic);
 
 	void setBlendConstants(MVKColor32 blendConstants, bool isDynamic);
 
@@ -309,6 +310,8 @@ public:
 protected:
 	void encodeImpl(uint32_t stage) override;
 	bool isDrawingTriangles();
+	bool isDrawingLines();
+	void checkSamplePositionsOverride();
 	template <typename T> void setContent(MVKRenderStateType state, T* iVarAry, T* pVal, bool isDynamic) {
 		auto* pIVar = &iVarAry[isDynamic ? StateScope::Dynamic : StateScope::Static];
 		if( !mvkAreEqual(pVal, pIVar) ) {
@@ -321,6 +324,11 @@ protected:
 	template <typename T> void setContent(MVKRenderStateType state, T* iVarAry, T val, bool isDynamic) {
 		setContent(state, iVarAry, &val, isDynamic);
 	}
+
+	enum SamplePositionsOverride {
+		None = 0,
+		Centered
+	};
 
 	MVKSmallVector<MTLSamplePosition, kMVKMaxSampleCount> _mtlSampleLocations[StateScope::Count] = {};
 	MVKMTLViewports _mtlViewports[StateScope::Count] = {};
@@ -335,9 +343,11 @@ protected:
 	MTLDepthClipMode _mtlDepthClipEnable[StateScope::Count] = { MTLDepthClipModeClip, MTLDepthClipModeClip };
 	MTLTriangleFillMode _mtlPolygonMode[StateScope::Count] = { MTLTriangleFillModeFill, MTLTriangleFillModeFill };
 	float _mtlLineWidth[StateScope::Count] = { 1, 1 };
+	VkLineRasterizationMode _vkLineRasterizationMode[StateScope::Count] = { VK_LINE_RASTERIZATION_MODE_DEFAULT, VK_LINE_RASTERIZATION_MODE_DEFAULT };
 	uint32_t _mtlPatchControlPoints[StateScope::Count] = { 0, 0 };
 	MVKRenderStateFlags _dirtyStates;
 	MVKRenderStateFlags _modifiedStates;
+	SamplePositionsOverride _samplePositionsOverride = None;
 	bool _mtlSampleLocationsEnable[StateScope::Count] = {};
 	bool _mtlDepthBiasEnable[StateScope::Count] = {};
 	bool _mtlPrimitiveRestartEnable[StateScope::Count] = {};
@@ -345,6 +355,7 @@ protected:
 	bool _mtlDepthBoundsTestEnable[StateScope::Count] = {};
 	bool _cullBothFaces[StateScope::Count] = {};
 	bool _isPolygonModePoint[StateScope::Count] = {};
+	bool _shouldCheckSamplePositionOverride = false;
 };
 
 

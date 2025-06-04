@@ -3131,6 +3131,15 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkTransitionImageLayout(
 	return VK_SUCCESS;
 }
 
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetLineStipple(
+	 VkCommandBuffer                             commandBuffer,
+	 uint32_t                                    lineStippleFactor,
+	 uint16_t                                    lineStipplePattern) {
+
+	MVKTraceVulkanCallStart();
+	MVKTraceVulkanCallEnd();
+}
+
 
 #pragma mark -
 #pragma mark VK_KHR_bind_memory2 extension
@@ -3354,6 +3363,12 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceImageFormatProperties2, KHR);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceQueueFamilyProperties2, KHR);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceMemoryProperties2, KHR);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceSparseImageFormatProperties2, KHR);
+
+
+#pragma mark -
+#pragma mark VK_KHR_line_rasterization extension
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetLineStipple, KHR);
 
 
 #pragma mark -
@@ -4065,9 +4080,10 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetExtraPrimitiveOverestimationSizeEXT(
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetLineRasterizationModeEXT(
     VkCommandBuffer                             commandBuffer,
-    VkLineRasterizationModeEXT                  lineRasterizationMode) {
+    VkLineRasterizationMode                     lineRasterizationMode) {
 
     MVKTraceVulkanCallStart();
+	MVKAddCmd(SetLineRasterizationMode, commandBuffer, lineRasterizationMode);
     MVKTraceVulkanCallEnd();
 }
 
@@ -4216,6 +4232,12 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkTransitionImageLayout, EXT);
 #pragma mark VK_EXT_host_query_reset extension
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkResetQueryPool, EXT);
+
+
+#pragma mark -
+#pragma mark VK_EXT_line_rasterization extension
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetLineStipple, EXT);
 
 
 #pragma mark -

@@ -20,6 +20,7 @@ Released TBD
 
 - Add support for extensions:
 	- `VK_KHR_global_priority`
+	- `VK_KHR_line_rasterization`
 	- `VK_KHR_maintenance5`
 	- `VK_KHR_maintenance8`
 	- `VK_KHR_present_id`
@@ -29,6 +30,7 @@ Released TBD
 	- `VK_KHR_shader_relaxed_extended_instruction`
 	- `VK_KHR_shader_subgroup_uniform_control_flow`
 	- `VK_KHR_surface_protected_capabilities`
+	- `VK_EXT_line_rasterization`
 - `vkDeviceWaitIdle()` & `vkQueueWaitIdle()` now wait even when `VK_ERROR_DEVICE_LOST` error is encountered.
 - For behaviouraly consistency, require deprecated unofficial extension `VK_MVK_moltenvk` be enabled to access 
   the proc addrs for functions `vkSetMoltenVKConfigurationMVK()` and `vkGetPhysicalDeviceMetalFeaturesMVK()`. 

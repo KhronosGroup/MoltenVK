@@ -444,6 +444,14 @@ void MVKCmdSetPolygonMode::encode(MVKCommandEncoder* cmdEncoder) {
 
 
 #pragma mark -
+#pragma mark MVKCmdSetLineRasterizationMode
+
+void MVKCmdSetLineRasterizationMode::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_renderingState.setLineRasterizationMode(_value, true);
+}
+
+
+#pragma mark -
 #pragma mark MVKCmdSetLineWidth
 
 void MVKCmdSetLineWidth::encode(MVKCommandEncoder* cmdEncoder) {

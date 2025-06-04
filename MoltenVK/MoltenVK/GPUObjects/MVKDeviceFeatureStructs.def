@@ -47,6 +47,7 @@ MVK_DEVICE_FEATURE(ImagelessFramebuffer,                  IMAGELESS_FRAMEBUFFER,
 MVK_DEVICE_FEATURE(ImageRobustness,                       IMAGE_ROBUSTNESS,                            1)
 MVK_DEVICE_FEATURE(IndexTypeUint8,                        INDEX_TYPE_UINT8,                            1)
 MVK_DEVICE_FEATURE(InlineUniformBlock,                    INLINE_UNIFORM_BLOCK,                        2)
+MVK_DEVICE_FEATURE(LineRasterization,                     LINE_RASTERIZATION,                          6)
 MVK_DEVICE_FEATURE(Maintenance4,                          MAINTENANCE_4,                               1)
 MVK_DEVICE_FEATURE(Maintenance5,                          MAINTENANCE_5,                               1)
 MVK_DEVICE_FEATURE(Maintenance6,                          MAINTENANCE_6,                               1)
