@@ -22,6 +22,7 @@
 #include "MVKEnvironment.h"
 #include <vector>
 #include <string>
+#include <memory>
 
 
 #pragma mark -
