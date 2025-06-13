@@ -764,13 +764,12 @@ public:
 #pragma mark Metal
 
 	/**
-	 * Returns an autoreleased options object to be used when compiling MSL shaders.
-	 * The requestFastMath parameter is combined with the value of MVKConfiguration::fastMathEnabled
-	 * to determine whether to enable fast math optimizations in the compiled shader.
-	 * The preserveInvariance parameter indicates that the shader requires the position
-	 * output invariance across invocations (typically for the position output).
+	 * Returns an autoreleased compile options object to be used when compiling MSL shaders.
+	 * The fpFastMathFlags parameter indicates flags from spv::FPFastMathModeMask that specify the fast
+	 * math optimizations that are permitted. The preserveInvariance parameter indicates that the shader
+	 * requires the position output invariance across invocations (typically for the position output).
 	 */
-	MTLCompileOptions* getMTLCompileOptions(bool requestFastMath = true, bool preserveInvariance = false);
+	MTLCompileOptions* getMTLCompileOptions(uint32_t fpFastMathFlags = ~0, bool preserveInvariance = false);
 
 	/** Returns the Metal vertex buffer index to use for the specified vertex attribute binding number.  */
 	uint32_t getMetalBufferIndexForVertexAttributeBinding(uint32_t binding);

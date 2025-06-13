@@ -196,6 +196,14 @@ namespace mvk {
 #pragma mark -
 #pragma mark SPIRVToMSLConversionResult
 
+	/** Supported fast math modes. */
+	static inline uint32_t kSPIRVFPFastMathModesSupported = (spv::FPFastMathModeNotNaNMask |
+															 spv::FPFastMathModeNotInfMask |
+															 spv::FPFastMathModeNSZMask |
+															 spv::FPFastMathModeAllowRecipMask |
+															 spv::FPFastMathModeAllowReassocMask |
+															 spv::FPFastMathModeAllowContractMask);
+
     /**
      * Describes one dimension of the workgroup size of a SPIR-V entry point, including whether
 	 * it is specialized, and if so, the value of the corresponding specialization ID, which
@@ -225,7 +233,7 @@ namespace mvk {
 			SPIRVWorkgroupSizeDimension height;
 			SPIRVWorkgroupSizeDimension depth;
 		} workgroupSize;
-		bool supportsFastMath = true;
+		uint32_t fpFastMathFlags;
 	} SPIRVEntryPoint;
 
 	typedef struct MSLSpecializationMacroInfo {
@@ -309,7 +317,7 @@ namespace mvk {
 		bool validateSPIRV();
 		void writeSPIRVToFile(std::string spvFilepath, std::string& log);
 		void populateWorkgroupDimension(SPIRVWorkgroupSizeDimension& wgDim, uint32_t size, SPIRV_CROSS_NAMESPACE::SpecializationConstant& spvSpecConst);
-		void populateEntryPoint(SPIRV_CROSS_NAMESPACE::Compiler* pCompiler, SPIRVToMSLConversionOptions& options, SPIRVEntryPoint& entryPoint);
+		void populateEntryPoint(SPIRV_CROSS_NAMESPACE::CompilerMSL* pMSLCompiler, SPIRVToMSLConversionOptions& options, SPIRVEntryPoint& entryPoint);
 		bool usesPhysicalStorageBufferAddressesCapability(SPIRV_CROSS_NAMESPACE::Compiler* pCompiler);
 		void populateSpecializationMacros(SPIRV_CROSS_NAMESPACE::CompilerMSL* pMSLCompiler, std::map<uint32_t, MSLSpecializationMacroInfo>& specializationMacros);
 

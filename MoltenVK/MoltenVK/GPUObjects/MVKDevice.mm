@@ -266,7 +266,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 		.globalPriorityQuery = true,
 		.shaderSubgroupRotate = _metalFeatures.simdPermute || _metalFeatures.quadPermute,
 		.shaderSubgroupRotateClustered = _metalFeatures.simdPermute || _metalFeatures.quadPermute,
-		.shaderFloatControls2 = false,
+		.shaderFloatControls2 = true,
 		.shaderExpectAssume = true,
 		.rectangularLines = false,
 		.bresenhamLines = true,
@@ -494,6 +494,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EXPECT_ASSUME_FEATURES: {
 				auto* shaderExpectAssumeFeatures = (VkPhysicalDeviceShaderExpectAssumeFeatures*)next;
 				shaderExpectAssumeFeatures->shaderExpectAssume = supportedFeats14.shaderExpectAssume;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT_CONTROLS_2_FEATURES: {
+				auto* shaderFloatControl2Features = (VkPhysicalDeviceShaderFloatControls2Features*)next;
+				shaderFloatControl2Features->shaderFloatControls2 = supportedFeats14.shaderFloatControls2;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES: {
@@ -5126,16 +5131,57 @@ id<MTLBuffer> MVKDevice::getDummyBlitMTLBuffer() {
 	return _dummyBlitMTLBuffer;
 }
 
-MTLCompileOptions* MVKDevice::getMTLCompileOptions(bool requestFastMath, bool preserveInvariance) {
+MTLCompileOptions* MVKDevice::getMTLCompileOptions(uint32_t fpFastMathFlags,
+												   bool preserveInvariance) {
 	MTLCompileOptions* mtlCompOpt = [MTLCompileOptions new];
 	mtlCompOpt.languageVersion = _physicalDevice->_metalFeatures.mslVersionEnum;
-	mtlCompOpt.fastMathEnabled = (getMVKConfig().fastMathEnabled == MVK_CONFIG_FAST_MATH_ALWAYS ||
-								  (getMVKConfig().fastMathEnabled == MVK_CONFIG_FAST_MATH_ON_DEMAND && requestFastMath));
-#if MVK_XCODE_12
-	if ([mtlCompOpt respondsToSelector: @selector(setPreserveInvariance:)]) {
-		[mtlCompOpt setPreserveInvariance: preserveInvariance];
+
+	switch (getMVKConfig().fastMathEnabled) {
+		case MVK_CONFIG_FAST_MATH_ALWAYS:
+			fpFastMathFlags = mvk::kSPIRVFPFastMathModesSupported;
+			break;
+		case MVK_CONFIG_FAST_MATH_NEVER:
+			fpFastMathFlags = spv::FPFastMathModeMaskNone;
+			break;
+		default:
+			break;
+	}
+
+#if MVK_XCODE_16
+	// Match Metal FP options as closely as possible to SPIR-V FPFastMathModeMask flags.
+	// TODO: Some MSL functions have different behavour than Vulkan and could probably been overwritten
+	// during shader compilation. For example, MSL fract() doesn't handle Inf->NaN like Vulkan.
+	if ([mtlCompOpt respondsToSelector: @selector(mathMode)]) {
+		MTLMathMode mtlMathMode = MTLMathModeSafe;
+		MTLMathFloatingPointFunctions mtlFPFuncs = MTLMathFloatingPointFunctionsPrecise;
+		if (mvkAreAllFlagsEnabled(fpFastMathFlags, (spv::FPFastMathModeNSZMask | spv::FPFastMathModeAllowRecipMask |
+													spv::FPFastMathModeAllowReassocMask | spv::FPFastMathModeAllowContractMask))) {
+			mtlMathMode = MTLMathModeRelaxed;
+			if (mvkAreAllFlagsEnabled(fpFastMathFlags, (spv::FPFastMathModeNotNaNMask | spv::FPFastMathModeNotInfMask))) {
+				mtlMathMode = MTLMathModeFast;
+				mtlFPFuncs = MTLMathFloatingPointFunctionsFast;
+			}
+		}
+		mtlCompOpt.mathMode = mtlMathMode;
+		mtlCompOpt.mathFloatingPointFunctions = mtlFPFuncs;
+	} else
+#endif
+	{
+		mtlCompOpt.fastMathEnabled = mvkAreAllFlagsEnabled(fpFastMathFlags, mvk::kSPIRVFPFastMathModesSupported);
+	}
+
+#if MVK_XCODE_14
+	if ([mtlCompOpt respondsToSelector: @selector(optimizationLevel)]) {
+		mtlCompOpt.optimizationLevel = MTLLibraryOptimizationLevelDefault;
 	}
 #endif
+
+#if MVK_XCODE_12
+	if ([mtlCompOpt respondsToSelector: @selector(preserveInvariance)]) {
+		mtlCompOpt.preserveInvariance = preserveInvariance;
+	}
+#endif
+
 	return [mtlCompOpt autorelease];
 }
 
@@ -5541,9 +5587,9 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				auto* requestedFeatures = (VkPhysicalDeviceVulkan14Features*)next;
 				enablePromotedFeatures(GlobalPriorityQuery, globalPriorityQuery, 1);
 				enablePromotedFeatures(ShaderSubgroupRotate, shaderSubgroupRotate, 2);
-//				enablePromotedFeatures(ShaderFloatControls2, shaderFloatControls2, 1);
+				enablePromotedFeatures(ShaderFloatControls2, shaderFloatControls2, 1);
 				enablePromotedFeatures(ShaderExpectAssume, shaderExpectAssume, 1);
-//				enablePromotedFeatures(LineRasterization, rectangularLines, 6);
+				enablePromotedFeatures(LineRasterization, rectangularLines, 6);
 				enablePromotedFeatures(VertexAttributeDivisor, vertexAttributeInstanceRateDivisor, 2);
 				enablePromotedFeatures(IndexTypeUint8, indexTypeUint8, 1);
 //				enablePromotedFeatures(DynamicRenderingLocalRead, dynamicRenderingLocalRead, 1);

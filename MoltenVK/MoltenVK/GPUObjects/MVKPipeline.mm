@@ -1860,6 +1860,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
     }
 
 	auto& mtlFeats = getMetalFeatures();
+	auto& mvkCfg = getMVKConfig();
     shaderConfig.options.mslOptions.msl_version = mtlFeats.mslVersion;
     shaderConfig.options.mslOptions.texel_buffer_texture_width = mtlFeats.maxTextureDimension;
     shaderConfig.options.mslOptions.r32ui_linear_texture_alignment = (uint32_t)_device->getVkFormatTexelBufferAlignment(VK_FORMAT_R32_UINT, this);
@@ -1916,13 +1917,13 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	}
 
 	shaderConfig.options.mslOptions.ios_support_base_vertex_instance = mtlFeats.baseVertexInstanceDrawing;
-	shaderConfig.options.mslOptions.texture_1D_as_2D = getMVKConfig().texture1DAs2D;
+	shaderConfig.options.mslOptions.texture_1D_as_2D = mvkCfg.texture1DAs2D;
 	shaderConfig.options.mslOptions.enable_point_size_builtin = isRenderingPoints(pCreateInfo) || reflectData.pointMode;
 	shaderConfig.options.mslOptions.enable_point_size_default = shaderConfig.options.mslOptions.enable_point_size_builtin;
 	shaderConfig.options.mslOptions.default_point_size = 1.0f; // See VK_KHR_maintenance5
 	shaderConfig.options.mslOptions.enable_frag_depth_builtin = pixFmts->isDepthFormat(pixFmts->getMTLPixelFormat(pRendInfo->depthAttachmentFormat));
 	shaderConfig.options.mslOptions.enable_frag_stencil_ref_builtin = pixFmts->isStencilFormat(pixFmts->getMTLPixelFormat(pRendInfo->stencilAttachmentFormat));
-    shaderConfig.options.shouldFlipVertexY = getMVKConfig().shaderConversionFlipVertexY;
+    shaderConfig.options.shouldFlipVertexY = mvkCfg.shaderConversionFlipVertexY;
     shaderConfig.options.shouldFixupClipSpace = isDepthClipNegativeOneToOne(pCreateInfo);
     shaderConfig.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !mtlFeats.nativeTextureSwizzle;
     shaderConfig.options.mslOptions.tess_domain_origin_lower_left = pTessDomainOriginState && pTessDomainOriginState->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
@@ -2333,6 +2334,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	warnIfBufferRobustnessEnabled(this, pSS);
 
 	auto& mtlFeats = getMetalFeatures();
+	auto& mvkCfg = getMVKConfig();
     SPIRVToMSLConversionConfiguration shaderConfig;
 	shaderConfig.options.entryPointName = pCreateInfo->stage.pName;
 	shaderConfig.options.entryPointStage = spv::ExecutionModelGLCompute;
@@ -2342,7 +2344,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderConfig.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !mtlFeats.nativeTextureSwizzle;
 	shaderConfig.options.mslOptions.texture_buffer_native = mtlFeats.textureBuffers;
 	shaderConfig.options.mslOptions.dispatch_base = _allowsDispatchBase;
-	shaderConfig.options.mslOptions.texture_1D_as_2D = getMVKConfig().texture1DAs2D;
+	shaderConfig.options.mslOptions.texture_1D_as_2D = mvkCfg.texture1DAs2D;
     shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT) ? 0 : mtlFeats.maxSubgroupSize;
 
 	bool useMetalArgBuff = isUsingMetalArgumentBuffers();
@@ -2832,7 +2834,7 @@ namespace mvk {
 				ep.workgroupSize.width,
 				ep.workgroupSize.height,
 				ep.workgroupSize.depth,
-				ep.supportsFastMath);
+				ep.fpFastMathFlags);
 	}
 
 	template<class Archive>
@@ -3044,15 +3046,15 @@ void mvkValidateCeralArchiveDefinitions() {
 	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::MSLResourceBinding>();
 	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::MSLConstexprSampler>();
 	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVWorkgroupSizeDimension>(3);
-	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVEntryPoint>(23);						// Contains string
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVEntryPoint>(20);						// Contains string
 	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionOptions>(23);			// Contains string
 	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLShaderInterfaceVariable>(3);
 	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLResourceBinding>(2);
 	missingBytes += mvkValidateCerealArchiveSize<mvk::DescriptorBinding>();
 	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionConfiguration>(103);	// Contains collection
-	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionResultInfo>(44);		// Contains collection
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionResultInfo>(41);		// Contains collection
 	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLSpecializationMacroInfo>(22);			// Contains string
 	missingBytes += mvkValidateCerealArchiveSize<MVKShaderModuleKey>();
-	missingBytes += mvkValidateCerealArchiveSize<MVKCompressor<std::string>>(20);					// Contains collection
+	missingBytes += mvkValidateCerealArchiveSize<MVKCompressor<std::string>>(20);				// Contains collection
 	assert(missingBytes == 0 && "Cereal Archive definitions incomplete. See previous logged errors.");
 }
