@@ -662,6 +662,7 @@ id<MTLFunction> MVKCommandResourceFactory::newMTLFunction(NSString* mslSrcCode, 
 id<MTLRenderPipelineState> MVKCommandResourceFactory::newMTLRenderPipelineState(MTLRenderPipelineDescriptor* plDesc,
 																				MVKVulkanAPIDeviceObject* owner) {
 	MVKRenderPipelineCompiler* plc = new MVKRenderPipelineCompiler(owner);
+//    plDesc.supportIndirectCommandBuffers = YES;
 	id<MTLRenderPipelineState> rps = plc->newMTLRenderPipelineState(plDesc);	// retained
 	plc->destroy();
     return rps;
