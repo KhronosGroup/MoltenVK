@@ -201,10 +201,11 @@ This can be enabled for publicity during demos.
 ##### Type: Enumeration
 - `0`: _Metal_ shaders will never be compiled with the fast math option.
 - `1`: _Metal_ shaders will always be compiled with the fast math option.
-- `2`: _Metal_ shaders will be compiled with the fast math option, unless the shader includes execution
-  capabilities, such as `SignedZeroInfNanPreserve`, that require it to be compiled without fast math.
+- `2`: _Metal_ shaders will be compiled with the fast math option. However, each shader can
+  limit the types of fast-math used, through the `VK_KHR_shader_float_controls2` extension, 
+  or by enabling execution capabilities, such as `SignedZeroInfNanPreserve` or `ContractionOff`.
 
-##### Default: `1`
+##### Default: `2`
 
 Identifies when _Metal_ shaders will be compiled with the _Metal_ fast math option enabled.
 
@@ -216,8 +217,8 @@ effect on the numerical accuracy of most shaders. As such, disabling fast math s
 carefully and deliberately. For most applications, always enabling fast math is the preferred choice.
 
 Apps that have specific accuracy and handling needs for particular shaders, may elect to set
-the value of this property to `2`, so that fast math will be disabled when compiling shaders
-that request specific math accuracy and precision capabilities, such as `SignedZeroInfNanPreserve`.
+the value of this property to `2`, which compiles shaders with fast math, but allows each shader 
+to limit the types of fast-math used, as described in the value description above.
 
 
 ---------------------------------------
