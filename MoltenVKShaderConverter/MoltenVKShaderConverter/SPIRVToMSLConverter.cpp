@@ -526,31 +526,44 @@ void SPIRVToMSLConverter::populateWorkgroupDimension(SPIRVWorkgroupSizeDimension
 }
 
 // Populates the entry point with info extracted from the SPRI-V compiler.
-void SPIRVToMSLConverter::populateEntryPoint(Compiler* pCompiler,
+void SPIRVToMSLConverter::populateEntryPoint(CompilerMSL* pMSLCompiler,
 											 SPIRVToMSLConversionOptions& options,
 											 SPIRVEntryPoint& entryPoint) {
 
-	if ( !pCompiler ) { return; }
+	if ( !pMSLCompiler ) { return; }
 
 	SPIREntryPoint spvEP;
 	if (options.hasEntryPoint()) {
-		spvEP = pCompiler->get_entry_point(options.entryPointName, options.entryPointStage);
+		spvEP = pMSLCompiler->get_entry_point(options.entryPointName, options.entryPointStage);
 	} else {
-		const auto& entryPoints = pCompiler->get_entry_points_and_stages();
+		const auto& entryPoints = pMSLCompiler->get_entry_points_and_stages();
 		if ( !entryPoints.empty() ) {
 			auto& ep = entryPoints[0];
-			spvEP = pCompiler->get_entry_point(ep.name, ep.execution_model);
+			spvEP = pMSLCompiler->get_entry_point(ep.name, ep.execution_model);
 		}
 	}
 
 	entryPoint.mtlFunctionName = spvEP.name;
-	entryPoint.supportsFastMath = !spvEP.flags.get(ExecutionModeSignedZeroInfNanPreserve);
+
+	// Start with all fast math enabled, and disable as needed, via SPV_KHR_float_controls or ExecutionModes.
+	auto fpDflt = kSPIRVFPFastMathModesSupported;
+	if (spvEP.flags.get(ExecutionModeFPFastMathDefault)) {
+		fpDflt &= pMSLCompiler->get_fp_fast_math_combined(true);
+	} else {
+		if (spvEP.flags.get(ExecutionModeSignedZeroInfNanPreserve)) {
+			fpDflt &= ~(FPFastMathModeNotNaNMask | FPFastMathModeNotInfMask | FPFastMathModeNSZMask);
+		}
+		if (spvEP.flags.get(ExecutionModeContractionOff)) {
+			fpDflt &= ~(FPFastMathModeAllowContractMask);
+		}
+	}
+	entryPoint.fpFastMathMode = fpDflt;
 
 	uint32_t x, y, z;
-	getWorkgroupSize(pCompiler, spvEP, x, y, z);
+	getWorkgroupSize(pMSLCompiler, spvEP, x, y, z);
 
 	SpecializationConstant widthSC, heightSC, depthSC;
-	pCompiler->get_work_group_size_specialization_constants(widthSC, heightSC, depthSC);
+	pMSLCompiler->get_work_group_size_specialization_constants(widthSC, heightSC, depthSC);
 
 	auto& wgSize = entryPoint.workgroupSize;
 	populateWorkgroupDimension(wgSize.width,  x, widthSC);
