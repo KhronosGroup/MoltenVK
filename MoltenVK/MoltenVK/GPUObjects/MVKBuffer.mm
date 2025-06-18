@@ -76,8 +76,7 @@ VkResult MVKBuffer::getMemoryRequirements(VkMemoryRequirements2* pMemoryRequirem
 }
 
 VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) {
-	if (_deviceMemory) { _deviceMemory->removeBuffer(this); }
-
+	if (_deviceMemory) { MVKDeviceMemory::removeBuffer(&_deviceMemory, this); }
 	MVKResource::bindDeviceMemory(mvkMem, memOffset);
 
 #if MVK_MACOS
@@ -298,9 +297,7 @@ void MVKBuffer::destroy() {
 
 // Potentially called twice, from destroy() and destructor, so ensure everything is nulled out.
 void MVKBuffer::detachMemory() {
-	if (_deviceMemory) { _deviceMemory->removeBuffer(this); }
-	_deviceMemory = nullptr;
-
+	if (_deviceMemory) { MVKDeviceMemory::removeBuffer(&_deviceMemory, this); }
 	MVKLiveResourceSet& live = _device->getLiveResources();
 	if (id<MTLBuffer> buf = _mtlBuffer) {
 		_mtlBuffer = nil;

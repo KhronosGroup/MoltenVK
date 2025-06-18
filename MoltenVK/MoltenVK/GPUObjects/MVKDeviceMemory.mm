@@ -24,6 +24,7 @@
 #include "MVKFoundation.h"
 #include <cstdlib>
 #include <stdlib.h>
+#include <os/lock.h>
 
 using namespace std;
 
@@ -148,9 +149,19 @@ VkResult MVKDeviceMemory::addBuffer(MVKBuffer* mvkBuff) {
 	return VK_SUCCESS;
 }
 
-void MVKDeviceMemory::removeBuffer(MVKBuffer* mvkBuff) {
-	lock_guard<mutex> lock(_rezLock);
-	mvkRemoveAllOccurances(_buffers, mvkBuff);
+// It's valid to destroy a device memory and a buffer/image at the same time without synchronization.
+// The device memory destructor wants to reach into the buffer/image, while the buffer/image destructor wants to reach into the device memory.
+// So use this global lock that won't be destructed with either of them to avoid problems.
+static os_unfair_lock s_device_memory_destruction_lock = OS_UNFAIR_LOCK_INIT;
+
+void MVKDeviceMemory::removeBuffer(MVKDeviceMemory** pMem, MVKBuffer* mvkBuff) {
+	os_unfair_lock_lock(&s_device_memory_destruction_lock);
+	if (MVKDeviceMemory* mem = *pMem) {
+		*pMem = nullptr;
+		std::lock_guard<std::mutex> lock(mem->_rezLock);
+		mvkRemoveAllOccurances(mem->_buffers, mvkBuff);
+	}
+	os_unfair_lock_unlock(&s_device_memory_destruction_lock);
 }
 
 VkResult MVKDeviceMemory::addImageMemoryBinding(MVKImageMemoryBinding* mvkImg) {
@@ -168,9 +179,14 @@ VkResult MVKDeviceMemory::addImageMemoryBinding(MVKImageMemoryBinding* mvkImg) {
 	return VK_SUCCESS;
 }
 
-void MVKDeviceMemory::removeImageMemoryBinding(MVKImageMemoryBinding* mvkImg) {
-	lock_guard<mutex> lock(_rezLock);
-	mvkRemoveAllOccurances(_imageMemoryBindings, mvkImg);
+void MVKDeviceMemory::removeImageMemoryBinding(MVKDeviceMemory** pMem, MVKImageMemoryBinding* mvkImg) {
+	os_unfair_lock_lock(&s_device_memory_destruction_lock);
+	if (MVKDeviceMemory* mem = *pMem) {
+		*pMem = nullptr;
+		std::lock_guard<std::mutex> lock(mem->_rezLock);
+		mvkRemoveAllOccurances(mem->_imageMemoryBindings, mvkImg);
+	}
+	os_unfair_lock_unlock(&s_device_memory_destruction_lock);
 }
 
 // Ensures that this instance is backed by a MTLHeap object,
@@ -473,12 +489,13 @@ void MVKDeviceMemory::initExternalMemory(MVKImage* dedicatedImage) {
 }
 
 MVKDeviceMemory::~MVKDeviceMemory() {
-    // Unbind any resources that are using me. Iterate a copy of the collection,
-    // to allow the resource to callback to remove itself from the collection.
-    auto buffCopies = _buffers;
-    for (auto& buf : buffCopies) { buf->bindDeviceMemory(nullptr, 0); }
-	auto imgCopies = _imageMemoryBindings;
-	for (auto& img : imgCopies) { img->bindDeviceMemory(nullptr, 0); }
+	// Unbind any resources that are using me.
+	// Manually null the binding parameter to prevent them from trying to remove themselves from the array.
+	// This will leave texture buffer pointers dangling, but according to Vulkan, those are not supposed to be used again anyways.
+	os_unfair_lock_lock(&s_device_memory_destruction_lock);
+	for (auto& buf : _buffers)             { buf->_deviceMemory = nullptr; }
+	for (auto& img : _imageMemoryBindings) { img->_deviceMemory = nullptr; }
+	os_unfair_lock_unlock(&s_device_memory_destruction_lock);
 
 	if (_externalMemoryHandleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT) {
 		[_mtlTexture release];
