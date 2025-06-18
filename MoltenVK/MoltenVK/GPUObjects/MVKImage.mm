@@ -434,7 +434,7 @@ VkResult MVKImageMemoryBinding::getMemoryRequirements(VkMemoryRequirements2* pMe
 
 // Memory may have been mapped before image was bound, and needs to be loaded into the MTLTexture.
 VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) {
-    if (_deviceMemory) { _deviceMemory->removeImageMemoryBinding(this); }
+    if (_deviceMemory) { MVKDeviceMemory::removeImageMemoryBinding(&_deviceMemory, this); }
     MVKResource::bindDeviceMemory(mvkMem, memOffset);
 
     if (!_deviceMemory) { return VK_SUCCESS; }
@@ -566,7 +566,7 @@ MVKImageMemoryBinding::MVKImageMemoryBinding(MVKDevice* device, MVKImage* image,
 }
 
 MVKImageMemoryBinding::~MVKImageMemoryBinding() {
-	if (_deviceMemory) { _deviceMemory->removeImageMemoryBinding(this); }
+	if (_deviceMemory) { MVKDeviceMemory::removeImageMemoryBinding(&_deviceMemory, this); }
 	if (_ownsTexelBuffer) {
 		_device->removeResidency(_mtlTexelBuffer);
 		_device->getLiveResources().remove(_mtlTexelBuffer);
