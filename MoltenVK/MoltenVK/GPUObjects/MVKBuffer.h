@@ -70,8 +70,14 @@ public:
 	/** Returns the Metal buffer underlying this memory allocation. */
     id<MTLBuffer> getMTLBuffer();
 
+	/** Returns the Metal heap underlying this memory allocation, if available. */
+    id<MTLHeap> getMTLHeap();
+
 	/** Returns the offset at which the contents of this instance starts within the underlying Metal buffer. */
-	inline NSUInteger getMTLBufferOffset() { return !_deviceMemory || _deviceMemory->getMTLHeap() ? 0 : _deviceMemoryOffset; }
+	inline NSUInteger getMTLBufferOffset() { return !_deviceMemory || _mtlHeap || _deviceMemory->getMTLHeap() ? 0 : _deviceMemoryOffset; }
+
+	/** Returns the offset at which the contents of this instance starts within the underlying Metal heap. */
+	inline NSUInteger getMTLHeapOffset() { return _deviceMemory && _deviceMemory->getMTLHeap() ? _deviceMemoryOffset : 0; }
 
     /** Returns the Metal buffer used as a cache for host-coherent texel buffers. */
     id<MTLBuffer> getMTLBufferCache();
@@ -103,6 +109,7 @@ protected:
 	bool _isHostCoherentTexelBuffer = false;
     id<MTLBuffer> _mtlBufferCache = nil;
 	id<MTLBuffer> _mtlBuffer = nil;
+	id<MTLHeap> _mtlHeap = nil;
     std::mutex _lock;
 };
 
