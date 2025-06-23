@@ -911,8 +911,8 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps14.earlyFragmentSampleMaskTestBeforeSampleCounting = false;
 	supportedProps14.depthStencilSwizzleOneSupport = true;
 	supportedProps14.polygonModePointSize = true;
-	supportedProps14.nonStrictSinglePixelWideLinesUseParallelogram = false;
-	supportedProps14.nonStrictWideLinesUseParallelogram = false;
+	supportedProps14.nonStrictSinglePixelWideLinesUseParallelogram = !_properties.limits.strictLines;
+	supportedProps14.nonStrictWideLinesUseParallelogram = !_properties.limits.strictLines;
 	supportedProps14.blockTexelViewCompatibleMultipleLayers = false;
 	supportedProps14.maxCombinedImageSamplerDescriptorCount = 3;
 	supportedProps14.fragmentShadingRateClampCombinerInputs = false;
@@ -3373,7 +3373,7 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.lineWidthGranularity = _features.wideLines ? 0.125f : 0;
 
     _properties.limits.standardSampleLocations = VK_TRUE;
-    _properties.limits.strictLines = _properties.vendorID == kIntelVendorId || _properties.vendorID == kNVVendorId;
+    _properties.limits.strictLines = _properties.vendorID == kNVVendorId;
 
 	VkExtent3D wgSize = mvkVkExtent3DFromMTLSize(_mtlDevice.maxThreadsPerThreadgroup);
 	_properties.limits.maxComputeWorkGroupSize[0] = wgSize.width;
