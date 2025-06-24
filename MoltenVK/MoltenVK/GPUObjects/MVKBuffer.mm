@@ -325,53 +325,56 @@ void MVKBufferView::propagateDebugName() {
 
 id<MTLTexture> MVKBufferView::getMTLTexture() {
 	auto& mtlFeats = getMetalFeatures();
-    if ( !_mtlTexture && _mtlPixelFormat && mtlFeats.texelBuffers) {
+	if ( !_mtlTexture && _mtlPixelFormat && mtlFeats.texelBuffers) {
 
 		// Lock and check again in case another thread has created the texture.
 		lock_guard<mutex> lock(_lock);
 		if (_mtlTexture) { return _mtlTexture; }
 
-        MTLTextureUsage usage = MTLTextureUsageShaderRead;
-        if ( mvkIsAnyFlagEnabled(_usage, VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT) ) {
+		MTLTextureUsage usage = MTLTextureUsageShaderRead;
+		if ( mvkIsAnyFlagEnabled(_usage, VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT) ) {
 			usage |= MTLTextureUsageShaderWrite;
 #if MVK_XCODE_15
 			if (getMetalFeatures().nativeTextureAtomics && (_mtlPixelFormat == MTLPixelFormatR32Sint || _mtlPixelFormat == MTLPixelFormatR32Uint))
 				usage |= MTLTextureUsageShaderAtomic;
 #endif
-        }
-        id<MTLBuffer> mtlBuff;
-        VkDeviceSize mtlBuffOffset;
-        if ( !mtlFeats.sharedLinearTextures && _buffer->isMemoryHostCoherent() ) {
-            mtlBuff = _buffer->getMTLBufferCache();
-            mtlBuffOffset = _offset;
-        } else {
-            mtlBuff = _buffer->getMTLBuffer();
-            mtlBuffOffset = _buffer->getMTLBufferOffset() + _offset;
-        }
-        MTLTextureDescriptor* mtlTexDesc;
-        if ( mtlFeats.textureBuffers ) {
-            mtlTexDesc = [MTLTextureDescriptor textureBufferDescriptorWithPixelFormat: _mtlPixelFormat
-                                                                                width: _textureSize.width
-                                                                      resourceOptions: (mtlBuff.cpuCacheMode << MTLResourceCPUCacheModeShift) | (mtlBuff.storageMode << MTLResourceStorageModeShift)
-                                                                                usage: usage];
-        } else {
-            mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: _mtlPixelFormat
-                                                                            width: _textureSize.width
-                                                                           height: _textureSize.height
-                                                                        mipmapped: NO];
-            mtlTexDesc.storageMode = mtlBuff.storageMode;
-            mtlTexDesc.cpuCacheMode = mtlBuff.cpuCacheMode;
-            mtlTexDesc.usage = usage;
-        }
-		id<MTLTexture> tex = [mtlBuff newTextureWithDescriptor: mtlTexDesc
-		                                                offset: mtlBuffOffset
-		                                           bytesPerRow: _mtlBytesPerRow];
-		_device->makeResident(tex);
-		_device->getLiveResources().add(tex);
-		_mtlTexture = tex;
-		propagateDebugName();
-    }
-    return _mtlTexture;
+		}
+		id<MTLBuffer> mtlBuff;
+		VkDeviceSize mtlBuffOffset;
+		if ( !mtlFeats.sharedLinearTextures && _buffer->isMemoryHostCoherent() ) {
+			mtlBuff = _buffer->getMTLBufferCache();
+			mtlBuffOffset = _offset;
+		} else {
+			mtlBuff = _buffer->getMTLBuffer();
+			mtlBuffOffset = _buffer->getMTLBufferOffset() + _offset;
+		}
+		@autoreleasepool {
+			MTLTextureDescriptor* mtlTexDesc;
+			if (mtlFeats.textureBuffers) {
+				MTLResourceOptions opts = (mtlBuff.cpuCacheMode << MTLResourceCPUCacheModeShift) | (mtlBuff.storageMode << MTLResourceStorageModeShift);
+				mtlTexDesc = [MTLTextureDescriptor textureBufferDescriptorWithPixelFormat: _mtlPixelFormat
+				                                                                    width: _textureSize.width
+				                                                          resourceOptions: opts
+				                                                                    usage: usage];
+			} else {
+				mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: _mtlPixelFormat
+				                                                                width: _textureSize.width
+				                                                               height: _textureSize.height
+				                                                            mipmapped: NO];
+				mtlTexDesc.storageMode = mtlBuff.storageMode;
+				mtlTexDesc.cpuCacheMode = mtlBuff.cpuCacheMode;
+				mtlTexDesc.usage = usage;
+			}
+			id<MTLTexture> tex = [mtlBuff newTextureWithDescriptor: mtlTexDesc
+			                                                offset: mtlBuffOffset
+			                                           bytesPerRow: _mtlBytesPerRow];
+			_device->makeResident(tex);
+			_device->getLiveResources().add(tex);
+			_mtlTexture = tex;
+			propagateDebugName();
+		}
+	}
+	return _mtlTexture;
 }
 
 
