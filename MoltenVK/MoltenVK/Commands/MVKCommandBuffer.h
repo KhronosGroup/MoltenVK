@@ -361,6 +361,8 @@ public:
      * the current encoder before beginning BLIT encoding.
 	 */
 	id<MTLBlitCommandEncoder> getMTLBlitEncoder(MVKCommandUse cmdUse);
+    
+    id<MTLAccelerationStructureCommandEncoder> getMTLAccelerationStructureEncoder(MVKCommandUse cmdUse); // Write proper comment above
 
 	/**
 	 * Returns the current Metal encoder, which may be any of the Metal render,
@@ -539,6 +541,7 @@ protected:
 	MVKSmallVector<MVKImageView*, kMVKDefaultAttachmentCount> _attachments;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
+    id<MTLAccelerationStructureCommandEncoder> _mtlAccelerationStructureEncoder;
 	id<MTLFence> _stageCountersMTLFence;
 	MVKPushConstantsCommandEncoderState _vertexPushConstants;
 	MVKPushConstantsCommandEncoderState _tessCtlPushConstants;
@@ -552,6 +555,7 @@ protected:
     uint32_t _flushCount;
 	MVKCommandUse _mtlComputeEncoderUse;
 	MVKCommandUse _mtlBlitEncoderUse;
+  MVKCommandUse _mtlAccelerationStructureEncoderUse;
 	bool _isRenderingEntireAttachment;
 };
 
@@ -567,3 +571,6 @@ NSString* mvkMTLBlitCommandEncoderLabel(MVKCommandUse cmdUse);
 
 /** Returns a name, suitable for use as a MTLComputeCommandEncoder label, based on the MVKCommandUse. */
 NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse);
+
+/** Returns a name, suitable for use as a MTLAccelerationStructureCommandEncoder label, based on the MVKCommandUse. */
+NSString* mvkMTLAccelerationStructureCommandEncoderLabel(MVKCommandUse cmdUse);
