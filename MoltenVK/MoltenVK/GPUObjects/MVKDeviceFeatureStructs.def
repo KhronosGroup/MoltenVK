@@ -63,6 +63,7 @@ MVK_DEVICE_FEATURE(ShaderAtomicInt64,                     SHADER_ATOMIC_INT64,  
 MVK_DEVICE_FEATURE(ShaderDemoteToHelperInvocation,        SHADER_DEMOTE_TO_HELPER_INVOCATION,          1)
 MVK_DEVICE_FEATURE(ShaderDrawParameters,                  SHADER_DRAW_PARAMETERS,                      1)
 MVK_DEVICE_FEATURE(ShaderExpectAssume,                    SHADER_EXPECT_ASSUME,                        1)
+MVK_DEVICE_FEATURE(ShaderFloatControls2,                  SHADER_FLOAT_CONTROLS_2,                     1)
 MVK_DEVICE_FEATURE(ShaderFloat16Int8,                     SHADER_FLOAT16_INT8,                         2)
 MVK_DEVICE_FEATURE(ShaderIntegerDotProduct,               SHADER_INTEGER_DOT_PRODUCT,                  1)
 MVK_DEVICE_FEATURE(ShaderSubgroupExtendedTypes,           SHADER_SUBGROUP_EXTENDED_TYPES,              1)

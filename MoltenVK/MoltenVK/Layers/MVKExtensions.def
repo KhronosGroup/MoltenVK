@@ -99,6 +99,7 @@ MVK_EXTENSION(KHR_shader_draw_parameters,               KHR_SHADER_DRAW_PARAMETE
 MVK_EXTENSION(KHR_shader_expect_assume,                 KHR_SHADER_EXPECT_ASSUME,                 DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_shader_float16_int8,                  KHR_SHADER_FLOAT16_INT8,                  DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_shader_float_controls,                KHR_SHADER_FLOAT_CONTROLS,                DEVICE,   10.11,  8.0,  1.0)
+MVK_EXTENSION(KHR_shader_float_controls2,               KHR_SHADER_FLOAT_CONTROLS_2,              DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_shader_integer_dot_product,           KHR_SHADER_INTEGER_DOT_PRODUCT,           DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_shader_maximal_reconvergence,         KHR_SHADER_MAXIMAL_RECONVERGENCE,         DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_shader_non_semantic_info,             KHR_SHADER_NON_SEMANTIC_INFO,             DEVICE,   10.11,  8.0,  1.0)

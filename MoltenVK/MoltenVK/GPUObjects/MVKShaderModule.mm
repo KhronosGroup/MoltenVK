@@ -565,8 +565,8 @@ id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode,
 		auto mtlDev = getMTLDevice();
 		@synchronized (mtlDev) {
 			@autoreleasepool {
-				auto mtlCompileOptions = getDevice()->getMTLCompileOptions(shaderConversionResults.entryPoint.supportsFastMath,
-																				shaderConversionResults.isPositionInvariant);
+				auto mtlCompileOptions = getDevice()->getMTLCompileOptions(shaderConversionResults.entryPoint.fpFastMathFlags,
+																		   shaderConversionResults.isPositionInvariant);
 				if (!specializationMacroDef.empty()) {
 					size_t macro_count = specializationMacroDef.size();
 					NSString *macro_names[macro_count];
@@ -579,7 +579,8 @@ id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode,
 																					   forKeys: macro_names
 																						 count: macro_count];
 				}
-				MVKLogInfoIf(getMVKConfig().debugMode, "Compiling Metal shader%s.", mtlCompileOptions.fastMathEnabled ? " with FastMath enabled" : "");
+				logCompilation(mtlCompileOptions);
+
 				[mtlDev newLibraryWithSource: mslSourceCode
 									options: mtlCompileOptions
 						completionHandler: ^(id<MTLLibrary> mtlLib, NSError* error) {
@@ -661,6 +662,47 @@ bool MVKShaderLibraryCompiler::compileComplete(id<MTLLibrary> mtlLibrary, NSErro
 	_mtlLibrary = [mtlLibrary retain];		// retained
 	return endCompile(compileError);
 }
+
+void MVKShaderLibraryCompiler::logCompilation(MTLCompileOptions* mtlCompOpt) {
+	if ( !getMVKConfig().debugMode ) { return; }
+
+#if MVK_XCODE_16
+	if ([mtlCompOpt respondsToSelector: @selector(mathMode)]) {
+		const char* mathModeName = "Unknown";
+		switch (mtlCompOpt.mathMode) {
+			case MTLMathModeFast:
+				mathModeName = "Fast";
+				break;
+			case MTLMathModeRelaxed:
+				mathModeName = "Relaxed";
+				break;
+			case MTLMathModeSafe:
+				mathModeName = "Safe";
+				break;
+			default:
+				break;
+		}
+		const char* mathFPFName = "Unknown";
+		switch (mtlCompOpt.mathFloatingPointFunctions) {
+			case MTLMathFloatingPointFunctionsFast:
+				mathFPFName = "Fast";
+				break;
+			case MTLMathFloatingPointFunctionsPrecise:
+				mathFPFName = "Precise";
+				break;
+			default:
+				break;
+		}
+		MVKLogInfo("Compiling Metal shader with MathMode %s, MathFloatingPointFunctions %s, and PreserveInvariance %sabled.",
+				   mathModeName, mathFPFName, mtlCompOpt.preserveInvariance ? "en" : "dis");
+	} else
+#endif
+	{
+		MVKLogInfo("Compiling Metal shader with FastMath %sabled and PreserveInvariance %sabled.",
+				   mtlCompOpt.fastMathEnabled ? "en" : "dis", mtlCompOpt.preserveInvariance ? "en" : "dis");
+	}
+}
+
 
 #pragma mark Construction
 
