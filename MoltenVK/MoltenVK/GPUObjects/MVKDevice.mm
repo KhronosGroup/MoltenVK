@@ -5517,6 +5517,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	enableFeatures(pCreateInfo);
 	initQueues(pCreateInfo);
 	reservePrivateData(pCreateInfo);
+	initConfiguration();
 
 	if (_enabledFeatures.robustBufferAccess || _enabledRobustness2Features.robustBufferAccess2) {
 		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support buffer robustness.");
@@ -5588,6 +5589,12 @@ static MVKPerformanceStatistics _processPerformanceStats = {};
 void MVKDevice::initPerformanceTracking() {
 	_isPerformanceTracking = getMVKConfig().performanceTracking;
 	_performanceStats = _processPerformanceStats;
+}
+
+void MVKDevice::initConfiguration() {
+	bool needsLiveTrackingForCopy = _physicalDevice->_isUsingMetalArgumentBuffers && _physicalDevice->_metalFeatures.needsArgumentBufferEncoders;
+	bool needsLiveTrackingForEncode = !hasResidencySet() && (getMVKConfig().liveCheckAllResources || _enabledDescriptorIndexingFeatures.descriptorBindingPartiallyBound);
+	_liveResources.enabled = needsLiveTrackingForCopy || needsLiveTrackingForEncode;
 }
 
 void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {

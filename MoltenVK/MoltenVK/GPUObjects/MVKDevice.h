@@ -580,19 +580,20 @@ private:
 };
 
 struct MVKLiveResourceSet {
+	bool enabled;
 	MVKLiveList textures;
 	MVKLiveList buffers;
 	MVKLiveList samplers;
 
-	void add(id<MTLTexture> tex)       { textures.add(tex); }
-	void add(id<MTLBuffer> buf)        { buffers .add(buf); }
-	void add(id<MTLSamplerState> samp) { samplers.add(samp); }
-	void remove(id<MTLTexture> tex)       { textures.remove(tex); }
-	void remove(id<MTLBuffer> buf)        { buffers .remove(buf); }
-	void remove(id<MTLSamplerState> samp) { samplers.remove(samp); }
-	MVKLiveList::IsLiveResult isLive(id<MTLTexture> tex)       { return textures.isLive(tex); }
-	MVKLiveList::IsLiveResult isLive(id<MTLBuffer> buf)        { return buffers .isLive(buf); }
-	MVKLiveList::IsLiveResult isLive(id<MTLSamplerState> samp) { return samplers.isLive(samp); }
+	void add(id<MTLTexture> tex)       { if (enabled) textures.add(tex); }
+	void add(id<MTLBuffer> buf)        { if (enabled) buffers .add(buf); }
+	void add(id<MTLSamplerState> samp) { if (enabled) samplers.add(samp); }
+	void remove(id<MTLTexture> tex)       { if (enabled) textures.remove(tex); }
+	void remove(id<MTLBuffer> buf)        { if (enabled) buffers .remove(buf); }
+	void remove(id<MTLSamplerState> samp) { if (enabled) samplers.remove(samp); }
+	MVKLiveList::IsLiveResult isLive(id<MTLTexture> tex)       { assert(enabled); return textures.isLive(tex); }
+	MVKLiveList::IsLiveResult isLive(id<MTLBuffer> buf)        { assert(enabled); return buffers .isLive(buf); }
+	MVKLiveList::IsLiveResult isLive(id<MTLSamplerState> samp) { assert(enabled); return samplers.isLive(samp); }
 };
 
 /** Represents a Vulkan logical GPU device, associated with a physical device. */
@@ -1015,6 +1016,7 @@ protected:
     void initPerformanceTracking();
 	void initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo);
 	void initQueues(const VkDeviceCreateInfo* pCreateInfo);
+	void initConfiguration();
 	void reservePrivateData(const VkDeviceCreateInfo* pCreateInfo);
 	void enableFeatures(const VkDeviceCreateInfo* pCreateInfo);
 	template<typename S> void enableFeatures(S* pEnabled, const S* pRequested, const S* pAvailable, uint32_t count);
