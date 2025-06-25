@@ -437,6 +437,7 @@ protected:
 	void initProperties();
 	void initLimits();
 	void initGPUInfoProperties();
+	bool isAMDRDNAGPU();
 	void initMemoryProperties();
 	void initVkSemaphoreStyle();
 	void setMemoryHeap(uint32_t heapIndex, VkDeviceSize heapSize, VkMemoryHeapFlags heapFlags);
