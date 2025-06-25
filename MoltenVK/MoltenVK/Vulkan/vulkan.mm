@@ -30,7 +30,7 @@
 #include "MVKBuffer.h"
 #include "MVKDeviceMemory.h"
 #include "MVKDescriptorSet.h"
-#include "MVKRenderpass.h"
+#include "MVKRenderPass.h"
 #include "MVKShaderModule.h"
 #include "MVKPipeline.h"
 #include "MVKFramebuffer.h"
