@@ -890,10 +890,11 @@ MVKAttachmentDescription::MVKAttachmentDescription(MVKRenderPass* renderPass,
 
 MVKAttachmentDescription::MVKAttachmentDescription(MVKRenderPass* renderPass,
 												   const VkRenderingAttachmentInfo* pAttInfo,
+												   VkImageAspectFlagBits aspect,
 												   bool isResolveAttachment) {
 	if (isResolveAttachment) {
 		_info.flags = 0;
-		_info.format = ((MVKImageView*)pAttInfo->resolveImageView)->getVkFormat();
+		_info.format = ((MVKImageView*)pAttInfo->resolveImageView)->getVkFormat(MVKImage::getPlaneFromVkImageAspectFlags(aspect));
 		_info.samples = VK_SAMPLE_COUNT_1_BIT;
 		_info.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -903,7 +904,7 @@ MVKAttachmentDescription::MVKAttachmentDescription(MVKRenderPass* renderPass,
 		_info.finalLayout = pAttInfo->resolveImageLayout;
 	} else {
 		_info.flags = 0;
-		_info.format = ((MVKImageView*)pAttInfo->imageView)->getVkFormat();
+		_info.format = ((MVKImageView*)pAttInfo->imageView)->getVkFormat(MVKImage::getPlaneFromVkImageAspectFlags(aspect));
 		_info.samples = ((MVKImageView*)pAttInfo->imageView)->getSampleCount();
 		_info.loadOp = pAttInfo->loadOp;
 		_info.storeOp = pAttInfo->storeOp;
@@ -1046,7 +1047,7 @@ MVKRenderPass::MVKRenderPass(MVKDevice* device, const VkRenderingInfo* pRenderin
 	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, bool isResolveAttachment)->void { attCnt++; });
 	_attachments.reserve(attCnt);
 	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, bool isResolveAttachment)->void {
-		_attachments.emplace_back(this, pAttInfo, isResolveAttachment);
+		_attachments.emplace_back(this, pAttInfo, aspect, isResolveAttachment);
 	});
 
 	// Add subpass
