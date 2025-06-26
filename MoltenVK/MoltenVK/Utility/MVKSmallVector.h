@@ -312,6 +312,7 @@ public:
         Type *data()                              { return alc.ptr; }
 
   size_t      size()                       const { return alc.num_elements_used; }
+  size_t      byteSize()                   const { return size() * sizeof(Type); }
   bool        empty()                      const { return alc.num_elements_used == 0; }
   size_t      capacity()                   const { return alc.get_capacity(); }
 
@@ -515,6 +516,9 @@ public:
 
     return alc.ptr[alc.num_elements_used - 1];
   }
+
+  operator MVKArrayRef<Type>() { return { data(), size() }; }
+  operator MVKArrayRef<const Type>() const { return { data(), size() }; }
 };
 
 // specialization for pointer types
@@ -910,10 +914,20 @@ public:
     alc.ptr[alc.num_elements_used] = const_cast< Type* >( t );
     ++alc.num_elements_used;
   }
+
+
+  operator MVKArrayRef<Type*>() { return { data(), size() }; }
+  operator MVKArrayRef<Type*const>() const { return { data(), size() }; }
 };
 
 template<typename Type, size_t N = 0>
 using MVKSmallVector = MVKSmallVectorImpl<Type, mvk_smallvector_allocator<Type, N>>;
+
+template <typename T, int N>
+MVKArrayRef(MVKSmallVector<T, N>&) -> MVKArrayRef<T>;
+
+template <typename T, int N>
+MVKArrayRef(const MVKSmallVector<T, N>&) -> MVKArrayRef<const T>;
 
 #endif
 
