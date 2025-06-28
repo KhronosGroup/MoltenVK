@@ -432,8 +432,8 @@ void MVKCommandEncoder::beginRendering(MVKCommand* rendCmd, const VkRenderingInf
 
 	uint32_t attCnt = 0;
 	MVKRenderingAttachmentIterator attIter(pRenderingInfo);
-	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, bool isResolveAttachment)->void {
-		imageViews[attCnt] = (MVKImageView*)(isResolveAttachment ? pAttInfo->resolveImageView : pAttInfo->imageView);
+	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, MVKImageView* imgView, bool isResolveAttachment)->void {
+		imageViews[attCnt] = imgView;
 		clearValues[attCnt] = pAttInfo->clearValue;
 		attCnt++;
 	});

@@ -339,6 +339,7 @@ protected:
 
 typedef std::function<void(const VkRenderingAttachmentInfo* pAttInfo,
 						   VkImageAspectFlagBits aspect,
+						   MVKImageView* imgView,
 						   bool isResolveAttachment)> MVKRenderingAttachmentInfoOperation;
 
 /**

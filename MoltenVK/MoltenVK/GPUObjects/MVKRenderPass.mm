@@ -155,7 +155,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 
             // If it exists, configure the resolve attachment first,
             // as it affects the store action of the color attachment.
-            uint32_t rslvRPAttIdx = _resolveAttachments.empty() ? VK_ATTACHMENT_UNUSED : _resolveAttachments[caIdx].attachment;
+            uint32_t rslvRPAttIdx = caIdx < _resolveAttachments.size() ? _resolveAttachments[caIdx].attachment : VK_ATTACHMENT_UNUSED;
             bool hasResolveAttachment = (rslvRPAttIdx != VK_ATTACHMENT_UNUSED);
 			bool canResolveFormat = true;
 			if (hasResolveAttachment) {
@@ -289,7 +289,7 @@ void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
     for (uint32_t caIdx = 0; caIdx < caCnt; ++caIdx) {
         uint32_t clrRPAttIdx = _colorAttachments[caIdx].attachment;
         if (clrRPAttIdx != VK_ATTACHMENT_UNUSED) {
-			uint32_t rslvRPAttIdx = _resolveAttachments.empty() ? VK_ATTACHMENT_UNUSED : _resolveAttachments[caIdx].attachment;
+			uint32_t rslvRPAttIdx = caIdx < _resolveAttachments.size() ? _resolveAttachments[caIdx].attachment : VK_ATTACHMENT_UNUSED;
 			bool hasResolveAttachment = (rslvRPAttIdx != VK_ATTACHMENT_UNUSED);
 			bool canResolveFormat = hasResolveAttachment && mvkAreAllFlagsEnabled(pixFmts->getCapabilities(attachments[rslvRPAttIdx]->getMTLPixelFormat()), kMVKMTLFmtCapsResolve);
 			_renderPass->_attachments[clrRPAttIdx].encodeStoreAction(cmdEncoder, this, attachments[clrRPAttIdx], isRenderingEntireAttachment, hasResolveAttachment, canResolveFormat, caIdx, false, storeOverride);
@@ -609,8 +609,9 @@ MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass, const VkRenderingI
 
 	uint32_t attIdx = 0;
 	MVKRenderingAttachmentIterator attIter(pRenderingInfo);
-	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, bool isResolveAttachment)->void {
-		VkAttachmentReference2 attRef = {VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2, nullptr, attIdx++, pAttInfo->imageLayout, aspect};
+	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, MVKImageView* imgView, bool isResolveAttachment)->void {
+		uint32_t atchmt = imgView ? attIdx : VK_ATTACHMENT_UNUSED;
+		VkAttachmentReference2 attRef = { VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2, nullptr, atchmt, pAttInfo->imageLayout, aspect };
 		switch (aspect) {
 			case VK_IMAGE_ASPECT_COLOR_BIT:
 				if (isResolveAttachment) {
@@ -640,6 +641,7 @@ MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass, const VkRenderingI
 			default:
 				break;
 		}
+		attIdx++;
 	});
 
 	populatePipelineRenderingCreateInfo();
@@ -828,7 +830,7 @@ bool MVKAttachmentDescription::shouldClearAttachment(MVKRenderSubpass* subpass, 
 void MVKAttachmentDescription::linkToSubpasses() {
 	// Validate pixel format is supported
 	MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
-	if ( !pixFmts->isSupportedOrSubstitutable(_info.format) ) {
+	if (_info.format && !pixFmts->isSupportedOrSubstitutable(_info.format) ) {
 		_renderPass->setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateRenderPass(): Attachment format %s is not supported on this device.", _renderPass->getPixelFormats()->getName(_info.format)));
 	}
 
@@ -892,8 +894,9 @@ MVKAttachmentDescription::MVKAttachmentDescription(MVKRenderPass* renderPass,
 												   const VkRenderingAttachmentInfo* pAttInfo,
 												   bool isResolveAttachment) {
 	if (isResolveAttachment) {
+		MVKImageView* imgVw = (MVKImageView*)pAttInfo->resolveImageView;
 		_info.flags = 0;
-		_info.format = ((MVKImageView*)pAttInfo->resolveImageView)->getVkFormat();
+		_info.format = imgVw ? imgVw->getVkFormat() : VK_FORMAT_UNDEFINED;
 		_info.samples = VK_SAMPLE_COUNT_1_BIT;
 		_info.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -902,9 +905,10 @@ MVKAttachmentDescription::MVKAttachmentDescription(MVKRenderPass* renderPass,
 		_info.initialLayout = pAttInfo->resolveImageLayout;
 		_info.finalLayout = pAttInfo->resolveImageLayout;
 	} else {
+		MVKImageView* imgVw = (MVKImageView*)pAttInfo->imageView;
 		_info.flags = 0;
-		_info.format = ((MVKImageView*)pAttInfo->imageView)->getVkFormat();
-		_info.samples = ((MVKImageView*)pAttInfo->imageView)->getSampleCount();
+		_info.format = imgVw ? imgVw->getVkFormat() : VK_FORMAT_UNDEFINED;
+		_info.samples = imgVw ? imgVw->getSampleCount() : VK_SAMPLE_COUNT_1_BIT;
 		_info.loadOp = pAttInfo->loadOp;
 		_info.storeOp = pAttInfo->storeOp;
 		_info.stencilLoadOp = pAttInfo->loadOp;
@@ -1043,9 +1047,11 @@ MVKRenderPass::MVKRenderPass(MVKDevice* device, const VkRenderingInfo* pRenderin
 	// Add attachments first so subpasses can access them during creation
 	uint32_t attCnt = 0;
 	MVKRenderingAttachmentIterator attIter(pRenderingInfo);
-	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, bool isResolveAttachment)->void { attCnt++; });
+	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, MVKImageView* imgView, bool isResolveAttachment)->void {
+		attCnt++;
+	});
 	_attachments.reserve(attCnt);
-	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, bool isResolveAttachment)->void {
+	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, MVKImageView* imgView, bool isResolveAttachment)->void {
 		_attachments.emplace_back(this, pAttInfo, isResolveAttachment);
 	});
 
@@ -1073,11 +1079,9 @@ void MVKRenderingAttachmentIterator::iterate(MVKRenderingAttachmentInfoOperation
 void MVKRenderingAttachmentIterator::handleAttachment(const VkRenderingAttachmentInfo* pAttInfo,
 													  VkImageAspectFlagBits aspect,
 													  MVKRenderingAttachmentInfoOperation attOperation) {
-	if (pAttInfo && pAttInfo->imageView) {
-		attOperation(pAttInfo, aspect, false);
-		if (pAttInfo->resolveImageView && pAttInfo->resolveMode != VK_RESOLVE_MODE_NONE) {
-			attOperation(pAttInfo, aspect, true);
-		}
+	if (pAttInfo) {
+		attOperation(pAttInfo, aspect, (MVKImageView*)pAttInfo->imageView, false);
+		attOperation(pAttInfo, aspect, (MVKImageView*)pAttInfo->resolveImageView, true);
 	}
 }
 

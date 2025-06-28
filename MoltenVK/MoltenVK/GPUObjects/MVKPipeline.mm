@@ -1807,10 +1807,19 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
 	MVKPixelFormats* pixFmts = getPixelFormats();
 
 	MTLPixelFormat mtlDepthPixFmt = pixFmts->getMTLPixelFormat(pRendInfo->depthAttachmentFormat);
-	if (pixFmts->isDepthFormat(mtlDepthPixFmt)) { plDesc.depthAttachmentPixelFormat = mtlDepthPixFmt; }
-
 	MTLPixelFormat mtlStencilPixFmt = pixFmts->getMTLPixelFormat(pRendInfo->stencilAttachmentFormat);
-	if (pixFmts->isStencilFormat(mtlStencilPixFmt)) { plDesc.stencilAttachmentPixelFormat = mtlStencilPixFmt; }
+
+	if (pixFmts->isDepthFormat(mtlDepthPixFmt)) {
+		plDesc.depthAttachmentPixelFormat = mtlDepthPixFmt;
+	} else if (pixFmts->isDepthFormat(mtlStencilPixFmt)) {
+		plDesc.depthAttachmentPixelFormat = mtlStencilPixFmt;
+	}
+
+	if (pixFmts->isStencilFormat(mtlStencilPixFmt)) {
+		plDesc.stencilAttachmentPixelFormat = mtlStencilPixFmt;
+	} else if (pixFmts->isStencilFormat(mtlDepthPixFmt)) {
+		plDesc.stencilAttachmentPixelFormat = mtlDepthPixFmt;
+	}
 
 	// In Vulkan, it's perfectly valid to render without any attachments. In Metal, if that
 	// isn't supported, and we have no attachments, then we have to add a dummy attachment.

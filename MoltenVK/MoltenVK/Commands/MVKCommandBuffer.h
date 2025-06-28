@@ -32,8 +32,6 @@ class MVKCommandPool;
 class MVKQueueCommandBufferSubmission;
 class MVKCommandEncoder;
 class MVKCommandEncodingPool;
-class MVKCmdBeginRenderPassBase;
-class MVKCmdNextSubpass;
 class MVKRenderPass;
 class MVKFramebuffer;
 class MVKRenderSubpass;
