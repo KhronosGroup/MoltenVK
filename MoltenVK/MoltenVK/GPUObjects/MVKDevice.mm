@@ -277,7 +277,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 		.vertexAttributeInstanceRateDivisor = true,
 		.vertexAttributeInstanceRateZeroDivisor = true,
 		.indexTypeUint8 = true,
-		.dynamicRenderingLocalRead = false,
+		.dynamicRenderingLocalRead = true,
 		.maintenance5 = true,
 		.maintenance6 = true,
 		.pipelineProtectedAccess = false,	// Required only if VkPhysicalDeviceVulkan11Features::protectedMemory is enabled
@@ -370,6 +370,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES: {
 				auto* dynamicRenderingFeatures = (VkPhysicalDeviceDynamicRenderingFeatures*)next;
 				dynamicRenderingFeatures->dynamicRendering = supportedFeats13.dynamicRendering;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES: {
+				auto* dynamicRenderingLocalReadFeatures = (VkPhysicalDeviceDynamicRenderingLocalReadFeatures*)next;
+				dynamicRenderingLocalReadFeatures->dynamicRenderingLocalRead = supportedFeats14.dynamicRenderingLocalRead;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES: {
@@ -910,8 +915,8 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps14.maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
 	supportedProps14.supportsNonZeroFirstInstance = true;
 	supportedProps14.maxPushDescriptors = _properties.limits.maxPerStageResources;
-	supportedProps14.dynamicRenderingLocalReadDepthStencilAttachments = false;
-	supportedProps14.dynamicRenderingLocalReadMultisampledAttachments = false;
+	supportedProps14.dynamicRenderingLocalReadDepthStencilAttachments = true;
+	supportedProps14.dynamicRenderingLocalReadMultisampledAttachments = true;
 	supportedProps14.earlyFragmentMultisampleCoverageAfterSampleCounting = true;
 	supportedProps14.earlyFragmentSampleMaskTestBeforeSampleCounting = false;
 	supportedProps14.depthStencilSwizzleOneSupport = true;
@@ -5592,7 +5597,7 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				enablePromotedFeatures(LineRasterization, rectangularLines, 6);
 				enablePromotedFeatures(VertexAttributeDivisor, vertexAttributeInstanceRateDivisor, 2);
 				enablePromotedFeatures(IndexTypeUint8, indexTypeUint8, 1);
-//				enablePromotedFeatures(DynamicRenderingLocalRead, dynamicRenderingLocalRead, 1);
+				enablePromotedFeatures(DynamicRenderingLocalRead, dynamicRenderingLocalRead, 1);
 				enablePromotedFeatures(Maintenance5, maintenance5, 1);
 				enablePromotedFeatures(Maintenance6, maintenance6, 1);
 //				enablePromotedFeatures(PipelineProtectedAccess, pipelineProtectedAccess, 1);

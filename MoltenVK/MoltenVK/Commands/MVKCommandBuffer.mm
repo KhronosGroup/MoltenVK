@@ -113,25 +113,58 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 	// whether it contains render pass continuation info. Otherwise, clear the inheritance info, and ignore it.
 	// Also check for and set any dynamic rendering inheritance info. The color format array must be copied locally.
 	const VkCommandBufferInheritanceInfo* pInheritInfo = (_isSecondary ? pBeginInfo->pInheritanceInfo : nullptr);
-	bool hasInheritInfo = mvkSetOrClear(&_secondaryInheritanceInfo, pInheritInfo);
-	if (hasInheritInfo) {
+	const VkCommandBufferInheritanceRenderingInfo* pInheritRendInfo = nullptr;
+	const VkRenderingAttachmentLocationInfo* pInheritAttLocInfo = nullptr;
+	const VkRenderingInputAttachmentIndexInfo* pInheritInpAttIdxInfo = nullptr;
+	_hasSecondaryInheritanceInfo = mvkSetOrClear(&_secondaryInheritanceInfo, pInheritInfo);
+	if (_hasSecondaryInheritanceInfo) {
 		for (const auto* next = (VkBaseInStructure*)_secondaryInheritanceInfo.pNext; next; next = next->pNext) {
 			switch (next->sType) {
-				case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO: {
-					if (mvkSetOrClear(&_secondaryInheritanceRenderingInfo, (VkCommandBufferInheritanceRenderingInfo*)next)) {
-						for (uint32_t caIdx = 0; caIdx < _secondaryInheritanceRenderingInfo.colorAttachmentCount; caIdx++) {
-							_colorAttachmentFormats.push_back(_secondaryInheritanceRenderingInfo.pColorAttachmentFormats[caIdx]);
-						}
-						_secondaryInheritanceRenderingInfo.pColorAttachmentFormats = _colorAttachmentFormats.data();
-					}
+				case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO:
+					pInheritRendInfo = (VkCommandBufferInheritanceRenderingInfo*)next;
 					break;
-				}
+				case VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_LOCATION_INFO:
+					pInheritAttLocInfo = (VkRenderingAttachmentLocationInfo*)next;
+					break;
+				case VK_STRUCTURE_TYPE_RENDERING_INPUT_ATTACHMENT_INDEX_INFO:
+					pInheritInpAttIdxInfo = (VkRenderingInputAttachmentIndexInfo*)next;
+					break;
 				default:
 					break;
 			}
 		}
 	}
-	_doesContinueRenderPass = mvkAreAllFlagsEnabled(usage, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) && hasInheritInfo;
+
+	_doesContinueRenderPass = mvkAreAllFlagsEnabled(usage, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) && _hasSecondaryInheritanceInfo;
+
+	_hasSecondaryInheritanceRenderingInfo = mvkSetOrClear(&_secondaryInheritanceRenderingInfo, pInheritRendInfo);
+	if (_hasSecondaryInheritanceRenderingInfo) {
+		_secondaryInheritanceColorAttachmentFormats.assign(_secondaryInheritanceRenderingInfo.pColorAttachmentFormats,
+														   _secondaryInheritanceRenderingInfo.pColorAttachmentFormats + _secondaryInheritanceRenderingInfo.colorAttachmentCount);
+		_secondaryInheritanceRenderingInfo.pColorAttachmentFormats = _secondaryInheritanceColorAttachmentFormats.data();
+	}
+
+	if (pInheritAttLocInfo) {
+		_secondaryInheritanceColorAttachmentLocations.assign(pInheritAttLocInfo->pColorAttachmentLocations,
+															 pInheritAttLocInfo->pColorAttachmentLocations + pInheritAttLocInfo->colorAttachmentCount);
+		_hasSecondaryInheritanceColorAttachmentLocations = true;
+	}
+
+	if (pInheritInpAttIdxInfo) {
+		_secondaryInheritanceColorAttachmentInputIndices.assign(pInheritInpAttIdxInfo->pColorAttachmentInputIndices,
+																pInheritInpAttIdxInfo->pColorAttachmentInputIndices + pInheritInpAttIdxInfo->colorAttachmentCount);
+		_hasSecondaryInheritanceColorAttachmentInputIndices = true;
+
+		if (pInheritInpAttIdxInfo->pDepthInputAttachmentIndex) {
+			_secondaryInheritanceDepthAttachmentInputIndex = *pInheritInpAttIdxInfo->pDepthInputAttachmentIndex;
+			_hasSecondaryInheritanceDepthAttachmentInputIndex = true;
+		}
+
+		if (pInheritInpAttIdxInfo->pStencilInputAttachmentIndex) {
+			_secondaryInheritanceStencilAttachmentInputIndex = *pInheritInpAttIdxInfo->pStencilInputAttachmentIndex;
+			_hasSecondaryInheritanceStencilAttachmentInputIndex = true;
+		}
+	}
 
     if(_device->shouldPrefillMTLCommandBuffers() && !(_isSecondary || _supportsConcurrentExecution)) {
 		@autoreleasepool {
@@ -147,6 +180,14 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
     }
 
     return getConfigurationResult();
+}
+
+void MVKCommandBuffer::beginSecondaryEncoding(MVKCommandEncoder* cmdEncoder) {
+	if ( !_isSecondary ) { return; }
+
+	if (_hasSecondaryInheritanceColorAttachmentLocations) {
+		cmdEncoder->updateColorAttachmentLocations(_secondaryInheritanceColorAttachmentLocations.contents());
+	}
 }
 
 void MVKCommandBuffer::releaseCommands(MVKCommand* command) {
@@ -178,6 +219,19 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
     flushImmediateCmdEncoder();
 	clearPrefilledMTLCommandBuffer();
 	releaseRecordedCommands();
+	_secondaryInheritanceInfo = {};
+	_hasSecondaryInheritanceInfo = false;
+	_secondaryInheritanceRenderingInfo = {};
+	_hasSecondaryInheritanceRenderingInfo = false;
+	_secondaryInheritanceColorAttachmentFormats.clear();
+	_secondaryInheritanceColorAttachmentLocations.clear();
+	_hasSecondaryInheritanceColorAttachmentLocations = false;
+	_secondaryInheritanceColorAttachmentInputIndices.clear();
+	_hasSecondaryInheritanceColorAttachmentInputIndices = false;
+	_secondaryInheritanceDepthAttachmentInputIndex = 0;
+	_hasSecondaryInheritanceDepthAttachmentInputIndex = false;
+	_secondaryInheritanceStencilAttachmentInputIndex = 0;
+	_hasSecondaryInheritanceStencilAttachmentInputIndex = false;
 	_doesContinueRenderPass = false;
 	_canAcceptCommands = false;
 	_isReusable = false;
@@ -413,6 +467,7 @@ void MVKCommandEncoder::endEncoding() {
 }
 
 void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
+	secondaryCmdBuffer->beginSecondaryEncoding(this);
 	MVKCommand* cmd = secondaryCmdBuffer->_head;
 	while (cmd) {
 		cmd->encode(this);
@@ -426,10 +481,12 @@ void MVKCommandEncoder::beginRendering(MVKCommand* rendCmd, const VkRenderingInf
 								  ? VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS
 								  : VK_SUBPASS_CONTENTS_INLINE);
 
+	// Track both rendering and resolve attachments, alternating a rendering attachment, then its corresponding resolve attachment.
 	uint32_t maxAttCnt = (pRenderingInfo->colorAttachmentCount + 2) * 2;
 	MVKImageView* imageViews[maxAttCnt];
 	VkClearValue clearValues[maxAttCnt];
 
+	// Assemble the list of attachments and clear values. This must be done identically to how the dynamic renderpass assembles attachments.
 	uint32_t attCnt = 0;
 	MVKRenderingAttachmentIterator attIter(pRenderingInfo);
 	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, MVKImageView* imgView, bool isResolveAttachment)->void {
@@ -469,6 +526,11 @@ void MVKCommandEncoder::beginRendering(MVKCommand* rendCmd, const VkRenderingInf
 		mvkRP->release();
 		mvkFB->release();
 	}
+}
+
+bool MVKCommandEncoder::isDynamicRendering() {
+	MVKRenderSubpass* mvkRSP = getSubpass();
+	return mvkRSP && mvkRSP->isDynamicRendering();
 }
 
 void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
@@ -725,9 +787,12 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 	// attachments, and some apps actively define extremely oversized framebuffers when they
 	// know they are not rendering to actual attachments, making this internal tile memory
 	// allocation even more wasteful, occasionally to the point of triggering OOM crashes.
+	// On the other hand, if the framebuffer has no attachments and has zero extent,
+	// we just set the render target extent to cover the render area.
 	VkExtent2D fbExtent = getFramebufferExtent();
-    mtlRPDesc.renderTargetWidthMVK = max(min(_renderArea.offset.x + _renderArea.extent.width, fbExtent.width), 1u);
-    mtlRPDesc.renderTargetHeightMVK = max(min(_renderArea.offset.y + _renderArea.extent.height, fbExtent.height), 1u);
+	VkExtent2D raFullExtent = { _renderArea.offset.x + _renderArea.extent.width, _renderArea.offset.y + _renderArea.extent.height };
+    mtlRPDesc.renderTargetWidthMVK = max(min(raFullExtent.width, (fbExtent.width ? fbExtent.width : raFullExtent.width)), 1u);
+    mtlRPDesc.renderTargetHeightMVK = max(min(raFullExtent.height, (fbExtent.height ? fbExtent.height : raFullExtent.height)), 1u);
     if (_canUseLayeredRendering) {
         uint32_t renderTargetArrayLength;
         bool found3D = false, found2D = false;
@@ -786,9 +851,7 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 }
 
 void MVKCommandEncoder::restartMetalRenderPassIfNeeded() {
-	if ( !_mtlRenderEncoder ) { return; }
-
-	if (_renderingState.needsMetalRenderPassRestart()) {
+	if ( !_mtlRenderEncoder || _renderingState.needsMetalRenderPassRestart() ) {
 		encodeStoreActions(true);
 		beginMetalRenderPass(kMVKCommandUseRestartSubpass);
 	}
@@ -801,7 +864,10 @@ void MVKCommandEncoder::encodeStoreActions(bool storeOverride) {
 									 storeOverride);
 }
 
-MVKRenderSubpass* MVKCommandEncoder::getSubpass() { return _pEncodingContext->getRenderPass()->getSubpass(_renderSubpassIndex); }
+MVKRenderSubpass* MVKCommandEncoder::getSubpass() {
+	MVKRenderPass* mvkRP = _pEncodingContext->getRenderPass();
+	return mvkRP ? mvkRP->getSubpass(_renderSubpassIndex) : nullptr;
+}
 
 // Returns a name for use as a MTLRenderCommandEncoder label
 NSString* MVKCommandEncoder::getMTLRenderCommandEncoderName(MVKCommandUse cmdUse) {
@@ -885,6 +951,33 @@ VkRect2D MVKCommandEncoder::clipToRenderArea(VkRect2D rect) {
 
 MTLScissorRect MVKCommandEncoder::clipToRenderArea(MTLScissorRect scissor) {
 	return mvkMTLScissorRectFromVkRect2D(clipToRenderArea(mvkVkRect2DFromMTLScissorRect(scissor)));
+}
+
+// Attachment locations are changing. Need to store attachments and begin another Metal renderpass.
+void MVKCommandEncoder::updateColorAttachmentLocations(const MVKArrayRef<uint32_t> colorAttLocs) {
+	if (_mtlRenderEncoder && isDynamicRendering()) {
+		auto atts = _pEncodingContext->getFramebuffer()->getAttachments();
+		auto* mvkSP = getSubpass();
+		if (mvkSP && mvkSP->isChangingColorAttachmentLocations(colorAttLocs, atts)) {
+			encodeStoreActions(true);
+			endMetalRenderEncoding();
+			mvkSP->updateColorAttachmentLocations(colorAttLocs, atts);
+		}
+	}
+}
+
+// Input attachments are changing. Need to store attachments and begin another Metal renderpass.
+void MVKCommandEncoder::updateAttachmentInputIndices(const MVKArrayRef<uint32_t> colorAttIdxs,
+													 const uint32_t* pDepthInputAttachmentIndex,
+													 const uint32_t* pStencilInputAttachmentIndex) {
+	if (_mtlRenderEncoder && isDynamicRendering()) {
+		auto* mvkSP = getSubpass();
+		if (mvkSP && mvkSP->isChangingAttachmentInputIndices(colorAttIdxs, pDepthInputAttachmentIndex, pStencilInputAttachmentIndex)) {
+			encodeStoreActions(true);
+			endMetalRenderEncoding();
+			mvkSP->updateAttachmentInputIndices(colorAttIdxs, pDepthInputAttachmentIndex, pStencilInputAttachmentIndex);
+		}
+	}
 }
 
 void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {

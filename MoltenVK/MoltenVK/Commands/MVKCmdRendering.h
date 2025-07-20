@@ -147,8 +147,8 @@ template <size_t N>
 class MVKCmdBeginRendering : public MVKCommand {
 
 public:
-	VkResult setContent(MVKCommandBuffer*
-						cmdBuff, const VkRenderingInfo* pRenderingInfo);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const VkRenderingInfo* pRenderingInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -167,6 +167,46 @@ typedef MVKCmdBeginRendering<1> MVKCmdBeginRendering1;
 typedef MVKCmdBeginRendering<2> MVKCmdBeginRendering2;
 typedef MVKCmdBeginRendering<4> MVKCmdBeginRendering4;
 typedef MVKCmdBeginRendering<8> MVKCmdBeginRenderingMulti;
+
+
+#pragma mark -
+#pragma mark MVKCmdSetRenderingAttachmentLocations
+
+class MVKCmdSetRenderingAttachmentLocations : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const VkRenderingAttachmentLocationInfo* pLocationInfo);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MVKSmallVector<uint32_t, 8> _colorAttachmentLocations;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetRenderingInputAttachmentIndices
+
+class MVKCmdSetRenderingInputAttachmentIndices : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const VkRenderingInputAttachmentIndexInfo* pInputAttachmentIndexInfo);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MVKSmallVector<uint32_t, 8> _colorAttachmentInputIndices;
+	uint32_t _depthInputAttachmentIndex;
+	uint32_t _stencilInputAttachmentIndex;
+	bool _hasDepthInputAttachmentIndex;
+	bool _hasStencilInputAttachmentIndex;
+};
 
 
 #pragma mark -

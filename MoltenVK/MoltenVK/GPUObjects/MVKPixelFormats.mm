@@ -535,7 +535,7 @@ MTLVertexFormat MVKPixelFormats::getMTLVertexFormat(VkFormat vkFormat) {
 	return mtlVtxFmt;
 }
 
-MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFormat vkFormat) {
+MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearColorValue clearValue, VkFormat vkFormat) {
 	MTLClearColor mtlClr;
 	// The VkComponentMapping (and its MTLTextureSwizzleChannels equivalent) define the *sources*
 	// for the texture color components for reading. Since we're *writing* to the texture,
@@ -545,10 +545,10 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 	switch (getFormatType(vkFormat)) {
 		case kMVKFormatColorHalf:
 		case kMVKFormatColorFloat: {
-			mtlClr.red		= mvkVkClearColorFloatValueFromVkComponentSwizzle(vkClearValue.color.float32, 0, inverseMap.r);
-			mtlClr.green	= mvkVkClearColorFloatValueFromVkComponentSwizzle(vkClearValue.color.float32, 1, inverseMap.g);
-			mtlClr.blue		= mvkVkClearColorFloatValueFromVkComponentSwizzle(vkClearValue.color.float32, 2, inverseMap.b);
-			mtlClr.alpha	= mvkVkClearColorFloatValueFromVkComponentSwizzle(vkClearValue.color.float32, 3, inverseMap.a);
+			mtlClr.red		= mvkVkClearColorFloatValueFromVkComponentSwizzle(clearValue.float32, 0, inverseMap.r);
+			mtlClr.green	= mvkVkClearColorFloatValueFromVkComponentSwizzle(clearValue.float32, 1, inverseMap.g);
+			mtlClr.blue		= mvkVkClearColorFloatValueFromVkComponentSwizzle(clearValue.float32, 2, inverseMap.b);
+			mtlClr.alpha	= mvkVkClearColorFloatValueFromVkComponentSwizzle(clearValue.float32, 3, inverseMap.a);
 
 			if (_physicalDevice && _physicalDevice->getMetalFeatures()->clearColorFloatRounding == MVK_FLOAT_ROUNDING_DOWN) {
 				// For normalized formats, increment the clear value by half the ULP
@@ -666,18 +666,18 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 		case kMVKFormatColorUInt8:
 		case kMVKFormatColorUInt16:
 		case kMVKFormatColorUInt32:
-			mtlClr.red   = mvkVkClearColorUIntValueFromVkComponentSwizzle(vkClearValue.color.uint32, 0, inverseMap.r);
-			mtlClr.green = mvkVkClearColorUIntValueFromVkComponentSwizzle(vkClearValue.color.uint32, 1, inverseMap.g);
-			mtlClr.blue  = mvkVkClearColorUIntValueFromVkComponentSwizzle(vkClearValue.color.uint32, 2, inverseMap.b);
-			mtlClr.alpha = mvkVkClearColorUIntValueFromVkComponentSwizzle(vkClearValue.color.uint32, 3, inverseMap.a);
+			mtlClr.red   = mvkVkClearColorUIntValueFromVkComponentSwizzle(clearValue.uint32, 0, inverseMap.r);
+			mtlClr.green = mvkVkClearColorUIntValueFromVkComponentSwizzle(clearValue.uint32, 1, inverseMap.g);
+			mtlClr.blue  = mvkVkClearColorUIntValueFromVkComponentSwizzle(clearValue.uint32, 2, inverseMap.b);
+			mtlClr.alpha = mvkVkClearColorUIntValueFromVkComponentSwizzle(clearValue.uint32, 3, inverseMap.a);
 			break;
 		case kMVKFormatColorInt8:
 		case kMVKFormatColorInt16:
 		case kMVKFormatColorInt32:
-			mtlClr.red   = mvkVkClearColorIntValueFromVkComponentSwizzle(vkClearValue.color.int32, 0, inverseMap.r);
-			mtlClr.green = mvkVkClearColorIntValueFromVkComponentSwizzle(vkClearValue.color.int32, 1, inverseMap.g);
-			mtlClr.blue  = mvkVkClearColorIntValueFromVkComponentSwizzle(vkClearValue.color.int32, 2, inverseMap.b);
-			mtlClr.alpha = mvkVkClearColorIntValueFromVkComponentSwizzle(vkClearValue.color.int32, 3, inverseMap.a);
+			mtlClr.red   = mvkVkClearColorIntValueFromVkComponentSwizzle(clearValue.int32, 0, inverseMap.r);
+			mtlClr.green = mvkVkClearColorIntValueFromVkComponentSwizzle(clearValue.int32, 1, inverseMap.g);
+			mtlClr.blue  = mvkVkClearColorIntValueFromVkComponentSwizzle(clearValue.int32, 2, inverseMap.b);
+			mtlClr.alpha = mvkVkClearColorIntValueFromVkComponentSwizzle(clearValue.int32, 3, inverseMap.a);
 			break;
 		default:
 			mtlClr.red   = 0.0;
@@ -687,14 +687,6 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 			break;
 	}
 	return mtlClr;
-}
-
-double MVKPixelFormats::getMTLClearDepthValue(VkClearValue vkClearValue) {
-	return vkClearValue.depthStencil.depth;
-}
-
-uint32_t MVKPixelFormats::getMTLClearStencilValue(VkClearValue vkClearValue) {
-	return vkClearValue.depthStencil.stencil;
 }
 
 VkImageUsageFlags MVKPixelFormats::getVkImageUsageFlags(MTLTextureUsage mtlUsage,

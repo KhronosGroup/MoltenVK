@@ -167,6 +167,55 @@ template class MVKCmdBeginRendering<8>;
 
 
 #pragma mark -
+#pragma mark MVKCmdSetRenderingAttachmentLocations
+
+// Resize dst to count, then if pSrc is not null, populate dst from it,
+// otherwise fill dst with ascending values starting at zero.
+template<typename Vec>
+void mvkPopulateFromOrFillAscending(Vec& dst, const uint32_t* pSrc, size_t count) {
+	dst.resize(count);
+	for (uint32_t i = 0; i < count; i++) { dst[i] = pSrc ? pSrc[i] : i; }
+}
+
+VkResult MVKCmdSetRenderingAttachmentLocations::setContent(MVKCommandBuffer* cmdBuff,
+														   const VkRenderingAttachmentLocationInfo* pLocationInfo) {
+	mvkPopulateFromOrFillAscending(_colorAttachmentLocations,
+								   pLocationInfo->pColorAttachmentLocations,
+								   pLocationInfo->colorAttachmentCount);
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetRenderingAttachmentLocations::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->updateColorAttachmentLocations(_colorAttachmentLocations.contents());
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetRenderingInputAttachmentIndices
+
+VkResult MVKCmdSetRenderingInputAttachmentIndices::setContent(MVKCommandBuffer* cmdBuff,
+															  const VkRenderingInputAttachmentIndexInfo* pInputAttachmentIndexInfo) {
+	mvkPopulateFromOrFillAscending(_colorAttachmentInputIndices,
+								   pInputAttachmentIndexInfo->pColorAttachmentInputIndices,
+								   pInputAttachmentIndexInfo->colorAttachmentCount);
+
+	_hasDepthInputAttachmentIndex = pInputAttachmentIndexInfo->pDepthInputAttachmentIndex;
+	_depthInputAttachmentIndex = _hasDepthInputAttachmentIndex ? *pInputAttachmentIndexInfo->pDepthInputAttachmentIndex : 0;
+
+	_hasStencilInputAttachmentIndex = pInputAttachmentIndexInfo->pStencilInputAttachmentIndex;
+	_stencilInputAttachmentIndex = _hasStencilInputAttachmentIndex ? *pInputAttachmentIndexInfo->pStencilInputAttachmentIndex : 0;
+
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetRenderingInputAttachmentIndices::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->updateAttachmentInputIndices(_colorAttachmentInputIndices.contents(),
+											 _hasDepthInputAttachmentIndex ? &_depthInputAttachmentIndex : nullptr,
+											 _hasStencilInputAttachmentIndex ? &_stencilInputAttachmentIndex : nullptr);
+}
+
+
+#pragma mark -
 #pragma mark MVKCmdEndRendering
 
 VkResult MVKCmdEndRendering::setContent(MVKCommandBuffer* cmdBuff) {

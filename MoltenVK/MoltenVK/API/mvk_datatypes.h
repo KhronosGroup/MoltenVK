@@ -173,17 +173,17 @@ const char* mvkVkFormatName(VkFormat vkFormat);
 const char* mvkMTLPixelFormatName(MTLPixelFormat mtlFormat);
 
 /**
- * Returns the MTLClearColor value corresponding to the color value in the VkClearValue,
+ * Returns the MTLClearColor value corresponding to the Vulkan color value,
  * extracting the color value that is VkFormat for the VkFormat.
  */
 MTLClearColor mvkMTLClearColorFromVkClearValue(VkClearValue vkClearValue,
 											   VkFormat vkFormat);
 
-/** Returns the Metal depth value corresponding to the depth value in the specified VkClearValue. */
-double mvkMTLClearDepthFromVkClearValue(VkClearValue vkClearValue);
+/** Returns the Metal depth value corresponding to the Vulkan depth value. */
+double mvkMTLClearDepthFromVkClearValue(VkClearDepthStencilValue clearValue);
 
-/** Returns the Metal stencil value corresponding to the stencil value in the specified VkClearValue. */
-uint32_t mvkMTLClearStencilFromVkClearValue(VkClearValue vkClearValue);
+/** Returns the Metal stencil value corresponding to the Vulkan stencil value. */
+uint32_t mvkMTLClearStencilFromVkClearValue(VkClearDepthStencilValue clearValue);
 
 /** Returns whether the specified Metal MTLPixelFormat can be used as a depth format. */
 bool mvkMTLPixelFormatIsDepthFormat(MTLPixelFormat mtlFormat);
