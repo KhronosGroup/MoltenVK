@@ -17,7 +17,6 @@
  */
 
 #include "MVKPipeline.h"
-#include "MVKRenderPass.h"
 #include "MVKCommandBuffer.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
@@ -268,6 +267,9 @@ void MVKGraphicsPipeline::wasBound(MVKCommandEncoder* cmdEncoder) {
 	if (_hasRasterLineInfo) {
 		cmdEncRS.setLineRasterizationMode(_rasterLineInfo.lineRasterizationMode, false);
 	}
+	if (_hasRemappedAttachmentLocations) {
+		cmdEncoder->updateColorAttachmentLocations(_colorAttachmentLocations.contents());
+	}
 }
 
 void MVKGraphicsPipeline::getStages(MVKPiplineStages& stages) {
@@ -498,6 +500,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
 	_isRasterizing = !isRasterizationDisabled(pCreateInfo);
 	_isRasterizingColor = _isRasterizing && mvkHasColorAttachments(pRendInfo);
+	populateRenderingAttachmentInfo(pCreateInfo);
 
 	const VkPipelineCreationFeedbackCreateInfo* pFeedbackInfo = nullptr;
 	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
@@ -598,16 +601,6 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	// Tessellation - must ignore allowed bad pTessellationState pointer if not tess pipeline
 	_outputControlPointCount = reflectData.numControlPoints;
 	mvkSetOrClear(&_tessInfo, _isTessellationPipeline ? pCreateInfo->pTessellationState : nullptr);
-
-	// Handles depth attachment being used as input attachment. However, it does not solve the issue when
-	// the pipeline is created without render pass (dynamic rendering) since we won't be able to know
-	// which resources will be used when rendering. Needs to be done before we do shaders
-	// Potential solution would be to generate 2 pipelines, one with the workaround for the Metal issue
-	// and one without it, and decide at bind time once we know the resources which one to use.
-	if (pCreateInfo->renderPass) {
-		MVKRenderSubpass* subpass = ((MVKRenderPass*)pCreateInfo->renderPass)->getSubpass(pCreateInfo->subpass);
-		_inputAttachmentIsDSAttachment = subpass->isInputAttachmentDepthStencilAttachment();
-	}
 
 	// Render pipeline state. Do this as early as possible, to fail fast if pipeline requires a fail on cache-miss.
 	initMTLRenderPipelineState(pCreateInfo, reflectData, pPipelineFB, pVertexSS, pVertexFB, pTessCtlSS, pTessCtlFB, pTessEvalSS, pTessEvalFB, pFragmentSS, pFragmentFB);
@@ -747,6 +740,38 @@ void MVKGraphicsPipeline::initDynamicState(const VkGraphicsPipelineCreateInfo* p
 	}
 }
 
+void MVKGraphicsPipeline::populateRenderingAttachmentInfo(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
+	const uint32_t* pColorAttLocs = nullptr;
+	if (pCreateInfo->renderPass) {
+		MVKRenderSubpass* subpass = ((MVKRenderPass*)pCreateInfo->renderPass)->getSubpass(pCreateInfo->subpass);
+		_inputAttachmentIsDSAttachment = subpass->isInputAttachmentDepthStencilAttachment();
+	} else {
+		for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+			switch (next->sType) {
+				case VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_LOCATION_INFO:
+					pColorAttLocs = ((VkRenderingAttachmentLocationInfo*)next)->pColorAttachmentLocations;
+					break;
+				case VK_STRUCTURE_TYPE_RENDERING_INPUT_ATTACHMENT_INDEX_INFO: {
+					const auto* pRendInpAttIdxInfo = (VkRenderingInputAttachmentIndexInfo*)next;
+					_inputAttachmentIsDSAttachment = ((pRendInpAttIdxInfo->pDepthInputAttachmentIndex && *pRendInpAttIdxInfo->pDepthInputAttachmentIndex != VK_ATTACHMENT_UNUSED) ||
+													  (pRendInpAttIdxInfo->pStencilInputAttachmentIndex && *pRendInpAttIdxInfo->pStencilInputAttachmentIndex != VK_ATTACHMENT_UNUSED));
+					break;
+				}
+				default:
+					break;
+			}
+		}
+	}
+
+	// Map the attachment locations from the collection defined by VkRenderingAttachmentLocationInfo.
+	// If there is no VkRenderingAttachmentLocationInfo, this is just a basic copy to _colorAttachmentFormats.
+	auto attCnt = getRenderingCreateInfo(pCreateInfo)->colorAttachmentCount;
+	for (uint32_t attIdx = 0; attIdx < attCnt; attIdx++) {
+		_colorAttachmentLocations.push_back(pColorAttLocs ? pColorAttLocs[attIdx] : attIdx);
+	}
+	_hasRemappedAttachmentLocations = (attCnt && pColorAttLocs);
+}
+
 // Either returns an existing pipeline state or compiles a new one.
 id<MTLRenderPipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLRenderPipelineDescriptor* plDesc,
 																	 id<MTLRenderPipelineState>& plState) {
@@ -850,8 +875,8 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 	if (!isTessellationPipeline()) {
 		MTLRenderPipelineDescriptor* plDesc = newMTLRenderPipelineDescriptor(pCreateInfo, reflectData, pVertexSS, pVertexFB, pFragmentSS, pFragmentFB);	// temp retain
 		if (plDesc) {
-			const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
-			if (pRendInfo && mvkIsMultiview(pRendInfo->viewMask)) {
+			auto viewMask = getRenderingCreateInfo(pCreateInfo)->viewMask;
+			if (mvkIsMultiview(viewMask)) {
 				// We need to adjust the step rate for per-instance attributes to account for the
 				// extra instances needed to render all views. But, there's a problem: vertex input
 				// descriptions are static pipeline state. If we need multiple passes, and some have
@@ -859,8 +884,9 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 				// for these passes. We'll need to make a pipeline for every pass view count we can see
 				// in the render pass. This really sucks.
 				std::unordered_set<uint32_t> viewCounts;
-				for (uint32_t passIdx = 0; passIdx < getDevice()->getMultiviewMetalPassCount(pRendInfo->viewMask); ++passIdx) {
-					viewCounts.insert(getDevice()->getViewCountInMetalPass(pRendInfo->viewMask, passIdx));
+				auto passCnt = getDevice()->getMultiviewMetalPassCount(viewMask);
+				for (uint32_t passIdx = 0; passIdx < passCnt; ++passIdx) {
+					viewCounts.insert(getDevice()->getViewCountInMetalPass(viewMask, passIdx));
 				}
 				auto count = viewCounts.cbegin();
 				adjustVertexInputForMultiview(plDesc.vertexDescriptor, pCreateInfo->pVertexInputState, *count);
@@ -1765,14 +1791,18 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
 
 	// Color attachments - must ignore bad pColorBlendState pointer if rasterization is disabled or subpass has no color attachments
     uint32_t caCnt = 0;
-    if (_isRasterizingColor && pRendInfo && pCreateInfo->pColorBlendState) {
+    if (_isRasterizingColor && pCreateInfo->pColorBlendState) {
         for (uint32_t caIdx = 0; caIdx < pCreateInfo->pColorBlendState->attachmentCount; caIdx++) {
             const VkPipelineColorBlendAttachmentState* pCA = &pCreateInfo->pColorBlendState->pAttachments[caIdx];
 
+			uint32_t caLoc = _colorAttachmentLocations[caIdx];
+			if (caLoc == VK_ATTACHMENT_UNUSED) { continue; }
+
 			MTLPixelFormat mtlPixFmt = getPixelFormats()->getMTLPixelFormat(pRendInfo->pColorAttachmentFormats[caIdx]);
-			MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[caIdx];
+			MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[caLoc];
             colorDesc.pixelFormat = mtlPixFmt;
-            if (colorDesc.pixelFormat == MTLPixelFormatRGB9E5Float) {
+
+			if (colorDesc.pixelFormat == MTLPixelFormatRGB9E5Float) {
                 // Metal doesn't allow disabling individual channels for a RGB9E5 render target.
                 // Either all must be disabled or none must be disabled.
                 // TODO: Use framebuffer fetch to support this anyway. I don't understand why Apple doesn't
@@ -1805,12 +1835,20 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
 
     // Depth & stencil attachment formats
 	MVKPixelFormats* pixFmts = getPixelFormats();
-
 	MTLPixelFormat mtlDepthPixFmt = pixFmts->getMTLPixelFormat(pRendInfo->depthAttachmentFormat);
-	if (pixFmts->isDepthFormat(mtlDepthPixFmt)) { plDesc.depthAttachmentPixelFormat = mtlDepthPixFmt; }
-
 	MTLPixelFormat mtlStencilPixFmt = pixFmts->getMTLPixelFormat(pRendInfo->stencilAttachmentFormat);
-	if (pixFmts->isStencilFormat(mtlStencilPixFmt)) { plDesc.stencilAttachmentPixelFormat = mtlStencilPixFmt; }
+
+	if (pixFmts->isDepthFormat(mtlDepthPixFmt)) {
+		plDesc.depthAttachmentPixelFormat = mtlDepthPixFmt;
+	} else if (pixFmts->isDepthFormat(mtlStencilPixFmt)) {
+		plDesc.depthAttachmentPixelFormat = mtlStencilPixFmt;
+	}
+
+	if (pixFmts->isStencilFormat(mtlStencilPixFmt)) {
+		plDesc.stencilAttachmentPixelFormat = mtlStencilPixFmt;
+	} else if (pixFmts->isStencilFormat(mtlDepthPixFmt)) {
+		plDesc.stencilAttachmentPixelFormat = mtlDepthPixFmt;
+	}
 
 	// In Vulkan, it's perfectly valid to render without any attachments. In Metal, if that
 	// isn't supported, and we have no attachments, then we have to add a dummy attachment.

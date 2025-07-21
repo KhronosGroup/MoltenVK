@@ -19,6 +19,7 @@
 #pragma once
 
 #include "MVKDevice.h"
+#include "MVKRenderPass.h"
 #include "MVKDescriptorSet.h"
 #include "MVKShaderModule.h"
 #include "MVKSync.h"
@@ -402,13 +403,12 @@ protected:
 								  VkPipelineCreationFeedback* pStageFB,
 								  MVKShaderModule* pShaderModule,
 								  const char* pStageName);
-	void markIfUsingPhysicalStorageBufferAddressesCapability(mvk::SPIRVToMSLConversionResultInfo& resultsInfo,
-															 MVKShaderStage stage);
+	void markIfUsingPhysicalStorageBufferAddressesCapability(mvk::SPIRVToMSLConversionResultInfo& resultsInfo, MVKShaderStage stage);
+	void populateRenderingAttachmentInfo(const VkGraphicsPipelineCreateInfo* pCreateInfo);
 
 	VkPipelineTessellationStateCreateInfo _tessInfo;
 	VkPipelineRasterizationStateCreateInfo _rasterInfo;
 	VkPipelineRasterizationLineStateCreateInfo _rasterLineInfo;
-
 	VkPipelineDepthStencilStateCreateInfo _depthStencilInfo;
 	MVKRenderStateFlags _dynamicState;
 
@@ -419,6 +419,7 @@ protected:
 	MVKSmallVector<MVKZeroDivisorVertexBinding> _zeroDivisorVertexBindings;
 	MVKSmallVector<MVKStagedDescriptorBindingUse> _descriptorBindingUse;
 	MVKSmallVector<MVKShaderStage> _stagesUsingPhysicalStorageBufferAddressesCapability;
+	MVKSmallVector<uint32_t, kMVKDefaultAttachmentCount> _colorAttachmentLocations;
 	std::unordered_map<uint32_t, id<MTLRenderPipelineState>> _multiviewMTLPipelineStates;
 
 	id<MTLComputePipelineState> _mtlTessVertexStageState = nil;
@@ -473,6 +474,7 @@ protected:
 	bool _sampleLocationsEnable = false;
 	bool _isTessellationPipeline = false;
 	bool _inputAttachmentIsDSAttachment = false;
+	bool _hasRemappedAttachmentLocations = false;
 };
 
 

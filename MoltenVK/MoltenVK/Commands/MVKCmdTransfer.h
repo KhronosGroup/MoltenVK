@@ -275,15 +275,14 @@ protected:
 	uint32_t populateVertices(MVKCommandEncoder* cmdEncoder, simd::float4* vertices,
 							  uint32_t startVertex, VkClearRect& clearRect,
 							  float attWidth, float attHeight);
-	virtual VkClearValue& getClearValue(uint32_t attIdx) = 0;
-	virtual void setClearValue(uint32_t attIdx, const VkClearValue& clearValue) = 0;
+	virtual VkClearColorValue& getClearColorValue(uint32_t attIdx) = 0;
+	virtual void setClearColorValue(uint32_t attIdx, const VkClearColorValue& clearValue) = 0;
 	NSString* getMTLDebugGroupLabel();
 
 	MVKSmallVector<VkClearRect, N> _clearRects;
-    MVKRPSKeyClearAtt _rpsKey;
-	float _mtlDepthVal;
-	uint32_t _mtlStencilValue;
+	VkClearDepthStencilValue _clearDepthStencilValue;
 	MVKCommandUse _commandUse;
+	bool _shouldClearAtt[kMVKClearAttachmentCount];
 };
 
 
@@ -299,10 +298,10 @@ class MVKCmdClearSingleAttachment : public MVKCmdClearAttachments<N> {
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-	VkClearValue& getClearValue(uint32_t attIdx) override { return _vkClearValue; }
-	void setClearValue(uint32_t attIdx, const VkClearValue& clearValue) override { _vkClearValue = clearValue; }
+	VkClearColorValue& getClearColorValue(uint32_t attIdx) override { return _clearColorValue; }
+	void setClearColorValue(uint32_t attIdx, const VkClearColorValue& clearValue) override { _clearColorValue = clearValue; }
 
-	VkClearValue _vkClearValue;
+	VkClearColorValue _clearColorValue;
 };
 
 typedef MVKCmdClearSingleAttachment<1> MVKCmdClearSingleAttachment1;
@@ -321,10 +320,10 @@ class MVKCmdClearMultiAttachments : public MVKCmdClearAttachments<N> {
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-	VkClearValue& getClearValue(uint32_t attIdx) override { return _vkClearValues[attIdx]; }
-	void setClearValue(uint32_t attIdx, const VkClearValue& clearValue) override { _vkClearValues[attIdx] = clearValue; }
+	VkClearColorValue& getClearColorValue(uint32_t attIdx) override { return _clearColorValues[attIdx]; }
+	void setClearColorValue(uint32_t attIdx, const VkClearColorValue& clearValue) override { _clearColorValues[attIdx] = clearValue; }
 
-	VkClearValue _vkClearValues[kMVKMaxColorAttachmentCount];
+	VkClearColorValue _clearColorValues[kMVKMaxColorAttachmentCount];
 };
 
 typedef MVKCmdClearMultiAttachments<1> MVKCmdClearMultiAttachments1;

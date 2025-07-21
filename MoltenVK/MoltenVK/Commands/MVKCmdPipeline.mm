@@ -201,10 +201,18 @@ void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	// into separate Metal renderpasses. Since this is a potentially expensive operation,
 	// verify that at least one attachment is being used both as an input and render attachment
 	// by checking for a VK_IMAGE_LAYOUT_GENERAL layout.
+	// During subpass changes, or with dynamic rendering, if an input attachment is being used,
+	// both VK_DEPENDENCY_BY_REGION_BIT and VK_ACCESS_INPUT_ATTACHMENT_READ_BIT will be set.
 	if (cmdEncoder->_mtlRenderEncoder && mtlFeats.tileBasedDeferredRendering) {
 		bool needsRenderpassRestart = false;
 		for (auto& b : _barriers) {
 			if (b.type == MVKPipelineBarrier::Image && b.newLayout == VK_IMAGE_LAYOUT_GENERAL) {
+				needsRenderpassRestart = true;
+				break;
+			}
+			if (mvkIsAnyFlagEnabled(_dependencyFlags, VK_DEPENDENCY_BY_REGION_BIT) &&
+				mvkIsAnyFlagEnabled(b.dstAccessMask, VK_ACCESS_INPUT_ATTACHMENT_READ_BIT)) {
+
 				needsRenderpassRestart = true;
 				break;
 			}

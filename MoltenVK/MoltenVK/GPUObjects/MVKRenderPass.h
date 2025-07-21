@@ -57,6 +57,9 @@ public:
 	/** Returns the number of color attachments, which may be zero for depth-only rendering. */
 	uint32_t getColorAttachmentCount() { return uint32_t(_colorAttachments.size()); }
 
+	/** Returns the clear-attachments color index for the color attachment. */
+	uint32_t getClearColorAttachmentIndex(uint32_t colorAttIdx);
+
 	/** Returns the format of the color attachment at the specified index. */
 	VkFormat getColorAttachmentFormat(uint32_t colorAttIdx);
 
@@ -92,6 +95,9 @@ public:
 
 	/** Returns whether or not the depth stencil is being used as input attachment */
 	bool isInputAttachmentDepthStencilAttachment() const { return _isInputAttachmentDepthStencilAttachment; }
+
+	/** Returns whether this subpass is rendering dynamically.  */
+	bool isDynamicRendering() { return _isDynamicRendering; }
 
 	/** Returns the multiview view mask. */
 	uint32_t getViewMask() const { return _pipelineRenderingCreateInfo.viewMask; }
@@ -149,6 +155,32 @@ public:
 	/** Resolves any resolve attachments that cannot be handled by native Metal subpass resolve behavior. */
 	void resolveUnresolvableAttachments(MVKCommandEncoder* cmdEncoder, MVKArrayRef<MVKImageView*const> attachments);
 
+	/**
+	 * Returns whether the color attachment locations are different than the current attachment locations.
+	 * Since updateColorAttachmentLocations() can require a new Metal renderpass to be effective, this can
+	 * be called to determine whether that is necessary.
+	 */
+	bool isChangingColorAttachmentLocations(const MVKArrayRef<uint32_t> colorAttLocs,
+											const MVKArrayRef<MVKImageView*> attachments);
+
+	/** Change the color attachment locations. */
+	void updateColorAttachmentLocations(const MVKArrayRef<uint32_t> colorAttLocs,
+										const MVKArrayRef<MVKImageView*> attachments);
+
+	/**
+	 * Returns whether the input attachment indexes are different than the current attachment indexes.
+	 * Since updateAttachmentInputIndices() can require a new Metal renderpass to be effective, this can
+	 * be called to determine whether that is necessary.
+	 */
+	bool isChangingAttachmentInputIndices(const MVKArrayRef<uint32_t> colorAttIdxs,
+										  const uint32_t* pDepthInputAttachmentIndex,
+										  const uint32_t* pStencilInputAttachmentIndex);
+
+	/** Change the input attachment locations. */
+	void updateAttachmentInputIndices(const MVKArrayRef<uint32_t> colorAttIdxs,
+									  const uint32_t* pDepthInputAttachmentIndex,
+									  const uint32_t* pStencilInputAttachmentIndex);
+
 	MVKRenderSubpass(MVKRenderPass* renderPass, const VkSubpassDescription* pCreateInfo,
 					 const VkRenderPassInputAttachmentAspectCreateInfo* pInputAspects,
 					 uint32_t viewMask);
@@ -164,6 +196,14 @@ protected:
 	uint32_t getViewMaskGroupForMetalPass(uint32_t passIdx);
 	MVKMTLFmtCaps getRequiredFormatCapabilitiesForAttachmentAt(uint32_t rpAttIdx);
 	void populatePipelineRenderingCreateInfo();
+	void updateColorAttachmentLocations(const MVKArrayRef<uint32_t> colorAttLocs,
+										const MVKArrayRef<MVKImageView*> attachments,
+										MVKArrayRef<VkAttachmentReference2> colorAtts,
+										MVKArrayRef<VkAttachmentReference2> resolveAtts);
+	void updateAttachmentInputIndices(const MVKArrayRef<uint32_t> colorAttIdxs,
+									  const uint32_t* pDepthInputAttachmentIndex,
+									  const uint32_t* pStencilInputAttachmentIndex,
+									  MVKArrayRef<VkAttachmentReference2> inputAtts);
 
 	MVKRenderPass* _renderPass;
 	MVKSmallVector<VkAttachmentReference2, kMVKDefaultAttachmentCount> _inputAttachments;
@@ -181,6 +221,7 @@ protected:
 	VkSampleCountFlagBits _defaultSampleCount = VK_SAMPLE_COUNT_1_BIT;
 	uint32_t _subpassIndex;
 	bool _isInputAttachmentDepthStencilAttachment = false;
+	bool _isDynamicRendering = false;
 };
 
 
@@ -325,6 +366,7 @@ protected:
 	friend class MVKAttachmentDescription;
 
 	void propagateDebugName() override {}
+	void linkAttachments();
 
 	MVKSmallVector<MVKAttachmentDescription> _attachments;
 	MVKSmallVector<MVKRenderSubpass> _subpasses;
@@ -339,6 +381,7 @@ protected:
 
 typedef std::function<void(const VkRenderingAttachmentInfo* pAttInfo,
 						   VkImageAspectFlagBits aspect,
+						   MVKImageView* imgView,
 						   bool isResolveAttachment)> MVKRenderingAttachmentInfoOperation;
 
 /**
@@ -349,7 +392,6 @@ typedef std::function<void(const VkRenderingAttachmentInfo* pAttInfo,
  *     [color, color-resolve], ...,
  *     depth, depth-resolve,
  *     stencil, stencil-resolve
- * skipping any attachments that do not have a VkImageView
  */
 class MVKRenderingAttachmentIterator : public MVKBaseObject {
 

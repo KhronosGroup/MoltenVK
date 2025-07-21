@@ -43,6 +43,20 @@ bool MVKRenderSubpass::hasColorAttachments() {
 	return false;
 }
 
+// For non-dynamic rendering, with renderpass and subpass, the clear color
+// attachments are aligned, so just return the subpass attachment index.
+// For dynamic rendering, the clear color index returned is half of the attachment index
+// within MVKRenderPass, to accommodate for the interleaved resolve attachments there.
+uint32_t MVKRenderSubpass::getClearColorAttachmentIndex(uint32_t colorAttIdx) {
+	if (_isDynamicRendering) {
+		uint32_t rpAttIdx = _colorAttachments[colorAttIdx].attachment;
+		if (rpAttIdx != VK_ATTACHMENT_UNUSED) { rpAttIdx /= 2; }
+		return rpAttIdx;
+	} else {
+		return colorAttIdx;
+	}
+}
+
 VkFormat MVKRenderSubpass::getColorAttachmentFormat(uint32_t colorAttIdx) {
 	if (colorAttIdx < _colorAttachments.size()) {
 		uint32_t rpAttIdx = _colorAttachments[colorAttIdx].attachment;
@@ -155,7 +169,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 
             // If it exists, configure the resolve attachment first,
             // as it affects the store action of the color attachment.
-            uint32_t rslvRPAttIdx = _resolveAttachments.empty() ? VK_ATTACHMENT_UNUSED : _resolveAttachments[caIdx].attachment;
+            uint32_t rslvRPAttIdx = caIdx < _resolveAttachments.size() ? _resolveAttachments[caIdx].attachment : VK_ATTACHMENT_UNUSED;
             bool hasResolveAttachment = (rslvRPAttIdx != VK_ATTACHMENT_UNUSED);
 			bool canResolveFormat = true;
 			if (hasResolveAttachment) {
@@ -182,7 +196,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
                                                                        isRenderingEntireAttachment,
                                                                        hasResolveAttachment, canResolveFormat,
 																	   false, loadOverride)) {
-				mtlColorAttDesc.clearColor = pixFmts->getMTLClearColor(clearValues[clrRPAttIdx], clrMVKRPAtt->getFormat());
+				mtlColorAttDesc.clearColor = pixFmts->getMTLClearColor(clearValues[clrRPAttIdx].color, clrMVKRPAtt->getFormat());
 			}
 			if (isMultiview()) {
 				uint32_t startView = getFirstViewIndexInMetalPass(passIdx);
@@ -219,7 +233,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 																	 isRenderingEntireAttachment,
 																	 hasDepthResolve, true,
 																	 false, loadOverride)) {
-			mtlDepthAttDesc.clearDepth = pixFmts->getMTLClearDepthValue(clearValues[depthRPAttIdx]);
+			mtlDepthAttDesc.clearDepth = pixFmts->getMTLClearDepthValue(clearValues[depthRPAttIdx].depthStencil);
 		}
 		if (isMultiview()) {
 			mtlDepthAttDesc.slice += getFirstViewIndexInMetalPass(passIdx);
@@ -253,7 +267,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 																	   isRenderingEntireAttachment,
 																	   hasStencilResolve, true,
 																	   true, loadOverride)) {
-			mtlStencilAttDesc.clearStencil = pixFmts->getMTLClearStencilValue(clearValues[stencilRPAttIdx]);
+			mtlStencilAttDesc.clearStencil = pixFmts->getMTLClearStencilValue(clearValues[stencilRPAttIdx].depthStencil);
 		}
 		if (isMultiview()) {
 			mtlStencilAttDesc.slice += getFirstViewIndexInMetalPass(passIdx);
@@ -289,7 +303,7 @@ void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
     for (uint32_t caIdx = 0; caIdx < caCnt; ++caIdx) {
         uint32_t clrRPAttIdx = _colorAttachments[caIdx].attachment;
         if (clrRPAttIdx != VK_ATTACHMENT_UNUSED) {
-			uint32_t rslvRPAttIdx = _resolveAttachments.empty() ? VK_ATTACHMENT_UNUSED : _resolveAttachments[caIdx].attachment;
+			uint32_t rslvRPAttIdx = caIdx < _resolveAttachments.size() ? _resolveAttachments[caIdx].attachment : VK_ATTACHMENT_UNUSED;
 			bool hasResolveAttachment = (rslvRPAttIdx != VK_ATTACHMENT_UNUSED);
 			bool canResolveFormat = hasResolveAttachment && mvkAreAllFlagsEnabled(pixFmts->getCapabilities(attachments[rslvRPAttIdx]->getMTLPixelFormat()), kMVKMTLFmtCapsResolve);
 			_renderPass->_attachments[clrRPAttIdx].encodeStoreAction(cmdEncoder, this, attachments[clrRPAttIdx], isRenderingEntireAttachment, hasResolveAttachment, canResolveFormat, caIdx, false, storeOverride);
@@ -455,6 +469,106 @@ void MVKRenderSubpass::populatePipelineRenderingCreateInfo() {
 	}
 }
 
+bool MVKRenderSubpass::isChangingColorAttachmentLocations(const MVKArrayRef<uint32_t> colorAttLocs,
+														  const MVKArrayRef<MVKImageView*> attachments) {
+
+	MVKSmallVector<VkAttachmentReference2, kMVKDefaultAttachmentCount> colorAtts;
+	colorAtts.assign(_colorAttachments.begin(), _colorAttachments.end());
+
+	MVKSmallVector<VkAttachmentReference2, kMVKDefaultAttachmentCount> resolveAtts;
+	resolveAtts.assign(_resolveAttachments.begin(), _resolveAttachments.end());
+
+	updateColorAttachmentLocations(colorAttLocs, attachments, colorAtts.contents(), resolveAtts.contents());
+
+	auto attCnt = colorAtts.size();
+	for (uint32_t attIdx = 0; attIdx < attCnt; attIdx++) {
+		if (colorAtts[attIdx].attachment != _colorAttachments[attIdx].attachment) { return true; }
+		if (resolveAtts[attIdx].attachment != _resolveAttachments[attIdx].attachment) { return true; }
+	}
+	return false;
+}
+
+void MVKRenderSubpass::updateColorAttachmentLocations(const MVKArrayRef<uint32_t> colorAttLocs,
+													  const MVKArrayRef<MVKImageView*> attachments) {
+	updateColorAttachmentLocations(colorAttLocs, attachments, _colorAttachments.contents(), _resolveAttachments.contents());
+	_renderPass->linkAttachments();
+}
+
+// Update the dynamic attachment value of the existing color attachments.
+// For dynamic rendering, we always create the potential resolve attachments, which are alternated
+// with the color attachments, so the color attachment index needs to be doubled.
+void MVKRenderSubpass::updateColorAttachmentLocations(const MVKArrayRef<uint32_t> colorAttLocs,
+													  const MVKArrayRef<MVKImageView*> attachments,
+													  MVKArrayRef<VkAttachmentReference2> colorAtts,
+													  MVKArrayRef<VkAttachmentReference2> resolveAtts) {
+
+	// Make sure any attachments we don't explicitly set here are set to unused.
+	auto attCnt = colorAtts.size();
+	for (uint32_t attIdx = 0; attIdx < attCnt; attIdx++) {
+		colorAtts[attIdx].attachment = VK_ATTACHMENT_UNUSED;
+		resolveAtts[attIdx].attachment = VK_ATTACHMENT_UNUSED;
+	}
+
+	attCnt = colorAttLocs.size();
+	for (uint32_t attIdx = 0; attIdx < attCnt; attIdx++) {
+		auto attLoc = colorAttLocs[attIdx];
+		if (attLoc != VK_ATTACHMENT_UNUSED) {
+			uint32_t clrAttIdx = attIdx * 2;
+			if (attachments[clrAttIdx]) {
+				colorAtts[attLoc].attachment = clrAttIdx;
+			}
+			uint32_t rslvAttIdx = clrAttIdx + 1;
+			if (attachments[rslvAttIdx]) {
+				resolveAtts[attLoc].attachment = rslvAttIdx;
+			}
+		}
+	}
+}
+
+bool MVKRenderSubpass::isChangingAttachmentInputIndices(const MVKArrayRef<uint32_t> colorAttIdxs,
+														const uint32_t* pDepthInputAttachmentIndex,
+														const uint32_t* pStencilInputAttachmentIndex) {
+
+	MVKSmallVector<VkAttachmentReference2, kMVKDefaultAttachmentCount> inputAtts;
+	inputAtts.assign(_inputAttachments.begin(), _inputAttachments.end());
+	updateAttachmentInputIndices(colorAttIdxs, pDepthInputAttachmentIndex, pStencilInputAttachmentIndex, inputAtts.contents());
+
+	auto attCnt = inputAtts.size();
+	if (attCnt != _inputAttachments.size()) { return true; }
+	for (uint32_t attIdx = 0; attIdx < attCnt; attIdx++) {
+		if (inputAtts[attIdx].attachment != _inputAttachments[attIdx].attachment) { return true; }
+	}
+	return false;
+}
+
+// Populate the attachment value of the input attachments from the color, depth & stencil attachment values.
+// The input attachments are effectively empty except for the attachment value.
+void MVKRenderSubpass::updateAttachmentInputIndices(const MVKArrayRef<uint32_t> colorAttIdxs,
+													const uint32_t* pDepthInputAttachmentIndex,
+													const uint32_t* pStencilInputAttachmentIndex) {
+	auto inpAttCnt = colorAttIdxs.size() + (pDepthInputAttachmentIndex ? 1 : 0) + (pStencilInputAttachmentIndex ? 1 : 0);
+	_inputAttachments.resize(inpAttCnt);
+	updateAttachmentInputIndices(colorAttIdxs, pDepthInputAttachmentIndex, pStencilInputAttachmentIndex, _inputAttachments.contents());
+}
+
+void MVKRenderSubpass::updateAttachmentInputIndices(const MVKArrayRef<uint32_t> colorAttIdxs,
+													const uint32_t* pDepthInputAttachmentIndex,
+													const uint32_t* pStencilInputAttachmentIndex,
+													MVKArrayRef<VkAttachmentReference2> inputAtts) {
+	uint32_t clrAttIdx = 0;
+	auto clrAttCnt = colorAttIdxs.size();
+	while (clrAttIdx < clrAttCnt) {
+		inputAtts[clrAttIdx].attachment = colorAttIdxs[clrAttIdx];
+		clrAttIdx++;
+	}
+	if (pDepthInputAttachmentIndex) {
+		inputAtts[clrAttIdx++].attachment = *pDepthInputAttachmentIndex;
+	}
+	if (pStencilInputAttachmentIndex) {
+		inputAtts[clrAttIdx++].attachment = *pStencilInputAttachmentIndex;
+	}
+}
+
 static const VkAttachmentReference2 _unusedAttachment = {VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2, nullptr, VK_ATTACHMENT_UNUSED, VK_IMAGE_LAYOUT_UNDEFINED, 0};
 
 MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass, const VkSubpassDescription2* pCreateInfo) {
@@ -598,6 +712,7 @@ MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass,
 
 MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass, const VkRenderingInfo* pRenderingInfo) {
 
+	_isDynamicRendering = true;
 	_renderPass = renderPass;
 	_subpassIndex = (uint32_t)_renderPass->_subpasses.size();
 	_pipelineRenderingCreateInfo.viewMask = pRenderingInfo->viewMask;
@@ -609,8 +724,9 @@ MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass, const VkRenderingI
 
 	uint32_t attIdx = 0;
 	MVKRenderingAttachmentIterator attIter(pRenderingInfo);
-	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, bool isResolveAttachment)->void {
-		VkAttachmentReference2 attRef = {VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2, nullptr, attIdx++, pAttInfo->imageLayout, aspect};
+	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, MVKImageView* imgView, bool isResolveAttachment)->void {
+		uint32_t atchmt = imgView ? attIdx : VK_ATTACHMENT_UNUSED;
+		VkAttachmentReference2 attRef = { VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2, nullptr, atchmt, pAttInfo->imageLayout, aspect };
 		switch (aspect) {
 			case VK_IMAGE_ASPECT_COLOR_BIT:
 				if (isResolveAttachment) {
@@ -640,6 +756,7 @@ MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass, const VkRenderingI
 			default:
 				break;
 		}
+		attIdx++;
 	});
 
 	populatePipelineRenderingCreateInfo();
@@ -828,7 +945,7 @@ bool MVKAttachmentDescription::shouldClearAttachment(MVKRenderSubpass* subpass, 
 void MVKAttachmentDescription::linkToSubpasses() {
 	// Validate pixel format is supported
 	MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
-	if ( !pixFmts->isSupportedOrSubstitutable(_info.format) ) {
+	if (_info.format && !pixFmts->isSupportedOrSubstitutable(_info.format) ) {
 		_renderPass->setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateRenderPass(): Attachment format %s is not supported on this device.", _renderPass->getPixelFormats()->getName(_info.format)));
 	}
 
@@ -892,8 +1009,9 @@ MVKAttachmentDescription::MVKAttachmentDescription(MVKRenderPass* renderPass,
 												   const VkRenderingAttachmentInfo* pAttInfo,
 												   bool isResolveAttachment) {
 	if (isResolveAttachment) {
+		MVKImageView* imgVw = (MVKImageView*)pAttInfo->resolveImageView;
 		_info.flags = 0;
-		_info.format = ((MVKImageView*)pAttInfo->resolveImageView)->getVkFormat();
+		_info.format = imgVw ? imgVw->getVkFormat() : VK_FORMAT_UNDEFINED;
 		_info.samples = VK_SAMPLE_COUNT_1_BIT;
 		_info.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -902,9 +1020,10 @@ MVKAttachmentDescription::MVKAttachmentDescription(MVKRenderPass* renderPass,
 		_info.initialLayout = pAttInfo->resolveImageLayout;
 		_info.finalLayout = pAttInfo->resolveImageLayout;
 	} else {
+		MVKImageView* imgVw = (MVKImageView*)pAttInfo->imageView;
 		_info.flags = 0;
-		_info.format = ((MVKImageView*)pAttInfo->imageView)->getVkFormat();
-		_info.samples = ((MVKImageView*)pAttInfo->imageView)->getSampleCount();
+		_info.format = imgVw ? imgVw->getVkFormat() : VK_FORMAT_UNDEFINED;
+		_info.samples = imgVw ? imgVw->getSampleCount() : VK_SAMPLE_COUNT_1_BIT;
 		_info.loadOp = pAttInfo->loadOp;
 		_info.storeOp = pAttInfo->storeOp;
 		_info.stencilLoadOp = pAttInfo->loadOp;
@@ -994,9 +1113,7 @@ MVKRenderPass::MVKRenderPass(MVKDevice* device,
 	}
 
 	// Link attachments to subpasses
-	for (auto& att : _attachments) {
-		att.linkToSubpasses();
-	}
+	linkAttachments();
 }
 
 MVKRenderPass::MVKRenderPass(MVKDevice* device,
@@ -1031,9 +1148,7 @@ MVKRenderPass::MVKRenderPass(MVKDevice* device,
 	}
 
 	// Link attachments to subpasses
-	for (auto& att : _attachments) {
-		att.linkToSubpasses();
-	}
+	linkAttachments();
 }
 
 MVKRenderPass::MVKRenderPass(MVKDevice* device, const VkRenderingInfo* pRenderingInfo) : MVKVulkanAPIDeviceObject(device) {
@@ -1041,11 +1156,15 @@ MVKRenderPass::MVKRenderPass(MVKDevice* device, const VkRenderingInfo* pRenderin
 	_renderingFlags = pRenderingInfo->flags;
 
 	// Add attachments first so subpasses can access them during creation
+	// Attachments alternate between color and resolve, even if resolved are unused, then with depth, depth resolve, stencil, and stencil resolve at the end.
+	// Both the dynamic Framebuffer attachments, and the attachments and clear values in MVKCommandEncoder::beginRendering() need to be laid out identically.
 	uint32_t attCnt = 0;
 	MVKRenderingAttachmentIterator attIter(pRenderingInfo);
-	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, bool isResolveAttachment)->void { attCnt++; });
+	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, MVKImageView* imgView, bool isResolveAttachment)->void {
+		attCnt++;
+	});
 	_attachments.reserve(attCnt);
-	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, bool isResolveAttachment)->void {
+	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, MVKImageView* imgView, bool isResolveAttachment)->void {
 		_attachments.emplace_back(this, pAttInfo, isResolveAttachment);
 	});
 
@@ -1053,6 +1172,11 @@ MVKRenderPass::MVKRenderPass(MVKDevice* device, const VkRenderingInfo* pRenderin
 	_subpasses.emplace_back(this, pRenderingInfo);
 
 	// Link attachments to subpasses
+	linkAttachments();
+}
+
+// Link attachments to subpasses
+void MVKRenderPass::linkAttachments() {
 	for (auto& att : _attachments) {
 		att.linkToSubpasses();
 	}
@@ -1073,11 +1197,9 @@ void MVKRenderingAttachmentIterator::iterate(MVKRenderingAttachmentInfoOperation
 void MVKRenderingAttachmentIterator::handleAttachment(const VkRenderingAttachmentInfo* pAttInfo,
 													  VkImageAspectFlagBits aspect,
 													  MVKRenderingAttachmentInfoOperation attOperation) {
-	if (pAttInfo && pAttInfo->imageView) {
-		attOperation(pAttInfo, aspect, false);
-		if (pAttInfo->resolveImageView && pAttInfo->resolveMode != VK_RESOLVE_MODE_NONE) {
-			attOperation(pAttInfo, aspect, true);
-		}
+	if (pAttInfo) {
+		attOperation(pAttInfo, aspect, (MVKImageView*)pAttInfo->imageView, false);
+		attOperation(pAttInfo, aspect, (MVKImageView*)pAttInfo->resolveImageView, true);
 	}
 }
 

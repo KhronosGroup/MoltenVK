@@ -3132,11 +3132,29 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkTransitionImageLayout(
 }
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetLineStipple(
-	 VkCommandBuffer                             commandBuffer,
-	 uint32_t                                    lineStippleFactor,
-	 uint16_t                                    lineStipplePattern) {
+	VkCommandBuffer                             commandBuffer,
+    uint32_t                                    lineStippleFactor,
+    uint16_t                                    lineStipplePattern) {
 
 	MVKTraceVulkanCallStart();
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetRenderingAttachmentLocations(
+    VkCommandBuffer                             commandBuffer,
+	const VkRenderingAttachmentLocationInfo*    pLocationInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(SetRenderingAttachmentLocations, commandBuffer, pLocationInfo);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetRenderingInputAttachmentIndices(
+    VkCommandBuffer                             commandBuffer,
+	const VkRenderingInputAttachmentIndexInfo*  pInputAttachmentIndexInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(SetRenderingInputAttachmentIndices, commandBuffer, pInputAttachmentIndexInfo);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -3292,11 +3310,20 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkEnumeratePhysicalDeviceGroups, KHR);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDrawIndexedIndirectCount, KHR);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDrawIndirectCount, KHR);
 
+
 #pragma mark -
 #pragma mark VK_KHR_dynamic_rendering extension
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdBeginRendering, KHR);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdEndRendering, KHR);
+
+
+#pragma mark -
+#pragma mark VK_KHR_dynamic_rendering_local_read extension
+
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetRenderingAttachmentLocations, KHR);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetRenderingInputAttachmentIndices, KHR);
+
 
 #pragma mark -
 #pragma mark VK_KHR_external_fence_capabilities extension

@@ -32,8 +32,6 @@ class MVKCommandPool;
 class MVKQueueCommandBufferSubmission;
 class MVKCommandEncoder;
 class MVKCommandEncodingPool;
-class MVKCmdBeginRenderPassBase;
-class MVKCmdNextSubpass;
 class MVKRenderPass;
 class MVKFramebuffer;
 class MVKRenderSubpass;
@@ -198,17 +196,24 @@ protected:
 	void releaseRecordedCommands();
 	void flushImmediateCmdEncoder();
 	void checkDeferredEncoding();
+	void beginSecondaryEncoding(MVKCommandEncoder* cmdEncoder);
 
 	MVKCommand* _head = nullptr;
 	MVKCommand* _tail = nullptr;
-	MVKSmallVector<VkFormat, kMVKDefaultAttachmentCount> _colorAttachmentFormats;
+	MVKSmallVector<VkFormat, kMVKDefaultAttachmentCount> _secondaryInheritanceColorAttachmentFormats;
+	MVKSmallVector<uint32_t, kMVKDefaultAttachmentCount> _secondaryInheritanceColorAttachmentLocations;
+	MVKSmallVector<uint32_t, kMVKDefaultAttachmentCount> _secondaryInheritanceColorAttachmentInputIndices;
 	MVKCommandPool* _commandPool;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
 	VkCommandBufferInheritanceRenderingInfo _secondaryInheritanceRenderingInfo;
+	VkRenderingAttachmentLocationInfo _secondaryInheritanceRenderingAttachmentLocationInfo;
+	VkRenderingInputAttachmentIndexInfo _secondaryInheritanceRenderingInputAttachmentIndexInfo;
 	id<MTLCommandBuffer> _prefilledMTLCmdBuffer = nil;
     MVKCommandEncodingContext* _immediateCmdEncodingContext = nullptr;
     MVKCommandEncoder* _immediateCmdEncoder = nullptr;
 	uint32_t _commandCount;
+	uint32_t _secondaryInheritanceDepthAttachmentInputIndex;
+	uint32_t _secondaryInheritanceStencilAttachmentInputIndex;
 	std::atomic_flag _isExecutingNonConcurrently;
 	bool _isSecondary;
 	bool _doesContinueRenderPass;
@@ -217,6 +222,12 @@ protected:
 	bool _supportsConcurrentExecution;
 	bool _wasExecuted;
 	bool _hasStageCounterTimestampCommand;
+	bool _hasSecondaryInheritanceInfo;
+	bool _hasSecondaryInheritanceRenderingInfo;
+	bool _hasSecondaryInheritanceColorAttachmentLocations;
+	bool _hasSecondaryInheritanceColorAttachmentInputIndices;
+	bool _hasSecondaryInheritanceDepthAttachmentInputIndex;
+	bool _hasSecondaryInheritanceStencilAttachmentInputIndex;
 };
 
 
@@ -265,6 +276,9 @@ public:
 
 	/** Begins dynamic rendering. */
 	void beginRendering(MVKCommand* rendCmd, const VkRenderingInfo* pRenderingInfo);
+
+	/** Returns whether dynamic rendering is active. */
+	bool isDynamicRendering();
 
 	/** Begins a Metal render pass for the current render subpass. */
 	void beginMetalRenderPass(MVKCommandUse cmdUse);
@@ -318,6 +332,14 @@ public:
 
 	/** Clips the scissor to ensure it fits inside the render area.  */
 	MTLScissorRect clipToRenderArea(MTLScissorRect scissor);
+
+	/** Updates the color attachment locations. */
+	void updateColorAttachmentLocations(const MVKArrayRef<uint32_t> colorAttLocs);
+
+	/** Updates the list of input attachments. */
+	void updateAttachmentInputIndices(const MVKArrayRef<uint32_t> colorAttIdxs,
+									  const uint32_t* pDepthInputAttachmentIndex,
+									  const uint32_t* pStencilInputAttachmentIndex);
 
 	/** Called by each graphics draw command to establish any outstanding state just prior to performing the draw. */
 	void finalizeDrawState(MVKGraphicsStage stage);

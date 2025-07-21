@@ -121,15 +121,15 @@ MVK_PUBLIC_SYMBOL MTLVertexFormat mvkMTLVertexFormatFromVkFormat(VkFormat vkForm
 
 MVK_PUBLIC_SYMBOL MTLClearColor mvkMTLClearColorFromVkClearValue(VkClearValue vkClearValue,
 																 VkFormat vkFormat) {
-	return getPlatformPixelFormats()->getMTLClearColor(vkClearValue, vkFormat);
+	return getPlatformPixelFormats()->getMTLClearColor(vkClearValue.color, vkFormat);
 }
 
-MVK_PUBLIC_SYMBOL double mvkMTLClearDepthFromVkClearValue(VkClearValue vkClearValue) {
-	return getPlatformPixelFormats()->getMTLClearDepthValue(vkClearValue);
+MVK_PUBLIC_SYMBOL double mvkMTLClearDepthFromVkClearValue(VkClearDepthStencilValue clearValue) {
+	return getPlatformPixelFormats()->getMTLClearDepthValue(clearValue);
 }
 
-MVK_PUBLIC_SYMBOL uint32_t mvkMTLClearStencilFromVkClearValue(VkClearValue vkClearValue) {
-	return getPlatformPixelFormats()->getMTLClearStencilValue(vkClearValue);
+MVK_PUBLIC_SYMBOL uint32_t mvkMTLClearStencilFromVkClearValue(VkClearDepthStencilValue clearValue) {
+	return getPlatformPixelFormats()->getMTLClearStencilValue(clearValue);
 }
 
 MVK_PUBLIC_SYMBOL bool mvkMTLPixelFormatIsDepthFormat(MTLPixelFormat mtlFormat) {

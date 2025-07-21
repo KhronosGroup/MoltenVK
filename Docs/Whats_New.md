@@ -19,6 +19,7 @@ MoltenVK 1.3.1
 Released TBD
 
 - Add support for extensions:
+	- `VK_KHR_dynamic_rendering_local_read`
 	- `VK_KHR_global_priority`
 	- `VK_KHR_line_rasterization`
 	- `VK_KHR_maintenance5`
