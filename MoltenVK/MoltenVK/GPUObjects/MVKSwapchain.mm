@@ -245,10 +245,10 @@ VkResult MVKSwapchain::getPastPresentationTiming(uint32_t *pCount, VkPastPresent
 	return res;
 }
 
-VkResult MVKSwapchain::waitForPresent(uint64_t presentId, uint64_t timeout) {
+VkResult MVKSwapchain::waitForPresent(const VkPresentWait2InfoKHR* pWaitInfo) {
 	std::unique_lock lock(_currentPresentIdMutex);
-	const auto success = _currentPresentIdCondVar.wait_for(lock, std::chrono::nanoseconds(timeout), [this, presentId] {
-		return _currentPresentId >= presentId || getConfigurationResult() == VK_ERROR_OUT_OF_DATE_KHR;
+	const auto success = _currentPresentIdCondVar.wait_for(lock, std::chrono::nanoseconds(pWaitInfo->timeout), [this, pWaitInfo] {
+		return _currentPresentId >= pWaitInfo->presentId || getConfigurationResult() == VK_ERROR_OUT_OF_DATE_KHR;
 	});
 	if (getConfigurationResult() == VK_ERROR_OUT_OF_DATE_KHR) return VK_ERROR_OUT_OF_DATE_KHR;
 	return success ? VK_SUCCESS : VK_TIMEOUT;

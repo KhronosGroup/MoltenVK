@@ -95,7 +95,7 @@ public:
 	VkResult getPastPresentationTiming(uint32_t *pCount, VkPastPresentationTimingGOOGLE *pPresentationTimings);
 
 	/** Waits for the swapchain present ID to meet or exceed the provided ID. */
-	VkResult waitForPresent(uint64_t presentId, uint64_t timeout);
+	VkResult waitForPresent(const VkPresentWait2InfoKHR* pWaitInfo);
 
 	/** Marks parts of the underlying CAMetalLayer as needing update. */
 	void setLayerNeedsDisplay(const VkPresentRegionKHR* pRegion);
