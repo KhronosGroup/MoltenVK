@@ -628,9 +628,19 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				presentIdFeatures->presentId = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_2_FEATURES_KHR: {
+				auto* presentId2Features = (VkPhysicalDevicePresentId2FeaturesKHR*)next;
+				presentId2Features->presentId2 = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR: {
 				auto* presentWaitFeatures = (VkPhysicalDevicePresentWaitFeaturesKHR*)next;
 				presentWaitFeatures->presentWait = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_2_FEATURES_KHR: {
+				auto* presentWait2Features = (VkPhysicalDevicePresentWait2FeaturesKHR*)next;
+				presentWait2Features->presentWait2 = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MAXIMAL_RECONVERGENCE_FEATURES_KHR: {
@@ -1889,6 +1899,14 @@ VkResult MVKPhysicalDevice::getSurfaceCapabilities(	const VkPhysicalDeviceSurfac
 			case VK_STRUCTURE_TYPE_SURFACE_PROTECTED_CAPABILITIES_KHR: {
 				// Not supported.
 				((VkSurfaceProtectedCapabilitiesKHR*)next)->supportsProtected = false;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_ID_2_KHR: {
+				((VkSurfaceCapabilitiesPresentId2KHR*)next)->presentId2Supported = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_WAIT_2_KHR: {
+				((VkSurfaceCapabilitiesPresentWait2KHR*)next)->presentWait2Supported = true;
 				break;
 			}
 			default:

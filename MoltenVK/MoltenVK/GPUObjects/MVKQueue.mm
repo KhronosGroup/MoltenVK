@@ -783,6 +783,7 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 	const VkSwapchainPresentModeInfoEXT* pPresentModeInfo = nullptr;
 	const VkPresentRegionsKHR* pPresentRegions = nullptr;
 	const VkPresentIdKHR* pPresentId = nullptr;
+	const VkPresentId2KHR* pPresentId2 = nullptr;
 	for (auto* next = (const VkBaseInStructure*)pPresentInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_PRESENT_REGIONS_KHR:
@@ -790,6 +791,9 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 				break;
 			case VK_STRUCTURE_TYPE_PRESENT_ID_KHR:
 				pPresentId = (const VkPresentIdKHR*) next;
+				break;
+			case VK_STRUCTURE_TYPE_PRESENT_ID_2_KHR:
+				pPresentId2 = (const VkPresentId2KHR*) next;
 				break;
 			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT:
 				pPresentFenceInfo = (const VkSwapchainPresentFenceInfoEXT*) next;
@@ -827,7 +831,9 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 		pRegions = pPresentRegions->pRegions;
 	}
 	const uint64_t* pPresentIds = nullptr;
-	if (pPresentId) {
+	if (pPresentId2) {
+		pPresentIds = pPresentId2->pPresentIds;
+	} else if (pPresentId) {
 		pPresentIds = pPresentId->pPresentIds;
 	}
 

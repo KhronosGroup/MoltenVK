@@ -763,6 +763,7 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_EXT_ENTRY_POINT(vkAcquireNextImageKHR, KHR_SWAPCHAIN);
 	ADD_DVC_EXT_ENTRY_POINT(vkQueuePresentKHR, KHR_SWAPCHAIN);
 	ADD_DVC_EXT_ENTRY_POINT(vkWaitForPresentKHR, KHR_PRESENT_WAIT);
+	ADD_DVC_EXT_ENTRY_POINT(vkWaitForPresent2KHR, KHR_PRESENT_WAIT_2);
 	ADD_DVC_EXT_ENTRY_POINT_ALIAS(vkGetCalibratedTimestampsEXT, vkGetCalibratedTimestampsKHR, EXT_CALIBRATED_TIMESTAMPS);
 	ADD_DVC_EXT_ENTRY_POINT_ALIAS(vkGetPhysicalDeviceCalibrateableTimeDomainsEXT, vkGetPhysicalDeviceCalibrateableTimeDomainsKHR, EXT_CALIBRATED_TIMESTAMPS);
 	ADD_DVC_EXT_ENTRY_POINT(vkDebugMarkerSetObjectTagEXT, EXT_DEBUG_MARKER);

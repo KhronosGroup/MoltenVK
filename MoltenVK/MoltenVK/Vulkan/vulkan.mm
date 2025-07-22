@@ -3454,7 +3454,28 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkWaitForPresentKHR(
 
 	MVKTraceVulkanCallStart();
 	MVKSwapchain* mvkSC = (MVKSwapchain*)swapchain;
-	VkResult rslt = mvkSC->waitForPresent(presentId, timeout);
+	const VkPresentWait2InfoKHR waitInfo = {
+		.sType = VK_STRUCTURE_TYPE_PRESENT_WAIT_2_INFO_KHR,
+		.presentId = presentId,
+		.timeout = timeout,
+	};
+	VkResult rslt = mvkSC->waitForPresent(&waitInfo);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+
+#pragma mark -
+#pragma mark VK_KHR_present_wait2 extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkWaitForPresent2KHR(
+    VkDevice                                    device,
+    VkSwapchainKHR                              swapchain,
+    const VkPresentWait2InfoKHR*                pPresentWait2Info) {
+
+	MVKTraceVulkanCallStart();
+	MVKSwapchain* mvkSC = (MVKSwapchain*)swapchain;
+	VkResult rslt = mvkSC->waitForPresent(pPresentWait2Info);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
