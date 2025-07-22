@@ -62,7 +62,7 @@
                                                                     0)
 
 /** Macro to determine the Vulkan version supported by MoltenVK. */
-#define MVK_VULKAN_API_VERSION					MVK_VULKAN_API_VERSION_HEADER(VK_API_VERSION_1_3)
+#define MVK_VULKAN_API_VERSION					MVK_VULKAN_API_VERSION_HEADER(VK_API_VERSION_1_4)
 
 /**
  * IOSurfaces are supported on macOS, and on iOS starting with iOS 11.

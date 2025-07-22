@@ -54,11 +54,11 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 	if ( !mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL) ) {
 #define MVK_NA  kMVKOSVersionUnsupported
 		if (mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_WSI)) {
-			MVK_EXTENSION_MIN_OS(EXT_METAL_SURFACE,                    10.11,  8.0,  1.0)
-			MVK_EXTENSION_MIN_OS(MVK_IOS_SURFACE,                      MVK_NA, 8.0,  1.0)
-			MVK_EXTENSION_MIN_OS(MVK_MACOS_SURFACE,                    10.11,  MVK_NA,  MVK_NA)
-			MVK_EXTENSION_MIN_OS(KHR_SURFACE,                          10.11,  8.0,  1.0)
-			MVK_EXTENSION_MIN_OS(KHR_SWAPCHAIN,                        10.11,  8.0,  1.0)
+			MVK_EXTENSION_MIN_OS(EXT_METAL_SURFACE,                    10.11,  8.0,    1.0)
+			MVK_EXTENSION_MIN_OS(MVK_IOS_SURFACE,                      MVK_NA, 8.0,    1.0)
+			MVK_EXTENSION_MIN_OS(MVK_MACOS_SURFACE,                    10.11,  MVK_NA, MVK_NA)
+			MVK_EXTENSION_MIN_OS(KHR_SURFACE,                          10.11,  8.0,    1.0)
+			MVK_EXTENSION_MIN_OS(KHR_SWAPCHAIN,                        10.11,  8.0,    1.0)
 		}
 		if (mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_PORTABILITY)) {
 			MVK_EXTENSION_MIN_OS(KHR_PORTABILITY_SUBSET,               10.11,  8.0,  1.0)

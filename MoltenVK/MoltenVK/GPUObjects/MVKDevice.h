@@ -457,6 +457,7 @@ protected:
 	void populateDeviceIDProperties(VkPhysicalDeviceVulkan11Properties* pVk11Props);
 	void populateSubgroupProperties(VkPhysicalDeviceVulkan11Properties* pVk11Props);
 	template<typename HostImageCopyProps> void populateHostImageCopyProperties(HostImageCopyProps* pHostImageCopyProps);
+	bool isTier2MetalArgumentBuffers();
 	void logGPUInfo();
 
 	MVKInstance* _mvkInstance;

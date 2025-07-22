@@ -52,6 +52,7 @@ static uint32_t expandAPIVersion(uint32_t apiVer) {
 		case 11:  return VK_API_VERSION_1_1;
 		case 12:  return VK_API_VERSION_1_2;
 		case 13:  return VK_API_VERSION_1_3;
+		case 14:  return VK_API_VERSION_1_4;
 		default:  return std::min(apiVer, MVK_VULKAN_API_VERSION);
 	}
 }
