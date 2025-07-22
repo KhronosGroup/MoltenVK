@@ -35,6 +35,12 @@
 #         If this parameter is not provided, it defaults to:
 #         "../../VK-GL-CTS/build/external/vulkancts/modules/vulkan/Debug".
 #
+#      -cMm
+#         Test conformance against Vulkan version M.m, with no additional extensions,
+#         under the Vulkan Portability initiative.
+#         In neither this nor the -p option is specified, the tests are run against the
+#         latest Vulkan version, plus all extensions, that are supported by MoltenVK.
+#
 #      -p
 #         Same as the --portability option.
 #
@@ -51,6 +57,7 @@ caselist_file=""
 results_file=""
 failures_file=""
 is_portability=""
+conformance_version=""
 
 while (( "$#" )); do
   case "$1" in
@@ -68,6 +75,26 @@ while (( "$#" )); do
          ;;
        -p | --portability)
          is_portability="Y"
+         shift 1
+         ;;
+       -c14)
+         conformance_version="14"
+         shift 1
+         ;;
+       -c13)
+         conformance_version="13"
+         shift 1
+         ;;
+       -c12)
+         conformance_version="12"
+         shift 1
+         ;;
+       -c11)
+         conformance_version="11"
+         shift 1
+         ;;
+       -c10 | -p | --portability)
+         conformance_version="10"
          shift 1
          ;;
        -*|--*=)
@@ -102,8 +129,17 @@ fi
 # - MVK_CONFIG_API_VERSION_TO_ADVERTISE = 4194304 (VK_API_VERSION_1_0).
 # - MVK_CONFIG_ADVERTISE_EXTENSIONS = 4 (VK_KHR_portability_subset and prerequistes).
 if [ "${is_portability}" != "" ]; then
-	export MVK_CONFIG_API_VERSION_TO_ADVERTISE=4194304
+	export MVK_CONFIG_API_VERSION_TO_ADVERTISE=10
 	export MVK_CONFIG_ADVERTISE_EXTENSIONS=4
+	echo "Testing against Vulkan portability ${conformance_version} with Vulkan portability extension."
+fi
+
+# When testing conformance to a particular Vulkan version,
+# advertise that version, and disable all extensions except portability.
+if [ "${conformance_version}" != "" ]; then
+	export MVK_CONFIG_API_VERSION_TO_ADVERTISE="${conformance_version}"
+	export MVK_CONFIG_ADVERTISE_EXTENSIONS=4
+	echo "Testing against Vulkan ${conformance_version} with only Vulkan portability extension."
 fi
 
 # ----- System settings ------

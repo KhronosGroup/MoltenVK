@@ -81,7 +81,7 @@ typedef VkFlags MVKCounterSamplingFlags;
  * EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. THE ORDER AND SIZE OF EXISTING MEMBERS SHOULD NOT BE CHANGED.
  */
 typedef struct {
-    uint32_t mslVersion;                        	/**< The version of the Metal Shading Language available on this device. The format of the integer is MMmmpp, with two decimal digts each for Major, minor, and patch version values (eg. MSL 1.3 would appear as 010300). */
+    uint32_t mslVersion;                        	/**< The version of the Metal Shading Language available on this device. The format of the integer is MMmmpp, with two decimal digts each for Major, minor, and patch version values (eg. MSL 3.2 would appear as 030200). */
 	VkBool32 indirectDrawing;                   	/**< If true, draw calls support parameters held in a GPU buffer. */
 	VkBool32 baseVertexInstanceDrawing;         	/**< If true, draw calls support specifiying the base vertex and instance. */
     uint32_t dynamicMTLBufferSize;              	/**< If greater than zero, dynamic MTLBuffers for setting vertex, fragment, and compute bytes are supported, and their content must be below this value. */

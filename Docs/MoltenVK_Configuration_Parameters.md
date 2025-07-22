@@ -85,13 +85,14 @@ extensions will be advertised. A value of zero means no extensions will be adver
 #### MVK_CONFIG_API_VERSION_TO_ADVERTISE
 
 ##### Type: UInt32
-##### Default: `4206592` (decimal number for `VK_API_VERSION_1_3`)
+##### Default: `4210688` (decimal number for `VK_API_VERSION_1_4`)
 
 Controls the _Vulkan_ API version that **MoltenVK** should advertise in `vkEnumerateInstanceVersion()`,
 after **MoltenVK** adds the `VK_HEADER_VERSION` component.
 
 Set this value to one of:
 
+- `4210688`  (decimal number for `VK_API_VERSION_1_4`)
 - `4206592`  (decimal number for `VK_API_VERSION_1_3`)
 - `4202496`  (decimal number for `VK_API_VERSION_1_2`)
 - `4198400`  (decimal number for `VK_API_VERSION_1_1`)
@@ -99,6 +100,7 @@ Set this value to one of:
 
 or one of the shorthand versions:
 
+- `14`  (`VK_API_VERSION_1_4`)
 - `13`  (`VK_API_VERSION_1_3`)
 - `12`  (`VK_API_VERSION_1_2`)
 - `11`  (`VK_API_VERSION_1_1`)

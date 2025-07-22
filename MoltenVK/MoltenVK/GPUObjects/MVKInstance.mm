@@ -305,6 +305,9 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 		_appInfo.apiVersion = cfgAPIVer;
 	}
 
+	// Ensure the API version includes the Vulkan header patch number
+	_appInfo.apiVersion = MVK_VULKAN_API_VERSION_HEADER(_appInfo.apiVersion);
+
 	initProcAddrs();				// Init function pointers. After extensions enabled.
 	logVersions();					// Log the MoltenVK and Vulkan versions. After config.
 

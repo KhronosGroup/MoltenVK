@@ -13,11 +13,12 @@ Copyright (c) 2015-2025 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
-MoltenVK 1.3.1
+MoltenVK 1.4.0
 ---------------
 
 Released TBD
 
+- Add support for _Vulkan 1.4_.
 - Add support for extensions:
 	- `VK_KHR_dynamic_rendering_local_read`
 	- `VK_KHR_global_priority`

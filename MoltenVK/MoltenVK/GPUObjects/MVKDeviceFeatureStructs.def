@@ -54,6 +54,7 @@ MVK_DEVICE_FEATURE(Maintenance5,                          MAINTENANCE_5,        
 MVK_DEVICE_FEATURE(Maintenance6,                          MAINTENANCE_6,                               1)
 MVK_DEVICE_FEATURE(Multiview,                             MULTIVIEW,                                   3)
 MVK_DEVICE_FEATURE(PipelineCreationCacheControl,          PIPELINE_CREATION_CACHE_CONTROL,             1)
+MVK_DEVICE_FEATURE(PipelineProtectedAccess,               PIPELINE_PROTECTED_ACCESS,                   1)
 MVK_DEVICE_FEATURE(PipelineRobustness,                    PIPELINE_ROBUSTNESS,                         1)
 MVK_DEVICE_FEATURE(PrivateData,                           PRIVATE_DATA,                                1)
 MVK_DEVICE_FEATURE(ProtectedMemory,                       PROTECTED_MEMORY,                            1)
