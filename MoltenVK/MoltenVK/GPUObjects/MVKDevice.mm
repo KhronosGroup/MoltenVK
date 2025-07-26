@@ -2820,19 +2820,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
                 _metalFeatures.minSubgroupSize = 8;
                 break;
             case kAMDVendorId:
-                switch (_properties.deviceID) {
-                    case kAMDRadeonRX5700DeviceId:
-                    case kAMDRadeonRX5500DeviceId:
-                    case kAMDRadeonPROW6800XDeviceId:
-                    case kAMDRadeonRX6800DeviceId:
-                    case kAMDRadeonRX6700DeviceId:
-                    case kAMDRadeonRX6600DeviceId:
-                        _metalFeatures.minSubgroupSize = 32;
-                        break;
-                    default:
-                        _metalFeatures.minSubgroupSize = _metalFeatures.maxSubgroupSize;
-                        break;
-                }
+                _metalFeatures.minSubgroupSize = isAMDRDNAGPU() ? 32 : _metalFeatures.maxSubgroupSize;
                 break;
             case kAppleVendorId:
                 // XXX Minimum thread execution width for Apple GPUs is unknown, but assumed to be 4. May be greater.
@@ -3574,6 +3562,48 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 	}
 }
 
+// Sourced from https://admin.pci-ids.ucw.cz/read/PC/1002
+bool MVKPhysicalDevice::isAMDRDNAGPU() {
+	assert(_properties.vendorID == kAMDVendorId);
+	switch (_properties.deviceID) {
+		// RDNA 1
+		case 0x7310:	// Radeon PRO W5700X
+		case 0x7312:	// Radeon PRO W5700
+		case 0x7319:	// Radeon PRO 5700 XT
+		case 0x731b:	// Radeon PRO 5700
+		case kAMDRadeonRX5700DeviceId:
+		case kAMDRadeonRX5500DeviceId:
+		case 0x7341:	// Radeon PRO W5500
+		case 0x7347:	// Radeon PRO W5500M
+		case 0x734f:	// Radeon PRO W5300M
+		case 0x7360:	// Radeon PRO 5600M
+		case 0x7362:	// Radeon PRO V520/V540
+
+		// RDNA 2
+		case 0x73a1:	// Radeon PRO V620
+		case 0x73a2:	// Radeon PRO W6900X
+		case 0x73a3:	// Radeon PRO W6800
+		case 0x73a5:	// Radeon RX 6950 XT
+		case kAMDRadeonPROW6800XDeviceId:
+		case 0x73ae:	// Radeon PRO V620 Mx
+		case 0x73af:	// Radeon RX 6900 XT
+		case kAMDRadeonRX6800DeviceId:
+		case kAMDRadeonRX6700DeviceId:
+		case 0x73e1:	// Radeon PRO W6600M
+		case 0x73e3:	// Radeon PRO W6600
+		case 0x73ef:	// Radeon RX 6650 XT
+		case kAMDRadeonRX6600DeviceId:
+		case 0x7421:	// Radeon PRO W6500M
+		case 0x7422:	// Radeon PRO W6400
+		case 0x7423:	// Radeon PRO W6300(M)
+		case 0x7424:	// Radeon RX 6300
+		case 0x743f:	// Radeon RX 6400/6500
+			return true;
+		default:
+			return false;
+	}
+}
+
 #endif	//MVK_MACOS
 
 #if !MVK_MACOS
@@ -3971,18 +4001,29 @@ void MVKPhysicalDevice::initVkSemaphoreStyle() {
 // https://en.wikipedia.org/wiki/List_of_Intel_graphics_processing_units#Gen11
 bool MVKPhysicalDevice::needsCounterSetRetained() {
 
-	if (_properties.vendorID != kIntelVendorId) { return false; }
-
-	switch (_properties.deviceID) {
-		case 0x8a51:
-		case 0x8a52:
-		case 0x8a53:
-		case 0x8a5a:
-		case 0x8a5c:
-			return true;
+#if MVK_MACOS
+	switch (_properties.vendorID) {
+		case kIntelVendorId:
+			switch (_properties.deviceID) {
+				case 0x8a51:
+				case 0x8a52:
+				case 0x8a53:
+				case 0x8a5a:
+				case 0x8a5c:
+					return true;
+				default:
+					return false;
+			}
+		case kAMDVendorId:
+			// The GFX10 (RDNA) Metal driver has the same problem in 10.15, but
+			// it was fixed in macOS 11.
+			return !mvkOSVersionIsAtLeast(11.0) && isAMDRDNAGPU();
 		default:
 			return false;
 	}
+#else
+	return false;
+#endif
 }
 
 void MVKPhysicalDevice::logGPUInfo() {
