@@ -144,7 +144,12 @@ MVK_CMD_TYPE_POOL(DebugMarkerEnd)
 MVK_CMD_TYPE_POOL(DebugMarkerInsert)
 MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(WaitEvents, 1)
 MVK_CMD_TYPE_POOL(SetEvent)
-MVK_CMD_TYPE_POOL_LAST(ResetEvent)
+MVK_CMD_TYPE_POOL(ResetEvent)
+MVK_CMD_TYPE_POOL(BuildAccelerationStructure)
+MVK_CMD_TYPE_POOL(CopyAccelerationStructure)
+MVK_CMD_TYPE_POOL(CopyAccelerationStructureToMemory)
+MVK_CMD_TYPE_POOL(CopyMemoryToAccelerationStructure)
+MVK_CMD_TYPE_POOL_LAST(WriteAccelerationStructuresProperties)
 
 #undef MVK_CMD_TYPE_POOL
 #undef MVK_CMD_TYPE_POOL_LAST

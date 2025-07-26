@@ -554,5 +554,33 @@ kernel void convertUint8Indices(device uint8_t* src [[ buffer(0) ]],            
     dst[pos] = idx == 0xFF ? 0xFFFF : idx;                                                                      \n\
 }                                                                                                               \n\
                                                                                                                 \n\
+typedef struct {                                                                                                \n\
+    float3x4 transform; // Row major                                                                            \n\
+    uint32_t packedData1;                                                                                       \n\
+    uint32_t packedData2;                                                                                       \n\
+    uint32_t addressBitsLow;                                                                                    \n\
+    uint32_t addressBitsHigh;                                                                                   \n\
+} __attribute__((packed)) VkAccStructInstance;                                                                  \n\
+                                                                                                                \n\
+kernel void cmdBuildAccelerationStructureConvertBuffers(const device char* srcBuff [[buffer(0)]],               \n\
+                                                        device MTLAccelerationStructureUserIDInstanceDescriptor* destBuff [[buffer(1)]],\n\
+                                                        constant uint32_t& srcStride [[buffer(2)]],             \n\
+                                                        constant uint32_t& instanceCount [[buffer(3)]],         \n\
+                                                        uint idx [[thread_position_in_grid]]) {                 \n\
+    if (idx >= instanceCount) { return; }                                                                       \n\
+    const device auto& src = *reinterpret_cast<const device VkAccStructInstance*>(srcBuff + idx * srcStride);   \n\
+	device auto& dst = destBuff[idx];                                                                           \n\
+    dst.mask = src.packedData1 >> 24;                                                                           \n\
+    dst.userID = src.packedData1 & ((1 << 24) - 1);                                                             \n\
+    dst.options = (MTLAccelerationStructureInstanceOptions)((src.packedData2 >> 24) & 0b1111);                  \n\
+    dst.intersectionFunctionTableOffset = src.packedData2 & ((1 << 24) - 1);                                    \n\
+    dst.accelerationStructureIndex = src.addressBitsLow;                                                        \n\
+                                                                                                                \n\
+    // Transpose the row-major matrix to column-major                                                           \n\
+    dst.transformationMatrix[0] = float3(src.transform[0][0], src.transform[1][0], src.transform[2][0]);        \n\
+    dst.transformationMatrix[1] = float3(src.transform[0][1], src.transform[1][1], src.transform[2][1]);        \n\
+    dst.transformationMatrix[2] = float3(src.transform[0][2], src.transform[1][2], src.transform[2][2]);        \n\
+    dst.transformationMatrix[3] = float3(src.transform[0][3], src.transform[1][3], src.transform[2][3]);        \n\
+}                                                                                                               \n\
 ";
 
