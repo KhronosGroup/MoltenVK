@@ -423,9 +423,10 @@ void MVKRenderSubpass::resolveUnresolvableAttachments(MVKCommandEncoder* cmdEnco
 				const bool isTextureArray = raImgView->getImage()->getLayerCount() != 1u;
 				id<MTLComputePipelineState> mtlRslvState = cmdEncoder->getCommandEncodingPool()->getCmdResolveColorImageMTLComputePipelineState(mvkFmtType, isTextureArray);
 				id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseResolveImage);
-				[mtlComputeEnc setComputePipelineState: mtlRslvState];
-				[mtlComputeEnc setTexture: raImgView->getMTLTexture() atIndex: 0];
-				[mtlComputeEnc setTexture: caImgView->getMTLTexture() atIndex: 1];
+				MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
+				state.bindPipeline(mtlComputeEnc, mtlRslvState);
+				state.bindTexture(mtlComputeEnc, raImgView->getMTLTexture(), 0);
+				state.bindTexture(mtlComputeEnc, caImgView->getMTLTexture(), 1);
 				MTLSize gridSize = mvkMTLSizeFromVkExtent3D(raImgView->getExtent3D());
 				MTLSize tgSize = MTLSizeMake(mtlRslvState.threadExecutionWidth, 1, 1);
 				if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
@@ -525,16 +526,25 @@ void MVKRenderSubpass::updateColorAttachmentLocations(const MVKArrayRef<uint32_t
 	}
 }
 
+static size_t getAttachmentCount(const MVKArrayRef<uint32_t> colorAttIdxs,
+                                 const uint32_t* pDepthInputAttachmentIndex,
+                                 const uint32_t* pStencilInputAttachmentIndex)
+{
+	size_t cnt = colorAttIdxs.size();
+	if (pDepthInputAttachmentIndex)   { ++cnt; }
+	if (pStencilInputAttachmentIndex) { ++cnt; }
+	return cnt;
+}
+
 bool MVKRenderSubpass::isChangingAttachmentInputIndices(const MVKArrayRef<uint32_t> colorAttIdxs,
 														const uint32_t* pDepthInputAttachmentIndex,
 														const uint32_t* pStencilInputAttachmentIndex) {
 
-	MVKSmallVector<VkAttachmentReference2, kMVKDefaultAttachmentCount> inputAtts;
-	inputAtts.assign(_inputAttachments.begin(), _inputAttachments.end());
+	size_t attCnt = getAttachmentCount(colorAttIdxs, pDepthInputAttachmentIndex, pStencilInputAttachmentIndex);
+	if (attCnt != _inputAttachments.size()) { return true; }
+	MVKSmallVector<VkAttachmentReference2, kMVKDefaultAttachmentCount> inputAtts(_inputAttachments);
 	updateAttachmentInputIndices(colorAttIdxs, pDepthInputAttachmentIndex, pStencilInputAttachmentIndex, inputAtts.contents());
 
-	auto attCnt = inputAtts.size();
-	if (attCnt != _inputAttachments.size()) { return true; }
 	for (uint32_t attIdx = 0; attIdx < attCnt; attIdx++) {
 		if (inputAtts[attIdx].attachment != _inputAttachments[attIdx].attachment) { return true; }
 	}
@@ -546,8 +556,7 @@ bool MVKRenderSubpass::isChangingAttachmentInputIndices(const MVKArrayRef<uint32
 void MVKRenderSubpass::updateAttachmentInputIndices(const MVKArrayRef<uint32_t> colorAttIdxs,
 													const uint32_t* pDepthInputAttachmentIndex,
 													const uint32_t* pStencilInputAttachmentIndex) {
-	auto inpAttCnt = colorAttIdxs.size() + (pDepthInputAttachmentIndex ? 1 : 0) + (pStencilInputAttachmentIndex ? 1 : 0);
-	_inputAttachments.resize(inpAttCnt);
+	_inputAttachments.resize(getAttachmentCount(colorAttIdxs, pDepthInputAttachmentIndex, pStencilInputAttachmentIndex));
 	updateAttachmentInputIndices(colorAttIdxs, pDepthInputAttachmentIndex, pStencilInputAttachmentIndex, _inputAttachments.contents());
 }
 
