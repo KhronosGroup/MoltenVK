@@ -146,23 +146,30 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
         
         uint8_t srcPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(vkIC.srcSubresource.aspectMask);
         uint8_t dstPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(vkIC.dstSubresource.aspectMask);
-        
+
+        uint32_t layerCount = vkIC.srcSubresource.layerCount == VK_REMAINING_ARRAY_LAYERS ?
+            _srcImage->getLayerCount() - vkIC.srcSubresource.baseArrayLayer :
+            vkIC.srcSubresource.layerCount;
+
         MTLPixelFormat srcMTLPixFmt = _srcImage->getMTLPixelFormat(srcPlaneIndex);
         bool isSrcCompressed = _srcImage->getIsCompressed();
+        bool isSrcColor = (vkIC.srcSubresource.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) != 0;
         bool isSrcCombinedDepthStencilAspect = getDepthStencilAspectFormat(srcMTLPixFmt, vkIC.srcSubresource.aspectMask) != srcMTLPixFmt;
         bool canReinterpretSrc = _srcImage->hasPixelFormatView(srcPlaneIndex);
 
         MTLPixelFormat dstMTLPixFmt = _dstImage->getMTLPixelFormat(dstPlaneIndex);
         bool isDstCompressed = _dstImage->getIsCompressed();
+        bool isDstColor = (vkIC.dstSubresource.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) != 0;
         bool isDstCombinedDepthStencilAspect = getDepthStencilAspectFormat(dstMTLPixFmt, vkIC.dstSubresource.aspectMask) != dstMTLPixFmt;
         bool canReinterpretDst = _dstImage->hasPixelFormatView(dstPlaneIndex);
 
         bool isEitherCompressed = isSrcCompressed || isDstCompressed;
-        bool isOneCombinedDepthStencilAspect = isSrcCombinedDepthStencilAspect != isDstCombinedDepthStencilAspect;
+        bool isOnlyOneColor = isSrcColor != isDstColor;
+        bool isOnlyOneCombinedDepthStencilAspect = isSrcCombinedDepthStencilAspect != isDstCombinedDepthStencilAspect;
         bool canReinterpret = canReinterpretSrc || canReinterpretDst;
 
         // If source and destination can't be reinterpreted to matching formats use a temporary intermediary buffer
-        bool useTempBuffer = (srcMTLPixFmt != dstMTLPixFmt) && (isEitherCompressed || isOneCombinedDepthStencilAspect || !canReinterpret);
+        bool useTempBuffer = (srcMTLPixFmt != dstMTLPixFmt) && (isEitherCompressed || isOnlyOneColor || isOnlyOneCombinedDepthStencilAspect || !canReinterpret);
 
         if (useTempBuffer) {
             // Add copy from source image to temp buffer.
@@ -201,7 +208,7 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
 
             size_t bytesPerRow = pixFmts->getBytesPerRow(srcMTLPixFmt, vkIC.extent.width);
             size_t bytesPerRegion = pixFmts->getBytesPerLayer(srcMTLPixFmt, bytesPerRow, vkIC.extent.height);
-            tmpBuffSize += bytesPerRegion * vkIC.extent.depth;
+            tmpBuffSize += bytesPerRegion * vkIC.extent.depth * layerCount;
         } else {
             // Map the source pixel format to the dest pixel format through a texture view on the reinterpretable texture.
             // If the source and dest pixel formats are the same, this will simply degenerate to the texture itself.
@@ -215,9 +222,6 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             // If copies can be performed using direct texture-texture copying, do so
             uint32_t srcLevel = vkIC.srcSubresource.mipLevel;
             uint32_t srcBaseLayer = vkIC.srcSubresource.baseArrayLayer;
-            uint32_t srcLayerCount = vkIC.srcSubresource.layerCount == VK_REMAINING_ARRAY_LAYERS ?
-                _srcImage->getLayerCount() - srcBaseLayer :
-                vkIC.srcSubresource.layerCount;
             VkExtent3D srcExtent = _srcImage->getExtent3D(srcPlaneIndex, srcLevel);
             uint32_t dstLevel = vkIC.dstSubresource.mipLevel;
             uint32_t dstBaseLayer = vkIC.dstSubresource.baseArrayLayer;
@@ -233,7 +237,7 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                                   toTexture: dstMTLTex
                            destinationSlice: dstBaseLayer
                            destinationLevel: dstLevel
-                                 sliceCount: srcLayerCount
+                                 sliceCount: layerCount
                                  levelCount: 1];
             } else {
                 MTLOrigin srcOrigin = mvkMTLOriginFromVkOffset3D(vkIC.srcOffset);
@@ -248,7 +252,7 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                                               mvkMTLSizeFromVkExtent3D(srcExtent));
                     srcSize.depth = 1;
                 } else {
-                    layCnt = srcLayerCount;
+                    layCnt = layerCount;
                     srcSize = mvkClampMTLSize(mvkMTLSizeFromVkExtent3D(vkIC.extent),
                                               srcOrigin,
                                               mvkMTLSizeFromVkExtent3D(srcExtent));
