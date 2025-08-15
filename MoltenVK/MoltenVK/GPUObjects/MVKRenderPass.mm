@@ -785,7 +785,7 @@ bool MVKAttachmentDescription::populateMTLRenderPassAttachmentDescriptor(MTLRend
 
 	bool isMemorylessAttachment = false;
 #if MVK_APPLE_SILICON
-	isMemorylessAttachment = attachment->getMTLTexture().storageMode == MTLStorageModeMemoryless;
+	isMemorylessAttachment = attachment->getImage()->getMTLStorageMode() == MTLStorageModeMemoryless;
 #endif
 	bool isResuming = mvkIsAnyFlagEnabled(_renderPass->getRenderingFlags(), VK_RENDERING_RESUMING_BIT);
 
@@ -853,7 +853,7 @@ void MVKAttachmentDescription::encodeStoreAction(MVKCommandEncoder* cmdEncoder,
 
 	bool isMemorylessAttachment = false;
 #if MVK_APPLE_SILICON
-	isMemorylessAttachment = attachment->getMTLTexture().storageMode == MTLStorageModeMemoryless;
+	isMemorylessAttachment = attachment->getImage()->getMTLStorageMode() == MTLStorageModeMemoryless;
 #endif
 	MTLStoreAction storeAction = getMTLStoreAction(subpass, isRenderingEntireAttachment, isMemorylessAttachment,
 												   hasResolveAttachment, canResolveFormat, isStencil, storeOverride);

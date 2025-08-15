@@ -88,7 +88,9 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
         }
 
         [mtlTexDesc release];                                            // temp release
-		_image->getDevice()->makeResident(_mtlTexture);
+        if (_mtlTexture.storageMode != MTLStorageModeMemoryless) {
+            _image->getDevice()->makeResident(_mtlTexture);
+        }
         propagateDebugName();
     }
     return _mtlTexture;
