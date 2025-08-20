@@ -41,6 +41,7 @@
 #include "MVKSurface.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
+#include "MVKAccelerationStructure.h" // I'll reposition this if needed
 
 #include <pthread.h>
 
@@ -3156,6 +3157,127 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetRenderingInputAttachmentIndices(
 	MVKTraceVulkanCallStart();
 	MVKAddCmd(SetRenderingInputAttachmentIndices, commandBuffer, pInputAttachmentIndexInfo);
 	MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
+#pragma mark VK_KHR_acceleration_structure extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateAccelerationStructureKHR(
+    VkDevice                                    device,
+    const VkAccelerationStructureCreateInfoKHR* pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkAccelerationStructureKHR*                 pAccelerationStructure) {
+    
+    MVKTraceVulkanCallStart();
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    MVKAccelerationStructure* mvkAccelerationStructure = mvkDev->createAccelerationStructure(pCreateInfo, pAllocator);
+    *pAccelerationStructure = (VkAccelerationStructureKHR)mvkAccelerationStructure;
+    VkResult rslt = VK_SUCCESS;
+    MVKTraceVulkanCallEnd();
+    
+    return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyAccelerationStructureKHR(
+    VkDevice                                    device,
+    VkAccelerationStructureKHR                  accelerationStructure,
+    const VkAllocationCallbacks*                pAllocator) {
+    
+    MVKTraceVulkanCallStart();
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    MVKAccelerationStructure* mvkAccelerationStructure = (MVKAccelerationStructure*)accelerationStructure;
+    mvkDev->destroyAccelerationStructure(mvkAccelerationStructure, pAllocator);
+    MVKTraceVulkanCallEnd();
+}
+
+
+MVK_PUBLIC_VULKAN_SYMBOL VkDeviceAddress vkGetAccelerationStructureDeviceAddressKHR(
+    VkDevice                                            device,
+    const VkAccelerationStructureDeviceAddressInfoKHR*  pInfo) {
+    
+    MVKTraceVulkanCallStart();
+    MVKAccelerationStructure* mvkAccelerationStructure = (MVKAccelerationStructure*)pInfo->accelerationStructure;
+    uint64_t result = mvkAccelerationStructure->getDeviceAddress();
+    MVKTraceVulkanCallEnd();
+    
+    return (VkDeviceAddress)result;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetAccelerationStructureBuildSizesKHR(
+    VkDevice                                              device,
+    VkAccelerationStructureBuildTypeKHR                   buildType,
+    const VkAccelerationStructureBuildGeometryInfoKHR*    pBuildInfo,
+    const uint32_t*                                       pMaxPrimitiveCounts,
+    VkAccelerationStructureBuildSizesInfoKHR*             pSizeInfo) {
+    
+    MVKTraceVulkanCallStart();
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    MVKAccelerationStructure empty(mvkDev);
+    *pSizeInfo = empty.getBuildSizes(buildType, pBuildInfo, pMaxPrimitiveCounts);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetDeviceAccelerationStructureCompatibilityKHR(
+    VkDevice                                        device,
+    const VkAccelerationStructureVersionInfoKHR*    pVersionInfo,
+    VkAccelerationStructureCompatibilityKHR*        pCompatibility) {
+    
+    MVKTraceVulkanCallStart();
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    *pCompatibility = mvkDev->getAccelerationStructureCompatibility(pVersionInfo);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBuildAccelerationStructuresKHR(
+    VkCommandBuffer                                         commandBuffer,
+    uint32_t                                                infoCount,
+    const VkAccelerationStructureBuildGeometryInfoKHR*      pInfos,
+    const VkAccelerationStructureBuildRangeInfoKHR* const*  ppBuildRangeInfos) {
+    
+    MVKTraceVulkanCallStart();
+    MVKAddCmd(BuildAccelerationStructure, commandBuffer, infoCount, pInfos, ppBuildRangeInfos);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyAccelerationStructureKHR(
+    VkCommandBuffer                             commandBuffer,
+    const VkCopyAccelerationStructureInfoKHR*   pInfo) {
+    
+    MVKTraceVulkanCallStart();
+    MVKAddCmd(CopyAccelerationStructure, commandBuffer, pInfo->src, pInfo->dst, pInfo->mode);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyAccelerationStructureToMemoryKHR(
+    VkCommandBuffer                                     commandBuffer,
+    const VkCopyAccelerationStructureToMemoryInfoKHR*   pInfo) {
+    
+    MVKTraceVulkanCallStart();
+    MVKAddCmd(CopyAccelerationStructureToMemory, commandBuffer, pInfo->src, pInfo->dst.deviceAddress, pInfo->mode);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyMemoryToAccelerationStructureKHR(
+    VkCommandBuffer                                     commandBuffer,
+    const VkCopyMemoryToAccelerationStructureInfoKHR* pInfo) {
+    
+    MVKTraceVulkanCallStart();
+    MVKAddCmd(CopyMemoryToAccelerationStructure, commandBuffer, pInfo->src.deviceAddress, pInfo->dst, pInfo->mode);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdWriteAccelerationStructuresPropertiesKHR(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    accelerationStructureCount,
+    const VkAccelerationStructureKHR*           pAccelerationStructures,
+    VkQueryType                                 queryType,
+    VkQueryPool                                 queryPool,
+    uint32_t                                    firstQuery) {
+    
+    MVKTraceVulkanCallStart();
+    MVKAddCmd(WriteAccelerationStructuresProperties, commandBuffer, accelerationStructureCount, pAccelerationStructures, queryType, queryPool, firstQuery);
+    MVKTraceVulkanCallEnd();
 }
 
 
