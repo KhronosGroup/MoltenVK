@@ -16,7 +16,7 @@ Copyright (c) 2015-2025 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.4.0
 ---------------
 
-Released 2025-07-29
+Released 2025-08-20
 
 - Add support for _Vulkan 1.4_.
 - Add support for extensions:
@@ -43,6 +43,8 @@ Released 2025-07-29
 - Fix high latency on present wait.
 - Fix shader cache misses within pipeline cache.
 - Fix misalignment between pipeline pixel formats and dynamic rendering attachments.
+- Fix attempting to add memoryless images to residency sets.
+- Fix color-depth image copies and image copies using buffer with multiple layers.
 - Enable `shaderRoundingModeRTEFloat16/32`.
 - Move `vkGetPhysicalDeviceMetalFeaturesMVK()` from `mvk_private_api.h` to `mvk_deprecated_api.h`.
 - Re-expose proc addr for deprecated `VK_MVK_moltenvk` extension functions.
@@ -56,11 +58,18 @@ Released 2025-07-29
   - MSL: Implement clustered subgroup operations for sizes other than 4.
   - MSL: Fix generation of the `WorkgroupSize` built-in.
   - MSL: Implement accurate `OpSMod`.
+  - MSL: Always emit gl_Layer for multiview.
   - MSL: Don't emit const for BDA pointers.
   - MSL: Fix loading BDA from `std140` UBO.
+  - MSL: Fix issues with `fp16` trancendentals.
+  - MSL: Fix edge case where a reference is taken of packed vector element.
+  - MSL: Fix crash when using force-native-arrays in some cases.
+  - MSL: Don't use fast::normalize for half at all.
   - MSL: Implement `atomic_thread_fence` for MSL 3.2+.
   - MSL: Always emit access qualifier when emitting coherency.
   - MSL: Support SPIR-V Fast Math execution modes and decorations.
+  - MSL: Deal with spec constant arrays which depend on composite extract.
+  - MSL: Attempt to deal with float controls and trancendentals.
   - MSL: Rethink `add_pragma_line()` and `add_typedef_line()`.
   - GLSL/MSL: Add support for `SPV_KHR_quad_control`.
 
