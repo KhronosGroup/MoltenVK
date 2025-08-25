@@ -24,6 +24,7 @@
 #include "MVKFoundation.h"
 #include <cstdlib>
 #include <stdlib.h>
+#include <os/lock.h>
 
 using namespace std;
 
@@ -148,9 +149,19 @@ VkResult MVKDeviceMemory::addBuffer(MVKBuffer* mvkBuff) {
 	return VK_SUCCESS;
 }
 
-void MVKDeviceMemory::removeBuffer(MVKBuffer* mvkBuff) {
-	lock_guard<mutex> lock(_rezLock);
-	mvkRemoveAllOccurances(_buffers, mvkBuff);
+// It's valid to destroy a device memory and a buffer/image at the same time without synchronization.
+// The device memory destructor wants to reach into the buffer/image, while the buffer/image destructor wants to reach into the device memory.
+// So use this global lock that won't be destructed with either of them to avoid problems.
+static os_unfair_lock s_device_memory_destruction_lock = OS_UNFAIR_LOCK_INIT;
+
+void MVKDeviceMemory::removeBuffer(MVKDeviceMemory** pMem, MVKBuffer* mvkBuff) {
+	os_unfair_lock_lock(&s_device_memory_destruction_lock);
+	if (MVKDeviceMemory* mem = *pMem) {
+		*pMem = nullptr;
+		std::lock_guard<std::mutex> lock(mem->_rezLock);
+		mvkRemoveAllOccurances(mem->_buffers, mvkBuff);
+	}
+	os_unfair_lock_unlock(&s_device_memory_destruction_lock);
 }
 
 VkResult MVKDeviceMemory::addImageMemoryBinding(MVKImageMemoryBinding* mvkImg) {
@@ -168,9 +179,14 @@ VkResult MVKDeviceMemory::addImageMemoryBinding(MVKImageMemoryBinding* mvkImg) {
 	return VK_SUCCESS;
 }
 
-void MVKDeviceMemory::removeImageMemoryBinding(MVKImageMemoryBinding* mvkImg) {
-	lock_guard<mutex> lock(_rezLock);
-	mvkRemoveAllOccurances(_imageMemoryBindings, mvkImg);
+void MVKDeviceMemory::removeImageMemoryBinding(MVKDeviceMemory** pMem, MVKImageMemoryBinding* mvkImg) {
+	os_unfair_lock_lock(&s_device_memory_destruction_lock);
+	if (MVKDeviceMemory* mem = *pMem) {
+		*pMem = nullptr;
+		std::lock_guard<std::mutex> lock(mem->_rezLock);
+		mvkRemoveAllOccurances(mem->_imageMemoryBindings, mvkImg);
+	}
+	os_unfair_lock_unlock(&s_device_memory_destruction_lock);
 }
 
 // Ensures that this instance is backed by a MTLHeap object,
@@ -227,28 +243,32 @@ bool MVKDeviceMemory::ensureMTLBuffer() {
 
 	if (memLen > getMetalFeatures().maxMTLBufferSize) { return false; }
 
+	id<MTLBuffer> buf;
 	// If host memory was already allocated, it is copied into the new MTLBuffer, and then released.
 	if (_mtlHeap) {
-		_mtlBuffer = [_mtlHeap newBufferWithLength: memLen options: getMTLResourceOptions() offset: 0];	// retained
+		buf = [_mtlHeap newBufferWithLength: memLen options: getMTLResourceOptions() offset: 0];	// retained
 		if (_pHostMemory) {
-			memcpy(_mtlBuffer.contents, _pHostMemory, memLen);
+			memcpy(buf.contents, _pHostMemory, memLen);
 			freeHostMemory();
 		}
-		[_mtlBuffer makeAliasable];
+		[buf makeAliasable];
 	} else if (_pHostMemory) {
 		auto rezOpts = getMTLResourceOptions();
 		if (_isHostMemImported) {
-			_mtlBuffer = [getMTLDevice() newBufferWithBytesNoCopy: _pHostMemory length: memLen options: rezOpts deallocator: nil];	// retained
+			buf = [getMTLDevice() newBufferWithBytesNoCopy: _pHostMemory length: memLen options: rezOpts deallocator: nil];	// retained
 		} else {
-			_mtlBuffer = [getMTLDevice() newBufferWithBytes: _pHostMemory length: memLen options: rezOpts];     // retained
+			buf = [getMTLDevice() newBufferWithBytes: _pHostMemory length: memLen options: rezOpts];     // retained
 		}
 		freeHostMemory();
 	} else {
-		_mtlBuffer = [getMTLDevice() newBufferWithLength: memLen options: getMTLResourceOptions()];     // retained
+		buf = [getMTLDevice() newBufferWithLength: memLen options: getMTLResourceOptions()];     // retained
 	}
-	if (!_mtlBuffer) { return false; }
-	_pMemory = isMemoryHostAccessible() ? _mtlBuffer.contents : nullptr;
-	getDevice()->makeResident(_mtlBuffer);
+	if (!buf) { return false; }
+	_device->makeResident(buf);
+	_device->getLiveResources().add(buf);
+	_pMemory = isMemoryHostAccessible() ? buf.contents : nullptr;
+	_mtlBuffer = buf;
+
 	propagateDebugName();
 
 	return true;
@@ -330,7 +350,10 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 				// Setting Metal objects directly will override Vulkan settings.
 				// It is responsibility of app to ensure these are consistent. Not doing so results in undefined behavior.
 				const auto* pMTLBuffInfo = (VkImportMetalBufferInfoEXT*)next;
+				if (_mtlBuffer)
+					_device->getLiveResources().remove(_mtlBuffer);
 				[_mtlBuffer release];							// guard against dups
+				_device->getLiveResources().add(pMTLBuffInfo->mtlBuffer);
 				_mtlBuffer = [pMTLBuffInfo->mtlBuffer retain];	// retained
 				_mtlStorageMode = _mtlBuffer.storageMode;
 				_mtlCPUCacheMode = _mtlBuffer.cpuCacheMode;
@@ -358,7 +381,10 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 					_allocationSize = _mtlHeap.size;
 				}
 				else if (pImportInfo->handleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT) {
+					if (_mtlBuffer)
+						_device->getLiveResources().remove(_mtlBuffer);
 					[_mtlBuffer release];							// guard against dups
+					_device->getLiveResources().add(((id<MTLBuffer>)pImportInfo->handle));
 					_mtlBuffer = [((id<MTLBuffer>)pImportInfo->handle) retain];	// retained
 					_mtlStorageMode = _mtlBuffer.storageMode;
 					_mtlCPUCacheMode = _mtlBuffer.cpuCacheMode;
@@ -463,20 +489,22 @@ void MVKDeviceMemory::initExternalMemory(MVKImage* dedicatedImage) {
 }
 
 MVKDeviceMemory::~MVKDeviceMemory() {
-    // Unbind any resources that are using me. Iterate a copy of the collection,
-    // to allow the resource to callback to remove itself from the collection.
-    auto buffCopies = _buffers;
-    for (auto& buf : buffCopies) { buf->bindDeviceMemory(nullptr, 0); }
-	auto imgCopies = _imageMemoryBindings;
-	for (auto& img : imgCopies) { img->bindDeviceMemory(nullptr, 0); }
+	// Unbind any resources that are using me.
+	// Manually null the binding parameter to prevent them from trying to remove themselves from the array.
+	// This will leave texture buffer pointers dangling, but according to Vulkan, those are not supposed to be used again anyways.
+	os_unfair_lock_lock(&s_device_memory_destruction_lock);
+	for (auto& buf : _buffers)             { buf->_deviceMemory = nullptr; }
+	for (auto& img : _imageMemoryBindings) { img->_deviceMemory = nullptr; }
+	os_unfair_lock_unlock(&s_device_memory_destruction_lock);
 
 	if (_externalMemoryHandleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT) {
 		[_mtlTexture release];
 		_mtlTexture = nil;
-	} else {
-		if (_mtlBuffer) getDevice()->removeResidency(_mtlBuffer);
-		[_mtlBuffer release];
+	} else if (id<MTLBuffer> buf = _mtlBuffer) {
 		_mtlBuffer = nil;
+		_device->removeResidency(buf);
+		_device->getLiveResources().remove(buf);
+		[buf release];
 	}
 
 	[_mtlHeap release];
