@@ -523,36 +523,43 @@ public:
 class MVKOcclusionQueryCommandEncoderState {
 
 public:
-	void beginMetalRenderPass(MVKCommandEncoder* cmdEncoder);
 	void endMetalRenderPass(MVKCommandEncoder* cmdEncoder);
 
-    /** Begins an occlusion query. */
-    void beginOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags);
+	/** Begins an occlusion query. */
+	void beginOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags);
 
-    /** Ends an occlusion query. */
-    void endOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query);
+	/** Ends an occlusion query. */
+	void endOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query);
 
 	void encode(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder* mvkEncoder);
 
 	void prepareHelperDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder* mvkEncoder);
 
 private:
-	void beginOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query, MTLVisibilityResultMode mode);
+	/** Advance to the next index in the Metal visibility buffer */
+	void nextMetalQuery(MVKCommandEncoder* cmdEncoder);
 
 	typedef struct OcclusionQueryLocation {
 		MVKOcclusionQueryPool* queryPool = nullptr;
 		uint32_t query = 0;
-		NSUInteger visibilityBufferOffset = 0;
+		uint32_t visibilityBufferOffset = 0;
 
-		OcclusionQueryLocation(MVKOcclusionQueryPool* qPool, uint32_t qIdx, NSUInteger vbOfst)
+		OcclusionQueryLocation(MVKOcclusionQueryPool* qPool, uint32_t qIdx, uint32_t vbOfst)
 		: queryPool(qPool), query(qIdx), visibilityBufferOffset(vbOfst) {}
 
 	} OcclusionQueryLocation;
 
 	MVKSmallVector<OcclusionQueryLocation> _mtlRenderPassQueries;
-    MTLVisibilityResultMode _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
-	bool _hasRasterized = false;
-	bool _dirty = false;
+	/// The pool of the current active query
+	MVKOcclusionQueryPool* _currentPool = nullptr;
+	/// The index of the current active query
+	uint32_t _currentQueryIndex = 0;
+	/// The visibility result mode of the current active query
+	uint8_t _currentVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	/// The visibility result mode of the current Metal render pass
+	uint8_t _metalVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	/// If true, accumulation will be run at the end of the next render pass
+	bool _shouldAccumulate = false;
 };
 
 

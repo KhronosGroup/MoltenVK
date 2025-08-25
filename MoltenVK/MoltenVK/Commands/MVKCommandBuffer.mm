@@ -839,8 +839,6 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 	// separately from a Vulkan subpass, and we otherwise only need to clear render
 	// area if we're not rendering to the entire attachment.
     if ( !isRestart && !_isRenderingEntireAttachment ) { clearRenderArea(cmdUse); }
-
-	_occlusionQueryState.beginMetalRenderPass(this);
 }
 
 void MVKCommandEncoder::restartMetalRenderPassIfNeeded() {

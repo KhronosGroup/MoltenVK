@@ -1802,16 +1802,34 @@ void MVKCommandEncoderState::applyToActiveMTLState(VkPipelineBindPoint bindPoint
 #pragma mark -
 #pragma mark MVKOcclusionQueryCommandEncoderState
 
-void MVKOcclusionQueryCommandEncoderState::beginMetalRenderPass(MVKCommandEncoder* cmdEncoder) {
-	if (_mtlVisibilityResultMode != MTLVisibilityResultModeDisabled)
-		_dirty = true;
+/// Used to indicate that the current metal visibility result mode needs to be set regardless of what mode is wanted
+/// (When visibility queries are currently active but on the wrong index)
+static constexpr uint8_t VisibilityResultModeNeedsUpdate = 0xff;
+
+static bool isMetalVisibilityActive(uint8_t mode) {
+	// return false for both Disabled and NeedsUpdate
+	static_assert(static_cast<int8_t>(MTLVisibilityResultModeDisabled) <= 0);
+	static_assert(static_cast<int8_t>(VisibilityResultModeNeedsUpdate) <= 0);
+	static_assert(static_cast<int8_t>(MTLVisibilityResultModeBoolean)  > 0);
+	static_assert(static_cast<int8_t>(MTLVisibilityResultModeCounting) > 0);
+	return static_cast<int8_t>(mode) > 0;
 }
 
 // Metal resets the query counter at a render pass boundary, so copy results to the query pool's accumulation buffer.
 // Don't copy occlusion info until after rasterization, as Metal renderpasses can be ended prematurely during tessellation.
 void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass(MVKCommandEncoder* cmdEncoder) {
+	nextMetalQuery(cmdEncoder);
+	_metalVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	if (!_shouldAccumulate || _mtlRenderPassQueries.empty()) { return; }
+
+	_shouldAccumulate = false;
+	cmdEncoder->_pEncodingContext->firstMtlVisibilityResultOffsetInRenderPass = cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset;
 	const MVKMTLBufferAllocation* vizBuff = cmdEncoder->_pEncodingContext->visibilityResultBuffer;
-	if ( !_hasRasterized || !vizBuff || _mtlRenderPassQueries.empty() ) { return; }  // Nothing to do.
+	if (!vizBuff) {
+		assert(0 && "Has visibility results but no buffer to write them to");
+		_mtlRenderPassQueries.clear();
+		return;
+	}
 
 	id<MTLComputePipelineState> mtlAccumState = cmdEncoder->getCommandEncodingPool()->getAccumulateOcclusionQueryResultsMTLComputePipelineState();
 	id<MTLComputeCommandEncoder> mtlAccumEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseAccumOcclusionQuery);
@@ -1825,8 +1843,6 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass(MVKCommandEncoder*
 		                threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
 	}
 	_mtlRenderPassQueries.clear();
-	_hasRasterized = false;
-	_dirty = false;
 }
 
 // The Metal visibility buffer has a finite size, and on some Metal platforms (looking at you M1),
@@ -1835,52 +1851,65 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass(MVKCommandEncoder*
 // report an error and disable further visibility tracking for the remainder of the MTLCommandBuffer.
 // In most cases, a MTLCommandBuffer corresponds to a Vulkan command submit (VkSubmitInfo),
 // and so the error text is framed in terms of the Vulkan submit.
-void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query, MTLVisibilityResultMode mode) {
-	if (cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset + kMVKQuerySlotSizeInBytes <= cmdEncoder->getMetalFeatures().maxQueryBufferSize) {
-		_mtlVisibilityResultMode = mode;
-		_mtlRenderPassQueries.emplace_back(pQueryPool, query, cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset);
-	} else {
-		cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCmdBeginQuery(): The maximum number of queries in a single Vulkan command submission is %llu.", cmdEncoder->getMetalFeatures().maxQueryBufferSize / kMVKQuerySlotSizeInBytes);
-		_mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
-		cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset -= kMVKQuerySlotSizeInBytes;
-	}
-	_hasRasterized = false;
-	_dirty = true;
-}
-
 void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags) {
-	bool shouldCount = cmdEncoder->getEnabledFeatures().occlusionQueryPrecise && mvkAreAllFlagsEnabled(flags, VK_QUERY_CONTROL_PRECISE_BIT);
-	beginOcclusionQuery(cmdEncoder, pQueryPool, query, shouldCount ? MTLVisibilityResultModeCounting : MTLVisibilityResultModeBoolean);
+	if (_currentPool) [[unlikely]] {
+		assert(0 && "Shouldn't have active query when beginning a new one!");
+		nextMetalQuery(cmdEncoder);
+	}
+	bool shouldCount = mvkAreAllFlagsEnabled(flags, VK_QUERY_CONTROL_PRECISE_BIT);
+	_currentVisibilityResultMode = shouldCount ? MTLVisibilityResultModeCounting : MTLVisibilityResultModeBoolean;
+	_currentPool = pQueryPool;
+	_currentQueryIndex = query;
 }
 
 void MVKOcclusionQueryCommandEncoderState::endOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query) {
-	_mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	if (_currentPool != pQueryPool || _currentQueryIndex != query) [[unlikely]] {
+		assert(0 && "Ended query that wasn't active!");
+		return;
+	}
+	_shouldAccumulate = true;
+	if (cmdEncoder->_mtlRenderEncoder) {
+		nextMetalQuery(cmdEncoder);
+		_metalVisibilityResultMode = VisibilityResultModeNeedsUpdate;
+	} else {
+		// Called outside of a render pass
+		// Run accumulation immediately
+		endMetalRenderPass(cmdEncoder);
+	}
+	_currentVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	_currentPool = nullptr;
+}
+
+void MVKOcclusionQueryCommandEncoderState::nextMetalQuery(MVKCommandEncoder* cmdEncoder) {
+	if (!isMetalVisibilityActive(_metalVisibilityResultMode))
+		return; // No draws were run
+	_mtlRenderPassQueries.emplace_back(_currentPool, _currentQueryIndex, cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset);
 	cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset += kMVKQuerySlotSizeInBytes;
-	_hasRasterized = true;	// Handle begin and end query with no rasterizing before end of renderpass.
-	_dirty = true;
+	// Loop around if we overflow
+	if (cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset >= cmdEncoder->getMetalFeatures().maxQueryBufferSize)
+		cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset = 0;
+	if (cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset == cmdEncoder->_pEncodingContext->firstMtlVisibilityResultOffsetInRenderPass) {
+		// We went through a whole visibility buffer in one render pass!  Guess we need to accumulate now...
+		cmdEncoder->encodeStoreActions(true);
+		cmdEncoder->endMetalRenderEncoding();
+		_shouldAccumulate = true;
+		endMetalRenderPass(cmdEncoder);
+	}
 }
 
 void MVKOcclusionQueryCommandEncoderState::prepareHelperDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder* mvkEncoder) {
-	if (_mtlVisibilityResultMode != MTLVisibilityResultModeDisabled) {
-		if (!_dirty) {
-			[encoder setVisibilityResultMode:MTLVisibilityResultModeDisabled
-			                          offset:mvkEncoder->_pEncodingContext->mtlVisibilityResultOffset];
-			mvkEncoder->_pEncodingContext->mtlVisibilityResultOffset += kMVKQuerySlotSizeInBytes;
-			_dirty = true;
-		}
-	} else if (_dirty) {
+	if (_metalVisibilityResultMode != MTLVisibilityResultModeDisabled) {
+		nextMetalQuery(mvkEncoder);
+		_metalVisibilityResultMode = MTLVisibilityResultModeDisabled;
 		[encoder setVisibilityResultMode:MTLVisibilityResultModeDisabled
 		                          offset:mvkEncoder->_pEncodingContext->mtlVisibilityResultOffset];
-		_dirty = false;
-		_hasRasterized = true;
 	}
 }
 
 void MVKOcclusionQueryCommandEncoderState::encode(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder* mvkEncoder) {
-	if (!_dirty)
+	if (_metalVisibilityResultMode == _currentVisibilityResultMode)
 		return;
-	_dirty = false;
-	_hasRasterized = true;
-	[encoder setVisibilityResultMode:_mtlVisibilityResultMode
+	_metalVisibilityResultMode = _currentVisibilityResultMode;
+	[encoder setVisibilityResultMode:static_cast<MTLVisibilityResultMode>(_currentVisibilityResultMode)
 	                          offset:mvkEncoder->_pEncodingContext->mtlVisibilityResultOffset];
 }
