@@ -145,11 +145,11 @@ class MVKOcclusionQueryPool : public MVKQueryPool {
 
 public:
 
-    /** Returns the MTLBuffer used to hold occlusion query results. */
-    id<MTLBuffer> getVisibilityResultMTLBuffer();
+	/** Returns the MTLBuffer used to hold occlusion query results. */
+	id<MTLBuffer> getVisibilityResultMTLBuffer() const { return _visibilityResultMTLBuffer; }
 
-    /** Returns the offset of the specified query in the visibility MTLBuffer. */
-    NSUInteger getVisibilityResultOffset(uint32_t query);
+	/** Returns the offset of the specified query in the visibility MTLBuffer. */
+	static NSUInteger getVisibilityResultOffset(uint32_t query) { return query * kMVKQuerySlotSizeInBytes; }
 
     void beginQuery(uint32_t query, VkQueryControlFlags flags, MVKCommandEncoder* cmdEncoder) override;
     void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) override;
@@ -169,8 +169,7 @@ protected:
 	id<MTLBuffer> getResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, NSUInteger& offset) override;
 	id<MTLComputeCommandEncoder> encodeComputeCopyResults(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) override;
 
-    id<MTLBuffer> _visibilityResultMTLBuffer;
-    uint32_t _queryIndexOffset;
+	id<MTLBuffer> _visibilityResultMTLBuffer;
 };
 
 

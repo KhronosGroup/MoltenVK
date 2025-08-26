@@ -232,16 +232,6 @@ void MVKQueryPool::deferCopyResults(uint32_t firstQuery,
 
 void MVKOcclusionQueryPool::propagateDebugName() { setMetalObjectLabel(_visibilityResultMTLBuffer, _debugName); }
 
-// If a dedicated visibility buffer has been established, use it, otherwise fetch the
-// current global visibility buffer, but don't cache it because it could be replaced later.
-id<MTLBuffer> MVKOcclusionQueryPool::getVisibilityResultMTLBuffer() {
-    return _visibilityResultMTLBuffer ? _visibilityResultMTLBuffer : _device->getGlobalVisibilityResultMTLBuffer();
-}
-
-NSUInteger MVKOcclusionQueryPool::getVisibilityResultOffset(uint32_t query) {
-    return (NSUInteger)(_queryIndexOffset + query) * kMVKQuerySlotSizeInBytes;
-}
-
 void MVKOcclusionQueryPool::beginQuery(uint32_t query, VkQueryControlFlags flags, MVKCommandEncoder* cmdEncoder) {
     MVKQueryPool::beginQuery(query, flags, cmdEncoder);
     cmdEncoder->beginOcclusionQuery(this, query, flags);
@@ -273,8 +263,8 @@ void MVKOcclusionQueryPool::resetResults(uint32_t firstQuery, uint32_t queryCoun
 NSData* MVKOcclusionQueryPool::getQuerySourceData(uint32_t firstQuery, uint32_t queryCount) {
 	id<MTLBuffer> vizBuff = getVisibilityResultMTLBuffer();
 	return [NSData dataWithBytesNoCopy: (void*)((uintptr_t)vizBuff.contents + getVisibilityResultOffset(firstQuery))
-								length: queryCount * kMVKQuerySlotSizeInBytes
-						  freeWhenDone: false];
+	                            length: queryCount * kMVKQuerySlotSizeInBytes
+	                      freeWhenDone: false];
 }
 
 id<MTLBuffer> MVKOcclusionQueryPool::getResultBuffer(MVKCommandEncoder*, uint32_t firstQuery, uint32_t, NSUInteger& offset) {
@@ -289,15 +279,7 @@ id<MTLComputeCommandEncoder> MVKOcclusionQueryPool::encodeComputeCopyResults(MVK
 }
 
 void MVKOcclusionQueryPool::beginQueryAddedTo(uint32_t query, MVKCommandBuffer* cmdBuffer) {
-	// In multiview passes, one query is used for each view.
-	NSUInteger queryCount = cmdBuffer->getViewCount();
-    NSUInteger offset = getVisibilityResultOffset(query);
-    NSUInteger maxOffset = getMetalFeatures().maxQueryBufferSize - kMVKQuerySlotSizeInBytes * queryCount;
-    if (offset > maxOffset) {
-        cmdBuffer->setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCmdBeginQuery(): The query offset value %lu is larger than the maximum offset value %lu available on this device.", offset, maxOffset));
-    }
-
-    cmdBuffer->_needsVisibilityResultMTLBuffer = true;
+	cmdBuffer->_needsVisibilityResultMTLBuffer = true;
 }
 
 
@@ -305,30 +287,12 @@ void MVKOcclusionQueryPool::beginQueryAddedTo(uint32_t query, MVKCommandBuffer* 
 
 MVKOcclusionQueryPool::MVKOcclusionQueryPool(MVKDevice* device,
                                              const VkQueryPoolCreateInfo* pCreateInfo) : MVKQueryPool(device, pCreateInfo, 1) {
+	// This buffer isn't directly used for queries, so it doesn't matter how big it is
+	VkDeviceSize reqBuffLen = (VkDeviceSize)pCreateInfo->queryCount * kMVKQuerySlotSizeInBytes;
 
-    if (getMVKConfig().supportLargeQueryPools) {
-        _queryIndexOffset = 0;
-
-        // Ensure we don't overflow the maximum number of queries
-		auto& mtlFeats = getMetalFeatures();
-        VkDeviceSize reqBuffLen = (VkDeviceSize)pCreateInfo->queryCount * kMVKQuerySlotSizeInBytes;
-        VkDeviceSize maxBuffLen = mtlFeats.maxQueryBufferSize;
-        VkDeviceSize newBuffLen = min(reqBuffLen, maxBuffLen);
-
-        if (reqBuffLen > maxBuffLen) {
-			reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
-						"vkCreateQueryPool(): Each occlusion query pool can support a maximum of %d queries.",
-						uint32_t(newBuffLen / kMVKQuerySlotSizeInBytes));
-        }
-
-        NSUInteger mtlBuffLen = mvkAlignByteCount(newBuffLen, mtlFeats.mtlBufferAlignment);
-        MTLResourceOptions mtlBuffOpts = MTLResourceStorageModeShared | MTLResourceCPUCacheModeDefaultCache;
-        _visibilityResultMTLBuffer = [getMTLDevice() newBufferWithLength: mtlBuffLen options: mtlBuffOpts];     // retained
-
-    } else {
-        _queryIndexOffset = _device->expandVisibilityResultMTLBuffer(pCreateInfo->queryCount);
-        _visibilityResultMTLBuffer = nil;   // Will delegate to global buffer in device on access
-    }
+	MTLResourceOptions mtlBuffOpts = MTLResourceStorageModeShared | MTLResourceCPUCacheModeDefaultCache;
+	_visibilityResultMTLBuffer = [getMTLDevice() newBufferWithLength: reqBuffLen options: mtlBuffOpts];     // retained
+	[_visibilityResultMTLBuffer setLabel:@"Occlusion Query Result Buffer"];
 }
 
 MVKOcclusionQueryPool::~MVKOcclusionQueryPool() {
