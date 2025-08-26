@@ -4687,16 +4687,18 @@ void MVKDevice::destroyEvent(MVKEvent* mvkEvent, const VkAllocationCallbacks* pA
 }
 
 MVKQueryPool* MVKDevice::createQueryPool(const VkQueryPoolCreateInfo* pCreateInfo,
-										 const VkAllocationCallbacks* pAllocator) {
-	switch (pCreateInfo->queryType) {
-        case VK_QUERY_TYPE_OCCLUSION:
-            return new MVKOcclusionQueryPool(this, pCreateInfo);
-		case VK_QUERY_TYPE_TIMESTAMP:
-			return new MVKTimestampQueryPool(this, pCreateInfo);
-		case VK_QUERY_TYPE_PIPELINE_STATISTICS:
-			return new MVKPipelineStatisticsQueryPool(this, pCreateInfo);
-		default:
-            return new MVKUnsupportedQueryPool(this, pCreateInfo);
+                                         const VkAllocationCallbacks* pAllocator) {
+	@autoreleasepool {
+		switch (pCreateInfo->queryType) {
+			case VK_QUERY_TYPE_OCCLUSION:
+				return new MVKOcclusionQueryPool(this, pCreateInfo);
+			case VK_QUERY_TYPE_TIMESTAMP:
+				return new MVKTimestampQueryPool(this, pCreateInfo);
+			case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+				return new MVKPipelineStatisticsQueryPool(this, pCreateInfo);
+			default:
+				return new MVKUnsupportedQueryPool(this, pCreateInfo);
+		}
 	}
 }
 
