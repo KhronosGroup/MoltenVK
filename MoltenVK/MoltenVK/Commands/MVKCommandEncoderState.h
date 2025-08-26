@@ -549,6 +549,17 @@ private:
 
 	} OcclusionQueryLocation;
 
+	struct CopyFence {
+		id<MTLFence> read;
+		id<MTLFence> write;
+	};
+
+	id<MTLFence> _lastFenceUpdate = nullptr;
+	// Max 3 Fences:
+	// [        |        ] <- buffer
+	//     00000 11111111 <loop around, update fences>
+	//  222 <can't write more without starting a new render pass>
+	CopyFence _copyFences[3];
 	MVKSmallVector<OcclusionQueryLocation> _mtlRenderPassQueries;
 	/// The pool of the current active query
 	MVKOcclusionQueryPool* _currentPool = nullptr;
@@ -558,6 +569,8 @@ private:
 	uint8_t _currentVisibilityResultMode = MTLVisibilityResultModeDisabled;
 	/// The visibility result mode of the current Metal render pass
 	uint8_t _metalVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	/// The number of fences that need to be waited on by the result copy shader
+	uint8_t _numCopyFences = 0;
 	/// If true, accumulation will be run at the end of the next render pass
 	bool _shouldAccumulate = false;
 };

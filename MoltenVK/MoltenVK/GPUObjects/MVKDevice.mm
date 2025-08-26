@@ -4209,6 +4209,51 @@ std::pair<MVKLiveList::Lock*, bool> MVKLiveList::isLive_(id object) {
 	return { &group->lock, group->entries.find(object) != group->entries.end() };
 }
 
+#pragma mark - MVKVisibilityBuffer
+
+MVKVisibilityBuffer::MVKVisibilityBuffer(id<MTLDevice> device, NSUInteger size, uint32_t name_idx) {
+	half_size = static_cast<uint32_t>(size / 2);
+	assert(half_size % kMVKQuerySlotSizeInBytes == 0);
+	@autoreleasepool {
+		MTLResourceOptions options = MTLResourceHazardTrackingModeUntracked | MTLResourceStorageModePrivate;
+		buffer_ = [device newBufferWithLength:half_size * 2 options:options];
+		if (buffer_) {
+			[buffer_ setLabel:[NSString stringWithFormat:@"Metal Visibility Result Buffer %d", name_idx]];
+			for (uint32_t gid = 0; gid < std::size(fences); gid++) {
+				for (uint32_t lohi = 0; lohi < std::size(fences[0]); lohi++) {
+					fences[gid][lohi] = [device newFence];
+					[fences[gid][lohi] setLabel:[NSString stringWithFormat:@"Visibility Fence %d %c%d", name_idx, lohi ? 'H' : 'L', gid]];
+				}
+			}
+		}
+	}
+}
+
+MVKVisibilityBuffer::~MVKVisibilityBuffer() {
+	if (buffer_) {
+		[buffer_ release];
+		for (auto& groups : fences)
+			for (auto& fence : groups)
+				[fence release];
+	}
+}
+
+uint32_t MVKVisibilityBuffer::advanceOffset() {
+	current_offset += kMVKQuerySlotSizeInBytes;
+	if (current_offset >= half_size * 2) {
+		current_offset = 0;
+		for (int lohi = 0; lohi < 2; lohi++) {
+			// Rotate fences so that the new prevRead is the previous read
+			id<MTLFence> read = fences[0][lohi];
+			for (int i = 0; i < 2; i++)
+				fences[i][lohi] = fences[i + 1][lohi];
+			fences[2][lohi] = read;
+		}
+		return 0;
+	}
+	return current_offset;
+}
+
 #pragma mark -
 #pragma mark MVKDevice
 
@@ -5261,31 +5306,21 @@ VkDeviceSize MVKDevice::getVkFormatTexelBufferAlignment(VkFormat format, MVKBase
 	return deviceAlignment ? deviceAlignment : _physicalDevice->_properties.limits.minTexelBufferOffsetAlignment;
 }
 
-id<MTLBuffer> MVKDevice::getGlobalVisibilityResultMTLBuffer() {
-    lock_guard<mutex> lock(_vizLock);
-    return _globalVisibilityResultMTLBuffer;
+/** Fetch a visibility buffer from the shared pool */
+MVKVisibilityBuffer MVKDevice::getVisibilityBuffer() {
+	std::lock_guard<std::mutex> guard(_vizLock);
+	if (_visibilityBuffers.empty())
+		return MVKVisibilityBuffer(_physicalDevice->_mtlDevice, _physicalDevice->_metalFeatures.maxQueryBufferSize, _visibilityBufferCount++);
+	MVKVisibilityBuffer res = std::move(_visibilityBuffers.back());
+	_visibilityBuffers.pop_back();
+	return res;
 }
 
-uint32_t MVKDevice::expandVisibilityResultMTLBuffer(uint32_t queryCount) {
-    lock_guard<mutex> lock(_vizLock);
-
-    // Ensure we don't overflow the maximum number of queries
-    _globalVisibilityQueryCount += queryCount;
-    VkDeviceSize reqBuffLen = (VkDeviceSize)_globalVisibilityQueryCount * kMVKQuerySlotSizeInBytes;
-    VkDeviceSize maxBuffLen = _physicalDevice->_metalFeatures.maxQueryBufferSize;
-    VkDeviceSize newBuffLen = min(reqBuffLen, maxBuffLen);
-    _globalVisibilityQueryCount = uint32_t(newBuffLen / kMVKQuerySlotSizeInBytes);
-
-    if (reqBuffLen > maxBuffLen) {
-        reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCreateQueryPool(): A maximum of %d total queries are available on this device in its current configuration. See the API notes for the MVKConfiguration.supportLargeQueryPools configuration parameter for more info.", _globalVisibilityQueryCount);
-    }
-
-    NSUInteger mtlBuffLen = mvkAlignByteCount(newBuffLen, _physicalDevice->_metalFeatures.mtlBufferAlignment);
-    MTLResourceOptions mtlBuffOpts = MTLResourceStorageModeShared | MTLResourceCPUCacheModeDefaultCache;
-    [_globalVisibilityResultMTLBuffer release];
-    _globalVisibilityResultMTLBuffer = [_physicalDevice->_mtlDevice newBufferWithLength: mtlBuffLen options: mtlBuffOpts];     // retained
-
-    return _globalVisibilityQueryCount - queryCount;     // Might be lower than requested if an overflow occurred
+/** Return a visibility buffer to the shared pool */
+void MVKDevice::returnVisibilityBuffer(MVKVisibilityBuffer&& buffer) {
+	assert(buffer.buffer());
+	std::lock_guard<std::mutex> guard(_vizLock);
+	_visibilityBuffers.emplace_back(std::move(buffer));
 }
 
 id<MTLSamplerState> MVKDevice::getDefaultMTLSamplerState() {
@@ -5957,7 +5992,6 @@ MVKDevice::~MVKDevice() {
 #if MVK_XCODE_16
 	[_residencySet release];
 #endif
-    [_globalVisibilityResultMTLBuffer release];
 	[_defaultMTLSamplerState release];
 	[_dummyBlitMTLBuffer release];
 

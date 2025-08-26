@@ -775,10 +775,10 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 												  _isRenderingEntireAttachment,
 												  isRestart);
 	if (_cmdBuffer->_needsVisibilityResultMTLBuffer) {
-		if ( !_pEncodingContext->visibilityResultBuffer ) {
-			_pEncodingContext->visibilityResultBuffer = getTempMTLBuffer(getMetalFeatures().maxQueryBufferSize, true, true);
+		if (!_pEncodingContext->visibilityResultBuffer.buffer()) {
+			_pEncodingContext->visibilityResultBuffer = _device->getVisibilityBuffer();
 		}
-		mtlRPDesc.visibilityResultBuffer = _pEncodingContext->visibilityResultBuffer->_mtlBuffer;
+		mtlRPDesc.visibilityResultBuffer = _pEncodingContext->visibilityResultBuffer.buffer();
 	}
 
 	// Metal uses MTLRenderPassDescriptor properties renderTargetWidth, renderTargetHeight,
