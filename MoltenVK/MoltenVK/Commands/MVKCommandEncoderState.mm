@@ -1815,6 +1815,11 @@ static bool isMetalVisibilityActive(uint8_t mode) {
 	return static_cast<int8_t>(mode) > 0;
 }
 
+struct alignas(8) QueryResultOffsets {
+	uint32_t dst;
+	uint32_t src;
+};
+
 // Metal resets the query counter at a render pass boundary, so copy results to the query pool's accumulation buffer.
 // Don't copy occlusion info until after rasterization, as Metal renderpasses can be ended prematurely during tessellation.
 void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass(MVKCommandEncoder* cmdEncoder) {
@@ -1835,12 +1840,41 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass(MVKCommandEncoder*
 	id<MTLComputeCommandEncoder> mtlAccumEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseAccumOcclusionQuery);
 	MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
 	state.bindPipeline(mtlAccumEncoder, mtlAccumState);
-	for (auto& qryLoc : _mtlRenderPassQueries) {
-		// Accumulate the current results to the query pool's buffer.
-		state.bindBuffer(mtlAccumEncoder, qryLoc.queryPool->getVisibilityResultMTLBuffer(), qryLoc.queryPool->getVisibilityResultOffset(qryLoc.query), 0);
-		state.bindBuffer(mtlAccumEncoder, vizBuff->_mtlBuffer, vizBuff->_offset + qryLoc.visibilityBufferOffset, 1);
-		[mtlAccumEncoder dispatchThreadgroups: MTLSizeMake(1, 1, 1)
-		                threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
+	state.bindBuffer(mtlAccumEncoder, vizBuff->_mtlBuffer, vizBuff->_offset, 2);
+	static constexpr size_t max_size = 4096 / sizeof(QueryResultOffsets);
+	QueryResultOffsets offsets[std::min(max_size, _mtlRenderPassQueries.size())];
+	uint32_t idx = 0;
+	uint32_t executionWidth = static_cast<uint32_t>([mtlAccumState threadExecutionWidth]);
+	const auto& mtlFeats = cmdEncoder->getMetalFeatures();
+	for (auto cur = _mtlRenderPassQueries.begin(), end = _mtlRenderPassQueries.end(); cur < end; cur++) {
+		offsets[idx].dst = cur->query;
+		offsets[idx].src = cur->visibilityBufferOffset / kMVKQuerySlotSizeInBytes;
+		idx++;
+		auto next = cur + 1;
+		if (next == end || idx >= max_size || next->queryPool != cur->queryPool) {
+			// Send what we've collected
+			uint32_t count = idx;
+			idx = 0;
+			state.bindBuffer(mtlAccumEncoder, cur->queryPool->getVisibilityResultMTLBuffer(), 0, 1);
+			MTLSize tgsize = MTLSizeMake(executionWidth, 1, 1);
+			if (mtlFeats.nonUniformThreadgroups) {
+				state.bindBytes(mtlAccumEncoder, offsets, count * sizeof(QueryResultOffsets), 0);
+				[mtlAccumEncoder dispatchThreads:MTLSizeMake(count, 1, 1) threadsPerThreadgroup:tgsize];
+			} else {
+				uint32_t rest = 0;
+				if (count >= executionWidth) {
+					uint32_t first = count / executionWidth;
+					rest = first * executionWidth;
+					count -= rest;
+					state.bindBytes(mtlAccumEncoder, offsets, rest * sizeof(QueryResultOffsets), 0);
+					[mtlAccumEncoder dispatchThreadgroups:MTLSizeMake(first, 1, 1) threadsPerThreadgroup:tgsize];
+				}
+				if (count) {
+					state.bindBytes(mtlAccumEncoder, offsets + rest, count * sizeof(QueryResultOffsets), 0);
+					[mtlAccumEncoder dispatchThreadgroups:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(count, 1, 1)];
+				}
+			}
+		}
 	}
 	_mtlRenderPassQueries.clear();
 }
