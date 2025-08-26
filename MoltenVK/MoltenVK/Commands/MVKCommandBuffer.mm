@@ -1061,12 +1061,41 @@ void MVKCommandEncoder::endCurrentMetalEncoding() {
 	encodeTimestampStageCounterSamples();
 }
 
+static MTLDispatchType getDispatchType(MVKCommandUse use) {
+	switch (use) {
+		case kMVKCommandUseAccumOcclusionQuery:
+			return MTLDispatchTypeConcurrent;
+		default:
+			return MTLDispatchTypeSerial;
+	}
+}
+
+static bool wantsSeparateComputeEncoder(MVKCommandUse use) {
+	switch (use) {
+		case kMVKCommandUseAccumOcclusionQuery:
+			return true;
+		default:
+			return false;
+	}
+}
+
+static bool shouldStartNewEncoder(MVKCommandUse prev, MVKCommandUse next) {
+	if (prev == next)
+		return false;
+	if (getDispatchType(prev) != getDispatchType(next))
+		return true;
+	return wantsSeparateComputeEncoder(prev) || wantsSeparateComputeEncoder(next);
+}
+
 id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandUse cmdUse) {
 	bool needWaits = false;
-	if ( !_mtlComputeEncoder ) {
+	if (!_mtlComputeEncoder || shouldStartNewEncoder(_mtlComputeEncoderUse, cmdUse)) {
 		needWaits = true;
 		endCurrentMetalEncoding();
-		_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoder];
+		if ([_mtlCmdBuffer respondsToSelector:@selector(computeCommandEncoderWithDispatchType:)])
+			_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoderWithDispatchType:getDispatchType(cmdUse)];
+		else
+			_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoder];
 		retainIfImmediatelyEncoding(_mtlComputeEncoder);
 		beginMetalComputeEncoding(cmdUse);
 	}
