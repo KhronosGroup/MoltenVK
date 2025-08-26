@@ -158,8 +158,8 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #   define MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_QUEUE    64
 #endif
 
-/** Support more than 8192 or 32768 occlusion queries per device. Enabled by default. */
-#ifndef MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS
+/** Support more than 8192 or 32768 occlusion queries per device. Always enabled. */
+#ifndef MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS       // Deprecated
 #   define MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS    1
 #endif
 
