@@ -1501,6 +1501,26 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 		return VK_ERROR_FORMAT_NOT_SUPPORTED;
 	}
 
+	// If a feature is not supported, then the corresponding usage should result in VK_ERROR_FORMAT_NOT_SUPPORTED.
+	auto& formatProps = _pixelFormats.getVkFormatProperties3(format);
+	VkFlags64 formatFeatures = tiling == VK_IMAGE_TILING_LINEAR ? formatProps.linearTilingFeatures : formatProps.optimalTilingFeatures;
+	static const std::pair<VkFlags, VkFlags64> usageFeatureCombos[] = {
+		{VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT},
+		{VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT},
+		{VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT},
+		{VK_IMAGE_USAGE_STORAGE_BIT, VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT},
+		{VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT},
+		{VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT},
+		{VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT},
+		{VK_IMAGE_USAGE_HOST_TRANSFER_BIT, VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT},
+	};
+	for (auto combo : usageFeatureCombos) {
+		if (mvkIsAnyFlagEnabled(usage, combo.first) &&
+			!mvkIsAnyFlagEnabled(formatFeatures, combo.second)) {
+			return VK_ERROR_FORMAT_NOT_SUPPORTED;
+		}
+	}
+
 	// Metal does not support creating uncompressed views of compressed formats.
 	// Metal does not support split-instance images.
 	if (mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT | VK_IMAGE_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT)) {
