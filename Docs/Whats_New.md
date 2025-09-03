@@ -13,8 +13,18 @@ Copyright (c) 2015-2025 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.4.1
+--------------
+
+Released TBD
+
+- .
+- Update to latest SPIRV-Cross:
+
+
+
 MoltenVK 1.4.0
----------------
+--------------
 
 Released 2025-08-20
 
@@ -76,7 +86,7 @@ Released 2025-08-20
 
 
 MoltenVK 1.3.0
----------------
+--------------
 
 Released 2025-04-27
 
