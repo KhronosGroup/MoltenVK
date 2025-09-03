@@ -4311,7 +4311,7 @@ void MVKDevice::getDescriptorVariableDescriptorCountLayoutSupport(const VkDescri
 
 	// If there is enough room for the requested size, indicate the amount available,
 	// otherwise indicate that the requested size cannot be supported.
-	if (requestedCount < maxVarDescCount) {
+	if (requestedCount <= maxVarDescCount) {
 		pVarDescSetCountSupport->maxVariableDescriptorCount = maxVarDescCount;
 	} else {
 		pSupport->supported = false;
