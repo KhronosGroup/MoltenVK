@@ -428,9 +428,9 @@ void MVKInstance::initMVKConfig(const VkInstanceCreateInfo* pCreateInfo) {
 	ADD_DVC_1_2_ENTRY_POINT(func); \
 	ADD_ENTRY_POINT_MAP(func##extSuffix, func, 0, VK_##EXT##_EXTENSION_NAME, true)
 
-#define ADD_INST_1_3_PROMOTED_ENTRY_POINT(func, EXT)	\
+#define ADD_INST_1_3_PROMOTED_ENTRY_POINT(func, extSuffix, EXT)	\
 	ADD_INST_1_3_ENTRY_POINT(func);	\
-	ADD_ENTRY_POINT_MAP(func##KHR, func, 0, VK_##EXT##_EXTENSION_NAME, false)
+	ADD_ENTRY_POINT_MAP(func##extSuffix, func, 0, VK_##EXT##_EXTENSION_NAME, false)
 
 #define ADD_DVC_1_3_PROMOTED_ENTRY_POINT(func, extSuffix, EXT) \
 	ADD_DVC_1_3_ENTRY_POINT(func); \
@@ -480,6 +480,8 @@ void MVKInstance::initProcAddrs() {
 	ADD_INST_1_1_PROMOTED_ENTRY_POINT(vkGetPhysicalDeviceExternalFenceProperties, KHR_EXTERNAL_FENCE_CAPABILITIES);
 	ADD_INST_1_1_PROMOTED_ENTRY_POINT(vkGetPhysicalDeviceExternalBufferProperties, KHR_EXTERNAL_MEMORY_CAPABILITIES);
 	ADD_INST_1_1_PROMOTED_ENTRY_POINT(vkGetPhysicalDeviceExternalSemaphoreProperties, KHR_EXTERNAL_SEMAPHORE_CAPABILITIES);
+
+	ADD_INST_1_3_PROMOTED_ENTRY_POINT(vkGetPhysicalDeviceToolProperties, EXT, EXT_TOOLING_INFO);
 
 	// Instance extension functions.
 	ADD_INST_EXT_ENTRY_POINT(vkDestroySurfaceKHR, KHR_SURFACE);
@@ -725,7 +727,6 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkGetPrivateData, EXT, EXT_PRIVATE_DATA);
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkQueueSubmit2, KHR, KHR_SYNCHRONIZATION_2);
 	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkSetPrivateData, EXT, EXT_PRIVATE_DATA);
-	ADD_DVC_1_3_PROMOTED_ENTRY_POINT(vkGetPhysicalDeviceToolProperties, EXT, EXT_TOOLING_INFO);
 
 	ADD_DVC_1_4_PROMOTED_ENTRY_POINT(vkCmdSetRenderingAttachmentLocations, KHR, KHR_DYNAMIC_RENDERING_LOCAL_READ);
 	ADD_DVC_1_4_PROMOTED_ENTRY_POINT(vkCmdSetRenderingInputAttachmentIndices, KHR, KHR_DYNAMIC_RENDERING_LOCAL_READ);
