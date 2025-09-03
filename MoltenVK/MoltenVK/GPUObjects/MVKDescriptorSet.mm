@@ -582,6 +582,9 @@ void MVKDescriptorSet::free(bool isPoolReset) {
 	_variableDescriptorCount = 0;
 
 	if (isPoolReset) { _argumentBuffer.setArgumentBuffer(_pool->_metalArgumentBuffer, 0, 0, nil); }
+	else if (_argumentBuffer.getMetalArgumentBufferEncodedSize() != 0) {
+		_pool->_freeArgBuffSpace += _argumentBuffer.getMetalArgumentBufferEncodedSize();
+	}
 
 	// If this is a pool reset, and all desciptors are from the pool, we don't need to free them.
 	if ( !(isPoolReset && _allDescriptorsAreFromPool) ) {
@@ -745,6 +748,17 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 		} else {
 			mtlArgBuffEncSize = mvkDSL->getMetal3ArgumentBufferEncodedLength(variableDescriptorCount);
 		}
+		// If there isn't enough space left in the argument buffer, there's no need to check the individual pieces.
+		if (mtlArgBuffEncSize > _freeArgBuffSpace) {
+			// n.b. OUT_OF_POOL_MEMORY means "the total free space is not enough to satisfy the descriptor set allocation."
+			// FRAGMENTED_POOL means "the total free space _is_ enough, but there's no free space big enough to hold the descriptor set."
+			return VK_ERROR_OUT_OF_POOL_MEMORY;
+		}
+	}
+
+	// If there aren't any available descriptor sets, there's no need to check the individual pieces.
+	if (_descriptorSetAvailablility.getIndexOfFirstEnabledBit() == _descriptorSetAvailablility.size()) {
+		return VK_ERROR_OUT_OF_POOL_MEMORY;
 	}
 
 	_descriptorSetAvailablility.enumerateEnabledBits([&](size_t dsIdx) {
@@ -782,6 +796,9 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 			} else {
 				_descriptorSetAvailablility.disableBit(dsIdx);
 				_allocatedDescSetCount = std::max(_allocatedDescSetCount, dsIdx + 1);
+				if (isUsingMetalArgBuff) {
+					_freeArgBuffSpace -= mtlArgBuffEncSize;
+				}
 				*pVKDS = (VkDescriptorSet)mvkDS;
 			}
 			return false;
@@ -823,6 +840,10 @@ VkResult MVKDescriptorPool::reset(VkDescriptorPoolResetFlags flags) {
 		freeDescriptorSet(&_descriptorSets[dsIdx], true);
 	}
 	_descriptorSetAvailablility.enableAllBits();
+
+	if (_metalArgumentBuffer) {
+		_freeArgBuffSpace = _metalArgumentBuffer.length;
+	}
 
 	_uniformBufferDescriptors.reset();
 	_storageBufferDescriptors.reset();
@@ -1111,6 +1132,7 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 			}
 			_metalArgumentBuffer = [getMTLDevice() newBufferWithLength: metalArgBuffSize options: MTLResourceStorageModeShared];	// retained
 			setMetalObjectLabel(_metalArgumentBuffer, @"Descriptor set argument buffer");
+			_freeArgBuffSpace = metalArgBuffSize;
 		}
 	}
 }

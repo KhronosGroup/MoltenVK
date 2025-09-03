@@ -328,6 +328,7 @@ protected:
 
 	VkDescriptorPoolCreateFlags _flags = 0;
 	size_t _allocatedDescSetCount = 0;
+	size_t _freeArgBuffSpace = 0;
 };
 
 
