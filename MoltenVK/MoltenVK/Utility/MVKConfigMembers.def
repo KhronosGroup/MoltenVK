@@ -49,7 +49,7 @@ MVK_CONFIG_MEMBER(shaderConversionFlipVertexY,            VkBool32,             
 MVK_CONFIG_MEMBER(synchronousQueueSubmits,                VkBool32,                                 SYNCHRONOUS_QUEUE_SUBMITS)
 MVK_CONFIG_MEMBER(prefillMetalCommandBuffers,             MVKPrefillMetalCommandBuffersStyle,       PREFILL_METAL_COMMAND_BUFFERS)
 MVK_CONFIG_MEMBER(maxActiveMetalCommandBuffersPerQueue,   uint32_t,                                 MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_QUEUE)
-MVK_CONFIG_MEMBER(supportLargeQueryPools,                 VkBool32,                                 SUPPORT_LARGE_QUERY_POOLS)
+MVK_CONFIG_MEMBER(supportLargeQueryPools,                 VkBool32,                                 SUPPORT_LARGE_QUERY_POOLS)          // Deprecated legacy
 MVK_CONFIG_MEMBER(presentWithCommandBuffer,               VkBool32,                                 PRESENT_WITH_COMMAND_BUFFER)
 MVK_CONFIG_MEMBER(swapchainMinMagFilterUseNearest,        VkBool32,                                 SWAPCHAIN_MAG_FILTER_USE_NEAREST)	// Deprecated legacy renaming
 MVK_CONFIG_MEMBER(swapchainMinMagFilterUseNearest,        VkBool32,                                 SWAPCHAIN_MIN_MAG_FILTER_USE_NEAREST)
@@ -85,6 +85,7 @@ MVK_CONFIG_MEMBER(timestampPeriodLowPassAlpha,            float,                
 MVK_CONFIG_MEMBER(useMetalPrivateAPI,                     VkBool32,                                 USE_METAL_PRIVATE_API)
 MVK_CONFIG_MEMBER_STRING(shaderDumpDir,                   char*,                                    SHADER_DUMP_DIR)
 MVK_CONFIG_MEMBER(shaderLogEstimatedGLSL,                 VkBool32,                                 SHADER_LOG_ESTIMATED_GLSL)
+MVK_CONFIG_MEMBER(liveCheckAllResources,                  VkBool32,                                 LIVE_CHECK_ALL_RESOURCES)
 
 #undef MVK_CONFIG_MEMBER
 #undef MVK_CONFIG_MEMBER_STRING
@@ -100,5 +101,5 @@ MVK_CONFIG_MEMBER(shaderLogEstimatedGLSL,                 VkBool32,             
  * Once  MVKConfiguration and the list above are in agreement, it may be necessary to modify
  * this value if the internal padding has changed as a result of new MVKConfiguration members.
  */
-#define kMVKConfigurationInternalPaddingByteCount  8
+#define kMVKConfigurationInternalPaddingByteCount  4
 

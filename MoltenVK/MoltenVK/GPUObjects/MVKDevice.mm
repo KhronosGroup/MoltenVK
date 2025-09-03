@@ -2376,6 +2376,22 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 	logGPUInfo();
 }
 
+static MVKPhysicalDeviceArgumentBufferSizes::Entry getArgumentBufferSize(id<MTLDevice> dev, MTLDataType type) {
+	MTLArgumentDescriptor* desc = [MTLArgumentDescriptor argumentDescriptor];
+	[desc setIndex:0];
+	[desc setDataType:type];
+	[desc setArrayLength:0];
+	[desc setAccess:type == MTLDataTypeSampler ? MTLArgumentAccessReadOnly : MTLArgumentAccessReadWrite];
+	if (type == MTLDataTypeTexture)
+		[desc setTextureType:MTLTextureType2D];
+	id<MTLArgumentEncoder> enc = [dev newArgumentEncoderWithArguments:@[desc]];
+	MVKPhysicalDeviceArgumentBufferSizes::Entry res;
+	res.size = static_cast<uint16_t>([enc encodedLength]);
+	res.align = static_cast<uint16_t>([enc alignment]);
+	[enc release];
+	return res;
+}
+
 void MVKPhysicalDevice::initMTLDevice() {
 #if MVK_MACOS
 	// Apple Silicon will respond false to isLowPower, but never hits it.
@@ -2984,6 +3000,14 @@ void MVKPhysicalDevice::initMetalFeatures() {
     _metalFeatures.subgroupUniformControlFlow = _gpuCapabilities.isAppleGPU;
     _metalFeatures.maximalReconvergence = _gpuCapabilities.isAppleGPU && _metalFeatures.subgroupUniformControlFlow;
     _metalFeatures.quadControlFlow = _gpuCapabilities.isAppleGPU && _metalFeatures.maximalReconvergence;
+
+	if (_isUsingMetalArgumentBuffers) {
+		_argumentBufferSizes.texture = getArgumentBufferSize(_mtlDevice, MTLDataTypeTexture);
+		_argumentBufferSizes.sampler = getArgumentBufferSize(_mtlDevice, MTLDataTypeSampler);
+		_argumentBufferSizes.pointer = getArgumentBufferSize(_mtlDevice, MTLDataTypePointer);
+	} else {
+		_argumentBufferSizes = {};
+	}
 
 	// Set features for all platforms based on previous settings.
 	// Bump resources up for Tier2 GPU, to meet Vulkan conformance.
@@ -4123,6 +4147,83 @@ MVKPhysicalDevice::~MVKPhysicalDevice() {
 	MVKLogInfo("Destroyed VkPhysicalDevice for GPU %s with %llu MB of GPU memory still allocated.", getName(), memUsed / MEBI);
 }
 
+#pragma mark - MVKLiveList
+
+MVKLiveList::Group* MVKLiveList::getGroup(id object) {
+	static constexpr size_t GOLDEN_RATIO = 0x9e3779b97f4a7c16ull;
+	size_t idx = reinterpret_cast<size_t>(object) * GOLDEN_RATIO;
+	idx >>= sizeof(size_t) * CHAR_BIT - GROUP_BITS;
+	return &groups[idx];
+}
+
+void MVKLiveList::add(id object) {
+	Group* group = getGroup(object);
+	std::lock_guard<Lock> guard(group->lock);
+	group->entries[object]++;
+}
+
+void MVKLiveList::remove(id object) {
+	Group* group = getGroup(object);
+	std::lock_guard<Lock> guard(group->lock);
+	auto it = group->entries.find(object);
+	if (it == group->entries.end())
+		return;
+	if (it->second <= 1)
+		group->entries.erase(it);
+	else
+		it->second--;
+}
+
+std::pair<MVKLiveList::Lock*, bool> MVKLiveList::isLive_(id object) {
+	Group* group = getGroup(object);
+	group->lock.lock();
+	return { &group->lock, group->entries.find(object) != group->entries.end() };
+}
+
+#pragma mark - MVKVisibilityBuffer
+
+MVKVisibilityBuffer::MVKVisibilityBuffer(id<MTLDevice> device, NSUInteger size, uint32_t name_idx) {
+	half_size = static_cast<uint32_t>(size / 2);
+	assert(half_size % kMVKQuerySlotSizeInBytes == 0);
+	@autoreleasepool {
+		MTLResourceOptions options = MTLResourceHazardTrackingModeUntracked | MTLResourceStorageModePrivate;
+		buffer_ = [device newBufferWithLength:half_size * 2 options:options];
+		if (buffer_) {
+			[buffer_ setLabel:[NSString stringWithFormat:@"Metal Visibility Result Buffer %d", name_idx]];
+			for (uint32_t gid = 0; gid < std::size(fences); gid++) {
+				for (uint32_t lohi = 0; lohi < std::size(fences[0]); lohi++) {
+					fences[gid][lohi] = [device newFence];
+					[fences[gid][lohi] setLabel:[NSString stringWithFormat:@"Visibility Fence %d %c%d", name_idx, lohi ? 'H' : 'L', gid]];
+				}
+			}
+		}
+	}
+}
+
+MVKVisibilityBuffer::~MVKVisibilityBuffer() {
+	if (buffer_) {
+		[buffer_ release];
+		for (auto& groups : fences)
+			for (auto& fence : groups)
+				[fence release];
+	}
+}
+
+uint32_t MVKVisibilityBuffer::advanceOffset() {
+	current_offset += kMVKQuerySlotSizeInBytes;
+	if (current_offset >= half_size * 2) {
+		current_offset = 0;
+		for (int lohi = 0; lohi < 2; lohi++) {
+			// Rotate fences so that the new prevRead is the previous read
+			id<MTLFence> read = fences[0][lohi];
+			for (int i = 0; i < 2; i++)
+				fences[i][lohi] = fences[i + 1][lohi];
+			fences[2][lohi] = read;
+		}
+		return 0;
+	}
+	return current_offset;
+}
 
 #pragma mark -
 #pragma mark MVKDevice
@@ -4602,16 +4703,18 @@ void MVKDevice::destroyEvent(MVKEvent* mvkEvent, const VkAllocationCallbacks* pA
 }
 
 MVKQueryPool* MVKDevice::createQueryPool(const VkQueryPoolCreateInfo* pCreateInfo,
-										 const VkAllocationCallbacks* pAllocator) {
-	switch (pCreateInfo->queryType) {
-        case VK_QUERY_TYPE_OCCLUSION:
-            return new MVKOcclusionQueryPool(this, pCreateInfo);
-		case VK_QUERY_TYPE_TIMESTAMP:
-			return new MVKTimestampQueryPool(this, pCreateInfo);
-		case VK_QUERY_TYPE_PIPELINE_STATISTICS:
-			return new MVKPipelineStatisticsQueryPool(this, pCreateInfo);
-		default:
-            return new MVKUnsupportedQueryPool(this, pCreateInfo);
+                                         const VkAllocationCallbacks* pAllocator) {
+	@autoreleasepool {
+		switch (pCreateInfo->queryType) {
+			case VK_QUERY_TYPE_OCCLUSION:
+				return new MVKOcclusionQueryPool(this, pCreateInfo);
+			case VK_QUERY_TYPE_TIMESTAMP:
+				return new MVKTimestampQueryPool(this, pCreateInfo);
+			case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+				return new MVKPipelineStatisticsQueryPool(this, pCreateInfo);
+			default:
+				return new MVKUnsupportedQueryPool(this, pCreateInfo);
+		}
 	}
 }
 
@@ -4641,8 +4744,8 @@ void MVKDevice::destroyPipelineCache(MVKPipelineCache* mvkPLC,
 }
 
 MVKPipelineLayout* MVKDevice::createPipelineLayout(const VkPipelineLayoutCreateInfo* pCreateInfo,
-												   const VkAllocationCallbacks* pAllocator) {
-	return new MVKPipelineLayout(this, pCreateInfo);
+                                                   const VkAllocationCallbacks* pAllocator) {
+	return MVKPipelineLayout::Create(this, pCreateInfo);
 }
 
 void MVKDevice::destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
@@ -4742,8 +4845,8 @@ void MVKDevice::destroySamplerYcbcrConversion(MVKSamplerYcbcrConversion* mvkSamp
 }
 
 MVKDescriptorSetLayout* MVKDevice::createDescriptorSetLayout(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
-															 const VkAllocationCallbacks* pAllocator) {
-	return new MVKDescriptorSetLayout(this, pCreateInfo);
+                                                             const VkAllocationCallbacks* pAllocator) {
+	return MVKDescriptorSetLayout::Create(this, pCreateInfo);
 }
 
 void MVKDevice::destroyDescriptorSetLayout(MVKDescriptorSetLayout* mvkDSL,
@@ -4752,8 +4855,8 @@ void MVKDevice::destroyDescriptorSetLayout(MVKDescriptorSetLayout* mvkDSL,
 }
 
 MVKDescriptorPool* MVKDevice::createDescriptorPool(const VkDescriptorPoolCreateInfo* pCreateInfo,
-												   const VkAllocationCallbacks* pAllocator) {
-	return new MVKDescriptorPool(this, pCreateInfo);
+                                                   const VkAllocationCallbacks* pAllocator) {
+	return MVKDescriptorPool::Create(this, pCreateInfo);
 }
 
 void MVKDevice::destroyDescriptorPool(MVKDescriptorPool* mvkDP,
@@ -4896,13 +4999,10 @@ MVKBuffer* MVKDevice::removeBuffer(MVKBuffer* mvkBuff) {
 	return mvkBuff;
 }
 
-void MVKDevice::encodeGPUAddressableBuffers(MVKResourcesCommandEncoderState* rezEncState, MVKShaderStage stage) {
-	MTLResourceUsage mtlUsage = MTLResourceUsageRead | MTLResourceUsageWrite;
-	MTLRenderStages mtlRendStage = (stage == kMVKShaderStageFragment) ? MTLRenderStageFragment : MTLRenderStageVertex;
-
+void MVKDevice::encodeGPUAddressableBuffers(MVKUseResourceHelper& resources, MVKResourceUsageStages stage) {
 	lock_guard<mutex> lock(_rezLock);
 	for (auto& buff : _gpuAddressableBuffers) {
-		rezEncState->encodeResourceUsage(stage, buff->getMTLBuffer(), mtlUsage, mtlRendStage);
+		resources.add(buff->getMTLBuffer(), stage, true);
 	}
 }
 
@@ -5177,31 +5277,21 @@ VkDeviceSize MVKDevice::getVkFormatTexelBufferAlignment(VkFormat format, MVKBase
 	return deviceAlignment ? deviceAlignment : _physicalDevice->_properties.limits.minTexelBufferOffsetAlignment;
 }
 
-id<MTLBuffer> MVKDevice::getGlobalVisibilityResultMTLBuffer() {
-    lock_guard<mutex> lock(_vizLock);
-    return _globalVisibilityResultMTLBuffer;
+/** Fetch a visibility buffer from the shared pool */
+MVKVisibilityBuffer MVKDevice::getVisibilityBuffer() {
+	std::lock_guard<std::mutex> guard(_vizLock);
+	if (_visibilityBuffers.empty())
+		return MVKVisibilityBuffer(_physicalDevice->_mtlDevice, _physicalDevice->_metalFeatures.maxQueryBufferSize, _visibilityBufferCount++);
+	MVKVisibilityBuffer res = std::move(_visibilityBuffers.back());
+	_visibilityBuffers.pop_back();
+	return res;
 }
 
-uint32_t MVKDevice::expandVisibilityResultMTLBuffer(uint32_t queryCount) {
-    lock_guard<mutex> lock(_vizLock);
-
-    // Ensure we don't overflow the maximum number of queries
-    _globalVisibilityQueryCount += queryCount;
-    VkDeviceSize reqBuffLen = (VkDeviceSize)_globalVisibilityQueryCount * kMVKQuerySlotSizeInBytes;
-    VkDeviceSize maxBuffLen = _physicalDevice->_metalFeatures.maxQueryBufferSize;
-    VkDeviceSize newBuffLen = min(reqBuffLen, maxBuffLen);
-    _globalVisibilityQueryCount = uint32_t(newBuffLen / kMVKQuerySlotSizeInBytes);
-
-    if (reqBuffLen > maxBuffLen) {
-        reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCreateQueryPool(): A maximum of %d total queries are available on this device in its current configuration. See the API notes for the MVKConfiguration.supportLargeQueryPools configuration parameter for more info.", _globalVisibilityQueryCount);
-    }
-
-    NSUInteger mtlBuffLen = mvkAlignByteCount(newBuffLen, _physicalDevice->_metalFeatures.mtlBufferAlignment);
-    MTLResourceOptions mtlBuffOpts = MTLResourceStorageModeShared | MTLResourceCPUCacheModeDefaultCache;
-    [_globalVisibilityResultMTLBuffer release];
-    _globalVisibilityResultMTLBuffer = [_physicalDevice->_mtlDevice newBufferWithLength: mtlBuffLen options: mtlBuffOpts];     // retained
-
-    return _globalVisibilityQueryCount - queryCount;     // Might be lower than requested if an overflow occurred
+/** Return a visibility buffer to the shared pool */
+void MVKDevice::returnVisibilityBuffer(MVKVisibilityBuffer&& buffer) {
+	assert(buffer.buffer());
+	std::lock_guard<std::mutex> guard(_vizLock);
+	_visibilityBuffers.emplace_back(std::move(buffer));
 }
 
 id<MTLSamplerState> MVKDevice::getDefaultMTLSamplerState() {
@@ -5464,6 +5554,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	enableFeatures(pCreateInfo);
 	initQueues(pCreateInfo);
 	reservePrivateData(pCreateInfo);
+	initConfiguration();
 
 	if (_enabledFeatures.robustBufferAccess || _enabledRobustness2Features.robustBufferAccess2) {
 		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support buffer robustness.");
@@ -5535,6 +5626,12 @@ static MVKPerformanceStatistics _processPerformanceStats = {};
 void MVKDevice::initPerformanceTracking() {
 	_isPerformanceTracking = getMVKConfig().performanceTracking;
 	_performanceStats = _processPerformanceStats;
+}
+
+void MVKDevice::initConfiguration() {
+	bool needsLiveTrackingForCopy = _physicalDevice->_isUsingMetalArgumentBuffers && _physicalDevice->_metalFeatures.needsArgumentBufferEncoders;
+	bool needsLiveTrackingForEncode = !hasResidencySet() && (getMVKConfig().liveCheckAllResources || _enabledDescriptorIndexingFeatures.descriptorBindingPartiallyBound);
+	_liveResources.enabled = needsLiveTrackingForCopy || needsLiveTrackingForEncode;
 }
 
 void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {
@@ -5866,7 +5963,6 @@ MVKDevice::~MVKDevice() {
 #if MVK_XCODE_16
 	[_residencySet release];
 #endif
-    [_globalVisibilityResultMTLBuffer release];
 	[_defaultMTLSamplerState release];
 	[_dummyBlitMTLBuffer release];
 
