@@ -1205,27 +1205,6 @@ void MVKRenderingAttachmentIterator::handleAttachment(const VkRenderingAttachmen
 
 MVKRenderingAttachmentIterator::MVKRenderingAttachmentIterator(const VkRenderingInfo* pRenderingInfo) {
 	_renderingInfo = *pRenderingInfo;
-	_renderingInfo.pDepthAttachment   = getAttachmentInfo(pRenderingInfo->pDepthAttachment, pRenderingInfo->pStencilAttachment, false);
-	_renderingInfo.pStencilAttachment = getAttachmentInfo(pRenderingInfo->pStencilAttachment, pRenderingInfo->pDepthAttachment, true);
-}
-
-// If the depth/stencil attachment is not in use, but the alternate stencil/depth attachment is,
-// and the MTLPixelFormat is usable by both attachments, force the use of the alternate attachment
-// for both attachments, to avoid Metal validation errors when a pipeline expects both depth and
-// stencil, but only one of the attachments has been provided here.
-// Check the MTLPixelFormat of the MVKImage underlying the MVKImageView, to bypass possible
-// substitution of MTLPixelFormat in the MVKImageView due to swizzling, or stencil-only access.
-const VkRenderingAttachmentInfo* MVKRenderingAttachmentIterator::getAttachmentInfo(const VkRenderingAttachmentInfo* pAtt,
-																				   const VkRenderingAttachmentInfo* pAltAtt,
-																				   bool isStencil) {
-	bool useAlt = false;
-	if ( !(pAtt && pAtt->imageView) && (pAltAtt && pAltAtt->imageView) ) {
-		MVKImage* mvkImg = ((MVKImageView*)pAltAtt->imageView)->getImage();
-		useAlt = (isStencil
-				  ? mvkImg->getPixelFormats()->isStencilFormat(mvkImg->getMTLPixelFormat())
-				  : mvkImg->getPixelFormats()->isDepthFormat(mvkImg->getMTLPixelFormat()));
-	}
-	return useAlt ? pAltAtt : pAtt;
 }
 
 
