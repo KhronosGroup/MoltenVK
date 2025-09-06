@@ -1678,7 +1678,8 @@ typedef enum : VkFormatFeatureFlags2 {
                                                                                    VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
                                                                                    VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT),
 	kMVKVkFormatFeatureFlagsBufAtomic   = (VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT),
-	kMVKVkFormatFeatureFlagsBufVertex   = (VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT),
+	kMVKVkFormatFeatureFlagsBufVertex   = (VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT |
+                                           VK_FORMAT_FEATURE_2_ACCELERATION_STRUCTURE_VERTEX_BUFFER_BIT_KHR),
 } MVKVkFormatFeatureFlags;
 
 // Sets the VkFormatProperties (optimal/linear/buffer) for the Vulkan format.
