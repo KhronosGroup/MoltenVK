@@ -408,9 +408,6 @@ protected:
 	void handleAttachment(const VkRenderingAttachmentInfo* pAttInfo,
 						  VkImageAspectFlagBits aspect,
 						  MVKRenderingAttachmentInfoOperation attOperation);
-	const VkRenderingAttachmentInfo* getAttachmentInfo(const VkRenderingAttachmentInfo* pAtt,
-													   const VkRenderingAttachmentInfo* pAltAtt,
-													   bool isStencil);
 
 	VkRenderingInfo _renderingInfo;
 };
