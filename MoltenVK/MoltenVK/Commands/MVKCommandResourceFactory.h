@@ -20,6 +20,7 @@
 
 #include "MVKDevice.h"
 #include "MVKFoundation.h"
+#include "MVKStateTracking.h"
 #include "mvk_datatypes.hpp"
 #include <string>
 
@@ -195,92 +196,6 @@ namespace std {
     template <>
     struct hash<MVKRPSKeyClearAtt> {
         std::size_t operator()(const MVKRPSKeyClearAtt& k) const { return k.hash(); }
-    };
-}
-
-
-#pragma mark -
-#pragma mark MVKMTLDepthStencilDescriptorData
-
-/**
- * A structure to hold configuration data for creating an MTLStencilDescriptor instance.
- *
- * The order of elements is designed to "fail-fast", with the more commonly changing elements
- * situated near the beginning of the structure so that a memory comparison will detect any
- * change as early as possible.
- */
-typedef struct MVKMTLStencilDescriptorData {
-	uint32_t readMask;					/**< The bit-mask to apply when comparing the stencil buffer value to the reference value. */
-	uint32_t writeMask;					/**< The bit-mask to apply when writing values to the stencil buffer. */
-    uint8_t stencilCompareFunction;		/**< The stencil compare function (interpreted as MTLCompareFunction). */
-    uint8_t stencilFailureOperation;	/**< The operation to take when the stencil test fails (interpreted as MTLStencilOperation). */
-    uint8_t depthFailureOperation;		/**< The operation to take when the stencil test passes, but the depth test fails (interpreted as MTLStencilOperation). */
-    uint8_t depthStencilPassOperation;	/**< The operation to take when both the stencil and depth tests pass (interpreted as MTLStencilOperation). */
-
-	bool operator==(const MVKMTLStencilDescriptorData& rhs) const { return mvkAreEqual(this, &rhs); }
-	bool operator!=(const MVKMTLStencilDescriptorData& rhs) const { return !(*this == rhs); }
-
-    MVKMTLStencilDescriptorData() {
-        mvkClear(this);  // Clear all memory to ensure memory comparisons will work.
-		mvkEnableAllFlags(readMask);
-		mvkEnableAllFlags(writeMask);
-        stencilCompareFunction = MTLCompareFunctionAlways;
-        stencilFailureOperation = MTLStencilOperationKeep;
-        depthFailureOperation = MTLStencilOperationKeep;
-        depthStencilPassOperation = MTLStencilOperationKeep;
-    }
-
-} MVKMTLStencilDescriptorData;
-
-/** An instance populated with default values, for use in resetting other instances to default state. */
-const MVKMTLStencilDescriptorData kMVKMTLStencilDescriptorDataDefault;
-
-/**
- * A structure to hold configuration data for creating an MTLDepthStencilDescriptor instance.
- * Instances of this structure can be used as a map key.
- *
- * The order of elements is designed to "fail-fast", with the more commonly changing elements
- * situated near the beginning of the structure so that a memory comparison will detect any
- * change as early as possible.
- */
-typedef struct MVKMTLDepthStencilDescriptorData {
-    MVKMTLStencilDescriptorData frontFaceStencilData;
-    MVKMTLStencilDescriptorData backFaceStencilData;
-	uint8_t depthCompareFunction;		/**< The depth compare function (interpreted as MTLCompareFunction). */
-	bool depthWriteEnabled;				/**< Indicates whether depth writing is enabled. */
-	bool stencilTestEnabled;			/**< Indicates whether stencil testing is enabled. */
-
-	bool operator==(const MVKMTLDepthStencilDescriptorData& rhs) const { return mvkAreEqual(this, &rhs); }
-	bool operator!=(const MVKMTLDepthStencilDescriptorData& rhs) const { return !(*this == rhs); }
-
-	std::size_t hash() const {
-		return mvkHash((uint64_t*)this, sizeof(*this) / sizeof(uint64_t));
-	}
-	void disableDepth() {
-		depthCompareFunction = MTLCompareFunctionAlways;
-		depthWriteEnabled = false;
-	}
-	void disableStencil() {
-		stencilTestEnabled = false;
-		frontFaceStencilData = kMVKMTLStencilDescriptorDataDefault;
-		backFaceStencilData = kMVKMTLStencilDescriptorDataDefault;
-	}
-
-	MVKMTLDepthStencilDescriptorData() {
-		mvkClear(this);  // Clear all memory to ensure memory comparisons will work.
-		disableDepth();
-		disableStencil();
-	}
-
-} __attribute__((aligned(sizeof(uint64_t)))) MVKMTLDepthStencilDescriptorData;
-
-/** An instance populated with default values, for use in resetting other instances to default state. */
-const MVKMTLDepthStencilDescriptorData kMVKMTLDepthStencilDescriptorDataDefault;
-
-namespace std {
-    template <>
-    struct hash<MVKMTLDepthStencilDescriptorData> {
-        std::size_t operator()(const MVKMTLDepthStencilDescriptorData& k) const { return k.hash(); }
     };
 }
 
