@@ -614,7 +614,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->multisampleArrayImage = _metalFeatures.multisampleArrayTextures;
 				portabilityFeatures->mutableComparisonSamplers = _metalFeatures.depthSampleCompare;
 				portabilityFeatures->pointPolygons = false;
-				portabilityFeatures->samplerMipLodBias = getMVKConfig().useMetalPrivateAPI;
+				portabilityFeatures->samplerMipLodBias = _metalFeatures.samplerMipLodBias;
 				portabilityFeatures->separateStencilMaskRef = true;
 				portabilityFeatures->shaderSampleRateInterpolationFunctions = _metalFeatures.pullModelInterpolation;
 				portabilityFeatures->tessellationIsolines = false;
@@ -2438,6 +2438,14 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.nativeTextureAtomics = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0) && (supportsMTLGPUFamily(Metal3) || supportsMTLGPUFamily(Apple6) || supportsMTLGPUFamily(Mac2));
 #endif
 
+#if MVK_XCODE_26
+	_metalFeatures.samplerMipLodBias = mvkOSVersionIsAtLeast(26.0);
+#endif
+
+#if MVK_USE_METAL_PRIVATE_API
+	_metalFeatures.samplerMipLodBias = _metalFeatures.samplerMipLodBias || getMVKConfig().useMetalPrivateAPI;
+#endif
+
 	// GPU-specific features
 	switch (_properties.vendorID) {
 		case kAMDVendorId:
@@ -3185,10 +3193,7 @@ void MVKPhysicalDevice::initLimits() {
 
 	_properties.limits.maxImageDimension3D = _metalFeatures.maxTextureLayers;
 	_properties.limits.maxImageArrayLayers = _metalFeatures.maxTextureLayers;
-	// Max sum of API and shader values. Bias not publicly supported in API, but can be applied in the shader directly.
-	// The lack of API value is covered by VkPhysicalDevicePortabilitySubsetFeaturesKHR::samplerMipLodBias.
-	// Metal does not specify a limit for the shader value, so choose something reasonable.
-	_properties.limits.maxSamplerLodBias = 16;
+	_properties.limits.maxSamplerLodBias = 15.999;
 	_properties.limits.maxSamplerAnisotropy = 16;
 
     _properties.limits.maxVertexInputAttributes = 31;

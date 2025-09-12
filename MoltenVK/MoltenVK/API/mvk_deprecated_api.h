@@ -160,6 +160,7 @@ typedef struct {
     VkBool32 subgroupUniformControlFlow;            /**< If true, subgroup invocations will reconverge if they were uniform upon entry to a block and exit via the corresponding merge block. */
     VkBool32 maximalReconvergence;                  /**< If true, shader invocations that diverge will reconverge as soon as possible. */
     VkBool32 quadControlFlow;                       /**< If true, derivatives are calculated on a per-quad basis, and full quads are spawned for fragment shaders using helper invocations. */
+    VkBool32 samplerMipLodBias;                     /**< If true, a mip lod bias can be set on a sampler. */
 } MVKPhysicalDeviceMetalFeatures;
 
 

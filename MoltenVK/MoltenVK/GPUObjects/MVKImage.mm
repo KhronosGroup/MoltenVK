@@ -2535,11 +2535,9 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
     mtlSampDesc.mipFilter = (pCreateInfo->unnormalizedCoordinates
                              ? MTLSamplerMipFilterNotMipmapped
                              : mvkMTLSamplerMipFilterFromVkSamplerMipmapMode(pCreateInfo->mipmapMode));
-#if MVK_USE_METAL_PRIVATE_API
-	if (getMVKConfig().useMetalPrivateAPI) {
+	if (getMetalFeatures().samplerMipLodBias) {
 		mtlSampDesc.lodBiasMVK = pCreateInfo->mipLodBias;
 	}
-#endif
 	mtlSampDesc.lodMinClamp = pCreateInfo->minLod;
 	mtlSampDesc.lodMaxClamp = pCreateInfo->maxLod;
 	mtlSampDesc.maxAnisotropy = (pCreateInfo->anisotropyEnable
