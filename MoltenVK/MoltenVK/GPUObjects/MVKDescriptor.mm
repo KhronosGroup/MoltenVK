@@ -1014,6 +1014,16 @@ void MVKImageDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 							   uint32_t srcIdx,
 							   size_t srcStride,
 							   const void* pData) {
+	writeCombined(mvkDSLBind, mvkDescSet, dstIdx, srcIdx, srcStride, pData, 1);
+}
+
+void MVKImageDescriptor::writeCombined(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+									   MVKDescriptorSet* mvkDescSet,
+									   uint32_t dstIdx,
+									   uint32_t srcIdx,
+									   size_t srcStride,
+									   const void* pData,
+									   uint32_t argStride) {
 	auto* oldImgView = _mvkImageView;
 
 	const auto* pImgInfo = &get<VkDescriptorImageInfo>(pData, srcStride, srcIdx);
@@ -1032,7 +1042,7 @@ void MVKImageDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			uint32_t planeDescIdx = (dstIdx * planeCount) + planeIndex;
 
 			id<MTLTexture> mtlTexture = _mvkImageView ? _mvkImageView->getMTLTexture(planeIndex) : nil;
-			uint32_t texArgIdx = mvkDSLBind->getMetalResourceIndexOffsets().textureIndex + planeDescIdx;
+			uint32_t texArgIdx = mvkDSLBind->getMetalResourceIndexOffsets().textureIndex + planeDescIdx * argStride;
 			mvkArgBuff.setTexture(mtlTexture, texArgIdx);
 
 			if (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && !mvkDSLBind->getMetalFeatures().nativeTextureAtomics) {
@@ -1120,7 +1130,8 @@ void MVKSamplerDescriptorMixin::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									  uint32_t dstIdx,
 									  uint32_t srcIdx,
 									  size_t srcStride,
-									  const void* pData) {
+									  const void* pData,
+									  uint32_t argStride) {
 
 	if (mvkDSLBind->usesImmutableSamplers()) { return; }
 
@@ -1143,7 +1154,7 @@ void MVKSamplerDescriptorMixin::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 		id<MTLSamplerState> mtlSamp = (mvkSamp
 									   ? mvkSamp->getMTLSamplerState()
 									   : mvkDSLBind->getDevice()->getDefaultMTLSamplerState());
-		uint32_t argIdx = mvkDSLBind->getMetalResourceIndexOffsets().samplerIndex + dstIdx;
+		uint32_t argIdx = mvkDSLBind->getMetalResourceIndexOffsets().samplerIndex + dstIdx * argStride;
 		mvkArgBuff.setSamplerState(mtlSamp, argIdx);
 	}
 }
@@ -1227,8 +1238,8 @@ void MVKCombinedImageSamplerDescriptor::write(MVKDescriptorSetLayoutBinding* mvk
 											  uint32_t srcIdx,
 											  size_t srcStride,
 											  const void* pData) {
-	MVKImageDescriptor::write(mvkDSLBind, mvkDescSet, dstIdx, srcIdx, srcStride, pData);
-	MVKSamplerDescriptorMixin::write(mvkDSLBind, mvkDescSet, dstIdx, srcIdx, srcStride, pData);
+	MVKImageDescriptor::writeCombined(mvkDSLBind, mvkDescSet, dstIdx, srcIdx, srcStride, pData, 2);
+	MVKSamplerDescriptorMixin::write(mvkDSLBind, mvkDescSet, dstIdx, srcIdx, srcStride, pData, 2);
 }
 
 void MVKCombinedImageSamplerDescriptor::read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
