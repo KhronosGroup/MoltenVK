@@ -953,8 +953,8 @@ void MVKAttachmentDescription::linkToSubpasses() {
 	_firstUseSubpassIdx = kMVKUndefinedLargeUInt32;
 	_lastUseSubpassIdx = 0;
 	if (_renderPass->_subpasses[0].isMultiview()) {
-		_firstUseViewMasks.reserve(_renderPass->_subpasses.size());
-		_lastUseViewMasks.reserve(_renderPass->_subpasses.size());
+		_firstUseViewMasks.resize(_renderPass->_subpasses.size());
+		_lastUseViewMasks.resize(_renderPass->_subpasses.size());
 	}
 	for (auto& subPass : _renderPass->_subpasses) {
 		// If it uses this attachment, the subpass will identify required format capabilities.
@@ -965,10 +965,10 @@ void MVKAttachmentDescription::linkToSubpasses() {
 			_lastUseSubpassIdx = max(spIdx, _lastUseSubpassIdx);
 			if ( subPass.isMultiview() ) {
 				uint32_t viewMask = subPass._pipelineRenderingCreateInfo.viewMask;
-				std::for_each(_lastUseViewMasks.begin(), _lastUseViewMasks.end(), [viewMask](uint32_t& mask) { mask &= ~viewMask; });
-				_lastUseViewMasks.push_back(viewMask);
-				std::for_each(_firstUseViewMasks.begin(), _firstUseViewMasks.end(), [&viewMask](uint32_t mask) { viewMask &= ~mask; });
-				_firstUseViewMasks.push_back(viewMask);
+				std::for_each(_lastUseViewMasks.begin(), _lastUseViewMasks.begin() + spIdx, [viewMask](uint32_t& mask) { mask &= ~viewMask; });
+				_lastUseViewMasks[spIdx] = viewMask;
+				std::for_each(_firstUseViewMasks.begin(), _firstUseViewMasks.begin() + spIdx, [&viewMask](uint32_t mask) { viewMask &= ~mask; });
+				_firstUseViewMasks[spIdx] = viewMask;
 			}
 
 			// Validate that the attachment pixel format supports the capabilities required by the subpass.
