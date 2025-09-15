@@ -680,6 +680,10 @@ allocate textures and buffers from general device memory.
 Vulkan extension `VK_EXT_image_2d_view_of_3d` requires this parameter to be active, 
 to allow aliasing of texture memory between the 3D image and the 2D view.
 
+`VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT` also requires this parameter to be active,
+to allow aliasing of texture memory between the compressed image and the uncompressed view.
+Note that this is only compatible with Apple GPUs.
+
 To force `MTLHeap` to be used on AMD GPUs, set this parameter to `2`. 
 To disable the use of `MTLHeap` on any GPU, set this parameter to `0`.
 
