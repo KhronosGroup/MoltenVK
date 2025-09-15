@@ -31,8 +31,8 @@ all:
 	@$(MAKE) maccat
 	@$(MAKE) tvos
 	@$(MAKE) tvossim
-#	@$(MAKE) visionos       # Requires Xcode 15+
-#	@$(MAKE) visionossim    # Requires Xcode 15+
+	@$(MAKE) visionos       # Requires Xcode 15+
+	@$(MAKE) visionossim    # Requires Xcode 15+
 
 .PHONY: all-debug
 all-debug:
@@ -42,8 +42,8 @@ all-debug:
 	@$(MAKE) maccat-debug
 	@$(MAKE) tvos-debug
 	@$(MAKE) tvossim-debug
-#	@$(MAKE) visionos-debug       # Requires Xcode 15+
-#	@$(MAKE) visionossim-debug    # Requires Xcode 15+
+	@$(MAKE) visionos-debug       # Requires Xcode 15+
+	@$(MAKE) visionossim-debug    # Requires Xcode 15+
 
 .PHONY: macos
 macos:
