@@ -381,3 +381,12 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #	define MVK_CONFIG_SHADER_LOG_ESTIMATED_GLSL		0
 #endif
 
+/*
+ * If set, MVK will treat all resources as if they had `MVK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT` set.
+ * This is mainly for getting more CTS coverage of the live resource tracking system,
+ * but it can also be used as a debug tool if MVK is crashing trying to bind destroyed resources.
+ * If setting this helps your application, your application is probably violating the Vulkan spec.
+ */
+#ifndef MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES
+#   define MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES 0
+#endif

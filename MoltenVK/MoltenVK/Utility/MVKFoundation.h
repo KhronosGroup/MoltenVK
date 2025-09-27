@@ -46,6 +46,12 @@ typedef uint16_t MVKHalfFloat;
 /** A representation of the value of 1.0 as a 16-bit half-float. */
 #define kHalfFloat1	0x3C00
 
+/** Indicates that a function will not modify any global state (but may read passed pointers or mutable global variables). */
+#define GCC_PURE __attribute__((pure))
+/** Indicates that a function's return depends only on its inputs (and no mutable global state). */
+#define GCC_CONST __attribute__((const))
+/** Indicates that a pointer does not alias any other pointers. */
+#define RESTRICT __restrict__
 
 #pragma mark -
 #pragma mark Vertex content structures
@@ -282,8 +288,89 @@ static constexpr  int64_t kMVKUndefinedLargePositiveInt64 =  mvkEnsurePowerOfTwo
 static constexpr  int64_t kMVKUndefinedLargeNegativeInt64 = -kMVKUndefinedLargePositiveInt64;
 static constexpr uint64_t kMVKUndefinedLargeUInt64        =  kMVKUndefinedLargePositiveInt64;
 
+#pragma mark - Bit Manipulation
 
-#pragma mark Vulkan structure support functions
+#ifndef __has_builtin
+#define __has_builtin(x) 0
+#endif
+
+#if __has_builtin(__builtin_popcount)
+static constexpr uint32_t mvkPopcount(unsigned char x)      { return __builtin_popcount(x); }
+static constexpr uint32_t mvkPopcount(unsigned short x)     { return __builtin_popcount(x); }
+static constexpr uint32_t mvkPopcount(unsigned x)           { return __builtin_popcount(x); }
+static constexpr uint32_t mvkPopcount(unsigned long x)      { return __builtin_popcountl(x); }
+static constexpr uint32_t mvkPopcount(unsigned long long x) { return __builtin_popcountll(x); }
+template <typename T> static constexpr uint32_t mvkPopcount(T t) { return mvkPopcount(static_cast<std::make_unsigned_t<T>>(t)); }
+#else
+template <typename T>
+static constexpr uint32_t mvkPopcount(T t) {
+	// From https://graphics.stanford.edu/~seander/bithacks.html
+	using U = std::make_unsigned_t<T>;
+	U val = t;
+	U allset = ~static_cast<U>(0);
+	U c0 = allset / 3;
+	U c1 = allset / 15 * 3;
+	U c2 = allset / 255;
+	val = val - ((val >> 1) & c0);
+	val = (val & c1) + ((val >> 2) & c1);
+	val = (val + (val >> 4)) & (c2 * 15);
+	return (val * c2) >> ((sizeof(U) - 1) * 8);
+}
+#endif
+
+#if __has_builtin(__builtin_clz)
+static constexpr uint32_t mvkCLZ(unsigned char x)      { return __builtin_clz(x) - (sizeof(int) - sizeof(char)) * 8; }
+static constexpr uint32_t mvkCLZ(unsigned short x)     { return __builtin_clz(x) - (sizeof(int) - sizeof(short)) * 8; }
+static constexpr uint32_t mvkCLZ(unsigned x)           { return __builtin_clz(x); }
+static constexpr uint32_t mvkCLZ(unsigned long x)      { return __builtin_clzl(x); }
+static constexpr uint32_t mvkCLZ(unsigned long long x) { return __builtin_clzll(x); }
+template <typename T> static constexpr uint32_t mvkCLZ(T t) { return mvkCLZ(static_cast<std::make_unsigned_t<T>>(t)); }
+#else
+template <typename T>
+static constexpr uint32_t mvkCLZ(T t) {
+	for (unsigned i = 0; i < sizeof(T) * 8; i++)
+		if (t & (static_cast<T>(1) << (sizeof(T) * 8 - 1 - i)))
+			return i;
+	return sizeof(T) * 8;
+}
+#endif
+
+#if __has_builtin(__builtin_ctz)
+static constexpr uint32_t mvkCTZ(unsigned char x)      { return __builtin_ctz(x); }
+static constexpr uint32_t mvkCTZ(unsigned short x)     { return __builtin_ctz(x); }
+static constexpr uint32_t mvkCTZ(unsigned x)           { return __builtin_ctz(x); }
+static constexpr uint32_t mvkCTZ(unsigned long x)      { return __builtin_ctzl(x); }
+static constexpr uint32_t mvkCTZ(unsigned long long x) { return __builtin_ctzll(x); }
+template <typename T> static constexpr uint32_t mvkCTZ(T t) { return mvkCTZ(static_cast<std::make_unsigned_t<T>>(t)); }
+#else
+template <typename T>
+static constexpr uint32_t mvkCTZ(T t) {
+	for (unsigned i = 0; i < sizeof(T) * 8; i++)
+		if (t & (static_cast<T>(1) << i))
+			return i;
+	return sizeof(T) * 8;
+}
+#endif
+
+#pragma mark - Vulkan structure support functions
+
+template <typename T, typename U>
+static const T* mvkFindStructInChain(const U* base, VkStructureType type) {
+	for (auto* cur = static_cast<const VkBaseInStructure*>(base->pNext); cur; cur = cur->pNext) {
+		if (cur->sType == type)
+			return reinterpret_cast<const T*>(cur);
+	}
+	return nullptr;
+}
+
+template <typename T, typename U>
+static T* mvkFindStructInChain(U* base, VkStructureType type) {
+	for (auto* cur = static_cast<const VkBaseOutStructure*>(base->pNext); cur; cur = cur->pNext) {
+		if (cur->sType == type)
+			return reinterpret_cast<T*>(cur);
+	}
+	return nullptr;
+}
 
 /** Returns a VkExtent2D created from the width and height of a VkExtent3D. */
 static constexpr VkExtent2D mvkVkExtent2DFromVkExtent3D(VkExtent3D e) { return {e.width, e.height }; }
@@ -478,11 +565,15 @@ public:
 	constexpr Type* data() const { return _data; }
 	constexpr size_t size() const { return _size; }
 	constexpr size_t byteSize() const { return _size * sizeof(Type); }
-	constexpr Type& operator[]( const size_t i ) const { return _data[i]; }
+	constexpr Type& operator[]( const size_t i ) const { assert(i < _size); return _data[i]; }
+	constexpr Type& front() const { assert(_size); return _data[0]; }
+	constexpr Type& back() const { assert(_size); return _data[_size - 1]; }
 	constexpr MVKArrayRef() : MVKArrayRef(nullptr, 0) {}
 	constexpr MVKArrayRef(Type* d, size_t s) : _data(d), _size(s) {}
 	template <typename Other, std::enable_if_t<std::is_convertible_v<Other(*)[], Type(*)[]>, bool> = true>
 	constexpr MVKArrayRef(MVKArrayRef<Other> other) : _data(other.data()), _size(other.size()) {}
+	template <size_t N>
+	constexpr MVKArrayRef(Type(&arr)[N]): _data(arr), _size(N) {}
 
 protected:
 	Type* _data;
@@ -672,3 +763,95 @@ static constexpr bool mvkIsOnlyAnyFlagEnabled(Tv value, const Tm bitMask) { retu
 template<typename Tv, typename Tm>
 static constexpr bool mvkAreOnlyAllFlagsEnabled(Tv value, const Tm bitMask) { return (value == bitMask); }
 
+/** Iterates over the set flags in a MVKFlagList. */
+template <typename Enum, typename Bits>
+struct MVKFlagListIterator {
+	Bits bits;
+	constexpr operator bool() const { return bits != 0; }
+	constexpr Enum operator*() const { return static_cast<Enum>(mvkCTZ(bits)); }
+	constexpr bool operator==(const MVKFlagListIterator& other) const { return bits == other.bits; }
+	constexpr bool operator!=(const MVKFlagListIterator& other) const { return bits != other.bits; }
+	constexpr MVKFlagListIterator& operator++() {
+		bits &= bits - 1;
+		return *this;
+	}
+	constexpr MVKFlagListIterator operator++(int) {
+		MVKFlagListIterator old = *this;
+		operator++();
+		return old;
+	}
+};
+
+/**
+ * Holds one bit for each value in `Enum`.
+ * `Enum` must be an enum class with a member `Count`, which is one greater than the last value in the enum.
+ */
+template <typename Enum>
+struct MVKFlagList {
+	static constexpr uint32_t NumBits = static_cast<uint32_t>(Enum::Count);
+	static_assert(NumBits <= 64, "Too many flags");
+	using Bits = std::conditional_t<(NumBits > 32), uint64_t, std::conditional_t<(NumBits > 16), uint32_t, uint16_t>>;
+	// Codegen for uint32 iteration is a bit better than smaller sizes
+	using Iter = MVKFlagListIterator<Enum, std::conditional_t<(NumBits > 32), uint64_t, uint32_t>>;
+	Bits bits;
+	MVKFlagList(const MVKFlagList&) = default;
+	constexpr MVKFlagList(): bits(0) {}
+	constexpr MVKFlagList(Enum flag, bool value = true): bits(static_cast<Bits>(value) << static_cast<uint32_t>(flag)) {}
+	constexpr MVKFlagList(std::initializer_list<Enum> flags): bits(0) {
+		for (Enum flag : flags)
+			add(flag);
+	}
+	static constexpr MVKFlagList fromBits(Bits bits) {
+		MVKFlagList res;
+		res.bits = bits;
+		return res;
+	}
+	static constexpr MVKFlagList all() {
+		return fromBits(static_cast<Bits>(NumBits == 64 ? ~0ull : (1ull << NumBits) - 1));
+	}
+	constexpr void set(Enum flag, bool value) {
+		remove(flag);
+		bits |= static_cast<Bits>(value) << static_cast<uint32_t>(flag);
+	}
+	constexpr Iter begin() const { return {bits}; }
+	constexpr Iter end() const { return {0}; }
+	constexpr void reset() { bits = 0; }
+	constexpr void addAll(MVKFlagList list) { bits |= list.bits; }
+	constexpr void removeAll(MVKFlagList list) { bits &= ~list.bits; }
+	constexpr void flipAll(MVKFlagList list) { bits ^= list.bits; }
+	constexpr void add(Enum flag) { addAll(flag); }
+	constexpr void remove(Enum flag) { removeAll(flag); }
+	constexpr void flip(Enum flag) { flipAll(flag); }
+	constexpr bool empty() const { return bits == 0; }
+	constexpr bool has(Enum flag) const { return (bits >> static_cast<uint32_t>(flag)) & 1; }
+	constexpr bool hasAny(MVKFlagList list) const { return mvkIsAnyFlagEnabled(bits, list.bits); }
+	constexpr bool hasAll(MVKFlagList list) const { return mvkAreAllFlagsEnabled(bits, list.bits); }
+	constexpr bool operator==(MVKFlagList other) const { return bits == other.bits; }
+	constexpr MVKFlagList addingAll(MVKFlagList list) const { MVKFlagList res = *this; res.addAll(list); return res; }
+	constexpr MVKFlagList removingAll(MVKFlagList list) const { MVKFlagList res = *this; res.removeAll(list); return res; }
+	constexpr MVKFlagList flippingAll(MVKFlagList list) const { MVKFlagList res = *this; res.flipAll(list); return res; }
+	constexpr MVKFlagList adding(Enum flag) const { MVKFlagList res = *this; res.add(flag); return res; }
+	constexpr MVKFlagList removing(Enum flag) const { MVKFlagList res = *this; res.remove(flag); return res; }
+	constexpr MVKFlagList flipping(Enum flag) const { MVKFlagList res = *this; res.flip(flag); return res; }
+	constexpr MVKFlagList& operator&=(MVKFlagList other) { bits &= other.bits; return *this; }
+	constexpr MVKFlagList& operator|=(MVKFlagList other) { bits |= other.bits; return *this; }
+	constexpr MVKFlagList operator&(MVKFlagList other) const { MVKFlagList res = *this; return res &= other; }
+	constexpr MVKFlagList operator|(MVKFlagList other) const { MVKFlagList res = *this; return res |= other; }
+};
+
+/**
+ * An array indexed by members of an `Enum`.
+ * `Enum` must have a member `Count`, which is one greater than the last value in the enum.
+ */
+template <typename Element, typename Enum>
+struct MVKOnePerEnumEntry {
+	static constexpr std::size_t Size = static_cast<std::size_t>(Enum::Count);
+	Element elements[Size];
+	constexpr       Element& operator[](Enum idx)       { return elements[static_cast<std::size_t>(idx)]; }
+	constexpr const Element& operator[](Enum idx) const { return elements[static_cast<std::size_t>(idx)]; }
+
+	      Element* begin()       { return std::begin(elements); }
+	const Element* begin() const { return std::begin(elements); }
+	      Element* end()         { return std::end(elements); }
+	const Element* end()   const { return std::end(elements); }
+};

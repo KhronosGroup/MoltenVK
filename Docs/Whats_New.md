@@ -19,6 +19,12 @@ MoltenVK 1.4.1
 Released TBD
 
 - .
+- New state tracker implementation.
+- New descriptor set/pool implementation.
+	- The new implementation is less forgiving of applications that don't properly manage the lifetime of their descriptors
+	  (and bind them after the objects they point to have been destroyed).
+	  Use `MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES=1` to revert any crashes this might cause, or mark potentially-destroyed descriptors
+	  with `VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT`.
 - Update to latest SPIRV-Cross:
 
 
