@@ -27,7 +27,7 @@
 
 template <typename Base> class MVKInlineObjectConstructor;
 
-/** Base class for classes that use inline objects */
+/** Base class for classes that use inline objects. */
 class MVKInlineConstructible {
 public:
 	void operator delete(void* ptr) noexcept {
@@ -40,7 +40,7 @@ public:
 	void operator delete[](void*) = delete;
 };
 
-/** An array whose allocation is part of in the allocation of its parent object */
+/** An array whose allocation is part of the allocation of its parent object. */
 template <typename T>
 class MVKInlineArray : public MVKArrayRef<T> {
 	constexpr MVKInlineArray(T* ptr, size_t sz): MVKArrayRef<T>(ptr, sz) {}
@@ -50,8 +50,8 @@ public:
 	MVKInlineArray(MVKInlineArray&&) = delete;
 	constexpr MVKInlineArray() = default;
 	/**
-	 * Manually construct an MVKInlineArray
-	 * `ptr` must be allocated on the parent object, e.g. with MVKInlineObjectConstructor::Allocate
+	 * Manually construct an MVKInlineArray.
+	 * `ptr` must be allocated on the parent object, e.g. with MVKInlineObjectConstructor::Allocate.
 	 */
 	void manualConstruct(T* ptr, size_t sz) {
 		MVKArrayRef<T>::_data = ptr;
@@ -63,7 +63,7 @@ public:
 	}
 };
 
-/** A pointer whose allocation is part of in the allocation of its parent object */
+/** A pointer whose allocation is part of the allocation of its parent object. */
 template <typename T>
 class MVKInlinePointer {
 	T* _ptr = nullptr;
@@ -76,8 +76,8 @@ public:
 	T* operator->() const { return _ptr; }
 	T* get() const { return _ptr; }
 	/**
-	 * Manually construct an MVKInlinePointer
-	 * `ptr` must be allocated on the parent object, e.g. with MVKInlineObjectConstructor::Allocate
+	 * Manually construct an MVKInlinePointer.
+	 * `ptr` must be allocated on the parent object, e.g. with MVKInlineObjectConstructor::Allocate.
 	 */
 	void manualConstruct(T* ptr) {
 		_ptr = ptr;

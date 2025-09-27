@@ -23,9 +23,7 @@
 #include <new>
 #include <type_traits>
 
-/**
- * Helper for creating objects that utilize inline arrays
- */
+/** Helper for creating objects that utilize inline arrays. */
 template <typename Base>
 class MVKInlineObjectConstructor {
 	static_assert(std::is_base_of<MVKInlineConstructible, Base>::value);
@@ -140,40 +138,40 @@ private:
 public:
 	/**
 	 * Create an initializer for an allocation that can be manually used after a Create call.
-	 * `*ptr` will be filled by the call to Create
+	 * `*ptr` will be filled by the call to Create.
 	 */
 	static ManualAllocationInitializer Allocate(void** ptr, size_t size, size_t align) {
 		return { ptr, size, align };
 	}
 
-	/** Create a pointer by copying the data behind an existing pointer */
+	/** Create a pointer by copying the data behind an existing pointer. */
 	template <typename T>
 	static PointerInitializer<T, InitType::Copy> Copy(MVKInlinePointer<T> Base::*member, const T* ptr) {
 		return { member, ptr, ptr };
 	}
-	/** Create an array by copying the data behind an existing array */
+	/** Create an array by copying the data behind an existing array. */
 	template <typename T>
 	static ArrayInitializer<T, InitType::Copy> Copy(MVKInlineArray<T> Base::*member, MVKArrayRef<const T> ptr) {
 		return { member, ptr.data(), ptr.size() };
 	}
 
-	/** Create a pointer by default-initializing the object */
+	/** Create a pointer by default-initializing the object. */
 	template <typename T>
 	static PointerInitializer<T, InitType::DefaultInit> Init(MVKInlinePointer<T> Base::*member, bool enabled = true) {
 		return { member, nullptr, enabled };
 	}
-	/** Create an array by default-initializing its contents */
+	/** Create an array by default-initializing its contents. */
 	template <typename T>
 	static ArrayInitializer<T, InitType::DefaultInit> Init(MVKInlineArray<T> Base::*member, size_t length) {
 		return { member, nullptr, length };
 	}
 
-	/** Create a pointer but leave it uninitialized */
+	/** Create a pointer but leave it uninitialized. */
 	template <typename T>
 	static PointerInitializer<T, InitType::Uninit> Uninit(MVKInlinePointer<T> Base::*member, bool enabled = true) {
 		return { member, nullptr, enabled };
 	}
-	/** Create an array but leave it uninitialized */
+	/** Create an array but leave it uninitialized. */
 	template <typename T>
 	static ArrayInitializer<T, InitType::Uninit> Uninit(MVKInlineArray<T> Base::*member, size_t length) {
 		return { member, nullptr, length };

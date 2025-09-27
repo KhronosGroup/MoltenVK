@@ -96,7 +96,7 @@ static_assert(sizeof(MVKMTLStencilDescriptorData) == offsetof(MVKMTLStencilDescr
  * A structure to hold configuration data for creating an MTLDepthStencilDescriptor instance.
  * Instances of this structure can be used as a map key.
  */
-struct alignas(sizeof(uint64_t)) MVKMTLDepthStencilDescriptorData {
+struct alignas(uint64_t) MVKMTLDepthStencilDescriptorData {
 	MVKMTLStencilDescriptorData frontFaceStencilData;
 	MVKMTLStencilDescriptorData backFaceStencilData;
 	uint8_t depthCompareFunction; /**< The depth compare function (interpreted as MTLCompareFunction). */
@@ -127,8 +127,8 @@ struct alignas(sizeof(uint64_t)) MVKMTLDepthStencilDescriptorData {
 	}
 
 	/**
-	 * Use default values for unused parts to reduce the number of different samplers
-	 * If `ignoreStencilTestEnabled`, simplification will act as if `stencilTestEnabled` is `true`
+	 * Use default values for unused parts to reduce the number of different samplers.
+	 * If `ignoreStencilTestEnabled`, simplification will act as if `stencilTestEnabled` is `true`.
 	 */
 	constexpr void simplify(bool ignoreStencilTestEnabled) {
 		if (!ignoreStencilTestEnabled && !stencilTestEnabled) {
@@ -146,7 +146,7 @@ struct alignas(sizeof(uint64_t)) MVKMTLDepthStencilDescriptorData {
 		reset();
 	}
 
-	/** Get a depth stencil descriptor that does nothing but write depth if `depth` and stencil if `stencil` */
+	/** Gets a depth stencil descriptor that does nothing but write depth if `depth` and stencil if `stencil`. */
 	static MVKMTLDepthStencilDescriptorData Write(bool depth, bool stencil) {
 		MVKMTLDepthStencilDescriptorData res;
 		if (depth)
@@ -209,7 +209,7 @@ struct MVKImplicitBufferBindings {
 	}
 };
 
-/** One bit for each resource that can be bound to a pipeline stage */
+/** Contains one bit for each resource that can be bound to a pipeline stage. */
 union MVKStageResourceBits {
 	struct {
 		MVKStaticBitSet<kMVKMaxTextureCount> textures;

@@ -445,47 +445,47 @@ public:
 	const MVKVulkanGraphicsCommandEncoderState& vkGraphics() const { return _vkGraphics; }
 	/** Get a reference to the Vulkan compute state.  Read-only, use methods on this class (which will invalidate associated Metal state) to modify. */
 	const MVKVulkanComputeCommandEncoderState&  vkCompute()  const { return _vkCompute; }
-	/** Get a reference to the Metal state shared between graphics and compute. */
+	/** Returns a reference to the Metal state shared between graphics and compute. */
 	MVKMetalSharedCommandEncoderState&   mtlShared()   { return _mtlShared; }
-	/** Get a reference to the Metal graphics state. */
+	/** Returns a reference to the Metal graphics state. */
 	MVKMetalGraphicsCommandEncoderState& mtlGraphics() { return _mtlGraphics; }
-	/** Get a reference to the Metal compute state. */
+	/** Returns a reference to the Metal compute state. */
 	MVKMetalComputeCommandEncoderState&  mtlCompute()  { return _mtlCompute; }
 
 	/**
-	 * Update the given dynamic state, invalidating the passed flags on the Metal graphics state.
-	 * (Use the returned reference to do the actual update to the Vulkan state.)
+	 * Updates the given dynamic state, invalidating the passed flags on the Metal graphics state.
+	 * Use the returned reference to do the actual update to the Vulkan state.
 	 */
 	MVKVulkanGraphicsCommandEncoderState& updateDynamicState(MVKRenderStateFlags state) {
 		_mtlGraphics.markDirty(state);
 		return _vkGraphics;
 	}
 
-	/** Get the current sample positions and mark those positions as the currently bound positions. */
+	/** Returns the current sample positions and marks those positions as the currently bound positions. */
 	MVKArrayRef<const MTLSamplePosition> updateSamplePositions();
-	/** Check if the render pass needs to be restarted before drawing with the current graphics configuration. */
+	/** Checks if the render pass needs to be restarted before drawing with the current graphics configuration. */
 	bool needsMetalRenderPassRestart();
-	/** Bind everything needed to render with the current Vulkan graphics state on the current Metal graphics state. */
+	/** Binds everything needed to render with the current Vulkan graphics state on the current Metal graphics state. */
 	void prepareDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder) {
 		_mtlGraphics.prepareDraw(encoder, mvkEncoder, _vkGraphics, _vkShared);
 	}
-	/** Bind everything needed to dispatch a compute-based emulation of the given stage of the current Vulkan graphics state on the current Metal compute state. */
+	/** Binds everything needed to dispatch a compute-based emulation of the given stage of the current Vulkan graphics state on the current Metal compute state. */
 	void prepareRenderDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, MVKGraphicsStage stage) {
 		assert(stage == kMVKGraphicsStageVertex || stage == kMVKGraphicsStageTessControl);
 		MVKShaderStage shaderStage = stage == kMVKGraphicsStageVertex ? kMVKShaderStageVertex : kMVKShaderStageTessCtl;
 		_mtlCompute.prepareRenderDispatch(encoder, mvkEncoder, _vkGraphics, _vkShared, shaderStage);
 	}
-	/** Bind everything needed to dispatch a Vulkan compute shader on the current Metal compute state. */
+	/** Binds everything needed to dispatch a Vulkan compute shader on the current Metal compute state. */
 	void prepareComputeDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder) {
 		_mtlCompute.prepareComputeDispatch(encoder, mvkEncoder, _vkCompute, _vkShared);
 	}
-	/** Bind the given graphics pipeline to the Vulkan graphics state, invalidating any necessary resources. */
+	/** Binds the given graphics pipeline to the Vulkan graphics state, invalidating any necessary resources. */
 	void bindGraphicsPipeline(MVKGraphicsPipeline* pipeline);
-	/** Bind the given compute pipeline to the Vulkan graphics state, invalidating any necessary resources. */
+	/** Binds the given compute pipeline to the Vulkan graphics state, invalidating any necessary resources. */
 	void bindComputePipeline(MVKComputePipeline* pipeline);
-	/** Bind the given push constants to the Vulkan state, invalidating any necessary resources. */
+	/** Binds the given push constants to the Vulkan state, invalidating any necessary resources. */
 	void pushConstants(uint32_t offset, uint32_t size, const void* data);
-	/** Bind the given descriptor sets to the Vulkan state, invalidating any necessary resources. */
+	/** Binds the given descriptor sets to the Vulkan state, invalidating any necessary resources. */
 	void bindDescriptorSets(VkPipelineBindPoint bindPoint,
 	                        MVKPipelineLayout* layout,
 	                        uint32_t firstSet,
@@ -493,23 +493,23 @@ public:
 	                        MVKDescriptorSet*const* sets,
 	                        uint32_t dynamicOffsetCount,
 	                        const uint32_t* dynamicOffsets);
-	/** Apply the given descriptor set writes to the push descriptor set on bindPoint. */
+	/** Applies the given descriptor set writes to the push descriptor set on bindPoint. */
 	void pushDescriptorSet(VkPipelineBindPoint bindPoint, MVKPipelineLayout* layout, uint32_t set, uint32_t writeCount, const VkWriteDescriptorSet* writes);
-	/** Apply the given descriptor update template to the push descriptor to its specified bindPoint. */
+	/** Applies the given descriptor update template to the push descriptor to its specified bindPoint. */
 	void pushDescriptorSet(MVKDescriptorUpdateTemplate* updateTemplate, MVKPipelineLayout* layout, uint32_t set, const void* data);
-	/** Bind the given vertex buffers to the Vulkan state, invalidating any necessary resources. */
+	/** Binds the given vertex buffers to the Vulkan state, invalidating any necessary resources. */
 	void bindVertexBuffers(uint32_t firstBinding, MVKArrayRef<const MVKVertexMTLBufferBinding> buffers);
-	/** Bind the given index buffer to the Vulkan state, invalidating any necessary resources. */
+	/** Binds the given index buffer to the Vulkan state, invalidating any necessary resources. */
 	void bindIndexBuffer(const MVKIndexMTLBufferBinding& buffer);
 	void offsetZeroDivisorVertexBuffers(MVKCommandEncoder& mvkEncoder, MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);
 
-	/** Begin tracking for a fresh MTLRenderCommandEncoder. */
+	/** Begins tracking for a fresh MTLRenderCommandEncoder. */
 	void beginGraphicsEncoding(VkSampleCountFlags sampleCount);
-	/** Begin tracking for a fresh MTLComputeCommandEncoder. */
+	/** Begins tracking for a fresh MTLComputeCommandEncoder. */
 	void beginComputeEncoding();
 
 	/**
-	 * Call the given function on either the Metal graphics or compute state tracker, whichever one is active (or neither if neither is active).
+	 * Calls the given function on either the Metal graphics or compute state tracker, whichever one is active (or neither if neither is active).
 	 * `bindPoint` can be used to only call the function if the given Vulkan pipeline is being encoded to the active encoder.
 	 */
 	template <typename Fn>

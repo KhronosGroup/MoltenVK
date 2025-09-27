@@ -1317,8 +1317,7 @@ void MVKCommandEncoder::finishQueries() {
 MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer, MVKPrefillMetalCommandBuffersStyle prefillStyle)
 	: MVKBaseDeviceObject(cmdBuffer->getDevice())
 	, _cmdBuffer(cmdBuffer)
-	, _prefillStyle(prefillStyle)
-{
+	, _prefillStyle(prefillStyle) {
 	_pActivatedQueries = nullptr;
 	_mtlCmdBuffer = nil;
 	_mtlRenderEncoder = nil;

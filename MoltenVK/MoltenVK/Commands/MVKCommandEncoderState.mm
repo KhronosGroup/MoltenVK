@@ -209,8 +209,7 @@ const MVKVertexBufferBinder& MVKVertexBufferBinder::Get(Stage stage) {
 
 template <typename Binder, typename Encoder>
 static void bindBuffer(Encoder encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index,
-                       MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const Binder& binder)
-{
+                       MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const Binder& binder) {
 	if (buffer) {
 		if (!exists.buffers.get(index) || bindings.buffers[index].buffer != buffer) {
 			exists.buffers.set(index);
@@ -228,8 +227,7 @@ static void bindBuffer(Encoder encoder, id<MTLBuffer> buffer, VkDeviceSize offse
 
 template <typename Binder, typename Encoder>
 static void bindBytes(Encoder encoder, const void* data, size_t size, NSUInteger index,
-                      MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const Binder& binder)
-{
+                      MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const Binder& binder) {
 	exists.buffers.set(index);
 	bindings.buffers[index] = MVKStageResourceBindings::InvalidBuffer();
 	binder.setBytes(encoder, data, size, index);
@@ -237,20 +235,19 @@ static void bindBytes(Encoder encoder, const void* data, size_t size, NSUInteger
 
 template <bool DynamicStride>
 static void bindVertexBuffer(id<MTLCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, uint32_t stride, NSUInteger index,
-                             MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const MVKVertexBufferBinder& binder)
-{
+                             MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const MVKVertexBufferBinder& binder) {
 	VkDeviceSize offsetLookup = offset;
-	if (DynamicStride)
+	if constexpr (DynamicStride)
 		offsetLookup ^= static_cast<VkDeviceSize>(stride ^ (1u << 31)) << 32;
 	if (!exists.buffers.get(index) || bindings.buffers[index].buffer != buffer) {
 		exists.buffers.set(index);
-		if (DynamicStride)
+		if constexpr (DynamicStride)
 			binder.setBufferDynamic(encoder, buffer, offset, stride, index);
 		else
 			binder.setBuffer(encoder, buffer, offset, index);
 		bindings.buffers[index] = { buffer, offsetLookup };
 	} else if (bindings.buffers[index].offset != offsetLookup) {
-		if (DynamicStride)
+		if constexpr (DynamicStride)
 			binder.setBufferOffsetDynamic(encoder, offset, stride, index);
 		else
 			binder.setBufferOffset(encoder, offset, index);
@@ -260,8 +257,7 @@ static void bindVertexBuffer(id<MTLCommandEncoder> encoder, id<MTLBuffer> buffer
 
 template <typename Binder, typename Encoder>
 static void bindTexture(Encoder encoder, id<MTLTexture> texture, NSUInteger index,
-                        MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const Binder& binder)
-{
+                        MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const Binder& binder) {
 	if (!exists.textures.get(index) || bindings.textures[index] != texture) {
 		exists.textures.set(index);
 		binder.setTexture(encoder, texture, index);
@@ -271,8 +267,7 @@ static void bindTexture(Encoder encoder, id<MTLTexture> texture, NSUInteger inde
 
 template <typename Binder, typename Encoder>
 static void bindSampler(Encoder encoder, id<MTLSamplerState> sampler, NSUInteger index,
-                        MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const Binder& binder)
-{
+                        MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const Binder& binder) {
 	if (!exists.samplers.get(index) || bindings.samplers[index] != sampler) {
 		exists.samplers.set(index);
 		binder.setSampler(encoder, sampler, index);
@@ -374,8 +369,7 @@ static void bindDescriptorSets(MVKImplicitBufferData& target,
                                MVKShaderStage stage,
                                MVKPipelineLayout* layout,
                                uint32_t firstSet, uint32_t setCount, MVKDescriptorSet*const* sets,
-                               uint32_t dynamicOffsetCount, const uint32_t* dynamicOffsets)
-{
+                               uint32_t dynamicOffsetCount, const uint32_t* dynamicOffsets) {
 	[[maybe_unused]] const uint32_t* dynamicOffsetsEnd = dynamicOffsets + dynamicOffsetCount;
 	VkShaderStageFlags vkStage = mvkVkShaderStageFlagBitsFromMVKShaderStage(stage);
 	for (uint32_t i = 0; i < setCount; i++) {
@@ -422,8 +416,7 @@ static void bindImmediateData(id<MTLCommandEncoder> encoder,
                               MVKCommandEncoder& mvkEncoder,
                               const uint8_t* data, size_t size,
                               uint32_t idx,
-                              const MVKResourceBinder& RESTRICT binder)
-{
+                              const MVKResourceBinder& RESTRICT binder) {
 	if (size < 4096) {
 		binder.setBytes(encoder, data, size, idx);
 	} else {
@@ -436,8 +429,7 @@ static void bindImmediateData(id<MTLCommandEncoder> encoder,
                               MVKCommandEncoder& mvkEncoder,
                               MVKArrayRef<const uint32_t> data,
                               uint32_t idx,
-                              const MVKResourceBinder& RESTRICT binder)
-{
+                              const MVKResourceBinder& RESTRICT binder) {
 	bindImmediateData(encoder, mvkEncoder, reinterpret_cast<const uint8_t*>(data.data()), data.byteSize(), idx, binder);
 }
 
@@ -467,8 +459,7 @@ static void executeBindOp(id<MTLCommandEncoder> encoder,
                           MVKResourceUsageStages useResourceStage,
                           MVKStageResourceBits& exists,
                           MVKStageResourceBindings& bindings,
-                          const MVKResourceBinder& RESTRICT binder)
-{
+                          const MVKResourceBinder& RESTRICT binder) {
 	if (Op == MVKDescriptorBindOperationCode::BindBytes) {
 		MVKStageResourceBindings::Buffer buffer = { reinterpret_cast<id<MTLBuffer>>(src), 0 };
 		if (!exists.buffers.get(target) || bindings.buffers[target].buffer != buffer.buffer) {
@@ -573,8 +564,7 @@ static void executeBindOps(id<MTLCommandEncoder> encoder,
                            MVKResourceUsageStages useResourceStage,
                            MVKStageResourceBits& exists,
                            MVKStageResourceBindings& bindings,
-                           const MVKResourceBinder& RESTRICT binder)
-{
+                           const MVKResourceBinder& RESTRICT binder) {
 	bool didUseResource = false;
 	for (const MVKDescriptorBindOperation& op : ops) {
 		MVKDescriptorSet* set = common._descriptorSets[op.set];
@@ -665,8 +655,7 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
                                MVKResourceUsageStages useResourceStage,
                                MVKStageResourceBits& exists,
                                MVKStageResourceBindings& bindings,
-                               const MVKResourceBinder& RESTRICT binder)
-{
+                               const MVKResourceBinder& RESTRICT binder) {
 	// Clear descriptor set resource use bitarray for new sets and bind them
 	MVKStaticBitSet<kMVKMaxDescriptorSetCount> setsNeeded = resources.resources.descriptorSetData.clearingAllIn(exists.descriptorSetData);
 	exists.descriptorSetData |= resources.resources.descriptorSetData;
@@ -739,20 +728,19 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 }
 
 /**
- * Bind resources for running Vulkan graphics commands on a Metal render command encoder
+ * Binds resources for running Vulkan graphics commands on a Metal render command encoder.
  *
- * Binds resources in stage `vkStage` of `vkState` to stage `mtlStage` of `mtlState`
+ * Binds resources in stage `vkStage` of `vkState` to stage `mtlStage` of `mtlState`.
  */
 static void bindVulkanGraphicsToMetalGraphics(
-	id<MTLRenderCommandEncoder> encoder,
-	MVKCommandEncoder& mvkEncoder,
-	const MVKVulkanGraphicsCommandEncoderState& vkState,
-	const MVKVulkanSharedCommandEncoderState& vkShared,
-	MVKMetalGraphicsCommandEncoderState& mtlState,
-	MVKGraphicsPipeline* pipeline,
-	MVKShaderStage vkStage,
-	MVKMetalGraphicsStage mtlStage)
-{
+  id<MTLRenderCommandEncoder> encoder,
+  MVKCommandEncoder& mvkEncoder,
+  const MVKVulkanGraphicsCommandEncoderState& vkState,
+  const MVKVulkanSharedCommandEncoderState& vkShared,
+  MVKMetalGraphicsCommandEncoderState& mtlState,
+  MVKGraphicsPipeline* pipeline,
+  MVKShaderStage vkStage,
+  MVKMetalGraphicsStage mtlStage) {
 	bindMetalResources(encoder,
 	                   mvkEncoder,
 	                   vkState,
@@ -767,19 +755,18 @@ static void bindVulkanGraphicsToMetalGraphics(
 }
 
 /**
- * Bind resources for running Vulkan graphics commands on a Metal compute command encoder
+ * Binds resources for running Vulkan graphics commands on a Metal compute command encoder.
  *
- * Binds resources in stage `vkStage` of `vkState` to `mtlState`
+ * Binds resources in stage `vkStage` of `vkState` to `mtlState`.
  */
 static void bindVulkanGraphicsToMetalCompute(
-	id<MTLComputeCommandEncoder> encoder,
-	MVKCommandEncoder& mvkEncoder,
-	const MVKVulkanGraphicsCommandEncoderState& vkState,
-	const MVKVulkanSharedCommandEncoderState& vkShared,
-	MVKMetalComputeCommandEncoderState& mtlState,
-	MVKGraphicsPipeline* pipeline,
-	MVKShaderStage vkStage)
-{
+  id<MTLComputeCommandEncoder> encoder,
+  MVKCommandEncoder& mvkEncoder,
+  const MVKVulkanGraphicsCommandEncoderState& vkState,
+  const MVKVulkanSharedCommandEncoderState& vkShared,
+  MVKMetalComputeCommandEncoderState& mtlState,
+  MVKGraphicsPipeline* pipeline,
+  MVKShaderStage vkStage) {
 	bindMetalResources(encoder,
 	                   mvkEncoder,
 	                   vkState,
@@ -793,15 +780,14 @@ static void bindVulkanGraphicsToMetalCompute(
 	                   MVKResourceBinder::Compute());
 }
 
-/** Bind resources for running Vulkan compute commands on a Metal compute command encoder */
+/** Binds resources for running Vulkan compute commands on a Metal compute command encoder. */
 static void bindVulkanComputeToMetalCompute(
-	id<MTLComputeCommandEncoder> encoder,
-	MVKCommandEncoder& mvkEncoder,
-	const MVKVulkanComputeCommandEncoderState& vkState,
-	const MVKVulkanSharedCommandEncoderState& vkShared,
-	MVKMetalComputeCommandEncoderState& mtlState,
-	MVKComputePipeline* pipeline)
-{
+  id<MTLComputeCommandEncoder> encoder,
+  MVKCommandEncoder& mvkEncoder,
+  const MVKVulkanComputeCommandEncoderState& vkState,
+  const MVKVulkanSharedCommandEncoderState& vkShared,
+  MVKMetalComputeCommandEncoderState& mtlState,
+  MVKComputePipeline* pipeline) {
 	bindMetalResources(encoder,
 	                   mvkEncoder,
 	                   vkState,
@@ -820,8 +806,7 @@ static void bindVertexBuffersTemplate(id<MTLCommandEncoder> encoder,
                                       const MVKVulkanGraphicsCommandEncoderState& vkState,
                                       MVKStageResourceBits& exists,
                                       MVKStageResourceBindings& bindings,
-                                      const MVKVertexBufferBinder& RESTRICT binder)
-{
+                                      const MVKVertexBufferBinder& RESTRICT binder) {
 	MVKGraphicsPipeline* pipeline = vkState._pipeline;
 	for (size_t vkidx : pipeline->getVkVertexBuffers()) {
 		const auto& buffer = vkState._vertexBuffers[vkidx];
@@ -841,8 +826,7 @@ static void bindVertexBuffers(id<MTLCommandEncoder> encoder,
                               const MVKVulkanGraphicsCommandEncoderState& vkState,
                               MVKStageResourceBits& exists,
                               MVKStageResourceBindings& bindings,
-                              const MVKVertexBufferBinder& RESTRICT binder)
-{
+                              const MVKVertexBufferBinder& RESTRICT binder) {
 	if (vkState._pipeline->getDynamicStateFlags().has(MVKRenderStateFlag::VertexStride))
 		bindVertexBuffersTemplate<true> (encoder, vkState, exists, bindings, binder);
 	else
@@ -928,7 +912,7 @@ void MVKUseResourceHelper::addImmediate(id<MTLResource> resource, id<MTLCommandE
 void MVKUseResourceHelper::bindAndResetGraphics(id<MTLRenderCommandEncoder> encoder) {
 	// If a resource is used multiple times on different stages, it may appear in multiple lists.
 	// As long as the iteration order hits stages that combine multiple render stages after the stages it combines,
-	// This should be OK, as the last useResource will be the one for the most comprehensive list of stages.
+	// this should be OK, as the last useResource will be the one for the most comprehensive list of stages.
 	for (uint32_t i = 0; i < std::size(entries.elements); i++) {
 		MVKResourceUsageStages stages = static_cast<MVKResourceUsageStages>(i);
 		MTLRenderStages mtlStages = getMTLStages(stages);
@@ -1143,17 +1127,15 @@ static constexpr MVKRenderStateFlags FlagsMetalState {
 static constexpr MVKRenderStateFlags FlagsHandledByBindStateData = FlagsViewportScissor | FlagsMetalState;
 
 void MVKMetalGraphicsCommandEncoderState::bindStateData(
-	id<MTLRenderCommandEncoder> encoder,
-	MVKCommandEncoder& mvkEncoder,
-	const MVKRenderStateData& data,
-	MVKRenderStateFlags flags,
-	const VkViewport* viewports,
-	const VkRect2D* scissors)
-{
+  id<MTLRenderCommandEncoder> encoder,
+  MVKCommandEncoder& mvkEncoder,
+  const MVKRenderStateData& data,
+  MVKRenderStateFlags flags,
+  const VkViewport* viewports,
+  const VkRect2D* scissors) {
 	if (flags.hasAny(FlagsViewportScissor)) {
 		if (flags.has(MVKRenderStateFlag::Viewports) &&
-		    (_numViewports != data.numViewports || !mvkAreEqual(_viewports, viewports, data.numViewports)))
-		{
+		  (_numViewports != data.numViewports || !mvkAreEqual(_viewports, viewports, data.numViewports))) {
 			_numViewports = data.numViewports;
 			mvkCopy(_viewports, viewports, data.numViewports);
 			MTLViewport mtlViewports[kMVKMaxViewportScissorCount];
@@ -1175,8 +1157,7 @@ void MVKMetalGraphicsCommandEncoderState::bindStateData(
 			}
 		}
 		if (flags.has(MVKRenderStateFlag::Scissors) &&
-			(_numScissors != data.numScissors || !mvkAreEqual(_scissors, scissors, data.numScissors)))
-		{
+		  (_numScissors != data.numScissors || !mvkAreEqual(_scissors, scissors, data.numScissors))) {
 			if (!_flags.has(MVKMetalRenderEncoderStateFlag::RasterizationDisabledByScissor) || _numScissors != data.numScissors)
 				_flags.add(MVKMetalRenderEncoderStateFlag::ScissorDirty);
 			_numScissors = data.numScissors;
@@ -1405,11 +1386,10 @@ void MVKMetalGraphicsCommandEncoderState::bindState(
 }
 
 void MVKMetalGraphicsCommandEncoderState::prepareDraw(
-	id<MTLRenderCommandEncoder> encoder,
-	MVKCommandEncoder& mvkEncoder,
-	const MVKVulkanGraphicsCommandEncoderState& vk,
-	const MVKVulkanSharedCommandEncoderState& vkShared)
-{
+  id<MTLRenderCommandEncoder> encoder,
+  MVKCommandEncoder& mvkEncoder,
+  const MVKVulkanGraphicsCommandEncoderState& vk,
+  const MVKVulkanSharedCommandEncoderState& vkShared) {
 	MVKGraphicsPipeline* pipeline = vk._pipeline;
 	if (!pipeline->getMainPipelineState()) // Abort if pipeline could not be created.
 		return;
@@ -1445,10 +1425,9 @@ void MVKMetalGraphicsCommandEncoderState::prepareDraw(
 }
 
 void MVKMetalGraphicsCommandEncoderState::prepareHelperDraw(
-	id<MTLRenderCommandEncoder> encoder,
-	MVKCommandEncoder& mvkEncoder,
-	const MVKHelperDrawState& state)
-{
+  id<MTLRenderCommandEncoder> encoder,
+  MVKCommandEncoder& mvkEncoder,
+  const MVKHelperDrawState& state) {
 	_stateReady.removeAll({
 		MVKRenderStateFlag::CullMode,
 		MVKRenderStateFlag::DepthBiasEnable,
@@ -1546,11 +1525,10 @@ void MVKMetalComputeCommandEncoderState::bindSampler(id<MTLComputeCommandEncoder
 }
 
 void MVKMetalComputeCommandEncoderState::prepareComputeDispatch(
-	id<MTLComputeCommandEncoder> encoder,
-	MVKCommandEncoder& mvkEncoder,
-	const MVKVulkanComputeCommandEncoderState& vk,
-	const MVKVulkanSharedCommandEncoderState& vkShared)
-{
+  id<MTLComputeCommandEncoder> encoder,
+  MVKCommandEncoder& mvkEncoder,
+  const MVKVulkanComputeCommandEncoderState& vk,
+  const MVKVulkanSharedCommandEncoderState& vkShared) {
 	MVKComputePipeline* pipeline = vk._pipeline;
 	id<MTLComputePipelineState> mtlPipeline = pipeline->getPipelineState();
 	if (!mtlPipeline) // Abort if pipeline could not be created.
@@ -1715,14 +1693,13 @@ void MVKCommandEncoderState::pushConstants(uint32_t offset, uint32_t size, const
 }
 
 void MVKCommandEncoderState::bindDescriptorSets(
-	VkPipelineBindPoint bindPoint,
-	MVKPipelineLayout* layout,
-	uint32_t firstSet,
-	uint32_t setCount,
-	MVKDescriptorSet*const* sets,
-	uint32_t dynamicOffsetCount,
-	const uint32_t* dynamicOffsets)
-{
+  VkPipelineBindPoint bindPoint,
+  MVKPipelineLayout* layout,
+  uint32_t firstSet,
+  uint32_t setCount,
+  MVKDescriptorSet*const* sets,
+  uint32_t dynamicOffsetCount,
+  const uint32_t* dynamicOffsets) {
 	auto affected = MVKStaticBitSet<kMVKMaxDescriptorSetCount>::range(firstSet, firstSet + setCount);
 	applyToActiveMTLState(bindPoint, [affected](auto& mtl){
 		invalidateDescriptorSetImplicitBuffers(mtl);

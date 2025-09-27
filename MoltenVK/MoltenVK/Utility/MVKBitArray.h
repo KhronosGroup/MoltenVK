@@ -2,6 +2,7 @@
  * MVKBitArray.h
  *
  * Copyright (c) 2020-2025 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2023-2025 Evan Tang for CodeWeavers
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,13 +59,13 @@ namespace detail {
 			}
 		}
 	}
-};
+}
 
 #pragma mark - MVKStaticBitArray
 
 /**
- * A pointer to a bit in a bit set
- * Decays into a bit offset, but if used directly with another bit set of the same type, can save putting the pieces together only to take them apart again
+ * A pointer to a bit in a bit set.
+ * It decays into a bit offset, but if it's used directly with another bit set of the same type, you can save putting the pieces together only to take them apart again.
  */
 template <typename Bits>
 struct MVKBitPointer {
@@ -73,7 +74,7 @@ struct MVKBitPointer {
 	operator std::size_t() const { return sizeof(Bits) * CHAR_BIT * wordOffset + bitOffset; }
 };
 
-/** Iterate over the bits set in `bits`, adding the offset `wordOffset` to each */
+/** Iterate over the bits set in `bits`, adding the offset `wordOffset` to each. */
 template <typename Bits>
 struct MVKSetBitIterator {
 	// Codegen for uint32 iteration is a bit better than smaller sizes
@@ -97,8 +98,8 @@ struct MVKSetBitIterator {
 };
 
 /**
- * Iterate over the bits set in an array of `Count` numbers
- * This iterator will yield a `MVKSetBitIterator` for each element of the array
+ * Iterate over the bits set in an array of `Count` numbers.
+ * This iterator will yield a `MVKSetBitIterator` for each element of the array.
  */
 template <typename Bits>
 struct MVKSetBitIteratorIterator {
@@ -133,9 +134,9 @@ class MVKSmallStaticBitSet {
 
 public:
 	constexpr MVKSmallStaticBitSet(): _bits(0) {}
-	/** Construct from a raw bit array */
+	/** Constructs from a raw bit array. */
 	static constexpr MVKSmallStaticBitSet fromBits(Base bits) { return { bits }; }
-	/** Construct from a range of set bits */
+	/** Constructs from a range of set bits. */
 	static constexpr MVKSmallStaticBitSet range(std::size_t begin, std::size_t end) {
 		MVKSmallStaticBitSet res;
 		if (end > begin) [[likely]] {
@@ -146,65 +147,65 @@ public:
 		return res;
 	}
 
-	/** Get the raw bit array from the bitset */
+	/** Gets the raw bit array from the bitset. */
 	constexpr Base bits() const { return _bits; }
-	/** For C++ for-in */
+	/** For C++ ranged for. */
 	constexpr MVKSetBitIterator<Base> begin() const { return { _bits, 0 }; }
-	/** For C++ for-in */
+	/** For C++ ranged for. */
 	constexpr MVKSetBitIterator<Base> end() const { return { 0, 0 }; }
 	/**
-	 * Get an iterator over iterators over the bits set in the bitset
+	 * Gets an iterator over iterators over the bits set in the bitset.
 	 *
 	 * This is a convenience function for API compatibility with MVKLargeStaticBitSet.  If you know your bit set is small, you can iterate over its bits directly.
 	 */
 	constexpr MVKSetBitIteratorIterator<Base> setBitsList() const { return { &_bits, 0, 1 }; }
 
-	/** Remove all bits from the set */
+	/** Removes all bits from the set. */
 	constexpr void reset() { _bits = 0; }
-	/** Remove all bits from the set, then add all the bits in the range `[begin, end)` */
+	/** Removes all bits from the set, then adds all the bits in the range `[begin, end)`. */
 	constexpr void resetToRange(std::size_t begin, std::size_t end) { *this = range(begin, end); }
-	/** Set all bits in the given range */
+	/** Sets all bits in the given range. */
 	constexpr void setRange(std::size_t begin, std::size_t end) { *this |= range(begin, end); }
-	/** Clear all bits in the given range */
+	/** Clears all bits in the given range. */
 	constexpr void clearRange(std::size_t begin, std::size_t end) { clearAllIn(range(begin, end)); }
-	/** Set or clear the given bit */
+	/** Sets or clears the given bit. */
 	constexpr void set(std::size_t bit, bool value = true) {
 		Base flag = static_cast<Base>(1) << bit;
 		_bits = value ? _bits | flag : _bits & ~flag;
 	}
-	/** Set or clear the given bit */
+	/** Sets or clears the given bit. */
 	constexpr void set(MVKBitPointer<Base> bit, bool value = true) { set(bit.bitOffset, value); }
-	/** Convenience function for set(bit, false) */
+	/** A convenience function for set(bit, false). */
 	constexpr void clear(MVKBitPointer<Base> bit) { set(bit, false); }
-	/** Convenience function for set(bit, false) */
+	/** A convenience function for set(bit, false). */
 	constexpr void clear(std::size_t bit) { set(bit, false); }
-	/** Check if the given bit is set */
+	/** Returns whether the given bit is set. */
 	constexpr bool get(std::size_t bit) const { return (_bits >> bit) & 1; }
-	/** Check if the given bit is set */
+	/** Returns whether the given bit is set. */
 	constexpr bool get(MVKBitPointer<Base> bit) const { return get(bit.bitOffset); }
-	/** Check if any bits in the array are set */
+	/** Returns whether any bits in the array are set. */
 	constexpr bool areAnyBitsSet() const { return _bits != 0; }
-	/** Check if all bits in the array are unset */
+	/** Returns whether all bits in the array are unset. */
 	constexpr bool areAllBitsClear() const { return !areAnyBitsSet(); }
-	/** Get the intersection of this and another set */
+	/** Returns the intersection of this and another set. */
 	constexpr MVKSmallStaticBitSet operator&(MVKSmallStaticBitSet other) const { return MVKSmallStaticBitSet(_bits & other._bits); }
-	/** Get the union of this and another set */
+	/** Returns the union of this and another set. */
 	constexpr MVKSmallStaticBitSet operator|(MVKSmallStaticBitSet other) const { return MVKSmallStaticBitSet(_bits | other._bits); }
-	/** Intersect this set with the given set */
+	/** Intersects this set with the given set. */
 	constexpr MVKSmallStaticBitSet& operator&=(MVKSmallStaticBitSet other) { *this = (*this & other); return *this; }
-	/** Union this set with the given set */
+	/** Unions this set with the given set. */
 	constexpr MVKSmallStaticBitSet& operator|=(MVKSmallStaticBitSet other) { *this = (*this | other); return *this; }
-	/** Check if this set is equal to the given set */
+	/** Returns whether this set is equal to the given set. */
 	constexpr bool operator==(MVKSmallStaticBitSet other) const { return _bits == other._bits; }
-	/** Check if this set is not equal to the given set */
+	/** Returns whether this set is not equal to the given set. */
 	constexpr bool operator!=(MVKSmallStaticBitSet other) const { return !(*this == other); }
-	/** Check if there are any elements in the intersection between this and another set */
+	/** Returns whether there are any elements in the intersection between this and another set. */
 	constexpr bool containsAny(MVKSmallStaticBitSet other) const { return (*this & other).any(); }
-	/** Check if this set is a superset of the given set */
+	/** Returns whether this set is a superset of the given set. */
 	constexpr bool containsAll(MVKSmallStaticBitSet other) const { return (*this & other) == other; }
-	/** Subtract the elements in the given set from this one */
+	/** Subtracts the elements in the given set from this set. */
 	constexpr void clearAllIn(MVKSmallStaticBitSet other) { _bits &= ~other._bits; }
-	/** Subtract the elements in the given set from this one */
+	/** Returns the difference between this and another set. */
 	constexpr MVKSmallStaticBitSet clearingAllIn(MVKSmallStaticBitSet other) const { return MVKSmallStaticBitSet(_bits & ~other._bits); }
 };
 
@@ -215,109 +216,109 @@ class MVKLargeStaticBitSet {
 	std::size_t bits[ArrayLen];
 
 public:
-	/** Construct an empty bitset */
+	/** Constructs an empty bitset. */
 	constexpr MVKLargeStaticBitSet(): bits{} {}
 
-	/** Construct from a range of set bits */
+	/** Constructs from a range of set bits. */
 	static constexpr MVKLargeStaticBitSet range(std::size_t begin, std::size_t end) {
 		MVKLargeStaticBitSet res;
 		res.setRange(begin, end);
 		return res;
 	}
 
-	/** Get an iterator over iterators over the bits set in the bitset */
+	/** Returns an iterator over iterators over the bits set in the bitset. */
 	constexpr MVKSetBitIteratorIterator<std::size_t> setBitsList() const { return { bits, 0, ArrayLen }; }
 
-	/** Remove all bits from the set */
+	/** Removes all bits from the set. */
 	constexpr void reset() {
 		for (uint32_t i = 0; i < ArrayLen; i++)
 			bits[i] = 0;
 	}
 
-	/** Remove all bits from the set, then add all the bits in the range `[begin, end)` */
+	/** Removes all bits from the set, then add all the bits in the range `[begin, end)`. */
 	constexpr void resetToRange(std::size_t begin, std::size_t end) {
 		*this = range(begin, end);
 	}
 
-	/** Set all bits in the given range */
+	/** Sets all bits in the given range. */
 	constexpr void setRange(std::size_t begin, std::size_t end) {
 		detail::applyToBitRange(bits, begin, end, [](std::size_t& val, std::size_t mask){ val |= mask; });
 	}
 
-	/** Clear all bits in the given range */
+	/** Clears all bits in the given range. */
 	constexpr void clearRange(std::size_t begin, std::size_t end) {
 		detail::applyToBitRange(bits, begin, end, [](std::size_t& val, std::size_t mask){ val &= ~mask; });
 	}
 
-	/** Set or clear the given bit */
+	/** Sets or clears the given bit. */
 	constexpr void set(MVKBitPointer<std::size_t> bit, bool value = true) {
 		std::size_t& word = bits[bit.wordOffset];
 		std::size_t flag = static_cast<std::size_t>(1ull << bit.bitOffset);
 		word = value ? word | flag : word & ~flag;
 	}
-	/** Set or clear the given bit */
+	/** Sets or clears the given bit. */
 	constexpr void set(std::size_t bit, bool value = true) { set({ bit / ElemSize, bit % ElemSize }, value); }
-	/** Convenience function for set(bit, false) */
+	/** Clears the given bit. A convenience function for set(bit, false). */
 	constexpr void clear(MVKBitPointer<std::size_t> bit) { set(bit, false); }
-	/** Convenience function for set(bit, false) */
+	/** Clears the given bit. A convenience function for set(bit, false). */
 	constexpr void clear(std::size_t bit) { set(bit, false); }
-	/** Check if the given bit is set */
+	/** Returns whether the given bit is set. */
 	constexpr bool get(MVKBitPointer<std::size_t> bit) const { return (bits[bit.wordOffset] >> bit.bitOffset) & 1; }
 	constexpr bool get(std::size_t bit) const { return get({ bit / ElemSize, bit % ElemSize }); }
-	/** Check if there are any bits in the set */
+	/** Returns whether there are any bits in the set. */
 	constexpr bool any() const {
 		bool any = false;
 		for (uint32_t i = 0; i < ArrayLen; i++)
 			any |= bits[i] != 0;
 		return any;
 	}
-	/** Check if the set is empty */
+	/** Returns whether the set is empty. */
 	constexpr bool empty() const { return !any(); }
-	/** Intersect this set with the given set */
+	/** Intersects this set with the given set. */
 	constexpr MVKLargeStaticBitSet operator&=(const MVKLargeStaticBitSet& other) {
 		for (uint32_t i = 0; i < ArrayLen; i++)
 			bits[i] &= other.bits[i];
 		return *this;
 	}
-	/** Union this set with the given set */
+	/** Unions this set with the given set. */
 	constexpr MVKLargeStaticBitSet operator|=(const MVKLargeStaticBitSet& other) {
 		for (uint32_t i = 0; i < ArrayLen; i++)
 			bits[i] |= other.bits[i];
 		return *this;
 	}
-	/** Check if this set is equal to the given set */
+	/** Returns whether this set is equal to the given set. */
 	constexpr bool operator==(const MVKLargeStaticBitSet& other) const {
 		bool eq = true;
 		for (uint32_t i = 0; i < ArrayLen; i++)
 			eq |= bits[i] == other.bits[i];
 		return eq;
 	}
-	/** Get the intersection of this and another set */
+	/** Returns the intersection of this and another set. */
 	constexpr MVKLargeStaticBitSet operator&(const MVKLargeStaticBitSet& other) const { MVKLargeStaticBitSet res = *this; return res &= other; }
-	/** Get the union of this and another set */
+	/** Returns the union of this and another set. */
 	constexpr MVKLargeStaticBitSet operator|(const MVKLargeStaticBitSet& other) const { MVKLargeStaticBitSet res = *this; return res |= other; }
-	/** Check if this set is not equal to the given set */
+	/** Returns whether this set is not equal to the given set. */
 	constexpr bool operator!=(const MVKLargeStaticBitSet& other) const { return !(*this == other); }
-	/** Check if there are any elements in the intersection between this and another set */
+	/** Returns whether there are any elements in the intersection between this and another set. */
 	constexpr bool containsAny(const MVKLargeStaticBitSet& other) const {
 		bool found = false;
 		for (uint32_t i = 0; i < ArrayLen; i++)
 			found |= (bits[i] & other.bits[i]) != 0;
 		return found;
 	}
-	/** Check if this set is a superset of the given set */
+	/** Returns whether this set is a superset of the given set. */
 	constexpr bool containsAll(const MVKLargeStaticBitSet& other) const {
 		bool check = true;
 		for (uint32_t i = 0; i < ArrayLen; i++)
 			check &= (bits[i] & other.bits[i]) == other.bits[i];
 		return check;
 	}
-	/** Subtract the elements in the given set from this one */
+	/** Subtracts the elements in the given set from this one. */
 	constexpr void clearAllIn(const MVKLargeStaticBitSet& other) {
 		for (uint32_t i = 0; i < ArrayLen; i++)
 			bits[i] &= ~other.bits[i];
 	}
-	/** Subtract the elements in the given set from this one */
+	/** Returns the difference between this set and the given set. */
 	constexpr MVKLargeStaticBitSet clearingAllIn(const MVKLargeStaticBitSet& other) const {
 		MVKLargeStaticBitSet res = *this;
 		res.clearAllIn(other);
@@ -326,8 +327,8 @@ public:
 };
 
 /**
- * A set for storing existence of bits in the known range `0..<Bits`
- * Like a std::bitset but supports iterating over the set bits
+ * A set for storing existence of bits in the known range `0..<Bits`,
+ * like a std::bitset, but it also supports iterating over the set bits.
  */
 template <uint32_t Bits>
 using MVKStaticBitSet = std::conditional_t<(Bits > 32), MVKLargeStaticBitSet<Bits>, MVKSmallStaticBitSet<std::conditional_t<(Bits > 16), uint32_t, uint16_t>>>;
@@ -462,49 +463,49 @@ public:
 		}
 	}
 
-	/** Get an iterator over the set bits in this array */
+	/** Returns an iterator over iterators over the set bits in this array. */
 	MVKSetBitIteratorIterator<std::size_t> setBitsList() const { return { _data, 0, elemCount(_size) }; }
 
-	/** Set all bits in the given range */
+	/** Sets all bits in the given range. */
 	void setRange(std::size_t begin, std::size_t end) {
 		assert(end <= _size);
 		detail::applyToBitRange(elems(), begin, end, [](std::size_t& val, std::size_t mask){ val |= mask; });
 	}
 
-	/** Clear all bits in the given range */
+	/** Clears all bits in the given range. */
 	void clearRange(std::size_t begin, std::size_t end) {
 		assert(end <= _size);
 		detail::applyToBitRange(elems(), begin, end, [](std::size_t& val, std::size_t mask){ val &= ~mask; });
 	}
 
-	/** Set or clear the given bit */
+	/** Sets or clears the given bit. */
 	void set(MVKBitPointer<std::size_t> bit, bool value = true) {
 		assert(static_cast<std::size_t>(bit) < _size);
 		std::size_t& word = _data[bit.wordOffset];
 		std::size_t flag = static_cast<std::size_t>(1ull << bit.bitOffset);
 		word = value ? word | flag : word & ~flag;
 	}
-	/** Set or clear the given bit */
+	/** Sets or clears the given bit. */
 	void set(std::size_t bit, bool value = true) { set({ bit / ElemSize, bit % ElemSize }, value); }
-	/** Convenience function for set(bit, false) */
+	/** Clears the given bit. A convenience function for set(bit, false). */
 	void clear(MVKBitPointer<std::size_t> bit) { set(bit, false); }
-	/** Convenience function for set(bit, false) */
+	/** Clears the given bit. A convenience function for set(bit, false). */
 	void clear(std::size_t bit) { set(bit, false); }
-	/** Check if the given bit is set */
+	/** Returns whether the given bit is set. */
 	bool get(MVKBitPointer<std::size_t> bit) const {
 		assert(static_cast<std::size_t>(bit) < _size);
 		return (_data[bit.wordOffset] >> bit.bitOffset) & 1;
 	}
-	/** Check if the given bit is set */
+	/** Returns whether the given bit is set. */
 	bool get(std::size_t bit) const { return get({ bit / ElemSize, bit % ElemSize }); }
-	/** Check if any bits in the array are set */
+	/** Returns whether any bits in the array are set. */
 	bool areAnyBitsSet() const {
 		for (std::size_t elem : elems())
 			if (elem)
 				return false;
 		return true;
 	}
-	/** Check if all bits in the array are unset */
+	/** Returns whether all bits in the array are unset. */
 	bool areAllBitsClear() const { return !areAnyBitsSet(); }
 
 	bool operator==(const MVKBitArray& other) const {

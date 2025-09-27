@@ -48,7 +48,7 @@ static constexpr uint32_t descriptorCPUAlign(MVKDescriptorCPULayout layout) {
 
 /**
  * The number of bytes to advance when moving to the next descriptor, per descriptor element.
- * (Note that OutlinedData is one element in the descriptor regardless of descriptorCount)
+ * (Note that OutlinedData is one element in the descriptor regardless of descriptorCount.)
  */
 static constexpr uint32_t descriptorGPUSizeMetal3(MVKDescriptorGPULayout layout) {
 	switch (layout) {
@@ -162,7 +162,7 @@ static bool needsAuxBuf(MVKDescriptorGPULayout layout) {
 	return layout == MVKDescriptorGPULayout::BufferAuxSize;
 }
 
-/** Select an argument buffer mode for the given device.  Descriptor sets on the device may use this mode or Off, but not any others. */
+/** Selects an argument buffer mode for the given device.  Descriptor sets on the device may use this mode or Off, but not any others. */
 static MVKArgumentBufferMode pickArgumentBufferMode(MVKDevice* dev) {
 	if (dev->getPhysicalDevice()->isUsingMetalArgumentBuffers()) {
 		if (dev->getPhysicalDevice()->getMetalFeatures()->needsArgumentBufferEncoders)
@@ -183,7 +183,7 @@ static bool mayDisableArgumentBuffers(MVKDevice* dev) {
 #endif
 }
 
-/** Select an argument buffer mode for the given device descriptor layout. */
+/** Selects an argument buffer mode for the given device descriptor layout. */
 static MVKArgumentBufferMode pickArgumentBufferMode(MVKDevice* dev, const VkDescriptorSetLayoutCreateInfo* pCreateInfo) {
 	MVKArgumentBufferMode mode = pickArgumentBufferMode(dev);
 	if (mode == MVKArgumentBufferMode::Off) // The following checks only switch argument buffers off, so we can skip them if they're already off.
@@ -206,27 +206,27 @@ static MVKArgumentBufferMode pickArgumentBufferMode(MVKDevice* dev, const VkDesc
 	return mode;
 }
 
-/** Binding metadata about immutable samplers and their ycbcr plane counts */
+/** Binding metadata about immutable samplers and their Y'CbCr plane counts. */
 class ImmutableSamplerPlaneInfo {
 	/**
-	 * bit 0: 1 if has non-ycbcr immutable samplers
-	 * bits 1:30: max ycbcr plane count
-	 * bit 31: if set, this is just asking for the maximum size, and the rest of the bits don't matter
+	 * Bit 0: set if non-Y'CbCr-conversion immutable samplers are present.
+	 * Bits 1-30: maximum Y'CbCr plane count.
+	 * Bit 31: if set, this is just asking for the maximum size, and the rest of the bits don't matter.
 	 */
 	uint32_t data;
 public:
 	/**
-	 * Check whether the descriptor has immutable samplers.
+	 * Returns whether the descriptor has immutable samplers.
 	 * Note that this will return false on MaxSize, while hasYCBCR will return true.
-	 * (Use in situations where having an immutable sampler requiers less space than not having one)
+	 * (Use in situations where having an immutable sampler requires less space than not having one.)
 	 */
 	bool hasImmutableSamplers() const { return static_cast<int32_t>(data) > 0; }
-	/** Check whether the descriptor has non-ycbcr immutable samplers */
+	/** Returns whether the descriptor has Y'CbCr immutable samplers. */
 	bool hasYCBCR() const { return data >> 1; }
-	/** Check whether the descriptor has ycbcr immutable samplers */
+	/** Returns whether the descriptor has non-Y'CbCr immutable samplers. */
 	bool hasNonYCBCR() const { return data & 1; }
 	bool isMaxSize() const { return static_cast<int32_t>(data) < 0; }
-	/** Get the number of planes.  If MaxSize, will return an incredibly large number. */
+	/** Returns the number of planes.  If requesting MaxSize, returns an indefinitely large number. */
 	uint32_t planeCount() { return data >> 1; }
 	ImmutableSamplerPlaneInfo(): data(0) {}
 	ImmutableSamplerPlaneInfo(MVKSampler* sampler) {
@@ -239,7 +239,7 @@ public:
 	void add(ImmutableSamplerPlaneInfo other) {
 		data = (data + (other.data & 0xfffffffe)) | (other.data & 1);
 	}
-	/** Get the worst case from a size perspective, when you don't know the full details */
+	/** Returns the worst case size, when the full details are unknown. */
 	static ImmutableSamplerPlaneInfo MaxSize() {
 		ImmutableSamplerPlaneInfo info;
 		info.data = ~0u;
@@ -328,12 +328,11 @@ static MVKDescriptorResourceCount perDescriptorResourceCount(VkDescriptorType ty
 }
 
 static MVKDescriptorCPULayout pickCPULayout(
-	VkDescriptorType type,
-	uint32_t count,
-	MVKArgumentBufferMode argBuf,
-	MVKDevice* dev,
-	ImmutableSamplerPlaneInfo planes = ImmutableSamplerPlaneInfo::MaxSize())
-{
+  VkDescriptorType type,
+  uint32_t count,
+  MVKArgumentBufferMode argBuf,
+  MVKDevice* dev,
+  ImmutableSamplerPlaneInfo planes = ImmutableSamplerPlaneInfo::MaxSize()) {
 	if (count == 0)
 		return MVKDescriptorCPULayout::None;
 	bool nativeSwizzle = dev->getPhysicalDevice()->getMetalFeatures()->nativeTextureSwizzle;
@@ -364,12 +363,11 @@ static MVKDescriptorCPULayout pickCPULayout(
 }
 
 static MVKDescriptorGPULayout pickGPULayout(
-	VkDescriptorType type,
-	uint32_t count,
-	MVKArgumentBufferMode argBuf,
-	MVKDevice* dev,
-	ImmutableSamplerPlaneInfo planes = ImmutableSamplerPlaneInfo::MaxSize())
-{
+  VkDescriptorType type,
+  uint32_t count,
+  MVKArgumentBufferMode argBuf,
+  MVKDevice* dev,
+  ImmutableSamplerPlaneInfo planes = ImmutableSamplerPlaneInfo::MaxSize()) {
 	if (argBuf == MVKArgumentBufferMode::Off || count == 0)
 		return MVKDescriptorGPULayout::None;
 	bool nativeTAtomic = dev->getPhysicalDevice()->getMetalFeatures()->nativeTextureAtomics;

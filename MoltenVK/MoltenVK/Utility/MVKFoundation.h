@@ -784,12 +784,12 @@ struct MVKFlagListIterator {
 
 /**
  * Holds one bit for each value in `Enum`.
- * `Enum` must have a member `Count`, which is one greater than the last value in the enum.
+ * `Enum` must be an enum class with a member `Count`, which is one greater than the last value in the enum.
  */
 template <typename Enum>
 struct MVKFlagList {
-	static_assert(static_cast<uint32_t>(Enum::Count) <= 64, "Too many flags");
 	static constexpr uint32_t NumBits = static_cast<uint32_t>(Enum::Count);
+	static_assert(NumBits <= 64, "Too many flags");
 	using Bits = std::conditional_t<(NumBits > 32), uint64_t, std::conditional_t<(NumBits > 16), uint32_t, uint16_t>>;
 	// Codegen for uint32 iteration is a bit better than smaller sizes
 	using Iter = MVKFlagListIterator<Enum, std::conditional_t<(NumBits > 32), uint64_t, uint32_t>>;
@@ -807,9 +807,7 @@ struct MVKFlagList {
 		return res;
 	}
 	static constexpr MVKFlagList all() {
-		MVKFlagList res;
-		res.bits = static_cast<Bits>(NumBits == 64 ? ~0ull : (1ull << NumBits) - 1);
-		return res;
+		return fromBits(static_cast<Bits>(NumBits == 64 ? ~0ull : (1ull << NumBits) - 1));
 	}
 	constexpr void set(Enum flag, bool value) {
 		remove(flag);

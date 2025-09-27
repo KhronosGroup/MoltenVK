@@ -86,38 +86,38 @@ struct MVKShaderResourceBinding {
 
 /** The way argument buffers are encoded */
 enum class MVKArgumentBufferMode : uint8_t {
-	Off,        /**< Direct binding only */
-	ArgEncoder, /**< Argument buffers encoded by an argument encoder */
-	Metal3,     /**< Argument buffers written directly, textures and samplers are 64-bit IDs, and buffers are 64-bit pointers (can add offset directly to pointer) */
+	Off,        /**< Direct binding only. */
+	ArgEncoder, /**< Argument buffers are encoded by an argument encoder. */
+	Metal3,     /**< Argument buffers are written directly, textures and samplers are 64-bit IDs, and buffers are 64-bit pointers (can add offset directly to pointer). */
 };
 
 /** Represents the layout of a descriptor in the CPU buffer */
 enum class MVKDescriptorCPULayout : uint8_t {
-	None,       /**< This descriptor is GPU only */
-	OneID,      /**< One Metal object (e.g. `id<MTLTexture>`, `id<MTLBuffer>`, etc) */
-	OneIDMeta,  /**< One Metal object and 8 bytes of metadata, or two Metal objects (for multiplanar images) */
+	None,       /**< This descriptor is GPU only. */
+	OneID,      /**< One Metal object (e.g. `id<MTLTexture>`, `id<MTLBuffer>`, etc). */
+	OneIDMeta,  /**< One Metal object and 8 bytes of metadata, or two Metal objects (for multiplanar images). */
 	TwoIDMeta,  /**< Two Metal objects and 8 bytes of metadata, or three Metal objects (for multiplanar images).  The first object is always a texture. */
-	OneID2Meta, /**< One Metal object and 16 bytes of metadata (e.g. `id<MTLBuffer>`, offset, size) */
+	OneID2Meta, /**< One Metal object and 16 bytes of metadata (e.g. `id<MTLBuffer>`, offset, size). */
 	TwoID2Meta, /**< Two Metal objects and 16 bytes of metadata (e.g. `id<MTLTexture>`, `id<MTLBuffer>`, offset, size).  The first object is always a texture. */
-	InlineData, /**< Inline uniform buffer stored inline */
+	InlineData, /**< Inline uniform buffer stored inline. */
 };
 
 /** Represents the layout of a descriptor in the GPU buffer */
 enum class MVKDescriptorGPULayout : uint8_t {
-	None,          /**< This descriptor is CPU only (must be bound with the Metal binding API) */
-	Texture,       /**< Single Metal texture descriptor */
-	Sampler,       /**< Single Metal sampler descriptor */
-	Buffer,        /**< Single Metal buffer pointer */
-	BufferAuxSize, /**< Single Metal buffer pointer, plus size in an auxiliary buffer */
-	InlineData,    /**< Inline uniform buffer stored inline (with 4-byte alignment) */
+	None,          /**< This descriptor is CPU only. It must be bound with the Metal binding API. */
+	Texture,       /**< A single Metal texture descriptor. */
+	Sampler,       /**< A single Metal sampler descriptor. */
+	Buffer,        /**< A single Metal buffer pointer. */
+	BufferAuxSize, /**< A single Metal buffer pointer, plus its size in an auxiliary buffer. */
+	InlineData,    /**< An inline uniform buffer stored inline, with 4-byte alignment. */
 	TexBufSoA,     /**< A texture pointer and a buffer pointer.  When arrayed, this is an array of textures followed by an array of pointers. */
 	TexSampSoA,    /**< A texture pointer and a sampler pointer.  When arrayed, this is an array of textures followed by an array of samplers. */
-	Tex2SampSoA,   /**< 2 texture pointers and a sampler pointer.  When arrayed, this is 2 arrays of textures followed by an array of samplers. */
-	Tex3SampSoA,   /**< 3 texture pointers and a sampler pointer.  When arrayed, this is 3 arrays of textures followed by an array of samplers. */
-	OutlinedData,  /**< Inline uniform buffer that is being represented as a pointer to a buffer instead (with 16-byte alignment) */
+	Tex2SampSoA,   /**< Two texture pointers and a sampler pointer.  When arrayed, this is 2 arrays of textures followed by an array of samplers. */
+	Tex3SampSoA,   /**< Three texture pointers and a sampler pointer.  When arrayed, this is 3 arrays of textures followed by an array of samplers. */
+	OutlinedData,  /**< An inline uniform buffer that is being represented as a pointer to a buffer instead, with 16-byte alignment. */
 };
 
-/** The number of each resource used by a descriptor */
+/** The number of each resource used by a descriptor. */
 struct MVKDescriptorResourceCount {
 	uint8_t texture : 2;
 	uint8_t buffer : 1;
@@ -134,7 +134,7 @@ struct MVKDescriptorResourceCount {
 	}
 };
 
-/** Descriptor metadata for images */
+/** Descriptor metadata for images. */
 struct MVKDescriptorMetaImage {
 	uint32_t size;
 	uint32_t swizzle;
@@ -143,7 +143,7 @@ struct MVKDescriptorMetaImage {
 };
 static_assert(sizeof(MVKDescriptorMetaImage) == sizeof(uint64_t));
 
-/** Descriptor metadata for texel buffers */
+/** Descriptor metadata for texel buffers. */
 struct MVKDescriptorMetaTexelBuffer {
 	uint32_t size;
 	uint32_t pad;
@@ -152,7 +152,7 @@ struct MVKDescriptorMetaTexelBuffer {
 };
 static_assert(sizeof(MVKDescriptorMetaTexelBuffer) == sizeof(uint64_t));
 
-/** Descriptor metadata for buffers */
+/** Descriptor metadata for buffers. */
 struct MVKDescriptorMetaBuffer {
 	uint32_t size;
 	uint32_t pad;
@@ -161,20 +161,20 @@ struct MVKDescriptorMetaBuffer {
 };
 static_assert(sizeof(MVKDescriptorMetaBuffer) == sizeof(uint64_t));
 
-/** CPU descriptor metadata */
+/** Descriptor metadata used on the host side. */
 union MVKCPUDescriptorMeta {
 	uint64_t raw;
 	MVKDescriptorMetaImage img;
 	MVKDescriptorMetaTexelBuffer texel;
 	MVKDescriptorMetaBuffer buffer;
 };
-/** CPU descriptor for MVKDescriptorCPULayout::OneIDMeta */
+/** A CPU descriptor for MVKDescriptorCPULayout::OneIDMeta. */
 struct MVKCPUDescriptorOneIDMeta { id a; union { MVKCPUDescriptorMeta meta; id b; }; };
-/** CPU descriptor for MVKDescriptorCPULayout::TwoIDMeta */
+/** A CPU descriptor for MVKDescriptorCPULayout::TwoIDMeta. */
 struct MVKCPUDescriptorTwoIDMeta { id a, b; union { MVKCPUDescriptorMeta meta; id c; }; };
-/** CPU descriptor for MVKDescriptorCPULayout::OneID2Meta */
+/** A CPU descriptor for MVKDescriptorCPULayout::OneID2Meta. */
 struct MVKCPUDescriptorOneID2Meta { id a; uint64_t offset; MVKCPUDescriptorMeta meta; };
-/** CPU descriptor for MVKDescriptorCPULayout::TwoID2Meta */
+/** A CPU descriptor for MVKDescriptorCPULayout::TwoID2Meta. */
 struct MVKCPUDescriptorTwoID2Meta { id a, b; uint64_t offset; MVKCPUDescriptorMeta meta; };
 
 static constexpr uint32_t descriptorCPUSize(MVKDescriptorCPULayout layout) {
@@ -210,33 +210,33 @@ enum MVKDescriptorBindingFlagBits {
 	MVK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT   = VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT,
 	MVK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT             = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT,
 	MVK_DESCRIPTOR_BINDING_ALL_VULKAN_FLAG_BITS            = 0x0f,
-	/** If true, this binding uses immutable samplers (stored on the descriptor set layout) */
+	/** If set, this binding uses immutable samplers, stored on the descriptor set layout. */
 	MVK_DESCRIPTOR_BINDING_USES_IMMUTABLE_SAMPLERS_BIT     = 0x80,
 };
 
-/** Metadata on a single descriptor binding in a descriptor set layout */
+/** Metadata on a single descriptor binding in a descriptor set layout. */
 struct MVKDescriptorBinding {
-	uint32_t binding;                 /**< Vulkan binding */
-	VkDescriptorType descriptorType;  /**< Vulkan type */
-	uint32_t descriptorCount;         /**< Vulkan descriptor count */
-	VkShaderStageFlags stageFlags;    /**< Vulkan stage flags */
+	uint32_t binding;                 /**< The Vulkan binding number. */
+	VkDescriptorType descriptorType;  /**< The Vulkan descriptor type. */
+	uint32_t descriptorCount;         /**< The number of Vulkan descriptors bound. */
+	VkShaderStageFlags stageFlags;    /**< Flags from Vulkan indicating the stages that use this descriptor. */
 	uint8_t flags;                    /**< MVKDescriptorBindingFlagBits */
-	MVKDescriptorCPULayout cpuLayout; /**< The layout in the descriptor set's CPU storage */
-	MVKDescriptorGPULayout gpuLayout; /**< The layout in the descriptor set's GPU storage */
-	MVKDescriptorResourceCount perDescriptorResourceCount; /**< Resource counts per descriptor */
-	uint32_t cpuOffset;               /**< The byte offset of the first descriptor of this binding in the descriptor set's CPU storage */
+	MVKDescriptorCPULayout cpuLayout; /**< The layout in the descriptor set's host-side storage. */
+	MVKDescriptorGPULayout gpuLayout; /**< The layout in the descriptor set's device-side storage. */
+	MVKDescriptorResourceCount perDescriptorResourceCount; /**< The number of resources in each descriptor. */
+	uint32_t cpuOffset;               /**< The byte offset of the first descriptor of this binding in the descriptor set's CPU storage. */
 	union {
-		uint32_t gpuOffset; /**< The byte offset of the first descriptor of this binding in the descriptor set's GPU storage, if using direct descriptor writes */
-		uint32_t argBufID;  /**< The argument buffer of the first descriptor of this binding in the descriptor set's GPU storage, if using argument encoders */
+		uint32_t gpuOffset; /**< The byte offset of the first descriptor of this binding in the descriptor set's GPU storage, if using direct descriptor writes. */
+		uint32_t argBufID;  /**< The argument buffer of the first descriptor of this binding in the descriptor set's GPU storage, if using argument encoders. */
 	};
 	union {
-		uint32_t auxIndex;        /**< The index into the descriptor set's metadata for auxiliary buffers (used by BufferAuxSize and OutlinedData) */
-		uint32_t immSamplerIndex; /**< The index into the descriptor set layout's immutable sampler list */
+		uint32_t auxIndex;        /**< The index into the descriptor set's metadata for auxiliary buffers (used by BufferAuxSize and OutlinedData). */
+		uint32_t immSamplerIndex; /**< The index into the descriptor set layout's immutable sampler list. */
 	};
 
 	void populate(const VkDescriptorSetLayoutBinding& vk);
 
-	/** Get the number of descriptors in this binding */
+	/** Returns the number of descriptors in this binding. */
 	uint32_t getDescriptorCount(uint32_t variableCount) const {
 		if (descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK)
 			return 1;
@@ -245,12 +245,12 @@ struct MVKDescriptorBinding {
 		return descriptorCount;
 	}
 
-	/** Get the total number of resource bindings used by this descriptor, assuming any variable descriptor counts are set to their maximum value */
+	/** Returns the total number of resource bindings used by this descriptor, assuming any variable descriptor counts are set to their maximum value. */
 	MVKShaderStageResourceBinding totalResourceCount() const {
 		return perDescriptorResourceCount * getDescriptorCount(descriptorCount);
 	}
 
-	/** Get the total number of resource bindings used by this descriptor, with the given variable descriptor count if enabled */
+	/** Returns the total number of resource bindings used by this descriptor, with the given variable descriptor count if enabled. */
 	MVKShaderStageResourceBinding totalResourceCount(uint32_t variableCount) const {
 		return perDescriptorResourceCount * getDescriptorCount(variableCount);
 	}
@@ -269,7 +269,7 @@ struct MVKMTLArgumentEncoder {
 	NSUInteger getEncodedLength() const { return _encodedLength; }
 
 	~MVKMTLArgumentEncoder() {
-		[_encoder.load(std::memory_order_relaxed) release];
+		[getEncoder() release];
 	}
 
 private:
@@ -303,43 +303,43 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT; }
 
-	/** Construtor */
+	/** Creates a new descriptor set layout. */
 	static MVKDescriptorSetLayout* Create(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
-	/** Whether this was created with `VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR` */
+	/** Returns whether this layout was created with `VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR`. */
 	bool isPushDescriptorSetLayout() const { return _flags.has(Flag::IsPushDescriptorSetLayout); }
 
-	/** Get the argument encoder.  Will be null if you should be using direct writes. */
+	/** Returns the argument encoder.  Returns null if you should be using direct writes. */
 	MVKMTLArgumentEncoder* mtlArgumentEncoder() { return _mtlArgumentEncoder.get(); }
 
-	/** Gets the list of bindings (ordered by binding number). */
+	/** Returns the list of bindings, ordered by binding number. */
 	MVKArrayRef<const MVKDescriptorBinding> bindings() const { return _bindings; }
-	/** Gets the list of immutable samplers. */
+	/** Returns the list of immutable samplers. */
 	MVKArrayRef<MVKSampler*const> immutableSamplers() const { return _immutableSamplers; }
-	/** Gets the total resource counts for the entire set. */
+	/** Returns the total resource counts for the entire set. */
 	const MVKShaderResourceBinding& totalResourceCount() const { return _totalResourceCount; }
 
-	/** Get the buffer of precalculated aux offsets. */
+	/** Returns the buffer of precalculated aux offsets. */
 	const uint32_t* auxOffsets() const { return _auxOffsets; }
-	/** Gets the number of aux offsets.  Note that for variable descriptor sets, `auxOffsets` will be null even though this is nonzero. */
+	/** Returns the number of aux offsets.  Note that for variable descriptor sets, `auxOffsets` will be null even though this is nonzero. */
 	uint32_t numAuxOffsets() const { return _numAuxOffsets; }
-	/** Gets the number of uint32s needed in the buffer size aux buffer. */
+	/** Returns the number of uint32s needed in the buffer size aux buffer. */
 	uint32_t sizeBufSize(uint32_t numVariable) const { return _sizeBufSize + (_flags.has(Flag::IsSizeBufVariable) ? numVariable : 0); }
-	/** Checks whether a size buffer is needed. */
+	/** Returns whether a size buffer is needed. */
 	bool needsSizeBuf() const { return _sizeBufSize || _flags.has(Flag::IsSizeBufVariable); }
 
-	/** Gets the required CPU buffer alignment. */
+	/** Returns the required CPU buffer alignment. */
 	uint32_t cpuAlignment() const { return _cpuAlignment; }
-	/** Gets the required GPU buffer alignment. */
+	/** Returns the required GPU buffer alignment. */
 	uint32_t gpuAlignment() const { return _gpuAlignment; }
-	/** Gets the required CPU buffer size. */
+	/** Returns the required CPU buffer size. */
 	uint32_t cpuSize(uint32_t numVariable = 0) const { return _cpuSize + numVariable * _cpuVariableElementSize; }
-	/** Gets the required GPU buffer size.  For variable descriptor sets with argument encoders, will return zero (need to get actual value from encoder). */
+	/** Returns the required GPU buffer size.  For variable descriptor sets with argument encoders, returns zero; you must get the actual value from the encoder in that case. */
 	uint32_t gpuSize(uint32_t numVariable = 0) const { return _gpuSize + numVariable * _gpuVariableElementSize; }
-	/** Gets the offset of the aux buffers in the GPU buffer.  For variable descriptor sets with argument encoders, will return zero (need to get actual value from encoder). */
+	/** Returns the offset of the aux buffers in the GPU buffer.  For variable descriptor sets with argument encoders, returns zero; you must get the actual value from the encoder in that case. */
 	uint32_t gpuAuxBase(uint32_t numVariable = 0) const { return _gpuAuxBase + (isMainGPUBufferVariable() ? numVariable * _gpuVariableElementSize : 0); }
 	uint32_t dynamicOffsetCount(uint32_t numVariable) const { return _dynamicOffsetCount + (_flags.has(Flag::IsDynamicOffsetCountVariable) ? numVariable : 0); }
-	/** Get the argument buffer mode. */
+	/** Returns the argument buffer mode. */
 	MVKArgumentBufferMode argBufMode() const { return _argBufMode; }
 	/** Returns whether the size of the main GPU argument buffer (not including aux buffers) is affected by variable descriptor size. */
 	bool isMainGPUBufferVariable() const { return _flags.has(Flag::IsVariable); }
@@ -353,20 +353,20 @@ public:
 	}
 
 	/**
-	 * Gets the index of the info for the given Vulkan binding.
+	 * Returns the index of the info for the given Vulkan binding.
 	 *
 	 * The info is part of an array ordered by binding number, so you can increment the index to go to the next binding in order.
 	 */
 	uint32_t getBindingIndex(uint32_t binding) const;
 
 	/**
-	 * Gets the a pointer to the info for the given Vulkan binding.
+	 * Returns a pointer to the info for the given Vulkan binding.
 	 *
 	 * The info is part of an array ordered by binding number, so you can increment the pointer to go to the next binding in order.
 	 */
 	const MVKDescriptorBinding* getBinding(uint32_t binding) const { return &_bindings[getBindingIndex(binding)]; }
 
-	/** Get the argument encoder for the given variable descriptor count. */
+	/** Returns the argument encoder for the given variable descriptor count. */
 	MVKMTLArgumentEncoder& getArgumentEncoder(uint32_t variableCount = 0) const {
 		assert(_argBufMode == MVKArgumentBufferMode::ArgEncoder);
 		if (isMainGPUBufferVariable())
@@ -375,9 +375,9 @@ public:
 			return getNonVariableArgumentEncoder();
 	}
 
-	/** Get the argument encoder for the given variable descriptor count.  Only valid if `isMainGPUBufferVariable`. */
+	/** Returns the argument encoder for the given variable descriptor count.  Only valid if `isMainGPUBufferVariable`. */
 	MVKMTLArgumentEncoder& getVariableArgumentEncoder(uint32_t variableCount) const;
-	/** Get the argument encoder.  Only valid if `!isMainGPUBufferVariable`. */
+	/** Returns the argument encoder.  Only valid if `!isMainGPUBufferVariable`. */
 	MVKMTLArgumentEncoder& getNonVariableArgumentEncoder() const {
 		assert(_argBufMode == MVKArgumentBufferMode::ArgEncoder);
 		assert(!isMainGPUBufferVariable());
@@ -439,25 +439,25 @@ private:
 
 /** Represents a Vulkan descriptor set. */
 struct MVKDescriptorSet {
-	/** The layout this descriptor set uses */
+	/** The layout this descriptor set uses. */
 	const MVKDescriptorSetLayout* layout;
-	/** The argument encoder, if needed */
+	/** The argument encoder, if needed. */
 	MVKMTLArgumentEncoder* argEnc;
-	/** CPU descriptor buffer */
+	/** The host-side descriptor buffer. */
 	char* cpuBuffer;
-	/** GPU descriptor buffer CPU pointer */
+	/** Host pointer to the device-side argument buffer. */
 	char* gpuBuffer;
-	/** Offsets for aux buffer entries */
+	/** An array of offsets in the auxiliary buffer for buffers that need it. */
 	const uint32_t* auxIndices;
-	/** GPU descriptor buffer Metal object */
+	/** The Metal device-side argument buffer object. */
 	id<MTLBuffer> gpuBufferObject;
-	/** The offset into the GPU buffer object used by this descriptor set */
+	/** The offset into the GPU buffer object used by this descriptor set. */
 	uint32_t gpuBufferOffset;
-	/** The size of the GPU buffer */
+	/** The size of the GPU buffer. */
 	uint32_t gpuBufferSize;
-	/** The size of the CPU buffer */
+	/** The size of the CPU buffer. */
 	uint32_t cpuBufferSize;
-	/** The number of variable descriptors */
+	/** The number of variable descriptors. */
 	uint32_t variableDescriptorCount;
 
 	void setGPUBuffer(id<MTLBuffer> buffer, void* contents, size_t offset, size_t size) {
@@ -478,7 +478,7 @@ struct MVKDescriptorSet {
 union MVKDescriptorSetListItem;
 
 struct MVKFreedDescriptorSet {
-	/** The next descriptor set in the linked list of freed descriptor sets */
+	/** The next descriptor set in the linked list of freed descriptor sets. */
 	MVKDescriptorSetListItem* next;
 };
 
@@ -488,9 +488,9 @@ union MVKDescriptorSetListItem {
 };
 
 /**
- * Free list used internally by MVKDescriptorPool
+ * The free list used internally by MVKDescriptorPool.
  * Kind of terrible, never resizes allocations.  Once an allocation has been made of a specific size, it's forever that size.
- * Hope: Games will allocate the same set of descriptor sets (and therefore the same sizes) over and over again, so this will work out fine
+ * Hope: Games will allocate the same set of descriptor sets (and therefore the same sizes) over and over again, so this will work out fine.
  */
 class MVKDescriptorPoolFreeList {
 	struct Entry {
@@ -520,7 +520,7 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT; }
 
-	/** Constructor */
+	/** Creates a new descriptor pool instance. */
 	static MVKDescriptorPool* Create(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo);
 
 	/** Allocates descriptor sets. */
@@ -533,7 +533,7 @@ public:
 	/** Destroys all currently allocated descriptor sets. */
 	VkResult reset(VkDescriptorPoolResetFlags flags);
 
-	/** Returns whether freeing descriptor sets is allowed */
+	/** Returns whether freeing descriptor sets is allowed. */
 	bool freeAllowed() const { return _freeAllowed; }
 
 protected:
