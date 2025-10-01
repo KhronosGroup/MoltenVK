@@ -52,19 +52,20 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
             MVKAssert(0, "Creating a 2D view of a 3D texture currently requires a placement heap, which is not available.");
         }
 
+        id<MTLTexture> tex;
         // Use imported texture if we are binding to a VkDeviceMemory that was created with an import operation
         if (dvcMem && (dvcMem->_externalMemoryHandleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT) && dvcMem->_mtlTexture) {
-            _mtlTexture = dvcMem->_mtlTexture;
+            tex = dvcMem->_mtlTexture;
         } else if (_image->_ioSurface) {
-            _mtlTexture = [_image->getMTLDevice()
-                           newTextureWithDescriptor: mtlTexDesc
-                           iosurface: _image->_ioSurface
-                           plane: _planeIndex];
+            tex = [_image->getMTLDevice()
+                   newTextureWithDescriptor: mtlTexDesc
+                   iosurface: _image->_ioSurface
+                   plane: _planeIndex];
         } else if (memoryBinding->_mtlTexelBuffer) {
-            _mtlTexture = [memoryBinding->_mtlTexelBuffer
-                           newTextureWithDescriptor: mtlTexDesc
-                           offset: memoryBinding->_mtlTexelBufferOffset + _subresources[0].layout.offset
-                           bytesPerRow: _subresources[0].layout.rowPitch];
+            tex = [memoryBinding->_mtlTexelBuffer
+                   newTextureWithDescriptor: mtlTexDesc
+                   offset: memoryBinding->_mtlTexelBufferOffset + _subresources[0].layout.offset
+                   bytesPerRow: _subresources[0].layout.rowPitch];
         } else if (dvcMem && dvcMem->getMTLHeap() && !_image->getIsDepthStencil()) {
             // Metal support for depth/stencil from heaps is flaky
             _heapAllocation.heap = dvcMem->getMTLHeap();
@@ -72,7 +73,7 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
             const auto texSizeAlign = [dvcMem->getMTLDevice() heapTextureSizeAndAlignWithDescriptor:mtlTexDesc];
             _heapAllocation.size = texSizeAlign.size;
             _heapAllocation.align = texSizeAlign.align;
-            _mtlTexture = [dvcMem->getMTLHeap()
+            tex = [dvcMem->getMTLHeap()
                            newTextureWithDescriptor: mtlTexDesc
                            offset: memoryBinding->getDeviceMemoryOffset() + _subresources[0].layout.offset];
             if (_image->_isAliasable) { [_mtlTexture makeAliasable]; }
@@ -82,15 +83,17 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
             // In this case, use the MTLTexture from the memory's dedicated image.
             // We know the other image must be aliasable, or I couldn't have been bound
             // to its memory: the memory object wouldn't allow it.
-            _mtlTexture = [dvcMem->_imageMemoryBindings[0]->_image->getMTLTexture(_planeIndex, mtlTexDesc.pixelFormat) retain];
+            tex = [dvcMem->_imageMemoryBindings[0]->_image->getMTLTexture(_planeIndex, mtlTexDesc.pixelFormat) retain];
         } else {
-            _mtlTexture = [_image->getMTLDevice() newTextureWithDescriptor: mtlTexDesc];
+            tex = [_image->getMTLDevice() newTextureWithDescriptor: mtlTexDesc];
         }
+        if (_mtlTexture.storageMode != MTLStorageModeMemoryless) {
+            _image->_device->makeResident(tex);
+            _image->_device->getLiveResources().add(tex);
+        }
+        _mtlTexture = tex;
 
         [mtlTexDesc release];                                            // temp release
-        if (_mtlTexture.storageMode != MTLStorageModeMemoryless) {
-            _image->getDevice()->makeResident(_mtlTexture);
-        }
         propagateDebugName();
     }
     return _mtlTexture;
@@ -108,6 +111,7 @@ id<MTLTexture> MVKImagePlane::getMTLTexture(MTLPixelFormat mtlPixFmt) {
         mtlTex = _mtlTextureViews[mtlPixFmt];
         if ( !mtlTex ) {
             mtlTex = [baseTexture newTextureViewWithPixelFormat: mtlPixFmt];    // retained
+            _image->_device->getLiveResources().add(mtlTex);
             _mtlTextureViews[mtlPixFmt] = mtlTex;
         }
     }
@@ -115,11 +119,17 @@ id<MTLTexture> MVKImagePlane::getMTLTexture(MTLPixelFormat mtlPixFmt) {
 }
 
 void MVKImagePlane::releaseMTLTexture() {
-	if (_mtlTexture) _image->getDevice()->removeResidency(_mtlTexture);
-    [_mtlTexture release];
-    _mtlTexture = nil;
+    MVKDevice* dev = _image->_device;
+    MVKLiveResourceSet& live = dev->getLiveResources();
+    if (id<MTLTexture> tex = _mtlTexture) {
+        dev->removeResidency(tex);
+        live.remove(tex);
+        [tex release];
+        _mtlTexture = nil;
+    }
 
-    for (auto elem : _mtlTextureViews) {
+    for (auto& elem : _mtlTextureViews) {
+        live.remove(elem.second);
         [elem.second release];
     }
     _mtlTextureViews.clear();
@@ -424,7 +434,7 @@ VkResult MVKImageMemoryBinding::getMemoryRequirements(VkMemoryRequirements2* pMe
 
 // Memory may have been mapped before image was bound, and needs to be loaded into the MTLTexture.
 VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) {
-    if (_deviceMemory) { _deviceMemory->removeImageMemoryBinding(this); }
+    if (_deviceMemory) { MVKDeviceMemory::removeImageMemoryBinding(&_deviceMemory, this); }
     MVKResource::bindDeviceMemory(mvkMem, memOffset);
 
     if (!_deviceMemory) { return VK_SUCCESS; }
@@ -451,8 +461,9 @@ VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDevi
             }
             if (!_mtlTexelBuffer) {
                 return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not create an MTLBuffer for an image that requires a buffer backing store. Images that can be used for atomic accesses must have a texel buffer backing them.");
-			}
-			getDevice()->makeResident(_mtlTexelBuffer);
+            }
+            _device->makeResident(_mtlTexelBuffer);
+            _device->getLiveResources().add(_mtlTexelBuffer);
             _mtlTexelBufferOffset = 0;
             _ownsTexelBuffer = true;
         }
@@ -555,9 +566,10 @@ MVKImageMemoryBinding::MVKImageMemoryBinding(MVKDevice* device, MVKImage* image,
 }
 
 MVKImageMemoryBinding::~MVKImageMemoryBinding() {
-    if (_deviceMemory) { _deviceMemory->removeImageMemoryBinding(this); }
+	if (_deviceMemory) { MVKDeviceMemory::removeImageMemoryBinding(&_deviceMemory, this); }
 	if (_ownsTexelBuffer) {
-		if (_ownsTexelBuffer) _image->getDevice()->removeResidency(_mtlTexelBuffer);
+		_device->removeResidency(_mtlTexelBuffer);
+		_device->getLiveResources().remove(_mtlTexelBuffer);
 		[_mtlTexelBuffer release];
 	}
 }
@@ -1845,7 +1857,9 @@ id<MTLTexture> MVKImageViewPlane::getMTLTexture() {
             lock_guard<mutex> lock(_imageView->_lock);
             if (_mtlTexture) { return _mtlTexture; }
 
-            _mtlTexture = newMTLTexture(); // retained
+            id<MTLTexture> tex = newMTLTexture(); // retained
+            getDevice()->getLiveResources().add(tex);
+            _mtlTexture = tex;
 
             propagateDebugName();
         }
@@ -2232,7 +2246,10 @@ bool MVKImageViewPlane::enableSwizzling() {
 }
 
 MVKImageViewPlane::~MVKImageViewPlane() {
-    [_mtlTexture release];
+	if (id<MTLTexture> tex = _mtlTexture) {
+		getDevice()->getLiveResources().remove(tex);
+		[tex release];
+	}
 }
 
 
@@ -2583,6 +2600,8 @@ MVKSampler::MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo
 		}
 	}
 
+	device->getLiveResources().add(_mtlSamplerState);
+
 	initConstExprSampler(pCreateInfo);
 }
 
@@ -2681,6 +2700,8 @@ void MVKSampler::destroy() {
 // Potentially called twice, from destroy() and destructor, so ensure everything is nulled out.
 void MVKSampler::detachMemory() {
 	@synchronized (getMTLDevice()) {
+		if (_mtlSamplerState)
+			_device->getLiveResources().remove(_mtlSamplerState);
 		[_mtlSamplerState release];
 		_mtlSamplerState = nil;
 	}

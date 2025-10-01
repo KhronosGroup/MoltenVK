@@ -174,14 +174,13 @@ void MVKQueryPool::encodeCopyResults(MVKCommandEncoder* cmdEncoder,
 		// TODO: In the case where none of the queries is ready, we can fill with 0.
 	} else {
 		id<MTLComputePipelineState> mtlCopyResultsState = cmdEncoder->getCommandEncodingPool()->getCmdCopyQueryPoolResultsMTLComputePipelineState();
+		MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
 		id<MTLComputeCommandEncoder> mtlComputeCmdEnc = encodeComputeCopyResults(cmdEncoder, firstQuery, queryCount, 0);
-		[mtlComputeCmdEnc setComputePipelineState: mtlCopyResultsState];
-		[mtlComputeCmdEnc setBuffer: destBuffer->getMTLBuffer()
-							 offset: destBuffer->getMTLBufferOffset() + destOffset
-							atIndex: 1];
-		cmdEncoder->setComputeBytes(mtlComputeCmdEnc, &stride, sizeof(uint32_t), 2);
-		cmdEncoder->setComputeBytes(mtlComputeCmdEnc, &queryCount, sizeof(uint32_t), 3);
-		cmdEncoder->setComputeBytes(mtlComputeCmdEnc, &flags, sizeof(VkQueryResultFlags), 4);
+		state.bindPipeline(mtlComputeCmdEnc, mtlCopyResultsState);
+		state.bindBuffer(mtlComputeCmdEnc, destBuffer->getMTLBuffer(), destBuffer->getMTLBufferOffset() + destOffset, 1);
+		state.bindStructBytes(mtlComputeCmdEnc, &stride,     2);
+		state.bindStructBytes(mtlComputeCmdEnc, &queryCount, 3);
+		state.bindStructBytes(mtlComputeCmdEnc, &flags,      4);
 		_availabilityLock.lock();
 		cmdEncoder->setComputeBytes(mtlComputeCmdEnc, _availability.data(), _availability.size() * sizeof(Status), 5);
 		_availabilityLock.unlock();
@@ -284,8 +283,8 @@ id<MTLBuffer> MVKOcclusionQueryPool::getResultBuffer(MVKCommandEncoder*, uint32_
 }
 
 id<MTLComputeCommandEncoder> MVKOcclusionQueryPool::encodeComputeCopyResults(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t, uint32_t index) {
-	id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults, true);
-	[mtlCmdEnc setBuffer: getVisibilityResultMTLBuffer() offset: getVisibilityResultOffset(firstQuery) atIndex: index];
+	id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults);
+	cmdEncoder->getMtlCompute().bindBuffer(mtlCmdEnc, getVisibilityResultMTLBuffer(), getVisibilityResultOffset(firstQuery), index);
 	return mtlCmdEnc;
 }
 
@@ -435,12 +434,12 @@ id<MTLComputeCommandEncoder> MVKTimestampQueryPool::encodeComputeCopyResults(MVK
 					 destinationBuffer: tempBuff->_mtlBuffer
 					 destinationOffset: tempBuff->_offset];
 
-		id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults, true);
-		[mtlCmdEnc setBuffer: tempBuff->_mtlBuffer offset: tempBuff->_offset atIndex: index];
+		id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults);
+		cmdEncoder->getMtlCompute().bindBuffer(mtlCmdEnc, tempBuff->_mtlBuffer, tempBuff->_offset, index);
 		return mtlCmdEnc;
 	} else {
 		// We can set the timestamp bytes into the compute encoder.
-		id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults, true);
+		id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults);
 		cmdEncoder->setComputeBytes(mtlCmdEnc, &_timestamps[firstQuery], queryCount * _queryElementCount * sizeof(uint64_t), index);
 		return mtlCmdEnc;
 	}
