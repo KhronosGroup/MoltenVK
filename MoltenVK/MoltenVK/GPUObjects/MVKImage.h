@@ -65,6 +65,7 @@ public:
 protected:
 	friend class MVKImageMemoryBinding;
 	friend MVKImage;
+	friend class MVKImageViewPlane;
 
     MTLTextureDescriptor* newMTLTextureDescriptor();
     void initSubresources(const VkImageCreateInfo* pCreateInfo);
@@ -402,6 +403,7 @@ protected:
 	bool _shouldSupportAtomics;
 	bool _isLinearForAtomics;
 	bool _is2DViewOn3DImageCompatible = false;
+	bool _isBlockTexelViewCompatible = false;
 };
 
 
