@@ -501,7 +501,14 @@ VkResult MVKQueueCommandBufferSubmission::execute() {
 // Returns the active MTLCommandBuffer, lazily retrieving it from the queue if needed.
 id<MTLCommandBuffer> MVKQueueCommandBufferSubmission::getActiveMTLCommandBuffer() {
 	if ( !_activeMTLCommandBuffer ) {
-		setActiveMTLCommandBuffer(_queue->getMTLCommandBuffer(_commandUse));
+		bool needsRetain = false;
+		if (!_device->hasResidencySet() && (getEnabledDescriptorIndexingFeatures().descriptorBindingPartiallyBound || getMVKConfig().liveCheckAllResources)) {
+			// Partially bound descriptors will get bound by us even if they're not used at runtime by the shader.
+			// The application is free to destroy them even if they're not used at runtime even if we bound them.
+			// Metal will be very unhappy if we destroy something we bound, even if it isn't used at runtime.
+			needsRetain = true;
+		}
+		setActiveMTLCommandBuffer(_queue->getMTLCommandBuffer(_commandUse, needsRetain));
 	}
 	return _activeMTLCommandBuffer;
 }

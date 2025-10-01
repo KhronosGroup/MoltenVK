@@ -715,6 +715,9 @@ public:
     /** Returns the number of planes if this is a ycbcr conversion or 0 otherwise. */
     uint8_t getPlaneCount() { return (_ycbcrConversion) ? _ycbcrConversion->getPlaneCount() : 0; }
 
+	/** Returns whether this is a ycbcr sampler. */
+	bool isYCBCR() { return _ycbcrConversion; }
+
 	/**
 	 * If this sampler requires hardcoding in MSL, populates the hardcoded sampler in the resource binding.
 	 * Returns whether this sampler requires hardcoding in MSL, and the constant sampler was populated.

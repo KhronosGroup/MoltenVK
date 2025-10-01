@@ -707,3 +707,13 @@ Determines the style used to implement _Vulkan_ semaphore (`VkSemaphore`) functi
 
 In the special case of `VK_SEMAPHORE_TYPE_TIMELINE` semaphores, **MoltenVK** will always use
 `MTLSharedEvent` if it is available on the platform, regardless of the value of this parameter.
+
+---------------------------------------
+#### MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES
+
+##### Type: Boolean
+##### Default: `0`
+
+Makes MoltenVK treat all descriptors as if they had `VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT` set.
+Versions of MoltenVK with this flag are less forgiving of applications that bind descriptors that point to
+destroyed objects, so this option can be used to temporarily work around any breakage that may have caused.

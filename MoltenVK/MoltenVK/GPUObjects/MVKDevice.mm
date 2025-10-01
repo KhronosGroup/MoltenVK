@@ -2388,6 +2388,22 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 	logGPUInfo();
 }
 
+static MVKPhysicalDeviceArgumentBufferSizes::Entry getArgumentBufferSize(id<MTLDevice> dev, MTLDataType type) {
+	MTLArgumentDescriptor* desc = [MTLArgumentDescriptor argumentDescriptor];
+	[desc setIndex:0];
+	[desc setDataType:type];
+	[desc setArrayLength:0];
+	[desc setAccess:type == MTLDataTypeSampler ? MTLArgumentAccessReadOnly : MTLArgumentAccessReadWrite];
+	if (type == MTLDataTypeTexture)
+		[desc setTextureType:MTLTextureType2D];
+	id<MTLArgumentEncoder> enc = [dev newArgumentEncoderWithArguments:@[desc]];
+	MVKPhysicalDeviceArgumentBufferSizes::Entry res;
+	res.size = static_cast<uint16_t>([enc encodedLength]);
+	res.align = static_cast<uint16_t>([enc alignment]);
+	[enc release];
+	return res;
+}
+
 void MVKPhysicalDevice::initMTLDevice() {
 #if MVK_MACOS
 	// Apple Silicon will respond false to isLowPower, but never hits it.
@@ -3009,6 +3025,14 @@ void MVKPhysicalDevice::initMetalFeatures() {
     _metalFeatures.subgroupUniformControlFlow = _gpuCapabilities.isAppleGPU;
     _metalFeatures.maximalReconvergence = _gpuCapabilities.isAppleGPU && _metalFeatures.subgroupUniformControlFlow;
     _metalFeatures.quadControlFlow = _gpuCapabilities.isAppleGPU && _metalFeatures.maximalReconvergence;
+
+	if (_isUsingMetalArgumentBuffers) {
+		_argumentBufferSizes.texture = getArgumentBufferSize(_mtlDevice, MTLDataTypeTexture);
+		_argumentBufferSizes.sampler = getArgumentBufferSize(_mtlDevice, MTLDataTypeSampler);
+		_argumentBufferSizes.pointer = getArgumentBufferSize(_mtlDevice, MTLDataTypePointer);
+	} else {
+		_argumentBufferSizes = {};
+	}
 
 	// Set features for all platforms based on previous settings.
 	// Bump resources up for Tier2 GPU, to meet Vulkan conformance.
@@ -4145,6 +4169,38 @@ MVKPhysicalDevice::~MVKPhysicalDevice() {
 	MVKLogInfo("Destroyed VkPhysicalDevice for GPU %s with %llu MB of GPU memory still allocated.", getName(), memUsed / MEBI);
 }
 
+#pragma mark - MVKLiveList
+
+MVKLiveList::Group* MVKLiveList::getGroup(id object) {
+	static constexpr size_t GOLDEN_RATIO = 0x9e3779b97f4a7c16ull;
+	size_t idx = reinterpret_cast<size_t>(object) * GOLDEN_RATIO;
+	idx >>= sizeof(size_t) * CHAR_BIT - GROUP_BITS;
+	return &groups[idx];
+}
+
+void MVKLiveList::add(id object) {
+	Group* group = getGroup(object);
+	std::lock_guard<Lock> guard(group->lock);
+	group->entries[object]++;
+}
+
+void MVKLiveList::remove(id object) {
+	Group* group = getGroup(object);
+	std::lock_guard<Lock> guard(group->lock);
+	auto it = group->entries.find(object);
+	if (it == group->entries.end())
+		return;
+	if (it->second <= 1)
+		group->entries.erase(it);
+	else
+		it->second--;
+}
+
+std::pair<MVKLiveList::Lock*, bool> MVKLiveList::isLive_(id object) {
+	Group* group = getGroup(object);
+	group->lock.lock();
+	return { &group->lock, group->entries.find(object) != group->entries.end() };
+}
 
 #pragma mark -
 #pragma mark MVKDevice
@@ -4663,8 +4719,8 @@ void MVKDevice::destroyPipelineCache(MVKPipelineCache* mvkPLC,
 }
 
 MVKPipelineLayout* MVKDevice::createPipelineLayout(const VkPipelineLayoutCreateInfo* pCreateInfo,
-												   const VkAllocationCallbacks* pAllocator) {
-	return new MVKPipelineLayout(this, pCreateInfo);
+                                                   const VkAllocationCallbacks* pAllocator) {
+	return MVKPipelineLayout::Create(this, pCreateInfo);
 }
 
 void MVKDevice::destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
@@ -4764,8 +4820,8 @@ void MVKDevice::destroySamplerYcbcrConversion(MVKSamplerYcbcrConversion* mvkSamp
 }
 
 MVKDescriptorSetLayout* MVKDevice::createDescriptorSetLayout(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
-															 const VkAllocationCallbacks* pAllocator) {
-	return new MVKDescriptorSetLayout(this, pCreateInfo);
+                                                             const VkAllocationCallbacks* pAllocator) {
+	return MVKDescriptorSetLayout::Create(this, pCreateInfo);
 }
 
 void MVKDevice::destroyDescriptorSetLayout(MVKDescriptorSetLayout* mvkDSL,
@@ -4774,8 +4830,8 @@ void MVKDevice::destroyDescriptorSetLayout(MVKDescriptorSetLayout* mvkDSL,
 }
 
 MVKDescriptorPool* MVKDevice::createDescriptorPool(const VkDescriptorPoolCreateInfo* pCreateInfo,
-												   const VkAllocationCallbacks* pAllocator) {
-	return new MVKDescriptorPool(this, pCreateInfo);
+                                                   const VkAllocationCallbacks* pAllocator) {
+	return MVKDescriptorPool::Create(this, pCreateInfo);
 }
 
 void MVKDevice::destroyDescriptorPool(MVKDescriptorPool* mvkDP,
@@ -4918,13 +4974,10 @@ MVKBuffer* MVKDevice::removeBuffer(MVKBuffer* mvkBuff) {
 	return mvkBuff;
 }
 
-void MVKDevice::encodeGPUAddressableBuffers(MVKResourcesCommandEncoderState* rezEncState, MVKShaderStage stage) {
-	MTLResourceUsage mtlUsage = MTLResourceUsageRead | MTLResourceUsageWrite;
-	MTLRenderStages mtlRendStage = (stage == kMVKShaderStageFragment) ? MTLRenderStageFragment : MTLRenderStageVertex;
-
+void MVKDevice::encodeGPUAddressableBuffers(MVKUseResourceHelper& resources, MVKResourceUsageStages stage) {
 	lock_guard<mutex> lock(_rezLock);
 	for (auto& buff : _gpuAddressableBuffers) {
-		rezEncState->encodeResourceUsage(stage, buff->getMTLBuffer(), mtlUsage, mtlRendStage);
+		resources.add(buff->getMTLBuffer(), stage, true);
 	}
 }
 
@@ -5486,6 +5539,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	enableFeatures(pCreateInfo);
 	initQueues(pCreateInfo);
 	reservePrivateData(pCreateInfo);
+	initConfiguration();
 
 	if (_enabledFeatures.robustBufferAccess || _enabledRobustness2Features.robustBufferAccess2) {
 		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support buffer robustness.");
@@ -5557,6 +5611,12 @@ static MVKPerformanceStatistics _processPerformanceStats = {};
 void MVKDevice::initPerformanceTracking() {
 	_isPerformanceTracking = getMVKConfig().performanceTracking;
 	_performanceStats = _processPerformanceStats;
+}
+
+void MVKDevice::initConfiguration() {
+	bool needsLiveTrackingForCopy = _physicalDevice->_isUsingMetalArgumentBuffers && _physicalDevice->_metalFeatures.needsArgumentBufferEncoders;
+	bool needsLiveTrackingForEncode = !hasResidencySet() && (getMVKConfig().liveCheckAllResources || _enabledDescriptorIndexingFeatures.descriptorBindingPartiallyBound);
+	_liveResources.enabled = needsLiveTrackingForCopy || needsLiveTrackingForEncode;
 }
 
 void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {
