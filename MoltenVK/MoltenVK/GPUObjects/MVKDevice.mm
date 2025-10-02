@@ -126,6 +126,9 @@ MVKMTLDeviceCapabilities::MVKMTLDeviceCapabilities(id<MTLDevice> mtlDev) {
 #if MVK_XCODE_15 && !MVK_TVOS && !MVK_VISIONOS
 	supportsApple9 = supportsGPUFam(Apple9, mtlDev);
 #endif
+#if MVK_XCODE_26
+	supportsApple10 = supportsGPUFam(Apple10, mtlDev);
+#endif
 	supportsMac1 = MVK_MACOS;	// Incl Mac1 & MacCatalyst1
 	supportsMac2 = MVK_MACOS;	// Incl Mac2 & MacCatalyst2
 
@@ -2469,7 +2472,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #endif
 
 #if MVK_XCODE_26
+	// NOTE: The Metal feature set table claims this requires Apple10, but it seems to work fine on older GPUs as well.
 	_metalFeatures.samplerMipLodBias = mvkOSVersionIsAtLeast(26.0);
+	_metalFeatures.depthBoundsTest = mvkOSVersionIsAtLeast(26.0) && supportsMTLGPUFamily(Apple10);
 #endif
 
 #if MVK_USE_METAL_PRIVATE_API
@@ -3149,14 +3154,7 @@ void MVKPhysicalDevice::initFeatures() {
     _features.imageCubeArray = true;
     _features.depthClamp = true;
     _features.shaderStorageImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
-
-#if MVK_USE_METAL_PRIVATE_API
-    if (getMVKConfig().useMetalPrivateAPI && _properties.vendorID == kAMDVendorId) {
-        // Only AMD drivers have the method we need for now.
-        _features.depthBounds = true;
-    }
-#endif
-
+    _features.depthBounds = _metalFeatures.depthBoundsTest;
 	_features.tessellationShader = true;
 	_features.dualSrcBlend = true;
 	_features.shaderTessellationAndGeometryPointSize = true;
