@@ -190,7 +190,7 @@ your app, and to avoid build errors, be sure to use the latest publicly availabl
 Once built, your app integrating the **MoltenVK** libraries can be run on *macOS*, *iOS* or *tvOS*
 devices that support *Metal*, or on the *Xcode* *iOS Simulator* or *tvOS Simulator*.
 
-- At runtime, **MoltenVK** requires at least *macOS 10.15*, *iOS 13*, or *tvOS 13*.
+- At runtime, **MoltenVK** requires at least *macOS 11.0*, *iOS 14*, or *tvOS 14*.
 - Information on *macOS* devices that are compatible with *Metal* can be found in
   [this article](http://www.idownloadblog.com/2015/06/22/how-to-find-mac-el-capitan-metal-compatible).
 - Information on *iOS* devices that are compatible with *Metal* can be found in
@@ -665,16 +665,6 @@ Known **MoltenVK** Limitations
 This section documents the known limitations in this version of **MoltenVK**.
 
 - See [above](#interaction) for known limitations for specific Vulkan extensions.
-
-- On *macOS* versions prior to *macOS 10.15.6*, native host-coherent image device memory is not available.
-  Because of this, changes made to `VkImage VK_MEMORY_PROPERTY_HOST_COHERENT_BIT` device memory by the CPU
-  or GPU will not be available to the GPU or CPU, respectively, until the memory is flushed  or unmapped by
-  the application. Applications using `vkMapMemory()` with `VkImage VK_MEMORY_PROPERTY_HOST_COHERENT_BIT`
-  device memory on *macOS* versions prior to *macOS 10.15.6* must call either `vkUnmapMemory()`, or
-  `vkFlushMappedMemoryRanges()` / `vkInvalidateMappedMemoryRanges()` to ensure memory changes are coherent
-  between the CPU and GPU.  This limitation does **_not_** apply to `VKImage` device memory on *macOS*
-  starting with *macOS 10.15.6*, does not apply to `VKImage` device memory on any version of *iOS* or *tvOS*,
-  and does **_not_** apply to `VKBuffer` device memory on any platform.
 
 - Image content in `PVRTC` compressed formats must be loaded directly into a `VkImage` using
   host-visible memory mapping. Loading via a staging buffer will result in malformed image content.

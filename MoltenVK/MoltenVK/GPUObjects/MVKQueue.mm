@@ -166,7 +166,6 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdUse) {
 id<MTLCommandBuffer> MVKQueue::getMTLCommandBuffer(MVKCommandUse cmdUse, bool retainRefs) {
 	id<MTLCommandBuffer> mtlCmdBuff = nil;
 	uint64_t startTime = getPerformanceTimestamp();
-#if MVK_XCODE_12
 	if ([_mtlQueue respondsToSelector: @selector(commandBufferWithDescriptor:)]) {
 		MTLCommandBufferDescriptor* mtlCmdBuffDesc = [MTLCommandBufferDescriptor new];	// temp retain
 		mtlCmdBuffDesc.retainedReferences = retainRefs;
@@ -175,9 +174,7 @@ id<MTLCommandBuffer> MVKQueue::getMTLCommandBuffer(MVKCommandUse cmdUse, bool re
 		}
 		mtlCmdBuff = [_mtlQueue commandBufferWithDescriptor: mtlCmdBuffDesc];
 		[mtlCmdBuffDesc release];														// temp release
-	} else
-#endif
-	if (retainRefs) {
+	} else if (retainRefs) {
 		mtlCmdBuff = [_mtlQueue commandBuffer];
 	} else {
 		mtlCmdBuff = [_mtlQueue commandBufferWithUnretainedReferences];
@@ -213,7 +210,6 @@ NSString* MVKQueue::getMTLCommandBufferLabel(MVKCommandUse cmdUse) {
 #undef CASE_GET_LABEL
 }
 
-#if MVK_XCODE_12
 static const char* mvkStringFromMTLCommandEncoderErrorState(MTLCommandEncoderErrorState errState) {
 	switch (errState) {
 		case MTLCommandEncoderErrorStateUnknown:   return "unknown";
@@ -224,7 +220,6 @@ static const char* mvkStringFromMTLCommandEncoderErrorState(MTLCommandEncoderErr
 	}
 	return "unknown";
 }
-#endif
 
 void MVKQueue::handleMTLCommandBufferError(id<MTLCommandBuffer> mtlCmdBuff) {
 	if (mtlCmdBuff.status != MTLCommandBufferStatusError) { return; }
@@ -268,21 +263,19 @@ void MVKQueue::handleMTLCommandBufferError(id<MTLCommandBuffer> mtlCmdBuff) {
 				 (mtlCmdBuff.label ? mtlCmdBuff.label.UTF8String : ""),
 				 mtlCmdBuff.error.code, mtlCmdBuff.error.localizedDescription.UTF8String);
 
-#if MVK_XCODE_12
-	if (&MTLCommandBufferEncoderInfoErrorKey != nullptr) {
-		if (NSArray<id<MTLCommandBufferEncoderInfo>>* mtlEncInfo = mtlCmdBuff.error.userInfo[MTLCommandBufferEncoderInfoErrorKey]) {
-			MVKLogInfo("Encoders for %p \"%s\":", mtlCmdBuff, mtlCmdBuff.label ? mtlCmdBuff.label.UTF8String : "");
-			for (id<MTLCommandBufferEncoderInfo> enc in mtlEncInfo) {
-				MVKLogInfo(" - %s: %s", enc.label.UTF8String, mvkStringFromMTLCommandEncoderErrorState(enc.errorState));
-				if (enc.debugSignposts.count > 0) {
-					MVKLogInfo("   Debug signposts:");
-					for (NSString* signpost in enc.debugSignposts) {
-						MVKLogInfo("    - %s", signpost.UTF8String);
-					}
+	if (NSArray<id<MTLCommandBufferEncoderInfo>>* mtlEncInfo = mtlCmdBuff.error.userInfo[MTLCommandBufferEncoderInfoErrorKey]) {
+		MVKLogInfo("Encoders for %p \"%s\":", mtlCmdBuff, mtlCmdBuff.label ? mtlCmdBuff.label.UTF8String : "");
+		for (id<MTLCommandBufferEncoderInfo> enc in mtlEncInfo) {
+			MVKLogInfo(" - %s: %s", enc.label.UTF8String, mvkStringFromMTLCommandEncoderErrorState(enc.errorState));
+			if (enc.debugSignposts.count > 0) {
+				MVKLogInfo("   Debug signposts:");
+				for (NSString* signpost in enc.debugSignposts) {
+					MVKLogInfo("    - %s", signpost.UTF8String);
 				}
 			}
 		}
 	}
+
 	if ([mtlCmdBuff respondsToSelector: @selector(logs)]) {
 		bool isFirstMsg = true;
 		for (id<MTLFunctionLog> log in mtlCmdBuff.logs) {
@@ -293,7 +286,6 @@ void MVKQueue::handleMTLCommandBufferError(id<MTLCommandBuffer> mtlCmdBuff) {
 			MVKLogInfo("%s", log.description.UTF8String);
 		}
 	}
-#endif
 }
 
 #pragma mark Construction

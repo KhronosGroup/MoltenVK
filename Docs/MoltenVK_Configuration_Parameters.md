@@ -124,7 +124,7 @@ file where the automatic GPU capture will be saved. If this parameter is an empt
 If this parameter is set to a valid file path, the _Xcode_ scheme need not have _Metal_ GPU capture
 enabled, and in fact the app need not be run under _Xcode_'s control at all. This is useful in case
 the app cannot be run under _Xcode_'s control. A path starting with '~' can be used to place it in
-a user's home directory. This feature requires _Metal 2.2 (macOS 10.15+, iOS/tvOS 13+)_.
+a user's home directory.
 
 
 ---------------------------------------
@@ -238,7 +238,7 @@ Forces **MoltenVK** to only advertise the low-power GPUs, if availble on the dev
 ##### Type: Boolean
 ##### Default: `0`
 
-If _Metal_ supports native per-texture swizzling (_macOS 10.15+ with Mac 2 GPU_, _ios/tvOS 13+_),
+If _Metal_ supports native per-texture swizzling (_Mac2 or Apple GPU_),
 this parameter is ignored.
 
 When running on an older version of _Metal_ that does not support native per-texture swizzling,
@@ -415,8 +415,6 @@ mark the `VkDevice` as lost, and subsequent use of that `VkDevice` will be reduc
 - `4`: `LZMA`: Slowest performance. Smallest compression size, particular with larger content.
 
 ##### Default: `0`
-
-Pipeline cache compression is available for _macOS 10.15+_, and _iOS/tvOS 13.0+_.
 
 Controls the type of compression to use on the MSL source code that is stored in memory for use in a pipeline cache.
 After being converted from SPIR-V, or loaded directly into a `VkShaderModule`, and then compiled into a `MTLLibrary`,
