@@ -21,8 +21,6 @@ MAKEARGS := $(strip \
       $(v)=$(value $(v)) ,)))
 
 # Specify individually (not as dependencies) so the sub-targets don't run in parallel
-# visionos and visionossim are currently excluded from `all` because they require
-# Xcode 15+ and will abort a multi-platform build on earlier Xcode versions.
 .PHONY: all
 all:
 	@$(MAKE) macos
