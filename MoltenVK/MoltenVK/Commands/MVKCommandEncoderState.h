@@ -523,36 +523,56 @@ public:
 class MVKOcclusionQueryCommandEncoderState {
 
 public:
-	void beginMetalRenderPass(MVKCommandEncoder* cmdEncoder);
 	void endMetalRenderPass(MVKCommandEncoder* cmdEncoder);
 
-    /** Begins an occlusion query. */
-    void beginOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags);
+	/** Begins an occlusion query. */
+	void beginOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags);
 
-    /** Ends an occlusion query. */
-    void endOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query);
+	/** Ends an occlusion query. */
+	void endOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query);
 
 	void encode(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder* mvkEncoder);
 
 	void prepareHelperDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder* mvkEncoder);
 
 private:
-	void beginOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query, MTLVisibilityResultMode mode);
+	/** Advances to the next index in the Metal visibility buffer. */
+	void nextMetalQuery(MVKCommandEncoder* cmdEncoder);
 
 	typedef struct OcclusionQueryLocation {
 		MVKOcclusionQueryPool* queryPool = nullptr;
 		uint32_t query = 0;
-		NSUInteger visibilityBufferOffset = 0;
+		uint32_t visibilityBufferOffset = 0;
 
-		OcclusionQueryLocation(MVKOcclusionQueryPool* qPool, uint32_t qIdx, NSUInteger vbOfst)
+		OcclusionQueryLocation(MVKOcclusionQueryPool* qPool, uint32_t qIdx, uint32_t vbOfst)
 		: queryPool(qPool), query(qIdx), visibilityBufferOffset(vbOfst) {}
 
 	} OcclusionQueryLocation;
 
+	struct CopyFence {
+		id<MTLFence> read;
+		id<MTLFence> write;
+	};
+
+	id<MTLFence> _lastFenceUpdate = nullptr;
+	// Max 3 Fences:
+	// [        |        ] <- buffer
+	//     00000 11111111 <loop around, update fences>
+	//  222 <can't write more without starting a new render pass>
+	CopyFence _copyFences[3];
 	MVKSmallVector<OcclusionQueryLocation> _mtlRenderPassQueries;
-    MTLVisibilityResultMode _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
-	bool _hasRasterized = false;
-	bool _dirty = false;
+	/// The pool of the current active query.
+	MVKOcclusionQueryPool* _currentPool = nullptr;
+	/// The index of the current active query.
+	uint32_t _currentQueryIndex = 0;
+	/// The visibility result mode of the current active query.
+	uint8_t _currentVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	/// The visibility result mode of the current Metal render pass.
+	uint8_t _metalVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	/// The number of fences that need to be waited on by the result copy shader.
+	uint8_t _numCopyFences = 0;
+	/// If true, accumulation will be run at the end of the next render pass.
+	bool _shouldAccumulate = false;
 };
 
 

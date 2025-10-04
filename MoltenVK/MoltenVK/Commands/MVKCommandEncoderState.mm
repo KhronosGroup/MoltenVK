@@ -1802,31 +1802,87 @@ void MVKCommandEncoderState::applyToActiveMTLState(VkPipelineBindPoint bindPoint
 #pragma mark -
 #pragma mark MVKOcclusionQueryCommandEncoderState
 
-void MVKOcclusionQueryCommandEncoderState::beginMetalRenderPass(MVKCommandEncoder* cmdEncoder) {
-	if (_mtlVisibilityResultMode != MTLVisibilityResultModeDisabled)
-		_dirty = true;
+/// Used to indicate that the current metal visibility result mode needs to be set regardless of what mode is wanted
+/// (when visibility queries are currently active but on the wrong index).
+static constexpr uint8_t VisibilityResultModeNeedsUpdate = 0xff;
+
+static bool isMetalVisibilityActive(uint8_t mode) {
+	// return false for both Disabled and NeedsUpdate
+	static_assert(static_cast<int8_t>(MTLVisibilityResultModeDisabled) <= 0);
+	static_assert(static_cast<int8_t>(VisibilityResultModeNeedsUpdate) <= 0);
+	static_assert(static_cast<int8_t>(MTLVisibilityResultModeBoolean)  > 0);
+	static_assert(static_cast<int8_t>(MTLVisibilityResultModeCounting) > 0);
+	return static_cast<int8_t>(mode) > 0;
 }
+
+struct alignas(8) QueryResultOffsets {
+	uint32_t dst;
+	uint32_t src;
+};
 
 // Metal resets the query counter at a render pass boundary, so copy results to the query pool's accumulation buffer.
 // Don't copy occlusion info until after rasterization, as Metal renderpasses can be ended prematurely during tessellation.
 void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass(MVKCommandEncoder* cmdEncoder) {
-	const MVKMTLBufferAllocation* vizBuff = cmdEncoder->_pEncodingContext->visibilityResultBuffer;
-	if ( !_hasRasterized || !vizBuff || _mtlRenderPassQueries.empty() ) { return; }  // Nothing to do.
+	nextMetalQuery(cmdEncoder);
+	_metalVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	_lastFenceUpdate = nullptr;
+	if (!_shouldAccumulate || _mtlRenderPassQueries.empty()) { return; }
+
+	_shouldAccumulate = false;
+	cmdEncoder->_pEncodingContext->firstVisibilityResultOffsetInRenderPass = cmdEncoder->_pEncodingContext->visibilityResultBuffer.offset();
+	const MVKVisibilityBuffer& vizBuff = cmdEncoder->_pEncodingContext->visibilityResultBuffer;
+	if (!vizBuff.buffer()) {
+		assert(0 && "Has visibility results but no buffer to write them to");
+		_mtlRenderPassQueries.clear();
+		return;
+	}
 
 	id<MTLComputePipelineState> mtlAccumState = cmdEncoder->getCommandEncodingPool()->getAccumulateOcclusionQueryResultsMTLComputePipelineState();
 	id<MTLComputeCommandEncoder> mtlAccumEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseAccumOcclusionQuery);
+	for (uint32_t i = 0; i < _numCopyFences; i++) {
+		[mtlAccumEncoder waitForFence:_copyFences[i].write];
+		[mtlAccumEncoder updateFence:_copyFences[i].read];
+	}
+	_numCopyFences = 0;
 	MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
 	state.bindPipeline(mtlAccumEncoder, mtlAccumState);
-	for (auto& qryLoc : _mtlRenderPassQueries) {
-		// Accumulate the current results to the query pool's buffer.
-		state.bindBuffer(mtlAccumEncoder, qryLoc.queryPool->getVisibilityResultMTLBuffer(), qryLoc.queryPool->getVisibilityResultOffset(qryLoc.query), 0);
-		state.bindBuffer(mtlAccumEncoder, vizBuff->_mtlBuffer, vizBuff->_offset + qryLoc.visibilityBufferOffset, 1);
-		[mtlAccumEncoder dispatchThreadgroups: MTLSizeMake(1, 1, 1)
-		                threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
+	state.bindBuffer(mtlAccumEncoder, vizBuff.buffer(), 0, 2);
+	static constexpr size_t max_size = 4096 / sizeof(QueryResultOffsets);
+	QueryResultOffsets offsets[std::min(max_size, _mtlRenderPassQueries.size())];
+	uint32_t idx = 0;
+	uint32_t executionWidth = static_cast<uint32_t>([mtlAccumState threadExecutionWidth]);
+	const auto& mtlFeats = cmdEncoder->getMetalFeatures();
+	for (auto cur = _mtlRenderPassQueries.begin(), end = _mtlRenderPassQueries.end(); cur < end; cur++) {
+		offsets[idx].dst = cur->query;
+		offsets[idx].src = cur->visibilityBufferOffset / kMVKQuerySlotSizeInBytes;
+		idx++;
+		auto next = cur + 1;
+		if (next == end || idx >= max_size || next->queryPool != cur->queryPool) {
+			// Send what we've collected
+			uint32_t count = idx;
+			idx = 0;
+			state.bindBuffer(mtlAccumEncoder, cur->queryPool->getVisibilityResultMTLBuffer(), 0, 1);
+			MTLSize tgsize = MTLSizeMake(executionWidth, 1, 1);
+			if (mtlFeats.nonUniformThreadgroups) {
+				state.bindBytes(mtlAccumEncoder, offsets, count * sizeof(QueryResultOffsets), 0);
+				[mtlAccumEncoder dispatchThreads:MTLSizeMake(count, 1, 1) threadsPerThreadgroup:tgsize];
+			} else {
+				uint32_t rest = 0;
+				if (count >= executionWidth) {
+					uint32_t first = count / executionWidth;
+					rest = first * executionWidth;
+					count -= rest;
+					state.bindBytes(mtlAccumEncoder, offsets, rest * sizeof(QueryResultOffsets), 0);
+					[mtlAccumEncoder dispatchThreadgroups:MTLSizeMake(first, 1, 1) threadsPerThreadgroup:tgsize];
+				}
+				if (count) {
+					state.bindBytes(mtlAccumEncoder, offsets + rest, count * sizeof(QueryResultOffsets), 0);
+					[mtlAccumEncoder dispatchThreadgroups:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(count, 1, 1)];
+				}
+			}
+		}
 	}
 	_mtlRenderPassQueries.clear();
-	_hasRasterized = false;
-	_dirty = false;
 }
 
 // The Metal visibility buffer has a finite size, and on some Metal platforms (looking at you M1),
@@ -1835,52 +1891,77 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass(MVKCommandEncoder*
 // report an error and disable further visibility tracking for the remainder of the MTLCommandBuffer.
 // In most cases, a MTLCommandBuffer corresponds to a Vulkan command submit (VkSubmitInfo),
 // and so the error text is framed in terms of the Vulkan submit.
-void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query, MTLVisibilityResultMode mode) {
-	if (cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset + kMVKQuerySlotSizeInBytes <= cmdEncoder->getMetalFeatures().maxQueryBufferSize) {
-		_mtlVisibilityResultMode = mode;
-		_mtlRenderPassQueries.emplace_back(pQueryPool, query, cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset);
-	} else {
-		cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCmdBeginQuery(): The maximum number of queries in a single Vulkan command submission is %llu.", cmdEncoder->getMetalFeatures().maxQueryBufferSize / kMVKQuerySlotSizeInBytes);
-		_mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
-		cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset -= kMVKQuerySlotSizeInBytes;
-	}
-	_hasRasterized = false;
-	_dirty = true;
-}
-
 void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags) {
-	bool shouldCount = cmdEncoder->getEnabledFeatures().occlusionQueryPrecise && mvkAreAllFlagsEnabled(flags, VK_QUERY_CONTROL_PRECISE_BIT);
-	beginOcclusionQuery(cmdEncoder, pQueryPool, query, shouldCount ? MTLVisibilityResultModeCounting : MTLVisibilityResultModeBoolean);
+	assert(!_currentPool && "Shouldn't have active query when beginning a new one!");
+	bool shouldCount = mvkAreAllFlagsEnabled(flags, VK_QUERY_CONTROL_PRECISE_BIT);
+	_currentVisibilityResultMode = shouldCount ? MTLVisibilityResultModeCounting : MTLVisibilityResultModeBoolean;
+	_currentPool = pQueryPool;
+	_currentQueryIndex = query;
 }
 
 void MVKOcclusionQueryCommandEncoderState::endOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query) {
-	_mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
-	cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset += kMVKQuerySlotSizeInBytes;
-	_hasRasterized = true;	// Handle begin and end query with no rasterizing before end of renderpass.
-	_dirty = true;
+	assert(_currentPool == pQueryPool && _currentQueryIndex == query && "Ended query that wasn't active!");
+	_shouldAccumulate = true;
+	if (cmdEncoder->_mtlRenderEncoder) {
+		nextMetalQuery(cmdEncoder);
+		_metalVisibilityResultMode = VisibilityResultModeNeedsUpdate;
+	} else {
+		// Called outside of a render pass
+		// Run accumulation immediately
+		endMetalRenderPass(cmdEncoder);
+	}
+	_currentVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	_currentPool = nullptr;
+}
+
+void MVKOcclusionQueryCommandEncoderState::nextMetalQuery(MVKCommandEncoder* cmdEncoder) {
+	if (!isMetalVisibilityActive(_metalVisibilityResultMode))
+		return; // No draws were run
+	MVKVisibilityBuffer& buffer = cmdEncoder->_pEncodingContext->visibilityResultBuffer;
+	if (_mtlRenderPassQueries.empty() || buffer.isFirstWithCurrentFence()) {
+		assert(_numCopyFences < std::size(_copyFences));
+		if (_numCopyFences < std::size(_copyFences)) {
+			auto current = buffer.currentFence();
+			_copyFences[_numCopyFences++] = { current.read, current.write };
+		}
+	}
+	_mtlRenderPassQueries.emplace_back(_currentPool, _currentQueryIndex, buffer.offset());
+	uint32_t offset = buffer.advanceOffset();
+	if (offset == cmdEncoder->_pEncodingContext->firstVisibilityResultOffsetInRenderPass) {
+		// We went through a whole visibility buffer in one render pass!  Guess we need to accumulate now...
+		cmdEncoder->encodeStoreActions(true);
+		cmdEncoder->endMetalRenderEncoding();
+		_shouldAccumulate = true;
+		endMetalRenderPass(cmdEncoder);
+	} else if (_numCopyFences >= 2) {
+		// Getting pretty full, accumulate soon so we don't have to split a render pass if possible
+		_shouldAccumulate = true;
+	}
 }
 
 void MVKOcclusionQueryCommandEncoderState::prepareHelperDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder* mvkEncoder) {
-	if (_mtlVisibilityResultMode != MTLVisibilityResultModeDisabled) {
-		if (!_dirty) {
-			[encoder setVisibilityResultMode:MTLVisibilityResultModeDisabled
-			                          offset:mvkEncoder->_pEncodingContext->mtlVisibilityResultOffset];
-			mvkEncoder->_pEncodingContext->mtlVisibilityResultOffset += kMVKQuerySlotSizeInBytes;
-			_dirty = true;
-		}
-	} else if (_dirty) {
+	if (_metalVisibilityResultMode != MTLVisibilityResultModeDisabled) {
+		nextMetalQuery(mvkEncoder);
+		_metalVisibilityResultMode = MTLVisibilityResultModeDisabled;
 		[encoder setVisibilityResultMode:MTLVisibilityResultModeDisabled
-		                          offset:mvkEncoder->_pEncodingContext->mtlVisibilityResultOffset];
-		_dirty = false;
-		_hasRasterized = true;
+		                          offset:mvkEncoder->_pEncodingContext->visibilityResultBuffer.offset()];
 	}
 }
 
 void MVKOcclusionQueryCommandEncoderState::encode(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder* mvkEncoder) {
-	if (!_dirty)
+	auto current = static_cast<MTLVisibilityResultMode>(_currentVisibilityResultMode);
+	if (_metalVisibilityResultMode == current)
 		return;
-	_dirty = false;
-	_hasRasterized = true;
-	[encoder setVisibilityResultMode:_mtlVisibilityResultMode
-	                          offset:mvkEncoder->_pEncodingContext->mtlVisibilityResultOffset];
+	MVKVisibilityBuffer& buffer = mvkEncoder->_pEncodingContext->visibilityResultBuffer;
+	_metalVisibilityResultMode = current;
+	[encoder setVisibilityResultMode:current
+	                          offset:buffer.offset()];
+	if (current != MTLVisibilityResultModeDisabled) {
+		auto fence = buffer.currentFence();
+		if (_lastFenceUpdate != fence.write) {
+			_lastFenceUpdate = fence.write;
+			[encoder waitForFence:fence.prevRead beforeStages:MTLRenderStageFragment];
+			[encoder  updateFence:fence.write     afterStages:MTLRenderStageFragment];
+		}
+	}
 }
