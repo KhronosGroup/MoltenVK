@@ -549,7 +549,6 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 			mtlLayer.colorspaceNameMVK = kCGColorSpaceExtendedLinearITUR_2020;
 			mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
-#if MVK_XCODE_12
 		case VK_COLOR_SPACE_HDR10_ST2084_EXT:
 			mtlLayer.colorspaceNameMVK = kCGColorSpaceITUR_2100_PQ;
 			mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
@@ -558,7 +557,6 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 			mtlLayer.colorspaceNameMVK = kCGColorSpaceITUR_2100_HLG;
 			mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
-#endif
 		case VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT:
 			mtlLayer.colorspaceNameMVK = kCGColorSpaceAdobeRGB1998;
 			mtlLayer.wantsExtendedDynamicRangeContentMVK = NO;

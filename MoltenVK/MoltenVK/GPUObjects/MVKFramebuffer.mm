@@ -63,11 +63,7 @@ id<MTLTexture> MVKFramebuffer::getDummyAttachmentMTLTexture(MVKRenderSubpass* su
 		mtlTexDesc.textureType = MTLTextureType2DMultisample;
 		mtlTexDesc.sampleCount = sampleCount;
 	}
-#if !MVK_MACOS || MVK_XCODE_12
 	mtlTexDesc.storageMode = MTLStorageModeMemoryless;
-#else
-	mtlTexDesc.storageMode = MTLStorageModePrivate;
-#endif
 	mtlTexDesc.usage = MTLTextureUsageRenderTarget;
 
 	_mtlDummyTex = [getMTLDevice() newTextureWithDescriptor: mtlTexDesc];	// retained

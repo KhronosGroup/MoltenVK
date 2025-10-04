@@ -344,7 +344,7 @@ MVK_PUBLIC_SYMBOL MTLSamplerAddressMode mvkMTLSamplerAddressModeFromVkSamplerAdd
 		case VK_SAMPLER_ADDRESS_MODE_REPEAT:				return MTLSamplerAddressModeRepeat;
 		case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE:			return MTLSamplerAddressModeClampToEdge;
 		case VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT:		return MTLSamplerAddressModeMirrorRepeat;
-#if MVK_MACOS || (MVK_IOS && MVK_XCODE_12)
+#if MVK_MACOS || MVK_IOS
 		case VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:	return MTLSamplerAddressModeMirrorClampToEdge;
 		case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER:		return MTLSamplerAddressModeClampToBorderColor;
 #endif
@@ -435,7 +435,7 @@ MVK_PUBLIC_SYMBOL MTLBlendFactor mvkMTLBlendFactorFromVkBlendFactor(VkBlendFacto
 
 #if MVK_USE_METAL_PRIVATE_API
 
-// This isn't in any public header yet. I'm really just guessing based on the D3D11 values here.
+// This isn't in any public header yet. Equivalent to D3D11 values.
 typedef NS_ENUM(NSUInteger, MTLLogicOperation) {
 	MTLLogicOperationClear,
 	MTLLogicOperationSet,

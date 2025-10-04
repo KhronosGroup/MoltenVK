@@ -28,73 +28,13 @@ class MVKBuffer;
 class MVKImage;
 
 
-/** Describes a MTLTexture resource binding. */
-typedef struct MVKMTLTextureBinding {
-    union { id<MTLTexture> mtlTexture = nil; id<MTLTexture> mtlResource; }; // aliases
-    uint32_t swizzle = 0;
-	uint16_t index = 0;
-    bool isDirty = true;
-
-    inline void markDirty() { isDirty = true; }
-
-    inline void update(const MVKMTLTextureBinding &other) {
-        if (mtlTexture != other.mtlTexture || swizzle != other.swizzle) {
-            mtlTexture = other.mtlTexture;
-            swizzle = other.swizzle;
-            markDirty();
-        }
-    }
-} MVKMTLTextureBinding;
-
-/** Describes a MTLSamplerState resource binding. */
-typedef struct MVKMTLSamplerStateBinding {
-    union { id<MTLSamplerState> mtlSamplerState = nil; id<MTLSamplerState> mtlResource; }; // aliases
-    uint16_t index = 0;
-    bool isDirty = true;
-
-    inline void markDirty() { isDirty = true; }
-
-    inline void update(const MVKMTLSamplerStateBinding &other) {
-        if (mtlSamplerState != other.mtlSamplerState) {
-            mtlSamplerState = other.mtlSamplerState;
-            markDirty();
-        }
-    }
-} MVKMTLSamplerStateBinding;
-
-/** Describes a MTLBuffer resource binding. */
-typedef struct MVKMTLBufferBinding {
-    union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; const void* mtlBytes; }; // aliases
-    VkDeviceSize offset = 0;
-    uint32_t size = 0;
+/** Describes a MTLBuffer resource binding used for a vertex buffer. */
+typedef struct MVKVertexMTLBufferBinding {
+	union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; }; // aliases
+	VkDeviceSize offset = 0;
+	uint32_t size = 0;
 	uint32_t stride = 0;
-	uint16_t index = 0;
-    bool justOffset = false;
-    bool isDirty = true;
-    bool isInline = false;
-	bool isOverridden = false;
-
-	void markDirty() { justOffset = false; isOverridden = false; isDirty = true; }
-
-    void update(const MVKMTLBufferBinding &other) {
-        if (mtlBuffer != other.mtlBuffer || size != other.size || other.isInline) {
-            mtlBuffer = other.mtlBuffer;
-			offset = other.offset;
-            size = other.size;
-			stride = other.stride;
-            isInline = other.isInline;
-            justOffset = false;
-			isOverridden = false;
-			isDirty = true;
-        } else if (offset != other.offset || stride != other.stride) {
-            offset = other.offset;
-			stride = other.stride;
-            justOffset = !isOverridden && (!isDirty || justOffset);
-			isOverridden = false;
-            isDirty = true;
-        }
-    }
-} MVKMTLBufferBinding;
+} MVKVertexMTLBufferBinding;
 
 /** Describes a MTLBuffer resource binding as used for an index buffer. */
 typedef struct MVKIndexMTLBufferBinding {
@@ -102,7 +42,6 @@ typedef struct MVKIndexMTLBufferBinding {
     VkDeviceSize offset = 0;
     VkDeviceSize size = 0;
     uint8_t mtlIndexType = 0;		// MTLIndexType
-    bool isDirty = true;
 } MVKIndexMTLBufferBinding;
 
 /** Concise and consistent structure for holding pipeline barrier info. */

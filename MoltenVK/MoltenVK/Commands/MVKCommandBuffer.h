@@ -54,8 +54,8 @@ struct BarrierFenceSlots {
 
 /** Context for tracking information across multiple encodings. */
 typedef struct MVKCommandEncodingContext {
-	NSUInteger mtlVisibilityResultOffset = 0;
-	const MVKMTLBufferAllocation* visibilityResultBuffer = nullptr;
+	uint32_t firstVisibilityResultOffsetInRenderPass = 0;
+	MVKVisibilityBuffer visibilityResultBuffer;
 	BarrierFenceSlots fenceSlots;
 
 	void syncFences(MVKDevice *device, id<MTLCommandBuffer> mtlCommandBuffer);
@@ -316,14 +316,6 @@ public:
     /** Binds a pipeline to a bind point. */
     void bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline);
 
-	/** Binds the descriptor set to the index at the bind point. */
-	void bindDescriptorSet(VkPipelineBindPoint pipelineBindPoint,
-						   uint32_t descSetIndex,
-						   MVKDescriptorSet* descSet,
-						   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-						   MVKArrayRef<uint32_t> dynamicOffsets,
-						   uint32_t& dynamicOffsetIndex);
-
 	/** Encodes an operation to signal an event to a status. */
 	void signalEvent(MVKEvent* mvkEvent, bool status);
 
@@ -372,8 +364,7 @@ public:
 	 * optionally be marked dirty. Otherwise, if the current encoder is not a compute
 	 * encoder, this function ends the current encoder before beginning compute encoding.
 	 */
-	id<MTLComputeCommandEncoder> getMTLComputeEncoder(MVKCommandUse cmdUse,
-													  bool markCurrentComputeStateDirty = false);
+	id<MTLComputeCommandEncoder> getMTLComputeEncoder(MVKCommandUse cmdUse);
 
 	/**
 	 * Returns the current Metal BLIT encoder for the specified use,
@@ -390,49 +381,59 @@ public:
 	 */
 	id<MTLCommandEncoder> getMTLEncoder();
 
+	/** Returns the command encoder state. */
+	MVKCommandEncoderState& getState() { return _state; }
+
+	/** Returns the Vulkan graphics encoder state. */
+	const MVKVulkanGraphicsCommandEncoderState& getVkGraphics() const { return _state.vkGraphics(); }
+
+	/** Returns the Metal graphics encoder state. */
+	MVKMetalGraphicsCommandEncoderState& getMtlGraphics() { return _state.mtlGraphics(); }
+
+	/** Returns the Vulkan compute encoder state. */
+	const MVKVulkanComputeCommandEncoderState& getVkCompute() const { return _state.vkCompute(); }
+
+	/** Returns the Metal compute encoder state. */
+	MVKMetalComputeCommandEncoderState& getMtlCompute() { return _state.mtlCompute(); }
+
+	/** Prepares state for a rasterization pipeline draw. */
+	void prepareDraw() { _state.prepareDraw(_mtlRenderEncoder, *this); }
+
+	/** Prepares the Metal compute pipeline state to dispatch the given stage of the Vulkan render pipeline. */
+	void prepareRenderDispatch(MVKGraphicsStage stage) { _state.prepareRenderDispatch(_mtlComputeEncoder, *this, stage); }
+
+	/** Prepares the Metal compute pipeline state to dispatch the given stage of the Vulkan render pipeline. */
+	void prepareComputeDispatch() { _state.prepareComputeDispatch(_mtlComputeEncoder, *this); }
+
 	/** Returns the graphics pipeline. */
-	MVKGraphicsPipeline* getGraphicsPipeline() { return (MVKGraphicsPipeline*)_graphicsPipelineState.getPipeline(); }
+	MVKGraphicsPipeline* getGraphicsPipeline() { return getVkGraphics()._pipeline; }
 
 	/** Returns the compute pipeline. */
-	MVKComputePipeline* getComputePipeline() { return (MVKComputePipeline*)_computePipelineState.getPipeline(); }
-
-	/** Returns the push constants associated with the specified shader stage. */
-	MVKPushConstantsCommandEncoderState* getPushConstants(VkShaderStageFlagBits shaderStage);
-
-	/** Encode the buffer binding as a vertex attribute buffer. */
-	void encodeVertexAttributeBuffer(MVKMTLBufferBinding& b, bool isDynamicStride);
+	MVKComputePipeline* getComputePipeline() { return getVkCompute()._pipeline; }
 
     /**
 	 * Copy bytes into the Metal encoder at a Metal vertex buffer index, and optionally indicate
 	 * that this binding might override a desriptor binding. If so, the descriptor binding will
 	 * be marked dirty so that it will rebind before the next usage.
 	 */
-    void setVertexBytes(id<MTLRenderCommandEncoder> mtlEncoder, const void* bytes,
-						NSUInteger length, uint32_t mtlBuffIndex, bool descOverride = false);
+	void setVertexBytes(id<MTLRenderCommandEncoder> mtlEncoder, const void* bytes,
+	                    NSUInteger length, uint32_t mtlBuffIndex);
 
 	/**
 	 * Copy bytes into the Metal encoder at a Metal fragment buffer index, and optionally indicate
 	 * that this binding might override a desriptor binding. If so, the descriptor binding will
 	 * be marked dirty so that it will rebind before the next usage.
 	 */
-    void setFragmentBytes(id<MTLRenderCommandEncoder> mtlEncoder, const void* bytes,
-						  NSUInteger length, uint32_t mtlBuffIndex, bool descOverride = false);
+	void setFragmentBytes(id<MTLRenderCommandEncoder> mtlEncoder, const void* bytes,
+	                      NSUInteger length, uint32_t mtlBuffIndex);
 
 	/**
 	 * Copy bytes into the Metal encoder at a Metal compute buffer index, and optionally indicate
 	 * that this binding might override a desriptor binding. If so, the descriptor binding will
 	 * be marked dirty so that it will rebind before the next usage.
 	 */
-    void setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder, const void* bytes,
-						 NSUInteger length, uint32_t mtlBuffIndex, bool descOverride = false);
-
-	/**
-	 * Copy bytes into the Metal encoder at a Metal compute buffer index with dynamic stride,
-	 * and optionally indicate that this binding might override a desriptor binding. If so,
-	 * the descriptor binding will be marked dirty so that it will rebind before the next usage.
-	 */
-    void setComputeBytesWithStride(id<MTLComputeCommandEncoder> mtlEncoder, const void* bytes,
-						 NSUInteger length, uint32_t mtlBuffIndex, uint32_t stride, bool descOverride = false);
+	void setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder, const void* bytes,
+	                     NSUInteger length, uint32_t mtlBuffIndex);
 
     /** Get a temporary MTLBuffer that will be returned to a pool after the command buffer is finished. */
     const MVKMTLBufferAllocation* getTempMTLBuffer(NSUInteger length, bool isPrivate = false, bool isDedicated = false);
@@ -492,26 +493,8 @@ public:
 	/** The current Metal render encoder. */
 	id<MTLRenderCommandEncoder> _mtlRenderEncoder;
 
-    /** Tracks the current graphics pipeline bound to the encoder. */
-	MVKPipelineCommandEncoderState _graphicsPipelineState;
-
-	/** Tracks the current graphics resources state of the encoder. */
-	MVKGraphicsResourcesCommandEncoderState _graphicsResourcesState;
-
-    /** Tracks the current compute pipeline bound to the encoder. */
-	MVKPipelineCommandEncoderState _computePipelineState;
-
-	/** Tracks the current compute resources state of the encoder. */
-	MVKComputeResourcesCommandEncoderState _computeResourcesState;
-
-	/** Tracks whether the GPU-addressable buffers need to be used. */
-	MVKGPUAddressableBuffersCommandEncoderState _gpuAddressableBuffersState;
-
-    /** Tracks the current depth stencil state of the encoder. */
-    MVKDepthStencilCommandEncoderState _depthStencilState;
-
-	/** Tracks the current rendering states of the encoder. */
-	MVKRenderingCommandEncoderState _renderingState;
+	/** Tracks the state of command encoding. */
+	MVKCommandEncoderState _state;
 
 	/** Tracks the occlusion query state of the encoder. */
 	MVKOcclusionQueryCommandEncoderState _occlusionQueryState;
@@ -562,11 +545,6 @@ protected:
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
 	id<MTLFence> _stageCountersMTLFence;
-	MVKPushConstantsCommandEncoderState _vertexPushConstants;
-	MVKPushConstantsCommandEncoderState _tessCtlPushConstants;
-	MVKPushConstantsCommandEncoderState _tessEvalPushConstants;
-	MVKPushConstantsCommandEncoderState _fragmentPushConstants;
-	MVKPushConstantsCommandEncoderState _computePushConstants;
 	MVKPrefillMetalCommandBuffersStyle _prefillStyle;
 	VkSubpassContents _subpassContents;
 	uint32_t _renderSubpassIndex;

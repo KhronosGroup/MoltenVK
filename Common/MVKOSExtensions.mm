@@ -111,8 +111,8 @@ uint64_t mvkGetSystemMemorySize() {
 
 uint64_t mvkGetAvailableMemorySize() {
 #if MVK_IOS_OR_TVOS
-	if (mvkOSVersionIsAtLeast(13.0)) { return os_proc_available_memory(); }
-#endif
+	return os_proc_available_memory();
+#else
 	mach_port_t host_port;
 	mach_msg_type_number_t host_size;
 	vm_size_t pagesize;
@@ -124,6 +124,7 @@ uint64_t mvkGetAvailableMemorySize() {
 		return vm_stat.free_count * pagesize;
 	}
 	return 0;
+#endif
 }
 
 uint64_t mvkGetUsedMemorySize() {

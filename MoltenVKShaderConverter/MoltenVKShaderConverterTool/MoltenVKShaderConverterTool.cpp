@@ -303,24 +303,9 @@ MoltenVKShaderConverterTool::MoltenVKShaderConverterTool(int argc, const char* a
 	} else if (mvkOSVersionIsAtLeast(12.0)) {
 		_mslVersionMajor = 2;
 		_mslVersionMinor = 4;
-	} else if (mvkOSVersionIsAtLeast(11.0)) {
+	} else {
 		_mslVersionMajor = 2;
 		_mslVersionMinor = 3;
-	} else if (mvkOSVersionIsAtLeast(10.15)) {
-		_mslVersionMajor = 2;
-		_mslVersionMinor = 2;
-	} else if (mvkOSVersionIsAtLeast(10.14)) {
-		_mslVersionMajor = 2;
-		_mslVersionMinor = 1;
-	} else if (mvkOSVersionIsAtLeast(10.13)) {
-		_mslVersionMajor = 2;
-		_mslVersionMinor = 0;
-	} else if (mvkOSVersionIsAtLeast(10.12)) {
-		_mslVersionMajor = 1;
-		_mslVersionMinor = 2;
-	} else {
-		_mslVersionMajor = 1;
-		_mslVersionMinor = 1;
 	}
 
 	_mslVersionPatch = 0;

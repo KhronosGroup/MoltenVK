@@ -158,8 +158,8 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #   define MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_QUEUE    64
 #endif
 
-/** Support more than 8192 or 32768 occlusion queries per device. Enabled by default. */
-#ifndef MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS
+/** Support more than 8192 or 32768 occlusion queries per device. Always enabled. */
+#ifndef MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS       // Deprecated
 #   define MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS    1
 #endif
 
@@ -381,3 +381,12 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #	define MVK_CONFIG_SHADER_LOG_ESTIMATED_GLSL		0
 #endif
 
+/*
+ * If set, MVK will treat all resources as if they had `MVK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT` set.
+ * This is mainly for getting more CTS coverage of the live resource tracking system,
+ * but it can also be used as a debug tool if MVK is crashing trying to bind destroyed resources.
+ * If setting this helps your application, your application is probably violating the Vulkan spec.
+ */
+#ifndef MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES
+#   define MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES 0
+#endif

@@ -56,6 +56,9 @@ MVKVulkanAPIObject* MVKVulkanAPIObject::getMVKVulkanAPIObject(VkDebugReportObjec
 		case VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT:
 		case VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT:
 			return MVKDispatchableVulkanAPIObject::getDispatchableObject(pVkObj);
+		// Pool subobjects need to have no-op destructors so they don't get to have fancy things like name storage
+		case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT:
+			return nullptr;
 		default:
 			return (MVKVulkanAPIObject*)pVkObj;
 	}
@@ -70,6 +73,9 @@ MVKVulkanAPIObject* MVKVulkanAPIObject::getMVKVulkanAPIObject(VkObjectType objTy
 		case VK_OBJECT_TYPE_QUEUE:
 		case VK_OBJECT_TYPE_COMMAND_BUFFER:
 			return MVKDispatchableVulkanAPIObject::getDispatchableObject(pVkObj);
+		// Pool subobjects need to have no-op destructors so they don't get to have fancy things like name storage
+		case VK_OBJECT_TYPE_DESCRIPTOR_SET:
+			return nullptr;
 		default:
 			return (MVKVulkanAPIObject*)pVkObj;
 	}

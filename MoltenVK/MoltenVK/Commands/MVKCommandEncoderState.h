@@ -22,10 +22,10 @@
 #include "MVKCommandResourceFactory.h"
 #include "MVKDevice.h"
 #include "MVKPipeline.h"
-#include "MVKDescriptor.h"
 #include "MVKSmallVector.h"
 #include "MVKBitArray.h"
 #include <unordered_map>
+#include <objc/message.h>
 
 class MVKCommandEncoder;
 class MVKGraphicsPipeline;
@@ -34,690 +34,545 @@ class MVKOcclusionQueryPool;
 
 struct MVKShaderImplicitRezBinding;
 
+enum class MVKMetalGraphicsStage {
+	Vertex,
+	Fragment,
+	Count
+};
 
-#pragma mark -
-#pragma mark MVKCommandEncoderState
+#pragma mark - Dynamic Resource Binders
 
-/** 
- * Abstract class that holds encoder state established by Vulkan commands.
- *
- * Some Vulkan commands can be issued both inside or outside a render pass, and the state 
- * encoded by the command needs to be retained by the encoder for use by following render 
- * passes. In addition, some Vulkan commands can be issued multiple times to accumulate
- * encoded content that should be submitted in one shot to the Metal encoder.
- */
-class MVKCommandEncoderState : public MVKBaseObject {
-
-public:
-
-	/** Returns the Vulkan API opaque object controlling this object. */
-	MVKVulkanAPIObject* getVulkanAPIObject() override;
-
-    /**
-     * Marks the content of this instance as dirty, relative to the
-     * current or next Metal render pass, and in need of submission to Metal.
-     */
-    virtual void markDirty() {
-        _isDirty = true;
-        _isModified = true;
-    }
-
-    /**
-     * Called automatically when a Metal render pass begins. If the contents have been
-     * modified from the default values, this instance is marked as dirty, so the contents
-     * will be encoded to Metal. Default state can be left unencoded on a new Metal encoder.
-     */
-	virtual void beginMetalRenderPass() { if (_isModified) { markDirty(); } }
-
-	/** Called automatically when a Metal render pass ends. */
-	virtual void endMetalRenderPass() { }
-
-	/**
-	 * Called automatically when a Metal compute pass begins. If the contents have been
-	 * modified from the default values, this instance is marked as dirty, so the contents
-	 * will be encoded to Metal. Default state can be left unencoded on a new Metal encoder.
-	 */
-	virtual void beginMetalComputeEncoding() { if (_isModified) { markDirty(); } }
-
-    /**
-     * If the content of this instance is dirty, marks this instance as no longer dirty
-     * and calls the encodeImpl() function to encode the content onto the Metal encoder.
-	 * Marking clean is done in advance so that subclass encodeImpl() implementations
-	 * can override to leave this instance in a dirty state.
-     * Subclasses must override the encodeImpl() function to do the actual work.
-     */
-    void encode(uint32_t stage = 0) {
-        if ( !_isDirty ) { return; }
-
-        _isDirty = false;
-        encodeImpl(stage);
-    }
-
-	/** Constructs this instance for the specified command encoder. */
-    MVKCommandEncoderState(MVKCommandEncoder* cmdEncoder) : _cmdEncoder(cmdEncoder) {}
-
-protected:
-	enum StateScope {
-		Static = 0,
-		Dynamic,
+/** Provides dynamic dispatch for binding resources to an encoder. */
+struct MVKResourceBinder {
+	typedef void (*UseResource)(id<MTLCommandEncoder> encoder, id<MTLResource> resource, MTLResourceUsage usage, MVKResourceUsageStages stages);
+	SEL _setBytes;
+	SEL _setBuffer;
+	SEL _setOffset;
+	SEL _setTexture;
+	SEL _setSampler;
+	UseResource useResource;
+	template <typename T> static MVKResourceBinder Create() {
+		return { T::selSetBytes(), T::selSetBuffer(), T::selSetOffset(), T::selSetTexture(), T::selSetSampler(), T::useResource() };
+	}
+	void setBytes(id<MTLCommandEncoder> encoder, const void* bytes, NSUInteger length, NSUInteger index) const {
+		reinterpret_cast<void(*)(id, SEL, const void*, NSUInteger, NSUInteger)>(objc_msgSend)(encoder, _setBytes, bytes, length, index);
+	}
+	void setBuffer(id<MTLCommandEncoder> encoder, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger index) const {
+		reinterpret_cast<void(*)(id, SEL, id<MTLBuffer>, NSUInteger, NSUInteger)>(objc_msgSend)(encoder, _setBuffer, buffer, offset, index);
+	}
+	void setBufferOffset(id<MTLCommandEncoder> encoder, NSUInteger offset, NSUInteger index) const {
+		reinterpret_cast<void(*)(id, SEL, NSUInteger, NSUInteger)>(objc_msgSend)(encoder, _setOffset, offset, index);
+	}
+	void setTexture(id<MTLCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index) const {
+		reinterpret_cast<void(*)(id, SEL, id<MTLTexture>, NSUInteger)>(objc_msgSend)(encoder, _setTexture, texture, index);
+	}
+	void setSampler(id<MTLCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index) const {
+		reinterpret_cast<void(*)(id, SEL, id<MTLSamplerState>, NSUInteger)>(objc_msgSend)(encoder, _setSampler, sampler, index);
+	}
+	enum class Stage {
+		Vertex   = static_cast<uint32_t>(MVKMetalGraphicsStage::Vertex),
+		Fragment = static_cast<uint32_t>(MVKMetalGraphicsStage::Fragment),
+		Compute  = static_cast<uint32_t>(MVKMetalGraphicsStage::Count),
 		Count
 	};
+	static const MVKResourceBinder& Get(Stage stage) GCC_CONST;
+	static const MVKResourceBinder& Get(MVKMetalGraphicsStage stage) { return Get(static_cast<Stage>(stage)); }
+	static const MVKResourceBinder& Vertex()   { return Get(Stage::Vertex); }
+	static const MVKResourceBinder& Fragment() { return Get(Stage::Fragment); }
+	static const MVKResourceBinder& Compute()  { return Get(Stage::Compute); }
+};
 
-	virtual void encodeImpl(uint32_t stage) = 0;
-	MVKDevice* getDevice();
-	bool isDynamicState(MVKRenderStateType state);
-	template <typename T> T& getContent(T* iVarAry, bool isDynamic) {
-		return iVarAry[isDynamic ? StateScope::Dynamic : StateScope::Static];
+/** Provides dynamic dispatch for binding vertex buffers to an encoder. */
+struct MVKVertexBufferBinder {
+	SEL _setBuffer;
+	SEL _setOffset;
+#if MVK_XCODE_15
+	SEL _setBufferDynamic;
+	SEL _setOffsetDynamic;
+#endif
+	template <typename T> static MVKVertexBufferBinder Create() {
+#if MVK_XCODE_15
+		return { T::selSetBuffer(), T::selSetOffset(), T::selSetBufferDynamic(), T::selSetOffsetDynamic() };
+#else
+		return { T::selSetBuffer(), T::selSetOffset() };
+#endif
 	}
-	template <typename T> T& getContent(T* iVarAry, MVKRenderStateType state) {
-		return getContent(iVarAry, isDynamicState(state));
+	void setBuffer(id<MTLCommandEncoder> encoder, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger index) const {
+		reinterpret_cast<void(*)(id, SEL, id<MTLBuffer>, NSUInteger, NSUInteger)>(objc_msgSend)(encoder, _setBuffer, buffer, offset, index);
+	}
+	void setBufferOffset(id<MTLCommandEncoder> encoder, NSUInteger offset, NSUInteger index) const {
+		reinterpret_cast<void(*)(id, SEL, NSUInteger, NSUInteger)>(objc_msgSend)(encoder, _setOffset, offset, index);
+	}
+	void setBufferDynamic(id<MTLCommandEncoder> encoder, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger stride, NSUInteger index) const {
+#if MVK_XCODE_15
+		reinterpret_cast<void(*)(id, SEL, id<MTLBuffer>, NSUInteger, NSUInteger, NSUInteger)>(objc_msgSend)(encoder, _setBufferDynamic, buffer, offset, stride, index);
+#else
+		assert(0);
+#endif
+	}
+	void setBufferOffsetDynamic(id<MTLCommandEncoder> encoder, NSUInteger offset, NSUInteger stride, NSUInteger index) const {
+#if MVK_XCODE_15
+		reinterpret_cast<void(*)(id, SEL, NSUInteger, NSUInteger, NSUInteger)>(objc_msgSend)(encoder, _setOffsetDynamic, offset, stride, index);
+#else
+		assert(0);
+#endif
+	}
+	enum class Stage {
+		Vertex,
+		Compute,
+		Count
+	};
+	static const MVKVertexBufferBinder& Get(Stage stage) GCC_CONST;
+	static const MVKVertexBufferBinder& Vertex()  { return Get(Stage::Vertex); }
+	static const MVKVertexBufferBinder& Compute() { return Get(Stage::Compute); }
+};
+
+#pragma mark - Vulkan Command Encoder State Structs
+
+/** Tracks state that's shared across both render and compute bind points. */
+struct MVKVulkanSharedCommandEncoderState {
+	MVKSmallVector<uint8_t, 128> _pushConstants;
+};
+
+struct MVKImplicitBufferData {
+	MVKSmallVector<uint32_t, 8> textureSwizzles;
+	MVKSmallVector<uint32_t, 8> bufferSizes;
+	MVKSmallVector<uint32_t, 8> dynamicOffsets;
+};
+
+enum class MVKResourceUsageStages : uint8_t {
+	Vertex   = static_cast<uint32_t>(MVKMetalGraphicsStage::Vertex),
+	Fragment = static_cast<uint32_t>(MVKMetalGraphicsStage::Fragment),
+	All      = static_cast<uint32_t>(MVKMetalGraphicsStage::Count),
+	Count,
+	Compute  = 0, // Aliases with Render stages
+	None     = Count, // Should not be passed to MVKUseResourceHelper
+};
+
+struct MVKUseResourceHelper {
+	struct Entry {
+		MVKSmallVector<id<MTLResource>> read;
+		MVKSmallVector<id<MTLResource>> readWrite;
+		MVKSmallVector<id<MTLResource>>& get(bool write) { return write ? readWrite : read; }
+	};
+	struct ResourceInfo {
+		MVKResourceUsageStages stages;
+		bool write;
+		bool deferred;
+	};
+	MVKOnePerEnumEntry<Entry, MVKResourceUsageStages> entries;
+	std::unordered_map<id<MTLResource>, ResourceInfo> used;
+	/** Add a resource to the list of resources to use. */
+	void add(id<MTLResource> resource, MVKResourceUsageStages stage, bool write);
+	/**
+	 * Immediately use the given resource.
+	 * (Important if you're holding a live resources lock and need to useResource before releasing the lock.)
+	 */
+	void addImmediate(id<MTLResource> resource, id<MTLCommandEncoder> enc, MVKResourceBinder::UseResource func, MVKResourceUsageStages stage, bool write);
+	void bindAndResetGraphics(id<MTLRenderCommandEncoder> encoder);
+	void bindAndResetCompute(id<MTLComputeCommandEncoder> encoder);
+};
+
+/**
+ * Tracks state that is needed by all Vulkan command encoder state trackers but is independent.
+ * (Commands that update these take a VkPipelineBindPoint to specify which state to update.)
+ */
+struct MVKVulkanCommonEncoderState {
+	MVKPipelineLayout* _layout = nullptr;
+	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount];
+	MVKDescriptorSet _pushDescriptor = {};
+	MVKSmallVector<uint8_t, 16> _pushDescData;
+	void ensurePushDescriptorSize(uint32_t size);
+	void setLayout(MVKPipelineLayout* layout);
+	MVKVulkanCommonEncoderState() = default;
+	MVKVulkanCommonEncoderState(const MVKVulkanCommonEncoderState& other);
+	MVKVulkanCommonEncoderState& operator=(const MVKVulkanCommonEncoderState& other);
+};
+
+/** Tracks the state of a Vulkan render encoder. */
+struct MVKVulkanGraphicsCommandEncoderState: public MVKVulkanCommonEncoderState {
+	MVKGraphicsPipeline* _pipeline = nullptr;
+	MVKRenderStateData _renderState;
+	MVKVertexMTLBufferBinding _vertexBuffers[kMVKMaxBufferCount];
+	MVKIndexMTLBufferBinding _indexBuffer;
+	VkViewport _viewports[kMVKMaxViewportScissorCount];
+	VkRect2D _scissors[kMVKMaxViewportScissorCount];
+	MTLSamplePosition _sampleLocations[kMVKMaxSampleCount];
+	MVKImplicitBufferData _implicitBufferData[kMVKShaderStageFragment + 1];
+
+	/** Choose between the dynamic and pipeline render states based on whether the given state flag is marked dynamic on the pipeline. */
+	const MVKRenderStateData& pickRenderState(MVKRenderStateFlag state) const {
+		bool dynamic = _pipeline->getDynamicStateFlags().has(state);
+		return *(dynamic ? &_renderState : &_pipeline->getStaticStateData());
+	}
+	MVKArrayRef<const MTLSamplePosition> getSamplePositions() const;
+	bool isBresenhamLines() const;
+	uint32_t getPatchControlPoints() const {
+		return pickRenderState(MVKRenderStateFlag::PatchControlPoints).patchControlPoints;
 	}
 
-    MVKCommandEncoder* _cmdEncoder;
-	bool _isDirty = false;
-    bool _isModified = false;
+	/** Bind the given descriptor sets, placing their bindings into `_descriptorSetBindings`. */
+	void bindDescriptorSets(MVKPipelineLayout* layout,
+	                        uint32_t firstSet,
+	                        uint32_t setCount,
+	                        MVKDescriptorSet*const* sets,
+	                        uint32_t dynamicOffsetCount,
+	                        const uint32_t* dynamicOffsets);
 };
 
+/** Tracks the state of a Vulkan compute encoder. */
+struct MVKVulkanComputeCommandEncoderState: public MVKVulkanCommonEncoderState {
+	MVKComputePipeline* _pipeline = nullptr;
+	MVKImplicitBufferData _implicitBufferData;
 
-#pragma mark -
-#pragma mark MVKPipelineCommandEncoderState
-
-/** Abstract class to hold encoder state established by pipeline commands. */
-class MVKPipelineCommandEncoderState : public MVKCommandEncoderState {
-
-public:
-	void bindPipeline(MVKPipeline* pipeline);
-
-    MVKPipeline* getPipeline();
-
-    MVKPipelineCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKCommandEncoderState(cmdEncoder) {}
-
-protected:
-    void encodeImpl(uint32_t stage) override;
-
-    MVKPipeline* _pipeline = nullptr;
+	/** Bind the given descriptor sets, placing their bindings into `_descriptorSetBindings`. */
+	void bindDescriptorSets(MVKPipelineLayout* layout,
+	                        uint32_t firstSet,
+	                        uint32_t setCount,
+	                        MVKDescriptorSet*const* sets,
+	                        uint32_t dynamicOffsetCount,
+	                        const uint32_t* dynamicOffsets);
 };
 
+struct MVKMetalSharedCommandEncoderState {
+	/** Storage space for use by various methods to reduce alloc/free. */
+	MVKSmallVector<uint32_t, 8> _scratch;
 
-#pragma mark -
-#pragma mark MVKPushConstantsCommandEncoderState
+	/** Storage for tracking which objects need to have useResource called on them. */
+	MVKUseResourceHelper _useResource;
 
-/** Holds encoder state established by push constant commands for a single shader stage. */
-class MVKPushConstantsCommandEncoderState : public MVKCommandEncoderState {
+	/** Which GPU addressable resources have been added to `_useResource`. */
+	MVKResourceUsageStages _gpuAddressableResourceStages;
 
-public:
-
-    /** Sets the specified push constants. */
-    void setPushConstants(uint32_t offset, MVKArrayRef<char> pushConstants);
-
-    /** Sets the index of the Metal buffer used to hold the push constants. */
-    void setMTLBufferIndex(uint32_t mtlBufferIndex, bool pipelineStageUsesPushConstants);
-
-	MVKPushConstantsCommandEncoderState(MVKCommandEncoder* cmdEncoder,
-                                        VkShaderStageFlagBits shaderStage)
-        : MVKCommandEncoderState(cmdEncoder), _shaderStage(shaderStage) {}
-
-protected:
-    void encodeImpl(uint32_t stage) override;
-	bool isTessellating();
-
-    MVKSmallVector<char, 128> _pushConstants;
-    VkShaderStageFlagBits _shaderStage;
-    uint32_t _mtlBufferIndex = 0;
-	bool _pipelineStageUsesPushConstants = false;
-};
-
-
-#pragma mark -
-#pragma mark MVKDepthStencilCommandEncoderState
-
-/** Holds encoder state established by depth stencil commands. */
-class MVKDepthStencilCommandEncoderState : public MVKCommandEncoderState {
-
-public:
-
-    /** Sets the depth stencil state during pipeline binding. */
-    void setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo);
-
-	/** Enables or disables depth testing, from explicit dynamic command. */
-	void setDepthTestEnable(VkBool32 depthTestEnable);
-
-	/** Enables or disables depth writing, from explicit dynamic command. */
-	void setDepthWriteEnable(VkBool32 depthWriteEnable);
-
-	/** Sets the depth compare operation, from explicit dynamic command. */
-	void setDepthCompareOp(VkCompareOp depthCompareOp);
-
-	/** Enables or disables stencil testing, from explicit dynamic command. */
-	void setStencilTestEnable(VkBool32 stencilTestEnable);
-
-	/** Sets the stencil operations of the indicated faces from explicit dynamic command. */
-	void setStencilOp(VkStencilFaceFlags faceMask,
-					  VkStencilOp failOp,
-					  VkStencilOp passOp,
-					  VkStencilOp depthFailOp,
-					  VkCompareOp compareOp);
-
-    /** Sets the stencil compare mask value of the indicated faces from explicit dynamic command. */
-    void setStencilCompareMask(VkStencilFaceFlags faceMask, uint32_t stencilCompareMask);
-
-    /** Sets the stencil write mask value of the indicated faces from explicit dynamic command. */
-    void setStencilWriteMask(VkStencilFaceFlags faceMask, uint32_t stencilWriteMask);
-
-	void beginMetalRenderPass() override;
-
-    /** Constructs this instance for the specified command encoder. */
-    MVKDepthStencilCommandEncoderState(MVKCommandEncoder* cmdEncoder)
-        : MVKCommandEncoderState(cmdEncoder) {}
-
-protected:
-    void encodeImpl(uint32_t stage) override;
-	MVKMTLDepthStencilDescriptorData& getData(MVKRenderStateType state) { return getContent(_depthStencilData, state); }
-	template <typename T> void setContent(T& content, T value) {
-		if (content != value) {
-			content = value;
-			markDirty();
-		}
+	void reset() {
+		_gpuAddressableResourceStages = MVKResourceUsageStages::None;
+		_useResource.used.clear();
 	}
-	void setStencilState(MVKMTLStencilDescriptorData& sData, const VkStencilOpState& vkStencil);
-	void setStencilOp(MVKMTLStencilDescriptorData& sData, VkStencilOp failOp,
-					  VkStencilOp passOp, VkStencilOp depthFailOp, VkCompareOp compareOp);
-
-	MVKMTLDepthStencilDescriptorData _depthStencilData[StateScope::Count];
-	bool _depthTestEnabled[StateScope::Count] = {};
-	bool _hasDepthAttachment = false;
-	bool _hasStencilAttachment = false;
 };
 
+#pragma mark - MVKMetalRenderCommandEncoderState
 
-#pragma mark -
-#pragma mark MVKRenderingCommandEncoderState
-
-struct MVKDepthBias {
-	float depthBiasConstantFactor;
-	float depthBiasClamp;
-	float depthBiasSlopeFactor;
+struct MVKStageResourceBindings {
+	id<MTLTexture> textures[kMVKMaxTextureCount];
+	struct Buffer {
+		id<MTLBuffer> buffer;
+		VkDeviceSize offset;
+		bool operator==(Buffer other) const { return std::make_pair(buffer, offset) == std::make_pair(other.buffer, other.offset); }
+		bool operator!=(Buffer other) const { return !(*this == other); }
+	} buffers[kMVKMaxBufferCount];
+	id<MTLSamplerState> samplers[kMVKMaxSamplerCount];
+	MVKBitArray descriptorSetResourceUse[kMVKMaxDescriptorSetCount];
+	MVKOnePerEnumEntry<uint8_t, MVKNonVolatileImplicitBuffer> implicitBufferIndices = {};
+	static Buffer ImplicitBuffer(MVKImplicitBuffer buffer) {
+		return { nil, static_cast<VkDeviceSize>(buffer) + 1 };
+	}
+	static Buffer ImplicitBuffer(MVKNonVolatileImplicitBuffer buffer) {
+		return ImplicitBuffer(static_cast<MVKImplicitBuffer>(buffer));
+	}
+	static Buffer NullBuffer() { return { nil, 0 }; }
+	static Buffer InvalidBuffer() { return { nil, ~0ull }; }
 };
 
-struct MVKDepthBounds {
-	float minDepthBound;
-	float maxDepthBound;
+template <typename T>
+struct MVKOnePerGraphicsStage: public MVKOnePerEnumEntry<T, MVKMetalGraphicsStage> {
+	      T& vertex()         { return (*this)[MVKMetalGraphicsStage::Vertex]; }
+	const T& vertex()   const { return (*this)[MVKMetalGraphicsStage::Vertex]; }
+	      T& fragment()       { return (*this)[MVKMetalGraphicsStage::Fragment]; }
+	const T& fragment() const { return (*this)[MVKMetalGraphicsStage::Fragment]; }
 };
 
-struct MVKStencilReference {
-	uint32_t frontFaceValue;
-	uint32_t backFaceValue;
+enum class MVKMetalRenderEncoderStateFlag {
+	DepthBiasEnable,
+	DepthBoundsEnable,
+	DepthClampEnable,
+	DepthTestEnable,
+	RasterizationDisabledByScissor,
+	ScissorDirty,
+	PipelineReady,
+	SamplePositionsOverridden,
+	Count
 };
 
-struct MVKMTLViewports {
-	MTLViewport viewports[kMVKMaxViewportScissorCount];
-	uint32_t viewportCount;
+using MVKMetalRenderEncoderStateFlags = MVKFlagList<MVKMetalRenderEncoderStateFlag>;
+
+class MVKRenderSubpass;
+
+/** The state for a draw inserted by MoltenVK. */
+struct MVKHelperDrawState {
+	id<MTLRenderPipelineState> pipeline;
+	VkRect2D viewportAndScissor;
+	uint32_t stencilReference;
+	bool writeDepth;
+	bool writeStencil;
 };
 
-struct MVKMTLScissors {
-	MTLScissorRect scissors[kMVKMaxViewportScissorCount];
-	uint32_t scissorCount;
+/** Subset of MVKMetalGraphicsCommandEncoderState that can be reset with memset. */
+struct MVKMetalGraphicsCommandEncoderStateQuickReset {
+	/**
+	 * If clear, ignore the binding in `bindings` and assume the Metal default value (usually nil / zero).
+	 * Allows us to quickly reset to the state of a fresh command encoder without having to zero all the bindings.
+	 */
+	MVKOnePerGraphicsStage<MVKStageResourceBits> _exists;
+
+	id<MTLRenderPipelineState> _pipeline;
+
+	/** Flags that mark whether a render state matches the current Vulkan render state. */
+	MVKRenderStateFlags _stateReady;
+	/** Other single-bit flags. */
+	MVKMetalRenderEncoderStateFlags _flags;
+
+	MVKStencilReference _stencilReference;
+	MVKColor32 _blendConstants;
+	uint8_t _numViewports;
+	uint8_t _numScissors;
+	uint8_t _patchControlPoints;
+	uint8_t _cullMode;
+	uint8_t _frontFace;
+	MVKPolygonMode _polygonMode;
+
+	// Memset 0 to here to clear.
+	// DO NOT memset sizeof(*this), or you'll clear padding, which is used by subclasses.
+	struct {} MEMSET_RESET_LINE;
 };
 
-/** Holds encoder state established by various rendering state commands. */
-class MVKRenderingCommandEncoderState : public MVKCommandEncoderState {
+/** Tracks the state of a Metal render encoder. */
+struct MVKMetalGraphicsCommandEncoderState : public MVKMetalGraphicsCommandEncoderStateQuickReset {
+	uint8_t _primitiveType;
+	uint8_t _numSamplePositions = 0;
+	MVKDepthBias _depthBias;
+	MVKDepthBounds _depthBounds;
+	float _lineWidth;
+	uint32_t _sampleCount;
+	MVKMTLDepthStencilDescriptorData _depthStencil;
+
+	MVKOnePerGraphicsStage<MVKStageResourceBindings> _bindings;
+
+	VkViewport _viewports[kMVKMaxViewportScissorCount];
+	VkRect2D _scissors[kMVKMaxViewportScissorCount];
+	MTLSamplePosition _samplePositions[kMVKMaxSampleCount];
+
+	MTLPrimitiveType getPrimitiveType() const { return static_cast<MTLPrimitiveType>(_primitiveType); }
+
+	/** For API compatibility with MVKMetalComputeCommandEncoderState. */
+	MVKArrayRef<MVKStageResourceBits> exists() { return _exists.elements; }
+
+	/** Reset to the state of a fresh Metal render encoder. */
+	void reset(VkSampleCountFlags sampleCount);
+
+	/** Mark the given pieces of render state as dirty. */
+	void markDirty(MVKRenderStateFlags flags) { _stateReady.removeAll(flags); }
+	/** Mark everything dirty that needs to be marked when changing pipelines. */
+	void changePipeline(MVKGraphicsPipeline* from, MVKGraphicsPipeline* to);
+
+	void bindFragmentBuffer(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index);
+	void bindFragmentBytes(id<MTLRenderCommandEncoder> encoder, const void* data, size_t size, NSUInteger index);
+	void bindFragmentTexture(id<MTLRenderCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index);
+	void bindFragmentSampler(id<MTLRenderCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index);
+	void bindVertexBuffer(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index);
+	void bindVertexBytes(id<MTLRenderCommandEncoder> encoder, const void* data, size_t size, NSUInteger index);
+	void bindVertexTexture(id<MTLRenderCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index);
+	void bindVertexSampler(id<MTLRenderCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index);
+	template <typename T> void bindFragmentStructBytes(id<MTLComputeCommandEncoder> encoder, const T& t, NSUInteger index) { bindFragmentBytes(encoder, &t, sizeof(T), index); }
+	template <typename T> void bindVertexStructBytes(id<MTLComputeCommandEncoder> encoder, const T& t, NSUInteger index) { bindVertexBytes(encoder, &t, sizeof(T), index); }
+	void bindStateData(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKRenderStateData& data, MVKRenderStateFlags flags, const VkViewport* viewports, const VkRect2D* scissors);
+	void bindState(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanGraphicsCommandEncoderState& vkState);
+	void prepareDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanGraphicsCommandEncoderState& vkState, const MVKVulkanSharedCommandEncoderState& vkShared);
+	void prepareHelperDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKHelperDrawState& state);
+};
+
+#pragma mark - MVKMetalComputeCommandEncoderState
+
+/** Tracks the state of a Metal compute encoder */
+struct MVKMetalComputeCommandEncoderState {
+	/**
+	 * If clear, ignore the binding in `bindings` and assume the Metal default value (usually nil / zero).
+	 * Allows us to quickly reset to the state of a fresh command encoder without having to zero all the bindings.
+	 */
+	MVKStageResourceBits _exists;
+
+	id<MTLComputePipelineState> _pipeline;
+
+	MVKPipeline* _vkPipeline;
+
+	// Everything above here can be reset by a memset from the beginning of the struct to offsetof(struct, MEMSET_RESET_LINE)
+	struct {} MEMSET_RESET_LINE;
+
+	/** The current stage being run on this compute encoder. */
+	MVKShaderStage _vkStage = kMVKShaderStageCount;
+
+	MVKStageResourceBindings _bindings;
+
+	void bindPipeline(id<MTLComputeCommandEncoder> encoder, id<MTLComputePipelineState> pipeline);
+	void bindBuffer(id<MTLComputeCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index);
+	void bindBytes(id<MTLComputeCommandEncoder> encoder, const void* data, size_t size, NSUInteger index);
+	void bindTexture(id<MTLComputeCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index);
+	void bindSampler(id<MTLComputeCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index);
+	template <typename T> void bindStructBytes(id<MTLComputeCommandEncoder> encoder, const T* t, NSUInteger index) { bindBytes(encoder, t, sizeof(T), index); }
+	void prepareComputeDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanComputeCommandEncoderState& vkState, const MVKVulkanSharedCommandEncoderState& vkShared);
+	void prepareRenderDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanGraphicsCommandEncoderState& vkState, const MVKVulkanSharedCommandEncoderState& vkShared, MVKShaderStage stage);
+
+	/** For API compatibility with MVKMetalGraphicsCommandEncoderState. */
+	MVKArrayRef<MVKStageResourceBits> exists() { return {&_exists, 1}; }
+
+	void reset();
+};
+
+#pragma mark - MVKCommandEncoderState
+
+/** Holds both Metal and Vulkan state for both compute and graphics. */
+class MVKCommandEncoderState {
+	MVKVulkanSharedCommandEncoderState   _vkShared;
+	MVKVulkanGraphicsCommandEncoderState _vkGraphics;
+	MVKVulkanComputeCommandEncoderState  _vkCompute;
+	MVKMetalSharedCommandEncoderState    _mtlShared;
+	MVKMetalGraphicsCommandEncoderState  _mtlGraphics;
+	MVKMetalComputeCommandEncoderState   _mtlCompute;
+	enum class CommandEncoderClass {
+		None,
+		Graphics,
+		Compute
+	};
+	/** The type of Metal encoder, if any, that is currently active. */
+	CommandEncoderClass _mtlActiveEncoder;
+
+	/** Get the encoder state associated with the given bind point, or nullptr if the bindPoint isn't supported. */
+	MVKVulkanCommonEncoderState* getVkEncoderState(VkPipelineBindPoint bindPoint);
+
 public:
-	void setCullMode(VkCullModeFlags cullMode, bool isDynamic);
+	/** Get a reference to the Vulkan state shared between graphics and compute.  Read-only, use methods on this class (which will invalidate associated Metal state) to modify. */
+	const MVKVulkanSharedCommandEncoderState&   vkShared()   const { return _vkShared; }
+	/** Get a reference to the Vulkan graphics state.  Read-only, use methods on this class (which will invalidate associated Metal state) to modify. */
+	const MVKVulkanGraphicsCommandEncoderState& vkGraphics() const { return _vkGraphics; }
+	/** Get a reference to the Vulkan compute state.  Read-only, use methods on this class (which will invalidate associated Metal state) to modify. */
+	const MVKVulkanComputeCommandEncoderState&  vkCompute()  const { return _vkCompute; }
+	/** Returns a reference to the Metal state shared between graphics and compute. */
+	MVKMetalSharedCommandEncoderState&   mtlShared()   { return _mtlShared; }
+	/** Returns a reference to the Metal graphics state. */
+	MVKMetalGraphicsCommandEncoderState& mtlGraphics() { return _mtlGraphics; }
+	/** Returns a reference to the Metal compute state. */
+	MVKMetalComputeCommandEncoderState&  mtlCompute()  { return _mtlCompute; }
 
-	void setFrontFace(VkFrontFace frontFace, bool isDynamic);
+	/**
+	 * Updates the given dynamic state, invalidating the passed flags on the Metal graphics state.
+	 * Use the returned reference to do the actual update to the Vulkan state.
+	 */
+	MVKVulkanGraphicsCommandEncoderState& updateDynamicState(MVKRenderStateFlags state) {
+		_mtlGraphics.markDirty(state);
+		return _vkGraphics;
+	}
 
-	void setPolygonMode(VkPolygonMode polygonMode, bool isDynamic);
-
-	void setLineWidth(float lineWidth, bool isDynamic);
-	void setLineRasterizationMode(VkLineRasterizationMode lineRasterizationMode, bool isDynamic);
-
-	void setBlendConstants(MVKColor32 blendConstants, bool isDynamic);
-
-	void setDepthBias(const VkPipelineRasterizationStateCreateInfo& vkRasterInfo);
-	void setDepthBias(MVKDepthBias depthBias, bool isDynamic);
-	void setDepthBiasEnable(VkBool32 depthBiasEnable, bool isDynamic);
-	void setDepthClipEnable(bool depthClip, bool isDynamic);
-	void setDepthBounds(MVKDepthBounds depthBounds, bool isDynamic);
-	void setDepthBoundsTestEnable(VkBool32 depthBoundsTestEnable, bool isDynamic);
-	void setStencilReferenceValues(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo);
-	void setStencilReferenceValues(VkStencilFaceFlags faceMask, uint32_t stencilReference);
-
-	void setViewports(const MVKArrayRef<VkViewport> viewports, uint32_t firstViewport, bool isDynamic);
-	void setScissors(const MVKArrayRef<VkRect2D> scissors, uint32_t firstScissor, bool isDynamic);
-
-	void setPrimitiveRestartEnable(VkBool32 primitiveRestartEnable, bool isDynamic);
-
-	void setRasterizerDiscardEnable(VkBool32 rasterizerDiscardEnable, bool isDynamic);
-
-	void setPrimitiveTopology(VkPrimitiveTopology topology, bool isDynamic);
-	MTLPrimitiveType getPrimitiveType();
-
-	void setPatchControlPoints(uint32_t patchControlPoints, bool isDynamic);
-	uint32_t getPatchControlPoints();
-
-	void setSampleLocationsEnable(VkBool32 sampleLocationsEnable, bool isDynamic);
-	void setSampleLocations(const MVKArrayRef<VkSampleLocationEXT> sampleLocations, bool isDynamic);
-	MVKArrayRef<MTLSamplePosition> getSamplePositions();
-
-	void beginMetalRenderPass() override;
+	/** Returns the current sample positions and marks those positions as the currently bound positions. */
+	MVKArrayRef<const MTLSamplePosition> updateSamplePositions();
+	/** Checks if the render pass needs to be restarted before drawing with the current graphics configuration. */
 	bool needsMetalRenderPassRestart();
-
-	bool isDirty(MVKRenderStateType state);
-	void markDirty() override;
-
-	MVKRenderingCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKCommandEncoderState(cmdEncoder) {}
-
-protected:
-	void encodeImpl(uint32_t stage) override;
-	bool isDrawingTriangles();
-	bool isDrawingLines();
-	void checkSamplePositionsOverride();
-	template <typename T> void setContent(MVKRenderStateType state, T* iVarAry, T* pVal, bool isDynamic) {
-		auto* pIVar = &iVarAry[isDynamic ? StateScope::Dynamic : StateScope::Static];
-		if( !mvkAreEqual(pVal, pIVar) ) {
-			*pIVar = *pVal;
-			_dirtyStates.enable(state);
-			_modifiedStates.enable(state);
-			MVKCommandEncoderState::markDirty();	// Avoid local markDirty() as it marks all states dirty.
-		}
+	/** Binds everything needed to render with the current Vulkan graphics state on the current Metal graphics state. */
+	void prepareDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder) {
+		_mtlGraphics.prepareDraw(encoder, mvkEncoder, _vkGraphics, _vkShared);
 	}
-	template <typename T> void setContent(MVKRenderStateType state, T* iVarAry, T val, bool isDynamic) {
-		setContent(state, iVarAry, &val, isDynamic);
+	/** Binds everything needed to dispatch a compute-based emulation of the given stage of the current Vulkan graphics state on the current Metal compute state. */
+	void prepareRenderDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, MVKGraphicsStage stage) {
+		assert(stage == kMVKGraphicsStageVertex || stage == kMVKGraphicsStageTessControl);
+		MVKShaderStage shaderStage = stage == kMVKGraphicsStageVertex ? kMVKShaderStageVertex : kMVKShaderStageTessCtl;
+		_mtlCompute.prepareRenderDispatch(encoder, mvkEncoder, _vkGraphics, _vkShared, shaderStage);
 	}
-
-	enum SamplePositionsOverride {
-		None = 0,
-		Centered
-	};
-
-	MVKSmallVector<MTLSamplePosition, kMVKMaxSampleCount> _mtlSampleLocations[StateScope::Count] = {};
-	MVKMTLViewports _mtlViewports[StateScope::Count] = {};
-	MVKMTLScissors _mtlScissors[StateScope::Count] = {};
-	MVKColor32 _mtlBlendConstants[StateScope::Count] = {};
-	MVKDepthBias _mtlDepthBias[StateScope::Count] = {};
-	MVKDepthBounds _mtlDepthBounds[StateScope::Count] = {};
-	MVKStencilReference _mtlStencilReference[StateScope::Count] = {};
-	MTLCullMode _mtlCullMode[StateScope::Count] = { MTLCullModeNone, MTLCullModeNone };
-	MTLWinding _mtlFrontFace[StateScope::Count] = { MTLWindingClockwise, MTLWindingClockwise };
-	MTLPrimitiveType _mtlPrimitiveTopology[StateScope::Count] = { MTLPrimitiveTypePoint, MTLPrimitiveTypePoint };
-	MTLDepthClipMode _mtlDepthClipEnable[StateScope::Count] = { MTLDepthClipModeClip, MTLDepthClipModeClip };
-	MTLTriangleFillMode _mtlPolygonMode[StateScope::Count] = { MTLTriangleFillModeFill, MTLTriangleFillModeFill };
-	float _mtlLineWidth[StateScope::Count] = { 1, 1 };
-	VkLineRasterizationMode _vkLineRasterizationMode[StateScope::Count] = { VK_LINE_RASTERIZATION_MODE_DEFAULT, VK_LINE_RASTERIZATION_MODE_DEFAULT };
-	uint32_t _mtlPatchControlPoints[StateScope::Count] = { 0, 0 };
-	MVKRenderStateFlags _dirtyStates;
-	MVKRenderStateFlags _modifiedStates;
-	SamplePositionsOverride _samplePositionsOverride = None;
-	bool _mtlSampleLocationsEnable[StateScope::Count] = {};
-	bool _mtlDepthBiasEnable[StateScope::Count] = {};
-	bool _mtlPrimitiveRestartEnable[StateScope::Count] = {};
-	bool _mtlRasterizerDiscardEnable[StateScope::Count] = {};
-	bool _mtlDepthBoundsTestEnable[StateScope::Count] = {};
-	bool _cullBothFaces[StateScope::Count] = {};
-	bool _isPolygonModePoint[StateScope::Count] = {};
-	bool _shouldCheckSamplePositionOverride = false;
-};
-
-
-#pragma mark -
-#pragma mark MVKResourcesCommandEncoderState
-
-/** Abstract resource state class for supporting encoder resources. */
-class MVKResourcesCommandEncoderState : public MVKCommandEncoderState {
-
-public:
-
-	/** Returns the currently bound pipeline for this bind point. */
-	virtual MVKPipeline* getPipeline() = 0;
-
-	/** Binds the specified descriptor set to the specified index. */
-	void bindDescriptorSet(uint32_t descSetIndex,
-						   MVKDescriptorSet* descSet,
-						   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-						   MVKArrayRef<uint32_t> dynamicOffsets,
-						   uint32_t& dynamicOffsetIndex);
-
-	/** Encodes the indirect use of the Metal resource to the Metal command encoder. */
-	virtual void encodeResourceUsage(MVKShaderStage stage,
-									 id<MTLResource> mtlResource,
-									 MTLResourceUsage mtlUsage,
-									 MTLRenderStages mtlStages) = 0;
-
-	void markDirty() override;
-
-    MVKResourcesCommandEncoderState(MVKCommandEncoder* cmdEncoder) :
-		MVKCommandEncoderState(cmdEncoder), _boundDescriptorSets{} {}
-
-protected:
-
-    // Template function that marks both the vector and all binding elements in the vector as dirty.
-    template<class T>
-    void markDirty(T& bindings, bool& bindingsDirtyFlag) {
-        for (auto& b : bindings) { b.markDirty(); }
-        bindingsDirtyFlag = true;
-    }
-
-	// Template function to find and mark as overridden the binding that uses the index.
-	template<class T>
-	void markBufferIndexOverridden(T& bufferBindings, uint32_t index) {
-		for (auto& b : bufferBindings) {
-			if (b.index == index) {
-				b.isOverridden = true;
-				return;
-			}
-		}
+	/** Binds everything needed to dispatch a Vulkan compute shader on the current Metal compute state. */
+	void prepareComputeDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder) {
+		_mtlCompute.prepareComputeDispatch(encoder, mvkEncoder, _vkCompute, _vkShared);
 	}
+	/** Binds the given graphics pipeline to the Vulkan graphics state, invalidating any necessary resources. */
+	void bindGraphicsPipeline(MVKGraphicsPipeline* pipeline);
+	/** Binds the given compute pipeline to the Vulkan graphics state, invalidating any necessary resources. */
+	void bindComputePipeline(MVKComputePipeline* pipeline);
+	/** Binds the given push constants to the Vulkan state, invalidating any necessary resources. */
+	void pushConstants(uint32_t offset, uint32_t size, const void* data);
+	/** Binds the given descriptor sets to the Vulkan state, invalidating any necessary resources. */
+	void bindDescriptorSets(VkPipelineBindPoint bindPoint,
+	                        MVKPipelineLayout* layout,
+	                        uint32_t firstSet,
+	                        uint32_t setCount,
+	                        MVKDescriptorSet*const* sets,
+	                        uint32_t dynamicOffsetCount,
+	                        const uint32_t* dynamicOffsets);
+	/** Applies the given descriptor set writes to the push descriptor set on bindPoint. */
+	void pushDescriptorSet(VkPipelineBindPoint bindPoint, MVKPipelineLayout* layout, uint32_t set, uint32_t writeCount, const VkWriteDescriptorSet* writes);
+	/** Applies the given descriptor update template to the push descriptor to its specified bindPoint. */
+	void pushDescriptorSet(MVKDescriptorUpdateTemplate* updateTemplate, MVKPipelineLayout* layout, uint32_t set, const void* data);
+	/** Binds the given vertex buffers to the Vulkan state, invalidating any necessary resources. */
+	void bindVertexBuffers(uint32_t firstBinding, MVKArrayRef<const MVKVertexMTLBufferBinding> buffers);
+	/** Binds the given index buffer to the Vulkan state, invalidating any necessary resources. */
+	void bindIndexBuffer(const MVKIndexMTLBufferBinding& buffer);
+	void offsetZeroDivisorVertexBuffers(MVKCommandEncoder& mvkEncoder, MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);
 
-	// Template function to mark any overridden bindings as dirty.
-	template<class T>
-	void markOverriddenBufferIndexesDirty(T& bufferBindings, bool& bindingsDirtyFlag) {
-		for (auto& b : bufferBindings) {
-			if (b.isOverridden) {
-				b.markDirty();
-				bindingsDirtyFlag = true;
-				MVKCommandEncoderState::markDirty();
-			}
-		}
-	}
-
-    // Template function that updates an existing binding or adds a new binding to a vector
-    // of bindings, and marks the binding, the vector, and this instance as dirty
-    template<class T, class V>
-    void bind(const T& b, V& bindings, bool& bindingsDirtyFlag) {
-        if ( !b.mtlResource ) { return; }
-
-        for (auto& rb : bindings) {
-			if (rb.index == b.index) {
-                rb.update(b);
-				if (rb.isDirty) {
-					bindingsDirtyFlag = true;
-					MVKCommandEncoderState::markDirty();
-				}
-                return;
-            }
-        }
-
-        bindings.push_back(b);
-        bindings.back().markDirty();
-		bindingsDirtyFlag = true;
-		MVKCommandEncoderState::markDirty();
-    }
-
-	// For texture bindings, we also keep track of whether any bindings need a texture swizzle
-	template<class V>
-	void bind(const MVKMTLTextureBinding& tb, V& texBindings, bool& bindingsDirtyFlag, bool& needsSwizzleFlag) {
-		bind(tb, texBindings, bindingsDirtyFlag);
-		if (tb.swizzle != 0) { needsSwizzleFlag = true; }
-	}
-
-    // Template function that executes a lambda expression on each dirty element of
-    // a vector of bindings, and marks the bindings and the vector as no longer dirty.
-	// Clear binding isDirty flag before operation to allow operation to possibly override.
-	// If it does override, leave both the bindings and this instance as dirty.
-	template<class T, class V>
-	void encodeBinding(V& bindings,
-					   bool& bindingsDirtyFlag,
-					   std::function<void(MVKCommandEncoder* cmdEncoder, T& b)> mtlOperation) {
-		if (bindingsDirtyFlag) {
-			bindingsDirtyFlag = false;
-			for (auto& b : bindings) {
-				if (b.isDirty) {
-					b.isDirty = false;
-					mtlOperation(_cmdEncoder, b);
-					if (b.isDirty) { _isDirty = bindingsDirtyFlag = true; }
-				}
-			}
-		}
-	}
-
-	// Updates a value at the given index in the given vector, resizing if needed.
-	template<class V>
-	void updateImplicitBuffer(V &contents, uint32_t index, uint32_t value) {
-		if (index >= contents.size()) { contents.resize(index + 1); }
-		contents[index] = value;
-	}
-
-	void assertMissingSwizzles(bool needsSwizzle, const char* stageName, MVKArrayRef<const MVKMTLTextureBinding> texBindings);
-	void encodeMetalArgumentBuffer(MVKShaderStage stage);
-	virtual void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) = 0;
-
-	template<size_t N>
-	struct ResourceBindings {
-		MVKSmallVector<MVKMTLBufferBinding, N> bufferBindings;
-		MVKSmallVector<MVKMTLTextureBinding, N> textureBindings;
-		MVKSmallVector<MVKMTLSamplerStateBinding, N> samplerStateBindings;
-		MVKSmallVector<uint32_t, N> swizzleConstants;
-		MVKSmallVector<uint32_t, N> bufferSizes;
-
-		MVKMTLBufferBinding swizzleBufferBinding;
-		MVKMTLBufferBinding bufferSizeBufferBinding;
-		MVKMTLBufferBinding dynamicOffsetBufferBinding;
-		MVKMTLBufferBinding viewRangeBufferBinding;
-
-		bool areBufferBindingsDirty = false;
-		bool areTextureBindingsDirty = false;
-		bool areSamplerStateBindingsDirty = false;
-
-		bool needsSwizzle = false;
-	};
-
-	MVKDescriptorSet* _boundDescriptorSets[kMVKMaxDescriptorSetCount];
-	MVKBitArray _metalUsageDirtyDescriptors[kMVKMaxDescriptorSetCount];
-
-	MVKSmallVector<uint32_t, 8> _dynamicOffsets;
-
-};
-
-
-#pragma mark -
-#pragma mark MVKGraphicsResourcesCommandEncoderState
-
-/** Holds graphics encoder resource state established by bind vertex buffer and descriptor set commands. */
-class MVKGraphicsResourcesCommandEncoderState : public MVKResourcesCommandEncoderState {
-
-public:
-
-	/** Returns the currently bound pipeline for this bind point. */
-	MVKPipeline* getPipeline() override;
-
-    /** Binds the specified buffer for the specified shader stage. */
-    void bindBuffer(MVKShaderStage stage, const MVKMTLBufferBinding& binding);
-
-    /** Binds the specified texture for the specified shader stage. */
-    void bindTexture(MVKShaderStage stage, const MVKMTLTextureBinding& binding);
-
-    /** Binds the specified sampler state for the specified shader stage. */
-    void bindSamplerState(MVKShaderStage stage, const MVKMTLSamplerStateBinding& binding);
-
-    /** The type of index that will be used to render primitives. Exposed directly. */
-    MVKIndexMTLBufferBinding _mtlIndexBufferBinding;
-
-    /** Binds the specified index buffer. */
-    void bindIndexBuffer(const MVKIndexMTLBufferBinding& binding) {
-        _mtlIndexBufferBinding = binding;   // No need to track dirty state
-    }
-
-    /** Sets the current swizzle buffer state. */
-    void bindSwizzleBuffer(const MVKShaderImplicitRezBinding& binding,
-                           bool needVertexSwizzleBuffer,
-                           bool needTessCtlSwizzleBuffer,
-                           bool needTessEvalSwizzleBuffer,
-                           bool needFragmentSwizzleBuffer);
-
-    /** Sets the current buffer size buffer state. */
-    void bindBufferSizeBuffer(const MVKShaderImplicitRezBinding& binding,
-                              bool needVertexSizeBuffer,
-                              bool needTessCtlSizeBuffer,
-                              bool needTessEvalSizeBuffer,
-                              bool needFragmentSizeBuffer);
-
-	/** Sets the current dynamic offset buffer state. */
-	void bindDynamicOffsetBuffer(const MVKShaderImplicitRezBinding& binding,
-								 bool needVertexDynanicOffsetBuffer,
-								 bool needTessCtlDynanicOffsetBuffer,
-								 bool needTessEvalDynanicOffsetBuffer,
-								 bool needFragmentDynanicOffsetBuffer);
-
-    /** Sets the current view range buffer state. */
-    void bindViewRangeBuffer(const MVKShaderImplicitRezBinding& binding,
-                             bool needVertexViewBuffer,
-                             bool needFragmentViewBuffer);
-
-    void encodeBindings(MVKShaderStage stage,
-                        const char* pStageName,
-                        bool fullImageViewSwizzle,
-                        std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&)> bindBuffer,
-                        std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, MVKArrayRef<const uint32_t>)> bindImplicitBuffer,
-                        std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
-                        std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler);
-
-	void encodeResourceUsage(MVKShaderStage stage,
-							 id<MTLResource> mtlResource,
-							 MTLResourceUsage mtlUsage,
-							 MTLRenderStages mtlStages) override;
-
-	/** Offset all buffers for vertex attribute bindings with zero divisors by the given number of strides. */
-	void offsetZeroDivisorVertexBuffers(MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);
+	/** Begins tracking for a fresh MTLRenderCommandEncoder. */
+	void beginGraphicsEncoding(VkSampleCountFlags sampleCount);
+	/** Begins tracking for a fresh MTLComputeCommandEncoder. */
+	void beginComputeEncoding();
 
 	/**
-	 * Marks the buffer binding using the index as having been overridden,
-	 * such as by push constants or internal rendering in some transfers.
-	 * */
-	void markBufferIndexOverridden(MVKShaderStage stage, uint32_t mtlBufferIndex);
-
-	/** Marks any overridden buffer indexes as dirty. */
-	void markOverriddenBufferIndexesDirty();
-
-	void endMetalRenderPass() override;
-
-	void markDirty() override;
-
-#pragma mark Construction
-    
-    /** Constructs this instance for the specified command encoder. */
-    MVKGraphicsResourcesCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKResourcesCommandEncoderState(cmdEncoder) {}
-
-protected:
-    void encodeImpl(uint32_t stage) override;
-	void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) override;
-
-    ResourceBindings<8> _shaderStageResourceBindings[kMVKShaderStageFragment + 1];
-	std::unordered_map<id<MTLResource>, MTLRenderStages> _renderUsageStages;
+	 * Calls the given function on either the Metal graphics or compute state tracker, whichever one is active (or neither if neither is active).
+	 * `bindPoint` can be used to only call the function if the given Vulkan pipeline is being encoded to the active encoder.
+	 */
+	template <typename Fn>
+	void applyToActiveMTLState(VkPipelineBindPoint bindPoint, Fn&& fn);
 };
-
-
-#pragma mark -
-#pragma mark MVKComputeResourcesCommandEncoderState
-
-/** Holds compute encoder resource state established by bind vertex buffer and descriptor set commands. */
-class MVKComputeResourcesCommandEncoderState : public MVKResourcesCommandEncoderState {
-
-public:
-
-	/** Returns the currently bound pipeline for this bind point. */
-	MVKPipeline* getPipeline() override;
-
-    /** Binds the specified buffer. */
-    void bindBuffer(const MVKMTLBufferBinding& binding);
-
-    /** Binds the specified texture. */
-    void bindTexture(const MVKMTLTextureBinding& binding);
-
-    /** Binds the specified sampler state. */
-    void bindSamplerState(const MVKMTLSamplerStateBinding& binding);
-
-    /** Sets the current swizzle buffer state. */
-    void bindSwizzleBuffer(const MVKShaderImplicitRezBinding& binding, bool needSwizzleBuffer);
-
-    /** Sets the current buffer size buffer state. */
-    void bindBufferSizeBuffer(const MVKShaderImplicitRezBinding& binding, bool needSizeBuffer);
-
-	/** Sets the current dynamic offset buffer state. */
-	void bindDynamicOffsetBuffer(const MVKShaderImplicitRezBinding& binding, bool needDynamicOffsetBuffer);
-
-	void encodeResourceUsage(MVKShaderStage stage,
-							 id<MTLResource> mtlResource,
-							 MTLResourceUsage mtlUsage,
-							 MTLRenderStages mtlStages) override;
-
-	/**
-	 * Marks the buffer binding using the index as having been overridden,
-	 * such as by push constants or internal rendering in some transfers.
-	 * */
-	void markBufferIndexOverridden(uint32_t mtlBufferIndex);
-
-	/** Marks any overridden buffer indexes as dirty. */
-	void markOverriddenBufferIndexesDirty();
-
-    void markDirty() override;
-
-#pragma mark Construction
-
-    /** Constructs this instance for the specified command encoder. */
-    MVKComputeResourcesCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKResourcesCommandEncoderState(cmdEncoder) {}
-
-protected:
-    void encodeImpl(uint32_t) override;
-	void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) override;
-
-	ResourceBindings<4> _resourceBindings;
-};
-
-
-#pragma mark -
-#pragma mark MVKGPUAddressableBuffersCommandEncoderState
-
-/** Tracks whether the GPU-addressable buffers need to be used. */
-class MVKGPUAddressableBuffersCommandEncoderState : public MVKCommandEncoderState {
-
-public:
-
-	/** Marks that GPU addressable buffers may be needed in the specified shader stage. */
-	void useGPUAddressableBuffersInStage(MVKShaderStage shaderStage);
-
-	MVKGPUAddressableBuffersCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKCommandEncoderState(cmdEncoder) {}
-
-protected:
-	void encodeImpl(uint32_t stage) override;
-
-	bool _usageStages[kMVKShaderStageCount] = {};
-};
-
 
 #pragma mark -
 #pragma mark MVKOcclusionQueryCommandEncoderState
 
 /** Holds encoder state established by occlusion query commands. */
-class MVKOcclusionQueryCommandEncoderState : public MVKCommandEncoderState {
+class MVKOcclusionQueryCommandEncoderState {
 
 public:
+	void endMetalRenderPass(MVKCommandEncoder* cmdEncoder);
 
-	void endMetalRenderPass() override;
+	/** Begins an occlusion query. */
+	void beginOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags);
 
-    /** Begins an occlusion query. */
-    void beginOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags);
+	/** Ends an occlusion query. */
+	void endOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query);
 
-    /** Ends an occlusion query. */
-    void endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query);
+	void encode(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder* mvkEncoder);
 
-	MVKOcclusionQueryCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKCommandEncoderState(cmdEncoder) {}
+	void prepareHelperDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder* mvkEncoder);
 
-protected:
-    void encodeImpl(uint32_t) override;
+private:
+	/** Advances to the next index in the Metal visibility buffer. */
+	void nextMetalQuery(MVKCommandEncoder* cmdEncoder);
 
 	typedef struct OcclusionQueryLocation {
 		MVKOcclusionQueryPool* queryPool = nullptr;
 		uint32_t query = 0;
-		NSUInteger visibilityBufferOffset = 0;
+		uint32_t visibilityBufferOffset = 0;
 
-		OcclusionQueryLocation(MVKOcclusionQueryPool* qPool, uint32_t qIdx, NSUInteger vbOfst)
+		OcclusionQueryLocation(MVKOcclusionQueryPool* qPool, uint32_t qIdx, uint32_t vbOfst)
 		: queryPool(qPool), query(qIdx), visibilityBufferOffset(vbOfst) {}
 
 	} OcclusionQueryLocation;
 
+	struct CopyFence {
+		id<MTLFence> read;
+		id<MTLFence> write;
+	};
+
+	id<MTLFence> _lastFenceUpdate = nullptr;
+	// Max 3 Fences:
+	// [        |        ] <- buffer
+	//     00000 11111111 <loop around, update fences>
+	//  222 <can't write more without starting a new render pass>
+	CopyFence _copyFences[3];
 	MVKSmallVector<OcclusionQueryLocation> _mtlRenderPassQueries;
-    MTLVisibilityResultMode _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
-	bool _hasRasterized = false;
+	/// The pool of the current active query.
+	MVKOcclusionQueryPool* _currentPool = nullptr;
+	/// The index of the current active query.
+	uint32_t _currentQueryIndex = 0;
+	/// The visibility result mode of the current active query.
+	uint8_t _currentVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	/// The visibility result mode of the current Metal render pass.
+	uint8_t _metalVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	/// The number of fences that need to be waited on by the result copy shader.
+	uint8_t _numCopyFences = 0;
+	/// If true, accumulation will be run at the end of the next render pass.
+	bool _shouldAccumulate = false;
 };
 
 
