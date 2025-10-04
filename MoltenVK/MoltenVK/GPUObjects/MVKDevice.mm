@@ -4211,18 +4211,18 @@ std::pair<MVKLiveList::Lock*, bool> MVKLiveList::isLive_(id object) {
 
 #pragma mark - MVKVisibilityBuffer
 
-MVKVisibilityBuffer::MVKVisibilityBuffer(id<MTLDevice> device, NSUInteger size, uint32_t name_idx) {
-	half_size = static_cast<uint32_t>(size / 2);
-	assert(half_size % kMVKQuerySlotSizeInBytes == 0);
+MVKVisibilityBuffer::MVKVisibilityBuffer(id<MTLDevice> device, NSUInteger size, uint32_t nameIdx) {
+	_halfSize = static_cast<uint32_t>(size / 2);
+	assert(_halfSize % kMVKQuerySlotSizeInBytes == 0);
 	@autoreleasepool {
 		MTLResourceOptions options = MTLResourceHazardTrackingModeUntracked | MTLResourceStorageModePrivate;
-		buffer_ = [device newBufferWithLength:half_size * 2 options:options];
-		if (buffer_) {
-			[buffer_ setLabel:[NSString stringWithFormat:@"Metal Visibility Result Buffer %d", name_idx]];
-			for (uint32_t gid = 0; gid < std::size(fences); gid++) {
-				for (uint32_t lohi = 0; lohi < std::size(fences[0]); lohi++) {
-					fences[gid][lohi] = [device newFence];
-					[fences[gid][lohi] setLabel:[NSString stringWithFormat:@"Visibility Fence %d %c%d", name_idx, lohi ? 'H' : 'L', gid]];
+		_buffer = [device newBufferWithLength:_halfSize * 2 options:options];
+		if (_buffer) {
+			[_buffer setLabel:[NSString stringWithFormat:@"Metal Visibility Result Buffer %d", nameIdx]];
+			for (uint32_t gid = 0; gid < std::size(_fences); gid++) {
+				for (uint32_t lohi = 0; lohi < std::size(_fences[0]); lohi++) {
+					_fences[gid][lohi] = [device newFence];
+					[_fences[gid][lohi] setLabel:[NSString stringWithFormat:@"Visibility Fence %d %c%d", nameIdx, lohi ? 'H' : 'L', gid]];
 				}
 			}
 		}
@@ -4230,28 +4230,28 @@ MVKVisibilityBuffer::MVKVisibilityBuffer(id<MTLDevice> device, NSUInteger size, 
 }
 
 MVKVisibilityBuffer::~MVKVisibilityBuffer() {
-	if (buffer_) {
-		[buffer_ release];
-		for (auto& groups : fences)
+	if (_buffer) {
+		[_buffer release];
+		for (auto& groups : _fences)
 			for (auto& fence : groups)
 				[fence release];
 	}
 }
 
 uint32_t MVKVisibilityBuffer::advanceOffset() {
-	current_offset += kMVKQuerySlotSizeInBytes;
-	if (current_offset >= half_size * 2) {
-		current_offset = 0;
+	_currentOffset += kMVKQuerySlotSizeInBytes;
+	if (_currentOffset >= _halfSize * 2) {
+		_currentOffset = 0;
 		for (int lohi = 0; lohi < 2; lohi++) {
 			// Rotate fences so that the new prevRead is the previous read
-			id<MTLFence> read = fences[0][lohi];
+			id<MTLFence> read = _fences[0][lohi];
 			for (int i = 0; i < 2; i++)
-				fences[i][lohi] = fences[i + 1][lohi];
-			fences[2][lohi] = read;
+				_fences[i][lohi] = _fences[i + 1][lohi];
+			_fences[2][lohi] = read;
 		}
 		return 0;
 	}
-	return current_offset;
+	return _currentOffset;
 }
 
 #pragma mark -
@@ -5306,7 +5306,6 @@ VkDeviceSize MVKDevice::getVkFormatTexelBufferAlignment(VkFormat format, MVKBase
 	return deviceAlignment ? deviceAlignment : _physicalDevice->_properties.limits.minTexelBufferOffsetAlignment;
 }
 
-/** Fetch a visibility buffer from the shared pool */
 MVKVisibilityBuffer MVKDevice::getVisibilityBuffer() {
 	std::lock_guard<std::mutex> guard(_vizLock);
 	if (_visibilityBuffers.empty())
@@ -5316,7 +5315,6 @@ MVKVisibilityBuffer MVKDevice::getVisibilityBuffer() {
 	return res;
 }
 
-/** Return a visibility buffer to the shared pool */
 void MVKDevice::returnVisibilityBuffer(MVKVisibilityBuffer&& buffer) {
 	assert(buffer.buffer());
 	std::lock_guard<std::mutex> guard(_vizLock);

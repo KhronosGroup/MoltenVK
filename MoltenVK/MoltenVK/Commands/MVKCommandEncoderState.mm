@@ -1803,7 +1803,7 @@ void MVKCommandEncoderState::applyToActiveMTLState(VkPipelineBindPoint bindPoint
 #pragma mark MVKOcclusionQueryCommandEncoderState
 
 /// Used to indicate that the current metal visibility result mode needs to be set regardless of what mode is wanted
-/// (When visibility queries are currently active but on the wrong index)
+/// (when visibility queries are currently active but on the wrong index).
 static constexpr uint8_t VisibilityResultModeNeedsUpdate = 0xff;
 
 static bool isMetalVisibilityActive(uint8_t mode) {
@@ -1892,10 +1892,7 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass(MVKCommandEncoder*
 // In most cases, a MTLCommandBuffer corresponds to a Vulkan command submit (VkSubmitInfo),
 // and so the error text is framed in terms of the Vulkan submit.
 void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags) {
-	if (_currentPool) [[unlikely]] {
-		assert(0 && "Shouldn't have active query when beginning a new one!");
-		nextMetalQuery(cmdEncoder);
-	}
+	assert(!_currentPool && "Shouldn't have active query when beginning a new one!");
 	bool shouldCount = mvkAreAllFlagsEnabled(flags, VK_QUERY_CONTROL_PRECISE_BIT);
 	_currentVisibilityResultMode = shouldCount ? MTLVisibilityResultModeCounting : MTLVisibilityResultModeBoolean;
 	_currentPool = pQueryPool;
@@ -1903,10 +1900,7 @@ void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKCommandEncoder
 }
 
 void MVKOcclusionQueryCommandEncoderState::endOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query) {
-	if (_currentPool != pQueryPool || _currentQueryIndex != query) [[unlikely]] {
-		assert(0 && "Ended query that wasn't active!");
-		return;
-	}
+	assert(_currentPool == pQueryPool && _currentQueryIndex == query && "Ended query that wasn't active!");
 	_shouldAccumulate = true;
 	if (cmdEncoder->_mtlRenderEncoder) {
 		nextMetalQuery(cmdEncoder);

@@ -605,36 +605,32 @@ public:
 		id<MTLFence> prevRead; ///< The read fence from the previous use of the buffer, waited on by writes to prevent WAR hazards
 	};
 private:
-	id<MTLBuffer> buffer_ = nullptr;
-	uint32_t current_offset = 0;
-	uint32_t half_size;
-	id<MTLFence> fences[3][2] = {};
-	template <typename T> static void move(T& dst, T& src) {
-		dst = src;
-		src = nullptr;
-	}
+	id<MTLBuffer> _buffer = nullptr;
+	uint32_t _currentOffset = 0;
+	uint32_t _halfSize;
+	id<MTLFence> _fences[3][2] = {};
 public:
-	id<MTLBuffer> buffer() const { return buffer_; }
-	uint32_t offset() const { return current_offset; }
-	uint32_t size() const { return half_size * 2; }
-	bool isFirstWithCurrentFence() const { return current_offset == half_size || current_offset == 0; }
+	id<MTLBuffer> buffer() const { return _buffer; }
+	uint32_t offset() const { return _currentOffset; }
+	uint32_t size() const { return _halfSize * 2; }
+	bool isFirstWithCurrentFence() const { return _currentOffset == _halfSize || _currentOffset == 0; }
 	FenceSet currentFence() const {
-		uint32_t idx = current_offset > half_size ? 1 : 0;
-		return { fences[0][idx], fences[1][idx], fences[2][idx] };
+		uint32_t idx = _currentOffset > _halfSize ? 1 : 0;
+		return { _fences[0][idx], _fences[1][idx], _fences[2][idx] };
 	}
 	MVKVisibilityBuffer() = default;
-	MVKVisibilityBuffer(id<MTLDevice> device, NSUInteger size, uint32_t name_idx);
+	MVKVisibilityBuffer(id<MTLDevice> device, NSUInteger size, uint32_t nameIdx);
 	MVKVisibilityBuffer(const MVKVisibilityBuffer&) = delete;
 	MVKVisibilityBuffer(MVKVisibilityBuffer&& other) {
-		move(buffer_, other.buffer_);
-		current_offset = other.current_offset;
-		half_size = other.half_size;
-		for (uint32_t i = 0; i < std::size(fences); i++)
-			for (uint32_t j = 0; j < std::size(fences[0]); j++)
-				move(fences[i][j], other.fences[i][j]);
+		_buffer = std::exchange(other._buffer, nil);
+		_currentOffset = other._currentOffset;
+		_halfSize = other._halfSize;
+		for (uint32_t i = 0; i < std::size(_fences); i++)
+			for (uint32_t j = 0; j < std::size(_fences[0]); j++)
+				_fences[i][j] = std::exchange(other._fences[i][j], nil);
 	}
 	~MVKVisibilityBuffer();
-	/// Advances `current_offset`, swaps fences if needed, and returns the new offset
+	/// Advances `_currentOffset`, swaps fences if needed, and returns the new offset.
 	uint32_t advanceOffset();
 	MVKVisibilityBuffer& operator=(MVKVisibilityBuffer&& other) {
 		if (this != &other) {
@@ -917,10 +913,10 @@ public:
 	/** Returns the memory alignment required for the format when used in a texel buffer. */
 	VkDeviceSize getVkFormatTexelBufferAlignment(VkFormat format, MVKBaseObject* mvkObj);
 
-	/** Fetch a visibility buffer from the shared pool */
+	/** Fetches a visibility buffer from the shared pool. */
 	MVKVisibilityBuffer getVisibilityBuffer();
 
-	/** Return a visibility buffer to the shared pool */
+	/** Returns a visibility buffer to the shared pool. */
 	void returnVisibilityBuffer(MVKVisibilityBuffer&& buffer);
 
 	/** Returns the GPU sample counter used for timestamps. */

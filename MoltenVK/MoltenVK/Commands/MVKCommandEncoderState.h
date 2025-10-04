@@ -536,7 +536,7 @@ public:
 	void prepareHelperDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder* mvkEncoder);
 
 private:
-	/** Advance to the next index in the Metal visibility buffer */
+	/** Advances to the next index in the Metal visibility buffer. */
 	void nextMetalQuery(MVKCommandEncoder* cmdEncoder);
 
 	typedef struct OcclusionQueryLocation {
@@ -561,17 +561,17 @@ private:
 	//  222 <can't write more without starting a new render pass>
 	CopyFence _copyFences[3];
 	MVKSmallVector<OcclusionQueryLocation> _mtlRenderPassQueries;
-	/// The pool of the current active query
+	/// The pool of the current active query.
 	MVKOcclusionQueryPool* _currentPool = nullptr;
-	/// The index of the current active query
+	/// The index of the current active query.
 	uint32_t _currentQueryIndex = 0;
-	/// The visibility result mode of the current active query
+	/// The visibility result mode of the current active query.
 	uint8_t _currentVisibilityResultMode = MTLVisibilityResultModeDisabled;
-	/// The visibility result mode of the current Metal render pass
+	/// The visibility result mode of the current Metal render pass.
 	uint8_t _metalVisibilityResultMode = MTLVisibilityResultModeDisabled;
-	/// The number of fences that need to be waited on by the result copy shader
+	/// The number of fences that need to be waited on by the result copy shader.
 	uint8_t _numCopyFences = 0;
-	/// If true, accumulation will be run at the end of the next render pass
+	/// If true, accumulation will be run at the end of the next render pass.
 	bool _shouldAccumulate = false;
 };
 
