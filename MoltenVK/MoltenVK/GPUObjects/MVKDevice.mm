@@ -43,7 +43,7 @@
 using namespace std;
 
 
-#if MVK_IOS_OR_TVOS
+#if MVK_IOS_OR_TVOS || MVK_VISIONOS
 #	include <UIKit/UIKit.h>
 #	define MVKViewClass		UIView
 #endif
@@ -1646,7 +1646,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			// Metal does not allow compressed or depth/stencil formats on 3D textures
 			if (mvkFmt == kMVKFormatDepthStencil ||
 				isChromaSubsampled
-#if MVK_IOS_OR_TVOS
+#if MVK_IOS_OR_TVOS || MVK_VISIONOS
 				|| (mvkFmt == kMVKFormatCompressed && !_metalFeatures.native3DCompressedTextures)
 #endif
 				) {
@@ -1805,7 +1805,7 @@ uint32_t MVKPhysicalDevice::getExternalResourceMemoryTypeBits(VkExternalMemoryHa
 	case MTLStorageModeShared:
 		memoryTypeBits = _hostCoherentMemoryTypes;
 		break;
-#if !MVK_IOS && !MVK_TVOS
+#if !MVK_IOS && !MVK_TVOS && !MVK_VISIONOS
 	case MTLStorageModeManaged:
 		memoryTypeBits = _hostVisibleMemoryTypes;
 		break;
@@ -2070,7 +2070,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 #if MVK_MACOS
     colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT);
 #endif
-#if MVK_IOS_OR_TVOS
+#if MVK_IOS_OR_TVOS || MVK_VISIONOS
     colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_LINEAR_EXT);
 #endif
 
@@ -2549,7 +2549,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 #endif
 
-#if MVK_IOS
+#if MVK_IOS_OR_VISIONOS
 	_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
     _metalFeatures.mtlBufferAlignment = 64;
 	_metalFeatures.mtlCopyBufferAlignment = 1;
@@ -2638,6 +2638,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( mvkOSVersionIsAtLeast(18.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_2;
 	}
+#if MVK_VISIONOS
+    if ( mvkOSVersionIsAtLeast(2.0) ) {
+        _metalFeatures.mslVersionEnum = MTLLanguageVersion3_2;
+    }
+#endif
 #endif
 #if MVK_XCODE_26
 	if ( mvkOSVersionIsAtLeast(26.0) ) {
@@ -2808,7 +2813,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
         }
     }
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_VISIONOS
     if (_metalFeatures.simdPermute) {
         _metalFeatures.minSubgroupSize = 4;
         _metalFeatures.maxSubgroupSize = 32;
@@ -3007,7 +3012,7 @@ void MVKPhysicalDevice::initFeatures() {
 	}
 #endif
 
-#if MVK_IOS
+#if MVK_IOS_OR_VISIONOS
     _features.textureCompressionETC2 = true;
 
     if (supportsMTLGPUFamily(Apple2)) {
@@ -3087,7 +3092,7 @@ void MVKPhysicalDevice::initLimits() {
 #if MVK_TVOS
     _properties.limits.maxColorAttachments = kMVKMaxColorAttachmentCount;
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_VISIONOS
     if (supportsMTLGPUFamily(Apple2)) {
         _properties.limits.maxColorAttachments = kMVKMaxColorAttachmentCount;
     } else {
@@ -3171,7 +3176,7 @@ void MVKPhysicalDevice::initLimits() {
 		_properties.limits.maxUniformBufferRange = (uint32_t)min(_metalFeatures.maxMTLBufferSize, (VkDeviceSize)std::numeric_limits<uint32_t>::max());
 	}
 #endif
-#if MVK_IOS_OR_TVOS
+#if MVK_IOS_OR_TVOS || MVK_VISIONOS
 	_properties.limits.maxUniformBufferRange = (uint32_t)min(_metalFeatures.maxMTLBufferSize, (VkDeviceSize)std::numeric_limits<uint32_t>::max());
 #endif
 	_properties.limits.maxStorageBufferRange = (uint32_t)min(_metalFeatures.maxMTLBufferSize, (VkDeviceSize)std::numeric_limits<uint32_t>::max());
@@ -3251,7 +3256,7 @@ void MVKPhysicalDevice::initLimits() {
 #if MVK_TVOS
         _properties.limits.minTexelBufferOffsetAlignment = 64;
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_VISIONOS
         if (supportsMTLGPUFamily(Apple3)) {
             _properties.limits.minTexelBufferOffsetAlignment = 16;
         } else {
@@ -3286,7 +3291,7 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.maxTessellationGenerationLevel = 16;
     _properties.limits.maxTessellationPatchSize = 32;
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_VISIONOS
     if (supportsMTLGPUFamily(Apple4)) {
         _properties.limits.maxFragmentInputComponents = 124;
     } else {
@@ -3387,7 +3392,7 @@ void MVKPhysicalDevice::initLimits() {
 			_properties.limits.maxComputeSharedMemorySize = ((16 * KIBI) - 32);
 		}
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_VISIONOS
 		if (supportsMTLGPUFamily(Apple4)) {
 			_properties.limits.maxComputeSharedMemorySize = (32 * KIBI);
 		} else if (supportsMTLGPUFamily(Apple3)) {
@@ -3707,7 +3712,7 @@ void MVKPhysicalDevice::initMemoryProperties() {
 		typeIdx++;
 	}
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_VISIONOS
 	memlessBit = 1 << typeIdx;
 	setMemoryType(typeIdx, mainHeapIdx, MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS);
 	typeIdx++;
