@@ -96,9 +96,6 @@ static constexpr float      kMVKMaxSampleLocationCoordinate = (float)(kMVKSample
 static constexpr VkExtent2D kMVKSampleLocationPixelGridSize = { 1, 1 };
 static constexpr VkExtent2D kMVKSampleLocationPixelGridSizeNotSupported = { 0, 0 };
 
-#if !MVK_XCODE_12
-typedef NSUInteger MTLTimestamp;
-#endif
 
 
 #pragma mark -

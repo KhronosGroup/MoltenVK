@@ -794,6 +794,7 @@ static MVKDescriptorUpdateSourceType getDescriptorUpdateSourceType(VkDescriptorT
 		case VK_DESCRIPTOR_TYPE_SAMPLE_WEIGHT_IMAGE_QCOM:
 		case VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM:
 		case VK_DESCRIPTOR_TYPE_MUTABLE_EXT:
+		case VK_DESCRIPTOR_TYPE_TENSOR_ARM:
 		case VK_DESCRIPTOR_TYPE_MAX_ENUM:
 			break;
 	}

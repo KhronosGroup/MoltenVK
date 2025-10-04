@@ -1212,9 +1212,6 @@ void MVKCommandEncoder::encodeGPUCounterSample(MVKGPUCounterQueryPool* mvkQryPoo
 		}
 	} else if (mvkIsAnyFlagEnabled(samplingPoints, MVK_COUNTER_SAMPLING_AT_BLIT)) {
 		[getMTLBlitEncoder(kMVKCommandUseRecordGPUCounterSample) sampleCountersInBuffer: mvkQryPool->getMTLCounterBuffer() atSampleIndex: sampleIndex withBarrier: YES];
-	} else if (mvkIsAnyFlagEnabled(samplingPoints, MVK_COUNTER_SAMPLING_AT_DISPATCH)) {
-		// Workaround for broken 10.15 AMD driver which crashes if you try to record to an empty blit encoder
-		[getMTLComputeEncoder(kMVKCommandUseRecordGPUCounterSample) sampleCountersInBuffer: mvkQryPool->getMTLCounterBuffer() atSampleIndex: sampleIndex withBarrier: YES];
 	}
 }
 
@@ -1250,7 +1247,6 @@ void MVKCommandEncoder::markTimestamp(MVKTimestampQueryPool* pQueryPool, uint32_
 	}
 }
 
-#if MVK_XCODE_12
 // Metal stage GPU counters need to be configured in a Metal render, compute, or BLIT encoder, meaning that the
 // Metal encoder needs to know about any Vulkan timestamp commands that will be executed during the execution
 // of a renderpass, or set of Vulkan dispatch or BLIT commands. In addition, there are a very small number of
@@ -1294,9 +1290,6 @@ void MVKCommandEncoder::encodeTimestampStageCounterSamples() {
 	}
 	_timestampStageCounterQueries.clear();
 }
-#else
-void MVKCommandEncoder::encodeTimestampStageCounterSamples() {}
-#endif
 
 id<MTLFence> MVKCommandEncoder::getStageCountersMTLFence() {
 	if ( !_stageCountersMTLFence ) {

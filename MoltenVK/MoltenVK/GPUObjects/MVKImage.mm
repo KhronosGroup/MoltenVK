@@ -1213,11 +1213,13 @@ MTLTextureUsage MVKImage::getMTLTextureUsage(MTLPixelFormat mtlPixFmt) {
 														   _isLinear || _isLinearForAtomics, needsReinterpretation, _hasExtendedUsage,
 														   _shouldSupportAtomics && getMetalFeatures().nativeTextureAtomics);
 
+#if MVK_MACOS
 	// Metal before 3.0 doesn't support 3D compressed textures, so we'll
 	// decompress the texture ourselves, and we need to be able to write to it.
-	if (MVK_MACOS && _is3DCompressed) {
+	if (_is3DCompressed) {
 		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderWrite);
 	}
+#endif
 
 	return mtlUsage;
 }

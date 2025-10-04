@@ -326,10 +326,6 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 		setConfigurationResult(reportError(VK_ERROR_INCOMPATIBLE_DRIVER, "Vulkan is not supported on this device. MoltenVK requires Metal, which is not available on this device."));
 	}
 
-	if (MVK_MACCAT && !mvkOSVersionIsAtLeast(11.0)) {
-		setConfigurationResult(reportError(VK_ERROR_INCOMPATIBLE_DRIVER, "To support Mac Catalyst, MoltenVK requires macOS 11.0 or above."));
-	}
-
 	// Warn if the Vulkan version requires buffer device address, but it is not available.
 	if ( !mvkSupportsBufferDeviceAddress() && (MVK_VULKAN_API_VERSION_CONFORM(_appInfo.apiVersion) >= MVK_VULKAN_API_VERSION_CONFORM(VK_API_VERSION_1_3)) ) {
 		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "VkPhysicalDeviceVulkan12Features::bufferDeviceAddress is a mandatory feature as of Vulkan 1.3, but is not supported on this platform.");
