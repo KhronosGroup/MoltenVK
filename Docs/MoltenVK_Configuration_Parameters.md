@@ -492,21 +492,6 @@ apps to select a queue family with the appropriate requirements.
 
 
 ---------------------------------------
-#### MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS
-
-##### Type: Boolean
-##### Default: `1`
-
-Depending on the GPU, _Metal_ allows 8,192 or 32,768 occlusion queries per `MTLBuffer`.
-If enabled, **MoltenVK** allocates a `MTLBuffer` for each query pool, allowing each query
-pool to support that permitted number of queries. This may slow performance or cause
-unexpected behaviour if the query pool is not established prior to a _Metal_ renderpass,
-or if the query pool is changed within a renderpass. If disabled, one `MTLBuffer` will
-be shared by all query pools, which improves performance, but limits the total device
-queries to the permitted number.
-
-
----------------------------------------
 #### MVK_CONFIG_SWAPCHAIN_MIN_MAG_FILTER_USE_NEAREST
 
 ##### Type: Boolean

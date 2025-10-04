@@ -18,13 +18,31 @@ MoltenVK 1.4.1
 
 Released TBD
 
-- .
-- New state tracker implementation.
-- New descriptor set/pool implementation.
-	- The new implementation is less forgiving of applications that don't properly manage the lifetime of their descriptors
-	  (and bind them after the objects they point to have been destroyed).
-	  Use `MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES=1` to revert any crashes this might cause, or mark potentially-destroyed descriptors
-	  with `VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT`.
+- Improved occlusion query support:
+  - Add support for occlusion queries across multiple renderpasses.
+  - Improve performance by accumulating occlusion quieries in parallel, 
+    and using untracked buffers to avoid encoder serialization.
+- New descriptor state tracker implementation to improve performance.
+- New descriptor set/pool implementation:
+  - The new implementation is less forgiving of applications that don't properly manage the lifetime 
+    of their descriptors (and bind them after the objects they point to have been destroyed).
+	Use `MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES=1` to revert any crashes this might cause, 
+	or mark potentially-destroyed descriptors with `VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT`.
+- Added working demo target for VisionOS in Cube Demo.
+- Raise minimum target to _macOS 11.0 / iOS 14.0 / tvOS 14.0_
+- Add support for `VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT`.
+- Reject image usages whose format features are not supported.
+- Return `VK_ERROR_OUT_OF_POOL_MEMORY` when running out of descriptor sets.
+- Make vkGetPhysicalDeviceToolProperties() an instance function.
+- Enable sample LOD bias for Xcode 26.
+- Fix VkExternalMemory*CreateInfo not allowing host memory handle types.
+- Fix improper boundary error when requesting exactly the number of variable descriptors allocated.
+- Fix regression on functions used by multiple extensions.
+- Fix improper use of dynamic depth/stencil attachment.
+- Fix out-of-bound access when using multiview with multiple subpasses.
+- Deprecate configuration parameter `MVKConfiguration::supportLargeQueryPools` and corresponding environment variable 
+  `MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS`, as obsolete and ignored. Large query pools are now supported always.
+- Disable Mac Catalyst builds from `all` and `all-debug` in `Makefile`, due to unresolved issues with Mac Catalyst builds. 
 - Update to latest SPIRV-Cross:
 
 

@@ -21,12 +21,13 @@ MAKEARGS := $(strip \
       $(v)=$(value $(v)) ,)))
 
 # Specify individually (not as dependencies) so the sub-targets don't run in parallel
+# maccat is currently excluded from `all` because of unresolved build issues on Mac Catalyst platform.
 .PHONY: all
 all:
 	@$(MAKE) macos
 	@$(MAKE) ios
 	@$(MAKE) iossim
-	@$(MAKE) maccat
+#	@$(MAKE) maccat
 	@$(MAKE) tvos
 	@$(MAKE) tvossim
 	@$(MAKE) visionos       # Requires Xcode 15+
@@ -37,7 +38,7 @@ all-debug:
 	@$(MAKE) macos-debug
 	@$(MAKE) ios-debug
 	@$(MAKE) iossim-debug
-	@$(MAKE) maccat-debug
+#	@$(MAKE) maccat-debug
 	@$(MAKE) tvos-debug
 	@$(MAKE) tvossim-debug
 	@$(MAKE) visionos-debug       # Requires Xcode 15+
