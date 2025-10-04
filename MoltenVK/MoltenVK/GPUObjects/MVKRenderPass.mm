@@ -296,7 +296,6 @@ void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
                                           MVKArrayRef<MVKImageView*const> attachments,
                                           bool storeOverride) {
     if (!cmdEncoder->_mtlRenderEncoder) { return; }
-	if (!_renderPass->getMetalFeatures().deferredStoreActions) { return; }
 
 	MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
     uint32_t caCnt = getColorAttachmentCount();
@@ -814,25 +813,10 @@ bool MVKAttachmentDescription::populateMTLRenderPassAttachmentDescriptor(MTLRend
 
 	mtlAttDesc.loadAction = mtlLA;
 
-    // If the device supports late-specified store actions, we'll use those, and then set them later.
+    // Use late-specified store actions and then set them later.
     // That way, if we wind up doing a tessellated draw, we can set the store action to store then,
     // and then when the render pass actually ends, we can use the true store action.
-    if (_renderPass->getMetalFeatures().deferredStoreActions) {
-        mtlAttDesc.storeAction = MTLStoreActionUnknown;
-    } else {
-		// For a combined depth-stencil format in an attachment with VK_IMAGE_ASPECT_STENCIL_BIT,
-		// the attachment format may have been swizzled to a stencil-only format. In this case,
-		// we want to guard against an attempt to store the non-existent depth component.
-		MTLPixelFormat mtlFmt = attachment->getMTLPixelFormat();
-		MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
-		bool isDepthFormat = pixFmts->isDepthFormat(mtlFmt);
-		bool isStencilFormat = pixFmts->isStencilFormat(mtlFmt);
-		if (isStencilFormat && !isStencil && !isDepthFormat) {
-			mtlAttDesc.storeAction = MTLStoreActionDontCare;
-		} else {
-			mtlAttDesc.storeAction = getMTLStoreAction(subpass, isRenderingEntireAttachment, isMemorylessAttachment, hasResolveAttachment, canResolveFormat, isStencil, false);
-		}
-    }
+    mtlAttDesc.storeAction = MTLStoreActionUnknown;
     return (mtlLA == MTLLoadActionClear);
 }
 

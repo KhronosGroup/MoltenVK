@@ -769,7 +769,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
 				auto* texelBuffAlignFeatures = (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)next;
-				texelBuffAlignFeatures->texelBufferAlignment = _metalFeatures.texelBuffers && [_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)];
+				texelBuffAlignFeatures->texelBufferAlignment = [_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)];
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
@@ -2471,25 +2471,27 @@ void MVKPhysicalDevice::initMetalFeatures() {
 					   ? cfgUseMTLHeap == MVK_CONFIG_USE_MTLHEAP_ALWAYS
 					   : cfgUseMTLHeap != MVK_CONFIG_USE_MTLHEAP_NEVER);
 
-#if MVK_TVOS
-	_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
-    _metalFeatures.mtlBufferAlignment = 64;
-	_metalFeatures.mtlCopyBufferAlignment = 1;
-    _metalFeatures.texelBuffers = true;
-	_metalFeatures.maxTextureDimension = (8 * KIBI);
-    _metalFeatures.dynamicMTLBufferSize = (4 * KIBI);
-    _metalFeatures.sharedLinearTextures = true;
-    _metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
-	_metalFeatures.renderLinearTextures = true;
-	_metalFeatures.tileBasedDeferredRendering = true;
+	// Deprecated options which are always true.
+	_metalFeatures.texelBuffers = true;
+	_metalFeatures.sharedLinearTextures = true;
+	_metalFeatures.textureBuffers = true;
 	_metalFeatures.shaderSpecialization = true;
 	_metalFeatures.stencilViews = true;
 	_metalFeatures.fences = true;
 	_metalFeatures.deferredStoreActions = true;
-	_metalFeatures.renderWithoutAttachments = true;
 	_metalFeatures.argumentBuffers = true;
 	_metalFeatures.events = true;
-	_metalFeatures.textureBuffers = true;
+
+#if MVK_TVOS
+	_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
+    _metalFeatures.mtlBufferAlignment = 64;
+	_metalFeatures.mtlCopyBufferAlignment = 1;
+	_metalFeatures.maxTextureDimension = (8 * KIBI);
+    _metalFeatures.dynamicMTLBufferSize = (4 * KIBI);
+    _metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
+	_metalFeatures.renderLinearTextures = true;
+	_metalFeatures.tileBasedDeferredRendering = true;
+	_metalFeatures.renderWithoutAttachments = true;
 	_metalFeatures.nativeTextureSwizzle = true;
 	_metalFeatures.placementHeaps = useMTLHeap;
 
@@ -2553,22 +2555,13 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
     _metalFeatures.mtlBufferAlignment = 64;
 	_metalFeatures.mtlCopyBufferAlignment = 1;
-    _metalFeatures.texelBuffers = true;
 	_metalFeatures.maxTextureDimension = (4 * KIBI);
-    _metalFeatures.sharedLinearTextures = true;
 	_metalFeatures.renderLinearTextures = true;
 	_metalFeatures.tileBasedDeferredRendering = true;
 	_metalFeatures.dynamicMTLBufferSize = (4 * KIBI);
 	_metalFeatures.maxTextureDimension = (8 * KIBI);
 	_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
-	_metalFeatures.shaderSpecialization = true;
-	_metalFeatures.stencilViews = true;
-	_metalFeatures.fences = true;
-	_metalFeatures.deferredStoreActions = true;
 	_metalFeatures.renderWithoutAttachments = true;
-	_metalFeatures.argumentBuffers = true;
-	_metalFeatures.events = true;
-	_metalFeatures.textureBuffers = true;
 	_metalFeatures.nativeTextureSwizzle = true;
 	_metalFeatures.placementHeaps = useMTLHeap;
 	_metalFeatures.multisampleArrayTextures = true;
@@ -2665,26 +2658,17 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.indirectDrawing = true;
 	_metalFeatures.indirectTessellationDrawing = true;
 	_metalFeatures.dynamicMTLBufferSize = (4 * KIBI);
-	_metalFeatures.shaderSpecialization = true;
-	_metalFeatures.stencilViews = true;
 	_metalFeatures.samplerClampToBorder = true;
 	_metalFeatures.combinedStoreResolveAction = true;
-	_metalFeatures.deferredStoreActions = true;
 	_metalFeatures.maxMTLBufferSize = (1 * GIBI);
 	_metalFeatures.maxPerStageDynamicMTLBufferCount = 14;
-	_metalFeatures.texelBuffers = true;
 	_metalFeatures.arrayOfTextures = true;
 	_metalFeatures.arrayOfSamplers = true;
 	_metalFeatures.presentModeImmediate = true;
-	_metalFeatures.fences = true;
 	_metalFeatures.nonUniformThreadgroups = true;
-	_metalFeatures.argumentBuffers = true;
 	_metalFeatures.multisampleArrayTextures = true;
-	_metalFeatures.events = true;
-	_metalFeatures.textureBuffers = true;
 	_metalFeatures.maxQueryBufferSize = (256 * KIBI);
 	_metalFeatures.native3DCompressedTextures = true;
-	_metalFeatures.sharedLinearTextures = true;
 
 	if (supportsMTLGPUFamily(Mac2)) {
 		_metalFeatures.multisampleLayeredRendering = _metalFeatures.layeredRendering;
@@ -2749,17 +2733,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 #endif
 
-	if ( [_mtlDevice respondsToSelector: @selector(areProgrammableSamplePositionsSupported)] ) {
-		_metalFeatures.programmableSamplePositions = _mtlDevice.areProgrammableSamplePositionsSupported;
-	}
-
-    if ( [_mtlDevice respondsToSelector: @selector(areRasterOrderGroupsSupported)] ) {
-        _metalFeatures.rasterOrderGroups = _mtlDevice.areRasterOrderGroupsSupported;
-    }
-
-	if ( [_mtlDevice respondsToSelector: @selector(supportsPullModelInterpolation)] ) {
-		_metalFeatures.pullModelInterpolation = _mtlDevice.supportsPullModelInterpolation;
-	}
+	_metalFeatures.programmableSamplePositions = _mtlDevice.areProgrammableSamplePositionsSupported;
+	_metalFeatures.rasterOrderGroups = _mtlDevice.areRasterOrderGroupsSupported;
+	_metalFeatures.pullModelInterpolation = _mtlDevice.supportsPullModelInterpolation;
 
 #if (MVK_MACOS && !MVK_MACCAT) || (MVK_MACCAT && MVK_XCODE_14) || MVK_IOS
 	// Both current and deprecated properties are retrieved and OR'd together, due to a
@@ -2775,9 +2751,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.shaderBarycentricCoordinates = bcProp1 || bcProp2;
 #endif
 
-    if ( [_mtlDevice respondsToSelector: @selector(maxBufferLength)] ) {
-        _metalFeatures.maxMTLBufferSize = _mtlDevice.maxBufferLength;
-    }
+    _metalFeatures.maxMTLBufferSize = _mtlDevice.maxBufferLength;
 
     for (uint32_t sc = VK_SAMPLE_COUNT_1_BIT; sc <= VK_SAMPLE_COUNT_64_BIT; sc <<= 1) {
         if ([_mtlDevice supportsTextureSampleCount: mvkSampleCountFromVkSampleCountFlagBits((VkSampleCountFlagBits)sc)]) {
@@ -2891,18 +2865,16 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	// Metal argument buffer support for descriptor sets is supported on macOS 11.0 or later,
 	// or on older versions of macOS using an Intel GPU, or on iOS & tvOS 16.0 or later (Metal 3).
-	_metalFeatures.descriptorSetArgumentBuffers = (_metalFeatures.argumentBuffers &&
-												   (mvkOSVersionIsAtLeast(11.0, 16.0, 1.0) ||
-													_properties.vendorID == kIntelVendorId));
+	_metalFeatures.descriptorSetArgumentBuffers = (mvkOSVersionIsAtLeast(11.0, 16.0, 1.0) ||
+													_properties.vendorID == kIntelVendorId);
 
 	// Argument encoders are not needed if Metal 3 plus Tier 2 argument buffers.
 #if MVK_XCODE_14
-	_metalFeatures.needsArgumentBufferEncoders = (_metalFeatures.argumentBuffers &&
-												  !(mvkOSVersionIsAtLeast(13.0, 16.0, 1.0) &&
+	_metalFeatures.needsArgumentBufferEncoders = !(mvkOSVersionIsAtLeast(13.0, 16.0, 1.0) &&
 													supportsMTLGPUFamily(Metal3) &&
-													_metalFeatures.argumentBuffersTier >= MTLArgumentBuffersTier2));
+													_metalFeatures.argumentBuffersTier >= MTLArgumentBuffersTier2);
 #else
-	_metalFeatures.needsArgumentBufferEncoders = _metalFeatures.argumentBuffers;
+	_metalFeatures.needsArgumentBufferEncoders = true;
 #endif
 
 	_isUsingMetalArgumentBuffers = _metalFeatures.descriptorSetArgumentBuffers && getMVKConfig().useMetalArgumentBuffers;
@@ -2993,7 +2965,7 @@ void MVKPhysicalDevice::initFeatures() {
 
 	_features.drawIndirectFirstInstance = _metalFeatures.indirectDrawing && _metalFeatures.baseVertexInstanceDrawing;
 
-	_features.shaderInt64 = mslVersionIsAtLeast(MTLLanguageVersion2_3) && (supportsMTLGPUFamily(Apple3) || supportsMTLGPUFamily(Mac1));
+	_features.shaderInt64 = supportsMTLGPUFamily(Apple3) || supportsMTLGPUFamily(Mac1);
 
 #if MVK_TVOS
     _features.textureCompressionETC2 = true;
@@ -3948,11 +3920,11 @@ void MVKPhysicalDevice::initVkSemaphoreStyle() {
 		case MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE: {
 			bool isNVIDIA = _properties.vendorID == kNVVendorId;
 			bool isRosetta2 = _gpuCapabilities.isAppleGPU && !MVK_APPLE_SILICON;
-			if (_metalFeatures.events && !(isRosetta2 || isNVIDIA)) { _vkSemaphoreStyle = MVKSemaphoreStyleUseMTLEvent; }
+			if (!(isRosetta2 || isNVIDIA)) { _vkSemaphoreStyle = MVKSemaphoreStyleUseMTLEvent; }
 			break;
 		}
 		case MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS:
-			if (_metalFeatures.events) { _vkSemaphoreStyle = MVKSemaphoreStyleUseMTLEvent; }
+			_vkSemaphoreStyle = MVKSemaphoreStyleUseMTLEvent;
 			break;
 		case MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_CALLBACK:
 			_vkSemaphoreStyle = MVKSemaphoreStyleUseEmulation;
@@ -4567,11 +4539,7 @@ MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInf
 	}
 
 	if (pTypeCreateInfo && pTypeCreateInfo->semaphoreType == VK_SEMAPHORE_TYPE_TIMELINE) {
-		if (_physicalDevice->_metalFeatures.events) {
-			return new MVKTimelineSemaphoreMTLEvent(this, pCreateInfo, pTypeCreateInfo, pExportInfo, pImportInfo);
-		} else {
-			return new MVKTimelineSemaphoreEmulated(this, pCreateInfo, pTypeCreateInfo, pExportInfo, pImportInfo);
-		}
+		return new MVKTimelineSemaphoreMTLEvent(this, pCreateInfo, pTypeCreateInfo, pExportInfo, pImportInfo);
 	} else {
 		switch (_physicalDevice->_vkSemaphoreStyle) {
 			case MVKSemaphoreStyleUseMTLEvent:  return new MVKSemaphoreMTLEvent(this, pCreateInfo, pExportInfo, pImportInfo);
@@ -4612,11 +4580,7 @@ MVKEvent* MVKDevice::createEvent(const VkEventCreateInfo* pCreateInfo,
 		}
 	}
 
-	if (_physicalDevice->_metalFeatures.events) {
-		return new MVKEventNative(this, pCreateInfo, pExportInfo, pImportInfo);
-	} else {
-		return new MVKEventEmulated(this, pCreateInfo, pExportInfo, pImportInfo);
-	}
+	return new MVKEventNative(this, pCreateInfo, pExportInfo, pImportInfo);
 }
 
 void MVKDevice::destroyEvent(MVKEvent* mvkEvent, const VkAllocationCallbacks* pAllocator) {

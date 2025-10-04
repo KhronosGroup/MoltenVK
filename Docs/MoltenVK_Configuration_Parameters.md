@@ -555,8 +555,6 @@ system, and as a result, may want to disable this parameter.
 ##### Type: Boolean
 ##### Default: `1`
 
-_(The default value is `0` for OS versions prior to macOS 10.14+/iOS 12+)._
-
 If enabled, queue command submissions `vkQueueSubmit()` and `vkQueuePresentKHR()`
 will be processed on the thread that called the submission function. If disabled,
 processing will be dispatched to a GCD `dispatch_queue` whose priority is determined
@@ -704,7 +702,7 @@ To disable the use of `MTLHeap` on any GPU, set this parameter to `0`.
 Determines the style used to implement _Vulkan_ semaphore (`VkSemaphore`) functionality in _Metal_.
 
 In the special case of `VK_SEMAPHORE_TYPE_TIMELINE` semaphores, **MoltenVK** will always use
-`MTLSharedEvent` if it is available on the platform, regardless of the value of this parameter.
+`MTLSharedEvent`, regardless of the value of this parameter.
 
 ---------------------------------------
 #### MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES

@@ -392,7 +392,6 @@ protected:
     IOSurfaceRef _ioSurface;
 	VkDeviceSize _rowByteAlignment;
     bool _isDepthStencilAttachment;
-	bool _canSupportMTLTextureView;
     bool _hasExpectedTexelSize;
     bool _hasChromaSubsampling;
 	bool _isLinear;

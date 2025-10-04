@@ -647,7 +647,6 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 	bool isStencilFmt = isStencilFormat(mtlFormat);
 	bool isCombinedDepthStencilFmt = isDepthFmt && isStencilFmt;
 	bool isColorFormat = !(isDepthFmt || isStencilFmt);
-	bool supportsStencilViews = _physicalDevice ? _physicalDevice->getMetalFeatures()->stencilViews : false;
 	MVKMTLFmtCaps mtlFmtCaps = getCapabilities(mtlFormat, isExtended);
 
 	MTLTextureUsage mtlUsage = MTLTextureUsageUnknown;
@@ -715,7 +714,7 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 	                                               VK_IMAGE_USAGE_STORAGE_BIT |
 	                                               VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
 	                                               VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
-	pfv |= isCombinedDepthStencilFmt && supportsStencilViews &&
+	pfv |= isCombinedDepthStencilFmt &&
 	       mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | // May use temp view if transfer involves format change
 	                                               VK_IMAGE_USAGE_SAMPLED_BIT |
 	                                               VK_IMAGE_USAGE_STORAGE_BIT |
@@ -1536,12 +1535,8 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(const MVKMTLDeviceCapabilities
 // Connects Vulkan and Metal pixel formats to one-another.
 void MVKPixelFormats::buildVkFormatMaps(const MVKMTLDeviceCapabilities& gpuCaps) {
 	for (auto& vkDesc : _vkFormatDescriptions) {
-		if (vkDesc.needsSwizzle()) {
-			bool supportsNativeTextureSwizzle = ((gpuCaps.isAppleGPU || gpuCaps.supportsMac2)
-												 && mvkOSVersionIsAtLeast(10.15, 13.0, 1.0));
-			if (!supportsNativeTextureSwizzle && !getMVKConfig().fullImageViewSwizzle) {
-				vkDesc.mtlPixelFormat = vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid;
-			}
+		if (vkDesc.needsSwizzle() && !_physicalDevice->getMetalFeatures()->nativeTextureSwizzle && !getMVKConfig().fullImageViewSwizzle) {
+			vkDesc.mtlPixelFormat = vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid;
 		}
 
 		// Populate the back reference from the Metal formats to the Vulkan format.

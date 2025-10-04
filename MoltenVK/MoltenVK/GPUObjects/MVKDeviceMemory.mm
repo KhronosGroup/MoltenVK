@@ -94,7 +94,6 @@ VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size) 
 	if ( !_mtlHeap ) {
 		lock_guard<mutex> lock(_rezLock);
 		for (auto& img : _imageMemoryBindings) { img->flushToDevice(offset, memSize); }
-		for (auto& buf : _buffers) { buf->flushToDevice(offset, memSize); }
 	}
 
 	return VK_SUCCESS;
@@ -118,7 +117,6 @@ VkResult MVKDeviceMemory::pullFromDevice(VkDeviceSize offset,
 	if ( !_mtlHeap ) {
 		lock_guard<mutex> lock(_rezLock);
         for (auto& img : _imageMemoryBindings) { img->pullFromDevice(offset, memSize); }
-        for (auto& buf : _buffers) { buf->pullFromDevice(offset, memSize); }
 	}
 
 	return VK_SUCCESS;
@@ -408,15 +406,9 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 		if (isMemoryHostCoherent() ) {
 			if (!dedicatedImage->_isLinear) {
 				setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkAllocateMemory(): Host-coherent VkDeviceMemory objects cannot be associated with optimal-tiling images."));
-			} else {
-				if (!getMetalFeatures().sharedLinearTextures) {
-					// Need to use the managed mode for images.
-					_mtlStorageMode = MTLStorageModeManaged;
-				}
+			} else if (!ensureMTLBuffer()) {
 				// Nonetheless, we need a buffer to be able to map the memory at will.
-				if (!ensureMTLBuffer() ) {
-					setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkAllocateMemory(): Could not allocate a host-coherent VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, getMetalFeatures().maxMTLBufferSize));
-				}
+				setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkAllocateMemory(): Could not allocate a host-coherent VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, getMetalFeatures().maxMTLBufferSize));
 			}
 		}
 #endif

@@ -2018,7 +2018,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
     shaderConfig.options.mslOptions.msl_version = mtlFeats.mslVersion;
     shaderConfig.options.mslOptions.texel_buffer_texture_width = mtlFeats.maxTextureDimension;
     shaderConfig.options.mslOptions.r32ui_linear_texture_alignment = (uint32_t)_device->getVkFormatTexelBufferAlignment(VK_FORMAT_R32_UINT, this);
-	shaderConfig.options.mslOptions.texture_buffer_native = mtlFeats.textureBuffers;
+	shaderConfig.options.mslOptions.texture_buffer_native = true;
 
 	bool useMetalArgBuff = isUsingMetalArgumentBuffers();
 	shaderConfig.options.mslOptions.argument_buffers = useMetalArgBuff;
@@ -2466,7 +2466,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     shaderConfig.options.mslOptions.texel_buffer_texture_width = mtlFeats.maxTextureDimension;
     shaderConfig.options.mslOptions.r32ui_linear_texture_alignment = (uint32_t)_device->getVkFormatTexelBufferAlignment(VK_FORMAT_R32_UINT, this);
 	shaderConfig.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !mtlFeats.nativeTextureSwizzle;
-	shaderConfig.options.mslOptions.texture_buffer_native = mtlFeats.textureBuffers;
+	shaderConfig.options.mslOptions.texture_buffer_native = true;
 	shaderConfig.options.mslOptions.dispatch_base = _allowsDispatchBase;
 	shaderConfig.options.mslOptions.texture_1D_as_2D = mvkCfg.texture1DAs2D;
     shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT) ? 0 : mtlFeats.maxSubgroupSize;

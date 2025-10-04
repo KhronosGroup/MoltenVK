@@ -484,7 +484,7 @@ VkResult MVKImageMemoryBinding::getMemoryRequirements(VkMemoryRequirements2* pMe
         case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
             auto* dedicatedReqs = (VkMemoryDedicatedRequirements*)next;
             bool writable = mvkIsAnyFlagEnabled(_image->getCombinedUsage(), VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-            bool canUseTexelBuffer = mtlFeats.texelBuffers && _image->_isLinear && !_image->getIsCompressed();
+            bool canUseTexelBuffer = _image->_isLinear && !_image->getIsCompressed();
             dedicatedReqs->requiresDedicatedAllocation = _requiresDedicatedMemoryAllocation;
             dedicatedReqs->prefersDedicatedAllocation = (dedicatedReqs->requiresDedicatedAllocation ||
                                                         (!canUseTexelBuffer && (writable || !mtlFeats.placementHeaps)));
@@ -505,11 +505,7 @@ VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDevi
     if (!_deviceMemory) { return VK_SUCCESS; }
 
 	auto& mtlFeats = getMetalFeatures();
-    bool usesTexelBuffer = mtlFeats.texelBuffers; // Texel buffers available
-    usesTexelBuffer = usesTexelBuffer && (isMemoryHostAccessible() || mtlFeats.placementHeaps) && _image->_isLinear && !_image->getIsCompressed(); // Applicable memory layout
-
-    // macOS before 10.15.5 cannot use shared memory for texel buffers.
-    usesTexelBuffer = usesTexelBuffer && (mtlFeats.sharedLinearTextures || !isMemoryHostCoherent());
+    bool usesTexelBuffer = (isMemoryHostAccessible() || mtlFeats.placementHeaps) && _image->_isLinear && !_image->getIsCompressed(); // Applicable memory layout
 
     if (_image->_isLinearForAtomics || (usesTexelBuffer && mtlFeats.placementHeaps)) {
         if (usesTexelBuffer && _deviceMemory->ensureMTLBuffer()) {
@@ -567,7 +563,7 @@ bool MVKImageMemoryBinding::needsHostReadSync(MVKPipelineBarrier& barrier) {
 #if MVK_MACOS
     return ( !isUnifiedMemoryGPU() && (barrier.newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
             mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
-            isMemoryHostAccessible() && (!getMetalFeatures().sharedLinearTextures || !isMemoryHostCoherent()));
+            isMemoryHostAccessible() && !isMemoryHostCoherent());
 #else
 	return false;
 #endif
@@ -1175,13 +1171,6 @@ MTLStorageMode MVKImage::getMTLStorageMode() {
 
     if (_ioSurface && stgMode == MTLStorageModePrivate) { stgMode = MTLStorageModeShared; }
 
-#if MVK_MACOS
-	// For macOS prior to 10.15.5, textures cannot use Shared storage mode, so change to Managed storage mode.
-	// All Apple GPUs support shared linear textures, so this only applies to other GPUs.
-    if (stgMode == MTLStorageModeShared && !getMetalFeatures().sharedLinearTextures) {
-        stgMode = MTLStorageModeManaged;
-    }
-#endif
     return stgMode;
 }
 
@@ -1296,7 +1285,6 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatCompressed) && !mtlFeats.native3DCompressedTextures;
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
 								 mvkAreAllFlagsEnabled(pixFmts->getVkFormatProperties3(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT));
-	_canSupportMTLTextureView = !_isDepthStencilAttachment || mtlFeats.stencilViews;
 	_rowByteAlignment = _isLinear || _isLinearForAtomics ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(pixFmts->getBytesPerBlock(pCreateInfo->format));
 
     VkExtent2D blockTexelSizeOfPlane[3];
@@ -2037,7 +2025,7 @@ MVKImageViewPlane::MVKImageViewPlane(MVKImageView* imageView,
     // Determine whether this image view should use a Metal texture view,
     // and set the _useMTLTextureView variable appropriately.
     if ( _imageView->_image ) {
-        _useMTLTextureView = _imageView->_image->_canSupportMTLTextureView;
+        _useMTLTextureView = true;
         bool is3D = _imageView->_image->_mtlTextureType == MTLTextureType3D;
         // If the view is identical to underlying image, don't bother using a Metal view
         if (_mtlPixFmt == _imageView->_image->getMTLPixelFormat(planeIndex) &&

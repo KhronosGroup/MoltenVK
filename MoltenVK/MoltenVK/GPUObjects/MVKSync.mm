@@ -254,81 +254,6 @@ MVKTimelineSemaphoreMTLEvent::~MVKTimelineSemaphoreMTLEvent() {
 
 
 #pragma mark -
-#pragma mark MVKTimelineSemaphoreEmulated
-
-void MVKTimelineSemaphoreEmulated::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) {
-	unique_lock<mutex> lock(_lock);
-	if ( !mtlCmdBuff ) {
-		_device->addTimelineSemaphore(this, value);
-		_blocker.wait(lock, [=]() { return _value >= value; });
-		_device->removeTimelineSemaphore(this, value);
-	}
-}
-
-void MVKTimelineSemaphoreEmulated::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) {
-	lock_guard<mutex> lock(_lock);
-	if ( !mtlCmdBuff ) { signalImpl(value); }
-}
-
-void MVKTimelineSemaphoreEmulated::signal(const VkSemaphoreSignalInfo* pSignalInfo) {
-	lock_guard<mutex> lock(_lock);
-	signalImpl(pSignalInfo->value);
-}
-
-void MVKTimelineSemaphoreEmulated::signalImpl(uint64_t value) {
-	if (value > _value) {
-		_value = value;
-		_blocker.notify_all();
-		for (auto& sittersForValue : _sitters) {
-			if (sittersForValue.first > value) { continue; }
-			for (auto* sitter : sittersForValue.second) {
-				sitter->signaled();
-			}
-		}
-	}
-}
-
-bool MVKTimelineSemaphoreEmulated::registerWait(MVKFenceSitter* sitter, const VkSemaphoreWaitInfo* pWaitInfo, uint32_t index) {
-	lock_guard<mutex> lock(_lock);
-	if (pWaitInfo->pValues[index] >= _value) { return true; }
-	uint64_t value = pWaitInfo->pValues[index];
-	if (!_sitters.count(value)) { _sitters.emplace(make_pair(value, unordered_set<MVKFenceSitter*>())); }
-	auto addRslt = _sitters[value].insert(sitter);
-	if (addRslt.second) {
-		_device->addSemaphore(&sitter->_blocker);
-		sitter->await();
-	}
-	return false;
-}
-
-void MVKTimelineSemaphoreEmulated::unregisterWait(MVKFenceSitter* sitter) {
-	MVKSmallVector<uint64_t> emptySets;
-	for (auto& sittersForValue : _sitters) {
-		_device->removeSemaphore(&sitter->_blocker);
-		sittersForValue.second.erase(sitter);
-		// Can't destroy while iterating...
-		if (sittersForValue.second.empty()) {
-			emptySets.push_back(sittersForValue.first);
-		}
-	}
-	for (auto value : emptySets) { _sitters.erase(value); }
-}
-
-MVKTimelineSemaphoreEmulated::MVKTimelineSemaphoreEmulated(MVKDevice* device,
-														   const VkSemaphoreCreateInfo* pCreateInfo,
-														   const VkSemaphoreTypeCreateInfo* pTypeCreateInfo,
-														   const VkExportMetalObjectCreateInfoEXT* pExportInfo,
-														   const VkImportMetalSharedEventInfoEXT* pImportInfo) :
-	MVKTimelineSemaphore(device, pCreateInfo),
-	_value(pTypeCreateInfo ? pTypeCreateInfo->initialValue : 0) {
-
-	if ((pImportInfo && pImportInfo->mtlSharedEvent) || (pExportInfo && pExportInfo->exportObjectType == VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT)) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkCreateEvent(): MTLSharedEvent is not available on this platform."));
-	}
-}
-
-
-#pragma mark -
 #pragma mark MVKFence
 
 void MVKFence::addSitter(MVKFenceSitter* fenceSitter) {
@@ -428,55 +353,6 @@ MVKEventNative::MVKEventNative(MVKDevice* device,
 
 MVKEventNative::~MVKEventNative() {
 	[_mtlEvent release];
-}
-
-
-#pragma mark -
-#pragma mark MVKEventEmulated
-
-bool MVKEventEmulated::isSet() { return !_blocker.isReserved(); }
-
-void MVKEventEmulated::signal(bool status) {
-	if (status) {
-		_blocker.release();
-	} else {
-		_blocker.reserve();
-	}
-}
-
-void MVKEventEmulated::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, bool status) {
-	if (status) {
-		[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) { _blocker.release(); }];
-	} else {
-		_blocker.reserve();
-	}
-
-	// An encoded signal followed by an encoded wait should cause the wait to be skipped.
-	// However, because encoding a signal will not release the blocker until the command buffer
-	// is finished executing (so the CPU can tell when it really is done) it is possible that
-	// the encoded wait will block when it shouldn't. To avoid that, we keep track of whether
-	// the most recent encoded signal was set or reset, so the next encoded wait knows whether
-	// to really wait or not.
-	_inlineSignalStatus = status;
-}
-
-void MVKEventEmulated::encodeWait(id<MTLCommandBuffer> mtlCmdBuff) {
-	if ( !_inlineSignalStatus ) {
-		_device->addSemaphore(&_blocker);
-		_blocker.wait();
-		_device->removeSemaphore(&_blocker);
-	}
-}
-
-MVKEventEmulated::MVKEventEmulated(MVKDevice* device,
-								   const VkEventCreateInfo* pCreateInfo,
-								   const VkExportMetalObjectCreateInfoEXT* pExportInfo,
-								   const VkImportMetalSharedEventInfoEXT* pImportInfo) :
-	MVKEvent(device, pCreateInfo, pExportInfo, pImportInfo), _blocker(false, 1), _inlineSignalStatus(false) {
-
-	if (pExportInfo && pExportInfo->exportObjectType == VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkCreateEvent(): MTLSharedEvent is not available on this platform."));
-	}
 }
 
 

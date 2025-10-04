@@ -412,13 +412,10 @@ public:
 	bool isUsingMetalArgumentBuffers() const { return _isUsingMetalArgumentBuffers; }
 
 	/** Returns whether or not vertex instancing can be used to implement multiview. */
-	bool canUseInstancingForMultiview() { return _metalFeatures.layeredRendering && _metalFeatures.deferredStoreActions; }
+	bool canUseInstancingForMultiview() { return _metalFeatures.layeredRendering; }
 
 	/** Returns the underlying Metal device. */
 	id<MTLDevice> getMTLDevice() const { return _mtlDevice; }
-
-	/** Returns whether the MSL version is supported on this device. */
-	bool mslVersionIsAtLeast(MTLLanguageVersion minVer) { return _metalFeatures.mslVersionEnum >= minVer; }
 
 	/** Returns the MTLStorageMode that matches the Vulkan memory property flags. */
 	MTLStorageMode getMTLStorageModeFromVkMemoryPropertyFlags(VkMemoryPropertyFlags vkFlags);
