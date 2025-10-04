@@ -435,7 +435,7 @@ MVK_PUBLIC_SYMBOL MTLBlendFactor mvkMTLBlendFactorFromVkBlendFactor(VkBlendFacto
 
 #if MVK_USE_METAL_PRIVATE_API
 
-// This isn't in any public header yet. I'm really just guessing based on the D3D11 values here.
+// This isn't in any public header yet. Equivalent to D3D11 values.
 typedef NS_ENUM(NSUInteger, MTLLogicOperation) {
 	MTLLogicOperationClear,
 	MTLLogicOperationSet,

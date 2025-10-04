@@ -42,4 +42,23 @@
  */
 @property(nonatomic, readwrite) NSUInteger sampleMaskMVK;
 
+/**
+ * Replacement for the logicOperationEnabled property.
+ *
+ * This property allows support under all OS versions. Delegates to the logicOperationEnabled
+ * property if it is available. otherwise, returns NO when read and does nothing when set.
+ */
+@property(nonatomic, readwrite, getter=isLogicOperationEnabledMVK) BOOL logicOperationEnabledMVK;
+
+/**
+ * Replacement for the logicOperation property.
+ *
+ * This property allows support under all OS versions. Delegates to the logicOperation
+ * property if it is available. otherwise, returns MTLLogicOperationCopy when
+ * read and does nothing when set.
+ *
+ * The value is treated as an NSUInteger to support OS versions on which the enum is unavailable.
+ */
+@property(nonatomic, readwrite) NSUInteger logicOperationMVK;
+
 @end

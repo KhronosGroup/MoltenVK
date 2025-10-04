@@ -31,12 +31,6 @@ using namespace std;
 @protocol MVKMTLRenderCommandEncoderLineWidth <MTLRenderCommandEncoder>
 - (void)setLineWidth:(float)width;
 @end
-
-// An extension of the MTLRenderCommandEncoder protocol containing a declaration of the
-// -setDepthBoundsTestAMD:minDepth:maxDepth: method.
-@protocol MVKMTLRenderCommandEncoderDepthBoundsAMD <MTLRenderCommandEncoder>
-- (void)setDepthBoundsTestAMD:(BOOL)enable minDepth:(float)minDepth maxDepth:(float)maxDepth;
-@end
 #endif
 
 #pragma mark - Resource Binder Structs
@@ -1305,7 +1299,7 @@ void MVKMetalGraphicsCommandEncoderState::bindState(
 	static constexpr MVKRenderStateFlags FlagsWithEnable {
 		MVKRenderStateFlag::DepthBias,
 		MVKRenderStateFlag::DepthBiasEnable,
-#if MVK_USE_METAL_PRIVATE_API
+#if MVK_XCODE_26
 		MVKRenderStateFlag::DepthBounds,
 		MVKRenderStateFlag::DepthBoundsTestEnable,
 #endif
@@ -1328,26 +1322,21 @@ void MVKMetalGraphicsCommandEncoderState::bindState(
 				[encoder setDepthBias:0 slopeScale:0 clamp:0];
 			}
 		}
-#if MVK_USE_METAL_PRIVATE_API
+#if MVK_XCODE_26
 		if (anyStateNeeded.hasAny({ MVKRenderStateFlag::DepthBounds, MVKRenderStateFlag::DepthBoundsTestEnable }) &&
-		    mvkEncoder.getEnabledFeatures().depthBounds && mvkEncoder.getMVKConfig().useMetalPrivateAPI)
+		    mvkEncoder.getMetalFeatures().depthBoundsTest)
 		{
-			auto encoder_ = static_cast<id<MVKMTLRenderCommandEncoderDepthBoundsAMD>>(encoder);
 			bool wasEnabled = _flags.has(MVKMetalRenderEncoderStateFlag::DepthBoundsEnable);
 			if (PICK_STATE(DepthBoundsTestEnable)->enable.has(MVKRenderStateEnableFlag::DepthBoundsTest)) {
 				const MVKDepthBounds& src = PICK_STATE(DepthBounds)->depthBounds;
 				if (!wasEnabled || !mvkAreEqual(&src, &_depthBounds)) {
 					_flags.add(MVKMetalRenderEncoderStateFlag::DepthBoundsEnable);
 					_depthBounds = src;
-					[encoder_ setDepthBoundsTestAMD:YES
-					                       minDepth:src.minDepthBound
-					                       maxDepth:src.maxDepthBound];
+					[encoder setDepthTestMinBound:src.minDepthBound maxBound:src.maxDepthBound];
 				}
 			} else if (wasEnabled) {
 				_flags.remove(MVKMetalRenderEncoderStateFlag::DepthBoundsEnable);
-				[encoder_ setDepthBoundsTestAMD:NO
-				                       minDepth:0.0f
-				                       maxDepth:1.0f];
+				[encoder setDepthTestMinBound:0.0f maxBound:1.0f];
 			}
 		}
 #endif

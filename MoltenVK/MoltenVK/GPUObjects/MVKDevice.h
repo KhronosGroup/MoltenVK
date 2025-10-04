@@ -114,6 +114,7 @@ typedef struct MVKMTLDeviceCapabilities {
 	bool supportsApple7;
 	bool supportsApple8;
 	bool supportsApple9;
+	bool supportsApple10;
 	bool supportsMac1;
 	bool supportsMac2;
 	bool supportsMetal3;

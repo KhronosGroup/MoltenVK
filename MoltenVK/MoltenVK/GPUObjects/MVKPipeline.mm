@@ -24,9 +24,6 @@
 #include "MVKOSExtensions.h"
 #include "MVKStrings.h"
 #include "MTLRenderPipelineDescriptor+MoltenVK.h"
-#if MVK_USE_METAL_PRIVATE_API
-#include "MTLRenderPipelineColorAttachmentDescriptor+MoltenVK.h"
-#endif
 #include "mvk_datatypes.hpp"
 #include <sys/stat.h>
 #include <sstream>
@@ -1944,8 +1941,8 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
                 colorDesc.destinationAlphaBlendFactor = mvkMTLBlendFactorFromVkBlendFactor(pCA->dstAlphaBlendFactor);
 #if MVK_USE_METAL_PRIVATE_API
 				if (getMVKConfig().useMetalPrivateAPI) {
-					colorDesc.logicOpEnabledMVK = pCreateInfo->pColorBlendState->logicOpEnable;
-					colorDesc.logicOpMVK = mvkMTLLogicOperationFromVkLogicOp(pCreateInfo->pColorBlendState->logicOp);
+					plDesc.logicOperationEnabledMVK = pCreateInfo->pColorBlendState->logicOpEnable;
+					plDesc.logicOperationMVK = mvkMTLLogicOperationFromVkLogicOp(pCreateInfo->pColorBlendState->logicOp);
 				}
 #endif
             }
