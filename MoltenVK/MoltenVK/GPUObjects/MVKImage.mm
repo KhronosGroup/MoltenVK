@@ -1498,12 +1498,10 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttac
 		isLin = false;
 	}
 
-#if !MVK_APPLE_SILICON
-	if (isAttachment) {
+	if (!getMetalFeatures().renderLinearTextures && isAttachment) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support rendering to linear (VK_IMAGE_TILING_LINEAR) images."));
 		isLin = false;
 	}
-#endif
 
 	return isLin;
 }
@@ -2191,7 +2189,7 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 
 		switch (_mtlPixFmt) {
 			case MTLPixelFormatR8Unorm:
-#if MVK_APPLE_SILICON
+#if !MVK_OS_SIMULATOR
 			case MTLPixelFormatR8Unorm_sRGB:
 #endif
 			case MTLPixelFormatR8Snorm:
@@ -2211,7 +2209,7 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 				break;
 
 			case MTLPixelFormatRG8Unorm:
-#if MVK_APPLE_SILICON
+#if !MVK_OS_SIMULATOR
 			case MTLPixelFormatRG8Unorm_sRGB:
 #endif
 			case MTLPixelFormatRG8Snorm:

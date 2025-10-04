@@ -1204,11 +1204,9 @@ void MVKCmdBufferImageCopy<N>::encode(MVKCommandEncoder* cmdEncoder) {
             }
         }
 
-#if MVK_APPLE_SILICON
 		if (pixFmts->isPVRTCFormat(mtlPixFmt)) {
 			blitOptions |= MTLBlitOptionRowLinearPVRTC;
 		}
-#endif
 
 #if MVK_MACOS
 		// If we're copying to a compressed 3D image, the image data need to be decompressed.

@@ -146,7 +146,6 @@ bool MVKPixelFormats::isStencilFormat(MTLPixelFormat mtlFormat) {
 
 bool MVKPixelFormats::isPVRTCFormat(MTLPixelFormat mtlFormat) {
 	switch (mtlFormat) {
-#if MVK_APPLE_SILICON
 		case MTLPixelFormatPVRTC_RGBA_2BPP:
 		case MTLPixelFormatPVRTC_RGBA_2BPP_sRGB:
 		case MTLPixelFormatPVRTC_RGBA_4BPP:
@@ -156,7 +155,6 @@ bool MVKPixelFormats::isPVRTCFormat(MTLPixelFormat mtlFormat) {
 		case MTLPixelFormatPVRTC_RGB_4BPP:
 		case MTLPixelFormatPVRTC_RGB_4BPP_sRGB:
 			return true;
-#endif
 		default:
 			return false;
 	}
@@ -1659,12 +1657,12 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc, const MVKMTLD
 		// Start with optimal tiling features, and modify.
 		vkProps.linearTilingFeatures = vkProps.optimalTilingFeatures;
 
-#if !MVK_APPLE_SILICON
-		// On macOS IMR GPUs, linear textures cannot be used as attachments, so disable those features.
-		mvkDisableFlags(vkProps.linearTilingFeatures, (kMVKVkFormatFeatureFlagsTexColorAtt |
-													   kMVKVkFormatFeatureFlagsTexDSAtt |
-													   kMVKVkFormatFeatureFlagsTexBlend));
-#endif
+        if (!_physicalDevice->getMetalFeatures()->renderLinearTextures) {
+            // On macOS IMR GPUs, linear textures cannot be used as attachments, so disable those features.
+            mvkDisableFlags(vkProps.linearTilingFeatures, (kMVKVkFormatFeatureFlagsTexColorAtt |
+                                                           kMVKVkFormatFeatureFlagsTexDSAtt |
+                                                           kMVKVkFormatFeatureFlagsTexBlend));
+        }
 	}
 
 	// Texel buffers are not available to depth/stencil, compressed, or chroma subsampled formats.

@@ -791,10 +791,7 @@ bool MVKAttachmentDescription::populateMTLRenderPassAttachmentDescriptor(MTLRend
 	// Populate from the attachment image view
 	attachment->populateMTLRenderPassAttachmentDescriptor(mtlAttDesc);
 
-	bool isMemorylessAttachment = false;
-#if MVK_APPLE_SILICON
-	isMemorylessAttachment = attachment->getImage()->getMTLStorageMode() == MTLStorageModeMemoryless;
-#endif
+	bool isMemorylessAttachment = attachment->getImage()->getMTLStorageMode() == MTLStorageModeMemoryless;
 	bool isResuming = mvkIsAnyFlagEnabled(_renderPass->getRenderingFlags(), VK_RENDERING_RESUMING_BIT);
 
 	// Only allow clearing of entire attachment if we're actually
@@ -844,10 +841,7 @@ void MVKAttachmentDescription::encodeStoreAction(MVKCommandEncoder* cmdEncoder,
 	}
 	bool isColorFormat = !(isDepthFormat || isStencilFormat);
 
-	bool isMemorylessAttachment = false;
-#if MVK_APPLE_SILICON
-	isMemorylessAttachment = attachment->getImage()->getMTLStorageMode() == MTLStorageModeMemoryless;
-#endif
+	bool isMemorylessAttachment = attachment->getImage()->getMTLStorageMode() == MTLStorageModeMemoryless;
 	MTLStoreAction storeAction = getMTLStoreAction(subpass, isRenderingEntireAttachment, isMemorylessAttachment,
 												   hasResolveAttachment, canResolveFormat, isStencil, storeOverride);
 	if (isColorFormat) {

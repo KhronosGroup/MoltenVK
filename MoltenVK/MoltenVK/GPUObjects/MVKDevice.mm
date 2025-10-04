@@ -1608,10 +1608,8 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				if (mvkFmt == kMVKFormatDepthStencil || mvkFmt == kMVKFormatCompressed || isBGRG) {
 					return VK_ERROR_FORMAT_NOT_SUPPORTED;
 				}
-#if !MVK_APPLE_SILICON
 				// - On macOS IMR GPUs, Linear textures may not be used as framebuffer attachments.
-				if (hasAttachmentUsage) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
-#endif
+				if (hasAttachmentUsage && !_metalFeatures.renderLinearTextures) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 				// Linear textures may only have one mip level, layer & sample.
 				maxLevels = 1;
 				maxLayers = 1;
@@ -1658,7 +1656,6 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
 #endif
-#if MVK_APPLE_SILICON
 			// ETC2 and EAC formats aren't supported for 3D textures.
 			switch (format) {
 				case VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:
@@ -1675,7 +1672,6 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				default:
 					break;
 			}
-#endif
 			maxExt.width = pLimits->maxImageDimension3D;
 			maxExt.height = pLimits->maxImageDimension3D;
 			maxExt.depth = pLimits->maxImageDimension3D;
@@ -2048,11 +2044,13 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	addSurfFmt(RGBA16Float);
 	addSurfFmt(RGB10A2Unorm);
 	addSurfFmt(BGR10A2Unorm);
-#if MVK_APPLE_SILICON && !MVK_OS_SIMULATOR
-	addSurfFmt(BGRA10_XR);
-	addSurfFmt(BGRA10_XR_sRGB);
-	addSurfFmt(BGR10_XR);
-	addSurfFmt(BGR10_XR_sRGB);
+#if !MVK_OS_SIMULATOR
+	if (_gpuCapabilities.isAppleGPU) {
+		addSurfFmt(BGRA10_XR);
+		addSurfFmt(BGRA10_XR_sRGB);
+		addSurfFmt(BGR10_XR);
+		addSurfFmt(BGR10_XR_sRGB);
+	}
 #endif
 
 	MVKSmallVector<VkColorSpaceKHR, 16> colorSpaces;
@@ -2854,6 +2852,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #if MVK_OS_SIMULATOR
 	_metalFeatures.mtlBufferAlignment = 256;	// Even on Apple Silicon
 	_metalFeatures.nativeTextureSwizzle = false;
+	_metalFeatures.renderLinearTextures = false;
 #endif
 
 	// Argument buffers
@@ -3708,8 +3707,8 @@ MVK_PUBLIC_SYMBOL MTLStorageMode MVKPhysicalDevice::getMTLStorageModeFromVkMemor
 
 	// If not visible to the host, use Private, or Memoryless if available and lazily allocated.
 	if ( !mvkAreAllFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ) {
-#if MVK_APPLE_SILICON
-		if (mvkAreAllFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT)) {
+#if !MVK_OS_SIMULATOR
+		if (_gpuCapabilities.isAppleGPU && mvkAreAllFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT)) {
 			return MTLStorageModeMemoryless;
 		}
 #endif
@@ -3919,7 +3918,7 @@ void MVKPhysicalDevice::initVkSemaphoreStyle() {
 	switch (getMVKConfig().semaphoreSupportStyle) {
 		case MVK_CONFIG_VK_SEMAPHORE_SUPPORT_STYLE_METAL_EVENTS_WHERE_SAFE: {
 			bool isNVIDIA = _properties.vendorID == kNVVendorId;
-			bool isRosetta2 = _gpuCapabilities.isAppleGPU && !MVK_APPLE_SILICON;
+			bool isRosetta2 = _gpuCapabilities.isAppleGPU && !TARGET_CPU_ARM64;
 			if (!(isRosetta2 || isNVIDIA)) { _vkSemaphoreStyle = MVKSemaphoreStyleUseMTLEvent; }
 			break;
 		}
@@ -4405,11 +4404,9 @@ uint32_t MVKDevice::getVulkanMemoryTypeIndex(MTLStorageMode mtlStorageMode) {
             vkMemFlags = MVK_VK_MEMORY_TYPE_METAL_MANAGED;
             break;
 #endif
-#if MVK_APPLE_SILICON
         case MTLStorageModeMemoryless:
             vkMemFlags = MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS;
             break;
-#endif
         default:
             vkMemFlags = MVK_VK_MEMORY_TYPE_METAL_SHARED;
             break;
