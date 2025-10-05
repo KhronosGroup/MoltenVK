@@ -228,8 +228,7 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             VkExtent3D dstExtent = _dstImage->getExtent3D(dstPlaneIndex, dstLevel);
             // If the extent completely covers both images, I can copy all layers at once.
             // This will obviously not apply to copies between a 3D and 2D image.
-            if (mvkVkExtent3DsAreEqual(srcExtent, vkIC.extent) && mvkVkExtent3DsAreEqual(dstExtent, vkIC.extent) &&
-                [mtlBlitEnc respondsToSelector: @selector(copyFromTexture:sourceSlice:sourceLevel:toTexture:destinationSlice:destinationLevel:sliceCount:levelCount:)]) {
+            if (mvkVkExtent3DsAreEqual(srcExtent, vkIC.extent) && mvkVkExtent3DsAreEqual(dstExtent, vkIC.extent)) {
                 assert((_srcImage->getMTLTextureType() == MTLTextureType3D) == (_dstImage->getMTLTextureType() == MTLTextureType3D));
                 [mtlBlitEnc copyFromTexture: srcMTLTex
                                 sourceSlice: srcBaseLayer
@@ -1322,7 +1321,7 @@ bool MVKCmdBufferImageCopy<N>::isArrayTexture() {
 	MTLTextureType mtlTexType = _image->getMTLTextureType();
 	return (mtlTexType == MTLTextureType3D ||
 			mtlTexType == MTLTextureType2DArray ||
-#if MVK_MACOS_OR_IOS
+#if MVK_MACOS_OR_IOS || MVK_XCODE_14
 			mtlTexType == MTLTextureType2DMultisampleArray ||
 #endif
 			mtlTexType == MTLTextureType1DArray);
@@ -1484,7 +1483,7 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	MVKRPSKeyClearAtt rpsKey;
 
 	VkExtent2D fbExtent = cmdEncoder->getFramebufferExtent();
-#if MVK_MACOS_OR_IOS
+
 	// I need to know if the 'renderTargetWidth' and 'renderTargetHeight' properties
 	// actually do something, but [MTLRenderPassDescriptor instancesRespondToSelector: @selector(renderTargetWidth)]
 	// returns NO even on systems that do support it. So we have to check an actual instance.
@@ -1494,7 +1493,7 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		fbExtent = {renderArea.offset.x + renderArea.extent.width, renderArea.offset.y + renderArea.extent.height};
 	}
 	[tempRPDesc release];													// temp release
-#endif
+
 	populateVertices(cmdEncoder, vertices, fbExtent.width, fbExtent.height);
 
 	MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();

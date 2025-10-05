@@ -71,7 +71,7 @@ static const uint32_t kMaxTimeDomains = 2;
 #pragma mark -
 #pragma mark MVKMTLDeviceCapabilities
 
-#define supportsGPUFam(gpuFam, mtlDev)  ([mtlDev respondsToSelector: @selector(supportsFamily:)] && [mtlDev supportsFamily: MTLGPUFamily ##gpuFam])
+#define supportsGPUFam(gpuFam, mtlDev)  [mtlDev supportsFamily: MTLGPUFamily ##gpuFam]
 
 #if MVK_IOS
 #define supportsIOSGPU(gpuIdx, mtlDev)  [mtlDev supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily ##gpuIdx ##_v1]
@@ -770,7 +770,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
 				auto* texelBuffAlignFeatures = (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)next;
-				texelBuffAlignFeatures->texelBufferAlignment = [_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)];
+				texelBuffAlignFeatures->texelBufferAlignment = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
@@ -1412,7 +1412,7 @@ void MVKPhysicalDevice::populateDeviceIDProperties(VkPhysicalDeviceVulkan11Prope
 	uuidComponentOffset += sizeof(gpuCap);
 
 	// ---- Device LUID ------------------------
-	*(uint64_t*)pVk11Props->deviceLUID = NSSwapHostLongLongToBig(mvkGetRegistryID(_mtlDevice));
+	*(uint64_t*)pVk11Props->deviceLUID = NSSwapHostLongLongToBig(_mtlDevice.registryID);
 	pVk11Props->deviceNodeMask = 1;		// Per Vulkan spec
 	pVk11Props->deviceLUIDValid = VK_TRUE;
 }
@@ -2277,7 +2277,7 @@ VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 // wild temporary changes, particularly during initial queries before much GPU activity has occurred.
 // On Apple GPUs, CPU & GPU timestamps are the same, and timestamp period never changes.
 void MVKPhysicalDevice::updateTimestampPeriod() {
-	if ( !_gpuCapabilities.isAppleGPU && [_mtlDevice respondsToSelector: @selector(sampleTimestamps:gpuTimestamp:)]) {
+	if (!_gpuCapabilities.isAppleGPU) {
 		MTLTimestamp earlierCPUTs = _prevCPUTimestamp;
 		MTLTimestamp earlierGPUTs = _prevGPUTimestamp;
 		[_mtlDevice sampleTimestamps: &_prevCPUTimestamp gpuTimestamp: &_prevGPUTimestamp];
@@ -2376,8 +2376,7 @@ static MVKPhysicalDeviceArgumentBufferSizes::Entry getArgumentBufferSize(id<MTLD
 void MVKPhysicalDevice::initMTLDevice() {
 #if MVK_MACOS
 	// Apple Silicon will respond false to isLowPower, but never hits it.
-	_hasUnifiedMemory = ([_mtlDevice respondsToSelector: @selector(hasUnifiedMemory)]
-						 ? _mtlDevice.hasUnifiedMemory : _mtlDevice.isLowPower);
+	_hasUnifiedMemory = _mtlDevice.hasUnifiedMemory;
 
 #if MVK_XCODE_14_3 && !MVK_MACCAT
 	if ([_mtlDevice respondsToSelector: @selector(setShouldMaximizeConcurrentCompilation:)]) {
@@ -2857,11 +2856,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #endif
 
 	// Argument buffers
-	if ([_mtlDevice respondsToSelector: @selector(argumentBuffersSupport)]) {
-		_metalFeatures.argumentBuffersTier = _mtlDevice.argumentBuffersSupport;
-	} else {
-		_metalFeatures.argumentBuffersTier = MTLArgumentBuffersTier1;
-	}
+	_metalFeatures.argumentBuffersTier = _mtlDevice.argumentBuffersSupport;
 
 	// Metal argument buffer support for descriptor sets is supported on macOS 11.0 or later,
 	// or on older versions of macOS using an Intel GPU, or on iOS & tvOS 16.0 or later (Metal 3).
@@ -2880,8 +2875,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_isUsingMetalArgumentBuffers = _metalFeatures.descriptorSetArgumentBuffers && getMVKConfig().useMetalArgumentBuffers;
 
 #define checkSupportsMTLCounterSamplingPoint(mtlSP, mvkSP)  \
-	if ([_mtlDevice respondsToSelector: @selector(supportsCounterSampling:)] &&  \
-		[_mtlDevice supportsCounterSampling: MTLCounterSamplingPointAt ##mtlSP ##Boundary]) {  \
+	if ([_mtlDevice supportsCounterSampling: MTLCounterSamplingPointAt ##mtlSP ##Boundary]) {  \
 		_metalFeatures.counterSamplingPoints |= MVK_COUNTER_SAMPLING_AT_ ##mvkSP;  \
 	}
 
@@ -3160,92 +3154,64 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.bufferImageGranularity = _metalFeatures.mtlBufferAlignment;
     _properties.limits.nonCoherentAtomSize = _metalFeatures.mtlBufferAlignment;
 
-    if ([_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)]) {
-        // Figure out the greatest alignment required by all supported formats, and whether
-		// or not they only require alignment to a single texel. We'll use this information
-		// to fill out the VkPhysicalDeviceTexelBufferAlignmentProperties struct.
-        uint32_t maxStorage = 0, maxUniform = 0;
-        bool singleTexelStorage = true, singleTexelUniform = true;
+    // Figure out the greatest alignment required by all supported formats, and whether
+	// or not they only require alignment to a single texel. We'll use this information
+	// to fill out the VkPhysicalDeviceTexelBufferAlignmentProperties struct.
+    uint32_t maxStorage = 0, maxUniform = 0;
+    bool singleTexelStorage = true, singleTexelUniform = true;
 
-		VkFormatProperties3 fmtProps = {}; // We don't initialize sType as enumerateSupportedFormats doesn't care.
-		fmtProps.bufferFeatures = VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT | VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT;
+	VkFormatProperties3 fmtProps = {}; // We don't initialize sType as enumerateSupportedFormats doesn't care.
+	fmtProps.bufferFeatures = VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT | VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT;
 
-        _pixelFormats.enumerateSupportedFormats(fmtProps, true, [&](VkFormat vk) {
-			MTLPixelFormat mtlFmt = _pixelFormats.getMTLPixelFormat(vk);
-			if ( !mtlFmt ) { return false; }	// If format is invalid, avoid validation errors on MTLDevice format alignment calls
+    _pixelFormats.enumerateSupportedFormats(fmtProps, true, [&](VkFormat vk) {
+		MTLPixelFormat mtlFmt = _pixelFormats.getMTLPixelFormat(vk);
+		if ( !mtlFmt ) { return false; }	// If format is invalid, avoid validation errors on MTLDevice format alignment calls
 
-            NSUInteger alignment;
-            if ([_mtlDevice respondsToSelector: @selector(minimumTextureBufferAlignmentForPixelFormat:)]) {
-                alignment = [_mtlDevice minimumTextureBufferAlignmentForPixelFormat: mtlFmt];
-            } else {
-                alignment = [_mtlDevice minimumLinearTextureAlignmentForPixelFormat: mtlFmt];
+        NSUInteger alignment = [_mtlDevice minimumTextureBufferAlignmentForPixelFormat: mtlFmt];
+        VkFormatProperties3& props = _pixelFormats.getVkFormatProperties3(vk);
+        // For uncompressed formats, this is the size of a single texel.
+        // Note that no implementations of Metal support compressed formats
+        // in a linear texture (including texture buffers). It's likely that even
+        // if they did, this would be the absolute minimum alignment.
+        uint32_t texelSize = _pixelFormats.getBytesPerBlock(vk);
+        // From the spec:
+        //   "If the size of a single texel is a multiple of three bytes, then
+        //    the size of a single component of the format is used instead."
+        if (texelSize % 3 == 0) {
+            switch (_pixelFormats.getFormatType(vk)) {
+            case kMVKFormatColorInt8:
+            case kMVKFormatColorUInt8:
+                texelSize = 1;
+                break;
+            case kMVKFormatColorHalf:
+            case kMVKFormatColorInt16:
+            case kMVKFormatColorUInt16:
+                texelSize = 2;
+                break;
+            case kMVKFormatColorFloat:
+            case kMVKFormatColorInt32:
+            case kMVKFormatColorUInt32:
+            default:
+                texelSize = 4;
+                break;
             }
-            VkFormatProperties3& props = _pixelFormats.getVkFormatProperties3(vk);
-            // For uncompressed formats, this is the size of a single texel.
-            // Note that no implementations of Metal support compressed formats
-            // in a linear texture (including texture buffers). It's likely that even
-            // if they did, this would be the absolute minimum alignment.
-            uint32_t texelSize = _pixelFormats.getBytesPerBlock(vk);
-            // From the spec:
-            //   "If the size of a single texel is a multiple of three bytes, then
-            //    the size of a single component of the format is used instead."
-            if (texelSize % 3 == 0) {
-                switch (_pixelFormats.getFormatType(vk)) {
-                case kMVKFormatColorInt8:
-                case kMVKFormatColorUInt8:
-                    texelSize = 1;
-                    break;
-                case kMVKFormatColorHalf:
-                case kMVKFormatColorInt16:
-                case kMVKFormatColorUInt16:
-                    texelSize = 2;
-                    break;
-                case kMVKFormatColorFloat:
-                case kMVKFormatColorInt32:
-                case kMVKFormatColorUInt32:
-                default:
-                    texelSize = 4;
-                    break;
-                }
-            }
-            if (mvkAreAllFlagsEnabled(props.bufferFeatures, VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT)) {
-                maxUniform = max(maxUniform, uint32_t(alignment));
-                if (alignment > texelSize) { singleTexelUniform = false; }
-            }
-            if (mvkAreAllFlagsEnabled(props.bufferFeatures, VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT)) {
-                maxStorage = max(maxStorage, uint32_t(alignment));
-                if (alignment > texelSize) { singleTexelStorage = false; }
-            }
-            return true;
-        });
-        _texelBuffAlignProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES;
-        _texelBuffAlignProperties.storageTexelBufferOffsetAlignmentBytes = maxStorage;
-        _texelBuffAlignProperties.storageTexelBufferOffsetSingleTexelAlignment = singleTexelStorage;
-        _texelBuffAlignProperties.uniformTexelBufferOffsetAlignmentBytes = maxUniform;
-        _texelBuffAlignProperties.uniformTexelBufferOffsetSingleTexelAlignment = singleTexelUniform;
-        _properties.limits.minTexelBufferOffsetAlignment = max(maxStorage, maxUniform);
-    } else {
-#if MVK_TVOS
-        _properties.limits.minTexelBufferOffsetAlignment = 64;
-#endif
-#if MVK_IOS_OR_VISIONOS
-        if (supportsMTLGPUFamily(Apple3)) {
-            _properties.limits.minTexelBufferOffsetAlignment = 16;
-        } else {
-            _properties.limits.minTexelBufferOffsetAlignment = 64;
         }
-#endif
-#if MVK_MACOS
-        _properties.limits.minTexelBufferOffsetAlignment = 256;
-		if (supportsMTLGPUFamily(Apple5)) {
-			_properties.limits.minTexelBufferOffsetAlignment = 16;
-		}
-#endif
-        _texelBuffAlignProperties.storageTexelBufferOffsetAlignmentBytes = _properties.limits.minTexelBufferOffsetAlignment;
-        _texelBuffAlignProperties.storageTexelBufferOffsetSingleTexelAlignment = VK_FALSE;
-        _texelBuffAlignProperties.uniformTexelBufferOffsetAlignmentBytes = _properties.limits.minTexelBufferOffsetAlignment;
-        _texelBuffAlignProperties.uniformTexelBufferOffsetSingleTexelAlignment = VK_FALSE;
-    }
+        if (mvkAreAllFlagsEnabled(props.bufferFeatures, VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT)) {
+            maxUniform = max(maxUniform, uint32_t(alignment));
+            if (alignment > texelSize) { singleTexelUniform = false; }
+        }
+        if (mvkAreAllFlagsEnabled(props.bufferFeatures, VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT)) {
+            maxStorage = max(maxStorage, uint32_t(alignment));
+            if (alignment > texelSize) { singleTexelStorage = false; }
+        }
+        return true;
+    });
+    _texelBuffAlignProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES;
+    _texelBuffAlignProperties.storageTexelBufferOffsetAlignmentBytes = maxStorage;
+    _texelBuffAlignProperties.storageTexelBufferOffsetSingleTexelAlignment = singleTexelStorage;
+    _texelBuffAlignProperties.uniformTexelBufferOffsetAlignmentBytes = maxUniform;
+    _texelBuffAlignProperties.uniformTexelBufferOffsetSingleTexelAlignment = singleTexelUniform;
+    _properties.limits.minTexelBufferOffsetAlignment = max(maxStorage, maxUniform);
 
 #if MVK_TVOS
     if (supportsMTLGPUFamily(Apple4)) {
@@ -3354,29 +3320,7 @@ void MVKPhysicalDevice::initLimits() {
 	_properties.limits.maxComputeWorkGroupSize[2] = wgSize.depth;
 	_properties.limits.maxComputeWorkGroupInvocations = max({wgSize.width, wgSize.height, wgSize.depth});
 
-	if ( [_mtlDevice respondsToSelector: @selector(maxThreadgroupMemoryLength)] ) {
-		_properties.limits.maxComputeSharedMemorySize = (uint32_t)_mtlDevice.maxThreadgroupMemoryLength;
-	} else {
-#if MVK_TVOS
-		if (supportsMTLGPUFamily(Apple3)) {
-			_properties.limits.maxComputeSharedMemorySize = (16 * KIBI);
-		} else {
-			_properties.limits.maxComputeSharedMemorySize = ((16 * KIBI) - 32);
-		}
-#endif
-#if MVK_IOS_OR_VISIONOS
-		if (supportsMTLGPUFamily(Apple4)) {
-			_properties.limits.maxComputeSharedMemorySize = (32 * KIBI);
-		} else if (supportsMTLGPUFamily(Apple3)) {
-			_properties.limits.maxComputeSharedMemorySize = (16 * KIBI);
-		} else {
-			_properties.limits.maxComputeSharedMemorySize = ((16 * KIBI) - 32);
-		}
-#endif
-#if MVK_MACOS
-		_properties.limits.maxComputeSharedMemorySize = (32 * KIBI);
-#endif
-	}
+	_properties.limits.maxComputeSharedMemorySize = (uint32_t)_mtlDevice.maxThreadgroupMemoryLength;
 
     _properties.limits.minTexelOffset = -8;
     _properties.limits.maxTexelOffset = 7;
@@ -3462,7 +3406,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 	// The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released.
 	bool isFound = false;
 	io_registry_entry_t entry;
-	uint64_t regID = mvkGetRegistryID(_mtlDevice);
+	uint64_t regID = _mtlDevice.registryID;
 	if (regID) {
 		entry = IOServiceGetMatchingService(MACH_PORT_NULL, IORegistryEntryIDMatching(regID));
 		if (entry) {
@@ -3752,10 +3696,7 @@ uint64_t MVKPhysicalDevice::getRecommendedMaxWorkingSetSize() {
 
 // If possible, retrieve from the MTLDevice, otherwise use the current memory used by this process.
 size_t MVKPhysicalDevice::getCurrentAllocatedSize() {
-	if ( [_mtlDevice respondsToSelector: @selector(currentAllocatedSize)] ) {
-		return _mtlDevice.currentAllocatedSize;
-	}
-	return mvkGetUsedMemorySize();
+	return _mtlDevice.currentAllocatedSize;
 }
 
 // When using argument buffers, Metal imposes a hard limit on the number of MTLSamplerState
@@ -3763,8 +3704,7 @@ size_t MVKPhysicalDevice::getCurrentAllocatedSize() {
 // limit is imposed. This has been verified with testing up to 1M MTLSamplerStates.
 uint32_t MVKPhysicalDevice::getMaxSamplerCount() {
 	if (_isUsingMetalArgumentBuffers) {
-		return ([_mtlDevice respondsToSelector: @selector(maxArgumentBufferSamplerCount)]
-				? (uint32_t)_mtlDevice.maxArgumentBufferSamplerCount : 1024);
+		return (uint32_t)_mtlDevice.maxArgumentBufferSamplerCount;
 	} else {
 		return 1e6;
 	}
@@ -4000,8 +3940,7 @@ void MVKPhysicalDevice::logGPUInfo() {
 	if (supportsMTLGPUFamily(Mac1)) { logMsg += "\n\t\tGPU Family Mac 1"; }
 
 	logMsg += "\n\t\tRead-Write Texture Tier ";
-	logMsg += ([_mtlDevice respondsToSelector: @selector(readWriteTextureSupport)] &&
-			   _mtlDevice.readWriteTextureSupport == MTLReadWriteTextureTier2) ? "2" : "1";
+	logMsg += _mtlDevice.readWriteTextureSupport == MTLReadWriteTextureTier2 ? "2" : "1";
 
 	string devTypeStr;
 	switch (_properties.deviceType) {
@@ -5148,15 +5087,15 @@ VkDeviceSize MVKDevice::getVkFormatTexelBufferAlignment(VkFormat format, MVKBase
 	VkDeviceSize deviceAlignment = 0;
 	id<MTLDevice> mtlDev = _physicalDevice->_mtlDevice;
 	MVKPixelFormats* mvkPixFmts = &_physicalDevice->_pixelFormats;
-	if ([mtlDev respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)]) {
-		MTLPixelFormat mtlPixFmt = mvkPixFmts->getMTLPixelFormat(format);
-		if (mvkPixFmts->getChromaSubsamplingPlaneCount(format) >= 2) {
-			// Use plane 1 to get the alignment requirements. In a 2-plane format, this will
-			// typically have stricter alignment requirements due to it being a 2-component format.
-			mtlPixFmt = mvkPixFmts->getChromaSubsamplingPlaneMTLPixelFormat(format, 1);
-		}
-		deviceAlignment = [mtlDev minimumLinearTextureAlignmentForPixelFormat: mtlPixFmt];
+
+	MTLPixelFormat mtlPixFmt = mvkPixFmts->getMTLPixelFormat(format);
+	if (mvkPixFmts->getChromaSubsamplingPlaneCount(format) >= 2) {
+		// Use plane 1 to get the alignment requirements. In a 2-plane format, this will
+		// typically have stricter alignment requirements due to it being a 2-component format.
+		mtlPixFmt = mvkPixFmts->getChromaSubsamplingPlaneMTLPixelFormat(format, 1);
 	}
+	deviceAlignment = [mtlDev minimumLinearTextureAlignmentForPixelFormat: mtlPixFmt];
+
 	return deviceAlignment ? deviceAlignment : _physicalDevice->_properties.limits.minTexelBufferOffsetAlignment;
 }
 
@@ -5250,10 +5189,7 @@ MTLCompileOptions* MVKDevice::getMTLCompileOptions(uint32_t fpFastMathFlags,
 	}
 #endif
 
-	if ([mtlCompOpt respondsToSelector: @selector(preserveInvariance)]) {
-		mtlCompOpt.preserveInvariance = preserveInvariance;
-	}
-
+	mtlCompOpt.preserveInvariance = preserveInvariance;
 	return [mtlCompOpt autorelease];
 }
 
@@ -5901,31 +5837,25 @@ NSArray<id<MTLDevice>>* mvkGetAvailableMTLDevicesArray(MVKInstance* instance) {
 	return mtlDevs;		// retained
 }
 
-uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice) {
-	return [mtlDevice respondsToSelector: @selector(registryID)] ? mtlDevice.registryID : 0;
-}
-
 uint64_t mvkGetLocationID(id<MTLDevice> mtlDevice) {
 	uint64_t hash = 0;
 
 #if MVK_MACOS && !MVK_MACCAT
 	// All of these device properties were added at the same time,
 	// so only need to check for the presence of one of them.
-	if ([mtlDevice respondsToSelector: @selector(location)]) {
-		uint64_t val;
+	uint64_t val;
 
-		val = mtlDevice.location;
-		hash = mvkHash(&val, 1, hash);
+	val = mtlDevice.location;
+	hash = mvkHash(&val, 1, hash);
 
-		val = mtlDevice.locationNumber;
-		hash = mvkHash(&val, 1, hash);
+	val = mtlDevice.locationNumber;
+	hash = mvkHash(&val, 1, hash);
 
-		val = mtlDevice.peerGroupID;
-		hash = mvkHash(&val, 1, hash);
+	val = mtlDevice.peerGroupID;
+	hash = mvkHash(&val, 1, hash);
 
-		val = mtlDevice.peerIndex;
-		hash = mvkHash(&val, 1, hash);
-	}
+	val = mtlDevice.peerIndex;
+	hash = mvkHash(&val, 1, hash);
 #endif
 
 	return hash;

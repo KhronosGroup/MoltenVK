@@ -24,73 +24,48 @@
 
 -(NSUInteger) renderTargetArrayLengthMVK {
 
-#if MVK_MACOS
-	return self.renderTargetArrayLength;
-#endif
-#if MVK_TVOS
-  return 0;
-#endif
-#if MVK_IOS_OR_VISIONOS
 	if ( [self respondsToSelector: @selector(renderTargetArrayLength)] ) {
 		return self.renderTargetArrayLength;
 	}
 	return 0;
-#endif
 
 }
 
 -(void) setRenderTargetArrayLengthMVK: (NSUInteger) length {
 
-#if MVK_MACOS
-	self.renderTargetArrayLength = length;
-#endif
-#if MVK_IOS_OR_VISIONOS
 	if ( [self respondsToSelector: @selector(setRenderTargetArrayLength:)] ) {
 		self.renderTargetArrayLength = length;
 	}
-#endif
 
 }
 
 -(NSUInteger) renderTargetWidthMVK {
 
-#if MVK_TVOS
-	return 0;
-#else
     if ([self respondsToSelector: @selector(renderTargetWidth)])
         return self.renderTargetWidth;
     return 0;
-#endif
 
 }
 
 -(void) setRenderTargetWidthMVK: (NSUInteger) width {
 
-#if !MVK_TVOS
 	if ([self respondsToSelector: @selector(setRenderTargetWidth:)])
 		self.renderTargetWidth = width;
-#endif
 
 }
 
 -(NSUInteger) renderTargetHeightMVK {
 
-#if MVK_TVOS
-	return 0;
-#else
 	if ([self respondsToSelector: @selector(renderTargetHeight)])
 		return self.renderTargetHeight;
 	return 0;
-#endif
 
 }
 
 -(void) setRenderTargetHeightMVK: (NSUInteger) height {
 
-#if !MVK_TVOS
 	if ([self respondsToSelector: @selector(setRenderTargetHeight:)])
 		self.renderTargetHeight = height;
-#endif
 
 }
 

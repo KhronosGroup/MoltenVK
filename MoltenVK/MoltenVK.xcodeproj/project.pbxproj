@@ -77,7 +77,6 @@
 		2FEA0A7B24902F9F00EEF3AD /* mvk_datatypes.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A9CEAAD1227378D400FAF779 /* mvk_datatypes.hpp */; };
 		2FEA0A7C24902F9F00EEF3AD /* MVKCommandEncodingPool.h in Headers */ = {isa = PBXBuildFile; fileRef = A90C8DE81F45354D009CB32C /* MVKCommandEncodingPool.h */; };
 		2FEA0A7D24902F9F00EEF3AD /* MVKResource.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7951C7DFB4800632CA3 /* MVKResource.h */; };
-		2FEA0A7E24902F9F00EEF3AD /* MTLTextureDescriptor+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = A9E53DD02100B197002781DD /* MTLTextureDescriptor+MoltenVK.h */; };
 		2FEA0A7F24902F9F00EEF3AD /* MVKPixelFormats.h in Headers */ = {isa = PBXBuildFile; fileRef = A9653FB724129C84005999D7 /* MVKPixelFormats.h */; };
 		2FEA0A8024902F9F00EEF3AD /* MVKStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = A981496A1FB6A998005F00B4 /* MVKStrings.h */; };
 		2FEA0A8124902F9F00EEF3AD /* MVKLayers.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7A01C7DFB4800632CA3 /* MVKLayers.h */; };
@@ -86,7 +85,6 @@
 		2FEA0A8524902F9F00EEF3AD /* MVKResource.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7961C7DFB4800632CA3 /* MVKResource.mm */; };
 		2FEA0A8624902F9F00EEF3AD /* MVKDescriptorSet.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7821C7DFB4800632CA3 /* MVKDescriptorSet.mm */; };
 		2FEA0A8724902F9F00EEF3AD /* MVKVulkanAPIObject.mm in Sources */ = {isa = PBXBuildFile; fileRef = A99C91002295FAC500A061DA /* MVKVulkanAPIObject.mm */; };
-		2FEA0A8824902F9F00EEF3AD /* MTLTextureDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = A9E53DD52100B197002781DD /* MTLTextureDescriptor+MoltenVK.m */; };
 		2FEA0A8924902F9F00EEF3AD /* MVKCommandResourceFactory.mm in Sources */ = {isa = PBXBuildFile; fileRef = A95870F71C90D29F009EB096 /* MVKCommandResourceFactory.mm */; };
 		2FEA0A8A24902F9F00EEF3AD /* MVKCommandEncodingPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = A90C8DE91F45354D009CB32C /* MVKCommandEncodingPool.mm */; };
 		2FEA0A8B24902F9F00EEF3AD /* MVKWatermark.mm in Sources */ = {isa = PBXBuildFile; fileRef = A981494A1FB6A3F7005F00B4 /* MVKWatermark.mm */; };
@@ -134,14 +132,8 @@
 		45003E74214AD4E600E989CB /* MVKExtensions.def in Headers */ = {isa = PBXBuildFile; fileRef = 45003E6F214AD4C900E989CB /* MVKExtensions.def */; };
 		453638322508A4C7000EFFD3 /* MTLRenderPassStencilAttachmentDescriptor+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = 4536382D2508A4C6000EFFD3 /* MTLRenderPassStencilAttachmentDescriptor+MoltenVK.h */; };
 		453638342508A4C7000EFFD3 /* MTLRenderPassStencilAttachmentDescriptor+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = 4536382D2508A4C6000EFFD3 /* MTLRenderPassStencilAttachmentDescriptor+MoltenVK.h */; };
-		453638352508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = 4536382F2508A4C6000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.m */; };
-		453638362508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = 4536382F2508A4C6000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.m */; };
-		453638372508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = 4536382F2508A4C6000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.m */; };
 		453638382508A4C7000EFFD3 /* MTLRenderPassStencilAttachmentDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = 453638302508A4C6000EFFD3 /* MTLRenderPassStencilAttachmentDescriptor+MoltenVK.m */; };
 		4536383A2508A4C7000EFFD3 /* MTLRenderPassStencilAttachmentDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = 453638302508A4C6000EFFD3 /* MTLRenderPassStencilAttachmentDescriptor+MoltenVK.m */; };
-		4536383B2508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = 453638312508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h */; };
-		4536383C2508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = 453638312508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h */; };
-		4536383D2508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = 453638312508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h */; };
 		4553AEFB2251617100E8EBCD /* MVKBlockObserver.m in Sources */ = {isa = PBXBuildFile; fileRef = 4553AEF62251617100E8EBCD /* MVKBlockObserver.m */; };
 		4553AEFC2251617100E8EBCD /* MVKBlockObserver.m in Sources */ = {isa = PBXBuildFile; fileRef = 4553AEF62251617100E8EBCD /* MVKBlockObserver.m */; };
 		4553AEFD2251617100E8EBCD /* MVKBlockObserver.h in Headers */ = {isa = PBXBuildFile; fileRef = 4553AEFA2251617100E8EBCD /* MVKBlockObserver.h */; };
@@ -367,8 +359,6 @@
 		A9E4B78A1E1D8AF10046A4CE /* MVKMTLResourceBindings.h in Headers */ = {isa = PBXBuildFile; fileRef = A9E4B7881E1D8AF10046A4CE /* MVKMTLResourceBindings.h */; };
 		A9E53DD72100B197002781DD /* MTLSamplerDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = A9E53DCD2100B197002781DD /* MTLSamplerDescriptor+MoltenVK.m */; };
 		A9E53DD82100B197002781DD /* MTLSamplerDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = A9E53DCD2100B197002781DD /* MTLSamplerDescriptor+MoltenVK.m */; };
-		A9E53DDD2100B197002781DD /* MTLTextureDescriptor+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = A9E53DD02100B197002781DD /* MTLTextureDescriptor+MoltenVK.h */; };
-		A9E53DDE2100B197002781DD /* MTLTextureDescriptor+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = A9E53DD02100B197002781DD /* MTLTextureDescriptor+MoltenVK.h */; };
 		A9E53DDF2100B197002781DD /* CAMetalLayer+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = A9E53DD12100B197002781DD /* CAMetalLayer+MoltenVK.h */; };
 		A9E53DE02100B197002781DD /* CAMetalLayer+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = A9E53DD12100B197002781DD /* CAMetalLayer+MoltenVK.h */; };
 		A9E53DE12100B197002781DD /* NSString+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = A9E53DD22100B197002781DD /* NSString+MoltenVK.h */; };
@@ -377,8 +367,6 @@
 		A9E53DE42100B197002781DD /* MTLSamplerDescriptor+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = A9E53DD32100B197002781DD /* MTLSamplerDescriptor+MoltenVK.h */; };
 		A9E53DE52100B197002781DD /* NSString+MoltenVK.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9E53DD42100B197002781DD /* NSString+MoltenVK.mm */; };
 		A9E53DE62100B197002781DD /* NSString+MoltenVK.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9E53DD42100B197002781DD /* NSString+MoltenVK.mm */; };
-		A9E53DE72100B197002781DD /* MTLTextureDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = A9E53DD52100B197002781DD /* MTLTextureDescriptor+MoltenVK.m */; };
-		A9E53DE82100B197002781DD /* MTLTextureDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = A9E53DD52100B197002781DD /* MTLTextureDescriptor+MoltenVK.m */; };
 		A9E53DE92100B197002781DD /* CAMetalLayer+MoltenVK.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9E53DD62100B197002781DD /* CAMetalLayer+MoltenVK.mm */; };
 		A9E53DEA2100B197002781DD /* CAMetalLayer+MoltenVK.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9E53DD62100B197002781DD /* CAMetalLayer+MoltenVK.mm */; };
 		A9E53DF32100B302002781DD /* MTLRenderPassDescriptor+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = A9E53DEE2100B302002781DD /* MTLRenderPassDescriptor+MoltenVK.h */; };
@@ -493,8 +481,6 @@
 		DCFD7F1F2A45BC6E007BBBF7 /* mvk_datatypes.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A9CEAAD1227378D400FAF779 /* mvk_datatypes.hpp */; };
 		DCFD7F202A45BC6E007BBBF7 /* MVKCommandEncodingPool.h in Headers */ = {isa = PBXBuildFile; fileRef = A90C8DE81F45354D009CB32C /* MVKCommandEncodingPool.h */; };
 		DCFD7F212A45BC6E007BBBF7 /* MVKResource.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7951C7DFB4800632CA3 /* MVKResource.h */; };
-		DCFD7F222A45BC6E007BBBF7 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = 453638312508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h */; };
-		DCFD7F232A45BC6E007BBBF7 /* MTLTextureDescriptor+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = A9E53DD02100B197002781DD /* MTLTextureDescriptor+MoltenVK.h */; };
 		DCFD7F242A45BC6E007BBBF7 /* MVKPixelFormats.h in Headers */ = {isa = PBXBuildFile; fileRef = A9653FB724129C84005999D7 /* MVKPixelFormats.h */; };
 		DCFD7F252A45BC6E007BBBF7 /* MVKStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = A981496A1FB6A998005F00B4 /* MVKStrings.h */; };
 		DCFD7F262A45BC6E007BBBF7 /* MVKLayers.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7A01C7DFB4800632CA3 /* MVKLayers.h */; };
@@ -503,14 +489,12 @@
 		DCFD7F2A2A45BC6E007BBBF7 /* MVKResource.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7961C7DFB4800632CA3 /* MVKResource.mm */; };
 		DCFD7F2B2A45BC6E007BBBF7 /* MVKDescriptorSet.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7821C7DFB4800632CA3 /* MVKDescriptorSet.mm */; };
 		DCFD7F2C2A45BC6E007BBBF7 /* MVKVulkanAPIObject.mm in Sources */ = {isa = PBXBuildFile; fileRef = A99C91002295FAC500A061DA /* MVKVulkanAPIObject.mm */; };
-		DCFD7F2D2A45BC6E007BBBF7 /* MTLTextureDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = A9E53DD52100B197002781DD /* MTLTextureDescriptor+MoltenVK.m */; };
 		DCFD7F2E2A45BC6E007BBBF7 /* MVKCommandResourceFactory.mm in Sources */ = {isa = PBXBuildFile; fileRef = A95870F71C90D29F009EB096 /* MVKCommandResourceFactory.mm */; };
 		DCFD7F2F2A45BC6E007BBBF7 /* MVKCommandEncodingPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = A90C8DE91F45354D009CB32C /* MVKCommandEncodingPool.mm */; };
 		DCFD7F302A45BC6E007BBBF7 /* MVKWatermark.mm in Sources */ = {isa = PBXBuildFile; fileRef = A981494A1FB6A3F7005F00B4 /* MVKWatermark.mm */; };
 		DCFD7F312A45BC6E007BBBF7 /* MVKBaseObject.mm in Sources */ = {isa = PBXBuildFile; fileRef = A98149411FB6A3F7005F00B4 /* MVKBaseObject.mm */; };
 		DCFD7F322A45BC6E007BBBF7 /* NSString+MoltenVK.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9E53DD42100B197002781DD /* NSString+MoltenVK.mm */; };
 		DCFD7F332A45BC6E007BBBF7 /* vulkan.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7AD1C7DFB4800632CA3 /* vulkan.mm */; };
-		DCFD7F342A45BC6E007BBBF7 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = 4536382F2508A4C6000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.m */; };
 		DCFD7F352A45BC6E007BBBF7 /* MVKSurface.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB79A1C7DFB4800632CA3 /* MVKSurface.mm */; };
 		DCFD7F362A45BC6E007BBBF7 /* MVKQueryPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7901C7DFB4800632CA3 /* MVKQueryPool.mm */; };
 		DCFD7F372A45BC6E007BBBF7 /* MVKInstance.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB78C1C7DFB4800632CA3 /* MVKInstance.mm */; };
@@ -660,9 +644,7 @@
 		2FEA0ABA24902F9F00EEF3AD /* libMoltenVK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVK.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		45003E6F214AD4C900E989CB /* MVKExtensions.def */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = MVKExtensions.def; sourceTree = "<group>"; };
 		4536382D2508A4C6000EFFD3 /* MTLRenderPassStencilAttachmentDescriptor+MoltenVK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "MTLRenderPassStencilAttachmentDescriptor+MoltenVK.h"; sourceTree = "<group>"; };
-		4536382F2508A4C6000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "MTLRenderPassDepthAttachmentDescriptor+MoltenVK.m"; sourceTree = "<group>"; };
 		453638302508A4C6000EFFD3 /* MTLRenderPassStencilAttachmentDescriptor+MoltenVK.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "MTLRenderPassStencilAttachmentDescriptor+MoltenVK.m"; sourceTree = "<group>"; };
-		453638312508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h"; sourceTree = "<group>"; };
 		4553AEF62251617100E8EBCD /* MVKBlockObserver.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MVKBlockObserver.m; sourceTree = "<group>"; };
 		4553AEFA2251617100E8EBCD /* MVKBlockObserver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKBlockObserver.h; sourceTree = "<group>"; };
 		45557A4D21C9EFF3008868BD /* MVKCodec.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCodec.mm; sourceTree = "<group>"; };
@@ -775,12 +757,10 @@
 		A9DE1083200598C500F18F80 /* icd */ = {isa = PBXFileReference; lastKnownFileType = folder; path = icd; sourceTree = "<group>"; };
 		A9E4B7881E1D8AF10046A4CE /* MVKMTLResourceBindings.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKMTLResourceBindings.h; sourceTree = "<group>"; };
 		A9E53DCD2100B197002781DD /* MTLSamplerDescriptor+MoltenVK.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "MTLSamplerDescriptor+MoltenVK.m"; sourceTree = "<group>"; };
-		A9E53DD02100B197002781DD /* MTLTextureDescriptor+MoltenVK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "MTLTextureDescriptor+MoltenVK.h"; sourceTree = "<group>"; };
 		A9E53DD12100B197002781DD /* CAMetalLayer+MoltenVK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "CAMetalLayer+MoltenVK.h"; sourceTree = "<group>"; };
 		A9E53DD22100B197002781DD /* NSString+MoltenVK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSString+MoltenVK.h"; sourceTree = "<group>"; };
 		A9E53DD32100B197002781DD /* MTLSamplerDescriptor+MoltenVK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "MTLSamplerDescriptor+MoltenVK.h"; sourceTree = "<group>"; };
 		A9E53DD42100B197002781DD /* NSString+MoltenVK.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = "NSString+MoltenVK.mm"; sourceTree = "<group>"; };
-		A9E53DD52100B197002781DD /* MTLTextureDescriptor+MoltenVK.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "MTLTextureDescriptor+MoltenVK.m"; sourceTree = "<group>"; };
 		A9E53DD62100B197002781DD /* CAMetalLayer+MoltenVK.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = "CAMetalLayer+MoltenVK.mm"; sourceTree = "<group>"; };
 		A9E53DEE2100B302002781DD /* MTLRenderPassDescriptor+MoltenVK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "MTLRenderPassDescriptor+MoltenVK.h"; sourceTree = "<group>"; };
 		A9E53DF22100B302002781DD /* MTLRenderPassDescriptor+MoltenVK.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "MTLRenderPassDescriptor+MoltenVK.m"; sourceTree = "<group>"; };
@@ -1077,8 +1057,6 @@
 			children = (
 				A9E53DD12100B197002781DD /* CAMetalLayer+MoltenVK.h */,
 				A9E53DD62100B197002781DD /* CAMetalLayer+MoltenVK.mm */,
-				453638312508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h */,
-				4536382F2508A4C6000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.m */,
 				A9E53DEE2100B302002781DD /* MTLRenderPassDescriptor+MoltenVK.h */,
 				A9E53DF22100B302002781DD /* MTLRenderPassDescriptor+MoltenVK.m */,
 				4536382D2508A4C6000EFFD3 /* MTLRenderPassStencilAttachmentDescriptor+MoltenVK.h */,
@@ -1087,8 +1065,6 @@
 				A9E53DFA21064F84002781DD /* MTLRenderPipelineDescriptor+MoltenVK.m */,
 				A9E53DD32100B197002781DD /* MTLSamplerDescriptor+MoltenVK.h */,
 				A9E53DCD2100B197002781DD /* MTLSamplerDescriptor+MoltenVK.m */,
-				A9E53DD02100B197002781DD /* MTLTextureDescriptor+MoltenVK.h */,
-				A9E53DD52100B197002781DD /* MTLTextureDescriptor+MoltenVK.m */,
 				A93E832E2121C5D3001FEBD4 /* MVKGPUCapture.h */,
 				A93E83342121F0C8001FEBD4 /* MVKGPUCapture.mm */,
 				A9E53DD22100B197002781DD /* NSString+MoltenVK.h */,
@@ -1222,7 +1198,6 @@
 				2FEA0A7524902F9F00EEF3AD /* MVKCmdDebug.h in Headers */,
 				2FEA0A7624902F9F00EEF3AD /* MVKWatermarkTextureContent.h in Headers */,
 				2FEA0A7724902F9F00EEF3AD /* MVKFoundation.h in Headers */,
-				4536383C2508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h in Headers */,
 				2FEA0A7824902F9F00EEF3AD /* MVKDeviceMemory.h in Headers */,
 				2FEA0A7924902F9F00EEF3AD /* MVKMTLResourceBindings.h in Headers */,
 				2FEA0A7A24902F9F00EEF3AD /* MVKExtensions.def in Headers */,
@@ -1230,7 +1205,6 @@
 				2FEA0A7B24902F9F00EEF3AD /* mvk_datatypes.hpp in Headers */,
 				2FEA0A7C24902F9F00EEF3AD /* MVKCommandEncodingPool.h in Headers */,
 				2FEA0A7D24902F9F00EEF3AD /* MVKResource.h in Headers */,
-				2FEA0A7E24902F9F00EEF3AD /* MTLTextureDescriptor+MoltenVK.h in Headers */,
 				2FEA0A7F24902F9F00EEF3AD /* MVKPixelFormats.h in Headers */,
 				2FEA0A8024902F9F00EEF3AD /* MVKStrings.h in Headers */,
 				2FEA0A8124902F9F00EEF3AD /* MVKLayers.h in Headers */,
@@ -1317,8 +1291,6 @@
 				A90C8DEA1F45354D009CB32C /* MVKCommandEncodingPool.h in Headers */,
 				1667EB842D5BDEF500ECF248 /* MVKInlineArray.h in Headers */,
 				A94FB8081C7DFB4800632CA3 /* MVKResource.h in Headers */,
-				4536383B2508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h in Headers */,
-				A9E53DDD2100B197002781DD /* MTLTextureDescriptor+MoltenVK.h in Headers */,
 				A9653FBA24129C84005999D7 /* MVKPixelFormats.h in Headers */,
 				A981496B1FB6A998005F00B4 /* MVKStrings.h in Headers */,
 				A94FB81C1C7DFB4800632CA3 /* MVKLayers.h in Headers */,
@@ -1398,8 +1370,6 @@
 				A90C8DEB1F45354D009CB32C /* MVKCommandEncodingPool.h in Headers */,
 				1667EB832D5BDEF500ECF248 /* MVKInlineArray.h in Headers */,
 				A94FB8091C7DFB4800632CA3 /* MVKResource.h in Headers */,
-				4536383D2508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h in Headers */,
-				A9E53DDE2100B197002781DD /* MTLTextureDescriptor+MoltenVK.h in Headers */,
 				A9653FBB24129C84005999D7 /* MVKPixelFormats.h in Headers */,
 				A981496C1FB6A998005F00B4 /* MVKStrings.h in Headers */,
 				A94FB81D1C7DFB4800632CA3 /* MVKLayers.h in Headers */,
@@ -1504,8 +1474,6 @@
 				DCFD7F1F2A45BC6E007BBBF7 /* mvk_datatypes.hpp in Headers */,
 				DCFD7F202A45BC6E007BBBF7 /* MVKCommandEncodingPool.h in Headers */,
 				DCFD7F212A45BC6E007BBBF7 /* MVKResource.h in Headers */,
-				DCFD7F222A45BC6E007BBBF7 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h in Headers */,
-				DCFD7F232A45BC6E007BBBF7 /* MTLTextureDescriptor+MoltenVK.h in Headers */,
 				DCFD7F242A45BC6E007BBBF7 /* MVKPixelFormats.h in Headers */,
 				DCFD7F252A45BC6E007BBBF7 /* MVKStrings.h in Headers */,
 				DCFD7F262A45BC6E007BBBF7 /* MVKLayers.h in Headers */,
@@ -2147,7 +2115,6 @@
 				2FEA0A8524902F9F00EEF3AD /* MVKResource.mm in Sources */,
 				2FEA0A8624902F9F00EEF3AD /* MVKDescriptorSet.mm in Sources */,
 				2FEA0A8724902F9F00EEF3AD /* MVKVulkanAPIObject.mm in Sources */,
-				2FEA0A8824902F9F00EEF3AD /* MTLTextureDescriptor+MoltenVK.m in Sources */,
 				2FEA0A8924902F9F00EEF3AD /* MVKCommandResourceFactory.mm in Sources */,
 				2FEA0A8A24902F9F00EEF3AD /* MVKCommandEncodingPool.mm in Sources */,
 				2FEA0A8B24902F9F00EEF3AD /* MVKWatermark.mm in Sources */,
@@ -2170,7 +2137,6 @@
 				2FEA0A9C24902F9F00EEF3AD /* MVKPixelFormats.mm in Sources */,
 				A9A5E9C825C0822700E9085E /* MVKEnvironment.cpp in Sources */,
 				2FEA0A9D24902F9F00EEF3AD /* MVKDevice.mm in Sources */,
-				453638362508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.m in Sources */,
 				2FEA0A9E24902F9F00EEF3AD /* MTLRenderPassDescriptor+MoltenVK.m in Sources */,
 				2FEA0AA024902F9F00EEF3AD /* MVKPipeline.mm in Sources */,
 				2FEA0AA124902F9F00EEF3AD /* MVKQueue.mm in Sources */,
@@ -2212,14 +2178,12 @@
 				A94FB80A1C7DFB4800632CA3 /* MVKResource.mm in Sources */,
 				A94FB7E21C7DFB4800632CA3 /* MVKDescriptorSet.mm in Sources */,
 				A99C91022295FAC600A061DA /* MVKVulkanAPIObject.mm in Sources */,
-				A9E53DE72100B197002781DD /* MTLTextureDescriptor+MoltenVK.m in Sources */,
 				A95870FA1C90D29F009EB096 /* MVKCommandResourceFactory.mm in Sources */,
 				A90C8DEC1F45354D009CB32C /* MVKCommandEncodingPool.mm in Sources */,
 				A981495F1FB6A3F7005F00B4 /* MVKWatermark.mm in Sources */,
 				A981494D1FB6A3F7005F00B4 /* MVKBaseObject.mm in Sources */,
 				A9E53DE52100B197002781DD /* NSString+MoltenVK.mm in Sources */,
 				A94FB8321C7DFB4800632CA3 /* vulkan.mm in Sources */,
-				453638352508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.m in Sources */,
 				A94FB8121C7DFB4800632CA3 /* MVKSurface.mm in Sources */,
 				A94FB7FE1C7DFB4800632CA3 /* MVKQueryPool.mm in Sources */,
 				A94FB7F61C7DFB4800632CA3 /* MVKInstance.mm in Sources */,
@@ -2271,14 +2235,12 @@
 				A94FB80B1C7DFB4800632CA3 /* MVKResource.mm in Sources */,
 				A94FB7E31C7DFB4800632CA3 /* MVKDescriptorSet.mm in Sources */,
 				A99C91032295FAC600A061DA /* MVKVulkanAPIObject.mm in Sources */,
-				A9E53DE82100B197002781DD /* MTLTextureDescriptor+MoltenVK.m in Sources */,
 				A95870FB1C90D29F009EB096 /* MVKCommandResourceFactory.mm in Sources */,
 				A90C8DED1F45354D009CB32C /* MVKCommandEncodingPool.mm in Sources */,
 				A98149601FB6A3F7005F00B4 /* MVKWatermark.mm in Sources */,
 				A981494E1FB6A3F7005F00B4 /* MVKBaseObject.mm in Sources */,
 				A9E53DE62100B197002781DD /* NSString+MoltenVK.mm in Sources */,
 				A94FB8331C7DFB4800632CA3 /* vulkan.mm in Sources */,
-				453638372508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.m in Sources */,
 				A94FB8131C7DFB4800632CA3 /* MVKSurface.mm in Sources */,
 				A94FB7FF1C7DFB4800632CA3 /* MVKQueryPool.mm in Sources */,
 				A94FB7F71C7DFB4800632CA3 /* MVKInstance.mm in Sources */,
@@ -2358,14 +2320,12 @@
 				DCFD7F2A2A45BC6E007BBBF7 /* MVKResource.mm in Sources */,
 				DCFD7F2B2A45BC6E007BBBF7 /* MVKDescriptorSet.mm in Sources */,
 				DCFD7F2C2A45BC6E007BBBF7 /* MVKVulkanAPIObject.mm in Sources */,
-				DCFD7F2D2A45BC6E007BBBF7 /* MTLTextureDescriptor+MoltenVK.m in Sources */,
 				DCFD7F2E2A45BC6E007BBBF7 /* MVKCommandResourceFactory.mm in Sources */,
 				DCFD7F2F2A45BC6E007BBBF7 /* MVKCommandEncodingPool.mm in Sources */,
 				DCFD7F302A45BC6E007BBBF7 /* MVKWatermark.mm in Sources */,
 				DCFD7F312A45BC6E007BBBF7 /* MVKBaseObject.mm in Sources */,
 				DCFD7F322A45BC6E007BBBF7 /* NSString+MoltenVK.mm in Sources */,
 				DCFD7F332A45BC6E007BBBF7 /* vulkan.mm in Sources */,
-				DCFD7F342A45BC6E007BBBF7 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.m in Sources */,
 				DCFD7F352A45BC6E007BBBF7 /* MVKSurface.mm in Sources */,
 				DCFD7F362A45BC6E007BBBF7 /* MVKQueryPool.mm in Sources */,
 				DCFD7F372A45BC6E007BBBF7 /* MVKInstance.mm in Sources */,

@@ -166,19 +166,15 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdUse) {
 id<MTLCommandBuffer> MVKQueue::getMTLCommandBuffer(MVKCommandUse cmdUse, bool retainRefs) {
 	id<MTLCommandBuffer> mtlCmdBuff = nil;
 	uint64_t startTime = getPerformanceTimestamp();
-	if ([_mtlQueue respondsToSelector: @selector(commandBufferWithDescriptor:)]) {
-		MTLCommandBufferDescriptor* mtlCmdBuffDesc = [MTLCommandBufferDescriptor new];	// temp retain
-		mtlCmdBuffDesc.retainedReferences = retainRefs;
-		if (getMVKConfig().debugMode) {
-			mtlCmdBuffDesc.errorOptions |= MTLCommandBufferErrorOptionEncoderExecutionStatus;
-		}
-		mtlCmdBuff = [_mtlQueue commandBufferWithDescriptor: mtlCmdBuffDesc];
-		[mtlCmdBuffDesc release];														// temp release
-	} else if (retainRefs) {
-		mtlCmdBuff = [_mtlQueue commandBuffer];
-	} else {
-		mtlCmdBuff = [_mtlQueue commandBufferWithUnretainedReferences];
+
+	MTLCommandBufferDescriptor* mtlCmdBuffDesc = [MTLCommandBufferDescriptor new];	// temp retain
+	mtlCmdBuffDesc.retainedReferences = retainRefs;
+	if (getMVKConfig().debugMode) {
+		mtlCmdBuffDesc.errorOptions |= MTLCommandBufferErrorOptionEncoderExecutionStatus;
 	}
+	mtlCmdBuff = [_mtlQueue commandBufferWithDescriptor: mtlCmdBuffDesc];
+	[mtlCmdBuffDesc release];														// temp release
+
 	addPerformanceInterval(getPerformanceStats().queue.retrieveMTLCommandBuffer, startTime);
 	NSString* mtlCmdBuffLabel = getMTLCommandBufferLabel(cmdUse);
 	setMetalObjectLabel(mtlCmdBuff, mtlCmdBuffLabel);
@@ -276,15 +272,13 @@ void MVKQueue::handleMTLCommandBufferError(id<MTLCommandBuffer> mtlCmdBuff) {
 		}
 	}
 
-	if ([mtlCmdBuff respondsToSelector: @selector(logs)]) {
-		bool isFirstMsg = true;
-		for (id<MTLFunctionLog> log in mtlCmdBuff.logs) {
-			if (isFirstMsg) {
-				MVKLogInfo("Shader log messages:");
-				isFirstMsg = false;
-			}
-			MVKLogInfo("%s", log.description.UTF8String);
+	bool isFirstMsg = true;
+	for (id<MTLFunctionLog> log in mtlCmdBuff.logs) {
+		if (isFirstMsg) {
+			MVKLogInfo("Shader log messages:");
+			isFirstMsg = false;
 		}
+		MVKLogInfo("%s", log.description.UTF8String);
 	}
 }
 

@@ -1297,9 +1297,6 @@ protected:
  */
 NSArray<id<MTLDevice>>* mvkGetAvailableMTLDevicesArray(MVKInstance* instance);
 
-/** Returns the registry ID of the specified device, or zero if the device does not have a registry ID. */
-uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice);
-
 /**
  * Returns a value identifying the physical location of the specified device.
  * The returned value is a hash of the location, locationNumber, peerGroupID,

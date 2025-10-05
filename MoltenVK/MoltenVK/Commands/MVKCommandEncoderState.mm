@@ -1144,10 +1144,8 @@ void MVKMetalGraphicsCommandEncoderState::bindStateData(
 			}
 			if (numViewports == 1) {
 				[encoder setViewport:mtlViewports[0]];
-			} else {
-#if MVK_MACOS_OR_IOS
+			} else if ([encoder respondsToSelector: @selector(setViewports:count:)]) {
 				[encoder setViewports:mtlViewports count:numViewports];
-#endif
 			}
 		}
 		if (flags.has(MVKRenderStateFlag::Scissors) &&
@@ -1366,10 +1364,8 @@ void MVKMetalGraphicsCommandEncoderState::bindState(
 		}
 		if (numScissors == 1) {
 			[encoder setScissorRect:mtlScissors[0]];
-		} else {
-#if MVK_MACOS_OR_IOS
+		} else if ([encoder respondsToSelector: @selector(setScissorRects:count:)]) {
 			[encoder setScissorRects:mtlScissors count:numScissors];
-#endif
 		}
 	}
 }

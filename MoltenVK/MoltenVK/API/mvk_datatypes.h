@@ -298,13 +298,11 @@ VkExtent3D mvkMipmapBaseSizeFromLevelSize3D(VkExtent3D levelSize, uint32_t level
 /** Returns the Metal MTLSamplerAddressMode corresponding to the specified Vulkan VkSamplerAddressMode. */
 MTLSamplerAddressMode mvkMTLSamplerAddressModeFromVkSamplerAddressMode(VkSamplerAddressMode vkMode);
 
-#if MVK_MACOS_OR_IOS
 /**
  * Returns the Metal MTLSamplerBorderColor corresponding to the specified Vulkan VkBorderColor,
  * or returns MTLSamplerBorderColorTransparentBlack if no corresponding MTLSamplerBorderColor exists.
  */
 MTLSamplerBorderColor mvkMTLSamplerBorderColorFromVkBorderColor(VkBorderColor vkColor);
-#endif
 
 /**
  * Returns the Metal MTLSamplerMinMagFilter corresponding to the specified Vulkan VkFilter,
@@ -384,10 +382,8 @@ MTLStoreAction mvkMTLStoreActionFromVkAttachmentStoreOp(VkAttachmentStoreOp vkSt
 /** Returns the Metal MTLMultisampleDepthResolveFilter corresponding to the specified Vulkan VkResolveModeFlagBits. */
 MTLMultisampleDepthResolveFilter mvkMTLMultisampleDepthResolveFilterFromVkResolveModeFlagBits(VkResolveModeFlagBits vkResolveMode);
 
-#if MVK_MACOS_OR_IOS
 /** Returns the Metal MTLMultisampleStencilResolveFilter corresponding to the specified Vulkan VkResolveModeFlagBits. */
 MTLMultisampleStencilResolveFilter mvkMTLMultisampleStencilResolveFilterFromVkResolveModeFlagBits(VkResolveModeFlagBits vkResolveMode);
-#endif
 
 /** Returns the Metal MTLViewport corresponding to the specified Vulkan VkViewport. */
 MTLViewport mvkMTLViewportFromVkViewport(VkViewport vkViewport);

@@ -36,7 +36,7 @@ id<MTLTexture> MVKFramebuffer::getDummyAttachmentMTLTexture(MVKRenderSubpass* su
 	uint32_t sampleCount = mvkSampleCountFromVkSampleCountFlagBits(subpass->getDefaultSampleCount());
 	MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatR8Unorm width: fbExtent.width height: fbExtent.height mipmapped: NO];
 	if (subpass->isMultiview()) {
-#if MVK_MACOS_OR_IOS
+#if MVK_MACOS_OR_IOS || MVK_XCODE_14
 		if (sampleCount > 1 && getMetalFeatures().multisampleLayeredRendering) {
 			mtlTexDesc.textureType = MTLTextureType2DMultisampleArray;
 			mtlTexDesc.sampleCount = sampleCount;

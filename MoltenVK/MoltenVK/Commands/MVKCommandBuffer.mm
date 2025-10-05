@@ -1092,10 +1092,7 @@ id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandU
 	if (!_mtlComputeEncoder || shouldStartNewEncoder(_mtlComputeEncoderUse, cmdUse)) {
 		needWaits = true;
 		endCurrentMetalEncoding();
-		if ([_mtlCmdBuffer respondsToSelector:@selector(computeCommandEncoderWithDispatchType:)])
-			_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoderWithDispatchType:getDispatchType(cmdUse)];
-		else
-			_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoder];
+		_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoderWithDispatchType:getDispatchType(cmdUse)];
 		retainIfImmediatelyEncoding(_mtlComputeEncoder);
 		beginMetalComputeEncoding(cmdUse);
 	}

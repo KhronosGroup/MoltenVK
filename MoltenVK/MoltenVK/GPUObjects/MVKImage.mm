@@ -26,7 +26,6 @@
 #include "MVKOSExtensions.h"
 #include "MVKCodec.h"
 
-#import "MTLTextureDescriptor+MoltenVK.h"
 #import "MTLSamplerDescriptor+MoltenVK.h"
 #import "CAMetalLayer+MoltenVK.h"
 
@@ -157,8 +156,8 @@ MTLTextureDescriptor* MVKImagePlane::newMTLTextureDescriptor() {
     mtlTexDesc.mipmapLevelCount = _image->_mipLevels;
     mtlTexDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(_image->_samples);
     mtlTexDesc.arrayLength = _image->_arrayLayers;
-	mtlTexDesc.usageMVK = _image->getMTLTextureUsage(mtlPixFmt);
-    mtlTexDesc.storageModeMVK = _image->getMTLStorageMode();
+	mtlTexDesc.usage = _image->getMTLTextureUsage(mtlPixFmt);
+    mtlTexDesc.storageMode = _image->getMTLStorageMode();
     mtlTexDesc.cpuCacheMode = _image->getMTLCPUCacheMode();
     // For 2D views of 3D and block texel views, we alias the underlying memory.
     // Ensure that it remains consistent by disabling GPU layout optimization.
@@ -1749,17 +1748,14 @@ void MVKPresentableSwapchainImage::addPresentedHandler(id<CAMetalDrawable> mtlDr
 	beginPresentation(presentInfo);
 
 #if !MVK_OS_SIMULATOR
-	if ([mtlDrawable respondsToSelector: @selector(addPresentedHandler:)]) {
-		[mtlDrawable addPresentedHandler: ^(id<MTLDrawable> mtlDrwbl) {
-			endPresentation(presentInfo, signaler, mtlDrwbl.presentedTime * 1.0e9);
-		}];
-	} else
+	[mtlDrawable addPresentedHandler: ^(id<MTLDrawable> mtlDrwbl) {
+		endPresentation(presentInfo, signaler, mtlDrwbl.presentedTime * 1.0e9);
+	}];
+#else
+	// If MTLDrawable.presentedTime/addPresentedHandler isn't supported,
+	// treat it as if the present happened when requested.
+	endPresentation(presentInfo, signaler);
 #endif
-	{
-		// If MTLDrawable.presentedTime/addPresentedHandler isn't supported,
-		// treat it as if the present happened when requested.
-		endPresentation(presentInfo, signaler);
-	}
 }
 
 // Ensure this image and the swapchain are not destroyed while awaiting presentation
@@ -1834,8 +1830,8 @@ MVKPresentableSwapchainImage::MVKPresentableSwapchainImage(MVKDevice* device,
 																								  width: pCreateInfo->extent.width
 																								 height: pCreateInfo->extent.height
 																							  mipmapped: NO];
-			mtlTexDesc.usageMVK = MTLTextureUsageRenderTarget;
-			mtlTexDesc.storageModeMVK = MTLStorageModePrivate;
+			mtlTexDesc.usage = MTLTextureUsageRenderTarget;
+			mtlTexDesc.storageMode = MTLStorageModePrivate;
 
 			_mtlTextureHeadless = [[getMTLDevice() newTextureWithDescriptor: mtlTexDesc] retain];	// retained
 		}
@@ -2438,7 +2434,7 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
 										 VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT))) {
 		if (_mtlTextureType == MTLTextureType2DArray && _image->_mtlTextureType == MTLTextureType2D) {
 			_mtlTextureType = MTLTextureType2D;
-#if MVK_MACOS_OR_IOS
+#if MVK_MACOS_OR_IOS || MVK_XCODE_14
 		} else if (_mtlTextureType == MTLTextureType2DMultisampleArray && _image->_mtlTextureType == MTLTextureType2DMultisample) {
 			_mtlTextureType = MTLTextureType2DMultisample;
 #endif
@@ -2627,9 +2623,7 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
     if (!pCreateInfo->unnormalizedCoordinates) {
         mtlSampDesc.rAddressMode = getMTLSamplerAddressMode(pCreateInfo->addressModeW);
     }
-#if MVK_MACOS_OR_IOS
 	mtlSampDesc.borderColorMVK = mvkMTLSamplerBorderColorFromVkBorderColor(pCreateInfo->borderColor);
-#endif
 
 	mtlSampDesc.minFilter = mvkMTLSamplerMinMagFilterFromVkFilter(pCreateInfo->minFilter);
 	mtlSampDesc.magFilter = mvkMTLSamplerMinMagFilterFromVkFilter(pCreateInfo->magFilter);
@@ -2652,7 +2646,7 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
 	// be automatically hardcoded into the shader MSL. An error will be triggered if this
 	// sampler is used to update or push a descriptor.
 	if (pCreateInfo->compareEnable && !_requiresConstExprSampler) {
-		mtlSampDesc.compareFunctionMVK = mvkMTLCompareFunctionFromVkCompareOp(pCreateInfo->compareOp);
+		mtlSampDesc.compareFunction = mvkMTLCompareFunctionFromVkCompareOp(pCreateInfo->compareOp);
 	}
 
 	return mtlSampDesc;
