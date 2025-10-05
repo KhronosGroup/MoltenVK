@@ -87,8 +87,8 @@ extern "C" {
 #endif
 
 /** Building for iOS or visionOS. */
-#ifndef MVK_IOS_OR_VISIONOS
-#    define MVK_IOS_OR_VISIONOS    (MVK_IOS || MVK_VISIONOS)
+#ifndef MVK_IOS_OR_TVOS_OR_VISIONOS
+#    define MVK_IOS_OR_TVOS_OR_VISIONOS    (MVK_IOS || MVK_TVOS || MVK_VISIONOS)
 #endif
 
 /** Building for a Simulator. */

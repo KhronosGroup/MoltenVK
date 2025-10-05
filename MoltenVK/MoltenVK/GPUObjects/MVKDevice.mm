@@ -43,7 +43,7 @@
 using namespace std;
 
 
-#if MVK_IOS_OR_TVOS || MVK_VISIONOS
+#if MVK_IOS_OR_TVOS_OR_VISIONOS
 #	include <UIKit/UIKit.h>
 #	define MVKViewClass		UIView
 #endif
@@ -1645,7 +1645,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			// Metal does not allow compressed or depth/stencil formats on 3D textures
 			if (mvkFmt == kMVKFormatDepthStencil ||
 				isChromaSubsampled
-#if MVK_IOS_OR_TVOS || MVK_VISIONOS
+#if MVK_IOS_OR_TVOS_OR_VISIONOS
 				|| (mvkFmt == kMVKFormatCompressed && !_metalFeatures.native3DCompressedTextures)
 #endif
 				) {
@@ -2069,7 +2069,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 #if MVK_MACOS
     colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT);
 #endif
-#if MVK_IOS_OR_TVOS || MVK_VISIONOS
+#if MVK_IOS_OR_TVOS_OR_VISIONOS
     colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_LINEAR_EXT);
 #endif
 
@@ -2480,80 +2480,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.argumentBuffers = true;
 	_metalFeatures.events = true;
 
-#if MVK_TVOS
+#if MVK_IOS_OR_TVOS_OR_VISIONOS
 	_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
     _metalFeatures.mtlBufferAlignment = 64;
 	_metalFeatures.mtlCopyBufferAlignment = 1;
-	_metalFeatures.maxTextureDimension = (8 * KIBI);
-    _metalFeatures.dynamicMTLBufferSize = (4 * KIBI);
-    _metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
-	_metalFeatures.renderLinearTextures = true;
-	_metalFeatures.tileBasedDeferredRendering = true;
-	_metalFeatures.renderWithoutAttachments = true;
-	_metalFeatures.nativeTextureSwizzle = true;
-	_metalFeatures.placementHeaps = useMTLHeap;
-
-	if (supportsMTLGPUFamily(Apple3)) {
-		_metalFeatures.indirectDrawing = true;
-		_metalFeatures.baseVertexInstanceDrawing = true;
-		_metalFeatures.combinedStoreResolveAction = true;
-		_metalFeatures.mtlBufferAlignment = 16;     // Min float4 alignment for typical vertex buffers. MTLBuffer may go down to 4 bytes for other data.
-		_metalFeatures.maxTextureDimension = (16 * KIBI);
-		_metalFeatures.depthSampleCompare = true;
-		_metalFeatures.arrayOfTextures = true;
-		_metalFeatures.arrayOfSamplers = true;
-		_metalFeatures.depthResolve = true;
-		_metalFeatures.native3DCompressedTextures = true;
-	}
-
-	if (supportsMTLGPUFamily(Apple4)) {
-		_metalFeatures.quadPermute = true;
-	}
-
-	if (supportsMTLGPUFamily(Apple6)) {
-		_metalFeatures.maxPerStageTextureCount = 128;
-	} else if (supportsMTLGPUFamily(Apple4)) {
-		_metalFeatures.maxPerStageTextureCount = 96;
-	} else {
-		_metalFeatures.maxPerStageTextureCount = 31;
-	}
-
-#if MVK_XCODE_13
-	if ( mvkOSVersionIsAtLeast(15.0) ) {
-		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_4;
-	}
-#endif
-#if MVK_XCODE_14
-	if ( mvkOSVersionIsAtLeast(16.0) ) {
-		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_0;
-	}
-#endif
-
-#if MVK_XCODE_15
-	if ( mvkOSVersionIsAtLeast(17.0) ) {
-		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_1;
-	}
-#endif
-
-#if MVK_XCODE_16
-	if ( mvkOSVersionIsAtLeast(18.0) ) {
-		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_2;
-	}
-#endif
-
-#if MVK_XCODE_26
-	if ( mvkOSVersionIsAtLeast(26.0) ) {
-		_metalFeatures.mslVersionEnum = MTLLanguageVersion4_0;
-	}
-#endif
-
-#endif
-
-#if MVK_IOS_OR_VISIONOS
-	_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
-    _metalFeatures.mtlBufferAlignment = 64;
-	_metalFeatures.mtlCopyBufferAlignment = 1;
-	_metalFeatures.maxTextureDimension = (4 * KIBI);
 	_metalFeatures.renderLinearTextures = true;
 	_metalFeatures.tileBasedDeferredRendering = true;
 	_metalFeatures.dynamicMTLBufferSize = (4 * KIBI);
@@ -2562,7 +2492,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.renderWithoutAttachments = true;
 	_metalFeatures.nativeTextureSwizzle = true;
 	_metalFeatures.placementHeaps = useMTLHeap;
-	_metalFeatures.multisampleArrayTextures = true;
+	_metalFeatures.multisampleArrayTextures = !MVK_TVOS || mvkOSVersionIsAtLeast(16.0);
 
 	if (supportsMTLGPUFamily(Apple3)) {
 		_metalFeatures.indirectDrawing = true;
@@ -2579,27 +2509,27 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if (supportsMTLGPUFamily(Apple4)) {
 		_metalFeatures.postDepthCoverage = true;
-		_metalFeatures.nonUniformThreadgroups = true;
+		_metalFeatures.nonUniformThreadgroups = !MVK_TVOS || mvkOSVersionIsAtLeast(14.5);
 		_metalFeatures.quadPermute = true;
 	}
 
 	if (supportsMTLGPUFamily(Apple5)) {
-		_metalFeatures.layeredRendering = true;
+		_metalFeatures.layeredRendering = !MVK_TVOS || mvkOSVersionIsAtLeast(14.5);
 		_metalFeatures.stencilFeedback = true;
-		_metalFeatures.indirectTessellationDrawing = true;
-		_metalFeatures.stencilResolve = true;
+		_metalFeatures.indirectTessellationDrawing = !MVK_TVOS || mvkOSVersionIsAtLeast(14.5);
+		_metalFeatures.stencilResolve = !MVK_TVOS || mvkOSVersionIsAtLeast(14.5);
 	}
 
 	if (supportsMTLGPUFamily(Apple6)) {
-		_metalFeatures.astcHDRTextures = true;
+		_metalFeatures.astcHDRTextures = !MVK_TVOS || mvkOSVersionIsAtLeast(16.0);
 		_metalFeatures.simdPermute = true;
 	}
 
 	if (supportsMTLGPUFamily(Apple7)) {
 		_metalFeatures.maxQueryBufferSize = (256 * KIBI);
 		_metalFeatures.multisampleLayeredRendering = _metalFeatures.layeredRendering;
-		_metalFeatures.samplerClampToBorder = true;
-		_metalFeatures.samplerMirrorClampToEdge = true;
+		_metalFeatures.samplerClampToBorder = !MVK_TVOS || mvkOSVersionIsAtLeast(16.0);
+		_metalFeatures.samplerMirrorClampToEdge = !MVK_TVOS || mvkOSVersionIsAtLeast(16.0);
 		_metalFeatures.simdReduction = true;
 	}
 
@@ -2785,7 +2715,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
         }
     }
 #endif
-#if MVK_IOS_OR_VISIONOS
+#if MVK_IOS_OR_TVOS_OR_VISIONOS
     if (_metalFeatures.simdPermute) {
         _metalFeatures.minSubgroupSize = 4;
         _metalFeatures.maxSubgroupSize = 32;
@@ -2961,41 +2891,15 @@ void MVKPhysicalDevice::initFeatures() {
 
 	_features.shaderInt64 = supportsMTLGPUFamily(Apple3) || supportsMTLGPUFamily(Mac1);
 
-#if MVK_TVOS
+#if MVK_IOS_OR_TVOS_OR_VISIONOS
     _features.textureCompressionETC2 = true;
     _features.textureCompressionASTC_LDR = true;
 
-	_features.dualSrcBlend = true;
-	_features.depthClamp = true;
+    _features.dualSrcBlend = true;
+    _features.depthClamp = true;
 
     if (supportsMTLGPUFamily(Apple3)) {
         _features.occlusionQueryPrecise = true;
-    }
-
-	if (supportsMTLGPUFamily(Apple3)) {
-		_features.tessellationShader = true;
-		_features.shaderTessellationAndGeometryPointSize = true;
-	}
-#endif
-
-#if MVK_IOS_OR_VISIONOS
-    _features.textureCompressionETC2 = true;
-
-    if (supportsMTLGPUFamily(Apple2)) {
-        _features.textureCompressionASTC_LDR = true;
-    }
-
-    if (supportsMTLGPUFamily(Apple3)) {
-        _features.occlusionQueryPrecise = true;
-    }
-
-	_features.dualSrcBlend = true;
-
-	if (supportsMTLGPUFamily(Apple2)) {
-		_features.depthClamp = true;
-	}
-
-	if (supportsMTLGPUFamily(Apple3)) {
 		_features.tessellationShader = true;
 		_features.shaderTessellationAndGeometryPointSize = true;
 	}
@@ -3004,7 +2908,7 @@ void MVKPhysicalDevice::initFeatures() {
 		_features.imageCubeArray = true;
 	}
 
-	if (supportsMTLGPUFamily(Apple5)) {
+	if (supportsMTLGPUFamily(Apple5) && (!MVK_TVOS || mvkOSVersionIsAtLeast(14.5))) {
 		_features.multiViewport = true;
 	}
 
@@ -3054,20 +2958,7 @@ void MVKPhysicalDevice::initFeatures() {
 
 // Initializes the physical device property limits.
 void MVKPhysicalDevice::initLimits() {
-
-#if MVK_TVOS
     _properties.limits.maxColorAttachments = kMVKMaxColorAttachmentCount;
-#endif
-#if MVK_IOS_OR_VISIONOS
-    if (supportsMTLGPUFamily(Apple2)) {
-        _properties.limits.maxColorAttachments = kMVKMaxColorAttachmentCount;
-    } else {
-        _properties.limits.maxColorAttachments = 4;		// < kMVKMaxColorAttachmentCount
-    }
-#endif
-#if MVK_MACOS
-    _properties.limits.maxColorAttachments = kMVKMaxColorAttachmentCount;
-#endif
 
     _properties.limits.maxFragmentOutputAttachments = _properties.limits.maxColorAttachments;
     _properties.limits.maxFragmentDualSrcAttachments = _features.dualSrcBlend ? 1 : 0;
@@ -3142,7 +3033,7 @@ void MVKPhysicalDevice::initLimits() {
 		_properties.limits.maxUniformBufferRange = (uint32_t)min(_metalFeatures.maxMTLBufferSize, (VkDeviceSize)std::numeric_limits<uint32_t>::max());
 	}
 #endif
-#if MVK_IOS_OR_TVOS || MVK_VISIONOS
+#if MVK_IOS_OR_TVOS_OR_VISIONOS
 	_properties.limits.maxUniformBufferRange = (uint32_t)min(_metalFeatures.maxMTLBufferSize, (VkDeviceSize)std::numeric_limits<uint32_t>::max());
 #endif
 	_properties.limits.maxStorageBufferRange = (uint32_t)min(_metalFeatures.maxMTLBufferSize, (VkDeviceSize)std::numeric_limits<uint32_t>::max());
@@ -3213,33 +3104,17 @@ void MVKPhysicalDevice::initLimits() {
     _texelBuffAlignProperties.uniformTexelBufferOffsetSingleTexelAlignment = singleTexelUniform;
     _properties.limits.minTexelBufferOffsetAlignment = max(maxStorage, maxUniform);
 
-#if MVK_TVOS
-    if (supportsMTLGPUFamily(Apple4)) {
-        _properties.limits.maxFragmentInputComponents = 124;
-    } else {
-        _properties.limits.maxFragmentInputComponents = 60;
-    }
-
+#if MVK_IOS_OR_TVOS_OR_VISIONOS
     if (supportsMTLGPUFamily(Apple3)) {
         _properties.limits.optimalBufferCopyOffsetAlignment = 16;
     } else {
         _properties.limits.optimalBufferCopyOffsetAlignment = 64;
     }
 
-    _properties.limits.maxTessellationGenerationLevel = 16;
-    _properties.limits.maxTessellationPatchSize = 32;
-#endif
-#if MVK_IOS_OR_VISIONOS
     if (supportsMTLGPUFamily(Apple4)) {
         _properties.limits.maxFragmentInputComponents = 124;
     } else {
         _properties.limits.maxFragmentInputComponents = 60;
-    }
-
-    if (supportsMTLGPUFamily(Apple3)) {
-        _properties.limits.optimalBufferCopyOffsetAlignment = 16;
-    } else {
-        _properties.limits.optimalBufferCopyOffsetAlignment = 64;
     }
 
     if (supportsMTLGPUFamily(Apple5)) {
@@ -3628,12 +3503,7 @@ void MVKPhysicalDevice::initMemoryProperties() {
 		typeIdx++;
 	}
 #endif
-#if MVK_IOS_OR_VISIONOS
-	memlessBit = 1 << typeIdx;
-	setMemoryType(typeIdx, mainHeapIdx, MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS);
-	typeIdx++;
-#endif
-#if MVK_TVOS
+#if MVK_IOS_OR_TVOS_OR_VISIONOS
 	memlessBit = 1 << typeIdx;
 	setMemoryType(typeIdx, mainHeapIdx, MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS);
 	typeIdx++;

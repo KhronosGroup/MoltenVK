@@ -1144,7 +1144,7 @@ void MVKMetalGraphicsCommandEncoderState::bindStateData(
 			}
 			if (numViewports == 1) {
 				[encoder setViewport:mtlViewports[0]];
-			} else if ([encoder respondsToSelector: @selector(setViewports:count:)]) {
+			} else {
 				[encoder setViewports:mtlViewports count:numViewports];
 			}
 		}
@@ -1364,7 +1364,7 @@ void MVKMetalGraphicsCommandEncoderState::bindState(
 		}
 		if (numScissors == 1) {
 			[encoder setScissorRect:mtlScissors[0]];
-		} else if ([encoder respondsToSelector: @selector(setScissorRects:count:)]) {
+		} else {
 			[encoder setScissorRects:mtlScissors count:numScissors];
 		}
 	}
