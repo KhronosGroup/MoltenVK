@@ -88,6 +88,7 @@ static const uint32_t kMaxTimeDomains = 2;
 #define returnGPUValIf(gpuType, gpuIdx)  if (supports ##gpuType ##gpuIdx) { return gpuIdx; }
 
 uint8_t MVKMTLDeviceCapabilities::getHighestAppleGPU() const {
+	returnGPUValIf(Apple, 10);
 	returnGPUValIf(Apple, 9);
 	returnGPUValIf(Apple, 8);
 	returnGPUValIf(Apple, 7);
