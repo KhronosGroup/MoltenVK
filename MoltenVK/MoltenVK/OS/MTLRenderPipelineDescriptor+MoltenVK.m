@@ -39,15 +39,6 @@ typedef NSUInteger MTLLogicOperation;
 
 @implementation MTLRenderPipelineDescriptor (MoltenVK)
 
--(MTLPrimitiveTopologyClass) inputPrimitiveTopologyMVK {
-	if ( [self respondsToSelector: @selector(inputPrimitiveTopology)] ) { return [self inputPrimitiveTopology]; }
-	return MTLPrimitiveTopologyClassUnspecified;
-}
-
--(void) setInputPrimitiveTopologyMVK: (MTLPrimitiveTopologyClass) topology {
-	if ([self respondsToSelector: @selector(setInputPrimitiveTopology:)]) { [self setInputPrimitiveTopology:topology]; }
-}
-
 -(NSUInteger) sampleMaskMVK {
 #if MVK_USE_METAL_PRIVATE_API
 	if ( [self respondsToSelector: @selector(sampleMask)] ) { return self.sampleMask; }

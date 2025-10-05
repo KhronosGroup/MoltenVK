@@ -2509,15 +2509,15 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if (supportsMTLGPUFamily(Apple4)) {
 		_metalFeatures.postDepthCoverage = true;
-		_metalFeatures.nonUniformThreadgroups = !MVK_TVOS || mvkOSVersionIsAtLeast(14.5);
+		_metalFeatures.nonUniformThreadgroups = true;
 		_metalFeatures.quadPermute = true;
 	}
 
 	if (supportsMTLGPUFamily(Apple5)) {
-		_metalFeatures.layeredRendering = !MVK_TVOS || mvkOSVersionIsAtLeast(14.5);
+		_metalFeatures.layeredRendering = true;
 		_metalFeatures.stencilFeedback = true;
-		_metalFeatures.indirectTessellationDrawing = !MVK_TVOS || mvkOSVersionIsAtLeast(14.5);
-		_metalFeatures.stencilResolve = !MVK_TVOS || mvkOSVersionIsAtLeast(14.5);
+		_metalFeatures.indirectTessellationDrawing = true;
+		_metalFeatures.stencilResolve = true;
 	}
 
 	if (supportsMTLGPUFamily(Apple6)) {
@@ -2908,7 +2908,7 @@ void MVKPhysicalDevice::initFeatures() {
 		_features.imageCubeArray = true;
 	}
 
-	if (supportsMTLGPUFamily(Apple5) && (!MVK_TVOS || mvkOSVersionIsAtLeast(14.5))) {
+	if (supportsMTLGPUFamily(Apple5)) {
 		_features.multiViewport = true;
 	}
 

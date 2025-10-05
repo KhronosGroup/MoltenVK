@@ -294,7 +294,13 @@ MoltenVKShaderConverterTool::MoltenVKShaderConverterTool(int argc, const char* a
 	_quietMode = false;
 	_useMetalArgumentBuffers = false;
 
-	if (mvkOSVersionIsAtLeast(14.0)) {
+	if (mvkOSVersionIsAtLeast(26.0)) {
+		_mslVersionMajor = 4;
+		_mslVersionMinor = 0;
+	} else if (mvkOSVersionIsAtLeast(15.0)) {
+		_mslVersionMajor = 3;
+		_mslVersionMinor = 2;
+	} else if (mvkOSVersionIsAtLeast(14.0)) {
 		_mslVersionMajor = 3;
 		_mslVersionMinor = 1;
 	} else 	if (mvkOSVersionIsAtLeast(13.0)) {

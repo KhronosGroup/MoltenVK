@@ -912,17 +912,11 @@ void MVKUseResourceHelper::bindAndResetGraphics(id<MTLRenderCommandEncoder> enco
 		MTLRenderStages mtlStages = getMTLStages(stages);
 		Entry& entry = entries[stages];
 		if (!entry.read.empty()) {
-			if ([encoder respondsToSelector:@selector(useResources:count:usage:stages:)])
-				[encoder useResources:entry.read.data() count:entry.read.size() usage:MTLResourceUsageRead stages:mtlStages];
-			else
-				[encoder useResources:entry.read.data() count:entry.read.size() usage:MTLResourceUsageRead];
+			[encoder useResources:entry.read.data() count:entry.read.size() usage:MTLResourceUsageRead stages:mtlStages];
 			entry.read.clear();
 		}
 		if (!entry.readWrite.empty()) {
-			if ([encoder respondsToSelector:@selector(useResources:count:usage:stages:)])
-				[encoder useResources:entry.readWrite.data() count:entry.readWrite.size() usage:MTLResourceUsageReadWrite stages:mtlStages];
-			else
-				[encoder useResources:entry.readWrite.data() count:entry.readWrite.size() usage:MTLResourceUsageReadWrite];
+			[encoder useResources:entry.readWrite.data() count:entry.readWrite.size() usage:MTLResourceUsageReadWrite stages:mtlStages];
 			entry.readWrite.clear();
 		}
 	}

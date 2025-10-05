@@ -689,7 +689,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = MoltenVKShaderConverter;
 				SKIP_INSTALL = YES;
-				TVOS_DEPLOYMENT_TARGET = 14.0;
+				TVOS_DEPLOYMENT_TARGET = 14.5;
 				WARNING_CFLAGS = (
 					"-Wreorder",
 					"-Wheader-hygiene",
@@ -753,7 +753,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = MoltenVKShaderConverter;
 				SKIP_INSTALL = YES;
-				TVOS_DEPLOYMENT_TARGET = 14.0;
+				TVOS_DEPLOYMENT_TARGET = 14.5;
 				VALIDATE_PRODUCT = YES;
 				WARNING_CFLAGS = (
 					"-Wreorder",

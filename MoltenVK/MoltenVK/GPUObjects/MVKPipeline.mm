@@ -1901,7 +1901,7 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
 													  const VkGraphicsPipelineCreateInfo* pCreateInfo) {
 	// Topology
 	if (pCreateInfo->pInputAssemblyState)
-		plDesc.inputPrimitiveTopologyMVK = getPrimitiveTopologyClass();
+		plDesc.inputPrimitiveTopology = getPrimitiveTopologyClass();
 
 	const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
 

@@ -24,7 +24,6 @@
 #include "MVKBuffer.h"
 #include "MVKFramebuffer.h"
 #include "MVKRenderPass.h"
-#include "MTLRenderPassDescriptor+MoltenVK.h"
 #include "mvk_datatypes.hpp"
 #include <algorithm>
 #include <sys/mman.h>
@@ -629,7 +628,7 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             }
             if (isLayeredBlit) {
                 // In this case, I can blit all layers at once with a layered draw.
-                mtlRPD.renderTargetArrayLengthMVK = layCnt;
+                mtlRPD.renderTargetArrayLength = layCnt;
                 layCnt = 1;     // Only need to run the loop once.
             }
             for (uint32_t layIdx = 0; layIdx < layCnt; layIdx++) {
@@ -722,7 +721,7 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                 texSubRez.lod = mvkIBR.region.srcSubresource.mipLevel;
                 cmdEncoder->setFragmentBytes(mtlRendEnc, &texSubRez, sizeof(texSubRez), 0);
 
-                NSUInteger instanceCount = isLayeredBlit ? mtlRPD.renderTargetArrayLengthMVK : 1;
+                NSUInteger instanceCount = isLayeredBlit ? mtlRPD.renderTargetArrayLength : 1;
                 [mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangleStrip vertexStart: 0 vertexCount: kMVKBlitVertexCount instanceCount: instanceCount];
 
 				cmdEncoder->barrierUpdate(kMVKBarrierStageCopy, mtlRendEnc, MTLRenderStageFragment);
@@ -946,7 +945,7 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		mtlColorAttDesc.resolveLevel = rslvSlice.dstSubresource.mipLevel;
 		mtlColorAttDesc.resolveSlice = rslvSlice.dstSubresource.baseArrayLayer;
 		if (rslvSlice.dstSubresource.layerCount > 1) {
-			mtlRPD.renderTargetArrayLengthMVK = rslvSlice.dstSubresource.layerCount == VK_REMAINING_ARRAY_LAYERS ?
+			mtlRPD.renderTargetArrayLength = rslvSlice.dstSubresource.layerCount == VK_REMAINING_ARRAY_LAYERS ?
 				_dstImage->getLayerCount() - rslvSlice.dstSubresource.baseArrayLayer :
 				rslvSlice.dstSubresource.layerCount;
 		}
@@ -1482,17 +1481,8 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	simd::float4 clearColors[kMVKClearAttachmentCount];
 	MVKRPSKeyClearAtt rpsKey;
 
-	VkExtent2D fbExtent = cmdEncoder->getFramebufferExtent();
-
-	// I need to know if the 'renderTargetWidth' and 'renderTargetHeight' properties
-	// actually do something, but [MTLRenderPassDescriptor instancesRespondToSelector: @selector(renderTargetWidth)]
-	// returns NO even on systems that do support it. So we have to check an actual instance.
-	MTLRenderPassDescriptor* tempRPDesc = [MTLRenderPassDescriptor new];	// temp retain
-	if ([tempRPDesc respondsToSelector: @selector(renderTargetWidth)]) {
-		VkRect2D renderArea = cmdEncoder->clipToRenderArea({{0, 0}, fbExtent});
-		fbExtent = {renderArea.offset.x + renderArea.extent.width, renderArea.offset.y + renderArea.extent.height};
-	}
-	[tempRPDesc release];													// temp release
+	VkRect2D renderArea = cmdEncoder->clipToRenderArea({{0, 0}, cmdEncoder->getFramebufferExtent()});
+	VkExtent2D fbExtent = {renderArea.offset.x + renderArea.extent.width, renderArea.offset.y + renderArea.extent.height};
 
 	populateVertices(cmdEncoder, vertices, fbExtent.width, fbExtent.height);
 
@@ -1747,9 +1737,9 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
                     mtlRPDADesc.slice = layerStart;
                     mtlRPSADesc.slice = layerStart;
                 }
-                mtlRPDesc.renderTargetArrayLengthMVK = (layerCnt == VK_REMAINING_ARRAY_LAYERS
-                                                        ? (_image->getLayerCount() - layerStart)
-                                                        : layerCnt);
+                mtlRPDesc.renderTargetArrayLength = (layerCnt == VK_REMAINING_ARRAY_LAYERS
+                                                     ? (_image->getLayerCount() - layerStart)
+                                                     : layerCnt);
 
                 id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
 				cmdEncoder->_cmdBuffer->setMetalObjectLabel(mtlRendEnc, mtlRendEncName);
