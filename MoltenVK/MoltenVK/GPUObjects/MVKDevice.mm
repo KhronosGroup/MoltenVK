@@ -73,18 +73,6 @@ static const uint32_t kMaxTimeDomains = 2;
 
 #define supportsGPUFam(gpuFam, mtlDev)  ([mtlDev respondsToSelector: @selector(supportsFamily:)] && [mtlDev supportsFamily: MTLGPUFamily ##gpuFam])
 
-#if MVK_IOS
-#define supportsIOSGPU(gpuIdx, mtlDev)  [mtlDev supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily ##gpuIdx ##_v1]
-#else
-#define supportsIOSGPU(gpuIdx, mtlDev)  false
-#endif
-
-#if MVK_TVOS
-#define supportsTVOSGPU(gpuIdx, mtlDev)  [mtlDev supportsFeatureSet: MTLFeatureSet_tvOS_GPUFamily ##gpuIdx ##_v1]
-#else
-#define supportsTVOSGPU(gpuIdx, mtlDev)  false
-#endif
-
 #define returnGPUValIf(gpuType, gpuIdx)  if (supports ##gpuType ##gpuIdx) { return gpuIdx; }
 
 uint8_t MVKMTLDeviceCapabilities::getHighestAppleGPU() const {
@@ -108,11 +96,11 @@ uint8_t MVKMTLDeviceCapabilities::getHighestMacGPU() const {
 
 MVKMTLDeviceCapabilities::MVKMTLDeviceCapabilities(id<MTLDevice> mtlDev) {
 	mvkClear(this);
-	supportsApple1 = supportsGPUFam(Apple1, mtlDev) || supportsIOSGPU(1, mtlDev) || supportsTVOSGPU(1, mtlDev);
-	supportsApple2 = supportsGPUFam(Apple2, mtlDev) || supportsIOSGPU(2, mtlDev) || supportsTVOSGPU(1, mtlDev);
-	supportsApple3 = supportsGPUFam(Apple3, mtlDev) || supportsIOSGPU(3, mtlDev) || supportsTVOSGPU(2, mtlDev);
-	supportsApple4 = supportsGPUFam(Apple4, mtlDev) || supportsIOSGPU(4, mtlDev);
-	supportsApple5 = supportsGPUFam(Apple5, mtlDev) || supportsIOSGPU(5, mtlDev);
+	supportsApple1 = supportsGPUFam(Apple1, mtlDev);
+	supportsApple2 = supportsGPUFam(Apple2, mtlDev);
+	supportsApple3 = supportsGPUFam(Apple3, mtlDev);
+	supportsApple4 = supportsGPUFam(Apple4, mtlDev);
+	supportsApple5 = supportsGPUFam(Apple5, mtlDev);
 	supportsApple6 = supportsGPUFam(Apple6, mtlDev);
 #if MVK_XCODE_13
 	supportsApple7 = supportsGPUFam(Apple7, mtlDev);

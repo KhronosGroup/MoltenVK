@@ -46,7 +46,7 @@ graphics and compute functionality, that is built on Apple's [*Metal*](https://d
 graphics and compute framework on *macOS*, *iOS*, *tvOS*, and *visionOS*. **MoltenVK** allows
 you to use *Vulkan* graphics and compute functionality to develop modern, cross-platform,
 high-performance graphical games and applications, and to run them across many platforms,
-including *macOS*, *iOS*, *tvOS*, *visionOS*, *Simulators*, and *Mac Catalyst* on *macOS 11.0+*,
+including *macOS*, *iOS*, *tvOS*, *visionOS*, *Simulators*, and *Mac Catalyst*,
 and all *Apple* architectures, including *Apple Silicon*.
 
 *Metal* uses a different shading language, the *Metal Shading Language (MSL)*, than

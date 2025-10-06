@@ -2591,6 +2591,10 @@
 					"-w",
 				);
 				SDKROOT = xros;
+				WARNING_CFLAGS = (
+					"$(inherited)",
+					"-Wno-deprecated-declarations",
+				);
 			};
 			name = Debug;
 		};
@@ -2604,6 +2608,10 @@
 					"-w",
 				);
 				SDKROOT = xros;
+				WARNING_CFLAGS = (
+					"$(inherited)",
+					"-Wno-deprecated-declarations",
+				);
 			};
 			name = Release;
 		};
@@ -2792,6 +2800,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				SDKROOT = xros;
+				WARNING_CFLAGS = (
+					"$(inherited)",
+					"-Wno-deprecated-declarations",
+				);
 			};
 			name = Debug;
 		};
@@ -2799,6 +2811,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				SDKROOT = xros;
+				WARNING_CFLAGS = (
+					"$(inherited)",
+					"-Wno-deprecated-declarations",
+				);
 			};
 			name = Release;
 		};
