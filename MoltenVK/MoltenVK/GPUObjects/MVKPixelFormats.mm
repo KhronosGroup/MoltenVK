@@ -32,7 +32,7 @@ using namespace std;
 #endif
 
 #if MVK_IOS_OR_TVOS
-#	if !MVK_XCODE_14_3   // iOS/tvOS 16.4
+#   if !MVK_XCODE_14_3   // iOS/tvOS 16.4
 #       define MTLPixelFormatBC1_RGBA               MTLPixelFormatInvalid
 #       define MTLPixelFormatBC1_RGBA_sRGB          MTLPixelFormatInvalid
 #       define MTLPixelFormatBC2_RGBA               MTLPixelFormatInvalid
@@ -49,18 +49,7 @@ using namespace std;
 #       define MTLPixelFormatBC7_RGBAUnorm_sRGB     MTLPixelFormatInvalid
 #   endif
 
-#   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatDepth32Float_Stencil8
-#   define MTLPixelFormatDepth24Unorm_Stencil8      MTLPixelFormatInvalid
-#   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
-#endif
-
-#if MVK_VISIONOS
-#   define MTLPixelFormatDepth24Unorm_Stencil8      MTLPixelFormatInvalid
-#   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatInvalid
-#   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
-#endif
-
-#if MVK_TVOS
+#   if MVK_TVOS && !MVK_XCODE_14
 #       define MTLPixelFormatASTC_4x4_HDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_5x4_HDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_5x5_HDR           MTLPixelFormatInvalid
@@ -75,6 +64,17 @@ using namespace std;
 #       define MTLPixelFormatASTC_10x10_HDR         MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_12x10_HDR         MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_12x12_HDR         MTLPixelFormatInvalid
+#   endif
+
+#   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatDepth32Float_Stencil8
+#   define MTLPixelFormatDepth24Unorm_Stencil8      MTLPixelFormatInvalid
+#   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
+#endif
+
+#if MVK_VISIONOS
+#   define MTLPixelFormatDepth24Unorm_Stencil8      MTLPixelFormatInvalid
+#   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatInvalid
+#   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
 #endif
 
 #if MVK_OS_SIMULATOR
