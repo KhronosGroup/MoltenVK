@@ -64,29 +64,6 @@
 /** Macro to determine the Vulkan version supported by MoltenVK. */
 #define MVK_VULKAN_API_VERSION					MVK_VULKAN_API_VERSION_HEADER(VK_API_VERSION_1_4)
 
-/**
- * IOSurfaces are supported on macOS, and on iOS starting with iOS 11.
- *
- * To enable IOSurface support on iOS in MoltenVK, set the iOS Deployment Target
- * (IPHONEOS_DEPLOYMENT_TARGET) build setting to 11.0 or greater when building
- * MoltenVK, and any app that uses IOSurfaces.
- */
-#if MVK_MACOS
-#	define MVK_SUPPORT_IOSURFACE_BOOL    1
-#endif
-
-#if MVK_IOS
-#	define MVK_SUPPORT_IOSURFACE_BOOL	(__IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_11_0)
-#endif
-
-#if MVK_TVOS
-#	define MVK_SUPPORT_IOSURFACE_BOOL (__TV_OS_VERSION_MIN_REQUIRED >= __TVOS_11_0)
-#endif
-
-#if MVK_VISIONOS
-#    define MVK_SUPPORT_IOSURFACE_BOOL   1
-#endif
-
 
 #pragma mark -
 #pragma mark MoltenVK Configuration

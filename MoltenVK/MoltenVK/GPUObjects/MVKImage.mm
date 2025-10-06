@@ -1073,10 +1073,8 @@ VkResult MVKImage::setMTLTexture(uint8_t planeIndex, id<MTLTexture> mtlTexture) 
 	_usage = getPixelFormats()->getVkImageUsageFlags(mtlTexture.usage, mtlTexture.pixelFormat);
 	_stencilUsage = _usage;
 
-	if (getMetalFeatures().ioSurfaces) {
-		_ioSurface = mtlTexture.iosurface;
-		if (_ioSurface) { CFRetain(_ioSurface); }
-	}
+	_ioSurface = mtlTexture.iosurface;
+	if (_ioSurface) { CFRetain(_ioSurface); }
 
 	return VK_SUCCESS;
 }
@@ -1095,10 +1093,6 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 
 	// Don't recreate existing. But special case of incoming nil if already nil means create a new IOSurface.
 	if (ioSurface && _ioSurface == ioSurface) { return VK_SUCCESS; }
-
-    if (!getMetalFeatures().ioSurfaces) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkUseIOSurfaceMVK() : IOSurfaces are not supported on this platform."); }
-
-#if MVK_SUPPORT_IOSURFACE_BOOL
 
     for (uint8_t planeIndex = 0; planeIndex < _planes.size(); planeIndex++) {
         _planes[planeIndex]->releaseMTLTexture();
@@ -1157,8 +1151,6 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
             CFRelease(properties);
         }
     }
-
-#endif
 
     return VK_SUCCESS;
 }

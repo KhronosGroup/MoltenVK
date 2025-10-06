@@ -2419,8 +2419,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	_metalFeatures.maxTextureLayers = (2 * KIBI);
 
-	_metalFeatures.ioSurfaces = MVK_SUPPORT_IOSURFACE_BOOL;
-
 	// Metal supports 2 or 3 concurrent CAMetalLayer drawables.
 	_metalFeatures.minSwapchainImageCount = kMVKMinSwapchainImageCount;
 	_metalFeatures.maxSwapchainImageCount = kMVKMaxSwapchainImageCount;
@@ -2479,6 +2477,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.deferredStoreActions = true;
 	_metalFeatures.argumentBuffers = true;
 	_metalFeatures.events = true;
+	_metalFeatures.ioSurfaces = true;
 
 #if MVK_IOS_OR_TVOS_OR_VISIONOS
 	_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
