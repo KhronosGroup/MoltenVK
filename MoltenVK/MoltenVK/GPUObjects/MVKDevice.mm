@@ -2437,8 +2437,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #endif
 
 #if MVK_XCODE_26
-	// NOTE: The Metal feature set table claims this requires Apple10, but it seems to work fine on older GPUs as well.
-	_metalFeatures.samplerMipLodBias = mvkOSVersionIsAtLeast(26.0);
+	// NOTE: The Metal feature set table claims this requires Apple10, but it seems to work fine on at least Apple9 as well.
+	// TODO: Test on Apple8 (M2).
+	_metalFeatures.samplerMipLodBias = mvkOSVersionIsAtLeast(26.0) && supportsMTLGPUFamily(Apple9);
 	_metalFeatures.depthBoundsTest = mvkOSVersionIsAtLeast(26.0) && supportsMTLGPUFamily(Apple10);
 #endif
 
