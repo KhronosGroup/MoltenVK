@@ -82,7 +82,6 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
     MVKIndexMTLBufferBinding _binding;
-    bool _isUint8;
 };
 
 

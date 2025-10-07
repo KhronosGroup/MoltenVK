@@ -210,6 +210,11 @@ struct MVKVulkanGraphicsCommandEncoderState: public MVKVulkanCommonEncoderState 
 	uint32_t getPatchControlPoints() const {
 		return pickRenderState(MVKRenderStateFlag::PatchControlPoints).patchControlPoints;
 	}
+#if MVK_USE_METAL_PRIVATE_API
+	bool isPrimitiveRestartEnabled() const {
+		return pickRenderState(MVKRenderStateFlag::PrimitiveRestartEnable).enable.has(MVKRenderStateEnableFlag::PrimitiveRestart);
+	}
+#endif
 
 	/** Bind the given descriptor sets, placing their bindings into `_descriptorSetBindings`. */
 	void bindDescriptorSets(MVKPipelineLayout* layout,
@@ -286,6 +291,7 @@ enum class MVKMetalRenderEncoderStateFlag {
 	DepthBoundsEnable,
 	DepthClampEnable,
 	DepthTestEnable,
+	PrimitiveRestartEnable,
 	RasterizationDisabledByScissor,
 	ScissorDirty,
 	PipelineReady,
@@ -329,6 +335,7 @@ struct MVKMetalGraphicsCommandEncoderStateQuickReset {
 	uint8_t _cullMode;
 	uint8_t _frontFace;
 	MVKPolygonMode _polygonMode;
+	uint32_t _primitiveRestartIndex;
 
 	// Memset 0 to here to clear.
 	// DO NOT memset sizeof(*this), or you'll clear padding, which is used by subclasses.

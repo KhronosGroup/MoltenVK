@@ -23,13 +23,15 @@
 #include "MVKRenderPass.h"
 #include "MVKPipeline.h"
 #include "MVKQueryPool.h"
+#include "mvk_datatypes.hpp"
 
 using namespace std;
 
 #if MVK_USE_METAL_PRIVATE_API
 // An extension of the MTLRenderCommandEncoder protocol to declare the setLineWidth: method.
-@protocol MVKMTLRenderCommandEncoderLineWidth <MTLRenderCommandEncoder>
+@protocol MVKMTLRenderCommandEncoder <MTLRenderCommandEncoder>
 - (void)setLineWidth:(float)width;
+- (void)setPrimitiveRestartEnabled:(BOOL)enabled index:(uint32_t)index;
 @end
 #endif
 
@@ -1186,9 +1188,9 @@ void MVKMetalGraphicsCommandEncoderState::bindStateData(
 #if MVK_USE_METAL_PRIVATE_API
 		if (flags.has(MVKRenderStateFlag::LineWidth) && _lineWidth != data.lineWidth && mvkEncoder.getMVKConfig().useMetalPrivateAPI) {
 			_lineWidth = data.lineWidth;
-			auto lineWidthRendEnc = static_cast<id<MVKMTLRenderCommandEncoderLineWidth>>(encoder);
-			if ([lineWidthRendEnc respondsToSelector:@selector(setLineWidth:)]) {
-				[lineWidthRendEnc setLineWidth:_lineWidth];
+			auto mvkRendEnc = static_cast<id<MVKMTLRenderCommandEncoder>>(encoder);
+			if ([mvkRendEnc respondsToSelector:@selector(setLineWidth:)]) {
+				[mvkRendEnc setLineWidth:_lineWidth];
 			}
 		}
 #endif
@@ -1303,6 +1305,9 @@ void MVKMetalGraphicsCommandEncoderState::bindState(
 		MVKRenderStateFlag::DepthBounds,
 		MVKRenderStateFlag::DepthBoundsTestEnable,
 #endif
+#if MVK_USE_METAL_PRIVATE_API
+		MVKRenderStateFlag::PrimitiveRestartEnable,
+#endif
 	};
 	if (anyStateNeeded.hasAny(FlagsWithEnable)) {
 		_stateReady.addAll(anyStateNeeded & FlagsWithEnable);
@@ -1337,6 +1342,22 @@ void MVKMetalGraphicsCommandEncoderState::bindState(
 			} else if (wasEnabled) {
 				_flags.remove(MVKMetalRenderEncoderStateFlag::DepthBoundsEnable);
 				[encoder setDepthTestMinBound:0.0f maxBound:1.0f];
+			}
+		}
+#endif
+#if MVK_USE_METAL_PRIVATE_API
+		if (anyStateNeeded.has(MVKRenderStateFlag::PrimitiveRestartEnable) && mvkEncoder.getMVKConfig().useMetalPrivateAPI) {
+			bool enable = PICK_STATE(PrimitiveRestartEnable)->enable.has(MVKRenderStateEnableFlag::PrimitiveRestart);
+			uint32_t index = mvkPrimRestartIndexFromVkIndexType(vk._indexBuffer.vkIndexType);
+
+			if (_flags.has(MVKMetalRenderEncoderStateFlag::PrimitiveRestartEnable) != enable || _primitiveRestartIndex != index) {
+				_flags.flip(MVKMetalRenderEncoderStateFlag::PrimitiveRestartEnable);
+				_primitiveRestartIndex = index;
+
+				if ([mvkEncoder._mtlRenderEncoder respondsToSelector:@selector(setPrimitiveRestartEnabled:index:)]) {
+					auto mvkRendEnc = static_cast<id<MVKMTLRenderCommandEncoder>>(mvkEncoder._mtlRenderEncoder);
+					[mvkRendEnc setPrimitiveRestartEnabled:enable index:index];
+				}
 			}
 		}
 #endif
@@ -1426,6 +1447,7 @@ void MVKMetalGraphicsCommandEncoderState::prepareHelperDraw(
 		MVKRenderStateFlag::DepthWriteEnable,
 		MVKRenderStateFlag::LineWidth,
 		MVKRenderStateFlag::PolygonMode,
+		MVKRenderStateFlag::PrimitiveRestartEnable,
 		MVKRenderStateFlag::RasterizerDiscardEnable,
 		MVKRenderStateFlag::Scissors,
 		MVKRenderStateFlag::StencilCompareMask,
@@ -1487,6 +1509,16 @@ void MVKMetalGraphicsCommandEncoderState::prepareHelperDraw(
 		_viewports[0] = viewport;
 		[encoder setViewport:mvkMTLViewportFromVkViewport(viewport)];
 	}
+#if MVK_USE_METAL_PRIVATE_API
+	if (!_flags.has(MVKMetalRenderEncoderStateFlag::PrimitiveRestartEnable) || _primitiveRestartIndex != 0xFFFFFFFF) {
+		_flags.add(MVKMetalRenderEncoderStateFlag::PrimitiveRestartEnable);
+		_primitiveRestartIndex = 0xFFFFFFFF;
+		if ([mvkEncoder._mtlRenderEncoder respondsToSelector:@selector(setPrimitiveRestartEnabled:index:)]) {
+			auto mvkRendEnc = static_cast<id<MVKMTLRenderCommandEncoder>>(encoder);
+			[mvkRendEnc setPrimitiveRestartEnabled:true index:_primitiveRestartIndex];
+		}
+	}
+#endif
 	mvkEncoder._occlusionQueryState.prepareHelperDraw(encoder, &mvkEncoder);
 }
 

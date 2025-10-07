@@ -284,14 +284,18 @@ typedef struct MVKVtxAdj {
 	MTLIndexType idxType;
 	bool isMultiView;
 	bool isTriFan;
+	bool isPrimRestart;
+	bool isUint8Index;
 } MVKVtxAdj;
 
 // Populates triangle vertex indexes for a triangle fan.
 template<typename T>
 static inline void populateTriIndxsFromTriFan(device T* triIdxs,
                                               constant T* triFanIdxs,
-                                              uint32_t triFanIdxCnt) {
-	T primRestartSentinel = (T)0xFFFFFFFF;
+                                              uint32_t triFanIdxCnt,
+                                              bool isPrimRestart,
+                                              bool isUint8Index) {
+	T primRestartSentinel = isUint8Index ? (T)0xFF : (T)0xFFFFFFFF;
 	uint32_t triIdxIdx = 0;
 	uint32_t triFanBaseIdx = 0;
 	uint32_t triFanIdxIdx = triFanBaseIdx + 2;
@@ -300,15 +304,15 @@ static inline void populateTriIndxsFromTriFan(device T* triIdxs,
 
 		// Detect primitive restart on any index, to catch possible consecutive restarts
 		T triIdx0 = triFanIdxs[triFanBaseIdx];
-		if (triIdx0 == primRestartSentinel)
+		if (isPrimRestart && triIdx0 == primRestartSentinel)
 			triFanBaseIdx++;
 
 		T triIdx1 = triFanIdxs[triFanIdxIdx - 1];
-		if (triIdx1 == primRestartSentinel)
+		if (isPrimRestart && triIdx1 == primRestartSentinel)
 			triFanBaseIdx = triFanIdxIdx;
 
 		T triIdx2 = triFanIdxs[triFanIdxIdx];
-		if (triIdx2 == primRestartSentinel)
+		if (isPrimRestart && triIdx2 == primRestartSentinel)
 			triFanBaseIdx = triFanIdxIdx + 1;
 
 		if (triFanBaseIdx != triFanBaseIdxCurr) {    // Restart the triangle fan
@@ -379,12 +383,16 @@ kernel void cmdDrawIndexedIndirectConvertBuffers(const device char* srcBuff [[bu
 			case MTLIndexTypeUInt16:
 				populateTriIndxsFromTriFan(&((device uint16_t*)triIdxs)[dst.indexStart],
 				                           &((constant uint16_t*)triFanIdxs)[src.indexStart],
-				                           src.indexCount);
+				                           src.indexCount,
+				                           vtxAdj.isPrimRestart,
+				                           vtxAdj.isUint8Index);
 				break;
 			case MTLIndexTypeUInt32:
 				populateTriIndxsFromTriFan(&((device uint32_t*)triIdxs)[dst.indexStart],
 				                           &((constant uint32_t*)triFanIdxs)[src.indexStart],
-				                           src.indexCount);
+				                           src.indexCount,
+				                           vtxAdj.isPrimRestart,
+				                           vtxAdj.isUint8Index);
 				break;
 		}
 	}
@@ -567,5 +575,12 @@ kernel void convertUint8Indices(device uint8_t* src [[ buffer(0) ]],
                                 uint pos [[thread_position_in_grid]]) {
 	uint8_t idx = src[pos];
 	dst[pos] = idx == 0xFF ? 0xFFFF : idx;
+}
+
+kernel void convertUint8IndicesRaw(device uint8_t* src [[ buffer(0) ]],
+                                   device uint16_t* dst [[ buffer(1) ]],
+                                   uint pos [[thread_position_in_grid]]) {
+	uint8_t idx = src[pos];
+	dst[pos] = idx;
 }
 )";
