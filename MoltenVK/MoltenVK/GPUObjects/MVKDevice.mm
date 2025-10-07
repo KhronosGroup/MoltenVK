@@ -3362,7 +3362,7 @@ bool MVKPhysicalDevice::isAMDRDNAGPU() {
 
 #endif	//MVK_MACOS
 
-#if !MVK_MACOS
+#if MVK_IOS_OR_TVOS_OR_VISIONOS
 // For Apple Silicon, the Device ID is determined by the highest
 // GPU capability, which is a combination of OS version and GPU type.
 void MVKPhysicalDevice::initGPUInfoProperties() {
@@ -3371,7 +3371,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 	_properties.deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
 	strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
 }
-#endif	//!MVK_MACOS
+#endif	//MVK_IOS_OR_TVOS_OR_VISIONOS
 
 // Since this is a uint8_t array, use Big-Endian byte ordering,
 // so a hex dump of the array is human readable in its parts.
