@@ -726,6 +726,14 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				extFeatures->sampler2DViewOf3D = _metalFeatures.placementHeaps;
 				break;
 			}
+#if MVK_USE_METAL_PRIVATE_API
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT: {
+				auto* listRestartFeatures = (VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT*)next;
+				listRestartFeatures->primitiveTopologyListRestart = getMVKConfig().useMetalPrivateAPI;
+				listRestartFeatures->primitiveTopologyPatchListRestart = false;
+				break;
+			}
+#endif
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR: {
 				auto* robustness2Features = (VkPhysicalDeviceRobustness2FeaturesKHR*)next;
 				robustness2Features->robustBufferAccess2 = false;
@@ -3892,6 +3900,14 @@ void MVKPhysicalDevice::initExtensions() {
 	if (!supportsMTLGPUFamily(Apple5)) {
 		pWritableExtns->vk_AMD_shader_image_load_store_lod.enabled = false;
 		pWritableExtns->vk_IMG_format_pvrtc.enabled = false;
+	}
+#endif
+
+#if MVK_USE_METAL_PRIVATE_API
+	if (!getMVKConfig().useMetalPrivateAPI) {
+#endif
+		pWritableExtns->vk_EXT_primitive_topology_list_restart.enabled = false;
+#if MVK_USE_METAL_PRIVATE_API
 	}
 #endif
 }
