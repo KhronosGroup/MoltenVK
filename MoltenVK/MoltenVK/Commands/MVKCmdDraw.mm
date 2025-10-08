@@ -77,7 +77,7 @@ VkResult MVKCmdBindIndexBuffer::setContent(MVKCommandBuffer* cmdBuff,
 										   VkDeviceSize offset,
 										   VkDeviceSize size,
 										   VkIndexType indexType) {
-	_isUint8 = indexType == VK_INDEX_TYPE_UINT8;
+	_binding.vkIndexType = indexType;
 	_binding.mtlIndexType = mvkMTLIndexTypeFromVkIndexType(indexType);
 
 	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
@@ -102,7 +102,7 @@ void MVKCmdBindIndexBuffer::encode(MVKCommandEncoder* cmdEncoder) {
         const auto* placeholderBuffer = cmdEncoder->getTempMTLBuffer(_binding.size);
         _binding.mtlBuffer = placeholderBuffer->_mtlBuffer;
         _binding.offset = placeholderBuffer->_offset;
-    } else if (_isUint8) {
+    } else if (_binding.vkIndexType == VK_INDEX_TYPE_UINT8) {
         // Copy 8-bit indices into 16-bit index buffer compatible with Metal.
         const auto numIndices = _binding.size;
         auto* uint16Buf = cmdEncoder->getTempMTLBuffer(numIndices * 2);
@@ -919,6 +919,8 @@ typedef struct MVKVertexAdjustments {
 	uint8_t mtlIndexType = MTLIndexTypeUInt16;	// Enum must match enum in shader
 	bool isMultiView = false;
 	bool isTriangleFan = false;
+	bool isPrimRestart = true;
+	bool isUint8Index = false;
 
 	bool needsAdjustment() { return isMultiView || isTriangleFan; }
 } MVKVertexAdjustments;
@@ -976,11 +978,16 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 	auto& mtlFeats = cmdEncoder->getMetalFeatures();
 	auto& dvcLimits = cmdEncoder->getDeviceProperties().limits;
 
-	MVKVertexAdjustments vtxAdjmts;
+	MVKVertexAdjustments vtxAdjmts{};
 	vtxAdjmts.mtlIndexType = ibb.mtlIndexType;
 	vtxAdjmts.isMultiView = (cmdEncoder->getSubpass()->isMultiview() &&
 							 cmdEncoder->getPhysicalDevice()->canUseInstancingForMultiview());
 	vtxAdjmts.isTriangleFan = pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+#if MVK_USE_METAL_PRIVATE_API
+	// With private APIs for primitive restart, we need to handle disabled restart and raw Uint8 indices.
+	vtxAdjmts.isPrimRestart = cmdEncoder->getState().vkGraphics().isPrimitiveRestartEnabled();
+	vtxAdjmts.isUint8Index = ibb.vkIndexType == VK_INDEX_TYPE_UINT8;
+#endif
 
 	// The indirect calls for dispatchThreadgroups:... and drawPatches:... have different formats.
     // We have to convert from the drawIndexedPrimitives:... format to them.

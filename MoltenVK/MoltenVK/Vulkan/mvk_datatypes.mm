@@ -738,6 +738,15 @@ MVK_PUBLIC_SYMBOL MTLIndexType mvkMTLIndexTypeFromVkIndexType(VkIndexType vkIdxT
 	}
 }
 
+MVK_PUBLIC_SYMBOL uint32_t mvkPrimRestartIndexFromVkIndexType(VkIndexType vkIdxType) {
+	switch (vkIdxType) {
+		case VK_INDEX_TYPE_UINT32:	return 0xFFFFFFFF;
+		case VK_INDEX_TYPE_UINT16:	return 0xFFFF;
+		case VK_INDEX_TYPE_UINT8:	return 0xFF;
+		default:					return 0xFFFFFFFF;
+	}
+}
+
 MVK_PUBLIC_SYMBOL size_t mvkMTLIndexTypeSizeInBytes(MTLIndexType mtlIdxType) {
 	switch (mtlIdxType) {
 		case MTLIndexTypeUInt16:	return 2;

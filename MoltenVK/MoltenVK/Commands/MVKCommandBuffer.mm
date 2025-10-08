@@ -29,6 +29,13 @@
 
 using namespace std;
 
+#if MVK_USE_METAL_PRIVATE_API
+// An extension of the MTLRenderPassDescriptor protocol to declare the setOpenGLModeEnabled: method.
+@interface MTLRenderPassDescriptor (MoltenVK)
+- (void)setOpenGLModeEnabled:(BOOL)enabled;
+@end
+#endif
+
 
 #pragma mark -
 #pragma mark MVKCommandEncodingContext
@@ -826,6 +833,13 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 		auto sampPosns = _state.updateSamplePositions();
 		[mtlRPDesc setSamplePositions: sampPosns.data() count: sampPosns.size()];
 	}
+
+#if MVK_USE_METAL_PRIVATE_API
+	if (getMVKConfig().useMetalPrivateAPI && [mtlRPDesc respondsToSelector: @selector(setOpenGLModeEnabled:)]) {
+		// Unlocks APIs such as setPrimitiveRestartEnabled.
+		[mtlRPDesc setOpenGLModeEnabled:true];
+	}
+#endif
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
 	retainIfImmediatelyEncoding(_mtlRenderEncoder);

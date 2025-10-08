@@ -41,6 +41,7 @@ typedef struct MVKIndexMTLBufferBinding {
     union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; }; // aliases
     VkDeviceSize offset = 0;
     VkDeviceSize size = 0;
+    VkIndexType vkIndexType = VK_INDEX_TYPE_UINT32;
     uint8_t mtlIndexType = 0;		// MTLIndexType
 } MVKIndexMTLBufferBinding;
 

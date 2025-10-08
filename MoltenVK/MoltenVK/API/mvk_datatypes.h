@@ -409,6 +409,9 @@ MTLWinding mvkMTLWindingFromVkFrontFace(VkFrontFace vkWinding);
 /** Returns the Metal MTLIndexType corresponding to the specified Vulkan VkIndexType, */
 MTLIndexType mvkMTLIndexTypeFromVkIndexType(VkIndexType vkIdxType);
 
+/** Returns the primitive restart index corresponding to the specified Vulkan VkIndexType, */
+uint32_t mvkPrimRestartIndexFromVkIndexType(VkIndexType vkIdxType);
+
 /** Returns the size, in bytes, of a vertex index of the specified type. */
 size_t mvkMTLIndexTypeSizeInBytes(MTLIndexType mtlIdxType);
 
