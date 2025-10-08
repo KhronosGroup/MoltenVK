@@ -2429,10 +2429,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.depthBoundsTest = mvkOSVersionIsAtLeast(26.0) && supportsMTLGPUFamily(Apple10);
 #endif
 
-#if MVK_USE_METAL_PRIVATE_API
-	_metalFeatures.samplerMipLodBias = _metalFeatures.samplerMipLodBias || getMVKConfig().useMetalPrivateAPI;
-#endif
-
 	// GPU-specific features
 	switch (_properties.vendorID) {
 		case kAMDVendorId:

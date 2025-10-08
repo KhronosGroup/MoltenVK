@@ -324,7 +324,6 @@ included in any of the `make` command-line build commands [mentioned above](#com
 Functionality added with `MVK_USE_METAL_PRIVATE_API` enabled includes:
 - `VkPhysicalDeviceFeatures::wideLines`
 - `VkPhysicalDeviceFeatures::logicOp`
-- `VkPhysicalDevicePortabilitySubsetFeaturesKHR::samplerMipLodBias` (before macOS/iOS 26)
 - `VkGraphicsPipelineRasterizationCreateInfo::sampleMask`, using `MTLRenderPipelineDescriptor.sampleMask` instead of emulating it in the fragment shader
 
 

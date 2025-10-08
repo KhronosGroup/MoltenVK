@@ -21,15 +21,6 @@
 #include "MVKCommonEnvironment.h"
 
 
-#if MVK_USE_METAL_PRIVATE_API && !MVK_XCODE_26
-/** Additional methods not necessarily declared in <Metal/MTLSampler.h>. */
-@interface MTLSamplerDescriptor ()
-
-@property(nonatomic, readwrite) float lodBias;
-
-@end
-#endif
-
 @implementation MTLSamplerDescriptor (MoltenVK)
 
 -(MTLCompareFunction) compareFunctionMVK {
@@ -55,14 +46,14 @@
 }
 
 -(float) lodBiasMVK {
-#if MVK_USE_METAL_PRIVATE_API || MVK_XCODE_26
+#if MVK_XCODE_26
 	if ( [self respondsToSelector: @selector(lodBias)] ) { return self.lodBias; }
 #endif
 	return 0.0f;
 }
 
 -(void) setLodBiasMVK: (float) bias {
-#if MVK_USE_METAL_PRIVATE_API || MVK_XCODE_26
+#if MVK_XCODE_26
 	if ( [self respondsToSelector: @selector(setLodBias:)] ) { self.lodBias = bias; }
 #endif
 }
