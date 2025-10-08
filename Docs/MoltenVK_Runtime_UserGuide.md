@@ -69,8 +69,8 @@ to their *MSL* equivalents.
 
 To provide *Vulkan* capability to the *macOS*, *iOS*, and *tvOS* platforms, **MoltenVK** uses
 *Apple's* publicly available API's, including *Metal*. **MoltenVK** does **_not_** use any
-private or undocumented API calls or features, so your app will be compatible with all
-standard distribution channels, including *Apple's App Store*.
+private or undocumented API calls or features unless configured to do so at build time, so your
+app will be compatible with all standard distribution channels, including *Apple's App Store*.
 
 
 <a name="install"></a>
@@ -191,6 +191,8 @@ Once built, your app integrating the **MoltenVK** libraries can be run on *macOS
 devices that support *Metal*, or on the *Xcode* *iOS Simulator* or *tvOS Simulator*.
 
 - At runtime, **MoltenVK** requires at least *macOS 11.0*, *iOS 14*, or *tvOS 14.5*.
+  - This support policy is based on the earliest deployment target [officially supported](https://developer.apple.com/support/xcode/)
+    by the latest version of Xcode.
 - Information on *macOS* devices that are compatible with *Metal* can be found in
   [this article](http://www.idownloadblog.com/2015/06/22/how-to-find-mac-el-capitan-metal-compatible).
 - Information on *iOS* devices that are compatible with *Metal* can be found in

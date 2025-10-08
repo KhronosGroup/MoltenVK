@@ -170,10 +170,7 @@ id<MTLBuffer> MVKBuffer::getMTLBuffer() {
 }
 
 uint64_t MVKBuffer::getMTLBufferGPUAddress() {
-#if MVK_XCODE_14
 	return [getMTLBuffer() gpuAddress] + getMTLBufferOffset();
-#endif
-	return 0;
 }
 
 #pragma mark Construction

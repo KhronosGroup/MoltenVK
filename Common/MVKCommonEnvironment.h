@@ -114,21 +114,6 @@ extern "C" {
                                     (__IPHONE_OS_VERSION_MAX_ALLOWED >= 170000) || \
                                         (__TV_OS_VERSION_MAX_ALLOWED >= 170000))
 #endif
-#ifndef MVK_XCODE_14_3
-#	define MVK_XCODE_14_3			((__MAC_OS_X_VERSION_MAX_ALLOWED >= 130300) || \
-									(__IPHONE_OS_VERSION_MAX_ALLOWED >= 160400) || \
-                                        (__TV_OS_VERSION_MAX_ALLOWED >= 160400))
-#endif
-#ifndef MVK_XCODE_14
-#	define MVK_XCODE_14				((__MAC_OS_X_VERSION_MAX_ALLOWED >= 130000) || \
-									(__IPHONE_OS_VERSION_MAX_ALLOWED >= 160000) || \
-                                        (__TV_OS_VERSION_MAX_ALLOWED >= 160000))
-#endif
-#ifndef MVK_XCODE_13
-#	define MVK_XCODE_13 			((__MAC_OS_X_VERSION_MAX_ALLOWED >= 120000) || \
-									(__IPHONE_OS_VERSION_MAX_ALLOWED >= 150000 || \
-                                        (__TV_OS_VERSION_MAX_ALLOWED >= 150000)))
-#endif
 
 /**
  * Enable use of private Metal APIs.

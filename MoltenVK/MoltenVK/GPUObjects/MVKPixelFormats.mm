@@ -32,40 +32,6 @@ using namespace std;
 #endif
 
 #if MVK_IOS_OR_TVOS
-#   if !MVK_XCODE_14_3   // iOS/tvOS 16.4
-#       define MTLPixelFormatBC1_RGBA               MTLPixelFormatInvalid
-#       define MTLPixelFormatBC1_RGBA_sRGB          MTLPixelFormatInvalid
-#       define MTLPixelFormatBC2_RGBA               MTLPixelFormatInvalid
-#       define MTLPixelFormatBC2_RGBA_sRGB          MTLPixelFormatInvalid
-#       define MTLPixelFormatBC3_RGBA               MTLPixelFormatInvalid
-#       define MTLPixelFormatBC3_RGBA_sRGB          MTLPixelFormatInvalid
-#       define MTLPixelFormatBC4_RUnorm             MTLPixelFormatInvalid
-#       define MTLPixelFormatBC4_RSnorm             MTLPixelFormatInvalid
-#       define MTLPixelFormatBC5_RGUnorm            MTLPixelFormatInvalid
-#       define MTLPixelFormatBC5_RGSnorm            MTLPixelFormatInvalid
-#       define MTLPixelFormatBC6H_RGBUfloat         MTLPixelFormatInvalid
-#       define MTLPixelFormatBC6H_RGBFloat          MTLPixelFormatInvalid
-#       define MTLPixelFormatBC7_RGBAUnorm          MTLPixelFormatInvalid
-#       define MTLPixelFormatBC7_RGBAUnorm_sRGB     MTLPixelFormatInvalid
-#   endif
-
-#   if MVK_TVOS && !MVK_XCODE_14
-#       define MTLPixelFormatASTC_4x4_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_5x4_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_5x5_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_6x5_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_6x6_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_8x5_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_8x6_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_8x8_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x5_HDR          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x6_HDR          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x8_HDR          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x10_HDR         MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_12x10_HDR         MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_12x12_HDR         MTLPixelFormatInvalid
-#   endif
-
 #   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatDepth32Float_Stencil8
 #   define MTLPixelFormatDepth24Unorm_Stencil8      MTLPixelFormatInvalid
 #   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
