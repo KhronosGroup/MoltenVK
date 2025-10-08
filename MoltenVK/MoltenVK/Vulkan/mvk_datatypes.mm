@@ -433,27 +433,7 @@ MVK_PUBLIC_SYMBOL MTLBlendFactor mvkMTLBlendFactorFromVkBlendFactor(VkBlendFacto
 
 #if MVK_USE_METAL_PRIVATE_API
 
-// This isn't in any public header yet. Equivalent to D3D11 values.
-typedef NS_ENUM(NSUInteger, MTLLogicOperation) {
-	MTLLogicOperationClear,
-	MTLLogicOperationSet,
-	MTLLogicOperationCopy,
-	MTLLogicOperationCopyInverted,
-	MTLLogicOperationNoop,
-	MTLLogicOperationInvert,
-	MTLLogicOperationAnd,
-	MTLLogicOperationNand,
-	MTLLogicOperationOr,
-	MTLLogicOperationNor,
-	MTLLogicOperationXor,
-	MTLLogicOperationEquivalence,
-	MTLLogicOperationAndReverse,
-	MTLLogicOperationAndInverted,
-	MTLLogicOperationOrReverse,
-	MTLLogicOperationOrInverted,
-};
-
-MVK_PUBLIC_SYMBOL NSUInteger mvkMTLLogicOperationFromVkLogicOp(VkLogicOp vkLogicOp) {
+MVK_PUBLIC_SYMBOL MTLLogicOperation mvkMTLLogicOperationFromVkLogicOp(VkLogicOp vkLogicOp) {
 	switch (vkLogicOp) {
 		case VK_LOGIC_OP_CLEAR:			return MTLLogicOperationClear;
 		case VK_LOGIC_OP_AND:			return MTLLogicOperationAnd;
@@ -472,6 +452,14 @@ MVK_PUBLIC_SYMBOL NSUInteger mvkMTLLogicOperationFromVkLogicOp(VkLogicOp vkLogic
 		case VK_LOGIC_OP_NAND:			return MTLLogicOperationNand;
 		case VK_LOGIC_OP_SET:			return MTLLogicOperationSet;
 		default:						return MTLLogicOperationCopy;
+	}
+}
+
+MVK_PUBLIC_SYMBOL MTLProvokingVertexMode mvkMTLProvokingVertexModeFromVkProvokingVertexMode(VkProvokingVertexModeEXT vkProvokingVertexMode) {
+	switch (vkProvokingVertexMode) {
+		case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:			return MTLProvokingVertexModeFirst;
+		case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:			return MTLProvokingVertexModeLast;
+		default:												return MTLProvokingVertexModeFirst;
 	}
 }
 
