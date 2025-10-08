@@ -50,14 +50,6 @@
 @property(nonatomic, readwrite) BOOL displaySyncEnabledMVK;
 
 /**
- * Replacement for the maximumDrawableCount property.
- *
- * This property allows support under all OS versions. Delegates to the maximumDrawableCount
- * property if it is available. otherwise, returns zero when read and does nothing when set.
- */
-@property(nonatomic, readwrite) NSUInteger maximumDrawableCountMVK;
-
-/**
  * Replacement for the wantsExtendedDynamicRangeContent property.
  *
  * This property allows support under all OS versions. Delegates to the wantsExtendedDynamicRangeContent

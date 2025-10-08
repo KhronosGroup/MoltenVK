@@ -125,40 +125,38 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 			}
 
 			if (mtlFunc) {
-				// If the Metal device supports shader specialization, and the Metal function expects to be specialized,
-				// populate Metal function constant values from the Vulkan specialization info, and compile a specialized
-				// Metal function, otherwise simply use the unspecialized Metal function.
-				if (getMetalFeatures().shaderSpecialization) {
-					NSArray<MTLFunctionConstant*>* mtlFCs = mtlFunc.functionConstantsDictionary.allValues;
-					if (mtlFCs.count > 0) {
-						// The Metal shader contains function constants and expects to be specialized.
-						// Populate the Metal function constant values from the Vulkan specialization info.
-						MTLFunctionConstantValues* mtlFCVals = [[MTLFunctionConstantValues new] autorelease];
-						if (pSpecializationInfo) {
-							// Iterate through the provided Vulkan specialization entries, and populate the
-							// Metal function constant value that matches the Vulkan specialization constantID.
-							for (uint32_t specIdx = 0; specIdx < pSpecializationInfo->mapEntryCount; specIdx++) {
-								const VkSpecializationMapEntry* pMapEntry = &pSpecializationInfo->pMapEntries[specIdx];
-								for (MTLFunctionConstant* mfc in mtlFCs) {
-									if (mfc.index == pMapEntry->constantID) {
-										[mtlFCVals setConstantValue: ((char*)pSpecializationInfo->pData + pMapEntry->offset)
-															   type: mfc.type
-															atIndex: mfc.index];
-										break;
-									}
+				// If the Metal function expects to be specialized, populate Metal function constant values from
+				// the Vulkan specialization info, and compile a specialized Metal function, otherwise simply use
+				// the unspecialized Metal function.
+				NSArray<MTLFunctionConstant*>* mtlFCs = mtlFunc.functionConstantsDictionary.allValues;
+				if (mtlFCs.count > 0) {
+					// The Metal shader contains function constants and expects to be specialized.
+					// Populate the Metal function constant values from the Vulkan specialization info.
+					MTLFunctionConstantValues* mtlFCVals = [[MTLFunctionConstantValues new] autorelease];
+					if (pSpecializationInfo) {
+						// Iterate through the provided Vulkan specialization entries, and populate the
+						// Metal function constant value that matches the Vulkan specialization constantID.
+						for (uint32_t specIdx = 0; specIdx < pSpecializationInfo->mapEntryCount; specIdx++) {
+							const VkSpecializationMapEntry* pMapEntry = &pSpecializationInfo->pMapEntries[specIdx];
+							for (MTLFunctionConstant* mfc in mtlFCs) {
+								if (mfc.index == pMapEntry->constantID) {
+									[mtlFCVals setConstantValue: ((char*)pSpecializationInfo->pData + pMapEntry->offset)
+														   type: mfc.type
+														atIndex: mfc.index];
+									break;
 								}
 							}
 						}
+					}
 
-						// Compile the specialized Metal function, and use it instead of the unspecialized Metal function.
-						MVKFunctionSpecializer fs(_owner);
-						if (pShaderFeedback) {
-							startTime = mvkGetTimestamp();
-						}
-						mtlFunc = [fs.newMTLFunction(lib, mtlFuncName, mtlFCVals) autorelease];
-						if (pShaderFeedback) {
-							pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime);
-						}
+					// Compile the specialized Metal function, and use it instead of the unspecialized Metal function.
+					MVKFunctionSpecializer fs(_owner);
+					if (pShaderFeedback) {
+						startTime = mvkGetTimestamp();
+					}
+					mtlFunc = [fs.newMTLFunction(lib, mtlFuncName, mtlFCVals) autorelease];
+					if (pShaderFeedback) {
+						pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime);
 					}
 				}
 			}

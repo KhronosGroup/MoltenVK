@@ -163,7 +163,7 @@ MTLTextureType mvkMTLTextureTypeFromVkImageTypeObj(VkImageType vkImageType,
 									   : (arraySize > 1 ? MTLTextureType1DArray : MTLTextureType1D));
 		case VK_IMAGE_TYPE_2D:
 		default: {
-#if MVK_MACOS_OR_IOS
+#if MVK_MACOS_OR_IOS || MVK_XCODE_14
 			if (arraySize > 1 && isMultisample) { return MTLTextureType2DMultisampleArray; }
 #endif
 			if (arraySize > 1) { return MTLTextureType2DArray; }
@@ -352,7 +352,6 @@ MVK_PUBLIC_SYMBOL MTLSamplerAddressMode mvkMTLSamplerAddressModeFromVkSamplerAdd
 	}
 }
 
-#if MVK_MACOS_OR_IOS
 MVK_PUBLIC_SYMBOL MTLSamplerBorderColor mvkMTLSamplerBorderColorFromVkBorderColor(VkBorderColor vkColor) {
 	switch (vkColor) {
 		case VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK:	return MTLSamplerBorderColorTransparentBlack;
@@ -364,7 +363,6 @@ MVK_PUBLIC_SYMBOL MTLSamplerBorderColor mvkMTLSamplerBorderColorFromVkBorderColo
 		default:										return MTLSamplerBorderColorTransparentBlack;
 	}
 }
-#endif
 
 MVK_PUBLIC_SYMBOL MTLSamplerMinMagFilter mvkMTLSamplerMinMagFilterFromVkFilter(VkFilter vkFilter) {
 	switch (vkFilter) {
@@ -641,7 +639,6 @@ MTLMultisampleDepthResolveFilter mvkMTLMultisampleDepthResolveFilterFromVkResolv
 	}
 }
 
-#if MVK_MACOS_OR_IOS
 #undef mvkMTLMultisampleStencilResolveFilterFromVkResolveModeFlagBits
 MVK_PUBLIC_SYMBOL MTLMultisampleStencilResolveFilter mvkMTLMultisampleStencilResolveFilterFromVkResolveModeFlagBits(VkResolveModeFlagBits vkResolveMode) {
 	return mvkMTLMultisampleStencilResolveFilterFromVkResolveModeFlagBitsInObj(vkResolveMode, nullptr);
@@ -656,7 +653,6 @@ MTLMultisampleStencilResolveFilter mvkMTLMultisampleStencilResolveFilterFromVkRe
 			return MTLMultisampleStencilResolveFilterSample0;
 	}
 }
-#endif
 
 MVK_PUBLIC_SYMBOL MTLViewport mvkMTLViewportFromVkViewport(VkViewport vkViewport) {
 	return {

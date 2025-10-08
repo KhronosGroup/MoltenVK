@@ -26,7 +26,6 @@
 #include "MVKOSExtensions.h"
 #include "MVKCodec.h"
 
-#import "MTLTextureDescriptor+MoltenVK.h"
 #import "MTLSamplerDescriptor+MoltenVK.h"
 #import "CAMetalLayer+MoltenVK.h"
 
@@ -157,8 +156,8 @@ MTLTextureDescriptor* MVKImagePlane::newMTLTextureDescriptor() {
     mtlTexDesc.mipmapLevelCount = _image->_mipLevels;
     mtlTexDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(_image->_samples);
     mtlTexDesc.arrayLength = _image->_arrayLayers;
-	mtlTexDesc.usageMVK = _image->getMTLTextureUsage(mtlPixFmt);
-    mtlTexDesc.storageModeMVK = _image->getMTLStorageMode();
+	mtlTexDesc.usage = _image->getMTLTextureUsage(mtlPixFmt);
+    mtlTexDesc.storageMode = _image->getMTLStorageMode();
     mtlTexDesc.cpuCacheMode = _image->getMTLCPUCacheMode();
     // For 2D views of 3D and block texel views, we alias the underlying memory.
     // Ensure that it remains consistent by disabling GPU layout optimization.
@@ -484,7 +483,7 @@ VkResult MVKImageMemoryBinding::getMemoryRequirements(VkMemoryRequirements2* pMe
         case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
             auto* dedicatedReqs = (VkMemoryDedicatedRequirements*)next;
             bool writable = mvkIsAnyFlagEnabled(_image->getCombinedUsage(), VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-            bool canUseTexelBuffer = mtlFeats.texelBuffers && _image->_isLinear && !_image->getIsCompressed();
+            bool canUseTexelBuffer = _image->_isLinear && !_image->getIsCompressed();
             dedicatedReqs->requiresDedicatedAllocation = _requiresDedicatedMemoryAllocation;
             dedicatedReqs->prefersDedicatedAllocation = (dedicatedReqs->requiresDedicatedAllocation ||
                                                         (!canUseTexelBuffer && (writable || !mtlFeats.placementHeaps)));
@@ -505,11 +504,7 @@ VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDevi
     if (!_deviceMemory) { return VK_SUCCESS; }
 
 	auto& mtlFeats = getMetalFeatures();
-    bool usesTexelBuffer = mtlFeats.texelBuffers; // Texel buffers available
-    usesTexelBuffer = usesTexelBuffer && (isMemoryHostAccessible() || mtlFeats.placementHeaps) && _image->_isLinear && !_image->getIsCompressed(); // Applicable memory layout
-
-    // macOS before 10.15.5 cannot use shared memory for texel buffers.
-    usesTexelBuffer = usesTexelBuffer && (mtlFeats.sharedLinearTextures || !isMemoryHostCoherent());
+    bool usesTexelBuffer = (isMemoryHostAccessible() || mtlFeats.placementHeaps) && _image->_isLinear && !_image->getIsCompressed(); // Applicable memory layout
 
     if (_image->_isLinearForAtomics || (usesTexelBuffer && mtlFeats.placementHeaps)) {
         if (usesTexelBuffer && _deviceMemory->ensureMTLBuffer()) {
@@ -567,7 +562,7 @@ bool MVKImageMemoryBinding::needsHostReadSync(MVKPipelineBarrier& barrier) {
 #if MVK_MACOS
     return ( !isUnifiedMemoryGPU() && (barrier.newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
             mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
-            isMemoryHostAccessible() && (!getMetalFeatures().sharedLinearTextures || !isMemoryHostCoherent()));
+            isMemoryHostAccessible() && !isMemoryHostCoherent());
 #else
 	return false;
 #endif
@@ -1078,10 +1073,8 @@ VkResult MVKImage::setMTLTexture(uint8_t planeIndex, id<MTLTexture> mtlTexture) 
 	_usage = getPixelFormats()->getVkImageUsageFlags(mtlTexture.usage, mtlTexture.pixelFormat);
 	_stencilUsage = _usage;
 
-	if (getMetalFeatures().ioSurfaces) {
-		_ioSurface = mtlTexture.iosurface;
-		if (_ioSurface) { CFRetain(_ioSurface); }
-	}
+	_ioSurface = mtlTexture.iosurface;
+	if (_ioSurface) { CFRetain(_ioSurface); }
 
 	return VK_SUCCESS;
 }
@@ -1100,10 +1093,6 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 
 	// Don't recreate existing. But special case of incoming nil if already nil means create a new IOSurface.
 	if (ioSurface && _ioSurface == ioSurface) { return VK_SUCCESS; }
-
-    if (!getMetalFeatures().ioSurfaces) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkUseIOSurfaceMVK() : IOSurfaces are not supported on this platform."); }
-
-#if MVK_SUPPORT_IOSURFACE_BOOL
 
     for (uint8_t planeIndex = 0; planeIndex < _planes.size(); planeIndex++) {
         _planes[planeIndex]->releaseMTLTexture();
@@ -1163,8 +1152,6 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
         }
     }
 
-#endif
-
     return VK_SUCCESS;
 }
 
@@ -1175,13 +1162,6 @@ MTLStorageMode MVKImage::getMTLStorageMode() {
 
     if (_ioSurface && stgMode == MTLStorageModePrivate) { stgMode = MTLStorageModeShared; }
 
-#if MVK_MACOS
-	// For macOS prior to 10.15.5, textures cannot use Shared storage mode, so change to Managed storage mode.
-	// All Apple GPUs support shared linear textures, so this only applies to other GPUs.
-    if (stgMode == MTLStorageModeShared && !getMetalFeatures().sharedLinearTextures) {
-        stgMode = MTLStorageModeManaged;
-    }
-#endif
     return stgMode;
 }
 
@@ -1296,7 +1276,6 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatCompressed) && !mtlFeats.native3DCompressedTextures;
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
 								 mvkAreAllFlagsEnabled(pixFmts->getVkFormatProperties3(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT));
-	_canSupportMTLTextureView = !_isDepthStencilAttachment || mtlFeats.stencilViews;
 	_rowByteAlignment = _isLinear || _isLinearForAtomics ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(pixFmts->getBytesPerBlock(pCreateInfo->format));
 
     VkExtent2D blockTexelSizeOfPlane[3];
@@ -1510,12 +1489,10 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttac
 		isLin = false;
 	}
 
-#if !MVK_APPLE_SILICON
-	if (isAttachment) {
+	if (!getMetalFeatures().renderLinearTextures && isAttachment) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support rendering to linear (VK_IMAGE_TILING_LINEAR) images."));
 		isLin = false;
 	}
-#endif
 
 	return isLin;
 }
@@ -1763,17 +1740,14 @@ void MVKPresentableSwapchainImage::addPresentedHandler(id<CAMetalDrawable> mtlDr
 	beginPresentation(presentInfo);
 
 #if !MVK_OS_SIMULATOR
-	if ([mtlDrawable respondsToSelector: @selector(addPresentedHandler:)]) {
-		[mtlDrawable addPresentedHandler: ^(id<MTLDrawable> mtlDrwbl) {
-			endPresentation(presentInfo, signaler, mtlDrwbl.presentedTime * 1.0e9);
-		}];
-	} else
+	[mtlDrawable addPresentedHandler: ^(id<MTLDrawable> mtlDrwbl) {
+		endPresentation(presentInfo, signaler, mtlDrwbl.presentedTime * 1.0e9);
+	}];
+#else
+	// If MTLDrawable.presentedTime/addPresentedHandler isn't supported,
+	// treat it as if the present happened when requested.
+	endPresentation(presentInfo, signaler);
 #endif
-	{
-		// If MTLDrawable.presentedTime/addPresentedHandler isn't supported,
-		// treat it as if the present happened when requested.
-		endPresentation(presentInfo, signaler);
-	}
 }
 
 // Ensure this image and the swapchain are not destroyed while awaiting presentation
@@ -1848,8 +1822,8 @@ MVKPresentableSwapchainImage::MVKPresentableSwapchainImage(MVKDevice* device,
 																								  width: pCreateInfo->extent.width
 																								 height: pCreateInfo->extent.height
 																							  mipmapped: NO];
-			mtlTexDesc.usageMVK = MTLTextureUsageRenderTarget;
-			mtlTexDesc.storageModeMVK = MTLStorageModePrivate;
+			mtlTexDesc.usage = MTLTextureUsageRenderTarget;
+			mtlTexDesc.storageMode = MTLStorageModePrivate;
 
 			_mtlTextureHeadless = [[getMTLDevice() newTextureWithDescriptor: mtlTexDesc] retain];	// retained
 		}
@@ -2037,7 +2011,7 @@ MVKImageViewPlane::MVKImageViewPlane(MVKImageView* imageView,
     // Determine whether this image view should use a Metal texture view,
     // and set the _useMTLTextureView variable appropriately.
     if ( _imageView->_image ) {
-        _useMTLTextureView = _imageView->_image->_canSupportMTLTextureView;
+        _useMTLTextureView = true;
         bool is3D = _imageView->_image->_mtlTextureType == MTLTextureType3D;
         // If the view is identical to underlying image, don't bother using a Metal view
         if (_mtlPixFmt == _imageView->_image->getMTLPixelFormat(planeIndex) &&
@@ -2203,7 +2177,7 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 
 		switch (_mtlPixFmt) {
 			case MTLPixelFormatR8Unorm:
-#if MVK_APPLE_SILICON
+#if !MVK_OS_SIMULATOR
 			case MTLPixelFormatR8Unorm_sRGB:
 #endif
 			case MTLPixelFormatR8Snorm:
@@ -2223,7 +2197,7 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 				break;
 
 			case MTLPixelFormatRG8Unorm:
-#if MVK_APPLE_SILICON
+#if !MVK_OS_SIMULATOR
 			case MTLPixelFormatRG8Unorm_sRGB:
 #endif
 			case MTLPixelFormatRG8Snorm:
@@ -2452,7 +2426,7 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
 										 VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT))) {
 		if (_mtlTextureType == MTLTextureType2DArray && _image->_mtlTextureType == MTLTextureType2D) {
 			_mtlTextureType = MTLTextureType2D;
-#if MVK_MACOS_OR_IOS
+#if MVK_MACOS_OR_IOS || MVK_XCODE_14
 		} else if (_mtlTextureType == MTLTextureType2DMultisampleArray && _image->_mtlTextureType == MTLTextureType2DMultisample) {
 			_mtlTextureType = MTLTextureType2DMultisample;
 #endif
@@ -2641,9 +2615,7 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
     if (!pCreateInfo->unnormalizedCoordinates) {
         mtlSampDesc.rAddressMode = getMTLSamplerAddressMode(pCreateInfo->addressModeW);
     }
-#if MVK_MACOS_OR_IOS
 	mtlSampDesc.borderColorMVK = mvkMTLSamplerBorderColorFromVkBorderColor(pCreateInfo->borderColor);
-#endif
 
 	mtlSampDesc.minFilter = mvkMTLSamplerMinMagFilterFromVkFilter(pCreateInfo->minFilter);
 	mtlSampDesc.magFilter = mvkMTLSamplerMinMagFilterFromVkFilter(pCreateInfo->magFilter);
@@ -2666,7 +2638,7 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
 	// be automatically hardcoded into the shader MSL. An error will be triggered if this
 	// sampler is used to update or push a descriptor.
 	if (pCreateInfo->compareEnable && !_requiresConstExprSampler) {
-		mtlSampDesc.compareFunctionMVK = mvkMTLCompareFunctionFromVkCompareOp(pCreateInfo->compareOp);
+		mtlSampDesc.compareFunction = mvkMTLCompareFunctionFromVkCompareOp(pCreateInfo->compareOp);
 	}
 
 	return mtlSampDesc;

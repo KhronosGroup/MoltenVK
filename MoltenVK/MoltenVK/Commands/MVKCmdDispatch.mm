@@ -48,15 +48,9 @@ void MVKCmdDispatch::encode(MVKCommandEncoder* cmdEncoder) {
 	id<MTLComputeCommandEncoder> mtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch);
 	auto* pipeline = cmdEncoder->getComputePipeline();
 	if (pipeline->allowsDispatchBase()) {
-		if ([mtlEncoder respondsToSelector: @selector(setStageInRegion:)]) {
-			// We'll use the stage-input region to pass the base along to the shader.
-			// Hopefully Metal won't complain that we didn't set up a stage-input descriptor.
-			[mtlEncoder setStageInRegion: mtlThreadgroupCount];
-		} else {
-			// We have to pass the base group in a buffer.
-			uint32_t base[3] = {(uint32_t)mtlThreadgroupCount.origin.x, (uint32_t)mtlThreadgroupCount.origin.y, (uint32_t)mtlThreadgroupCount.origin.z};
-			cmdEncoder->setComputeBytes(mtlEncoder, base, sizeof(base), pipeline->getImplicitBuffers().ids[MVKImplicitBuffer::DispatchBase]);
-		}
+		// We'll use the stage-input region to pass the base along to the shader.
+		// Hopefully Metal won't complain that we didn't set up a stage-input descriptor.
+		[mtlEncoder setStageInRegion: mtlThreadgroupCount];
 	}
 	[mtlEncoder dispatchThreadgroups: mtlThreadgroupCount.size
 			   threadsPerThreadgroup: pipeline->getThreadgroupSize()];

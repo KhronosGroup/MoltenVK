@@ -64,29 +64,6 @@
 /** Macro to determine the Vulkan version supported by MoltenVK. */
 #define MVK_VULKAN_API_VERSION					MVK_VULKAN_API_VERSION_HEADER(VK_API_VERSION_1_4)
 
-/**
- * IOSurfaces are supported on macOS, and on iOS starting with iOS 11.
- *
- * To enable IOSurface support on iOS in MoltenVK, set the iOS Deployment Target
- * (IPHONEOS_DEPLOYMENT_TARGET) build setting to 11.0 or greater when building
- * MoltenVK, and any app that uses IOSurfaces.
- */
-#if MVK_MACOS
-#	define MVK_SUPPORT_IOSURFACE_BOOL    1
-#endif
-
-#if MVK_IOS
-#	define MVK_SUPPORT_IOSURFACE_BOOL	(__IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_11_0)
-#endif
-
-#if MVK_TVOS
-#	define MVK_SUPPORT_IOSURFACE_BOOL (__TV_OS_VERSION_MIN_REQUIRED >= __TVOS_11_0)
-#endif
-
-#if MVK_VISIONOS
-#    define MVK_SUPPORT_IOSURFACE_BOOL   1
-#endif
-
 
 #pragma mark -
 #pragma mark MoltenVK Configuration
@@ -123,26 +100,9 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #   define MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y    1
 #endif
 
-/**
- * Process command queue submissions on the same thread on which the submission call was made.
- * The default value actually depends on whether MTLEvents are supported, because if MTLEvents
- * are not supported, then synchronous queues should be turned off by default to ensure the
- * CPU emulation of VkEvent behaviour does not deadlock a queue submission, whereas if MTLEvents
- * are supported, we want sychronous queues for better, and more performant, behaviour.
- * The app can of course still override this default behaviour by setting the
- * MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS env var, or the config directly.
- */
-#if MVK_MACOS
-#   define MVK_CONFIG_MTLEVENT_MIN_OS  10.14
-#endif
-#if MVK_IOS_OR_TVOS
-#   define MVK_CONFIG_MTLEVENT_MIN_OS  12.0
-#endif
-#if MVK_VISIONOS
-#   define MVK_CONFIG_MTLEVENT_MIN_OS  1.0
-#endif
+/** Process command queue submissions on the same thread on which the submission call was made. */
 #ifndef MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS
-#   define MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS    mvkOSVersionIsAtLeast(MVK_CONFIG_MTLEVENT_MIN_OS)
+#   define MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS    1
 #endif
 
 /** Fill a Metal command buffer when each Vulkan command buffer is filled. */

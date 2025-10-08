@@ -190,7 +190,7 @@ your app, and to avoid build errors, be sure to use the latest publicly availabl
 Once built, your app integrating the **MoltenVK** libraries can be run on *macOS*, *iOS* or *tvOS*
 devices that support *Metal*, or on the *Xcode* *iOS Simulator* or *tvOS Simulator*.
 
-- At runtime, **MoltenVK** requires at least *macOS 11.0*, *iOS 14*, or *tvOS 14*.
+- At runtime, **MoltenVK** requires at least *macOS 11.0*, *iOS 14*, or *tvOS 14.5*.
 - Information on *macOS* devices that are compatible with *Metal* can be found in
   [this article](http://www.idownloadblog.com/2015/06/22/how-to-find-mac-el-capitan-metal-compatible).
 - Information on *iOS* devices that are compatible with *Metal* can be found in

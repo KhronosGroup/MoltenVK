@@ -483,7 +483,7 @@
 				MARKETING_VERSION = 1;
 				PRODUCT_NAME = Cube;
 				SDKROOT = appletvos;
-				TVOS_DEPLOYMENT_TARGET = 14.0;
+				TVOS_DEPLOYMENT_TARGET = 14.5;
 			};
 			name = Debug;
 		};
@@ -506,7 +506,7 @@
 				MARKETING_VERSION = 1;
 				PRODUCT_NAME = Cube;
 				SDKROOT = appletvos;
-				TVOS_DEPLOYMENT_TARGET = 14.0;
+				TVOS_DEPLOYMENT_TARGET = 14.5;
 			};
 			name = Release;
 		};

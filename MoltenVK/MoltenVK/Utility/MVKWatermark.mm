@@ -20,7 +20,6 @@
 #include "MVKEnvironment.h"
 #include "MVKWatermark.h"
 #include "MVKOSExtensions.h"
-#include "MTLTextureDescriptor+MoltenVK.h"
 
 
 /** The structure to hold shader uniforms. */
@@ -280,12 +279,12 @@ void MVKWatermark::initTexture(unsigned char* textureContent,
                                                                                        width: textureWidth
                                                                                       height: textureHeight
                                                                                    mipmapped: NO];
-    texDesc.usageMVK = MTLTextureUsageShaderRead;
+    texDesc.usage = MTLTextureUsageShaderRead;
 #if MVK_IOS
-    texDesc.storageModeMVK = MTLStorageModeShared;
+    texDesc.storageMode = MTLStorageModeShared;
 #endif
 #if MVK_MACOS
-    texDesc.storageModeMVK = MTLStorageModeManaged;
+    texDesc.storageMode = MTLStorageModeManaged;
 #endif
 
     _mtlTexture = [_mtlDevice newTextureWithDescriptor: texDesc];		// retained

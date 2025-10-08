@@ -76,7 +76,7 @@ typedef struct MVKRPSKeyBlitImg {
 
 	inline bool isSrcArrayType() {
 		return (srcMTLTextureType == MTLTextureType2DArray ||
-#if MVK_MACOS_OR_IOS
+#if MVK_MACOS_OR_IOS || MVK_XCODE_14
 				srcMTLTextureType == MTLTextureType2DMultisampleArray ||
 #endif
 				srcMTLTextureType == MTLTextureType1DArray);

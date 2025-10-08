@@ -25,15 +25,6 @@
 @interface MTLRenderPipelineDescriptor (MoltenVK)
 
 /**
- * Replacement for the inputPrimitiveTopology property.
- *
- * This property allows support under all OS versions. Delegates to the inputPrimitiveTopology
- * property if it is available. otherwise, returns MTLPrimitiveTopologyClassUnspecified when
- * read and does nothing when set.
- */
-@property(nonatomic, readwrite) MTLPrimitiveTopologyClass inputPrimitiveTopologyMVK;
-
-/**
  * Replacement for the sampleMask property.
  *
  * This property allows support under all OS versions. Delegates to the sampleMask

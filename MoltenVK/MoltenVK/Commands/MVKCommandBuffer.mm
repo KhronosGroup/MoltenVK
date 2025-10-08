@@ -23,7 +23,6 @@
 #include "MVKPipeline.h"
 #include "MVKQueryPool.h"
 #include "MVKFoundation.h"
-#include "MTLRenderPassDescriptor+MoltenVK.h"
 #include "MVKCmdDraw.h"
 #include "MVKCmdRendering.h"
 #include <sys/mman.h>
@@ -791,8 +790,8 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 	// we just set the render target extent to cover the render area.
 	VkExtent2D fbExtent = getFramebufferExtent();
 	VkExtent2D raFullExtent = { _renderArea.offset.x + _renderArea.extent.width, _renderArea.offset.y + _renderArea.extent.height };
-    mtlRPDesc.renderTargetWidthMVK = max(min(raFullExtent.width, (fbExtent.width ? fbExtent.width : raFullExtent.width)), 1u);
-    mtlRPDesc.renderTargetHeightMVK = max(min(raFullExtent.height, (fbExtent.height ? fbExtent.height : raFullExtent.height)), 1u);
+    mtlRPDesc.renderTargetWidth = max(min(raFullExtent.width, (fbExtent.width ? fbExtent.width : raFullExtent.width)), 1u);
+    mtlRPDesc.renderTargetHeight = max(min(raFullExtent.height, (fbExtent.height ? fbExtent.height : raFullExtent.height)), 1u);
     if (_canUseLayeredRendering) {
         uint32_t renderTargetArrayLength;
         bool found3D = false, found2D = false;
@@ -816,7 +815,7 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
         }
         // Metal does not allow layered render passes where some RTs are 3D and others are 2D.
         if (!(found3D && found2D) || renderTargetArrayLength > 1) {
-            mtlRPDesc.renderTargetArrayLengthMVK = renderTargetArrayLength;
+            mtlRPDesc.renderTargetArrayLength = renderTargetArrayLength;
         }
     }
 
@@ -1092,10 +1091,7 @@ id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandU
 	if (!_mtlComputeEncoder || shouldStartNewEncoder(_mtlComputeEncoderUse, cmdUse)) {
 		needWaits = true;
 		endCurrentMetalEncoding();
-		if ([_mtlCmdBuffer respondsToSelector:@selector(computeCommandEncoderWithDispatchType:)])
-			_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoderWithDispatchType:getDispatchType(cmdUse)];
-		else
-			_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoder];
+		_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoderWithDispatchType:getDispatchType(cmdUse)];
 		retainIfImmediatelyEncoding(_mtlComputeEncoder);
 		beginMetalComputeEncoding(cmdUse);
 	}

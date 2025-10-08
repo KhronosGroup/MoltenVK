@@ -39,24 +39,15 @@
 
 -(BOOL) displaySyncEnabledMVK {
 #if MVK_MACOS
-    if ( [self respondsToSelector: @selector(displaySyncEnabled)] ) { return self.displaySyncEnabled; }
+    return self.displaySyncEnabled;
 #endif
     return YES;
 }
 
 -(void) setDisplaySyncEnabledMVK: (BOOL) enabled {
 #if MVK_MACOS
-    if ( [self respondsToSelector: @selector(setDisplaySyncEnabled:)] ) { self.displaySyncEnabled = enabled; }
+    self.displaySyncEnabled = enabled;
 #endif
-}
-
--(NSUInteger) maximumDrawableCountMVK {
-	if ( [self respondsToSelector: @selector(maximumDrawableCount)] ) { return self.maximumDrawableCount; }
-	return 0;
-}
-
--(void) setMaximumDrawableCountMVK: (NSUInteger) count {
-	if ( [self respondsToSelector: @selector(setMaximumDrawableCount:)] ) { self.maximumDrawableCount = count; }
 }
 
 -(BOOL) wantsExtendedDynamicRangeContentMVK {

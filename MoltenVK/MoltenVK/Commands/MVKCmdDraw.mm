@@ -271,10 +271,8 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                 cmdEncoder->getState().offsetZeroDivisorVertexBuffers(*cmdEncoder, stage, pipeline, _firstInstance);
 				id<MTLComputePipelineState> vtxState = pipeline->getTessVertexStageState();
 				if (mtlFeats.nonUniformThreadgroups) {
-#if MVK_MACOS_OR_IOS
 					[mtlTessCtlEncoder dispatchThreads: MTLSizeMake(_vertexCount, _instanceCount, 1)
-                                 threadsPerThreadgroup: MTLSizeMake(vtxState.threadExecutionWidth, 1, 1)];
-#endif
+					             threadsPerThreadgroup: MTLSizeMake(vtxState.threadExecutionWidth, 1, 1)];
 				} else {
 					[mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide(_vertexCount, vtxState.threadExecutionWidth), _instanceCount, 1)
                                       threadsPerThreadgroup: MTLSizeMake(vtxState.threadExecutionWidth, 1, 1)];
@@ -316,10 +314,8 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 					wgSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
 				}
 				if (mtlFeats.nonUniformThreadgroups) {
-#if MVK_MACOS_OR_IOS
 					[mtlTessCtlEncoder dispatchThreads: MTLSizeMake(tessParams.patchCount * outControlPointCount, 1, 1)
 								 threadsPerThreadgroup: MTLSizeMake(wgSize, 1, 1)];
-#endif
 				} else {
 					[mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide(tessParams.patchCount * outControlPointCount, wgSize), 1, 1)
 									  threadsPerThreadgroup: MTLSizeMake(wgSize, 1, 1)];
@@ -492,10 +488,8 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                 cmdEncoder->getState().offsetZeroDivisorVertexBuffers(*cmdEncoder, stage, pipeline, _firstInstance);
 				id<MTLComputePipelineState> vtxState = ibb.mtlIndexType == MTLIndexTypeUInt16 ? pipeline->getTessVertexStageIndex16State() : pipeline->getTessVertexStageIndex32State();
 				if (mtlFeats.nonUniformThreadgroups) {
-#if MVK_MACOS_OR_IOS
 					[mtlTessCtlEncoder dispatchThreads: MTLSizeMake(_indexCount, _instanceCount, 1)
-                                 threadsPerThreadgroup: MTLSizeMake(vtxState.threadExecutionWidth, 1, 1)];
-#endif
+					             threadsPerThreadgroup: MTLSizeMake(vtxState.threadExecutionWidth, 1, 1)];
 				} else {
 					[mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide(_indexCount, vtxState.threadExecutionWidth), _instanceCount, 1)
                                       threadsPerThreadgroup: MTLSizeMake(vtxState.threadExecutionWidth, 1, 1)];
@@ -538,10 +532,8 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 					wgSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
 				}
 				if (mtlFeats.nonUniformThreadgroups) {
-#if MVK_MACOS_OR_IOS
 					[mtlTessCtlEncoder dispatchThreads: MTLSizeMake(tessParams.patchCount * outControlPointCount, 1, 1)
 								 threadsPerThreadgroup: MTLSizeMake(wgSize, 1, 1)];
-#endif
 				} else {
 					[mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide(tessParams.patchCount * outControlPointCount, wgSize), 1, 1)
 									  threadsPerThreadgroup: MTLSizeMake(wgSize, 1, 1)];
@@ -667,10 +659,8 @@ void MVKCmdDrawIndirect::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
 	state.bindStructBytes(mtlConvertEncoder, &_drawCount,               3);
 	state.bindBuffer(mtlConvertEncoder, ibb.mtlBuffer, ibb.offset, 4);
 	if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
-#if MVK_MACOS_OR_IOS
 		[mtlConvertEncoder dispatchThreads: MTLSizeMake(_drawCount, 1, 1)
 					 threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
-#endif
 	} else {
 		[mtlConvertEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(_drawCount, mtlConvertState.threadExecutionWidth), 1, 1)
 						  threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
@@ -735,10 +725,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         outControlPointCount = pipeline->getOutputControlPointCount();
         vertexCount = kMVKMaxDrawIndirectVertexCount;
         patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
-        VkDeviceSize indirectSize = (2 * sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments)) * _drawCount;
-        if (mtlFeats.mslVersion >= 20100) {
-            indirectSize += sizeof(MTLStageInRegionIndirectArguments) * _drawCount;
-        }
+        VkDeviceSize indirectSize = (2 * sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments) + sizeof(MTLStageInRegionIndirectArguments)) * _drawCount;
 		paramsIncr = std::max((size_t)dvcLimits.minUniformBufferOffsetAlignment, sizeof(uint32_t) * 2);
 		VkDeviceSize paramsSize = paramsIncr * _drawCount;
         tempIndirectBuff = cmdEncoder->getTempMTLBuffer(indirectSize, true);
@@ -799,10 +786,8 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 				state.bindStructBytes(mtlTessCtlEncoder, &vtxThreadExecWidth,       7);
 				state.bindStructBytes(mtlTessCtlEncoder, &tcWorkgroupSize,          8);
 				if (mtlFeats.nonUniformThreadgroups) {
-#if MVK_MACOS_OR_IOS
 					[mtlTessCtlEncoder dispatchThreads: MTLSizeMake(_drawCount, 1, 1)
 								 threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
-#endif
 				} else {
 					[mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(_drawCount, mtlConvertState.threadExecutionWidth), 1, 1)
 									  threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
@@ -823,10 +808,8 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 				state.bindStructBytes(mtlConvertEncoder, &_drawCount,               3);
 				state.bindStructBytes(mtlConvertEncoder, &viewCount,                4);
                 if (mtlFeats.nonUniformThreadgroups) {
-#if MVK_MACOS_OR_IOS
-                    [mtlConvertEncoder dispatchThreads: MTLSizeMake(_drawCount, 1, 1)
-                                 threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
-#endif
+					[mtlConvertEncoder dispatchThreads: MTLSizeMake(_drawCount, 1, 1)
+					             threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
                 } else {
                     [mtlConvertEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(_drawCount, mtlConvertState.threadExecutionWidth), 1, 1)
                                       threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
@@ -849,11 +832,9 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                     }
 					// We must assume we can read up to the maximum number of vertices.
 					[mtlTessCtlEncoder setStageInRegion: MTLRegionMake2D(0, 0, vertexCount, vertexCount)];
-					if ([mtlTessCtlEncoder respondsToSelector: @selector(setStageInRegionWithIndirectBuffer:indirectBufferOffset:)]) {
-						[mtlTessCtlEncoder setStageInRegionWithIndirectBuffer: mtlIndBuff
-						                                 indirectBufferOffset: mtlIndBuffOfst];
-						mtlIndBuffOfst += sizeof(MTLStageInRegionIndirectArguments);
-					}
+					[mtlTessCtlEncoder setStageInRegionWithIndirectBuffer: mtlIndBuff
+						                             indirectBufferOffset: mtlIndBuffOfst];
+					mtlIndBuffOfst += sizeof(MTLStageInRegionIndirectArguments);
 					[mtlTessCtlEncoder dispatchThreadgroupsWithIndirectBuffer: mtlIndBuff
 														 indirectBufferOffset: mtlIndBuffOfst
 														threadsPerThreadgroup: MTLSizeMake(vtxThreadExecWidth, 1, 1)];
@@ -910,13 +891,11 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 							[cmdEncoder->_mtlRenderEncoder setTessellationFactorBuffer: tcLevelBuff->_mtlBuffer
 																				offset: tcLevelBuff->_offset
 																		instanceStride: 0];
-#if MVK_MACOS_OR_IOS
 							[cmdEncoder->_mtlRenderEncoder drawPatches: outControlPointCount
 													  patchIndexBuffer: nil
 												patchIndexBufferOffset: 0
 														indirectBuffer: mtlIndBuff
 												  indirectBufferOffset: mtlIndBuffOfst];
-#endif
 						}
 
 						mtlIndBuffOfst += sizeof(MTLDrawPatchIndirectArguments);
@@ -1034,10 +1013,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
         outControlPointCount = pipeline->getOutputControlPointCount();
         vertexCount = kMVKMaxDrawIndirectVertexCount;
         patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
-        VkDeviceSize indirectSize = (sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments)) * _drawCount;
-        if (mtlFeats.mslVersion >= 20100) {
-            indirectSize += sizeof(MTLStageInRegionIndirectArguments) * _drawCount;
-        }
+        VkDeviceSize indirectSize = (sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments) + sizeof(MTLStageInRegionIndirectArguments)) * _drawCount;
 		paramsIncr = std::max((size_t)dvcLimits.minUniformBufferOffsetAlignment, sizeof(uint32_t) * 2);
 		VkDeviceSize paramsSize = paramsIncr * _drawCount;
         tempIndirectBuff = cmdEncoder->getTempMTLBuffer(indirectSize, true);
@@ -1141,10 +1117,8 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 				state.bindBuffer(mtlConvertEncoder, ibb.mtlBuffer,       ibb.offset,       6);
 				state.bindBuffer(mtlConvertEncoder, ibbTriFan.mtlBuffer, ibbTriFan.offset, 7);
 				if (mtlFeats.nonUniformThreadgroups) {
-#if MVK_MACOS_OR_IOS
 					[mtlConvertEncoder dispatchThreads: MTLSizeMake(_drawCount, 1, 1)
 								 threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
-#endif
 				} else {
 					[mtlConvertEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(_drawCount, mtlConvertState.threadExecutionWidth), 1, 1)
 									  threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
@@ -1169,11 +1143,9 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 										  offset: vtxIndexBuff->_offset
 										 atIndex: pipeline->getImplicitBuffers(kMVKShaderStageVertex).ids[MVKImplicitBuffer::Index]];
 					[mtlTessCtlEncoder setStageInRegion: MTLRegionMake2D(0, 0, vertexCount, vertexCount)];
-					if ([mtlTessCtlEncoder respondsToSelector: @selector(setStageInRegionWithIndirectBuffer:indirectBufferOffset:)]) {
-						[mtlTessCtlEncoder setStageInRegionWithIndirectBuffer: mtlIndBuff
-						                                 indirectBufferOffset: mtlTempIndBuffOfst];
-						mtlTempIndBuffOfst += sizeof(MTLStageInRegionIndirectArguments);
-					}
+					[mtlTessCtlEncoder setStageInRegionWithIndirectBuffer: mtlIndBuff
+						                             indirectBufferOffset: mtlTempIndBuffOfst];
+					mtlTempIndBuffOfst += sizeof(MTLStageInRegionIndirectArguments);
 					// If this is a synthetic command that originated in a direct call, and there are vertex bindings with a zero vertex
 					// divisor, I need to offset them by _firstInstance * stride, since that is the expected behaviour for a divisor of 0.
 					cmdEncoder->getState().offsetZeroDivisorVertexBuffers(*cmdEncoder, stage, pipeline, _directCmdFirstInstance);
@@ -1233,13 +1205,11 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 							[cmdEncoder->_mtlRenderEncoder setTessellationFactorBuffer: tcLevelBuff->_mtlBuffer
 																				offset: tcLevelBuff->_offset
 																		instanceStride: 0];
-#if MVK_MACOS_OR_IOS
 							[cmdEncoder->_mtlRenderEncoder drawPatches: outControlPointCount
-													  patchIndexBuffer: nil
-												patchIndexBufferOffset: 0
-														indirectBuffer: mtlIndBuff
-												  indirectBufferOffset: mtlTempIndBuffOfst];
-#endif
+							                          patchIndexBuffer: nil
+							                    patchIndexBufferOffset: 0
+							                            indirectBuffer: mtlIndBuff
+							                      indirectBufferOffset: mtlTempIndBuffOfst];
 						}
 
 						mtlTempIndBuffOfst += sizeof(MTLDrawPatchIndirectArguments);

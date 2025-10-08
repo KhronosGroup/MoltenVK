@@ -24,15 +24,6 @@
 @interface MTLSamplerDescriptor (MoltenVK)
 
 /**
- * Replacement for the compareFunction property.
- *
- * This property allows support under all OS versions. Delegates to the compareFunction
- * property if it is available. otherwise, returns MTLTextureUsageUnknown when read and
- * does nothing when set.
- */
-@property(nonatomic, readwrite) MTLCompareFunction compareFunctionMVK;
-
-/**
  * Replacement for the borderColor property.
  *
  * This property allows support under all OS versions. Delegates to the borderColor
