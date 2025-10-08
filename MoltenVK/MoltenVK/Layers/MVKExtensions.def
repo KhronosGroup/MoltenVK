@@ -155,6 +155,7 @@ MVK_EXTENSION(EXT_load_store_op_none,                   EXT_LOAD_STORE_OP_NONE, 
 MVK_EXTENSION(EXT_memory_budget,                        EXT_MEMORY_BUDGET,                        DEVICE,   10.13, 11.0,  1.0)
 MVK_EXTENSION(EXT_metal_objects,                        EXT_METAL_OBJECTS,                        DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_metal_surface,                        EXT_METAL_SURFACE,                        INSTANCE, 10.11,  8.0,  1.0)
+MVK_EXTENSION(EXT_non_seamless_cube_map,                EXT_NON_SEAMLESS_CUBE_MAP,                DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_pipeline_creation_cache_control,      EXT_PIPELINE_CREATION_CACHE_CONTROL,      DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_pipeline_creation_feedback,           EXT_PIPELINE_CREATION_FEEDBACK,           DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_pipeline_robustness,                  EXT_PIPELINE_ROBUSTNESS,                  DEVICE,   10.11,  8.0,  1.0)
