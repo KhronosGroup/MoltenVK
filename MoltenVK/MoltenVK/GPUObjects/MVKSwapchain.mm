@@ -196,10 +196,8 @@ VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRe
 		CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayId);
 		framesPerSecond = CGDisplayModeGetRefreshRate(mode);
 		CGDisplayModeRelease(mode);
-#if MVK_XCODE_13
 		if (framesPerSecond == 0 && [screen respondsToSelector: @selector(maximumFramesPerSecond)])
 			framesPerSecond = [screen maximumFramesPerSecond];
-#endif
 		// Builtin panels, e.g., on MacBook, report a zero refresh rate.
 		if (framesPerSecond == 0)
 			framesPerSecond = 60.0;

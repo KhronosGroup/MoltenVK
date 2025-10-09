@@ -163,9 +163,7 @@ MTLTextureType mvkMTLTextureTypeFromVkImageTypeObj(VkImageType vkImageType,
 									   : (arraySize > 1 ? MTLTextureType1DArray : MTLTextureType1D));
 		case VK_IMAGE_TYPE_2D:
 		default: {
-#if MVK_MACOS_OR_IOS || MVK_XCODE_14
 			if (arraySize > 1 && isMultisample) { return MTLTextureType2DMultisampleArray; }
-#endif
 			if (arraySize > 1) { return MTLTextureType2DArray; }
 			if (isMultisample) { return MTLTextureType2DMultisample; }
 			return MTLTextureType2D;
