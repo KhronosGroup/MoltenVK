@@ -20,22 +20,32 @@ jobs:
         platform: [ "all", "macos", "ios" ]
         upload_artifacts: [ true ]
         select_xcode: [ false ]
+        private_api: [ false ]
 
-        # Legacy build. Up to 3 versions behind latest (or beta).
         include:
+          # macOS build with private APIs enabled.
+          - os: "macos-latest"
+            platform: "macos"
+            upload_artifacts: true
+            select_xcode: false
+            private_api: true
+          # Legacy build. Up to 3 versions behind latest (or beta).
           - os: "macos-13"
             xcode: "14.3.1"
             platform: "macos"
             upload_artifacts: false
             select_xcode: true
+            private_api: false
       fail-fast: false
 
-    name: 'MoltenVK (Xcode ${{ matrix.xcode }} - ${{ matrix.platform }})'
+    name: MoltenVK (Xcode ${{ matrix.xcode }} - ${{ matrix.platform }}${{ matrix.private_api && '-privateapi' || '' }})
     
     runs-on: ${{ matrix.os }}
     
     env:
       XCODE_DEV_PATH: "/Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer"
+      ARTIFACT_TYPE: ${{ matrix.platform }}${{ matrix.private_api && '-privateapi' || '' }}
+      BUILD_ARGUMENTS: ${{ matrix.platform }} ${{ matrix.private_api && 'MVK_USE_METAL_PRIVATE_API=1' || '' }}
 
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -89,7 +99,7 @@ jobs:
 
       - name: Build MoltenVK
         run: |
-          make ${{ matrix.platform }}
+          make ${BUILD_ARGUMENTS}
 
       - name: Output MoltenVK Build Logs on Failure
         if: failure()
@@ -104,14 +114,14 @@ jobs:
         # To reduce artifact size, don't include any stand-alone shader converter binaries.
         run: |
           rm -rf Package/Release/MoltenVKShaderConverter
-          tar -C Package -s/Release/MoltenVK/ -cvf "MoltenVK-${{ matrix.platform }}.tar" Release/
+          tar -C Package -s/Release/MoltenVK/ -cvf "MoltenVK-${ARTIFACT_TYPE}.tar" Release/
 
       - name: Upload Artifacts
         if: success() && matrix.upload_artifacts == true
         uses: actions/upload-artifact@v4
         with:
-          name: "MoltenVK-${{ matrix.platform }}"
-          path: "MoltenVK-${{ matrix.platform }}.tar"
+          name: "MoltenVK-${{ env.ARTIFACT_TYPE }}"
+          path: "MoltenVK-${{ env.ARTIFACT_TYPE }}.tar"
 
   release:
     name: 'Release'
