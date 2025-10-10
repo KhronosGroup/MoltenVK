@@ -220,6 +220,7 @@ protected:
 	VkResolveModeFlagBits _stencilResolveMode = VK_RESOLVE_MODE_NONE;
 	VkSampleCountFlagBits _defaultSampleCount = VK_SAMPLE_COUNT_1_BIT;
 	uint32_t _subpassIndex;
+	bool _isDitheringEnabled = false;
 	bool _isInputAttachmentDepthStencilAttachment = false;
 	bool _isDynamicRendering = false;
 };

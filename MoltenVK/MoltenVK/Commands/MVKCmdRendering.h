@@ -648,3 +648,16 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 };
 
+
+#pragma mark -
+#pragma mark MVKCmdSetProvokingVertexMode
+
+class MVKCmdSetProvokingVertexMode : public MVKSingleValueCommand<VkProvokingVertexModeEXT> {
+
+public:
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};
+

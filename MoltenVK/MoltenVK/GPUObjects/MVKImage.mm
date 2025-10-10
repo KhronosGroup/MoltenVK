@@ -2641,6 +2641,12 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
 		mtlSampDesc.compareFunction = mvkMTLCompareFunctionFromVkCompareOp(pCreateInfo->compareOp);
 	}
 
+#if MVK_USE_METAL_PRIVATE_API
+	if (getMVKConfig().useMetalPrivateAPI) {
+		mtlSampDesc.forceSeamsOnCubemapFilteringMVK = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT);
+	}
+#endif
+
 	return mtlSampDesc;
 }
 

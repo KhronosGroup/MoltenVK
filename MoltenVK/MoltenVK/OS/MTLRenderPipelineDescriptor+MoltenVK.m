@@ -19,9 +19,9 @@
 
 #include "MTLRenderPipelineDescriptor+MoltenVK.h"
 #include "MVKCommonEnvironment.h"
+#include "mvk_datatypes.h"
 
 #if MVK_USE_METAL_PRIVATE_API
-typedef NSUInteger MTLLogicOperation;
 
 // These properties aren't public yet.
 @interface MTLRenderPipelineDescriptor ()

@@ -349,8 +349,41 @@ MTLBlendOperation mvkMTLBlendOperationFromVkBlendOp(VkBlendOp vkBlendOp);
 /** Returns the Metal MTLBlendFactor corresponding to the specified Vulkan VkBlendFactor. */
 MTLBlendFactor mvkMTLBlendFactorFromVkBlendFactor(VkBlendFactor vkBlendFactor);
 
+#if MVK_USE_METAL_PRIVATE_API
+
+// This isn't in any public header yet. Equivalent to D3D11 values.
+typedef NS_ENUM(NSUInteger, MTLLogicOperation) {
+	MTLLogicOperationClear,
+	MTLLogicOperationSet,
+	MTLLogicOperationCopy,
+	MTLLogicOperationCopyInverted,
+	MTLLogicOperationNoop,
+	MTLLogicOperationInvert,
+	MTLLogicOperationAnd,
+	MTLLogicOperationNand,
+	MTLLogicOperationOr,
+	MTLLogicOperationNor,
+	MTLLogicOperationXor,
+	MTLLogicOperationEquivalence,
+	MTLLogicOperationAndReverse,
+	MTLLogicOperationAndInverted,
+	MTLLogicOperationOrReverse,
+	MTLLogicOperationOrInverted,
+};
+
 /** Returns the Metal MTLLogicOperation corresponding to the specified Vulkan VkLogicOp. */
-NSUInteger mvkMTLLogicOperationFromVkLogicOp(VkLogicOp vkBlendOp);
+MTLLogicOperation mvkMTLLogicOperationFromVkLogicOp(VkLogicOp vkBlendOp);
+
+typedef NS_ENUM(NSUInteger, MTLProvokingVertexMode) {
+	MTLProvokingVertexModeFirst,
+	MTLProvokingVertexModeLast,
+	MTLProvokingVertexModeUnknown, // FIXME: Unknown what this value is currently.
+};
+
+/** Returns the Metal MTLProvokingVertexMode corresponding to the specified Vulkan VkProvokingVertexModeEXT. */
+MTLProvokingVertexMode mvkMTLProvokingVertexModeFromVkProvokingVertexMode(VkProvokingVertexModeEXT vkProvokingVertexMode);
+
+#endif
 
 /**
  * Returns the Metal MTLVertexFormat corresponding to the specified
@@ -362,7 +395,7 @@ MTLVertexFormat mvkMTLVertexFormatFromVkFormat(VkFormat vkFormat);
 MTLVertexStepFunction mvkMTLVertexStepFunctionFromVkVertexInputRate(VkVertexInputRate vkVtxStep);
 
 /** Returns the Metal MTLStepFunction corresponding to the specified Vulkan VkVertexInputRate. */
-MTLStepFunction mvkMTLStepFunctionFromVkVertexInputRate(VkVertexInputRate vkVtxStep, bool forTess = false);
+MTLStepFunction mvkMTLStepFunctionFromVkVertexInputRate(VkVertexInputRate vkVtxStep, bool forTess);
 
 /** Returns the Metal MTLPrimitiveType corresponding to the specified Vulkan VkPrimitiveTopology. */
 MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopology(VkPrimitiveTopology vkTopology);
@@ -377,7 +410,7 @@ MTLTriangleFillMode mvkMTLTriangleFillModeFromVkPolygonMode(VkPolygonMode vkFill
 MTLLoadAction mvkMTLLoadActionFromVkAttachmentLoadOp(VkAttachmentLoadOp vkLoadOp);
 
 /** Returns the Metal MTLStoreAction corresponding to the specified Vulkan VkAttachmentStoreOp. */
-MTLStoreAction mvkMTLStoreActionFromVkAttachmentStoreOp(VkAttachmentStoreOp vkStoreOp, bool hasResolveAttachment, bool canResolveFormat = true);
+MTLStoreAction mvkMTLStoreActionFromVkAttachmentStoreOp(VkAttachmentStoreOp vkStoreOp, bool hasResolveAttachment, bool canResolveFormat);
 
 /** Returns the Metal MTLMultisampleDepthResolveFilter corresponding to the specified Vulkan VkResolveModeFlagBits. */
 MTLMultisampleDepthResolveFilter mvkMTLMultisampleDepthResolveFilterFromVkResolveModeFlagBits(VkResolveModeFlagBits vkResolveMode);
@@ -461,7 +494,8 @@ static inline MTLOrigin mvkMTLOriginFromVkOffset3D(VkOffset3D vkOffset) {
 
 /** Returns a Vulkan VkOffset3D constructed from a Metal MTLOrigin. */
 static inline VkOffset3D mvkVkOffset3DFromMTLOrigin(MTLOrigin mtlOrigin) {
-	return { (int32_t)mtlOrigin.x, (int32_t)mtlOrigin.y, (int32_t)mtlOrigin.z };
+	VkOffset3D offset3D = { (int32_t)mtlOrigin.x, (int32_t)mtlOrigin.y, (int32_t)mtlOrigin.z };
+	return offset3D;
 }
 
 /** Returns a Metal MTLSize constructed from a VkExtent3D. */
@@ -471,7 +505,8 @@ static inline MTLSize mvkMTLSizeFromVkExtent3D(VkExtent3D vkExtent) {
 
 /** Returns a Vulkan VkExtent3D  constructed from a Metal MTLSize. */
 static inline VkExtent3D mvkVkExtent3DFromMTLSize(MTLSize mtlSize) {
-	return { (uint32_t)mtlSize.width, (uint32_t)mtlSize.height, (uint32_t)mtlSize.depth };
+	VkExtent3D extent3D = { (uint32_t)mtlSize.width, (uint32_t)mtlSize.height, (uint32_t)mtlSize.depth };
+	return extent3D;
 }
 
 

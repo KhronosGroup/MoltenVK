@@ -567,3 +567,13 @@ void MVKCmdSetPrimitiveRestartEnable::encode(MVKCommandEncoder* cmdEncoder) {
 void MVKCmdSetRasterizerDiscardEnable::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::RasterizerDiscardEnable)._renderState.enable.set(MVKRenderStateEnableFlag::RasterizerDiscard, _value);
 }
+
+
+#pragma mark -
+#pragma mark MVKCmdSetProvokingVertexMode
+
+void MVKCmdSetProvokingVertexMode::encode(MVKCommandEncoder* cmdEncoder) {
+#if MVK_USE_METAL_PRIVATE_API
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::ProvokingVertexMode)._renderState.provokingVertexMode = mvkMTLProvokingVertexModeFromVkProvokingVertexMode(_value);
+#endif
+}
