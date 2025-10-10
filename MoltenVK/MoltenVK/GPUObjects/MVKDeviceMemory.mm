@@ -403,7 +403,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 	// "Dedicated" means this memory can only be used for this image or buffer.
 	if (dedicatedImage) {
 #if MVK_MACOS
-		if (isMemoryHostCoherent() ) {
+		if (!isAppleGPU() && isMemoryHostCoherent()) {
 			if (!dedicatedImage->_isLinear) {
 				setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkAllocateMemory(): Host-coherent VkDeviceMemory objects cannot be associated with optimal-tiling images."));
 			} else if (!ensureMTLBuffer()) {
