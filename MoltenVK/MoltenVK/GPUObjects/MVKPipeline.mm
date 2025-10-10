@@ -559,11 +559,6 @@ static const VkPipelineRenderingCreateInfo* getRenderingCreateInfo(const VkGraph
 	return &emptyRendInfo;
 }
 
-static bool isBufferRobustnessEnabled(const VkPipelineRobustnessBufferBehavior behavior) {
-	return behavior == VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS ||
-		   behavior == VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS_2;
-}
-
 template <typename T>
 static const VkPipelineRobustnessCreateInfo* getRobustnessCreateInfo(const T* pCreateInfo) {
 	const VkPipelineRobustnessCreateInfo* pRobustnessInfo = nullptr;
@@ -580,16 +575,17 @@ static const VkPipelineRobustnessCreateInfo* getRobustnessCreateInfo(const T* pC
 }
 
 template <typename T>
-static void warnIfBufferRobustnessEnabled(MVKPipeline* pipeline, const T* pCreateInfo) {
-	if (!pCreateInfo) return;
+static void warnIfUnsupportedRobustnessEnabled(MVKPipeline* pipeline, const T* pCreateInfo) {
+	if (!pCreateInfo || pipeline->isAppleGPU()) return;
 
 	const VkPipelineRobustnessCreateInfo* pRobustnessInfo = getRobustnessCreateInfo(pCreateInfo);
 	if (!pRobustnessInfo) return;
 
-	if (isBufferRobustnessEnabled(pRobustnessInfo->storageBuffers) ||
-		isBufferRobustnessEnabled(pRobustnessInfo->uniformBuffers) ||
-		isBufferRobustnessEnabled(pRobustnessInfo->vertexInputs)) {
-		pipeline->reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support buffer robustness.");
+	if (pRobustnessInfo->storageBuffers == VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS ||
+		pRobustnessInfo->uniformBuffers == VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS ||
+		pRobustnessInfo->vertexInputs == VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS ||
+		pRobustnessInfo->images == VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_ROBUST_IMAGE_ACCESS) {
+		pipeline->reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "Non-Apple GPUs do not fully support robustness.");
 	}
 }
 
@@ -716,7 +712,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 		}
 	}
 
-	warnIfBufferRobustnessEnabled(this, pCreateInfo);
+	warnIfUnsupportedRobustnessEnabled(this, pCreateInfo);
 
 	// Initialize feedback. The VALID bit must be initialized, either set or cleared.
 	// We'll set the VALID bits later, after successful compilation.
@@ -779,10 +775,10 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	_tessEvalModule = getOrCreateShaderModule(device, pTessEvalSS, _ownsTessEvalModule);
 	_fragmentModule = getOrCreateShaderModule(device, pFragmentSS, _ownsFragmentModule);
 
-	warnIfBufferRobustnessEnabled(this, pVertexSS);
-	warnIfBufferRobustnessEnabled(this, pTessCtlSS);
-	warnIfBufferRobustnessEnabled(this, pTessEvalSS);
-	warnIfBufferRobustnessEnabled(this, pFragmentSS);
+	warnIfUnsupportedRobustnessEnabled(this, pVertexSS);
+	warnIfUnsupportedRobustnessEnabled(this, pTessCtlSS);
+	warnIfUnsupportedRobustnessEnabled(this, pTessEvalSS);
+	warnIfUnsupportedRobustnessEnabled(this, pFragmentSS);
 
 	// Get the tessellation parameters from the shaders.
 	SPIRVTessReflectionData reflectData;
@@ -2395,7 +2391,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 		}
 	}
 
-	warnIfBufferRobustnessEnabled(this, pCreateInfo);
+	warnIfUnsupportedRobustnessEnabled(this, pCreateInfo);
 
 	// Initialize feedback. The VALID bit must be initialized, either set or cleared.
 	// We'll set the VALID bit on the stage feedback when we compile it.
@@ -2458,7 +2454,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 
 	_module = getOrCreateShaderModule(_device, pSS, _ownsModule);
 
-	warnIfBufferRobustnessEnabled(this, pSS);
+	warnIfUnsupportedRobustnessEnabled(this, pSS);
 
 	auto& mtlFeats = getMetalFeatures();
 	auto& mvkCfg = getMVKConfig();
