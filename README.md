@@ -175,19 +175,8 @@ Building **MoltenVK**
 During building, **MoltenVK** references the latest *Apple SDK* frameworks. To access these frameworks,
 and to avoid build errors, be sure to use the latest publicly available version of *Xcode*.
 
-> ***Note:*** *Xcode 14* introduced a new static linkage model that is not compatible with previous
-versions of *Xcode*. If you link to a `MoltenVK.xcframework` that was built with *Xcode 14* or later,
-also use *Xcode 14* or later to link it to your app or game.
->
-> If you need to use *Xcode 13* or earlier to link `MoltenVK.xcframework` to your app or game,
-first build **MoltenVK** with *Xcode 13* or earlier.
->
-> Or, if you want to use *Xcode 14* or later to build **MoltenVK**, in order to be able to use the
-latest *Metal* capabilities, but need to use *Xcode 13* or earlier to link `MoltenVK.xcframework`
-to your app or game, first add the value `-fno-objc-msgsend-selector-stubs` to the `OTHER_CFLAGS`
-*Xcode* build setting in the `MoltenVK.xcodeproj` and `MoltenVKShaderConverter.xcodeproj` *Xcode*
-projects, build **MoltenVK** with *Xcode 14* or later, and then link `MoltenVK.xcframework`
-to your app or game using *Xcode 13* or earlier.
+MoltenVK currently supports being built with *Xcode 14.3* or later. Support is based on the
+earliest version of Xcode that can be verified in CI workflows.
 
 Once built, the **MoltenVK** libraries can be run on *macOS*, *iOS*, *tvOS*, or *visionOS* devices
 that support *Metal*,or on the *Xcode* *iOS Simulator*, *tvOS Simulator*, or *visionOS Simulator*.

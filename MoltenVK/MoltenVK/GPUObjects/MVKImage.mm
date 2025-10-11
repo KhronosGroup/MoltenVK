@@ -2426,10 +2426,8 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
 										 VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT))) {
 		if (_mtlTextureType == MTLTextureType2DArray && _image->_mtlTextureType == MTLTextureType2D) {
 			_mtlTextureType = MTLTextureType2D;
-#if MVK_MACOS_OR_IOS || MVK_XCODE_14
 		} else if (_mtlTextureType == MTLTextureType2DMultisampleArray && _image->_mtlTextureType == MTLTextureType2DMultisample) {
 			_mtlTextureType = MTLTextureType2DMultisample;
-#endif
 		}
 	}
 

@@ -240,9 +240,7 @@ void MVKQueue::handleMTLCommandBufferError(id<MTLCommandBuffer> mtlCmdBuff) {
 		case MTLCommandBufferErrorTimeout:
 			vkErr = VK_TIMEOUT;
 			break;
-#if MVK_XCODE_13
 		case MTLCommandBufferErrorStackOverflow:
-#endif
 		case MTLCommandBufferErrorPageFault:
 		case MTLCommandBufferErrorOutOfMemory:
 		default:
