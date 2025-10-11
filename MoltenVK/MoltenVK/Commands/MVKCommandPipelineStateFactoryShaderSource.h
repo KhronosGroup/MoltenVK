@@ -583,4 +583,8 @@ kernel void convertUint8IndicesRaw(device uint8_t* src [[ buffer(0) ]],
 	uint8_t idx = src[pos];
 	dst[pos] = idx;
 }
+
+fragment void discardAllFragments() {
+    discard_fragment();
+}
 )";

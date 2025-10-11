@@ -1843,6 +1843,10 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(T* plDesc,
 		auto& funcRslts = func.shaderConversionResults;
 		populateResourceUsage(_stageResources[kMVKShaderStageFragment], shaderConfig, funcRslts, spv::ExecutionModelFragment);
 		_layout->populateBindOperations(_stageResources[kMVKShaderStageFragment].bindScript, shaderConfig, spv::ExecutionModelFragment);
+	} else if (isMeshPipeline()) {
+		// fragmentFunction cannot be nil for a mesh pipeline. Fill in with a discard shader.
+		_builtinFragmentFunction = _device->getCommandResourceFactory()->newDiscardAllFragmentFunction();
+		plDesc.fragmentFunction = _builtinFragmentFunction;
 	}
 	return verifyImplicitBuffers(kMVKShaderStageFragment);
 }
@@ -2548,6 +2552,7 @@ MVKMTLFunction MVKGraphicsPipeline::getMTLFunction(SPIRVToMSLConversionConfigura
 
 MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 	@synchronized (getMTLDevice()) {
+		[_builtinFragmentFunction release];
 		[_mtlTessVertexStageState release];
 		[_mtlTessVertexStageIndex16State release];
 		[_mtlTessVertexStageIndex32State release];
@@ -2556,6 +2561,8 @@ MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 		if (_ownsVertexModule) delete _vertexModule;
 		if (_ownsTessCtlModule) delete _tessCtlModule;
 		if (_ownsTessEvalModule) delete _tessEvalModule;
+		if (_ownsTaskModule) delete _taskModule;
+		if (_ownsMeshModule) delete _meshModule;
 		if (_ownsFragmentModule) delete _fragmentModule;
 	}
 }

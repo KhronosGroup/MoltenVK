@@ -418,6 +418,7 @@ protected:
 	MVKShaderModule* _taskModule = nullptr;
 	MVKShaderModule* _meshModule = nullptr;
 	MVKShaderModule* _fragmentModule = nullptr;
+	id<MTLFunction> _builtinFragmentFunction = nil;
 	bool _ownsVertexModule = false;
 	bool _ownsTessCtlModule = false;
 	bool _ownsTessEvalModule = false;
