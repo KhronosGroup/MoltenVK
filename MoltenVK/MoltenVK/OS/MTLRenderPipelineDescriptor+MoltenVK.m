@@ -35,9 +35,72 @@ typedef NSUInteger MTLLogicOperation;
 - (void)setLogicOperation: (MTLLogicOperation)op;
 
 @end
+
+@interface MTLMeshRenderPipelineDescriptor ()
+
+@property(nonatomic, readwrite) NSUInteger sampleMask;
+@property(nonatomic, readwrite) float sampleCoverage;
+
+- (BOOL)isLogicOperationEnabled;
+- (void)setLogicOperationEnabled: (BOOL)enable;
+- (MTLLogicOperation)logicOperation;
+- (void)setLogicOperation: (MTLLogicOperation)op;
+
+@end
 #endif
 
 @implementation MTLRenderPipelineDescriptor (MoltenVK)
+
+-(NSUInteger) sampleMaskMVK {
+#if MVK_USE_METAL_PRIVATE_API
+	if ( [self respondsToSelector: @selector(sampleMask)] ) { return self.sampleMask; }
+#endif
+	return 0xFFFFFFFFFFFFFFFFULL;
+}
+
+-(void) setSampleMaskMVK: (NSUInteger) mask {
+#if MVK_USE_METAL_PRIVATE_API
+	if ([self respondsToSelector: @selector(setSampleMask:)]) { self.sampleMask = mask; }
+#endif
+}
+
+- (BOOL)isLogicOperationEnabledMVK {
+#if MVK_USE_METAL_PRIVATE_API
+	if ([self respondsToSelector:@selector(isLogicOperationEnabled)]) {
+		return [self isLogicOperationEnabled];
+	}
+#endif
+	return NO;
+}
+
+- (void)setLogicOperationEnabledMVK: (BOOL)enable {
+#if MVK_USE_METAL_PRIVATE_API
+	if ([self respondsToSelector:@selector(setLogicOperationEnabled:)]) {
+		[self setLogicOperationEnabled: enable];
+	}
+#endif
+}
+
+- (NSUInteger)logicOperationMVK {
+#if MVK_USE_METAL_PRIVATE_API
+	if ([self respondsToSelector:@selector(logicOperation)]) {
+		return [self logicOperation];
+	}
+#endif
+	return 3 /* MTLLogicOperationCopy */;
+}
+
+- (void)setLogicOperationMVK: (NSUInteger)op {
+#if MVK_USE_METAL_PRIVATE_API
+	if ([self respondsToSelector:@selector(setLogicOperation:)]) {
+		[self setLogicOperation: (MTLLogicOperation)op];
+	}
+#endif
+}
+
+@end
+
+@implementation MTLMeshRenderPipelineDescriptor (MoltenVK)
 
 -(NSUInteger) sampleMaskMVK {
 #if MVK_USE_METAL_PRIVATE_API

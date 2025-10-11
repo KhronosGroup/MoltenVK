@@ -1236,3 +1236,83 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
     }
 }
 
+
+#pragma mark -
+#pragma mark MVKCmdDrawMeshTasks
+
+VkResult MVKCmdDrawMeshTasks::setContent(MVKCommandBuffer* cmdBuff,
+                                         uint32_t groupCountX,
+                                         uint32_t groupCountY,
+                                         uint32_t groupCountZ) {
+	_groupCountX = groupCountX;
+	_groupCountY = groupCountY;
+	_groupCountZ = groupCountZ;
+	return VK_SUCCESS;
+}
+
+void MVKCmdDrawMeshTasks::encode(MVKCommandEncoder* cmdEncoder) {
+	if (_groupCountX == 0 || _groupCountY == 0 || _groupCountZ == 0) { return; }	// Nothing to do.
+
+	cmdEncoder->restartMetalRenderPassIfNeeded();
+
+	auto* pipeline = cmdEncoder->getGraphicsPipeline();
+
+	cmdEncoder->_isIndexedDraw = false;
+
+	MVKPiplineStages stages;
+	pipeline->getStages(stages);
+
+	for (uint32_t s : stages) {
+		auto stage = MVKGraphicsStage(s);
+		cmdEncoder->finalizeDrawState(stage);	// Ensure all updated state has been submitted to Metal
+
+		if ( !pipeline->hasValidMTLPipelineStates() ) { return; }	// Abort if this pipeline stage could not be compiled.
+	}
+
+	[cmdEncoder->_mtlRenderEncoder drawMeshThreadgroups:MTLSizeMake(_groupCountX, _groupCountY, _groupCountZ)
+	                        threadsPerObjectThreadgroup:pipeline->getObjectThreadgroupSize()
+	                          threadsPerMeshThreadgroup:pipeline->getMeshThreadgroupSize()];
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdDrawMeshTasksIndirect
+
+VkResult MVKCmdDrawMeshTasksIndirect::setContent(MVKCommandBuffer* cmdBuff,
+                                                 VkBuffer buffer,
+                                                 VkDeviceSize offset,
+                                                 uint32_t drawCount,
+                                                 uint32_t stride) {
+	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
+	_mtlIndirectBuffer = mvkBuffer->getMTLBuffer();
+	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
+	_mtlIndirectBufferStride = stride;
+	_drawCount = drawCount;
+	return VK_SUCCESS;
+}
+
+void MVKCmdDrawMeshTasksIndirect::encode(MVKCommandEncoder* cmdEncoder) {
+	if (_drawCount == 0) { return; }	// Nothing to do.
+
+	cmdEncoder->restartMetalRenderPassIfNeeded();
+
+	auto* pipeline = cmdEncoder->getGraphicsPipeline();
+
+	cmdEncoder->_isIndexedDraw = false;
+
+	MVKPiplineStages stages;
+	pipeline->getStages(stages);
+
+	for (uint32_t s : stages) {
+		auto stage = MVKGraphicsStage(s);
+		cmdEncoder->finalizeDrawState(stage);	// Ensure all updated state has been submitted to Metal
+
+		if ( !pipeline->hasValidMTLPipelineStates() ) { return; }	// Abort if this pipeline stage could not be compiled.
+	}
+
+	[cmdEncoder->_mtlRenderEncoder drawMeshThreadgroupsWithIndirectBuffer:_mtlIndirectBuffer
+	                                                 indirectBufferOffset:_mtlIndirectBufferOffset
+	                                          threadsPerObjectThreadgroup:pipeline->getObjectThreadgroupSize()
+	                                            threadsPerMeshThreadgroup:pipeline->getMeshThreadgroupSize()];
+}
+

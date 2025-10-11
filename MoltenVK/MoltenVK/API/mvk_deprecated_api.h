@@ -163,6 +163,14 @@ typedef struct {
     VkBool32 samplerMipLodBias;                     /**< If true, a mip lod bias can be set on a sampler. */
     VkSampleCountFlags supportedSamplePosCounts;    /**< A bitmask identifying the sample counts for which the device supports sample positions. */
     VkBool32 depthBoundsTest;                       /**< If true, depth bounds test is supported. */
+    VkBool32 meshShader;                            /**< If true, mesh shaders are supported. */
+    uint32_t maxObjectThreadgroups;                 /**< The maximum number of threadgroups per object shader grid. */
+    uint32_t maxObjectThreadsPerGroup;              /**< The maximum number of threads per threadgroup in an object shader. */
+    uint32_t maxObjectPayloadSize;                  /**< The maximum payload size of an object shader. */
+    uint32_t maxObjectSharedMemorySize;             /**< The maximum shared memory size of an object shader. */
+    uint32_t maxMeshThreadgroups;                   /**< The maximum number of threadgroups per mesh shader grid. */
+    uint32_t maxMeshThreadsPerGroup;                /**< The maximum number of threads per threadgroup in a mesh shader. */
+    uint32_t maxMeshSharedMemorySize;               /**< The maximum shared memory size of a mesh shader. */
 } MVKPhysicalDeviceMetalFeatures;
 
 

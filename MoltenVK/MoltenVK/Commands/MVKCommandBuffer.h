@@ -499,9 +499,6 @@ public:
 	/** Tracks the occlusion query state of the encoder. */
 	MVKOcclusionQueryCommandEncoderState _occlusionQueryState;
 
-    /** The size of the threadgroup for the compute shader. */
-    MTLSize _mtlThreadgroupSize;
-
 	/** Indicates whether the current render subpass is able to render to an array (layered) framebuffer. */
 	bool _canUseLayeredRendering;
 

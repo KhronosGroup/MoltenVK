@@ -153,6 +153,7 @@ MVK_EXTENSION(EXT_layer_settings,                       EXT_LAYER_SETTINGS,     
 MVK_EXTENSION(EXT_line_rasterization,                   EXT_LINE_RASTERIZATION,                   DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_load_store_op_none,                   EXT_LOAD_STORE_OP_NONE,                   DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_memory_budget,                        EXT_MEMORY_BUDGET,                        DEVICE,   10.13, 11.0,  1.0)
+MVK_EXTENSION(EXT_mesh_shader,                          EXT_MESH_SHADER,                          DEVICE,   13.0,  16.0,  1.0)
 MVK_EXTENSION(EXT_metal_objects,                        EXT_METAL_OBJECTS,                        DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_metal_surface,                        EXT_METAL_SURFACE,                        INSTANCE, 10.11,  8.0,  1.0)
 MVK_EXTENSION(EXT_pipeline_creation_cache_control,      EXT_PIPELINE_CREATION_CACHE_CONTROL,      DEVICE,   10.11,  8.0,  1.0)
