@@ -325,6 +325,8 @@ typedef enum {
 	kMVKShaderStageVertex = 0,
 	kMVKShaderStageTessCtl,
 	kMVKShaderStageTessEval,
+	kMVKShaderStageTask,
+	kMVKShaderStageMesh,
 	kMVKShaderStageFragment,
 	kMVKShaderStageCompute,
 	kMVKShaderStageCount,

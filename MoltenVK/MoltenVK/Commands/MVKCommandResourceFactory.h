@@ -405,6 +405,9 @@ public:
 	/** Returns a new MTLComputePipelineState for converting a Uint8 index buffer to Uint16. */
 	id<MTLComputePipelineState> newConvertUint8IndicesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 
+	/** Returns a new MTLFunction for a fragment shader which discards all fragments. */
+	id<MTLFunction> newDiscardAllFragmentFunction();
+
 
 #pragma mark Construction
 

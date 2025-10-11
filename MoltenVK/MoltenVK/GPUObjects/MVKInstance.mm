@@ -816,6 +816,9 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetTessellationDomainOriginEXT, EXT_EXTENDED_DYNAMIC_STATE_3);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetMemoryMetalHandleEXT, EXT_EXTERNAL_MEMORY_METAL);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetMemoryMetalHandlePropertiesEXT, EXT_EXTERNAL_MEMORY_METAL);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdDrawMeshTasksEXT, EXT_MESH_SHADER);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdDrawMeshTasksIndirectEXT, EXT_MESH_SHADER);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdDrawMeshTasksIndirectCountEXT, EXT_MESH_SHADER);
 }
 
 void MVKInstance::logVersions() {

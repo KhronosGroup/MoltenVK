@@ -764,6 +764,8 @@ MVKShaderStage mvkShaderStageFromVkShaderStageFlagBitsInObj(VkShaderStageFlagBit
 		case VK_SHADER_STAGE_VERTEX_BIT:					return kMVKShaderStageVertex;
 		case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:		return kMVKShaderStageTessCtl;
 		case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:	return kMVKShaderStageTessEval;
+		case VK_SHADER_STAGE_TASK_BIT_EXT:					return kMVKShaderStageTask;
+		case VK_SHADER_STAGE_MESH_BIT_EXT:					return kMVKShaderStageMesh;
 		/* FIXME: VK_SHADER_STAGE_GEOMETRY_BIT */
 		case VK_SHADER_STAGE_FRAGMENT_BIT:					return kMVKShaderStageFragment;
 		case VK_SHADER_STAGE_COMPUTE_BIT:					return kMVKShaderStageCompute;
@@ -778,6 +780,8 @@ MVK_PUBLIC_SYMBOL VkShaderStageFlagBits mvkVkShaderStageFlagBitsFromMVKShaderSta
 		case kMVKShaderStageVertex:		return VK_SHADER_STAGE_VERTEX_BIT;
 		case kMVKShaderStageTessCtl:	return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
 		case kMVKShaderStageTessEval:	return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+		case kMVKShaderStageTask:		return VK_SHADER_STAGE_TASK_BIT_EXT;
+		case kMVKShaderStageMesh:		return VK_SHADER_STAGE_MESH_BIT_EXT;
 		/* FIXME: kMVKShaderStageGeometry */
 		case kMVKShaderStageFragment:	return VK_SHADER_STAGE_FRAGMENT_BIT;
 		case kMVKShaderStageCompute:	return VK_SHADER_STAGE_COMPUTE_BIT;

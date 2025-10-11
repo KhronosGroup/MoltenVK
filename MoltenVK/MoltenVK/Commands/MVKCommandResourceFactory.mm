@@ -625,6 +625,10 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newConvertUint8IndicesMTL
 	return newMTLComputePipelineState("convertUint8Indices", owner);
 }
 
+id<MTLFunction> MVKCommandResourceFactory::newDiscardAllFragmentFunction() {
+	return newFunctionNamed("discardAllFragments");
+}
+
 
 #pragma mark Support methods
 

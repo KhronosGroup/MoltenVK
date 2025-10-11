@@ -4399,6 +4399,46 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDrawIndirectCount, AMD);
 
 
 #pragma mark -
+#pragma mark VK_EXT_mesh_shader
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMeshTasksEXT(
+	VkCommandBuffer                             commandBuffer,
+	uint32_t                                    groupCountX,
+	uint32_t                                    groupCountY,
+	uint32_t                                    groupCountZ) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(DrawMeshTasks, commandBuffer, groupCountX, groupCountY, groupCountZ);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMeshTasksIndirectEXT(
+	VkCommandBuffer                             commandBuffer,
+	VkBuffer                                    buffer,
+	VkDeviceSize                                offset,
+	uint32_t                                    drawCount,
+	uint32_t                                    stride) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(DrawMeshTasksIndirect, commandBuffer, buffer, offset, drawCount, stride);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMeshTasksIndirectCountEXT(
+	VkCommandBuffer                             commandBuffer,
+	VkBuffer                                    buffer,
+	VkDeviceSize                                offset,
+	VkBuffer                                    countBuffer,
+	VkDeviceSize                                countBufferOffset,
+	uint32_t                                    maxDrawCount,
+	uint32_t                                    stride) {
+
+	MVKTraceVulkanCallStart();
+	MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
 #pragma mark iOS & macOS surface extensions
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreate_PLATFORM_SurfaceMVK(

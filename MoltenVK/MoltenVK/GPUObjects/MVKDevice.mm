@@ -727,6 +727,15 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				extFeatures->sampler2DViewOf3D = _metalFeatures.placementHeaps;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT: {
+				auto* extFeatures = (VkPhysicalDeviceMeshShaderFeaturesEXT*)next;
+				extFeatures->taskShader = _metalFeatures.meshShader;
+				extFeatures->meshShader = _metalFeatures.meshShader;
+				extFeatures->multiviewMeshShader = false; // TODO
+				extFeatures->primitiveFragmentShadingRateMeshShader = false;
+				extFeatures->meshShaderQueries = false;
+				break;
+			}
 #if MVK_USE_METAL_PRIVATE_API
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT: {
 				auto* listRestartFeatures = (VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT*)next;
@@ -1253,6 +1262,46 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT: {
 				auto* extMemHostProps = (VkPhysicalDeviceExternalMemoryHostPropertiesEXT*)next;
 				extMemHostProps->minImportedHostPointerAlignment = _metalFeatures.hostMemoryPageSize;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT: {
+				auto* meshShaderProps = (VkPhysicalDeviceMeshShaderPropertiesEXT*)next;
+				meshShaderProps->maxTaskWorkGroupTotalCount = _metalFeatures.maxObjectThreadgroups;
+				meshShaderProps->maxTaskWorkGroupCount[0] = _metalFeatures.maxObjectThreadgroups;
+				meshShaderProps->maxTaskWorkGroupCount[1] = _metalFeatures.maxObjectThreadgroups;
+				meshShaderProps->maxTaskWorkGroupCount[2] = _metalFeatures.maxObjectThreadgroups;
+				meshShaderProps->maxTaskWorkGroupInvocations = _metalFeatures.maxObjectThreadsPerGroup;
+				meshShaderProps->maxTaskWorkGroupSize[0] = _metalFeatures.maxObjectThreadsPerGroup;
+				meshShaderProps->maxTaskWorkGroupSize[1] = _metalFeatures.maxObjectThreadsPerGroup;
+				meshShaderProps->maxTaskWorkGroupSize[2] = _metalFeatures.maxObjectThreadsPerGroup;
+				meshShaderProps->maxTaskPayloadSize = _metalFeatures.maxObjectPayloadSize;
+				meshShaderProps->maxTaskSharedMemorySize = _metalFeatures.maxObjectSharedMemorySize;
+				meshShaderProps->maxTaskPayloadAndSharedMemorySize = _metalFeatures.maxObjectSharedMemorySize;
+				meshShaderProps->maxMeshWorkGroupTotalCount = _metalFeatures.maxMeshThreadgroups;
+				meshShaderProps->maxMeshWorkGroupCount[0] = _metalFeatures.maxMeshThreadgroups;
+				meshShaderProps->maxMeshWorkGroupCount[1] = _metalFeatures.maxMeshThreadgroups;
+				meshShaderProps->maxMeshWorkGroupCount[2] = _metalFeatures.maxMeshThreadgroups;
+				meshShaderProps->maxMeshWorkGroupInvocations = _metalFeatures.maxMeshThreadsPerGroup;
+				meshShaderProps->maxMeshWorkGroupSize[0] = _metalFeatures.maxMeshThreadsPerGroup;
+				meshShaderProps->maxMeshWorkGroupSize[1] = _metalFeatures.maxMeshThreadsPerGroup;
+				meshShaderProps->maxMeshWorkGroupSize[2] = _metalFeatures.maxMeshThreadsPerGroup;
+				meshShaderProps->maxMeshSharedMemorySize = _metalFeatures.maxMeshSharedMemorySize;
+				meshShaderProps->maxMeshPayloadAndSharedMemorySize = _metalFeatures.maxMeshSharedMemorySize;
+				meshShaderProps->maxMeshOutputMemorySize = _metalFeatures.maxMeshOutputSize;
+				meshShaderProps->maxMeshPayloadAndOutputMemorySize = _metalFeatures.maxMeshOutputSize;
+				meshShaderProps->maxMeshOutputComponents = 0; // TODO
+				meshShaderProps->maxMeshOutputVertices = 0; // TODO
+				meshShaderProps->maxMeshOutputPrimitives = 0; // TODO
+				meshShaderProps->maxMeshOutputLayers = _metalFeatures.layeredRendering ? _metalFeatures.maxTextureLayers : 1;
+				meshShaderProps->maxMeshMultiviewViewCount = 0; // TODO
+				meshShaderProps->meshOutputPerVertexGranularity = 0; // TODO
+				meshShaderProps->meshOutputPerPrimitiveGranularity = 0; // TODO
+				meshShaderProps->maxPreferredTaskWorkGroupInvocations = _metalFeatures.maxObjectThreadsPerGroup;
+				meshShaderProps->maxPreferredMeshWorkGroupInvocations = _metalFeatures.maxMeshThreadsPerGroup;
+				meshShaderProps->prefersLocalInvocationVertexOutput = false; // TODO
+				meshShaderProps->prefersLocalInvocationPrimitiveOutput = false; // TODO
+				meshShaderProps->prefersCompactVertexOutput = false;  // TODO
+				meshShaderProps->prefersCompactPrimitiveOutput = false; // TODO
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_KHR: {
@@ -2420,6 +2469,22 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.maxSwapchainImageCount = kMVKMaxSwapchainImageCount;
 
 	_metalFeatures.vertexStrideAlignment = supportsMTLGPUFamily(Apple5) ? 1 : 4;
+
+	_metalFeatures.meshShader = mvkOSVersionIsAtLeast(13.0, 16.0, 1.0) && (supportsMTLGPUFamily(Metal3) || supportsMTLGPUFamily(Apple7) || supportsMTLGPUFamily(Mac2));
+	if (_metalFeatures.meshShader) {
+		_metalFeatures.maxObjectThreadgroups = _gpuCapabilities.isAppleGPU ? std::numeric_limits<uint32_t>::max() : 1024;
+		_metalFeatures.maxObjectThreadsPerGroup = 1024;
+		_metalFeatures.maxObjectPayloadSize = 16384;
+		_metalFeatures.maxObjectSharedMemorySize = 32768;
+
+		if (supportsMTLGPUFamily(Apple10)) _metalFeatures.maxMeshThreadgroups = 4194303;
+		else if (supportsMTLGPUFamily(Apple9)) _metalFeatures.maxMeshThreadgroups = 1048575;
+		else _metalFeatures.maxMeshThreadgroups = 1024;
+
+		_metalFeatures.maxMeshThreadsPerGroup = 1024;
+		_metalFeatures.maxMeshOutputSize = 32768;
+		_metalFeatures.maxMeshSharedMemorySize = 32768;
+	}
 
 #if MVK_XCODE_15
 	// Dynamic vertex stride needs to have everything aligned - compiled with support for vertex stride calls, and supported by both runtime OS and GPU.
@@ -3658,6 +3723,9 @@ void MVKPhysicalDevice::initExtensions() {
 	}
 	if (!_metalFeatures.placementHeaps) {
 		pWritableExtns->vk_EXT_image_2d_view_of_3d.enabled = false;
+	}
+	if (!_metalFeatures.meshShader) {
+		pWritableExtns->vk_EXT_mesh_shader.enabled = false;
 	}
 
     // The relevant functions are not available if not built with Xcode 14.
