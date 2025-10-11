@@ -170,6 +170,7 @@ typedef struct {
     uint32_t maxObjectSharedMemorySize;             /**< The maximum shared memory size of an object shader. */
     uint32_t maxMeshThreadgroups;                   /**< The maximum number of threadgroups per mesh shader grid. */
     uint32_t maxMeshThreadsPerGroup;                /**< The maximum number of threads per threadgroup in a mesh shader. */
+    uint32_t maxMeshOutputSize;                     /**< The maximum output size of a mesh shader. */
     uint32_t maxMeshSharedMemorySize;               /**< The maximum shared memory size of a mesh shader. */
 } MVKPhysicalDeviceMetalFeatures;
 

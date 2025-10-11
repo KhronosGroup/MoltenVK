@@ -1287,8 +1287,8 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				meshShaderProps->maxMeshWorkGroupSize[2] = _metalFeatures.maxMeshThreadsPerGroup;
 				meshShaderProps->maxMeshSharedMemorySize = _metalFeatures.maxMeshSharedMemorySize;
 				meshShaderProps->maxMeshPayloadAndSharedMemorySize = _metalFeatures.maxMeshSharedMemorySize;
-				meshShaderProps->maxMeshOutputMemorySize = 0; // TODO
-				meshShaderProps->maxMeshPayloadAndOutputMemorySize = 0; // TODO
+				meshShaderProps->maxMeshOutputMemorySize = _metalFeatures.maxMeshOutputSize;
+				meshShaderProps->maxMeshPayloadAndOutputMemorySize = _metalFeatures.maxMeshOutputSize;
 				meshShaderProps->maxMeshOutputComponents = 0; // TODO
 				meshShaderProps->maxMeshOutputVertices = 0; // TODO
 				meshShaderProps->maxMeshOutputPrimitives = 0; // TODO
@@ -2482,6 +2482,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		else _metalFeatures.maxMeshThreadgroups = 1024;
 
 		_metalFeatures.maxMeshThreadsPerGroup = 1024;
+		_metalFeatures.maxMeshOutputSize = 32768;
 		_metalFeatures.maxMeshSharedMemorySize = 32768;
 	}
 
