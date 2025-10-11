@@ -1292,7 +1292,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				meshShaderProps->maxMeshOutputComponents = 0; // TODO
 				meshShaderProps->maxMeshOutputVertices = 0; // TODO
 				meshShaderProps->maxMeshOutputPrimitives = 0; // TODO
-				meshShaderProps->maxMeshOutputLayers = 0; // TODO
+				meshShaderProps->maxMeshOutputLayers = _metalFeatures.layeredRendering ? _metalFeatures.maxTextureLayers : 1;
 				meshShaderProps->maxMeshMultiviewViewCount = 0; // TODO
 				meshShaderProps->meshOutputPerVertexGranularity = 0; // TODO
 				meshShaderProps->meshOutputPerPrimitiveGranularity = 0; // TODO
