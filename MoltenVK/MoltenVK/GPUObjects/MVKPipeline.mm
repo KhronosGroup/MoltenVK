@@ -1489,6 +1489,7 @@ MTLMeshRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLMeshRenderPipelineDe
 	SPIRVShaderOutputs taskOutputs;
 	std::string errorLog;
 
+	// Add shader stages. Compile task and mesh shaders before others just in case conversion changes anything...like rasterizaion disable.
 	if (pTaskSS) {
 		if (!getShaderOutputs(_taskModule->getSPIRV(), spv::ExecutionModelTaskEXT, pTaskSS->pName, taskOutputs, errorLog) ) {
 			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get task outputs: %s", errorLog.c_str()));
@@ -1508,7 +1509,7 @@ MTLMeshRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLMeshRenderPipelineDe
 
 	if (!addMeshShaderToPipeline(plDesc, pCreateInfo, shaderConfig, taskOutputs, pMeshSS, pMeshFB, pFragmentSS)) { return nil; }
 
-	// Fragment shader - only add if rasterization is enabled
+	// Fragment shader
 	if (!addFragmentShaderToPipeline(plDesc, pCreateInfo, shaderConfig, meshOutputs, pFragmentSS, pFragmentFB)) { return nil; }
 
 	// Output

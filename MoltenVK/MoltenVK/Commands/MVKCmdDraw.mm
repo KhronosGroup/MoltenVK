@@ -1310,9 +1310,13 @@ void MVKCmdDrawMeshTasksIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 		if ( !pipeline->hasValidMTLPipelineStates() ) { return; }	// Abort if this pipeline stage could not be compiled.
 	}
 
-	[cmdEncoder->_mtlRenderEncoder drawMeshThreadgroupsWithIndirectBuffer:_mtlIndirectBuffer
-	                                                 indirectBufferOffset:_mtlIndirectBufferOffset
-	                                          threadsPerObjectThreadgroup:pipeline->getObjectThreadgroupSize()
-	                                            threadsPerMeshThreadgroup:pipeline->getMeshThreadgroupSize()];
+	VkDeviceSize mtlIndBuffOfst = _mtlIndirectBufferOffset;
+	for (uint32_t drawIdx = 0; drawIdx < _drawCount; drawIdx++) {
+		[cmdEncoder->_mtlRenderEncoder drawMeshThreadgroupsWithIndirectBuffer:_mtlIndirectBuffer
+		                                                 indirectBufferOffset:mtlIndBuffOfst
+		                                          threadsPerObjectThreadgroup:pipeline->getObjectThreadgroupSize()
+		                                            threadsPerMeshThreadgroup:pipeline->getMeshThreadgroupSize()];
+		mtlIndBuffOfst += _mtlIndirectBufferStride;
+	}
 }
 
