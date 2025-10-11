@@ -21,6 +21,15 @@
 #include "MVKCommonEnvironment.h"
 
 
+#if MVK_USE_METAL_PRIVATE_API
+/** Additional methods not necessarily declared in <Metal/MTLSampler.h>. */
+@interface MTLSamplerDescriptor ()
+
+@property(nonatomic, readwrite) BOOL forceSeamsOnCubemapFiltering;
+
+@end
+#endif
+
 @implementation MTLSamplerDescriptor (MoltenVK)
 
 -(NSUInteger) borderColorMVK {
@@ -42,6 +51,19 @@
 -(void) setLodBiasMVK: (float) bias {
 #if MVK_XCODE_26
 	if ( [self respondsToSelector: @selector(setLodBias:)] ) { self.lodBias = bias; }
+#endif
+}
+
+-(BOOL) forceSeamsOnCubemapFilteringMVK {
+#if MVK_USE_METAL_PRIVATE_API
+	if ( [self respondsToSelector: @selector(forceSeamsOnCubemapFiltering)] ) { return self.forceSeamsOnCubemapFiltering; }
+#endif
+	return false;
+}
+
+-(void) setForceSeamsOnCubemapFilteringMVK: (BOOL) force {
+#if MVK_USE_METAL_PRIVATE_API
+	if ( [self respondsToSelector: @selector(setForceSeamsOnCubemapFiltering:)] ) { self.forceSeamsOnCubemapFiltering = force; }
 #endif
 }
 

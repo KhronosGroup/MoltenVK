@@ -688,7 +688,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				extDynState3->extendedDynamicState3DepthClipEnable = true;
 				extDynState3->extendedDynamicState3SampleLocationsEnable = true;
 				extDynState3->extendedDynamicState3ColorBlendAdvanced = false;
-				extDynState3->extendedDynamicState3ProvokingVertexMode = false;
+				extDynState3->extendedDynamicState3ProvokingVertexMode = getMVKConfig().useMetalPrivateAPI;
 				extDynState3->extendedDynamicState3LineRasterizationMode = true;
 				extDynState3->extendedDynamicState3LineStippleEnable = false;
 				extDynState3->extendedDynamicState3DepthClipNegativeOneToOne = false;
@@ -717,14 +717,28 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				extFeatures->sampler2DViewOf3D = _metalFeatures.placementHeaps;
 				break;
 			}
-#if MVK_USE_METAL_PRIVATE_API
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LEGACY_DITHERING_FEATURES_EXT: {
+				auto* legacyDitheringFeatures = (VkPhysicalDeviceLegacyDitheringFeaturesEXT*)next;
+				legacyDitheringFeatures->legacyDithering = getMVKConfig().useMetalPrivateAPI;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT: {
+				auto* nonSeamlessFeatures = (VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT*)next;
+				nonSeamlessFeatures->nonSeamlessCubeMap = getMVKConfig().useMetalPrivateAPI;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT: {
 				auto* listRestartFeatures = (VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT*)next;
 				listRestartFeatures->primitiveTopologyListRestart = getMVKConfig().useMetalPrivateAPI;
 				listRestartFeatures->primitiveTopologyPatchListRestart = false;
 				break;
 			}
-#endif
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: {
+				auto* provokingVertexFeatures = (VkPhysicalDeviceProvokingVertexFeaturesEXT*)next;
+				provokingVertexFeatures->provokingVertexLast = getMVKConfig().useMetalPrivateAPI;
+				provokingVertexFeatures->transformFeedbackPreservesProvokingVertex = false;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR: {
 				auto* robustness2Features = (VkPhysicalDeviceRobustness2FeaturesKHR*)next;
 				robustness2Features->robustBufferAccess2 = false;
@@ -1250,6 +1264,12 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				auto* robustness2Props = (VkPhysicalDeviceRobustness2PropertiesKHR*)next;
 				robustness2Props->robustStorageBufferAccessSizeAlignment = 1;
 				robustness2Props->robustUniformBufferAccessSizeAlignment = 1;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT: {
+				auto* provokingVertexProps = (VkPhysicalDeviceProvokingVertexPropertiesEXT*)next;
+				provokingVertexProps->provokingVertexModePerPipeline = getMVKConfig().useMetalPrivateAPI;
+				provokingVertexProps->transformFeedbackPreservesTriangleFanProvokingVertex = false;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT: {
@@ -3648,7 +3668,10 @@ void MVKPhysicalDevice::initExtensions() {
 #if MVK_USE_METAL_PRIVATE_API
 	if (!getMVKConfig().useMetalPrivateAPI) {
 #endif
+		pWritableExtns->vk_EXT_legacy_dithering.enabled = false;
+		pWritableExtns->vk_EXT_non_seamless_cube_map.enabled = false;
 		pWritableExtns->vk_EXT_primitive_topology_list_restart.enabled = false;
+		pWritableExtns->vk_EXT_provoking_vertex.enabled = false;
 #if MVK_USE_METAL_PRIVATE_API
 	}
 #endif

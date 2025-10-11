@@ -31,9 +31,12 @@ Released TBD
 - Added working demo target for VisionOS in Cube Demo.
 - Raise minimum target to _macOS 11.0 / iOS 14.0 / tvOS 14.0_
 - Add support for `VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT`.
-- Add support for new features when using `MVK_USE_METAL_PRIVATE_API`:
+- Add support for new features and extensions when using `MVK_USE_METAL_PRIVATE_API`:
   - Disabling primitive restart
+  - `VK_EXT_legacy_dithering`
+  - `VK_EXT_non_seamless_cube_map`
   - `VK_EXT_primitive_topology_list_restart`
+  - `VK_EXT_provoking_vertex`
 - Reject image usages whose format features are not supported.
 - Return `VK_ERROR_OUT_OF_POOL_MEMORY` when running out of descriptor sets.
 - Make vkGetPhysicalDeviceToolProperties() an instance function.

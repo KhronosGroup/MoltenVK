@@ -358,12 +358,16 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_index_type_uint8`
 - `VK_EXT_inline_uniform_block`
 - `VK_EXT_layer_settings`
+- `VK_EXT_legacy_dithering`
+  - *Requires a build of MoltenVK with `MVK_USE_METAL_PRIVATE_API` enabled.*
 - `VK_EXT_line_rasterization`
 - `VK_EXT_load_store_op_none`
 - `VK_EXT_memory_budget`
   - *Requires Metal 2.0.*
 - `VK_EXT_metal_objects`
 - `VK_EXT_metal_surface`
+- `VK_EXT_non_seamless_cube_map`
+  - *Requires a build of MoltenVK with `MVK_USE_METAL_PRIVATE_API` enabled.*
 - `VK_EXT_pipeline_creation_cache_control`
 - `VK_EXT_pipeline_creation_feedback`
 - `VK_EXT_pipeline_robustness`
@@ -372,6 +376,8 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_primitive_topology_list_restart`
   - *Requires a build of MoltenVK with `MVK_USE_METAL_PRIVATE_API` enabled.*
 - `VK_EXT_private_data `
+- `VK_EXT_provoking_vertex`
+  - *Requires a build of MoltenVK with `MVK_USE_METAL_PRIVATE_API` enabled.*
 - `VK_EXT_robustness2`
 - `VK_EXT_sample_locations`
 - `VK_EXT_scalar_block_layout`

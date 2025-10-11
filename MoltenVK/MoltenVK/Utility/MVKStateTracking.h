@@ -245,6 +245,7 @@ enum class MVKRenderStateFlag {
 	PolygonMode,
 	PrimitiveRestartEnable,
 	PrimitiveTopology,
+	ProvokingVertexMode,
 	RasterizerDiscardEnable,
 	SampleLocations,
 	SampleLocationsEnable,
@@ -332,6 +333,11 @@ struct MVKRenderStateData {
 	MVKDepthBounds depthBounds = {};
 	MVKStencilReference stencilReference = {};
 	MVKMTLDepthStencilDescriptorData depthStencil;
+#if MVK_USE_METAL_PRIVATE_API
+	uint8_t provokingVertexMode = MTLProvokingVertexModeFirst;
+#else
+	uint8_t provokingVertexMode = 0;
+#endif
 	void setCullMode(VkCullModeFlags cull) {
 		cull &= VK_CULL_MODE_FRONT_AND_BACK;
 		if (cull == VK_CULL_MODE_FRONT_BIT)

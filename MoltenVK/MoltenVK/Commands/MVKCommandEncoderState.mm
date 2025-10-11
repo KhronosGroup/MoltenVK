@@ -31,7 +31,8 @@ using namespace std;
 // An extension of the MTLRenderCommandEncoder protocol to declare the setLineWidth: method.
 @protocol MVKMTLRenderCommandEncoder <MTLRenderCommandEncoder>
 - (void)setLineWidth:(float)width;
-- (void)setPrimitiveRestartEnabled:(BOOL)enabled index:(uint32_t)index;
+- (void)setPrimitiveRestartEnabled:(BOOL)enabled index:(NSUInteger)index;
+- (void)setProvokingVertexMode:(NSUInteger)mode;
 @end
 #endif
 
@@ -1061,6 +1062,7 @@ void MVKMetalGraphicsCommandEncoderState::reset(VkSampleCountFlags sampleCount) 
 	memset(static_cast<MVKMetalGraphicsCommandEncoderStateQuickReset*>(this), 0, offsetof(MVKMetalGraphicsCommandEncoderStateQuickReset, MEMSET_RESET_LINE));
 	_lineWidth = 1;
 	_sampleCount = getSampleCount(sampleCount);
+	_primitiveRestartIndex = 0xFFFFFFFF;
 	_depthStencil.reset();
 }
 
@@ -1111,6 +1113,7 @@ static constexpr MVKRenderStateFlags FlagsMetalState {
 	MVKRenderStateFlag::StencilReference,
 #if MVK_USE_METAL_PRIVATE_API
 	MVKRenderStateFlag::LineWidth,
+	MVKRenderStateFlag::ProvokingVertexMode,
 #endif
 };
 
@@ -1178,11 +1181,19 @@ void MVKMetalGraphicsCommandEncoderState::bindStateData(
 				[encoder setStencilFrontReferenceValue:_stencilReference.frontFaceValue backReferenceValue:_stencilReference.backFaceValue];
 		}
 #if MVK_USE_METAL_PRIVATE_API
-		if (flags.has(MVKRenderStateFlag::LineWidth) && _lineWidth != data.lineWidth && mvkEncoder.getMVKConfig().useMetalPrivateAPI) {
-			_lineWidth = data.lineWidth;
+		if (mvkEncoder.getMVKConfig().useMetalPrivateAPI) {
 			auto mvkRendEnc = static_cast<id<MVKMTLRenderCommandEncoder>>(encoder);
-			if ([mvkRendEnc respondsToSelector:@selector(setLineWidth:)]) {
-				[mvkRendEnc setLineWidth:_lineWidth];
+			if (flags.has(MVKRenderStateFlag::LineWidth) && _lineWidth != data.lineWidth) {
+				_lineWidth = data.lineWidth;
+				if ([mvkRendEnc respondsToSelector:@selector(setLineWidth:)]) {
+					[mvkRendEnc setLineWidth:_lineWidth];
+				}
+			}
+			if (flags.has(MVKRenderStateFlag::ProvokingVertexMode) && _provokingVertexMode != data.provokingVertexMode) {
+				_provokingVertexMode = data.provokingVertexMode;
+				if ([mvkRendEnc respondsToSelector:@selector(setProvokingVertexMode:)]) {
+					[mvkRendEnc setProvokingVertexMode:_provokingVertexMode];
+				}
 			}
 		}
 #endif
@@ -1438,6 +1449,7 @@ void MVKMetalGraphicsCommandEncoderState::prepareHelperDraw(
 		MVKRenderStateFlag::LineWidth,
 		MVKRenderStateFlag::PolygonMode,
 		MVKRenderStateFlag::PrimitiveRestartEnable,
+		MVKRenderStateFlag::ProvokingVertexMode,
 		MVKRenderStateFlag::RasterizerDiscardEnable,
 		MVKRenderStateFlag::Scissors,
 		MVKRenderStateFlag::StencilCompareMask,
@@ -1500,12 +1512,20 @@ void MVKMetalGraphicsCommandEncoderState::prepareHelperDraw(
 		[encoder setViewport:mvkMTLViewportFromVkViewport(viewport)];
 	}
 #if MVK_USE_METAL_PRIVATE_API
-	if (!_flags.has(MVKMetalRenderEncoderStateFlag::PrimitiveRestartEnable) || _primitiveRestartIndex != 0xFFFFFFFF) {
-		_flags.add(MVKMetalRenderEncoderStateFlag::PrimitiveRestartEnable);
-		_primitiveRestartIndex = 0xFFFFFFFF;
-		if ([mvkEncoder._mtlRenderEncoder respondsToSelector:@selector(setPrimitiveRestartEnabled:index:)]) {
-			auto mvkRendEnc = static_cast<id<MVKMTLRenderCommandEncoder>>(encoder);
-			[mvkRendEnc setPrimitiveRestartEnabled:true index:_primitiveRestartIndex];
+	if (mvkEncoder.getMVKConfig().useMetalPrivateAPI) {
+		auto mvkRendEnc = static_cast<id<MVKMTLRenderCommandEncoder>>(encoder);
+		if ((!_flags.has(MVKMetalRenderEncoderStateFlag::PrimitiveRestartEnable) || _primitiveRestartIndex != 0xFFFFFFFF)) {
+			_flags.add(MVKMetalRenderEncoderStateFlag::PrimitiveRestartEnable);
+			_primitiveRestartIndex = 0xFFFFFFFF;
+			if ([mvkEncoder._mtlRenderEncoder respondsToSelector:@selector(setPrimitiveRestartEnabled:index:)]) {
+				[mvkRendEnc setPrimitiveRestartEnabled:true index:_primitiveRestartIndex];
+			}
+		}
+		if (_provokingVertexMode != 0) {
+			_provokingVertexMode = MTLProvokingVertexModeFirst;
+			if ([mvkEncoder._mtlRenderEncoder respondsToSelector:@selector(setProvokingVertexMode:)]) {
+				[mvkRendEnc setProvokingVertexMode:_provokingVertexMode];
+			}
 		}
 	}
 #endif

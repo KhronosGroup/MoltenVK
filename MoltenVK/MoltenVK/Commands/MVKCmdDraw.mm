@@ -921,6 +921,7 @@ typedef struct MVKVertexAdjustments {
 	bool isTriangleFan = false;
 	bool isPrimRestart = true;
 	bool isUint8Index = false;
+	bool isProvokingVertexLast = false;
 
 	bool needsAdjustment() { return isMultiView || isTriangleFan; }
 } MVKVertexAdjustments;
@@ -987,6 +988,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 	// With private APIs for primitive restart, we need to handle disabled restart and raw Uint8 indices.
 	vtxAdjmts.isPrimRestart = cmdEncoder->getState().vkGraphics().isPrimitiveRestartEnabled();
 	vtxAdjmts.isUint8Index = ibb.vkIndexType == VK_INDEX_TYPE_UINT8;
+	vtxAdjmts.isProvokingVertexLast = cmdEncoder->getState().vkGraphics().getProvokingVertexMode() == MTLProvokingVertexModeLast;
 #endif
 
 	// The indirect calls for dispatchThreadgroups:... and drawPatches:... have different formats.
