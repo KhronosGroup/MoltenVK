@@ -222,7 +222,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 	VkPhysicalDeviceVulkan13Features supportedFeats13 = {
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
 		.pNext = nullptr,
-		.robustImageAccess = true,
+		.robustImageAccess = true, // NOTE: Required by spec, not fully supported by non-Apple GPUs.
 		.inlineUniformBlock = true,
 		.descriptorBindingInlineUniformBlockUpdateAfterBind = true,
 		.pipelineCreationCacheControl = true,
@@ -742,7 +742,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR: {
 				auto* robustness2Features = (VkPhysicalDeviceRobustness2FeaturesKHR*)next;
 				robustness2Features->robustBufferAccess2 = false;
-				robustness2Features->robustImageAccess2 = true;
+				robustness2Features->robustImageAccess2 = _gpuCapabilities.isAppleGPU;
 				robustness2Features->nullDescriptor = false;
 				break;
 			}
@@ -924,6 +924,8 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps13.maxBufferSize = _metalFeatures.maxMTLBufferSize;
 
 	// Create a SSOT for these Vulkan 1.4 properties, which can be queried via two mechanisms here.
+	const auto bufferRobustness = _gpuCapabilities.isAppleGPU ? VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS : VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED;
+	const auto imageRobustness = _gpuCapabilities.isAppleGPU ? VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_ROBUST_IMAGE_ACCESS_2 : VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_DISABLED;
 	VkPhysicalDeviceVulkan14Properties supportedProps14;
 	supportedProps14.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_PROPERTIES;
 	supportedProps14.pNext = nullptr;
@@ -942,10 +944,10 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps14.blockTexelViewCompatibleMultipleLayers = false;
 	supportedProps14.maxCombinedImageSamplerDescriptorCount = 3;
 	supportedProps14.fragmentShadingRateClampCombinerInputs = false;
-	supportedProps14.defaultRobustnessStorageBuffers = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED;
-	supportedProps14.defaultRobustnessUniformBuffers = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED;
-	supportedProps14.defaultRobustnessVertexInputs = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED;
-	supportedProps14.defaultRobustnessImages = VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_ROBUST_IMAGE_ACCESS_2;
+	supportedProps14.defaultRobustnessStorageBuffers = bufferRobustness;
+	supportedProps14.defaultRobustnessUniformBuffers = bufferRobustness;
+	supportedProps14.defaultRobustnessVertexInputs = bufferRobustness;
+	supportedProps14.defaultRobustnessImages = imageRobustness;
 
 	for (auto* next = (VkBaseOutStructure*)properties->pNext; next; next = next->pNext) {
 		switch ((uint32_t)next->sType) {
@@ -2842,7 +2844,7 @@ bool MVKPhysicalDevice::isTier2MetalArgumentBuffers() {
 void MVKPhysicalDevice::initFeatures() {
 	mvkClear(&_features);	// Start with everything cleared
 
-    _features.robustBufferAccess = true;  // XXX Required by Vulkan spec
+    _features.robustBufferAccess = true; // NOTE: Required by spec, not fully supported by non-Apple GPUs.
     _features.fullDrawIndexUint32 = true;
     _features.independentBlend = true;
     _features.sampleRateShading = true;
@@ -5219,8 +5221,9 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	reservePrivateData(pCreateInfo);
 	initConfiguration();
 
-	if (_enabledFeatures.robustBufferAccess || _enabledRobustness2Features.robustBufferAccess2) {
-		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support buffer robustness.");
+	if (!physicalDevice->_gpuCapabilities.isAppleGPU &&
+	        (_enabledFeatures.robustBufferAccess || _enabledImageRobustnessFeatures.robustImageAccess)) {
+		reportWarning(VK_ERROR_FEATURE_NOT_PRESENT, "Non-Apple GPUs do not fully support robustness.");
 	}
 
 	// Initialize fences for execution barriers
