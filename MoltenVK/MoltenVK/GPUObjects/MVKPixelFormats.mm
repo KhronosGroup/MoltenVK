@@ -29,17 +29,13 @@ using namespace std;
 // Add stub defs for unsupported MTLPixelFormats per platform
 #if MVK_MACOS
 #   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatDepth24Unorm_Stencil8
-#endif
-
-#if MVK_IOS_OR_TVOS
-#   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatDepth32Float_Stencil8
-#   define MTLPixelFormatDepth24Unorm_Stencil8      MTLPixelFormatInvalid
-#   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
-#endif
-
-#if MVK_VISIONOS
+#elif MVK_VISIONOS
 #   define MTLPixelFormatDepth24Unorm_Stencil8      MTLPixelFormatInvalid
 #   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatInvalid
+#   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
+#else
+#   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatDepth32Float_Stencil8
+#   define MTLPixelFormatDepth24Unorm_Stencil8      MTLPixelFormatInvalid
 #   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
 #endif
 
@@ -611,6 +607,7 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 	bool isStencilFmt = isStencilFormat(mtlFormat);
 	bool isCombinedDepthStencilFmt = isDepthFmt && isStencilFmt;
 	bool isColorFormat = !(isDepthFmt || isStencilFmt);
+	bool linearRenderSupported = _physicalDevice->getMetalFeatures()->renderLinearTextures;
 	MVKMTLFmtCaps mtlFmtCaps = getCapabilities(mtlFormat, isExtended);
 
 	MTLTextureUsage mtlUsage = MTLTextureUsageUnknown;
@@ -636,14 +633,12 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 	}
 #endif
 
-#if MVK_MACOS
     // Clearing a linear image may use shader writes.
     if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_TRANSFER_DST_BIT)) &&
-        mvkIsAnyFlagEnabled(mtlFmtCaps, kMVKMTLFmtCapsWrite) && isLinear) {
+        mvkIsAnyFlagEnabled(mtlFmtCaps, kMVKMTLFmtCapsWrite) && isLinear && !linearRenderSupported) {
 
 		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderWrite);
     }
-#endif
 
 	// Render to but only if format supports rendering...
 	if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
@@ -651,13 +646,9 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 												VK_IMAGE_USAGE_TRANSFER_DST_BIT)) &&	// Scaling a BLIT may use rendering.
 		mvkIsAnyFlagEnabled(mtlFmtCaps, (kMVKMTLFmtCapsColorAtt | kMVKMTLFmtCapsDSAtt))) {
 
-#if MVK_MACOS
-        if(!isLinear || (_physicalDevice && _physicalDevice->getMetalFeatures()->renderLinearTextures)) {
+        if(!isLinear || linearRenderSupported) {
             mvkEnableFlags(mtlUsage, MTLTextureUsageRenderTarget);
         }
-#else
-        mvkEnableFlags(mtlUsage, MTLTextureUsageRenderTarget);
-#endif
 	}
 
 	// Resolving an MSAA color attachment whose format Metal cannot resolve natively, may use a compute shader
@@ -1074,7 +1065,7 @@ void MVKPixelFormats::addValidatedMTLPixelFormatDesc(MTLPixelFormat mtlPixFmt, M
 	if ( !mtlPixFmt) { return; }
 
 	MVKMTLFmtCaps fmtCaps = kMVKMTLFmtCapsNone;
-	if (mtlDevCaps.isAppleGPU && mtlDevCaps.supportsMac1) {
+	if (mtlDevCaps.isAppleGPU && mtlDevCaps.supportsMac2) {
 		mvkEnableFlags(fmtCaps, appleGPUCaps);
 		mvkEnableFlags(fmtCaps, macGPUCaps);
 	} else {
@@ -1384,7 +1375,7 @@ MVKMTLFmtCaps& MVKPixelFormats::getMTLPixelFormatCapsIf(MTLPixelFormat mtlPixFmt
 void MVKPixelFormats::modifyMTLFormatCapabilities(const MVKMTLDeviceCapabilities& gpuCaps) {
 
 	bool noVulkanSupport =  false;		// Indicated supported in Metal but not Vulkan or SPIR-V.
-	bool notMac =  gpuCaps.isAppleGPU && !gpuCaps.supportsMac1;
+	bool notMac =  gpuCaps.isAppleGPU && !gpuCaps.supportsMac2;
 	bool iosOnly1 = notMac && !gpuCaps.supportsApple2;
 	bool iosOnly2 = notMac && !gpuCaps.supportsApple3;
 	bool iosOnly6 = notMac && !gpuCaps.supportsApple7;
@@ -1416,7 +1407,7 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(const MVKMTLDeviceCapabilities
 	// Blending is actually supported for RGB9E5Float, but format channels cannot
 	// be individually write-enabled during blending on macOS. Disabling blending
 	// on macOS is the least-intrusive way to handle this in a Vulkan-friendly way.
-	disableMTLPixFmtCapsIfGPU( Mac1, RGB9E5Float, Blend);
+	disableMTLPixFmtCapsIfGPU( Mac2, RGB9E5Float, Blend);
 
 	// RGB9E5Float cannot be used as a render target on the simulator
 	disableMTLPixFmtCapsIf( MVK_OS_SIMULATOR, RGB9E5Float, ColorAtt );

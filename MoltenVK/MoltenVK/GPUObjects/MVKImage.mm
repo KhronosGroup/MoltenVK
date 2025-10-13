@@ -141,14 +141,9 @@ void MVKImagePlane::releaseMTLTexture() {
 // It is the caller's responsibility to release the returned descriptor object.
 MTLTextureDescriptor* MVKImagePlane::newMTLTextureDescriptor() {
 
-	// Metal before 3.0 doesn't support 3D compressed textures, so we'll decompress
-	// the texture ourselves. This, then, is the *uncompressed* format.
-	bool shouldSubFmt = MVK_MACOS && _image->_is3DCompressed;
-	MTLPixelFormat mtlPixFmt = shouldSubFmt ? MTLPixelFormatBGRA8Unorm : _mtlPixFmt;
-
     VkExtent3D extent = _image->getExtent3D(_planeIndex, 0);
     MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor new];    // retained
-    mtlTexDesc.pixelFormat = mtlPixFmt;
+    mtlTexDesc.pixelFormat = _mtlPixFmt;
     mtlTexDesc.textureType = _image->_mtlTextureType;
     mtlTexDesc.width = extent.width;
     mtlTexDesc.height = extent.height;
@@ -156,7 +151,7 @@ MTLTextureDescriptor* MVKImagePlane::newMTLTextureDescriptor() {
     mtlTexDesc.mipmapLevelCount = _image->_mipLevels;
     mtlTexDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(_image->_samples);
     mtlTexDesc.arrayLength = _image->_arrayLayers;
-	mtlTexDesc.usage = _image->getMTLTextureUsage(mtlPixFmt);
+	mtlTexDesc.usage = _image->getMTLTextureUsage(_mtlPixFmt);
     mtlTexDesc.storageMode = _image->getMTLStorageMode();
     mtlTexDesc.cpuCacheMode = _image->getMTLCPUCacheMode();
     // For 2D views of 3D and block texel views, we alias the underlying memory.
@@ -304,27 +299,6 @@ void MVKImagePlane::updateMTLTextureContent(MVKImageSubresource& subresource,
     MTLRegion mtlRegion;
     mtlRegion.origin = MTLOriginMake(0, 0, 0);
     mtlRegion.size = mvkMTLSizeFromVkExtent3D(mipExtent);
-
-#if MVK_MACOS
-    std::unique_ptr<char[]> decompBuffer;
-    if (_image->_is3DCompressed) {
-        // We cannot upload the texture data directly in this case.
-		// But we can upload the decompressed image data.
-        std::unique_ptr<MVKCodec> codec = mvkCreateCodec(_image->getVkFormat());
-        if (!codec) {
-            _image->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "A 3D texture used a compressed format that MoltenVK does not yet support.");
-            return;
-        }
-        VkSubresourceLayout destLayout;
-        destLayout.rowPitch = 4 * mipExtent.width;
-        destLayout.depthPitch = destLayout.rowPitch * mipExtent.height;
-        destLayout.size = destLayout.depthPitch * mipExtent.depth;
-        decompBuffer = std::unique_ptr<char[]>(new char[destLayout.size]);
-        codec->decompress(decompBuffer.get(), pImgBytes, destLayout, imgLayout, mipExtent);
-        pImgBytes = decompBuffer.get();
-        imgLayout = destLayout;
-    }
-#endif
 
     VkImageType imgType = _image->getImageType();
     VkDeviceSize bytesPerRow = (imgType != VK_IMAGE_TYPE_1D) ? imgLayout.rowPitch : 0;
@@ -679,23 +653,6 @@ VkResult MVKImage::copyContent(id<MTLTexture> mtlTex,
 							   VkMemoryToImageCopy imgRgn, uint32_t mipLevel, uint32_t slice,
 							   void* pImgBytes, size_t rowPitch, size_t depthPitch) {
 	VkSubresourceLayout imgLayout = { 0, 0, rowPitch, 0, depthPitch};
-#if MVK_MACOS
-	// Compressed content cannot be directly uploaded to a compressed 3D texture.
-	// But we can upload the decompressed image data.
-	std::unique_ptr<char[]> decompBuffer;
-	if (_is3DCompressed) {
-		std::unique_ptr<MVKCodec> codec = mvkCreateCodec(getPixelFormats()->getVkFormat(mtlTex.pixelFormat));
-		if ( !codec ) { return reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "A 3D texture used a compressed format that MoltenVK does not yet support."); }
-		VkSubresourceLayout linearLayout = {};
-		linearLayout.rowPitch = 4 * imgRgn.imageExtent.width;
-		linearLayout.depthPitch = linearLayout.rowPitch * imgRgn.imageExtent.height;
-		linearLayout.size = linearLayout.depthPitch * imgRgn.imageExtent.depth;
-		decompBuffer = std::unique_ptr<char[]>(new char[linearLayout.size]);
-		codec->decompress(decompBuffer.get(), pImgBytes, linearLayout, imgLayout, imgRgn.imageExtent);
-		pImgBytes = decompBuffer.get();
-		imgLayout = linearLayout;
-	}
-#endif
 	[mtlTex replaceRegion: getMTLRegion(imgRgn)
 			  mipmapLevel: mipLevel
 					slice: slice
@@ -963,12 +920,11 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
     pMemoryRequirements->memoryTypeBits = (_isDepthStencilAttachment)
                                           ? mvkPD->getPrivateMemoryTypes()
                                           : mvkPD->getAllMemoryTypes();
+
     // Metal on non-Apple GPUs does not provide native support for host-coherent memory, but Vulkan requires it for Linear images
-#if MVK_MACOS
     if ( !isAppleGPU() && !_isLinear ) {
         mvkDisableFlags(pMemoryRequirements->memoryTypeBits, mvkPD->getHostCoherentMemoryTypes());
     }
-#endif
 
 	// If the image can be used in a host-copy transfer, the memory cannot be private.
 	if (mvkIsAnyFlagEnabled(combinedUsage, VK_IMAGE_USAGE_HOST_TRANSFER_BIT)) {
@@ -1193,14 +1149,6 @@ MTLTextureUsage MVKImage::getMTLTextureUsage(MTLPixelFormat mtlPixFmt) {
 														   _isLinear || _isLinearForAtomics, needsReinterpretation, _hasExtendedUsage,
 														   _shouldSupportAtomics && getMetalFeatures().nativeTextureAtomics);
 
-#if MVK_MACOS
-	// Metal before 3.0 doesn't support 3D compressed textures, so we'll
-	// decompress the texture ourselves, and we need to be able to write to it.
-	if (_is3DCompressed) {
-		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderWrite);
-	}
-#endif
-
 	return mtlUsage;
 }
 
@@ -1273,7 +1221,6 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 
 	_isLinearForAtomics = _shouldSupportAtomics && !getMetalFeatures().nativeTextureAtomics && _arrayLayers == 1 && getImageType() == VK_IMAGE_TYPE_2D;
 
-	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatCompressed) && !mtlFeats.native3DCompressedTextures;
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
 								 mvkAreAllFlagsEnabled(pixFmts->getVkFormatProperties3(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT));
 	_rowByteAlignment = _isLinear || _isLinearForAtomics ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(pixFmts->getBytesPerBlock(pCreateInfo->format));
@@ -2382,7 +2329,9 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
 	_image->retain();		// Ensure image sticks around while this image view is in flight.
 
     _mtlTextureType = mvkMTLTextureTypeFromVkImageViewType(pCreateInfo->viewType,
-														   _image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT);
+														   _image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT &&
+														   (pCreateInfo->viewType != VK_IMAGE_VIEW_TYPE_2D_ARRAY ||
+														    getMetalFeatures().multisampleArrayTextures));
 
 	// Per spec, for depth/stencil formats, determine the appropriate usage
 	// based on whether stencil or depth or both aspects are being used.

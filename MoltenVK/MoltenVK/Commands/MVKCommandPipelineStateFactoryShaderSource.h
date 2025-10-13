@@ -204,69 +204,6 @@ kernel void cmdResolveColorImage2DIntArray(texture2d_array<int, access::write> d
 }
 #endif
 
-typedef struct {
-	uint32_t srcRowStride;
-	uint32_t srcRowStrideHigh;
-	uint32_t srcDepthStride;
-	uint32_t srcDepthStrideHigh;
-	uint32_t destRowStride;
-	uint32_t destRowStrideHigh;
-	uint32_t destDepthStride;
-	uint32_t destDepthStrideHigh;
-	VkFormat format;
-	VkOffset3D offset;
-	VkExtent3D extent;
-} CmdCopyBufferToImageInfo;
-
-kernel void cmdCopyBufferToImage3DDecompressDXTn(const device uint8_t* src [[buffer(0)]],
-                                                 texture3d<float, access::write> dest [[texture(0)]],
-                                                 constant CmdCopyBufferToImageInfo& info [[buffer(2)]],
-                                                 uint3 pos [[thread_position_in_grid]]) {
-	uint x = pos.x * 4, y = pos.y * 4, z = pos.z;
-	VkDeviceSize blockByteCount = isBC1Format(info.format) ? 8 : 16;
-
-	if (x >= info.extent.width || y >= info.extent.height || z >= info.extent.depth) { return; }
-
-	src += z * info.srcDepthStride + y * info.srcRowStride / 4 + x * blockByteCount / 4;
-	VkExtent2D blockExtent;
-	blockExtent.width = min(info.extent.width - x, 4u);
-	blockExtent.height = min(info.extent.height - y, 4u);
-	uint pixels[16] = {0};
-	decompressDXTnBlock(src, pixels, blockExtent, 4 * sizeof(uint), info.format);
-	for (uint j = 0; j < blockExtent.height; ++j) {
-		for (uint i = 0; i < blockExtent.width; ++i) {
-			// The pixel components are in BGRA order, but texture::write wants them
-			// in RGBA order. We can fix that (ironically) with a BGRA swizzle.
-			dest.write(unpack_unorm4x8_to_float(pixels[j * 4 + i]).bgra,
-			           uint3(info.offset.x + x + i, info.offset.y + y + j, info.offset.z + z));
-		}
-	}
-}
-
-kernel void cmdCopyBufferToImage3DDecompressTempBufferDXTn(const device uint8_t* src [[buffer(0)]],
-                                                           device uint8_t* dest [[buffer(1)]],
-                                                           constant CmdCopyBufferToImageInfo& info [[buffer(2)]],
-                                                           uint3 pos [[thread_position_in_grid]]) {
-	uint x = pos.x * 4, y = pos.y * 4, z = pos.z;
-	VkDeviceSize blockByteCount = isBC1Format(info.format) ? 8 : 16;
-
-	if (x >= info.extent.width || y >= info.extent.height || z >= info.extent.depth) { return; }
-
-	src += z * info.srcDepthStride + y * info.srcRowStride / 4 + x * blockByteCount / 4;
-	dest += z * info.destDepthStride + y * info.destRowStride + x * sizeof(uint);
-	VkExtent2D blockExtent;
-	blockExtent.width = min(info.extent.width - x, 4u);
-	blockExtent.height = min(info.extent.height - y, 4u);
-	uint pixels[16] = {0};
-	decompressDXTnBlock(src, pixels, blockExtent, 4 * sizeof(uint), info.format);
-	device uint* destPixel = (device uint*)dest;
-	for (uint j = 0; j < blockExtent.height; ++j) {
-		for (uint i = 0; i < blockExtent.width; ++i) {
-			destPixel[j * info.destRowStride / sizeof(uint) + i] = pixels[j * 4 + i];
-		}
-	}
-}
-
 #if __METAL_VERSION__ >= 210
 // This structure is missing from the MSL headers. :/
 struct MTLStageInRegionIndirectArguments {

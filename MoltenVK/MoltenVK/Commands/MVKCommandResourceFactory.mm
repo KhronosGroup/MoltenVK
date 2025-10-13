@@ -575,13 +575,6 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdResolveColorImageMT
 	return newMTLComputePipelineState(funcName, owner);
 }
 
-id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needTempBuf,
-																												  MVKVulkanAPIDeviceObject* owner) {
-	return newMTLComputePipelineState(needTempBuf
-									  ? "cmdCopyBufferToImage3DDecompressTempBufferDXTn"
-									  : "cmdCopyBufferToImage3DDecompressDXTn", owner);
-}
-
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed,
 																											   MVKVulkanAPIDeviceObject* owner) {
 	return newMTLComputePipelineState(indexed

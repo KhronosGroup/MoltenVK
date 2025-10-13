@@ -198,16 +198,9 @@ MTLTextureType mvkMTLTextureTypeFromVkImageViewTypeObj(VkImageViewType vkImageVi
 		case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:	return MTLTextureTypeCubeArray;
 		case VK_IMAGE_VIEW_TYPE_1D:			return mvkGetMVKConfig(mvkObj).texture1DAs2D ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D, isMultisample) : MTLTextureType1D;
 		case VK_IMAGE_VIEW_TYPE_1D_ARRAY:	return mvkGetMVKConfig(mvkObj).texture1DAs2D ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY, isMultisample) : MTLTextureType1DArray;
-
-		case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
-#if MVK_MACOS
-			if (isMultisample) { return MTLTextureType2DMultisampleArray; }
-#endif
-			return MTLTextureType2DArray;
-
+		case VK_IMAGE_VIEW_TYPE_2D_ARRAY:	return isMultisample ? MTLTextureType2DMultisampleArray : MTLTextureType2DArray;
 		case VK_IMAGE_VIEW_TYPE_2D:
-		default:
-			return (isMultisample ? MTLTextureType2DMultisample : MTLTextureType2D);
+		default:                            return isMultisample ? MTLTextureType2DMultisample : MTLTextureType2D;
 	}
 }
 
@@ -342,10 +335,8 @@ MVK_PUBLIC_SYMBOL MTLSamplerAddressMode mvkMTLSamplerAddressModeFromVkSamplerAdd
 		case VK_SAMPLER_ADDRESS_MODE_REPEAT:				return MTLSamplerAddressModeRepeat;
 		case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE:			return MTLSamplerAddressModeClampToEdge;
 		case VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT:		return MTLSamplerAddressModeMirrorRepeat;
-#if MVK_MACOS || MVK_IOS
 		case VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:	return MTLSamplerAddressModeMirrorClampToEdge;
 		case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER:		return MTLSamplerAddressModeClampToBorderColor;
-#endif
 		default:											return MTLSamplerAddressModeClampToZero;
 	}
 }

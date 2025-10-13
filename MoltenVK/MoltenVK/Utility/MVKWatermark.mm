@@ -280,11 +280,10 @@ void MVKWatermark::initTexture(unsigned char* textureContent,
                                                                                       height: textureHeight
                                                                                    mipmapped: NO];
     texDesc.usage = MTLTextureUsageShaderRead;
-#if MVK_IOS
-    texDesc.storageMode = MTLStorageModeShared;
-#endif
 #if MVK_MACOS
     texDesc.storageMode = MTLStorageModeManaged;
+#else
+    texDesc.storageMode = MTLStorageModeShared;
 #endif
 
     _mtlTexture = [_mtlDevice newTextureWithDescriptor: texDesc];		// retained

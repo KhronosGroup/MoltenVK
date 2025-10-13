@@ -72,12 +72,6 @@
 	CGColorSpaceRelease(csRef);
 }
 
-#if (MVK_IOS_OR_TVOS || MVK_MACCAT) && !MVK_VISIONOS
--(UIScreen*) screenMVK {
-	return UIScreen.mainScreen;
-}
-#endif
-
 #if MVK_MACOS && !MVK_MACCAT
 -(NSScreen*) screenMVK {
 	__block NSScreen* screen;
@@ -105,6 +99,10 @@
 		}
 	}
 	return NSScreen.mainScreen;		// Default to main screen if not found
+}
+#elif !MVK_VISIONOS
+-(UIScreen*) screenMVK {
+	return UIScreen.mainScreen;
 }
 #endif
 

@@ -277,20 +277,8 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 		}
 	}
 
-	// Vulkan supports rendering without attachments, but older Metal does not.
-	// If Metal does not support rendering without attachments, create a dummy attachment to pass Metal validation.
 	if (caUsedCnt == 0 && depthRPAttIdx == VK_ATTACHMENT_UNUSED && stencilRPAttIdx == VK_ATTACHMENT_UNUSED) {
-        if (_renderPass->getMetalFeatures().renderWithoutAttachments) {
-            mtlRPDesc.defaultRasterSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_defaultSampleCount);
-		} else {
-			MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = mtlRPDesc.colorAttachments[0];
-			mtlColorAttDesc.texture = framebuffer->getDummyAttachmentMTLTexture(this, passIdx);
-			mtlColorAttDesc.level = 0;
-			mtlColorAttDesc.slice = 0;
-			mtlColorAttDesc.depthPlane = 0;
-			mtlColorAttDesc.loadAction = MTLLoadActionDontCare;
-			mtlColorAttDesc.storeAction = MTLStoreActionDontCare;
-		}
+        mtlRPDesc.defaultRasterSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_defaultSampleCount);
 	}
 
 #if MVK_USE_METAL_PRIVATE_API

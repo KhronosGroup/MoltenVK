@@ -375,10 +375,6 @@ public:
 																			   MVKVulkanAPIDeviceObject* owner,
 																			   bool isTextureArray);
 
-	/** Returns a new MTLComputePipelineState for copying between a buffer holding compressed data and a 3D image. */
-	id<MTLComputePipelineState> newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needTempBuf,
-																						   MVKVulkanAPIDeviceObject* owner);
-
 	/** Returns a new MTLComputePipelineState for populating an indirect index buffer from a non-indexed indirect buffer. */
 	id<MTLComputePipelineState> newCmdDrawIndirectPopulateIndexesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 

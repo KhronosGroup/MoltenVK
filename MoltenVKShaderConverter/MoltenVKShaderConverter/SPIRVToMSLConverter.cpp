@@ -84,8 +84,7 @@ MVK_PUBLIC_SYMBOL SPIRVToMSLConversionOptions::SPIRVToMSLConversionOptions() {
 
 #if MVK_MACOS
 	mslOptions.platform = CompilerMSL::Options::macOS;
-#endif
-#if MVK_IOS_OR_TVOS_OR_VISIONOS
+#else
 	mslOptions.platform = CompilerMSL::Options::iOS;
 #endif
 

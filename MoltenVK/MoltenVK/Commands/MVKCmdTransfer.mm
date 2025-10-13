@@ -343,7 +343,7 @@ VkResult MVKCmdBlitImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 	_filter = filter;
 
-	bool isDestUnwritableLinear = MVK_MACOS && !cmdBuff->getMetalFeatures().renderLinearTextures && _dstImage->getIsLinear();
+	bool isDestUnwritableLinear = !cmdBuff->getMetalFeatures().renderLinearTextures && _dstImage->getIsLinear();
 
 	_vkImageBlits.clear();		// Clear for reuse
 	for (uint32_t rIdx = 0; rIdx < regionCount; rIdx++) {
@@ -374,7 +374,7 @@ VkResult MVKCmdBlitImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 
     _filter = pBlitImageInfo->filter;
 
-    bool isDestUnwritableLinear = MVK_MACOS && !cmdBuff->getMetalFeatures().renderLinearTextures && _dstImage->getIsLinear();
+    bool isDestUnwritableLinear = !cmdBuff->getMetalFeatures().renderLinearTextures && _dstImage->getIsLinear();
 
     _vkImageBlits.clear();        // Clear for reuse
     _vkImageBlits.reserve(pBlitImageInfo->regionCount);
@@ -1066,21 +1066,6 @@ template class MVKCmdCopyBuffer<4>;
 #pragma mark -
 #pragma mark MVKCmdBufferImageCopy
 
-// Matches shader struct.
-typedef struct {
-    uint32_t srcRowStride;
-    uint32_t srcRowStrideHigh;
-    uint32_t srcDepthStride;
-    uint32_t srcDepthStrideHigh;
-    uint32_t destRowStride;
-    uint32_t destRowStrideHigh;
-    uint32_t destDepthStride;
-    uint32_t destDepthStrideHigh;
-    VkFormat format;
-    VkOffset3D offset;
-    VkExtent3D extent;
-} MVKCmdCopyBufferToImageInfo;
-
 template <size_t N>
 VkResult MVKCmdBufferImageCopy<N>::setContent(MVKCommandBuffer* cmdBuff,
 											  VkBuffer buffer,
@@ -1205,79 +1190,6 @@ void MVKCmdBufferImageCopy<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		if (pixFmts->isPVRTCFormat(mtlPixFmt)) {
 			blitOptions |= MTLBlitOptionRowLinearPVRTC;
 		}
-
-#if MVK_MACOS
-		// If we're copying to a compressed 3D image, the image data need to be decompressed.
-		// If we're copying to mip level 0, we can skip the copy and just decode
-		// directly into the image. Otherwise, we need to use an intermediate buffer.
-        if (_toImage && _image->getIsCompressed() && mtlTexture.textureType == MTLTextureType3D &&
-            !cmdEncoder->getMetalFeatures().native3DCompressedTextures) {
-
-            MVKCmdCopyBufferToImageInfo info;
-            info.srcRowStride = bytesPerRow & 0xffffffff;
-            info.srcRowStrideHigh = bytesPerRow >> 32;
-            info.srcDepthStride = bytesPerImg & 0xffffffff;
-            info.srcDepthStrideHigh = bytesPerImg >> 32;
-            info.destRowStride = info.destRowStrideHigh = 0;
-            info.destDepthStride = info.destDepthStrideHigh = 0;
-            info.format = _image->getVkFormat();
-            info.offset = cpyRgn.imageOffset;
-            info.extent = cpyRgn.imageExtent;
-            bool needsTempBuff = mipLevel != 0;
-			id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(cmdUse);
-			MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
-            id<MTLComputePipelineState> mtlComputeState = cmdEncoder->getCommandEncodingPool()->getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(needsTempBuff);
-            [mtlComputeEnc pushDebugGroup: @"vkCmdCopyBufferToImage"];
-            state.bindPipeline(mtlComputeEnc, mtlComputeState);
-            state.bindBuffer(mtlComputeEnc, mtlBuffer, mtlBuffOffset, 0);
-            MVKBuffer* tempBuff;
-            if (needsTempBuff) {
-                NSUInteger bytesPerDestRow = pixFmts->getBytesPerRow(mtlTexture.pixelFormat, info.extent.width);
-                NSUInteger bytesPerDestImg = pixFmts->getBytesPerLayer(mtlTexture.pixelFormat, bytesPerDestRow, info.extent.height);
-                // We're going to copy from the temporary buffer now, so use the
-                // temp buffer parameters in the copy below.
-                bytesPerRow = bytesPerDestRow;
-                bytesPerImg = bytesPerDestImg;
-                MVKBufferDescriptorData tempBuffData;
-                tempBuffData.size = bytesPerDestImg * mtlTxtSize.depth;
-                tempBuffData.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-                tempBuff = cmdEncoder->getCommandEncodingPool()->getTransferMVKBuffer(tempBuffData);
-                mtlBuffer = tempBuff->getMTLBuffer();
-                mtlBuffOffset = tempBuff->getMTLBufferOffset();
-                info.destRowStride = bytesPerDestRow & 0xffffffff;
-                info.destRowStrideHigh = bytesPerDestRow >> 32;
-                info.destDepthStride = bytesPerDestImg & 0xffffffff;
-                info.destDepthStrideHigh = bytesPerDestImg >> 32;
-                state.bindBuffer(mtlComputeEnc, mtlBuffer, mtlBuffOffset, 1);
-            } else {
-                state.bindTexture(mtlComputeEnc, mtlTexture, 0);
-            }
-            cmdEncoder->setComputeBytes(mtlComputeEnc, &info, sizeof(info), 2);
-
-            // Now work out how big to make the grid, and from there, the size and number of threadgroups.
-            // One thread is run per block. Each block decompresses to an m x n array of texels.
-            // So the size of the grid is (ceil(width/m), ceil(height/n), depth).
-            VkExtent2D blockExtent = pixFmts->getBlockTexelSize(mtlPixFmt);
-            MTLSize mtlGridSize = MTLSizeMake(mvkCeilingDivide<NSUInteger>(mtlTxtSize.width, blockExtent.width),
-                                              mvkCeilingDivide<NSUInteger>(mtlTxtSize.height, blockExtent.height),
-                                              mtlTxtSize.depth);
-            // Use four times the thread execution width as the threadgroup size.
-            MTLSize mtlTgrpSize = MTLSizeMake(2, 2, mtlComputeState.threadExecutionWidth);
-            // Then the number of threadgroups is (ceil(x/2), ceil(y/2), ceil(z/t)),
-            // where 't' is the thread execution width.
-            mtlGridSize.width = mvkCeilingDivide(mtlGridSize.width, mtlTgrpSize.width);
-            mtlGridSize.height = mvkCeilingDivide(mtlGridSize.height, mtlTgrpSize.height);
-            mtlGridSize.depth = mvkCeilingDivide(mtlGridSize.depth, mtlTgrpSize.depth);
-            // There may be extra threads, but that's OK; the shader does bounds checking to
-            // ensure it doesn't try to write out of bounds.
-            // Alternatively, we could use the newer -[MTLComputeCommandEncoder dispatchThreads:threadsPerThreadgroup:] method,
-            // but that needs Metal 2.0.
-            [mtlComputeEnc dispatchThreadgroups: mtlGridSize threadsPerThreadgroup: mtlTgrpSize];
-            [mtlComputeEnc popDebugGroup];
-
-            if (!needsTempBuff) { continue; }
-        }
-#endif
 
 		// Don't supply bytes per image if not an arrayed texture
 		if ( !isArrayTexture() ) { bytesPerImg = 0; }
@@ -1604,7 +1516,7 @@ VkResult MVKCmdClearImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 
         // Validate
         MVKMTLFmtCaps mtlFmtCaps = cmdBuff->getPixelFormats()->getCapabilities(_image->getMTLPixelFormat(planeIndex));
-		bool isDestUnwritableLinear = MVK_MACOS && !cmdBuff->getMetalFeatures().renderLinearTextures && _image->getIsLinear();
+		bool isDestUnwritableLinear = !cmdBuff->getMetalFeatures().renderLinearTextures && _image->getIsLinear();
 		uint32_t reqCap = isDS ? kMVKMTLFmtCapsDSAtt : (isDestUnwritableLinear ? kMVKMTLFmtCapsWrite : kMVKMTLFmtCapsColorAtt);
         if (!mvkAreAllFlagsEnabled(mtlFmtCaps, reqCap)) {
             return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClear%sImage(): Format %s cannot be cleared on this device.", (isDS ? "DepthStencil" : "Color"), cmdBuff->getPixelFormats()->getName(_image->getVkFormat()));
@@ -1637,8 +1549,7 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
         id<MTLTexture> imgMTLTex = _image->getMTLTexture(planeIndex);
         if ( !imgMTLTex ) { continue; }
 
-#if MVK_MACOS
-        if (_image->getIsLinear() && !mtlFeats.renderLinearTextures) {
+        if (!mtlFeats.renderLinearTextures && _image->getIsLinear()) {
             // These images cannot be rendered. Instead, use a compute shader.
             // Luckily for us, linear images only have one mip and one array layer under Metal.
             assert( !isDS );
@@ -1662,7 +1573,6 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
             [mtlComputeEnc popDebugGroup];
             continue;
         }
-#endif
 
 		MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
 		MTLRenderPassColorAttachmentDescriptor* mtlRPCADesc = nil;
