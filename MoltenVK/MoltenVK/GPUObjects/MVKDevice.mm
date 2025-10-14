@@ -95,6 +95,9 @@ uint8_t MVKMTLDeviceCapabilities::getHighestMacGPU() const {
 MVKMTLDeviceCapabilities::MVKMTLDeviceCapabilities(id<MTLDevice> mtlDev) {
 	mvkClear(this);
 	supportsMetal3 = supportsGPUFam(Metal3, mtlDev);
+#if MVK_XCODE_26 && !MVK_OS_SIMULATOR
+	supportsMetal4 = supportsGPUFam(Metal4, mtlDev);
+#endif
 	supportsApple1 = supportsGPUFam(Apple1, mtlDev);
 	supportsApple2 = supportsGPUFam(Apple2, mtlDev);
 	supportsApple3 = supportsGPUFam(Apple3, mtlDev);
@@ -3629,8 +3632,10 @@ void MVKPhysicalDevice::logGPUInfo() {
 	logMsg += "\n\tMetal Shading Language %s";
 	logMsg += "\n\tsupports the following GPU Features:";
 
+	if (supportsMTLGPUFamily(Metal4)) { logMsg += "\n\t\tGPU Family Metal 4"; } else
 	if (supportsMTLGPUFamily(Metal3)) { logMsg += "\n\t\tGPU Family Metal 3"; }
 
+	if (supportsMTLGPUFamily(Apple10)) { logMsg += "\n\t\tGPU Family Apple 10"; } else
 	if (supportsMTLGPUFamily(Apple9)) { logMsg += "\n\t\tGPU Family Apple 9"; } else
 	if (supportsMTLGPUFamily(Apple8)) { logMsg += "\n\t\tGPU Family Apple 8"; } else
 	if (supportsMTLGPUFamily(Apple7)) { logMsg += "\n\t\tGPU Family Apple 7"; } else

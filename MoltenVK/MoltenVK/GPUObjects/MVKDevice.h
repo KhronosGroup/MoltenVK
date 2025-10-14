@@ -114,6 +114,7 @@ typedef struct MVKMTLDeviceCapabilities {
 	bool supportsApple10;
 	bool supportsMac2;
 	bool supportsMetal3;
+	bool supportsMetal4;
 
 	bool isAppleGPU;
 	bool supportsBCTextureCompression;
