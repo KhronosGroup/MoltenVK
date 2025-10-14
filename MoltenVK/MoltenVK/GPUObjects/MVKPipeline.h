@@ -157,9 +157,6 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT; }
 
-	/** Returns whether or not full image view swizzling is enabled for this pipeline. */
-	bool fullImageViewSwizzle() const { return _fullImageViewSwizzle; }
-
 	/** Returns whether all internal Metal pipeline states are valid. */
 	bool hasValidMTLPipelineStates() { return _hasValidMTLPipelineStates; }
 
@@ -209,7 +206,6 @@ protected:
 	VkPipelineCreateFlags2 _flags;
 	uint32_t _descriptorSetCount;
 	bool _stageUsesPushConstants[kMVKShaderStageCount];
-	bool _fullImageViewSwizzle;
 	bool _hasValidMTLPipelineStates = true;
 
 };

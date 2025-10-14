@@ -1925,7 +1925,7 @@ id<MTLTexture> MVKImageViewPlane::newMTLTexture() {
     }
 
     id<MTLTexture> texView = nil;
-    if (_useNativeSwizzle) {
+    if (_useSwizzle) {
         texView = [mtlTex newTextureViewWithPixelFormat: _mtlPixFmt
                                             textureType: _imageView->_mtlTextureType
                                                  levels: levelRange
@@ -1966,7 +1966,7 @@ MVKImageViewPlane::MVKImageViewPlane(MVKImageView* imageView,
              ((_imageView->_mtlTextureType == MTLTextureType2D || _imageView->_mtlTextureType == MTLTextureType2DArray) && is3D)) &&
             _imageView->_subresourceRange.levelCount == _imageView->_image->_mipLevels &&
             (is3D || _imageView->_subresourceRange.layerCount == _imageView->_image->_arrayLayers) &&
-            !_useNativeSwizzle) {
+            !_useSwizzle) {
             _useMTLTextureView = false;
         }
     } else {
@@ -1976,8 +1976,7 @@ MVKImageViewPlane::MVKImageViewPlane(MVKImageView* imageView,
 
 VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateInfo* pCreateInfo) {
 
-	_useNativeSwizzle = false;
-	_useShaderSwizzle = false;
+	_useSwizzle = false;
 	_componentSwizzle = pCreateInfo->components;
 	VkImageAspectFlags aspectMask = pCreateInfo->subresourceRange.aspectMask;
 
@@ -2074,7 +2073,7 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 			}
 #endif
 		}
-		
+
 		// 2. Metal's undefined values for depth/stencil sample to vec4 conversion
 		// Due to differences in Metal and Vulkan specification for sampling depth/stencil textures into vec4, we need to
 		// provide the correct mapping from Vulkan to Metal
@@ -2083,185 +2082,30 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 		// the default value for an unspecified component is undefined." which means all values but R will be undefined.
 		// Vulkan requires that all components be defined, with `G` and `B` set to `0` and `A` set to `1`.
 		// See https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#textures-conversion-to-rgba.
-		if (enableSwizzling()) {
-			if (_componentSwizzle.r == VK_COMPONENT_SWIZZLE_A) {
-				_componentSwizzle.r = VK_COMPONENT_SWIZZLE_ONE;
-			} else if (_componentSwizzle.r == VK_COMPONENT_SWIZZLE_G || _componentSwizzle.r == VK_COMPONENT_SWIZZLE_B) {
-				_componentSwizzle.r = VK_COMPONENT_SWIZZLE_ZERO;
-			}
-			if (_componentSwizzle.g == VK_COMPONENT_SWIZZLE_A) {
-				_componentSwizzle.g = VK_COMPONENT_SWIZZLE_ONE;
-			} else if (_componentSwizzle.g == VK_COMPONENT_SWIZZLE_G || _componentSwizzle.g == VK_COMPONENT_SWIZZLE_B || _componentSwizzle.g == VK_COMPONENT_SWIZZLE_IDENTITY) {
-				_componentSwizzle.g = VK_COMPONENT_SWIZZLE_ZERO;
-			}
-			if (_componentSwizzle.b == VK_COMPONENT_SWIZZLE_A) {
-				_componentSwizzle.b = VK_COMPONENT_SWIZZLE_ONE;
-			} else if (_componentSwizzle.b == VK_COMPONENT_SWIZZLE_G || _componentSwizzle.b == VK_COMPONENT_SWIZZLE_B || _componentSwizzle.b == VK_COMPONENT_SWIZZLE_IDENTITY) {
-				_componentSwizzle.b = VK_COMPONENT_SWIZZLE_ZERO;
-			}
-			if (_componentSwizzle.a == VK_COMPONENT_SWIZZLE_A || _componentSwizzle.a == VK_COMPONENT_SWIZZLE_IDENTITY) {
-				_componentSwizzle.a = VK_COMPONENT_SWIZZLE_ONE;
-			} else if (_componentSwizzle.a == VK_COMPONENT_SWIZZLE_G || _componentSwizzle.a == VK_COMPONENT_SWIZZLE_B ) {
-				_componentSwizzle.a = VK_COMPONENT_SWIZZLE_ZERO;
-			}
-			
-			return VK_SUCCESS;
+		if (_componentSwizzle.r == VK_COMPONENT_SWIZZLE_A) {
+			_componentSwizzle.r = VK_COMPONENT_SWIZZLE_ONE;
+		} else if (_componentSwizzle.r == VK_COMPONENT_SWIZZLE_G || _componentSwizzle.r == VK_COMPONENT_SWIZZLE_B) {
+			_componentSwizzle.r = VK_COMPONENT_SWIZZLE_ZERO;
+		}
+		if (_componentSwizzle.g == VK_COMPONENT_SWIZZLE_A) {
+			_componentSwizzle.g = VK_COMPONENT_SWIZZLE_ONE;
+		} else if (_componentSwizzle.g == VK_COMPONENT_SWIZZLE_G || _componentSwizzle.g == VK_COMPONENT_SWIZZLE_B || _componentSwizzle.g == VK_COMPONENT_SWIZZLE_IDENTITY) {
+			_componentSwizzle.g = VK_COMPONENT_SWIZZLE_ZERO;
+		}
+		if (_componentSwizzle.b == VK_COMPONENT_SWIZZLE_A) {
+			_componentSwizzle.b = VK_COMPONENT_SWIZZLE_ONE;
+		} else if (_componentSwizzle.b == VK_COMPONENT_SWIZZLE_G || _componentSwizzle.b == VK_COMPONENT_SWIZZLE_B || _componentSwizzle.b == VK_COMPONENT_SWIZZLE_IDENTITY) {
+			_componentSwizzle.b = VK_COMPONENT_SWIZZLE_ZERO;
+		}
+		if (_componentSwizzle.a == VK_COMPONENT_SWIZZLE_A || _componentSwizzle.a == VK_COMPONENT_SWIZZLE_IDENTITY) {
+			_componentSwizzle.a = VK_COMPONENT_SWIZZLE_ONE;
+		} else if (_componentSwizzle.a == VK_COMPONENT_SWIZZLE_G || _componentSwizzle.a == VK_COMPONENT_SWIZZLE_B ) {
+			_componentSwizzle.a = VK_COMPONENT_SWIZZLE_ZERO;
 		}
 	}
 
-#define SWIZZLE_MATCHES(R, G, B, A)    mvkVkComponentMappingsMatch(_componentSwizzle, {VK_COMPONENT_SWIZZLE_ ##R, VK_COMPONENT_SWIZZLE_ ##G, VK_COMPONENT_SWIZZLE_ ##B, VK_COMPONENT_SWIZZLE_ ##A} )
-#define VK_COMPONENT_SWIZZLE_ANY       VK_COMPONENT_SWIZZLE_MAX_ENUM
-
-	// If we have an identity swizzle, we're all good.
-	if (SWIZZLE_MATCHES(R, G, B, A)) {
-		return VK_SUCCESS;
-	}
-
-	if (mvkIsAnyFlagEnabled(_imageView->_usage, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) {
-		// Vulkan forbids using image views with non-identity swizzles as storage images or attachments.
-		// Let's catch some cases which are essentially identity, but would still result in Metal restricting
-		// the resulting texture's usage.
-
-		switch (_mtlPixFmt) {
-			case MTLPixelFormatR8Unorm:
-#if !MVK_OS_SIMULATOR
-			case MTLPixelFormatR8Unorm_sRGB:
-#endif
-			case MTLPixelFormatR8Snorm:
-			case MTLPixelFormatR8Uint:
-			case MTLPixelFormatR8Sint:
-			case MTLPixelFormatR16Unorm:
-			case MTLPixelFormatR16Snorm:
-			case MTLPixelFormatR16Uint:
-			case MTLPixelFormatR16Sint:
-			case MTLPixelFormatR16Float:
-			case MTLPixelFormatR32Uint:
-			case MTLPixelFormatR32Sint:
-			case MTLPixelFormatR32Float:
-				if (SWIZZLE_MATCHES(R, ZERO, ZERO, ONE)) {
-					return VK_SUCCESS;
-				}
-				break;
-
-			case MTLPixelFormatRG8Unorm:
-#if !MVK_OS_SIMULATOR
-			case MTLPixelFormatRG8Unorm_sRGB:
-#endif
-			case MTLPixelFormatRG8Snorm:
-			case MTLPixelFormatRG8Uint:
-			case MTLPixelFormatRG8Sint:
-			case MTLPixelFormatRG16Unorm:
-			case MTLPixelFormatRG16Snorm:
-			case MTLPixelFormatRG16Uint:
-			case MTLPixelFormatRG16Sint:
-			case MTLPixelFormatRG16Float:
-			case MTLPixelFormatRG32Uint:
-			case MTLPixelFormatRG32Sint:
-			case MTLPixelFormatRG32Float:
-				if (SWIZZLE_MATCHES(R, G, ZERO, ONE)) {
-					return VK_SUCCESS;
-				}
-				break;
-
-			case MTLPixelFormatRG11B10Float:
-			case MTLPixelFormatRGB9E5Float:
-				if (SWIZZLE_MATCHES(R, G, B, ONE)) {
-					return VK_SUCCESS;
-				}
-				break;
-
-			default:
-				break;
-		}
-	}
-
-	if (!_imageView->_image->hasPixelFormatView(_planeIndex)) {
-		if (!enableSwizzling()) {
-			MVKAssert(0, "Image without PixelFormatView usage couldn't enable swizzling!");
-		}
-		return VK_SUCCESS;
-	}
-
-	switch (_mtlPixFmt) {
-		case MTLPixelFormatR8Unorm:
-			if (SWIZZLE_MATCHES(ZERO, ANY, ANY, R)) {
-				_mtlPixFmt = MTLPixelFormatA8Unorm;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatA8Unorm:
-			if (SWIZZLE_MATCHES(A, ANY, ANY, ZERO)) {
-				_mtlPixFmt = MTLPixelFormatR8Unorm;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatRGBA8Unorm:
-			if (SWIZZLE_MATCHES(B, G, R, A)) {
-				_mtlPixFmt = MTLPixelFormatBGRA8Unorm;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatRGBA8Unorm_sRGB:
-			if (SWIZZLE_MATCHES(B, G, R, A)) {
-				_mtlPixFmt = MTLPixelFormatBGRA8Unorm_sRGB;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatBGRA8Unorm:
-			if (SWIZZLE_MATCHES(B, G, R, A)) {
-				_mtlPixFmt = MTLPixelFormatRGBA8Unorm;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatBGRA8Unorm_sRGB:
-			if (SWIZZLE_MATCHES(B, G, R, A)) {
-				_mtlPixFmt = MTLPixelFormatRGBA8Unorm_sRGB;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatX32_Stencil8:
-			if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
-				return VK_SUCCESS;
-			}
-			break;
-
-#if MVK_MACOS
-		case MTLPixelFormatX24_Stencil8:
-			if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
-				return VK_SUCCESS;
-			}
-			break;
-#endif
-
-		default:
-			break;
-	}
-
-	// No format transformation swizzles were found, so we'll need to use either native or shader swizzling, if supported.
-	if ( !enableSwizzling() ) {
-		return getVulkanAPIObject()->reportError(VK_ERROR_FEATURE_NOT_PRESENT,
-												 "The value of %s::components) (%s, %s, %s, %s), when applied to a VkImageView, requires full component swizzling to be enabled both at the"
-												 " time when the VkImageView is created and at the time any pipeline that uses that VkImageView is compiled. Full component swizzling can"
-												 " be enabled via the MVKConfiguration::fullImageViewSwizzle config parameter or MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE environment variable.",
-												 pCreateInfo->image ? "vkCreateImageView(VkImageViewCreateInfo" : "vkGetPhysicalDeviceImageFormatProperties2KHR(VkPhysicalDeviceImageViewSupportEXTX",
-												 mvkVkComponentSwizzleName(_componentSwizzle.r), mvkVkComponentSwizzleName(_componentSwizzle.g),
-												 mvkVkComponentSwizzleName(_componentSwizzle.b), mvkVkComponentSwizzleName(_componentSwizzle.a));
-	}
-
+	_useSwizzle = !mvkVkComponentMappingsMatch(_componentSwizzle, {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A});
 	return VK_SUCCESS;
-}
-
-// Enable either native or shader swizzling, depending on what is available, preferring native, and return whether successful.
-bool MVKImageViewPlane::enableSwizzling() {
-	_useNativeSwizzle = getMetalFeatures().nativeTextureSwizzle;
-	_useShaderSwizzle = !_useNativeSwizzle && getMVKConfig().fullImageViewSwizzle;
-	return _useNativeSwizzle || _useShaderSwizzle;
 }
 
 MVKImageViewPlane::~MVKImageViewPlane() {
@@ -2285,9 +2129,9 @@ void MVKImageView::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttach
     MVKImageViewPlane* plane = _planes[0];
     bool useView = plane->_useMTLTextureView;
     mtlAttDesc.texture = plane->getMTLTexture();
-    // If a native swizzle is being applied, use the unswizzled parent texture.
+    // If a swizzle is being applied, use the unswizzled parent texture.
     // This is relevant for depth/stencil attachments that are also sampled and might have forced swizzles.
-    if (plane->_useNativeSwizzle && mtlAttDesc.texture.parentTexture) {
+    if (plane->_useSwizzle && mtlAttDesc.texture.parentTexture) {
         useView = false;
         mtlAttDesc.texture = mtlAttDesc.texture.parentTexture;
     }
@@ -2305,9 +2149,9 @@ void MVKImageView::populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPas
     MVKImageViewPlane* plane = _planes[0];
     bool useView = plane->_useMTLTextureView;
     mtlAttDesc.resolveTexture = plane->getMTLTexture();
-    // If a native swizzle is being applied, use the unswizzled parent texture.
+    // If a swizzle is being applied, use the unswizzled parent texture.
     // This is relevant for depth/stencil attachments that are also sampled and might have forced swizzles.
-    if (plane->_useNativeSwizzle && mtlAttDesc.resolveTexture.parentTexture) {
+    if (plane->_useSwizzle && mtlAttDesc.resolveTexture.parentTexture) {
         useView = false;
         mtlAttDesc.resolveTexture = mtlAttDesc.resolveTexture.parentTexture;
     }

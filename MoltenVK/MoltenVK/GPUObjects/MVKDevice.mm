@@ -587,8 +587,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->constantAlphaColorBlendFactors = true;
 				portabilityFeatures->events = true;
 				portabilityFeatures->imageViewFormatReinterpretation = true;
-				portabilityFeatures->imageViewFormatSwizzle = (_metalFeatures.nativeTextureSwizzle ||
-															   getMVKConfig().fullImageViewSwizzle);
+				portabilityFeatures->imageViewFormatSwizzle = true;
 				portabilityFeatures->imageView2DOn3DImage = _metalFeatures.placementHeaps;
 				portabilityFeatures->multisampleArrayImage = _metalFeatures.multisampleArrayTextures;
 				portabilityFeatures->mutableComparisonSamplers = _metalFeatures.depthSampleCompare;
@@ -644,9 +643,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
 				auto* formatFeatures = (VkPhysicalDevice4444FormatsFeaturesEXT*)next;
-				bool canSupport4444 = _metalFeatures.tileBasedDeferredRendering &&
-									  (_metalFeatures.nativeTextureSwizzle ||
-									   getMVKConfig().fullImageViewSwizzle);
+				bool canSupport4444 = _metalFeatures.tileBasedDeferredRendering;
 				formatFeatures->formatA4R4G4B4 = canSupport4444;
 				formatFeatures->formatA4B4G4R4 = canSupport4444;
 				break;
@@ -2444,7 +2441,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	                                 ? cfgUseMTLHeap == MVK_CONFIG_USE_MTLHEAP_ALWAYS
 	                                 : cfgUseMTLHeap != MVK_CONFIG_USE_MTLHEAP_NEVER);
 	_metalFeatures.multisampleArrayTextures = !MVK_TVOS || mvkOSVersionIsAtLeast(16.0);
-	_metalFeatures.nativeTextureSwizzle = true;
 
 #if MVK_XCODE_15
 	// Dynamic vertex stride needs to have everything aligned - compiled with support for vertex stride calls, and supported by both runtime OS and GPU.
@@ -2562,7 +2558,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 // iOS, tvOS and visionOS adjustments necessary when running on the simulator.
 #if MVK_OS_SIMULATOR
 	_metalFeatures.mtlBufferAlignment = 256;	// Even on Apple Silicon
-	_metalFeatures.nativeTextureSwizzle = false;
 	_metalFeatures.renderLinearTextures = false;
 #endif
 
@@ -2715,6 +2710,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.events = true;
 	_metalFeatures.ioSurfaces = true;
 	_metalFeatures.renderWithoutAttachments = true;
+	_metalFeatures.nativeTextureSwizzle = true;
 }
 
 bool MVKPhysicalDevice::isTier2MetalArgumentBuffers() {
@@ -2793,11 +2789,6 @@ void MVKPhysicalDevice::initFeatures() {
 		_features.shaderResourceMinLod = true;
 		_features.shaderInt64 = true;
     }
-
-// iOS, tvOS and visionOS adjustments necessary when running on the simulator.
-#if MVK_OS_SIMULATOR
-	_features.depthClamp = false;
-#endif
 
 	// Additional non-extension Vulkan 1.2 features.
 	mvkClear(&_vulkan12NoExtFeatures);		// Start with everything cleared

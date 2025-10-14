@@ -118,7 +118,7 @@ typedef struct {
 	VkBool32 fences;								/**< If true, Metal synchronization fences (MTLFence) are supported. Deprecated. Will always be true on all platforms. */
 	VkBool32 rasterOrderGroups;						/**< If true, Raster order groups in fragment shaders are supported. */
 	VkBool32 native3DCompressedTextures;			/**< If true, 3D compressed images are supported natively, without manual decompression. */
-	VkBool32 nativeTextureSwizzle;					/**< If true, component swizzle is supported natively, without manual swizzling in shaders. */
+	VkBool32 nativeTextureSwizzle;					/**< If true, component swizzle is supported natively, without manual swizzling in shaders. Deprecated. Will always be true on all platforms. */
 	VkBool32 placementHeaps;						/**< If true, MTLHeap objects support placement of resources. */
 	VkDeviceSize pushConstantSizeAlignment;			/**< The alignment used internally when allocating memory for push constants. Must be PoT. */
 	uint32_t maxTextureLayers;						/**< The maximum number of layers in an array texture. */

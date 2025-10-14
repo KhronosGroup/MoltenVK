@@ -661,9 +661,6 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 
 	bool pfv = false;
 
-	// Swizzle emulation may need to reinterpret
-	needsReinterpretation |= !_physicalDevice->getMetalFeatures()->nativeTextureSwizzle;
-
 	pfv |= isColorFormat && needsReinterpretation &&
 	       mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_SAMPLED_BIT |
 	                                               VK_IMAGE_USAGE_STORAGE_BIT |
@@ -1490,10 +1487,6 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(const MVKMTLDeviceCapabilities
 // Connects Vulkan and Metal pixel formats to one-another.
 void MVKPixelFormats::buildVkFormatMaps(const MVKMTLDeviceCapabilities& gpuCaps) {
 	for (auto& vkDesc : _vkFormatDescriptions) {
-		if (vkDesc.needsSwizzle() && !_physicalDevice->getMetalFeatures()->nativeTextureSwizzle && !getMVKConfig().fullImageViewSwizzle) {
-			vkDesc.mtlPixelFormat = vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid;
-		}
-
 		// Populate the back reference from the Metal formats to the Vulkan format.
 		// Validate the corresponding Metal formats for the platform, and clear them
 		// if the Vulkan format if not supported.

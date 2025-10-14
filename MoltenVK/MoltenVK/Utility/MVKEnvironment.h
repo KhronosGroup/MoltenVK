@@ -174,7 +174,7 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #   define MVK_CONFIG_SWITCH_SYSTEM_GPU    1
 #endif
 
-/** Support full ImageView swizzles. Disabled by default. */
+/** Obsolete, deprecated, and ignored. */
 #ifndef MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE
 #   define MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE    0
 #endif

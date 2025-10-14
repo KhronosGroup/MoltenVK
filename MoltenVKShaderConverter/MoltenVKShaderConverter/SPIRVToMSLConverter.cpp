@@ -358,7 +358,6 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	populateEntryPoint(pMSLCompiler, shaderConfig.options, conversionResult.resultInfo.entryPoint);
 	conversionResult.resultInfo.isRasterizationDisabled = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
 	conversionResult.resultInfo.isPositionInvariant = pMSLCompiler && pMSLCompiler->is_position_invariant();
-	conversionResult.resultInfo.needsSwizzleBuffer = pMSLCompiler && pMSLCompiler->needs_swizzle_buffer();
 	conversionResult.resultInfo.needsOutputBuffer = pMSLCompiler && pMSLCompiler->needs_output_buffer();
 	conversionResult.resultInfo.needsPatchOutputBuffer = pMSLCompiler && pMSLCompiler->needs_patch_output_buffer();
 	conversionResult.resultInfo.needsBufferSizeBuffer = pMSLCompiler && pMSLCompiler->needs_buffer_size_buffer();
