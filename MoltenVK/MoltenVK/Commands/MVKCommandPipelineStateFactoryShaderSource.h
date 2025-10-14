@@ -204,13 +204,11 @@ kernel void cmdResolveColorImage2DIntArray(texture2d_array<int, access::write> d
 }
 #endif
 
-#if __METAL_VERSION__ >= 210
 // This structure is missing from the MSL headers. :/
 struct MTLStageInRegionIndirectArguments {
 	uint32_t stageInOrigin[3];
 	uint32_t stageInSize[3];
 };
-#endif
 
 typedef enum : uint8_t {
 	MTLIndexTypeUInt16 = 0,
@@ -333,7 +331,6 @@ kernel void cmdDrawIndexedIndirectConvertBuffers(const device char* srcBuff [[bu
 	}
 }
 
-#if __METAL_VERSION__ >= 120
 kernel void cmdDrawIndirectTessConvertBuffers(const device char* srcBuff [[buffer(0)]],
                                               device char* destBuff [[buffer(1)]],
                                               device char* paramsBuff [[buffer(2)]],
@@ -348,13 +345,9 @@ kernel void cmdDrawIndirectTessConvertBuffers(const device char* srcBuff [[buffe
 	const device auto& src = *reinterpret_cast<const device MTLDrawPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);
 	device char* dest;
 	device auto* params = reinterpret_cast<device uint32_t*>(paramsBuff + idx * 256);
-#if __METAL_VERSION__ >= 210
 	dest = destBuff + idx * (sizeof(MTLStageInRegionIndirectArguments) + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2 + sizeof(MTLDrawPatchIndirectArguments));
 	device auto& destSI = *(device MTLStageInRegionIndirectArguments*)dest;
 	dest += sizeof(MTLStageInRegionIndirectArguments);
-#else
-	dest = destBuff + idx * (sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2 + sizeof(MTLDrawPatchIndirectArguments));
-#endif
 	device auto& destVtx = *(device MTLDispatchThreadgroupsIndirectArguments*)dest;
 	device auto& destTC = *(device MTLDispatchThreadgroupsIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments));
 	device auto& destTE = *(device MTLDrawPatchIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2);
@@ -369,14 +362,12 @@ kernel void cmdDrawIndirectTessConvertBuffers(const device char* srcBuff [[buffe
 	destTE.patchCount = patchCount;
 	destTE.instanceCount = 1;
 	destTE.patchStart = destTE.baseInstance = 0;
-#if __METAL_VERSION__ >= 210
 	destSI.stageInOrigin[0] = src.vertexStart;
 	destSI.stageInOrigin[1] = src.baseInstance;
 	destSI.stageInOrigin[2] = 0;
 	destSI.stageInSize[0] = src.vertexCount;
 	destSI.stageInSize[1] = src.instanceCount;
 	destSI.stageInSize[2] = 1;
-#endif
 }
 
 kernel void cmdDrawIndexedIndirectTessConvertBuffers(const device char* srcBuff [[buffer(0)]],
@@ -393,13 +384,9 @@ kernel void cmdDrawIndexedIndirectTessConvertBuffers(const device char* srcBuff 
 	const device auto& src = *reinterpret_cast<const device MTLDrawIndexedPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);
 	device char* dest;
 	device auto* params = reinterpret_cast<device uint32_t*>(paramsBuff + idx * 256);
-#if __METAL_VERSION__ >= 210
 	dest = destBuff + idx * (sizeof(MTLStageInRegionIndirectArguments) + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2 + sizeof(MTLDrawPatchIndirectArguments));
 	device auto& destSI = *(device MTLStageInRegionIndirectArguments*)dest;
 	dest += sizeof(MTLStageInRegionIndirectArguments);
-#else
-	dest = destBuff + idx * (sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2 + sizeof(MTLDrawPatchIndirectArguments));
-#endif
 	device auto& destVtx = *(device MTLDispatchThreadgroupsIndirectArguments*)dest;
 	device auto& destTC = *(device MTLDispatchThreadgroupsIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments));
 	device auto& destTE = *(device MTLDrawPatchIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2);
@@ -414,14 +401,12 @@ kernel void cmdDrawIndexedIndirectTessConvertBuffers(const device char* srcBuff 
 	destTE.patchCount = patchCount;
 	destTE.instanceCount = 1;
 	destTE.patchStart = destTE.baseInstance = 0;
-#if __METAL_VERSION__ >= 210
 	destSI.stageInOrigin[0] = src.baseVertex;
 	destSI.stageInOrigin[1] = src.baseInstance;
 	destSI.stageInOrigin[2] = 0;
 	destSI.stageInSize[0] = src.indexCount;
 	destSI.stageInSize[1] = src.instanceCount;
 	destSI.stageInSize[2] = 1;
-#endif
 }
 
 kernel void cmdDrawIndexedCopyIndex16Buffer(const device uint16_t* srcBuff [[buffer(0)]],
@@ -437,8 +422,6 @@ kernel void cmdDrawIndexedCopyIndex32Buffer(const device uint32_t* srcBuff [[buf
                                             uint i [[thread_position_in_grid]]) {
 	destBuff[i] = srcBuff[params.indexStart + i];
 }
-
-#endif
 
 typedef struct alignas(8) {
 	uint32_t count;
