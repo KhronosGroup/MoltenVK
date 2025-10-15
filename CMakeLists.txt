@@ -60,7 +60,7 @@ cmake_policy(SET CMP0114 NEW) # Support the Xcode "new build system"
 project(MoltenVK
 	DESCRIPTION "MoltenVK is a Vulkan Portability implementation. It layers a subset of the high-performance, industry-standard Vulkan graphics and compute API over Apple's Metal graphics framework, enabling Vulkan applications to run on macOS, iOS and tvOS."
 	LANGUAGES C CXX OBJC OBJCXX
-	VERSION "1.3.1")
+	VERSION "1.4.0")
 
 set(MVK_CONFIG_LOG_LEVEL "info" CACHE STRING "Set the default log level for MoltenVK. Options are: debug, info, warn, error, off. Default is 'info'.")
 set_property(CACHE MVK_CONFIG_LOG_LEVEL PROPERTY STRINGS "debug" "info" "warn" "error" "off")
