@@ -65,6 +65,7 @@ public:
 protected:
 	friend class MVKImageMemoryBinding;
 	friend MVKImage;
+	friend class MVKImageViewPlane;
 
     MTLTextureDescriptor* newMTLTextureDescriptor();
     void initSubresources(const VkImageCreateInfo* pCreateInfo);
@@ -228,8 +229,8 @@ public:
 								  VkSubresourceLayout* pLayout);
 
 	/** Populates the specified layout for the specified sub-resource. */
-	VkResult getSubresourceLayout(const VkImageSubresource2KHR* pSubresource,
-								  VkSubresourceLayout2KHR* pLayout);
+	VkResult getSubresourceLayout(const VkImageSubresource2* pSubresource,
+								  VkSubresourceLayout2* pLayout);
 
     /** Populates the specified transfer image descriptor data structure. */
     void getTransferDescriptorData(MVKImageDescriptorData& imgData);
@@ -261,13 +262,13 @@ public:
     void flushToDevice(VkDeviceSize offset, VkDeviceSize size);
 
 	/** Host-copy the content of an image to another using the CPU. */
-	static VkResult copyImageToImage(const VkCopyImageToImageInfoEXT* pCopyImageToImageInfo);
+	static VkResult copyImageToImage(const VkCopyImageToImageInfo* pCopyImageToImageInfo);
 
 	/** Host-copy the content of an image to memory using the CPU. */
-	VkResult copyImageToMemory(const VkCopyImageToMemoryInfoEXT* pCopyImageToMemoryInfo);
+	VkResult copyImageToMemory(const VkCopyImageToMemoryInfo* pCopyImageToMemoryInfo);
 
 	/** Host-copy the content of an image from memory using the CPU. */
-	VkResult copyMemoryToImage(const VkCopyMemoryToImageInfoEXT* pCopyMemoryToImageInfo);
+	VkResult copyMemoryToImage(const VkCopyMemoryToImageInfo* pCopyMemoryToImageInfo);
 
 
 #pragma mark Metal
@@ -370,10 +371,10 @@ protected:
 	MVKImageMemoryBinding* getMemoryBinding(uint8_t planeIndex);
 	template<typename CopyInfo> VkResult copyContent(const CopyInfo* pCopyInfo);
 	VkResult copyContent(id<MTLTexture> mtlTex,
-						 VkMemoryToImageCopyEXT imgRgn, uint32_t mipLevel, uint32_t slice,
+						 VkMemoryToImageCopy imgRgn, uint32_t mipLevel, uint32_t slice,
 						 void* pImgBytes, size_t rowPitch, size_t depthPitch);
 	VkResult copyContent(id<MTLTexture> mtlTex,
-						 VkImageToMemoryCopyEXT imgRgn, uint32_t mipLevel, uint32_t slice,
+						 VkImageToMemoryCopy imgRgn, uint32_t mipLevel, uint32_t slice,
 						 void* pImgBytes, size_t rowPitch, size_t depthPitch);
 
     MVKSmallVector<MVKImageMemoryBinding*, 3> _memoryBindings;
@@ -391,7 +392,6 @@ protected:
     IOSurfaceRef _ioSurface;
 	VkDeviceSize _rowByteAlignment;
     bool _isDepthStencilAttachment;
-	bool _canSupportMTLTextureView;
     bool _hasExpectedTexelSize;
     bool _hasChromaSubsampling;
 	bool _isLinear;
@@ -402,6 +402,7 @@ protected:
 	bool _shouldSupportAtomics;
 	bool _isLinearForAtomics;
 	bool _is2DViewOn3DImageCompatible = false;
+	bool _isBlockTexelViewCompatible = false;
 };
 
 
@@ -712,6 +713,9 @@ public:
     
     /** Returns the number of planes if this is a ycbcr conversion or 0 otherwise. */
     uint8_t getPlaneCount() { return (_ycbcrConversion) ? _ycbcrConversion->getPlaneCount() : 0; }
+
+	/** Returns whether this is a ycbcr sampler. */
+	bool isYCBCR() { return _ycbcrConversion; }
 
 	/**
 	 * If this sampler requires hardcoding in MSL, populates the hardcoded sampler in the resource binding.

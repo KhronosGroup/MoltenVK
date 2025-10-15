@@ -21,7 +21,7 @@
 
 #include "MVKCommonEnvironment.h"
 #include "mvk_vulkan.h"
-#include "mvk_private_api.h"
+#include "mvk_deprecated_api.h"
 #include "MVKLogging.h"
 #ifdef __cplusplus
 #include <string>
@@ -62,30 +62,7 @@
                                                                     0)
 
 /** Macro to determine the Vulkan version supported by MoltenVK. */
-#define MVK_VULKAN_API_VERSION					MVK_VULKAN_API_VERSION_HEADER(VK_API_VERSION_1_3)
-
-/**
- * IOSurfaces are supported on macOS, and on iOS starting with iOS 11.
- *
- * To enable IOSurface support on iOS in MoltenVK, set the iOS Deployment Target
- * (IPHONEOS_DEPLOYMENT_TARGET) build setting to 11.0 or greater when building
- * MoltenVK, and any app that uses IOSurfaces.
- */
-#if MVK_MACOS
-#	define MVK_SUPPORT_IOSURFACE_BOOL    1
-#endif
-
-#if MVK_IOS
-#	define MVK_SUPPORT_IOSURFACE_BOOL	(__IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_11_0)
-#endif
-
-#if MVK_TVOS
-#	define MVK_SUPPORT_IOSURFACE_BOOL (__TV_OS_VERSION_MIN_REQUIRED >= __TVOS_11_0)
-#endif
-
-#if MVK_VISIONOS
-#    define MVK_SUPPORT_IOSURFACE_BOOL   1
-#endif
+#define MVK_VULKAN_API_VERSION					MVK_VULKAN_API_VERSION_HEADER(VK_API_VERSION_1_4)
 
 
 #pragma mark -
@@ -123,26 +100,9 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #   define MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y    1
 #endif
 
-/**
- * Process command queue submissions on the same thread on which the submission call was made.
- * The default value actually depends on whether MTLEvents are supported, because if MTLEvents
- * are not supported, then synchronous queues should be turned off by default to ensure the
- * CPU emulation of VkEvent behaviour does not deadlock a queue submission, whereas if MTLEvents
- * are supported, we want sychronous queues for better, and more performant, behaviour.
- * The app can of course still override this default behaviour by setting the
- * MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS env var, or the config directly.
- */
-#if MVK_MACOS
-#   define MVK_CONFIG_MTLEVENT_MIN_OS  10.14
-#endif
-#if MVK_IOS_OR_TVOS
-#   define MVK_CONFIG_MTLEVENT_MIN_OS  12.0
-#endif
-#if MVK_VISIONOS
-#   define MVK_CONFIG_MTLEVENT_MIN_OS  1.0
-#endif
+/** Process command queue submissions on the same thread on which the submission call was made. */
 #ifndef MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS
-#   define MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS    mvkOSVersionIsAtLeast(MVK_CONFIG_MTLEVENT_MIN_OS)
+#   define MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS    1
 #endif
 
 /** Fill a Metal command buffer when each Vulkan command buffer is filled. */
@@ -158,8 +118,8 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #   define MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_QUEUE    64
 #endif
 
-/** Support more than 8192 or 32768 occlusion queries per device. Enabled by default. */
-#ifndef MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS
+/** Support more than 8192 or 32768 occlusion queries per device. Always enabled. */
+#ifndef MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS       // Deprecated
 #   define MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS    1
 #endif
 
@@ -219,9 +179,9 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #   define MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE    0
 #endif
 
-/** Set the fastMathEnabled Metal Compiler option. Set to always use fast math by default. */
+/** Set the fast math Metal Compiler options. By default, set to use fast math as determined by the shader. */
 #ifndef MVK_CONFIG_FAST_MATH_ENABLED
-#   define MVK_CONFIG_FAST_MATH_ENABLED    MVK_CONFIG_FAST_MATH_ALWAYS
+#   define MVK_CONFIG_FAST_MATH_ENABLED    MVK_CONFIG_FAST_MATH_ON_DEMAND
 #endif
 
 /** Set the logging level: */
@@ -381,3 +341,12 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #	define MVK_CONFIG_SHADER_LOG_ESTIMATED_GLSL		0
 #endif
 
+/*
+ * If set, MVK will treat all resources as if they had `MVK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT` set.
+ * This is mainly for getting more CTS coverage of the live resource tracking system,
+ * but it can also be used as a debug tool if MVK is crashing trying to bind destroyed resources.
+ * If setting this helps your application, your application is probably violating the Vulkan spec.
+ */
+#ifndef MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES
+#   define MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES 0
+#endif

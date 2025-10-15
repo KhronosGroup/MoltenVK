@@ -27,8 +27,10 @@
 #include "MVKPixelFormats.h"
 #include "MVKOSExtensions.h"
 #include "mvk_datatypes.hpp"
+#include <shared_mutex>
 #include <string>
 #include <mutex>
+#include <os/lock.h>
 
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
@@ -69,6 +71,8 @@ class MVKCommandPool;
 class MVKCommandEncoder;
 class MVKCommandResourceFactory;
 class MVKPrivateDataSlot;
+struct MVKUseResourceHelper;
+enum class MVKResourceUsageStages : uint8_t;
 
 
 /** The buffer index to use for vertex content. */
@@ -82,6 +86,9 @@ static constexpr uint32_t   kMVKMaxSwapchainImageCount = 3;
 static constexpr uint32_t   kMVKMaxColorAttachmentCount = 8;
 static constexpr uint32_t   kMVKMaxViewportScissorCount = 16;
 static constexpr uint32_t   kMVKMaxDescriptorSetCount = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
+static constexpr uint32_t   kMVKMaxTextureCount = 128; // Maximum value across all GPUs in Metal feature set tables
+static constexpr uint32_t   kMVKMaxBufferCount = 31;
+static constexpr uint32_t   kMVKMaxSamplerCount = 16;
 static constexpr uint32_t   kMVKMaxSampleCount = 8;
 static constexpr uint32_t   kMVKSampleLocationCoordinateGridSize = 16;
 static constexpr float      kMVKMinSampleLocationCoordinate = 0.0;
@@ -89,9 +96,6 @@ static constexpr float      kMVKMaxSampleLocationCoordinate = (float)(kMVKSample
 static constexpr VkExtent2D kMVKSampleLocationPixelGridSize = { 1, 1 };
 static constexpr VkExtent2D kMVKSampleLocationPixelGridSizeNotSupported = { 0, 0 };
 
-#if !MVK_XCODE_12
-typedef NSUInteger MTLTimestamp;
-#endif
 
 
 #pragma mark -
@@ -107,6 +111,7 @@ typedef struct MVKMTLDeviceCapabilities {
 	bool supportsApple7;
 	bool supportsApple8;
 	bool supportsApple9;
+	bool supportsApple10;
 	bool supportsMac1;
 	bool supportsMac2;
 	bool supportsMetal3;
@@ -134,7 +139,7 @@ typedef enum {
 } MVKSemaphoreStyle;
 
 /** VkPhysicalDeviceVulkan12Features entries that did not originate in a prior extension. */
-typedef struct MVKPhysicalDeviceVulkan12FeaturesNoExt {
+typedef struct MVKPhysicalDeviceVulkan12NoExtFeatures {
 	VkBool32 samplerMirrorClampToEdge;
 	VkBool32 drawIndirectCount;
 	VkBool32 descriptorIndexing;
@@ -142,7 +147,28 @@ typedef struct MVKPhysicalDeviceVulkan12FeaturesNoExt {
 	VkBool32 shaderOutputViewportIndex;
 	VkBool32 shaderOutputLayer;
 	VkBool32 subgroupBroadcastDynamicId;
-} MVKPhysicalDeviceVulkan12FeaturesNoExt;
+} MVKPhysicalDeviceVulkan12NoExtFeatures;
+
+/** VkPhysicalDeviceVulkan14Features entries that did not originate in a prior extension. */
+typedef struct MVKPhysicalDeviceVulkan14NoExtFeatures {
+	VkBool32 pushDescriptor;
+} MVKPhysicalDeviceVulkan14NoExtFeatures;
+
+/**
+ * The size of each type of struct in an argument buffer.
+ *
+ * Note: On devices with tier 1 argument buffers, the size of an array of `n` of the given item may be smaller than the size of `n * size`.
+ * (Some tier 1 devices include metadata that's shared among multiple elements).
+ */
+struct MVKPhysicalDeviceArgumentBufferSizes {
+	struct Entry {
+		uint16_t size;
+		uint16_t align;
+	};
+	Entry texture;
+	Entry sampler;
+	Entry pointer;
+};
 
 /** Represents a Vulkan physical GPU device. */
 class MVKPhysicalDevice : public MVKDispatchableVulkanAPIObject {
@@ -380,22 +406,25 @@ public:
 #pragma mark Metal
 
 	/** Populates the specified structure with the Metal-specific features of this device. */
-	const MVKPhysicalDeviceMetalFeatures* getMetalFeatures() { return &_metalFeatures; }
+	const MVKPhysicalDeviceMetalFeatures* getMetalFeatures() const { return &_metalFeatures; }
+
+	/** Returns whether argument buffers are in use. */
+	bool isUsingMetalArgumentBuffers() const { return _isUsingMetalArgumentBuffers; }
 
 	/** Returns whether or not vertex instancing can be used to implement multiview. */
-	bool canUseInstancingForMultiview() { return _metalFeatures.layeredRendering && _metalFeatures.deferredStoreActions; }
+	bool canUseInstancingForMultiview() { return _metalFeatures.layeredRendering; }
 
 	/** Returns the underlying Metal device. */
-	id<MTLDevice> getMTLDevice() { return _mtlDevice; }
-
-	/** Returns whether the MSL version is supported on this device. */
-	bool mslVersionIsAtLeast(MTLLanguageVersion minVer) { return _metalFeatures.mslVersionEnum >= minVer; }
+	id<MTLDevice> getMTLDevice() const { return _mtlDevice; }
 
 	/** Returns the MTLStorageMode that matches the Vulkan memory property flags. */
 	MTLStorageMode getMTLStorageModeFromVkMemoryPropertyFlags(VkMemoryPropertyFlags vkFlags);
 
 	/** Returns the MTLDevice capabilities. */
 	const MVKMTLDeviceCapabilities getMTLDeviceCapabilities() { return _gpuCapabilities; }
+
+	/** Returns info on the sizes of argument buffers. */
+	const MVKPhysicalDeviceArgumentBufferSizes& getArgumentBufferSizes() const { return _argumentBufferSizes; }
 
 
 #pragma mark Construction
@@ -425,13 +454,13 @@ protected:
 	friend class MVKDeviceTrackingMixin;
 
 	void propagateDebugName() override {}
-	MTLFeatureSet getMaximalMTLFeatureSet();
     void initMetalFeatures();
 	void initFeatures();
 	void initMTLDevice();
 	void initProperties();
 	void initLimits();
 	void initGPUInfoProperties();
+	bool isAMDRDNAGPU();
 	void initMemoryProperties();
 	void initVkSemaphoreStyle();
 	void setMemoryHeap(uint32_t heapIndex, VkDeviceSize heapSize, VkMemoryHeapFlags heapFlags);
@@ -451,7 +480,8 @@ protected:
 	uint32_t getMoltenVKGitRevision();
 	void populateDeviceIDProperties(VkPhysicalDeviceVulkan11Properties* pVk11Props);
 	void populateSubgroupProperties(VkPhysicalDeviceVulkan11Properties* pVk11Props);
-	void populateHostImageCopyProperties(VkPhysicalDeviceHostImageCopyPropertiesEXT* pHostImageCopyProps);
+	template<typename HostImageCopyProps> void populateHostImageCopyProperties(HostImageCopyProps* pHostImageCopyProps);
+	bool isTier2MetalArgumentBuffers();
 	void logGPUInfo();
 
 	MVKInstance* _mvkInstance;
@@ -460,7 +490,8 @@ protected:
 	const MVKExtensionList _supportedExtensions;
 	MVKPixelFormats _pixelFormats;
 	VkPhysicalDeviceFeatures _features;
-	MVKPhysicalDeviceVulkan12FeaturesNoExt _vulkan12NoExtFeatures;
+	MVKPhysicalDeviceVulkan12NoExtFeatures _vulkan12NoExtFeatures;
+	MVKPhysicalDeviceVulkan14NoExtFeatures _vulkan14NoExtFeatures;
 	MVKPhysicalDeviceMetalFeatures _metalFeatures;
 	VkPhysicalDeviceProperties _properties;
 	VkPhysicalDeviceTexelBufferAlignmentProperties _texelBuffAlignProperties;
@@ -468,6 +499,7 @@ protected:
 	MVKSmallVector<MVKQueueFamily*, kMVKQueueFamilyCount> _queueFamilies;
 	VkExternalMemoryProperties _hostPointerExternalMemoryProperties;
 	VkExternalMemoryProperties _mtlBufferExternalMemoryProperties;
+	VkExternalMemoryProperties _mtlBufferHeapExternalMemoryProperties;
 	VkExternalMemoryProperties _mtlTextureExternalMemoryProperties;
 	VkExternalMemoryProperties _mtlTextureHeapExternalMemoryProperties;
 	id<MTLCounterSet> _timestampMTLCounterSet;
@@ -479,6 +511,7 @@ protected:
 	uint32_t _hostCoherentMemoryTypes;
 	uint32_t _privateMemoryTypes;
 	uint32_t _lazilyAllocatedMemoryTypes;
+	MVKPhysicalDeviceArgumentBufferSizes _argumentBufferSizes;
 	bool _hasUnifiedMemory = true;
 	bool _isUsingMetalArgumentBuffers = true;
 };
@@ -501,6 +534,107 @@ typedef struct MVKMTLBlitEncoder {
 // and potentially introduce extra synchronization on previous invocations of the same stage.
 static const uint32_t kMVKBarrierFenceCount = 64;
 
+class MVKLiveList {
+	// std::mutex is kind of massive and we're making a lot of these...
+	class Lock {
+		os_unfair_lock _mtx = OS_UNFAIR_LOCK_INIT;
+	public:
+		Lock() = default;
+		Lock(Lock&&) = delete;
+		void lock()   { os_unfair_lock_lock(&_mtx); }
+		void unlock() { os_unfair_lock_unlock(&_mtx); }
+	};
+
+	struct alignas(64) Group {
+		Lock lock;
+		std::unordered_map<id, uint32_t> entries;
+	};
+
+	static constexpr size_t GROUP_BITS = 4;
+	Group groups[1 << GROUP_BITS];
+	Group* getGroup(id object);
+
+public:
+	class IsLiveResult {
+		friend class MVKLiveList;
+		Lock* lock;
+		bool value;
+		IsLiveResult(std::pair<Lock*, bool> res): lock(res.first), value(res.second) {}
+		IsLiveResult(IsLiveResult&&) = delete;
+	public:
+		~IsLiveResult() { lock->unlock(); }
+		operator bool() const { return value; }
+	};
+
+	void add(id object);
+	void remove(id object);
+	IsLiveResult isLive(id object) { return isLive_(object); }
+
+private:
+	std::pair<Lock*, bool> isLive_(id object);
+};
+
+struct MVKLiveResourceSet {
+	bool enabled;
+	MVKLiveList textures;
+	MVKLiveList buffers;
+	MVKLiveList samplers;
+
+	void add(id<MTLTexture> tex)       { if (enabled) textures.add(tex); }
+	void add(id<MTLBuffer> buf)        { if (enabled) buffers .add(buf); }
+	void add(id<MTLSamplerState> samp) { if (enabled) samplers.add(samp); }
+	void remove(id<MTLTexture> tex)       { if (enabled) textures.remove(tex); }
+	void remove(id<MTLBuffer> buf)        { if (enabled) buffers .remove(buf); }
+	void remove(id<MTLSamplerState> samp) { if (enabled) samplers.remove(samp); }
+	MVKLiveList::IsLiveResult isLive(id<MTLTexture> tex)       { assert(enabled); return textures.isLive(tex); }
+	MVKLiveList::IsLiveResult isLive(id<MTLBuffer> buf)        { assert(enabled); return buffers .isLive(buf); }
+	MVKLiveList::IsLiveResult isLive(id<MTLSamplerState> samp) { assert(enabled); return samplers.isLive(samp); }
+};
+
+class MVKVisibilityBuffer {
+public:
+	struct FenceSet {
+		id<MTLFence> read;     ///< Updated by reads
+		id<MTLFence> write;    ///< Updated by writes, and waited on by reads
+		id<MTLFence> prevRead; ///< The read fence from the previous use of the buffer, waited on by writes to prevent WAR hazards
+	};
+private:
+	id<MTLBuffer> _buffer = nullptr;
+	uint32_t _currentOffset = 0;
+	uint32_t _halfSize;
+	id<MTLFence> _fences[3][2] = {};
+public:
+	id<MTLBuffer> buffer() const { return _buffer; }
+	uint32_t offset() const { return _currentOffset; }
+	uint32_t size() const { return _halfSize * 2; }
+	bool isFirstWithCurrentFence() const { return _currentOffset == _halfSize || _currentOffset == 0; }
+	FenceSet currentFence() const {
+		uint32_t idx = _currentOffset > _halfSize ? 1 : 0;
+		return { _fences[0][idx], _fences[1][idx], _fences[2][idx] };
+	}
+	MVKVisibilityBuffer() = default;
+	MVKVisibilityBuffer(id<MTLDevice> device, NSUInteger size, uint32_t nameIdx);
+	MVKVisibilityBuffer(const MVKVisibilityBuffer&) = delete;
+	MVKVisibilityBuffer(MVKVisibilityBuffer&& other) {
+		_buffer = std::exchange(other._buffer, nil);
+		_currentOffset = other._currentOffset;
+		_halfSize = other._halfSize;
+		for (uint32_t i = 0; i < std::size(_fences); i++)
+			for (uint32_t j = 0; j < std::size(_fences[0]); j++)
+				_fences[i][j] = std::exchange(other._fences[i][j], nil);
+	}
+	~MVKVisibilityBuffer();
+	/// Advances `_currentOffset`, swaps fences if needed, and returns the new offset.
+	uint32_t advanceOffset();
+	MVKVisibilityBuffer& operator=(MVKVisibilityBuffer&& other) {
+		if (this != &other) {
+			this->~MVKVisibilityBuffer();
+			new (this) MVKVisibilityBuffer(std::move(other));
+		}
+		return *this;
+	}
+};
+
 /** Represents a Vulkan logical GPU device, associated with a physical device. */
 class MVKDevice : public MVKDispatchableVulkanAPIObject {
 
@@ -519,6 +653,9 @@ public:
 
 	/** Returns the name of this device. */
 	const char* getName() { return _physicalDevice->_properties.deviceName; }
+
+	/** Returns the list of live resources. */
+	MVKLiveResourceSet& getLiveResources() { return _liveResources; }
 
     /** Returns the common resource factory for creating command resources. */
     MVKCommandResourceFactory* getCommandResourceFactory() { return _commandResourceFactory; }
@@ -636,7 +773,7 @@ public:
 							  const VkAllocationCallbacks* pAllocator);
 
 	MVKPipelineLayout* createPipelineLayout(const VkPipelineLayoutCreateInfo* pCreateInfo,
-											const VkAllocationCallbacks* pAllocator);
+	                                           const VkAllocationCallbacks* pAllocator);
 	void destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
 							   const VkAllocationCallbacks* pAllocator);
 
@@ -665,12 +802,12 @@ public:
 								       const VkAllocationCallbacks* pAllocator);
 
 	MVKDescriptorSetLayout* createDescriptorSetLayout(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
-													  const VkAllocationCallbacks* pAllocator);
+	                                                     const VkAllocationCallbacks* pAllocator);
 	void destroyDescriptorSetLayout(MVKDescriptorSetLayout* mvkDSL,
 									const VkAllocationCallbacks* pAllocator);
 
 	MVKDescriptorPool* createDescriptorPool(const VkDescriptorPoolCreateInfo* pCreateInfo,
-											const VkAllocationCallbacks* pAllocator);
+	                                           const VkAllocationCallbacks* pAllocator);
 	void destroyDescriptorPool(MVKDescriptorPool* mvkDP,
 							   const VkAllocationCallbacks* pAllocator);
 
@@ -716,8 +853,7 @@ public:
 #pragma mark Operations
 
 	/** Tell the GPU to be ready to use any of the GPU-addressable buffers. */
-	void encodeGPUAddressableBuffers(MVKResourcesCommandEncoderState* rezEncState,
-										 MVKShaderStage stage);
+	void encodeGPUAddressableBuffers(MVKUseResourceHelper& resources, MVKResourceUsageStages stage);
 
 	/** Adds the specified host semaphore to be woken upon device loss. */
 	void addSemaphore(MVKSemaphoreImpl* sem4);
@@ -758,13 +894,12 @@ public:
 #pragma mark Metal
 
 	/**
-	 * Returns an autoreleased options object to be used when compiling MSL shaders.
-	 * The requestFastMath parameter is combined with the value of MVKConfiguration::fastMathEnabled
-	 * to determine whether to enable fast math optimizations in the compiled shader.
-	 * The preserveInvariance parameter indicates that the shader requires the position
-	 * output invariance across invocations (typically for the position output).
+	 * Returns an autoreleased compile options object to be used when compiling MSL shaders.
+	 * The fpFastMathFlags parameter indicates flags from spv::FPFastMathModeMask that specify the fast
+	 * math optimizations that are permitted. The preserveInvariance parameter indicates that the shader
+	 * requires the position output invariance across invocations (typically for the position output).
 	 */
-	MTLCompileOptions* getMTLCompileOptions(bool requestFastMath = true, bool preserveInvariance = false);
+	MTLCompileOptions* getMTLCompileOptions(uint32_t fpFastMathFlags = ~0, bool preserveInvariance = false);
 
 	/** Returns the Metal vertex buffer index to use for the specified vertex attribute binding number.  */
 	uint32_t getMetalBufferIndexForVertexAttributeBinding(uint32_t binding);
@@ -772,20 +907,11 @@ public:
 	/** Returns the memory alignment required for the format when used in a texel buffer. */
 	VkDeviceSize getVkFormatTexelBufferAlignment(VkFormat format, MVKBaseObject* mvkObj);
 
-    /** 
-     * Returns the MTLBuffer used to hold occlusion query results, 
-     * when all query pools use the same MTLBuffer.
-     */
-    id<MTLBuffer> getGlobalVisibilityResultMTLBuffer();
+	/** Fetches a visibility buffer from the shared pool. */
+	MVKVisibilityBuffer getVisibilityBuffer();
 
-    /**
-     * Expands the visibility results buffer, used for occlusion queries, by replacing the
-     * existing buffer with a new MTLBuffer that is large enough to accommodate all occlusion
-     * queries created to date, including those defined in the specified query pool.
-     * Returns the previous query count, before the new queries were added, which can
-     * be used by the new query pool to locate its queries within the single large buffer.
-     */
-    uint32_t expandVisibilityResultMTLBuffer(uint32_t queryCount);
+	/** Returns a visibility buffer to the shared pool. */
+	void returnVisibilityBuffer(MVKVisibilityBuffer&& buffer);
 
 	/** Returns the GPU sample counter used for timestamps. */
 	id<MTLCounterSet> getTimestampMTLCounterSet() { return _physicalDevice->_timestampMTLCounterSet; }
@@ -920,6 +1046,7 @@ protected:
     void initPerformanceTracking();
 	void initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo);
 	void initQueues(const VkDeviceCreateInfo* pCreateInfo);
+	void initConfiguration();
 	void reservePrivateData(const VkDeviceCreateInfo* pCreateInfo);
 	void enableFeatures(const VkDeviceCreateInfo* pCreateInfo);
 	template<typename S> void enableFeatures(S* pEnabled, const S* pRequested, const S* pAvailable, uint32_t count);
@@ -939,7 +1066,8 @@ protected:
 	MVKPhysicalDevice* _physicalDevice = nullptr;
 	MVKExtensionList _enabledExtensions;
 	VkPhysicalDeviceFeatures _enabledFeatures;
-	MVKPhysicalDeviceVulkan12FeaturesNoExt _enabledVulkan12NoExtFeatures;
+	MVKPhysicalDeviceVulkan12NoExtFeatures _enabledVulkan12NoExtFeatures;
+	MVKPhysicalDeviceVulkan14NoExtFeatures _enabledVulkan14NoExtFeatures;
 
 	// List of extended device feature enabling structures, as member variables.
 #define MVK_DEVICE_FEATURE(structName, enumName, flagCount) \
@@ -959,18 +1087,19 @@ protected:
 	MVKSmallVector<bool> _privateDataSlotsAvailability;
 	MVKSmallVector<MVKSemaphoreImpl*> _awaitingSemaphores;
 	MVKSmallVector<std::pair<MVKTimelineSemaphore*, uint64_t>> _awaitingTimelineSem4s;
+	MVKSmallVector<MVKVisibilityBuffer> _visibilityBuffers;
+	MVKLiveResourceSet _liveResources;
 	std::mutex _rezLock;
 	std::mutex _sem4Lock;
     std::mutex _perfLock;
 	std::mutex _vizLock;
 	std::string _capturePipeFileName;
-    id<MTLBuffer> _globalVisibilityResultMTLBuffer = nil;
 	id<MTLSamplerState> _defaultMTLSamplerState = nil;
 	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
 #if MVK_XCODE_16
 	id<MTLResidencySet> _residencySet = nil;
 #endif
-    uint32_t _globalVisibilityQueryCount = 0;
+	uint32_t _visibilityBufferCount = 0;
 	int _capturePipeFileDesc = -1;
 	bool _isPerformanceTracking = false;
 	bool _isCurrentlyAutoGPUCapturing = false;
@@ -993,34 +1122,34 @@ class MVKDeviceTrackingMixin {
 public:
 
 	/** Returns the device for which this object was created. */
-	MVKDevice* getDevice() { return _device; }
+	MVKDevice* getDevice() const { return _device; }
 
 	/** Returns the physical device underlying this logical device. */
-	MVKPhysicalDevice* getPhysicalDevice() { return _device->_physicalDevice; }
+	MVKPhysicalDevice* getPhysicalDevice() const { return _device->_physicalDevice; }
 
 	/** Returns the underlying Metal device. */
-	id<MTLDevice> getMTLDevice() { return _device->_physicalDevice->_mtlDevice; }
+	id<MTLDevice> getMTLDevice() const { return _device->_physicalDevice->_mtlDevice; }
 
 	/** Returns whether the GPU is a unified memory device. */
-	bool isUnifiedMemoryGPU() { return _device->_physicalDevice->_hasUnifiedMemory; }
+	bool isUnifiedMemoryGPU() const { return _device->_physicalDevice->_hasUnifiedMemory; }
 
 	/** Returns whether the GPU is Apple Silicon. */
-	bool isAppleGPU() { return _device->_physicalDevice->_gpuCapabilities.isAppleGPU; }
+	bool isAppleGPU() const { return _device->_physicalDevice->_gpuCapabilities.isAppleGPU; }
 
 	/** Returns whether this device is using one Metal argument buffer for each descriptor set, on multiple pipeline and pipeline stages. */
-	virtual bool isUsingMetalArgumentBuffers() { return _device->_physicalDevice->_isUsingMetalArgumentBuffers; };
+	virtual bool isUsingMetalArgumentBuffers() const { return _device->_physicalDevice->_isUsingMetalArgumentBuffers; };
 
 	/** Returns whether this device needs Metal argument buffer encoders to populate argument buffer content. */
-	bool needsMetalArgumentBufferEncoders() { return _device->_physicalDevice->_metalFeatures.needsArgumentBufferEncoders; };
+	bool needsMetalArgumentBufferEncoders() const { return _device->_physicalDevice->_metalFeatures.needsArgumentBufferEncoders; };
 
 	/** Returns info about the pixel format supported by the physical device. */
 	MVKPixelFormats* getPixelFormats() { return &_device->_physicalDevice->_pixelFormats; }
 
 	/** The list of Vulkan extensions, indicating whether each has been enabled by the app for this device. */
-	MVKExtensionList& getEnabledExtensions() { return _device->_enabledExtensions; }
+	const MVKExtensionList& getEnabledExtensions() const { return _device->_enabledExtensions; }
 
 	/** Device features available and enabled. */
-	VkPhysicalDeviceFeatures& getEnabledFeatures() { return _device->_enabledFeatures; }
+	const VkPhysicalDeviceFeatures& getEnabledFeatures() const { return _device->_enabledFeatures; }
 
 	// List of extended device feature enabling structures, as getEnabledXXXFeatures() functions.
 #define MVK_DEVICE_FEATURE(structName, enumName, flagCount) \
@@ -1030,13 +1159,13 @@ public:
 #include "MVKDeviceFeatureStructs.def"
 
 	/** Pointer to the Metal-specific features of the underlying physical device. */
-	const MVKPhysicalDeviceMetalFeatures& getMetalFeatures() { return _device->_physicalDevice->_metalFeatures; }
+	const MVKPhysicalDeviceMetalFeatures& getMetalFeatures() const { return _device->_physicalDevice->_metalFeatures; }
 
 	/** Pointer to the properties of the underlying physical device. */
-	const VkPhysicalDeviceProperties& getDeviceProperties() { return _device->_physicalDevice->_properties; }
+	const VkPhysicalDeviceProperties& getDeviceProperties() const { return _device->_physicalDevice->_properties; }
 
 	/** Pointer to the memory properties of the underlying physical device. */
-	const VkPhysicalDeviceMemoryProperties& getDeviceMemoryProperties() { return _device->_physicalDevice->_memoryProperties; }
+	const VkPhysicalDeviceMemoryProperties& getDeviceMemoryProperties() const { return _device->_physicalDevice->_memoryProperties; }
 
 	/** Performance statistics. */
 	MVKPerformanceStatistics& getPerformanceStats() { return _device->_performanceStats; }
@@ -1166,9 +1295,6 @@ protected:
  * array will only include low-power devices. The instance may be a nullptr.
  */
 NSArray<id<MTLDevice>>* mvkGetAvailableMTLDevicesArray(MVKInstance* instance);
-
-/** Returns the registry ID of the specified device, or zero if the device does not have a registry ID. */
-uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice);
 
 /**
  * Returns a value identifying the physical location of the specified device.

@@ -166,8 +166,8 @@ while (( "$#" )); do
          BLD_MAC_CAT="Y"
          BLD_TVOS="Y"
          BLD_TVOS_SIM="Y"
-#         BLD_VISIONOS="Y"              # Requires Xcode 15+
-#         BLD_VISIONOS_SIM="Y"          # Requires Xcode 15+
+         BLD_VISIONOS="Y"              # Requires Xcode 15+
+         BLD_VISIONOS_SIM="Y"          # Requires Xcode 15+
          shift 1
          ;;
        --none)

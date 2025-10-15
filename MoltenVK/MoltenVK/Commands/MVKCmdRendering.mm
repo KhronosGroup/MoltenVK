@@ -167,6 +167,55 @@ template class MVKCmdBeginRendering<8>;
 
 
 #pragma mark -
+#pragma mark MVKCmdSetRenderingAttachmentLocations
+
+// Resize dst to count, then if pSrc is not null, populate dst from it,
+// otherwise fill dst with ascending values starting at zero.
+template<typename Vec>
+void mvkPopulateFromOrFillAscending(Vec& dst, const uint32_t* pSrc, size_t count) {
+	dst.resize(count);
+	for (uint32_t i = 0; i < count; i++) { dst[i] = pSrc ? pSrc[i] : i; }
+}
+
+VkResult MVKCmdSetRenderingAttachmentLocations::setContent(MVKCommandBuffer* cmdBuff,
+														   const VkRenderingAttachmentLocationInfo* pLocationInfo) {
+	mvkPopulateFromOrFillAscending(_colorAttachmentLocations,
+								   pLocationInfo->pColorAttachmentLocations,
+								   pLocationInfo->colorAttachmentCount);
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetRenderingAttachmentLocations::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->updateColorAttachmentLocations(_colorAttachmentLocations.contents());
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetRenderingInputAttachmentIndices
+
+VkResult MVKCmdSetRenderingInputAttachmentIndices::setContent(MVKCommandBuffer* cmdBuff,
+															  const VkRenderingInputAttachmentIndexInfo* pInputAttachmentIndexInfo) {
+	mvkPopulateFromOrFillAscending(_colorAttachmentInputIndices,
+								   pInputAttachmentIndexInfo->pColorAttachmentInputIndices,
+								   pInputAttachmentIndexInfo->colorAttachmentCount);
+
+	_hasDepthInputAttachmentIndex = pInputAttachmentIndexInfo->pDepthInputAttachmentIndex;
+	_depthInputAttachmentIndex = _hasDepthInputAttachmentIndex ? *pInputAttachmentIndexInfo->pDepthInputAttachmentIndex : 0;
+
+	_hasStencilInputAttachmentIndex = pInputAttachmentIndexInfo->pStencilInputAttachmentIndex;
+	_stencilInputAttachmentIndex = _hasStencilInputAttachmentIndex ? *pInputAttachmentIndexInfo->pStencilInputAttachmentIndex : 0;
+
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetRenderingInputAttachmentIndices::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->updateAttachmentInputIndices(_colorAttachmentInputIndices.contents(),
+											 _hasDepthInputAttachmentIndex ? &_depthInputAttachmentIndex : nullptr,
+											 _hasStencilInputAttachmentIndex ? &_stencilInputAttachmentIndex : nullptr);
+}
+
+
+#pragma mark -
 #pragma mark MVKCmdEndRendering
 
 VkResult MVKCmdEndRendering::setContent(MVKCommandBuffer* cmdBuff) {
@@ -192,7 +241,15 @@ VkResult MVKCmdSetSampleLocations::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetSampleLocations::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setSampleLocations(_sampleLocations.contents(), true);
+	size_t count = std::min<size_t>(_sampleLocations.size(), kMVKMaxSampleCount);
+	MVKVulkanGraphicsCommandEncoderState& state = cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::SampleLocations);
+	state._renderState.numSampleLocations = static_cast<uint8_t>(count);
+	MTLSamplePosition* write = state._sampleLocations;
+	for (size_t i = 0; i < count; i++) {
+		write[i] = MTLSamplePositionMake(
+			mvkClamp(_sampleLocations[i].x, kMVKMinSampleLocationCoordinate, kMVKMaxSampleLocationCoordinate),
+			mvkClamp(_sampleLocations[i].y, kMVKMinSampleLocationCoordinate, kMVKMaxSampleLocationCoordinate));
+	}
 }
 
 
@@ -200,7 +257,7 @@ void MVKCmdSetSampleLocations::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetSampleLocationsEnable
 
 void MVKCmdSetSampleLocationsEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setSampleLocationsEnable(_value, true);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::SampleLocationsEnable)._renderState.enable.set(MVKRenderStateEnableFlag::SampleLocations, _value);
 }
 
 
@@ -224,7 +281,11 @@ VkResult MVKCmdSetViewport<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N>
 void MVKCmdSetViewport<N>::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setViewports(_viewports.contents(), _firstViewport, true);
+	uint32_t end = std::min(_firstViewport + static_cast<uint32_t>(_viewports.size()), kMVKMaxViewportScissorCount);
+	MVKVulkanGraphicsCommandEncoderState& state = cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::Viewports);
+	state._renderState.numViewports = std::max(static_cast<uint8_t>(end), cmdEncoder->getVkGraphics()._renderState.numViewports);
+	for (uint32_t i = _firstViewport; i < end; i++)
+		state._viewports[i] = _viewports[i - _firstViewport];
 }
 
 template class MVKCmdSetViewport<1>;
@@ -251,7 +312,11 @@ VkResult MVKCmdSetScissor<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N>
 void MVKCmdSetScissor<N>::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_renderingState.setScissors(_scissors.contents(), _firstScissor, true);
+	uint32_t end = std::min(_firstScissor + static_cast<uint32_t>(_scissors.size()), kMVKMaxViewportScissorCount);
+	MVKVulkanGraphicsCommandEncoderState& state = cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::Scissors);
+	state._renderState.numScissors = std::max(static_cast<uint8_t>(end), cmdEncoder->getVkGraphics()._renderState.numScissors);
+	for (uint32_t i = _firstScissor; i < end; i++)
+		state._scissors[i] = _scissors[i - _firstScissor];
 }
 
 template class MVKCmdSetScissor<1>;
@@ -262,7 +327,7 @@ template class MVKCmdSetScissor<kMVKMaxViewportScissorCount>;
 #pragma mark MVKCmdSetDepthBias
 
 void MVKCmdSetDepthBias::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setDepthBias(_value, true);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::DepthBias)._renderState.depthBias = _value;
 }
 
 
@@ -270,7 +335,7 @@ void MVKCmdSetDepthBias::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetDepthBiasEnable
 
 void MVKCmdSetDepthBiasEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setDepthBiasEnable(_value, true);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::DepthBiasEnable)._renderState.enable.set(MVKRenderStateEnableFlag::DepthBias, _value);
 }
 
 
@@ -278,7 +343,7 @@ void MVKCmdSetDepthBiasEnable::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetBlendConstants
 
 void MVKCmdSetBlendConstants::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_renderingState.setBlendConstants(_value, true);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::BlendConstants)._renderState.blendConstants = _value;
 }
 
 
@@ -286,7 +351,7 @@ void MVKCmdSetBlendConstants::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetDepthTestEnable
 
 void MVKCmdSetDepthTestEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_depthStencilState.setDepthTestEnable(_value);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::DepthTestEnable)._renderState.enable.set(MVKRenderStateEnableFlag::DepthTest, _value);
 }
 
 
@@ -294,7 +359,7 @@ void MVKCmdSetDepthTestEnable::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetDepthWriteEnable
 
 void MVKCmdSetDepthWriteEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_depthStencilState.setDepthWriteEnable(_value);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::DepthWriteEnable)._renderState.depthStencil.depthWriteEnabled = _value;
 }
 
 
@@ -302,7 +367,7 @@ void MVKCmdSetDepthWriteEnable::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetDepthClipEnable
 
 void MVKCmdSetDepthClipEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setDepthClipEnable(_value, true);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::DepthClipEnable)._renderState.enable.set(MVKRenderStateEnableFlag::DepthClamp, !_value);
 }
 
 
@@ -310,7 +375,7 @@ void MVKCmdSetDepthClipEnable::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetDepthCompareOp
 
 void MVKCmdSetDepthCompareOp::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_depthStencilState.setDepthCompareOp(_value);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::DepthCompareOp)._renderState.depthStencil.depthCompareFunction = _value;
 }
 
 
@@ -318,7 +383,7 @@ void MVKCmdSetDepthCompareOp::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetDepthBounds
 
 void MVKCmdSetDepthBounds::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setDepthBounds(_value, true);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::DepthBounds)._renderState.depthBounds = _value;
 }
 
 
@@ -326,7 +391,7 @@ void MVKCmdSetDepthBounds::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetDepthBoundsTestEnable
 
 void MVKCmdSetDepthBoundsTestEnable::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_renderingState.setDepthBoundsTestEnable(_value, true);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::DepthBoundsTestEnable)._renderState.enable.set(MVKRenderStateEnableFlag::DepthBoundsTest, _value);
 }
 
 
@@ -334,7 +399,7 @@ void MVKCmdSetDepthBoundsTestEnable::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetStencilTestEnable
 
 void MVKCmdSetStencilTestEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_depthStencilState.setStencilTestEnable(_value);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::StencilTestEnable)._renderState.depthStencil.stencilTestEnabled = _value;
 }
 
 
@@ -356,7 +421,16 @@ VkResult MVKCmdSetStencilOp::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetStencilOp::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_depthStencilState.setStencilOp(_faceMask, _failOp, _passOp, _depthFailOp, _compareOp);
+	MVKMTLStencilOps op;
+	op.stencilCompareFunction = mvkMTLCompareFunctionFromVkCompareOp(_compareOp);
+	op.stencilFailureOperation = mvkMTLStencilOperationFromVkStencilOp(_failOp);
+	op.depthFailureOperation = mvkMTLStencilOperationFromVkStencilOp(_depthFailOp);
+	op.depthStencilPassOperation = mvkMTLStencilOperationFromVkStencilOp(_passOp);
+	MVKVulkanGraphicsCommandEncoderState& state = cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::StencilOp);
+	if (_faceMask & VK_STENCIL_FACE_FRONT_BIT)
+		state._renderState.depthStencil.frontFaceStencilData.op = op;
+	if (_faceMask & VK_STENCIL_FACE_BACK_BIT)
+		state._renderState.depthStencil.backFaceStencilData.op = op;
 }
 
 
@@ -373,7 +447,11 @@ VkResult MVKCmdSetStencilCompareMask::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetStencilCompareMask::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_depthStencilState.setStencilCompareMask(_faceMask, _stencilCompareMask);
+	MVKVulkanGraphicsCommandEncoderState& state = cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::StencilCompareMask);
+	if (_faceMask & VK_STENCIL_FACE_FRONT_BIT)
+		state._renderState.depthStencil.frontFaceStencilData.readMask = _stencilCompareMask;
+	if (_faceMask & VK_STENCIL_FACE_BACK_BIT)
+		state._renderState.depthStencil.backFaceStencilData.readMask = _stencilCompareMask;
 }
 
 
@@ -390,7 +468,11 @@ VkResult MVKCmdSetStencilWriteMask::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetStencilWriteMask::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_depthStencilState.setStencilWriteMask(_faceMask, _stencilWriteMask);
+	MVKVulkanGraphicsCommandEncoderState& state = cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::StencilWriteMask);
+	if (_faceMask & VK_STENCIL_FACE_FRONT_BIT)
+		state._renderState.depthStencil.frontFaceStencilData.writeMask = _stencilWriteMask;
+	if (_faceMask & VK_STENCIL_FACE_BACK_BIT)
+		state._renderState.depthStencil.backFaceStencilData.writeMask = _stencilWriteMask;
 }
 
 
@@ -407,7 +489,11 @@ VkResult MVKCmdSetStencilReference::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetStencilReference::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_renderingState.setStencilReferenceValues(_faceMask, _stencilReference);
+	MVKVulkanGraphicsCommandEncoderState& state = cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::StencilReference);
+	if (_faceMask & VK_STENCIL_FACE_FRONT_BIT)
+		state._renderState.stencilReference.frontFaceValue = _stencilReference;
+	if (_faceMask & VK_STENCIL_FACE_BACK_BIT)
+		state._renderState.stencilReference.backFaceValue = _stencilReference;
 }
 
 
@@ -415,7 +501,7 @@ void MVKCmdSetStencilReference::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetCullMode
 
 void MVKCmdSetCullMode::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setCullMode(_value, true);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::CullMode)._renderState.setCullMode(_value);
 }
 
 
@@ -423,7 +509,7 @@ void MVKCmdSetCullMode::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetFrontFace
 
 void MVKCmdSetFrontFace::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setFrontFace(_value, true);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::FrontFace)._renderState.setFrontFace(_value);
 }
 
 
@@ -431,7 +517,7 @@ void MVKCmdSetFrontFace::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetPatchControlPoints
 
 void MVKCmdSetPatchControlPoints::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setPatchControlPoints(_value, true);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::PatchControlPoints)._renderState.patchControlPoints = static_cast<uint8_t>(_value);
 }
 
 
@@ -439,7 +525,15 @@ void MVKCmdSetPatchControlPoints::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetPolygonMode
 
 void MVKCmdSetPolygonMode::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setPolygonMode(_value, true);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::PolygonMode)._renderState.setPolygonMode(_value);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetLineRasterizationMode
+
+void MVKCmdSetLineRasterizationMode::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::LineRasterizationMode)._renderState.setLineRasterizationMode(_value);
 }
 
 
@@ -447,7 +541,7 @@ void MVKCmdSetPolygonMode::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetLineWidth
 
 void MVKCmdSetLineWidth::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setLineWidth(_value, true);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::LineWidth)._renderState.lineWidth = _value;
 }
 
 
@@ -455,7 +549,7 @@ void MVKCmdSetLineWidth::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetPrimitiveTopology
 
 void MVKCmdSetPrimitiveTopology::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setPrimitiveTopology(_value, true);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::PrimitiveTopology)._renderState.primitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(_value);
 }
 
 
@@ -463,7 +557,7 @@ void MVKCmdSetPrimitiveTopology::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetPrimitiveRestartEnable
 
 void MVKCmdSetPrimitiveRestartEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setPrimitiveRestartEnable(_value, true);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::PrimitiveRestartEnable)._renderState.enable.set(MVKRenderStateEnableFlag::PrimitiveRestart, _value);
 }
 
 
@@ -471,5 +565,15 @@ void MVKCmdSetPrimitiveRestartEnable::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetRasterizerDiscardEnable
 
 void MVKCmdSetRasterizerDiscardEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_renderingState.setRasterizerDiscardEnable(_value, true);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::RasterizerDiscardEnable)._renderState.enable.set(MVKRenderStateEnableFlag::RasterizerDiscard, _value);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetProvokingVertexMode
+
+void MVKCmdSetProvokingVertexMode::encode(MVKCommandEncoder* cmdEncoder) {
+#if MVK_USE_METAL_PRIVATE_API
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::ProvokingVertexMode)._renderState.provokingVertexMode = mvkMTLProvokingVertexModeFromVkProvokingVertexMode(_value);
+#endif
 }

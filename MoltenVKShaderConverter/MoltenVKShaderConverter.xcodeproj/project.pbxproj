@@ -684,12 +684,12 @@
 					"\"$(SRCROOT)/SPIRV-Cross\"",
 					"\"$(SRCROOT)/SPIRV-Tools/include\"",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				MACH_O_TYPE = staticlib;
-				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = MoltenVKShaderConverter;
 				SKIP_INSTALL = YES;
-				TVOS_DEPLOYMENT_TARGET = 13.0;
+				TVOS_DEPLOYMENT_TARGET = 14.5;
 				WARNING_CFLAGS = (
 					"-Wreorder",
 					"-Wheader-hygiene",
@@ -748,12 +748,12 @@
 					"\"$(SRCROOT)/SPIRV-Cross\"",
 					"\"$(SRCROOT)/SPIRV-Tools/include\"",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				MACH_O_TYPE = staticlib;
-				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = MoltenVKShaderConverter;
 				SKIP_INSTALL = YES;
-				TVOS_DEPLOYMENT_TARGET = 13.0;
+				TVOS_DEPLOYMENT_TARGET = 14.5;
 				VALIDATE_PRODUCT = YES;
 				WARNING_CFLAGS = (
 					"-Wreorder",

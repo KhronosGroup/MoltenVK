@@ -25,45 +25,45 @@
 /** Additional methods not necessarily declared in <Metal/MTLSampler.h>. */
 @interface MTLSamplerDescriptor ()
 
-@property(nonatomic, readwrite) float lodBias;
+@property(nonatomic, readwrite) BOOL forceSeamsOnCubemapFiltering;
 
 @end
 #endif
 
 @implementation MTLSamplerDescriptor (MoltenVK)
 
--(MTLCompareFunction) compareFunctionMVK {
-	if ( [self respondsToSelector: @selector(compareFunction)] ) { return self.compareFunction; }
-	return MTLCompareFunctionNever;
-}
-
--(void) setCompareFunctionMVK: (MTLCompareFunction) cmpFunc {
-	if ( [self respondsToSelector: @selector(setCompareFunction:)] ) { self.compareFunction = cmpFunc; }
-}
-
 -(NSUInteger) borderColorMVK {
-#if MVK_MACOS_OR_IOS
 	if ( [self respondsToSelector: @selector(borderColor)] ) { return self.borderColor; }
-#endif
 	return /*MTLSamplerBorderColorTransparentBlack*/ 0;
 }
 
 -(void) setBorderColorMVK: (NSUInteger) color {
-#if MVK_MACOS_OR_IOS
 	if ( [self respondsToSelector: @selector(setBorderColor:)] ) { self.borderColor = (MTLSamplerBorderColor) color; }
-#endif
 }
 
 -(float) lodBiasMVK {
-#if MVK_USE_METAL_PRIVATE_API
+#if MVK_XCODE_26
 	if ( [self respondsToSelector: @selector(lodBias)] ) { return self.lodBias; }
 #endif
 	return 0.0f;
 }
 
 -(void) setLodBiasMVK: (float) bias {
-#if MVK_USE_METAL_PRIVATE_API
+#if MVK_XCODE_26
 	if ( [self respondsToSelector: @selector(setLodBias:)] ) { self.lodBias = bias; }
+#endif
+}
+
+-(BOOL) forceSeamsOnCubemapFilteringMVK {
+#if MVK_USE_METAL_PRIVATE_API
+	if ( [self respondsToSelector: @selector(forceSeamsOnCubemapFiltering)] ) { return self.forceSeamsOnCubemapFiltering; }
+#endif
+	return false;
+}
+
+-(void) setForceSeamsOnCubemapFilteringMVK: (BOOL) force {
+#if MVK_USE_METAL_PRIVATE_API
+	if ( [self respondsToSelector: @selector(setForceSeamsOnCubemapFiltering:)] ) { self.forceSeamsOnCubemapFiltering = force; }
 #endif
 }
 

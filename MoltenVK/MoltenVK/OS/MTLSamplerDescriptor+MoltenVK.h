@@ -24,15 +24,6 @@
 @interface MTLSamplerDescriptor (MoltenVK)
 
 /**
- * Replacement for the compareFunction property.
- *
- * This property allows support under all OS versions. Delegates to the compareFunction
- * property if it is available. otherwise, returns MTLTextureUsageUnknown when read and
- * does nothing when set.
- */
-@property(nonatomic, readwrite) MTLCompareFunction compareFunctionMVK;
-
-/**
  * Replacement for the borderColor property.
  *
  * This property allows support under all OS versions. Delegates to the borderColor
@@ -49,5 +40,13 @@
  * does nothing when set.
  */
 @property(nonatomic, readwrite) float lodBiasMVK;
+
+/**
+ * Replacement for the forceSeamsOnCubemapFiltering property.
+ *
+ * This property allows support under all OS versions. Delegates to the forceSeamsOnCubemapFiltering
+ * property if it is available. otherwise, returns false when read and does nothing when set.
+ */
+@property(nonatomic, readwrite) BOOL forceSeamsOnCubemapFilteringMVK;
 
 @end

@@ -21,29 +21,28 @@ MAKEARGS := $(strip \
       $(v)=$(value $(v)) ,)))
 
 # Specify individually (not as dependencies) so the sub-targets don't run in parallel
-# visionos and visionossim are currently excluded from `all` because they require
-# Xcode 15+ and will abort a multi-platform build on earlier Xcode versions.
+# maccat is currently excluded from `all` because of unresolved build issues on Mac Catalyst platform.
 .PHONY: all
 all:
 	@$(MAKE) macos
 	@$(MAKE) ios
 	@$(MAKE) iossim
-	@$(MAKE) maccat
+#	@$(MAKE) maccat
 	@$(MAKE) tvos
 	@$(MAKE) tvossim
-#	@$(MAKE) visionos       # Requires Xcode 15+
-#	@$(MAKE) visionossim    # Requires Xcode 15+
+	@$(MAKE) visionos       # Requires Xcode 15+
+	@$(MAKE) visionossim    # Requires Xcode 15+
 
 .PHONY: all-debug
 all-debug:
 	@$(MAKE) macos-debug
 	@$(MAKE) ios-debug
 	@$(MAKE) iossim-debug
-	@$(MAKE) maccat-debug
+#	@$(MAKE) maccat-debug
 	@$(MAKE) tvos-debug
 	@$(MAKE) tvossim-debug
-#	@$(MAKE) visionos-debug       # Requires Xcode 15+
-#	@$(MAKE) visionossim-debug    # Requires Xcode 15+
+	@$(MAKE) visionos-debug       # Requires Xcode 15+
+	@$(MAKE) visionossim-debug    # Requires Xcode 15+
 
 .PHONY: macos
 macos:

@@ -33,8 +33,7 @@
  *   - Build settings at MoltenVK build time.
  *
  * If you require access to private structures and functions to query MoltenVK about MoltenVK
- * version and configuration, runtime performance information, and available Metal capabilities,
- * use the following header file:
+ * version, configuration, or runtime performance information, use the following header file:
  *
  *     #include <MoltenVK/mvk_private_api.h>
  *

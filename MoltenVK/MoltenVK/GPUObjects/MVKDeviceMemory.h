@@ -57,10 +57,8 @@ public:
 
 	/** Returns whether the memory is accessible from the host. */
     inline bool isMemoryHostAccessible() {
-#if MVK_APPLE_SILICON
         if (_mtlStorageMode == MTLStorageModeMemoryless)
             return false;
-#endif
         return (_mtlStorageMode != MTLStorageModePrivate);
     }
 
@@ -83,10 +81,10 @@ public:
 	 * Maps the memory address at the specified offset from the start of this memory allocation,
 	 * and returns the address in the specified data reference.
 	 */
-	VkResult map(const VkMemoryMapInfoKHR* mapInfo, void** ppData);
+	VkResult map(const VkMemoryMapInfo* mapInfo, void** ppData);
 	
 	/** Unmaps a previously mapped memory range. */
-	VkResult unmap(const VkMemoryUnmapInfoKHR* unmapInfo);
+	VkResult unmap(const VkMemoryUnmapInfo* unmapInfo);
 
 	/**
 	 * If this device memory is currently mapped to host memory, returns the range within
@@ -154,9 +152,9 @@ protected:
 	void propagateDebugName() override;
 	VkDeviceSize adjustMemorySize(VkDeviceSize size, VkDeviceSize offset);
 	VkResult addBuffer(MVKBuffer* mvkBuff);
-	void removeBuffer(MVKBuffer* mvkBuff);
+	static void removeBuffer(MVKDeviceMemory** pMem, MVKBuffer* mvkBuf);
 	VkResult addImageMemoryBinding(MVKImageMemoryBinding* mvkImg);
-	void removeImageMemoryBinding(MVKImageMemoryBinding* mvkImg);
+	static void removeImageMemoryBinding(MVKDeviceMemory** pMem, MVKImageMemoryBinding* mvkImg);
 	bool ensureMTLHeap();
 	bool ensureMTLBuffer();
 	bool ensureHostMemory();

@@ -319,6 +319,7 @@ protected:
 	NSNumber *getMacroValue(const mvk::MSLSpecializationMacroInfo& info, const MVKShaderMacroValue& value);
 	bool compileComplete(id<MTLLibrary> mtlLibrary, NSError *error);
 	void handleError() override;
+	void logCompilation(MTLCompileOptions*);
 
 	id<MTLLibrary> _mtlLibrary = nil;
 };

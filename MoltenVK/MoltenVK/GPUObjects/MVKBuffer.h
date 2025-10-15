@@ -72,9 +72,6 @@ public:
 
 	/** Returns the offset at which the contents of this instance starts within the underlying Metal buffer. */
 	inline NSUInteger getMTLBufferOffset() { return !_deviceMemory || _deviceMemory->getMTLHeap() ? 0 : _deviceMemoryOffset; }
-
-    /** Returns the Metal buffer used as a cache for host-coherent texel buffers. */
-    id<MTLBuffer> getMTLBufferCache();
     
 	/** Returns the GPU address for this MTLBuffer, respecting its offset. */
 	uint64_t getMTLBufferGPUAddress();
@@ -93,15 +90,10 @@ protected:
 	void propagateDebugName() override;
 	bool needsHostReadSync(MVKPipelineBarrier& barrier);
     bool overlaps(VkDeviceSize offset, VkDeviceSize size, VkDeviceSize &overlapOffset, VkDeviceSize &overlapSize);
-	bool shouldFlushHostMemory();
-	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
-	VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);
 	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
 	void detachMemory();
 
 	VkBufferUsageFlags2 _usage;
-	bool _isHostCoherentTexelBuffer = false;
-    id<MTLBuffer> _mtlBufferCache = nil;
 	id<MTLBuffer> _mtlBuffer = nil;
     std::mutex _lock;
 };

@@ -125,40 +125,38 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 			}
 
 			if (mtlFunc) {
-				// If the Metal device supports shader specialization, and the Metal function expects to be specialized,
-				// populate Metal function constant values from the Vulkan specialization info, and compile a specialized
-				// Metal function, otherwise simply use the unspecialized Metal function.
-				if (getMetalFeatures().shaderSpecialization) {
-					NSArray<MTLFunctionConstant*>* mtlFCs = mtlFunc.functionConstantsDictionary.allValues;
-					if (mtlFCs.count > 0) {
-						// The Metal shader contains function constants and expects to be specialized.
-						// Populate the Metal function constant values from the Vulkan specialization info.
-						MTLFunctionConstantValues* mtlFCVals = [[MTLFunctionConstantValues new] autorelease];
-						if (pSpecializationInfo) {
-							// Iterate through the provided Vulkan specialization entries, and populate the
-							// Metal function constant value that matches the Vulkan specialization constantID.
-							for (uint32_t specIdx = 0; specIdx < pSpecializationInfo->mapEntryCount; specIdx++) {
-								const VkSpecializationMapEntry* pMapEntry = &pSpecializationInfo->pMapEntries[specIdx];
-								for (MTLFunctionConstant* mfc in mtlFCs) {
-									if (mfc.index == pMapEntry->constantID) {
-										[mtlFCVals setConstantValue: ((char*)pSpecializationInfo->pData + pMapEntry->offset)
-															   type: mfc.type
-															atIndex: mfc.index];
-										break;
-									}
+				// If the Metal function expects to be specialized, populate Metal function constant values from
+				// the Vulkan specialization info, and compile a specialized Metal function, otherwise simply use
+				// the unspecialized Metal function.
+				NSArray<MTLFunctionConstant*>* mtlFCs = mtlFunc.functionConstantsDictionary.allValues;
+				if (mtlFCs.count > 0) {
+					// The Metal shader contains function constants and expects to be specialized.
+					// Populate the Metal function constant values from the Vulkan specialization info.
+					MTLFunctionConstantValues* mtlFCVals = [[MTLFunctionConstantValues new] autorelease];
+					if (pSpecializationInfo) {
+						// Iterate through the provided Vulkan specialization entries, and populate the
+						// Metal function constant value that matches the Vulkan specialization constantID.
+						for (uint32_t specIdx = 0; specIdx < pSpecializationInfo->mapEntryCount; specIdx++) {
+							const VkSpecializationMapEntry* pMapEntry = &pSpecializationInfo->pMapEntries[specIdx];
+							for (MTLFunctionConstant* mfc in mtlFCs) {
+								if (mfc.index == pMapEntry->constantID) {
+									[mtlFCVals setConstantValue: ((char*)pSpecializationInfo->pData + pMapEntry->offset)
+														   type: mfc.type
+														atIndex: mfc.index];
+									break;
 								}
 							}
 						}
+					}
 
-						// Compile the specialized Metal function, and use it instead of the unspecialized Metal function.
-						MVKFunctionSpecializer fs(_owner);
-						if (pShaderFeedback) {
-							startTime = mvkGetTimestamp();
-						}
-						mtlFunc = [fs.newMTLFunction(lib, mtlFuncName, mtlFCVals) autorelease];
-						if (pShaderFeedback) {
-							pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime);
-						}
+					// Compile the specialized Metal function, and use it instead of the unspecialized Metal function.
+					MVKFunctionSpecializer fs(_owner);
+					if (pShaderFeedback) {
+						startTime = mvkGetTimestamp();
+					}
+					mtlFunc = [fs.newMTLFunction(lib, mtlFuncName, mtlFCVals) autorelease];
+					if (pShaderFeedback) {
+						pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime);
 					}
 				}
 			}
@@ -565,8 +563,8 @@ id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode,
 		auto mtlDev = getMTLDevice();
 		@synchronized (mtlDev) {
 			@autoreleasepool {
-				auto mtlCompileOptions = getDevice()->getMTLCompileOptions(shaderConversionResults.entryPoint.supportsFastMath,
-																				shaderConversionResults.isPositionInvariant);
+				auto mtlCompileOptions = getDevice()->getMTLCompileOptions(shaderConversionResults.entryPoint.fpFastMathFlags,
+																		   shaderConversionResults.isPositionInvariant);
 				if (!specializationMacroDef.empty()) {
 					size_t macro_count = specializationMacroDef.size();
 					NSString *macro_names[macro_count];
@@ -579,7 +577,8 @@ id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode,
 																					   forKeys: macro_names
 																						 count: macro_count];
 				}
-				MVKLogInfoIf(getMVKConfig().debugMode, "Compiling Metal shader%s.", mtlCompileOptions.fastMathEnabled ? " with FastMath enabled" : "");
+				logCompilation(mtlCompileOptions);
+
 				[mtlDev newLibraryWithSource: mslSourceCode
 									options: mtlCompileOptions
 						completionHandler: ^(id<MTLLibrary> mtlLib, NSError* error) {
@@ -661,6 +660,47 @@ bool MVKShaderLibraryCompiler::compileComplete(id<MTLLibrary> mtlLibrary, NSErro
 	_mtlLibrary = [mtlLibrary retain];		// retained
 	return endCompile(compileError);
 }
+
+void MVKShaderLibraryCompiler::logCompilation(MTLCompileOptions* mtlCompOpt) {
+	if ( !getMVKConfig().debugMode ) { return; }
+
+#if MVK_XCODE_16
+	if ([mtlCompOpt respondsToSelector: @selector(mathMode)]) {
+		const char* mathModeName = "Unknown";
+		switch (mtlCompOpt.mathMode) {
+			case MTLMathModeFast:
+				mathModeName = "Fast";
+				break;
+			case MTLMathModeRelaxed:
+				mathModeName = "Relaxed";
+				break;
+			case MTLMathModeSafe:
+				mathModeName = "Safe";
+				break;
+			default:
+				break;
+		}
+		const char* mathFPFName = "Unknown";
+		switch (mtlCompOpt.mathFloatingPointFunctions) {
+			case MTLMathFloatingPointFunctionsFast:
+				mathFPFName = "Fast";
+				break;
+			case MTLMathFloatingPointFunctionsPrecise:
+				mathFPFName = "Precise";
+				break;
+			default:
+				break;
+		}
+		MVKLogInfo("Compiling Metal shader with MathMode %s, MathFloatingPointFunctions %s, and PreserveInvariance %sabled.",
+				   mathModeName, mathFPFName, mtlCompOpt.preserveInvariance ? "en" : "dis");
+	} else
+#endif
+	{
+		MVKLogInfo("Compiling Metal shader with FastMath %sabled and PreserveInvariance %sabled.",
+				   mtlCompOpt.fastMathEnabled ? "en" : "dis", mtlCompOpt.preserveInvariance ? "en" : "dis");
+	}
+}
+
 
 #pragma mark Construction
 

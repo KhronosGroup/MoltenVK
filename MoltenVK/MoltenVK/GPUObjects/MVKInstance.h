@@ -35,22 +35,29 @@ class MVKDebugUtilsMessenger;
 /** Tracks info about entry point function pointer addresses. */
 typedef struct MVKEntryPoint {
 	PFN_vkVoidFunction functionPointer;
-	uint32_t apiVersion;
-	const char* ext1Name;
-	const char* ext2Name;
-	const char* ext3Name;
+	const char* extName;
+	const char* ext2Name;	///< Second extension required if core not new enough (see api2Version).
+	uint32_t apiVersion;	///< Core version required without any extension.
+	uint32_t api2Version;	///< Core version required in addition to extension.
 	bool isDevice;
 
-	bool isCore() { return !ext1Name && !ext2Name && !ext3Name; }
+	bool isCore() { return apiVersion > 0; }
+	bool needsOtherCore() { return api2Version > 0; }
 	bool isEnabled(uint32_t enabledVersion, const MVKExtensionList& extList, const MVKExtensionList* instExtList = nullptr) {
-		bool isAPISupported = MVK_VULKAN_API_VERSION_CONFORM(enabledVersion) >= apiVersion;
-		auto isExtnSupported = [this, isAPISupported](const MVKExtensionList& extList) {
-			return extList.isEnabled(this->ext1Name) && (isAPISupported ||
-					((!this->ext2Name || extList.isEnabled(this->ext2Name)) && (!this->ext3Name || extList.isEnabled(this->ext3Name))));
-		};
-		return ((isCore() && isAPISupported) ||
-				isExtnSupported(extList) ||
-				(instExtList && isExtnSupported(*instExtList)));
+		// The entry point is enabled if:
+		// - the required core version is enabled; or
+		// - the required extension is enabled, and
+		//   - neither another core version nor another extension are required, or
+		//   - the second core version is enabled, or
+		//   - the second extension is enabled.
+		// This logic is horrible, yes, but unfortunately, it's required by the spec.
+		return ((isCore() && MVK_VULKAN_API_VERSION_CONFORM(enabledVersion) >= apiVersion) ||
+				((extList.isEnabled(this->extName) ||
+				  (instExtList && instExtList->isEnabled(this->extName))) &&
+				 ((!needsOtherCore() && !this->ext2Name) ||
+				  (needsOtherCore() && MVK_VULKAN_API_VERSION_CONFORM(enabledVersion) >= api2Version) ||
+				  (extList.isEnabled(this->ext2Name) ||
+				   (instExtList && instExtList->isEnabled(this->ext2Name))))));
 	}
 
 } MVKEntryPoint;

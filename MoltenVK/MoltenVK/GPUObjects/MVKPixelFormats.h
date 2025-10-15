@@ -363,16 +363,16 @@ public:
 	const char* getName(MTLVertexFormat mtlFormat);
 
 	/**
-	 * Returns the MTLClearColor value corresponding to the color value in the VkClearValue,
+	 * Returns the MTLClearColor value corresponding to the Vulkan color value,
 	 * extracting the color value that is VkFormat for the VkFormat.
 	 */
-	MTLClearColor getMTLClearColor(VkClearValue vkClearValue, VkFormat vkFormat);
+	MTLClearColor getMTLClearColor(VkClearColorValue clearValue, VkFormat vkFormat);
 
-	/** Returns the Metal depth value corresponding to the depth value in the specified VkClearValue. */
-	double getMTLClearDepthValue(VkClearValue vkClearValue);
+	/** Returns the Metal depth value corresponding to the Vulkan depth value. */
+	double getMTLClearDepthValue(VkClearDepthStencilValue clearValue) { return clearValue.depth; }
 
-	/** Returns the Metal stencil value corresponding to the stencil value in the specified VkClearValue. */
-	uint32_t getMTLClearStencilValue(VkClearValue vkClearValue);
+	/** Returns the Metal stencil value corresponding to the Vulkan stencil value. */
+	uint32_t getMTLClearStencilValue(VkClearDepthStencilValue clearValue) { return clearValue.stencil; }
 
 	/** Returns the Vulkan image usage from the Metal texture usage and format. */
 	VkImageUsageFlags getVkImageUsageFlags(MTLTextureUsage mtlUsage, MTLPixelFormat mtlFormat);

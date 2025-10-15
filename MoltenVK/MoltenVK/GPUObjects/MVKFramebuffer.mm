@@ -36,16 +36,12 @@ id<MTLTexture> MVKFramebuffer::getDummyAttachmentMTLTexture(MVKRenderSubpass* su
 	uint32_t sampleCount = mvkSampleCountFromVkSampleCountFlagBits(subpass->getDefaultSampleCount());
 	MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatR8Unorm width: fbExtent.width height: fbExtent.height mipmapped: NO];
 	if (subpass->isMultiview()) {
-#if MVK_MACOS_OR_IOS
 		if (sampleCount > 1 && getMetalFeatures().multisampleLayeredRendering) {
 			mtlTexDesc.textureType = MTLTextureType2DMultisampleArray;
 			mtlTexDesc.sampleCount = sampleCount;
 		} else {
 			mtlTexDesc.textureType = MTLTextureType2DArray;
 		}
-#else
-		mtlTexDesc.textureType = MTLTextureType2DArray;
-#endif
 		mtlTexDesc.arrayLength = subpass->getViewCountInMetalPass(passIdx);
 	} else if (fbLayerCount > 1) {
 #if MVK_MACOS
@@ -63,11 +59,7 @@ id<MTLTexture> MVKFramebuffer::getDummyAttachmentMTLTexture(MVKRenderSubpass* su
 		mtlTexDesc.textureType = MTLTextureType2DMultisample;
 		mtlTexDesc.sampleCount = sampleCount;
 	}
-#if !MVK_MACOS || MVK_XCODE_12
 	mtlTexDesc.storageMode = MTLStorageModeMemoryless;
-#else
-	mtlTexDesc.storageMode = MTLStorageModePrivate;
-#endif
 	mtlTexDesc.usage = MTLTextureUsageRenderTarget;
 
 	_mtlDummyTex = [getMTLDevice() newTextureWithDescriptor: mtlTexDesc];	// retained
@@ -89,24 +81,24 @@ MVKFramebuffer::MVKFramebuffer(MVKDevice* device,
 		}
 	}
 }
-
 MVKFramebuffer::MVKFramebuffer(MVKDevice* device,
 							   const VkRenderingInfo* pRenderingInfo) : MVKVulkanAPIDeviceObject(device) {
 	_layerCount = pRenderingInfo->layerCount;
-
 	_extent = {};
-	for (uint32_t caIdx = 0; caIdx < pRenderingInfo->colorAttachmentCount; caIdx++) {
-		auto& clrAtt = pRenderingInfo->pColorAttachments[caIdx];
-		if (clrAtt.imageView) {
-			_extent = mvkVkExtent2DFromVkExtent3D(((MVKImageView*)clrAtt.imageView)->getExtent3D());
+
+	// Assemble the list of attachments. This must be done identically to how the dynamic renderpass assembles attachments.
+	uint32_t attCnt = 0;
+	MVKRenderingAttachmentIterator attIter(pRenderingInfo);
+	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, MVKImageView* imgView, bool isResolveAttachment)->void {
+		attCnt++;
+	});
+	_attachments.reserve(attCnt);
+	attIter.iterate([&](const VkRenderingAttachmentInfo* pAttInfo, VkImageAspectFlagBits aspect, MVKImageView* imgView, bool isResolveAttachment)->void {
+		_attachments.push_back(imgView);
+		if (imgView) {
+			_extent = mvkVkExtent2DFromVkExtent3D(imgView->getExtent3D());
 		}
-	}
-	if (pRenderingInfo->pDepthAttachment && pRenderingInfo->pDepthAttachment->imageView) {
-		_extent = mvkVkExtent2DFromVkExtent3D(((MVKImageView*)pRenderingInfo->pDepthAttachment->imageView)->getExtent3D());
-	}
-	if (pRenderingInfo->pStencilAttachment && pRenderingInfo->pStencilAttachment->imageView) {
-		_extent = mvkVkExtent2DFromVkExtent3D(((MVKImageView*)pRenderingInfo->pStencilAttachment->imageView)->getExtent3D());
-	}
+	});
 }
 
 MVKFramebuffer::~MVKFramebuffer() {

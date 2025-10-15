@@ -19,27 +19,25 @@
 
 #include "MTLRenderPipelineDescriptor+MoltenVK.h"
 #include "MVKCommonEnvironment.h"
+#include "mvk_datatypes.h"
 
 #if MVK_USE_METAL_PRIVATE_API
+
 // These properties aren't public yet.
 @interface MTLRenderPipelineDescriptor ()
 
 @property(nonatomic, readwrite) NSUInteger sampleMask;
 @property(nonatomic, readwrite) float sampleCoverage;
 
+- (BOOL)isLogicOperationEnabled;
+- (void)setLogicOperationEnabled: (BOOL)enable;
+- (MTLLogicOperation)logicOperation;
+- (void)setLogicOperation: (MTLLogicOperation)op;
+
 @end
 #endif
 
 @implementation MTLRenderPipelineDescriptor (MoltenVK)
-
--(MTLPrimitiveTopologyClass) inputPrimitiveTopologyMVK {
-	if ( [self respondsToSelector: @selector(inputPrimitiveTopology)] ) { return [self inputPrimitiveTopology]; }
-	return MTLPrimitiveTopologyClassUnspecified;
-}
-
--(void) setInputPrimitiveTopologyMVK: (MTLPrimitiveTopologyClass) topology {
-	if ([self respondsToSelector: @selector(setInputPrimitiveTopology:)]) { [self setInputPrimitiveTopology:topology]; }
-}
 
 -(NSUInteger) sampleMaskMVK {
 #if MVK_USE_METAL_PRIVATE_API
@@ -51,6 +49,40 @@
 -(void) setSampleMaskMVK: (NSUInteger) mask {
 #if MVK_USE_METAL_PRIVATE_API
 	if ([self respondsToSelector: @selector(setSampleMask:)]) { self.sampleMask = mask; }
+#endif
+}
+
+- (BOOL)isLogicOperationEnabledMVK {
+#if MVK_USE_METAL_PRIVATE_API
+	if ([self respondsToSelector:@selector(isLogicOperationEnabled)]) {
+		return [self isLogicOperationEnabled];
+	}
+#endif
+	return NO;
+}
+
+- (void)setLogicOperationEnabledMVK: (BOOL)enable {
+#if MVK_USE_METAL_PRIVATE_API
+	if ([self respondsToSelector:@selector(setLogicOperationEnabled:)]) {
+		[self setLogicOperationEnabled: enable];
+	}
+#endif
+}
+
+- (NSUInteger)logicOperationMVK {
+#if MVK_USE_METAL_PRIVATE_API
+	if ([self respondsToSelector:@selector(logicOperation)]) {
+		return [self logicOperation];
+	}
+#endif
+	return 3 /* MTLLogicOperationCopy */;
+}
+
+- (void)setLogicOperationMVK: (NSUInteger)op {
+#if MVK_USE_METAL_PRIVATE_API
+	if ([self respondsToSelector:@selector(setLogicOperation:)]) {
+		[self setLogicOperation: (MTLLogicOperation)op];
+	}
 #endif
 }
 

@@ -196,10 +196,8 @@ VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRe
 		CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayId);
 		framesPerSecond = CGDisplayModeGetRefreshRate(mode);
 		CGDisplayModeRelease(mode);
-#if MVK_XCODE_13
 		if (framesPerSecond == 0 && [screen respondsToSelector: @selector(maximumFramesPerSecond)])
 			framesPerSecond = [screen maximumFramesPerSecond];
-#endif
 		// Builtin panels, e.g., on MacBook, report a zero refresh rate.
 		if (framesPerSecond == 0)
 			framesPerSecond = 60.0;
@@ -245,10 +243,10 @@ VkResult MVKSwapchain::getPastPresentationTiming(uint32_t *pCount, VkPastPresent
 	return res;
 }
 
-VkResult MVKSwapchain::waitForPresent(uint64_t presentId, uint64_t timeout) {
+VkResult MVKSwapchain::waitForPresent(const VkPresentWait2InfoKHR* pWaitInfo) {
 	std::unique_lock lock(_currentPresentIdMutex);
-	const auto success = _currentPresentIdCondVar.wait_for(lock, std::chrono::nanoseconds(timeout), [this, presentId] {
-		return _currentPresentId >= presentId || getConfigurationResult() == VK_ERROR_OUT_OF_DATE_KHR;
+	const auto success = _currentPresentIdCondVar.wait_for(lock, std::chrono::nanoseconds(pWaitInfo->timeout), [this, pWaitInfo] {
+		return _currentPresentId >= pWaitInfo->presentId || getConfigurationResult() == VK_ERROR_OUT_OF_DATE_KHR;
 	});
 	if (getConfigurationResult() == VK_ERROR_OUT_OF_DATE_KHR) return VK_ERROR_OUT_OF_DATE_KHR;
 	return success ? VK_SUCCESS : VK_TIMEOUT;
@@ -277,7 +275,9 @@ void MVKSwapchain::endPresentation(const MVKImagePresentInfo& presentInfo, uint6
 	_presentTimingHistory[_presentHistoryIndex].earliestPresentTime = actualPresentTime;
 	_presentTimingHistory[_presentHistoryIndex].presentMargin = actualPresentTime > beginPresentTime ? actualPresentTime - beginPresentTime : 0;
 	_presentHistoryIndex = (_presentHistoryIndex + 1) % kMaxPresentationHistory;
+}
 
+void MVKSwapchain::notifyPresentComplete(const MVKImagePresentInfo& presentInfo) {
 	if (presentInfo.presentId != 0) {
 		std::unique_lock pidLock(_currentPresentIdMutex);
 		_currentPresentId = std::max(_currentPresentId, presentInfo.presentId);
@@ -490,7 +490,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 	mtlLayer.drawableSize = mvkCGSizeFromVkExtent2D(_imageExtent);
 	mtlLayer.device = getMTLDevice();
 	mtlLayer.pixelFormat = getPixelFormats()->getMTLPixelFormat(pCreateInfo->imageFormat);
-	mtlLayer.maximumDrawableCountMVK = imgCnt;
+	mtlLayer.maximumDrawableCount = imgCnt;
 	mtlLayer.displaySyncEnabledMVK = (pCreateInfo->presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR);
 	mtlLayer.minificationFilter = minMagFilter;
 	mtlLayer.magnificationFilter = minMagFilter;
@@ -547,7 +547,6 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 			mtlLayer.colorspaceNameMVK = kCGColorSpaceExtendedLinearITUR_2020;
 			mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
-#if MVK_XCODE_12
 		case VK_COLOR_SPACE_HDR10_ST2084_EXT:
 			mtlLayer.colorspaceNameMVK = kCGColorSpaceITUR_2100_PQ;
 			mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
@@ -556,7 +555,6 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 			mtlLayer.colorspaceNameMVK = kCGColorSpaceITUR_2100_HLG;
 			mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
-#endif
 		case VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT:
 			mtlLayer.colorspaceNameMVK = kCGColorSpaceAdobeRGB1998;
 			mtlLayer.wantsExtendedDynamicRangeContentMVK = NO;
@@ -634,9 +632,7 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 		// To prevent deadlocks, avoid dispatching screenMVK to the main thread at the cost of a less informative log.
 		if (NSThread.isMainThread) {
 			auto* screen = mtlLayer.screenMVK;
-			if ([screen respondsToSelector:@selector(localizedName)]) {
-				screenName = screen.localizedName;
-			}
+			screenName = screen.localizedName;
 		}
 #endif
 		MVKLogInfo("Created %d swapchain images with size (%d, %d) and contents scale %.1f in layer %s (%p) on screen %s.",

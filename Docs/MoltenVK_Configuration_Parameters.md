@@ -85,13 +85,14 @@ extensions will be advertised. A value of zero means no extensions will be adver
 #### MVK_CONFIG_API_VERSION_TO_ADVERTISE
 
 ##### Type: UInt32
-##### Default: `4206592` (decimal number for `VK_API_VERSION_1_3`)
+##### Default: `4210688` (decimal number for `VK_API_VERSION_1_4`)
 
 Controls the _Vulkan_ API version that **MoltenVK** should advertise in `vkEnumerateInstanceVersion()`,
 after **MoltenVK** adds the `VK_HEADER_VERSION` component.
 
 Set this value to one of:
 
+- `4210688`  (decimal number for `VK_API_VERSION_1_4`)
 - `4206592`  (decimal number for `VK_API_VERSION_1_3`)
 - `4202496`  (decimal number for `VK_API_VERSION_1_2`)
 - `4198400`  (decimal number for `VK_API_VERSION_1_1`)
@@ -99,6 +100,7 @@ Set this value to one of:
 
 or one of the shorthand versions:
 
+- `14`  (`VK_API_VERSION_1_4`)
 - `13`  (`VK_API_VERSION_1_3`)
 - `12`  (`VK_API_VERSION_1_2`)
 - `11`  (`VK_API_VERSION_1_1`)
@@ -122,7 +124,7 @@ file where the automatic GPU capture will be saved. If this parameter is an empt
 If this parameter is set to a valid file path, the _Xcode_ scheme need not have _Metal_ GPU capture
 enabled, and in fact the app need not be run under _Xcode_'s control at all. This is useful in case
 the app cannot be run under _Xcode_'s control. A path starting with '~' can be used to place it in
-a user's home directory. This feature requires _Metal 2.2 (macOS 10.15+, iOS/tvOS 13+)_.
+a user's home directory.
 
 
 ---------------------------------------
@@ -201,10 +203,11 @@ This can be enabled for publicity during demos.
 ##### Type: Enumeration
 - `0`: _Metal_ shaders will never be compiled with the fast math option.
 - `1`: _Metal_ shaders will always be compiled with the fast math option.
-- `2`: _Metal_ shaders will be compiled with the fast math option, unless the shader includes execution
-  capabilities, such as `SignedZeroInfNanPreserve`, that require it to be compiled without fast math.
+- `2`: _Metal_ shaders will be compiled with the fast math option. However, each shader can
+  limit the types of fast-math used, through the `VK_KHR_shader_float_controls2` extension, 
+  or by enabling execution capabilities, such as `SignedZeroInfNanPreserve` or `ContractionOff`.
 
-##### Default: `1`
+##### Default: `2`
 
 Identifies when _Metal_ shaders will be compiled with the _Metal_ fast math option enabled.
 
@@ -216,8 +219,8 @@ effect on the numerical accuracy of most shaders. As such, disabling fast math s
 carefully and deliberately. For most applications, always enabling fast math is the preferred choice.
 
 Apps that have specific accuracy and handling needs for particular shaders, may elect to set
-the value of this property to `2`, so that fast math will be disabled when compiling shaders
-that request specific math accuracy and precision capabilities, such as `SignedZeroInfNanPreserve`.
+the value of this property to `2`, which compiles shaders with fast math, but allows each shader 
+to limit the types of fast-math used, as described in the value description above.
 
 
 ---------------------------------------
@@ -235,7 +238,7 @@ Forces **MoltenVK** to only advertise the low-power GPUs, if availble on the dev
 ##### Type: Boolean
 ##### Default: `0`
 
-If _Metal_ supports native per-texture swizzling (_macOS 10.15+ with Mac 2 GPU_, _ios/tvOS 13+_),
+If _Metal_ supports native per-texture swizzling (_Mac2 or Apple GPU_),
 this parameter is ignored.
 
 When running on an older version of _Metal_ that does not support native per-texture swizzling,
@@ -413,8 +416,6 @@ mark the `VkDevice` as lost, and subsequent use of that `VkDevice` will be reduc
 
 ##### Default: `0`
 
-Pipeline cache compression is available for _macOS 10.15+_, and _iOS/tvOS 13.0+_.
-
 Controls the type of compression to use on the MSL source code that is stored in memory for use in a pipeline cache.
 After being converted from SPIR-V, or loaded directly into a `VkShaderModule`, and then compiled into a `MTLLibrary`,
 the MSL source code is no longer needed for operation, but it is retained so it can be written out as part of a
@@ -491,21 +492,6 @@ apps to select a queue family with the appropriate requirements.
 
 
 ---------------------------------------
-#### MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS
-
-##### Type: Boolean
-##### Default: `1`
-
-Depending on the GPU, _Metal_ allows 8,192 or 32,768 occlusion queries per `MTLBuffer`.
-If enabled, **MoltenVK** allocates a `MTLBuffer` for each query pool, allowing each query
-pool to support that permitted number of queries. This may slow performance or cause
-unexpected behaviour if the query pool is not established prior to a _Metal_ renderpass,
-or if the query pool is changed within a renderpass. If disabled, one `MTLBuffer` will
-be shared by all query pools, which improves performance, but limits the total device
-queries to the permitted number.
-
-
----------------------------------------
 #### MVK_CONFIG_SWAPCHAIN_MIN_MAG_FILTER_USE_NEAREST
 
 ##### Type: Boolean
@@ -553,8 +539,6 @@ system, and as a result, may want to disable this parameter.
 
 ##### Type: Boolean
 ##### Default: `1`
-
-_(The default value is `0` for OS versions prior to macOS 10.14+/iOS 12+)._
 
 If enabled, queue command submissions `vkQueueSubmit()` and `vkQueuePresentKHR()`
 will be processed on the thread that called the submission function. If disabled,
@@ -677,6 +661,10 @@ allocate textures and buffers from general device memory.
 Vulkan extension `VK_EXT_image_2d_view_of_3d` requires this parameter to be active, 
 to allow aliasing of texture memory between the 3D image and the 2D view.
 
+`VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT` also requires this parameter to be active,
+to allow aliasing of texture memory between the compressed image and the uncompressed view.
+Note that this is only compatible with Apple GPUs.
+
 To force `MTLHeap` to be used on AMD GPUs, set this parameter to `2`. 
 To disable the use of `MTLHeap` on any GPU, set this parameter to `0`.
 
@@ -699,4 +687,14 @@ To disable the use of `MTLHeap` on any GPU, set this parameter to `0`.
 Determines the style used to implement _Vulkan_ semaphore (`VkSemaphore`) functionality in _Metal_.
 
 In the special case of `VK_SEMAPHORE_TYPE_TIMELINE` semaphores, **MoltenVK** will always use
-`MTLSharedEvent` if it is available on the platform, regardless of the value of this parameter.
+`MTLSharedEvent`, regardless of the value of this parameter.
+
+---------------------------------------
+#### MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES
+
+##### Type: Boolean
+##### Default: `0`
+
+Makes MoltenVK treat all descriptors as if they had `VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT` set.
+Versions of MoltenVK with this flag are less forgiving of applications that bind descriptors that point to
+destroyed objects, so this option can be used to temporarily work around any breakage that may have caused.

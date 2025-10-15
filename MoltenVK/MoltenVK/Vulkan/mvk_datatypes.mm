@@ -121,15 +121,15 @@ MVK_PUBLIC_SYMBOL MTLVertexFormat mvkMTLVertexFormatFromVkFormat(VkFormat vkForm
 
 MVK_PUBLIC_SYMBOL MTLClearColor mvkMTLClearColorFromVkClearValue(VkClearValue vkClearValue,
 																 VkFormat vkFormat) {
-	return getPlatformPixelFormats()->getMTLClearColor(vkClearValue, vkFormat);
+	return getPlatformPixelFormats()->getMTLClearColor(vkClearValue.color, vkFormat);
 }
 
-MVK_PUBLIC_SYMBOL double mvkMTLClearDepthFromVkClearValue(VkClearValue vkClearValue) {
-	return getPlatformPixelFormats()->getMTLClearDepthValue(vkClearValue);
+MVK_PUBLIC_SYMBOL double mvkMTLClearDepthFromVkClearValue(VkClearDepthStencilValue clearValue) {
+	return getPlatformPixelFormats()->getMTLClearDepthValue(clearValue);
 }
 
-MVK_PUBLIC_SYMBOL uint32_t mvkMTLClearStencilFromVkClearValue(VkClearValue vkClearValue) {
-	return getPlatformPixelFormats()->getMTLClearStencilValue(vkClearValue);
+MVK_PUBLIC_SYMBOL uint32_t mvkMTLClearStencilFromVkClearValue(VkClearDepthStencilValue clearValue) {
+	return getPlatformPixelFormats()->getMTLClearStencilValue(clearValue);
 }
 
 MVK_PUBLIC_SYMBOL bool mvkMTLPixelFormatIsDepthFormat(MTLPixelFormat mtlFormat) {
@@ -163,9 +163,7 @@ MTLTextureType mvkMTLTextureTypeFromVkImageTypeObj(VkImageType vkImageType,
 									   : (arraySize > 1 ? MTLTextureType1DArray : MTLTextureType1D));
 		case VK_IMAGE_TYPE_2D:
 		default: {
-#if MVK_MACOS_OR_IOS
 			if (arraySize > 1 && isMultisample) { return MTLTextureType2DMultisampleArray; }
-#endif
 			if (arraySize > 1) { return MTLTextureType2DArray; }
 			if (isMultisample) { return MTLTextureType2DMultisample; }
 			return MTLTextureType2D;
@@ -344,7 +342,7 @@ MVK_PUBLIC_SYMBOL MTLSamplerAddressMode mvkMTLSamplerAddressModeFromVkSamplerAdd
 		case VK_SAMPLER_ADDRESS_MODE_REPEAT:				return MTLSamplerAddressModeRepeat;
 		case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE:			return MTLSamplerAddressModeClampToEdge;
 		case VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT:		return MTLSamplerAddressModeMirrorRepeat;
-#if MVK_MACOS || (MVK_IOS && MVK_XCODE_12)
+#if MVK_MACOS || MVK_IOS
 		case VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:	return MTLSamplerAddressModeMirrorClampToEdge;
 		case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER:		return MTLSamplerAddressModeClampToBorderColor;
 #endif
@@ -352,7 +350,6 @@ MVK_PUBLIC_SYMBOL MTLSamplerAddressMode mvkMTLSamplerAddressModeFromVkSamplerAdd
 	}
 }
 
-#if MVK_MACOS_OR_IOS
 MVK_PUBLIC_SYMBOL MTLSamplerBorderColor mvkMTLSamplerBorderColorFromVkBorderColor(VkBorderColor vkColor) {
 	switch (vkColor) {
 		case VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK:	return MTLSamplerBorderColorTransparentBlack;
@@ -364,7 +361,6 @@ MVK_PUBLIC_SYMBOL MTLSamplerBorderColor mvkMTLSamplerBorderColorFromVkBorderColo
 		default:										return MTLSamplerBorderColorTransparentBlack;
 	}
 }
-#endif
 
 MVK_PUBLIC_SYMBOL MTLSamplerMinMagFilter mvkMTLSamplerMinMagFilterFromVkFilter(VkFilter vkFilter) {
 	switch (vkFilter) {
@@ -435,27 +431,7 @@ MVK_PUBLIC_SYMBOL MTLBlendFactor mvkMTLBlendFactorFromVkBlendFactor(VkBlendFacto
 
 #if MVK_USE_METAL_PRIVATE_API
 
-// This isn't in any public header yet. I'm really just guessing based on the D3D11 values here.
-typedef NS_ENUM(NSUInteger, MTLLogicOperation) {
-	MTLLogicOperationClear,
-	MTLLogicOperationSet,
-	MTLLogicOperationCopy,
-	MTLLogicOperationCopyInverted,
-	MTLLogicOperationNoop,
-	MTLLogicOperationInvert,
-	MTLLogicOperationAnd,
-	MTLLogicOperationNand,
-	MTLLogicOperationOr,
-	MTLLogicOperationNor,
-	MTLLogicOperationXor,
-	MTLLogicOperationEquivalence,
-	MTLLogicOperationAndReverse,
-	MTLLogicOperationAndInverted,
-	MTLLogicOperationOrReverse,
-	MTLLogicOperationOrInverted,
-};
-
-MVK_PUBLIC_SYMBOL NSUInteger mvkMTLLogicOperationFromVkLogicOp(VkLogicOp vkLogicOp) {
+MVK_PUBLIC_SYMBOL MTLLogicOperation mvkMTLLogicOperationFromVkLogicOp(VkLogicOp vkLogicOp) {
 	switch (vkLogicOp) {
 		case VK_LOGIC_OP_CLEAR:			return MTLLogicOperationClear;
 		case VK_LOGIC_OP_AND:			return MTLLogicOperationAnd;
@@ -474,6 +450,14 @@ MVK_PUBLIC_SYMBOL NSUInteger mvkMTLLogicOperationFromVkLogicOp(VkLogicOp vkLogic
 		case VK_LOGIC_OP_NAND:			return MTLLogicOperationNand;
 		case VK_LOGIC_OP_SET:			return MTLLogicOperationSet;
 		default:						return MTLLogicOperationCopy;
+	}
+}
+
+MVK_PUBLIC_SYMBOL MTLProvokingVertexMode mvkMTLProvokingVertexModeFromVkProvokingVertexMode(VkProvokingVertexModeEXT vkProvokingVertexMode) {
+	switch (vkProvokingVertexMode) {
+		case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:			return MTLProvokingVertexModeFirst;
+		case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:			return MTLProvokingVertexModeLast;
+		default:												return MTLProvokingVertexModeFirst;
 	}
 }
 
@@ -641,7 +625,6 @@ MTLMultisampleDepthResolveFilter mvkMTLMultisampleDepthResolveFilterFromVkResolv
 	}
 }
 
-#if MVK_MACOS_OR_IOS
 #undef mvkMTLMultisampleStencilResolveFilterFromVkResolveModeFlagBits
 MVK_PUBLIC_SYMBOL MTLMultisampleStencilResolveFilter mvkMTLMultisampleStencilResolveFilterFromVkResolveModeFlagBits(VkResolveModeFlagBits vkResolveMode) {
 	return mvkMTLMultisampleStencilResolveFilterFromVkResolveModeFlagBitsInObj(vkResolveMode, nullptr);
@@ -656,7 +639,6 @@ MTLMultisampleStencilResolveFilter mvkMTLMultisampleStencilResolveFilterFromVkRe
 			return MTLMultisampleStencilResolveFilterSample0;
 	}
 }
-#endif
 
 MVK_PUBLIC_SYMBOL MTLViewport mvkMTLViewportFromVkViewport(VkViewport vkViewport) {
 	return {
@@ -739,6 +721,15 @@ MVK_PUBLIC_SYMBOL MTLIndexType mvkMTLIndexTypeFromVkIndexType(VkIndexType vkIdxT
 		case VK_INDEX_TYPE_UINT8:
 		case VK_INDEX_TYPE_UINT16:	return MTLIndexTypeUInt16;
 		default:					return MTLIndexTypeUInt16;
+	}
+}
+
+MVK_PUBLIC_SYMBOL uint32_t mvkPrimRestartIndexFromVkIndexType(VkIndexType vkIdxType) {
+	switch (vkIdxType) {
+		case VK_INDEX_TYPE_UINT32:	return 0xFFFFFFFF;
+		case VK_INDEX_TYPE_UINT16:	return 0xFFFF;
+		case VK_INDEX_TYPE_UINT8:	return 0xFF;
+		default:					return 0xFFFFFFFF;
 	}
 }
 

@@ -28,104 +28,10 @@ using namespace std;
 
 // Add stub defs for unsupported MTLPixelFormats per platform
 #if MVK_MACOS
-#	if !MVK_XCODE_12 // macOS 11.0 / iOS 14.2
-#       define MTLPixelFormatR8Unorm_sRGB           MTLPixelFormatInvalid
-#       define MTLPixelFormatRG8Unorm_sRGB          MTLPixelFormatInvalid
-#       define MTLPixelFormatABGR4Unorm             MTLPixelFormatInvalid
-#       define MTLPixelFormatB5G6R5Unorm            MTLPixelFormatInvalid
-#       define MTLPixelFormatA1BGR5Unorm            MTLPixelFormatInvalid
-#       define MTLPixelFormatBGR5A1Unorm            MTLPixelFormatInvalid
-
-#       define MTLPixelFormatBGR10_XR				MTLPixelFormatInvalid
-#       define MTLPixelFormatBGR10_XR_sRGB			MTLPixelFormatInvalid
-#       define MTLPixelFormatBGRA10_XR				MTLPixelFormatInvalid
-#       define MTLPixelFormatBGRA10_XR_sRGB			MTLPixelFormatInvalid
-
-#       define MTLPixelFormatPVRTC_RGB_2BPP         MTLPixelFormatInvalid
-#       define MTLPixelFormatPVRTC_RGB_2BPP_sRGB    MTLPixelFormatInvalid
-#       define MTLPixelFormatPVRTC_RGB_4BPP         MTLPixelFormatInvalid
-#       define MTLPixelFormatPVRTC_RGB_4BPP_sRGB    MTLPixelFormatInvalid
-#       define MTLPixelFormatPVRTC_RGBA_2BPP        MTLPixelFormatInvalid
-#       define MTLPixelFormatPVRTC_RGBA_2BPP_sRGB   MTLPixelFormatInvalid
-#       define MTLPixelFormatPVRTC_RGBA_4BPP        MTLPixelFormatInvalid
-#       define MTLPixelFormatPVRTC_RGBA_4BPP_sRGB   MTLPixelFormatInvalid
-
-#       define MTLPixelFormatEAC_RGBA8              MTLPixelFormatInvalid
-#       define MTLPixelFormatEAC_RGBA8_sRGB         MTLPixelFormatInvalid
-#       define MTLPixelFormatEAC_R11Unorm           MTLPixelFormatInvalid
-#       define MTLPixelFormatEAC_R11Snorm           MTLPixelFormatInvalid
-#       define MTLPixelFormatEAC_RG11Unorm          MTLPixelFormatInvalid
-#       define MTLPixelFormatEAC_RG11Snorm          MTLPixelFormatInvalid
-#       define MTLPixelFormatETC2_RGB8              MTLPixelFormatInvalid
-#       define MTLPixelFormatETC2_RGB8_sRGB         MTLPixelFormatInvalid
-#       define MTLPixelFormatETC2_RGB8A1            MTLPixelFormatInvalid
-#       define MTLPixelFormatETC2_RGB8A1_sRGB       MTLPixelFormatInvalid
-
-#       define MTLPixelFormatASTC_4x4_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_4x4_LDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_4x4_sRGB          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_5x4_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_5x4_LDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_5x4_sRGB          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_5x5_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_5x5_LDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_5x5_sRGB          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_6x5_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_6x5_LDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_6x5_sRGB          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_6x6_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_6x6_LDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_6x6_sRGB          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_8x5_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_8x5_LDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_8x5_sRGB          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_8x6_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_8x6_LDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_8x6_sRGB          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_8x8_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_8x8_LDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_8x8_sRGB          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x5_HDR          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x5_LDR          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x5_sRGB         MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x6_HDR          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x6_LDR          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x6_sRGB         MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x8_HDR          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x8_LDR          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x8_sRGB         MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x10_HDR         MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x10_LDR         MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x10_sRGB        MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_12x10_HDR         MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_12x10_LDR         MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_12x10_sRGB        MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_12x12_HDR         MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_12x12_LDR         MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_12x12_sRGB        MTLPixelFormatInvalid
-#   endif
-
 #   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatDepth24Unorm_Stencil8
 #endif
 
 #if MVK_IOS_OR_TVOS
-#	if !MVK_XCODE_14_3   // iOS/tvOS 16.4
-#       define MTLPixelFormatBC1_RGBA               MTLPixelFormatInvalid
-#       define MTLPixelFormatBC1_RGBA_sRGB          MTLPixelFormatInvalid
-#       define MTLPixelFormatBC2_RGBA               MTLPixelFormatInvalid
-#       define MTLPixelFormatBC2_RGBA_sRGB          MTLPixelFormatInvalid
-#       define MTLPixelFormatBC3_RGBA               MTLPixelFormatInvalid
-#       define MTLPixelFormatBC3_RGBA_sRGB          MTLPixelFormatInvalid
-#       define MTLPixelFormatBC4_RUnorm             MTLPixelFormatInvalid
-#       define MTLPixelFormatBC4_RSnorm             MTLPixelFormatInvalid
-#       define MTLPixelFormatBC5_RGUnorm            MTLPixelFormatInvalid
-#       define MTLPixelFormatBC5_RGSnorm            MTLPixelFormatInvalid
-#       define MTLPixelFormatBC6H_RGBUfloat         MTLPixelFormatInvalid
-#       define MTLPixelFormatBC6H_RGBFloat          MTLPixelFormatInvalid
-#       define MTLPixelFormatBC7_RGBAUnorm          MTLPixelFormatInvalid
-#       define MTLPixelFormatBC7_RGBAUnorm_sRGB     MTLPixelFormatInvalid
-#   endif
-
 #   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatDepth32Float_Stencil8
 #   define MTLPixelFormatDepth24Unorm_Stencil8      MTLPixelFormatInvalid
 #   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
@@ -135,23 +41,6 @@ using namespace std;
 #   define MTLPixelFormatDepth24Unorm_Stencil8      MTLPixelFormatInvalid
 #   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatInvalid
 #   define MTLPixelFormatX24_Stencil8               MTLPixelFormatInvalid
-#endif
-
-#if MVK_TVOS
-#       define MTLPixelFormatASTC_4x4_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_5x4_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_5x5_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_6x5_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_6x6_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_8x5_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_8x6_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_8x8_HDR           MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x5_HDR          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x6_HDR          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x8_HDR          MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_10x10_HDR         MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_12x10_HDR         MTLPixelFormatInvalid
-#       define MTLPixelFormatASTC_12x12_HDR         MTLPixelFormatInvalid
 #endif
 
 #if MVK_OS_SIMULATOR
@@ -223,7 +112,6 @@ bool MVKPixelFormats::isStencilFormat(MTLPixelFormat mtlFormat) {
 
 bool MVKPixelFormats::isPVRTCFormat(MTLPixelFormat mtlFormat) {
 	switch (mtlFormat) {
-#if MVK_APPLE_SILICON
 		case MTLPixelFormatPVRTC_RGBA_2BPP:
 		case MTLPixelFormatPVRTC_RGBA_2BPP_sRGB:
 		case MTLPixelFormatPVRTC_RGBA_4BPP:
@@ -233,7 +121,6 @@ bool MVKPixelFormats::isPVRTCFormat(MTLPixelFormat mtlFormat) {
 		case MTLPixelFormatPVRTC_RGB_4BPP:
 		case MTLPixelFormatPVRTC_RGB_4BPP_sRGB:
 			return true;
-#endif
 		default:
 			return false;
 	}
@@ -535,7 +422,7 @@ MTLVertexFormat MVKPixelFormats::getMTLVertexFormat(VkFormat vkFormat) {
 	return mtlVtxFmt;
 }
 
-MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFormat vkFormat) {
+MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearColorValue clearValue, VkFormat vkFormat) {
 	MTLClearColor mtlClr;
 	// The VkComponentMapping (and its MTLTextureSwizzleChannels equivalent) define the *sources*
 	// for the texture color components for reading. Since we're *writing* to the texture,
@@ -545,10 +432,10 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 	switch (getFormatType(vkFormat)) {
 		case kMVKFormatColorHalf:
 		case kMVKFormatColorFloat: {
-			mtlClr.red		= mvkVkClearColorFloatValueFromVkComponentSwizzle(vkClearValue.color.float32, 0, inverseMap.r);
-			mtlClr.green	= mvkVkClearColorFloatValueFromVkComponentSwizzle(vkClearValue.color.float32, 1, inverseMap.g);
-			mtlClr.blue		= mvkVkClearColorFloatValueFromVkComponentSwizzle(vkClearValue.color.float32, 2, inverseMap.b);
-			mtlClr.alpha	= mvkVkClearColorFloatValueFromVkComponentSwizzle(vkClearValue.color.float32, 3, inverseMap.a);
+			mtlClr.red		= mvkVkClearColorFloatValueFromVkComponentSwizzle(clearValue.float32, 0, inverseMap.r);
+			mtlClr.green	= mvkVkClearColorFloatValueFromVkComponentSwizzle(clearValue.float32, 1, inverseMap.g);
+			mtlClr.blue		= mvkVkClearColorFloatValueFromVkComponentSwizzle(clearValue.float32, 2, inverseMap.b);
+			mtlClr.alpha	= mvkVkClearColorFloatValueFromVkComponentSwizzle(clearValue.float32, 3, inverseMap.a);
 
 			if (_physicalDevice && _physicalDevice->getMetalFeatures()->clearColorFloatRounding == MVK_FLOAT_ROUNDING_DOWN) {
 				// For normalized formats, increment the clear value by half the ULP
@@ -666,18 +553,18 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 		case kMVKFormatColorUInt8:
 		case kMVKFormatColorUInt16:
 		case kMVKFormatColorUInt32:
-			mtlClr.red   = mvkVkClearColorUIntValueFromVkComponentSwizzle(vkClearValue.color.uint32, 0, inverseMap.r);
-			mtlClr.green = mvkVkClearColorUIntValueFromVkComponentSwizzle(vkClearValue.color.uint32, 1, inverseMap.g);
-			mtlClr.blue  = mvkVkClearColorUIntValueFromVkComponentSwizzle(vkClearValue.color.uint32, 2, inverseMap.b);
-			mtlClr.alpha = mvkVkClearColorUIntValueFromVkComponentSwizzle(vkClearValue.color.uint32, 3, inverseMap.a);
+			mtlClr.red   = mvkVkClearColorUIntValueFromVkComponentSwizzle(clearValue.uint32, 0, inverseMap.r);
+			mtlClr.green = mvkVkClearColorUIntValueFromVkComponentSwizzle(clearValue.uint32, 1, inverseMap.g);
+			mtlClr.blue  = mvkVkClearColorUIntValueFromVkComponentSwizzle(clearValue.uint32, 2, inverseMap.b);
+			mtlClr.alpha = mvkVkClearColorUIntValueFromVkComponentSwizzle(clearValue.uint32, 3, inverseMap.a);
 			break;
 		case kMVKFormatColorInt8:
 		case kMVKFormatColorInt16:
 		case kMVKFormatColorInt32:
-			mtlClr.red   = mvkVkClearColorIntValueFromVkComponentSwizzle(vkClearValue.color.int32, 0, inverseMap.r);
-			mtlClr.green = mvkVkClearColorIntValueFromVkComponentSwizzle(vkClearValue.color.int32, 1, inverseMap.g);
-			mtlClr.blue  = mvkVkClearColorIntValueFromVkComponentSwizzle(vkClearValue.color.int32, 2, inverseMap.b);
-			mtlClr.alpha = mvkVkClearColorIntValueFromVkComponentSwizzle(vkClearValue.color.int32, 3, inverseMap.a);
+			mtlClr.red   = mvkVkClearColorIntValueFromVkComponentSwizzle(clearValue.int32, 0, inverseMap.r);
+			mtlClr.green = mvkVkClearColorIntValueFromVkComponentSwizzle(clearValue.int32, 1, inverseMap.g);
+			mtlClr.blue  = mvkVkClearColorIntValueFromVkComponentSwizzle(clearValue.int32, 2, inverseMap.b);
+			mtlClr.alpha = mvkVkClearColorIntValueFromVkComponentSwizzle(clearValue.int32, 3, inverseMap.a);
 			break;
 		default:
 			mtlClr.red   = 0.0;
@@ -687,14 +574,6 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 			break;
 	}
 	return mtlClr;
-}
-
-double MVKPixelFormats::getMTLClearDepthValue(VkClearValue vkClearValue) {
-	return vkClearValue.depthStencil.depth;
-}
-
-uint32_t MVKPixelFormats::getMTLClearStencilValue(VkClearValue vkClearValue) {
-	return vkClearValue.depthStencil.stencil;
 }
 
 VkImageUsageFlags MVKPixelFormats::getVkImageUsageFlags(MTLTextureUsage mtlUsage,
@@ -732,7 +611,6 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 	bool isStencilFmt = isStencilFormat(mtlFormat);
 	bool isCombinedDepthStencilFmt = isDepthFmt && isStencilFmt;
 	bool isColorFormat = !(isDepthFmt || isStencilFmt);
-	bool supportsStencilViews = _physicalDevice ? _physicalDevice->getMetalFeatures()->stencilViews : false;
 	MVKMTLFmtCaps mtlFmtCaps = getCapabilities(mtlFormat, isExtended);
 
 	MTLTextureUsage mtlUsage = MTLTextureUsageUnknown;
@@ -800,7 +678,7 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 	                                               VK_IMAGE_USAGE_STORAGE_BIT |
 	                                               VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
 	                                               VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
-	pfv |= isCombinedDepthStencilFmt && supportsStencilViews &&
+	pfv |= isCombinedDepthStencilFmt &&
 	       mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | // May use temp view if transfer involves format change
 	                                               VK_IMAGE_USAGE_SAMPLED_BIT |
 	                                               VK_IMAGE_USAGE_STORAGE_BIT |
@@ -1621,12 +1499,8 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(const MVKMTLDeviceCapabilities
 // Connects Vulkan and Metal pixel formats to one-another.
 void MVKPixelFormats::buildVkFormatMaps(const MVKMTLDeviceCapabilities& gpuCaps) {
 	for (auto& vkDesc : _vkFormatDescriptions) {
-		if (vkDesc.needsSwizzle()) {
-			bool supportsNativeTextureSwizzle = ((gpuCaps.isAppleGPU || gpuCaps.supportsMac2)
-												 && mvkOSVersionIsAtLeast(10.15, 13.0, 1.0));
-			if (!supportsNativeTextureSwizzle && !getMVKConfig().fullImageViewSwizzle) {
-				vkDesc.mtlPixelFormat = vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid;
-			}
+		if (vkDesc.needsSwizzle() && !_physicalDevice->getMetalFeatures()->nativeTextureSwizzle && !getMVKConfig().fullImageViewSwizzle) {
+			vkDesc.mtlPixelFormat = vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid;
 		}
 
 		// Populate the back reference from the Metal formats to the Vulkan format.
@@ -1662,7 +1536,7 @@ typedef enum : VkFormatFeatureFlags2 {
 	kMVKVkFormatFeatureFlagsTexRead     = (VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT |
 										   VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT |
 										   VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT |
-										   VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT_EXT |
+										   VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT |
 										   VK_FORMAT_FEATURE_2_BLIT_SRC_BIT),
 	kMVKVkFormatFeatureFlagsTexFilter   = (VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT),
 	kMVKVkFormatFeatureFlagsTexWrite    = (VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT |
@@ -1749,12 +1623,12 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc, const MVKMTLD
 		// Start with optimal tiling features, and modify.
 		vkProps.linearTilingFeatures = vkProps.optimalTilingFeatures;
 
-#if !MVK_APPLE_SILICON
-		// On macOS IMR GPUs, linear textures cannot be used as attachments, so disable those features.
-		mvkDisableFlags(vkProps.linearTilingFeatures, (kMVKVkFormatFeatureFlagsTexColorAtt |
-													   kMVKVkFormatFeatureFlagsTexDSAtt |
-													   kMVKVkFormatFeatureFlagsTexBlend));
-#endif
+        if (!_physicalDevice->getMetalFeatures()->renderLinearTextures) {
+            // On macOS IMR GPUs, linear textures cannot be used as attachments, so disable those features.
+            mvkDisableFlags(vkProps.linearTilingFeatures, (kMVKVkFormatFeatureFlagsTexColorAtt |
+                                                           kMVKVkFormatFeatureFlagsTexDSAtt |
+                                                           kMVKVkFormatFeatureFlagsTexBlend));
+        }
 	}
 
 	// Texel buffers are not available to depth/stencil, compressed, or chroma subsampled formats.

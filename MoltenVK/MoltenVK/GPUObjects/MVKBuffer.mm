@@ -76,19 +76,8 @@ VkResult MVKBuffer::getMemoryRequirements(VkMemoryRequirements2* pMemoryRequirem
 }
 
 VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) {
-	if (_deviceMemory) { _deviceMemory->removeBuffer(this); }
-
+	if (_deviceMemory) { MVKDeviceMemory::removeBuffer(&_deviceMemory, this); }
 	MVKResource::bindDeviceMemory(mvkMem, memOffset);
-
-#if MVK_MACOS
-	if (_deviceMemory) {
-		_isHostCoherentTexelBuffer = (!isUnifiedMemoryGPU() &&
-									  !getMetalFeatures().sharedLinearTextures &&
-									  _deviceMemory->isMemoryHostCoherent() &&
-									  mvkIsAnyFlagEnabled(_usage, (VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT |
-																   VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT)));
-	}
-#endif
 
 	propagateDebugName();
 
@@ -138,7 +127,7 @@ bool MVKBuffer::needsHostReadSync(MVKPipelineBarrier& barrier) {
 	return (!isUnifiedMemoryGPU() &&
 			mvkIsAnyFlagEnabled(barrier.dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
 			mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT)) &&
-			isMemoryHostAccessible() && (!isMemoryHostCoherent() || _isHostCoherentTexelBuffer));
+			isMemoryHostAccessible() && !isMemoryHostCoherent());
 #else
 	return false;
 #endif
@@ -156,35 +145,6 @@ bool MVKBuffer::overlaps(VkDeviceSize offset, VkDeviceSize size, VkDeviceSize &o
     return false;
 }
 
-bool MVKBuffer::shouldFlushHostMemory() { return !isUnifiedMemoryGPU() && _isHostCoherentTexelBuffer; }
-
-// Flushes the device memory at the specified memory range into the MTLBuffer.
-VkResult MVKBuffer::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
-#if MVK_MACOS
-    VkDeviceSize flushOffset, flushSize;
-	if (shouldFlushHostMemory() && _mtlBufferCache && overlaps(offset, size, flushOffset, flushSize)) {
-		memcpy(reinterpret_cast<char *>(_mtlBufferCache.contents) + flushOffset - _deviceMemoryOffset,
-		       reinterpret_cast<const char *>(_deviceMemory->getHostMemoryAddress()) + flushOffset,
-		       flushSize);
-		[_mtlBufferCache didModifyRange: NSMakeRange(flushOffset - _deviceMemoryOffset, flushSize)];
-	}
-#endif
-	return VK_SUCCESS;
-}
-
-// Pulls content from the MTLBuffer into the device memory at the specified memory range.
-VkResult MVKBuffer::pullFromDevice(VkDeviceSize offset, VkDeviceSize size) {
-#if MVK_MACOS
-    VkDeviceSize pullOffset, pullSize;
-	if (shouldFlushHostMemory() && _mtlBufferCache && overlaps(offset, size, pullOffset, pullSize)) {
-		memcpy(reinterpret_cast<char *>(_deviceMemory->getHostMemoryAddress()) + pullOffset,
-		       reinterpret_cast<const char *>(_mtlBufferCache.contents) + pullOffset - _deviceMemoryOffset,
-		       pullSize);
-	}
-#endif
-	return VK_SUCCESS;
-}
-
 
 #pragma mark Metal
 
@@ -194,10 +154,12 @@ id<MTLBuffer> MVKBuffer::getMTLBuffer() {
 		if (_deviceMemory->getMTLHeap()) {
             lock_guard<mutex> lock(_lock);
             if (_mtlBuffer) { return _mtlBuffer; }
-			_mtlBuffer = [_deviceMemory->getMTLHeap() newBufferWithLength: getByteCount()
-																  options: _deviceMemory->getMTLResourceOptions()
-																   offset: _deviceMemoryOffset];	// retained
-			getDevice()->makeResident(_mtlBuffer);
+			id<MTLBuffer> buf = [_deviceMemory->getMTLHeap() newBufferWithLength: getByteCount()
+			                                                             options: _deviceMemory->getMTLResourceOptions()
+			                                                              offset: _deviceMemoryOffset];	// retained
+			_device->makeResident(buf);
+			_device->getLiveResources().add(buf);
+			_mtlBuffer = buf;
 			propagateDebugName();
 			return _mtlBuffer;
 		} else {
@@ -207,26 +169,8 @@ id<MTLBuffer> MVKBuffer::getMTLBuffer() {
 	return nil;
 }
 
-id<MTLBuffer> MVKBuffer::getMTLBufferCache() {
-#if MVK_MACOS
-    if (_isHostCoherentTexelBuffer && !_mtlBufferCache) {
-        lock_guard<mutex> lock(_lock);
-        if (_mtlBufferCache) { return _mtlBufferCache; }
-
-		_mtlBufferCache = [getMTLDevice() newBufferWithLength: getByteCount()
-													  options: MTLResourceStorageModeManaged];    // retained
-		getDevice()->makeResident(_mtlBufferCache);
-        flushToDevice(_deviceMemoryOffset, _byteCount);
-    }
-#endif
-    return _mtlBufferCache;
-}
-
 uint64_t MVKBuffer::getMTLBufferGPUAddress() {
-#if MVK_XCODE_14
 	return [getMTLBuffer() gpuAddress] + getMTLBufferOffset();
-#endif
-	return 0;
 }
 
 #pragma mark Construction
@@ -237,7 +181,7 @@ MVKBuffer::MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo) :
 
 	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
-			case VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR:
+			case VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO:
 				_usage |= ((VkBufferUsageFlags2CreateInfo*)next)->usage;
 				break;
 			default:
@@ -260,17 +204,15 @@ MVKBuffer::MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo) :
 
 void MVKBuffer::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
 	if ( !handleTypes ) { return; }
-	if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT)) {
-		_externalMemoryHandleTypes = handleTypes;
-		auto& xmProps = getPhysicalDevice()->getExternalBufferProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT);
-		_requiresDedicatedMemoryAllocation = _requiresDedicatedMemoryAllocation || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
-	} else if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT)) {
-		_externalMemoryHandleTypes = handleTypes;
-		auto& xmProps = getPhysicalDevice()->getExternalBufferProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT);
-		_requiresDedicatedMemoryAllocation = _requiresDedicatedMemoryAllocation || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
-	} else {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateBuffer(): Only external memory handle type VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT and VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT are supported."));
-	}
+
+	auto& xmProps = getPhysicalDevice()->getExternalBufferProperties((VkExternalMemoryHandleTypeFlagBits)handleTypes);
+	if (xmProps.compatibleHandleTypes == 0) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateBuffer(): Only Metal and host external memory handle types are supported."));
+		return;
+ 	}
+
+	_externalMemoryHandleTypes = handleTypes;
+	_requiresDedicatedMemoryAllocation = _requiresDedicatedMemoryAllocation || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
 }
 
 // Memory detached in destructor too, as a fail-safe.
@@ -294,14 +236,14 @@ void MVKBuffer::destroy() {
 
 // Potentially called twice, from destroy() and destructor, so ensure everything is nulled out.
 void MVKBuffer::detachMemory() {
-	if (_deviceMemory) { _deviceMemory->removeBuffer(this); }
-	_deviceMemory = nullptr;
-	if (_mtlBuffer) getDevice()->removeResidency(_mtlBuffer);
-	[_mtlBuffer release];
-	_mtlBuffer = nil;
-	if (_mtlBufferCache) getDevice()->removeResidency(_mtlBufferCache);
-	[_mtlBufferCache release];
-	_mtlBufferCache = nil;
+	if (_deviceMemory) { MVKDeviceMemory::removeBuffer(&_deviceMemory, this); }
+	MVKLiveResourceSet& live = _device->getLiveResources();
+	if (id<MTLBuffer> buf = _mtlBuffer) {
+		_mtlBuffer = nil;
+		_device->removeResidency(buf);
+		live.remove(buf);
+		[buf release];
+	}
 }
 
 
@@ -315,52 +257,38 @@ void MVKBufferView::propagateDebugName() {
 #pragma mark Metal
 
 id<MTLTexture> MVKBufferView::getMTLTexture() {
-	auto& mtlFeats = getMetalFeatures();
-    if ( !_mtlTexture && _mtlPixelFormat && mtlFeats.texelBuffers) {
+	if (!_mtlTexture && _mtlPixelFormat) {
 
 		// Lock and check again in case another thread has created the texture.
 		lock_guard<mutex> lock(_lock);
 		if (_mtlTexture) { return _mtlTexture; }
 
-        MTLTextureUsage usage = MTLTextureUsageShaderRead;
-        if ( mvkIsAnyFlagEnabled(_usage, VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT) ) {
+		MTLTextureUsage usage = MTLTextureUsageShaderRead;
+		if ( mvkIsAnyFlagEnabled(_usage, VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT) ) {
 			usage |= MTLTextureUsageShaderWrite;
 #if MVK_XCODE_15
 			if (getMetalFeatures().nativeTextureAtomics && (_mtlPixelFormat == MTLPixelFormatR32Sint || _mtlPixelFormat == MTLPixelFormatR32Uint))
 				usage |= MTLTextureUsageShaderAtomic;
 #endif
-        }
-        id<MTLBuffer> mtlBuff;
-        VkDeviceSize mtlBuffOffset;
-        if ( !mtlFeats.sharedLinearTextures && _buffer->isMemoryHostCoherent() ) {
-            mtlBuff = _buffer->getMTLBufferCache();
-            mtlBuffOffset = _offset;
-        } else {
-            mtlBuff = _buffer->getMTLBuffer();
-            mtlBuffOffset = _buffer->getMTLBufferOffset() + _offset;
-        }
-        MTLTextureDescriptor* mtlTexDesc;
-        if ( mtlFeats.textureBuffers ) {
-            mtlTexDesc = [MTLTextureDescriptor textureBufferDescriptorWithPixelFormat: _mtlPixelFormat
-                                                                                width: _textureSize.width
-                                                                      resourceOptions: (mtlBuff.cpuCacheMode << MTLResourceCPUCacheModeShift) | (mtlBuff.storageMode << MTLResourceStorageModeShift)
-                                                                                usage: usage];
-        } else {
-            mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: _mtlPixelFormat
-                                                                            width: _textureSize.width
-                                                                           height: _textureSize.height
-                                                                        mipmapped: NO];
-            mtlTexDesc.storageMode = mtlBuff.storageMode;
-            mtlTexDesc.cpuCacheMode = mtlBuff.cpuCacheMode;
-            mtlTexDesc.usage = usage;
-        }
-		_mtlTexture = [mtlBuff newTextureWithDescriptor: mtlTexDesc
-												 offset: mtlBuffOffset
-											bytesPerRow: _mtlBytesPerRow];
-		getDevice()->makeResident(_mtlTexture);
-		propagateDebugName();
-    }
-    return _mtlTexture;
+		}
+		id<MTLBuffer> mtlBuff = _buffer->getMTLBuffer();
+		VkDeviceSize mtlBuffOffset = _buffer->getMTLBufferOffset() + _offset;
+		@autoreleasepool {
+			MTLResourceOptions opts = (mtlBuff.cpuCacheMode << MTLResourceCPUCacheModeShift) | (mtlBuff.storageMode << MTLResourceStorageModeShift);
+			MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor textureBufferDescriptorWithPixelFormat: _mtlPixelFormat
+				                                                                                      width: _textureSize.width
+				                                                                            resourceOptions: opts
+				                                                                                      usage: usage];
+			id<MTLTexture> tex = [mtlBuff newTextureWithDescriptor: mtlTexDesc
+			                                                offset: mtlBuffOffset
+			                                           bytesPerRow: _mtlBytesPerRow];
+			_device->makeResident(tex);
+			_device->getLiveResources().add(tex);
+			_mtlTexture = tex;
+			propagateDebugName();
+		}
+	}
+	return _mtlTexture;
 }
 
 
@@ -378,7 +306,7 @@ MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pC
 	_usage = _buffer->getUsage();
 	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
-			case VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR:
+			case VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO:
 				// Buffer view usage should be a subset of the buffer usage.
 				_usage &= ((VkBufferUsageFlags2CreateInfo*)next)->usage;
 				break;
@@ -392,30 +320,9 @@ MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pC
     if (byteCount == VK_WHOLE_SIZE) { byteCount = _buffer->getByteCount() - pCreateInfo->offset; }    // Remaining bytes in buffer
     size_t blockCount = byteCount / bytesPerBlock;
 
-	auto& mtlFeats = getMetalFeatures();
-	if ( !mtlFeats.textureBuffers ) {
-		// But Metal requires the texture to be a 2D texture. Determine the number of 2D rows we need and their width.
-		// Multiple rows will automatically align with PoT max texture dimension, but need to align upwards if less than full single row.
-		size_t maxBlocksPerRow = mtlFeats.maxTextureDimension / fmtBlockSize.width;
-		size_t blocksPerRow = min(blockCount, maxBlocksPerRow);
-		_mtlBytesPerRow = mvkAlignByteCount(blocksPerRow * bytesPerBlock, _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this));
-
-		size_t rowCount = blockCount / blocksPerRow;
-		if (blockCount % blocksPerRow) { rowCount++; }
-
-		_textureSize.width = uint32_t(blocksPerRow * fmtBlockSize.width);
-		_textureSize.height = uint32_t(rowCount * fmtBlockSize.height);
-	} else {
-		// With native texture buffers we don't need to bother with any of that.
-		// We can just use a simple 1D texel array.
-		_textureSize.width = uint32_t(blockCount * fmtBlockSize.width);
-		_textureSize.height = 1;
-		_mtlBytesPerRow = mvkAlignByteCount(byteCount, _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this));
-	}
-
-    if ( !mtlFeats.texelBuffers ) {
-        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Texel buffers are not supported on this device."));
-    }
+	_textureSize.width = uint32_t(blockCount * fmtBlockSize.width);
+    _textureSize.height = 1;
+    _mtlBytesPerRow = mvkAlignByteCount(byteCount, _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this));
 }
 
 // Memory detached in destructor too, as a fail-safe.
@@ -433,7 +340,10 @@ void MVKBufferView::destroy() {
 
 // Potentially called twice, from destroy() and destructor, so ensure everything is nulled out.
 void MVKBufferView::detachMemory() {
-	if (_mtlTexture) getDevice()->removeResidency(_mtlTexture);
-	[_mtlTexture release];
-	_mtlTexture = nil;
+	if (id<MTLTexture> tex = _mtlTexture) {
+		_device->getLiveResources().remove(tex);
+		_device->removeResidency(tex);
+		[tex release];
+		_mtlTexture = nil;
+	}
 }

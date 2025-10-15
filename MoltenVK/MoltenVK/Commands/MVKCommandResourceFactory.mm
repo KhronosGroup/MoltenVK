@@ -18,6 +18,7 @@
 
 #include "MVKCommandResourceFactory.h"
 #include "MVKCommandPipelineStateFactoryShaderSource.h"
+#include "MVKImage.h"
 #include "MVKPipeline.h"
 #include "MVKFoundation.h"
 #include "MVKBuffer.h"
@@ -42,7 +43,7 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPi
 	plDesc.fragmentFunction = fragFunc;
 	plDesc.sampleCount = blitKey.dstSampleCount;
 	if (isLayeredBlit) {
-		plDesc.inputPrimitiveTopologyMVK = MTLPrimitiveTopologyClassTriangle;
+		plDesc.inputPrimitiveTopology = MTLPrimitiveTopologyClassTriangle;
 	}
 
 	if (mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_DEPTH_BIT))) {
@@ -122,7 +123,7 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipeli
 	plDesc.vertexFunction = vtxFunc;
     plDesc.fragmentFunction = fragFunc;
 	plDesc.sampleCount = attKey.mtlSampleCount;
-	plDesc.inputPrimitiveTopologyMVK = MTLPrimitiveTopologyClassTriangle;
+	plDesc.inputPrimitiveTopology = MTLPrimitiveTopologyClassTriangle;
 
     for (uint32_t caIdx = 0; caIdx < kMVKClearColorAttachmentCount; caIdx++) {
         MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[caIdx];
@@ -453,10 +454,10 @@ id<MTLDepthStencilState> MVKCommandResourceFactory::newMTLDepthStencilState(MVKM
 
 MTLStencilDescriptor* MVKCommandResourceFactory::newMTLStencilDescriptor(MVKMTLStencilDescriptorData& sData) {
     MTLStencilDescriptor* sDesc = [MTLStencilDescriptor new];		// retained
-    sDesc.stencilCompareFunction = (MTLCompareFunction)sData.stencilCompareFunction;
-    sDesc.stencilFailureOperation = (MTLStencilOperation)sData.stencilFailureOperation;
-    sDesc.depthFailureOperation = (MTLStencilOperation)sData.depthFailureOperation;
-    sDesc.depthStencilPassOperation = (MTLStencilOperation)sData.depthStencilPassOperation;
+    sDesc.stencilCompareFunction = (MTLCompareFunction)sData.op.stencilCompareFunction;
+    sDesc.stencilFailureOperation = (MTLStencilOperation)sData.op.stencilFailureOperation;
+    sDesc.depthFailureOperation = (MTLStencilOperation)sData.op.depthFailureOperation;
+    sDesc.depthStencilPassOperation = (MTLStencilOperation)sData.op.depthStencilPassOperation;
     sDesc.readMask = sData.readMask;
     sDesc.writeMask = sData.writeMask;
     return sDesc;
@@ -615,6 +616,12 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newAccumulateOcclusionQue
 }
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newConvertUint8IndicesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+#if MVK_USE_METAL_PRIVATE_API
+	if (getMVKConfig().useMetalPrivateAPI) {
+		// Private API allows us to control restart index and enable. Do not convert restart sentinels.
+		return newMTLComputePipelineState("convertUint8IndicesRaw", owner);
+	}
+#endif
 	return newMTLComputePipelineState("convertUint8Indices", owner);
 }
 

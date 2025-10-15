@@ -49,7 +49,8 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-    MVKSmallVector<MVKMTLBufferBinding, N> _bindings;
+	uint32_t _firstBinding;
+    MVKSmallVector<MVKVertexMTLBufferBinding, N> _bindings;
 };
 
 // Concrete template class implementations.
@@ -81,7 +82,6 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
     MVKIndexMTLBufferBinding _binding;
-    bool _isUint8;
 };
 
 
