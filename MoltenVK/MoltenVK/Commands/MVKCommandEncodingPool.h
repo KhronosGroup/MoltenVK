@@ -115,9 +115,6 @@ public:
 	/** Returns a MTLComputePipelineState for resolving an image. */
 	id<MTLComputePipelineState> getCmdResolveColorImageMTLComputePipelineState(MVKFormatType type, bool isTextureArray);
 
-	/** Returns a MTLComputePipelineState for decompressing a buffer into a 3D image. */
-	id<MTLComputePipelineState> getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needsTempBuff);
-
 	/** Returns a MTLComputePipelineState for populating an indirect index buffer from a non-indexed indirect buffer. */
 	id<MTLComputePipelineState> getCmdDrawIndirectPopulateIndexesMTLComputePipelineState();
 
@@ -173,7 +170,6 @@ protected:
 	static constexpr uint32_t kColorImageCount = 6u;
 	id<MTLComputePipelineState> _mtlClearColorImageComputePipelineState[kColorImageCount] = {nil, nil, nil, nil, nil, nil};
 	id<MTLComputePipelineState> _mtlResolveColorImageComputePipelineState[kColorImageCount] = {nil, nil, nil, nil, nil, nil};
-	id<MTLComputePipelineState> _mtlCopyBufferToImage3DDecompressComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndirectConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndirectTessConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndexedCopyIndexBufferComputePipelineState[2] = {nil, nil};

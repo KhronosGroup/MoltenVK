@@ -44,16 +44,12 @@ id<MTLTexture> MVKFramebuffer::getDummyAttachmentMTLTexture(MVKRenderSubpass* su
 		}
 		mtlTexDesc.arrayLength = subpass->getViewCountInMetalPass(passIdx);
 	} else if (fbLayerCount > 1) {
-#if MVK_MACOS
 		if (sampleCount > 1 && getMetalFeatures().multisampleLayeredRendering) {
 			mtlTexDesc.textureType = MTLTextureType2DMultisampleArray;
 			mtlTexDesc.sampleCount = sampleCount;
 		} else {
 			mtlTexDesc.textureType = MTLTextureType2DArray;
 		}
-#else
-		mtlTexDesc.textureType = MTLTextureType2DArray;
-#endif
 		mtlTexDesc.arrayLength = fbLayerCount;
 	} else if (sampleCount > 1) {
 		mtlTexDesc.textureType = MTLTextureType2DMultisample;

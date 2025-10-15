@@ -22,12 +22,10 @@
 
 #import <QuartzCore/QuartzCore.h>
 
-#if MVK_IOS_OR_TVOS || MVK_MACCAT
-#	include <UIKit/UIScreen.h>
-#endif
-
 #if MVK_MACOS && !MVK_MACCAT
 #	include <AppKit/NSScreen.h>
+#elif !MVK_VISIONOS
+#	include <UIKit/UIScreen.h>
 #endif
 
 /** Extensions to CAMetalLayer to support MoltenVK. */
@@ -66,16 +64,14 @@
  */
 @property(nonatomic, readwrite) CFStringRef colorspaceNameMVK;
 
-#if MVK_IOS_OR_TVOS || MVK_MACCAT
-/** Returns the screen on which this layer is rendering. */
-@property(nonatomic, readonly) UIScreen* screenMVK;
-#endif
-
 #if MVK_MACOS && !MVK_MACCAT
 /** Returns the screen on which this layer is rendering. */
 @property(nonatomic, readonly) NSScreen* screenMVK;
 
 @property(nonatomic, readonly) NSScreen* privateScreenMVKImpl;
+#elif !MVK_VISIONOS
+/** Returns the screen on which this layer is rendering. */
+@property(nonatomic, readonly) UIScreen* screenMVK;
 #endif
 
 @end

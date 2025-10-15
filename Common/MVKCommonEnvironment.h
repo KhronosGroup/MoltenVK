@@ -76,19 +76,9 @@ extern "C" {
 #	define MVK_VISIONOS				(TARGET_OS_XR || TARGET_OS_VISION)
 #endif
 
-/** Building for iOS or tvOS. */
-#ifndef MVK_IOS_OR_TVOS
-#	define MVK_IOS_OR_TVOS			(MVK_IOS || MVK_TVOS)
-#endif
-
 /** Building for macOS or iOS. */
 #ifndef MVK_MACOS_OR_IOS
 #	define MVK_MACOS_OR_IOS			(MVK_MACOS || MVK_IOS)
-#endif
-
-/** Building for iOS or visionOS. */
-#ifndef MVK_IOS_OR_TVOS_OR_VISIONOS
-#    define MVK_IOS_OR_TVOS_OR_VISIONOS    (MVK_IOS || MVK_TVOS || MVK_VISIONOS)
 #endif
 
 /** Building for a Simulator. */

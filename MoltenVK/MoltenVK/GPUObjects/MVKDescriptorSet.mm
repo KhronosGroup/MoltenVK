@@ -175,7 +175,7 @@ static MVKArgumentBufferMode pickArgumentBufferMode(MVKDevice* dev) {
 
 /** Returns true if the device may disable argument buffers for non-push descriptor sets. */
 static bool mayDisableArgumentBuffers(MVKDevice* dev) {
-#if MVK_IOS_OR_TVOS
+#if MVK_IOS || MVK_TVOS
 	// iOS Tier 1 argument buffers do not support writable images.
 	return dev->getPhysicalDevice()->getMetalFeatures()->argumentBuffersTier < MTLArgumentBuffersTier2;
 #else
@@ -191,7 +191,7 @@ static MVKArgumentBufferMode pickArgumentBufferMode(MVKDevice* dev, const VkDesc
 	// Push descriptors are always binding-based
 	if (mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT))
 		return MVKArgumentBufferMode::Off;
-#if MVK_IOS_OR_TVOS
+#if MVK_IOS || MVK_TVOS
 	// iOS Tier 1 argument buffers do not support writable images.
 	if (dev->getPhysicalDevice()->getMetalFeatures()->argumentBuffersTier < MTLArgumentBuffersTier2) {
 		for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {

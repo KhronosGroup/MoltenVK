@@ -137,10 +137,6 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdResolveColorImageMTLCo
 	MVK_ENC_REZ_ACCESS(_mtlResolveColorImageComputePipelineState[getRenderpassLoadStoreStateIndex(type, isTextureArray)], newCmdResolveColorImageMTLComputePipelineState(type, _commandPool, isTextureArray));
 }
 
-id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needsTempBuff) {
-	MVK_ENC_REZ_ACCESS(_mtlCopyBufferToImage3DDecompressComputePipelineState[needsTempBuff ? 1 : 0], newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(needsTempBuff, _commandPool));
-}
-
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndirectPopulateIndexesMTLComputePipelineState() {
 	MVK_ENC_REZ_ACCESS(_mtlDrawIndirectPopulateIndexesComputePipelineState, newCmdDrawIndirectPopulateIndexesMTLComputePipelineState(_commandPool));
 }
@@ -237,11 +233,6 @@ void MVKCommandEncodingPool::destroyMetalResources() {
 		[_mtlResolveColorImageComputePipelineState[i] release];
 		_mtlResolveColorImageComputePipelineState[i] = nil;
 	}
-
-    [_mtlCopyBufferToImage3DDecompressComputePipelineState[0] release];
-    [_mtlCopyBufferToImage3DDecompressComputePipelineState[1] release];
-    _mtlCopyBufferToImage3DDecompressComputePipelineState[0] = nil;
-    _mtlCopyBufferToImage3DDecompressComputePipelineState[1] = nil;
 
     [_mtlDrawIndirectConvertBuffersComputePipelineState[0] release];
     [_mtlDrawIndirectConvertBuffersComputePipelineState[1] release];

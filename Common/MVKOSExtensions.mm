@@ -110,7 +110,7 @@ uint64_t mvkGetSystemMemorySize() {
 }
 
 uint64_t mvkGetAvailableMemorySize() {
-#if MVK_IOS_OR_TVOS_OR_VISIONOS
+#if !MVK_MACOS
 	return os_proc_available_memory();
 #else
 	mach_port_t host_port;

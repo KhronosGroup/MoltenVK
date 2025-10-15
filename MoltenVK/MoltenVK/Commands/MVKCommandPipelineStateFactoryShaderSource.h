@@ -204,76 +204,11 @@ kernel void cmdResolveColorImage2DIntArray(texture2d_array<int, access::write> d
 }
 #endif
 
-typedef struct {
-	uint32_t srcRowStride;
-	uint32_t srcRowStrideHigh;
-	uint32_t srcDepthStride;
-	uint32_t srcDepthStrideHigh;
-	uint32_t destRowStride;
-	uint32_t destRowStrideHigh;
-	uint32_t destDepthStride;
-	uint32_t destDepthStrideHigh;
-	VkFormat format;
-	VkOffset3D offset;
-	VkExtent3D extent;
-} CmdCopyBufferToImageInfo;
-
-kernel void cmdCopyBufferToImage3DDecompressDXTn(const device uint8_t* src [[buffer(0)]],
-                                                 texture3d<float, access::write> dest [[texture(0)]],
-                                                 constant CmdCopyBufferToImageInfo& info [[buffer(2)]],
-                                                 uint3 pos [[thread_position_in_grid]]) {
-	uint x = pos.x * 4, y = pos.y * 4, z = pos.z;
-	VkDeviceSize blockByteCount = isBC1Format(info.format) ? 8 : 16;
-
-	if (x >= info.extent.width || y >= info.extent.height || z >= info.extent.depth) { return; }
-
-	src += z * info.srcDepthStride + y * info.srcRowStride / 4 + x * blockByteCount / 4;
-	VkExtent2D blockExtent;
-	blockExtent.width = min(info.extent.width - x, 4u);
-	blockExtent.height = min(info.extent.height - y, 4u);
-	uint pixels[16] = {0};
-	decompressDXTnBlock(src, pixels, blockExtent, 4 * sizeof(uint), info.format);
-	for (uint j = 0; j < blockExtent.height; ++j) {
-		for (uint i = 0; i < blockExtent.width; ++i) {
-			// The pixel components are in BGRA order, but texture::write wants them
-			// in RGBA order. We can fix that (ironically) with a BGRA swizzle.
-			dest.write(unpack_unorm4x8_to_float(pixels[j * 4 + i]).bgra,
-			           uint3(info.offset.x + x + i, info.offset.y + y + j, info.offset.z + z));
-		}
-	}
-}
-
-kernel void cmdCopyBufferToImage3DDecompressTempBufferDXTn(const device uint8_t* src [[buffer(0)]],
-                                                           device uint8_t* dest [[buffer(1)]],
-                                                           constant CmdCopyBufferToImageInfo& info [[buffer(2)]],
-                                                           uint3 pos [[thread_position_in_grid]]) {
-	uint x = pos.x * 4, y = pos.y * 4, z = pos.z;
-	VkDeviceSize blockByteCount = isBC1Format(info.format) ? 8 : 16;
-
-	if (x >= info.extent.width || y >= info.extent.height || z >= info.extent.depth) { return; }
-
-	src += z * info.srcDepthStride + y * info.srcRowStride / 4 + x * blockByteCount / 4;
-	dest += z * info.destDepthStride + y * info.destRowStride + x * sizeof(uint);
-	VkExtent2D blockExtent;
-	blockExtent.width = min(info.extent.width - x, 4u);
-	blockExtent.height = min(info.extent.height - y, 4u);
-	uint pixels[16] = {0};
-	decompressDXTnBlock(src, pixels, blockExtent, 4 * sizeof(uint), info.format);
-	device uint* destPixel = (device uint*)dest;
-	for (uint j = 0; j < blockExtent.height; ++j) {
-		for (uint i = 0; i < blockExtent.width; ++i) {
-			destPixel[j * info.destRowStride / sizeof(uint) + i] = pixels[j * 4 + i];
-		}
-	}
-}
-
-#if __METAL_VERSION__ >= 210
 // This structure is missing from the MSL headers. :/
 struct MTLStageInRegionIndirectArguments {
 	uint32_t stageInOrigin[3];
 	uint32_t stageInSize[3];
 };
-#endif
 
 typedef enum : uint8_t {
 	MTLIndexTypeUInt16 = 0,
@@ -396,7 +331,6 @@ kernel void cmdDrawIndexedIndirectConvertBuffers(const device char* srcBuff [[bu
 	}
 }
 
-#if __METAL_VERSION__ >= 120
 kernel void cmdDrawIndirectTessConvertBuffers(const device char* srcBuff [[buffer(0)]],
                                               device char* destBuff [[buffer(1)]],
                                               device char* paramsBuff [[buffer(2)]],
@@ -411,13 +345,9 @@ kernel void cmdDrawIndirectTessConvertBuffers(const device char* srcBuff [[buffe
 	const device auto& src = *reinterpret_cast<const device MTLDrawPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);
 	device char* dest;
 	device auto* params = reinterpret_cast<device uint32_t*>(paramsBuff + idx * 256);
-#if __METAL_VERSION__ >= 210
 	dest = destBuff + idx * (sizeof(MTLStageInRegionIndirectArguments) + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2 + sizeof(MTLDrawPatchIndirectArguments));
 	device auto& destSI = *(device MTLStageInRegionIndirectArguments*)dest;
 	dest += sizeof(MTLStageInRegionIndirectArguments);
-#else
-	dest = destBuff + idx * (sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2 + sizeof(MTLDrawPatchIndirectArguments));
-#endif
 	device auto& destVtx = *(device MTLDispatchThreadgroupsIndirectArguments*)dest;
 	device auto& destTC = *(device MTLDispatchThreadgroupsIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments));
 	device auto& destTE = *(device MTLDrawPatchIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2);
@@ -432,14 +362,12 @@ kernel void cmdDrawIndirectTessConvertBuffers(const device char* srcBuff [[buffe
 	destTE.patchCount = patchCount;
 	destTE.instanceCount = 1;
 	destTE.patchStart = destTE.baseInstance = 0;
-#if __METAL_VERSION__ >= 210
 	destSI.stageInOrigin[0] = src.vertexStart;
 	destSI.stageInOrigin[1] = src.baseInstance;
 	destSI.stageInOrigin[2] = 0;
 	destSI.stageInSize[0] = src.vertexCount;
 	destSI.stageInSize[1] = src.instanceCount;
 	destSI.stageInSize[2] = 1;
-#endif
 }
 
 kernel void cmdDrawIndexedIndirectTessConvertBuffers(const device char* srcBuff [[buffer(0)]],
@@ -456,13 +384,9 @@ kernel void cmdDrawIndexedIndirectTessConvertBuffers(const device char* srcBuff 
 	const device auto& src = *reinterpret_cast<const device MTLDrawIndexedPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);
 	device char* dest;
 	device auto* params = reinterpret_cast<device uint32_t*>(paramsBuff + idx * 256);
-#if __METAL_VERSION__ >= 210
 	dest = destBuff + idx * (sizeof(MTLStageInRegionIndirectArguments) + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2 + sizeof(MTLDrawPatchIndirectArguments));
 	device auto& destSI = *(device MTLStageInRegionIndirectArguments*)dest;
 	dest += sizeof(MTLStageInRegionIndirectArguments);
-#else
-	dest = destBuff + idx * (sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2 + sizeof(MTLDrawPatchIndirectArguments));
-#endif
 	device auto& destVtx = *(device MTLDispatchThreadgroupsIndirectArguments*)dest;
 	device auto& destTC = *(device MTLDispatchThreadgroupsIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments));
 	device auto& destTE = *(device MTLDrawPatchIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2);
@@ -477,14 +401,12 @@ kernel void cmdDrawIndexedIndirectTessConvertBuffers(const device char* srcBuff 
 	destTE.patchCount = patchCount;
 	destTE.instanceCount = 1;
 	destTE.patchStart = destTE.baseInstance = 0;
-#if __METAL_VERSION__ >= 210
 	destSI.stageInOrigin[0] = src.baseVertex;
 	destSI.stageInOrigin[1] = src.baseInstance;
 	destSI.stageInOrigin[2] = 0;
 	destSI.stageInSize[0] = src.indexCount;
 	destSI.stageInSize[1] = src.instanceCount;
 	destSI.stageInSize[2] = 1;
-#endif
 }
 
 kernel void cmdDrawIndexedCopyIndex16Buffer(const device uint16_t* srcBuff [[buffer(0)]],
@@ -500,8 +422,6 @@ kernel void cmdDrawIndexedCopyIndex32Buffer(const device uint32_t* srcBuff [[buf
                                             uint i [[thread_position_in_grid]]) {
 	destBuff[i] = srcBuff[params.indexStart + i];
 }
-
-#endif
 
 typedef struct alignas(8) {
 	uint32_t count;

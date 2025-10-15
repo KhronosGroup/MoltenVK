@@ -1914,7 +1914,6 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
 	const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
 
 	// Color attachments - must ignore bad pColorBlendState pointer if rasterization is disabled or subpass has no color attachments
-    uint32_t caCnt = 0;
     if (_isRasterizingColor && pCreateInfo->pColorBlendState) {
         for (uint32_t caIdx = 0; caIdx < pCreateInfo->pColorBlendState->attachmentCount; caIdx++) {
             const VkPipelineColorBlendAttachmentState* pCA = &pCreateInfo->pColorBlendState->pAttachments[caIdx];
@@ -1939,7 +1938,6 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
             // The pixel format will be MTLPixelFormatInvalid in that case, and
             // Metal asserts if we turn on blending with that pixel format.
             if (mtlPixFmt) {
-                caCnt++;
                 colorDesc.blendingEnabled = pCA->blendEnable;
                 colorDesc.rgbBlendOperation = mvkMTLBlendOperationFromVkBlendOp(pCA->colorBlendOp);
                 colorDesc.sourceRGBBlendFactor = mvkMTLBlendFactorFromVkBlendFactor(pCA->srcColorBlendFactor);
@@ -1973,16 +1971,6 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
 	} else if (pixFmts->isStencilFormat(mtlDepthPixFmt)) {
 		plDesc.stencilAttachmentPixelFormat = mtlDepthPixFmt;
 	}
-
-	// In Vulkan, it's perfectly valid to render without any attachments. In Metal, if that
-	// isn't supported, and we have no attachments, then we have to add a dummy attachment.
-	if (!getMetalFeatures().renderWithoutAttachments &&
-		!caCnt && !pRendInfo->depthAttachmentFormat && !pRendInfo->stencilAttachmentFormat) {
-
-        MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[0];
-        colorDesc.pixelFormat = MTLPixelFormatR8Unorm;
-        colorDesc.writeMask = MTLColorWriteMaskNone;
-    }
 
     // Multisampling - must ignore allowed bad pMultisampleState pointer if rasterization disabled
     if (_isRasterizing && pCreateInfo->pMultisampleState) {
@@ -2109,8 +2097,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	shaderConfig.options.mslOptions.replace_recursive_inputs = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0);
 #if MVK_MACOS
     shaderConfig.options.mslOptions.emulate_subgroups = !mtlFeats.simdPermute;
-#endif
-#if MVK_IOS_OR_TVOS
+#else
     shaderConfig.options.mslOptions.emulate_subgroups = !mtlFeats.quadPermute;
     shaderConfig.options.mslOptions.ios_use_simdgroup_functions = !!mtlFeats.simdPermute;
 #endif
@@ -2484,8 +2471,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 
 #if MVK_MACOS
     shaderConfig.options.mslOptions.emulate_subgroups = !mtlFeats.simdPermute;
-#endif
-#if MVK_IOS_OR_TVOS
+#else
     shaderConfig.options.mslOptions.emulate_subgroups = !mtlFeats.quadPermute;
     shaderConfig.options.mslOptions.ios_use_simdgroup_functions = !!mtlFeats.simdPermute;
 #endif

@@ -202,14 +202,14 @@ VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRe
 		if (framesPerSecond == 0)
 			framesPerSecond = 60.0;
 	}
-#elif MVK_IOS_OR_TVOS || MVK_MACCAT
+#elif MVK_VISIONOS
+	NSInteger framesPerSecond = 90;		// TODO: See if this can be obtained from OS instead
+#else
     auto* screen = getCAMetalLayer().screenMVK;        // Will be nil if headless
 	NSInteger framesPerSecond = 60;
 	if ([screen respondsToSelector: @selector(maximumFramesPerSecond)]) {
 		framesPerSecond = screen.maximumFramesPerSecond;
 	}
-#elif MVK_VISIONOS
-	NSInteger framesPerSecond = 90;		// TODO: See if this can be obtained from OS instead
 #endif
 
 	pRefreshCycleDuration->refreshDuration = (uint64_t)1e9 / framesPerSecond;

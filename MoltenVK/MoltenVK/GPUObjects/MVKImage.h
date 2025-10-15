@@ -395,7 +395,6 @@ protected:
     bool _hasExpectedTexelSize;
     bool _hasChromaSubsampling;
 	bool _isLinear;
-	bool _is3DCompressed;
 	bool _isAliasable;
 	bool _hasExtendedUsage;
 	bool _hasMutableFormat;
