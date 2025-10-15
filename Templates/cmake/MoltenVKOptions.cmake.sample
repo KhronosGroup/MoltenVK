@@ -23,7 +23,7 @@
 # set(CMAKE_OBJCXX_COMPILER "/usr/bin/c++" CACHE STRING "C++ compiler")
 
 # Set deployment platform for macOS
-# set(CMAKE_OSX_DEPLOYMENT_TARGET 10.12 CACHE STRING "macOS deployment target")
+# set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0 CACHE STRING "macOS deployment target")
 
 ################################################################################
 # MoltenVK Options
