@@ -175,7 +175,7 @@ Building **MoltenVK**
 During building, **MoltenVK** references the latest *Apple SDK* frameworks. To access these frameworks,
 and to avoid build errors, be sure to use the latest publicly available version of *Xcode*.
 
-MoltenVK currently supports being built with *Xcode 14.3* or later. Support is based on the
+MoltenVK currently supports being built with *Xcode 15.0.1* or later. Support is based on the
 earliest version of Xcode that can be verified in CI workflows.
 
 Once built, the **MoltenVK** libraries can be run on *macOS*, *iOS*, *tvOS*, or *visionOS* devices

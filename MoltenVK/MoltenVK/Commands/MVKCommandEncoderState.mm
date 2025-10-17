@@ -88,10 +88,8 @@ struct MVKVertexBinder {
 	static SEL selSetTexture() { return @selector(setVertexTexture:atIndex:); }
 	static SEL selSetSampler() { return @selector(setVertexSamplerState:atIndex:); }
 	static MVKResourceBinder::UseResource useResource() { return useResourceGraphics; }
-#if MVK_XCODE_15
 	static SEL selSetBufferDynamic() { return @selector(setVertexBuffer:offset:attributeStride:atIndex:); }
 	static SEL selSetOffsetDynamic() { return @selector(setVertexBufferOffset:attributeStride:atIndex:); }
-#endif
 	static void setBuffer(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger index) {
 		[encoder setVertexBuffer:buffer offset:offset atIndex:index];
 	}
@@ -99,18 +97,10 @@ struct MVKVertexBinder {
 		[encoder setVertexBufferOffset:offset atIndex:index];
 	}
 	static void setBufferDynamic(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger stride, NSUInteger index) {
-#if MVK_XCODE_15
 		[encoder setVertexBuffer:buffer offset:offset attributeStride:stride atIndex:index];
-#else
-		assert(0);
-#endif
 	}
 	static void setBufferOffsetDynamic(id<MTLRenderCommandEncoder> encoder, NSUInteger offset, NSUInteger stride, NSUInteger index) {
-#if MVK_XCODE_15
 		[encoder setVertexBufferOffset:offset attributeStride:stride atIndex:index];
-#else
-		assert(0);
-#endif
 	}
 	static void setBytes(id<MTLRenderCommandEncoder> encoder, const void* bytes, NSUInteger length, NSUInteger index) {
 		[encoder setVertexBytes:bytes length:length atIndex:index];
@@ -130,10 +120,8 @@ struct MVKComputeBinder {
 	static SEL selSetTexture() { return @selector(setTexture:atIndex:); }
 	static SEL selSetSampler() { return @selector(setSamplerState:atIndex:); }
 	static MVKResourceBinder::UseResource useResource() { return useResourceCompute; }
-#if MVK_XCODE_15
 	static SEL selSetBufferDynamic() { return @selector(setBuffer:offset:attributeStride:atIndex:); }
 	static SEL selSetOffsetDynamic() { return @selector(setBufferOffset:attributeStride:atIndex:); }
-#endif
 	static void setBuffer(id<MTLComputeCommandEncoder> encoder, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger index) {
 		[encoder setBuffer:buffer offset:offset atIndex:index];
 	}
@@ -141,18 +129,10 @@ struct MVKComputeBinder {
 		[encoder setBufferOffset:offset atIndex:index];
 	}
 	static void setBufferDynamic(id<MTLComputeCommandEncoder> encoder, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger stride, NSUInteger index) {
-#if MVK_XCODE_15
 		[encoder setBuffer:buffer offset:offset attributeStride:stride atIndex:index];
-#else
-		assert(0);
-#endif
 	}
 	static void setBufferOffsetDynamic(id<MTLComputeCommandEncoder> encoder, NSUInteger offset, NSUInteger stride, NSUInteger index) {
-#if MVK_XCODE_15
 		[encoder setBufferOffset:offset attributeStride:stride atIndex:index];
-#else
-		assert(0);
-#endif
 	}
 	static void setBytes(id<MTLComputeCommandEncoder> encoder, const void* bytes, NSUInteger length, NSUInteger index) {
 		[encoder setBytes:bytes length:length atIndex:index];

@@ -99,11 +99,6 @@ extern "C" {
                                     (__VISION_OS_VERSION_MAX_ALLOWED >= 20000) || \
                                         (__TV_OS_VERSION_MAX_ALLOWED >= 180000))
 #endif
-#ifndef MVK_XCODE_15
-#   define MVK_XCODE_15             ((__MAC_OS_X_VERSION_MAX_ALLOWED >= 140000) || \
-                                    (__IPHONE_OS_VERSION_MAX_ALLOWED >= 170000) || \
-                                        (__TV_OS_VERSION_MAX_ALLOWED >= 170000))
-#endif
 
 /**
  * Enable use of private Metal APIs.

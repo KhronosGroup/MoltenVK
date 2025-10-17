@@ -81,12 +81,9 @@ bool mvk::compile(const string& mslSourceCode,
 		mslVerEnum = MTLLanguageVersion3_2;
 	} else
 #endif
-#if MVK_XCODE_15
 	if (mslVer(3, 1, 0)) {
 		mslVerEnum = MTLLanguageVersion3_1;
-	} else
-#endif
-	if (mslVer(3, 0, 0)) {
+	} else if (mslVer(3, 0, 0)) {
 		mslVerEnum = MTLLanguageVersion3_0;
 	} else if (mslVer(2, 4, 0)) {
 		mslVerEnum = MTLLanguageVersion2_4;
