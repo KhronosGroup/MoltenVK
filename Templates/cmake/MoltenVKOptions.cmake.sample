@@ -1,0 +1,40 @@
+# In order to persistently set default options for your project, copy this file
+# and remove the '.sample' suffix. Then uncomment the relevant options for your
+# project. Note that this file is included before `project(IPCToolkit)` is defined,
+# so we can use it to define the C and C++ compilers, but some variables such as
+# PROJECT_SOURCE_DIR will not be defined yet. You can use CMAKE_SOURCE_DIR instead.
+
+################################################################################
+# CMake Options
+################################################################################
+
+# Specify a custom install prefix path
+# set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/install CACHE STRING "Install directory used by install().")
+
+# Generates a `compile_commands.json` that can be used for autocompletion
+# set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Enable/Disable output of compile commands during generation.")
+
+# Use a specific C/C++ compiler, e.g. llvm-clang on macOS (so we can use clangd)
+# set(CMAKE_C_COMPILER   "/usr/bin/cc"  CACHE STRING "C compiler")
+# set(CMAKE_CXX_COMPILER "/usr/bin/c++" CACHE STRING "C++ compiler")
+
+# Use a specific Objective-C/C++ compiler, e.g. llvm-clang on macOS (so we can use clangd)
+# set(CMAKE_OBJC_COMPILER   "/usr/bin/cc"  CACHE STRING "C compiler")
+# set(CMAKE_OBJCXX_COMPILER "/usr/bin/c++" CACHE STRING "C++ compiler")
+
+# Set deployment platform for macOS
+# set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0 CACHE STRING "macOS deployment target")
+
+################################################################################
+# MoltenVK Options
+################################################################################
+
+# set(MVK_CONFIG_LOG_LEVEL "info" CACHE STRING "Set the default log level for MoltenVK. Options are: debug, info, warn, error, off. Default is 'info'.")
+
+# set(CPM_cereal_SOURCE "" CACHE PATH "Path to Cereal library to override CPM download")
+# set(CPM_SPIRV-Cross_SOURCE "" CACHE PATH "Path to SPIRV-Cross library to override CPM download")
+# set(CPM_SPIRV-Headers_SOURCE "" CACHE PATH "Path to SPIRV-Headers library to override CPM download")
+# set(CPM_SPIRV-Tools_SOURCE "" CACHE PATH "Path to SPIRV-Tools library to override CPM download")
+# set(CPM_Volk_SOURCE "" CACHE PATH "Path to Volk library to override CPM download")
+# set(CPM_Vulkan-Headers_SOURCE "" CACHE PATH "Path to Vulkan-Headers library to override CPM download")
+# set(CPM_Vulkan-Tools_SOURCE "" CACHE PATH "Path to Vulkan-Tools library to override CPM download")

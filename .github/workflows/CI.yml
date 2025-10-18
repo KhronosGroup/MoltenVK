@@ -1,6 +1,6 @@
 name: CI
 
-# Controls when the action will run. 
+# Controls when the action will run.
 on:
   # Triggers the workflow on push or pull request events
   push:
@@ -39,9 +39,9 @@ jobs:
       fail-fast: false
 
     name: MoltenVK (Xcode ${{ matrix.xcode }} - ${{ matrix.platform }}${{ matrix.private_api && '-privateapi' || '' }})
-    
+
     runs-on: ${{ matrix.os }}
-    
+
     env:
       XCODE_DEV_PATH: "/Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer"
       ARTIFACT_TYPE: ${{ matrix.platform }}${{ matrix.private_api && '-privateapi' || '' }}
@@ -122,6 +122,56 @@ jobs:
         with:
           name: "MoltenVK-${{ env.ARTIFACT_TYPE }}"
           path: "MoltenVK-${{ env.ARTIFACT_TYPE }}.tar"
+
+  build_cmake:
+    strategy:
+      matrix:
+        # Primary build on latest macOS and its default Xcode version
+        os: [ "macos-latest" ]
+        # platform: [ "all", "macos", "ios" ]
+        config: [Debug, Release]
+      fail-fast: false
+
+    name: 'MoltenVK (Cmake - ${{ matrix.config }})'
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew install ccache
+          echo 'CACHE_PATH=~/Library/Caches/ccache' >> "$GITHUB_ENV"
+
+      - name: Get number of CPU cores
+        uses: SimenB/github-actions-cpu-cores@v2.0.0
+        id: cpu-cores
+
+      - name: Cache Build
+        id: cache-build
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CACHE_PATH }}
+          key: ${{ runner.os }}-${{ matrix.config }}-cache
+
+      - name: Prepare ccache
+        run: |
+          ccache --max-size=1.0G
+          ccache -V && ccache --show-config
+          ccache --show-stats && ccache --zero-stats
+
+      - name: Configure
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+
+      - name: Build
+        run: |
+          cmake --build build -j ${{ steps.cpu-cores.outputs.count }}
+          ccache --show-stats
 
   release:
     name: 'Release'
