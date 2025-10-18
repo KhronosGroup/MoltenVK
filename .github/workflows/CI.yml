@@ -30,8 +30,8 @@ jobs:
             select_xcode: false
             private_api: true
           # Legacy build. Up to 3 versions behind latest (or beta).
-          - os: "macos-13"
-            xcode: "14.3.1"
+          - os: "macos-14"
+            xcode: "15.0.1"
             platform: "macos"
             upload_artifacts: false
             select_xcode: true

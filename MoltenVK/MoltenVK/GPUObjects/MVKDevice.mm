@@ -106,9 +106,7 @@ MVKMTLDeviceCapabilities::MVKMTLDeviceCapabilities(id<MTLDevice> mtlDev) {
 	supportsApple6 = supportsGPUFam(Apple6, mtlDev);
 	supportsApple7 = supportsGPUFam(Apple7, mtlDev);
 	supportsApple8 = supportsGPUFam(Apple8, mtlDev);
-#if MVK_XCODE_15 && !MVK_TVOS && !MVK_VISIONOS
 	supportsApple9 = supportsGPUFam(Apple9, mtlDev);
-#endif
 #if MVK_XCODE_26
 	supportsApple10 = supportsGPUFam(Apple10, mtlDev);
 #endif
@@ -2442,11 +2440,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	                                 : cfgUseMTLHeap != MVK_CONFIG_USE_MTLHEAP_NEVER);
 	_metalFeatures.multisampleArrayTextures = !MVK_TVOS || mvkOSVersionIsAtLeast(16.0);
 
-#if MVK_XCODE_15
 	// Dynamic vertex stride needs to have everything aligned - compiled with support for vertex stride calls, and supported by both runtime OS and GPU.
 	_metalFeatures.dynamicVertexStride = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0) && (supportsMTLGPUFamily(Apple4) || supportsMTLGPUFamily(Mac2));
 	_metalFeatures.nativeTextureAtomics = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0) && (supportsMTLGPUFamily(Metal3) || supportsMTLGPUFamily(Apple6) || supportsMTLGPUFamily(Mac2));
-#endif
 
 	if (supportsMTLGPUFamily(Mac2)) {
 		_metalFeatures.mtlBufferAlignment = 256;
@@ -2576,13 +2572,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		setMSLVersion(3, 2);
 	} else
 #endif
-#if MVK_XCODE_15
 	if ( mvkOSVersionIsAtLeast(14.0, 17.0, 1.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_1;
 		setMSLVersion(3, 1);
-	} else
-#endif
-	if ( mvkOSVersionIsAtLeast(13.0, 16.0, 1.0) ) {
+	} else if ( mvkOSVersionIsAtLeast(13.0, 16.0, 1.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_0;
 		setMSLVersion(3, 0);
 	} else if ( mvkOSVersionIsAtLeast(12.0, 15.0, 1.0) ) {
@@ -3388,11 +3381,9 @@ uint64_t MVKPhysicalDevice::getVRAMSize() {
 
 // If possible, retrieve from the MTLDevice, otherwise from available memory size, or a fixed conservative estimate.
 uint64_t MVKPhysicalDevice::getRecommendedMaxWorkingSetSize() {
-#if MVK_XCODE_15 || MVK_MACOS
 	if ( [_mtlDevice respondsToSelector: @selector(recommendedMaxWorkingSetSize)]) {
 		return _mtlDevice.recommendedMaxWorkingSetSize;
 	}
-#endif
 	uint64_t freeMem = mvkGetAvailableMemorySize();
 	return freeMem ? freeMem : 256 * MEBI;
 }
