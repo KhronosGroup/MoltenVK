@@ -135,7 +135,6 @@ struct MVKVulkanSharedCommandEncoderState {
 };
 
 struct MVKImplicitBufferData {
-	MVKSmallVector<uint32_t, 8> textureSwizzles;
 	MVKSmallVector<uint32_t, 8> bufferSizes;
 	MVKSmallVector<uint32_t, 8> dynamicOffsets;
 };

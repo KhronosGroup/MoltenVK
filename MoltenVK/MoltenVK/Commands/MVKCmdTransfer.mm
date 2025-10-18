@@ -532,8 +532,7 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
         id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture(srcPlaneIndex);
         id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture(dstPlaneIndex);
         if (blitCnt && srcMTLTex && dstMTLTex) {
-			if (mtlFeats.nativeTextureSwizzle &&
-				_srcImage->needsSwizzle()) {
+			if (_srcImage->needsSwizzle()) {
 				// Use a view that has a swizzle on it.
 				srcMTLTex = [srcMTLTex newTextureViewWithPixelFormat:srcMTLTex.pixelFormat
 														 textureType:srcMTLTex.textureType
@@ -589,14 +588,6 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             blitKey.srcFilter = mvkMTLSamplerMinMagFilterFromVkFilter(_filter);
             blitKey.srcAspect = mvkIBR.region.srcSubresource.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
             blitKey.dstSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_dstImage->getSampleCount());
-			if (!mtlFeats.nativeTextureSwizzle &&
-				_srcImage->needsSwizzle()) {
-				VkComponentMapping vkMapping = _srcImage->getPixelFormats()->getVkComponentMapping(_srcImage->getVkFormat());
-				blitKey.srcSwizzleR = vkMapping.r;
-				blitKey.srcSwizzleG = vkMapping.g;
-				blitKey.srcSwizzleB = vkMapping.b;
-				blitKey.srcSwizzleA = vkMapping.a;
-			}
             id<MTLRenderPipelineState> mtlRPS = cmdEncoder->getCommandEncodingPool()->getCmdBlitImageMTLRenderPipelineState(blitKey);
             bool isBlittingDepth = mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_DEPTH_BIT));
             bool isBlittingStencil = mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_STENCIL_BIT));

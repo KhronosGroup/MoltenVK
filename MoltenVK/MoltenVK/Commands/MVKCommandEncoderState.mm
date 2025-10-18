@@ -287,7 +287,6 @@ static uint32_t getCPUMetaOffset(MVKDescriptorCPULayout layout) {
 
 enum class ImplicitBufferData {
 	BufferSize,
-	TextureSwizzle,
 };
 
 static bool isTexelBuffer(VkDescriptorType type) {
@@ -328,15 +327,12 @@ static void bindImplicitBufferData(uint32_t* target, MVKDescriptorSetLayout* lay
 		uint32_t perDescCount;
 		switch (DataType) {
 			case ImplicitBufferData::BufferSize:     perDescCount = binding.perDescriptorResourceCount.buffer;  break;
-			case ImplicitBufferData::TextureSwizzle: perDescCount = binding.perDescriptorResourceCount.texture; break;
 		}
 		if (perDescCount == 0)
 			continue;
 		size_t stride = descriptorCPUSize(binding.cpuLayout);
 		size_t metaOff = getCPUMetaOffset(binding.cpuLayout);
-		if (DataType == ImplicitBufferData::TextureSwizzle && isTexelBuffer(binding.descriptorType)) {
-			mvkClear(target, count);
-		} else if (metaOff == 0) {
+		if (metaOff == 0) {
 			assert(DataType != ImplicitBufferData::BufferSize && "All buffers should have metadata");
 			mvkClear(target, count);
 		} else {
@@ -351,9 +347,6 @@ static void bindImplicitBufferData(uint32_t* target, MVKDescriptorSetLayout* lay
 							target[i] = reinterpret_cast<const MVKDescriptorMetaImage*>(base)->size;
 						else
 							target[i] = reinterpret_cast<const MVKDescriptorMetaBuffer*>(base)->size;
-						break;
-					case ImplicitBufferData::TextureSwizzle:
-						target[i] = reinterpret_cast<const MVKDescriptorMetaImage*>(base)->swizzle;
 						break;
 				}
 			}
@@ -396,10 +389,6 @@ static void bindDescriptorSets(MVKImplicitBufferData& target,
 		if (setLayout->argBufMode() == MVKArgumentBufferMode::Off) {
 			// If we grab these now, we can be guaranteed the sets are valid
 			// If we wait until draw time, we can only be guaranteed statically used sets are valid
-			if (!layout->getMetalFeatures().nativeTextureSwizzle && stride.textureIndex) {
-				mvkEnsureSize(target.textureSwizzles, offsets.textureIndex + stride.textureIndex);
-				bindImplicitBufferData<ImplicitBufferData::TextureSwizzle>(&target.textureSwizzles[offsets.textureIndex], setLayout, set->cpuBuffer, vkStage, varCount);
-			}
 			if (stride.bufferIndex) {
 				mvkEnsureSize(target.bufferSizes, offsets.bufferIndex + stride.bufferIndex);
 				bindImplicitBufferData<ImplicitBufferData::BufferSize>(&target.bufferSizes[offsets.bufferIndex], setLayout, set->cpuBuffer, vkStage, varCount);
@@ -694,9 +683,6 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 			case MVKNonVolatileImplicitBuffer::PushConstant:
 				bindImmediateData(encoder, mvkEncoder, pushConstants, common._layout->getPushConstantsLength(), idx, binder);
 				break;
-			case MVKNonVolatileImplicitBuffer::Swizzle:
-				bindImmediateData(encoder, mvkEncoder, getImplicitBindingData(implicitBufferData.textureSwizzles, resourceCounts.textureIndex), idx, binder);
-				break;
 			case MVKNonVolatileImplicitBuffer::BufferSize:
 				bindImmediateData(encoder, mvkEncoder, getImplicitBindingData(implicitBufferData.bufferSizes, resourceCounts.bufferIndex), idx, binder);
 				break;
@@ -856,7 +842,6 @@ template <typename MTLState>
 static void invalidateDescriptorSetImplicitBuffers(MTLState& state) {
 	invalidateImplicitBuffer(state, MVKNonVolatileImplicitBuffer::BufferSize);
 	invalidateImplicitBuffer(state, MVKNonVolatileImplicitBuffer::DynamicOffset);
-	invalidateImplicitBuffer(state, MVKNonVolatileImplicitBuffer::Swizzle);
 }
 
 static bool isGraphicsStage(MVKShaderStage stage) {

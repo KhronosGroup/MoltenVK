@@ -168,7 +168,6 @@ struct std::hash<MVKMTLDepthStencilDescriptorData> {
 /** These buffers are dirty-tracked across draw calls, and need code to make sure they're invalidated if they ever change binding indices. */
 enum class MVKNonVolatileImplicitBuffer : uint32_t {
 	PushConstant,
-	Swizzle,
 	BufferSize,
 	DynamicOffset,
 	ViewRange,
@@ -177,7 +176,6 @@ enum class MVKNonVolatileImplicitBuffer : uint32_t {
 
 enum class MVKImplicitBuffer : uint32_t {
 	PushConstant  = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::PushConstant),
-	Swizzle       = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::Swizzle),
 	BufferSize    = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::BufferSize),
 	DynamicOffset = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::DynamicOffset),
 	ViewRange     = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::ViewRange),

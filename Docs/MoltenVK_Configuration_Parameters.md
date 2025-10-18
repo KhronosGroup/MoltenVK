@@ -233,46 +233,6 @@ Forces **MoltenVK** to only advertise the low-power GPUs, if availble on the dev
 
 
 ---------------------------------------
-#### MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE
-
-##### Type: Boolean
-##### Default: `0`
-
-If _Metal_ supports native per-texture swizzling (_Mac2 or Apple GPU_),
-this parameter is ignored.
-
-When running on an older version of _Metal_ that does not support native per-texture swizzling,
-if this parameter is enabled, `VkImageView` swizzling is automatically performed in the converted
-_Metal_ shader code during all texture sampling and reading operations. This occurs regardless
-of whether a swizzle is required for the `VkImageView` associated with the _Metal_ texture,
-which may result in reduced performance.
-
-If disabled, and native _Metal_ per-texture swizzling is not available on the platform, the
-following very limited set of `VkImageView` component swizzles is supported via format substitutions:
-
-```
-Texture format			            Swizzle
---------------                  -------
-VK_FORMAT_R8_UNORM              ZERO, ANY, ANY, RED
-VK_FORMAT_A8_UNORM              ALPHA, ANY, ANY, ZERO
-VK_FORMAT_R8G8B8A8_UNORM        BLUE, GREEN, RED, ALPHA
-VK_FORMAT_R8G8B8A8_SRGB         BLUE, GREEN, RED, ALPHA
-VK_FORMAT_B8G8R8A8_UNORM        BLUE, GREEN, RED, ALPHA
-VK_FORMAT_B8G8R8A8_SRGB         BLUE, GREEN, RED, ALPHA
-VK_FORMAT_D32_SFLOAT_S8_UINT    RED, ANY, ANY, ANY (stencil only)
-VK_FORMAT_D24_UNORM_S8_UINT     RED, ANY, ANY, ANY (stencil only)
-```
-
-If native per-texture swizzling is not available, and this feature is not enabled,
-an error is logged and returned in the following situations:
-
-- `VkImageView` creation if that `VkImageView` requires full image view swizzling.
-- A pipeline that was not compiled with full image view swizzling uses a `VkImageView` that is expecting a swizzle.
-- `VkPhysicalDeviceImageFormatInfo2KHR` is passed in a call to `vkGetPhysicalDeviceImageFormatProperties2KHR()`
-  to query for an `VkImageView` format that will require full swizzling.
-
-
----------------------------------------
 #### MVK_CONFIG_LOG_LEVEL
 
 ##### Type: Enumeration

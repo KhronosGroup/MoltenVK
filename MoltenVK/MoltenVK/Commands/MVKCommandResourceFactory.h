@@ -44,13 +44,8 @@ typedef struct MVKRPSKeyBlitImg {
 	uint8_t srcFilter : 4;					/**< as MTLSamplerMinMagFilter */
 	uint8_t srcAspect = 0;					/**< as VkImageAspectFlags */
 	uint8_t dstSampleCount = 0;
-	uint8_t srcSwizzleR : 4;				/**< as VkComponentSwizzle */
-	uint8_t srcSwizzleG : 4;				/**< as VkComponentSwizzle */
-	uint8_t srcSwizzleB : 4;				/**< as VkComponentSwizzle */
-	uint8_t srcSwizzleA : 4;				/**< as VkComponentSwizzle */
 
-	MVKRPSKeyBlitImg() : srcMTLPixelFormat(0), dstMTLPixelFormat(0), srcMTLTextureType(0), srcFilter(0),
-		srcSwizzleR(0), srcSwizzleG(0), srcSwizzleB(0), srcSwizzleA(0) {}
+	MVKRPSKeyBlitImg() : srcMTLPixelFormat(0), dstMTLPixelFormat(0), srcMTLTextureType(0), srcFilter(0) {}
 
 	bool operator==(const MVKRPSKeyBlitImg& rhs) const {
 		if (srcMTLPixelFormat != rhs.srcMTLPixelFormat) { return false; }
@@ -59,10 +54,6 @@ typedef struct MVKRPSKeyBlitImg {
 		if (srcFilter != rhs.srcFilter) { return false; }
 		if (srcAspect != rhs.srcAspect) { return false; }
 		if (dstSampleCount != rhs.dstSampleCount) { return false; }
-		if (srcSwizzleR != rhs.srcSwizzleR) { return false; }
-		if (srcSwizzleG != rhs.srcSwizzleG) { return false; }
-		if (srcSwizzleB != rhs.srcSwizzleB) { return false; }
-		if (srcSwizzleA != rhs.srcSwizzleA) { return false; }
 		return true;
 	}
 
@@ -78,11 +69,6 @@ typedef struct MVKRPSKeyBlitImg {
 		return (srcMTLTextureType == MTLTextureType2DArray ||
 				srcMTLTextureType == MTLTextureType2DMultisampleArray ||
 				srcMTLTextureType == MTLTextureType1DArray);
-	}
-
-	VkComponentMapping getSrcSwizzle() {
-		return { (VkComponentSwizzle)srcSwizzleR, (VkComponentSwizzle)srcSwizzleG,
-			 (VkComponentSwizzle)srcSwizzleB, (VkComponentSwizzle)srcSwizzleA };
 	}
 
 	std::size_t hash() const {
@@ -102,18 +88,6 @@ typedef struct MVKRPSKeyBlitImg {
 
 		hash <<= 8;
 		hash |= dstSampleCount;
-
-		hash <<= 4;
-		hash |= srcSwizzleR;
-
-		hash <<= 4;
-		hash |= srcSwizzleG;
-
-		hash <<= 4;
-		hash |= srcSwizzleB;
-
-		hash <<= 4;
-		hash |= srcSwizzleA;
 		return hash;
 	}
 
