@@ -119,5 +119,9 @@ if(MOLTEN_VK_TOPLEVEL_PROJECT)
 	install(FILES ${CMAKE_BINARY_DIR}/MoltenVK.pc
 			DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig)
 
+    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Templates/cmake/MoltenVK_icd.json.in" MoltenVK_icd.json @ONLY)
+    install(FILES ${CMAKE_BINARY_DIR}/MoltenVK_icd.json
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/etc/vulkan/icd.d)
+
 	install(TARGETS MoltenVKShaderConverter)
 endif()
