@@ -65,6 +65,8 @@ project(MoltenVK
 set(MVK_CONFIG_LOG_LEVEL "info" CACHE STRING "Set the default log level for MoltenVK. Options are: debug, info, warn, error, off. Default is 'info'.")
 set_property(CACHE MVK_CONFIG_LOG_LEVEL PROPERTY STRINGS "debug" "info" "warn" "error" "off")
 
+option(MVK_USE_METAL_PRIVATE_API "If enabled, MoltenVK will use private interfaces exposed by Metal to implement Vulkan features that are difficult to support otherwise." OFF)
+
 # Set default minimum C++ standard
 if(MOLTEN_VK_TOPLEVEL_PROJECT)
 	set(CMAKE_CXX_STANDARD 17)

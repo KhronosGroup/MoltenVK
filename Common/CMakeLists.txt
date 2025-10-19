@@ -64,3 +64,12 @@ endif()
 target_compile_definitions(MoltenVK_Common PUBLIC
 	MVK_CONFIG_LOG_LEVEL=${MVK_CONFIG_LOG_LEVEL_NUM}
 )
+
+if(MVK_USE_METAL_PRIVATE_API)
+    set(MVK_USE_METAL_PRIVATE_API_NUM 1)
+else()
+    set(MVK_USE_METAL_PRIVATE_API_NUM 0)
+endif()
+target_compile_definitions(MoltenVK_Common PUBLIC
+    MVK_USE_METAL_PRIVATE_API=${MVK_USE_METAL_PRIVATE_API_NUM}
+)
