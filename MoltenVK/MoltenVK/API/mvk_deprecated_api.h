@@ -93,7 +93,7 @@ typedef struct {
 	VkBool32 stencilViews;                      	/**< If true, stencil aspect views are supported through the MTLPixelFormatX24_Stencil8 and MTLPixelFormatX32_Stencil8 formats. Deprecated. Will always be true on all platforms. */
 	VkBool32 multisampleArrayTextures;          	/**< If true, MTLTextureType2DMultisampleArray is supported. */
 	VkBool32 samplerClampToBorder;              	/**< If true, the border color set when creating a sampler will be respected. */
-	uint32_t maxTextureDimension; 	     	  		/**< The maximum size of each texture dimension (width, height, or depth). */
+	uint32_t maxTextureDimension; 	     	  		/**< The maximum size of each texture dimension (width or height). */
 	uint32_t maxPerStageBufferCount;            	/**< The total number of per-stage Metal buffers available for shader uniform content and attributes. */
     uint32_t maxPerStageTextureCount;           	/**< The total number of per-stage Metal textures available for shader uniform content. */
     uint32_t maxPerStageSamplerCount;           	/**< The total number of per-stage Metal samplers available for shader uniform content. */
