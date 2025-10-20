@@ -2547,6 +2547,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	}
 
 	if (supportsMTLGPUFamily(Apple10)) {
+		_metalFeatures.maxTextureDimension = (32 * KIBI);
 		_metalFeatures.samplerMipLodBias = true;
 		_metalFeatures.depthBoundsTest = true;
 	}
