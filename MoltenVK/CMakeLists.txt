@@ -53,8 +53,12 @@ set_target_properties(MoltenVK PROPERTIES SOVERSION ${PROJECT_VERSION_MAJOR})
 
 target_link_libraries(MoltenVK PUBLIC MoltenVK::ShaderConverter)
 
-include(cereal)
-target_link_libraries(MoltenVK PRIVATE cereal::cereal)
+if (NOT MVK_EXCLUDE_CEREAL)
+	include(cereal)
+	target_link_libraries(MoltenVK PRIVATE cereal::cereal)
+else()
+	target_compile_definitions(MoltenVK PUBLIC MVK_USE_CEREAL=0)
+endif()
 
 include(Vulkan-Headers)
 target_link_libraries(MoltenVK PUBLIC Vulkan::Headers)
