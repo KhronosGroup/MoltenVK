@@ -619,6 +619,13 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				presentWait2Features->presentWait2 = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FMA_FEATURES_KHR: {
+				auto* shaderFmaFeatures = (VkPhysicalDeviceShaderFmaFeaturesKHR*)next;
+				shaderFmaFeatures->shaderFmaFloat16 = true;
+				shaderFmaFeatures->shaderFmaFloat32 = true;
+				shaderFmaFeatures->shaderFmaFloat64 = false;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MAXIMAL_RECONVERGENCE_FEATURES_KHR: {
 				auto* shaderReconvergenceFeatures = (VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR*)next;
 				shaderReconvergenceFeatures->shaderMaximalReconvergence = _metalFeatures.maximalReconvergence;

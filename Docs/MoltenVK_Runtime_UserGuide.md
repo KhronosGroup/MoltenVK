@@ -297,6 +297,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_shader_float_controls`
 - `VK_KHR_shader_float_controls2`
 - `VK_KHR_shader_float16_int8`
+- `VK_KHR_shader_fma`
 - `VK_KHR_shader_integer_dot_product`
 - `VK_KHR_shader_maximal_reconvergence`
 - `VK_KHR_shader_non_semantic_info`
