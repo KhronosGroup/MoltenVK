@@ -31,6 +31,8 @@ Released TBD
 - Added working demo target for VisionOS in Cube Demo.
 - Raise minimum target to _macOS 11.0 / iOS 14.0 / tvOS 14.0_
 - Add support for `VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT`.
+- Add support for the following extensions:
+  - `VK_KHR_shader_fma`
 - Add support for new features and extensions when using `MVK_USE_METAL_PRIVATE_API`:
   - Disabling primitive restart
   - `VK_EXT_legacy_dithering`

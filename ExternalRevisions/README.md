@@ -141,7 +141,10 @@ if you encounter any building errors, you may need to re-add the *SPIRV-Tools* l
    - `fuzz`
    - `wasm`
 
-6. In the `Scripts` folder, run `./packagePregenSpirvToolsHeaders`, which will fetch and 
+6. Remove the following *Files* from under the *Group* named `External/SPIRV-Tools/source`:
+   - `mimalloc.cpp`
+
+7. In the `Scripts` folder, run `./packagePregenSpirvToolsHeaders`, which will fetch and 
    build the full `SPIRV-Tools` library and will update `Templates/spirv-tools/build.zip` 
    from the `*.h` and `*.inc` files in `External/SPIRV-Tools/build`. 
    Test by running `./fetchDependencies --all` and a **MoltenVK** build.

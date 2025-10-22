@@ -89,6 +89,7 @@ MVK_DEVICE_FEATURE_EXTN(PresentId2,                       PRESENT_ID_2,         
 MVK_DEVICE_FEATURE_EXTN(PresentWait,                      PRESENT_WAIT,                         KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(PresentWait2,                     PRESENT_WAIT_2,                       KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(Robustness2,                      ROBUSTNESS_2,                         KHR,   3)
+MVK_DEVICE_FEATURE_EXTN(ShaderFma,                        SHADER_FMA,                           KHR,   3)
 MVK_DEVICE_FEATURE_EXTN(ShaderMaximalReconvergence,       SHADER_MAXIMAL_RECONVERGENCE,         KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(ShaderQuadControl,                SHADER_QUAD_CONTROL,                  KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(ShaderRelaxedExtendedInstruction, SHADER_RELAXED_EXTENDED_INSTRUCTION,  KHR,   1)
