@@ -94,6 +94,7 @@ MVK_DEVICE_FEATURE_EXTN(ShaderMaximalReconvergence,       SHADER_MAXIMAL_RECONVE
 MVK_DEVICE_FEATURE_EXTN(ShaderQuadControl,                SHADER_QUAD_CONTROL,                  KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(ShaderRelaxedExtendedInstruction, SHADER_RELAXED_EXTENDED_INSTRUCTION,  KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(ShaderSubgroupUniformControlFlow, SHADER_SUBGROUP_UNIFORM_CONTROL_FLOW, KHR,   1)
+MVK_DEVICE_FEATURE_EXTN(SwapchainMaintenance1,            SWAPCHAIN_MAINTENANCE_1,              KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(4444Formats,                      4444_FORMATS,                         EXT,   2)
 MVK_DEVICE_FEATURE_EXTN(DepthClipControl,                 DEPTH_CLIP_CONTROL,                   EXT,   1)
 MVK_DEVICE_FEATURE_EXTN(ExtendedDynamicState,             EXTENDED_DYNAMIC_STATE,               EXT,   1)
@@ -106,7 +107,6 @@ MVK_DEVICE_FEATURE_EXTN(NonSeamlessCubeMap,               NON_SEAMLESS_CUBE_MAP,
 MVK_DEVICE_FEATURE_EXTN(PrimitiveTopologyListRestart,     PRIMITIVE_TOPOLOGY_LIST_RESTART,      EXT,   2)
 MVK_DEVICE_FEATURE_EXTN(ProvokingVertex,                  PROVOKING_VERTEX,                     EXT,   2)
 MVK_DEVICE_FEATURE_EXTN(ShaderAtomicFloat,                SHADER_ATOMIC_FLOAT,                  EXT,  12)
-MVK_DEVICE_FEATURE_EXTN(SwapchainMaintenance1,            SWAPCHAIN_MAINTENANCE_1,              EXT,   1)
 MVK_DEVICE_FEATURE_EXTN(TexelBufferAlignment,             TEXEL_BUFFER_ALIGNMENT,               EXT,   1)
 MVK_DEVICE_FEATURE_EXTN(ShaderIntegerFunctions2,          SHADER_INTEGER_FUNCTIONS_2,           INTEL, 1)
 

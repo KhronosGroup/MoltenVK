@@ -3621,12 +3621,13 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkAcquireNextImage2KHR(
 	return rslt;
 }
 
-#pragma mark -
-#pragma mark VK_EXT_swapchain_maintenance1 extension
 
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkReleaseSwapchainImagesEXT(
+#pragma mark -
+#pragma mark VK_KHR_swapchain_maintenance1 extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkReleaseSwapchainImagesKHR(
 	VkDevice                                    device,
-	const VkReleaseSwapchainImagesInfoEXT*      pReleaseInfo) {
+	const VkReleaseSwapchainImagesInfoKHR*      pReleaseInfo) {
 
 	MVKTraceVulkanCallStart();
 	MVKSwapchain* mvkSwapchain = (MVKSwapchain*)pReleaseInfo->swapchain;
@@ -3634,6 +3635,12 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkReleaseSwapchainImagesEXT(
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
+
+
+#pragma mark -
+#pragma mark VK_EXT_swapchain_maintenance1 extension
+
+MVK_PUBLIC_VULKAN_ALIAS(vkReleaseSwapchainImagesEXT, vkReleaseSwapchainImagesKHR);
 
 
 #pragma mark -

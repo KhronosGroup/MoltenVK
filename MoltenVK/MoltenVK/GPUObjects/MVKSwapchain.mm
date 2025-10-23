@@ -103,7 +103,7 @@ VkResult MVKSwapchain::acquireNextImage(uint64_t timeout,
 	return rslt ? rslt : getSurfaceStatus();
 }
 
-VkResult MVKSwapchain::releaseImages(const VkReleaseSwapchainImagesInfoEXT* pReleaseInfo) {
+VkResult MVKSwapchain::releaseImages(const VkReleaseSwapchainImagesInfoKHR* pReleaseInfo) {
 	for (uint32_t imgIdxIdx = 0; imgIdxIdx < pReleaseInfo->imageIndexCount; imgIdxIdx++) {
 		getPresentableImage(pReleaseInfo->pImageIndices[imgIdxIdx])->makeAvailable();
 	}
@@ -406,16 +406,16 @@ MVKSwapchain::MVKSwapchain(MVKDevice* device, const VkSwapchainCreateInfoKHR* pC
 	memset(_presentTimingHistory, 0, sizeof(_presentTimingHistory));
 
 	// Retrieve the scaling and present mode structs if they are supplied.
-	VkSwapchainPresentScalingCreateInfoEXT* pScalingInfo = nullptr;
-	VkSwapchainPresentModesCreateInfoEXT* pPresentModesInfo = nullptr;
+	VkSwapchainPresentScalingCreateInfoKHR* pScalingInfo = nullptr;
+	VkSwapchainPresentModesCreateInfoKHR* pPresentModesInfo = nullptr;
 	for (auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
-			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_EXT: {
-				pScalingInfo = (VkSwapchainPresentScalingCreateInfoEXT*)next;
+			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_KHR: {
+				pScalingInfo = (VkSwapchainPresentScalingCreateInfoKHR*)next;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_EXT: {
-				pPresentModesInfo = (VkSwapchainPresentModesCreateInfoEXT*)next;
+			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_KHR: {
+				pPresentModesInfo = (VkSwapchainPresentModesCreateInfoKHR*)next;
 				break;
 			}
 			default:
@@ -442,34 +442,34 @@ MVKSwapchain::MVKSwapchain(MVKDevice* device, const VkSwapchainCreateInfoKHR* pC
 }
 
 // kCAGravityResize is the Metal default
-static CALayerContentsGravity getCALayerContentsGravity(VkSwapchainPresentScalingCreateInfoEXT* pScalingInfo) {
+static CALayerContentsGravity getCALayerContentsGravity(VkSwapchainPresentScalingCreateInfoKHR* pScalingInfo) {
 
 	if( !pScalingInfo ) {                                         return kCAGravityResize; }
 
 	switch (pScalingInfo->scalingBehavior) {
-		case VK_PRESENT_SCALING_STRETCH_BIT_EXT:                  return kCAGravityResize;
-		case VK_PRESENT_SCALING_ASPECT_RATIO_STRETCH_BIT_EXT:     return kCAGravityResizeAspect;
-		case VK_PRESENT_SCALING_ONE_TO_ONE_BIT_EXT:
+		case VK_PRESENT_SCALING_STRETCH_BIT_KHR:                  return kCAGravityResize;
+		case VK_PRESENT_SCALING_ASPECT_RATIO_STRETCH_BIT_KHR:     return kCAGravityResizeAspect;
+		case VK_PRESENT_SCALING_ONE_TO_ONE_BIT_KHR:
 			switch (pScalingInfo->presentGravityY) {
-				case VK_PRESENT_GRAVITY_MIN_BIT_EXT:
+				case VK_PRESENT_GRAVITY_MIN_BIT_KHR:
 					switch (pScalingInfo->presentGravityX) {
-						case VK_PRESENT_GRAVITY_MIN_BIT_EXT:      return kCAGravityTopLeft;
-						case VK_PRESENT_GRAVITY_CENTERED_BIT_EXT: return kCAGravityTop;
-						case VK_PRESENT_GRAVITY_MAX_BIT_EXT:      return kCAGravityTopRight;
+						case VK_PRESENT_GRAVITY_MIN_BIT_KHR:      return kCAGravityTopLeft;
+						case VK_PRESENT_GRAVITY_CENTERED_BIT_KHR: return kCAGravityTop;
+						case VK_PRESENT_GRAVITY_MAX_BIT_KHR:      return kCAGravityTopRight;
 						default:                                  return kCAGravityTop;
 					}
-				case VK_PRESENT_GRAVITY_CENTERED_BIT_EXT:
+				case VK_PRESENT_GRAVITY_CENTERED_BIT_KHR:
 					switch (pScalingInfo->presentGravityX) {
-						case VK_PRESENT_GRAVITY_MIN_BIT_EXT:      return kCAGravityLeft;
-						case VK_PRESENT_GRAVITY_CENTERED_BIT_EXT: return kCAGravityCenter;
-						case VK_PRESENT_GRAVITY_MAX_BIT_EXT:      return kCAGravityRight;
+						case VK_PRESENT_GRAVITY_MIN_BIT_KHR:      return kCAGravityLeft;
+						case VK_PRESENT_GRAVITY_CENTERED_BIT_KHR: return kCAGravityCenter;
+						case VK_PRESENT_GRAVITY_MAX_BIT_KHR:      return kCAGravityRight;
 						default:                                  return kCAGravityCenter;
 					}
-				case VK_PRESENT_GRAVITY_MAX_BIT_EXT:
+				case VK_PRESENT_GRAVITY_MAX_BIT_KHR:
 					switch (pScalingInfo->presentGravityX) {
-						case VK_PRESENT_GRAVITY_MIN_BIT_EXT:      return kCAGravityBottomLeft;
-						case VK_PRESENT_GRAVITY_CENTERED_BIT_EXT: return kCAGravityBottom;
-						case VK_PRESENT_GRAVITY_MAX_BIT_EXT:      return kCAGravityBottomRight;
+						case VK_PRESENT_GRAVITY_MIN_BIT_KHR:      return kCAGravityBottomLeft;
+						case VK_PRESENT_GRAVITY_CENTERED_BIT_KHR: return kCAGravityBottom;
+						case VK_PRESENT_GRAVITY_MAX_BIT_KHR:      return kCAGravityBottomRight;
 						default:                                  return kCAGravityBottom;
 					}
 				default:                                          return kCAGravityCenter;
@@ -480,7 +480,7 @@ static CALayerContentsGravity getCALayerContentsGravity(VkSwapchainPresentScalin
 
 // Initializes the CAMetalLayer underlying the surface of this swapchain.
 void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
-									VkSwapchainPresentScalingCreateInfoEXT* pScalingInfo,
+									VkSwapchainPresentScalingCreateInfoKHR* pScalingInfo,
 									uint32_t imgCnt) {
 
 	auto* mtlLayer = getCAMetalLayer();
@@ -617,7 +617,7 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 		mvkEnableFlags(imgInfo.flags, VK_IMAGE_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT);
 	}
 
-	// The VK_SWAPCHAIN_CREATE_DEFERRED_MEMORY_ALLOCATION_BIT_EXT flag is ignored, because
+	// The VK_SWAPCHAIN_CREATE_DEFERRED_MEMORY_ALLOCATION_BIT_KHR flag is ignored, because
 	// swapchain image memory allocation is provided by a MTLDrawable, which is retrieved
 	// lazily, and hence is already deferred (or as deferred as we can make it).
 

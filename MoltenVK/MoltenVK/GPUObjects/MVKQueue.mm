@@ -771,8 +771,8 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 	: MVKQueueSubmission(queue, pPresentInfo->waitSemaphoreCount, pPresentInfo->pWaitSemaphores, nullptr) {
 
 	const VkPresentTimesInfoGOOGLE* pPresentTimesInfo = nullptr;
-	const VkSwapchainPresentFenceInfoEXT* pPresentFenceInfo = nullptr;
-	const VkSwapchainPresentModeInfoEXT* pPresentModeInfo = nullptr;
+	const VkSwapchainPresentFenceInfoKHR* pPresentFenceInfo = nullptr;
+	const VkSwapchainPresentModeInfoKHR* pPresentModeInfo = nullptr;
 	const VkPresentRegionsKHR* pPresentRegions = nullptr;
 	const VkPresentIdKHR* pPresentId = nullptr;
 	const VkPresentId2KHR* pPresentId2 = nullptr;
@@ -787,11 +787,11 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 			case VK_STRUCTURE_TYPE_PRESENT_ID_2_KHR:
 				pPresentId2 = (const VkPresentId2KHR*) next;
 				break;
-			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT:
-				pPresentFenceInfo = (const VkSwapchainPresentFenceInfoEXT*) next;
+			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR:
+				pPresentFenceInfo = (const VkSwapchainPresentFenceInfoKHR*) next;
 				break;
-			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_EXT:
-				pPresentModeInfo = (const VkSwapchainPresentModeInfoEXT*) next;
+			case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_KHR:
+				pPresentModeInfo = (const VkSwapchainPresentModeInfoKHR*) next;
 				break;
 			case VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE:
 				pPresentTimesInfo = (const VkPresentTimesInfoGOOGLE*) next;
@@ -811,12 +811,12 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 	const VkPresentModeKHR* pPresentModes = nullptr;
 	if (pPresentModeInfo) {
 		pPresentModes = pPresentModeInfo->pPresentModes;
-		MVKAssert(pPresentModeInfo->swapchainCount == scCnt, "VkSwapchainPresentModeInfoEXT swapchainCount must match VkPresentInfo swapchainCount.");
+		MVKAssert(pPresentModeInfo->swapchainCount == scCnt, "VkSwapchainPresentModeInfoKHR swapchainCount must match VkPresentInfo swapchainCount.");
 	}
 	const VkFence* pFences = nullptr;
 	if (pPresentFenceInfo) {
 		pFences = pPresentFenceInfo->pFences;
-		MVKAssert(pPresentFenceInfo->swapchainCount == scCnt, "VkSwapchainPresentFenceInfoEXT swapchainCount must match VkPresentInfo swapchainCount.");
+		MVKAssert(pPresentFenceInfo->swapchainCount == scCnt, "VkSwapchainPresentFenceInfoKHR swapchainCount must match VkPresentInfo swapchainCount.");
 	}
 	const VkPresentRegionKHR* pRegions = nullptr;
 	if (pPresentRegions) {
