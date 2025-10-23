@@ -1959,13 +1959,12 @@ MVKImageViewPlane::MVKImageViewPlane(MVKImageView* imageView,
     // and set the _useMTLTextureView variable appropriately.
     if ( _imageView->_image ) {
         _useMTLTextureView = true;
-        bool is3D = _imageView->_image->_mtlTextureType == MTLTextureType3D;
         // If the view is identical to underlying image, don't bother using a Metal view
         if (_mtlPixFmt == _imageView->_image->getMTLPixelFormat(planeIndex) &&
-            (_imageView->_mtlTextureType == _imageView->_image->_mtlTextureType ||
-             ((_imageView->_mtlTextureType == MTLTextureType2D || _imageView->_mtlTextureType == MTLTextureType2DArray) && is3D)) &&
+            _imageView->_mtlTextureType == _imageView->_image->_mtlTextureType &&
             _imageView->_subresourceRange.levelCount == _imageView->_image->_mipLevels &&
-            (is3D || _imageView->_subresourceRange.layerCount == _imageView->_image->_arrayLayers) &&
+            (_imageView->_mtlTextureType == MTLTextureType3D ||
+             _imageView->_subresourceRange.layerCount == _imageView->_image->_arrayLayers) &&
             !_useSwizzle) {
             _useMTLTextureView = false;
         }
