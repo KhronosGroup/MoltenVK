@@ -619,6 +619,13 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				presentWait2Features->presentWait2 = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR: {
+				auto* robustness2Features = (VkPhysicalDeviceRobustness2FeaturesKHR*)next;
+				robustness2Features->robustBufferAccess2 = false;
+				robustness2Features->robustImageAccess2 = _gpuCapabilities.isAppleGPU;
+				robustness2Features->nullDescriptor = false;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FMA_FEATURES_KHR: {
 				auto* shaderFmaFeatures = (VkPhysicalDeviceShaderFmaFeaturesKHR*)next;
 				shaderFmaFeatures->shaderFmaFloat16 = true;
@@ -644,6 +651,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_UNIFORM_CONTROL_FLOW_FEATURES_KHR: {
 				auto* shaderSGUniformFeatures = (VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR*)next;
 				shaderSGUniformFeatures->shaderSubgroupUniformControlFlow = _metalFeatures.subgroupUniformControlFlow;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR: {
+				auto* swapchainMaintenance1Features = (VkPhysicalDeviceSwapchainMaintenance1FeaturesKHR*)next;
+				swapchainMaintenance1Features->swapchainMaintenance1 = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
@@ -740,13 +752,6 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				provokingVertexFeatures->transformFeedbackPreservesProvokingVertex = false;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR: {
-				auto* robustness2Features = (VkPhysicalDeviceRobustness2FeaturesKHR*)next;
-				robustness2Features->robustBufferAccess2 = false;
-				robustness2Features->robustImageAccess2 = _gpuCapabilities.isAppleGPU;
-				robustness2Features->nullDescriptor = false;
-				break;
-			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT: {
 				auto* atomicFloatFeatures = (VkPhysicalDeviceShaderAtomicFloatFeaturesEXT*)next;
 				bool atomicFloatEnabled = _metalFeatures.mslVersion >= 030000;
@@ -762,11 +767,6 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				atomicFloatFeatures->shaderImageFloat32AtomicAdd = false;
 				atomicFloatFeatures->sparseImageFloat32Atomics = false;
 				atomicFloatFeatures->sparseImageFloat32AtomicAdd = false;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT: {
-				auto* swapchainMaintenance1Features = (VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT*)next;
-				swapchainMaintenance1Features->swapchainMaintenance1 = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
@@ -1902,8 +1902,8 @@ VkResult MVKPhysicalDevice::getSurfaceCapabilities(	const VkPhysicalDeviceSurfac
 	VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAX_ENUM_KHR;
 	for (auto* next = (const VkBaseInStructure*)pSurfaceInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
-			case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT: {
-				presentMode = ((VkSurfacePresentModeEXT*)next)->presentMode;
+			case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_KHR: {
+				presentMode = ((VkSurfacePresentModeKHR*)next)->presentMode;
 				break;
 			}
 			default:
@@ -1912,16 +1912,16 @@ VkResult MVKPhysicalDevice::getSurfaceCapabilities(	const VkPhysicalDeviceSurfac
 	}
 
 	// Retrieve the scaling and present mode compatibility structs if they are supplied in this query.
-	VkSurfacePresentScalingCapabilitiesEXT* pScalingCaps = nullptr;
-	VkSurfacePresentModeCompatibilityEXT* pCompatibility = nullptr;
+	VkSurfacePresentScalingCapabilitiesKHR* pScalingCaps = nullptr;
+	VkSurfacePresentModeCompatibilityKHR* pCompatibility = nullptr;
 	for (auto* next = (VkBaseOutStructure*)pSurfaceCapabilities->pNext; next; next = next->pNext) {
 		switch (next->sType) {
-			case VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_EXT: {
-				pScalingCaps = (VkSurfacePresentScalingCapabilitiesEXT*)next;
+			case VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_KHR: {
+				pScalingCaps = (VkSurfacePresentScalingCapabilitiesKHR*)next;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_EXT: {
-				pCompatibility = (VkSurfacePresentModeCompatibilityEXT*)next;
+			case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_KHR: {
+				pCompatibility = (VkSurfacePresentModeCompatibilityKHR*)next;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_SURFACE_PROTECTED_CAPABILITIES_KHR: {
@@ -1966,15 +1966,15 @@ VkResult MVKPhysicalDevice::getSurfaceCapabilities(	const VkPhysicalDeviceSurfac
 
 	// Swapchain-to-surface scaling capabilities.
 	if (pScalingCaps) {
-		pScalingCaps->supportedPresentScaling = (VK_PRESENT_SCALING_ONE_TO_ONE_BIT_EXT |
-												 VK_PRESENT_SCALING_ASPECT_RATIO_STRETCH_BIT_EXT |
-												 VK_PRESENT_SCALING_STRETCH_BIT_EXT);
-		pScalingCaps->supportedPresentGravityX = (VK_PRESENT_GRAVITY_MIN_BIT_EXT |
-												  VK_PRESENT_GRAVITY_MAX_BIT_EXT |
-												  VK_PRESENT_GRAVITY_CENTERED_BIT_EXT);
-		pScalingCaps->supportedPresentGravityY = (VK_PRESENT_GRAVITY_MIN_BIT_EXT |
-												  VK_PRESENT_GRAVITY_MAX_BIT_EXT |
-												  VK_PRESENT_GRAVITY_CENTERED_BIT_EXT);
+		pScalingCaps->supportedPresentScaling = (VK_PRESENT_SCALING_ONE_TO_ONE_BIT_KHR |
+												 VK_PRESENT_SCALING_ASPECT_RATIO_STRETCH_BIT_KHR |
+												 VK_PRESENT_SCALING_STRETCH_BIT_KHR);
+		pScalingCaps->supportedPresentGravityX = (VK_PRESENT_GRAVITY_MIN_BIT_KHR |
+												  VK_PRESENT_GRAVITY_MAX_BIT_KHR |
+												  VK_PRESENT_GRAVITY_CENTERED_BIT_KHR);
+		pScalingCaps->supportedPresentGravityY = (VK_PRESENT_GRAVITY_MIN_BIT_KHR |
+												  VK_PRESENT_GRAVITY_MAX_BIT_KHR |
+												  VK_PRESENT_GRAVITY_CENTERED_BIT_KHR);
 		pScalingCaps->minScaledImageExtent = surfCaps.minImageExtent;
 		pScalingCaps->maxScaledImageExtent = surfCaps.maxImageExtent;
 	}

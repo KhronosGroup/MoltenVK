@@ -80,7 +80,7 @@ public:
 							  uint32_t* pImageIndex);
 
 	/** Releases swapchain images. */
-	VkResult releaseImages(const VkReleaseSwapchainImagesInfoEXT* pReleaseInfo);
+	VkResult releaseImages(const VkReleaseSwapchainImagesInfoKHR* pReleaseInfo);
 
 	/** Returns the status of the surface. Surface loss takes precedence over sub-optimal errors. */
 	VkResult getSurfaceStatus();
@@ -113,7 +113,7 @@ protected:
 
 	void propagateDebugName() override;
 	void initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
-						  VkSwapchainPresentScalingCreateInfoEXT* pScalingInfo,
+						  VkSwapchainPresentScalingCreateInfoKHR* pScalingInfo,
 						  uint32_t imgCnt);
 	void initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
 	bool getIsSurfaceLost();

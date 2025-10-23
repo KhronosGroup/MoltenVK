@@ -33,6 +33,8 @@ Released TBD
 - Add support for `VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT`.
 - Add support for the following extensions:
   - `VK_KHR_shader_fma`
+  - `VK_KHR_surface_maintenance1`
+  - `VK_KHR_swapchain_maintenance1`
 - Add support for new features and extensions when using `MVK_USE_METAL_PRIVATE_API`:
   - Disabling primitive restart
   - `VK_EXT_legacy_dithering`
