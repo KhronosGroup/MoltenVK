@@ -580,6 +580,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				maintenance8Features->maintenance8 = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_9_FEATURES_KHR: {
+				auto* maintenance9Features = (VkPhysicalDeviceMaintenance9FeaturesKHR*)next;
+				maintenance9Features->maintenance9 = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR: {
 				auto* portabilityFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesKHR*)next;
 				portabilityFeatures->constantAlphaColorBlendFactors = true;
@@ -1205,6 +1210,12 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 maintenance7Properties->maxDescriptorSetUpdateAfterBindTotalStorageBuffersDynamic = supportedProps12.maxDescriptorSetUpdateAfterBindStorageBuffersDynamic;
                 maintenance7Properties->maxDescriptorSetUpdateAfterBindTotalBuffersDynamic =
                         supportedProps12.maxDescriptorSetUpdateAfterBindUniformBuffersDynamic + supportedProps12.maxDescriptorSetUpdateAfterBindStorageBuffersDynamic;
+                break;
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_9_PROPERTIES_KHR: {
+                auto* maintenance9Properties = (VkPhysicalDeviceMaintenance9PropertiesKHR*)next;
+                maintenance9Properties->image2DViewOf3DSparse = false;
+                maintenance9Properties->defaultVertexAttributeValue = VK_DEFAULT_VERTEX_ATTRIBUTE_VALUE_ZERO_ZERO_ZERO_ZERO_KHR;
                 break;
             }
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_PROPERTIES: {

@@ -83,6 +83,7 @@ MVK_DEVICE_FEATURE(ZeroInitializeWorkgroupMemory,         ZERO_INITIALIZE_WORKGR
 MVK_DEVICE_FEATURE_EXTN(FragmentShaderBarycentric,        FRAGMENT_SHADER_BARYCENTRIC,          KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(Maintenance7,                     MAINTENANCE_7,                        KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(Maintenance8,                     MAINTENANCE_8,                        KHR,   1)
+MVK_DEVICE_FEATURE_EXTN(Maintenance9,                     MAINTENANCE_9,                        KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(PortabilitySubset,                PORTABILITY_SUBSET,                   KHR,  15)
 MVK_DEVICE_FEATURE_EXTN(PresentId,                        PRESENT_ID,                           KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(PresentId2,                       PRESENT_ID_2,                         KHR,   1)
