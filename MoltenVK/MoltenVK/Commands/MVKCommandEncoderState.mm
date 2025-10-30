@@ -187,6 +187,7 @@ const MVKVertexBufferBinder& MVKVertexBufferBinder::Get(Stage stage) {
 template <typename Binder, typename Encoder>
 static void bindBuffer(Encoder encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index,
                        MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const Binder& binder) {
+	assert(index < kMVKMaxBufferCount);
 	if (buffer) {
 		if (!exists.buffers.get(index) || bindings.buffers[index].buffer != buffer) {
 			exists.buffers.set(index);
@@ -205,6 +206,7 @@ static void bindBuffer(Encoder encoder, id<MTLBuffer> buffer, VkDeviceSize offse
 template <typename Binder, typename Encoder>
 static void bindBytes(Encoder encoder, const void* data, size_t size, NSUInteger index,
                       MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const Binder& binder) {
+	assert(index < kMVKMaxBufferCount);
 	exists.buffers.set(index);
 	bindings.buffers[index] = MVKStageResourceBindings::InvalidBuffer();
 	binder.setBytes(encoder, data, size, index);
@@ -213,6 +215,7 @@ static void bindBytes(Encoder encoder, const void* data, size_t size, NSUInteger
 template <bool DynamicStride>
 static void bindVertexBuffer(id<MTLCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, uint32_t stride, NSUInteger index,
                              MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const MVKVertexBufferBinder& binder) {
+	assert(index < kMVKMaxBufferCount);
 	VkDeviceSize offsetLookup = offset;
 	if constexpr (DynamicStride)
 		offsetLookup ^= static_cast<VkDeviceSize>(stride ^ (1u << 31)) << 32;
@@ -235,6 +238,7 @@ static void bindVertexBuffer(id<MTLCommandEncoder> encoder, id<MTLBuffer> buffer
 template <typename Binder, typename Encoder>
 static void bindTexture(Encoder encoder, id<MTLTexture> texture, NSUInteger index,
                         MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const Binder& binder) {
+	assert(index < kMVKMaxTextureCount);
 	if (!exists.textures.get(index) || bindings.textures[index] != texture) {
 		exists.textures.set(index);
 		binder.setTexture(encoder, texture, index);
@@ -245,6 +249,7 @@ static void bindTexture(Encoder encoder, id<MTLTexture> texture, NSUInteger inde
 template <typename Binder, typename Encoder>
 static void bindSampler(Encoder encoder, id<MTLSamplerState> sampler, NSUInteger index,
                         MVKStageResourceBits& exists, MVKStageResourceBindings& bindings, const Binder& binder) {
+	assert(index < kMVKMaxSamplerCount);
 	if (!exists.samplers.get(index) || bindings.samplers[index] != sampler) {
 		exists.samplers.set(index);
 		binder.setSampler(encoder, sampler, index);
