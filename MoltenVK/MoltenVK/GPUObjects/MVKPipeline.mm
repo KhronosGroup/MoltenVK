@@ -250,6 +250,19 @@ static bool isWriteable(VkDescriptorType type) {
 	}
 }
 
+bool MVKPipelineLayout::boundsCheckBindOp(uint32_t bind, uint32_t count, uint32_t limit, const char *type) {
+	if (bind + count > limit) {
+		char desc[32];
+		if (count > 1)
+			snprintf(desc, sizeof(desc), "%d-%d", bind, bind + count - 1);
+		else
+			snprintf(desc, sizeof(desc), "%d", bind);
+		MVKLogError("Pipeline wants to bind %s %s which goes above the limit %d, skipping...", type, desc, limit);
+		return false;
+	}
+	return true;
+}
+
 void MVKPipelineLayout::populateBindOperations(MVKPipelineBindScript& script, const SPIRVToMSLConversionConfiguration& shaderConfig, spv::ExecutionModel execModel) {
 	assert(script.ops.empty());
 
@@ -271,7 +284,8 @@ void MVKPipelineLayout::populateBindOperations(MVKPipelineBindScript& script, co
 
 		if (layout->argBufMode() == MVKArgumentBufferMode::Off) {
 			if (desc.cpuLayout == MVKDescriptorCPULayout::InlineData) {
-				script.ops.push_back({ MVKDescriptorBindOperationCode::BindBytes, set, mslBinding.resourceBinding.msl_buffer, descIdx });
+				if (boundsCheckBindOp(mslBinding.resourceBinding.msl_buffer, 1, kMVKMaxBufferCount, "buffer"))
+					script.ops.push_back({ MVKDescriptorBindOperationCode::BindBytes, set, mslBinding.resourceBinding.msl_buffer, descIdx });
 			} else {
 				MVKDescriptorBindOperationCode bindTex  = partiallyBound ? MVKDescriptorBindOperationCode::BindTextureWithLiveCheck : MVKDescriptorBindOperationCode::BindTexture;
 				MVKDescriptorBindOperationCode bindBuf  = partiallyBound ? MVKDescriptorBindOperationCode::BindBufferWithLiveCheck  : MVKDescriptorBindOperationCode::BindBuffer ;
@@ -279,7 +293,9 @@ void MVKPipelineLayout::populateBindOperations(MVKPipelineBindScript& script, co
 				MVKDescriptorBindOperationCode bindBufDyn = partiallyBound ? MVKDescriptorBindOperationCode::BindBufferDynamicWithLiveCheck : MVKDescriptorBindOperationCode::BindBufferDynamic;
 				uint32_t nbind = desc.descriptorCount;
 				for (uint32_t i = 0; i < counts.texture; i++) {
-					script.ops.push_back({ bindTex, set, mslBinding.resourceBinding.msl_texture + i * nbind, descIdx, sizeof(id) * i });
+					uint32_t base = mslBinding.resourceBinding.msl_texture + i * nbind;
+					if (boundsCheckBindOp(base, nbind, kMVKMaxTextureCount, "texture"))
+						script.ops.push_back({ bindTex, set, base, descIdx, sizeof(id) * i });
 				}
 
 				if (hasDynamicBuffer(desc.descriptorType)) {
@@ -292,14 +308,17 @@ void MVKPipelineLayout::populateBindOperations(MVKPipelineBindScript& script, co
 					} else {
 						dynOffset = it->index;
 					}
-					script.ops.push_back({ bindBufDyn, set, mslBinding.resourceBinding.msl_buffer, descIdx, nonTexOffset, dynOffset });
+					if (boundsCheckBindOp(mslBinding.resourceBinding.msl_buffer, nbind, kMVKMaxBufferCount, "buffer"))
+						script.ops.push_back({ bindBufDyn, set, mslBinding.resourceBinding.msl_buffer, descIdx, nonTexOffset, dynOffset });
 				} else if (counts.buffer > 0) {
-					script.ops.push_back({ bindBuf, set, mslBinding.resourceBinding.msl_buffer, descIdx, nonTexOffset });
+					if (boundsCheckBindOp(mslBinding.resourceBinding.msl_buffer, nbind, kMVKMaxBufferCount, "buffer"))
+						script.ops.push_back({ bindBuf, set, mslBinding.resourceBinding.msl_buffer, descIdx, nonTexOffset });
 				}
 				if (counts.sampler > 0) {
 					if (desc.hasImmutableSamplers())
 						bindSamp = MVKDescriptorBindOperationCode::BindImmutableSampler;
-					script.ops.push_back({ bindSamp, set, mslBinding.resourceBinding.msl_sampler, descIdx, nonTexOffset });
+					if (boundsCheckBindOp(mslBinding.resourceBinding.msl_sampler, nbind, kMVKMaxSamplerCount, "sampler"))
+						script.ops.push_back({ bindSamp, set, mslBinding.resourceBinding.msl_sampler, descIdx, nonTexOffset });
 				}
 			}
 		} else if (!_device->hasResidencySet()) {

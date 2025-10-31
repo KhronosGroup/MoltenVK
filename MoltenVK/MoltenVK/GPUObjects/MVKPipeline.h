@@ -123,6 +123,7 @@ public:
 	~MVKPipelineLayout();
 
 private:
+	bool boundsCheckBindOp(uint32_t bind, uint32_t count, uint32_t limit, const char *type);
 	MVKInlineArray<MVKDescriptorSetLayout*> _descriptorSetLayouts;
 	MVKInlineArray<MVKShaderResourceBinding> _resourceIndexOffsets;
 	uint32_t _pushConstantsLength = 0;
