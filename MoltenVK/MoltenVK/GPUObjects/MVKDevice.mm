@@ -2423,7 +2423,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
     _metalFeatures.maxPerStageSamplerCount = 16;
     _metalFeatures.maxQueryBufferSize = (64 * KIBI);
 
-	_metalFeatures.vertexStrideAlignment = 1;
+	_metalFeatures.vertexStrideAlignment = 4;
 	_metalFeatures.pushConstantSizeAlignment = 16;     // Min float4 alignment for typical uniform structs.
 
 	_metalFeatures.maxTextureLayers = (2 * KIBI);
