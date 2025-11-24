@@ -16,21 +16,8 @@ Copyright (c) 2015-2025 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.4.1
 --------------
 
-Released TBD
+Released 2025-11-24
 
-- Improved occlusion query support:
-  - Add support for occlusion queries across multiple renderpasses.
-  - Improve performance by accumulating occlusion quieries in parallel, 
-    and using untracked buffers to avoid encoder serialization.
-- New descriptor state tracker implementation to improve performance.
-- New descriptor set/pool implementation:
-  - The new implementation is less forgiving of applications that don't properly manage the lifetime 
-    of their descriptors (and bind them after the objects they point to have been destroyed).
-	Use `MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES=1` to revert any crashes this might cause, 
-	or mark potentially-destroyed descriptors with `VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT`.
-- Added working demo target for VisionOS in Cube Demo.
-- Raise minimum target to _macOS 11.0 / iOS 14.0 / tvOS 14.0_
-- Add support for `VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT`.
 - Add support for the following extensions:
   - `VK_KHR_maintenance9`
   - `VK_KHR_shader_fma`
@@ -42,21 +29,60 @@ Released TBD
   - `VK_EXT_non_seamless_cube_map`
   - `VK_EXT_primitive_topology_list_restart`
   - `VK_EXT_provoking_vertex`
+- Improved occlusion query support:
+  - Add support for occlusion queries across multiple renderpasses.
+  - Improve performance by accumulating occlusion quieries in parallel, 
+    and using untracked buffers to avoid encoder serialization.
+- New descriptor state tracker implementation to improve performance.
+- New descriptor set/pool implementation:
+  - The new implementation is less forgiving of applications that don't properly manage the lifetime 
+    of their descriptors (and bind them after the objects they point to have been destroyed).
+	Use `MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES=1` to revert any crashes this might cause, 
+	or mark potentially-destroyed descriptors with `VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT`.
+- Add CMake build support.
+- Added working demo target for VisionOS in Cube Demo.
+- Raise minimum target to _macOS 11.0 / iOS 14.0 / tvOS 14.0_
+- Add support for `VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT`.
 - Reject image usages whose format features are not supported.
 - Return `VK_ERROR_OUT_OF_POOL_MEMORY` when running out of descriptor sets.
 - Make vkGetPhysicalDeviceToolProperties() an instance function.
 - Enable sample LOD bias for Xcode 26.
+- Update robustness support levels for different GPU types.
+- Update max texture dimensions for Apple10 GPU.
+- Allow host-coherent optimal tiling images on macOS with Apple GPU.
+- Add Metal4 and Apple10 GPU family logs.
+- Fix depth bounds test and logic op implementations.
 - Fix VkExternalMemory*CreateInfo not allowing host memory handle types.
 - Fix improper boundary error when requesting exactly the number of variable descriptors allocated.
 - Fix regression on functions used by multiple extensions.
 - Fix improper use of dynamic depth/stencil attachment.
 - Fix out-of-bound access when using multiview with multiple subpasses.
+- Fix vertexStrideAlignment value without Apple5.
+- Fix tvOS ASTC HDR formats.
+- Add base GPU family for `samplerMipLodBias` support.
 - Deprecate configuration parameter `MVKConfiguration::supportLargeQueryPools` and corresponding environment variable 
   `MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS`, as obsolete and ignored. Large query pools are now supported always.
 - Disable Mac Catalyst builds from `all` and `all-debug` in `Makefile`, due to unresolved issues with Mac Catalyst builds. 
+- Add CI job for building for macOS with private API.
 - Update to latest SPIRV-Cross:
-
-
+  - MSL: Support image cube atomics on MSL 4.0+.
+  - MSL: Fix array copy to array inside stage IO Blocks.
+  - MSL: Fix boolean spec const as_type<> invalid output.
+  - MSL: Don't emit const device for readonly SSBO.
+  - MSL: Add some extra reserved function names.
+  - MSL: Support 64-bit subgroup shuffles.
+  - MSL: Get rid of obsolete buffer_aliases_argument vector.
+  - MSL: Ensure dynamic buffer offsets get a unique name.
+  - MSL: Fix missing use of add_local_variable_name for dynamic offset resources.
+  - MSL: Rethink how discrete variable count descriptor arrays are emitted.
+  - MSL: Throw on attempting to alias unrolled discrete descriptors.
+  - MSL: Fix mesh shader with no vertex outputs.
+  - MSL: Fix writing default gl_PointSize in tessellation shaders.
+  - MSL: Rethink "const device" handling.
+  - MSL: Narrow down which analysis passes need deep ID mapping.
+  - MSL: Support OpFmaKHR.
+  
+  
 
 MoltenVK 1.4.0
 --------------

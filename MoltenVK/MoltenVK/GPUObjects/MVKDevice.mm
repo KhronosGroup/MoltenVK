@@ -820,7 +820,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 
 	// Create a SSOT for these Vulkan 1.2 properties, which can be queried via two mechanisms here.
 	bool isTier2 = isTier2MetalArgumentBuffers();
-	static constexpr VkConformanceVersion testedCTSVer = { 1, 4, 2, 0 };	// Latest version of CTS used to test
+	static constexpr VkConformanceVersion testedCTSVer = { 1, 4, 4, 0 };	// Latest version of CTS used to test
 	VkPhysicalDeviceVulkan12Properties supportedProps12;
 	supportedProps12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
 	supportedProps12.pNext = nullptr;
