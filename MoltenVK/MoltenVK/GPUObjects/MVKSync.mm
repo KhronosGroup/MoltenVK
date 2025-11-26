@@ -131,6 +131,48 @@ void MVKSemaphoreMTLEvent::encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff,
 	[mtlCmdBuff encodeSignalEvent: _mtlEvent value: deferToken];
 }
 
+VkResult MVKSemaphoreMTLEvent::importFd(VkSemaphoreImportFlags flags, VkExternalSemaphoreHandleTypeFlagBits handleType, int fd) {
+	if (handleType != VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT || fd != -1) {
+		return reportError(VK_ERROR_INVALID_EXTERNAL_HANDLE, "importFd(): Only VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT with fd == -1 is supported.");
+	}
+	/**
+	* If handleType is `VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT`, the special
+	* value -1 for fd is treated like a valid sync file descriptor referring to an object that has already
+	* signaled. The import operation will succeed and the VkFence will have a temporarily
+	* imported payload as if a valid file descriptor had been provided.
+	*/
+	/**
+	* If handleType is `VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT`, the special
+	* value -1 for fd is treated like a valid sync file descriptor referring to an object that has already
+	* signaled. The import operation will succeed and the VkSemaphore will have a temporarily
+	* imported payload as if a valid file descriptor had been provided.
+	*/
+	uint64_t value = _mtlEventValue.load();
+	[(id<MTLSharedEvent>)_mtlEvent setSignaledValue:value];
+	return VK_SUCCESS;
+}
+
+VkResult MVKSemaphoreMTLEvent::exportFd(VkExternalSemaphoreHandleTypeFlagBits handleType, int *pFd) {
+	if (handleType != VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT) {
+		return reportError(VK_ERROR_INVALID_EXTERNAL_HANDLE, "exportFd(): Only VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT is supported.");
+	}
+	/**
+	* `VUID-VkSemaphoreGetFdInfoKHR-handleType-03254`
+	* If handleType refers to a handle type with copy payload transference semantics, semaphore
+	* must have an associated semaphore signal operation that has been submitted for execution
+	* and any semaphore signal operations on which it depends must have also been submitted
+	* for execution
+	*/
+	/**
+	* ... exporting a semaphore payload to a handle with copy transference has the same side
+	* effects on the source semaphore’s payload as executing a semaphore wait operation.
+	*/
+	uint64_t value = _mtlEventValue.load();
+	[(id<MTLSharedEvent>)_mtlEvent waitUntilSignaledValue:value timeoutMS:kMVKUndefinedLargeUInt64];
+	*pFd = -1;
+	return VK_SUCCESS;
+}
+
 MVKSemaphoreMTLEvent::MVKSemaphoreMTLEvent(MVKDevice* device,
 										   const VkSemaphoreCreateInfo* pCreateInfo,
 										   const VkExportMetalObjectCreateInfoEXT* pExportInfo,
@@ -144,7 +186,11 @@ MVKSemaphoreMTLEvent::MVKSemaphoreMTLEvent(MVKDevice* device,
 		_mtlEvent = [getMTLDevice() newSharedEvent];	//retained
 		_mtlEventValue = ((id<MTLSharedEvent>)_mtlEvent).signaledValue + 1;
 	} else {
-		_mtlEvent = [getMTLDevice() newEvent];			//retained
+		// We might use importFd()/exportFd() so we need a MTLSharedEvent
+		// At creation, we might know about potential exports when
+		// `VkExportSemaphoreCreateInfo` is present but we have no idea
+		// if imports might happen.
+		_mtlEvent = [getMTLDevice() newSharedEvent];			//retained
 		_mtlEventValue = 1;
 	}
 }
