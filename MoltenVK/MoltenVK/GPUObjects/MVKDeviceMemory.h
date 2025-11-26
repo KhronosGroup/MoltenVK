@@ -160,7 +160,7 @@ protected:
 	bool ensureHostMemory();
 	void freeHostMemory();
 	MVKResource* getDedicatedResource();
-	void initExternalMemory(MVKImage* dedicatedImage);
+	void initExternalMemory(MVKImage* dedicatedImage, bool wantsHeap);
 
 	MVKSmallVector<MVKBuffer*, 4> _buffers;
 	MVKSmallVector<MVKImageMemoryBinding*, 4> _imageMemoryBindings;

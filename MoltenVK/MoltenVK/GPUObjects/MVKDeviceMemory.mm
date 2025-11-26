@@ -196,6 +196,9 @@ bool MVKDeviceMemory::ensureMTLHeap() {
 	// Can't create a MTLHeap on imported memory
 	if (_isHostMemImported) { return true; }
 
+	// Can't create a MTLHeap if we already have a _mtlBuffer
+	if (_mtlBuffer) { return true; }
+
 	// Don't bother if we don't have placement heaps.
 	if (!getMetalFeatures().placementHeaps) { return true; }
 
@@ -311,6 +314,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 	_allocationSize = pAllocateInfo->allocationSize;
 
 	bool willExportMTLBuffer = false;
+	bool wantsHeap = true;
 	MVKImage* dedicatedImage = nullptr;
 	VkBuffer dedicatedBuffer = VK_NULL_HANDLE;
 	for (const auto* next = (const VkBaseInStructure*)pAllocateInfo->pNext; next; next = next->pNext) {
@@ -356,6 +360,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 				_mtlStorageMode = _mtlBuffer.storageMode;
 				_mtlCPUCacheMode = _mtlBuffer.cpuCacheMode;
 				_allocationSize = _mtlBuffer.length;
+				wantsHeap = false;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_EXPORT_METAL_OBJECT_CREATE_INFO_EXT: {
@@ -388,6 +393,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 					_mtlCPUCacheMode = _mtlBuffer.cpuCacheMode;
 					_allocationSize = _mtlBuffer.length;
 					_pMemory = isMemoryHostAccessible() ? _mtlBuffer.contents : nullptr;
+					wantsHeap = false;
 				} else if (pImportInfo->handleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT) {
 					[_mtlTexture release];
 					_mtlTexture = [((id<MTLTexture>)pImportInfo->handle) retain];
@@ -398,7 +404,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 		}
 	}
 
-	initExternalMemory(dedicatedImage);	// After setting _isDedicated
+	initExternalMemory(dedicatedImage, wantsHeap);	// After setting _isDedicated
 
 	// "Dedicated" means this memory can only be used for this image or buffer.
 	if (dedicatedImage) {
@@ -421,7 +427,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 	}
 
 	// If we can, create a MTLHeap. This should happen before creating the buffer, allowing us to map its contents.
-	if (!ensureMTLHeap()) {
+	if (wantsHeap && !ensureMTLHeap()) {
 		setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkAllocateMemory(): Could not allocate VkDeviceMemory of size %llu bytes.", _allocationSize));
 		return;
 	}
@@ -434,7 +440,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 	}
 }
 
-void MVKDeviceMemory::initExternalMemory(MVKImage* dedicatedImage) {
+void MVKDeviceMemory::initExternalMemory(MVKImage* dedicatedImage, bool wantsHeap) {
 	if ( !_externalMemoryHandleType ) { return; }
 	
 	if ( !mvkIsOnlyAnyFlagEnabled(_externalMemoryHandleType, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT | VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT | VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT) ) {
@@ -445,13 +451,22 @@ void MVKDeviceMemory::initExternalMemory(MVKImage* dedicatedImage) {
 	if (mvkIsAnyFlagEnabled(_externalMemoryHandleType, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT)) {
 		auto& xmProps = getPhysicalDevice()->getExternalBufferProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLHEAP_BIT_EXT);
 		requiresDedicated = requiresDedicated || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
-		
-		// Make sure allocation happens at creation time since we may need to export the memory before usage
-		ensureMTLHeap();
+
+		if (wantsHeap) {
+			// Make sure allocation happens at creation time since we may need to export the memory before usage
+			ensureMTLHeap();
+		} else {
+			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkAllocateMemory(): Cannot export MTLHeap from an imported MTLBuffer."));
+		}
 	}
 	if (mvkIsAnyFlagEnabled(_externalMemoryHandleType, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT)) {
 		auto& xmProps = getPhysicalDevice()->getExternalBufferProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT);
 		requiresDedicated = requiresDedicated || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
+
+		if (wantsHeap) {
+			// Make sure to initialize heap before buffer if we need one
+			ensureMTLHeap();
+		}
 
 		// Make sure allocation happens at creation time since we may need to export the memory before usage
 		ensureMTLBuffer();
