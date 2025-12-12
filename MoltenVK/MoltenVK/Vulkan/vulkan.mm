@@ -3371,6 +3371,30 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetMemoryMetalHandlePropertiesEXT(
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceExternalSemaphoreProperties, KHR);
 
+#pragma mark -
+#pragma mark VK_KHR_external_semaphore_fd extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkImportSemaphoreFdKHR(
+                                                         VkDevice                          device,
+                                                         const VkImportSemaphoreFdInfoKHR* pImportSemaphoreFdInfo) {
+    MVKTraceVulkanCallStart();
+    auto* mvkSem4 = (MVKSemaphore*)pImportSemaphoreFdInfo->semaphore;
+    VkResult rslt = mvkSem4->importFd(pImportSemaphoreFdInfo->flags, pImportSemaphoreFdInfo->handleType, pImportSemaphoreFdInfo->fd);
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetSemaphoreFdKHR(
+                                                      VkDevice                       device,
+                                                      const VkSemaphoreGetFdInfoKHR* pGetFdInfo,
+                                                      int*                           pFd) {
+    MVKTraceVulkanCallStart();
+    auto* mvkSem4 = (MVKSemaphore*)pGetFdInfo->semaphore;
+    VkResult rslt = mvkSem4->exportFd(pGetFdInfo->handleType, pFd);
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
+
 
 #pragma mark -
 #pragma mark VK_KHR_get_memory_requirements2 extension
