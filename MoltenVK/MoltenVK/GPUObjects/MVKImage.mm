@@ -89,7 +89,7 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
         } else {
             tex = [_image->getMTLDevice() newTextureWithDescriptor: mtlTexDesc];
         }
-        if (_mtlTexture.storageMode != MTLStorageModeMemoryless) {
+        if (tex.storageMode != MTLStorageModeMemoryless) {
             _image->_device->makeResident(tex);
             _image->_device->getLiveResources().add(tex);
         }
