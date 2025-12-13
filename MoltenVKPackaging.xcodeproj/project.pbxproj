@@ -276,6 +276,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A90055732EED9B7D00F19028 /* CMakeLists.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = CMakeLists.txt; path = ../CMakeLists.txt; sourceTree = "<group>"; };
 		A905CE6F2BB897F700BBCB10 /* clean_dynamic.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = clean_dynamic.sh; sourceTree = "<group>"; };
 		A92DB3E41CE0F37D00FBC835 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		A92DB3E51CE0F37D00FBC835 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
@@ -362,6 +363,7 @@
 				A92EF7CB21856EA300C8B91B /* package_shader_converter_xcframework.sh */,
 				A92EF7CA21856EA200C8B91B /* package_update_latest.sh */,
 				A9DDBF8C26827F02005DD991 /* runcts */,
+				A90055732EED9B7D00F19028 /* CMakeLists.txt */,
 				A92EF7DE2186451700C8B91B /* Makefile */,
 			);
 			path = Scripts;

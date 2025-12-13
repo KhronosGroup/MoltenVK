@@ -13,6 +13,27 @@ Copyright (c) 2015-2025 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.4.2
+--------------
+
+Released TBD
+
+- Add support for the following extensions:
+  - `VK_KHR_external_semaphore_fd`
+- Fix buffer and heap out-of-sync in `initExternalMemory()`.
+- Fix incorrect varable usage in `MVKImagePlane::getMTLTexture()`.
+- Update to latest SPIRV-Cross:
+  - MSL: Fix `subgroupBallotExclusiveBitCount()` is not available for task shader and mesh shader.
+  - MSL: `thread_execution_width` is deprecated as of Metal 3.0 , use `threads_per_simdgroup` instead.
+  - MSL: Add `msl3.0` variant for subgroup builtin.
+  - MSL: Fix handling of variable pointer arguments which are not BDA.
+  - MSL: Fix variable pointer buffer arguments.
+  - MSL: Handle variable pointer argument to SSBO array.
+  - MSL: Fix handling of forced temporary row-major matrices.
+  - MSL: Additional MSL specific keywords(`signed`).
+
+
+
 MoltenVK 1.4.1
 --------------
 
