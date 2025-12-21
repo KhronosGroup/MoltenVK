@@ -6,10 +6,8 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
- *     http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
+ * * http://www.apache.org/licenses/LICENSE-2.0
+ * * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
@@ -48,7 +46,9 @@
 
 	uint32_t fps = 60;
 	_displayLink = [CADisplayLink displayLinkWithTarget: self selector: @selector(renderLoop)];
-	[_displayLink setFrameInterval: 60 / fps];
+    
+    // Modernized: Using dot-notation for property access
+	_displayLink.frameInterval = 60 / fps;
 	[_displayLink addToRunLoop: NSRunLoop.currentRunLoop forMode: NSDefaultRunLoopMode];
 }
 
@@ -64,6 +64,8 @@
 
 -(void) viewDidDisappear: (BOOL) animated {
 	[_displayLink invalidate];
+    
+    // NOTE: Manual release is required here as MoltenVK often disables ARC for performance.
 	[_displayLink release];
 	demo_cleanup(&demo);
 	[super viewDidDisappear: animated];
@@ -81,4 +83,3 @@
 +(Class) layerClass { return [CAMetalLayer class]; }
 
 @end
-
