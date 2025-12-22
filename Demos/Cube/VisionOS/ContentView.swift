@@ -33,8 +33,36 @@ final class MetalHostView: UIView {
 
 struct ContentView: View {
     var body: some View {
-        CubeHostView()
-            .ignoresSafeArea()
+        ZStack(alignment: .bottom) {
+            // 1. The 3D Vulkan Content Layer
+            CubeHostView()
+                .ignoresSafeArea()
+            
+            // 2. The 2D Spatial UI Layer
+            VStack(spacing: 20) {
+                Text("Vulkan Live on visionOS")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                    .padding()
+                    .background(Color.black.opacity(0.5))
+                    .cornerRadius(15)
+                
+                Button(action: {
+                    // Triggers the C-function to re-initialize swapchain logic
+                    cube_runner_resize()
+                }) {
+                    Label("Reset View", systemImage: "arrow.counterclockwise")
+                        .font(.headline)
+                        .padding()
+                        .frame(minWidth: 200)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+                .padding(.bottom, 50)
+            }
+        }
     }
 }
 
@@ -57,16 +85,16 @@ struct CubeHostView: UIViewRepresentable {
         view.metalLayer.presentsWithTransaction = false
 
         // Drive rendering
-        let cADisplayLink = CADisplayLink(target: context.coordinator, selector: #selector(Coordinator.tick))
-        cADisplayLink.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
-        cADisplayLink.add(to: .main, forMode: .default)
-        context.coordinator.displayLink = cADisplayLink
+        let displayLink = CADisplayLink(target: context.coordinator, selector: #selector(Coordinator.tick))
+        displayLink.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
+        displayLink.add(to: .main, forMode: .default)
+        context.coordinator.displayLink = displayLink
 
         return view
     }
 
     func updateUIView(_ uiView: MetalHostView, context: Context) {
-        uiView.setNeedsLayout()  // layoutSubviews will size & start/resize
+        uiView.setNeedsLayout()
     }
 
     static func dismantleUIView(_ uiView: MetalHostView, coordinator: Coordinator) {
