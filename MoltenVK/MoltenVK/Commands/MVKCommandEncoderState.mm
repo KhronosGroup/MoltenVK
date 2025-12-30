@@ -1032,8 +1032,11 @@ void MVKMetalGraphicsCommandEncoderState::reset(VkSampleCountFlags sampleCount) 
 	memset(static_cast<MVKMetalGraphicsCommandEncoderStateQuickReset*>(this), 0, offsetof(MVKMetalGraphicsCommandEncoderStateQuickReset, MEMSET_RESET_LINE));
 	_lineWidth = 1;
 	_sampleCount = getSampleCount(sampleCount);
-	_primitiveRestartIndex = 0xFFFFFFFF;
 	_depthStencil.reset();
+
+	// Enabled by default in Metal.
+	_flags.set(MVKMetalRenderEncoderStateFlag::PrimitiveRestartEnable, true);
+	_primitiveRestartIndex = 0xFFFFFFFF;
 }
 
 void MVKMetalGraphicsCommandEncoderState::bindFragmentBuffer(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index) {
@@ -1319,18 +1322,22 @@ void MVKMetalGraphicsCommandEncoderState::bindState(
 		}
 #endif
 #if MVK_USE_METAL_PRIVATE_API
-		if (anyStateNeeded.has(MVKRenderStateFlag::PrimitiveRestartEnable) && mvkEncoder.getMVKConfig().useMetalPrivateAPI) {
-			bool enable = PICK_STATE(PrimitiveRestartEnable)->enable.has(MVKRenderStateEnableFlag::PrimitiveRestart);
-			uint32_t index = mvkPrimRestartIndexFromVkIndexType(vk._indexBuffer.vkIndexType);
-
-			if (_flags.has(MVKMetalRenderEncoderStateFlag::PrimitiveRestartEnable) != enable || _primitiveRestartIndex != index) {
-				_flags.flip(MVKMetalRenderEncoderStateFlag::PrimitiveRestartEnable);
-				_primitiveRestartIndex = index;
-
-				if ([mvkEncoder._mtlRenderEncoder respondsToSelector:@selector(setPrimitiveRestartEnabled:index:)]) {
-					auto mvkRendEnc = static_cast<id<MVKMTLRenderCommandEncoder>>(mvkEncoder._mtlRenderEncoder);
-					[mvkRendEnc setPrimitiveRestartEnabled:enable index:index];
+		if (anyStateNeeded.has(MVKRenderStateFlag::PrimitiveRestartEnable) &&
+		    mvkEncoder.getMVKConfig().useMetalPrivateAPI &&
+		    [mvkEncoder._mtlRenderEncoder respondsToSelector:@selector(setPrimitiveRestartEnabled:index:)])
+		{
+			auto mvkRendEnc = static_cast<id<MVKMTLRenderCommandEncoder>>(mvkEncoder._mtlRenderEncoder);
+			bool wasEnabled = _flags.has(MVKMetalRenderEncoderStateFlag::PrimitiveRestartEnable);
+			if (PICK_STATE(PrimitiveRestartEnable)->enable.has(MVKRenderStateEnableFlag::PrimitiveRestart)) {
+				const uint32_t index = mvkPrimRestartIndexFromVkIndexType(vk._indexBuffer.vkIndexType);
+				if (!wasEnabled || _primitiveRestartIndex != index) {
+					_flags.add(MVKMetalRenderEncoderStateFlag::PrimitiveRestartEnable);
+					_primitiveRestartIndex = index;
+					[mvkRendEnc setPrimitiveRestartEnabled:true index:index];
 				}
+			} else if (wasEnabled) {
+				_flags.remove(MVKMetalRenderEncoderStateFlag::PrimitiveRestartEnable);
+				[mvkRendEnc setPrimitiveRestartEnabled:false index:0xFFFFFFFF];
 			}
 		}
 #endif
@@ -1747,6 +1754,10 @@ void MVKCommandEncoderState::bindVertexBuffers(uint32_t firstBinding, MVKArrayRe
 
 void MVKCommandEncoderState::bindIndexBuffer(const MVKIndexMTLBufferBinding& buffer) {
 	_vkGraphics._indexBuffer = buffer;
+#if MVK_USE_METAL_PRIVATE_API
+	// Let state tracker know to update primitive restart config if the index type has changed.
+	_mtlGraphics.markDirty(MVKRenderStateFlag::PrimitiveRestartEnable);
+#endif
 }
 
 void MVKCommandEncoderState::offsetZeroDivisorVertexBuffers(MVKCommandEncoder& mvkEncoder, MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance) {
