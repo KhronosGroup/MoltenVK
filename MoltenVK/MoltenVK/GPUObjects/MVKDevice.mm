@@ -2571,8 +2571,15 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if (supportsMTLGPUFamily(Apple10)) {
 		_metalFeatures.maxTextureDimension = (32 * KIBI);
 		_metalFeatures.samplerMipLodBias = true;
-		_metalFeatures.depthBoundsTest = true;
 	}
+#if MVK_XCODE_26
+	// Depth bounds test is available on all Apple GPUs running macOS 26+ / iOS 26+.
+	// On Apple10 (M4+) hardware it was also available in earlier OS versions.
+	_metalFeatures.depthBoundsTest = supportsMTLGPUFamily(Apple10) ||
+	                                 (mvkOSVersionIsAtLeast(26.0, 26.0, 26.0) && supportsMTLGPUFamily(Apple1));
+#else
+	_metalFeatures.depthBoundsTest = supportsMTLGPUFamily(Apple10);
+#endif
 
 // iOS, tvOS and visionOS adjustments necessary when running on the simulator.
 #if MVK_OS_SIMULATOR
@@ -2755,6 +2762,7 @@ void MVKPhysicalDevice::initFeatures() {
     _features.shaderUniformBufferArrayDynamicIndexing = true;
     _features.shaderStorageBufferArrayDynamicIndexing = true;
     _features.shaderClipDistance = true;
+    _features.shaderCullDistance = true;    // Cull distances are passed as user varyings; fixed-function culling is emulated.
     _features.shaderInt16 = true;
     _features.multiDrawIndirect = true;
     _features.inheritedQueries = true;
@@ -2886,9 +2894,9 @@ void MVKPhysicalDevice::initLimits() {
 	_properties.limits.maxDescriptorSetInputAttachments = (_properties.limits.maxPerStageDescriptorInputAttachments * 5);
 
 	_properties.limits.maxClipDistances = 8;	// Per Apple engineers.
-	_properties.limits.maxCullDistances = 0;	// unsupported
+	_properties.limits.maxCullDistances = 8;	// Emulated via user varyings; same slots as clip distances.
 	_properties.limits.maxCombinedClipAndCullDistances = max(_properties.limits.maxClipDistances,
-															 _properties.limits.maxCullDistances);  // If supported, these consume the same slots.
+															 _properties.limits.maxCullDistances);  // Clip and cull distances consume the same slots.
 
 	// Whether handled as a real texture buffer or a 2D texture, this value is likely nowhere near the size of a buffer,
 	// needs to fit in 32 bits, and some apps (I'm looking at you, CTS), assume it is low when doing 32-bit math.
