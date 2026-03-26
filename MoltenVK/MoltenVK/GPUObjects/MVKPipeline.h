@@ -380,6 +380,7 @@ protected:
 	MVKSmallVector<MVKZeroDivisorVertexBinding> _zeroDivisorVertexBindings;
 	MVKSmallVector<MVKShaderStage> _stagesUsingPhysicalStorageBufferAddressesCapability;
 	MVKSmallVector<uint32_t, kMVKDefaultAttachmentCount> _colorAttachmentLocations;
+	std::unordered_map<uint32_t, bool> _fragmentOutputIsFloat;  // location -> true if shader outputs float
 	std::unordered_map<uint32_t, id<MTLRenderPipelineState>> _multiviewMTLPipelineStates;
 	MVKStaticBitSet<kMVKMaxBufferCount> _vkVertexBuffers;
 	MVKStaticBitSet<kMVKMaxBufferCount> _mtlVertexBuffers;
@@ -547,9 +548,10 @@ public:
 
 #pragma mark Construction
 
-	MVKRenderPipelineCompiler(MVKVulkanAPIDeviceObject* owner) : MVKMetalCompiler(owner) {
+	MVKRenderPipelineCompiler(MVKVulkanAPIDeviceObject* owner, bool suppressErrors = false) : MVKMetalCompiler(owner) {
 		_compilerType = "Render pipeline";
 		_pPerformanceTracker = &getPerformanceStats().shaderCompilation.pipelineCompile;
+		_suppressErrors = suppressErrors;
 	}
 
 	~MVKRenderPipelineCompiler() override;

@@ -1669,6 +1669,62 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		}
 		addPrevStageOutputToShaderConversionConfig(shaderConfig, shaderOutputs);
 
+		// Add fragment output format info so SPIRV-Cross generates correct output types
+		// for integer render targets (e.g. RGBA16Uint needs uint4, not float4)
+		{
+			const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
+			if (_isRasterizingColor && pCreateInfo->pColorBlendState) {
+				for (uint32_t caIdx = 0; caIdx < pCreateInfo->pColorBlendState->attachmentCount; caIdx++) {
+					uint32_t caLoc = _colorAttachmentLocations[caIdx];
+					if (caLoc == VK_ATTACHMENT_UNUSED) { continue; }
+					VkFormat vkFmt = pRendInfo->pColorAttachmentFormats[caIdx];
+					if (!vkFmt) { continue; }
+					mvk::MSLShaderInterfaceVariable fo;
+					auto& fosv = fo.shaderVar;
+					fosv.location = caLoc;
+					fosv.component = 0;
+					fosv.builtin = spv::BuiltInMax;
+					fosv.vecsize = 4;
+					switch (getPixelFormats()->getFormatType(vkFmt)) {
+						case kMVKFormatColorUInt8:
+							fosv.format = MSL_SHADER_VARIABLE_FORMAT_UINT8;
+							break;
+						case kMVKFormatColorUInt16:
+							fosv.format = MSL_SHADER_VARIABLE_FORMAT_UINT16;
+							break;
+						case kMVKFormatColorHalf:
+						case kMVKFormatColorInt16:
+							fosv.format = MSL_SHADER_VARIABLE_FORMAT_ANY16;
+							break;
+						default:
+							fosv.format = MSL_SHADER_VARIABLE_FORMAT_OTHER;
+							break;
+					}
+					if (fosv.format != MSL_SHADER_VARIABLE_FORMAT_OTHER) {
+						shaderConfig.shaderOutputs.push_back(fo);
+					}
+				}
+			}
+		}
+
+		// Reflect fragment shader outputs to know their base types (float vs uint).
+		{
+			SPIRVShaderOutputs fragOutputs;
+			std::string errorLog;
+			if (getShaderOutputs(_fragmentModule->getSPIRV(), spv::ExecutionModelFragment,
+			                     pFragmentSS->pName, fragOutputs, errorLog)) {
+				for (auto& fo : fragOutputs) {
+					if (fo.builtin == spv::BuiltInMax && fo.isUsed) {
+						bool isFloat = (fo.baseType == SPIRV_CROSS_NAMESPACE::SPIRType::Float ||
+						                fo.baseType == SPIRV_CROSS_NAMESPACE::SPIRType::Half ||
+						                fo.baseType == SPIRV_CROSS_NAMESPACE::SPIRType::Double);
+						_fragmentOutputIsFloat[fo.location] = isFloat;
+					}
+				}
+			}
+
+		}
+
 		MVKMTLFunction func = getMTLFunction(shaderConfig, pFragmentSS, pFragmentFB, _fragmentModule, "Fragment");
 		id<MTLFunction> mtlFunc = func.getMTLFunction();
 		plDesc.fragmentFunction = mtlFunc;
@@ -1933,6 +1989,21 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
 			if (caLoc == VK_ATTACHMENT_UNUSED) { continue; }
 
 			MTLPixelFormat mtlPixFmt = getPixelFormats()->getMTLPixelFormat(pRendInfo->pColorAttachmentFormats[caIdx]);
+
+			// Per-location format fix: swap integer to float only where the shader outputs float.
+			auto fragIt = _fragmentOutputIsFloat.find(caLoc);
+			if (fragIt != _fragmentOutputIsFloat.end() && fragIt->second) {
+				switch (mtlPixFmt) {
+					case MTLPixelFormatRGBA16Uint: case MTLPixelFormatRGBA16Sint: mtlPixFmt = MTLPixelFormatRGBA16Float; break;
+					case MTLPixelFormatRGBA32Uint: case MTLPixelFormatRGBA32Sint: mtlPixFmt = MTLPixelFormatRGBA32Float; break;
+					case MTLPixelFormatRG16Uint: case MTLPixelFormatRG16Sint: mtlPixFmt = MTLPixelFormatRG16Float; break;
+					case MTLPixelFormatR16Uint: case MTLPixelFormatR16Sint: mtlPixFmt = MTLPixelFormatR16Float; break;
+					case MTLPixelFormatRGBA8Uint: mtlPixFmt = MTLPixelFormatRGBA8Unorm; break;
+					case MTLPixelFormatRGBA8Sint: mtlPixFmt = MTLPixelFormatRGBA8Snorm; break;
+					default: break;
+				}
+			}
+
 			MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[caLoc];
             colorDesc.pixelFormat = mtlPixFmt;
 

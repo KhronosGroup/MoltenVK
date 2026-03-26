@@ -586,6 +586,7 @@ protected:
 	uint64_t _startTime = 0;
 	bool _isCompileDone = false;
 	bool _isDestroyed = false;
+	bool _suppressErrors = false;
 	std::mutex _completionLock;
 	std::condition_variable _blocker;
 	std::string _compilerType = "Unknown";

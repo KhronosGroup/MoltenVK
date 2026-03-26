@@ -203,6 +203,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 																	   false, loadOverride)) {
 				mtlColorAttDesc.clearColor = pixFmts->getMTLClearColor(clearValues[clrRPAttIdx].color, clrMVKRPAtt->getFormat());
 			}
+
 			if (isMultiview()) {
 				uint32_t startView = getFirstViewIndexInMetalPass(passIdx);
 				if (mtlColorAttDesc.texture.textureType == MTLTextureType3D)

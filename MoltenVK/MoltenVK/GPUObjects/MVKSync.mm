@@ -513,6 +513,7 @@ void MVKMetalCompiler::compile(unique_lock<mutex>& lock, dispatch_block_t block)
 }
 
 void MVKMetalCompiler::handleError() {
+	if (_suppressErrors) return;
 	_owner->setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED,
 											   "%s compile failed (Error code %li):\n%s.",
 											   _compilerType.c_str(), (long)_compileError.code,
