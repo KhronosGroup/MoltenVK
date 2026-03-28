@@ -2464,6 +2464,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if (supportsMTLGPUFamily(Mac2)) {
 		_metalFeatures.mtlBufferAlignment = 256;
+		_metalFeatures.mtlConstantBufferAlignment = 32;
 		_metalFeatures.mtlCopyBufferAlignment = 4;
 		_metalFeatures.maxPerStageTextureCount = 128;
 		_metalFeatures.maxTextureDimension = (16 * KIBI);
@@ -2495,6 +2496,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
     if (supportsMTLGPUFamily(Apple1)) {
 		_metalFeatures.mtlBufferAlignment = 64;
+		_metalFeatures.mtlConstantBufferAlignment = 4;
 		_metalFeatures.mtlCopyBufferAlignment = 1;
 		_metalFeatures.maxPerStageTextureCount = 31;
 		_metalFeatures.maxTextureDimension = (8 * KIBI);
@@ -2573,6 +2575,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 // iOS, tvOS and visionOS adjustments necessary when running on the simulator.
 #if MVK_OS_SIMULATOR
 	_metalFeatures.mtlBufferAlignment = 256;	// Even on Apple Silicon
+	_metalFeatures.mtlConstantBufferAlignment = 256;
 	_metalFeatures.renderLinearTextures = false;
 #endif
 
@@ -2698,6 +2701,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_argumentBufferSizes.texture = getArgumentBufferSize(_mtlDevice, MTLDataTypeTexture);
 		_argumentBufferSizes.sampler = getArgumentBufferSize(_mtlDevice, MTLDataTypeSampler);
 		_argumentBufferSizes.pointer = getArgumentBufferSize(_mtlDevice, MTLDataTypePointer);
+		_argumentBufferSizes.uniform.size  = _argumentBufferSizes.pointer.size;
+		_argumentBufferSizes.uniform.align = _metalFeatures.mtlConstantBufferAlignment;
 	} else {
 		_argumentBufferSizes = {};
 	}
