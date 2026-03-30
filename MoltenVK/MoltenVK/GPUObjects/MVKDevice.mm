@@ -2702,7 +2702,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_argumentBufferSizes.sampler = getArgumentBufferSize(_mtlDevice, MTLDataTypeSampler);
 		_argumentBufferSizes.pointer = getArgumentBufferSize(_mtlDevice, MTLDataTypePointer);
 		_argumentBufferSizes.uniform.size  = _argumentBufferSizes.pointer.size;
-		_argumentBufferSizes.uniform.align = _metalFeatures.mtlConstantBufferAlignment;
+		_argumentBufferSizes.uniform.align = max(_argumentBufferSizes.pointer.align, static_cast<uint16_t>(_metalFeatures.mtlConstantBufferAlignment));
 	} else {
 		_argumentBufferSizes = {};
 	}
