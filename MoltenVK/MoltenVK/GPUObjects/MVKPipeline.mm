@@ -821,7 +821,9 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 		_staticStateData.patchControlPoints = pCreateInfo->pTessellationState->patchControlPoints;
 
 	if (const VkPipelineRasterizationStateCreateInfo* rs = pCreateInfo->pRasterizationState) {
-		_staticStateData.enable.set(MVKRenderStateEnableFlag::DepthClamp, rs->depthClampEnable);
+		const auto* clip = mvkFindStructInChain<VkPipelineRasterizationDepthClipStateCreateInfoEXT>(rs, VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
+		bool depthClamp = clip ? !clip->depthClipEnable : rs->depthClampEnable;
+		_staticStateData.enable.set(MVKRenderStateEnableFlag::DepthClamp, depthClamp);
 		_staticStateData.enable.set(MVKRenderStateEnableFlag::DepthBias, rs->depthBiasEnable);
 		_staticStateData.setCullMode(rs->cullMode);
 		_staticStateData.setFrontFace(rs->frontFace);
