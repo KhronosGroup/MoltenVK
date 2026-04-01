@@ -1898,7 +1898,8 @@ MVKDescriptorPool* MVKDescriptorPool::Create(MVKDevice* device, const VkDescript
 	MVKArrayRef pools(pCreateInfo->pPoolSizes, pCreateInfo->poolSizeCount);
 	MVKArgumentBufferMode argBufMode = pickArgumentBufferMode(device);
 	const MVKPhysicalDeviceArgumentBufferSizes& sizes = device->getPhysicalDevice()->getArgumentBufferSizes();
-	uint32_t gpuAlign = std::max(std::max<uint32_t>(sizes.texture.align, sizes.sampler.align), std::max<uint32_t>(sizes.pointer.align, sizes.uniform.align));
+	uint32_t gpuAlign = std::max(std::max<uint32_t>(sizes.texture.align, sizes.sampler.align), std::max<uint32_t>(sizes.pointer.align, 1));
+	uint32_t cbufAlign = std::max<uint32_t>(gpuAlign, sizes.cbuffer.align);
 	uint32_t cpuAlign = alignof(id);
 	uint32_t gpuSize = 0;
 	uint32_t cpuSize = 0;
@@ -1906,6 +1907,7 @@ MVKDescriptorPool* MVKDescriptorPool::Create(MVKDevice* device, const VkDescript
 	uint32_t numAuxOffset = 0;
 	uint32_t inlineUniformSize = 0;
 	bool usesAuxBuffer = false;
+	bool usesTexCombined = false;
 
 	for (const auto& pool : pools) {
 		if (pool.type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
@@ -1916,7 +1918,14 @@ MVKDescriptorPool* MVKDescriptorPool::Create(MVKDevice* device, const VkDescript
 		MVKDescriptorCPULayout cpu = pickCPULayout(pool.type, 1, argBufMode, device);
 		numElem += descriptorGPUBindingCount(gpu) * pool.descriptorCount;
 		cpuSize += alignDescriptorOffset(descriptorCPUSize(cpu), cpuAlign) * pool.descriptorCount;
-		gpuSize += alignDescriptorOffset(maxGPUSize(gpu, sizes), gpuAlign) * pool.descriptorCount;
+		if (gpu == MVKDescriptorGPULayout::TexBufSoA || gpu == MVKDescriptorGPULayout::TexSampSoA ||
+			gpu == MVKDescriptorGPULayout::Tex2SampSoA || gpu == MVKDescriptorGPULayout::Tex3SampSoA) {
+			// Combined textures use Metal Constant Buffer alignment
+			gpuSize += alignDescriptorOffset(maxGPUSize(gpu, sizes), cbufAlign) * pool.descriptorCount;
+			usesTexCombined = true;
+		}
+		else
+			gpuSize += alignDescriptorOffset(maxGPUSize(gpu, sizes), gpuAlign) * pool.descriptorCount;
 		numAuxOffset += needsAuxOffset(gpu) ? pool.descriptorCount : 0;
 		usesAuxBuffer |= gpu == MVKDescriptorGPULayout::BufferAuxSize;
 	}
@@ -1949,7 +1958,13 @@ MVKDescriptorPool* MVKDescriptorPool::Create(MVKDevice* device, const VkDescript
 		gpuSize += alignDescriptorOffset(maxGPUSize(MVKDescriptorGPULayout::Buffer, sizes), gpuAlign) * pCreateInfo->maxSets;
 		// The aux buffer is sized relative to the number of total elements in a descriptor, rather than the number of bindings with aux buffers
 		uint32_t size = numElem * sizeof(uint32_t);
+		// Aux buffers use Metal Constant Buffer alignment
+		gpuAlign = cbufAlign;
 		gpuSize += calcGroupSizeWithPadding(size, pCreateInfo->maxSets, alignof(uint32_t), gpuAlign);
+	}
+	else if (usesTexCombined) {
+		// Combined textures use Metal Constant Buffer alignment
+		gpuAlign = cbufAlign;
 	}
 
 	bool hostOnly = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_EXT) && argBufMode != MVKArgumentBufferMode::ArgEncoder;
