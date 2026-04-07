@@ -22,6 +22,7 @@ Released TBD
   - `VK_KHR_external_semaphore_fd`
 - Fix buffer and heap out-of-sync in `initExternalMemory()`.
 - Fix incorrect varable usage in `MVKImagePlane::getMTLTexture()`.
+- Fix device loss when using imported `MTLTexture` objects with Metal argument buffers.
 - Update to latest SPIRV-Cross:
   - MSL: Fix `subgroupBallotExclusiveBitCount()` is not available for task shader and mesh shader.
   - MSL: `thread_execution_width` is deprecated as of Metal 3.0 , use `threads_per_simdgroup` instead.
