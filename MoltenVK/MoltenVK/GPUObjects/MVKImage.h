@@ -551,6 +551,15 @@ public:
     /** Returns the Metal texture underlying this image view. */
     id<MTLTexture> getMTLTexture();
 
+    /**
+     * Returns a Metal texture for use as a storage image (imageStore).
+     * If the view format is sRGB, returns a non-sRGB texture view to prevent
+     * Metal from applying automatic linear-to-sRGB conversion on compute writes.
+     * This matches the Vulkan spec behavior where imageStore does not apply
+     * sRGB conversion, unlike color attachment writes in render passes.
+     */
+    id<MTLTexture> getMTLTextureForStorage();
+
     void releaseMTLTexture();
 
     ~MVKImageViewPlane();
@@ -564,6 +573,7 @@ protected:
     friend MVKImageView;
     MVKImageView* _imageView;
 	id<MTLTexture> _mtlTexture;
+	id<MTLTexture> _mtlTextureLinear;  // Non-sRGB view for storage image writes
 	VkComponentMapping _componentSwizzle;
     MTLPixelFormat _mtlPixFmt;
 	uint8_t _planeIndex;
@@ -596,6 +606,9 @@ public:
 
 	/** Returns the Metal texture underlying this image view.  */
 	id<MTLTexture> getMTLTexture(uint8_t planeIndex = 0) { return planeIndex < _planes.size() ? _planes[planeIndex]->getMTLTexture() : nil; }	// Guard against destroyed instance retained in a descriptor.
+
+	/** Returns a Metal texture for use as a storage image, with sRGB stripped to prevent automatic conversion on compute writes. */
+	id<MTLTexture> getMTLTextureForStorage(uint8_t planeIndex = 0) { return planeIndex < _planes.size() ? _planes[planeIndex]->getMTLTextureForStorage() : nil; }
 
 	/** Returns the Metal pixel format of this image view. */
 	MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex = 0) { return planeIndex < _planes.size() ? _planes[planeIndex]->_mtlPixFmt : MTLPixelFormatInvalid; }	// Guard against destroyed instance retained in a descriptor.

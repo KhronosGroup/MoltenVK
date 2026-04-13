@@ -1866,6 +1866,68 @@ id<MTLTexture> MVKImageViewPlane::getMTLTexture() {
     }
 }
 
+// Returns the linear (non-sRGB) equivalent of an sRGB MTLPixelFormat, or MTLPixelFormatInvalid if not sRGB.
+static MTLPixelFormat getLinearMTLPixelFormat(MTLPixelFormat fmt) {
+    switch (fmt) {
+        case MTLPixelFormatRGBA8Unorm_sRGB:     return MTLPixelFormatRGBA8Unorm;
+        case MTLPixelFormatBGRA8Unorm_sRGB:     return MTLPixelFormatBGRA8Unorm;
+#if MVK_APPLE_SILICON
+        case MTLPixelFormatR8Unorm_sRGB:        return MTLPixelFormatR8Unorm;
+        case MTLPixelFormatRG8Unorm_sRGB:       return MTLPixelFormatRG8Unorm;
+#endif
+        case MTLPixelFormatBC1_RGBA_sRGB:       return MTLPixelFormatBC1_RGBA;
+        case MTLPixelFormatBC2_RGBA_sRGB:       return MTLPixelFormatBC2_RGBA;
+        case MTLPixelFormatBC3_RGBA_sRGB:       return MTLPixelFormatBC3_RGBA;
+        case MTLPixelFormatBC7_RGBAUnorm_sRGB:  return MTLPixelFormatBC7_RGBAUnorm;
+        case MTLPixelFormatETC2_RGB8_sRGB:      return MTLPixelFormatETC2_RGB8;
+        case MTLPixelFormatETC2_RGB8A1_sRGB:    return MTLPixelFormatETC2_RGB8A1;
+        case MTLPixelFormatEAC_RGBA8_sRGB:      return MTLPixelFormatEAC_RGBA8;
+        case MTLPixelFormatASTC_4x4_sRGB:       return MTLPixelFormatASTC_4x4_LDR;
+        case MTLPixelFormatASTC_5x4_sRGB:       return MTLPixelFormatASTC_5x4_LDR;
+        case MTLPixelFormatASTC_5x5_sRGB:       return MTLPixelFormatASTC_5x5_LDR;
+        case MTLPixelFormatASTC_6x5_sRGB:       return MTLPixelFormatASTC_6x5_LDR;
+        case MTLPixelFormatASTC_6x6_sRGB:       return MTLPixelFormatASTC_6x6_LDR;
+        case MTLPixelFormatASTC_8x5_sRGB:       return MTLPixelFormatASTC_8x5_LDR;
+        case MTLPixelFormatASTC_8x6_sRGB:       return MTLPixelFormatASTC_8x6_LDR;
+        case MTLPixelFormatASTC_8x8_sRGB:       return MTLPixelFormatASTC_8x8_LDR;
+        case MTLPixelFormatASTC_10x5_sRGB:      return MTLPixelFormatASTC_10x5_LDR;
+        case MTLPixelFormatASTC_10x6_sRGB:      return MTLPixelFormatASTC_10x6_LDR;
+        case MTLPixelFormatASTC_10x8_sRGB:      return MTLPixelFormatASTC_10x8_LDR;
+        case MTLPixelFormatASTC_10x10_sRGB:     return MTLPixelFormatASTC_10x10_LDR;
+        case MTLPixelFormatASTC_12x10_sRGB:     return MTLPixelFormatASTC_12x10_LDR;
+        case MTLPixelFormatASTC_12x12_sRGB:     return MTLPixelFormatASTC_12x12_LDR;
+        default:                                return MTLPixelFormatInvalid;
+    }
+}
+
+id<MTLTexture> MVKImageViewPlane::getMTLTextureForStorage() {
+    // For sRGB formats, return a non-sRGB texture view to prevent Metal from
+    // applying automatic linear-to-sRGB conversion on compute shader writes.
+    // Per the Vulkan spec, imageStore does not apply sRGB conversion.
+    MTLPixelFormat linearFmt = getLinearMTLPixelFormat(_mtlPixFmt);
+    if (linearFmt != MTLPixelFormatInvalid) {
+        if ( !_mtlTextureLinear ) {
+            lock_guard<mutex> lock(_imageView->_lock);
+            if ( !_mtlTextureLinear ) {
+                // Create the linear view from the underlying image texture directly,
+                // preserving the correct texture type, mip levels, and array slices.
+                id<MTLTexture> imgTex = _imageView->_image->getMTLTexture(_planeIndex);
+                NSRange levelRange = NSMakeRange(_imageView->_subresourceRange.baseMipLevel, _imageView->_subresourceRange.levelCount);
+                NSRange sliceRange = NSMakeRange(_imageView->_subresourceRange.baseArrayLayer, _imageView->_subresourceRange.layerCount);
+                _mtlTextureLinear = [imgTex newTextureViewWithPixelFormat: linearFmt
+                                                             textureType: _imageView->_mtlTextureType
+                                                                  levels: levelRange
+                                                                  slices: sliceRange];  // retained
+                if (_mtlTextureLinear) {
+                    getDevice()->getLiveResources().add(_mtlTextureLinear);
+                }
+            }
+        }
+        if (_mtlTextureLinear) { return _mtlTextureLinear; }
+    }
+    return getMTLTexture();
+}
+
 // Creates and returns a retained Metal texture as an
 // overlay on the Metal texture of the underlying image.
 id<MTLTexture> MVKImageViewPlane::newMTLTexture() {
@@ -1957,6 +2019,7 @@ MVKImageViewPlane::MVKImageViewPlane(MVKImageView* imageView,
     _planeIndex = planeIndex;
     _mtlPixFmt = mtlPixFmt;
     _mtlTexture = nil;
+    _mtlTextureLinear = nil;
 
 	getVulkanAPIObject()->setConfigurationResult(initSwizzledMTLPixelFormat(pCreateInfo));
 
@@ -2113,6 +2176,10 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 }
 
 MVKImageViewPlane::~MVKImageViewPlane() {
+	if (id<MTLTexture> tex = _mtlTextureLinear) {
+		getDevice()->getLiveResources().remove(tex);
+		[tex release];
+	}
 	if (id<MTLTexture> tex = _mtlTexture) {
 		getDevice()->getLiveResources().remove(tex);
 		[tex release];

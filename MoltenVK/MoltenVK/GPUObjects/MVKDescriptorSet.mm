@@ -851,11 +851,14 @@ static bool canUseFastPathUpdate(MVKDescriptorGPULayout layout, MVKArgumentBuffe
 }
 
 /** Get the MTLTexture stored at the given image-representing source Vulkan update pointer. */
-static id<MTLTexture> getTexture(const void* src, MVKDescriptorUpdateSourceType type) {
+static id<MTLTexture> getTexture(const void* src, MVKDescriptorUpdateSourceType type,
+								 VkDescriptorType descType = VK_DESCRIPTOR_TYPE_MAX_ENUM) {
 	switch (type) {
 		case MVKDescriptorUpdateSourceType::Image: {
 			auto* img = reinterpret_cast<MVKImageView*>(static_cast<const VkDescriptorImageInfo*>(src)->imageView);
-			return img ? img->getMTLTexture() : nullptr;
+			if (!img) return nullptr;
+			return (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+				? img->getMTLTextureForStorage() : img->getMTLTexture();
 		}
 		case MVKDescriptorUpdateSourceType::TexelBuffer: {
 			auto* img = *reinterpret_cast<MVKBufferView*const*>(src);
@@ -970,7 +973,7 @@ static void writeDescriptorSetGPUBuffer(
 	for (uint32_t i = 0; i < count; i++) {
 		switch (Layout) {
 			case MVKDescriptorGPULayout::Texture:
-				enc.setTexture(getTexture(src, srcType));
+				enc.setTexture(getTexture(src, srcType, binding.descriptorType));
 				break;
 
 			case MVKDescriptorGPULayout::Sampler:
@@ -985,7 +988,7 @@ static void writeDescriptorSetGPUBuffer(
 				break;
 
 			case MVKDescriptorGPULayout::TexBufSoA:
-				if (id<MTLTexture> tex = getTexture(src, srcType)) {
+				if (id<MTLTexture> tex = getTexture(src, srcType, binding.descriptorType)) {
 					enc.setTexture(tex);
 					enc.setBuffer([tex buffer], [tex bufferOffset], binding.descriptorCount);
 				} else {
@@ -1161,7 +1164,13 @@ static void writeDescriptorSetCPUBuffer(
 					case MVKDescriptorUpdateSourceType::ImageSampler: {
 						// OneID ImageSampler is image + constexpr sampler
 						auto* img = reinterpret_cast<MVKImageView*>(static_cast<const VkDescriptorImageInfo*>(src)->imageView);
-						*desc = img ? img->getMTLTexture() : nil;
+						if (!img) {
+							*desc = nil;
+						} else if (binding.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+							*desc = img->getMTLTextureForStorage();
+						} else {
+							*desc = img->getMTLTexture();
+						}
 						break;
 					}
 					case MVKDescriptorUpdateSourceType::Sampler: {
@@ -1277,7 +1286,8 @@ static void writeDescriptorSetCPUBuffer(
 					case MVKDescriptorUpdateSourceType::Image: {
 						auto* img = reinterpret_cast<MVKImageView*>(static_cast<const VkDescriptorImageInfo*>(src)->imageView);
 						if (img) {
-							id<MTLTexture> tex = img->getMTLTexture();
+							id<MTLTexture> tex = (binding.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+								? img->getMTLTextureForStorage() : img->getMTLTexture();
 							desc->a = tex;
 							desc->b = [tex buffer];
 							desc->offset = [tex bufferOffset];
