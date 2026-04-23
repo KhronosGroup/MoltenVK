@@ -1923,6 +1923,9 @@ MVKDescriptorPool* MVKDescriptorPool::Create(MVKDevice* device, const VkDescript
 		usesAuxBuffer |= gpu == MVKDescriptorGPULayout::BufferAuxSize;
 	}
 
+	// Apply Metal constant buffer alignment padding for each descriptor set
+	gpuSize = calcGroupSizeWithPadding(gpuSize, pCreateInfo->maxSets, gpuAlign, cbufAlign);
+
 	if (numAuxOffset) {
 		// Aux offsets are allocated on the CPU buffer
 		cpuSize += calcGroupSizeWithPadding(numAuxOffset * sizeof(uint32_t), pCreateInfo->maxSets, alignof(uint32_t), cpuAlign);
@@ -1951,7 +1954,7 @@ MVKDescriptorPool* MVKDescriptorPool::Create(MVKDevice* device, const VkDescript
 		gpuSize += alignDescriptorOffset(maxGPUSize(MVKDescriptorGPULayout::Buffer, sizes), gpuAlign) * pCreateInfo->maxSets;
 		// The aux buffer is sized relative to the number of total elements in a descriptor, rather than the number of bindings with aux buffers
 		uint32_t size = numElem * sizeof(uint32_t);
-		// Aux buffers require Metal constant buffer alignment padding between descriptor sets
+		// Apply Metal constant buffer alignment padding for each descriptor set
 		gpuSize += calcGroupSizeWithPadding(size, pCreateInfo->maxSets, alignof(uint32_t), cbufAlign);
 	}
 
