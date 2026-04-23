@@ -100,7 +100,6 @@ typedef struct {
     VkDeviceSize maxMTLBufferSize;              	/**< The max size of a MTLBuffer (in bytes). */
     VkDeviceSize mtlBufferAlignment;            	/**< The alignment used when allocating memory for MTLBuffers. Must be PoT. */
     VkDeviceSize maxQueryBufferSize;            	/**< The maximum size of an occlusion query buffer (in bytes). */
-	VkDeviceSize mtlConstantBufferAlignment;		/**< The alignment required for Metal constant buffers (in bytes). */
 	VkDeviceSize mtlCopyBufferAlignment;        	/**< The alignment required during buffer copy operations (in bytes). */
     VkSampleCountFlags supportedSampleCounts;   	/**< A bitmask identifying the sample counts supported by the device. */
 	uint32_t minSwapchainImageCount;	 	  		/**< The minimum number of swapchain images that can be supported by a surface. */
@@ -164,6 +163,7 @@ typedef struct {
     VkBool32 samplerMipLodBias;                     /**< If true, a mip lod bias can be set on a sampler. */
     VkSampleCountFlags supportedSamplePosCounts;    /**< A bitmask identifying the sample counts for which the device supports sample positions. */
     VkBool32 depthBoundsTest;                       /**< If true, depth bounds test is supported. */
+	VkDeviceSize mtlConstantBufferAlignment;		/**< Minimum Metal constant buffer offset alignment (in bytes). */
 } MVKPhysicalDeviceMetalFeatures;
 
 
