@@ -168,7 +168,6 @@ struct MVKPhysicalDeviceArgumentBufferSizes {
 	Entry texture;
 	Entry sampler;
 	Entry pointer;
-	Entry cbuffer;
 };
 
 /** Represents a Vulkan physical GPU device. */

@@ -1899,7 +1899,8 @@ MVKDescriptorPool* MVKDescriptorPool::Create(MVKDevice* device, const VkDescript
 	MVKArgumentBufferMode argBufMode = pickArgumentBufferMode(device);
 	const MVKPhysicalDeviceArgumentBufferSizes& sizes = device->getPhysicalDevice()->getArgumentBufferSizes();
 	uint32_t gpuAlign = std::max(std::max<uint32_t>(sizes.texture.align, sizes.sampler.align), std::max<uint32_t>(sizes.pointer.align, 1));
-	uint32_t cbufAlign = std::max<uint32_t>(gpuAlign, sizes.cbuffer.align);
+	const uint32_t mtlCbufAlign = (uint32_t)device->getPhysicalDevice()->getMetalFeatures()->mtlConstantBufferAlignment;
+	uint32_t cbufAlign = std::max(gpuAlign, argBufMode != MVKArgumentBufferMode::Off ? mtlCbufAlign : 1u);
 	uint32_t dataAlign = gpuAlign;
 	uint32_t cpuAlign = alignof(id);
 	uint32_t gpuSize = 0;
