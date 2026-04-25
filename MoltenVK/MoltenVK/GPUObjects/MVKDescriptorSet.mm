@@ -1887,7 +1887,7 @@ static uint32_t maxGPUSize(MVKDescriptorGPULayout layout, const MVKPhysicalDevic
  * where each group is aligned to `groupAlign`, calculates the amount of space required to do that
  */
 static uint32_t calcGroupSizeWithPadding(uint32_t size, uint32_t groups, uint32_t elemAlign, uint32_t groupAlign) {
-	groups = std::min(groups, size / elemAlign); // Each group needs at least one element
+	groups = std::min(groups, size / elemAlign);	// Each group needs at least one element
 	size += groups * (std::max(elemAlign, groupAlign) - elemAlign);
 	return size & ~(groupAlign - 1);
 }
@@ -1900,10 +1900,6 @@ MVKDescriptorPool* MVKDescriptorPool::Create(MVKDevice* device, const VkDescript
 	MVKArgumentBufferMode argBufMode = pickArgumentBufferMode(device);
 	const MVKPhysicalDeviceArgumentBufferSizes& sizes = device->getPhysicalDevice()->getArgumentBufferSizes();
 	uint32_t gpuAlign = std::max(std::max<uint32_t>(sizes.texture.align, sizes.sampler.align), std::max<uint32_t>(sizes.pointer.align, 1));
-	const uint32_t mtlCbufAlign = (uint32_t)device->getPhysicalDevice()->getMetalFeatures()->mtlConstantBufferAlignment;
-	const bool hostOnly = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_EXT) && argBufMode != MVKArgumentBufferMode::ArgEncoder;
-	uint32_t cbufAlign = std::max(gpuAlign, hostOnly ? 1u : mtlCbufAlign);
-	uint32_t dataAlign = gpuAlign;
 	uint32_t cpuAlign = alignof(id);
 	uint32_t gpuSize = 0;
 	uint32_t cpuSize = 0;
@@ -1926,7 +1922,6 @@ MVKDescriptorPool* MVKDescriptorPool::Create(MVKDevice* device, const VkDescript
 		usesAuxBuffer |= gpu == MVKDescriptorGPULayout::BufferAuxSize;
 	}
 
-
 	if (numAuxOffset) {
 		// Aux offsets are allocated on the CPU buffer
 		cpuSize += calcGroupSizeWithPadding(numAuxOffset * sizeof(uint32_t), pCreateInfo->maxSets, alignof(uint32_t), cpuAlign);
@@ -1938,19 +1933,17 @@ MVKDescriptorPool* MVKDescriptorPool::Create(MVKDevice* device, const VkDescript
 			if (argBufMode == MVKArgumentBufferMode::Off || mayDisableArgumentBuffers(device))
 				cpuSize += calcGroupSizeWithPadding(inlineUniformSize, info->maxInlineUniformBlockBindings, 4, cpuAlign);
 			MVKDescriptorGPULayout gpuLayout = pickGPULayout(VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK, 1, argBufMode, device);
+			uint32_t dataAlign = gpuAlign;
 			if (gpuLayout == MVKDescriptorGPULayout::OutlinedData) {
 				// Add space for the pointers
 				gpuSize += alignDescriptorOffset(sizes.pointer.size, gpuAlign) * info->maxInlineUniformBlockBindings;
 				// Outlined data is 16-byte aligned
-				dataAlign = std::max(gpuAlign, 16u);
+				dataAlign = std::max(dataAlign, 16u);
 			}
 			if (gpuLayout != MVKDescriptorGPULayout::None)
 				gpuSize += calcGroupSizeWithPadding(inlineUniformSize, info->maxInlineUniformBlockBindings, 4, dataAlign);
 		}
 	}
-
-	// Apply Metal constant buffer alignment padding for each descriptor set
-	gpuSize = calcGroupSizeWithPadding(gpuSize, pCreateInfo->maxSets, gpuAlign, cbufAlign);
 
 	if (usesAuxBuffer) {
 		// One entry is also used at the beginning of each set for the pointer to the aux buffer
@@ -1958,12 +1951,16 @@ MVKDescriptorPool* MVKDescriptorPool::Create(MVKDevice* device, const VkDescript
 		gpuSize += alignDescriptorOffset(maxGPUSize(MVKDescriptorGPULayout::Buffer, sizes), gpuAlign) * pCreateInfo->maxSets;
 		// The aux buffer is sized relative to the number of total elements in a descriptor, rather than the number of bindings with aux buffers
 		uint32_t size = numElem * sizeof(uint32_t);
-		// Apply Metal constant buffer alignment padding for each descriptor set
-		gpuSize += calcGroupSizeWithPadding(size, pCreateInfo->maxSets, alignof(uint32_t), cbufAlign);
+		gpuSize += calcGroupSizeWithPadding(size, pCreateInfo->maxSets, alignof(uint32_t), gpuAlign);
 	}
 
-	// Set overall gpu alignment incorporating Metal constant buffer and inline uniform data alignment
-	gpuAlign = std::max(cbufAlign, dataAlign);
+	bool hostOnly = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_EXT) && argBufMode != MVKArgumentBufferMode::ArgEncoder;
+
+	// Apply Metal constant buffer offset alignment padding for descriptor sets
+	const uint32_t mtlCbufAlign = (uint32_t)device->getPhysicalDevice()->getMetalFeatures()->mtlConstantBufferAlignment;
+	const uint32_t cbufAlign = std::max(gpuAlign, hostOnly || argBufMode == MVKArgumentBufferMode::Off ? 1u : mtlCbufAlign);
+	gpuSize = calcGroupSizeWithPadding(gpuSize, pCreateInfo->maxSets, gpuAlign, cbufAlign);
+	gpuAlign = cbufAlign;
 
 	void* cpuBuffer;
 	void* hostOnlyGPUBuffer;
