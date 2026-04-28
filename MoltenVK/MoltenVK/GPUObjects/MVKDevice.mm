@@ -1839,16 +1839,12 @@ void MVKPhysicalDevice::getExternalFenceProperties(const VkPhysicalDeviceExterna
 	pExternalFenceProperties->pNext = next;
 }
 
-static const VkExternalSemaphoreProperties _extSemProps = {
-	VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES,
-	nullptr, 0, 0,
-	VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT | VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT
-};
+static const VkExternalSemaphoreProperties _emptyExtSemProps = {VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES, nullptr, 0, 0, 0};
 
 void MVKPhysicalDevice::getExternalSemaphoreProperties(const VkPhysicalDeviceExternalSemaphoreInfo* pExternalSemaphoreInfo,
 													   VkExternalSemaphoreProperties* pExternalSemaphoreProperties) {
 	void* next = pExternalSemaphoreProperties->pNext;
-	*pExternalSemaphoreProperties = _extSemProps;
+	*pExternalSemaphoreProperties = _emptyExtSemProps;
 	pExternalSemaphoreProperties->pNext = next;
 }
 
