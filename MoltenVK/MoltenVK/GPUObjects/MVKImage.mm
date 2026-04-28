@@ -155,8 +155,13 @@ MTLTextureDescriptor* MVKImagePlane::newMTLTextureDescriptor() {
     mtlTexDesc.storageMode = _image->getMTLStorageMode();
     mtlTexDesc.cpuCacheMode = _image->getMTLCPUCacheMode();
     // For 2D views of 3D and block texel views, we alias the underlying memory.
-    // Ensure that it remains consistent by disabling GPU layout optimization.
-    mtlTexDesc.allowGPUOptimizedContents = !_image->_is2DViewOn3DImageCompatible && !_image->_isBlockTexelViewCompatible;
+    // For color render targets used as transfer sources, MTLBlitCommandEncoder
+    // copies the lossless-compressed tile layout directly rather than the
+    // logical pixel values, which corrupts readback on Apple Silicon (#2220).
+    // Ensure layout remains consistent by disabling GPU layout optimization.
+    mtlTexDesc.allowGPUOptimizedContents = !_image->_is2DViewOn3DImageCompatible
+                                        && !_image->_isBlockTexelViewCompatible
+                                        && !_image->_isColorAttachmentTransferSrc;
 
     return mtlTexDesc;
 }
@@ -1314,6 +1319,9 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 
 	_is2DViewOn3DImageCompatible = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT | VK_IMAGE_CREATE_2D_VIEW_COMPATIBLE_BIT_EXT);
 	_isBlockTexelViewCompatible = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT);
+	_isColorAttachmentTransferSrc = mvkAreAllFlagsEnabled(pCreateInfo->usage,
+														  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+														  VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 }
 
 VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {

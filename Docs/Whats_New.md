@@ -24,6 +24,7 @@ Released TBD
 - Fix incorrect varable usage in `MVKImagePlane::getMTLTexture()`.
 - Fix device loss when using imported `MTLTexture` objects with Metal argument buffers.
 - Update copyright notices to year 2026.
+- Fix channel corruption on Apple Silicon for color render targets used as transfer sources.
 - Update to latest SPIRV-Cross:
   - MSL: Fix `subgroupBallotExclusiveBitCount()` is not available for task shader and mesh shader.
   - MSL: `thread_execution_width` is deprecated as of Metal 3.0 , use `threads_per_simdgroup` instead.

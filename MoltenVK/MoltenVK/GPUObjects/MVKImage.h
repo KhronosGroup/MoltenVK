@@ -402,6 +402,7 @@ protected:
 	bool _isLinearForAtomics;
 	bool _is2DViewOn3DImageCompatible = false;
 	bool _isBlockTexelViewCompatible = false;
+	bool _isColorAttachmentTransferSrc = false;
 };
 
 
