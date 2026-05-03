@@ -1614,7 +1614,7 @@ void MVKMetalComputeCommandEncoderState::prepareRenderDispatch(
 }
 
 void MVKMetalComputeCommandEncoderState::reset() {
-	memset(this, 0, offsetof(MVKMetalComputeCommandEncoderState, MEMSET_RESET_LINE));
+	memset((void*)this, 0, offsetof(MVKMetalComputeCommandEncoderState, MEMSET_RESET_LINE));
 	_vkStage = kMVKShaderStageCount;
 }
 

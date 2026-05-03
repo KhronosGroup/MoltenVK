@@ -1044,7 +1044,13 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 
 void MVKPixelFormats::addMTLPixelFormatDescImpl(MTLPixelFormat mtlPixFmt, MTLPixelFormat mtlPixFmtLinear,
 												MVKMTLViewClass viewClass, MVKMTLFmtCaps fmtCaps, const char* name) {
-	_mtlPixelFormatDescriptions[mtlPixFmt] = { .mtlPixelFormat = mtlPixFmt, VK_FORMAT_UNDEFINED, fmtCaps, viewClass, mtlPixFmtLinear, name };
+	_mtlPixelFormatDescriptions[mtlPixFmt] = {
+		.mtlPixelFormat = mtlPixFmt,
+		.vkFormat = VK_FORMAT_UNDEFINED,
+		.mtlFmtCaps = fmtCaps,
+		.mtlViewClass = viewClass,
+		.mtlPixelFormatLinear = mtlPixFmtLinear,
+		.name = name };
 }
 
 // Verify mtlFmt exists on platform, to avoid overwriting the MTLPixelFormatInvalid entry.
@@ -1254,7 +1260,13 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities(const MVKMTLDeviceCapabilit
 // If necessary, resize vector with empty elements
 void MVKPixelFormats::addMTLVertexFormatDescImpl(MTLVertexFormat mtlVtxFmt, MVKMTLFmtCaps vtxCap, const char* name) {
 	if (mtlVtxFmt >= _mtlVertexFormatDescriptions.size()) { _mtlVertexFormatDescriptions.resize(mtlVtxFmt + 1, {}); }
-	_mtlVertexFormatDescriptions[mtlVtxFmt] = { .mtlVertexFormat = mtlVtxFmt, VK_FORMAT_UNDEFINED, vtxCap, MVKMTLViewClass::None, MTLPixelFormatInvalid, name };
+	_mtlVertexFormatDescriptions[mtlVtxFmt] = {
+		.mtlVertexFormat = mtlVtxFmt,
+		.vkFormat = VK_FORMAT_UNDEFINED,
+		.mtlFmtCaps = vtxCap,
+		.mtlViewClass = MVKMTLViewClass::None,
+		.mtlPixelFormatLinear = MTLPixelFormatInvalid,
+		.name = name };
 }
 
 // Check mtlVtx exists on platform, to avoid overwriting the MTLVertexFormatInvalid entry.
