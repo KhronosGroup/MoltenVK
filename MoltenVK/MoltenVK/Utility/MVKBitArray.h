@@ -1,8 +1,8 @@
 /*
  * MVKBitArray.h
  *
- * Copyright (c) 2020-2025 The Brenwill Workshop Ltd. (http://www.brenwill.com)
- * Copyright (c) 2023-2025 Evan Tang for CodeWeavers
+ * Copyright (c) 2020-2026 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2023-2026 Evan Tang for CodeWeavers
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

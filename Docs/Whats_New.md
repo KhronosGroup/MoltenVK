@@ -6,7 +6,7 @@
 
 # What's New in MoltenVK
 
-Copyright (c) 2015-2025 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
+Copyright (c) 2015-2026 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 [comment]: # "This document is written in Markdown (http://en.wikipedia.org/wiki/Markdown) format."
 [comment]: # "For best results, use a Markdown reader."
@@ -23,6 +23,7 @@ Released TBD
 - Fix buffer and heap out-of-sync in `initExternalMemory()`.
 - Fix incorrect varable usage in `MVKImagePlane::getMTLTexture()`.
 - Fix device loss when using imported `MTLTexture` objects with Metal argument buffers.
+- Update copyright notices to year 2026.
 - Update to latest SPIRV-Cross:
   - MSL: Fix `subgroupBallotExclusiveBitCount()` is not available for task shader and mesh shader.
   - MSL: `thread_execution_width` is deprecated as of Metal 3.0 , use `threads_per_simdgroup` instead.
