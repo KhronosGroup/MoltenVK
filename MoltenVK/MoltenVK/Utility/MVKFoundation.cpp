@@ -39,6 +39,7 @@ const char* mvkVkCommandName(MVKCommandUse cmdUse) {
 		case kMVKCommandUseBlitImage:                    return "vkCmdBlitImage";
 		case kMVKCommandUseCopyImage:                    return "vkCmdCopyImage";
 		case kMVKCommandUseResolveImage:                 return "vkCmdResolveImage (resolve stage)";
+		case kMVKCommandUseResolveSubpassAttachment:     return "Resolve subpass attachment";
 		case kMVKCommandUseResolveExpandImage:           return "vkCmdResolveImage (expand stage)";
 		case kMVKCommandUseResolveCopyImage:             return "vkCmdResolveImage (copy stage)";
 		case kMVKCommandUseCopyImageToMemory:            return "vkCopyImageToMemory host sync";
@@ -155,5 +156,4 @@ void mvkFlipVertically(void* rowMajorData, uint32_t rowCount, size_t bytesPerRow
 		memcpy(lowerRow, tmpRow, bytesPerRow);
 	}
 }
-
 
