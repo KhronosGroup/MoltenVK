@@ -424,7 +424,7 @@ void MVKRenderSubpass::resolveUnresolvableAttachments(MVKCommandEncoder* cmdEnco
 				MVKFormatType mvkFmtType = _renderPass->getPixelFormats()->getFormatType(raImgView->getMTLPixelFormat());
 				const bool isTextureArray = raImgView->getImage()->getLayerCount() != 1u;
 				id<MTLComputePipelineState> mtlRslvState = cmdEncoder->getCommandEncodingPool()->getCmdResolveColorImageMTLComputePipelineState(mvkFmtType, isTextureArray);
-				id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseResolveImage);
+				id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseResolveSubpassAttachment);
 				MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
 				state.bindPipeline(mtlComputeEnc, mtlRslvState);
 				state.bindTexture(mtlComputeEnc, raImgView->getMTLTexture(), 0);
@@ -1060,6 +1060,16 @@ VkExtent2D MVKRenderPass::getRenderAreaGranularity() {
         return { 32, 32 };
     }
     return { 1, 1 };
+}
+
+void MVKRenderPass::encodeSubpassDependencyBarriers(MVKCommandEncoder* cmdEncoder, uint32_t dstSubpass) {
+	for (auto& spDep : _subpassDependencies) {
+		if (spDep.dstSubpass != dstSubpass || spDep.srcSubpass == spDep.dstSubpass) { continue; }
+
+		uint64_t sourceStageMask = mvkBarrierStagesFromPipelineStageFlags(spDep.srcStageMask);
+		uint64_t destStageMask = mvkBarrierStagesFromPipelineStageFlags(spDep.dstStageMask);
+		cmdEncoder->setBarrier(sourceStageMask, destStageMask);
+	}
 }
 
 MVKRenderPass::MVKRenderPass(MVKDevice* device,
