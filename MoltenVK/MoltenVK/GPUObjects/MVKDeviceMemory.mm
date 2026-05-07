@@ -389,6 +389,14 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 					[_mtlBuffer release];							// guard against dups
 					_device->getLiveResources().add(((id<MTLBuffer>)pImportInfo->handle));
 					_mtlBuffer = [((id<MTLBuffer>)pImportInfo->handle) retain];	// retained
+					/* On Metal 3 / Xcode 16+, GPU access to a buffer requires
+					 * the buffer be registered in the device's residency set.
+					 * The non-import path in ensureMTLBuffer() calls
+					 * _device->makeResident(buf) immediately after creation;
+					 * the import path here was missing that, so GPU writes
+					 * to a buffer imported via VkImportMemoryMetalHandleInfoEXT
+					 * silently went to a non-resident region the CPU can't see. */
+					_device->makeResident(_mtlBuffer);
 					_mtlStorageMode = _mtlBuffer.storageMode;
 					_mtlCPUCacheMode = _mtlBuffer.cpuCacheMode;
 					_allocationSize = _mtlBuffer.length;
