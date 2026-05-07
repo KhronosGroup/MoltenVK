@@ -565,9 +565,7 @@ void MVKCommandEncoder::setSubpass(MVKCommand* subpassCmd,
 								   uint32_t subpassIndex,
 								   MVKCommandUse cmdUse) {
 	encodeStoreActions();
-	encodeBarrierUpdates();
 	endMetalRenderEncoding();
-	encodeBarrierUpdates(); // In case a compute encoder was created by resolveUnresolvableAttachments
 
 	MVKRenderPass* renderPass = _pEncodingContext->getRenderPass();
 	if (renderPass) { renderPass->encodeSubpassDependencyBarriers(this, subpassIndex); }
@@ -1030,9 +1028,7 @@ void MVKCommandEncoder::endRenderpass() {
 	}
 
 	encodeStoreActions();
-	encodeBarrierUpdates();
 	endMetalRenderEncoding();
-	encodeBarrierUpdates(); // In case a compute encoder was created by resolveUnresolvableAttachments
 	MVKRenderPass *renderPass = _pEncodingContext->getRenderPass();
 	if (renderPass) { renderPass->encodeSubpassDependencyBarriers(this, VK_SUBPASS_EXTERNAL); }
 	if ( !mvkIsAnyFlagEnabled(_pEncodingContext->getRenderingFlags(), VK_RENDERING_SUSPENDING_BIT) ) {
@@ -1046,16 +1042,18 @@ void MVKCommandEncoder::endMetalRenderEncoding() {
     if (_mtlRenderEncoder == nil) { return; }
 
 	if (_cmdBuffer->_hasStageCounterTimestampCommand) { [_mtlRenderEncoder updateFence: getStageCountersMTLFence() afterStages: MTLRenderStageFragment]; }
+	encodeBarrierUpdates();
 	endMetalEncoding(_mtlRenderEncoder);
 
 	getSubpass()->resolveUnresolvableAttachments(this, _attachments.contents());
+	endCurrentMetalEncoding();
 
     _occlusionQueryState.endMetalRenderPass(this);
 }
 
 void MVKCommandEncoder::endCurrentMetalEncoding() {
-	encodeBarrierUpdates();
 	endMetalRenderEncoding();
+	encodeBarrierUpdates();
 
 	if (_mtlComputeEncoder && _cmdBuffer->_hasStageCounterTimestampCommand) { [_mtlComputeEncoder updateFence: getStageCountersMTLFence()]; }
 	endMetalEncoding(_mtlComputeEncoder);
