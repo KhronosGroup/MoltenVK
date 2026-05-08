@@ -352,11 +352,14 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 				// Setting Metal objects directly will override Vulkan settings.
 				// It is responsibility of app to ensure these are consistent. Not doing so results in undefined behavior.
 				const auto* pMTLBuffInfo = (VkImportMetalBufferInfoEXT*)next;
-				if (_mtlBuffer)
+				if (_mtlBuffer) {
+					_device->removeResidency(_mtlBuffer);
 					_device->getLiveResources().remove(_mtlBuffer);
+				}
 				[_mtlBuffer release];							// guard against dups
 				_device->getLiveResources().add(pMTLBuffInfo->mtlBuffer);
 				_mtlBuffer = [pMTLBuffInfo->mtlBuffer retain];	// retained
+				_device->makeResident(_mtlBuffer);
 				_mtlStorageMode = _mtlBuffer.storageMode;
 				_mtlCPUCacheMode = _mtlBuffer.cpuCacheMode;
 				_allocationSize = _mtlBuffer.length;
@@ -384,18 +387,13 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 					_allocationSize = _mtlHeap.size;
 				}
 				else if (pImportInfo->handleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_EXT) {
-					if (_mtlBuffer)
+					if (_mtlBuffer) {
+						_device->removeResidency(_mtlBuffer);
 						_device->getLiveResources().remove(_mtlBuffer);
+					}
 					[_mtlBuffer release];							// guard against dups
 					_device->getLiveResources().add(((id<MTLBuffer>)pImportInfo->handle));
 					_mtlBuffer = [((id<MTLBuffer>)pImportInfo->handle) retain];	// retained
-					/* On Metal 3 / Xcode 16+, GPU access to a buffer requires
-					 * the buffer be registered in the device's residency set.
-					 * The non-import path in ensureMTLBuffer() calls
-					 * _device->makeResident(buf) immediately after creation;
-					 * the import path here was missing that, so GPU writes
-					 * to a buffer imported via VkImportMemoryMetalHandleInfoEXT
-					 * silently went to a non-resident region the CPU can't see. */
 					_device->makeResident(_mtlBuffer);
 					_mtlStorageMode = _mtlBuffer.storageMode;
 					_mtlCPUCacheMode = _mtlBuffer.cpuCacheMode;
