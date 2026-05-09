@@ -1382,7 +1382,7 @@ void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttac
 	const auto placementHeapFlags = VK_IMAGE_CREATE_2D_VIEW_COMPATIBLE_BIT_EXT |
 	                                VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT |
 	                                VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT;
-	if (!getMVKConfig().useMTLHeap && mvkIsAnyFlagEnabled(pCreateInfo->flags, placementHeapFlags)) {
+	if (!getMetalFeatures().placementHeaps && mvkIsAnyFlagEnabled(pCreateInfo->flags, placementHeapFlags)) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : MTLHeap must be enabled to create 2D-on-3D or block texel view compatible images."));
 	}
 
