@@ -1343,7 +1343,7 @@ void MVKPixelFormats::initMTLVertexFormatCapabilities(const MVKMTLDeviceCapabili
 
 	addMTLVertexFormatDesc( UChar4Normalized_BGRA );
 	
-	if (gpuCaps.supportsApple5 || gpuCaps.supportsMac2) {
+	if (gpuCaps.supportsApple5 || gpuCaps.supportsMac1) {
 		addMTLVertexFormatDesc( FloatRG11B10 );
 		addMTLVertexFormatDesc( FloatRGB9E5 );
 	}
