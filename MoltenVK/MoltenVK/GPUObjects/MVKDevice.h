@@ -121,6 +121,7 @@ typedef struct MVKMTLDeviceCapabilities {
 	bool supportsDepth24Stencil8;
 	bool supports32BitFloatFiltering;
 	bool supports32BitMSAA;
+	bool supportsRenderLinearTextures;
 
 	uint8_t getHighestAppleGPU() const;
 	uint8_t getHighestMacGPU() const;

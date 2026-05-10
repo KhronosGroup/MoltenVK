@@ -126,6 +126,9 @@ MVKMTLDeviceCapabilities::MVKMTLDeviceCapabilities(id<MTLDevice> mtlDev) {
 #if MVK_MACOS
 	supportsDepth24Stencil8 = mtlDev.isDepth24Stencil8PixelFormatSupported;
 #endif
+#if !MVK_OS_SIMULATOR
+	supportsRenderLinearTextures = supportsApple1;
+#endif
 }
 
 
@@ -2462,6 +2465,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.dynamicVertexStride = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0) && (supportsMTLGPUFamily(Apple4) || supportsMTLGPUFamily(Mac2));
 	_metalFeatures.nativeTextureAtomics = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0) && (supportsMTLGPUFamily(Metal3) || supportsMTLGPUFamily(Apple6) || supportsMTLGPUFamily(Mac2));
 
+	_metalFeatures.renderLinearTextures = _gpuCapabilities.supportsRenderLinearTextures;
+
 	if (supportsMTLGPUFamily(Mac2)) {
 		_metalFeatures.mtlBufferAlignment = 256;
 		_metalFeatures.mtlConstantBufferAlignment = 32;
@@ -2503,7 +2508,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.maxQueryBufferSize = (64 * KIBI);
 
 		_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
-		_metalFeatures.renderLinearTextures = true;
 		_metalFeatures.tileBasedDeferredRendering = true;
 
 		// From testing, these guarantees are only true on Apple GPUs.
@@ -2576,7 +2580,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #if MVK_OS_SIMULATOR
 	_metalFeatures.mtlBufferAlignment = 256;	// Even on Apple Silicon
 	_metalFeatures.mtlConstantBufferAlignment = 256;
-	_metalFeatures.renderLinearTextures = false;
 #endif
 
 #define setMSLVersion(maj, min)	\
