@@ -150,9 +150,11 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 	}
 
 	if (pInheritInpAttIdxInfo) {
-		_secondaryInheritanceColorAttachmentInputIndices.assign(pInheritInpAttIdxInfo->pColorAttachmentInputIndices,
-																pInheritInpAttIdxInfo->pColorAttachmentInputIndices + pInheritInpAttIdxInfo->colorAttachmentCount);
-		_hasSecondaryInheritanceColorAttachmentInputIndices = true;
+		if (pInheritInpAttIdxInfo->pColorAttachmentInputIndices) {
+			_secondaryInheritanceColorAttachmentInputIndices.assign(pInheritInpAttIdxInfo->pColorAttachmentInputIndices,
+																	pInheritInpAttIdxInfo->pColorAttachmentInputIndices + pInheritInpAttIdxInfo->colorAttachmentCount);
+			_hasSecondaryInheritanceColorAttachmentInputIndices = true;
+		}
 
 		if (pInheritInpAttIdxInfo->pDepthInputAttachmentIndex) {
 			_secondaryInheritanceDepthAttachmentInputIndex = *pInheritInpAttIdxInfo->pDepthInputAttachmentIndex;
