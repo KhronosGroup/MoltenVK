@@ -613,6 +613,12 @@ public:
 	/** Returns the Metal texture type of this image view. */
 	MTLTextureType getMTLTextureType() { return _mtlTextureType; }
 
+	bool getIs2dViewOf3d() {
+		return _image->_is2DViewOn3DImageCompatible &&
+				_image->getImageType() == VK_IMAGE_TYPE_3D &&
+				(_mtlTextureType == MTLTextureType2D || _mtlTextureType == MTLTextureType2DArray);
+	}
+
 	/**
 	 * Populates the texture of the specified render pass descriptor
 	 * with the Metal texture underlying this image.

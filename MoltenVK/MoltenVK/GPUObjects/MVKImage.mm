@@ -1885,10 +1885,7 @@ id<MTLTexture> MVKImageViewPlane::newMTLTexture() {
     NSRange sliceRange = NSMakeRange(_imageView->_subresourceRange.baseArrayLayer, _imageView->_subresourceRange.layerCount);
 
     // Support 2D views of 3D textures and block texel views using memory aliasing.
-    const bool is2dViewOf3d = image->_is2DViewOn3DImageCompatible &&
-        image->getImageType() == VK_IMAGE_TYPE_3D &&
-        (_imageView->_mtlTextureType == MTLTextureType2D || _imageView->_mtlTextureType == MTLTextureType2DArray);
-
+    const bool is2dViewOf3d = _imageView->getIs2dViewOf3d();
     const bool imageCompressed = image->getIsCompressed();
     const bool viewCompressed = getPixelFormats()->getFormatType(_mtlPixFmt) == kMVKFormatCompressed;
     const bool isBlockTexelView = image->_isBlockTexelViewCompatible && imageCompressed && !viewCompressed;
@@ -2242,7 +2239,8 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
 		_subresourceRange.levelCount = _image->getMipLevelCount() - _subresourceRange.baseMipLevel;
 	}
 	if (_subresourceRange.layerCount == VK_REMAINING_ARRAY_LAYERS) {
-		_subresourceRange.layerCount = _image->getLayerCount() - _subresourceRange.baseArrayLayer;
+		uint32_t imgLayerCnt = getIs2dViewOf3d() ? _image->getExtent3D(0, _subresourceRange.baseMipLevel).depth : _image->getLayerCount();
+		_subresourceRange.layerCount = imgLayerCnt - _subresourceRange.baseArrayLayer;
 	}
 
 	auto& mtlFeats = getMetalFeatures();
