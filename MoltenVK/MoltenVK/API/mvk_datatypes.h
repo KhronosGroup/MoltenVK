@@ -469,6 +469,9 @@ MTLRenderStages mvkMTLRenderStagesFromVkPipelineStageFlags(VkPipelineStageFlags2
 /** Returns the combination of Metal MTLBarrierScope bits corresponding to the specified Vulkan VkAccessFlags2. */
 MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFlags2 vkAccess);
 
+/** Returns the mask of MVKBarrierStage bits corresponding to the specified Vulkan VkPipelineStageFlags2.  */
+uint64_t mvkBarrierStagesFromPipelineStageFlags(VkPipelineStageFlags2 flags);
+
 #pragma mark -
 #pragma mark Geometry conversions
 

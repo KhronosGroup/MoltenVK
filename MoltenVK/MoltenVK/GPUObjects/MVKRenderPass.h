@@ -350,6 +350,9 @@ public:
 	/** Returns whether or not this render pass is a multiview render pass. */
 	bool isMultiview() const;
 
+	/** Encodes barriers for subpass dependencies with the specified destination subpass. */
+	void encodeSubpassDependencyBarriers(MVKCommandEncoder* cmdEncoder, uint32_t dstSubpass);
+
 	/** Returns the dynamic rendering flags. */
 	VkRenderingFlags getRenderingFlags() { return _renderingFlags; }
 
@@ -432,4 +435,3 @@ bool mvkHasColorAttachments(const VkPipelineRenderingCreateInfo* pRendInfo);
  */
 uint32_t mvkGetNextViewMaskGroup(uint32_t viewMask, uint32_t* startView,
 								 uint32_t* viewCount, uint32_t *groupMask = nullptr);
-
