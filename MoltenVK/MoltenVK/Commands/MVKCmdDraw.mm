@@ -102,50 +102,6 @@ void MVKCmdBindIndexBuffer::encode(MVKCommandEncoder* cmdEncoder) {
         const auto* placeholderBuffer = cmdEncoder->getTempMTLBuffer(_binding.size);
         _binding.mtlBuffer = placeholderBuffer->_mtlBuffer;
         _binding.offset = placeholderBuffer->_offset;
-    } else if (_binding.vkIndexType == VK_INDEX_TYPE_UINT8) {
-        // Copy 8-bit indices into 16-bit index buffer compatible with Metal.
-        const auto numIndices = _binding.size;
-        auto* uint16Buf = cmdEncoder->getTempMTLBuffer(numIndices * 2);
-
-        cmdEncoder->encodeStoreActions(true);
-
-        // Determine the number of full threadgroups we can dispatch to cover the buffer content efficiently.
-        // Some GPU's report different values for max threadgroup width between the pipeline state and device,
-        // so conservatively use the minimum of these two reported values.
-        id<MTLComputePipelineState> cps = cmdEncoder->getCommandEncodingPool()->getConvertUint8IndicesMTLComputePipelineState();
-        NSUInteger tgWidth = std::min(cps.maxTotalThreadsPerThreadgroup, cmdEncoder->getMTLDevice().maxThreadsPerThreadgroup.width);
-        NSUInteger tgCount = numIndices / tgWidth;
-
-        MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
-        id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandConvertUint8Indices);
-        state.bindPipeline(mtlComputeEnc, cps);
-        state.bindBuffer(mtlComputeEnc, _binding.mtlBuffer, _binding.offset, 0);
-        state.bindBuffer(mtlComputeEnc, uint16Buf->_mtlBuffer, 0, 1);
-
-        // Run as many full threadgroups as will fit into the buffer content.
-        if (tgCount > 0) {
-            [mtlComputeEnc dispatchThreadgroups: MTLSizeMake(tgCount, 1, 1)
-                           threadsPerThreadgroup: MTLSizeMake(tgWidth, 1, 1)];
-        }
-
-        // If there is left-over buffer content after running full threadgroups, or if the buffer content
-        // fits within a single threadgroup, run a single partial threadgroup of the appropriate size.
-        auto remainderIndexCount = numIndices % tgWidth;
-        if (remainderIndexCount > 0) {
-            if (tgCount > 0) {
-                const auto indicesConverted = tgCount * tgWidth;
-                state.bindBuffer(mtlComputeEnc, _binding.mtlBuffer, _binding.offset + indicesConverted, 0);
-                state.bindBuffer(mtlComputeEnc, uint16Buf->_mtlBuffer, indicesConverted * 2, 1);
-            }
-            [mtlComputeEnc dispatchThreadgroups: MTLSizeMake(1, 1, 1)
-                           threadsPerThreadgroup: MTLSizeMake(remainderIndexCount, 1, 1)];
-        }
-
-        // Running this stage prematurely ended the render pass, so we have to start it up again.
-        cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
-
-        _binding.mtlBuffer = uint16Buf->_mtlBuffer;
-        _binding.offset = uint16Buf->_offset;
     }
 
     cmdEncoder->getState().bindIndexBuffer(_binding);
@@ -424,6 +380,51 @@ void MVKCmdDrawIndexed::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
 	diiCmd.encode(cmdEncoder);
 }
 
+static const MVKMTLBufferAllocation* convertUint8IndexBuffer(MVKCommandEncoder* cmdEncoder, const MVKIndexMTLBufferBinding& ibb) {
+    // Copy 8-bit indices into 16-bit index buffer compatible with Metal.
+    const auto numIndices = ibb.size;
+    auto* uint16Buf = cmdEncoder->getTempMTLBuffer(numIndices * 2);
+
+    cmdEncoder->encodeStoreActions(true);
+
+    // Determine the number of full threadgroups we can dispatch to cover the buffer content efficiently.
+    // Some GPU's report different values for max threadgroup width between the pipeline state and device,
+    // so conservatively use the minimum of these two reported values.
+    id<MTLComputePipelineState> cps = cmdEncoder->getCommandEncodingPool()->getConvertUint8IndicesMTLComputePipelineState();
+    NSUInteger tgWidth = std::min(cps.maxTotalThreadsPerThreadgroup, cmdEncoder->getMTLDevice().maxThreadsPerThreadgroup.width);
+    NSUInteger tgCount = numIndices / tgWidth;
+
+    MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
+    id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandConvertUint8Indices);
+    state.bindPipeline(mtlComputeEnc, cps);
+    state.bindBuffer(mtlComputeEnc, ibb.mtlBuffer, ibb.offset, 0);
+    state.bindBuffer(mtlComputeEnc, uint16Buf->_mtlBuffer, uint16Buf->_offset, 1);
+
+    // Run as many full threadgroups as will fit into the buffer content.
+    if (tgCount > 0) {
+        [mtlComputeEnc dispatchThreadgroups: MTLSizeMake(tgCount, 1, 1)
+                       threadsPerThreadgroup: MTLSizeMake(tgWidth, 1, 1)];
+    }
+
+    // If there is left-over buffer content after running full threadgroups, or if the buffer content
+    // fits within a single threadgroup, run a single partial threadgroup of the appropriate size.
+    auto remainderIndexCount = numIndices % tgWidth;
+    if (remainderIndexCount > 0) {
+        if (tgCount > 0) {
+            const auto indicesConverted = tgCount * tgWidth;
+            state.bindBuffer(mtlComputeEnc, ibb.mtlBuffer, ibb.offset + indicesConverted, 0);
+            state.bindBuffer(mtlComputeEnc, uint16Buf->_mtlBuffer, uint16Buf->_offset + indicesConverted * 2, 1);
+        }
+        [mtlComputeEnc dispatchThreadgroups: MTLSizeMake(1, 1, 1)
+                       threadsPerThreadgroup: MTLSizeMake(remainderIndexCount, 1, 1)];
+    }
+
+    // Running this stage prematurely ended the render pass, so we have to start it up again.
+    cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
+
+    return uint16Buf;
+}
+
 void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 
 	if (_indexCount == 0 || _instanceCount == 0) { return; }	// Nothing to do.
@@ -445,7 +446,13 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 	MVKPiplineStages stages;
     pipeline->getStages(stages);
 
-    const MVKIndexMTLBufferBinding& ibb = cmdEncoder->getVkGraphics()._indexBuffer;
+    MVKIndexMTLBufferBinding ibb = cmdEncoder->getVkGraphics()._indexBuffer;
+    if (ibb.vkIndexType == VK_INDEX_TYPE_UINT8) {
+        auto* converted = convertUint8IndexBuffer(cmdEncoder, ibb);
+        ibb.mtlBuffer = converted->_mtlBuffer;
+        ibb.offset = converted->_offset;
+    }
+
     size_t idxSize = mvkMTLIndexTypeSizeInBytes((MTLIndexType)ibb.mtlIndexType);
     VkDeviceSize idxBuffOffset = ibb.offset + (_firstIndex * idxSize);
 
@@ -974,6 +981,12 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
     cmdEncoder->_isIndexedDraw = true;
 
     MVKIndexMTLBufferBinding ibb = ibbOrig;
+    if (ibb.vkIndexType == VK_INDEX_TYPE_UINT8) {
+        auto* converted = convertUint8IndexBuffer(cmdEncoder, ibb);
+        ibb.mtlBuffer = converted->_mtlBuffer;
+        ibb.offset = converted->_offset;
+    }
+
 	MVKIndexMTLBufferBinding ibbTriFan = ibb;
     auto* pipeline = cmdEncoder->getGraphicsPipeline();
 	auto& mtlFeats = cmdEncoder->getMetalFeatures();
