@@ -146,6 +146,7 @@ static const uint32_t kMVKTessEvalNumReservedBuffers = 3;
 static const uint32_t kMVKTessEvalInputBufferBinding = 0;
 static const uint32_t kMVKTessEvalPatchInputBufferBinding = 1;
 static const uint32_t kMVKTessEvalLevelBufferBinding = 2;
+static const uint32_t kMVKDrawIDBufferIndex = 19;
 
 /** Represents an abstract Vulkan pipeline. */
 class MVKPipeline : public MVKVulkanAPIDeviceObject {
@@ -272,6 +273,10 @@ public:
 
 	/** Returns the MTLComputePipelineState object for the tessellation control stage of a tessellated draw. */
 	id<MTLComputePipelineState> getTessControlStageState() { return _mtlTessControlStageState; }
+    
+    bool needsDrawIDBuffer() const { return _needsDrawIDBuffer; }
+    
+    uint32_t getMetalBufferIndexForDrawID() {return kMVKDrawIDBufferIndex; }
 
 	/** Returns true if the vertex shader needs a buffer to store its output. */
 	bool needsVertexOutputBuffer() const { return _stageResources[kMVKShaderStageVertex].implicitBuffers.needed.has(MVKImplicitBuffer::Output); }
@@ -403,6 +408,8 @@ protected:
 	bool _ownsTessCtlModule = false;
 	bool _ownsTessEvalModule = false;
 	bool _ownsFragmentModule = false;
+    
+    bool _needsDrawIDBuffer = false;
 
 	uint8_t _primitiveTopologyClass;
 	bool _isRasterizing = false;

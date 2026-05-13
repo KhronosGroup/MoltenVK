@@ -254,6 +254,7 @@ namespace mvk {
 		bool isPositionInvariant = false;
 		bool needsOutputBuffer = false;
 		bool needsPatchOutputBuffer = false;
+        bool usesDrawId = false;
 		bool needsBufferSizeBuffer = false;
 		bool needsDynamicOffsetBuffer = false;
 		bool needsInputThreadgroupMem = false;
