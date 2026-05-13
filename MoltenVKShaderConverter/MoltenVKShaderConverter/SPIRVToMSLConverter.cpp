@@ -384,6 +384,10 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 		} else {
 			ctxSI.outIsUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxSI.shaderVar.location);
 		}
+        
+        if (pMSLCompiler->has_active_builtin(spv::BuiltInDrawIndex, spv::StorageClassInput)) {
+            conversionResult.resultInfo.usesDrawId = true;
+        }
 	}
 	for (auto& ctxSO : shaderConfig.shaderOutputs) {
 		if (ctxSO.shaderVar.builtin != spv::BuiltInMax) {

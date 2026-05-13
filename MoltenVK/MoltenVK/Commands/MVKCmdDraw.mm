@@ -768,8 +768,35 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 
 	MVKPiplineStages stages;
     pipeline->getStages(stages);
+    
+    // Before the for-loop over drawCount
+    if (pipeline->needsDrawIDBuffer()) {
+        uint32_t firstDrawID = 0;  // usually 0 for a new vkCmdDraw* call,
+                                     // or accumulated baseDrawID if you support multi-draw indirect with offset
+
+        cmdEncoder->ensureDrawIDBuffer(_drawCount);   // or the indirect drawCount
+
+        uint32_t* drawIDs = (uint32_t*)[cmdEncoder->_drawIDBuffer contents];
+        for (uint32_t i = 0; i < _drawCount; i++) {
+            drawIDs[i] = firstDrawID + i;     // sequential IDs starting from 0 or base
+        }
+    }
 
     for (uint32_t drawIdx = 0; drawIdx < _drawCount; drawIdx++) {
+        // === gl_DrawID hack: bind current draw index as [[buffer(N)]] ===
+        if (pipeline->needsDrawIDBuffer()) {
+            
+            if (drawIdx == 0) {
+                [cmdEncoder->_mtlRenderEncoder setVertexBuffer:cmdEncoder->_drawIDBuffer
+                                                              offset:0
+                                                             atIndex:pipeline -> getMetalBufferIndexForDrawID()];   // your reserved index
+                [cmdEncoder->_mtlRenderEncoder setVertexBufferOffset:0
+                                                             atIndex:pipeline -> getMetalBufferIndexForDrawID()];   // set the correct offset for draw #0
+            } else {
+                [cmdEncoder->_mtlRenderEncoder setVertexBufferOffset:drawIdx * sizeof(uint32_t)
+                                                             atIndex:pipeline -> getMetalBufferIndexForDrawID()];   // set the correct offset for draw #1+
+            }
+        }
         for (uint32_t s : stages) {
             auto stage = MVKGraphicsStage(s);
             id<MTLComputeCommandEncoder> mtlTessCtlEncoder = nil;
@@ -1081,7 +1108,32 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 	MVKPiplineStages stages;
     pipeline->getStages(stages);
 
+    if (pipeline->needsDrawIDBuffer()) {
+        uint32_t firstDrawID = 0;  // usually 0 for a new vkCmdDraw* call,
+                                     // or accumulated baseDrawID if you support multi-draw indirect with offset
+
+        cmdEncoder->ensureDrawIDBuffer(_drawCount);   // or the indirect drawCount
+
+        uint32_t* drawIDs = (uint32_t*)[cmdEncoder->_drawIDBuffer contents];
+        for (uint32_t i = 0; i < _drawCount; i++) {
+            drawIDs[i] = firstDrawID + i;     // sequential IDs starting from 0 or base
+        }
+    }
+
     for (uint32_t drawIdx = 0; drawIdx < _drawCount; drawIdx++) {
+        // === gl_DrawID hack: bind current draw index as [[buffer(N)]] ===
+        if (pipeline->needsDrawIDBuffer()) {
+            if (drawIdx == 0) {
+                [cmdEncoder->_mtlRenderEncoder setVertexBuffer:cmdEncoder->_drawIDBuffer
+                                                              offset:0
+                                                             atIndex:pipeline -> getMetalBufferIndexForDrawID()];   // your reserved index
+                [cmdEncoder->_mtlRenderEncoder setVertexBufferOffset:0
+                                                             atIndex:pipeline -> getMetalBufferIndexForDrawID()];   // set the correct offset for draw #0
+            } else {
+                [cmdEncoder->_mtlRenderEncoder setVertexBufferOffset:drawIdx * sizeof(uint32_t)
+                                                             atIndex:pipeline -> getMetalBufferIndexForDrawID()];   // set the correct offset for draw #1+
+            }
+        }
         for (uint32_t s : stages) {
             auto stage = MVKGraphicsStage(s);
             id<MTLComputeCommandEncoder> mtlTessCtlEncoder = nil;

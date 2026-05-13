@@ -272,6 +272,10 @@ public:
 
 	/** Returns the MTLComputePipelineState object for the tessellation control stage of a tessellated draw. */
 	id<MTLComputePipelineState> getTessControlStageState() { return _mtlTessControlStageState; }
+    
+    bool needsDrawIDBuffer() const { return _needsDrawIDBuffer; }
+    
+    uint32_t getMetalBufferIndexForDrawID() {return _drawIDBufferIndex; }
 
 	/** Returns true if the vertex shader needs a buffer to store its output. */
 	bool needsVertexOutputBuffer() const { return _stageResources[kMVKShaderStageVertex].implicitBuffers.needed.has(MVKImplicitBuffer::Output); }
@@ -403,6 +407,9 @@ protected:
 	bool _ownsTessCtlModule = false;
 	bool _ownsTessEvalModule = false;
 	bool _ownsFragmentModule = false;
+    
+    bool _needsDrawIDBuffer = false;
+    uint32_t _drawIDBufferIndex = 19;
 
 	uint8_t _primitiveTopologyClass;
 	bool _isRasterizing = false;

@@ -250,6 +250,10 @@ public:
 
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return _cmdBuffer->getVulkanAPIObject(); };
+    
+    id<MTLBuffer> _drawIDBuffer = nil;
+    uint32_t _currentMaxDrawCount = 0;   // track allocated size to avoid frequent realloc
+    void ensureDrawIDBuffer(uint32_t maxDrawCount);
 
 	/** Encode commands from the command buffer onto the Metal command buffer. */
 	void encode(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext);

@@ -422,6 +422,22 @@ void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff,
 	addPerformanceInterval(getPerformanceStats().queue.commandBufferEncoding, startTime);
 }
 
+void MVKCommandEncoder::ensureDrawIDBuffer(uint32_t maxDrawCount) {
+    uint32_t neededBytes = maxDrawCount * sizeof(uint32_t);
+    if (_drawIDBuffer && [_drawIDBuffer length] >= neededBytes) return;
+
+    // Release old one
+    [_drawIDBuffer release];
+
+    // Create a new managed or shared buffer (shared is fine for CPU write)
+    if (neededBytes != 0) {
+        _drawIDBuffer = [getMTLDevice() newBufferWithLength:neededBytes
+                                                    options:MTLResourceStorageModeShared];
+    }
+    
+    _currentMaxDrawCount = maxDrawCount;
+}
+
 void MVKCommandEncoder::beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext) {
 	_pEncodingContext = pEncodingContext;
 
