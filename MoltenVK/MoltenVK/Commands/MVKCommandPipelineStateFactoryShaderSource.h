@@ -283,6 +283,38 @@ kernel void cmdDrawIndirectPopulateIndexes(const device char* srcBuff [[buffer(0
 	}
 }
 
+kernel void cmdDrawIndirectCountPredicate(const device char* srcBuff [[buffer(0)]],
+                                          device MTLDrawPrimitivesIndirectArguments* destBuff [[buffer(1)]],
+                                          constant uint32_t& srcStride [[buffer(2)]],
+                                          constant uint32_t& maxDrawCount [[buffer(3)]],
+                                          constant uint32_t* drawCount [[buffer(4)]],
+                                          uint idx [[thread_position_in_grid]]) {
+	if (idx >= maxDrawCount) { return; }
+	bool enabled = idx < *drawCount;
+	const device auto& src = *reinterpret_cast<const device MTLDrawPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);
+	if (enabled) {
+		destBuff[idx] = src;
+	} else {
+		destBuff[idx] = {0, 0, 0, 0};
+	}
+}
+
+kernel void cmdDrawIndexedIndirectCountPredicate(const device char* srcBuff [[buffer(0)]],
+                                                  device MTLDrawIndexedPrimitivesIndirectArguments* destBuff [[buffer(1)]],
+                                                  constant uint32_t& srcStride [[buffer(2)]],
+                                                  constant uint32_t& maxDrawCount [[buffer(3)]],
+                                                  constant uint32_t* drawCount [[buffer(4)]],
+                                                  uint idx [[thread_position_in_grid]]) {
+	if (idx >= maxDrawCount) { return; }
+	bool enabled = idx < *drawCount;
+	const device auto& src = *reinterpret_cast<const device MTLDrawIndexedPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);
+	if (enabled) {
+		destBuff[idx] = src;
+	} else {
+		destBuff[idx] = {0, 0, 0, 0, 0};
+	}
+}
+
 kernel void cmdDrawIndirectConvertBuffers(const device char* srcBuff [[buffer(0)]],
                                           device MTLDrawPrimitivesIndirectArguments* destBuff [[buffer(1)]],
                                           constant uint32_t& srcStride [[buffer(2)]],

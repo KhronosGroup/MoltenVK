@@ -552,6 +552,13 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdResolveColorImageMT
 	return newMTLComputePipelineState(funcName, owner);
 }
 
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectCountPredicateMTLComputePipelineState(bool indexed,
+																												   MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState(indexed
+									  ? "cmdDrawIndexedIndirectCountPredicate"
+									  : "cmdDrawIndirectCountPredicate", owner);
+}
+
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed,
 																											   MVKVulkanAPIDeviceObject* owner) {
 	return newMTLComputePipelineState(indexed

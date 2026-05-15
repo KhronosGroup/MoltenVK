@@ -631,6 +631,28 @@ VkResult MVKCmdDrawIndirect::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
+VkResult MVKCmdDrawIndirect::setContent(MVKCommandBuffer* cmdBuff,
+										id<MTLBuffer> indirectMTLBuff,
+										VkDeviceSize indirectMTLBuffOffset,
+										uint32_t drawCount,
+										uint32_t stride,
+										uint32_t unused) {
+	_mtlIndirectBuffer = indirectMTLBuff;
+	_mtlIndirectBufferOffset = indirectMTLBuffOffset;
+	_mtlIndirectBufferStride = stride;
+	_drawCount = drawCount;
+
+	auto& mtlFeats = cmdBuff->getMetalFeatures();
+	if ( !mtlFeats.indirectDrawing ) {
+		return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndirect(): The current device does not support indirect drawing.");
+	}
+	if (cmdBuff->_lastTessellationPipeline && !mtlFeats.indirectTessellationDrawing) {
+		return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndirect(): The current device does not support indirect tessellated drawing.");
+	}
+
+	return VK_SUCCESS;
+}
+
 // Populates and encodes a MVKCmdDrawIndexedIndirect command, after populating indexed indirect buffers.
 void MVKCmdDrawIndirect::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder) {
 
@@ -1236,5 +1258,141 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
             }
         }
     }
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdDrawIndirectCount
+
+VkResult MVKCmdDrawIndirectCount::setContent(MVKCommandBuffer* cmdBuff,
+											 VkBuffer buffer,
+											 VkDeviceSize offset,
+											 VkBuffer countBuffer,
+											 VkDeviceSize countBufferOffset,
+											 uint32_t maxDrawCount,
+											 uint32_t stride) {
+	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
+	_mtlIndirectBuffer = mvkBuffer->getMTLBuffer();
+	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
+	_mtlIndirectBufferStride = stride;
+	_maxDrawCount = maxDrawCount;
+
+	MVKBuffer* mvkCountBuffer = (MVKBuffer*)countBuffer;
+	_mtlCountBuffer = mvkCountBuffer->getMTLBuffer();
+	_mtlCountBufferOffset = mvkCountBuffer->getMTLBufferOffset() + countBufferOffset;
+
+	auto& mtlFeats = cmdBuff->getMetalFeatures();
+	if ( !mtlFeats.indirectDrawing ) {
+		return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndirectCount(): The current device does not support indirect drawing.");
+	}
+	if (cmdBuff->_lastTessellationPipeline && !mtlFeats.indirectTessellationDrawing) {
+		return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndirectCount(): The current device does not support indirect tessellated drawing.");
+	}
+
+	return VK_SUCCESS;
+}
+
+void MVKCmdDrawIndirectCount::encode(MVKCommandEncoder* cmdEncoder) {
+	if (_maxDrawCount == 0) { return; }
+
+	cmdEncoder->restartMetalRenderPassIfNeeded();
+
+	uint32_t outStride = sizeof(MTLDrawPrimitivesIndirectArguments);
+	NSUInteger allocSize = outStride * _maxDrawCount;
+	auto* patchedBuff = cmdEncoder->getTempMTLBuffer(allocSize, false);
+
+	cmdEncoder->encodeStoreActions(true);
+	id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDrawIndirectConvertBuffers);
+	id<MTLComputePipelineState> mtlComputeState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndirectCountPredicateMTLComputePipelineState(false);
+	MVKMetalComputeCommandEncoderState& compState = cmdEncoder->getMtlCompute();
+	compState.bindPipeline(mtlComputeEnc, mtlComputeState);
+	compState.bindBuffer(mtlComputeEnc, _mtlIndirectBuffer,       _mtlIndirectBufferOffset,  0);
+	compState.bindBuffer(mtlComputeEnc, patchedBuff->_mtlBuffer,  patchedBuff->_offset,      1);
+	compState.bindStructBytes(mtlComputeEnc, &_mtlIndirectBufferStride, 2);
+	compState.bindStructBytes(mtlComputeEnc, &_maxDrawCount,            3);
+	compState.bindBuffer(mtlComputeEnc, _mtlCountBuffer,           _mtlCountBufferOffset,     4);
+	if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
+		[mtlComputeEnc dispatchThreads: MTLSizeMake(_maxDrawCount, 1, 1)
+				  threadsPerThreadgroup: MTLSizeMake(mtlComputeState.threadExecutionWidth, 1, 1)];
+	} else {
+		[mtlComputeEnc dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(_maxDrawCount, mtlComputeState.threadExecutionWidth), 1, 1)
+					  threadsPerThreadgroup: MTLSizeMake(mtlComputeState.threadExecutionWidth, 1, 1)];
+	}
+	MVKCmdDrawIndirect drawCmd;
+	drawCmd.setContent(cmdEncoder->_cmdBuffer,
+					   patchedBuff->_mtlBuffer,
+					   patchedBuff->_offset,
+					   _maxDrawCount,
+					   outStride,
+					   0);
+	drawCmd.encode(cmdEncoder);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdDrawIndexedIndirectCount
+
+VkResult MVKCmdDrawIndexedIndirectCount::setContent(MVKCommandBuffer* cmdBuff,
+													VkBuffer buffer,
+													VkDeviceSize offset,
+													VkBuffer countBuffer,
+													VkDeviceSize countBufferOffset,
+													uint32_t maxDrawCount,
+													uint32_t stride) {
+	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
+	_mtlIndirectBuffer = mvkBuffer->getMTLBuffer();
+	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
+	_mtlIndirectBufferStride = stride;
+	_maxDrawCount = maxDrawCount;
+
+	MVKBuffer* mvkCountBuffer = (MVKBuffer*)countBuffer;
+	_mtlCountBuffer = mvkCountBuffer->getMTLBuffer();
+	_mtlCountBufferOffset = mvkCountBuffer->getMTLBufferOffset() + countBufferOffset;
+
+	auto& mtlFeats = cmdBuff->getMetalFeatures();
+	if ( !mtlFeats.indirectDrawing ) {
+		return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirectCount(): The current device does not support indirect drawing.");
+	}
+	if (cmdBuff->_lastTessellationPipeline && !mtlFeats.indirectTessellationDrawing) {
+		return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirectCount(): The current device does not support indirect tessellated drawing.");
+	}
+
+	return VK_SUCCESS;
+}
+
+void MVKCmdDrawIndexedIndirectCount::encode(MVKCommandEncoder* cmdEncoder) {
+	if (_maxDrawCount == 0) { return; }
+
+	cmdEncoder->restartMetalRenderPassIfNeeded();
+
+	uint32_t outStride = sizeof(MTLDrawIndexedPrimitivesIndirectArguments);
+	NSUInteger allocSize = outStride * _maxDrawCount;
+	auto* patchedBuff = cmdEncoder->getTempMTLBuffer(allocSize, false);
+
+	cmdEncoder->encodeStoreActions(true);
+	id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDrawIndirectConvertBuffers);
+	id<MTLComputePipelineState> mtlComputeState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndirectCountPredicateMTLComputePipelineState(true);
+	MVKMetalComputeCommandEncoderState& compState = cmdEncoder->getMtlCompute();
+	compState.bindPipeline(mtlComputeEnc, mtlComputeState);
+	compState.bindBuffer(mtlComputeEnc, _mtlIndirectBuffer,       _mtlIndirectBufferOffset,  0);
+	compState.bindBuffer(mtlComputeEnc, patchedBuff->_mtlBuffer,  patchedBuff->_offset,      1);
+	compState.bindStructBytes(mtlComputeEnc, &_mtlIndirectBufferStride, 2);
+	compState.bindStructBytes(mtlComputeEnc, &_maxDrawCount,            3);
+	compState.bindBuffer(mtlComputeEnc, _mtlCountBuffer,           _mtlCountBufferOffset,     4);
+	if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
+		[mtlComputeEnc dispatchThreads: MTLSizeMake(_maxDrawCount, 1, 1)
+				  threadsPerThreadgroup: MTLSizeMake(mtlComputeState.threadExecutionWidth, 1, 1)];
+	} else {
+		[mtlComputeEnc dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(_maxDrawCount, mtlComputeState.threadExecutionWidth), 1, 1)
+					  threadsPerThreadgroup: MTLSizeMake(mtlComputeState.threadExecutionWidth, 1, 1)];
+	}
+	MVKCmdDrawIndexedIndirect drawCmd;
+	drawCmd.setContent(cmdEncoder->_cmdBuffer,
+					   patchedBuff->_mtlBuffer,
+					   patchedBuff->_offset,
+					   _maxDrawCount,
+					   outStride,
+					   0);
+	drawCmd.encode(cmdEncoder);
 }
 

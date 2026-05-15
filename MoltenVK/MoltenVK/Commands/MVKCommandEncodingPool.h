@@ -118,6 +118,9 @@ public:
 	/** Returns a MTLComputePipelineState for populating an indirect index buffer from a non-indexed indirect buffer. */
 	id<MTLComputePipelineState> getCmdDrawIndirectPopulateIndexesMTLComputePipelineState();
 
+	/** Returns a MTLComputePipelineState for predicating indirect draws based on a count buffer. */
+	id<MTLComputePipelineState> getCmdDrawIndirectCountPredicateMTLComputePipelineState(bool indexed);
+
 	/** Returns a MTLComputePipelineState for converting the contents of an indirect buffer. */
 	id<MTLComputePipelineState> getCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed);
 
@@ -170,6 +173,7 @@ protected:
 	static constexpr uint32_t kColorImageCount = 6u;
 	id<MTLComputePipelineState> _mtlClearColorImageComputePipelineState[kColorImageCount] = {nil, nil, nil, nil, nil, nil};
 	id<MTLComputePipelineState> _mtlResolveColorImageComputePipelineState[kColorImageCount] = {nil, nil, nil, nil, nil, nil};
+	id<MTLComputePipelineState> _mtlDrawIndirectCountPredicateComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndirectConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndirectTessConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndexedCopyIndexBufferComputePipelineState[2] = {nil, nil};

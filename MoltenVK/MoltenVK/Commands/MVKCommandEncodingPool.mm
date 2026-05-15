@@ -141,6 +141,10 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndirectPopulateIn
 	MVK_ENC_REZ_ACCESS(_mtlDrawIndirectPopulateIndexesComputePipelineState, newCmdDrawIndirectPopulateIndexesMTLComputePipelineState(_commandPool));
 }
 
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndirectCountPredicateMTLComputePipelineState(bool indexed) {
+	MVK_ENC_REZ_ACCESS(_mtlDrawIndirectCountPredicateComputePipelineState[indexed ? 1 : 0], newCmdDrawIndirectCountPredicateMTLComputePipelineState(indexed, _commandPool));
+}
+
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed) {
 	MVK_ENC_REZ_ACCESS(_mtlDrawIndirectConvertBuffersComputePipelineState[indexed ? 1 : 0], newCmdDrawIndirectConvertBuffersMTLComputePipelineState(indexed, _commandPool));
 }
@@ -233,6 +237,11 @@ void MVKCommandEncodingPool::destroyMetalResources() {
 		[_mtlResolveColorImageComputePipelineState[i] release];
 		_mtlResolveColorImageComputePipelineState[i] = nil;
 	}
+
+    [_mtlDrawIndirectCountPredicateComputePipelineState[0] release];
+    [_mtlDrawIndirectCountPredicateComputePipelineState[1] release];
+    _mtlDrawIndirectCountPredicateComputePipelineState[0] = nil;
+    _mtlDrawIndirectCountPredicateComputePipelineState[1] = nil;
 
     [_mtlDrawIndirectConvertBuffersComputePipelineState[0] release];
     [_mtlDrawIndirectConvertBuffersComputePipelineState[1] release];

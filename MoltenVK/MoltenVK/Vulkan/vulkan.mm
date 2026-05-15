@@ -2397,6 +2397,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawIndexedIndirectCount(
     uint32_t                                    stride) {
 
 	MVKTraceVulkanCallStart();
+	MVKAddCmd(DrawIndexedIndirectCount, commandBuffer, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2410,6 +2411,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawIndirectCount(
     uint32_t                                    stride) {
 
 	MVKTraceVulkanCallStart();
+	MVKAddCmd(DrawIndirectCount, commandBuffer, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
 	MVKTraceVulkanCallEnd();
 }
 
