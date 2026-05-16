@@ -1501,6 +1501,10 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	if ( !mtlFunc ) { return false; }
 
 	auto& funcRslts = func.shaderConversionResults;
+    if (funcRslts.usesDrawId) {
+        _needsDrawIDBuffer = true;
+        _drawIDBufferIndex = funcRslts.drawIDBuffer;
+    }
 	plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled;
 	populateResourceUsage(_stageResources[kMVKShaderStageVertex], shaderConfig, funcRslts, spv::ExecutionModelVertex);
 	_layout->populateBindOperations(_stageResources[kMVKShaderStageVertex].bindScript, shaderConfig, spv::ExecutionModelVertex);
@@ -2810,6 +2814,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.texel_buffer_texture_width,
 				opt.r32ui_linear_texture_alignment,
 				opt.r32ui_alignment_constant_id,
+                opt.draw_id_buffer_index,
 				opt.swizzle_buffer_index,
 				opt.indirect_params_buffer_index,
 				opt.shader_output_buffer_index,
