@@ -748,7 +748,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         vertexCount = kMVKMaxDrawIndirectVertexCount;
         patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
         VkDeviceSize indirectSize = (2 * sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments) + sizeof(MTLStageInRegionIndirectArguments)) * _drawCount;
-		paramsIncr = std::max((size_t)dvcLimits.minUniformBufferOffsetAlignment, sizeof(uint32_t) * 2);
+		paramsIncr = 256;
 		VkDeviceSize paramsSize = paramsIncr * _drawCount;
         tempIndirectBuff = cmdEncoder->getTempMTLBuffer(indirectSize, true);
         mtlIndBuff = tempIndirectBuff->_mtlBuffer;
@@ -1044,8 +1044,8 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
         outControlPointCount = pipeline->getOutputControlPointCount();
         vertexCount = kMVKMaxDrawIndirectVertexCount;
         patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
-        VkDeviceSize indirectSize = (sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments) + sizeof(MTLStageInRegionIndirectArguments)) * _drawCount;
-		paramsIncr = std::max((size_t)dvcLimits.minUniformBufferOffsetAlignment, sizeof(uint32_t) * 2);
+        VkDeviceSize indirectSize = (2 * sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments) + sizeof(MTLStageInRegionIndirectArguments)) * _drawCount;
+		paramsIncr = 256;
 		VkDeviceSize paramsSize = paramsIncr * _drawCount;
         tempIndirectBuff = cmdEncoder->getTempMTLBuffer(indirectSize, true);
         mtlIndBuff = tempIndirectBuff->_mtlBuffer;
@@ -1074,6 +1074,44 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
             sgSize >>= 1;
             tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
         }
+
+		static uint32_t _tessIdxLogCounter = 0;
+		if (_tessIdxLogCounter++ < 3) {
+			VkDeviceSize indirectSize = (2 * sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments) + sizeof(MTLStageInRegionIndirectArguments)) * _drawCount;
+			VkDeviceSize paramsSize = paramsIncr * _drawCount;
+			VkDeviceSize perDrawTessStride = sizeof(MTLStageInRegionIndirectArguments) + 2 * sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments);
+			NSLog(@"DEBUG DrawIndexedIndirect TESS: drawCount=%u stride=%u", _drawCount, _mtlIndirectBufferStride);
+			NSLog(@"DEBUG   ibb: buf=%p offset=%llu size=%llu mtlIndexType=%u",
+				ibb.mtlBuffer, (uint64_t)ibb.offset, (uint64_t)ibb.size, ibb.mtlIndexType);
+			NSLog(@"DEBUG   inCP=%u outCP=%u vertexCount=%u patchCount=%u",
+				inControlPointCount, outControlPointCount, vertexCount, patchCount);
+			NSLog(@"DEBUG   indirectSize=%llu perDrawTessStride=%llu paramsSize=%llu paramsIncr=%llu",
+				(uint64_t)indirectSize, (uint64_t)perDrawTessStride, (uint64_t)paramsSize, (uint64_t)paramsIncr);
+			NSLog(@"DEBUG   vtxThreadExecWidth=%lu tcWorkgroupSize=%lu",
+				(unsigned long)vtxThreadExecWidth, (unsigned long)tcWorkgroupSize);
+			NSLog(@"DEBUG   tempIndBuff: buf=%p offset=%llu length=%llu",
+				tempIndirectBuff->_mtlBuffer, (uint64_t)tempIndirectBuff->_offset, (uint64_t)tempIndirectBuff->_length);
+			NSLog(@"DEBUG   tcParamsBuff: buf=%p offset=%llu length=%llu",
+				tcParamsBuff->_mtlBuffer, (uint64_t)tcParamsBuff->_offset, (uint64_t)tcParamsBuff->_length);
+			NSLog(@"DEBUG   vtxIndexBuff: buf=%p offset=%llu length=%llu",
+				vtxIndexBuff->_mtlBuffer, (uint64_t)vtxIndexBuff->_offset, (uint64_t)vtxIndexBuff->_length);
+			if (vtxOutBuff) NSLog(@"DEBUG   vtxOutBuff: buf=%p offset=%llu length=%llu",
+				vtxOutBuff->_mtlBuffer, (uint64_t)vtxOutBuff->_offset, (uint64_t)vtxOutBuff->_length);
+			if (tcOutBuff) NSLog(@"DEBUG   tcOutBuff: buf=%p offset=%llu length=%llu",
+				tcOutBuff->_mtlBuffer, (uint64_t)tcOutBuff->_offset, (uint64_t)tcOutBuff->_length);
+			if (tcPatchOutBuff) NSLog(@"DEBUG   tcPatchOutBuff: buf=%p offset=%llu length=%llu",
+				tcPatchOutBuff->_mtlBuffer, (uint64_t)tcPatchOutBuff->_offset, (uint64_t)tcPatchOutBuff->_length);
+			NSLog(@"DEBUG   tcLevelBuff: buf=%p offset=%llu length=%llu",
+				tcLevelBuff->_mtlBuffer, (uint64_t)tcLevelBuff->_offset, (uint64_t)tcLevelBuff->_length);
+			NSLog(@"DEBUG   srcIndBuf=%p srcIndOffset=%llu tempIndBufOffset=%llu",
+				_mtlIndirectBuffer, (uint64_t)mtlIndBuffOfst, (uint64_t)mtlTempIndBuffOfst);
+			if (paramsIncr != 256) {
+				NSLog(@"DEBUG   WARNING: paramsIncr=%llu but shader hardcodes stride=256!", (uint64_t)paramsIncr);
+			}
+			if (tempIndirectBuff->_length < indirectSize) {
+				NSLog(@"DEBUG   WARNING: tempIndBuff length %llu < needed %llu!", (uint64_t)tempIndirectBuff->_length, (uint64_t)indirectSize);
+			}
+		}
     } else if (vtxAdjmts.needsAdjustment()) {
         // In this case, we need to adjust the instance count for the views being drawn.
         VkDeviceSize indirectSize = sizeof(MTLDrawIndexedPrimitivesIndirectArguments) * _drawCount;
@@ -1125,7 +1163,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
                 state.bindBuffer(mtlTessCtlEncoder, vtxIndexBuff->_mtlBuffer, vtxIndexBuff->_offset, 1);
                 state.bindBuffer(mtlTessCtlEncoder, _mtlIndirectBuffer,       mtlIndBuffOfst,        2);
                 [mtlTessCtlEncoder dispatchThreadgroupsWithIndirectBuffer: mtlIndBuff
-													 indirectBufferOffset: mtlTempIndBuffOfst
+													 indirectBufferOffset: mtlTempIndBuffOfst + sizeof(MTLStageInRegionIndirectArguments)
                                                     threadsPerThreadgroup: MTLSizeMake(vtxThreadExecWidth, 1, 1)];
 				mtlIndBuffOfst += sizeof(MTLDrawIndexedPrimitivesIndirectArguments);
             } else if (drawIdx == 0 && vtxAdjmts.needsAdjustment()) {
