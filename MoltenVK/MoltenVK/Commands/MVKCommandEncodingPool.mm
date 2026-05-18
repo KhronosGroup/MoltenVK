@@ -153,6 +153,37 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndirectTessConver
 	MVK_ENC_REZ_ACCESS(_mtlDrawIndirectTessConvertBuffersComputePipelineState[indexed ? 1 : 0], newCmdDrawIndirectTessConvertBuffersMTLComputePipelineState(indexed, _commandPool));
 }
 
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndirectCountTessConvertBuffersMTLComputePipelineState(bool indexed) {
+	MVK_ENC_REZ_ACCESS(_mtlDrawIndirectCountTessConvertBuffersComputePipelineState[indexed ? 1 : 0], newCmdDrawIndirectCountTessConvertBuffersMTLComputePipelineState(indexed, _commandPool));
+}
+
+MVKCommandEncodingPool::TessOutputBuffers
+MVKCommandEncodingPool::getTessOutputBuffers(bool indexed,
+	VkDeviceSize vtxOutSize, VkDeviceSize tcOutSize,
+	VkDeviceSize tcPatchOutSize, VkDeviceSize tcLevelSize,
+	VkDeviceSize vtxIdxSize)
+{
+	lock_guard<mutex> lock(_lock);
+	auto& p = _tessOutputPool[indexed ? 1 : 0];
+	id<MTLDevice> mtlDev = _commandPool->getDevice()->getPhysicalDevice()->getMTLDevice();
+
+	auto grow = [&](id<MTLBuffer>& buf, VkDeviceSize& cap, VkDeviceSize need) {
+		if (need == 0) return;
+		if (buf && cap >= need) return;
+		[buf release];
+		buf = [mtlDev newBufferWithLength: (NSUInteger)need options: MTLResourceStorageModePrivate];
+		cap = need;
+	};
+
+	grow(p.vtxOut,     p.vtxOutCap,     vtxOutSize);
+	grow(p.tcOut,      p.tcOutCap,      tcOutSize);
+	grow(p.tcPatchOut, p.tcPatchOutCap, tcPatchOutSize);
+	grow(p.tcLevel,    p.tcLevelCap,    tcLevelSize);
+	grow(p.vtxIdx,     p.vtxIdxCap,     vtxIdxSize);
+
+	return { p.vtxOut, p.tcOut, p.tcPatchOut, p.tcLevel, p.vtxIdx };
+}
+
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type) {
 	MVK_ENC_REZ_ACCESS(_mtlDrawIndexedCopyIndexBufferComputePipelineState[type == MTLIndexTypeUInt16 ? 1 : 0], newCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(type, _commandPool));
 }
@@ -253,6 +284,11 @@ void MVKCommandEncodingPool::destroyMetalResources() {
     _mtlDrawIndirectTessConvertBuffersComputePipelineState[0] = nil;
     _mtlDrawIndirectTessConvertBuffersComputePipelineState[1] = nil;
 
+    [_mtlDrawIndirectCountTessConvertBuffersComputePipelineState[0] release];
+    [_mtlDrawIndirectCountTessConvertBuffersComputePipelineState[1] release];
+    _mtlDrawIndirectCountTessConvertBuffersComputePipelineState[0] = nil;
+    _mtlDrawIndirectCountTessConvertBuffersComputePipelineState[1] = nil;
+
     [_mtlDrawIndexedCopyIndexBufferComputePipelineState[0] release];
     [_mtlDrawIndexedCopyIndexBufferComputePipelineState[1] release];
     _mtlDrawIndexedCopyIndexBufferComputePipelineState[0] = nil;
@@ -266,5 +302,14 @@ void MVKCommandEncodingPool::destroyMetalResources() {
 
     [_mtlConvertUint8IndicesComputePipelineState release];
     _mtlConvertUint8IndicesComputePipelineState = nil;
+
+	for (uint32_t i = 0; i < 2; i++) {
+		[_tessOutputPool[i].vtxOut release];
+		[_tessOutputPool[i].tcOut release];
+		[_tessOutputPool[i].tcPatchOut release];
+		[_tessOutputPool[i].tcLevel release];
+		[_tessOutputPool[i].vtxIdx release];
+		_tessOutputPool[i] = {};
+	}
 }
 

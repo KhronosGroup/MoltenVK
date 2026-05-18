@@ -577,6 +577,13 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectTessCon
 									  : "cmdDrawIndirectTessConvertBuffers", owner);
 }
 
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectCountTessConvertBuffersMTLComputePipelineState(bool indexed,
+																														MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState(indexed
+									  ? "cmdDrawIndexedIndirectCountTessConvertBuffers"
+									  : "cmdDrawIndirectCountTessConvertBuffers", owner);
+}
+
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type,
 																											   MVKVulkanAPIDeviceObject* owner) {
 	return newMTLComputePipelineState(type == MTLIndexTypeUInt16

@@ -127,8 +127,26 @@ public:
 	/** Returns a MTLComputePipelineState for converting an indirect buffer for use in a tessellated draw. */
 	id<MTLComputePipelineState> getCmdDrawIndirectTessConvertBuffersMTLComputePipelineState(bool indexed);
 
+	/** Returns a MTLComputePipelineState for converting an indirect buffer for use in a tessellated indirect-count draw. */
+	id<MTLComputePipelineState> getCmdDrawIndirectCountTessConvertBuffersMTLComputePipelineState(bool indexed);
+
 	/** Returns a MTLComputePipelineState for copying an index buffer for use in an indirect tessellated draw. */
 	id<MTLComputePipelineState> getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type);
+
+	/** Pooled tessellation output buffers returned by getTessOutputBuffers(). */
+	struct TessOutputBuffers {
+		id<MTLBuffer> vtxOut;
+		id<MTLBuffer> tcOut;
+		id<MTLBuffer> tcPatchOut;
+		id<MTLBuffer> tcLevel;
+		id<MTLBuffer> vtxIdx;
+	};
+
+	/** Returns pooled tessellation output buffers for IndirectCount draws, growing if needed. */
+	TessOutputBuffers getTessOutputBuffers(bool indexed,
+		VkDeviceSize vtxOutSize, VkDeviceSize tcOutSize,
+		VkDeviceSize tcPatchOutSize, VkDeviceSize tcLevelSize,
+		VkDeviceSize vtxIdxSize);
 
 	/** Returns a MTLComputePipelineState for copying query results to a buffer. */
 	id<MTLComputePipelineState> getCmdCopyQueryPoolResultsMTLComputePipelineState();
@@ -176,9 +194,24 @@ protected:
 	id<MTLComputePipelineState> _mtlDrawIndirectCountPredicateComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndirectConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndirectTessConvertBuffersComputePipelineState[2] = {nil, nil};
+	id<MTLComputePipelineState> _mtlDrawIndirectCountTessConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndexedCopyIndexBufferComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlCopyQueryPoolResultsComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlAccumOcclusionQueryResultsComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlConvertUint8IndicesComputePipelineState = nil;
+
+	struct TessOutputBufferPool {
+		id<MTLBuffer> vtxOut = nil;
+		id<MTLBuffer> tcOut = nil;
+		id<MTLBuffer> tcPatchOut = nil;
+		id<MTLBuffer> tcLevel = nil;
+		id<MTLBuffer> vtxIdx = nil;
+		VkDeviceSize vtxOutCap = 0;
+		VkDeviceSize tcOutCap = 0;
+		VkDeviceSize tcPatchOutCap = 0;
+		VkDeviceSize tcLevelCap = 0;
+		VkDeviceSize vtxIdxCap = 0;
+	};
+	TessOutputBufferPool _tessOutputPool[2];
 };
 
