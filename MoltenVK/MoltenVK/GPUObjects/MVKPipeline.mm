@@ -1374,6 +1374,14 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessControlStageDescrip
 		return var.builtin != spv::BuiltInPosition && var.builtin != spv::BuiltInPointSize && var.builtin != spv::BuiltInClipDistance && var.builtin != spv::BuiltInCullDistance;
 	}), teInputs.end());
 
+	_vtxOutputStride = 0;
+	for (const auto& var : vtxOutputs) {
+		if (var.isUsed) {
+			_vtxOutputStride = mvkAlignByteCount(_vtxOutputStride, mvk::getShaderOutputAlignment(var));
+			_vtxOutputStride += mvk::getShaderOutputSize(var);
+		}
+	}
+
 	// Add shader stages.
 	if (!addTessCtlShaderToPipeline(plDesc, pCreateInfo, shaderConfig, vtxOutputs, teInputs, pTessCtlSS, pTessCtlFB)) {
 		[plDesc release];
@@ -1410,6 +1418,22 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 	if (!getShaderOutputs(_tessEvalModule->getSPIRV(), spv::ExecutionModelTessellationEvaluation, pTessEvalSS->pName, teOutputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation evaluation outputs: %s", errorLog.c_str()));
 		return nil;
+	}
+
+	_tcPerVertexOutputStride = 0;
+	_tcPerPatchOutputStride = 0;
+	for (const auto& var : tcOutputs) {
+		if (var.isUsed) {
+			uint32_t sz = mvk::getShaderOutputSize(var);
+			uint32_t al = mvk::getShaderOutputAlignment(var);
+			if (var.perPatch) {
+				_tcPerPatchOutputStride = mvkAlignByteCount(_tcPerPatchOutputStride, al);
+				_tcPerPatchOutputStride += sz;
+			} else {
+				_tcPerVertexOutputStride = mvkAlignByteCount(_tcPerVertexOutputStride, al);
+				_tcPerVertexOutputStride += sz;
+			}
+		}
 	}
 
 	// Add shader stages. Compile tessellation evaluation shader before others just in case conversion changes anything...like rasterizaion disable.

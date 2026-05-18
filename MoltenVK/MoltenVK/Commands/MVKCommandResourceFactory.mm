@@ -552,6 +552,13 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdResolveColorImageMT
 	return newMTLComputePipelineState(funcName, owner);
 }
 
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectCountPredicateMTLComputePipelineState(bool indexed,
+																												   MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState(indexed
+									  ? "cmdDrawIndexedIndirectCountPredicate"
+									  : "cmdDrawIndirectCountPredicate", owner);
+}
+
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed,
 																											   MVKVulkanAPIDeviceObject* owner) {
 	return newMTLComputePipelineState(indexed
@@ -568,6 +575,13 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectTessCon
 	return newMTLComputePipelineState(indexed
 									  ? "cmdDrawIndexedIndirectTessConvertBuffers"
 									  : "cmdDrawIndirectTessConvertBuffers", owner);
+}
+
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectCountTessConvertBuffersMTLComputePipelineState(bool indexed,
+																														MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState(indexed
+									  ? "cmdDrawIndexedIndirectCountTessConvertBuffers"
+									  : "cmdDrawIndirectCountTessConvertBuffers", owner);
 }
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type,

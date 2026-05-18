@@ -352,6 +352,10 @@ public:
 	/** Returns a new MTLComputePipelineState for populating an indirect index buffer from a non-indexed indirect buffer. */
 	id<MTLComputePipelineState> newCmdDrawIndirectPopulateIndexesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 
+	/** Returns a new MTLComputePipelineState for predicating indirect draws based on a count buffer. */
+	id<MTLComputePipelineState> newCmdDrawIndirectCountPredicateMTLComputePipelineState(bool indexed,
+																						MVKVulkanAPIDeviceObject* owner);
+
 	/** Returns a new MTLComputePipelineState for converting the contents of an indirect buffer. */
 	id<MTLComputePipelineState> newCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed,
 																						MVKVulkanAPIDeviceObject* owner);
@@ -359,6 +363,10 @@ public:
 	/** Returns a new MTLComputePipelineState for converting an indirect buffer for use in a tessellated draw. */
 	id<MTLComputePipelineState> newCmdDrawIndirectTessConvertBuffersMTLComputePipelineState(bool indexed,
 																							MVKVulkanAPIDeviceObject* owner);
+
+	/** Returns a new MTLComputePipelineState for converting an indirect buffer for use in a tessellated indirect-count draw. */
+	id<MTLComputePipelineState> newCmdDrawIndirectCountTessConvertBuffersMTLComputePipelineState(bool indexed,
+																								 MVKVulkanAPIDeviceObject* owner);
 
 	/** Returns a new MTLComputePipelineState for copying an index buffer for use in a tessellated draw. */
 	id<MTLComputePipelineState> newCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type,

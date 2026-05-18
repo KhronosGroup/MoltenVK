@@ -282,6 +282,15 @@ public:
 	/** Returns true if the tessellation control shader needs a buffer to store its per-patch output. */
 	bool needsTessCtlPatchOutputBuffer() const { return _stageResources[kMVKShaderStageTessCtl].implicitBuffers.needed.has(MVKImplicitBuffer::PatchOutput); }
 
+	/** Returns the per-vertex output stride (bytes) of the vertex shader, from SPIR-V reflection. */
+	uint32_t getVertexOutputStride() const { return _vtxOutputStride; }
+
+	/** Returns the per-vertex output stride (bytes) of the tessellation control shader. */
+	uint32_t getTessCtlPerVertexOutputStride() const { return _tcPerVertexOutputStride; }
+
+	/** Returns the per-patch output stride (bytes) of the tessellation control shader. */
+	uint32_t getTessCtlPerPatchOutputStride() const { return _tcPerPatchOutputStride; }
+
 	/** Returns the Vulkan primitive topology. */
 	VkPrimitiveTopology getVkPrimitiveTopology() { return _vkPrimitiveTopology; }
 
@@ -394,6 +403,9 @@ protected:
 	MVKShaderImplicitRezBinding _reservedVertexAttributeBufferCount;
 	VkPrimitiveTopology _vkPrimitiveTopology;
 	uint32_t _outputControlPointCount;
+	uint32_t _vtxOutputStride = 0;
+	uint32_t _tcPerVertexOutputStride = 0;
+	uint32_t _tcPerPatchOutputStride = 0;
 
 	MVKShaderModule* _vertexModule = nullptr;
 	MVKShaderModule* _tessCtlModule = nullptr;
