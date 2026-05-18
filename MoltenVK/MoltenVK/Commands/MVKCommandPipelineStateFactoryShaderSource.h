@@ -372,11 +372,12 @@ kernel void cmdDrawIndirectTessConvertBuffers(const device char* srcBuff [[buffe
                                               constant uint32_t& drawCount [[buffer(6)]],
                                               constant uint32_t& vtxThreadExecWidth [[buffer(7)]],
                                               constant uint32_t& tcWorkgroupSize [[buffer(8)]],
+                                              constant uint32_t& paramsStride [[buffer(9)]],
                                               uint idx [[thread_position_in_grid]]) {
 	if (idx >= drawCount) { return; }
 	const device auto& src = *reinterpret_cast<const device MTLDrawPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);
 	device char* dest;
-	device auto* params = reinterpret_cast<device uint32_t*>(paramsBuff + idx * 256);
+	device auto* params = reinterpret_cast<device uint32_t*>(paramsBuff + idx * paramsStride);
 	dest = destBuff + idx * (sizeof(MTLStageInRegionIndirectArguments) + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2 + sizeof(MTLDrawPatchIndirectArguments));
 	device auto& destSI = *(device MTLStageInRegionIndirectArguments*)dest;
 	dest += sizeof(MTLStageInRegionIndirectArguments);
@@ -411,11 +412,12 @@ kernel void cmdDrawIndexedIndirectTessConvertBuffers(const device char* srcBuff 
                                                      constant uint32_t& drawCount [[buffer(6)]],
                                                      constant uint32_t& vtxThreadExecWidth [[buffer(7)]],
                                                      constant uint32_t& tcWorkgroupSize [[buffer(8)]],
+                                                     constant uint32_t& paramsStride [[buffer(9)]],
                                                      uint idx [[thread_position_in_grid]]) {
 	if (idx >= drawCount) { return; }
 	const device auto& src = *reinterpret_cast<const device MTLDrawIndexedPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);
 	device char* dest;
-	device auto* params = reinterpret_cast<device uint32_t*>(paramsBuff + idx * 256);
+	device auto* params = reinterpret_cast<device uint32_t*>(paramsBuff + idx * paramsStride);
 	dest = destBuff + idx * (sizeof(MTLStageInRegionIndirectArguments) + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2 + sizeof(MTLDrawPatchIndirectArguments));
 	device auto& destSI = *(device MTLStageInRegionIndirectArguments*)dest;
 	dest += sizeof(MTLStageInRegionIndirectArguments);
