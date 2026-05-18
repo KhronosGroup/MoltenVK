@@ -303,13 +303,13 @@ void MVKCommandEncodingPool::destroyMetalResources() {
     [_mtlConvertUint8IndicesComputePipelineState release];
     _mtlConvertUint8IndicesComputePipelineState = nil;
 
-	for (uint32_t i = 0; i < 2; i++) {
-		[_tessOutputPool[i].vtxOut release];
-		[_tessOutputPool[i].tcOut release];
-		[_tessOutputPool[i].tcPatchOut release];
-		[_tessOutputPool[i].tcLevel release];
-		[_tessOutputPool[i].vtxIdx release];
-		_tessOutputPool[i] = {};
-	}
+    for (uint32_t i = 0; i < 2; i++) {
+        [_tessOutputPool[i].vtxOut release];
+        [_tessOutputPool[i].tcOut release];
+        [_tessOutputPool[i].tcPatchOut release];
+        [_tessOutputPool[i].tcLevel release];
+        [_tessOutputPool[i].vtxIdx release];
+        _tessOutputPool[i] = {};
+    }
 }
 
