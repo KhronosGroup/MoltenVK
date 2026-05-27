@@ -713,6 +713,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
     const MVKMTLBufferAllocation* tcOutBuff = nullptr;
     const MVKMTLBufferAllocation* tcPatchOutBuff = nullptr;
     const MVKMTLBufferAllocation* tcLevelBuff = nullptr;
+    const MVKMTLBufferAllocation* tempDrawIDBuff = nullptr;
     uint32_t patchCount = 0, vertexCount = 0;
     uint32_t inControlPointCount = 0, outControlPointCount = 0;
 	VkDeviceSize paramsIncr = 0;
@@ -769,7 +770,26 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 	MVKPiplineStages stages;
     pipeline->getStages(stages);
 
+    if (pipeline->needsDrawIDBuffer()) {
+        tempDrawIDBuff = cmdEncoder->getTempMTLBuffer(_drawCount * sizeof(uint32_t));
+
+        auto* drawIDs = (uint32_t*)((char*)[tempDrawIDBuff->_mtlBuffer contents] + tempDrawIDBuff->_offset);
+        for (uint32_t i = 0; i < _drawCount; i++) {
+            drawIDs[i] = i;
+        }
+    }
+
     for (uint32_t drawIdx = 0; drawIdx < _drawCount; drawIdx++) {
+        if (pipeline->needsDrawIDBuffer()) {
+            if (drawIdx == 0) {
+                [cmdEncoder->_mtlRenderEncoder setVertexBuffer:tempDrawIDBuff->_mtlBuffer
+                                                        offset:tempDrawIDBuff->_offset
+                                                       atIndex:kMVKDrawIDBufferIndex];
+            } else {
+                [cmdEncoder->_mtlRenderEncoder setVertexBufferOffset:tempDrawIDBuff->_offset + drawIdx * sizeof(uint32_t)
+                                                             atIndex:kMVKDrawIDBufferIndex];
+            }
+        }
         for (uint32_t s : stages) {
             auto stage = MVKGraphicsStage(s);
             id<MTLComputeCommandEncoder> mtlTessCtlEncoder = nil;
@@ -1015,6 +1035,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
     const MVKMTLBufferAllocation* tcPatchOutBuff = nullptr;
     const MVKMTLBufferAllocation* tcLevelBuff = nullptr;
     const MVKMTLBufferAllocation* vtxIndexBuff = nullptr;
+    const MVKMTLBufferAllocation* tempDrawIDBuff = nullptr;
     uint32_t patchCount = 0, vertexCount = 0;
     uint32_t inControlPointCount = 0, outControlPointCount = 0;
 	VkDeviceSize paramsIncr = 0;
@@ -1081,7 +1102,26 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 	MVKPiplineStages stages;
     pipeline->getStages(stages);
 
+    if (pipeline->needsDrawIDBuffer()) {
+        tempDrawIDBuff = cmdEncoder->getTempMTLBuffer(_drawCount * sizeof(uint32_t));
+
+        auto* drawIDs = (uint32_t*)((char*)[tempDrawIDBuff->_mtlBuffer contents] + tempDrawIDBuff->_offset);
+        for (uint32_t i = 0; i < _drawCount; i++) {
+            drawIDs[i] = i;
+        }
+    }
+
     for (uint32_t drawIdx = 0; drawIdx < _drawCount; drawIdx++) {
+        if (pipeline->needsDrawIDBuffer()) {
+            if (drawIdx == 0) {
+                [cmdEncoder->_mtlRenderEncoder setVertexBuffer:tempDrawIDBuff->_mtlBuffer
+                                                        offset:tempDrawIDBuff->_offset
+                                                       atIndex:kMVKDrawIDBufferIndex];
+            } else {
+                [cmdEncoder->_mtlRenderEncoder setVertexBufferOffset:tempDrawIDBuff->_offset + drawIdx * sizeof(uint32_t)
+                                                             atIndex:kMVKDrawIDBufferIndex];
+            }
+        }
         for (uint32_t s : stages) {
             auto stage = MVKGraphicsStage(s);
             id<MTLComputeCommandEncoder> mtlTessCtlEncoder = nil;
