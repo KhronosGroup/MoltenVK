@@ -273,10 +273,9 @@ public:
 
 	/** Returns the MTLComputePipelineState object for the tessellation control stage of a tessellated draw. */
 	id<MTLComputePipelineState> getTessControlStageState() { return _mtlTessControlStageState; }
-    
-    bool needsDrawIDBuffer() const { return _needsDrawIDBuffer; }
-    
-    uint32_t getMetalBufferIndexForDrawID() {return kMVKDrawIDBufferIndex; }
+
+	/** Returns true if the vertex shader needs the draw ID in a buffer. */
+	bool needsDrawIDBuffer() const { return _needsDrawIDBuffer; }
 
 	/** Returns true if the vertex shader needs a buffer to store its output. */
 	bool needsVertexOutputBuffer() const { return _stageResources[kMVKShaderStageVertex].implicitBuffers.needed.has(MVKImplicitBuffer::Output); }
@@ -408,8 +407,6 @@ protected:
 	bool _ownsTessCtlModule = false;
 	bool _ownsTessEvalModule = false;
 	bool _ownsFragmentModule = false;
-    
-    bool _needsDrawIDBuffer = false;
 
 	uint8_t _primitiveTopologyClass;
 	bool _isRasterizing = false;
@@ -417,6 +414,7 @@ protected:
 	bool _isTessellationPipeline = false;
 	bool _inputAttachmentIsDSAttachment = false;
 	bool _hasRemappedAttachmentLocations = false;
+	bool _needsDrawIDBuffer = false;
 };
 
 

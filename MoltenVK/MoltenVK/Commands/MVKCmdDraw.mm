@@ -769,29 +769,25 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 
 	MVKPiplineStages stages;
     pipeline->getStages(stages);
-    
-    // Before the for-loop over drawCount
+
     if (pipeline->needsDrawIDBuffer()) {
-        
         tempDrawIDBuff = cmdEncoder->getTempMTLBuffer(_drawCount * sizeof(uint32_t));
 
-        uint32_t* drawIDs = (uint32_t*)((char*)[tempDrawIDBuff->_mtlBuffer contents] + tempDrawIDBuff->_offset);
+        auto* drawIDs = (uint32_t*)((char*)[tempDrawIDBuff->_mtlBuffer contents] + tempDrawIDBuff->_offset);
         for (uint32_t i = 0; i < _drawCount; i++) {
-            drawIDs[i] = i;     // sequential IDs starting from 0
+            drawIDs[i] = i;
         }
     }
 
     for (uint32_t drawIdx = 0; drawIdx < _drawCount; drawIdx++) {
-        // === gl_DrawID hack: bind current draw index as [[buffer(N)]] ===
         if (pipeline->needsDrawIDBuffer()) {
-            
             if (drawIdx == 0) {
                 [cmdEncoder->_mtlRenderEncoder setVertexBuffer:tempDrawIDBuff->_mtlBuffer
-                                                              offset:tempDrawIDBuff->_offset
-                                                             atIndex:pipeline -> getMetalBufferIndexForDrawID()];   // your reserved index
+                                                        offset:tempDrawIDBuff->_offset
+                                                       atIndex:kMVKDrawIDBufferIndex];
             } else {
                 [cmdEncoder->_mtlRenderEncoder setVertexBufferOffset:tempDrawIDBuff->_offset + drawIdx * sizeof(uint32_t)
-                                                             atIndex:pipeline -> getMetalBufferIndexForDrawID()];   // set the correct offset for draw #1+
+                                                             atIndex:kMVKDrawIDBufferIndex];
             }
         }
         for (uint32_t s : stages) {
@@ -1107,25 +1103,23 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
     pipeline->getStages(stages);
 
     if (pipeline->needsDrawIDBuffer()) {
-
         tempDrawIDBuff = cmdEncoder->getTempMTLBuffer(_drawCount * sizeof(uint32_t));
 
-        uint32_t* drawIDs = (uint32_t*)((char*)[tempDrawIDBuff->_mtlBuffer contents] + tempDrawIDBuff->_offset);
+        auto* drawIDs = (uint32_t*)((char*)[tempDrawIDBuff->_mtlBuffer contents] + tempDrawIDBuff->_offset);
         for (uint32_t i = 0; i < _drawCount; i++) {
-            drawIDs[i] = i;     // sequential IDs starting from 0
+            drawIDs[i] = i;
         }
     }
 
     for (uint32_t drawIdx = 0; drawIdx < _drawCount; drawIdx++) {
-        // === gl_DrawID hack: bind current draw index as [[buffer(N)]] ===
         if (pipeline->needsDrawIDBuffer()) {
             if (drawIdx == 0) {
                 [cmdEncoder->_mtlRenderEncoder setVertexBuffer:tempDrawIDBuff->_mtlBuffer
-                                                              offset:tempDrawIDBuff->_offset
-                                                             atIndex:pipeline -> getMetalBufferIndexForDrawID()];   // your reserved index
+                                                        offset:tempDrawIDBuff->_offset
+                                                       atIndex:kMVKDrawIDBufferIndex];
             } else {
                 [cmdEncoder->_mtlRenderEncoder setVertexBufferOffset:tempDrawIDBuff->_offset + drawIdx * sizeof(uint32_t)
-                                                             atIndex:pipeline -> getMetalBufferIndexForDrawID()];   // set the correct offset for draw #1+
+                                                             atIndex:kMVKDrawIDBufferIndex];
             }
         }
         for (uint32_t s : stages) {
