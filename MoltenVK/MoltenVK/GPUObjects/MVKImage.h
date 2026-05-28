@@ -557,8 +557,11 @@ public:
 
 protected:
     void propagateDebugName();
+    void initializeMTLTexture(id<MTLTexture> mtlTexture);
     id<MTLTexture> newMTLTexture();
-	VkResult initSwizzledMTLPixelFormat(const VkImageViewCreateInfo* pCreateInfo);
+    id<MTLTexture> newMTLTextureFromBaseMTLTexture(id<MTLTexture> baseMTLTexture);
+    bool matchesMTLTextureViewBase(id<MTLTexture> mtlTexture);
+    VkResult initSwizzledMTLPixelFormat(const VkImageViewCreateInfo* pCreateInfo);
     MVKImageViewPlane(MVKImageView* imageView, uint8_t planeIndex, MTLPixelFormat mtlPixFmt, const VkImageViewCreateInfo* pCreateInfo);
 
     friend MVKImageView;

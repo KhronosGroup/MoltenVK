@@ -29,8 +29,26 @@
 #import "MTLSamplerDescriptor+MoltenVK.h"
 #import "CAMetalLayer+MoltenVK.h"
 
+#import <IOSurface/IOSurfaceRef.h>
+
 using namespace std;
 using namespace SPIRV_CROSS_NAMESPACE;
+
+static id<MTLTexture> mvkGetRootMTLTexture(id<MTLTexture> tex) {
+    while (tex.parentTexture && tex.parentTexture != tex) {
+      tex = tex.parentTexture;
+    }
+    return tex;
+}
+
+static id<MTLTexture> mvkGetBaseMTLTexture(id<MTLTexture> tex) {
+    return tex.parentTexture ? tex.parentTexture : tex;
+}
+
+static uint32_t mvkGetMTLTextureIOSurfaceID(id<MTLTexture> tex) {
+    IOSurfaceRef ioSurface = tex.iosurface;
+    return ioSurface ? IOSurfaceGetID(ioSurface) : 0;
+}
 
 #pragma mark -
 #pragma mark MVKImagePlane
@@ -1843,17 +1861,29 @@ void MVKImageViewPlane::propagateDebugName() { _imageView->setMetalObjectLabel(_
 id<MTLTexture> MVKImageViewPlane::getMTLTexture() {
     // If we can use a Metal texture view, lazily create it, otherwise use the image texture directly.
     if (_useMTLTextureView) {
+        id<MTLTexture> baseMTLTexture = _imageView->_image->getMTLTexture(_planeIndex);
+
+        if (_mtlTexture && !matchesMTLTextureViewBase(baseMTLTexture)) {
+            lock_guard<mutex> lock(_imageView->_lock);
+            if (_mtlTexture && !matchesMTLTextureViewBase(baseMTLTexture)) {
+                releaseMTLTexture();
+            }
+        }
+
         if ( !_mtlTexture && _mtlPixFmt ) {
 
             // Lock and check again in case another thread created the texture view
             lock_guard<mutex> lock(_imageView->_lock);
-            if (_mtlTexture) { return _mtlTexture; }
+            if (_mtlTexture) {
+              if (!matchesMTLTextureViewBase(baseMTLTexture)) {
+                releaseMTLTexture();
+              } else {
+                return _mtlTexture;
+              }
+            }
 
-            id<MTLTexture> tex = newMTLTexture(); // retained
-            getDevice()->getLiveResources().add(tex);
-            _mtlTexture = tex;
-
-            propagateDebugName();
+            MVKAssert(baseMTLTexture, "Attempting to create an MTLTexture view from a nil base texture.");
+            initializeMTLTexture(newMTLTextureFromBaseMTLTexture(baseMTLTexture)); // retained
         }
         return _mtlTexture;
     } else {
@@ -1861,12 +1891,52 @@ id<MTLTexture> MVKImageViewPlane::getMTLTexture() {
     }
 }
 
+bool MVKImageViewPlane::matchesMTLTextureViewBase(id<MTLTexture> mtlTexture) {
+    id<MTLTexture> cachedBaseMTLTexture = mvkGetBaseMTLTexture(_mtlTexture);
+    if (cachedBaseMTLTexture == mtlTexture) { return true; }
+
+    uint32_t cachedBaseIOSurfaceID = mvkGetMTLTextureIOSurfaceID(cachedBaseMTLTexture);
+    uint32_t baseIOSurfaceID = mvkGetMTLTextureIOSurfaceID(mtlTexture);
+    if (cachedBaseIOSurfaceID && baseIOSurfaceID) {
+      return cachedBaseIOSurfaceID == baseIOSurfaceID;
+    }
+
+    id<MTLTexture> cachedRootMTLTexture = mvkGetRootMTLTexture(_mtlTexture);
+    id<MTLTexture> rootMTLTexture = mvkGetRootMTLTexture(mtlTexture);
+    if (cachedRootMTLTexture == rootMTLTexture) { return true; }
+
+    uint32_t cachedRootIOSurfaceID = mvkGetMTLTextureIOSurfaceID(cachedRootMTLTexture);
+    uint32_t rootIOSurfaceID = mvkGetMTLTextureIOSurfaceID(rootMTLTexture);
+    if (cachedRootIOSurfaceID && rootIOSurfaceID) {
+        return cachedRootIOSurfaceID == rootIOSurfaceID;
+    }
+
+    return false;
+}
+
+void MVKImageViewPlane::initializeMTLTexture(id<MTLTexture> mtlTexture) {
+    MVKAssert(mtlTexture, "Attempting to initialize an MVKImageViewPlane with a nil MTLTexture.");
+    if ( !mtlTexture ) { return; }
+
+    getDevice()->getLiveResources().add(mtlTexture);
+    _mtlTexture = mtlTexture;
+
+    propagateDebugName();
+}
+
 // Creates and returns a retained Metal texture as an
 // overlay on the Metal texture of the underlying image.
 id<MTLTexture> MVKImageViewPlane::newMTLTexture() {
-    auto* image = _imageView->_image;
+    return newMTLTextureFromBaseMTLTexture(_imageView->_image->getMTLTexture(_planeIndex));
+}
 
-    id<MTLTexture> mtlTex = image->getMTLTexture(_planeIndex);
+id<MTLTexture> MVKImageViewPlane::newMTLTextureFromBaseMTLTexture(id<MTLTexture> baseMTLTexture) {
+    MVKAssert(baseMTLTexture, "Attempting to create an MTLTexture view from a nil base texture.");
+    if ( !baseMTLTexture ) { return nil; }
+
+    auto* image = _imageView->_image;
+    id<MTLTexture> mtlTex = baseMTLTexture;
+
     id<MTLTexture> aliasTex = nil;
     NSRange levelRange = NSMakeRange(_imageView->_subresourceRange.baseMipLevel, _imageView->_subresourceRange.levelCount);
     NSRange sliceRange = NSMakeRange(_imageView->_subresourceRange.baseArrayLayer, _imageView->_subresourceRange.layerCount);
@@ -1959,7 +2029,7 @@ MVKImageViewPlane::MVKImageViewPlane(MVKImageView* imageView,
     // and set the _useMTLTextureView variable appropriately.
     if ( _imageView->_image ) {
         _useMTLTextureView = true;
-        // If the view is identical to underlying image, don't bother using a Metal view
+        // If the view is identical to underlying image, don't bother using a Metal view.
         if (_mtlPixFmt == _imageView->_image->getMTLPixelFormat(planeIndex) &&
             _imageView->_mtlTextureType == _imageView->_image->_mtlTextureType &&
             _imageView->_subresourceRange.levelCount == _imageView->_image->_mipLevels &&
@@ -2107,11 +2177,16 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 	return VK_SUCCESS;
 }
 
-MVKImageViewPlane::~MVKImageViewPlane() {
+void MVKImageViewPlane::releaseMTLTexture() {
 	if (id<MTLTexture> tex = _mtlTexture) {
 		getDevice()->getLiveResources().remove(tex);
 		[tex release];
+		_mtlTexture = nil;
 	}
+}
+
+MVKImageViewPlane::~MVKImageViewPlane() {
+	releaseMTLTexture();
 }
 
 
