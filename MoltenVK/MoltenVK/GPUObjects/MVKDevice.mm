@@ -2816,7 +2816,7 @@ void MVKPhysicalDevice::initFeatures() {
 	// Additional non-extension Vulkan 1.2 features.
 	mvkClear(&_vulkan12NoExtFeatures);		// Start with everything cleared
 	_vulkan12NoExtFeatures.samplerMirrorClampToEdge = _metalFeatures.samplerMirrorClampToEdge;
-	_vulkan12NoExtFeatures.drawIndirectCount = false;
+	_vulkan12NoExtFeatures.drawIndirectCount = _metalFeatures.indirectDrawing;
 	_vulkan12NoExtFeatures.descriptorIndexing = _metalFeatures.arrayOfTextures && _metalFeatures.arrayOfSamplers;
 	_vulkan12NoExtFeatures.samplerFilterMinmax = false;
 	_vulkan12NoExtFeatures.shaderOutputViewportIndex = _features.multiViewport;
