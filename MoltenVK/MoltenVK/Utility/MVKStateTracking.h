@@ -188,6 +188,7 @@ enum class MVKImplicitBuffer : uint32_t {
 	TessLevel,
 	Index,
 	DispatchBase,
+	DrawId,
 	Count,
 };
 
