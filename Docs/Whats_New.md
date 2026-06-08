@@ -22,6 +22,7 @@ Released TBD
   - `VK_KHR_external_semaphore_fd`
 - Fix buffer and heap out-of-sync in `initExternalMemory()`.
 - Fix incorrect varable usage in `MVKImagePlane::getMTLTexture()`.
+- Fix incorrect placement heap check in `MVKImagePlane::getMTLTexture()`.
 - Fix device loss when using imported `MTLTexture` objects with Metal argument buffers.
 - Update copyright notices to year 2026.
 - Update to latest SPIRV-Cross:
