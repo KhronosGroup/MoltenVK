@@ -140,6 +140,7 @@ typedef struct {
 	VkBool32 quadPermute;							/**< If true, quadgroup permutation functions (vote, ballot, shuffle) are supported in shaders. */
 	VkBool32 simdPermute;							/**< If true, SIMD-group permutation functions (vote, ballot, shuffle) are supported in shaders. */
 	VkBool32 simdReduction;							/**< If true, SIMD-group reduction functions (arithmetic) are supported in shaders. */
+	VkBool32 cooperativeMatrix;						/**< If true, cooperative matrix (SIMD-group matrix) operations are supported in shaders. */
     uint32_t minSubgroupSize;			        	/**< The minimum number of threads in a SIMD-group. */
     VkBool32 textureBarriers;                   	/**< If true, texture barriers are supported within Metal render passes. Deprecated. Will always be false on all platforms. */
     VkBool32 tileBasedDeferredRendering;        	/**< If true, this device uses tile-based deferred rendering. */

@@ -569,6 +569,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				zeroInitWorkgroupMemFeatures->shaderZeroInitializeWorkgroupMemory = supportedFeats13.shaderZeroInitializeWorkgroupMemory;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR: {
+				auto* coopMatFeatures = (VkPhysicalDeviceCooperativeMatrixFeaturesKHR*)next;
+				coopMatFeatures->cooperativeMatrix = _metalFeatures.cooperativeMatrix;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR: {
 				auto* barycentricFeatures = (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)next;
 				barycentricFeatures->fragmentShaderBarycentric = true;
@@ -1256,6 +1261,11 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				shaderIntDotProperties->integerDotProductAccumulatingSaturating64BitMixedSignednessAccelerated = supportedProps13.integerDotProductAccumulatingSaturating64BitMixedSignednessAccelerated;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_PROPERTIES_KHR: {
+				auto* coopMatProps = (VkPhysicalDeviceCooperativeMatrixPropertiesKHR*)next;				
+				coopMatProps->cooperativeMatrixSupportedStages = VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES: {
 				auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorProperties*)next;
 				divisorProps->maxVertexAttribDivisor = supportedProps14.maxVertexAttribDivisor;
@@ -1872,6 +1882,39 @@ VkResult MVKPhysicalDevice::getToolProperties(uint32_t* pToolCount, VkPhysicalDe
 	// Metal does not currently have a standard way to detect attached tools, so report nothing.
 	*pToolCount = 0;
 	return VK_SUCCESS;
+}
+
+VkResult MVKPhysicalDevice::getCooperativeMatrixProperties(uint32_t* pPropertyCount, VkCooperativeMatrixPropertiesKHR* pProperties) {
+	// The exact 8x8 configurations Apple Silicon and SPIRV-Cross support
+	static const VkCooperativeMatrixPropertiesKHR coopMatProps[] = {
+        { VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_KHR, nullptr, 
+          8, 8, 8, 
+          VK_COMPONENT_TYPE_FLOAT16_KHR, VK_COMPONENT_TYPE_FLOAT16_KHR, VK_COMPONENT_TYPE_FLOAT16_KHR, VK_COMPONENT_TYPE_FLOAT16_KHR, 
+          VK_FALSE, VK_SCOPE_SUBGROUP_KHR },
+        { VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_KHR, nullptr, 
+          8, 8, 8, 
+          VK_COMPONENT_TYPE_FLOAT32_KHR, VK_COMPONENT_TYPE_FLOAT32_KHR, VK_COMPONENT_TYPE_FLOAT32_KHR, VK_COMPONENT_TYPE_FLOAT32_KHR, 
+          VK_FALSE, VK_SCOPE_SUBGROUP_KHR },
+        { VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_KHR, nullptr, 
+          8, 8, 8, 
+          VK_COMPONENT_TYPE_FLOAT16_KHR, VK_COMPONENT_TYPE_FLOAT16_KHR, VK_COMPONENT_TYPE_FLOAT32_KHR, VK_COMPONENT_TYPE_FLOAT32_KHR, 
+          VK_FALSE, VK_SCOPE_SUBGROUP_KHR }
+    };
+	uint32_t propCnt = sizeof(coopMatProps) / sizeof(coopMatProps[0]);
+
+	if (!pProperties) {
+		*pPropertyCount = propCnt;
+		return VK_SUCCESS;
+	}
+
+	uint32_t rtCnt = min(*pPropertyCount, propCnt);
+	for (uint32_t i = 0; i < rtCnt; i++) {
+		pProperties[i] = coopMatProps[i];
+	}
+
+	VkResult rslt = (*pPropertyCount >= propCnt) ? VK_SUCCESS : VK_INCOMPLETE;
+	*pPropertyCount = rtCnt;
+	return rslt;	
 }
 
 
@@ -2573,6 +2616,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.samplerClampToBorder = !MVK_TVOS || mvkOSVersionIsAtLeast(16.0);
 		_metalFeatures.samplerMirrorClampToEdge = !MVK_TVOS || mvkOSVersionIsAtLeast(16.0);
 		_metalFeatures.simdReduction = true;
+		_metalFeatures.cooperativeMatrix = true;
 	}
 
 	if (supportsMTLGPUFamily(Apple10)) {
