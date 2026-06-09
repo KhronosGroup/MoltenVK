@@ -4331,6 +4331,22 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkExportMetalObjectsEXT(
 
 
 #pragma mark -
+#pragma mark VK_KHR_cooperative_matrix extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR(
+    VkPhysicalDevice                            physicalDevice,
+    uint32_t*                                   pPropertyCount,
+    VkCooperativeMatrixPropertiesKHR*           pProperties) {
+
+    MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    VkResult rslt = mvkPD->getCooperativeMatrixProperties(pPropertyCount, pProperties);
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
+
+
+#pragma mark -
 #pragma mark VK_EXT_private_data extension
 
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCreatePrivateDataSlot, EXT);

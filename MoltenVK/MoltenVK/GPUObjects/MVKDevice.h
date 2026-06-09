@@ -244,6 +244,9 @@ public:
 	/** Populates the specified structure with the tool properties of this device. */
 	VkResult getToolProperties(uint32_t* pToolCount, VkPhysicalDeviceToolProperties* pToolProperties);
 
+	/** Populates the specified structure with the cooperative matrix properties of this device. */
+	VkResult getCooperativeMatrixProperties(uint32_t* pPropertyCount, VkCooperativeMatrixPropertiesKHR* pProperties); 
+
 #pragma mark Surfaces
 
 	/**
