@@ -2504,6 +2504,13 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.simdReduction = true;
     }
 
+	// Intel UHD 630 (Gen9) reports Mac2 family through Metal,
+	// but simd_reduction operations (simd_sum, etc.) produce
+	// incorrect results on this hardware.
+	if (_properties.vendorID == kIntelVendorId) {
+		_metalFeatures.simdReduction = false;
+	}
+
     if (supportsMTLGPUFamily(Apple1)) {
 		_metalFeatures.mtlBufferAlignment = 64;
 		_metalFeatures.mtlConstantBufferAlignment = 4;
