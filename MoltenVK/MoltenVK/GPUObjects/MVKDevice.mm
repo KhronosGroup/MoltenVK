@@ -2655,8 +2655,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
                 _metalFeatures.minSubgroupSize = 8;
                 break;
             case kAMDVendorId:
-                _metalFeatures.maxSubgroupSize = 64;
-                _metalFeatures.minSubgroupSize = isAMDRDNAGPU() ? 32 : _metalFeatures.maxSubgroupSize;
+                // Metal simdgroup operations (simd_shuffle_xor, etc.) produce incorrect
+                // results on AMD GPUs with 64-wide subgroups. Use 32-wide subgroups which
+                // matches RDNA wave32 mode and works correctly.
+                _metalFeatures.maxSubgroupSize = 32;
+                _metalFeatures.minSubgroupSize = 32;
                 break;
             case kAppleVendorId:
                 _metalFeatures.maxSubgroupSize = 32;
