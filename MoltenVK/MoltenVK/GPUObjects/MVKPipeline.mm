@@ -2117,7 +2117,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
     shaderConfig.options.mslOptions.view_index_from_device_index = mvkAreAllFlagsEnabled(_flags, VK_PIPELINE_CREATE_2_VIEW_INDEX_FROM_DEVICE_INDEX_BIT);
 	shaderConfig.options.mslOptions.replace_recursive_inputs = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0);
 #if MVK_MACOS
-    shaderConfig.options.mslOptions.emulate_subgroups = !mtlFeats.simdPermute;
+    shaderConfig.options.mslOptions.emulate_subgroups = !mtlFeats.simdPermute || !mtlFeats.simdReduction;
 #else
     shaderConfig.options.mslOptions.emulate_subgroups = !mtlFeats.quadPermute;
     shaderConfig.options.mslOptions.ios_use_simdgroup_functions = !!mtlFeats.simdPermute;
@@ -2490,7 +2490,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderConfig.options.mslOptions.argument_buffers_tier = (SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::ArgumentBuffersTier)getMetalFeatures().argumentBuffersTier;
 
 #if MVK_MACOS
-    shaderConfig.options.mslOptions.emulate_subgroups = !mtlFeats.simdPermute;
+    shaderConfig.options.mslOptions.emulate_subgroups = !mtlFeats.simdPermute || !mtlFeats.simdReduction;
 #else
     shaderConfig.options.mslOptions.emulate_subgroups = !mtlFeats.quadPermute;
     shaderConfig.options.mslOptions.ios_use_simdgroup_functions = !!mtlFeats.simdPermute;
