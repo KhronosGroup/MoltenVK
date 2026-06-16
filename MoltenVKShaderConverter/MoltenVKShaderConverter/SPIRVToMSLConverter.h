@@ -252,6 +252,7 @@ namespace mvk {
 		SPIRVEntryPoint entryPoint;
 		bool isRasterizationDisabled = false;
 		bool isPositionInvariant = false;
+		bool needsSwizzleBuffer = false;
 		bool needsOutputBuffer = false;
 		bool needsPatchOutputBuffer = false;
 		bool needsBufferSizeBuffer = false;

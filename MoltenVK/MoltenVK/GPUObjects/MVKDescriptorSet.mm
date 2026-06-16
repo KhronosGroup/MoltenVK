@@ -192,14 +192,16 @@ static MVKArgumentBufferMode pickArgumentBufferMode(MVKDevice* dev, const VkDesc
 	if (mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT))
 		return MVKArgumentBufferMode::Off;
 	auto gpuCaps = dev->getPhysicalDevice()->getMTLDeviceCapabilities();
+	auto* metalFeatures = dev->getPhysicalDevice()->getMetalFeatures();
 	if (dev->getPhysicalDevice()->isNVIDIAGPU() &&
 		gpuCaps.supportsMac1 && !gpuCaps.supportsMac2 &&
-		dev->getPhysicalDevice()->getMetalFeatures()->needsArgumentBufferEncoders) {
+		metalFeatures->needsArgumentBufferEncoders) {
 		for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
 			const VkDescriptorSetLayoutBinding& bind = pCreateInfo->pBindings[i];
 			if (bind.descriptorCount == 0)
 				continue;
-			if (bind.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+			if (bind.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+				(!metalFeatures->nativeTextureSwizzle && bind.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE))
 				return MVKArgumentBufferMode::Off;
 		}
 	}
@@ -348,17 +350,20 @@ static MVKDescriptorCPULayout pickCPULayout(
 	if (count == 0)
 		return MVKDescriptorCPULayout::None;
 	bool nativeTAtomic = dev->getPhysicalDevice()->getMetalFeatures()->nativeTextureAtomics;
+	bool nativeTextureSwizzle = dev->getPhysicalDevice()->getMetalFeatures()->nativeTextureSwizzle;
 	switch (type) {
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
 			// Multiplanar images are for ycbcr, which requires a swizzle of IDENTITY, so we don't need to store it.
 			// Immutable samplers are accessible from the layout so they also don't need to be stored.
+			if (!nativeTextureSwizzle && !planes.hasYCBCR())
+				return planes.hasImmutableSamplers() ? MVKDescriptorCPULayout::OneIDMeta : MVKDescriptorCPULayout::TwoIDMeta;
 			if (planes.planeCount() > 2)
 				return MVKDescriptorCPULayout::TwoIDMeta;
 			if (planes.planeCount() == 1 || planes.hasNonYCBCR())
 				return MVKDescriptorCPULayout::OneID;
 			return MVKDescriptorCPULayout::OneIDMeta;
 		case VK_DESCRIPTOR_TYPE_SAMPLER:                return planes.hasImmutableSamplers() ? MVKDescriptorCPULayout::None : MVKDescriptorCPULayout::OneID;
-		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:          return MVKDescriptorCPULayout::OneID;
+		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:          return nativeTextureSwizzle ? MVKDescriptorCPULayout::OneID : MVKDescriptorCPULayout::OneIDMeta;
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:          return nativeTAtomic ? MVKDescriptorCPULayout::OneID : MVKDescriptorCPULayout::TwoID2Meta;
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:   return MVKDescriptorCPULayout::OneID;
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:   return nativeTAtomic ? MVKDescriptorCPULayout::OneID : MVKDescriptorCPULayout::TwoID2Meta;
@@ -1206,7 +1211,7 @@ static void writeDescriptorSetCPUBuffer(
 								if (immutableSamplers[i]->isYCBCR())
 									desc->b = img->getMTLTexture(1);
 								else
-									desc->meta.img = { static_cast<uint32_t>([tex height] * [tex bufferBytesPerRow]) };
+									desc->meta.img = { static_cast<uint32_t>([tex height] * [tex bufferBytesPerRow]), img->getPackedSwizzle() };
 							} else {
 								*desc = {};
 							}
@@ -1222,7 +1227,7 @@ static void writeDescriptorSetCPUBuffer(
 						if (auto* img = reinterpret_cast<MVKImageView*>(static_cast<const VkDescriptorImageInfo*>(src)->imageView)) {
 							id<MTLTexture> tex = img->getMTLTexture();
 							desc->a = tex;
-							desc->meta.img = { static_cast<uint32_t>([tex height] * [tex bufferBytesPerRow]) };
+							desc->meta.img = { static_cast<uint32_t>([tex height] * [tex bufferBytesPerRow]), img->getPackedSwizzle() };
 						} else {
 							*desc = {};
 						}
@@ -1248,7 +1253,7 @@ static void writeDescriptorSetCPUBuffer(
 							desc->c = img->getMTLTexture(2);
 						} else {
 							desc->b = nullptr;
-							desc->meta.img = { static_cast<uint32_t>([tex height] * [tex bufferBytesPerRow]) };
+							desc->meta.img = { static_cast<uint32_t>([tex height] * [tex bufferBytesPerRow]), img->getPackedSwizzle() };
 						}
 					} else {
 						*desc = {};
@@ -1259,7 +1264,7 @@ static void writeDescriptorSetCPUBuffer(
 					if (img) {
 						id<MTLTexture> tex = img->getMTLTexture();
 						desc->a = tex;
-						desc->meta.img = { static_cast<uint32_t>([tex height] * [tex bufferBytesPerRow]) };
+						desc->meta.img = { static_cast<uint32_t>([tex height] * [tex bufferBytesPerRow]), img->getPackedSwizzle() };
 					} else {
 						desc->a = nil;
 						desc->meta = {};
@@ -1293,7 +1298,7 @@ static void writeDescriptorSetCPUBuffer(
 							desc->a = tex;
 							desc->b = [tex buffer];
 							desc->offset = [tex bufferOffset];
-							desc->meta.img = { static_cast<uint32_t>([tex height] * [tex bufferBytesPerRow]) };
+							desc->meta.img = { static_cast<uint32_t>([tex height] * [tex bufferBytesPerRow]), img->getPackedSwizzle() };
 						} else {
 							*desc = {};
 						}
