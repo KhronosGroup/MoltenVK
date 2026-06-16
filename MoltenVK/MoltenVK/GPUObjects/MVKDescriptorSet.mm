@@ -191,6 +191,18 @@ static MVKArgumentBufferMode pickArgumentBufferMode(MVKDevice* dev, const VkDesc
 	// Push descriptors are always binding-based
 	if (mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT))
 		return MVKArgumentBufferMode::Off;
+	auto gpuCaps = dev->getPhysicalDevice()->getMTLDeviceCapabilities();
+	if (dev->getPhysicalDevice()->isNVIDIAGPU() &&
+		gpuCaps.supportsMac1 && !gpuCaps.supportsMac2 &&
+		dev->getPhysicalDevice()->getMetalFeatures()->needsArgumentBufferEncoders) {
+		for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
+			const VkDescriptorSetLayoutBinding& bind = pCreateInfo->pBindings[i];
+			if (bind.descriptorCount == 0)
+				continue;
+			if (bind.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+				return MVKArgumentBufferMode::Off;
+		}
+	}
 #if MVK_IOS || MVK_TVOS
 	// iOS Tier 1 argument buffers do not support writable images.
 	if (dev->getPhysicalDevice()->getMetalFeatures()->argumentBuffersTier < MTLArgumentBuffersTier2) {

@@ -3310,6 +3310,10 @@ void MVKPhysicalDevice::setMemoryType(uint32_t typeIndex, uint32_t heapIndex, Vk
 	_memoryProperties.memoryTypes[typeIndex].propertyFlags = propertyFlags;
 }
 
+bool MVKPhysicalDevice::isNVIDIAGPU() const {
+	return _properties.vendorID == kNVVendorId;
+}
+
 void MVKPhysicalDevice::initMemoryProperties() {
 
 	mvkClear(&_memoryProperties);	// Start with everything cleared

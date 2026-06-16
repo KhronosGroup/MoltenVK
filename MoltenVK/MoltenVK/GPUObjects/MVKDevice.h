@@ -204,6 +204,9 @@ public:
 	/** Returns the name of this device. */
 	const char* getName() { return _properties.deviceName; }
 
+	/** Returns whether the GPU is an NVIDIA GPU. */
+	bool isNVIDIAGPU() const;
+
 	/** Populates the specified structure with the format properties of this device. */
 	void getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties);
 
@@ -423,7 +426,7 @@ public:
 	MTLStorageMode getMTLStorageModeFromVkMemoryPropertyFlags(VkMemoryPropertyFlags vkFlags);
 
 	/** Returns the MTLDevice capabilities. */
-	const MVKMTLDeviceCapabilities getMTLDeviceCapabilities() { return _gpuCapabilities; }
+	MVKMTLDeviceCapabilities getMTLDeviceCapabilities() const { return _gpuCapabilities; }
 
 	/** Returns info on the sizes of argument buffers. */
 	const MVKPhysicalDeviceArgumentBufferSizes& getArgumentBufferSizes() const { return _argumentBufferSizes; }
