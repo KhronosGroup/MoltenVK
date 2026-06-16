@@ -2734,6 +2734,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.ioSurfaces = true;
 	_metalFeatures.renderWithoutAttachments = true;
 	_metalFeatures.nativeTextureSwizzle = true;
+
+	// NVIDIA Mac1 textures do not support native texture swizzle.
+	if (isNVIDIAGPU() && supportsMTLGPUFamily(Mac1) && !supportsMTLGPUFamily(Mac2)) {
+		_metalFeatures.nativeTextureSwizzle = false;
+	}
 }
 
 bool MVKPhysicalDevice::isTier2MetalArgumentBuffers() {
