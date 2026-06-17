@@ -1652,8 +1652,8 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 		shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pFragmentSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT) ? 0 : mtlFeats.maxSubgroupSize;
 		shaderConfig.options.mslOptions.check_discarded_frag_stores = true;
-		auto gpuCaps = getPhysicalDevice()->getMTLDeviceCapabilities();
-		if (getPhysicalDevice()->isNVIDIAGPU() && gpuCaps.supportsMac1 && !gpuCaps.supportsMac2) {
+		// On NVIDIA, simd_is_helper_thread() can trigger a Metal compiler internal error.
+		if (getPhysicalDevice()->isNVIDIAGPU()) {
 			shaderConfig.options.mslOptions.check_discarded_frag_stores = false;
 		}
 		/* Enabling makes dEQP-VK.fragment_shader_interlock.basic.discard.image.pixel_ordered.1xaa.no_sample_shading.1024x1024 and similar tests fail. Requires investigation */

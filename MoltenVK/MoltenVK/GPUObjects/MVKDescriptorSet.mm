@@ -191,7 +191,6 @@ static MVKArgumentBufferMode pickArgumentBufferMode(MVKDevice* dev, const VkDesc
 	// Push descriptors are always binding-based
 	if (mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT))
 		return MVKArgumentBufferMode::Off;
-	auto gpuCaps = dev->getPhysicalDevice()->getMTLDeviceCapabilities();
 	auto* metalFeatures = dev->getPhysicalDevice()->getMetalFeatures();
 	if (!metalFeatures->nativeTextureSwizzle) {
 		for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
@@ -204,9 +203,7 @@ static MVKArgumentBufferMode pickArgumentBufferMode(MVKDevice* dev, const VkDesc
 				return MVKArgumentBufferMode::Off;
 		}
 	}
-	if (dev->getPhysicalDevice()->isNVIDIAGPU() &&
-		gpuCaps.supportsMac1 && !gpuCaps.supportsMac2 &&
-		metalFeatures->needsArgumentBufferEncoders) {
+	if (dev->getPhysicalDevice()->isNVIDIAGPU() && metalFeatures->needsArgumentBufferEncoders) {
 		for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
 			const VkDescriptorSetLayoutBinding& bind = pCreateInfo->pBindings[i];
 			if (bind.descriptorCount == 0)

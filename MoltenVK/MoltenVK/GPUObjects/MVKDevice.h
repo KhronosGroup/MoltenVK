@@ -426,7 +426,7 @@ public:
 	MTLStorageMode getMTLStorageModeFromVkMemoryPropertyFlags(VkMemoryPropertyFlags vkFlags);
 
 	/** Returns the MTLDevice capabilities. */
-	MVKMTLDeviceCapabilities getMTLDeviceCapabilities() const { return _gpuCapabilities; }
+	const MVKMTLDeviceCapabilities getMTLDeviceCapabilities() { return _gpuCapabilities; }
 
 	/** Returns info on the sizes of argument buffers. */
 	const MVKPhysicalDeviceArgumentBufferSizes& getArgumentBufferSizes() const { return _argumentBufferSizes; }
