@@ -201,6 +201,7 @@ static MVKArgumentBufferMode pickArgumentBufferMode(MVKDevice* dev, const VkDesc
 			if (bind.descriptorCount == 0)
 				continue;
 			if (bind.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+				bind.descriptorType == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT ||
 				(!metalFeatures->nativeTextureSwizzle && bind.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE))
 				return MVKArgumentBufferMode::Off;
 		}
