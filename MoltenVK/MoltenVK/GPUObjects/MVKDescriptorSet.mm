@@ -193,6 +193,17 @@ static MVKArgumentBufferMode pickArgumentBufferMode(MVKDevice* dev, const VkDesc
 		return MVKArgumentBufferMode::Off;
 	auto gpuCaps = dev->getPhysicalDevice()->getMTLDeviceCapabilities();
 	auto* metalFeatures = dev->getPhysicalDevice()->getMetalFeatures();
+	if (!metalFeatures->nativeTextureSwizzle) {
+		for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
+			const VkDescriptorSetLayoutBinding& bind = pCreateInfo->pBindings[i];
+			if (bind.descriptorCount == 0)
+				continue;
+			if (bind.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+				bind.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
+				bind.descriptorType == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)
+				return MVKArgumentBufferMode::Off;
+		}
+	}
 	if (dev->getPhysicalDevice()->isNVIDIAGPU() &&
 		gpuCaps.supportsMac1 && !gpuCaps.supportsMac2 &&
 		metalFeatures->needsArgumentBufferEncoders) {
@@ -201,8 +212,7 @@ static MVKArgumentBufferMode pickArgumentBufferMode(MVKDevice* dev, const VkDesc
 			if (bind.descriptorCount == 0)
 				continue;
 			if (bind.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
-				bind.descriptorType == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT ||
-				(!metalFeatures->nativeTextureSwizzle && bind.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE))
+				bind.descriptorType == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)
 				return MVKArgumentBufferMode::Off;
 		}
 	}

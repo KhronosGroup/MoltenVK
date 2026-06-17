@@ -381,7 +381,7 @@ static void bindDescriptorSets(MVKImplicitBufferData& target,
 		if (setLayout->argBufMode() == MVKArgumentBufferMode::Off) {
 			// If we grab these now, we can be guaranteed the sets are valid
 			// If we wait until draw time, we can only be guaranteed statically used sets are valid
-			if (stride.textureIndex) {
+			if (!layout->getMetalFeatures().nativeTextureSwizzle && stride.textureIndex) {
 				mvkEnsureSize(target.textureSwizzles, offsets.textureIndex + stride.textureIndex);
 				bindImplicitBufferData<ImplicitBufferData::TextureSwizzle>(&target.textureSwizzles[offsets.textureIndex], setLayout, set->cpuBuffer, vkStage, varCount);
 			}
@@ -841,6 +841,7 @@ template <typename MTLState>
 static void invalidateDescriptorSetImplicitBuffers(MTLState& state) {
 	invalidateImplicitBuffer(state, MVKNonVolatileImplicitBuffer::BufferSize);
 	invalidateImplicitBuffer(state, MVKNonVolatileImplicitBuffer::DynamicOffset);
+	invalidateImplicitBuffer(state, MVKNonVolatileImplicitBuffer::Swizzle);
 }
 
 static bool isGraphicsStage(MVKShaderStage stage) {
