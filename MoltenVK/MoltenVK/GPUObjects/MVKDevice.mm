@@ -2468,6 +2468,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.nativeTextureAtomics = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0) && (supportsMTLGPUFamily(Metal3) || supportsMTLGPUFamily(Apple6) || supportsMTLGPUFamily(Mac2));
 
 	_metalFeatures.renderLinearTextures = _gpuCapabilities.supportsRenderLinearTextures;
+	_metalFeatures.nativeTextureSwizzle = false;
 
 	if (supportsMTLGPUFamily(Mac1)) {
 		_metalFeatures.mtlBufferAlignment = 256;
@@ -2502,6 +2503,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.stencilResolve = true;
 		_metalFeatures.quadPermute = true;
 		_metalFeatures.simdReduction = true;
+		_metalFeatures.nativeTextureSwizzle = true;
     }
 
     if (supportsMTLGPUFamily(Apple1)) {
@@ -2519,6 +2521,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.subgroupUniformControlFlow = true;
 		_metalFeatures.maximalReconvergence = true;
 		_metalFeatures.quadControlFlow = true;
+		_metalFeatures.nativeTextureSwizzle = true;
 
 		// Don't use barriers in render passes on Apple GPUs. Apple GPUs don't support them,
 		// and in fact Metal's validation layer will complain if you try to use them.
@@ -2733,12 +2736,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.events = true;
 	_metalFeatures.ioSurfaces = true;
 	_metalFeatures.renderWithoutAttachments = true;
-	_metalFeatures.nativeTextureSwizzle = true;
-
-	// NVIDIA Mac1 textures do not support native texture swizzle.
-	if (isNVIDIAGPU() && supportsMTLGPUFamily(Mac1) && !supportsMTLGPUFamily(Mac2)) {
-		_metalFeatures.nativeTextureSwizzle = false;
-	}
 }
 
 bool MVKPhysicalDevice::isTier2MetalArgumentBuffers() {
