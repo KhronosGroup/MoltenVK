@@ -3316,6 +3316,14 @@ bool MVKPhysicalDevice::isNVIDIAGPU() const {
 	return _properties.vendorID == kNVVendorId;
 }
 
+bool MVKPhysicalDevice::isIntelGPU() const {
+	return _properties.vendorID == kIntelVendorId;
+}
+
+bool MVKPhysicalDevice::isMacGPUFamily1() const {
+	return !_gpuCapabilities.isAppleGPU && _gpuCapabilities.supportsMac1 && !_gpuCapabilities.supportsMac2;
+}
+
 void MVKPhysicalDevice::initMemoryProperties() {
 
 	mvkClear(&_memoryProperties);	// Start with everything cleared

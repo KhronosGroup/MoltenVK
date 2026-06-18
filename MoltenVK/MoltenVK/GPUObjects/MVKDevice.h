@@ -207,6 +207,12 @@ public:
 	/** Returns whether the GPU is an NVIDIA GPU. */
 	bool isNVIDIAGPU() const;
 
+	/** Returns whether the GPU is an Intel GPU. */
+	bool isIntelGPU() const;
+
+	/** Returns whether the GPU supports exactly Metal Mac GPU Family 1. */
+	bool isMacGPUFamily1() const;
+
 	/** Populates the specified structure with the format properties of this device. */
 	void getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties);
 
