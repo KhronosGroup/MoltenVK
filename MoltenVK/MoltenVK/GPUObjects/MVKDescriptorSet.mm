@@ -192,24 +192,20 @@ static MVKArgumentBufferMode pickArgumentBufferMode(MVKDevice* dev, const VkDesc
 	if (mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT))
 		return MVKArgumentBufferMode::Off;
 	auto* metalFeatures = dev->getPhysicalDevice()->getMetalFeatures();
-	if (!metalFeatures->nativeTextureSwizzle) {
+	bool useMac1ArgumentEncoders = dev->getPhysicalDevice()->isMacGPUFamily1() && metalFeatures->needsArgumentBufferEncoders;
+	bool isIntelGPU = useMac1ArgumentEncoders && dev->getPhysicalDevice()->isIntelGPU();
+	bool isNVIDIAGPU = useMac1ArgumentEncoders && dev->getPhysicalDevice()->isNVIDIAGPU();
+	if (!metalFeatures->nativeTextureSwizzle || useMac1ArgumentEncoders) {
 		for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
 			const VkDescriptorSetLayoutBinding& bind = pCreateInfo->pBindings[i];
 			if (bind.descriptorCount == 0)
 				continue;
-			if (bind.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
-				bind.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
-				bind.descriptorType == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)
-				return MVKArgumentBufferMode::Off;
-		}
-	}
-	if (dev->getPhysicalDevice()->isNVIDIAGPU() && metalFeatures->needsArgumentBufferEncoders) {
-		for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
-			const VkDescriptorSetLayoutBinding& bind = pCreateInfo->pBindings[i];
-			if (bind.descriptorCount == 0)
-				continue;
-			if (bind.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
-				bind.descriptorType == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)
+			if ((!metalFeatures->nativeTextureSwizzle &&
+				 (bind.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+				  bind.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
+				  bind.descriptorType == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)) ||
+				(isIntelGPU && bind.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) ||
+				(isNVIDIAGPU && bind.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER))
 				return MVKArgumentBufferMode::Off;
 		}
 	}
