@@ -213,6 +213,12 @@ public:
 	/** Returns whether the GPU supports exactly Metal Mac GPU Family 1. */
 	bool isMacGPUFamily1() const;
 
+	/** Returns whether this GPU is in the affected AMD Mac family for the reversed-depth viewport workaround. */
+	bool needsAMDMac2ReversedDepthViewportWorkaround() const;
+
+	/** Returns whether reversed-depth viewports should be emulated instead of passed through to Metal. */
+	bool shouldEmulateReversedDepthViewport() const;
+
 	/** Populates the specified structure with the format properties of this device. */
 	void getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties);
 

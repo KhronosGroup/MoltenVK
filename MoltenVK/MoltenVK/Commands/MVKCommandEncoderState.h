@@ -124,6 +124,7 @@ struct MVKImplicitBufferData {
 	MVKSmallVector<uint32_t, 8> textureSwizzles;
 	MVKSmallVector<uint32_t, 8> bufferSizes;
 	MVKSmallVector<uint32_t, 8> dynamicOffsets;
+	uint32_t emulatedReversedDepthViewportMask = 0;
 };
 
 enum class MVKResourceUsageStages : uint8_t {
@@ -476,6 +477,8 @@ public:
 	}
 	/** Binds the given graphics pipeline to the Vulkan graphics state, invalidating any necessary resources. */
 	void bindGraphicsPipeline(MVKGraphicsPipeline* pipeline);
+	/** Updates the mask of viewports whose reversed-depth range should be emulated in graphics shaders. */
+	void setGraphicsEmulatedReversedDepthViewportMask(uint32_t mask);
 	/** Binds the given compute pipeline to the Vulkan graphics state, invalidating any necessary resources. */
 	void bindComputePipeline(MVKComputePipeline* pipeline);
 	/** Binds the given push constants to the Vulkan state, invalidating any necessary resources. */

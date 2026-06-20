@@ -696,6 +696,14 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 				binder.setBytes(encoder, viewRange, sizeof(viewRange), idx);
 				break;
 			}
+			case MVKNonVolatileImplicitBuffer::EmulatedReversedDepthViewport:
+				bindImmediateData(encoder,
+				                  mvkEncoder,
+				                  reinterpret_cast<const uint8_t*>(&implicitBufferData.emulatedReversedDepthViewportMask),
+				                  sizeof(implicitBufferData.emulatedReversedDepthViewportMask),
+				                  idx,
+				                  binder);
+				break;
 			case MVKNonVolatileImplicitBuffer::Count:
 				assert(0);
 				break;
@@ -1107,6 +1115,10 @@ static constexpr MVKRenderStateFlags FlagsMetalState {
 
 static constexpr MVKRenderStateFlags FlagsHandledByBindStateData = FlagsViewportScissor | FlagsMetalState;
 
+static bool shouldEmulateReversedDepthViewport(const MVKPhysicalDevice* physicalDevice) {
+	return physicalDevice->shouldEmulateReversedDepthViewport();
+}
+
 void MVKMetalGraphicsCommandEncoderState::bindStateData(
   id<MTLRenderCommandEncoder> encoder,
   MVKCommandEncoder& mvkEncoder,
@@ -1121,14 +1133,23 @@ void MVKMetalGraphicsCommandEncoderState::bindStateData(
 			mvkCopy(_viewports, viewports, data.numViewports);
 			MTLViewport mtlViewports[kMVKMaxViewportScissorCount];
 			uint32_t numViewports = data.numViewports;
+			uint32_t emulatedReversedDepthViewportMask = 0;
+			bool shouldEmulateReversedDepthViewports = shouldEmulateReversedDepthViewport(mvkEncoder.getDevice()->getPhysicalDevice());
 			for (uint32_t i = 0; i < numViewports; i++) {
 				mtlViewports[i].width = viewports[i].width;
 				mtlViewports[i].height = viewports[i].height;
 				mtlViewports[i].originX = viewports[i].x;
 				mtlViewports[i].originY = viewports[i].y;
-				mtlViewports[i].znear = viewports[i].minDepth;
-				mtlViewports[i].zfar = viewports[i].maxDepth;
+				bool isReversedDepthViewport = viewports[i].minDepth > viewports[i].maxDepth;
+				// Only reversed Vulkan depth ranges are emulated. Normal depth ranges are passed to Metal unchanged.
+				// The reversed range is swapped to preserve arbitrary Vulkan depth subranges after shader Z inversion.
+				if (shouldEmulateReversedDepthViewports && isReversedDepthViewport) {
+					emulatedReversedDepthViewportMask |= 1u << i;
+				}
+				mtlViewports[i].znear = shouldEmulateReversedDepthViewports && isReversedDepthViewport ? viewports[i].maxDepth : viewports[i].minDepth;
+				mtlViewports[i].zfar = shouldEmulateReversedDepthViewports && isReversedDepthViewport ? viewports[i].minDepth : viewports[i].maxDepth;
 			}
+			mvkEncoder.getState().setGraphicsEmulatedReversedDepthViewportMask(emulatedReversedDepthViewportMask);
 			if (numViewports == 1) {
 				[encoder setViewport:mtlViewports[0]];
 			} else {
@@ -1682,6 +1703,19 @@ static constexpr VkPipelineBindPoint VK_PIPELINE_BIND_POINT_ALL = VK_PIPELINE_BI
 
 static void invalidateImplicitBuffer(MVKCommandEncoderState& state, VkPipelineBindPoint bindPoint, MVKNonVolatileImplicitBuffer buffer) {
 	state.applyToActiveMTLState(bindPoint, [buffer](auto& mtl){ invalidateImplicitBuffer(mtl, buffer); });
+}
+
+void MVKCommandEncoderState::setGraphicsEmulatedReversedDepthViewportMask(uint32_t mask) {
+	bool changed = false;
+	for (auto& stageData : _vkGraphics._implicitBufferData) {
+		if (stageData.emulatedReversedDepthViewportMask != mask) {
+			stageData.emulatedReversedDepthViewportMask = mask;
+			changed = true;
+		}
+	}
+	if (changed) {
+		invalidateImplicitBuffer(*this, VK_PIPELINE_BIND_POINT_GRAPHICS, MVKNonVolatileImplicitBuffer::EmulatedReversedDepthViewport);
+	}
 }
 
 void MVKCommandEncoderState::bindGraphicsPipeline(MVKGraphicsPipeline* pipeline) {

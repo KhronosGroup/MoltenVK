@@ -3324,6 +3324,14 @@ bool MVKPhysicalDevice::isMacGPUFamily1() const {
 	return !_gpuCapabilities.isAppleGPU && _gpuCapabilities.supportsMac1 && !_gpuCapabilities.supportsMac2;
 }
 
+bool MVKPhysicalDevice::needsAMDMac2ReversedDepthViewportWorkaround() const {
+	return _properties.vendorID == kAMDVendorId && !_gpuCapabilities.isAppleGPU && _gpuCapabilities.supportsMac2 && !_gpuCapabilities.supportsMetal3;
+}
+
+bool MVKPhysicalDevice::shouldEmulateReversedDepthViewport() const {
+	return needsAMDMac2ReversedDepthViewportWorkaround();
+}
+
 void MVKPhysicalDevice::initMemoryProperties() {
 
 	mvkClear(&_memoryProperties);	// Start with everything cleared
