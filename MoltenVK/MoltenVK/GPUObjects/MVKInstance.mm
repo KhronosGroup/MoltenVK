@@ -43,7 +43,7 @@ PFN_vkVoidFunction MVKInstance::getProcAddr(const char* pName) {
 	MVKEntryPoint* pMVKPA = getEntryPoint(pName);
 
 	bool isSupported = (pMVKPA &&														// Command exists and...
-						(pMVKPA->isDevice ||											// ...is a device command or...
+						(pMVKPA->isDevice || pMVKPA->isInstanceDeviceExtEntrypoint ||	// ...is a device command or...
 						 pMVKPA->isEnabled(_appInfo.apiVersion, _enabledExtensions)));	// ...is a core or enabled extension command.
 
 	return isSupported ? pMVKPA->functionPointer : nullptr;
@@ -395,10 +395,10 @@ void MVKInstance::initMVKConfig(const VkInstanceCreateInfo* pCreateInfo) {
 	mvkSetConfig(_mvkConfig, _mvkConfig, _mvkConfigStringHolders);
 }
 
-#define ADD_ENTRY_POINT_MAP(name, func, api, ext, api2, ext2, isDev)  \
-	_entryPoints[""#name] = { (PFN_vkVoidFunction)&func, ext, ext2, api, api2, isDev }
+#define ADD_ENTRY_POINT_MAP(name, func, api, ext, api2, ext2, isDev, isInstanceDev)  \
+	_entryPoints[""#name] = { (PFN_vkVoidFunction)&func, ext, ext2, api, api2, isDev, isInstanceDev }
 
-#define ADD_ENTRY_POINT(func, api, ext, api2, ext2, isDev)	ADD_ENTRY_POINT_MAP(func, func, api, ext, api2, ext2, isDev)
+#define ADD_ENTRY_POINT(func, api, ext, api2, ext2, isDev)	ADD_ENTRY_POINT_MAP(func, func, api, ext, api2, ext2, isDev, false)
 
 // Add a core function.
 #define ADD_INST_ENTRY_POINT(func)				ADD_ENTRY_POINT(func, VK_API_VERSION_1_0, nullptr, 0, nullptr, false)
@@ -413,13 +413,14 @@ void MVKInstance::initMVKConfig(const VkInstanceCreateInfo* pCreateInfo) {
 #define ADD_DVC_1_4_ENTRY_POINT(func)			ADD_ENTRY_POINT(func, VK_API_VERSION_1_4, nullptr, 0, nullptr, true)
 
 // Add an extension function that aliases to another function from core or another extension.
-#define ADD_INST_EXT_ENTRY_POINT_ALIAS(alias, func, EXT)	ADD_ENTRY_POINT_MAP(alias, func, 0, VK_##EXT##_EXTENSION_NAME, 0, nullptr, false)
-#define ADD_DVC_EXT_ENTRY_POINT_ALIAS(alias, func, EXT)		ADD_ENTRY_POINT_MAP(alias, func, 0, VK_##EXT##_EXTENSION_NAME, 0, nullptr, true)
+#define ADD_INST_EXT_ENTRY_POINT_ALIAS(alias, func, EXT)	    ADD_ENTRY_POINT_MAP(alias, func, 0, VK_##EXT##_EXTENSION_NAME, 0, nullptr, false, false)
+#define ADD_INST_DEVICE_EXT_ENTRY_POINT_ALIAS(alias, func, EXT)	ADD_ENTRY_POINT_MAP(alias, func, 0, VK_##EXT##_EXTENSION_NAME, 0, nullptr, false, true)
+#define ADD_DVC_EXT_ENTRY_POINT_ALIAS(alias, func, EXT)		    ADD_ENTRY_POINT_MAP(alias, func, 0, VK_##EXT##_EXTENSION_NAME, 0, nullptr, true, false)
 
 // Add an extension function that requires either another extension or a certain core version, and that aliases to
 // another function from core or another extension.
 #define ADD_DVC_EXT_VER_OR_EXT_ENTRY_POINT_ALIAS(alias, func, EXT1, API, EXT2)	\
-	ADD_ENTRY_POINT_MAP(alias, func, 0, VK_##EXT1##_EXTENSION_NAME, VK_API_VERSION_##API, VK_##EXT2##_EXTENSION_NAME, true)
+	ADD_ENTRY_POINT_MAP(alias, func, 0, VK_##EXT1##_EXTENSION_NAME, VK_API_VERSION_##API, VK_##EXT2##_EXTENSION_NAME, true, false)
 
 // Add both the promoted core function under the promoted name, and the extension function under its original name.
 #define ADD_INST_1_1_PROMOTED_ENTRY_POINT(func, EXT)	\
@@ -434,9 +435,9 @@ void MVKInstance::initMVKConfig(const VkInstanceCreateInfo* pCreateInfo) {
 	ADD_DVC_1_2_ENTRY_POINT(func); \
 	ADD_DVC_EXT_ENTRY_POINT_ALIAS(func##extSuffix, func, EXT)
 
-#define ADD_INST_1_3_PROMOTED_ENTRY_POINT(func, extSuffix, EXT)	\
+#define ADD_INST_1_3_PROMOTED_DEVICE_EXT_ENTRY_POINT(func, extSuffix, EXT)	\
 	ADD_INST_1_3_ENTRY_POINT(func);	\
-	ADD_INST_EXT_ENTRY_POINT_ALIAS(func##extSuffix, func, EXT)
+	ADD_INST_DEVICE_EXT_ENTRY_POINT_ALIAS(func##extSuffix, func, EXT)
 
 #define ADD_DVC_1_3_PROMOTED_ENTRY_POINT(func, extSuffix, EXT) \
 	ADD_DVC_1_3_ENTRY_POINT(func); \
@@ -490,7 +491,7 @@ void MVKInstance::initProcAddrs() {
 
 	// n.b. This is an instance function despite VK_EXT_tooling_info being a device extension,
 	// because it operates on physical devices.
-	ADD_INST_1_3_PROMOTED_ENTRY_POINT(vkGetPhysicalDeviceToolProperties, EXT, EXT_TOOLING_INFO);
+	ADD_INST_1_3_PROMOTED_DEVICE_EXT_ENTRY_POINT(vkGetPhysicalDeviceToolProperties, EXT, EXT_TOOLING_INFO);
 
 	// Instance extension functions.
 	ADD_INST_EXT_ENTRY_POINT(vkDestroySurfaceKHR, KHR_SURFACE);
