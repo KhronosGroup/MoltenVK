@@ -486,7 +486,14 @@ VkResult MVKQueueCommandBufferSubmission::execute() {
 id<MTLCommandBuffer> MVKQueueCommandBufferSubmission::getActiveMTLCommandBuffer() {
 	if ( !_activeMTLCommandBuffer ) {
 		bool needsRetain = false;
-		if (!_device->hasResidencySet() && (getEnabledDescriptorIndexingFeatures().descriptorBindingPartiallyBound || getMVKConfig().liveCheckAllResources)) {
+		if (getMVKConfig().liveCheckAllResources) {
+			// A residency set guarantees residency, not lifetime: with retained references disabled, a
+			// resource the application destroys right after waiting on the submission fence is released
+			// (in detachMemory) while this completed-but-not-yet-released command buffer still references
+			// it, which Metal rejects. Honour an explicit liveCheckAllResources request even when a
+			// residency set is active.
+			needsRetain = true;
+		} else if (!_device->hasResidencySet() && getEnabledDescriptorIndexingFeatures().descriptorBindingPartiallyBound) {
 			// Partially bound descriptors will get bound by us even if they're not used at runtime by the shader.
 			// The application is free to destroy them even if they're not used at runtime even if we bound them.
 			// Metal will be very unhappy if we destroy something we bound, even if it isn't used at runtime.
