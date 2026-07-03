@@ -3858,6 +3858,113 @@ VkResult MVKDevice::waitIdle() {
 	return rslt;
 }
 
+#if MVK_XCODE_16
+
+// A MTLResidencySet retains its allocations, and command buffers on the residency-set
+// submission path are created with retainedReferences = NO, so the set's retain can be
+// the last reference keeping a destroyed resource alive while a command buffer that
+// references it is still in flight or not yet released. Removing an allocation the
+// instant the app destroys the resource can therefore drop that last reference too
+// early, and Metal aborts on the dangling reference (surfacing as VK_ERROR_DEVICE_LOST).
+//
+// Each pending removal is retained here and tagged with the newest command buffer
+// sequence committed before the destroy (its cutoff); command buffers committed later
+// cannot legally reference the destroyed resource. Once every sequence at or below the
+// cutoff has retired, the entry ripens, and it is executed on the next drain after
+// that, giving the completion machinery of the last referencing command buffer time to
+// let go of it. Drains run on tracked command buffer completions and on present
+// completions; waitIdle and device destruction retire whatever remains.
+
+void MVKDevice::makeResident(id<MTLAllocation> allocation) {
+	if ( !_residencySet || !allocation ) { return; }
+	@synchronized (_residencySet) {
+		// Cancel any pending removal of this allocation, so a removal queued by a
+		// previous owner cannot evict the re-added allocation later.
+		size_t dst = 0;
+		for (size_t src = 0; src < _pendingResidencyRemovals.size(); src++) {
+			auto& pr = _pendingResidencyRemovals[src];
+			if (pr.allocation == allocation) {
+				[pr.allocation release];	// retained by removeResidency()
+			} else {
+				_pendingResidencyRemovals[dst++] = pr;
+			}
+		}
+		while (_pendingResidencyRemovals.size() > dst) { _pendingResidencyRemovals.pop_back(); }
+
+		[_residencySet addAllocation: allocation];
+		[_residencySet commit];
+	}
+}
+
+void MVKDevice::removeResidency(id<MTLAllocation> allocation) {
+	if ( !_residencySet || !allocation ) { return; }
+	@synchronized (_residencySet) {
+		_pendingResidencyRemovals.push_back({ [allocation retain], _nextResidencyCmdBufSeq - 1, false });
+	}
+}
+
+uint64_t MVKDevice::trackResidencyCmdBufCommit() {
+	if ( !_residencySet ) { return 0; }
+	@synchronized (_residencySet) {
+		uint64_t seq = _nextResidencyCmdBufSeq++;
+		_inFlightResidencyCmdBufSeqs.insert(seq);
+		return seq;
+	}
+}
+
+void MVKDevice::residencyCmdBufCompleted(uint64_t seq) {
+	if ( !_residencySet || !seq ) { return; }
+	@synchronized (_residencySet) {
+		_inFlightResidencyCmdBufSeqs.erase(seq);
+	}
+	drainResidencyRemovals();
+}
+
+void MVKDevice::drainResidencyRemovals() {
+	if ( !_residencySet ) { return; }
+	MVKSmallVector<id<MTLAllocation>> retired;
+	@synchronized (_residencySet) {
+		if (_pendingResidencyRemovals.empty()) { return; }
+		uint64_t oldestInFlight = _inFlightResidencyCmdBufSeqs.empty()
+			? UINT64_MAX
+			: *_inFlightResidencyCmdBufSeqs.begin();
+		size_t dst = 0;
+		for (size_t src = 0; src < _pendingResidencyRemovals.size(); src++) {
+			auto pr = _pendingResidencyRemovals[src];
+			if (pr.isRipe) {
+				[_residencySet removeAllocation: pr.allocation];
+				retired.push_back(pr.allocation);
+			} else {
+				pr.isRipe = (oldestInFlight > pr.cutoffSeq);
+				_pendingResidencyRemovals[dst++] = pr;
+			}
+		}
+		if ( !retired.empty() ) {
+			while (_pendingResidencyRemovals.size() > dst) { _pendingResidencyRemovals.pop_back(); }
+			[_residencySet commit];
+		}
+	}
+	// Release outside the lock; this may be the allocation's last reference.
+	for (id<MTLAllocation> allocation : retired) { [allocation release]; }
+}
+
+void MVKDevice::flushResidencyRemovalsIfIdle() {
+	if ( !_residencySet ) { return; }
+	MVKSmallVector<id<MTLAllocation>> retired;
+	@synchronized (_residencySet) {
+		if (_pendingResidencyRemovals.empty() || !_inFlightResidencyCmdBufSeqs.empty()) { return; }
+		for (auto& pr : _pendingResidencyRemovals) {
+			[_residencySet removeAllocation: pr.allocation];
+			retired.push_back(pr.allocation);
+		}
+		_pendingResidencyRemovals.clear();
+		[_residencySet commit];
+	}
+	for (id<MTLAllocation> allocation : retired) { [allocation release]; }
+}
+
+#endif
+
 VkResult MVKDevice::markLost(bool alsoMarkPhysicalDevice) {
 	lock_guard<mutex> lock(_sem4Lock);
 
@@ -5553,6 +5660,13 @@ MVKDevice::~MVKDevice() {
 	for (auto &fences: _barrierFences) for (auto fence: fences) [fence release];
 
 #if MVK_XCODE_16
+	// Retire any residency removals still pending, so their allocations are
+	// removed from the set and released before the set itself goes away.
+	for (auto& pr : _pendingResidencyRemovals) {
+		[_residencySet removeAllocation: pr.allocation];
+		[pr.allocation release];
+	}
+	_pendingResidencyRemovals.clear();
 	[_residencySet release];
 #endif
 	[_defaultMTLSamplerState release];
