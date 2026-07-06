@@ -1145,9 +1145,12 @@ void MVKMetalGraphicsCommandEncoderState::bindStateData(
 				// The reversed range is swapped to preserve arbitrary Vulkan depth subranges after shader Z inversion.
 				if (shouldEmulateReversedDepthViewports && isReversedDepthViewport) {
 					emulatedReversedDepthViewportMask |= 1u << i;
+					mtlViewports[i].znear = viewports[i].maxDepth;
+					mtlViewports[i].zfar = viewports[i].minDepth;
+				} else {
+					mtlViewports[i].znear = viewports[i].minDepth;
+					mtlViewports[i].zfar = viewports[i].maxDepth;
 				}
-				mtlViewports[i].znear = shouldEmulateReversedDepthViewports && isReversedDepthViewport ? viewports[i].maxDepth : viewports[i].minDepth;
-				mtlViewports[i].zfar = shouldEmulateReversedDepthViewports && isReversedDepthViewport ? viewports[i].minDepth : viewports[i].maxDepth;
 			}
 			mvkEncoder.getState().setGraphicsEmulatedReversedDepthViewportMask(emulatedReversedDepthViewportMask);
 			if (numViewports == 1) {

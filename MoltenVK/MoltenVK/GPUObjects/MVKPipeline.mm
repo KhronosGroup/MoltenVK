@@ -1663,16 +1663,13 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		shaderConfig.options.entryPointName = pFragmentSS->pName;
 		shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 		shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pFragmentSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT) ? 0 : mtlFeats.maxSubgroupSize;
-		bool shouldEmulateReversedDepthViewports = getPhysicalDevice()->shouldEmulateReversedDepthViewport();
 		setEmulatedReversedDepthViewportConfig(shaderConfig, implicit, false);
 		shaderConfig.options.mslOptions.check_discarded_frag_stores = true;
-		// On NVIDIA, simd_is_helper_thread() can trigger a Metal compiler internal error.
-		if (getPhysicalDevice()->isMacGPUFamily1()) {
-			shaderConfig.options.mslOptions.check_discarded_frag_stores = false;
-		}
-		if (shouldEmulateReversedDepthViewports) {
-			// The discard-store helper path uses simd_is_helper_thread(), which is unreliable on the
-			// same AMD Metal path that needs reversed-depth viewport emulation.
+		// check_discarded_frag_stores emits simd_is_helper_thread() guards around
+		// discarded fragment stores. This can trigger a Metal compiler error on
+		// Mac1 NVIDIA. On legacy AMD Mac2, simd_is_helper_thread() can classify
+		// covered fragments as helpers, suppressing valid SSBO/atomic writes.
+		if (getPhysicalDevice()->isMacGPUFamily1() || getPhysicalDevice()->isLegacyAMDMac2GPU()) {
 			shaderConfig.options.mslOptions.check_discarded_frag_stores = false;
 		}
 		/* Enabling makes dEQP-VK.fragment_shader_interlock.basic.discard.image.pixel_ordered.1xaa.no_sample_shading.1024x1024 and similar tests fail. Requires investigation */

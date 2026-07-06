@@ -213,8 +213,8 @@ public:
 	/** Returns whether the GPU supports exactly Metal Mac GPU Family 1. */
 	bool isMacGPUFamily1() const;
 
-	/** Returns whether this GPU is in the affected AMD Mac family for the reversed-depth viewport workaround. */
-	bool needsAMDMac2ReversedDepthViewportWorkaround() const;
+	/** Returns whether the GPU is a legacy AMD Mac2 GPU without Metal 3 support. */
+	bool isLegacyAMDMac2GPU() const;
 
 	/** Returns whether reversed-depth viewports should be emulated instead of passed through to Metal. */
 	bool shouldEmulateReversedDepthViewport() const;
