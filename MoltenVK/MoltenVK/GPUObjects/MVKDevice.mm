@@ -3324,14 +3324,10 @@ bool MVKPhysicalDevice::isMacGPUFamily1() const {
 	return !_gpuCapabilities.isAppleGPU && _gpuCapabilities.supportsMac1 && !_gpuCapabilities.supportsMac2;
 }
 
-bool MVKPhysicalDevice::isLegacyAMDMac2GPU() const {
-	// Roughly Radeon Pro 5xx-class hardware.
-	return _properties.vendorID == kAMDVendorId && _gpuCapabilities.supportsMac2 && !_gpuCapabilities.supportsMetal3;
-}
-
 bool MVKPhysicalDevice::shouldEmulateReversedDepthViewport() const {
-	// Reversed Metal viewport depth is broken on this GPU path.
-	return isLegacyAMDMac2GPU();
+	// Reversed Metal viewport depth is broken on legacy AMD Mac2 GPUs without Metal 3 support.
+	// This is roughly Radeon Pro 5xx-class hardware.
+	return _properties.vendorID == kAMDVendorId && _gpuCapabilities.supportsMac2 && !_gpuCapabilities.supportsMetal3;
 }
 
 void MVKPhysicalDevice::initMemoryProperties() {

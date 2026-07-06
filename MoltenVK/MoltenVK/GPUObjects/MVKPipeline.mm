@@ -1664,14 +1664,11 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 		shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pFragmentSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT) ? 0 : mtlFeats.maxSubgroupSize;
 		setEmulatedReversedDepthViewportConfig(shaderConfig, implicit, false);
-		shaderConfig.options.mslOptions.check_discarded_frag_stores = true;
-		// check_discarded_frag_stores emits simd_is_helper_thread() guards around
-		// discarded fragment stores. This can trigger a Metal compiler error on
-		// Mac1 NVIDIA. On legacy AMD Mac2, simd_is_helper_thread() can classify
-		// covered fragments as helpers, suppressing valid SSBO/atomic writes.
-		if (getPhysicalDevice()->isMacGPUFamily1() || getPhysicalDevice()->isLegacyAMDMac2GPU()) {
-			shaderConfig.options.mslOptions.check_discarded_frag_stores = false;
-		}
+		/* check_discarded_frag_stores emits simd_is_helper_thread() guards around discarded fragment stores,
+		 * and is intended for Apple GPUs. On non-Apple GPUs, this can trigger a Metal compiler error on
+		 * Mac1 NVIDIA, and can classify covered fragments as helpers on legacy AMD Mac2. */
+		shaderConfig.options.mslOptions.check_discarded_frag_stores = getPhysicalDevice()->getMTLDeviceCapabilities().isAppleGPU;
+
 		/* Enabling makes dEQP-VK.fragment_shader_interlock.basic.discard.image.pixel_ordered.1xaa.no_sample_shading.1024x1024 and similar tests fail. Requires investigation */
 		shaderConfig.options.mslOptions.force_fragment_with_side_effects_execution = false;
 		shaderConfig.options.mslOptions.input_attachment_is_ds_attachment = _inputAttachmentIsDSAttachment;
