@@ -2523,12 +2523,14 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 		_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
 		_metalFeatures.tileBasedDeferredRendering = true;
+		_metalFeatures.nativeTextureSwizzle = true;
 
 		// From testing, these guarantees are only true on Apple GPUs.
 		_metalFeatures.subgroupUniformControlFlow = true;
 		_metalFeatures.maximalReconvergence = true;
-		_metalFeatures.quadControlFlow = true;
-		_metalFeatures.nativeTextureSwizzle = true;
+
+		// FIXME: Fails tests using fragment terminate with quads on Apple GPUs.
+		_metalFeatures.quadControlFlow = false;
 
 		// Don't use barriers in render passes on Apple GPUs. Apple GPUs don't support them,
 		// and in fact Metal's validation layer will complain if you try to use them.
