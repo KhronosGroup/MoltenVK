@@ -30,6 +30,7 @@ class MVKDescriptorPool;
 class MVKPipelineLayout;
 class MVKCommandEncoder;
 class MVKResourcesCommandEncoderState;
+class MVKAccelerationStructureStorageGeneration;
 
 #pragma mark MVKShaderStageResourceBinding
 
@@ -108,6 +109,7 @@ enum class MVKDescriptorGPULayout : uint8_t {
 	Texture,       /**< A single Metal texture descriptor. */
 	Sampler,       /**< A single Metal sampler descriptor. */
 	Buffer,        /**< A single Metal buffer pointer. */
+	AccelerationStructureAux,
 	BufferAuxSize, /**< A single Metal buffer pointer, plus its size in an auxiliary buffer. */
 	InlineData,    /**< An inline uniform buffer stored inline, with 4-byte alignment. */
 	TexBufSoA,     /**< A texture pointer and a buffer pointer.  When arrayed, this is an array of textures followed by an array of pointers. */
@@ -120,7 +122,7 @@ enum class MVKDescriptorGPULayout : uint8_t {
 /** The number of each resource used by a descriptor. */
 struct MVKDescriptorResourceCount {
 	uint8_t texture : 2;
-	uint8_t buffer : 1;
+	uint8_t buffer : 2;
 	uint8_t sampler : 1;
 	uint8_t dynamicOffset : 1;
 
@@ -308,6 +310,7 @@ public:
 
 	/** Returns whether this layout was created with `VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR`. */
 	bool isPushDescriptorSetLayout() const { return _flags.has(Flag::IsPushDescriptorSetLayout); }
+	bool hasAccelerationStructures() const { return _flags.has(Flag::HasAccelerationStructures); }
 
 	/** Returns the argument encoder.  Returns null if you should be using direct writes. */
 	MVKMTLArgumentEncoder* mtlArgumentEncoder() { return _mtlArgumentEncoder.get(); }
@@ -390,6 +393,7 @@ private:
 		IsVariable,                   /**< Whether the descriptor set is variable length. */
 		IsSizeBufVariable,            /**< Whether the size buf is variable length. */
 		IsDynamicOffsetCountVariable, /**< Whether the dynamic offset buffer is variable length. */
+		HasAccelerationStructures,
 		Count
 	};
 	/** A list of bindings sorted by binding number. */
@@ -459,6 +463,7 @@ struct MVKDescriptorSet {
 	uint32_t cpuBufferSize;
 	/** The number of variable descriptors. */
 	uint32_t variableDescriptorCount;
+	uint64_t mutationSerial;
 
 	void setGPUBuffer(id<MTLBuffer> buffer, void* contents, size_t offset, size_t size) {
 		gpuBufferObject = buffer;
@@ -471,6 +476,20 @@ struct MVKDescriptorSet {
 		cpuBuffer = static_cast<char*>(buffer);
 		cpuBufferSize = static_cast<uint32_t>(size);
 	}
+};
+
+struct MVKDescriptorSetSnapshot {
+	const MVKDescriptorSetLayout* layout = nullptr;
+	id<MTLBuffer> sourceGPUBufferObject = nil;
+	uint32_t sourceGPUBufferOffset = 0;
+	uint32_t sourceGPUBufferSize = 0;
+	uint64_t sourceMutationSerial = 0;
+	id<MTLBuffer> gpuBufferObject = nil;
+	uint32_t gpuBufferOffset = 0;
+	MVKSmallVector<uint32_t, 8> bindingOffsets;
+	MVKSmallVector<MVKAccelerationStructureStorageGeneration*, 8> generations;
+
+	const MVKAccelerationStructureStorageGeneration* getGeneration(uint32_t bindingIndex, uint32_t arrayElement) const;
 };
 
 #pragma mark - MVKDescriptorPool
@@ -555,7 +574,6 @@ private:
 	MVKInlineArray<char> _cpuBuffer;
 	MVKArrayRef<char> _gpuBuffer;
 	id<MTLBuffer> _gpuBufferObject = nullptr;
-	uint64_t _gpuBufferGPUAddress = 0;
 	MVKDescriptorSetListItem* _firstFreeDescriptorSet = nullptr;
 	MVKDescriptorPoolFreeList _cpuBufferFreeList;
 	MVKDescriptorPoolFreeList _gpuBufferFreeList;
@@ -623,10 +641,15 @@ void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet descriptorSet,
 										VkDescriptorUpdateTemplate updateTemplate,
 										const void* pData);
 
-/** Updates the resource bindings in the given descriptor set with the given writes, ignoring their dstSet parameter and using the given dst cpu buffer instead. */
-void mvkPushDescriptorSet(void* dst, MVKDescriptorSetLayout* layout,
+/** Updates the resource bindings in the given push descriptor set with the given writes. */
+void mvkPushDescriptorSet(MVKDescriptorSet* set,
                           uint32_t writeCount, const VkWriteDescriptorSet* pDescriptorWrites);
 
 /** Updates the resource bindings in the given descriptor set with the given template. */
-void mvkPushDescriptorSetTemplate(void* dst, MVKDescriptorSetLayout* layout,
-                                  MVKDescriptorUpdateTemplate* updateTemplate, const void* pData);
+void mvkPushDescriptorSetTemplate(MVKDescriptorSet* set, MVKDescriptorUpdateTemplate* updateTemplate, const void* pData);
+
+void mvkInitializeDescriptorSetGPUBuffer(MVKDescriptorSet* set);
+
+MVKDescriptorSetSnapshot* mvkSnapshotDescriptorSet(MVKCommandEncoder* cmdEncoder,
+	                                               MVKDescriptorSet* set,
+	                                               MVKDescriptorSetSnapshot* current);

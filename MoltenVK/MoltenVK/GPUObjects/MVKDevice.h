@@ -71,6 +71,7 @@ class MVKCommandPool;
 class MVKCommandEncoder;
 class MVKCommandResourceFactory;
 class MVKPrivateDataSlot;
+class MVKAccelerationStructure;
 struct MVKUseResourceHelper;
 enum class MVKResourceUsageStages : uint8_t;
 
@@ -528,6 +529,8 @@ protected:
 	uint32_t _lazilyAllocatedMemoryTypes;
 	MVKPhysicalDeviceArgumentBufferSizes _argumentBufferSizes;
 	bool _hasUnifiedMemory = true;
+	bool _supportsFunctionPointers = false;
+	bool _supportsRaytracingFromRender = false;
 	bool _isUsingMetalArgumentBuffers = true;
 };
 
@@ -594,16 +597,27 @@ struct MVKLiveResourceSet {
 	MVKLiveList textures;
 	MVKLiveList buffers;
 	MVKLiveList samplers;
+	MVKLiveList accelerationStructures;
 
 	void add(id<MTLTexture> tex)       { if (enabled) textures.add(tex); }
 	void add(id<MTLBuffer> buf)        { if (enabled) buffers .add(buf); }
 	void add(id<MTLSamplerState> samp) { if (enabled) samplers.add(samp); }
+	void add(id<MTLAccelerationStructure> acc) {
+		if (enabled) accelerationStructures.add(acc);
+	}
 	void remove(id<MTLTexture> tex)       { if (enabled) textures.remove(tex); }
 	void remove(id<MTLBuffer> buf)        { if (enabled) buffers .remove(buf); }
 	void remove(id<MTLSamplerState> samp) { if (enabled) samplers.remove(samp); }
+	void remove(id<MTLAccelerationStructure> acc) {
+		if (enabled) accelerationStructures.remove(acc);
+	}
 	MVKLiveList::IsLiveResult isLive(id<MTLTexture> tex)       { assert(enabled); return textures.isLive(tex); }
 	MVKLiveList::IsLiveResult isLive(id<MTLBuffer> buf)        { assert(enabled); return buffers .isLive(buf); }
 	MVKLiveList::IsLiveResult isLive(id<MTLSamplerState> samp) { assert(enabled); return samplers.isLive(samp); }
+	MVKLiveList::IsLiveResult isLive(id<MTLAccelerationStructure> acc) {
+		assert(enabled);
+		return accelerationStructures.isLive(acc);
+	}
 };
 
 class MVKVisibilityBuffer {
@@ -671,6 +685,16 @@ public:
 
 	/** Returns the list of live resources. */
 	MVKLiveResourceSet& getLiveResources() { return _liveResources; }
+	void addLiveAccelerationStructureObject(MVKAccelerationStructure* accelerationStructure) {
+		_liveAccelerationStructureObjects.add(reinterpret_cast<id>(accelerationStructure));
+	}
+	void removeLiveAccelerationStructureObject(MVKAccelerationStructure* accelerationStructure) {
+		_liveAccelerationStructureObjects.remove(reinterpret_cast<id>(accelerationStructure));
+	}
+	MVKLiveList::IsLiveResult isLiveAccelerationStructureObject(MVKAccelerationStructure* accelerationStructure) {
+		return _liveAccelerationStructureObjects.isLive(reinterpret_cast<id>(accelerationStructure));
+	}
+	std::mutex& getAccelerationStructureDescriptorLock() { return _accelerationStructureDescriptorLock; }
 
     /** Returns the common resource factory for creating command resources. */
     MVKCommandResourceFactory* getCommandResourceFactory() { return _commandResourceFactory; }
@@ -790,7 +814,15 @@ public:
 	MVKPipelineLayout* createPipelineLayout(const VkPipelineLayoutCreateInfo* pCreateInfo,
 	                                           const VkAllocationCallbacks* pAllocator);
 	void destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
-							   const VkAllocationCallbacks* pAllocator);
+								   const VkAllocationCallbacks* pAllocator);
+
+	MVKAccelerationStructure* createAccelerationStructure(const VkAccelerationStructureCreateInfoKHR* pCreateInfo,
+															 const VkAllocationCallbacks* pAllocator);
+	void destroyAccelerationStructure(MVKAccelerationStructure* mvkAccelerationStructure,
+									  const VkAllocationCallbacks* pAllocator);
+	void getAccelerationStructureSerializationUUIDs(uint8_t driverUUID[VK_UUID_SIZE],
+												uint8_t compatibilityUUID[VK_UUID_SIZE]);
+	VkAccelerationStructureCompatibilityKHR getAccelerationStructureCompatibility(const VkAccelerationStructureVersionInfoKHR* pVersionInfo);
 
     /**
      * Template function that creates count number of pipelines of type PipelineType,
@@ -867,8 +899,18 @@ public:
 
 #pragma mark Operations
 
-	/** Tell the GPU to be ready to use any of the GPU-addressable buffers. */
-	void encodeGPUAddressableBuffers(MVKUseResourceHelper& resources, MVKResourceUsageStages stage);
+	/** Tell the GPU to be ready to use GPU-addressable resources. */
+	void encodeGPUAddressableBuffers(MVKCommandEncoder* commandEncoder,
+	                                 MVKUseResourceHelper& resources,
+	                                 MVKResourceUsageStages stage);
+	void encodeGPUAddressableAccelerationStructures(MVKCommandEncoder* commandEncoder,
+	                                                 id<MTLAccelerationStructureCommandEncoder> encoder);
+	void getAccelerationStructureAddressTable(MVKCommandEncoder* commandEncoder,
+	                                          MVKSmallVector<uint64_t, 32>& table,
+	                                          MVKSmallVector<id<MTLResource>, 16>& resources);
+	void addGPUAddressableAccelerationStructure(MVKAccelerationStructure* accelerationStructure);
+	void removeGPUAddressableAccelerationStructure(MVKAccelerationStructure* accelerationStructure);
+	MVKBuffer* getBufferAtAddress(VkDeviceAddress address, VkDeviceSize& offset, VkDeviceSize requiredSize = 1);
 
 	/** Adds the specified host semaphore to be woken upon device loss. */
 	void addSemaphore(MVKSemaphoreImpl* sem4);
@@ -1056,6 +1098,7 @@ protected:
 	void propagateDebugName() override  {}
 	MVKBuffer* addBuffer(MVKBuffer* mvkBuff);
 	MVKBuffer* removeBuffer(MVKBuffer* mvkBuff);
+	void retainGPUAddressableAccelerationStructures(MVKSmallVector<MVKAccelerationStructure*, 16>& accelerationStructures);
 	MVKImage* addImage(MVKImage* mvkImg);
 	MVKImage* removeImage(MVKImage* mvkImg);
     void initPerformanceTracking();
@@ -1098,12 +1141,15 @@ protected:
 	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
 	MVKSmallVector<MVKResource*> _resources;
 	MVKSmallVector<MVKBuffer*> _gpuAddressableBuffers;
+	MVKSmallVector<MVKAccelerationStructure*> _gpuAddressableAccelerationStructures;
 	MVKSmallVector<MVKPrivateDataSlot*> _privateDataSlots;
 	MVKSmallVector<bool> _privateDataSlotsAvailability;
 	MVKSmallVector<MVKSemaphoreImpl*> _awaitingSemaphores;
 	MVKSmallVector<std::pair<MVKTimelineSemaphore*, uint64_t>> _awaitingTimelineSem4s;
 	MVKSmallVector<MVKVisibilityBuffer> _visibilityBuffers;
 	MVKLiveResourceSet _liveResources;
+	MVKLiveList _liveAccelerationStructureObjects;
+	std::mutex _accelerationStructureDescriptorLock;
 	std::mutex _rezLock;
 	std::mutex _sem4Lock;
     std::mutex _perfLock;

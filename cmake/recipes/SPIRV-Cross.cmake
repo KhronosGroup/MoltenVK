@@ -15,6 +15,7 @@ CPMAddPackage(
   NAME SPIRV-Cross
   GITHUB_REPOSITORY KhronosGroup/SPIRV-Cross
   GIT_TAG ${SPIRV_CROSS_COMMIT_HASH}
+  GIT_CONFIG remote.origin.fetch=+refs/pull/2649/head:refs/remotes/origin/pr/2649
   SYSTEM TRUE
   OPTIONS
     "SPIRV_CROSS_CLI OFF"

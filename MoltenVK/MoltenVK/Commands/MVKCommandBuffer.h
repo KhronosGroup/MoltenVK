@@ -39,6 +39,8 @@ class MVKQueryPool;
 class MVKPipeline;
 class MVKGraphicsPipeline;
 class MVKComputePipeline;
+class MVKAccelerationStructureStorageGeneration;
+struct MVKDescriptorSetSnapshot;
 
 typedef uint64_t MVKMTLCommandBufferID;
 
@@ -154,6 +156,11 @@ public:
 	/** Called when a timestamp command is added. */
 	void recordTimestampCommand();
 
+	void recordHostReadbackCommand() { _requiresHostReadback = true; }
+	bool requiresHostReadback() const { return _requiresHostReadback; }
+	void recordAccelerationStructureCommand() { _requiresEncodingDependencyWait = true; }
+	bool requiresEncodingDependencyWait() const { return _requiresEncodingDependencyWait; }
+
 
 #pragma mark Tessellation constituent command management
 
@@ -222,6 +229,8 @@ protected:
 	bool _supportsConcurrentExecution;
 	bool _wasExecuted;
 	bool _hasStageCounterTimestampCommand;
+	bool _requiresHostReadback;
+	bool _requiresEncodingDependencyWait;
 	bool _hasSecondaryInheritanceInfo;
 	bool _hasSecondaryInheritanceRenderingInfo;
 	bool _hasSecondaryInheritanceColorAttachmentLocations;
@@ -339,6 +348,9 @@ public:
     /** Called by each compute dispatch command to establish any outstanding state just prior to performing the dispatch. */
     void finalizeDispatchState();
 
+	/** Establishes outstanding state before a ray-tracing dispatch. */
+	void finalizeRayTracingDispatchState();
+
 	/** Ends the current renderpass. */
 	void endRenderpass();
 
@@ -349,9 +361,11 @@ public:
 	 * Ends all encoding operations on the current Metal command encoder.
 	 *
 	 * This must be called once all encoding is complete, and prior 
-	 * to each switch between render, compute, and BLIT encoding.
+	 * to each switch between render, compute, BLIT, and acceleration-structure encoding.
 	 */
 	void endCurrentMetalEncoding();
+
+	VkResult splitForHostReadback();
 
 	/** Ends encoding operations on the current Metal command encoder if it is a rendering encoder. */
 	void endMetalRenderEncoding();
@@ -375,9 +389,12 @@ public:
 	 */
 	id<MTLBlitCommandEncoder> getMTLBlitEncoder(MVKCommandUse cmdUse);
 
+	/** Returns the current Metal acceleration-structure encoder, creating it if needed. */
+	id<MTLAccelerationStructureCommandEncoder> getMTLAccelerationStructureEncoder(MVKCommandUse cmdUse);
+
 	/**
 	 * Returns the current Metal encoder, which may be any of the Metal render,
-	 * compute, or Blit encoders, or nil if no encoding is currently occurring.
+	 * compute, Blit, or acceleration-structure encoders, or nil if no encoding is currently occurring.
 	 */
 	id<MTLCommandEncoder> getMTLEncoder();
 
@@ -393,6 +410,9 @@ public:
 	/** Returns the Vulkan compute encoder state. */
 	const MVKVulkanComputeCommandEncoderState& getVkCompute() const { return _state.vkCompute(); }
 
+	/** Returns the Vulkan ray-tracing encoder state. */
+	const MVKVulkanComputeCommandEncoderState& getVkRayTracing() const { return _state.vkRayTracing(); }
+
 	/** Returns the Metal compute encoder state. */
 	MVKMetalComputeCommandEncoderState& getMtlCompute() { return _state.mtlCompute(); }
 
@@ -405,11 +425,17 @@ public:
 	/** Prepares the Metal compute pipeline state to dispatch the given stage of the Vulkan render pipeline. */
 	void prepareComputeDispatch() { _state.prepareComputeDispatch(_mtlComputeEncoder, *this); }
 
+	/** Prepares the Metal compute pipeline state for a ray-tracing dispatch. */
+	void prepareRayTracingDispatch() { _state.prepareRayTracingDispatch(_mtlComputeEncoder, *this); }
+
 	/** Returns the graphics pipeline. */
 	MVKGraphicsPipeline* getGraphicsPipeline() { return getVkGraphics()._pipeline; }
 
 	/** Returns the compute pipeline. */
 	MVKComputePipeline* getComputePipeline() { return getVkCompute()._pipeline; }
+
+	/** Returns the ray-tracing pipeline. */
+	MVKComputePipeline* getRayTracingPipeline() { return getVkRayTracing()._pipeline; }
 
     /**
 	 * Copy bytes into the Metal encoder at a Metal vertex buffer index, and optionally indicate
@@ -441,6 +467,13 @@ public:
 	/** Copy the bytes to a temporary MTLBuffer that will be returned to a pool after the command buffer is finished. */
 	const MVKMTLBufferAllocation* copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length, bool isDedicated = false);
 
+	const MVKMTLBufferAllocation* getAccelerationStructureAddressTable();
+	const MVKMTLBufferAllocation* getAccelerationStructureAddressTable(MVKUseResourceHelper& resources,
+	                                                                  MVKResourceUsageStages stages);
+	void invalidateAccelerationStructureAddressTable();
+	void retainAccelerationStructureGeneration(MVKAccelerationStructureStorageGeneration* generation);
+	MVKDescriptorSetSnapshot* getDescriptorSetSnapshot(MVKDescriptorSet* set);
+
     /** Returns the command encoding pool. */
     MVKCommandEncodingPool* getCommandEncodingPool();
 
@@ -459,11 +492,13 @@ public:
 	void barrierWait(MVKBarrierStage stage, id<MTLRenderCommandEncoder> mtlEncoder, MTLRenderStages beforeStages);
 	void barrierWait(MVKBarrierStage stage, id<MTLBlitCommandEncoder> mtlEncoder);
 	void barrierWait(MVKBarrierStage stage, id<MTLComputeCommandEncoder> mtlEncoder);
+	void barrierWait(MVKBarrierStage stage, id<MTLAccelerationStructureCommandEncoder> mtlEncoder);
 
 	/** Encode update for a specific stage in given encoder. */
 	void barrierUpdate(MVKBarrierStage stage, id<MTLRenderCommandEncoder> mtlEncoder, MTLRenderStages afterStages);
 	void barrierUpdate(MVKBarrierStage stage, id<MTLBlitCommandEncoder> mtlEncoder);
 	void barrierUpdate(MVKBarrierStage stage, id<MTLComputeCommandEncoder> mtlEncoder);
+	void barrierUpdate(MVKBarrierStage stage, id<MTLAccelerationStructureCommandEncoder> mtlEncoder);
 
 #pragma mark Queries
 
@@ -475,6 +510,9 @@ public:
 
     /** Marks a timestamp for the specified query. */
     void markTimestamp(MVKTimestampQueryPool* pQueryPool, uint32_t query);
+
+	/** Marks the specified acceleration-structure property query. */
+	void markAccelerationStructureQuery(MVKQueryPool* pQueryPool, uint32_t query);
 
     /** Reset a range of queries. */
     void resetQueries(MVKQueryPool* pQueryPool, uint32_t firstQuery, uint32_t queryCount);
@@ -511,7 +549,8 @@ public:
 #pragma mark Construction
 
 	MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
-					  MVKPrefillMetalCommandBuffersStyle prefillStyle = MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_NO_PREFILL);
+					  MVKPrefillMetalCommandBuffersStyle prefillStyle = MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_NO_PREFILL,
+					  MVKQueueCommandBufferSubmission* submission = nullptr);
 
 	~MVKCommandEncoder() override;
 
@@ -542,9 +581,15 @@ protected:
 	MVKSmallVector<GPUCounterQuery, 16> _timestampStageCounterQueries;
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
 	MVKSmallVector<MVKImageView*, kMVKDefaultAttachmentCount> _attachments;
+	MVKSmallVector<id<MTLResource>, 16> _accelerationStructureAddressTableResources;
+	MVKSmallVector<MVKAccelerationStructureStorageGeneration*, 16> _retainedAccelerationStructureGenerations;
+	const MVKMTLBufferAllocation* _accelerationStructureAddressTable = nullptr;
+	std::unordered_map<MVKDescriptorSet*, MVKDescriptorSetSnapshot*> _descriptorSetSnapshots;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
+	id<MTLAccelerationStructureCommandEncoder> _mtlAccelerationStructureEncoder;
 	id<MTLFence> _stageCountersMTLFence;
+	MVKQueueCommandBufferSubmission* _submission;
 	MVKPrefillMetalCommandBuffersStyle _prefillStyle;
 	VkSubpassContents _subpassContents;
 	uint32_t _renderSubpassIndex;
@@ -552,6 +597,7 @@ protected:
     uint32_t _flushCount;
 	MVKCommandUse _mtlComputeEncoderUse;
 	MVKCommandUse _mtlBlitEncoderUse;
+	MVKCommandUse _mtlAccelerationStructureEncoderUse;
 	bool _isRenderingEntireAttachment;
 };
 
@@ -567,3 +613,6 @@ NSString* mvkMTLBlitCommandEncoderLabel(MVKCommandUse cmdUse);
 
 /** Returns a name, suitable for use as a MTLComputeCommandEncoder label, based on the MVKCommandUse. */
 NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse);
+
+/** Returns a name, suitable for use as a MTLAccelerationStructureCommandEncoder label, based on the MVKCommandUse. */
+NSString* mvkMTLAccelerationStructureCommandEncoderLabel(MVKCommandUse cmdUse);

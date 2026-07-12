@@ -757,6 +757,29 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_EXT_ENTRY_POINT_ALIAS(vkCmdSetLineStippleEXT, vkCmdSetLineStipple, EXT_LINE_RASTERIZATION);
 
 	// Device extension functions.
+    ADD_DVC_EXT_ENTRY_POINT(vkCreateAccelerationStructureKHR, KHR_ACCELERATION_STRUCTURE);
+    ADD_DVC_EXT_ENTRY_POINT(vkDestroyAccelerationStructureKHR, KHR_ACCELERATION_STRUCTURE);
+    ADD_DVC_EXT_ENTRY_POINT(vkGetAccelerationStructureDeviceAddressKHR, KHR_ACCELERATION_STRUCTURE);
+    ADD_DVC_EXT_ENTRY_POINT(vkGetAccelerationStructureBuildSizesKHR, KHR_ACCELERATION_STRUCTURE);
+    ADD_DVC_EXT_ENTRY_POINT(vkGetDeviceAccelerationStructureCompatibilityKHR, KHR_ACCELERATION_STRUCTURE);
+    ADD_DVC_EXT_ENTRY_POINT(vkCmdBuildAccelerationStructuresKHR, KHR_ACCELERATION_STRUCTURE);
+    ADD_DVC_EXT_ENTRY_POINT(vkCmdBuildAccelerationStructuresIndirectKHR, KHR_ACCELERATION_STRUCTURE);
+    ADD_DVC_EXT_ENTRY_POINT(vkBuildAccelerationStructuresKHR, KHR_ACCELERATION_STRUCTURE);
+    ADD_DVC_EXT_ENTRY_POINT(vkCopyAccelerationStructureKHR, KHR_ACCELERATION_STRUCTURE);
+    ADD_DVC_EXT_ENTRY_POINT(vkCopyAccelerationStructureToMemoryKHR, KHR_ACCELERATION_STRUCTURE);
+    ADD_DVC_EXT_ENTRY_POINT(vkCopyMemoryToAccelerationStructureKHR, KHR_ACCELERATION_STRUCTURE);
+    ADD_DVC_EXT_ENTRY_POINT(vkWriteAccelerationStructuresPropertiesKHR, KHR_ACCELERATION_STRUCTURE);
+    ADD_DVC_EXT_ENTRY_POINT(vkCmdCopyAccelerationStructureKHR, KHR_ACCELERATION_STRUCTURE);
+    ADD_DVC_EXT_ENTRY_POINT(vkCmdCopyAccelerationStructureToMemoryKHR, KHR_ACCELERATION_STRUCTURE);
+    ADD_DVC_EXT_ENTRY_POINT(vkCmdCopyMemoryToAccelerationStructureKHR, KHR_ACCELERATION_STRUCTURE);
+    ADD_DVC_EXT_ENTRY_POINT(vkCmdWriteAccelerationStructuresPropertiesKHR, KHR_ACCELERATION_STRUCTURE);
+	ADD_DVC_EXT_ENTRY_POINT(vkCreateRayTracingPipelinesKHR, KHR_RAY_TRACING_PIPELINE);
+	ADD_DVC_EXT_ENTRY_POINT(vkGetRayTracingShaderGroupHandlesKHR, KHR_RAY_TRACING_PIPELINE);
+	ADD_DVC_EXT_ENTRY_POINT(vkGetRayTracingCaptureReplayShaderGroupHandlesKHR, KHR_RAY_TRACING_PIPELINE);
+	ADD_DVC_EXT_ENTRY_POINT(vkGetRayTracingShaderGroupStackSizeKHR, KHR_RAY_TRACING_PIPELINE);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdTraceRaysKHR, KHR_RAY_TRACING_PIPELINE);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdTraceRaysIndirectKHR, KHR_RAY_TRACING_PIPELINE);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetRayTracingPipelineStackSizeKHR, KHR_RAY_TRACING_PIPELINE);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetCalibratedTimestampsKHR, KHR_CALIBRATED_TIMESTAMPS);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetPhysicalDeviceCalibrateableTimeDomainsKHR, KHR_CALIBRATED_TIMESTAMPS);
     ADD_DVC_EXT_ENTRY_POINT(vkCreateDeferredOperationKHR, KHR_DEFERRED_HOST_OPERATIONS);
@@ -854,4 +877,3 @@ MVKInstance::~MVKInstance() {
 	mvkDestroyContainerContents(_debugReportCallbacks);
 	mvkDestroyContainerContents(_debugUtilMessengers);
 }
-

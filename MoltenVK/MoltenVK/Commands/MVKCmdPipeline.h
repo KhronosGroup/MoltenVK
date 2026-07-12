@@ -109,6 +109,7 @@ public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff, VkPipeline pipeline);
 
 	virtual bool isTessellationPipeline() { return false; };
+	virtual bool usesAccelerationStructures() { return false; }
 
 protected:
 	MVKPipeline* _pipeline;
@@ -125,6 +126,7 @@ public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 	bool isTessellationPipeline() override;
+	bool usesAccelerationStructures() override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -139,6 +141,22 @@ class MVKCmdBindComputePipeline : public MVKCmdBindPipeline {
 
 public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool usesAccelerationStructures() override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdBindRayTracingPipeline
+
+class MVKCmdBindRayTracingPipeline : public MVKCmdBindPipeline {
+
+public:
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool usesAccelerationStructures() override { return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;

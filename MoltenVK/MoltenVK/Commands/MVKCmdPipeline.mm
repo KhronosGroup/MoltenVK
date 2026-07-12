@@ -257,12 +257,28 @@ bool MVKCmdBindGraphicsPipeline::isTessellationPipeline() {
 	return ((MVKGraphicsPipeline*)_pipeline)->isTessellationPipeline();
 }
 
+bool MVKCmdBindGraphicsPipeline::usesAccelerationStructures() {
+	return ((MVKGraphicsPipeline*)_pipeline)->usesAccelerationStructures();
+}
+
 
 #pragma mark -
 #pragma mark MVKCmdBindComputePipeline
 
 void MVKCmdBindComputePipeline::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->bindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, _pipeline);
+}
+
+bool MVKCmdBindComputePipeline::usesAccelerationStructures() {
+	return ((MVKComputePipeline*)_pipeline)->usesAccelerationStructures();
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdBindRayTracingPipeline
+
+void MVKCmdBindRayTracingPipeline::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->bindPipeline(VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, _pipeline);
 }
 
 
@@ -387,13 +403,13 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 											 uint32_t set,
 											 uint32_t descriptorWriteCount,
 											 const VkWriteDescriptorSet* pDescriptorWrites) {
+	auto* mvkLayout = (MVKPipelineLayout*)layout;
+	mvkLayout->retain();
 	if (_pipelineLayout) { _pipelineLayout->release(); }
 
 	_pipelineBindPoint = pipelineBindPoint;
-	_pipelineLayout = (MVKPipelineLayout*)layout;
+	_pipelineLayout = mvkLayout;
 	_set = set;
-
-	_pipelineLayout->retain();
 
 	// Add the descriptor writes
 	clearDescriptorWrites();	// Clear for reuse
@@ -401,37 +417,71 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 	for (uint32_t dwIdx = 0; dwIdx < descriptorWriteCount; dwIdx++) {
 		_descriptorWrites.push_back(pDescriptorWrites[dwIdx]);
 		VkWriteDescriptorSet& descWrite = _descriptorWrites.back();
+		descWrite.pNext = nullptr;
+		descWrite.pImageInfo = nullptr;
+		descWrite.pBufferInfo = nullptr;
+		descWrite.pTexelBufferView = nullptr;
 		// Make a copy of the associated data.
-		if (descWrite.pImageInfo) {
-			auto* pNewImageInfo = new VkDescriptorImageInfo[descWrite.descriptorCount];
-			std::copy_n(descWrite.pImageInfo, descWrite.descriptorCount, pNewImageInfo);
-			descWrite.pImageInfo = pNewImageInfo;
-		}
-		if (descWrite.pBufferInfo) {
-			auto* pNewBufferInfo = new VkDescriptorBufferInfo[descWrite.descriptorCount];
-			std::copy_n(descWrite.pBufferInfo, descWrite.descriptorCount, pNewBufferInfo);
-			descWrite.pBufferInfo = pNewBufferInfo;
-		}
-		if (descWrite.pTexelBufferView) {
-			auto* pNewTexelBufferView = new VkBufferView[descWrite.descriptorCount];
-			std::copy_n(descWrite.pTexelBufferView, descWrite.descriptorCount, pNewTexelBufferView);
-			descWrite.pTexelBufferView = pNewTexelBufferView;
+		switch (descWrite.descriptorType) {
+			case VK_DESCRIPTOR_TYPE_SAMPLER:
+			case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+			case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
+				auto* info = new VkDescriptorImageInfo[descWrite.descriptorCount];
+				std::copy_n(pDescriptorWrites[dwIdx].pImageInfo, descWrite.descriptorCount, info);
+				descWrite.pImageInfo = info;
+				break;
+			}
+			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+				auto* info = new VkDescriptorBufferInfo[descWrite.descriptorCount];
+				std::copy_n(pDescriptorWrites[dwIdx].pBufferInfo, descWrite.descriptorCount, info);
+				descWrite.pBufferInfo = info;
+				break;
+			}
+			case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+			case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+				auto* views = new VkBufferView[descWrite.descriptorCount];
+				std::copy_n(pDescriptorWrites[dwIdx].pTexelBufferView, descWrite.descriptorCount, views);
+				descWrite.pTexelBufferView = views;
+				break;
+			}
+			default:
+				break;
 		}
 		const VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock = nullptr;
-		for (const auto* next = (VkBaseInStructure*)descWrite.pNext; next; next = next->pNext) {
+		const VkWriteDescriptorSetAccelerationStructureKHR* pAccelerationStructures = nullptr;
+		for (const auto* next = (VkBaseInStructure*)pDescriptorWrites[dwIdx].pNext; next; next = next->pNext) {
 			switch (next->sType) {
 				case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK: {
 					pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlock*)next;
+					break;
+				}
+				case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR: {
+					pAccelerationStructures = (VkWriteDescriptorSetAccelerationStructureKHR*)next;
 					break;
 				}
 				default:
 					break;
 			}
 		}
-		if (pInlineUniformBlock) {
+		if (descWrite.descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK && pInlineUniformBlock) {
 			auto *pNewInlineUniformBlock = new VkWriteDescriptorSetInlineUniformBlock(*pInlineUniformBlock);
-			pNewInlineUniformBlock->pNext = nullptr; // clear pNext just in case, no other extensions are supported at this time
+			pNewInlineUniformBlock->pNext = nullptr;
+			auto* data = new uint8_t[pInlineUniformBlock->dataSize];
+			std::copy_n(static_cast<const uint8_t*>(pInlineUniformBlock->pData), pInlineUniformBlock->dataSize, data);
+			pNewInlineUniformBlock->pData = data;
 			descWrite.pNext = pNewInlineUniformBlock;
+		} else if (descWrite.descriptorType == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR && pAccelerationStructures) {
+			auto* pNewAccelerationStructures = new VkWriteDescriptorSetAccelerationStructureKHR(*pAccelerationStructures);
+			pNewAccelerationStructures->pNext = nullptr;
+			auto* handles = new VkAccelerationStructureKHR[pAccelerationStructures->accelerationStructureCount];
+			std::copy_n(pAccelerationStructures->pAccelerationStructures, pAccelerationStructures->accelerationStructureCount, handles);
+			pNewAccelerationStructures->pAccelerationStructures = handles;
+			descWrite.pNext = pNewAccelerationStructures;
 		}
 	}
 
@@ -439,7 +489,12 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdPushDescriptorSet::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->getState().pushDescriptorSet(_pipelineBindPoint, _pipelineLayout, _set, static_cast<uint32_t>(_descriptorWrites.size()), _descriptorWrites.data());
+	cmdEncoder->getState().pushDescriptorSet(cmdEncoder,
+	                                         _pipelineBindPoint,
+	                                         _pipelineLayout,
+	                                         _set,
+	                                         static_cast<uint32_t>(_descriptorWrites.size()),
+	                                         _descriptorWrites.data());
 }
 
 MVKCmdPushDescriptorSet::~MVKCmdPushDescriptorSet() {
@@ -453,18 +508,18 @@ void MVKCmdPushDescriptorSet::clearDescriptorWrites() {
 		if (descWrite.pBufferInfo) { delete[] descWrite.pBufferInfo; }
 		if (descWrite.pTexelBufferView) { delete[] descWrite.pTexelBufferView; }
 
-		const VkWriteDescriptorSetInlineUniformBlock* pInlineUniformBlock = nullptr;
-		for (const auto* next = (VkBaseInStructure*)descWrite.pNext; next; next = next->pNext) {
-			switch (next->sType) {
-				case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK: {
-					pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlock*)next;
-					break;
-				}
-				default:
-					break;
+		if (descWrite.pNext) {
+			auto* next = (VkBaseInStructure*)descWrite.pNext;
+			if (next->sType == VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR) {
+				auto* accelerationStructures = (VkWriteDescriptorSetAccelerationStructureKHR*)next;
+				delete[] accelerationStructures->pAccelerationStructures;
+				delete accelerationStructures;
+			} else if (next->sType == VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK) {
+				auto* inlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlock*)next;
+				delete[] static_cast<const uint8_t*>(inlineUniformBlock->pData);
+				delete inlineUniformBlock;
 			}
 		}
-		if (pInlineUniformBlock) { delete pInlineUniformBlock; }
 	}
 	_descriptorWrites.clear();
 }
@@ -478,11 +533,15 @@ VkResult MVKCmdPushDescriptorSetWithTemplate::setContent(MVKCommandBuffer* cmdBu
 														 VkPipelineLayout layout,
 														 uint32_t set,
 														 const void* pData) {
+	auto* mvkDUT = (MVKDescriptorUpdateTemplate*)descUpdateTemplate;
+	auto* mvkLayout = (MVKPipelineLayout*)layout;
+	mvkDUT->retain();
+	mvkLayout->retain();
+	if (_descUpdateTemplate) { _descUpdateTemplate->release(); }
 	if (_pipelineLayout) { _pipelineLayout->release(); }
-	_pipelineLayout = (MVKPipelineLayout*)layout;
-	_pipelineLayout->retain();
+	_pipelineLayout = mvkLayout;
 	_set = set;
-	_descUpdateTemplate = (MVKDescriptorUpdateTemplate*)descUpdateTemplate;
+	_descUpdateTemplate = mvkDUT;
 
 	size_t oldSize = _dataSize;
 	_dataSize = _descUpdateTemplate->getSize();
@@ -498,10 +557,11 @@ VkResult MVKCmdPushDescriptorSetWithTemplate::setContent(MVKCommandBuffer* cmdBu
 }
 
 void MVKCmdPushDescriptorSetWithTemplate::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->getState().pushDescriptorSet(_descUpdateTemplate, _pipelineLayout, _set, _pData);
+	cmdEncoder->getState().pushDescriptorSet(cmdEncoder, _descUpdateTemplate, _pipelineLayout, _set, _pData);
 }
 
 MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
+	if (_descUpdateTemplate) { _descUpdateTemplate->release(); }
 	if (_pipelineLayout) { _pipelineLayout->release(); }
 	free(_pData);
 }

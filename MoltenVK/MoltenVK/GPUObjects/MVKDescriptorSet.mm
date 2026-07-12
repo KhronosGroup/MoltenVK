@@ -17,6 +17,7 @@
  */
 
 #include "MVKDescriptorSet.h"
+#include "MVKAccelerationStructure.h"
 #include "MVKBuffer.h"
 #include "MVKCommandBuffer.h"
 #include "MVKCommandEncoderState.h"
@@ -56,6 +57,7 @@ static constexpr uint32_t descriptorGPUSizeMetal3(MVKDescriptorGPULayout layout)
 		case MVKDescriptorGPULayout::Texture:       return sizeof(uint64_t);
 		case MVKDescriptorGPULayout::Sampler:       return sizeof(uint64_t);
 		case MVKDescriptorGPULayout::Buffer:        return sizeof(uint64_t);
+		case MVKDescriptorGPULayout::AccelerationStructureAux: return sizeof(uint64_t) * 2;
 		case MVKDescriptorGPULayout::InlineData:    return 1;
 		case MVKDescriptorGPULayout::TexBufSoA:     return sizeof(uint64_t) * 2;
 		case MVKDescriptorGPULayout::TexSampSoA:    return sizeof(uint64_t) * 2;
@@ -80,6 +82,7 @@ static constexpr uint32_t descriptorGPUStrideMetal3(MVKDescriptorGPULayout layou
 		case MVKDescriptorGPULayout::Texture:       return sizeof(uint64_t);
 		case MVKDescriptorGPULayout::Sampler:       return sizeof(uint64_t);
 		case MVKDescriptorGPULayout::Buffer:        return sizeof(uint64_t);
+		case MVKDescriptorGPULayout::AccelerationStructureAux: return sizeof(uint64_t);
 		case MVKDescriptorGPULayout::InlineData:    return 1;
 		case MVKDescriptorGPULayout::TexBufSoA:     return sizeof(uint64_t);
 		case MVKDescriptorGPULayout::TexSampSoA:    return sizeof(uint64_t);
@@ -96,6 +99,7 @@ static constexpr uint32_t descriptorGPUBindingCount(MVKDescriptorGPULayout layou
 		case MVKDescriptorGPULayout::Texture:       return 1;
 		case MVKDescriptorGPULayout::Sampler:       return 1;
 		case MVKDescriptorGPULayout::Buffer:        return 1;
+		case MVKDescriptorGPULayout::AccelerationStructureAux: return 2;
 		case MVKDescriptorGPULayout::InlineData:    return 1;
 		case MVKDescriptorGPULayout::TexBufSoA:     return 2;
 		case MVKDescriptorGPULayout::TexSampSoA:    return 2;
@@ -113,6 +117,7 @@ static constexpr uint32_t descriptorGPUBindingStride(MVKDescriptorGPULayout layo
 		case MVKDescriptorGPULayout::Texture:       return 1;
 		case MVKDescriptorGPULayout::Sampler:       return 1;
 		case MVKDescriptorGPULayout::Buffer:        return 1;
+		case MVKDescriptorGPULayout::AccelerationStructureAux: return 1;
 		case MVKDescriptorGPULayout::InlineData:    return 1;
 		case MVKDescriptorGPULayout::TexBufSoA:     return 1;
 		case MVKDescriptorGPULayout::TexSampSoA:    return 1;
@@ -188,10 +193,9 @@ static MVKArgumentBufferMode pickArgumentBufferMode(MVKDevice* dev, const VkDesc
 	MVKArgumentBufferMode mode = pickArgumentBufferMode(dev);
 	if (mode == MVKArgumentBufferMode::Off) // The following checks only switch argument buffers off, so we can skip them if they're already off.
 		return mode;
-	// Push descriptors are always binding-based
-	if (mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT))
-		return MVKArgumentBufferMode::Off;
 	auto* metalFeatures = dev->getPhysicalDevice()->getMetalFeatures();
+	if (mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT))
+		return mode == MVKArgumentBufferMode::Metal3 && metalFeatures->accelerationStructures ? mode : MVKArgumentBufferMode::Off;
 	bool useMac1ArgumentEncoders = dev->getPhysicalDevice()->isMacGPUFamily1() && metalFeatures->needsArgumentBufferEncoders;
 	bool isIntelGPU = useMac1ArgumentEncoders && dev->getPhysicalDevice()->isIntelGPU();
 	bool isNVIDIAGPU = useMac1ArgumentEncoders && dev->getPhysicalDevice()->isNVIDIAGPU();
@@ -293,6 +297,9 @@ static MVKDescriptorResourceCount perDescriptorResourceCount(VkDescriptorType ty
 			case MVKDescriptorGPULayout::OutlinedData:
 				count.buffer = 1;
 				break;
+			case MVKDescriptorGPULayout::AccelerationStructureAux:
+				count.buffer = 2;
+				break;
 			case MVKDescriptorGPULayout::TexBufSoA:
 				count.buffer = 1;
 				count.texture = 1;
@@ -337,6 +344,9 @@ static MVKDescriptorResourceCount perDescriptorResourceCount(VkDescriptorType ty
 			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 				count.buffer = 1;
 				break;
+			case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+				count.buffer = 2;
+				break;
 			default:
 				assert(0);
 				break;
@@ -376,6 +386,7 @@ static MVKDescriptorCPULayout pickCPULayout(
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: return MVKDescriptorCPULayout::OneID2Meta;
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: return MVKDescriptorCPULayout::OneID2Meta;
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:       return MVKDescriptorCPULayout::OneID;
+		case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR: return MVKDescriptorCPULayout::OneID;
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:   return argBuf == MVKArgumentBufferMode::Off ? MVKDescriptorCPULayout::InlineData : MVKDescriptorCPULayout::None;
 		default:                                        return MVKDescriptorCPULayout::None;
 	}
@@ -408,6 +419,7 @@ static MVKDescriptorGPULayout pickGPULayout(
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: return MVKDescriptorGPULayout::BufferAuxSize;
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: return MVKDescriptorGPULayout::BufferAuxSize;
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:       return MVKDescriptorGPULayout::Texture;
+		case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR: return MVKDescriptorGPULayout::AccelerationStructureAux;
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:   return MVKDescriptorGPULayout::OutlinedData;
 		default:                                        return MVKDescriptorGPULayout::None;
 	}
@@ -476,11 +488,14 @@ static id<MTLArgumentEncoder> createArgumentEncoder(MVKArrayRef<const MVKDescrip
 				case MVKDescriptorGPULayout::Texture:
 				case MVKDescriptorGPULayout::BufferAuxSize: {
 					MTLDataType type = layout == MVKDescriptorGPULayout::Sampler ? MTLDataTypeSampler :
-					                   layout == MVKDescriptorGPULayout::Texture ? MTLDataTypeTexture :
-					                                                               MTLDataTypePointer;
+						layout == MVKDescriptorGPULayout::Texture ? MTLDataTypeTexture : MTLDataTypePointer;
 					[list addObject:argumentDescriptor(index, access, type, count)];
 					break;
 				}
+				case MVKDescriptorGPULayout::AccelerationStructureAux:
+					[list addObject:argumentDescriptor(index, access, MTLDataTypeInstanceAccelerationStructure, count)];
+					[list addObject:argumentDescriptor(index + count, access, MTLDataTypePointer, count)];
+					break;
 
 				case MVKDescriptorGPULayout::OutlinedData:
 					[list addObject:argumentDescriptor(index, access, MTLDataTypePointer)];
@@ -560,6 +575,7 @@ MVKDescriptorSetLayout* MVKDescriptorSetLayout::Create(MVKDevice* device, const 
 	const VkDescriptorSetLayoutBinding* variableDesc = nullptr;
 	bool needsSizeBuf = false;
 	bool hasAnyBindings = false;
+	bool hasAccelerationStructures = false;
 
 	MVKArgumentBufferMode argBufMode = pickArgumentBufferMode(device, pCreateInfo);
 
@@ -575,6 +591,7 @@ MVKDescriptorSetLayout* MVKDescriptorSetLayout::Create(MVKDevice* device, const 
 			if (flagList && mvkIsAnyFlagEnabled(flagList[i], VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT))
 				variableDesc = &bind;
 			hasAnyBindings = true;
+			hasAccelerationStructures |= bind.descriptorType == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
 		}
 	}
 
@@ -601,6 +618,7 @@ MVKDescriptorSetLayout* MVKDescriptorSetLayout::Create(MVKDevice* device, const 
 	ret->_argBufMode = argBufMode;
 	ret->_flags |= MVKFlagList<Flag>(Flag::IsPushDescriptorSetLayout, isPush);
 	ret->_flags |= MVKFlagList<Flag>(Flag::IsVariable,                isVariable);
+	ret->_flags |= MVKFlagList<Flag>(Flag::HasAccelerationStructures, hasAccelerationStructures);
 
 
 	for (uint32_t i = 0; i < numBindings; i++) {
@@ -662,7 +680,7 @@ MVKDescriptorSetLayout* MVKDescriptorSetLayout::Create(MVKDevice* device, const 
 		MVKShaderStageResourceBinding resourceCount = binding.totalResourceCount();
 		for (uint32_t i = 0; i < kMVKShaderStageCount; i++) {
 			auto stage = static_cast<MVKShaderStage>(i);
-			if (mvkIsAnyFlagEnabled(binding.stageFlags, mvkVkShaderStageFlagBitsFromMVKShaderStage(stage)))
+			if (mvkIsAnyFlagEnabled(binding.stageFlags, mvkVkShaderStageFlagsFromMVKShaderStage(stage)))
 				ret->_totalResourceCount.stages[stage] += resourceCount;
 		}
 		if (!binding.isVariable())
@@ -779,7 +797,7 @@ MVKMTLArgumentEncoder& MVKDescriptorSetLayout::getVariableArgumentEncoder(uint32
 #pragma mark Descriptor Set Updates
 
 /** The type of data being supplied from a Vulkan descriptor update */
-enum class MVKDescriptorUpdateSourceType { Unsupported, Image, ImageSampler, Sampler, Buffer, TexelBuffer, InlineUniform };
+enum class MVKDescriptorUpdateSourceType { Unsupported, Image, ImageSampler, Sampler, Buffer, TexelBuffer, InlineUniform, AccelerationStructure };
 
 static MVKDescriptorUpdateSourceType getDescriptorUpdateSourceType(VkDescriptorType type) {
 	switch (type) {
@@ -807,8 +825,10 @@ static MVKDescriptorUpdateSourceType getDescriptorUpdateSourceType(VkDescriptorT
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
 			return MVKDescriptorUpdateSourceType::InlineUniform;
 
-		case VK_DESCRIPTOR_TYPE_PARTITIONED_ACCELERATION_STRUCTURE_NV:
 		case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+			return MVKDescriptorUpdateSourceType::AccelerationStructure;
+
+		case VK_DESCRIPTOR_TYPE_PARTITIONED_ACCELERATION_STRUCTURE_NV:
 		case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV:
 		case VK_DESCRIPTOR_TYPE_SAMPLE_WEIGHT_IMAGE_QCOM:
 		case VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM:
@@ -833,6 +853,8 @@ static const void* getDescriptorWriteSource(const VkWriteDescriptorSet& write, M
 			return write.pTexelBufferView;
 		case MVKDescriptorUpdateSourceType::InlineUniform:
 			return mvkFindStructInChain<VkWriteDescriptorSetInlineUniformBlock>(&write, VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK)->pData;
+		case MVKDescriptorUpdateSourceType::AccelerationStructure:
+			return mvkFindStructInChain<VkWriteDescriptorSetAccelerationStructureKHR>(&write, VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR)->pAccelerationStructures;
 		case MVKDescriptorUpdateSourceType::Unsupported:
 			return nullptr;
 	}
@@ -846,6 +868,7 @@ static uint32_t getDescriptorUpdateStride(MVKDescriptorUpdateSourceType type) {
 		case MVKDescriptorUpdateSourceType::Buffer:        return sizeof(VkDescriptorBufferInfo);
 		case MVKDescriptorUpdateSourceType::TexelBuffer:   return sizeof(VkBufferView);
 		case MVKDescriptorUpdateSourceType::InlineUniform: return 1;
+		case MVKDescriptorUpdateSourceType::AccelerationStructure: return sizeof(VkAccelerationStructureKHR);
 		case MVKDescriptorUpdateSourceType::Unsupported:   return 0;
 	}
 }
@@ -863,6 +886,7 @@ static bool canUseFastPathUpdate(MVKDescriptorGPULayout layout, MVKArgumentBuffe
 		case MVKDescriptorGPULayout::InlineData:
 			return true;
 		case MVKDescriptorGPULayout::TexBufSoA:
+		case MVKDescriptorGPULayout::AccelerationStructureAux:
 		case MVKDescriptorGPULayout::TexSampSoA:
 		case MVKDescriptorGPULayout::Tex2SampSoA:
 		case MVKDescriptorGPULayout::Tex3SampSoA:
@@ -909,9 +933,13 @@ template <> struct MVKArgBufEncoder<MVKArgumentBufferMode::Metal3> {
 	void setBuffer(id<MTLBuffer> buf, uint64_t offset, size_t index = 0) {
 		dst[index].gpuAddress = buf.gpuAddress + offset;
 	}
+	void setAccelerationStructure(id<MTLAccelerationStructure> accelerationStructure, size_t index = 0) {
+		dst[index].resource = accelerationStructure.gpuResourceID;
+	}
 	void setNullTexture(size_t index = 0) { dst[index].resource = {}; }
 	void setNullSampler(size_t index = 0) { dst[index].resource = {}; }
 	void setNullBuffer (size_t index = 0) { dst[index].gpuAddress = 0; }
+	void setNullAccelerationStructure(size_t index = 0) { dst[index].resource = {}; }
 	void setTexture(MVKImageView* img, size_t index = 0) { setTexture(img ? img->getMTLTexture() : nil, index); }
 	void setSampler(MVKSampler* samp, size_t index = 0) { setSampler(samp ? samp->getMTLSamplerState() : nil, index); }
 	void setBuffer(const VkDescriptorBufferInfo* info, size_t index = 0) {
@@ -934,9 +962,13 @@ template <> struct MVKArgBufEncoder<MVKArgumentBufferMode::ArgEncoder> {
 	void setBuffer(id<MTLBuffer> buf, uint64_t offset, size_t index = 0) {
 		[enc setBuffer:buf offset:static_cast<NSUInteger>(offset) atIndex:base + index];
 	}
+	void setAccelerationStructure(id<MTLAccelerationStructure> accelerationStructure, size_t index = 0) {
+		[enc setAccelerationStructure:accelerationStructure atIndex:base + index];
+	}
 	void setNullTexture(size_t index = 0) { [enc setTexture:nil atIndex:base + index]; }
 	void setNullSampler(size_t index = 0) { [enc setSamplerState:nil atIndex:base + index]; }
 	void setNullBuffer (size_t index = 0) { [enc setBuffer:nil offset:0 atIndex:base + index]; }
+	void setNullAccelerationStructure(size_t index = 0) { [enc setAccelerationStructure:nil atIndex:base + index]; }
 	void setTexture(MVKImageView* img, size_t index = 0) {
 		[enc setTexture:img ? img->getMTLTexture() : nil atIndex:base + index];
 	}
@@ -967,7 +999,7 @@ static void writeDescriptorSetGPUBuffer(
 	const MVKDescriptorBinding& binding,
 	id<MTLArgumentEncoder> enc_, char* base, const uint32_t* auxOffsets,
 	const void* src, size_t srcStride, MVKDescriptorUpdateSourceType srcType,
-	uint32_t start, uint32_t count)
+	uint32_t bindingCount, uint32_t start, uint32_t count)
 {
 	constexpr size_t dstStride = descriptorGPUStride(ArgBufMode, Layout);
 	size_t startOffset = start * dstStride;
@@ -1005,13 +1037,20 @@ static void writeDescriptorSetGPUBuffer(
 				enc.setBuffer(static_cast<const VkDescriptorBufferInfo*>(src));
 				break;
 
+			case MVKDescriptorGPULayout::AccelerationStructureAux: {
+				assert(srcType == MVKDescriptorUpdateSourceType::AccelerationStructure);
+				enc.setNullAccelerationStructure();
+				enc.setNullBuffer(bindingCount);
+				break;
+			}
+
 			case MVKDescriptorGPULayout::TexBufSoA:
 				if (id<MTLTexture> tex = getTexture(src, srcType)) {
 					enc.setTexture(tex);
-					enc.setBuffer([tex buffer], [tex bufferOffset], binding.descriptorCount);
+					enc.setBuffer([tex buffer], [tex bufferOffset], bindingCount);
 				} else {
 					enc.setNullTexture();
-					enc.setNullBuffer(binding.descriptorCount);
+					enc.setNullBuffer(bindingCount);
 				}
 				break;
 
@@ -1020,7 +1059,7 @@ static void writeDescriptorSetGPUBuffer(
 				auto* info = static_cast<const VkDescriptorImageInfo*>(src);
 				enc.setTexture(reinterpret_cast<MVKImageView*>(info->imageView));
 				if (!binding.hasImmutableSamplers())
-					enc.setSampler(reinterpret_cast<MVKSampler*>(info->sampler), binding.descriptorCount);
+					enc.setSampler(reinterpret_cast<MVKSampler*>(info->sampler), bindingCount);
 				break;
 			}
 
@@ -1028,11 +1067,11 @@ static void writeDescriptorSetGPUBuffer(
 				assert(srcType == MVKDescriptorUpdateSourceType::ImageSampler);
 				assert(binding.hasImmutableSamplers());
 				if (auto* img = reinterpret_cast<MVKImageView*>(static_cast<const VkDescriptorImageInfo*>(src)->imageView)) {
-					enc.setTexture(img->getMTLTexture(0), binding.descriptorCount * 0ull);
-					enc.setTexture(img->getMTLTexture(1), binding.descriptorCount * 1ull);
+					enc.setTexture(img->getMTLTexture(0), bindingCount * 0ull);
+					enc.setTexture(img->getMTLTexture(1), bindingCount * 1ull);
 				} else {
-					enc.setNullTexture(binding.descriptorCount * 0ull);
-					enc.setNullTexture(binding.descriptorCount * 1ull);
+					enc.setNullTexture(bindingCount * 0ull);
+					enc.setNullTexture(bindingCount * 1ull);
 				}
 				break;
 
@@ -1041,10 +1080,10 @@ static void writeDescriptorSetGPUBuffer(
 				assert(binding.hasImmutableSamplers());
 				if (auto* img = reinterpret_cast<MVKImageView*>(static_cast<const VkDescriptorImageInfo*>(src)->imageView)) {
 					for (size_t j = 0; j < 3; j++)
-						enc.setTexture(img->getMTLTexture(j), binding.descriptorCount * j);
+						enc.setTexture(img->getMTLTexture(j), bindingCount * j);
 				} else {
 					for (size_t j = 0; j < 3; j++)
-						enc.setNullTexture(binding.descriptorCount * j);
+						enc.setNullTexture(bindingCount * j);
 				}
 				break;
 
@@ -1090,9 +1129,10 @@ static void writeDescriptorSetGPUBuffer(
 {
 	char* base = set->gpuBuffer;
 	const uint32_t* auxOffsets = set->auxIndices;
+	uint32_t bindingCount = binding->getDescriptorCount(set->variableDescriptorCount);
 	if (canUseFastPathUpdate(binding->gpuLayout, ArgBufMode)) {
 		switch (binding->gpuLayout) {
-#define DISPATCH(x) writeDescriptorSetGPUBuffer<ArgBufMode, MVKDescriptorGPULayout::x>(*binding, enc, base, auxOffsets, src, srcStride, srcType, start, count)
+#define DISPATCH(x) writeDescriptorSetGPUBuffer<ArgBufMode, MVKDescriptorGPULayout::x>(*binding, enc, base, auxOffsets, src, srcStride, srcType, bindingCount, start, count)
 			case MVKDescriptorGPULayout::None:          break;
 			case MVKDescriptorGPULayout::Texture:       DISPATCH(Texture);       break;
 			case MVKDescriptorGPULayout::Sampler:       DISPATCH(Sampler);       break;
@@ -1107,6 +1147,7 @@ static void writeDescriptorSetGPUBuffer(
 				break;
 
 			case MVKDescriptorGPULayout::TexBufSoA:
+			case MVKDescriptorGPULayout::AccelerationStructureAux:
 			case MVKDescriptorGPULayout::TexSampSoA:
 			case MVKDescriptorGPULayout::Tex2SampSoA:
 			case MVKDescriptorGPULayout::Tex3SampSoA:
@@ -1115,15 +1156,17 @@ static void writeDescriptorSetGPUBuffer(
 #undef DISPATCH
 		}
 	} else {
-		while (start >= binding->descriptorCount) {
-			start -= binding->descriptorCount;
+		while (start >= bindingCount) {
+			start -= bindingCount;
 			advanceBinding(&binding);
+			bindingCount = binding->getDescriptorCount(set->variableDescriptorCount);
 		}
 		while (true) {
-			uint32_t numWrite = std::min(count, binding->descriptorCount - start);
+			uint32_t numWrite = std::min(count, bindingCount - start);
 			switch (binding->gpuLayout) {
-#define DISPATCH(x) writeDescriptorSetGPUBuffer<ArgBufMode, MVKDescriptorGPULayout::x>(*binding, enc, base, auxOffsets, src, srcStride, srcType, start, numWrite)
+#define DISPATCH(x) writeDescriptorSetGPUBuffer<ArgBufMode, MVKDescriptorGPULayout::x>(*binding, enc, base, auxOffsets, src, srcStride, srcType, bindingCount, start, numWrite)
 				case MVKDescriptorGPULayout::TexBufSoA:     DISPATCH(TexBufSoA);    break;
+				case MVKDescriptorGPULayout::AccelerationStructureAux: DISPATCH(AccelerationStructureAux); break;
 				case MVKDescriptorGPULayout::TexSampSoA:    DISPATCH(TexSampSoA);   break;
 				case MVKDescriptorGPULayout::Tex2SampSoA:   DISPATCH(Tex2SampSoA);  break;
 				case MVKDescriptorGPULayout::Tex3SampSoA:   DISPATCH(Tex3SampSoA);  break;
@@ -1144,13 +1187,14 @@ static void writeDescriptorSetGPUBuffer(
 					assert(0); // Fast path
 #undef DISPATCH
 			}
-			if (start + count <= binding->descriptorCount)
+			if (start + count <= bindingCount)
 				break;
 			src = static_cast<const char*>(src) + numWrite * srcStride;
 			count -= numWrite;
 			start = 0;
 			for (advanceBinding(&binding); !binding->descriptorCount; advanceBinding(&binding))
 				;
+			bindingCount = binding->getDescriptorCount(set->variableDescriptorCount);
 		}
 	}
 }
@@ -1178,6 +1222,10 @@ static void writeDescriptorSetCPUBuffer(
 			case MVKDescriptorCPULayout::OneID: {
 				id* desc = reinterpret_cast<id*>(dst);
 				switch (srcType) {
+					case MVKDescriptorUpdateSourceType::AccelerationStructure: {
+						*desc = reinterpret_cast<id>(*static_cast<MVKAccelerationStructure*const*>(src));
+						break;
+					}
 					case MVKDescriptorUpdateSourceType::Image:
 					case MVKDescriptorUpdateSourceType::ImageSampler: {
 						// OneID ImageSampler is image + constexpr sampler
@@ -1362,10 +1410,14 @@ static void writeDescriptorSetCPUBufferDispatch(
 
 static void writeDescriptorSetBinding(
 	const MVKDescriptorSetLayout* layout,
-	const MVKDescriptorBinding* binding, const MVKDescriptorSet* set, id<MTLArgumentEncoder> enc,
+	const MVKDescriptorBinding* binding, MVKDescriptorSet* set, id<MTLArgumentEncoder> enc,
 	const void* src, MVKDescriptorUpdateSourceType type, size_t stride,
 	uint32_t start, uint32_t count)
 {
+	std::unique_lock<std::mutex> accelerationStructureLock;
+	if (type == MVKDescriptorUpdateSourceType::AccelerationStructure ||
+		(layout->argBufMode() == MVKArgumentBufferMode::Metal3 && layout->hasAccelerationStructures()))
+		accelerationStructureLock = std::unique_lock<std::mutex>(layout->getDevice()->getAccelerationStructureDescriptorLock());
 	char* cpuBuffer = set->cpuBuffer + binding->cpuOffset;
 	writeDescriptorSetCPUBufferDispatch(layout, *binding, cpuBuffer, src, stride, type, start, count);
 	switch (layout->argBufMode()) {
@@ -1378,6 +1430,8 @@ static void writeDescriptorSetBinding(
 			writeDescriptorSetGPUBuffer<MVKArgumentBufferMode::Metal3    >(binding, set, src, stride, type, enc, start, count);
 			break;
 	}
+	if (count && layout->argBufMode() != MVKArgumentBufferMode::Off && layout->hasAccelerationStructures())
+		set->mutationSerial++;
 }
 
 /**
@@ -1416,12 +1470,38 @@ static void copyArgBuf(MVKDevice* device, id<MTLArgumentEncoder> enc,
 static void copyDescriptorSetBinding(
 	const MVKDescriptorSetLayout* dstLayout,
 	const MVKDescriptorBinding* srcBinding, const MVKDescriptorSet* srcSet, id<MTLArgumentEncoder> srcEnc,
-	const MVKDescriptorBinding* dstBinding, const MVKDescriptorSet* dstSet, id<MTLArgumentEncoder> dstEnc,
+	const MVKDescriptorBinding* dstBinding, MVKDescriptorSet* dstSet, id<MTLArgumentEncoder> dstEnc,
 	uint32_t srcArrayElement, uint32_t dstArrayElement, uint32_t count)
 {
 	assert(srcBinding->cpuLayout == dstBinding->cpuLayout);
 	assert(srcBinding->gpuLayout == dstBinding->gpuLayout);
+	bool isAccelerationStructure = srcBinding->descriptorType == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+	std::unique_lock<std::mutex> accelerationStructureLock;
+	if (isAccelerationStructure ||
+		(dstLayout->argBufMode() == MVKArgumentBufferMode::Metal3 &&
+		 (srcSet->layout->hasAccelerationStructures() || dstLayout->hasAccelerationStructures())))
+		accelerationStructureLock = std::unique_lock<std::mutex>(dstLayout->getDevice()->getAccelerationStructureDescriptorLock());
+	if (count && dstLayout->argBufMode() != MVKArgumentBufferMode::Off && dstLayout->hasAccelerationStructures())
+		dstSet->mutationSerial++;
 	MVKDescriptorCPULayout cpu = srcBinding->cpuLayout;
+	if (isAccelerationStructure) {
+		assert(cpu == MVKDescriptorCPULayout::OneID);
+		size_t stride = descriptorCPUSize(cpu);
+		auto* src = srcSet->cpuBuffer + srcBinding->cpuOffset + srcArrayElement * stride;
+		auto* dst = dstSet->cpuBuffer + dstBinding->cpuOffset + dstArrayElement * stride;
+		memcpy(dst, src, count * stride);
+		switch (dstLayout->argBufMode()) {
+			case MVKArgumentBufferMode::Off:
+				break;
+			case MVKArgumentBufferMode::ArgEncoder:
+				writeDescriptorSetGPUBuffer<MVKArgumentBufferMode::ArgEncoder>(dstBinding, dstSet, dstBinding, 0, MVKDescriptorUpdateSourceType::AccelerationStructure, dstEnc, dstArrayElement, count);
+				break;
+			case MVKArgumentBufferMode::Metal3:
+				writeDescriptorSetGPUBuffer<MVKArgumentBufferMode::Metal3>(dstBinding, dstSet, dstBinding, 0, MVKDescriptorUpdateSourceType::AccelerationStructure, nil, dstArrayElement, count);
+				break;
+		}
+		return;
+	}
 	if (cpu != MVKDescriptorCPULayout::None) {
 		size_t stride = descriptorCPUSize(cpu);
 		char* src = srcSet->cpuBuffer + srcBinding->cpuOffset + srcArrayElement * stride;
@@ -1476,6 +1556,7 @@ static void copyDescriptorSetBinding(
 
 					case MVKDescriptorGPULayout::InlineData:
 					case MVKDescriptorGPULayout::TexBufSoA:
+					case MVKDescriptorGPULayout::AccelerationStructureAux:
 					case MVKDescriptorGPULayout::TexSampSoA:
 					case MVKDescriptorGPULayout::Tex2SampSoA:
 					case MVKDescriptorGPULayout::Tex3SampSoA:
@@ -1529,6 +1610,7 @@ static void copyDescriptorSetBinding(
 					size_t elemSize = sizeof(uint64_t);
 					uint32_t elems = 0;
 					switch (gpu) {
+						case MVKDescriptorGPULayout::AccelerationStructureAux: elems = 2; break;
 						case MVKDescriptorGPULayout::TexBufSoA:   elems = 2; break;
 						case MVKDescriptorGPULayout::TexSampSoA:  elems = 2; break;
 						case MVKDescriptorGPULayout::Tex2SampSoA: elems = 3; break;
@@ -1555,6 +1637,7 @@ static void copyDescriptorSetBinding(
 					// All these are SoA with textures as the first element
 					uint32_t ntex = 0;
 					switch (gpu) {
+						case MVKDescriptorGPULayout::AccelerationStructureAux: break;
 						case MVKDescriptorGPULayout::TexBufSoA:   ntex = 1; break;
 						case MVKDescriptorGPULayout::TexSampSoA:  ntex = 1; break;
 						case MVKDescriptorGPULayout::Tex2SampSoA: ntex = 2; break;
@@ -1817,8 +1900,9 @@ void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet set, VkDescriptorUpdateT
 	}
 }
 
-void mvkPushDescriptorSet(void* dst, MVKDescriptorSetLayout* layout, uint32_t writeCount, const VkWriteDescriptorSet* pDescriptorWrites) {
-	assert(layout->argBufMode() == MVKArgumentBufferMode::Off);
+void mvkPushDescriptorSet(MVKDescriptorSet* set, uint32_t writeCount, const VkWriteDescriptorSet* pDescriptorWrites) {
+	const MVKDescriptorSetLayout* layout = set->layout;
+	assert(layout->argBufMode() != MVKArgumentBufferMode::ArgEncoder);
 	for (uint32_t i = 0; i < writeCount; i++) {
 		const VkWriteDescriptorSet& write = pDescriptorWrites[i];
 		MVKDescriptorUpdateSourceType type = getDescriptorUpdateSourceType(write.descriptorType);
@@ -1828,13 +1912,13 @@ void mvkPushDescriptorSet(void* dst, MVKDescriptorSetLayout* layout, uint32_t wr
 			continue;
 
 		const MVKDescriptorBinding* binding = layout->getBinding(write.dstBinding);
-		char* target = static_cast<char*>(dst) + binding->cpuOffset;
-		writeDescriptorSetCPUBufferDispatch(layout, *binding, target, src, stride, type, write.dstArrayElement, write.descriptorCount);
+		writeDescriptorSetBinding(layout, binding, set, nil, src, type, stride, write.dstArrayElement, write.descriptorCount);
 	}
 }
 
-void mvkPushDescriptorSetTemplate(void* dst, MVKDescriptorSetLayout* layout, MVKDescriptorUpdateTemplate* updateTemplate, const void* pData) {
-	assert(layout->argBufMode() == MVKArgumentBufferMode::Off);
+void mvkPushDescriptorSetTemplate(MVKDescriptorSet* set, MVKDescriptorUpdateTemplate* updateTemplate, const void* pData) {
+	const MVKDescriptorSetLayout* layout = set->layout;
+	assert(layout->argBufMode() != MVKArgumentBufferMode::ArgEncoder);
 
 	for (uint32_t i = 0; i < updateTemplate->getNumberOfEntries(); i++) {
 		const VkDescriptorUpdateTemplateEntry* pEntry = updateTemplate->getEntry(i);
@@ -1842,8 +1926,186 @@ void mvkPushDescriptorSetTemplate(void* dst, MVKDescriptorSetLayout* layout, MVK
 
 		const MVKDescriptorBinding* binding = layout->getBinding(pEntry->dstBinding);
 		MVKDescriptorUpdateSourceType type = getDescriptorUpdateSourceType(pEntry->descriptorType);
-		char* target = static_cast<char*>(dst) + binding->cpuOffset;
-		writeDescriptorSetCPUBufferDispatch(layout, *binding, target, pCurData, pEntry->stride, type, pEntry->dstArrayElement, pEntry->descriptorCount);
+		writeDescriptorSetBinding(layout, binding, set, nil, pCurData, type, pEntry->stride, pEntry->dstArrayElement, pEntry->descriptorCount);
+	}
+}
+
+const MVKAccelerationStructureStorageGeneration* MVKDescriptorSetSnapshot::getGeneration(uint32_t bindingIndex,
+	                                                                                      uint32_t arrayElement) const {
+	assert(bindingIndex < bindingOffsets.size());
+	uint32_t offset = bindingOffsets[bindingIndex];
+	assert(offset != UINT32_MAX && offset + arrayElement < generations.size());
+	return generations[offset + arrayElement];
+}
+
+template <MVKArgumentBufferMode ArgBufMode>
+static void writeDescriptorSetSnapshotAccelerationStructures(MVKDescriptorSet* set,
+	                                                          const MVKDescriptorSetSnapshot* snapshot,
+	                                                          id<MTLArgumentEncoder> enc) {
+	auto bindings = set->layout->bindings();
+	for (uint32_t bindingIndex = 0; bindingIndex < bindings.size(); bindingIndex++) {
+		const auto& binding = bindings[bindingIndex];
+		if (binding.gpuLayout != MVKDescriptorGPULayout::AccelerationStructureAux) { continue; }
+		uint32_t count = binding.getDescriptorCount(set->variableDescriptorCount);
+		MVKArgBufEncoder<ArgBufMode> encoder(enc, set->gpuBuffer);
+		encoder.advance(ArgBufMode == MVKArgumentBufferMode::ArgEncoder ? binding.argBufID : binding.gpuOffset);
+		for (uint32_t i = 0; i < count; i++) {
+			auto* generation = snapshot->getGeneration(bindingIndex, i);
+			if (generation) {
+				encoder.setAccelerationStructure(generation->getMTLAccelerationStructure());
+				id<MTLBuffer> metadata = generation->getInstanceMetadataMTLBuffer();
+				if (metadata) { encoder.setBuffer(metadata, 0, count); }
+				else { encoder.setNullBuffer(count); }
+			} else {
+				encoder.setNullAccelerationStructure();
+				encoder.setNullBuffer(count);
+			}
+			encoder.advance(descriptorGPUStride(ArgBufMode, MVKDescriptorGPULayout::AccelerationStructureAux));
+		}
+	}
+}
+
+MVKDescriptorSetSnapshot* mvkSnapshotDescriptorSet(MVKCommandEncoder* cmdEncoder,
+	                                               MVKDescriptorSet* set,
+	                                               MVKDescriptorSetSnapshot* current) {
+	const MVKDescriptorSetLayout* layout = set->layout;
+	assert(layout->hasAccelerationStructures());
+	MVKSmallVector<uint32_t, 8> bindingOffsets(layout->bindings().size(), UINT32_MAX);
+	MVKSmallVector<MVKAccelerationStructureStorageGeneration*, 8> generations;
+	const MVKMTLBufferAllocation* allocation = nullptr;
+	id<MTLBuffer> sourceGPUBufferObject = nil;
+	uint32_t sourceGPUBufferOffset = 0;
+	uint32_t sourceGPUBufferSize = 0;
+	uint64_t sourceMutationSerial = 0;
+	MVKDescriptorSet view;
+	std::mutex& descriptorLock = layout->argBufMode() == MVKArgumentBufferMode::ArgEncoder
+		? set->argEnc->_lock
+		: layout->getDevice()->getAccelerationStructureDescriptorLock();
+	{
+		std::lock_guard<std::mutex> guard(descriptorLock);
+		sourceGPUBufferObject = set->gpuBufferObject;
+		sourceGPUBufferOffset = set->gpuBufferOffset;
+		sourceGPUBufferSize = set->gpuBufferSize;
+		sourceMutationSerial = set->mutationSerial;
+		auto bindings = layout->bindings();
+		for (uint32_t bindingIndex = 0; bindingIndex < bindings.size(); bindingIndex++) {
+			const auto& binding = bindings[bindingIndex];
+			if (binding.descriptorType != VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR) { continue; }
+			bindingOffsets[bindingIndex] = static_cast<uint32_t>(generations.size());
+			uint32_t count = binding.getDescriptorCount(set->variableDescriptorCount);
+			auto* objects = reinterpret_cast<MVKAccelerationStructure*const*>(set->cpuBuffer + binding.cpuOffset);
+			for (uint32_t i = 0; i < count; i++) {
+				auto* object = objects[i];
+				MVKAccelerationStructureStorageGeneration* generation = nullptr;
+				if (object) {
+					auto live = layout->getDevice()->isLiveAccelerationStructureObject(object);
+					if (live) { generation = object->retainCurrentGeneration(); }
+				}
+				generations.push_back(generation);
+			}
+		}
+		bool matches = current &&
+			current->layout == layout &&
+			current->sourceGPUBufferObject == sourceGPUBufferObject &&
+			current->sourceGPUBufferOffset == sourceGPUBufferOffset &&
+			current->sourceGPUBufferSize == sourceGPUBufferSize &&
+			current->sourceMutationSerial == sourceMutationSerial &&
+			current->bindingOffsets == bindingOffsets &&
+			current->generations == generations;
+		if (matches) {
+			for (auto* generation : generations) {
+				if (generation) { generation->release(); }
+			}
+			return current;
+		}
+		if (layout->argBufMode() != MVKArgumentBufferMode::Off) {
+			allocation = cmdEncoder->getTempMTLBuffer(set->gpuBufferSize);
+			memcpy(allocation->getContents(), set->gpuBuffer, set->gpuBufferSize);
+		}
+		view = *set;
+	}
+
+	auto* snapshot = new MVKDescriptorSetSnapshot;
+	snapshot->layout = layout;
+	snapshot->sourceGPUBufferObject = sourceGPUBufferObject;
+	snapshot->sourceGPUBufferOffset = sourceGPUBufferOffset;
+	snapshot->sourceGPUBufferSize = sourceGPUBufferSize;
+	snapshot->sourceMutationSerial = sourceMutationSerial;
+	snapshot->bindingOffsets = std::move(bindingOffsets);
+	snapshot->generations = std::move(generations);
+	for (auto* generation : snapshot->generations) {
+		if (generation) { cmdEncoder->retainAccelerationStructureGeneration(generation); }
+	}
+	if (!allocation) { return snapshot; }
+
+	view.setGPUBuffer(allocation->_mtlBuffer, allocation->_mtlBuffer.contents, allocation->_offset, sourceGPUBufferSize);
+	snapshot->gpuBufferObject = view.gpuBufferObject;
+	snapshot->gpuBufferOffset = view.gpuBufferOffset;
+	mvkInitializeDescriptorSetGPUBuffer(&view);
+	switch (layout->argBufMode()) {
+		case MVKArgumentBufferMode::ArgEncoder: {
+			id<MTLArgumentEncoder> enc = view.argEnc->getEncoder();
+			std::lock_guard<std::mutex> guard(view.argEnc->_lock);
+			[enc setArgumentBuffer:view.gpuBufferObject offset:view.gpuBufferOffset];
+			writeDescriptorSetSnapshotAccelerationStructures<MVKArgumentBufferMode::ArgEncoder>(&view, snapshot, enc);
+			break;
+		}
+		case MVKArgumentBufferMode::Metal3:
+			writeDescriptorSetSnapshotAccelerationStructures<MVKArgumentBufferMode::Metal3>(&view, snapshot, nil);
+			break;
+		case MVKArgumentBufferMode::Off:
+			assert(0);
+			break;
+	}
+	return snapshot;
+}
+
+void mvkInitializeDescriptorSetGPUBuffer(MVKDescriptorSet* set) {
+	const MVKDescriptorSetLayout* layout = set->layout;
+	const uint32_t* indices = set->auxIndices;
+	uint32_t gpuBase = layout->isMainGPUBufferVariable() && layout->argBufMode() == MVKArgumentBufferMode::ArgEncoder
+		? static_cast<uint32_t>(set->argEnc->getEncodedLength())
+		: layout->gpuAuxBase(set->variableDescriptorCount);
+	switch (layout->argBufMode()) {
+		case MVKArgumentBufferMode::ArgEncoder: {
+			id<MTLArgumentEncoder> enc = set->argEnc->getEncoder();
+			std::lock_guard<std::mutex> guard(set->argEnc->_lock);
+			[enc setArgumentBuffer:set->gpuBufferObject offset:set->gpuBufferOffset];
+			if (layout->needsSizeBuf())
+				[enc setBuffer:set->gpuBufferObject offset:set->gpuBufferOffset + gpuBase atIndex:0];
+			for (const auto& binding : layout->bindings()) {
+				if (binding.gpuLayout == MVKDescriptorGPULayout::OutlinedData)
+					[enc setBuffer:set->gpuBufferObject offset:set->gpuBufferOffset + indices[binding.auxIndex] atIndex:binding.argBufID];
+				if (binding.hasImmutableSamplers()) {
+					uint32_t count = binding.descriptorCount;
+					uint32_t base = binding.argBufID + descriptorTextureCount(binding.gpuLayout) * count;
+					MVKSampler*const* samplers = &layout->immutableSamplers()[binding.immSamplerIndex];
+					for (uint32_t i = 0; i < count; i++)
+						[enc setSamplerState:samplers[i]->getMTLSamplerState() atIndex:base + i];
+				}
+			}
+			break;
+		}
+		case MVKArgumentBufferMode::Metal3: {
+			uint64_t buffer = set->gpuBufferObject.gpuAddress + set->gpuBufferOffset;
+			char* base = set->gpuBuffer;
+			if (layout->needsSizeBuf())
+				*reinterpret_cast<uint64_t*>(base) = buffer + gpuBase;
+			for (const auto& binding : layout->bindings()) {
+				if (binding.gpuLayout == MVKDescriptorGPULayout::OutlinedData)
+					*reinterpret_cast<uint64_t*>(base + binding.gpuOffset) = buffer + indices[binding.auxIndex];
+				if (binding.hasImmutableSamplers()) {
+					uint32_t count = binding.descriptorCount;
+					MTLResourceID* write = reinterpret_cast<MTLResourceID*>(base + binding.gpuOffset) + descriptorTextureCount(binding.gpuLayout) * count;
+					MVKSampler*const* samplers = &layout->immutableSamplers()[binding.immSamplerIndex];
+					for (uint32_t i = 0; i < count; i++)
+						write[i] = samplers[i]->getMTLSamplerState().gpuResourceID;
+				}
+			}
+			break;
+		}
+		case MVKArgumentBufferMode::Off:
+			break;
 	}
 }
 
@@ -1890,6 +2152,7 @@ static uint32_t maxGPUSize(MVKDescriptorGPULayout layout, const MVKPhysicalDevic
 		case MVKDescriptorGPULayout::Texture:       return sizes.texture.size;
 		case MVKDescriptorGPULayout::Sampler:       return sizes.sampler.size;
 		case MVKDescriptorGPULayout::Buffer:        return sizes.pointer.size;
+		case MVKDescriptorGPULayout::AccelerationStructureAux: return sizes.pointer.size * 2;
 		case MVKDescriptorGPULayout::TexBufSoA:     return sizes.texture.size + sizes.pointer.size;
 		case MVKDescriptorGPULayout::TexSampSoA:    return sizes.texture.size + sizes.sampler.size;
 		case MVKDescriptorGPULayout::Tex2SampSoA:   return sizes.texture.size * 2 + sizes.sampler.size;
@@ -2008,8 +2271,6 @@ MVKDescriptorPool* MVKDescriptorPool::Create(MVKDevice* device, const VkDescript
 		} else @autoreleasepool {
 			ret->_gpuBufferObject = [device->getPhysicalDevice()->getMTLDevice() newBufferWithLength:gpuSize options:MTLResourceStorageModeShared];
 			ret->_gpuBuffer = { static_cast<char*>([ret->_gpuBufferObject contents]), gpuSize };
-			if (argBufMode == MVKArgumentBufferMode::Metal3)
-				ret->_gpuBufferGPUAddress = ret->_gpuBufferObject.gpuAddress;
 			ret->setMetalObjectLabel(ret->_gpuBufferObject, @"Descriptor set buffer");
 		}
 	}
@@ -2145,57 +2406,8 @@ VkResult MVKDescriptorPool::initDescriptorSet(MVKDescriptorSetLayout* mvkDSL, ui
 	if (set->gpuBuffer)
 		memset(set->gpuBuffer, 0, gpuSize);
 
-	if (mvkDSL->numAuxOffsets() || mvkDSL->immutableSamplers().size() != 0) {
-		// Need to write aux buffer pointers and immutable samplers to GPU buffer
-		const uint32_t* indices = set->auxIndices;
-		uint32_t baseOffset = set->gpuBufferOffset;
-		switch (mvkDSL->argBufMode()) {
-			case MVKArgumentBufferMode::ArgEncoder: {
-				id<MTLBuffer> buffer = _gpuBufferObject;
-				id<MTLArgumentEncoder> enc = argenc->getEncoder();
-				std::lock_guard<std::mutex> guard(argenc->_lock);
-				[enc setArgumentBuffer:buffer offset:baseOffset];
-				if (mvkDSL->needsSizeBuf())
-					[enc setBuffer:buffer offset:baseOffset + gpuBase atIndex:0];
-				for (const auto& binding : mvkDSL->bindings()) {
-					if (binding.gpuLayout == MVKDescriptorGPULayout::OutlinedData)
-						[enc setBuffer:buffer offset:baseOffset + indices[binding.auxIndex] atIndex:binding.argBufID];
-					if (binding.hasImmutableSamplers()) {
-						// SPIRV-Cross doesn't use constexpr samplers with argument buffers, so we need to bind them.
-						uint32_t count = binding.descriptorCount;
-						uint32_t base = binding.argBufID + descriptorTextureCount(binding.gpuLayout) * count;
-						MVKSampler*const* samp = &mvkDSL->immutableSamplers()[binding.immSamplerIndex];
-						for (uint32_t i = 0; i < count; i++)
-							[enc setSamplerState:samp[i]->getMTLSamplerState() atIndex:base + i];
-					}
-				}
-				break;
-			}
-			case MVKArgumentBufferMode::Metal3: {
-				uint64_t buffer = _gpuBufferGPUAddress + baseOffset;
-				char* base = set->gpuBuffer;
-				if (mvkDSL->needsSizeBuf())
-					*reinterpret_cast<uint64_t*>(base) = buffer + gpuBase;
-				for (const auto& binding : mvkDSL->bindings()) {
-					if (binding.gpuLayout == MVKDescriptorGPULayout::OutlinedData)
-						*reinterpret_cast<uint64_t*>(base + binding.gpuOffset) = buffer + indices[binding.auxIndex];
-					if (binding.hasImmutableSamplers()) {
-						// SPIRV-Cross doesn't use constexpr samplers with argument buffers, so we need to bind them.
-						uint32_t count = binding.descriptorCount;
-						MTLResourceID* write = reinterpret_cast<MTLResourceID*>(base + binding.gpuOffset) + descriptorTextureCount(binding.gpuLayout) * count;
-						MVKSampler*const* samp = &mvkDSL->immutableSamplers()[binding.immSamplerIndex];
-						for (uint32_t i = 0; i < count; i++)
-							write[i] = samp[i]->getMTLSamplerState().gpuResourceID;
-					}
-				}
-				break;
-			}
-			case MVKArgumentBufferMode::Off: {
-				assert(mvkDSL->numAuxOffsets() == 0); // Should not need aux offsets if there's no GPU buffers
-				break;
-			}
-		}
-	}
+	if (mvkDSL->numAuxOffsets() || mvkDSL->immutableSamplers().size())
+		mvkInitializeDescriptorSetGPUBuffer(set);
 
 	return VK_SUCCESS;
 }
@@ -2289,6 +2501,10 @@ MVKVulkanAPIDeviceObject(device), _pipelineBindPoint(pCreateInfo->pipelineBindPo
 				case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 				case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 					entryEnd += sizeof(VkBufferView);
+					break;
+
+				case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+					entryEnd += sizeof(VkAccelerationStructureKHR);
 					break;
 
 				default:

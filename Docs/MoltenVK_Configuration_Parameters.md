@@ -82,6 +82,19 @@ extensions will be advertised. A value of zero means no extensions will be adver
 
 
 ---------------------------------------
+#### MVK_CONFIG_ENABLE_EXPERIMENTAL_RAY_TRACING
+
+##### Type: Boolean
+##### Default: `0`
+
+Enables experimental support for `VK_KHR_acceleration_structure`, `VK_KHR_ray_query`,
+`VK_KHR_ray_tracing_pipeline`, and `VK_KHR_pipeline_library`. Compatible private placement heaps
+use the bound backing ranges; otherwise, standalone Metal storage does not preserve overlapping-range
+aliasing and may consume memory beyond the bound allocation. This option is intended for development
+and testing.
+
+
+---------------------------------------
 #### MVK_CONFIG_API_VERSION_TO_ADVERTISE
 
 ##### Type: UInt32

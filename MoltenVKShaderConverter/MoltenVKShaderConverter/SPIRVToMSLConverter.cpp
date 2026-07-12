@@ -50,6 +50,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionOptions::matches(const SPIRVToMSLConv
 	if (memcmp(&mslOptions, &other.mslOptions, sizeof(mslOptions)) != 0) { return false; }
 	if (entryPointStage != other.entryPointStage) { return false; }
 	if (entryPointName != other.entryPointName) { return false; }
+	if (rayTracingFunctionHash != other.rayTracingFunctionHash) { return false; }
 	if (tessPatchKind != other.tessPatchKind) { return false; }
 	if (numTessControlPoints != other.numTessControlPoints) { return false; }
 	if (shouldFlipVertexY != other.shouldFlipVertexY) { return false; }
@@ -89,6 +90,24 @@ MVK_PUBLIC_SYMBOL SPIRVToMSLConversionOptions::SPIRVToMSLConversionOptions() {
 #endif
 
 	mslOptions.pad_fragment_output_components = true;
+}
+
+static string getMSLEntryPointName(const SPIRVToMSLConversionOptions& options) {
+	string name = options.entryPointName;
+	if (!options.rayTracingFunctionHash) { return name; }
+	switch (options.entryPointStage) {
+		case ExecutionModelMissKHR: name += "_mvkMiss"; break;
+		case ExecutionModelClosestHitKHR: name += "_mvkClosestHit"; break;
+		case ExecutionModelAnyHitKHR: name += "_mvkAnyHit"; break;
+		case ExecutionModelIntersectionKHR: name += "_mvkIntersection"; break;
+		case ExecutionModelCallableKHR: name += "_mvkCallable"; break;
+		default: break;
+	}
+	name += "_mvk" + to_string(options.rayTracingFunctionHash);
+	if (options.mslOptions.ray_tracing_stage_depth) {
+		name += "Depth" + to_string(options.mslOptions.ray_tracing_stage_depth);
+	}
+	return name;
 }
 
 MVK_PUBLIC_SYMBOL bool mvk::MSLShaderInterfaceVariable::matches(const mvk::MSLShaderInterfaceVariable& other) const {
@@ -210,9 +229,16 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToM
 		if (db.stage == options.entryPointStage &&
 			!containsMatching(other.dynamicBufferDescriptors, db)) { return false; }
 	}
+	for (const auto& db : other.dynamicBufferDescriptors) {
+		if (db.stage == options.entryPointStage &&
+			!containsMatching(dynamicBufferDescriptors, db)) { return false; }
+	}
 
 	for (uint32_t dsIdx : discreteDescriptorSets) {
 		if ( !contains(other.discreteDescriptorSets, dsIdx)) { return false; }
+	}
+	for (uint32_t dsIdx : other.discreteDescriptorSets) {
+		if ( !contains(discreteDescriptorSets, dsIdx)) { return false; }
 	}
 
     return true;
@@ -279,7 +305,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 		pMSLCompiler = new CompilerMSL(_spirv);
 
 		if (shaderConfig.options.hasEntryPoint()) {
-			pMSLCompiler->set_entry_point(shaderConfig.options.entryPointName, shaderConfig.options.entryPointStage);
+			auto mslEntryPointName = getMSLEntryPointName(shaderConfig.options);
+			if (mslEntryPointName != shaderConfig.options.entryPointName) {
+				pMSLCompiler->rename_entry_point(shaderConfig.options.entryPointName, mslEntryPointName,
+				                                 shaderConfig.options.entryPointStage);
+			}
+			pMSLCompiler->set_entry_point(mslEntryPointName, shaderConfig.options.entryPointStage);
 		}
 
 		// Set up tessellation parameters if needed.
@@ -362,6 +393,8 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	conversionResult.resultInfo.needsOutputBuffer = pMSLCompiler && pMSLCompiler->needs_output_buffer();
 	conversionResult.resultInfo.needsPatchOutputBuffer = pMSLCompiler && pMSLCompiler->needs_patch_output_buffer();
 	conversionResult.resultInfo.needsBufferSizeBuffer = pMSLCompiler && pMSLCompiler->needs_buffer_size_buffer();
+	conversionResult.resultInfo.needsAccelerationStructureAddressTable =
+		pMSLCompiler && pMSLCompiler->needs_acceleration_structure_address_table();
 	conversionResult.resultInfo.needsInputThreadgroupMem = pMSLCompiler && pMSLCompiler->needs_input_threadgroup_mem();
 	conversionResult.resultInfo.needsDispatchBaseBuffer = pMSLCompiler && pMSLCompiler->needs_dispatch_base_buffer();
 	conversionResult.resultInfo.needsViewRangeBuffer = pMSLCompiler && pMSLCompiler->needs_view_mask_buffer();
@@ -531,7 +564,7 @@ void SPIRVToMSLConverter::populateEntryPoint(CompilerMSL* pMSLCompiler,
 
 	SPIREntryPoint spvEP;
 	if (options.hasEntryPoint()) {
-		spvEP = pMSLCompiler->get_entry_point(options.entryPointName, options.entryPointStage);
+		spvEP = pMSLCompiler->get_entry_point(getMSLEntryPointName(options), options.entryPointStage);
 	} else {
 		const auto& entryPoints = pMSLCompiler->get_entry_points_and_stages();
 		if ( !entryPoints.empty() ) {
@@ -563,6 +596,12 @@ bool SPIRVToMSLConverter::usesPhysicalStorageBufferAddressesCapability(Compiler*
 				return true;
 			}
 		}
+	}
+	for (size_t idx = 5; idx < _spirv.size();) {
+		uint32_t wordCount = _spirv[idx] >> 16;
+		if ((_spirv[idx] & 0xffffu) == OpConvertUToAccelerationStructureKHR) { return true; }
+		if (!wordCount || idx + wordCount > _spirv.size()) { break; }
+		idx += wordCount;
 	}
 	return false;
 }

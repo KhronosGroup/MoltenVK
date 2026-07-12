@@ -243,13 +243,14 @@ function update_repo() {
 
 	if [ -d $1 -a -d $1/.git ]; then
 		cd $1
-		git cat-file -e $3 || git fetch --all
+		git cat-file -e $3 || git fetch origin $3
 		git checkout --force $3
 		cd -  > /dev/null
 	else
 		rm -rf $1
 		git clone $2 $1
 		cd $1
+		git cat-file -e $3 || git fetch origin $3
 		git checkout $3
 		cd -  > /dev/null
 	fi
@@ -341,8 +342,6 @@ else
 
 	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 fi
-
-
 # ----------------- SPIRV-Tools -------------------
 
 echo

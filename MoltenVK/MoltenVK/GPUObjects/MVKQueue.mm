@@ -79,6 +79,7 @@ VkResult MVKQueue::submit(MVKQueueSubmission* qSubmit) {
 	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 
 	if ( !qSubmit ) { return VK_SUCCESS; }     // Ignore nils
+	if (qSubmit->requiresHostReadback() || qSubmit->requiresEncodingDependencyWait()) { initExecQueue(true); }
 
 	// Extract result before submission to avoid race condition with early destruction
 	// Submit regardless of config result, to ensure submission semaphores and fences are signalled.
@@ -300,9 +301,8 @@ void MVKQueue::initName() {
 	_name = name;
 }
 
-void MVKQueue::initExecQueue() {
-	_execQueue = nil;
-	if ( !getMVKConfig().synchronousQueueSubmits ) {
+void MVKQueue::initExecQueue(bool force) {
+	if ( !_execQueue && (!getMVKConfig().synchronousQueueSubmits || force) ) {
 		// Determine the dispatch queue priority
 		dispatch_qos_class_t dqQOS;
 		switch (_globalPriority) {
@@ -366,11 +366,27 @@ void MVKQueue::destroyExecQueue() {
 #pragma mark MVKQueueSubmission
 
 void MVKSemaphoreSubmitInfo::encodeWait(id<MTLCommandBuffer> mtlCmdBuff) {
-	if (_semaphore) { _semaphore->encodeWait(mtlCmdBuff, value); }
+	if (_semaphore) { _semaphore->encodeWait(mtlCmdBuff, value, _encodingToken); }
 }
 
 void MVKSemaphoreSubmitInfo::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff) {
-	if (_semaphore) { _semaphore->encodeSignal(mtlCmdBuff, value); }
+	if (_semaphore) { _semaphore->encodeSignal(mtlCmdBuff, value, _encodingToken); }
+}
+
+void MVKSemaphoreSubmitInfo::reserveEncodingWait() {
+	if (_semaphore && !_encodingToken) { _encodingToken = _semaphore->reserveEncodingWait(value); }
+}
+
+void MVKSemaphoreSubmitInfo::reserveEncodingSignal() {
+	if (_semaphore && !_encodingToken) { _encodingToken = _semaphore->reserveEncodingSignal(value); }
+}
+
+void MVKSemaphoreSubmitInfo::waitForEncodingSignal() {
+	if (_semaphore && _encodingToken) { _semaphore->waitForEncodingSignal(_encodingToken, value); }
+}
+
+void MVKSemaphoreSubmitInfo::publishEncodingSignal() {
+	if (_semaphore && _encodingToken) { _semaphore->publishEncodingSignal(_encodingToken, value); }
 }
 
 MVKSemaphoreSubmitInfo::MVKSemaphoreSubmitInfo(const VkSemaphoreSubmitInfo& semaphoreSubmitInfo) :
@@ -392,6 +408,7 @@ MVKSemaphoreSubmitInfo::MVKSemaphoreSubmitInfo(const VkSemaphore semaphore,
 
 MVKSemaphoreSubmitInfo::MVKSemaphoreSubmitInfo(const MVKSemaphoreSubmitInfo& other) :
 	_semaphore(other._semaphore),
+	_encodingToken(other._encodingToken),
 	value(other.value),
 	stageMask(other.stageMask),
 	deviceIndex(other.deviceIndex) {
@@ -403,6 +420,7 @@ MVKSemaphoreSubmitInfo& MVKSemaphoreSubmitInfo::operator=(const MVKSemaphoreSubm
 	if (other._semaphore) {other._semaphore->retain(); }
 	if (_semaphore) { _semaphore->release(); }
 	_semaphore = other._semaphore;
+	_encodingToken = other._encodingToken;
 
 	value = other.value;
 	stageMask = other.stageMask;
@@ -435,6 +453,9 @@ MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 	for (uint32_t i = 0; i < waitSemaphoreInfoCount; i++) {
 		_waitSemaphores.emplace_back(pWaitSemaphoreSubmitInfos[i]);
 	}
+	if (getEnabledAccelerationStructureFeatures().accelerationStructure) {
+		for (auto& wait : _waitSemaphores) { wait.reserveEncodingWait(); }
+	}
 }
 
 MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
@@ -450,6 +471,9 @@ MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 	_waitSemaphores.reserve(waitSemaphoreCount);
 	for (uint32_t i = 0; i < waitSemaphoreCount; i++) {
 		_waitSemaphores.emplace_back(pWaitSemaphores[i], pWaitDstStageMask ? pWaitDstStageMask[i] : 0);
+	}
+	if (getEnabledAccelerationStructureFeatures().accelerationStructure) {
+		for (auto& wait : _waitSemaphores) { wait.reserveEncodingWait(); }
 	}
 }
 
@@ -467,6 +491,11 @@ VkResult MVKQueueCommandBufferSubmission::execute() {
 
 	// If using encoded semaphore waiting, do so now.
 	for (auto& ws : _waitSemaphores) { ws.encodeWait(getActiveMTLCommandBuffer()); }
+	bool waitForEncodingDependency = requiresEncodingDependencyWait();
+	if (waitForEncodingDependency) {
+		for (auto& ws : _waitSemaphores) { ws.waitForEncodingSignal(); }
+	}
+	_deferEncodingSignalPublication = !_waitSemaphores.empty() && !waitForEncodingDependency;
 
 	// Wait time from an async vkQueueSubmit() call to starting submit and encoding of the command buffers
 	addPerformanceInterval(_queue->getPerformanceStats().queue.waitSubmitCommandBuffers, _creationTime);
@@ -475,7 +504,10 @@ VkResult MVKQueueCommandBufferSubmission::execute() {
 	submitCommandBuffers();
 
 	// If using encoded semaphore signaling, do so now.
-	for (auto& ss : _signalSemaphores) { ss.encodeSignal(getActiveMTLCommandBuffer()); }
+	for (auto& ss : _signalSemaphores) {
+		ss.encodeSignal(getActiveMTLCommandBuffer());
+		if (!_deferEncodingSignalPublication) { ss.publishEncodingSignal(); }
+	}
 
 	// Commit the last MTLCommandBuffer.
 	// Nothing after this because callback might destroy this instance before this function ends.
@@ -486,7 +518,9 @@ VkResult MVKQueueCommandBufferSubmission::execute() {
 id<MTLCommandBuffer> MVKQueueCommandBufferSubmission::getActiveMTLCommandBuffer() {
 	if ( !_activeMTLCommandBuffer ) {
 		bool needsRetain = false;
-		if (!_device->hasResidencySet() && (getEnabledDescriptorIndexingFeatures().descriptorBindingPartiallyBound || getMVKConfig().liveCheckAllResources)) {
+		if (getEnabledAccelerationStructureFeatures().accelerationStructure ||
+		    (!_device->hasResidencySet() && (getEnabledDescriptorIndexingFeatures().descriptorBindingPartiallyBound ||
+		                                     getMVKConfig().liveCheckAllResources))) {
 			// Partially bound descriptors will get bound by us even if they're not used at runtime by the shader.
 			// The application is free to destroy them even if they're not used at runtime even if we bound them.
 			// Metal will be very unhappy if we destroy something we bound, even if it isn't used at runtime.
@@ -563,6 +597,18 @@ VkResult MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool sign
 	return rslt;
 }
 
+VkResult MVKQueueCommandBufferSubmission::commitActiveMTLCommandBufferAndWait() {
+	id<MTLCommandBuffer> mtlCmdBuff = [_activeMTLCommandBuffer retain];
+	VkResult rslt = commitActiveMTLCommandBuffer();
+	[mtlCmdBuff waitUntilCompleted];
+	if (rslt == VK_SUCCESS && mtlCmdBuff.status != MTLCommandBufferStatusCompleted) {
+		rslt = VK_ERROR_DEVICE_LOST;
+	}
+	[mtlCmdBuff release];
+	_encodingContext.fenceSlots = {};
+	return rslt;
+}
+
 // Be sure to retain() any API objects referenced in this function, and release() them in the
 // destructor (or superclass destructor). It is possible for rare race conditions to result
 // in the app destroying API objects before this function completes execution. For example,
@@ -576,6 +622,9 @@ void MVKQueueCommandBufferSubmission::finish() {
 
 	// If using inline semaphore signaling, do so now.
 	for (auto& ss : _signalSemaphores) { ss.encodeSignal(nil); }
+	if (_deferEncodingSignalPublication) {
+		for (auto& ss : _signalSemaphores) { ss.publishEncodingSignal(); }
+	}
 
 	// If a fence exists, signal it.
 	if (_fence) { _fence->signal(); }
@@ -606,6 +655,7 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKQueue* queue
 			_signalSemaphores.emplace_back(pSubmit->pSignalSemaphoreInfos[i]);
 		}
 	}
+	reserveEncodingSignals();
 }
 
 // On device loss, the fence and signal semaphores may be signalled early, and they might then
@@ -655,12 +705,17 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKQueue* queue
 			}
         }
     }
+	reserveEncodingSignals();
 }
 
 MVKQueueCommandBufferSubmission::~MVKQueueCommandBufferSubmission() {
 	if (_fence) { _fence->release(); }
 }
 
+void MVKQueueCommandBufferSubmission::reserveEncodingSignals() {
+	if (!getEnabledAccelerationStructureFeatures().accelerationStructure) { return; }
+	for (auto& signal : _signalSemaphores) { signal.reserveEncodingSignal(); }
+}
 
 template <size_t N>
 void MVKQueueFullCommandBufferSubmission<N>::submitCommandBuffers() {
@@ -669,6 +724,24 @@ void MVKQueueFullCommandBufferSubmission<N>::submitCommandBuffers() {
 	for (auto& cbInfo : _cmdBuffers) { cbInfo.commandBuffer->submit(this, &_encodingContext); }
 
 	addPerformanceInterval(getPerformanceStats().queue.submitCommandBuffers, startTime);
+}
+
+template <size_t N>
+bool MVKQueueFullCommandBufferSubmission<N>::requiresHostReadback() const {
+	for (auto& cbInfo : _cmdBuffers) {
+		if (cbInfo.commandBuffer->requiresHostReadback()) { return true; }
+	}
+	return false;
+}
+
+template <size_t N>
+bool MVKQueueFullCommandBufferSubmission<N>::requiresEncodingDependencyWait() {
+	bool hasDependentCommandBuffers = false;
+	for (auto& cbInfo : _cmdBuffers) {
+		hasDependentCommandBuffers |= cbInfo.commandBuffer->requiresEncodingDependencyWait();
+	}
+	return getEnabledAccelerationStructureFeatures().accelerationStructure &&
+		   !_waitSemaphores.empty() && hasDependentCommandBuffers;
 }
 
 template <size_t N>
@@ -850,4 +923,3 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 		setConfigurationResult(scRslt);
 	}
 }
-

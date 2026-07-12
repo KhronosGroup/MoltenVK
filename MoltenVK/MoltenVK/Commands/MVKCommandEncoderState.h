@@ -50,9 +50,10 @@ struct MVKResourceBinder {
 	SEL _setOffset;
 	SEL _setTexture;
 	SEL _setSampler;
+	SEL _setAccelerationStructure;
 	UseResource useResource;
 	template <typename T> static MVKResourceBinder Create() {
-		return { T::selSetBytes(), T::selSetBuffer(), T::selSetOffset(), T::selSetTexture(), T::selSetSampler(), T::useResource() };
+		return { T::selSetBytes(), T::selSetBuffer(), T::selSetOffset(), T::selSetTexture(), T::selSetSampler(), T::selSetAccelerationStructure(), T::useResource() };
 	}
 	void setBytes(id<MTLCommandEncoder> encoder, const void* bytes, NSUInteger length, NSUInteger index) const {
 		reinterpret_cast<void(*)(id, SEL, const void*, NSUInteger, NSUInteger)>(objc_msgSend)(encoder, _setBytes, bytes, length, index);
@@ -68,6 +69,9 @@ struct MVKResourceBinder {
 	}
 	void setSampler(id<MTLCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index) const {
 		reinterpret_cast<void(*)(id, SEL, id<MTLSamplerState>, NSUInteger)>(objc_msgSend)(encoder, _setSampler, sampler, index);
+	}
+	void setAccelerationStructure(id<MTLCommandEncoder> encoder, id<MTLAccelerationStructure> accelerationStructure, NSUInteger index) const {
+		reinterpret_cast<void(*)(id, SEL, id<MTLAccelerationStructure>, NSUInteger)>(objc_msgSend)(encoder, _setAccelerationStructure, accelerationStructure, index);
 	}
 	enum class Stage {
 		Vertex   = static_cast<uint32_t>(MVKMetalGraphicsStage::Vertex),
@@ -170,6 +174,8 @@ struct MVKVulkanCommonEncoderState {
 	MVKDescriptorSet _pushDescriptor = {};
 	MVKSmallVector<uint8_t, 16> _pushDescData;
 	void ensurePushDescriptorSize(uint32_t size);
+	/** Prepares push-descriptor storage for the specified layout. */
+	void preparePushDescriptor(MVKCommandEncoder* cmdEncoder, MVKDescriptorSetLayout* layout);
 	void setLayout(MVKPipelineLayout* layout);
 	MVKVulkanCommonEncoderState() = default;
 	MVKVulkanCommonEncoderState(const MVKVulkanCommonEncoderState& other);
@@ -420,6 +426,7 @@ class MVKCommandEncoderState {
 	MVKVulkanSharedCommandEncoderState   _vkShared;
 	MVKVulkanGraphicsCommandEncoderState _vkGraphics;
 	MVKVulkanComputeCommandEncoderState  _vkCompute;
+	MVKVulkanComputeCommandEncoderState  _vkRayTracing;
 	MVKMetalSharedCommandEncoderState    _mtlShared;
 	MVKMetalGraphicsCommandEncoderState  _mtlGraphics;
 	MVKMetalComputeCommandEncoderState   _mtlCompute;
@@ -441,6 +448,8 @@ public:
 	const MVKVulkanGraphicsCommandEncoderState& vkGraphics() const { return _vkGraphics; }
 	/** Get a reference to the Vulkan compute state.  Read-only, use methods on this class (which will invalidate associated Metal state) to modify. */
 	const MVKVulkanComputeCommandEncoderState&  vkCompute()  const { return _vkCompute; }
+	/** Get a reference to the Vulkan ray-tracing state. Read-only, use methods on this class to modify. */
+	const MVKVulkanComputeCommandEncoderState&  vkRayTracing() const { return _vkRayTracing; }
 	/** Returns a reference to the Metal state shared between graphics and compute. */
 	MVKMetalSharedCommandEncoderState&   mtlShared()   { return _mtlShared; }
 	/** Returns a reference to the Metal graphics state. */
@@ -475,12 +484,18 @@ public:
 	void prepareComputeDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder) {
 		_mtlCompute.prepareComputeDispatch(encoder, mvkEncoder, _vkCompute, _vkShared);
 	}
+	/** Binds everything needed to dispatch a Vulkan ray-tracing pipeline on the current Metal compute state. */
+	void prepareRayTracingDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder) {
+		_mtlCompute.prepareComputeDispatch(encoder, mvkEncoder, _vkRayTracing, _vkShared);
+	}
 	/** Binds the given graphics pipeline to the Vulkan graphics state, invalidating any necessary resources. */
 	void bindGraphicsPipeline(MVKGraphicsPipeline* pipeline);
 	/** Updates the mask of viewports whose reversed-depth range should be emulated in graphics shaders. */
 	void setGraphicsEmulatedReversedDepthViewportMask(uint32_t mask);
 	/** Binds the given compute pipeline to the Vulkan graphics state, invalidating any necessary resources. */
 	void bindComputePipeline(MVKComputePipeline* pipeline);
+	/** Binds the given ray-tracing pipeline to the Vulkan ray-tracing state. */
+	void bindRayTracingPipeline(MVKComputePipeline* pipeline);
 	/** Binds the given push constants to the Vulkan state, invalidating any necessary resources. */
 	void pushConstants(uint32_t offset, uint32_t size, const void* data);
 	/** Binds the given descriptor sets to the Vulkan state, invalidating any necessary resources. */
@@ -492,9 +507,18 @@ public:
 	                        uint32_t dynamicOffsetCount,
 	                        const uint32_t* dynamicOffsets);
 	/** Applies the given descriptor set writes to the push descriptor set on bindPoint. */
-	void pushDescriptorSet(VkPipelineBindPoint bindPoint, MVKPipelineLayout* layout, uint32_t set, uint32_t writeCount, const VkWriteDescriptorSet* writes);
+	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
+	                       VkPipelineBindPoint bindPoint,
+	                       MVKPipelineLayout* layout,
+	                       uint32_t set,
+	                       uint32_t writeCount,
+	                       const VkWriteDescriptorSet* writes);
 	/** Applies the given descriptor update template to the push descriptor to its specified bindPoint. */
-	void pushDescriptorSet(MVKDescriptorUpdateTemplate* updateTemplate, MVKPipelineLayout* layout, uint32_t set, const void* data);
+	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
+	                       MVKDescriptorUpdateTemplate* updateTemplate,
+	                       MVKPipelineLayout* layout,
+	                       uint32_t set,
+	                       const void* data);
 	/** Binds the given vertex buffers to the Vulkan state, invalidating any necessary resources. */
 	void bindVertexBuffers(uint32_t firstBinding, MVKArrayRef<const MVKVertexMTLBufferBinding> buffers);
 	/** Binds the given index buffer to the Vulkan state, invalidating any necessary resources. */
@@ -572,5 +596,3 @@ private:
 	/// If true, accumulation will be run at the end of the next render pass.
 	bool _shouldAccumulate = false;
 };
-
-

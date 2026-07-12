@@ -25,6 +25,9 @@
 
 static NSString* _MVKStaticCmdShaderSource = @R"(
 #include <metal_stdlib>
+#if __METAL_VERSION__ >= 310
+#include <metal_raytracing>
+#endif
 using namespace metal;
 
 typedef struct {
@@ -547,4 +550,197 @@ kernel void convertUint8IndicesRaw(device uint8_t* src [[ buffer(0) ]],
 	uint8_t idx = src[pos];
 	dst[pos] = idx;
 }
+
+#if __METAL_VERSION__ >= 310
+typedef struct {
+	float3x4 transform;
+	uint32_t packedData1;
+	uint32_t packedData2;
+	uint64_t accelerationStructureReference;
+} __attribute__((packed)) VkAccelerationStructureInstance;
+
+typedef struct {
+	float3x4 transform;
+	uint32_t packedData1;
+	uint32_t packedData2;
+	uint32_t handleSlot;
+	uint32_t reserved;
+} __attribute__((packed)) MVKSerializedAccelerationStructureInstanceRecord;
+
+static_assert(sizeof(MVKSerializedAccelerationStructureInstanceRecord) == 64, "");
+
+struct MVKAccelerationStructureReference {
+	raytracing::acceleration_structure<raytracing::instancing> accelerationStructure [[id(0)]];
+	device const uint2* instanceMetadata [[id(1)]];
+	ulong resourceID [[id(2)]];
+};
+
+static ulong mvkAccelerationStructureAddressHash(ulong value) {
+	value ^= value >> 30;
+	value *= 0xbf58476d1ce4e5b9ul;
+	value ^= value >> 27;
+	value *= 0x94d049bb133111ebul;
+	return value ^ (value >> 31);
+}
+
+static ulong mvkAccelerationStructureReferenceAddress(ulong address, const device ulong2* table) {
+	if (!address || !table) { return 0; }
+	ulong2 header = table[0];
+	if (!header.y) { return 0; }
+	ulong mask = header.x;
+	for (ulong slot = mvkAccelerationStructureAddressHash(address) & mask, remaining = min(header.y, mask) + 1;
+	     remaining;
+	     slot = (slot + 1) & mask, remaining--) {
+		ulong2 entry = table[slot + 1];
+		if (entry.x == address) { return entry.y; }
+		if (!entry.x) { return 0; }
+	}
+	return 0;
+}
+
+static void mvkWriteAccelerationStructureInstance(
+	float3x4 transform,
+	uint packedData1,
+	uint packedData2,
+	ulong address,
+	const device ulong2* accelerationStructureAddressTable,
+	device MTLIndirectAccelerationStructureInstanceDescriptor& dst,
+	device uint2& metadata) {
+	dst.mask = packedData1 >> 24;
+	dst.userID = packedData1 & 0xffffff;
+	dst.options = MTLAccelerationStructureInstanceOptions(packedData2 >> 24);
+	dst.intersectionFunctionTableOffset = packedData2 & 0xffffff;
+	metadata = uint2(packedData1 & 0xffffff, packedData2 & 0xffffff);
+	ulong referenceAddress = mvkAccelerationStructureReferenceAddress(address, accelerationStructureAddressTable);
+	reinterpret_cast<device ulong&>(dst.accelerationStructureID) = referenceAddress
+		? reinterpret_cast<const device MVKAccelerationStructureReference*>(referenceAddress)->resourceID
+		: 0;
+	dst.transformationMatrix[0] = float3(transform[0][0], transform[1][0], transform[2][0]);
+	dst.transformationMatrix[1] = float3(transform[0][1], transform[1][1], transform[2][1]);
+	dst.transformationMatrix[2] = float3(transform[0][2], transform[1][2], transform[2][2]);
+	dst.transformationMatrix[3] = float3(transform[0][3], transform[1][3], transform[2][3]);
+}
+
+typedef enum : uint32_t {
+	MVKAccelerationStructureConvertInstances,
+	MVKAccelerationStructureConvertInstancePointers,
+	MVKAccelerationStructureConvertTransform,
+} MVKAccelerationStructureConversionType;
+
+kernel void cmdBuildAccelerationStructureConvertBuffers(
+    const device char* srcBuff [[buffer(0)]],
+    device char* dstBuff [[buffer(1)]],
+    constant uint32_t& srcStride [[buffer(2)]],
+    constant uint32_t& itemCount [[buffer(3)]],
+    device uint2* instanceMetadata [[buffer(4)]],
+    constant uint32_t& conversionType [[buffer(5)]],
+	const device ulong2* accelerationStructureAddressTable [[buffer(6)]],
+	device MVKSerializedAccelerationStructureInstanceRecord* serializedRecords [[buffer(7)]],
+	device ulong* serializedHandles [[buffer(8)]],
+	constant uint32_t& emitSerialization [[buffer(9)]],
+    uint idx [[thread_position_in_grid]]) {
+	if (idx >= itemCount) { return; }
+	if (conversionType == MVKAccelerationStructureConvertTransform) {
+		const device float* src = reinterpret_cast<const device float*>(srcBuff + idx * srcStride);
+		device float* dst = reinterpret_cast<device float*>(dstBuff + idx * 12 * sizeof(float));
+		dst[0] = src[0]; dst[1] = src[4]; dst[2] = src[8];
+		dst[3] = src[1]; dst[4] = src[5]; dst[5] = src[9];
+		dst[6] = src[2]; dst[7] = src[6]; dst[8] = src[10];
+		dst[9] = src[3]; dst[10] = src[7]; dst[11] = src[11];
+		return;
+	}
+	const device char* srcAddress = srcBuff + idx * srcStride;
+	if (conversionType == MVKAccelerationStructureConvertInstancePointers) {
+		srcAddress = reinterpret_cast<const device char*>(*reinterpret_cast<const device ulong*>(srcAddress));
+	}
+	const device auto& src = *reinterpret_cast<const device VkAccelerationStructureInstance*>(srcAddress);
+	if (emitSerialization) {
+		device auto& record = serializedRecords[idx];
+		record.transform = src.transform;
+		record.packedData1 = src.packedData1;
+		record.packedData2 = src.packedData2;
+		record.handleSlot = idx;
+		record.reserved = 0;
+		serializedHandles[idx] = src.accelerationStructureReference;
+	}
+	device auto& dst = *reinterpret_cast<device MTLIndirectAccelerationStructureInstanceDescriptor*>(
+		dstBuff + idx * sizeof(MTLIndirectAccelerationStructureInstanceDescriptor));
+	mvkWriteAccelerationStructureInstance(src.transform,
+	                                      src.packedData1,
+	                                      src.packedData2,
+	                                      src.accelerationStructureReference,
+	                                      accelerationStructureAddressTable,
+	                                      dst,
+	                                      instanceMetadata[idx]);
+}
+
+kernel void cmdDeserializeAccelerationStructureInstances(
+	const device MVKSerializedAccelerationStructureInstanceRecord* records [[buffer(0)]],
+	const device ulong* handles [[buffer(1)]],
+	device MTLIndirectAccelerationStructureInstanceDescriptor* descriptors [[buffer(2)]],
+	device uint2* instanceMetadata [[buffer(3)]],
+	constant uint32_t& itemCount [[buffer(4)]],
+	const device ulong2* accelerationStructureAddressTable [[buffer(5)]],
+	uint idx [[thread_position_in_grid]]) {
+	if (idx >= itemCount) { return; }
+	const device auto& record = records[idx];
+	device auto& dst = descriptors[idx];
+	ulong address = record.handleSlot < itemCount ? handles[record.handleSlot] : 0;
+	mvkWriteAccelerationStructureInstance(record.transform,
+	                                      record.packedData1,
+	                                      record.packedData2,
+	                                      address,
+	                                      accelerationStructureAddressTable,
+	                                      dst,
+	                                      instanceMetadata[idx]);
+}
+
+struct MVKAccelerationStructureIndexedVerticesInfo {
+	ulong indexOffset;
+	ulong vertexOffset;
+	ulong vertexStride;
+	ulong vertexAvailable;
+	ulong destinationOffset;
+	uint itemCount;
+	uint indexElementSize;
+	uint vertexElementSize;
+	uint maxVertex;
+};
+
+static_assert(sizeof(MVKAccelerationStructureIndexedVerticesInfo) == 56, "");
+
+kernel void cmdSerializeAccelerationStructureIndexedVertices(
+	const device uchar* indices [[buffer(0)]],
+	const device uchar* vertices [[buffer(1)]],
+	device uchar* destination [[buffer(2)]],
+	constant MVKAccelerationStructureIndexedVerticesInfo& info [[buffer(3)]],
+	uint idx [[thread_position_in_grid]]) {
+	if (idx >= info.itemCount) { return; }
+	ulong indexAddress = info.indexOffset + ulong(idx) * info.indexElementSize;
+	uint vertexIndex;
+	if (info.indexElementSize == sizeof(ushort)) {
+		vertexIndex = uint(indices[indexAddress]) |
+			(uint(indices[indexAddress + 1]) << 8);
+	} else if (info.indexElementSize == sizeof(uint)) {
+		vertexIndex = uint(indices[indexAddress]) |
+			(uint(indices[indexAddress + 1]) << 8) |
+			(uint(indices[indexAddress + 2]) << 16) |
+			(uint(indices[indexAddress + 3]) << 24);
+	} else {
+		return;
+	}
+	if (vertexIndex > info.maxVertex) { return; }
+	if (vertexIndex && info.vertexStride > info.vertexAvailable / vertexIndex) { return; }
+	ulong sourceOffset = ulong(vertexIndex) * info.vertexStride;
+	if (sourceOffset > info.vertexAvailable ||
+		info.vertexElementSize > info.vertexAvailable - sourceOffset) {
+		return;
+	}
+	sourceOffset += info.vertexOffset;
+	ulong targetOffset = info.destinationOffset + ulong(idx) * info.vertexElementSize;
+	for (uint byteIndex = 0; byteIndex < info.vertexElementSize; byteIndex++) {
+		destination[targetOffset + byteIndex] = vertices[sourceOffset + byteIndex];
+	}
+}
+#endif
 )";

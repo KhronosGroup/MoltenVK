@@ -22,6 +22,8 @@
 #include "MVKCommandBuffer.h"
 #include "MVKCommandEncodingPool.h"
 #include "MVKCommand.h"
+#include "MVKCmdAccelerationStructure.h"
+#include "MVKCmdAccelerationStructureSerialization.h"
 #include "MVKCmdPipeline.h"
 #include "MVKCmdRendering.h"
 #include "MVKCmdDispatch.h"
@@ -106,4 +108,3 @@ protected:
 	MVKCommandEncodingPool _commandEncodingPool;
 	uint32_t _queueFamilyIndex;
 };
-

@@ -53,13 +53,18 @@ const char* mvkVkCommandName(MVKCommandUse cmdUse) {
 		case kMVKCommandUseClearDepthStencilImage:       return "vkCmdClearDepthStencilImage";
 		case kMVKCommandUseResetQueryPool:               return "vkCmdResetQueryPool";
 		case kMVKCommandUseDispatch:                     return "vkCmdDispatch";
+		case kMVKCommandUseTraceRays:                    return "vkCmdTraceRaysKHR";
 		case kMVKCommandUseTessellationVertexTessCtl:    return "vkCmdDraw (vertex and tess control stages)";
 		case kMVKCommandUseDrawIndirectConvertBuffers:   return "vkCmdDrawIndirect (convert indirect buffers)";
 		case kMVKCommandUseCopyQueryPoolResults:         return "vkCmdCopyQueryPoolResults";
 		case kMVKCommandUseAccumOcclusionQuery:          return "Post-render-pass occlusion query accumulation";
 		case kMVKCommandConvertUint8Indices:             return "Convert Uint8 indices to Uint16";
 		case kMVKCommandUseRecordGPUCounterSample:       return "Record GPU Counter Sample";
-		default:                                         return "Unknown Vulkan command";
+		case kMVKCommandUseBuildAccelerationStructureConvertBuffers: return "vkCmdBuildAccelerationStructuresKHR (convert instance buffers)";
+		case kMVKCommandUseBuildAccelerationStructure:               return "vkCmdBuildAccelerationStructuresKHR";
+		case kMVKCommandUseCopyAccelerationStructure:                return "vkCmdCopyAccelerationStructureKHR";
+		case kMVKCommandUseWriteAccelerationStructuresProperties:    return "vkCmdWriteAccelerationStructuresPropertiesKHR";
+		default:                                                     return "Unknown Vulkan command";
 	}
 }
 
@@ -156,4 +161,3 @@ void mvkFlipVertically(void* rowMajorData, uint32_t rowCount, size_t bytesPerRow
 		memcpy(lowerRow, tmpRow, bytesPerRow);
 	}
 }
-

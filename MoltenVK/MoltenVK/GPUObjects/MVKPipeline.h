@@ -47,9 +47,11 @@ struct MVKShaderImplicitRezBinding {
 enum class MVKDescriptorBindOperationCode : uint8_t {
 	BindBytes,
 	BindBuffer,
+	BindBufferZeroOffset,
 	BindBufferDynamic,
 	BindTexture,
 	BindSampler,
+	BindAccelerationStructure,
 	BindImmutableSampler,
 	BindBufferWithLiveCheck,
 	BindBufferDynamicWithLiveCheck,
@@ -58,6 +60,7 @@ enum class MVKDescriptorBindOperationCode : uint8_t {
 	UseResource,
 	UseBufferWithLiveCheck,
 	UseTextureWithLiveCheck,
+	UseAccelerationStructureWithLiveCheck,
 };
 
 struct MVKDescriptorBindOperation {
@@ -65,7 +68,7 @@ struct MVKDescriptorBindOperation {
 	uint8_t set : 4;
 	uint8_t _offset : 4; /**< Offset into the first descriptor */
 	uint8_t target;      /**< For BindX, the target bind index.  For UseX, whether the resource can be written or not */
-	uint8_t target2;     /**< For BindBufferDynamic, the index of the dynamic offset */
+	uint8_t target2;     /**< Secondary target or dynamic offset index. */
 	uint32_t bindingIdx; /**< The index of the MVKDescriptorBinding in the layout */
 	MVKDescriptorBindOperation() = default;
 	constexpr MVKDescriptorBindOperation(MVKDescriptorBindOperationCode opcode_, uint32_t set_, uint32_t target_, uint32_t bindingIdx_, size_t offset_ = 0, uint32_t target2_ = 0)
@@ -179,11 +182,11 @@ public:
 	/** Returns the pipeline create flags from a pipeline create info. */
 	template <typename PipelineInfoType>
 	static VkPipelineCreateFlags2 getPipelineCreateFlags(const PipelineInfoType* pCreateInfo) {
-		auto flags = pCreateInfo->flags;
+		VkPipelineCreateFlags2 flags = pCreateInfo->flags;
 		for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 			switch (next->sType) {
 				case VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO:
-					flags |= ((VkPipelineCreateFlags2CreateInfo*)next)->flags;
+					flags = ((VkPipelineCreateFlags2CreateInfo*)next)->flags;
 					break;
 				default:
 					break;
@@ -234,6 +237,16 @@ struct MVKPipelineStageResourceInfo {
 	MVKImplicitBufferBindings implicitBuffers;
 	bool usesPhysicalStorageBufferAddresses;
 	MVKStageResourceBits resources;
+
+	bool usesAccelerationStructures() const {
+		if (usesPhysicalStorageBufferAddresses ||
+			implicitBuffers.needed.has(MVKImplicitBuffer::AccelerationStructureAddressTable)) { return true; }
+		for (const auto& op : bindScript.ops) {
+			if (op.opcode == MVKDescriptorBindOperationCode::BindAccelerationStructure ||
+				op.opcode == MVKDescriptorBindOperationCode::UseAccelerationStructureWithLiveCheck) { return true; }
+		}
+		return false;
+	}
 };
 
 /** Represents an Vulkan graphics pipeline. */
@@ -305,6 +318,12 @@ public:
 
 	/** Returns info about the given stage's bindings. */
 	const MVKPipelineStageResourceInfo& getStageResources(MVKShaderStage stage) const { return _stageResources[stage]; }
+	bool usesAccelerationStructures() const {
+		for (const auto& resources : _stageResources) {
+			if (resources.usesAccelerationStructures()) { return true; }
+		}
+		return false;
+	}
 
 	/** Returns the list of state that is needed from the command encoder */
 	const MVKRenderStateFlags& getDynamicStateFlags() const { return _dynamicStateFlags; }
@@ -441,6 +460,11 @@ public:
 	/** Returns the threadgroup size */
 	const MTLSize& getThreadgroupSize() const { return _mtlThreadgroupSize; }
 
+	bool needsAccelerationStructureAddressTable() const {
+		return _stageResources.implicitBuffers.needed.has(MVKImplicitBuffer::AccelerationStructureAddressTable);
+	}
+	bool usesAccelerationStructures() const { return _stageResources.usesAccelerationStructures(); }
+
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKComputePipeline(MVKDevice* device,
 					   MVKPipelineCache* pipelineCache,
@@ -450,17 +474,93 @@ public:
 	~MVKComputePipeline() override;
 
 protected:
-    MVKMTLFunction getMTLFunction(const VkComputePipelineCreateInfo* pCreateInfo,
-								  VkPipelineCreationFeedback* pStageFB);
-	uint32_t getImplicitBufferIndex(uint32_t bufferIndexOffset);
+	MVKComputePipeline(MVKDevice* device,
+					   MVKPipelineCache* pipelineCache,
+					   MVKPipeline* parent,
+					   MVKPipelineLayout* layout,
+					   VkPipelineCreateFlags2 flags);
+	MVKComputePipeline(MVKDevice* device,
+					   MVKPipelineCache* pipelineCache,
+					   MVKPipeline* parent,
+					   MVKPipelineLayout* layout,
+					   VkPipelineCreateFlags2 flags,
+					   const void* pNext,
+					   const VkPipelineShaderStageCreateInfo* pStage,
+					   uint32_t stageFeedbackIndex,
+					   spv::ExecutionModel executionModel,
+					   bool allowsDispatchBase);
+	MVKMTLFunction getMTLFunction(const VkPipelineShaderStageCreateInfo* pStage,
+								  spv::ExecutionModel executionModel,
+								  VkPipelineCreationFeedback* pStageFB,
+								  uint32_t rayTracingStageDepth = 0,
+								  bool rayGenerationVisible = false);
+	uint32_t getImplicitBufferIndex(uint32_t bufferIndexOffset) const;
 
-    id<MTLComputePipelineState> _mtlPipelineState;
+	id<MTLComputePipelineState> _mtlPipelineState;
 	MVKPipelineStageResourceInfo _stageResources = {};
-    MTLSize _mtlThreadgroupSize;
+	MTLSize _mtlThreadgroupSize;
 	bool _allowsDispatchBase = false;
 
 	MVKShaderModule* _module = nullptr;
 	bool _ownsModule = false;
+};
+
+
+#pragma mark -
+#pragma mark MVKRayTracingPipeline
+
+class MVKRayTracingPipeline : public MVKComputePipeline {
+
+public:
+	MVKRayTracingPipeline(MVKDevice* device,
+						  MVKPipelineCache* pipelineCache,
+						  MVKPipeline* parent,
+						  const VkRayTracingPipelineCreateInfoKHR* pCreateInfo);
+
+	VkResult getShaderGroupHandles(uint32_t firstGroup, uint32_t groupCount, size_t dataSize, void* pData);
+	VkDeviceSize getShaderGroupStackSize(uint32_t group, VkShaderGroupShaderKHR groupShader) const;
+	id<MTLVisibleFunctionTable> getRayTracingFunctionTable() const { return _mtlFunctionTable; }
+	id<MTLVisibleFunctionTable> getRayGenerationFunctionTable() const { return _mtlRayGenerationFunctionTable; }
+	id<MTLVisibleFunctionTable> getRayTracingIntersectionFunctionTable() const { return _mtlIntersectionFunctionTable; }
+	id<MTLVisibleFunctionTable> getRayTracingCallableFunctionTable() const { return _mtlCallableFunctionTable; }
+	id<MTLVisibleFunctionTable> getRecursiveRayTracingFunctionTable() const { return _mtlRecursiveFunctionTable; }
+	id<MTLVisibleFunctionTable> getRecursiveRayTracingIntersectionFunctionTable() const { return _mtlRecursiveIntersectionFunctionTable; }
+	uint32_t getRayTracingFunctionTableBufferIndex() const { return _stageResources.implicitBuffers.ids[MVKImplicitBuffer::DispatchBase]; }
+	uint32_t getRayGenerationFunctionTableBufferIndex() const;
+	uint32_t getRayTracingIntersectionFunctionTableBufferIndex() const;
+	uint32_t getRayTracingCallableFunctionTableBufferIndex() const;
+	uint32_t getRecursiveRayTracingFunctionTableBufferIndex() const;
+	uint32_t getRecursiveRayTracingIntersectionFunctionTableBufferIndex() const;
+	uint32_t getRayTracingDispatchBufferIndex() const;
+	uint32_t getRayTracingInstanceMetadataBufferIndex() const;
+	uint32_t getRayTracingPipelineFlags() const;
+	~MVKRayTracingPipeline() override;
+
+private:
+	static constexpr uint32_t kMaxCallStackDepth = 6;
+	static constexpr VkDeviceSize kShaderGroupStackSize = (VkDeviceSize{1} << 32) / kMaxCallStackDepth;
+	struct ShaderStage {
+		VkShaderStageFlagBits stage;
+		MVKMTLFunction function;
+		MVKMTLFunction recursiveFunction;
+	};
+	struct ShaderGroup {
+		VkRayTracingShaderGroupTypeKHR type;
+		uint32_t generalShader;
+		uint32_t closestHitShader;
+		uint32_t anyHitShader;
+		uint32_t intersectionShader;
+	};
+	std::vector<ShaderStage> _shaderStages;
+	std::vector<ShaderGroup> _shaderGroups;
+	std::vector<uint32_t> _groupHandles;
+	bool _isLibrary = false;
+	id<MTLVisibleFunctionTable> _mtlFunctionTable = nil;
+	id<MTLVisibleFunctionTable> _mtlRayGenerationFunctionTable = nil;
+	id<MTLVisibleFunctionTable> _mtlIntersectionFunctionTable = nil;
+	id<MTLVisibleFunctionTable> _mtlCallableFunctionTable = nil;
+	id<MTLVisibleFunctionTable> _mtlRecursiveFunctionTable = nil;
+	id<MTLVisibleFunctionTable> _mtlRecursiveIntersectionFunctionTable = nil;
 };
 
 

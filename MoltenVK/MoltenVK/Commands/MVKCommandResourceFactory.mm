@@ -632,6 +632,17 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newConvertUint8IndicesMTL
 #endif
 	return newMTLComputePipelineState("convertUint8Indices", owner);
 }
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdBuildAccelerationStructureConvertBuffersMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("cmdBuildAccelerationStructureConvertBuffers", owner);
+}
+
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdSerializeAccelerationStructureIndexedVerticesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("cmdSerializeAccelerationStructureIndexedVertices", owner);
+}
+
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDeserializeAccelerationStructureInstancesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("cmdDeserializeAccelerationStructureInstances", owner);
+}
 
 
 #pragma mark Support methods

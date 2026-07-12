@@ -138,7 +138,7 @@ protected:
 
 	void propagateDebugName() override;
 	void initName();
-	void initExecQueue();
+	void initExecQueue(bool force = false);
 	void initMTLCommandQueue();
 	void destroyExecQueue();
 	VkResult submit(MVKQueueSubmission* qSubmit);
@@ -147,7 +147,7 @@ protected:
 
 	MVKQueueFamily* _queueFamily;
 	std::string _name;
-	dispatch_queue_t _execQueue;
+	dispatch_queue_t _execQueue = nil;
 	std::mutex _execQueueMutex;
 	std::condition_variable _execQueueConditionVariable;
 	uint32_t _execQueueJobCount = 0;
@@ -173,6 +173,7 @@ protected:
 typedef struct MVKSemaphoreSubmitInfo {
 private:
 	MVKSemaphore* _semaphore;
+	uint64_t _encodingToken = 0;
 public:
 	uint64_t value;
 	VkPipelineStageFlags2 stageMask;
@@ -180,6 +181,10 @@ public:
 
 	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff);
 	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff);
+	void reserveEncodingWait();
+	void reserveEncodingSignal();
+	void waitForEncodingSignal();
+	void publishEncodingSignal();
 	MVKSemaphoreSubmitInfo(const VkSemaphoreSubmitInfo& semaphoreSubmitInfo);
 	MVKSemaphoreSubmitInfo(const VkSemaphore semaphore, VkPipelineStageFlags stageMask);
 	MVKSemaphoreSubmitInfo(const MVKSemaphoreSubmitInfo& other);
@@ -218,6 +223,8 @@ protected:
 	friend class MVKQueue;
 
 	virtual void finish() = 0;
+	virtual bool requiresHostReadback() const { return false; }
+	virtual bool requiresEncodingDependencyWait() { return false; }
 	MVKDevice* getDevice() { return _queue->getDevice(); }
 
 	MVKQueue* _queue;
@@ -261,12 +268,15 @@ public:
 
 protected:
 	friend MVKCommandBuffer;
+	friend MVKCommandEncoder;
 
 	id<MTLCommandBuffer> getActiveMTLCommandBuffer();
 	void setActiveMTLCommandBuffer(id<MTLCommandBuffer> mtlCmdBuff);
 	VkResult commitActiveMTLCommandBuffer(bool signalCompletion = false);
+	VkResult commitActiveMTLCommandBufferAndWait();
 	void finish() override;
 	virtual void submitCommandBuffers() {}
+	void reserveEncodingSignals();
 
 	MVKCommandEncodingContext _encodingContext;
 	MVKSmallVector<MVKSemaphoreSubmitInfo> _signalSemaphores;
@@ -274,6 +284,7 @@ protected:
 	id<MTLCommandBuffer> _activeMTLCommandBuffer = nil;
 	MVKCommandUse _commandUse = kMVKCommandUseNone;
 	bool _emulatedWaitDone = false;		//Used to track if we've already waited for emulated semaphores.
+	bool _deferEncodingSignalPublication = false;
 };
 
 
@@ -297,6 +308,8 @@ public:
 
 protected:
 	void submitCommandBuffers() override;
+	bool requiresHostReadback() const override;
+	bool requiresEncodingDependencyWait() override;
 
 	MVKSmallVector<MVKCommandBufferSubmitInfo, N> _cmdBuffers;
 };
@@ -319,4 +332,3 @@ protected:
 
 	MVKSmallVector<MVKImagePresentInfo, 4> _presentInfo;
 };
-

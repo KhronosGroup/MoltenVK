@@ -19,6 +19,7 @@
 #include "MVKPixelFormats.h"
 #include "MVKDevice.h"
 #include "MVKFoundation.h"
+#include "mvk_datatypes.hpp"
 #include <string>
 
 using namespace std;
@@ -1635,5 +1636,8 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc, const MVKMTLD
 		enableFormatFeatures(Write, Buf, mtlPixFmtCaps, vkProps.bufferFeatures);
 		enableFormatFeatures(Atomic, Buf, mtlPixFmtCaps, vkProps.bufferFeatures);
 		enableFormatFeatures(Vertex, Buf, getMTLVertexFormatDesc(vkDesc.mtlVertexFormat).mtlFmtCaps, vkProps.bufferFeatures);
+		if (mvkMTLAccelerationStructureVertexFormatFromVkFormat(vkDesc.vkFormat) != MTLAttributeFormatInvalid) {
+			vkProps.bufferFeatures |= VK_FORMAT_FEATURE_2_ACCELERATION_STRUCTURE_VERTEX_BUFFER_BIT_KHR;
+		}
 	}
 }

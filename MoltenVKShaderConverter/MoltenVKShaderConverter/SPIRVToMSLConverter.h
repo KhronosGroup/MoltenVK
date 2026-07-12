@@ -41,6 +41,7 @@ namespace mvk {
 		SPIRV_CROSS_NAMESPACE::CompilerMSL::Options mslOptions;
 		std::string entryPointName;
 		spv::ExecutionModel entryPointStage = spv::ExecutionModelMax;
+		uint64_t rayTracingFunctionHash = 0;
 		spv::ExecutionMode tessPatchKind = spv::ExecutionModeMax;
 		uint32_t numTessControlPoints = 0;
 		bool shouldFlipVertexY = true;
@@ -257,6 +258,7 @@ namespace mvk {
 		bool needsPatchOutputBuffer = false;
 		bool needsBufferSizeBuffer = false;
 		bool needsDynamicOffsetBuffer = false;
+		bool needsAccelerationStructureAddressTable = false;
 		bool needsInputThreadgroupMem = false;
 		bool needsDispatchBaseBuffer = false;
 		bool needsViewRangeBuffer = false;
