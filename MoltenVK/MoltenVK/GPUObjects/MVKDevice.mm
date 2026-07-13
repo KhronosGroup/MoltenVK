@@ -2620,12 +2620,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	} else if ( mvkOSVersionIsAtLeast(13.0, 16.0, 1.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_0;
 		setMSLVersion(3, 0);
-	} else if ( mvkOSVersionIsAtLeast(12.0, 15.0, 1.0) ) {
+	} else {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_4;
 		setMSLVersion(2, 4);
-	} else {
-		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
-		setMSLVersion(2, 3);
 	}
 
 	_metalFeatures.programmableSamplePositions = _mtlDevice.areProgrammableSamplePositionsSupported;

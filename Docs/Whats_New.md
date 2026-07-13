@@ -24,6 +24,7 @@ Released TBD
 - Fix incorrect varable usage in `MVKImagePlane::getMTLTexture()`.
 - Fix incorrect placement heap check in `MVKImagePlane::getMTLTexture()`.
 - Fix device loss when using imported `MTLTexture` objects with Metal argument buffers.
+- Raise minimum target to _macOS 12.0 / iOS 15.0 / tvOS 15.0_
 - Update copyright notices to year 2026.
 - Update to latest SPIRV-Cross:
   - MSL: Fix `subgroupBallotExclusiveBitCount()` is not available for task shader and mesh shader.
