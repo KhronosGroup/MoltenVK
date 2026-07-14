@@ -44,6 +44,7 @@ typedef struct MVKRPSKeyBlitImg {
 	uint8_t srcFilter : 4;					/**< as MTLSamplerMinMagFilter */
 	uint8_t srcAspect = 0;					/**< as VkImageAspectFlags */
 	uint8_t dstSampleCount = 0;
+	uint32_t srcSwizzle = 0;
 
 	MVKRPSKeyBlitImg() : srcMTLPixelFormat(0), dstMTLPixelFormat(0), srcMTLTextureType(0), srcFilter(0) {}
 
@@ -54,6 +55,7 @@ typedef struct MVKRPSKeyBlitImg {
 		if (srcFilter != rhs.srcFilter) { return false; }
 		if (srcAspect != rhs.srcAspect) { return false; }
 		if (dstSampleCount != rhs.dstSampleCount) { return false; }
+		if (srcSwizzle != rhs.srcSwizzle) { return false; }
 		return true;
 	}
 
@@ -88,6 +90,9 @@ typedef struct MVKRPSKeyBlitImg {
 
 		hash <<= 8;
 		hash |= dstSampleCount;
+
+		hash <<= 32;
+		hash |= srcSwizzle;
 		return hash;
 	}
 

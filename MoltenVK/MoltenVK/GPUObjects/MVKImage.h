@@ -402,7 +402,6 @@ protected:
 	bool _isLinearForAtomics;
 	bool _is2DViewOn3DImageCompatible = false;
 	bool _isBlockTexelViewCompatible = false;
-	bool _isColorAttachmentTransferSrc = false;
 };
 
 
@@ -554,6 +553,9 @@ public:
 
     void releaseMTLTexture();
 
+	/** Returns the packed component swizzle of this image view. */
+	uint32_t getPackedSwizzle() { return _useShaderSwizzle ? mvkPackSwizzle(_componentSwizzle) : 0; }
+
     ~MVKImageViewPlane();
 
 protected:
@@ -569,7 +571,8 @@ protected:
     MTLPixelFormat _mtlPixFmt;
 	uint8_t _planeIndex;
     bool _useMTLTextureView;
-    bool _useSwizzle;
+	bool _useNativeSwizzle;
+	bool _useShaderSwizzle;
 };
 
 
@@ -607,11 +610,20 @@ public:
 	/** Returns the number of samples for each pixel of this image view. */
 	VkSampleCountFlagBits getSampleCount() { return _image->getSampleCount(); }
 
-    /** Returns the number of planes of this image view. */
-    uint8_t getPlaneCount() { return _planes.size(); }
+	/** Returns the packed component swizzle of this image view. */
+	uint32_t getPackedSwizzle() { return _planes.empty() ? 0 : _planes[0]->getPackedSwizzle(); }	// Guard against destroyed instance retained in a descriptor.
+
+	/** Returns the number of planes of this image view. */
+	uint8_t getPlaneCount() { return _planes.size(); }
 
 	/** Returns the Metal texture type of this image view. */
 	MTLTextureType getMTLTextureType() { return _mtlTextureType; }
+
+	bool getIs2dViewOf3d() {
+		return _image->_is2DViewOn3DImageCompatible &&
+				_image->getImageType() == VK_IMAGE_TYPE_3D &&
+				(_mtlTextureType == MTLTextureType2D || _mtlTextureType == MTLTextureType2DArray);
+	}
 
 	/**
 	 * Populates the texture of the specified render pass descriptor

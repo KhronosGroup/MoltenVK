@@ -836,7 +836,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps12.roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_NONE;
 	supportedProps12.shaderSignedZeroInfNanPreserveFloat16 = true;
 	supportedProps12.shaderSignedZeroInfNanPreserveFloat32 = true;
-	supportedProps12.shaderSignedZeroInfNanPreserveFloat64 = true;
+	supportedProps12.shaderSignedZeroInfNanPreserveFloat64 = false;
 	supportedProps12.shaderDenormPreserveFloat16 = false;
 	supportedProps12.shaderDenormPreserveFloat32 = false;
 	supportedProps12.shaderDenormPreserveFloat64 = false;
@@ -845,7 +845,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps12.shaderDenormFlushToZeroFloat64 = false;
 	supportedProps12.shaderRoundingModeRTEFloat16 = true;
 	supportedProps12.shaderRoundingModeRTEFloat32 = true;
-	supportedProps12.shaderRoundingModeRTEFloat64 = true;
+	supportedProps12.shaderRoundingModeRTEFloat64 = false;
 	supportedProps12.shaderRoundingModeRTZFloat16 = false;
 	supportedProps12.shaderRoundingModeRTZFloat32 = false;
 	supportedProps12.shaderRoundingModeRTZFloat64 = false;
@@ -2468,6 +2468,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.nativeTextureAtomics = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0) && (supportsMTLGPUFamily(Metal3) || supportsMTLGPUFamily(Apple6) || supportsMTLGPUFamily(Mac2));
 
 	_metalFeatures.renderLinearTextures = _gpuCapabilities.supportsRenderLinearTextures;
+	_metalFeatures.nativeTextureSwizzle = false;
 
 	if (supportsMTLGPUFamily(Mac1)) {
 		_metalFeatures.mtlBufferAlignment = 256;
@@ -2502,7 +2503,15 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.stencilResolve = true;
 		_metalFeatures.quadPermute = true;
 		_metalFeatures.simdReduction = true;
+		_metalFeatures.nativeTextureSwizzle = true;
     }
+
+	// Intel UHD 630 (Gen9) reports Mac2 family through Metal,
+	// but simd_reduction operations (simd_sum, etc.) produce
+	// incorrect results on this hardware.
+	if (_properties.vendorID == kIntelVendorId) {
+		_metalFeatures.simdReduction = false;
+	}
 
     if (supportsMTLGPUFamily(Apple1)) {
 		_metalFeatures.mtlBufferAlignment = 64;
@@ -2514,11 +2523,14 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 		_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
 		_metalFeatures.tileBasedDeferredRendering = true;
+		_metalFeatures.nativeTextureSwizzle = true;
 
 		// From testing, these guarantees are only true on Apple GPUs.
 		_metalFeatures.subgroupUniformControlFlow = true;
 		_metalFeatures.maximalReconvergence = true;
-		_metalFeatures.quadControlFlow = true;
+
+		// FIXME: Fails tests using fragment terminate with quads on Apple GPUs.
+		_metalFeatures.quadControlFlow = false;
 
 		// Don't use barriers in render passes on Apple GPUs. Apple GPUs don't support them,
 		// and in fact Metal's validation layer will complain if you try to use them.
@@ -2655,8 +2667,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
                 _metalFeatures.minSubgroupSize = 8;
                 break;
             case kAMDVendorId:
-                _metalFeatures.maxSubgroupSize = 64;
-                _metalFeatures.minSubgroupSize = isAMDRDNAGPU() ? 32 : _metalFeatures.maxSubgroupSize;
+                // Metal simdgroup operations (simd_shuffle_xor, etc.) produce incorrect
+                // results on AMD GPUs with 64-wide subgroups. Use 32-wide subgroups which
+                // matches RDNA wave32 mode and works correctly.
+                _metalFeatures.maxSubgroupSize = 32;
+                _metalFeatures.minSubgroupSize = 32;
                 break;
             case kAppleVendorId:
                 _metalFeatures.maxSubgroupSize = 32;
@@ -2733,7 +2748,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.events = true;
 	_metalFeatures.ioSurfaces = true;
 	_metalFeatures.renderWithoutAttachments = true;
-	_metalFeatures.nativeTextureSwizzle = true;
 }
 
 bool MVKPhysicalDevice::isTier2MetalArgumentBuffers() {
@@ -3308,6 +3322,24 @@ void MVKPhysicalDevice::setMemoryHeap(uint32_t heapIndex, VkDeviceSize heapSize,
 void MVKPhysicalDevice::setMemoryType(uint32_t typeIndex, uint32_t heapIndex, VkMemoryPropertyFlags propertyFlags) {
 	_memoryProperties.memoryTypes[typeIndex].heapIndex = heapIndex;
 	_memoryProperties.memoryTypes[typeIndex].propertyFlags = propertyFlags;
+}
+
+bool MVKPhysicalDevice::isNVIDIAGPU() const {
+	return _properties.vendorID == kNVVendorId;
+}
+
+bool MVKPhysicalDevice::isIntelGPU() const {
+	return _properties.vendorID == kIntelVendorId;
+}
+
+bool MVKPhysicalDevice::isMacGPUFamily1() const {
+	return !_gpuCapabilities.isAppleGPU && _gpuCapabilities.supportsMac1 && !_gpuCapabilities.supportsMac2;
+}
+
+bool MVKPhysicalDevice::shouldEmulateReversedDepthViewport() const {
+	// Reversed Metal viewport depth is broken on legacy AMD Mac2 GPUs without Metal 3 support.
+	// This is roughly Radeon Pro 5xx-class hardware.
+	return _properties.vendorID == kAMDVendorId && _gpuCapabilities.supportsMac2 && !_gpuCapabilities.supportsMetal3;
 }
 
 void MVKPhysicalDevice::initMemoryProperties() {

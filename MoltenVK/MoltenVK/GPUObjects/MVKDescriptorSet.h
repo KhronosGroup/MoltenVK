@@ -137,9 +137,9 @@ struct MVKDescriptorResourceCount {
 /** Descriptor metadata for images. */
 struct MVKDescriptorMetaImage {
 	uint32_t size;
-	uint32_t pad;
+	uint32_t swizzle;
 	MVKDescriptorMetaImage() = default;
-	constexpr MVKDescriptorMetaImage(uint32_t size_): size(size_), pad(0) {}
+	constexpr MVKDescriptorMetaImage(uint32_t size_, uint32_t swizzle_ = 0): size(size_), swizzle(swizzle_) {}
 };
 static_assert(sizeof(MVKDescriptorMetaImage) == sizeof(uint64_t));
 

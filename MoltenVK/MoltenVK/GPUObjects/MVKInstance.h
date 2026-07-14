@@ -40,6 +40,7 @@ typedef struct MVKEntryPoint {
 	uint32_t apiVersion;	///< Core version required without any extension.
 	uint32_t api2Version;	///< Core version required in addition to extension.
 	bool isDevice;
+	bool isInstanceDeviceExtEntrypoint;
 
 	bool isCore() { return apiVersion > 0; }
 	bool needsOtherCore() { return api2Version > 0; }
