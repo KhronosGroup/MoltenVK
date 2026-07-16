@@ -295,6 +295,20 @@ kernel void cmdDrawIndirectConvertBuffers(const device char* srcBuff [[buffer(0)
 	destBuff[idx].instanceCount *= viewCount;
 }
 
+kernel void cmdDrawIndirectCountConvertBuffers(const device char* srcBuff [[buffer(0)]],
+                                               device MTLDrawPrimitivesIndirectArguments* destBuff [[buffer(1)]],
+                                               constant uint32_t& srcStride [[buffer(2)]],
+                                               constant uint32_t& drawCount [[buffer(3)]],
+                                               const device uint32_t* countBuff [[buffer(4)]],
+                                               uint idx [[thread_position_in_grid]]) {
+	if (idx >= drawCount) { return; }
+	const device auto& src = *reinterpret_cast<const device MTLDrawPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);
+	destBuff[idx] = src;
+	if (idx >= countBuff[0]) {
+		destBuff[idx].instanceCount = 0;
+	}
+}
+
 kernel void cmdDrawIndexedIndirectConvertBuffers(const device char* srcBuff [[buffer(0)]],
                                                  device MTLDrawIndexedPrimitivesIndirectArguments* destBuff [[buffer(1)]],
                                                  constant uint32_t& srcStride [[buffer(2)]],
@@ -329,6 +343,38 @@ kernel void cmdDrawIndexedIndirectConvertBuffers(const device char* srcBuff [[bu
 				break;
 		}
 	}
+}
+
+kernel void cmdDrawIndexedIndirectCountConvertBuffers(const device char* srcBuff [[buffer(0)]],
+                                                      device MTLDrawIndexedPrimitivesIndirectArguments* destBuff [[buffer(1)]],
+                                                      constant uint32_t& srcStride [[buffer(2)]],
+                                                      constant uint32_t& drawCount [[buffer(3)]],
+                                                      const device uint32_t* countBuff [[buffer(4)]],
+                                                      uint idx [[thread_position_in_grid]]) {
+	if (idx >= drawCount) { return; }
+	const device auto& src = *reinterpret_cast<const device MTLDrawIndexedPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);
+	destBuff[idx] = src;
+	if (idx >= countBuff[0]) {
+		destBuff[idx].instanceCount = 0;
+	}
+}
+
+kernel void cmdDrawIndirectCopyZeroDivisorVertexBuffers(const device char* indirectBuff [[buffer(0)]],
+                                                         const device char* srcBuff [[buffer(1)]],
+                                                         device char* destBuff [[buffer(2)]],
+                                                         constant uint32_t& indirectStride [[buffer(3)]],
+                                                         constant uint32_t& drawCount [[buffer(4)]],
+                                                         constant uint32_t& vertexStride [[buffer(5)]],
+                                                         constant uint32_t& baseInstanceOffset [[buffer(6)]],
+                                                         uint idx [[thread_position_in_grid]]) {
+	uint32_t drawIdx = idx / vertexStride;
+	if (drawIdx >= drawCount) { return; }
+	uint32_t byteIdx = idx % vertexStride;
+	size_t drawOffset = (size_t)drawIdx * indirectStride;
+	const device auto& instanceCount = *reinterpret_cast<const device uint32_t*>(indirectBuff + drawOffset + sizeof(uint32_t));
+	if (instanceCount == 0) { return; }
+	const device auto& baseInstance = *reinterpret_cast<const device uint32_t*>(indirectBuff + drawOffset + baseInstanceOffset);
+	destBuff[idx] = srcBuff[(size_t)baseInstance * vertexStride + byteIdx];
 }
 
 kernel void cmdDrawIndirectTessConvertBuffers(const device char* srcBuff [[buffer(0)]],
