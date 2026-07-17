@@ -790,7 +790,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 				break;
             case VK_SHADER_STAGE_GEOMETRY_BIT:
 #if MVK_XCODE_14
-                if (getDevice()->getPhysicalDevice()->mslVersionIsAtLeast(MTLLanguageVersion3_0)) {
+                if (getDevice()->getPhysicalDevice()->getMetalFeatures()->mslVersion >= CompilerMSL::Options::make_msl_version(3, 0)) {
                     pGeometrySS = pSS;
                     _isGeometryPipeline = true;
                     if (pFeedbackInfo && pFeedbackInfo->pPipelineStageCreationFeedbacks) {
@@ -807,6 +807,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	_vertexModule = getOrCreateShaderModule(device, pVertexSS, _ownsVertexModule);
 	_tessCtlModule = getOrCreateShaderModule(device, pTessCtlSS, _ownsTessCtlModule);
 	_tessEvalModule = getOrCreateShaderModule(device, pTessEvalSS, _ownsTessEvalModule);
+	_geometryModule = getOrCreateShaderModule(device, pGeometrySS, _ownsGeometryModule);
 	_fragmentModule = getOrCreateShaderModule(device, pFragmentSS, _ownsFragmentModule);
 
 	warnIfUnsupportedRobustnessEnabled(this, pVertexSS);
@@ -873,7 +874,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 
     // Topology
     _mtlPrimitiveType = MTLPrimitiveTypePoint;
-    if (pCreateInfo->pInputAssemblyState && !isRenderingPoints(pCreateInfo)) {
+    if (pCreateInfo->pInputAssemblyState && !isRenderingPoints()) {
         _mtlPrimitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
         // Explicitly fail creation with triangle fan topology.
         if (pCreateInfo->pInputAssemblyState->topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
@@ -1296,7 +1297,7 @@ MTLMeshRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLMeshRenderPipelineDe
 	// Metal does not allow the name of the pipeline to be changed after it has been created,
 	// and we need to create the Metal pipeline immediately to provide error feedback to app.
 	// The best we can do at this point is set the pipeline name from the layout.
-	setLabelIfNotNil(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
+	setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
 
 	return plDesc;
 }
@@ -1710,12 +1711,12 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLMeshRenderPipelineDescrip
 
     shaderConfig.options.entryPointStage = spv::ExecutionModelVertex;
     shaderConfig.options.entryPointName = pVertexSS->pName;
-    shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageVertex];
-    shaderConfig.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageVertex];
-    shaderConfig.options.mslOptions.shader_output_buffer_index = _outputBufferIndex.stages[kMVKShaderStageVertex];
-    shaderConfig.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageVertex];
-    shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageVertex];
-    shaderConfig.options.mslOptions.view_mask_buffer_index = _viewRangeBufferIndex.stages[kMVKShaderStageVertex];
+    // Ported from the 1.2.5-era per-stage index members to the 1.4.x
+    // _stageResources implicit-buffer API, mirroring the classic vertex path.
+    const auto& implicit = _stageResources[kMVKShaderStageVertex].implicitBuffers.ids;
+    addCommonImplicitBuffersToShaderConfig(shaderConfig, implicit);
+    shaderConfig.options.mslOptions.shader_output_buffer_index = implicit[MVKImplicitBuffer::Output];
+    shaderConfig.options.mslOptions.view_mask_buffer_index = implicit[MVKImplicitBuffer::ViewRange];
     shaderConfig.options.mslOptions.capture_output_to_buffer = false;
     shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
     shaderConfig.options.mslOptions.for_mesh_pipeline = true;
@@ -1733,7 +1734,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLMeshRenderPipelineDescrip
 
     addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
 
-    MVKMTLFunction vertexFunc = getMTLFunction(shaderConfig, pVertexSS, pVertexFB, "Vertex");
+    MVKMTLFunction vertexFunc = getMTLFunction(shaderConfig, pVertexSS, pVertexFB, _vertexModule, "Vertex");
 
     plDesc.objectFunction = vertexFunc.getMTLFunction();
     return true;
@@ -1748,12 +1749,13 @@ bool MVKGraphicsPipeline::addGeometryShaderToPipeline(MTLMeshRenderPipelineDescr
 
     shaderConfig.options.entryPointStage = spv::ExecutionModelGeometry;
     shaderConfig.options.entryPointName = pGeometrySS->pName;
-    shaderConfig.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageGeometry];
-    shaderConfig.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageGeometry];
-    shaderConfig.options.mslOptions.shader_output_buffer_index = _outputBufferIndex.stages[kMVKShaderStageGeometry];
-    shaderConfig.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageGeometry];
-    shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageGeometry];
-    shaderConfig.options.mslOptions.view_mask_buffer_index = _viewRangeBufferIndex.stages[kMVKShaderStageGeometry];
+    // Ported from the 1.2.5-era per-stage index members to the 1.4.x
+    // _stageResources implicit-buffer API. The Geometry slot exists because the
+    // kMVKShaderStageGeometry enum entry sits before Fragment, which sizes the array.
+    const auto& implicit = _stageResources[kMVKShaderStageGeometry].implicitBuffers.ids;
+    addCommonImplicitBuffersToShaderConfig(shaderConfig, implicit);
+    shaderConfig.options.mslOptions.shader_output_buffer_index = implicit[MVKImplicitBuffer::Output];
+    shaderConfig.options.mslOptions.view_mask_buffer_index = implicit[MVKImplicitBuffer::ViewRange];
     shaderConfig.options.mslOptions.capture_output_to_buffer = false;
     shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
     shaderConfig.options.mslOptions.for_mesh_pipeline = true;
@@ -1771,7 +1773,7 @@ bool MVKGraphicsPipeline::addGeometryShaderToPipeline(MTLMeshRenderPipelineDescr
 
     addPrevStageOutputToShaderConversionConfig(shaderConfig, vertexOutputs);
 
-    MVKMTLFunction geometryFunc = getMTLFunction(shaderConfig, pGeometrySS, pGeometryFB, "Geometry");
+    MVKMTLFunction geometryFunc = getMTLFunction(shaderConfig, pGeometrySS, pGeometryFB, _geometryModule, "Geometry");
 
     plDesc.meshFunction = geometryFunc.getMTLFunction();
     return true;
@@ -2196,9 +2198,12 @@ void MVKGraphicsPipeline::addTessellationToPipeline(MTLRenderPipelineDescriptor*
 
 template<typename T>
 void MVKGraphicsPipeline::addFragmentOutputToPipeline(T* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo) {
-	// Topology
-	if (pCreateInfo->pInputAssemblyState)
-		plDesc.inputPrimitiveTopology = getPrimitiveTopologyClass();
+	// Topology. Mesh pipeline descriptors have no inputPrimitiveTopology; the mesh
+	// stage declares its own output topology instead.
+	if constexpr (!std::is_same_v<T, MTLMeshRenderPipelineDescriptor>) {
+		if (pCreateInfo->pInputAssemblyState)
+			plDesc.inputPrimitiveTopology = getPrimitiveTopologyClass();
+	}
 
 	const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
 
@@ -2665,6 +2670,7 @@ MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 		[_mtlTessControlStageState release];
 		[_mtlPipelineState release];
 		if (_ownsVertexModule) delete _vertexModule;
+		if (_ownsGeometryModule) delete _geometryModule;
 		if (_ownsTessCtlModule) delete _tessCtlModule;
 		if (_ownsTessEvalModule) delete _tessEvalModule;
 		if (_ownsFragmentModule) delete _fragmentModule;

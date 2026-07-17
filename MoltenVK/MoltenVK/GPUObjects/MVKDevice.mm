@@ -2781,11 +2781,10 @@ void MVKPhysicalDevice::initFeatures() {
     _features.inheritedQueries = true;
 	_features.vertexPipelineStoresAndAtomics = true;
 	_features.fragmentStoresAndAtomics = true;
-	// Deliberately still false. Turning this on belongs with the mesh-pipeline
-	// machinery from PR #1815 (see gs-mesh-pipeline-TODO.patch), which is not yet
-	// ported onto this base. Advertising geometryShader without it would only move
-	// the failure from device creation to the first geometry pipeline.
-	// _features.geometryShader = true;
+	// Geometry shaders run as Metal mesh pipelines (PR #1815, rebased onto 1.4.1):
+	// vertex shader -> object stage, geometry shader -> mesh stage, translated by
+	// the matching SPIRV-Cross fork (branch gs-on-adec).
+	_features.geometryShader = true;
 
 	_features.shaderSampledImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
 	_features.textureCompressionBC = _gpuCapabilities.supportsBCTextureCompression;
