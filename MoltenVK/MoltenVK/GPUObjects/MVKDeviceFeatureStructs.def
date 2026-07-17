@@ -87,6 +87,7 @@ MVK_DEVICE_FEATURE_EXTN(Maintenance9,                     MAINTENANCE_9,        
 MVK_DEVICE_FEATURE_EXTN(PortabilitySubset,                PORTABILITY_SUBSET,                   KHR,  15)
 MVK_DEVICE_FEATURE_EXTN(PresentId,                        PRESENT_ID,                           KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(PresentId2,                       PRESENT_ID_2,                         KHR,   1)
+MVK_DEVICE_FEATURE_EXTN(TransformFeedback,                TRANSFORM_FEEDBACK,                   EXT,   2)
 MVK_DEVICE_FEATURE_EXTN(PresentWait,                      PRESENT_WAIT,                         KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(PresentWait2,                     PRESENT_WAIT_2,                       KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(Robustness2,                      ROBUSTNESS_2,                         KHR,   3)

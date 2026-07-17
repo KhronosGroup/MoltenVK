@@ -221,6 +221,7 @@ typedef struct {
 	VkBool32 specializedQueueFamilies;                                         /**< MVK_CONFIG_SPECIALIZED_QUEUE_FAMILIES */
 	VkBool32 switchSystemGPU;                                                  /**< MVK_CONFIG_SWITCH_SYSTEM_GPU */
 	VkBool32 fullImageViewSwizzle;                                             /**< Obsolete, deprecated, and ignored. */
+	uint32_t maxTransformFeedbackBuffers;                                      /**< The maximum transform feedback Buffers to support */
 	uint32_t defaultGPUCaptureScopeQueueFamilyIndex;                           /**< MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_FAMILY_INDEX */
 	uint32_t defaultGPUCaptureScopeQueueIndex;                                 /**< MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_INDEX */
 	MVKConfigFastMath fastMathEnabled;                                         /**< MVK_CONFIG_FAST_MATH_ENABLED */

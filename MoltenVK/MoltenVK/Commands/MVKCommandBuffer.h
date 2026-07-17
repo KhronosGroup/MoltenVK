@@ -508,6 +508,18 @@ public:
 	/** Indicates whether the current draw is an indexed draw. */
 	bool _isIndexedDraw;
 
+    /** If true, transform feedback is currently running. */
+    VkBool32 _transformFeedbackRunning;
+
+    /** VK_EXT_transform_feedback (PR #1943). The PR was written against the old
+        _graphicsResourcesState encoder-state object, which no longer exists; this
+        carries just the SO buffer bindings the TF code tracks through it. */
+    struct {
+        MVKMTLBufferBinding _transformFeedbackCounterBufferBinding;
+        MVKSmallVector<MVKMTLBufferBinding, 4> _transformFeedbackBufferBindings;
+    } _graphicsResourcesState;
+
+
 #pragma mark Construction
 
 	MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,

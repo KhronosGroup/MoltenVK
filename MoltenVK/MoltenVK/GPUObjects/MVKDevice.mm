@@ -786,6 +786,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				texelBuffAlignFeatures->texelBufferAlignment = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
+				auto* xfbFeatures = (VkPhysicalDeviceTransformFeedbackFeaturesEXT*)next;
+				xfbFeatures->transformFeedback = true;
+				xfbFeatures->geometryStreams = false;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
 				auto* shaderIntFuncsFeatures = (VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL*)next;
 				shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
@@ -1302,6 +1308,19 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				sampLocnProps->sampleLocationSubPixelBits = mvkPowerOfTwoExponent(kMVKSampleLocationCoordinateGridSize);
 				sampLocnProps->variableSampleLocations = true;
 				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: {
+				auto* xfbProps = (VkPhysicalDeviceTransformFeedbackPropertiesEXT*)next;
+				xfbProps->maxTransformFeedbackStreams = 1;																			// Must be 1 if geometryStreams isn't supported.
+				xfbProps->maxTransformFeedbackBuffers = kMVKMaxTransformFeedbackBufferCount;
+				xfbProps->maxTransformFeedbackBufferSize = _metalFeatures.maxMTLBufferSize;
+				xfbProps->maxTransformFeedbackStreamDataSize = (_properties.limits.maxFragmentInputComponents + 4) * sizeof(float);	// +4 more for the position.
+				xfbProps->maxTransformFeedbackBufferDataSize = xfbProps->maxTransformFeedbackStreamDataSize;
+				xfbProps->maxTransformFeedbackBufferDataStride = _metalFeatures.maxMTLBufferSize - xfbProps->maxTransformFeedbackBufferDataSize;
+				xfbProps->transformFeedbackQueries = VK_FALSE;
+				xfbProps->transformFeedbackStreamsLinesTriangles = VK_FALSE;
+				xfbProps->transformFeedbackRasterizationStreamSelect = VK_FALSE;
+				xfbProps->transformFeedbackDraw = VK_FALSE;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
 				// VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT is different than the promoted VkPhysicalDeviceVertexAttributeDivisorProperties.
@@ -2886,7 +2905,7 @@ void MVKPhysicalDevice::initLimits() {
 	_properties.limits.maxSamplerAnisotropy = 16;
 
     _properties.limits.maxVertexInputAttributes = 31;
-    _properties.limits.maxVertexInputBindings = 31;
+    _properties.limits.maxVertexInputBindings = 16;
 
     _properties.limits.maxVertexInputBindingStride = supportsMTLGPUFamily(Apple2) ? kMVKUndefinedLargeUInt32 : (4 * KIBI);
 	_properties.limits.maxVertexInputAttributeOffset = _properties.limits.maxVertexInputBindingStride - 1;
@@ -4864,6 +4883,22 @@ uint32_t MVKDevice::getViewCountInMetalPass(uint32_t viewMask, uint32_t passIdx)
 
 uint32_t MVKDevice::getMetalBufferIndexForVertexAttributeBinding(uint32_t binding) {
 	return ((_physicalDevice->_metalFeatures.maxPerStageBufferCount - 1) - binding);
+}
+
+uint32_t MVKDevice::getMetalBufferIndexForTransformFeedbackBinding(MVKShaderStage stage, uint32_t binding) {
+    binding = ((_physicalDevice->_metalFeatures.maxPerStageBufferCount - 1) - binding);
+	switch (stage) {
+		case kMVKShaderStageVertex:
+			binding -= _physicalDevice->_properties.limits.maxVertexInputBindings;
+			break;
+		default:
+			break;
+	}
+	return binding;
+}
+
+uint32_t MVKDevice::getMetalBufferIndexForTransformFeedbackCounterBinding(MVKShaderStage stage, uint32_t binding) {
+	return (getMetalBufferIndexForTransformFeedbackBinding(stage, binding) - kMVKMaxTransformFeedbackBufferCount);
 }
 
 VkDeviceSize MVKDevice::getVkFormatTexelBufferAlignment(VkFormat format, MVKBaseObject* mvkObj) {

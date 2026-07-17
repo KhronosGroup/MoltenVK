@@ -1616,11 +1616,11 @@ void MVKMetalComputeCommandEncoderState::prepareRenderDispatch(
 	id<MTLComputePipelineState> mtlPipeline = nil;
 	if (stage == kMVKShaderStageVertex) {
 		if (!mvkEncoder._isIndexedDraw) {
-			mtlPipeline = pipeline->getTessVertexStageState();
+			mtlPipeline = pipeline->getVertexStageState();
 		} else if (vk._indexBuffer.mtlIndexType == MTLIndexTypeUInt16) {
-			mtlPipeline = pipeline->getTessVertexStageIndex16State();
+			mtlPipeline = pipeline->getVertexStageIndex16State();
 		} else {
-			mtlPipeline = pipeline->getTessVertexStageIndex32State();
+			mtlPipeline = pipeline->getVertexStageIndex32State();
 		}
 	} else if (stage == kMVKShaderStageTessCtl) {
 		mtlPipeline = pipeline->getTessControlStageState();
