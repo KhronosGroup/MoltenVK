@@ -1796,6 +1796,25 @@ static constexpr MSLVertexFormatInfo vertexFormatInfo[] = {
 	[VK_FORMAT_R32G32B32A32_SFLOAT]  = {4, false},
 };
 
+// The mesh (object-stage) path fetches vertices by hand, so SPIRV-Cross needs the
+// concrete component format of each attribute (get_variable_format_string reads it).
+// The classic path only ever sets shaderVar.format for the signedness fixup, leaving
+// float/int formats as OTHER(0) — which throws "Format not handled: 0" in the mesh
+// path. Map every MVKFormatType to a concrete MSLShaderVariableFormat here.
+static MVK_spirv_cross::MSLShaderVariableFormat mvkMSLFormatForFormatType(MVKFormatType type) {
+    switch (type) {
+        case kMVKFormatColorInt8:   return MSL_SHADER_VARIABLE_FORMAT_INT8;
+        case kMVKFormatColorUInt8:  return MSL_SHADER_VARIABLE_FORMAT_UINT8;
+        case kMVKFormatColorInt16:  return MSL_SHADER_VARIABLE_FORMAT_INT16;
+        case kMVKFormatColorUInt16: return MSL_SHADER_VARIABLE_FORMAT_UINT16;
+        case kMVKFormatColorInt32:  return MSL_SHADER_VARIABLE_FORMAT_INT32;
+        case kMVKFormatColorUInt32: return MSL_SHADER_VARIABLE_FORMAT_UINT32;
+        case kMVKFormatColorHalf:   return MSL_SHADER_VARIABLE_FORMAT_HALF;
+        case kMVKFormatColorFloat:  return MSL_SHADER_VARIABLE_FORMAT_FLOAT;
+        default:                    return MSL_SHADER_VARIABLE_FORMAT_FLOAT;  // normalized/UNORM etc. load as float
+    }
+}
+
 bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLMeshRenderPipelineDescriptor* plDesc,
                                                     const VkGraphicsPipelineCreateInfo* pCreateInfo,
                                                     SPIRVToMSLConversionConfiguration& shaderConfig,
@@ -1829,6 +1848,14 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLMeshRenderPipelineDescrip
 
     MVKMTLFunction vertexFunc = getMTLFunction(shaderConfig, pVertexSS, pVertexFB, _vertexModule, "Vertex");
 
+    // If SPIR-V->MSL conversion failed the function is nil; feeding that to
+    // MTLMeshRenderPipelineDescriptor.objectFunction aborts Metal ("objectFunction
+    // must not be nil"). Fail the pipeline cleanly instead so the caller gets a
+    // VkResult error rather than a process abort.
+    if ( !vertexFunc.getMTLFunction() ) {
+        setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Vertex (object) shader for the geometry pipeline could not be compiled."));
+        return false;
+    }
     plDesc.objectFunction = vertexFunc.getMTLFunction();
     return true;
 }
@@ -1868,6 +1895,10 @@ bool MVKGraphicsPipeline::addGeometryShaderToPipeline(MTLMeshRenderPipelineDescr
 
     MVKMTLFunction geometryFunc = getMTLFunction(shaderConfig, pGeometrySS, pGeometryFB, _geometryModule, "Geometry");
 
+    if ( !geometryFunc.getMTLFunction() ) {
+        setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Geometry (mesh) shader could not be compiled."));
+        return false;
+    }
     plDesc.meshFunction = geometryFunc.getMTLFunction();
     return true;
 }
@@ -2596,6 +2627,9 @@ void MVKGraphicsPipeline::addVertexInputToShaderConversionConfig(SPIRVToMSLConve
             si.shaderVar.vecsize = vertexFormatInfo[pVKVA->format].num_elements;
             si.shaderVar.normalized = vertexFormatInfo[pVKVA->format].normalized;
             si.shaderVar.binding = getDevice()->getMetalBufferIndexForVertexAttributeBinding(pVKVA->binding);
+            // Concrete component format for the manual vertex fetch. The signedness
+            // switch below may still refine it for unsigned attributes.
+            si.shaderVar.format = mvkMSLFormatForFormatType(getPixelFormats()->getFormatType(pVKVA->format));
         }
 
         si.binding = pVKVA->binding;
@@ -2692,6 +2726,9 @@ void MVKGraphicsPipeline::addPrevStageOutputToShaderConversionConfig(SPIRVToMSLC
 		sisv.component = so.component;
         sisv.builtin = so.builtin;
         sisv.vecsize = so.vecWidth;
+        // The GS-as-mesh payload struct is typed off sisv.type (SPIRType::BaseType);
+        // without this it stays Unknown(0) and SPIRV-Cross throws "Type not handled: 0".
+        sisv.type = so.baseType;
 		sisv.rate = so.perPatch ? MSL_SHADER_VARIABLE_RATE_PER_PATCH : MSL_SHADER_VARIABLE_RATE_PER_VERTEX;
 
         switch (getPixelFormats()->getFormatType(mvkFormatFromOutput(so) ) ) {
