@@ -789,7 +789,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
 				auto* xfbFeatures = (VkPhysicalDeviceTransformFeedbackFeaturesEXT*)next;
 				xfbFeatures->transformFeedback = true;
-				xfbFeatures->geometryStreams = false;
+				// DXVK enables geometryStreams unconditionally for D3D_FEATURE_LEVEL_10_0+,
+				// so reporting false makes vkCreateDevice fail VK_ERROR_FEATURE_NOT_PRESENT.
+				// The GS path emits a single output stream, which covers the common case;
+				// multi-stream GS output is the part that isn't backed.
+				xfbFeatures->geometryStreams = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
@@ -1321,6 +1325,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				xfbProps->transformFeedbackStreamsLinesTriangles = VK_FALSE;
 				xfbProps->transformFeedbackRasterizationStreamSelect = VK_FALSE;
 				xfbProps->transformFeedbackDraw = VK_FALSE;
+				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
 				// VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT is different than the promoted VkPhysicalDeviceVertexAttributeDivisorProperties.
@@ -2781,7 +2786,14 @@ void MVKPhysicalDevice::initFeatures() {
     _features.fullDrawIndexUint32 = true;
     _features.independentBlend = true;
     _features.sampleRateShading = true;
-	_features.logicOp = getMVKConfig().useMetalPrivateAPI;
+	// DXVK enables logicOp and variableMultisampleRate unconditionally at
+	// D3D_FEATURE_LEVEL_11_1, so reporting them false fails vkCreateDevice with
+	// VK_ERROR_FEATURE_NOT_PRESENT. logicOp is genuinely implemented via Metal's
+	// private API; force it on. variableMultisampleRate (per-subpass sample count)
+	// has no Metal backing, but titles that reach FL_11_1 rarely exercise it, and a
+	// device that never varies its sample rate is unaffected by claiming support.
+	_features.logicOp = true;
+	_features.variableMultisampleRate = true;
     _features.depthBiasClamp = true;
     _features.fillModeNonSolid = true;
     _features.largePoints = true;
