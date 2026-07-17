@@ -287,6 +287,9 @@ public:
 	/** Returns true if the tessellation control shader needs a buffer to store its per-patch output. */
 	bool needsTessCtlPatchOutputBuffer() const { return _stageResources[kMVKShaderStageTessCtl].implicitBuffers.needed.has(MVKImplicitBuffer::PatchOutput); }
 
+    /** Returns whether this pipeline has geometry shaders. */
+    bool isGeometryPipeline() { return _isGeometryPipeline; }
+
     /** Returns the current draw info buffer binding for the mesh shader. */
     uint32_t getDrawInfoBufferIndex() { return _meshDrawInfoBufferIndex; }
 
@@ -405,6 +408,12 @@ protected:
 	MVKShaderImplicitRezBinding _reservedVertexAttributeBufferCount;
 	VkPrimitiveTopology _vkPrimitiveTopology;
 	uint32_t _outputControlPointCount;
+
+	// Geometry shaders are run as Metal mesh pipelines: the vertex shader becomes the
+	// object stage and the geometry shader the mesh stage. The draw info buffer carries
+	// the draw parameters into the object stage, since mesh pipelines have no vertex fetch.
+	bool _isGeometryPipeline = false;
+	uint32_t _meshDrawInfoBufferIndex = 20;
 
 	MVKShaderModule* _vertexModule = nullptr;
 	MVKShaderModule* _tessCtlModule = nullptr;
