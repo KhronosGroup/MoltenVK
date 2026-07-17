@@ -2807,6 +2807,10 @@ void MVKPhysicalDevice::initFeatures() {
     _features.shaderUniformBufferArrayDynamicIndexing = true;
     _features.shaderStorageBufferArrayDynamicIndexing = true;
     _features.shaderClipDistance = true;
+	// DXVK requires shaderCullDistance (VK_TRUE) from FL_9_1 up, so false fails
+	// vkCreateDevice. Metal expresses cull distance through the same clip-distance
+	// mechanism MoltenVK already maps, so advertising it is backed in practice.
+	_features.shaderCullDistance = true;
     _features.shaderInt16 = true;
     _features.multiDrawIndirect = true;
     _features.inheritedQueries = true;
