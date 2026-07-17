@@ -1920,7 +1920,16 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 	shaderConfig.options.mslOptions.shader_index_buffer_index = implicit[MVKImplicitBuffer::Index];
 	shaderConfig.options.mslOptions.shader_output_buffer_index = implicit[MVKImplicitBuffer::Output];
 	shaderConfig.options.mslOptions.capture_output_to_buffer = true;
-	shaderConfig.options.mslOptions.vertex_for_tessellation = true;
+	// This compute-vertex stage is shared between tessellation and transform
+	// feedback. For XFB it must NOT claim vertex_for_tessellation, and SPIRV-Cross
+	// needs the input primitive type (else it throws "Primitive type not yet
+	// supported for transform feedback"). VkPrimitiveTopology and
+	// CompilerMSL::Options::PrimitiveType share values for the basic topologies.
+	bool xfb = isTransformFeedbackPipeline();
+	shaderConfig.options.mslOptions.vertex_for_tessellation = !xfb;
+	if (xfb && _vkPrimitiveTopology <= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN)
+		shaderConfig.options.mslOptions.xfb_primitive_type =
+			(CompilerMSL::Options::PrimitiveType)_vkPrimitiveTopology;
 	shaderConfig.options.mslOptions.disable_rasterization = true;
 	setEmulatedReversedDepthViewportConfig(shaderConfig, implicit, false);
     addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
