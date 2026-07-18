@@ -73,6 +73,8 @@ static id<MTLComputeCommandEncoder> encodeAccelerationStructureConversion(MVKCom
 	[mtlEncoder setBuffer:serializationBuffer offset:canonicalBuffer ? canonicalHandleOffset : dstOffset atIndex:8];
 	uint32_t emitSerialization = canonicalBuffer != nil;
 	cmdEncoder->setComputeBytes(mtlEncoder, &emitSerialization, sizeof(emitSerialization), 9);
+	// The shared kernel declares this argument even though transform conversion does not read it.
+	[mtlEncoder setBuffer:dstBuffer offset:dstOffset atIndex:6];
 	if (conversionType != kMVKAccelerationStructureConvertTransform) {
 		MVKUseResourceHelper resources;
 		auto* addressTable = cmdEncoder->getAccelerationStructureAddressTable(resources,
