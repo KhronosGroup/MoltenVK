@@ -19,6 +19,7 @@ MoltenVK 1.4.2
 Released TBD
 
 - Add support for the following extensions:
+  - `VK_EXT_sampler_filter_minmax` on Apple10 GPUs with macOS 26 or iOS 26
   - `VK_KHR_external_semaphore_fd`
 - Fix buffer and heap out-of-sync in `initExternalMemory()`.
 - Fix incorrect varable usage in `MVKImagePlane::getMTLTexture()`.

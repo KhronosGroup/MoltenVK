@@ -2442,6 +2442,31 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
 		mtlSampDesc.compareFunction = mvkMTLCompareFunctionFromVkCompareOp(pCreateInfo->compareOp);
 	}
 
+#if MVK_XCODE_26 && !MVK_TVOS && !MVK_VISIONOS
+	if (@available(macOS 26.0, iOS 26.0, *)) {
+		if (getPhysicalDevice()->getMTLDeviceCapabilities().supportsSamplerReduction) {
+			for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+				if (next->sType == VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO) {
+					const auto* reductionInfo =
+						(const VkSamplerReductionModeCreateInfo*)next;
+					switch (reductionInfo->reductionMode) {
+						case VK_SAMPLER_REDUCTION_MODE_MIN:
+							mtlSampDesc.reductionMode = MTLSamplerReductionModeMinimum;
+							break;
+						case VK_SAMPLER_REDUCTION_MODE_MAX:
+							mtlSampDesc.reductionMode = MTLSamplerReductionModeMaximum;
+							break;
+						default:
+							mtlSampDesc.reductionMode = MTLSamplerReductionModeWeightedAverage;
+							break;
+					}
+					break;
+				}
+			}
+		}
+	}
+#endif
+
 #if MVK_USE_METAL_PRIVATE_API
 	if (getMVKConfig().useMetalPrivateAPI) {
 		mtlSampDesc.forceSeamsOnCubemapFilteringMVK = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT);

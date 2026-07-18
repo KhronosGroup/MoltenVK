@@ -110,6 +110,9 @@ MVKMTLDeviceCapabilities::MVKMTLDeviceCapabilities(id<MTLDevice> mtlDev) {
 #if MVK_XCODE_26
 	supportsApple10 = supportsGPUFam(Apple10, mtlDev);
 #endif
+#if MVK_XCODE_26 && !MVK_TVOS && !MVK_VISIONOS
+	supportsSamplerReduction = supportsApple10 && mvkOSVersionIsAtLeast(26.0);
+#endif
 	supportsMac1 = MVK_MACOS;
 	supportsMac2 = supportsGPUFam(Mac2, mtlDev) || supportsGPUFam(MacCatalyst2, mtlDev);
 
@@ -878,8 +881,8 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps12.supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;	// Metal allows you to set the stencil resolve filter to either Sample0 or the same sample used for depth resolve. This is impossible to express in Vulkan.
 	supportedProps12.independentResolveNone = true;
 	supportedProps12.independentResolve = true;
-	supportedProps12.filterMinmaxSingleComponentFormats = false;
-	supportedProps12.filterMinmaxImageComponentMapping = false;
+	supportedProps12.filterMinmaxSingleComponentFormats = _gpuCapabilities.supportsSamplerReduction;
+	supportedProps12.filterMinmaxImageComponentMapping = _gpuCapabilities.supportsSamplerReduction;
 	supportedProps12.maxTimelineSemaphoreValueDifference = std::numeric_limits<uint64_t>::max();
 	supportedProps12.framebufferIntegerColorSampleCounts = _metalFeatures.supportedSampleCounts;
 
@@ -2829,7 +2832,7 @@ void MVKPhysicalDevice::initFeatures() {
 	_vulkan12NoExtFeatures.samplerMirrorClampToEdge = _metalFeatures.samplerMirrorClampToEdge;
 	_vulkan12NoExtFeatures.drawIndirectCount = false;
 	_vulkan12NoExtFeatures.descriptorIndexing = _metalFeatures.arrayOfTextures && _metalFeatures.arrayOfSamplers;
-	_vulkan12NoExtFeatures.samplerFilterMinmax = false;
+	_vulkan12NoExtFeatures.samplerFilterMinmax = _gpuCapabilities.supportsSamplerReduction;
 	_vulkan12NoExtFeatures.shaderOutputViewportIndex = _features.multiViewport;
 	_vulkan12NoExtFeatures.shaderOutputLayer = _metalFeatures.layeredRendering;
 	_vulkan12NoExtFeatures.subgroupBroadcastDynamicId = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
@@ -3551,6 +3554,9 @@ void MVKPhysicalDevice::initExtensions() {
 	}
 	if (!_metalFeatures.placementHeaps) {
 		pWritableExtns->vk_EXT_image_2d_view_of_3d.enabled = false;
+	}
+	if (!_gpuCapabilities.supportsSamplerReduction) {
+		pWritableExtns->vk_EXT_sampler_filter_minmax.enabled = false;
 	}
 
     // gpuAddress requires Tier2 argument buffer support (per feedback from Apple engineers).

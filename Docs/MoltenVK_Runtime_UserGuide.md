@@ -385,6 +385,8 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
   - *Requires a build of MoltenVK with `MVK_USE_METAL_PRIVATE_API` enabled.*
 - `VK_EXT_robustness2`
 - `VK_EXT_sample_locations`
+- `VK_EXT_sampler_filter_minmax`
+  - *Requires Apple GPU family 10 and macOS 26 or iOS 26.*
 - `VK_EXT_scalar_block_layout`
 - `VK_EXT_separate_stencil_usage`
 - `VK_EXT_shader_atomic_float`
