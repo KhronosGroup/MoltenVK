@@ -118,8 +118,8 @@ void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	// Check if pipeline barriers are available and we are in a renderpass.
 	if (mtlFeats.memoryBarriers && cmdEncoder->_mtlRenderEncoder) {
 		for (auto& b : _barriers) {
-			MTLRenderStages srcStages = mvkMTLRenderStagesFromVkPipelineStageFlags(b.srcStageMask, false);
-			MTLRenderStages dstStages = mvkMTLRenderStagesFromVkPipelineStageFlags(b.dstStageMask, true);
+			MTLRenderStages srcStages = mvkMTLRenderStagesFromVkPipelineStageFlagsWithMesh(b.srcStageMask, false, mtlFeats.meshShader);
+			MTLRenderStages dstStages = mvkMTLRenderStagesFromVkPipelineStageFlagsWithMesh(b.dstStageMask, true, mtlFeats.meshShader);
 			switch (b.type) {
 				case MVKPipelineBarrier::Memory: {
 					MTLBarrierScope scope = (mvkMTLBarrierScopeFromVkAccessFlags(b.srcAccessMask) |

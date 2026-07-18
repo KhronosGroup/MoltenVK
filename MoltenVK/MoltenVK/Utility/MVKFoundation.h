@@ -40,6 +40,12 @@
 /** Represents a non-existent index. */
 static const int kMVKIndexNone = -1;
 
+/** Maximum mesh workgroup count supported by the mesh capture/replay path. */
+static constexpr uint32_t kMVKMeshEmulationMaxWorkgroupCount = 1u << 22;
+
+/** Maximum draw count supported by CPU-expanded multi-draw commands. */
+static constexpr uint32_t kMVKMaxDrawIndirectCount = 65535;
+
 /** A type definition for 16-bit half-float values. */
 typedef uint16_t MVKHalfFloat;
 
@@ -102,6 +108,7 @@ typedef enum : uint8_t {
     kMVKCommandUseResetQueryPool,               /**< vkCmdResetQueryPool. */
     kMVKCommandUseDispatch,                     /**< vkCmdDispatch. */
     kMVKCommandUseTessellationVertexTessCtl,    /**< vkCmdDraw* - vertex and tessellation control stages. */
+	kMVKCommandUseMeshShaderCapture,             /**< vkCmdDrawMeshTasksEXT - mesh capture stage. */
 	kMVKCommandUseDrawIndirectConvertBuffers,   /**< vkCmdDrawIndirect* convert indirect buffers. */
 	kMVKCommandUseCopyQueryPoolResults,         /**< vkCmdCopyQueryPoolResults. */
 	kMVKCommandUseAccumOcclusionQuery,          /**< Any command terminating a Metal render pass with active visibility buffer. */

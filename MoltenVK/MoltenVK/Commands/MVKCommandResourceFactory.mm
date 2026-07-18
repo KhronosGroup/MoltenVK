@@ -580,7 +580,7 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdResolveColorImageMT
 }
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed,
-																																	   MVKVulkanAPIDeviceObject* owner) {
+																												   MVKVulkanAPIDeviceObject* owner) {
 	return newMTLComputePipelineState(indexed
 																	  ? "cmdDrawIndexedIndirectConvertBuffers"
 																	  : "cmdDrawIndirectConvertBuffers", owner);
@@ -595,6 +595,10 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectCountCo
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectCopyZeroDivisorVertexBuffersMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
 	return newMTLComputePipelineState("cmdDrawIndirectCopyZeroDivisorVertexBuffers", owner);
+}
+
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawMeshTasksIndirectPrepareMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("cmdDrawMeshTasksIndirectPrepare", owner);
 }
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectPopulateIndexesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
@@ -631,6 +635,10 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newConvertUint8IndicesMTL
 	}
 #endif
 	return newMTLComputePipelineState("convertUint8Indices", owner);
+}
+
+id<MTLFunction> MVKCommandResourceFactory::newNoopFragmentFunction() {
+	return newFunctionNamed("noopFragment");
 }
 
 

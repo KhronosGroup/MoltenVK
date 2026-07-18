@@ -71,7 +71,8 @@ static uint32_t getWorkgroupDimensionSize(const SPIRVWorkgroupSizeDimension& wgD
 
 MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpecializationInfo,
 												VkPipelineCreationFeedback* pShaderFeedback,
-												MVKShaderModule* shaderModule) {
+												MVKShaderModule* shaderModule,
+												const char* pFunctionNameSuffix) {
 
 	if ( !_mtlLibrary ) { return MVKMTLFunctionNull; }
 
@@ -112,7 +113,9 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 
 	@synchronized (getMTLDevice()) {
 		@autoreleasepool {
-			NSString* mtlFuncName = @(_shaderConversionResultInfo.entryPoint.mtlFunctionName.c_str());
+			string functionName = _shaderConversionResultInfo.entryPoint.mtlFunctionName;
+			if (pFunctionNameSuffix) { functionName += pFunctionNameSuffix; }
+			NSString* mtlFuncName = @(functionName.c_str());
 
 			uint64_t startTime = pShaderFeedback ? mvkGetTimestamp() : getPerformanceTimestamp();
 			id<MTLFunction> mtlFunc = [[lib newFunctionWithName: mtlFuncName] autorelease];
@@ -330,7 +333,7 @@ MVKShaderLibrary* MVKShaderLibraryCache::getShaderLibrary(SPIRVToMSLConversionCo
 			if (pShaderFeedback) {
 				pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime);
 			}
-			wasAdded = true;
+			wasAdded = shLib != nullptr;
 		}
 	}
 
@@ -359,17 +362,25 @@ MVKShaderLibrary* MVKShaderLibraryCache::findShaderLibrary(SPIRVToMSLConversionC
 
 // Adds and returns a new shader library configured from the specified conversion configuration.
 MVKShaderLibrary* MVKShaderLibraryCache::addShaderLibrary(const SPIRVToMSLConversionConfiguration* pShaderConfig,
-														  const SPIRVToMSLConversionResult& conversionResult) {
+													  const SPIRVToMSLConversionResult& conversionResult) {
 	MVKShaderLibrary* shLib = new MVKShaderLibrary(_owner, conversionResult);
+	if (!shLib->_mtlLibrary) {
+		shLib->destroy();
+		return nullptr;
+	}
 	_shaderLibraries.emplace_back(*pShaderConfig, shLib);
 	return shLib;
 }
 
 // Adds and returns a new shader library configured from contents read from a pipeline cache.
 MVKShaderLibrary* MVKShaderLibraryCache::addShaderLibrary(const SPIRVToMSLConversionConfiguration* pShaderConfig,
-														  const SPIRVToMSLConversionResultInfo& resultInfo,
-														  const MVKCompressor<std::string> compressedMSL) {
+								  const SPIRVToMSLConversionResultInfo& resultInfo,
+								  const MVKCompressor<std::string> compressedMSL) {
 	MVKShaderLibrary* shLib = new MVKShaderLibrary(_owner, resultInfo, compressedMSL);
+	if (!shLib->_mtlLibrary) {
+		shLib->destroy();
+		return nullptr;
+	}
 	_shaderLibraries.emplace_back(*pShaderConfig, shLib);
 	return shLib;
 }
@@ -378,9 +389,15 @@ MVKShaderLibrary* MVKShaderLibraryCache::addShaderLibrary(const SPIRVToMSLConver
 void MVKShaderLibraryCache::merge(MVKShaderLibraryCache* other) {
 	if ( !other ) { return; }
 	for (auto& otherPair : other->_shaderLibraries) {
+		if (!otherPair.second || !otherPair.second->_mtlLibrary) { continue; }
 		if ( !findShaderLibrary(&otherPair.first) ) {
-			_shaderLibraries.emplace_back(otherPair.first, new MVKShaderLibrary(*otherPair.second));
-			_shaderLibraries.back().second->_owner = _owner;
+			MVKShaderLibrary* shLib = new MVKShaderLibrary(*otherPair.second);
+			shLib->_owner = _owner;
+			if (!shLib->_mtlLibrary) {
+				shLib->destroy();
+				continue;
+			}
+			_shaderLibraries.emplace_back(otherPair.first, shLib);
 		}
 	}
 }
@@ -396,13 +413,16 @@ MVKShaderLibraryCache::~MVKShaderLibraryCache() {
 MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration* pShaderConfig,
 											   const VkSpecializationInfo* pSpecializationInfo,
 											   MVKPipeline* pipeline,
-											   VkPipelineCreationFeedback* pShaderFeedback) {
+											   VkPipelineCreationFeedback* pShaderFeedback,
+											   const char* pFunctionNameSuffix,
+											   bool reportApplicationCacheHit) {
 	MVKShaderLibrary* mvkLib = _directMSLLibrary;
 	if ( !mvkLib ) {
 		uint64_t startTime = pShaderFeedback ? mvkGetTimestamp() : getPerformanceTimestamp();
 		MVKPipelineCache* pipelineCache = pipeline->getPipelineCache();
 		if (pipelineCache) {
-			mvkLib = pipelineCache->getShaderLibrary(pShaderConfig, this, pipeline, pShaderFeedback, startTime);
+			mvkLib = pipelineCache->getShaderLibrary(pShaderConfig, this, pipeline, pShaderFeedback, startTime,
+													 reportApplicationCacheHit);
 		} else {
 			lock_guard<mutex> lock(_accessLock);
 			mvkLib = _shaderLibraryCache.getShaderLibrary(pShaderConfig, this, pipeline, nullptr, pShaderFeedback, startTime);
@@ -412,7 +432,7 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration
 		pShaderConfig->markAllInterfaceVarsAndResourcesUsed();
 	}
 
-	return mvkLib ? mvkLib->getMTLFunction(pSpecializationInfo, pShaderFeedback, this) : MVKMTLFunctionNull;
+	return mvkLib ? mvkLib->getMTLFunction(pSpecializationInfo, pShaderFeedback, this, pFunctionNameSuffix) : MVKMTLFunctionNull;
 }
 
 bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
@@ -436,7 +456,9 @@ bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
 			case spv::ExecutionModelFragment:               type = "-fs"; break;
 			case spv::ExecutionModelGeometry:               type = "-gs"; break;
 			case spv::ExecutionModelTaskNV:                 type = "-ts"; break;
+			case spv::ExecutionModelTaskEXT:                type = "-ts"; break;
 			case spv::ExecutionModelMeshNV:                 type = "-ms"; break;
+			case spv::ExecutionModelMeshEXT:                type = "-ms"; break;
 			case spv::ExecutionModelGLCompute:              type = "-cs"; break;
 			default:                                        type = "";    break;
 		}
@@ -741,4 +763,3 @@ bool MVKFunctionSpecializer::compileComplete(id<MTLFunction> mtlFunction, NSErro
 MVKFunctionSpecializer::~MVKFunctionSpecializer() {
 	[_mtlFunction release];
 }
-

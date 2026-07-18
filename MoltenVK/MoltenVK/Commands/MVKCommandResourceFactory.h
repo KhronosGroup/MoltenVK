@@ -359,7 +359,7 @@ public:
 
 	/** Returns a new MTLComputePipelineState for converting the contents of an indirect buffer. */
 	id<MTLComputePipelineState> newCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed,
-																																	   MVKVulkanAPIDeviceObject* owner);
+																						MVKVulkanAPIDeviceObject* owner);
 
 	/** Returns a new MTLComputePipelineState for emulating indirect draw count. */
 	id<MTLComputePipelineState> newCmdDrawIndirectCountConvertBuffersMTLComputePipelineState(bool indexed,
@@ -367,6 +367,9 @@ public:
 
 	/** Returns a new MTLComputePipelineState for copying zero-divisor vertex data for an indirect draw. */
 	id<MTLComputePipelineState> newCmdDrawIndirectCopyZeroDivisorVertexBuffersMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+
+	/** Returns a new MTLComputePipelineState for preparing bounded taskless mesh indirect schedules. */
+	id<MTLComputePipelineState> newCmdDrawMeshTasksIndirectPrepareMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 
 	/** Returns a new MTLComputePipelineState for converting an indirect buffer for use in a tessellated draw. */
 	id<MTLComputePipelineState> newCmdDrawIndirectTessConvertBuffersMTLComputePipelineState(bool indexed,
@@ -384,6 +387,8 @@ public:
 
 	/** Returns a new MTLComputePipelineState for converting a Uint8 index buffer to Uint16. */
 	id<MTLComputePipelineState> newConvertUint8IndicesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+
+	id<MTLFunction> newNoopFragmentFunction();
 
 
 #pragma mark Construction

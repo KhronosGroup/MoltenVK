@@ -167,10 +167,12 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 		}
 	}
 
-    if(_device->shouldPrefillMTLCommandBuffers() && !(_isSecondary || _supportsConcurrentExecution)) {
+	auto prefillStyle = getMVKConfig().prefillMetalCommandBuffers;
+	bool canPrefill = prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_DEFERRED_ENCODING ||
+					  !getEnabledMeshShaderFeatures().meshShader;
+	if(_device->shouldPrefillMTLCommandBuffers() && canPrefill && !(_isSecondary || _supportsConcurrentExecution)) {
 		@autoreleasepool {
 			_prefilledMTLCmdBuffer = [_commandPool->getMTLCommandBuffer(kMVKCommandUseBeginCommandBuffer, 0) retain];    // retained
-			auto prefillStyle = getMVKConfig().prefillMetalCommandBuffers;
 			if (prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING ||
 				prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING_NO_AUTORELEASE ) {
 				_immediateCmdEncodingContext = new MVKCommandEncodingContext;
@@ -242,6 +244,9 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	_commandCount = 0;
 	_currentSubpassInfo = {};
 	_needsVisibilityResultMTLBuffer = false;
+	_currentRenderPassCommand = nullptr;
+	_memorylessBackingRenderPasses.clear();
+	_needsInheritedMemorylessAttachmentBacking = false;
 	_hasStageCounterTimestampCommand = false;
 	_lastTessellationPipeline = nullptr;
 	setConfigurationResult(VK_NOT_READY);
@@ -382,12 +387,35 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 	reset(0);
 }
 
-// Promote the initial visibility buffer and indication of timestamp use from the secondary buffers.
+// Promote state that must be known before encoding the primary render pass.
 void MVKCommandBuffer::recordExecuteCommands(MVKArrayRef<MVKCommandBuffer*const> secondaryCommandBuffers) {
 	for (MVKCommandBuffer* cmdBuff : secondaryCommandBuffers) {
 		if (cmdBuff->_needsVisibilityResultMTLBuffer) { _needsVisibilityResultMTLBuffer = true; }
 		if (cmdBuff->_hasStageCounterTimestampCommand) { _hasStageCounterTimestampCommand = true; }
+		if (cmdBuff->_needsInheritedMemorylessAttachmentBacking) { recordMeshDraw(); }
 	}
+}
+
+void MVKCommandBuffer::recordBeginRenderPass(MVKCommand* passCmd) {
+	_currentRenderPassCommand = passCmd;
+}
+
+void MVKCommandBuffer::recordEndRenderPass() {
+	_currentRenderPassCommand = nullptr;
+}
+
+void MVKCommandBuffer::recordMeshDraw() {
+	if (_currentRenderPassCommand) {
+		if ( !mvkContains(_memorylessBackingRenderPasses, _currentRenderPassCommand) ) {
+			_memorylessBackingRenderPasses.push_back(_currentRenderPassCommand);
+		}
+	} else if (_doesContinueRenderPass) {
+		_needsInheritedMemorylessAttachmentBacking = true;
+	}
+}
+
+bool MVKCommandBuffer::needsMemorylessAttachmentBacking(MVKCommand* passCmd) {
+	return mvkContains(_memorylessBackingRenderPasses, passCmd);
 }
 
 // Track whether a stage-based timestamp command has been added, so we know
@@ -548,6 +576,7 @@ void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
 									mvkVkExtent2DsAreEqual(_renderArea.extent, getFramebufferExtent()));
 	_clearValues.assign(clearValues.begin(), clearValues.end());
 	_attachments.assign(attachments.begin(), attachments.end());
+	_isUsingMemorylessAttachmentBacking = _cmdBuffer->needsMemorylessAttachmentBacking(passCmd);
 
 	setSubpass(passCmd, subpassContents, 0, cmdUse);
 }
@@ -638,6 +667,7 @@ static MVKBarrierStage commandUseToBarrierStage(MVKCommandUse use) {
 	case kMVKCommandUseResetQueryPool:               return kMVKBarrierStageCopy; /**< vkCmdResetQueryPool. */
 	case kMVKCommandUseDispatch:                     return kMVKBarrierStageCompute; /**< vkCmdDispatch. */
 	case kMVKCommandUseTessellationVertexTessCtl:    return kMVKBarrierStageVertex; /**< vkCmdDraw* - vertex and tessellation control stages. */
+	case kMVKCommandUseMeshShaderCapture:            return kMVKBarrierStageVertex; /**< vkCmdDrawMeshTasksEXT - mesh capture stage. */
 	case kMVKCommandUseDrawIndirectConvertBuffers:   return kMVKBarrierStageVertex; /**< vkCmdDrawIndirect* convert indirect buffers. */
 	case kMVKCommandUseCopyQueryPoolResults:         return kMVKBarrierStageCopy; /**< vkCmdCopyQueryPoolResults. */
 	case kMVKCommandUseAccumOcclusionQuery:          return kMVKBarrierStageNone; /**< Any command terminating a Metal render pass with active visibility buffer. */
@@ -725,7 +755,9 @@ void MVKCommandEncoder::setBarrier(uint64_t sourceStageMask, uint64_t destStageM
 void MVKCommandEncoder::encodeBarrierWaits(MVKCommandUse use) {
 	if (_mtlRenderEncoder) {
 		[_mtlRenderEncoder insertDebugSignpost:@"Encoding waits"];
-		barrierWait(kMVKBarrierStageVertex, _mtlRenderEncoder, MTLRenderStageVertex);
+		MTLRenderStages preRasterStages = MTLRenderStageVertex;
+		if (getMetalFeatures().meshShader) { preRasterStages |= MTLRenderStageObject | MTLRenderStageMesh; }
+		barrierWait(kMVKBarrierStageVertex, _mtlRenderEncoder, preRasterStages);
 		barrierWait(kMVKBarrierStageFragment, _mtlRenderEncoder, MTLRenderStageFragment);
 	}
 	if (_mtlComputeEncoder) {
@@ -744,7 +776,9 @@ void MVKCommandEncoder::encodeBarrierWaits(MVKCommandUse use) {
 
 void MVKCommandEncoder::encodeBarrierUpdates() {
 	if (_mtlRenderEncoder) {
-		barrierUpdate(kMVKBarrierStageVertex, _mtlRenderEncoder, MTLRenderStageVertex);
+		MTLRenderStages preRasterStages = MTLRenderStageVertex;
+		if (getMetalFeatures().meshShader) { preRasterStages |= MTLRenderStageObject | MTLRenderStageMesh; }
+		barrierUpdate(kMVKBarrierStageVertex, _mtlRenderEncoder, preRasterStages);
 		barrierUpdate(kMVKBarrierStageFragment, _mtlRenderEncoder, MTLRenderStageFragment);
 	}
 
@@ -778,6 +812,26 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 												  _clearValues.contents(),
 												  _isRenderingEntireAttachment,
 												  isRestart);
+	if (_isUsingMemorylessAttachmentBacking) {
+		bool preserveContents = isRestart || mvkIsAnyFlagEnabled(_pEncodingContext->getRenderingFlags(), VK_RENDERING_RESUMING_BIT);
+		auto backAttachment = [&](MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
+			id<MTLTexture> mtlTexture = mtlAttDesc.texture;
+			if (mtlTexture.storageMode != MTLStorageModeMemoryless) { return; }
+			id<MTLTexture> backing = getMemorylessAttachmentTexture(mtlTexture);
+			if (backing == mtlTexture) { return; }
+			mtlAttDesc.texture = backing;
+			if (preserveContents) { mtlAttDesc.loadAction = MTLLoadActionLoad; }
+		};
+		for (uint32_t caIdx = 0; caIdx < 8; caIdx++) {
+			auto* mtlColorAttDesc = mtlRPDesc.colorAttachments[caIdx];
+			backAttachment(mtlColorAttDesc);
+			mtlColorAttDesc.resolveTexture = getMemorylessAttachmentTexture(mtlColorAttDesc.resolveTexture);
+		}
+		backAttachment(mtlRPDesc.depthAttachment);
+		backAttachment(mtlRPDesc.stencilAttachment);
+		mtlRPDesc.depthAttachment.resolveTexture = getMemorylessAttachmentTexture(mtlRPDesc.depthAttachment.resolveTexture);
+		mtlRPDesc.stencilAttachment.resolveTexture = getMemorylessAttachmentTexture(mtlRPDesc.stencilAttachment.resolveTexture);
+	}
 	if (_cmdBuffer->_needsVisibilityResultMTLBuffer) {
 		if (!_pEncodingContext->visibilityResultBuffer.buffer()) {
 			_pEncodingContext->visibilityResultBuffer = _device->getVisibilityBuffer();
@@ -890,6 +944,45 @@ uint32_t MVKCommandEncoder::getFramebufferLayerCount() {
 	return mvkFB ? mvkFB->getLayerCount() : 0;
 }
 
+id<MTLTexture> MVKCommandEncoder::getMemorylessAttachmentTexture(id<MTLTexture> mtlTexture) {
+	if (!_isUsingMemorylessAttachmentBacking || !mtlTexture || mtlTexture.storageMode != MTLStorageModeMemoryless) {
+		return mtlTexture;
+	}
+	for (auto& backing : _memorylessAttachmentBackings) {
+		if (backing.first == mtlTexture) { return backing.second; }
+	}
+
+	MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor new];
+	mtlTexDesc.textureType = mtlTexture.textureType;
+	mtlTexDesc.pixelFormat = mtlTexture.pixelFormat;
+	mtlTexDesc.width = mtlTexture.width;
+	mtlTexDesc.height = mtlTexture.height;
+	mtlTexDesc.depth = mtlTexture.depth;
+	mtlTexDesc.mipmapLevelCount = mtlTexture.mipmapLevelCount;
+	mtlTexDesc.sampleCount = mtlTexture.sampleCount;
+	mtlTexDesc.arrayLength = mtlTexture.arrayLength;
+	mtlTexDesc.usage = mtlTexture.usage | MTLTextureUsageShaderRead;
+	mtlTexDesc.storageMode = MTLStorageModePrivate;
+	id<MTLTexture> backing = [getMTLDevice() newTextureWithDescriptor:mtlTexDesc];
+	[mtlTexDesc release];
+	if (!backing) {
+		reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate private backing for a memoryless mesh render-pass attachment.");
+		return mtlTexture;
+	}
+
+	backing.label = mtlTexture.label;
+	getDevice()->makeResident(backing);
+	getDevice()->getLiveResources().add(backing);
+	auto* device = getDevice();
+	[_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) {
+		device->removeResidency(backing);
+		device->getLiveResources().remove(backing);
+		[backing release];
+	}];
+	_memorylessAttachmentBackings.push_back({mtlTexture, backing});
+	return backing;
+}
+
 void MVKCommandEncoder::bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline) {
     switch (pipelineBindPoint) {
         case VK_PIPELINE_BIND_POINT_GRAPHICS:
@@ -971,6 +1064,13 @@ void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
 	}
 }
 
+id<MTLComputeCommandEncoder> MVKCommandEncoder::finalizeMeshCaptureState() {
+	encodeStoreActions(true);
+	id<MTLComputeCommandEncoder> mtlEncoder = getMTLComputeEncoder(kMVKCommandUseMeshShaderCapture);
+	getState().prepareMeshCapture(mtlEncoder, *this);
+	return mtlEncoder;
+}
+
 // Clears the render area of the framebuffer attachments.
 void MVKCommandEncoder::clearRenderArea(MVKCommandUse cmdUse) {
 
@@ -1040,6 +1140,7 @@ void MVKCommandEncoder::endRenderpass() {
 		_pEncodingContext->setRenderingContext(nullptr, nullptr);
 	}
 	_attachments.clear();
+	_isUsingMemorylessAttachmentBacking = false;
 	_renderSubpassIndex = 0;
 }
 
@@ -1355,6 +1456,7 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer, MVKPrefillMeta
 	_pEncodingContext = nullptr;
 	_stageCountersMTLFence = nil;
 	_flushCount = 0;
+	_isUsingMemorylessAttachmentBacking = false;
 }
 
 MVKCommandEncoder::~MVKCommandEncoder() {
@@ -1411,6 +1513,7 @@ NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse) {
         case kMVKCommandUseClearColorImage:                 return @"vkCmdClearColorImage ComputeEncoder";
         case kMVKCommandUseResolveSubpassAttachment:        return @"Resolve Subpass Attachment ComputeEncoder";
         case kMVKCommandUseTessellationVertexTessCtl:       return @"vkCmdDraw (vertex and tess control stages) ComputeEncoder";
+		case kMVKCommandUseMeshShaderCapture:              return @"vkCmdDrawMeshTasksEXT (mesh capture stage) ComputeEncoder";
         case kMVKCommandUseDrawIndirectConvertBuffers:      return @"vkCmdDraw (convert indirect buffers) ComputeEncoder";
         case kMVKCommandUseCopyQueryPoolResults:            return @"vkCmdCopyQueryPoolResults ComputeEncoder";
         case kMVKCommandUseAccumOcclusionQuery:             return @"Post-render-pass occlusion query accumulation ComputeEncoder";

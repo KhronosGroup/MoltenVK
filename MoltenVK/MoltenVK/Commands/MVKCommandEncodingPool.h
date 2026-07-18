@@ -127,6 +127,9 @@ public:
 	/** Returns a MTLComputePipelineState for copying zero-divisor vertex data for an indirect draw. */
 	id<MTLComputePipelineState> getCmdDrawIndirectCopyZeroDivisorVertexBuffersMTLComputePipelineState();
 
+	/** Returns a MTLComputePipelineState for preparing bounded taskless mesh indirect schedules. */
+	id<MTLComputePipelineState> getCmdDrawMeshTasksIndirectPrepareMTLComputePipelineState();
+
 	/** Returns a MTLComputePipelineState for converting an indirect buffer for use in a tessellated draw. */
 	id<MTLComputePipelineState> getCmdDrawIndirectTessConvertBuffersMTLComputePipelineState(bool indexed);
 
@@ -179,6 +182,7 @@ protected:
 	id<MTLComputePipelineState> _mtlDrawIndirectConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndirectCountConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndirectCopyZeroDivisorVertexBuffersComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlDrawMeshTasksIndirectPrepareComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlDrawIndirectTessConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndexedCopyIndexBufferComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlCopyQueryPoolResultsComputePipelineState = nil;

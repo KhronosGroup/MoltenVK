@@ -31,6 +31,8 @@ Released 2026-07-20
   - `VK_EXT_sampler_filter_minmax` on Apple10 GPUs with macOS 26 or iOS 26
 - Add gl_DrawID / DrawIndex support for MacOS.
 - Add native sampler min/max filtering.
+  - `VK_KHR_external_semaphore_fd`
+  - `VK_EXT_mesh_shader`, with taskless mesh shaders on supported Metal GPUs. Indirect-count draws remain unavailable while `drawIndirectCount` is unsupported.
 - Fix buffer and heap out-of-sync in `initExternalMemory()`.
 - Fix incorrect varable usage in `MVKImagePlane::getMTLTexture()`.
 - Fix incorrect placement heap check in `MVKImagePlane::getMTLTexture()`.
@@ -68,6 +70,7 @@ Released 2026-07-20
 - Update to latest SPIRV-Cross:
   - MSL: add `gl_DrawID` (DrawIndex) support for macOS.
   - MSL: Add reversed depth viewport emulation.
+  - MSL: Add native and capture/replay translation paths for mesh shaders.
   - MSL: Fix `subgroupBallotExclusiveBitCount()` is not available for task shader and mesh shader.
   - MSL: `thread_execution_width` is deprecated as of Metal 3.0 , use `threads_per_simdgroup` instead.
   - MSL: Add `msl3.0` variant for subgroup builtin.
@@ -2834,4 +2837,3 @@ MoltenVK 1.0.0
 Released 2018/02/26
 
 Initial open-source release!
-

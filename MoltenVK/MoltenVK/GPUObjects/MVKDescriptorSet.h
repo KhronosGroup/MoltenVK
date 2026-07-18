@@ -59,24 +59,27 @@ struct MVKShaderStageResourceBinding {
 
 /** Indicates the Metal resource indexes used by each shader stage in a descriptor. */
 struct MVKShaderResourceBinding {
-	MVKShaderStageResourceBinding stages[kMVKShaderStageCount];
+	MVKShaderStageResourceBinding stages[kMVKShaderStageInternalCount];
 
 	MVKShaderResourceBinding operator+(const MVKShaderResourceBinding& rhs) const { auto tmp = *this; tmp += rhs; return tmp; }
 	MVKShaderResourceBinding& operator+=(const MVKShaderResourceBinding& rhs) {
-		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
+		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageInternalCount; i++) {
+			if (!mvkIsValidShaderStage(static_cast<MVKShaderStage>(i))) { continue; }
 			this->stages[i] += rhs.stages[i];
 		}
 		return *this;
 	}
 
 	void clearArgumentBufferResources() {
-		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
+		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageInternalCount; i++) {
+			if (!mvkIsValidShaderStage(static_cast<MVKShaderStage>(i))) { continue; }
 			stages[i].clearArgumentBufferResources();
 		}
 	}
 
 	void addArgumentBuffers(uint32_t count) {
-		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
+		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageInternalCount; i++) {
+			if (!mvkIsValidShaderStage(static_cast<MVKShaderStage>(i))) { continue; }
 			stages[i].bufferIndex += count;
 		}
 	}

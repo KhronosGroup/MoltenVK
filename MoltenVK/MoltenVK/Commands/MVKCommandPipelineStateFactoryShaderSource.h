@@ -309,6 +309,56 @@ kernel void cmdDrawIndirectCountConvertBuffers(const device char* srcBuff [[buff
 	}
 }
 
+struct VkDrawMeshTasksIndirectCommandEXT {
+	uint32_t groupCountX;
+	uint32_t groupCountY;
+	uint32_t groupCountZ;
+};
+
+kernel void cmdDrawMeshTasksIndirectPrepare(const device VkDrawMeshTasksIndirectCommandEXT& src [[buffer(0)]],
+											device char* schedules [[buffer(1)]],
+											constant uint32_t& packedBatchCapacity [[buffer(2)]],
+											constant uint32_t& scheduleCount [[buffer(3)]],
+											constant uint32_t& scheduleStride [[buffer(4)]],
+											constant uint32_t& batchWidth [[buffer(5)]],
+											constant uint32_t& activeDrawCount [[buffer(6)]],
+											constant uint32_t& drawIndex [[buffer(7)]],
+											uint32_t scheduleIndex [[thread_position_in_grid]]) {
+	if (scheduleIndex >= scheduleCount) { return; }
+	device char* schedule = schedules + scheduleIndex * scheduleStride;
+	device uint4& logicalDispatch = *reinterpret_cast<device uint4*>(schedule);
+	device auto& physicalDispatch =
+		*reinterpret_cast<device MTLDispatchThreadgroupsIndirectArguments*>(schedule + sizeof(uint4));
+	uint32_t batchCapacity = packedBatchCapacity & 0x7fffffffu;
+	ulong total = drawIndex < activeDrawCount ?
+		ulong(src.groupCountX) * ulong(src.groupCountY) * ulong(src.groupCountZ) : 0ul;
+	ulong fullBatchCount = total / ulong(batchCapacity);
+	ulong fullBatchBase = fullBatchCount * ulong(batchCapacity);
+	ulong remainder = total - fullBatchBase;
+	ulong batchBase = total;
+	uint2 batchGrid = uint2(0u);
+	if (ulong(scheduleIndex) < fullBatchCount) {
+		batchBase = ulong(scheduleIndex) * ulong(batchCapacity);
+		batchGrid = uint2(batchWidth, batchCapacity / batchWidth);
+	} else if (ulong(scheduleIndex) == fullBatchCount && remainder) {
+		uint32_t rows = uint32_t(remainder / ulong(batchWidth));
+		batchBase = fullBatchBase;
+		batchGrid = rows ? uint2(batchWidth, rows) : uint2(uint32_t(remainder), 1u);
+	} else if (ulong(scheduleIndex) == fullBatchCount + 1u && remainder >= batchWidth) {
+		uint32_t rows = uint32_t(remainder / ulong(batchWidth));
+		uint32_t tail = uint32_t(remainder % ulong(batchWidth));
+		if (tail) {
+			batchBase = fullBatchBase + ulong(rows) * ulong(batchWidth);
+			batchGrid = uint2(tail, 1u);
+		}
+	}
+	logicalDispatch = uint4(src.groupCountX, src.groupCountY, src.groupCountZ,
+							uint32_t(batchBase) | (packedBatchCapacity & 0x80000000u));
+	physicalDispatch.threadgroupsPerGrid[0] = batchGrid.x;
+	physicalDispatch.threadgroupsPerGrid[1] = batchGrid.y;
+	physicalDispatch.threadgroupsPerGrid[2] = 1u;
+}
+
 kernel void cmdDrawIndexedIndirectConvertBuffers(const device char* srcBuff [[buffer(0)]],
                                                  device MTLDrawIndexedPrimitivesIndirectArguments* destBuff [[buffer(1)]],
                                                  constant uint32_t& srcStride [[buffer(2)]],
@@ -547,4 +597,6 @@ kernel void convertUint8IndicesRaw(device uint8_t* src [[ buffer(0) ]],
 	uint8_t idx = src[pos];
 	dst[pos] = idx;
 }
+
+fragment void noopFragment() {}
 )";

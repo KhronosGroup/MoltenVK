@@ -368,6 +368,8 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_load_store_op_none`
 - `VK_EXT_memory_budget`
   - *Requires Metal 2.0.*
+- `VK_EXT_mesh_shader`
+  - *Requires native Metal mesh-shader support. MoltenVK currently exposes taskless mesh shaders only.*
 - `VK_EXT_metal_objects`
 - `VK_EXT_metal_surface`
 - `VK_EXT_non_seamless_cube_map`
@@ -686,6 +688,10 @@ This section documents the known limitations in this version of **MoltenVK**.
   host-visible memory mapping. Loading via a staging buffer will result in malformed image content.
 
 - Pipeline statistics query pool using `VK_QUERY_TYPE_PIPELINE_STATISTICS` is not supported.
+
+- `vkCmdDrawMeshTasksIndirectCountEXT()` cannot be used because the `drawIndirectCount` feature is not supported.
+
+- Render passes containing taskless mesh draws use private backing for memoryless attachments so capture/replay or GPU schedule preparation can preserve their contents. Ordinary render passes retain native memoryless storage.
 
 - Application-controlled memory allocations using `VkAllocationCallbacks` are ignored.
 

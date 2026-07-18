@@ -54,6 +54,7 @@ const char* mvkVkCommandName(MVKCommandUse cmdUse) {
 		case kMVKCommandUseResetQueryPool:               return "vkCmdResetQueryPool";
 		case kMVKCommandUseDispatch:                     return "vkCmdDispatch";
 		case kMVKCommandUseTessellationVertexTessCtl:    return "vkCmdDraw (vertex and tess control stages)";
+		case kMVKCommandUseMeshShaderCapture:            return "vkCmdDrawMeshTasksEXT (mesh capture stage)";
 		case kMVKCommandUseDrawIndirectConvertBuffers:   return "vkCmdDrawIndirect (convert indirect buffers)";
 		case kMVKCommandUseCopyQueryPoolResults:         return "vkCmdCopyQueryPoolResults";
 		case kMVKCommandUseAccumOcclusionQuery:          return "Post-render-pass occlusion query accumulation";
@@ -156,4 +157,3 @@ void mvkFlipVertically(void* rowMajorData, uint32_t rowCount, size_t bytesPerRow
 		memcpy(lowerRow, tmpRow, bytesPerRow);
 	}
 }
-

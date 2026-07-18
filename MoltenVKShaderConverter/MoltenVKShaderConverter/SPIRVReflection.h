@@ -53,6 +53,13 @@ namespace mvk {
 		uint32_t numControlPoints = 0;
 	};
 
+	/** Reflection data used to choose between native and emulated taskless mesh execution. */
+	struct SPIRVMeshReflectionData {
+		uint32_t maxOutputVertices = 0;
+		uint32_t maxOutputPrimitives = 0;
+		bool usesWorkgroupVariables = false;
+	};
+
 #pragma mark -
 #pragma mark SPIRVShaderInterfaceVariable
 
@@ -83,11 +90,14 @@ namespace mvk {
 		/** If this is a builtin, the kind of builtin this is. */
 		spv::BuiltIn builtin;
 
-		/** Whether this is a per-patch or per-vertex variable. Only meaningful for tessellation shaders. */
+		/** whether this is a per-patch variable. */
 		bool perPatch;
 
 		/** Whether this variable is actually used (read or written) by the shader. */
 		bool isUsed;
+
+		/** whether this is a per-primitive variable. */
+		bool perPrimitive;
 	};
 	typedef SPIRVShaderInterfaceVariable SPIRVShaderOutput;
 
@@ -191,6 +201,88 @@ namespace mvk {
 #endif
 	}
 
+	template<typename Vs>
+	static inline bool getMeshOutputTopology(const Vs& mesh, const std::string& entryName,
+											spv::ExecutionMode& topology, std::string& errorLog) {
+#ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+		try {
+#endif
+			SPIRV_CROSS_NAMESPACE::CompilerReflection reflect(mesh);
+			if (!entryName.empty()) {
+				reflect.set_entry_point(entryName, spv::ExecutionModelMeshEXT);
+			}
+			reflect.compile();
+			const auto& modes = reflect.get_execution_mode_bitset();
+			if (modes.get(spv::ExecutionModeOutputPoints)) {
+				topology = spv::ExecutionModeOutputPoints;
+			} else if (modes.get(spv::ExecutionModeOutputLinesEXT)) {
+				topology = spv::ExecutionModeOutputLinesEXT;
+			} else if (modes.get(spv::ExecutionModeOutputTrianglesEXT)) {
+				topology = spv::ExecutionModeOutputTrianglesEXT;
+			} else {
+				errorLog = "Mesh shader does not specify an output topology.";
+				return false;
+			}
+			return true;
+#ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+		} catch (SPIRV_CROSS_NAMESPACE::CompilerError& ex) {
+			errorLog = ex.what();
+			return false;
+		}
+#endif
+	}
+
+	template<typename Vs>
+	static inline bool getMeshReflectionData(const Vs& mesh, const std::string& entryName,
+										SPIRVMeshReflectionData& reflectData, std::string& errorLog) {
+#ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+		try {
+#endif
+			SPIRV_CROSS_NAMESPACE::CompilerReflection reflect(mesh);
+			if (!entryName.empty()) {
+				reflect.set_entry_point(entryName, spv::ExecutionModelMeshEXT);
+			}
+			reflect.compile();
+			const auto& modes = reflect.get_execution_mode_bitset();
+			if (!modes.get(spv::ExecutionModeOutputVertices) ||
+				!modes.get(spv::ExecutionModeOutputPrimitivesEXT)) {
+				errorLog = "Mesh shader does not specify fixed output limits.";
+				return false;
+			}
+			reflectData.maxOutputVertices =
+				reflect.get_execution_mode_argument(spv::ExecutionModeOutputVertices);
+			reflectData.maxOutputPrimitives =
+				reflect.get_execution_mode_argument(spv::ExecutionModeOutputPrimitivesEXT);
+			reflectData.usesWorkgroupVariables = false;
+
+			// Workgroup storage competes with native Metal mesh-output storage. Conservatively
+			// keep those shaders on capture/replay until their combined allocation is reflected.
+			for (size_t offset = 5; offset < mesh.size();) {
+				uint32_t instruction = mesh[offset];
+				uint32_t wordCount = instruction >> 16u;
+				uint32_t opcode = instruction & 0xffffu;
+				if (!wordCount || offset + wordCount > mesh.size()) {
+					errorLog = "Mesh shader contains malformed SPIR-V instructions.";
+					return false;
+				}
+				if (opcode == spv::OpVariable && wordCount >= 4) {
+					auto storage = static_cast<spv::StorageClass>(mesh[offset + 3]);
+					if (storage == spv::StorageClassWorkgroup ||
+						storage == spv::StorageClassTaskPayloadWorkgroupEXT) {
+						reflectData.usesWorkgroupVariables = true;
+					}
+				}
+				offset += wordCount;
+			}
+			return true;
+#ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+		} catch (SPIRV_CROSS_NAMESPACE::CompilerError& ex) {
+			errorLog = ex.what();
+			return false;
+		}
+#endif
+	}
+
 	/** Returns the size in bytes of the interface variable. */
 	static inline uint32_t getShaderInterfaceVariableSize(const SPIRVShaderInterfaceVariable& var) {
 		if ( !var.isUsed ) { return 0; }		// Unused variables consume no buffer space.
@@ -208,6 +300,11 @@ namespace mvk {
 			case SPIRV_CROSS_NAMESPACE::SPIRType::Int:
 			case SPIRV_CROSS_NAMESPACE::SPIRType::UInt:
 			case SPIRV_CROSS_NAMESPACE::SPIRType::Float:
+				return 4 * vecWidth;
+			case SPIRV_CROSS_NAMESPACE::SPIRType::Int64:
+			case SPIRV_CROSS_NAMESPACE::SPIRType::UInt64:
+			case SPIRV_CROSS_NAMESPACE::SPIRType::Double:
+				return 8 * vecWidth;
 			default:
 				return 4 * vecWidth;
 		}
@@ -231,78 +328,187 @@ namespace mvk {
 		return getShaderInterfaceVariableAlignment(output);
 	}
 
-	auto addSat = [](uint32_t a, uint32_t b) { return a == uint32_t(-1) ? a : a + b; };
+	static inline uint32_t addSat(uint32_t a, uint32_t b) {
+		const uint32_t max = uint32_t(-1);
+		return a == max || b > max - a ? max : a + b;
+	}
+
+	[[noreturn]] static inline void throwShaderInterfaceReflectionError(const char* message) {
+#ifdef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+		SPIRV_CROSS_NAMESPACE::report_and_abort(message);
+#else
+		throw SPIRV_CROSS_NAMESPACE::CompilerError(message);
+#endif
+	}
+
+	static inline uint32_t getShaderInterfaceElementCount(
+			const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
+			const SPIRV_CROSS_NAMESPACE::SPIRType& type) {
+		if (type.array.size() != type.array_size_literal.size()) {
+			throwShaderInterfaceReflectionError("Shader interface array metadata is inconsistent.");
+		}
+		uint64_t count = std::max(type.columns, 1u);
+		for (uint32_t index = 0; index < type.array.size(); ++index) {
+			uint32_t dimension = type.array_size_literal[index]
+				? type.array[index]
+				: reflect.evaluate_constant_u32(type.array[index]);
+			if (!dimension) {
+				throwShaderInterfaceReflectionError("Shader interface arrays must have a non-zero fixed extent.");
+			}
+			if (count > uint64_t(UINT32_MAX) / dimension) {
+				throwShaderInterfaceReflectionError("Shader interface element count overflows 32 bits.");
+			}
+			count *= dimension;
+		}
+		return uint32_t(count);
+	}
+
+	static inline uint32_t getShaderInterfaceLocationCount(
+			const SPIRV_CROSS_NAMESPACE::SPIRType& type, uint32_t component) {
+		if (!type.vecsize || type.vecsize > 4 || component > 3) {
+			throwShaderInterfaceReflectionError("Shader interface variable has an invalid vector width or component.");
+		}
+		uint32_t componentsPerLane = type.width > 32 ? 2 : 1;
+		uint32_t occupiedComponents = component + type.vecsize * componentsPerLane;
+		return std::max(1u, (occupiedComponents + 3u) / 4u);
+	}
+
+	static inline uint32_t getShaderInterfaceLocationCount(
+			const SPIRVShaderInterfaceVariable& var) {
+		if (!var.vecWidth || var.vecWidth > 4 || var.component > 3) {
+			throwShaderInterfaceReflectionError("Reflected shader interface variable has an invalid vector width or component.");
+		}
+		uint32_t componentsPerLane = 1;
+		switch (var.baseType) {
+			case SPIRV_CROSS_NAMESPACE::SPIRType::Int64:
+			case SPIRV_CROSS_NAMESPACE::SPIRType::UInt64:
+			case SPIRV_CROSS_NAMESPACE::SPIRType::Double:
+				componentsPerLane = 2;
+				break;
+			default:
+				break;
+		}
+		uint32_t occupiedComponents = var.component + var.vecWidth * componentsPerLane;
+		return std::max(1u, (occupiedComponents + 3u) / 4u);
+	}
 
 	template<typename Vi>
 	static inline uint32_t getShaderInterfaceStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
-														   Vi& vars, SPIRVShaderInterfaceVariable* pParentFirstMember,
-														   const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
-														   bool patch, uint32_t loc) {
-		bool isUsed = true;
-		auto biType = spv::BuiltInMax;
-		SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
+													   Vi& vars, size_t* pParentFirstMemberIndex,
+													   const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
+													   bool patch, bool perPrimitive, uint32_t loc) {
+		const size_t noMember = size_t(-1);
+		size_t firstMemberIndex = noMember;
 		size_t mbrCnt = structType->member_types.size();
 		for (uint32_t mbrIdx = 0; mbrIdx < mbrCnt; mbrIdx++) {
+			bool isUsed = true;
+			auto biType = spv::BuiltInMax;
 			// Each member may have a location decoration. If not, each member
 			// gets an incrementing location based on the base location for the struct.
 			uint32_t cmp = 0;
 			if (reflect.has_member_decoration(structType->self, mbrIdx, spv::DecorationLocation)) {
 				loc = reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationLocation);
+			}
+			if (reflect.has_member_decoration(structType->self, mbrIdx, spv::DecorationComponent)) {
 				cmp = reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationComponent);
 			}
-			patch = patch || reflect.has_member_decoration(structType->self, mbrIdx, spv::DecorationPatch);
+			bool memberPatch = patch || reflect.has_member_decoration(structType->self, mbrIdx, spv::DecorationPatch);
+			bool memberPerPrimitive = perPrimitive || reflect.has_member_decoration(structType->self, mbrIdx, spv::DecorationPerPrimitiveEXT);
 			if (reflect.has_member_decoration(structType->self, mbrIdx, spv::DecorationBuiltIn)) {
 				biType = (spv::BuiltIn)reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationBuiltIn);
 				isUsed = reflect.has_active_builtin(biType, storage);
 			}
 			const SPIRV_CROSS_NAMESPACE::SPIRType* type = &reflect.get_type(structType->member_types[mbrIdx]);
-			uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
+			uint32_t elemCnt = getShaderInterfaceElementCount(reflect, *type);
 			for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 				if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct)
-					loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
+					loc = getShaderInterfaceStructMembers(reflect, vars, &firstMemberIndex, type, storage, memberPatch, memberPerPrimitive, loc);
 				else {
+					// Every array/matrix element starts at the decorated component in its location.
+					uint32_t elemComponent = cmp;
 					// The alignment of a structure is the same as the largest member of the structure.
 					// Consequently, the first flattened member of a structure should align with structure itself.
-					vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
-					auto& currOutput = vars.back();
-					if ( !pFirstMember ) { pFirstMember = &currOutput; }
-					pFirstMember->firstStructMemberAlignment = std::max(pFirstMember->firstStructMemberAlignment, getShaderOutputSize(currOutput));
-					loc = addSat(loc, 1);
+					size_t currentMemberIndex = vars.size();
+					vars.push_back({type->basetype, type->vecsize, loc, elemComponent, 0, biType, memberPatch, isUsed, memberPerPrimitive});
+					if (firstMemberIndex == noMember) { firstMemberIndex = currentMemberIndex; }
+					auto& firstMember = vars[firstMemberIndex];
+					firstMember.firstStructMemberAlignment = std::max(
+						firstMember.firstStructMemberAlignment,
+						getShaderOutputSize(vars[currentMemberIndex]));
+					loc = addSat(loc, getShaderInterfaceLocationCount(*type, elemComponent));
 				}
 			}
 		}
 
 		// Set the parent's first member alignment to the largest alignment found so far.
-		if ( !pParentFirstMember ) {
-			pParentFirstMember = pFirstMember;
-		} else if (pParentFirstMember && pFirstMember) {
-			pParentFirstMember->firstStructMemberAlignment = std::max(pParentFirstMember->firstStructMemberAlignment, pFirstMember->firstStructMemberAlignment);
+		if (pParentFirstMemberIndex && firstMemberIndex != noMember) {
+			if (*pParentFirstMemberIndex == noMember) {
+				*pParentFirstMemberIndex = firstMemberIndex;
+			} else {
+				auto& parentFirstMember = vars[*pParentFirstMemberIndex];
+				parentFirstMember.firstStructMemberAlignment = std::max(
+					parentFirstMember.firstStructMemberAlignment,
+					vars[firstMemberIndex].firstStructMemberAlignment);
+			}
 		}
 
 		return loc;
 	}
 	template<typename Vo>
 	static inline uint32_t getShaderOutputStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
-														Vo& outputs, SPIRVShaderOutput* pParentFirstMember,
-														const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
-														bool patch, uint32_t loc) {
-		return getShaderInterfaceStructMembers(reflect, outputs, pParentFirstMember, structType, storage, patch, loc);
+													Vo& outputs, size_t* pParentFirstMemberIndex,
+													const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
+													bool patch, bool perPrimitive, uint32_t loc) {
+		return getShaderInterfaceStructMembers(reflect, outputs, pParentFirstMemberIndex, structType, storage, patch, perPrimitive, loc);
+	}
+
+	template<typename SpecializationConstants>
+	static inline void applyShaderInterfaceSpecializationConstants(
+			SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
+			const SpecializationConstants& specializationConstants) {
+		for (const auto& requested : specializationConstants) {
+			for (const auto& available : reflect.get_specialization_constants()) {
+				if (available.constant_id != requested.constantID) { continue; }
+				auto& constant = reflect.get_constant(available.id);
+				if (!constant.is_used_as_array_length) { break; }
+				const auto& type = reflect.get_type(constant.constant_type);
+				if (type.columns != 1 || type.vecsize != 1) { break; }
+				const bool isInteger =
+					type.basetype == SPIRV_CROSS_NAMESPACE::SPIRType::SByte ||
+					type.basetype == SPIRV_CROSS_NAMESPACE::SPIRType::UByte ||
+					type.basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Short ||
+					type.basetype == SPIRV_CROSS_NAMESPACE::SPIRType::UShort ||
+					type.basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Int ||
+					type.basetype == SPIRV_CROSS_NAMESPACE::SPIRType::UInt ||
+					type.basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Int64 ||
+					type.basetype == SPIRV_CROSS_NAMESPACE::SPIRType::UInt64;
+				if (isInteger && requested.byteSize * 8u == type.width) {
+					constant.m.c[0].r[0].u64 = requested.value;
+				} else if (type.basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Boolean &&
+						   type.width == 1 && requested.byteSize == sizeof(uint32_t)) {
+					constant.m.c[0].r[0].u32 = requested.value != 0;
+				}
+				break;
+			}
+		}
 	}
 
 	/** Given a shader in SPIR-V format, returns interface reflection data. */
-	template<typename Vs, typename Vi>
-	static inline bool getShaderInterfaceVariables(const Vs& spirv, spv::StorageClass storage, spv::ExecutionModel model,
-												   const std::string& entryName, Vi& vars, std::string& errorLog) {
+	template<typename Vs, typename Vi, typename Specialize>
+	static inline bool getShaderInterfaceVariablesImpl(const Vs& spirv, spv::StorageClass storage, spv::ExecutionModel model,
+													   const std::string& entryName, Vi& vars, Specialize specialize,
+													   std::string& errorLog) {
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 		try {
 #endif
 			SPIRV_CROSS_NAMESPACE::Parser parser(spirv);
 			parser.parse();
 			SPIRV_CROSS_NAMESPACE::CompilerReflection reflect(parser.get_parsed_ir());
-			if (!entryName.empty()) {
-				reflect.set_entry_point(entryName, model);
-			}
-			reflect.compile();
+				if (!entryName.empty()) {
+					reflect.set_entry_point(entryName, model);
+				}
+				specialize(reflect);
+				reflect.compile();
 			reflect.update_active_builtins();
 
 			vars.clear();
@@ -313,6 +519,14 @@ namespace mvk {
 				bool isUsed = true;
 				const auto* type = &reflect.get_type(reflect.get_type_from_variable(varID).parent_type);
 				bool patch = reflect.has_decoration(varID, spv::DecorationPatch);
+				bool perPrimitive = reflect.has_decoration(varID, spv::DecorationPerPrimitiveEXT);
+				if (model == spv::ExecutionModelMeshEXT && storage == spv::StorageClassOutput && !type->array.empty()) {
+					type = &reflect.get_type(type->parent_type);
+				}
+				if (model == spv::ExecutionModelFragment && storage == spv::StorageClassInput &&
+					reflect.has_decoration(varID, spv::DecorationPerVertexKHR) && !type->array.empty()) {
+					type = &reflect.get_type(type->parent_type);
+				}
 				if (reflect.has_decoration(type->self, spv::DecorationBlock)) {
 					// In this case, the Patch decoration is on the members.
 					// FIXME It is theoretically possible for some members of a block to have
@@ -336,29 +550,35 @@ namespace mvk {
 				// Only some builtins will be arrayed here.
 				if ((model == spv::ExecutionModelTessellationControl || (model == spv::ExecutionModelTessellationEvaluation && storage == spv::StorageClassInput)) && !patch &&
 					(biType == spv::BuiltInMax || biType == spv::BuiltInPosition || biType == spv::BuiltInPointSize ||
-					 biType == spv::BuiltInClipDistance || biType == spv::BuiltInCullDistance))
+					 biType == spv::BuiltInClipDistance || biType == spv::BuiltInCullDistance)) {
 					type = &reflect.get_type(type->parent_type);
+				}
 
-				uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
+				uint32_t elemCnt = getShaderInterfaceElementCount(reflect, *type);
 				for (uint32_t i = 0; i < elemCnt; i++) {
 					if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct) {
-						SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
-						loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
+						size_t firstMemberIndex = size_t(-1);
+						loc = getShaderInterfaceStructMembers(reflect, vars, &firstMemberIndex, type, storage, patch, perPrimitive, loc);
 					} else {
-						vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
-						loc = addSat(loc, 1);
+						// Every array/matrix element starts at the decorated component in its location.
+						uint32_t elemComponent = cmp;
+						vars.push_back({type->basetype, type->vecsize, loc, elemComponent, 0, biType, patch, isUsed, perPrimitive});
+						loc = addSat(loc, getShaderInterfaceLocationCount(*type, elemComponent));
 					}
 				}
 			}
 			// Sort variables by ascending location.
 			std::stable_sort(vars.begin(), vars.end(), [](const SPIRVShaderInterfaceVariable& a, const SPIRVShaderInterfaceVariable& b) {
-				return a.location < b.location;
+				if (a.location != b.location) { return a.location < b.location; }
+				return a.component < b.component;
 			});
-			// Assign locations to variables that don't have one.
-			uint32_t loc = -1;
+			// Assign locations to variables that don't have one, preserving the full
+			// location footprint of 64-bit vectors and explicitly placed variables.
+			uint32_t nextLoc = 0;
 			for (SPIRVShaderInterfaceVariable& var : vars) {
-				if (var.location == uint32_t(-1)) { var.location = loc + 1; }
-				loc = var.location;
+				if (var.location == uint32_t(-1)) { var.location = nextLoc; }
+				nextLoc = std::max(nextLoc,
+					addSat(var.location, getShaderInterfaceLocationCount(var)));
 			}
 			return true;
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
@@ -367,16 +587,51 @@ namespace mvk {
 			return false;
 		}
 #endif
+		}
+
+	template<typename Vs, typename Vi>
+	static inline bool getShaderInterfaceVariables(const Vs& spirv, spv::StorageClass storage, spv::ExecutionModel model,
+												   const std::string& entryName, Vi& vars, std::string& errorLog) {
+		return getShaderInterfaceVariablesImpl(
+			spirv, storage, model, entryName, vars,
+			[](SPIRV_CROSS_NAMESPACE::CompilerReflection&) {}, errorLog);
 	}
+
+	template<typename Vs, typename Vi, typename SpecializationConstants>
+	static inline bool getShaderInterfaceVariables(const Vs& spirv, spv::StorageClass storage, spv::ExecutionModel model,
+												   const std::string& entryName, Vi& vars,
+												   const SpecializationConstants& specializationConstants,
+												   std::string& errorLog) {
+		return getShaderInterfaceVariablesImpl(
+			spirv, storage, model, entryName, vars,
+			[&](SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect) {
+				applyShaderInterfaceSpecializationConstants(reflect, specializationConstants);
+			}, errorLog);
+	}
+
 	template<typename Vs, typename Vo>
 	static inline bool getShaderOutputs(const Vs& spirv, spv::ExecutionModel model, const std::string& entryName,
-										Vo& outputs, std::string& errorLog) {
+											Vo& outputs, std::string& errorLog) {
 		return getShaderInterfaceVariables(spirv, spv::StorageClassOutput, model, entryName, outputs, errorLog);
+	}
+	template<typename Vs, typename Vo, typename SpecializationConstants>
+	static inline bool getShaderOutputs(const Vs& spirv, spv::ExecutionModel model, const std::string& entryName,
+											Vo& outputs, const SpecializationConstants& specializationConstants,
+											std::string& errorLog) {
+		return getShaderInterfaceVariables(spirv, spv::StorageClassOutput, model, entryName, outputs,
+										 specializationConstants, errorLog);
 	}
 	template<typename Vs, typename Vo>
 	static inline bool getShaderInputs(const Vs& spirv, spv::ExecutionModel model, const std::string& entryName,
-										Vo& outputs, std::string& errorLog) {
+											Vo& outputs, std::string& errorLog) {
 		return getShaderInterfaceVariables(spirv, spv::StorageClassInput, model, entryName, outputs, errorLog);
+	}
+	template<typename Vs, typename Vo, typename SpecializationConstants>
+	static inline bool getShaderInputs(const Vs& spirv, spv::ExecutionModel model, const std::string& entryName,
+											Vo& outputs, const SpecializationConstants& specializationConstants,
+											std::string& errorLog) {
+		return getShaderInterfaceVariables(spirv, spv::StorageClassInput, model, entryName, outputs,
+										 specializationConstants, errorLog);
 	}
 
 }

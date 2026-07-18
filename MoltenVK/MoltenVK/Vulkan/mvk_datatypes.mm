@@ -751,6 +751,8 @@ MVKShaderStage mvkShaderStageFromVkShaderStageFlagBitsInObj(VkShaderStageFlagBit
 		case VK_SHADER_STAGE_VERTEX_BIT:					return kMVKShaderStageVertex;
 		case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:		return kMVKShaderStageTessCtl;
 		case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:	return kMVKShaderStageTessEval;
+		case VK_SHADER_STAGE_TASK_BIT_EXT:					return kMVKShaderStageTask;
+		case VK_SHADER_STAGE_MESH_BIT_EXT:					return kMVKShaderStageMesh;
 		/* FIXME: VK_SHADER_STAGE_GEOMETRY_BIT */
 		case VK_SHADER_STAGE_FRAGMENT_BIT:					return kMVKShaderStageFragment;
 		case VK_SHADER_STAGE_COMPUTE_BIT:					return kMVKShaderStageCompute;
@@ -765,10 +767,13 @@ MVK_PUBLIC_SYMBOL VkShaderStageFlagBits mvkVkShaderStageFlagBitsFromMVKShaderSta
 		case kMVKShaderStageVertex:		return VK_SHADER_STAGE_VERTEX_BIT;
 		case kMVKShaderStageTessCtl:	return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
 		case kMVKShaderStageTessEval:	return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+		case kMVKShaderStageTask:		return VK_SHADER_STAGE_TASK_BIT_EXT;
+		case kMVKShaderStageMesh:		return VK_SHADER_STAGE_MESH_BIT_EXT;
 		/* FIXME: kMVKShaderStageGeometry */
 		case kMVKShaderStageFragment:	return VK_SHADER_STAGE_FRAGMENT_BIT;
 		case kMVKShaderStageCompute:	return VK_SHADER_STAGE_COMPUTE_BIT;
 		case kMVKShaderStageCount:
+		case kMVKShaderStageInternalCount:
 			assert(!"This function should never be called with kMVKShaderStageCount!");
 			return VK_SHADER_STAGE_ALL;
 	}
@@ -806,28 +811,52 @@ MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionMode
 	}
 }
 
-MVK_PUBLIC_SYMBOL MTLRenderStages mvkMTLRenderStagesFromVkPipelineStageFlags(VkPipelineStageFlags2 vkStages,
-																			 bool placeBarrierBefore) {
-	// Although there are many combined render/compute/host stages in Vulkan, there are only two render
-	// stages in Metal. If the Vulkan stage did not map ONLY to a specific Metal render stage, then if the
-	// barrier is to be placed before the render stages, it should come before the vertex stage, otherwise
-	// if the barrier is to be placed after the render stages, it should come after the fragment stage.
+MTLRenderStages mvkMTLRenderStagesFromVkPipelineStageFlagsWithMesh(VkPipelineStageFlags2 vkStages,
+														  bool placeBarrierBefore,
+														  bool meshShaders) {
+	MTLRenderStages preRasterStages = MTLRenderStageVertex;
+	if (meshShaders) { preRasterStages |= MTLRenderStageObject | MTLRenderStageMesh; }
+	const VkPipelineStageFlags2 vertexStages = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT |
+		VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT |
+		VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT |
+		VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
+		VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
+		VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
+		VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
+		VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT;
+	const VkPipelineStageFlags2 meshStages = VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
+		VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
+	const VkPipelineStageFlags2 preRasterVkStages = vertexStages |
+		meshStages |
+		VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
+		VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT |
+		VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT;
+	const VkPipelineStageFlags2 fragmentStages = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
+		VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+		VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT |
+		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT |
+		VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+
 	if (placeBarrierBefore) {
-		bool placeBeforeFragment = mvkIsOnlyAnyFlagEnabled(vkStages, (VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
-																		VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
-																		VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT |
-																		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT |
-																		VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT));
-		return placeBeforeFragment ? MTLRenderStageFragment : MTLRenderStageVertex;
+		if (mvkIsOnlyAnyFlagEnabled(vkStages, fragmentStages)) { return MTLRenderStageFragment; }
+		if (meshShaders && mvkIsOnlyAnyFlagEnabled(vkStages, meshStages)) {
+			return mvkIsAnyFlagEnabled(vkStages, VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT) ? MTLRenderStageObject : MTLRenderStageMesh;
+		}
+		if (mvkIsOnlyAnyFlagEnabled(vkStages, vertexStages)) { return MTLRenderStageVertex; }
+		return preRasterStages;
 	} else {
-		bool placeAfterVertex = mvkIsOnlyAnyFlagEnabled(vkStages, (VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT |
-																	 VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
-																	 VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT |
-																	 VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
-																	 VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
-																	 VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT));
-		return placeAfterVertex ? MTLRenderStageVertex : MTLRenderStageFragment;
+		if (mvkIsOnlyAnyFlagEnabled(vkStages, vertexStages)) { return MTLRenderStageVertex; }
+		if (meshShaders && mvkIsOnlyAnyFlagEnabled(vkStages, meshStages)) {
+			return mvkIsAnyFlagEnabled(vkStages, VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT) ? MTLRenderStageMesh : MTLRenderStageObject;
+		}
+		if (mvkIsOnlyAnyFlagEnabled(vkStages, preRasterVkStages)) { return preRasterStages; }
+		return MTLRenderStageFragment;
 	}
+}
+
+MVK_PUBLIC_SYMBOL MTLRenderStages mvkMTLRenderStagesFromVkPipelineStageFlags(VkPipelineStageFlags2 vkStages,
+															 bool placeBarrierBefore) {
+	return mvkMTLRenderStagesFromVkPipelineStageFlagsWithMesh(vkStages, placeBarrierBefore, false);
 }
 
 MVK_PUBLIC_SYMBOL MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFlags2 vkAccess) {
@@ -863,6 +892,7 @@ uint64_t mvkBarrierStagesFromPipelineStageFlags(VkPipelineStageFlags2 flags) {
                  VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT | VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT |
                  VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT | VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT |
                  VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT | VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT | VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT |
+                 VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT | VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT |
                  VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT))
         result |= 1 << kMVKBarrierStageVertex;
 

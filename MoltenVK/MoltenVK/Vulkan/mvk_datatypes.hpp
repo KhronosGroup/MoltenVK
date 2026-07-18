@@ -83,4 +83,6 @@ MTLWinding mvkMTLWindingFromSpvExecutionModeInObj(uint32_t spvMode, MVKBaseObjec
 MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionModeInObj(uint32_t spvMode, MVKBaseObject* mvkObj);
 #define mvkMTLTessellationPartitionModeFromSpvExecutionMode(spvMode) mvkMTLTessellationPartitionModeFromSpvExecutionModeInObj(spvMode, this)
 
+MTLRenderStages mvkMTLRenderStagesFromVkPipelineStageFlagsWithMesh(VkPipelineStageFlags2 vkStages, bool placeBarrierBefore, bool meshShaders);
+
 #endif

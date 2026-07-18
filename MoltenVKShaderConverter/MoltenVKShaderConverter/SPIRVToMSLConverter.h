@@ -140,6 +140,19 @@ namespace mvk {
 
 	} DescriptorBinding;
 
+	/** Raw scalar specialization data which affects shader interface layout. */
+	typedef struct SPIRVShaderInterfaceSpecializationConstant {
+		uint32_t constantID = 0;
+		uint32_t byteSize = 0;
+		uint64_t value = 0;
+
+		bool operator==(const SPIRVShaderInterfaceSpecializationConstant& other) const {
+			return constantID == other.constantID &&
+				byteSize == other.byteSize &&
+				value == other.value;
+		}
+	} SPIRVShaderInterfaceSpecializationConstant;
+
 	/**
 	 * Configuration passed to the SPIRVToMSLConverter.
 	 *
@@ -150,6 +163,10 @@ namespace mvk {
 		SPIRVToMSLConversionOptions options;
 		std::vector<MSLShaderInterfaceVariable> shaderInputs;
 		std::vector<MSLShaderInterfaceVariable> shaderOutputs;
+		std::vector<SPIRV_CROSS_NAMESPACE::MSLMeshOutputSpillKey> meshOutputSpillKeys;
+		SPIRV_CROSS_NAMESPACE::MSLMeshOutputSpillLayout meshOutputSpillLayout;
+		std::vector<SPIRV_CROSS_NAMESPACE::MSLMeshOutputSpillField> meshOutputSpillFields;
+		std::vector<SPIRVShaderInterfaceSpecializationConstant> shaderInterfaceSpecializationConstants;
 		std::vector<MSLResourceBinding> resourceBindings;
 		std::vector<uint32_t> discreteDescriptorSets;
 		std::vector<DescriptorBinding> dynamicBufferDescriptors;
@@ -250,6 +267,11 @@ namespace mvk {
 	 */
 	typedef struct SPIRVToMSLConversionResultInfo {
 		SPIRVEntryPoint entryPoint;
+		uint32_t meshOutputBufferSize = 0;
+		uint32_t meshOutputBufferAlignment = 0;
+		uint32_t meshOutputThreadgroupSize = 0;
+		SPIRV_CROSS_NAMESPACE::MSLMeshOutputSpillLayout meshOutputSpillLayout;
+		std::vector<SPIRV_CROSS_NAMESPACE::MSLMeshOutputSpillField> meshOutputSpillFields;
 		bool isRasterizationDisabled = false;
 		bool isPositionInvariant = false;
 		bool needsSwizzleBuffer = false;

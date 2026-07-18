@@ -747,6 +747,13 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				legacyDitheringFeatures->legacyDithering = getMVKConfig().useMetalPrivateAPI;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT: {
+				auto* meshShaderFeatures = (VkPhysicalDeviceMeshShaderFeaturesEXT*)next;
+				auto* pNext = meshShaderFeatures->pNext;
+				*meshShaderFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT, pNext };
+				meshShaderFeatures->meshShader = _metalFeatures.meshShader;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT: {
 				auto* nonSeamlessFeatures = (VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT*)next;
 				nonSeamlessFeatures->nonSeamlessCubeMap = getMVKConfig().useMetalPrivateAPI;
@@ -1278,6 +1285,38 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT: {
 				auto* extMemHostProps = (VkPhysicalDeviceExternalMemoryHostPropertiesEXT*)next;
 				extMemHostProps->minImportedHostPointerAlignment = _metalFeatures.hostMemoryPageSize;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT: {
+				auto* meshShaderProps = (VkPhysicalDeviceMeshShaderPropertiesEXT*)next;
+				auto* pNext = meshShaderProps->pNext;
+				*meshShaderProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT, pNext };
+				meshShaderProps->maxTaskWorkGroupTotalCount = _metalFeatures.maxObjectThreadgroups;
+				meshShaderProps->maxTaskWorkGroupInvocations = _metalFeatures.maxObjectThreadsPerGroup;
+				meshShaderProps->maxTaskPayloadSize = _metalFeatures.maxObjectPayloadSize;
+				meshShaderProps->maxTaskSharedMemorySize = _metalFeatures.maxObjectSharedMemorySize;
+				meshShaderProps->maxTaskPayloadAndSharedMemorySize = _metalFeatures.maxObjectSharedMemorySize;
+				meshShaderProps->maxMeshWorkGroupTotalCount = kMVKMeshEmulationMaxWorkgroupCount;
+				meshShaderProps->maxMeshWorkGroupInvocations = _metalFeatures.maxMeshThreadsPerGroup;
+				meshShaderProps->maxMeshSharedMemorySize = _metalFeatures.maxMeshSharedMemorySize;
+				meshShaderProps->maxMeshPayloadAndSharedMemorySize = _metalFeatures.maxMeshSharedMemorySize;
+				meshShaderProps->maxMeshOutputMemorySize = _metalFeatures.maxMeshOutputSize;
+				meshShaderProps->maxMeshPayloadAndOutputMemorySize = 48128;
+				meshShaderProps->maxMeshOutputComponents = 128;
+				meshShaderProps->maxMeshOutputVertices = 256;
+				meshShaderProps->maxMeshOutputPrimitives = 256;
+				meshShaderProps->maxMeshOutputLayers = _properties.limits.maxFramebufferLayers;
+				meshShaderProps->maxMeshMultiviewViewCount = 1;
+				meshShaderProps->meshOutputPerVertexGranularity = 1;
+				meshShaderProps->meshOutputPerPrimitiveGranularity = 1;
+				meshShaderProps->maxPreferredTaskWorkGroupInvocations = _metalFeatures.maxSubgroupSize;
+				meshShaderProps->maxPreferredMeshWorkGroupInvocations = _metalFeatures.maxSubgroupSize;
+				for (uint32_t i = 0; i < 3; i++) {
+					meshShaderProps->maxTaskWorkGroupCount[i] = 65535;
+					meshShaderProps->maxTaskWorkGroupSize[i] = _properties.limits.maxComputeWorkGroupSize[i];
+					meshShaderProps->maxMeshWorkGroupCount[i] = 65535;
+					meshShaderProps->maxMeshWorkGroupSize[i] = _properties.limits.maxComputeWorkGroupSize[i];
+				}
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_KHR: {
@@ -2469,6 +2508,21 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	// Dynamic vertex stride needs to have everything aligned - compiled with support for vertex stride calls, and supported by both runtime OS and GPU.
 	_metalFeatures.dynamicVertexStride = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0) && (supportsMTLGPUFamily(Apple4) || supportsMTLGPUFamily(Mac2));
 	_metalFeatures.nativeTextureAtomics = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0) && (supportsMTLGPUFamily(Metal3) || supportsMTLGPUFamily(Apple6) || supportsMTLGPUFamily(Mac2));
+	_metalFeatures.meshShader = mvkOSVersionIsAtLeast(13.0, 16.0, 1.0) &&
+							   (supportsMTLGPUFamily(Metal4) || supportsMTLGPUFamily(Metal3) ||
+								supportsMTLGPUFamily(Apple7) || supportsMTLGPUFamily(Mac2)) &&
+							   !shouldEmulateReversedDepthViewport();
+	if (_metalFeatures.meshShader) {
+		_metalFeatures.maxObjectThreadgroups = _gpuCapabilities.isAppleGPU ? std::numeric_limits<uint32_t>::max() : 1024;
+		_metalFeatures.maxObjectThreadsPerGroup = 1024;
+		_metalFeatures.maxObjectPayloadSize = 16384;
+		_metalFeatures.maxObjectSharedMemorySize = 32768;
+		_metalFeatures.maxMeshThreadgroups = supportsMTLGPUFamily(Apple10) ? 4194303 :
+											supportsMTLGPUFamily(Apple9) ? 1048575 : 1024;
+		_metalFeatures.maxMeshThreadsPerGroup = 1024;
+		_metalFeatures.maxMeshOutputSize = 32768;
+		_metalFeatures.maxMeshSharedMemorySize = 32768;
+	}
 
 	_metalFeatures.renderLinearTextures = _gpuCapabilities.supportsRenderLinearTextures;
 	_metalFeatures.nativeTextureSwizzle = false;
@@ -3087,7 +3141,7 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.maxComputeWorkGroupCount[2] = kMVKUndefinedLargeUInt32;
 
     _properties.limits.maxDrawIndexedIndexValue = numeric_limits<uint32_t>::max();
-    _properties.limits.maxDrawIndirectCount = kMVKUndefinedLargeUInt32;
+    _properties.limits.maxDrawIndirectCount = kMVKMaxDrawIndirectCount;
 
 
     // Features with unknown limits - default to Vulkan required limits
@@ -3253,6 +3307,8 @@ bool MVKPhysicalDevice::isAMDRDNAGPU() {
 
 // Since this is a uint8_t array, use Big-Endian byte ordering,
 // so a hex dump of the array is human readable in its parts.
+static constexpr uint32_t kMVKPipelineCacheFormatVersion = 5;
+
 void MVKPhysicalDevice::initPipelineCacheUUID() {
 
 	// Clear the UUID
@@ -3278,6 +3334,8 @@ void MVKPhysicalDevice::initPipelineCacheUUID() {
 	mtlFeatures |= _isUsingMetalArgumentBuffers << 0;
 	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatures);
 	uuidComponentOffset += sizeof(mtlFeatures);
+
+	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(kMVKPipelineCacheFormatVersion);
 }
 
 // Combine OS major (8 bits), OS minor (8 bits), Mac GPU family (8 bits), and
@@ -3557,6 +3615,9 @@ void MVKPhysicalDevice::initExtensions() {
 	}
 	if (!_gpuCapabilities.supportsSamplerReduction) {
 		pWritableExtns->vk_EXT_sampler_filter_minmax.enabled = false;
+	}
+	if (!_metalFeatures.meshShader) {
+		pWritableExtns->vk_EXT_mesh_shader.enabled = false;
 	}
 
     // gpuAddress requires Tier2 argument buffer support (per feedback from Apple engineers).
