@@ -97,6 +97,7 @@ MVK_EXTENSION(KHR_present_wait2,                        KHR_PRESENT_WAIT_2,     
 MVK_EXTENSION(KHR_push_descriptor,                      KHR_PUSH_DESCRIPTOR,                      DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_ray_query,                            KHR_RAY_QUERY,                            DEVICE,   14.0,  17.0,  1.0)
 MVK_EXTENSION(KHR_ray_tracing_pipeline,                 KHR_RAY_TRACING_PIPELINE,                 DEVICE,   14.0,  17.0,  1.0)
+MVK_EXTENSION(KHR_ray_tracing_position_fetch,           KHR_RAY_TRACING_POSITION_FETCH,           DEVICE,   14.0,  17.0,  1.0)
 MVK_EXTENSION(KHR_relaxed_block_layout,                 KHR_RELAXED_BLOCK_LAYOUT,                 DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_robustness2,                          KHR_ROBUSTNESS_2,                         DEVICE,   10.11,  8.0,  1.0)
 MVK_EXTENSION(KHR_sampler_mirror_clamp_to_edge,         KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE,         DEVICE,   10.11, 14.0,  1.0)

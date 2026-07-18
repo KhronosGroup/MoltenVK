@@ -80,7 +80,8 @@ static id<MTLComputeCommandEncoder> encodeAccelerationStructureConversion(MVKCom
 		auto* addressTable = cmdEncoder->getAccelerationStructureAddressTable(resources,
 		                                                                    MVKResourceUsageStages::Compute);
 		[mtlEncoder setBuffer:addressTable->_mtlBuffer offset:addressTable->_offset atIndex:6];
-		cmdEncoder->getDevice()->encodeGPUAddressableBuffers(cmdEncoder, resources, MVKResourceUsageStages::Compute);
+		cmdEncoder->getDevice()->encodeGPUAddressableBuffers(cmdEncoder, resources,
+			MVKResourceUsageStages::Compute, mtlEncoder, MVKResourceBinder::Compute().useResource);
 		resources.bindAndResetCompute(mtlEncoder);
 	}
     if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
@@ -91,6 +92,101 @@ static id<MTLComputeCommandEncoder> encodeAccelerationStructureConversion(MVKCom
                    threadsPerThreadgroup:MTLSizeMake(mtlState.threadExecutionWidth, 1, 1)];
     }
     return mtlEncoder;
+}
+
+static bool encodeAccelerationStructureTrianglePositions(
+	MVKCommandEncoder* cmdEncoder,
+	MTLAccelerationStructureTriangleGeometryDescriptor* descriptor,
+	const VkAccelerationStructureGeometryTrianglesDataKHR& triangles,
+	uint32_t primitiveCount,
+	id<MTLComputeCommandEncoder>& mtlEncoder) {
+	constexpr NSUInteger primitiveDataStride = 3 * 3 * sizeof(float);
+	uint32_t positionFormat = 0;
+	uint32_t vertexElementSize = 0;
+	if (!mvkGetAccelerationStructurePositionFormat(triangles.vertexFormat,
+			positionFormat, vertexElementSize) ||
+		!descriptor.vertexBuffer ||
+		descriptor.vertexBufferOffset > descriptor.vertexBuffer.length ||
+		descriptor.vertexStride > std::numeric_limits<uint32_t>::max() ||
+		primitiveCount > cmdEncoder->getMetalFeatures().maxMTLBufferSize / primitiveDataStride) {
+		return false;
+	}
+	if (!primitiveCount) {
+		const MVKMTLBufferAllocation* positions = cmdEncoder->getTempMTLBuffer(
+			primitiveDataStride, true);
+		if (!positions || !positions->_mtlBuffer) { return false; }
+		descriptor.primitiveDataBuffer = positions->_mtlBuffer;
+		descriptor.primitiveDataBufferOffset = positions->_offset;
+		descriptor.primitiveDataElementSize = primitiveDataStride;
+		descriptor.primitiveDataStride = primitiveDataStride;
+		return true;
+	}
+
+	uint32_t indexElementSize = 0;
+	switch (triangles.indexType) {
+		case VK_INDEX_TYPE_NONE_KHR: break;
+		case VK_INDEX_TYPE_UINT16: indexElementSize = sizeof(uint16_t); break;
+		case VK_INDEX_TYPE_UINT32: indexElementSize = sizeof(uint32_t); break;
+		default: return false;
+	}
+	if (indexElementSize && (!descriptor.indexBuffer ||
+		descriptor.indexBufferOffset > descriptor.indexBuffer.length)) {
+		return false;
+	}
+	if (descriptor.transformationMatrixBuffer &&
+		(descriptor.transformationMatrixBufferOffset > descriptor.transformationMatrixBuffer.length ||
+		 sizeof(VkTransformMatrixKHR) > descriptor.transformationMatrixBuffer.length -
+			descriptor.transformationMatrixBufferOffset)) {
+		return false;
+	}
+
+	NSUInteger dataSize = std::max<NSUInteger>(primitiveDataStride,
+		static_cast<NSUInteger>(primitiveCount) * primitiveDataStride);
+	const MVKMTLBufferAllocation* positions = cmdEncoder->getTempMTLBuffer(dataSize, true);
+	if (!positions || !positions->_mtlBuffer) { return false; }
+	descriptor.primitiveDataBuffer = positions->_mtlBuffer;
+	descriptor.primitiveDataBufferOffset = positions->_offset;
+	descriptor.primitiveDataElementSize = primitiveDataStride;
+	descriptor.primitiveDataStride = primitiveDataStride;
+	MVKAccelerationStructureTrianglePositionsInfo info {
+		.vertexAvailable = descriptor.vertexBuffer.length - descriptor.vertexBufferOffset,
+		.indexAvailable = indexElementSize
+			? descriptor.indexBuffer.length - descriptor.indexBufferOffset : 0,
+		.vertexStride = static_cast<uint32_t>(descriptor.vertexStride),
+		.vertexFormat = positionFormat,
+		.indexElementSize = indexElementSize,
+		.vertexElementSize = vertexElementSize,
+		.maxVertex = triangles.maxVertex,
+		.primitiveCount = primitiveCount,
+		.hasTransform = descriptor.transformationMatrixBuffer != nil,
+	};
+	id<MTLComputePipelineState> state = cmdEncoder->getCommandEncodingPool()
+		->getCmdBuildAccelerationStructureTrianglePositionsMTLComputePipelineState();
+	if (!state) { return false; }
+	mtlEncoder = cmdEncoder->getMTLComputeEncoder(
+		kMVKCommandUseBuildAccelerationStructureConvertBuffers);
+	[mtlEncoder setComputePipelineState:state];
+	[mtlEncoder setBuffer:descriptor.vertexBuffer
+	              offset:descriptor.vertexBufferOffset
+	             atIndex:0];
+	[mtlEncoder setBuffer:indexElementSize ? descriptor.indexBuffer : descriptor.vertexBuffer
+	              offset:indexElementSize ? descriptor.indexBufferOffset : descriptor.vertexBufferOffset
+	             atIndex:1];
+	[mtlEncoder setBuffer:descriptor.transformationMatrixBuffer ?: positions->_mtlBuffer
+	              offset:descriptor.transformationMatrixBuffer
+					? descriptor.transformationMatrixBufferOffset : positions->_offset
+	             atIndex:2];
+	[mtlEncoder setBuffer:positions->_mtlBuffer offset:positions->_offset atIndex:3];
+	cmdEncoder->setComputeBytes(mtlEncoder, &info, sizeof(info), 4);
+	if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
+		[mtlEncoder dispatchThreads:MTLSizeMake(primitiveCount, 1, 1)
+		  threadsPerThreadgroup:MTLSizeMake(state.threadExecutionWidth, 1, 1)];
+	} else {
+		[mtlEncoder dispatchThreadgroups:MTLSizeMake(
+				mvkCeilingDivide<NSUInteger>(primitiveCount, state.threadExecutionWidth), 1, 1)
+		   threadsPerThreadgroup:MTLSizeMake(state.threadExecutionWidth, 1, 1)];
+	}
+	return true;
 }
 
 VkResult MVKCmdBuildAccelerationStructure::setContent(MVKCommandBuffer* cmdBuff,
@@ -121,6 +217,10 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
     for (MVKAccelerationStructureBuildInfo& entry : _buildInfos) {
         const auto& buildInfo = entry.info;
         const auto& ranges = entry.ranges;
+		bool hasBuildPrimitives = false;
+		for (const auto& range : ranges) {
+			hasBuildPrimitives = hasBuildPrimitives || range.primitiveCount;
+		}
 
         MVKAccelerationStructure* mvkDstAccStruct = (MVKAccelerationStructure*)buildInfo.dstAccelerationStructure;
 
@@ -131,6 +231,49 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
         if ( !mvkBuffer ) { continue; }
         id<MTLBuffer> scratchBuffer = mvkBuffer->getMTLBuffer();
         NSInteger scratchBufferOffset = mvkBuffer->getMTLBufferOffset() + scratchOffset;
+
+		if (buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR && !hasBuildPrimitives) {
+			MVKAccelerationStructure* mvkSrcAccStruct =
+				(MVKAccelerationStructure*)buildInfo.srcAccelerationStructure;
+			auto* dstGeneration = mvkDstAccStruct->retainCurrentGeneration();
+			auto* srcGeneration = mvkSrcAccStruct->retainCurrentGeneration();
+			uint64_t nativeSize = srcGeneration ? srcGeneration->getNativeSize() : 0;
+			if (!dstGeneration || !srcGeneration || nativeSize > dstGeneration->getNativeCapacity()) {
+				if (dstGeneration) { dstGeneration->release(); }
+				if (srcGeneration) { srcGeneration->release(); }
+				cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+					"vkCmdBuildAccelerationStructuresKHR(): The destination acceleration structure has insufficient storage capacity.");
+				continue;
+			}
+
+			MVKAccelerationStructureCanonicalBuild canonicalBuild;
+			VkResult canonicalResult = canonicalBuild.prepareAndEncode(cmdEncoder, mvkDstAccStruct,
+				buildInfo, ranges.data(), nativeSize);
+			if (canonicalResult < 0) {
+				cmdEncoder->reportError(canonicalResult,
+					"vkCmdBuildAccelerationStructuresKHR(): The canonical build input could not be captured.");
+				dstGeneration->release();
+				srcGeneration->release();
+				continue;
+			}
+
+			id<MTLAccelerationStructure> dstAccStruct = dstGeneration->getMTLAccelerationStructure();
+			id<MTLAccelerationStructure> srcAccStruct = srcGeneration->getMTLAccelerationStructure();
+			if (srcAccStruct != dstAccStruct) {
+				auto* accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(
+					kMVKCommandUseBuildAccelerationStructure);
+				[accStructEncoder copyAccelerationStructure:srcAccStruct
+									 toAccelerationStructure:dstAccStruct];
+			}
+			dstGeneration->publishBuild(nativeSize, 0, 0);
+			if (!canonicalBuild.publish(dstGeneration)) {
+				cmdEncoder->reportError(VK_ERROR_OUT_OF_HOST_MEMORY,
+					"vkCmdBuildAccelerationStructuresKHR(): The canonical build input could not be published.");
+			}
+			releaseAccelerationStructureGenerationOnCompletion(cmdEncoder, dstGeneration);
+			releaseAccelerationStructureGenerationOnCompletion(cmdEncoder, srcGeneration);
+			continue;
+		}
 
         MTLAccelerationStructureDescriptor* descriptor = mvkDstAccStruct->newMTLAccelerationStructureDescriptor(buildInfo, entry.ranges.data(), nullptr);
         if ( !descriptor ) { continue; }
@@ -170,32 +313,57 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
 		}
 
         id<MTLComputeCommandEncoder> mtlConvertEncoder = nil;
+		bool validTrianglePositions = true;
         if (buildInfo.type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR) {
             NSArray* geometryDescriptors = ((MTLPrimitiveAccelerationStructureDescriptor*)descriptor).geometryDescriptors;
             for (uint32_t geomIdx = 0; geomIdx < buildInfo.geometryCount && geomIdx < geometryDescriptors.count; geomIdx++) {
                 const VkAccelerationStructureGeometryKHR& geometry = buildInfo.pGeometries
                     ? buildInfo.pGeometries[geomIdx]
                     : *buildInfo.ppGeometries[geomIdx];
-                if (geometry.geometryType != VK_GEOMETRY_TYPE_TRIANGLES_KHR ||
-                    !geometry.geometry.triangles.transformData.deviceAddress) { continue; }
+				if (geometry.geometryType != VK_GEOMETRY_TYPE_TRIANGLES_KHR) { continue; }
                 MTLAccelerationStructureTriangleGeometryDescriptor* triangleDescriptor = geometryDescriptors[geomIdx];
-                id<MTLBuffer> srcBuffer = triangleDescriptor.transformationMatrixBuffer;
-                if ( !srcBuffer ) { continue; }
-                const MVKMTLBufferAllocation* tmpBuffer = cmdEncoder->getTempMTLBuffer(sizeof(VkTransformMatrixKHR), true);
-                mtlConvertEncoder = encodeAccelerationStructureConversion(cmdEncoder,
-                                                                          srcBuffer,
-                                                                          triangleDescriptor.transformationMatrixBufferOffset,
-                                                                          tmpBuffer->_mtlBuffer,
-                                                                          tmpBuffer->_offset,
-                                                                          nil,
-                                                                          sizeof(VkTransformMatrixKHR),
-                                                                          1,
-                                                                          kMVKAccelerationStructureConvertTransform,
-																						  nil, 0, 0);
-                triangleDescriptor.transformationMatrixBuffer = tmpBuffer->_mtlBuffer;
-                triangleDescriptor.transformationMatrixBufferOffset = tmpBuffer->_offset;
+				if (geometry.geometry.triangles.transformData.deviceAddress) {
+					id<MTLBuffer> srcBuffer = triangleDescriptor.transformationMatrixBuffer;
+					if (!srcBuffer) {
+						validTrianglePositions = false;
+						break;
+					}
+					const MVKMTLBufferAllocation* tmpBuffer =
+						cmdEncoder->getTempMTLBuffer(sizeof(VkTransformMatrixKHR), true);
+					if (!tmpBuffer || !tmpBuffer->_mtlBuffer) {
+						validTrianglePositions = false;
+						break;
+					}
+					mtlConvertEncoder = encodeAccelerationStructureConversion(cmdEncoder,
+																  srcBuffer,
+																  triangleDescriptor.transformationMatrixBufferOffset,
+																  tmpBuffer->_mtlBuffer,
+																  tmpBuffer->_offset,
+																  nil,
+																  sizeof(VkTransformMatrixKHR),
+																  1,
+																  kMVKAccelerationStructureConvertTransform,
+																  nil, 0, 0);
+					triangleDescriptor.transformationMatrixBuffer = tmpBuffer->_mtlBuffer;
+					triangleDescriptor.transformationMatrixBufferOffset = tmpBuffer->_offset;
+				}
+				if (mvkIsAnyFlagEnabled(buildInfo.flags,
+						VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_DATA_ACCESS_BIT_KHR) &&
+					!encodeAccelerationStructureTrianglePositions(cmdEncoder,
+						triangleDescriptor, geometry.geometry.triangles,
+						ranges[geomIdx].primitiveCount, mtlConvertEncoder)) {
+					validTrianglePositions = false;
+					break;
+				}
             }
         }
+		if (!validTrianglePositions) {
+			cmdEncoder->reportError(VK_ERROR_FEATURE_NOT_PRESENT,
+				"vkCmdBuildAccelerationStructuresKHR(): Triangle position data could not be generated.");
+			dstGeneration->release();
+			[descriptor release];
+			continue;
+		}
         if (buildInfo.type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR) {
             const VkAccelerationStructureGeometryKHR& geometry = buildInfo.pGeometries
                 ? buildInfo.pGeometries[0]
@@ -279,14 +447,30 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
                                      scratchBufferOffset:scratchBufferOffset];
 			encoded = true;
         } else if (buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR) {
-            MVKAccelerationStructure* mvkSrcAccStruct = (MVKAccelerationStructure*)buildInfo.srcAccelerationStructure;
+			MVKAccelerationStructure* mvkSrcAccStruct = (MVKAccelerationStructure*)buildInfo.srcAccelerationStructure;
 			srcGeneration = mvkSrcAccStruct->retainCurrentGeneration();
 			if (srcGeneration) {
-				[accStructEncoder refitAccelerationStructure:srcGeneration->getMTLAccelerationStructure()
+				id<MTLAccelerationStructure> srcAccStruct = srcGeneration->getMTLAccelerationStructure();
+				if (buildInfo.type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR) {
+					MTLAccelerationStructureRefitOptions refitOptions =
+						MTLAccelerationStructureRefitOptionVertexData;
+					if (mvkIsAnyFlagEnabled(buildInfo.flags,
+							VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_DATA_ACCESS_BIT_KHR)) {
+						refitOptions |= MTLAccelerationStructureRefitOptionPerPrimitiveData;
+					}
+					[accStructEncoder refitAccelerationStructure:srcAccStruct
 											  descriptor:descriptor
 											 destination:dstAccStruct
-										   scratchBuffer:scratchBuffer
-									 scratchBufferOffset:scratchBufferOffset];
+										  scratchBuffer:scratchBuffer
+									scratchBufferOffset:scratchBufferOffset
+											 options:refitOptions];
+				} else {
+					[accStructEncoder refitAccelerationStructure:srcAccStruct
+											  descriptor:descriptor
+											 destination:dstAccStruct
+										  scratchBuffer:scratchBuffer
+									scratchBufferOffset:scratchBufferOffset];
+				}
 				encoded = true;
 			}
         }

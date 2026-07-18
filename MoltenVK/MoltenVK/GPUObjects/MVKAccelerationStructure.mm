@@ -505,6 +505,12 @@ MTLAccelerationStructureDescriptor* MVKAccelerationStructure::newMTLAcceleration
                         }
                         geometryTriangles.vertexStride = triangleData.vertexStride;
                         geometryTriangles.vertexFormat = mvkMTLAccelerationStructureVertexFormatFromVkFormat(triangleData.vertexFormat);
+						if (mvkIsAnyFlagEnabled(buildInfo.flags,
+								VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_DATA_ACCESS_BIT_KHR)) {
+							constexpr NSUInteger positionDataStride = 3 * 3 * sizeof(float);
+							geometryTriangles.primitiveDataElementSize = positionDataStride;
+							geometryTriangles.primitiveDataStride = positionDataStride;
+						}
                         geometryTriangles.opaque = mvkIsAnyFlagEnabled(geom.flags, VK_GEOMETRY_OPAQUE_BIT_KHR);
                         geometryTriangles.allowDuplicateIntersectionFunctionInvocation = !mvkIsAnyFlagEnabled(geom.flags, VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR);
 
@@ -544,7 +550,11 @@ MTLAccelerationStructureDescriptor* MVKAccelerationStructure::newMTLAcceleration
                         if (rangeInfos && !mvkBoundingBoxBuffer) { continue; }
 
                         MTLAccelerationStructureBoundingBoxGeometryDescriptor* geometryAABBs = [MTLAccelerationStructureBoundingBoxGeometryDescriptor new];
-                        geometryAABBs.boundingBoxStride = aabbData.stride;
+						const NSUInteger boundingBoxCount = rangeInfos
+							? rangeInfos[i].primitiveCount : maxPrimitiveCounts[i];
+						geometryAABBs.boundingBoxStride = boundingBoxCount ||
+							aabbData.stride >= sizeof(VkAabbPositionsKHR)
+							? aabbData.stride : sizeof(VkAabbPositionsKHR);
                         if (mvkBoundingBoxBuffer) {
                             geometryAABBs.boundingBoxBuffer = mvkBoundingBoxBuffer->getMTLBuffer();
                             geometryAABBs.boundingBoxBufferOffset = mvkBoundingBoxBuffer->getMTLBufferOffset() + boundingBoxOffset;
@@ -553,11 +563,11 @@ MTLAccelerationStructureDescriptor* MVKAccelerationStructure::newMTLAcceleration
                         geometryAABBs.allowDuplicateIntersectionFunctionInvocation = !mvkIsAnyFlagEnabled(geom.flags, VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR);
 
                         if (rangeInfos) {
-                            geometryAABBs.boundingBoxCount = rangeInfos[i].primitiveCount;
+                            geometryAABBs.boundingBoxCount = boundingBoxCount;
                             geometryAABBs.boundingBoxBufferOffset += rangeInfos[i].primitiveOffset;
                         }
                         else {
-                            geometryAABBs.boundingBoxCount = maxPrimitiveCounts[i];
+                            geometryAABBs.boundingBoxCount = boundingBoxCount;
                         }
 
                         [geoms addObject:geometryAABBs];
@@ -565,6 +575,23 @@ MTLAccelerationStructureDescriptor* MVKAccelerationStructure::newMTLAcceleration
                     } break;
                 }
             }
+			if (!buildInfo.geometryCount) {
+				id<MTLBuffer> emptyVertexBuffer = [getMTLDevice()
+					newBufferWithLength:sizeof(float) * 3
+					options:MTLResourceStorageModePrivate];
+				if (!emptyVertexBuffer) {
+					[geoms release];
+					[primitive release];
+					return nil;
+				}
+				MTLAccelerationStructureTriangleGeometryDescriptor* emptyGeometry =
+					[MTLAccelerationStructureTriangleGeometryDescriptor new];
+				emptyGeometry.vertexBuffer = emptyVertexBuffer;
+				emptyGeometry.vertexStride = sizeof(float) * 3;
+				[geoms addObject:emptyGeometry];
+				[emptyGeometry release];
+				[emptyVertexBuffer release];
+			}
 
             primitive.geometryDescriptors = geoms;
             [geoms release];

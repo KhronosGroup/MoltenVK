@@ -26,6 +26,64 @@ class MVKAccelerationStructureStorageGeneration;
 class MVKCommandBuffer;
 class MVKCommandEncoder;
 
+enum MVKAccelerationStructurePositionFormat : uint32_t {
+	kMVKAccelerationStructurePositionFormatR32G32,
+	kMVKAccelerationStructurePositionFormatR32G32B32,
+	kMVKAccelerationStructurePositionFormatR16G16Float,
+	kMVKAccelerationStructurePositionFormatR16G16B16A16Float,
+	kMVKAccelerationStructurePositionFormatR16G16Snorm,
+	kMVKAccelerationStructurePositionFormatR16G16B16A16Snorm,
+};
+
+struct MVKAccelerationStructureTrianglePositionsInfo {
+	uint64_t vertexAvailable;
+	uint64_t indexAvailable;
+	uint32_t vertexStride;
+	uint32_t vertexFormat;
+	uint32_t indexElementSize;
+	uint32_t vertexElementSize;
+	uint32_t maxVertex;
+	uint32_t primitiveCount;
+	uint32_t hasTransform;
+	uint32_t reserved;
+};
+
+static_assert(sizeof(MVKAccelerationStructureTrianglePositionsInfo) == 48);
+
+static inline bool mvkGetAccelerationStructurePositionFormat(
+	VkFormat format,
+	uint32_t& positionFormat,
+	uint32_t& elementSize) {
+	switch (format) {
+		case VK_FORMAT_R32G32_SFLOAT:
+			positionFormat = kMVKAccelerationStructurePositionFormatR32G32;
+			elementSize = 2 * sizeof(float);
+			return true;
+		case VK_FORMAT_R32G32B32_SFLOAT:
+			positionFormat = kMVKAccelerationStructurePositionFormatR32G32B32;
+			elementSize = 3 * sizeof(float);
+			return true;
+		case VK_FORMAT_R16G16_SFLOAT:
+			positionFormat = kMVKAccelerationStructurePositionFormatR16G16Float;
+			elementSize = 2 * sizeof(uint16_t);
+			return true;
+		case VK_FORMAT_R16G16B16A16_SFLOAT:
+			positionFormat = kMVKAccelerationStructurePositionFormatR16G16B16A16Float;
+			elementSize = 4 * sizeof(uint16_t);
+			return true;
+		case VK_FORMAT_R16G16_SNORM:
+			positionFormat = kMVKAccelerationStructurePositionFormatR16G16Snorm;
+			elementSize = 2 * sizeof(int16_t);
+			return true;
+		case VK_FORMAT_R16G16B16A16_SNORM:
+			positionFormat = kMVKAccelerationStructurePositionFormatR16G16B16A16Snorm;
+			elementSize = 4 * sizeof(int16_t);
+			return true;
+		default:
+			return false;
+	}
+}
+
 class MVKAccelerationStructureCanonicalBuild {
 
 public:

@@ -22,12 +22,14 @@ Released TBD
   - `VK_KHR_acceleration_structure`
   - `VK_KHR_ray_query`
   - `VK_KHR_ray_tracing_pipeline`
+  - `VK_KHR_ray_tracing_position_fetch`
   - `VK_KHR_pipeline_library`
   - Acceleration-structure builds for triangles and axis-aligned bounding boxes
   - Top-level acceleration structures with indirect instance descriptors
   - Refit, copy, compaction, serialization, and build size queries
   - Ray queries from any shader stage
   - Ray tracing pipelines with shader binding tables, callable shaders, and recursion
+  - Triangle position fetch from ray queries and ray tracing hit shaders
   - SPIR-V to MSL lowering for ray queries and ray tracing
   - Enable with `MVK_CONFIG_ENABLE_EXPERIMENTAL_RAY_TRACING=1`. Compatible private placement heaps
     use the bound backing ranges; otherwise, standalone Metal storage does not preserve

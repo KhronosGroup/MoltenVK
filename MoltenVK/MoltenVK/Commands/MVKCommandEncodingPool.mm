@@ -180,6 +180,10 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdSerializeAccelerationS
 	MVK_ENC_REZ_ACCESS(_mtlSerializeAccStructIndexedVerticesComputePipelineState, newCmdSerializeAccelerationStructureIndexedVerticesMTLComputePipelineState(_commandPool));
 }
 
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdBuildAccelerationStructureTrianglePositionsMTLComputePipelineState() {
+	MVK_ENC_REZ_ACCESS(_mtlBuildAccStructTrianglePositionsComputePipelineState, newCmdBuildAccelerationStructureTrianglePositionsMTLComputePipelineState(_commandPool));
+}
+
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDeserializeAccelerationStructureInstancesMTLComputePipelineState() {
 	MVK_ENC_REZ_ACCESS(_mtlDeserializeAccStructComputePipelineState, newCmdDeserializeAccelerationStructureInstancesMTLComputePipelineState(_commandPool));
 }
@@ -290,6 +294,9 @@ void MVKCommandEncodingPool::destroyMetalResources() {
 
 	[_mtlSerializeAccStructIndexedVerticesComputePipelineState release];
 	_mtlSerializeAccStructIndexedVerticesComputePipelineState = nil;
+
+	[_mtlBuildAccStructTrianglePositionsComputePipelineState release];
+	_mtlBuildAccStructTrianglePositionsComputePipelineState = nil;
 
 	[_mtlDeserializeAccStructComputePipelineState release];
 	_mtlDeserializeAccStructComputePipelineState = nil;

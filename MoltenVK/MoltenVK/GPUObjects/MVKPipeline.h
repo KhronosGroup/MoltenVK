@@ -493,7 +493,8 @@ protected:
 								  spv::ExecutionModel executionModel,
 								  VkPipelineCreationFeedback* pStageFB,
 								  uint32_t rayTracingStageDepth = 0,
-								  bool rayGenerationVisible = false);
+								  bool rayGenerationVisible = false,
+								  bool rayTracingPositionFetch = false);
 	uint32_t getImplicitBufferIndex(uint32_t bufferIndexOffset) const;
 
 	id<MTLComputePipelineState> _mtlPipelineState;

@@ -742,5 +742,113 @@ kernel void cmdSerializeAccelerationStructureIndexedVertices(
 		destination[targetOffset + byteIndex] = vertices[sourceOffset + byteIndex];
 	}
 }
+
+typedef enum : uint32_t {
+	MVKAccelerationStructurePositionFormatR32G32,
+	MVKAccelerationStructurePositionFormatR32G32B32,
+	MVKAccelerationStructurePositionFormatR16G16Float,
+	MVKAccelerationStructurePositionFormatR16G16B16A16Float,
+	MVKAccelerationStructurePositionFormatR16G16Snorm,
+	MVKAccelerationStructurePositionFormatR16G16B16A16Snorm,
+} MVKAccelerationStructurePositionFormat;
+
+struct MVKAccelerationStructureTrianglePositionsInfo {
+	ulong vertexAvailable;
+	ulong indexAvailable;
+	uint vertexStride;
+	uint vertexFormat;
+	uint indexElementSize;
+	uint vertexElementSize;
+	uint maxVertex;
+	uint primitiveCount;
+	uint hasTransform;
+	uint reserved;
+};
+
+static_assert(sizeof(MVKAccelerationStructureTrianglePositionsInfo) == 48, "");
+
+static float mvkAccelerationStructureSnorm16(short value) {
+	return max(float(value) / 32767.0f, -1.0f);
+}
+
+static float3 mvkAccelerationStructurePosition(
+	const device uchar* vertices,
+	ulong offset,
+	uint format) {
+	switch (format) {
+		case MVKAccelerationStructurePositionFormatR32G32: {
+			const device float* value = reinterpret_cast<const device float*>(vertices + offset);
+			return float3(value[0], value[1], 0.0f);
+		}
+		case MVKAccelerationStructurePositionFormatR32G32B32: {
+			const device float* value = reinterpret_cast<const device float*>(vertices + offset);
+			return float3(value[0], value[1], value[2]);
+		}
+		case MVKAccelerationStructurePositionFormatR16G16Float: {
+			const device half* value = reinterpret_cast<const device half*>(vertices + offset);
+			return float3(float(value[0]), float(value[1]), 0.0f);
+		}
+		case MVKAccelerationStructurePositionFormatR16G16B16A16Float: {
+			const device half* value = reinterpret_cast<const device half*>(vertices + offset);
+			return float3(float(value[0]), float(value[1]), float(value[2]));
+		}
+		case MVKAccelerationStructurePositionFormatR16G16Snorm: {
+			const device short* value = reinterpret_cast<const device short*>(vertices + offset);
+			return float3(mvkAccelerationStructureSnorm16(value[0]),
+			              mvkAccelerationStructureSnorm16(value[1]), 0.0f);
+		}
+		case MVKAccelerationStructurePositionFormatR16G16B16A16Snorm: {
+			const device short* value = reinterpret_cast<const device short*>(vertices + offset);
+			return float3(mvkAccelerationStructureSnorm16(value[0]),
+			              mvkAccelerationStructureSnorm16(value[1]),
+			              mvkAccelerationStructureSnorm16(value[2]));
+		}
+		default:
+			return float3(0.0f);
+	}
+}
+
+kernel void cmdBuildAccelerationStructureTrianglePositions(
+	const device uchar* vertices [[buffer(0)]],
+	const device uchar* indices [[buffer(1)]],
+	const device float* transform [[buffer(2)]],
+	device packed_float3* positions [[buffer(3)]],
+	constant MVKAccelerationStructureTrianglePositionsInfo& info [[buffer(4)]],
+	uint primitiveIndex [[thread_position_in_grid]]) {
+	if (primitiveIndex >= info.primitiveCount) { return; }
+	for (uint corner = 0; corner < 3; corner++) {
+		ulong itemIndex = ulong(primitiveIndex) * 3 + corner;
+		ulong vertexIndex = itemIndex;
+		if (info.indexElementSize) {
+			ulong indexOffset = ulong(itemIndex) * info.indexElementSize;
+			if (indexOffset > info.indexAvailable ||
+				info.indexElementSize > info.indexAvailable - indexOffset) { return; }
+			if (info.indexElementSize == sizeof(ushort)) {
+				vertexIndex = uint(indices[indexOffset]) |
+					(uint(indices[indexOffset + 1]) << 8);
+			} else if (info.indexElementSize == sizeof(uint)) {
+				vertexIndex = uint(indices[indexOffset]) |
+					(uint(indices[indexOffset + 1]) << 8) |
+					(uint(indices[indexOffset + 2]) << 16) |
+					(uint(indices[indexOffset + 3]) << 24);
+			} else {
+				return;
+			}
+			if (vertexIndex > info.maxVertex) { return; }
+		}
+		if (vertexIndex && info.vertexStride > info.vertexAvailable / vertexIndex) { return; }
+		ulong vertexOffset = ulong(vertexIndex) * info.vertexStride;
+		if (vertexOffset > info.vertexAvailable ||
+			info.vertexElementSize > info.vertexAvailable - vertexOffset) { return; }
+		float3 position = mvkAccelerationStructurePosition(vertices, vertexOffset, info.vertexFormat);
+		if (info.hasTransform) {
+			position = float3(transform[0], transform[1], transform[2]) * position.x +
+			           float3(transform[3], transform[4], transform[5]) * position.y +
+			           float3(transform[6], transform[7], transform[8]) * position.z +
+			           float3(transform[9], transform[10], transform[11]);
+		}
+		positions[itemIndex] = packed_float3(position);
+	}
+}
 #endif
 )";

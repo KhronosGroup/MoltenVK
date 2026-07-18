@@ -44,7 +44,7 @@ enum class MVKMetalGraphicsStage {
 
 /** Provides dynamic dispatch for binding resources to an encoder. */
 struct MVKResourceBinder {
-	typedef void (*UseResource)(id<MTLCommandEncoder> encoder, id<MTLResource> resource, MTLResourceUsage usage, MVKResourceUsageStages stages);
+	using UseResource = MVKUseResourceFunction;
 	SEL _setBytes;
 	SEL _setBuffer;
 	SEL _setOffset;

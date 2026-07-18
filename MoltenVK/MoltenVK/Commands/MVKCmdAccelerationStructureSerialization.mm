@@ -675,10 +675,120 @@ static void applyAccelerationStructureUsage(MTLAccelerationStructureDescriptor* 
 #endif
 }
 
+static bool encodeDeserializedBLASTrianglePositions(
+	MVKCommandEncoder* cmdEncoder,
+	id<MTLBuffer> serializationBuffer,
+	const MVKValidatedAccelerationStructureSerialization& serialization,
+	MTLPrimitiveAccelerationStructureDescriptor* descriptor,
+	id<MTLComputeCommandEncoder>& computeEncoder) {
+	constexpr NSUInteger primitiveDataStride = 3 * 3 * sizeof(float);
+	struct TrianglePositions {
+		MTLAccelerationStructureTriangleGeometryDescriptor* geometry;
+		MVKAccelerationStructureTrianglePositionsInfo info;
+	};
+	MVKSmallVector<TrianglePositions, 4> trianglePositions;
+	bool hasPrimitives = false;
+	NSArray* geometries = descriptor.geometryDescriptors;
+	for (uint64_t index = 0; index < serialization.payload.recordCount; index++) {
+		MVKSerializedAccelerationStructureGeometryRecord record;
+		VkDeviceSize recordOffset;
+		if (!mvkAccelerationStructureSerializationMultiply(index,
+				serialization.payload.recordStride, recordOffset) ||
+			!mvkAccelerationStructureSerializationAdd(serialization.layout.recordTableOffset,
+				recordOffset, recordOffset) ||
+			!readAccelerationStructureSerializationValue(serializationBuffer, recordOffset, record)) {
+			return false;
+		}
+		if (record.geometryType != VK_GEOMETRY_TYPE_TRIANGLES_KHR) { continue; }
+
+		uint32_t positionFormat = 0;
+		uint32_t vertexElementSize = 0;
+		if (index >= geometries.count ||
+			!mvkGetAccelerationStructurePositionFormat(static_cast<VkFormat>(record.vertexFormat),
+				positionFormat, vertexElementSize) ||
+			record.primitiveCount > std::numeric_limits<uint32_t>::max() ||
+			record.vertexStride > std::numeric_limits<uint32_t>::max() ||
+			record.maxVertex > std::numeric_limits<uint32_t>::max() ||
+			record.primitiveCount >
+				cmdEncoder->getMetalFeatures().maxMTLBufferSize / primitiveDataStride) {
+			return false;
+		}
+
+		MTLAccelerationStructureTriangleGeometryDescriptor* geometry = geometries[index];
+		if (record.primitiveCount && (!geometry.vertexBuffer ||
+			geometry.vertexBufferOffset > geometry.vertexBuffer.length ||
+			record.vertexSize > geometry.vertexBuffer.length - geometry.vertexBufferOffset ||
+			(geometry.transformationMatrixBuffer &&
+			 (geometry.transformationMatrixBufferOffset > geometry.transformationMatrixBuffer.length ||
+			  sizeof(VkTransformMatrixKHR) > geometry.transformationMatrixBuffer.length -
+				geometry.transformationMatrixBufferOffset)))) {
+			return false;
+		}
+		MVKAccelerationStructureTrianglePositionsInfo info {
+			.vertexAvailable = record.vertexSize,
+			.indexAvailable = 0,
+			.vertexStride = static_cast<uint32_t>(record.vertexStride),
+			.vertexFormat = positionFormat,
+			.indexElementSize = 0,
+			.vertexElementSize = vertexElementSize,
+			.maxVertex = static_cast<uint32_t>(record.maxVertex),
+			.primitiveCount = static_cast<uint32_t>(record.primitiveCount),
+			.hasTransform = geometry.transformationMatrixBuffer != nil,
+		};
+		trianglePositions.push_back({geometry, info});
+		hasPrimitives |= record.primitiveCount != 0;
+	}
+
+	id<MTLComputePipelineState> pipeline = hasPrimitives
+		? cmdEncoder->getCommandEncodingPool()
+			->getCmdBuildAccelerationStructureTrianglePositionsMTLComputePipelineState()
+		: nil;
+	if (hasPrimitives && !pipeline) { return false; }
+	for (const auto& positionsInfo : trianglePositions) {
+		auto* geometry = positionsInfo.geometry;
+		const auto& info = positionsInfo.info;
+		NSUInteger dataSize = std::max<NSUInteger>(primitiveDataStride,
+			static_cast<NSUInteger>(info.primitiveCount) * primitiveDataStride);
+		const MVKMTLBufferAllocation* positions = cmdEncoder->getTempMTLBuffer(dataSize, true);
+		if (!positions || !positions->_mtlBuffer) { return false; }
+		geometry.primitiveDataBuffer = positions->_mtlBuffer;
+		geometry.primitiveDataBufferOffset = positions->_offset;
+		geometry.primitiveDataElementSize = primitiveDataStride;
+		geometry.primitiveDataStride = primitiveDataStride;
+		if (!info.primitiveCount) { continue; }
+
+		computeEncoder = cmdEncoder->getMTLComputeEncoder(
+			kMVKCommandUseBuildAccelerationStructureConvertBuffers);
+		[computeEncoder setComputePipelineState:pipeline];
+		[computeEncoder setBuffer:geometry.vertexBuffer
+						 offset:geometry.vertexBufferOffset
+						atIndex:0];
+		[computeEncoder setBuffer:geometry.vertexBuffer
+						 offset:geometry.vertexBufferOffset
+						atIndex:1];
+		[computeEncoder setBuffer:geometry.transformationMatrixBuffer ?: positions->_mtlBuffer
+						 offset:geometry.transformationMatrixBuffer
+							? geometry.transformationMatrixBufferOffset : positions->_offset
+						atIndex:2];
+		[computeEncoder setBuffer:positions->_mtlBuffer offset:positions->_offset atIndex:3];
+		cmdEncoder->setComputeBytes(computeEncoder, &info, sizeof(info), 4);
+		if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
+			[computeEncoder dispatchThreads:MTLSizeMake(info.primitiveCount, 1, 1)
+				 threadsPerThreadgroup:MTLSizeMake(pipeline.threadExecutionWidth, 1, 1)];
+		} else {
+			[computeEncoder dispatchThreadgroups:MTLSizeMake(
+					mvkCeilingDivide<NSUInteger>(info.primitiveCount, pipeline.threadExecutionWidth), 1, 1)
+					  threadsPerThreadgroup:MTLSizeMake(pipeline.threadExecutionWidth, 1, 1)];
+		}
+	}
+	return true;
+}
+
 static MTLAccelerationStructureDescriptor* newDeserializedBLASDescriptor(
 	MVKCommandEncoder* cmdEncoder,
 	id<MTLBuffer> serializationBuffer,
-	const MVKValidatedAccelerationStructureSerialization& serialization) {
+	const MVKValidatedAccelerationStructureSerialization& serialization,
+	id<MTLComputeCommandEncoder>& computeEncoder) {
 	NSMutableArray* geometries = [NSMutableArray new];
 	for (uint64_t index = 0; index < serialization.payload.recordCount; index++) {
 		MVKSerializedAccelerationStructureGeometryRecord record;
@@ -740,6 +850,17 @@ static MTLAccelerationStructureDescriptor* newDeserializedBLASDescriptor(
 			if (record.vertexSize) {
 				geometry.vertexBuffer = serializationBuffer;
 				geometry.vertexBufferOffset = static_cast<NSUInteger>(record.vertexOffset);
+			} else {
+				id<MTLBuffer> emptyVertexBuffer = [cmdEncoder->getMTLDevice()
+					newBufferWithLength:sizeof(float) * 3
+					options:MTLResourceStorageModePrivate];
+				if (!emptyVertexBuffer) {
+					[geometry release];
+					[geometries release];
+					return nil;
+				}
+				geometry.vertexBuffer = emptyVertexBuffer;
+				[emptyVertexBuffer release];
 			}
 			if (record.transformSize) {
 				float source[12];
@@ -787,10 +908,23 @@ static MTLAccelerationStructureDescriptor* newDeserializedBLASDescriptor(
 			MTLAccelerationStructureBoundingBoxGeometryDescriptor* geometry =
 				[MTLAccelerationStructureBoundingBoxGeometryDescriptor new];
 			geometry.boundingBoxCount = static_cast<NSUInteger>(record.primitiveCount);
-			geometry.boundingBoxStride = static_cast<NSUInteger>(record.vertexStride);
+			geometry.boundingBoxStride = record.primitiveCount ||
+				record.vertexStride >= sizeof(VkAabbPositionsKHR)
+				? static_cast<NSUInteger>(record.vertexStride) : sizeof(VkAabbPositionsKHR);
 			if (record.aabbSize) {
 				geometry.boundingBoxBuffer = serializationBuffer;
 				geometry.boundingBoxBufferOffset = static_cast<NSUInteger>(record.aabbOffset);
+			} else {
+				id<MTLBuffer> emptyBoundingBoxBuffer = [cmdEncoder->getMTLDevice()
+					newBufferWithLength:sizeof(VkAabbPositionsKHR)
+					options:MTLResourceStorageModePrivate];
+				if (!emptyBoundingBoxBuffer) {
+					[geometry release];
+					[geometries release];
+					return nil;
+				}
+				geometry.boundingBoxBuffer = emptyBoundingBoxBuffer;
+				[emptyBoundingBoxBuffer release];
 			}
 			geometry.opaque = mvkIsAnyFlagEnabled(record.geometryFlags, VK_GEOMETRY_OPAQUE_BIT_KHR);
 			geometry.allowDuplicateIntersectionFunctionInvocation =
@@ -803,12 +937,35 @@ static MTLAccelerationStructureDescriptor* newDeserializedBLASDescriptor(
 			return nil;
 		}
 	}
+	if (!serialization.payload.recordCount) {
+		id<MTLBuffer> emptyVertexBuffer = [cmdEncoder->getMTLDevice()
+			newBufferWithLength:sizeof(float) * 3
+			options:MTLResourceStorageModePrivate];
+		if (!emptyVertexBuffer) {
+			[geometries release];
+			return nil;
+		}
+		MTLAccelerationStructureTriangleGeometryDescriptor* geometry =
+			[MTLAccelerationStructureTriangleGeometryDescriptor new];
+		geometry.vertexBuffer = emptyVertexBuffer;
+		geometry.vertexStride = sizeof(float) * 3;
+		[geometries addObject:geometry];
+		[geometry release];
+		[emptyVertexBuffer release];
+	}
 	MTLPrimitiveAccelerationStructureDescriptor* descriptor =
 		[MTLPrimitiveAccelerationStructureDescriptor new];
 	descriptor.geometryDescriptors = geometries;
 	[geometries release];
 	applyAccelerationStructureUsage(descriptor,
 		static_cast<VkBuildAccelerationStructureFlagsKHR>(serialization.payload.buildFlags));
+	if (mvkIsAnyFlagEnabled(serialization.payload.buildFlags,
+			VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_DATA_ACCESS_BIT_KHR) &&
+		!encodeDeserializedBLASTrianglePositions(cmdEncoder, serializationBuffer,
+			serialization, descriptor, computeEncoder)) {
+		[descriptor release];
+		return nil;
+	}
 	return descriptor;
 }
 
@@ -898,6 +1055,15 @@ static void releaseDeserializationResourcesOnCompletion(
 	}];
 }
 
+static void releaseDeserializationBufferOnCompletion(
+	MVKCommandEncoder* cmdEncoder,
+	id<MTLBuffer> serializationBuffer) {
+	MVKDevice* device = cmdEncoder->getDevice();
+	[cmdEncoder->_mtlCmdBuffer addCompletedHandler:^(id<MTLCommandBuffer>) {
+		releaseAccelerationStructureBuffer(device, serializationBuffer);
+	}];
+}
+
 VkResult MVKCmdCopyMemoryToAccelerationStructure::setContent(
 	MVKCommandBuffer* cmdBuff,
 	VkDeviceAddress source,
@@ -965,12 +1131,17 @@ void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncod
 		return;
 	}
 
+	id<MTLComputeCommandEncoder> computeEncoder = nil;
 	MTLAccelerationStructureDescriptor* descriptor =
 		serialization.payload.accelerationStructureType == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR
-			? newDeserializedBLASDescriptor(cmdEncoder, serializationBuffer, serialization)
+			? newDeserializedBLASDescriptor(cmdEncoder, serializationBuffer, serialization, computeEncoder)
 			: newDeserializedTLASDescriptor(serializationBuffer, serialization);
 	if (!descriptor) {
-		releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
+		if (computeEncoder) {
+			releaseDeserializationBufferOnCompletion(cmdEncoder, serializationBuffer);
+		} else {
+			releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
+		}
 		cmdEncoder->reportError(VK_ERROR_INITIALIZATION_FAILED,
 			"vkCmdCopyMemoryToAccelerationStructureKHR(): The serialized records are invalid.");
 		return;
@@ -987,7 +1158,11 @@ void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncod
 		!sizes.buildScratchBufferSize ||
 		sizes.buildScratchBufferSize > std::numeric_limits<NSUInteger>::max()) {
 		[descriptor release];
-		releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
+		if (computeEncoder) {
+			releaseDeserializationBufferOnCompletion(cmdEncoder, serializationBuffer);
+		} else {
+			releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
+		}
 		cmdEncoder->reportError(VK_ERROR_INITIALIZATION_FAILED,
 			"vkCmdCopyMemoryToAccelerationStructureKHR(): The serialized build sizes are invalid.");
 		return;
@@ -1000,7 +1175,11 @@ void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncod
 													 options:MTLResourceStorageModePrivate];
 	if (!canonicalBuffer) {
 		[descriptor release];
-		releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
+		if (computeEncoder) {
+			releaseDeserializationBufferOnCompletion(cmdEncoder, serializationBuffer);
+		} else {
+			releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
+		}
 		cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
 			"vkCmdCopyMemoryToAccelerationStructureKHR(): The canonical buffer could not be allocated.");
 		return;
@@ -1013,28 +1192,16 @@ void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncod
 		if (generation) { generation->release(); }
 		[canonicalBuffer release];
 		[descriptor release];
-		releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
+		if (computeEncoder) {
+			releaseDeserializationBufferOnCompletion(cmdEncoder, serializationBuffer);
+		} else {
+			releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
+		}
 		cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
 			"vkCmdCopyMemoryToAccelerationStructureKHR(): The destination acceleration structure is too small.");
 		return;
 	}
 
-	id<MTLFence> fence = serialization.payload.recordCount &&
-		serialization.payload.accelerationStructureType == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR
-		? [cmdEncoder->getMTLDevice() newFence]
-		: nil;
-	if (serialization.payload.recordCount &&
-		serialization.payload.accelerationStructureType == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR &&
-		!fence) {
-		generation->release();
-		[canonicalBuffer release];
-		[descriptor release];
-		releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
-		cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
-			"vkCmdCopyMemoryToAccelerationStructureKHR(): The conversion fence could not be allocated.");
-		return;
-	}
-	id<MTLComputeCommandEncoder> computeEncoder = nil;
 	if (serialization.payload.accelerationStructureType == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR) {
 		computeEncoder = encodeDeserializedTLASInstances(cmdEncoder, serializationBuffer,
 			serialization, generation, (MTLInstanceAccelerationStructureDescriptor*)descriptor);
@@ -1043,11 +1210,19 @@ void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncod
 			[canonicalBuffer release];
 			[descriptor release];
 			releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
-			[fence release];
 			cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
 				"vkCmdCopyMemoryToAccelerationStructureKHR(): The instance conversion could not be encoded.");
 			return;
 		}
+	}
+	id<MTLFence> fence = computeEncoder ? [cmdEncoder->getMTLDevice() newFence] : nil;
+	if (computeEncoder && !fence) {
+		[canonicalBuffer release];
+		[descriptor release];
+		releaseDeserializationResourcesOnCompletion(cmdEncoder, generation, serializationBuffer);
+		cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+			"vkCmdCopyMemoryToAccelerationStructureKHR(): The conversion fence could not be allocated.");
+		return;
 	}
 	if (computeEncoder) {
 		[computeEncoder updateFence:fence];

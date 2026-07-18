@@ -640,6 +640,10 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdSerializeAccelerati
 	return newMTLComputePipelineState("cmdSerializeAccelerationStructureIndexedVertices", owner);
 }
 
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdBuildAccelerationStructureTrianglePositionsMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("cmdBuildAccelerationStructureTrianglePositions", owner);
+}
+
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDeserializeAccelerationStructureInstancesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
 	return newMTLComputePipelineState("cmdDeserializeAccelerationStructureInstances", owner);
 }

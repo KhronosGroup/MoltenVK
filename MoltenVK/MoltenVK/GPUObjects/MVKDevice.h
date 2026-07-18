@@ -74,6 +74,10 @@ class MVKPrivateDataSlot;
 class MVKAccelerationStructure;
 struct MVKUseResourceHelper;
 enum class MVKResourceUsageStages : uint8_t;
+using MVKUseResourceFunction = void (*)(id<MTLCommandEncoder> encoder,
+										id<MTLResource> resource,
+										MTLResourceUsage usage,
+										MVKResourceUsageStages stages);
 
 
 /** The buffer index to use for vertex content. */
@@ -902,7 +906,9 @@ public:
 	/** Tell the GPU to be ready to use GPU-addressable resources. */
 	void encodeGPUAddressableBuffers(MVKCommandEncoder* commandEncoder,
 	                                 MVKUseResourceHelper& resources,
-	                                 MVKResourceUsageStages stage);
+	                                 MVKResourceUsageStages stage,
+	                                 id<MTLCommandEncoder> encoder,
+	                                 MVKUseResourceFunction useResource);
 	void encodeGPUAddressableAccelerationStructures(MVKCommandEncoder* commandEncoder,
 	                                                 id<MTLAccelerationStructureCommandEncoder> encoder);
 	void getAccelerationStructureAddressTable(MVKCommandEncoder* commandEncoder,
@@ -1094,6 +1100,7 @@ public:
 
 protected:
 	friend class MVKDeviceTrackingMixin;
+	friend class MVKDeviceMemory;
 
 	void propagateDebugName() override  {}
 	MVKBuffer* addBuffer(MVKBuffer* mvkBuff);

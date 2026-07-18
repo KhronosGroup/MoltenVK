@@ -540,6 +540,11 @@ void MVKDeviceMemory::initExternalMemory(MVKImage* dedicatedImage, bool wantsHea
 }
 
 MVKDeviceMemory::~MVKDeviceMemory() {
+	// GPU-addressable buffers are enumerated under the device resource lock. Keep
+	// their memory binding and underlying Metal allocation stable until that scan
+	// has declared each resource on the active encoder.
+	lock_guard<mutex> deviceLock(_device->_rezLock);
+
 	// Unbind any resources that are using me.
 	// Manually null the binding parameter to prevent them from trying to remove themselves from the array.
 	// This will leave texture buffer pointers dangling, but according to Vulkan, those are not supposed to be used again anyways.

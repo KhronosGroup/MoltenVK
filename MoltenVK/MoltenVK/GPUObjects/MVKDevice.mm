@@ -592,6 +592,13 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				rayTracingFeatures->rayTraversalPrimitiveCulling = false;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_POSITION_FETCH_FEATURES_KHR: {
+				auto* positionFetchFeatures =
+					(VkPhysicalDeviceRayTracingPositionFetchFeaturesKHR*)next;
+				positionFetchFeatures->rayTracingPositionFetch =
+					_metalFeatures.accelerationStructures && _metalFeatures.mslVersion >= 031000;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR: {
 				auto* barycentricFeatures = (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)next;
 				barycentricFeatures->fragmentShaderBarycentric = true;
@@ -3635,6 +3642,10 @@ void MVKPhysicalDevice::initExtensions() {
 	if (!_metalFeatures.accelerationStructures) {
 		pWritableExtns->vk_KHR_acceleration_structure.enabled = false;
 		pWritableExtns->vk_KHR_ray_query.enabled = false;
+		pWritableExtns->vk_KHR_ray_tracing_position_fetch.enabled = false;
+	}
+	if (_metalFeatures.mslVersion < 031000) {
+		pWritableExtns->vk_KHR_ray_tracing_position_fetch.enabled = false;
 	}
 	if (!_metalFeatures.accelerationStructures || !_supportsFunctionPointers) {
 		pWritableExtns->vk_KHR_pipeline_library.enabled = false;
@@ -4740,12 +4751,16 @@ void MVKDevice::retainGPUAddressableAccelerationStructures(MVKSmallVector<MVKAcc
 
 void MVKDevice::encodeGPUAddressableBuffers(MVKCommandEncoder* commandEncoder,
 											MVKUseResourceHelper& resources,
-											MVKResourceUsageStages stage) {
+											MVKResourceUsageStages stage,
+											id<MTLCommandEncoder> encoder,
+											MVKUseResourceFunction useResource) {
 	MVKSmallVector<MVKAccelerationStructure*, 16> accelerationStructures;
 	{
 		lock_guard<mutex> lock(_rezLock);
 		for (auto* buffer : _gpuAddressableBuffers) {
-			resources.add(buffer->getMTLBuffer(), stage, true);
+			if (id<MTLBuffer> mtlBuffer = buffer->getMTLBuffer()) {
+				resources.addImmediate(mtlBuffer, encoder, useResource, stage, true);
+			}
 		}
 		accelerationStructures.reserve(_gpuAddressableAccelerationStructures.size());
 		for (auto* accelerationStructure : _gpuAddressableAccelerationStructures) {

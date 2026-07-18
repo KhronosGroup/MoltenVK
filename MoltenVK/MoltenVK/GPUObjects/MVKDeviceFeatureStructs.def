@@ -92,6 +92,7 @@ MVK_DEVICE_FEATURE_EXTN(PresentWait,                      PRESENT_WAIT,         
 MVK_DEVICE_FEATURE_EXTN(PresentWait2,                     PRESENT_WAIT_2,                       KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(RayQuery,                         RAY_QUERY,                            KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(RayTracingPipeline,               RAY_TRACING_PIPELINE,                 KHR,   5)
+MVK_DEVICE_FEATURE_EXTN(RayTracingPositionFetch,          RAY_TRACING_POSITION_FETCH,           KHR,   1)
 MVK_DEVICE_FEATURE_EXTN(Robustness2,                      ROBUSTNESS_2,                         KHR,   3)
 MVK_DEVICE_FEATURE_EXTN(ShaderFma,                        SHADER_FMA,                           KHR,   3)
 MVK_DEVICE_FEATURE_EXTN(ShaderMaximalReconvergence,       SHADER_MAXIMAL_RECONVERGENCE,         KHR,   1)

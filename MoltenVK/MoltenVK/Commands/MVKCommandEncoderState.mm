@@ -709,7 +709,8 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 			mtlShared._gpuAddressableResourceStages = useResourceStage;
 		else
 			mtlShared._gpuAddressableResourceStages = combineStages(mtlShared._gpuAddressableResourceStages, useResourceStage);
-		mvkEncoder.getDevice()->encodeGPUAddressableBuffers(&mvkEncoder, mtlShared._useResource, useResourceStage);
+		mvkEncoder.getDevice()->encodeGPUAddressableBuffers(&mvkEncoder,
+			mtlShared._useResource, useResourceStage, encoder, binder.useResource);
 	}
 
 	const MVKShaderStageResourceBinding& resourceCounts = common._layout->getResourceCounts().stages[vkStage];
@@ -954,7 +955,7 @@ void MVKUseResourceHelper::addImmediate(id<MTLResource> resource, id<MTLCommandE
 		if (stored.deferred)
 			entries[stored.stages].get(stored.write).push_back(resource);
 		else
-			func(enc, resource, write ? MTLResourceUsageReadWrite : MTLResourceUsageRead, stored.stages);
+			func(enc, resource, stored.write ? MTLResourceUsageReadWrite : MTLResourceUsageRead, stored.stages);
 	}
 }
 
