@@ -16,18 +16,49 @@ Copyright (c) 2015-2026 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.4.2
 --------------
 
-Released TBD
+Released 2026-07-20
 
 - Add support for the following extensions:
   - `VK_EXT_sampler_filter_minmax` on Apple10 GPUs with macOS 26 or iOS 26
-  - `VK_KHR_external_semaphore_fd`
+- Add gl_DrawID / DrawIndex support for MacOS.
+- Add native sampler min/max filtering.
 - Fix buffer and heap out-of-sync in `initExternalMemory()`.
 - Fix incorrect varable usage in `MVKImagePlane::getMTLTexture()`.
 - Fix incorrect placement heap check in `MVKImagePlane::getMTLTexture()`.
 - Fix device loss when using imported `MTLTexture` objects with Metal argument buffers.
 - Raise minimum target to _macOS 12.0 / iOS 15.0 / tvOS 15.0_
+- Fix desync in primitive restart enable state tracking.
+- Fix inverted return logic in MVKBitArray::areAnyBitsSet().
+- Fix imported MTLTexture residency tracking.
+- Fix swapchain recreation giving 1x1 drawables.
+- Fix variable descriptor count query.
+- Fix channel corruption on Apple Silicon for color RTs used as transfer sources.
+- Fix behavior of VK_REMAINING_ARRAY_LAYERS with 2D array views of 3D images.
+- Fix invalidation of cached metal textures
+- Fix AMD subgroup size (64→32) and disable Intel UHD 630 simdReduction.
+- Fix incorrect placement heap check in `MVKImagePlane::getMTLTexture()`.
+- Fix regressions and crashes on Mac 1 (NVIDIA/Intel) GPUs.
+- Disable 64-bit float control properties.
+- Disable non-working quad control flow.
+- Emulate reversed-depth viewports on affected AMD Mac GPUs.
+- Do not rely on extension enable for vkGetPhysicalDeviceToolPropertiesEXT procaddr.
+- Do not convert UINT8 indices until draw time.
+- Do not enable blending when unsupported by format.
+- Null-check pColorAttachmentInputIndices before reading.
+- Make imported `MTLBuffer` resident in `MVKDeviceMemory`.
+- Include Metal constant buffer alignment in argument buffer gpuAlign calculation.
+- Use max of pointer and constant buf alignments for arg buffer uniform.align field.
+- Only apply Metal Constant Buffer alignment to Aux Buffers and Combined Textures.
+- Apply Metal constant buffer alignment padding for each descriptor set.
+- MVKRenderPass: encode barriers for subpass dependencies.
+- Occlusion queries: wrap detection uses stale baseline, crashes when visibility buffer starts near end of pass.
+- Prevent null dereference in MVKPixelFormats.
+- Improve handling of draw ID buffer binding.
+- Restore some checks for Mac1 GPUs.
 - Update copyright notices to year 2026.
 - Update to latest SPIRV-Cross:
+  - MSL: add `gl_DrawID` (DrawIndex) support for macOS.
+  - MSL: Add reversed depth viewport emulation.
   - MSL: Fix `subgroupBallotExclusiveBitCount()` is not available for task shader and mesh shader.
   - MSL: `thread_execution_width` is deprecated as of Metal 3.0 , use `threads_per_simdgroup` instead.
   - MSL: Add `msl3.0` variant for subgroup builtin.
@@ -36,6 +67,15 @@ Released TBD
   - MSL: Handle variable pointer argument to SSBO array.
   - MSL: Fix handling of forced temporary row-major matrices.
   - MSL: Additional MSL specific keywords(`signed`).
+  - MSL: Deal with std140 layouts when copying arrays between storage class.
+  - MSL: Rewrite std140 struct padding.
+  - MSL: BlockIO in vertex is captured as thread storage.
+  - MSL: Add initial cooperative matrix support.
+  - MSL: Fix ptr-cast prepass and coopmat typed load/store.
+  - MSL: Handle array type writes to builtin clip/cull better.
+  - MSL: Fix some extremely bizarre tess access chain bugs.
+  - MSL: Use pointer expression when dealing with atomics.
+  - Parser: support SPIR-V library modules without OpEntryPoint
 
 
 
