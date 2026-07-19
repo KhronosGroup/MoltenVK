@@ -706,25 +706,35 @@ static MVKIndirectZeroDivisorVertexBuffers encodeIndirectZeroDivisorVertexBuffer
 	state.bindPipeline(computeEncoder, computePipeline);
 
 	for (const auto& binding : bindings) {
-		if (binding.second == 0) { continue; }
-		const auto& sourceBuffer = cmdEncoder->getVkGraphics()._vertexBuffers[binding.first];
+		uint32_t sourceBinding = binding.first;
+		VkDeviceSize translationOffset = 0;
+		for (const auto& translatedBinding : pipeline->getTranslatedVertexBindings()) {
+			if (translatedBinding.translationBinding == binding.first) {
+				sourceBinding = translatedBinding.binding;
+				translationOffset = translatedBinding.translationOffset;
+				break;
+			}
+		}
+		const auto& sourceBuffer = cmdEncoder->getVkGraphics()._vertexBuffers[sourceBinding];
+		uint32_t vertexStride = pipeline->getDynamicStateFlags().has(MVKRenderStateFlag::VertexStride) ? sourceBuffer.stride : binding.second;
+		if (vertexStride == 0) { continue; }
 		if (sourceBuffer.mtlBuffer == nil) { continue; }
 
-		auto* copiedBuffer = cmdEncoder->getTempMTLBuffer((NSUInteger)drawCount * binding.second, true);
-		copiedBuffers.push_back({pipeline->getMetalBufferIndexForVertexAttributeBinding(binding.first), binding.second, copiedBuffer});
+		auto* copiedBuffer = cmdEncoder->getTempMTLBuffer((NSUInteger)drawCount * vertexStride, true);
+		copiedBuffers.push_back({pipeline->getMetalBufferIndexForVertexAttributeBinding(binding.first), vertexStride, copiedBuffer});
 		state.bindBuffer(computeEncoder, indirectBuffer, indirectBufferOffset, 0);
-		state.bindBuffer(computeEncoder, sourceBuffer.mtlBuffer, sourceBuffer.offset, 1);
+		state.bindBuffer(computeEncoder, sourceBuffer.mtlBuffer, sourceBuffer.offset + translationOffset, 1);
 		state.bindBuffer(computeEncoder, copiedBuffer->_mtlBuffer, copiedBuffer->_offset, 2);
 		state.bindStructBytes(computeEncoder, &indirectBufferStride, 3);
 		state.bindStructBytes(computeEncoder, &drawCount, 4);
-		state.bindStructBytes(computeEncoder, &binding.second, 5);
+		state.bindStructBytes(computeEncoder, &vertexStride, 5);
 		state.bindStructBytes(computeEncoder, &baseInstanceOffset, 6);
 		if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
-			[computeEncoder dispatchThreads: MTLSizeMake((NSUInteger)drawCount * binding.second, 1, 1)
+			[computeEncoder dispatchThreads: MTLSizeMake((NSUInteger)drawCount * vertexStride, 1, 1)
 					 threadsPerThreadgroup: MTLSizeMake(computePipeline.threadExecutionWidth, 1, 1)];
 		} else {
-			[computeEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>((NSUInteger)drawCount * binding.second, computePipeline.threadExecutionWidth), 1, 1)
-						  threadsPerThreadgroup: MTLSizeMake(computePipeline.threadExecutionWidth, 1, 1)];
+			[computeEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>((NSUInteger)drawCount * vertexStride, computePipeline.threadExecutionWidth), 1, 1)
+					  threadsPerThreadgroup: MTLSizeMake(computePipeline.threadExecutionWidth, 1, 1)];
 		}
 	}
 
