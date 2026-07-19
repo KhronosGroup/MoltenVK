@@ -110,9 +110,6 @@ MVKMTLDeviceCapabilities::MVKMTLDeviceCapabilities(id<MTLDevice> mtlDev) {
 #if MVK_XCODE_26
 	supportsApple10 = supportsGPUFam(Apple10, mtlDev);
 #endif
-#if MVK_XCODE_26 && !MVK_TVOS && !MVK_VISIONOS
-	supportsSamplerReduction = supportsApple10 && mvkOSVersionIsAtLeast(26.0);
-#endif
 	supportsMac1 = MVK_MACOS;
 	supportsMac2 = supportsGPUFam(Mac2, mtlDev) || supportsGPUFam(MacCatalyst2, mtlDev);
 
@@ -132,6 +129,9 @@ MVKMTLDeviceCapabilities::MVKMTLDeviceCapabilities(id<MTLDevice> mtlDev) {
 #endif
 #if !MVK_OS_SIMULATOR
 	supportsRenderLinearTextures = supportsApple1;
+#endif
+#if MVK_XCODE_26 && !MVK_TVOS && !MVK_VISIONOS
+	supportsSamplerReduction = supportsApple10 && mvkOSVersionIsAtLeast(26.0);
 #endif
 }
 
