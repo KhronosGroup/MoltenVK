@@ -316,6 +316,11 @@ MTLSamplerMinMagFilter mvkMTLSamplerMinMagFilterFromVkFilter(VkFilter vkFilter);
  */
 MTLSamplerMipFilter mvkMTLSamplerMipFilterFromVkSamplerMipmapMode(VkSamplerMipmapMode vkMode);
 
+#if MVK_XCODE_26 && !MVK_TVOS && !MVK_VISIONOS
+MTLSamplerReductionMode mvkMTLSamplerReductionModeFromVkSamplerReductionMode(VkSamplerReductionMode vkMode)
+	API_AVAILABLE(macos(26.0), ios(26.0));
+#endif
+
 
 #pragma mark -
 #pragma mark Render pipeline

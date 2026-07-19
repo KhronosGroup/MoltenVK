@@ -369,6 +369,16 @@ MVK_PUBLIC_SYMBOL MTLSamplerMipFilter mvkMTLSamplerMipFilterFromVkSamplerMipmapM
 	}
 }
 
+#if MVK_XCODE_26 && !MVK_TVOS && !MVK_VISIONOS
+MVK_PUBLIC_SYMBOL MTLSamplerReductionMode mvkMTLSamplerReductionModeFromVkSamplerReductionMode(VkSamplerReductionMode vkMode) {
+	switch (vkMode) {
+		case VK_SAMPLER_REDUCTION_MODE_MIN:	return MTLSamplerReductionModeMinimum;
+		case VK_SAMPLER_REDUCTION_MODE_MAX:	return MTLSamplerReductionModeMaximum;
+		default:								return MTLSamplerReductionModeWeightedAverage;
+	}
+}
+#endif
+
 
 #pragma mark -
 #pragma mark Render pipeline

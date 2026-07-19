@@ -2449,17 +2449,8 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
 				if (next->sType == VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO) {
 					const auto* reductionInfo =
 						(const VkSamplerReductionModeCreateInfo*)next;
-					switch (reductionInfo->reductionMode) {
-						case VK_SAMPLER_REDUCTION_MODE_MIN:
-							mtlSampDesc.reductionMode = MTLSamplerReductionModeMinimum;
-							break;
-						case VK_SAMPLER_REDUCTION_MODE_MAX:
-							mtlSampDesc.reductionMode = MTLSamplerReductionModeMaximum;
-							break;
-						default:
-							mtlSampDesc.reductionMode = MTLSamplerReductionModeWeightedAverage;
-							break;
-					}
+					mtlSampDesc.reductionMode =
+						mvkMTLSamplerReductionModeFromVkSamplerReductionMode(reductionInfo->reductionMode);
 					break;
 				}
 			}
