@@ -31,6 +31,7 @@
 #include <string>
 #include <mutex>
 #include <set>
+#include <unordered_map>
 #include <os/lock.h>
 
 #import <Metal/Metal.h>
@@ -986,10 +987,10 @@ public:
 	void drainResidencyRemovals() {}
 	void flushResidencyRemovalsIfIdle() {}
 #else
-	/** Adds the allocation to the residency set, cancelling any pending removal of it. */
+	/** Adds the resource's underlying allocation to the residency set (reference-counted). */
 	void makeResident(id<MTLAllocation> allocation);
 
-	/** Queues removal of the allocation from the residency set once no command buffer can reference it. */
+	/** Queues removal of the resource's underlying allocation once no command buffer can reference it. */
 	void removeResidency(id<MTLAllocation> allocation);
 
 	/** Registers a command buffer being committed and returns its tracking sequence. */
@@ -1003,6 +1004,10 @@ public:
 
 	/** Executes all pending residency removals if no tracked command buffers are in flight. */
 	void flushResidencyRemovalsIfIdle();
+
+protected:
+	bool retireResidencyRemoval(id<MTLAllocation> allocation);
+public:
 #endif
 
 	void addResidencySet(id<MTLCommandQueue> queue) {
@@ -1119,13 +1124,14 @@ protected:
 	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
 #if MVK_XCODE_16
 	struct MVKPendingResidencyRemoval {
-		id<MTLAllocation> allocation;	// retained until the removal executes
+		id<MTLAllocation> allocation;	// underlying allocation, retained until the removal executes
 		uint64_t cutoffSeq;				// newest cmd buf committed before the app destroyed the resource
 		bool isRipe;					// all cmd bufs up to cutoffSeq have completed; remove on the next drain
 	};
 	id<MTLResidencySet> _residencySet = nil;
 	MVKSmallVector<MVKPendingResidencyRemoval> _pendingResidencyRemovals;
 	std::set<uint64_t> _inFlightResidencyCmdBufSeqs;
+	std::unordered_map<void*, uint32_t> _residencyRefCounts;	// underlying allocation -> resident resource count
 	uint64_t _nextResidencyCmdBufSeq = 1;
 #endif
 	uint32_t _visibilityBufferCount = 0;

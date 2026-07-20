@@ -3875,31 +3875,63 @@ VkResult MVKDevice::waitIdle() {
 // let go of it. Drains run on tracked command buffer completions and on present
 // completions; waitIdle and device destruction retire whatever remains.
 
-void MVKDevice::makeResident(id<MTLAllocation> allocation) {
-	if ( !_residencySet || !allocation ) { return; }
-	@synchronized (_residencySet) {
-		// Cancel any pending removal of this allocation, so a removal queued by a
-		// previous owner cannot evict the re-added allocation later.
-		size_t dst = 0;
-		for (size_t src = 0; src < _pendingResidencyRemovals.size(); src++) {
-			auto& pr = _pendingResidencyRemovals[src];
-			if (pr.allocation == allocation) {
-				[pr.allocation release];	// retained by removeResidency()
-			} else {
-				_pendingResidencyRemovals[dst++] = pr;
-			}
-		}
-		while (_pendingResidencyRemovals.size() > dst) { _pendingResidencyRemovals.pop_back(); }
+// Metal deduplicates residency-set membership by underlying allocation: adding a
+// heap- or buffer-backed resource registers its backing allocation, which several
+// live resources may share (e.g. sub-allocated textures on one heap). Track
+// membership per underlying allocation with a reference count, so destroying one
+// resource cannot evict an allocation that other resources still need.
+//
+// Normalization must be transitive and reach the same base for every resource
+// that aliases the same memory, or the reference counts diverge: a texel-buffer
+// texture (a texture created over a MTLBuffer) shares memory with that buffer,
+// and the buffer may itself be placed on a heap. Following texture -> buffer ->
+// heap collapses all three onto the heap, matching how Metal dedups the set. If
+// the texture stopped at the placed buffer instead, removing it would emit
+// removeAllocation: for a resource whose memory the heap's other resources still
+// reference, evicting them mid-frame.
+static id<MTLAllocation> mvkBaseAllocation(id<MTLAllocation> allocation) {
+	NSObject* obj = (NSObject*)allocation;
+	if ([obj conformsToProtocol: @protocol(MTLTexture)]) {
+		id<MTLTexture> tex = (id<MTLTexture>)obj;
+		while (tex.parentTexture) { tex = tex.parentTexture; }
+		if (tex.heap)   { return (id<MTLAllocation>)tex.heap; }
+		if (tex.buffer) { return mvkBaseAllocation((id<MTLAllocation>)tex.buffer); }
+		return (id<MTLAllocation>)tex;
+	}
+	if ([obj conformsToProtocol: @protocol(MTLBuffer)]) {
+		id<MTLBuffer> buf = (id<MTLBuffer>)obj;
+		if (buf.heap) { return (id<MTLAllocation>)buf.heap; }
+	}
+	return allocation;
+}
 
-		[_residencySet addAllocation: allocation];
-		[_residencySet commit];
+// Memoryless textures hold no allocation and are never added to the residency
+// set, so they must never be counted on either side or a removal would decrement
+// a heap that only its non-memoryless siblings registered, evicting them early.
+static bool mvkIsResidencyTracked(id<MTLAllocation> allocation) {
+	NSObject* obj = (NSObject*)allocation;
+	if ([obj conformsToProtocol: @protocol(MTLTexture)]) {
+		return ((id<MTLTexture>)obj).storageMode != MTLStorageModeMemoryless;
+	}
+	return true;
+}
+
+void MVKDevice::makeResident(id<MTLAllocation> allocation) {
+	if ( !_residencySet || !allocation || !mvkIsResidencyTracked(allocation) ) { return; }
+	id<MTLAllocation> base = mvkBaseAllocation(allocation);
+	@synchronized (_residencySet) {
+		if (_residencyRefCounts[(void*)base]++ == 0) {
+			[_residencySet addAllocation: base];
+			[_residencySet commit];
+		}
 	}
 }
 
 void MVKDevice::removeResidency(id<MTLAllocation> allocation) {
-	if ( !_residencySet || !allocation ) { return; }
+	if ( !_residencySet || !allocation || !mvkIsResidencyTracked(allocation) ) { return; }
+	id<MTLAllocation> base = mvkBaseAllocation(allocation);
 	@synchronized (_residencySet) {
-		_pendingResidencyRemovals.push_back({ [allocation retain], _nextResidencyCmdBufSeq - 1, false });
+		_pendingResidencyRemovals.push_back({ [base retain], _nextResidencyCmdBufSeq - 1, false });
 	}
 }
 
@@ -3920,6 +3952,18 @@ void MVKDevice::residencyCmdBufCompleted(uint64_t seq) {
 	drainResidencyRemovals();
 }
 
+// Retires one pending removal under the residency monitor: decrements the
+// underlying allocation's resident-resource count and removes it from the set
+// only when no live resource needs it any more. Returns true if it removed.
+bool MVKDevice::retireResidencyRemoval(id<MTLAllocation> allocation) {
+	auto it = _residencyRefCounts.find((void*)allocation);
+	if (it == _residencyRefCounts.end()) { return false; }		// never resident (e.g. memoryless)
+	if (--(it->second) > 0) { return false; }					// other resources still share it
+	_residencyRefCounts.erase(it);
+	[_residencySet removeAllocation: allocation];
+	return true;
+}
+
 void MVKDevice::drainResidencyRemovals() {
 	if ( !_residencySet ) { return; }
 	MVKSmallVector<id<MTLAllocation>> retired;
@@ -3928,11 +3972,12 @@ void MVKDevice::drainResidencyRemovals() {
 		uint64_t oldestInFlight = _inFlightResidencyCmdBufSeqs.empty()
 			? UINT64_MAX
 			: *_inFlightResidencyCmdBufSeqs.begin();
+		bool removedAny = false;
 		size_t dst = 0;
 		for (size_t src = 0; src < _pendingResidencyRemovals.size(); src++) {
 			auto pr = _pendingResidencyRemovals[src];
 			if (pr.isRipe) {
-				[_residencySet removeAllocation: pr.allocation];
+				removedAny |= retireResidencyRemoval(pr.allocation);
 				retired.push_back(pr.allocation);
 			} else {
 				pr.isRipe = (oldestInFlight > pr.cutoffSeq);
@@ -3941,7 +3986,7 @@ void MVKDevice::drainResidencyRemovals() {
 		}
 		if ( !retired.empty() ) {
 			while (_pendingResidencyRemovals.size() > dst) { _pendingResidencyRemovals.pop_back(); }
-			[_residencySet commit];
+			if (removedAny) { [_residencySet commit]; }
 		}
 	}
 	// Release outside the lock; this may be the allocation's last reference.
@@ -3953,12 +3998,13 @@ void MVKDevice::flushResidencyRemovalsIfIdle() {
 	MVKSmallVector<id<MTLAllocation>> retired;
 	@synchronized (_residencySet) {
 		if (_pendingResidencyRemovals.empty() || !_inFlightResidencyCmdBufSeqs.empty()) { return; }
+		bool removedAny = false;
 		for (auto& pr : _pendingResidencyRemovals) {
-			[_residencySet removeAllocation: pr.allocation];
+			removedAny |= retireResidencyRemoval(pr.allocation);
 			retired.push_back(pr.allocation);
 		}
 		_pendingResidencyRemovals.clear();
-		[_residencySet commit];
+		if (removedAny) { [_residencySet commit]; }
 	}
 	for (id<MTLAllocation> allocation : retired) { [allocation release]; }
 }
