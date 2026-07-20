@@ -257,6 +257,12 @@ bool MVKCmdBindGraphicsPipeline::isTessellationPipeline() {
 	return ((MVKGraphicsPipeline*)_pipeline)->isTessellationPipeline();
 }
 
+bool MVKCmdBindGraphicsPipeline::needsMemorylessAttachmentBackingForMeshDraw(bool isIndirect) {
+	auto* pipeline = (MVKGraphicsPipeline*)_pipeline;
+	return pipeline->isMeshShaderEmulated() ||
+		   (isIndirect && pipeline->usesNativeTasklessMeshBatchedDispatch());
+}
+
 
 #pragma mark -
 #pragma mark MVKCmdBindComputePipeline

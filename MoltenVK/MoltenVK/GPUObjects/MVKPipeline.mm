@@ -77,8 +77,6 @@ static bool mvkPopulateShaderInterfaceSpecializationConstants(
 			error = "Shader specialization entry extends past its data.";
 			return false;
 		}
-		// Preserve the raw integer scalar width. The SPIR-V reflection/conversion
-		// pass validates it against the constant's declared type before applying it.
 		if (entry.size != 1 && entry.size != 2 &&
 			entry.size != 4 && entry.size != 8) { continue; }
 		SPIRVShaderInterfaceSpecializationConstant value;
@@ -121,11 +119,11 @@ static uint64_t mvkEstimateNativeMeshOutputBytes(
 		const Outputs& outputs,
 		const SPIRVMeshReflectionData& reflection,
 		VkPrimitiveTopology topology) {
-	uint64_t vertexStride = 4 * sizeof(uint32_t); // Position is synthesized when absent.
+	uint64_t vertexStride = 4 * sizeof(uint32_t);
 	uint64_t primitiveStride = 0;
 	switch (topology) {
 		case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
-			vertexStride += sizeof(uint32_t); // Default point size.
+			vertexStride += sizeof(uint32_t);
 			primitiveStride = sizeof(uint32_t);
 			break;
 		case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
@@ -151,7 +149,6 @@ static uint64_t mvkEstimateNativeMeshOutputBytes(
 				if (topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST) { continue; }
 				break;
 			case spv::BuiltInClipDistance:
-				// SPIRV-Cross emits both the Metal builtin and fragment-visible user fields.
 				size *= 2;
 				break;
 			default:
@@ -252,7 +249,6 @@ static MVKMeshFixedOutputComponentCounts mvkMeshFixedOutputComponentCounts(
 	counts.native = kMVKMeshPositionComponentCount;
 	counts.spilled = kMVKMeshPositionComponentCount;
 	if (topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST) {
-		// SPIRV-Cross synthesizes a default PointSize output for mesh point topology.
 		counts.native++;
 		counts.spilled++;
 	}
@@ -273,15 +269,10 @@ static MVKMeshFixedOutputComponentCounts mvkMeshFixedOutputComponentCounts(
 
 		uint32_t componentCount = mvkMeshOutputVaryingComponentCount(output);
 		counts.native += componentCount;
-		// SPIRV-Cross emits ClipDistance both as Metal's clip-distance builtin and as
-		// user varyings so a fragment shader can consume gl_ClipDistance. Account for
-		// that second physical copy when deciding whether the mesh interface fits.
 		if (output.builtin == spv::BuiltInClipDistance) {
 			counts.native += componentCount;
 			counts.spilled += componentCount;
 		}
-		// The spill token occupies the physical primitive_id slot. A logical authored
-		// PrimitiveId is retained in capture memory instead of consuming another varying.
 		if (output.builtin != spv::BuiltInPrimitiveId) {
 			counts.spilled += componentCount;
 		}
@@ -338,9 +329,6 @@ static MVKMeshOutputSpillSelection mvkSelectMeshOutputSpills(
 		return selection;
 	}
 
-	// Prefer flat per-primitive fields, then wider fields, to minimize both the number of
-	// buffer loads and the chance that pull-model interpolation bases are needed. The
-	// location/component tie-breakers keep shader-cache keys deterministic.
 	std::stable_sort(candidates.begin(), candidates.end(), [](const auto* lhs, const auto* rhs) {
 		if (lhs->perPrimitive != rhs->perPrimitive) { return lhs->perPrimitive; }
 		uint32_t lhsComponents = mvkMeshOutputVaryingComponentCount(*lhs);

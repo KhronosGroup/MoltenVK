@@ -260,7 +260,6 @@ public:
 	/** Returns the MTLRenderPipelineState for the final stage of the pipeline */
 	id<MTLRenderPipelineState> getMainPipelineState() const { return _mtlPipelineState; }
 
-	/** Returns the bounded logical-grid pipeline state for eligible native taskless mesh shaders. */
 	id<MTLRenderPipelineState> getNativeTasklessMeshBatchedPipelineState() const {
 		return _mtlNativeTasklessMeshBatchedPipelineState;
 	}

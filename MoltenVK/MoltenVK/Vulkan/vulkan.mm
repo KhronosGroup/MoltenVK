@@ -4442,10 +4442,9 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMeshTasksIndirectCountEXT(
 	uint32_t                                    maxDrawCount,
 	uint32_t                                    stride) {
 
-	// MoltenVK reports drawIndirectCount as unsupported, so valid applications cannot
-	// call this command. Keep the entry point available because VK_EXT_mesh_shader
-	// includes it whenever Vulkan 1.2 or VK_KHR_draw_indirect_count is supported.
 	MVKTraceVulkanCallStart();
+	MVKAddCmd(DrawMeshTasksIndirect, commandBuffer, buffer, offset,
+			  countBuffer, countBufferOffset, maxDrawCount, stride);
 	MVKTraceVulkanCallEnd();
 }
 

@@ -140,7 +140,6 @@ namespace mvk {
 
 	} DescriptorBinding;
 
-	/** Raw scalar specialization data which affects shader interface layout. */
 	typedef struct SPIRVShaderInterfaceSpecializationConstant {
 		uint32_t constantID = 0;
 		uint32_t byteSize = 0;

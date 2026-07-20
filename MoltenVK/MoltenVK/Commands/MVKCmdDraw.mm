@@ -1716,7 +1716,24 @@ VkResult MVKCmdDrawMeshTasksIndirect::setContent(MVKCommandBuffer* cmdBuff,
 	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
 	_mtlIndirectBufferStride = stride;
 	_drawCount = drawCount;
-	if (drawCount) { cmdBuff->recordMeshDraw(); }
+	_mtlCountBuffer = nil;
+	_mtlCountBufferOffset = 0;
+	if (drawCount) { cmdBuff->recordMeshDraw(true); }
+	return VK_SUCCESS;
+}
+
+VkResult MVKCmdDrawMeshTasksIndirect::setContent(MVKCommandBuffer* cmdBuff,
+												 VkBuffer buffer,
+												 VkDeviceSize offset,
+												 VkBuffer countBuffer,
+												 VkDeviceSize countBufferOffset,
+												 uint32_t maxDrawCount,
+												 uint32_t stride) {
+	VkResult result = setContent(cmdBuff, buffer, offset, maxDrawCount, stride);
+	if (result != VK_SUCCESS) { return result; }
+	auto* mvkCountBuffer = (MVKBuffer*)countBuffer;
+	_mtlCountBuffer = mvkCountBuffer->getMTLBuffer();
+	_mtlCountBufferOffset = mvkCountBuffer->getMTLBufferOffset() + countBufferOffset;
 	return VK_SUCCESS;
 }
 
@@ -1777,7 +1794,11 @@ void MVKCmdDrawMeshTasksIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 			computeState.bindStructBytes(mtlPrepareEncoder, &scheduleStride, 4);
 			uint32_t batchWidth = uint32_t(batchCapacity);
 			computeState.bindStructBytes(mtlPrepareEncoder, &batchWidth, 5);
-			computeState.bindStructBytes(mtlPrepareEncoder, &_drawCount, 6);
+			if (_mtlCountBuffer) {
+				computeState.bindBuffer(mtlPrepareEncoder, _mtlCountBuffer, _mtlCountBufferOffset, 6);
+			} else {
+				computeState.bindStructBytes(mtlPrepareEncoder, &_drawCount, 6);
+			}
 			computeState.bindStructBytes(mtlPrepareEncoder, &drawIdx, 7);
 			NSUInteger prepareWidth = mtlPrepareState.threadExecutionWidth;
 			[mtlPrepareEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(scheduleCount, prepareWidth), 1, 1)
@@ -1861,7 +1882,11 @@ void MVKCmdDrawMeshTasksIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 			computeState.bindStructBytes(mtlPrepareEncoder, &scheduleCount, 3);
 			computeState.bindStructBytes(mtlPrepareEncoder, &scheduleStride, 4);
 			computeState.bindStructBytes(mtlPrepareEncoder, &batchWidth, 5);
-			computeState.bindStructBytes(mtlPrepareEncoder, &_drawCount, 6);
+			if (_mtlCountBuffer) {
+				computeState.bindBuffer(mtlPrepareEncoder, _mtlCountBuffer, _mtlCountBufferOffset, 6);
+			} else {
+				computeState.bindStructBytes(mtlPrepareEncoder, &_drawCount, 6);
+			}
 			computeState.bindStructBytes(mtlPrepareEncoder, &drawIdx, 7);
 			NSUInteger prepareWidth = mtlPrepareState.threadExecutionWidth;
 			[mtlPrepareEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(scheduleCount, prepareWidth), 1, 1)

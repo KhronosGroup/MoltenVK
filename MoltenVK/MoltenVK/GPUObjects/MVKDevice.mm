@@ -3141,7 +3141,7 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.maxComputeWorkGroupCount[2] = kMVKUndefinedLargeUInt32;
 
     _properties.limits.maxDrawIndexedIndexValue = numeric_limits<uint32_t>::max();
-    _properties.limits.maxDrawIndirectCount = kMVKMaxDrawIndirectCount;
+    _properties.limits.maxDrawIndirectCount = kMVKUndefinedLargeUInt32;
 
 
     // Features with unknown limits - default to Vulkan required limits

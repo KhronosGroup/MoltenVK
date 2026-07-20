@@ -53,7 +53,6 @@ namespace mvk {
 		uint32_t numControlPoints = 0;
 	};
 
-	/** Reflection data used to choose between native and emulated taskless mesh execution. */
 	struct SPIRVMeshReflectionData {
 		uint32_t maxOutputVertices = 0;
 		uint32_t maxOutputPrimitives = 0;
@@ -90,13 +89,11 @@ namespace mvk {
 		/** If this is a builtin, the kind of builtin this is. */
 		spv::BuiltIn builtin;
 
-		/** whether this is a per-patch variable. */
 		bool perPatch;
 
 		/** Whether this variable is actually used (read or written) by the shader. */
 		bool isUsed;
 
-		/** whether this is a per-primitive variable. */
 		bool perPrimitive;
 	};
 	typedef SPIRVShaderInterfaceVariable SPIRVShaderOutput;
@@ -255,8 +252,6 @@ namespace mvk {
 				reflect.get_execution_mode_argument(spv::ExecutionModeOutputPrimitivesEXT);
 			reflectData.usesWorkgroupVariables = false;
 
-			// Workgroup storage competes with native Metal mesh-output storage. Conservatively
-			// keep those shaders on capture/replay until their combined allocation is reflected.
 			for (size_t offset = 5; offset < mesh.size();) {
 				uint32_t instruction = mesh[offset];
 				uint32_t wordCount = instruction >> 16u;
@@ -424,7 +419,6 @@ namespace mvk {
 				if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct)
 					loc = getShaderInterfaceStructMembers(reflect, vars, &firstMemberIndex, type, storage, memberPatch, memberPerPrimitive, loc);
 				else {
-					// Every array/matrix element starts at the decorated component in its location.
 					uint32_t elemComponent = cmp;
 					// The alignment of a structure is the same as the largest member of the structure.
 					// Consequently, the first flattened member of a structure should align with structure itself.
@@ -560,7 +554,6 @@ namespace mvk {
 						size_t firstMemberIndex = size_t(-1);
 						loc = getShaderInterfaceStructMembers(reflect, vars, &firstMemberIndex, type, storage, patch, perPrimitive, loc);
 					} else {
-						// Every array/matrix element starts at the decorated component in its location.
 						uint32_t elemComponent = cmp;
 						vars.push_back({type->basetype, type->vecsize, loc, elemComponent, 0, biType, patch, isUsed, perPrimitive});
 						loc = addSat(loc, getShaderInterfaceLocationCount(*type, elemComponent));
@@ -572,8 +565,6 @@ namespace mvk {
 				if (a.location != b.location) { return a.location < b.location; }
 				return a.component < b.component;
 			});
-			// Assign locations to variables that don't have one, preserving the full
-			// location footprint of 64-bit vectors and explicitly placed variables.
 			uint32_t nextLoc = 0;
 			for (SPIRVShaderInterfaceVariable& var : vars) {
 				if (var.location == uint32_t(-1)) { var.location = nextLoc; }

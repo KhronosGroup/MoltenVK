@@ -151,10 +151,10 @@ public:
 	/** Called when a MVKCmdExecuteCommands is added to this command buffer. */
 	void recordExecuteCommands(MVKArrayRef<MVKCommandBuffer*const> secondaryCommandBuffers);
 
-	/** Track render passes that contain mesh draws and may need to switch to compute encoding. */
 	void recordBeginRenderPass(MVKCommand* passCmd);
 	void recordEndRenderPass();
-	void recordMeshDraw();
+	void recordMeshDraw(bool isIndirect = false);
+	void recordMemorylessAttachmentBacking();
 	bool needsMemorylessAttachmentBacking(MVKCommand* passCmd);
 
 	/** Called when a timestamp command is added. */
@@ -168,6 +168,7 @@ public:
 
 	/** The most recent recorded tessellation pipeline */
 	MVKCmdBindPipeline* _lastTessellationPipeline;
+	MVKCmdBindPipeline* _lastGraphicsPipeline;
 
 
 #pragma mark Construction
@@ -316,10 +317,8 @@ public:
 	/** The layer count of current framebuffer.*/
 	uint32_t getFramebufferLayerCount();
 
-	/** Returns whether the current render pass uses private backing for memoryless attachments. */
 	bool isUsingMemorylessAttachmentBacking() { return _isUsingMemorylessAttachmentBacking; }
 
-	/** Returns private backing for a memoryless attachment texture in the current render pass. */
 	id<MTLTexture> getMemorylessAttachmentTexture(id<MTLTexture> mtlTexture);
 
 	/** Returns the index of the currently active multiview subpass, or zero if the current render pass is not multiview. */

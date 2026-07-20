@@ -127,7 +127,6 @@ public:
 	/** Returns a MTLComputePipelineState for copying zero-divisor vertex data for an indirect draw. */
 	id<MTLComputePipelineState> getCmdDrawIndirectCopyZeroDivisorVertexBuffersMTLComputePipelineState();
 
-	/** Returns a MTLComputePipelineState for preparing bounded taskless mesh indirect schedules. */
 	id<MTLComputePipelineState> getCmdDrawMeshTasksIndirectPrepareMTLComputePipelineState();
 
 	/** Returns a MTLComputePipelineState for converting an indirect buffer for use in a tessellated draw. */

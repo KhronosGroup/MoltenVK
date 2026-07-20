@@ -249,6 +249,7 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	_needsInheritedMemorylessAttachmentBacking = false;
 	_hasStageCounterTimestampCommand = false;
 	_lastTessellationPipeline = nullptr;
+	_lastGraphicsPipeline = nullptr;
 	setConfigurationResult(VK_NOT_READY);
 
 	if (mvkAreAllFlagsEnabled(flags, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)) {
@@ -387,12 +388,11 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 	reset(0);
 }
 
-// Promote state that must be known before encoding the primary render pass.
 void MVKCommandBuffer::recordExecuteCommands(MVKArrayRef<MVKCommandBuffer*const> secondaryCommandBuffers) {
 	for (MVKCommandBuffer* cmdBuff : secondaryCommandBuffers) {
 		if (cmdBuff->_needsVisibilityResultMTLBuffer) { _needsVisibilityResultMTLBuffer = true; }
 		if (cmdBuff->_hasStageCounterTimestampCommand) { _hasStageCounterTimestampCommand = true; }
-		if (cmdBuff->_needsInheritedMemorylessAttachmentBacking) { recordMeshDraw(); }
+		if (cmdBuff->_needsInheritedMemorylessAttachmentBacking) { recordMemorylessAttachmentBacking(); }
 	}
 }
 
@@ -404,7 +404,13 @@ void MVKCommandBuffer::recordEndRenderPass() {
 	_currentRenderPassCommand = nullptr;
 }
 
-void MVKCommandBuffer::recordMeshDraw() {
+void MVKCommandBuffer::recordMeshDraw(bool isIndirect) {
+	if (!_lastGraphicsPipeline ||
+		!_lastGraphicsPipeline->needsMemorylessAttachmentBackingForMeshDraw(isIndirect)) { return; }
+	recordMemorylessAttachmentBacking();
+}
+
+void MVKCommandBuffer::recordMemorylessAttachmentBacking() {
 	if (_currentRenderPassCommand) {
 		if ( !mvkContains(_memorylessBackingRenderPasses, _currentRenderPassCommand) ) {
 			_memorylessBackingRenderPasses.push_back(_currentRenderPassCommand);
@@ -430,6 +436,7 @@ void MVKCommandBuffer::recordTimestampCommand() {
 
 void MVKCommandBuffer::recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline) {
 	_lastTessellationPipeline = mvkBindPipeline->isTessellationPipeline() ? mvkBindPipeline : nullptr;
+	if (mvkBindPipeline->isGraphicsPipeline()) { _lastGraphicsPipeline = mvkBindPipeline; }
 }
 
 
@@ -667,7 +674,7 @@ static MVKBarrierStage commandUseToBarrierStage(MVKCommandUse use) {
 	case kMVKCommandUseResetQueryPool:               return kMVKBarrierStageCopy; /**< vkCmdResetQueryPool. */
 	case kMVKCommandUseDispatch:                     return kMVKBarrierStageCompute; /**< vkCmdDispatch. */
 	case kMVKCommandUseTessellationVertexTessCtl:    return kMVKBarrierStageVertex; /**< vkCmdDraw* - vertex and tessellation control stages. */
-	case kMVKCommandUseMeshShaderCapture:            return kMVKBarrierStageVertex; /**< vkCmdDrawMeshTasksEXT - mesh capture stage. */
+	case kMVKCommandUseMeshShaderCapture:            return kMVKBarrierStageVertex;
 	case kMVKCommandUseDrawIndirectConvertBuffers:   return kMVKBarrierStageVertex; /**< vkCmdDrawIndirect* convert indirect buffers. */
 	case kMVKCommandUseCopyQueryPoolResults:         return kMVKBarrierStageCopy; /**< vkCmdCopyQueryPoolResults. */
 	case kMVKCommandUseAccumOcclusionQuery:          return kMVKBarrierStageNone; /**< Any command terminating a Metal render pass with active visibility buffer. */
