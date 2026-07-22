@@ -1948,13 +1948,13 @@ MVKDescriptorPool* MVKDescriptorPool::Create(MVKDevice* device, const VkDescript
 		cpuSize += calcGroupSizeWithPadding(numAuxOffset * sizeof(uint32_t), pCreateInfo->maxSets, alignof(uint32_t), cpuAlign);
 	}
 
+	uint32_t dataAlign = gpuAlign;
 	if (inlineUniformSize) {
 		auto* info = mvkFindStructInChain<VkDescriptorPoolInlineUniformBlockCreateInfo>(pCreateInfo, VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO);
 		if (info) {
 			if (argBufMode == MVKArgumentBufferMode::Off || mayDisableArgumentBuffers(device))
 				cpuSize += calcGroupSizeWithPadding(inlineUniformSize, info->maxInlineUniformBlockBindings, 4, cpuAlign);
 			MVKDescriptorGPULayout gpuLayout = pickGPULayout(VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK, 1, argBufMode, device);
-			uint32_t dataAlign = gpuAlign;
 			if (gpuLayout == MVKDescriptorGPULayout::OutlinedData) {
 				// Add space for the pointers
 				gpuSize += alignDescriptorOffset(sizes.pointer.size, gpuAlign) * info->maxInlineUniformBlockBindings;
@@ -1979,7 +1979,7 @@ MVKDescriptorPool* MVKDescriptorPool::Create(MVKDevice* device, const VkDescript
 
 	// Apply Metal constant buffer offset alignment padding for descriptor sets
 	const uint32_t mtlCbufAlign = (uint32_t)device->getPhysicalDevice()->getMetalFeatures()->mtlConstantBufferAlignment;
-	const uint32_t cbufAlign = std::max(gpuAlign, hostOnly || argBufMode == MVKArgumentBufferMode::Off ? 1u : mtlCbufAlign);
+	const uint32_t cbufAlign = std::max(dataAlign, hostOnly || argBufMode == MVKArgumentBufferMode::Off ? 1u : mtlCbufAlign);
 	gpuSize = calcGroupSizeWithPadding(gpuSize, pCreateInfo->maxSets, gpuAlign, cbufAlign);
 	gpuAlign = cbufAlign;
 
