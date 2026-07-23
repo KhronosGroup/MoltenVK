@@ -509,7 +509,7 @@ public:
 	bool _isIndexedDraw;
 
     /** If true, transform feedback is currently running. */
-    VkBool32 _transformFeedbackRunning;
+    VkBool32 _transformFeedbackRunning = false;
 
     /** VK_EXT_transform_feedback (PR #1943). The PR was written against the old
         _graphicsResourcesState encoder-state object, which no longer exists; this

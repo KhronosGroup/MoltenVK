@@ -527,11 +527,11 @@ bool MVKGraphicsPipeline::compileVertexStageState(MTLComputePipelineDescriptor* 
                 blDesc.stepFunction = MTLStepFunctionThreadPositionInGridXIndexed;
         }
     }
-    res |= !!getOrCompilePipeline(vtxPLDesc, _mtlVertexStageIndex16State, vtxCompilerType);
+    res &= !!getOrCompilePipeline(vtxPLDesc, _mtlVertexStageIndex16State, vtxCompilerType);
 
 	vtxPLDesc.computeFunction = pVtxFunctions[2].getMTLFunction();
     vtxPLDesc.stageInputDescriptor.indexType = MTLIndexTypeUInt32;
-    res |= !!getOrCompilePipeline(vtxPLDesc, _mtlVertexStageIndex32State, vtxCompilerType);
+    res &= !!getOrCompilePipeline(vtxPLDesc, _mtlVertexStageIndex32State, vtxCompilerType);
 
 	if (pVertexFB) {
 		if (!res) {
@@ -1927,9 +1927,19 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 	// CompilerMSL::Options::PrimitiveType share values for the basic topologies.
 	bool xfb = isTransformFeedbackPipeline();
 	shaderConfig.options.mslOptions.vertex_for_tessellation = !xfb;
-	if (xfb && _vkPrimitiveTopology <= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN)
-		shaderConfig.options.mslOptions.xfb_primitive_type =
-			(CompilerMSL::Options::PrimitiveType)_vkPrimitiveTopology;
+	if (xfb) {
+		shaderConfig.options.mslOptions.xfb_counter_buffer_index_base =
+			getTransformFeedbackCounterBufferIndex(kMVKShaderStageVertex);
+		shaderConfig.options.mslOptions.xfb_output_buffer_index_base =
+			getTransformFeedbackBufferIndex(kMVKShaderStageVertex);
+		if (pCreateInfo->pInputAssemblyState) {
+			// _vkPrimitiveTopology is assigned only after this function runs.
+			VkPrimitiveTopology topo = pCreateInfo->pInputAssemblyState->topology;
+			if (topo <= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN)
+				shaderConfig.options.mslOptions.xfb_primitive_type =
+					(CompilerMSL::Options::PrimitiveType)topo;
+		}
+	}
 	shaderConfig.options.mslOptions.disable_rasterization = true;
 	setEmulatedReversedDepthViewportConfig(shaderConfig, implicit, false);
     addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
@@ -2151,7 +2161,8 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 				vbDesc.stepRate = 0;
 			} else {
 				vbDesc.stride = isVtxStrideStatic ? pVKVB->stride : MTLBufferLayoutStrideDynamic;
-				vbDesc.stepFunction = (decltype(vbDesc.stepFunction))mvkMTLStepFunctionFromVkVertexInputRate(pVKVB->inputRate, isTessellationPipeline());
+				vbDesc.stepFunction = (decltype(vbDesc.stepFunction))mvkMTLStepFunctionFromVkVertexInputRate(
+					pVKVB->inputRate, isTessellationPipeline() || isTransformFeedbackPipeline());
 				vbDesc.stepRate = 1;
 			}
         }
@@ -2636,6 +2647,7 @@ void MVKGraphicsPipeline::addVertexInputToShaderConversionConfig(SPIRVToMSLConve
             si.shaderVar.vecsize = vertexFormatInfo[pVKVA->format].num_elements;
             si.shaderVar.normalized = vertexFormatInfo[pVKVA->format].normalized;
             si.shaderVar.binding = getDevice()->getMetalBufferIndexForVertexAttributeBinding(pVKVA->binding);
+            _vkVertexBuffers.set(pVKVA->binding);
             // Concrete component format for the manual vertex fetch. The signedness
             // switch below may still refine it for unsigned attributes.
             si.shaderVar.format = mvkMSLFormatForFormatType(getPixelFormats()->getFormatType(pVKVA->format));

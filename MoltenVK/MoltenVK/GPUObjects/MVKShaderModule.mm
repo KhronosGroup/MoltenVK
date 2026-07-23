@@ -662,6 +662,7 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 		"struct " + entryName + "_passthru\n"
 		"{\n";
 	for (const auto& output : vtxOutputs) {
+		if (output.builtin == spv::BuiltInPointSize) { continue; }
 		conversionResult.msl += "    " + mvkTypeToMSL(output) + " ";
 		if (output.builtin != spv::BuiltInMax) {
 			conversionResult.msl += mvkBuiltInToName(output) + " [[" + mvkBuiltInToAttr(output) + "]]";
@@ -669,7 +670,8 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 				clipDistances++;
 			}
 		} else {
-			conversionResult.msl += mvkVertexAttrToName(output) + " [[user(" + mvkVertexAttrToUserAttr(output) + "]]";
+			conversionResult.msl += mvkVertexAttrToName(output) + " [[user(" +
+			                        mvkVertexAttrToUserAttr(output) + ")]]";
 		}
 		conversionResult.msl += ";\n";
 	}
@@ -679,7 +681,8 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 		conversionResult.msl += os.str();
 	}
 	conversionResult.msl += "};\n\n";
-	conversionResult.msl += "vertex " + entryName + "_passthru " + entryName + "PassThru(";
+	conversionResult.msl += "vertex " + entryName + "_passthru " +
+	                        conversionResult.resultInfo.entryPoint.mtlFunctionName + "_PassThru(";
 	std::ostringstream os;
 	// Emit parameters for XFB buffers and the other output buffer.
 	for (const auto& buffer : xfbBuffers) {
@@ -690,12 +693,16 @@ void MVKShaderModule::generatePassThruVertexShader(const std::string& entryName,
 		else
 			os << "const device " << entryName << "_pt_xfb" << buffer.first << "* xfb" << buffer.first << " [[buffer(" << buffer.first << ")]]";
 	}
+	if (!os.str().empty())
+		os << ", ";
+	os << "uint gl_VertexIndex [[vertex_id]]";
 	conversionResult.msl += os.str();
 	conversionResult.msl += ")\n"
 		"{\n"
 		"    " + entryName + "_passthru out;\n";
 	// Emit loads from the XFB buffers and stores to stage out.
 	for (const auto& output : vtxOutputs) {
+		if (output.builtin == spv::BuiltInPointSize) { continue; }
 		std::ostringstream loadStore;
 		loadStore << "out.";
 		if (output.builtin != spv::BuiltInMax) {
@@ -1003,4 +1010,3 @@ bool MVKFunctionSpecializer::compileComplete(id<MTLFunction> mtlFunction, NSErro
 MVKFunctionSpecializer::~MVKFunctionSpecializer() {
 	[_mtlFunction release];
 }
-

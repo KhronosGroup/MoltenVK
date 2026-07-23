@@ -1609,10 +1609,6 @@ void MVKMetalComputeCommandEncoderState::prepareRenderDispatch(
 	MVKShaderStage stage)
 {
 	MVKGraphicsPipeline* pipeline = vk._pipeline;
-	if (!pipeline->getMainPipelineState()) // Abort if pipeline could not be created.
-		return;
-
-
 	id<MTLComputePipelineState> mtlPipeline = nil;
 	if (stage == kMVKShaderStageVertex) {
 		if (!mvkEncoder._isIndexedDraw) {
@@ -1627,6 +1623,11 @@ void MVKMetalComputeCommandEncoderState::prepareRenderDispatch(
 	} else {
 		assert(0);
 	}
+	// A capture-only transform-feedback pipeline intentionally has no raster
+	// pipeline state. Validate the compute state selected for this stage instead
+	// of requiring an unrelated main render pipeline.
+	if (!mtlPipeline)
+		return;
 
 	if (_vkPipeline != pipeline) {
 		_vkPipeline = pipeline;
