@@ -789,11 +789,9 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
 				auto* xfbFeatures = (VkPhysicalDeviceTransformFeedbackFeaturesEXT*)next;
 				xfbFeatures->transformFeedback = true;
-				// DXVK enables geometryStreams unconditionally for D3D_FEATURE_LEVEL_10_0+,
-				// so reporting false makes vkCreateDevice fail VK_ERROR_FEATURE_NOT_PRESENT.
-				// The GS path emits a single output stream, which covers the common case;
-				// multi-stream GS output is the part that isn't backed.
-				xfbFeatures->geometryStreams = true;
+				// Metal mesh output and the current XFB path expose one stream. Dropping
+				// nonzero SPIR-V stream operands would silently change GS/XFB semantics.
+				xfbFeatures->geometryStreams = false;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
