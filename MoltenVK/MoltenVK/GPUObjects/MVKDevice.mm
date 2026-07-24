@@ -2784,14 +2784,7 @@ void MVKPhysicalDevice::initFeatures() {
     _features.fullDrawIndexUint32 = true;
     _features.independentBlend = true;
     _features.sampleRateShading = true;
-	// DXVK enables logicOp and variableMultisampleRate unconditionally at
-	// D3D_FEATURE_LEVEL_11_1, so reporting them false fails vkCreateDevice with
-	// VK_ERROR_FEATURE_NOT_PRESENT. logicOp is genuinely implemented via Metal's
-	// private API; force it on. variableMultisampleRate (per-subpass sample count)
-	// has no Metal backing, but titles that reach FL_11_1 rarely exercise it, and a
-	// device that never varies its sample rate is unaffected by claiming support.
-	_features.logicOp = true;
-	_features.variableMultisampleRate = true;
+	_features.logicOp = getMVKConfig().useMetalPrivateAPI;
     _features.depthBiasClamp = true;
     _features.fillModeNonSolid = true;
     _features.largePoints = true;
