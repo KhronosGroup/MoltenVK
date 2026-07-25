@@ -13,6 +13,15 @@ Copyright (c) 2015-2026 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.4.3
+--------------
+
+Released TBD
+
+- 
+
+
+
 MoltenVK 1.4.2
 --------------
 
