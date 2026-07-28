@@ -4083,17 +4083,18 @@ void MVKDevice::getDescriptorVariableDescriptorCountLayoutSupport(const VkDescri
 		}
 	}
 	auto& mtlFeats = _physicalDevice->_metalFeatures;
+	uint32_t mtlBuffAvail = mtlBuffCnt < mtlFeats.maxPerStageBufferCount
+								? mtlFeats.maxPerStageBufferCount - mtlBuffCnt
+								: 0;
 	switch (pCreateInfo->pBindings[varBindingIdx].descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-			maxVarDescCount = mtlFeats.maxPerStageBufferCount - mtlBuffCnt;
+			maxVarDescCount = mtlBuffAvail;
 			break;
 		case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
-			maxVarDescCount = mtlBuffCnt < mtlFeats.maxPerStageBufferCount
-								? (mtlFeats.maxPerStageBufferCount - mtlBuffCnt) / 2
-								: 0;
+			maxVarDescCount = mtlBuffAvail / 2;
 			break;
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
 			maxVarDescCount = (uint32_t)min<VkDeviceSize>(mtlFeats.maxMTLBufferSize, numeric_limits<uint32_t>::max());
@@ -4105,8 +4106,8 @@ void MVKDevice::getDescriptorVariableDescriptorCountLayoutSupport(const VkDescri
 			break;
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-				maxVarDescCount = min(mtlFeats.maxPerStageTextureCount - mtlTexCnt,
-						    		  mtlFeats.maxPerStageBufferCount - mtlBuffCnt);
+			maxVarDescCount = min(mtlFeats.maxPerStageTextureCount - mtlTexCnt,
+								  mtlBuffAvail);
 			break;
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
 				maxVarDescCount = mtlFeats.maxPerStageSamplerCount - mtlSampCnt;
