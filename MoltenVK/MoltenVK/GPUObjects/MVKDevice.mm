@@ -4053,6 +4053,9 @@ void MVKDevice::getDescriptorVariableDescriptorCountLayoutSupport(const VkDescri
 				case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 					mtlBuffCnt += pBind->descriptorCount;
 					break;
+				case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+					mtlBuffCnt += pBind->descriptorCount * 2;
+					break;
 				case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
 					break;
 				case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
@@ -4086,6 +4089,11 @@ void MVKDevice::getDescriptorVariableDescriptorCountLayoutSupport(const VkDescri
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 			maxVarDescCount = mtlFeats.maxPerStageBufferCount - mtlBuffCnt;
+			break;
+		case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+			maxVarDescCount = mtlBuffCnt < mtlFeats.maxPerStageBufferCount
+								? (mtlFeats.maxPerStageBufferCount - mtlBuffCnt) / 2
+								: 0;
 			break;
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
 			maxVarDescCount = (uint32_t)min<VkDeviceSize>(mtlFeats.maxMTLBufferSize, numeric_limits<uint32_t>::max());
