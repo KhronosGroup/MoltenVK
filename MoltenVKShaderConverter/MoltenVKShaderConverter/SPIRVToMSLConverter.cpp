@@ -412,7 +412,6 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	populateEntryPoint(pMSLCompiler, shaderConfig.options, conversionResult.resultInfo.entryPoint);
 	conversionResult.resultInfo.meshOutputBufferSize = pMSLCompiler ? pMSLCompiler->get_mesh_output_buffer_size() : 0;
 	conversionResult.resultInfo.meshOutputBufferAlignment = pMSLCompiler ? pMSLCompiler->get_mesh_output_buffer_alignment() : 0;
-	conversionResult.resultInfo.meshOutputThreadgroupSize = pMSLCompiler ? pMSLCompiler->get_mesh_output_threadgroup_size() : 0;
 	conversionResult.resultInfo.meshOutputSpillLayout = MSLMeshOutputSpillLayout{};
 	conversionResult.resultInfo.meshOutputSpillFields.clear();
 	if (pMSLCompiler) {

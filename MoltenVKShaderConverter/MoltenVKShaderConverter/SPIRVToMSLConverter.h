@@ -268,7 +268,6 @@ namespace mvk {
 		SPIRVEntryPoint entryPoint;
 		uint32_t meshOutputBufferSize = 0;
 		uint32_t meshOutputBufferAlignment = 0;
-		uint32_t meshOutputThreadgroupSize = 0;
 		SPIRV_CROSS_NAMESPACE::MSLMeshOutputSpillLayout meshOutputSpillLayout;
 		std::vector<SPIRV_CROSS_NAMESPACE::MSLMeshOutputSpillField> meshOutputSpillFields;
 		bool isRasterizationDisabled = false;
