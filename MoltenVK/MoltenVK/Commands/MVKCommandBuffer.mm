@@ -269,7 +269,8 @@ VkResult MVKCommandBuffer::end() {
 }
 
 void MVKCommandBuffer::checkDeferredEncoding() {
-	if (getMVKConfig().prefillMetalCommandBuffers == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_DEFERRED_ENCODING) {
+	if (_prefilledMTLCmdBuffer &&
+		getMVKConfig().prefillMetalCommandBuffers == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_DEFERRED_ENCODING) {
 		@autoreleasepool {
 			MVKCommandEncodingContext encodingContext;
 			MVKCommandEncoder encoder(this);
@@ -393,6 +394,11 @@ void MVKCommandBuffer::recordExecuteCommands(MVKArrayRef<MVKCommandBuffer*const>
 		if (cmdBuff->_needsVisibilityResultMTLBuffer) { _needsVisibilityResultMTLBuffer = true; }
 		if (cmdBuff->_hasStageCounterTimestampCommand) { _hasStageCounterTimestampCommand = true; }
 		if (cmdBuff->_needsInheritedMemorylessAttachmentBacking) { recordMemorylessAttachmentBacking(); }
+		for (auto* passCmd : cmdBuff->_memorylessBackingRenderPasses) {
+			if ( !mvkContains(_memorylessBackingRenderPasses, passCmd) ) {
+				_memorylessBackingRenderPasses.push_back(passCmd);
+			}
+		}
 	}
 }
 
@@ -583,7 +589,10 @@ void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
 									mvkVkExtent2DsAreEqual(_renderArea.extent, getFramebufferExtent()));
 	_clearValues.assign(clearValues.begin(), clearValues.end());
 	_attachments.assign(attachments.begin(), attachments.end());
-	_isUsingMemorylessAttachmentBacking = _cmdBuffer->needsMemorylessAttachmentBacking(passCmd);
+	_isUsingMemorylessAttachmentBacking =
+		_cmdBuffer->needsMemorylessAttachmentBacking(passCmd) ||
+		mvkIsAnyFlagEnabled(_pEncodingContext->getRenderingFlags(),
+						   VK_RENDERING_SUSPENDING_BIT | VK_RENDERING_RESUMING_BIT);
 
 	setSubpass(passCmd, subpassContents, 0, cmdUse);
 }
@@ -820,24 +829,42 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 												  _isRenderingEntireAttachment,
 												  isRestart);
 	if (_isUsingMemorylessAttachmentBacking) {
+		auto* subpass = getSubpass();
+		auto getAttachment = [&](uint32_t index) {
+			return index < _attachments.size() ? _attachments[index] : nullptr;
+		};
 		bool preserveContents = isRestart || mvkIsAnyFlagEnabled(_pEncodingContext->getRenderingFlags(), VK_RENDERING_RESUMING_BIT);
-		auto backAttachment = [&](MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
+		auto backAttachment = [&](MTLRenderPassAttachmentDescriptor* mtlAttDesc,
+								  MVKImageView* attachment) {
 			id<MTLTexture> mtlTexture = mtlAttDesc.texture;
 			if (mtlTexture.storageMode != MTLStorageModeMemoryless) { return; }
-			id<MTLTexture> backing = getMemorylessAttachmentTexture(mtlTexture);
+			id<MTLTexture> backing = getMemorylessAttachmentTexture(mtlTexture, attachment);
 			if (backing == mtlTexture) { return; }
 			mtlAttDesc.texture = backing;
 			if (preserveContents) { mtlAttDesc.loadAction = MTLLoadActionLoad; }
 		};
 		for (uint32_t caIdx = 0; caIdx < 8; caIdx++) {
 			auto* mtlColorAttDesc = mtlRPDesc.colorAttachments[caIdx];
-			backAttachment(mtlColorAttDesc);
-			mtlColorAttDesc.resolveTexture = getMemorylessAttachmentTexture(mtlColorAttDesc.resolveTexture);
+			backAttachment(mtlColorAttDesc, getAttachment(subpass->getColorAttachmentIndex(caIdx)));
+			mtlColorAttDesc.resolveTexture = getMemorylessAttachmentTexture(
+				mtlColorAttDesc.resolveTexture,
+				getAttachment(subpass->getResolveAttachmentIndex(caIdx)));
 		}
-		backAttachment(mtlRPDesc.depthAttachment);
-		backAttachment(mtlRPDesc.stencilAttachment);
-		mtlRPDesc.depthAttachment.resolveTexture = getMemorylessAttachmentTexture(mtlRPDesc.depthAttachment.resolveTexture);
-		mtlRPDesc.stencilAttachment.resolveTexture = getMemorylessAttachmentTexture(mtlRPDesc.stencilAttachment.resolveTexture);
+		backAttachment(mtlRPDesc.depthAttachment, getAttachment(subpass->getDepthAttachmentIndex()));
+		backAttachment(mtlRPDesc.stencilAttachment, getAttachment(subpass->getStencilAttachmentIndex()));
+		mtlRPDesc.depthAttachment.resolveTexture = getMemorylessAttachmentTexture(
+			mtlRPDesc.depthAttachment.resolveTexture,
+			getAttachment(subpass->getDepthResolveAttachmentIndex()));
+		mtlRPDesc.stencilAttachment.resolveTexture = getMemorylessAttachmentTexture(
+			mtlRPDesc.stencilAttachment.resolveTexture,
+			getAttachment(subpass->getStencilResolveAttachmentIndex()));
+	}
+	if (mvkIsAnyFlagEnabled(_pEncodingContext->getRenderingFlags(), VK_RENDERING_SUSPENDING_BIT)) {
+		for (uint32_t caIdx = 0; caIdx < 8; caIdx++) {
+			mtlRPDesc.colorAttachments[caIdx].resolveTexture = nil;
+		}
+		mtlRPDesc.depthAttachment.resolveTexture = nil;
+		mtlRPDesc.stencilAttachment.resolveTexture = nil;
 	}
 	if (_cmdBuffer->_needsVisibilityResultMTLBuffer) {
 		if (!_pEncodingContext->visibilityResultBuffer.buffer()) {
@@ -951,9 +978,14 @@ uint32_t MVKCommandEncoder::getFramebufferLayerCount() {
 	return mvkFB ? mvkFB->getLayerCount() : 0;
 }
 
-id<MTLTexture> MVKCommandEncoder::getMemorylessAttachmentTexture(id<MTLTexture> mtlTexture) {
+id<MTLTexture> MVKCommandEncoder::getMemorylessAttachmentTexture(id<MTLTexture> mtlTexture,
+																 MVKImageView* attachment) {
 	if (!_isUsingMemorylessAttachmentBacking || !mtlTexture || mtlTexture.storageMode != MTLStorageModeMemoryless) {
 		return mtlTexture;
+	}
+	if (attachment) {
+		id<MTLTexture> backing = attachment->getMemorylessAttachmentBacking(mtlTexture);
+		if (backing) { return backing; }
 	}
 	for (auto& backing : _memorylessAttachmentBackings) {
 		if (backing.first == mtlTexture) { return backing.second; }
@@ -973,7 +1005,7 @@ id<MTLTexture> MVKCommandEncoder::getMemorylessAttachmentTexture(id<MTLTexture> 
 	id<MTLTexture> backing = [getMTLDevice() newTextureWithDescriptor:mtlTexDesc];
 	[mtlTexDesc release];
 	if (!backing) {
-		reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate private backing for a memoryless mesh render-pass attachment.");
+		reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate private backing for a memoryless render-pass attachment.");
 		return mtlTexture;
 	}
 

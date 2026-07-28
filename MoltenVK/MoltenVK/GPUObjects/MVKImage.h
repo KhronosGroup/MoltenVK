@@ -551,6 +551,8 @@ public:
     /** Returns the Metal texture underlying this image view. */
     id<MTLTexture> getMTLTexture();
 
+	id<MTLTexture> getMemorylessAttachmentBacking(id<MTLTexture> mtlTexture);
+
     void releaseMTLTexture();
 
 	/** Returns the packed component swizzle of this image view. */
@@ -570,6 +572,7 @@ protected:
     friend MVKImageView;
     MVKImageView* _imageView;
 	id<MTLTexture> _mtlTexture;
+	MVKSmallVector<std::pair<id<MTLTexture>, id<MTLTexture>>, 1> _memorylessAttachmentBackings;
 	VkComponentMapping _componentSwizzle;
     MTLPixelFormat _mtlPixFmt;
 	uint8_t _planeIndex;
@@ -603,6 +606,8 @@ public:
 
 	/** Returns the Metal texture underlying this image view.  */
 	id<MTLTexture> getMTLTexture(uint8_t planeIndex = 0) { return planeIndex < _planes.size() ? _planes[planeIndex]->getMTLTexture() : nil; }	// Guard against destroyed instance retained in a descriptor.
+
+	id<MTLTexture> getMemorylessAttachmentBacking(id<MTLTexture> mtlTexture);
 
 	/** Returns the Metal pixel format of this image view. */
 	MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex = 0) { return planeIndex < _planes.size() ? _planes[planeIndex]->_mtlPixFmt : MTLPixelFormatInvalid; }	// Guard against destroyed instance retained in a descriptor.

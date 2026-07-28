@@ -428,7 +428,7 @@ void MVKRenderSubpass::resolveUnresolvableAttachments(MVKCommandEncoder* cmdEnco
 				MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
 				state.bindPipeline(mtlComputeEnc, mtlRslvState);
 				state.bindTexture(mtlComputeEnc, raImgView->getMTLTexture(), 0);
-				state.bindTexture(mtlComputeEnc, cmdEncoder->getMemorylessAttachmentTexture(caImgView->getMTLTexture()), 1);
+				state.bindTexture(mtlComputeEnc, cmdEncoder->getMemorylessAttachmentTexture(caImgView->getMTLTexture(), caImgView), 1);
 				MTLSize gridSize = mvkMTLSizeFromVkExtent3D(raImgView->getExtent3D());
 				MTLSize tgSize = MTLSizeMake(mtlRslvState.threadExecutionWidth, 1, 1);
 				if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {

@@ -319,7 +319,8 @@ public:
 
 	bool isUsingMemorylessAttachmentBacking() { return _isUsingMemorylessAttachmentBacking; }
 
-	id<MTLTexture> getMemorylessAttachmentTexture(id<MTLTexture> mtlTexture);
+	id<MTLTexture> getMemorylessAttachmentTexture(id<MTLTexture> mtlTexture,
+												  MVKImageView* attachment = nullptr);
 
 	/** Returns the index of the currently active multiview subpass, or zero if the current render pass is not multiview. */
 	uint32_t getMultiviewPassIndex() { return _multiviewPassIndex; }
