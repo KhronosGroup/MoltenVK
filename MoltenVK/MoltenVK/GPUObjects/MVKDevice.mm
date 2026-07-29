@@ -2770,7 +2770,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	_isUsingMetalArgumentBuffers = _metalFeatures.descriptorSetArgumentBuffers && getMVKConfig().useMetalArgumentBuffers;
 	_metalFeatures.accelerationStructures &=
-		_isUsingMetalArgumentBuffers && _metalFeatures.placementHeaps &&
+		_isUsingMetalArgumentBuffers &&
 		getMVKConfig().enableExperimentalRayTracing;
 
 #define checkSupportsMTLCounterSamplingPoint(mtlSP, mvkSP)  \
