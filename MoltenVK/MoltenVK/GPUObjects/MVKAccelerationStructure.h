@@ -37,7 +37,6 @@ class MVKAccelerationStructureCanonicalStorage;
 struct MVKAccelerationStructureCanonicalSnapshot {
 	MVKAccelerationStructureCanonicalStorage* storage = nullptr;
 	id<MTLBuffer> canonicalBuffer = nil;
-	uint64_t canonicalSize = 0;
 	uint64_t serializationSize = 0;
 };
 
@@ -60,16 +59,13 @@ public:
 	uint64_t getHandleCount();
 	MVKAccelerationStructureCanonicalSnapshot retainCanonicalSnapshot();
 	static void releaseCanonicalSnapshot(MVKAccelerationStructureCanonicalSnapshot& snapshot);
-	bool isCompatibleWith(uint64_t nativeCapacity, uint64_t metadataCapacity);
-
 	bool setInstanceMetadataSize(uint64_t size);
-	void publishBuild(uint64_t nativeSize,
-					  uint64_t instanceMetadataSize,
-					  uint64_t handleCount);
-	void publishCanonical(id<MTLBuffer> canonicalBuffer,
-					  uint64_t canonicalSize,
-					  uint64_t serializationSize,
-					  uint64_t handleCount);
+	void publishBuild(uint64_t nativeSize, uint64_t instanceMetadataSize, uint64_t handleCount);
+	void publishBuild(uint64_t nativeSize, uint64_t handleCount) { publishBuild(nativeSize, 0, handleCount); }
+	bool publishCanonical(id<MTLBuffer> canonicalBuffer,
+						  uint64_t serializationSize,
+						  uint64_t handleCount,
+						  bool adoptsResidency = false);
 	void copyContentFrom(MVKAccelerationStructureStorageGeneration* source,
 						 uint64_t nativeSizeLimit = UINT64_MAX);
 
@@ -90,7 +86,6 @@ protected:
 	id<MTLAccelerationStructure> _accelerationStructure;
 	id<MTLBuffer> _instanceMetadataBuffer;
 	id<MTLBuffer> _referenceBuffer;
-	id<MTLBuffer> _canonicalBuffer = nil;
 	MVKAccelerationStructureCanonicalStorage* _canonicalStorage = nullptr;
 	std::atomic<uint32_t> _refCount { 1 };
 	std::mutex _stateLock;
@@ -98,7 +93,6 @@ protected:
 	uint64_t _metadataCapacity;
 	uint64_t _nativeSize = 0;
 	uint64_t _instanceMetadataSize = 0;
-	uint64_t _canonicalSize = 0;
 	uint64_t _serializationSize = 0;
 	uint64_t _handleCount = 0;
 };
@@ -106,16 +100,13 @@ protected:
 class MVKAccelerationStructureStorage {
 
 public:
-	bool matches(VkDeviceSize physicalStart,
-				 VkDeviceAddress requestedDeviceAddress,
-				 VkAccelerationStructureCreateFlagsKHR createFlags,
-				 VkAccelerationStructureTypeKHR type) const;
+	bool matches(VkDeviceSize physicalStart) const;
 	MVKAccelerationStructureStorageGeneration* retainCurrentGeneration();
-	MVKAccelerationStructureStorageGeneration* retainInitialGeneration(uint64_t nativeCapacity,
-																 uint64_t metadataCapacity);
+	bool ensureInitialGeneration(uint64_t nativeCapacity,
+							 bool usesPlacement,
+							 VkDeviceSize placementOffset);
 	VkResult retainFullWriteGeneration(uint64_t nativeCapacity,
 									 uint64_t requiredNativeSize,
-									 uint64_t metadataCapacity,
 									 uint64_t requiredMetadataSize,
 									 MVKAccelerationStructureStorageGeneration*& generation);
 	bool publishGeneration(MVKAccelerationStructureStorageGeneration* generation);
@@ -125,27 +116,18 @@ protected:
 
 	MVKAccelerationStructureStorage(MVKDevice* device,
 									id<MTLHeap> heap,
-									bool usesPlacement,
-									VkDeviceSize physicalStart,
-									VkDeviceAddress requestedDeviceAddress,
-									VkAccelerationStructureCreateFlagsKHR createFlags,
-									VkAccelerationStructureTypeKHR type,
-									VkDeviceSize placementOffset);
+									VkDeviceSize physicalStart);
 	~MVKAccelerationStructureStorage();
 	MVKAccelerationStructureStorageGeneration* newGeneration(uint64_t nativeCapacity,
-																uint64_t metadataCapacity);
+															 bool usesPlacement,
+															 VkDeviceSize placementOffset,
+															 uint64_t metadataCapacity);
 
 	MVKDevice* _device;
 	id<MTLHeap> _heap;
-	bool _usesPlacement;
 	VkDeviceSize _physicalStart;
-	VkDeviceAddress _requestedDeviceAddress;
-	VkAccelerationStructureCreateFlagsKHR _createFlags;
-	VkAccelerationStructureTypeKHR _type;
-	VkDeviceSize _placementOffset;
 	uint32_t _memberCount = 0;
 	std::mutex _lock;
-	MVKSmallVector<MVKAccelerationStructureStorageGeneration*, 2> _generations;
 	MVKAccelerationStructureStorageGeneration* _currentGeneration = nullptr;
 };
 
@@ -170,20 +152,21 @@ public:
 
 	uint64_t getSize() const { return _size; }
 
-	uint64_t getNativeCapacity();
-
 	VkAccelerationStructureTypeKHR getAccelerationStructureType() const { return _type; }
 
-	VkAccelerationStructureCreateFlagsKHR getCreateFlags() const { return _createFlags; }
 	MVKAccelerationStructureStorageGeneration* retainCurrentGeneration();
 
 	VkResult retainFullWriteGeneration(uint64_t requiredNativeSize,
-									 uint64_t requiredMetadataSize,
 									 MVKAccelerationStructureStorageGeneration*& generation);
+	VkResult retainFullWriteGeneration(uint64_t requiredNativeSize,
+	                                     uint64_t requiredMetadataSize,
+	                                     MVKAccelerationStructureStorageGeneration*& generation);
 
 	bool publishGeneration(MVKAccelerationStructureStorageGeneration* generation);
 
 	static VkDeviceSize getMTLPlacementAlignment(MVKDevice* device);
+	static void applyMTLUsage(MTLAccelerationStructureDescriptor* descriptor,
+						  VkBuildAccelerationStructureFlagsKHR flags);
 
     MVKAccelerationStructure(MVKDevice* device);
 
@@ -202,25 +185,24 @@ protected:
 	void bufferMemoryBindingFailed();
 	void releaseMetalResources();
 	void detachBackingBuffer();
-	VkResult getMaximumMetalSize(MVKBuffer* backingBuffer,
-							 MVKDeviceMemory* memory,
-							 VkDeviceSize bufferMemoryOffset,
-							 VkDeviceSize& physicalStart,
-							 VkDeviceSize& placementOffset,
-							 VkDeviceSize& metalSize);
+	VkResult getMetalStorageInfo(MVKBuffer* backingBuffer,
+								MVKDeviceMemory* memory,
+								VkDeviceSize bufferMemoryOffset,
+								VkDeviceSize& physicalStart,
+								bool& usesPlacement,
+								VkDeviceSize& placementOffset,
+								VkDeviceSize& nativeCapacity);
 
 	MVKBuffer* _backingBuffer = nullptr;
 	MVKDeviceMemory* _storageMemory = nullptr;
 	MVKAccelerationStructureStorage* _storage = nullptr;
 
-    uint64_t _address = 0;
-    uint64_t _size = 0;
+	uint64_t _address = 0;
+	uint64_t _size = 0;
 	VkDeviceSize _bufferOffset = 0;
-	VkDeviceAddress _requestedDeviceAddress = 0;
 	VkDeviceSize _nativeCapacity = 0;
 	VkDeviceSize _metadataCapacity = 0;
 	VkAccelerationStructureTypeKHR _type = VK_ACCELERATION_STRUCTURE_TYPE_GENERIC_KHR;
-	VkAccelerationStructureCreateFlagsKHR _createFlags = 0;
 	std::mutex _lock;
 	std::atomic<bool> _isMaterialized { false };
 	bool _isGPUAddressableRegistered = false;

@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include "MVKDevice.h"
 #include "MVKCommand.h"
 #include "MVKSmallVector.h"
 
@@ -37,13 +36,14 @@ public:
                         const VkAccelerationStructureBuildRangeInfoKHR* const*  ppBuildRangeInfos);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
+
 protected:
     struct MVKAccelerationStructureBuildInfo {
         VkAccelerationStructureBuildGeometryInfoKHR info;
         MVKSmallVector<VkAccelerationStructureGeometryKHR, 3> geometries;
         MVKSmallVector<VkAccelerationStructureBuildRangeInfoKHR, 3> ranges;
     };
-protected:
+
     MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
     MVKSmallVector<MVKAccelerationStructureBuildInfo, 1> _buildInfos;

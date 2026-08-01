@@ -241,21 +241,16 @@ bool MVKDeviceMemory::isAccelerationStructurePlacementCompatible() const {
 }
 
 MVKAccelerationStructureStorage* MVKDeviceMemory::acquireAccelerationStructureStorage(
-	VkDeviceSize physicalStart,
-	VkDeviceAddress requestedDeviceAddress,
-	VkAccelerationStructureCreateFlagsKHR createFlags,
-	VkAccelerationStructureTypeKHR type,
-	VkDeviceSize placementOffset) {
+	VkDeviceSize physicalStart) {
 	lock_guard<mutex> lock(_rezLock);
 	for (auto* storage : _accelerationStructureStorages) {
-		if (storage->matches(physicalStart, requestedDeviceAddress, createFlags, type)) {
+		if (storage->matches(physicalStart)) {
 			storage->_memberCount++;
 			return storage;
 		}
 	}
 	auto* storage = new (std::nothrow) MVKAccelerationStructureStorage(
-		_device, _mtlHeap, isAccelerationStructurePlacementCompatible(), physicalStart,
-		requestedDeviceAddress, createFlags, type, placementOffset);
+		_device, _mtlHeap, physicalStart);
 	if (!storage) { return nullptr; }
 	storage->_memberCount = 1;
 	_accelerationStructureStorages.push_back(storage);
@@ -540,9 +535,7 @@ void MVKDeviceMemory::initExternalMemory(MVKImage* dedicatedImage, bool wantsHea
 }
 
 MVKDeviceMemory::~MVKDeviceMemory() {
-	// GPU-addressable buffers are enumerated under the device resource lock. Keep
-	// their memory binding and underlying Metal allocation stable until that scan
-	// has declared each resource on the active encoder.
+	// Keep GPU-addressable buffer bindings stable while the device enumerates them.
 	lock_guard<mutex> deviceLock(_device->_rezLock);
 
 	// Unbind any resources that are using me.

@@ -580,7 +580,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				accelerationStructureFeatures->accelerationStructureCaptureReplay = false;
 				accelerationStructureFeatures->accelerationStructureIndirectBuild = false;
 				accelerationStructureFeatures->accelerationStructureHostCommands = false;
-				accelerationStructureFeatures->descriptorBindingAccelerationStructureUpdateAfterBind = _metalFeatures.accelerationStructures;
+				accelerationStructureFeatures->descriptorBindingAccelerationStructureUpdateAfterBind = false;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR: {
@@ -590,13 +590,6 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				rayTracingFeatures->rayTracingPipelineShaderGroupHandleCaptureReplayMixed = false;
 				rayTracingFeatures->rayTracingPipelineTraceRaysIndirect = _metalFeatures.accelerationStructures && _supportsFunctionPointers;
 				rayTracingFeatures->rayTraversalPrimitiveCulling = false;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_POSITION_FETCH_FEATURES_KHR: {
-				auto* positionFetchFeatures =
-					(VkPhysicalDeviceRayTracingPositionFetchFeaturesKHR*)next;
-				positionFetchFeatures->rayTracingPositionFetch =
-					_metalFeatures.accelerationStructures && _metalFeatures.mslVersion >= 031000;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR: {
@@ -661,6 +654,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR: {
 				auto* rayQueryFeatures = (VkPhysicalDeviceRayQueryFeaturesKHR*)next;
 				rayQueryFeatures->rayQuery = _metalFeatures.accelerationStructures && _supportsRaytracingFromRender;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MAINTENANCE_1_FEATURES_KHR: {
+				auto* maintenanceFeatures = (VkPhysicalDeviceRayTracingMaintenance1FeaturesKHR*)next;
+				maintenanceFeatures->rayTracingMaintenance1 = _metalFeatures.accelerationStructures;
+				maintenanceFeatures->rayTracingPipelineTraceRaysIndirect2 = false;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR: {
@@ -1214,7 +1213,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				floatControlsProperties->shaderRoundingModeRTZFloat64 = supportedProps12.shaderRoundingModeRTZFloat64;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_PROPERTIES_KHR: {
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_PROPERTIES_KHR: {
                 auto* barycentricProperties = (VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR*)next;
                 barycentricProperties->triStripVertexOrderIndependentOfProvokingVertex = false;
                 break;
@@ -1297,9 +1296,9 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				accelerationStructureProperties->maxInstanceCount = (1u << 24) - 1;
 				accelerationStructureProperties->maxPrimitiveCount = (1u << 29) - 1;
 				accelerationStructureProperties->maxPerStageDescriptorAccelerationStructures = 16;
-				accelerationStructureProperties->maxPerStageDescriptorUpdateAfterBindAccelerationStructures = 500000;
+				accelerationStructureProperties->maxPerStageDescriptorUpdateAfterBindAccelerationStructures = 0;
 				accelerationStructureProperties->maxDescriptorSetAccelerationStructures = 16;
-				accelerationStructureProperties->maxDescriptorSetUpdateAfterBindAccelerationStructures = 500000;
+				accelerationStructureProperties->maxDescriptorSetUpdateAfterBindAccelerationStructures = 0;
 				accelerationStructureProperties->minAccelerationStructureScratchOffsetAlignment = 256;
 				break;
 			}
@@ -2756,7 +2755,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.argumentBuffersTier = _mtlDevice.argumentBuffersSupport;
 	_metalFeatures.accelerationStructures &=
 		_metalFeatures.argumentBuffersTier >= MTLArgumentBuffersTier2 &&
-		_metalFeatures.mslVersion >= SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(3, 1);
+		_metalFeatures.mslVersion >= SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(3, 0);
 
 	// Metal argument buffer support for descriptor sets is supported on macOS 11.0 or later,
 	// or on older versions of macOS using an Intel GPU, or on iOS & tvOS 16.0 or later (Metal 3).
@@ -2770,7 +2769,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	_isUsingMetalArgumentBuffers = _metalFeatures.descriptorSetArgumentBuffers && getMVKConfig().useMetalArgumentBuffers;
 	_metalFeatures.accelerationStructures &=
-		_isUsingMetalArgumentBuffers &&
 		getMVKConfig().enableExperimentalRayTracing;
 
 #define checkSupportsMTLCounterSamplingPoint(mtlSP, mvkSP)  \
@@ -3324,8 +3322,6 @@ bool MVKPhysicalDevice::isAMDRDNAGPU() {
 
 // Since this is a uint8_t array, use Big-Endian byte ordering,
 // so a hex dump of the array is human readable in its parts.
-static constexpr uint32_t kMVKPipelineCacheFormatVersion = 2;
-
 void MVKPhysicalDevice::initPipelineCacheUUID() {
 
 	// Clear the UUID
@@ -3351,8 +3347,6 @@ void MVKPhysicalDevice::initPipelineCacheUUID() {
 	mtlFeatures |= _isUsingMetalArgumentBuffers << 0;
 	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatures);
 	uuidComponentOffset += sizeof(mtlFeatures);
-
-	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(kMVKPipelineCacheFormatVersion);
 }
 
 // Combine OS major (8 bits), OS minor (8 bits), Mac GPU family (8 bits), and
@@ -3635,17 +3629,14 @@ void MVKPhysicalDevice::initExtensions() {
 	}
 
     // gpuAddress requires Tier2 argument buffer support (per feedback from Apple engineers).
-	if (_metalFeatures.argumentBuffersTier < MTLArgumentBuffersTier2) {
+    if (_metalFeatures.argumentBuffersTier < MTLArgumentBuffersTier2) {
 		pWritableExtns->vk_KHR_buffer_device_address.enabled = false;
 		pWritableExtns->vk_EXT_buffer_device_address.enabled = false;
 	}
 	if (!_metalFeatures.accelerationStructures) {
 		pWritableExtns->vk_KHR_acceleration_structure.enabled = false;
 		pWritableExtns->vk_KHR_ray_query.enabled = false;
-		pWritableExtns->vk_KHR_ray_tracing_position_fetch.enabled = false;
-	}
-	if (_metalFeatures.mslVersion < 031000) {
-		pWritableExtns->vk_KHR_ray_tracing_position_fetch.enabled = false;
+		pWritableExtns->vk_KHR_ray_tracing_maintenance1.enabled = false;
 	}
 	if (!_metalFeatures.accelerationStructures || !_supportsFunctionPointers) {
 		pWritableExtns->vk_KHR_pipeline_library.enabled = false;
@@ -4053,9 +4044,6 @@ void MVKDevice::getDescriptorVariableDescriptorCountLayoutSupport(const VkDescri
 				case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 					mtlBuffCnt += pBind->descriptorCount;
 					break;
-				case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
-					mtlBuffCnt += pBind->descriptorCount * 2;
-					break;
 				case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
 					break;
 				case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
@@ -4083,18 +4071,15 @@ void MVKDevice::getDescriptorVariableDescriptorCountLayoutSupport(const VkDescri
 		}
 	}
 	auto& mtlFeats = _physicalDevice->_metalFeatures;
-	uint32_t mtlBuffAvail = mtlBuffCnt < mtlFeats.maxPerStageBufferCount
-								? mtlFeats.maxPerStageBufferCount - mtlBuffCnt
-								: 0;
 	switch (pCreateInfo->pBindings[varBindingIdx].descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-			maxVarDescCount = mtlBuffAvail;
+			maxVarDescCount = mtlFeats.maxPerStageBufferCount - mtlBuffCnt;
 			break;
 		case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
-			maxVarDescCount = mtlBuffAvail / 2;
+			maxVarDescCount = 16;
 			break;
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
 			maxVarDescCount = (uint32_t)min<VkDeviceSize>(mtlFeats.maxMTLBufferSize, numeric_limits<uint32_t>::max());
@@ -4106,8 +4091,8 @@ void MVKDevice::getDescriptorVariableDescriptorCountLayoutSupport(const VkDescri
 			break;
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-			maxVarDescCount = min(mtlFeats.maxPerStageTextureCount - mtlTexCnt,
-								  mtlBuffAvail);
+				maxVarDescCount = min(mtlFeats.maxPerStageTextureCount - mtlTexCnt,
+								  mtlFeats.maxPerStageBufferCount - mtlBuffCnt);
 			break;
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
 				maxVarDescCount = mtlFeats.maxPerStageSamplerCount - mtlSampCnt;
@@ -4411,9 +4396,9 @@ MVKQueryPool* MVKDevice::createQueryPool(const VkQueryPoolCreateInfo* pCreateInf
 			case VK_QUERY_TYPE_TIMESTAMP:
 				return new MVKTimestampQueryPool(this, pCreateInfo);
 			case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR:
-			case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR:
 			case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE_KHR:
 			case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_BOTTOM_LEVEL_POINTERS_KHR:
+			case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR:
 				return new MVKAccelerationStructureQueryPool(this, pCreateInfo);
 			case VK_QUERY_TYPE_PIPELINE_STATISTICS:
 				return new MVKPipelineStatisticsQueryPool(this, pCreateInfo);
@@ -4491,8 +4476,8 @@ void MVKDevice::getAccelerationStructureSerializationUUIDs(uint8_t driverUUID[VK
 	_physicalDevice->getProperties(&properties);
 	mvkCopy(driverUUID, idProperties.driverUUID, VK_UUID_SIZE);
 	static constexpr uint8_t formatUUID[VK_UUID_SIZE] = {
-		0x3e, 0x9d, 0x5d, 0x8e, 0xdf, 0x9f, 0x46, 0xc0,
-		0xa9, 0xda, 0x43, 0x63, 0xc2, 0x0e, 0x12, 0x45,
+		0xe8, 0x8f, 0x30, 0x5d, 0x42, 0x0c, 0x4a, 0x42,
+		0xae, 0xdf, 0x0a, 0xad, 0x77, 0x46, 0x1e, 0x52,
 	};
 	mvkCopy(compatibilityUUID, formatUUID, VK_UUID_SIZE);
 }
@@ -4564,10 +4549,10 @@ template VkResult MVKDevice::createPipelines<MVKComputePipeline, VkComputePipeli
                                                                                               VkPipeline* pPipelines);
 
 template VkResult MVKDevice::createPipelines<MVKRayTracingPipeline, VkRayTracingPipelineCreateInfoKHR>(VkPipelineCache pipelineCache,
-																			 uint32_t count,
-																			 const VkRayTracingPipelineCreateInfoKHR* pCreateInfos,
-																			 const VkAllocationCallbacks* pAllocator,
-																			 VkPipeline* pPipelines);
+                                                                                                       uint32_t count,
+                                                                                                       const VkRayTracingPipelineCreateInfoKHR* pCreateInfos,
+                                                                                                       const VkAllocationCallbacks* pAllocator,
+                                                                                                       VkPipeline* pPipelines);
 
 void MVKDevice::destroyPipeline(MVKPipeline* mvkPL,
                                 const VkAllocationCallbacks* pAllocator) {
@@ -4734,6 +4719,7 @@ MVKBuffer* MVKDevice::addBuffer(MVKBuffer* mvkBuff) {
 	_resources.push_back(mvkBuff);
 	if (mvkIsAnyFlagEnabled(mvkBuff->getUsage(), VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT)) {
 		_gpuAddressableBuffers.push_back(mvkBuff);
+		_gpuAddressableBufferIndexDirty = true;
 	}
 	return mvkBuff;
 }
@@ -4745,8 +4731,14 @@ MVKBuffer* MVKDevice::removeBuffer(MVKBuffer* mvkBuff) {
 	mvkRemoveFirstOccurance(_resources, mvkBuff);
 	if (mvkIsAnyFlagEnabled(mvkBuff->getUsage(), VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT)) {
 		mvkRemoveFirstOccurance(_gpuAddressableBuffers, mvkBuff);
+		_gpuAddressableBufferIndexDirty = true;
 	}
 	return mvkBuff;
+}
+
+void MVKDevice::invalidateGPUAddressableBufferIndex() {
+	lock_guard<mutex> lock(_rezLock);
+	_gpuAddressableBufferIndexDirty = true;
 }
 
 void MVKDevice::retainGPUAddressableAccelerationStructures(MVKSmallVector<MVKAccelerationStructure*, 16>& accelerationStructures) {
@@ -4758,53 +4750,52 @@ void MVKDevice::retainGPUAddressableAccelerationStructures(MVKSmallVector<MVKAcc
 	}
 }
 
-void MVKDevice::encodeGPUAddressableBuffers(MVKCommandEncoder* commandEncoder,
-											MVKUseResourceHelper& resources,
-											MVKResourceUsageStages stage,
-											id<MTLCommandEncoder> encoder,
-											MVKUseResourceFunction useResource) {
-	MVKSmallVector<MVKAccelerationStructure*, 16> accelerationStructures;
-	{
-		lock_guard<mutex> lock(_rezLock);
-		for (auto* buffer : _gpuAddressableBuffers) {
-			if (id<MTLBuffer> mtlBuffer = buffer->getMTLBuffer()) {
-				resources.addImmediate(mtlBuffer, encoder, useResource, stage, true);
-			}
-		}
-		accelerationStructures.reserve(_gpuAddressableAccelerationStructures.size());
-		for (auto* accelerationStructure : _gpuAddressableAccelerationStructures) {
-			accelerationStructure->retain();
-			accelerationStructures.push_back(accelerationStructure);
-		}
-	}
-	for (auto* accelerationStructure : accelerationStructures) {
-		auto* generation = accelerationStructure->retainCurrentGeneration();
-		if (generation) {
-			resources.add(generation->getReferenceMTLBuffer(), stage, false);
-			resources.add((id<MTLResource>)generation->getMTLAccelerationStructure(), stage, false);
-			if (auto metadata = generation->getInstanceMetadataMTLBuffer()) {
-				resources.add(metadata, stage, false);
-			}
-			commandEncoder->retainAccelerationStructureGeneration(generation);
-		}
-		accelerationStructure->release();
+void MVKDevice::encodeGPUAddressableBuffers(MVKUseResourceHelper& resources,
+											MVKResourceUsageStages stage) {
+	lock_guard<mutex> lock(_rezLock);
+	for (auto* buffer : _gpuAddressableBuffers) {
+		resources.add(buffer->getMTLBuffer(), stage, true);
 	}
 }
 
 void MVKDevice::encodeGPUAddressableAccelerationStructures(
 	MVKCommandEncoder* commandEncoder,
 	id<MTLAccelerationStructureCommandEncoder> encoder) {
-	MVKSmallVector<MVKAccelerationStructure*, 16> accelerationStructures;
-	retainGPUAddressableAccelerationStructures(accelerationStructures);
-	for (auto* accelerationStructure : accelerationStructures) {
-		auto* generation = accelerationStructure->retainCurrentGeneration();
-		if (generation) {
-			[encoder useResource:(id<MTLResource>)generation->getMTLAccelerationStructure()
-						 usage:MTLResourceUsageRead];
-			commandEncoder->retainAccelerationStructureGeneration(generation);
-		}
-		accelerationStructure->release();
+	const auto& accelerationStructures = commandEncoder->getAccelerationStructureInstances();
+	for (size_t index = 0; index < accelerationStructures.size(); index++) {
+		[encoder useResource:(id<MTLResource>)accelerationStructures[index]
+					 usage:MTLResourceUsageRead];
 	}
+}
+
+bool MVKDevice::usesIndirectAccelerationStructureInstanceDescriptors() const {
+#if MVK_TVOS || MVK_VISIONOS
+	return false;
+#else
+	return _physicalDevice->_metalFeatures.mslVersion >=
+		SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(3, 1);
+#endif
+}
+
+MTLAccelerationStructureInstanceDescriptorType
+MVKDevice::getAccelerationStructureInstanceDescriptorType() const {
+#if MVK_TVOS || MVK_VISIONOS
+	return MTLAccelerationStructureInstanceDescriptorTypeUserID;
+#else
+	return usesIndirectAccelerationStructureInstanceDescriptors()
+		? MTLAccelerationStructureInstanceDescriptorTypeIndirect
+		: MTLAccelerationStructureInstanceDescriptorTypeUserID;
+#endif
+}
+
+NSUInteger MVKDevice::getAccelerationStructureInstanceDescriptorSize() const {
+#if MVK_TVOS || MVK_VISIONOS
+	return sizeof(MTLAccelerationStructureUserIDInstanceDescriptor);
+#else
+	return usesIndirectAccelerationStructureInstanceDescriptors()
+		? sizeof(MTLIndirectAccelerationStructureInstanceDescriptor)
+		: sizeof(MTLAccelerationStructureUserIDInstanceDescriptor);
+#endif
 }
 
 static uint64_t mvkAccelerationStructureAddressHash(uint64_t value) {
@@ -4815,9 +4806,10 @@ static uint64_t mvkAccelerationStructureAddressHash(uint64_t value) {
 	return value ^ (value >> 31);
 }
 
-void MVKDevice::getAccelerationStructureAddressTable(MVKCommandEncoder* commandEncoder,
-	                                                   MVKSmallVector<uint64_t, 32>& table,
-	                                                   MVKSmallVector<id<MTLResource>, 16>& resources) {
+void MVKDevice::getAccelerationStructureAddressTable(
+	MVKCommandEncoder* commandEncoder,
+	MVKSmallVector<uint64_t, 32>& table,
+	MVKSmallVector<id<MTLResource>, 16>& resources) {
 	struct Entry {
 		uint64_t address;
 		uint64_t size;
@@ -4848,10 +4840,10 @@ void MVKDevice::getAccelerationStructureAddressTable(MVKCommandEncoder* commandE
 		}
 		accelerationStructure->release();
 	}
-	std::sort(candidates.begin(), candidates.end(), [](const Entry& a, const Entry& b) {
-		if (a.address != b.address) { return a.address < b.address; }
-		if (a.size != b.size) { return a.size > b.size; }
-		return a.referenceAddress < b.referenceAddress;
+	std::sort(candidates.begin(), candidates.end(), [](const Entry& left, const Entry& right) {
+		if (left.address != right.address) { return left.address < right.address; }
+		if (left.size != right.size) { return left.size > right.size; }
+		return left.referenceAddress < right.referenceAddress;
 	});
 
 	std::vector<Entry> entries;
@@ -4862,21 +4854,9 @@ void MVKDevice::getAccelerationStructureAddressTable(MVKCommandEncoder* commandE
 		}
 	}
 
-	if (entries.size() > std::numeric_limits<size_t>::max() / 2) {
-		table.assign(size_t(2), uint64_t(0));
-		resources.clear();
-		return;
-	}
 	size_t requiredCapacity = entries.size() * 2;
 	size_t capacity = 1;
-	while (capacity < requiredCapacity && capacity <= std::numeric_limits<size_t>::max() / 2) {
-		capacity *= 2;
-	}
-	if (capacity < requiredCapacity || capacity > std::numeric_limits<size_t>::max() / 2 - 1) {
-		table.assign(size_t(2), uint64_t(0));
-		resources.clear();
-		return;
-	}
+	while (capacity < requiredCapacity) { capacity *= 2; }
 	table.assign((capacity + 1) * 2, 0);
 	table[0] = capacity - 1;
 	table[1] = entries.size();
@@ -4897,6 +4877,75 @@ void MVKDevice::getAccelerationStructureAddressTable(MVKCommandEncoder* commandE
 	}
 }
 
+void MVKDevice::getAccelerationStructureReferenceTable(
+	MVKCommandEncoder* commandEncoder,
+	MVKSmallVector<uint64_t, 32>& table,
+	MVKSmallVector<id<MTLAccelerationStructure>, 16>& instances) {
+	struct Candidate {
+		uint64_t address;
+		MVKAccelerationStructureStorageGeneration* generation;
+	};
+
+	MVKSmallVector<MVKAccelerationStructure*, 16> accelerationStructures;
+	retainGPUAddressableAccelerationStructures(accelerationStructures);
+	MVKSmallVector<Candidate, 16> candidates;
+	candidates.reserve(accelerationStructures.size());
+	for (auto* accelerationStructure : accelerationStructures) {
+		auto* generation = accelerationStructure->retainCurrentGeneration();
+		uint64_t address = generation ? accelerationStructure->getDeviceAddress() : 0;
+		if (address && generation->getMTLAccelerationStructure()) {
+			candidates.push_back({ address, generation });
+		} else if (generation) {
+			generation->release();
+		}
+		accelerationStructure->release();
+	}
+	std::sort(candidates.begin(), candidates.end(), [](const Candidate& a, const Candidate& b) {
+		return a.address < b.address;
+	});
+
+	size_t entryCount = 0;
+	for (size_t index = 0; index < candidates.size(); index++) {
+		auto& candidate = candidates[index];
+		if (!entryCount || candidates[entryCount - 1].address != candidate.address) {
+			if (entryCount != index) { candidates[entryCount] = candidate; }
+			entryCount++;
+		} else {
+			candidate.generation->release();
+		}
+	}
+	candidates.resize(entryCount);
+	auto& entries = candidates;
+
+	size_t requiredCapacity = entries.size() * 2;
+	size_t capacity = 1;
+	while (capacity < requiredCapacity) { capacity *= 2; }
+	table.assign((capacity + 1) * 2, 0);
+	table[0] = capacity - 1;
+	table[1] = entries.size();
+	instances.clear();
+	instances.reserve(entries.size());
+	bool usesIndirectDescriptors = usesIndirectAccelerationStructureInstanceDescriptors();
+	for (const auto& entry : entries) {
+		id<MTLAccelerationStructure> accelerationStructure =
+			entry.generation->getMTLAccelerationStructure();
+		instances.push_back(accelerationStructure);
+		uint64_t reference = 0;
+		if (usesIndirectDescriptors) {
+			MTLResourceID resourceID = accelerationStructure.gpuResourceID;
+			static_assert(sizeof(resourceID) == sizeof(reference));
+			std::memcpy(&reference, &resourceID, sizeof(reference));
+		} else {
+			reference = instances.size();
+		}
+		size_t slot = mvkAccelerationStructureAddressHash(entry.address) & (capacity - 1);
+		while (table[(slot + 1) * 2]) { slot = (slot + 1) & (capacity - 1); }
+		table[(slot + 1) * 2] = entry.address;
+		table[(slot + 1) * 2 + 1] = reference;
+		commandEncoder->retainAccelerationStructureGeneration(entry.generation);
+	}
+}
+
 void MVKDevice::addGPUAddressableAccelerationStructure(MVKAccelerationStructure* accelerationStructure) {
 	lock_guard<mutex> lock(_rezLock);
 	_gpuAddressableAccelerationStructures.push_back(accelerationStructure);
@@ -4909,23 +4958,60 @@ void MVKDevice::removeGPUAddressableAccelerationStructure(MVKAccelerationStructu
 
 MVKBuffer* MVKDevice::getBufferAtAddress(VkDeviceAddress address, VkDeviceSize& offset, VkDeviceSize requiredSize) {
 	lock_guard<mutex> lock(_rezLock);
-	MVKBuffer* match = nullptr;
-	VkDeviceSize matchOffset = 0;
-	VkDeviceSize matchRemaining = 0;
-	for (auto* buffer : _gpuAddressableBuffers) {
-		VkDeviceAddress base = buffer->getMTLBufferGPUAddress();
-		if (!base || address < base) { continue; }
-		VkDeviceSize candidateOffset = address - base;
-		VkDeviceSize byteCount = buffer->getByteCount();
-		if (candidateOffset > byteCount) { continue; }
-		VkDeviceSize remaining = byteCount - candidateOffset;
-		if (requiredSize > remaining || (match && remaining <= matchRemaining)) { continue; }
-		match = buffer;
-		matchOffset = candidateOffset;
-		matchRemaining = remaining;
+	for (;;) {
+		if (_gpuAddressableBufferIndexDirty) {
+			_gpuAddressableBufferIndex.clear();
+			_gpuAddressableBufferIndex.reserve(_gpuAddressableBuffers.size());
+			for (size_t registration = 0; registration < _gpuAddressableBuffers.size(); registration++) {
+				MVKBuffer* buffer = _gpuAddressableBuffers[registration];
+				VkDeviceAddress base = buffer->getMTLBufferGPUAddress();
+				if (base) {
+					_gpuAddressableBufferIndex.push_back({
+						base, buffer->getByteCount(), buffer, registration, 0});
+				}
+			}
+			sort(_gpuAddressableBufferIndex.begin(), _gpuAddressableBufferIndex.end(),
+				 [](const GPUAddressableBufferRange& left,
+					const GPUAddressableBufferRange& right) {
+					 return left.base != right.base ? left.base < right.base
+												   : left.registration < right.registration;
+				 });
+			size_t best = 0;
+			for (size_t index = 0; index < _gpuAddressableBufferIndex.size(); index++) {
+				auto& range = _gpuAddressableBufferIndex[index];
+				auto& bestRange = _gpuAddressableBufferIndex[best];
+				__uint128_t end = (__uint128_t)range.base + range.size;
+				__uint128_t bestEnd = (__uint128_t)bestRange.base + bestRange.size;
+				if (end > bestEnd ||
+					(end == bestEnd && range.registration < bestRange.registration)) {
+					best = index;
+				}
+				range.prefixBest = best;
+			}
+			_gpuAddressableBufferIndexDirty = false;
+		}
+		auto end = upper_bound(
+			_gpuAddressableBufferIndex.begin(), _gpuAddressableBufferIndex.end(), address,
+			[](VkDeviceAddress value, const GPUAddressableBufferRange& range) {
+				return value < range.base;
+			});
+		if (end == _gpuAddressableBufferIndex.begin()) {
+			offset = 0;
+			return nullptr;
+		}
+		const auto& match = _gpuAddressableBufferIndex[(end - 1)->prefixBest];
+		if (match.buffer->getMTLBufferGPUAddress() != match.base) {
+			_gpuAddressableBufferIndexDirty = true;
+			continue;
+		}
+		VkDeviceSize candidateOffset = address - match.base;
+		if (candidateOffset > match.size || requiredSize > match.size - candidateOffset) {
+			offset = 0;
+			return nullptr;
+		}
+		offset = candidateOffset;
+		return match.buffer;
 	}
-	offset = matchOffset;
-	return match;
 }
 
 MVKImage* MVKDevice::addImage(MVKImage* mvkImg) {

@@ -27,6 +27,128 @@
 #include <algorithm>
 #include <cstring>
 #include <limits>
+#include <numeric>
+
+static constexpr VkDeviceSize kMVKAccelerationStructureSerializationAlignment = 256;
+static constexpr uint64_t kMVKAccelerationStructureSerializationBLASBlockHeader =
+	uint64_t(UINT32_MAX) << 32;
+
+struct MVKSerializedAccelerationStructureHeader {
+	uint8_t driverUUID[VK_UUID_SIZE];
+	uint8_t compatibilityUUID[VK_UUID_SIZE];
+	uint64_t serializedSize;
+	uint64_t deserializedSize;
+	uint64_t handleCountOrBlockHeader;
+};
+
+struct alignas(16) MVKSerializedAccelerationStructurePayloadHeader {
+	uint32_t accelerationStructureType;
+	uint32_t buildFlags;
+	uint64_t recordCount;
+	uint64_t dataSize;
+};
+
+struct alignas(16) MVKSerializedAccelerationStructureGeometryRecord {
+	uint32_t geometryType;
+	uint32_t geometryFlags;
+	uint32_t primitiveCount;
+	uint32_t vertexFormat;
+	uint32_t indexType;
+	uint32_t maxVertex;
+	uint64_t vertexStride;
+	uint64_t vertexOffset;
+	uint64_t vertexSize;
+	uint64_t indexOffset;
+	uint64_t indexSize;
+	uint64_t transformOffset;
+	uint64_t transformSize;
+	uint64_t aabbOffset;
+	uint64_t aabbSize;
+};
+
+struct alignas(16) MVKSerializedAccelerationStructureInstanceRecord {
+	float transform[12];
+	uint32_t packedData1;
+	uint32_t packedData2;
+	uint32_t handleSlot;
+	uint32_t reserved;
+};
+
+static_assert(sizeof(MVKSerializedAccelerationStructureHeader) == 56);
+static_assert(sizeof(MVKSerializedAccelerationStructurePayloadHeader) == 32);
+static_assert(sizeof(MVKSerializedAccelerationStructureGeometryRecord) == 96);
+static_assert(sizeof(MVKSerializedAccelerationStructureInstanceRecord) == 64);
+static_assert(offsetof(MVKSerializedAccelerationStructureHeader, handleCountOrBlockHeader) == 48);
+
+static bool mvkAccelerationStructureSerializationAdd(VkDeviceSize a,
+													 VkDeviceSize b,
+													 VkDeviceSize& result) {
+	if (b > std::numeric_limits<VkDeviceSize>::max() - a) { return false; }
+	result = a + b;
+	return true;
+}
+
+static bool mvkAccelerationStructureSerializationMultiply(VkDeviceSize a,
+													  VkDeviceSize b,
+													  VkDeviceSize& result) {
+	if (a && b > std::numeric_limits<VkDeviceSize>::max() / a) { return false; }
+	result = a * b;
+	return true;
+}
+
+static bool mvkAccelerationStructureSerializationAlign(VkDeviceSize value,
+											   VkDeviceSize alignment,
+											   VkDeviceSize& result) {
+	if (!alignment) { return false; }
+	VkDeviceSize mask = alignment - 1;
+	if ((alignment & mask) || value > std::numeric_limits<VkDeviceSize>::max() - mask) {
+		return false;
+	}
+	result = (value + mask) & ~mask;
+	return true;
+}
+
+static bool mvkGetAccelerationStructureSerializationHandleCount(
+	const MVKSerializedAccelerationStructureHeader& header,
+	VkDeviceSize& handleCount,
+	bool& isBottomLevel) {
+	uint32_t blockCount = static_cast<uint32_t>(header.handleCountOrBlockHeader);
+	isBottomLevel = uint32_t(header.handleCountOrBlockHeader >> 32) == UINT32_MAX;
+	if (isBottomLevel) {
+		if (blockCount) { return false; }
+		handleCount = 0;
+	} else {
+		handleCount = header.handleCountOrBlockHeader;
+	}
+	return true;
+}
+
+static bool mvkGetAccelerationStructureSerializationLayout(
+	VkDeviceSize handleCount,
+	VkDeviceSize recordCount,
+	VkDeviceSize recordStride,
+	VkDeviceSize dataSize,
+	MVKAccelerationStructureSerializationLayout& layout) {
+	VkDeviceSize handleBytes;
+	VkDeviceSize offset;
+	VkDeviceSize recordBytes;
+	if (!mvkAccelerationStructureSerializationMultiply(handleCount, sizeof(VkDeviceAddress), handleBytes) ||
+		!mvkAccelerationStructureSerializationAdd(sizeof(MVKSerializedAccelerationStructureHeader), handleBytes, offset) ||
+		!mvkAccelerationStructureSerializationAlign(offset, kMVKAccelerationStructureSerializationAlignment, layout.payloadOffset) ||
+		!mvkAccelerationStructureSerializationAdd(layout.payloadOffset, sizeof(MVKSerializedAccelerationStructurePayloadHeader), layout.recordTableOffset) ||
+		!mvkAccelerationStructureSerializationMultiply(recordCount, recordStride, recordBytes) ||
+		!mvkAccelerationStructureSerializationAdd(layout.recordTableOffset, recordBytes, offset) ||
+		!mvkAccelerationStructureSerializationAlign(offset, 16, layout.dataOffset) ||
+		!mvkAccelerationStructureSerializationAdd(layout.dataOffset, dataSize, offset) ||
+		!mvkAccelerationStructureSerializationAlign(offset, kMVKAccelerationStructureSerializationAlignment, layout.serializedSize)) {
+		return false;
+	}
+	return true;
+}
+
+NSUInteger MVKAccelerationStructureCanonicalBuild::getHandleArrayOffset() const {
+	return sizeof(MVKSerializedAccelerationStructureHeader);
+}
 
 struct MVKAccelerationStructureCanonicalCopy {
 	id<MTLBuffer> source;
@@ -35,7 +157,7 @@ struct MVKAccelerationStructureCanonicalCopy {
 	VkDeviceSize size;
 };
 
-struct MVKAccelerationStructureCanonicalIndexedVerticesInfo {
+struct MVKAccelerationStructureCanonicalGatherInfo {
 	uint64_t indexOffset;
 	uint64_t vertexOffset;
 	uint64_t vertexStride;
@@ -47,12 +169,12 @@ struct MVKAccelerationStructureCanonicalIndexedVerticesInfo {
 	uint32_t maxVertex;
 };
 
-static_assert(sizeof(MVKAccelerationStructureCanonicalIndexedVerticesInfo) == 56);
+static_assert(sizeof(MVKAccelerationStructureCanonicalGatherInfo) == 56);
 
-struct MVKAccelerationStructureCanonicalIndexedVertices {
+struct MVKAccelerationStructureCanonicalGather {
 	id<MTLBuffer> indices;
 	id<MTLBuffer> vertices;
-	MVKAccelerationStructureCanonicalIndexedVerticesInfo info;
+	MVKAccelerationStructureCanonicalGatherInfo info;
 };
 
 struct MVKAddressedBufferRange {
@@ -95,6 +217,33 @@ static bool reserveCanonicalSpan(VkDeviceSize size,
 		return true;
 	}
 	if (!mvkAccelerationStructureSerializationAlign(dataSize, 16, offset)) { return false; }
+	return mvkAccelerationStructureSerializationAdd(offset, size, dataSize);
+}
+
+static bool reserveCanonicalVertexSpan(VkDeviceSize size,
+									   VkDeviceSize stride,
+									   VkDeviceSize dataOffset,
+									   VkDeviceSize& dataSize,
+									   VkDeviceSize& offset) {
+	if (!size) {
+		offset = 0;
+		return true;
+	}
+	if (!stride) { return false; }
+	VkDeviceSize gcd = std::gcd<VkDeviceSize>(16, stride);
+	VkDeviceSize factor = 16 / gcd;
+	if (stride > std::numeric_limits<VkDeviceSize>::max() / factor) { return false; }
+	VkDeviceSize alignment = stride * factor;
+	VkDeviceSize absoluteOffset;
+	if (!mvkAccelerationStructureSerializationAdd(dataOffset, dataSize, absoluteOffset)) {
+		return false;
+	}
+	VkDeviceSize remainder = absoluteOffset % alignment;
+	if (remainder && !mvkAccelerationStructureSerializationAdd(
+			absoluteOffset, alignment - remainder, absoluteOffset)) {
+		return false;
+	}
+	offset = absoluteOffset - dataOffset;
 	return mvkAccelerationStructureSerializationAdd(offset, size, dataSize);
 }
 
@@ -153,26 +302,26 @@ static void encodeCanonicalBytes(MVKCommandEncoder* cmdEncoder,
 		size:size];
 }
 
-static bool encodeCanonicalIndexedVertices(
+static bool encodeCanonicalGather(
 	MVKCommandEncoder* cmdEncoder,
 	id<MTLBuffer> destination,
-	const MVKAccelerationStructureCanonicalIndexedVertices& vertices) {
+	const MVKAccelerationStructureCanonicalGather& gather) {
 	id<MTLComputePipelineState> pipeline = cmdEncoder->getCommandEncodingPool()
-		->getCmdSerializeAccelerationStructureIndexedVerticesMTLComputePipelineState();
+		->getCmdSerializeAccelerationStructureGatherMTLComputePipelineState();
 	if (!pipeline) { return false; }
 	id<MTLComputeCommandEncoder> encoder =
 		cmdEncoder->getMTLComputeEncoder(kMVKCommandUseBuildAccelerationStructureConvertBuffers);
 	[encoder setComputePipelineState:pipeline];
-	[encoder setBuffer:vertices.indices offset:0 atIndex:0];
-	[encoder setBuffer:vertices.vertices offset:0 atIndex:1];
+	[encoder setBuffer:gather.indices offset:0 atIndex:0];
+	[encoder setBuffer:gather.vertices offset:0 atIndex:1];
 	[encoder setBuffer:destination offset:0 atIndex:2];
-	cmdEncoder->setComputeBytes(encoder, &vertices.info, sizeof(vertices.info), 3);
+	cmdEncoder->setComputeBytes(encoder, &gather.info, sizeof(gather.info), 3);
 	if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
-		[encoder dispatchThreads:MTLSizeMake(vertices.info.itemCount, 1, 1)
+		[encoder dispatchThreads:MTLSizeMake(gather.info.itemCount, 1, 1)
 			threadsPerThreadgroup:MTLSizeMake(pipeline.threadExecutionWidth, 1, 1)];
 	} else {
 		[encoder dispatchThreadgroups:MTLSizeMake(
-				mvkCeilingDivide<NSUInteger>(vertices.info.itemCount, pipeline.threadExecutionWidth), 1, 1)
+				mvkCeilingDivide<NSUInteger>(gather.info.itemCount, pipeline.threadExecutionWidth), 1, 1)
 			threadsPerThreadgroup:MTLSizeMake(pipeline.threadExecutionWidth, 1, 1)];
 	}
 	return true;
@@ -195,8 +344,7 @@ VkResult MVKAccelerationStructureCanonicalBuild::prepareAndEncode(
 	MVKCommandEncoder* cmdEncoder,
 	MVKAccelerationStructure* accelerationStructure,
 	const VkAccelerationStructureBuildGeometryInfoKHR& buildInfo,
-	const VkAccelerationStructureBuildRangeInfoKHR* ranges,
-	uint64_t nativeSize) {
+	const VkAccelerationStructureBuildRangeInfoKHR* ranges) {
 	[_buffer release];
 	_buffer = nil;
 	_layout = {};
@@ -206,14 +354,21 @@ VkResult MVKAccelerationStructureCanonicalBuild::prepareAndEncode(
 
 	MVKSmallVector<MVKSerializedAccelerationStructureGeometryRecord, 4> records;
 	MVKSmallVector<MVKAccelerationStructureCanonicalCopy, 8> copies;
-	MVKSmallVector<MVKAccelerationStructureCanonicalIndexedVertices, 4> indexedVertices;
+	MVKSmallVector<MVKAccelerationStructureCanonicalGather, 4> gathers;
 	VkDeviceSize dataSize = 0;
 	VkDeviceSize recordStride = 0;
 	VkDeviceSize recordCount = 0;
+	VkDeviceSize canonicalDataOffset = 0;
 
 	if (buildInfo.type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR) {
 		recordStride = sizeof(MVKSerializedAccelerationStructureGeometryRecord);
 		recordCount = buildInfo.geometryCount;
+		MVKAccelerationStructureSerializationLayout baseLayout;
+		if (!mvkGetAccelerationStructureSerializationLayout(0, recordCount,
+				recordStride, 0, baseLayout)) {
+			return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+		}
+		canonicalDataOffset = baseLayout.dataOffset;
 		records.resize(buildInfo.geometryCount);
 		for (uint32_t index = 0; index < buildInfo.geometryCount; index++) {
 			const VkAccelerationStructureGeometryKHR& geometry = buildInfo.pGeometries
@@ -233,50 +388,89 @@ VkResult MVKAccelerationStructureCanonicalBuild::prepareAndEncode(
 					return VK_ERROR_INITIALIZATION_FAILED;
 				}
 				if (triangles.indexType == VK_INDEX_TYPE_NONE_KHR) {
-					uint64_t vertexCount;
+					VkDeviceSize vertexCount;
 					VkDeviceSize vertexSourceOffset;
+					VkDeviceSize vertexSize;
 					if (!mvkAccelerationStructureSerializationMultiply(range.primitiveCount, 3, vertexCount) ||
 						!mvkAccelerationStructureSerializationMultiply(range.firstVertex, triangles.vertexStride, vertexSourceOffset) ||
-						!mvkAccelerationStructureSerializationAdd(vertexSourceOffset, range.primitiveOffset, vertexSourceOffset)) {
+						!mvkAccelerationStructureSerializationAdd(vertexSourceOffset, range.primitiveOffset, vertexSourceOffset) ||
+						!mvkAccelerationStructureSerializationMultiply(vertexCount, formatSize, vertexSize)) {
 						return VK_ERROR_INITIALIZATION_FAILED;
 					}
 					record.indexType = VK_INDEX_TYPE_NONE_KHR;
-					record.vertexStride = triangles.vertexStride;
+					record.vertexStride = formatSize;
 					record.maxVertex = vertexCount ? vertexCount - 1 : 0;
 					if (vertexCount) {
-						VkDeviceSize lastVertexOffset;
-						if (!mvkAccelerationStructureSerializationMultiply(vertexCount - 1, triangles.vertexStride, lastVertexOffset) ||
-							!mvkAccelerationStructureSerializationAdd(lastVertexOffset, formatSize, record.vertexSize) ||
-							!addCanonicalDataSpan(cmdEncoder->getDevice(), triangles.vertexData.deviceAddress,
-								vertexSourceOffset, record.vertexSize, dataSize, record.vertexOffset, copies)) {
+						VkDeviceAddress vertexAddress;
+						MVKAddressedBufferRange vertexRange;
+						VkDeviceSize vertexDestination;
+						if (vertexCount > std::numeric_limits<uint32_t>::max() ||
+							!mvkAccelerationStructureSerializationAdd(triangles.vertexData.deviceAddress,
+								vertexSourceOffset, vertexAddress) ||
+							!getAddressedBufferRange(cmdEncoder->getDevice(), vertexAddress,
+								formatSize, vertexRange) ||
+							!reserveCanonicalVertexSpan(vertexSize, record.vertexStride,
+								canonicalDataOffset, dataSize, record.vertexOffset) ||
+							!mvkAccelerationStructureSerializationAdd(canonicalDataOffset,
+								record.vertexOffset, vertexDestination)) {
 							return VK_ERROR_INITIALIZATION_FAILED;
+						}
+						record.vertexSize = vertexSize;
+						VkDeviceSize copyAlignment = cmdEncoder->getMetalFeatures().mtlCopyBufferAlignment;
+						bool blitAligned = copyAlignment <= 1 ||
+							(!(vertexRange.offset % copyAlignment) &&
+							 !(vertexDestination % copyAlignment) &&
+							 !(vertexSize % copyAlignment));
+						if (triangles.vertexStride == formatSize &&
+							vertexSize <= vertexRange.remaining && blitAligned) {
+							copies.push_back({vertexRange.buffer, vertexRange.offset,
+								record.vertexOffset, vertexSize});
+						} else {
+							gathers.push_back({vertexRange.buffer, vertexRange.buffer,
+								{0,
+								 vertexRange.offset,
+								 triangles.vertexStride,
+								 vertexRange.remaining,
+								 record.vertexOffset,
+								 static_cast<uint32_t>(vertexCount),
+								 0,
+								 static_cast<uint32_t>(formatSize),
+								 static_cast<uint32_t>(vertexCount - 1)}});
 						}
 					}
 				} else {
 					uint64_t indexElementSize = accelerationStructureIndexSize(triangles.indexType);
 					VkDeviceSize itemCount;
 					VkDeviceSize indexSize;
-					VkDeviceSize vertexSize;
+					VkDeviceSize deindexedVertexSize;
 					VkDeviceSize vertexSourceOffset;
 					if (!indexElementSize ||
 						!mvkAccelerationStructureSerializationMultiply(range.primitiveCount, 3, itemCount) ||
-						itemCount > std::numeric_limits<uint32_t>::max() ||
 						!mvkAccelerationStructureSerializationMultiply(itemCount, indexElementSize, indexSize) ||
-						!mvkAccelerationStructureSerializationMultiply(itemCount, formatSize, vertexSize) ||
+						!mvkAccelerationStructureSerializationMultiply(itemCount, formatSize, deindexedVertexSize) ||
 						!mvkAccelerationStructureSerializationMultiply(range.firstVertex, triangles.vertexStride, vertexSourceOffset)) {
 						return VK_ERROR_INITIALIZATION_FAILED;
 					}
-					record.indexType = VK_INDEX_TYPE_NONE_KHR;
-					record.vertexStride = formatSize;
-					record.maxVertex = itemCount ? itemCount - 1 : 0;
-					record.vertexSize = vertexSize;
-					if (itemCount) {
+					if (!itemCount) {
+						record.indexType = VK_INDEX_TYPE_NONE_KHR;
+						record.vertexStride = formatSize;
+					} else {
+						if (triangles.maxVertex < range.firstVertex) {
+							return VK_ERROR_INITIALIZATION_FAILED;
+						}
+						VkDeviceSize maxRelativeVertex = triangles.maxVertex - range.firstVertex;
+						VkDeviceSize indexedVertexSize;
+						if (!mvkAccelerationStructureSerializationMultiply(maxRelativeVertex,
+								triangles.vertexStride, indexedVertexSize) ||
+							!mvkAccelerationStructureSerializationAdd(indexedVertexSize,
+								formatSize, indexedVertexSize)) {
+							return VK_ERROR_INITIALIZATION_FAILED;
+						}
 						VkDeviceAddress indexAddress;
 						VkDeviceAddress vertexAddress;
 						MVKAddressedBufferRange indexRange;
 						MVKAddressedBufferRange vertexRange;
-						if (!reserveCanonicalSpan(vertexSize, dataSize, record.vertexOffset) ||
-							!triangles.indexData.deviceAddress ||
+						if (!triangles.indexData.deviceAddress ||
 							!triangles.vertexData.deviceAddress ||
 							!mvkAccelerationStructureSerializationAdd(triangles.indexData.deviceAddress,
 								range.primitiveOffset, indexAddress) ||
@@ -286,17 +480,88 @@ VkResult MVKAccelerationStructureCanonicalBuild::prepareAndEncode(
 							!getAddressedBufferRange(cmdEncoder->getDevice(), vertexAddress, formatSize, vertexRange)) {
 							return VK_ERROR_INITIALIZATION_FAILED;
 						}
-						indexedVertices.push_back({indexRange.buffer,
-							vertexRange.buffer,
-							{indexRange.offset,
-							 vertexRange.offset,
-							 triangles.vertexStride,
-							 vertexRange.remaining,
-							 record.vertexOffset,
-							 static_cast<uint32_t>(itemCount),
-							 static_cast<uint32_t>(indexElementSize),
-							 static_cast<uint32_t>(formatSize),
-							 triangles.maxVertex}});
+
+						VkDeviceSize deindexedDataSize = dataSize;
+						VkDeviceSize deindexedVertexOffset;
+						bool deindexedValid = itemCount <= std::numeric_limits<uint32_t>::max() &&
+							reserveCanonicalVertexSpan(deindexedVertexSize,
+								formatSize, canonicalDataOffset, deindexedDataSize, deindexedVertexOffset);
+						VkDeviceSize indexedDataSize = dataSize;
+						VkDeviceSize indexOffset;
+						VkDeviceSize indexedVertexOffset;
+						bool indexedValid = reserveCanonicalSpan(indexSize, indexedDataSize, indexOffset) &&
+							reserveCanonicalVertexSpan(indexedVertexSize, triangles.vertexStride,
+								canonicalDataOffset, indexedDataSize, indexedVertexOffset);
+						VkDeviceSize vertexFirstDataSize = dataSize;
+						VkDeviceSize vertexFirstIndexOffset;
+						VkDeviceSize vertexFirstVertexOffset;
+						bool vertexFirstValid = reserveCanonicalVertexSpan(indexedVertexSize,
+							triangles.vertexStride, canonicalDataOffset,
+							vertexFirstDataSize, vertexFirstVertexOffset) &&
+							reserveCanonicalSpan(indexSize, vertexFirstDataSize, vertexFirstIndexOffset);
+						if (vertexFirstValid && (!indexedValid || vertexFirstDataSize < indexedDataSize)) {
+							indexedValid = true;
+							indexedDataSize = vertexFirstDataSize;
+							indexOffset = vertexFirstIndexOffset;
+							indexedVertexOffset = vertexFirstVertexOffset;
+						}
+						VkDeviceSize indexDestination;
+						VkDeviceSize vertexDestination;
+						indexedValid = indexedValid &&
+							mvkAccelerationStructureSerializationAdd(canonicalDataOffset,
+								indexOffset, indexDestination) &&
+							mvkAccelerationStructureSerializationAdd(canonicalDataOffset,
+								indexedVertexOffset, vertexDestination);
+						VkDeviceSize copyAlignment = cmdEncoder->getMetalFeatures().mtlCopyBufferAlignment;
+						VkDeviceSize indexedCopySize;
+						bool blitAligned = indexedValid && (copyAlignment <= 1 ||
+							(!(indexRange.offset % copyAlignment) && !(indexDestination % copyAlignment) &&
+							 !(indexSize % copyAlignment) && !(vertexRange.offset % copyAlignment) &&
+							 !(vertexDestination % copyAlignment) && !(indexedVertexSize % copyAlignment)));
+						bool preserveIndices = indexedVertexSize <= vertexRange.remaining &&
+							blitAligned &&
+							mvkAccelerationStructureSerializationAdd(indexSize,
+								indexedVertexSize, indexedCopySize) &&
+							indexedCopySize <= deindexedVertexSize &&
+							(!deindexedValid || indexedDataSize <= deindexedDataSize);
+						if (!preserveIndices && !deindexedValid) {
+							return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+						}
+
+						if (preserveIndices) {
+							dataSize = indexedDataSize;
+							record.indexType = triangles.indexType;
+							record.vertexStride = triangles.vertexStride;
+							record.maxVertex = maxRelativeVertex;
+							record.indexOffset = indexOffset;
+							record.indexSize = indexSize;
+							record.vertexOffset = indexedVertexOffset;
+							record.vertexSize = indexedVertexSize;
+							if (!addCanonicalCopy(cmdEncoder->getDevice(), triangles.indexData.deviceAddress,
+									range.primitiveOffset, record.indexSize, record.indexOffset, copies) ||
+								!addCanonicalCopy(cmdEncoder->getDevice(), triangles.vertexData.deviceAddress,
+									vertexSourceOffset, record.vertexSize, record.vertexOffset, copies)) {
+								return VK_ERROR_INITIALIZATION_FAILED;
+							}
+						} else {
+							dataSize = deindexedDataSize;
+							record.indexType = VK_INDEX_TYPE_NONE_KHR;
+							record.vertexStride = formatSize;
+							record.maxVertex = itemCount - 1;
+							record.vertexOffset = deindexedVertexOffset;
+							record.vertexSize = deindexedVertexSize;
+							gathers.push_back({indexRange.buffer,
+								vertexRange.buffer,
+								{indexRange.offset,
+								 vertexRange.offset,
+								 triangles.vertexStride,
+								 vertexRange.remaining,
+								 record.vertexOffset,
+								 static_cast<uint32_t>(itemCount),
+								 static_cast<uint32_t>(indexElementSize),
+								 static_cast<uint32_t>(formatSize),
+								 static_cast<uint32_t>(maxRelativeVertex)}});
+						}
 					}
 				}
 				if (triangles.transformData.deviceAddress) {
@@ -308,15 +573,43 @@ VkResult MVKAccelerationStructureCanonicalBuild::prepareAndEncode(
 				}
 			} else if (geometry.geometryType == VK_GEOMETRY_TYPE_AABBS_KHR) {
 				const auto& aabbs = geometry.geometry.aabbs;
-				record.vertexStride = aabbs.stride;
+				record.vertexStride = sizeof(VkAabbPositionsKHR);
 				if (range.primitiveCount) {
-					VkDeviceSize lastAABBOffset;
+					VkDeviceAddress aabbAddress;
+					MVKAddressedBufferRange aabbRange;
+					VkDeviceSize aabbDestination;
 					if (!aabbs.stride ||
-						!mvkAccelerationStructureSerializationMultiply(range.primitiveCount - 1, aabbs.stride, lastAABBOffset) ||
-						!mvkAccelerationStructureSerializationAdd(lastAABBOffset, sizeof(VkAabbPositionsKHR), record.aabbSize) ||
-						!addCanonicalDataSpan(cmdEncoder->getDevice(), aabbs.data.deviceAddress,
-							range.primitiveOffset, record.aabbSize, dataSize, record.aabbOffset, copies)) {
+						!mvkAccelerationStructureSerializationMultiply(range.primitiveCount,
+							sizeof(VkAabbPositionsKHR), record.aabbSize) ||
+						!mvkAccelerationStructureSerializationAdd(aabbs.data.deviceAddress,
+							range.primitiveOffset, aabbAddress) ||
+						!getAddressedBufferRange(cmdEncoder->getDevice(), aabbAddress,
+							sizeof(VkAabbPositionsKHR), aabbRange) ||
+						!reserveCanonicalSpan(record.aabbSize, dataSize, record.aabbOffset) ||
+						!mvkAccelerationStructureSerializationAdd(canonicalDataOffset,
+							record.aabbOffset, aabbDestination)) {
 						return VK_ERROR_INITIALIZATION_FAILED;
+					}
+					VkDeviceSize copyAlignment = cmdEncoder->getMetalFeatures().mtlCopyBufferAlignment;
+					bool blitAligned = copyAlignment <= 1 ||
+						(!(aabbRange.offset % copyAlignment) &&
+						 !(aabbDestination % copyAlignment) &&
+						 !(record.aabbSize % copyAlignment));
+					if (aabbs.stride == sizeof(VkAabbPositionsKHR) &&
+						record.aabbSize <= aabbRange.remaining && blitAligned) {
+						copies.push_back({aabbRange.buffer, aabbRange.offset,
+							record.aabbOffset, record.aabbSize});
+					} else {
+						gathers.push_back({aabbRange.buffer, aabbRange.buffer,
+							{0,
+							 aabbRange.offset,
+							 aabbs.stride,
+							 aabbRange.remaining,
+							 record.aabbOffset,
+							 range.primitiveCount,
+							 0,
+							 sizeof(VkAabbPositionsKHR),
+							 range.primitiveCount - 1}});
 					}
 				}
 			} else {
@@ -339,6 +632,8 @@ VkResult MVKAccelerationStructureCanonicalBuild::prepareAndEncode(
 
 	if (!mvkGetAccelerationStructureSerializationLayout(_handleCount, recordCount,
 			recordStride, dataSize, _layout) ||
+		(buildInfo.type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR &&
+			_layout.dataOffset != canonicalDataOffset) ||
 		_layout.serializedSize > std::numeric_limits<NSUInteger>::max() ||
 		_layout.serializedSize > cmdEncoder->getMetalFeatures().maxMTLBufferSize) {
 		return VK_ERROR_OUT_OF_DEVICE_MEMORY;
@@ -346,6 +641,7 @@ VkResult MVKAccelerationStructureCanonicalBuild::prepareAndEncode(
 
 	for (auto& record : records) {
 		if ((record.vertexSize && !mvkAccelerationStructureSerializationAdd(_layout.dataOffset, record.vertexOffset, record.vertexOffset)) ||
+			(record.indexSize && !mvkAccelerationStructureSerializationAdd(_layout.dataOffset, record.indexOffset, record.indexOffset)) ||
 			(record.transformSize && !mvkAccelerationStructureSerializationAdd(_layout.dataOffset, record.transformOffset, record.transformOffset)) ||
 			(record.aabbSize && !mvkAccelerationStructureSerializationAdd(_layout.dataOffset, record.aabbOffset, record.aabbOffset))) {
 			return VK_ERROR_INITIALIZATION_FAILED;
@@ -357,9 +653,9 @@ VkResult MVKAccelerationStructureCanonicalBuild::prepareAndEncode(
 			return VK_ERROR_INITIALIZATION_FAILED;
 		}
 	}
-	for (auto& vertices : indexedVertices) {
+	for (auto& gather : gathers) {
 		if (!mvkAccelerationStructureSerializationAdd(_layout.dataOffset,
-				vertices.info.destinationOffset, vertices.info.destinationOffset)) {
+				gather.info.destinationOffset, gather.info.destinationOffset)) {
 			return VK_ERROR_INITIALIZATION_FAILED;
 		}
 	}
@@ -369,25 +665,14 @@ VkResult MVKAccelerationStructureCanonicalBuild::prepareAndEncode(
 															 header.compatibilityUUID);
 	header.serializedSize = _layout.serializedSize;
 	header.deserializedSize = accelerationStructure->getSize();
-	header.handleCount = _handleCount;
+	header.handleCountOrBlockHeader = buildInfo.type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR
+		? kMVKAccelerationStructureSerializationBLASBlockHeader : _handleCount;
 
 	MVKSerializedAccelerationStructurePayloadHeader payload {};
-	payload.magic = kMVKAccelerationStructureSerializationMagic;
-	payload.schema = kMVKAccelerationStructureSerializationSchema;
-	payload.endian = kMVKAccelerationStructureSerializationEndian;
-	payload.headerSize = sizeof(payload);
 	payload.accelerationStructureType = buildInfo.type;
 	payload.buildFlags = buildInfo.flags;
-	payload.createFlags = accelerationStructure->getCreateFlags();
 	payload.recordCount = recordCount;
-	payload.recordStride = recordStride;
-	payload.recordTableOffset = _layout.recordTableOffset;
-	payload.recordTableSize = recordCount * recordStride;
-	payload.dataOffset = _layout.dataOffset;
 	payload.dataSize = dataSize;
-	payload.nativeSize = nativeSize;
-	payload.deserializedSize = header.deserializedSize;
-	payload.handleCount = _handleCount;
 
 	_buffer = [cmdEncoder->getMTLDevice() newBufferWithLength:static_cast<NSUInteger>(_layout.serializedSize)
 												 options:MTLResourceStorageModePrivate];
@@ -409,8 +694,8 @@ VkResult MVKAccelerationStructureCanonicalBuild::prepareAndEncode(
 			destinationOffset:static_cast<NSUInteger>(copy.destinationOffset)
 			size:static_cast<NSUInteger>(copy.size)];
 	}
-	for (const auto& vertices : indexedVertices) {
-		if (!encodeCanonicalIndexedVertices(cmdEncoder, _buffer, vertices)) {
+	for (const auto& gather : gathers) {
+		if (!encodeCanonicalGather(cmdEncoder, _buffer, gather)) {
 			return VK_ERROR_INITIALIZATION_FAILED;
 		}
 	}
@@ -420,8 +705,9 @@ VkResult MVKAccelerationStructureCanonicalBuild::prepareAndEncode(
 bool MVKAccelerationStructureCanonicalBuild::publish(
 	MVKAccelerationStructureStorageGeneration* generation) {
 	if (!_buffer || !generation) { return false; }
-	generation->publishCanonical(_buffer, _layout.serializedSize,
-		_layout.serializedSize, _handleCount);
+	if (!generation->publishCanonical(_buffer, _layout.serializedSize, _handleCount)) {
+		return false;
+	}
 	auto snapshot = generation->retainCanonicalSnapshot();
 	_published = snapshot.canonicalBuffer == _buffer &&
 		snapshot.serializationSize == _layout.serializedSize;
@@ -462,7 +748,6 @@ void MVKCmdCopyAccelerationStructureToMemory::encode(MVKCommandEncoder* cmdEncod
 	auto snapshot = generation->retainCanonicalSnapshot();
 	generation->release();
 	bool valid = snapshot.canonicalBuffer && snapshot.serializationSize &&
-		snapshot.canonicalSize >= snapshot.serializationSize &&
 		snapshot.serializationSize <= snapshot.canonicalBuffer.length &&
 		snapshot.serializationSize <= std::numeric_limits<NSUInteger>::max();
 	VkDeviceSize destinationOffset = 0;
@@ -493,13 +778,11 @@ void MVKCmdCopyAccelerationStructureToMemory::encode(MVKCommandEncoder* cmdEncod
 }
 
 static void trackAccelerationStructureBuffer(MVKDevice* device, id<MTLBuffer> buffer) {
-	device->getLiveResources().add(buffer);
 	device->makeResident(buffer);
 }
 
 static void untrackAccelerationStructureBuffer(MVKDevice* device, id<MTLBuffer> buffer) {
 	device->removeResidency(buffer);
-	device->getLiveResources().remove(buffer);
 }
 
 static void releaseAccelerationStructureBuffer(MVKDevice* device, id<MTLBuffer> buffer) {
@@ -536,6 +819,8 @@ static bool validateAccelerationStructureHeader(
 	uint8_t driverUUID[VK_UUID_SIZE];
 	uint8_t compatibilityUUID[VK_UUID_SIZE];
 	device->getAccelerationStructureSerializationUUIDs(driverUUID, compatibilityUUID);
+	VkDeviceSize handleCount;
+	bool isBottomLevel;
 	VkDeviceSize handleBytes;
 	VkDeviceSize minimumSize;
 	return !std::memcmp(header.driverUUID, driverUUID, sizeof(driverUUID)) &&
@@ -546,7 +831,8 @@ static bool validateAccelerationStructureHeader(
 		header.serializedSize <= device->getPhysicalDevice()->getMetalFeatures()->maxMTLBufferSize &&
 		header.serializedSize <= std::numeric_limits<NSUInteger>::max() &&
 		header.deserializedSize &&
-		mvkAccelerationStructureSerializationMultiply(header.handleCount,
+		mvkGetAccelerationStructureSerializationHandleCount(header, handleCount, isBottomLevel) &&
+		mvkAccelerationStructureSerializationMultiply(handleCount,
 			sizeof(VkDeviceAddress), handleBytes) &&
 		mvkAccelerationStructureSerializationAdd(sizeof(header), handleBytes, minimumSize) &&
 		minimumSize <= header.serializedSize;
@@ -556,6 +842,8 @@ struct MVKValidatedAccelerationStructureSerialization {
 	MVKSerializedAccelerationStructureHeader header {};
 	MVKSerializedAccelerationStructurePayloadHeader payload {};
 	MVKAccelerationStructureSerializationLayout layout {};
+	VkDeviceSize handleCount = 0;
+	bool isBottomLevel = false;
 };
 
 template<class T>
@@ -579,7 +867,9 @@ static bool validateAccelerationStructureSerialization(
 	}
 	VkDeviceSize handleBytes;
 	VkDeviceSize payloadOffset;
-	if (!mvkAccelerationStructureSerializationMultiply(serialization.header.handleCount,
+	if (!mvkGetAccelerationStructureSerializationHandleCount(serialization.header,
+			serialization.handleCount, serialization.isBottomLevel) ||
+		!mvkAccelerationStructureSerializationMultiply(serialization.handleCount,
 			sizeof(VkDeviceAddress), handleBytes) ||
 		!mvkAccelerationStructureSerializationAdd(sizeof(serialization.header), handleBytes, payloadOffset) ||
 		!mvkAccelerationStructureSerializationAlign(payloadOffset,
@@ -591,36 +881,20 @@ static bool validateAccelerationStructureSerialization(
 	VkDeviceSize expectedStride;
 	if (payload.accelerationStructureType == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR) {
 		expectedStride = sizeof(MVKSerializedAccelerationStructureGeometryRecord);
-		if (payload.handleCount || serialization.header.handleCount) { return false; }
+		if (!serialization.isBottomLevel) { return false; }
 	} else if (payload.accelerationStructureType == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR) {
 		expectedStride = sizeof(MVKSerializedAccelerationStructureInstanceRecord);
-		if (payload.recordCount != payload.handleCount ||
-			payload.handleCount != serialization.header.handleCount ||
-			payload.handleCount > std::numeric_limits<uint32_t>::max() || payload.dataSize) {
+		if (serialization.isBottomLevel || payload.recordCount != serialization.handleCount ||
+			serialization.handleCount > std::numeric_limits<uint32_t>::max() ||
+			payload.dataSize) {
 			return false;
 		}
 	} else {
 		return false;
 	}
-	VkDeviceSize recordTableSize;
-	if (payload.magic != kMVKAccelerationStructureSerializationMagic ||
-		payload.schema != kMVKAccelerationStructureSerializationSchema ||
-		payload.endian != kMVKAccelerationStructureSerializationEndian ||
-		payload.headerSize != sizeof(payload) ||
-		payload.buildFlags > std::numeric_limits<VkBuildAccelerationStructureFlagsKHR>::max() ||
-		payload.createFlags > std::numeric_limits<VkAccelerationStructureCreateFlagsKHR>::max() ||
-		payload.recordStride != expectedStride ||
-		payload.deserializedSize != serialization.header.deserializedSize ||
-		!payload.nativeSize ||
-		payload.reserved[0] || payload.reserved[1] ||
-		!mvkAccelerationStructureSerializationMultiply(payload.recordCount,
-			payload.recordStride, recordTableSize) ||
-		payload.recordTableSize != recordTableSize ||
-		!mvkGetAccelerationStructureSerializationLayout(payload.handleCount,
-			payload.recordCount, payload.recordStride, payload.dataSize, serialization.layout) ||
+	if (!mvkGetAccelerationStructureSerializationLayout(serialization.handleCount,
+			payload.recordCount, expectedStride, payload.dataSize, serialization.layout) ||
 		serialization.layout.payloadOffset != payloadOffset ||
-		serialization.layout.recordTableOffset != payload.recordTableOffset ||
-		serialization.layout.dataOffset != payload.dataOffset ||
 		serialization.layout.serializedSize != serialization.header.serializedSize) {
 		return false;
 	}
@@ -647,159 +921,19 @@ static bool validateAccelerationStructureSerializationSpan(
 		offset <= dataEnd && size <= dataEnd - offset;
 }
 
-static bool isZeroed(const uint64_t* values, size_t count) {
-	for (size_t index = 0; index < count; index++) {
-		if (values[index]) { return false; }
-	}
-	return true;
-}
-
-static void applyAccelerationStructureUsage(MTLAccelerationStructureDescriptor* descriptor,
-											 VkBuildAccelerationStructureFlagsKHR flags) {
-	descriptor.usage = MTLAccelerationStructureUsageExtendedLimits;
-	if (mvkIsAnyFlagEnabled(flags, VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)) {
-		descriptor.usage |= MTLAccelerationStructureUsageRefit;
-	}
-	if (mvkIsAnyFlagEnabled(flags, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR)) {
-		descriptor.usage |= MTLAccelerationStructureUsagePreferFastBuild;
-	}
-#if MVK_XCODE_26
-	if (@available(macOS 26.0, iOS 26.0, tvOS 26.0, visionOS 26.0, *)) {
-		if (mvkIsAnyFlagEnabled(flags, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR)) {
-			descriptor.usage |= MTLAccelerationStructureUsagePreferFastIntersection;
-		}
-		if (mvkIsAnyFlagEnabled(flags, VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_KHR)) {
-			descriptor.usage |= MTLAccelerationStructureUsageMinimizeMemory;
-		}
-	}
-#endif
-}
-
-static bool encodeDeserializedBLASTrianglePositions(
-	MVKCommandEncoder* cmdEncoder,
-	id<MTLBuffer> serializationBuffer,
-	const MVKValidatedAccelerationStructureSerialization& serialization,
-	MTLPrimitiveAccelerationStructureDescriptor* descriptor,
-	id<MTLComputeCommandEncoder>& computeEncoder) {
-	constexpr NSUInteger primitiveDataStride = 3 * 3 * sizeof(float);
-	struct TrianglePositions {
-		MTLAccelerationStructureTriangleGeometryDescriptor* geometry;
-		MVKAccelerationStructureTrianglePositionsInfo info;
-	};
-	MVKSmallVector<TrianglePositions, 4> trianglePositions;
-	bool hasPrimitives = false;
-	NSArray* geometries = descriptor.geometryDescriptors;
-	for (uint64_t index = 0; index < serialization.payload.recordCount; index++) {
-		MVKSerializedAccelerationStructureGeometryRecord record;
-		VkDeviceSize recordOffset;
-		if (!mvkAccelerationStructureSerializationMultiply(index,
-				serialization.payload.recordStride, recordOffset) ||
-			!mvkAccelerationStructureSerializationAdd(serialization.layout.recordTableOffset,
-				recordOffset, recordOffset) ||
-			!readAccelerationStructureSerializationValue(serializationBuffer, recordOffset, record)) {
-			return false;
-		}
-		if (record.geometryType != VK_GEOMETRY_TYPE_TRIANGLES_KHR) { continue; }
-
-		uint32_t positionFormat = 0;
-		uint32_t vertexElementSize = 0;
-		if (index >= geometries.count ||
-			!mvkGetAccelerationStructurePositionFormat(static_cast<VkFormat>(record.vertexFormat),
-				positionFormat, vertexElementSize) ||
-			record.primitiveCount > std::numeric_limits<uint32_t>::max() ||
-			record.vertexStride > std::numeric_limits<uint32_t>::max() ||
-			record.maxVertex > std::numeric_limits<uint32_t>::max() ||
-			record.primitiveCount >
-				cmdEncoder->getMetalFeatures().maxMTLBufferSize / primitiveDataStride) {
-			return false;
-		}
-
-		MTLAccelerationStructureTriangleGeometryDescriptor* geometry = geometries[index];
-		if (record.primitiveCount && (!geometry.vertexBuffer ||
-			geometry.vertexBufferOffset > geometry.vertexBuffer.length ||
-			record.vertexSize > geometry.vertexBuffer.length - geometry.vertexBufferOffset ||
-			(geometry.transformationMatrixBuffer &&
-			 (geometry.transformationMatrixBufferOffset > geometry.transformationMatrixBuffer.length ||
-			  sizeof(VkTransformMatrixKHR) > geometry.transformationMatrixBuffer.length -
-				geometry.transformationMatrixBufferOffset)))) {
-			return false;
-		}
-		MVKAccelerationStructureTrianglePositionsInfo info {
-			.vertexAvailable = record.vertexSize,
-			.indexAvailable = 0,
-			.vertexStride = static_cast<uint32_t>(record.vertexStride),
-			.vertexFormat = positionFormat,
-			.indexElementSize = 0,
-			.vertexElementSize = vertexElementSize,
-			.maxVertex = static_cast<uint32_t>(record.maxVertex),
-			.primitiveCount = static_cast<uint32_t>(record.primitiveCount),
-			.hasTransform = geometry.transformationMatrixBuffer != nil,
-		};
-		trianglePositions.push_back({geometry, info});
-		hasPrimitives |= record.primitiveCount != 0;
-	}
-
-	id<MTLComputePipelineState> pipeline = hasPrimitives
-		? cmdEncoder->getCommandEncodingPool()
-			->getCmdBuildAccelerationStructureTrianglePositionsMTLComputePipelineState()
-		: nil;
-	if (hasPrimitives && !pipeline) { return false; }
-	for (const auto& positionsInfo : trianglePositions) {
-		auto* geometry = positionsInfo.geometry;
-		const auto& info = positionsInfo.info;
-		NSUInteger dataSize = std::max<NSUInteger>(primitiveDataStride,
-			static_cast<NSUInteger>(info.primitiveCount) * primitiveDataStride);
-		const MVKMTLBufferAllocation* positions = cmdEncoder->getTempMTLBuffer(dataSize, true);
-		if (!positions || !positions->_mtlBuffer) { return false; }
-		geometry.primitiveDataBuffer = positions->_mtlBuffer;
-		geometry.primitiveDataBufferOffset = positions->_offset;
-		geometry.primitiveDataElementSize = primitiveDataStride;
-		geometry.primitiveDataStride = primitiveDataStride;
-		if (!info.primitiveCount) { continue; }
-
-		computeEncoder = cmdEncoder->getMTLComputeEncoder(
-			kMVKCommandUseBuildAccelerationStructureConvertBuffers);
-		[computeEncoder setComputePipelineState:pipeline];
-		[computeEncoder setBuffer:geometry.vertexBuffer
-						 offset:geometry.vertexBufferOffset
-						atIndex:0];
-		[computeEncoder setBuffer:geometry.vertexBuffer
-						 offset:geometry.vertexBufferOffset
-						atIndex:1];
-		[computeEncoder setBuffer:geometry.transformationMatrixBuffer ?: positions->_mtlBuffer
-						 offset:geometry.transformationMatrixBuffer
-							? geometry.transformationMatrixBufferOffset : positions->_offset
-						atIndex:2];
-		[computeEncoder setBuffer:positions->_mtlBuffer offset:positions->_offset atIndex:3];
-		cmdEncoder->setComputeBytes(computeEncoder, &info, sizeof(info), 4);
-		if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
-			[computeEncoder dispatchThreads:MTLSizeMake(info.primitiveCount, 1, 1)
-				 threadsPerThreadgroup:MTLSizeMake(pipeline.threadExecutionWidth, 1, 1)];
-		} else {
-			[computeEncoder dispatchThreadgroups:MTLSizeMake(
-					mvkCeilingDivide<NSUInteger>(info.primitiveCount, pipeline.threadExecutionWidth), 1, 1)
-					  threadsPerThreadgroup:MTLSizeMake(pipeline.threadExecutionWidth, 1, 1)];
-		}
-	}
-	return true;
-}
-
 static MTLAccelerationStructureDescriptor* newDeserializedBLASDescriptor(
 	MVKCommandEncoder* cmdEncoder,
 	id<MTLBuffer> serializationBuffer,
-	const MVKValidatedAccelerationStructureSerialization& serialization,
-	id<MTLComputeCommandEncoder>& computeEncoder) {
+	const MVKValidatedAccelerationStructureSerialization& serialization) {
 	NSMutableArray* geometries = [NSMutableArray new];
 	for (uint64_t index = 0; index < serialization.payload.recordCount; index++) {
 		MVKSerializedAccelerationStructureGeometryRecord record;
 		VkDeviceSize recordOffset;
 		if (!mvkAccelerationStructureSerializationMultiply(index,
-				serialization.payload.recordStride, recordOffset) ||
+				sizeof(record), recordOffset) ||
 			!mvkAccelerationStructureSerializationAdd(serialization.layout.recordTableOffset,
 				recordOffset, recordOffset) ||
 			!readAccelerationStructureSerializationValue(serializationBuffer, recordOffset, record) ||
-			!isZeroed(record.reserved, 3) ||
-			record.primitiveCount > std::numeric_limits<NSUInteger>::max() ||
 			record.vertexStride > std::numeric_limits<NSUInteger>::max()) {
 			[geometries release];
 			return nil;
@@ -809,34 +943,51 @@ static MTLAccelerationStructureDescriptor* newDeserializedBLASDescriptor(
 			uint64_t formatSize = mvkVkFormatBytesPerBlock(static_cast<VkFormat>(record.vertexFormat));
 			uint64_t vertexCount = 0;
 			uint64_t expectedVertexSize = 0;
+			uint64_t expectedIndexSize = 0;
+			VkIndexType indexType = static_cast<VkIndexType>(record.indexType);
+			uint64_t indexElementSize = accelerationStructureIndexSize(indexType);
+			bool indexed = indexElementSize != 0;
 			if (!formatSize ||
 				mvkMTLAccelerationStructureVertexFormatFromVkFormat(static_cast<VkFormat>(record.vertexFormat)) == MTLAttributeFormatInvalid ||
-				record.indexType != VK_INDEX_TYPE_NONE_KHR ||
+				(!indexed && indexType != VK_INDEX_TYPE_NONE_KHR) ||
 				record.aabbOffset || record.aabbSize ||
-				record.indexOffset || record.indexSize ||
 				(record.primitiveCount && !record.vertexStride) ||
-				!mvkAccelerationStructureSerializationMultiply(record.primitiveCount, 3, vertexCount) ||
-				record.maxVertex != (vertexCount ? vertexCount - 1 : 0)) {
+				!mvkAccelerationStructureSerializationMultiply(record.primitiveCount, 3, vertexCount)) {
 				[geometries release];
 				return nil;
 			}
 			if (vertexCount) {
-				VkDeviceSize lastVertexOffset;
-				if (!mvkAccelerationStructureSerializationMultiply(vertexCount - 1,
-						record.vertexStride, lastVertexOffset) ||
-					!mvkAccelerationStructureSerializationAdd(lastVertexOffset,
-						formatSize, expectedVertexSize)) {
+				uint64_t lastVertex = indexed ? record.maxVertex : vertexCount - 1;
+				if ((!indexed && record.maxVertex != lastVertex) ||
+					!mvkAccelerationStructureSerializationMultiply(lastVertex,
+						record.vertexStride, expectedVertexSize) ||
+					!mvkAccelerationStructureSerializationAdd(expectedVertexSize,
+						formatSize, expectedVertexSize) ||
+					(indexed && !mvkAccelerationStructureSerializationMultiply(vertexCount,
+						indexElementSize, expectedIndexSize))) {
 					[geometries release];
 					return nil;
 				}
+			} else if (indexed || record.maxVertex) {
+				[geometries release];
+				return nil;
 			}
 			if (record.vertexSize != expectedVertexSize ||
+				record.indexSize != expectedIndexSize ||
 				!validateAccelerationStructureSerializationSpan(serialization,
 					record.vertexOffset, record.vertexSize) ||
 				!validateAccelerationStructureSerializationSpan(serialization,
+					record.indexOffset, record.indexSize) ||
+				!validateAccelerationStructureSerializationSpan(serialization,
 					record.transformOffset, record.transformSize) ||
 				(record.transformSize && record.transformSize != sizeof(VkTransformMatrixKHR)) ||
-				record.vertexOffset > std::numeric_limits<NSUInteger>::max()) {
+				record.vertexOffset > std::numeric_limits<NSUInteger>::max() ||
+				record.indexOffset > std::numeric_limits<NSUInteger>::max() ||
+				(record.vertexSize && record.vertexOffset % 16) ||
+				(record.indexSize && record.indexOffset % 16) ||
+				(record.vertexSize && record.vertexOffset % record.vertexStride) ||
+				(indexed && record.indexOffset % indexElementSize) ||
+				(record.transformSize && record.transformOffset % 16)) {
 				[geometries release];
 				return nil;
 			}
@@ -847,20 +998,14 @@ static MTLAccelerationStructureDescriptor* newDeserializedBLASDescriptor(
 			geometry.vertexStride = static_cast<NSUInteger>(record.vertexStride);
 			geometry.vertexFormat = mvkMTLAccelerationStructureVertexFormatFromVkFormat(
 				static_cast<VkFormat>(record.vertexFormat));
+			geometry.vertexBuffer = serializationBuffer;
 			if (record.vertexSize) {
-				geometry.vertexBuffer = serializationBuffer;
 				geometry.vertexBufferOffset = static_cast<NSUInteger>(record.vertexOffset);
-			} else {
-				id<MTLBuffer> emptyVertexBuffer = [cmdEncoder->getMTLDevice()
-					newBufferWithLength:sizeof(float) * 3
-					options:MTLResourceStorageModePrivate];
-				if (!emptyVertexBuffer) {
-					[geometry release];
-					[geometries release];
-					return nil;
-				}
-				geometry.vertexBuffer = emptyVertexBuffer;
-				[emptyVertexBuffer release];
+			}
+			if (indexed) {
+				geometry.indexBuffer = serializationBuffer;
+				geometry.indexBufferOffset = static_cast<NSUInteger>(record.indexOffset);
+				geometry.indexType = mvkMTLIndexTypeFromVkIndexType(indexType);
 			}
 			if (record.transformSize) {
 				float source[12];
@@ -911,20 +1056,9 @@ static MTLAccelerationStructureDescriptor* newDeserializedBLASDescriptor(
 			geometry.boundingBoxStride = record.primitiveCount ||
 				record.vertexStride >= sizeof(VkAabbPositionsKHR)
 				? static_cast<NSUInteger>(record.vertexStride) : sizeof(VkAabbPositionsKHR);
+			geometry.boundingBoxBuffer = serializationBuffer;
 			if (record.aabbSize) {
-				geometry.boundingBoxBuffer = serializationBuffer;
 				geometry.boundingBoxBufferOffset = static_cast<NSUInteger>(record.aabbOffset);
-			} else {
-				id<MTLBuffer> emptyBoundingBoxBuffer = [cmdEncoder->getMTLDevice()
-					newBufferWithLength:sizeof(VkAabbPositionsKHR)
-					options:MTLResourceStorageModePrivate];
-				if (!emptyBoundingBoxBuffer) {
-					[geometry release];
-					[geometries release];
-					return nil;
-				}
-				geometry.boundingBoxBuffer = emptyBoundingBoxBuffer;
-				[emptyBoundingBoxBuffer release];
 			}
 			geometry.opaque = mvkIsAnyFlagEnabled(record.geometryFlags, VK_GEOMETRY_OPAQUE_BIT_KHR);
 			geometry.allowDuplicateIntersectionFunctionInvocation =
@@ -938,57 +1072,44 @@ static MTLAccelerationStructureDescriptor* newDeserializedBLASDescriptor(
 		}
 	}
 	if (!serialization.payload.recordCount) {
-		id<MTLBuffer> emptyVertexBuffer = [cmdEncoder->getMTLDevice()
-			newBufferWithLength:sizeof(float) * 3
-			options:MTLResourceStorageModePrivate];
-		if (!emptyVertexBuffer) {
-			[geometries release];
-			return nil;
-		}
 		MTLAccelerationStructureTriangleGeometryDescriptor* geometry =
 			[MTLAccelerationStructureTriangleGeometryDescriptor new];
-		geometry.vertexBuffer = emptyVertexBuffer;
+		geometry.vertexBuffer = serializationBuffer;
 		geometry.vertexStride = sizeof(float) * 3;
 		[geometries addObject:geometry];
 		[geometry release];
-		[emptyVertexBuffer release];
 	}
 	MTLPrimitiveAccelerationStructureDescriptor* descriptor =
 		[MTLPrimitiveAccelerationStructureDescriptor new];
 	descriptor.geometryDescriptors = geometries;
 	[geometries release];
-	applyAccelerationStructureUsage(descriptor,
+	MVKAccelerationStructure::applyMTLUsage(descriptor,
 		static_cast<VkBuildAccelerationStructureFlagsKHR>(serialization.payload.buildFlags));
-	if (mvkIsAnyFlagEnabled(serialization.payload.buildFlags,
-			VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_DATA_ACCESS_BIT_KHR) &&
-		!encodeDeserializedBLASTrianglePositions(cmdEncoder, serializationBuffer,
-			serialization, descriptor, computeEncoder)) {
-		[descriptor release];
-		return nil;
-	}
 	return descriptor;
 }
 
 static MTLAccelerationStructureDescriptor* newDeserializedTLASDescriptor(
+	MVKCommandEncoder* cmdEncoder,
 	id<MTLBuffer> serializationBuffer,
 	const MVKValidatedAccelerationStructureSerialization& serialization) {
 	for (uint64_t index = 0; index < serialization.payload.recordCount; index++) {
 		MVKSerializedAccelerationStructureInstanceRecord record;
 		VkDeviceSize recordOffset;
 		if (!mvkAccelerationStructureSerializationMultiply(index,
-				serialization.payload.recordStride, recordOffset) ||
+				sizeof(record), recordOffset) ||
 			!mvkAccelerationStructureSerializationAdd(serialization.layout.recordTableOffset,
 				recordOffset, recordOffset) ||
 			!readAccelerationStructureSerializationValue(serializationBuffer, recordOffset, record) ||
-			record.handleSlot >= serialization.payload.handleCount || record.reserved) {
+			record.handleSlot >= serialization.handleCount || record.reserved) {
 			return nil;
 		}
 	}
 	MTLInstanceAccelerationStructureDescriptor* descriptor =
 		[MTLInstanceAccelerationStructureDescriptor new];
-	descriptor.instanceDescriptorType = MTLAccelerationStructureInstanceDescriptorTypeIndirect;
+	descriptor.instanceDescriptorType =
+		cmdEncoder->getDevice()->getAccelerationStructureInstanceDescriptorType();
 	descriptor.instanceCount = static_cast<NSUInteger>(serialization.payload.recordCount);
-	applyAccelerationStructureUsage(descriptor,
+	MVKAccelerationStructure::applyMTLUsage(descriptor,
 		static_cast<VkBuildAccelerationStructureFlagsKHR>(serialization.payload.buildFlags));
 	return descriptor;
 }
@@ -997,49 +1118,39 @@ static id<MTLComputeCommandEncoder> encodeDeserializedTLASInstances(
 	MVKCommandEncoder* cmdEncoder,
 	id<MTLBuffer> serializationBuffer,
 	const MVKValidatedAccelerationStructureSerialization& serialization,
-	MVKAccelerationStructureStorageGeneration* generation,
-	MTLInstanceAccelerationStructureDescriptor* descriptor) {
+	MTLInstanceAccelerationStructureDescriptor* descriptor,
+	id<MTLBuffer> instanceMetadata) {
 	uint32_t itemCount = static_cast<uint32_t>(serialization.payload.recordCount);
 	if (!itemCount) { return nil; }
+	MVKDevice* device = cmdEncoder->getDevice();
+	NSUInteger descriptorSize = device->getAccelerationStructureInstanceDescriptorSize();
 	VkDeviceSize descriptorBytes;
 	if (!mvkAccelerationStructureSerializationMultiply(itemCount,
-			sizeof(MTLIndirectAccelerationStructureInstanceDescriptor), descriptorBytes) ||
+			descriptorSize, descriptorBytes) ||
 		descriptorBytes > std::numeric_limits<NSUInteger>::max()) {
 		return nil;
 	}
 	const MVKMTLBufferAllocation* instances =
 		cmdEncoder->getTempMTLBuffer(static_cast<NSUInteger>(descriptorBytes), true);
+	if (!instances || !instances->_mtlBuffer) { return nil; }
 	descriptor.instanceDescriptorBuffer = instances->_mtlBuffer;
 	descriptor.instanceDescriptorBufferOffset = instances->_offset;
-	descriptor.instanceDescriptorStride = sizeof(MTLIndirectAccelerationStructureInstanceDescriptor);
+	descriptor.instanceDescriptorStride = descriptorSize;
 
-	id<MTLComputePipelineState> pipeline = cmdEncoder->getCommandEncodingPool()
-		->getCmdDeserializeAccelerationStructureInstancesMTLComputePipelineState();
-	if (!pipeline) { return nil; }
 	id<MTLComputeCommandEncoder> encoder =
-		cmdEncoder->getMTLComputeEncoder(kMVKCommandUseBuildAccelerationStructureConvertBuffers);
-	[encoder setComputePipelineState:pipeline];
-	[encoder setBuffer:serializationBuffer
-			 offset:static_cast<NSUInteger>(serialization.layout.recordTableOffset)
-			atIndex:0];
-	[encoder setBuffer:serializationBuffer
-			 offset:sizeof(MVKSerializedAccelerationStructureHeader)
-			atIndex:1];
-	[encoder setBuffer:instances->_mtlBuffer offset:instances->_offset atIndex:2];
-	[encoder setBuffer:generation->getInstanceMetadataMTLBuffer() offset:0 atIndex:3];
-	cmdEncoder->setComputeBytes(encoder, &itemCount, sizeof(itemCount), 4);
-	MVKUseResourceHelper resources;
-	const MVKMTLBufferAllocation* addressTable =
-		cmdEncoder->getAccelerationStructureAddressTable(resources, MVKResourceUsageStages::Compute);
-	[encoder setBuffer:addressTable->_mtlBuffer offset:addressTable->_offset atIndex:5];
-	resources.bindAndResetCompute(encoder);
-	if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
-		[encoder dispatchThreads:MTLSizeMake(itemCount, 1, 1)
-			threadsPerThreadgroup:MTLSizeMake(pipeline.threadExecutionWidth, 1, 1)];
-	} else {
-		[encoder dispatchThreadgroups:MTLSizeMake(
-				mvkCeilingDivide<NSUInteger>(itemCount, pipeline.threadExecutionWidth), 1, 1)
-			threadsPerThreadgroup:MTLSizeMake(pipeline.threadExecutionWidth, 1, 1)];
+		mvkEncodeAccelerationStructureConversion(cmdEncoder,
+			serializationBuffer, static_cast<NSUInteger>(serialization.layout.recordTableOffset),
+			instances->_mtlBuffer, instances->_offset,
+			sizeof(MVKSerializedAccelerationStructureInstanceRecord), itemCount,
+		kMVKAccelerationStructureDeserializeInstances,
+		serializationBuffer, static_cast<NSUInteger>(serialization.layout.recordTableOffset),
+		sizeof(MVKSerializedAccelerationStructureHeader), instanceMetadata);
+	if (!encoder) { return nil; }
+	if (!device->usesIndirectAccelerationStructureInstanceDescriptors()) {
+		const auto& accelerationStructures = cmdEncoder->getAccelerationStructureInstances();
+		descriptor.instancedAccelerationStructures =
+			[NSArray arrayWithObjects:accelerationStructures.data()
+						   count:accelerationStructures.size()];
 	}
 	return encoder;
 }
@@ -1047,20 +1158,13 @@ static id<MTLComputeCommandEncoder> encodeDeserializedTLASInstances(
 static void releaseDeserializationResourcesOnCompletion(
 	MVKCommandEncoder* cmdEncoder,
 	MVKAccelerationStructureStorageGeneration* generation,
-	id<MTLBuffer> serializationBuffer) {
+	id<MTLBuffer> serializationBuffer,
+	bool canonicalOwnsResidency = false) {
 	MVKDevice* device = cmdEncoder->getDevice();
 	[cmdEncoder->_mtlCmdBuffer addCompletedHandler:^(id<MTLCommandBuffer>) {
 		generation->release();
-		releaseAccelerationStructureBuffer(device, serializationBuffer);
-	}];
-}
-
-static void releaseDeserializationBufferOnCompletion(
-	MVKCommandEncoder* cmdEncoder,
-	id<MTLBuffer> serializationBuffer) {
-	MVKDevice* device = cmdEncoder->getDevice();
-	[cmdEncoder->_mtlCmdBuffer addCompletedHandler:^(id<MTLCommandBuffer>) {
-		releaseAccelerationStructureBuffer(device, serializationBuffer);
+		if (canonicalOwnsResidency) { [serializationBuffer release]; }
+		else { releaseAccelerationStructureBuffer(device, serializationBuffer); }
 	}];
 }
 
@@ -1134,14 +1238,10 @@ void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncod
 	id<MTLComputeCommandEncoder> computeEncoder = nil;
 	MTLAccelerationStructureDescriptor* descriptor =
 		serialization.payload.accelerationStructureType == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR
-			? newDeserializedBLASDescriptor(cmdEncoder, serializationBuffer, serialization, computeEncoder)
-			: newDeserializedTLASDescriptor(serializationBuffer, serialization);
+			? newDeserializedBLASDescriptor(cmdEncoder, serializationBuffer, serialization)
+			: newDeserializedTLASDescriptor(cmdEncoder, serializationBuffer, serialization);
 	if (!descriptor) {
-		if (computeEncoder) {
-			releaseDeserializationBufferOnCompletion(cmdEncoder, serializationBuffer);
-		} else {
-			releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
-		}
+		releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
 		cmdEncoder->reportError(VK_ERROR_INITIALIZATION_FAILED,
 			"vkCmdCopyMemoryToAccelerationStructureKHR(): The serialized records are invalid.");
 		return;
@@ -1149,20 +1249,11 @@ void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncod
 
 	MTLAccelerationStructureSizes sizes =
 		[cmdEncoder->getMTLDevice() accelerationStructureSizesWithDescriptor:descriptor];
-	VkDeviceSize metadataSize = 0;
-	if ((serialization.payload.accelerationStructureType == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR &&
-		 !mvkAccelerationStructureSerializationMultiply(serialization.payload.recordCount,
-			 sizeof(uint32_t) * 2, metadataSize)) ||
-		!sizes.accelerationStructureSize ||
-		sizes.accelerationStructureSize != serialization.payload.nativeSize ||
+	if (!sizes.accelerationStructureSize ||
 		!sizes.buildScratchBufferSize ||
 		sizes.buildScratchBufferSize > std::numeric_limits<NSUInteger>::max()) {
 		[descriptor release];
-		if (computeEncoder) {
-			releaseDeserializationBufferOnCompletion(cmdEncoder, serializationBuffer);
-		} else {
-			releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
-		}
+		releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
 		cmdEncoder->reportError(VK_ERROR_INITIALIZATION_FAILED,
 			"vkCmdCopyMemoryToAccelerationStructureKHR(): The serialized build sizes are invalid.");
 		return;
@@ -1170,44 +1261,37 @@ void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncod
 
 	const MVKMTLBufferAllocation* scratch = cmdEncoder->getTempMTLBuffer(
 		static_cast<NSUInteger>(sizes.buildScratchBufferSize), true);
-	id<MTLBuffer> canonicalBuffer =
-		[cmdEncoder->getMTLDevice() newBufferWithLength:static_cast<NSUInteger>(header.serializedSize)
-													 options:MTLResourceStorageModePrivate];
-	if (!canonicalBuffer) {
-		[descriptor release];
-		if (computeEncoder) {
-			releaseDeserializationBufferOnCompletion(cmdEncoder, serializationBuffer);
-		} else {
-			releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
-		}
-		cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
-			"vkCmdCopyMemoryToAccelerationStructureKHR(): The canonical buffer could not be allocated.");
-		return;
-	}
 
 	MVKAccelerationStructureStorageGeneration* generation = nullptr;
+	uint64_t instanceMetadataSize =
+		serialization.payload.accelerationStructureType == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR
+			? serialization.payload.recordCount * sizeof(uint32_t) * 2
+			: 0;
 	VkResult result = _accelerationStructure->retainFullWriteGeneration(
-		sizes.accelerationStructureSize, metadataSize, generation);
+		sizes.accelerationStructureSize, instanceMetadataSize, generation);
 	if (result < 0 || !generation) {
 		if (generation) { generation->release(); }
-		[canonicalBuffer release];
 		[descriptor release];
-		if (computeEncoder) {
-			releaseDeserializationBufferOnCompletion(cmdEncoder, serializationBuffer);
-		} else {
-			releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
-		}
+		releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
 		cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
 			"vkCmdCopyMemoryToAccelerationStructureKHR(): The destination acceleration structure is too small.");
+		return;
+	}
+	if (!generation->setInstanceMetadataSize(instanceMetadataSize)) {
+		generation->release();
+		[descriptor release];
+		releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
+		cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+			"vkCmdCopyMemoryToAccelerationStructureKHR(): The destination instance metadata is too large.");
 		return;
 	}
 
 	if (serialization.payload.accelerationStructureType == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR) {
 		computeEncoder = encodeDeserializedTLASInstances(cmdEncoder, serializationBuffer,
-			serialization, generation, (MTLInstanceAccelerationStructureDescriptor*)descriptor);
+			serialization, (MTLInstanceAccelerationStructureDescriptor*)descriptor,
+			generation->getInstanceMetadataMTLBuffer());
 		if (serialization.payload.recordCount && !computeEncoder) {
 			generation->release();
-			[canonicalBuffer release];
 			[descriptor release];
 			releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
 			cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
@@ -1215,21 +1299,12 @@ void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncod
 			return;
 		}
 	}
-	id<MTLFence> fence = computeEncoder ? [cmdEncoder->getMTLDevice() newFence] : nil;
-	if (computeEncoder && !fence) {
-		[canonicalBuffer release];
-		[descriptor release];
-		releaseDeserializationResourcesOnCompletion(cmdEncoder, generation, serializationBuffer);
-		cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
-			"vkCmdCopyMemoryToAccelerationStructureKHR(): The conversion fence could not be allocated.");
-		return;
-	}
-	if (computeEncoder) {
-		[computeEncoder updateFence:fence];
-		[cmdEncoder->_mtlCmdBuffer addCompletedHandler:^(id<MTLCommandBuffer>) { [fence release]; }];
+	id<MTLAccelerationStructureCommandEncoder> encoder =
+		cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseBuildAccelerationStructure);
+	if (serialization.payload.accelerationStructureType == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR) {
+		cmdEncoder->getDevice()->encodeGPUAddressableAccelerationStructures(cmdEncoder, encoder);
 	}
 	if (!_accelerationStructure->publishGeneration(generation)) {
-		[canonicalBuffer release];
 		[descriptor release];
 		if (computeEncoder) {
 			releaseDeserializationResourcesOnCompletion(cmdEncoder, generation, serializationBuffer);
@@ -1242,41 +1317,30 @@ void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncod
 		return;
 	}
 	cmdEncoder->invalidateAccelerationStructureAddressTable();
-
-	id<MTLAccelerationStructureCommandEncoder> encoder =
-		cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseBuildAccelerationStructure);
-	if (fence) { [encoder waitForFence:fence]; }
-	if (serialization.payload.accelerationStructureType == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR) {
-		cmdEncoder->getDevice()->encodeGPUAddressableAccelerationStructures(cmdEncoder, encoder);
-	}
+	cmdEncoder->invalidateAccelerationStructureReferenceTable();
 	[encoder buildAccelerationStructure:generation->getMTLAccelerationStructure()
 						 descriptor:descriptor
 					  scratchBuffer:scratch->_mtlBuffer
-				scratchBufferOffset:scratch->_offset];
-	generation->publishBuild(sizes.accelerationStructureSize, metadataSize,
-		serialization.payload.handleCount);
-	generation->publishCanonical(canonicalBuffer, header.serializedSize,
-		header.serializedSize, header.handleCount);
+				 scratchBufferOffset:scratch->_offset];
+	generation->publishBuild(sizes.accelerationStructureSize, instanceMetadataSize,
+		serialization.handleCount);
+	bool canonicalOwnsResidency = generation->publishCanonical(
+		serializationBuffer, header.serializedSize, serialization.handleCount, true);
 	auto canonicalSnapshot = generation->retainCanonicalSnapshot();
-	bool canonicalPublished = canonicalSnapshot.canonicalBuffer == canonicalBuffer &&
+	bool canonicalPublished = canonicalOwnsResidency &&
+		canonicalSnapshot.canonicalBuffer == serializationBuffer &&
 		canonicalSnapshot.serializationSize == header.serializedSize;
 	if (!canonicalPublished) {
 		MVKAccelerationStructureStorageGeneration::releaseCanonicalSnapshot(canonicalSnapshot);
-		[canonicalBuffer release];
 		[descriptor release];
-		releaseDeserializationResourcesOnCompletion(cmdEncoder, generation, serializationBuffer);
+		releaseDeserializationResourcesOnCompletion(cmdEncoder, generation,
+			serializationBuffer, canonicalOwnsResidency);
 		cmdEncoder->reportError(VK_ERROR_OUT_OF_HOST_MEMORY,
 			"vkCmdCopyMemoryToAccelerationStructureKHR(): The canonical buffer could not be published.");
 		return;
 	}
 	releaseCanonicalSnapshotOnCompletion(cmdEncoder, canonicalSnapshot);
-	[cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyAccelerationStructure)
-		copyFromBuffer:serializationBuffer
-		sourceOffset:0
-		toBuffer:canonicalBuffer
-		destinationOffset:0
-		size:static_cast<NSUInteger>(header.serializedSize)];
-	[canonicalBuffer release];
 	[descriptor release];
-	releaseDeserializationResourcesOnCompletion(cmdEncoder, generation, serializationBuffer);
+	releaseDeserializationResourcesOnCompletion(cmdEncoder, generation,
+		serializationBuffer, true);
 }

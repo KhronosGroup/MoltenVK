@@ -385,9 +385,7 @@ public:
 	/** Returns a new MTLComputePipelineState for converting a Uint8 index buffer to Uint16. */
 	id<MTLComputePipelineState> newConvertUint8IndicesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 	id<MTLComputePipelineState> newCmdBuildAccelerationStructureConvertBuffersMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
-	id<MTLComputePipelineState> newCmdSerializeAccelerationStructureIndexedVerticesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
-	id<MTLComputePipelineState> newCmdBuildAccelerationStructureTrianglePositionsMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
-	id<MTLComputePipelineState> newCmdDeserializeAccelerationStructureInstancesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+	id<MTLComputePipelineState> newCmdSerializeAccelerationStructureGatherMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 
 
 #pragma mark Construction
@@ -398,18 +396,21 @@ public:
 
 protected:
 	void initMTLLibrary();
+	void initAccelerationStructureMTLLibrary();
 	void initImageDeviceMemory();
 	id<MTLFunction> newBlitFragFunction(MVKRPSKeyBlitImg& blitKey);
 	id<MTLFunction> newClearVertFunction(MVKRPSKeyClearAtt& attKey);
 	id<MTLFunction> newClearFragFunction(MVKRPSKeyClearAtt& attKey);
 	NSString* getMTLFormatTypeString(MTLPixelFormat mtlPixFmt);
-    id<MTLFunction> newFunctionNamed(const char* funcName);
+	id<MTLFunction> newFunctionNamed(const char* funcName, id<MTLLibrary> library = nil);
 	id<MTLFunction> newMTLFunction(NSString* mslSrcCode, NSString* funcName);
 	id<MTLRenderPipelineState> newMTLRenderPipelineState(MTLRenderPipelineDescriptor* plDesc,
 														 MVKVulkanAPIDeviceObject* owner);
 	id<MTLComputePipelineState> newMTLComputePipelineState(const char* funcName,
-														   MVKVulkanAPIDeviceObject* owner);
+														   MVKVulkanAPIDeviceObject* owner,
+														   id<MTLLibrary> library = nil);
 
 	id<MTLLibrary> _mtlLibrary;
+	id<MTLLibrary> _mtlAccelerationStructureLibrary = nil;
 	MVKDeviceMemory* _transferImageMemory;
 };

@@ -165,11 +165,7 @@ protected:
 	void freeHostMemory();
 	MVKResource* getDedicatedResource();
 	void initExternalMemory(MVKImage* dedicatedImage, bool wantsHeap);
-	MVKAccelerationStructureStorage* acquireAccelerationStructureStorage(VkDeviceSize physicalStart,
-															VkDeviceAddress requestedDeviceAddress,
-															VkAccelerationStructureCreateFlagsKHR createFlags,
-															VkAccelerationStructureTypeKHR type,
-															VkDeviceSize placementOffset);
+	MVKAccelerationStructureStorage* acquireAccelerationStructureStorage(VkDeviceSize physicalStart);
 	void releaseAccelerationStructureStorage(MVKAccelerationStructureStorage* storage);
 
 	MVKSmallVector<MVKBuffer*, 4> _buffers;

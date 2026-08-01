@@ -783,7 +783,6 @@
 		D7A000042F00000100000004 /* MVKAccelerationStructure.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKAccelerationStructure.mm; sourceTree = "<group>"; };
 		D7A000052F00000100000005 /* MVKCmdAccelerationStructureSerialization.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCmdAccelerationStructureSerialization.h; sourceTree = "<group>"; };
 		D7A000062F00000100000006 /* MVKCmdAccelerationStructureSerialization.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdAccelerationStructureSerialization.mm; sourceTree = "<group>"; };
-		D7A000072F00000100000007 /* MVKAccelerationStructureSerialization.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKAccelerationStructureSerialization.h; sourceTree = "<group>"; };
 		DCFD7F622A45BC6E007BBBF7 /* libMoltenVK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVK.a; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -943,7 +942,6 @@
 			children = (
 				D7A000032F00000100000003 /* MVKAccelerationStructure.h */,
 				D7A000042F00000100000004 /* MVKAccelerationStructure.mm */,
-				D7A000072F00000100000007 /* MVKAccelerationStructureSerialization.h */,
 				A94FB77F1C7DFB4800632CA3 /* MVKBuffer.h */,
 				A94FB7801C7DFB4800632CA3 /* MVKBuffer.mm */,
 				A94FB7811C7DFB4800632CA3 /* MVKDescriptorSet.h */,

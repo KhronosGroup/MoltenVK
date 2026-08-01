@@ -45,10 +45,10 @@ void MVKBuffer::propagateDebugName() {
 VkResult MVKBuffer::getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements) {
 	bool accelerationStructure = mvkIsAnyFlagEnabled(_usage, VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
 	if (getMetalFeatures().placementHeaps) {
-		MTLSizeAndAlign bufferSizeAndAlign = [getMTLDevice() heapBufferSizeAndAlignWithLength:getByteCount()
-																		 options:MTLResourceStorageModePrivate];
-		pMemoryRequirements->size = bufferSizeAndAlign.size;
-		pMemoryRequirements->alignment = bufferSizeAndAlign.align;
+		MTLSizeAndAlign sizeAndAlign = [getMTLDevice() heapBufferSizeAndAlignWithLength: getByteCount()
+																				options: MTLResourceStorageModePrivate];
+		pMemoryRequirements->size = sizeAndAlign.size;
+		pMemoryRequirements->alignment = sizeAndAlign.align;
 		if (accelerationStructure && getMetalFeatures().accelerationStructures) {
 			VkDeviceSize placementAlignment = MVKAccelerationStructure::getMTLPlacementAlignment(getDevice());
 			if (placementAlignment) {
@@ -88,6 +88,8 @@ VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOf
 	MVKSmallVector<MVKAccelerationStructure*, 1> accelerationStructures;
 	id<MTLBuffer> failedMTLBuffer = nil;
 	VkResult result = VK_SUCCESS;
+	bool gpuAddressable =
+		mvkIsAnyFlagEnabled(_usage, VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT);
 	{
 		lock_guard<mutex> lock(_lock);
 		if (_deviceMemory) { MVKDeviceMemory::removeBuffer(&_deviceMemory, this); }
@@ -103,6 +105,7 @@ VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOf
 			}
 		}
 	}
+	if (gpuAddressable) { _device->invalidateGPUAddressableBufferIndex(); }
 	if (result < 0) { return result; }
 
 	MVKSmallVector<MVKAccelerationStructure*, 1> materializedAccelerationStructures;
@@ -124,6 +127,9 @@ VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOf
 		_deviceMemoryOffset = 0;
 		failedMTLBuffer = _mtlBuffer;
 		_mtlBuffer = nil;
+	}
+	if (result < 0 && gpuAddressable) {
+		_device->invalidateGPUAddressableBufferIndex();
 	}
 	if (failedMTLBuffer) {
 		_device->removeResidency(failedMTLBuffer);
@@ -300,6 +306,9 @@ void MVKBuffer::detachMemory() {
 		if (_deviceMemory) { MVKDeviceMemory::removeBuffer(&_deviceMemory, this); }
 		buf = _mtlBuffer;
 		_mtlBuffer = nil;
+	}
+	if (mvkIsAnyFlagEnabled(_usage, VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT)) {
+		_device->invalidateGPUAddressableBufferIndex();
 	}
 	if (buf) {
 		_device->removeResidency(buf);
