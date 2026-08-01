@@ -844,6 +844,7 @@ MVK_PUBLIC_SYMBOL MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFl
 	MTLBarrierScope mtlScope = MTLBarrierScope(0);
 	if ( mvkIsAnyFlagEnabled(vkAccess, (VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | 
 										VK_ACCESS_2_INDEX_READ_BIT |
+										VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR |
 										VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT | 
 										VK_ACCESS_2_UNIFORM_READ_BIT)) ) {
 		mtlScope |= MTLBarrierScopeBuffers;

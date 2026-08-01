@@ -1183,6 +1183,17 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdTraceRaysIndirectKHR(
 	MVKTraceVulkanCallEnd();
 }
 
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdTraceRaysIndirect2KHR(
+	VkCommandBuffer                             commandBuffer,
+	VkDeviceAddress                             indirectDeviceAddress) {
+
+	MVKTraceVulkanCallStart();
+	MVKCommandBuffer::getMVKCommandBuffer(commandBuffer)->reportError(
+		VK_ERROR_FEATURE_NOT_PRESENT,
+		"vkCmdTraceRaysIndirect2KHR(): Indirect shader binding tables are not supported.");
+	MVKTraceVulkanCallEnd();
+}
+
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetRayTracingPipelineStackSizeKHR(
 	VkCommandBuffer                             commandBuffer,
 	uint32_t                                    pipelineStackSize) {
