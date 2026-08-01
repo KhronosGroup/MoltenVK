@@ -433,6 +433,8 @@ void MVKCommandEncoder::beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKComman
 	_accelerationStructureAddressTable = nullptr;
 	_accelerationStructureAddressTableResources.clear();
 	_descriptorSetSnapshots.clear();
+	_accelerationStructureReferenceTable = nullptr;
+	_accelerationStructureInstances.clear();
 	_retainedAccelerationStructureGenerations.clear();
 
     _subpassContents = VK_SUBPASS_CONTENTS_INLINE;
@@ -1138,6 +1140,8 @@ VkResult MVKCommandEncoder::splitForHostReadback() {
 	_accelerationStructureAddressTable = nullptr;
 	_accelerationStructureAddressTableResources.clear();
 	_descriptorSetSnapshots.clear();
+	_accelerationStructureReferenceTable = nullptr;
+	_accelerationStructureInstances.clear();
 	_retainedAccelerationStructureGenerations.clear();
 	_stageCountersMTLFence = nil;
 	if (rslt != VK_SUCCESS) { return rslt; }
@@ -1294,7 +1298,7 @@ const MVKMTLBufferAllocation* MVKCommandEncoder::copyToTempMTLBufferAllocation(c
     void* pBuffData = mtlBuffAlloc->getContents();
     memcpy(pBuffData, bytes, length);
 
-	return mtlBuffAlloc;
+    return mtlBuffAlloc;
 }
 
 const MVKMTLBufferAllocation* MVKCommandEncoder::getAccelerationStructureAddressTable() {
@@ -1307,7 +1311,7 @@ const MVKMTLBufferAllocation* MVKCommandEncoder::getAccelerationStructureAddress
 }
 
 const MVKMTLBufferAllocation* MVKCommandEncoder::getAccelerationStructureAddressTable(MVKUseResourceHelper& resources,
-	                                                                                   MVKResourceUsageStages stages) {
+                                                                                       MVKResourceUsageStages stages) {
 	auto* allocation = getAccelerationStructureAddressTable();
 	for (id<MTLResource> resource : _accelerationStructureAddressTableResources) {
 		resources.add(resource, stages, false);
@@ -1318,6 +1322,27 @@ const MVKMTLBufferAllocation* MVKCommandEncoder::getAccelerationStructureAddress
 void MVKCommandEncoder::invalidateAccelerationStructureAddressTable() {
 	_accelerationStructureAddressTable = nullptr;
 	_accelerationStructureAddressTableResources.clear();
+}
+
+const MVKMTLBufferAllocation* MVKCommandEncoder::getAccelerationStructureReferenceTable() {
+	if (!_accelerationStructureReferenceTable) {
+		MVKSmallVector<uint64_t, 32> table;
+		getDevice()->getAccelerationStructureReferenceTable(this, table, _accelerationStructureInstances);
+		_accelerationStructureReferenceTable =
+			copyToTempMTLBufferAllocation(table.data(), table.size() * sizeof(uint64_t));
+	}
+	return _accelerationStructureReferenceTable;
+}
+
+const MVKSmallVector<id<MTLAccelerationStructure>, 16>&
+MVKCommandEncoder::getAccelerationStructureInstances() {
+	getAccelerationStructureReferenceTable();
+	return _accelerationStructureInstances;
+}
+
+void MVKCommandEncoder::invalidateAccelerationStructureReferenceTable() {
+	_accelerationStructureReferenceTable = nullptr;
+	_accelerationStructureInstances.clear();
 }
 
 void MVKCommandEncoder::retainAccelerationStructureGeneration(MVKAccelerationStructureStorageGeneration* generation) {

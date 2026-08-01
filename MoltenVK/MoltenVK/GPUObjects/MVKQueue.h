@@ -173,7 +173,6 @@ protected:
 typedef struct MVKSemaphoreSubmitInfo {
 private:
 	MVKSemaphore* _semaphore;
-	uint64_t _encodingToken = 0;
 public:
 	uint64_t value;
 	VkPipelineStageFlags2 stageMask;
@@ -181,10 +180,6 @@ public:
 
 	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff);
 	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff);
-	void reserveEncodingWait();
-	void reserveEncodingSignal();
-	void waitForEncodingSignal();
-	void publishEncodingSignal();
 	MVKSemaphoreSubmitInfo(const VkSemaphoreSubmitInfo& semaphoreSubmitInfo);
 	MVKSemaphoreSubmitInfo(const VkSemaphore semaphore, VkPipelineStageFlags stageMask);
 	MVKSemaphoreSubmitInfo(const MVKSemaphoreSubmitInfo& other);
@@ -276,7 +271,6 @@ protected:
 	VkResult commitActiveMTLCommandBufferAndWait();
 	void finish() override;
 	virtual void submitCommandBuffers() {}
-	void reserveEncodingSignals();
 
 	MVKCommandEncodingContext _encodingContext;
 	MVKSmallVector<MVKSemaphoreSubmitInfo> _signalSemaphores;
@@ -284,7 +278,6 @@ protected:
 	id<MTLCommandBuffer> _activeMTLCommandBuffer = nil;
 	MVKCommandUse _commandUse = kMVKCommandUseNone;
 	bool _emulatedWaitDone = false;		//Used to track if we've already waited for emulated semaphores.
-	bool _deferEncodingSignalPublication = false;
 };
 
 

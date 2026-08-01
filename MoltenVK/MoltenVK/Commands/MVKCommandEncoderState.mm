@@ -474,9 +474,6 @@ static void executeBindOp(id<MTLCommandEncoder> encoder,
 			case MVKDescriptorBindOperationCode::BindBytes:
 				assert(0); // Handled above
 				break;
-			case MVKDescriptorBindOperationCode::BindBufferZeroOffset:
-				bindBuffer(encoder, static_cast<id<MTLBuffer>>(resource), 0, target + i, exists, bindings, binder);
-				break;
 			case MVKDescriptorBindOperationCode::BindBuffer:
 			case MVKDescriptorBindOperationCode::BindBufferDynamic:
 			case MVKDescriptorBindOperationCode::BindBufferWithLiveCheck:
@@ -624,7 +621,6 @@ static void executeBindOps(id<MTLCommandEncoder> encoder,
 				break;
 			CASE(BindBytes)
 			CASE(BindBuffer)
-			CASE(BindBufferZeroOffset)
 			CASE(BindBufferDynamic)
 			CASE(BindTexture)
 			CASE(BindSampler)
@@ -709,8 +705,7 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 			mtlShared._gpuAddressableResourceStages = useResourceStage;
 		else
 			mtlShared._gpuAddressableResourceStages = combineStages(mtlShared._gpuAddressableResourceStages, useResourceStage);
-		mvkEncoder.getDevice()->encodeGPUAddressableBuffers(&mvkEncoder,
-			mtlShared._useResource, useResourceStage, encoder, binder.useResource);
+		mvkEncoder.getDevice()->encodeGPUAddressableBuffers(mtlShared._useResource, useResourceStage);
 	}
 
 	const MVKShaderStageResourceBinding& resourceCounts = common._layout->getResourceCounts().stages[vkStage];
@@ -1003,7 +998,7 @@ void MVKVulkanCommonEncoderState::ensurePushDescriptorSize(uint32_t size) {
 	}
 }
 
-void MVKVulkanCommonEncoderState::preparePushDescriptor(MVKCommandEncoder* cmdEncoder, MVKDescriptorSetLayout* layout) {
+void MVKVulkanCommonEncoderState::preparePushDescriptor(MVKDescriptorSetLayout* layout) {
 	uint32_t cpuSize = layout->cpuSize();
 	_pushDescriptor.cpuBufferSize = cpuSize;
 	ensurePushDescriptorSize(cpuSize);
@@ -1011,23 +1006,10 @@ void MVKVulkanCommonEncoderState::preparePushDescriptor(MVKCommandEncoder* cmdEn
 	_pushDescriptor.argEnc = nullptr;
 	_pushDescriptor.auxIndices = layout->auxOffsets();
 	_pushDescriptor.variableDescriptorCount = 0;
-	if (layout->argBufMode() == MVKArgumentBufferMode::Off) {
-		_pushDescriptor.gpuBuffer = nullptr;
-		_pushDescriptor.gpuBufferObject = nil;
-		_pushDescriptor.gpuBufferOffset = 0;
-		_pushDescriptor.gpuBufferSize = 0;
-		return;
-	}
-	assert(layout->argBufMode() == MVKArgumentBufferMode::Metal3);
-	uint32_t gpuSize = layout->gpuSize();
-	const MVKMTLBufferAllocation* allocation = cmdEncoder->getTempMTLBuffer(gpuSize);
-	void* contents = allocation->getContents();
-	if (_pushDescriptor.gpuBuffer && _pushDescriptor.gpuBufferSize == gpuSize)
-		memcpy(contents, _pushDescriptor.gpuBuffer, gpuSize);
-	else
-		memset(contents, 0, gpuSize);
-	_pushDescriptor.setGPUBuffer(allocation->_mtlBuffer, allocation->_mtlBuffer.contents, allocation->_offset, gpuSize);
-	mvkInitializeDescriptorSetGPUBuffer(&_pushDescriptor);
+	_pushDescriptor.gpuBuffer = nullptr;
+	_pushDescriptor.gpuBufferObject = nil;
+	_pushDescriptor.gpuBufferOffset = 0;
+	_pushDescriptor.gpuBufferSize = 0;
 }
 
 void MVKVulkanCommonEncoderState::setLayout(MVKPipelineLayout* layout) {
@@ -1892,8 +1874,7 @@ MVKVulkanCommonEncoderState* MVKCommandEncoderState::getVkEncoderState(VkPipelin
 	}
 }
 
-void MVKCommandEncoderState::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-	                                           VkPipelineBindPoint bindPoint,
+void MVKCommandEncoderState::pushDescriptorSet(VkPipelineBindPoint bindPoint,
 	                                           MVKPipelineLayout* layout,
 	                                           uint32_t set,
 	                                           uint32_t writeCount,
@@ -1901,14 +1882,13 @@ void MVKCommandEncoderState::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
 	assert(layout->pushDescriptor() == set);
 	if (MVKVulkanCommonEncoderState* state = getVkEncoderState(bindPoint)) [[likely]] {
 		MVKDescriptorSetLayout* dsl = layout->getDescriptorSetLayout(set);
-		state->preparePushDescriptor(cmdEncoder, dsl);
+		state->preparePushDescriptor(dsl);
 		mvkPushDescriptorSet(&state->_pushDescriptor, writeCount, writes);
 		invalidateDescriptorSets(*this, bindPoint, MVKStaticBitSet<kMVKMaxDescriptorSetCount>::range(set, set + 1));
 	}
 }
 
-void MVKCommandEncoderState::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-	                                           MVKDescriptorUpdateTemplate* updateTemplate,
+void MVKCommandEncoderState::pushDescriptorSet(MVKDescriptorUpdateTemplate* updateTemplate,
 	                                           MVKPipelineLayout* layout,
 	                                           uint32_t set,
 	                                           const void* data) {
@@ -1916,7 +1896,7 @@ void MVKCommandEncoderState::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
 	VkPipelineBindPoint bindPoint = updateTemplate->getBindPoint();
 	if (MVKVulkanCommonEncoderState* state = getVkEncoderState(bindPoint)) [[likely]] {
 		MVKDescriptorSetLayout* dsl = layout->getDescriptorSetLayout(set);
-		state->preparePushDescriptor(cmdEncoder, dsl);
+		state->preparePushDescriptor(dsl);
 		mvkPushDescriptorSetTemplate(&state->_pushDescriptor, updateTemplate, data);
 		invalidateDescriptorSets(*this, bindPoint, MVKStaticBitSet<kMVKMaxDescriptorSetCount>::range(set, set + 1));
 	}

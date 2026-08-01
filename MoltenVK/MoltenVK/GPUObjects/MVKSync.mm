@@ -19,9 +19,6 @@
 #include "MVKSync.h"
 #include "MVKFoundation.h"
 
-#include <algorithm>
-#include <chrono>
-
 using namespace std;
 
 
@@ -85,86 +82,22 @@ MVKSemaphoreImpl::~MVKSemaphoreImpl() {
 
 
 #pragma mark -
-#pragma mark MVKSemaphore
-
-uint64_t MVKSemaphore::reserveEncodingWait(uint64_t) {
-	lock_guard<mutex> lock(_encodingLock);
-	return ++_encodingWaitCount;
-}
-
-uint64_t MVKSemaphore::reserveEncodingSignal(uint64_t) {
-	lock_guard<mutex> lock(_encodingLock);
-	return ++_encodingSignalCount;
-}
-
-void MVKSemaphore::waitForEncodingSignal(uint64_t token, uint64_t value) {
-	unique_lock<mutex> lock(_encodingLock);
-	bool isTimeline = getSemaphoreType() == VK_SEMAPHORE_TYPE_TIMELINE;
-	uint64_t target = isTimeline ? value : token;
-	bool externallyPublished = false;
-	auto ready = [&] {
-		externallyPublished = false;
-		if (_encodingCancelled || _encodingValue >= target) { return true; }
-		externallyPublished = isExternalEncodingSignalPublished(token, value);
-		return externallyPublished;
-	};
-	while (!ready()) { _encodingCondition.wait_for(lock, chrono::milliseconds(1)); }
-	if (externallyPublished) {
-		_encodingValue = max(_encodingValue, target);
-		if (!isTimeline) { _encodingSignalCount = max(_encodingSignalCount, token); }
-	}
-}
-
-void MVKSemaphore::publishEncodingSignal(uint64_t token, uint64_t value) {
-	{
-		lock_guard<mutex> lock(_encodingLock);
-		uint64_t published = getSemaphoreType() == VK_SEMAPHORE_TYPE_TIMELINE ? value : token;
-		_encodingValue = max(_encodingValue, published);
-	}
-	_encodingCondition.notify_all();
-}
-
-void MVKSemaphore::initializeEncodingTimeline(uint64_t value) {
-	lock_guard<mutex> lock(_encodingLock);
-	_encodingValue = value;
-}
-
-void MVKSemaphore::cancelEncodingWaits() {
-	{
-		lock_guard<mutex> lock(_encodingLock);
-		_encodingCancelled = true;
-	}
-	_encodingCondition.notify_all();
-}
-
-void MVKSemaphore::destroy() {
-	cancelEncodingWaits();
-	MVKVulkanAPIDeviceObject::destroy();
-}
-
-MVKSemaphore::~MVKSemaphore() {
-	cancelEncodingWaits();
-}
-
-
-#pragma mark -
 #pragma mark MVKSemaphoreSingleQueue
 
-void MVKSemaphoreSingleQueue::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t, uint64_t) {
+void MVKSemaphoreSingleQueue::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
 	// Metal will handle all synchronization for us automatically
 }
 
-void MVKSemaphoreSingleQueue::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t, uint64_t) {
+void MVKSemaphoreSingleQueue::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
 	// Metal will handle all synchronization for us automatically
 }
 
 uint64_t MVKSemaphoreSingleQueue::deferSignal() {
-	return reserveEncodingSignal(0);
+	return 0;
 }
 
-void MVKSemaphoreSingleQueue::encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t token) {
-	encodeSignal(mtlCmdBuff, 0, token);
-	publishEncodingSignal(token, 0);
+void MVKSemaphoreSingleQueue::encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
+	encodeSignal(mtlCmdBuff, 0);
 }
 
 MVKSemaphoreSingleQueue::MVKSemaphoreSingleQueue(MVKDevice* device,
@@ -182,41 +115,20 @@ MVKSemaphoreSingleQueue::~MVKSemaphoreSingleQueue() = default;
 #pragma mark -
 #pragma mark MVKSemaphoreMTLEvent
 
-void MVKSemaphoreMTLEvent::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t, uint64_t token) {
-	if (mtlCmdBuff) {
-		uint64_t eventValue = token ? token : _mtlEventValue++;
-		[mtlCmdBuff encodeWaitForEvent: _mtlEvent value: eventValue];
-	}
+void MVKSemaphoreMTLEvent::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
+	if (mtlCmdBuff) { [mtlCmdBuff encodeWaitForEvent: _mtlEvent value: _mtlEventValue++]; }
 }
 
-void MVKSemaphoreMTLEvent::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t, uint64_t token) {
-	if (mtlCmdBuff) {
-		uint64_t eventValue = token ? token : _mtlEventValue.load();
-		[mtlCmdBuff encodeSignalEvent: _mtlEvent value: eventValue];
-	}
+void MVKSemaphoreMTLEvent::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
+	if (mtlCmdBuff) { [mtlCmdBuff encodeSignalEvent: _mtlEvent value: _mtlEventValue]; }
 }
 
 uint64_t MVKSemaphoreMTLEvent::deferSignal() {
-	return reserveEncodingSignal(0);
+	return _mtlEventValue;
 }
 
-void MVKSemaphoreMTLEvent::encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t token) {
-	encodeSignal(mtlCmdBuff, 0, token);
-	publishEncodingSignal(token, 0);
-}
-
-uint64_t MVKSemaphoreMTLEvent::reserveEncodingWait(uint64_t) {
-	lock_guard<mutex> lock(_encodingLock);
-	return _mtlEventValue++;
-}
-
-uint64_t MVKSemaphoreMTLEvent::reserveEncodingSignal(uint64_t) {
-	lock_guard<mutex> lock(_encodingLock);
-	return _mtlEventValue.load();
-}
-
-bool MVKSemaphoreMTLEvent::isExternalEncodingSignalPublished(uint64_t token, uint64_t) {
-	return _mtlSharedEvent && token && _mtlSharedEvent.signaledValue >= token;
+void MVKSemaphoreMTLEvent::encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t deferToken) {
+	[mtlCmdBuff encodeSignalEvent: _mtlEvent value: deferToken];
 }
 
 MVKSemaphoreMTLEvent::MVKSemaphoreMTLEvent(MVKDevice* device,
@@ -235,10 +147,6 @@ MVKSemaphoreMTLEvent::MVKSemaphoreMTLEvent(MVKDevice* device,
 		_mtlEvent = [getMTLDevice() newEvent];			//retained
 		_mtlEventValue = 1;
 	}
-	if ((pImportInfo && pImportInfo->mtlSharedEvent) ||
-		(pExportInfo && pExportInfo->exportObjectType == VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT)) {
-		_mtlSharedEvent = (id<MTLSharedEvent>)_mtlEvent;
-	}
 }
 
 MVKSemaphoreMTLEvent::~MVKSemaphoreMTLEvent() {
@@ -249,7 +157,7 @@ MVKSemaphoreMTLEvent::~MVKSemaphoreMTLEvent() {
 #pragma mark -
 #pragma mark MVKSemaphoreEmulated
 
-void MVKSemaphoreEmulated::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t, uint64_t) {
+void MVKSemaphoreEmulated::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
 	if ( !mtlCmdBuff ) {
 		_device->addSemaphore(&_blocker);
 		_blocker.wait(UINT64_MAX, true);
@@ -257,17 +165,16 @@ void MVKSemaphoreEmulated::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t,
 	}
 }
 
-void MVKSemaphoreEmulated::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t, uint64_t) {
+void MVKSemaphoreEmulated::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
 	if ( !mtlCmdBuff ) { _blocker.release(); }
 }
 
 uint64_t MVKSemaphoreEmulated::deferSignal() {
-	return reserveEncodingSignal(0);
+	return 0;
 }
 
-void MVKSemaphoreEmulated::encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t token) {
-	encodeSignal(mtlCmdBuff, 0, token);
-	publishEncodingSignal(token, 0);
+void MVKSemaphoreEmulated::encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
+	encodeSignal(mtlCmdBuff, 0);
 }
 
 MVKSemaphoreEmulated::MVKSemaphoreEmulated(MVKDevice* device,
@@ -287,22 +194,17 @@ MVKSemaphoreEmulated::MVKSemaphoreEmulated(MVKDevice* device,
 #pragma mark MVKTimelineSemaphoreMTLEvent
 
 // Nil mtlCmdBuff will do nothing.
-void MVKTimelineSemaphoreMTLEvent::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value, uint64_t) {
+void MVKTimelineSemaphoreMTLEvent::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) {
 	[mtlCmdBuff encodeWaitForEvent: _mtlEvent value: value];
 }
 
 // Nil mtlCmdBuff will do nothing.
-void MVKTimelineSemaphoreMTLEvent::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value, uint64_t) {
+void MVKTimelineSemaphoreMTLEvent::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) {
 	[mtlCmdBuff encodeSignalEvent: _mtlEvent value: value];
 }
 
 void MVKTimelineSemaphoreMTLEvent::signal(const VkSemaphoreSignalInfo* pSignalInfo) {
 	_mtlEvent.signaledValue = pSignalInfo->value;
-	publishEncodingSignal(0, pSignalInfo->value);
-}
-
-bool MVKTimelineSemaphoreMTLEvent::isExternalEncodingSignalPublished(uint64_t, uint64_t value) {
-	return _mtlEvent.signaledValue >= value;
 }
 
 bool MVKTimelineSemaphoreMTLEvent::registerWait(MVKFenceSitter* sitter, const VkSemaphoreWaitInfo* pWaitInfo, uint32_t index) {
@@ -344,7 +246,6 @@ MVKTimelineSemaphoreMTLEvent::MVKTimelineSemaphoreMTLEvent(MVKDevice* device,
 	if (pTypeCreateInfo) {
 		_mtlEvent.signaledValue = pTypeCreateInfo->initialValue;
 	}
-	initializeEncodingTimeline(_mtlEvent.signaledValue);
 }
 
 MVKTimelineSemaphoreMTLEvent::~MVKTimelineSemaphoreMTLEvent() {

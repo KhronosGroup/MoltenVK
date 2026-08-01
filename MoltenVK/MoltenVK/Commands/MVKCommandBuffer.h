@@ -471,6 +471,9 @@ public:
 	const MVKMTLBufferAllocation* getAccelerationStructureAddressTable(MVKUseResourceHelper& resources,
 	                                                                  MVKResourceUsageStages stages);
 	void invalidateAccelerationStructureAddressTable();
+	const MVKMTLBufferAllocation* getAccelerationStructureReferenceTable();
+	const MVKSmallVector<id<MTLAccelerationStructure>, 16>& getAccelerationStructureInstances();
+	void invalidateAccelerationStructureReferenceTable();
 	void retainAccelerationStructureGeneration(MVKAccelerationStructureStorageGeneration* generation);
 	MVKDescriptorSetSnapshot* getDescriptorSetSnapshot(MVKDescriptorSet* set);
 
@@ -581,9 +584,11 @@ protected:
 	MVKSmallVector<GPUCounterQuery, 16> _timestampStageCounterQueries;
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
 	MVKSmallVector<MVKImageView*, kMVKDefaultAttachmentCount> _attachments;
-	MVKSmallVector<id<MTLResource>, 16> _accelerationStructureAddressTableResources;
+	MVKSmallVector<id<MTLAccelerationStructure>, 16> _accelerationStructureInstances;
 	MVKSmallVector<MVKAccelerationStructureStorageGeneration*, 16> _retainedAccelerationStructureGenerations;
+	MVKSmallVector<id<MTLResource>, 16> _accelerationStructureAddressTableResources;
 	const MVKMTLBufferAllocation* _accelerationStructureAddressTable = nullptr;
+	const MVKMTLBufferAllocation* _accelerationStructureReferenceTable = nullptr;
 	std::unordered_map<MVKDescriptorSet*, MVKDescriptorSetSnapshot*> _descriptorSetSnapshots;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;

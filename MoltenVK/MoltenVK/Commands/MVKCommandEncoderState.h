@@ -174,8 +174,7 @@ struct MVKVulkanCommonEncoderState {
 	MVKDescriptorSet _pushDescriptor = {};
 	MVKSmallVector<uint8_t, 16> _pushDescData;
 	void ensurePushDescriptorSize(uint32_t size);
-	/** Prepares push-descriptor storage for the specified layout. */
-	void preparePushDescriptor(MVKCommandEncoder* cmdEncoder, MVKDescriptorSetLayout* layout);
+	void preparePushDescriptor(MVKDescriptorSetLayout* layout);
 	void setLayout(MVKPipelineLayout* layout);
 	MVKVulkanCommonEncoderState() = default;
 	MVKVulkanCommonEncoderState(const MVKVulkanCommonEncoderState& other);
@@ -507,15 +506,13 @@ public:
 	                        uint32_t dynamicOffsetCount,
 	                        const uint32_t* dynamicOffsets);
 	/** Applies the given descriptor set writes to the push descriptor set on bindPoint. */
-	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-	                       VkPipelineBindPoint bindPoint,
+	void pushDescriptorSet(VkPipelineBindPoint bindPoint,
 	                       MVKPipelineLayout* layout,
 	                       uint32_t set,
 	                       uint32_t writeCount,
 	                       const VkWriteDescriptorSet* writes);
 	/** Applies the given descriptor update template to the push descriptor to its specified bindPoint. */
-	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-	                       MVKDescriptorUpdateTemplate* updateTemplate,
+	void pushDescriptorSet(MVKDescriptorUpdateTemplate* updateTemplate,
 	                       MVKPipelineLayout* layout,
 	                       uint32_t set,
 	                       const void* data);

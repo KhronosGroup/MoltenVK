@@ -176,16 +176,8 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdBuildAccelerationStruc
 	MVK_ENC_REZ_ACCESS(_mtlBuildAccStructConvertComputePipelineState, newCmdBuildAccelerationStructureConvertBuffersMTLComputePipelineState(_commandPool));
 }
 
-id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdSerializeAccelerationStructureIndexedVerticesMTLComputePipelineState() {
-	MVK_ENC_REZ_ACCESS(_mtlSerializeAccStructIndexedVerticesComputePipelineState, newCmdSerializeAccelerationStructureIndexedVerticesMTLComputePipelineState(_commandPool));
-}
-
-id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdBuildAccelerationStructureTrianglePositionsMTLComputePipelineState() {
-	MVK_ENC_REZ_ACCESS(_mtlBuildAccStructTrianglePositionsComputePipelineState, newCmdBuildAccelerationStructureTrianglePositionsMTLComputePipelineState(_commandPool));
-}
-
-id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDeserializeAccelerationStructureInstancesMTLComputePipelineState() {
-	MVK_ENC_REZ_ACCESS(_mtlDeserializeAccStructComputePipelineState, newCmdDeserializeAccelerationStructureInstancesMTLComputePipelineState(_commandPool));
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdSerializeAccelerationStructureGatherMTLComputePipelineState() {
+	MVK_ENC_REZ_ACCESS(_mtlSerializeAccStructGatherComputePipelineState, newCmdSerializeAccelerationStructureGatherMTLComputePipelineState(_commandPool));
 }
 
 void MVKCommandEncodingPool::clear() {
@@ -289,15 +281,9 @@ void MVKCommandEncodingPool::destroyMetalResources() {
     [_mtlConvertUint8IndicesComputePipelineState release];
     _mtlConvertUint8IndicesComputePipelineState = nil;
 
-    [_mtlBuildAccStructConvertComputePipelineState release];
-    _mtlBuildAccStructConvertComputePipelineState = nil;
+	[_mtlBuildAccStructConvertComputePipelineState release];
+	_mtlBuildAccStructConvertComputePipelineState = nil;
 
-	[_mtlSerializeAccStructIndexedVerticesComputePipelineState release];
-	_mtlSerializeAccStructIndexedVerticesComputePipelineState = nil;
-
-	[_mtlBuildAccStructTrianglePositionsComputePipelineState release];
-	_mtlBuildAccStructTrianglePositionsComputePipelineState = nil;
-
-	[_mtlDeserializeAccStructComputePipelineState release];
-	_mtlDeserializeAccStructComputePipelineState = nil;
+	[_mtlSerializeAccStructGatherComputePipelineState release];
+	_mtlSerializeAccStructGatherComputePipelineState = nil;
 }
