@@ -47,7 +47,6 @@ struct MVKShaderImplicitRezBinding {
 enum class MVKDescriptorBindOperationCode : uint8_t {
 	BindBytes,
 	BindBuffer,
-	BindBufferZeroOffset,
 	BindBufferDynamic,
 	BindTexture,
 	BindSampler,
@@ -239,8 +238,7 @@ struct MVKPipelineStageResourceInfo {
 	MVKStageResourceBits resources;
 
 	bool usesAccelerationStructures() const {
-		if (usesPhysicalStorageBufferAddresses ||
-			implicitBuffers.needed.has(MVKImplicitBuffer::AccelerationStructureAddressTable)) { return true; }
+		if (implicitBuffers.needed.has(MVKImplicitBuffer::AccelerationStructureAddressTable)) { return true; }
 		for (const auto& op : bindScript.ops) {
 			if (op.opcode == MVKDescriptorBindOperationCode::BindAccelerationStructure ||
 				op.opcode == MVKDescriptorBindOperationCode::UseAccelerationStructureWithLiveCheck) { return true; }
@@ -493,8 +491,7 @@ protected:
 								  spv::ExecutionModel executionModel,
 								  VkPipelineCreationFeedback* pStageFB,
 								  uint32_t rayTracingStageDepth = 0,
-								  bool rayGenerationVisible = false,
-								  bool rayTracingPositionFetch = false);
+								  bool rayGenerationVisible = false);
 	uint32_t getImplicitBufferIndex(uint32_t bufferIndexOffset) const;
 
 	id<MTLComputePipelineState> _mtlPipelineState;
@@ -539,6 +536,7 @@ public:
 
 private:
 	static constexpr uint32_t kMaxCallStackDepth = 6;
+	// Conservatively maps each Vulkan shader call to one of six Metal call frames.
 	static constexpr VkDeviceSize kShaderGroupStackSize = (VkDeviceSize{1} << 32) / kMaxCallStackDepth;
 	struct ShaderStage {
 		VkShaderStageFlagBits stage;

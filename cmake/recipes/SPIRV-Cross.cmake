@@ -13,9 +13,8 @@ string(STRIP "${SPIRV_CROSS_COMMIT_HASH}" SPIRV_CROSS_COMMIT_HASH)
 include(CPM)
 CPMAddPackage(
   NAME SPIRV-Cross
-  GITHUB_REPOSITORY KhronosGroup/SPIRV-Cross
+  GITHUB_REPOSITORY dttdrv/SPIRV-Cross
   GIT_TAG ${SPIRV_CROSS_COMMIT_HASH}
-  GIT_CONFIG remote.origin.fetch=+refs/pull/2649/head:refs/remotes/origin/pr/2649
   SYSTEM TRUE
   OPTIONS
     "SPIRV_CROSS_CLI OFF"

@@ -193,9 +193,10 @@ static MVKArgumentBufferMode pickArgumentBufferMode(MVKDevice* dev, const VkDesc
 	MVKArgumentBufferMode mode = pickArgumentBufferMode(dev);
 	if (mode == MVKArgumentBufferMode::Off) // The following checks only switch argument buffers off, so we can skip them if they're already off.
 		return mode;
-	auto* metalFeatures = dev->getPhysicalDevice()->getMetalFeatures();
+	// Push descriptors are always binding-based.
 	if (mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT))
-		return mode == MVKArgumentBufferMode::Metal3 && metalFeatures->accelerationStructures ? mode : MVKArgumentBufferMode::Off;
+		return MVKArgumentBufferMode::Off;
+	auto* metalFeatures = dev->getPhysicalDevice()->getMetalFeatures();
 	bool useMac1ArgumentEncoders = dev->getPhysicalDevice()->isMacGPUFamily1() && metalFeatures->needsArgumentBufferEncoders;
 	bool isIntelGPU = useMac1ArgumentEncoders && dev->getPhysicalDevice()->isIntelGPU();
 	bool isNVIDIAGPU = useMac1ArgumentEncoders && dev->getPhysicalDevice()->isNVIDIAGPU();
@@ -1414,10 +1415,6 @@ static void writeDescriptorSetBinding(
 	const void* src, MVKDescriptorUpdateSourceType type, size_t stride,
 	uint32_t start, uint32_t count)
 {
-	std::unique_lock<std::mutex> accelerationStructureLock;
-	if (type == MVKDescriptorUpdateSourceType::AccelerationStructure ||
-		(layout->argBufMode() == MVKArgumentBufferMode::Metal3 && layout->hasAccelerationStructures()))
-		accelerationStructureLock = std::unique_lock<std::mutex>(layout->getDevice()->getAccelerationStructureDescriptorLock());
 	char* cpuBuffer = set->cpuBuffer + binding->cpuOffset;
 	writeDescriptorSetCPUBufferDispatch(layout, *binding, cpuBuffer, src, stride, type, start, count);
 	switch (layout->argBufMode()) {
@@ -1476,11 +1473,6 @@ static void copyDescriptorSetBinding(
 	assert(srcBinding->cpuLayout == dstBinding->cpuLayout);
 	assert(srcBinding->gpuLayout == dstBinding->gpuLayout);
 	bool isAccelerationStructure = srcBinding->descriptorType == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-	std::unique_lock<std::mutex> accelerationStructureLock;
-	if (isAccelerationStructure ||
-		(dstLayout->argBufMode() == MVKArgumentBufferMode::Metal3 &&
-		 (srcSet->layout->hasAccelerationStructures() || dstLayout->hasAccelerationStructures())))
-		accelerationStructureLock = std::unique_lock<std::mutex>(dstLayout->getDevice()->getAccelerationStructureDescriptorLock());
 	if (count && dstLayout->argBufMode() != MVKArgumentBufferMode::Off && dstLayout->hasAccelerationStructures())
 		dstSet->mutationSerial++;
 	MVKDescriptorCPULayout cpu = srcBinding->cpuLayout;
@@ -1978,11 +1970,11 @@ MVKDescriptorSetSnapshot* mvkSnapshotDescriptorSet(MVKCommandEncoder* cmdEncoder
 	uint32_t sourceGPUBufferSize = 0;
 	uint64_t sourceMutationSerial = 0;
 	MVKDescriptorSet view;
-	std::mutex& descriptorLock = layout->argBufMode() == MVKArgumentBufferMode::ArgEncoder
-		? set->argEnc->_lock
-		: layout->getDevice()->getAccelerationStructureDescriptorLock();
+	std::unique_lock<std::mutex> descriptorLock;
+	if (layout->argBufMode() == MVKArgumentBufferMode::ArgEncoder) {
+		descriptorLock = std::unique_lock<std::mutex>(set->argEnc->_lock);
+	}
 	{
-		std::lock_guard<std::mutex> guard(descriptorLock);
 		sourceGPUBufferObject = set->gpuBufferObject;
 		sourceGPUBufferOffset = set->gpuBufferOffset;
 		sourceGPUBufferSize = set->gpuBufferSize;
@@ -1996,11 +1988,8 @@ MVKDescriptorSetSnapshot* mvkSnapshotDescriptorSet(MVKCommandEncoder* cmdEncoder
 			auto* objects = reinterpret_cast<MVKAccelerationStructure*const*>(set->cpuBuffer + binding.cpuOffset);
 			for (uint32_t i = 0; i < count; i++) {
 				auto* object = objects[i];
-				MVKAccelerationStructureStorageGeneration* generation = nullptr;
-				if (object) {
-					auto live = layout->getDevice()->isLiveAccelerationStructureObject(object);
-					if (live) { generation = object->retainCurrentGeneration(); }
-				}
+				MVKAccelerationStructureStorageGeneration* generation =
+					object ? object->retainCurrentGeneration() : nullptr;
 				generations.push_back(generation);
 			}
 		}
@@ -2024,6 +2013,7 @@ MVKDescriptorSetSnapshot* mvkSnapshotDescriptorSet(MVKCommandEncoder* cmdEncoder
 		}
 		view = *set;
 	}
+	if (descriptorLock.owns_lock()) { descriptorLock.unlock(); }
 
 	auto* snapshot = new MVKDescriptorSetSnapshot;
 	snapshot->layout = layout;
