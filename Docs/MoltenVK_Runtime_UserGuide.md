@@ -190,7 +190,7 @@ your app, and to avoid build errors, be sure to use the latest publicly availabl
 Once built, your app integrating the **MoltenVK** libraries can be run on *macOS*, *iOS* or *tvOS*
 devices that support *Metal*, or on the *Xcode* *iOS Simulator* or *tvOS Simulator*.
 
-- At runtime, **MoltenVK** requires at least *macOS 11.0*, *iOS 14*, or *tvOS 14.5*.
+- At runtime, **MoltenVK** requires at least *macOS 12.0*, *iOS 15*, or *tvOS 15*.
   - This support policy is based on the earliest deployment target [officially supported](https://developer.apple.com/support/xcode/)
     by the latest version of Xcode.
 - Information on *macOS* devices that are compatible with *Metal* can be found in
@@ -255,7 +255,6 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_external_memory`
 - `VK_KHR_external_memory_capabilities`
 - `VK_KHR_external_semaphore`
-- `VK_KHR_external_semaphore_fd`
 - `VK_KHR_external_semaphore_capabilities`
 - `VK_KHR_format_feature_flags2`
 - `VK_KHR_fragment_shader_barycentric`
@@ -385,6 +384,8 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
   - *Requires a build of MoltenVK with `MVK_USE_METAL_PRIVATE_API` enabled.*
 - `VK_EXT_robustness2`
 - `VK_EXT_sample_locations`
+- `VK_EXT_sampler_filter_minmax`
+  - *Requires Apple GPU family 10 and macOS 26 or iOS 26.*
 - `VK_EXT_scalar_block_layout`
 - `VK_EXT_separate_stencil_usage`
 - `VK_EXT_shader_atomic_float`

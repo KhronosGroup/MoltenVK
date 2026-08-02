@@ -130,6 +130,9 @@ MVKMTLDeviceCapabilities::MVKMTLDeviceCapabilities(id<MTLDevice> mtlDev) {
 #if !MVK_OS_SIMULATOR
 	supportsRenderLinearTextures = supportsApple1;
 #endif
+#if MVK_XCODE_26 && !MVK_TVOS && !MVK_VISIONOS
+	supportsSamplerReduction = supportsApple10 && mvkOSVersionIsAtLeast(26.0);
+#endif
 }
 
 
@@ -878,8 +881,8 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	supportedProps12.supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;	// Metal allows you to set the stencil resolve filter to either Sample0 or the same sample used for depth resolve. This is impossible to express in Vulkan.
 	supportedProps12.independentResolveNone = true;
 	supportedProps12.independentResolve = true;
-	supportedProps12.filterMinmaxSingleComponentFormats = false;
-	supportedProps12.filterMinmaxImageComponentMapping = false;
+	supportedProps12.filterMinmaxSingleComponentFormats = _gpuCapabilities.supportsSamplerReduction;
+	supportedProps12.filterMinmaxImageComponentMapping = _gpuCapabilities.supportsSamplerReduction;
 	supportedProps12.maxTimelineSemaphoreValueDifference = std::numeric_limits<uint64_t>::max();
 	supportedProps12.framebufferIntegerColorSampleCounts = _metalFeatures.supportedSampleCounts;
 
@@ -2620,12 +2623,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	} else if ( mvkOSVersionIsAtLeast(13.0, 16.0, 1.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion3_0;
 		setMSLVersion(3, 0);
-	} else if ( mvkOSVersionIsAtLeast(12.0, 15.0, 1.0) ) {
+	} else {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_4;
 		setMSLVersion(2, 4);
-	} else {
-		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
-		setMSLVersion(2, 3);
 	}
 
 	_metalFeatures.programmableSamplePositions = _mtlDevice.areProgrammableSamplePositionsSupported;
@@ -2830,9 +2830,9 @@ void MVKPhysicalDevice::initFeatures() {
 	// Additional non-extension Vulkan 1.2 features.
 	mvkClear(&_vulkan12NoExtFeatures);		// Start with everything cleared
 	_vulkan12NoExtFeatures.samplerMirrorClampToEdge = _metalFeatures.samplerMirrorClampToEdge;
-	_vulkan12NoExtFeatures.drawIndirectCount = false;
+	_vulkan12NoExtFeatures.drawIndirectCount = _metalFeatures.indirectDrawing;
 	_vulkan12NoExtFeatures.descriptorIndexing = _metalFeatures.arrayOfTextures && _metalFeatures.arrayOfSamplers;
-	_vulkan12NoExtFeatures.samplerFilterMinmax = false;
+	_vulkan12NoExtFeatures.samplerFilterMinmax = _gpuCapabilities.supportsSamplerReduction;
 	_vulkan12NoExtFeatures.shaderOutputViewportIndex = _features.multiViewport;
 	_vulkan12NoExtFeatures.shaderOutputLayer = _metalFeatures.layeredRendering;
 	_vulkan12NoExtFeatures.subgroupBroadcastDynamicId = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
@@ -3554,6 +3554,9 @@ void MVKPhysicalDevice::initExtensions() {
 	}
 	if (!_metalFeatures.placementHeaps) {
 		pWritableExtns->vk_EXT_image_2d_view_of_3d.enabled = false;
+	}
+	if (!_gpuCapabilities.supportsSamplerReduction) {
+		pWritableExtns->vk_EXT_sampler_filter_minmax.enabled = false;
 	}
 
     // gpuAddress requires Tier2 argument buffer support (per feedback from Apple engineers).

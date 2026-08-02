@@ -1580,6 +1580,12 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc, const MVKMTLD
 
 	// Optimal tiling features
 	enableFormatFeatures(Read, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
+#if MVK_XCODE_26 && !MVK_TVOS && !MVK_VISIONOS
+	if (gpuCaps.supportsSamplerReduction && chromaSubsamplingComponentBits == 0 &&
+		mvkIsAnyFlagEnabled(vkProps.optimalTilingFeatures, VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT)) {
+		vkProps.optimalTilingFeatures |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT;
+	}
+#endif
 	enableFormatFeatures(Filter, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 	enableFormatFeatures(Write, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 	enableFormatFeatures(Atomic, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);

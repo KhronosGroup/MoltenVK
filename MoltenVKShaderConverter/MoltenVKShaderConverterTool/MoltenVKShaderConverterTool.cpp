@@ -306,12 +306,9 @@ MoltenVKShaderConverterTool::MoltenVKShaderConverterTool(int argc, const char* a
 	} else 	if (mvkOSVersionIsAtLeast(13.0)) {
 		_mslVersionMajor = 3;
 		_mslVersionMinor = 0;
-	} else if (mvkOSVersionIsAtLeast(12.0)) {
-		_mslVersionMajor = 2;
-		_mslVersionMinor = 4;
 	} else {
 		_mslVersionMajor = 2;
-		_mslVersionMinor = 3;
+		_mslVersionMinor = 4;
 	}
 
 	_mslVersionPatch = 0;
