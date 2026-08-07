@@ -100,7 +100,8 @@ VkResult MVKQueryPool::getResults(uint32_t firstQuery,
 	return rqstRslt;
 }
 
-bool MVKQueryPool::areQueriesDeviceAvailable(uint32_t firstQuery, uint32_t endQuery) {
+bool MVKQueryPool::areQueriesDeviceAvailable(uint32_t firstQuery, uint32_t queryCount) {
+	uint32_t endQuery = firstQuery + queryCount;
     for (uint32_t query = firstQuery; query < endQuery; query++) {
         if ( _availability[query] < DeviceAvailable ) { return false; }
     }

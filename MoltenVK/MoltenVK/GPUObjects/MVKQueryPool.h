@@ -92,8 +92,8 @@ public:
     /** Called from the MVKCmdBeginQuery command when it is added to the command buffer */
     virtual void beginQueryAddedTo(uint32_t query, MVKCommandBuffer* cmdBuffer) {};
 
-    /** Returns whether all the queries in [firstQuery, endQuery) are available on the device. */
-    bool areQueriesDeviceAvailable(uint32_t firstQuery, uint32_t endQuery);
+    /**  Returns whether queryCount queries starting at firstQuery are available on the device. */
+    bool areQueriesDeviceAvailable(uint32_t firstQuery, uint32_t queryCount);
 
 #pragma mark Construction
 
