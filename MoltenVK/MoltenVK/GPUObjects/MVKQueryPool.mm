@@ -183,7 +183,7 @@ void MVKQueryPool::encodeCopyResults(MVKCommandEncoder* cmdEncoder,
 		state.bindStructBytes(mtlComputeCmdEnc, &queryCount, 3);
 		state.bindStructBytes(mtlComputeCmdEnc, &flags,      4);
 		_availabilityLock.lock();
-		cmdEncoder->setComputeBytes(mtlComputeCmdEnc, _availability.data(), _availability.size() * sizeof(Status), 5);
+		cmdEncoder->setComputeBytes(mtlComputeCmdEnc, _availability.data() + firstQuery, queryCount * sizeof(Status), 5);
 		_availabilityLock.unlock();
 
 		// Run one thread per query. Try to fill up a subgroup.
