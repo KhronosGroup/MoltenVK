@@ -410,6 +410,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
   - *iOS and macOS, requires family 6 (A13) or better Apple GPU.*
 - `VK_EXT_tooling_info`
 - `VK_EXT_vertex_attribute_divisor`
+- `VK_EXT_ycbcr_2plane_444_formats`
 - `VK_AMD_gpu_shader_half_float`
 - `VK_AMD_negative_viewport_height`
 - `VK_AMD_shader_image_load_store_lod`

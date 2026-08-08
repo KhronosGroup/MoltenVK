@@ -18,7 +18,8 @@ MoltenVK 1.4.3
 
 Released TBD
 
-- 
+- Add support for the following extensions:
+  - `VK_EXT_ycbcr_2plane_444_formats`
 
 
 

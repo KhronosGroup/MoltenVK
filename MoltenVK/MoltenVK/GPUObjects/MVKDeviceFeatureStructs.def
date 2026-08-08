@@ -109,6 +109,7 @@ MVK_DEVICE_FEATURE_EXTN(PrimitiveTopologyListRestart,     PRIMITIVE_TOPOLOGY_LIS
 MVK_DEVICE_FEATURE_EXTN(ProvokingVertex,                  PROVOKING_VERTEX,                     EXT,   2)
 MVK_DEVICE_FEATURE_EXTN(ShaderAtomicFloat,                SHADER_ATOMIC_FLOAT,                  EXT,  12)
 MVK_DEVICE_FEATURE_EXTN(TexelBufferAlignment,             TEXEL_BUFFER_ALIGNMENT,               EXT,   1)
+MVK_DEVICE_FEATURE_EXTN(Ycbcr2Plane444Formats,            YCBCR_2_PLANE_444_FORMATS,            EXT,   1)
 MVK_DEVICE_FEATURE_EXTN(ShaderIntegerFunctions2,          SHADER_INTEGER_FUNCTIONS_2,           INTEL, 1)
 
 #pragma pop_macro("INTEL")
