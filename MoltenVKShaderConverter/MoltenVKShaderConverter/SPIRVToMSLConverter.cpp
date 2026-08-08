@@ -368,6 +368,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	conversionResult.resultInfo.needsDrawId = pMSLCompiler && pMSLCompiler->has_active_builtin(spv::BuiltInDrawIndex, spv::StorageClassInput);
 	conversionResult.resultInfo.usesPhysicalStorageBufferAddressesCapability = usesPhysicalStorageBufferAddressesCapability(pMSLCompiler);
 	populateSpecializationMacros(pMSLCompiler, conversionResult.resultInfo.specializationMacros);
+	conversionResult.resultInfo.needsTransformFeedback = pMSLCompiler && pMSLCompiler->needs_transform_feedback();
 
 	// When using Metal argument buffers, if the shader is provided with dynamic buffer offsets,
 	// then it needs a buffer to hold these dynamic offsets.
@@ -380,29 +381,31 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 		}
 	}
 
-	for (auto& ctxSI : shaderConfig.shaderInputs) {
-		if (ctxSI.shaderVar.builtin != spv::BuiltInMax) {
-			ctxSI.outIsUsedByShader = pMSLCompiler->has_active_builtin(ctxSI.shaderVar.builtin, spv::StorageClassInput);
-		} else {
-			ctxSI.outIsUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxSI.shaderVar.location);
-		}
-	}
-	for (auto& ctxSO : shaderConfig.shaderOutputs) {
-		if (ctxSO.shaderVar.builtin != spv::BuiltInMax) {
-			ctxSO.outIsUsedByShader = pMSLCompiler->has_active_builtin(ctxSO.shaderVar.builtin, spv::StorageClassOutput);
-		} else {
-			ctxSO.outIsUsedByShader = pMSLCompiler->is_msl_shader_output_used(ctxSO.shaderVar.location);
-		}
-	}
-	for (auto& ctxRB : shaderConfig.resourceBindings) {
-		if (ctxRB.resourceBinding.stage == shaderConfig.options.entryPointStage) {
-			ctxRB.outIsUsedByShader = pMSLCompiler->is_msl_resource_binding_used(ctxRB.resourceBinding.stage,
-																				 ctxRB.resourceBinding.desc_set,
-																				 ctxRB.resourceBinding.binding);
-		}
-	}
-
-	delete pMSLCompiler;
+    if (pMSLCompiler) {
+        for (auto& ctxSI : shaderConfig.shaderInputs) {
+            if (ctxSI.shaderVar.builtin != spv::BuiltInMax) {
+                ctxSI.outIsUsedByShader = pMSLCompiler->has_active_builtin(ctxSI.shaderVar.builtin, spv::StorageClassInput);
+            } else {
+                ctxSI.outIsUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxSI.shaderVar.location);
+            }
+        }
+        for (auto& ctxSO : shaderConfig.shaderOutputs) {
+            if (ctxSO.shaderVar.builtin != spv::BuiltInMax) {
+                ctxSO.outIsUsedByShader = pMSLCompiler->has_active_builtin(ctxSO.shaderVar.builtin, spv::StorageClassOutput);
+            } else {
+                ctxSO.outIsUsedByShader = pMSLCompiler->is_msl_shader_output_used(ctxSO.shaderVar.location);
+            }
+        }
+        for (auto& ctxRB : shaderConfig.resourceBindings) {
+            if (ctxRB.resourceBinding.stage == shaderConfig.options.entryPointStage) {
+                ctxRB.outIsUsedByShader = pMSLCompiler->is_msl_resource_binding_used(ctxRB.resourceBinding.stage,
+                                                                                     ctxRB.resourceBinding.desc_set,
+                                                                                     ctxRB.resourceBinding.binding);
+            }
+        }
+        
+        delete pMSLCompiler;
+    }
 
     // To check GLSL conversion
     if (shouldLogGLSL) {

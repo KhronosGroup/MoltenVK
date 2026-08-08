@@ -36,6 +36,16 @@ typedef struct MVKVertexMTLBufferBinding {
 	uint32_t stride = 0;
 } MVKVertexMTLBufferBinding;
 
+// A buffer binding that also carries its Metal argument index. v1.4.1 split the old
+// general MVKMTLBufferBinding into vertex/index variants that dropped the index; the
+// transform-feedback code (PR #1943) needs a buffer + offset + index together.
+typedef struct MVKMTLBufferBinding {
+	union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; };
+	VkDeviceSize offset = 0;
+	uint32_t index = 0;
+	uint32_t size = 0;
+} MVKMTLBufferBinding;
+
 /** Describes a MTLBuffer resource binding as used for an index buffer. */
 typedef struct MVKIndexMTLBufferBinding {
     union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; }; // aliases

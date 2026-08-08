@@ -141,7 +141,8 @@ protected:
 
 	MVKMTLFunction getMTLFunction(const VkSpecializationInfo* pSpecializationInfo,
 								  VkPipelineCreationFeedback* pShaderFeedback,
-								  MVKShaderModule* shaderModule);
+								  MVKShaderModule* shaderModule,
+								  bool passThruFunc);
 	void handleCompilationError(NSError* err, const char* opDesc);
     MTLFunctionConstant* getFunctionConstant(NSArray<MTLFunctionConstant*>* mtlFCs, NSUInteger mtlFCID);
 	void compileLibrary(const std::string& msl,
@@ -251,7 +252,8 @@ public:
 	MVKMTLFunction getMTLFunction(mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
 								  const VkSpecializationInfo* pSpecializationInfo,
 								  MVKPipeline* pipeline,
-								  VkPipelineCreationFeedback* pShaderFeedback);
+								  VkPipelineCreationFeedback* pShaderFeedback,
+								  bool passThruFunc);
 
 	/** Convert the SPIR-V to MSL, using the specified shader conversion configuration. */
 	bool convert(mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
@@ -274,6 +276,9 @@ protected:
 	friend MVKShaderCacheIterator;
 
 	void propagateDebugName() override {}
+	// Generates a pass-through vertex function (used by the transform-feedback raster
+	// stage) that reads back the captured SO buffers.
+	void generatePassThruVertexShader(const std::string& entryPoint, mvk::SPIRVToMSLConversionResult& conversionResult);
 
 	MVKShaderLibraryCache _shaderLibraryCache;
 	mvk::SPIRVToMSLConverter _spvConverter;

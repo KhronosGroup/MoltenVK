@@ -99,6 +99,13 @@ extern "C" {
                                     (__VISION_OS_VERSION_MAX_ALLOWED >= 20000) || \
                                         (__TV_OS_VERSION_MAX_ALLOWED >= 180000))
 #endif
+// The geometry-shader (mesh pipeline) code from PR #1815 gates on MVK_XCODE_14
+// (Metal mesh API = macOS 13 SDK). Upstream removed that macro when it raised the
+// minimum Xcode, which silently compiles all of those blocks OUT. Restore it.
+#ifndef MVK_XCODE_14
+#   define MVK_XCODE_14             ((__MAC_OS_X_VERSION_MAX_ALLOWED >= 130000) || \
+                                    (__IPHONE_OS_VERSION_MAX_ALLOWED >= 160000))
+#endif
 
 /**
  * Enable use of private Metal APIs.

@@ -263,6 +263,7 @@ namespace mvk {
 		bool needsDrawId = false;
 		bool usesPhysicalStorageBufferAddressesCapability = false;
 		std::map<uint32_t, MSLSpecializationMacroInfo> specializationMacros;
+		bool needsTransformFeedback = false;
 
 	} SPIRVToMSLConversionResultInfo;
 
