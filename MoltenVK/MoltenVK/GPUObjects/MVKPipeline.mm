@@ -1179,9 +1179,14 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLRenderPipelineDescriptor
 	MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];	// retained
 
 	SPIRVShaderOutputs vtxOutputs;
+	SPIRVShaderInputs vtxInputs;
 	std::string errorLog;
 	if (!getShaderOutputs(_vertexModule->getSPIRV(), spv::ExecutionModelVertex, pVertexSS->pName, vtxOutputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get vertex outputs: %s", errorLog.c_str()));
+		return nil;
+	}
+	if (!getShaderInputs(_vertexModule->getSPIRV(), spv::ExecutionModelVertex, pVertexSS->pName, vtxInputs, errorLog) ) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get vertex inputs: %s", errorLog.c_str()));
 		return nil;
 	}
 
@@ -1190,7 +1195,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLRenderPipelineDescriptor
 
 	// Vertex input
 	// This needs to happen before compiling the fragment shader, or we'll lose information on vertex attributes.
-	if (!addVertexInputToPipeline(plDesc.vertexDescriptor, pCreateInfo->pVertexInputState, shaderConfig)) { return nil; }
+	if (!addVertexInputToPipeline(plDesc.vertexDescriptor, pCreateInfo->pVertexInputState, shaderConfig, &vtxInputs)) { return nil; }
 
 	// Fragment shader - only add if rasterization is enabled
 	if (!addFragmentShaderToPipeline(plDesc, pCreateInfo, shaderConfig, vtxOutputs, pFragmentSS, pFragmentFB)) { return nil; }
@@ -1707,7 +1712,8 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 template<class T>
 bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 												   const VkPipelineVertexInputStateCreateInfo* pVI,
-												   const SPIRVToMSLConversionConfiguration& shaderConfig) {
+												   const SPIRVToMSLConversionConfiguration& shaderConfig,
+												   const SPIRVShaderInputs* pVtxInputs) {
     // Collect extension structures
     VkPipelineVertexInputDivisorStateCreateInfo* pVertexInputDivisorState = nullptr;
 	for (const auto* next = (VkBaseInStructure*)pVI->pNext; next; next = next->pNext) {
@@ -1868,6 +1874,59 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
         uint32_t stride = (uint32_t)inputDesc.layouts[getMetalBufferIndexForVertexAttributeBinding(binding)].stride;
         _zeroDivisorVertexBindings.emplace_back(binding, stride);
     }
+
+	// Vulkan allows a vertex shader to consume input locations for which the vertex input
+	// state supplies no attribute; the values read are undefined. Metal instead rejects the
+	// pipeline ("Vertex attribute ... is missing from the vertex descriptor"). For each such
+	// location, synthesize an attribute that reads undefined-but-harmless data at offset zero
+	// of a vertex buffer binding the pipeline already uses.
+	if (pVtxInputs) {
+		uint64_t coveredLocs = 0;
+		for (uint32_t i = 0; i < vaCnt; i++) {
+			uint32_t loc = pVI->pVertexAttributeDescriptions[i].location;
+			if (loc < 64) { coveredLocs |= 1ULL << loc; }
+		}
+		for (auto& vtxInput : *pVtxInputs) {
+			if (vtxInput.builtin != spv::BuiltInMax) { continue; }
+			uint32_t loc = vtxInput.location;
+			if (loc >= 64 || (coveredLocs & (1ULL << loc))) { continue; }
+
+			// Scalar format matching the shader var's base type. Metal expands missing
+			// components to (0,0,0,1). Exotic base types keep prior (failing) behavior.
+			MTLVertexFormat mtlFmt;
+			NSUInteger fmtSize;
+			switch (vtxInput.baseType) {
+				case SPIRType::Half:   mtlFmt = MTLVertexFormatHalf;   fmtSize = 2; break;
+				case SPIRType::Float:  mtlFmt = MTLVertexFormatFloat;  fmtSize = 4; break;
+				case SPIRType::Int:    mtlFmt = MTLVertexFormatInt;    fmtSize = 4; break;
+				case SPIRType::UInt:   mtlFmt = MTLVertexFormatUInt;   fmtSize = 4; break;
+				case SPIRType::Short:  mtlFmt = MTLVertexFormatShort;  fmtSize = 2; break;
+				case SPIRType::UShort: mtlFmt = MTLVertexFormatUShort; fmtSize = 2; break;
+				default: continue;
+			}
+
+			// Donor: a used vertex buffer binding whose final layout permits reading
+			// fmtSize bytes at offset zero.
+			int32_t donorVBIdx = -1;
+			for (uint32_t i = 0; i < vbCnt; i++) {
+				const VkVertexInputBindingDescription* pVKVB = &pVI->pVertexBindingDescriptions[i];
+				if (!shaderConfig.isVertexBufferUsed(pVKVB->binding)) { continue; }
+				uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
+				NSUInteger stride = inputDesc.layouts[vbIdx].stride;
+				if (stride >= fmtSize && stride != MTLBufferLayoutStrideDynamic) {
+					donorVBIdx = vbIdx;
+					break;
+				}
+			}
+			if (donorVBIdx < 0) { continue; }
+
+			auto vaDesc = inputDesc.attributes[loc];
+			vaDesc.format = (decltype(vaDesc.format))mtlFmt;
+			vaDesc.bufferIndex = (decltype(vaDesc.bufferIndex))donorVBIdx;
+			vaDesc.offset = 0;
+			reportError(VK_SUCCESS, "Vertex shader consumes input location %u, but no vertex attribute is supplied there. Synthesizing a dummy attribute; the values read are undefined.", loc);
+		}
+	}
 
 	return true;
 }
