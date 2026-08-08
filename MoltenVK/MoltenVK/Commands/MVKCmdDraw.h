@@ -95,7 +95,8 @@ public:
 						uint32_t vertexCount,
 						uint32_t instanceCount,
 						uint32_t firstVertex,
-						uint32_t firstInstance);
+						uint32_t firstInstance,
+						uint32_t drawIndex = 0);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 	void encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder);
@@ -107,6 +108,7 @@ protected:
 	uint32_t _vertexCount;
 	uint32_t _firstInstance;
 	uint32_t _instanceCount;
+	uint32_t _drawIndex;
 };
 
 
@@ -121,7 +123,8 @@ public:
 						uint32_t instanceCount,
 						uint32_t firstIndex,
 						int32_t vertexOffset,
-						uint32_t firstInstance);
+						uint32_t firstInstance,
+						uint32_t drawIndex = 0);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -134,6 +137,7 @@ protected:
 	int32_t	_vertexOffset;
 	uint32_t _firstInstance;
 	uint32_t _instanceCount;
+	uint32_t _drawIndex;
 };
 
 

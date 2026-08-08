@@ -4298,6 +4298,45 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetLineStipple, EXT);
 
 
 #pragma mark -
+#pragma mark VK_EXT_multi_draw extension
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMultiEXT(
+	VkCommandBuffer                             commandBuffer,
+	uint32_t                                    drawCount,
+	const VkMultiDrawInfoEXT*                   pVertexInfo,
+	uint32_t                                    instanceCount,
+	uint32_t                                    firstInstance,
+	uint32_t                                    stride) {
+
+	MVKTraceVulkanCallStart();
+	for (uint32_t drawIdx = 0; drawIdx < drawCount; drawIdx++) {
+		auto* pDrawInfo = (const VkMultiDrawInfoEXT*)((uintptr_t)pVertexInfo + (drawIdx * stride));
+		MVKAddCmd(Draw, commandBuffer, pDrawInfo->vertexCount, instanceCount, pDrawInfo->firstVertex, firstInstance, drawIdx);
+	}
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMultiIndexedEXT(
+	VkCommandBuffer                             commandBuffer,
+	uint32_t                                    drawCount,
+	const VkMultiDrawIndexedInfoEXT*            pIndexInfo,
+	uint32_t                                    instanceCount,
+	uint32_t                                    firstInstance,
+	uint32_t                                    stride,
+	const int32_t*                              pVertexOffset) {
+
+	MVKTraceVulkanCallStart();
+	for (uint32_t drawIdx = 0; drawIdx < drawCount; drawIdx++) {
+		auto* pDrawInfo = (const VkMultiDrawIndexedInfoEXT*)((uintptr_t)pIndexInfo + (drawIdx * stride));
+		// If pVertexOffset is provided, it overrides the offset carried by each draw.
+		int32_t vtxOffset = pVertexOffset ? *pVertexOffset : pDrawInfo->vertexOffset;
+		MVKAddCmd(DrawIndexed, commandBuffer, pDrawInfo->indexCount, instanceCount, pDrawInfo->firstIndex, vtxOffset, firstInstance, drawIdx);
+	}
+	MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
 #pragma mark VK_EXT_metal_surface extension
 
 MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateMetalSurfaceEXT(

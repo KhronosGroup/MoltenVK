@@ -1540,6 +1540,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 	addCommonImplicitBuffersToShaderConfig(shaderConfig, implicit);
 	shaderConfig.options.mslOptions.shader_index_buffer_index = implicit[MVKImplicitBuffer::Index];
 	shaderConfig.options.mslOptions.shader_output_buffer_index = implicit[MVKImplicitBuffer::Output];
+	shaderConfig.options.mslOptions.draw_id_buffer_index = implicit[MVKImplicitBuffer::DrawId];
 	shaderConfig.options.mslOptions.capture_output_to_buffer = true;
 	shaderConfig.options.mslOptions.vertex_for_tessellation = true;
 	shaderConfig.options.mslOptions.disable_rasterization = true;

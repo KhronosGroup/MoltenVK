@@ -370,6 +370,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
   - *Requires Metal 2.0.*
 - `VK_EXT_metal_objects`
 - `VK_EXT_metal_surface`
+- `VK_EXT_multi_draw`
 - `VK_EXT_nested_command_buffer`
 - `VK_EXT_non_seamless_cube_map`
   - *Requires a build of MoltenVK with `MVK_USE_METAL_PRIVATE_API` enabled.*
