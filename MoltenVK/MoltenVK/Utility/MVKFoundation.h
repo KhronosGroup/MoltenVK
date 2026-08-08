@@ -40,6 +40,8 @@
 /** Represents a non-existent index. */
 static const int kMVKIndexNone = -1;
 
+static constexpr uint32_t kMVKMeshEmulationMaxWorkgroupCount = 1u << 22;
+
 /** A type definition for 16-bit half-float values. */
 typedef uint16_t MVKHalfFloat;
 
@@ -102,6 +104,7 @@ typedef enum : uint8_t {
     kMVKCommandUseResetQueryPool,               /**< vkCmdResetQueryPool. */
     kMVKCommandUseDispatch,                     /**< vkCmdDispatch. */
     kMVKCommandUseTessellationVertexTessCtl,    /**< vkCmdDraw* - vertex and tessellation control stages. */
+	kMVKCommandUseMeshShaderCapture,
 	kMVKCommandUseDrawIndirectConvertBuffers,   /**< vkCmdDrawIndirect* convert indirect buffers. */
 	kMVKCommandUseCopyQueryPoolResults,         /**< vkCmdCopyQueryPoolResults. */
 	kMVKCommandUseAccumOcclusionQuery,          /**< Any command terminating a Metal render pass with active visibility buffer. */

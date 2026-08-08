@@ -2975,7 +2975,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindDescriptorSets2(
 	// If stageFlags specifies a subset of all stages corresponding to one or more pipeline bind points,
 	// the binding operation still affects all stages corresponding to the given pipeline bind point(s)
 	// as if the equivalent original version of this command had been called with the same parameters.
-	if (pBindDescriptorSetsInfo->stageFlags & VK_SHADER_STAGE_ALL_GRAPHICS) {
+	if (pBindDescriptorSetsInfo->stageFlags & (VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT)) {
 		if (pBindDescriptorSetsInfo->dynamicOffsetCount) {
 			MVKAddCmdFromThreshold(BindDescriptorSetsDynamic, pBindDescriptorSetsInfo->descriptorSetCount, 4, commandBuffer,
 					VK_PIPELINE_BIND_POINT_GRAPHICS, pBindDescriptorSetsInfo->layout, pBindDescriptorSetsInfo->firstSet,
@@ -3020,7 +3020,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSet2(
 	// If stageFlags specifies a subset of all stages corresponding to one or more pipeline bind points,
 	// the binding operation still affects all stages corresponding to the given pipeline bind point(s)
 	// as if the equivalent original version of this command had been called with the same parameters.
-	if (pPushDescriptorSetInfo->stageFlags & VK_SHADER_STAGE_ALL_GRAPHICS) {
+	if (pPushDescriptorSetInfo->stageFlags & (VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT)) {
 		MVKAddCmd(PushDescriptorSet, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pPushDescriptorSetInfo->layout,
 				pPushDescriptorSetInfo->set, pPushDescriptorSetInfo->descriptorWriteCount, pPushDescriptorSetInfo->pDescriptorWrites);
 	}
@@ -4406,6 +4406,47 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPastPresentationTimingGOOGLE(
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDrawIndexedIndirectCount, AMD);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDrawIndirectCount, AMD);
 
+
+#pragma mark -
+#pragma mark VK_EXT_mesh_shader
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMeshTasksEXT(
+	VkCommandBuffer                             commandBuffer,
+	uint32_t                                    groupCountX,
+	uint32_t                                    groupCountY,
+	uint32_t                                    groupCountZ) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(DrawMeshTasks, commandBuffer, groupCountX, groupCountY, groupCountZ);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMeshTasksIndirectEXT(
+	VkCommandBuffer                             commandBuffer,
+	VkBuffer                                    buffer,
+	VkDeviceSize                                offset,
+	uint32_t                                    drawCount,
+	uint32_t                                    stride) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(DrawMeshTasksIndirect, commandBuffer, buffer, offset, drawCount, stride);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMeshTasksIndirectCountEXT(
+	VkCommandBuffer                             commandBuffer,
+	VkBuffer                                    buffer,
+	VkDeviceSize                                offset,
+	VkBuffer                                    countBuffer,
+	VkDeviceSize                                countBufferOffset,
+	uint32_t                                    maxDrawCount,
+	uint32_t                                    stride) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(DrawMeshTasksIndirect, commandBuffer, buffer, offset,
+			  countBuffer, countBufferOffset, maxDrawCount, stride);
+	MVKTraceVulkanCallEnd();
+}
 
 #pragma mark -
 #pragma mark iOS & macOS surface extensions

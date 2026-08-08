@@ -164,6 +164,15 @@ typedef struct {
     VkSampleCountFlags supportedSamplePosCounts;    /**< A bitmask identifying the sample counts for which the device supports sample positions. */
     VkBool32 depthBoundsTest;                       /**< If true, depth bounds test is supported. */
 	VkDeviceSize mtlConstantBufferAlignment;		/**< Minimum Metal constant buffer offset alignment (in bytes). */
+	VkBool32 meshShader;                            /**< native metal mesh shaders are available. */
+	uint32_t maxObjectThreadgroups;                 /**< maximum threadgroups per object shader grid. */
+	uint32_t maxObjectThreadsPerGroup;              /**< maximum threads per object shader threadgroup. */
+	uint32_t maxObjectPayloadSize;                  /**< maximum object shader payload size. */
+	uint32_t maxObjectSharedMemorySize;             /**< maximum object shader shared memory size. */
+	uint32_t maxMeshThreadgroups;                   /**< maximum threadgroups per mesh shader grid. */
+	uint32_t maxMeshThreadsPerGroup;                /**< maximum threads per mesh shader threadgroup. */
+	uint32_t maxMeshOutputSize;                     /**< maximum mesh shader output size. */
+	uint32_t maxMeshSharedMemorySize;               /**< maximum mesh shader shared memory size. */
 } MVKPhysicalDeviceMetalFeatures;
 
 

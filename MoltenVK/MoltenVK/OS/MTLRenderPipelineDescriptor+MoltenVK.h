@@ -53,3 +53,11 @@
 @property(nonatomic, readwrite) NSUInteger logicOperationMVK;
 
 @end
+
+@interface MTLMeshRenderPipelineDescriptor (MoltenVK)
+
+@property(nonatomic, readwrite) NSUInteger sampleMaskMVK;
+@property(nonatomic, readwrite, getter=isLogicOperationEnabledMVK) BOOL logicOperationEnabledMVK;
+@property(nonatomic, readwrite) NSUInteger logicOperationMVK;
+
+@end

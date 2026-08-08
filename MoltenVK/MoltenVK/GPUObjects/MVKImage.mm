@@ -1863,7 +1863,12 @@ MVKPeerSwapchainImage::MVKPeerSwapchainImage(MVKDevice* device,
 
 MVKVulkanAPIObject* MVKImageViewPlane::getVulkanAPIObject() { return _imageView; }
 
-void MVKImageViewPlane::propagateDebugName() { _imageView->setMetalObjectLabel(_mtlTexture, _imageView->_debugName); }
+void MVKImageViewPlane::propagateDebugName() {
+	_imageView->setMetalObjectLabel(_mtlTexture, _imageView->_debugName);
+	for (auto& backing : _memorylessAttachmentBackings) {
+		_imageView->setMetalObjectLabel(backing.second, _imageView->_debugName);
+	}
+}
 
 
 #pragma mark Metal
@@ -1899,6 +1904,38 @@ id<MTLTexture> MVKImageViewPlane::getMTLTexture() {
     } else {
         return _imageView->_image->getMTLTexture(_planeIndex);
     }
+}
+
+id<MTLTexture> MVKImageViewPlane::getMemorylessAttachmentBacking(id<MTLTexture> mtlTexture) {
+	id<MTLTexture> viewTexture = getMTLTexture();
+	if (mtlTexture != viewTexture &&
+		mvkGetRootMTLTexture(mtlTexture) != mvkGetRootMTLTexture(viewTexture)) { return nil; }
+
+	lock_guard<mutex> lock(_imageView->_lock);
+	for (auto& backing : _memorylessAttachmentBackings) {
+		if (backing.first == mtlTexture) { return backing.second; }
+	}
+
+	MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor new];
+	mtlTexDesc.textureType = mtlTexture.textureType;
+	mtlTexDesc.pixelFormat = mtlTexture.pixelFormat;
+	mtlTexDesc.width = mtlTexture.width;
+	mtlTexDesc.height = mtlTexture.height;
+	mtlTexDesc.depth = mtlTexture.depth;
+	mtlTexDesc.mipmapLevelCount = mtlTexture.mipmapLevelCount;
+	mtlTexDesc.sampleCount = mtlTexture.sampleCount;
+	mtlTexDesc.arrayLength = mtlTexture.arrayLength;
+	mtlTexDesc.usage = mtlTexture.usage | MTLTextureUsageShaderRead;
+	mtlTexDesc.storageMode = MTLStorageModePrivate;
+	id<MTLTexture> backing = [getMTLDevice() newTextureWithDescriptor:mtlTexDesc];
+	[mtlTexDesc release];
+	if (!backing) { return nil; }
+
+	_imageView->setMetalObjectLabel(backing, _imageView->_debugName);
+	getDevice()->makeResident(backing);
+	getDevice()->getLiveResources().add(backing);
+	_memorylessAttachmentBackings.push_back({mtlTexture, backing});
+	return backing;
 }
 
 bool MVKImageViewPlane::matchesMTLTextureViewBase(id<MTLTexture> mtlTexture) {
@@ -2188,6 +2225,12 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 }
 
 void MVKImageViewPlane::releaseMTLTexture() {
+	for (auto& backing : _memorylessAttachmentBackings) {
+		getDevice()->removeResidency(backing.second);
+		getDevice()->getLiveResources().remove(backing.second);
+		[backing.second release];
+	}
+	_memorylessAttachmentBackings.clear();
 	if (id<MTLTexture> tex = _mtlTexture) {
 		getDevice()->getLiveResources().remove(tex);
 		[tex release];
@@ -2247,6 +2290,10 @@ void MVKImageView::populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPas
         mtlAttDesc.resolveSlice = useView ? 0 : _subresourceRange.baseArrayLayer;
         mtlAttDesc.resolveDepthPlane = 0;
     }
+}
+
+id<MTLTexture> MVKImageView::getMemorylessAttachmentBacking(id<MTLTexture> mtlTexture) {
+	return _planes.empty() ? nil : _planes[0]->getMemorylessAttachmentBacking(mtlTexture);
 }
 
 

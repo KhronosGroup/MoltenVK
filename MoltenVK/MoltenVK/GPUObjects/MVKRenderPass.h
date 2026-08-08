@@ -57,6 +57,17 @@ public:
 	/** Returns the number of color attachments, which may be zero for depth-only rendering. */
 	uint32_t getColorAttachmentCount() { return uint32_t(_colorAttachments.size()); }
 
+	uint32_t getColorAttachmentIndex(uint32_t colorAttIdx) {
+		return colorAttIdx < _colorAttachments.size() ? _colorAttachments[colorAttIdx].attachment : VK_ATTACHMENT_UNUSED;
+	}
+	uint32_t getResolveAttachmentIndex(uint32_t colorAttIdx) {
+		return colorAttIdx < _resolveAttachments.size() ? _resolveAttachments[colorAttIdx].attachment : VK_ATTACHMENT_UNUSED;
+	}
+	uint32_t getDepthAttachmentIndex() { return _depthAttachment.attachment; }
+	uint32_t getStencilAttachmentIndex() { return _stencilAttachment.attachment; }
+	uint32_t getDepthResolveAttachmentIndex() { return _depthResolveAttachment.attachment; }
+	uint32_t getStencilResolveAttachmentIndex() { return _stencilResolveAttachment.attachment; }
+
 	/** Returns the clear-attachments color index for the color attachment. */
 	uint32_t getClearColorAttachmentIndex(uint32_t colorAttIdx);
 

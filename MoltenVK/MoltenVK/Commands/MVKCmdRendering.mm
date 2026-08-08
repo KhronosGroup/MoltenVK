@@ -38,6 +38,7 @@ VkResult MVKCmdBeginRenderPassBase::setContent(MVKCommandBuffer* cmdBuff,
 	_renderArea = pRenderPassBegin->renderArea;
 
 	cmdBuff->_currentSubpassInfo.beginRenderpass(_renderPass);
+	cmdBuff->recordBeginRenderPass(this);
 
 	return VK_SUCCESS;
 }
@@ -116,6 +117,7 @@ void MVKCmdNextSubpass::encode(MVKCommandEncoder* cmdEncoder) {
 
 VkResult MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff) {
 	cmdBuff->_currentSubpassInfo = {};
+	cmdBuff->recordEndRenderPass();
 	return VK_SUCCESS;
 }
 
@@ -151,6 +153,7 @@ VkResult MVKCmdBeginRendering<N>::setContent(MVKCommandBuffer* cmdBuff,
 	}
 
 	cmdBuff->_currentSubpassInfo.beginRendering(pRenderingInfo->viewMask);
+	cmdBuff->recordBeginRenderPass(this);
 
 	return VK_SUCCESS;
 }
@@ -220,6 +223,7 @@ void MVKCmdSetRenderingInputAttachmentIndices::encode(MVKCommandEncoder* cmdEnco
 
 VkResult MVKCmdEndRendering::setContent(MVKCommandBuffer* cmdBuff) {
 	cmdBuff->_currentSubpassInfo = {};
+	cmdBuff->recordEndRenderPass();
 	return VK_SUCCESS;
 }
 

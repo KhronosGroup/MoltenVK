@@ -151,6 +151,12 @@ public:
 	/** Called when a MVKCmdExecuteCommands is added to this command buffer. */
 	void recordExecuteCommands(MVKArrayRef<MVKCommandBuffer*const> secondaryCommandBuffers);
 
+	void recordBeginRenderPass(MVKCommand* passCmd);
+	void recordEndRenderPass();
+	void recordMeshDraw(bool isIndirect = false);
+	void recordMemorylessAttachmentBacking();
+	bool needsMemorylessAttachmentBacking(MVKCommand* passCmd);
+
 	/** Called when a timestamp command is added. */
 	void recordTimestampCommand();
 
@@ -162,6 +168,7 @@ public:
 
 	/** The most recent recorded tessellation pipeline */
 	MVKCmdBindPipeline* _lastTessellationPipeline;
+	MVKCmdBindPipeline* _lastGraphicsPipeline;
 
 
 #pragma mark Construction
@@ -200,6 +207,8 @@ protected:
 
 	MVKCommand* _head = nullptr;
 	MVKCommand* _tail = nullptr;
+	MVKCommand* _currentRenderPassCommand = nullptr;
+	MVKSmallVector<MVKCommand*, 1> _memorylessBackingRenderPasses;
 	MVKSmallVector<VkFormat, kMVKDefaultAttachmentCount> _secondaryInheritanceColorAttachmentFormats;
 	MVKSmallVector<uint32_t, kMVKDefaultAttachmentCount> _secondaryInheritanceColorAttachmentLocations;
 	MVKSmallVector<uint32_t, kMVKDefaultAttachmentCount> _secondaryInheritanceColorAttachmentInputIndices;
@@ -228,6 +237,7 @@ protected:
 	bool _hasSecondaryInheritanceColorAttachmentInputIndices;
 	bool _hasSecondaryInheritanceDepthAttachmentInputIndex;
 	bool _hasSecondaryInheritanceStencilAttachmentInputIndex;
+	bool _needsInheritedMemorylessAttachmentBacking;
 };
 
 
@@ -307,6 +317,11 @@ public:
 	/** The layer count of current framebuffer.*/
 	uint32_t getFramebufferLayerCount();
 
+	bool isUsingMemorylessAttachmentBacking() { return _isUsingMemorylessAttachmentBacking; }
+
+	id<MTLTexture> getMemorylessAttachmentTexture(id<MTLTexture> mtlTexture,
+												  MVKImageView* attachment = nullptr);
+
 	/** Returns the index of the currently active multiview subpass, or zero if the current render pass is not multiview. */
 	uint32_t getMultiviewPassIndex() { return _multiviewPassIndex; }
 
@@ -335,6 +350,8 @@ public:
 
 	/** Called by each graphics draw command to establish any outstanding state just prior to performing the draw. */
 	void finalizeDrawState(MVKGraphicsStage stage);
+
+	id<MTLComputeCommandEncoder> finalizeMeshCaptureState();
 
     /** Called by each compute dispatch command to establish any outstanding state just prior to performing the dispatch. */
     void finalizeDispatchState();
@@ -542,6 +559,7 @@ protected:
 	MVKSmallVector<GPUCounterQuery, 16> _timestampStageCounterQueries;
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
 	MVKSmallVector<MVKImageView*, kMVKDefaultAttachmentCount> _attachments;
+	MVKSmallVector<std::pair<id<MTLTexture>, id<MTLTexture>>, kMVKDefaultAttachmentCount> _memorylessAttachmentBackings;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
 	id<MTLFence> _stageCountersMTLFence;
@@ -553,6 +571,7 @@ protected:
 	MVKCommandUse _mtlComputeEncoderUse;
 	MVKCommandUse _mtlBlitEncoderUse;
 	bool _isRenderingEntireAttachment;
+	bool _isUsingMemorylessAttachmentBacking;
 };
 
 

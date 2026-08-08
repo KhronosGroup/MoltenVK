@@ -428,7 +428,7 @@ void MVKRenderSubpass::resolveUnresolvableAttachments(MVKCommandEncoder* cmdEnco
 				MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
 				state.bindPipeline(mtlComputeEnc, mtlRslvState);
 				state.bindTexture(mtlComputeEnc, raImgView->getMTLTexture(), 0);
-				state.bindTexture(mtlComputeEnc, caImgView->getMTLTexture(), 1);
+				state.bindTexture(mtlComputeEnc, cmdEncoder->getMemorylessAttachmentTexture(caImgView->getMTLTexture(), caImgView), 1);
 				MTLSize gridSize = mvkMTLSizeFromVkExtent3D(raImgView->getExtent3D());
 				MTLSize tgSize = MTLSizeMake(mtlRslvState.threadExecutionWidth, 1, 1);
 				if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
@@ -847,7 +847,8 @@ void MVKAttachmentDescription::encodeStoreAction(MVKCommandEncoder* cmdEncoder,
 	}
 	bool isColorFormat = !(isDepthFormat || isStencilFormat);
 
-	bool isMemorylessAttachment = attachment->getImage()->getMTLStorageMode() == MTLStorageModeMemoryless;
+	bool isMemorylessAttachment = attachment->getImage()->getMTLStorageMode() == MTLStorageModeMemoryless &&
+								  !cmdEncoder->isUsingMemorylessAttachmentBacking();
 	MTLStoreAction storeAction = getMTLStoreAction(subpass, isRenderingEntireAttachment, isMemorylessAttachment,
 												   hasResolveAttachment, canResolveFormat, isStencil, storeOverride);
 	if (isColorFormat) {

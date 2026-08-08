@@ -191,6 +191,12 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::markAllInterfaceVarsAn
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToMSLConversionConfiguration& other) const {
 
     if ( !options.matches(other.options) ) { return false; }
+	if (shaderInterfaceSpecializationConstants != other.shaderInterfaceSpecializationConstants) { return false; }
+	if (options.entryPointStage == ExecutionModelMeshEXT &&
+		meshOutputSpillKeys != other.meshOutputSpillKeys) { return false; }
+	if (options.entryPointStage == ExecutionModelFragment &&
+		(!(meshOutputSpillLayout == other.meshOutputSpillLayout) ||
+		 meshOutputSpillFields != other.meshOutputSpillFields)) { return false; }
 
 	for (const auto& si : shaderInputs) {
 		if (si.outIsUsedByShader && !containsMatching(other.shaderInputs, si)) { return false; }
@@ -249,6 +255,36 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::alignWith(const SPIRVT
 #pragma mark -
 #pragma mark SPIRVToMSLConverter
 
+static void applyShaderInterfaceSpecializationConstants(
+		CompilerMSL* compiler,
+		const vector<SPIRVShaderInterfaceSpecializationConstant>& specializationConstants) {
+	for (const auto& requested : specializationConstants) {
+		for (const auto& available : compiler->get_specialization_constants()) {
+			if (available.constant_id != requested.constantID) { continue; }
+			auto& constant = compiler->get_constant(available.id);
+			if (!constant.is_used_as_array_length) { break; }
+			const auto& type = compiler->get_type(constant.constant_type);
+			if (type.columns != 1 || type.vecsize != 1) { break; }
+			const bool isInteger =
+				type.basetype == SPIRType::SByte ||
+				type.basetype == SPIRType::UByte ||
+				type.basetype == SPIRType::Short ||
+				type.basetype == SPIRType::UShort ||
+				type.basetype == SPIRType::Int ||
+				type.basetype == SPIRType::UInt ||
+				type.basetype == SPIRType::Int64 ||
+				type.basetype == SPIRType::UInt64;
+			if (isInteger && requested.byteSize * 8u == type.width) {
+				constant.m.c[0].r[0].u64 = requested.value;
+			} else if (type.basetype == SPIRType::Boolean && type.width == 1 &&
+					   requested.byteSize == sizeof(uint32_t)) {
+				constant.m.c[0].r[0].u32 = requested.value != 0;
+			}
+			break;
+		}
+	}
+}
+
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConverter::setSPIRV(const uint32_t* spirvCode, size_t length) {
 	_spirv.clear();			// Clear for reuse
 	_spirv.reserve(length);
@@ -282,6 +318,9 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 			pMSLCompiler->set_entry_point(shaderConfig.options.entryPointName, shaderConfig.options.entryPointStage);
 		}
 
+		applyShaderInterfaceSpecializationConstants(
+			pMSLCompiler, shaderConfig.shaderInterfaceSpecializationConstants);
+
 		// Set up tessellation parameters if needed.
 		if (shaderConfig.options.entryPointStage == ExecutionModelTessellationControl ||
 			shaderConfig.options.entryPointStage == ExecutionModelTessellationEvaluation) {
@@ -309,6 +348,21 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 
 		for (auto& so : shaderConfig.shaderOutputs) {
 			pMSLCompiler->add_msl_shader_output(so.shaderVar);
+		}
+
+		if (shaderConfig.options.entryPointStage == ExecutionModelMeshEXT) {
+			for (const auto& key : shaderConfig.meshOutputSpillKeys) {
+				pMSLCompiler->add_msl_mesh_output_spill(key);
+			}
+		} else if (shaderConfig.options.entryPointStage == ExecutionModelFragment &&
+				   !shaderConfig.meshOutputSpillFields.empty()) {
+			SmallVector<MSLMeshOutputSpillField> spillFields;
+			spillFields.reserve(shaderConfig.meshOutputSpillFields.size());
+			for (const auto& field : shaderConfig.meshOutputSpillFields) {
+				spillFields.push_back(field);
+			}
+			pMSLCompiler->set_msl_mesh_output_spill_layout(shaderConfig.meshOutputSpillLayout,
+															  spillFields);
 		}
 
 		// Add resource bindings and hardcoded constexpr samplers
@@ -356,6 +410,16 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	// Populate the shader conversion results with info from the compilation run,
 	// and mark which vertex attributes and resource bindings are used by the shader
 	populateEntryPoint(pMSLCompiler, shaderConfig.options, conversionResult.resultInfo.entryPoint);
+	conversionResult.resultInfo.meshOutputBufferSize = pMSLCompiler ? pMSLCompiler->get_mesh_output_buffer_size() : 0;
+	conversionResult.resultInfo.meshOutputBufferAlignment = pMSLCompiler ? pMSLCompiler->get_mesh_output_buffer_alignment() : 0;
+	conversionResult.resultInfo.meshOutputSpillLayout = MSLMeshOutputSpillLayout{};
+	conversionResult.resultInfo.meshOutputSpillFields.clear();
+	if (pMSLCompiler) {
+		conversionResult.resultInfo.meshOutputSpillLayout =
+			pMSLCompiler->get_msl_mesh_output_spill_layout();
+		const auto& spillFields = pMSLCompiler->get_msl_mesh_output_spill_fields();
+		conversionResult.resultInfo.meshOutputSpillFields.assign(spillFields.begin(), spillFields.end());
+	}
 	conversionResult.resultInfo.isRasterizationDisabled = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
 	conversionResult.resultInfo.isPositionInvariant = pMSLCompiler && pMSLCompiler->is_position_invariant();
 	conversionResult.resultInfo.needsSwizzleBuffer = pMSLCompiler && pMSLCompiler->needs_swizzle_buffer();

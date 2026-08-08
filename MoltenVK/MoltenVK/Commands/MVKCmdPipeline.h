@@ -109,6 +109,8 @@ public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff, VkPipeline pipeline);
 
 	virtual bool isTessellationPipeline() { return false; };
+	virtual bool isGraphicsPipeline() { return false; }
+	virtual bool needsMemorylessAttachmentBackingForMeshDraw(bool isIndirect) { return false; }
 
 protected:
 	MVKPipeline* _pipeline;
@@ -125,6 +127,8 @@ public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 	bool isTessellationPipeline() override;
+	bool isGraphicsPipeline() override { return true; }
+	bool needsMemorylessAttachmentBackingForMeshDraw(bool isIndirect) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;

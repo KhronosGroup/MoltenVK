@@ -43,6 +43,475 @@ using namespace std;
 using namespace mvk;
 using namespace SPIRV_CROSS_NAMESPACE;
 
+static constexpr uint32_t kMVKMetalMeshVaryingComponentLimit = 124;
+static constexpr uint32_t kMVKMeshPositionComponentCount = 4;
+static constexpr uint32_t kMVKMeshSpillPrimitiveTokenComponentCount = 1;
+static constexpr uint32_t kMVKNativeTasklessMeshMaxOutputVertices = 128;
+static constexpr uint32_t kMVKNativeTasklessMeshMaxOutputPrimitives = 128;
+static constexpr uint32_t kMVKNativeTasklessMeshMaxOutputBytes = 16 * 1024;
+
+static bool mvkPopulateShaderInterfaceSpecializationConstants(
+		const VkPipelineShaderStageCreateInfo* stage,
+		vector<SPIRVShaderInterfaceSpecializationConstant>& specializationConstants,
+		string& error) {
+	specializationConstants.clear();
+	if (!stage || !stage->pSpecializationInfo) { return true; }
+	const auto& info = *stage->pSpecializationInfo;
+	if (info.mapEntryCount && !info.pMapEntries) {
+		error = "Shader specialization map entries are missing.";
+		return false;
+	}
+	if (info.dataSize && !info.pData) {
+		error = "Shader specialization data is missing.";
+		return false;
+	}
+	MVKSmallVector<uint32_t, 8> constantIDs;
+	for (uint32_t index = 0; index < info.mapEntryCount; ++index) {
+		const auto& entry = info.pMapEntries[index];
+		if (std::find(constantIDs.begin(), constantIDs.end(), entry.constantID) != constantIDs.end()) {
+			error = "Shader specialization contains a duplicate constant ID.";
+			return false;
+		}
+		constantIDs.push_back(entry.constantID);
+		if (entry.offset > info.dataSize || entry.size > info.dataSize - entry.offset) {
+			error = "Shader specialization entry extends past its data.";
+			return false;
+		}
+		if (entry.size != 1 && entry.size != 2 &&
+			entry.size != 4 && entry.size != 8) { continue; }
+		SPIRVShaderInterfaceSpecializationConstant value;
+		value.constantID = entry.constantID;
+		value.byteSize = static_cast<uint32_t>(entry.size);
+		memcpy(&value.value, static_cast<const uint8_t*>(info.pData) + entry.offset,
+			   entry.size);
+		specializationConstants.push_back(value);
+	}
+	std::sort(specializationConstants.begin(), specializationConstants.end(),
+			  [](const auto& lhs, const auto& rhs) { return lhs.constantID < rhs.constantID; });
+	return true;
+}
+
+struct MVKMeshOutputSpillSelection {
+	MVKSmallVector<SPIRVShaderInterfaceVariable, 32> fields;
+	uint64_t userComponentCount = 0;
+	uint64_t spilledComponentCount = 0;
+	uint64_t physicalComponentCount = 0;
+	bool usesPerVertexFields = false;
+	bool fits = true;
+};
+
+static uint32_t mvkMeshOutputVaryingComponentCount(const SPIRVShaderInterfaceVariable& input) {
+	uint32_t componentsPerLane = 1;
+	switch (input.baseType) {
+		case SPIRType::Int64:
+		case SPIRType::UInt64:
+		case SPIRType::Double:
+			componentsPerLane = 2;
+			break;
+		default:
+			break;
+	}
+	return input.vecWidth * componentsPerLane;
+}
+
+template<class Outputs>
+static uint64_t mvkEstimateNativeMeshOutputBytes(
+		const Outputs& outputs,
+		const SPIRVMeshReflectionData& reflection,
+		VkPrimitiveTopology topology) {
+	uint64_t vertexStride = 4 * sizeof(uint32_t);
+	uint64_t primitiveStride = 0;
+	switch (topology) {
+		case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
+			vertexStride += sizeof(uint32_t);
+			primitiveStride = sizeof(uint32_t);
+			break;
+		case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
+			primitiveStride = 2 * sizeof(uint32_t);
+			break;
+		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
+			primitiveStride = 3 * sizeof(uint32_t);
+			break;
+		default:
+			return UINT64_MAX;
+	}
+
+	for (const auto& output : outputs) {
+		if (!output.isUsed) { continue; }
+		uint64_t size = getShaderInterfaceVariableSize(output);
+		switch (output.builtin) {
+			case spv::BuiltInPosition:
+			case spv::BuiltInPrimitivePointIndicesEXT:
+			case spv::BuiltInPrimitiveLineIndicesEXT:
+			case spv::BuiltInPrimitiveTriangleIndicesEXT:
+				continue;
+			case spv::BuiltInPointSize:
+				if (topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST) { continue; }
+				break;
+			case spv::BuiltInClipDistance:
+				size *= 2;
+				break;
+			default:
+				break;
+		}
+		if (output.perPrimitive) {
+			primitiveStride += size;
+		} else {
+			vertexStride += size;
+		}
+	}
+	return vertexStride * reflection.maxOutputVertices +
+		primitiveStride * reflection.maxOutputPrimitives;
+}
+
+static bool mvkGetMeshOutputSpillType(const SPIRVShaderInterfaceVariable& variable,
+									 MSLMeshOutputSpillBaseType& baseType,
+									 uint32_t& bitWidth) {
+	switch (variable.baseType) {
+		case SPIRType::SByte:  baseType = MSL_MESH_OUTPUT_SPILL_BASE_TYPE_SINT; bitWidth = 8;  return true;
+		case SPIRType::UByte:  baseType = MSL_MESH_OUTPUT_SPILL_BASE_TYPE_UINT; bitWidth = 8;  return true;
+		case SPIRType::Short:  baseType = MSL_MESH_OUTPUT_SPILL_BASE_TYPE_SINT; bitWidth = 16; return true;
+		case SPIRType::UShort: baseType = MSL_MESH_OUTPUT_SPILL_BASE_TYPE_UINT; bitWidth = 16; return true;
+		case SPIRType::Half:   baseType = MSL_MESH_OUTPUT_SPILL_BASE_TYPE_FLOAT; bitWidth = 16; return true;
+		case SPIRType::Int:    baseType = MSL_MESH_OUTPUT_SPILL_BASE_TYPE_SINT; bitWidth = 32; return true;
+		case SPIRType::UInt:   baseType = MSL_MESH_OUTPUT_SPILL_BASE_TYPE_UINT; bitWidth = 32; return true;
+		case SPIRType::Float:  baseType = MSL_MESH_OUTPUT_SPILL_BASE_TYPE_FLOAT; bitWidth = 32; return true;
+		case SPIRType::Int64:  baseType = MSL_MESH_OUTPUT_SPILL_BASE_TYPE_SINT; bitWidth = 64; return true;
+		case SPIRType::UInt64: baseType = MSL_MESH_OUTPUT_SPILL_BASE_TYPE_UINT; bitWidth = 64; return true;
+		case SPIRType::Double: baseType = MSL_MESH_OUTPUT_SPILL_BASE_TYPE_FLOAT; bitWidth = 64; return true;
+		default: return false;
+	}
+}
+
+static bool mvkValidateMeshOutputSpillFieldTypes(
+		const vector<MSLMeshOutputSpillField>& fields,
+		const MVKSmallVector<SPIRVShaderInterfaceVariable, 32>& interfaceVariables,
+		bool requireEveryField,
+		string& error) {
+	for (const auto& field : fields) {
+		const SPIRVShaderInterfaceVariable* match = nullptr;
+		for (const auto& variable : interfaceVariables) {
+			MSLShaderVariableRate rate = variable.perPrimitive
+				? MSL_SHADER_VARIABLE_RATE_PER_PRIMITIVE
+				: MSL_SHADER_VARIABLE_RATE_PER_VERTEX;
+			if (variable.isUsed && variable.builtin == spv::BuiltInMax &&
+				variable.location == field.key.location &&
+				variable.component == field.key.component &&
+				rate == field.key.rate) {
+				match = &variable;
+				break;
+			}
+		}
+		if (!match) {
+			if (!requireEveryField) { continue; }
+			error = "Mesh output spill metadata does not match a reflected mesh output.";
+			return false;
+		}
+		MSLMeshOutputSpillBaseType expectedBaseType;
+		uint32_t expectedBitWidth = 0;
+		if (!mvkGetMeshOutputSpillType(*match, expectedBaseType, expectedBitWidth) ||
+			field.base_type != expectedBaseType ||
+			field.bit_width != expectedBitWidth ||
+			field.vecsize != match->vecWidth ||
+			field.columns != 1) {
+			error = "Mesh output spill metadata type does not match the reflected shader interface.";
+			return false;
+		}
+	}
+	return true;
+}
+
+static uint32_t mvkMeshOutputMomentBasisComponentCount(VkPrimitiveTopology topology) {
+	switch (topology) {
+		case VK_PRIMITIVE_TOPOLOGY_POINT_LIST: return 0;
+		case VK_PRIMITIVE_TOPOLOGY_LINE_LIST: return 1;
+		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST: return 2;
+		default: return 0;
+	}
+}
+
+static bool mvkIsMeshOutputTopology(VkPrimitiveTopology topology) {
+	return topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST ||
+		topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST ||
+		topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+}
+
+struct MVKMeshFixedOutputComponentCounts {
+	uint64_t native = 0;
+	uint64_t spilled = 0;
+};
+
+static MVKMeshFixedOutputComponentCounts mvkMeshFixedOutputComponentCounts(
+		const MVKSmallVector<SPIRVShaderInterfaceVariable, 32>& meshOutputs,
+		VkPrimitiveTopology topology) {
+	MVKMeshFixedOutputComponentCounts counts;
+	if (!mvkIsMeshOutputTopology(topology)) { return counts; }
+	counts.native = kMVKMeshPositionComponentCount;
+	counts.spilled = kMVKMeshPositionComponentCount;
+	if (topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST) {
+		counts.native++;
+		counts.spilled++;
+	}
+
+	for (const auto& output : meshOutputs) {
+		if (!output.isUsed || output.builtin == spv::BuiltInMax ||
+			output.builtin == spv::BuiltInPosition) { continue; }
+		if (output.builtin == spv::BuiltInPointSize &&
+			topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST) { continue; }
+		switch (output.builtin) {
+			case spv::BuiltInPrimitivePointIndicesEXT:
+			case spv::BuiltInPrimitiveLineIndicesEXT:
+			case spv::BuiltInPrimitiveTriangleIndicesEXT:
+				continue;
+			default:
+				break;
+		}
+
+		uint32_t componentCount = mvkMeshOutputVaryingComponentCount(output);
+		counts.native += componentCount;
+		if (output.builtin == spv::BuiltInClipDistance) {
+			counts.native += componentCount;
+			counts.spilled += componentCount;
+		}
+		if (output.builtin != spv::BuiltInPrimitiveId) {
+			counts.spilled += componentCount;
+		}
+	}
+	return counts;
+}
+
+static bool mvkMeshOutputSpillTopology(VkPrimitiveTopology topology,
+									   MSLMeshOutputSpillTopology& spillTopology) {
+	switch (topology) {
+		case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
+			spillTopology = MSL_MESH_OUTPUT_SPILL_TOPOLOGY_POINT;
+			return true;
+		case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
+			spillTopology = MSL_MESH_OUTPUT_SPILL_TOPOLOGY_LINE;
+			return true;
+		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
+			spillTopology = MSL_MESH_OUTPUT_SPILL_TOPOLOGY_TRIANGLE;
+			return true;
+		default:
+			return false;
+	}
+}
+
+static MVKMeshOutputSpillSelection mvkSelectMeshOutputSpills(
+		const MVKSmallVector<SPIRVShaderInterfaceVariable, 32>& meshOutputs,
+		VkPrimitiveTopology topology) {
+	MVKMeshOutputSpillSelection selection;
+	const uint32_t momentBasisWidth = mvkMeshOutputMomentBasisComponentCount(topology);
+	const auto fixedOutputComponents = mvkMeshFixedOutputComponentCounts(meshOutputs, topology);
+	if (!mvkIsMeshOutputTopology(topology) || !fixedOutputComponents.native) {
+		selection.fits = false;
+		return selection;
+	}
+	MVKSmallVector<const SPIRVShaderInterfaceVariable*, 32> candidates;
+	for (const auto& output : meshOutputs) {
+		if (!output.isUsed || output.builtin != spv::BuiltInMax) { continue; }
+		if (!output.vecWidth || output.vecWidth > 4) {
+			selection.fits = false;
+			return selection;
+		}
+		uint32_t componentCount = mvkMeshOutputVaryingComponentCount(output);
+		if (!componentCount) {
+			selection.fits = false;
+			return selection;
+		}
+		selection.userComponentCount += componentCount;
+		candidates.push_back(&output);
+	}
+
+	selection.physicalComponentCount =
+		selection.userComponentCount + fixedOutputComponents.native;
+	if (selection.physicalComponentCount <= kMVKMetalMeshVaryingComponentLimit) {
+		return selection;
+	}
+
+	std::stable_sort(candidates.begin(), candidates.end(), [](const auto* lhs, const auto* rhs) {
+		if (lhs->perPrimitive != rhs->perPrimitive) { return lhs->perPrimitive; }
+		uint32_t lhsComponents = mvkMeshOutputVaryingComponentCount(*lhs);
+		uint32_t rhsComponents = mvkMeshOutputVaryingComponentCount(*rhs);
+		if (lhsComponents != rhsComponents) { return lhsComponents > rhsComponents; }
+		if (lhs->location != rhs->location) { return lhs->location < rhs->location; }
+		return lhs->component < rhs->component;
+	});
+
+	uint64_t remainingUserComponents = selection.userComponentCount;
+	for (const auto* candidate : candidates) {
+		uint32_t fieldComponents = mvkMeshOutputVaryingComponentCount(*candidate);
+		selection.fields.push_back(*candidate);
+		selection.spilledComponentCount += fieldComponents;
+		remainingUserComponents -= fieldComponents;
+		selection.usesPerVertexFields |= !candidate->perPrimitive;
+
+		uint32_t momentBasisComponents = selection.usesPerVertexFields
+			? 2 * momentBasisWidth
+			: 0;
+		selection.physicalComponentCount = remainingUserComponents +
+			fixedOutputComponents.spilled +
+			kMVKMeshSpillPrimitiveTokenComponentCount +
+			momentBasisComponents;
+		if (selection.physicalComponentCount <= kMVKMetalMeshVaryingComponentLimit) {
+			return selection;
+		}
+	}
+
+	selection.fits = false;
+	return selection;
+}
+
+static bool mvkValidateMeshOutputSpillLayout(
+		const vector<MSLMeshOutputSpillKey>& keys,
+		const MSLMeshOutputSpillLayout& layout,
+		const vector<MSLMeshOutputSpillField>& fields,
+		uint32_t captureRecordSize,
+		VkPrimitiveTopology topology,
+		string& error) {
+	if (keys.empty()) {
+		if (!fields.empty()) { error = "Mesh output spill metadata exists without selected fields."; }
+		return fields.empty();
+	}
+	MSLMeshOutputSpillTopology expectedTopology;
+	if (!mvkMeshOutputSpillTopology(topology, expectedTopology)) {
+		error = "Mesh output spill has an unsupported primitive topology.";
+		return false;
+	}
+	if (layout.version != 2) {
+		error = "Mesh output spill layout has an unsupported version.";
+		return false;
+	}
+	if (!captureRecordSize || (captureRecordSize & 3u) ||
+		layout.capture_record_stride != captureRecordSize) {
+		error = "Mesh output spill capture stride does not match the mesh capture record.";
+		return false;
+	}
+	if (!layout.max_vertices || !layout.max_primitives || layout.topology != expectedTopology) {
+		error = "Mesh output spill layout has invalid mesh execution limits or topology.";
+		return false;
+	}
+	const uint32_t recordWordCount = captureRecordSize / sizeof(uint32_t);
+	const uint32_t expectedPrimitiveIndexStride = topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+		? 3u : topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST ? 2u : 1u;
+	if (layout.primitive_index_word_offset == UINT32_MAX ||
+		layout.primitive_index_word_offset >= recordWordCount ||
+		layout.primitive_index_word_stride != expectedPrimitiveIndexStride) {
+		error = "Mesh output spill layout has an invalid primitive-index region.";
+		return false;
+	}
+	uint64_t primitiveIndexEnd = uint64_t(layout.primitive_index_word_offset) +
+		uint64_t(layout.max_primitives) * layout.primitive_index_word_stride;
+	if (primitiveIndexEnd > recordWordCount ||
+		layout.logical_primitive_id_word_offset != primitiveIndexEnd) {
+		error = "Mesh output spill primitive indices extend past the capture record.";
+		return false;
+	}
+	uint64_t logicalPrimitiveIdEnd = uint64_t(layout.logical_primitive_id_word_offset) +
+		layout.max_primitives;
+	if (layout.logical_primitive_id_word_offset == UINT32_MAX ||
+		logicalPrimitiveIdEnd > recordWordCount) {
+		error = "Mesh output spill logical primitive IDs extend past the capture record.";
+		return false;
+	}
+
+	auto keyLess = [](const auto& lhs, const auto& rhs) {
+		if (lhs.rate != rhs.rate) { return lhs.rate < rhs.rate; }
+		if (lhs.location != rhs.location) { return lhs.location < rhs.location; }
+		return lhs.component < rhs.component;
+	};
+	auto validKey = [](const auto& key) {
+		return key.location < 32 && key.component < 4 &&
+			(key.rate == MSL_SHADER_VARIABLE_RATE_PER_VERTEX ||
+			 key.rate == MSL_SHADER_VARIABLE_RATE_PER_PRIMITIVE);
+	};
+	for (size_t index = 0; index < keys.size(); ++index) {
+		if (!validKey(keys[index]) ||
+			(index && !keyLess(keys[index - 1], keys[index]))) {
+			error = "Mesh output spill selection keys are invalid, duplicated, or unsorted.";
+			return false;
+		}
+	}
+	if (fields.size() < keys.size()) {
+		error = "Mesh output spill metadata does not contain every selected key.";
+		return false;
+	}
+	for (size_t index = 0; index < fields.size(); ++index) {
+		if (!validKey(fields[index].key) ||
+			(index && !keyLess(fields[index - 1].key, fields[index].key))) {
+			error = "Mesh output spill result fields are invalid, duplicated, or unsorted.";
+			return false;
+		}
+	}
+	for (const auto& key : keys) {
+		auto match = std::lower_bound(fields.begin(), fields.end(), key,
+			[&](const auto& field, const auto& requested) {
+				return keyLess(field.key, requested);
+			});
+		if (match == fields.end() || !(match->key == key)) {
+			error = "Mesh output spill metadata is missing a selected field.";
+			return false;
+		}
+	}
+	uint64_t nextFieldWord = logicalPrimitiveIdEnd;
+	for (const auto& field : fields) {
+		if (field.capture_word_offset == UINT32_MAX ||
+			field.capture_word_offset != nextFieldWord ||
+			(field.bit_width != 16 && field.bit_width != 32 && field.bit_width != 64) ||
+			!field.vecsize || field.vecsize > 4 || field.columns != 1 ||
+			field.capture_word_stride != field.vecsize * (field.bit_width == 64 ? 2u : 1u) ||
+			(field.base_type != MSL_MESH_OUTPUT_SPILL_BASE_TYPE_SINT &&
+			 field.base_type != MSL_MESH_OUTPUT_SPILL_BASE_TYPE_UINT &&
+			 field.base_type != MSL_MESH_OUTPUT_SPILL_BASE_TYPE_FLOAT)) {
+			error = "Mesh output spill field metadata is invalid.";
+			return false;
+		}
+		uint64_t elementCount = field.key.rate == MSL_SHADER_VARIABLE_RATE_PER_VERTEX
+			? layout.max_vertices
+			: layout.max_primitives;
+		uint64_t fieldEnd = uint64_t(field.capture_word_offset) +
+			elementCount * field.capture_word_stride;
+		if (fieldEnd > recordWordCount) {
+			error = "Mesh output spill field extends past the capture record.";
+			return false;
+		}
+		nextFieldWord = fieldEnd;
+	}
+
+	const bool hasPerVertexField = std::any_of(fields.begin(), fields.end(), [](const auto& field) {
+		return field.key.rate == MSL_SHADER_VARIABLE_RATE_PER_VERTEX;
+	});
+	const uint32_t expectedBasisComponents = hasPerVertexField
+		? mvkMeshOutputMomentBasisComponentCount(topology)
+		: 0;
+	if (layout.perspective_basis_components != expectedBasisComponents ||
+		layout.no_perspective_basis_components != expectedBasisComponents) {
+		error = "Mesh output spill reconstruction basis has the wrong width.";
+		return false;
+	}
+	if (expectedBasisComponents &&
+		(layout.perspective_basis_location == UINT32_MAX ||
+		 layout.perspective_basis_component == UINT32_MAX ||
+		 layout.perspective_basis_component + expectedBasisComponents > 4 ||
+		 layout.no_perspective_basis_location == UINT32_MAX ||
+		 layout.no_perspective_basis_component == UINT32_MAX ||
+		 layout.no_perspective_basis_component + expectedBasisComponents > 4)) {
+		error = "Mesh output spill reconstruction basis has invalid locations.";
+		return false;
+	}
+	if (!expectedBasisComponents &&
+		(layout.perspective_basis_location != UINT32_MAX ||
+		 layout.perspective_basis_component != UINT32_MAX ||
+		 layout.no_perspective_basis_location != UINT32_MAX ||
+		 layout.no_perspective_basis_component != UINT32_MAX)) {
+		error = "Mesh output spill reconstruction basis has unexpected locations.";
+		return false;
+	}
+	return true;
+}
+
+
+
 
 #pragma mark - MVKPipelineLayout
 
@@ -69,9 +538,12 @@ static spv::ExecutionModel spvExecModelForStage(MVKShaderStage stage) {
 		case kMVKShaderStageVertex:   return spv::ExecutionModelVertex;
 		case kMVKShaderStageTessCtl:  return spv::ExecutionModelTessellationControl;
 		case kMVKShaderStageTessEval: return spv::ExecutionModelTessellationEvaluation;
+		case kMVKShaderStageTask:     return spv::ExecutionModelTaskEXT;
+		case kMVKShaderStageMesh:     return spv::ExecutionModelMeshEXT;
 		case kMVKShaderStageFragment: return spv::ExecutionModelFragment;
 		case kMVKShaderStageCompute:  return spv::ExecutionModelGLCompute;
 		case kMVKShaderStageCount:
+		case kMVKShaderStageInternalCount:
 			break;
 	}
 	assert(!"Invalid stage");
@@ -160,8 +632,9 @@ void MVKPipelineLayout::populateShaderConversionConfig(SPIRVToMSLConversionConfi
 	shaderConfig.dynamicBufferDescriptors.clear();
 
 	// Add any resource bindings used by push-constants.
-	for (uint32_t i = 0; i < kMVKShaderStageCount; i++) {
+	for (uint32_t i = 0; i < kMVKShaderStageInternalCount; i++) {
 		auto stage = static_cast<MVKShaderStage>(i);
+		if (!mvkIsValidShaderStage(stage)) { continue; }
 		if (stageUsesPushConstants(stage)) {
 			MVKShaderStageResourceBinding binding = {};
 			binding.bufferIndex = getPushConstantResourceIndex(stage);
@@ -177,16 +650,18 @@ void MVKPipelineLayout::populateShaderConversionConfig(SPIRVToMSLConversionConfi
 		if (argbuf) {
 			if (layout->needsSizeBuf()) {
 				argBufResIdx++;
-				for (uint32_t i = 0; i < kMVKShaderStageCount; i++) {
+				for (uint32_t i = 0; i < kMVKShaderStageInternalCount; i++) {
 					auto stage = static_cast<MVKShaderStage>(i);
+					if (!mvkIsValidShaderStage(stage)) { continue; }
 					addResourceBindingToShaderConfig(shaderConfig, {}, stage, dslIdx, kBufferSizeBufferBinding, 1, MVKDescriptorGPULayout::Buffer);
 				}
 			}
 		}
 		for (const MVKDescriptorBinding& desc : layout->bindings()) {
 			MVKShaderStageResourceBinding resCount = desc.totalResourceCount();
-			for (uint32_t i = 0; i < kMVKShaderStageCount; i++) {
+			for (uint32_t i = 0; i < kMVKShaderStageInternalCount; i++) {
 				auto stage = static_cast<MVKShaderStage>(i);
+				if (!mvkIsValidShaderStage(stage)) { continue; }
 				bool used = mvkIsAnyFlagEnabled(desc.stageFlags, mvkVkShaderStageFlagBitsFromMVKShaderStage(stage));
 				if (argbuf) {
 					binding.stages[stage].textureIndex = argBufResIdx;
@@ -375,7 +850,8 @@ MVKPipelineLayout* MVKPipelineLayout::Create(MVKDevice* device, const VkPipeline
 		}
 	}
 
-	for (uint32_t stage = 0; stage < kMVKShaderStageCount; stage++) {
+	for (uint32_t stage = 0; stage < kMVKShaderStageInternalCount; stage++) {
+		if (!mvkIsValidShaderStage(static_cast<MVKShaderStage>(stage))) { continue; }
 		ret->_pushConstantResourceIndices[stage] = static_cast<uint8_t>(ret->_mtlResourceCounts.stages[stage].bufferIndex);
 		if (ret->stageUsesPushConstants(static_cast<MVKShaderStage>(stage)))
 			++ret->_mtlResourceCounts.stages[stage].bufferIndex;
@@ -413,7 +889,8 @@ MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVK
 		layout->retain();
 
 		// Establish descriptor counts and push constants use.
-		for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
+		for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageInternalCount; stage++) {
+			if (!mvkIsValidShaderStage(static_cast<MVKShaderStage>(stage))) { continue; }
 			_descriptorBufferCounts.stages[stage] = layout->getResourceCounts().stages[stage].bufferIndex;
 			_stageUsesPushConstants[stage] = layout->stageUsesPushConstants((MVKShaderStage)stage);
 		}
@@ -709,16 +1186,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	// Extract dynamic state first, as it can affect many configurations.
 	initDynamicState(pCreateInfo);
 
-	_primitiveTopologyClass = MTLPrimitiveTopologyClassUnspecified;
-	if (pCreateInfo->pInputAssemblyState)
-		_primitiveTopologyClass = mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
-	if (!_dynamicStateFlags.has(MVKRenderStateFlag::PolygonMode) && pCreateInfo->pRasterizationState->polygonMode == VK_POLYGON_MODE_POINT)
-		_primitiveTopologyClass = MTLPrimitiveTopologyClassPoint;
-
-	// Determine rasterization early, as various other structs are validated and interpreted in this context.
 	const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
-	_isRasterizing = !isRasterizationDisabled(pCreateInfo);
-	_isRasterizingColor = _isRasterizing && mvkHasColorAttachments(pRendInfo);
 	populateRenderingAttachmentInfo(pCreateInfo);
 
 	const VkPipelineCreationFeedbackCreateInfo* pFeedbackInfo = nullptr;
@@ -753,10 +1221,14 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	const VkPipelineShaderStageCreateInfo* pVertexSS = nullptr;
 	const VkPipelineShaderStageCreateInfo* pTessCtlSS = nullptr;
 	const VkPipelineShaderStageCreateInfo* pTessEvalSS = nullptr;
+	const VkPipelineShaderStageCreateInfo* pTaskSS = nullptr;
+	const VkPipelineShaderStageCreateInfo* pMeshSS = nullptr;
 	const VkPipelineShaderStageCreateInfo* pFragmentSS = nullptr;
 	VkPipelineCreationFeedback* pVertexFB = nullptr;
 	VkPipelineCreationFeedback* pTessCtlFB = nullptr;
 	VkPipelineCreationFeedback* pTessEvalFB = nullptr;
+	VkPipelineCreationFeedback* pTaskFB = nullptr;
+	VkPipelineCreationFeedback* pMeshFB = nullptr;
 	VkPipelineCreationFeedback* pFragmentFB = nullptr;
 	for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
 		const auto* pSS = &pCreateInfo->pStages[i];
@@ -779,6 +1251,18 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 					pTessEvalFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[i];
 				}
 				break;
+			case VK_SHADER_STAGE_TASK_BIT_EXT:
+				pTaskSS = pSS;
+				if (pFeedbackInfo && pFeedbackInfo->pPipelineStageCreationFeedbacks) {
+					pTaskFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[i];
+				}
+				break;
+			case VK_SHADER_STAGE_MESH_BIT_EXT:
+				pMeshSS = pSS;
+				if (pFeedbackInfo && pFeedbackInfo->pPipelineStageCreationFeedbacks) {
+					pMeshFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[i];
+				}
+				break;
 			case VK_SHADER_STAGE_FRAGMENT_BIT:
 				pFragmentSS = pSS;
 				if (pFeedbackInfo && pFeedbackInfo->pPipelineStageCreationFeedbacks) {
@@ -793,11 +1277,15 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	_vertexModule = getOrCreateShaderModule(device, pVertexSS, _ownsVertexModule);
 	_tessCtlModule = getOrCreateShaderModule(device, pTessCtlSS, _ownsTessCtlModule);
 	_tessEvalModule = getOrCreateShaderModule(device, pTessEvalSS, _ownsTessEvalModule);
+	_taskModule = getOrCreateShaderModule(device, pTaskSS, _ownsTaskModule);
+	_meshModule = getOrCreateShaderModule(device, pMeshSS, _ownsMeshModule);
 	_fragmentModule = getOrCreateShaderModule(device, pFragmentSS, _ownsFragmentModule);
 
 	warnIfUnsupportedRobustnessEnabled(this, pVertexSS);
 	warnIfUnsupportedRobustnessEnabled(this, pTessCtlSS);
 	warnIfUnsupportedRobustnessEnabled(this, pTessEvalSS);
+	warnIfUnsupportedRobustnessEnabled(this, pTaskSS);
+	warnIfUnsupportedRobustnessEnabled(this, pMeshSS);
 	warnIfUnsupportedRobustnessEnabled(this, pFragmentSS);
 
 	// Get the tessellation parameters from the shaders.
@@ -816,6 +1304,36 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 			return;
 		}
 	}
+	_isMeshPipeline = pMeshSS != nullptr;
+	_isMeshShaderEmulated = _isMeshPipeline && !pTaskSS;
+
+	_vkPrimitiveTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+	_primitiveTopologyClass = MTLPrimitiveTopologyClassUnspecified;
+	if (_isMeshPipeline) {
+		spv::ExecutionMode meshOutputTopology;
+		if (!getMeshOutputTopology(_meshModule->getSPIRV(), pMeshSS->pName, meshOutputTopology, reflectErrorLog)) {
+			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to reflect mesh shader: %s", reflectErrorLog.c_str()));
+			return;
+		}
+		if (meshOutputTopology == spv::ExecutionModeOutputLinesEXT) {
+			_vkPrimitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+		} else if (meshOutputTopology == spv::ExecutionModeOutputTrianglesEXT) {
+			_vkPrimitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		}
+		_primitiveTopologyClass = mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(_vkPrimitiveTopology);
+		_dynamicStateFlags.remove(MVKRenderStateFlag::PrimitiveTopology);
+	} else {
+		if (pCreateInfo->pInputAssemblyState) {
+			_vkPrimitiveTopology = pCreateInfo->pInputAssemblyState->topology;
+			_primitiveTopologyClass = mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
+		}
+		if (!_dynamicStateFlags.has(MVKRenderStateFlag::PolygonMode) &&
+			pCreateInfo->pRasterizationState && pCreateInfo->pRasterizationState->polygonMode == VK_POLYGON_MODE_POINT) {
+			_primitiveTopologyClass = MTLPrimitiveTopologyClassPoint;
+		}
+	}
+	_isRasterizing = !isRasterizationDisabled(pCreateInfo);
+	_isRasterizingColor = _isRasterizing && mvkHasColorAttachments(pRendInfo);
 
 	// Tessellation - must ignore allowed bad pTessellationState pointer if not tess pipeline
 	_outputControlPointCount = reflectData.numControlPoints;
@@ -858,7 +1376,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	}
 
 	// Render pipeline state. Do this as early as possible, to fail fast if pipeline requires a fail on cache-miss.
-	initMTLRenderPipelineState(pCreateInfo, reflectData, pPipelineFB, pVertexSS, pVertexFB, pTessCtlSS, pTessCtlFB, pTessEvalSS, pTessEvalFB, pFragmentSS, pFragmentFB);
+	initMTLRenderPipelineState(pCreateInfo, reflectData, pPipelineFB, pVertexSS, pVertexFB, pTessCtlSS, pTessCtlFB, pTessEvalSS, pTessEvalFB, pTaskSS, pTaskFB, pMeshSS, pMeshFB, pFragmentSS, pFragmentFB);
 	if ( !_hasValidMTLPipelineStates ) { return; }
 
 	// Blending - must ignore allowed bad pColorBlendState pointer if rasterization disabled or no color attachments
@@ -867,10 +1385,8 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	}
 
 	// Topology
-	_vkPrimitiveTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 	bool primitiveRestart = true; // Always enabled in Metal
-	if (pCreateInfo->pInputAssemblyState) {
-		_vkPrimitiveTopology = pCreateInfo->pInputAssemblyState->topology;
+	if (!_isMeshPipeline && pCreateInfo->pInputAssemblyState) {
 		primitiveRestart = pCreateInfo->pInputAssemblyState->primitiveRestartEnable;
 	}
 
@@ -941,6 +1457,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	_dynamicStateFlags &= needed;
 
 	for (uint32_t stage = kMVKShaderStageVertex; stage < std::size(_stageResources); stage++) {
+		if (!mvkIsValidShaderStage(static_cast<MVKShaderStage>(stage)) || stage == kMVKShaderStageCompute) { continue; }
 		_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::PushConstant] = _layout->getPushConstantResourceIndex(static_cast<MVKShaderStage>(stage));
 	}
 }
@@ -1006,6 +1523,17 @@ id<MTLRenderPipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLRenderPi
 	return plState;
 }
 
+id<MTLRenderPipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLMeshRenderPipelineDescriptor* plDesc,
+															 id<MTLRenderPipelineState>& plState) {
+	if ( !plState ) {
+		MVKRenderPipelineCompiler* plc = new MVKRenderPipelineCompiler(this);
+		plState = plc->newMTLRenderPipelineState(plDesc);
+		plc->destroy();
+		if ( !plState ) { _hasValidMTLPipelineStates = false; }
+	}
+	return plState;
+}
+
 // Either returns an existing pipeline state or compiles a new one.
 id<MTLComputePipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLComputePipelineDescriptor* plDesc,
 																	  id<MTLComputePipelineState>& plState,
@@ -1055,13 +1583,19 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 													 VkPipelineCreationFeedback* pTessCtlFB,
 													 const VkPipelineShaderStageCreateInfo* pTessEvalSS,
 													 VkPipelineCreationFeedback* pTessEvalFB,
+													 const VkPipelineShaderStageCreateInfo* pTaskSS,
+													 VkPipelineCreationFeedback* pTaskFB,
+													 const VkPipelineShaderStageCreateInfo* pMeshSS,
+													 VkPipelineCreationFeedback* pMeshFB,
 													 const VkPipelineShaderStageCreateInfo* pFragmentSS,
 													 VkPipelineCreationFeedback* pFragmentFB) {
 	_mtlTessVertexStageState = nil;
 	_mtlTessVertexStageIndex16State = nil;
 	_mtlTessVertexStageIndex32State = nil;
 	_mtlTessControlStageState = nil;
+	_mtlMeshCaptureStageState = nil;
 	_mtlPipelineState = nil;
+	_mtlNativeTasklessMeshBatchedPipelineState = nil;
 
 	uint64_t pipelineStart = 0;
 	if (pPipelineFB) {
@@ -1074,7 +1608,7 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 		char text[1024];
 		char* ptext = text;
 		size_t full_hash = 0;
-		const char* type = pTessCtlSS && pTessEvalSS ? "-tess" : "";
+		const char* type = pTessCtlSS && pTessEvalSS ? "-tess" : (pMeshSS ? "-mesh" : "");
 		auto addShader = [&](const char* type, MVKShaderModule* module) {
 			if (!module) {
 				return;
@@ -1086,6 +1620,8 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 		addShader(" VS", _vertexModule);
 		addShader("TCS", _tessCtlModule);
 		addShader("TES", _tessEvalModule);
+		addShader(" TS", _taskModule);
+		addShader(" MS", _meshModule);
 		addShader(" FS", _fragmentModule);
 		mkdir(dumpDir, 0755);
 		snprintf(filename, sizeof(filename), "%s/pipeline%s-%016zx.txt", dumpDir, type, full_hash);
@@ -1096,7 +1632,7 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 		}
 	}
 
-	if (!isTessellationPipeline()) {
+	if (!isTessellationPipeline() && !isMeshPipeline()) {
 		MTLRenderPipelineDescriptor* plDesc = newMTLRenderPipelineDescriptor(pCreateInfo, reflectData, pVertexSS, pVertexFB, pFragmentSS, pFragmentFB);	// temp retain
 		if (plDesc) {
 			auto viewMask = getRenderingCreateInfo(pCreateInfo)->viewMask;
@@ -1132,7 +1668,7 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 		} else {
 			_hasValidMTLPipelineStates = false;
 		}
-	} else {
+	} else if (isTessellationPipeline()) {
 		// In this case, we need to create three render pipelines. But, the way Metal handles
 		// index buffers for compute stage-in means we have to create three pipelines for
 		// stage 1 (five pipelines in total).
@@ -1155,6 +1691,24 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 		[vtxPLDesc release];	// temp release
 		[tcPLDesc release];		// temp release
 		[rastPLDesc release];	// temp release
+	} else {
+		MTLMeshRenderPipelineDescriptor* plDesc = newMTLMeshRenderPipelineDescriptor(pCreateInfo, reflectData, pTaskSS, pTaskFB, pMeshSS, pMeshFB, pFragmentSS, pFragmentFB);
+		if (plDesc) {
+			getOrCompilePipeline(plDesc, _mtlPipelineState);
+			if (_mtlNativeTasklessMeshBatchedFunction) {
+				if (_mtlPipelineState) {
+					MTLMeshRenderPipelineDescriptor* batchedDesc = [plDesc copy];
+					batchedDesc.meshFunction = _mtlNativeTasklessMeshBatchedFunction;
+					getOrCompilePipeline(batchedDesc, _mtlNativeTasklessMeshBatchedPipelineState);
+					[batchedDesc release];
+				}
+				[_mtlNativeTasklessMeshBatchedFunction release];
+				_mtlNativeTasklessMeshBatchedFunction = nil;
+			}
+			[plDesc release];
+		} else {
+			_hasValidMTLPipelineStates = false;
+		}
 	}
 
 	if (pPipelineFB) {
@@ -1196,6 +1750,9 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLRenderPipelineDescriptor
 	if (!addFragmentShaderToPipeline(plDesc, pCreateInfo, shaderConfig, vtxOutputs, pFragmentSS, pFragmentFB)) { return nil; }
 
 	// Output
+	if (pCreateInfo->pInputAssemblyState) {
+		plDesc.inputPrimitiveTopology = getPrimitiveTopologyClass();
+	}
 	addFragmentOutputToPipeline(plDesc, pCreateInfo);
 
 	// Metal does not allow the name of the pipeline to be changed after it has been created,
@@ -1203,6 +1760,128 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLRenderPipelineDescriptor
 	// The best we can do at this point is set the pipeline name from the layout.
 	setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
 
+	return plDesc;
+}
+
+MTLMeshRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLMeshRenderPipelineDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo,
+																				 const SPIRVTessReflectionData& reflectData,
+																				 const VkPipelineShaderStageCreateInfo* pTaskSS,
+																				 VkPipelineCreationFeedback* pTaskFB,
+																				 const VkPipelineShaderStageCreateInfo* pMeshSS,
+																				 VkPipelineCreationFeedback* pMeshFB,
+																				 const VkPipelineShaderStageCreateInfo* pFragmentSS,
+																				 VkPipelineCreationFeedback* pFragmentFB) {
+	SPIRVToMSLConversionConfiguration shaderConfig;
+	initShaderConversionConfig(shaderConfig, pCreateInfo, reflectData);
+
+	MTLMeshRenderPipelineDescriptor* plDesc = [MTLMeshRenderPipelineDescriptor new];
+	std::string errorLog;
+
+	if (pTaskSS) {
+		if (!addTaskShaderToPipeline(plDesc, shaderConfig, pTaskSS, pTaskFB)) {
+			[plDesc release];
+			return nil;
+		}
+	}
+
+	SPIRVShaderOutputs meshOutputs;
+	SPIRVMeshReflectionData meshReflection;
+	vector<SPIRVShaderInterfaceSpecializationConstant> meshSpecializationConstants;
+	if (!pMeshSS || !mvkPopulateShaderInterfaceSpecializationConstants(
+					 pMeshSS, meshSpecializationConstants, errorLog)) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED,
+										"Failed to resolve mesh shader specialization: %s", errorLog.c_str()));
+		[plDesc release];
+		return nil;
+	}
+	if (!getShaderOutputs(_meshModule->getSPIRV(), spv::ExecutionModelMeshEXT,
+						  pMeshSS->pName, meshOutputs, meshSpecializationConstants, errorLog)) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get mesh outputs: %s", errorLog.c_str()));
+		[plDesc release];
+		return nil;
+	}
+	if (!getMeshReflectionData(_meshModule->getSPIRV(), pMeshSS->pName,
+						   meshReflection, errorLog)) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED,
+										"Failed to reflect mesh shader limits: %s", errorLog.c_str()));
+		[plDesc release];
+		return nil;
+	}
+	SPIRVShaderInputs fragmentInputs;
+	vector<SPIRVShaderInterfaceSpecializationConstant> fragmentSpecializationConstants;
+	if (!mvkPopulateShaderInterfaceSpecializationConstants(
+			pFragmentSS, fragmentSpecializationConstants, errorLog)) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED,
+										"Failed to resolve fragment shader specialization: %s", errorLog.c_str()));
+		[plDesc release];
+		return nil;
+	}
+	if (pFragmentSS && !getShaderInputs(
+			_fragmentModule->getSPIRV(), spv::ExecutionModelFragment, pFragmentSS->pName,
+			fragmentInputs, fragmentSpecializationConstants, errorLog)) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED,
+										"Failed to get fragment inputs: %s", errorLog.c_str()));
+		[plDesc release];
+		return nil;
+	}
+	MVKMeshOutputSpillSelection spillSelection;
+	if (_isMeshShaderEmulated) {
+		spillSelection = mvkSelectMeshOutputSpills(meshOutputs,
+												 _vkPrimitiveTopology);
+		if (_isRasterizing && spillSelection.fields.empty() && !meshReflection.usesWorkgroupVariables &&
+			meshReflection.maxOutputVertices <= kMVKNativeTasklessMeshMaxOutputVertices &&
+			meshReflection.maxOutputPrimitives <= kMVKNativeTasklessMeshMaxOutputPrimitives &&
+			mvkEstimateNativeMeshOutputBytes(meshOutputs, meshReflection, _vkPrimitiveTopology) <=
+				kMVKNativeTasklessMeshMaxOutputBytes) {
+			_isMeshShaderEmulated = false;
+			_usesNativeTasklessMeshBatchedDispatch = true;
+		}
+	}
+	if (!spillSelection.fits) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED,
+										"Mesh-to-fragment interface cannot fit Metal's %u-component varying limit.",
+										kMVKMetalMeshVaryingComponentLimit));
+		[plDesc release];
+		return nil;
+	}
+	addNextStageInputToShaderConversionConfig(shaderConfig, fragmentInputs);
+	shaderConfig.meshOutputSpillKeys.clear();
+	shaderConfig.meshOutputSpillKeys.reserve(spillSelection.fields.size());
+	for (const auto& field : spillSelection.fields) {
+		MSLMeshOutputSpillKey key;
+		key.location = field.location;
+		key.component = field.component;
+		key.rate = field.perPrimitive ? MSL_SHADER_VARIABLE_RATE_PER_PRIMITIVE :
+			MSL_SHADER_VARIABLE_RATE_PER_VERTEX;
+		shaderConfig.meshOutputSpillKeys.push_back(key);
+	}
+	std::sort(shaderConfig.meshOutputSpillKeys.begin(), shaderConfig.meshOutputSpillKeys.end(),
+			  [](const auto& lhs, const auto& rhs) {
+				  if (lhs.rate != rhs.rate) { return lhs.rate < rhs.rate; }
+				  if (lhs.location != rhs.location) { return lhs.location < rhs.location; }
+				  return lhs.component < rhs.component;
+			  });
+	shaderConfig.shaderInterfaceSpecializationConstants = meshSpecializationConstants;
+	if (!addMeshShaderToPipeline(plDesc, shaderConfig, pMeshSS, pMeshFB, pFragmentSS)) {
+		[plDesc release];
+		return nil;
+	}
+	if (!mvkValidateMeshOutputSpillFieldTypes(
+			shaderConfig.meshOutputSpillFields, meshOutputs, true, errorLog) ||
+		!mvkValidateMeshOutputSpillFieldTypes(
+			shaderConfig.meshOutputSpillFields, fragmentInputs, false, errorLog)) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "%s", errorLog.c_str()));
+		[plDesc release];
+		return nil;
+	}
+	shaderConfig.shaderInterfaceSpecializationConstants = fragmentSpecializationConstants;
+	if (!addFragmentShaderToPipeline(plDesc, pCreateInfo, shaderConfig, meshOutputs, pFragmentSS, pFragmentFB)) {
+		[plDesc release];
+		return nil;
+	}
+
+	addFragmentOutputToPipeline(plDesc, pCreateInfo);
+	setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
 	return plDesc;
 }
 
@@ -1430,6 +2109,9 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 	addTessellationToPipeline(plDesc, reflectData, pCreateInfo->pTessellationState);
 
 	// Output
+	if (pCreateInfo->pInputAssemblyState) {
+		plDesc.inputPrimitiveTopology = getPrimitiveTopologyClass();
+	}
 	addFragmentOutputToPipeline(plDesc, pCreateInfo);
 
 	return plDesc;
@@ -1479,11 +2161,15 @@ static void setEmulatedReversedDepthViewportConfig(SPIRVToMSLConversionConfigura
 }
 
 bool MVKGraphicsPipeline::verifyImplicitBuffers(MVKShaderStage stage) {
-	const char* stageNames[] = {
+	const char* stageNames[kMVKShaderStageInternalCount] = {
 		"Vertex",
 		"Tessellation control",
 		"Tessellation evaluation",
-		"Fragment"
+		"Fragment",
+		"Compute",
+		"Invalid",
+		"Task",
+		"Mesh"
 	};
 
 	return ::verifyImplicitBuffers(_stageResources[stage].implicitBuffers, stageNames[stage], _descriptorBufferCounts.stages[stage], this);
@@ -1504,6 +2190,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	shaderConfig.options.mslOptions.view_mask_buffer_index = implicit[MVKImplicitBuffer::ViewRange];
 	shaderConfig.options.mslOptions.draw_id_buffer_index = implicit[MVKImplicitBuffer::DrawId];
 	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
+	shaderConfig.options.mslOptions.mesh_shader_emulation = false;
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
 	setEmulatedReversedDepthViewportConfig(shaderConfig, implicit, getPhysicalDevice()->shouldEmulateReversedDepthViewport());
 	addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
@@ -1648,7 +2335,126 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	return verifyImplicitBuffers(kMVKShaderStageTessEval);
 }
 
-bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescriptor* plDesc,
+bool MVKGraphicsPipeline::addTaskShaderToPipeline(MTLMeshRenderPipelineDescriptor* plDesc,
+												  SPIRVToMSLConversionConfiguration& shaderConfig,
+												  const VkPipelineShaderStageCreateInfo* pTaskSS,
+												  VkPipelineCreationFeedback* pTaskFB) {
+	const auto& implicit = _stageResources[kMVKShaderStageTask].implicitBuffers.ids;
+	shaderConfig.options.entryPointStage = spv::ExecutionModelTaskEXT;
+	shaderConfig.options.entryPointName = pTaskSS->pName;
+	addCommonImplicitBuffersToShaderConfig(shaderConfig, implicit);
+	shaderConfig.options.mslOptions.indirect_params_buffer_index = implicit[MVKImplicitBuffer::IndirectParams];
+	shaderConfig.options.mslOptions.shader_output_buffer_index = implicit[MVKImplicitBuffer::Output];
+	shaderConfig.options.mslOptions.draw_id_buffer_index = implicit[MVKImplicitBuffer::DrawId];
+	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
+	shaderConfig.options.mslOptions.mesh_shader_emulation = false;
+	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
+	shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pTaskSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT) ? 0 : getMetalFeatures().maxSubgroupSize;
+
+	MVKMTLFunction func = getMTLFunction(shaderConfig, pTaskSS, pTaskFB, _taskModule, "Task");
+	id<MTLFunction> mtlFunc = func.getMTLFunction();
+	if ( !mtlFunc ) { return false; }
+
+	_mtlObjectThreadgroupSize = func.threadGroupSize;
+	plDesc.objectFunction = mtlFunc;
+	plDesc.maxTotalThreadsPerObjectThreadgroup = _mtlObjectThreadgroupSize.width * _mtlObjectThreadgroupSize.height * _mtlObjectThreadgroupSize.depth;
+	plDesc.objectThreadgroupSizeIsMultipleOfThreadExecutionWidth = mvkIsAnyFlagEnabled(pTaskSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT);
+
+	auto& funcRslts = func.shaderConversionResults;
+	populateResourceUsage(_stageResources[kMVKShaderStageTask], shaderConfig, funcRslts, spv::ExecutionModelTaskEXT);
+	_layout->populateBindOperations(_stageResources[kMVKShaderStageTask].bindScript, shaderConfig, spv::ExecutionModelTaskEXT);
+	return verifyImplicitBuffers(kMVKShaderStageTask);
+}
+
+bool MVKGraphicsPipeline::addMeshShaderToPipeline(MTLMeshRenderPipelineDescriptor* plDesc,
+												  SPIRVToMSLConversionConfiguration& shaderConfig,
+												  const VkPipelineShaderStageCreateInfo* pMeshSS,
+												  VkPipelineCreationFeedback* pMeshFB,
+												  const VkPipelineShaderStageCreateInfo*& pFragmentSS) {
+	const auto& implicit = _stageResources[kMVKShaderStageMesh].implicitBuffers.ids;
+	shaderConfig.options.entryPointStage = spv::ExecutionModelMeshEXT;
+	shaderConfig.options.entryPointName = pMeshSS->pName;
+	addCommonImplicitBuffersToShaderConfig(shaderConfig, implicit);
+	shaderConfig.options.mslOptions.indirect_params_buffer_index = implicit[MVKImplicitBuffer::IndirectParams];
+	shaderConfig.options.mslOptions.shader_output_buffer_index = implicit[MVKImplicitBuffer::Output];
+	shaderConfig.options.mslOptions.view_mask_buffer_index = implicit[MVKImplicitBuffer::ViewRange];
+	shaderConfig.options.mslOptions.draw_id_buffer_index = implicit[MVKImplicitBuffer::DrawId];
+	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
+	shaderConfig.options.mslOptions.mesh_shader_emulation = _isMeshShaderEmulated;
+	shaderConfig.options.mslOptions.dispatch_base = false;
+	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
+	shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pMeshSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT) ? 0 : getMetalFeatures().maxSubgroupSize;
+
+	MVKMTLFunction captureFunc = getMTLFunction(shaderConfig, pMeshSS, pMeshFB, _meshModule, "Mesh");
+	id<MTLFunction> mtlCaptureFunc = captureFunc.getMTLFunction();
+	if ( !mtlCaptureFunc ) { return false; }
+
+	if (_isMeshShaderEmulated) {
+		auto& funcRslts = captureFunc.shaderConversionResults;
+		_meshOutputBufferSize = funcRslts.meshOutputBufferSize;
+		_meshOutputBufferAlignment = funcRslts.meshOutputBufferAlignment;
+		if (!_meshOutputBufferSize || !_meshOutputBufferAlignment || _meshOutputBufferSize % _meshOutputBufferAlignment) {
+			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Mesh shader output capture layout is invalid."));
+			return false;
+		}
+		string spillLayoutError;
+		if (!mvkValidateMeshOutputSpillLayout(shaderConfig.meshOutputSpillKeys,
+											 funcRslts.meshOutputSpillLayout,
+											 funcRslts.meshOutputSpillFields,
+											 _meshOutputBufferSize,
+											 _vkPrimitiveTopology,
+											 spillLayoutError)) {
+			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED,
+													"Mesh output spill layout is invalid: %s",
+													spillLayoutError.c_str()));
+			return false;
+		}
+
+		_mtlMeshCaptureThreadgroupSize = captureFunc.threadGroupSize;
+		MTLComputePipelineDescriptor* capturePLDesc = [MTLComputePipelineDescriptor new];
+		capturePLDesc.computeFunction = mtlCaptureFunc;
+		capturePLDesc.threadGroupSizeIsMultipleOfThreadExecutionWidth = mvkIsAnyFlagEnabled(pMeshSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT);
+		bool captureCompiled = getOrCompilePipeline(capturePLDesc, _mtlMeshCaptureStageState, "Mesh capture stage");
+		[capturePLDesc release];
+		if (!captureCompiled) { return false; }
+
+		MVKMTLFunction replayFunc = getMTLFunction(shaderConfig, pMeshSS, pMeshFB, _meshModule,
+														"Mesh replay", "_replay", false);
+		id<MTLFunction> mtlReplayFunc = replayFunc.getMTLFunction();
+		if ( !mtlReplayFunc ) { return false; }
+		_mtlMeshThreadgroupSize = replayFunc.threadGroupSize;
+		plDesc.meshFunction = mtlReplayFunc;
+		shaderConfig.meshOutputSpillLayout = funcRslts.meshOutputSpillLayout;
+		shaderConfig.meshOutputSpillFields = funcRslts.meshOutputSpillFields;
+	} else {
+		_mtlMeshThreadgroupSize = captureFunc.threadGroupSize;
+		plDesc.meshFunction = mtlCaptureFunc;
+	}
+	plDesc.maxTotalThreadsPerMeshThreadgroup = _mtlMeshThreadgroupSize.width * _mtlMeshThreadgroupSize.height * _mtlMeshThreadgroupSize.depth;
+	plDesc.meshThreadgroupSizeIsMultipleOfThreadExecutionWidth = mvkIsAnyFlagEnabled(pMeshSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT);
+
+	auto& funcRslts = captureFunc.shaderConversionResults;
+	plDesc.rasterizationEnabled = _isMeshShaderEmulated ? _isRasterizing : !funcRslts.isRasterizationDisabled;
+	populateResourceUsage(_stageResources[kMVKShaderStageMesh], shaderConfig, funcRslts, spv::ExecutionModelMeshEXT);
+	if (_usesNativeTasklessMeshBatchedDispatch) {
+		shaderConfig.options.mslOptions.dispatch_base = true;
+		MVKMTLFunction batchedFunc = getMTLFunction(shaderConfig, pMeshSS, pMeshFB, _meshModule,
+												  "Bounded native taskless mesh", "", false);
+		id<MTLFunction> mtlBatchedFunc = batchedFunc.getMTLFunction();
+		if ( !mtlBatchedFunc ) { return false; }
+		_mtlNativeTasklessMeshBatchedFunction = [mtlBatchedFunc retain];
+		auto& batchedFuncRslts = batchedFunc.shaderConversionResults;
+		populateResourceUsage(_stageResources[kMVKShaderStageMesh], shaderConfig, batchedFuncRslts,
+							  spv::ExecutionModelMeshEXT);
+	}
+	_stageResources[kMVKShaderStageMesh].implicitBuffers.needed.set(MVKImplicitBuffer::IndirectParams, _isMeshShaderEmulated);
+	_layout->populateBindOperations(_stageResources[kMVKShaderStageMesh].bindScript, shaderConfig, spv::ExecutionModelMeshEXT);
+	if (!plDesc.rasterizationEnabled) { pFragmentSS = nullptr; }
+	return verifyImplicitBuffers(kMVKShaderStageMesh);
+}
+
+template<class T>
+bool MVKGraphicsPipeline::addFragmentShaderToPipeline(T* plDesc,
 													  const VkGraphicsPipelineCreateInfo* pCreateInfo,
 													  SPIRVToMSLConversionConfiguration& shaderConfig,
 													  SPIRVShaderOutputs& shaderOutputs,
@@ -1656,9 +2462,12 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 													  VkPipelineCreationFeedback* pFragmentFB) {
 	const auto& implicit = _stageResources[kMVKShaderStageFragment].implicitBuffers.ids;
 	auto& mtlFeats = getMetalFeatures();
+	shaderConfig.options.mslOptions.mesh_shader_emulation = false;
+	shaderConfig.options.mslOptions.dispatch_base = false;
 	if (pFragmentSS) {
 		shaderConfig.options.entryPointStage = spv::ExecutionModelFragment;
 		addCommonImplicitBuffersToShaderConfig(shaderConfig, implicit);
+		shaderConfig.options.mslOptions.shader_output_buffer_index = implicit[MVKImplicitBuffer::Output];
 		shaderConfig.options.mslOptions.view_mask_buffer_index = implicit[MVKImplicitBuffer::ViewRange];
 		shaderConfig.options.entryPointName = pFragmentSS->pName;
 		shaderConfig.options.mslOptions.capture_output_to_buffer = false;
@@ -1699,7 +2508,14 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 
 		auto& funcRslts = func.shaderConversionResults;
 		populateResourceUsage(_stageResources[kMVKShaderStageFragment], shaderConfig, funcRslts, spv::ExecutionModelFragment);
+		if (!shaderConfig.meshOutputSpillFields.empty()) {
+			_stageResources[kMVKShaderStageFragment].implicitBuffers.needed.add(MVKImplicitBuffer::Output);
+		}
 		_layout->populateBindOperations(_stageResources[kMVKShaderStageFragment].bindScript, shaderConfig, spv::ExecutionModelFragment);
+	} else if (isMeshPipeline() && plDesc.rasterizationEnabled) {
+		id<MTLFunction> mtlFunc = _device->getCommandResourceFactory()->newNoopFragmentFunction();
+		plDesc.fragmentFunction = mtlFunc;
+		[mtlFunc release];
 	}
 	return verifyImplicitBuffers(kMVKShaderStageFragment);
 }
@@ -1939,12 +2755,9 @@ void MVKGraphicsPipeline::addTessellationToPipeline(MTLRenderPipelineDescriptor*
 	plDesc.tessellationPartitionMode = mvkMTLTessellationPartitionModeFromSpvExecutionMode(reflectData.partitionMode);
 }
 
-void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc,
+template<class T>
+void MVKGraphicsPipeline::addFragmentOutputToPipeline(T* plDesc,
 													  const VkGraphicsPipelineCreateInfo* pCreateInfo) {
-	// Topology
-	if (pCreateInfo->pInputAssemblyState)
-		plDesc.inputPrimitiveTopology = getPrimitiveTopologyClass();
-
 	const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
 
 	// Color attachments - must ignore bad pColorBlendState pointer if rasterization is disabled or subpass has no color attachments
@@ -2076,6 +2889,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	initReservedVertexAttributeBufferCount(pCreateInfo);
 	for (uint32_t i = 0; i < std::size(_stageResources); i++) {
 		MVKShaderStage stage = (MVKShaderStage)i;
+		if (!mvkIsValidShaderStage(stage) || stage == kMVKShaderStageCompute) { continue; }
 		_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::DynamicOffset]  = getImplicitBufferIndex(stage, 0);
 		_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::BufferSize]     = getImplicitBufferIndex(stage, 1);
 		_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::Swizzle]        = getImplicitBufferIndex(stage, 2);
@@ -2101,6 +2915,18 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 				break;
 			case kMVKShaderStageTessEval:
 				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::IndirectParams] = extra;
+				break;
+			case kMVKShaderStageTask:
+				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::ViewRange] = extra;
+				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::IndirectParams] = extra;
+				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::DrawId] = getImplicitBufferIndex(stage, 5);
+				break;
+			case kMVKShaderStageMesh:
+				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::ViewRange] = extra;
+				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::IndirectParams] = getImplicitBufferIndex(stage, 6);
+				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::DispatchBase] =
+					_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::IndirectParams];
+				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::DrawId] = getImplicitBufferIndex(stage, 5);
 				break;
 			default:
 				break;
@@ -2159,6 +2985,9 @@ uint32_t MVKGraphicsPipeline::getImplicitBufferIndex(MVKShaderStage stage, uint3
 // defined by this count below the max number of Metal buffer bindings per stage.
 // Must be called before any calls to getImplicitBufferIndex().
 void MVKGraphicsPipeline::initReservedVertexAttributeBufferCount(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
+	mvkClear<uint32_t>(_reservedVertexAttributeBufferCount.stages, kMVKShaderStageInternalCount);
+	if (isMeshPipeline() || !pCreateInfo->pVertexInputState) { return; }
+
 	int32_t maxBinding = -1;
 	uint32_t xltdBuffCnt = 0;
 
@@ -2189,7 +3018,6 @@ void MVKGraphicsPipeline::initReservedVertexAttributeBufferCount(const VkGraphic
 
 	// The number of reserved bindings we need for the vertex stage is determined from the largest vertex
 	// attribute binding number, plus any synthetic buffer bindings created to support translated offsets.
-	mvkClear<uint32_t>(_reservedVertexAttributeBufferCount.stages, kMVKShaderStageCount);
 	_reservedVertexAttributeBufferCount.stages[kMVKShaderStageVertex] = (maxBinding + 1) + xltdBuffCnt;
 	_reservedVertexAttributeBufferCount.stages[kMVKShaderStageTessCtl] = kMVKTessCtlNumReservedBuffers;
 	_reservedVertexAttributeBufferCount.stages[kMVKShaderStageTessEval] = kMVKTessEvalNumReservedBuffers;
@@ -2261,7 +3089,8 @@ void MVKGraphicsPipeline::addNextStageInputToShaderConversionConfig(SPIRVToMSLCo
 		sosv.component = si.component;
         sosv.builtin = si.builtin;
         sosv.vecsize = si.vecWidth;
-		sosv.rate = si.perPatch ? MSL_SHADER_VARIABLE_RATE_PER_PATCH : MSL_SHADER_VARIABLE_RATE_PER_VERTEX;
+		sosv.rate = si.perPrimitive ? MSL_SHADER_VARIABLE_RATE_PER_PRIMITIVE :
+					 si.perPatch ? MSL_SHADER_VARIABLE_RATE_PER_PATCH : MSL_SHADER_VARIABLE_RATE_PER_VERTEX;
 
         switch (getPixelFormats()->getFormatType(mvkFormatFromOutput(si) ) ) {
             case kMVKFormatColorUInt8:
@@ -2306,7 +3135,8 @@ void MVKGraphicsPipeline::addPrevStageOutputToShaderConversionConfig(SPIRVToMSLC
 		sisv.component = so.component;
         sisv.builtin = so.builtin;
         sisv.vecsize = so.vecWidth;
-		sisv.rate = so.perPatch ? MSL_SHADER_VARIABLE_RATE_PER_PATCH : MSL_SHADER_VARIABLE_RATE_PER_VERTEX;
+		sisv.rate = so.perPrimitive ? MSL_SHADER_VARIABLE_RATE_PER_PRIMITIVE :
+					 so.perPatch ? MSL_SHADER_VARIABLE_RATE_PER_PATCH : MSL_SHADER_VARIABLE_RATE_PER_VERTEX;
 
         switch (getPixelFormats()->getFormatType(mvkFormatFromOutput(so) ) ) {
             case kMVKFormatColorUInt8:
@@ -2352,8 +3182,10 @@ bool MVKGraphicsPipeline::isRenderingPoints() {
 bool MVKGraphicsPipeline::isRasterizationDisabled(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
 	if (!_dynamicStateFlags.has(MVKRenderStateFlag::RasterizerDiscardEnable) && pCreateInfo->pRasterizationState->rasterizerDiscardEnable)
 		return true;
-	if (!_dynamicStateFlags.has(MVKRenderStateFlag::CullMode) && pCreateInfo->pRasterizationState->cullMode == VK_CULL_MODE_FRONT_AND_BACK)
+	if (!_dynamicStateFlags.has(MVKRenderStateFlag::CullMode) && pCreateInfo->pRasterizationState->cullMode == VK_CULL_MODE_FRONT_AND_BACK) {
+		if (_isMeshPipeline) { return getPrimitiveTopologyClass() == MTLPrimitiveTopologyClassTriangle; }
 		return pCreateInfo->pInputAssemblyState && mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology) == MTLPrimitiveTopologyClassTriangle;
+	}
 	return false;
 }
 
@@ -2376,11 +3208,15 @@ MVKMTLFunction MVKGraphicsPipeline::getMTLFunction(SPIRVToMSLConversionConfigura
 												   const VkPipelineShaderStageCreateInfo* pShaderStage,
 												   VkPipelineCreationFeedback* pStageFB,
 												   MVKShaderModule* pShaderModule,
-												   const char* pStageName) {
+												   const char* pStageName,
+												   const char* pFunctionNameSuffix,
+													   bool reportApplicationCacheHit) {
 	MVKMTLFunction func = pShaderModule->getMTLFunction(&shaderConfig,
 													    pShaderStage->pSpecializationInfo,
 													    this,
-													    pStageFB);
+													    pStageFB,
+														    pFunctionNameSuffix,
+														    reportApplicationCacheHit);
 	if ( !func.getMTLFunction() ) {
 		if (shouldFailOnPipelineCompileRequired()) {
 			setConfigurationResult(VK_PIPELINE_COMPILE_REQUIRED);
@@ -2397,10 +3233,15 @@ MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 		[_mtlTessVertexStageIndex16State release];
 		[_mtlTessVertexStageIndex32State release];
 		[_mtlTessControlStageState release];
+		[_mtlMeshCaptureStageState release];
 		[_mtlPipelineState release];
+		[_mtlNativeTasklessMeshBatchedPipelineState release];
+		[_mtlNativeTasklessMeshBatchedFunction release];
 		if (_ownsVertexModule) delete _vertexModule;
 		if (_ownsTessCtlModule) delete _tessCtlModule;
 		if (_ownsTessEvalModule) delete _tessEvalModule;
+		if (_ownsTaskModule) delete _taskModule;
+		if (_ownsMeshModule) delete _meshModule;
 		if (_ownsFragmentModule) delete _fragmentModule;
 	}
 }
@@ -2571,12 +3412,13 @@ MVKShaderLibrary* MVKPipelineCache::getShaderLibrary(SPIRVToMSLConversionConfigu
 													 MVKShaderModule* shaderModule,
 													 MVKPipeline* pipeline,
 													 VkPipelineCreationFeedback* pShaderFeedback,
-													 uint64_t startTime) {
+													 uint64_t startTime,
+													 bool reportApplicationCacheHit) {
 	if (_isExternallySynchronized) {
-		return getShaderLibraryImpl(pContext, shaderModule, pipeline, pShaderFeedback, startTime);
+		return getShaderLibraryImpl(pContext, shaderModule, pipeline, pShaderFeedback, startTime, reportApplicationCacheHit);
 	} else {
 		lock_guard<mutex> lock(_shaderCacheLock);
-		return getShaderLibraryImpl(pContext, shaderModule, pipeline, pShaderFeedback, startTime);
+		return getShaderLibraryImpl(pContext, shaderModule, pipeline, pShaderFeedback, startTime, reportApplicationCacheHit);
 	}
 }
 
@@ -2584,12 +3426,15 @@ MVKShaderLibrary* MVKPipelineCache::getShaderLibraryImpl(SPIRVToMSLConversionCon
 														 MVKShaderModule* shaderModule,
 														 MVKPipeline* pipeline,
 														 VkPipelineCreationFeedback* pShaderFeedback,
-														 uint64_t startTime) {
+														 uint64_t startTime,
+														 bool reportApplicationCacheHit) {
 	bool wasAdded = false;
 	MVKShaderLibraryCache* slCache = getShaderLibraryCache(shaderModule->getKey());
 	MVKShaderLibrary* shLib = slCache->getShaderLibrary(pContext, shaderModule, pipeline, &wasAdded, pShaderFeedback, startTime);
 	if (wasAdded) { markDirty(); }
-	else if (pShaderFeedback) { mvkEnableFlags(pShaderFeedback->flags, VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT); }
+	else if (pShaderFeedback && reportApplicationCacheHit) {
+		mvkEnableFlags(pShaderFeedback->flags, VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT);
+	}
 	return shLib;
 }
 
@@ -2871,6 +3716,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.enable_frag_stencil_ref_builtin,
 				opt.disable_rasterization,
 				opt.capture_output_to_buffer,
+				opt.mesh_shader_emulation,
 				opt.swizzle_texture_samples,
 				opt.tess_domain_origin_lower_left,
 				opt.multiview,
@@ -2923,6 +3769,42 @@ namespace SPIRV_CROSS_NAMESPACE {
 				si.builtin,
 				si.vecsize,
 				si.rate);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, MSLMeshOutputSpillKey& key) {
+		archive(key.location,
+				key.component,
+				key.rate);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, MSLMeshOutputSpillField& field) {
+		archive(field.key,
+				field.base_type,
+				field.bit_width,
+				field.vecsize,
+				field.columns,
+				field.capture_word_offset,
+				field.capture_word_stride);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, MSLMeshOutputSpillLayout& layout) {
+		archive(layout.version,
+				layout.capture_record_stride,
+				layout.max_vertices,
+				layout.max_primitives,
+				layout.topology,
+				layout.primitive_index_word_offset,
+				layout.primitive_index_word_stride,
+				layout.logical_primitive_id_word_offset,
+				layout.perspective_basis_location,
+				layout.perspective_basis_component,
+				layout.perspective_basis_components,
+				layout.no_perspective_basis_location,
+				layout.no_perspective_basis_component,
+				layout.no_perspective_basis_components);
 	}
 
 	template<class Archive>
@@ -3021,10 +3903,21 @@ namespace mvk {
 	}
 
 	template<class Archive>
+	void serialize(Archive & archive, SPIRVShaderInterfaceSpecializationConstant& constant) {
+		archive(constant.constantID,
+				constant.byteSize,
+				constant.value);
+	}
+
+	template<class Archive>
 	void serialize(Archive & archive, SPIRVToMSLConversionConfiguration& cfg) {
 		archive(cfg.options,
 				cfg.shaderInputs,
 				cfg.shaderOutputs,
+				cfg.meshOutputSpillKeys,
+				cfg.meshOutputSpillLayout,
+				cfg.meshOutputSpillFields,
+				cfg.shaderInterfaceSpecializationConstants,
 				cfg.resourceBindings,
 				cfg.discreteDescriptorSets,
 				cfg.dynamicBufferDescriptors);
@@ -3033,6 +3926,10 @@ namespace mvk {
 	template<class Archive>
 	void serialize(Archive & archive, SPIRVToMSLConversionResultInfo& scr) {
 		archive(scr.entryPoint,
+				scr.meshOutputBufferSize,
+				scr.meshOutputBufferAlignment,
+				scr.meshOutputSpillLayout,
+				scr.meshOutputSpillFields,
 				scr.specializationMacros,
 				scr.isRasterizationDisabled,
 				scr.isPositionInvariant,
@@ -3103,6 +4000,24 @@ id<MTLRenderPipelineState> MVKRenderPipelineCompiler::newMTLRenderPipelineState(
 										   bool isLate = compileComplete(ps, error);
 										   if (isLate) { destroy(); }
 									   }];
+		}
+	});
+
+	return [_mtlRenderPipelineState retain];
+}
+
+id<MTLRenderPipelineState> MVKRenderPipelineCompiler::newMTLRenderPipelineState(MTLMeshRenderPipelineDescriptor* mtlRPLDesc) {
+	unique_lock<mutex> lock(_completionLock);
+
+	compile(lock, ^{
+		auto mtlDev = getMTLDevice();
+		@synchronized (mtlDev) {
+			[mtlDev newRenderPipelineStateWithMeshDescriptor: mtlRPLDesc
+											 options: MTLPipelineOptionNone
+								   completionHandler: ^(id<MTLRenderPipelineState> ps, MTLRenderPipelineReflection*, NSError* error) {
+									   bool isLate = compileComplete(ps, error);
+									   if (isLate) { destroy(); }
+								   }];
 		}
 	});
 
@@ -3191,18 +4106,22 @@ static size_t mvkValidateCerealArchiveSize(size_t padByteCnt = 0) {
 
 void mvkValidateCeralArchiveDefinitions() {
 	[[maybe_unused]] size_t missingBytes = 0;
-	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::CompilerMSL::Options>(7);
+	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::CompilerMSL::Options>(6);
 	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::MSLShaderInterfaceVariable>();
+	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::MSLMeshOutputSpillKey>();
+	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::MSLMeshOutputSpillField>();
+	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::MSLMeshOutputSpillLayout>();
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVShaderInterfaceSpecializationConstant>();
 	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::MSLResourceBinding>();
 	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::MSLConstexprSampler>();
 	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVWorkgroupSizeDimension>(3);
 	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVEntryPoint>(20);						// Contains string
-	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionOptions>(29);			// Contains string
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionOptions>(28);			// Contains string
 	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLShaderInterfaceVariable>(3);
 	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLResourceBinding>(2);
 	missingBytes += mvkValidateCerealArchiveSize<mvk::DescriptorBinding>();
-	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionConfiguration>(109);	// Contains collection
-	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionResultInfo>(40);		// Contains collection
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionConfiguration>(156);	// Contains collection
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionResultInfo>(56);		// Contains collection
 	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLSpecializationMacroInfo>(22);			// Contains string
 	missingBytes += mvkValidateCerealArchiveSize<MVKShaderModuleKey>();
 	missingBytes += mvkValidateCerealArchiveSize<MVKCompressor<std::string>>(20);				// Contains collection

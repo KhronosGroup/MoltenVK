@@ -18,7 +18,10 @@ MoltenVK 1.4.3
 
 Released TBD
 
-- 
+- Add support for the following extensions:
+  - `VK_EXT_mesh_shader`, with taskless mesh shaders on supported Metal GPUs.
+- Update to latest SPIRV-Cross:
+  - MSL: Add native and capture/replay translation paths for mesh shaders.
 
 
 
@@ -2834,4 +2837,3 @@ MoltenVK 1.0.0
 Released 2018/02/26
 
 Initial open-source release!
-

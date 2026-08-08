@@ -333,8 +333,16 @@ typedef enum {
 	kMVKShaderStageFragment,
 	kMVKShaderStageCompute,
 	kMVKShaderStageCount,
-	kMVKShaderStageMax = kMVKShaderStageCount	// Public API legacy value
+	kMVKShaderStageMax = kMVKShaderStageCount,
+	kMVKShaderStageTask,
+	kMVKShaderStageMesh,
+	kMVKShaderStageInternalCount,
 } MVKShaderStage;
+
+static inline bool mvkIsValidShaderStage(MVKShaderStage stage) {
+	return (stage >= kMVKShaderStageVertex && stage < kMVKShaderStageCount) ||
+		   (stage >= kMVKShaderStageTask && stage < kMVKShaderStageInternalCount);
+}
 
 typedef enum {
 	kMVKBarrierStageVertex = 0,
