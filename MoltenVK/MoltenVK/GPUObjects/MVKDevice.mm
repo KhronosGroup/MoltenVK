@@ -2776,6 +2776,7 @@ void MVKPhysicalDevice::initFeatures() {
     _features.shaderUniformBufferArrayDynamicIndexing = true;
     _features.shaderStorageBufferArrayDynamicIndexing = true;
     _features.shaderClipDistance = true;
+    _features.shaderCullDistance = true;
     _features.shaderInt16 = true;
     _features.multiDrawIndirect = true;
     _features.inheritedQueries = true;
@@ -2912,7 +2913,7 @@ void MVKPhysicalDevice::initLimits() {
 	_properties.limits.maxDescriptorSetInputAttachments = (_properties.limits.maxPerStageDescriptorInputAttachments * 5);
 
 	_properties.limits.maxClipDistances = 8;	// Per Apple engineers.
-	_properties.limits.maxCullDistances = 0;	// unsupported
+	_properties.limits.maxCullDistances = 8;	// SPIRV-Cross translates BuiltInCullDistance to MSL [[cull_distance]]
 	_properties.limits.maxCombinedClipAndCullDistances = max(_properties.limits.maxClipDistances,
 															 _properties.limits.maxCullDistances);  // If supported, these consume the same slots.
 
