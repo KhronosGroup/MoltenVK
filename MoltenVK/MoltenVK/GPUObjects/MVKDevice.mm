@@ -2791,7 +2791,12 @@ void MVKPhysicalDevice::initFeatures() {
     _features.depthClamp = true;
 
     _features.shaderStorageImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
-    _features.depthBounds = _metalFeatures.depthBoundsTest;
+    // Advertise depthBounds even without hardware support (pre-Apple10 GPUs):
+    // the encoder only issues Metal depth-bounds calls when
+    // _metalFeatures.depthBoundsTest is set, so the state is silently ignored.
+    // Depth bounds is a fragment-culling optimization; skipping it affects
+    // performance, not correctness. Required by DOOM 2016 at vkCreateDevice.
+    _features.depthBounds = true;
 
     if ( supportsMTLGPUFamily(Apple1) ) {
         _features.textureCompressionETC2 = true;
