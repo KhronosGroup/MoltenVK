@@ -2822,9 +2822,11 @@ MVKRayTracingPipeline::MVKRayTracingPipeline(MVKDevice* device,
 		}
 		return { nullptr, 0 };
 	};
+#if MVK_XCODE_26 && MVK_MACOS_OR_IOS
 	_usesIFB = !_isLibrary && !linksLibraries &&
 		getMetalFeatures().mslVersion >= SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(4, 0) &&
 		getPhysicalDevice()->getMTLDeviceCapabilities().getHighestAppleGPU() >= 9;
+#endif
 	for (uint32_t i = 0; _usesIFB && i < pCreateInfo->groupCount; i++) {
 		_usesIFB = pCreateInfo->pGroups[i].type != VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
 	}
@@ -3247,6 +3249,7 @@ MVKRayTracingPipeline::MVKRayTracingPipeline(MVKDevice* device,
 			}
 			continue;
 		}
+#if MVK_XCODE_26 && MVK_MACOS_OR_IOS
 		if (_usesIFB) {
 			id<MTLFunctionHandle> handle = group.anyHitShader == VK_SHADER_UNUSED_KHR
 				? ifbPassthroughHandle : ifbStageHandles[group.anyHitShader];
@@ -3254,6 +3257,7 @@ MVKRayTracingPipeline::MVKRayTracingPipeline(MVKDevice* device,
 			static_assert(sizeof(resourceID) == sizeof(_groupHandles[i].intersectionFunction));
 			std::memcpy(&_groupHandles[i].intersectionFunction, &resourceID, sizeof(resourceID));
 		}
+#endif
 		if (group.closestHitShader != VK_SHADER_UNUSED_KHR) {
 			[_mtlFunctionTable setFunction:stageHandles[group.closestHitShader] atIndex:handles[0]];
 		}
