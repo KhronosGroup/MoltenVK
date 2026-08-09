@@ -490,8 +490,8 @@ protected:
 	MVKMTLFunction getMTLFunction(const VkPipelineShaderStageCreateInfo* pStage,
 								  spv::ExecutionModel executionModel,
 								  VkPipelineCreationFeedback* pStageFB,
-								  uint32_t rayTracingStageDepth = 0,
-								  bool rayGenerationVisible = false);
+								  bool enableRayTracingIFB = false,
+								  bool rayTracingAnyHitIFB = false);
 	uint32_t getImplicitBufferIndex(uint32_t bufferIndexOffset) const;
 
 	id<MTLComputePipelineState> _mtlPipelineState;
@@ -521,17 +521,13 @@ public:
 	id<MTLVisibleFunctionTable> getRayGenerationFunctionTable() const { return _mtlRayGenerationFunctionTable; }
 	id<MTLVisibleFunctionTable> getRayTracingIntersectionFunctionTable() const { return _mtlIntersectionFunctionTable; }
 	id<MTLVisibleFunctionTable> getRayTracingCallableFunctionTable() const { return _mtlCallableFunctionTable; }
-	id<MTLVisibleFunctionTable> getRecursiveRayTracingFunctionTable() const { return _mtlRecursiveFunctionTable; }
-	id<MTLVisibleFunctionTable> getRecursiveRayTracingIntersectionFunctionTable() const { return _mtlRecursiveIntersectionFunctionTable; }
 	uint32_t getRayTracingFunctionTableBufferIndex() const { return _stageResources.implicitBuffers.ids[MVKImplicitBuffer::DispatchBase]; }
 	uint32_t getRayGenerationFunctionTableBufferIndex() const;
 	uint32_t getRayTracingIntersectionFunctionTableBufferIndex() const;
 	uint32_t getRayTracingCallableFunctionTableBufferIndex() const;
-	uint32_t getRecursiveRayTracingFunctionTableBufferIndex() const;
-	uint32_t getRecursiveRayTracingIntersectionFunctionTableBufferIndex() const;
 	uint32_t getRayTracingDispatchBufferIndex() const;
-	uint32_t getRayTracingInstanceMetadataBufferIndex() const;
 	uint32_t getRayTracingPipelineFlags() const;
+	bool usesIntersectionFunctionBuffer() const { return _usesIFB; }
 	~MVKRayTracingPipeline() override;
 
 private:
@@ -541,7 +537,7 @@ private:
 	struct ShaderStage {
 		VkShaderStageFlagBits stage;
 		MVKMTLFunction function;
-		MVKMTLFunction recursiveFunction;
+		MVKMTLFunction ifbFunction;
 	};
 	struct ShaderGroup {
 		VkRayTracingShaderGroupTypeKHR type;
@@ -552,14 +548,23 @@ private:
 	};
 	std::vector<ShaderStage> _shaderStages;
 	std::vector<ShaderGroup> _shaderGroups;
-	std::vector<uint32_t> _groupHandles;
+	bool _usesTraceRay = false;
+	bool _usesExecuteCallable = false;
+	bool _callableCallsCallable = false;
+	struct alignas(uint64_t) ShaderGroupHandle {
+		uint64_t intersectionFunction = 0;
+		uint32_t functions[3] = {};
+		uint32_t padding = 0;
+		uint64_t reserved = 0;
+	};
+	static_assert(sizeof(ShaderGroupHandle) == 32);
+	std::vector<ShaderGroupHandle> _groupHandles;
 	bool _isLibrary = false;
+	bool _usesIFB = false;
 	id<MTLVisibleFunctionTable> _mtlFunctionTable = nil;
 	id<MTLVisibleFunctionTable> _mtlRayGenerationFunctionTable = nil;
 	id<MTLVisibleFunctionTable> _mtlIntersectionFunctionTable = nil;
 	id<MTLVisibleFunctionTable> _mtlCallableFunctionTable = nil;
-	id<MTLVisibleFunctionTable> _mtlRecursiveFunctionTable = nil;
-	id<MTLVisibleFunctionTable> _mtlRecursiveIntersectionFunctionTable = nil;
 };
 
 

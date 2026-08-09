@@ -170,7 +170,7 @@ struct MVKUseResourceHelper {
  */
 struct MVKVulkanCommonEncoderState {
 	MVKPipelineLayout* _layout = nullptr;
-	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount];
+	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount] = {};
 	MVKDescriptorSet _pushDescriptor = {};
 	MVKSmallVector<uint8_t, 16> _pushDescData;
 	void ensurePushDescriptorSize(uint32_t size);
@@ -425,7 +425,7 @@ class MVKCommandEncoderState {
 	MVKVulkanSharedCommandEncoderState   _vkShared;
 	MVKVulkanGraphicsCommandEncoderState _vkGraphics;
 	MVKVulkanComputeCommandEncoderState  _vkCompute;
-	MVKVulkanComputeCommandEncoderState  _vkRayTracing;
+	MVKVulkanComputeCommandEncoderState* _vkRayTracing = nullptr;
 	MVKMetalSharedCommandEncoderState    _mtlShared;
 	MVKMetalGraphicsCommandEncoderState  _mtlGraphics;
 	MVKMetalComputeCommandEncoderState   _mtlCompute;
@@ -439,8 +439,10 @@ class MVKCommandEncoderState {
 
 	/** Get the encoder state associated with the given bind point, or nullptr if the bindPoint isn't supported. */
 	MVKVulkanCommonEncoderState* getVkEncoderState(VkPipelineBindPoint bindPoint);
+	MVKVulkanComputeCommandEncoderState& getOrCreateRayTracingState();
 
 public:
+	~MVKCommandEncoderState();
 	/** Get a reference to the Vulkan state shared between graphics and compute.  Read-only, use methods on this class (which will invalidate associated Metal state) to modify. */
 	const MVKVulkanSharedCommandEncoderState&   vkShared()   const { return _vkShared; }
 	/** Get a reference to the Vulkan graphics state.  Read-only, use methods on this class (which will invalidate associated Metal state) to modify. */
@@ -448,7 +450,7 @@ public:
 	/** Get a reference to the Vulkan compute state.  Read-only, use methods on this class (which will invalidate associated Metal state) to modify. */
 	const MVKVulkanComputeCommandEncoderState&  vkCompute()  const { return _vkCompute; }
 	/** Get a reference to the Vulkan ray-tracing state. Read-only, use methods on this class to modify. */
-	const MVKVulkanComputeCommandEncoderState&  vkRayTracing() const { return _vkRayTracing; }
+	const MVKVulkanComputeCommandEncoderState&  vkRayTracing() const { return *_vkRayTracing; }
 	/** Returns a reference to the Metal state shared between graphics and compute. */
 	MVKMetalSharedCommandEncoderState&   mtlShared()   { return _mtlShared; }
 	/** Returns a reference to the Metal graphics state. */
@@ -485,7 +487,7 @@ public:
 	}
 	/** Binds everything needed to dispatch a Vulkan ray-tracing pipeline on the current Metal compute state. */
 	void prepareRayTracingDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder) {
-		_mtlCompute.prepareComputeDispatch(encoder, mvkEncoder, _vkRayTracing, _vkShared);
+		_mtlCompute.prepareComputeDispatch(encoder, mvkEncoder, *_vkRayTracing, _vkShared);
 	}
 	/** Binds the given graphics pipeline to the Vulkan graphics state, invalidating any necessary resources. */
 	void bindGraphicsPipeline(MVKGraphicsPipeline* pipeline);

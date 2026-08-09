@@ -125,6 +125,17 @@ static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t star
 		cmdBuff->setConfigurationResult(cmdRslt);												\
 	}
 
+#define MVKAddRayCmd(cmdType, vkCmdBuff, ...)  											\
+	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(vkCmdBuff);				\
+	MVKCmd ##cmdType* cmd = cmdBuff->getCommandPool()->getRayTracingCommandPools().			\
+		_cmd ##cmdType ##Pool.acquireObject();												\
+	VkResult cmdRslt = cmd->setContent(cmdBuff, ##__VA_ARGS__);									\
+	if (cmdRslt == VK_SUCCESS) {															\
+		cmdBuff->addCommand(cmd);															\
+	} else {																		\
+		cmdBuff->setConfigurationResult(cmdRslt);											\
+	}
+
 // Add one of two commands, based on comparing a command parameter against a threshold value
 #define MVKAddCmdFromThreshold(baseCmdType, value, threshold, vkCmdBuff, ...)					\
 	if (value <= threshold) {																	\
@@ -1109,6 +1120,7 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateRayTracingPipelinesKHR(
 	MVKTraceVulkanCallStart();
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	VkResult rslt = mvkDev->createPipelines<MVKRayTracingPipeline, VkRayTracingPipelineCreateInfoKHR>(pipelineCache, count, pCreateInfos, pAllocator, pPipelines);
+	if (deferredOperation && rslt == VK_SUCCESS) { rslt = VK_OPERATION_NOT_DEFERRED_KHR; }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -1164,7 +1176,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdTraceRaysKHR(
 	uint32_t                                    depth) {
 
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(TraceRays, commandBuffer, pRaygenShaderBindingTable, pMissShaderBindingTable,
+	MVKAddRayCmd(TraceRays, commandBuffer, pRaygenShaderBindingTable, pMissShaderBindingTable,
 			  pHitShaderBindingTable, pCallableShaderBindingTable, width, height, depth);
 	MVKTraceVulkanCallEnd();
 }
@@ -1178,7 +1190,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdTraceRaysIndirectKHR(
 	VkDeviceAddress                             indirectDeviceAddress) {
 
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(TraceRays, commandBuffer, pRaygenShaderBindingTable, pMissShaderBindingTable,
+	MVKAddRayCmd(TraceRays, commandBuffer, pRaygenShaderBindingTable, pMissShaderBindingTable,
 			  pHitShaderBindingTable, pCallableShaderBindingTable, indirectDeviceAddress);
 	MVKTraceVulkanCallEnd();
 }
@@ -1546,7 +1558,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindPipeline(
 			break;
 		}
 		case VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR: {
-			MVKAddCmd(BindRayTracingPipeline, commandBuffer, pipeline);
+			MVKAddRayCmd(BindRayTracingPipeline, commandBuffer, pipeline);
 			break;
 		}
 		default:
@@ -3374,7 +3386,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBuildAccelerationStructuresKHR(
     const VkAccelerationStructureBuildRangeInfoKHR* const*  ppBuildRangeInfos) {
 
     MVKTraceVulkanCallStart();
-    MVKAddCmd(BuildAccelerationStructure, commandBuffer, infoCount, pInfos, ppBuildRangeInfos);
+    MVKAddRayCmd(BuildAccelerationStructure, commandBuffer, infoCount, pInfos, ppBuildRangeInfos);
     MVKTraceVulkanCallEnd();
 }
 
@@ -3464,7 +3476,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyAccelerationStructureKHR(
     const VkCopyAccelerationStructureInfoKHR*   pInfo) {
 
     MVKTraceVulkanCallStart();
-    MVKAddCmd(CopyAccelerationStructure, commandBuffer, pInfo->src, pInfo->dst, pInfo->mode);
+    MVKAddRayCmd(CopyAccelerationStructure, commandBuffer, pInfo->src, pInfo->dst, pInfo->mode);
     MVKTraceVulkanCallEnd();
 }
 
@@ -3473,7 +3485,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyAccelerationStructureToMemoryKHR(
     const VkCopyAccelerationStructureToMemoryInfoKHR*   pInfo) {
 
     MVKTraceVulkanCallStart();
-	MVKAddCmd(CopyAccelerationStructureToMemory, commandBuffer,
+	MVKAddRayCmd(CopyAccelerationStructureToMemory, commandBuffer,
 		(MVKAccelerationStructure*)pInfo->src, pInfo->dst.deviceAddress, pInfo->mode);
     MVKTraceVulkanCallEnd();
 }
@@ -3483,7 +3495,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyMemoryToAccelerationStructureKHR(
     const VkCopyMemoryToAccelerationStructureInfoKHR* pInfo) {
 
     MVKTraceVulkanCallStart();
-	MVKAddCmd(CopyMemoryToAccelerationStructure, commandBuffer,
+	MVKAddRayCmd(CopyMemoryToAccelerationStructure, commandBuffer,
 		pInfo->src.deviceAddress, (MVKAccelerationStructure*)pInfo->dst, pInfo->mode);
     MVKTraceVulkanCallEnd();
 }
@@ -3497,7 +3509,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdWriteAccelerationStructuresPropertiesKHR(
     uint32_t                                    firstQuery) {
 
     MVKTraceVulkanCallStart();
-    MVKAddCmd(WriteAccelerationStructuresProperties, commandBuffer, accelerationStructureCount, pAccelerationStructures, queryType, queryPool, firstQuery);
+    MVKAddRayCmd(WriteAccelerationStructuresProperties, commandBuffer, accelerationStructureCount, pAccelerationStructures, queryType, queryPool, firstQuery);
     MVKTraceVulkanCallEnd();
 }
 

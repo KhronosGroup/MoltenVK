@@ -134,7 +134,7 @@ MVKAccelerationStructureStorageGeneration::~MVKAccelerationStructureStorageGener
 	}
 	if (canonicalStorage) { canonicalStorage->release(); }
 	if (_instanceMetadataBuffer) { _device->removeResidency(_instanceMetadataBuffer); }
-	_device->removeResidency(_referenceBuffer);
+	if (_ownsReferenceResidency) { _device->removeResidency(_referenceBuffer); }
 	_device->removeResidency(_accelerationStructure);
 	[_referenceBuffer release];
 	[_instanceMetadataBuffer release];
@@ -281,6 +281,8 @@ MVKAccelerationStructureStorage::MVKAccelerationStructureStorage(
 
 MVKAccelerationStructureStorage::~MVKAccelerationStructureStorage() {
 	if (_currentGeneration) { _currentGeneration->release(); }
+	if (_referenceBuffer) { _device->removeResidency(_referenceBuffer); }
+	[_referenceBuffer release];
 }
 
 bool MVKAccelerationStructureStorage::matches(VkDeviceSize physicalStart) const {
@@ -342,8 +344,16 @@ bool MVKAccelerationStructureStorage::ensureInitialGeneration(
 	std::lock_guard<std::mutex> lock(_lock);
 	if (!_currentGeneration) {
 		_currentGeneration = newGeneration(nativeCapacity, usesPlacement, placementOffset, 0);
+		if (_currentGeneration) { _device->advanceAccelerationStructureStateSerial(); }
 	}
-	return _currentGeneration != nullptr;
+	if (_currentGeneration && !_referenceBuffer) {
+		id<MTLBuffer> reference = _currentGeneration->getReferenceMTLBuffer();
+		if (reference.gpuAddress) {
+			_referenceBuffer = [reference retain];
+			_currentGeneration->relinquishReferenceResidency();
+		}
+	}
+	return _currentGeneration && _referenceBuffer;
 }
 
 VkResult MVKAccelerationStructureStorage::retainFullWriteGeneration(
@@ -377,13 +387,23 @@ bool MVKAccelerationStructureStorage::publishGeneration(
 		previousGeneration = _currentGeneration;
 		_currentGeneration = generation;
 	}
+	_device->advanceAccelerationStructureStateSerial();
 	if (previousGeneration) { previousGeneration->release(); }
 	return true;
 }
 
 uint64_t MVKAccelerationStructure::getDeviceAddress() {
 	std::lock_guard<std::mutex> lock(_lock);
-	return _isBufferBound && !_isDestroyed ? _address : 0;
+	if (!_isBufferBound || _isDestroyed) { return 0; }
+	uint64_t referenceAddress = _storage->getReferenceGPUAddress();
+	return _type == VK_ACCELERATION_STRUCTURE_TYPE_GENERIC_KHR || (referenceAddress & 0xff)
+		? _address : referenceAddress;
+}
+
+id<MTLBuffer> MVKAccelerationStructure::getReferenceMTLBuffer() {
+	std::lock_guard<std::mutex> lock(_lock);
+	return _isBufferBound && !_isDestroyed && _storage
+		? _storage->getReferenceMTLBuffer() : nil;
 }
 
 MVKAccelerationStructureStorageGeneration* MVKAccelerationStructure::retainCurrentGeneration() {
@@ -492,6 +512,7 @@ MTLAccelerationStructureDescriptor* MVKAccelerationStructure::newMTLAcceleration
                         }
                         geometryTriangles.vertexStride = triangleData.vertexStride;
                         geometryTriangles.vertexFormat = mvkMTLAccelerationStructureVertexFormatFromVkFormat(triangleData.vertexFormat);
+						geometryTriangles.intersectionFunctionTableOffset = i;
                         geometryTriangles.opaque = mvkIsAnyFlagEnabled(geom.flags, VK_GEOMETRY_OPAQUE_BIT_KHR);
                         geometryTriangles.allowDuplicateIntersectionFunctionInvocation = !mvkIsAnyFlagEnabled(geom.flags, VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR);
 
@@ -536,6 +557,7 @@ MTLAccelerationStructureDescriptor* MVKAccelerationStructure::newMTLAcceleration
 						geometryAABBs.boundingBoxStride = boundingBoxCount ||
 							aabbData.stride >= sizeof(VkAabbPositionsKHR)
 							? aabbData.stride : sizeof(VkAabbPositionsKHR);
+						geometryAABBs.intersectionFunctionTableOffset = i;
                         if (mvkBoundingBoxBuffer) {
                             geometryAABBs.boundingBoxBuffer = mvkBoundingBoxBuffer->getMTLBuffer();
                             geometryAABBs.boundingBoxBufferOffset = mvkBoundingBoxBuffer->getMTLBufferOffset() + boundingBoxOffset;

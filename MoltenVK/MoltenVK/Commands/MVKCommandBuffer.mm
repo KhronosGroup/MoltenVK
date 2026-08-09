@@ -30,6 +30,24 @@
 
 using namespace std;
 
+struct MVKAccelerationStructureCommandEncodingState {
+	MVKSmallVector<id<MTLAccelerationStructure>, 16> instances;
+	MVKSmallVector<id<MTLResource>, 16> addressTableResources;
+	MVKSmallVector<MVKAccelerationStructureStorageGeneration*, 16>* retainedGenerations = nullptr;
+	const MVKMTLBufferAllocation* addressTable = nullptr;
+	const MVKMTLBufferAllocation* referenceTable = nullptr;
+	MVKSmallVector<pair<MVKDescriptorSet*, MVKDescriptorSetSnapshot*>, kMVKMaxDescriptorSetCount> descriptorSetSnapshots;
+
+	void reset() {
+		instances.clear();
+		addressTableResources.clear();
+		retainedGenerations = nullptr;
+		addressTable = nullptr;
+		referenceTable = nullptr;
+		descriptorSetSnapshots.clear();
+	}
+};
+
 
 #pragma mark -
 #pragma mark MVKCommandEncodingContext
@@ -265,6 +283,10 @@ VkResult MVKCommandBuffer::end() {
 	return getConfigurationResult();
 }
 
+void MVKCommandBuffer::recordAccelerationStructureCommand() {
+	_requiresEncodingDependencyWait = true;
+}
+
 void MVKCommandBuffer::checkDeferredEncoding() {
 	if (getMVKConfig().prefillMetalCommandBuffers == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_DEFERRED_ENCODING) {
 		@autoreleasepool {
@@ -407,7 +429,10 @@ void MVKCommandBuffer::recordTimestampCommand() {
 
 void MVKCommandBuffer::recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline) {
 	_lastTessellationPipeline = mvkBindPipeline->isTessellationPipeline() ? mvkBindPipeline : nullptr;
-	if (mvkBindPipeline->usesAccelerationStructures()) { _requiresEncodingDependencyWait = true; }
+	if (getEnabledAccelerationStructureFeatures().accelerationStructure &&
+		mvkBindPipeline->usesAccelerationStructures()) {
+		recordAccelerationStructureCommand();
+	}
 }
 
 
@@ -430,12 +455,7 @@ void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff,
 
 void MVKCommandEncoder::beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext) {
 	_pEncodingContext = pEncodingContext;
-	_accelerationStructureAddressTable = nullptr;
-	_accelerationStructureAddressTableResources.clear();
-	_descriptorSetSnapshots.clear();
-	_accelerationStructureReferenceTable = nullptr;
-	_accelerationStructureInstances.clear();
-	_retainedAccelerationStructureGenerations.clear();
+	if (_accelerationStructureState) { _accelerationStructureState->reset(); }
 
     _subpassContents = VK_SUBPASS_CONTENTS_INLINE;
     _renderSubpassIndex = 0;
@@ -1137,12 +1157,7 @@ VkResult MVKCommandEncoder::splitForHostReadback() {
 	_mtlCmdBuffer = nil;
 
 	VkResult rslt = _submission->commitActiveMTLCommandBufferAndWait();
-	_accelerationStructureAddressTable = nullptr;
-	_accelerationStructureAddressTableResources.clear();
-	_descriptorSetSnapshots.clear();
-	_accelerationStructureReferenceTable = nullptr;
-	_accelerationStructureInstances.clear();
-	_retainedAccelerationStructureGenerations.clear();
+	if (_accelerationStructureState) { _accelerationStructureState->reset(); }
 	_stageCountersMTLFence = nil;
 	if (rslt != VK_SUCCESS) { return rslt; }
 
@@ -1301,67 +1316,97 @@ const MVKMTLBufferAllocation* MVKCommandEncoder::copyToTempMTLBufferAllocation(c
     return mtlBuffAlloc;
 }
 
-const MVKMTLBufferAllocation* MVKCommandEncoder::getAccelerationStructureAddressTable() {
-	if (!_accelerationStructureAddressTable) {
-		MVKSmallVector<uint64_t, 32> table;
-		getDevice()->getAccelerationStructureAddressTable(this, table, _accelerationStructureAddressTableResources);
-		_accelerationStructureAddressTable = copyToTempMTLBufferAllocation(table.data(), table.size() * sizeof(uint64_t));
+MVKAccelerationStructureCommandEncodingState& MVKCommandEncoder::getOrCreateAccelerationStructureState() {
+	if (!_accelerationStructureState) {
+		_accelerationStructureState = new MVKAccelerationStructureCommandEncodingState;
 	}
-	return _accelerationStructureAddressTable;
+	return *_accelerationStructureState;
+}
+
+const MVKMTLBufferAllocation* MVKCommandEncoder::getAccelerationStructureAddressTable() {
+	auto& state = getOrCreateAccelerationStructureState();
+	if (!state.addressTable) {
+		MVKSmallVector<uint64_t, 32> table;
+		MVKSmallVector<id<MTLAccelerationStructure>, 16> scratchInstances;
+		auto& instances = getDevice()->usesIndirectAccelerationStructureInstanceDescriptors()
+			? state.instances : scratchInstances;
+		getDevice()->getAccelerationStructureAddressTable(
+			this, table, state.addressTableResources, instances);
+		state.addressTable = copyToTempMTLBufferAllocation(table.data(), table.size() * sizeof(uint64_t));
+	}
+	return state.addressTable;
 }
 
 const MVKMTLBufferAllocation* MVKCommandEncoder::getAccelerationStructureAddressTable(MVKUseResourceHelper& resources,
-                                                                                       MVKResourceUsageStages stages) {
+	                                                                                       MVKResourceUsageStages stages) {
 	auto* allocation = getAccelerationStructureAddressTable();
-	for (id<MTLResource> resource : _accelerationStructureAddressTableResources) {
+	for (id<MTLResource> resource : _accelerationStructureState->addressTableResources) {
 		resources.add(resource, stages, false);
 	}
 	return allocation;
 }
 
 void MVKCommandEncoder::invalidateAccelerationStructureAddressTable() {
-	_accelerationStructureAddressTable = nullptr;
-	_accelerationStructureAddressTableResources.clear();
+	if (!_accelerationStructureState) { return; }
+	_accelerationStructureState->addressTable = nullptr;
+	_accelerationStructureState->addressTableResources.clear();
+	if (getDevice()->usesIndirectAccelerationStructureInstanceDescriptors()) {
+		_accelerationStructureState->instances.clear();
+	}
 }
 
 const MVKMTLBufferAllocation* MVKCommandEncoder::getAccelerationStructureReferenceTable() {
-	if (!_accelerationStructureReferenceTable) {
+	auto& state = getOrCreateAccelerationStructureState();
+	if (!state.referenceTable) {
 		MVKSmallVector<uint64_t, 32> table;
-		getDevice()->getAccelerationStructureReferenceTable(this, table, _accelerationStructureInstances);
-		_accelerationStructureReferenceTable =
+		getDevice()->getAccelerationStructureReferenceTable(this, table, state.instances);
+		state.referenceTable =
 			copyToTempMTLBufferAllocation(table.data(), table.size() * sizeof(uint64_t));
 	}
-	return _accelerationStructureReferenceTable;
+	return state.referenceTable;
 }
 
 const MVKSmallVector<id<MTLAccelerationStructure>, 16>&
 MVKCommandEncoder::getAccelerationStructureInstances() {
-	getAccelerationStructureReferenceTable();
-	return _accelerationStructureInstances;
+	if (getDevice()->usesIndirectAccelerationStructureInstanceDescriptors()) {
+		getAccelerationStructureAddressTable();
+	} else {
+		getAccelerationStructureReferenceTable();
+	}
+	return _accelerationStructureState->instances;
 }
 
 void MVKCommandEncoder::invalidateAccelerationStructureReferenceTable() {
-	_accelerationStructureReferenceTable = nullptr;
-	_accelerationStructureInstances.clear();
+	if (!_accelerationStructureState) { return; }
+	_accelerationStructureState->referenceTable = nullptr;
+	if (!getDevice()->usesIndirectAccelerationStructureInstanceDescriptors()) {
+		_accelerationStructureState->instances.clear();
+	}
 }
 
 void MVKCommandEncoder::retainAccelerationStructureGeneration(MVKAccelerationStructureStorageGeneration* generation) {
 	if (!generation) { return; }
-	if (std::find(_retainedAccelerationStructureGenerations.begin(),
-				  _retainedAccelerationStructureGenerations.end(), generation) != _retainedAccelerationStructureGenerations.end()) {
-		generation->release();
-		return;
+	auto& state = getOrCreateAccelerationStructureState();
+	if (!state.retainedGenerations) {
+		auto* generations = new MVKSmallVector<MVKAccelerationStructureStorageGeneration*, 16>;
+		state.retainedGenerations = generations;
+		[_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) {
+			for (auto* retainedGeneration : *generations) { retainedGeneration->release(); }
+			delete generations;
+		}];
 	}
-	_retainedAccelerationStructureGenerations.push_back(generation);
-	[_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) { generation->release(); }];
+	state.retainedGenerations->push_back(generation);
 }
 
 MVKDescriptorSetSnapshot* MVKCommandEncoder::getDescriptorSetSnapshot(MVKDescriptorSet* set) {
-	auto it = _descriptorSetSnapshots.find(set);
-	auto* current = it == _descriptorSetSnapshots.end() ? nullptr : it->second;
+	auto& snapshots = getOrCreateAccelerationStructureState().descriptorSetSnapshots;
+	auto it = std::find_if(snapshots.begin(), snapshots.end(),
+		[set](const auto& entry) { return entry.first == set; });
+	auto* current = it == snapshots.end() ? nullptr : it->second;
 	auto* snapshot = mvkSnapshotDescriptorSet(this, set, current);
 	if (snapshot != current) {
-		_descriptorSetSnapshots[set] = snapshot;
+		if (it == snapshots.end()) { snapshots.emplace_back(set, snapshot); }
+		else { it->second = snapshot; }
 		[_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) { delete snapshot; }];
 	}
 	return snapshot;
@@ -1536,6 +1581,7 @@ MVKCommandEncoder::~MVKCommandEncoder() {
 	[_mtlComputeEncoder release];
 	[_mtlBlitEncoder release];
 	[_mtlAccelerationStructureEncoder release];
+	delete _accelerationStructureState;
 	// _stageCountersMTLFence is released after Metal command buffer completion
 }
 

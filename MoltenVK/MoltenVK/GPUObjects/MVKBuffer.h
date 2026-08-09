@@ -100,7 +100,7 @@ protected:
 
 	VkBufferUsageFlags2 _usage;
 	id<MTLBuffer> _mtlBuffer = nil;
-	MVKSmallVector<MVKAccelerationStructure*, 1> _accelerationStructures;
+	MVKSmallVector<MVKAccelerationStructure*> _accelerationStructures;
     std::mutex _lock;
 };
 

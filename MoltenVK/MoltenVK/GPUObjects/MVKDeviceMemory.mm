@@ -536,7 +536,8 @@ void MVKDeviceMemory::initExternalMemory(MVKImage* dedicatedImage, bool wantsHea
 
 MVKDeviceMemory::~MVKDeviceMemory() {
 	// Keep GPU-addressable buffer bindings stable while the device enumerates them.
-	lock_guard<mutex> deviceLock(_device->_rezLock);
+	unique_lock<mutex> deviceLock(_device->_rezLock, defer_lock);
+	if (getEnabledAccelerationStructureFeatures().accelerationStructure) { deviceLock.lock(); }
 
 	// Unbind any resources that are using me.
 	// Manually null the binding parameter to prevent them from trying to remove themselves from the array.

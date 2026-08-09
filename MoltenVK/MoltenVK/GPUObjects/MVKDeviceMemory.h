@@ -170,7 +170,7 @@ protected:
 
 	MVKSmallVector<MVKBuffer*, 4> _buffers;
 	MVKSmallVector<MVKImageMemoryBinding*, 4> _imageMemoryBindings;
-	MVKSmallVector<MVKAccelerationStructureStorage*, 4> _accelerationStructureStorages;
+	MVKSmallVector<MVKAccelerationStructureStorage*> _accelerationStructureStorages;
 	std::mutex _rezLock;
     VkDeviceSize _allocationSize = 0;
 	MVKMappedMemoryRange _mappedRange;

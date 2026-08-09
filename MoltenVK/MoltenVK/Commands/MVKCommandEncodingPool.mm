@@ -180,6 +180,10 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdSerializeAccelerationS
 	MVK_ENC_REZ_ACCESS(_mtlSerializeAccStructGatherComputePipelineState, newCmdSerializeAccelerationStructureGatherMTLComputePipelineState(_commandPool));
 }
 
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdTraceRaysIndirectConvertMTLComputePipelineState() {
+	MVK_ENC_REZ_ACCESS(_mtlTraceRaysIndirectConvertComputePipelineState, newCmdTraceRaysIndirectConvertMTLComputePipelineState(_commandPool));
+}
+
 void MVKCommandEncodingPool::clear() {
 	lock_guard<mutex> lock(_lock);
 	destroyMetalResources();
@@ -286,4 +290,7 @@ void MVKCommandEncodingPool::destroyMetalResources() {
 
 	[_mtlSerializeAccStructGatherComputePipelineState release];
 	_mtlSerializeAccStructGatherComputePipelineState = nil;
+
+	[_mtlTraceRaysIndirectConvertComputePipelineState release];
+	_mtlTraceRaysIndirectConvertComputePipelineState = nil;
 }

@@ -287,21 +287,6 @@ static uint64_t accelerationStructureIndexSize(VkIndexType indexType) {
 	}
 }
 
-static void encodeCanonicalBytes(MVKCommandEncoder* cmdEncoder,
-								 id<MTLBuffer> destination,
-								 VkDeviceSize destinationOffset,
-								 const void* bytes,
-								 NSUInteger size) {
-	if (!size) { return; }
-	const MVKMTLBufferAllocation* source = cmdEncoder->copyToTempMTLBufferAllocation(bytes, size);
-	[cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyAccelerationStructure)
-		copyFromBuffer:source->_mtlBuffer
-		sourceOffset:source->_offset
-		toBuffer:destination
-		destinationOffset:static_cast<NSUInteger>(destinationOffset)
-		size:size];
-}
-
 static bool encodeCanonicalGather(
 	MVKCommandEncoder* cmdEncoder,
 	id<MTLBuffer> destination,
@@ -679,14 +664,26 @@ VkResult MVKAccelerationStructureCanonicalBuild::prepareAndEncode(
 	if (!_buffer) { return VK_ERROR_OUT_OF_DEVICE_MEMORY; }
 	_commandEncoder = cmdEncoder;
 
+	NSUInteger metadataSize = static_cast<NSUInteger>(_layout.dataOffset);
+	const MVKMTLBufferAllocation* metadata = cmdEncoder->getTempMTLBuffer(metadataSize);
+	uint8_t* metadataContents = static_cast<uint8_t*>(metadata->getContents());
+	memset(metadataContents, 0, metadataSize);
+	memcpy(metadataContents, &header, sizeof(header));
+	memcpy(metadataContents + _layout.payloadOffset, &payload, sizeof(payload));
+	if (!records.empty()) {
+		memcpy(metadataContents + _layout.recordTableOffset,
+			   records.data(), records.size() * sizeof(records[0]));
+	}
 	id<MTLBlitCommandEncoder> encoder =
 		cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyAccelerationStructure);
-	[encoder fillBuffer:_buffer range:NSMakeRange(0, static_cast<NSUInteger>(_layout.serializedSize)) value:0];
-	encodeCanonicalBytes(cmdEncoder, _buffer, 0, &header, sizeof(header));
-	encodeCanonicalBytes(cmdEncoder, _buffer, _layout.payloadOffset, &payload, sizeof(payload));
-	encodeCanonicalBytes(cmdEncoder, _buffer, _layout.recordTableOffset,
-					 records.data(), static_cast<NSUInteger>(records.size() * sizeof(records[0])));
-	encoder = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyAccelerationStructure);
+	[encoder fillBuffer:_buffer
+		range:NSMakeRange(metadataSize, static_cast<NSUInteger>(_layout.serializedSize) - metadataSize)
+		value:0];
+	[encoder copyFromBuffer:metadata->_mtlBuffer
+		sourceOffset:metadata->_offset
+		toBuffer:_buffer
+		destinationOffset:0
+		size:metadataSize];
 	for (const auto& copy : copies) {
 		[encoder copyFromBuffer:copy.source
 			sourceOffset:copy.sourceOffset
@@ -998,6 +995,7 @@ static MTLAccelerationStructureDescriptor* newDeserializedBLASDescriptor(
 			geometry.vertexStride = static_cast<NSUInteger>(record.vertexStride);
 			geometry.vertexFormat = mvkMTLAccelerationStructureVertexFormatFromVkFormat(
 				static_cast<VkFormat>(record.vertexFormat));
+			geometry.intersectionFunctionTableOffset = static_cast<NSUInteger>(index);
 			geometry.vertexBuffer = serializationBuffer;
 			if (record.vertexSize) {
 				geometry.vertexBufferOffset = static_cast<NSUInteger>(record.vertexOffset);
@@ -1056,6 +1054,7 @@ static MTLAccelerationStructureDescriptor* newDeserializedBLASDescriptor(
 			geometry.boundingBoxStride = record.primitiveCount ||
 				record.vertexStride >= sizeof(VkAabbPositionsKHR)
 				? static_cast<NSUInteger>(record.vertexStride) : sizeof(VkAabbPositionsKHR);
+			geometry.intersectionFunctionTableOffset = static_cast<NSUInteger>(index);
 			geometry.boundingBoxBuffer = serializationBuffer;
 			if (record.aabbSize) {
 				geometry.boundingBoxBufferOffset = static_cast<NSUInteger>(record.aabbOffset);
@@ -1261,11 +1260,18 @@ void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncod
 
 	const MVKMTLBufferAllocation* scratch = cmdEncoder->getTempMTLBuffer(
 		static_cast<NSUInteger>(sizes.buildScratchBufferSize), true);
+	if (!scratch || !scratch->_mtlBuffer) {
+		[descriptor release];
+		releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
+		cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+			"vkCmdCopyMemoryToAccelerationStructureKHR(): The build scratch buffer could not be allocated.");
+		return;
+	}
 
 	MVKAccelerationStructureStorageGeneration* generation = nullptr;
 	uint64_t instanceMetadataSize =
 		serialization.payload.accelerationStructureType == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR
-			? serialization.payload.recordCount * sizeof(uint32_t) * 2
+			? serialization.payload.recordCount * sizeof(uint32_t)
 			: 0;
 	VkResult result = _accelerationStructure->retainFullWriteGeneration(
 		sizes.accelerationStructureSize, instanceMetadataSize, generation);
@@ -1299,12 +1305,27 @@ void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncod
 			return;
 		}
 	}
+	if (!mvkEncodeAccelerationStructureReferenceUpdate(
+			cmdEncoder, _accelerationStructure, generation)) {
+		generation->release();
+		[descriptor release];
+		releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
+		cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+			"vkCmdCopyMemoryToAccelerationStructureKHR(): The stable acceleration-structure reference could not be updated.");
+		return;
+	}
+	auto* previousGeneration = _accelerationStructure->retainCurrentGeneration();
+	if (previousGeneration == generation && previousGeneration) {
+		previousGeneration->release();
+		previousGeneration = nullptr;
+	}
 	id<MTLAccelerationStructureCommandEncoder> encoder =
 		cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseBuildAccelerationStructure);
 	if (serialization.payload.accelerationStructureType == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR) {
 		cmdEncoder->getDevice()->encodeGPUAddressableAccelerationStructures(cmdEncoder, encoder);
 	}
 	if (!_accelerationStructure->publishGeneration(generation)) {
+		if (previousGeneration) { previousGeneration->release(); }
 		[descriptor release];
 		if (computeEncoder) {
 			releaseDeserializationResourcesOnCompletion(cmdEncoder, generation, serializationBuffer);
@@ -1316,6 +1337,7 @@ void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncod
 			"vkCmdCopyMemoryToAccelerationStructureKHR(): The destination generation could not be published.");
 		return;
 	}
+	cmdEncoder->retainAccelerationStructureGeneration(previousGeneration);
 	cmdEncoder->invalidateAccelerationStructureAddressTable();
 	cmdEncoder->invalidateAccelerationStructureReferenceTable();
 	[encoder buildAccelerationStructure:generation->getMTLAccelerationStructure()

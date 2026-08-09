@@ -144,6 +144,7 @@ public:
 
 	id<MTLComputePipelineState> getCmdBuildAccelerationStructureConvertBuffersMTLComputePipelineState();
 	id<MTLComputePipelineState> getCmdSerializeAccelerationStructureGatherMTLComputePipelineState();
+	id<MTLComputePipelineState> getCmdTraceRaysIndirectConvertMTLComputePipelineState();
 
 	/** Deletes all the internal resources. */
 	void clear();
@@ -189,4 +190,5 @@ protected:
 	id<MTLComputePipelineState> _mtlConvertUint8IndicesComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlBuildAccStructConvertComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlSerializeAccStructGatherComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlTraceRaysIndirectConvertComputePipelineState = nil;
 };

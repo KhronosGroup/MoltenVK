@@ -26,7 +26,6 @@
 #include "MVKCmdPipeline.h"
 #include "MVKQueryPool.h"
 #include "MVKSmallVector.h"
-#include <unordered_map>
 
 class MVKCommandPool;
 class MVKQueueCommandBufferSubmission;
@@ -41,6 +40,7 @@ class MVKGraphicsPipeline;
 class MVKComputePipeline;
 class MVKAccelerationStructureStorageGeneration;
 struct MVKDescriptorSetSnapshot;
+struct MVKAccelerationStructureCommandEncodingState;
 
 typedef uint64_t MVKMTLCommandBufferID;
 
@@ -158,7 +158,7 @@ public:
 
 	void recordHostReadbackCommand() { _requiresHostReadback = true; }
 	bool requiresHostReadback() const { return _requiresHostReadback; }
-	void recordAccelerationStructureCommand() { _requiresEncodingDependencyWait = true; }
+	void recordAccelerationStructureCommand();
 	bool requiresEncodingDependencyWait() const { return _requiresEncodingDependencyWait; }
 
 
@@ -572,6 +572,7 @@ protected:
 	template<typename T> void retainIfImmediatelyEncoding(T& mtlEnc);
 	template<typename T> void endMetalEncoding(T& mtlEnc);
 	id<MTLFence> getBarrierStageFence(MVKBarrierStage stage);
+	MVKAccelerationStructureCommandEncodingState& getOrCreateAccelerationStructureState();
 
 	typedef struct GPUCounterQuery {
 		MVKGPUCounterQueryPool* queryPool = nullptr;
@@ -584,12 +585,7 @@ protected:
 	MVKSmallVector<GPUCounterQuery, 16> _timestampStageCounterQueries;
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
 	MVKSmallVector<MVKImageView*, kMVKDefaultAttachmentCount> _attachments;
-	MVKSmallVector<id<MTLAccelerationStructure>, 16> _accelerationStructureInstances;
-	MVKSmallVector<MVKAccelerationStructureStorageGeneration*, 16> _retainedAccelerationStructureGenerations;
-	MVKSmallVector<id<MTLResource>, 16> _accelerationStructureAddressTableResources;
-	const MVKMTLBufferAllocation* _accelerationStructureAddressTable = nullptr;
-	const MVKMTLBufferAllocation* _accelerationStructureReferenceTable = nullptr;
-	std::unordered_map<MVKDescriptorSet*, MVKDescriptorSetSnapshot*> _descriptorSetSnapshots;
+	MVKAccelerationStructureCommandEncodingState* _accelerationStructureState = nullptr;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
 	id<MTLAccelerationStructureCommandEncoder> _mtlAccelerationStructureEncoder;

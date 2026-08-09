@@ -124,13 +124,14 @@ VkResult MVKCmdTraceRays::setShaderBindingTables(
 	const VkStridedDeviceAddressRegionKHR* pHitShaderBindingTable,
 	const VkStridedDeviceAddressRegionKHR* pCallableShaderBindingTable) {
 	if (!pRaygenShaderBindingTable->deviceAddress || pRaygenShaderBindingTable->size != pRaygenShaderBindingTable->stride ||
-		pRaygenShaderBindingTable->stride < sizeof(uint32_t) || (pRaygenShaderBindingTable->deviceAddress & 3) ||
-		(pRaygenShaderBindingTable->stride & 3)) {
+		pRaygenShaderBindingTable->stride < 32 || (pRaygenShaderBindingTable->deviceAddress & 15) ||
+		(pRaygenShaderBindingTable->stride & 15)) {
 		return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT,
 									"vkCmdTraceRaysKHR(): The ray-generation shader binding table is invalid for the Metal backend.");
 	}
 	auto invalidOptionalRegion = [](const VkStridedDeviceAddressRegionKHR* region) {
-		return region->size && (!region->deviceAddress || (region->deviceAddress & 3) || (region->stride & 3));
+		return region->size && (!region->deviceAddress || region->stride < 32 ||
+			(region->deviceAddress & 15) || (region->stride & 15));
 	};
 	for (auto* region : {pMissShaderBindingTable, pHitShaderBindingTable, pCallableShaderBindingTable}) {
 		if (invalidOptionalRegion(region)) {
@@ -148,11 +149,8 @@ VkResult MVKCmdTraceRays::setShaderBindingTables(
 	_mtlRaygenShaderBindingTableBuffer = nil;
 	_mtlMissShaderBindingTableBuffer = nil;
 	_mtlHitShaderBindingTableBuffer = nil;
-	_mtlHitShaderBindingTableBufferOffset = 0;
 	_mtlCallableShaderBindingTableBuffer = nil;
-	_mtlCallableShaderBindingTableBufferOffset = 0;
-	auto resolveBuffer = [&](const VkStridedDeviceAddressRegionKHR& region, id<MTLBuffer>& mtlBuffer,
-							 VkDeviceSize* bufferOffset = nullptr) {
+	auto resolveBuffer = [&](const VkStridedDeviceAddressRegionKHR& region, id<MTLBuffer>& mtlBuffer) {
 		if (!region.size) { return true; }
 		VkDeviceSize offset = 0;
 		MVKBuffer* buffer = cmdBuff->getDevice()->getBufferAtAddress(region.deviceAddress, offset, region.size);
@@ -162,15 +160,12 @@ VkResult MVKCmdTraceRays::setShaderBindingTables(
 			return false;
 		}
 		mtlBuffer = buffer->getMTLBuffer();
-		if (bufferOffset) { *bufferOffset = buffer->getMTLBufferOffset() + offset; }
 		return true;
 	};
 	if (!resolveBuffer(_raygenShaderBindingTable, _mtlRaygenShaderBindingTableBuffer) ||
 		!resolveBuffer(_missShaderBindingTable, _mtlMissShaderBindingTableBuffer) ||
-		!resolveBuffer(_hitShaderBindingTable, _mtlHitShaderBindingTableBuffer,
-					   &_mtlHitShaderBindingTableBufferOffset) ||
-		!resolveBuffer(_callableShaderBindingTable, _mtlCallableShaderBindingTableBuffer,
-					   &_mtlCallableShaderBindingTableBufferOffset)) {
+		!resolveBuffer(_hitShaderBindingTable, _mtlHitShaderBindingTableBuffer) ||
+		!resolveBuffer(_callableShaderBindingTable, _mtlCallableShaderBindingTableBuffer)) {
 		return VK_ERROR_INITIALIZATION_FAILED;
 	}
 	return VK_SUCCESS;
@@ -178,59 +173,20 @@ VkResult MVKCmdTraceRays::setShaderBindingTables(
 
 void MVKCmdTraceRays::encode(MVKCommandEncoder* cmdEncoder) {
 	if (!_mtlIndirectBuffer && (!_threads.width || !_threads.height || !_threads.depth)) { return; }
-	cmdEncoder->finalizeRayTracingDispatchState();
 	auto* pipeline = static_cast<MVKRayTracingPipeline*>(cmdEncoder->getRayTracingPipeline());
-	auto& computeState = cmdEncoder->getMtlCompute();
-	uint32_t metadataIndex = pipeline->getRayTracingInstanceMetadataBufferIndex();
-	auto metadataBinding = computeState._bindings.buffers[metadataIndex];
-	NSUInteger metadataSize = computeState._exists.buffers.get(metadataIndex) && metadataBinding.buffer &&
-								metadataBinding.offset < metadataBinding.buffer.length
-							? metadataBinding.buffer.length - metadataBinding.offset
-							: 0;
-	VkDeviceSize traceDataSize = metadataSize;
-	VkDeviceSize maxTraceDataSize = cmdEncoder->getMetalFeatures().maxMTLBufferSize;
-	auto appendTable = [&](VkDeviceSize size, VkDeviceSize& offset) {
-		VkDeviceSize mask = sizeof(uint64_t) - 1;
-		VkDeviceSize padding = -traceDataSize & mask;
-		if (traceDataSize > maxTraceDataSize || padding > maxTraceDataSize - traceDataSize) { return false; }
-		offset = traceDataSize += padding;
-		if (size > maxTraceDataSize - traceDataSize) { return false; }
-		traceDataSize += size;
-		return true;
-	};
-	VkDeviceSize hitTableOffset = 0;
-	VkDeviceSize callableTableOffset = 0;
-	if (maxTraceDataSize < sizeof(uint64_t) ||
-		!appendTable(_hitShaderBindingTable.size, hitTableOffset) ||
-		!appendTable(_callableShaderBindingTable.size, callableTableOffset)) {
-		cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
-			"vkCmdTraceRaysKHR(): The trace data exceeds the maximum Metal buffer size.");
-		return;
-	}
-	traceDataSize = std::max<VkDeviceSize>(traceDataSize, sizeof(uint64_t));
-	const MVKMTLBufferAllocation* traceData = cmdEncoder->getTempMTLBuffer(
-		static_cast<NSUInteger>(traceDataSize), true);
-	id<MTLBlitCommandEncoder> blitEncoder = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseTraceRays);
-	if (metadataSize) {
-		[blitEncoder copyFromBuffer:metadataBinding.buffer
-					sourceOffset:metadataBinding.offset
-					    toBuffer:traceData->_mtlBuffer
-				 destinationOffset:traceData->_offset
-						 size:metadataSize];
-	}
-	if (_mtlHitShaderBindingTableBuffer) {
-		[blitEncoder copyFromBuffer:_mtlHitShaderBindingTableBuffer
-					sourceOffset:_mtlHitShaderBindingTableBufferOffset
-					    toBuffer:traceData->_mtlBuffer
-					 destinationOffset:traceData->_offset + hitTableOffset
-						 size:_hitShaderBindingTable.size];
-	}
-	if (_mtlCallableShaderBindingTableBuffer) {
-		[blitEncoder copyFromBuffer:_mtlCallableShaderBindingTableBuffer
-					sourceOffset:_mtlCallableShaderBindingTableBufferOffset
-					    toBuffer:traceData->_mtlBuffer
-				 destinationOffset:traceData->_offset + callableTableOffset
-						 size:_callableShaderBindingTable.size];
+	const MVKMTLBufferAllocation* indirectDispatch = nullptr;
+	if (_mtlIndirectBuffer) {
+		indirectDispatch = cmdEncoder->getTempMTLBuffer(sizeof(MTLDispatchThreadgroupsIndirectArguments), true);
+		id<MTLComputeCommandEncoder> convertEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTraceRays);
+		auto& state = cmdEncoder->getMtlCompute();
+		state.bindPipeline(convertEncoder, cmdEncoder->getCommandEncodingPool()
+			->getCmdTraceRaysIndirectConvertMTLComputePipelineState());
+		state.bindBuffer(convertEncoder, _mtlIndirectBuffer, _mtlIndirectBufferOffset, 0);
+		state.bindBuffer(convertEncoder, indirectDispatch->_mtlBuffer, indirectDispatch->_offset, 1);
+		uint32_t threadgroupWidth = pipeline->getThreadgroupSize().width;
+		state.bindStructBytes(convertEncoder, &threadgroupWidth, 2);
+		[convertEncoder dispatchThreads:MTLSizeMake(1, 1, 1)
+			threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
 	}
 	cmdEncoder->finalizeRayTracingDispatchState();
 	id<MTLComputeCommandEncoder> mtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTraceRays);
@@ -242,13 +198,9 @@ void MVKCmdTraceRays::encode(MVKCommandEncoder* cmdEncoder) {
 						 atBufferIndex:pipeline->getRayTracingIntersectionFunctionTableBufferIndex()];
 	[mtlEncoder setVisibleFunctionTable:pipeline->getRayTracingCallableFunctionTable()
 						 atBufferIndex:pipeline->getRayTracingCallableFunctionTableBufferIndex()];
-	[mtlEncoder setVisibleFunctionTable:pipeline->getRecursiveRayTracingFunctionTable()
-						 atBufferIndex:pipeline->getRecursiveRayTracingFunctionTableBufferIndex()];
-	[mtlEncoder setVisibleFunctionTable:pipeline->getRecursiveRayTracingIntersectionFunctionTable()
-						 atBufferIndex:pipeline->getRecursiveRayTracingIntersectionFunctionTableBufferIndex()];
-	[mtlEncoder useResource:traceData->_mtlBuffer usage:MTLResourceUsageRead];
 	for (id<MTLBuffer> buffer : {_mtlRaygenShaderBindingTableBuffer, _mtlMissShaderBindingTableBuffer,
-								 _mtlCallableShaderBindingTableBuffer}) {
+								 _mtlHitShaderBindingTableBuffer, _mtlCallableShaderBindingTableBuffer,
+								 _mtlIndirectBuffer}) {
 		if (buffer) { [mtlEncoder useResource:buffer usage:MTLResourceUsageRead]; }
 	}
 	struct {
@@ -259,38 +211,60 @@ void MVKCmdTraceRays::encode(MVKCommandEncoder* cmdEncoder) {
 		uint64_t hitSize;
 		uint64_t callableAddress;
 		uint64_t callableStride;
-		uint64_t hitTableOffset;
 		uint64_t raygenAddress;
 		uint64_t swizzleAddress;
 		uint64_t bufferSizeAddress;
 		uint64_t dynamicOffsetsAddress;
 		uint64_t accelerationStructureAddressTableAddress;
 		uint64_t pushConstantsAddress;
+		uint64_t indirectLaunchSizeAddress;
 		uint64_t descriptorSetAddresses[kMVKMaxDescriptorSetCount];
 		uint32_t pipelineFlags;
+		uint32_t usesIFB;
 	} dispatch = {
 		_missShaderBindingTable.deviceAddress,
 		_missShaderBindingTable.stride,
-		traceData->_mtlBuffer.gpuAddress + traceData->_offset,
+		_hitShaderBindingTable.deviceAddress,
 		_hitShaderBindingTable.stride,
 		_hitShaderBindingTable.size,
-		_callableShaderBindingTable.size ? traceData->_mtlBuffer.gpuAddress + traceData->_offset + callableTableOffset : 0,
+		_callableShaderBindingTable.deviceAddress,
 		_callableShaderBindingTable.stride,
-		hitTableOffset,
 		_raygenShaderBindingTable.deviceAddress,
 	};
+	if (_mtlIndirectBuffer) {
+		dispatch.indirectLaunchSizeAddress = _mtlIndirectBuffer.gpuAddress + _mtlIndirectBufferOffset;
+	}
 	dispatch.pipelineFlags = pipeline->getRayTracingPipelineFlags();
-	static_assert(kMVKMaxDescriptorSetCount == 8);
+	dispatch.usesIFB = pipeline->usesIntersectionFunctionBuffer() &&
+		_hitShaderBindingTable.size >= 32 && _hitShaderBindingTable.stride &&
+		_hitShaderBindingTable.stride <= (1u << 12) &&
+		!(_hitShaderBindingTable.deviceAddress & 63);
+	using Dispatch = decltype(dispatch);
+	static_assert(offsetof(Dispatch, descriptorSetAddresses) == 14 * sizeof(uint64_t));
+	static_assert(offsetof(Dispatch, pipelineFlags) == offsetof(Dispatch, descriptorSetAddresses) +
+										 sizeof(dispatch.descriptorSetAddresses));
+	static_assert(sizeof(Dispatch) == offsetof(Dispatch, pipelineFlags) + 2 * sizeof(uint32_t));
 	const auto& vkRayTracing = cmdEncoder->getVkRayTracing();
-	auto copyImplicitData = [&](const auto& data, uint64_t& address) {
-		if (data.empty()) { return; }
-		auto* allocation = cmdEncoder->copyToTempMTLBufferAllocation(data.data(), data.size() * sizeof(uint32_t));
-		address = allocation->_mtlBuffer.gpuAddress + allocation->_offset;
-		[mtlEncoder useResource:allocation->_mtlBuffer usage:MTLResourceUsageRead];
+	struct Upload {
+		const void* data;
+		NSUInteger size;
+		NSUInteger offset;
+		uint64_t* address;
 	};
-	copyImplicitData(vkRayTracing._implicitBufferData.textureSwizzles, dispatch.swizzleAddress);
-	copyImplicitData(vkRayTracing._implicitBufferData.bufferSizes, dispatch.bufferSizeAddress);
-	copyImplicitData(vkRayTracing._implicitBufferData.dynamicOffsets, dispatch.dynamicOffsetsAddress);
+	MVKSmallVector<Upload, 4> uploads;
+	NSUInteger uploadSize = 0;
+	auto addUpload = [&](const void* data, NSUInteger size, uint64_t& address) {
+		if (!size) { return; }
+		uploadSize = mvkAlignByteCount(uploadSize, 16);
+		uploads.push_back({ data, size, uploadSize, &address });
+		uploadSize += size;
+	};
+	auto addImplicitData = [&](const auto& data, uint64_t& address) {
+		addUpload(data.data(), data.size() * sizeof(uint32_t), address);
+	};
+	addImplicitData(vkRayTracing._implicitBufferData.textureSwizzles, dispatch.swizzleAddress);
+	addImplicitData(vkRayTracing._implicitBufferData.bufferSizes, dispatch.bufferSizeAddress);
+	addImplicitData(vkRayTracing._implicitBufferData.dynamicOffsets, dispatch.dynamicOffsetsAddress);
 	if (pipeline->needsAccelerationStructureAddressTable()) {
 		MVKUseResourceHelper resources;
 		auto* addressTable = cmdEncoder->getAccelerationStructureAddressTable(
@@ -300,11 +274,7 @@ void MVKCmdTraceRays::encode(MVKCommandEncoder* cmdEncoder) {
 		resources.bindAndResetCompute(mtlEncoder);
 	}
 	const auto& pushConstants = cmdEncoder->getState().vkShared()._pushConstants;
-	if (!pushConstants.empty()) {
-		auto* pushConstantsAllocation = cmdEncoder->copyToTempMTLBufferAllocation(pushConstants.data(), pushConstants.size());
-		dispatch.pushConstantsAddress = pushConstantsAllocation->_mtlBuffer.gpuAddress + pushConstantsAllocation->_offset;
-		[mtlEncoder useResource:pushConstantsAllocation->_mtlBuffer usage:MTLResourceUsageRead];
-	}
+	addUpload(pushConstants.data(), pushConstants.size(), dispatch.pushConstantsAddress);
 	uint32_t descriptorSetCount = vkRayTracing._layout ? vkRayTracing._layout->getDescriptorSetCount() : 0;
 	for (uint32_t i = 0; i < descriptorSetCount; i++) {
 		auto* descriptorSet = vkRayTracing._descriptorSets[i];
@@ -320,10 +290,23 @@ void MVKCmdTraceRays::encode(MVKCommandEncoder* cmdEncoder) {
 			[mtlEncoder useResource:buffer usage:MTLResourceUsageRead];
 		}
 	}
-	[mtlEncoder setBytes:&dispatch length:sizeof(dispatch) atIndex:pipeline->getRayTracingDispatchBufferIndex()];
+	uploadSize = mvkAlignByteCount(uploadSize, 16);
+	NSUInteger dispatchOffset = uploadSize;
+	auto* dispatchAllocation = cmdEncoder->getTempMTLBuffer(uploadSize + sizeof(dispatch));
+	uint8_t* uploadContents = static_cast<uint8_t*>(dispatchAllocation->getContents());
+	uint64_t uploadAddress = dispatchAllocation->_mtlBuffer.gpuAddress + dispatchAllocation->_offset;
+	for (const auto& upload : uploads) {
+		memcpy(uploadContents + upload.offset, upload.data, upload.size);
+		*upload.address = uploadAddress + upload.offset;
+	}
+	memcpy(uploadContents + dispatchOffset, &dispatch, sizeof(dispatch));
+	[mtlEncoder setBuffer:dispatchAllocation->_mtlBuffer
+				 offset:dispatchAllocation->_offset + dispatchOffset
+				atIndex:pipeline->getRayTracingDispatchBufferIndex()];
+	[mtlEncoder useResource:dispatchAllocation->_mtlBuffer usage:MTLResourceUsageRead];
 	if (_mtlIndirectBuffer) {
-		[mtlEncoder dispatchThreadgroupsWithIndirectBuffer:_mtlIndirectBuffer
-									 indirectBufferOffset:_mtlIndirectBufferOffset
+		[mtlEncoder dispatchThreadgroupsWithIndirectBuffer:indirectDispatch->_mtlBuffer
+									 indirectBufferOffset:indirectDispatch->_offset
 									threadsPerThreadgroup:pipeline->getThreadgroupSize()];
 	} else {
 		[mtlEncoder dispatchThreads:_threads threadsPerThreadgroup:pipeline->getThreadgroupSize()];

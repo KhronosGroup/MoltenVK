@@ -85,11 +85,17 @@ VkResult MVKBuffer::getMemoryRequirements(VkMemoryRequirements2* pMemoryRequirem
 }
 
 VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) {
+	if (!getEnabledAccelerationStructureFeatures().accelerationStructure) {
+		if (_deviceMemory) { MVKDeviceMemory::removeBuffer(&_deviceMemory, this); }
+		MVKResource::bindDeviceMemory(mvkMem, memOffset);
+		propagateDebugName();
+		return _deviceMemory ? _deviceMemory->addBuffer(this) : VK_SUCCESS;
+	}
+
 	MVKSmallVector<MVKAccelerationStructure*, 1> accelerationStructures;
 	id<MTLBuffer> failedMTLBuffer = nil;
 	VkResult result = VK_SUCCESS;
-	bool gpuAddressable =
-		mvkIsAnyFlagEnabled(_usage, VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT);
+	bool gpuAddressable = mvkIsAnyFlagEnabled(_usage, VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT);
 	{
 		lock_guard<mutex> lock(_lock);
 		if (_deviceMemory) { MVKDeviceMemory::removeBuffer(&_deviceMemory, this); }
@@ -300,6 +306,18 @@ void MVKBuffer::destroy() {
 
 // Potentially called twice, from destroy() and destructor, so ensure everything is nulled out.
 void MVKBuffer::detachMemory() {
+	if (!getEnabledAccelerationStructureFeatures().accelerationStructure) {
+		if (_deviceMemory) { MVKDeviceMemory::removeBuffer(&_deviceMemory, this); }
+		MVKLiveResourceSet& live = _device->getLiveResources();
+		if (id<MTLBuffer> buf = _mtlBuffer) {
+			_mtlBuffer = nil;
+			_device->removeResidency(buf);
+			live.remove(buf);
+			[buf release];
+		}
+		return;
+	}
+
 	id<MTLBuffer> buf = nil;
 	{
 		lock_guard<mutex> lock(_lock);

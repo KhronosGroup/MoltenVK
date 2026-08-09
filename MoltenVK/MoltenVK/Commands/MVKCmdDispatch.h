@@ -102,9 +102,7 @@ protected:
 	id<MTLBuffer> _mtlRaygenShaderBindingTableBuffer = nil;
 	id<MTLBuffer> _mtlMissShaderBindingTableBuffer = nil;
 	id<MTLBuffer> _mtlHitShaderBindingTableBuffer = nil;
-	VkDeviceSize _mtlHitShaderBindingTableBufferOffset = 0;
 	id<MTLBuffer> _mtlCallableShaderBindingTableBuffer = nil;
-	VkDeviceSize _mtlCallableShaderBindingTableBufferOffset = 0;
 	id<MTLBuffer> _mtlIndirectBuffer = nil;
 	VkDeviceSize _mtlIndirectBufferOffset = 0;
 };

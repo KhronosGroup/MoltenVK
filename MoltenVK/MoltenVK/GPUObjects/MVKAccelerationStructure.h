@@ -50,6 +50,7 @@ public:
 	id<MTLBuffer> getInstanceMetadataMTLBuffer() const { return _instanceMetadataBuffer; }
 	id<MTLBuffer> getReferenceMTLBuffer() const { return _referenceBuffer; }
 	uint64_t getReferenceGPUAddress() const { return _referenceBuffer.gpuAddress; }
+	void relinquishReferenceResidency() { _ownsReferenceResidency = false; }
 	uint64_t getNativeCapacity() const { return _nativeCapacity; }
 	uint64_t getMetadataCapacity() const { return _metadataCapacity; }
 
@@ -86,6 +87,7 @@ protected:
 	id<MTLAccelerationStructure> _accelerationStructure;
 	id<MTLBuffer> _instanceMetadataBuffer;
 	id<MTLBuffer> _referenceBuffer;
+	bool _ownsReferenceResidency = true;
 	MVKAccelerationStructureCanonicalStorage* _canonicalStorage = nullptr;
 	std::atomic<uint32_t> _refCount { 1 };
 	std::mutex _stateLock;
@@ -102,6 +104,8 @@ class MVKAccelerationStructureStorage {
 public:
 	bool matches(VkDeviceSize physicalStart) const;
 	MVKAccelerationStructureStorageGeneration* retainCurrentGeneration();
+	id<MTLBuffer> getReferenceMTLBuffer() const { return _referenceBuffer; }
+	uint64_t getReferenceGPUAddress() const { return _referenceBuffer.gpuAddress; }
 	bool ensureInitialGeneration(uint64_t nativeCapacity,
 							 bool usesPlacement,
 							 VkDeviceSize placementOffset);
@@ -125,6 +129,7 @@ protected:
 
 	MVKDevice* _device;
 	id<MTLHeap> _heap;
+	id<MTLBuffer> _referenceBuffer = nil;
 	VkDeviceSize _physicalStart;
 	uint32_t _memberCount = 0;
 	std::mutex _lock;
@@ -148,7 +153,8 @@ public:
                                                            const VkAccelerationStructureBuildGeometryInfoKHR* buildInfo,
                                                            const uint32_t* maxPrimitiveCounts);
 
-    uint64_t getDeviceAddress();
+	uint64_t getDeviceAddress();
+	id<MTLBuffer> getReferenceMTLBuffer();
 
 	uint64_t getSize() const { return _size; }
 

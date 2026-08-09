@@ -883,12 +883,16 @@ public:
 #pragma mark Operations
 
 	/** Tell the GPU to be ready to use any of the GPU-addressable buffers. */
-	void encodeGPUAddressableBuffers(MVKUseResourceHelper& resources, MVKResourceUsageStages stage);
+	void encodeGPUAddressableBuffers(MVKUseResourceHelper& resources,
+	                                 MVKResourceUsageStages stage,
+	                                 bool write = true,
+	                                 MVKSmallVector<id<MTLBuffer>, 16>* retainedBuffers = nullptr);
 	void encodeGPUAddressableAccelerationStructures(MVKCommandEncoder* commandEncoder,
 	                                                 id<MTLAccelerationStructureCommandEncoder> encoder);
 	void getAccelerationStructureAddressTable(MVKCommandEncoder* commandEncoder,
 	                                          MVKSmallVector<uint64_t, 32>& table,
-	                                          MVKSmallVector<id<MTLResource>, 16>& resources);
+	                                          MVKSmallVector<id<MTLResource>, 16>& resources,
+	                                          MVKSmallVector<id<MTLAccelerationStructure>, 16>& instances);
 	bool usesIndirectAccelerationStructureInstanceDescriptors() const;
 	MTLAccelerationStructureInstanceDescriptorType getAccelerationStructureInstanceDescriptorType() const;
 	NSUInteger getAccelerationStructureInstanceDescriptorSize() const;
@@ -898,6 +902,12 @@ public:
 	void addGPUAddressableAccelerationStructure(MVKAccelerationStructure* accelerationStructure);
 	void removeGPUAddressableAccelerationStructure(MVKAccelerationStructure* accelerationStructure);
 	MVKBuffer* getBufferAtAddress(VkDeviceAddress address, VkDeviceSize& offset, VkDeviceSize requiredSize = 1);
+	void advanceAccelerationStructureStateSerial() {
+		_accelerationStructureStateSerial.fetch_add(1, std::memory_order_release);
+	}
+	uint64_t getAccelerationStructureStateSerial() const {
+		return _accelerationStructureStateSerial.load(std::memory_order_acquire);
+	}
 
 	/** Adds the specified host semaphore to be woken upon device loss. */
 	void addSemaphore(MVKSemaphoreImpl* sem4);
@@ -1158,6 +1168,7 @@ protected:
 #endif
 	uint32_t _visibilityBufferCount = 0;
 	bool _gpuAddressableBufferIndexDirty = true;
+	std::atomic<uint64_t> _accelerationStructureStateSerial { 1 };
 	int _capturePipeFileDesc = -1;
 	bool _isPerformanceTracking = false;
 	bool _isCurrentlyAutoGPUCapturing = false;

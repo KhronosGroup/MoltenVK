@@ -463,6 +463,7 @@ struct MVKDescriptorSet {
 	uint32_t cpuBufferSize;
 	/** The number of variable descriptors. */
 	uint32_t variableDescriptorCount;
+	/** Changes whenever this descriptor set is written. */
 	uint64_t mutationSerial;
 
 	void setGPUBuffer(id<MTLBuffer> buffer, void* contents, size_t offset, size_t size) {
@@ -484,6 +485,7 @@ struct MVKDescriptorSetSnapshot {
 	uint32_t sourceGPUBufferOffset = 0;
 	uint32_t sourceGPUBufferSize = 0;
 	uint64_t sourceMutationSerial = 0;
+	uint64_t sourceAccelerationStructureStateSerial = 0;
 	id<MTLBuffer> gpuBufferObject = nil;
 	uint32_t gpuBufferOffset = 0;
 	MVKSmallVector<uint32_t, 8> bindingOffsets;

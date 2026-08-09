@@ -32,6 +32,11 @@ enum MVKAccelerationStructureConversionType : uint32_t {
 	kMVKAccelerationStructureDeserializeInstances,
 };
 
+bool mvkEncodeAccelerationStructureReferenceUpdate(
+	MVKCommandEncoder* cmdEncoder,
+	MVKAccelerationStructure* accelerationStructure,
+	MVKAccelerationStructureStorageGeneration* generation);
+
 id<MTLComputeCommandEncoder> mvkEncodeAccelerationStructureConversion(
 	MVKCommandEncoder* cmdEncoder,
 	id<MTLBuffer> srcBuffer,

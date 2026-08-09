@@ -386,6 +386,7 @@ public:
 	id<MTLComputePipelineState> newConvertUint8IndicesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 	id<MTLComputePipelineState> newCmdBuildAccelerationStructureConvertBuffersMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 	id<MTLComputePipelineState> newCmdSerializeAccelerationStructureGatherMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+	id<MTLComputePipelineState> newCmdTraceRaysIndirectConvertMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 
 
 #pragma mark Construction

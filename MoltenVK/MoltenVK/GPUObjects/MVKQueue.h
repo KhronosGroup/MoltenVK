@@ -173,6 +173,8 @@ protected:
 typedef struct MVKSemaphoreSubmitInfo {
 private:
 	MVKSemaphore* _semaphore;
+	uint64_t _deferredOperation = 0;
+	bool _hasDeferredOperation = false;
 public:
 	uint64_t value;
 	VkPipelineStageFlags2 stageMask;
@@ -180,6 +182,11 @@ public:
 
 	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff);
 	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff);
+	void deferBinaryWait();
+	void deferBinarySignal();
+	void waitForEncodingSignal();
+	bool supportsEncodingDependencyWait() const;
+	bool waitsForEncodingSignal() const;
 	MVKSemaphoreSubmitInfo(const VkSemaphoreSubmitInfo& semaphoreSubmitInfo);
 	MVKSemaphoreSubmitInfo(const VkSemaphore semaphore, VkPipelineStageFlags stageMask);
 	MVKSemaphoreSubmitInfo(const MVKSemaphoreSubmitInfo& other);
@@ -220,6 +227,7 @@ protected:
 	virtual void finish() = 0;
 	virtual bool requiresHostReadback() const { return false; }
 	virtual bool requiresEncodingDependencyWait() { return false; }
+	virtual bool propagatesEncodingDependency() { return false; }
 	MVKDevice* getDevice() { return _queue->getDevice(); }
 
 	MVKQueue* _queue;
@@ -271,6 +279,7 @@ protected:
 	VkResult commitActiveMTLCommandBufferAndWait();
 	void finish() override;
 	virtual void submitCommandBuffers() {}
+	bool propagatesEncodingDependency() override;
 
 	MVKCommandEncodingContext _encodingContext;
 	MVKSmallVector<MVKSemaphoreSubmitInfo> _signalSemaphores;

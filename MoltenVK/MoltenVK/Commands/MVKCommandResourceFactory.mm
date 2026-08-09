@@ -643,6 +643,11 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdSerializeAccelerati
 		_mtlAccelerationStructureLibrary);
 }
 
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdTraceRaysIndirectConvertMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("cmdTraceRaysIndirectConvert", owner,
+		_mtlAccelerationStructureLibrary);
+}
+
 #pragma mark Support methods
 
 // Returns the retained MTLFunction with the name.

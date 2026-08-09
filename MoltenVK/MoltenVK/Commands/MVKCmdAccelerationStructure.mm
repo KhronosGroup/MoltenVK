@@ -29,6 +29,35 @@
 #pragma mark -
 #pragma mark MVKCmdBuildAccelerationStructure
 
+bool mvkEncodeAccelerationStructureReferenceUpdate(
+	MVKCommandEncoder* cmdEncoder,
+	MVKAccelerationStructure* accelerationStructure,
+	MVKAccelerationStructureStorageGeneration* generation) {
+	id<MTLBuffer> source = generation ? generation->getReferenceMTLBuffer() : nil;
+	id<MTLBuffer> destination = accelerationStructure
+		? accelerationStructure->getReferenceMTLBuffer() : nil;
+	if (!source || !destination || source.length > destination.length) { return false; }
+	if (source == destination) { return true; }
+	[cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyAccelerationStructure)
+		copyFromBuffer:source
+		sourceOffset:0
+		toBuffer:destination
+		destinationOffset:0
+		size:source.length];
+	return true;
+}
+
+static MVKAccelerationStructureStorageGeneration* retainPreviousGeneration(
+	MVKAccelerationStructure* accelerationStructure,
+	MVKAccelerationStructureStorageGeneration* generation) {
+	auto* previous = accelerationStructure->retainCurrentGeneration();
+	if (previous == generation && previous) {
+		previous->release();
+		return nullptr;
+	}
+	return previous;
+}
+
 id<MTLComputeCommandEncoder> mvkEncodeAccelerationStructureConversion(
 	MVKCommandEncoder* cmdEncoder,
 	id<MTLBuffer> srcBuffer,
@@ -62,10 +91,23 @@ id<MTLComputeCommandEncoder> mvkEncodeAccelerationStructureConversion(
 	                atIndex:8];
 	[mtlEncoder setBuffer:dstBuffer offset:dstOffset atIndex:5];
 	if (conversionType != kMVKAccelerationStructureConvertTransform) {
-		auto* referenceTable = cmdEncoder->getAccelerationStructureReferenceTable();
+		const MVKMTLBufferAllocation* referenceTable = nullptr;
+		MVKUseResourceHelper resources;
+		if (cmdEncoder->getDevice()->usesIndirectAccelerationStructureInstanceDescriptors()) {
+			referenceTable = cmdEncoder->getAccelerationStructureAddressTable(
+				resources, MVKResourceUsageStages::Compute);
+		} else {
+			referenceTable = cmdEncoder->getAccelerationStructureReferenceTable();
+		}
 		[mtlEncoder setBuffer:referenceTable->_mtlBuffer
-					 offset:referenceTable->_offset
-					atIndex:5];
+					 offset:referenceTable->_offset atIndex:5];
+		MVKSmallVector<id<MTLBuffer>, 16> retainedBuffers;
+		if (conversionType == kMVKAccelerationStructureConvertInstancePointers) {
+			cmdEncoder->getDevice()->encodeGPUAddressableBuffers(
+				resources, MVKResourceUsageStages::Compute, false, &retainedBuffers);
+		}
+		resources.bindAndResetCompute(mtlEncoder);
+		for (id<MTLBuffer> buffer : retainedBuffers) { [buffer release]; }
 	}
 	if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
 		[mtlEncoder dispatchThreads:MTLSizeMake(itemCount, 1, 1)
@@ -163,7 +205,7 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
         if ( !descriptor ) { continue; }
 		MTLAccelerationStructureSizes buildSizes = [cmdEncoder->getMTLDevice() accelerationStructureSizesWithDescriptor:descriptor];
 		uint64_t instanceMetadataSize = buildInfo.type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR
-			? static_cast<uint64_t>(ranges[0].primitiveCount) * sizeof(uint32_t) * 2
+			? static_cast<uint64_t>(ranges[0].primitiveCount) * sizeof(uint32_t)
 			: 0;
 		MVKAccelerationStructureStorageGeneration* dstGeneration = nullptr;
 		VkResult generationResult = buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR
@@ -306,6 +348,16 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
             }
         }
 
+		if (buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR &&
+			!mvkEncodeAccelerationStructureReferenceUpdate(cmdEncoder, mvkDstAccStruct, dstGeneration)) {
+			cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+				"vkCmdBuildAccelerationStructuresKHR(): The stable acceleration-structure reference could not be updated.");
+			dstGeneration->release();
+			[descriptor release];
+			continue;
+		}
+		auto* previousGeneration = buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR
+			? retainPreviousGeneration(mvkDstAccStruct, dstGeneration) : nullptr;
 		id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseBuildAccelerationStructure);
 		if (buildInfo.type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR) {
             mvkDevice->encodeGPUAddressableAccelerationStructures(cmdEncoder, accStructEncoder);
@@ -315,6 +367,7 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
 		bool encoded = false;
 		if (buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR &&
 			mvkDstAccStruct->publishGeneration(dstGeneration)) {
+			cmdEncoder->retainAccelerationStructureGeneration(previousGeneration);
 			cmdEncoder->invalidateAccelerationStructureAddressTable();
 			cmdEncoder->invalidateAccelerationStructureReferenceTable();
             [accStructEncoder buildAccelerationStructure:dstAccStruct
@@ -355,6 +408,7 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
 			cmdEncoder->retainAccelerationStructureGeneration(dstGeneration);
 			cmdEncoder->retainAccelerationStructureGeneration(srcGeneration);
 		} else {
+			if (previousGeneration) { previousGeneration->release(); }
 			dstGeneration->release();
 			if (srcGeneration) { srcGeneration->release(); }
 		}
@@ -406,11 +460,23 @@ void MVKCmdCopyAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
 		srcGeneration->release();
         return;
     }
-	if (!_dstMVKAccelerationStructure->publishGeneration(dstGeneration)) {
+	if (!mvkEncodeAccelerationStructureReferenceUpdate(
+			cmdEncoder, _dstMVKAccelerationStructure, dstGeneration)) {
+		cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+			"vkCmdCopyAccelerationStructureKHR(): The stable acceleration-structure reference could not be updated.");
 		dstGeneration->release();
 		srcGeneration->release();
 		return;
 	}
+	auto* previousGeneration = retainPreviousGeneration(
+		_dstMVKAccelerationStructure, dstGeneration);
+	if (!_dstMVKAccelerationStructure->publishGeneration(dstGeneration)) {
+		if (previousGeneration) { previousGeneration->release(); }
+		dstGeneration->release();
+		srcGeneration->release();
+		return;
+	}
+	cmdEncoder->retainAccelerationStructureGeneration(previousGeneration);
 	cmdEncoder->invalidateAccelerationStructureAddressTable();
 	cmdEncoder->invalidateAccelerationStructureReferenceTable();
     id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseCopyAccelerationStructure);

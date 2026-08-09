@@ -541,15 +541,34 @@ static void executeBindOp(id<MTLCommandEncoder> encoder,
 			case MVKDescriptorBindOperationCode::UseAccelerationStructureWithLiveCheck: {
 				auto* generation = descriptorSnapshot->getGeneration(bindingIndex, i);
 				id<MTLAccelerationStructure> accelerationStructure = generation ? generation->getMTLAccelerationStructure() : nil;
+#if SPIRV_CROSS_MSL_ACCELERATION_STRUCTURE_DESCRIPTOR_AS_ADDRESS
 				id<MTLBuffer> instanceMetadata = generation ? generation->getInstanceMetadataMTLBuffer() : nil;
+#endif
 				if constexpr (Op == MVKDescriptorBindOperationCode::BindAccelerationStructure) {
+#if SPIRV_CROSS_MSL_ACCELERATION_STRUCTURE_DESCRIPTOR_AS_ADDRESS
+					id<MTLBuffer> referenceBuffer = generation ? generation->getReferenceMTLBuffer() : nil;
+					bindBuffer(encoder, referenceBuffer, 0, target + i, exists, bindings, binder);
+					if (!dev->hasResidencySet()) {
+						if (accelerationStructure)
+							mvkEncoder.getState().mtlShared()._useResource.addImmediate(accelerationStructure, encoder, binder.useResource, useResourceStage, false);
+						if (instanceMetadata)
+							mvkEncoder.getState().mtlShared()._useResource.addImmediate(instanceMetadata, encoder, binder.useResource, useResourceStage, false);
+					}
+#else
 					binder.setAccelerationStructure(encoder, accelerationStructure, target + i);
-					bindBuffer(encoder, instanceMetadata, 0, target2 + i, exists, bindings, binder);
+#endif
 				} else if constexpr (Op == MVKDescriptorBindOperationCode::UseAccelerationStructureWithLiveCheck) {
+#if SPIRV_CROSS_MSL_ACCELERATION_STRUCTURE_DESCRIPTOR_AS_ADDRESS
+					id<MTLBuffer> referenceBuffer = generation ? generation->getReferenceMTLBuffer() : nil;
+					if (referenceBuffer)
+						mvkEncoder.getState().mtlShared()._useResource.addImmediate(referenceBuffer, encoder, binder.useResource, useResourceStage, false);
+#endif
 					if (accelerationStructure)
-						mvkEncoder.getState().mtlShared()._useResource.addImmediate(accelerationStructure, encoder, binder.useResource, useResourceStage, target);
+						mvkEncoder.getState().mtlShared()._useResource.addImmediate(accelerationStructure, encoder, binder.useResource, useResourceStage, false);
+#if SPIRV_CROSS_MSL_ACCELERATION_STRUCTURE_DESCRIPTOR_AS_ADDRESS
 					if (instanceMetadata)
-						mvkEncoder.getState().mtlShared()._useResource.addImmediate(instanceMetadata, encoder, binder.useResource, useResourceStage, target);
+						mvkEncoder.getState().mtlShared()._useResource.addImmediate(instanceMetadata, encoder, binder.useResource, useResourceStage, false);
+#endif
 				}
 				break;
 			}
@@ -1732,6 +1751,15 @@ void MVKMetalComputeCommandEncoderState::reset() {
 
 #pragma mark - MVKCommandEncoderState
 
+MVKCommandEncoderState::~MVKCommandEncoderState() {
+	delete _vkRayTracing;
+}
+
+MVKVulkanComputeCommandEncoderState& MVKCommandEncoderState::getOrCreateRayTracingState() {
+	if (!_vkRayTracing) { _vkRayTracing = new MVKVulkanComputeCommandEncoderState; }
+	return *_vkRayTracing;
+}
+
 static constexpr MVKRenderStateFlags SampleLocationFlags {
 	MVKRenderStateFlag::SampleLocations,
 	MVKRenderStateFlag::SampleLocationsEnable,
@@ -1820,14 +1848,15 @@ void MVKCommandEncoderState::bindComputePipeline(MVKComputePipeline* pipeline) {
 }
 
 void MVKCommandEncoderState::bindRayTracingPipeline(MVKComputePipeline* pipeline) {
-	_vkRayTracing._pipeline = pipeline;
+	auto& rayTracing = getOrCreateRayTracingState();
+	rayTracing._pipeline = pipeline;
 	MVKPipelineLayout* layout = pipeline->getLayout();
-	if (_vkRayTracing._layout != layout) {
-		if (!_vkRayTracing._layout || _vkRayTracing._layout->getPushConstantsLength() < layout->getPushConstantsLength()) {
+	if (rayTracing._layout != layout) {
+		if (!rayTracing._layout || rayTracing._layout->getPushConstantsLength() < layout->getPushConstantsLength()) {
 			mvkEnsureSize(_vkShared._pushConstants, layout->getPushConstantsLength());
 			invalidateImplicitBuffer(*this, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, MVKNonVolatileImplicitBuffer::PushConstant);
 		}
-		_vkRayTracing.setLayout(layout);
+		rayTracing.setLayout(layout);
 	}
 }
 
@@ -1861,7 +1890,8 @@ void MVKCommandEncoderState::bindDescriptorSets(
 	} else if (bindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
 		_vkCompute.bindDescriptorSets(layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
 	} else if (bindPoint == VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR) {
-		_vkRayTracing.bindDescriptorSets(layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
+		getOrCreateRayTracingState().bindDescriptorSets(layout, firstSet, setCount, sets,
+				dynamicOffsetCount, dynamicOffsets);
 	}
 }
 
@@ -1869,7 +1899,7 @@ MVKVulkanCommonEncoderState* MVKCommandEncoderState::getVkEncoderState(VkPipelin
 	switch (bindPoint) {
 		case VK_PIPELINE_BIND_POINT_GRAPHICS: return &_vkGraphics;
 		case VK_PIPELINE_BIND_POINT_COMPUTE:  return &_vkCompute;
-		case VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR: return &_vkRayTracing;
+		case VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR: return &getOrCreateRayTracingState();
 		default: return nullptr;
 	}
 }
