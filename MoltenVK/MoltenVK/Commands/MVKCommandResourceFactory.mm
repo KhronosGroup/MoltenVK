@@ -633,15 +633,31 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newConvertUint8IndicesMTL
 	return newMTLComputePipelineState("convertUint8Indices", owner);
 }
 
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdBuildAccelerationStructureConvertBuffersMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("cmdBuildAccelerationStructureConvertBuffers", owner,
+		_mtlAccelerationStructureLibrary);
+}
+
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdSerializeAccelerationStructureGatherMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("cmdSerializeAccelerationStructureGather", owner,
+		_mtlAccelerationStructureLibrary);
+}
+
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdTraceRaysIndirectConvertMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("cmdTraceRaysIndirectConvert", owner,
+		_mtlAccelerationStructureLibrary);
+}
 
 #pragma mark Support methods
 
 // Returns the retained MTLFunction with the name.
 // The caller is responsible for releasing the returned function object.
-id<MTLFunction> MVKCommandResourceFactory::newFunctionNamed(const char* funcName) {
+id<MTLFunction> MVKCommandResourceFactory::newFunctionNamed(const char* funcName,
+														 id<MTLLibrary> library) {
 	uint64_t startTime = getPerformanceTimestamp();
 	NSString* nsFuncName = [[NSString alloc] initWithUTF8String: funcName];		// temp retained
-	id<MTLFunction> mtlFunc = [_mtlLibrary newFunctionWithName: nsFuncName];	// retained
+	id<MTLFunction> mtlFunc = [library ? library : _mtlLibrary
+		newFunctionWithName:nsFuncName];	// retained
 	[nsFuncName release];														// temp release
 	addPerformanceInterval(getPerformanceStats().shaderCompilation.functionRetrieval, startTime);
 	return mtlFunc;
@@ -683,8 +699,9 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newMTLRenderPipelineState(
 }
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newMTLComputePipelineState(const char* funcName,
-																				  MVKVulkanAPIDeviceObject* owner) {
-	id<MTLFunction> mtlFunc = newFunctionNamed(funcName);							// temp retain
+																	  MVKVulkanAPIDeviceObject* owner,
+																	  id<MTLLibrary> library) {
+	id<MTLFunction> mtlFunc = newFunctionNamed(funcName, library);				// temp retain
 	// Providing a function directly may cause issues with Metal shader validation layer object
 	// management for some reason, so create a temporary pipeline descriptor to provide instead.
 	MTLComputePipelineDescriptor* plDesc = [MTLComputePipelineDescriptor new];		// temp retain
@@ -702,7 +719,44 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newMTLComputePipelineStat
 
 MVKCommandResourceFactory::MVKCommandResourceFactory(MVKDevice* device) : MVKBaseDeviceObject(device) {
 	initMTLLibrary();
+	if (getEnabledAccelerationStructureFeatures().accelerationStructure) {
+		initAccelerationStructureMTLLibrary();
+	}
 	initImageDeviceMemory();
+}
+
+void MVKCommandResourceFactory::initAccelerationStructureMTLLibrary() {
+	@autoreleasepool {
+		NSError* err = nil;
+		uint64_t startTime = getPerformanceTimestamp();
+		MTLCompileOptions* options = getDevice()->getMTLCompileOptions();
+		options.preprocessorMacros = @{
+			@"MVK_USE_INDIRECT_ACCELERATION_STRUCTURE_DESCRIPTORS":
+				@(getDevice()->usesIndirectAccelerationStructureInstanceDescriptors()),
+		};
+		_mtlAccelerationStructureLibrary = [getMTLDevice()
+			newLibraryWithSource:_MVKStaticAccelerationStructureShaderSource
+			options:options
+			error:&err];
+		MVKAssert(!err, "Could not compile acceleration-structure command shaders (Error code %li):\n%s",
+			(long)err.code, err.localizedDescription.UTF8String);
+		addPerformanceInterval(getPerformanceStats().shaderCompilation.mslCompile, startTime);
+	}
+}
+
+id<MTLLibrary> MVKCommandResourceFactory::newRayTracingDispatcherMTLLibrary(
+	NSString* source,
+	bool usesIFB,
+	MVKVulkanAPIDeviceObject* owner) {
+	lock_guard<mutex> lock(_rayTracingDispatcherLibraryLock);
+	auto& library = _mtlRayTracingDispatcherLibraries[usesIFB];
+	if (!library) {
+		mvk::SPIRVToMSLConversionResultInfo resultInfo;
+		auto* compiler = new MVKShaderLibraryCompiler(owner);
+		library = compiler->newMTLLibrary(source, resultInfo, {});
+		compiler->destroy();
+	}
+	return [library retain];
 }
 
 // Initializes the Metal shaders used for command activity.
@@ -730,6 +784,9 @@ void MVKCommandResourceFactory::initImageDeviceMemory() {
 }
 
 MVKCommandResourceFactory::~MVKCommandResourceFactory() {
+	for (auto library : _mtlRayTracingDispatcherLibraries) { [library release]; }
+	[_mtlAccelerationStructureLibrary release];
+	_mtlAccelerationStructureLibrary = nil;
 	[_mtlLibrary release];
 	_mtlLibrary = nil;
 	if (_transferImageMemory) { _transferImageMemory->destroy(); }

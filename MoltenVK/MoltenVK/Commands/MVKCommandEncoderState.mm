@@ -19,6 +19,7 @@
 #include "MVKCommandEncoderState.h"
 #include "MVKCommandEncodingPool.h"
 #include "MVKCommandBuffer.h"
+#include "MVKAccelerationStructure.h"
 #include "MVKImage.h"
 #include "MVKRenderPass.h"
 #include "MVKPipeline.h"
@@ -63,6 +64,7 @@ struct MVKFragmentBinder {
 	static SEL selSetOffset()  { return @selector(setFragmentBufferOffset:atIndex:); }
 	static SEL selSetTexture() { return @selector(setFragmentTexture:atIndex:); }
 	static SEL selSetSampler() { return @selector(setFragmentSamplerState:atIndex:); }
+	static SEL selSetAccelerationStructure() { return @selector(setFragmentAccelerationStructure:atBufferIndex:); }
 	static MVKResourceBinder::UseResource useResource() { return useResourceGraphics; }
 	static void setBuffer(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger index) {
 		[encoder setFragmentBuffer:buffer offset:offset atIndex:index];
@@ -87,6 +89,7 @@ struct MVKVertexBinder {
 	static SEL selSetOffset()  { return @selector(setVertexBufferOffset:atIndex:); }
 	static SEL selSetTexture() { return @selector(setVertexTexture:atIndex:); }
 	static SEL selSetSampler() { return @selector(setVertexSamplerState:atIndex:); }
+	static SEL selSetAccelerationStructure() { return @selector(setVertexAccelerationStructure:atBufferIndex:); }
 	static MVKResourceBinder::UseResource useResource() { return useResourceGraphics; }
 	static SEL selSetBufferDynamic() { return @selector(setVertexBuffer:offset:attributeStride:atIndex:); }
 	static SEL selSetOffsetDynamic() { return @selector(setVertexBufferOffset:attributeStride:atIndex:); }
@@ -119,6 +122,7 @@ struct MVKComputeBinder {
 	static SEL selSetOffset()  { return @selector(setBufferOffset:atIndex:); }
 	static SEL selSetTexture() { return @selector(setTexture:atIndex:); }
 	static SEL selSetSampler() { return @selector(setSamplerState:atIndex:); }
+	static SEL selSetAccelerationStructure() { return @selector(setAccelerationStructure:atBufferIndex:); }
 	static MVKResourceBinder::UseResource useResource() { return useResourceCompute; }
 	static SEL selSetBufferDynamic() { return @selector(setBuffer:offset:attributeStride:atIndex:); }
 	static SEL selSetOffsetDynamic() { return @selector(setBufferOffset:attributeStride:atIndex:); }
@@ -317,12 +321,17 @@ static void bindImplicitBufferData(uint32_t* target, MVKDescriptorSetLayout* lay
 		}
 		if (perDescCount == 0)
 			continue;
+		if (DataType == ImplicitBufferData::BufferSize && binding.descriptorType == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR) {
+			mvkClear(target, perDescCount * count);
+			target += perDescCount * count;
+			continue;
+		}
 		size_t stride = descriptorCPUSize(binding.cpuLayout);
 		size_t metaOff = getCPUMetaOffset(binding.cpuLayout);
 		if (DataType == ImplicitBufferData::TextureSwizzle && isTexelBuffer(binding.descriptorType)) {
 			mvkClear(target, count);
 		} else if (metaOff == 0) {
-			assert(DataType != ImplicitBufferData::BufferSize && "All buffers should have metadata");
+			assert((DataType != ImplicitBufferData::BufferSize || binding.descriptorType == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR) && "All buffers should have metadata");
 			mvkClear(target, count);
 		} else {
 			const char* base = static_cast<const char*>(descriptor) + binding.cpuOffset + metaOff;
@@ -353,7 +362,7 @@ static void bindDescriptorSets(MVKImplicitBufferData& target,
                                uint32_t firstSet, uint32_t setCount, MVKDescriptorSet*const* sets,
                                uint32_t dynamicOffsetCount, const uint32_t* dynamicOffsets) {
 	[[maybe_unused]] const uint32_t* dynamicOffsetsEnd = dynamicOffsets + dynamicOffsetCount;
-	VkShaderStageFlags vkStage = mvkVkShaderStageFlagBitsFromMVKShaderStage(stage);
+	VkShaderStageFlags vkStage = mvkVkShaderStageFlagsFromMVKShaderStage(stage);
 	for (uint32_t i = 0; i < setCount; i++) {
 		MVKDescriptorSet* set = sets[i];
 		MVKDescriptorSetLayout* setLayout = layout->getDescriptorSetLayout(firstSet + i);
@@ -426,6 +435,7 @@ static constexpr bool isUseResource(MVKDescriptorBindOperationCode op) {
 	switch (op) {
 		case MVKDescriptorBindOperationCode::UseBufferWithLiveCheck:
 		case MVKDescriptorBindOperationCode::UseTextureWithLiveCheck:
+		case MVKDescriptorBindOperationCode::UseAccelerationStructureWithLiveCheck:
 		case MVKDescriptorBindOperationCode::UseResource:
 			return true;
 		default:
@@ -437,7 +447,8 @@ template <MVKDescriptorBindOperationCode Op>
 static void executeBindOp(id<MTLCommandEncoder> encoder,
                           MVKCommandEncoder& mvkEncoder,
                           const char* src, uint32_t count, size_t stride,
-                          uint32_t target, const uint32_t* dynOffsets,
+                          MVKDescriptorSetSnapshot* descriptorSnapshot, uint32_t bindingIndex,
+                          uint32_t target, uint32_t target2, const uint32_t* dynOffsets,
                           MVKResourceUsageStages useResourceStage,
                           MVKStageResourceBits& exists,
                           MVKStageResourceBindings& bindings,
@@ -452,8 +463,13 @@ static void executeBindOp(id<MTLCommandEncoder> encoder,
 		return;
 	}
 	MVKDevice* dev = mvkEncoder.getDevice();
+	if (Op == MVKDescriptorBindOperationCode::UseAccelerationStructureWithLiveCheck && dev->hasResidencySet())
+		return;
 	for (uint32_t i = 0; i < count; i++, src += stride) {
-		id resource = *reinterpret_cast<const id*>(src);
+		id resource = nil;
+		if constexpr (Op != MVKDescriptorBindOperationCode::BindAccelerationStructure &&
+					  Op != MVKDescriptorBindOperationCode::UseAccelerationStructureWithLiveCheck)
+			resource = *reinterpret_cast<const id*>(src);
 		switch (Op) {
 			case MVKDescriptorBindOperationCode::BindBytes:
 				assert(0); // Handled above
@@ -466,7 +482,7 @@ static void executeBindOp(id<MTLCommandEncoder> encoder,
 				static_assert(offsetof(MVKCPUDescriptorTwoID2Meta, offset) == offsetof(MVKCPUDescriptorTwoID2Meta, b) + sizeof(id), "For the pointer arithmetic below");
 				uint64_t offset = *reinterpret_cast<const uint64_t*>(src + sizeof(id));
 				if (Op == MVKDescriptorBindOperationCode::BindBufferDynamic || Op == MVKDescriptorBindOperationCode::BindBufferDynamicWithLiveCheck)
-					offset += dynOffsets[i];
+					offset += dynOffsets[target2 + i];
 				if ((Op == MVKDescriptorBindOperationCode::BindBufferWithLiveCheck || Op == MVKDescriptorBindOperationCode::BindBufferDynamicWithLiveCheck) && resource) {
 					id<MTLBuffer> buffer = resource;
 					if (exists.buffers.get(target + i) && bindings.buffers[target + i].buffer == buffer) {
@@ -521,6 +537,42 @@ static void executeBindOp(id<MTLCommandEncoder> encoder,
 				}
 				break;
 
+			case MVKDescriptorBindOperationCode::BindAccelerationStructure:
+			case MVKDescriptorBindOperationCode::UseAccelerationStructureWithLiveCheck: {
+				auto* generation = descriptorSnapshot->getGeneration(bindingIndex, i);
+				id<MTLAccelerationStructure> accelerationStructure = generation ? generation->getMTLAccelerationStructure() : nil;
+#if SPIRV_CROSS_MSL_ACCELERATION_STRUCTURE_DESCRIPTOR_AS_ADDRESS
+				id<MTLBuffer> instanceMetadata = generation ? generation->getInstanceMetadataMTLBuffer() : nil;
+#endif
+				if constexpr (Op == MVKDescriptorBindOperationCode::BindAccelerationStructure) {
+#if SPIRV_CROSS_MSL_ACCELERATION_STRUCTURE_DESCRIPTOR_AS_ADDRESS
+					id<MTLBuffer> referenceBuffer = generation ? generation->getReferenceMTLBuffer() : nil;
+					bindBuffer(encoder, referenceBuffer, 0, target + i, exists, bindings, binder);
+					if (!dev->hasResidencySet()) {
+						if (accelerationStructure)
+							mvkEncoder.getState().mtlShared()._useResource.addImmediate(accelerationStructure, encoder, binder.useResource, useResourceStage, false);
+						if (instanceMetadata)
+							mvkEncoder.getState().mtlShared()._useResource.addImmediate(instanceMetadata, encoder, binder.useResource, useResourceStage, false);
+					}
+#else
+					binder.setAccelerationStructure(encoder, accelerationStructure, target + i);
+#endif
+				} else if constexpr (Op == MVKDescriptorBindOperationCode::UseAccelerationStructureWithLiveCheck) {
+#if SPIRV_CROSS_MSL_ACCELERATION_STRUCTURE_DESCRIPTOR_AS_ADDRESS
+					id<MTLBuffer> referenceBuffer = generation ? generation->getReferenceMTLBuffer() : nil;
+					if (referenceBuffer)
+						mvkEncoder.getState().mtlShared()._useResource.addImmediate(referenceBuffer, encoder, binder.useResource, useResourceStage, false);
+#endif
+					if (accelerationStructure)
+						mvkEncoder.getState().mtlShared()._useResource.addImmediate(accelerationStructure, encoder, binder.useResource, useResourceStage, false);
+#if SPIRV_CROSS_MSL_ACCELERATION_STRUCTURE_DESCRIPTOR_AS_ADDRESS
+					if (instanceMetadata)
+						mvkEncoder.getState().mtlShared()._useResource.addImmediate(instanceMetadata, encoder, binder.useResource, useResourceStage, false);
+#endif
+				}
+				break;
+			}
+
 			case MVKDescriptorBindOperationCode::UseResource:
 				if (resource)
 					mvkEncoder.getState().mtlShared()._useResource.add(resource, useResourceStage, target);
@@ -534,6 +586,7 @@ static void executeBindOp(id<MTLCommandEncoder> encoder,
 						mvkEncoder.getState().mtlShared()._useResource.addImmediate(resource, encoder, binder.useResource, useResourceStage, target);
 				}
 				break;
+
 		}
 	}
 }
@@ -548,13 +601,31 @@ static void executeBindOps(id<MTLCommandEncoder> encoder,
                            MVKStageResourceBindings& bindings,
                            const MVKResourceBinder& RESTRICT binder) {
 	bool didUseResource = false;
+	MVKDescriptorSetSnapshot* snapshots[kMVKMaxDescriptorSetCount];
+	bool snapshotsInitialized = false;
 	for (const MVKDescriptorBindOperation& op : ops) {
-		MVKDescriptorSet* set = common._descriptorSets[op.set];
+		MVKDescriptorSet* set = common.descriptorSet(op.set);
 		uint32_t target = op.target;
 		MVKDescriptorSetLayout* setLayout = common._layout->getDescriptorSetLayout(op.set);
 		const MVKDescriptorBinding& binding = setLayout->bindings()[op.bindingIdx];
+		bool isAccelerationStructure = op.opcode == MVKDescriptorBindOperationCode::BindAccelerationStructure ||
+			op.opcode == MVKDescriptorBindOperationCode::UseAccelerationStructureWithLiveCheck;
+		MVKDescriptorSetSnapshot* snapshot = nullptr;
+		if (isAccelerationStructure) {
+			if (!snapshotsInitialized) {
+				memset(snapshots, 0, sizeof(snapshots));
+				snapshotsInitialized = true;
+			}
+			snapshot = snapshots[op.set];
+			if (!snapshot) {
+				snapshot = mvkEncoder.getDescriptorSetSnapshot(set);
+				snapshots[op.set] = snapshot;
+			}
+			if (setLayout->argBufMode() != MVKArgumentBufferMode::Off)
+				bindBuffer(encoder, snapshot->gpuBufferObject, snapshot->gpuBufferOffset, op.set, exists, bindings, binder);
+		}
 		const char* src = set->cpuBuffer + binding.cpuOffset + op.offset();
-		const uint32_t* dynOffs = implicitBufferData.dynamicOffsets.data() + op.target2;
+		const uint32_t* dynOffs = implicitBufferData.dynamicOffsets.data();
 		uint32_t count = binding.isVariable() ? set->variableDescriptorCount : binding.descriptorCount;
 		size_t stride = descriptorCPUSize(binding.cpuLayout);
 
@@ -562,7 +633,7 @@ static void executeBindOps(id<MTLCommandEncoder> encoder,
 			// Unlike binds, useResource can't be undone by binding something else
 			// So we can store a list of which resources have been used in a bit array and use that to early exit on repeat binds
 			// Some resources (e.g. multi-planar textures) can require multiple bind ops to fully bind, mark in a separate pass after all bind ops have executed
-			if (bindings.descriptorSetResourceUse[op.set].get(op.bindingIdx))
+			if (!isAccelerationStructure && bindings.getDescriptorSetResourceUse(op.set).get(op.bindingIdx))
 				continue;
 			didUseResource = true;
 		}
@@ -570,13 +641,14 @@ static void executeBindOps(id<MTLCommandEncoder> encoder,
 		switch (op.opcode) {
 #define CASE(x) case MVKDescriptorBindOperationCode::x: \
 				executeBindOp<MVKDescriptorBindOperationCode::x>( \
-					encoder, mvkEncoder, src, count, stride, target, dynOffs, useResourceStage, exists, bindings, binder); \
+					encoder, mvkEncoder, src, count, stride, snapshot, op.bindingIdx, target, op.target2, dynOffs, useResourceStage, exists, bindings, binder); \
 				break;
 			CASE(BindBytes)
 			CASE(BindBuffer)
 			CASE(BindBufferDynamic)
 			CASE(BindTexture)
 			CASE(BindSampler)
+			CASE(BindAccelerationStructure)
 			CASE(BindBufferWithLiveCheck)
 			CASE(BindBufferDynamicWithLiveCheck)
 			CASE(BindTextureWithLiveCheck)
@@ -584,6 +656,7 @@ static void executeBindOps(id<MTLCommandEncoder> encoder,
 			CASE(UseResource)
 			CASE(UseBufferWithLiveCheck)
 			CASE(UseTextureWithLiveCheck)
+			CASE(UseAccelerationStructureWithLiveCheck)
 #undef CASE
 			case MVKDescriptorBindOperationCode::BindImmutableSampler: {
 				MVKSampler*const* samplers = &setLayout->immutableSamplers()[binding.immSamplerIndex];
@@ -596,8 +669,8 @@ static void executeBindOps(id<MTLCommandEncoder> encoder,
 
 	if (didUseResource) {
 		for (const MVKDescriptorBindOperation& op : ops) {
-			if (isUseResource(op.opcode) && !bindings.descriptorSetResourceUse[op.set].get(op.bindingIdx))
-				bindings.descriptorSetResourceUse[op.set].set(op.bindingIdx);
+			if (isUseResource(op.opcode) && !bindings.getDescriptorSetResourceUse(op.set).get(op.bindingIdx))
+				bindings.getDescriptorSetResourceUse(op.set).set(op.bindingIdx);
 		}
 	}
 }
@@ -642,9 +715,9 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 	MVKStaticBitSet<kMVKMaxDescriptorSetCount> setsNeeded = resources.resources.descriptorSetData.clearingAllIn(exists.descriptorSetData);
 	exists.descriptorSetData |= resources.resources.descriptorSetData;
 	for (size_t idx : setsNeeded) {
-		MVKDescriptorSet* set = common._descriptorSets[idx];
+		MVKDescriptorSet* set = common.descriptorSet(idx);
 		const MVKDescriptorSetLayout* layout = common._layout->getDescriptorSetLayout(idx);
-		bindings.descriptorSetResourceUse[idx].resizeAndClear(layout->bindings().size());
+		bindings.getDescriptorSetResourceUse(idx).resizeAndClear(layout->bindings().size());
 		bindBuffer(encoder, set->gpuBufferObject, set->gpuBufferOffset, idx, exists, bindings, binder);
 	}
 
@@ -704,6 +777,18 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 				                  idx,
 				                  binder);
 				break;
+			case MVKNonVolatileImplicitBuffer::AccelerationStructureAddressTable: {
+				auto* allocation = mvkEncoder.getAccelerationStructureAddressTable(mtlShared._useResource,
+				                                                                   useResourceStage);
+				if (allocation && allocation->_mtlBuffer) {
+					binder.setBuffer(encoder, allocation->_mtlBuffer, allocation->_offset, idx);
+				} else {
+					binder.setBuffer(encoder, nil, 0, idx);
+					mvkEncoder.reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+						"Acceleration-structure address-table storage could not be allocated.");
+				}
+				break;
+			}
 			case MVKNonVolatileImplicitBuffer::Count:
 				assert(0);
 				break;
@@ -895,7 +980,7 @@ void MVKUseResourceHelper::addImmediate(id<MTLResource> resource, id<MTLCommandE
 		if (stored.deferred)
 			entries[stored.stages].get(stored.write).push_back(resource);
 		else
-			func(enc, resource, write ? MTLResourceUsageReadWrite : MTLResourceUsageRead, stored.stages);
+			func(enc, resource, stored.write ? MTLResourceUsageReadWrite : MTLResourceUsageRead, stored.stages);
 	}
 }
 
@@ -936,18 +1021,52 @@ void MVKUseResourceHelper::bindAndResetCompute(id<MTLComputeCommandEncoder> enco
 
 #pragma mark - MVKVulkanCommonCommandEncoderState
 
+MVKDescriptorSet*& MVKVulkanCommonEncoderState::descriptorSet(uint32_t index) {
+	assert(index < kMVKMaxDescriptorSetCount);
+	if (index < kMVKInlineDescriptorSetCount) { return _descriptorSets[index]; }
+	if (!_descriptorSetOverflow) {
+		_descriptorSetOverflow = new MVKDescriptorSet*[kMVKMaxDescriptorSetCount - kMVKInlineDescriptorSetCount]{};
+	}
+	return _descriptorSetOverflow[index - kMVKInlineDescriptorSetCount];
+}
+
+MVKDescriptorSet* MVKVulkanCommonEncoderState::descriptorSet(uint32_t index) const {
+	assert(index < kMVKMaxDescriptorSetCount);
+	return index < kMVKInlineDescriptorSetCount ? _descriptorSets[index]
+		: (_descriptorSetOverflow ? _descriptorSetOverflow[index - kMVKInlineDescriptorSetCount] : nullptr);
+}
+
 void MVKVulkanCommonEncoderState::ensurePushDescriptorSize(uint32_t size) {
 	if (size > _pushDescData.size()) {
 		_pushDescData.resize(size);
-		_pushDescriptor.cpuBuffer = reinterpret_cast<char*>(_pushDescData.data());
 	}
+	_pushDescriptor.cpuBuffer = reinterpret_cast<char*>(_pushDescData.data());
+}
+
+void MVKVulkanCommonEncoderState::preparePushDescriptor(MVKDescriptorSetLayout* layout) {
+	bool layoutChanged = _pushDescriptor.layout != layout;
+	if (layoutChanged) {
+		mvkReleaseDescriptorSetAccelerationStructures(&_pushDescriptor);
+	}
+	uint32_t cpuSize = layout->cpuSize();
+	_pushDescriptor.cpuBufferSize = cpuSize;
+	ensurePushDescriptorSize(cpuSize);
+	_pushDescriptor.layout = layout;
+	_pushDescriptor.argEnc = nullptr;
+	_pushDescriptor.auxIndices = layout->auxOffsets();
+	_pushDescriptor.variableDescriptorCount = 0;
+	_pushDescriptor.gpuBuffer = nullptr;
+	_pushDescriptor.gpuBufferObject = nil;
+	_pushDescriptor.gpuBufferOffset = 0;
+	_pushDescriptor.gpuBufferSize = 0;
+	if (layoutChanged && cpuSize) { memset(_pushDescriptor.cpuBuffer, 0, cpuSize); }
 }
 
 void MVKVulkanCommonEncoderState::setLayout(MVKPipelineLayout* layout) {
 	_layout = layout;
 	if (layout && layout->hasPushDescriptor()) {
 		size_t idx = layout->pushDescriptor();
-		_descriptorSets[idx] = &_pushDescriptor;
+		descriptorSet(idx) = &_pushDescriptor;
 		MVKDescriptorSetLayout* dsl = layout->getDescriptorSetLayout(idx);
 		uint32_t size = dsl->cpuSize();
 		_pushDescriptor.cpuBufferSize = size;
@@ -955,19 +1074,45 @@ void MVKVulkanCommonEncoderState::setLayout(MVKPipelineLayout* layout) {
 	}
 }
 
-MVKVulkanCommonEncoderState::MVKVulkanCommonEncoderState(const MVKVulkanCommonEncoderState& other) {
+MVKVulkanCommonEncoderState::MVKVulkanCommonEncoderState(const MVKVulkanCommonEncoderState& other) :
+	_pushDescData(other._pushDescData) {
 	memcpy(_descriptorSets, other._descriptorSets, sizeof(_descriptorSets));
+	if (other._descriptorSetOverflow) {
+		_descriptorSetOverflow = new MVKDescriptorSet*[kMVKMaxDescriptorSetCount - kMVKInlineDescriptorSetCount];
+		memcpy(_descriptorSetOverflow, other._descriptorSetOverflow,
+			   (kMVKMaxDescriptorSetCount - kMVKInlineDescriptorSetCount) * sizeof(*_descriptorSetOverflow));
+	}
 	_pushDescriptor = other._pushDescriptor;
+	_pushDescriptor.cpuBuffer = reinterpret_cast<char*>(_pushDescData.data());
 	setLayout(other._layout);
-	memcpy(_pushDescriptor.cpuBuffer, other._pushDescriptor.cpuBuffer, _pushDescriptor.cpuBufferSize);
+	mvkRetainDescriptorSetAccelerationStructures(&_pushDescriptor);
 }
 
 MVKVulkanCommonEncoderState& MVKVulkanCommonEncoderState::operator=(const MVKVulkanCommonEncoderState& other) {
+	if (this == &other) { return *this; }
+	mvkReleaseDescriptorSetAccelerationStructures(&_pushDescriptor);
 	memmove(_descriptorSets, other._descriptorSets, sizeof(_descriptorSets));
+	if (other._descriptorSetOverflow) {
+		if (!_descriptorSetOverflow) {
+			_descriptorSetOverflow = new MVKDescriptorSet*[kMVKMaxDescriptorSetCount - kMVKInlineDescriptorSetCount];
+		}
+		memmove(_descriptorSetOverflow, other._descriptorSetOverflow,
+				(kMVKMaxDescriptorSetCount - kMVKInlineDescriptorSetCount) * sizeof(*_descriptorSetOverflow));
+	} else {
+		delete[] _descriptorSetOverflow;
+		_descriptorSetOverflow = nullptr;
+	}
+	_pushDescData.assign(other._pushDescData.begin(), other._pushDescData.end());
 	_pushDescriptor = other._pushDescriptor;
+	_pushDescriptor.cpuBuffer = reinterpret_cast<char*>(_pushDescData.data());
 	setLayout(other._layout);
-	memmove(_pushDescriptor.cpuBuffer, other._pushDescriptor.cpuBuffer, _pushDescriptor.cpuBufferSize);
+	mvkRetainDescriptorSetAccelerationStructures(&_pushDescriptor);
 	return *this;
+}
+
+MVKVulkanCommonEncoderState::~MVKVulkanCommonEncoderState() {
+	mvkReleaseDescriptorSetAccelerationStructures(&_pushDescriptor);
+	delete[] _descriptorSetOverflow;
 }
 
 #pragma mark - MVKVulkanGraphicsCommandEncoderState
@@ -1018,7 +1163,7 @@ void MVKVulkanGraphicsCommandEncoderState::bindDescriptorSets(
 		::bindDescriptorSets(_implicitBufferData[stage], stage, layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
 	}
 	for (uint32_t i = 0; i < setCount; i++) {
-		_descriptorSets[firstSet + i] = sets[i];
+		descriptorSet(firstSet + i) = sets[i];
 	}
 }
 
@@ -1034,7 +1179,7 @@ void MVKVulkanComputeCommandEncoderState::bindDescriptorSets(
 {
 	::bindDescriptorSets(_implicitBufferData, kMVKShaderStageCompute, layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
 	for (uint32_t i = 0; i < setCount; i++) {
-		_descriptorSets[firstSet + i] = sets[i];
+		descriptorSet(firstSet + i) = sets[i];
 	}
 }
 
@@ -1581,7 +1726,11 @@ void MVKMetalComputeCommandEncoderState::prepareComputeDispatch(
 	if (!mtlPipeline) // Abort if pipeline could not be created.
 		return;
 
-	_vkPipeline = pipeline;
+	if (_vkPipeline != pipeline) {
+		_vkPipeline = pipeline;
+		invalidateDescriptorSetImplicitBuffers(*this);
+		_exists.descriptorSetData.reset();
+	}
 
 	if (_pipeline != mtlPipeline) {
 		_pipeline = mtlPipeline;
@@ -1658,6 +1807,15 @@ void MVKMetalComputeCommandEncoderState::reset() {
 }
 
 #pragma mark - MVKCommandEncoderState
+
+MVKCommandEncoderState::~MVKCommandEncoderState() {
+	delete _vkRayTracing;
+}
+
+MVKVulkanComputeCommandEncoderState& MVKCommandEncoderState::getOrCreateRayTracingState() {
+	if (!_vkRayTracing) { _vkRayTracing = new MVKVulkanComputeCommandEncoderState; }
+	return *_vkRayTracing;
+}
 
 static constexpr MVKRenderStateFlags SampleLocationFlags {
 	MVKRenderStateFlag::SampleLocations,
@@ -1746,10 +1904,32 @@ void MVKCommandEncoderState::bindComputePipeline(MVKComputePipeline* pipeline) {
 	}
 }
 
+void MVKCommandEncoderState::bindRayTracingPipeline(MVKComputePipeline* pipeline) {
+	auto& rayTracing = getOrCreateRayTracingState();
+	rayTracing._pipeline = pipeline;
+	MVKPipelineLayout* layout = pipeline->getLayout();
+	if (rayTracing._layout != layout) {
+		if (!rayTracing._layout || rayTracing._layout->getPushConstantsLength() < layout->getPushConstantsLength()) {
+			mvkEnsureSize(_vkShared._pushConstants, layout->getPushConstantsLength());
+			invalidateImplicitBuffer(*this, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, MVKNonVolatileImplicitBuffer::PushConstant);
+		}
+		rayTracing.setLayout(layout);
+	}
+}
+
 void MVKCommandEncoderState::pushConstants(uint32_t offset, uint32_t size, const void* data) {
 	mvkEnsureSize(_vkShared._pushConstants, offset + size);
 	memcpy(_vkShared._pushConstants.data() + offset, data, size);
 	invalidateImplicitBuffer(*this, VK_PIPELINE_BIND_POINT_ALL, MVKNonVolatileImplicitBuffer::PushConstant);
+}
+
+static void invalidateDescriptorSets(MVKCommandEncoderState& state, VkPipelineBindPoint bindPoint,
+									 MVKStaticBitSet<kMVKMaxDescriptorSetCount> affected) {
+	state.applyToActiveMTLState(bindPoint, [affected](auto& mtl){
+		invalidateDescriptorSetImplicitBuffers(mtl);
+		for (MVKStageResourceBits& exists : mtl.exists())
+			exists.descriptorSetData.clearAllIn(affected);
+	});
 }
 
 void MVKCommandEncoderState::bindDescriptorSets(
@@ -1761,16 +1941,14 @@ void MVKCommandEncoderState::bindDescriptorSets(
   uint32_t dynamicOffsetCount,
   const uint32_t* dynamicOffsets) {
 	auto affected = MVKStaticBitSet<kMVKMaxDescriptorSetCount>::range(firstSet, firstSet + setCount);
-	applyToActiveMTLState(bindPoint, [affected](auto& mtl){
-		invalidateDescriptorSetImplicitBuffers(mtl);
-		for (MVKStageResourceBits& exists : mtl.exists()) {
-			exists.descriptorSetData.clearAllIn(affected);
-		}
-	});
+	invalidateDescriptorSets(*this, bindPoint, affected);
 	if (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
 		_vkGraphics.bindDescriptorSets(layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
 	} else if (bindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
 		_vkCompute.bindDescriptorSets(layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
+	} else if (bindPoint == VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR) {
+		getOrCreateRayTracingState().bindDescriptorSets(layout, firstSet, setCount, sets,
+				dynamicOffsetCount, dynamicOffsets);
 	}
 }
 
@@ -1778,25 +1956,36 @@ MVKVulkanCommonEncoderState* MVKCommandEncoderState::getVkEncoderState(VkPipelin
 	switch (bindPoint) {
 		case VK_PIPELINE_BIND_POINT_GRAPHICS: return &_vkGraphics;
 		case VK_PIPELINE_BIND_POINT_COMPUTE:  return &_vkCompute;
+		case VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR: return &getOrCreateRayTracingState();
 		default: return nullptr;
 	}
 }
 
-void MVKCommandEncoderState::pushDescriptorSet(VkPipelineBindPoint bindPoint, MVKPipelineLayout* layout, uint32_t set, uint32_t writeCount, const VkWriteDescriptorSet* writes) {
+void MVKCommandEncoderState::pushDescriptorSet(VkPipelineBindPoint bindPoint,
+	                                           MVKPipelineLayout* layout,
+	                                           uint32_t set,
+	                                           uint32_t writeCount,
+	                                           const VkWriteDescriptorSet* writes) {
 	assert(layout->pushDescriptor() == set);
 	if (MVKVulkanCommonEncoderState* state = getVkEncoderState(bindPoint)) [[likely]] {
 		MVKDescriptorSetLayout* dsl = layout->getDescriptorSetLayout(set);
-		state->ensurePushDescriptorSize(dsl->cpuSize());
-		mvkPushDescriptorSet(state->_pushDescriptor.cpuBuffer, dsl, writeCount, writes);
+		state->preparePushDescriptor(dsl);
+		mvkPushDescriptorSet(&state->_pushDescriptor, writeCount, writes);
+		invalidateDescriptorSets(*this, bindPoint, MVKStaticBitSet<kMVKMaxDescriptorSetCount>::range(set, set + 1));
 	}
 }
 
-void MVKCommandEncoderState::pushDescriptorSet(MVKDescriptorUpdateTemplate* updateTemplate, MVKPipelineLayout* layout, uint32_t set, const void* data) {
+void MVKCommandEncoderState::pushDescriptorSet(MVKDescriptorUpdateTemplate* updateTemplate,
+	                                           MVKPipelineLayout* layout,
+	                                           uint32_t set,
+	                                           const void* data) {
 	assert(layout->pushDescriptor() == set);
-	if (MVKVulkanCommonEncoderState* state = getVkEncoderState(updateTemplate->getBindPoint())) [[likely]] {
+	VkPipelineBindPoint bindPoint = updateTemplate->getBindPoint();
+	if (MVKVulkanCommonEncoderState* state = getVkEncoderState(bindPoint)) [[likely]] {
 		MVKDescriptorSetLayout* dsl = layout->getDescriptorSetLayout(set);
-		state->ensurePushDescriptorSize(dsl->cpuSize());
-		mvkPushDescriptorSetTemplate(state->_pushDescriptor.cpuBuffer, dsl, updateTemplate, data);
+		state->preparePushDescriptor(dsl);
+		mvkPushDescriptorSetTemplate(&state->_pushDescriptor, updateTemplate, data);
+		invalidateDescriptorSets(*this, bindPoint, MVKStaticBitSet<kMVKMaxDescriptorSetCount>::range(set, set + 1));
 	}
 }
 
@@ -1846,6 +2035,7 @@ void MVKCommandEncoderState::beginComputeEncoding() {
 
 template <typename Fn>
 void MVKCommandEncoderState::applyToActiveMTLState(VkPipelineBindPoint bindPoint, Fn&& fn) {
+	if (bindPoint == VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR) { bindPoint = VK_PIPELINE_BIND_POINT_COMPUTE; }
 	switch (_mtlActiveEncoder) {
 		case CommandEncoderClass::Graphics:
 			if (bindPoint != VK_PIPELINE_BIND_POINT_COMPUTE)

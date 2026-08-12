@@ -138,7 +138,7 @@ protected:
 
 	void propagateDebugName() override;
 	void initName();
-	void initExecQueue();
+	void initExecQueue(bool force = false);
 	void initMTLCommandQueue();
 	void destroyExecQueue();
 	VkResult submit(MVKQueueSubmission* qSubmit);
@@ -147,7 +147,7 @@ protected:
 
 	MVKQueueFamily* _queueFamily;
 	std::string _name;
-	dispatch_queue_t _execQueue;
+	dispatch_queue_t _execQueue = nil;
 	std::mutex _execQueueMutex;
 	std::condition_variable _execQueueConditionVariable;
 	uint32_t _execQueueJobCount = 0;
@@ -180,11 +180,20 @@ public:
 
 	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff);
 	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff);
+	void deferBinaryWait();
+	void deferBinarySignal();
+	void waitForEncodingSignal();
+	bool supportsEncodingDependencyWait() const;
+	bool waitsForEncodingSignal() const;
+	bool waitsForEncodingStages(VkPipelineStageFlags2 stages) const;
 	MVKSemaphoreSubmitInfo(const VkSemaphoreSubmitInfo& semaphoreSubmitInfo);
 	MVKSemaphoreSubmitInfo(const VkSemaphore semaphore, VkPipelineStageFlags stageMask);
 	MVKSemaphoreSubmitInfo(const MVKSemaphoreSubmitInfo& other);
 	MVKSemaphoreSubmitInfo& operator=(const MVKSemaphoreSubmitInfo& other);
 	~MVKSemaphoreSubmitInfo();
+
+private:
+	bool _hasDeferredOperation = false;
 
 } MVKSemaphoreSubmitInfo;
 
@@ -218,6 +227,9 @@ protected:
 	friend class MVKQueue;
 
 	virtual void finish() = 0;
+	virtual bool requiresHostReadback() const { return false; }
+	virtual bool requiresEncodingDependencyWait() { return false; }
+	virtual bool propagatesEncodingDependency() { return false; }
 	MVKDevice* getDevice() { return _queue->getDevice(); }
 
 	MVKQueue* _queue;
@@ -261,12 +273,16 @@ public:
 
 protected:
 	friend MVKCommandBuffer;
+	friend MVKCommandEncoder;
 
 	id<MTLCommandBuffer> getActiveMTLCommandBuffer();
 	void setActiveMTLCommandBuffer(id<MTLCommandBuffer> mtlCmdBuff);
 	VkResult commitActiveMTLCommandBuffer(bool signalCompletion = false);
+	VkResult commitActiveMTLCommandBufferAndWait();
 	void finish() override;
 	virtual void submitCommandBuffers() {}
+	bool propagatesEncodingDependency() override;
+	virtual VkPipelineStageFlags2 getEncodingDependencyStages() const { return 0; }
 
 	MVKCommandEncodingContext _encodingContext;
 	MVKSmallVector<MVKSemaphoreSubmitInfo> _signalSemaphores;
@@ -297,6 +313,9 @@ public:
 
 protected:
 	void submitCommandBuffers() override;
+	bool requiresHostReadback() const override;
+	bool requiresEncodingDependencyWait() override;
+	VkPipelineStageFlags2 getEncodingDependencyStages() const override;
 
 	MVKSmallVector<MVKCommandBufferSubmitInfo, N> _cmdBuffers;
 };
@@ -319,4 +338,3 @@ protected:
 
 	MVKSmallVector<MVKImagePresentInfo, 4> _presentInfo;
 };
-

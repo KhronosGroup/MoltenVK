@@ -142,6 +142,10 @@ public:
 	 * semaphore to have.
 	 */
 	virtual void encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) = 0;
+	virtual uint64_t deferWait() { return 0; }
+	virtual void encodeDeferredWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t deferToken) {
+		encodeWait(mtlCmdBuff, deferToken);
+	}
 
 	/**
 	 * Signals this semaphore.
@@ -184,6 +188,7 @@ public:
 
 	/** Returns whether this semaphore uses command encoding. */
 	virtual bool isUsingCommandEncoding() = 0;
+	virtual bool supportsEncodingDependencyWait() { return isUsingCommandEncoding(); }
 
 	/**
 	 * Returns the MTLSharedEvent underlying this Vulkan semaphore,
@@ -191,13 +196,31 @@ public:
 	 */
 	virtual id<MTLSharedEvent> getMTLSharedEvent() { return nil; };
 
+	/** Waits only until the operation that signals value has finished CPU encoding. */
+	void waitForEncodingSignal(uint64_t value);
+
+	/** Publishes that all CPU-visible state preceding value has been encoded. */
+	void publishEncodingSignal(uint64_t value);
+	void destroy() override;
+
 
 #pragma mark Construction
 
-    MVKSemaphore(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {}
+	MVKSemaphore(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo);
+	~MVKSemaphore() override;
 
 protected:
 	void propagateDebugName() override {}
+	void initializeEncodingSignal(uint64_t value);
+	void cancelEncodingWaits();
+
+	struct EncodingSync {
+		std::mutex lock;
+		std::condition_variable condition;
+		uint64_t value = 0;
+		bool cancelled = false;
+	};
+	EncodingSync* _encodingSync = nullptr;
 
 };
 
@@ -219,6 +242,7 @@ public:
 	uint64_t deferSignal() override;
 	void encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
 	bool isUsingCommandEncoding() override { return false; }
+	bool supportsEncodingDependencyWait() override { return true; }
 
 	MVKSemaphoreSingleQueue(MVKDevice* device,
 	                        const VkSemaphoreCreateInfo* pCreateInfo,
@@ -237,10 +261,13 @@ class MVKSemaphoreMTLEvent : public MVKSemaphore {
 
 public:
 	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) override;
+	uint64_t deferWait() override;
+	void encodeDeferredWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t deferToken) override;
 	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) override;
 	uint64_t deferSignal() override;
 	void encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t deferToken) override;
 	bool isUsingCommandEncoding() override { return true; }
+	id<MTLSharedEvent> getMTLSharedEvent() override { return _mtlSharedEvent; }
 
 	MVKSemaphoreMTLEvent(MVKDevice* device,
 						 const VkSemaphoreCreateInfo* pCreateInfo,
@@ -251,7 +278,9 @@ public:
 
 protected:
 	id<MTLEvent> _mtlEvent;
-	std::atomic<uint64_t> _mtlEventValue;
+	id<MTLSharedEvent> _mtlSharedEvent = nil;
+	std::atomic<uint64_t> _mtlEventWaitValue;
+	std::atomic<uint64_t> _mtlEventSignalValue;
 };
 
 

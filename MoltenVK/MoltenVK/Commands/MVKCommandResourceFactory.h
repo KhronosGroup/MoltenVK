@@ -384,6 +384,12 @@ public:
 
 	/** Returns a new MTLComputePipelineState for converting a Uint8 index buffer to Uint16. */
 	id<MTLComputePipelineState> newConvertUint8IndicesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+	id<MTLComputePipelineState> newCmdBuildAccelerationStructureConvertBuffersMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+	id<MTLComputePipelineState> newCmdSerializeAccelerationStructureGatherMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+	id<MTLComputePipelineState> newCmdTraceRaysIndirectConvertMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+	id<MTLLibrary> newRayTracingDispatcherMTLLibrary(NSString* source,
+														 bool usesIFB,
+														 MVKVulkanAPIDeviceObject* owner);
 
 
 #pragma mark Construction
@@ -394,18 +400,23 @@ public:
 
 protected:
 	void initMTLLibrary();
+	void initAccelerationStructureMTLLibrary();
 	void initImageDeviceMemory();
 	id<MTLFunction> newBlitFragFunction(MVKRPSKeyBlitImg& blitKey);
 	id<MTLFunction> newClearVertFunction(MVKRPSKeyClearAtt& attKey);
 	id<MTLFunction> newClearFragFunction(MVKRPSKeyClearAtt& attKey);
 	NSString* getMTLFormatTypeString(MTLPixelFormat mtlPixFmt);
-    id<MTLFunction> newFunctionNamed(const char* funcName);
+	id<MTLFunction> newFunctionNamed(const char* funcName, id<MTLLibrary> library = nil);
 	id<MTLFunction> newMTLFunction(NSString* mslSrcCode, NSString* funcName);
 	id<MTLRenderPipelineState> newMTLRenderPipelineState(MTLRenderPipelineDescriptor* plDesc,
 														 MVKVulkanAPIDeviceObject* owner);
 	id<MTLComputePipelineState> newMTLComputePipelineState(const char* funcName,
-														   MVKVulkanAPIDeviceObject* owner);
+														   MVKVulkanAPIDeviceObject* owner,
+														   id<MTLLibrary> library = nil);
 
 	id<MTLLibrary> _mtlLibrary;
+	id<MTLLibrary> _mtlAccelerationStructureLibrary = nil;
+	id<MTLLibrary> _mtlRayTracingDispatcherLibraries[2] = {};
+	std::mutex _rayTracingDispatcherLibraryLock;
 	MVKDeviceMemory* _transferImageMemory;
 };

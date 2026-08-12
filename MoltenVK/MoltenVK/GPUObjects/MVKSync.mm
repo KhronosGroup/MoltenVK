@@ -82,6 +82,68 @@ MVKSemaphoreImpl::~MVKSemaphoreImpl() {
 
 
 #pragma mark -
+#pragma mark MVKSemaphore
+
+MVKSemaphore::MVKSemaphore(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo) :
+	MVKVulkanAPIDeviceObject(device) {}
+
+MVKSemaphore::~MVKSemaphore() {
+	cancelEncodingWaits();
+	delete _encodingSync;
+}
+
+void MVKSemaphore::cancelEncodingWaits() {
+	if (!_encodingSync) { return; }
+	{
+		lock_guard<mutex> lock(_encodingSync->lock);
+		_encodingSync->cancelled = true;
+	}
+	_encodingSync->condition.notify_all();
+}
+
+void MVKSemaphore::destroy() {
+	cancelEncodingWaits();
+	MVKVulkanAPIDeviceObject::destroy();
+}
+
+void MVKSemaphore::initializeEncodingSignal(uint64_t value) {
+	if (!_encodingSync && getEnabledAccelerationStructureFeatures().accelerationStructure) {
+		_encodingSync = new (std::nothrow) EncodingSync;
+		if (!_encodingSync) {
+			setConfigurationResult(reportError(VK_ERROR_OUT_OF_HOST_MEMORY,
+				"vkCreateSemaphore(): Could not allocate acceleration-structure synchronization state."));
+			return;
+		}
+	}
+	if (!_encodingSync) { return; }
+	lock_guard<mutex> lock(_encodingSync->lock);
+	_encodingSync->value = value;
+}
+
+void MVKSemaphore::waitForEncodingSignal(uint64_t value) {
+	if (!_encodingSync || !isUsingCommandEncoding()) { return; }
+	unique_lock<mutex> lock(_encodingSync->lock);
+	while (!_encodingSync->cancelled && _encodingSync->value < value) {
+		id<MTLSharedEvent> event = getMTLSharedEvent();
+		if (event && event.signaledValue >= value) {
+			_encodingSync->value = value;
+			break;
+		}
+		_encodingSync->condition.wait_for(lock, chrono::milliseconds(1));
+	}
+}
+
+void MVKSemaphore::publishEncodingSignal(uint64_t value) {
+	if (!_encodingSync) { return; }
+	{
+		lock_guard<mutex> lock(_encodingSync->lock);
+		_encodingSync->value = max(_encodingSync->value, value);
+	}
+	_encodingSync->condition.notify_all();
+}
+
+
+#pragma mark -
 #pragma mark MVKSemaphoreSingleQueue
 
 void MVKSemaphoreSingleQueue::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
@@ -116,37 +178,52 @@ MVKSemaphoreSingleQueue::~MVKSemaphoreSingleQueue() = default;
 #pragma mark MVKSemaphoreMTLEvent
 
 void MVKSemaphoreMTLEvent::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
-	if (mtlCmdBuff) { [mtlCmdBuff encodeWaitForEvent: _mtlEvent value: _mtlEventValue++]; }
+	if (mtlCmdBuff) { [mtlCmdBuff encodeWaitForEvent: _mtlEvent value: _mtlEventWaitValue.fetch_add(1, std::memory_order_relaxed)]; }
+}
+
+uint64_t MVKSemaphoreMTLEvent::deferWait() {
+	return _mtlEventWaitValue.fetch_add(1, std::memory_order_relaxed);
+}
+
+void MVKSemaphoreMTLEvent::encodeDeferredWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t deferToken) {
+	[mtlCmdBuff encodeWaitForEvent: _mtlEvent value: deferToken];
 }
 
 void MVKSemaphoreMTLEvent::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
-	if (mtlCmdBuff) { [mtlCmdBuff encodeSignalEvent: _mtlEvent value: _mtlEventValue]; }
+	if (mtlCmdBuff) { [mtlCmdBuff encodeSignalEvent: _mtlEvent value: _mtlEventSignalValue.fetch_add(1, std::memory_order_relaxed)]; }
 }
 
 uint64_t MVKSemaphoreMTLEvent::deferSignal() {
-	return _mtlEventValue;
+	return _mtlEventSignalValue.fetch_add(1, std::memory_order_relaxed);
 }
 
 void MVKSemaphoreMTLEvent::encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t deferToken) {
 	[mtlCmdBuff encodeSignalEvent: _mtlEvent value: deferToken];
+	publishEncodingSignal(deferToken);
 }
 
 MVKSemaphoreMTLEvent::MVKSemaphoreMTLEvent(MVKDevice* device,
 										   const VkSemaphoreCreateInfo* pCreateInfo,
 										   const VkExportMetalObjectCreateInfoEXT* pExportInfo,
 										   const VkImportMetalSharedEventInfoEXT* pImportInfo) : MVKSemaphore(device, pCreateInfo) {
+	uint64_t nextValue;
 	// In order of preference, import a MTLSharedEvent,
 	// create a MTLSharedEvent, or create a MTLEvent.
 	if (pImportInfo && pImportInfo->mtlSharedEvent) {
 		_mtlEvent = [pImportInfo->mtlSharedEvent retain];		// retained
-		_mtlEventValue = pImportInfo->mtlSharedEvent.signaledValue + 1;
+		_mtlSharedEvent = pImportInfo->mtlSharedEvent;
+		nextValue = pImportInfo->mtlSharedEvent.signaledValue + 1;
 	} else if (pExportInfo && pExportInfo->exportObjectType == VK_EXPORT_METAL_OBJECT_TYPE_METAL_SHARED_EVENT_BIT_EXT) {
 		_mtlEvent = [getMTLDevice() newSharedEvent];	//retained
-		_mtlEventValue = ((id<MTLSharedEvent>)_mtlEvent).signaledValue + 1;
+		_mtlSharedEvent = (id<MTLSharedEvent>)_mtlEvent;
+		nextValue = ((id<MTLSharedEvent>)_mtlEvent).signaledValue + 1;
 	} else {
 		_mtlEvent = [getMTLDevice() newEvent];			//retained
-		_mtlEventValue = 1;
+		nextValue = 1;
 	}
+	_mtlEventWaitValue = nextValue;
+	_mtlEventSignalValue = nextValue;
+	initializeEncodingSignal(nextValue - 1);
 }
 
 MVKSemaphoreMTLEvent::~MVKSemaphoreMTLEvent() {
@@ -201,10 +278,12 @@ void MVKTimelineSemaphoreMTLEvent::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, u
 // Nil mtlCmdBuff will do nothing.
 void MVKTimelineSemaphoreMTLEvent::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) {
 	[mtlCmdBuff encodeSignalEvent: _mtlEvent value: value];
+	if (mtlCmdBuff) { publishEncodingSignal(value); }
 }
 
 void MVKTimelineSemaphoreMTLEvent::signal(const VkSemaphoreSignalInfo* pSignalInfo) {
 	_mtlEvent.signaledValue = pSignalInfo->value;
+	publishEncodingSignal(pSignalInfo->value);
 }
 
 bool MVKTimelineSemaphoreMTLEvent::registerWait(MVKFenceSitter* sitter, const VkSemaphoreWaitInfo* pWaitInfo, uint32_t index) {
@@ -246,6 +325,7 @@ MVKTimelineSemaphoreMTLEvent::MVKTimelineSemaphoreMTLEvent(MVKDevice* device,
 	if (pTypeCreateInfo) {
 		_mtlEvent.signaledValue = pTypeCreateInfo->initialValue;
 	}
+	initializeEncodingSignal(_mtlEvent.signaledValue);
 }
 
 MVKTimelineSemaphoreMTLEvent::~MVKTimelineSemaphoreMTLEvent() {
@@ -553,4 +633,3 @@ void MVKDeferredOperation::updateResults(VkResult opResult, uint32_t maxConCurr)
 	_operationResult = opResult;
 	_maxConcurrency = maxConCurr;
 }
-

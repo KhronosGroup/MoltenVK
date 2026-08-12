@@ -424,6 +424,53 @@ MVKTimestampQueryPool::MVKTimestampQueryPool(MVKDevice* device, const VkQueryPoo
 
 
 #pragma mark -
+#pragma mark MVKAccelerationStructureQueryPool
+
+void MVKAccelerationStructureQueryPool::propagateDebugName() { setMetalObjectLabel(_resultMTLBuffer, _debugName); }
+
+void MVKAccelerationStructureQueryPool::resetResults(uint32_t firstQuery, uint32_t queryCount,
+													  MVKCommandEncoder* cmdEncoder) {
+	MVKQueryPool::resetResults(firstQuery, queryCount, cmdEncoder);
+	NSUInteger offset = getResultOffset(firstQuery);
+	NSUInteger length = getResultOffset(queryCount);
+	if (cmdEncoder) {
+		id<MTLBlitCommandEncoder> encoder = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseResetQueryPool);
+		[encoder fillBuffer:_resultMTLBuffer range:NSMakeRange(offset, length) value:0];
+	} else {
+		mvkClear((char*)_resultMTLBuffer.contents + offset, length);
+	}
+}
+
+NSData* MVKAccelerationStructureQueryPool::getQuerySourceData(uint32_t firstQuery, uint32_t queryCount) {
+	return [NSData dataWithBytesNoCopy:(void*)((uintptr_t)_resultMTLBuffer.contents + getResultOffset(firstQuery))
+	                          length:getResultOffset(queryCount)
+	                    freeWhenDone:false];
+}
+
+id<MTLBuffer> MVKAccelerationStructureQueryPool::getResultBuffer(MVKCommandEncoder*, uint32_t firstQuery,
+																  uint32_t, NSUInteger& offset) {
+	offset = getResultOffset(firstQuery);
+	return _resultMTLBuffer;
+}
+
+id<MTLComputeCommandEncoder> MVKAccelerationStructureQueryPool::encodeComputeCopyResults(
+	MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t, uint32_t index) {
+	id<MTLComputeCommandEncoder> encoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults);
+	cmdEncoder->getMtlCompute().bindBuffer(encoder, _resultMTLBuffer, getResultOffset(firstQuery), index);
+	return encoder;
+}
+
+MVKAccelerationStructureQueryPool::MVKAccelerationStructureQueryPool(
+	MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo) : MVKQueryPool(device, pCreateInfo, 1) {
+	_resultMTLBuffer = [getMTLDevice() newBufferWithLength:getResultOffset(pCreateInfo->queryCount)
+	                                               options:MTLResourceStorageModeShared | MTLResourceCPUCacheModeDefaultCache];
+	[_resultMTLBuffer setLabel:@"Acceleration Structure Query Result Buffer"];
+}
+
+MVKAccelerationStructureQueryPool::~MVKAccelerationStructureQueryPool() { [_resultMTLBuffer release]; }
+
+
+#pragma mark -
 #pragma mark MVKPipelineStatisticsQueryPool
 
 MVKPipelineStatisticsQueryPool::MVKPipelineStatisticsQueryPool(MVKDevice* device,

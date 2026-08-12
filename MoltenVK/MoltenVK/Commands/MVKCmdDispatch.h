@@ -64,3 +64,45 @@ protected:
 	VkDeviceSize _mtlIndirectBufferOffset;
 };
 
+
+#pragma mark -
+#pragma mark MVKCmdTraceRays
+
+class MVKCmdTraceRays : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const VkStridedDeviceAddressRegionKHR* pRaygenShaderBindingTable,
+						const VkStridedDeviceAddressRegionKHR* pMissShaderBindingTable,
+						const VkStridedDeviceAddressRegionKHR* pHitShaderBindingTable,
+						const VkStridedDeviceAddressRegionKHR* pCallableShaderBindingTable,
+						uint32_t width, uint32_t height, uint32_t depth);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const VkStridedDeviceAddressRegionKHR* pRaygenShaderBindingTable,
+						const VkStridedDeviceAddressRegionKHR* pMissShaderBindingTable,
+						const VkStridedDeviceAddressRegionKHR* pHitShaderBindingTable,
+						const VkStridedDeviceAddressRegionKHR* pCallableShaderBindingTable,
+						VkDeviceAddress indirectDeviceAddress);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+	VkResult setShaderBindingTables(MVKCommandBuffer* cmdBuff,
+									const VkStridedDeviceAddressRegionKHR* pRaygenShaderBindingTable,
+									const VkStridedDeviceAddressRegionKHR* pMissShaderBindingTable,
+									const VkStridedDeviceAddressRegionKHR* pHitShaderBindingTable,
+									const VkStridedDeviceAddressRegionKHR* pCallableShaderBindingTable);
+
+	MTLSize _threads;
+	VkStridedDeviceAddressRegionKHR _raygenShaderBindingTable;
+	VkStridedDeviceAddressRegionKHR _missShaderBindingTable;
+	VkStridedDeviceAddressRegionKHR _hitShaderBindingTable;
+	VkStridedDeviceAddressRegionKHR _callableShaderBindingTable;
+	id<MTLBuffer> _mtlRaygenShaderBindingTableBuffer = nil;
+	id<MTLBuffer> _mtlMissShaderBindingTableBuffer = nil;
+	id<MTLBuffer> _mtlHitShaderBindingTableBuffer = nil;
+	id<MTLBuffer> _mtlCallableShaderBindingTableBuffer = nil;
+	id<MTLBuffer> _mtlIndirectBuffer = nil;
+	VkDeviceSize _mtlIndirectBufferOffset = 0;
+};

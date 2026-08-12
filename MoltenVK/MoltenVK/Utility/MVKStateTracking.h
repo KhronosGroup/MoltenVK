@@ -173,6 +173,7 @@ enum class MVKNonVolatileImplicitBuffer : uint32_t {
 	DynamicOffset,
 	ViewRange,
 	EmulatedReversedDepthViewport,
+	AccelerationStructureAddressTable,
 	Count
 };
 
@@ -183,6 +184,7 @@ enum class MVKImplicitBuffer : uint32_t {
 	DynamicOffset = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::DynamicOffset),
 	ViewRange     = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::ViewRange),
 	EmulatedReversedDepthViewport = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::EmulatedReversedDepthViewport),
+	AccelerationStructureAddressTable = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::AccelerationStructureAddressTable),
 
 	// Volatile implicit buffers
 	// These buffers are updated per draw call, and are therefore always considered dirty

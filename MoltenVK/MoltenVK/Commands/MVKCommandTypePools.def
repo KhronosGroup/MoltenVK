@@ -41,6 +41,14 @@
 #	define MVK_CMD_TYPE_POOL_LAST(cmdType) MVK_CMD_TYPE_POOL(cmdType)
 #endif
 
+#ifndef MVK_RT_CMD_TYPE_POOL
+#	define MVK_RT_CMD_TYPE_POOL(cmdType) MVK_CMD_TYPE_POOL(cmdType)
+#endif
+
+#ifndef MVK_RT_CMD_TYPE_POOL_LAST
+#	define MVK_RT_CMD_TYPE_POOL_LAST(cmdType) MVK_RT_CMD_TYPE_POOL(cmdType)
+#endif
+
 #define MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(cmdType, threshold)	\
 	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##threshold)		\
 	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##Multi)
@@ -75,6 +83,7 @@
 MVK_CMD_TYPE_POOLS_FROM_2_THRESHOLDS(PipelineBarrier, 1, 4)
 MVK_CMD_TYPE_POOL(BindGraphicsPipeline)
 MVK_CMD_TYPE_POOL(BindComputePipeline)
+MVK_RT_CMD_TYPE_POOL(BindRayTracingPipeline)
 MVK_CMD_TYPE_POOLS_FROM_5_THRESHOLDS(BeginRenderPass, 1, 2, 0, 1, 2)
 MVK_CMD_TYPE_POOL(NextSubpass)
 MVK_CMD_TYPE_POOL(EndRenderPass)
@@ -138,6 +147,7 @@ MVK_CMD_TYPE_POOL(CopyQueryPoolResults)
 MVK_CMD_TYPE_POOLS_FROM_2_THRESHOLDS(PushConstants, 64, 128)
 MVK_CMD_TYPE_POOL(Dispatch)
 MVK_CMD_TYPE_POOL(DispatchIndirect)
+MVK_RT_CMD_TYPE_POOL(TraceRays)
 MVK_CMD_TYPE_POOL(PushDescriptorSet)
 MVK_CMD_TYPE_POOL(PushDescriptorSetWithTemplate)
 MVK_CMD_TYPE_POOL(DebugMarkerBegin)
@@ -145,8 +155,15 @@ MVK_CMD_TYPE_POOL(DebugMarkerEnd)
 MVK_CMD_TYPE_POOL(DebugMarkerInsert)
 MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(WaitEvents, 1)
 MVK_CMD_TYPE_POOL(SetEvent)
-MVK_CMD_TYPE_POOL_LAST(ResetEvent)
+MVK_CMD_TYPE_POOL(ResetEvent)
+MVK_RT_CMD_TYPE_POOL(BuildAccelerationStructure)
+MVK_RT_CMD_TYPE_POOL(CopyAccelerationStructure)
+MVK_RT_CMD_TYPE_POOL(CopyAccelerationStructureToMemory)
+MVK_RT_CMD_TYPE_POOL(CopyMemoryToAccelerationStructure)
+MVK_RT_CMD_TYPE_POOL_LAST(WriteAccelerationStructuresProperties)
 
 #undef MVK_CMD_TYPE_POOL
 #undef MVK_CMD_TYPE_POOL_LAST
+#undef MVK_RT_CMD_TYPE_POOL
+#undef MVK_RT_CMD_TYPE_POOL_LAST
 #undef MVK_TMPLT_DECL

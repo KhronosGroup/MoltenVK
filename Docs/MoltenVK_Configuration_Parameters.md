@@ -82,6 +82,18 @@ extensions will be advertised. A value of zero means no extensions will be adver
 
 
 ---------------------------------------
+#### MVK_CONFIG_ENABLE_EXPERIMENTAL_RAY_TRACING
+
+##### Type: Boolean
+##### Default: `0`
+
+Enables experimental support for `VK_KHR_acceleration_structure`, `VK_KHR_pipeline_library`,
+`VK_KHR_ray_query`, `VK_KHR_ray_tracing_maintenance1`, and `VK_KHR_ray_tracing_pipeline`.
+This option is intended for development and testing. Acceleration structures may use standalone
+Metal storage and do not support general partial-overlap buffer aliasing.
+
+
+---------------------------------------
 #### MVK_CONFIG_API_VERSION_TO_ADVERTISE
 
 ##### Type: UInt32

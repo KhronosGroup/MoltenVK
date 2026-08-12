@@ -27,8 +27,10 @@
 #include "MVKPixelFormats.h"
 #include "MVKOSExtensions.h"
 #include "mvk_datatypes.hpp"
+#include <algorithm>
 #include <shared_mutex>
 #include <string>
+#include <limits>
 #include <mutex>
 #include <os/lock.h>
 
@@ -71,8 +73,13 @@ class MVKCommandPool;
 class MVKCommandEncoder;
 class MVKCommandResourceFactory;
 class MVKPrivateDataSlot;
+class MVKAccelerationStructure;
 struct MVKUseResourceHelper;
 enum class MVKResourceUsageStages : uint8_t;
+using MVKUseResourceFunction = void (*)(id<MTLCommandEncoder> encoder,
+                                        id<MTLResource> resource,
+                                        MTLResourceUsage usage,
+                                        MVKResourceUsageStages stages);
 
 
 /** The buffer index to use for vertex content. */
@@ -85,9 +92,15 @@ static constexpr uint32_t   kMVKMinSwapchainImageCount = 2;
 static constexpr uint32_t   kMVKMaxSwapchainImageCount = 3;
 static constexpr uint32_t   kMVKMaxColorAttachmentCount = 8;
 static constexpr uint32_t   kMVKMaxViewportScissorCount = 16;
-static constexpr uint32_t   kMVKMaxDescriptorSetCount = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
 static constexpr uint32_t   kMVKMaxTextureCount = 128; // Maximum value across all GPUs in Metal feature set tables
 static constexpr uint32_t   kMVKMaxBufferCount = 31;
+static constexpr uint32_t   kMVKRayTracingImplicitBufferCount = 9;
+static constexpr uint32_t   kMVKDescriptorSetStorageCount = std::numeric_limits<uint16_t>::digits;
+static constexpr uint32_t   kMVKMaxDescriptorSetCount = std::min(kMVKDescriptorSetStorageCount,
+													 kMVKMaxBufferCount - kMVKRayTracingImplicitBufferCount);
+static constexpr uint32_t   kMVKInlineDescriptorSetCount = 8;
+static_assert(kMVKInlineDescriptorSetCount <= kMVKMaxDescriptorSetCount);
+static_assert(kMVKMaxDescriptorSetCount <= SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers);
 static constexpr uint32_t   kMVKMaxSamplerCount = 16;
 static constexpr uint32_t   kMVKMaxSampleCount = 8;
 static constexpr uint32_t   kMVKSampleLocationCoordinateGridSize = 16;
@@ -486,6 +499,7 @@ protected:
 	uint32_t getMaxPerSetDescriptorCount();
 	void initExternalMemoryProperties();
 	void initExtensions();
+	bool supportsRayTracingPipeline() const;
 	void initCounterSets();
 	bool needsCounterSetRetained();
 	void updateTimestampPeriod();
@@ -528,6 +542,8 @@ protected:
 	uint32_t _lazilyAllocatedMemoryTypes;
 	MVKPhysicalDeviceArgumentBufferSizes _argumentBufferSizes;
 	bool _hasUnifiedMemory = true;
+	bool _supportsFunctionPointers = false;
+	bool _supportsRaytracingFromRender = false;
 	bool _isUsingMetalArgumentBuffers = true;
 };
 
@@ -792,6 +808,14 @@ public:
 	void destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
 							   const VkAllocationCallbacks* pAllocator);
 
+	MVKAccelerationStructure* createAccelerationStructure(const VkAccelerationStructureCreateInfoKHR* pCreateInfo,
+															 const VkAllocationCallbacks* pAllocator);
+	void destroyAccelerationStructure(MVKAccelerationStructure* mvkAccelerationStructure,
+									  const VkAllocationCallbacks* pAllocator);
+	void getAccelerationStructureSerializationUUIDs(uint8_t driverUUID[VK_UUID_SIZE],
+												uint8_t compatibilityUUID[VK_UUID_SIZE]);
+	VkAccelerationStructureCompatibilityKHR getAccelerationStructureCompatibility(const VkAccelerationStructureVersionInfoKHR* pVersionInfo);
+
     /**
      * Template function that creates count number of pipelines of type PipelineType,
      * using a collection of configuration information of type PipelineInfoType,
@@ -868,7 +892,32 @@ public:
 #pragma mark Operations
 
 	/** Tell the GPU to be ready to use any of the GPU-addressable buffers. */
-	void encodeGPUAddressableBuffers(MVKUseResourceHelper& resources, MVKResourceUsageStages stage);
+	void encodeGPUAddressableBuffers(MVKUseResourceHelper& resources,
+	                                 MVKResourceUsageStages stage,
+	                                 bool write = true,
+	                                 MVKSmallVector<id<MTLBuffer>, 16>* retainedBuffers = nullptr);
+	void encodeGPUAddressableAccelerationStructures(MVKCommandEncoder* commandEncoder,
+	                                                 id<MTLAccelerationStructureCommandEncoder> encoder);
+	void getAccelerationStructureAddressTable(MVKCommandEncoder* commandEncoder,
+	                                          MVKSmallVector<uint64_t, 32>& table,
+	                                          MVKSmallVector<id<MTLResource>, 16>& resources,
+	                                          MVKSmallVector<id<MTLAccelerationStructure>, 16>& instances);
+	bool usesIndirectAccelerationStructureInstanceDescriptors() const;
+	MTLAccelerationStructureInstanceDescriptorType getAccelerationStructureInstanceDescriptorType() const;
+	NSUInteger getAccelerationStructureInstanceDescriptorSize() const;
+	void getAccelerationStructureReferenceTable(MVKCommandEncoder* commandEncoder,
+												 MVKSmallVector<uint64_t, 32>& table,
+												 MVKSmallVector<id<MTLAccelerationStructure>, 16>& instances);
+	void addGPUAddressableAccelerationStructure(MVKAccelerationStructure* accelerationStructure);
+	void removeGPUAddressableAccelerationStructure(MVKAccelerationStructure* accelerationStructure);
+	MVKBuffer* getBufferAtAddress(VkDeviceAddress address, VkDeviceSize& offset, VkDeviceSize requiredSize = 1);
+	void advanceAccelerationStructureStateSerial() {
+		_accelerationStructureStateSerial.fetch_add(1, std::memory_order_release);
+	}
+	uint64_t getAccelerationStructureStateSerial() const {
+		return _accelerationStructureStateSerial.load(std::memory_order_acquire);
+	}
+	std::mutex& getAccelerationStructureDescriptorLock() { return _accelerationStructureDescriptorLock; }
 
 	/** Adds the specified host semaphore to be woken upon device loss. */
 	void addSemaphore(MVKSemaphoreImpl* sem4);
@@ -1052,10 +1101,14 @@ public:
 
 protected:
 	friend class MVKDeviceTrackingMixin;
+	friend class MVKDeviceMemory;
+	friend class MVKBuffer;
 
 	void propagateDebugName() override  {}
 	MVKBuffer* addBuffer(MVKBuffer* mvkBuff);
 	MVKBuffer* removeBuffer(MVKBuffer* mvkBuff);
+	void invalidateGPUAddressableBufferIndex();
+	void retainGPUAddressableAccelerationStructures(MVKSmallVector<MVKAccelerationStructure*, 16>& accelerationStructures);
 	MVKImage* addImage(MVKImage* mvkImg);
 	MVKImage* removeImage(MVKImage* mvkImg);
     void initPerformanceTracking();
@@ -1097,7 +1150,16 @@ protected:
     MVKCommandResourceFactory* _commandResourceFactory = nullptr;
 	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
 	MVKSmallVector<MVKResource*> _resources;
+	struct GPUAddressableBufferRange {
+		VkDeviceAddress base;
+		VkDeviceSize size;
+		MVKBuffer* buffer;
+		size_t registration;
+		size_t prefixBest;
+	};
 	MVKSmallVector<MVKBuffer*> _gpuAddressableBuffers;
+	MVKSmallVector<GPUAddressableBufferRange> _gpuAddressableBufferIndex;
+	MVKSmallVector<MVKAccelerationStructure*> _gpuAddressableAccelerationStructures;
 	MVKSmallVector<MVKPrivateDataSlot*> _privateDataSlots;
 	MVKSmallVector<bool> _privateDataSlotsAvailability;
 	MVKSmallVector<MVKSemaphoreImpl*> _awaitingSemaphores;
@@ -1105,6 +1167,7 @@ protected:
 	MVKSmallVector<MVKVisibilityBuffer> _visibilityBuffers;
 	MVKLiveResourceSet _liveResources;
 	std::mutex _rezLock;
+	std::mutex _accelerationStructureDescriptorLock;
 	std::mutex _sem4Lock;
     std::mutex _perfLock;
 	std::mutex _vizLock;
@@ -1115,6 +1178,8 @@ protected:
 	id<MTLResidencySet> _residencySet = nil;
 #endif
 	uint32_t _visibilityBufferCount = 0;
+	bool _gpuAddressableBufferIndexDirty = true;
+	std::atomic<uint64_t> _accelerationStructureStateSerial { 1 };
 	int _capturePipeFileDesc = -1;
 	bool _isPerformanceTracking = false;
 	bool _isCurrentlyAutoGPUCapturing = false;
@@ -1168,9 +1233,11 @@ public:
 
 	// List of extended device feature enabling structures, as getEnabledXXXFeatures() functions.
 #define MVK_DEVICE_FEATURE(structName, enumName, flagCount) \
-	VkPhysicalDevice##structName##Features& getEnabled##structName##Features() { return _device->_enabled##structName##Features; }
+	VkPhysicalDevice##structName##Features& getEnabled##structName##Features() { return _device->_enabled##structName##Features; } \
+	const VkPhysicalDevice##structName##Features& getEnabled##structName##Features() const { return _device->_enabled##structName##Features; }
 #define MVK_DEVICE_FEATURE_EXTN(structName, enumName, extnSfx, flagCount) \
-	VkPhysicalDevice##structName##Features##extnSfx& getEnabled##structName##Features() { return _device->_enabled##structName##Features; }
+	VkPhysicalDevice##structName##Features##extnSfx& getEnabled##structName##Features() { return _device->_enabled##structName##Features; } \
+	const VkPhysicalDevice##structName##Features##extnSfx& getEnabled##structName##Features() const { return _device->_enabled##structName##Features; }
 #include "MVKDeviceFeatureStructs.def"
 
 	/** Pointer to the Metal-specific features of the underlying physical device. */

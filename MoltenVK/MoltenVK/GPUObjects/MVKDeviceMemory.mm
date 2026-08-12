@@ -17,6 +17,7 @@
  */
 
 #include "MVKDeviceMemory.h"
+#include "MVKAccelerationStructure.h"
 #include "MVKBuffer.h"
 #include "MVKImage.h"
 #include "MVKQueue.h"
@@ -25,6 +26,7 @@
 #include <cstdlib>
 #include <stdlib.h>
 #include <os/lock.h>
+#include <new>
 
 using namespace std;
 
@@ -232,6 +234,39 @@ bool MVKDeviceMemory::ensureMTLHeap() {
 	propagateDebugName();
 
 	return true;
+}
+
+bool MVKDeviceMemory::isAccelerationStructurePlacementCompatible() const {
+	return _mtlHeap && _mtlHeap.type == MTLHeapTypePlacement && _mtlStorageMode == MTLStorageModePrivate;
+}
+
+MVKAccelerationStructureStorage* MVKDeviceMemory::acquireAccelerationStructureStorage(
+	VkDeviceSize physicalStart) {
+	lock_guard<mutex> lock(_rezLock);
+	for (auto* storage : _accelerationStructureStorages) {
+		if (storage->matches(physicalStart)) {
+			storage->_memberCount++;
+			return storage;
+		}
+	}
+	auto* storage = new (std::nothrow) MVKAccelerationStructureStorage(
+		_device, _mtlHeap, physicalStart);
+	if (!storage) { return nullptr; }
+	storage->_memberCount = 1;
+	_accelerationStructureStorages.push_back(storage);
+	return storage;
+}
+
+void MVKDeviceMemory::releaseAccelerationStructureStorage(MVKAccelerationStructureStorage* storage) {
+	bool destroyStorage = false;
+	{
+		lock_guard<mutex> lock(_rezLock);
+		if (storage && storage->_memberCount && --storage->_memberCount == 0) {
+			mvkRemoveAllOccurances(_accelerationStructureStorages, storage);
+			destroyStorage = true;
+		}
+	}
+	if (destroyStorage) { delete storage; }
 }
 
 // Ensures that this instance is backed by a MTLBuffer object,
@@ -500,6 +535,10 @@ void MVKDeviceMemory::initExternalMemory(MVKImage* dedicatedImage, bool wantsHea
 }
 
 MVKDeviceMemory::~MVKDeviceMemory() {
+	// Keep GPU-addressable buffer bindings stable while the device enumerates them.
+	unique_lock<mutex> deviceLock(_device->_rezLock, defer_lock);
+	if (getEnabledAccelerationStructureFeatures().accelerationStructure) { deviceLock.lock(); }
+
 	// Unbind any resources that are using me.
 	// Manually null the binding parameter to prevent them from trying to remove themselves from the array.
 	// This will leave texture buffer pointers dangling, but according to Vulkan, those are not supposed to be used again anyways.
@@ -507,6 +546,9 @@ MVKDeviceMemory::~MVKDeviceMemory() {
 	for (auto& buf : _buffers)             { buf->_deviceMemory = nullptr; }
 	for (auto& img : _imageMemoryBindings) { img->_deviceMemory = nullptr; }
 	os_unfair_lock_unlock(&s_device_memory_destruction_lock);
+
+	for (auto* storage : _accelerationStructureStorages) { delete storage; }
+	_accelerationStructureStorages.clear();
 
 	if (_externalMemoryHandleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT) {
 		[_mtlTexture release];

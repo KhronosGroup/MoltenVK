@@ -21,6 +21,7 @@
 #include "MVKCommandPool.h"
 #include "MVKQueue.h"
 #include "MVKPipeline.h"
+#include "MVKAccelerationStructure.h"
 #include "MVKQueryPool.h"
 #include "MVKFoundation.h"
 #include "MVKCmdDraw.h"
@@ -28,6 +29,24 @@
 #include <sys/mman.h>
 
 using namespace std;
+
+struct MVKAccelerationStructureCommandEncodingState {
+	MVKSmallVector<id<MTLAccelerationStructure>, 16> instances;
+	MVKSmallVector<id<MTLResource>, 16> addressTableResources;
+	MVKSmallVector<MVKAccelerationStructureStorageGeneration*, 16>* retainedGenerations = nullptr;
+	const MVKMTLBufferAllocation* addressTable = nullptr;
+	const MVKMTLBufferAllocation* referenceTable = nullptr;
+	MVKSmallVector<pair<MVKDescriptorSet*, MVKDescriptorSetSnapshot*>, kMVKInlineDescriptorSetCount> descriptorSetSnapshots;
+
+	void reset() {
+		instances.clear();
+		addressTableResources.clear();
+		retainedGenerations = nullptr;
+		addressTable = nullptr;
+		referenceTable = nullptr;
+		descriptorSetSnapshots.clear();
+	}
+};
 
 
 #pragma mark -
@@ -167,10 +186,12 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 		}
 	}
 
-    if(_device->shouldPrefillMTLCommandBuffers() && !(_isSecondary || _supportsConcurrentExecution)) {
+	auto prefillStyle = getMVKConfig().prefillMetalCommandBuffers;
+    if(_device->shouldPrefillMTLCommandBuffers() &&
+	   prefillStyle != MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_DEFERRED_ENCODING &&
+	   !(_isSecondary || _supportsConcurrentExecution)) {
 		@autoreleasepool {
 			_prefilledMTLCmdBuffer = [_commandPool->getMTLCommandBuffer(kMVKCommandUseBeginCommandBuffer, 0) retain];    // retained
-			auto prefillStyle = getMVKConfig().prefillMetalCommandBuffers;
 			if (prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING ||
 				prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING_NO_AUTORELEASE ) {
 				_immediateCmdEncodingContext = new MVKCommandEncodingContext;
@@ -243,6 +264,8 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	_currentSubpassInfo = {};
 	_needsVisibilityResultMTLBuffer = false;
 	_hasStageCounterTimestampCommand = false;
+	_requiresHostReadback = false;
+	_encodingDependencyStages = 0;
 	_lastTessellationPipeline = nullptr;
 	setConfigurationResult(VK_NOT_READY);
 
@@ -262,9 +285,17 @@ VkResult MVKCommandBuffer::end() {
 	return getConfigurationResult();
 }
 
+void MVKCommandBuffer::recordAccelerationStructureCommand(VkPipelineStageFlags2 stages) {
+	_encodingDependencyStages |= stages;
+}
+
 void MVKCommandBuffer::checkDeferredEncoding() {
-	if (getMVKConfig().prefillMetalCommandBuffers == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_DEFERRED_ENCODING) {
+	if (getMVKConfig().prefillMetalCommandBuffers == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_DEFERRED_ENCODING &&
+		_device->shouldPrefillMTLCommandBuffers() && !_encodingDependencyStages &&
+		!(_isSecondary || _supportsConcurrentExecution)) {
 		@autoreleasepool {
+			_prefilledMTLCmdBuffer = [_commandPool->getMTLCommandBuffer(
+				kMVKCommandUseBeginCommandBuffer, 0) retain];
 			MVKCommandEncodingContext encodingContext;
 			MVKCommandEncoder encoder(this);
 			encoder.encode(_prefilledMTLCmdBuffer, &encodingContext);
@@ -309,7 +340,7 @@ void MVKCommandBuffer::submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit,
 		cmdBuffSubmit->setActiveMTLCommandBuffer(_prefilledMTLCmdBuffer);
 		clearPrefilledMTLCommandBuffer();
 	} else {
-		MVKCommandEncoder encoder(this);
+		MVKCommandEncoder encoder(this, MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_NO_PREFILL, cmdBuffSubmit);
 		encoder.encode(cmdBuffSubmit->getActiveMTLCommandBuffer(), pEncodingContext);
 	}
 
@@ -387,6 +418,8 @@ void MVKCommandBuffer::recordExecuteCommands(MVKArrayRef<MVKCommandBuffer*const>
 	for (MVKCommandBuffer* cmdBuff : secondaryCommandBuffers) {
 		if (cmdBuff->_needsVisibilityResultMTLBuffer) { _needsVisibilityResultMTLBuffer = true; }
 		if (cmdBuff->_hasStageCounterTimestampCommand) { _hasStageCounterTimestampCommand = true; }
+		if (cmdBuff->_requiresHostReadback) { _requiresHostReadback = true; }
+		_encodingDependencyStages |= cmdBuff->_encodingDependencyStages;
 	}
 }
 
@@ -402,6 +435,10 @@ void MVKCommandBuffer::recordTimestampCommand() {
 
 void MVKCommandBuffer::recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline) {
 	_lastTessellationPipeline = mvkBindPipeline->isTessellationPipeline() ? mvkBindPipeline : nullptr;
+	if (getEnabledAccelerationStructureFeatures().accelerationStructure &&
+		mvkBindPipeline->usesAccelerationStructures()) {
+		recordAccelerationStructureCommand(mvkBindPipeline->getAccelerationStructureStages());
+	}
 }
 
 
@@ -424,6 +461,7 @@ void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff,
 
 void MVKCommandEncoder::beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext) {
 	_pEncodingContext = pEncodingContext;
+	if (_accelerationStructureState) { _accelerationStructureState->reset(); }
 
     _subpassContents = VK_SUBPASS_CONTENTS_INLINE;
     _renderSubpassIndex = 0;
@@ -637,12 +675,17 @@ static MVKBarrierStage commandUseToBarrierStage(MVKCommandUse use) {
 	case kMVKCommandUseClearDepthStencilImage:       return kMVKBarrierStageCopy; /**< vkCmdClearDepthStencilImage. */
 	case kMVKCommandUseResetQueryPool:               return kMVKBarrierStageCopy; /**< vkCmdResetQueryPool. */
 	case kMVKCommandUseDispatch:                     return kMVKBarrierStageCompute; /**< vkCmdDispatch. */
+	case kMVKCommandUseTraceRays:                    return kMVKBarrierStageCompute;
 	case kMVKCommandUseTessellationVertexTessCtl:    return kMVKBarrierStageVertex; /**< vkCmdDraw* - vertex and tessellation control stages. */
 	case kMVKCommandUseDrawIndirectConvertBuffers:   return kMVKBarrierStageVertex; /**< vkCmdDrawIndirect* convert indirect buffers. */
 	case kMVKCommandUseCopyQueryPoolResults:         return kMVKBarrierStageCopy; /**< vkCmdCopyQueryPoolResults. */
 	case kMVKCommandUseAccumOcclusionQuery:          return kMVKBarrierStageNone; /**< Any command terminating a Metal render pass with active visibility buffer. */
 	case kMVKCommandConvertUint8Indices:             return kMVKBarrierStageCopy; /**< Converting a Uint8 index buffer to Uint16. */
 	case kMVKCommandUseRecordGPUCounterSample:       return kMVKBarrierStageNone; /**< Any command triggering the recording of a GPU counter sample. */
+	case kMVKCommandUseBuildAccelerationStructureConvertBuffers: return kMVKBarrierStageCopy;
+	case kMVKCommandUseBuildAccelerationStructure:               return kMVKBarrierStageCopy;
+	case kMVKCommandUseCopyAccelerationStructure:                return kMVKBarrierStageCopy;
+	case kMVKCommandUseWriteAccelerationStructuresProperties:    return kMVKBarrierStageCopy;
 	}
 }
 
@@ -675,6 +718,15 @@ void MVKCommandEncoder::barrierWait(MVKBarrierStage stage, id<MTLComputeCommandE
 	}
 }
 
+void MVKCommandEncoder::barrierWait(MVKBarrierStage stage, id<MTLAccelerationStructureCommandEncoder> mtlEncoder) {
+	if (!isUsingMetalArgumentBuffers() || !getDevice()->hasResidencySet()) return;
+	for (int i = 0; i < kMVKBarrierStageCount; ++i) {
+		auto fenceIndex = _pEncodingContext->fenceSlots.wait[stage][i];
+		auto fence = _device->getFence((MVKBarrierStage)i, fenceIndex);
+		[mtlEncoder waitForFence:fence];
+	}
+}
+
 void MVKCommandEncoder::barrierUpdate(MVKBarrierStage stage, id<MTLRenderCommandEncoder> mtlEncoder, MTLRenderStages afterStages) {
 	if (!isUsingMetalArgumentBuffers() || !getDevice()->hasResidencySet()) return;
 	auto fence = getBarrierStageFence(stage);
@@ -688,6 +740,12 @@ void MVKCommandEncoder::barrierUpdate(MVKBarrierStage stage, id<MTLBlitCommandEn
 }
 
 void MVKCommandEncoder::barrierUpdate(MVKBarrierStage stage, id<MTLComputeCommandEncoder> mtlEncoder) {
+	if (!isUsingMetalArgumentBuffers() || !getDevice()->hasResidencySet()) return;
+	auto fence = getBarrierStageFence(stage);
+	[mtlEncoder updateFence:fence];
+}
+
+void MVKCommandEncoder::barrierUpdate(MVKBarrierStage stage, id<MTLAccelerationStructureCommandEncoder> mtlEncoder) {
 	if (!isUsingMetalArgumentBuffers() || !getDevice()->hasResidencySet()) return;
 	auto fence = getBarrierStageFence(stage);
 	[mtlEncoder updateFence:fence];
@@ -740,6 +798,12 @@ void MVKCommandEncoder::encodeBarrierWaits(MVKCommandUse use) {
 			barrierWait(stage, _mtlBlitEncoder);
 		}
 	}
+	if (_mtlAccelerationStructureEncoder) {
+		auto stage = commandUseToBarrierStage(use);
+		if (stage != kMVKBarrierStageNone) {
+			barrierWait(stage, _mtlAccelerationStructureEncoder);
+		}
+	}
 }
 
 void MVKCommandEncoder::encodeBarrierUpdates() {
@@ -759,6 +823,13 @@ void MVKCommandEncoder::encodeBarrierUpdates() {
 		MVKBarrierStage stage = commandUseToBarrierStage(_mtlBlitEncoderUse);
 		if (stage != kMVKBarrierStageNone) {
 			barrierUpdate(stage, _mtlBlitEncoder);
+		}
+	}
+
+	if (_mtlAccelerationStructureEncoder) {
+		MVKBarrierStage stage = commandUseToBarrierStage(_mtlAccelerationStructureEncoderUse);
+		if (stage != kMVKBarrierStageNone) {
+			barrierUpdate(stage, _mtlAccelerationStructureEncoder);
 		}
 	}
 }
@@ -901,6 +972,10 @@ void MVKCommandEncoder::bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKP
             _state.bindComputePipeline(static_cast<MVKComputePipeline*>(pipeline));
             break;
 
+		case VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR:
+			_state.bindRayTracingPipeline(static_cast<MVKComputePipeline*>(pipeline));
+			break;
+
         default:
             break;
     }
@@ -1022,6 +1097,11 @@ void MVKCommandEncoder::finalizeDispatchState() {
 	prepareComputeDispatch();
 }
 
+void MVKCommandEncoder::finalizeRayTracingDispatchState() {
+	getMTLComputeEncoder(kMVKCommandUseTraceRays);
+	prepareRayTracingDispatch();
+}
+
 void MVKCommandEncoder::endRendering() {
 	endRenderpass();
 }
@@ -1068,7 +1148,27 @@ void MVKCommandEncoder::endCurrentMetalEncoding() {
 	endMetalEncoding(_mtlBlitEncoder);
     _mtlBlitEncoderUse = kMVKCommandUseNone;
 
+	if (_mtlAccelerationStructureEncoder && _cmdBuffer->_hasStageCounterTimestampCommand) { [_mtlAccelerationStructureEncoder updateFence: getStageCountersMTLFence()]; }
+	endMetalEncoding(_mtlAccelerationStructureEncoder);
+    _mtlAccelerationStructureEncoderUse = kMVKCommandUseNone;
+
 	encodeTimestampStageCounterSamples();
+}
+
+VkResult MVKCommandEncoder::splitForHostReadback() {
+	if ( !_submission ) { return VK_ERROR_INITIALIZATION_FAILED; }
+
+	endCurrentMetalEncoding();
+	finishQueries();
+	_mtlCmdBuffer = nil;
+
+	VkResult rslt = _submission->commitActiveMTLCommandBufferAndWait();
+	if (_accelerationStructureState) { _accelerationStructureState->reset(); }
+	_stageCountersMTLFence = nil;
+	if (rslt != VK_SUCCESS) { return rslt; }
+
+	_mtlCmdBuffer = _submission->getActiveMTLCommandBuffer();
+	return _mtlCmdBuffer ? VK_SUCCESS : VK_ERROR_OUT_OF_POOL_MEMORY;
 }
 
 static MTLDispatchType getDispatchType(MVKCommandUse use) {
@@ -1136,10 +1236,30 @@ id<MTLBlitCommandEncoder> MVKCommandEncoder::getMTLBlitEncoder(MVKCommandUse cmd
 	return _mtlBlitEncoder;
 }
 
+id<MTLAccelerationStructureCommandEncoder> MVKCommandEncoder::getMTLAccelerationStructureEncoder(MVKCommandUse cmdUse) {
+	bool needWaits = false;
+	if ( !_mtlAccelerationStructureEncoder ) {
+		needWaits = true;
+		endCurrentMetalEncoding();
+		_mtlAccelerationStructureEncoder = [_mtlCmdBuffer accelerationStructureCommandEncoder];
+		retainIfImmediatelyEncoding(_mtlAccelerationStructureEncoder);
+	}
+	if (_mtlAccelerationStructureEncoderUse != cmdUse) {
+		needWaits = true;
+		_mtlAccelerationStructureEncoderUse = cmdUse;
+		_cmdBuffer->setMetalObjectLabel(_mtlAccelerationStructureEncoder, mvkMTLAccelerationStructureCommandEncoderLabel(cmdUse));
+	}
+	if (needWaits) {
+		encodeBarrierWaits(cmdUse);
+	}
+	return _mtlAccelerationStructureEncoder;
+}
+
 id<MTLCommandEncoder> MVKCommandEncoder::getMTLEncoder(){
 	if (_mtlRenderEncoder) { return _mtlRenderEncoder; }
 	if (_mtlComputeEncoder) { return _mtlComputeEncoder; }
 	if (_mtlBlitEncoder) { return _mtlBlitEncoder; }
+	if (_mtlAccelerationStructureEncoder) { return _mtlAccelerationStructureEncoder; }
 	return nil;
 }
 
@@ -1196,10 +1316,121 @@ MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() {
 // Copies the specified bytes into a temporary allocation within a pooled MTLBuffer, and returns the MTLBuffer allocation.
 const MVKMTLBufferAllocation* MVKCommandEncoder::copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length, bool isDedicated) {
 	const MVKMTLBufferAllocation* mtlBuffAlloc = getTempMTLBuffer(length, false, isDedicated);
-    void* pBuffData = mtlBuffAlloc->getContents();
-    memcpy(pBuffData, bytes, length);
+	void* pBuffData = mtlBuffAlloc ? mtlBuffAlloc->getContents() : nullptr;
+	if (pBuffData) { memcpy(pBuffData, bytes, length); }
 
-    return mtlBuffAlloc;
+	return mtlBuffAlloc;
+}
+
+MVKAccelerationStructureCommandEncodingState& MVKCommandEncoder::getOrCreateAccelerationStructureState() {
+	if (!_accelerationStructureState) {
+		_accelerationStructureState = new MVKAccelerationStructureCommandEncodingState;
+	}
+	return *_accelerationStructureState;
+}
+
+const MVKMTLBufferAllocation* MVKCommandEncoder::getAccelerationStructureAddressTable() {
+	auto& state = getOrCreateAccelerationStructureState();
+	if (!state.addressTable) {
+		MVKSmallVector<uint64_t, 32> table;
+		MVKSmallVector<id<MTLAccelerationStructure>, 16> scratchInstances;
+		auto& instances = getDevice()->usesIndirectAccelerationStructureInstanceDescriptors()
+			? state.instances : scratchInstances;
+		getDevice()->getAccelerationStructureAddressTable(
+			this, table, state.addressTableResources, instances);
+		state.addressTable = copyToTempMTLBufferAllocation(table.data(), table.size() * sizeof(uint64_t));
+	}
+	return state.addressTable;
+}
+
+const MVKMTLBufferAllocation* MVKCommandEncoder::getAccelerationStructureAddressTable(MVKUseResourceHelper& resources,
+	                                                                                       MVKResourceUsageStages stages) {
+	auto* allocation = getAccelerationStructureAddressTable();
+	for (id<MTLResource> resource : _accelerationStructureState->addressTableResources) {
+		resources.add(resource, stages, false);
+	}
+	return allocation;
+}
+
+void MVKCommandEncoder::invalidateAccelerationStructureAddressTable() {
+	if (!_accelerationStructureState) { return; }
+	_accelerationStructureState->addressTable = nullptr;
+	_accelerationStructureState->addressTableResources.clear();
+	if (getDevice()->usesIndirectAccelerationStructureInstanceDescriptors()) {
+		_accelerationStructureState->instances.clear();
+	}
+}
+
+const MVKMTLBufferAllocation* MVKCommandEncoder::getAccelerationStructureReferenceTable() {
+	auto& state = getOrCreateAccelerationStructureState();
+	if (!state.referenceTable) {
+		MVKSmallVector<uint64_t, 32> table;
+		getDevice()->getAccelerationStructureReferenceTable(this, table, state.instances);
+		state.referenceTable =
+			copyToTempMTLBufferAllocation(table.data(), table.size() * sizeof(uint64_t));
+	}
+	return state.referenceTable;
+}
+
+const MVKSmallVector<id<MTLAccelerationStructure>, 16>&
+MVKCommandEncoder::getAccelerationStructureInstances() {
+	if (getDevice()->usesIndirectAccelerationStructureInstanceDescriptors()) {
+		getAccelerationStructureAddressTable();
+	} else {
+		getAccelerationStructureReferenceTable();
+	}
+	return _accelerationStructureState->instances;
+}
+
+void MVKCommandEncoder::invalidateAccelerationStructureReferenceTable() {
+	if (!_accelerationStructureState) { return; }
+	_accelerationStructureState->referenceTable = nullptr;
+	if (!getDevice()->usesIndirectAccelerationStructureInstanceDescriptors()) {
+		_accelerationStructureState->instances.clear();
+	}
+}
+
+void MVKCommandEncoder::retainAccelerationStructureGeneration(MVKAccelerationStructureStorageGeneration* generation) {
+	if (!generation) { return; }
+	auto retainOnCompletion = [&] {
+		[_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) { generation->release(); }];
+	};
+	auto& state = getOrCreateAccelerationStructureState();
+	if (!state.retainedGenerations) {
+		auto* generations = new (std::nothrow) MVKSmallVector<MVKAccelerationStructureStorageGeneration*, 16>;
+		if (!generations) {
+			retainOnCompletion();
+			reportError(VK_ERROR_OUT_OF_HOST_MEMORY,
+				"Could not retain acceleration-structure storage for command completion.");
+			return;
+		}
+		state.retainedGenerations = generations;
+		[_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) {
+			for (auto* retainedGeneration : *generations) { retainedGeneration->release(); }
+			delete generations;
+		}];
+	}
+	try {
+		state.retainedGenerations->push_back(generation);
+	} catch (const std::bad_alloc&) {
+		retainOnCompletion();
+		reportError(VK_ERROR_OUT_OF_HOST_MEMORY,
+			"Could not retain acceleration-structure storage for command completion.");
+	}
+}
+
+MVKDescriptorSetSnapshot* MVKCommandEncoder::getDescriptorSetSnapshot(MVKDescriptorSet* set) {
+	auto& snapshots = getOrCreateAccelerationStructureState().descriptorSetSnapshots;
+	auto it = std::find_if(snapshots.begin(), snapshots.end(),
+		[set](const auto& entry) { return entry.first == set; });
+	auto* current = it == snapshots.end() ? nullptr : it->second;
+	auto* snapshot = mvkSnapshotDescriptorSet(this, set, current);
+	if (snapshot != current) {
+		if (it == snapshots.end()) { snapshots.emplace_back(set, snapshot); }
+		else { it->second = snapshot; }
+		[_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) { delete snapshot; }];
+	}
+	return snapshot;
 }
 
 
@@ -1252,6 +1483,10 @@ void MVKCommandEncoder::markTimestamp(MVKTimestampQueryPool* pQueryPool, uint32_
 			}
 		}
 	}
+}
+
+void MVKCommandEncoder::markAccelerationStructureQuery(MVKQueryPool* pQueryPool, uint32_t query) {
+	addActivatedQueries(pQueryPool, query, 1);
 }
 
 // Metal stage GPU counters need to be configured in a Metal render, compute, or BLIT encoder, meaning that the
@@ -1341,9 +1576,12 @@ void MVKCommandEncoder::finishQueries() {
 
 #pragma mark Construction
 
-MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer, MVKPrefillMetalCommandBuffersStyle prefillStyle)
+MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
+									 MVKPrefillMetalCommandBuffersStyle prefillStyle,
+									 MVKQueueCommandBufferSubmission* submission)
 	: MVKBaseDeviceObject(cmdBuffer->getDevice())
 	, _cmdBuffer(cmdBuffer)
+	, _submission(submission)
 	, _prefillStyle(prefillStyle) {
 	_pActivatedQueries = nullptr;
 	_mtlCmdBuffer = nil;
@@ -1352,6 +1590,8 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer, MVKPrefillMeta
 	_mtlComputeEncoderUse = kMVKCommandUseNone;
 	_mtlBlitEncoder = nil;
 	_mtlBlitEncoderUse = kMVKCommandUseNone;
+	_mtlAccelerationStructureEncoder = nil;
+	_mtlAccelerationStructureEncoderUse = kMVKCommandUseNone;
 	_pEncodingContext = nullptr;
 	_stageCountersMTLFence = nil;
 	_flushCount = 0;
@@ -1361,6 +1601,8 @@ MVKCommandEncoder::~MVKCommandEncoder() {
 	[_mtlRenderEncoder release];
 	[_mtlComputeEncoder release];
 	[_mtlBlitEncoder release];
+	[_mtlAccelerationStructureEncoder release];
+	delete _accelerationStructureState;
 	// _stageCountersMTLFence is released after Metal command buffer completion
 }
 
@@ -1396,6 +1638,9 @@ NSString* mvkMTLBlitCommandEncoderLabel(MVKCommandUse cmdUse) {
         case kMVKCommandUseUpdateBuffer:                    return @"vkCmdUpdateBuffer BlitEncoder";
         case kMVKCommandUseResetQueryPool:                  return @"vkCmdResetQueryPool BlitEncoder";
         case kMVKCommandUseCopyQueryPoolResults:            return @"vkCmdCopyQueryPoolResults BlitEncoder";
+        case kMVKCommandUseWriteAccelerationStructuresProperties:
+            return @"vkCmdWriteAccelerationStructureProperties BlitEncoder";
+        case kMVKCommandUseTraceRays:                       return @"vkCmdTraceRaysKHR BlitEncoder";
 		case kMVKCommandUseRecordGPUCounterSample:          return @"Record GPU Counter Sample BlitEncoder";
         default:                                            return @"Unknown Use BlitEncoder";
     }
@@ -1404,6 +1649,7 @@ NSString* mvkMTLBlitCommandEncoderLabel(MVKCommandUse cmdUse) {
 NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse) {
     switch (cmdUse) {
         case kMVKCommandUseDispatch:                        return @"vkCmdDispatch ComputeEncoder";
+        case kMVKCommandUseTraceRays:                       return @"vkCmdTraceRaysKHR ComputeEncoder";
         case kMVKCommandUseCopyBuffer:                      return @"vkCmdCopyBuffer ComputeEncoder";
         case kMVKCommandUseCopyBufferToImage:               return @"vkCmdCopyBufferToImage ComputeEncoder";
         case kMVKCommandUseCopyImageToBuffer:               return @"vkCmdCopyImageToBuffer ComputeEncoder";
@@ -1415,6 +1661,16 @@ NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse) {
         case kMVKCommandUseCopyQueryPoolResults:            return @"vkCmdCopyQueryPoolResults ComputeEncoder";
         case kMVKCommandUseAccumOcclusionQuery:             return @"Post-render-pass occlusion query accumulation ComputeEncoder";
         case kMVKCommandConvertUint8Indices:                return @"Convert Uint8 indices to Uint16 ComputeEncoder";
-        default:                                            return @"Unknown Use ComputeEncoder";
+        case kMVKCommandUseBuildAccelerationStructureConvertBuffers:  return @"vkCmdBuildAccelerationStructures (convert instance buffers) ComputeEncoder";
+        default:                                                      return @"Unknown Use ComputeEncoder";
+    }
+}
+
+NSString* mvkMTLAccelerationStructureCommandEncoderLabel(MVKCommandUse cmdUse) {
+    switch (cmdUse) {
+        case kMVKCommandUseBuildAccelerationStructure:            return @"vkCmdBuildAccelerationStructures AccelerationStructureEncoder";
+        case kMVKCommandUseCopyAccelerationStructure:             return @"vkCmdCopyAccelerationStructure AccelerationStructureEncoder";
+        case kMVKCommandUseWriteAccelerationStructuresProperties: return @"vkCmdWriteAccelerationStructuresProperties AccelerationStructureEncoder";
+        default:                                                  return @"Unknown Use AccelerationStructureEncoder";
     }
 }
