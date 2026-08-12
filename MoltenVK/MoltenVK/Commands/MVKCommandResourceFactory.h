@@ -387,6 +387,9 @@ public:
 	id<MTLComputePipelineState> newCmdBuildAccelerationStructureConvertBuffersMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 	id<MTLComputePipelineState> newCmdSerializeAccelerationStructureGatherMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 	id<MTLComputePipelineState> newCmdTraceRaysIndirectConvertMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+	id<MTLLibrary> newRayTracingDispatcherMTLLibrary(NSString* source,
+														 bool usesIFB,
+														 MVKVulkanAPIDeviceObject* owner);
 
 
 #pragma mark Construction
@@ -413,5 +416,7 @@ protected:
 
 	id<MTLLibrary> _mtlLibrary;
 	id<MTLLibrary> _mtlAccelerationStructureLibrary = nil;
+	id<MTLLibrary> _mtlRayTracingDispatcherLibraries[2] = {};
+	std::mutex _rayTracingDispatcherLibraryLock;
 	MVKDeviceMemory* _transferImageMemory;
 };

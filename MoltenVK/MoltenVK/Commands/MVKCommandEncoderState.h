@@ -170,15 +170,19 @@ struct MVKUseResourceHelper {
  */
 struct MVKVulkanCommonEncoderState {
 	MVKPipelineLayout* _layout = nullptr;
-	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount] = {};
+	MVKDescriptorSet* _descriptorSets[kMVKInlineDescriptorSetCount] = {};
+	MVKDescriptorSet** _descriptorSetOverflow = nullptr;
 	MVKDescriptorSet _pushDescriptor = {};
 	MVKSmallVector<uint8_t, 16> _pushDescData;
+	MVKDescriptorSet*& descriptorSet(uint32_t index);
+	MVKDescriptorSet* descriptorSet(uint32_t index) const;
 	void ensurePushDescriptorSize(uint32_t size);
 	void preparePushDescriptor(MVKDescriptorSetLayout* layout);
 	void setLayout(MVKPipelineLayout* layout);
 	MVKVulkanCommonEncoderState() = default;
 	MVKVulkanCommonEncoderState(const MVKVulkanCommonEncoderState& other);
 	MVKVulkanCommonEncoderState& operator=(const MVKVulkanCommonEncoderState& other);
+	~MVKVulkanCommonEncoderState();
 };
 
 /** Tracks the state of a Vulkan render encoder. */
@@ -259,7 +263,19 @@ struct MVKStageResourceBindings {
 		bool operator!=(Buffer other) const { return !(*this == other); }
 	} buffers[kMVKMaxBufferCount];
 	id<MTLSamplerState> samplers[kMVKMaxSamplerCount];
-	MVKBitArray descriptorSetResourceUse[kMVKMaxDescriptorSetCount];
+	MVKBitArray descriptorSetResourceUse[kMVKInlineDescriptorSetCount];
+	MVKBitArray* descriptorSetResourceUseOverflow = nullptr;
+	MVKBitArray& getDescriptorSetResourceUse(uint32_t index) {
+		if (index < kMVKInlineDescriptorSetCount) { return descriptorSetResourceUse[index]; }
+		if (!descriptorSetResourceUseOverflow) {
+			descriptorSetResourceUseOverflow = new MVKBitArray[kMVKMaxDescriptorSetCount - kMVKInlineDescriptorSetCount];
+		}
+		return descriptorSetResourceUseOverflow[index - kMVKInlineDescriptorSetCount];
+	}
+	MVKStageResourceBindings() = default;
+	MVKStageResourceBindings(const MVKStageResourceBindings&) = delete;
+	MVKStageResourceBindings& operator=(const MVKStageResourceBindings&) = delete;
+	~MVKStageResourceBindings() { delete[] descriptorSetResourceUseOverflow; }
 	MVKOnePerEnumEntry<uint8_t, MVKNonVolatileImplicitBuffer> implicitBufferIndices = {};
 	static Buffer ImplicitBuffer(MVKImplicitBuffer buffer) {
 		return { nil, static_cast<VkDeviceSize>(buffer) + 1 };

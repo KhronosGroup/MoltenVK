@@ -50,25 +50,28 @@ public:
 	id<MTLBuffer> getInstanceMetadataMTLBuffer() const { return _instanceMetadataBuffer; }
 	id<MTLBuffer> getReferenceMTLBuffer() const { return _referenceBuffer; }
 	uint64_t getReferenceGPUAddress() const { return _referenceBuffer.gpuAddress; }
+	NSUInteger getCompactedSizeOffset() const { return _referenceBuffer.length - sizeof(uint64_t); }
 	void relinquishReferenceResidency() { _ownsReferenceResidency = false; }
 	uint64_t getNativeCapacity() const { return _nativeCapacity; }
 	uint64_t getMetadataCapacity() const { return _metadataCapacity; }
 
 	uint64_t getNativeSize();
+	bool isCompacted();
 	uint64_t getInstanceMetadataSize();
 	uint64_t getSerializationSize();
 	uint64_t getHandleCount();
 	MVKAccelerationStructureCanonicalSnapshot retainCanonicalSnapshot();
 	static void releaseCanonicalSnapshot(MVKAccelerationStructureCanonicalSnapshot& snapshot);
 	bool setInstanceMetadataSize(uint64_t size);
-	void publishBuild(uint64_t nativeSize, uint64_t instanceMetadataSize, uint64_t handleCount);
-	void publishBuild(uint64_t nativeSize, uint64_t handleCount) { publishBuild(nativeSize, 0, handleCount); }
-	bool publishCanonical(id<MTLBuffer> canonicalBuffer,
-						  uint64_t serializationSize,
-						  uint64_t handleCount,
-						  bool adoptsResidency = false);
+	bool publishBuild(uint64_t nativeSize,
+					 uint64_t instanceMetadataSize,
+						 uint64_t handleCount,
+						 id<MTLBuffer> canonicalBuffer,
+						 uint64_t serializationSize,
+						 bool adoptsCanonicalResidency = false,
+						 MVKAccelerationStructureCanonicalSnapshot* publishedSnapshot = nullptr);
 	void copyContentFrom(MVKAccelerationStructureStorageGeneration* source,
-						 uint64_t nativeSizeLimit = UINT64_MAX);
+						 bool compacted = false);
 
 protected:
 	friend class MVKAccelerationStructureStorage;
@@ -94,6 +97,7 @@ protected:
 	uint64_t _nativeCapacity;
 	uint64_t _metadataCapacity;
 	uint64_t _nativeSize = 0;
+	bool _isCompacted = false;
 	uint64_t _instanceMetadataSize = 0;
 	uint64_t _serializationSize = 0;
 	uint64_t _handleCount = 0;

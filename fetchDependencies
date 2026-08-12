@@ -243,8 +243,7 @@ function update_repo() {
 
 	if [ -d $1 -a -d $1/.git ]; then
 		cd $1
-		git remote set-url origin $2
-		git cat-file -e $3 || git fetch origin $3
+		git cat-file -e $3 || git fetch $2 $3
 		git checkout --force $3
 		cd -  > /dev/null
 	else

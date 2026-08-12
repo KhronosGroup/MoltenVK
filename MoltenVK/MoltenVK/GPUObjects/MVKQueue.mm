@@ -80,9 +80,9 @@ VkResult MVKQueue::submit(MVKQueueSubmission* qSubmit) {
 
 	if ( !qSubmit ) { return VK_SUCCESS; }     // Ignore nils
 	if (qSubmit->requiresHostReadback() ||
-		qSubmit->requiresEncodingDependencyWait() ||
 		(getEnabledAccelerationStructureFeatures().accelerationStructure &&
-		 qSubmit->propagatesEncodingDependency())) {
+		 (qSubmit->requiresEncodingDependencyWait() ||
+		  qSubmit->propagatesEncodingDependency()))) {
 		initExecQueue(true);
 	}
 
@@ -372,13 +372,13 @@ void MVKQueue::destroyExecQueue() {
 
 void MVKSemaphoreSubmitInfo::encodeWait(id<MTLCommandBuffer> mtlCmdBuff) {
 	if (!_semaphore) { return; }
-	if (_hasDeferredOperation) { _semaphore->encodeDeferredWait(mtlCmdBuff, _deferredOperation); }
+	if (_hasDeferredOperation) { _semaphore->encodeDeferredWait(mtlCmdBuff, value); }
 	else { _semaphore->encodeWait(mtlCmdBuff, value); }
 }
 
 void MVKSemaphoreSubmitInfo::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff) {
 	if (!_semaphore) { return; }
-	if (_hasDeferredOperation) { _semaphore->encodeDeferredSignal(mtlCmdBuff, _deferredOperation); }
+	if (_hasDeferredOperation) { _semaphore->encodeDeferredSignal(mtlCmdBuff, value); }
 	else { _semaphore->encodeSignal(mtlCmdBuff, value); }
 }
 
@@ -386,19 +386,19 @@ void MVKSemaphoreSubmitInfo::deferBinaryWait() {
 	_hasDeferredOperation = _semaphore &&
 		_semaphore->getSemaphoreType() == VK_SEMAPHORE_TYPE_BINARY &&
 		_semaphore->isUsingCommandEncoding();
-	if (_hasDeferredOperation) { _deferredOperation = _semaphore->deferWait(); }
+	if (_hasDeferredOperation) { value = _semaphore->deferWait(); }
 }
 
 void MVKSemaphoreSubmitInfo::deferBinarySignal() {
 	_hasDeferredOperation = _semaphore &&
 		_semaphore->getSemaphoreType() == VK_SEMAPHORE_TYPE_BINARY &&
 		_semaphore->isUsingCommandEncoding();
-	if (_hasDeferredOperation) { _deferredOperation = _semaphore->deferSignal(); }
+	if (_hasDeferredOperation) { value = _semaphore->deferSignal(); }
 }
 
 void MVKSemaphoreSubmitInfo::waitForEncodingSignal() {
 	if (!_semaphore) { return; }
-	_semaphore->waitForEncodingSignal(_hasDeferredOperation ? _deferredOperation : value);
+	_semaphore->waitForEncodingSignal(value);
 }
 
 bool MVKSemaphoreSubmitInfo::supportsEncodingDependencyWait() const {
@@ -407,6 +407,109 @@ bool MVKSemaphoreSubmitInfo::supportsEncodingDependencyWait() const {
 
 bool MVKSemaphoreSubmitInfo::waitsForEncodingSignal() const {
 	return _semaphore && _semaphore->isUsingCommandEncoding();
+}
+
+bool MVKSemaphoreSubmitInfo::waitsForEncodingStages(VkPipelineStageFlags2 stages) const {
+	if (!stages) { return false; }
+	auto expandStages = [](VkPipelineStageFlags2 mask) {
+		if (mvkIsAnyFlagEnabled(mask, VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT)) {
+			mask |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
+				VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
+				VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
+				VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
+				VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
+				VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
+		}
+		if (mvkIsAnyFlagEnabled(mask, VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT)) {
+			mask |= VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT |
+				VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT;
+		}
+		if (mvkIsAnyFlagEnabled(mask,
+			VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT |
+			VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT)) {
+			mask |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
+		}
+		if (mvkIsAnyFlagEnabled(mask,
+			VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT |
+			VK_PIPELINE_STAGE_2_TRANSFER_BIT)) {
+			mask |= VK_PIPELINE_STAGE_2_COPY_BIT |
+				VK_PIPELINE_STAGE_2_RESOLVE_BIT |
+				VK_PIPELINE_STAGE_2_BLIT_BIT |
+				VK_PIPELINE_STAGE_2_CLEAR_BIT |
+				VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR;
+		}
+		return mask;
+	};
+	VkPipelineStageFlags2 waitStages = expandStages(stageMask);
+	stages = expandStages(stages);
+	if (mvkIsAnyFlagEnabled(waitStages,
+		VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)) {
+		return true;
+	}
+	if (mvkIsAnyFlagEnabled(waitStages, stages)) { return true; }
+
+	constexpr VkPipelineStageFlags2 graphicsStages =
+		VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
+		VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
+		VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
+		VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+	if (mvkIsAnyFlagEnabled(waitStages, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT) &&
+		mvkIsAnyFlagEnabled(stages, graphicsStages)) {
+		return true;
+	}
+	if (mvkIsAnyFlagEnabled(stages, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT) &&
+		mvkIsAnyFlagEnabled(waitStages,
+			VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
+			VK_PIPELINE_STAGE_2_COPY_INDIRECT_BIT_KHR)) {
+		return true;
+	}
+	if (mvkIsAnyFlagEnabled(stages, VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR) &&
+		mvkIsAnyFlagEnabled(waitStages, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT)) {
+		return true;
+	}
+	if (mvkIsAnyFlagEnabled(stages, VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT) &&
+		mvkIsAnyFlagEnabled(waitStages,
+			VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
+			VK_PIPELINE_STAGE_2_COPY_INDIRECT_BIT_KHR |
+			VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT)) {
+		return true;
+	}
+	if (mvkIsAnyFlagEnabled(stages, VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT) &&
+		mvkIsAnyFlagEnabled(waitStages,
+			VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
+			VK_PIPELINE_STAGE_2_COPY_INDIRECT_BIT_KHR |
+			VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT |
+			VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT)) {
+		return true;
+	}
+	if (mvkIsAnyFlagEnabled(stages, VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT) &&
+		mvkIsAnyFlagEnabled(waitStages,
+			VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
+			VK_PIPELINE_STAGE_2_COPY_INDIRECT_BIT_KHR |
+			VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT |
+			VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
+			VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT)) {
+		return true;
+	}
+	if (mvkIsAnyFlagEnabled(stages, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT) &&
+		mvkIsAnyFlagEnabled(waitStages,
+			VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
+			VK_PIPELINE_STAGE_2_COPY_INDIRECT_BIT_KHR |
+			VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT |
+			VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
+			VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
+			VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
+			VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
+			VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
+			VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT |
+			VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT |
+			VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR |
+			VK_PIPELINE_STAGE_2_FRAGMENT_DENSITY_PROCESS_BIT_EXT |
+			VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+			VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT)) {
+		return true;
+	}
+	return false;
 }
 
 MVKSemaphoreSubmitInfo::MVKSemaphoreSubmitInfo(const VkSemaphoreSubmitInfo& semaphoreSubmitInfo) :
@@ -428,11 +531,10 @@ MVKSemaphoreSubmitInfo::MVKSemaphoreSubmitInfo(const VkSemaphore semaphore,
 
 MVKSemaphoreSubmitInfo::MVKSemaphoreSubmitInfo(const MVKSemaphoreSubmitInfo& other) :
 	_semaphore(other._semaphore),
-	_deferredOperation(other._deferredOperation),
-	_hasDeferredOperation(other._hasDeferredOperation),
 	value(other.value),
 	stageMask(other.stageMask),
-	deviceIndex(other.deviceIndex) {
+	deviceIndex(other.deviceIndex),
+	_hasDeferredOperation(other._hasDeferredOperation) {
 		if (_semaphore) { _semaphore->retain(); }
 }
 
@@ -441,12 +543,11 @@ MVKSemaphoreSubmitInfo& MVKSemaphoreSubmitInfo::operator=(const MVKSemaphoreSubm
 	if (other._semaphore) {other._semaphore->retain(); }
 	if (_semaphore) { _semaphore->release(); }
 	_semaphore = other._semaphore;
-	_deferredOperation = other._deferredOperation;
-	_hasDeferredOperation = other._hasDeferredOperation;
 
 	value = other.value;
 	stageMask = other.stageMask;
 	deviceIndex = other.deviceIndex;
+	_hasDeferredOperation = other._hasDeferredOperation;
 	return *this;
 }
 
@@ -504,8 +605,7 @@ MVKQueueSubmission::~MVKQueueSubmission() {
 }
 
 bool MVKQueueCommandBufferSubmission::propagatesEncodingDependency() {
-	return getEnabledAccelerationStructureFeatures().accelerationStructure &&
-		std::any_of(_waitSemaphores.begin(), _waitSemaphores.end(),
+	return std::any_of(_waitSemaphores.begin(), _waitSemaphores.end(),
 					[](const auto& wait) { return wait.waitsForEncodingSignal(); });
 }
 
@@ -519,14 +619,28 @@ VkResult MVKQueueCommandBufferSubmission::execute() {
 
 	// If using encoded semaphore waiting, do so now.
 	for (auto& ws : _waitSemaphores) { ws.encodeWait(getActiveMTLCommandBuffer()); }
-	bool waitsBeforeEncoding = requiresEncodingDependencyWait();
-	if (waitsBeforeEncoding) {
+	bool tracksEncodingDependencies =
+		getEnabledAccelerationStructureFeatures().accelerationStructure;
+	VkPipelineStageFlags2 dependencyStages = tracksEncodingDependencies
+		? getEncodingDependencyStages() : 0;
+	auto waitsBeforeEncoding = [dependencyStages](const auto& wait) {
+		return wait.waitsForEncodingStages(dependencyStages);
+	};
+	bool hasWaitBeforeEncoding = tracksEncodingDependencies && std::any_of(
+		_waitSemaphores.begin(), _waitSemaphores.end(), waitsBeforeEncoding);
+	bool completedEncodedWaits = false;
+	if (hasWaitBeforeEncoding) {
 		bool supportsEncodingWait = std::all_of(_waitSemaphores.begin(), _waitSemaphores.end(),
-			[](const auto& wait) { return wait.supportsEncodingDependencyWait(); });
+			[&](const auto& wait) {
+				return !waitsBeforeEncoding(wait) || wait.supportsEncodingDependencyWait();
+			});
 		if (supportsEncodingWait) {
-			for (auto& ws : _waitSemaphores) { ws.waitForEncodingSignal(); }
+			for (auto& ws : _waitSemaphores) {
+				if (waitsBeforeEncoding(ws)) { ws.waitForEncodingSignal(); }
+			}
 		} else {
 			setConfigurationResult(commitActiveMTLCommandBufferAndWait());
+			completedEncodedWaits = true;
 		}
 	}
 
@@ -535,8 +649,12 @@ VkResult MVKQueueCommandBufferSubmission::execute() {
 
 	// Submit each command buffer.
 	submitCommandBuffers();
-	if (!waitsBeforeEncoding && propagatesEncodingDependency()) {
-		for (auto& ws : _waitSemaphores) { ws.waitForEncodingSignal(); }
+	if (tracksEncodingDependencies && !completedEncodedWaits) {
+		for (auto& ws : _waitSemaphores) {
+			if (!waitsBeforeEncoding(ws) && ws.waitsForEncodingSignal()) {
+				ws.waitForEncodingSignal();
+			}
+		}
 	}
 
 	// If using encoded semaphore signaling, do so now.
@@ -765,13 +883,19 @@ bool MVKQueueFullCommandBufferSubmission<N>::requiresHostReadback() const {
 }
 
 template <size_t N>
-bool MVKQueueFullCommandBufferSubmission<N>::requiresEncodingDependencyWait() {
-	bool hasDependentCommandBuffers = false;
+VkPipelineStageFlags2 MVKQueueFullCommandBufferSubmission<N>::getEncodingDependencyStages() const {
+	VkPipelineStageFlags2 stages = 0;
 	for (auto& cbInfo : _cmdBuffers) {
-		hasDependentCommandBuffers |= cbInfo.commandBuffer->requiresEncodingDependencyWait();
+		stages |= cbInfo.commandBuffer->getEncodingDependencyStages();
 	}
-	return getEnabledAccelerationStructureFeatures().accelerationStructure &&
-		   !_waitSemaphores.empty() && hasDependentCommandBuffers;
+	return stages;
+}
+
+template <size_t N>
+bool MVKQueueFullCommandBufferSubmission<N>::requiresEncodingDependencyWait() {
+	VkPipelineStageFlags2 stages = getEncodingDependencyStages();
+	return std::any_of(_waitSemaphores.begin(), _waitSemaphores.end(),
+			[stages](const auto& wait) { return wait.waitsForEncodingStages(stages); });
 }
 
 template <size_t N>

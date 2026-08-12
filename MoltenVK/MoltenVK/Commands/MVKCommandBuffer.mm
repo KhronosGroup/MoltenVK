@@ -36,7 +36,7 @@ struct MVKAccelerationStructureCommandEncodingState {
 	MVKSmallVector<MVKAccelerationStructureStorageGeneration*, 16>* retainedGenerations = nullptr;
 	const MVKMTLBufferAllocation* addressTable = nullptr;
 	const MVKMTLBufferAllocation* referenceTable = nullptr;
-	MVKSmallVector<pair<MVKDescriptorSet*, MVKDescriptorSetSnapshot*>, kMVKMaxDescriptorSetCount> descriptorSetSnapshots;
+	MVKSmallVector<pair<MVKDescriptorSet*, MVKDescriptorSetSnapshot*>, kMVKInlineDescriptorSetCount> descriptorSetSnapshots;
 
 	void reset() {
 		instances.clear();
@@ -186,10 +186,12 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 		}
 	}
 
-    if(_device->shouldPrefillMTLCommandBuffers() && !(_isSecondary || _supportsConcurrentExecution)) {
+	auto prefillStyle = getMVKConfig().prefillMetalCommandBuffers;
+    if(_device->shouldPrefillMTLCommandBuffers() &&
+	   prefillStyle != MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_DEFERRED_ENCODING &&
+	   !(_isSecondary || _supportsConcurrentExecution)) {
 		@autoreleasepool {
 			_prefilledMTLCmdBuffer = [_commandPool->getMTLCommandBuffer(kMVKCommandUseBeginCommandBuffer, 0) retain];    // retained
-			auto prefillStyle = getMVKConfig().prefillMetalCommandBuffers;
 			if (prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING ||
 				prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING_NO_AUTORELEASE ) {
 				_immediateCmdEncodingContext = new MVKCommandEncodingContext;
@@ -263,7 +265,7 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	_needsVisibilityResultMTLBuffer = false;
 	_hasStageCounterTimestampCommand = false;
 	_requiresHostReadback = false;
-	_requiresEncodingDependencyWait = false;
+	_encodingDependencyStages = 0;
 	_lastTessellationPipeline = nullptr;
 	setConfigurationResult(VK_NOT_READY);
 
@@ -283,13 +285,17 @@ VkResult MVKCommandBuffer::end() {
 	return getConfigurationResult();
 }
 
-void MVKCommandBuffer::recordAccelerationStructureCommand() {
-	_requiresEncodingDependencyWait = true;
+void MVKCommandBuffer::recordAccelerationStructureCommand(VkPipelineStageFlags2 stages) {
+	_encodingDependencyStages |= stages;
 }
 
 void MVKCommandBuffer::checkDeferredEncoding() {
-	if (getMVKConfig().prefillMetalCommandBuffers == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_DEFERRED_ENCODING) {
+	if (getMVKConfig().prefillMetalCommandBuffers == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_DEFERRED_ENCODING &&
+		_device->shouldPrefillMTLCommandBuffers() && !_encodingDependencyStages &&
+		!(_isSecondary || _supportsConcurrentExecution)) {
 		@autoreleasepool {
+			_prefilledMTLCmdBuffer = [_commandPool->getMTLCommandBuffer(
+				kMVKCommandUseBeginCommandBuffer, 0) retain];
 			MVKCommandEncodingContext encodingContext;
 			MVKCommandEncoder encoder(this);
 			encoder.encode(_prefilledMTLCmdBuffer, &encodingContext);
@@ -413,7 +419,7 @@ void MVKCommandBuffer::recordExecuteCommands(MVKArrayRef<MVKCommandBuffer*const>
 		if (cmdBuff->_needsVisibilityResultMTLBuffer) { _needsVisibilityResultMTLBuffer = true; }
 		if (cmdBuff->_hasStageCounterTimestampCommand) { _hasStageCounterTimestampCommand = true; }
 		if (cmdBuff->_requiresHostReadback) { _requiresHostReadback = true; }
-		if (cmdBuff->_requiresEncodingDependencyWait) { _requiresEncodingDependencyWait = true; }
+		_encodingDependencyStages |= cmdBuff->_encodingDependencyStages;
 	}
 }
 
@@ -431,7 +437,7 @@ void MVKCommandBuffer::recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline) {
 	_lastTessellationPipeline = mvkBindPipeline->isTessellationPipeline() ? mvkBindPipeline : nullptr;
 	if (getEnabledAccelerationStructureFeatures().accelerationStructure &&
 		mvkBindPipeline->usesAccelerationStructures()) {
-		recordAccelerationStructureCommand();
+		recordAccelerationStructureCommand(mvkBindPipeline->getAccelerationStructureStages());
 	}
 }
 
@@ -1310,10 +1316,10 @@ MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() {
 // Copies the specified bytes into a temporary allocation within a pooled MTLBuffer, and returns the MTLBuffer allocation.
 const MVKMTLBufferAllocation* MVKCommandEncoder::copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length, bool isDedicated) {
 	const MVKMTLBufferAllocation* mtlBuffAlloc = getTempMTLBuffer(length, false, isDedicated);
-    void* pBuffData = mtlBuffAlloc->getContents();
-    memcpy(pBuffData, bytes, length);
+	void* pBuffData = mtlBuffAlloc ? mtlBuffAlloc->getContents() : nullptr;
+	if (pBuffData) { memcpy(pBuffData, bytes, length); }
 
-    return mtlBuffAlloc;
+	return mtlBuffAlloc;
 }
 
 MVKAccelerationStructureCommandEncodingState& MVKCommandEncoder::getOrCreateAccelerationStructureState() {
@@ -1386,16 +1392,31 @@ void MVKCommandEncoder::invalidateAccelerationStructureReferenceTable() {
 
 void MVKCommandEncoder::retainAccelerationStructureGeneration(MVKAccelerationStructureStorageGeneration* generation) {
 	if (!generation) { return; }
+	auto retainOnCompletion = [&] {
+		[_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) { generation->release(); }];
+	};
 	auto& state = getOrCreateAccelerationStructureState();
 	if (!state.retainedGenerations) {
-		auto* generations = new MVKSmallVector<MVKAccelerationStructureStorageGeneration*, 16>;
+		auto* generations = new (std::nothrow) MVKSmallVector<MVKAccelerationStructureStorageGeneration*, 16>;
+		if (!generations) {
+			retainOnCompletion();
+			reportError(VK_ERROR_OUT_OF_HOST_MEMORY,
+				"Could not retain acceleration-structure storage for command completion.");
+			return;
+		}
 		state.retainedGenerations = generations;
 		[_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) {
 			for (auto* retainedGeneration : *generations) { retainedGeneration->release(); }
 			delete generations;
 		}];
 	}
-	state.retainedGenerations->push_back(generation);
+	try {
+		state.retainedGenerations->push_back(generation);
+	} catch (const std::bad_alloc&) {
+		retainOnCompletion();
+		reportError(VK_ERROR_OUT_OF_HOST_MEMORY,
+			"Could not retain acceleration-structure storage for command completion.");
+	}
 }
 
 MVKDescriptorSetSnapshot* MVKCommandEncoder::getDescriptorSetSnapshot(MVKDescriptorSet* set) {

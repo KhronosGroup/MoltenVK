@@ -158,8 +158,8 @@ public:
 
 	void recordHostReadbackCommand() { _requiresHostReadback = true; }
 	bool requiresHostReadback() const { return _requiresHostReadback; }
-	void recordAccelerationStructureCommand();
-	bool requiresEncodingDependencyWait() const { return _requiresEncodingDependencyWait; }
+	void recordAccelerationStructureCommand(VkPipelineStageFlags2 stages);
+	VkPipelineStageFlags2 getEncodingDependencyStages() const { return _encodingDependencyStages; }
 
 
 #pragma mark Tessellation constituent command management
@@ -230,7 +230,7 @@ protected:
 	bool _wasExecuted;
 	bool _hasStageCounterTimestampCommand;
 	bool _requiresHostReadback;
-	bool _requiresEncodingDependencyWait;
+	VkPipelineStageFlags2 _encodingDependencyStages;
 	bool _hasSecondaryInheritanceInfo;
 	bool _hasSecondaryInheritanceRenderingInfo;
 	bool _hasSecondaryInheritanceColorAttachmentLocations;

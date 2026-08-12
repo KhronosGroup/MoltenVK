@@ -112,13 +112,18 @@ public:
 	/** Check whether the given stage uses push constants. */
 	bool stageUsesPushConstants(MVKShaderStage stage) const;
 	/** Populates the specified shader conversion config. */
-	void populateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig) const;
+	void populateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
+											 MVKDescriptorSetLayout* rayTracingPushLayout = nullptr) const;
 	/** Adds all used bindings to the given bind script. */
-	void populateBindOperations(MVKPipelineBindScript& script, const mvk::SPIRVToMSLConversionConfiguration& shaderConfig, spv::ExecutionModel execModel);
+	void populateBindOperations(MVKPipelineBindScript& script,
+								const mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
+								spv::ExecutionModel execModel,
+								MVKDescriptorSetLayout* rayTracingPushLayout = nullptr);
 	/** Does this pipeline layout have a push descriptor? */
 	bool hasPushDescriptor() const { return _pushDescriptor >= 0; }
 	/** If this pipeline layout has a push descriptor, returns the set ID of that descriptor. */
 	size_t pushDescriptor() const { assert(hasPushDescriptor()); return _pushDescriptor; }
+	MVKDescriptorSetLayout* getRayTracingPushDescriptorLayout() const;
 
 	/** Constructs an instance for the specified device. */
 	static MVKPipelineLayout* Create(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
@@ -133,6 +138,7 @@ private:
 	MVKShaderResourceBinding _mtlResourceCounts;
 	uint8_t _pushConstantResourceIndices[kMVKShaderStageCount];
 	int8_t _pushDescriptor = -1;
+	mutable std::atomic<MVKDescriptorSetLayout*> _rayTracingPushDescriptorLayout { nullptr };
 	void propagateDebugName() override {}
 	friend class MVKInlineObjectConstructor<MVKPipelineLayout>;
 	MVKPipelineLayout(MVKDevice* device);
@@ -322,6 +328,19 @@ public:
 		}
 		return false;
 	}
+	VkPipelineStageFlags2 getAccelerationStructureStages() const {
+		static constexpr VkPipelineStageFlags2 stages[] = {
+			VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+			VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT,
+			VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT,
+			VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+		};
+		VkPipelineStageFlags2 result = 0;
+		for (uint32_t i = 0; i < std::size(stages); i++) {
+			if (_stageResources[i].usesAccelerationStructures()) { result |= stages[i]; }
+		}
+		return result;
+	}
 
 	/** Returns the list of state that is needed from the command encoder */
 	const MVKRenderStateFlags& getDynamicStateFlags() const { return _dynamicStateFlags; }
@@ -491,7 +510,9 @@ protected:
 								  spv::ExecutionModel executionModel,
 								  VkPipelineCreationFeedback* pStageFB,
 								  bool enableRayTracingIFB = false,
-								  bool rayTracingAnyHitIFB = false);
+								  bool enableRayTracingProceduralIFB = false,
+								  bool rayTracingAnyHitIFB = false,
+								  bool rayTracingProceduralIFB = false);
 	uint32_t getImplicitBufferIndex(uint32_t bufferIndexOffset) const;
 
 	id<MTLComputePipelineState> _mtlPipelineState;
@@ -506,6 +527,14 @@ protected:
 
 #pragma mark -
 #pragma mark MVKRayTracingPipeline
+
+static constexpr uint32_t kMVKMaxRayRecursionDepth = 4;
+static constexpr uint32_t kMVKMaxRayHitAttributeSize = 32;
+static constexpr uint32_t kMVKMaxRayTracingCallStackDepth = 2 * kMVKMaxRayRecursionDepth;
+// Vulkan has no separate callable-recursion limit. Make an unsupported ninth call
+// exceed vkCmdSetRayTracingPipelineStackSizeKHR's uint32_t byte budget.
+static constexpr VkDeviceSize kMVKRayTracingShaderGroupStackSize =
+	UINT32_MAX / kMVKMaxRayTracingCallStackDepth;
 
 class MVKRayTracingPipeline : public MVKComputePipeline {
 
@@ -531,13 +560,11 @@ public:
 	~MVKRayTracingPipeline() override;
 
 private:
-	static constexpr uint32_t kMaxCallStackDepth = 6;
-	// Conservatively maps each Vulkan shader call to one of six Metal call frames.
-	static constexpr VkDeviceSize kShaderGroupStackSize = (VkDeviceSize{1} << 32) / kMaxCallStackDepth;
 	struct ShaderStage {
 		VkShaderStageFlagBits stage;
 		MVKMTLFunction function;
 		MVKMTLFunction ifbFunction;
+		MVKMTLFunction proceduralIFBFunction;
 	};
 	struct ShaderGroup {
 		VkRayTracingShaderGroupTypeKHR type;
@@ -561,6 +588,7 @@ private:
 	std::vector<ShaderGroupHandle> _groupHandles;
 	bool _isLibrary = false;
 	bool _usesIFB = false;
+	bool _usesProceduralIFB = false;
 	id<MTLVisibleFunctionTable> _mtlFunctionTable = nil;
 	id<MTLVisibleFunctionTable> _mtlRayGenerationFunctionTable = nil;
 	id<MTLVisibleFunctionTable> _mtlIntersectionFunctionTable = nil;

@@ -27,8 +27,10 @@
 #include "MVKPixelFormats.h"
 #include "MVKOSExtensions.h"
 #include "mvk_datatypes.hpp"
+#include <algorithm>
 #include <shared_mutex>
 #include <string>
+#include <limits>
 #include <mutex>
 #include <os/lock.h>
 
@@ -90,9 +92,15 @@ static constexpr uint32_t   kMVKMinSwapchainImageCount = 2;
 static constexpr uint32_t   kMVKMaxSwapchainImageCount = 3;
 static constexpr uint32_t   kMVKMaxColorAttachmentCount = 8;
 static constexpr uint32_t   kMVKMaxViewportScissorCount = 16;
-static constexpr uint32_t   kMVKMaxDescriptorSetCount = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
 static constexpr uint32_t   kMVKMaxTextureCount = 128; // Maximum value across all GPUs in Metal feature set tables
 static constexpr uint32_t   kMVKMaxBufferCount = 31;
+static constexpr uint32_t   kMVKRayTracingImplicitBufferCount = 9;
+static constexpr uint32_t   kMVKDescriptorSetStorageCount = std::numeric_limits<uint16_t>::digits;
+static constexpr uint32_t   kMVKMaxDescriptorSetCount = std::min(kMVKDescriptorSetStorageCount,
+													 kMVKMaxBufferCount - kMVKRayTracingImplicitBufferCount);
+static constexpr uint32_t   kMVKInlineDescriptorSetCount = 8;
+static_assert(kMVKInlineDescriptorSetCount <= kMVKMaxDescriptorSetCount);
+static_assert(kMVKMaxDescriptorSetCount <= SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers);
 static constexpr uint32_t   kMVKMaxSamplerCount = 16;
 static constexpr uint32_t   kMVKMaxSampleCount = 8;
 static constexpr uint32_t   kMVKSampleLocationCoordinateGridSize = 16;
@@ -491,6 +499,7 @@ protected:
 	uint32_t getMaxPerSetDescriptorCount();
 	void initExternalMemoryProperties();
 	void initExtensions();
+	bool supportsRayTracingPipeline() const;
 	void initCounterSets();
 	bool needsCounterSetRetained();
 	void updateTimestampPeriod();
@@ -908,6 +917,7 @@ public:
 	uint64_t getAccelerationStructureStateSerial() const {
 		return _accelerationStructureStateSerial.load(std::memory_order_acquire);
 	}
+	std::mutex& getAccelerationStructureDescriptorLock() { return _accelerationStructureDescriptorLock; }
 
 	/** Adds the specified host semaphore to be woken upon device loss. */
 	void addSemaphore(MVKSemaphoreImpl* sem4);
@@ -1157,6 +1167,7 @@ protected:
 	MVKSmallVector<MVKVisibilityBuffer> _visibilityBuffers;
 	MVKLiveResourceSet _liveResources;
 	std::mutex _rezLock;
+	std::mutex _accelerationStructureDescriptorLock;
 	std::mutex _sem4Lock;
     std::mutex _perfLock;
 	std::mutex _vizLock;
@@ -1222,9 +1233,11 @@ public:
 
 	// List of extended device feature enabling structures, as getEnabledXXXFeatures() functions.
 #define MVK_DEVICE_FEATURE(structName, enumName, flagCount) \
-	VkPhysicalDevice##structName##Features& getEnabled##structName##Features() { return _device->_enabled##structName##Features; }
+	VkPhysicalDevice##structName##Features& getEnabled##structName##Features() { return _device->_enabled##structName##Features; } \
+	const VkPhysicalDevice##structName##Features& getEnabled##structName##Features() const { return _device->_enabled##structName##Features; }
 #define MVK_DEVICE_FEATURE_EXTN(structName, enumName, extnSfx, flagCount) \
-	VkPhysicalDevice##structName##Features##extnSfx& getEnabled##structName##Features() { return _device->_enabled##structName##Features; }
+	VkPhysicalDevice##structName##Features##extnSfx& getEnabled##structName##Features() { return _device->_enabled##structName##Features; } \
+	const VkPhysicalDevice##structName##Features##extnSfx& getEnabled##structName##Features() const { return _device->_enabled##structName##Features; }
 #include "MVKDeviceFeatureStructs.def"
 
 	/** Pointer to the Metal-specific features of the underlying physical device. */

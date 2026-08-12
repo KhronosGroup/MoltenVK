@@ -71,7 +71,9 @@ public:
 	id<MTLBuffer> getMTLBuffer() const { return _buffer; }
 	NSUInteger getRecordTableOffset() const { return static_cast<NSUInteger>(_layout.recordTableOffset); }
 	NSUInteger getHandleArrayOffset() const;
-	bool publish(MVKAccelerationStructureStorageGeneration* generation);
+	bool publish(MVKAccelerationStructureStorageGeneration* generation,
+				 uint64_t nativeSize,
+				 uint64_t instanceMetadataSize);
 
 protected:
 	id<MTLBuffer> _buffer = nil;

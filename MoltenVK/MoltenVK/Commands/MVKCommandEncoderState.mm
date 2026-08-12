@@ -601,9 +601,10 @@ static void executeBindOps(id<MTLCommandEncoder> encoder,
                            MVKStageResourceBindings& bindings,
                            const MVKResourceBinder& RESTRICT binder) {
 	bool didUseResource = false;
-	MVKDescriptorSetSnapshot* snapshots[kMVKMaxDescriptorSetCount] = {};
+	MVKDescriptorSetSnapshot* snapshots[kMVKMaxDescriptorSetCount];
+	bool snapshotsInitialized = false;
 	for (const MVKDescriptorBindOperation& op : ops) {
-		MVKDescriptorSet* set = common._descriptorSets[op.set];
+		MVKDescriptorSet* set = common.descriptorSet(op.set);
 		uint32_t target = op.target;
 		MVKDescriptorSetLayout* setLayout = common._layout->getDescriptorSetLayout(op.set);
 		const MVKDescriptorBinding& binding = setLayout->bindings()[op.bindingIdx];
@@ -611,6 +612,10 @@ static void executeBindOps(id<MTLCommandEncoder> encoder,
 			op.opcode == MVKDescriptorBindOperationCode::UseAccelerationStructureWithLiveCheck;
 		MVKDescriptorSetSnapshot* snapshot = nullptr;
 		if (isAccelerationStructure) {
+			if (!snapshotsInitialized) {
+				memset(snapshots, 0, sizeof(snapshots));
+				snapshotsInitialized = true;
+			}
 			snapshot = snapshots[op.set];
 			if (!snapshot) {
 				snapshot = mvkEncoder.getDescriptorSetSnapshot(set);
@@ -628,7 +633,7 @@ static void executeBindOps(id<MTLCommandEncoder> encoder,
 			// Unlike binds, useResource can't be undone by binding something else
 			// So we can store a list of which resources have been used in a bit array and use that to early exit on repeat binds
 			// Some resources (e.g. multi-planar textures) can require multiple bind ops to fully bind, mark in a separate pass after all bind ops have executed
-			if (!isAccelerationStructure && bindings.descriptorSetResourceUse[op.set].get(op.bindingIdx))
+			if (!isAccelerationStructure && bindings.getDescriptorSetResourceUse(op.set).get(op.bindingIdx))
 				continue;
 			didUseResource = true;
 		}
@@ -664,8 +669,8 @@ static void executeBindOps(id<MTLCommandEncoder> encoder,
 
 	if (didUseResource) {
 		for (const MVKDescriptorBindOperation& op : ops) {
-			if (isUseResource(op.opcode) && !bindings.descriptorSetResourceUse[op.set].get(op.bindingIdx))
-				bindings.descriptorSetResourceUse[op.set].set(op.bindingIdx);
+			if (isUseResource(op.opcode) && !bindings.getDescriptorSetResourceUse(op.set).get(op.bindingIdx))
+				bindings.getDescriptorSetResourceUse(op.set).set(op.bindingIdx);
 		}
 	}
 }
@@ -710,9 +715,9 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 	MVKStaticBitSet<kMVKMaxDescriptorSetCount> setsNeeded = resources.resources.descriptorSetData.clearingAllIn(exists.descriptorSetData);
 	exists.descriptorSetData |= resources.resources.descriptorSetData;
 	for (size_t idx : setsNeeded) {
-		MVKDescriptorSet* set = common._descriptorSets[idx];
+		MVKDescriptorSet* set = common.descriptorSet(idx);
 		const MVKDescriptorSetLayout* layout = common._layout->getDescriptorSetLayout(idx);
-		bindings.descriptorSetResourceUse[idx].resizeAndClear(layout->bindings().size());
+		bindings.getDescriptorSetResourceUse(idx).resizeAndClear(layout->bindings().size());
 		bindBuffer(encoder, set->gpuBufferObject, set->gpuBufferOffset, idx, exists, bindings, binder);
 	}
 
@@ -775,7 +780,13 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 			case MVKNonVolatileImplicitBuffer::AccelerationStructureAddressTable: {
 				auto* allocation = mvkEncoder.getAccelerationStructureAddressTable(mtlShared._useResource,
 				                                                                   useResourceStage);
-				binder.setBuffer(encoder, allocation->_mtlBuffer, allocation->_offset, idx);
+				if (allocation && allocation->_mtlBuffer) {
+					binder.setBuffer(encoder, allocation->_mtlBuffer, allocation->_offset, idx);
+				} else {
+					binder.setBuffer(encoder, nil, 0, idx);
+					mvkEncoder.reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+						"Acceleration-structure address-table storage could not be allocated.");
+				}
 				break;
 			}
 			case MVKNonVolatileImplicitBuffer::Count:
@@ -1010,14 +1021,33 @@ void MVKUseResourceHelper::bindAndResetCompute(id<MTLComputeCommandEncoder> enco
 
 #pragma mark - MVKVulkanCommonCommandEncoderState
 
+MVKDescriptorSet*& MVKVulkanCommonEncoderState::descriptorSet(uint32_t index) {
+	assert(index < kMVKMaxDescriptorSetCount);
+	if (index < kMVKInlineDescriptorSetCount) { return _descriptorSets[index]; }
+	if (!_descriptorSetOverflow) {
+		_descriptorSetOverflow = new MVKDescriptorSet*[kMVKMaxDescriptorSetCount - kMVKInlineDescriptorSetCount]{};
+	}
+	return _descriptorSetOverflow[index - kMVKInlineDescriptorSetCount];
+}
+
+MVKDescriptorSet* MVKVulkanCommonEncoderState::descriptorSet(uint32_t index) const {
+	assert(index < kMVKMaxDescriptorSetCount);
+	return index < kMVKInlineDescriptorSetCount ? _descriptorSets[index]
+		: (_descriptorSetOverflow ? _descriptorSetOverflow[index - kMVKInlineDescriptorSetCount] : nullptr);
+}
+
 void MVKVulkanCommonEncoderState::ensurePushDescriptorSize(uint32_t size) {
 	if (size > _pushDescData.size()) {
 		_pushDescData.resize(size);
-		_pushDescriptor.cpuBuffer = reinterpret_cast<char*>(_pushDescData.data());
 	}
+	_pushDescriptor.cpuBuffer = reinterpret_cast<char*>(_pushDescData.data());
 }
 
 void MVKVulkanCommonEncoderState::preparePushDescriptor(MVKDescriptorSetLayout* layout) {
+	bool layoutChanged = _pushDescriptor.layout != layout;
+	if (layoutChanged) {
+		mvkReleaseDescriptorSetAccelerationStructures(&_pushDescriptor);
+	}
 	uint32_t cpuSize = layout->cpuSize();
 	_pushDescriptor.cpuBufferSize = cpuSize;
 	ensurePushDescriptorSize(cpuSize);
@@ -1029,13 +1059,14 @@ void MVKVulkanCommonEncoderState::preparePushDescriptor(MVKDescriptorSetLayout* 
 	_pushDescriptor.gpuBufferObject = nil;
 	_pushDescriptor.gpuBufferOffset = 0;
 	_pushDescriptor.gpuBufferSize = 0;
+	if (layoutChanged && cpuSize) { memset(_pushDescriptor.cpuBuffer, 0, cpuSize); }
 }
 
 void MVKVulkanCommonEncoderState::setLayout(MVKPipelineLayout* layout) {
 	_layout = layout;
 	if (layout && layout->hasPushDescriptor()) {
 		size_t idx = layout->pushDescriptor();
-		_descriptorSets[idx] = &_pushDescriptor;
+		descriptorSet(idx) = &_pushDescriptor;
 		MVKDescriptorSetLayout* dsl = layout->getDescriptorSetLayout(idx);
 		uint32_t size = dsl->cpuSize();
 		_pushDescriptor.cpuBufferSize = size;
@@ -1043,19 +1074,45 @@ void MVKVulkanCommonEncoderState::setLayout(MVKPipelineLayout* layout) {
 	}
 }
 
-MVKVulkanCommonEncoderState::MVKVulkanCommonEncoderState(const MVKVulkanCommonEncoderState& other) {
+MVKVulkanCommonEncoderState::MVKVulkanCommonEncoderState(const MVKVulkanCommonEncoderState& other) :
+	_pushDescData(other._pushDescData) {
 	memcpy(_descriptorSets, other._descriptorSets, sizeof(_descriptorSets));
+	if (other._descriptorSetOverflow) {
+		_descriptorSetOverflow = new MVKDescriptorSet*[kMVKMaxDescriptorSetCount - kMVKInlineDescriptorSetCount];
+		memcpy(_descriptorSetOverflow, other._descriptorSetOverflow,
+			   (kMVKMaxDescriptorSetCount - kMVKInlineDescriptorSetCount) * sizeof(*_descriptorSetOverflow));
+	}
 	_pushDescriptor = other._pushDescriptor;
+	_pushDescriptor.cpuBuffer = reinterpret_cast<char*>(_pushDescData.data());
 	setLayout(other._layout);
-	memcpy(_pushDescriptor.cpuBuffer, other._pushDescriptor.cpuBuffer, _pushDescriptor.cpuBufferSize);
+	mvkRetainDescriptorSetAccelerationStructures(&_pushDescriptor);
 }
 
 MVKVulkanCommonEncoderState& MVKVulkanCommonEncoderState::operator=(const MVKVulkanCommonEncoderState& other) {
+	if (this == &other) { return *this; }
+	mvkReleaseDescriptorSetAccelerationStructures(&_pushDescriptor);
 	memmove(_descriptorSets, other._descriptorSets, sizeof(_descriptorSets));
+	if (other._descriptorSetOverflow) {
+		if (!_descriptorSetOverflow) {
+			_descriptorSetOverflow = new MVKDescriptorSet*[kMVKMaxDescriptorSetCount - kMVKInlineDescriptorSetCount];
+		}
+		memmove(_descriptorSetOverflow, other._descriptorSetOverflow,
+				(kMVKMaxDescriptorSetCount - kMVKInlineDescriptorSetCount) * sizeof(*_descriptorSetOverflow));
+	} else {
+		delete[] _descriptorSetOverflow;
+		_descriptorSetOverflow = nullptr;
+	}
+	_pushDescData.assign(other._pushDescData.begin(), other._pushDescData.end());
 	_pushDescriptor = other._pushDescriptor;
+	_pushDescriptor.cpuBuffer = reinterpret_cast<char*>(_pushDescData.data());
 	setLayout(other._layout);
-	memmove(_pushDescriptor.cpuBuffer, other._pushDescriptor.cpuBuffer, _pushDescriptor.cpuBufferSize);
+	mvkRetainDescriptorSetAccelerationStructures(&_pushDescriptor);
 	return *this;
+}
+
+MVKVulkanCommonEncoderState::~MVKVulkanCommonEncoderState() {
+	mvkReleaseDescriptorSetAccelerationStructures(&_pushDescriptor);
+	delete[] _descriptorSetOverflow;
 }
 
 #pragma mark - MVKVulkanGraphicsCommandEncoderState
@@ -1106,7 +1163,7 @@ void MVKVulkanGraphicsCommandEncoderState::bindDescriptorSets(
 		::bindDescriptorSets(_implicitBufferData[stage], stage, layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
 	}
 	for (uint32_t i = 0; i < setCount; i++) {
-		_descriptorSets[firstSet + i] = sets[i];
+		descriptorSet(firstSet + i) = sets[i];
 	}
 }
 
@@ -1122,7 +1179,7 @@ void MVKVulkanComputeCommandEncoderState::bindDescriptorSets(
 {
 	::bindDescriptorSets(_implicitBufferData, kMVKShaderStageCompute, layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
 	for (uint32_t i = 0; i < setCount; i++) {
-		_descriptorSets[firstSet + i] = sets[i];
+		descriptorSet(firstSet + i) = sets[i];
 	}
 }
 

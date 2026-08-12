@@ -1211,6 +1211,8 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetRayTracingPipelineStackSizeKHR(
 	uint32_t                                    pipelineStackSize) {
 
 	MVKTraceVulkanCallStart();
+	// Metal fixes visible-function stack depth when the pipeline is compiled. MoltenVK
+	// provisions each pipeline for its statically reachable depth, or the advertised maximum.
 	MVKTraceVulkanCallEnd();
 }
 

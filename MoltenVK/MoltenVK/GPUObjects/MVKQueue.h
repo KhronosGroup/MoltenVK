@@ -173,8 +173,6 @@ protected:
 typedef struct MVKSemaphoreSubmitInfo {
 private:
 	MVKSemaphore* _semaphore;
-	uint64_t _deferredOperation = 0;
-	bool _hasDeferredOperation = false;
 public:
 	uint64_t value;
 	VkPipelineStageFlags2 stageMask;
@@ -187,11 +185,15 @@ public:
 	void waitForEncodingSignal();
 	bool supportsEncodingDependencyWait() const;
 	bool waitsForEncodingSignal() const;
+	bool waitsForEncodingStages(VkPipelineStageFlags2 stages) const;
 	MVKSemaphoreSubmitInfo(const VkSemaphoreSubmitInfo& semaphoreSubmitInfo);
 	MVKSemaphoreSubmitInfo(const VkSemaphore semaphore, VkPipelineStageFlags stageMask);
 	MVKSemaphoreSubmitInfo(const MVKSemaphoreSubmitInfo& other);
 	MVKSemaphoreSubmitInfo& operator=(const MVKSemaphoreSubmitInfo& other);
 	~MVKSemaphoreSubmitInfo();
+
+private:
+	bool _hasDeferredOperation = false;
 
 } MVKSemaphoreSubmitInfo;
 
@@ -280,6 +282,7 @@ protected:
 	void finish() override;
 	virtual void submitCommandBuffers() {}
 	bool propagatesEncodingDependency() override;
+	virtual VkPipelineStageFlags2 getEncodingDependencyStages() const { return 0; }
 
 	MVKCommandEncodingContext _encodingContext;
 	MVKSmallVector<MVKSemaphoreSubmitInfo> _signalSemaphores;
@@ -312,6 +315,7 @@ protected:
 	void submitCommandBuffers() override;
 	bool requiresHostReadback() const override;
 	bool requiresEncodingDependencyWait() override;
+	VkPipelineStageFlags2 getEncodingDependencyStages() const override;
 
 	MVKSmallVector<MVKCommandBufferSubmitInfo, N> _cmdBuffers;
 };

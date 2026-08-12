@@ -108,7 +108,12 @@ void MVKSemaphore::destroy() {
 
 void MVKSemaphore::initializeEncodingSignal(uint64_t value) {
 	if (!_encodingSync && getEnabledAccelerationStructureFeatures().accelerationStructure) {
-		_encodingSync = new EncodingSync;
+		_encodingSync = new (std::nothrow) EncodingSync;
+		if (!_encodingSync) {
+			setConfigurationResult(reportError(VK_ERROR_OUT_OF_HOST_MEMORY,
+				"vkCreateSemaphore(): Could not allocate acceleration-structure synchronization state."));
+			return;
+		}
 	}
 	if (!_encodingSync) { return; }
 	lock_guard<mutex> lock(_encodingSync->lock);

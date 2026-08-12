@@ -85,7 +85,7 @@ VkResult MVKCmdTraceRays::setContent(MVKCommandBuffer* cmdBuff,
 									 const VkStridedDeviceAddressRegionKHR* pHitShaderBindingTable,
 									 const VkStridedDeviceAddressRegionKHR* pCallableShaderBindingTable,
 									 uint32_t width, uint32_t height, uint32_t depth) {
-	cmdBuff->recordAccelerationStructureCommand();
+	cmdBuff->recordAccelerationStructureCommand(VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR);
 	VkResult result = setShaderBindingTables(cmdBuff, pRaygenShaderBindingTable, pMissShaderBindingTable,
 										  pHitShaderBindingTable, pCallableShaderBindingTable);
 	if (result != VK_SUCCESS) { return result; }
@@ -100,7 +100,7 @@ VkResult MVKCmdTraceRays::setContent(MVKCommandBuffer* cmdBuff,
 									 const VkStridedDeviceAddressRegionKHR* pHitShaderBindingTable,
 									 const VkStridedDeviceAddressRegionKHR* pCallableShaderBindingTable,
 									 VkDeviceAddress indirectDeviceAddress) {
-	cmdBuff->recordAccelerationStructureCommand();
+	cmdBuff->recordAccelerationStructureCommand(VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR);
 	VkResult result = setShaderBindingTables(cmdBuff, pRaygenShaderBindingTable, pMissShaderBindingTable,
 										  pHitShaderBindingTable, pCallableShaderBindingTable);
 	if (result != VK_SUCCESS) { return result; }
@@ -177,6 +177,11 @@ void MVKCmdTraceRays::encode(MVKCommandEncoder* cmdEncoder) {
 	const MVKMTLBufferAllocation* indirectDispatch = nullptr;
 	if (_mtlIndirectBuffer) {
 		indirectDispatch = cmdEncoder->getTempMTLBuffer(sizeof(MTLDispatchThreadgroupsIndirectArguments), true);
+		if (!indirectDispatch || !indirectDispatch->_mtlBuffer) {
+			cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+				"vkCmdTraceRaysIndirectKHR(): Indirect dispatch storage could not be allocated.");
+			return;
+		}
 		id<MTLComputeCommandEncoder> convertEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTraceRays);
 		auto& state = cmdEncoder->getMtlCompute();
 		state.bindPipeline(convertEncoder, cmdEncoder->getCommandEncodingPool()
@@ -218,7 +223,7 @@ void MVKCmdTraceRays::encode(MVKCommandEncoder* cmdEncoder) {
 		uint64_t accelerationStructureAddressTableAddress;
 		uint64_t pushConstantsAddress;
 		uint64_t indirectLaunchSizeAddress;
-		uint64_t descriptorSetAddresses[kMVKMaxDescriptorSetCount];
+		uint64_t descriptorSetAddressesAddress;
 		uint32_t pipelineFlags;
 		uint32_t usesIFB;
 	} dispatch = {
@@ -240,9 +245,9 @@ void MVKCmdTraceRays::encode(MVKCommandEncoder* cmdEncoder) {
 		_hitShaderBindingTable.stride <= (1u << 12) &&
 		!(_hitShaderBindingTable.deviceAddress & 63);
 	using Dispatch = decltype(dispatch);
-	static_assert(offsetof(Dispatch, descriptorSetAddresses) == 14 * sizeof(uint64_t));
-	static_assert(offsetof(Dispatch, pipelineFlags) == offsetof(Dispatch, descriptorSetAddresses) +
-										 sizeof(dispatch.descriptorSetAddresses));
+	static_assert(offsetof(Dispatch, descriptorSetAddressesAddress) == 14 * sizeof(uint64_t));
+	static_assert(offsetof(Dispatch, pipelineFlags) == offsetof(Dispatch, descriptorSetAddressesAddress) +
+										 sizeof(dispatch.descriptorSetAddressesAddress));
 	static_assert(sizeof(Dispatch) == offsetof(Dispatch, pipelineFlags) + 2 * sizeof(uint32_t));
 	const auto& vkRayTracing = cmdEncoder->getVkRayTracing();
 	struct Upload {
@@ -269,6 +274,11 @@ void MVKCmdTraceRays::encode(MVKCommandEncoder* cmdEncoder) {
 		MVKUseResourceHelper resources;
 		auto* addressTable = cmdEncoder->getAccelerationStructureAddressTable(
 			resources, MVKResourceUsageStages::Compute);
+		if (!addressTable || !addressTable->_mtlBuffer) {
+			cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+				"vkCmdTraceRaysKHR(): Acceleration-structure address-table storage could not be allocated.");
+			return;
+		}
 		dispatch.accelerationStructureAddressTableAddress = addressTable->_mtlBuffer.gpuAddress + addressTable->_offset;
 		[mtlEncoder useResource:addressTable->_mtlBuffer usage:MTLResourceUsageRead];
 		resources.bindAndResetCompute(mtlEncoder);
@@ -276,24 +286,37 @@ void MVKCmdTraceRays::encode(MVKCommandEncoder* cmdEncoder) {
 	const auto& pushConstants = cmdEncoder->getState().vkShared()._pushConstants;
 	addUpload(pushConstants.data(), pushConstants.size(), dispatch.pushConstantsAddress);
 	uint32_t descriptorSetCount = vkRayTracing._layout ? vkRayTracing._layout->getDescriptorSetCount() : 0;
+	uint64_t descriptorSetAddresses[kMVKMaxDescriptorSetCount] = {};
 	for (uint32_t i = 0; i < descriptorSetCount; i++) {
-		auto* descriptorSet = vkRayTracing._descriptorSets[i];
+		auto* descriptorSet = vkRayTracing.descriptorSet(i);
 		id<MTLBuffer> buffer = descriptorSet ? descriptorSet->gpuBufferObject : nil;
 		uint32_t offset = descriptorSet ? descriptorSet->gpuBufferOffset : 0;
-		if (descriptorSet && vkRayTracing._layout->getDescriptorSetLayout(i)->hasAccelerationStructures()) {
+		if (descriptorSet && vkRayTracing._layout->hasPushDescriptor() &&
+			i == vkRayTracing._layout->pushDescriptor()) {
+			mvkMaterializePushDescriptorSet(cmdEncoder, descriptorSet,
+				vkRayTracing._layout->getRayTracingPushDescriptorLayout(), buffer, offset);
+		} else if (descriptorSet && vkRayTracing._layout->getDescriptorSetLayout(i)->hasAccelerationStructures()) {
 			auto* snapshot = cmdEncoder->getDescriptorSetSnapshot(descriptorSet);
 			buffer = snapshot ? snapshot->gpuBufferObject : nil;
 			offset = snapshot ? snapshot->gpuBufferOffset : 0;
 		}
 		if (buffer) {
-			dispatch.descriptorSetAddresses[i] = buffer.gpuAddress + offset;
+			descriptorSetAddresses[i] = buffer.gpuAddress + offset;
 			[mtlEncoder useResource:buffer usage:MTLResourceUsageRead];
 		}
 	}
+	addUpload(descriptorSetAddresses, descriptorSetCount * sizeof(*descriptorSetAddresses),
+			  dispatch.descriptorSetAddressesAddress);
 	uploadSize = mvkAlignByteCount(uploadSize, 16);
 	NSUInteger dispatchOffset = uploadSize;
 	auto* dispatchAllocation = cmdEncoder->getTempMTLBuffer(uploadSize + sizeof(dispatch));
-	uint8_t* uploadContents = static_cast<uint8_t*>(dispatchAllocation->getContents());
+	uint8_t* uploadContents = dispatchAllocation
+		? static_cast<uint8_t*>(dispatchAllocation->getContents()) : nullptr;
+	if (!dispatchAllocation || !dispatchAllocation->_mtlBuffer || !uploadContents) {
+		cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+			"vkCmdTraceRaysKHR(): Dispatch storage could not be allocated.");
+		return;
+	}
 	uint64_t uploadAddress = dispatchAllocation->_mtlBuffer.gpuAddress + dispatchAllocation->_offset;
 	for (const auto& upload : uploads) {
 		memcpy(uploadContents + upload.offset, upload.data, upload.size);

@@ -744,6 +744,21 @@ void MVKCommandResourceFactory::initAccelerationStructureMTLLibrary() {
 	}
 }
 
+id<MTLLibrary> MVKCommandResourceFactory::newRayTracingDispatcherMTLLibrary(
+	NSString* source,
+	bool usesIFB,
+	MVKVulkanAPIDeviceObject* owner) {
+	lock_guard<mutex> lock(_rayTracingDispatcherLibraryLock);
+	auto& library = _mtlRayTracingDispatcherLibraries[usesIFB];
+	if (!library) {
+		mvk::SPIRVToMSLConversionResultInfo resultInfo;
+		auto* compiler = new MVKShaderLibraryCompiler(owner);
+		library = compiler->newMTLLibrary(source, resultInfo, {});
+		compiler->destroy();
+	}
+	return [library retain];
+}
+
 // Initializes the Metal shaders used for command activity.
 void MVKCommandResourceFactory::initMTLLibrary() {
     @autoreleasepool {
@@ -769,6 +784,7 @@ void MVKCommandResourceFactory::initImageDeviceMemory() {
 }
 
 MVKCommandResourceFactory::~MVKCommandResourceFactory() {
+	for (auto library : _mtlRayTracingDispatcherLibraries) { [library release]; }
 	[_mtlAccelerationStructureLibrary release];
 	_mtlAccelerationStructureLibrary = nil;
 	[_mtlLibrary release];

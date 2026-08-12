@@ -110,6 +110,7 @@ public:
 
 	virtual bool isTessellationPipeline() { return false; };
 	virtual bool usesAccelerationStructures() { return false; }
+	virtual VkPipelineStageFlags2 getAccelerationStructureStages() { return 0; }
 
 protected:
 	MVKPipeline* _pipeline;
@@ -127,6 +128,7 @@ public:
 
 	bool isTessellationPipeline() override;
 	bool usesAccelerationStructures() override;
+	VkPipelineStageFlags2 getAccelerationStructureStages() override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -142,6 +144,9 @@ class MVKCmdBindComputePipeline : public MVKCmdBindPipeline {
 public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 	bool usesAccelerationStructures() override;
+	VkPipelineStageFlags2 getAccelerationStructureStages() override {
+		return VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+	}
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -157,6 +162,9 @@ class MVKCmdBindRayTracingPipeline : public MVKCmdBindPipeline {
 public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 	bool usesAccelerationStructures() override { return true; }
+	VkPipelineStageFlags2 getAccelerationStructureStages() override {
+		return VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+	}
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -291,6 +299,7 @@ protected:
 	void clearDescriptorWrites();
 
 	MVKSmallVector<VkWriteDescriptorSet, 1> _descriptorWrites;
+	MVKSmallVector<MVKVulkanAPIObject*, 4> _retainedResources;
 	MVKPipelineLayout* _pipelineLayout = nullptr;
 	VkPipelineBindPoint _pipelineBindPoint;
 	uint32_t _set;
@@ -318,6 +327,7 @@ protected:
 
 	MVKDescriptorUpdateTemplate* _descUpdateTemplate = nullptr;
 	MVKPipelineLayout* _pipelineLayout = nullptr;
+	MVKSmallVector<MVKVulkanAPIObject*, 4> _retainedResources;
 	void* _pData = nullptr;
 	size_t _dataSize = 0;
 	uint32_t _set = 0;

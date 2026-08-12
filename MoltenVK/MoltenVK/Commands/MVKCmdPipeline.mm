@@ -22,6 +22,7 @@
 #include "MVKImage.h"
 #include "MVKBuffer.h"
 #include "MVKPipeline.h"
+#include "MVKAccelerationStructure.h"
 #include "MVKFoundation.h"
 #include "mvk_datatypes.hpp"
 
@@ -261,6 +262,10 @@ bool MVKCmdBindGraphicsPipeline::usesAccelerationStructures() {
 	return ((MVKGraphicsPipeline*)_pipeline)->usesAccelerationStructures();
 }
 
+VkPipelineStageFlags2 MVKCmdBindGraphicsPipeline::getAccelerationStructureStages() {
+	return ((MVKGraphicsPipeline*)_pipeline)->getAccelerationStructureStages();
+}
+
 
 #pragma mark -
 #pragma mark MVKCmdBindComputePipeline
@@ -397,6 +402,56 @@ template class MVKCmdPushConstants<512>;
 #pragma mark -
 #pragma mark MVKCmdPushDescriptorSet
 
+static void retainPushDescriptorResources(MVKSmallVector<MVKVulkanAPIObject*, 4>& retainedResources,
+									  const MVKDescriptorSetLayout* layout, uint32_t binding,
+									  VkDescriptorType type, uint32_t count,
+									  const void* data, size_t stride) {
+	bool immutableSamplers = layout->getBinding(binding)->hasImmutableSamplers();
+	for (uint32_t i = 0; i < count; i++, data = static_cast<const char*>(data) + stride) {
+		MVKVulkanAPIObject* resources[2] = {};
+		switch (type) {
+			case VK_DESCRIPTOR_TYPE_SAMPLER:
+				if (!immutableSamplers) { resources[0] = (MVKSampler*)((VkDescriptorImageInfo*)data)->sampler; }
+				break;
+			case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+				resources[0] = (MVKImageView*)((VkDescriptorImageInfo*)data)->imageView;
+				if (!immutableSamplers) { resources[1] = (MVKSampler*)((VkDescriptorImageInfo*)data)->sampler; }
+				break;
+			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+			case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+				resources[0] = (MVKImageView*)((VkDescriptorImageInfo*)data)->imageView;
+				break;
+			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+				resources[0] = (MVKBuffer*)((VkDescriptorBufferInfo*)data)->buffer;
+				break;
+			case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+			case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+				resources[0] = (MVKBufferView*)*(VkBufferView*)data;
+				break;
+			case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+				resources[0] = (MVKAccelerationStructure*)*(VkAccelerationStructureKHR*)data;
+				break;
+			default:
+				break;
+		}
+		for (auto* resource : resources) {
+			if (resource) {
+				resource->retain();
+				retainedResources.push_back(resource);
+			}
+		}
+	}
+}
+
+static void releasePushDescriptorResources(MVKSmallVector<MVKVulkanAPIObject*, 4>& retainedResources) {
+	for (auto* resource : retainedResources) { resource->release(); }
+	retainedResources.clear();
+}
+
 VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 											 VkPipelineBindPoint pipelineBindPoint,
 											 VkPipelineLayout layout,
@@ -414,6 +469,8 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 	// Add the descriptor writes
 	clearDescriptorWrites();	// Clear for reuse
 	_descriptorWrites.reserve(descriptorWriteCount);
+	bool retainResources = mvkLayout->getEnabledAccelerationStructureFeatures().accelerationStructure;
+	auto* descriptorSetLayout = retainResources ? mvkLayout->getDescriptorSetLayout(set) : nullptr;
 	for (uint32_t dwIdx = 0; dwIdx < descriptorWriteCount; dwIdx++) {
 		_descriptorWrites.push_back(pDescriptorWrites[dwIdx]);
 		VkWriteDescriptorSet& descWrite = _descriptorWrites.back();
@@ -431,6 +488,8 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 				auto* info = new VkDescriptorImageInfo[descWrite.descriptorCount];
 				std::copy_n(pDescriptorWrites[dwIdx].pImageInfo, descWrite.descriptorCount, info);
 				descWrite.pImageInfo = info;
+				if (retainResources) { retainPushDescriptorResources(_retainedResources, descriptorSetLayout,
+					descWrite.dstBinding, descWrite.descriptorType, descWrite.descriptorCount, info, sizeof(*info)); }
 				break;
 			}
 			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -440,6 +499,8 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 				auto* info = new VkDescriptorBufferInfo[descWrite.descriptorCount];
 				std::copy_n(pDescriptorWrites[dwIdx].pBufferInfo, descWrite.descriptorCount, info);
 				descWrite.pBufferInfo = info;
+				if (retainResources) { retainPushDescriptorResources(_retainedResources, descriptorSetLayout,
+					descWrite.dstBinding, descWrite.descriptorType, descWrite.descriptorCount, info, sizeof(*info)); }
 				break;
 			}
 			case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
@@ -447,6 +508,8 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 				auto* views = new VkBufferView[descWrite.descriptorCount];
 				std::copy_n(pDescriptorWrites[dwIdx].pTexelBufferView, descWrite.descriptorCount, views);
 				descWrite.pTexelBufferView = views;
+				if (retainResources) { retainPushDescriptorResources(_retainedResources, descriptorSetLayout,
+					descWrite.dstBinding, descWrite.descriptorType, descWrite.descriptorCount, views, sizeof(*views)); }
 				break;
 			}
 			default:
@@ -476,12 +539,15 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 			pNewInlineUniformBlock->pData = data;
 			descWrite.pNext = pNewInlineUniformBlock;
 		} else if (descWrite.descriptorType == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR && pAccelerationStructures) {
-			auto* pNewAccelerationStructures = new VkWriteDescriptorSetAccelerationStructureKHR(*pAccelerationStructures);
-			pNewAccelerationStructures->pNext = nullptr;
-			auto* handles = new VkAccelerationStructureKHR[pAccelerationStructures->accelerationStructureCount];
-			std::copy_n(pAccelerationStructures->pAccelerationStructures, pAccelerationStructures->accelerationStructureCount, handles);
-			pNewAccelerationStructures->pAccelerationStructures = handles;
-			descWrite.pNext = pNewAccelerationStructures;
+				auto* pNewAccelerationStructures = new VkWriteDescriptorSetAccelerationStructureKHR(*pAccelerationStructures);
+				pNewAccelerationStructures->pNext = nullptr;
+				auto* handles = new VkAccelerationStructureKHR[pAccelerationStructures->accelerationStructureCount];
+				std::copy_n(pAccelerationStructures->pAccelerationStructures, pAccelerationStructures->accelerationStructureCount, handles);
+				pNewAccelerationStructures->pAccelerationStructures = handles;
+				descWrite.pNext = pNewAccelerationStructures;
+				if (retainResources) { retainPushDescriptorResources(_retainedResources, descriptorSetLayout,
+					descWrite.dstBinding, descWrite.descriptorType,
+					pAccelerationStructures->accelerationStructureCount, handles, sizeof(*handles)); }
 		}
 	}
 
@@ -521,6 +587,7 @@ void MVKCmdPushDescriptorSet::clearDescriptorWrites() {
 		}
 	}
 	_descriptorWrites.clear();
+	releasePushDescriptorResources(_retainedResources);
 }
 
 
@@ -541,6 +608,7 @@ VkResult MVKCmdPushDescriptorSetWithTemplate::setContent(MVKCommandBuffer* cmdBu
 	_pipelineLayout = mvkLayout;
 	_set = set;
 	_descUpdateTemplate = mvkDUT;
+	releasePushDescriptorResources(_retainedResources);
 
 	size_t oldSize = _dataSize;
 	_dataSize = _descUpdateTemplate->getSize();
@@ -550,6 +618,15 @@ VkResult MVKCmdPushDescriptorSetWithTemplate::setContent(MVKCommandBuffer* cmdBu
 	}
 	if (_pData && pData) {
 		mvkCopy(_pData, pData, _dataSize);
+		if (mvkLayout->getEnabledAccelerationStructureFeatures().accelerationStructure) {
+			auto* descriptorSetLayout = mvkLayout->getDescriptorSetLayout(set);
+			for (uint32_t i = 0; i < mvkDUT->getNumberOfEntries(); i++) {
+				auto* entry = mvkDUT->getEntry(i);
+				retainPushDescriptorResources(_retainedResources, descriptorSetLayout,
+					entry->dstBinding, entry->descriptorType, entry->descriptorCount,
+					static_cast<const char*>(_pData) + entry->offset, entry->stride);
+			}
+		}
 	}
 
 	return VK_SUCCESS;
@@ -560,6 +637,7 @@ void MVKCmdPushDescriptorSetWithTemplate::encode(MVKCommandEncoder* cmdEncoder) 
 }
 
 MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
+	releasePushDescriptorResources(_retainedResources);
 	if (_descUpdateTemplate) { _descUpdateTemplate->release(); }
 	if (_pipelineLayout) { _pipelineLayout->release(); }
 	free(_pData);

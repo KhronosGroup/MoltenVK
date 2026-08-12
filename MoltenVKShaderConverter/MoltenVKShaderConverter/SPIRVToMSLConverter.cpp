@@ -28,41 +28,95 @@ using namespace std;
 using namespace spv;
 using namespace SPIRV_CROSS_NAMESPACE;
 
-MVK_PUBLIC_SYMBOL const string& mvk::getRayTracingRuntimePreludeMSL() {
-	static const string source = string("#define SPV_MAX_DESCRIPTOR_SET_COUNT ") +
-		to_string(kMaxArgumentBuffers) + "\n" + R"MVKRT(
+static const string& getAccelerationStructureAddressMSL() {
+	static const string source = R"MVKRT(
 #include <metal_stdlib>
 #include <metal_raytracing>
 using namespace metal;
 using namespace metal::raytracing;
 
+template<typename T>
+static inline device const ulong* spvAccelerationStructureFromAddress(ulong key, T table) {
+	if (!key) return nullptr;
+	if (table && table[0].y) {
+		ulong mask = table[0].x, hash = key;
+		hash = (hash ^ (hash >> 30)) * 0xbf58476d1ce4e5b9ul;
+		hash = (hash ^ (hash >> 27)) * 0x94d049bb133111ebul;
+		hash ^= hash >> 31;
+		for (ulong slot = hash & mask, remaining = min(table[0].y, mask) + 1;
+		     remaining; --remaining, slot = (slot + 1) & mask) {
+			ulong2 entry = table[slot + 1];
+			if (entry.x == key) return reinterpret_cast<device const ulong*>(entry.y);
+			if (!entry.x) break;
+		}
+	}
+	return reinterpret_cast<device const ulong*>(key);
+}
+)MVKRT";
+	return source;
+}
+
+MVK_PUBLIC_SYMBOL const string& mvk::getRayTracingRuntimePreludeMSL() {
+	static const string source = getAccelerationStructureAddressMSL() + R"MVKRT(
 #ifndef SPV_RAY_IFB
 #define SPV_RAY_IFB 0
 #endif
+#ifndef SPV_RAY_PROCEDURAL_IFB
+#define SPV_RAY_PROCEDURAL_IFB 0
+#endif
+#ifndef SPV_RAY_PROCEDURAL_IFB_WRAPPER
+#define SPV_RAY_PROCEDURAL_IFB_WRAPPER 0
+#endif
+#if SPV_RAY_CONTEXT_KIND == 0
+#define SPV_RAY_CONTEXT_ARGS(Payload) thread spvRayTracingState& spvRayState
+#define SPV_RAY_CONTEXT_NAMES spvRayState
+#define SPV_RAY_SHADER_RECORD_ARGS(Miss) spvRayState
+#elif SPV_RAY_CONTEXT_KIND == 1
+#define SPV_RAY_CONTEXT_ARGS(Payload) thread spvRayInvocation& spvRay, thread spvRayTracingState& spvRayState
+#define SPV_RAY_CONTEXT_NAMES spvRay, spvRayState
+#define SPV_RAY_INCOMING_DATA spvRay.data
+#define SPV_RAY_SHADER_RECORD_ARGS(Miss) spvRay, spvRayState, Miss
+#elif SPV_RAY_CONTEXT_KIND == 2
+#define SPV_RAY_CONTEXT_ARGS(Payload) thread spvCallableInvocation& spvRay, thread spvRayTracingState& spvRayState
+#define SPV_RAY_CONTEXT_NAMES spvRay, spvRayState
+#define SPV_RAY_INCOMING_DATA spvRay.data
+#define SPV_RAY_SHADER_RECORD_ARGS(Miss) spvRay
+#elif SPV_RAY_CONTEXT_KIND == 3
+#define SPV_RAY_CONTEXT_ARGS(Payload) ray_data spvIFBPayload<Payload>& spvRayPayload, thread spvRayTracingContext& spvRayContext, thread uint& spvRayAction, thread spvRayTracingIFBState& spvRayState
+#define SPV_RAY_CONTEXT_NAMES spvRayPayload, spvRayContext, spvRayAction, spvRayState
+#define SPV_RAY_INCOMING_DATA &spvRayPayload.data
+#define SPV_RAY_SHADER_RECORD_ARGS(Miss) spvRayContext, spvRayState
+#else
+#define SPV_RAY_CONTEXT_ARGS(Payload) ray_data spvIFBPayload<Payload>& spvRayPayload, thread spvRayTracingContext& spvRayContext, thread uint& spvRayAction, thread spvRayTracingState& spvRayState
+#define SPV_RAY_CONTEXT_NAMES spvRayPayload, spvRayContext, spvRayAction, spvRayState
+#define SPV_RAY_INCOMING_DATA &spvRayPayload.data
+#define SPV_RAY_SHADER_RECORD_ARGS(Miss) spvRayContext, spvRayState
+#endif
+#define SPV_RAY_IFB_ENTRY_POINT(Name, Payload) using Name##_ifb_payload = Payload; SPV_RAY_IFB_ENTRY(Name, Name##_ifb_payload)
 
 struct spvRayHitAttribute {
 	ulong4 data;
 };
 
 struct spvRayTracingContext {
-	uint3 launchId;
-	uint3 launchSize;
-	float3 worldRayOrigin;
-	float3 worldRayDirection;
-	float3 objectRayOrigin;
-	float3 objectRayDirection;
-	float rayTmin;
-	float rayTmax;
-	uint instanceCustomIndex;
-	uint instanceId;
-	float4x3 objectToWorld;
-	float4x3 worldToObject;
+	uint3 LaunchIdKHR;
+	uint3 LaunchSizeKHR;
+	float3 WorldRayOriginKHR;
+	float3 WorldRayDirectionKHR;
+	float3 ObjectRayOriginKHR;
+	float3 ObjectRayDirectionKHR;
+	float RayTminKHR;
+	float RayTmaxKHR;
+	uint InstanceCustomIndexKHR;
+	uint InstanceId;
+	float4x3 ObjectToWorldKHR;
+	float4x3 WorldToObjectKHR;
 	spvRayHitAttribute hitAttribute;
-	uint hitKind;
-	uint incomingRayFlags;
-	uint geometryIndex;
-	uint primitiveId;
-	uint cullMask;
+	uint HitKindKHR;
+	uint IncomingRayFlagsKHR;
+	uint RayGeometryIndexKHR;
+	uint PrimitiveId;
+	uint CullMaskKHR;
 	float traceRayTmax;
 	float reportedDistance;
 	spvRayHitAttribute reportedHitAttribute;
@@ -87,14 +141,23 @@ struct spvRayTracingDispatch {
 	ulong accelerationStructureAddressTableAddress;
 	ulong pushConstantsAddress;
 	ulong indirectLaunchSizeAddress;
-	ulong descriptorSetAddresses[SPV_MAX_DESCRIPTOR_SET_COUNT];
+	device const ulong* descriptorSetAddresses;
 	uint pipelineFlags;
 	uint usesIFB;
 };
 
 struct spvRayTracingState;
-using spvRayFunctionTable = visible_function_table<void(thread void*, thread spvRayTracingContext&, thread uint&, thread spvRayTracingState&)>;
-using spvCallableFunctionTable = visible_function_table<void(thread void*, thread ulong&, thread spvRayTracingState&)>;
+struct spvRayInvocation {
+	thread void* data;
+	spvRayTracingContext context;
+	uint action;
+};
+struct spvCallableInvocation {
+	thread void* data;
+	ulong shaderRecordAddress;
+};
+using spvRayFunctionTable = visible_function_table<void(thread spvRayInvocation&, thread spvRayTracingState&)>;
+using spvCallableFunctionTable = visible_function_table<void(thread spvCallableInvocation&, thread spvRayTracingState&)>;
 
 struct spvRayTracingState {
 	spvRayFunctionTable functions;
@@ -102,14 +165,28 @@ struct spvRayTracingState {
 	spvCallableFunctionTable callables;
 	constant spvRayTracingDispatch* dispatch;
 	ulong dispatchAddress;
-	uint3 launchId;
-	uint3 launchSize;
+	uint3 LaunchIdKHR;
+	uint3 LaunchSizeKHR;
+	uint SubgroupSize;
+	uint SubgroupLocalInvocationId;
 };
+
+#if SPV_RAY_PROCEDURAL_IFB_WRAPPER
+constant spvRayFunctionTable spvIFBFunctions [[buffer(SPV_RAY_FUNCTION_TABLE_BUFFER_INDEX)]];
+constant spvRayFunctionTable spvIFBIntersections [[buffer(SPV_RAY_INTERSECTION_TABLE_BUFFER_INDEX)]];
+constant spvCallableFunctionTable spvIFBCallables [[buffer(SPV_RAY_CALLABLE_TABLE_BUFFER_INDEX)]];
+#endif
 
 #if SPV_RAY_IFB
 struct spvIFBDecision {
 	bool accept [[accept_intersection]];
 	bool continueSearch [[continue_search]];
+};
+
+struct spvIFBIntersectionDecision {
+	bool accept [[accept_intersection]];
+	bool continueSearch [[continue_search]];
+	float distance [[distance]];
 };
 #endif
 
@@ -118,7 +195,7 @@ using spvRayGenerationFunctionTable = visible_function_table<void(uint3, uint3, 
 	return source;
 }
 
-MVK_PUBLIC_SYMBOL const string& mvk::getRayTracingRuntimeMSL() {
+static const string& getRayTracingRuntimeMSL() {
 	static const string source = getRayTracingRuntimePreludeMSL() + R"MVKRT(
 #if SPV_RAY_IFB
 template<typename T>
@@ -126,13 +203,22 @@ struct spvIFBPayload {
 	T data;
 	uint3 launchId;
 	uint3 launchSize;
+	uint subgroupSize;
+	uint subgroupInvocationId;
 	uint rayFlags;
 	uint cullMask;
+#if SPV_RAY_PROCEDURAL_IFB
+	spvRayHitAttribute hitAttribute;
+	float reportedDistance;
+	uint hitKind;
+#endif
 };
 struct spvRayTracingIFBState {
 	const device spvRayTracingDispatch* dispatch;
 	uint3 launchId;
 	uint3 launchSize;
+	uint SubgroupSize;
+	uint SubgroupLocalInvocationId;
 };
 
 static inline __attribute__((always_inline)) spvRayTracingContext spvMakeIFBContext(
@@ -142,17 +228,17 @@ static inline __attribute__((always_inline)) spvRayTracingContext spvMakeIFBCont
 	float4x3 objectToWorld, float4x3 worldToObject, uint geometryId, uint primitiveId,
 	uint functionId, uint rayFlags, uint cullMask) {
 	spvRayTracingContext context;
-	context.launchId = launchId; context.launchSize = launchSize;
-	context.objectRayOrigin = objectOrigin; context.objectRayDirection = objectDirection;
-	context.rayTmin = rayTmin; context.rayTmax = rayTmax;
-	context.worldRayOrigin = worldOrigin; context.worldRayDirection = worldDirection;
+	context.LaunchIdKHR = launchId; context.LaunchSizeKHR = launchSize;
+	context.ObjectRayOriginKHR = objectOrigin; context.ObjectRayDirectionKHR = objectDirection;
+	context.RayTminKHR = rayTmin; context.RayTmaxKHR = rayTmax;
+	context.WorldRayOriginKHR = worldOrigin; context.WorldRayDirectionKHR = worldDirection;
 	*reinterpret_cast<thread float2*>(&context.hitAttribute) = barycentrics;
-	context.hitKind = frontFacing ? 0xfeu : 0xffu;
-	context.instanceCustomIndex = customIndex; context.instanceId = instanceId;
-	context.objectToWorld = objectToWorld; context.worldToObject = worldToObject;
-	context.geometryIndex = geometryId; context.primitiveId = primitiveId;
+	context.HitKindKHR = frontFacing ? 0xfeu : 0xffu;
+	context.InstanceCustomIndexKHR = customIndex; context.InstanceId = instanceId;
+	context.ObjectToWorldKHR = objectToWorld; context.WorldToObjectKHR = worldToObject;
+	context.RayGeometryIndexKHR = geometryId; context.PrimitiveId = primitiveId;
 	context.shaderRecordIndex = functionId;
-	context.incomingRayFlags = rayFlags; context.cullMask = cullMask;
+	context.IncomingRayFlagsKHR = rayFlags; context.CullMaskKHR = cullMask;
 	return context;
 }
 #endif
@@ -171,27 +257,163 @@ static inline __attribute__((always_inline)) intersection_params spvTraceInterse
 	return params;
 }
 
+static inline __attribute__((always_inline)) ulong spvShaderRecordAddress(ulong base, ulong stride, uint index) {
+	return base + ulong(index) * stride + 32;
+}
+
+template<typename T>
+static inline __attribute__((always_inline)) thread T& spvRayData(thread void* address) {
+	return *reinterpret_cast<thread T*>(address);
+}
+
+#if SPV_RAY_IFB
+template<typename T, typename U>
+static inline __attribute__((always_inline)) ray_data T& spvRayData(ray_data U* address) {
+	return *reinterpret_cast<ray_data T*>(address);
+}
+#endif
+
+template<typename T>
+static inline __attribute__((always_inline)) const device T& spvRayData(ulong address) {
+	return *reinterpret_cast<const device T*>(address);
+}
+
+template<typename T>
+static inline __attribute__((always_inline)) const device T& spvPushConstant(thread spvRayTracingState& state) {
+	return spvRayData<T>(state.dispatch->pushConstantsAddress);
+}
+
+template<uint I>
+static inline __attribute__((always_inline)) const device uint* spvRuntimeBuffer(thread spvRayTracingState& state) {
+	ulong address = I == 0 ? state.dispatch->swizzleAddress : I == 1 ? state.dispatch->bufferSizeAddress :
+		I == 2 ? state.dispatch->dynamicOffsetsAddress : state.dispatch->accelerationStructureAddressTableAddress;
+	return reinterpret_cast<const device uint*>(address);
+}
+
+template<typename T>
+static inline __attribute__((always_inline)) const device T& spvShaderRecord(thread spvRayTracingState& state) {
+	return spvRayData<T>(spvShaderRecordAddress(state.dispatch->raygenAddress, 0, 0));
+}
+
+template<typename T>
+static inline __attribute__((always_inline)) const device T& spvShaderRecord(thread spvCallableInvocation& ray) {
+	return spvRayData<T>(ray.shaderRecordAddress);
+}
+
+template<typename T>
+static inline __attribute__((always_inline)) const device T& spvShaderRecord(
+	thread spvRayInvocation& ray, thread spvRayTracingState& state, bool miss) {
+	return spvRayData<T>(spvShaderRecordAddress(miss ? state.dispatch->missAddress : state.dispatch->hitAddress,
+		miss ? state.dispatch->missStride : state.dispatch->hitStride, ray.context.shaderRecordIndex));
+}
+
+template<typename T, typename S>
+static inline __attribute__((always_inline)) const device T& spvShaderRecord(
+	thread spvRayTracingContext& context, thread S& state) {
+	return spvRayData<T>(spvShaderRecordAddress(state.dispatch->hitAddress, state.dispatch->hitStride,
+		context.shaderRecordIndex));
+}
+
+template<typename T>
+static inline __attribute__((always_inline)) thread T& spvHitAttribute(thread spvRayTracingContext& context) {
+	return *reinterpret_cast<thread T*>(&context.hitAttribute);
+}
+
+template<typename T>
+static inline __attribute__((always_inline)) thread const T& spvReadHitAttribute(thread spvRayTracingContext& context) {
+	return *reinterpret_cast<thread const T*>(&context.hitAttribute);
+}
+
+static inline __attribute__((always_inline)) uint spvIntersectionFunctionHandle(ulong base, ulong stride, uint index) {
+	return reinterpret_cast<device const uint*>(base + ulong(index) * stride)[4];
+}
+
 static inline __attribute__((always_inline)) void spvCallRayFunction(
-	uint handle, thread void* data, thread spvRayTracingContext& context,
-	thread uint& action, thread spvRayTracingState& state) {
-	state.functions[handle](data, context, action, state);
+	uint handle, thread spvRayInvocation& ray, thread spvRayTracingState& state) {
+	state.functions[handle](ray, state);
 }
 
 static inline __attribute__((always_inline)) void spvCallIntersectionFunction(
-	uint handle, thread void* data, thread spvRayTracingContext& context,
-	thread uint& action, thread spvRayTracingState& state) {
-	state.intersections[handle](data, context, action, state);
+	uint handle, thread spvRayInvocation& ray, thread spvRayTracingState& state) {
+	state.intersections[handle](ray, state);
 }
 
+#if SPV_RAY_PROCEDURAL_IFB_WRAPPER
+template<typename T>
+static inline __attribute__((always_inline)) spvIFBIntersectionDecision spvRunProceduralIFB(
+	ray_data spvIFBPayload<T>& payload, float3 objectOrigin, float3 objectDirection,
+	float rayTmin, float rayTmax, float3 worldOrigin, float3 worldDirection, bool opaque,
+	uint customIndex, uint instanceId, float4x3 objectToWorld, float4x3 worldToObject,
+	uint geometryId, uint primitiveId, uint functionId, const device spvRayTracingDispatch* dispatch) {
+	spvRayTracingContext context = spvMakeIFBContext(payload.launchId, payload.launchSize,
+		objectOrigin, objectDirection, rayTmin, rayTmax, worldOrigin, worldDirection, float2(0.0f), true,
+		customIndex, instanceId, objectToWorld, worldToObject, geometryId, primitiveId,
+		functionId, payload.rayFlags, payload.cullMask);
+	context.traceRayTmax = rayTmax;
+	context.reportedDistance = min(rayTmax, payload.reportedDistance);
+	context.reportAccepted = false;
+	context.candidateNonOpaque = !opaque;
+	spvRayTracingState state = { spvIFBFunctions, spvIFBIntersections, spvIFBCallables,
+		reinterpret_cast<const constant spvRayTracingDispatch*>(reinterpret_cast<ulong>(dispatch)),
+		reinterpret_cast<ulong>(dispatch), payload.launchId, payload.launchSize,
+		payload.subgroupSize, payload.subgroupInvocationId };
+	T data = payload.data;
+	spvRayInvocation ray = { reinterpret_cast<thread void*>(&data), context, 0 };
+	uint intersection = spvIntersectionFunctionHandle(dispatch->hitAddress, dispatch->hitStride, functionId);
+	if (intersection) spvCallIntersectionFunction(intersection, ray, state);
+	payload.data = data;
+	if (ray.context.reportAccepted && ray.context.reportedDistance <= payload.reportedDistance) {
+		payload.reportedDistance = ray.context.reportedDistance;
+		payload.hitAttribute = ray.context.reportedHitAttribute;
+		payload.hitKind = ray.context.reportedHitKind;
+	}
+	return { ray.context.reportAccepted, ray.action != 2u, ray.context.reportedDistance };
+}
+#endif
+
+#if SPV_RAY_PROCEDURAL_IFB_WRAPPER
+#define SPV_RAY_IFB_ENTRY(NAME, PAYLOAD) \
+[[intersection(bounding_box, instancing, world_space_data, intersection_function_buffer, user_data)]] \
+spvIFBIntersectionDecision NAME(ray_data spvIFBPayload<PAYLOAD>& payload [[payload]], \
+	float3 objectOrigin [[origin]], float3 objectDirection [[direction]], \
+	float rayTmin [[min_distance]], float rayTmax [[max_distance]], \
+	float3 worldOrigin [[world_space_origin]], float3 worldDirection [[world_space_direction]], bool opaque [[opaque]], \
+	uint customIndex [[user_instance_id]], uint instanceId [[instance_id]], \
+	float4x3 objectToWorld [[object_to_world_transform]], float4x3 worldToObject [[world_to_object_transform]], \
+	uint geometryId [[geometry_id]], uint primitiveId [[primitive_id]], uint functionId [[function_id]], \
+	const device spvRayTracingDispatch* dispatch [[user_data_buffer]]) { \
+	return spvRunProceduralIFB(payload, objectOrigin, objectDirection, rayTmin, rayTmax, worldOrigin, worldDirection, opaque, \
+		customIndex, instanceId, objectToWorld, worldToObject, geometryId, primitiveId, functionId, dispatch); \
+}
+#else
+#define SPV_RAY_IFB_ENTRY(NAME, PAYLOAD) \
+[[intersection(triangle, instancing, triangle_data, world_space_data, intersection_function_buffer, user_data)]] \
+spvIFBDecision NAME(ray_data spvIFBPayload<PAYLOAD>& payload [[payload]], \
+	float3 objectOrigin [[origin]], float3 objectDirection [[direction]], \
+	float rayTmin [[min_distance]], float rayTmax [[distance]], \
+	float3 worldOrigin [[world_space_origin]], float3 worldDirection [[world_space_direction]], \
+	float2 barycentrics [[barycentric_coord]], bool frontFacing [[front_facing]], \
+	uint customIndex [[user_instance_id]], uint instanceId [[instance_id]], \
+	float4x3 objectToWorld [[object_to_world_transform]], float4x3 worldToObject [[world_to_object_transform]], \
+	uint geometryId [[geometry_id]], uint primitiveId [[primitive_id]], uint functionId [[function_id]], \
+	const device spvRayTracingDispatch* dispatch [[user_data_buffer]]) { \
+	thread spvRayTracingContext context = spvMakeIFBContext(payload.launchId, payload.launchSize, objectOrigin, objectDirection, \
+		rayTmin, rayTmax, worldOrigin, worldDirection, barycentrics, frontFacing, customIndex, instanceId, objectToWorld, \
+		worldToObject, geometryId, primitiveId, functionId, payload.rayFlags, payload.cullMask); \
+	thread spvRayTracingIFBState state = { dispatch, payload.launchId, payload.launchSize, payload.subgroupSize, payload.subgroupInvocationId }; \
+	uint action = 0; NAME##_ifb_impl(payload, context, action, state); \
+	return { action != 1u, action != 2u }; \
+}
+#endif
+
 static inline __attribute__((always_inline)) void spvCallMiss(
-	uint index, thread void* data, thread spvRayTracingContext& context,
-	thread uint& action, thread spvRayTracingState& state) {
+	uint index, thread spvRayInvocation& ray, thread spvRayTracingState& state) {
 	constant spvRayTracingDispatch& dispatch = *state.dispatch;
 	if (!dispatch.missAddress) return;
-	context.shaderRecordIndex = index & 65535u;
-	ulong record = dispatch.missAddress + ulong(context.shaderRecordIndex) * dispatch.missStride;
+	ray.context.shaderRecordIndex = index & 65535u;
+	ulong record = dispatch.missAddress + ulong(ray.context.shaderRecordIndex) * dispatch.missStride;
 	uint handle = *reinterpret_cast<device const uint*>(record + 8);
-	if (handle) spvCallRayFunction(handle, data, context, action, state);
+	if (handle) spvCallRayFunction(handle, ray, state);
 }
 
 template<typename T>
@@ -199,35 +421,36 @@ static inline __attribute__((always_inline)) void spvExecuteCallable(
 	uint index, thread T& data, thread spvRayTracingState& state) {
 	constant spvRayTracingDispatch& dispatch = *state.dispatch;
 	ulong record = dispatch.callableAddress + ulong(index) * dispatch.callableStride;
-	ulong shaderRecord = record + 32;
 	uint handle = *reinterpret_cast<device const uint*>(record + 8);
-	if (handle) state.callables[handle](reinterpret_cast<thread void*>(&data), shaderRecord, state);
+	spvCallableInvocation ray = { reinterpret_cast<thread void*>(&data), record + 32 };
+	if (handle) state.callables[handle](ray, state);
 }
 
 static inline __attribute__((always_inline)) bool spvReportIntersection(
-	float distance, uint hitKind, thread void* data, thread spvRayTracingContext& context,
-	thread uint& action, thread spvRayTracingState& state) {
+	float distance, uint hitKind, thread spvRayInvocation& ray, thread spvRayTracingState& state) {
 	constant spvRayTracingDispatch& dispatch = *state.dispatch;
-	bool accepted = distance >= context.rayTmin && distance <= context.rayTmax;
-	action = 0;
+	if (ray.action == 2) return true;
+	bool accepted = distance >= ray.context.RayTminKHR && distance <= ray.context.RayTmaxKHR;
+	ray.action = 0;
 	uint anyHit = reinterpret_cast<device const uint*>(
-		dispatch.hitAddress + ulong(context.shaderRecordIndex) * dispatch.hitStride)[3];
-	if (accepted && context.candidateNonOpaque && anyHit) {
-		float savedTmax = context.rayTmax;
-		context.rayTmax = distance;
-		context.hitKind = hitKind;
-		spvCallRayFunction(anyHit, data, context, action, state);
-		context.rayTmax = savedTmax;
-		accepted = action != 1;
+		dispatch.hitAddress + ulong(ray.context.shaderRecordIndex) * dispatch.hitStride)[3];
+	if (accepted && ray.context.candidateNonOpaque && anyHit) {
+		float savedTmax = ray.context.RayTmaxKHR;
+		ray.context.RayTmaxKHR = distance;
+		ray.context.HitKindKHR = hitKind;
+		spvCallRayFunction(anyHit, ray, state);
+		ray.context.RayTmaxKHR = savedTmax;
+		accepted = ray.action != 1;
 	}
 	if (accepted) {
-		context.reportAccepted = true;
-		if (distance <= context.reportedDistance) {
-			context.reportedDistance = distance;
-			context.rayTmax = distance;
-			context.reportedHitKind = hitKind;
-			context.reportedHitAttribute = context.hitAttribute;
+		ray.context.reportAccepted = true;
+		if (distance <= ray.context.reportedDistance) {
+			ray.context.reportedDistance = distance;
+			ray.context.RayTmaxKHR = distance;
+			ray.context.reportedHitKind = hitKind;
+			ray.context.reportedHitAttribute = ray.context.hitAttribute;
 		}
+		if (ray.context.IncomingRayFlagsKHR & 4u) ray.action = 2;
 	}
 	return accepted;
 }
@@ -238,18 +461,18 @@ static inline __attribute__((always_inline)) void spvTraceRay(
 	uint missIndex, float3 origin, float tmin, float3 direction, float tmax,
 	thread T& payload, thread spvRayTracingState& state) {
 	constant spvRayTracingDispatch& dispatch = *state.dispatch;
-	thread void* data = reinterpret_cast<thread void*>(&payload);
-	spvRayTracingContext context;
-	uint action = 0;
-	context.launchId = state.launchId;
-	context.launchSize = state.launchSize;
-	context.worldRayOrigin = origin;
-	context.worldRayDirection = direction;
-	context.rayTmin = tmin;
-	context.rayTmax = tmax;
+	spvRayInvocation invocation = { reinterpret_cast<thread void*>(&payload), {}, 0 };
+	thread spvRayTracingContext& context = invocation.context;
+	thread uint& action = invocation.action;
+	context.LaunchIdKHR = state.LaunchIdKHR;
+	context.LaunchSizeKHR = state.LaunchSizeKHR;
+	context.WorldRayOriginKHR = origin;
+	context.WorldRayDirectionKHR = direction;
+	context.RayTminKHR = tmin;
+	context.RayTmaxKHR = tmax;
 	context.traceRayTmax = tmax;
-	context.incomingRayFlags = rayFlags;
-	context.cullMask = cullMask & 255u;
+	context.IncomingRayFlagsKHR = rayFlags;
+	context.CullMaskKHR = cullMask & 255u;
 	uint flags = rayFlags | dispatch.pipelineFlags;
 	constexpr uint nativeFlags = 1u | 8u | 512u;
 	constexpr uint incompatibleFlags = 2u | 64u | 128u | 256u | 1024u;
@@ -261,19 +484,28 @@ static inline __attribute__((always_inline)) void spvTraceRay(
 		if (flags & 16u) nativeIntersector.set_triangle_cull_mode(triangle_cull_mode::back);
 		if (flags & 32u) nativeIntersector.set_triangle_cull_mode(triangle_cull_mode::front);
 		auto result = nativeIntersector.intersect(ray(origin, direction, tmin, tmax),
-			*reinterpret_cast<device const acceleration_structure<instancing>*>(scene), context.cullMask);
-		if (result.type == intersection_type::none) spvCallMiss(missIndex, data, context, action, state);
+			*reinterpret_cast<device const acceleration_structure<instancing>*>(scene), context.CullMaskKHR);
+		if (result.type == intersection_type::none) spvCallMiss(missIndex, invocation, state);
 		return;
 	}
 	device const uint* metadata = dispatch.hitSize
 		? reinterpret_cast<device const uint*>(scene[1]) : nullptr;
 
 #if SPV_RAY_IFB
-	if (dispatch.usesIFB && !(flags & 256u) && (flags & 48u) != 48u &&
+	if (dispatch.usesIFB &&
+#if !SPV_RAY_PROCEDURAL_IFB
+		!(flags & 256u) &&
+#endif
+		(flags & 48u) != 48u &&
 		!((flags & 3u) && (flags & 192u))) {
 		intersector<instancing, triangle_data, world_space_data,
 			intersection_function_buffer, user_data> nativeIntersector;
+#if SPV_RAY_PROCEDURAL_IFB
+		if (flags & 256u) nativeIntersector.set_geometry_cull_mode(geometry_cull_mode::triangle);
+		if (flags & 512u) nativeIntersector.set_geometry_cull_mode(geometry_cull_mode::bounding_box);
+#else
 		nativeIntersector.set_geometry_cull_mode(geometry_cull_mode::bounding_box);
+#endif
 		if (flags & 1u) nativeIntersector.force_opacity(forced_opacity::opaque);
 		if (flags & 2u) nativeIntersector.force_opacity(forced_opacity::non_opaque);
 		if (flags & 4u) nativeIntersector.accept_any_intersection(true);
@@ -288,35 +520,46 @@ static inline __attribute__((always_inline)) void spvTraceRay(
 		arguments.intersection_function_buffer_size = dispatch.hitSize;
 		arguments.intersection_function_stride = dispatch.hitStride;
 		spvIFBPayload<T> ifbPayload = {
-			payload, state.launchId, state.launchSize, rayFlags, context.cullMask,
+			payload, state.LaunchIdKHR, state.LaunchSizeKHR, state.SubgroupSize,
+			state.SubgroupLocalInvocationId, rayFlags, context.CullMaskKHR,
+#if SPV_RAY_PROCEDURAL_IFB
+			{}, tmax, 0,
+#endif
 		};
 		auto result = nativeIntersector.intersect(
 			ray(origin, direction, tmin, tmax),
 			*reinterpret_cast<device const acceleration_structure<instancing>*>(scene),
-			context.cullMask, arguments,
+			context.CullMaskKHR, arguments,
 			reinterpret_cast<const device void*>(state.dispatchAddress), ifbPayload);
 		payload = ifbPayload.data;
 		if (result.type == intersection_type::none) {
-			spvCallMiss(missIndex, data, context, action, state);
+			spvCallMiss(missIndex, invocation, state);
 			return;
 		}
 		if ((rayFlags & 8u) || !dispatch.hitSize) return;
-		context.objectRayOrigin = result.world_to_object_transform * float4(origin, 1.0f);
-		context.objectRayDirection = result.world_to_object_transform * float4(direction, 0.0f);
-		context.rayTmax = result.distance;
-		context.instanceId = result.instance_id;
-		context.instanceCustomIndex = result.user_instance_id;
-		context.objectToWorld = result.object_to_world_transform;
-		context.worldToObject = result.world_to_object_transform;
-		*reinterpret_cast<thread float2*>(&context.hitAttribute) = result.triangle_barycentric_coord;
-		context.hitKind = result.triangle_front_facing ? 0xfeu : 0xffu;
-		context.geometryIndex = result.geometry_id;
-		context.primitiveId = result.primitive_id;
-		context.shaderRecordIndex = context.geometryIndex * (sbtStride & 15u) +
-			(sbtOffset & 15u) + metadata[context.instanceId];
+		context.ObjectRayOriginKHR = result.world_to_object_transform * float4(origin, 1.0f);
+		context.ObjectRayDirectionKHR = result.world_to_object_transform * float4(direction, 0.0f);
+		context.RayTmaxKHR = result.distance;
+		context.InstanceId = result.instance_id;
+		context.InstanceCustomIndexKHR = result.user_instance_id;
+		context.ObjectToWorldKHR = result.object_to_world_transform;
+		context.WorldToObjectKHR = result.world_to_object_transform;
+		if (result.type == intersection_type::triangle) {
+			*reinterpret_cast<thread float2*>(&context.hitAttribute) = result.triangle_barycentric_coord;
+			context.HitKindKHR = result.triangle_front_facing ? 0xfeu : 0xffu;
+		} else {
+#if SPV_RAY_PROCEDURAL_IFB
+			context.hitAttribute = ifbPayload.hitAttribute;
+			context.HitKindKHR = ifbPayload.hitKind;
+#endif
+		}
+		context.RayGeometryIndexKHR = result.geometry_id;
+		context.PrimitiveId = result.primitive_id;
+		context.shaderRecordIndex = context.RayGeometryIndexKHR * (sbtStride & 15u) +
+			(sbtOffset & 15u) + metadata[context.InstanceId];
 		uint closestHit = *reinterpret_cast<device const uint*>(
 			dispatch.hitAddress + ulong(context.shaderRecordIndex) * dispatch.hitStride + 8);
-		if (closestHit) spvCallRayFunction(closestHit, data, context, action, state);
+		if (closestHit) spvCallRayFunction(closestHit, invocation, state);
 		return;
 	}
 #endif
@@ -324,85 +567,85 @@ static inline __attribute__((always_inline)) void spvTraceRay(
 	intersection_query<instancing, triangle_data> query;
 	query.reset(ray(origin, direction, tmin, tmax),
 		*reinterpret_cast<device const acceleration_structure<instancing>*>(scene),
-		context.cullMask, spvTraceIntersectionParams(flags));
+		context.CullMaskKHR, spvTraceIntersectionParams(flags));
 	while (query.next()) {
 		if (query.get_candidate_intersection_type() == intersection_type::triangle) {
 			action = 0;
 			if (dispatch.hitSize) {
-				context.objectRayOrigin = query.get_candidate_ray_origin();
-				context.objectRayDirection = query.get_candidate_ray_direction();
-				context.rayTmax = query.get_candidate_triangle_distance();
-				context.instanceId = query.get_candidate_instance_id();
-				context.instanceCustomIndex = query.get_candidate_user_instance_id();
-				context.objectToWorld = query.get_candidate_object_to_world_transform();
-				context.worldToObject = query.get_candidate_world_to_object_transform();
+				context.ObjectRayOriginKHR = query.get_candidate_ray_origin();
+				context.ObjectRayDirectionKHR = query.get_candidate_ray_direction();
+				context.RayTmaxKHR = query.get_candidate_triangle_distance();
+				context.InstanceId = query.get_candidate_instance_id();
+				context.InstanceCustomIndexKHR = query.get_candidate_user_instance_id();
+				context.ObjectToWorldKHR = query.get_candidate_object_to_world_transform();
+				context.WorldToObjectKHR = query.get_candidate_world_to_object_transform();
 				*reinterpret_cast<thread float2*>(&context.hitAttribute) = query.get_candidate_triangle_barycentric_coord();
-				context.hitKind = query.is_candidate_triangle_front_facing() ? 0xfeu : 0xffu;
-				context.geometryIndex = query.get_candidate_geometry_id();
-				context.primitiveId = query.get_candidate_primitive_id();
-				context.shaderRecordIndex = context.geometryIndex * (sbtStride & 15u) +
-					(sbtOffset & 15u) + metadata[context.instanceId];
+				context.HitKindKHR = query.is_candidate_triangle_front_facing() ? 0xfeu : 0xffu;
+				context.RayGeometryIndexKHR = query.get_candidate_geometry_id();
+				context.PrimitiveId = query.get_candidate_primitive_id();
+				context.shaderRecordIndex = context.RayGeometryIndexKHR * (sbtStride & 15u) +
+					(sbtOffset & 15u) + metadata[context.InstanceId];
 				uint anyHit = reinterpret_cast<device const uint*>(
 					dispatch.hitAddress + ulong(context.shaderRecordIndex) * dispatch.hitStride)[3];
-				if (anyHit) spvCallRayFunction(anyHit, data, context, action, state);
+				if (anyHit) spvCallRayFunction(anyHit, invocation, state);
 			}
 			if (action != 1) query.commit_triangle_intersection();
 			if (action == 2) query.abort();
 		} else if (query.get_candidate_intersection_type() == intersection_type::bounding_box && dispatch.hitSize) {
-			context.objectRayOrigin = query.get_candidate_ray_origin();
-			context.objectRayDirection = query.get_candidate_ray_direction();
-			context.rayTmax = query.get_committed_intersection_type() == intersection_type::none
+			context.ObjectRayOriginKHR = query.get_candidate_ray_origin();
+			context.ObjectRayDirectionKHR = query.get_candidate_ray_direction();
+			context.RayTmaxKHR = query.get_committed_intersection_type() == intersection_type::none
 				? context.traceRayTmax : query.get_committed_distance();
-			context.instanceId = query.get_candidate_instance_id();
-			context.instanceCustomIndex = query.get_candidate_user_instance_id();
-			context.objectToWorld = query.get_candidate_object_to_world_transform();
-			context.worldToObject = query.get_candidate_world_to_object_transform();
-			context.geometryIndex = query.get_candidate_geometry_id();
-			context.primitiveId = query.get_candidate_primitive_id();
-			context.shaderRecordIndex = context.geometryIndex * (sbtStride & 15u) +
-				(sbtOffset & 15u) + metadata[context.instanceId];
+			context.InstanceId = query.get_candidate_instance_id();
+			context.InstanceCustomIndexKHR = query.get_candidate_user_instance_id();
+			context.ObjectToWorldKHR = query.get_candidate_object_to_world_transform();
+			context.WorldToObjectKHR = query.get_candidate_world_to_object_transform();
+			context.RayGeometryIndexKHR = query.get_candidate_geometry_id();
+			context.PrimitiveId = query.get_candidate_primitive_id();
+			context.shaderRecordIndex = context.RayGeometryIndexKHR * (sbtStride & 15u) +
+				(sbtOffset & 15u) + metadata[context.InstanceId];
 			context.reportAccepted = false;
-			context.reportedDistance = context.rayTmax;
+			context.reportedDistance = context.RayTmaxKHR;
 			context.candidateNonOpaque = query.is_candidate_non_opaque_bounding_box();
 			uint intersection = reinterpret_cast<device const uint*>(
 				dispatch.hitAddress + ulong(context.shaderRecordIndex) * dispatch.hitStride)[4];
 			action = 0;
-			if (intersection) spvCallIntersectionFunction(intersection, data, context, action, state);
+			if (intersection) spvCallIntersectionFunction(intersection, invocation, state);
 			if (context.reportAccepted) query.commit_bounding_box_intersection(context.reportedDistance);
 			if (action == 2) query.abort();
 		}
 	}
 
 	if (query.get_committed_intersection_type() == intersection_type::none) {
-		context.rayTmax = context.traceRayTmax;
+		context.RayTmaxKHR = context.traceRayTmax;
 		action = 0;
-		spvCallMiss(missIndex, data, context, action, state);
+		spvCallMiss(missIndex, invocation, state);
 		return;
 	}
 
 	if ((rayFlags & 8u) || !dispatch.hitSize) return;
-	context.objectRayOrigin = query.get_committed_ray_origin();
-	context.objectRayDirection = query.get_committed_ray_direction();
-	context.rayTmax = query.get_committed_distance();
-	context.instanceId = query.get_committed_instance_id();
-	context.instanceCustomIndex = query.get_committed_user_instance_id();
-	context.objectToWorld = query.get_committed_object_to_world_transform();
-	context.worldToObject = query.get_committed_world_to_object_transform();
+	context.ObjectRayOriginKHR = query.get_committed_ray_origin();
+	context.ObjectRayDirectionKHR = query.get_committed_ray_direction();
+	context.RayTmaxKHR = query.get_committed_distance();
+	context.InstanceId = query.get_committed_instance_id();
+	context.InstanceCustomIndexKHR = query.get_committed_user_instance_id();
+	context.ObjectToWorldKHR = query.get_committed_object_to_world_transform();
+	context.WorldToObjectKHR = query.get_committed_world_to_object_transform();
 	if (query.get_committed_intersection_type() == intersection_type::triangle) {
 		*reinterpret_cast<thread float2*>(&context.hitAttribute) = query.get_committed_triangle_barycentric_coord();
-		context.hitKind = query.is_committed_triangle_front_facing() ? 0xfeu : 0xffu;
+		context.HitKindKHR = query.is_committed_triangle_front_facing() ? 0xfeu : 0xffu;
 	} else {
 		context.hitAttribute = context.reportedHitAttribute;
-		context.hitKind = context.reportedHitKind;
+		context.HitKindKHR = context.reportedHitKind;
 	}
-	context.geometryIndex = query.get_committed_geometry_id();
-	context.primitiveId = query.get_committed_primitive_id();
-	context.shaderRecordIndex = context.geometryIndex * (sbtStride & 15u) +
-		(sbtOffset & 15u) + metadata[context.instanceId];
+	context.RayGeometryIndexKHR = query.get_committed_geometry_id();
+	context.PrimitiveId = query.get_committed_primitive_id();
+	context.shaderRecordIndex = context.RayGeometryIndexKHR * (sbtStride & 15u) +
+		(sbtOffset & 15u) + metadata[context.InstanceId];
 	uint closestHit = *reinterpret_cast<device const uint*>(
 		dispatch.hitAddress + ulong(context.shaderRecordIndex) * dispatch.hitStride + 8);
 	action = 0;
-	if (closestHit) spvCallRayFunction(closestHit, data, context, action, state);
+	if (closestHit) spvCallRayFunction(closestHit, invocation, state);
 }
 
 )MVKRT";
@@ -429,10 +672,15 @@ bool containsMatching(const vector<T>& vec, const T& val) {
 
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionOptions::matches(const SPIRVToMSLConversionOptions& other) const {
 	if (memcmp(&mslOptions, &other.mslOptions, sizeof(mslOptions)) != 0) { return false; }
+	if (descriptorSetCount != other.descriptorSetCount) { return false; }
 	if (entryPointStage != other.entryPointStage) { return false; }
 	if (entryPointName != other.entryPointName) { return false; }
 	if (rayTracingFunctionHash != other.rayTracingFunctionHash) { return false; }
 	if (enableRayTracingIFB != other.enableRayTracingIFB) { return false; }
+	if (enableRayTracingProceduralIFB != other.enableRayTracingProceduralIFB) { return false; }
+	if (rayTracingFunctionTableBufferIndex != other.rayTracingFunctionTableBufferIndex) { return false; }
+	if (rayTracingIntersectionTableBufferIndex != other.rayTracingIntersectionTableBufferIndex) { return false; }
+	if (rayTracingCallableTableBufferIndex != other.rayTracingCallableTableBufferIndex) { return false; }
 	if (tessPatchKind != other.tessPatchKind) { return false; }
 	if (numTessControlPoints != other.numTessControlPoints) { return false; }
 	if (shouldFlipVertexY != other.shouldFlipVertexY) { return false; }
@@ -488,6 +736,7 @@ static string getMSLEntryPointName(const SPIRVToMSLConversionOptions& options) {
 	name += "_mvk" + to_string(options.rayTracingFunctionHash);
 #if MVK_SPIRV_CROSS_RT_PIPELINE
 	if (options.mslOptions.ray_tracing_any_hit_ifb) { name += "IFB"; }
+	if (options.mslOptions.ray_tracing_intersection_ifb) { name += "ProceduralIFB"; }
 #endif
 	return name;
 }
@@ -708,11 +957,33 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 
 		// Establish the MSL options for the compiler
 		// This needs to be done in two steps...for CompilerMSL and its superclass.
+		bool isRayTracingPipeline = shaderConfig.options.entryPointStage >= ExecutionModelRayGenerationKHR &&
+			shaderConfig.options.entryPointStage <= ExecutionModelCallableKHR;
+#if SPIRV_CROSS_MSL_RAY_TRACING_PIPELINE
+		shaderConfig.options.mslOptions.ray_tracing_pipeline = isRayTracingPipeline;
+#endif
 		pMSLCompiler->set_msl_options(shaderConfig.options.mslOptions);
-#if SPIRV_CROSS_MSL_COMPACT_RAY_TRACING_PIPELINE
-		if (shaderConfig.options.mslOptions.enable_ray_tracing_pipeline) {
+#if SPIRV_CROSS_MSL_RAY_TRACING_PIPELINE
+		if (isRayTracingPipeline) {
+			uint32_t contextKind = shaderConfig.options.mslOptions.ray_tracing_any_hit_ifb ? 3 :
+				shaderConfig.options.mslOptions.ray_tracing_intersection_ifb ? 4 :
+				shaderConfig.options.entryPointStage == ExecutionModelRayGenerationKHR ? 0 :
+				shaderConfig.options.entryPointStage == ExecutionModelCallableKHR ? 2 : 1;
+			pMSLCompiler->add_header_line("#define SPV_RAY_CONTEXT_KIND " + to_string(contextKind));
 			pMSLCompiler->add_header_line(shaderConfig.options.enableRayTracingIFB
 				? "#define SPV_RAY_IFB 1" : "#define SPV_RAY_IFB 0");
+			pMSLCompiler->add_header_line(shaderConfig.options.enableRayTracingProceduralIFB
+				? "#define SPV_RAY_PROCEDURAL_IFB 1" : "#define SPV_RAY_PROCEDURAL_IFB 0");
+			pMSLCompiler->add_header_line(shaderConfig.options.mslOptions.ray_tracing_intersection_ifb
+				? "#define SPV_RAY_PROCEDURAL_IFB_WRAPPER 1" : "#define SPV_RAY_PROCEDURAL_IFB_WRAPPER 0");
+			if (shaderConfig.options.mslOptions.ray_tracing_intersection_ifb) {
+				pMSLCompiler->add_header_line("#define SPV_RAY_FUNCTION_TABLE_BUFFER_INDEX " +
+					to_string(shaderConfig.options.rayTracingFunctionTableBufferIndex));
+				pMSLCompiler->add_header_line("#define SPV_RAY_INTERSECTION_TABLE_BUFFER_INDEX " +
+					to_string(shaderConfig.options.rayTracingIntersectionTableBufferIndex));
+				pMSLCompiler->add_header_line("#define SPV_RAY_CALLABLE_TABLE_BUFFER_INDEX " +
+					to_string(shaderConfig.options.rayTracingCallableTableBufferIndex));
+			}
 			pMSLCompiler->add_header_line(getRayTracingRuntimeMSL());
 		}
 #endif
@@ -736,8 +1007,8 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 			auto& rbb = rb.resourceBinding;
 			if (rbb.stage == shaderConfig.options.entryPointStage) {
 				pMSLCompiler->add_msl_resource_binding(rbb);
-#if SPIRV_CROSS_MSL_COMPACT_RAY_TRACING_PIPELINE
-				if (shaderConfig.options.mslOptions.enable_ray_tracing_pipeline) {
+#if SPIRV_CROSS_MSL_RAY_TRACING_PIPELINE
+				if (isRayTracingPipeline) {
 					pMSLCompiler->set_argument_buffer_device_address_space(rbb.desc_set, true);
 				}
 #endif
@@ -763,6 +1034,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 			}
 		}
 		conversionResult.msl = pMSLCompiler->compile();
+#if SPIRV_CROSS_MSL_ACCELERATION_STRUCTURE_DESCRIPTOR_AS_ADDRESS
+		if (pMSLCompiler->needs_acceleration_structure_address_table() &&
+		    !isRayTracingPipeline) {
+			conversionResult.msl.insert(0, getAccelerationStructureAddressMSL());
+		}
+#endif
 
         if (shouldLogMSL) { logSource(conversionResult.resultLog, conversionResult.msl, "MSL", "Converted"); }
 

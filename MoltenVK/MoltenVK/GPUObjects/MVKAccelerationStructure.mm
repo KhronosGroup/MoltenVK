@@ -155,6 +155,11 @@ uint64_t MVKAccelerationStructureStorageGeneration::getNativeSize() {
 	return _nativeSize;
 }
 
+bool MVKAccelerationStructureStorageGeneration::isCompacted() {
+	std::lock_guard<std::mutex> lock(_stateLock);
+	return _isCompacted;
+}
+
 uint64_t MVKAccelerationStructureStorageGeneration::getInstanceMetadataSize() {
 	std::lock_guard<std::mutex> lock(_stateLock);
 	return _instanceMetadataSize;
@@ -194,38 +199,18 @@ bool MVKAccelerationStructureStorageGeneration::setInstanceMetadataSize(uint64_t
 	return true;
 }
 
-void MVKAccelerationStructureStorageGeneration::publishBuild(
+bool MVKAccelerationStructureStorageGeneration::publishBuild(
 	uint64_t nativeSize,
 	uint64_t instanceMetadataSize,
-	uint64_t handleCount) {
-	MVKAccelerationStructureCanonicalStorage* canonicalStorage = nullptr;
-	{
-		std::lock_guard<std::mutex> lock(_stateLock);
-		canonicalStorage = _canonicalStorage;
-		_canonicalStorage = nullptr;
-		_serializationSize = 0;
-		_nativeSize = std::min(nativeSize, _nativeCapacity);
-		_instanceMetadataSize = std::min(instanceMetadataSize, _metadataCapacity);
-		_handleCount = handleCount;
-	}
-	if (canonicalStorage) { canonicalStorage->release(); }
-}
-
-bool MVKAccelerationStructureStorageGeneration::publishCanonical(id<MTLBuffer> canonicalBuffer,
-														  uint64_t serializationSize,
-														  uint64_t handleCount,
-														  bool adoptsResidency) {
-	{
-		std::lock_guard<std::mutex> lock(_stateLock);
-		if (_canonicalStorage && _canonicalStorage->getMTLBuffer() == canonicalBuffer) {
-			_serializationSize = serializationSize;
-			_handleCount = handleCount;
-			return true;
-		}
-	}
+	uint64_t handleCount,
+	id<MTLBuffer> canonicalBuffer,
+	uint64_t serializationSize,
+	bool adoptsCanonicalResidency,
+	MVKAccelerationStructureCanonicalSnapshot* publishedSnapshot) {
+	if (publishedSnapshot) { *publishedSnapshot = {}; }
 	auto* canonicalStorage = canonicalBuffer
 		? new (std::nothrow) MVKAccelerationStructureCanonicalStorage(
-			_device, canonicalBuffer, adoptsResidency)
+			_device, canonicalBuffer, adoptsCanonicalResidency)
 		: nullptr;
 	if (canonicalBuffer && !canonicalStorage) { return false; }
 	MVKAccelerationStructureCanonicalStorage* oldStorage = nullptr;
@@ -233,8 +218,15 @@ bool MVKAccelerationStructureStorageGeneration::publishCanonical(id<MTLBuffer> c
 		std::lock_guard<std::mutex> lock(_stateLock);
 		oldStorage = _canonicalStorage;
 		_canonicalStorage = canonicalStorage;
+		_nativeSize = std::min(nativeSize, _nativeCapacity);
+		_isCompacted = false;
+		_instanceMetadataSize = std::min(instanceMetadataSize, _metadataCapacity);
 		_serializationSize = serializationSize;
 		_handleCount = handleCount;
+		if (publishedSnapshot && canonicalStorage) {
+			canonicalStorage->retain();
+			*publishedSnapshot = { canonicalStorage, canonicalBuffer, serializationSize };
+		}
 	}
 	if (oldStorage) { oldStorage->release(); }
 	return true;
@@ -242,13 +234,14 @@ bool MVKAccelerationStructureStorageGeneration::publishCanonical(id<MTLBuffer> c
 
 void MVKAccelerationStructureStorageGeneration::copyContentFrom(
 	MVKAccelerationStructureStorageGeneration* source,
-	uint64_t nativeSizeLimit) {
+	bool compacted) {
 	if (source == this) { return; }
 	MVKAccelerationStructureCanonicalStorage* canonicalStorage = nullptr;
 	uint64_t nativeSize = 0;
 	uint64_t instanceMetadataSize = 0;
 	uint64_t serializationSize = 0;
 	uint64_t handleCount = 0;
+	bool sourceIsCompacted = false;
 	{
 		std::lock_guard<std::mutex> lock(source->_stateLock);
 		canonicalStorage = source->_canonicalStorage;
@@ -257,13 +250,15 @@ void MVKAccelerationStructureStorageGeneration::copyContentFrom(
 		instanceMetadataSize = source->_instanceMetadataSize;
 		serializationSize = source->_serializationSize;
 		handleCount = source->_handleCount;
+		sourceIsCompacted = source->_isCompacted;
 	}
 	MVKAccelerationStructureCanonicalStorage* oldStorage = nullptr;
 	{
 		std::lock_guard<std::mutex> lock(_stateLock);
 		oldStorage = _canonicalStorage;
 		_canonicalStorage = canonicalStorage;
-		_nativeSize = std::min({nativeSize, nativeSizeLimit, _nativeCapacity});
+		_isCompacted = compacted || sourceIsCompacted;
+		_nativeSize = compacted ? 0 : std::min(nativeSize, _nativeCapacity);
 		_instanceMetadataSize = std::min(instanceMetadataSize, _metadataCapacity);
 		_serializationSize = serializationSize;
 		_handleCount = handleCount;
@@ -307,8 +302,10 @@ MVKAccelerationStructureStorageGeneration* MVKAccelerationStructureStorage::newG
 		? [mtlDevice newBufferWithLength:metadataCapacity options:MTLResourceStorageModePrivate]
 		: nil;
 	id<MTLArgumentEncoder> encoder = newAccelerationStructureReferenceEncoder(mtlDevice);
+	NSUInteger compactedSizeOffset = encoder ? mvkAlignByteCount(encoder.encodedLength, sizeof(uint64_t)) : 0;
 	id<MTLBuffer> referenceBuffer = encoder
-		? [mtlDevice newBufferWithLength:encoder.encodedLength options:MTLResourceStorageModeShared]
+		? [mtlDevice newBufferWithLength:compactedSizeOffset + sizeof(uint64_t)
+		                         options:MTLResourceStorageModeShared]
 		: nil;
 	[encoder release];
 	if (!accelerationStructure || (metadataCapacity && !metadataBuffer) ||
@@ -503,7 +500,11 @@ MTLAccelerationStructureDescriptor* MVKAccelerationStructure::newMTLAcceleration
                         bool useIndices = triangleData.indexType != VK_INDEX_TYPE_NONE_KHR;
                         if (rangeInfos && (!mvkVertexBuffer ||
                             (useIndices && !mvkIndexBuffer) ||
-                            (triangleData.transformData.deviceAddress && !mvkTransformBuffer))) { continue; }
+                            (triangleData.transformData.deviceAddress && !mvkTransformBuffer))) {
+							[geoms release];
+							[primitive release];
+							return nil;
+						}
 
                         MTLAccelerationStructureTriangleGeometryDescriptor* geometryTriangles = [MTLAccelerationStructureTriangleGeometryDescriptor new];
                         if (mvkVertexBuffer) {
@@ -549,7 +550,11 @@ MTLAccelerationStructureDescriptor* MVKAccelerationStructure::newMTLAcceleration
                         const VkAccelerationStructureGeometryAabbsDataKHR& aabbData = geom.geometry.aabbs;
                         VkDeviceSize boundingBoxOffset = 0;
                         MVKBuffer* mvkBoundingBoxBuffer = getDevice()->getBufferAtAddress(aabbData.data.deviceAddress, boundingBoxOffset);
-                        if (rangeInfos && !mvkBoundingBoxBuffer) { continue; }
+                        if (rangeInfos && !mvkBoundingBoxBuffer) {
+							[geoms release];
+							[primitive release];
+							return nil;
+						}
 
                         MTLAccelerationStructureBoundingBoxGeometryDescriptor* geometryAABBs = [MTLAccelerationStructureBoundingBoxGeometryDescriptor new];
 						const NSUInteger boundingBoxCount = rangeInfos

@@ -29,11 +29,14 @@
 #define SPIRV_CROSS_MSL_ACCELERATION_STRUCTURE_DESCRIPTOR_AS_ADDRESS 0
 #endif
 
-#ifndef SPIRV_CROSS_MSL_COMPACT_RAY_TRACING_PIPELINE
-#define SPIRV_CROSS_MSL_COMPACT_RAY_TRACING_PIPELINE 0
+#ifndef SPIRV_CROSS_MSL_RAY_TRACING_PIPELINE
+#define SPIRV_CROSS_MSL_RAY_TRACING_PIPELINE 0
+#endif
+#if SPIRV_CROSS_MSL_RAY_TRACING_PIPELINE > 1
+#error Unsupported SPIRV-Cross ray-tracing runtime ABI
 #endif
 
-#if SPIRV_CROSS_MSL_COMPACT_RAY_TRACING_PIPELINE
+#if SPIRV_CROSS_MSL_RAY_TRACING_PIPELINE
 #define MVK_SPIRV_CROSS_RT_PROFILE 3
 #elif SPIRV_CROSS_MSL_ACCELERATION_STRUCTURE_DESCRIPTOR_AS_ADDRESS
 #define MVK_SPIRV_CROSS_RT_PROFILE 1
@@ -41,13 +44,11 @@
 #define MVK_SPIRV_CROSS_RT_PROFILE 0
 #endif
 
-#define MVK_SPIRV_CROSS_RT_PIPELINE SPIRV_CROSS_MSL_COMPACT_RAY_TRACING_PIPELINE
+#define MVK_SPIRV_CROSS_RT_PIPELINE SPIRV_CROSS_MSL_RAY_TRACING_PIPELINE
 
 
 namespace mvk {
 
-	/** Returns the shared MSL ABI and traversal runtime used by ray-tracing pipeline stages. */
-	const std::string& getRayTracingRuntimeMSL();
 	/** Returns only the ABI declarations needed by the ray-generation dispatcher. */
 	const std::string& getRayTracingRuntimePreludeMSL();
 
@@ -62,10 +63,15 @@ namespace mvk {
 	 */
 	typedef struct SPIRVToMSLConversionOptions {
 		SPIRV_CROSS_NAMESPACE::CompilerMSL::Options mslOptions;
+		uint32_t descriptorSetCount = 0;
 		std::string entryPointName;
 		spv::ExecutionModel entryPointStage = spv::ExecutionModelMax;
 		uint64_t rayTracingFunctionHash = 0;
 		bool enableRayTracingIFB = false;
+		bool enableRayTracingProceduralIFB = false;
+		uint32_t rayTracingFunctionTableBufferIndex = 0;
+		uint32_t rayTracingIntersectionTableBufferIndex = 0;
+		uint32_t rayTracingCallableTableBufferIndex = 0;
 		spv::ExecutionMode tessPatchKind = spv::ExecutionModeMax;
 		uint32_t numTessControlPoints = 0;
 		bool shouldFlipVertexY = true;

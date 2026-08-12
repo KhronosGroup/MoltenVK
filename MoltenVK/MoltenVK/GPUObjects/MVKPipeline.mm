@@ -48,6 +48,10 @@ static constexpr uint32_t kMVKRayTracingIntersectionFunctionTableBufferOffset = 
 static constexpr uint32_t kMVKRayTracingCallableFunctionTableBufferOffset = 6;
 static constexpr uint32_t kMVKRayTracingRayGenerationFunctionTableBufferOffset = 7;
 static constexpr uint32_t kMVKRayTracingAccelerationStructureAddressTableBufferOffset = 8;
+static_assert(kMVKRayTracingAccelerationStructureAddressTableBufferOffset + 1 ==
+			  kMVKRayTracingImplicitBufferCount);
+static_assert(kMVKMaxDescriptorSetCount + kMVKRayTracingAccelerationStructureAddressTableBufferOffset + 1 <=
+			  kMVKMaxBufferCount);
 
 
 #pragma mark - MVKPipelineLayout
@@ -167,10 +171,14 @@ static void addResourceBindingToShaderConfig(SPIRVToMSLConversionConfiguration& 
 	}
 }
 
-void MVKPipelineLayout::populateShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig) const {
+void MVKPipelineLayout::populateShaderConversionConfig(
+	SPIRVToMSLConversionConfiguration& shaderConfig,
+	MVKDescriptorSetLayout* rayTracingPushLayout) const {
+	assert(_descriptorSetLayouts.size() <= kMVKMaxDescriptorSetCount);
 	shaderConfig.resourceBindings.clear();
 	shaderConfig.discreteDescriptorSets.clear();
 	shaderConfig.dynamicBufferDescriptors.clear();
+	shaderConfig.options.descriptorSetCount = static_cast<uint32_t>(_descriptorSetLayouts.size());
 
 	// Add any resource bindings used by push-constants.
 	for (uint32_t i = 0; i < kMVKShaderStageCount; i++) {
@@ -183,7 +191,8 @@ void MVKPipelineLayout::populateShaderConversionConfig(SPIRVToMSLConversionConfi
 	}
 
 	for (uint32_t dslIdx = 0; dslIdx < _descriptorSetLayouts.size(); dslIdx++) {
-		MVKDescriptorSetLayout* layout = _descriptorSetLayouts[dslIdx];
+		MVKDescriptorSetLayout* layout = rayTracingPushLayout && dslIdx == _pushDescriptor
+			? rayTracingPushLayout : _descriptorSetLayouts[dslIdx];
 		MVKShaderResourceBinding binding = _resourceIndexOffsets[dslIdx];
 		uint32_t argBufResIdx = 0;
 		bool argbuf = layout->argBufMode() != MVKArgumentBufferMode::Off;
@@ -277,7 +286,11 @@ bool MVKPipelineLayout::boundsCheckBindOp(uint32_t bind, uint32_t count, uint32_
 	return true;
 }
 
-void MVKPipelineLayout::populateBindOperations(MVKPipelineBindScript& script, const SPIRVToMSLConversionConfiguration& shaderConfig, spv::ExecutionModel execModel) {
+void MVKPipelineLayout::populateBindOperations(
+	MVKPipelineBindScript& script,
+	const SPIRVToMSLConversionConfiguration& shaderConfig,
+	spv::ExecutionModel execModel,
+	MVKDescriptorSetLayout* rayTracingPushLayout) {
 	for (const auto& mslBinding : shaderConfig.resourceBindings) {
 		if (mslBinding.resourceBinding.stage != execModel || !mslBinding.outIsUsedByShader) { continue; }
 		uint32_t set = mslBinding.resourceBinding.desc_set;
@@ -285,7 +298,8 @@ void MVKPipelineLayout::populateBindOperations(MVKPipelineBindScript& script, co
 		if (set >= _descriptorSetLayouts.size()) { assert(set == kPushConstDescSet); continue; }
 		// Aux buffers are always allocated out of the same buffer as the descriptor set itself, so they'll already be resident
 		if (binding == kBufferSizeBufferBinding) { continue; }
-		MVKDescriptorSetLayout* layout = _descriptorSetLayouts[set];
+		MVKDescriptorSetLayout* layout = rayTracingPushLayout && set == _pushDescriptor
+			? rayTracingPushLayout : _descriptorSetLayouts[set];
 		uint32_t descIdx = layout->getBindingIndex(binding);
 		if (descIdx >= layout->bindings().size()) { assert(!"Binding missing from layout"); continue; }
 		const MVKDescriptorBinding& desc = layout->bindings()[descIdx];
@@ -356,6 +370,42 @@ void MVKPipelineLayout::populateBindOperations(MVKPipelineBindScript& script, co
 
 MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device): MVKVulkanAPIDeviceObject(device) {}
 
+MVKDescriptorSetLayout* MVKPipelineLayout::getRayTracingPushDescriptorLayout() const {
+	if (!hasPushDescriptor()) { return nullptr; }
+	auto* layout = _rayTracingPushDescriptorLayout.load(std::memory_order_acquire);
+	if (layout) { return layout; }
+
+	auto* source = _descriptorSetLayouts[_pushDescriptor];
+	std::vector<VkDescriptorSetLayoutBinding> bindings;
+	std::vector<VkDescriptorBindingFlags> flags;
+	bindings.reserve(source->bindings().size());
+	flags.reserve(source->bindings().size());
+	for (const auto& binding : source->bindings()) {
+		bindings.push_back({ binding.binding, binding.descriptorType, binding.descriptorCount,
+			binding.stageFlags, reinterpret_cast<const VkSampler*>(source->getImmutableSampler(binding)) });
+		flags.push_back(binding.flags & MVK_DESCRIPTOR_BINDING_ALL_VULKAN_FLAG_BITS);
+	}
+	VkDescriptorSetLayoutBindingFlagsCreateInfo flagInfo = {
+		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+		nullptr,
+		static_cast<uint32_t>(flags.size()),
+		flags.data(),
+	};
+	VkDescriptorSetLayoutCreateInfo createInfo = {
+		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+		flags.empty() ? nullptr : &flagInfo,
+		0,
+		static_cast<uint32_t>(bindings.size()),
+		bindings.data(),
+	};
+	auto* candidate = MVKDescriptorSetLayout::Create(_device, &createInfo, true);
+	if (!_rayTracingPushDescriptorLayout.compare_exchange_strong(
+			layout, candidate, std::memory_order_release, std::memory_order_acquire)) {
+		candidate->destroy();
+	}
+	return layout ? layout : candidate;
+}
+
 MVKPipelineLayout* MVKPipelineLayout::Create(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo) {
 	using Constructor = MVKInlineObjectConstructor<MVKPipelineLayout>;
 	MVKArrayRef layouts(reinterpret_cast<MVKDescriptorSetLayout*const*>(pCreateInfo->pSetLayouts), pCreateInfo->setLayoutCount);
@@ -415,6 +465,7 @@ MVKPipelineLayout* MVKPipelineLayout::Create(MVKDevice* device, const VkPipeline
 }
 
 MVKPipelineLayout::~MVKPipelineLayout() {
+	if (auto* layout = _rayTracingPushDescriptorLayout.load(std::memory_order_relaxed)) { layout->destroy(); }
 	for (auto dsl : _descriptorSetLayouts) { dsl->release(); }
 }
 
@@ -461,12 +512,12 @@ static void populateResourceUsage(MVKPipelineStageResourceInfo& dst, SPIRVToMSLC
 	                                                   results.needsAccelerationStructureAddressTable);
 
 	typedef SPIRV_CROSS_NAMESPACE::SPIRType SPIRType;
-	bool isArgBuf[kMVKMaxDescriptorSetCount] = {};
-	bool isUsed[kMVKMaxDescriptorSetCount] = {};
+	MVKStaticBitSet<kMVKMaxDescriptorSetCount> isArgBuf;
+	MVKStaticBitSet<kMVKMaxDescriptorSetCount> isUsed;
 	if (src.options.mslOptions.argument_buffers) {
-		std::fill(std::begin(isArgBuf), std::end(isArgBuf), true);
+		isArgBuf.setRange(0, src.options.descriptorSetCount);
 		for (uint32_t set : src.discreteDescriptorSets)
-			isArgBuf[set] = false;
+			isArgBuf.clear(set);
 	}
 	for (const auto& binding : src.resourceBindings) {
 		if (!binding.outIsUsedByShader)
@@ -478,8 +529,8 @@ static void populateResourceUsage(MVKPipelineStageResourceInfo& dst, SPIRVToMSLC
 			continue;
 		}
 		assert(binding.resourceBinding.desc_set < kMVKMaxDescriptorSetCount);
-		isUsed[binding.resourceBinding.desc_set] = true;
-		if (isArgBuf[binding.resourceBinding.desc_set])
+		isUsed.set(binding.resourceBinding.desc_set);
+		if (isArgBuf.get(binding.resourceBinding.desc_set))
 			continue;
 		uint32_t count = binding.resourceBinding.count;
 		switch (binding.resourceBinding.basetype) {
@@ -507,8 +558,8 @@ static void populateResourceUsage(MVKPipelineStageResourceInfo& dst, SPIRVToMSLC
 				break;
 		}
 	}
-	for (uint32_t i = 0; i < kMVKMaxDescriptorSetCount; i++) {
-		if (isArgBuf[i] && isUsed[i]) {
+	for (uint32_t i = 0; i < src.options.descriptorSetCount; i++) {
+		if (isArgBuf.get(i) && isUsed.get(i)) {
 			dst.resources.buffers.set(i);
 			dst.resources.descriptorSetData.set(i);
 		}
@@ -2551,7 +2602,9 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkPipelineShaderStageCre
 											  spv::ExecutionModel executionModel,
 											  VkPipelineCreationFeedback* pStageFB,
 											  bool enableRayTracingIFB,
-											  bool rayTracingAnyHitIFB) {
+											  bool enableRayTracingProceduralIFB,
+											  bool rayTracingAnyHitIFB,
+											  bool rayTracingProceduralIFB) {
 
 	VkShaderStageFlagBits expectedStage = VK_SHADER_STAGE_COMPUTE_BIT;
 	switch (executionModel) {
@@ -2599,7 +2652,9 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkPipelineShaderStageCre
 #endif
 
 	MVKPipelineLayout* layout = _layout;
-	layout->populateShaderConversionConfig(shaderConfig);
+	MVKDescriptorSetLayout* rayTracingPushLayout = executionModel == spv::ExecutionModelGLCompute
+		? nullptr : layout->getRayTracingPushDescriptorLayout();
+	layout->populateShaderConversionConfig(shaderConfig, rayTracingPushLayout);
 	if (executionModel != spv::ExecutionModelGLCompute) {
 		for (auto& binding : shaderConfig.resourceBindings) {
 			if (binding.resourceBinding.stage == spv::ExecutionModelGLCompute) {
@@ -2624,24 +2679,38 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkPipelineShaderStageCre
 
 	addCommonImplicitBuffersToShaderConfig(shaderConfig, _stageResources.implicitBuffers.ids);
 	shaderConfig.options.mslOptions.indirect_params_buffer_index = _stageResources.implicitBuffers.ids[MVKImplicitBuffer::DispatchBase];
+	bool visibleRayStage = executionModel >= spv::ExecutionModelRayGenerationKHR &&
+		executionModel <= spv::ExecutionModelCallableKHR;
 #if MVK_SPIRV_CROSS_RT_PIPELINE
-	shaderConfig.options.mslOptions.enable_ray_tracing_pipeline = executionModel != spv::ExecutionModelGLCompute;
-	shaderConfig.options.enableRayTracingIFB = enableRayTracingIFB;
-	shaderConfig.options.mslOptions.ray_tracing_any_hit_ifb = rayTracingAnyHitIFB;
-	size_t functionHash = _module->getKey().codeHash;
-	functionHash = mvkHash(pSS->pName, strlen(pSS->pName), functionHash);
-	functionHash = mvkHash(&executionModel, 1, functionHash);
-	if (pSS->pSpecializationInfo) {
-		auto* specInfo = pSS->pSpecializationInfo;
-		functionHash = mvkHash(reinterpret_cast<const uint8_t*>(specInfo->pMapEntries),
-						   specInfo->mapEntryCount * sizeof(VkSpecializationMapEntry),
-						   functionHash);
-		functionHash = mvkHash(static_cast<const uint8_t*>(specInfo->pData), specInfo->dataSize, functionHash);
-	}
-	shaderConfig.options.rayTracingFunctionHash = functionHash;
-	if (executionModel == spv::ExecutionModelRayGenerationKHR) {
-		shaderConfig.options.mslOptions.shader_output_buffer_index =
-			getImplicitBufferIndex(kMVKRayTracingDispatchBufferOffset);
+	if (visibleRayStage) {
+		shaderConfig.options.enableRayTracingIFB = enableRayTracingIFB;
+		shaderConfig.options.enableRayTracingProceduralIFB = enableRayTracingProceduralIFB;
+		shaderConfig.options.rayTracingFunctionTableBufferIndex =
+			_stageResources.implicitBuffers.ids[MVKImplicitBuffer::DispatchBase];
+		shaderConfig.options.rayTracingIntersectionTableBufferIndex =
+			getImplicitBufferIndex(kMVKRayTracingIntersectionFunctionTableBufferOffset);
+		shaderConfig.options.rayTracingCallableTableBufferIndex =
+			getImplicitBufferIndex(kMVKRayTracingCallableFunctionTableBufferOffset);
+		shaderConfig.options.mslOptions.ray_tracing_any_hit_ifb = rayTracingAnyHitIFB;
+		shaderConfig.options.mslOptions.ray_tracing_intersection_ifb = rayTracingProceduralIFB;
+		shaderConfig.options.mslOptions.ray_tracing_max_hit_attribute_size = kMVKMaxRayHitAttributeSize;
+		size_t functionHash = _module->getKey().codeHash;
+		functionHash = mvkHash(pSS->pName, strlen(pSS->pName), functionHash);
+		functionHash = mvkHash(&executionModel, 1, functionHash);
+		functionHash = mvkHash(&pSS->flags, 1, functionHash);
+		if (pSS->pSpecializationInfo) {
+			auto* specInfo = pSS->pSpecializationInfo;
+			functionHash = mvkHash(reinterpret_cast<const uint8_t*>(specInfo->pMapEntries),
+							   specInfo->mapEntryCount * sizeof(VkSpecializationMapEntry),
+							   functionHash);
+			functionHash = mvkHash(static_cast<const uint8_t*>(specInfo->pData),
+							   specInfo->dataSize, functionHash);
+		}
+		shaderConfig.options.rayTracingFunctionHash = functionHash;
+		if (executionModel == spv::ExecutionModelRayGenerationKHR) {
+			shaderConfig.options.mslOptions.shader_output_buffer_index =
+				getImplicitBufferIndex(kMVKRayTracingDispatchBufferOffset);
+		}
 	}
 #endif
 	shaderConfig.options.mslOptions.replace_recursive_inputs = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0);
@@ -2655,27 +2724,28 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkPipelineShaderStageCre
 		}
 	}
 	auto& funcRslts = func.shaderConversionResults;
-	bool visibleRayStage = executionModel >= spv::ExecutionModelRayGenerationKHR &&
-						   executionModel <= spv::ExecutionModelCallableKHR;
 	bool unsupportedVisibleResources = visibleRayStage &&
 		std::any_of(shaderConfig.resourceBindings.begin(), shaderConfig.resourceBindings.end(),
-					 [executionModel, layout](const auto& binding) {
-						 if (binding.resourceBinding.stage != executionModel || !binding.outIsUsedByShader) { return false; }
-						 uint32_t set = binding.resourceBinding.desc_set;
-						 if (set == kPushConstDescSet) { return false; }
-						 return set >= layout->getDescriptorSetCount() ||
-							layout->getDescriptorSetLayout(set)->argBufMode() == MVKArgumentBufferMode::Off;
-					 });
+						 [executionModel, layout, rayTracingPushLayout](const auto& binding) {
+							 if (binding.resourceBinding.stage != executionModel || !binding.outIsUsedByShader) { return false; }
+							 uint32_t set = binding.resourceBinding.desc_set;
+							 if (set == kPushConstDescSet) { return false; }
+							 if (set >= layout->getDescriptorSetCount()) { return true; }
+							 auto* setLayout = rayTracingPushLayout && set == layout->pushDescriptor()
+								? rayTracingPushLayout : layout->getDescriptorSetLayout(set);
+							 return setLayout->argBufMode() == MVKArgumentBufferMode::Off;
+						 });
 	if (unsupportedVisibleResources) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT,
 										"vkCreateRayTracingPipelinesKHR(): Visible shader resources require Metal argument buffers and cannot use auxiliary descriptor buffers."));
 		return MVKMTLFunctionNull;
 	}
-	if (!rayTracingAnyHitIFB &&
+	if (!rayTracingAnyHitIFB && !rayTracingProceduralIFB &&
 		(executionModel == spv::ExecutionModelGLCompute ||
 		 executionModel == spv::ExecutionModelRayGenerationKHR || visibleRayStage)) {
 		populateResourceUsage(_stageResources, shaderConfig, funcRslts, executionModel);
-		_layout->populateBindOperations(_stageResources.bindScript, shaderConfig, executionModel);
+		_layout->populateBindOperations(_stageResources.bindScript, shaderConfig, executionModel,
+											rayTracingPushLayout);
 	}
 
 	return func;
@@ -2730,6 +2800,8 @@ spvIFBDecision mvkRayTracingIFBAccept() {
 
 kernel void mvkRayGenerationDispatcher(uint3 spvLaunchId [[thread_position_in_grid]],
                                        uint3 spvGridSize [[threads_per_grid]],
+									   uint spvSubgroupSize [[threads_per_simdgroup]],
+									   uint spvSubgroupInvocationId [[thread_index_in_simdgroup]],
                                        spvRayGenerationFunctionTable spvRayGenerationFunctions [[buffer()" << rayGenerationTableIndex << R"()]],
                                        spvRayFunctionTable spvRayFunctions [[buffer()" << functionTableIndex << R"()]],
                                        constant spvRayTracingDispatch& spvRayTracing [[buffer()" << dispatchIndex << R"()]],
@@ -2750,6 +2822,8 @@ kernel void mvkRayGenerationDispatcher(uint3 spvLaunchId [[thread_position_in_gr
 		reinterpret_cast<ulong>(&spvRayTracing),
 		spvLaunchId,
 		spvLaunchSize,
+		spvSubgroupSize,
+		spvSubgroupInvocationId,
 	};
 	if (uint handle = *reinterpret_cast<device const uint*>(spvRayTracing.raygenAddress + 8))
 		spvRayGenerationFunctions[handle](spvLaunchId, spvLaunchSize, spvRayState);
@@ -2796,17 +2870,23 @@ MVKRayTracingPipeline::MVKRayTracingPipeline(MVKDevice* device,
 		getImplicitBufferIndex(kMVKRayTracingRayGenerationFunctionTableBufferOffset);
 	uint32_t addressTableIndex =
 		getImplicitBufferIndex(kMVKRayTracingAccelerationStructureAddressTableBufferOffset);
+	uint32_t descriptorBufferCount = _descriptorBufferCounts.stages[kMVKShaderStageCompute];
+	if (_layout->hasPushDescriptor() && _layout->getRayTracingPushDescriptorLayout()) {
+		descriptorBufferCount -= _layout->getDescriptorSetLayout(_layout->pushDescriptor())
+			->totalResourceCount().stages[kMVKShaderStageCompute].bufferIndex;
+	}
 	if (getMetalFeatures().maxPerStageBufferCount <= kMVKRayTracingAccelerationStructureAddressTableBufferOffset ||
-		rayGenerationTableIndex < _descriptorBufferCounts.stages[kMVKShaderStageCompute] ||
-		addressTableIndex < _descriptorBufferCounts.stages[kMVKShaderStageCompute]) {
+		rayGenerationTableIndex < descriptorBufferCount ||
+		addressTableIndex < descriptorBufferCount) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT,
 									   "vkCreateRayTracingPipelinesKHR(): The pipeline layout leaves no room for ray-tracing implicit buffers."));
 		finishFeedback();
 		return;
 	}
-	bool valid = pCreateInfo->maxPipelineRayRecursionDepth <= 2 &&
+	bool valid = pCreateInfo->maxPipelineRayRecursionDepth <= kMVKMaxRayRecursionDepth &&
 		(!pCreateInfo->pLibraryInterface ||
-		 pCreateInfo->pLibraryInterface->maxPipelineRayHitAttributeSize <= 32);
+		 pCreateInfo->pLibraryInterface->maxPipelineRayHitAttributeSize <=
+			 kMVKMaxRayHitAttributeSize);
 	const bool linksLibraries = pCreateInfo->pLibraryInfo && pCreateInfo->pLibraryInfo->libraryCount;
 	auto stageSPIRV = [&](uint32_t stage) -> std::pair<const uint32_t*, size_t> {
 		auto* module = (MVKShaderModule*)pCreateInfo->pStages[stage].module;
@@ -2827,29 +2907,10 @@ MVKRayTracingPipeline::MVKRayTracingPipeline(MVKDevice* device,
 		getMetalFeatures().mslVersion >= SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(4, 0) &&
 		getPhysicalDevice()->getMTLDeviceCapabilities().getHighestAppleGPU() >= 9;
 #endif
-	for (uint32_t i = 0; _usesIFB && i < pCreateInfo->groupCount; i++) {
-		_usesIFB = pCreateInfo->pGroups[i].type != VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
-	}
-	for (uint32_t i = 0; _usesIFB && i < pCreateInfo->stageCount; i++) {
-		if (pCreateInfo->pStages[i].stage != VK_SHADER_STAGE_ANY_HIT_BIT_KHR) { continue; }
-		auto [words, wordCount] = stageSPIRV(i);
-		bool hasPayload = false;
-		uint32_t entryPointCount = 0;
-		bool validModule = wordCount >= 5 && words[0] == spv::MagicNumber;
-		for (size_t word = 5; validModule && word < wordCount;) {
-			uint32_t count = words[word] >> 16;
-			spv::Op op = static_cast<spv::Op>(words[word] & 0xffff);
-			validModule = count && word + count <= wordCount;
-			if (!validModule) { break; }
-			if (op == spv::OpEntryPoint && ++entryPointCount > 1) { validModule = false; break; }
-			if (op == spv::OpTraceRayKHR || op == spv::OpExecuteCallableKHR) { validModule = false; break; }
-			if (op == spv::OpVariable && count >= 4 && words[word + 3] == spv::StorageClassIncomingRayPayloadKHR) {
-				hasPayload = true;
-			}
-			word += count;
-		}
-		_usesIFB = validModule && hasPayload;
-	}
+	_usesProceduralIFB = _usesIFB && std::any_of(pCreateInfo->pGroups,
+		pCreateInfo->pGroups + pCreateInfo->groupCount, [](const auto& group) {
+			return group.type == VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
+		});
 	for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
 		bool callableStage = pCreateInfo->pStages[i].stage == VK_SHADER_STAGE_CALLABLE_BIT_KHR;
 		auto [words, wordCount] = stageSPIRV(i);
@@ -2921,15 +2982,71 @@ MVKRayTracingPipeline::MVKRayTracingPipeline(MVKDevice* device,
 		return;
 	}
 
-	auto compileStage = [&](uint32_t stageIndex, spv::ExecutionModel model, bool anyHitIFB = false) {
+	std::vector<bool> triangleIFBStages(pCreateInfo->stageCount);
+	std::vector<bool> proceduralIFBStages(pCreateInfo->stageCount);
+	auto validIFBModule = [&](uint32_t stage, bool requirePayload) {
+		auto [words, wordCount] = stageSPIRV(stage);
+		MVKSmallVector<uint32_t, 8> interfaces;
+		MVKSmallVector<uint32_t, 2> payloads;
+		uint32_t entryPointCount = 0;
+		bool validModule = wordCount >= 5 && words[0] == spv::MagicNumber;
+		for (size_t word = 5; validModule && word < wordCount;) {
+			uint32_t count = words[word] >> 16;
+			spv::Op op = static_cast<spv::Op>(words[word] & 0xffff);
+			validModule = count && word + count <= wordCount;
+			if (!validModule) { break; }
+			if (op == spv::OpEntryPoint) {
+				if (++entryPointCount > 1 || count < 4) { return false; }
+				size_t interfaceWord = word + 3;
+				bool terminated = false;
+				while (interfaceWord < word + count && !terminated) {
+					uint32_t packed = words[interfaceWord++];
+					terminated = !(packed & 0xffu) || !(packed & 0xff00u) ||
+						!(packed & 0xff0000u) || !(packed & 0xff000000u);
+				}
+				if (!terminated) { return false; }
+				for (; interfaceWord < word + count; interfaceWord++) {
+					interfaces.push_back(words[interfaceWord]);
+				}
+			}
+			if (op == spv::OpTraceRayKHR || op == spv::OpExecuteCallableKHR) { return false; }
+			if (op == spv::OpVariable && count >= 4 && words[word + 3] == spv::StorageClassIncomingRayPayloadKHR) {
+				payloads.push_back(words[word + 2]);
+			}
+			word += count;
+		}
+		bool hasPayload = std::any_of(payloads.begin(), payloads.end(), [&](uint32_t id) {
+			return std::find(interfaces.begin(), interfaces.end(), id) != interfaces.end();
+		});
+		return validModule && entryPointCount == 1 && (!requirePayload || hasPayload);
+	};
+	for (uint32_t i = 0; _usesIFB && i < pCreateInfo->groupCount; i++) {
+		auto& group = pCreateInfo->pGroups[i];
+		if (group.type == VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR &&
+			group.anyHitShader != VK_SHADER_UNUSED_KHR) {
+			triangleIFBStages[group.anyHitShader] = true;
+			_usesIFB = validIFBModule(group.anyHitShader, true);
+		} else if (group.type == VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR) {
+			if (group.anyHitShader != VK_SHADER_UNUSED_KHR) { _usesIFB = false; continue; }
+			uint32_t carrier = group.closestHitShader;
+			_usesIFB = carrier != VK_SHADER_UNUSED_KHR &&
+				validIFBModule(carrier, true) && validIFBModule(group.intersectionShader, false);
+			if (_usesIFB) { proceduralIFBStages[carrier] = true; }
+		}
+	}
+	_usesProceduralIFB &= _usesIFB;
+
+	auto compileStage = [&](uint32_t stageIndex, spv::ExecutionModel model,
+							bool anyHitIFB = false, bool proceduralIFB = false) {
 		_module = nullptr;
 		_ownsModule = false;
 		VkPipelineCreationFeedback* stageFeedback = nullptr;
-		if (!anyHitIFB && feedbackInfo && stageIndex < feedbackInfo->pipelineStageCreationFeedbackCount) {
+		if (!anyHitIFB && !proceduralIFB && feedbackInfo && stageIndex < feedbackInfo->pipelineStageCreationFeedbackCount) {
 			stageFeedback = &feedbackInfo->pPipelineStageCreationFeedbacks[stageIndex];
 		}
 		MVKMTLFunction function = getMTLFunction(&pCreateInfo->pStages[stageIndex], model,
-											 stageFeedback, _usesIFB, anyHitIFB);
+											 stageFeedback, _usesIFB, _usesProceduralIFB,
+											 anyHitIFB, proceduralIFB);
 		if (_ownsModule) { delete _module; }
 		_module = nullptr;
 		_ownsModule = false;
@@ -2947,12 +3064,15 @@ MVKRayTracingPipeline::MVKRayTracingPipeline(MVKDevice* device,
 			case VK_SHADER_STAGE_CALLABLE_BIT_KHR: model = spv::ExecutionModelCallableKHR; break;
 			default: valid = false; continue;
 		}
+		bool anyHitIFB = _usesIFB && triangleIFBStages[i];
+		bool proceduralIFB = _usesIFB && proceduralIFBStages[i];
 		ShaderStage stage = {pCreateInfo->pStages[i].stage,
 							 compileStage(i, model),
-							 _usesIFB && model == spv::ExecutionModelAnyHitKHR
-								? compileStage(i, model, true) : MVKMTLFunctionNull};
+							 anyHitIFB ? compileStage(i, model, true) : MVKMTLFunctionNull,
+							 proceduralIFB ? compileStage(i, model, false, true) : MVKMTLFunctionNull};
 		valid = valid && stage.function.getMTLFunction() &&
-				(!_usesIFB || model != spv::ExecutionModelAnyHitKHR || stage.ifbFunction.getMTLFunction());
+				(!anyHitIFB || stage.ifbFunction.getMTLFunction()) &&
+				(!proceduralIFB || stage.proceduralIFBFunction.getMTLFunction());
 		_shaderStages.push_back(stage);
 	}
 	if (!valid) {
@@ -3118,12 +3238,10 @@ MVKRayTracingPipeline::MVKRayTracingPipeline(MVKDevice* device,
 		getImplicitBufferIndex(kMVKRayTracingIntersectionFunctionTableBufferOffset),
 		getImplicitBufferIndex(kMVKRayTracingCallableFunctionTableBufferOffset),
 		_usesIFB);
-	SPIRVToMSLConversionResultInfo resultInfo;
-	MVKShaderLibraryCompiler* libraryCompiler = new MVKShaderLibraryCompiler(this);
 	NSString* sourceString = [[NSString alloc] initWithUTF8String:source.c_str()];
-	id<MTLLibrary> library = libraryCompiler->newMTLLibrary(sourceString, resultInfo, {});
+	id<MTLLibrary> library = getDevice()->getCommandResourceFactory()
+		->newRayTracingDispatcherMTLLibrary(sourceString, _usesIFB, this);
 	[sourceString release];
-	libraryCompiler->destroy();
 	id<MTLFunction> dispatcher = nil;
 	id<MTLFunction> ifbPassthrough = nil;
 	if (library) {
@@ -3145,6 +3263,7 @@ MVKRayTracingPipeline::MVKRayTracingPipeline(MVKDevice* device,
 	NSMutableDictionary<NSString*, id<MTLFunction>>* canonicalFunctions = [NSMutableDictionary new];
 	std::vector<id<MTLFunction>> stageFunctions(_shaderStages.size(), nil);
 	std::vector<id<MTLFunction>> ifbStageFunctions(_shaderStages.size(), nil);
+	std::vector<id<MTLFunction>> proceduralIFBStageFunctions(_shaderStages.size(), nil);
 	auto addFunction = [&](id<MTLFunction> function) {
 		if (!function) { return function; }
 		id<MTLFunction> canonical = canonicalFunctions[function.name];
@@ -3158,6 +3277,7 @@ MVKRayTracingPipeline::MVKRayTracingPipeline(MVKDevice* device,
 	for (uint32_t i = 0; i < _shaderStages.size(); i++) {
 		stageFunctions[i] = addFunction(_shaderStages[i].function.getMTLFunction());
 		ifbStageFunctions[i] = addFunction(_shaderStages[i].ifbFunction.getMTLFunction());
+		proceduralIFBStageFunctions[i] = addFunction(_shaderStages[i].proceduralIFBFunction.getMTLFunction());
 	}
 	ifbPassthrough = addFunction(ifbPassthrough);
 	linkedFunctions.functions = functions;
@@ -3166,8 +3286,8 @@ MVKRayTracingPipeline::MVKRayTracingPipeline(MVKDevice* device,
 	MTLComputePipelineDescriptor* descriptor = [MTLComputePipelineDescriptor new];
 	descriptor.computeFunction = dispatcher;
 	descriptor.linkedFunctions = linkedFunctions;
-	uint32_t maxCallStackDepth = kMaxCallStackDepth;
-	if (!_callableCallsCallable) {
+	uint32_t maxCallStackDepth = kMVKMaxRayTracingCallStackDepth;
+	if (!_callableCallsCallable && !(_usesTraceRay && _usesExecuteCallable)) {
 		bool hasProceduralAnyHit = std::any_of(_shaderGroups.begin(), _shaderGroups.end(), [](const auto& group) {
 			return group.type == VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR &&
 				   group.anyHitShader != VK_SHADER_UNUSED_KHR;
@@ -3215,12 +3335,17 @@ MVKRayTracingPipeline::MVKRayTracingPipeline(MVKDevice* device,
 
 	std::vector<id<MTLFunctionHandle>> stageHandles(_shaderStages.size(), nil);
 	std::vector<id<MTLFunctionHandle>> ifbStageHandles(_shaderStages.size(), nil);
+	std::vector<id<MTLFunctionHandle>> proceduralIFBStageHandles(_shaderStages.size(), nil);
 	for (uint32_t i = 0; i < _shaderStages.size(); i++) {
 		stageHandles[i] = [_mtlPipelineState functionHandleWithFunction:stageFunctions[i]];
 		valid = valid && stageHandles[i];
 		if (ifbStageFunctions[i]) {
 			ifbStageHandles[i] = [_mtlPipelineState functionHandleWithFunction:ifbStageFunctions[i]];
 			valid = valid && ifbStageHandles[i];
+		}
+		if (proceduralIFBStageFunctions[i]) {
+			proceduralIFBStageHandles[i] = [_mtlPipelineState functionHandleWithFunction:proceduralIFBStageFunctions[i]];
+			valid = valid && proceduralIFBStageHandles[i];
 		}
 	}
 	id<MTLFunctionHandle> ifbPassthroughHandle = _usesIFB
@@ -3251,8 +3376,12 @@ MVKRayTracingPipeline::MVKRayTracingPipeline(MVKDevice* device,
 		}
 #if MVK_XCODE_26 && MVK_MACOS_OR_IOS
 		if (_usesIFB) {
-			id<MTLFunctionHandle> handle = group.anyHitShader == VK_SHADER_UNUSED_KHR
-				? ifbPassthroughHandle : ifbStageHandles[group.anyHitShader];
+			uint32_t carrier = group.anyHitShader != VK_SHADER_UNUSED_KHR
+				? group.anyHitShader : group.closestHitShader;
+			id<MTLFunctionHandle> handle = group.type == VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR
+				? proceduralIFBStageHandles[carrier]
+				: (group.anyHitShader == VK_SHADER_UNUSED_KHR
+					? ifbPassthroughHandle : ifbStageHandles[group.anyHitShader]);
 			MTLResourceID resourceID = handle.gpuResourceID;
 			static_assert(sizeof(resourceID) == sizeof(_groupHandles[i].intersectionFunction));
 			std::memcpy(&_groupHandles[i].intersectionFunction, &resourceID, sizeof(resourceID));
@@ -3312,7 +3441,8 @@ VkDeviceSize MVKRayTracingPipeline::getShaderGroupStackSize(uint32_t group, VkSh
 		case VK_SHADER_GROUP_SHADER_INTERSECTION_KHR: stage = shaderGroup.intersectionShader; break;
 		default: break;
 	}
-	return stage == VK_SHADER_UNUSED_KHR || stage >= _shaderStages.size() ? 0 : kShaderGroupStackSize;
+	return stage == VK_SHADER_UNUSED_KHR || stage >= _shaderStages.size()
+		? 0 : kMVKRayTracingShaderGroupStackSize;
 }
 
 #pragma mark -
@@ -3605,9 +3735,11 @@ namespace SPIRV_CROSS_NAMESPACE {
 #if SPIRV_CROSS_MSL_ACCELERATION_STRUCTURE_DESCRIPTOR_AS_ADDRESS
 				opt.acceleration_structure_descriptor_as_address,
 					opt.acceleration_structure_address_table_buffer_index,
-#if SPIRV_CROSS_MSL_COMPACT_RAY_TRACING_PIPELINE
-					opt.enable_ray_tracing_pipeline,
+#if SPIRV_CROSS_MSL_RAY_TRACING_PIPELINE
+					opt.ray_tracing_pipeline,
+					opt.ray_tracing_max_hit_attribute_size,
 					opt.ray_tracing_any_hit_ifb,
+					opt.ray_tracing_intersection_ifb,
 #endif
 #else
 				opt.ray_tracing_intersection_buffer_index,
@@ -3759,10 +3891,15 @@ namespace mvk {
 	template<class Archive>
 	void serialize(Archive & archive, SPIRVToMSLConversionOptions& opt) {
 		archive(opt.mslOptions,
+				opt.descriptorSetCount,
 				opt.entryPointName,
 				opt.entryPointStage,
 				opt.rayTracingFunctionHash,
 				opt.enableRayTracingIFB,
+				opt.enableRayTracingProceduralIFB,
+				opt.rayTracingFunctionTableBufferIndex,
+				opt.rayTracingIntersectionTableBufferIndex,
+				opt.rayTracingCallableTableBufferIndex,
 				opt.tessPatchKind,
 				opt.numTessControlPoints,
 				opt.shouldFlipVertexY,
@@ -3964,8 +4101,8 @@ static size_t mvkValidateCerealArchiveSize(size_t padByteCnt = 0) {
 
 void mvkValidateCeralArchiveDefinitions() {
 	[[maybe_unused]] size_t missingBytes = 0;
-#if SPIRV_CROSS_MSL_COMPACT_RAY_TRACING_PIPELINE
-	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::CompilerMSL::Options>(4);
+#if SPIRV_CROSS_MSL_RAY_TRACING_PIPELINE
+	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::CompilerMSL::Options>(7);
 #elif SPIRV_CROSS_MSL_ACCELERATION_STRUCTURE_DESCRIPTOR_AS_ADDRESS
 	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::CompilerMSL::Options>(6);
 #else
@@ -3976,8 +4113,8 @@ void mvkValidateCeralArchiveDefinitions() {
 	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::MSLConstexprSampler>();
 	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVWorkgroupSizeDimension>(3);
 	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVEntryPoint>(20);						// Contains string
-#if SPIRV_CROSS_MSL_COMPACT_RAY_TRACING_PIPELINE
-	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionOptions>(29);			// Contains string
+#if SPIRV_CROSS_MSL_RAY_TRACING_PIPELINE
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionOptions>(39);			// Contains string
 #elif SPIRV_CROSS_MSL_ACCELERATION_STRUCTURE_DESCRIPTOR_AS_ADDRESS
 	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionOptions>(32);			// Contains string
 #else
@@ -3986,8 +4123,8 @@ void mvkValidateCeralArchiveDefinitions() {
 	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLShaderInterfaceVariable>(3);
 	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLResourceBinding>(2);
 	missingBytes += mvkValidateCerealArchiveSize<mvk::DescriptorBinding>();
-#if SPIRV_CROSS_MSL_COMPACT_RAY_TRACING_PIPELINE
-	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionConfiguration>(109);	// Contains collection
+#if SPIRV_CROSS_MSL_RAY_TRACING_PIPELINE
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionConfiguration>(119);	// Contains collection
 #elif SPIRV_CROSS_MSL_ACCELERATION_STRUCTURE_DESCRIPTOR_AS_ADDRESS
 	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionConfiguration>(112);	// Contains collection
 #else

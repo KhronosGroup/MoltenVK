@@ -306,7 +306,9 @@ public:
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT; }
 
 	/** Creates a new descriptor set layout. */
-	static MVKDescriptorSetLayout* Create(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
+	static MVKDescriptorSetLayout* Create(MVKDevice* device,
+											 const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
+											 bool forceArgumentEncoder = false);
 
 	/** Returns whether this layout was created with `VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR`. */
 	bool isPushDescriptorSetLayout() const { return _flags.has(Flag::IsPushDescriptorSetLayout); }
@@ -494,6 +496,15 @@ struct MVKDescriptorSetSnapshot {
 	const MVKAccelerationStructureStorageGeneration* getGeneration(uint32_t bindingIndex, uint32_t arrayElement) const;
 };
 
+void mvkRetainDescriptorSetAccelerationStructures(MVKDescriptorSet* set);
+void mvkReleaseDescriptorSetAccelerationStructures(MVKDescriptorSet* set);
+void mvkMaterializePushDescriptorSet(
+	MVKCommandEncoder* cmdEncoder,
+	MVKDescriptorSet* source,
+	MVKDescriptorSetLayout* argumentBufferLayout,
+	id<MTLBuffer>& buffer,
+	uint32_t& offset);
+
 #pragma mark - MVKDescriptorPool
 
 union MVKDescriptorSetListItem;
@@ -572,6 +583,7 @@ private:
 	uint32_t _cpuBufferUsed = 0;
 	uint32_t _gpuBufferUsed = 0;
 	bool _freeAllowed;
+	bool _hasAccelerationStructureDescriptors = false;
 	MVKInlineArray<MVKDescriptorSetListItem> _descriptorSets;
 	MVKInlineArray<char> _cpuBuffer;
 	MVKArrayRef<char> _gpuBuffer;

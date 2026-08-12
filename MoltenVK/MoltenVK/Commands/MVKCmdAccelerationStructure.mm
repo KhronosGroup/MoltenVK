@@ -47,6 +47,18 @@ bool mvkEncodeAccelerationStructureReferenceUpdate(
 	return true;
 }
 
+static void copyAccelerationStructureCompactedSize(
+	MVKCommandEncoder* cmdEncoder,
+	MVKAccelerationStructureStorageGeneration* source,
+	MVKAccelerationStructureStorageGeneration* destination) {
+	[cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyAccelerationStructure)
+		copyFromBuffer:source->getReferenceMTLBuffer()
+		sourceOffset:source->getCompactedSizeOffset()
+		toBuffer:destination->getReferenceMTLBuffer()
+		destinationOffset:destination->getCompactedSizeOffset()
+		size:sizeof(uint64_t)];
+}
+
 static MVKAccelerationStructureStorageGeneration* retainPreviousGeneration(
 	MVKAccelerationStructure* accelerationStructure,
 	MVKAccelerationStructureStorageGeneration* generation) {
@@ -99,6 +111,7 @@ id<MTLComputeCommandEncoder> mvkEncodeAccelerationStructureConversion(
 		} else {
 			referenceTable = cmdEncoder->getAccelerationStructureReferenceTable();
 		}
+		if (!referenceTable || !referenceTable->_mtlBuffer) { return nil; }
 		[mtlEncoder setBuffer:referenceTable->_mtlBuffer
 					 offset:referenceTable->_offset atIndex:5];
 		MVKSmallVector<id<MTLBuffer>, 16> retainedBuffers;
@@ -124,7 +137,7 @@ VkResult MVKCmdBuildAccelerationStructure::setContent(MVKCommandBuffer* cmdBuff,
                                                       uint32_t infoCount,
                                                       const VkAccelerationStructureBuildGeometryInfoKHR* pInfos,
                                                       const VkAccelerationStructureBuildRangeInfoKHR* const* ppBuildRangeInfos) {
-	cmdBuff->recordAccelerationStructureCommand();
+	cmdBuff->recordAccelerationStructureCommand(VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR);
     _buildInfos.clear();
     _buildInfos.reserve(infoCount);
     for (uint32_t i = 0; i < infoCount; i++) {
@@ -156,12 +169,6 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
         MVKAccelerationStructure* mvkDstAccStruct = (MVKAccelerationStructure*)buildInfo.dstAccelerationStructure;
 
         MVKDevice* mvkDevice = cmdEncoder->getDevice();
-        VkDeviceSize scratchOffset = 0;
-        MVKBuffer* mvkBuffer = mvkDevice->getBufferAtAddress(buildInfo.scratchData.deviceAddress, scratchOffset);
-
-        if ( !mvkBuffer ) { continue; }
-        id<MTLBuffer> scratchBuffer = mvkBuffer->getMTLBuffer();
-        NSInteger scratchBufferOffset = mvkBuffer->getMTLBufferOffset() + scratchOffset;
 
 		if (buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR && !hasBuildPrimitives) {
 			MVKAccelerationStructure* mvkSrcAccStruct =
@@ -195,6 +202,9 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
 					destinationOffset:0
 					size:metadataSize];
 			}
+			if (srcGeneration->isCompacted()) {
+				copyAccelerationStructureCompactedSize(cmdEncoder, srcGeneration, dstGeneration);
+			}
 			dstGeneration->copyContentFrom(srcGeneration);
 			cmdEncoder->retainAccelerationStructureGeneration(dstGeneration);
 			cmdEncoder->retainAccelerationStructureGeneration(srcGeneration);
@@ -202,8 +212,28 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
 		}
 
         MTLAccelerationStructureDescriptor* descriptor = mvkDstAccStruct->newMTLAccelerationStructureDescriptor(buildInfo, entry.ranges.data(), nullptr);
-        if ( !descriptor ) { continue; }
+		if (!descriptor) {
+			cmdEncoder->reportError(VK_ERROR_INITIALIZATION_FAILED,
+				"vkCmdBuildAccelerationStructuresKHR(): The acceleration-structure geometry is invalid or unavailable.");
+			continue;
+		}
 		MTLAccelerationStructureSizes buildSizes = [cmdEncoder->getMTLDevice() accelerationStructureSizesWithDescriptor:descriptor];
+		NSUInteger requiredScratchSize = buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR
+			? buildSizes.buildScratchBufferSize : buildSizes.refitScratchBufferSize;
+		VkDeviceSize scratchOffset = 0;
+		MVKBuffer* scratchMVKBuffer = requiredScratchSize
+			? mvkDevice->getBufferAtAddress(buildInfo.scratchData.deviceAddress, scratchOffset) : nullptr;
+		VkDeviceSize scratchAvailable = scratchMVKBuffer ? scratchMVKBuffer->getByteCount() : 0;
+		if (requiredScratchSize && (!scratchMVKBuffer || scratchOffset > scratchAvailable ||
+			requiredScratchSize > scratchAvailable - scratchOffset)) {
+			cmdEncoder->reportError(VK_ERROR_INITIALIZATION_FAILED,
+				"vkCmdBuildAccelerationStructuresKHR(): The scratch buffer is invalid or too small.");
+			[descriptor release];
+			continue;
+		}
+		id<MTLBuffer> scratchBuffer = scratchMVKBuffer ? scratchMVKBuffer->getMTLBuffer() : nil;
+		NSInteger scratchBufferOffset = scratchMVKBuffer
+			? scratchMVKBuffer->getMTLBufferOffset() + scratchOffset : 0;
 		uint64_t instanceMetadataSize = buildInfo.type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR
 			? static_cast<uint64_t>(ranges[0].primitiveCount) * sizeof(uint32_t)
 			: 0;
@@ -296,6 +326,8 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
                                     ranges[0].primitiveOffset > available - instanceOffset ||
                                     instanceCount > (available - instanceOffset - ranges[0].primitiveOffset) / srcStride;
             if (instanceCount && invalidInstances) {
+				cmdEncoder->reportError(VK_ERROR_INITIALIZATION_FAILED,
+					"vkCmdBuildAccelerationStructuresKHR(): The instance-data range is invalid or unavailable.");
 				dstGeneration->release();
                 [descriptor release];
                 continue;
@@ -313,6 +345,8 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
             NSUInteger tmpBufferSize = descriptorSize * (instanceCount ? instanceCount : 1);
             const MVKMTLBufferAllocation* tmpBuffer = cmdEncoder->getTempMTLBuffer(tmpBufferSize, true);
 			if (!tmpBuffer || !tmpBuffer->_mtlBuffer) {
+				cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+					"vkCmdBuildAccelerationStructuresKHR(): A temporary instance-descriptor buffer could not be allocated.");
 				dstGeneration->release();
 				[descriptor release];
 				continue;
@@ -335,7 +369,9 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
 														  canonicalBuild.getMTLBuffer(),
 														  canonicalBuild.getRecordTableOffset(),
 														  canonicalBuild.getHandleArrayOffset(),
-														  instanceMetadata)) {
+																  instanceMetadata)) {
+					cmdEncoder->reportError(VK_ERROR_INITIALIZATION_FAILED,
+						"vkCmdBuildAccelerationStructuresKHR(): Instance descriptors could not be converted.");
 					dstGeneration->release();
 					[descriptor release];
 					continue;
@@ -348,6 +384,27 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
             }
         }
 
+		MVKAccelerationStructureStorageGeneration* srcGeneration = nullptr;
+		if (buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR) {
+			auto* mvkSrcAccStruct = (MVKAccelerationStructure*)buildInfo.srcAccelerationStructure;
+			srcGeneration = mvkSrcAccStruct ? mvkSrcAccStruct->retainCurrentGeneration() : nullptr;
+		}
+		if (buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR && !srcGeneration) {
+			cmdEncoder->reportError(VK_ERROR_INITIALIZATION_FAILED,
+				"vkCmdBuildAccelerationStructuresKHR(): The source acceleration structure has no built storage.");
+			dstGeneration->release();
+			[descriptor release];
+			continue;
+		}
+		if (!canonicalBuild.publish(dstGeneration, buildSizes.accelerationStructureSize,
+				instanceMetadataSize)) {
+			cmdEncoder->reportError(VK_ERROR_OUT_OF_HOST_MEMORY,
+				"vkCmdBuildAccelerationStructuresKHR(): The canonical build input could not be published.");
+			dstGeneration->release();
+			if (srcGeneration) { srcGeneration->release(); }
+			[descriptor release];
+			continue;
+		}
 		if (buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR &&
 			!mvkEncodeAccelerationStructureReferenceUpdate(cmdEncoder, mvkDstAccStruct, dstGeneration)) {
 			cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
@@ -358,33 +415,33 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
 		}
 		auto* previousGeneration = buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR
 			? retainPreviousGeneration(mvkDstAccStruct, dstGeneration) : nullptr;
-		id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseBuildAccelerationStructure);
-		if (buildInfo.type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR) {
-            mvkDevice->encodeGPUAddressableAccelerationStructures(cmdEncoder, accStructEncoder);
-        }
-
-		MVKAccelerationStructureStorageGeneration* srcGeneration = nullptr;
-		bool encoded = false;
-		if (buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR &&
-			mvkDstAccStruct->publishGeneration(dstGeneration)) {
-			cmdEncoder->retainAccelerationStructureGeneration(previousGeneration);
-			cmdEncoder->invalidateAccelerationStructureAddressTable();
-			cmdEncoder->invalidateAccelerationStructureReferenceTable();
-            [accStructEncoder buildAccelerationStructure:dstAccStruct
-                                              descriptor:descriptor
-                                           scratchBuffer:scratchBuffer
-                                     scratchBufferOffset:scratchBufferOffset];
-			encoded = true;
-        } else if (buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR) {
-			MVKAccelerationStructure* mvkSrcAccStruct = (MVKAccelerationStructure*)buildInfo.srcAccelerationStructure;
-			srcGeneration = mvkSrcAccStruct->retainCurrentGeneration();
-			if (srcGeneration) {
+		bool encoded = buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR ||
+			mvkDstAccStruct->publishGeneration(dstGeneration);
+		if (!encoded) {
+			cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+				"vkCmdBuildAccelerationStructuresKHR(): The destination generation could not be published.");
+		}
+		if (encoded) {
+			id<MTLAccelerationStructureCommandEncoder> accStructEncoder =
+				cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseBuildAccelerationStructure);
+			if (buildInfo.type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR) {
+				mvkDevice->encodeGPUAddressableAccelerationStructures(cmdEncoder, accStructEncoder);
+			}
+			if (buildInfo.mode == VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR) {
+				cmdEncoder->retainAccelerationStructureGeneration(previousGeneration);
+				cmdEncoder->invalidateAccelerationStructureAddressTable();
+				cmdEncoder->invalidateAccelerationStructureReferenceTable();
+				[accStructEncoder buildAccelerationStructure:dstAccStruct
+				                                  descriptor:descriptor
+				                               scratchBuffer:scratchBuffer
+				                         scratchBufferOffset:scratchBufferOffset];
+			} else {
 				id<MTLAccelerationStructure> srcAccStruct = srcGeneration->getMTLAccelerationStructure();
 				if (buildInfo.type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR) {
 					[accStructEncoder refitAccelerationStructure:srcAccStruct
 											  descriptor:descriptor
-											 destination:dstAccStruct
-										  scratchBuffer:scratchBuffer
+										 destination:dstAccStruct
+									  scratchBuffer:scratchBuffer
 									scratchBufferOffset:scratchBufferOffset
 											 options:MTLAccelerationStructureRefitOptionVertexData];
 				} else {
@@ -392,24 +449,14 @@ void MVKCmdBuildAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
 											  descriptor:descriptor
 											 destination:dstAccStruct
 										  scratchBuffer:scratchBuffer
-									scratchBufferOffset:scratchBufferOffset];
+										scratchBufferOffset:scratchBufferOffset];
 				}
-				encoded = true;
-			}
-        }
-		if (encoded) {
-			dstGeneration->publishBuild(buildSizes.accelerationStructureSize,
-				instanceMetadataSize,
-				buildInfo.type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR ? ranges[0].primitiveCount : 0);
-			if (!canonicalBuild.publish(dstGeneration)) {
-				cmdEncoder->reportError(VK_ERROR_OUT_OF_HOST_MEMORY,
-					"vkCmdBuildAccelerationStructuresKHR(): The canonical build input could not be published.");
 			}
 			cmdEncoder->retainAccelerationStructureGeneration(dstGeneration);
 			cmdEncoder->retainAccelerationStructureGeneration(srcGeneration);
 		} else {
 			if (previousGeneration) { previousGeneration->release(); }
-			dstGeneration->release();
+			cmdEncoder->retainAccelerationStructureGeneration(dstGeneration);
 			if (srcGeneration) { srcGeneration->release(); }
 		}
         [descriptor release];
@@ -423,7 +470,9 @@ VkResult MVKCmdCopyAccelerationStructure::setContent(MVKCommandBuffer* cmdBuff,
                                                      VkAccelerationStructureKHR srcAccelerationStructure,
                                                      VkAccelerationStructureKHR dstAccelerationStructure,
                                                      VkCopyAccelerationStructureModeKHR copyMode) {
-	cmdBuff->recordAccelerationStructureCommand();
+	cmdBuff->recordAccelerationStructureCommand(
+		VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR |
+		VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR);
 
 	_srcMVKAccelerationStructure = (MVKAccelerationStructure*)srcAccelerationStructure;
 	_dstMVKAccelerationStructure = (MVKAccelerationStructure*)dstAccelerationStructure;
@@ -440,7 +489,8 @@ void MVKCmdCopyAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
 	if (!requiredNativeSize) {
 		requiredNativeSize = srcGeneration->getNativeCapacity();
 	}
-	if (_copyMode == VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR) {
+	if (_copyMode == VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR ||
+		srcGeneration->isCompacted()) {
 		requiredNativeSize = std::min(
 			requiredNativeSize, _dstMVKAccelerationStructure->getSize());
 	}
@@ -482,6 +532,10 @@ void MVKCmdCopyAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLAccelerationStructureCommandEncoder> accStructEncoder = cmdEncoder->getMTLAccelerationStructureEncoder(kMVKCommandUseCopyAccelerationStructure);
 
     if(_copyMode == VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR) {
+		[accStructEncoder writeCompactedAccelerationStructureSize:srcGeneration->getMTLAccelerationStructure()
+		                                                  toBuffer:dstGeneration->getReferenceMTLBuffer()
+		                                                    offset:dstGeneration->getCompactedSizeOffset()
+		                                              sizeDataType:MTLDataTypeULong];
         [accStructEncoder
 		 copyAndCompactAccelerationStructure:srcGeneration->getMTLAccelerationStructure()
 		 toAccelerationStructure:dstGeneration->getMTLAccelerationStructure()];
@@ -489,6 +543,9 @@ void MVKCmdCopyAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
         [accStructEncoder
 			 copyAccelerationStructure:srcGeneration->getMTLAccelerationStructure()
 			 toAccelerationStructure:dstGeneration->getMTLAccelerationStructure()];
+		if (srcGeneration->isCompacted()) {
+			copyAccelerationStructureCompactedSize(cmdEncoder, srcGeneration, dstGeneration);
+		}
     }
 
 	if (instanceMetadataSize) {
@@ -500,9 +557,7 @@ void MVKCmdCopyAccelerationStructure::encode(MVKCommandEncoder* cmdEncoder) {
 			size:instanceMetadataSize];
 	}
 	dstGeneration->copyContentFrom(srcGeneration,
-		_copyMode == VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR
-			? dstGeneration->getNativeCapacity()
-			: UINT64_MAX);
+		_copyMode == VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR);
 	cmdEncoder->retainAccelerationStructureGeneration(srcGeneration);
 	cmdEncoder->retainAccelerationStructureGeneration(dstGeneration);
 }
@@ -516,7 +571,9 @@ VkResult MVKCmdWriteAccelerationStructuresProperties::setContent(MVKCommandBuffe
                                                                  VkQueryType queryType,
                                                                  VkQueryPool queryPool,
                                                                  uint32_t firstQuery) {
-	cmdBuff->recordAccelerationStructureCommand();
+	cmdBuff->recordAccelerationStructureCommand(
+		VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR |
+		VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR);
 	switch (queryType) {
 		case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR:
 		case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE_KHR:
@@ -559,14 +616,18 @@ void MVKCmdWriteAccelerationStructuresProperties::encode(MVKCommandEncoder* cmdE
 		return;
 	}
 	MVKSmallVector<uint64_t, 1> values;
+	MVKSmallVector<MVKAccelerationStructureStorageGeneration*, 1> compactedGenerations;
 	values.reserve(_accelerationStructures.size());
+	compactedGenerations.reserve(_accelerationStructures.size());
 	for (auto* accelerationStructure : _accelerationStructures) {
 		auto* generation = accelerationStructure->retainCurrentGeneration();
 		uint64_t value = 0;
+		bool needsCompactedSize = false;
 		if (generation) {
 			switch (_queryType) {
 				case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE_KHR:
-					value = generation->getNativeSize();
+					needsCompactedSize = generation->isCompacted();
+					if (!needsCompactedSize) { value = generation->getNativeSize(); }
 					break;
 				case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_BOTTOM_LEVEL_POINTERS_KHR:
 					value = generation->getHandleCount();
@@ -577,11 +638,20 @@ void MVKCmdWriteAccelerationStructuresProperties::encode(MVKCommandEncoder* cmdE
 			}
 		}
 		values.push_back(value);
-		if (generation) { generation->release(); }
+		compactedGenerations.push_back(needsCompactedSize ? generation : nullptr);
+		if (generation && !needsCompactedSize) { generation->release(); }
 	}
 	NSUInteger byteCount = values.size() * sizeof(values[0]);
 	const MVKMTLBufferAllocation* allocation =
 		cmdEncoder->copyToTempMTLBufferAllocation(values.data(), byteCount);
+	if (!allocation || !allocation->_mtlBuffer) {
+		for (auto* generation : compactedGenerations) {
+			if (generation) { generation->release(); }
+		}
+		cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+			"vkCmdWriteAccelerationStructuresPropertiesKHR(): The query results could not be staged.");
+		return;
+	}
 	id<MTLBlitCommandEncoder> encoder =
 		cmdEncoder->getMTLBlitEncoder(kMVKCommandUseWriteAccelerationStructuresProperties);
 	[encoder copyFromBuffer:allocation->_mtlBuffer
@@ -589,6 +659,16 @@ void MVKCmdWriteAccelerationStructuresProperties::encode(MVKCommandEncoder* cmdE
 	              toBuffer:_queryPool->getResultMTLBuffer()
 	     destinationOffset:_queryPool->getResultOffset(_firstQuery)
 	                  size:byteCount];
+	for (uint32_t index = 0; index < compactedGenerations.size(); index++) {
+		auto* generation = compactedGenerations[index];
+		if (!generation) { continue; }
+		[encoder copyFromBuffer:generation->getReferenceMTLBuffer()
+		          sourceOffset:generation->getCompactedSizeOffset()
+		              toBuffer:_queryPool->getResultMTLBuffer()
+		     destinationOffset:_queryPool->getResultOffset(_firstQuery + index)
+		                  size:sizeof(uint64_t)];
+		cmdEncoder->retainAccelerationStructureGeneration(generation);
+	}
 	for (uint32_t index = 0; index < values.size(); index++) {
 		uint32_t query = _firstQuery + index;
 		cmdEncoder->markAccelerationStructureQuery(_queryPool, query);

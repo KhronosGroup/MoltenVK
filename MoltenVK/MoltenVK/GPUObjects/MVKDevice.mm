@@ -585,13 +585,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR: {
 				auto* rayTracingFeatures = (VkPhysicalDeviceRayTracingPipelineFeaturesKHR*)next;
-				rayTracingFeatures->rayTracingPipeline = _metalFeatures.accelerationStructures && _supportsFunctionPointers &&
-					_isUsingMetalArgumentBuffers && MVK_SPIRV_CROSS_RT_PIPELINE;
+				VkBool32 supportsPipeline = supportsRayTracingPipeline();
+				rayTracingFeatures->rayTracingPipeline = supportsPipeline;
 				rayTracingFeatures->rayTracingPipelineShaderGroupHandleCaptureReplay = false;
 				rayTracingFeatures->rayTracingPipelineShaderGroupHandleCaptureReplayMixed = false;
-				rayTracingFeatures->rayTracingPipelineTraceRaysIndirect = _metalFeatures.accelerationStructures && _supportsFunctionPointers &&
-					_isUsingMetalArgumentBuffers && MVK_SPIRV_CROSS_RT_PIPELINE;
-				rayTracingFeatures->rayTraversalPrimitiveCulling = false;
+				rayTracingFeatures->rayTracingPipelineTraceRaysIndirect = supportsPipeline;
+				rayTracingFeatures->rayTraversalPrimitiveCulling = supportsPipeline;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR: {
@@ -1308,13 +1307,13 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR: {
 				auto* rayTracingProperties = (VkPhysicalDeviceRayTracingPipelinePropertiesKHR*)next;
 				rayTracingProperties->shaderGroupHandleSize = 32;
-				rayTracingProperties->maxRayRecursionDepth = 2;
+				rayTracingProperties->maxRayRecursionDepth = kMVKMaxRayRecursionDepth;
 				rayTracingProperties->maxShaderGroupStride = std::numeric_limits<uint32_t>::max() & ~15u;
 				rayTracingProperties->shaderGroupBaseAlignment = 16;
 				rayTracingProperties->shaderGroupHandleCaptureReplaySize = 32;
 				rayTracingProperties->maxRayDispatchInvocationCount = 1u << 30;
 				rayTracingProperties->shaderGroupHandleAlignment = 16;
-				rayTracingProperties->maxRayHitAttributeSize = 32;
+				rayTracingProperties->maxRayHitAttributeSize = kMVKMaxRayHitAttributeSize;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES: {
@@ -3581,6 +3580,12 @@ void MVKPhysicalDevice::initExternalMemoryProperties() {
 	}
 }
 
+bool MVKPhysicalDevice::supportsRayTracingPipeline() const {
+	return _metalFeatures.accelerationStructures && _supportsFunctionPointers &&
+		_isUsingMetalArgumentBuffers && MVK_SPIRV_CROSS_RT_PIPELINE &&
+		_metalFeatures.mslVersion >= SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(3, 2);
+}
+
 void MVKPhysicalDevice::initExtensions() {
 	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_supportedExtensions;
 	pWritableExtns->disableAllButEnabledDeviceExtensions();
@@ -3642,8 +3647,7 @@ void MVKPhysicalDevice::initExtensions() {
 		pWritableExtns->vk_KHR_ray_query.enabled = false;
 		pWritableExtns->vk_KHR_ray_tracing_maintenance1.enabled = false;
 	}
-	if (!_metalFeatures.accelerationStructures || !_supportsFunctionPointers || !_isUsingMetalArgumentBuffers ||
-		!MVK_SPIRV_CROSS_RT_PIPELINE) {
+	if (!supportsRayTracingPipeline()) {
 		pWritableExtns->vk_KHR_pipeline_library.enabled = false;
 		pWritableExtns->vk_KHR_ray_tracing_pipeline.enabled = false;
 	}
@@ -4817,10 +4821,8 @@ NSUInteger MVKDevice::getAccelerationStructureInstanceDescriptorSize() const {
 }
 
 static uint64_t mvkAccelerationStructureAddressHash(uint64_t value) {
-	value ^= value >> 30;
-	value *= 0xbf58476d1ce4e5b9ull;
-	value ^= value >> 27;
-	value *= 0x94d049bb133111ebull;
+	value = (value ^ (value >> 30)) * 0xbf58476d1ce4e5b9ull;
+	value = (value ^ (value >> 27)) * 0x94d049bb133111ebull;
 	return value ^ (value >> 31);
 }
 
@@ -4891,7 +4893,8 @@ void MVKDevice::getAccelerationStructureAddressTable(
 	table[0] = capacity - 1;
 	table[1] = entries.size();
 	for (const auto& entry : entries) {
-		size_t slot = mvkAccelerationStructureAddressHash(entry.address) & (capacity - 1);
+		size_t slot = mvkAccelerationStructureAddressHash(entry.address) &
+			(capacity - 1);
 		while (table[(slot + 1) * 2]) { slot = (slot + 1) & (capacity - 1); }
 		table[(slot + 1) * 2] = entry.address;
 		table[(slot + 1) * 2 + 1] = entry.referenceAddress;
@@ -4981,7 +4984,8 @@ void MVKDevice::getAccelerationStructureReferenceTable(
 		} else {
 			reference = instances.size();
 		}
-		size_t slot = mvkAccelerationStructureAddressHash(entry.address) & (capacity - 1);
+		size_t slot = mvkAccelerationStructureAddressHash(entry.address) &
+			(capacity - 1);
 		while (table[(slot + 1) * 2]) { slot = (slot + 1) & (capacity - 1); }
 		table[(slot + 1) * 2] = entry.address;
 		table[(slot + 1) * 2 + 1] = reference;
@@ -5422,15 +5426,18 @@ MTLCompileOptions* MVKDevice::getMTLCompileOptions(uint32_t fpFastMathFlags,
 
 // Can't use prefilled Metal command buffers if any of the resource descriptors can be updated after binding.
 bool MVKDevice::shouldPrefillMTLCommandBuffers() {
-	return (getMVKConfig().prefillMetalCommandBuffers &&
+	auto prefillStyle = getMVKConfig().prefillMetalCommandBuffers;
+	bool accelerationStructuresAllowPrefill =
+		!_enabledAccelerationStructureFeatures.accelerationStructure ||
+		prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_DEFERRED_ENCODING;
+	return (prefillStyle && accelerationStructuresAllowPrefill &&
 			!(_enabledDescriptorIndexingFeatures.descriptorBindingUniformBufferUpdateAfterBind ||
 			  _enabledDescriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind ||
 			  _enabledDescriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind ||
 			  _enabledDescriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind ||
 			  _enabledDescriptorIndexingFeatures.descriptorBindingUniformTexelBufferUpdateAfterBind ||
 			  _enabledDescriptorIndexingFeatures.descriptorBindingStorageTexelBufferUpdateAfterBind ||
-			  _enabledInlineUniformBlockFeatures.descriptorBindingInlineUniformBlockUpdateAfterBind ||
-			  _enabledAccelerationStructureFeatures.accelerationStructure));
+			  _enabledInlineUniformBlockFeatures.descriptorBindingInlineUniformBlockUpdateAfterBind));
 }
 
 void MVKDevice::startAutoGPUCapture(MVKConfigAutoGPUCaptureScope autoGPUCaptureScope, id mtlCaptureObject) {
@@ -5674,7 +5681,11 @@ void MVKDevice::initPerformanceTracking() {
 void MVKDevice::initConfiguration() {
 	bool needsLiveTrackingForCopy = _physicalDevice->_isUsingMetalArgumentBuffers && _physicalDevice->_metalFeatures.needsArgumentBufferEncoders;
 	bool needsLiveTrackingForEncode = !hasResidencySet() && (getMVKConfig().liveCheckAllResources || _enabledDescriptorIndexingFeatures.descriptorBindingPartiallyBound);
-	_liveResources.enabled = needsLiveTrackingForCopy || needsLiveTrackingForEncode;
+	bool needsLiveTrackingForRayTracingPush =
+		_enabledAccelerationStructureFeatures.accelerationStructure &&
+		_enabledDescriptorIndexingFeatures.descriptorBindingPartiallyBound;
+	_liveResources.enabled = needsLiveTrackingForCopy || needsLiveTrackingForEncode ||
+		needsLiveTrackingForRayTracingPush;
 }
 
 void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {

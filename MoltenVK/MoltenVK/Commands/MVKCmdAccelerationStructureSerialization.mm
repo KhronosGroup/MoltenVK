@@ -666,7 +666,11 @@ VkResult MVKAccelerationStructureCanonicalBuild::prepareAndEncode(
 
 	NSUInteger metadataSize = static_cast<NSUInteger>(_layout.dataOffset);
 	const MVKMTLBufferAllocation* metadata = cmdEncoder->getTempMTLBuffer(metadataSize);
-	uint8_t* metadataContents = static_cast<uint8_t*>(metadata->getContents());
+	uint8_t* metadataContents = metadata
+		? static_cast<uint8_t*>(metadata->getContents()) : nullptr;
+	if (!metadata || !metadata->_mtlBuffer || !metadataContents) {
+		return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+	}
 	memset(metadataContents, 0, metadataSize);
 	memcpy(metadataContents, &header, sizeof(header));
 	memcpy(metadataContents + _layout.payloadOffset, &payload, sizeof(payload));
@@ -676,9 +680,6 @@ VkResult MVKAccelerationStructureCanonicalBuild::prepareAndEncode(
 	}
 	id<MTLBlitCommandEncoder> encoder =
 		cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyAccelerationStructure);
-	[encoder fillBuffer:_buffer
-		range:NSMakeRange(metadataSize, static_cast<NSUInteger>(_layout.serializedSize) - metadataSize)
-		value:0];
 	[encoder copyFromBuffer:metadata->_mtlBuffer
 		sourceOffset:metadata->_offset
 		toBuffer:_buffer
@@ -700,17 +701,18 @@ VkResult MVKAccelerationStructureCanonicalBuild::prepareAndEncode(
 }
 
 bool MVKAccelerationStructureCanonicalBuild::publish(
-	MVKAccelerationStructureStorageGeneration* generation) {
+	MVKAccelerationStructureStorageGeneration* generation,
+	uint64_t nativeSize,
+	uint64_t instanceMetadataSize) {
 	if (!_buffer || !generation) { return false; }
-	if (!generation->publishCanonical(_buffer, _layout.serializedSize, _handleCount)) {
+	MVKAccelerationStructureCanonicalSnapshot snapshot;
+	if (!generation->publishBuild(nativeSize, instanceMetadataSize, _handleCount,
+			_buffer, _layout.serializedSize, false, &snapshot)) {
 		return false;
 	}
-	auto snapshot = generation->retainCanonicalSnapshot();
-	_published = snapshot.canonicalBuffer == _buffer &&
-		snapshot.serializationSize == _layout.serializedSize;
-	if (_published) { releaseCanonicalSnapshotOnCompletion(_commandEncoder, snapshot); }
-	else { MVKAccelerationStructureStorageGeneration::releaseCanonicalSnapshot(snapshot); }
-	return _published;
+	_published = true;
+	releaseCanonicalSnapshotOnCompletion(_commandEncoder, snapshot);
+	return true;
 }
 
 static void releaseCanonicalSnapshotOnCompletion(
@@ -727,7 +729,9 @@ VkResult MVKCmdCopyAccelerationStructureToMemory::setContent(
 	MVKAccelerationStructure* accelerationStructure,
 	VkDeviceAddress destination,
 	VkCopyAccelerationStructureModeKHR mode) {
-	cmdBuff->recordAccelerationStructureCommand();
+	cmdBuff->recordAccelerationStructureCommand(
+		VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR |
+		VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR);
 	if (mode != VK_COPY_ACCELERATION_STRUCTURE_MODE_SERIALIZE_KHR) {
 		return cmdBuff->reportError(VK_ERROR_INITIALIZATION_FAILED,
 			"vkCmdCopyAccelerationStructureToMemoryKHR(): The copy mode is not SERIALIZE.");
@@ -1017,6 +1021,13 @@ static MTLAccelerationStructureDescriptor* newDeserializedBLASDescriptor(
 				transform[9] = source[3]; transform[10] = source[7]; transform[11] = source[11];
 				const MVKMTLBufferAllocation* allocation =
 					cmdEncoder->copyToTempMTLBufferAllocation(transform, sizeof(transform));
+				if (!allocation || !allocation->_mtlBuffer || !allocation->getContents()) {
+					[geometry release];
+					[geometries release];
+					cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+						"Acceleration-structure transform storage could not be allocated.");
+					return nil;
+				}
 				geometry.transformationMatrixBuffer = allocation->_mtlBuffer;
 				geometry.transformationMatrixBufferOffset = allocation->_offset;
 			}
@@ -1172,7 +1183,9 @@ VkResult MVKCmdCopyMemoryToAccelerationStructure::setContent(
 	VkDeviceAddress source,
 	MVKAccelerationStructure* accelerationStructure,
 	VkCopyAccelerationStructureModeKHR mode) {
-	cmdBuff->recordAccelerationStructureCommand();
+	cmdBuff->recordAccelerationStructureCommand(
+		VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR |
+		VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR);
 	if (mode != VK_COPY_ACCELERATION_STRUCTURE_MODE_DESERIALIZE_KHR) {
 		return cmdBuff->reportError(VK_ERROR_INITIALIZATION_FAILED,
 			"vkCmdCopyMemoryToAccelerationStructureKHR(): The copy mode is not DESERIALIZE.");
@@ -1324,15 +1337,24 @@ void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncod
 	if (serialization.payload.accelerationStructureType == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR) {
 		cmdEncoder->getDevice()->encodeGPUAddressableAccelerationStructures(cmdEncoder, encoder);
 	}
-	if (!_accelerationStructure->publishGeneration(generation)) {
+	MVKAccelerationStructureCanonicalSnapshot canonicalSnapshot;
+	bool canonicalOwnsResidency = generation->publishBuild(
+		sizes.accelerationStructureSize, instanceMetadataSize, serialization.handleCount,
+		serializationBuffer, header.serializedSize, true, &canonicalSnapshot);
+	if (!canonicalOwnsResidency) {
 		if (previousGeneration) { previousGeneration->release(); }
 		[descriptor release];
-		if (computeEncoder) {
-			releaseDeserializationResourcesOnCompletion(cmdEncoder, generation, serializationBuffer);
-		} else {
-			generation->release();
-			releaseAccelerationStructureBuffer(cmdEncoder->getDevice(), serializationBuffer);
-		}
+		releaseDeserializationResourcesOnCompletion(cmdEncoder, generation, serializationBuffer);
+		cmdEncoder->reportError(VK_ERROR_OUT_OF_HOST_MEMORY,
+			"vkCmdCopyMemoryToAccelerationStructureKHR(): The canonical buffer could not be published.");
+		return;
+	}
+	if (!_accelerationStructure->publishGeneration(generation)) {
+		MVKAccelerationStructureStorageGeneration::releaseCanonicalSnapshot(canonicalSnapshot);
+		if (previousGeneration) { previousGeneration->release(); }
+		[descriptor release];
+		releaseDeserializationResourcesOnCompletion(cmdEncoder, generation,
+			serializationBuffer, true);
 		cmdEncoder->reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY,
 			"vkCmdCopyMemoryToAccelerationStructureKHR(): The destination generation could not be published.");
 		return;
@@ -1344,23 +1366,6 @@ void MVKCmdCopyMemoryToAccelerationStructure::encode(MVKCommandEncoder* cmdEncod
 						 descriptor:descriptor
 					  scratchBuffer:scratch->_mtlBuffer
 				 scratchBufferOffset:scratch->_offset];
-	generation->publishBuild(sizes.accelerationStructureSize, instanceMetadataSize,
-		serialization.handleCount);
-	bool canonicalOwnsResidency = generation->publishCanonical(
-		serializationBuffer, header.serializedSize, serialization.handleCount, true);
-	auto canonicalSnapshot = generation->retainCanonicalSnapshot();
-	bool canonicalPublished = canonicalOwnsResidency &&
-		canonicalSnapshot.canonicalBuffer == serializationBuffer &&
-		canonicalSnapshot.serializationSize == header.serializedSize;
-	if (!canonicalPublished) {
-		MVKAccelerationStructureStorageGeneration::releaseCanonicalSnapshot(canonicalSnapshot);
-		[descriptor release];
-		releaseDeserializationResourcesOnCompletion(cmdEncoder, generation,
-			serializationBuffer, canonicalOwnsResidency);
-		cmdEncoder->reportError(VK_ERROR_OUT_OF_HOST_MEMORY,
-			"vkCmdCopyMemoryToAccelerationStructureKHR(): The canonical buffer could not be published.");
-		return;
-	}
 	releaseCanonicalSnapshotOnCompletion(cmdEncoder, canonicalSnapshot);
 	[descriptor release];
 	releaseDeserializationResourcesOnCompletion(cmdEncoder, generation,
