@@ -114,11 +114,13 @@ VkResult MVKCmdDraw::setContent(MVKCommandBuffer* cmdBuff,
 								uint32_t vertexCount,
 								uint32_t instanceCount,
 								uint32_t firstVertex,
-								uint32_t firstInstance) {
+								uint32_t firstInstance,
+								uint32_t drawIndex) {
 	_vertexCount = vertexCount;
 	_instanceCount = instanceCount;
 	_firstVertex = firstVertex;
 	_firstInstance = firstInstance;
+	_drawIndex = drawIndex;
 
     // Validate
     if ((_firstInstance != 0) && !(cmdBuff->getMetalFeatures().baseVertexInstanceDrawing)) {
@@ -206,8 +208,8 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
     if (pipeline->needsDrawIdBuffer()) {
         tempDrawIDBuff = cmdEncoder->getTempMTLBuffer(sizeof(uint32_t));
 
-        // We don't currently support non-indirect multi-draw commands, so just 0.
-        memset([tempDrawIDBuff->_mtlBuffer contents], 0, sizeof(uint32_t));
+        // Zero for a single draw, or the index of this draw within a vkCmdDrawMulti*EXT() call.
+        *(uint32_t*)tempDrawIDBuff->getContents() = _drawIndex;
     }
     for (uint32_t s : stages) {
         auto stage = MVKGraphicsStage(s);
@@ -353,12 +355,14 @@ VkResult MVKCmdDrawIndexed::setContent(MVKCommandBuffer* cmdBuff,
 									   uint32_t instanceCount,
 									   uint32_t firstIndex,
 									   int32_t vertexOffset,
-									   uint32_t firstInstance) {
+									   uint32_t firstInstance,
+									   uint32_t drawIndex) {
 	_indexCount = indexCount;
 	_instanceCount = instanceCount;
 	_firstIndex = firstIndex;
 	_vertexOffset = vertexOffset;
 	_firstInstance = firstInstance;
+	_drawIndex = drawIndex;
 
     // Validate
 	auto& mtlFeats = cmdBuff->getMetalFeatures();
@@ -488,8 +492,8 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
     if (pipeline->needsDrawIdBuffer()) {
         tempDrawIDBuff = cmdEncoder->getTempMTLBuffer(sizeof(uint32_t));
 
-        // We don't currently support non-indirect multi-draw commands, so just 0.
-        memset([tempDrawIDBuff->_mtlBuffer contents], 0, sizeof(uint32_t));
+        // Zero for a single draw, or the index of this draw within a vkCmdDrawMulti*EXT() call.
+        *(uint32_t*)tempDrawIDBuff->getContents() = _drawIndex;
     }
     for (uint32_t s : stages) {
         auto stage = MVKGraphicsStage(s);

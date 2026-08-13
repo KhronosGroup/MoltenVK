@@ -747,6 +747,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				legacyDitheringFeatures->legacyDithering = getMVKConfig().useMetalPrivateAPI;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT: {
+				auto* multiDrawFeatures = (VkPhysicalDeviceMultiDrawFeaturesEXT*)next;
+				multiDrawFeatures->multiDraw = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_FEATURES_EXT: {
 				auto* nestedCmdBuffFeatures = (VkPhysicalDeviceNestedCommandBufferFeaturesEXT*)next;
 				// Secondary command buffers are encoded by replaying their commands onto the
@@ -1299,6 +1304,12 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				auto* nestedCmdBuffProps = (VkPhysicalDeviceNestedCommandBufferPropertiesEXT*)next;
 				// Nesting is handled by recursion on the host, so no limit is imposed.
 				nestedCmdBuffProps->maxCommandBufferNestingLevel = std::numeric_limits<uint32_t>::max();
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT: {
+				auto* multiDrawProps = (VkPhysicalDeviceMultiDrawPropertiesEXT*)next;
+				// Each draw is encoded as a separate command, so no limit is imposed.
+				multiDrawProps->maxMultiDrawCount = std::numeric_limits<uint32_t>::max();
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_KHR: {
