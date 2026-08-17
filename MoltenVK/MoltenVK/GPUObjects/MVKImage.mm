@@ -954,13 +954,12 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 		mvkDisableFlags(pMemoryRequirements->memoryTypeBits, mvkPD->getPrivateMemoryTypes());
 	}
 
-    // Only transient attachments may use memoryless storage.
-	// Using memoryless as an input attachment requires shader framebuffer fetch, which MoltenVK does not support yet.
-	// TODO: support framebuffer fetch so VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT uses color(m) in shader instead of setFragmentTexture:, which crashes Metal
-    if (!mvkIsAnyFlagEnabled(combinedUsage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ||
-		 mvkIsAnyFlagEnabled(combinedUsage, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) ) {
-        mvkDisableFlags(pMemoryRequirements->memoryTypeBits, mvkPD->getLazilyAllocatedMemoryTypes());
-    }
+	// Only transient attachments may use memoryless storage. Vulkan requires memoryTypeBits to be
+	// identical for all images sharing a tiling, sparse binding flag, external handle types, and
+	// transient attachment usage, so no other usage bit may be taken into account here.
+	if ( !mvkIsAnyFlagEnabled(combinedUsage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ) {
+		mvkDisableFlags(pMemoryRequirements->memoryTypeBits, mvkPD->getLazilyAllocatedMemoryTypes());
+	}
 
     return getMemoryBinding(planeIndex)->getMemoryRequirements(pMemoryRequirements);
 }
@@ -1145,6 +1144,16 @@ MTLStorageMode MVKImage::getMTLStorageMode() {
     MTLStorageMode stgMode = _memoryBindings[0]->_deviceMemory->getMTLStorageMode();
 
     if (_ioSurface && stgMode == MTLStorageModePrivate) { stgMode = MTLStorageModeShared; }
+
+	// An input attachment is read through a texture binding, which memoryless storage does not
+	// support, so commit the memory instead. Lazily allocated memory only promises that an
+	// implementation may defer the allocation, and never that it must.
+	// TODO: support framebuffer fetch so VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT reads color(m) in the
+	// shader rather than a texture binding, and memoryless storage can be kept here.
+	if (stgMode == MTLStorageModeMemoryless &&
+		mvkIsAnyFlagEnabled(getCombinedUsage(), VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
+		stgMode = MTLStorageModePrivate;
+	}
 
     return stgMode;
 }

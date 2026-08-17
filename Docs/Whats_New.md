@@ -22,6 +22,7 @@ Released TBD
   - `VK_EXT_multi_draw`
   - `VK_EXT_nested_command_buffer`
   - `VK_EXT_ycbcr_2plane_444_formats`
+- Fix inconsistent image `memoryTypeBits` when `VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT` is used.
 
 
 
