@@ -682,6 +682,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				depthFeatures->depthClipControl = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT: {
+				auto* depthClipFeatures = (VkPhysicalDeviceDepthClipEnableFeaturesEXT*)next;
+				depthClipFeatures->depthClipEnable = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
 				auto* extDynState = (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT*)next;
 				extDynState->extendedDynamicState = true;
