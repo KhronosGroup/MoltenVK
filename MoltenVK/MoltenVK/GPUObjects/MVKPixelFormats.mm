@@ -421,7 +421,6 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearColorValue clearValue, Vk
 	// n.b. Bad things might happen if the original swizzle isn't one-to-one!
 	VkComponentMapping inverseMap = getInverseComponentMapping(vkFormat);
 	switch (getFormatType(vkFormat)) {
-		case kMVKFormatColorHalf:
 		case kMVKFormatColorFloat: {
 			mtlClr.red		= mvkVkClearColorFloatValueFromVkComponentSwizzle(clearValue.float32, 0, inverseMap.r);
 			mtlClr.green	= mvkVkClearColorFloatValueFromVkComponentSwizzle(clearValue.float32, 1, inverseMap.g);

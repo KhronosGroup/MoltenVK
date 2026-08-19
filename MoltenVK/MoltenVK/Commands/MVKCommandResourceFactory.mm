@@ -400,7 +400,6 @@ NSString* MVKCommandResourceFactory::getMTLFormatTypeString(MTLPixelFormat mtlPi
 		case kMVKFormatColorUInt16:		return @"ushort";
 		case kMVKFormatColorInt32:		return @"int";
 		case kMVKFormatColorUInt32:		return @"uint";
-		case kMVKFormatColorHalf:		return @"half";
 		case kMVKFormatColorFloat:
 		case kMVKFormatDepthStencil:
 		case kMVKFormatCompressed:		return @"float";
@@ -532,7 +531,6 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdClearColorImageMTLC
 					bool isTextureArray) {
 	const char* funcName;
 	switch (type) {
-		case kMVKFormatColorHalf:
 		case kMVKFormatColorFloat:
 			funcName = isTextureArray ? "cmdClearColorImage2DFloatArray" : "cmdClearColorImage2DFloat";
 			break;
@@ -558,7 +556,6 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdResolveColorImageMT
 																									  bool isTextureArray) {
 	const char* funcName;
 	switch (type) {
-		case kMVKFormatColorHalf:
 		case kMVKFormatColorFloat:
 			funcName = isTextureArray ? "cmdResolveColorImage2DFloatArray" : "cmdResolveColorImage2DFloat";
 			break;

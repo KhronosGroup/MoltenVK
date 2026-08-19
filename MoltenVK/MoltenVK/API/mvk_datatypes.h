@@ -45,7 +45,6 @@ extern "C" {
 /** Enumerates the data type of a format. */
 typedef enum {
     kMVKFormatNone,             /**< Format type is unknown. */
-	kMVKFormatColorHalf,		/**< A 16-bit floating point color. */
     kMVKFormatColorFloat,		/**< A 32-bit floating point color. */
 	kMVKFormatColorInt8,        /**< A signed 8-bit integer color. */
 	kMVKFormatColorUInt8,		/**< An unsigned 8-bit integer color. */
