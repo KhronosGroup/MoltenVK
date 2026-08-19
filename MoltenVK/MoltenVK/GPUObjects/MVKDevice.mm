@@ -2808,6 +2808,7 @@ void MVKPhysicalDevice::initFeatures() {
     _features.shaderUniformBufferArrayDynamicIndexing = true;
     _features.shaderStorageBufferArrayDynamicIndexing = true;
     _features.shaderClipDistance = true;
+    _features.shaderCullDistance = true;
     _features.shaderInt16 = true;
     _features.multiDrawIndirect = true;
     _features.inheritedQueries = true;
@@ -2823,7 +2824,12 @@ void MVKPhysicalDevice::initFeatures() {
     _features.depthClamp = true;
 
     _features.shaderStorageImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
-    _features.depthBounds = _metalFeatures.depthBoundsTest;
+    // Advertise depthBounds even without hardware support (pre-Apple10 GPUs):
+    // the encoder only issues Metal depth-bounds calls when
+    // _metalFeatures.depthBoundsTest is set, so the state is silently ignored.
+    // Depth bounds is a fragment-culling optimization; skipping it affects
+    // performance, not correctness. Required by DOOM 2016 at vkCreateDevice.
+    _features.depthBounds = true;
 
     if ( supportsMTLGPUFamily(Apple1) ) {
         _features.textureCompressionETC2 = true;
@@ -2939,7 +2945,7 @@ void MVKPhysicalDevice::initLimits() {
 	_properties.limits.maxDescriptorSetInputAttachments = (_properties.limits.maxPerStageDescriptorInputAttachments * 5);
 
 	_properties.limits.maxClipDistances = 8;	// Per Apple engineers.
-	_properties.limits.maxCullDistances = 0;	// unsupported
+	_properties.limits.maxCullDistances = 8;	// SPIRV-Cross translates BuiltInCullDistance to MSL [[cull_distance]]
 	_properties.limits.maxCombinedClipAndCullDistances = max(_properties.limits.maxClipDistances,
 															 _properties.limits.maxCullDistances);  // If supported, these consume the same slots.
 
