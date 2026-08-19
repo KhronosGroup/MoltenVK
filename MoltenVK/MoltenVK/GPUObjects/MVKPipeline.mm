@@ -824,6 +824,23 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 
 	if (const VkPipelineRasterizationStateCreateInfo* rs = pCreateInfo->pRasterizationState) {
 		_staticStateData.enable.set(MVKRenderStateEnableFlag::DepthClamp, rs->depthClampEnable);
+
+		// VK_EXT_depth_clip_enable decouples depth CLIPPING from depthClampEnable, which in core
+		// Vulkan implicitly disables clipping. Metal's single MTLDepthClipMode expresses exactly one
+		// of clip or clamp, and that is sufficient here rather than a limitation:
+		//
+		//   clipping ENABLED  -> MTLDepthClipModeClip. depthClampEnable is unobservable in this case,
+		//                        because clipping removes everything outside the near/far planes, so
+		//                        every surviving fragment's depth already lies inside the viewport's
+		//                        [minDepth, maxDepth] and clamping to that range is a no-op.
+		//   clipping DISABLED -> MTLDepthClipModeClamp, which keeps the fragments and clamps them.
+		//
+		// So the clip mode follows depthClipEnable alone. Without the struct, the core rule applies
+		// and clipping is enabled exactly when depthClampEnable is false, which is what the
+		// depthClampEnable assignment above already encodes.
+		if (const auto* depthClip = mvkFindStructInChain<VkPipelineRasterizationDepthClipStateCreateInfoEXT>(rs, VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT)) {
+			_staticStateData.enable.set(MVKRenderStateEnableFlag::DepthClamp, !depthClip->depthClipEnable);
+		}
 		_staticStateData.enable.set(MVKRenderStateEnableFlag::DepthBias, rs->depthBiasEnable);
 		_staticStateData.setCullMode(rs->cullMode);
 		_staticStateData.setFrontFace(rs->frontFace);
