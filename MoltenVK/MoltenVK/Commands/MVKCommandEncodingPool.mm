@@ -112,7 +112,6 @@ static constexpr uint32_t getRenderpassLoadStoreStateIndex(MVKFormatType type, b
 	// Kernels for array textures are stored from slot 3 onwards
 	uint32_t layeredOffset = isTextureArray ? 3u : 0u;
 	switch (type) {
-		case kMVKFormatColorHalf:
 		case kMVKFormatColorFloat:
 			return 0 + layeredOffset;
 		case kMVKFormatColorInt8:

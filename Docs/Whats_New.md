@@ -24,6 +24,7 @@ Released TBD
   - `VK_EXT_ycbcr_2plane_444_formats`
 - Fix inconsistent image `memoryTypeBits` when `VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT` is used.
 - Fix shader stage interface matching of 16-bit floating point variables.
+- Remove the unused `kMVKFormatColorHalf` format type.
 
 
 

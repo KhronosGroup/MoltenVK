@@ -2989,7 +2989,6 @@ void MVKPhysicalDevice::initLimits() {
             case kMVKFormatColorUInt8:
                 texelSize = 1;
                 break;
-            case kMVKFormatColorHalf:
             case kMVKFormatColorInt16:
             case kMVKFormatColorUInt16:
                 texelSize = 2;
