@@ -759,6 +759,7 @@ void MVKInstance::initProcAddrs() {
 	// Device extension functions.
 	ADD_DVC_EXT_ENTRY_POINT(vkGetCalibratedTimestampsKHR, KHR_CALIBRATED_TIMESTAMPS);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetPhysicalDeviceCalibrateableTimeDomainsKHR, KHR_CALIBRATED_TIMESTAMPS);
+	ADD_DVC_EXT_ENTRY_POINT(vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR, KHR_COOPERATIVE_MATRIX);
     ADD_DVC_EXT_ENTRY_POINT(vkCreateDeferredOperationKHR, KHR_DEFERRED_HOST_OPERATIONS);
     ADD_DVC_EXT_ENTRY_POINT(vkDeferredOperationJoinKHR, KHR_DEFERRED_HOST_OPERATIONS);
     ADD_DVC_EXT_ENTRY_POINT(vkDestroyDeferredOperationKHR, KHR_DEFERRED_HOST_OPERATIONS);
