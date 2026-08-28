@@ -266,6 +266,8 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
+	void releaseRetainedContent() override;
+
 	~MVKCmdPushDescriptorSet() override;
 
 protected:
@@ -292,6 +294,8 @@ public:
 						const void* pData);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+	void releaseRetainedContent() override;
 
 	~MVKCmdPushDescriptorSetWithTemplate() override;
 

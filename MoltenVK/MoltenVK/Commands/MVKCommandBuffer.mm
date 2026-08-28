@@ -219,6 +219,9 @@ void MVKCommandBuffer::flushImmediateCmdEncoder() {
 VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
     flushImmediateCmdEncoder();
 	clearPrefilledMTLCommandBuffer();
+	// The command buffer is not in the pending state here, so retained command
+	// content can no longer be referenced by encoding or execution.
+	for (MVKCommand* cmd = _head; cmd; cmd = cmd->_next) { cmd->releaseRetainedContent(); }
 	releaseRecordedCommands();
 	_secondaryInheritanceInfo = {};
 	_hasSecondaryInheritanceInfo = false;

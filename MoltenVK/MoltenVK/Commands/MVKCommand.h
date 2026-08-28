@@ -74,6 +74,12 @@ protected:
 	// This function is overridden in each concrete subclass declaration, but the implementation of
 	// this function in each subclass is automatically generated in the MVKCommandPool implementation.
 	virtual MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) = 0;
+
+	/**
+	 * Releases any content retained by this command, so that it is not
+	 * held by the command pool while this command awaits reuse.
+	 */
+	virtual void releaseRetainedContent() {}
 };
 
 

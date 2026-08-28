@@ -442,6 +442,11 @@ void MVKCmdPushDescriptorSet::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->getState().pushDescriptorSet(_pipelineBindPoint, _pipelineLayout, _set, static_cast<uint32_t>(_descriptorWrites.size()), _descriptorWrites.data());
 }
 
+void MVKCmdPushDescriptorSet::releaseRetainedContent() {
+	clearDescriptorWrites();
+	_descriptorWrites.shrink_to_fit();
+}
+
 MVKCmdPushDescriptorSet::~MVKCmdPushDescriptorSet() {
 	clearDescriptorWrites();
 	if (_pipelineLayout) { _pipelineLayout->release(); }
@@ -499,6 +504,12 @@ VkResult MVKCmdPushDescriptorSetWithTemplate::setContent(MVKCommandBuffer* cmdBu
 
 void MVKCmdPushDescriptorSetWithTemplate::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->getState().pushDescriptorSet(_descUpdateTemplate, _pipelineLayout, _set, _pData);
+}
+
+void MVKCmdPushDescriptorSetWithTemplate::releaseRetainedContent() {
+	free(_pData);
+	_pData = nullptr;
+	_dataSize = 0;
 }
 
 MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
