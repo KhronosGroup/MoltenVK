@@ -359,6 +359,55 @@ kernel void cmdDrawIndexedIndirectCountConvertBuffers(const device char* srcBuff
 	}
 }
 
+struct MVKMeshDrawInfo {
+	int32_t indexed;
+	int32_t indexSize;
+	uint64_t indexBuffer;
+};
+
+static uint32_t meshThreadgroupCount(uint32_t vertexCount, uint32_t primitiveType) {
+	switch (primitiveType) {
+		case 0: return vertexCount;
+		case 1: return vertexCount / 2;
+		case 2: return vertexCount > 1 ? vertexCount - 1 : 0;
+		case 3: return vertexCount / 3;
+		case 4: return vertexCount > 2 ? vertexCount - 2 : 0;
+		default: return 0;
+	}
+}
+
+kernel void cmdDrawIndirectMeshConvertBuffers(const device char* srcBuff [[buffer(0)]],
+                                              device MTLDispatchThreadgroupsIndirectArguments* dispatchBuff [[buffer(1)]],
+                                              device MVKMeshDrawInfo* drawInfoBuff [[buffer(2)]],
+                                              constant uint32_t& srcStride [[buffer(3)]],
+                                              constant uint32_t& drawCount [[buffer(4)]],
+                                              constant uint32_t& primitiveType [[buffer(5)]],
+                                              uint idx [[thread_position_in_grid]]) {
+	if (idx >= drawCount) { return; }
+	const device auto& src = *reinterpret_cast<const device MTLDrawPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);
+	dispatchBuff[idx].threadgroupsPerGrid[0] = meshThreadgroupCount(src.vertexCount, primitiveType);
+	dispatchBuff[idx].threadgroupsPerGrid[1] = src.instanceCount;
+	dispatchBuff[idx].threadgroupsPerGrid[2] = 1;
+	drawInfoBuff[idx] = { false, 0, 0 };
+}
+
+kernel void cmdDrawIndexedIndirectMeshConvertBuffers(const device char* srcBuff [[buffer(0)]],
+                                                     device MTLDispatchThreadgroupsIndirectArguments* dispatchBuff [[buffer(1)]],
+                                                     device MVKMeshDrawInfo* drawInfoBuff [[buffer(2)]],
+                                                     constant uint32_t& srcStride [[buffer(3)]],
+                                                     constant uint32_t& drawCount [[buffer(4)]],
+                                                     constant uint32_t& primitiveType [[buffer(5)]],
+                                                     constant uint64_t& indexBuffer [[buffer(6)]],
+                                                     constant uint32_t& indexSize [[buffer(7)]],
+                                                     uint idx [[thread_position_in_grid]]) {
+	if (idx >= drawCount) { return; }
+	const device auto& src = *reinterpret_cast<const device MTLDrawIndexedPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);
+	dispatchBuff[idx].threadgroupsPerGrid[0] = meshThreadgroupCount(src.indexCount, primitiveType);
+	dispatchBuff[idx].threadgroupsPerGrid[1] = src.instanceCount;
+	dispatchBuff[idx].threadgroupsPerGrid[2] = 1;
+	drawInfoBuff[idx] = { true, int32_t(indexSize), indexBuffer + uint64_t(src.indexStart) * indexSize };
+}
+
 kernel void cmdDrawIndirectCopyZeroDivisorVertexBuffers(const device char* indirectBuff [[buffer(0)]],
                                                          const device char* srcBuff [[buffer(1)]],
                                                          device char* destBuff [[buffer(2)]],

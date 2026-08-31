@@ -18,7 +18,7 @@ MoltenVK 1.4.3
 
 Released TBD
 
-- 
+- Extend Metal mesh-based geometry shader execution to indexed and indirect draws.
 
 
 
@@ -2834,4 +2834,3 @@ MoltenVK 1.0.0
 Released 2018/02/26
 
 Initial open-source release!
-

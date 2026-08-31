@@ -365,6 +365,10 @@ public:
 	id<MTLComputePipelineState> newCmdDrawIndirectCountConvertBuffersMTLComputePipelineState(bool indexed,
 																				 MVKVulkanAPIDeviceObject* owner);
 
+	/** Returns a new MTLComputePipelineState for converting an indirect buffer for a mesh draw. */
+	id<MTLComputePipelineState> newCmdDrawIndirectMeshConvertBuffersMTLComputePipelineState(bool indexed,
+																				MVKVulkanAPIDeviceObject* owner);
+
 	/** Returns a new MTLComputePipelineState for copying zero-divisor vertex data for an indirect draw. */
 	id<MTLComputePipelineState> newCmdDrawIndirectCopyZeroDivisorVertexBuffersMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 

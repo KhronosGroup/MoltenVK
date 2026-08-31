@@ -124,6 +124,9 @@ public:
 	/** Returns a MTLComputePipelineState for emulating indirect draw count. */
 	id<MTLComputePipelineState> getCmdDrawIndirectCountConvertBuffersMTLComputePipelineState(bool indexed);
 
+	/** Returns a MTLComputePipelineState for converting an indirect buffer for a mesh draw. */
+	id<MTLComputePipelineState> getCmdDrawIndirectMeshConvertBuffersMTLComputePipelineState(bool indexed);
+
 	/** Returns a MTLComputePipelineState for copying zero-divisor vertex data for an indirect draw. */
 	id<MTLComputePipelineState> getCmdDrawIndirectCopyZeroDivisorVertexBuffersMTLComputePipelineState();
 
@@ -178,6 +181,7 @@ protected:
 	id<MTLComputePipelineState> _mtlResolveColorImageComputePipelineState[kColorImageCount] = {nil, nil, nil, nil, nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndirectConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndirectCountConvertBuffersComputePipelineState[2] = {nil, nil};
+	id<MTLComputePipelineState> _mtlDrawIndirectMeshConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndirectCopyZeroDivisorVertexBuffersComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlDrawIndirectTessConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndexedCopyIndexBufferComputePipelineState[2] = {nil, nil};
