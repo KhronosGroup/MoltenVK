@@ -99,6 +99,15 @@ public:
 	/** If this memory is host-visible, the specified memory range is flushed to the device. */
 	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
 
+	/** Returns whether this memory mirrors imported host memory in a private MTLBuffer. */
+	bool isShadowingImportedHostMemory() { return _pShadowedHostMemory != nullptr; }
+
+	/** If shadowing imported host memory, copies the imported pages into the MTLBuffer. */
+	void syncShadowedHostMemoryToDevice(VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
+
+	/** If shadowing imported host memory, copies the MTLBuffer back into the imported pages. */
+	void syncShadowedHostMemoryFromDevice(VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
+
 	/**
 	 * If this memory is host-visible, pulls the specified memory range from the device.
 	 *
@@ -185,6 +194,10 @@ protected:
 	MTLCPUCacheMode _mtlCPUCacheMode;
 	bool _isDedicated = false;
 	bool _isHostMemImported = false;
+	// When shadowing imported host memory, the imported pages stay the host-visible memory
+	// and _mtlBuffer is a private mirror of them. See MVK_CONFIG_SHADOW_IMPORTED_HOST_MEMORY.
+	void* _pShadowedHostMemory = nullptr;
+	NSUInteger _shadowedByteCount = 0;
 	VkExternalMemoryHandleTypeFlags _externalMemoryHandleType = 0u;
 };
 

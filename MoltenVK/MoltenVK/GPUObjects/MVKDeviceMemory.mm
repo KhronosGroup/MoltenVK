@@ -84,6 +84,8 @@ VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size) 
 	VkDeviceSize memSize = adjustMemorySize(size, offset);
 	if (memSize == 0 || !isMemoryHostAccessible()) { return VK_SUCCESS; }
 
+	syncShadowedHostMemoryToDevice(offset, memSize);
+
 #if MVK_MACOS
 	if ( !isUnifiedMemoryGPU() && _mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {
 		[_mtlBuffer didModifyRange: NSMakeRange(offset, memSize)];
@@ -104,6 +106,8 @@ VkResult MVKDeviceMemory::pullFromDevice(VkDeviceSize offset,
 										 MVKMTLBlitEncoder* pBlitEnc) {
     VkDeviceSize memSize = adjustMemorySize(size, offset);
 	if (memSize == 0 || !isMemoryHostAccessible()) { return VK_SUCCESS; }
+
+	syncShadowedHostMemoryFromDevice(offset, memSize);
 
 #if MVK_MACOS
 	if ( !isUnifiedMemoryGPU() && pBlitEnc && _mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {
@@ -255,7 +259,16 @@ bool MVKDeviceMemory::ensureMTLBuffer() {
 		[buf makeAliasable];
 	} else if (_pHostMemory) {
 		auto rezOpts = getMTLResourceOptions();
-		if (_isHostMemImported) {
+		if (_isHostMemImported && getMVKConfig().shadowImportedHostMemory) {
+			// Mirror the imported pages in a private MTLBuffer. The pages remain the host-visible
+			// memory and are synchronized with the buffer on flush, invalidate and queue submission.
+			buf = [getMTLDevice() newBufferWithBytes: _pHostMemory length: memLen options: rezOpts];	// retained
+			if (buf) {
+				_pShadowedHostMemory = _pHostMemory;
+				_shadowedByteCount = memLen;
+				_device->addShadowedDeviceMemory(this);
+			}
+		} else if (_isHostMemImported) {
 			buf = [getMTLDevice() newBufferWithBytesNoCopy: _pHostMemory length: memLen options: rezOpts deallocator: nil];	// retained
 		} else {
 			buf = [getMTLDevice() newBufferWithBytes: _pHostMemory length: memLen options: rezOpts];     // retained
@@ -267,7 +280,7 @@ bool MVKDeviceMemory::ensureMTLBuffer() {
 	if (!buf) { return false; }
 	_device->makeResident(buf);
 	_device->getLiveResources().add(buf);
-	_pMemory = isMemoryHostAccessible() ? buf.contents : nullptr;
+	_pMemory = _pShadowedHostMemory ? _pShadowedHostMemory : (isMemoryHostAccessible() ? buf.contents : nullptr);
 	_mtlBuffer = buf;
 
 	propagateDebugName();
@@ -499,7 +512,30 @@ void MVKDeviceMemory::initExternalMemory(MVKImage* dedicatedImage, bool wantsHea
 	}
 }
 
+void MVKDeviceMemory::syncShadowedHostMemoryToDevice(VkDeviceSize offset, VkDeviceSize size) {
+	if ( !_pShadowedHostMemory || !_mtlBuffer ) { return; }
+	if (offset >= _shadowedByteCount) { return; }
+	NSUInteger byteCount = (size == VK_WHOLE_SIZE) ? (_shadowedByteCount - offset) : (NSUInteger)std::min<VkDeviceSize>(size, _shadowedByteCount - offset);
+	memcpy((char*)_mtlBuffer.contents + offset, (char*)_pShadowedHostMemory + offset, byteCount);
+#if MVK_MACOS
+	if ( !isUnifiedMemoryGPU() && _mtlStorageMode == MTLStorageModeManaged) {
+		[_mtlBuffer didModifyRange: NSMakeRange(offset, byteCount)];
+	}
+#endif
+}
+
+void MVKDeviceMemory::syncShadowedHostMemoryFromDevice(VkDeviceSize offset, VkDeviceSize size) {
+	if ( !_pShadowedHostMemory || !_mtlBuffer ) { return; }
+	if (offset >= _shadowedByteCount) { return; }
+	NSUInteger byteCount = (size == VK_WHOLE_SIZE) ? (_shadowedByteCount - offset) : (NSUInteger)std::min<VkDeviceSize>(size, _shadowedByteCount - offset);
+	memcpy((char*)_pShadowedHostMemory + offset, (char*)_mtlBuffer.contents + offset, byteCount);
+}
+
 MVKDeviceMemory::~MVKDeviceMemory() {
+	if (_pShadowedHostMemory) {
+		_device->removeShadowedDeviceMemory(this);
+		_pShadowedHostMemory = nullptr;
+	}
 	// Unbind any resources that are using me.
 	// Manually null the binding parameter to prevent them from trying to remove themselves from the array.
 	// This will leave texture buffer pointers dangling, but according to Vulkan, those are not supposed to be used again anyways.

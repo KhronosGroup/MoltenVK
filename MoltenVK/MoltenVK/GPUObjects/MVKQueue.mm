@@ -84,6 +84,10 @@ VkResult MVKQueue::submit(MVKQueueSubmission* qSubmit) {
 	// Submit regardless of config result, to ensure submission semaphores and fences are signalled.
 	// The submissions will ensure a misconfiguration will be safe to execute.
 	VkResult rslt = qSubmit->getConfigurationResult();
+
+	// Host writes to shadowed imported host memory must reach the MTLBuffers before the GPU runs.
+	if (getMVKConfig().shadowImportedHostMemory) { _device->syncShadowedDeviceMemoryToDevice(); }
+
 	if (_execQueue) {
 		std::unique_lock lock(_execQueueMutex);
 		_execQueueJobCount++;

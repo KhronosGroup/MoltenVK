@@ -658,3 +658,22 @@ In the special case of `VK_SEMAPHORE_TYPE_TIMELINE` semaphores, **MoltenVK** wil
 Makes MoltenVK treat all descriptors as if they had `VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT` set.
 Versions of MoltenVK with this flag are less forgiving of applications that bind descriptors that point to
 destroyed objects, so this option can be used to temporarily work around any breakage that may have caused.
+
+
+---------------------------------------
+#### MVK_CONFIG_SHADOW_IMPORTED_HOST_MEMORY
+
+##### Type: Boolean
+##### Default: `0`
+
+If enabled, host memory imported through `VK_EXT_external_memory_host` is backed by a private `MTLBuffer`
+that mirrors the imported pages, instead of a no-copy `MTLBuffer` created directly over them. The imported
+pages remain the host-visible memory returned by `vkMapMemory()`. **MoltenVK** copies them into the
+`MTLBuffer` on `vkFlushMappedMemoryRanges()`, on `vkUnmapMemory()` of coherent memory, and for all such
+allocations before every queue submission, and copies the `MTLBuffer` back into the pages on
+`vkInvalidateMappedMemoryRanges()` and on `vkMapMemory()` of coherent memory.
+
+This is a workaround for imported allocations that _Metal_ accepts as no-copy buffers but then fails to
+execute against, where every `MTLCommandBuffer` completes with `kIOGPUCommandBufferCallbackErrorOutOfMemory`
+and the device is lost. It costs a copy of all shadowed memory per queue submission, so it should only be
+enabled for applications that need it.

@@ -5647,6 +5647,21 @@ NSArray<id<MTLDevice>>* mvkGetAvailableMTLDevicesArray(MVKInstance* instance) {
 	return mtlDevs;		// retained
 }
 
+void MVKDevice::addShadowedDeviceMemory(MVKDeviceMemory* mvkMem) {
+	lock_guard<mutex> lock(_shadowedDeviceMemoryLock);
+	_shadowedDeviceMemory.push_back(mvkMem);
+}
+
+void MVKDevice::removeShadowedDeviceMemory(MVKDeviceMemory* mvkMem) {
+	lock_guard<mutex> lock(_shadowedDeviceMemoryLock);
+	mvkRemoveFirstOccurance(_shadowedDeviceMemory, mvkMem);
+}
+
+void MVKDevice::syncShadowedDeviceMemoryToDevice() {
+	lock_guard<mutex> lock(_shadowedDeviceMemoryLock);
+	for (auto* mvkMem : _shadowedDeviceMemory) { mvkMem->syncShadowedHostMemoryToDevice(); }
+}
+
 uint64_t mvkGetLocationID(id<MTLDevice> mtlDevice) {
 	uint64_t hash = 0;
 
