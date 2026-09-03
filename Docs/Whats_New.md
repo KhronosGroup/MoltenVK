@@ -22,6 +22,9 @@ Released TBD
   - `VK_EXT_multi_draw`
   - `VK_EXT_nested_command_buffer`
   - `VK_EXT_ycbcr_2plane_444_formats`
+- Add `MVK_CONFIG_MAXIMUM_PRESENT_FRAME_RATE` configuration parameter, to cap the rate at which
+  swapchain images are presented, which allows the OS to lower the refresh rate of a variable
+  refresh rate display, and to reduce GPU clocks.
 - Fix inconsistent image `memoryTypeBits` when `VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT` is used.
 - Fix shader stage interface matching of 16-bit floating point variables.
 - Fix spurious warning about blending on attachment formats that do not support it.
