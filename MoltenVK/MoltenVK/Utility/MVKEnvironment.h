@@ -350,3 +350,8 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #ifndef MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES
 #   define MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES 0
 #endif
+
+/** Create linear-tiled images Metal cannot back with linear memory as optimal-tiled images instead of failing. Disabled by default. */
+#ifndef MVK_CONFIG_LINEAR_TILING_FALLBACK
+#   define MVK_CONFIG_LINEAR_TILING_FALLBACK    0
+#endif

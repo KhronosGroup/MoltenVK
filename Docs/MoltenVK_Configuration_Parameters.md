@@ -650,6 +650,22 @@ In the special case of `VK_SEMAPHORE_TYPE_TIMELINE` semaphores, **MoltenVK** wil
 `MTLSharedEvent`, regardless of the value of this parameter.
 
 ---------------------------------------
+#### MVK_CONFIG_LINEAR_TILING_FALLBACK
+
+##### Type: Boolean
+##### Default: `0`
+
+_Metal_ cannot back a 3D, mipmapped, or array texture with linear memory, so **MoltenVK**
+fails `vkCreateImage()` for a `VK_IMAGE_TILING_LINEAR` image of that kind. Some applications
+create such images anyway and cannot recover when the call fails. If this parameter is enabled,
+**MoltenVK** creates such an image with `VK_IMAGE_TILING_OPTIMAL` instead and logs a warning.
+Host access to the image then goes through the memory binding's flush path rather than a
+shared `MTLBuffer`, and `vkGetImageSubresourceLayout()` describes that layout. The other
+restrictions on linear images (depth/stencil, compressed and chroma-subsampled formats,
+multisampling, rendering where the device does not support it) are unchanged.
+
+
+---------------------------------------
 #### MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES
 
 ##### Type: Boolean

@@ -25,6 +25,7 @@ Released TBD
 - Fix inconsistent image `memoryTypeBits` when `VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT` is used.
 - Fix shader stage interface matching of 16-bit floating point variables.
 - Fix spurious warning about blending on attachment formats that do not support it.
+- Add `MVK_CONFIG_LINEAR_TILING_FALLBACK` configuration parameter to create linear-tiled 3D, mipmapped or array images, which _Metal_ cannot back with linear memory, as optimal-tiled images instead of failing `vkCreateImage()`.
 
 
 
