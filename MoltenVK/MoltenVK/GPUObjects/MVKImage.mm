@@ -1440,10 +1440,26 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttac
 
 	bool isLin = true;
 
-	if (getImageType() != VK_IMAGE_TYPE_2D) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, imageType must be VK_IMAGE_TYPE_2D."));
+	// Metal cannot back a 3D, mipmapped or array texture with linear memory. With
+	// MVK_CONFIG_LINEAR_TILING_FALLBACK, such an image is created with optimal tiling instead
+	// of failing vkCreateImage: the app gets a usable image (host access goes through the
+	// memory binding's flush path rather than a shared MTLBuffer), which some engines rely on.
+	bool fallback = getMVKConfig().linearTilingFallback;
+	auto unsupportedLinear = [&](const char* what) {
+		if (fallback) {
+			// An engine that wants such an image tends to want thousands of them; say it once.
+			static bool reported = false;
+			if ( !reported ) {
+				reported = true;
+				reportMessage(MVK_CONFIG_LOG_LEVEL_WARNING, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, %s; creating the image with VK_IMAGE_TILING_OPTIMAL instead (MVK_CONFIG_LINEAR_TILING_FALLBACK). Further such images are created silently.", what);
+			}
+		} else {
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, %s.", what));
+		}
 		isLin = false;
-	}
+	};
+
+	if (getImageType() != VK_IMAGE_TYPE_2D) { unsupportedLinear("imageType must be VK_IMAGE_TYPE_2D"); }
 
 	if (getPixelFormats()->getFormatType(pCreateInfo->format) == kMVKFormatDepthStencil) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, format must not be a depth/stencil format."));
@@ -1458,15 +1474,9 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttac
 		isLin = false;
 	}
 
-	if (pCreateInfo->mipLevels > 1) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, mipLevels must be 1."));
-		isLin = false;
-	}
+	if (pCreateInfo->mipLevels > 1) { unsupportedLinear("mipLevels must be 1"); }
 
-	if (pCreateInfo->arrayLayers > 1) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, arrayLayers must be 1."));
-		isLin = false;
-	}
+	if (pCreateInfo->arrayLayers > 1) { unsupportedLinear("arrayLayers must be 1"); }
 
 	if (pCreateInfo->samples > VK_SAMPLE_COUNT_1_BIT) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, samples must be VK_SAMPLE_COUNT_1_BIT."));
