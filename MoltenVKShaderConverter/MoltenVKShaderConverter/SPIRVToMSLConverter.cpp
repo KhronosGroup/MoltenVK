@@ -17,6 +17,7 @@
  */
 
 #include "SPIRVToMSLConverter.h"
+#include "SPIRVDualSourceBlend.h"
 #include "MVKCommonEnvironment.h"
 #include "MVKStrings.h"
 #include "FileSupport.h"
@@ -276,7 +277,21 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 	try {
 #endif
-		pMSLCompiler = new CompilerMSL(_spirv);
+		// Metal will not build a pipeline whose fragment function omits either source of dual
+		// source blending, even where Vulkan leaves that output undefined, so both are supplied.
+		const std::vector<uint32_t>* pSPIRV = &_spirv;
+		std::vector<uint32_t> dualSourceSPIRV;
+		if (shaderConfig.options.entryPointStage == spv::ExecutionModelFragment) {
+			dualSourceSPIRV = _spirv;
+			std::string dualSourceLog;
+			if (addMissingDualSourceOutput(dualSourceSPIRV, dualSourceLog)) {
+				pSPIRV = &dualSourceSPIRV;
+			} else if ( !dualSourceLog.empty() ) {
+				conversionResult.resultLog += "Dual source blending was not completed: " + dualSourceLog + "\n";
+			}
+		}
+
+		pMSLCompiler = new CompilerMSL(*pSPIRV);
 
 		if (shaderConfig.options.hasEntryPoint()) {
 			pMSLCompiler->set_entry_point(shaderConfig.options.entryPointName, shaderConfig.options.entryPointStage);
