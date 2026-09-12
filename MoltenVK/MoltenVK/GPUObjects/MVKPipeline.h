@@ -139,6 +139,21 @@ private:
 #pragma mark -
 #pragma mark MVKPipeline
 
+/** Bytes of zeros a vertex attribute the application never bound reads its default value from. */
+static const uint32_t kMVKDefaultVertexAttributeSize = 16;
+
+/**
+ * A vertex shader input the application described no attribute for.
+ *
+ * Vulkan defines reading one as the default attribute value, while Metal will not build a pipeline
+ * whose vertex function declares an attribute the vertex descriptor does not, so each is described
+ * against a buffer of zeros, in the format the shader declares it with.
+ */
+struct MVKDefaultVertexAttribute {
+	uint32_t location;
+	uint32_t mtlVertexFormat;
+};
+
 static const uint32_t kMVKTessCtlNumReservedBuffers = 1;
 static const uint32_t kMVKTessCtlInputBufferBinding = 0;
 
@@ -294,6 +309,15 @@ public:
 	/** Returns the collection of translated vertex bindings. */
 	MVKArrayRef<MVKTranslatedVertexBinding> getTranslatedVertexBindings() { return _translatedVertexBindings.contents(); }
 
+	/**
+	 * Returns the Metal buffer index a buffer of zeros must be bound at, or -1 if none is needed.
+	 *
+	 * Vulkan lets a vertex shader read a location the application never described, and defines the
+	 * result as the default attribute value, while Metal requires the vertex descriptor to describe
+	 * every attribute the function declares. Such locations are described against this binding.
+	 */
+	int32_t getDefaultVertexBufferIndex() const { return _defaultVertexBufferIndex; }
+
 	/** Returns the collection of instance-rate vertex bindings whose divisor is zero, along with their strides. */
 	MVKArrayRef<MVKZeroDivisorVertexBinding> getZeroDivisorVertexBindings() { return _zeroDivisorVertexBindings.contents(); }
 
@@ -356,6 +380,7 @@ protected:
     bool addFragmentShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, mvk::SPIRVToMSLConversionConfiguration& shaderConfig, SPIRVShaderOutputs& prevOutput, const VkPipelineShaderStageCreateInfo* pFragmentSS, VkPipelineCreationFeedback* pFragmentFB);
 	template<class T>
 	bool addVertexInputToPipeline(T* inputDesc, const VkPipelineVertexInputStateCreateInfo* pVI, const mvk::SPIRVToMSLConversionConfiguration& shaderConfig);
+	void initDefaultVertexAttributes(const VkPipelineVertexInputStateCreateInfo* pVI, const char* pVtxEntryName);
 	void adjustVertexInputForMultiview(MTLVertexDescriptor* inputDesc, const VkPipelineVertexInputStateCreateInfo* pVI, uint32_t viewCount, uint32_t oldViewCount = 1);
     void addTessellationToPipeline(MTLRenderPipelineDescriptor* plDesc, const mvk::SPIRVTessReflectionData& reflectData, const VkPipelineTessellationStateCreateInfo* pTS);
     void addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo);
@@ -380,6 +405,8 @@ protected:
 	VkRect2D _scissors[kMVKMaxViewportScissorCount];
 	MTLSamplePosition _sampleLocations[kMVKMaxSampleCount];
 	MVKSmallVector<MVKTranslatedVertexBinding> _translatedVertexBindings;
+	MVKSmallVector<MVKDefaultVertexAttribute, 4> _defaultVertexAttributes;
+	int32_t _defaultVertexBufferIndex = -1;
 	MVKSmallVector<MVKZeroDivisorVertexBinding> _zeroDivisorVertexBindings;
 	MVKSmallVector<MVKShaderStage> _stagesUsingPhysicalStorageBufferAddressesCapability;
 	MVKSmallVector<uint32_t, kMVKDefaultAttachmentCount> _colorAttachmentLocations;

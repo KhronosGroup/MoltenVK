@@ -532,6 +532,9 @@ protected:
 };
 
 
+/** Bytes of zeros the null vertex buffer holds, enough for the widest attribute Metal fetches. */
+static const NSUInteger kMVKNullVertexMTLBufferSize = 64;
+
 #pragma mark -
 #pragma mark MVKDevice
 
@@ -944,6 +947,18 @@ public:
 	id<MTLBuffer> getDummyBlitMTLBuffer();
 
 	/**
+	 * Returns a small zeroed MTLBuffer that a vertex shader loading its own attributes reads
+	 * an out-of-bounds or unbound attribute from.
+	 */
+	/**
+	 * Returns a buffer of zeros a vertex attribute can be read from, creating it on first use.
+	 *
+	 * Vulkan lets a shader read a vertex attribute the application never bound, and defines the
+	 * result as the default attribute value, which is zero in every component here.
+	 */
+	id<MTLBuffer> getNullVertexMTLBuffer();
+
+	/**
 	 * Returns whether MTLCommandBuffers can be prefilled.
 	 *
 	 * This depends both on whether the app config has requested prefilling, and whether doing so will
@@ -1111,6 +1126,7 @@ protected:
 	std::string _capturePipeFileName;
 	id<MTLSamplerState> _defaultMTLSamplerState = nil;
 	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
+	id<MTLBuffer> _nullVertexMTLBuffer = nil;
 #if MVK_XCODE_16
 	id<MTLResidencySet> _residencySet = nil;
 #endif

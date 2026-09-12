@@ -820,6 +820,13 @@ static void bindVertexBuffersTemplate(id<MTLCommandEncoder> encoder,
 		bindVertexBuffer<DynamicStride>(encoder, buffer.mtlBuffer, buffer.offset + xltdBuffer.translationOffset, buffer.stride,
 		                                idx, exists, bindings, binder);
 	}
+	// The attributes the application never bound read their default value from here. The layout
+	// this is described against carries its own stride, so it is never a dynamic one.
+	int32_t dfltIdx = pipeline->getDefaultVertexBufferIndex();
+	if (dfltIdx >= 0) {
+		bindVertexBuffer<false>(encoder, pipeline->getDevice()->getNullVertexMTLBuffer(), 0, 0,
+		                        uint32_t(dfltIdx), exists, bindings, binder);
+	}
 }
 
 static void bindVertexBuffers(id<MTLCommandEncoder> encoder,

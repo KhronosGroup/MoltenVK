@@ -1679,6 +1679,46 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 	return verifyImplicitBuffers(kMVKShaderStageFragment);
 }
 
+// Collects the vertex shader inputs the application described no attribute for. Answered before
+// the Metal buffer bindings are reserved, since serving them costs one more binding.
+void MVKGraphicsPipeline::initDefaultVertexAttributes(const VkPipelineVertexInputStateCreateInfo* pVI,
+													  const char* pVtxEntryName) {
+	_defaultVertexAttributes.clear();
+	if ( !_vertexModule ) { return; }
+
+	MVKSmallVector<mvk::SPIRVShaderInterfaceVariable, 32> vtxInputs;
+	std::string errorLog;
+	if ( !mvk::getShaderInputs(_vertexModule->getSPIRV(), spv::ExecutionModelVertex,
+							   pVtxEntryName ? pVtxEntryName : "main", vtxInputs, errorLog) ) { return; }
+
+	for (auto& vtxIn : vtxInputs) {
+		if ( !vtxIn.isUsed || vtxIn.builtin != spv::BuiltInMax ) { continue; }
+		if (vtxIn.location >= getDeviceProperties().limits.maxVertexInputAttributes) { continue; }
+
+		bool isDescribed = false;
+		for (uint32_t vaIdx = 0; vaIdx < pVI->vertexAttributeDescriptionCount; vaIdx++) {
+			isDescribed = isDescribed || pVI->pVertexAttributeDescriptions[vaIdx].location == vtxIn.location;
+		}
+		if (isDescribed) { continue; }
+
+		// Four components of the shader's own type, so that every component it reads is a zero
+		// that came from the buffer rather than a component Metal filled in for itself.
+		MTLVertexFormat mtlVtxFmt;
+		switch (vtxIn.baseType) {
+			case SPIRV_CROSS_NAMESPACE::SPIRType::SByte:  mtlVtxFmt = MTLVertexFormatChar4;   break;
+			case SPIRV_CROSS_NAMESPACE::SPIRType::UByte:  mtlVtxFmt = MTLVertexFormatUChar4;  break;
+			case SPIRV_CROSS_NAMESPACE::SPIRType::Short:  mtlVtxFmt = MTLVertexFormatShort4;  break;
+			case SPIRV_CROSS_NAMESPACE::SPIRType::UShort: mtlVtxFmt = MTLVertexFormatUShort4; break;
+			case SPIRV_CROSS_NAMESPACE::SPIRType::Int:    mtlVtxFmt = MTLVertexFormatInt4;    break;
+			case SPIRV_CROSS_NAMESPACE::SPIRType::UInt:   mtlVtxFmt = MTLVertexFormatUInt4;   break;
+			case SPIRV_CROSS_NAMESPACE::SPIRType::Half:   mtlVtxFmt = MTLVertexFormatHalf4;   break;
+			case SPIRV_CROSS_NAMESPACE::SPIRType::Float:  mtlVtxFmt = MTLVertexFormatFloat4;  break;
+			default:	continue;		// A 64-bit attribute has no Metal vertex format to describe it.
+		}
+		_defaultVertexAttributes.push_back({ .location = vtxIn.location, .mtlVertexFormat = uint32_t(mtlVtxFmt) });
+	}
+}
+
 template<class T>
 bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 												   const VkPipelineVertexInputStateCreateInfo* pVI,
@@ -1806,6 +1846,31 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 			vaDesc.format = mtlFormat;
 			vaDesc.bufferIndex = (decltype(vaDesc.bufferIndex))getMetalBufferIndexForVertexAttributeBinding(vaBinding);
 			vaDesc.offset = vaOffset;
+		}
+	}
+
+	// Vulkan lets a vertex shader read a location the application never described, and defines the
+	// result as the default attribute value, but Metal requires the vertex descriptor to describe
+	// every attribute the vertex function declares and fails the pipeline otherwise. Any such
+	// location is described against a buffer of zeros, which reads back as that default. Which
+	// locations those are was settled when the bindings were reserved, because this one is
+	// counted among them.
+	// See VkPhysicalDeviceMaintenance9Properties::defaultVertexAttributeValue.
+	if ( !_defaultVertexAttributes.empty() ) {
+		uint32_t dfltBinding = uint32_t(maxBinding + _translatedVertexBindings.size() + 1);
+		_defaultVertexBufferIndex = int32_t(getMetalBufferIndexForVertexAttributeBinding(dfltBinding));
+		_mtlVertexBuffers.set(_defaultVertexBufferIndex);
+
+		auto vbDesc = inputDesc.layouts[_defaultVertexBufferIndex];
+		vbDesc.stride = kMVKDefaultVertexAttributeSize;
+		vbDesc.stepFunction = (decltype(vbDesc.stepFunction))MTLStepFunctionConstant;
+		vbDesc.stepRate = 0;
+
+		for (auto& dfltVA : _defaultVertexAttributes) {
+			auto vaDesc = inputDesc.attributes[dfltVA.location];
+			vaDesc.format = (decltype(vaDesc.format))dfltVA.mtlVertexFormat;
+			vaDesc.bufferIndex = (decltype(vaDesc.bufferIndex))_defaultVertexBufferIndex;
+			vaDesc.offset = 0;
 		}
 	}
 
@@ -2163,10 +2228,19 @@ void MVKGraphicsPipeline::initReservedVertexAttributeBufferCount(const VkGraphic
 		}
 	}
 
+	// A location the shader reads and the application described nothing for is served from one
+	// more synthetic binding, holding the zeros it reads its default value from.
+	const char* pVtxEntryName = nullptr;
+	for (uint32_t ssIdx = 0; ssIdx < pCreateInfo->stageCount; ssIdx++) {
+		if (pCreateInfo->pStages[ssIdx].stage == VK_SHADER_STAGE_VERTEX_BIT) { pVtxEntryName = pCreateInfo->pStages[ssIdx].pName; }
+	}
+	initDefaultVertexAttributes(pVI, pVtxEntryName);
+	uint32_t dfltBuffCnt = _defaultVertexAttributes.empty() ? 0 : 1;
+
 	// The number of reserved bindings we need for the vertex stage is determined from the largest vertex
 	// attribute binding number, plus any synthetic buffer bindings created to support translated offsets.
 	mvkClear<uint32_t>(_reservedVertexAttributeBufferCount.stages, kMVKShaderStageCount);
-	_reservedVertexAttributeBufferCount.stages[kMVKShaderStageVertex] = (maxBinding + 1) + xltdBuffCnt;
+	_reservedVertexAttributeBufferCount.stages[kMVKShaderStageVertex] = (maxBinding + 1) + xltdBuffCnt + dfltBuffCnt;
 	_reservedVertexAttributeBufferCount.stages[kMVKShaderStageTessCtl] = kMVKTessCtlNumReservedBuffers;
 	_reservedVertexAttributeBufferCount.stages[kMVKShaderStageTessEval] = kMVKTessEvalNumReservedBuffers;
 }

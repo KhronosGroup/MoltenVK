@@ -4967,6 +4967,20 @@ id<MTLBuffer> MVKDevice::getDummyBlitMTLBuffer() {
 	return _dummyBlitMTLBuffer;
 }
 
+id<MTLBuffer> MVKDevice::getNullVertexMTLBuffer() {
+	if ( !_nullVertexMTLBuffer ) {
+		lock_guard<mutex> lock(_rezLock);
+		if ( !_nullVertexMTLBuffer ) {
+			@autoreleasepool {
+				_nullVertexMTLBuffer = [_physicalDevice->_mtlDevice newBufferWithLength: kMVKNullVertexMTLBufferSize
+																			   options: MTLResourceStorageModeShared];
+				memset(_nullVertexMTLBuffer.contents, 0, kMVKNullVertexMTLBufferSize);
+			}
+		}
+	}
+	return _nullVertexMTLBuffer;
+}
+
 MTLCompileOptions* MVKDevice::getMTLCompileOptions(uint32_t fpFastMathFlags,
 												   bool preserveInvariance) {
 	MTLCompileOptions* mtlCompOpt = [MTLCompileOptions new];
@@ -5601,6 +5615,7 @@ MVKDevice::~MVKDevice() {
 #endif
 	[_defaultMTLSamplerState release];
 	[_dummyBlitMTLBuffer release];
+	[_nullVertexMTLBuffer release];
 
 	stopAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE);
 
