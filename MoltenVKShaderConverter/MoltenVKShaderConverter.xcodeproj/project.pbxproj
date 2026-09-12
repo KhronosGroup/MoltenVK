@@ -14,14 +14,23 @@
 		2FEA0D062490381A00EEF3AD /* MVKCommonEnvironment.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F042AA1FB4D060009FCCB8 /* MVKCommonEnvironment.h */; };
 		2FEA0D082490381A00EEF3AD /* FileSupport.mm in Sources */ = {isa = PBXBuildFile; fileRef = A925B70A1C7754B2006E7ECD /* FileSupport.mm */; };
 		2FEA0D092490381A00EEF3AD /* SPIRVToMSLConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */; };
+		20F2FCB3EA524D3F9FEE72B5 /* SPIRVBlendInShader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BFCBA48BB9AA45D088175ABF /* SPIRVBlendInShader.cpp */; };
 		930FDAC7AFCA45AE924DC4F9 /* SPIRVDualSourceBlend.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 01F280482863453AACC7C927 /* SPIRVDualSourceBlend.cpp */; };
+		29E37B1291AB4530A2078ABC /* SPIRVVertexPulling.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 328C88E66F614106B1B6F351 /* SPIRVVertexPulling.cpp */; };
+		39BB57DB1E2245EFBD173810 /* SPIRVDepthClip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F70F7266F59245FABA5F9D98 /* SPIRVDepthClip.cpp */; };
 		2FEA0D0B2490381A00EEF3AD /* SPIRVConversion.mm in Sources */ = {isa = PBXBuildFile; fileRef = A928C9181D0488DC00071B88 /* SPIRVConversion.mm */; };
 		450A4F61220CB180007203D7 /* SPIRVReflection.h in Headers */ = {isa = PBXBuildFile; fileRef = 450A4F5E220CB180007203D7 /* SPIRVReflection.h */; };
 		450A4F62220CB180007203D7 /* SPIRVReflection.h in Headers */ = {isa = PBXBuildFile; fileRef = 450A4F5E220CB180007203D7 /* SPIRVReflection.h */; };
 		A909408A1C58013E0094110D /* SPIRVToMSLConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */; };
+		8BE61C829D7F4E338F6BD197 /* SPIRVBlendInShader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BFCBA48BB9AA45D088175ABF /* SPIRVBlendInShader.cpp */; };
 		E137DE06C71D4D6DA46F8FEF /* SPIRVDualSourceBlend.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 01F280482863453AACC7C927 /* SPIRVDualSourceBlend.cpp */; };
+		7193594D9FE448E08F8DB82B /* SPIRVVertexPulling.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 328C88E66F614106B1B6F351 /* SPIRVVertexPulling.cpp */; };
+		B59BC36E1C3A4CEE866AB502 /* SPIRVDepthClip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F70F7266F59245FABA5F9D98 /* SPIRVDepthClip.cpp */; };
 		A909408B1C58013E0094110D /* SPIRVToMSLConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */; };
+		88470D83B57F4760AD3983B5 /* SPIRVBlendInShader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BFCBA48BB9AA45D088175ABF /* SPIRVBlendInShader.cpp */; };
 		761968EB0AD9474A93C28E14 /* SPIRVDualSourceBlend.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 01F280482863453AACC7C927 /* SPIRVDualSourceBlend.cpp */; };
+		F36E643BE12347AAAD4CD65D /* SPIRVVertexPulling.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 328C88E66F614106B1B6F351 /* SPIRVVertexPulling.cpp */; };
+		2E3D8AF10F954EE1B65C5434 /* SPIRVDepthClip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F70F7266F59245FABA5F9D98 /* SPIRVDepthClip.cpp */; };
 		A909408C1C58013E0094110D /* SPIRVToMSLConverter.h in Headers */ = {isa = PBXBuildFile; fileRef = A9093F5B1C58013E0094110D /* SPIRVToMSLConverter.h */; };
 		A909408D1C58013E0094110D /* SPIRVToMSLConverter.h in Headers */ = {isa = PBXBuildFile; fileRef = A9093F5B1C58013E0094110D /* SPIRVToMSLConverter.h */; };
 		A925B71B1C78DEB2006E7ECD /* libMoltenVKShaderConverter.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A93903C71C57E9ED00FE90DC /* libMoltenVKShaderConverter.a */; };
@@ -61,7 +70,10 @@
 		DCFD7F782A45BDA0007BBBF7 /* MVKCommonEnvironment.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F042AA1FB4D060009FCCB8 /* MVKCommonEnvironment.h */; };
 		DCFD7F7A2A45BDA0007BBBF7 /* FileSupport.mm in Sources */ = {isa = PBXBuildFile; fileRef = A925B70A1C7754B2006E7ECD /* FileSupport.mm */; };
 		DCFD7F7D2A45BDA0007BBBF7 /* SPIRVToMSLConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */; };
+		A4E66127BAA64CA4B4B6C534 /* SPIRVBlendInShader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BFCBA48BB9AA45D088175ABF /* SPIRVBlendInShader.cpp */; };
 		9B1AAFA5F635417CA3FE5774 /* SPIRVDualSourceBlend.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 01F280482863453AACC7C927 /* SPIRVDualSourceBlend.cpp */; };
+		35AC7E89016D427489632EA7 /* SPIRVVertexPulling.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 328C88E66F614106B1B6F351 /* SPIRVVertexPulling.cpp */; };
+		376ECCF8C64642578FB1390F /* SPIRVDepthClip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F70F7266F59245FABA5F9D98 /* SPIRVDepthClip.cpp */; };
 		DCFD7F7E2A45BDA0007BBBF7 /* SPIRVConversion.mm in Sources */ = {isa = PBXBuildFile; fileRef = A928C9181D0488DC00071B88 /* SPIRVConversion.mm */; };
 		DCFD7F7F2A45BDA0007BBBF7 /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9546B232672A3B8004BA3E6 /* SPIRVSupport.cpp */; };
 		DCFD7F812A45BDA0007BBBF7 /* SPIRVTools.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A983870224EEE94800199A05 /* SPIRVTools.xcframework */; };
@@ -82,8 +94,14 @@
 		2FEA0D142490381A00EEF3AD /* libMoltenVKShaderConverter.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVKShaderConverter.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		450A4F5E220CB180007203D7 /* SPIRVReflection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIRVReflection.h; sourceTree = "<group>"; };
 		A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPIRVToMSLConverter.cpp; sourceTree = "<group>"; };
+		BFCBA48BB9AA45D088175ABF /* SPIRVBlendInShader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPIRVBlendInShader.cpp; sourceTree = "<group>"; };
 		01F280482863453AACC7C927 /* SPIRVDualSourceBlend.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPIRVDualSourceBlend.cpp; sourceTree = "<group>"; };
+		328C88E66F614106B1B6F351 /* SPIRVVertexPulling.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPIRVVertexPulling.cpp; sourceTree = "<group>"; };
+		C582B50B810F41A49B2E8414 /* SPIRVBlendInShader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIRVBlendInShader.h; sourceTree = "<group>"; };
 		A7BF211807EF4B559E0FB8B4 /* SPIRVDualSourceBlend.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIRVDualSourceBlend.h; sourceTree = "<group>"; };
+		04E1C0633AF0414D87B29FB9 /* SPIRVVertexPulling.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIRVVertexPulling.h; sourceTree = "<group>"; };
+		F70F7266F59245FABA5F9D98 /* SPIRVDepthClip.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPIRVDepthClip.cpp; sourceTree = "<group>"; };
+		665AE579E96F455386039484 /* SPIRVDepthClip.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIRVDepthClip.h; sourceTree = "<group>"; };
 		A9093F5B1C58013E0094110D /* SPIRVToMSLConverter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIRVToMSLConverter.h; sourceTree = "<group>"; };
 		A925B70A1C7754B2006E7ECD /* FileSupport.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FileSupport.mm; sourceTree = "<group>"; };
 		A925B70B1C7754B2006E7ECD /* FileSupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileSupport.h; sourceTree = "<group>"; };
@@ -170,8 +188,14 @@
 				A9546B232672A3B8004BA3E6 /* SPIRVSupport.cpp */,
 				A9546B242672A3B8004BA3E6 /* SPIRVSupport.h */,
 				A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */,
+				BFCBA48BB9AA45D088175ABF /* SPIRVBlendInShader.cpp */,
 				01F280482863453AACC7C927 /* SPIRVDualSourceBlend.cpp */,
+				328C88E66F614106B1B6F351 /* SPIRVVertexPulling.cpp */,
+				C582B50B810F41A49B2E8414 /* SPIRVBlendInShader.h */,
 				A7BF211807EF4B559E0FB8B4 /* SPIRVDualSourceBlend.h */,
+				04E1C0633AF0414D87B29FB9 /* SPIRVVertexPulling.h */,
+				F70F7266F59245FABA5F9D98 /* SPIRVDepthClip.cpp */,
+				665AE579E96F455386039484 /* SPIRVDepthClip.h */,
 				A9093F5B1C58013E0094110D /* SPIRVToMSLConverter.h */,
 			);
 			path = MoltenVKShaderConverter;
@@ -516,7 +540,10 @@
 			files = (
 				2FEA0D082490381A00EEF3AD /* FileSupport.mm in Sources */,
 				2FEA0D092490381A00EEF3AD /* SPIRVToMSLConverter.cpp in Sources */,
+				20F2FCB3EA524D3F9FEE72B5 /* SPIRVBlendInShader.cpp in Sources */,
 				930FDAC7AFCA45AE924DC4F9 /* SPIRVDualSourceBlend.cpp in Sources */,
+				29E37B1291AB4530A2078ABC /* SPIRVVertexPulling.cpp in Sources */,
+				39BB57DB1E2245EFBD173810 /* SPIRVDepthClip.cpp in Sources */,
 				2FEA0D0B2490381A00EEF3AD /* SPIRVConversion.mm in Sources */,
 				A9546B272672A3B8004BA3E6 /* SPIRVSupport.cpp in Sources */,
 			);
@@ -540,7 +567,10 @@
 			files = (
 				A95096BB2003D00300F10950 /* FileSupport.mm in Sources */,
 				A909408A1C58013E0094110D /* SPIRVToMSLConverter.cpp in Sources */,
+				8BE61C829D7F4E338F6BD197 /* SPIRVBlendInShader.cpp in Sources */,
 				E137DE06C71D4D6DA46F8FEF /* SPIRVDualSourceBlend.cpp in Sources */,
+				7193594D9FE448E08F8DB82B /* SPIRVVertexPulling.cpp in Sources */,
+				B59BC36E1C3A4CEE866AB502 /* SPIRVDepthClip.cpp in Sources */,
 				A928C91B1D0488DC00071B88 /* SPIRVConversion.mm in Sources */,
 				A9546B262672A3B8004BA3E6 /* SPIRVSupport.cpp in Sources */,
 			);
@@ -552,7 +582,10 @@
 			files = (
 				A95096BC2003D00300F10950 /* FileSupport.mm in Sources */,
 				A909408B1C58013E0094110D /* SPIRVToMSLConverter.cpp in Sources */,
+				88470D83B57F4760AD3983B5 /* SPIRVBlendInShader.cpp in Sources */,
 				761968EB0AD9474A93C28E14 /* SPIRVDualSourceBlend.cpp in Sources */,
+				F36E643BE12347AAAD4CD65D /* SPIRVVertexPulling.cpp in Sources */,
+				2E3D8AF10F954EE1B65C5434 /* SPIRVDepthClip.cpp in Sources */,
 				A928C91C1D0488DC00071B88 /* SPIRVConversion.mm in Sources */,
 				A9546B282672A3B8004BA3E6 /* SPIRVSupport.cpp in Sources */,
 			);
@@ -564,7 +597,10 @@
 			files = (
 				DCFD7F7A2A45BDA0007BBBF7 /* FileSupport.mm in Sources */,
 				DCFD7F7D2A45BDA0007BBBF7 /* SPIRVToMSLConverter.cpp in Sources */,
+				A4E66127BAA64CA4B4B6C534 /* SPIRVBlendInShader.cpp in Sources */,
 				9B1AAFA5F635417CA3FE5774 /* SPIRVDualSourceBlend.cpp in Sources */,
+				35AC7E89016D427489632EA7 /* SPIRVVertexPulling.cpp in Sources */,
+				376ECCF8C64642578FB1390F /* SPIRVDepthClip.cpp in Sources */,
 				DCFD7F7E2A45BDA0007BBBF7 /* SPIRVConversion.mm in Sources */,
 				DCFD7F7F2A45BDA0007BBBF7 /* SPIRVSupport.cpp in Sources */,
 			);

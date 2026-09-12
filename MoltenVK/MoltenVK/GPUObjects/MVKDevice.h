@@ -55,6 +55,8 @@ class MVKTimelineSemaphore;
 class MVKDeferredOperation;
 class MVKEvent;
 class MVKQueryPool;
+class MVKShader;
+class MVKShaderObjectPipelines;
 class MVKShaderModule;
 class MVKPipelineCache;
 class MVKPipelineLayout;
@@ -88,6 +90,8 @@ static constexpr uint32_t   kMVKMaxViewportScissorCount = 16;
 static constexpr uint32_t   kMVKMaxDescriptorSetCount = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
 static constexpr uint32_t   kMVKMaxTextureCount = 128; // Maximum value across all GPUs in Metal feature set tables
 static constexpr uint32_t   kMVKMaxBufferCount = 31;
+static constexpr uint32_t   kMVKMaxVertexInputBindingCount = 31;	// Matches VkPhysicalDeviceLimits::maxVertexInputBindings
+static constexpr uint32_t   kMVKMaxVertexInputAttributeCount = 31;	// Matches VkPhysicalDeviceLimits::maxVertexInputAttributes
 static constexpr uint32_t   kMVKMaxSamplerCount = 16;
 static constexpr uint32_t   kMVKMaxSampleCount = 8;
 static constexpr uint32_t   kMVKSampleLocationCoordinateGridSize = 16;
@@ -780,6 +784,16 @@ public:
 	void destroyQueryPool(MVKQueryPool* mvkQP,
 						  const VkAllocationCallbacks* pAllocator);
 
+	/** Returns the cache of pipelines built from bound shader objects. */
+	MVKShaderObjectPipelines* getShaderObjectPipelines() { return _shaderObjectPipelines; }
+
+	VkResult createShaders(uint32_t createInfoCount,
+						   const VkShaderCreateInfoEXT* pCreateInfos,
+						   const VkAllocationCallbacks* pAllocator,
+						   VkShaderEXT* pShaders);
+	void destroyShader(MVKShader* mvkShdr,
+					   const VkAllocationCallbacks* pAllocator);
+
 	MVKShaderModule* createShaderModule(const VkShaderModuleCreateInfo* pCreateInfo,
 										const VkAllocationCallbacks* pAllocator);
 	void destroyShaderModule(MVKShaderModule* mvkShdrMod,
@@ -1110,6 +1124,7 @@ protected:
 
 	MVKPerformanceStatistics _performanceStats;
     MVKCommandResourceFactory* _commandResourceFactory = nullptr;
+    MVKShaderObjectPipelines* _shaderObjectPipelines = nullptr;
 	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
 	MVKSmallVector<MVKResource*> _resources;
 	MVKSmallVector<MVKBuffer*> _gpuAddressableBuffers;

@@ -75,6 +75,34 @@ private:
 #pragma mark MVKCurrentSubpassInfo
 
 /** Tracks current render subpass information. */
+/**
+ * The state a shader object draw builds its pipeline from, tracked while commands are recorded.
+ *
+ * The authoritative copy of this state lives in the command encoder and is only assembled when
+ * the command buffer is submitted. But every value is known by the time vkCmdDraw is recorded,
+ * usually long before the submit, so this shadow lets the draw start building its pipeline on a
+ * background thread at record time. If the shadow and the encoder ever disagree, the prefetch is
+ * merely wasted: the encoder still resolves the pipeline itself, so rendering is unaffected.
+ */
+typedef struct MVKShaderObjectRecordState {
+	MVKShader* shaders[kMVKShaderStageCount] = {};
+	MVKDynamicVertexInput vertexInput;
+	MVKDynamicPipelineState pipelineState;
+	VkFormat colorAttachmentFormats[kMVKMaxColorAttachmentCount] = {};
+	VkFormat depthAttachmentFormat = VK_FORMAT_UNDEFINED;
+	VkFormat stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
+	uint32_t colorAttachmentCount = 0;
+	VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
+
+	bool hasShaderObjects() const {
+		for (auto* s : shaders) { if (s) { return true; } }
+		return false;
+	}
+	void clearShaders() { for (auto& s : shaders) { s = nullptr; } }
+	void setAttachmentsFromSubpass(MVKRenderSubpass* subpass);
+	void setAttachmentsFromRenderingInfo(const VkRenderingInfo* pRenderingInfo);
+} MVKShaderObjectRecordState;
+
 typedef struct MVKCurrentSubpassInfo {
 	MVKRenderPass* renderpass;
 	uint32_t subpassIndex;
@@ -162,6 +190,18 @@ public:
 
 	/** The most recent recorded tessellation pipeline */
 	MVKCmdBindPipeline* _lastTessellationPipeline;
+
+
+#pragma mark Shader object pipeline prefetch
+
+	/** Record-time shadow of the state a shader object draw is built from. */
+	MVKShaderObjectRecordState _shaderObjectRecordState;
+
+	/**
+	 * Called when a draw is recorded. If shader objects are bound, starts building the pipeline
+	 * they and the current state amount to, on a background thread, so it is ready by submit.
+	 */
+	void recordShaderObjectDraw();
 
 
 #pragma mark Construction
@@ -404,6 +444,21 @@ public:
 
 	/** Prepares the Metal compute pipeline state to dispatch the given stage of the Vulkan render pipeline. */
 	void prepareComputeDispatch() { _state.prepareComputeDispatch(_mtlComputeEncoder, *this); }
+
+	/**
+	 * Ensures a pipeline is bound for a draw that uses shader objects.
+	 *
+	 * Vulkan lets a shader object leave until draw time state that Metal needs before a pipeline
+	 * can be built, so the pipeline the bound shaders and that state amount to is found, or built
+	 * on first use, here. Does nothing when a pipeline is already bound.
+	 *
+	 * Returns false when no pipeline could be produced, in which case the draw must be skipped
+	 * rather than run against nothing.
+	 */
+	bool resolveShaderObjectPipeline();
+
+	/** The compute counterpart of resolveShaderObjectPipeline(). */
+	bool resolveComputeShaderObjectPipeline();
 
 	/** Returns the graphics pipeline. */
 	MVKGraphicsPipeline* getGraphicsPipeline() { return getVkGraphics()._pipeline; }

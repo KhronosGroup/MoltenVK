@@ -21,6 +21,7 @@ Released TBD
 - Add support for the following extensions:
   - `VK_EXT_multi_draw`
   - `VK_EXT_nested_command_buffer`
+  - `VK_EXT_shader_object`
   - `VK_EXT_ycbcr_2plane_444_formats`
 - Fix inconsistent image `memoryTypeBits` when `VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT` is used.
 - Fix shader stage interface matching of 16-bit floating point variables.

@@ -616,6 +616,8 @@ protected:
 class MVKCmdSetPrimitiveTopology : public MVKSingleValueCommand<VkPrimitiveTopology> {
 
 public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff, VkPrimitiveTopology value);
+
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
@@ -661,3 +663,265 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 };
 
+
+
+
+#pragma mark -
+#pragma mark MVKCmdBindShaders
+
+class MVKCmdBindShaders : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						uint32_t stageCount,
+						const VkShaderStageFlagBits* pStages,
+						const VkShaderEXT* pShaders);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MVKSmallVector<std::pair<VkShaderStageFlagBits, MVKShader*>, 5> _shaders;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetVertexInput
+
+class MVKCmdSetVertexInput : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						uint32_t vertexBindingDescriptionCount,
+						const VkVertexInputBindingDescription2EXT* pVertexBindingDescriptions,
+						uint32_t vertexAttributeDescriptionCount,
+						const VkVertexInputAttributeDescription2EXT* pVertexAttributeDescriptions);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MVKSmallVector<MVKDynamicVertexBinding, 8> _bindings;
+	MVKSmallVector<MVKDynamicVertexAttribute, 8> _attributes;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetRasterizationSamples
+
+class MVKCmdSetRasterizationSamples : public MVKSingleValueCommand<VkSampleCountFlagBits> {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff, VkSampleCountFlagBits value);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetAlphaToCoverageEnable
+
+class MVKCmdSetAlphaToCoverageEnable : public MVKSingleValueCommand<VkBool32> {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff, VkBool32 value);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetAlphaToOneEnable
+
+class MVKCmdSetAlphaToOneEnable : public MVKSingleValueCommand<VkBool32> {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff, VkBool32 value);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetLogicOpEnable
+
+class MVKCmdSetLogicOpEnable : public MVKSingleValueCommand<VkBool32> {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff, VkBool32 value);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetLogicOp
+
+class MVKCmdSetLogicOp : public MVKSingleValueCommand<VkLogicOp> {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff, VkLogicOp value);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetTessellationDomainOrigin
+
+class MVKCmdSetTessellationDomainOrigin : public MVKSingleValueCommand<VkTessellationDomainOrigin> {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff, VkTessellationDomainOrigin value);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthClipNegativeOneToOne
+
+class MVKCmdSetDepthClipNegativeOneToOne : public MVKSingleValueCommand<VkBool32> {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff, VkBool32 value);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetLineStippleEnable
+
+class MVKCmdSetLineStippleEnable : public MVKSingleValueCommand<VkBool32> {
+
+public:
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetColorBlendEnable
+
+class MVKCmdSetColorBlendEnable : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						uint32_t firstAttachment,
+						uint32_t attachmentCount,
+						const VkBool32* pValues);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MVKSmallVector<VkBool32, kMVKMaxColorAttachmentCount> _values;
+	uint32_t _firstAttachment = 0;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetColorBlendEquation
+
+class MVKCmdSetColorBlendEquation : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						uint32_t firstAttachment,
+						uint32_t attachmentCount,
+						const VkColorBlendEquationEXT* pValues);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MVKSmallVector<VkColorBlendEquationEXT, kMVKMaxColorAttachmentCount> _values;
+	uint32_t _firstAttachment = 0;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetColorWriteMask
+
+class MVKCmdSetColorWriteMask : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						uint32_t firstAttachment,
+						uint32_t attachmentCount,
+						const VkColorComponentFlags* pValues);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MVKSmallVector<VkColorComponentFlags, kMVKMaxColorAttachmentCount> _values;
+	uint32_t _firstAttachment = 0;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetSampleMask
+
+class MVKCmdSetSampleMask : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkSampleCountFlagBits samples,
+						const VkSampleMask* pSampleMask);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	uint32_t _sampleMask = ~0u;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetColorWriteEnable
+
+class MVKCmdSetColorWriteEnable : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						uint32_t attachmentCount,
+						const VkBool32* pColorWriteEnables);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MVKSmallVector<VkBool32, kMVKMaxColorAttachmentCount> _values;
+};

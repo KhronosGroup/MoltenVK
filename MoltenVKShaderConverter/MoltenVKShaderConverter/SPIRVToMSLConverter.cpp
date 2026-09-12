@@ -17,7 +17,10 @@
  */
 
 #include "SPIRVToMSLConverter.h"
+#include "SPIRVDepthClip.h"
+#include "SPIRVBlendInShader.h"
 #include "SPIRVDualSourceBlend.h"
+#include "SPIRVVertexPulling.h"
 #include "MVKCommonEnvironment.h"
 #include "MVKStrings.h"
 #include "FileSupport.h"
@@ -55,6 +58,15 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionOptions::matches(const SPIRVToMSLConv
 	if (numTessControlPoints != other.numTessControlPoints) { return false; }
 	if (shouldFlipVertexY != other.shouldFlipVertexY) { return false; }
 	if (shouldFixupClipSpace != other.shouldFixupClipSpace) { return false; }
+	if (dynamicDepthClip != other.dynamicDepthClip) { return false; }
+	if (depthClipStateBufferIndex != other.depthClipStateBufferIndex) { return false; }
+	if (blendInShader != other.blendInShader) { return false; }
+	if (blendMultisampled != other.blendMultisampled) { return false; }
+	if (blendStateBufferIndex != other.blendStateBufferIndex) { return false; }
+	if (blendAttachmentMask != other.blendAttachmentMask) { return false; }
+	if (blendDynamicMultisample != other.blendDynamicMultisample) { return false; }
+	if (pullVertices != other.pullVertices) { return false; }
+	if (pullStateBufferIndex != other.pullStateBufferIndex) { return false; }
 	return true;
 }
 
@@ -277,12 +289,27 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 	try {
 #endif
-		// Metal will not build a pipeline whose fragment function omits either source of dual
-		// source blending, even where Vulkan leaves that output undefined, so both are supplied.
+		// A shader asked to map the depth clip convention for itself is rewritten first. The
+		// rewrite can decline, in which case the original is compiled and the caller keeps the
+		// convention baked in.
 		const std::vector<uint32_t>* pSPIRV = &_spirv;
+		std::vector<uint32_t> depthClipSPIRV;
+		if (shaderConfig.options.dynamicDepthClip) {
+			depthClipSPIRV = _spirv;
+			std::string depthClipLog;
+			if (mapDepthClipInShader(depthClipSPIRV, depthClipLog)) {
+				pSPIRV = &depthClipSPIRV;
+				conversionResult.resultInfo.isDepthClipInShader = true;
+			} else {
+				conversionResult.resultLog += "Mapping the depth clip convention in the shader was not applied: " + depthClipLog + "\n";
+			}
+		}
+
+		// Metal will not build a pipeline whose fragment function omits the first source of dual
+		// source blending, even where Vulkan leaves that output undefined, so it is supplied.
 		std::vector<uint32_t> dualSourceSPIRV;
 		if (shaderConfig.options.entryPointStage == spv::ExecutionModelFragment) {
-			dualSourceSPIRV = _spirv;
+			dualSourceSPIRV = *pSPIRV;
 			std::string dualSourceLog;
 			if (addMissingDualSourceOutput(dualSourceSPIRV, dualSourceLog)) {
 				pSPIRV = &dualSourceSPIRV;
@@ -291,7 +318,84 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 			}
 		}
 
+		// A fragment shader asked to blend its own outputs is rewritten too. The rewrite can
+		// decline, in which case the original is compiled and the caller keeps Metal blending on.
+		std::vector<uint32_t> blendedSPIRV;
+		if (shaderConfig.options.blendInShader && shaderConfig.options.entryPointStage == spv::ExecutionModelFragment) {
+			blendedSPIRV = *pSPIRV;
+			std::string blendLog;
+			if (blendFragmentOutputsInShader(blendedSPIRV, shaderConfig.options.blendMultisampled,
+											 shaderConfig.options.blendAttachmentMask,
+											 shaderConfig.options.blendDynamicMultisample, blendLog)) {
+				pSPIRV = &blendedSPIRV;
+				conversionResult.resultInfo.isBlendInShader = true;
+			} else {
+				conversionResult.resultLog += "Blending in the shader was not applied: " + blendLog + "\n";
+			}
+		}
+		// Likewise a vertex shader asked to load its own attributes. When the rewrite declines,
+		// the caller keeps the vertex layout in the pipeline.
+		std::vector<uint32_t> pulledSPIRV;
+		if (shaderConfig.options.pullVertices && shaderConfig.options.entryPointStage == spv::ExecutionModelVertex) {
+			pulledSPIRV = *pSPIRV;
+			std::string pullLog;
+			if (pullVerticesInShader(pulledSPIRV, pullLog)) {
+				pSPIRV = &pulledSPIRV;
+				conversionResult.resultInfo.isPullingVertices = true;
+			} else {
+				conversionResult.resultLog += "Loading vertex attributes in the shader was not applied: " + pullLog + "\n";
+			}
+		}
+
 		pMSLCompiler = new CompilerMSL(*pSPIRV);
+
+		if (conversionResult.resultInfo.isBlendInShader) {
+			// Every resource in a descriptor set must carry a base type, because argument buffer
+			// padding consults it. The blend block is a buffer; the framebuffer fetches are
+			// images, and are registered for all attachments the transform could have used.
+			SPIRV_CROSS_NAMESPACE::MSLResourceBinding blendBinding;
+			blendBinding.stage = spv::ExecutionModelFragment;
+			blendBinding.basetype = SPIRV_CROSS_NAMESPACE::SPIRType::Void;
+			blendBinding.desc_set = kSPIRVBlendStateDescriptorSet;
+			blendBinding.binding = kSPIRVBlendStateBinding;
+			blendBinding.count = 1;
+			blendBinding.msl_buffer = shaderConfig.options.blendStateBufferIndex;
+			pMSLCompiler->add_msl_resource_binding(blendBinding);
+
+			for (uint32_t caIdx = 0; caIdx < kSPIRVBlendMaxAttachments; caIdx++) {
+				SPIRV_CROSS_NAMESPACE::MSLResourceBinding fetchBinding;
+				fetchBinding.stage = spv::ExecutionModelFragment;
+				fetchBinding.basetype = SPIRV_CROSS_NAMESPACE::SPIRType::Image;
+				fetchBinding.desc_set = kSPIRVBlendStateDescriptorSet;
+				fetchBinding.binding = kSPIRVBlendStateBinding + 1 + caIdx;
+				fetchBinding.count = 1;
+				fetchBinding.msl_texture = caIdx;
+				pMSLCompiler->add_msl_resource_binding(fetchBinding);
+			}
+		}
+		if (conversionResult.resultInfo.isPullingVertices) {
+			SPIRV_CROSS_NAMESPACE::MSLResourceBinding pullBinding;
+			pullBinding.stage = spv::ExecutionModelVertex;
+			pullBinding.basetype = SPIRV_CROSS_NAMESPACE::SPIRType::Void;
+			pullBinding.desc_set = kSPIRVVertexPullDescriptorSet;
+			pullBinding.binding = kSPIRVVertexPullBinding;
+			pullBinding.count = 1;
+			pullBinding.msl_buffer = shaderConfig.options.pullStateBufferIndex;
+			pMSLCompiler->add_msl_resource_binding(pullBinding);
+		}
+
+		if (conversionResult.resultInfo.isDepthClipInShader) {
+			// Every resource in a descriptor set must carry a base type, because argument buffer
+			// padding consults it. The state block is a buffer the driver binds itself.
+			SPIRV_CROSS_NAMESPACE::MSLResourceBinding depthClipBinding;
+			depthClipBinding.stage = shaderConfig.options.entryPointStage;
+			depthClipBinding.basetype = SPIRV_CROSS_NAMESPACE::SPIRType::Void;
+			depthClipBinding.desc_set = kSPIRVDepthClipDescriptorSet;
+			depthClipBinding.binding = kSPIRVDepthClipBinding;
+			depthClipBinding.count = 1;
+			depthClipBinding.msl_buffer = shaderConfig.options.depthClipStateBufferIndex;
+			pMSLCompiler->add_msl_resource_binding(depthClipBinding);
+		}
 
 		if (shaderConfig.options.hasEntryPoint()) {
 			pMSLCompiler->set_entry_point(shaderConfig.options.entryPointName, shaderConfig.options.entryPointStage);
@@ -311,6 +415,15 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 		// Establish the MSL options for the compiler
 		// This needs to be done in two steps...for CompilerMSL and its superclass.
 		pMSLCompiler->set_msl_options(shaderConfig.options.mslOptions);
+
+		// Set after the options above, which would otherwise replace it wholesale. Without it the
+		// attachment reads the rewrite introduced come out as ordinary texture reads, which nothing
+		// binds, rather than as the framebuffer fetch they have to be.
+		if (conversionResult.resultInfo.isBlendInShader) {
+			auto blendOpts = pMSLCompiler->get_msl_options();
+			blendOpts.use_framebuffer_fetch_subpasses = true;
+			pMSLCompiler->set_msl_options(blendOpts);
+		}
 
 		auto scOpts = pMSLCompiler->get_common_options();
 		scOpts.vertex.flip_vert_y = shaderConfig.options.shouldFlipVertexY;
@@ -381,7 +494,11 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	conversionResult.resultInfo.needsDispatchBaseBuffer = pMSLCompiler && pMSLCompiler->needs_dispatch_base_buffer();
 	conversionResult.resultInfo.needsViewRangeBuffer = pMSLCompiler && pMSLCompiler->needs_view_mask_buffer();
 	conversionResult.resultInfo.needsDrawId = pMSLCompiler && pMSLCompiler->has_active_builtin(spv::BuiltInDrawIndex, spv::StorageClassInput);
-	conversionResult.resultInfo.usesPhysicalStorageBufferAddressesCapability = usesPhysicalStorageBufferAddressesCapability(pMSLCompiler);
+	// The vertex pulling rewrite reaches the vertex buffers through their addresses, but the
+	// driver makes those resident itself, so only the application's own use of addresses counts.
+	conversionResult.resultInfo.usesPhysicalStorageBufferAddressesCapability = conversionResult.resultInfo.isPullingVertices
+		? spirvDeclaresCapability(_spirv, spv::CapabilityPhysicalStorageBufferAddresses)
+		: usesPhysicalStorageBufferAddressesCapability(pMSLCompiler);
 	populateSpecializationMacros(pMSLCompiler, conversionResult.resultInfo.specializationMacros);
 
 	// When using Metal argument buffers, if the shader is provided with dynamic buffer offsets,
@@ -568,6 +685,15 @@ void SPIRVToMSLConverter::populateEntryPoint(CompilerMSL* pMSLCompiler,
 	populateWorkgroupDimension(wgSize.width,  x, widthSC);
 	populateWorkgroupDimension(wgSize.height, y, heightSC);
 	populateWorkgroupDimension(wgSize.depth,  z, depthSC);
+}
+
+bool SPIRVToMSLConverter::spirvDeclaresCapability(const vector<uint32_t>& spirv, spv::Capability capability) {
+	// Capabilities come first in a module, so the scan stops at the first instruction that is not one.
+	for (size_t idx = 5; idx + 1 < spirv.size(); idx += spirv[idx] >> 16) {
+		if ((spirv[idx] & 0xFFFF) != spv::OpCapability || (spirv[idx] >> 16) == 0) { break; }
+		if (spirv[idx + 1] == uint32_t(capability)) { return true; }
+	}
+	return false;
 }
 
 bool SPIRVToMSLConverter::usesPhysicalStorageBufferAddressesCapability(Compiler* pCompiler) {

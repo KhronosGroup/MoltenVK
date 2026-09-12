@@ -17,6 +17,8 @@
  */
 
 #include "MVKCommandEncoderState.h"
+#include <MoltenVKShaderConverter/SPIRVBlendInShader.h>
+#include <MoltenVKShaderConverter/SPIRVVertexPulling.h>
 #include "MVKCommandEncodingPool.h"
 #include "MVKCommandBuffer.h"
 #include "MVKImage.h"
@@ -696,11 +698,163 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 				binder.setBytes(encoder, viewRange, sizeof(viewRange), idx);
 				break;
 			}
+			case MVKNonVolatileImplicitBuffer::BlendState: {
+				// Resolve the blend state into the coefficients the rewritten shader evaluates.
+				// See mvk::SPIRVBlendState: every factor becomes a constant term plus weights on
+				// the source, its alpha, the destination, its alpha, and the saturate term.
+				const auto& vkGfx = mvkEncoder.getVkGraphics();
+				const auto& dps = vkGfx._dynamicPipelineState;
+				const uint8_t* clampModes = vkGfx._pipeline ? vkGfx._pipeline->getBlendClampModes() : nullptr;
+				const auto& blendConstants = vkGfx.pickRenderState(MVKRenderStateFlag::BlendConstants).blendConstants.float32;
+
+				mvk::SPIRVBlendState blend = {};
+				for (uint32_t att = 0; att < mvk::kSPIRVBlendMaxAttachments; att++) {
+					const auto& ba = dps.blendAttachments[att];
+
+					// A fixed-point attachment clamps the constant colour to its own range before
+					// the factors that name it are formed. The other factors are formed from the
+					// source and the destination, which the shader has already clamped.
+					// See the Vulkan specification, Blending, Blend Factors.
+					uint32_t clampMode = clampModes ? uint32_t(clampModes[att]) : 0u;
+					float lo = (clampMode == mvk::kSPIRVBlendClampSnorm) ? -1.0f : 0.0f;
+					float bc[4];
+					for (uint32_t c = 0; c < 4; c++) {
+						bc[c] = (clampMode == mvk::kSPIRVBlendClampNone) ? blendConstants[c]
+																		: std::min(std::max(blendConstants[c], lo), 1.0f);
+					}
+
+					VkBlendFactor factors[mvk::kSPIRVBlendSlotCount] = {
+						ba.srcColorBlendFactor, ba.dstColorBlendFactor, ba.srcAlphaBlendFactor, ba.dstAlphaBlendFactor };
+					for (uint32_t slot = 0; slot < mvk::kSPIRVBlendSlotCount; slot++) {
+						uint32_t row = att * mvk::kSPIRVBlendSlotCount + slot;
+						float* C = blend.constantTerm[row];
+						float* K = blend.coefficients[row];
+						bool forAlpha = (slot >= 2);
+						auto setC = [&](float r, float g, float b2, float a) { C[0] = r; C[1] = g; C[2] = b2; C[3] = a; };
+						switch (factors[slot]) {
+							case VK_BLEND_FACTOR_ZERO:							break;
+							case VK_BLEND_FACTOR_ONE:							setC(1, 1, 1, 1); break;
+							case VK_BLEND_FACTOR_SRC_COLOR:						K[0] =  1; break;
+							case VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR:			setC(1, 1, 1, 1); K[0] = -1; break;
+							case VK_BLEND_FACTOR_DST_COLOR:						K[2] =  1; break;
+							case VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR:			setC(1, 1, 1, 1); K[2] = -1; break;
+							case VK_BLEND_FACTOR_SRC_ALPHA:						K[1] =  1; break;
+							case VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA:			setC(1, 1, 1, 1); K[1] = -1; break;
+							case VK_BLEND_FACTOR_DST_ALPHA:						K[3] =  1; break;
+							case VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA:			setC(1, 1, 1, 1); K[3] = -1; break;
+							case VK_BLEND_FACTOR_CONSTANT_COLOR:				setC(bc[0], bc[1], bc[2], bc[3]); break;
+							case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR:		setC(1 - bc[0], 1 - bc[1], 1 - bc[2], 1 - bc[3]); break;
+							case VK_BLEND_FACTOR_CONSTANT_ALPHA:				setC(bc[3], bc[3], bc[3], bc[3]); break;
+							case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA:		setC(1 - bc[3], 1 - bc[3], 1 - bc[3], 1 - bc[3]); break;
+							case VK_BLEND_FACTOR_SRC_ALPHA_SATURATE:
+								// Saturates the colour channels, but is exactly one for alpha.
+								if (forAlpha) { setC(1, 1, 1, 1); } else { blend.saturate[att][slot] = 1; }
+								break;
+							default:											break;	// Dual source is declined by the rewrite.
+						}
+					}
+
+					auto encodeOp = [&](VkBlendOp op, uint32_t opIdx, uint32_t srcMulIdx, uint32_t dstMulIdx) {
+						switch (op) {
+							case VK_BLEND_OP_SUBTRACT:
+								blend.opFactors[att][srcMulIdx] =  1; blend.opFactors[att][dstMulIdx] = -1; break;
+							case VK_BLEND_OP_REVERSE_SUBTRACT:
+								blend.opFactors[att][srcMulIdx] = -1; blend.opFactors[att][dstMulIdx] =  1; break;
+							case VK_BLEND_OP_MIN:
+								blend.control[att][opIdx] = mvk::kSPIRVBlendOpMin; break;
+							case VK_BLEND_OP_MAX:
+								blend.control[att][opIdx] = mvk::kSPIRVBlendOpMax; break;
+							default:	// VK_BLEND_OP_ADD
+								blend.opFactors[att][srcMulIdx] = 1; blend.opFactors[att][dstMulIdx] = 1; break;
+						}
+					};
+					encodeOp(ba.colorBlendOp, 0, 0, 1);
+					encodeOp(ba.alphaBlendOp, 1, 2, 3);
+
+					uint32_t mask = dps.colorWriteEnables[att] ? uint32_t(ba.colorWriteMask) : 0;
+					blend.control[att][2] = (ba.blendEnable ? mvk::kSPIRVBlendFlagEnable : 0u) |
+											(mask << mvk::kSPIRVBlendFlagWriteMaskShift) |
+											(clampMode << mvk::kSPIRVBlendFlagClampShift);
+				}
+				// The sample mask and the alpha operations travel with the blend state, because
+				// the shader that carries one carries all of them.
+				blend.multisample[0] = dps.sampleMask;
+				blend.multisample[1] = (dps.alphaToOneEnable ? mvk::kSPIRVBlendFlagAlphaToOne : 0u) |
+									   (dps.alphaToCoverageEnable ? mvk::kSPIRVBlendFlagAlphaToCoverage : 0u);
+				// Coverage is spread over the samples the attachments actually have, which is what
+				// the pipeline was built for; a stale vkCmdSetRasterizationSamplesEXT value is not.
+				MVKRenderSubpass* blendSubpass = mvkEncoder.getSubpass();
+				blend.multisample[2] = std::max(blendSubpass ? blendSubpass->getSampleCount() : 1u, 1u);
+				binder.setBytes(encoder, &blend, sizeof(blend), idx);
+				break;
+			}
+			case MVKNonVolatileImplicitBuffer::VertexPull: {
+				// Resolve the vertex layout and the bound vertex buffers into the per-location
+				// table the rewritten shader reads. See mvk::SPIRVVertexPullState. The shader
+				// reaches the buffers by address, so each one is made resident here as well.
+				const auto& vkGfx = mvkEncoder.getVkGraphics();
+				const auto& vi = vkGfx._dynamicVertexInput;
+				auto& useResource = mvkEncoder.getState().mtlShared()._useResource;
+
+				id<MTLBuffer> nullBuf = mvkEncoder.getDevice()->getNullVertexMTLBuffer();
+				uint64_t nullAddr = nullBuf.gpuAddress;
+				useResource.add(nullBuf, useResourceStage, false);
+
+				// A location with no attribute behind it reads four components from the null
+				// buffer, and so evaluates to the default vertex attribute value. That is not
+				// the same as a described attribute whose format supplies fewer components,
+				// which fills the missing ones with (0, 0, 0, 1).
+				// See VkPhysicalDeviceMaintenance9Properties::defaultVertexAttributeValue.
+				mvk::SPIRVVertexPullState pull = {};
+				for (auto& attr : pull.attributes) {
+					attr.addressLo = uint32_t(nullAddr);
+					attr.addressHi = uint32_t(nullAddr >> 32);
+					attr.byteBound = uint32_t(nullBuf.length);
+					attr.control = mvkVertexPullFormatControl(VK_FORMAT_R32G32B32A32_SFLOAT);
+				}
+				pull.nullAddressLo = uint32_t(nullAddr);
+				pull.nullAddressHi = uint32_t(nullAddr >> 32);
+
+				for (uint32_t vaIdx = 0; vaIdx < vi.attributeCount; vaIdx++) {
+					const auto& va = vi.attributes[vaIdx];
+					if (va.location >= mvk::kSPIRVVertexPullMaxLocations || va.binding >= kMVKMaxBufferCount) { continue; }
+					const MVKDynamicVertexBinding* vb = nullptr;
+					for (uint32_t vbIdx = 0; vbIdx < vi.bindingCount; vbIdx++) {
+						if (vi.bindings[vbIdx].binding == va.binding) { vb = &vi.bindings[vbIdx]; }
+					}
+					const auto& buf = vkGfx._vertexBuffers[va.binding];
+					auto& attr = pull.attributes[va.location];
+					attr.control = mvkVertexPullFormatControl((VkFormat)va.format);
+					if ( !vb || !buf.mtlBuffer ) { continue; }		// Nothing bound: reads as zero.
+
+					// The element's address counts from the attribute, so that the bound is the
+					// bytes left from there, and the strides follow whichever call set them last.
+					uint64_t addr = buf.mtlBuffer.gpuAddress + buf.offset + va.offset;
+					uint64_t size = buf.size ? buf.size : (buf.mtlBuffer.length > buf.offset ? buf.mtlBuffer.length - buf.offset : 0);
+					attr.addressLo = uint32_t(addr);
+					attr.addressHi = uint32_t(addr >> 32);
+					attr.stride = buf.stride;
+					attr.divisor = vb->divisor;
+					attr.byteBound = uint32_t(std::min<uint64_t>(va.offset < size ? size - va.offset : 0, UINT32_MAX));
+					if (vb->inputRate == VK_VERTEX_INPUT_RATE_INSTANCE) { attr.control |= mvk::kSPIRVVertexPullFlagInstanced; }
+					useResource.add(buf.mtlBuffer, useResourceStage, false);
+				}
+				binder.setBytes(encoder, &pull, sizeof(pull), idx);
+				break;
+			}
 			case MVKNonVolatileImplicitBuffer::EmulatedReversedDepthViewport:
 				bindImmediateData(encoder,
 				                  mvkEncoder,
 				                  reinterpret_cast<const uint8_t*>(&implicitBufferData.emulatedReversedDepthViewportMask),
 				                  sizeof(implicitBufferData.emulatedReversedDepthViewportMask),
+				                  idx,
+				                  binder);
+				break;
+			case MVKNonVolatileImplicitBuffer::DepthClip:
+				bindImmediateData(encoder,
+				                  mvkEncoder,
+				                  reinterpret_cast<const uint8_t*>(implicitBufferData.depthClipState),
+				                  sizeof(implicitBufferData.depthClipState),
 				                  idx,
 				                  binder);
 				break;
@@ -988,24 +1142,34 @@ MVKArrayRef<const MTLSamplePosition> MVKVulkanGraphicsCommandEncoderState::getSa
 			const MTLSamplePosition* samples = dynamic ? _sampleLocations : _pipeline->getSampleLocations();
 			res = MVKArrayRef(samples, count);
 		}
+	} else if (_renderState.enable.has(MVKRenderStateEnableFlag::SampleLocations)) {
+		// A draw with shader objects has no pipeline to hold any of this, so the positions are
+		// whatever the draw itself set, and there is no static state to fall back on.
+		res = MVKArrayRef(_sampleLocations, _renderState.numSampleLocations);
 	}
 	return res;
 }
 
 bool MVKVulkanGraphicsCommandEncoderState::isBresenhamLines() const {
-	if (!_pipeline)
-		return false;
-	if (pickRenderState(MVKRenderStateFlag::LineRasterizationMode).lineRasterizationMode != MVKLineRasterizationMode::Bresenham)
+	// A draw with shader objects has no pipeline to hold any of this, so the state the draw itself
+	// set is the only state there is. Without this, such a draw never got the pixel-centre sample
+	// positions a multisampled Bresenham line needs, and rasterized differently from the same line
+	// drawn through a pipeline.
+	auto pick = [this](MVKRenderStateFlag flag) -> const MVKRenderStateData& {
+		return _pipeline ? pickRenderState(flag) : _renderState;
+	};
+
+	if (pick(MVKRenderStateFlag::LineRasterizationMode).lineRasterizationMode != MVKLineRasterizationMode::Bresenham)
 		return false;
 
-	switch (pickRenderState(MVKRenderStateFlag::PrimitiveTopology).primitiveType) {
+	switch (pick(MVKRenderStateFlag::PrimitiveTopology).primitiveType) {
 		case MTLPrimitiveTypeLine:
 		case MTLPrimitiveTypeLineStrip:
 			return true;
 
 		case MTLPrimitiveTypeTriangle:
 		case MTLPrimitiveTypeTriangleStrip:
-			return pickRenderState(MVKRenderStateFlag::PolygonMode).polygonMode == MVKPolygonMode::Lines;
+			return pick(MVKRenderStateFlag::PolygonMode).polygonMode == MVKPolygonMode::Lines;
 
 		default:
 			return false;
@@ -1681,6 +1845,45 @@ static MVKArrayRef<const MTLSamplePosition> getSamplePositions(const MVKVulkanGr
 	return vk.getSamplePositions();
 }
 
+void MVKCommandEncoderState::bindShaders(uint32_t count, const VkShaderStageFlagBits* pStages, MVKShader*const* pShaders) {
+	for (uint32_t i = 0; i < count; i++) {
+		MVKShaderStage stage = mvkShaderStageFromVkShaderStageFlagBitsInObj(pStages[i], nullptr);
+		if (stage == kMVKShaderStageCount) { continue; }		// A stage this implementation does not have.
+
+		// Vulkan makes pipelines and shader objects mutually exclusive, so touching any stage
+		// at a bind point unbinds the pipeline there, whether a shader is bound or unbound.
+		MVKShader* shader = pShaders ? pShaders[i] : nullptr;
+		if (stage == kMVKShaderStageCompute) {
+			_vkCompute._shaderObject = shader;
+			_vkCompute._pipeline = nullptr;
+		} else {
+			_vkGraphics._shaderObjects[stage] = shader;
+			_vkGraphics._pipeline = nullptr;
+		}
+	}
+}
+
+bool MVKCommandEncoderState::hasGraphicsShaderObjects() const {
+	for (auto* shader : _vkGraphics._shaderObjects) { if (shader) { return true; } }
+	return false;
+}
+
+void MVKCommandEncoderState::setVertexInput(const MVKDynamicVertexInput& vertexInput) {
+	// As with the pipeline state setters, re-setting the layout already in place is common and
+	// must not cost a pipeline resolve, so nothing is invalidated unless something changed.
+	if (memcmp(&_vkGraphics._dynamicVertexInput, &vertexInput, sizeof(vertexInput)) == 0) { return; }
+
+	_vkGraphics._dynamicVertexInput = vertexInput;
+	// A pipeline built for a canonical stride reads the real one from the buffer binding, so the
+	// stride this call supplies is put where the draw will look for it.
+	for (uint32_t i = 0; i < vertexInput.bindingCount; i++) {
+		uint32_t binding = vertexInput.bindings[i].binding;
+		if (binding < kMVKMaxBufferCount) { _vkGraphics._vertexBuffers[binding].stride = vertexInput.bindings[i].stride; }
+	}
+	invalidateShaderObjectPipeline();
+	invalidateVertexPullBuffer();
+}
+
 MVKArrayRef<const MTLSamplePosition> MVKCommandEncoderState::updateSamplePositions() {
 	// Multisample Bresenham lines require sampling from the pixel center.
 	bool locOverride = _mtlGraphics._sampleCount > 1 && _vkGraphics.isBresenhamLines();
@@ -1728,7 +1931,58 @@ void MVKCommandEncoderState::setGraphicsEmulatedReversedDepthViewportMask(uint32
 	}
 }
 
+// A shader that maps the depth clip convention itself reads the convention from here, so that it
+// is a value the draw supplies rather than one the shader was compiled for.
+void MVKCommandEncoderState::setGraphicsDepthClipNegativeOneToOne(bool negativeOneToOne) {
+	uint32_t flag = negativeOneToOne ? 1 : 0;
+	bool changed = false;
+	for (auto& stageData : _vkGraphics._implicitBufferData) {
+		if (stageData.depthClipState[0] != flag) {
+			stageData.depthClipState[0] = flag;
+			changed = true;
+		}
+	}
+	if (changed) {
+		invalidateImplicitBuffer(*this, VK_PIPELINE_BIND_POINT_GRAPHICS, MVKNonVolatileImplicitBuffer::DepthClip);
+	}
+}
+
+void MVKCommandEncoderState::invalidateBlendStateBuffer() {
+	invalidateImplicitBuffer(*this, VK_PIPELINE_BIND_POINT_GRAPHICS, MVKNonVolatileImplicitBuffer::BlendState);
+}
+
+void MVKCommandEncoderState::invalidateVertexPullBuffer() {
+	invalidateImplicitBuffer(*this, VK_PIPELINE_BIND_POINT_GRAPHICS, MVKNonVolatileImplicitBuffer::VertexPull);
+}
+
+void MVKCommandEncoderState::invalidateShaderObjectPipeline() {
+	if (hasGraphicsShaderObjects()) { _vkGraphics._pipeline = nullptr; }
+	// A pipeline that blends in the shader reads this state from a buffer, which must therefore
+	// be rebound whenever the state changes.
+	invalidateBlendStateBuffer();
+}
+
 void MVKCommandEncoderState::bindGraphicsPipeline(MVKGraphicsPipeline* pipeline) {
+	_mtlGraphics.changePipeline(_vkGraphics._pipeline, pipeline);
+	_vkGraphics._pipeline = pipeline;
+	// Vulkan makes binding a pipeline and binding shader objects mutually exclusive, so a
+	// pipeline bind leaves no shader object behind for a later draw to prefer over it.
+	for (uint32_t stage = 0; stage < kMVKShaderStageCount; stage++) { _vkGraphics._shaderObjects[stage] = nullptr; }
+	MVKPipelineLayout* layout = pipeline->getLayout();
+	if (_vkGraphics._layout != layout) {
+		if (!_vkGraphics._layout || _vkGraphics._layout->getPushConstantsLength() < layout->getPushConstantsLength()) {
+			mvkEnsureSize(_vkShared._pushConstants, layout->getPushConstantsLength());
+			invalidateImplicitBuffer(*this, VK_PIPELINE_BIND_POINT_GRAPHICS, MVKNonVolatileImplicitBuffer::PushConstant);
+		}
+		_vkGraphics.setLayout(layout);
+	}
+}
+
+void MVKCommandEncoderState::useShaderObjectPipeline(MVKGraphicsPipeline* pipeline) {
+	if (_vkGraphics._pipeline == pipeline) { return; }
+
+	// Deliberately not bindGraphicsPipeline(), which unbinds the shader objects this pipeline
+	// was built from, and which the next draw still needs in order to find it again.
 	_mtlGraphics.changePipeline(_vkGraphics._pipeline, pipeline);
 	_vkGraphics._pipeline = pipeline;
 	MVKPipelineLayout* layout = pipeline->getLayout();
@@ -1741,8 +1995,24 @@ void MVKCommandEncoderState::bindGraphicsPipeline(MVKGraphicsPipeline* pipeline)
 	}
 }
 
+void MVKCommandEncoderState::useShaderObjectComputePipeline(MVKComputePipeline* pipeline) {
+	if (_vkCompute._pipeline == pipeline) { return; }
+
+	// Deliberately not bindComputePipeline(), which unbinds the shader object this was built from.
+	_vkCompute._pipeline = pipeline;
+	MVKPipelineLayout* layout = pipeline->getLayout();
+	if (_vkCompute._layout != layout) {
+		if (!_vkCompute._layout || _vkCompute._layout->getPushConstantsLength() < layout->getPushConstantsLength()) {
+			mvkEnsureSize(_vkShared._pushConstants, layout->getPushConstantsLength());
+			invalidateImplicitBuffer(*this, VK_PIPELINE_BIND_POINT_COMPUTE, MVKNonVolatileImplicitBuffer::PushConstant);
+		}
+		_vkCompute.setLayout(layout);
+	}
+}
+
 void MVKCommandEncoderState::bindComputePipeline(MVKComputePipeline* pipeline) {
 	_vkCompute._pipeline = pipeline;
+	_vkCompute._shaderObject = nullptr;
 	MVKPipelineLayout* layout = pipeline->getLayout();
 	if (_vkCompute._layout != layout) {
 		if (!_vkCompute._layout || _vkCompute._layout->getPushConstantsLength() < layout->getPushConstantsLength()) {
@@ -1807,8 +2077,95 @@ void MVKCommandEncoderState::pushDescriptorSet(MVKDescriptorUpdateTemplate* upda
 	}
 }
 
-void MVKCommandEncoderState::bindVertexBuffers(uint32_t firstBinding, MVKArrayRef<const MVKVertexMTLBufferBinding> buffers) {
-	mvkCopy(&_vkGraphics._vertexBuffers[firstBinding], buffers.data(), buffers.size());
+void MVKCommandEncoderState::bindVertexBuffers(uint32_t firstBinding, MVKArrayRef<const MVKVertexMTLBufferBinding> buffers, bool hasStrides) {
+	// Passing no strides leaves whatever set them last in charge, so those are carried over
+	// rather than overwritten with the zero the command recorded.
+	for (size_t i = 0; i < buffers.size(); i++) {
+		uint32_t keepStride = _vkGraphics._vertexBuffers[firstBinding + i].stride;
+		_vkGraphics._vertexBuffers[firstBinding + i] = buffers[i];
+		if (!hasStrides) { _vkGraphics._vertexBuffers[firstBinding + i].stride = keepStride; }
+	}
+	if (hasStrides && !_vkGraphics._dynamicVertexInput.stridesFromVertexBuffers) {
+		_vkGraphics._dynamicVertexInput.stridesFromVertexBuffers = 1;
+		invalidateShaderObjectPipeline();
+	}
+	// A shader that loads its own attributes reads the buffers' addresses from a table, which
+	// must be rebuilt now that they have changed.
+	invalidateVertexPullBuffer();
+}
+
+uint32_t mvkVertexPullFormatControl(VkFormat format) {
+	using namespace mvk;
+	auto control = [](uint32_t comps, uint32_t bytes, SPIRVVertexPullKind kind, uint32_t flags = 0) {
+		uint32_t sizeLog2 = (bytes == 1) ? 0 : ((bytes == 2) ? 1 : 2);
+		return (comps << kSPIRVVertexPullComponentCountShift) | (sizeLog2 << kSPIRVVertexPullComponentSizeShift) |
+			   (uint32_t(kind) << kSPIRVVertexPullKindShift) | flags;
+	};
+	// Every array format with the same component layout shares one line of cases per numeric kind.
+#define MVK_PULL_ARRAY(name, comps, bytes, flags) \
+	case VK_FORMAT_##name##_UNORM:   return control(comps, bytes, kSPIRVVertexPullUnorm, flags); \
+	case VK_FORMAT_##name##_SNORM:   return control(comps, bytes, kSPIRVVertexPullSnorm, flags); \
+	case VK_FORMAT_##name##_USCALED: return control(comps, bytes, kSPIRVVertexPullUScaled, flags); \
+	case VK_FORMAT_##name##_SSCALED: return control(comps, bytes, kSPIRVVertexPullSScaled, flags); \
+	case VK_FORMAT_##name##_UINT:    return control(comps, bytes, kSPIRVVertexPullUInt, flags); \
+	case VK_FORMAT_##name##_SINT:    return control(comps, bytes, kSPIRVVertexPullSInt, flags);
+#define MVK_PULL_PACKED(name, flags) \
+	case VK_FORMAT_##name##_UNORM_PACK32:   return control(4, 4, kSPIRVVertexPullUnorm, flags); \
+	case VK_FORMAT_##name##_SNORM_PACK32:   return control(4, 4, kSPIRVVertexPullSnorm, flags); \
+	case VK_FORMAT_##name##_USCALED_PACK32: return control(4, 4, kSPIRVVertexPullUScaled, flags); \
+	case VK_FORMAT_##name##_SSCALED_PACK32: return control(4, 4, kSPIRVVertexPullSScaled, flags); \
+	case VK_FORMAT_##name##_UINT_PACK32:    return control(4, 4, kSPIRVVertexPullUInt, flags); \
+	case VK_FORMAT_##name##_SINT_PACK32:    return control(4, 4, kSPIRVVertexPullSInt, flags);
+	switch (format) {
+		MVK_PULL_ARRAY(R8, 1, 1, 0)
+		MVK_PULL_ARRAY(R8G8, 2, 1, 0)
+		MVK_PULL_ARRAY(R8G8B8, 3, 1, 0)
+		MVK_PULL_ARRAY(B8G8R8, 3, 1, kSPIRVVertexPullFlagSwapRedBlue)
+		MVK_PULL_ARRAY(R8G8B8A8, 4, 1, 0)
+		MVK_PULL_ARRAY(B8G8R8A8, 4, 1, kSPIRVVertexPullFlagSwapRedBlue)
+		MVK_PULL_ARRAY(R16, 1, 2, 0)
+		MVK_PULL_ARRAY(R16G16, 2, 2, 0)
+		MVK_PULL_ARRAY(R16G16B16, 3, 2, 0)
+		MVK_PULL_ARRAY(R16G16B16A16, 4, 2, 0)
+		case VK_FORMAT_R16_SFLOAT:          return control(1, 2, kSPIRVVertexPullSFloat);
+		case VK_FORMAT_R16G16_SFLOAT:       return control(2, 2, kSPIRVVertexPullSFloat);
+		case VK_FORMAT_R16G16B16_SFLOAT:    return control(3, 2, kSPIRVVertexPullSFloat);
+		case VK_FORMAT_R16G16B16A16_SFLOAT: return control(4, 2, kSPIRVVertexPullSFloat);
+		case VK_FORMAT_R32_UINT:            return control(1, 4, kSPIRVVertexPullUInt);
+		case VK_FORMAT_R32_SINT:            return control(1, 4, kSPIRVVertexPullSInt);
+		case VK_FORMAT_R32_SFLOAT:          return control(1, 4, kSPIRVVertexPullSFloat);
+		case VK_FORMAT_R32G32_UINT:         return control(2, 4, kSPIRVVertexPullUInt);
+		case VK_FORMAT_R32G32_SINT:         return control(2, 4, kSPIRVVertexPullSInt);
+		case VK_FORMAT_R32G32_SFLOAT:       return control(2, 4, kSPIRVVertexPullSFloat);
+		case VK_FORMAT_R32G32B32_UINT:      return control(3, 4, kSPIRVVertexPullUInt);
+		case VK_FORMAT_R32G32B32_SINT:      return control(3, 4, kSPIRVVertexPullSInt);
+		case VK_FORMAT_R32G32B32_SFLOAT:    return control(3, 4, kSPIRVVertexPullSFloat);
+		case VK_FORMAT_R32G32B32A32_UINT:   return control(4, 4, kSPIRVVertexPullUInt);
+		case VK_FORMAT_R32G32B32A32_SINT:   return control(4, 4, kSPIRVVertexPullSInt);
+		case VK_FORMAT_R32G32B32A32_SFLOAT: return control(4, 4, kSPIRVVertexPullSFloat);
+		// Packed 32-bit formats name their components from the high bits down, so in memory
+		// A8B8G8R8 is R8G8B8A8, and A2R10G10B10 stores blue in the low bits.
+		case VK_FORMAT_A8B8G8R8_UNORM_PACK32:   return control(4, 1, kSPIRVVertexPullUnorm);
+		case VK_FORMAT_A8B8G8R8_SNORM_PACK32:   return control(4, 1, kSPIRVVertexPullSnorm);
+		case VK_FORMAT_A8B8G8R8_USCALED_PACK32: return control(4, 1, kSPIRVVertexPullUScaled);
+		case VK_FORMAT_A8B8G8R8_SSCALED_PACK32: return control(4, 1, kSPIRVVertexPullSScaled);
+		case VK_FORMAT_A8B8G8R8_UINT_PACK32:    return control(4, 1, kSPIRVVertexPullUInt);
+		case VK_FORMAT_A8B8G8R8_SINT_PACK32:    return control(4, 1, kSPIRVVertexPullSInt);
+		MVK_PULL_PACKED(A2B10G10R10, kSPIRVVertexPullFlagPacked)
+		MVK_PULL_PACKED(A2R10G10B10, kSPIRVVertexPullFlagPacked | kSPIRVVertexPullFlagSwapRedBlue)
+		default: return 0;
+	}
+#undef MVK_PULL_ARRAY
+#undef MVK_PULL_PACKED
+}
+
+bool mvkCanPullVertexInput(const MVKDynamicVertexInput& vertexInput, MVKPixelFormats* pixFmts) {
+	for (uint32_t vaIdx = 0; vaIdx < vertexInput.attributeCount; vaIdx++) {
+		VkFormat format = (VkFormat)vertexInput.attributes[vaIdx].format;
+		if ( !mvkVertexPullFormatControl(format) ) { return false; }
+		if ( !mvkIsAnyFlagEnabled(pixFmts->getVkFormatProperties3(format).bufferFeatures, VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT) ) { return false; }
+	}
+	return true;
 }
 
 void MVKCommandEncoderState::bindIndexBuffer(const MVKIndexMTLBufferBinding& buffer) {

@@ -17,6 +17,8 @@
  */
 
 #include "MVKPipeline.h"
+#include <MoltenVKShaderConverter/SPIRVBlendInShader.h>
+#include <MoltenVKShaderConverter/SPIRVVertexPulling.h>
 #include "MVKCommandBuffer.h"
 #include "MVKInlineObjectConstructor.h"
 #include "MVKImage.h"
@@ -438,6 +440,8 @@ static void populateResourceUsage(MVKPipelineStageResourceInfo& dst, SPIRVToMSLC
 	dst.implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::DispatchBase,  results.needsDispatchBaseBuffer);
 	dst.implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::ViewRange,     results.needsViewRangeBuffer);
 	dst.implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::DrawId,        results.needsDrawId);
+	dst.implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::BlendState,    results.isBlendInShader);
+	dst.implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::VertexPull,    results.isPullingVertices);
 
 	typedef SPIRV_CROSS_NAMESPACE::SPIRType SPIRType;
 	bool isArgBuf[kMVKMaxDescriptorSetCount] = {};
@@ -703,9 +707,15 @@ static bool usesConstantColor(MVKRenderStateFlags dynamic, const VkPipelineColor
 MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 										 MVKPipelineCache* pipelineCache,
 										 MVKPipeline* parent,
-										 const VkGraphicsPipelineCreateInfo* pCreateInfo) :
-	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, getPipelineCreateFlags(pCreateInfo), parent)
+										 const VkGraphicsPipelineCreateInfo* pCreateInfo,
+										 const MVKShaderObjectPipelineConfig& soConfig) :
+	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, getPipelineCreateFlags(pCreateInfo), parent),
+	_binaryArchive(soConfig.binaryArchive),
+	_neverRendersPoints(soConfig.neverRendersPoints),
+	_dynamicDepthClipRequested(soConfig.dynamicDepthClip)
 {
+	_blendInShaderRequested = soConfig.blendInShader;
+	_pullVerticesRequested = soConfig.pullVertices;
 	// Extract dynamic state first, as it can affect many configurations.
 	initDynamicState(pCreateInfo);
 
@@ -922,7 +932,10 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	MVKRenderStateFlags needed = MVKRenderStateFlags::all();
 	if (!_dynamicStateFlags.has(MVKRenderStateFlag::StencilTestEnable) && !_staticStateData.depthStencil.stencilTestEnabled)
 		needed.remove(MVKRenderStateFlag::StencilReference);
-	if (!_isRasterizingColor || !usesConstantColor(_dynamicStateFlags, pCreateInfo->pColorBlendState))
+	// A shader that blends for itself is handed the blend constants in its state buffer, so they
+	// remain live even though the pipeline it is built for names no constant factor.
+	if (!_blendInShaderRequested &&
+		(!_isRasterizingColor || !usesConstantColor(_dynamicStateFlags, pCreateInfo->pColorBlendState)))
 		needed.remove(MVKRenderStateFlag::BlendConstants);
 	if (_primitiveTopologyClass == MTLPrimitiveTopologyClassPoint || _primitiveTopologyClass == MTLPrimitiveTopologyClassLine)
 		needed.removeAll({ MVKRenderStateFlag::CullMode, MVKRenderStateFlag::FrontFace });
@@ -998,10 +1011,20 @@ void MVKGraphicsPipeline::populateRenderingAttachmentInfo(const VkGraphicsPipeli
 id<MTLRenderPipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLRenderPipelineDescriptor* plDesc,
 																	 id<MTLRenderPipelineState>& plState) {
 	if ( !plState ) {
+		// The archive that will outlive this run: the cache the application asked for, or the
+		// shader object that will hand its binary back. It is searched only where an earlier run
+		// seeded it, and the pipeline is merely recorded here, to be written into it if and when
+		// the application asks for something that carries it.
+		MVKPipelineCache* plCache = getPipelineCache();
+		MVKMTLBinaryArchive* plArch = _binaryArchive ? _binaryArchive : (plCache ? plCache->getBinaryArchive() : nullptr);
+		id<MTLBinaryArchive> mtlArch = plArch ? plArch->getMTLBinaryArchiveForLookup() : nil;
+		if (mtlArch) { plDesc.binaryArchives = @[mtlArch]; }
+
 		MVKRenderPipelineCompiler* plc = new MVKRenderPipelineCompiler(this);
 		plState = plc->newMTLRenderPipelineState(plDesc);	// retained
 		plc->destroy();
 		if ( !plState ) { _hasValidMTLPipelineStates = false; }
+		if (plState && plArch) { plArch->recordRenderPipeline(plDesc); }
 	}
 	return plState;
 }
@@ -1448,11 +1471,18 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	addCommonImplicitBuffersToShaderConfig(shaderConfig, implicit);
 	shaderConfig.options.mslOptions.shader_output_buffer_index = implicit[MVKImplicitBuffer::Output];
 	shaderConfig.options.mslOptions.view_mask_buffer_index = implicit[MVKImplicitBuffer::ViewRange];
+	// This vertex stage feeds the rasterizer, so it is the one that maps the depth.
+	shaderConfig.options.dynamicDepthClip = _dynamicDepthClipRequested;
+	shaderConfig.options.depthClipStateBufferIndex = implicit[MVKImplicitBuffer::DepthClip];
 	shaderConfig.options.mslOptions.draw_id_buffer_index = implicit[MVKImplicitBuffer::DrawId];
 	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
 	setEmulatedReversedDepthViewportConfig(shaderConfig, implicit, getPhysicalDevice()->shouldEmulateReversedDepthViewport());
 	addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
+	if (_pullVerticesRequested) {
+		shaderConfig.options.pullVertices = true;
+		shaderConfig.options.pullStateBufferIndex = implicit[MVKImplicitBuffer::VertexPull];
+	}
 
 	MVKMTLFunction func = getMTLFunction(shaderConfig, pVertexSS, pVertexFB, _vertexModule, "Vertex");
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
@@ -1460,9 +1490,12 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	if ( !mtlFunc ) { return false; }
 
 	auto& funcRslts = func.shaderConversionResults;
+	// The rewrite can decline, so the pipeline follows what the converter actually did.
+	_isPullingVertices = funcRslts.isPullingVertices;
 	plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled;
 	populateResourceUsage(_stageResources[kMVKShaderStageVertex], shaderConfig, funcRslts, spv::ExecutionModelVertex);
 	_stageResources[kMVKShaderStageVertex].implicitBuffers.needed.set(MVKImplicitBuffer::EmulatedReversedDepthViewport, shaderConfig.options.mslOptions.emulate_reversed_depth_viewport);
+	_stageResources[kMVKShaderStageVertex].implicitBuffers.needed.set(MVKImplicitBuffer::DepthClip, funcRslts.isDepthClipInShader);
 	_layout->populateBindOperations(_stageResources[kMVKShaderStageVertex].bindScript, shaderConfig, spv::ExecutionModelVertex);
 
 	if (funcRslts.isRasterizationDisabled) {
@@ -1568,6 +1601,10 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	shaderConfig.options.entryPointStage = spv::ExecutionModelTessellationEvaluation;
 	shaderConfig.options.entryPointName = pTessEvalSS->pName;
 	addCommonImplicitBuffersToShaderConfig(shaderConfig, implicit);
+	// With tessellation it is this stage that feeds the rasterizer, so it maps the depth in place
+	// of the vertex stage, which by then has written a position only the tessellator reads.
+	shaderConfig.options.dynamicDepthClip = _dynamicDepthClipRequested;
+	shaderConfig.options.depthClipStateBufferIndex = implicit[MVKImplicitBuffer::DepthClip];
 	shaderConfig.options.mslOptions.shader_input_buffer_index = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalInputBufferBinding);
 	shaderConfig.options.mslOptions.shader_patch_input_buffer_index = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalPatchInputBufferBinding);
 	shaderConfig.options.mslOptions.shader_tess_factor_buffer_index = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalLevelBufferBinding);
@@ -1586,6 +1623,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled;
 	populateResourceUsage(_stageResources[kMVKShaderStageTessEval], shaderConfig, funcRslts, spv::ExecutionModelTessellationEvaluation);
 	_stageResources[kMVKShaderStageTessEval].implicitBuffers.needed.set(MVKImplicitBuffer::EmulatedReversedDepthViewport, shaderConfig.options.mslOptions.emulate_reversed_depth_viewport);
+	_stageResources[kMVKShaderStageTessEval].implicitBuffers.needed.set(MVKImplicitBuffer::DepthClip, funcRslts.isDepthClipInShader);
 	_layout->populateBindOperations(_stageResources[kMVKShaderStageTessEval].bindScript, shaderConfig, spv::ExecutionModelTessellationEvaluation);
 
 	if (funcRslts.isRasterizationDisabled) {
@@ -1619,6 +1657,27 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		/* Enabling makes dEQP-VK.fragment_shader_interlock.basic.discard.image.pixel_ordered.1xaa.no_sample_shading.1024x1024 and similar tests fail. Requires investigation */
 		shaderConfig.options.mslOptions.force_fragment_with_side_effects_execution = false;
 		shaderConfig.options.mslOptions.input_attachment_is_ds_attachment = _inputAttachmentIsDSAttachment;
+		if (_blendInShaderRequested) {
+			shaderConfig.options.blendInShader = true;
+			shaderConfig.options.blendMultisampled = (_isRasterizing && pCreateInfo->pMultisampleState &&
+													  pCreateInfo->pMultisampleState->rasterizationSamples > VK_SAMPLE_COUNT_1_BIT);
+			shaderConfig.options.blendStateBufferIndex = _stageResources[kMVKShaderStageFragment].implicitBuffers.ids[MVKImplicitBuffer::BlendState];
+			// A shader may write outputs past the attachments that exist; those keep Metal's
+			// behaviour, because there is nothing to fetch behind them.
+			const VkPipelineRenderingCreateInfo* pRendInfoBlend = getRenderingCreateInfo(pCreateInfo);
+			uint32_t attMask = 0;
+			for (uint32_t caIdx = 0; caIdx < pRendInfoBlend->colorAttachmentCount && caIdx < _colorAttachmentLocations.size(); caIdx++) {
+				uint32_t caLoc = _colorAttachmentLocations[caIdx];
+				if (caLoc != VK_ATTACHMENT_UNUSED && caLoc < kMVKMaxColorAttachmentCount &&
+					pRendInfoBlend->pColorAttachmentFormats[caIdx] != VK_FORMAT_UNDEFINED) {
+					attMask |= (1u << caLoc);
+				}
+			}
+			shaderConfig.options.blendAttachmentMask = attMask;
+			// The one shader that carries blending carries the coverage operations with it, so
+			// that a draw departing from any of the defaults needs no pipeline of its own.
+			shaderConfig.options.blendDynamicMultisample = true;
+		}
 		if (mtlFeats.needsSampleDrefLodArrayWorkaround) {
 			shaderConfig.options.mslOptions.sample_dref_lod_array_as_grad = true;
 		}
@@ -1645,6 +1704,8 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		if ( !mtlFunc ) { return false; }
 
 		auto& funcRslts = func.shaderConversionResults;
+		// The rewrite can decline, so the pipeline follows what the converter actually did.
+		_isBlendInShader = funcRslts.isBlendInShader;
 		populateResourceUsage(_stageResources[kMVKShaderStageFragment], shaderConfig, funcRslts, spv::ExecutionModelFragment);
 		_layout->populateBindOperations(_stageResources[kMVKShaderStageFragment].bindScript, shaderConfig, spv::ExecutionModelFragment);
 	}
@@ -1970,6 +2031,20 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
 			VkFormat attachFmt = pRendInfo->pColorAttachmentFormats[caIdx];
 			MTLPixelFormat mtlPixFmt = getPixelFormats()->getMTLPixelFormat(attachFmt);
 			bool supportsBlend = getPixelFormats()->getCapabilities(mtlPixFmt) & kMVKMTLFmtCapsBlend;
+
+			// The shader blends and masks for itself, so Metal is told to write every channel
+			// straight through. Fixed-point attachments clamp, which the shader must reproduce.
+			if (_isBlendInShader && caLoc < kMVKMaxColorAttachmentCount) {
+				const char* fmtName = getPixelFormats()->getName(attachFmt);
+				bool isSnorm = fmtName && strstr(fmtName, "SNORM");
+				bool isUnorm = fmtName && (strstr(fmtName, "UNORM") || strstr(fmtName, "SRGB"));
+				_blendClampModes[caLoc] = isSnorm ? mvk::kSPIRVBlendClampSnorm : (isUnorm ? mvk::kSPIRVBlendClampUnorm : mvk::kSPIRVBlendClampNone);
+				MTLRenderPipelineColorAttachmentDescriptor* cd = plDesc.colorAttachments[caLoc];
+				cd.pixelFormat = mtlPixFmt;
+				cd.writeMask = MTLColorWriteMaskAll;
+				cd.blendingEnabled = NO;
+				continue;
+			}
 			MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[caLoc];
             colorDesc.pixelFormat = mtlPixFmt;
 
@@ -2093,6 +2168,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 		_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::Swizzle]        = getImplicitBufferIndex(stage, 2);
 		_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::Output]         = getImplicitBufferIndex(stage, 4);
 		_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::EmulatedReversedDepthViewport] = getImplicitBufferIndex(stage, 7);
+		_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::DepthClip]      = getImplicitBufferIndex(stage, 8);
 		uint32_t extra = getImplicitBufferIndex(stage, 3);
 		switch (stage) {
 			case kMVKShaderStageVertex:
@@ -2102,9 +2178,11 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::ViewRange] = extra;
 				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::Index]     = extra;
 				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::DrawId]    = getImplicitBufferIndex(stage, 5);
+				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::VertexPull] = getImplicitBufferIndex(stage, 6);
 				break;
 			case kMVKShaderStageFragment:
 				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::ViewRange] = extra;
+				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::BlendState] = getImplicitBufferIndex(stage, 5);
 				break;
 			case kMVKShaderStageTessCtl:
 				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::PatchOutput]    = getImplicitBufferIndex(stage, 5);
@@ -2127,7 +2205,9 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	// However, if alpha-to-coverage is enabled, we must enable the fragment shader first color output,
 	// even without a color attachment present or in use, so that coverage can be calculated.
 	// Must ignore allowed bad pMultisampleState pointer if rasterization disabled
-	bool hasA2C = _isRasterizing && pCreateInfo->pMultisampleState && pCreateInfo->pMultisampleState->alphaToCoverageEnable;
+	// A shader deriving coverage for itself reads location zero, so that output must survive too.
+	bool hasA2C = _isRasterizing && ((pCreateInfo->pMultisampleState && pCreateInfo->pMultisampleState->alphaToCoverageEnable) ||
+									 _blendInShaderRequested);
 	shaderConfig.options.mslOptions.enable_frag_output_mask = hasA2C ? 1 : 0;
 	if (_isRasterizingColor && pCreateInfo->pColorBlendState) {
 		for (uint32_t caIdx = 0; caIdx < pCreateInfo->pColorBlendState->attachmentCount; caIdx++) {
@@ -2139,13 +2219,20 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 
 	shaderConfig.options.mslOptions.ios_support_base_vertex_instance = mtlFeats.baseVertexInstanceDrawing;
 	shaderConfig.options.mslOptions.texture_1D_as_2D = mvkCfg.texture1DAs2D;
-	shaderConfig.options.mslOptions.enable_point_size_builtin = isRenderingPoints() || reflectData.pointMode;
+	shaderConfig.options.mslOptions.enable_point_size_builtin = (isRenderingPoints() && !_neverRendersPoints) ||
+															   reflectData.pointMode;
 	shaderConfig.options.mslOptions.enable_point_size_default = shaderConfig.options.mslOptions.enable_point_size_builtin;
 	shaderConfig.options.mslOptions.default_point_size = 1.0f; // See VK_KHR_maintenance5
 	shaderConfig.options.mslOptions.enable_frag_depth_builtin = pixFmts->isDepthFormat(pixFmts->getMTLPixelFormat(pRendInfo->depthAttachmentFormat));
 	shaderConfig.options.mslOptions.enable_frag_stencil_ref_builtin = pixFmts->isStencilFormat(pixFmts->getMTLPixelFormat(pRendInfo->stencilAttachmentFormat));
     shaderConfig.options.shouldFlipVertexY = mvkCfg.shaderConversionFlipVertexY;
-    shaderConfig.options.shouldFixupClipSpace = isDepthClipNegativeOneToOne(pCreateInfo);
+    // A shader object draw can change the convention, so the shader reads it from the state the
+    // draw supplies instead of having it baked in. Where it is baked in, SPIRV-Cross writes it.
+    // Only the stage that feeds the rasterizer maps the depth, and each stage turns this on for
+    // itself below. A vertex stage feeding a tessellator writes a position the tessellator reads,
+    // not one Metal clips, and mapping it there would map it twice.
+    shaderConfig.options.dynamicDepthClip = false;
+    shaderConfig.options.shouldFixupClipSpace = !_dynamicDepthClipRequested && isDepthClipNegativeOneToOne(pCreateInfo);
     shaderConfig.options.mslOptions.tess_domain_origin_lower_left = pTessDomainOriginState && pTessDomainOriginState->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
     shaderConfig.options.mslOptions.multiview = mvkIsMultiview(pRendInfo->viewMask);
     shaderConfig.options.mslOptions.multiview_layered_rendering = getPhysicalDevice()->canUseInstancingForMultiview();
@@ -2382,6 +2469,603 @@ MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 
 
 #pragma mark -
+#pragma mark MVKShaderObjectPipelines
+
+void MVKShaderObjectPipelineKey::canonicalize(MVKPixelFormats* pixFmts, bool dynamicVertexStride) {
+	// Attributes first: a stride only has to cover the attributes that are kept.
+	canonicalizeVertexAttributes();
+
+	// A shader loading its own attributes needs no layout at all, so the strides it would have
+	// been built with do not matter. The vertex stage of a tessellated draw runs as a compute
+	// kernel, which the rewrite does not address, so such a draw keeps its layout.
+	MVKShader* vtxShader = shaders[kMVKShaderStageVertex];
+	if (vtxShader && vtxShader->canPullVertices() && !shaders[kMVKShaderStageTessCtl] &&
+		mvkCanPullVertexInput(vertexInput, pixFmts)) {
+		dropVertexInput();
+	} else if (dynamicVertexStride) {
+		canonicalizeVertexStrides(pixFmts);
+	}
+
+	canonicalizeTopology();
+	canonicalizeUnusedState();
+	// Last: it reads the sample mask the fold above leaves behind.
+	canonicalizeFragmentOutputState();
+}
+
+bool MVKShaderObjectPipelineKey::blendsOrMasks() const {
+	const VkColorComponentFlags allChannels = (VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+											   VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
+	for (uint32_t caIdx = 0; caIdx < colorAttachmentCount && caIdx < kMVKMaxColorAttachmentCount; caIdx++) {
+		if (colorAttachmentFormats[caIdx] == VK_FORMAT_UNDEFINED) { continue; }
+		const VkPipelineColorBlendAttachmentState& blendAtt = pipelineState.blendAttachments[caIdx];
+		if (blendAtt.blendEnable) { return true; }
+		if (blendAtt.colorWriteMask != allChannels) { return true; }
+		if ( !pipelineState.colorWriteEnables[caIdx] ) { return true; }
+	}
+	return false;
+}
+
+bool MVKShaderObjectPipelineKey::coversPartially() const {
+	// canonicalizeUnusedState() has already folded a mask covering every sample the draw has to
+	// all ones, which is what setting no mask means, so anything else drops a sample.
+	return (pipelineState.sampleMask != ~0u ||
+			pipelineState.alphaToCoverageEnable ||
+			pipelineState.alphaToOneEnable);
+}
+
+void MVKShaderObjectPipelineKey::canonicalizeFragmentOutputState() {
+	MVKShader* fragShader = shaders[kMVKShaderStageFragment];
+	if ( !fragShader || !fragShader->canBlendInShader() ) { return; }	// Metal does it; the state stays.
+
+	// A logic op replaces blending entirely, and reaches Metal through the same colour blend state
+	// the rewrite turns off, so a draw using one keeps that state and Metal's own stages. It is
+	// available only where MoltenVK is allowed Metal's private API, and takes a bounded set of
+	// values, so leaving it in the key costs little.
+	// See the Vulkan specification, Logical Operations.
+	if (pipelineState.logicOpEnable) { return; }
+
+	// Both alpha operations read the alpha of the floating point output at location zero, and are
+	// skipped where the shader has no such output. Neither then decides anything about the
+	// pipeline, so they leave the key rather than force the shader that can carry them.
+	// See the Vulkan specification, Multisample Coverage.
+	if ( !fragShader->canDeriveCoverage() ) {
+		pipelineState.alphaToCoverageEnable = 0;
+		pipelineState.alphaToOneEnable = 0;
+	}
+
+	if ( !blendsOrMasks() && !coversPartially() ) { return; }			// The plain shader.
+
+	pipelineState.blendInShader = 1;
+	for (auto& blendAtt : pipelineState.blendAttachments) { blendAtt = {}; }
+	for (auto& colorWriteEnable : pipelineState.colorWriteEnables) { colorWriteEnable = VK_TRUE; }
+	pipelineState.sampleMask = ~0u;
+	pipelineState.alphaToCoverageEnable = 0;
+	pipelineState.alphaToOneEnable = 0;
+}
+
+void MVKShaderObjectPipelineKey::canonicalizeVertexAttributes() {
+	MVKShader* vtxShader = shaders[kMVKShaderStageVertex];
+	if ( !vtxShader ) { return; }
+
+	uint64_t consumedLocations = 0;
+	if ( !vtxShader->getConsumedVertexLocations(consumedLocations) ) { return; }
+
+	uint32_t keptCnt = 0;
+	for (uint32_t vaIdx = 0; vaIdx < vertexInput.attributeCount; vaIdx++) {
+		const MVKDynamicVertexAttribute& va = vertexInput.attributes[vaIdx];
+		if (va.location < 64 && mvkIsAnyFlagEnabled(consumedLocations, 1ull << va.location)) {
+			vertexInput.attributes[keptCnt++] = va;
+		}
+	}
+
+	// The tail is cleared so that two layouts keeping the same attributes compare equal as bytes,
+	// the way the rest of the key does.
+	for (uint32_t vaIdx = keptCnt; vaIdx < vertexInput.attributeCount; vaIdx++) {
+		vertexInput.attributes[vaIdx] = {};
+	}
+	vertexInput.attributeCount = keptCnt;
+}
+
+void MVKShaderObjectPipelineKey::canonicalizeUnusedState() {
+	static const MVKDynamicPipelineState dfltState;
+	MVKDynamicPipelineState& dps = pipelineState;
+
+	// Metal reads the mask only for the samples the draw has. A mask covering all of them leaves
+	// every sample alone, which is what no mask at all means, and takes the same pipeline and the
+	// same shader as a draw that never set one.
+	uint32_t consulted = dps.rasterizationSamples >= 32 ? ~0u : (1u << dps.rasterizationSamples) - 1;
+	dps.sampleMask = (dps.sampleMask & consulted) == consulted ? ~0u : dps.sampleMask & consulted;
+
+	// A divisor counts instances, so a binding advancing per vertex never consults it.
+	for (uint32_t vbIdx = 0; vbIdx < vertexInput.bindingCount; vbIdx++) {
+		MVKDynamicVertexBinding& vb = vertexInput.bindings[vbIdx];
+		if (vb.inputRate == VK_VERTEX_INPUT_RATE_VERTEX) { vb.divisor = 1; }
+	}
+
+	// Where the shader maps the depth clip convention for itself, reading it from the state the
+	// draw supplies, the convention decides nothing about the pipeline and leaves the key. An
+	// application that never enabled the feature has only one convention, and nothing to collapse.
+	for (auto* shader : shaders) {
+		if (shader && shader->getEnabledDepthClipControlFeatures().depthClipControl && shader->canMapDepthClip()) {
+			dps.negativeOneToOne = 0;
+			break;
+		}
+	}
+
+	// The domain origin reaches Metal through the tessellation state, and the logic op through a
+	// colour blend state that has it enabled.
+	if ( !(shaders[kMVKShaderStageTessCtl] && shaders[kMVKShaderStageTessEval]) ) {
+		dps.domainOrigin = dfltState.domainOrigin;
+	}
+	if ( !dps.logicOpEnable ) { dps.logicOp = dfltState.logicOp; }
+
+	for (uint32_t caIdx = 0; caIdx < kMVKMaxColorAttachmentCount; caIdx++) {
+		VkPipelineColorBlendAttachmentState& blendAtt = dps.blendAttachments[caIdx];
+		if (caIdx >= colorAttachmentCount || colorAttachmentFormats[caIdx] == VK_FORMAT_UNDEFINED) {
+			// Nothing is rendered here, so none of this attachment's state is ever read.
+			blendAtt = dfltState.blendAttachments[caIdx];
+			dps.colorWriteEnables[caIdx] = dfltState.colorWriteEnables[caIdx];
+		} else if ( !blendAtt.blendEnable ) {
+			// The equation is ignored, but the write mask is not.
+			VkColorComponentFlags colorWriteMask = blendAtt.colorWriteMask;
+			blendAtt = dfltState.blendAttachments[caIdx];
+			blendAtt.colorWriteMask = colorWriteMask;
+		}
+	}
+}
+
+void MVKShaderObjectPipelineKey::canonicalizeTopology() {
+	// Only lines and triangles are folded together. A pipeline that admits points has to carry a
+	// point size through the vertex stage, which costs every vertex it ever draws, so points keep
+	// a pipeline of their own rather than impose that on the two topologies that never need it.
+	// A triangle fan is not a class Metal rasterizes but one MoltenVK emulates, and a patch list
+	// is the tessellator's input, so both mean something beyond their class and stay as they are.
+	if (pipelineState.topology != VK_PRIMITIVE_TOPOLOGY_LINE_LIST &&
+		pipelineState.topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) { return; }
+
+	// Tessellation rasterizes what the domain produces, and Metal takes that through the class.
+	if (shaders[kMVKShaderStageTessCtl] && shaders[kMVKShaderStageTessEval]) { return; }
+
+	// A layered target needs the class so Metal can route the layer index, whether the layer comes
+	// from multiview or from the shader writing the built-in itself.
+	if (viewMask) { return; }
+	for (auto* shader : shaders) {
+		if (shader && shader->writesLayer()) { return; }
+	}
+
+	pipelineState.topology = kMVKTopologyClassNotNeeded;
+}
+
+void MVKShaderObjectPipelineKey::canonicalizeVertexStrides(MVKPixelFormats* pixFmts) {
+
+	// Vulkan allows a stride of zero, meaning every vertex reads the same data, which Metal
+	// expresses as a constant step function baked into the pipeline rather than as a stride.
+	// Such a binding cannot take its stride from the draw, so the key is left as it is.
+	for (uint32_t vbIdx = 0; vbIdx < vertexInput.bindingCount; vbIdx++) {
+		if (vertexInput.bindings[vbIdx].stride == 0) { return; }
+	}
+
+	for (uint32_t vbIdx = 0; vbIdx < vertexInput.bindingCount; vbIdx++) {
+		auto& vb = vertexInput.bindings[vbIdx];
+		uint32_t minStride = 0;
+		for (uint32_t vaIdx = 0; vaIdx < vertexInput.attributeCount; vaIdx++) {
+			const auto& va = vertexInput.attributes[vaIdx];
+			if (va.binding != vb.binding) { continue; }
+			uint32_t attrEnd = va.offset + pixFmts->getBytesPerBlock((VkFormat)va.format);
+			minStride = std::max(minStride, attrEnd);
+		}
+		// A binding no attribute reads has no extent to collapse to, and must not be given a
+		// stride of zero, which means something else entirely.
+		if (minStride > 0 && vb.stride >= minStride) { vb.stride = minStride; }
+	}
+	// The pipeline built from this key now takes its stride from the vertex buffer bindings.
+	vertexInput.stridesFromVertexBuffers = 1;
+}
+
+MVKVulkanAPIObject* MVKShaderObjectPipelines::getVulkanAPIObject() { return _device; }
+
+MVKShaderObjectPipelines::~MVKShaderObjectPipelines() {
+	// A prefetch may still be building on a background thread; it holds a pointer to this cache.
+	dispatch_group_wait(_prefetches, DISPATCH_TIME_FOREVER);
+	dispatch_release(_prefetches);
+	for (auto& entry : _pipelines) { if (entry.second.pipeline) { entry.second.pipeline->destroy(); } }
+	for (auto& entry : _computePipelines) { if (entry.second) { entry.second->destroy(); } }
+}
+
+MVKGraphicsPipeline* MVKShaderObjectPipelines::getPipeline(const MVKShaderObjectPipelineKey& key, bool* pWasBuilt) {
+	std::unique_lock<std::mutex> lock(_lock);
+
+	auto iter = _pipelines.find(key);
+	if (iter != _pipelines.end()) {
+		// Someone else is building this exact key, most likely a record-time prefetch of this
+		// very draw. Waiting on it costs no more than building it here would have.
+		_built.wait(lock, [&] { return !_pipelines[key].building; });
+		return _pipelines[key].pipeline;
+	}
+
+	// Nothing had this key, so this call is the build, and a caller that must never be the one to
+	// build is told so.
+	if (pWasBuilt) { *pWasBuilt = true; }
+
+	// Claim the key, then build without holding the lock so other keys can build alongside.
+	_pipelines[key] = { nullptr, true };
+	lock.unlock();
+	MVKGraphicsPipeline* plne = newPipeline(key);
+	lock.lock();
+	_pipelines[key] = { plne, false };		// Cached even when null, so a failing combination is not rebuilt every draw.
+	_built.notify_all();
+	return plne;
+}
+
+void MVKShaderObjectPipelines::prefetchPipeline(const MVKShaderObjectPipelineKey& key) {
+	{
+		std::lock_guard<std::mutex> lock(_lock);
+		if (_pipelines.find(key) != _pipelines.end()) { return; }		// Cached or already being built.
+	}
+	// The command buffer that recorded this draw keeps its shaders alive until it is freed or
+	// reset, but this block may run after either, so it holds its own references. The key is
+	// copied by value: a block captures a reference parameter as the reference itself, which
+	// would point into the caller's stack frame long after it has been unwound.
+	MVKShaderObjectPipelineKey keyCopy = key;
+	for (auto* shader : keyCopy.shaders) { if (shader) { shader->retain(); } }
+	dispatch_group_async(_prefetches, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{ @autoreleasepool {
+		getPipeline(keyCopy);
+		for (auto* shader : keyCopy.shaders) { if (shader) { shader->release(); } }
+	}});
+}
+
+void MVKShaderObjectPipelines::removeShader(MVKShader* shader) {
+	std::unique_lock<std::mutex> lock(_lock);
+
+	for (auto iter = _pipelines.begin(); iter != _pipelines.end(); ) {
+		bool usesShader = false;
+		for (auto* keyShader : iter->first.shaders) { usesShader = usesShader || (keyShader == shader); }
+		if (usesShader) {
+			// A prefetch of this shader may be mid-build; it holds a reference, so the shader
+			// object outlives it, but the finished pipeline must still be destroyed here.
+			if (iter->second.building) {
+				MVKShaderObjectPipelineKey key = iter->first;
+				_built.wait(lock, [&] { return !_pipelines[key].building; });
+				iter = _pipelines.begin();		// The map may have changed while waiting.
+				continue;
+			}
+			if (iter->second.pipeline) { iter->second.pipeline->destroy(); }
+			iter = _pipelines.erase(iter);
+		} else {
+			++iter;
+		}
+	}
+
+	auto cpIter = _computePipelines.find(shader);
+	if (cpIter != _computePipelines.end()) {
+		if (cpIter->second) { cpIter->second->destroy(); }
+		_computePipelines.erase(cpIter);
+	}
+}
+
+MVKComputePipeline* MVKShaderObjectPipelines::getComputePipeline(MVKShader* shader) {
+	std::lock_guard<std::mutex> lock(_lock);
+
+	auto iter = _computePipelines.find(shader);
+	if (iter != _computePipelines.end()) { return iter->second; }
+
+	MVKComputePipeline* plne = newComputePipeline(shader);
+	_computePipelines[shader] = plne;
+	return plne;
+}
+
+MVKComputePipeline* MVKShaderObjectPipelines::newComputePipeline(MVKShader* shader) {
+	VkComputePipelineCreateInfo plCI = {
+		.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.stage = {
+			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.stage = VK_SHADER_STAGE_COMPUTE_BIT,
+			.module = (VkShaderModule)shader->getShaderModule(),
+			.pName = shader->getEntryPointName(),
+			.pSpecializationInfo = shader->getSpecializationInfo(),
+		},
+		.layout = (VkPipelineLayout)shader->getPipelineLayout(),
+		.basePipelineHandle = VK_NULL_HANDLE,
+		.basePipelineIndex = -1,
+	};
+
+	auto* plne = new MVKComputePipeline(_device, nullptr, nullptr, &plCI);
+	if (plne->getConfigurationResult() != VK_SUCCESS || !plne->hasValidMTLPipelineStates()) {
+		reportError(plne->getConfigurationResult(), "vkCmdDispatch(): Could not build a pipeline for the bound compute shader object.");
+		plne->destroy();
+		return nullptr;
+	}
+	return plne;
+}
+
+MVKGraphicsPipeline* MVKShaderObjectPipelines::newPipeline(const MVKShaderObjectPipelineKey& key) {
+	const MVKDynamicPipelineState& dps = key.pipelineState;
+
+	VkPipelineShaderStageCreateInfo ssCIs[kMVKShaderStageCount];
+	uint32_t ssCnt = 0;
+	for (uint32_t stage = 0; stage < kMVKShaderStageCount; stage++) {
+		MVKShader* shader = key.shaders[stage];
+		if ( !shader || stage == kMVKShaderStageCompute ) { continue; }
+		ssCIs[ssCnt++] = {
+			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.stage = shader->getStage(),
+			.module = (VkShaderModule)shader->getShaderModule(),
+			.pName = shader->getEntryPointName(),
+			.pSpecializationInfo = shader->getSpecializationInfo(),
+		};
+	}
+
+	// Vertex input. A divisor other than one needs the divisor structure chained on, so the
+	// divisors are always collected and the structure only chained when one of them differs.
+	VkVertexInputBindingDescription vibDescs[kMVKMaxVertexInputBindingCount];
+	VkVertexInputBindingDivisorDescription vibDivisors[kMVKMaxVertexInputBindingCount];
+	uint32_t vibDivisorCnt = 0;
+	for (uint32_t i = 0; i < key.vertexInput.bindingCount; i++) {
+		const auto& vb = key.vertexInput.bindings[i];
+		vibDescs[i] = { .binding = vb.binding, .stride = vb.stride, .inputRate = (VkVertexInputRate)vb.inputRate };
+		if (vb.inputRate == VK_VERTEX_INPUT_RATE_INSTANCE && vb.divisor != 1) {
+			vibDivisors[vibDivisorCnt++] = { .binding = vb.binding, .divisor = vb.divisor };
+		}
+	}
+	VkVertexInputAttributeDescription viaDescs[kMVKMaxVertexInputAttributeCount];
+	for (uint32_t i = 0; i < key.vertexInput.attributeCount; i++) {
+		const auto& va = key.vertexInput.attributes[i];
+		viaDescs[i] = { .location = va.location, .binding = va.binding, .format = (VkFormat)va.format, .offset = va.offset };
+	}
+	VkPipelineVertexInputDivisorStateCreateInfo viDivisorCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.vertexBindingDivisorCount = vibDivisorCnt,
+		.pVertexBindingDivisors = vibDivisors,
+	};
+	VkPipelineVertexInputStateCreateInfo viCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+		.pNext = vibDivisorCnt ? &viDivisorCI : nullptr,
+		.flags = 0,
+		.vertexBindingDescriptionCount = key.vertexInput.bindingCount,
+		.pVertexBindingDescriptions = vibDescs,
+		.vertexAttributeDescriptionCount = key.vertexInput.attributeCount,
+		.pVertexAttributeDescriptions = viaDescs,
+	};
+
+	VkPipelineInputAssemblyStateCreateInfo iaCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.topology = (VkPrimitiveTopology)dps.topology,
+		.primitiveRestartEnable = VK_TRUE,		// Metal cannot disable it; kept dynamic below.
+	};
+
+	VkPipelineTessellationDomainOriginStateCreateInfo tsOriginCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.domainOrigin = (VkTessellationDomainOrigin)dps.domainOrigin,
+	};
+	VkPipelineTessellationStateCreateInfo tsCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
+		.pNext = &tsOriginCI,
+		.flags = 0,
+		.patchControlPoints = 3,				// Kept dynamic below.
+	};
+
+	VkPipelineViewportDepthClipControlCreateInfoEXT vpClipCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT,
+		.pNext = nullptr,
+		.negativeOneToOne = dps.negativeOneToOne,
+	};
+	VkPipelineViewportStateCreateInfo vpCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+		.pNext = dps.negativeOneToOne ? &vpClipCI : nullptr,
+		.flags = 0,
+		.viewportCount = 0,						// Both counts come from the dynamic state below.
+		.pViewports = nullptr,
+		.scissorCount = 0,
+		.pScissors = nullptr,
+	};
+
+	VkPipelineRasterizationStateCreateInfo rsCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.depthClampEnable = VK_FALSE,			// All of these are kept dynamic below.
+		.rasterizerDiscardEnable = VK_FALSE,
+		.polygonMode = VK_POLYGON_MODE_FILL,
+		.cullMode = VK_CULL_MODE_NONE,
+		.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+		.depthBiasEnable = VK_FALSE,
+		.depthBiasConstantFactor = 0,
+		.depthBiasClamp = 0,
+		.depthBiasSlopeFactor = 0,
+		.lineWidth = 1,
+	};
+
+	VkSampleMask sampleMask = dps.sampleMask;
+	VkPipelineMultisampleStateCreateInfo msCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.rasterizationSamples = (VkSampleCountFlagBits)dps.rasterizationSamples,
+		.sampleShadingEnable = VK_FALSE,
+		.minSampleShading = 0,
+		.pSampleMask = &sampleMask,
+		.alphaToCoverageEnable = dps.alphaToCoverageEnable,
+		.alphaToOneEnable = dps.alphaToOneEnable,
+	};
+
+	VkPipelineDepthStencilStateCreateInfo dsCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,								// Every field below is kept dynamic.
+	};
+
+	// VK_EXT_color_write_enable turns writes off for a whole attachment, which Metal expresses
+	// as an empty write mask, so the two are folded together before the pipeline is built.
+	VkPipelineColorBlendAttachmentState blendAtts[kMVKMaxColorAttachmentCount];
+	for (uint32_t caIdx = 0; caIdx < kMVKMaxColorAttachmentCount; caIdx++) {
+		blendAtts[caIdx] = dps.blendAttachments[caIdx];
+		if ( !dps.colorWriteEnables[caIdx] ) { blendAtts[caIdx].colorWriteMask = 0; }
+	}
+
+	VkPipelineColorBlendStateCreateInfo cbCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.logicOpEnable = dps.logicOpEnable,
+		.logicOp = (VkLogicOp)dps.logicOp,
+		.attachmentCount = key.colorAttachmentCount,
+		.pAttachments = blendAtts,
+		.blendConstants = { 0, 0, 0, 0 },		// Kept dynamic below.
+	};
+
+	// Only the state Metal can change on an already built pipeline is left dynamic. Anything
+	// else has been baked in above, and is part of the key that selected this pipeline.
+	//
+	// The vertex stride is the exception that can go either way. Both vkCmdSetVertexInputEXT
+	// and vkCmdBindVertexBuffers2 set it and the later call wins, so when the buffers set it
+	// last the pipeline must read it from them instead of from its own baked layout. Metal can
+	// only do that where it supports setting the stride per draw.
+	VkDynamicState dynStates[40];
+	uint32_t dynStateCnt = 0;
+	if (key.vertexInput.stridesFromVertexBuffers &&
+		_device->getPhysicalDevice()->getMetalFeatures()->dynamicVertexStride) {
+		dynStates[dynStateCnt++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE;
+	}
+	static const VkDynamicState fixedDynStates[] = {
+		VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
+		VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
+		VK_DYNAMIC_STATE_LINE_WIDTH,
+		VK_DYNAMIC_STATE_DEPTH_BIAS,
+		VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE,
+		VK_DYNAMIC_STATE_BLEND_CONSTANTS,
+		VK_DYNAMIC_STATE_DEPTH_BOUNDS,
+		VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE,
+		VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
+		VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
+		VK_DYNAMIC_STATE_STENCIL_REFERENCE,
+		VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE,
+		VK_DYNAMIC_STATE_STENCIL_OP,
+		VK_DYNAMIC_STATE_CULL_MODE,
+		VK_DYNAMIC_STATE_FRONT_FACE,
+		VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE,
+		VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE,
+		VK_DYNAMIC_STATE_DEPTH_COMPARE_OP,
+		VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE,
+		VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE,
+		// The key holds only the topology class, so the pipeline is built for a representative
+		// of that class and the draw must supply the real topology itself.
+		VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
+		VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT,
+		VK_DYNAMIC_STATE_POLYGON_MODE_EXT,
+		VK_DYNAMIC_STATE_DEPTH_CLAMP_ENABLE_EXT,
+		VK_DYNAMIC_STATE_LINE_RASTERIZATION_MODE_EXT,
+	};
+	for (VkDynamicState ds : fixedDynStates) { dynStates[dynStateCnt++] = ds; }
+	assert(dynStateCnt <= sizeof(dynStates) / sizeof(dynStates[0]));
+
+	VkPipelineDynamicStateCreateInfo dynCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.dynamicStateCount = dynStateCnt,
+		.pDynamicStates = dynStates,
+	};
+
+	VkPipelineRenderingCreateInfo rendCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+		.pNext = nullptr,
+		.viewMask = key.viewMask,
+		.colorAttachmentCount = key.colorAttachmentCount,
+		.pColorAttachmentFormats = key.colorAttachmentFormats,
+		.depthAttachmentFormat = key.depthAttachmentFormat,
+		.stencilAttachmentFormat = key.stencilAttachmentFormat,
+	};
+
+	// Any bound shader carries the same layout, so the first one answers for all of them.
+	MVKPipelineLayout* layout = nullptr;
+	for (auto* shader : key.shaders) {
+		if (shader && !layout) { layout = shader->getPipelineLayout(); }
+	}
+
+	bool isTess = key.shaders[kMVKShaderStageTessCtl] && key.shaders[kMVKShaderStageTessEval];
+	VkGraphicsPipelineCreateInfo plCI = {
+		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+		.pNext = &rendCI,
+		.flags = 0,
+		.stageCount = ssCnt,
+		.pStages = ssCIs,
+		.pVertexInputState = &viCI,
+		// Withholding the input assembly state is what leaves the topology class unspecified, which
+		// is how one pipeline comes to serve every topology the key no longer distinguishes.
+		.pInputAssemblyState = ((VkPrimitiveTopology)dps.topology == kMVKTopologyClassNotNeeded) ? nullptr : &iaCI,
+		.pTessellationState = isTess ? &tsCI : nullptr,
+		.pViewportState = &vpCI,
+		.pRasterizationState = &rsCI,
+		.pMultisampleState = &msCI,
+		.pDepthStencilState = &dsCI,
+		.pColorBlendState = &cbCI,
+		.pDynamicState = &dynCI,
+		.layout = (VkPipelineLayout)layout,
+		.renderPass = VK_NULL_HANDLE,
+		.subpass = 0,
+		.basePipelineHandle = VK_NULL_HANDLE,
+		.basePipelineIndex = -1,
+	};
+
+	// A shader object pipeline has no pipeline cache to record itself in, so it is recorded in the
+	// archive of the first shader of the key. Metal searches every archive a descriptor names, and
+	// the same shader leads the key whenever this combination is built again, so the pipeline is
+	// found through the binary that shader hands back.
+	MVKMTLBinaryArchive* plArch = nullptr;
+	for (auto* shader : key.shaders) {
+		if (shader && !plArch) { plArch = shader->getBinaryArchive(); }
+	}
+
+	// A key that no longer names a topology was folded from lines and triangles only, so the
+	// pipeline it builds is never asked to draw points.
+	bool neverRendersPoints = (VkPrimitiveTopology)dps.topology == kMVKTopologyClassNotNeeded;
+
+	// Asked for wherever a shader can map the convention itself, which is the same test that took
+	// it out of the key, so the pipeline is built for a draw that supplies it. An application that
+	// never enabled the feature has only one convention to draw with, and is left alone.
+	bool dynamicDepthClip = false;
+	for (auto* shader : key.shaders) {
+		if (shader && shader->getEnabledDepthClipControlFeatures().depthClipControl && shader->canMapDepthClip()) {
+			dynamicDepthClip = true;
+			break;
+		}
+	}
+
+	// The fragment output operations are handed to the shader only where the draw actually
+	// uses one. A draw writing every channel straight through at full coverage gains nothing
+	// from reading the attachment, and reading one costs the hidden surface removal that
+	// opaque geometry depends on, so it keeps the plain shader and Metal's own stages.
+	MVKShader* fragShader = key.shaders[kMVKShaderStageFragment];
+	bool blendInShader = dps.blendInShader && fragShader && fragShader->canBlendInShader();
+
+	MVKShaderObjectPipelineConfig soConfig = {
+		.binaryArchive      = plArch,
+		.neverRendersPoints = neverRendersPoints,
+		.dynamicDepthClip   = dynamicDepthClip,
+		.blendInShader      = blendInShader,
+		.pullVertices       = key.pullVertices != 0,
+	};
+	auto* plne = new MVKGraphicsPipeline(_device, nullptr, nullptr, &plCI, soConfig);
+	if (plne->getConfigurationResult() != VK_SUCCESS || !plne->hasValidMTLPipelineStates()) {
+		reportError(plne->getConfigurationResult(), "vkCmdDraw(): Could not build a pipeline for the bound shader objects.");
+		plne->destroy();
+		return nullptr;
+	}
+	return plne;
+}
+
+
+#pragma mark -
 #pragma mark MVKComputePipeline
 
 MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
@@ -2589,6 +3273,7 @@ static uint32_t kDataHeaderSize = (sizeof(uint32_t) * 4) + VK_UUID_SIZE;
 typedef enum {
 	MVKPipelineCacheEntryTypeEOF = 0,
 	MVKPipelineCacheEntryTypeShaderLibrary = 1,
+	MVKPipelineCacheEntryTypeBinaryArchive = 2,
 } MVKPipelineCacheEntryType;
 
 // Helper class to iterate through the shader libraries in a shader library cache in order to serialize them.
@@ -2630,6 +3315,9 @@ VkResult MVKPipelineCache::writeDataImpl(size_t* pDataSize, void* pData) {
 	try {
 
 		if ( !pDataSize ) { return VK_SUCCESS; }
+
+		// Pipelines added to the archive since the last write change the size it serializes to.
+		if (_mtlBinaryArchive.isDirty()) { _dataSize = 0; }
 
 		if (pData) {
 			if (*pDataSize >= _dataSize) {
@@ -2699,6 +3387,14 @@ void MVKPipelineCache::writeData(ostream& outstream, bool isCounting) {
 	}
 
 	// Mark the end of the archive
+	// Compiled pipelines, as one Metal archive covering every pipeline this cache has built.
+	const std::vector<char>& mtlArchBytes = _mtlBinaryArchive.getBytes();
+	if ( !mtlArchBytes.empty() ) {
+		cacheEntryType = MVKPipelineCacheEntryTypeBinaryArchive;
+		writer(cacheEntryType);
+		writer(mtlArchBytes);
+	}
+
 	cacheEntryType = MVKPipelineCacheEntryTypeEOF;
 	writer(cacheEntryType);
 #else
@@ -2766,6 +3462,13 @@ void MVKPipelineCache::readData(const VkPipelineCacheCreateInfo* pCreateInfo) {
 					addPerformanceInterval(getPerformanceStats().pipelineCache.readPipelineCache, startTime);
 					slCache->addShaderLibrary(&shaderConversionConfig, resultInfo, compressedMSL);
 
+					break;
+				}
+
+				case MVKPipelineCacheEntryTypeBinaryArchive: {
+					std::vector<char> mtlArchBytes;
+					reader(mtlArchBytes);
+					_mtlBinaryArchive.setBytes(mtlArchBytes.data(), mtlArchBytes.size());
 					break;
 				}
 
@@ -2969,7 +3672,16 @@ namespace mvk {
 				opt.tessPatchKind,
 				opt.numTessControlPoints,
 				opt.shouldFlipVertexY,
-				opt.shouldFixupClipSpace);
+				opt.shouldFixupClipSpace,
+				opt.dynamicDepthClip,
+				opt.depthClipStateBufferIndex,
+				opt.blendInShader,
+				opt.blendMultisampled,
+				opt.blendStateBufferIndex,
+				opt.blendAttachmentMask,
+				opt.blendDynamicMultisample,
+				opt.pullVertices,
+				opt.pullStateBufferIndex);
 	}
 
 	template<class Archive>
@@ -3010,6 +3722,7 @@ namespace mvk {
 		archive(scr.entryPoint,
 				scr.specializationMacros,
 				scr.isRasterizationDisabled,
+				scr.isDepthClipInShader,
 				scr.isPositionInvariant,
 				scr.needsSwizzleBuffer,
 				scr.needsOutputBuffer,
@@ -3020,7 +3733,9 @@ namespace mvk {
 				scr.needsDispatchBaseBuffer,
 				scr.needsViewRangeBuffer,
 				scr.needsDrawId,
-				scr.usesPhysicalStorageBufferAddressesCapability);
+				scr.usesPhysicalStorageBufferAddressesCapability,
+				scr.isBlendInShader,
+				scr.isPullingVertices);
 	}
 
 	template<class Archive>
@@ -3048,8 +3763,130 @@ void serialize(Archive & archive, MVKCompressor<C>& comp) {
 
 #pragma mark Construction
 
+#pragma mark Metal binary archive
+
+// Metal serializes an archive to a file rather than to memory, so a scratch file carries it
+// between the archive and the bytes this cache stores.
+static NSURL* mvkNewTempArchiveURL() {
+	NSString* path = [NSTemporaryDirectory() stringByAppendingPathComponent:
+					  [NSString stringWithFormat: @"MoltenVK-%u.metallib", arc4random()]];
+	return [NSURL fileURLWithPath: path];
+}
+
+id<MTLBinaryArchive> MVKMTLBinaryArchive::getMTLBinaryArchiveForLookup() {
+	lock_guard<mutex> lock(_lock);
+	if (_bytes.empty()) { return nil; }
+	return getMTLBinaryArchiveLocked();
+}
+
+id<MTLBinaryArchive> MVKMTLBinaryArchive::getMTLBinaryArchiveLocked() {
+	if (_mtlBinaryArchive) { return _mtlBinaryArchive; }
+	if ( !mvkOSVersionIsAtLeast(11.0, 14.0, 1.0) ) { return nil; }
+
+	@autoreleasepool {
+		MTLBinaryArchiveDescriptor* baDesc = [MTLBinaryArchiveDescriptor new];		// temp retained
+		NSURL* url = nil;
+		id<MTLDevice> mtlDev = _device->getPhysicalDevice()->getMTLDevice();
+
+		// Seed the archive with what an earlier run left behind, if anything.
+		if ( !_bytes.empty() ) {
+			url = mvkNewTempArchiveURL();
+			NSData* data = [NSData dataWithBytes: _bytes.data() length: _bytes.size()];
+			if ([data writeToURL: url atomically: YES]) { baDesc.url = url; }
+		}
+
+		NSError* err = nil;
+		_mtlBinaryArchive = [[mtlDev newBinaryArchiveWithDescriptor: baDesc error: &err] retain];
+
+		// Archives are only valid for the GPU and driver that wrote them, so one this device
+		// cannot open is discarded rather than treated as an error, and the run repopulates it.
+		if ( !_mtlBinaryArchive && baDesc.url ) {
+			baDesc.url = nil;
+			_mtlBinaryArchive = [[mtlDev newBinaryArchiveWithDescriptor: baDesc error: &err] retain];
+			_bytes.clear();
+		}
+		if (url) { [[NSFileManager defaultManager] removeItemAtURL: url error: nil]; }
+		[baDesc release];
+	}
+	return _mtlBinaryArchive;
+}
+
+void MVKMTLBinaryArchive::recordRenderPipeline(MTLRenderPipelineDescriptor* mtlRPLDesc) {
+	if ( !mvkOSVersionIsAtLeast(11.0, 14.0, 1.0) ) { return; }
+
+	// The copy leaves behind the archive the build was given, which is not the one this descriptor
+	// is going to be added to, and holds the functions alive until that happens.
+	MTLRenderPipelineDescriptor* rplDesc = [mtlRPLDesc copy];		// retained
+	rplDesc.binaryArchives = nil;
+
+	lock_guard<mutex> lock(_lock);
+	_recordedRPLDescs.push_back(rplDesc);
+	_isDirty = true;
+}
+
+// Writes everything recorded since the last time into the archive. Adding a pipeline costs about
+// as much as building it, so it happens here, once something is going to keep the result, rather
+// than on the draw that built it.
+void MVKMTLBinaryArchive::addRecordedPipelinesLocked() {
+	if (_recordedRPLDescs.empty()) { return; }
+
+	@autoreleasepool {
+		id<MTLBinaryArchive> mtlArch = getMTLBinaryArchiveLocked();
+		for (auto* rplDesc : _recordedRPLDescs) {
+			NSError* err = nil;
+			if (mtlArch) { [mtlArch addRenderPipelineFunctionsWithDescriptor: rplDesc error: &err]; }
+			[rplDesc release];
+		}
+	}
+	_recordedRPLDescs.clear();
+}
+
+bool MVKMTLBinaryArchive::isDirty() {
+	lock_guard<mutex> lock(_lock);
+	return _isDirty;
+}
+
+const std::vector<char>& MVKMTLBinaryArchive::getBytes() {
+	lock_guard<mutex> lock(_lock);
+	addRecordedPipelinesLocked();
+	refreshBytesLocked();
+	return _bytes;
+}
+
+void MVKMTLBinaryArchive::setBytes(const void* pBytes, size_t byteCount) {
+	lock_guard<mutex> lock(_lock);
+	const char* bytes = (const char*)pBytes;
+	_bytes.assign(bytes, bytes + byteCount);
+}
+
+// Brings the stored bytes up to date with what the archive now holds, before they are written out.
+void MVKMTLBinaryArchive::refreshBytesLocked() {
+	if ( !_mtlBinaryArchive || !_isDirty ) { return; }
+
+	@autoreleasepool {
+		NSURL* url = mvkNewTempArchiveURL();
+		NSError* err = nil;
+		if ([_mtlBinaryArchive serializeToURL: url error: &err]) {
+			NSData* data = [NSData dataWithContentsOfURL: url];
+			if (data) {
+				const char* bytes = (const char*)data.bytes;
+				_bytes.assign(bytes, bytes + data.length);
+			}
+		}
+		[[NSFileManager defaultManager] removeItemAtURL: url error: nil];
+		_isDirty = false;
+	}
+}
+
+MVKMTLBinaryArchive::~MVKMTLBinaryArchive() {
+	for (auto* rplDesc : _recordedRPLDescs) { [rplDesc release]; }
+	[_mtlBinaryArchive release];
+}
+
+
 MVKPipelineCache::MVKPipelineCache(MVKDevice* device, const VkPipelineCacheCreateInfo* pCreateInfo) :
 	MVKVulkanAPIDeviceObject(device),
+	_mtlBinaryArchive(device),
 	_isExternallySynchronized(getEnabledPipelineCreationCacheControlFeatures().pipelineCreationCacheControl &&
 							  mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT)),
 	_isMergeInternallySynchronized(getEnabledPipelineCreationCacheControlFeatures().pipelineCreationCacheControl &&
@@ -3172,12 +4009,12 @@ void mvkValidateCeralArchiveDefinitions() {
 	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::MSLConstexprSampler>();
 	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVWorkgroupSizeDimension>(3);
 	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVEntryPoint>(20);						// Contains string
-	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionOptions>(29);			// Contains string
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionOptions>(32);			// Contains string
 	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLShaderInterfaceVariable>(3);
 	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLResourceBinding>(2);
 	missingBytes += mvkValidateCerealArchiveSize<mvk::DescriptorBinding>();
-	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionConfiguration>(109);	// Contains collection
-	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionResultInfo>(40);		// Contains collection
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionConfiguration>(112);	// Contains collection
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionResultInfo>(37);		// Contains collection
 	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLSpecializationMacroInfo>(22);			// Contains string
 	missingBytes += mvkValidateCerealArchiveSize<MVKShaderModuleKey>();
 	missingBytes += mvkValidateCerealArchiveSize<MVKCompressor<std::string>>(20);				// Contains collection
