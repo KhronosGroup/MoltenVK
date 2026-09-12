@@ -37,6 +37,10 @@ VkResult MVKCmdBindVertexBuffers<N>::setContent(MVKCommandBuffer* cmdBuff,
 												const VkDeviceSize* pSizes,
 												const VkDeviceSize* pStrides) {
 	_firstBinding = firstBinding;
+	_hasStrides = (pStrides != nullptr);
+	// Mirrors MVKCommandEncoderState::bindVertexBuffers(): supplying strides here makes this the
+	// most recent call to set them, ahead of any earlier vkCmdSetVertexInputEXT.
+	if (_hasStrides) { cmdBuff->_shaderObjectRecordState.vertexInput.stridesFromVertexBuffers = 1; }
 	_bindings.clear();	// Clear for reuse
     _bindings.reserve(bindingCount);
     MVKVertexMTLBufferBinding b;
@@ -53,7 +57,7 @@ VkResult MVKCmdBindVertexBuffers<N>::setContent(MVKCommandBuffer* cmdBuff,
 }
 template <size_t N>
 void MVKCmdBindVertexBuffers<N>::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->getState().bindVertexBuffers(_firstBinding, _bindings.contents());
+	cmdEncoder->getState().bindVertexBuffers(_firstBinding, _bindings.contents(), _hasStrides);
 }
 
 template class MVKCmdBindVertexBuffers<1>;
@@ -127,6 +131,7 @@ VkResult MVKCmdDraw::setContent(MVKCommandBuffer* cmdBuff,
         return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDraw(): The current device does not support drawing with a non-zero base instance.");
     }
 
+	cmdBuff->recordShaderObjectDraw();
 	return VK_SUCCESS;
 }
 
@@ -174,6 +179,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 	if (_vertexCount == 0 || _instanceCount == 0) { return; }	// Nothing to do.
 
 	cmdEncoder->restartMetalRenderPassIfNeeded();
+	if ( !cmdEncoder->resolveShaderObjectPipeline() ) { return; }
 
 	auto* pipeline = cmdEncoder->getGraphicsPipeline();
 	auto& mtlFeats = cmdEncoder->getMetalFeatures();
@@ -373,6 +379,7 @@ VkResult MVKCmdDrawIndexed::setContent(MVKCommandBuffer* cmdBuff,
         return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexed(): The current device does not support drawing with a non-zero base vertex.");
     }
 
+	cmdBuff->recordShaderObjectDraw();
 	return VK_SUCCESS;
 }
 
@@ -448,6 +455,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 	if (_indexCount == 0 || _instanceCount == 0) { return; }	// Nothing to do.
 
 	cmdEncoder->restartMetalRenderPassIfNeeded();
+	if ( !cmdEncoder->resolveShaderObjectPipeline() ) { return; }
 
 	auto* pipeline = cmdEncoder->getGraphicsPipeline();
 	auto& mtlFeats = cmdEncoder->getMetalFeatures();
@@ -795,6 +803,7 @@ VkResult MVKCmdDrawIndirect::setContent(MVKCommandBuffer* cmdBuff,
 		return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndirect(): The current device does not support indirect tessellated drawing.");
 	}
 
+	cmdBuff->recordShaderObjectDraw();
 	return VK_SUCCESS;
 }
 
@@ -867,6 +876,7 @@ void MVKCmdDrawIndirect::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder,
 void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 
 	cmdEncoder->restartMetalRenderPassIfNeeded();
+	if ( !cmdEncoder->resolveShaderObjectPipeline() ) { return; }
 	id<MTLBuffer> indirectBuffer = _mtlIndirectBuffer;
 	VkDeviceSize indirectBufferOffset = _mtlIndirectBufferOffset;
 	uint32_t indirectBufferStride = _mtlIndirectBufferStride;
@@ -1193,6 +1203,7 @@ VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
 		return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect tessellated drawing.");
 	}
 
+	cmdBuff->recordShaderObjectDraw();
 	return VK_SUCCESS;
 }
 
@@ -1215,6 +1226,7 @@ VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
 
 void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->restartMetalRenderPassIfNeeded();
+	if ( !cmdEncoder->resolveShaderObjectPipeline() ) { return; }
 	encode(cmdEncoder, cmdEncoder->getVkGraphics()._indexBuffer);
 }
 

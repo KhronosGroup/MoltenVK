@@ -284,6 +284,224 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKMTLBinaryArchive
+
+/**
+ * A Metal binary archive of compiled pipelines, and the bytes it serializes to.
+ *
+ * Metal will only hand back a compiled pipeline it has been given beforehand, so a pipeline built
+ * against an archive that already holds it is loaded instead of compiled. This is the only part of
+ * pipeline creation a later run can avoid outright: a cached shader saves the front end, but the
+ * pipeline state itself was compiled again on every run.
+ *
+ * https://developer.apple.com/documentation/metal/mtlbinaryarchive
+ */
+class MVKMTLBinaryArchive {
+
+public:
+
+	/**
+	 * Returns the archive a pipeline should be built against, or nil when there is nothing in it
+	 * to find. An archive that no earlier run seeded holds no pipeline this run has not already
+	 * built, so searching it costs a build without ever saving one.
+	 */
+	id<MTLBinaryArchive> getMTLBinaryArchiveForLookup();
+
+	/**
+	 * Records a pipeline to be written into the archive when its bytes are next asked for.
+	 *
+	 * Adding to a Metal archive costs about as much as building the pipeline again, so it is left
+	 * until something is going to keep the result. Until then this only retains the descriptor,
+	 * which holds onto the functions the archive will need.
+	 */
+	void recordRenderPipeline(MTLRenderPipelineDescriptor* mtlRPLDesc);
+
+	/** Returns the serialized archive, including every pipeline recorded into it. */
+	const std::vector<char>& getBytes();
+
+	/** Seeds the archive from an earlier run. Must be called before the archive is first used. */
+	void setBytes(const void* pBytes, size_t byteCount);
+
+	/** Returns whether a pipeline has been recorded since the bytes were last brought up to date. */
+	bool isDirty();
+
+	MVKMTLBinaryArchive(MVKDevice* device) : _device(device) {}
+
+	~MVKMTLBinaryArchive();
+
+protected:
+	id<MTLBinaryArchive> getMTLBinaryArchiveLocked();
+	void addRecordedPipelinesLocked();
+	void refreshBytesLocked();
+
+	MVKDevice* _device;
+	std::vector<char> _bytes;
+	std::vector<MTLRenderPipelineDescriptor*> _recordedRPLDescs;
+	id<MTLBinaryArchive> _mtlBinaryArchive = nil;
+	std::mutex _lock;
+	bool _isDirty = false;
+};
+
+
+#pragma mark -
+#pragma mark MVKShader
+
+class MVKPipelineLayout;
+
+/**
+ * The header prefixed to the binary returned by vkGetShaderBinaryDataEXT.
+ *
+ * Metal offers no way to link a MTLFunction to its neighbours after the fact, and MoltenVK
+ * generates MSL that depends on the adjoining stages, so a shader cannot be translated until
+ * the stages it will be used with are known. A binary therefore carries the original SPIR-V,
+ * and translation is deferred to the draw that first pairs the stages up.
+ *
+ * Only what identifies the code is stored. Fields such as nextStage and flags come from the
+ * create info every time, and would break the requirement that a binary round-trips to an
+ * identical binary, because an application may legitimately supply different ones when it
+ * recreates a shader from a binary it was handed.
+ */
+typedef struct MVKShaderBinaryHeader {
+	uint32_t magic;
+	uint32_t version;
+	uint8_t  uuid[VK_UUID_SIZE];
+	uint32_t stage;
+	uint32_t codeSize;
+	uint32_t nameSize;
+	uint32_t archiveSize;
+} MVKShaderBinaryHeader;
+
+static constexpr uint32_t kMVKShaderBinaryMagic = 0x4D564B53;	// 'MVKS'
+
+// Raised whenever the layout changes, so that a binary from an older MoltenVK is rejected rather
+// than misread. Vulkan expects shaderBinaryVersion to be raised alongside it.
+static constexpr uint32_t kMVKShaderBinaryVersion = 1;
+
+/** Represents a Vulkan shader object. */
+class MVKShader : public MVKVulkanAPIDeviceObject {
+
+public:
+
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_SHADER_EXT; }
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT; }
+
+	/** Returns the single stage this shader was created for. */
+	VkShaderStageFlagBits getStage() const { return _stage; }
+
+	/** Returns the stages this shader permits as its successor. */
+	VkShaderStageFlags getNextStage() const { return _nextStage; }
+
+	/** Returns the flags this shader was created with. */
+	VkShaderCreateFlagsEXT getFlags() const { return _flags; }
+
+	/** Returns the shader module holding this shader's SPIR-V. */
+	MVKShaderModule* getShaderModule() { return _shaderModule; }
+
+	/** Returns the name of the SPIR-V entry point to use. */
+	const char* getEntryPointName() const { return _entryPointName.c_str(); }
+
+	/** Returns the specialization constants to apply, or null if there are none. */
+	const VkSpecializationInfo* getSpecializationInfo() const { return _hasSpecializationInfo ? &_specializationInfo : nullptr; }
+
+	/** Returns the pipeline layout describing this shader's descriptor bindings and push constants. */
+	MVKPipelineLayout* getPipelineLayout() const { return _pipelineLayout; }
+
+	/**
+	 * Returns whether this fragment shader can be rewritten to blend its own outputs.
+	 *
+	 * Answered when the shader is created, because it decides whether blend state belongs in
+	 * the key its pipelines are cached under, which must be known before one is built.
+	 */
+	bool canBlendInShader() const { return _canBlendInShader; }
+
+	/**
+	 * Returns whether this vertex shader can be rewritten to load its own attributes.
+	 *
+	 * Answered when the shader is created, for the same reason as canBlendInShader().
+	 */
+	bool canPullVertices() const { return _canPullVertices; }
+
+	/** Writes this shader's binary representation, following the vkGetShaderBinaryDataEXT rules. */
+	VkResult getBinaryData(size_t* pDataSize, void* pData);
+
+	/**
+	 * Returns the archive of pipelines that were built from this shader, which a binary carries
+	 * so that a later run loads them instead of compiling them again.
+	 */
+	MVKMTLBinaryArchive* getBinaryArchive() { return &_binaryArchive; }
+
+	/**
+	 * Returns whether this fragment shader writes the location zero output that alpha to
+	 * coverage derives coverage from, which decides whether it can take that state over.
+	 */
+	bool canDeriveCoverage() const { return _canDeriveCoverage; }
+
+	/**
+	 * Returns whether this shader writes the layer built-in, which decides whether a pipeline
+	 * built from it has to declare a topology class.
+	 */
+	bool writesLayer() const { return _writesLayer; }
+
+	/**
+	 * Populates a mask of the vertex input locations this shader reads, and returns whether that
+	 * mask can be trusted. Where it cannot, every location must be treated as read.
+	 */
+	bool getConsumedVertexLocations(uint64_t& locationMask) const {
+		locationMask = _consumedVertexLocations;
+		return _consumedVertexLocationsValid;
+	}
+
+	/**
+	 * Returns whether this shader can map the depth clip convention itself, which decides whether
+	 * the convention has to stay in the key of the pipelines built from it.
+	 */
+	bool canMapDepthClip() const { return _canMapDepthClip; }
+
+	MVKShader(MVKDevice* device, const VkShaderCreateInfoEXT* pCreateInfo);
+
+	~MVKShader() override;
+
+protected:
+	void propagateDebugName() override {}
+	void initFromSPIRV(const VkShaderCreateInfoEXT* pCreateInfo, const void* pCode, size_t codeSize, const char* pName);
+	void reflectForPipelineKeys();
+	void initFromBinary(const VkShaderCreateInfoEXT* pCreateInfo);
+	void initLayout(const VkShaderCreateInfoEXT* pCreateInfo);
+	void initSpecialization(const VkSpecializationInfo* pSpecInfo);
+
+	const std::vector<char>& getBinaryArchiveBytes();
+
+	MVKShaderModule* _shaderModule = nullptr;
+	MVKPipelineLayout* _pipelineLayout = nullptr;
+	MVKMTLBinaryArchive _binaryArchive;
+	// Vulkan requires a binary to be invariant for the lifetime of the shader, so the archive is
+	// captured the first time one is asked for, and every later binary repeats that capture even
+	// if more pipelines have been built from this shader since.
+	std::vector<char> _binaryArchiveSnapshot;
+	std::mutex _binaryArchiveSnapshotLock;
+	bool _hasBinaryArchiveSnapshot = false;
+	uint64_t _consumedVertexLocations = 0;
+	bool _consumedVertexLocationsValid = false;
+	bool _writesLayer = false;
+	bool _canMapDepthClip = false;
+	std::string _entryPointName;
+	MVKSmallVector<VkSpecializationMapEntry, 8> _specializationEntries;
+	MVKSmallVector<uint8_t, 64> _specializationData;
+	VkSpecializationInfo _specializationInfo = {};
+	VkShaderStageFlagBits _stage = VK_SHADER_STAGE_VERTEX_BIT;
+	VkShaderStageFlags _nextStage = 0;
+	VkShaderCreateFlagsEXT _flags = 0;
+	bool _hasSpecializationInfo = false;
+	bool _canBlendInShader = false;
+	bool _canDeriveCoverage = false;
+	bool _canPullVertices = false;
+};
+
+
+#pragma mark -
 #pragma mark MVKShaderLibraryCompiler
 
 /**
