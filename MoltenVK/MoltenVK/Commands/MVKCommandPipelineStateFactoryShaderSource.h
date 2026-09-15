@@ -766,8 +766,16 @@ kernel void cmdSerializeAccelerationStructureGather(
 	}
 	sourceOffset += info.vertexOffset;
 	ulong targetOffset = info.destinationOffset + ulong(idx) * info.vertexElementSize;
-	for (uint byteIndex = 0; byteIndex < info.vertexElementSize; byteIndex++) {
-		destination[targetOffset + byteIndex] = vertices[sourceOffset + byteIndex];
+	if (!((sourceOffset | targetOffset | info.vertexElementSize) & 3)) {
+		const device uint* source = reinterpret_cast<const device uint*>(vertices + sourceOffset);
+		device uint* target = reinterpret_cast<device uint*>(destination + targetOffset);
+		for (uint index = 0; index < info.vertexElementSize / sizeof(uint); index++) {
+			target[index] = source[index];
+		}
+	} else {
+		for (uint byteIndex = 0; byteIndex < info.vertexElementSize; byteIndex++) {
+			destination[targetOffset + byteIndex] = vertices[sourceOffset + byteIndex];
+		}
 	}
 }
 

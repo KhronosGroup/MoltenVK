@@ -195,6 +195,14 @@ void MVKCmdTraceRays::encode(MVKCommandEncoder* cmdEncoder) {
 	}
 	cmdEncoder->finalizeRayTracingDispatchState();
 	id<MTLComputeCommandEncoder> mtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTraceRays);
+	auto& state = cmdEncoder->getMtlCompute();
+	for (uint32_t index : {pipeline->getRayGenerationFunctionTableBufferIndex(),
+						  pipeline->getRayTracingFunctionTableBufferIndex(),
+						  pipeline->getRayTracingIntersectionFunctionTableBufferIndex(),
+						  pipeline->getRayTracingCallableFunctionTableBufferIndex()}) {
+		state._exists.buffers.set(index);
+		state._bindings.buffers[index] = MVKStageResourceBindings::InvalidBuffer();
+	}
 	[mtlEncoder setVisibleFunctionTable:pipeline->getRayGenerationFunctionTable()
 						 atBufferIndex:pipeline->getRayGenerationFunctionTableBufferIndex()];
 	[mtlEncoder setVisibleFunctionTable:pipeline->getRayTracingFunctionTable()
@@ -323,9 +331,8 @@ void MVKCmdTraceRays::encode(MVKCommandEncoder* cmdEncoder) {
 		*upload.address = uploadAddress + upload.offset;
 	}
 	memcpy(uploadContents + dispatchOffset, &dispatch, sizeof(dispatch));
-	[mtlEncoder setBuffer:dispatchAllocation->_mtlBuffer
-				 offset:dispatchAllocation->_offset + dispatchOffset
-				atIndex:pipeline->getRayTracingDispatchBufferIndex()];
+	state.bindBuffer(mtlEncoder, dispatchAllocation->_mtlBuffer,
+					 dispatchAllocation->_offset + dispatchOffset, pipeline->getRayTracingDispatchBufferIndex());
 	[mtlEncoder useResource:dispatchAllocation->_mtlBuffer usage:MTLResourceUsageRead];
 	if (_mtlIndirectBuffer) {
 		[mtlEncoder dispatchThreadgroupsWithIndirectBuffer:indirectDispatch->_mtlBuffer

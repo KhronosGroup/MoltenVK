@@ -492,6 +492,40 @@ static inline __attribute__((always_inline)) void spvTraceRay(
 		? reinterpret_cast<device const uint*>(scene[1]) : nullptr;
 
 #if SPV_RAY_IFB
+	if ((flags & ((nativeFlags & ~8u) | incompatibleFlags)) == (nativeFlags & ~8u) &&
+		(flags & 48u) != 48u) {
+		intersector<instancing, triangle_data, world_space_data> nativeIntersector;
+		nativeIntersector.force_opacity(forced_opacity::opaque);
+		nativeIntersector.set_geometry_cull_mode(geometry_cull_mode::bounding_box);
+		if (flags & 4u) nativeIntersector.accept_any_intersection(true);
+		if (flags & 16u) nativeIntersector.set_triangle_cull_mode(triangle_cull_mode::back);
+		if (flags & 32u) nativeIntersector.set_triangle_cull_mode(triangle_cull_mode::front);
+		auto result = nativeIntersector.intersect(ray(origin, direction, tmin, tmax),
+			*reinterpret_cast<device const acceleration_structure<instancing>*>(scene), context.CullMaskKHR);
+		if (result.type == intersection_type::none) {
+			spvCallMiss(missIndex, invocation, state);
+			return;
+		}
+		if (!dispatch.hitSize) return;
+		context.ObjectRayOriginKHR = result.world_to_object_transform * float4(origin, 1.0f);
+		context.ObjectRayDirectionKHR = result.world_to_object_transform * float4(direction, 0.0f);
+		context.RayTmaxKHR = result.distance;
+		context.InstanceId = result.instance_id;
+		context.InstanceCustomIndexKHR = result.user_instance_id;
+		context.ObjectToWorldKHR = result.object_to_world_transform;
+		context.WorldToObjectKHR = result.world_to_object_transform;
+		*reinterpret_cast<thread float2*>(&context.hitAttribute) = result.triangle_barycentric_coord;
+		context.HitKindKHR = result.triangle_front_facing ? 0xfeu : 0xffu;
+		context.RayGeometryIndexKHR = result.geometry_id;
+		context.PrimitiveId = result.primitive_id;
+		context.shaderRecordIndex = context.RayGeometryIndexKHR * (sbtStride & 15u) +
+			(sbtOffset & 15u) + metadata[context.InstanceId];
+		uint closestHit = *reinterpret_cast<device const uint*>(
+			dispatch.hitAddress + ulong(context.shaderRecordIndex) * dispatch.hitStride + 8);
+		if (closestHit) spvCallRayFunction(closestHit, invocation, state);
+		return;
+	}
+
 	if (dispatch.usesIFB &&
 #if !SPV_RAY_PROCEDURAL_IFB
 		!(flags & 256u) &&
