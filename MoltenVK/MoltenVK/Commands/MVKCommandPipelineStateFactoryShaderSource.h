@@ -460,14 +460,18 @@ kernel void cmdDrawIndexedIndirectTessConvertBuffers(const device char* srcBuff 
 kernel void cmdDrawIndexedCopyIndex16Buffer(const device uint16_t* srcBuff [[buffer(0)]],
                                             device uint16_t* destBuff [[buffer(1)]],
                                             const device MTLDrawIndexedPrimitivesIndirectArguments& params [[buffer(2)]],
-                                            uint i [[thread_position_in_grid]]) {
+                                            uint2 pos [[thread_position_in_grid]]) {
+	uint i = pos.x;
+	if (i >= params.indexCount || pos.y != 0) { return; }
 	destBuff[i] = srcBuff[params.indexStart + i];
 }
 
 kernel void cmdDrawIndexedCopyIndex32Buffer(const device uint32_t* srcBuff [[buffer(0)]],
                                             device uint32_t* destBuff [[buffer(1)]],
                                             const device MTLDrawIndexedPrimitivesIndirectArguments& params [[buffer(2)]],
-                                            uint i [[thread_position_in_grid]]) {
+                                            uint2 pos [[thread_position_in_grid]]) {
+	uint i = pos.x;
+	if (i >= params.indexCount || pos.y != 0) { return; }
 	destBuff[i] = srcBuff[params.indexStart + i];
 }
 
