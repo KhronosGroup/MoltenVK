@@ -25,6 +25,7 @@ Released TBD
 - Fix inconsistent image `memoryTypeBits` when `VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT` is used.
 - Fix shader stage interface matching of 16-bit floating point variables.
 - Fix spurious warning about blending on attachment formats that do not support it.
+- Fix `OpArrayLength` returning 0 for buffers bound with `vkCmdPushDescriptorSet()`, which never populated the implicit buffer-sizes buffer.
 
 
 

@@ -1782,21 +1782,39 @@ MVKVulkanCommonEncoderState* MVKCommandEncoderState::getVkEncoderState(VkPipelin
 	}
 }
 
+void MVKCommandEncoderState::refreshPushDescriptorSet(VkPipelineBindPoint bindPoint, MVKPipelineLayout* layout, uint32_t set) {
+	// The push descriptor set's contents changed, so the implicit buffer data derived from
+	// descriptor contents (buffer sizes for OpArrayLength, texture swizzles) must be regenerated
+	// from it and rebound before the next draw or dispatch, exactly as vkCmdBindDescriptorSets does.
+	// Push descriptor sets carry no dynamic offsets.
+	if (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
+		MVKDescriptorSet* pushSet = &_vkGraphics._pushDescriptor;
+		_vkGraphics.bindDescriptorSets(layout, set, 1, &pushSet, 0, nullptr);
+	} else if (bindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
+		MVKDescriptorSet* pushSet = &_vkCompute._pushDescriptor;
+		_vkCompute.bindDescriptorSets(layout, set, 1, &pushSet, 0, nullptr);
+	}
+	applyToActiveMTLState(bindPoint, [](auto& mtl){ invalidateDescriptorSetImplicitBuffers(mtl); });
+}
+
 void MVKCommandEncoderState::pushDescriptorSet(VkPipelineBindPoint bindPoint, MVKPipelineLayout* layout, uint32_t set, uint32_t writeCount, const VkWriteDescriptorSet* writes) {
 	assert(layout->pushDescriptor() == set);
 	if (MVKVulkanCommonEncoderState* state = getVkEncoderState(bindPoint)) [[likely]] {
 		MVKDescriptorSetLayout* dsl = layout->getDescriptorSetLayout(set);
 		state->ensurePushDescriptorSize(dsl->cpuSize());
 		mvkPushDescriptorSet(state->_pushDescriptor.cpuBuffer, dsl, writeCount, writes);
+		refreshPushDescriptorSet(bindPoint, layout, set);
 	}
 }
 
 void MVKCommandEncoderState::pushDescriptorSet(MVKDescriptorUpdateTemplate* updateTemplate, MVKPipelineLayout* layout, uint32_t set, const void* data) {
 	assert(layout->pushDescriptor() == set);
-	if (MVKVulkanCommonEncoderState* state = getVkEncoderState(updateTemplate->getBindPoint())) [[likely]] {
+	VkPipelineBindPoint bindPoint = updateTemplate->getBindPoint();
+	if (MVKVulkanCommonEncoderState* state = getVkEncoderState(bindPoint)) [[likely]] {
 		MVKDescriptorSetLayout* dsl = layout->getDescriptorSetLayout(set);
 		state->ensurePushDescriptorSize(dsl->cpuSize());
 		mvkPushDescriptorSetTemplate(state->_pushDescriptor.cpuBuffer, dsl, updateTemplate, data);
+		refreshPushDescriptorSet(bindPoint, layout, set);
 	}
 }
 
