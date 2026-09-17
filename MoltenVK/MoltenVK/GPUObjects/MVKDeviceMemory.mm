@@ -514,7 +514,10 @@ MVKDeviceMemory::~MVKDeviceMemory() {
 	if (_externalMemoryHandleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT) {
 		[_mtlTexture release];
 		_mtlTexture = nil;
-	} else if (id<MTLBuffer> buf = _mtlBuffer) {
+	}
+
+	// Memory holding a texture can hold a buffer as well, when it is host coherent.
+	if (id<MTLBuffer> buf = _mtlBuffer) {
 		_mtlBuffer = nil;
 		_device->removeResidency(buf);
 		_device->getLiveResources().remove(buf);
