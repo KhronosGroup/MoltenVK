@@ -55,6 +55,10 @@ MVKMTLBufferAllocation* MVKMTLBufferAllocationPool::acquireAllocationUnlocked() 
     if (!_mtlBuffers[ba->_poolIndex].allocationCount++) {
         [ba->_mtlBuffer setPurgeableState: MTLPurgeableStateNonVolatile];
     }
+
+    // Keep the pool alive until this allocation is returned by the
+    // MTLCommandBuffer completion handler.
+    retain();
     return ba;
 }
 
@@ -76,16 +80,22 @@ void MVKMTLBufferAllocationPool::returnAllocationUnlocked(MVKMTLBufferAllocation
 
 void MVKMTLBufferAllocationPool::returnAllocation(MVKMTLBufferAllocation* ba) {
     if (_isThreadSafe) {
-        std::lock_guard<std::mutex> lock(_lock);
-        returnAllocationUnlocked(ba);
+        {
+            std::lock_guard<std::mutex> lock(_lock);
+            returnAllocationUnlocked(ba);
+        }
     } else {
         returnAllocationUnlocked(ba);
     }
+
+    // The final release may destroy the pool, so do this after
+    // releasing the pool mutex.
+    release();
 }
 
 MVKMTLBufferAllocationPool::MVKMTLBufferAllocationPool(MVKDevice* device, NSUInteger allocationLength, bool makeThreadSafe,
 													   bool isDedicated, MTLStorageMode mtlStorageMode) :
-	MVKObjectPool<MVKMTLBufferAllocation>(true),
+	MVKReferenceCountingMixin<MVKObjectPool<MVKMTLBufferAllocation>>(),
 	MVKDeviceTrackingMixin(device) {
 
     _allocationLength = allocationLength;
