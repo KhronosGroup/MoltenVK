@@ -328,18 +328,20 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 			}
 			case VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT: {
 				auto* pMemHostPtrInfo = (VkImportMemoryHostPointerInfoEXT*)next;
-				if (mvkIsAnyFlagEnabled(_vkMemPropFlags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
-					switch (pMemHostPtrInfo->handleType) {
-						case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
-						case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT:
-							_pHostMemory = pMemHostPtrInfo->pHostPointer;
-							_isHostMemImported = true;
-							break;
-						default:
-							break;
-					}
-				} else {
-					setConfigurationResult(reportError(VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR, "vkAllocateMemory(): Imported memory must be host-visible."));
+				switch (pMemHostPtrInfo->handleType) {
+					case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
+					case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT:
+						_pHostMemory = pMemHostPtrInfo->pHostPointer;
+						_isHostMemImported = true;
+						// Host memory can only be wrapped in a shared MTLBuffer. As with an imported
+						// MTLBuffer, that overrides the storage mode of a non-host-visible memory type.
+						if ( !mvkIsAnyFlagEnabled(_vkMemPropFlags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ) {
+							_mtlStorageMode = MTLStorageModeShared;
+							_mtlCPUCacheMode = MTLCPUCacheModeDefaultCache;
+						}
+						break;
+					default:
+						break;
 				}
 				break;
 			}
