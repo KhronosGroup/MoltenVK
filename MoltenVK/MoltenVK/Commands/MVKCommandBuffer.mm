@@ -561,13 +561,13 @@ void MVKCommandEncoder::beginNextSubpass(MVKCommand* subpassCmd, VkSubpassConten
 }
 
 // Sets the current render subpass to the subpass with the specified index.
-// End current Metal renderpass before updating subpass index.
+// End any active Metal encoder before capturing dependency fences and updating the subpass index.
 void MVKCommandEncoder::setSubpass(MVKCommand* subpassCmd,
 								   VkSubpassContents subpassContents,
 								   uint32_t subpassIndex,
 								   MVKCommandUse cmdUse) {
 	encodeStoreActions();
-	endMetalRenderEncoding();
+	endCurrentMetalEncoding();
 
 	MVKRenderPass* renderPass = _pEncodingContext->getRenderPass();
 	if (renderPass) { renderPass->encodeSubpassDependencyBarriers(this, subpassIndex); }
