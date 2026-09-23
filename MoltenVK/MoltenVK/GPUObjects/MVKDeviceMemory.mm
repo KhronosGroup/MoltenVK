@@ -483,14 +483,17 @@ void MVKDeviceMemory::initExternalMemory(MVKImage* dedicatedImage, bool wantsHea
 			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkAllocateMemory(): External memory requires a dedicated VkImage when a export operation will be done."));
 			return;
 		}
-		auto& xmProps = getPhysicalDevice()->getExternalImageProperties(dedicatedImage->getVkFormat(), VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT);
-		// Not all texture formats allow to exporting. Vulkan formats that are emulated through the use of multiple MTLTextures
-		// cannot be exported as a single MTLTexture, and therefore will have exporting forbidden.
-		if (!(xmProps.externalMemoryFeatures & VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT)) {
-			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkAllocateMemory(): VkImage's VkFormat does not allow exports."));
-		} else {
-			// Make sure allocation happens at creation time since we may need to export the memory before usage
-			_mtlTexture = [dedicatedImage->getMTLTexture() retain];
+		// An imported texture is already the memory; only an exportable one is made here.
+		if ( !_mtlTexture ) {
+			auto& xmProps = getPhysicalDevice()->getExternalImageProperties(dedicatedImage->getVkFormat(), VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT);
+			// Not all texture formats allow to exporting. Vulkan formats that are emulated through the use of multiple MTLTextures
+			// cannot be exported as a single MTLTexture, and therefore will have exporting forbidden.
+			if (!(xmProps.externalMemoryFeatures & VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT)) {
+				setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkAllocateMemory(): VkImage's VkFormat does not allow exports."));
+			} else {
+				// Make sure allocation happens at creation time since we may need to export the memory before usage
+				_mtlTexture = [dedicatedImage->getMTLTexture() retain];
+			}
 		}
 		requiresDedicated = true;
 	}
@@ -511,7 +514,10 @@ MVKDeviceMemory::~MVKDeviceMemory() {
 	if (_externalMemoryHandleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT) {
 		[_mtlTexture release];
 		_mtlTexture = nil;
-	} else if (id<MTLBuffer> buf = _mtlBuffer) {
+	}
+
+	// Memory holding a texture can hold a buffer as well, when it is host coherent.
+	if (id<MTLBuffer> buf = _mtlBuffer) {
 		_mtlBuffer = nil;
 		_device->removeResidency(buf);
 		_device->getLiveResources().remove(buf);
