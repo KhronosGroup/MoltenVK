@@ -164,6 +164,7 @@ typedef struct {
     VkSampleCountFlags supportedSamplePosCounts;    /**< A bitmask identifying the sample counts for which the device supports sample positions. */
     VkBool32 depthBoundsTest;                       /**< If true, depth bounds test is supported. */
 	VkDeviceSize mtlConstantBufferAlignment;		/**< Minimum Metal constant buffer offset alignment (in bytes). */
+    VkBool32 accelerationStructures;                 /**< If true, Metal acceleration structures are supported. */
 } MVKPhysicalDeviceMetalFeatures;
 
 

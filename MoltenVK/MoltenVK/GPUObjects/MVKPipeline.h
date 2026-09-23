@@ -50,6 +50,7 @@ enum class MVKDescriptorBindOperationCode : uint8_t {
 	BindBufferDynamic,
 	BindTexture,
 	BindSampler,
+	BindAccelerationStructure,
 	BindImmutableSampler,
 	BindBufferWithLiveCheck,
 	BindBufferDynamicWithLiveCheck,
@@ -58,6 +59,7 @@ enum class MVKDescriptorBindOperationCode : uint8_t {
 	UseResource,
 	UseBufferWithLiveCheck,
 	UseTextureWithLiveCheck,
+	UseAccelerationStructureWithLiveCheck,
 };
 
 struct MVKDescriptorBindOperation {
@@ -65,7 +67,7 @@ struct MVKDescriptorBindOperation {
 	uint8_t set : 4;
 	uint8_t _offset : 4; /**< Offset into the first descriptor */
 	uint8_t target;      /**< For BindX, the target bind index.  For UseX, whether the resource can be written or not */
-	uint8_t target2;     /**< For BindBufferDynamic, the index of the dynamic offset */
+	uint8_t target2;     /**< Secondary target or dynamic offset index. */
 	uint32_t bindingIdx; /**< The index of the MVKDescriptorBinding in the layout */
 	MVKDescriptorBindOperation() = default;
 	constexpr MVKDescriptorBindOperation(MVKDescriptorBindOperationCode opcode_, uint32_t set_, uint32_t target_, uint32_t bindingIdx_, size_t offset_ = 0, uint32_t target2_ = 0)
@@ -110,13 +112,18 @@ public:
 	/** Check whether the given stage uses push constants. */
 	bool stageUsesPushConstants(MVKShaderStage stage) const;
 	/** Populates the specified shader conversion config. */
-	void populateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig) const;
+	void populateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
+											 MVKDescriptorSetLayout* rayTracingPushLayout = nullptr) const;
 	/** Adds all used bindings to the given bind script. */
-	void populateBindOperations(MVKPipelineBindScript& script, const mvk::SPIRVToMSLConversionConfiguration& shaderConfig, spv::ExecutionModel execModel);
+	void populateBindOperations(MVKPipelineBindScript& script,
+								const mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
+								spv::ExecutionModel execModel,
+								MVKDescriptorSetLayout* rayTracingPushLayout = nullptr);
 	/** Does this pipeline layout have a push descriptor? */
 	bool hasPushDescriptor() const { return _pushDescriptor >= 0; }
 	/** If this pipeline layout has a push descriptor, returns the set ID of that descriptor. */
 	size_t pushDescriptor() const { assert(hasPushDescriptor()); return _pushDescriptor; }
+	MVKDescriptorSetLayout* getRayTracingPushDescriptorLayout() const;
 
 	/** Constructs an instance for the specified device. */
 	static MVKPipelineLayout* Create(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
@@ -131,6 +138,7 @@ private:
 	MVKShaderResourceBinding _mtlResourceCounts;
 	uint8_t _pushConstantResourceIndices[kMVKShaderStageCount];
 	int8_t _pushDescriptor = -1;
+	mutable std::atomic<MVKDescriptorSetLayout*> _rayTracingPushDescriptorLayout { nullptr };
 	void propagateDebugName() override {}
 	friend class MVKInlineObjectConstructor<MVKPipelineLayout>;
 	MVKPipelineLayout(MVKDevice* device);
@@ -179,11 +187,11 @@ public:
 	/** Returns the pipeline create flags from a pipeline create info. */
 	template <typename PipelineInfoType>
 	static VkPipelineCreateFlags2 getPipelineCreateFlags(const PipelineInfoType* pCreateInfo) {
-		auto flags = pCreateInfo->flags;
+		VkPipelineCreateFlags2 flags = pCreateInfo->flags;
 		for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 			switch (next->sType) {
 				case VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO:
-					flags |= ((VkPipelineCreateFlags2CreateInfo*)next)->flags;
+					flags = ((VkPipelineCreateFlags2CreateInfo*)next)->flags;
 					break;
 				default:
 					break;
@@ -234,6 +242,15 @@ struct MVKPipelineStageResourceInfo {
 	MVKImplicitBufferBindings implicitBuffers;
 	bool usesPhysicalStorageBufferAddresses;
 	MVKStageResourceBits resources;
+
+	bool usesAccelerationStructures() const {
+		if (implicitBuffers.needed.has(MVKImplicitBuffer::AccelerationStructureAddressTable)) { return true; }
+		for (const auto& op : bindScript.ops) {
+			if (op.opcode == MVKDescriptorBindOperationCode::BindAccelerationStructure ||
+				op.opcode == MVKDescriptorBindOperationCode::UseAccelerationStructureWithLiveCheck) { return true; }
+		}
+		return false;
+	}
 };
 
 /** Represents an Vulkan graphics pipeline. */
@@ -305,6 +322,25 @@ public:
 
 	/** Returns info about the given stage's bindings. */
 	const MVKPipelineStageResourceInfo& getStageResources(MVKShaderStage stage) const { return _stageResources[stage]; }
+	bool usesAccelerationStructures() const {
+		for (const auto& resources : _stageResources) {
+			if (resources.usesAccelerationStructures()) { return true; }
+		}
+		return false;
+	}
+	VkPipelineStageFlags2 getAccelerationStructureStages() const {
+		static constexpr VkPipelineStageFlags2 stages[] = {
+			VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+			VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT,
+			VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT,
+			VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+		};
+		VkPipelineStageFlags2 result = 0;
+		for (uint32_t i = 0; i < std::size(stages); i++) {
+			if (_stageResources[i].usesAccelerationStructures()) { result |= stages[i]; }
+		}
+		return result;
+	}
 
 	/** Returns the list of state that is needed from the command encoder */
 	const MVKRenderStateFlags& getDynamicStateFlags() const { return _dynamicStateFlags; }
@@ -441,6 +477,11 @@ public:
 	/** Returns the threadgroup size */
 	const MTLSize& getThreadgroupSize() const { return _mtlThreadgroupSize; }
 
+	bool needsAccelerationStructureAddressTable() const {
+		return _stageResources.implicitBuffers.needed.has(MVKImplicitBuffer::AccelerationStructureAddressTable);
+	}
+	bool usesAccelerationStructures() const { return _stageResources.usesAccelerationStructures(); }
+
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKComputePipeline(MVKDevice* device,
 					   MVKPipelineCache* pipelineCache,
@@ -450,17 +491,108 @@ public:
 	~MVKComputePipeline() override;
 
 protected:
-    MVKMTLFunction getMTLFunction(const VkComputePipelineCreateInfo* pCreateInfo,
-								  VkPipelineCreationFeedback* pStageFB);
-	uint32_t getImplicitBufferIndex(uint32_t bufferIndexOffset);
+	MVKComputePipeline(MVKDevice* device,
+					   MVKPipelineCache* pipelineCache,
+					   MVKPipeline* parent,
+					   MVKPipelineLayout* layout,
+					   VkPipelineCreateFlags2 flags);
+	MVKComputePipeline(MVKDevice* device,
+					   MVKPipelineCache* pipelineCache,
+					   MVKPipeline* parent,
+					   MVKPipelineLayout* layout,
+					   VkPipelineCreateFlags2 flags,
+					   const void* pNext,
+					   const VkPipelineShaderStageCreateInfo* pStage,
+					   uint32_t stageFeedbackIndex,
+					   spv::ExecutionModel executionModel,
+					   bool allowsDispatchBase);
+	MVKMTLFunction getMTLFunction(const VkPipelineShaderStageCreateInfo* pStage,
+								  spv::ExecutionModel executionModel,
+								  VkPipelineCreationFeedback* pStageFB,
+								  bool enableRayTracingIFB = false,
+								  bool enableRayTracingProceduralIFB = false,
+								  bool rayTracingAnyHitIFB = false,
+								  bool rayTracingProceduralIFB = false);
+	uint32_t getImplicitBufferIndex(uint32_t bufferIndexOffset) const;
 
-    id<MTLComputePipelineState> _mtlPipelineState;
+	id<MTLComputePipelineState> _mtlPipelineState;
 	MVKPipelineStageResourceInfo _stageResources = {};
-    MTLSize _mtlThreadgroupSize;
+	MTLSize _mtlThreadgroupSize;
 	bool _allowsDispatchBase = false;
 
 	MVKShaderModule* _module = nullptr;
 	bool _ownsModule = false;
+};
+
+
+#pragma mark -
+#pragma mark MVKRayTracingPipeline
+
+static constexpr uint32_t kMVKMaxRayRecursionDepth = 4;
+static constexpr uint32_t kMVKMaxRayHitAttributeSize = 32;
+static constexpr uint32_t kMVKMaxRayTracingCallStackDepth = 2 * kMVKMaxRayRecursionDepth;
+// Vulkan has no separate callable-recursion limit. Make an unsupported ninth call
+// exceed vkCmdSetRayTracingPipelineStackSizeKHR's uint32_t byte budget.
+static constexpr VkDeviceSize kMVKRayTracingShaderGroupStackSize =
+	UINT32_MAX / kMVKMaxRayTracingCallStackDepth;
+
+class MVKRayTracingPipeline : public MVKComputePipeline {
+
+public:
+	MVKRayTracingPipeline(MVKDevice* device,
+						  MVKPipelineCache* pipelineCache,
+						  MVKPipeline* parent,
+						  const VkRayTracingPipelineCreateInfoKHR* pCreateInfo);
+
+	VkResult getShaderGroupHandles(uint32_t firstGroup, uint32_t groupCount, size_t dataSize, void* pData);
+	VkDeviceSize getShaderGroupStackSize(uint32_t group, VkShaderGroupShaderKHR groupShader) const;
+	id<MTLVisibleFunctionTable> getRayTracingFunctionTable() const { return _mtlFunctionTable; }
+	id<MTLVisibleFunctionTable> getRayGenerationFunctionTable() const { return _mtlRayGenerationFunctionTable; }
+	id<MTLVisibleFunctionTable> getRayTracingIntersectionFunctionTable() const { return _mtlIntersectionFunctionTable; }
+	id<MTLVisibleFunctionTable> getRayTracingCallableFunctionTable() const { return _mtlCallableFunctionTable; }
+	uint32_t getRayTracingFunctionTableBufferIndex() const { return _stageResources.implicitBuffers.ids[MVKImplicitBuffer::DispatchBase]; }
+	uint32_t getRayGenerationFunctionTableBufferIndex() const;
+	uint32_t getRayTracingIntersectionFunctionTableBufferIndex() const;
+	uint32_t getRayTracingCallableFunctionTableBufferIndex() const;
+	uint32_t getRayTracingDispatchBufferIndex() const;
+	uint32_t getRayTracingPipelineFlags() const;
+	bool usesIntersectionFunctionBuffer() const { return _usesIFB; }
+	~MVKRayTracingPipeline() override;
+
+private:
+	struct ShaderStage {
+		VkShaderStageFlagBits stage;
+		MVKMTLFunction function;
+		MVKMTLFunction ifbFunction;
+		MVKMTLFunction proceduralIFBFunction;
+	};
+	struct ShaderGroup {
+		VkRayTracingShaderGroupTypeKHR type;
+		uint32_t generalShader;
+		uint32_t closestHitShader;
+		uint32_t anyHitShader;
+		uint32_t intersectionShader;
+	};
+	std::vector<ShaderStage> _shaderStages;
+	std::vector<ShaderGroup> _shaderGroups;
+	bool _usesTraceRay = false;
+	bool _usesExecuteCallable = false;
+	bool _callableCallsCallable = false;
+	struct alignas(uint64_t) ShaderGroupHandle {
+		uint64_t intersectionFunction = 0;
+		uint32_t functions[3] = {};
+		uint32_t padding = 0;
+		uint64_t reserved = 0;
+	};
+	static_assert(sizeof(ShaderGroupHandle) == 32);
+	std::vector<ShaderGroupHandle> _groupHandles;
+	bool _isLibrary = false;
+	bool _usesIFB = false;
+	bool _usesProceduralIFB = false;
+	id<MTLVisibleFunctionTable> _mtlFunctionTable = nil;
+	id<MTLVisibleFunctionTable> _mtlRayGenerationFunctionTable = nil;
+	id<MTLVisibleFunctionTable> _mtlIntersectionFunctionTable = nil;
+	id<MTLVisibleFunctionTable> _mtlCallableFunctionTable = nil;
 };
 
 

@@ -26,6 +26,19 @@
 
 using namespace std;
 
+MVKRayTracingCommandPools::MVKRayTracingCommandPools(bool usePooling) :
+#	define MVK_CMD_TYPE_POOL(cmdType)
+#	define MVK_RT_CMD_TYPE_POOL(cmdType)  _cmd ##cmdType ##Pool(usePooling),
+#	define MVK_RT_CMD_TYPE_POOL_LAST(cmdType)  _cmd ##cmdType ##Pool(usePooling)
+#	include "MVKCommandTypePools.def"
+{}
+
+void MVKRayTracingCommandPools::clear() {
+#	define MVK_CMD_TYPE_POOL(cmdType)
+#	define MVK_RT_CMD_TYPE_POOL(cmdType)  _cmd ##cmdType ##Pool.clear();
+#	include "MVKCommandTypePools.def"
+}
+
 #pragma mark -
 #pragma mark MVKCommandPool
 
@@ -84,7 +97,16 @@ id<MTLCommandBuffer> MVKCommandPool::getMTLCommandBuffer(MVKCommandUse cmdUse, u
 // Clear the command type pool member variables.
 void MVKCommandPool::trim() {
 #	define MVK_CMD_TYPE_POOL(cmdType)  _cmd ##cmdType ##Pool.clear();
+#	define MVK_RT_CMD_TYPE_POOL(cmdType)
 #	include "MVKCommandTypePools.def"
+	if (_rayTracingCommandPools) { _rayTracingCommandPools->clear(); }
+}
+
+MVKRayTracingCommandPools& MVKCommandPool::getRayTracingCommandPools() {
+	if (!_rayTracingCommandPools) {
+		_rayTracingCommandPools = new MVKRayTracingCommandPools(_usePooling);
+	}
+	return *_rayTracingCommandPools;
 }
 
 
@@ -96,19 +118,21 @@ MVKCommandPool::MVKCommandPool(MVKDevice* device,
 	MVKVulkanAPIDeviceObject(device),
 
 // Initialize the command type pool member variables.
-#	define MVK_CMD_TYPE_POOL_LAST(cmdType)  _cmd ##cmdType ##Pool(usePooling)
-#	define MVK_CMD_TYPE_POOL(cmdType)  MVK_CMD_TYPE_POOL_LAST(cmdType),
+#	define MVK_CMD_TYPE_POOL(cmdType)  _cmd ##cmdType ##Pool(usePooling),
+#	define MVK_RT_CMD_TYPE_POOL(cmdType)
 #	include "MVKCommandTypePools.def"
-	,
 	_commandBufferPool(device, usePooling),
 	_commandEncodingPool(this),
-	_queueFamilyIndex(pCreateInfo->queueFamilyIndex)
+	_queueFamilyIndex(pCreateInfo->queueFamilyIndex),
+	_usePooling(usePooling)
 {}
 
 MVKCommandPool::~MVKCommandPool() {
 	for (auto& mvkCB : _allocatedCommandBuffers) {
+		mvkCB->reset(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 		_commandBufferPool.returnObject(mvkCB);
 	}
+	delete _rayTracingCommandPools;
 }
 
 #pragma mark -
@@ -120,6 +144,8 @@ MVKCommandPool::~MVKCommandPool() {
 MVKCommandTypePool<MVKCommand>* MVKCmd ##cmdType ::getTypePool(MVKCommandPool* cmdPool) {	\
 	return (MVKCommandTypePool<MVKCommand>*)&cmdPool->_cmd  ##cmdType ##Pool;				\
 }
+#define MVK_RT_CMD_TYPE_POOL(cmdType)												\
+MVKCommandTypePool<MVKCommand>* MVKCmd ##cmdType ::getTypePool(MVKCommandPool* cmdPool) {	\
+	return (MVKCommandTypePool<MVKCommand>*)&cmdPool->getRayTracingCommandPools()._cmd ##cmdType ##Pool; \
+}
 #include "MVKCommandTypePools.def"
-
-

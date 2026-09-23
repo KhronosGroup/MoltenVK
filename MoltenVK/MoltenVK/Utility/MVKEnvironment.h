@@ -350,3 +350,8 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #ifndef MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES
 #   define MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES 0
 #endif
+
+/** Expose the experimental ray tracing extensions. Disabled by default. */
+#ifndef MVK_CONFIG_ENABLE_EXPERIMENTAL_RAY_TRACING
+#   define MVK_CONFIG_ENABLE_EXPERIMENTAL_RAY_TRACING 0
+#endif
