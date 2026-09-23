@@ -7,7 +7,7 @@ else()
 endif()
 
 # Check required CMake version
-set(REQUIRED_CMAKE_VERSION "3.18.0")
+set(REQUIRED_CMAKE_VERSION "3.21.0")
 if(MOLTEN_VK_TOPLEVEL_PROJECT)
 	cmake_minimum_required(VERSION ${REQUIRED_CMAKE_VERSION})
 else()
