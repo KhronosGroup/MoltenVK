@@ -749,9 +749,10 @@ void MVKCommandEncoder::encodeBarrierUpdates() {
 	}
 
 	if (_mtlComputeEncoder) {
-		MVKBarrierStage stage = commandUseToBarrierStage(_mtlComputeEncoderUse);
-		if (stage != kMVKBarrierStageNone) {
-			barrierUpdate(stage, _mtlComputeEncoder);
+		for (int stage = 0; stage < kMVKBarrierStageCount; ++stage) {
+			if (mvkIsAnyFlagEnabled(_mtlComputeEncoderStages, 1 << stage)) {
+				barrierUpdate((MVKBarrierStage)stage, _mtlComputeEncoder);
+			}
 		}
 	}
 
@@ -1063,6 +1064,7 @@ void MVKCommandEncoder::endCurrentMetalEncoding() {
 	if (_mtlComputeEncoder && _cmdBuffer->_hasStageCounterTimestampCommand) { [_mtlComputeEncoder updateFence: getStageCountersMTLFence()]; }
 	endMetalEncoding(_mtlComputeEncoder);
 	_mtlComputeEncoderUse = kMVKCommandUseNone;
+	_mtlComputeEncoderStages = 0;
 
 	if (_mtlBlitEncoder && _cmdBuffer->_hasStageCounterTimestampCommand) { [_mtlBlitEncoder updateFence: getStageCountersMTLFence()]; }
 	endMetalEncoding(_mtlBlitEncoder);
@@ -1109,6 +1111,10 @@ id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandU
 	if (_mtlComputeEncoderUse != cmdUse) {
 		needWaits = true;
 		_mtlComputeEncoderUse = cmdUse;
+		MVKBarrierStage stage = commandUseToBarrierStage(cmdUse);
+		if (stage != kMVKBarrierStageNone) {
+			mvkEnableFlags(_mtlComputeEncoderStages, 1 << stage);
+		}
 		_cmdBuffer->setMetalObjectLabel(_mtlComputeEncoder, mvkMTLComputeCommandEncoderLabel(cmdUse));
 	}
 	if (needWaits) {
@@ -1350,6 +1356,7 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer, MVKPrefillMeta
 	_mtlRenderEncoder = nil;
 	_mtlComputeEncoder = nil;
 	_mtlComputeEncoderUse = kMVKCommandUseNone;
+	_mtlComputeEncoderStages = 0;
 	_mtlBlitEncoder = nil;
 	_mtlBlitEncoderUse = kMVKCommandUseNone;
 	_pEncodingContext = nullptr;

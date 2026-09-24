@@ -551,6 +551,7 @@ protected:
 	uint32_t _multiviewPassIndex;
     uint32_t _flushCount;
 	MVKCommandUse _mtlComputeEncoderUse;
+	uint32_t _mtlComputeEncoderStages;
 	MVKCommandUse _mtlBlitEncoderUse;
 	bool _isRenderingEntireAttachment;
 };
