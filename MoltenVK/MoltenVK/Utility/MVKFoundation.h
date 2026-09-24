@@ -106,7 +106,9 @@ typedef enum : uint8_t {
 	kMVKCommandUseCopyQueryPoolResults,         /**< vkCmdCopyQueryPoolResults. */
 	kMVKCommandUseAccumOcclusionQuery,          /**< Any command terminating a Metal render pass with active visibility buffer. */
 	kMVKCommandConvertUint8Indices,             /**< Converting a Uint8 index buffer to Uint16. */
-	kMVKCommandUseRecordGPUCounterSample        /**< Any command triggering the recording of a GPU counter sample. */
+	kMVKCommandUseRecordGPUCounterSample,       /**< Any command triggering the recording of a GPU counter sample. */
+	kMVKCommandUseEncodeVideo,                  /**< vkCmdEncodeVideoKHR. */
+	kMVKCommandUseDecodeVideo                   /**< vkCmdDecodeVideoKHR. */
 } MVKCommandUse;
 
 /** Represents a given stage of a graphics pipeline. */

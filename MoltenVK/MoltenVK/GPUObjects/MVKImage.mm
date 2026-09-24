@@ -1389,7 +1389,9 @@ void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttac
 	if (isChromaSubsampled && mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, chroma subsampled formats may not be used with cube images."));
 	}
-	if (isChromaSubsampled && (pCreateInfo->arrayLayers > 1)) {
+	// Video DPB slots may be layers of one image.
+	bool isVideoDPB = mvkIsAnyFlagEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR | VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR);
+	if (isChromaSubsampled && (pCreateInfo->arrayLayers > 1) && !isVideoDPB) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Chroma-subsampled formats may only have one array layer."));
 	}
 	if ((pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatDepthStencil) && !is2D ) {

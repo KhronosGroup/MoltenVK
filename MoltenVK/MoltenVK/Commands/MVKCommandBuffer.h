@@ -31,6 +31,9 @@
 class MVKCommandPool;
 class MVKQueueCommandBufferSubmission;
 class MVKCommandEncoder;
+class MVKVideoSession;
+class MVKVideoSessionParameters;
+class MVKVideoQueryPool;
 class MVKCommandEncodingPool;
 class MVKRenderPass;
 class MVKFramebuffer;
@@ -478,6 +481,21 @@ public:
 
     /** Reset a range of queries. */
     void resetQueries(MVKQueryPool* pQueryPool, uint32_t firstQuery, uint32_t queryCount);
+
+#pragma mark Video coding
+
+	/** Makes a video query available once this command buffer completes. */
+	void activateVideoQuery(MVKQueryPool* pQueryPool, uint32_t query) { addActivatedQueries(pQueryPool, query, 1); }
+
+	/** The session bound by vkCmdBeginVideoCodingKHR. */
+	MVKVideoSession* _videoSession = nullptr;
+
+	/** The parameters bound by vkCmdBeginVideoCodingKHR. */
+	MVKVideoSessionParameters* _videoSessionParameters = nullptr;
+
+	/** The video query active around a video operation. */
+	MVKVideoQueryPool* _videoQueryPool = nullptr;
+	uint32_t _videoQuery = 0;
 
 #pragma mark Dynamic encoding state accessed directly
 

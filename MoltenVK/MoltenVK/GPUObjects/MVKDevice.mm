@@ -24,6 +24,7 @@
 #include "MVKImage.h"
 #include "MVKSwapchain.h"
 #include "MVKQueryPool.h"
+#include "MVKVideo.h"
 #include "MVKShaderModule.h"
 #include "MVKPipeline.h"
 #include "MVKFramebuffer.h"
@@ -1554,7 +1555,8 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 	constexpr VkImageUsageFlags supportedUsageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
-		VK_IMAGE_USAGE_HOST_TRANSFER_BIT;
+		VK_IMAGE_USAGE_HOST_TRANSFER_BIT | VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR | VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR |
+		VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR | VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR;
 	if (usage & ~supportedUsageFlags) {
 		return VK_ERROR_FORMAT_NOT_SUPPORTED;
 	}
@@ -1571,6 +1573,10 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 		{VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT},
 		{VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT},
 		{VK_IMAGE_USAGE_HOST_TRANSFER_BIT, VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT},
+		{VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR, VK_FORMAT_FEATURE_2_VIDEO_ENCODE_INPUT_BIT_KHR},
+		{VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR, VK_FORMAT_FEATURE_2_VIDEO_ENCODE_DPB_BIT_KHR},
+		{VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR, VK_FORMAT_FEATURE_2_VIDEO_DECODE_OUTPUT_BIT_KHR},
+		{VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR, VK_FORMAT_FEATURE_2_VIDEO_DECODE_DPB_BIT_KHR},
 	};
 	for (auto combo : usageFeatureCombos) {
 		if (mvkIsAnyFlagEnabled(usage, combo.first) &&
@@ -1689,7 +1695,8 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				// Other chroma subsampled formats may have multiple mip levels, but still only one layer.
 				if (isChromaSubsampled) {
 					maxLevels = isBGRG ? 1 : mvkMipmapLevels3D(maxExt);
-					maxLayers = 1;
+					// Video DPB slots may be layers of one image.
+					if ( !mvkIsAnyFlagEnabled(usage, VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR | VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR) ) { maxLayers = 1; }
 				} else {
 					maxLevels = mvkMipmapLevels3D(maxExt);
 				}
@@ -1758,6 +1765,13 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
 						auto* pExtImgFmtProps = (VkExternalImageFormatProperties*)nextProps;
 						pExtImgFmtProps->externalMemoryProperties = getExternalImageProperties(pImageFormatInfo->format, pExtImgFmtInfo->handleType);
 					}
+				}
+				break;
+			}
+			case VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR: {
+				auto* pProfiles = (VkVideoProfileListInfoKHR*)nextInfo;
+				for (uint32_t i = 0; i < pProfiles->profileCount; i++) {
+					if ( !mvkIsSupportedVideoProfile(&pProfiles->pProfiles[i]) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 				}
 				break;
 			}
@@ -2256,6 +2270,13 @@ MVKArrayRef<MVKQueueFamily*> MVKPhysicalDevice::getQueueFamilies() {
 			// Dedicated transfer queue family...or another general-purpose queue family.
 			if (specialize) { qfProps.queueFlags = VK_QUEUE_TRANSFER_BIT; }
 			_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
+
+			// Video encode and decode queue family, over VideoToolbox.
+			if (mvkVideoAvailable()) {
+				qfProps.queueFlags = ((mvkVideoEncodeH264Available() ? VK_QUEUE_VIDEO_ENCODE_BIT_KHR : 0) |
+									  (mvkVideoDecodeH264Available() ? VK_QUEUE_VIDEO_DECODE_BIT_KHR : 0));
+				_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
+			}
 		}
 
 		MVKAssert(kMVKQueueFamilyCount >= _queueFamilies.size(), "Adjust value of kMVKQueueFamilyCount.");
@@ -2308,6 +2329,19 @@ VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 						pGlobalPriorityProps->priorities[0] = VK_QUEUE_GLOBAL_PRIORITY_LOW;
 						pGlobalPriorityProps->priorities[1] = VK_QUEUE_GLOBAL_PRIORITY_MEDIUM;
 						pGlobalPriorityProps->priorities[2] = VK_QUEUE_GLOBAL_PRIORITY_HIGH;
+						break;
+					}
+					case VK_STRUCTURE_TYPE_QUEUE_FAMILY_VIDEO_PROPERTIES_KHR: {
+						auto* pVideoProps = (VkQueueFamilyVideoPropertiesKHR*)next;
+						bool encodes = mvkIsAnyFlagEnabled(qProps[qpIdx].queueFlags, VK_QUEUE_VIDEO_ENCODE_BIT_KHR);
+						bool decodes = mvkIsAnyFlagEnabled(qProps[qpIdx].queueFlags, VK_QUEUE_VIDEO_DECODE_BIT_KHR);
+						pVideoProps->videoCodecOperations = ((encodes ? VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_KHR : 0) |
+															 (decodes ? VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR : 0));
+						break;
+					}
+					case VK_STRUCTURE_TYPE_QUEUE_FAMILY_QUERY_RESULT_STATUS_PROPERTIES_KHR: {
+						auto* pStatusProps = (VkQueueFamilyQueryResultStatusPropertiesKHR*)next;
+						pStatusProps->queryResultStatusSupport = mvkIsAnyFlagEnabled(qProps[qpIdx].queueFlags, VK_QUEUE_VIDEO_ENCODE_BIT_KHR | VK_QUEUE_VIDEO_DECODE_BIT_KHR);
 						break;
 					}
 					default:
@@ -3602,6 +3636,19 @@ void MVKPhysicalDevice::initExtensions() {
 		pWritableExtns->vk_IMG_format_pvrtc.enabled = false;
 	}
 
+	// video needs VideoToolbox's H.264 encoder or decoder
+	if ( !mvkVideoAvailable() ) {
+		pWritableExtns->vk_KHR_video_queue.enabled = false;
+	}
+	if ( !mvkVideoEncodeH264Available() ) {
+		pWritableExtns->vk_KHR_video_encode_queue.enabled = false;
+		pWritableExtns->vk_KHR_video_encode_h264.enabled = false;
+	}
+	if ( !mvkVideoDecodeH264Available() ) {
+		pWritableExtns->vk_KHR_video_decode_queue.enabled = false;
+		pWritableExtns->vk_KHR_video_decode_h264.enabled = false;
+	}
+
 #if MVK_USE_METAL_PRIVATE_API
 	if (!getMVKConfig().useMetalPrivateAPI) {
 #endif
@@ -4352,6 +4399,9 @@ MVKQueryPool* MVKDevice::createQueryPool(const VkQueryPoolCreateInfo* pCreateInf
 				return new MVKTimestampQueryPool(this, pCreateInfo);
 			case VK_QUERY_TYPE_PIPELINE_STATISTICS:
 				return new MVKPipelineStatisticsQueryPool(this, pCreateInfo);
+			case VK_QUERY_TYPE_VIDEO_ENCODE_FEEDBACK_KHR:
+			case VK_QUERY_TYPE_RESULT_STATUS_ONLY_KHR:
+				return new MVKVideoQueryPool(this, pCreateInfo);
 			default:
 				return new MVKUnsupportedQueryPool(this, pCreateInfo);
 		}
@@ -4361,6 +4411,26 @@ MVKQueryPool* MVKDevice::createQueryPool(const VkQueryPoolCreateInfo* pCreateInf
 void MVKDevice::destroyQueryPool(MVKQueryPool* mvkQP,
 								 const VkAllocationCallbacks* pAllocator) {
 	if (mvkQP) { mvkQP->destroy(); }
+}
+
+MVKVideoSession* MVKDevice::createVideoSession(const VkVideoSessionCreateInfoKHR* pCreateInfo,
+											   const VkAllocationCallbacks* pAllocator) {
+	return new MVKVideoSession(this, pCreateInfo);
+}
+
+void MVKDevice::destroyVideoSession(MVKVideoSession* mvkVS,
+									const VkAllocationCallbacks* pAllocator) {
+	if (mvkVS) { mvkVS->destroy(); }
+}
+
+MVKVideoSessionParameters* MVKDevice::createVideoSessionParameters(const VkVideoSessionParametersCreateInfoKHR* pCreateInfo,
+																   const VkAllocationCallbacks* pAllocator) {
+	return new MVKVideoSessionParameters(this, pCreateInfo);
+}
+
+void MVKDevice::destroyVideoSessionParameters(MVKVideoSessionParameters* mvkVSP,
+											  const VkAllocationCallbacks* pAllocator) {
+	if (mvkVSP) { mvkVSP->destroy(); }
 }
 
 MVKShaderModule* MVKDevice::createShaderModule(const VkShaderModuleCreateInfo* pCreateInfo,

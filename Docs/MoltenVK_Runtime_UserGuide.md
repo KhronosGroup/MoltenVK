@@ -323,6 +323,16 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_uniform_buffer_standard_layout`
 - `VK_KHR_variable_pointers`
 - `VK_KHR_vertex_attribute_divisor`
+- `VK_KHR_video_decode_h264`
+  - *Requires VideoToolbox H.264 decode.*
+- `VK_KHR_video_decode_queue`
+  - *Requires VideoToolbox H.264 decode.*
+- `VK_KHR_video_encode_h264`
+  - *Requires a hardware VideoToolbox H.264 encoder.*
+- `VK_KHR_video_encode_queue`
+  - *Requires a hardware VideoToolbox H.264 encoder.*
+- `VK_KHR_video_queue`
+  - *Requires VideoToolbox H.264 encode or decode.*
 - `VK_KHR_vulkan_memory_model`
 - `VK_KHR_zero_initialize_workgroup_memory`
 - `VK_EXT_4444_formats`

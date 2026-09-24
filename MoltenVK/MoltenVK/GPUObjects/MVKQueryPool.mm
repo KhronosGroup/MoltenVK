@@ -435,6 +435,125 @@ MVKPipelineStatisticsQueryPool::MVKPipelineStatisticsQueryPool(MVKDevice* device
 
 
 #pragma mark -
+#pragma mark MVKVideoQueryPool
+
+void MVKVideoQueryPool::beginQuery(uint32_t query, VkQueryControlFlags flags, MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_videoQueryPool = this;
+	cmdEncoder->_videoQuery = query;
+}
+
+void MVKVideoQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) {
+	if (cmdEncoder->_videoQueryPool == this) { cmdEncoder->_videoQueryPool = nullptr; }
+
+	// a query with no failed operation inside it completes
+	retain();
+	[cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) {
+		{
+			lock_guard<mutex> lock(_feedbackLock);
+			if (_feedback[query].status == 0) {
+				_feedback[query].status = (mtlCB.status == MTLCommandBufferStatusCompleted
+										   ? VK_QUERY_RESULT_STATUS_COMPLETE_KHR
+										   : VK_QUERY_RESULT_STATUS_ERROR_KHR);
+			}
+		}
+		release();
+	}];
+	cmdEncoder->activateVideoQuery(this, query);
+	MVKQueryPool::endQuery(query, cmdEncoder);
+}
+
+void MVKVideoQueryPool::resetResults(uint32_t firstQuery, uint32_t queryCount, MVKCommandEncoder* cmdEncoder) {
+	MVKQueryPool::resetResults(firstQuery, queryCount, cmdEncoder);
+	lock_guard<mutex> lock(_feedbackLock);
+	for (uint32_t query = firstQuery; query < firstQuery + queryCount; query++) {
+		_feedback[query] = { 0, 0, 0 };
+	}
+}
+
+void MVKVideoQueryPool::setFeedback(uint32_t query, uint64_t offset, uint64_t bytesWritten, int32_t status) {
+	lock_guard<mutex> lock(_feedbackLock);
+	if (query < _feedback.size()) { _feedback[query] = { offset, bytesWritten, status }; }
+}
+
+VkResult MVKVideoQueryPool::getResult(uint32_t query, NSData* srcData, uint32_t srcDataQueryOffset, void* pDstData, VkQueryResultFlags flags) {
+	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
+	return writeResult(query, _availability[query] == Available, pDstData, flags);
+}
+
+// values in feedback-flag order, then availability or status
+VkResult MVKVideoQueryPool::writeResult(uint32_t query, bool available, void* pDstData, VkQueryResultFlags flags) {
+	Feedback fb;
+	{
+		lock_guard<mutex> lock(_feedbackLock);
+		fb = _feedback[query];
+	}
+	bool is64Bit = mvkAreAllFlagsEnabled(flags, VK_QUERY_RESULT_64_BIT);
+	auto put = [&](uint32_t index, int64_t value) {
+		if (is64Bit) {
+			((uint64_t*)pDstData)[index] = (uint64_t)value;
+		} else {
+			((uint32_t*)pDstData)[index] = (uint32_t)value;
+		}
+	};
+
+	bool shouldOutput = available || mvkAreAllFlagsEnabled(flags, VK_QUERY_RESULT_PARTIAL_BIT);
+	if (shouldOutput && !_statusOnly) {
+		uint32_t index = 0;
+		if (mvkIsAnyFlagEnabled(_feedbackFlags, VK_VIDEO_ENCODE_FEEDBACK_BITSTREAM_BUFFER_OFFSET_BIT_KHR)) { put(index++, fb.offset); }
+		if (mvkIsAnyFlagEnabled(_feedbackFlags, VK_VIDEO_ENCODE_FEEDBACK_BITSTREAM_BYTES_WRITTEN_BIT_KHR)) { put(index++, fb.bytesWritten); }
+		if (mvkIsAnyFlagEnabled(_feedbackFlags, VK_VIDEO_ENCODE_FEEDBACK_BITSTREAM_HAS_OVERRIDES_BIT_KHR)) { put(index++, 1); }
+	}
+	if (mvkAreAllFlagsEnabled(flags, VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)) { put(_queryElementCount, available); }
+	if (mvkAreAllFlagsEnabled(flags, VK_QUERY_RESULT_WITH_STATUS_BIT_KHR)) { put(_queryElementCount, available ? fb.status : 0); }
+	return shouldOutput ? VK_SUCCESS : VK_NOT_READY;
+}
+
+// the results are made on the CPU, so the copy is made there too
+void MVKVideoQueryPool::encodeCopyResults(MVKCommandEncoder* cmdEncoder,
+										  uint32_t firstQuery,
+										  uint32_t queryCount,
+										  MVKBuffer* destBuffer,
+										  VkDeviceSize destOffset,
+										  VkDeviceSize stride,
+										  VkQueryResultFlags flags) {
+	if (queryCount == 0) { return; }
+	retain();
+	destBuffer->retain();
+	[cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) {
+		uint8_t* base = (uint8_t*)destBuffer->getMTLBuffer().contents;
+		if (base) {
+			base += destBuffer->getMTLBufferOffset() + destOffset;
+			for (uint32_t i = 0; i < queryCount; i++) {
+				uint32_t query = firstQuery + i;
+				bool ready;
+				{
+					lock_guard<mutex> lock(_feedbackLock);
+					ready = _feedback[query].status != 0;
+				}
+				writeResult(query, ready, base + i * stride, flags);
+			}
+		} else {
+			reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyQueryPoolResults(): video query results can only be copied to host-visible memory.");
+		}
+		destBuffer->release();
+		release();
+	}];
+}
+
+MVKVideoQueryPool::MVKVideoQueryPool(MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo)
+	: MVKQueryPool(device, pCreateInfo, 0), _feedback(pCreateInfo->queryCount, Feedback{ 0, 0, 0 }) {
+	_statusOnly = pCreateInfo->queryType == VK_QUERY_TYPE_RESULT_STATUS_ONLY_KHR;
+	_feedbackFlags = 0;
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		if (next->sType == VK_STRUCTURE_TYPE_QUERY_POOL_VIDEO_ENCODE_FEEDBACK_CREATE_INFO_KHR) {
+			_feedbackFlags = ((const VkQueryPoolVideoEncodeFeedbackCreateInfoKHR*)next)->encodeFeedbackFlags;
+		}
+	}
+	_queryElementCount = _statusOnly ? 0 : __builtin_popcount(_feedbackFlags);
+}
+
+
+#pragma mark -
 #pragma mark MVKUnsupportedQueryPool
 
 MVKUnsupportedQueryPool::MVKUnsupportedQueryPool(MVKDevice* device,
