@@ -38,22 +38,22 @@ using namespace std;
 
 #pragma mark - Resource Binder Structs
 
-static MTLRenderStages getMTLStages(MVKResourceUsageStages stages) {
+MTLRenderStages MVKUseResourceHelper::getMTLStages(MVKResourceUsageStages stages) const {
 	switch (stages) {
-		case MVKResourceUsageStages::Vertex:   return MTLRenderStageVertex;
+		case MVKResourceUsageStages::Vertex:   return vertexStages;
 		case MVKResourceUsageStages::Fragment: return MTLRenderStageFragment;
-		case MVKResourceUsageStages::All:      return MTLRenderStageVertex | MTLRenderStageFragment;
+		case MVKResourceUsageStages::All:      return vertexStages | MTLRenderStageFragment;
 		case MVKResourceUsageStages::Count:    break;
 	}
 	assert(0);
 	return 0;
 }
 
-static void useResourceGraphics(id<MTLCommandEncoder> encoder, id<MTLResource> resource, MTLResourceUsage usage, MVKResourceUsageStages stages) {
-	[static_cast<id<MTLRenderCommandEncoder>>(encoder) useResource:resource usage:usage stages:getMTLStages(stages)];
+static void useResourceGraphics(id<MTLCommandEncoder> encoder, id<MTLResource> resource, MTLResourceUsage usage, MTLRenderStages stages) {
+	[static_cast<id<MTLRenderCommandEncoder>>(encoder) useResource:resource usage:usage stages:stages];
 }
 
-static void useResourceCompute(id<MTLCommandEncoder> encoder, id<MTLResource> resource, MTLResourceUsage usage, MVKResourceUsageStages stages) {
+static void useResourceCompute(id<MTLCommandEncoder> encoder, id<MTLResource> resource, MTLResourceUsage usage, MTLRenderStages stages) {
 	[static_cast<id<MTLComputeCommandEncoder>>(encoder) useResource:resource usage:usage];
 }
 
@@ -113,6 +113,24 @@ struct MVKVertexBinder {
 	}
 };
 
+struct MVKObjectBinder {
+	static SEL selSetBytes()   { return @selector(setObjectBytes:length:atIndex:); }
+	static SEL selSetBuffer()  { return @selector(setObjectBuffer:offset:atIndex:); }
+	static SEL selSetOffset()  { return @selector(setObjectBufferOffset:atIndex:); }
+	static SEL selSetTexture() { return @selector(setObjectTexture:atIndex:); }
+	static SEL selSetSampler() { return @selector(setObjectSamplerState:atIndex:); }
+	static MVKResourceBinder::UseResource useResource() { return useResourceGraphics; }
+};
+
+struct MVKMeshBinder {
+	static SEL selSetBytes()   { return @selector(setMeshBytes:length:atIndex:); }
+	static SEL selSetBuffer()  { return @selector(setMeshBuffer:offset:atIndex:); }
+	static SEL selSetOffset()  { return @selector(setMeshBufferOffset:atIndex:); }
+	static SEL selSetTexture() { return @selector(setMeshTexture:atIndex:); }
+	static SEL selSetSampler() { return @selector(setMeshSamplerState:atIndex:); }
+	static MVKResourceBinder::UseResource useResource() { return useResourceGraphics; }
+};
+
 struct MVKComputeBinder {
 	static SEL selSetBytes()   { return @selector(setBytes:length:atIndex:); }
 	static SEL selSetBuffer()  { return @selector(setBuffer:offset:atIndex:); }
@@ -161,6 +179,8 @@ static ResourceBinderTable<MVKResourceBinder> GenResourceBinders() {
 	ResourceBinderTable<MVKResourceBinder> res = {};
 	res[MVKResourceBinder::Stage::Vertex]   = MVKResourceBinder::Create<MVKVertexBinder>();
 	res[MVKResourceBinder::Stage::Fragment] = MVKResourceBinder::Create<MVKFragmentBinder>();
+	res[MVKResourceBinder::Stage::Object]   = MVKResourceBinder::Create<MVKObjectBinder>();
+	res[MVKResourceBinder::Stage::Mesh]     = MVKResourceBinder::Create<MVKMeshBinder>();
 	res[MVKResourceBinder::Stage::Compute]  = MVKResourceBinder::Create<MVKComputeBinder>();
 	return res;
 }
@@ -353,7 +373,7 @@ static void bindDescriptorSets(MVKImplicitBufferData& target,
                                uint32_t firstSet, uint32_t setCount, MVKDescriptorSet*const* sets,
                                uint32_t dynamicOffsetCount, const uint32_t* dynamicOffsets) {
 	[[maybe_unused]] const uint32_t* dynamicOffsetsEnd = dynamicOffsets + dynamicOffsetCount;
-	VkShaderStageFlags vkStage = mvkVkShaderStageFlagBitsFromMVKShaderStage(stage);
+	VkShaderStageFlags vkStage = mvkVkShaderStagesFromMVKShaderStage(stage);
 	for (uint32_t i = 0; i < setCount; i++) {
 		MVKDescriptorSet* set = sets[i];
 		if (!set)
@@ -610,8 +630,7 @@ static MVKArrayRef<const T> getImplicitBindingData(const MVKSmallVector<T, N>& d
 }
 
 static MVKResourceUsageStages getUseResourceStage(MVKMetalGraphicsStage stage) {
-	// The single-stage enums are the same
-	return static_cast<MVKResourceUsageStages>(stage);
+	return stage == MVKMetalGraphicsStage::Fragment ? MVKResourceUsageStages::Fragment : MVKResourceUsageStages::Vertex;
 }
 
 /** Check if `add` is a subset of `current` */
@@ -835,7 +854,9 @@ static void invalidateImplicitBuffer(MVKStageResourceBindings& bindings, MVKNonV
 
 /** If the contents of an implicit buffer changes, call this to ensure that the contents will be rebound before the next draw. */
 static void invalidateImplicitBuffer(MVKMetalGraphicsCommandEncoderState& state, MVKNonVolatileImplicitBuffer buffer) {
-	for (uint32_t i = 0; i < static_cast<uint32_t>(MVKMetalGraphicsStage::Count); i++) {
+	// object and mesh bindings only exist once a mesh pipeline has drawn on this encoder
+	auto count = state._flags.has(MVKMetalRenderEncoderStateFlag::MeshStagesBound) ? MVKMetalGraphicsStage::Count : MVKMetalGraphicsStage::Object;
+	for (uint32_t i = 0; i < static_cast<uint32_t>(count); i++) {
 		MVKMetalGraphicsStage stage = static_cast<MVKMetalGraphicsStage>(i);
 		invalidateImplicitBuffer(state._bindings[stage], buffer);
 	}
@@ -897,7 +918,7 @@ void MVKUseResourceHelper::addImmediate(id<MTLResource> resource, id<MTLCommandE
 		if (stored.deferred)
 			entries[stored.stages].get(stored.write).push_back(resource);
 		else
-			func(enc, resource, write ? MTLResourceUsageReadWrite : MTLResourceUsageRead, stored.stages);
+			func(enc, resource, write ? MTLResourceUsageReadWrite : MTLResourceUsageRead, getMTLStages(stored.stages));
 	}
 }
 
@@ -1087,6 +1108,14 @@ void MVKMetalGraphicsCommandEncoderState::bindVertexTexture(id<MTLRenderCommandE
 }
 void MVKMetalGraphicsCommandEncoderState::bindVertexSampler(id<MTLRenderCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index) {
 	bindSampler(encoder, sampler, index, _exists.vertex(), _bindings.vertex(), MVKVertexBinder());
+}
+
+void MVKMetalGraphicsCommandEncoderState::bindObjectBuffer(id<MTLRenderCommandEncoder> encoder, id<MTLBuffer> buffer, VkDeviceSize offset, NSUInteger index) {
+	bindBuffer(encoder, buffer, offset, index, _exists[MVKMetalGraphicsStage::Object], _bindings[MVKMetalGraphicsStage::Object], MVKResourceBinder::Get(MVKMetalGraphicsStage::Object));
+}
+
+void MVKMetalGraphicsCommandEncoderState::bindObjectBytes(id<MTLRenderCommandEncoder> encoder, const void* data, size_t size, NSUInteger index) {
+	bindBytes(encoder, data, size, index, _exists[MVKMetalGraphicsStage::Object], _bindings[MVKMetalGraphicsStage::Object], MVKResourceBinder::Get(MVKMetalGraphicsStage::Object));
 }
 
 void MVKMetalGraphicsCommandEncoderState::changePipeline(MVKGraphicsPipeline* from, MVKGraphicsPipeline* to) {
@@ -1414,6 +1443,7 @@ void MVKMetalGraphicsCommandEncoderState::bindState(
 	}
 }
 
+template <bool Mesh>
 void MVKMetalGraphicsCommandEncoderState::prepareDraw(
   id<MTLRenderCommandEncoder> encoder,
   MVKCommandEncoder& mvkEncoder,
@@ -1443,7 +1473,11 @@ void MVKMetalGraphicsCommandEncoderState::prepareDraw(
 	bindState(encoder, mvkEncoder, vk);
 
 	// Resources
-	if (pipeline->isTessellationPipeline()) {
+	if constexpr (Mesh) {
+		_flags.add(MVKMetalRenderEncoderStateFlag::MeshStagesBound);
+		bindVulkanGraphicsToMetalGraphics(encoder, mvkEncoder, vk, vkShared, *this, pipeline, kMVKShaderStageTessCtl,  MVKMetalGraphicsStage::Object);
+		bindVulkanGraphicsToMetalGraphics(encoder, mvkEncoder, vk, vkShared, *this, pipeline, kMVKShaderStageVertex,   MVKMetalGraphicsStage::Mesh);
+	} else if (pipeline->isTessellationPipeline()) {
 		bindVulkanGraphicsToMetalGraphics(encoder, mvkEncoder, vk, vkShared, *this, pipeline, kMVKShaderStageTessEval, MVKMetalGraphicsStage::Vertex);
 	} else {
 		bindVulkanGraphicsToMetalGraphics(encoder, mvkEncoder, vk, vkShared, *this, pipeline, kMVKShaderStageVertex,   MVKMetalGraphicsStage::Vertex);
@@ -1452,6 +1486,8 @@ void MVKMetalGraphicsCommandEncoderState::prepareDraw(
 	bindVulkanGraphicsToMetalGraphics(encoder, mvkEncoder, vk, vkShared, *this, pipeline, kMVKShaderStageFragment, MVKMetalGraphicsStage::Fragment);
 	mvkEncoder.getState().mtlShared()._useResource.bindAndResetGraphics(encoder);
 }
+template void MVKMetalGraphicsCommandEncoderState::prepareDraw<false>(id<MTLRenderCommandEncoder>, MVKCommandEncoder&, const MVKVulkanGraphicsCommandEncoderState&, const MVKVulkanSharedCommandEncoderState&);
+template void MVKMetalGraphicsCommandEncoderState::prepareDraw<true>(id<MTLRenderCommandEncoder>, MVKCommandEncoder&, const MVKVulkanGraphicsCommandEncoderState&, const MVKVulkanSharedCommandEncoderState&);
 
 void MVKMetalGraphicsCommandEncoderState::prepareHelperDraw(
   id<MTLRenderCommandEncoder> encoder,

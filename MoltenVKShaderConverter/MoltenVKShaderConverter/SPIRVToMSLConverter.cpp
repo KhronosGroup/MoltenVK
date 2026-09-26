@@ -293,6 +293,18 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 			}
 		}
 
+		// SPIRV-Cross strides mesh output writes by the literal LocalSize, which LocalSizeId leaves zero.
+		// a specialized dimension is unknown here, and a stride of one is correct for any specialization.
+		if (shaderConfig.options.entryPointStage == ExecutionModelMeshEXT) {
+			SpecializationConstant wg[3];
+			pMSLCompiler->get_work_group_size_specialization_constants(wg[0], wg[1], wg[2]);
+			uint32_t size[3];
+			for (uint32_t i = 0; i < 3; i++) {
+				size[i] = wg[i].id ? 1 : pMSLCompiler->get_execution_mode_argument(ExecutionModeLocalSize, i);
+			}
+			pMSLCompiler->set_execution_mode(ExecutionModeLocalSize, size[0], size[1], size[2]);
+		}
+
 		// Establish the MSL options for the compiler
 		// This needs to be done in two steps...for CompilerMSL and its superclass.
 		pMSLCompiler->set_msl_options(shaderConfig.options.mslOptions);

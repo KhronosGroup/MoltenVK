@@ -747,6 +747,16 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				legacyDitheringFeatures->legacyDithering = getMVKConfig().useMetalPrivateAPI;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT: {
+				auto* meshFeatures = (VkPhysicalDeviceMeshShaderFeaturesEXT*)next;
+				// without indirect mesh draws, indirect task draws have no stage left to read their grid
+				meshFeatures->taskShader = _gpuCapabilities.supportsApple9;
+				meshFeatures->meshShader = _gpuCapabilities.supportsApple7;
+				meshFeatures->multiviewMeshShader = false;
+				meshFeatures->primitiveFragmentShadingRateMeshShader = false;
+				meshFeatures->meshShaderQueries = false;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT: {
 				auto* multiDrawFeatures = (VkPhysicalDeviceMultiDrawFeaturesEXT*)next;
 				multiDrawFeatures->multiDraw = true;
@@ -1304,6 +1314,43 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				auto* nestedCmdBuffProps = (VkPhysicalDeviceNestedCommandBufferPropertiesEXT*)next;
 				// Nesting is handled by recursion on the host, so no limit is imposed.
 				nestedCmdBuffProps->maxCommandBufferNestingLevel = std::numeric_limits<uint32_t>::max();
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT: {
+				auto* meshProps = (VkPhysicalDeviceMeshShaderPropertiesEXT*)next;
+				auto& lim = _properties.limits;
+				// object grids are unbounded, mesh grids are bounded per GPU family by the Metal feature set tables,
+				// and each mesh grid dimension is 16 bits. payload is object memory.
+				uint32_t meshGrid = _gpuCapabilities.supportsApple10 ? (1u << 22) - 1 : _gpuCapabilities.supportsApple9 ? (1u << 20) - 1 : 1024;
+				uint32_t payload = 16 * KIBI;
+				uint32_t meshVerts = 256, meshPrims = 512;		// metal::mesh limits
+				// SPIRV-Cross stages mesh outputs, their counts (a uint2) and triangle indices (a 16-byte uint3 each) in threadgroup
+				// memory next to shared variables, so shared and output memory split the rest. Metal takes 16 bytes of object
+				// threadgroup memory (measured).
+				uint32_t meshShared = (lim.maxComputeSharedMemorySize - sizeof(uint32_t[2]) - meshPrims * sizeof(uint32_t[4])) / 2;
+				uint32_t taskShared = lim.maxComputeSharedMemorySize - 16;
+				for (uint32_t i = 0; i < 3; i++) {
+					meshProps->maxTaskWorkGroupCount[i] = lim.maxComputeWorkGroupCount[i];
+					meshProps->maxTaskWorkGroupSize[i] = meshProps->maxMeshWorkGroupSize[i] = lim.maxComputeWorkGroupSize[i];
+					meshProps->maxMeshWorkGroupCount[i] = std::min<uint32_t>(meshGrid, numeric_limits<uint16_t>::max());
+				}
+				meshProps->maxTaskWorkGroupTotalCount = kMVKUndefinedLargeUInt32;
+				meshProps->maxTaskWorkGroupInvocations = meshProps->maxMeshWorkGroupInvocations = lim.maxComputeWorkGroupInvocations;
+				meshProps->maxTaskPayloadSize = payload;
+				meshProps->maxTaskSharedMemorySize = taskShared;
+				meshProps->maxTaskPayloadAndSharedMemorySize = payload + taskShared;
+				meshProps->maxMeshSharedMemorySize = meshProps->maxMeshOutputMemorySize = meshShared;
+				meshProps->maxMeshPayloadAndSharedMemorySize = meshProps->maxMeshPayloadAndOutputMemorySize = payload + meshShared;
+				meshProps->maxMeshWorkGroupTotalCount = meshGrid;
+				meshProps->maxMeshOutputComponents = lim.maxVertexOutputComponents;
+				meshProps->maxMeshOutputVertices = meshVerts;
+				meshProps->maxMeshOutputPrimitives = meshPrims;
+				meshProps->maxMeshOutputLayers = lim.maxFramebufferLayers;
+				meshProps->maxMeshMultiviewViewCount = 1;
+				meshProps->meshOutputPerVertexGranularity = meshProps->meshOutputPerPrimitiveGranularity = 1;
+				meshProps->maxPreferredTaskWorkGroupInvocations = meshProps->maxPreferredMeshWorkGroupInvocations = _metalFeatures.maxSubgroupSize;
+				meshProps->prefersLocalInvocationVertexOutput = meshProps->prefersLocalInvocationPrimitiveOutput = false;
+				meshProps->prefersCompactVertexOutput = meshProps->prefersCompactPrimitiveOutput = false;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT: {
@@ -3589,6 +3636,9 @@ void MVKPhysicalDevice::initExtensions() {
 	}
 	if (!_gpuCapabilities.supportsSamplerReduction) {
 		pWritableExtns->vk_EXT_sampler_filter_minmax.enabled = false;
+	}
+	if (!_gpuCapabilities.supportsApple7) {
+		pWritableExtns->vk_EXT_mesh_shader.enabled = false;
 	}
 
     // gpuAddress requires Tier2 argument buffer support (per feedback from Apple engineers).

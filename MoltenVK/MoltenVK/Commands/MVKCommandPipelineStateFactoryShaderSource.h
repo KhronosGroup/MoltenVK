@@ -359,6 +359,30 @@ kernel void cmdDrawIndexedIndirectCountConvertBuffers(const device char* srcBuff
 	}
 }
 
+kernel void cmdDrawMeshTasksIndirectCountConvertBuffers(const device char* srcBuff [[buffer(0)]],
+                                                        device MTLDispatchThreadgroupsIndirectArguments* destBuff [[buffer(1)]],
+                                                        constant uint32_t& srcStride [[buffer(2)]],
+                                                        constant uint32_t& drawCount [[buffer(3)]],
+                                                        const device uint32_t* countBuff [[buffer(4)]],
+                                                        uint idx [[thread_position_in_grid]]) {
+	if (idx >= drawCount) { return; }
+	destBuff[idx] = *reinterpret_cast<const device MTLDispatchThreadgroupsIndirectArguments*>(srcBuff + idx * srcStride);
+	if (idx >= countBuff[0]) {
+		destBuff[idx].threadgroupsPerGrid[0] = 0;
+	}
+}
+
+#if __METAL_VERSION__ >= 300
+// launches the mesh grid read from a buffer, for GPUs without indirect mesh draws
+[[object]] void objCmdDrawMeshTasks(const device MTLDispatchThreadgroupsIndirectArguments& args [[buffer(0)]],
+                                    mesh_grid_properties grid) {
+	grid.set_threadgroups_per_grid(uint3(args.threadgroupsPerGrid[0], args.threadgroupsPerGrid[1], args.threadgroupsPerGrid[2]));
+}
+
+// rasterizing mesh pipelines need a fragment function, even when Vulkan has none
+fragment void fragCmdNone() {}
+#endif
+
 kernel void cmdDrawIndirectCopyZeroDivisorVertexBuffers(const device char* indirectBuff [[buffer(0)]],
                                                          const device char* srcBuff [[buffer(1)]],
                                                          device char* destBuff [[buffer(2)]],
