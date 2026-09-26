@@ -347,13 +347,14 @@ static void bindImplicitBufferData(uint32_t* target, MVKDescriptorSetLayout* lay
 	}
 }
 
-static void bindDescriptorSets(MVKImplicitBufferData& target,
+static bool bindDescriptorSets(MVKImplicitBufferData& target,
                                MVKShaderStage stage,
                                MVKPipelineLayout* layout,
                                uint32_t firstSet, uint32_t setCount, MVKDescriptorSet*const* sets,
                                uint32_t dynamicOffsetCount, const uint32_t* dynamicOffsets) {
 	[[maybe_unused]] const uint32_t* dynamicOffsetsEnd = dynamicOffsets + dynamicOffsetCount;
 	VkShaderStageFlags vkStage = mvkVkShaderStageFlagBitsFromMVKShaderStage(stage);
+	bool changed = false;
 	for (uint32_t i = 0; i < setCount; i++) {
 		MVKDescriptorSet* set = sets[i];
 		if (!set)
@@ -370,6 +371,7 @@ static void bindDescriptorSets(MVKImplicitBufferData& target,
 					if (!binding.perDescriptorResourceCount.dynamicOffset)
 						continue;
 					if (binding.stageFlags & vkStage) {
+						changed |= !mvkAreEqual(write, dynamicOffsets, binding.descriptorCount);
 						mvkCopy(write, dynamicOffsets, binding.descriptorCount);
 						write += binding.descriptorCount;
 					}
@@ -381,6 +383,7 @@ static void bindDescriptorSets(MVKImplicitBufferData& target,
 			}
 		}
 		if (setLayout->argBufMode() == MVKArgumentBufferMode::Off) {
+			changed = true;
 			// If we grab these now, we can be guaranteed the sets are valid
 			// If we wait until draw time, we can only be guaranteed statically used sets are valid
 			if (!layout->getMetalFeatures().nativeTextureSwizzle && stride.textureIndex) {
@@ -394,6 +397,7 @@ static void bindDescriptorSets(MVKImplicitBufferData& target,
 		}
 	}
 	assert(dynamicOffsets == dynamicOffsetsEnd && "All dynamic offsets should have been used, and no more than that");
+	return changed;
 }
 
 static void bindImmediateData(id<MTLCommandEncoder> encoder,
@@ -1007,7 +1011,7 @@ bool MVKVulkanGraphicsCommandEncoderState::isBresenhamLines() const {
 	}
 }
 
-void MVKVulkanGraphicsCommandEncoderState::bindDescriptorSets(
+bool MVKVulkanGraphicsCommandEncoderState::bindDescriptorSets(
 	MVKPipelineLayout* layout,
 	uint32_t firstSet,
 	uint32_t setCount,
@@ -1015,18 +1019,20 @@ void MVKVulkanGraphicsCommandEncoderState::bindDescriptorSets(
 	uint32_t dynamicOffsetCount,
 	const uint32_t* dynamicOffsets)
 {
+	bool changed = false;
 	for (uint32_t i = 0; i <= kMVKShaderStageFragment; i++) {
 		MVKShaderStage stage = static_cast<MVKShaderStage>(i);
-		::bindDescriptorSets(_implicitBufferData[stage], stage, layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
+		changed |= ::bindDescriptorSets(_implicitBufferData[stage], stage, layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
 	}
 	for (uint32_t i = 0; i < setCount; i++) {
 		_descriptorSets[firstSet + i] = sets[i];
 	}
+	return changed;
 }
 
 #pragma mark - MVKVulkanComputeCommandEncoderState
 
-void MVKVulkanComputeCommandEncoderState::bindDescriptorSets(
+bool MVKVulkanComputeCommandEncoderState::bindDescriptorSets(
 	MVKPipelineLayout* layout,
 	uint32_t firstSet,
 	uint32_t setCount,
@@ -1034,10 +1040,11 @@ void MVKVulkanComputeCommandEncoderState::bindDescriptorSets(
 	uint32_t dynamicOffsetCount,
 	const uint32_t* dynamicOffsets)
 {
-	::bindDescriptorSets(_implicitBufferData, kMVKShaderStageCompute, layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
+	bool changed = ::bindDescriptorSets(_implicitBufferData, kMVKShaderStageCompute, layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
 	for (uint32_t i = 0; i < setCount; i++) {
 		_descriptorSets[firstSet + i] = sets[i];
 	}
+	return changed;
 }
 
 #pragma mark - MVKMetalGraphicsCommandEncoderState
@@ -1762,18 +1769,27 @@ void MVKCommandEncoderState::bindDescriptorSets(
   MVKDescriptorSet*const* sets,
   uint32_t dynamicOffsetCount,
   const uint32_t* dynamicOffsets) {
-	auto affected = MVKStaticBitSet<kMVKMaxDescriptorSetCount>::range(firstSet, firstSet + setCount);
-	applyToActiveMTLState(bindPoint, [affected](auto& mtl){
-		invalidateDescriptorSetImplicitBuffers(mtl);
+	// a set bound again with the same data needs no rebinding
+	MVKStaticBitSet<kMVKMaxDescriptorSetCount> changedSets;
+	bool changedData = false;
+	if (MVKVulkanCommonEncoderState* vk = getVkEncoderState(bindPoint)) {
+		for (uint32_t i = 0; i < setCount; i++) {
+			if (vk->_descriptorSets[firstSet + i] != sets[i])
+				changedSets.set(firstSet + i);
+		}
+	}
+	if (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
+		changedData = _vkGraphics.bindDescriptorSets(layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
+	} else if (bindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
+		changedData = _vkCompute.bindDescriptorSets(layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
+	}
+	applyToActiveMTLState(bindPoint, [changedSets, changedData](auto& mtl){
+		if (changedData)
+			invalidateDescriptorSetImplicitBuffers(mtl);
 		for (MVKStageResourceBits& exists : mtl.exists()) {
-			exists.descriptorSetData.clearAllIn(affected);
+			exists.descriptorSetData.clearAllIn(changedSets);
 		}
 	});
-	if (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
-		_vkGraphics.bindDescriptorSets(layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
-	} else if (bindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
-		_vkCompute.bindDescriptorSets(layout, firstSet, setCount, sets, dynamicOffsetCount, dynamicOffsets);
-	}
 }
 
 MVKVulkanCommonEncoderState* MVKCommandEncoderState::getVkEncoderState(VkPipelineBindPoint bindPoint) {

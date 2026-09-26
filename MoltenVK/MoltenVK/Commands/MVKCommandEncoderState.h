@@ -166,7 +166,7 @@ struct MVKUseResourceHelper {
  */
 struct MVKVulkanCommonEncoderState {
 	MVKPipelineLayout* _layout = nullptr;
-	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount];
+	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount] = {};
 	MVKDescriptorSet _pushDescriptor = {};
 	MVKSmallVector<uint8_t, 16> _pushDescData;
 	void ensurePushDescriptorSize(uint32_t size);
@@ -204,8 +204,8 @@ struct MVKVulkanGraphicsCommandEncoderState: public MVKVulkanCommonEncoderState 
 		return pickRenderState(MVKRenderStateFlag::ProvokingVertexMode).provokingVertexMode;
 	}
 
-	/** Bind the given descriptor sets, placing their bindings into `_descriptorSetBindings`. */
-	void bindDescriptorSets(MVKPipelineLayout* layout,
+	/** Bind the given descriptor sets, placing their bindings into `_descriptorSetBindings`. Returns whether any implicit buffer data changed. */
+	bool bindDescriptorSets(MVKPipelineLayout* layout,
 	                        uint32_t firstSet,
 	                        uint32_t setCount,
 	                        MVKDescriptorSet*const* sets,
@@ -218,8 +218,8 @@ struct MVKVulkanComputeCommandEncoderState: public MVKVulkanCommonEncoderState {
 	MVKComputePipeline* _pipeline = nullptr;
 	MVKImplicitBufferData _implicitBufferData;
 
-	/** Bind the given descriptor sets, placing their bindings into `_descriptorSetBindings`. */
-	void bindDescriptorSets(MVKPipelineLayout* layout,
+	/** Bind the given descriptor sets, placing their bindings into `_descriptorSetBindings`. Returns whether any implicit buffer data changed. */
+	bool bindDescriptorSets(MVKPipelineLayout* layout,
 	                        uint32_t firstSet,
 	                        uint32_t setCount,
 	                        MVKDescriptorSet*const* sets,
