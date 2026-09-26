@@ -356,6 +356,8 @@ static void bindDescriptorSets(MVKImplicitBufferData& target,
 	VkShaderStageFlags vkStage = mvkVkShaderStageFlagBitsFromMVKShaderStage(stage);
 	for (uint32_t i = 0; i < setCount; i++) {
 		MVKDescriptorSet* set = sets[i];
+		if (!set)
+			continue;
 		MVKDescriptorSetLayout* setLayout = layout->getDescriptorSetLayout(firstSet + i);
 		const MVKShaderStageResourceBinding& offsets = layout->getResourceBindingOffsets(firstSet + i).stages[stage];
 		const MVKShaderStageResourceBinding& stride = setLayout->totalResourceCount().stages[stage];
