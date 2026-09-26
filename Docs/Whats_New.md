@@ -22,6 +22,8 @@ Released TBD
   - `VK_EXT_multi_draw`
   - `VK_EXT_nested_command_buffer`
   - `VK_EXT_ycbcr_2plane_444_formats`
+- Add `MVK_CONFIG_SHADOW_IMPORTED_HOST_MEMORY` configuration parameter, to back host memory imported
+  through `VK_EXT_external_memory_host` with a private `MTLBuffer` when no-copy buffers over it fail at execution time.
 - Fix inconsistent image `memoryTypeBits` when `VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT` is used.
 - Fix shader stage interface matching of 16-bit floating point variables.
 - Fix spurious warning about blending on attachment formats that do not support it.
