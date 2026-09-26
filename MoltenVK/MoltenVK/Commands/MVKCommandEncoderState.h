@@ -434,6 +434,9 @@ class MVKCommandEncoderState {
 	/** Get the encoder state associated with the given bind point, or nullptr if the bindPoint isn't supported. */
 	MVKVulkanCommonEncoderState* getVkEncoderState(VkPipelineBindPoint bindPoint);
 
+	/** Regenerates and invalidates the implicit buffer data derived from the push descriptor set after its contents change. */
+	void refreshPushDescriptorSet(VkPipelineBindPoint bindPoint, MVKPipelineLayout* layout, uint32_t set);
+
 public:
 	/** Get a reference to the Vulkan state shared between graphics and compute.  Read-only, use methods on this class (which will invalidate associated Metal state) to modify. */
 	const MVKVulkanSharedCommandEncoderState&   vkShared()   const { return _vkShared; }
