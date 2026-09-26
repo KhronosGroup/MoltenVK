@@ -26,6 +26,20 @@
 #include "mvk_datatypes.hpp"
 
 
+/**
+ * Writes a value into the pipeline state a shader object draw is built from, and drops any
+ * pipeline already resolved for the old value. A write that changes nothing is left alone, so
+ * that re-setting the same state before every draw costs nothing.
+ */
+template <typename T, typename V>
+static void mvkSetDynamicPipelineState(MVKCommandEncoder* cmdEncoder, T& field, V value) {
+	T newValue = static_cast<T>(value);
+	if (field == newValue) { return; }
+	field = newValue;
+	cmdEncoder->getState().invalidateShaderObjectPipeline();
+}
+
+
 #pragma mark -
 #pragma mark MVKCmdBeginRenderPassBase
 
@@ -38,6 +52,7 @@ VkResult MVKCmdBeginRenderPassBase::setContent(MVKCommandBuffer* cmdBuff,
 	_renderArea = pRenderPassBegin->renderArea;
 
 	cmdBuff->_currentSubpassInfo.beginRenderpass(_renderPass);
+	cmdBuff->_shaderObjectRecordState.setAttachmentsFromSubpass(_renderPass->getSubpass(0));
 
 	return VK_SUCCESS;
 }
@@ -96,6 +111,9 @@ VkResult MVKCmdNextSubpass::setContent(MVKCommandBuffer* cmdBuff,
 	_contents = contents;
 
 	cmdBuff->_currentSubpassInfo.nextSubpass();
+	if (cmdBuff->_currentSubpassInfo.renderpass) {
+		cmdBuff->_shaderObjectRecordState.setAttachmentsFromSubpass(cmdBuff->_currentSubpassInfo.renderpass->getSubpass(cmdBuff->_currentSubpassInfo.subpassIndex));
+	}
 
 	return VK_SUCCESS;
 }
@@ -151,6 +169,7 @@ VkResult MVKCmdBeginRendering<N>::setContent(MVKCommandBuffer* cmdBuff,
 	}
 
 	cmdBuff->_currentSubpassInfo.beginRendering(pRenderingInfo->viewMask);
+	cmdBuff->_shaderObjectRecordState.setAttachmentsFromRenderingInfo(pRenderingInfo);
 
 	return VK_SUCCESS;
 }
@@ -550,6 +569,9 @@ void MVKCmdSetLineWidth::encode(MVKCommandEncoder* cmdEncoder) {
 
 void MVKCmdSetPrimitiveTopology::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::PrimitiveTopology)._renderState.primitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(_value);
+	// Metal bakes the topology class into a pipeline, so a shader object draw needs the Vulkan
+	// topology itself, which the Metal primitive type above does not preserve.
+	mvkSetDynamicPipelineState(cmdEncoder, cmdEncoder->getState().dynamicPipelineState().topology, mvkShaderObjectKeyTopology(_value));
 }
 
 
@@ -576,4 +598,348 @@ void MVKCmdSetProvokingVertexMode::encode(MVKCommandEncoder* cmdEncoder) {
 #if MVK_USE_METAL_PRIVATE_API
 	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::ProvokingVertexMode)._renderState.provokingVertexMode = mvkMTLProvokingVertexModeFromVkProvokingVertexMode(_value);
 #endif
+}
+
+
+
+#pragma mark -
+#pragma mark MVKCmdBindShaders
+
+VkResult MVKCmdBindShaders::setContent(MVKCommandBuffer* cmdBuff,
+									   uint32_t stageCount,
+									   const VkShaderStageFlagBits* pStages,
+									   const VkShaderEXT* pShaders) {
+	_shaders.clear();
+	_shaders.reserve(stageCount);
+	for (uint32_t i = 0; i < stageCount; i++) {
+		// pShaders may be null, which unbinds every stage named in pStages.
+		MVKShader* shader = pShaders ? (MVKShader*)pShaders[i] : nullptr;
+		_shaders.push_back({ pStages[i], shader });
+		// Only the graphics stages MoltenVK has feed the shadow; the encoder reports the others.
+		switch (pStages[i]) {
+			case VK_SHADER_STAGE_VERTEX_BIT:					cmdBuff->_shaderObjectRecordState.shaders[kMVKShaderStageVertex] = shader; break;
+			case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:		cmdBuff->_shaderObjectRecordState.shaders[kMVKShaderStageTessCtl] = shader; break;
+			case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:	cmdBuff->_shaderObjectRecordState.shaders[kMVKShaderStageTessEval] = shader; break;
+			case VK_SHADER_STAGE_FRAGMENT_BIT:					cmdBuff->_shaderObjectRecordState.shaders[kMVKShaderStageFragment] = shader; break;
+			default: break;
+		}
+	}
+	return VK_SUCCESS;
+}
+
+void MVKCmdBindShaders::encode(MVKCommandEncoder* cmdEncoder) {
+	for (auto& stageShader : _shaders) {
+		VkShaderStageFlagBits stage = stageShader.first;
+		MVKShader* shader = stageShader.second;
+		cmdEncoder->getState().bindShaders(1, &stage, &shader);
+	}
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetVertexInput
+
+VkResult MVKCmdSetVertexInput::setContent(MVKCommandBuffer* cmdBuff,
+										  uint32_t vertexBindingDescriptionCount,
+										  const VkVertexInputBindingDescription2EXT* pVertexBindingDescriptions,
+										  uint32_t vertexAttributeDescriptionCount,
+										  const VkVertexInputAttributeDescription2EXT* pVertexAttributeDescriptions) {
+	_bindings.clear();
+	_bindings.reserve(vertexBindingDescriptionCount);
+	for (uint32_t i = 0; i < vertexBindingDescriptionCount; i++) {
+		const auto& vb = pVertexBindingDescriptions[i];
+		_bindings.push_back({ vb.binding, vb.stride, vb.divisor, (uint32_t)vb.inputRate });
+	}
+
+	_attributes.clear();
+	_attributes.reserve(vertexAttributeDescriptionCount);
+	for (uint32_t i = 0; i < vertexAttributeDescriptionCount; i++) {
+		const auto& va = pVertexAttributeDescriptions[i];
+		_attributes.push_back({ va.location, va.binding, (uint32_t)va.format, va.offset });
+	}
+
+	auto& rsVI = cmdBuff->_shaderObjectRecordState.vertexInput;
+	memset(&rsVI, 0, sizeof(rsVI));
+	rsVI.bindingCount = std::min((uint32_t)_bindings.size(), kMVKMaxVertexInputBindingCount);
+	rsVI.attributeCount = std::min((uint32_t)_attributes.size(), kMVKMaxVertexInputAttributeCount);
+	for (uint32_t i = 0; i < rsVI.bindingCount; i++) { rsVI.bindings[i] = _bindings[i]; }
+	for (uint32_t i = 0; i < rsVI.attributeCount; i++) { rsVI.attributes[i] = _attributes[i]; }
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetVertexInput::encode(MVKCommandEncoder* cmdEncoder) {
+	// Zeroed so that the unused tail compares equal between two calls that set the same layout.
+	MVKDynamicVertexInput vtxInput;
+	memset(&vtxInput, 0, sizeof(vtxInput));
+	vtxInput.bindingCount = std::min((uint32_t)_bindings.size(), kMVKMaxVertexInputBindingCount);
+	vtxInput.attributeCount = std::min((uint32_t)_attributes.size(), kMVKMaxVertexInputAttributeCount);
+	for (uint32_t i = 0; i < vtxInput.bindingCount; i++) { vtxInput.bindings[i] = _bindings[i]; }
+	for (uint32_t i = 0; i < vtxInput.attributeCount; i++) { vtxInput.attributes[i] = _attributes[i]; }
+	vtxInput.stridesFromVertexBuffers = 0;		// This call is now the most recent to set the stride.
+
+	cmdEncoder->getState().setVertexInput(vtxInput);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetRasterizationSamples
+
+void MVKCmdSetRasterizationSamples::encode(MVKCommandEncoder* cmdEncoder) {
+	mvkSetDynamicPipelineState(cmdEncoder, cmdEncoder->getState().dynamicPipelineState().rasterizationSamples, _value);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetAlphaToCoverageEnable
+
+void MVKCmdSetAlphaToCoverageEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	mvkSetDynamicPipelineState(cmdEncoder, cmdEncoder->getState().dynamicPipelineState().alphaToCoverageEnable, _value ? 1 : 0);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetAlphaToOneEnable
+
+void MVKCmdSetAlphaToOneEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	mvkSetDynamicPipelineState(cmdEncoder, cmdEncoder->getState().dynamicPipelineState().alphaToOneEnable, _value ? 1 : 0);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetLogicOpEnable
+
+void MVKCmdSetLogicOpEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	mvkSetDynamicPipelineState(cmdEncoder, cmdEncoder->getState().dynamicPipelineState().logicOpEnable, _value ? 1 : 0);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetLogicOp
+
+void MVKCmdSetLogicOp::encode(MVKCommandEncoder* cmdEncoder) {
+	mvkSetDynamicPipelineState(cmdEncoder, cmdEncoder->getState().dynamicPipelineState().logicOp, _value);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetTessellationDomainOrigin
+
+void MVKCmdSetTessellationDomainOrigin::encode(MVKCommandEncoder* cmdEncoder) {
+	mvkSetDynamicPipelineState(cmdEncoder, cmdEncoder->getState().dynamicPipelineState().domainOrigin, _value);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthClipNegativeOneToOne
+
+void MVKCmdSetDepthClipNegativeOneToOne::encode(MVKCommandEncoder* cmdEncoder) {
+	mvkSetDynamicPipelineState(cmdEncoder, cmdEncoder->getState().dynamicPipelineState().negativeOneToOne, _value ? 1 : 0);
+	// A shader that maps the convention for itself reads it from here rather than from the
+	// pipeline it was compiled into.
+	cmdEncoder->getState().setGraphicsDepthClipNegativeOneToOne(_value);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetLineStippleEnable
+
+void MVKCmdSetLineStippleEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	// Metal has no line stipple, so MoltenVK reports the feature unsupported and only VK_FALSE
+	// is a legal value here. Nothing needs recording, but the entry point must exist because
+	// enabling shader objects makes every dynamic state setter callable.
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetColorBlendEnable
+
+VkResult MVKCmdSetColorBlendEnable::setContent(MVKCommandBuffer* cmdBuff,
+											   uint32_t firstAttachment,
+											   uint32_t attachmentCount,
+											   const VkBool32* pValues) {
+	_firstAttachment = firstAttachment;
+	_values.clear();
+	_values.reserve(attachmentCount);
+	auto& rs = cmdBuff->_shaderObjectRecordState.pipelineState;
+	for (uint32_t i = 0; i < attachmentCount; i++) {
+		_values.push_back(pValues[i]);
+		if (firstAttachment + i < kMVKMaxColorAttachmentCount) { rs.blendAttachments[firstAttachment + i].blendEnable = pValues[i]; }
+	}
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetColorBlendEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	auto& dps = cmdEncoder->getState().dynamicPipelineState();
+	for (uint32_t i = 0; i < _values.size(); i++) {
+		uint32_t attIdx = _firstAttachment + i;
+		if (attIdx >= kMVKMaxColorAttachmentCount) { break; }
+		mvkSetDynamicPipelineState(cmdEncoder, dps.blendAttachments[attIdx].blendEnable, _values[i]);
+	}
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetColorBlendEquation
+
+VkResult MVKCmdSetColorBlendEquation::setContent(MVKCommandBuffer* cmdBuff,
+												 uint32_t firstAttachment,
+												 uint32_t attachmentCount,
+												 const VkColorBlendEquationEXT* pValues) {
+	_firstAttachment = firstAttachment;
+	_values.clear();
+	_values.reserve(attachmentCount);
+	auto& rs = cmdBuff->_shaderObjectRecordState.pipelineState;
+	for (uint32_t i = 0; i < attachmentCount; i++) {
+		_values.push_back(pValues[i]);
+		if (firstAttachment + i < kMVKMaxColorAttachmentCount) {
+			auto& ba = rs.blendAttachments[firstAttachment + i];
+			ba.srcColorBlendFactor = pValues[i].srcColorBlendFactor; ba.dstColorBlendFactor = pValues[i].dstColorBlendFactor; ba.colorBlendOp = pValues[i].colorBlendOp;
+			ba.srcAlphaBlendFactor = pValues[i].srcAlphaBlendFactor; ba.dstAlphaBlendFactor = pValues[i].dstAlphaBlendFactor; ba.alphaBlendOp = pValues[i].alphaBlendOp;
+		}
+	}
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetColorBlendEquation::encode(MVKCommandEncoder* cmdEncoder) {
+	auto& dps = cmdEncoder->getState().dynamicPipelineState();
+	for (uint32_t i = 0; i < _values.size(); i++) {
+		uint32_t attIdx = _firstAttachment + i;
+		if (attIdx >= kMVKMaxColorAttachmentCount) { break; }
+		auto& ba = dps.blendAttachments[attIdx];
+		mvkSetDynamicPipelineState(cmdEncoder, ba.srcColorBlendFactor, _values[i].srcColorBlendFactor);
+		mvkSetDynamicPipelineState(cmdEncoder, ba.dstColorBlendFactor, _values[i].dstColorBlendFactor);
+		mvkSetDynamicPipelineState(cmdEncoder, ba.colorBlendOp,        _values[i].colorBlendOp);
+		mvkSetDynamicPipelineState(cmdEncoder, ba.srcAlphaBlendFactor, _values[i].srcAlphaBlendFactor);
+		mvkSetDynamicPipelineState(cmdEncoder, ba.dstAlphaBlendFactor, _values[i].dstAlphaBlendFactor);
+		mvkSetDynamicPipelineState(cmdEncoder, ba.alphaBlendOp,        _values[i].alphaBlendOp);
+	}
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetColorWriteMask
+
+VkResult MVKCmdSetColorWriteMask::setContent(MVKCommandBuffer* cmdBuff,
+											 uint32_t firstAttachment,
+											 uint32_t attachmentCount,
+											 const VkColorComponentFlags* pValues) {
+	_firstAttachment = firstAttachment;
+	_values.clear();
+	_values.reserve(attachmentCount);
+	auto& rs = cmdBuff->_shaderObjectRecordState.pipelineState;
+	for (uint32_t i = 0; i < attachmentCount; i++) {
+		_values.push_back(pValues[i]);
+		if (firstAttachment + i < kMVKMaxColorAttachmentCount) { rs.blendAttachments[firstAttachment + i].colorWriteMask = pValues[i]; }
+	}
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetColorWriteMask::encode(MVKCommandEncoder* cmdEncoder) {
+	auto& dps = cmdEncoder->getState().dynamicPipelineState();
+	for (uint32_t i = 0; i < _values.size(); i++) {
+		uint32_t attIdx = _firstAttachment + i;
+		if (attIdx >= kMVKMaxColorAttachmentCount) { break; }
+		mvkSetDynamicPipelineState(cmdEncoder, dps.blendAttachments[attIdx].colorWriteMask, _values[i]);
+	}
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetSampleMask
+
+VkResult MVKCmdSetSampleMask::setContent(MVKCommandBuffer* cmdBuff,
+										 VkSampleCountFlagBits samples,
+										 const VkSampleMask* pSampleMask) {
+	// Metal carries a single 32-bit sample mask, and MoltenVK supports at most 32 samples,
+	// so only the first word of the Vulkan array can ever be meaningful.
+	_sampleMask = pSampleMask ? pSampleMask[0] : ~0u;
+	cmdBuff->_shaderObjectRecordState.pipelineState.sampleMask = _sampleMask;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetSampleMask::encode(MVKCommandEncoder* cmdEncoder) {
+	mvkSetDynamicPipelineState(cmdEncoder, cmdEncoder->getState().dynamicPipelineState().sampleMask, _sampleMask);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetColorWriteEnable
+
+// VK_EXT_color_write_enable is not advertised, because turning writes off for an attachment means
+// rebuilding a Metal pipeline, which only the shader object path can do. The command is reachable
+// through VK_EXT_shader_object, where it does take effect.
+VkResult MVKCmdSetColorWriteEnable::setContent(MVKCommandBuffer* cmdBuff,
+											   uint32_t attachmentCount,
+											   const VkBool32* pColorWriteEnables) {
+	_values.clear();
+	_values.reserve(attachmentCount);
+	auto& rs = cmdBuff->_shaderObjectRecordState.pipelineState;
+	for (uint32_t i = 0; i < attachmentCount; i++) {
+		_values.push_back(pColorWriteEnables[i]);
+		if (i < kMVKMaxColorAttachmentCount) { rs.colorWriteEnables[i] = pColorWriteEnables[i]; }
+	}
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetColorWriteEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	auto& dps = cmdEncoder->getState().dynamicPipelineState();
+	for (uint32_t i = 0; i < _values.size() && i < kMVKMaxColorAttachmentCount; i++) {
+		mvkSetDynamicPipelineState(cmdEncoder, dps.colorWriteEnables[i], _values[i]);
+	}
+}
+
+
+#pragma mark -
+#pragma mark Record-time shadow for shader object prefetch
+
+// Each setter also writes the value into the command buffer's record-time shadow, so that a
+// draw recorded afterwards can start building its pipeline before the command buffer is
+// submitted. The encoder keeps its own authoritative copy, written when the command encodes.
+
+VkResult MVKCmdSetRasterizationSamples::setContent(MVKCommandBuffer* cmdBuff, VkSampleCountFlagBits value) {
+	auto& rs = cmdBuff->_shaderObjectRecordState.pipelineState;
+	rs.rasterizationSamples = value;
+	return MVKSingleValueCommand<VkSampleCountFlagBits>::setContent(cmdBuff, value);
+}
+
+VkResult MVKCmdSetAlphaToCoverageEnable::setContent(MVKCommandBuffer* cmdBuff, VkBool32 value) {
+	auto& rs = cmdBuff->_shaderObjectRecordState.pipelineState;
+	rs.alphaToCoverageEnable = value ? 1 : 0;
+	return MVKSingleValueCommand<VkBool32>::setContent(cmdBuff, value);
+}
+
+VkResult MVKCmdSetAlphaToOneEnable::setContent(MVKCommandBuffer* cmdBuff, VkBool32 value) {
+	auto& rs = cmdBuff->_shaderObjectRecordState.pipelineState;
+	rs.alphaToOneEnable = value ? 1 : 0;
+	return MVKSingleValueCommand<VkBool32>::setContent(cmdBuff, value);
+}
+
+VkResult MVKCmdSetLogicOpEnable::setContent(MVKCommandBuffer* cmdBuff, VkBool32 value) {
+	auto& rs = cmdBuff->_shaderObjectRecordState.pipelineState;
+	rs.logicOpEnable = value ? 1 : 0;
+	return MVKSingleValueCommand<VkBool32>::setContent(cmdBuff, value);
+}
+
+VkResult MVKCmdSetLogicOp::setContent(MVKCommandBuffer* cmdBuff, VkLogicOp value) {
+	auto& rs = cmdBuff->_shaderObjectRecordState.pipelineState;
+	rs.logicOp = value;
+	return MVKSingleValueCommand<VkLogicOp>::setContent(cmdBuff, value);
+}
+
+VkResult MVKCmdSetTessellationDomainOrigin::setContent(MVKCommandBuffer* cmdBuff, VkTessellationDomainOrigin value) {
+	auto& rs = cmdBuff->_shaderObjectRecordState.pipelineState;
+	rs.domainOrigin = value;
+	return MVKSingleValueCommand<VkTessellationDomainOrigin>::setContent(cmdBuff, value);
+}
+
+VkResult MVKCmdSetDepthClipNegativeOneToOne::setContent(MVKCommandBuffer* cmdBuff, VkBool32 value) {
+	auto& rs = cmdBuff->_shaderObjectRecordState.pipelineState;
+	rs.negativeOneToOne = value ? 1 : 0;
+	return MVKSingleValueCommand<VkBool32>::setContent(cmdBuff, value);
+}
+
+VkResult MVKCmdSetPrimitiveTopology::setContent(MVKCommandBuffer* cmdBuff, VkPrimitiveTopology value) {
+	auto& rs = cmdBuff->_shaderObjectRecordState.pipelineState;
+	rs.topology = mvkShaderObjectKeyTopology(value);
+	return MVKSingleValueCommand<VkPrimitiveTopology>::setContent(cmdBuff, value);
 }

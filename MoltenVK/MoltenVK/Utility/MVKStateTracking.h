@@ -20,6 +20,8 @@
 
 #include "MVKBitArray.h"
 
+class MVKPixelFormats;
+
 #pragma mark -
 #pragma mark MVKMTLDepthStencilDescriptorData
 
@@ -173,6 +175,9 @@ enum class MVKNonVolatileImplicitBuffer : uint32_t {
 	DynamicOffset,
 	ViewRange,
 	EmulatedReversedDepthViewport,
+	DepthClip,
+	BlendState,
+	VertexPull,
 	Count
 };
 
@@ -183,6 +188,9 @@ enum class MVKImplicitBuffer : uint32_t {
 	DynamicOffset = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::DynamicOffset),
 	ViewRange     = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::ViewRange),
 	EmulatedReversedDepthViewport = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::EmulatedReversedDepthViewport),
+	DepthClip     = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::DepthClip),
+	BlendState    = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::BlendState),
+	VertexPull    = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::VertexPull),
 
 	// Volatile implicit buffers
 	// These buffers are updated per draw call, and are therefore always considered dirty
@@ -359,5 +367,137 @@ struct MVKRenderStateData {
 	}
 	void setLineRasterizationMode(VkLineRasterizationMode mode) {
 		lineRasterizationMode = mvkLineRasterizationModeFromVkLineRasterizationMode(mode);
+	}
+};
+
+
+#pragma mark -
+#pragma mark Shader object state
+
+/** A vertex buffer binding set by vkCmdSetVertexInputEXT. */
+struct MVKDynamicVertexBinding {
+	uint32_t binding;
+	uint32_t stride;
+	uint32_t divisor;
+	uint32_t inputRate;
+};
+
+/** A vertex attribute set by vkCmdSetVertexInputEXT. */
+struct MVKDynamicVertexAttribute {
+	uint32_t location;
+	uint32_t binding;
+	uint32_t format;
+	uint32_t offset;
+};
+
+/**
+ * The vertex input state set by vkCmdSetVertexInputEXT.
+ *
+ * Metal bakes the vertex layout into a MTLRenderPipelineState, so this is held as plain data
+ * until a draw, and contributes to the identity of the pipeline built to satisfy that draw.
+ */
+struct MVKDynamicVertexInput {
+	MVKDynamicVertexBinding bindings[kMVKMaxVertexInputBindingCount];
+	MVKDynamicVertexAttribute attributes[kMVKMaxVertexInputAttributeCount];
+	uint32_t bindingCount = 0;
+	uint32_t attributeCount = 0;
+	/**
+	 * Whether a pipeline built for this state takes the stride from the vertex buffer bindings
+	 * rather than from the layout baked into it.
+	 *
+	 * Set when vkCmdBindVertexBuffers2 supplied the stride more recently than
+	 * vkCmdSetVertexInputEXT, since Vulkan lets the later call win, and also set when the key
+	 * has had its strides canonicalized so that draws differing only in stride share a
+	 * pipeline. Part of the pipeline key, because it decides how the pipeline is built.
+	 */
+	uint32_t stridesFromVertexBuffers = 0;
+};
+
+/**
+ * Returns the control word a vertex shader that loads its own attributes decodes this format
+ * by, or zero for a format it cannot decode. See SPIRVVertexPulling.h.
+ */
+uint32_t mvkVertexPullFormatControl(VkFormat format);
+
+/**
+ * Returns whether every attribute in this vertex layout can be loaded by such a shader, which
+ * needs each format to be one it decodes, and one the device offers for vertex buffers.
+ */
+bool mvkCanPullVertexInput(const MVKDynamicVertexInput& vertexInput, MVKPixelFormats* pixFmts);
+
+/**
+ * Reduces a primitive topology to the value a shader object pipeline is keyed and built on.
+ *
+ * The pipeline only ever consults the topology class, plus whether it is a triangle fan, which
+ * the draw path emulates. Every list, strip and adjacency variant within a class therefore
+ * shares one pipeline, instead of each forcing its own Metal build.
+ */
+/**
+ * Placed in a shader object pipeline key in place of the topology, where the pipeline needs no
+ * topology class at all and therefore serves points, lines and triangles alike.
+ */
+static constexpr VkPrimitiveTopology kMVKTopologyClassNotNeeded = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+
+static inline VkPrimitiveTopology mvkShaderObjectKeyTopology(VkPrimitiveTopology t) {
+	switch (t) {
+		case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
+			return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+		case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
+		case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP:
+		case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
+		case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
+			return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
+		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:
+		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
+		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
+			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		default:
+			return t;		// Triangle fan and patch list carry meaning of their own.
+	}
+}
+
+/**
+ * The state that Vulkan allows to be set dynamically but Metal bakes into a MTLRenderPipelineState.
+ *
+ * None of this can be changed on an already built Metal pipeline, so a draw that uses shader
+ * objects builds one from these values, and draws that agree on all of them share it. Everything
+ * is plain data, and the constructor clears the whole struct before applying the Vulkan defaults,
+ * so the bytes can be hashed and compared directly.
+ */
+struct MVKDynamicPipelineState {
+	VkPipelineColorBlendAttachmentState blendAttachments[kMVKMaxColorAttachmentCount];
+	VkBool32 colorWriteEnables[kMVKMaxColorAttachmentCount];
+	uint32_t sampleMask;
+	uint32_t rasterizationSamples;
+	uint32_t logicOp;
+	uint32_t domainOrigin;
+	uint32_t topology;
+	uint8_t logicOpEnable;
+	uint8_t alphaToCoverageEnable;
+	uint8_t alphaToOneEnable;
+	uint8_t negativeOneToOne;
+	/**
+	 * Whether the fragment shader carries the fragment output operations for itself, reading the
+	 * state for them from a buffer.
+	 *
+	 * This is the only thing blending, the write masks, the sample mask and the alpha operations
+	 * leave in the key. It is set for a draw that departs from writing every channel straight
+	 * through at full coverage, and cleared for one that does not, because a shader that reads the
+	 * attachment and writes a sample mask gives up hidden surface removal and the early depth
+	 * test, which opaque geometry must not pay for.
+	 */
+	uint8_t blendInShader;
+
+	MVKDynamicPipelineState() {
+		memset(this, 0, sizeof(*this));
+		for (auto& ba : blendAttachments) { ba.colorWriteMask = (VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+															     VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT); }
+		for (auto& cwe : colorWriteEnables) { cwe = VK_TRUE; }
+		sampleMask = ~0u;
+		rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		logicOp = VK_LOGIC_OP_COPY;
+		domainOrigin = VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT;
+		topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	}
 };
