@@ -17,6 +17,7 @@
  */
 
 #include "MVKPixelFormats.h"
+#include "MVKVideo.h"
 #include "MVKDevice.h"
 #include "MVKFoundation.h"
 #include <string>
@@ -1583,6 +1584,16 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc, const MVKMTLD
     if (chromaSubsamplingPlaneCount > 1) {
         enableFormatFeatures(MultiPlanar, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
     }
+
+	// NV12 is the picture format of video encode and decode
+	if (vkDesc.vkFormat == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM && mvkVideoEncodeH264Available()) {
+		mvkEnableFlags(vkProps.optimalTilingFeatures, (VK_FORMAT_FEATURE_2_VIDEO_ENCODE_INPUT_BIT_KHR |
+													   VK_FORMAT_FEATURE_2_VIDEO_ENCODE_DPB_BIT_KHR));
+	}
+	if (vkDesc.vkFormat == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM && mvkVideoDecodeH264Available()) {
+		mvkEnableFlags(vkProps.optimalTilingFeatures, (VK_FORMAT_FEATURE_2_VIDEO_DECODE_OUTPUT_BIT_KHR |
+													   VK_FORMAT_FEATURE_2_VIDEO_DECODE_DPB_BIT_KHR));
+	}
 
 	// Optimal tiling features
 	enableFormatFeatures(Read, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);

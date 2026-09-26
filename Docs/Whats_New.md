@@ -22,6 +22,10 @@ Released TBD
   - `VK_EXT_multi_draw`
   - `VK_EXT_nested_command_buffer`
   - `VK_EXT_ycbcr_2plane_444_formats`
+  - `VK_KHR_video_queue`, `VK_KHR_video_encode_queue`, `VK_KHR_video_encode_h264`,
+    `VK_KHR_video_decode_queue` and `VK_KHR_video_decode_h264`, over VideoToolbox:
+    H.264, 8-bit 4:2:0 `VK_FORMAT_G8_B8R8_2PLANE_420_UNORM`, progressive only,
+    on one video queue family. Bitstream buffers must use host-visible memory.
 - Fix inconsistent image `memoryTypeBits` when `VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT` is used.
 - Fix shader stage interface matching of 16-bit floating point variables.
 - Fix spurious warning about blending on attachment formats that do not support it.

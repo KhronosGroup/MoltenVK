@@ -599,6 +599,9 @@ public:
 	/** Return the underlying image. */
 	MVKImage* getImage() { return _image; }
 
+	/** The image subresources this view covers. */
+	const VkImageSubresourceRange& getSubresourceRange() const { return _subresourceRange; }
+
 #pragma mark Metal
 
 	/** Returns the Metal texture underlying this image view.  */
