@@ -1327,9 +1327,15 @@ void MVKCommandEncoder::resetQueries(MVKQueryPool* pQueryPool, uint32_t firstQue
 // Marks the specified queries as activated
 void MVKCommandEncoder::addActivatedQueries(MVKQueryPool* pQueryPool, uint32_t query, uint32_t queryCount) {
     if ( !_pActivatedQueries ) { _pActivatedQueries = new MVKActivatedQueries(); }
+    // The Metal completion handler may run after the Vulkan submission signals.
+    // Keep each pool alive until the handler has finished marking its queries.
+    auto [it, inserted] = _pActivatedQueries->try_emplace(pQueryPool);
+    if (inserted) {
+        pQueryPool->retain();
+    }
     uint32_t endQuery = query + queryCount;
     while (query < endQuery) {
-        (*_pActivatedQueries)[pQueryPool].push_back(query++);
+        it->second.push_back(query++);
     }
 }
 
@@ -1342,6 +1348,7 @@ void MVKCommandEncoder::finishQueries() {
     [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
         for (auto& qryPair : *pAQs) {
             qryPair.first->finishQueries(qryPair.second.contents());
+            qryPair.first->release();
         }
         delete pAQs;
     }];
