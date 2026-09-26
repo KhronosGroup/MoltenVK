@@ -328,18 +328,20 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 			}
 			case VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT: {
 				auto* pMemHostPtrInfo = (VkImportMemoryHostPointerInfoEXT*)next;
-				if (mvkIsAnyFlagEnabled(_vkMemPropFlags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
-					switch (pMemHostPtrInfo->handleType) {
-						case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
-						case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT:
-							_pHostMemory = pMemHostPtrInfo->pHostPointer;
-							_isHostMemImported = true;
-							break;
-						default:
-							break;
-					}
-				} else {
-					setConfigurationResult(reportError(VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR, "vkAllocateMemory(): Imported memory must be host-visible."));
+				switch (pMemHostPtrInfo->handleType) {
+					case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
+					case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT:
+						_pHostMemory = pMemHostPtrInfo->pHostPointer;
+						_isHostMemImported = true;
+						// Host memory can only be wrapped in a shared MTLBuffer. As with an imported
+						// MTLBuffer, that overrides the storage mode of a non-host-visible memory type.
+						if ( !mvkIsAnyFlagEnabled(_vkMemPropFlags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ) {
+							_mtlStorageMode = MTLStorageModeShared;
+							_mtlCPUCacheMode = MTLCPUCacheModeDefaultCache;
+						}
+						break;
+					default:
+						break;
 				}
 				break;
 			}
@@ -483,14 +485,17 @@ void MVKDeviceMemory::initExternalMemory(MVKImage* dedicatedImage, bool wantsHea
 			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkAllocateMemory(): External memory requires a dedicated VkImage when a export operation will be done."));
 			return;
 		}
-		auto& xmProps = getPhysicalDevice()->getExternalImageProperties(dedicatedImage->getVkFormat(), VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT);
-		// Not all texture formats allow to exporting. Vulkan formats that are emulated through the use of multiple MTLTextures
-		// cannot be exported as a single MTLTexture, and therefore will have exporting forbidden.
-		if (!(xmProps.externalMemoryFeatures & VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT)) {
-			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkAllocateMemory(): VkImage's VkFormat does not allow exports."));
-		} else {
-			// Make sure allocation happens at creation time since we may need to export the memory before usage
-			_mtlTexture = [dedicatedImage->getMTLTexture() retain];
+		// An imported texture is already the memory; only an exportable one is made here.
+		if ( !_mtlTexture ) {
+			auto& xmProps = getPhysicalDevice()->getExternalImageProperties(dedicatedImage->getVkFormat(), VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT);
+			// Not all texture formats allow to exporting. Vulkan formats that are emulated through the use of multiple MTLTextures
+			// cannot be exported as a single MTLTexture, and therefore will have exporting forbidden.
+			if (!(xmProps.externalMemoryFeatures & VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT)) {
+				setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkAllocateMemory(): VkImage's VkFormat does not allow exports."));
+			} else {
+				// Make sure allocation happens at creation time since we may need to export the memory before usage
+				_mtlTexture = [dedicatedImage->getMTLTexture() retain];
+			}
 		}
 		requiresDedicated = true;
 	}
@@ -511,7 +516,10 @@ MVKDeviceMemory::~MVKDeviceMemory() {
 	if (_externalMemoryHandleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT) {
 		[_mtlTexture release];
 		_mtlTexture = nil;
-	} else if (id<MTLBuffer> buf = _mtlBuffer) {
+	}
+
+	// Memory holding a texture can hold a buffer as well, when it is host coherent.
+	if (id<MTLBuffer> buf = _mtlBuffer) {
 		_mtlBuffer = nil;
 		_device->removeResidency(buf);
 		_device->getLiveResources().remove(buf);

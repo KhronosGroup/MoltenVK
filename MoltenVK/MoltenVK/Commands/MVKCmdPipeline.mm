@@ -104,6 +104,9 @@ VkResult MVKCmdPipelineBarrier<N>::setContent(MVKCommandBuffer* cmdBuff,
 	for (uint32_t i = 0; i < imageMemoryBarrierCount; i++) {
 		_barriers.emplace_back(pImageMemoryBarriers[i], srcStageMask, dstStageMask);
 	}
+	if (_barriers.empty()) {
+		_barriers.emplace_back(srcStageMask, dstStageMask);
+	}
 
 	return VK_SUCCESS;
 }
