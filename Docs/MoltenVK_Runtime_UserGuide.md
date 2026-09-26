@@ -335,6 +335,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_debug_report`
 - `VK_EXT_debug_utils`
 - `VK_EXT_depth_clip_control`
+- `VK_EXT_depth_clip_enable`
 - `VK_EXT_descriptor_indexing`
   - *Initial release limited to Metal Tier 1: 96/128 textures,
     16 samplers, except macOS 11.0 (Big Sur) or later, or on older versions of macOS using

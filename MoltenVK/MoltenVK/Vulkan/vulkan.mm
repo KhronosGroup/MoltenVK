@@ -4105,7 +4105,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthClampEnableEXT(
 	VkBool32                                    depthClampEnable) {
 
     MVKTraceVulkanCallStart();
-	MVKAddCmd(SetDepthClipEnable, commandBuffer, !depthClampEnable);
+	MVKAddCmd(SetDepthClampEnable, commandBuffer, depthClampEnable);
     MVKTraceVulkanCallEnd();
 }
 

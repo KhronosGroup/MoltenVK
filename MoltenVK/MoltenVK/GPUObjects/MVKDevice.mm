@@ -682,6 +682,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				depthFeatures->depthClipControl = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT: {
+				auto* depthFeatures = (VkPhysicalDeviceDepthClipEnableFeaturesEXT*)next;
+				depthFeatures->depthClipEnable = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
 				auto* extDynState = (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT*)next;
 				extDynState->extendedDynamicState = true;
@@ -2453,6 +2458,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	// Start with all Metal features cleared
 	mvkClear(&_metalFeatures);
 
+#if MVK_USE_METAL_PRIVATE_API
+	_supportsMetalOpenGLMode = [[MTLRenderPassDescriptor renderPassDescriptor]
+		respondsToSelector:NSSelectorFromString(@"setOpenGLModeEnabled:")];
+#endif
+
 	_metalFeatures.hostMemoryPageSize = mvkGetHostMemoryPageSize();
 
 	_metalFeatures.maxPerStageBufferCount = 31;
@@ -3366,6 +3376,10 @@ bool MVKPhysicalDevice::isIntelGPU() const {
 
 bool MVKPhysicalDevice::isMacGPUFamily1() const {
 	return !_gpuCapabilities.isAppleGPU && _gpuCapabilities.supportsMac1 && !_gpuCapabilities.supportsMac2;
+}
+
+bool MVKPhysicalDevice::canUseMetalOpenGLMode() const {
+	return _mvkInstance->getMVKConfig().useMetalPrivateAPI && _supportsMetalOpenGLMode;
 }
 
 bool MVKPhysicalDevice::shouldEmulateReversedDepthViewport() const {

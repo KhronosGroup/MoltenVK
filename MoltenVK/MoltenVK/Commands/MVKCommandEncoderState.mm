@@ -706,6 +706,14 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 				                  idx,
 				                  binder);
 				break;
+			case MVKNonVolatileImplicitBuffer::DepthClip:
+				bindImmediateData(encoder,
+				                  mvkEncoder,
+				                  reinterpret_cast<const uint8_t*>(&implicitBufferData.depthClipState),
+				                  sizeof(implicitBufferData.depthClipState),
+				                  idx,
+				                  binder);
+				break;
 			case MVKNonVolatileImplicitBuffer::Count:
 				assert(0);
 				break;
@@ -1099,14 +1107,12 @@ void MVKMetalGraphicsCommandEncoderState::changePipeline(MVKGraphicsPipeline* fr
 		markDirty(to->getStaticStateFlags());
 }
 
-static constexpr MVKRenderStateFlags FlagsViewportScissor {
-	MVKRenderStateFlag::Viewports,
+static constexpr MVKRenderStateFlags FlagsScissor {
 	MVKRenderStateFlag::Scissors,
 };
 
 static constexpr MVKRenderStateFlags FlagsMetalState {
 	MVKRenderStateFlag::BlendConstants,
-	MVKRenderStateFlag::DepthClipEnable,
 	MVKRenderStateFlag::FrontFace,
 	MVKRenderStateFlag::StencilReference,
 #if MVK_USE_METAL_PRIVATE_API
@@ -1115,7 +1121,7 @@ static constexpr MVKRenderStateFlags FlagsMetalState {
 #endif
 };
 
-static constexpr MVKRenderStateFlags FlagsHandledByBindStateData = FlagsViewportScissor | FlagsMetalState;
+static constexpr MVKRenderStateFlags FlagsHandledByBindStateData = FlagsScissor | FlagsMetalState;
 
 static bool shouldEmulateReversedDepthViewport(const MVKPhysicalDevice* physicalDevice) {
 	return physicalDevice->shouldEmulateReversedDepthViewport();
@@ -1126,41 +1132,8 @@ void MVKMetalGraphicsCommandEncoderState::bindStateData(
   MVKCommandEncoder& mvkEncoder,
   const MVKRenderStateData& data,
   MVKRenderStateFlags flags,
-  const VkViewport* viewports,
   const VkRect2D* scissors) {
-	if (flags.hasAny(FlagsViewportScissor)) {
-		if (flags.has(MVKRenderStateFlag::Viewports) &&
-		  (_numViewports != data.numViewports || !mvkAreEqual(_viewports, viewports, data.numViewports))) {
-			_numViewports = data.numViewports;
-			mvkCopy(_viewports, viewports, data.numViewports);
-			MTLViewport mtlViewports[kMVKMaxViewportScissorCount];
-			uint32_t numViewports = data.numViewports;
-			uint32_t emulatedReversedDepthViewportMask = 0;
-			bool shouldEmulateReversedDepthViewports = shouldEmulateReversedDepthViewport(mvkEncoder.getDevice()->getPhysicalDevice());
-			for (uint32_t i = 0; i < numViewports; i++) {
-				mtlViewports[i].width = viewports[i].width;
-				mtlViewports[i].height = viewports[i].height;
-				mtlViewports[i].originX = viewports[i].x;
-				mtlViewports[i].originY = viewports[i].y;
-				bool isReversedDepthViewport = viewports[i].minDepth > viewports[i].maxDepth;
-				// Only reversed Vulkan depth ranges are emulated. Normal depth ranges are passed to Metal unchanged.
-				// The reversed range is swapped to preserve arbitrary Vulkan depth subranges after shader Z inversion.
-				if (shouldEmulateReversedDepthViewports && isReversedDepthViewport) {
-					emulatedReversedDepthViewportMask |= 1u << i;
-					mtlViewports[i].znear = viewports[i].maxDepth;
-					mtlViewports[i].zfar = viewports[i].minDepth;
-				} else {
-					mtlViewports[i].znear = viewports[i].minDepth;
-					mtlViewports[i].zfar = viewports[i].maxDepth;
-				}
-			}
-			mvkEncoder.getState().setGraphicsEmulatedReversedDepthViewportMask(emulatedReversedDepthViewportMask);
-			if (numViewports == 1) {
-				[encoder setViewport:mtlViewports[0]];
-			} else {
-				[encoder setViewports:mtlViewports count:numViewports];
-			}
-		}
+	if (flags.hasAny(FlagsScissor)) {
 		if (flags.has(MVKRenderStateFlag::Scissors) &&
 		  (_numScissors != data.numScissors || !mvkAreEqual(_scissors, scissors, data.numScissors))) {
 			if (!_flags.has(MVKMetalRenderEncoderStateFlag::RasterizationDisabledByScissor) || _numScissors != data.numScissors)
@@ -1175,13 +1148,6 @@ void MVKMetalGraphicsCommandEncoderState::bindStateData(
 			_blendConstants = data.blendConstants;
 			const float* c = data.blendConstants.float32;
 			[encoder setBlendColorRed:c[0] green:c[1] blue:c[2] alpha:c[3]];
-		}
-		if (flags.has(MVKRenderStateFlag::DepthClipEnable)) {
-			bool enable = data.enable.has(MVKRenderStateEnableFlag::DepthClamp);
-			if (_flags.has(MVKMetalRenderEncoderStateFlag::DepthClampEnable) != enable) {
-				_flags.flip(MVKMetalRenderEncoderStateFlag::DepthClampEnable);
-				[encoder setDepthClipMode:enable ? MTLDepthClipModeClamp : MTLDepthClipModeClip];
-			}
 		}
 		if (flags.has(MVKRenderStateFlag::FrontFace) && _frontFace != data.frontFace) {
 			_frontFace = data.frontFace;
@@ -1227,6 +1193,86 @@ void MVKMetalGraphicsCommandEncoderState::bindState(
 	const MVKRenderStateData& dynamicStateData = vk._renderState;
 #define PICK_STATE(x) (dynamicStateFlags.has(MVKRenderStateFlag::x) ? &dynamicStateData : &staticStateData)
 	// Handle anything that requires data from multiple (possibly different) sources out here
+	static constexpr MVKRenderStateFlags FlagsDepthClipClamp = {
+		MVKRenderStateFlag::Viewports,
+		MVKRenderStateFlag::DepthClampEnable,
+		MVKRenderStateFlag::DepthClipEnable,
+	};
+	if (anyStateNeeded.hasAny(FlagsDepthClipClamp)) {
+		_stateReady.addAll(anyStateNeeded & FlagsDepthClipClamp);
+
+		bool depthClamp = PICK_STATE(DepthClampEnable)->enable.has(MVKRenderStateEnableFlag::DepthClamp);
+		MVKDepthClipEnable depthClipEnable = PICK_STATE(DepthClipEnable)->depthClipEnable;
+		bool depthClip = mvkIsDepthClipEnabled(depthClipEnable, depthClamp);
+
+		// Metal supports either depth clipping or clamping. Emulate only the Vulkan
+		// combinations where both are disabled or both are enabled.
+		bool emulateViewportZ = !depthClamp && !depthClip;
+		bool emulateDepthClamp = depthClamp && depthClip;
+
+		bool metalDepthClamp = !depthClip;
+		if (_flags.has(MVKMetalRenderEncoderStateFlag::DepthClampEnable) != metalDepthClamp) {
+			_flags.flip(MVKMetalRenderEncoderStateFlag::DepthClampEnable);
+			[encoder setDepthClipMode:metalDepthClamp ? MTLDepthClipModeClamp : MTLDepthClipModeClip];
+		}
+
+		const MVKRenderStateData* viewportData = PICK_STATE(Viewports);
+		const VkViewport* viewports = dynamicStateFlags.has(MVKRenderStateFlag::Viewports) ? vk._viewports : pipeline->getViewports();
+		uint32_t numViewports = viewportData->numViewports;
+		_numViewports = numViewports;
+		mvkCopy(_viewports, viewports, numViewports);
+
+		MTLViewport mtlViewports[kMVKMaxViewportScissorCount];
+		MVKDepthClipState depthClipState;
+		depthClipState.emulateViewportZ = emulateViewportZ;
+		depthClipState.emulateDepthClamp = emulateDepthClamp;
+		uint32_t emulatedReversedDepthViewportMask = 0;
+		bool shouldEmulateReversedDepthViewports = shouldEmulateReversedDepthViewport(mvkEncoder.getDevice()->getPhysicalDevice());
+		for (uint32_t i = 0; i < numViewports; i++) {
+			const VkViewport& viewport = viewports[i];
+			mtlViewports[i].width = viewport.width;
+			mtlViewports[i].height = viewport.height;
+			mtlViewports[i].originX = viewport.x;
+			mtlViewports[i].originY = viewport.y;
+
+			if (emulateViewportZ) {
+				mtlViewports[i].znear = 0.0;
+				mtlViewports[i].zfar = 1.0;
+				depthClipState.viewportDepthRanges[i][0] = viewport.minDepth;
+				depthClipState.viewportDepthRanges[i][1] = viewport.maxDepth;
+			} else {
+				bool isReversedDepthViewport = viewport.minDepth > viewport.maxDepth;
+				if (shouldEmulateReversedDepthViewports && isReversedDepthViewport) {
+					emulatedReversedDepthViewportMask |= 1u << i;
+					mtlViewports[i].znear = viewport.maxDepth;
+					mtlViewports[i].zfar = viewport.minDepth;
+				} else {
+					mtlViewports[i].znear = viewport.minDepth;
+					mtlViewports[i].zfar = viewport.maxDepth;
+				}
+
+				if (emulateDepthClamp) {
+					depthClipState.viewportDepthRanges[i][0] = std::min(viewport.minDepth, viewport.maxDepth);
+					depthClipState.viewportDepthRanges[i][1] = std::max(viewport.minDepth, viewport.maxDepth);
+				}
+			}
+
+			// Metal OpenGL mode clips Z to [-W, W], so shaders expand Vulkan's [0, W]
+			// clip space to that range. Use the upper half of the Metal viewport depth
+			// range to preserve the original Vulkan window-space depth transform.
+			if (mvkEncoder.getDevice()->getPhysicalDevice()->canUseMetalOpenGLMode()) {
+				mtlViewports[i].znear = (mtlViewports[i].znear + mtlViewports[i].zfar) * 0.5;
+			}
+		}
+
+		mvkEncoder.getState().setGraphicsEmulatedReversedDepthViewportMask(emulatedReversedDepthViewportMask);
+		mvkEncoder.getState().setGraphicsDepthClipState(depthClipState);
+		if (numViewports == 1) {
+			[encoder setViewport:mtlViewports[0]];
+		} else {
+			[encoder setViewports:mtlViewports count:numViewports];
+		}
+	}
 
 	// Polygon mode and primitive topology need to be handled specially, as we implement point mode by switching the primitive topology
 	// Cull mode and discard both are specially handled only when using dynamic state
@@ -1389,10 +1435,10 @@ void MVKMetalGraphicsCommandEncoderState::bindState(
 	MVKRenderStateFlags handledByBindStateData = anyStateNeeded & FlagsHandledByBindStateData;
 	_stateReady.addAll(handledByBindStateData);
 	if (MVKRenderStateFlags neededStatic = handledByBindStateData & staticStateFlags; !neededStatic.empty()) {
-		bindStateData(encoder, mvkEncoder, staticStateData, neededStatic, pipeline->getViewports(), pipeline->getScissors());
+		bindStateData(encoder, mvkEncoder, staticStateData, neededStatic, pipeline->getScissors());
 	}
 	if (MVKRenderStateFlags neededDynamic = handledByBindStateData & dynamicStateFlags; !neededDynamic.empty()) {
-		bindStateData(encoder, mvkEncoder, dynamicStateData, neededDynamic, vk._viewports, vk._scissors);
+		bindStateData(encoder, mvkEncoder, dynamicStateData, neededDynamic, vk._scissors);
 	}
 
 	// Scissor can be affected by a number of things so do it at the end
@@ -1720,6 +1766,19 @@ void MVKCommandEncoderState::setGraphicsEmulatedReversedDepthViewportMask(uint32
 	}
 	if (changed) {
 		invalidateImplicitBuffer(*this, VK_PIPELINE_BIND_POINT_GRAPHICS, MVKNonVolatileImplicitBuffer::EmulatedReversedDepthViewport);
+	}
+}
+
+void MVKCommandEncoderState::setGraphicsDepthClipState(const MVKDepthClipState& depthClipState) {
+	bool changed = false;
+	for (auto& stageData : _vkGraphics._implicitBufferData) {
+		if (!mvkAreEqual(&stageData.depthClipState, &depthClipState)) {
+			stageData.depthClipState = depthClipState;
+			changed = true;
+		}
+	}
+	if (changed) {
+		invalidateImplicitBuffer(*this, VK_PIPELINE_BIND_POINT_GRAPHICS, MVKNonVolatileImplicitBuffer::DepthClip);
 	}
 }
 

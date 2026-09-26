@@ -364,10 +364,19 @@ void MVKCmdSetDepthWriteEnable::encode(MVKCommandEncoder* cmdEncoder) {
 
 
 #pragma mark -
+#pragma mark MVKCmdSetDepthClampEnable
+
+void MVKCmdSetDepthClampEnable::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::DepthClampEnable)._renderState.enable.set(MVKRenderStateEnableFlag::DepthClamp, _value);
+}
+
+
+#pragma mark -
 #pragma mark MVKCmdSetDepthClipEnable
 
 void MVKCmdSetDepthClipEnable::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::DepthClipEnable)._renderState.enable.set(MVKRenderStateEnableFlag::DepthClamp, !_value);
+	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::DepthClipEnable)._renderState.depthClipEnable =
+		_value ? MVKDepthClipEnable::Enabled : MVKDepthClipEnable::Disabled;
 }
 
 

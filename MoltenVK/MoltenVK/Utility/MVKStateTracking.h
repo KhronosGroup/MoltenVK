@@ -173,6 +173,7 @@ enum class MVKNonVolatileImplicitBuffer : uint32_t {
 	DynamicOffset,
 	ViewRange,
 	EmulatedReversedDepthViewport,
+	DepthClip,
 	Count
 };
 
@@ -183,6 +184,7 @@ enum class MVKImplicitBuffer : uint32_t {
 	DynamicOffset = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::DynamicOffset),
 	ViewRange     = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::ViewRange),
 	EmulatedReversedDepthViewport = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::EmulatedReversedDepthViewport),
+	DepthClip     = static_cast<uint32_t>(MVKNonVolatileImplicitBuffer::DepthClip),
 
 	// Volatile implicit buffers
 	// These buffers are updated per draw call, and are therefore always considered dirty
@@ -235,6 +237,7 @@ enum class MVKRenderStateFlag {
 	DepthBiasEnable,
 	DepthBounds,
 	DepthBoundsTestEnable,
+	DepthClampEnable,
 	DepthClipEnable,
 	DepthCompareOp,
 	DepthTestEnable,
@@ -278,6 +281,17 @@ enum class MVKRenderStateEnableFlag {
 };
 
 using MVKRenderStateEnableFlags = MVKFlagList<MVKRenderStateEnableFlag>;
+
+enum class MVKDepthClipEnable : uint8_t {
+	Disabled,
+	Enabled,
+	InverseDepthClamp,
+};
+
+static inline bool mvkIsDepthClipEnabled(MVKDepthClipEnable depthClipEnable, bool depthClampEnable) {
+	return depthClipEnable == MVKDepthClipEnable::Enabled ||
+	       (depthClipEnable == MVKDepthClipEnable::InverseDepthClamp && !depthClampEnable);
+}
 
 struct MVKDepthBias {
 	float depthBiasConstantFactor;
@@ -330,6 +344,7 @@ struct MVKRenderStateData {
 	MVKPolygonMode polygonMode = MVKPolygonMode::Fill;
 	MVKLineRasterizationMode lineRasterizationMode = MVKLineRasterizationMode::Default;
 	MVKRenderStateEnableFlags enable;
+	MVKDepthClipEnable depthClipEnable = MVKDepthClipEnable::InverseDepthClamp;
 	float lineWidth = 1;
 	MVKColor32 blendConstants = {};
 	MVKDepthBias depthBias = {};

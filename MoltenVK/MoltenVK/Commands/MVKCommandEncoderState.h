@@ -120,11 +120,20 @@ struct MVKVulkanSharedCommandEncoderState {
 	MVKSmallVector<uint8_t, 128> _pushConstants;
 };
 
+struct MVKDepthClipState {
+	uint32_t emulateViewportZ = 0;
+	uint32_t emulateDepthClamp = 0;
+	float viewportDepthRanges[kMVKMaxViewportScissorCount][2] = {};
+};
+
+static_assert(sizeof(MVKDepthClipState) == 136, "MVKDepthClipState must match the SPIRV-Cross MSL layout.");
+
 struct MVKImplicitBufferData {
 	MVKSmallVector<uint32_t, 8> textureSwizzles;
 	MVKSmallVector<uint32_t, 8> bufferSizes;
 	MVKSmallVector<uint32_t, 8> dynamicOffsets;
 	uint32_t emulatedReversedDepthViewportMask = 0;
+	MVKDepthClipState depthClipState;
 };
 
 enum class MVKResourceUsageStages : uint8_t {
@@ -370,7 +379,7 @@ struct MVKMetalGraphicsCommandEncoderState : public MVKMetalGraphicsCommandEncod
 	void bindVertexSampler(id<MTLRenderCommandEncoder> encoder, id<MTLSamplerState> sampler, NSUInteger index);
 	template <typename T> void bindFragmentStructBytes(id<MTLComputeCommandEncoder> encoder, const T& t, NSUInteger index) { bindFragmentBytes(encoder, &t, sizeof(T), index); }
 	template <typename T> void bindVertexStructBytes(id<MTLComputeCommandEncoder> encoder, const T& t, NSUInteger index) { bindVertexBytes(encoder, &t, sizeof(T), index); }
-	void bindStateData(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKRenderStateData& data, MVKRenderStateFlags flags, const VkViewport* viewports, const VkRect2D* scissors);
+	void bindStateData(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKRenderStateData& data, MVKRenderStateFlags flags, const VkRect2D* scissors);
 	void bindState(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanGraphicsCommandEncoderState& vkState);
 	void prepareDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKVulkanGraphicsCommandEncoderState& vkState, const MVKVulkanSharedCommandEncoderState& vkShared);
 	void prepareHelperDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder, const MVKHelperDrawState& state);
@@ -479,6 +488,8 @@ public:
 	void bindGraphicsPipeline(MVKGraphicsPipeline* pipeline);
 	/** Updates the mask of viewports whose reversed-depth range should be emulated in graphics shaders. */
 	void setGraphicsEmulatedReversedDepthViewportMask(uint32_t mask);
+	/** Updates the depth clip and clamp emulation state used by graphics shaders. */
+	void setGraphicsDepthClipState(const MVKDepthClipState& depthClipState);
 	/** Binds the given compute pipeline to the Vulkan graphics state, invalidating any necessary resources. */
 	void bindComputePipeline(MVKComputePipeline* pipeline);
 	/** Binds the given push constants to the Vulkan state, invalidating any necessary resources. */

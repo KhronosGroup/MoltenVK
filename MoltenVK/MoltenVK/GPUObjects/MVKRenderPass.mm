@@ -286,7 +286,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 		if ([mtlRPDesc respondsToSelector: @selector(setDitherEnabled:)]) {
 			[mtlRPDesc setDitherEnabled:_isDitheringEnabled];
 		}
-		if ([mtlRPDesc respondsToSelector: @selector(setOpenGLModeEnabled:)]) {
+		if (_renderPass->getPhysicalDevice()->canUseMetalOpenGLMode()) {
 			// Unlocks APIs such as setPrimitiveRestartEnabled.
 			[mtlRPDesc setOpenGLModeEnabled:true];
 		}

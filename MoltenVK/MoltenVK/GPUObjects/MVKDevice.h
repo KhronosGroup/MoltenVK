@@ -429,6 +429,9 @@ public:
 	/** Returns whether or not vertex instancing can be used to implement multiview. */
 	bool canUseInstancingForMultiview() { return _metalFeatures.layeredRendering; }
 
+	/** Returns whether Metal OpenGL mode is enabled and available. */
+	bool canUseMetalOpenGLMode() const;
+
 	/** Returns the underlying Metal device. */
 	id<MTLDevice> getMTLDevice() const { return _mtlDevice; }
 
@@ -508,6 +511,7 @@ protected:
 	MVKPhysicalDeviceVulkan12NoExtFeatures _vulkan12NoExtFeatures;
 	MVKPhysicalDeviceVulkan14NoExtFeatures _vulkan14NoExtFeatures;
 	MVKPhysicalDeviceMetalFeatures _metalFeatures;
+	bool _supportsMetalOpenGLMode = false;
 	VkPhysicalDeviceProperties _properties;
 	VkPhysicalDeviceTexelBufferAlignmentProperties _texelBuffAlignProperties;
 	VkPhysicalDeviceMemoryProperties _memoryProperties;

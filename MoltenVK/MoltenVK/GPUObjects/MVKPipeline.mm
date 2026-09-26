@@ -438,6 +438,7 @@ static void populateResourceUsage(MVKPipelineStageResourceInfo& dst, SPIRVToMSLC
 	dst.implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::DispatchBase,  results.needsDispatchBaseBuffer);
 	dst.implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::ViewRange,     results.needsViewRangeBuffer);
 	dst.implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::DrawId,        results.needsDrawId);
+	dst.implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::DepthClip,     results.needsDepthClipStateBuffer);
 
 	typedef SPIRV_CROSS_NAMESPACE::SPIRType SPIRType;
 	bool isArgBuf[kMVKMaxDescriptorSetCount] = {};
@@ -635,7 +636,7 @@ static MVKRenderStateFlags getRenderStateFlags(VkDynamicState vk) {
 		case VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE:           return MVKRenderStateFlag::DepthBiasEnable;
 		case VK_DYNAMIC_STATE_DEPTH_BOUNDS:                return MVKRenderStateFlag::DepthBounds;
 		case VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE:    return MVKRenderStateFlag::DepthBoundsTestEnable;
-		case VK_DYNAMIC_STATE_DEPTH_CLAMP_ENABLE_EXT:      return MVKRenderStateFlag::DepthClipEnable;
+		case VK_DYNAMIC_STATE_DEPTH_CLAMP_ENABLE_EXT:      return MVKRenderStateFlag::DepthClampEnable;
 		case VK_DYNAMIC_STATE_DEPTH_CLIP_ENABLE_EXT:       return MVKRenderStateFlag::DepthClipEnable;
 		case VK_DYNAMIC_STATE_DEPTH_COMPARE_OP:            return MVKRenderStateFlag::DepthCompareOp;
 		case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE:           return MVKRenderStateFlag::DepthTestEnable;
@@ -823,7 +824,11 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 		_staticStateData.patchControlPoints = pCreateInfo->pTessellationState->patchControlPoints;
 
 	if (const VkPipelineRasterizationStateCreateInfo* rs = pCreateInfo->pRasterizationState) {
+		const auto* depthClip = mvkFindStructInChain<VkPipelineRasterizationDepthClipStateCreateInfoEXT>(rs, VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
 		_staticStateData.enable.set(MVKRenderStateEnableFlag::DepthClamp, rs->depthClampEnable);
+		_staticStateData.depthClipEnable = depthClip
+			? (depthClip->depthClipEnable ? MVKDepthClipEnable::Enabled : MVKDepthClipEnable::Disabled)
+			: MVKDepthClipEnable::InverseDepthClamp;
 		_staticStateData.enable.set(MVKRenderStateEnableFlag::DepthBias, rs->depthBiasEnable);
 		_staticStateData.setCullMode(rs->cullMode);
 		_staticStateData.setFrontFace(rs->frontFace);
@@ -1389,6 +1394,7 @@ static constexpr const char* getImplicitBufferName(MVKImplicitBuffer buffer) {
 		case MVKImplicitBuffer::DynamicOffset:  return "dynamic offset";
 		case MVKImplicitBuffer::ViewRange:      return "view range";
 		case MVKImplicitBuffer::EmulatedReversedDepthViewport: return "emulated reversed-depth viewport";
+		case MVKImplicitBuffer::DepthClip:      return "depth clip state";
 		case MVKImplicitBuffer::IndirectParams: return "indirect parameter";
 		case MVKImplicitBuffer::Output:         return "per-vertex output";
 		case MVKImplicitBuffer::PatchOutput:    return "per-patch output";
@@ -1424,6 +1430,26 @@ static void setEmulatedReversedDepthViewportConfig(SPIRVToMSLConversionConfigura
 	shaderConfig.options.mslOptions.reversed_depth_viewport_buffer_index = enable ? implicit[MVKImplicitBuffer::EmulatedReversedDepthViewport] : 0;
 }
 
+static bool canDepthClipAndClampBothBe(MVKRenderStateFlags dynamic, const MVKRenderStateData& state, bool enabled) {
+	bool dynamicClamp = dynamic.has(MVKRenderStateFlag::DepthClampEnable);
+	bool dynamicClip = dynamic.has(MVKRenderStateFlag::DepthClipEnable);
+
+	// Without explicit clip state, Vulkan defines clip as the inverse of clamp.
+	if (!dynamicClip && state.depthClipEnable == MVKDepthClipEnable::InverseDepthClamp) {
+		return false;
+	}
+
+	bool staticClampMatches = state.enable.has(MVKRenderStateEnableFlag::DepthClamp) == enabled;
+	bool staticClipMatches = mvkIsDepthClipEnabled(state.depthClipEnable,
+	                                               state.enable.has(MVKRenderStateEnableFlag::DepthClamp)) == enabled;
+	return (dynamicClamp || staticClampMatches) && (dynamicClip || staticClipMatches);
+}
+
+static void setDepthClipConfig(SPIRVToMSLConversionConfiguration& shaderConfig, const MVKOnePerEnumEntry<uint8_t, MVKImplicitBuffer>& implicit, bool enable) {
+	shaderConfig.options.mslOptions.emulate_depth_clip_enable = enable;
+	shaderConfig.options.mslOptions.depth_clip_state_buffer_index = enable ? implicit[MVKImplicitBuffer::DepthClip] : 0;
+}
+
 bool MVKGraphicsPipeline::verifyImplicitBuffers(MVKShaderStage stage) {
 	const char* stageNames[] = {
 		"Vertex",
@@ -1452,6 +1478,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
 	setEmulatedReversedDepthViewportConfig(shaderConfig, implicit, getPhysicalDevice()->shouldEmulateReversedDepthViewport());
+	setDepthClipConfig(shaderConfig, implicit, _isRasterizing && canDepthClipAndClampBothBe(_dynamicStateFlags, _staticStateData, false));
 	addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
 
 	MVKMTLFunction func = getMTLFunction(shaderConfig, pVertexSS, pVertexFB, _vertexModule, "Vertex");
@@ -1491,6 +1518,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 	shaderConfig.options.mslOptions.vertex_for_tessellation = true;
 	shaderConfig.options.mslOptions.disable_rasterization = true;
 	setEmulatedReversedDepthViewportConfig(shaderConfig, implicit, false);
+	setDepthClipConfig(shaderConfig, implicit, false);
     addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
 	addNextStageInputToShaderConversionConfig(shaderConfig, tcInputs);
 
@@ -1538,6 +1566,7 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	shaderConfig.options.mslOptions.multi_patch_workgroup = true;
 	shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pTessCtlSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT) ? 0 : getMetalFeatures().maxSubgroupSize;
 	setEmulatedReversedDepthViewportConfig(shaderConfig, implicit, false);
+	setDepthClipConfig(shaderConfig, implicit, false);
 	addPrevStageOutputToShaderConversionConfig(shaderConfig, vtxOutputs);
 	addNextStageInputToShaderConversionConfig(shaderConfig, teInputs);
 
@@ -1575,6 +1604,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	shaderConfig.options.mslOptions.raw_buffer_tese_input = true;
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
 	setEmulatedReversedDepthViewportConfig(shaderConfig, implicit, getPhysicalDevice()->shouldEmulateReversedDepthViewport());
+	setDepthClipConfig(shaderConfig, implicit, _isRasterizing && canDepthClipAndClampBothBe(_dynamicStateFlags, _staticStateData, false));
 	addPrevStageOutputToShaderConversionConfig(shaderConfig, tcOutputs);
 
 	MVKMTLFunction func = getMTLFunction(shaderConfig, pTessEvalSS, pTessEvalFB, _tessEvalModule, "Tessellation evaluation");
@@ -1611,6 +1641,7 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 		shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pFragmentSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT) ? 0 : mtlFeats.maxSubgroupSize;
 		setEmulatedReversedDepthViewportConfig(shaderConfig, implicit, false);
+		setDepthClipConfig(shaderConfig, implicit, _isRasterizing && canDepthClipAndClampBothBe(_dynamicStateFlags, _staticStateData, true));
 		/* check_discarded_frag_stores emits simd_is_helper_thread() guards around discarded fragment stores,
 		 * and is intended for Apple GPUs. On non-Apple GPUs, this can trigger a Metal compiler error on
 		 * Mac1 NVIDIA, and can classify covered fragments as helpers on legacy AMD Mac2. */
@@ -2028,6 +2059,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 		_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::Swizzle]        = getImplicitBufferIndex(stage, 2);
 		_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::Output]         = getImplicitBufferIndex(stage, 4);
 		_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::EmulatedReversedDepthViewport] = getImplicitBufferIndex(stage, 7);
+		_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::DepthClip]       = getImplicitBufferIndex(stage, 8);
 		uint32_t extra = getImplicitBufferIndex(stage, 3);
 		switch (stage) {
 			case kMVKShaderStageVertex:
@@ -2081,6 +2113,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	shaderConfig.options.mslOptions.enable_frag_stencil_ref_builtin = pixFmts->isStencilFormat(pixFmts->getMTLPixelFormat(pRendInfo->stencilAttachmentFormat));
     shaderConfig.options.shouldFlipVertexY = mvkCfg.shaderConversionFlipVertexY;
     shaderConfig.options.shouldFixupClipSpace = isDepthClipNegativeOneToOne(pCreateInfo);
+    shaderConfig.options.mslOptions.use_opengl_mode = getPhysicalDevice()->canUseMetalOpenGLMode();
     shaderConfig.options.mslOptions.tess_domain_origin_lower_left = pTessDomainOriginState && pTessDomainOriginState->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
     shaderConfig.options.mslOptions.multiview = mvkIsMultiview(pRendInfo->viewMask);
     shaderConfig.options.mslOptions.multiview_layered_rendering = getPhysicalDevice()->canUseInstancingForMultiview();
@@ -2761,6 +2794,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.shader_patch_input_buffer_index,
 				opt.draw_id_buffer_index,
 				opt.reversed_depth_viewport_buffer_index,
+				opt.depth_clip_state_buffer_index,
 				opt.shader_input_wg_index,
 				opt.device_index,
 				opt.enable_frag_output_mask,
@@ -2780,6 +2814,8 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.dispatch_base,
 				opt.texture_1D_as_2D,
 				opt.emulate_reversed_depth_viewport,
+				opt.emulate_depth_clip_enable,
+				opt.use_opengl_mode,
 				opt.argument_buffers,
 				opt.argument_buffers_tier,
 				opt.runtime_array_rich_descriptor,
@@ -2946,6 +2982,7 @@ namespace mvk {
 				scr.needsDispatchBaseBuffer,
 				scr.needsViewRangeBuffer,
 				scr.needsDrawId,
+				scr.needsDepthClipStateBuffer,
 				scr.usesPhysicalStorageBufferAddressesCapability);
 	}
 
@@ -3092,18 +3129,18 @@ static size_t mvkValidateCerealArchiveSize(size_t padByteCnt = 0) {
 
 void mvkValidateCeralArchiveDefinitions() {
 	[[maybe_unused]] size_t missingBytes = 0;
-	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::CompilerMSL::Options>(7);
+	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::CompilerMSL::Options>(5);
 	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::MSLShaderInterfaceVariable>();
 	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::MSLResourceBinding>();
 	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::MSLConstexprSampler>();
 	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVWorkgroupSizeDimension>(3);
 	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVEntryPoint>(20);						// Contains string
-	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionOptions>(29);			// Contains string
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionOptions>(23);			// Contains string
 	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLShaderInterfaceVariable>(3);
 	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLResourceBinding>(2);
 	missingBytes += mvkValidateCerealArchiveSize<mvk::DescriptorBinding>();
-	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionConfiguration>(109);	// Contains collection
-	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionResultInfo>(40);		// Contains collection
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionConfiguration>(103);	// Contains collection
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionResultInfo>(39);		// Contains collection
 	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLSpecializationMacroInfo>(22);			// Contains string
 	missingBytes += mvkValidateCerealArchiveSize<MVKShaderModuleKey>();
 	missingBytes += mvkValidateCerealArchiveSize<MVKCompressor<std::string>>(20);				// Contains collection

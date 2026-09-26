@@ -261,6 +261,7 @@ namespace mvk {
 		bool needsDispatchBaseBuffer = false;
 		bool needsViewRangeBuffer = false;
 		bool needsDrawId = false;
+		bool needsDepthClipStateBuffer = false;
 		bool usesPhysicalStorageBufferAddressesCapability = false;
 		std::map<uint32_t, MSLSpecializationMacroInfo> specializationMacros;
 
