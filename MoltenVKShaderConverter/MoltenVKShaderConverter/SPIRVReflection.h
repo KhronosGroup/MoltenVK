@@ -233,6 +233,23 @@ namespace mvk {
 
 	auto addSat = [](uint32_t a, uint32_t b) { return a == uint32_t(-1) ? a : a + b; };
 
+	typedef std::vector<std::pair<uint32_t, uint64_t>> SPIRVSpecializationValues;
+
+	/** Sets these specialization constant values, so that the array sizes they define resolve to them. */
+	static inline void setSpecializationValues(SPIRV_CROSS_NAMESPACE::Compiler& compiler, const SPIRVSpecializationValues& values) {
+		for (auto& v : values) {
+			for (auto& sc : compiler.get_specialization_constants()) {
+				if (v.first == sc.constant_id) { compiler.get_constant(sc.id).m.c[0].r[0].u64 = v.second; }
+			}
+		}
+	}
+
+	// an array sized by a specialization constant holds the constant's id
+	static inline uint32_t getElementCount(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect, const SPIRV_CROSS_NAMESPACE::SPIRType* type) {
+		uint32_t arrCnt = type->array.empty() ? 1 : type->array_size_literal[0] ? type->array[0] : reflect.evaluate_constant_u32(type->array[0]);
+		return arrCnt * type->columns;
+	}
+
 	template<typename Vi>
 	static inline uint32_t getShaderInterfaceStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
 														   Vi& vars, SPIRVShaderInterfaceVariable* pParentFirstMember,
@@ -256,7 +273,7 @@ namespace mvk {
 				isUsed = reflect.has_active_builtin(biType, storage);
 			}
 			const SPIRV_CROSS_NAMESPACE::SPIRType* type = &reflect.get_type(structType->member_types[mbrIdx]);
-			uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
+			uint32_t elemCnt = getElementCount(reflect, type);
 			for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 				if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct)
 					loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
@@ -292,7 +309,8 @@ namespace mvk {
 	/** Given a shader in SPIR-V format, returns interface reflection data. */
 	template<typename Vs, typename Vi>
 	static inline bool getShaderInterfaceVariables(const Vs& spirv, spv::StorageClass storage, spv::ExecutionModel model,
-												   const std::string& entryName, Vi& vars, std::string& errorLog) {
+												   const std::string& entryName, Vi& vars, std::string& errorLog,
+												   const SPIRVSpecializationValues& specValues = {}) {
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 		try {
 #endif
@@ -302,6 +320,7 @@ namespace mvk {
 			if (!entryName.empty()) {
 				reflect.set_entry_point(entryName, model);
 			}
+			setSpecializationValues(reflect, specValues);
 			reflect.compile();
 			reflect.update_active_builtins();
 
@@ -339,7 +358,7 @@ namespace mvk {
 					 biType == spv::BuiltInClipDistance || biType == spv::BuiltInCullDistance))
 					type = &reflect.get_type(type->parent_type);
 
-				uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
+				uint32_t elemCnt = getElementCount(reflect, type);
 				for (uint32_t i = 0; i < elemCnt; i++) {
 					if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct) {
 						SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
@@ -370,8 +389,8 @@ namespace mvk {
 	}
 	template<typename Vs, typename Vo>
 	static inline bool getShaderOutputs(const Vs& spirv, spv::ExecutionModel model, const std::string& entryName,
-										Vo& outputs, std::string& errorLog) {
-		return getShaderInterfaceVariables(spirv, spv::StorageClassOutput, model, entryName, outputs, errorLog);
+										Vo& outputs, std::string& errorLog, const SPIRVSpecializationValues& specValues = {}) {
+		return getShaderInterfaceVariables(spirv, spv::StorageClassOutput, model, entryName, outputs, errorLog, specValues);
 	}
 	template<typename Vs, typename Vo>
 	static inline bool getShaderInputs(const Vs& spirv, spv::ExecutionModel model, const std::string& entryName,

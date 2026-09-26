@@ -32,6 +32,9 @@ class MVKShaderCacheIterator;
 class MVKShaderLibraryCache;
 class MVKShaderModule;
 
+/** Returns the values in the specialization info as constant ID and value pairs, sorted by constant ID. */
+std::vector<std::pair<uint32_t, uint64_t>> mvkGetSpecializationValues(const VkSpecializationInfo* pSpecInfo);
+
 #pragma mark -
 #pragma mark MVKShaderLibrary
 

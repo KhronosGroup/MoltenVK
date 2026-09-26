@@ -17,6 +17,7 @@
  */
 
 #include "SPIRVToMSLConverter.h"
+#include "SPIRVReflection.h"
 #include "MVKCommonEnvironment.h"
 #include "MVKStrings.h"
 #include "FileSupport.h"
@@ -190,7 +191,7 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::markAllInterfaceVarsAn
 // and shaderInputs and shaderOutputs are populated before each stage, so neither needs to be filtered by stage here.
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToMSLConversionConfiguration& other) const {
 
-    if ( !options.matches(other.options) ) { return false; }
+    if ( !options.matches(other.options) || specializationConstants != other.specializationConstants ) { return false; }
 
 	for (const auto& si : shaderInputs) {
 		if (si.outIsUsedByShader && !containsMatching(other.shaderInputs, si)) { return false; }
@@ -337,6 +338,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 				}
 			}
 		}
+		setSpecializationValues(*pMSLCompiler, shaderConfig.specializationConstants);
 		conversionResult.msl = pMSLCompiler->compile();
 
         if (shouldLogMSL) { logSource(conversionResult.resultLog, conversionResult.msl, "MSL", "Converted"); }
@@ -368,6 +370,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	conversionResult.resultInfo.needsDrawId = pMSLCompiler && pMSLCompiler->has_active_builtin(spv::BuiltInDrawIndex, spv::StorageClassInput);
 	conversionResult.resultInfo.usesPhysicalStorageBufferAddressesCapability = usesPhysicalStorageBufferAddressesCapability(pMSLCompiler);
 	populateSpecializationMacros(pMSLCompiler, conversionResult.resultInfo.specializationMacros);
+	for (auto& v : shaderConfig.specializationConstants) { conversionResult.resultInfo.specializationMacros.erase(v.first); }
 
 	// When using Metal argument buffers, if the shader is provided with dynamic buffer offsets,
 	// then it needs a buffer to hold these dynamic offsets.
