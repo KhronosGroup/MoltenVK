@@ -788,6 +788,7 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 		_pEncodingContext->firstVisibilityResultOffsetInRenderPass = _pEncodingContext->visibilityResultBuffer.offset();
 		mtlRPDesc.visibilityResultBuffer = _pEncodingContext->visibilityResultBuffer.buffer();
 	}
+	_hasMTLRenderEncoderVisibilityResultBuffer = (mtlRPDesc.visibilityResultBuffer != nil);
 
 	// Metal uses MTLRenderPassDescriptor properties renderTargetWidth, renderTargetHeight,
 	// and renderTargetArrayLength to preallocate tile memory storage on machines using tiled
@@ -850,7 +851,8 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 }
 
 void MVKCommandEncoder::restartMetalRenderPassIfNeeded() {
-	if ( !_mtlRenderEncoder || _state.needsMetalRenderPassRestart() ) {
+	if ( !_mtlRenderEncoder || _state.needsMetalRenderPassRestart() ||
+		(_cmdBuffer->_needsVisibilityResultMTLBuffer && !_hasMTLRenderEncoderVisibilityResultBuffer) ) {
 		encodeStoreActions(true);
 		beginMetalRenderPass(kMVKCommandUseRestartSubpass);
 	}
@@ -1354,6 +1356,7 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer, MVKPrefillMeta
 	_pActivatedQueries = nullptr;
 	_mtlCmdBuffer = nil;
 	_mtlRenderEncoder = nil;
+	_hasMTLRenderEncoderVisibilityResultBuffer = false;
 	_mtlComputeEncoder = nil;
 	_mtlComputeEncoderUse = kMVKCommandUseNone;
 	_mtlComputeEncoderStages = 0;
