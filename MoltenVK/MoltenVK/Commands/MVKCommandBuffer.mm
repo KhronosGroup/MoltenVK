@@ -263,6 +263,8 @@ VkResult MVKCommandBuffer::end() {
 }
 
 void MVKCommandBuffer::checkDeferredEncoding() {
+	if ( !_prefilledMTLCmdBuffer ) { return; }
+
 	if (getMVKConfig().prefillMetalCommandBuffers == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_DEFERRED_ENCODING) {
 		@autoreleasepool {
 			MVKCommandEncodingContext encodingContext;
