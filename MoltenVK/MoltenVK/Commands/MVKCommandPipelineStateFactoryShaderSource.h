@@ -397,10 +397,11 @@ kernel void cmdDrawIndirectTessConvertBuffers(const device char* srcBuff [[buffe
 	device auto& destVtx = *(device MTLDispatchThreadgroupsIndirectArguments*)dest;
 	device auto& destTC = *(device MTLDispatchThreadgroupsIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments));
 	device auto& destTE = *(device MTLDrawPatchIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2);
-	uint32_t patchCount = (src.vertexCount * src.instanceCount + inControlPointCount - 1) / inControlPointCount;
+	uint32_t vertexCount = src.vertexCount / inControlPointCount * inControlPointCount;
+	uint32_t patchCount = vertexCount / inControlPointCount * src.instanceCount;
 	params[0] = inControlPointCount;
 	params[1] = patchCount;
-	destVtx.threadgroupsPerGrid[0] = (src.vertexCount + vtxThreadExecWidth - 1) / vtxThreadExecWidth;
+	destVtx.threadgroupsPerGrid[0] = (vertexCount + vtxThreadExecWidth - 1) / vtxThreadExecWidth;
 	destVtx.threadgroupsPerGrid[1] = src.instanceCount;
 	destVtx.threadgroupsPerGrid[2] = 1;
 	destTC.threadgroupsPerGrid[0] = (patchCount * outControlPointCount + tcWorkgroupSize - 1) / tcWorkgroupSize;
@@ -411,7 +412,7 @@ kernel void cmdDrawIndirectTessConvertBuffers(const device char* srcBuff [[buffe
 	destSI.stageInOrigin[0] = src.vertexStart;
 	destSI.stageInOrigin[1] = src.baseInstance;
 	destSI.stageInOrigin[2] = 0;
-	destSI.stageInSize[0] = src.vertexCount;
+	destSI.stageInSize[0] = vertexCount;
 	destSI.stageInSize[1] = src.instanceCount;
 	destSI.stageInSize[2] = 1;
 }
@@ -436,10 +437,11 @@ kernel void cmdDrawIndexedIndirectTessConvertBuffers(const device char* srcBuff 
 	device auto& destVtx = *(device MTLDispatchThreadgroupsIndirectArguments*)dest;
 	device auto& destTC = *(device MTLDispatchThreadgroupsIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments));
 	device auto& destTE = *(device MTLDrawPatchIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2);
-	uint32_t patchCount = (src.indexCount * src.instanceCount + inControlPointCount - 1) / inControlPointCount;
+	uint32_t vertexCount = src.indexCount / inControlPointCount * inControlPointCount;
+	uint32_t patchCount = vertexCount / inControlPointCount * src.instanceCount;
 	params[0] = inControlPointCount;
 	params[1] = patchCount;
-	destVtx.threadgroupsPerGrid[0] = (src.indexCount + vtxThreadExecWidth - 1) / vtxThreadExecWidth;
+	destVtx.threadgroupsPerGrid[0] = (vertexCount + vtxThreadExecWidth - 1) / vtxThreadExecWidth;
 	destVtx.threadgroupsPerGrid[1] = src.instanceCount;
 	destVtx.threadgroupsPerGrid[2] = 1;
 	destTC.threadgroupsPerGrid[0] = (patchCount * outControlPointCount + tcWorkgroupSize - 1) / tcWorkgroupSize;
@@ -450,7 +452,7 @@ kernel void cmdDrawIndexedIndirectTessConvertBuffers(const device char* srcBuff 
 	destSI.stageInOrigin[0] = src.baseVertex;
 	destSI.stageInOrigin[1] = src.baseInstance;
 	destSI.stageInOrigin[2] = 0;
-	destSI.stageInSize[0] = src.indexCount;
+	destSI.stageInSize[0] = vertexCount;
 	destSI.stageInSize[1] = src.instanceCount;
 	destSI.stageInSize[2] = 1;
 }
@@ -458,14 +460,18 @@ kernel void cmdDrawIndexedIndirectTessConvertBuffers(const device char* srcBuff 
 kernel void cmdDrawIndexedCopyIndex16Buffer(const device uint16_t* srcBuff [[buffer(0)]],
                                             device uint16_t* destBuff [[buffer(1)]],
                                             const device MTLDrawIndexedPrimitivesIndirectArguments& params [[buffer(2)]],
-                                            uint i [[thread_position_in_grid]]) {
+                                            uint2 pos [[thread_position_in_grid]]) {
+	uint i = pos.x;
+	if (i >= params.indexCount || pos.y != 0) { return; }
 	destBuff[i] = srcBuff[params.indexStart + i];
 }
 
 kernel void cmdDrawIndexedCopyIndex32Buffer(const device uint32_t* srcBuff [[buffer(0)]],
                                             device uint32_t* destBuff [[buffer(1)]],
                                             const device MTLDrawIndexedPrimitivesIndirectArguments& params [[buffer(2)]],
-                                            uint i [[thread_position_in_grid]]) {
+                                            uint2 pos [[thread_position_in_grid]]) {
+	uint i = pos.x;
+	if (i >= params.indexCount || pos.y != 0) { return; }
 	destBuff[i] = srcBuff[params.indexStart + i];
 }
 

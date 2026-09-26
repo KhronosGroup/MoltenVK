@@ -199,11 +199,14 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 		uint32_t inControlPointCount = 0;
 		uint32_t patchCount = 0;
 	} tessParams;
+    uint32_t tessVertexCount = 0;
     uint32_t outControlPointCount = 0;
     if (pipeline->isTessellationPipeline()) {
         tessParams.inControlPointCount = cmdEncoder->getVkGraphics().getPatchControlPoints();
         outControlPointCount = pipeline->getOutputControlPointCount();
-        tessParams.patchCount = mvkCeilingDivide(_vertexCount, tessParams.inControlPointCount) * _instanceCount;
+        tessVertexCount = _vertexCount / tessParams.inControlPointCount * tessParams.inControlPointCount;
+        tessParams.patchCount = tessVertexCount / tessParams.inControlPointCount * _instanceCount;
+        if (!tessParams.patchCount) { return; }
     }
     if (pipeline->needsDrawIdBuffer()) {
         tempDrawIDBuff = cmdEncoder->getTempMTLBuffer(sizeof(uint32_t));
@@ -233,16 +236,16 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                                           offset: tempDrawIDBuff->_offset
                                          atIndex: pipeline->getImplicitBuffers(kMVKShaderStageVertex).ids[MVKImplicitBuffer::DrawId]];
                 }
-				[mtlTessCtlEncoder setStageInRegion: MTLRegionMake2D(_firstVertex, _firstInstance, _vertexCount, _instanceCount)];
+				[mtlTessCtlEncoder setStageInRegion: MTLRegionMake2D(_firstVertex, _firstInstance, tessVertexCount, _instanceCount)];
 				// If there are vertex bindings with a zero vertex divisor, I need to offset them by
 				// _firstInstance * stride, since that is the expected behaviour for a divisor of 0.
                 cmdEncoder->getState().offsetZeroDivisorVertexBuffers(*cmdEncoder, stage, pipeline, _firstInstance);
 				id<MTLComputePipelineState> vtxState = pipeline->getTessVertexStageState();
 				if (mtlFeats.nonUniformThreadgroups) {
-					[mtlTessCtlEncoder dispatchThreads: MTLSizeMake(_vertexCount, _instanceCount, 1)
+					[mtlTessCtlEncoder dispatchThreads: MTLSizeMake(tessVertexCount, _instanceCount, 1)
 					             threadsPerThreadgroup: MTLSizeMake(vtxState.threadExecutionWidth, 1, 1)];
 				} else {
-					[mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide(_vertexCount, vtxState.threadExecutionWidth), _instanceCount, 1)
+					[mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide(tessVertexCount, vtxState.threadExecutionWidth), _instanceCount, 1)
                                       threadsPerThreadgroup: MTLSizeMake(vtxState.threadExecutionWidth, 1, 1)];
 				}
                 break;
@@ -469,6 +472,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
         auto* converted = convertUint8IndexBuffer(cmdEncoder, ibb);
         ibb.mtlBuffer = converted->_mtlBuffer;
         ibb.offset = converted->_offset;
+        ibb.size = converted->_length;
     }
 
     size_t idxSize = mvkMTLIndexTypeSizeInBytes((MTLIndexType)ibb.mtlIndexType);
@@ -483,11 +487,14 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 		uint32_t inControlPointCount = 0;
 		uint32_t patchCount = 0;
 	} tessParams;
+    uint32_t tessVertexCount = 0;
     uint32_t outControlPointCount = 0;
     if (pipeline->isTessellationPipeline()) {
         tessParams.inControlPointCount = cmdEncoder->getVkGraphics().getPatchControlPoints();
         outControlPointCount = pipeline->getOutputControlPointCount();
-        tessParams.patchCount = mvkCeilingDivide(_indexCount, tessParams.inControlPointCount) * _instanceCount;
+        tessVertexCount = _indexCount / tessParams.inControlPointCount * tessParams.inControlPointCount;
+        tessParams.patchCount = tessVertexCount / tessParams.inControlPointCount * _instanceCount;
+        if (!tessParams.patchCount) { return; }
     }
     if (pipeline->needsDrawIdBuffer()) {
         tempDrawIDBuff = cmdEncoder->getTempMTLBuffer(sizeof(uint32_t));
@@ -519,16 +526,16 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 				[mtlTessCtlEncoder setBuffer: ibb.mtlBuffer
                                       offset: idxBuffOffset
                                      atIndex: pipeline->getImplicitBuffers(kMVKShaderStageVertex).ids[MVKImplicitBuffer::Index]];
-				[mtlTessCtlEncoder setStageInRegion: MTLRegionMake2D(_vertexOffset, _firstInstance, _indexCount, _instanceCount)];
+				[mtlTessCtlEncoder setStageInRegion: MTLRegionMake2D(_vertexOffset, _firstInstance, tessVertexCount, _instanceCount)];
 				// If there are vertex bindings with a zero vertex divisor, I need to offset them by
 				// _firstInstance * stride, since that is the expected behaviour for a divisor of 0.
                 cmdEncoder->getState().offsetZeroDivisorVertexBuffers(*cmdEncoder, stage, pipeline, _firstInstance);
 				id<MTLComputePipelineState> vtxState = ibb.mtlIndexType == MTLIndexTypeUInt16 ? pipeline->getTessVertexStageIndex16State() : pipeline->getTessVertexStageIndex32State();
 				if (mtlFeats.nonUniformThreadgroups) {
-					[mtlTessCtlEncoder dispatchThreads: MTLSizeMake(_indexCount, _instanceCount, 1)
+					[mtlTessCtlEncoder dispatchThreads: MTLSizeMake(tessVertexCount, _instanceCount, 1)
 					             threadsPerThreadgroup: MTLSizeMake(vtxState.threadExecutionWidth, 1, 1)];
 				} else {
-					[mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide(_indexCount, vtxState.threadExecutionWidth), _instanceCount, 1)
+					[mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide(tessVertexCount, vtxState.threadExecutionWidth), _instanceCount, 1)
                                       threadsPerThreadgroup: MTLSizeMake(vtxState.threadExecutionWidth, 1, 1)];
 				}
                 break;
@@ -937,7 +944,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         vertexCount = kMVKMaxDrawIndirectVertexCount;
         patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
         VkDeviceSize indirectSize = (2 * sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments) + sizeof(MTLStageInRegionIndirectArguments)) * _drawCount;
-		paramsIncr = std::max((size_t)dvcLimits.minUniformBufferOffsetAlignment, sizeof(uint32_t) * 2);
+		paramsIncr = 256;
 		VkDeviceSize paramsSize = paramsIncr * _drawCount;
         tempIndirectBuff = cmdEncoder->getTempMTLBuffer(indirectSize, true);
         mtlIndBuff = tempIndirectBuff->_mtlBuffer;
@@ -1244,6 +1251,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
         auto* converted = convertUint8IndexBuffer(cmdEncoder, ibb);
         ibb.mtlBuffer = converted->_mtlBuffer;
         ibb.offset = converted->_offset;
+        ibb.size = converted->_length;
     }
 
 	MVKIndexMTLBufferBinding ibbTriFan = ibb;
@@ -1302,8 +1310,8 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
         outControlPointCount = pipeline->getOutputControlPointCount();
         vertexCount = kMVKMaxDrawIndirectVertexCount;
         patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
-        VkDeviceSize indirectSize = (sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments) + sizeof(MTLStageInRegionIndirectArguments)) * _drawCount;
-		paramsIncr = std::max((size_t)dvcLimits.minUniformBufferOffsetAlignment, sizeof(uint32_t) * 2);
+        VkDeviceSize indirectSize = (2 * sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments) + sizeof(MTLStageInRegionIndirectArguments)) * _drawCount;
+		paramsIncr = 256;
 		VkDeviceSize paramsSize = paramsIncr * _drawCount;
         tempIndirectBuff = cmdEncoder->getTempMTLBuffer(indirectSize, true);
         mtlIndBuff = tempIndirectBuff->_mtlBuffer;
@@ -1393,7 +1401,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
                 [mtlTessCtlEncoder dispatchThreadgroupsWithIndirectBuffer: mtlIndBuff
 													 indirectBufferOffset: mtlTempIndBuffOfst + sizeof(MTLStageInRegionIndirectArguments)
                                                     threadsPerThreadgroup: MTLSizeMake(vtxThreadExecWidth, 1, 1)];
-				mtlIndBuffOfst += sizeof(MTLDrawIndexedPrimitivesIndirectArguments);
+				mtlIndBuffOfst += indirectBufferStride;
             } else if (drawIdx == 0 && vtxAdjmts.needsAdjustment()) {
                 // Similarly, for multiview, we need to adjust the instance count now.
                 // Unfortunately, this requires switching to compute. Luckily, we don't also
