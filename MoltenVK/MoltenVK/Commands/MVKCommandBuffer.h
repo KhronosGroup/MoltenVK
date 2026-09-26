@@ -554,6 +554,7 @@ protected:
 	uint32_t _mtlComputeEncoderStages;
 	MVKCommandUse _mtlBlitEncoderUse;
 	bool _isRenderingEntireAttachment;
+	bool _hasMTLRenderEncoderVisibilityResultBuffer;
 };
 
 
