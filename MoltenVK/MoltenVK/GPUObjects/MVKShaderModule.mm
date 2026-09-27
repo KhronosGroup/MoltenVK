@@ -52,6 +52,19 @@ MVKMTLFunction::~MVKMTLFunction() {
 }
 
 
+std::vector<std::pair<uint32_t, uint64_t>> mvkGetSpecializationValues(const VkSpecializationInfo* pSpecInfo) {
+	std::vector<std::pair<uint32_t, uint64_t>> values;
+	for (uint32_t i = 0; pSpecInfo && i < pSpecInfo->mapEntryCount; i++) {
+		auto& me = pSpecInfo->pMapEntries[i];
+		uint64_t val = 0;
+		memcpy(&val, (char*)pSpecInfo->pData + me.offset, min(me.size, sizeof(val)));
+		values.emplace_back(me.constantID, val);
+	}
+	std::sort(values.begin(), values.end());
+	return values;
+}
+
+
 #pragma mark -
 #pragma mark MVKShaderLibrary
 
@@ -399,13 +412,23 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration
 											   VkPipelineCreationFeedback* pShaderFeedback) {
 	MVKShaderLibrary* mvkLib = _directMSLLibrary;
 	if ( !mvkLib ) {
-		uint64_t startTime = pShaderFeedback ? mvkGetTimestamp() : getPerformanceTimestamp();
 		MVKPipelineCache* pipelineCache = pipeline->getPipelineCache();
-		if (pipelineCache) {
-			mvkLib = pipelineCache->getShaderLibrary(pShaderConfig, this, pipeline, pShaderFeedback, startTime);
-		} else {
+		auto getLib = [&]() {
+			uint64_t startTime = pShaderFeedback ? mvkGetTimestamp() : getPerformanceTimestamp();
+			if (pipelineCache) { return pipelineCache->getShaderLibrary(pShaderConfig, this, pipeline, pShaderFeedback, startTime); }
 			lock_guard<mutex> lock(_accessLock);
-			mvkLib = _shaderLibraryCache.getShaderLibrary(pShaderConfig, this, pipeline, nullptr, pShaderFeedback, startTime);
+			return _shaderLibraryCache.getShaderLibrary(pShaderConfig, this, pipeline, nullptr, pShaderFeedback, startTime);
+		};
+		pShaderConfig->specializationConstants.clear();
+		mvkLib = getLib();
+
+		// array sizes are resolved during conversion, so convert again with the specialized values of array sizing constants
+		for (auto& v : mvkGetSpecializationValues(mvkLib ? pSpecializationInfo : nullptr)) {
+			if (mvkLib->_shaderConversionResultInfo.specializationMacros.count(v.first)) { pShaderConfig->specializationConstants.push_back(v); }
+		}
+		if ( !pShaderConfig->specializationConstants.empty() ) {
+			if (pShaderFeedback) { mvkDisableFlags(pShaderFeedback->flags, VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT); }
+			mvkLib = getLib();
 		}
 	} else {
 		mvkLib->setEntryPointName(pShaderConfig->options.entryPointName);

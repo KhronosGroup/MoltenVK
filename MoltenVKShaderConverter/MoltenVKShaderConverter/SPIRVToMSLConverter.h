@@ -153,6 +153,7 @@ namespace mvk {
 		std::vector<MSLResourceBinding> resourceBindings;
 		std::vector<uint32_t> discreteDescriptorSets;
 		std::vector<DescriptorBinding> dynamicBufferDescriptors;
+		std::vector<std::pair<uint32_t, uint64_t>> specializationConstants;
 
 		/** Returns whether the pipeline stage being converted supports vertex attributes. */
 		bool stageSupportsVertexAttributes() const;
