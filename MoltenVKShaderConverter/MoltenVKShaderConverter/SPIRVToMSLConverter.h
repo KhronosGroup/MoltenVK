@@ -45,6 +45,15 @@ namespace mvk {
 		uint32_t numTessControlPoints = 0;
 		bool shouldFlipVertexY = true;
 		bool shouldFixupClipSpace = false;
+		bool dynamicDepthClip = false;			/**< Read the depth clip convention from a buffer. See SPIRVDepthClip.h. */
+		uint32_t depthClipStateBufferIndex = 0;	/**< With dynamicDepthClip, the Metal buffer index the state is bound at. */
+		bool blendInShader = false;				/**< Rewrite a fragment shader to blend its own outputs. See SPIRVBlendInShader.h. */
+		bool blendMultisampled = false;			/**< With blendInShader, whether the colour attachments are multisampled. */
+		uint32_t blendStateBufferIndex = 0;		/**< With blendInShader, the Metal buffer index the blend state is bound at. */
+		uint32_t blendAttachmentMask = 0;		/**< With blendInShader, a bit per colour attachment location that exists. */
+		bool blendDynamicMultisample = false;	/**< With blendInShader, also take the sample mask, alpha to coverage and alpha to one from the buffer. */
+		bool pullVertices = false;				/**< Rewrite a vertex shader to load its own attributes. See SPIRVVertexPulling.h. */
+		uint32_t pullStateBufferIndex = 0;		/**< With pullVertices, the Metal buffer index the vertex input block is bound at. */
 
 		/**
 		 * Returns whether the specified options match this one.
@@ -251,6 +260,8 @@ namespace mvk {
 	typedef struct SPIRVToMSLConversionResultInfo {
 		SPIRVEntryPoint entryPoint;
 		bool isRasterizationDisabled = false;
+		bool isDepthClipInShader = false;	/**< The shader maps the depth clip convention itself, from a buffer. */
+		bool isBlendInShader = false;		/**< The shader blends its own outputs, and Metal blending must be off. */
 		bool isPositionInvariant = false;
 		bool needsSwizzleBuffer = false;
 		bool needsOutputBuffer = false;
@@ -262,6 +273,7 @@ namespace mvk {
 		bool needsViewRangeBuffer = false;
 		bool needsDrawId = false;
 		bool usesPhysicalStorageBufferAddressesCapability = false;
+		bool isPullingVertices = false;		/**< The shader was rewritten to load its own attributes, and needs no vertex layout. */
 		std::map<uint32_t, MSLSpecializationMacroInfo> specializationMacros;
 
 	} SPIRVToMSLConversionResultInfo;
@@ -320,6 +332,7 @@ namespace mvk {
 		void populateWorkgroupDimension(SPIRVWorkgroupSizeDimension& wgDim, uint32_t size, SPIRV_CROSS_NAMESPACE::SpecializationConstant& spvSpecConst);
 		void populateEntryPoint(SPIRV_CROSS_NAMESPACE::CompilerMSL* pMSLCompiler, SPIRVToMSLConversionOptions& options, SPIRVEntryPoint& entryPoint);
 		bool usesPhysicalStorageBufferAddressesCapability(SPIRV_CROSS_NAMESPACE::Compiler* pCompiler);
+		static bool spirvDeclaresCapability(const std::vector<uint32_t>& spirv, spv::Capability capability);
 		void populateSpecializationMacros(SPIRV_CROSS_NAMESPACE::CompilerMSL* pMSLCompiler, std::map<uint32_t, MSLSpecializationMacroInfo>& specializationMacros);
 
 		std::vector<uint32_t> _spirv;

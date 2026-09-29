@@ -41,20 +41,27 @@ typedef struct MVKEntryPoint {
 	uint32_t api2Version;	///< Core version required in addition to extension.
 	bool isDevice;
 	bool isInstanceDeviceExtEntrypoint;
+	const char* extAltName;	///< Extension that provides this entry point in place of extName.
 
 	bool isCore() { return apiVersion > 0; }
+	/** Returns whether either the extension that provides this entry point, or its alternative, is enabled. */
+	bool isProvidingExtEnabled(const MVKExtensionList& extList, const MVKExtensionList* instExtList) {
+		for (const char* extn : { this->extName, this->extAltName }) {
+			if (extn && (extList.isEnabled(extn) || (instExtList && instExtList->isEnabled(extn)))) { return true; }
+		}
+		return false;
+	}
 	bool needsOtherCore() { return api2Version > 0; }
 	bool isEnabled(uint32_t enabledVersion, const MVKExtensionList& extList, const MVKExtensionList* instExtList = nullptr) {
 		// The entry point is enabled if:
 		// - the required core version is enabled; or
-		// - the required extension is enabled, and
+		// - the required extension, or the alternative extension that also provides it, is enabled, and
 		//   - neither another core version nor another extension are required, or
 		//   - the second core version is enabled, or
 		//   - the second extension is enabled.
 		// This logic is horrible, yes, but unfortunately, it's required by the spec.
 		return ((isCore() && MVK_VULKAN_API_VERSION_CONFORM(enabledVersion) >= apiVersion) ||
-				((extList.isEnabled(this->extName) ||
-				  (instExtList && instExtList->isEnabled(this->extName))) &&
+				(isProvidingExtEnabled(extList, instExtList) &&
 				 ((!needsOtherCore() && !this->ext2Name) ||
 				  (needsOtherCore() && MVK_VULKAN_API_VERSION_CONFORM(enabledVersion) >= api2Version) ||
 				  (extList.isEnabled(this->ext2Name) ||

@@ -51,6 +51,7 @@ protected:
 
 	uint32_t _firstBinding;
     MVKSmallVector<MVKVertexMTLBufferBinding, N> _bindings;
+	bool _hasStrides = false;
 };
 
 // Concrete template class implementations.

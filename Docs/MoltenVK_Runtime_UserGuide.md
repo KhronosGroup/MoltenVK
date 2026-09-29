@@ -394,6 +394,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
   - *Requires Metal 3.0.*
 - `VK_EXT_shader_demote_to_helper_invocation`
   - *Requires Metal Shading Language 2.3.*
+- `VK_EXT_shader_object`
 - `VK_EXT_shader_stencil_export`
   - *Requires Mac GPU family 2 or iOS GPU family 5.*
 - `VK_EXT_shader_subgroup_ballot`
