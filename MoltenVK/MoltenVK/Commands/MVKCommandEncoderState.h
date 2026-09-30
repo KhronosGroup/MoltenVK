@@ -166,7 +166,7 @@ struct MVKUseResourceHelper {
  */
 struct MVKVulkanCommonEncoderState {
 	MVKPipelineLayout* _layout = nullptr;
-	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount];
+	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount] = {};
 	MVKDescriptorSet _pushDescriptor = {};
 	MVKSmallVector<uint8_t, 16> _pushDescData;
 	void ensurePushDescriptorSize(uint32_t size);
@@ -429,7 +429,7 @@ class MVKCommandEncoderState {
 		Compute
 	};
 	/** The type of Metal encoder, if any, that is currently active. */
-	CommandEncoderClass _mtlActiveEncoder;
+	CommandEncoderClass _mtlActiveEncoder = CommandEncoderClass::None;
 
 	/** Get the encoder state associated with the given bind point, or nullptr if the bindPoint isn't supported. */
 	MVKVulkanCommonEncoderState* getVkEncoderState(VkPipelineBindPoint bindPoint);
