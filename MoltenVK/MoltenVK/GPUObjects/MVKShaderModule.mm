@@ -325,7 +325,7 @@ MVKShaderLibrary* MVKShaderLibraryCache::getShaderLibrary(SPIRVToMSLConversionCo
 	MVKShaderLibrary* shLib = findShaderLibrary(pShaderConfig, pShaderFeedback, startTime);
 	if ( !shLib && !pipeline->shouldFailOnPipelineCompileRequired() ) {
 		SPIRVToMSLConversionResult conversionResult;
-		if (shaderModule->convert(pShaderConfig, conversionResult)) {
+		if (shaderModule->convert(pShaderConfig, conversionResult) && !conversionResult.msl.empty()) {
 			shLib = addShaderLibrary(pShaderConfig, conversionResult);
 			if (pShaderFeedback) {
 				pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime);
