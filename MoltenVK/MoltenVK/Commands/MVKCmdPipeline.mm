@@ -485,7 +485,13 @@ VkResult MVKCmdPushDescriptorSetWithTemplate::setContent(MVKCommandBuffer* cmdBu
 	_pipelineLayout = (MVKPipelineLayout*)layout;
 	_pipelineLayout->retain();
 	_set = set;
+
+	// The app may destroy the template once this command is recorded, but encoding reads it,
+	// possibly much later, so keep it until this command is reused or destroyed.
+	auto* descUpdateTemplateToRelease = _descUpdateTemplate;
 	_descUpdateTemplate = (MVKDescriptorUpdateTemplate*)descUpdateTemplate;
+	_descUpdateTemplate->retain();
+	if (descUpdateTemplateToRelease) { descUpdateTemplateToRelease->release(); }
 
 	size_t oldSize = _dataSize;
 	_dataSize = _descUpdateTemplate->getSize();
@@ -505,6 +511,7 @@ void MVKCmdPushDescriptorSetWithTemplate::encode(MVKCommandEncoder* cmdEncoder) 
 }
 
 MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
+	if (_descUpdateTemplate) { _descUpdateTemplate->release(); }
 	if (_pipelineLayout) { _pipelineLayout->release(); }
 	free(_pData);
 }
