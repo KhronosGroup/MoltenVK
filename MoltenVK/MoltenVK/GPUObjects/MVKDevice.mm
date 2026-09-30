@@ -4869,14 +4869,11 @@ uint32_t MVKDevice::getFirstViewIndexInMetalPass(uint32_t viewMask, uint32_t pas
 	if ( !viewMask ) { return 0; }
 	assert(passIdx < getMultiviewMetalPassCount(viewMask));
 	uint32_t mask = viewMask;
-	uint32_t startView = 0, viewCount = 0;
+	uint32_t startView = 0;
 	if ( !_physicalDevice->canUseInstancingForMultiview() ) {
-		while (mask != 0) {
-			mask = mvkGetNextViewMaskGroup(mask, &startView, &viewCount);
-			while (passIdx-- > 0 && viewCount-- > 0) {
-				startView++;
-			}
-		}
+		// Each pass consumes one enabled view, including gaps between groups.
+		for (uint32_t i = 0; i < passIdx; ++i) { mask &= mask - 1; }
+		startView = __builtin_ctz(mask);
 	} else {
 		for (uint32_t i = 0; i <= passIdx; ++i) {
 			mask = mvkGetNextViewMaskGroup(mask, &startView, nullptr);
