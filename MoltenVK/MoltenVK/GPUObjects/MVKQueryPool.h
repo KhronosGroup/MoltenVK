@@ -106,7 +106,8 @@ public:
 protected:
 	bool areQueriesHostAvailable(uint32_t firstQuery, uint32_t endQuery);
 	virtual NSData* getQuerySourceData(uint32_t firstQuery, uint32_t queryCount) { return nil; }
-    VkResult getResult(uint32_t query, NSData* srcData, uint32_t srcDataQueryOffset, void* pDstData, VkQueryResultFlags flags);
+	virtual const uint64_t* getQuerySourceValues(uint32_t firstQuery, uint32_t queryCount);
+    VkResult getResult(uint32_t query, const uint64_t* srcValues, uint32_t srcDataQueryOffset, void* pDstData, VkQueryResultFlags flags);
 	virtual id<MTLBuffer> getResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, NSUInteger& offset) { return nil; }
 	virtual id<MTLComputeCommandEncoder> encodeComputeCopyResults(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) { return nil; }
 	virtual void encodeDirectCopyResults(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount,
@@ -165,7 +166,7 @@ public:
 
 protected:
 	void propagateDebugName() override;
-	NSData* getQuerySourceData(uint32_t firstQuery, uint32_t queryCount) override;
+	const uint64_t* getQuerySourceValues(uint32_t firstQuery, uint32_t queryCount) override;
 	id<MTLBuffer> getResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, NSUInteger& offset) override;
 	id<MTLComputeCommandEncoder> encodeComputeCopyResults(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) override;
 
