@@ -85,10 +85,10 @@ public:
 	VkSampleCountFlagBits getSampleCount();
 
 	/** Returns the default sample count for when there are no attachments used in this subpass. */
-	VkSampleCountFlagBits getDefaultSampleCount() { return _defaultSampleCount; }
+	VkSampleCountFlagBits getDefaultSampleCount() { return (VkSampleCountFlagBits)__atomic_load_n(&_defaultSampleCount, __ATOMIC_RELAXED); }
 
 	/** Sets the default sample count for when there are no attachments used in this subpass. */
-	void setDefaultSampleCount(VkSampleCountFlagBits count) { _defaultSampleCount = count; }
+	void setDefaultSampleCount(VkSampleCountFlagBits count) { __atomic_store_n(&_defaultSampleCount, (uint32_t)count, __ATOMIC_RELAXED); }
 
 	/** Returns whether or not this is a multiview subpass. */
 	bool isMultiview() const { return _pipelineRenderingCreateInfo.viewMask != 0; }
@@ -218,7 +218,7 @@ protected:
 	VkAttachmentReference2 _stencilResolveAttachment;
 	VkResolveModeFlagBits _depthResolveMode = VK_RESOLVE_MODE_NONE;
 	VkResolveModeFlagBits _stencilResolveMode = VK_RESOLVE_MODE_NONE;
-	VkSampleCountFlagBits _defaultSampleCount = VK_SAMPLE_COUNT_1_BIT;
+	uint32_t _defaultSampleCount = VK_SAMPLE_COUNT_1_BIT;	// Set by pipelines, possibly from several threads.
 	uint32_t _subpassIndex;
 	bool _isDitheringEnabled = false;
 	bool _isInputAttachmentDepthStencilAttachment = false;
