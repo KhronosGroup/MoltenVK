@@ -483,6 +483,10 @@ public:
 		MVKShaderStage shaderStage = stage == kMVKGraphicsStageVertex ? kMVKShaderStageVertex : kMVKShaderStageTessCtl;
 		_mtlCompute.prepareRenderDispatch(encoder, mvkEncoder, _vkGraphics, _vkShared, shaderStage);
 	}
+	void prepareTessEvalDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder) {
+		_mtlCompute.prepareRenderDispatch(encoder, mvkEncoder, _vkGraphics, _vkShared, kMVKShaderStageTessEval);
+	}
+
 	/** Binds everything needed to dispatch a Vulkan compute shader on the current Metal compute state. */
 	void prepareComputeDispatch(id<MTLComputeCommandEncoder> encoder, MVKCommandEncoder& mvkEncoder) {
 		_mtlCompute.prepareComputeDispatch(encoder, mvkEncoder, _vkCompute, _vkShared);

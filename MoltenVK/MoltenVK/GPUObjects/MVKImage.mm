@@ -447,9 +447,12 @@ void MVKImagePlane::pullFromDeviceOnCompletion(MVKCommandEncoder* cmdEncoder,
 											   MVKImageSubresource& subresource,
 											   const MVKMappedMemoryRange& mappedRange) {
 
-	[cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
-		getMTLTextureContent(subresource, mappedRange.offset, mappedRange.size);
-	}];
+	cmdEncoder->getDevice()->addMTLCommandBufferHandler(cmdEncoder->_mtlCmdBuffer, ^(id<MTLCommandBuffer> mcb) {
+		// An abandoned command buffer never wrote the subresource.
+		if (mcb.status != MTLCommandBufferStatusNotEnqueued) {
+			getMTLTextureContent(subresource, mappedRange.offset, mappedRange.size);
+		}
+	});
 }
 
 MVKImagePlane::MVKImagePlane(MVKImage* image, uint8_t planeIndex) {
@@ -798,7 +801,13 @@ VkResult MVKImage::copyImageToMemory(const VkCopyImageToMemoryInfo* pCopyImageTo
 	// to sync the managed memory from the GPU, so the texture content is accessible to be copied by the CPU.
 	if ( !isUnifiedMemoryGPU() && getMTLStorageMode() == MTLStorageModeManaged ) {
 		@autoreleasepool {
-			id<MTLCommandBuffer> mtlCmdBuff = getDevice()->getAnyQueue()->getMTLCommandBuffer(kMVKCommandUseCopyImageToMemory);
+			// Acquired, admitted and committed as in MVKDevice::invalidateMappedMemoryRanges(), for the same reasons.
+			id<MTLCommandBuffer> mtlCmdBuff = getDevice()->isLosing() ? nil : getDevice()->getAnyQueue()->getMTLCommandBuffer(kMVKCommandUseCopyImageToMemory);
+			getDevice()->beginEncoding();
+			if (getDevice()->isLosing()) {
+				getDevice()->abandonMTLCommandBuffer(mtlCmdBuff);
+				mtlCmdBuff = nil;
+			}
 			id<MTLBlitCommandEncoder> mtlBlitEnc = [mtlCmdBuff blitCommandEncoder];
 
 			for (uint32_t imgRgnIdx = 0; imgRgnIdx < pCopyImageToMemoryInfo->regionCount; imgRgnIdx++) {
@@ -816,7 +825,8 @@ VkResult MVKImage::copyImageToMemory(const VkCopyImageToMemoryInfo* pCopyImageTo
 			}
 
 			[mtlBlitEnc endEncoding];
-			[mtlCmdBuff commit];
+			getDevice()->commitMTLCommandBuffer(mtlCmdBuff);
+			getDevice()->endEncoding();
 			[mtlCmdBuff waitUntilCompleted];
 		}
 	}
@@ -1139,21 +1149,37 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 }
 
 MTLStorageMode MVKImage::getMTLStorageMode() {
-    if ( !_memoryBindings[0]->_deviceMemory ) return MTLStorageModePrivate;
+    // Imported textures cannot be promoted. Report their real storage so render-pass
+    // load/store selection and indexed PerVertex capture still reject true memoryless backing.
+    if (_planes[0]->_mtlTexture) { return _planes[0]->_mtlTexture.storageMode; }
+    MVKImageMemoryBinding* memoryBinding = _memoryBindings[0];
+    MVKDeviceMemory* dvcMem = memoryBinding->_deviceMemory;
+    if (!dvcMem) { return MTLStorageModePrivate; }
+    if ((dvcMem->_externalMemoryHandleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT) && dvcMem->_mtlTexture) { return dvcMem->_mtlTexture.storageMode; }
+    // Match the dedicated-alias texture reuse in MVKImagePlane::getMTLTexture().
+    if (!_ioSurface && !memoryBinding->_mtlTexelBuffer && !(dvcMem->getMTLHeap() && !getIsDepthStencil()) && _isAliasable && dvcMem->isDedicatedAllocation() && !mvkContains(dvcMem->_imageMemoryBindings, memoryBinding)) {
+        return dvcMem->_imageMemoryBindings[0]->_image->getMTLStorageMode();
+    }
 
-    MTLStorageMode stgMode = _memoryBindings[0]->_deviceMemory->getMTLStorageMode();
-
-    if (_ioSurface && stgMode == MTLStorageModePrivate) { stgMode = MTLStorageModeShared; }
+    MTLStorageMode stgMode = dvcMem->getMTLStorageMode();
 
 	// An input attachment is read through a texture binding, which memoryless storage does not
 	// support, so commit the memory instead. Lazily allocated memory only promises that an
 	// implementation may defer the allocation, and never that it must.
 	// TODO: support framebuffer fetch so VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT reads color(m) in the
 	// shader rather than a texture binding, and memoryless storage can be kept here.
+	// Indexed PerVertex capture also needs store/load across a render -> compute -> render split.
+	// Extension enablement is immutable before image creation, unlike the eventual pipeline choice.
+	// Commit lazy attachments on these devices, trading tile-only storage for memory and bandwidth.
+	const auto& extensions = getEnabledExtensions();
+	bool mayCapturePerVertex = getPhysicalDevice()->isPortablePerVertexEnabled() &&
+		(extensions.vk_KHR_fragment_shader_barycentric.enabled || extensions.vk_NV_fragment_shader_barycentric.enabled);
 	if (stgMode == MTLStorageModeMemoryless &&
-		mvkIsAnyFlagEnabled(getCombinedUsage(), VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
+		(mvkIsAnyFlagEnabled(getCombinedUsage(), VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) || mayCapturePerVertex)) {
 		stgMode = MTLStorageModePrivate;
 	}
+
+    if (_ioSurface && stgMode == MTLStorageModePrivate) { stgMode = MTLStorageModeShared; }
 
     return stgMode;
 }
@@ -1599,7 +1625,7 @@ VkResult MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphor
 			}
 			signal(signaler.semaphore, signaler.semaphoreSignalToken, mtlCmdBuff);
 			signal(signaler.fence);
-			[mtlCmdBuff commit];
+			_device->commitMTLCommandBuffer(mtlCmdBuff);
 		}
 
 		_preSignaler = signaler;
@@ -1624,8 +1650,10 @@ id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
 			uint32_t attemptCnt = _swapchain->getImageCount();	// Attempt a resonable number of times
 			for (uint32_t attemptIdx = 0; !_mtlDrawable && attemptIdx < attemptCnt; attemptIdx++) {
 				uint64_t startTime = getPerformanceTimestamp();
-				_mtlDrawable = [_swapchain->getCAMetalLayer().nextDrawable retain];	// retained
+				_mtlDrawable = requestNextDrawable();	// retained
 				addPerformanceInterval(getPerformanceStats().queue.retrieveCAMetalDrawable, startTime);
+				// While the device is being lost, the encoding goes on without a drawable: its submission is lost.
+				if ( !_mtlDrawable && getDevice()->isLosing() ) { return nil; }
 				hasInvalidFormat = _mtlDrawable && !_mtlDrawable.texture.pixelFormat;
 				if (hasInvalidFormat) { releaseMetalDrawable(); }
 			}
@@ -1637,6 +1665,40 @@ id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
 		}
 	}
 	return _mtlDrawable;
+}
+
+// Requests the next drawable of the layer on the surface's drawable queue, and waits for it. The wait checks every
+// millisecond whether the device is being lost, and then gives up: an encoding, which the loss report waits for, never
+// waits in Core Animation, where nextDrawable may take a second or more. A drawable that arrives after the wait gave up
+// is released at the end of its request, which returns it to the layer. The request uses neither this image nor the
+// device. Returns the drawable retained, or nil.
+id<CAMetalDrawable> MVKPresentableSwapchainImage::requestNextDrawable() {
+	struct Request {
+		std::mutex lock;
+		std::condition_variable done;
+		id<CAMetalDrawable> drawable = nil;
+		bool isDone = false;
+		bool isAbandoned = false;
+	};
+	auto request = std::make_shared<Request>();
+	CAMetalLayer* mtlLayer = _swapchain->getCAMetalLayer();		// retained by the block
+	dispatch_async(_swapchain->_surface->getDrawableQueue(), ^{
+		@autoreleasepool {
+			id<CAMetalDrawable> drawable = mtlLayer.nextDrawable;
+			std::lock_guard<std::mutex> lock(request->lock);
+			if ( !request->isAbandoned ) { request->drawable = [drawable retain]; }
+			request->isDone = true;
+			request->done.notify_one();
+		}
+	});
+	std::unique_lock<std::mutex> lock(request->lock);
+	while ( !request->done.wait_for(lock, std::chrono::milliseconds(1), [&request]{ return request->isDone; }) ) {
+		if (getDevice()->isLosing()) {
+			request->isAbandoned = true;
+			return nil;
+		}
+	}
+	return request->drawable;
 }
 
 // If not headless, retrieve the MTLTexture directly from the CAMetalDrawable.
@@ -1656,7 +1718,7 @@ VkResult MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffe
 	// Attach present handler before presenting to avoid race condition.
 	id<CAMetalDrawable> mtlDrwbl = getCAMetalDrawable();
 	MVKSwapchainSignaler signaler = getPresentationSignaler();
-	[mtlCmdBuff addScheduledHandler: ^(id<MTLCommandBuffer> mcb) {
+	getDevice()->addMTLCommandBufferHandler(mtlCmdBuff, ^(id<MTLCommandBuffer> mcb) {
 
 		addPresentedHandler(mtlDrwbl, presentInfo, signaler);
 
@@ -1670,7 +1732,7 @@ VkResult MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffe
 		} else {
 			[mtlDrwbl present];
 		}
-	}];
+	}, true);
 
 	// Ensure this image, the drawable, and the present fence are not destroyed while
 	// awaiting MTLCommandBuffer completion. We retain the drawable separately because
@@ -1682,13 +1744,13 @@ VkResult MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffe
 	[mtlDrwbl retain];
 	auto* fence = presentInfo.fence;
 	if (fence) { fence->retain(); }
-	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
+	getDevice()->addMTLCommandBufferHandler(mtlCmdBuff, ^(id<MTLCommandBuffer> mcb) {
 		signal(fence);
 		if (fence) { fence->release(); }
 		[mtlDrwbl release];
 		release();
 		if (_swapchain) { _swapchain->notifyPresentComplete(presentInfo); }
-	}];
+	});
 
 	signal(signaler.semaphore, signaler.semaphoreSignalToken, mtlCmdBuff);
 

@@ -22,8 +22,10 @@
 #include <spirv.hpp>
 #include <spirv_common.hpp>
 #include <spirv_parser.hpp>
+#include <spirv_msl.hpp>
 #include <spirv_reflect.hpp>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 
@@ -51,6 +53,9 @@ namespace mvk {
 
 		/** The number of control points output by the tessellation control shader. */
 		uint32_t numControlPoints = 0;
+
+		/** Whether both shaders can exchange float32 tessellation levels (SPIRV-Cross tessellation_factors_float32). */
+		bool float32TessLevels = false;
 	};
 
 #pragma mark -
@@ -88,12 +93,101 @@ namespace mvk {
 
 		/** Whether this variable is actually used (read or written) by the shader. */
 		bool isUsed;
+
+		/** Whether this fragment input is read per vertex, including leaves of a PerVertexKHR block. */
+		bool perVertex = false;
 	};
 	typedef SPIRVShaderInterfaceVariable SPIRVShaderOutput;
 
 
 #pragma mark -
 #pragma mark Functions
+
+	/** Returns whether a type has a PerVertexKHR-decorated member, including nested structs and arrays. */
+	static inline bool hasPerVertexInputMember(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect, const SPIRV_CROSS_NAMESPACE::SPIRType& type) {
+		for (uint32_t member = 0; member < type.member_types.size(); member++) {
+			if (reflect.has_member_decoration(type.self, member, spv::DecorationPerVertexKHR) || hasPerVertexInputMember(reflect, reflect.get_type(type.member_types[member]))) { return true; }
+		}
+		return false;
+	}
+
+	/**
+	 * Reports PerVertexKHR decorations on statically active fragment input variables or their members.
+	 * Activity is per interface variable (including whole blocks), as in SPIRV-Cross reflection.
+	 * An empty entryName selects the module's default entry point, which must be a fragment entry point.
+	 * Returns success separately from usesPerVertexInput; on failure the latter is false and errorLog is set.
+	 * Like the other reflection helpers, parser errors are recoverable when SPIRV-Cross exceptions are enabled.
+	 */
+	template<typename Vs>
+	static inline bool getFragmentShaderUsesPerVertexInput(const Vs& spirv, const std::string& entryName, bool& usesPerVertexInput, std::string& errorLog) {
+		usesPerVertexInput = false;
+		errorLog.clear();
+#ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+		try {
+#endif
+			SPIRV_CROSS_NAMESPACE::Parser parser(spirv);
+			parser.parse();
+			SPIRV_CROSS_NAMESPACE::CompilerReflection reflect(parser.get_parsed_ir());
+			if (!entryName.empty()) {
+				bool found = false;
+				for (const auto& entry : reflect.get_entry_points_and_stages()) {
+					if (entry.name == entryName && entry.execution_model == spv::ExecutionModelFragment) { found = true; break; }
+				}
+				if (!found) {
+					errorLog = "Fragment entry point not found: " + entryName;
+					return false;
+				}
+				reflect.set_entry_point(entryName, spv::ExecutionModelFragment);
+			}
+			if (reflect.get_execution_model() != spv::ExecutionModelFragment) {
+				errorLog = "PerVertexKHR input reflection requires a fragment entry point.";
+				return false;
+			}
+			for (auto varID : reflect.get_active_interface_variables()) {
+				if (reflect.get_storage_class(varID) != spv::StorageClassInput) { continue; }
+				if (reflect.has_decoration(varID, spv::DecorationPerVertexKHR) || hasPerVertexInputMember(reflect, reflect.get_type_from_variable(varID))) {
+					usesPerVertexInput = true;
+					break;
+				}
+			}
+			return true;
+#ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+		} catch (SPIRV_CROSS_NAMESPACE::CompilerError& ex) {
+			errorLog = ex.what();
+			return false;
+		}
+#endif
+	}
+
+	/**
+	 * Returns the Locations of the fragment PerVertexKHR inputs that the corner copies of a mesh pipeline support:
+	 * arrays of one to three 16- or 32-bit scalars or vectors below Location 32, outside blocks.
+	 * Returns zero if any other form is read. Parser errors throw, as in the other mesh admission checks.
+	 */
+	template<typename Vs>
+	static inline uint32_t getMeshPerVertexCornerLocations(const Vs& spirv, const std::string& entryName) {
+		SPIRV_CROSS_NAMESPACE::CompilerReflection reflect(spirv);
+		reflect.set_entry_point(entryName, spv::ExecutionModelFragment);
+		uint32_t locations = 0;
+		for (auto varID : reflect.get_active_interface_variables()) {
+			if (reflect.get_storage_class(varID) != spv::StorageClassInput) { continue; }
+			const auto& type = reflect.get_type(reflect.get_type_from_variable(varID).parent_type);
+			if (!reflect.has_decoration(varID, spv::DecorationPerVertexKHR)) {
+				if (hasPerVertexInputMember(reflect, type)) { return 0; }
+				continue;
+			}
+			if (type.array.size() != 1 || !type.array_size_literal[0] || type.array[0] < 1 || type.array[0] > 3) { return 0; }
+			const auto& element = reflect.get_type(type.parent_type);
+			bool scalarOrVector = element.array.empty() && element.columns == 1 &&
+				(element.basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Float || element.basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Half ||
+				 element.basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Int || element.basetype == SPIRV_CROSS_NAMESPACE::SPIRType::UInt ||
+				 element.basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Short || element.basetype == SPIRV_CROSS_NAMESPACE::SPIRType::UShort);
+			uint32_t location = reflect.get_decoration(varID, spv::DecorationLocation);
+			if (!scalarOrVector || reflect.has_decoration(varID, spv::DecorationBuiltIn) || !reflect.has_decoration(varID, spv::DecorationLocation) || location >= 32) { return 0; }
+			locations |= 1u << location;
+		}
+		return locations;
+	}
 
 	/**
 	 * Given a tessellation control shader and a tessellation evaluation shader,
@@ -181,6 +275,16 @@ namespace mvk {
 				return false;
 			}
 
+			// Same execution modes as the MSL conversion, which sets the patch kind and control points on both stages.
+			SPIRV_CROSS_NAMESPACE::CompilerMSL tescMSL(tesc), teseMSL(tese);
+			if (!tescEntryName.empty()) { tescMSL.set_entry_point(tescEntryName, spv::ExecutionModelTessellationControl); }
+			if (!teseEntryName.empty()) { teseMSL.set_entry_point(teseEntryName, spv::ExecutionModelTessellationEvaluation); }
+			for (auto* compiler : {&tescMSL, &teseMSL}) {
+				compiler->set_execution_mode(reflectData.patchKind);
+				compiler->set_execution_mode(spv::ExecutionModeOutputVertices, reflectData.numControlPoints);
+			}
+			reflectData.float32TessLevels = tescMSL.get_tessellation_factors_float32_incompatibility().empty() && teseMSL.get_tessellation_factors_float32_incompatibility().empty();
+
 			return true;
 
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
@@ -235,12 +339,12 @@ namespace mvk {
 
 	template<typename Vi>
 	static inline uint32_t getShaderInterfaceStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
-														   Vi& vars, SPIRVShaderInterfaceVariable* pParentFirstMember,
+														   Vi& vars, size_t parentFirstMember,
 														   const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
-														   bool patch, uint32_t loc) {
+														   bool patch, uint32_t loc, bool perVertex = false) {
 		bool isUsed = true;
 		auto biType = spv::BuiltInMax;
-		SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
+		const size_t firstMember = vars.size();
 		size_t mbrCnt = structType->member_types.size();
 		for (uint32_t mbrIdx = 0; mbrIdx < mbrCnt; mbrIdx++) {
 			// Each member may have a location decoration. If not, each member
@@ -256,37 +360,37 @@ namespace mvk {
 				isUsed = reflect.has_active_builtin(biType, storage);
 			}
 			const SPIRV_CROSS_NAMESPACE::SPIRType* type = &reflect.get_type(structType->member_types[mbrIdx]);
-			uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
+			bool memberPerVertex = storage == spv::StorageClassInput && reflect.get_execution_model() == spv::ExecutionModelFragment && reflect.has_member_decoration(structType->self, mbrIdx, spv::DecorationPerVertexKHR);
+			if (memberPerVertex && !type->array.empty()) { type = &reflect.get_type(type->parent_type); }
+			uint32_t elemCnt = type->columns;
+			for (uint32_t count : type->array) { elemCnt *= count; }
 			for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 				if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct)
-					loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
+					loc = getShaderInterfaceStructMembers(reflect, vars, firstMember, type, storage, patch, loc, perVertex || memberPerVertex);
 				else {
 					// The alignment of a structure is the same as the largest member of the structure.
 					// Consequently, the first flattened member of a structure should align with structure itself.
-					vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
-					auto& currOutput = vars.back();
-					if ( !pFirstMember ) { pFirstMember = &currOutput; }
-					pFirstMember->firstStructMemberAlignment = std::max(pFirstMember->firstStructMemberAlignment, getShaderOutputSize(currOutput));
+					vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed, perVertex || memberPerVertex});
+					vars[firstMember].firstStructMemberAlignment = std::max(vars[firstMember].firstStructMemberAlignment, getShaderOutputSize(vars.back()));
 					loc = addSat(loc, 1);
 				}
 			}
 		}
 
 		// Set the parent's first member alignment to the largest alignment found so far.
-		if ( !pParentFirstMember ) {
-			pParentFirstMember = pFirstMember;
-		} else if (pParentFirstMember && pFirstMember) {
-			pParentFirstMember->firstStructMemberAlignment = std::max(pParentFirstMember->firstStructMemberAlignment, pFirstMember->firstStructMemberAlignment);
+		// Indices remain valid when appending leaves reallocates the container.
+		if (parentFirstMember < vars.size() && firstMember < vars.size()) {
+			vars[parentFirstMember].firstStructMemberAlignment = std::max(vars[parentFirstMember].firstStructMemberAlignment, vars[firstMember].firstStructMemberAlignment);
 		}
 
 		return loc;
 	}
 	template<typename Vo>
 	static inline uint32_t getShaderOutputStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
-														Vo& outputs, SPIRVShaderOutput* pParentFirstMember,
+														Vo& outputs, size_t parentFirstMember,
 														const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
 														bool patch, uint32_t loc) {
-		return getShaderInterfaceStructMembers(reflect, outputs, pParentFirstMember, structType, storage, patch, loc);
+		return getShaderInterfaceStructMembers(reflect, outputs, parentFirstMember, structType, storage, patch, loc);
 	}
 
 	/** Given a shader in SPIR-V format, returns interface reflection data. */
@@ -298,6 +402,37 @@ namespace mvk {
 #endif
 			SPIRV_CROSS_NAMESPACE::Parser parser(spirv);
 			parser.parse();
+			if (model == spv::ExecutionModelFragment && storage == spv::StorageClassInput) {
+				// Match the MSL backend's builtin analysis: access chains must see through
+				// copied/aliased Input pointers before deciding which block members are active.
+				// Only the parser's private IR is changed; entry-point reachability is retained.
+				auto& ir = parser.get_parsed_ir();
+				std::unordered_map<uint32_t, uint32_t> pointerAliases;
+				ir.for_each_typed_id<SPIRV_CROSS_NAMESPACE::SPIRBlock>([&](uint32_t, SPIRV_CROSS_NAMESPACE::SPIRBlock& block) {
+					for (auto& op : block.ops) {
+						bool emptyAccessChain = (op.op == spv::OpAccessChain || op.op == spv::OpInBoundsAccessChain) && op.length == 3;
+						if ((op.op != spv::OpCopyObject && !emptyAccessChain) || op.length < 3) { continue; }
+						const auto* args = ir.spirv.data() + op.offset;
+						const auto& type = SPIRV_CROSS_NAMESPACE::variant_get<SPIRV_CROSS_NAMESPACE::SPIRType>(ir.ids[args[0]]);
+						if (type.pointer && type.storage == spv::StorageClassInput) {
+							pointerAliases[args[1]] = args[2];
+							// Empty access chains are identity copies, but ActiveBuiltinHandler
+							// stops traversal on their three operands. A copy keeps it walking.
+							op.op = spv::OpCopyObject;
+						}
+					}
+				});
+				ir.for_each_typed_id<SPIRV_CROSS_NAMESPACE::SPIRBlock>([&](uint32_t, const SPIRV_CROSS_NAMESPACE::SPIRBlock& block) {
+					for (const auto& op : block.ops) {
+						if ((op.op != spv::OpAccessChain && op.op != spv::OpInBoundsAccessChain) || op.length < 3) { continue; }
+						auto* args = ir.spirv.data() + op.offset;
+						for (size_t count = 0; pointerAliases.count(args[2]); ++count) {
+							if (count == pointerAliases.size()) { using namespace SPIRV_CROSS_NAMESPACE; SPIRV_CROSS_THROW("Cyclic input pointer aliases."); }
+							args[2] = pointerAliases.at(args[2]);
+						}
+					}
+				});
+			}
 			SPIRV_CROSS_NAMESPACE::CompilerReflection reflect(parser.get_parsed_ir());
 			if (!entryName.empty()) {
 				reflect.set_entry_point(entryName, model);
@@ -323,6 +458,9 @@ namespace mvk {
 				if (reflect.has_decoration(varID, spv::DecorationBuiltIn)) {
 					biType = (spv::BuiltIn)reflect.get_decoration(varID, spv::DecorationBuiltIn);
 					isUsed = reflect.has_active_builtin(biType, storage);
+					// The active interface includes whole-variable InterpolateAt* operands,
+					// which update_active_builtins() does not count as loads.
+					if (model == spv::ExecutionModelFragment && storage == spv::StorageClassInput && (biType == spv::BuiltInBaryCoordKHR || biType == spv::BuiltInBaryCoordNoPerspKHR)) { isUsed = true; }
 				}
 				uint32_t loc = -1;
 				uint32_t cmp = 0;
@@ -332,20 +470,28 @@ namespace mvk {
 				if (reflect.has_decoration(varID, spv::DecorationComponent)) {
 					cmp = reflect.get_decoration(varID, spv::DecorationComponent);
 				}
+				// Mesh outputs are arrays over the emitted vertices or primitives, and the primitive index builtins
+				// describe connectivity, not varyings.
+				bool meshOutput = model == spv::ExecutionModelMeshEXT && storage == spv::StorageClassOutput;
+				if (meshOutput && (biType == spv::BuiltInPrimitivePointIndicesEXT || biType == spv::BuiltInPrimitiveLineIndicesEXT || biType == spv::BuiltInPrimitiveTriangleIndicesEXT)) { continue; }
 				// For tessellation shaders, peel away the initial array type. SPIRV-Cross adds the array back automatically.
 				// Only some builtins will be arrayed here.
-				if ((model == spv::ExecutionModelTessellationControl || (model == spv::ExecutionModelTessellationEvaluation && storage == spv::StorageClassInput)) && !patch &&
-					(biType == spv::BuiltInMax || biType == spv::BuiltInPosition || biType == spv::BuiltInPointSize ||
-					 biType == spv::BuiltInClipDistance || biType == spv::BuiltInCullDistance))
+				if (((model == spv::ExecutionModelTessellationControl || (model == spv::ExecutionModelTessellationEvaluation && storage == spv::StorageClassInput)) && !patch &&
+					 (biType == spv::BuiltInMax || biType == spv::BuiltInPosition || biType == spv::BuiltInPointSize ||
+					  biType == spv::BuiltInClipDistance || biType == spv::BuiltInCullDistance)) ||
+					(meshOutput && !type->array.empty()))
 					type = &reflect.get_type(type->parent_type);
 
-				uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
+				// PerVertexKHR's outer array selects a vertex, not additional varying locations.
+				bool perVertex = model == spv::ExecutionModelFragment && storage == spv::StorageClassInput && reflect.has_decoration(varID, spv::DecorationPerVertexKHR);
+				if (perVertex && !type->array.empty()) { type = &reflect.get_type(type->parent_type); }
+				uint32_t elemCnt = type->columns;
+				for (uint32_t count : type->array) { elemCnt *= count; }
 				for (uint32_t i = 0; i < elemCnt; i++) {
 					if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct) {
-						SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
-						loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
+						loc = getShaderInterfaceStructMembers(reflect, vars, size_t(-1), type, storage, patch, loc, perVertex);
 					} else {
-						vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
+						vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed, perVertex});
 						loc = addSat(loc, 1);
 					}
 				}

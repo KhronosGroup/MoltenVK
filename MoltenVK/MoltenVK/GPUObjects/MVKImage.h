@@ -499,6 +499,7 @@ protected:
 	friend MVKSwapchain;
 
 	id<CAMetalDrawable> getCAMetalDrawable();
+	id<CAMetalDrawable> requestNextDrawable();
 	void addPresentedHandler(id<CAMetalDrawable> mtlDrawable, MVKImagePresentInfo presentInfo, MVKSwapchainSignaler signaler);
 	void releaseMetalDrawable();
 	MVKSwapchainImageAvailability getAvailability();

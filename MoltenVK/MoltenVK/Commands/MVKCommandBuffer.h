@@ -26,7 +26,9 @@
 #include "MVKCmdPipeline.h"
 #include "MVKQueryPool.h"
 #include "MVKSmallVector.h"
+#include "MVKPerVertexScratch.h"
 #include <unordered_map>
+#include <unordered_set>
 
 class MVKCommandPool;
 class MVKQueueCommandBufferSubmission;
@@ -57,6 +59,10 @@ typedef struct MVKCommandEncodingContext {
 	uint32_t firstVisibilityResultOffsetInRenderPass = 0;
 	MVKVisibilityBuffer visibilityResultBuffer;
 	BarrierFenceSlots fenceSlots;
+	const MVKPerVertexScratchReservations* perVertexScratch = nullptr;
+	size_t nextPerVertexScratch = 0;
+	/** The queue submission being encoded, which can continue on a new Metal command buffer, or null when prefilling. */
+	MVKQueueCommandBufferSubmission* submission = nullptr;
 
 	void syncFences(MVKDevice *device, id<MTLCommandBuffer> mtlCommandBuffer);
 	MVKRenderPass* getRenderPass() { return _renderPass; }
@@ -126,7 +132,8 @@ public:
 	MVKCommandPool* getCommandPool() { return _commandPool; }
 
 	/** Submit the commands in this buffer as part of the queue submission. */
-	void submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit, MVKCommandEncodingContext* pEncodingContext);
+	void submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit, MVKCommandEncodingContext* pEncodingContext, const MVKPerVertexScratchReservations& scratch);
+	VkResult reservePerVertexScratch(MVKPerVertexScratchReservations& scratch, std::unordered_set<MVKCommandBuffer*>& prefilledExecutions);
 
     /** Returns whether this command buffer can be submitted to a queue more than once. */
     bool getIsReusable() { return _isReusable; }
@@ -136,6 +143,7 @@ public:
 	 * from the primary command buffer. If this is a primary command buffer, returns 1.
 	 */
 	uint32_t getViewCount() const;
+	uint32_t getViewMask() const;
 
 	/** Updated as renderpass commands are added. */
 	MVKCurrentSubpassInfo _currentSubpassInfo;
@@ -149,7 +157,15 @@ public:
     bool _needsVisibilityResultMTLBuffer;
 
 	/** Called when a MVKCmdExecuteCommands is added to this command buffer. */
-	void recordExecuteCommands(MVKArrayRef<MVKCommandBuffer*const> secondaryCommandBuffers);
+	VkResult recordExecuteCommands(MVKArrayRef<MVKCommandBuffer*const> secondaryCommandBuffers);
+
+	void recordRenderPass(MVKArrayRef<MVKImageView*> attachments, bool attachmentsKnown = true);
+	void recordRendering(const VkRenderingInfo* renderingInfo);
+	void recordIndexType(VkIndexType indexType) { _recordedIndexType = indexType; }
+	VkResult recordPerVertexDraw(uint32_t vertexCount, uint32_t instanceCount, bool indexed = false);
+	/** Reserves the bounded scratch of a portable PerVertexKHR indirect command; its arguments are only read on the GPU. */
+	VkResult recordPerVertexIndirectDraw(bool indexed, uint32_t drawCount);
+	VkResult recordPerVertexTessEvalDraw(uint32_t vertexCount, uint32_t instanceCount, bool indexed);
 
 	/** Called when a timestamp command is added. */
 	void recordTimestampCommand();
@@ -162,6 +178,22 @@ public:
 
 	/** The most recent recorded tessellation pipeline */
 	MVKCmdBindPipeline* _lastTessellationPipeline;
+	bool recordedGraphicsPipelineUsesPerVertexInput() const { return _recordedPerVertexPipeline != nullptr; }
+	bool recordedGraphicsPipelineUsesPerVertexTessEval() const;
+	/** The mesh pipeline bound for the draws being recorded, if any. */
+	MVKGraphicsPipeline* getRecordedMeshPipeline() const { return _recordedMeshPipeline; }
+
+	/**
+	 * The recorded graphics pipeline if its draws take the ordinary tessellation path, and the patch control points
+	 * they will encode with: the recorded dynamic value when the pipeline declares it dynamic, as while encoding.
+	 */
+	MVKGraphicsPipeline* getRecordedTessellationPipeline() const { return _recordedTessellationPipeline; }
+	uint32_t getRecordedPatchControlPoints() const;
+	void recordPatchControlPoints(uint32_t count) { _recordedPatchControlPoints = static_cast<uint8_t>(count); }
+
+	/** The topology the recorded portable PerVertexKHR pipeline draws with: the recorded dynamic value when the pipeline declares it dynamic, as while encoding. */
+	VkPrimitiveTopology getRecordedPerVertexTopology() const;
+	void recordPrimitiveTopology(VkPrimitiveTopology topology) { _recordedPrimitiveTopology = topology; }
 
 
 #pragma mark Construction
@@ -197,6 +229,21 @@ protected:
 	void flushImmediateCmdEncoder();
 	void checkDeferredEncoding();
 	void beginSecondaryEncoding(MVKCommandEncoder* cmdEncoder);
+	VkResult validateIndexedPerVertexAttachments();
+	VkResult reservePrefilledPerVertexScratch(size_t firstRequest);
+	VkResult reservePerVertexScratch(const std::vector<MVKPerVertexScratchRequest>& requests, MVKPerVertexScratchReservations& scratch);
+	std::vector<MVKPerVertexScratchRequest> _perVertexScratchRequests;
+	MVKPerVertexScratchReservations _prefilledPerVertexScratch;
+	MVKGraphicsPipeline* _recordedPerVertexPipeline = nullptr;
+	MVKGraphicsPipeline* _recordedTessellationPipeline = nullptr;
+	MVKGraphicsPipeline* _recordedMeshPipeline = nullptr;
+	uint8_t _recordedPatchControlPoints = 0;
+	VkPrimitiveTopology _recordedPrimitiveTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+
+	bool _recordedAttachmentsKnown = false;
+	const char* _recordedRenderingError = nullptr;
+	VkIndexType _recordedIndexType = VK_INDEX_TYPE_MAX_ENUM;
+	bool _needsInheritedPerVertexAttachments = false;
 
 	MVKCommand* _head = nullptr;
 	MVKCommand* _tail = nullptr;
@@ -261,6 +308,23 @@ public:
 	/** Encode commands from the specified secondary command buffer onto the Metal command buffer. */
 	void encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer);
 
+	/**
+	 * Commits the work encoded so far, waits until it completes on the GPU, then continues encoding on a new Metal
+	 * command buffer of the same queue submission. Ends any active Metal encoder; the caller restarts its render pass.
+	 * Returns false, and stops encoding this submission, if the submission cannot continue.
+	 */
+	bool awaitEncodedWork();
+
+	/** Returns whether encoding stopped after a failed awaitEncodedWork(). */
+	bool isEncodingStopped() { return _isEncodingStopped; }
+
+	/** Stops encoding the rest of this submission, after its device was lost while encoding it. */
+	void stopEncoding() { _isEncodingStopped = true; }
+
+	/** Pushes or pops a debug group of the Metal command buffer, carried over to later Metal command buffers. */
+	void pushCommandBufferDebugGroup(NSString* name);
+	void popCommandBufferDebugGroup();
+
 	/** Begins a render pass and establishes initial draw state. */
 	void beginRenderpass(MVKCommand* passCmd,
 						 VkSubpassContents subpassContents,
@@ -297,6 +361,9 @@ public:
 
 	/** Returns the render subpass that is currently active. */
 	MVKRenderSubpass* getSubpass();
+
+	/** Checks the actual views that must survive an indexed PerVertex compute capture. */
+	const char* getIndexedPerVertexAttachmentError();
 
 	/** Returns the sample count of the current render subpass. */
 	VkSampleCountFlagBits getSampleCount() { return getSubpass()->getSampleCount(); }
@@ -508,6 +575,12 @@ public:
 	/** Indicates whether the current draw is an indexed draw. */
 	bool _isIndexedDraw;
 
+	/** Consume a preflight reservation and retain its resources until Metal completes. */
+	MVKPerVertexScratch* nextPerVertexScratch();
+
+	/** Keeps every buffer of the last reservation, including ones added since, resident and alive for the current Metal command buffer. */
+	void keepPerVertexScratchResident();
+
 #pragma mark Construction
 
 	MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
@@ -538,6 +611,7 @@ protected:
 
 	VkRect2D _renderArea;
 	MVKCommand* _lastMultiviewPassCmd;
+	size_t _firstSubpassPerVertexScratch = 0;
     MVKActivatedQueries* _pActivatedQueries;
 	MVKSmallVector<GPUCounterQuery, 16> _timestampStageCounterQueries;
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
@@ -553,8 +627,11 @@ protected:
 	MVKCommandUse _mtlComputeEncoderUse;
 	uint32_t _mtlComputeEncoderStages;
 	MVKCommandUse _mtlBlitEncoderUse;
+	MVKSmallVector<NSString*, 4> _commandBufferDebugGroups;
+	std::shared_ptr<MVKPerVertexScratch> _lastPerVertexScratch;
 	bool _isRenderingEntireAttachment;
 	bool _hasMTLRenderEncoderVisibilityResultBuffer;
+	bool _isEncodingStopped = false;
 };
 
 

@@ -541,7 +541,7 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                                                                    levels:NSMakeRange(0, srcMTLTex.mipmapLevelCount)
                                                                    slices:NSMakeRange(0, srcMTLTex.arrayLength)
                                                                   swizzle:_srcImage->getPixelFormats()->getMTLTextureSwizzleChannels(_srcImage->getVkFormat())];
-                    [cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) { [srcMTLTex release]; }];
+                    cmdEncoder->getDevice()->addMTLCommandBufferHandler(cmdEncoder->_mtlCmdBuffer, ^(id<MTLCommandBuffer>) { [srcMTLTex release]; });
                 } else {
                     srcSwizzle = mvkPackSwizzle(_srcImage->getPixelFormats()->getVkComponentMapping(_srcImage->getVkFormat()));
                 }
@@ -587,7 +587,7 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                                                          textureType: MTLTextureType2DArray
                                                               levels: NSMakeRange(0, srcMTLTex.mipmapLevelCount)
                                                               slices: NSMakeRange(0, srcMTLTex.arrayLength)];
-                [cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) { [srcMTLTex release]; }];
+                cmdEncoder->getDevice()->addMTLCommandBufferHandler(cmdEncoder->_mtlCmdBuffer, ^(id<MTLCommandBuffer>) { [srcMTLTex release]; });
             }
             blitKey.dstMTLPixelFormat = _dstImage->getMTLPixelFormat(dstPlaneIndex);
             blitKey.srcFilter = mvkMTLSamplerMinMagFilterFromVkFilter(_filter);
@@ -703,7 +703,7 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
 #endif
                         }
                         id<MTLTexture> stencilMTLTex = [srcMTLTex newTextureViewWithPixelFormat: stencilFmt];
-                        [cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) { [stencilMTLTex release]; }];
+                        cmdEncoder->getDevice()->addMTLCommandBufferHandler(cmdEncoder->_mtlCmdBuffer, ^(id<MTLCommandBuffer>) { [stencilMTLTex release]; });
                         [mtlRendEnc setFragmentTexture: stencilMTLTex atIndex: 1];
                     } else {
                         [mtlRendEnc setFragmentTexture: srcMTLTex atIndex: 1];
@@ -1792,8 +1792,8 @@ void MVKCmdUpdateBuffer::encode(MVKCommandEncoder* cmdEncoder) {
                           size: _dataSize];
 
     // Return the MTLBuffer allocation to the pool once the command buffer is done with it
-    [cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
+    cmdEncoder->getDevice()->addMTLCommandBufferHandler(cmdEncoder->_mtlCmdBuffer, ^(id<MTLCommandBuffer> mcb) {
         srcMTLBufferAlloc->returnToPool();
-    }];
+    });
 }
 

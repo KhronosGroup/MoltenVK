@@ -140,7 +140,16 @@ public:
 	id<MTLComputePipelineState> getAccumulateOcclusionQueryResultsMTLComputePipelineState();
 
 	/** Returns a MTLComputePipelineState for converting a Uint8 index buffer to Uint16. */
-	id<MTLComputePipelineState> getConvertUint8IndicesMTLComputePipelineState();
+	id<MTLComputePipelineState> getConvertUint8IndicesMTLComputePipelineState(bool preserveValues = false);
+
+	id<MTLComputePipelineState> getPerVertexRestartMTLComputePipelineState();
+
+	/** Returns the GPU admission and planning pipeline for portable PerVertexKHR indirect draws. */
+	id<MTLComputePipelineState> getPerVertexIndirectMTLComputePipelineState();
+	/** Returns the GPU topology generator for portable PerVertexKHR tessellation. */
+	id<MTLComputePipelineState> getPerVertexTessTopologyMTLComputePipelineState();
+
+	/** Returns a compute pipeline state that classifies float32 TCS levels into Metal half tessellation factors. */
 
 	/** Deletes all the internal resources. */
 	void clear();
@@ -183,5 +192,8 @@ protected:
 	id<MTLComputePipelineState> _mtlDrawIndexedCopyIndexBufferComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlCopyQueryPoolResultsComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlAccumOcclusionQueryResultsComputePipelineState = nil;
-	id<MTLComputePipelineState> _mtlConvertUint8IndicesComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlPerVertexRestartComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlPerVertexIndirectComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlPerVertexTessTopologyComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlConvertUint8IndicesComputePipelineState[2] = {nil, nil};
 };

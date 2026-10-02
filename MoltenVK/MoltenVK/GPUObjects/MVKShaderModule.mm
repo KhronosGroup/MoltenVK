@@ -437,6 +437,8 @@ bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
 			case spv::ExecutionModelGeometry:               type = "-gs"; break;
 			case spv::ExecutionModelTaskNV:                 type = "-ts"; break;
 			case spv::ExecutionModelMeshNV:                 type = "-ms"; break;
+			case spv::ExecutionModelTaskEXT:                type = "-ts"; break;
+			case spv::ExecutionModelMeshEXT:                type = "-ms"; break;
 			case spv::ExecutionModelGLCompute:              type = "-cs"; break;
 			default:                                        type = "";    break;
 		}

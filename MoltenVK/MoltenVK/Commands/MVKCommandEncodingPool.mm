@@ -168,8 +168,30 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getAccumulateOcclusionQueryR
 	MVK_ENC_REZ_ACCESS(_mtlAccumOcclusionQueryResultsComputePipelineState, newAccumulateOcclusionQueryResultsMTLComputePipelineState(_commandPool));
 }
 
-id<MTLComputePipelineState> MVKCommandEncodingPool::getConvertUint8IndicesMTLComputePipelineState() {
-	MVK_ENC_REZ_ACCESS(_mtlConvertUint8IndicesComputePipelineState, newConvertUint8IndicesMTLComputePipelineState(_commandPool));
+id<MTLComputePipelineState> MVKCommandEncodingPool::getConvertUint8IndicesMTLComputePipelineState(bool preserveValues) {
+	// Preflight can overlap encoding on another queue. Synchronize warm reads too.
+	lock_guard<mutex> lock(_lock);
+	auto& state = _mtlConvertUint8IndicesComputePipelineState[preserveValues];
+	if (!state) { state = _commandPool->getDevice()->getCommandResourceFactory()->newConvertUint8IndicesMTLComputePipelineState(_commandPool, preserveValues); }
+	return state;
+}
+
+id<MTLComputePipelineState> MVKCommandEncodingPool::getPerVertexRestartMTLComputePipelineState() {
+	lock_guard<mutex> lock(_lock);
+	if (!_mtlPerVertexRestartComputePipelineState) { _mtlPerVertexRestartComputePipelineState = _commandPool->getDevice()->getCommandResourceFactory()->newPerVertexRestartMTLComputePipelineState(_commandPool); }
+	return _mtlPerVertexRestartComputePipelineState;
+}
+
+id<MTLComputePipelineState> MVKCommandEncodingPool::getPerVertexIndirectMTLComputePipelineState() {
+	lock_guard<mutex> lock(_lock);
+	if (!_mtlPerVertexIndirectComputePipelineState) { _mtlPerVertexIndirectComputePipelineState = _commandPool->getDevice()->getCommandResourceFactory()->newPerVertexIndirectMTLComputePipelineState(_commandPool); }
+	return _mtlPerVertexIndirectComputePipelineState;
+}
+
+id<MTLComputePipelineState> MVKCommandEncodingPool::getPerVertexTessTopologyMTLComputePipelineState() {
+	lock_guard<mutex> lock(_lock);
+	if (!_mtlPerVertexTessTopologyComputePipelineState) { _mtlPerVertexTessTopologyComputePipelineState = _commandPool->getDevice()->getCommandResourceFactory()->newPerVertexTessTopologyMTLComputePipelineState(_commandPool); }
+	return _mtlPerVertexTessTopologyComputePipelineState;
 }
 
 void MVKCommandEncodingPool::clear() {
@@ -270,6 +292,8 @@ void MVKCommandEncodingPool::destroyMetalResources() {
     [_mtlAccumOcclusionQueryResultsComputePipelineState release];
     _mtlAccumOcclusionQueryResultsComputePipelineState = nil;
 
-    [_mtlConvertUint8IndicesComputePipelineState release];
-    _mtlConvertUint8IndicesComputePipelineState = nil;
+	[_mtlPerVertexRestartComputePipelineState release]; _mtlPerVertexRestartComputePipelineState = nil;
+	[_mtlPerVertexIndirectComputePipelineState release]; _mtlPerVertexIndirectComputePipelineState = nil;
+	[_mtlPerVertexTessTopologyComputePipelineState release]; _mtlPerVertexTessTopologyComputePipelineState = nil;
+    for (auto& state : _mtlConvertUint8IndicesComputePipelineState) { [state release]; state = nil; }
 }

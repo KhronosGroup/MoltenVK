@@ -36,8 +36,10 @@
 
 #import "CAMetalLayer+MoltenVK.h"
 
+#include <objc/runtime.h>
 #include <sys/stat.h>
 #include <cmath>
+#include <thread>
 
 using namespace std;
 
@@ -574,7 +576,8 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR: {
 				auto* barycentricFeatures = (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)next;
-				barycentricFeatures->fragmentShaderBarycentric = true;
+				// KHR and NV are aliases; report the same support gate used by extension enumeration.
+				barycentricFeatures->fragmentShaderBarycentric = _supportedExtensions.vk_KHR_fragment_shader_barycentric.enabled || _supportedExtensions.vk_NV_fragment_shader_barycentric.enabled;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR: {
@@ -750,6 +753,16 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LEGACY_DITHERING_FEATURES_EXT: {
 				auto* legacyDitheringFeatures = (VkPhysicalDeviceLegacyDitheringFeaturesEXT*)next;
 				legacyDitheringFeatures->legacyDithering = getMVKConfig().useMetalPrivateAPI;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT: {
+				auto* meshFeatures = (VkPhysicalDeviceMeshShaderFeaturesEXT*)next;
+				// The first mesh path draws mesh and fragment stages only, and is exposed to the test adapter only.
+				meshFeatures->taskShader = false;
+				meshFeatures->meshShader = _supportedExtensions.vk_EXT_mesh_shader.enabled;
+				meshFeatures->multiviewMeshShader = false;
+				meshFeatures->primitiveFragmentShadingRateMeshShader = false;
+				meshFeatures->meshShaderQueries = false;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT: {
@@ -1309,6 +1322,43 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				auto* nestedCmdBuffProps = (VkPhysicalDeviceNestedCommandBufferPropertiesEXT*)next;
 				// Nesting is handled by recursion on the host, so no limit is imposed.
 				nestedCmdBuffProps->maxCommandBufferNestingLevel = std::numeric_limits<uint32_t>::max();
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT: {
+				auto* meshProps = (VkPhysicalDeviceMeshShaderPropertiesEXT*)next;
+				// Vulkan minimum limits, except where Metal is measured and documented lower (MeshLimits probe, Metal Feature
+				// Set Tables): those two fall below Vulkan's minimums, so this path cannot be exposed as the extension as is.
+				// Task shaders are not supported, so their limits are zero.
+				meshProps->maxTaskWorkGroupTotalCount = 0;
+				mvkClear(meshProps->maxTaskWorkGroupCount, 3);
+				meshProps->maxTaskWorkGroupInvocations = 0;
+				mvkClear(meshProps->maxTaskWorkGroupSize, 3);
+				meshProps->maxTaskPayloadSize = 0;
+				meshProps->maxTaskSharedMemorySize = 0;
+				meshProps->maxTaskPayloadAndSharedMemorySize = 0;
+				// "Maximum threadgroups per mesh shader grid": 1024 on Apple7 and Apple8, 1,048,575 on Apple9, 4,194,303 on
+				// Apple10. Each pipeline also reports its own limit, which vkCmdDrawMeshTasksEXT() enforces.
+				meshProps->maxMeshWorkGroupTotalCount = _gpuCapabilities.supportsApple10 ? 4194303 : _gpuCapabilities.supportsApple9 ? 1048575 : 1024;
+				for (uint32_t i = 0; i < 3; i++) { meshProps->maxMeshWorkGroupCount[i] = 65535; meshProps->maxMeshWorkGroupSize[i] = 128; }
+				meshProps->maxMeshWorkGroupInvocations = 128;
+				meshProps->maxMeshSharedMemorySize = 28 * KIBI;
+				meshProps->maxMeshPayloadAndSharedMemorySize = 28 * KIBI;
+				meshProps->maxMeshOutputMemorySize = 32 * KIBI;
+				meshProps->maxMeshPayloadAndOutputMemorySize = 47 * KIBI;
+				// Metal counts at most 124 unique scalars per mesh vertex and primitive, the position included.
+				meshProps->maxMeshOutputComponents = 120;
+				meshProps->maxMeshOutputVertices = 256;
+				meshProps->maxMeshOutputPrimitives = 256;
+				meshProps->maxMeshOutputLayers = 8;
+				meshProps->maxMeshMultiviewViewCount = 1;
+				meshProps->meshOutputPerVertexGranularity = 1;
+				meshProps->meshOutputPerPrimitiveGranularity = 1;
+				meshProps->maxPreferredTaskWorkGroupInvocations = 0;
+				meshProps->maxPreferredMeshWorkGroupInvocations = 32;
+				meshProps->prefersLocalInvocationVertexOutput = true;
+				meshProps->prefersLocalInvocationPrimitiveOutput = true;
+				meshProps->prefersCompactVertexOutput = false;
+				meshProps->prefersCompactPrimitiveOutput = false;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT: {
@@ -3313,6 +3363,8 @@ void MVKPhysicalDevice::initPipelineCacheUUID() {
 	// might affect the contents of the pipeline cache (mostly MSL content).
 	uint32_t mtlFeatures = 0;
 	mtlFeatures |= _isUsingMetalArgumentBuffers << 0;
+	mtlFeatures |= 1u << 1; // Shader cache archive includes the portable PerVertex input ABI.
+	mtlFeatures |= 1u << 2; // Portable barycentric opt-in and private varying locations.
 	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatures);
 	uuidComponentOffset += sizeof(mtlFeatures);
 }
@@ -3582,10 +3634,15 @@ void MVKPhysicalDevice::initExtensions() {
 		pWritableExtns->vk_EXT_shader_subgroup_ballot.enabled = false;
 		pWritableExtns->vk_EXT_shader_subgroup_vote.enabled = false;
 	}
+	// The native path uses Metal barycentric coordinates. The experimental capture and replay of PerVertexKHR inputs
+	// is a separate path, which only the test entry point enables (isPortablePerVertexEnabled()).
 	if (!_metalFeatures.shaderBarycentricCoordinates) {
 		pWritableExtns->vk_KHR_fragment_shader_barycentric.enabled = false;
 		pWritableExtns->vk_NV_fragment_shader_barycentric.enabled = false;
 	}
+	// The first mesh path (mesh and fragment stages, direct draws, no mesh-stage resources) is exposed only
+	// to the test device adapter.
+	pWritableExtns->vk_EXT_mesh_shader.enabled = false;
 	if (!_metalFeatures.arrayOfTextures || !_metalFeatures.arrayOfSamplers) {
 		pWritableExtns->vk_EXT_descriptor_indexing.enabled = false;
 	}
@@ -3763,9 +3820,21 @@ void MVKPhysicalDevice::logGPUInfo() {
 	[nsUUID release];																		// temp release
 }
 
+id<MTLCommandQueue> MVKPhysicalDevice::getLossRescueMTLCommandQueue() {
+	lock_guard<mutex> lock(_lossRescueLock);
+	if ( !_lossRescueMTLQueue ) {
+		@autoreleasepool {
+			_lossRescueMTLQueue = [_mtlDevice newCommandQueue];		// retained
+			setMetalObjectLabel(_lossRescueMTLQueue, @"MoltenVK device loss semaphore release");
+		}
+	}
+	return _lossRescueMTLQueue;
+}
+
 MVKPhysicalDevice::~MVKPhysicalDevice() {
 	mvkDestroyContainerContents(_queueFamilies);
 	[_timestampMTLCounterSet release];
+	[_lossRescueMTLQueue release];
 
 	uint64_t memUsed = getCurrentAllocatedSize();	// Retrieve before releasing MTLDevice
 	[_mtlDevice release];
@@ -3895,24 +3964,237 @@ VkResult MVKDevice::waitIdle() {
 	return rslt;
 }
 
+// Called from Metal completion handlers as well as from queue workers, so it must never block. Reporting the loss to
+// host waits is deferred to publishLoss(): a host wait that returns VK_ERROR_DEVICE_LOST ends the pending state of the
+// command buffers it covers (Vulkan "Lost Device"), and a submission still encoding may be reading them.
 VkResult MVKDevice::markLost(bool alsoMarkPhysicalDevice) {
+	if (alsoMarkPhysicalDevice) { _markPhysicalDeviceLost.store(true, std::memory_order_release); }
+	if (_losing.exchange(true)) {
+		if (alsoMarkPhysicalDevice && getConfigurationResult() != VK_SUCCESS) { _physicalDevice->setConfigurationResult(VK_ERROR_DEVICE_LOST); }
+		return VK_ERROR_DEVICE_LOST;
+	}
+
+	// Queue workers blocked on emulated semaphores must stop encoding before the loss can be published.
+	{
+		lock_guard<mutex> lock(_sem4Lock);
+		for (auto* sem4 : _encodingSemaphores) { sem4->cancel(); }
+		_encodingSemaphores.clear();
+	}
+	// Release Metal waits now: a submission still encoding may be blocked until one of them completes.
+	releaseSemaphoreWaitsAfterLoss();
+
+	lock_guard<mutex> lock(_lossLock);
+	_lossPublisher = dispatch_queue_create("MoltenVK device loss", DISPATCH_QUEUE_SERIAL);	// retained
+	dispatch_async(_lossPublisher, ^{ publishLoss(); });
+	return VK_ERROR_DEVICE_LOST;
+}
+
+// The handlers added to a Metal command buffer by MVKDevice::addMTLCommandBufferHandler(), until it is committed.
+@interface MVKMTLCommandBufferHandlers : NSObject {
+@public
+	NSMutableArray* _completed;
+	NSMutableArray* _scheduled;
+}
+@end
+
+@implementation MVKMTLCommandBufferHandlers
+
+-(instancetype) init {
+	if ((self = [super init])) {
+		_completed = [NSMutableArray new];		// retained
+		_scheduled = [NSMutableArray new];		// retained
+	}
+	return self;
+}
+
+-(void) dealloc {
+	[_completed release];
+	[_scheduled release];
+	[super dealloc];
+}
+
+@end
+
+static char kMVKMTLCommandBufferHandlersKey;
+
+// Detaches and returns, retained, the handlers added to a Metal command buffer, if any.
+static MVKMTLCommandBufferHandlers* mvkTakeMTLCommandBufferHandlers(id<MTLCommandBuffer> mtlCmdBuff) {
+	MVKMTLCommandBufferHandlers* handlers = [objc_getAssociatedObject(mtlCmdBuff, &kMVKMTLCommandBufferHandlersKey) retain];
+	if (handlers) { objc_setAssociatedObject(mtlCmdBuff, &kMVKMTLCommandBufferHandlersKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC); }
+	return handlers;
+}
+
+// Polls rather than waits for a notification: whatever decremented the count may not use this device again.
+template <typename T>
+static void mvkWaitForZero(const std::atomic<T>& count) {
+	while (count.load()) { std::this_thread::sleep_for(std::chrono::milliseconds(1)); }
+}
+
+// Reports the loss to host waits once no queue submission is encoding, after a final release of the Metal waits
+// those submissions encoded. Later submissions are refused or dropped without encoding, since isLosing() is set.
+void MVKDevice::publishLoss() {
+	mvkWaitForZero(_activeEncodings);
+	// No encoding remains, so no application work can be committed any more: the work that may still write application
+	// memory is now exactly the command buffers committed so far, whose completed handlers the inventory counts.
+	_isLossInventoryClosed = true;
+	releaseSemaphoreWaitsAfterLoss();
+	// Work released above, or committed before the loss, may still use application resources. Work that waits for
+	// Metal work MoltenVK cannot release, such as the application's own on an exported command queue, holds the report
+	// back: MoltenVK cannot keep those resources alive once the loss is reported (see PerVertexLossTests.mm).
+	auto start = std::chrono::steady_clock::now();
+	bool isWarned = false;
+	while (_pendingMTLCommandBufferHandlers.load()) {
+		if ( !isWarned && std::chrono::steady_clock::now() - start > std::chrono::seconds(1) ) {
+			reportWarning(VK_ERROR_DEVICE_LOST, "The device loss is not reported yet: Metal work that MoltenVK committed has not completed after one second. It may wait for Metal work that MoltenVK cannot release, such as work committed to an exported command queue.");
+			isWarned = true;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+	{
+		lock_guard<mutex> lock(_sem4Lock);
+		setConfigurationResult(VK_ERROR_DEVICE_LOST);
+		if (_markPhysicalDeviceLost.load(std::memory_order_acquire)) { _physicalDevice->setConfigurationResult(VK_ERROR_DEVICE_LOST); }
+		for (auto* sem4 : _awaitingSemaphores) {
+			sem4->cancel();
+		}
+		for (auto& sem4AndValue : _awaitingTimelineSem4s) {
+			VkSemaphoreSignalInfo signalInfo;
+			signalInfo.value = sem4AndValue.second;
+			sem4AndValue.first->signal(&signalInfo);
+		}
+		_awaitingSemaphores.clear();
+		_awaitingTimelineSem4s.clear();
+	}
+	{
+		lock_guard<mutex> lock(_lossLock);
+		_isLossPublished = true;
+	}
+	_lossCondition.notify_all();
+}
+
+// Signals every semaphore or event that has encoded Metal waits to a value satisfying all of them, on a Metal queue that
+// never holds application work. Metal event values only increase, so signals already executed are unaffected.
+void MVKDevice::releaseSemaphoreWaitsAfterLoss() {
+	lock_guard<mutex> lock(_lossReleaseLock);
+	if (_lossReleasables.empty()) { return; }
+	@autoreleasepool {
+		id<MTLCommandQueue> mtlQueue = _physicalDevice->getLossRescueMTLCommandQueue();
+		id<MTLCommandBuffer> mtlCmdBuff = [mtlQueue commandBuffer];		// retains the events it signals
+		bool released = true;
+		for (auto* releasable : _lossReleasables) { released &= releasable->releaseWaitsAfterLoss(mtlCmdBuff); }
+		commitMTLCommandBuffer(mtlCmdBuff);
+		if ( !released ) { reportWarning(VK_ERROR_DEVICE_LOST, "Could not release every Metal semaphore wait after device loss. Metal work waiting on them may not complete."); }
+	}
+}
+
+VkResult MVKDevice::getHostWaitResult(bool isFinished, uint64_t timeout) {
+	// Orders the completion state the caller read before the loss checks below: a semaphore value raised by the
+	// release of Metal waits after a loss is then always followed by a check that sees the loss.
+	std::atomic_thread_fence(std::memory_order_seq_cst);
+	VkResult rslt = getConfigurationResult();
+	if (rslt != VK_SUCCESS) { return rslt; }
+	if (isLosing()) {
+		unique_lock<mutex> lock(_lossLock);
+		if (timeout == UINT64_MAX) {
+			_lossCondition.wait(lock, [this]{ return _isLossPublished; });
+		} else if ( !_lossCondition.wait_for(lock, chrono::nanoseconds(min(timeout, kMVKUndefinedLargeUInt64)), [this]{ return _isLossPublished; }) ) {
+			return VK_TIMEOUT;
+		}
+		return VK_ERROR_DEVICE_LOST;
+	}
+	return isFinished ? VK_SUCCESS : VK_TIMEOUT;
+}
+
+void MVKDevice::beginEncoding() {
+	_activeEncodings++;
+}
+
+void MVKDevice::endEncoding() {
+	_activeEncodings--;
+}
+
+void MVKDevice::addMTLCommandBufferHandler(id<MTLCommandBuffer> mtlCmdBuff, MTLCommandBufferHandler handler, bool isScheduled) {
+	if ( !mtlCmdBuff ) { return; }
+	MVKMTLCommandBufferHandlers* handlers = objc_getAssociatedObject(mtlCmdBuff, &kMVKMTLCommandBufferHandlersKey);
+	if ( !handlers ) {
+		handlers = [MVKMTLCommandBufferHandlers new];		// temp retain
+		objc_setAssociatedObject(mtlCmdBuff, &kMVKMTLCommandBufferHandlersKey, handlers, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+		[handlers release];									// temp release
+	}
+	id copiedHandler = [handler copy];						// temp retain
+	[(isScheduled ? handlers->_scheduled : handlers->_completed) addObject: copiedHandler];
+	[copiedHandler release];								// temp release
+}
+
+void MVKDevice::commitMTLCommandBuffer(id<MTLCommandBuffer> mtlCmdBuff) {
+	if ( !mtlCmdBuff ) { return; }
+	MVKMTLCommandBufferHandlers* handlers = mvkTakeMTLCommandBufferHandlers(mtlCmdBuff);
+	NSArray* scheduled = handlers ? handlers->_scheduled : nil;
+	NSArray* completed = handlers ? handlers->_completed : nil;
+	// The end of each Metal handler is its last use of this device, which may be destroyed right after it.
+	if (scheduled.count) {
+		_pendingMTLCommandBufferHandlers++;
+		[mtlCmdBuff addScheduledHandler: ^(id<MTLCommandBuffer> mtlCB) {
+			for (MTLCommandBufferHandler handler in scheduled) { handler(mtlCB); }
+			_pendingMTLCommandBufferHandlers--;
+		}];
+	}
+	// Until a loss closes the inventory, every command buffer is counted until its completed handlers have returned,
+	// even one without other completed handlers: it may write memory the application releases once the loss is reported.
+	bool isCounted = !_isLossInventoryClosed.load();
+	if (completed.count || isCounted) {
+		if (isCounted) { _handlersBeforeInventory++; }
+		_pendingMTLCommandBufferHandlers++;
+		[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) {
+			for (MTLCommandBufferHandler handler in completed) { handler(mtlCB); }
+			if (isCounted) { _handlersBeforeInventory--; }
+			_pendingMTLCommandBufferHandlers--;
+		}];
+	}
+	[handlers release];
+	[mtlCmdBuff commit];
+}
+
+void MVKDevice::abandonMTLCommandBuffer(id<MTLCommandBuffer> mtlCmdBuff) {
+	if ( !mtlCmdBuff ) { return; }
+	MVKMTLCommandBufferHandlers* handlers = mvkTakeMTLCommandBufferHandlers(mtlCmdBuff);
+	if (handlers) {
+		for (MTLCommandBufferHandler handler in handlers->_completed) { handler(mtlCmdBuff); }
+	}
+	[handlers release];
+}
+
+void MVKDevice::waitForLossInventory() {
+	if ( !isLosing() ) { return; }
+	bool isWarned = false;
+	while ( !_isLossInventoryClosed.load() || _handlersBeforeInventory.load() ) {
+		if ( !isWarned ) {
+			reportWarning(VK_ERROR_DEVICE_LOST, "Freeing imported host memory waits for the Metal work committed before the device loss, which may still write it.");
+			isWarned = true;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+}
+
+void MVKDevice::addLossReleasable(MVKLossReleasable* releasable) {
+	lock_guard<mutex> lock(_lossReleaseLock);
+	_lossReleasables.insert(releasable);
+}
+
+void MVKDevice::removeLossReleasable(MVKLossReleasable* releasable) {
+	lock_guard<mutex> lock(_lossReleaseLock);
+	_lossReleasables.erase(releasable);
+}
+
+void MVKDevice::addEncodingSemaphore(MVKSemaphoreImpl* sem4) {
 	lock_guard<mutex> lock(_sem4Lock);
+	if (isLosing()) { sem4->cancel(); }
+	else { _encodingSemaphores.push_back(sem4); }
+}
 
-	setConfigurationResult(VK_ERROR_DEVICE_LOST);
-	if (alsoMarkPhysicalDevice) { _physicalDevice->setConfigurationResult(VK_ERROR_DEVICE_LOST); }
-
-	for (auto* sem4 : _awaitingSemaphores) {
-		sem4->release();
-	}
-	for (auto& sem4AndValue : _awaitingTimelineSem4s) {
-		VkSemaphoreSignalInfo signalInfo;
-		signalInfo.value = sem4AndValue.second;
-		sem4AndValue.first->signal(&signalInfo);
-	}
-	_awaitingSemaphores.clear();
-	_awaitingTimelineSem4s.clear();
-
-	return getConfigurationResult();
+void MVKDevice::removeEncodingSemaphore(MVKSemaphoreImpl* sem4) {
+	lock_guard<mutex> lock(_sem4Lock);
+	mvkRemoveFirstOccurance(_encodingSemaphores, sem4);
 }
 
 void MVKDevice::getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
@@ -4572,7 +4854,11 @@ MVKDeviceMemory* MVKDevice::allocateMemory(const VkMemoryAllocateInfo* pAllocate
 
 void MVKDevice::freeMemory(MVKDeviceMemory* mvkDevMem,
 						   const VkAllocationCallbacks* pAllocator) {
-	if (mvkDevMem) { mvkDevMem->destroy(); }
+	if ( !mvkDevMem ) { return; }
+	// Once this returns, the application may reuse host memory it imported: no Metal work may write it any more.
+	// Memory imported during the loss, or whose import failed, has no such work.
+	if (mvkDevMem->isHostMemoryImportedBeforeLoss()) { waitForLossInventory(); }
+	mvkDevMem->destroy();
 }
 
 // Look for an available pre-reserved private data slot and return its address if found.
@@ -4673,7 +4959,8 @@ MVKImage* MVKDevice::removeImage(MVKImage* mvkImg) {
 
 void MVKDevice::addSemaphore(MVKSemaphoreImpl* sem4) {
 	lock_guard<mutex> lock(_sem4Lock);
-	_awaitingSemaphores.push_back(sem4);
+	if (getConfigurationResult() != VK_SUCCESS) { sem4->cancel(); }
+	else { _awaitingSemaphores.push_back(sem4); }
 }
 
 void MVKDevice::removeSemaphore(MVKSemaphoreImpl* sem4) {
@@ -4833,6 +5120,21 @@ VkResult MVKDevice::invalidateMappedMemoryRanges(uint32_t memRangeCount, const V
 	@autoreleasepool {
 		VkResult rslt = VK_SUCCESS;
 		MVKMTLBlitEncoder mvkBlitEnc;
+		// A synchronization from the GPU may write imported host memory, which a device loss must count before reporting:
+		// it is admitted and committed within an encoding bracket, like a queue submission. Its Metal command buffer is
+		// acquired before the bracket, since the acquisition blocks while the queue is full, and the loss report waits for
+		// the bracket. The completion wait comes after the bracket too. Once the device is being lost, nothing is admitted:
+		// the contents of device memory are undefined after a loss.
+		for (uint32_t i = 0; i < memRangeCount && !mvkBlitEnc.mtlCmdBuffer && !isLosing(); i++) {
+			if (((MVKDeviceMemory*)pMemRanges[i].memory)->needsDeviceSynchronization()) {
+				mvkBlitEnc.mtlCmdBuffer = getAnyQueue()->getMTLCommandBuffer(kMVKCommandUseInvalidateMappedMemoryRanges);
+			}
+		}
+		beginEncoding();
+		if (isLosing()) {
+			abandonMTLCommandBuffer(mvkBlitEnc.mtlCmdBuffer);
+			mvkBlitEnc.mtlCmdBuffer = nil;
+		}
 		for (uint32_t i = 0; i < memRangeCount; i++) {
 			const VkMappedMemoryRange* pMem = &pMemRanges[i];
 			MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMem->memory;
@@ -4840,10 +5142,9 @@ VkResult MVKDevice::invalidateMappedMemoryRanges(uint32_t memRangeCount, const V
 			if (rslt == VK_SUCCESS) { rslt = r; }
 		}
 		if (mvkBlitEnc.mtlBlitEncoder) { [mvkBlitEnc.mtlBlitEncoder endEncoding]; }
-		if (mvkBlitEnc.mtlCmdBuffer) {
-			[mvkBlitEnc.mtlCmdBuffer commit];
-			[mvkBlitEnc.mtlCmdBuffer waitUntilCompleted];
-		}
+		commitMTLCommandBuffer(mvkBlitEnc.mtlCmdBuffer);
+		endEncoding();
+		[mvkBlitEnc.mtlCmdBuffer waitUntilCompleted];
 		return rslt;
 	}
 }
@@ -5573,6 +5874,10 @@ void MVKDevice::reservePrivateData(const VkDeviceCreateInfo* pCreateInfo) {
 }
 
 MVKDevice::~MVKDevice() {
+	// Queue submissions still encoding, and handlers of committed Metal command buffers, still use this device.
+	mvkWaitForZero(_activeEncodings);
+	mvkWaitForZero(_pendingMTLCommandBufferHandlers);
+
 	if (_isPerformanceTracking) {
 		auto perfLogStyle = getMVKConfig().activityPerformanceLoggingStyle;
 		if (perfLogStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_DEVICE_LIFETIME) {
@@ -5587,6 +5892,12 @@ MVKDevice::~MVKDevice() {
 
 	for (auto& queues : _queuesByQueueFamilyIndex) {
 		mvkDestroyContainerContents(queues);
+	}
+
+	// Wait for a pending loss report, which uses this device.
+	if (_lossPublisher) {
+		dispatch_sync(_lossPublisher, ^{});
+		dispatch_release(_lossPublisher);
 	}
 
 	if (_commandResourceFactory) { _commandResourceFactory->destroy(); }

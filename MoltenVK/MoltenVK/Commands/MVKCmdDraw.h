@@ -21,8 +21,30 @@
 #include "MVKCommand.h"
 #include "MVKMTLResourceBindings.h"
 #include "MVKSmallVector.h"
+#include "MVKPerVertexReplay.h"
 
 #import <Metal/Metal.h>
+
+class MVKGraphicsPipeline;
+
+// Preserve the conservative power-of-two scratch ceiling used by recording validation.
+static inline bool mvkCanEncodePerVertexDraw(uint32_t vertexCount, uint32_t instanceCount, uint32_t stride, VkPrimitiveTopology topology, uint64_t maxMTLBufferSize) {
+	if (!mvkPerVertexReplayVertexCount(topology)) { return false; }
+	if (!vertexCount || !instanceCount) { return true; }
+	if (!maxMTLBufferSize) { return false; }
+	uint64_t maxBufferSize = 1;
+	while (maxBufferSize <= maxMTLBufferSize / 2) { maxBufferSize *= 2; }
+	uint64_t recordCount = uint64_t(vertexCount) * instanceCount;
+	if (!stride || recordCount > UINT32_MAX || recordCount > maxBufferSize / stride) { return false; }
+	uint64_t primitiveCount = uint64_t(mvkPerVertexPrimitiveCount(vertexCount, topology)) * instanceCount;
+	uint64_t occurrenceCount = primitiveCount * mvkPerVertexReplayVertexCount(topology);
+	return primitiveCount <= UINT32_MAX / 3 && primitiveCount <= maxBufferSize / (3 * sizeof(uint32_t)) && occurrenceCount <= UINT32_MAX / 2 && occurrenceCount <= maxBufferSize / (2 * sizeof(uint32_t));
+}
+
+// PerVertex TES plan: status, replay arguments and constants, per-patch counts and offsets, then, 256-byte
+// aligned for the fragment binding, the patch index of each generated triangle (at most 13 per patch).
+static inline uint64_t mvkPerVertexTessPrimitiveIdOffset(uint64_t patches) { return mvkAlignByteCount(512 + patches * 2 * sizeof(uint32_t), 256); }
+static inline uint64_t mvkPerVertexTessPlanSize(uint64_t patches) { return mvkPerVertexTessPrimitiveIdOffset(patches) + patches * 13 * sizeof(uint32_t); }
 
 
 #pragma mark -
@@ -99,6 +121,7 @@ public:
 						uint32_t drawIndex = 0);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
+	void encodePerVertexInput(MVKCommandEncoder* cmdEncoder, MVKGraphicsPipeline* pipeline);
 	void encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder);
 
 protected:
@@ -127,6 +150,7 @@ public:
 						uint32_t drawIndex = 0);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	void encodePerVertexInput(MVKCommandEncoder* cmdEncoder, MVKGraphicsPipeline* pipeline);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -217,4 +241,24 @@ protected:
 	uint32_t _drawCount;
 	id<MTLBuffer> _mtlCountBuffer;
 	VkDeviceSize _mtlCountBufferOffset;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdDrawMeshTasks
+
+/** Vulkan command to draw mesh workgroups (vkCmdDrawMeshTasksEXT). */
+class MVKCmdDrawMeshTasks : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	uint32_t _groupCountX;
+	uint32_t _groupCountY;
+	uint32_t _groupCountZ;
 };

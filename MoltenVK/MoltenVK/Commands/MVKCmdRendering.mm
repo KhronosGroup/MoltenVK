@@ -54,6 +54,7 @@ VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
 	MVKCmdBeginRenderPassBase::setContent(cmdBuff, pRenderPassBegin, pSubpassBeginInfo);
 
 	_attachments.assign(attachments.begin(), attachments.end());
+	cmdBuff->recordRenderPass(_attachments.contents());
 	_clearValues.assign(pRenderPassBegin->pClearValues,
 						pRenderPassBegin->pClearValues + pRenderPassBegin->clearValueCount);
 
@@ -116,6 +117,7 @@ void MVKCmdNextSubpass::encode(MVKCommandEncoder* cmdEncoder) {
 
 VkResult MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff) {
 	cmdBuff->_currentSubpassInfo = {};
+	cmdBuff->recordRenderPass({}, false);
 	return VK_SUCCESS;
 }
 
@@ -151,6 +153,7 @@ VkResult MVKCmdBeginRendering<N>::setContent(MVKCommandBuffer* cmdBuff,
 	}
 
 	cmdBuff->_currentSubpassInfo.beginRendering(pRenderingInfo->viewMask);
+	cmdBuff->recordRendering(pRenderingInfo);
 
 	return VK_SUCCESS;
 }
@@ -220,6 +223,7 @@ void MVKCmdSetRenderingInputAttachmentIndices::encode(MVKCommandEncoder* cmdEnco
 
 VkResult MVKCmdEndRendering::setContent(MVKCommandBuffer* cmdBuff) {
 	cmdBuff->_currentSubpassInfo = {};
+	cmdBuff->recordRenderPass({}, false);
 	return VK_SUCCESS;
 }
 
@@ -524,6 +528,12 @@ void MVKCmdSetFrontFace::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdSetPatchControlPoints
 
+// Recorded too, so that tessellation draws can be checked while recording.
+VkResult MVKCmdSetPatchControlPoints::setContent(MVKCommandBuffer* cmdBuff, uint32_t patchControlPoints) {
+	cmdBuff->recordPatchControlPoints(patchControlPoints);
+	return MVKSingleValueCommand::setContent(cmdBuff, patchControlPoints);
+}
+
 void MVKCmdSetPatchControlPoints::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::PatchControlPoints)._renderState.patchControlPoints = static_cast<uint8_t>(_value);
 }
@@ -555,6 +565,12 @@ void MVKCmdSetLineWidth::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark -
 #pragma mark MVKCmdSetPrimitiveTopology
+
+// Recorded too, so that portable PerVertexKHR draws can size their scratch while recording.
+VkResult MVKCmdSetPrimitiveTopology::setContent(MVKCommandBuffer* cmdBuff, VkPrimitiveTopology topology) {
+	cmdBuff->recordPrimitiveTopology(topology);
+	return MVKSingleValueCommand::setContent(cmdBuff, topology);
+}
 
 void MVKCmdSetPrimitiveTopology::encode(MVKCommandEncoder* cmdEncoder) {
 	auto& renderState = cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::PrimitiveTopology)._renderState;
