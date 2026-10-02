@@ -1720,16 +1720,16 @@ void MVKCommandEncoder::finishQueries() {
     _pActivatedQueries = nullptr;
     // After a failed continuation, no Metal command buffer remains to complete the queries.
     if ( !_mtlCmdBuffer ) {
+        for (auto& qryPair : *pAQs) { qryPair.first->release(); }
         delete pAQs;
         return;
     }
     getDevice()->addMTLCommandBufferHandler(_mtlCmdBuffer, ^(id<MTLCommandBuffer> mtlCmdBuff) {
         // An abandoned command buffer never ran its queries.
-        if (mtlCmdBuff.status != MTLCommandBufferStatusNotEnqueued) {
-            for (auto& qryPair : *pAQs) {
-                qryPair.first->finishQueries(qryPair.second.contents());
-                qryPair.first->release();
-            }
+        bool ran = mtlCmdBuff.status != MTLCommandBufferStatusNotEnqueued;
+        for (auto& qryPair : *pAQs) {
+            if (ran) { qryPair.first->finishQueries(qryPair.second.contents()); }
+            qryPair.first->release();
         }
         delete pAQs;
     });
