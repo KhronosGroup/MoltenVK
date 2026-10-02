@@ -1351,7 +1351,7 @@ bool MVKGraphicsPipeline::initMeshPipelineState(const VkGraphicsPipelineCreateIn
 	setMetalObjectLabel(meshDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
 	[fragmentDesc release];
 	if (compiled) {
-		// ponytail: synchronous compile; route through MVKRenderPipelineCompiler for timeouts once mesh leaves the test gate.
+		// Compiles synchronously; route through MVKRenderPipelineCompiler for timeouts once mesh leaves the test gate.
 		NSError* error = nil;
 		_mtlPipelineState = [getMTLDevice() newRenderPipelineStateWithMeshDescriptor:meshDesc options:MTLPipelineOptionNone reflection:nil error:&error];	// retained
 		if (!_mtlPipelineState) { setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Could not create the mesh pipeline: %s", error.localizedDescription.UTF8String)); }

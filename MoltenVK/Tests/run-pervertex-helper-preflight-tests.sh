@@ -4,7 +4,7 @@
 set -euo pipefail
 test_dir=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$test_dir/../.." && pwd)
-output=${1:-$(mktemp -d /private/tmp/mvk-helper-preflight.XXXXXX)}
+output=${1:-$(mktemp -d "${TMPDIR:-/tmp}/mvk-helper-preflight.XXXXXX")}
 mkdir -p "$output"
 # Compile the production preflight/cache method bodies against CPU-only doubles.
 # Set MVK_TEST_REVISION=9f1cb26a to exercise the original implementation.

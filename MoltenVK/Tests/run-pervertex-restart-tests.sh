@@ -4,7 +4,7 @@
 set -euo pipefail
 test_dir=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$test_dir/../.." && pwd)
-output=${1:-$(mktemp -d /private/tmp/mvk-restart.XXXXXX)}
+output=${1:-$(mktemp -d "${TMPDIR:-/tmp}/mvk-restart.XXXXXX")}
 mode=${2:-cpu}
 mkdir -p "$output"
 python3 - "$root" "$output" <<'PY'

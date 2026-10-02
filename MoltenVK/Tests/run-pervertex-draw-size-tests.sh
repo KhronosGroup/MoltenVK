@@ -4,7 +4,7 @@
 set -euo pipefail
 test_dir=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$test_dir/../.." && pwd)
-output=${1:-$(mktemp -d /private/tmp/mvk-draw-size.XXXXXX)}
+output=${1:-$(mktemp -d "${TMPDIR:-/tmp}/mvk-draw-size.XXXXXX")}
 mkdir -p "$output"
 includes=(-I"$root/Common" -I"$root/MoltenVK/include" -I"$root/External/Vulkan-Headers/include")
 for directory in API Commands GPUObjects Layers OS Utility Vulkan; do

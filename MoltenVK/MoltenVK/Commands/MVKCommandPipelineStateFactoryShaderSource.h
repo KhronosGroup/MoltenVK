@@ -783,7 +783,7 @@ kernel void perVertexTessTopology(const device uint* levels [[buffer(0)]], devic
     }
     if (p[4] == 1) {
         if (i) { return; }
-        // ponytail: serial prefix over patches; a parallel scan is needed for very large patch counts.
+        // Serial prefix over patches; very large patch counts need a parallel scan.
         uint total = 0;
         for (uint patch = 0; patch < patches; ++patch) { offsets[patch] = total; total += counts[patch]; }
         uint records = plan[0] ? 0 : 3 * total;

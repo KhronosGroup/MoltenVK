@@ -4,7 +4,7 @@
 set -euo pipefail
 test_dir=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$test_dir/../.." && pwd)
-output=${1:-$(mktemp -d /private/tmp/mvk-memoryless.XXXXXX)}
+output=${1:-$(mktemp -d "${TMPDIR:-/tmp}/mvk-memoryless.XXXXXX")}
 mkdir -p "$output"
 # Compile the production storage decision, not a copy of the policy.
 python3 - "$root" "$output" <<'PY'

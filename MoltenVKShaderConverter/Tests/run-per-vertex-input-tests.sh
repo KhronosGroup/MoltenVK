@@ -7,7 +7,7 @@ root=$(cd "$test_dir/../.." && pwd)
 cross_source=${1:?SPIRV-Cross source directory required}
 cross_build=${2:?SPIRV-Cross library build directory required}
 ordinary_spirv=${3:?Ordinary fragment SPIR-V fixture required}
-output=${4:-$(mktemp -d /private/tmp/mvk-converter-pervertex.XXXXXX)}
+output=${4:-$(mktemp -d "${TMPDIR:-/tmp}/mvk-converter-pervertex.XXXXXX")}
 mkdir -p "$output"
 compiler_dir="$root/MoltenVKShaderConverter/MoltenVKShaderConverter"
 for fixture in simple complex unsupported; do

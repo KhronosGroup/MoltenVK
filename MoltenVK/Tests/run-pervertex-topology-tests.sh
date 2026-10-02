@@ -4,7 +4,7 @@
 set -euo pipefail
 test_dir=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$test_dir/../.." && pwd)
-output=${1:-$(mktemp -d /private/tmp/mvk-topology.XXXXXX)}
+output=${1:-$(mktemp -d "${TMPDIR:-/tmp}/mvk-topology.XXXXXX")}
 mkdir -p "$output"
 python3 - "$root" "$output" <<'PY'
 from pathlib import Path
