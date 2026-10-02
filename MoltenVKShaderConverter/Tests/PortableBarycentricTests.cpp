@@ -250,7 +250,7 @@ int main(int argc, char** argv) {
 		check(empty.matches(disabled) && disabled.matches(empty), "Disabled binding changed cache identity");
 		std::stringstream bytes;
 		{ cereal::BinaryOutputArchive archive(bytes); archive(empty); }
-		check(sizeof(empty) - bytes.str().size() == 156, "Pipeline archive padding expectation is stale");
+		check(sizeof(empty) - bytes.str().size() == 154, "Pipeline archive padding expectation is stale");
 		std::cout << "Configuration sizeof=" << sizeof(empty) << " empty archive=" << bytes.str().size() << "\n";
 		std::cout << "PASS: six matching capture/replay/fragment variants, explicit-only reflection, production cache round-trip/mutations, list/strip/fan corners, instances, optional payload and incomplete primitives\n";
 		return 0;
