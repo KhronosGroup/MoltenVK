@@ -104,6 +104,7 @@ protected:
 	VkOffset2D _codedOffset;
 	VkExtent2D _codedExtent;
 	uint32_t _baseArrayLayer;
+	uint8_t _vpsId;
 	uint8_t _spsId;
 	uint8_t _ppsId;
 	bool _idr;
@@ -133,6 +134,7 @@ protected:
 	VkOffset2D _codedOffset;
 	VkExtent2D _codedExtent;
 	uint32_t _baseArrayLayer;
+	uint8_t _vpsId;
 	uint8_t _spsId;
 	uint8_t _ppsId;
 };

@@ -42,6 +42,21 @@ bool mvkVideoEncodeH264Available();
 /** Whether this system has an H.264 decoder. */
 bool mvkVideoDecodeH264Available();
 
+/** Whether this system has a hardware H.265 encoder. */
+bool mvkVideoEncodeH265Available();
+
+/** Whether the H.265 encoder takes 4:4:4 pictures. */
+bool mvkVideoEncodeH265Chroma444Available();
+
+/** Whether this system has an H.265 decoder. */
+bool mvkVideoDecodeH265Available();
+
+/** Whether any codec encodes. */
+bool mvkVideoEncodeAvailable();
+
+/** Whether any codec decodes. */
+bool mvkVideoDecodeAvailable();
+
 /** Whether any video codec operation is available. */
 bool mvkVideoAvailable();
 
@@ -68,7 +83,7 @@ bool mvkIsSupportedVideoProfile(const VkVideoProfileInfoKHR* pVideoProfile);
 #pragma mark -
 #pragma mark MVKVideoSession
 
-/** A VkVideoSessionKHR, coding H.264 through VideoToolbox. */
+/** A VkVideoSessionKHR, coding H.264 or H.265 through VideoToolbox. */
 class MVKVideoSession : public MVKVulkanAPIDeviceObject {
 
 public:
@@ -89,11 +104,25 @@ public:
 	/** Whether this session decodes. */
 	bool isDecode() const { return _decode; }
 
+	/** Whether this session codes H.265. */
+	bool isHevc() const { return _hevc; }
+
+	/** Whether its pictures are 4:4:4 (else 4:2:0). */
+	bool isChroma444() const { return _chroma444; }
+
 	/** Readies an encoder for this SPS, returning its SPS and PPS. */
 	VkResult prepare(const StdVideoH264SequenceParameterSet* pSPS,
 					 const StdVideoH264PictureParameterSet* pPPS,
 					 std::vector<uint8_t>* pSPSOut,
 					 std::vector<uint8_t>* pPPSOut);
+
+	/** Readies an H.265 encoder; returns its VPS, SPS and PPS. */
+	VkResult prepareH265(const StdVideoH265VideoParameterSet* pVPS,
+						 const StdVideoH265SequenceParameterSet* pSPS,
+						 const StdVideoH265PictureParameterSet* pPPS,
+						 std::vector<uint8_t>* pVPSOut,
+						 std::vector<uint8_t>* pSPSOut,
+						 std::vector<uint8_t>* pPPSOut);
 
 	/** A pixel buffer of the encoder's size, and its planes. */
 	CVPixelBufferRef newPixelBuffer(id<MTLTexture>* pLuma, id<MTLTexture>* pChroma,
@@ -115,6 +144,14 @@ public:
 						 const uint32_t* pSliceOffsets, uint32_t sliceCount,
 						 CVPixelBufferRef* pPixelBuffer);
 
+	/** Decodes one H.265 picture of Annex B slice segments. */
+	VkResult decodeFrameH265(const StdVideoH265VideoParameterSet* pVPS,
+							 const StdVideoH265SequenceParameterSet* pSPS,
+							 const StdVideoH265PictureParameterSet* pPPS,
+							 const uint8_t* data, size_t size,
+							 const uint32_t* pSliceOffsets, uint32_t sliceCount,
+							 CVPixelBufferRef* pPixelBuffer);
+
 	/** Metal textures over a pixel buffer's two planes. */
 	bool newTextures(CVPixelBufferRef pixelBuffer, id<MTLTexture>* pLuma, id<MTLTexture>* pChroma,
 					 CVMetalTextureRef* pLumaRef, CVMetalTextureRef* pChromaRef);
@@ -131,16 +168,23 @@ public:
 protected:
 	void propagateDebugName() override {}
 	VkResult createEncoder(uint32_t width, uint32_t height, bool fullRange, bool cabac, double frameRate);
+	VkResult prepareEncoder(VkExtent2D extent, bool fullRange, bool cabac, double frameRate);
 	void destroyEncoder();
 	void applyRateControl(int32_t constantQp);
 	VkResult primeParameterSets();
-	VkResult prepareDecoder(const std::vector<uint8_t>& sps, const std::vector<uint8_t>& pps, bool fullRange);
+	VkResult prepareDecoder(const std::vector<std::vector<uint8_t>>& sets, bool fullRange);
+	VkResult decodeSample(const std::vector<std::vector<uint8_t>>& sets, bool fullRange,
+						  const uint8_t* data, size_t size,
+						  const uint32_t* pSliceOffsets, uint32_t sliceCount,
+						  CVPixelBufferRef* pPixelBuffer);
+	OSType pixelFormatFor(bool fullRange) const;
 	void destroyDecoder();
 
 	std::mutex _lock;
 	VTCompressionSessionRef _vtSession = nullptr;
 	CVPixelBufferPoolRef _pixelBufferPool = nullptr;
 	CVMetalTextureCacheRef _textureCache = nullptr;
+	std::vector<uint8_t> _vps;
 	std::vector<uint8_t> _sps;
 	std::vector<uint8_t> _pps;
 	VkExtent2D _frameExtent = { 0, 0 };
@@ -157,17 +201,18 @@ protected:
 	int32_t _appliedQp = -1;
 	bool _rcDirty = false;
 	bool _decode = false;
+	bool _hevc = false;
+	bool _chroma444 = false;
 	VTDecompressionSessionRef _vtDecoder = nullptr;
 	CMVideoFormatDescriptionRef _decodeFormat = nullptr;
-	std::vector<uint8_t> _decodeSPS;
-	std::vector<uint8_t> _decodePPS;
+	std::vector<std::vector<uint8_t>> _decodeSets;
 };
 
 
 #pragma mark -
 #pragma mark MVKVideoSessionParameters
 
-/** A VkVideoSessionParametersKHR holding H.264 SPS and PPS entries. */
+/** A VkVideoSessionParametersKHR: H.264 SPS/PPS or H.265 VPS/SPS/PPS. */
 class MVKVideoSessionParameters : public MVKVulkanAPIDeviceObject {
 
 public:
@@ -188,6 +233,15 @@ public:
 	/** The PPS with these ids, or null. */
 	const StdVideoH264PictureParameterSet* getPPS(uint8_t spsId, uint8_t ppsId) const;
 
+	/** The H.265 VPS with this id, or null. */
+	const StdVideoH265VideoParameterSet* getH265VPS(uint8_t vpsId) const;
+
+	/** The H.265 SPS with these ids, or null. */
+	const StdVideoH265SequenceParameterSet* getH265SPS(uint8_t vpsId, uint8_t spsId) const;
+
+	/** The H.265 PPS with these ids, or null. */
+	const StdVideoH265PictureParameterSet* getH265PPS(uint8_t vpsId, uint8_t spsId, uint8_t ppsId) const;
+
 	/** vkGetEncodedVideoSessionParametersKHR. */
 	VkResult getEncoded(const VkVideoEncodeSessionParametersGetInfoKHR* pInfo,
 						VkVideoEncodeSessionParametersFeedbackInfoKHR* pFeedbackInfo,
@@ -201,6 +255,12 @@ protected:
 	void propagateDebugName() override {}
 	VkResult add(uint32_t spsCount, const StdVideoH264SequenceParameterSet* pSPSs,
 				 uint32_t ppsCount, const StdVideoH264PictureParameterSet* pPPSs);
+	VkResult addH265(uint32_t vpsCount, const StdVideoH265VideoParameterSet* pVPSs,
+					 uint32_t spsCount, const StdVideoH265SequenceParameterSet* pSPSs,
+					 uint32_t ppsCount, const StdVideoH265PictureParameterSet* pPPSs);
+	VkResult getEncodedH265(const VkVideoEncodeSessionParametersGetInfoKHR* pInfo,
+							VkVideoEncodeSessionParametersFeedbackInfoKHR* pFeedbackInfo,
+							size_t* pDataSize, void* pData);
 
 	struct SPSEntry {
 		StdVideoH264SequenceParameterSet sps;
@@ -219,9 +279,44 @@ protected:
 		bool hasScalingLists;
 	};
 
+	// H.265 entries keep their own copy of every pointed-to part
+	struct H265VPSEntry {
+		StdVideoH265VideoParameterSet vps;
+		StdVideoH265ProfileTierLevel ptl;
+		StdVideoH265DecPicBufMgr dpbm;
+		bool hasPtl;
+		bool hasDpbm;
+	};
+
+	struct H265SPSEntry {
+		StdVideoH265SequenceParameterSet sps;
+		StdVideoH265ProfileTierLevel ptl;
+		StdVideoH265DecPicBufMgr dpbm;
+		StdVideoH265ScalingLists scalingLists;
+		StdVideoH265ShortTermRefPicSet stRps[STD_VIDEO_H265_MAX_SHORT_TERM_REF_PIC_SETS];
+		StdVideoH265LongTermRefPicsSps ltRps;
+		StdVideoH265SequenceParameterSetVui vui;
+		bool hasPtl;
+		bool hasDpbm;
+		bool hasScalingLists;
+		bool hasStRps;
+		bool hasLtRps;
+		bool hasVui;
+	};
+
+	struct H265PPSEntry {
+		StdVideoH265PictureParameterSet pps;
+		StdVideoH265ScalingLists scalingLists;
+		bool hasScalingLists;
+	};
+
 	MVKVideoSession* _session;
 	MVKSmallVector<SPSEntry, 1> _spsList;
 	MVKSmallVector<PPSEntry, 1> _ppsList;
+	MVKSmallVector<H265VPSEntry, 1> _h265VpsList;
+	MVKSmallVector<H265SPSEntry, 1> _h265SpsList;
+	MVKSmallVector<H265PPSEntry, 1> _h265PpsList;
+	uint32_t _maxVPSCount = 0;
 	uint32_t _maxSPSCount;
 	uint32_t _maxPPSCount;
 	uint32_t _updateSequenceCount = 0;

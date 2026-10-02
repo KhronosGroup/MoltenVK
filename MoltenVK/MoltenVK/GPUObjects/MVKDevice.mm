@@ -2273,8 +2273,8 @@ MVKArrayRef<MVKQueueFamily*> MVKPhysicalDevice::getQueueFamilies() {
 
 			// Video encode and decode queue family, over VideoToolbox.
 			if (mvkVideoAvailable()) {
-				qfProps.queueFlags = ((mvkVideoEncodeH264Available() ? VK_QUEUE_VIDEO_ENCODE_BIT_KHR : 0) |
-									  (mvkVideoDecodeH264Available() ? VK_QUEUE_VIDEO_DECODE_BIT_KHR : 0));
+				qfProps.queueFlags = ((mvkVideoEncodeAvailable() ? VK_QUEUE_VIDEO_ENCODE_BIT_KHR : 0) |
+									  (mvkVideoDecodeAvailable() ? VK_QUEUE_VIDEO_DECODE_BIT_KHR : 0));
 				_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
 			}
 		}
@@ -2335,8 +2335,12 @@ VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 						auto* pVideoProps = (VkQueueFamilyVideoPropertiesKHR*)next;
 						bool encodes = mvkIsAnyFlagEnabled(qProps[qpIdx].queueFlags, VK_QUEUE_VIDEO_ENCODE_BIT_KHR);
 						bool decodes = mvkIsAnyFlagEnabled(qProps[qpIdx].queueFlags, VK_QUEUE_VIDEO_DECODE_BIT_KHR);
-						pVideoProps->videoCodecOperations = ((encodes ? VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_KHR : 0) |
-															 (decodes ? VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR : 0));
+						VkVideoCodecOperationFlagsKHR ops = 0;
+						if (encodes && mvkVideoEncodeH264Available()) { ops |= VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_KHR; }
+						if (encodes && mvkVideoEncodeH265Available()) { ops |= VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_KHR; }
+						if (decodes && mvkVideoDecodeH264Available()) { ops |= VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR; }
+						if (decodes && mvkVideoDecodeH265Available()) { ops |= VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR; }
+						pVideoProps->videoCodecOperations = ops;
 						break;
 					}
 					case VK_STRUCTURE_TYPE_QUEUE_FAMILY_QUERY_RESULT_STATUS_PROPERTIES_KHR: {
@@ -3636,18 +3640,16 @@ void MVKPhysicalDevice::initExtensions() {
 		pWritableExtns->vk_IMG_format_pvrtc.enabled = false;
 	}
 
-	// video needs VideoToolbox's H.264 encoder or decoder
+	// video needs a VideoToolbox encoder or decoder
 	if ( !mvkVideoAvailable() ) {
 		pWritableExtns->vk_KHR_video_queue.enabled = false;
 	}
-	if ( !mvkVideoEncodeH264Available() ) {
-		pWritableExtns->vk_KHR_video_encode_queue.enabled = false;
-		pWritableExtns->vk_KHR_video_encode_h264.enabled = false;
-	}
-	if ( !mvkVideoDecodeH264Available() ) {
-		pWritableExtns->vk_KHR_video_decode_queue.enabled = false;
-		pWritableExtns->vk_KHR_video_decode_h264.enabled = false;
-	}
+	if ( !mvkVideoEncodeAvailable() ) { pWritableExtns->vk_KHR_video_encode_queue.enabled = false; }
+	if ( !mvkVideoDecodeAvailable() ) { pWritableExtns->vk_KHR_video_decode_queue.enabled = false; }
+	if ( !mvkVideoEncodeH264Available() ) { pWritableExtns->vk_KHR_video_encode_h264.enabled = false; }
+	if ( !mvkVideoEncodeH265Available() ) { pWritableExtns->vk_KHR_video_encode_h265.enabled = false; }
+	if ( !mvkVideoDecodeH264Available() ) { pWritableExtns->vk_KHR_video_decode_h264.enabled = false; }
+	if ( !mvkVideoDecodeH265Available() ) { pWritableExtns->vk_KHR_video_decode_h265.enabled = false; }
 
 #if MVK_USE_METAL_PRIVATE_API
 	if (!getMVKConfig().useMetalPrivateAPI) {

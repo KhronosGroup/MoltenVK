@@ -112,6 +112,7 @@ VkResult MVKCmdEncodeVideo::setContent(MVKCommandBuffer* cmdBuff, const VkVideoE
 	_codedOffset = pEncodeInfo->srcPictureResource.codedOffset;
 	_codedExtent = pEncodeInfo->srcPictureResource.codedExtent;
 	_baseArrayLayer = pEncodeInfo->srcPictureResource.baseArrayLayer;
+	_vpsId = 0;
 	_spsId = 0;
 	_ppsId = 0;
 	_idr = false;
@@ -128,6 +129,17 @@ VkResult MVKCmdEncodeVideo::setContent(MVKCommandBuffer* cmdBuff, const VkVideoE
 			if (pH264->naluSliceEntryCount > 0 && pH264->pNaluSliceEntries) {
 				_constantQp = pH264->pNaluSliceEntries[0].constantQp;
 			}
+		} else if (next->sType == VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_PICTURE_INFO_KHR) {
+			auto* pH265 = (const VkVideoEncodeH265PictureInfoKHR*)next;
+			if (pH265->pStdPictureInfo) {
+				_vpsId = pH265->pStdPictureInfo->sps_video_parameter_set_id;
+				_spsId = pH265->pStdPictureInfo->pps_seq_parameter_set_id;
+				_ppsId = pH265->pStdPictureInfo->pps_pic_parameter_set_id;
+				_idr = pH265->pStdPictureInfo->pic_type == STD_VIDEO_H265_PICTURE_TYPE_IDR;
+			}
+			if (pH265->naluSliceSegmentEntryCount > 0 && pH265->pNaluSliceSegmentEntries) {
+				_constantQp = pH265->pNaluSliceSegmentEntries[0].constantQp;
+			}
 		}
 	}
 	return VK_SUCCESS;
@@ -143,7 +155,10 @@ void MVKCmdEncodeVideo::encode(MVKCommandEncoder* cmdEncoder) {
 		return;
 	}
 
-	VkResult rslt = session->prepare(params->getSPS(_spsId), params->getPPS(_spsId, _ppsId), nullptr, nullptr);
+	VkResult rslt = (session->isHevc()
+					 ? session->prepareH265(params->getH265VPS(_vpsId), params->getH265SPS(_vpsId, _spsId),
+											params->getH265PPS(_vpsId, _spsId, _ppsId), nullptr, nullptr, nullptr)
+					 : session->prepare(params->getSPS(_spsId), params->getPPS(_spsId, _ppsId), nullptr, nullptr));
 	id<MTLTexture> luma = nil, chroma = nil;
 	CVMetalTextureRef lumaRef = nullptr, chromaRef = nullptr;
 	CVPixelBufferRef pixelBuffer = (rslt == VK_SUCCESS) ? session->newPixelBuffer(&luma, &chroma, &lumaRef, &chromaRef) : nullptr;
@@ -157,6 +172,8 @@ void MVKCmdEncodeVideo::encode(MVKCommandEncoder* cmdEncoder) {
 		uint32_t slice = _srcView->getSubresourceRange().baseArrayLayer + _baseArrayLayer;
 		id<MTLTexture> srcLuma = image->getMTLTexture(0);
 		id<MTLTexture> srcChroma = image->getMTLTexture(1);
+		// chroma is half size at 4:2:0, full size at 4:4:4
+		uint32_t sub = session->isChroma444() ? 1 : 2;
 		id<MTLBlitCommandEncoder> blit = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseEncodeVideo);
 		[blit copyFromTexture: srcLuma
 				  sourceSlice: slice
@@ -170,8 +187,8 @@ void MVKCmdEncodeVideo::encode(MVKCommandEncoder* cmdEncoder) {
 		[blit copyFromTexture: srcChroma
 				  sourceSlice: slice
 				  sourceLevel: 0
-				 sourceOrigin: MTLOriginMake(_codedOffset.x / 2, _codedOffset.y / 2, 0)
-				   sourceSize: MTLSizeMake((w + 1) / 2, (h + 1) / 2, 1)
+				 sourceOrigin: MTLOriginMake(_codedOffset.x / sub, _codedOffset.y / sub, 0)
+				   sourceSize: MTLSizeMake((w + sub - 1) / sub, (h + sub - 1) / sub, 1)
 					toTexture: chroma
 			 destinationSlice: 0
 			 destinationLevel: 0
@@ -222,6 +239,7 @@ VkResult MVKCmdDecodeVideo::setContent(MVKCommandBuffer* cmdBuff, const VkVideoD
 	_codedOffset = pDecodeInfo->dstPictureResource.codedOffset;
 	_codedExtent = pDecodeInfo->dstPictureResource.codedExtent;
 	_baseArrayLayer = pDecodeInfo->dstPictureResource.baseArrayLayer;
+	_vpsId = 0;
 	_spsId = 0;
 	_ppsId = 0;
 	_sliceOffsets.clear();
@@ -234,6 +252,14 @@ VkResult MVKCmdDecodeVideo::setContent(MVKCommandBuffer* cmdBuff, const VkVideoD
 				_ppsId = pH264->pStdPictureInfo->pic_parameter_set_id;
 			}
 			for (uint32_t i = 0; i < pH264->sliceCount; i++) { _sliceOffsets.push_back(pH264->pSliceOffsets[i]); }
+		} else if (next->sType == VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_PICTURE_INFO_KHR) {
+			auto* pH265 = (const VkVideoDecodeH265PictureInfoKHR*)next;
+			if (pH265->pStdPictureInfo) {
+				_vpsId = pH265->pStdPictureInfo->sps_video_parameter_set_id;
+				_spsId = pH265->pStdPictureInfo->pps_seq_parameter_set_id;
+				_ppsId = pH265->pStdPictureInfo->pps_pic_parameter_set_id;
+			}
+			for (uint32_t i = 0; i < pH265->sliceSegmentCount; i++) { _sliceOffsets.push_back(pH265->pSliceSegmentOffsets[i]); }
 		}
 	}
 	return VK_SUCCESS;
@@ -250,13 +276,21 @@ void MVKCmdDecodeVideo::encode(MVKCommandEncoder* cmdEncoder) {
 		return;
 	}
 
-	const StdVideoH264SequenceParameterSet* pSPS = params->getSPS(_spsId);
+	bool hevc = session->isHevc();
+	const StdVideoH264SequenceParameterSet* pSPS = hevc ? nullptr : params->getSPS(_spsId);
+	const StdVideoH265SequenceParameterSet* pSPS5 = hevc ? params->getH265SPS(_vpsId, _spsId) : nullptr;
 	CVPixelBufferRef pixelBuffer = nullptr;
 	uint8_t* base = (uint8_t*)_srcBuffer->getMTLBuffer().contents;
 	if (base) {
 		const uint8_t* data = base + _srcBuffer->getMTLBufferOffset() + _srcBufferOffset;
-		session->decodeFrame(pSPS, params->getPPS(_spsId, _ppsId), data, (size_t)_srcBufferRange,
-							 _sliceOffsets.data(), (uint32_t)_sliceOffsets.size(), &pixelBuffer);
+		if (hevc) {
+			session->decodeFrameH265(params->getH265VPS(_vpsId), pSPS5, params->getH265PPS(_vpsId, _spsId, _ppsId),
+									 data, (size_t)_srcBufferRange,
+									 _sliceOffsets.data(), (uint32_t)_sliceOffsets.size(), &pixelBuffer);
+		} else {
+			session->decodeFrame(pSPS, params->getPPS(_spsId, _ppsId), data, (size_t)_srcBufferRange,
+								 _sliceOffsets.data(), (uint32_t)_sliceOffsets.size(), &pixelBuffer);
+		}
 	}
 
 	id<MTLTexture> luma = nil, chroma = nil;
@@ -264,11 +298,19 @@ void MVKCmdDecodeVideo::encode(MVKCommandEncoder* cmdEncoder) {
 	bool decoded = pixelBuffer && session->newTextures(pixelBuffer, &luma, &chroma, &lumaRef, &chromaRef);
 	if (decoded) {
 		// a cropped picture sits at the SPS crop origin
-		uint32_t codedW = (pSPS->pic_width_in_mbs_minus1 + 1) * 16;
+		uint32_t sub = session->isChroma444() ? 1 : 2;
 		uint32_t cropX = 0, cropY = 0;
-		if (pSPS->flags.frame_cropping_flag && luma.width < codedW) {
-			cropX = 2 * pSPS->frame_crop_left_offset;
-			cropY = 2 * (pSPS->flags.frame_mbs_only_flag ? 1 : 2) * pSPS->frame_crop_top_offset;
+		if (hevc) {
+			if (pSPS5->flags.conformance_window_flag && luma.width < pSPS5->pic_width_in_luma_samples) {
+				cropX = sub * pSPS5->conf_win_left_offset;
+				cropY = sub * pSPS5->conf_win_top_offset;
+			}
+		} else {
+			uint32_t codedW = (pSPS->pic_width_in_mbs_minus1 + 1) * 16;
+			if (pSPS->flags.frame_cropping_flag && luma.width < codedW) {
+				cropX = 2 * pSPS->frame_crop_left_offset;
+				cropY = 2 * (pSPS->flags.frame_mbs_only_flag ? 1 : 2) * pSPS->frame_crop_top_offset;
+			}
 		}
 		MVKImage* image = _dstView->getImage();
 		id<MTLTexture> dstLuma = image->getMTLTexture(0);
@@ -293,11 +335,11 @@ void MVKCmdDecodeVideo::encode(MVKCommandEncoder* cmdEncoder) {
 					  sourceSlice: 0
 					  sourceLevel: 0
 					 sourceOrigin: MTLOriginMake(0, 0, 0)
-					   sourceSize: MTLSizeMake(std::min<NSUInteger>((w + 1) / 2, chroma.width), std::min<NSUInteger>((h + 1) / 2, chroma.height), 1)
+					   sourceSize: MTLSizeMake(std::min<NSUInteger>((w + sub - 1) / sub, chroma.width), std::min<NSUInteger>((h + sub - 1) / sub, chroma.height), 1)
 						toTexture: dstChroma
 				 destinationSlice: slice
 				 destinationLevel: 0
-				destinationOrigin: MTLOriginMake(x / 2, y / 2, 0)];
+				destinationOrigin: MTLOriginMake(x / sub, y / sub, 0)];
 		}
 	}
 
