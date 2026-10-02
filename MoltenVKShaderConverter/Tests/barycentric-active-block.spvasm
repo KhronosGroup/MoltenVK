@@ -1,0 +1,147 @@
+; Copyright (c) 2026 Jean-Philippe Meunier
+; SPDX-License-Identifier: Apache-2.0
+; F1: only statically active members require a portable barycentric basis.
+OpCapability Shader
+OpCapability FragmentBarycentricKHR
+OpCapability InterpolationFunction
+OpCapability SampleRateShading
+OpExtension "SPV_KHR_fragment_shader_barycentric"
+%glsl = OpExtInstImport "GLSL.std.450"
+OpMemoryModel Logical GLSL450
+OpEntryPoint Fragment %perspective "perspective" %weights %color
+OpEntryPoint Fragment %linear "linear" %weights %color
+OpEntryPoint Fragment %ordinary "ordinary" %weights %color
+OpEntryPoint Fragment %both "both" %weights %color
+OpEntryPoint Fragment %unused "unused" %weights %color
+OpEntryPoint Fragment %explicit_perspective "explicit_perspective" %weights %color
+OpEntryPoint Fragment %explicit_linear "explicit_linear" %weights %color
+OpExecutionMode %perspective OriginUpperLeft
+OpExecutionMode %linear OriginUpperLeft
+OpExecutionMode %ordinary OriginUpperLeft
+OpExecutionMode %both OriginUpperLeft
+OpExecutionMode %unused OriginUpperLeft
+OpExecutionMode %explicit_perspective OriginUpperLeft
+OpExecutionMode %explicit_linear OriginUpperLeft
+OpDecorate %block Block
+OpMemberDecorate %block 0 BuiltIn BaryCoordKHR
+OpMemberDecorate %block 1 BuiltIn BaryCoordNoPerspKHR
+OpMemberDecorate %block 2 BuiltIn FragCoord
+OpDecorate %color Location 0
+%void = OpTypeVoid
+%float = OpTypeFloat 32
+%uint = OpTypeInt 32 0
+%vec2 = OpTypeVector %float 2
+%vec3 = OpTypeVector %float 3
+%vec4 = OpTypeVector %float 4
+%block = OpTypeStruct %vec3 %vec3 %vec4
+%inblock = OpTypePointer Input %block
+%in1 = OpTypePointer Input %float
+%in3 = OpTypePointer Input %vec3
+%in4 = OpTypePointer Input %vec4
+%out4 = OpTypePointer Output %vec4
+%fn = OpTypeFunction %void
+%vec_fn = OpTypeFunction %vec3
+%u0 = OpConstant %uint 0
+%u1 = OpConstant %uint 1
+%u2 = OpConstant %uint 2
+%f0 = OpConstant %float 0
+%zero4 = OpConstantComposite %vec4 %f0 %f0 %f0 %f0
+%offset = OpConstantComposite %vec2 %f0 %f0
+%weights = OpVariable %inblock Input
+%color = OpVariable %out4 Output
+
+%perspective = OpFunction %void None %fn
+%perspective_entry = OpLabel
+%perspective_ptr = OpAccessChain %in3 %weights %u0
+%perspective_v = OpLoad %vec3 %perspective_ptr
+%perspective_value = OpCompositeConstruct %vec4 %perspective_v %f0
+OpStore %color %perspective_value
+OpReturn
+OpFunctionEnd
+
+%linear = OpFunction %void None %fn
+%linear_entry = OpLabel
+%linear_ptr = OpAccessChain %in3 %weights %u1
+%linear_v = OpLoad %vec3 %linear_ptr
+%linear_value = OpCompositeConstruct %vec4 %linear_v %f0
+OpStore %color %linear_value
+OpReturn
+OpFunctionEnd
+
+%ordinary = OpFunction %void None %fn
+%ordinary_entry = OpLabel
+%ordinary_ptr = OpAccessChain %in4 %weights %u2
+%ordinary_value = OpLoad %vec4 %ordinary_ptr
+OpStore %color %ordinary_value
+OpReturn
+OpFunctionEnd
+
+%both = OpFunction %void None %fn
+%both_entry = OpLabel
+%both_p = OpAccessChain %in3 %weights %u0
+%both_n = OpAccessChain %in3 %weights %u1
+%both_pv = OpLoad %vec3 %both_p
+%both_nv = OpLoad %vec3 %both_n
+%both_v = OpFAdd %vec3 %both_pv %both_nv
+%both_value = OpCompositeConstruct %vec4 %both_v %f0
+OpStore %color %both_value
+OpReturn
+OpFunctionEnd
+
+%unused = OpFunction %void None %fn
+%unused_entry = OpLabel
+OpStore %color %zero4
+OpReturn
+OpFunctionEnd
+
+%explicit_perspective = OpFunction %void None %fn
+%explicit_perspective_entry = OpLabel
+%explicit_perspective_v = OpFunctionCall %vec3 %explicit_perspective_read
+%explicit_perspective_value = OpCompositeConstruct %vec4 %explicit_perspective_v %f0
+OpStore %color %explicit_perspective_value
+OpReturn
+OpFunctionEnd
+
+%explicit_linear = OpFunction %void None %fn
+%explicit_linear_entry = OpLabel
+%explicit_linear_v = OpFunctionCall %vec3 %explicit_linear_read
+%explicit_linear_value = OpCompositeConstruct %vec4 %explicit_linear_v %f0
+OpStore %color %explicit_linear_value
+OpReturn
+OpFunctionEnd
+
+; No loads: helpers read copied block/vector/scalar pointers with all three InterpolateAt forms.
+%explicit_perspective_read = OpFunction %vec3 None %vec_fn
+%explicit_perspective_label = OpLabel
+%explicit_perspective_root = OpCopyObject %inblock %weights
+%explicit_perspective_root2 = OpCopyObject %inblock %explicit_perspective_root
+%explicit_perspective_base = OpInBoundsAccessChain %in3 %explicit_perspective_root2 %u0
+%explicit_perspective_copy = OpCopyObject %in3 %explicit_perspective_base
+%explicit_perspective_scalar = OpAccessChain %in1 %explicit_perspective_copy %u1
+%explicit_perspective_alias = OpAccessChain %in1 %explicit_perspective_scalar
+%explicit_perspective_scalar_copy = OpCopyObject %in1 %explicit_perspective_alias
+%explicit_perspective_centroid = OpExtInst %vec3 %glsl InterpolateAtCentroid %explicit_perspective_copy
+%explicit_perspective_sample = OpExtInst %float %glsl InterpolateAtSample %explicit_perspective_scalar_copy %u1
+%explicit_perspective_offset = OpExtInst %float %glsl InterpolateAtOffset %explicit_perspective_scalar_copy %offset
+%explicit_perspective_scale = OpFAdd %float %explicit_perspective_sample %explicit_perspective_offset
+%explicit_perspective_result = OpVectorTimesScalar %vec3 %explicit_perspective_centroid %explicit_perspective_scale
+OpReturnValue %explicit_perspective_result
+OpFunctionEnd
+
+; No loads: helpers read copied block/vector/scalar pointers with all three InterpolateAt forms.
+%explicit_linear_read = OpFunction %vec3 None %vec_fn
+%explicit_linear_label = OpLabel
+%explicit_linear_root = OpCopyObject %inblock %weights
+%explicit_linear_root2 = OpCopyObject %inblock %explicit_linear_root
+%explicit_linear_base = OpInBoundsAccessChain %in3 %explicit_linear_root2 %u1
+%explicit_linear_copy = OpCopyObject %in3 %explicit_linear_base
+%explicit_linear_scalar = OpAccessChain %in1 %explicit_linear_copy %u1
+%explicit_linear_alias = OpAccessChain %in1 %explicit_linear_scalar
+%explicit_linear_scalar_copy = OpCopyObject %in1 %explicit_linear_alias
+%explicit_linear_centroid = OpExtInst %vec3 %glsl InterpolateAtCentroid %explicit_linear_copy
+%explicit_linear_sample = OpExtInst %float %glsl InterpolateAtSample %explicit_linear_scalar_copy %u1
+%explicit_linear_offset = OpExtInst %float %glsl InterpolateAtOffset %explicit_linear_scalar_copy %offset
+%explicit_linear_scale = OpFAdd %float %explicit_linear_sample %explicit_linear_offset
+%explicit_linear_result = OpVectorTimesScalar %vec3 %explicit_linear_centroid %explicit_linear_scale
+OpReturnValue %explicit_linear_result
+OpFunctionEnd
