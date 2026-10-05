@@ -90,6 +90,7 @@ protected:
 	id<MTLAccelerationStructure> _accelerationStructure;
 	id<MTLBuffer> _instanceMetadataBuffer;
 	id<MTLBuffer> _referenceBuffer;
+	id<MTLBuffer> _stableReferenceBuffer = nil;
 	bool _ownsReferenceResidency = true;
 	MVKAccelerationStructureCanonicalStorage* _canonicalStorage = nullptr;
 	std::atomic<uint32_t> _refCount { 1 };

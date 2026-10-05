@@ -137,6 +137,7 @@ MVKAccelerationStructureStorageGeneration::~MVKAccelerationStructureStorageGener
 	if (_ownsReferenceResidency) { _device->removeResidency(_referenceBuffer); }
 	_device->removeResidency(_accelerationStructure);
 	[_referenceBuffer release];
+	[_stableReferenceBuffer release];
 	[_instanceMetadataBuffer release];
 	[_accelerationStructure release];
 	[_heap release];
@@ -324,6 +325,9 @@ MVKAccelerationStructureStorageGeneration* MVKAccelerationStructureStorage::newG
 		[referenceBuffer release];
 		[metadataBuffer release];
 		[accelerationStructure release];
+	} else {
+		// a command buffer that holds this generation may also bind the storage's stable reference.
+		generation->_stableReferenceBuffer = [_referenceBuffer retain];
 	}
 	return generation;
 }
