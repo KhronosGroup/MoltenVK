@@ -94,7 +94,7 @@ static constexpr uint32_t   kMVKMaxColorAttachmentCount = 8;
 static constexpr uint32_t   kMVKMaxViewportScissorCount = 16;
 static constexpr uint32_t   kMVKMaxTextureCount = 128; // Maximum value across all GPUs in Metal feature set tables
 static constexpr uint32_t   kMVKMaxBufferCount = 31;
-static constexpr uint32_t   kMVKRayTracingImplicitBufferCount = 9;
+static constexpr uint32_t   kMVKRayTracingImplicitBufferCount = 10;
 static constexpr uint32_t   kMVKDescriptorSetStorageCount = std::numeric_limits<uint16_t>::digits;
 static constexpr uint32_t   kMVKMaxDescriptorSetCount = std::min(kMVKDescriptorSetStorageCount,
 													 kMVKMaxBufferCount - kMVKRayTracingImplicitBufferCount);

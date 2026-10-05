@@ -715,6 +715,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				depthFeatures->depthClipControl = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT: {
+				auto* depthFeatures = (VkPhysicalDeviceDepthClipEnableFeaturesEXT*)next;
+				depthFeatures->depthClipEnable = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
 				auto* extDynState = (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT*)next;
 				extDynState->extendedDynamicState = true;
@@ -4191,7 +4196,14 @@ VkResult MVKDevice::getMemoryHostPointerProperties(VkExternalMemoryHandleTypeFla
 		switch (handleType) {
 			case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
 			case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT:
-				pMemHostPtrProps->memoryTypeBits = _physicalDevice->getHostVisibleMemoryTypes();
+				// Imported host memory is wrapped in a shared MTLBuffer, so any memory type
+				// except lazily allocated ones can use it. A private type then becomes shared,
+				// which non-Apple GPUs do not support for textures, so exclude it there.
+				pMemHostPtrProps->memoryTypeBits = _physicalDevice->getAllMemoryTypes();
+				mvkDisableFlags(pMemHostPtrProps->memoryTypeBits, _physicalDevice->getLazilyAllocatedMemoryTypes());
+				if ( !_physicalDevice->getMTLDeviceCapabilities().isAppleGPU ) {
+					mvkDisableFlags(pMemHostPtrProps->memoryTypeBits, _physicalDevice->getPrivateMemoryTypes());
+				}
 				break;
 			default:
 				pMemHostPtrProps->memoryTypeBits = 0;

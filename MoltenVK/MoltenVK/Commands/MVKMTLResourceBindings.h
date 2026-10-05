@@ -53,6 +53,7 @@ typedef struct MVKPipelineBarrier {
 		Memory,
 		Buffer,
 		Image,
+		Execution,
 	} MVKPipelineBarrierType;
 
 	MVKPipelineBarrierType type = None;
@@ -81,6 +82,13 @@ typedef struct MVKPipelineBarrier {
 	bool isMemoryBarrier() { return type == Memory; }
 	bool isBufferBarrier() { return type == Buffer; }
 	bool isImageBarrier() { return type == Image; }
+
+	MVKPipelineBarrier(VkPipelineStageFlags srcStageMask,
+					   VkPipelineStageFlags dstStageMask) :
+		type(Execution),
+		srcStageMask(srcStageMask),
+		dstStageMask(dstStageMask)
+		{}
 
 	MVKPipelineBarrier(const VkMemoryBarrier2& vkBarrier) :
 		type(Memory),

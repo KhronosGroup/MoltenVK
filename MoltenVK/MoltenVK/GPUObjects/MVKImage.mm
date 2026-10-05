@@ -80,7 +80,7 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
         id<MTLTexture> tex;
         // Use imported texture if we are binding to a VkDeviceMemory that was created with an import operation
         if (dvcMem && (dvcMem->_externalMemoryHandleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT) && dvcMem->_mtlTexture) {
-            tex = dvcMem->_mtlTexture;
+            tex = [dvcMem->_mtlTexture retain];		// retained
         } else if (_image->_ioSurface) {
             tex = [_image->getMTLDevice()
                    newTextureWithDescriptor: mtlTexDesc
