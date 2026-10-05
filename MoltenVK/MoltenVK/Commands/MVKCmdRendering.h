@@ -382,6 +382,19 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKCmdSetDepthClampEnable
+
+class MVKCmdSetDepthClampEnable : public MVKSingleValueCommand<VkBool32> {
+
+public:
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};
+
+
+#pragma mark -
 #pragma mark MVKCmdSetDepthClipEnable
 
 class MVKCmdSetDepthClipEnable : public MVKSingleValueCommand<VkBool32> {
