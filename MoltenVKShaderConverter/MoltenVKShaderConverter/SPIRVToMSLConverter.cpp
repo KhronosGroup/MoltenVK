@@ -211,8 +211,17 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToM
 			!containsMatching(other.dynamicBufferDescriptors, db)) { return false; }
 	}
 
+	for (const auto& db : other.dynamicBufferDescriptors) {
+		if (db.stage == options.entryPointStage &&
+			!containsMatching(dynamicBufferDescriptors, db)) { return false; }
+	}
+
 	for (uint32_t dsIdx : discreteDescriptorSets) {
 		if ( !contains(other.discreteDescriptorSets, dsIdx)) { return false; }
+	}
+
+	for (uint32_t dsIdx : other.discreteDescriptorSets) {
+		if ( !contains(discreteDescriptorSets, dsIdx)) { return false; }
 	}
 
     return true;
