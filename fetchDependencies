@@ -243,7 +243,7 @@ function update_repo() {
 
 	if [ -d $1 -a -d $1/.git ]; then
 		cd $1
-		git cat-file -e $3 || git fetch --all
+		git cat-file -e $3 || git fetch $2 $3
 		git checkout --force $3
 		cd -  > /dev/null
 	else
@@ -336,7 +336,7 @@ if [ ! "$SPIRV_CROSS_ROOT" = "" ]; then
 	rm -rf ${REPO_NAME}
 	ln -sfn ${SPIRV_CROSS_ROOT} ${REPO_NAME}
 else
-	REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
+	REPO_URL="https://github.com/dttdrv/${REPO_NAME}.git"
 	REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
 	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}

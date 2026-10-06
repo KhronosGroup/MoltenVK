@@ -28,6 +28,13 @@ Released TBD
 - Fix spurious warning about blending on attachment formats that do not support it.
 - Fix `VkDeviceMemory` imported from a `MTLTexture` not backing the image bound to it, and over-releasing that texture.
 - Fix leak of the `MTLBuffer` of a host-coherent `VkDeviceMemory` that also holds a `MTLTexture`.
+- Add opt-in experimental ray-tracing support:
+  - `VK_KHR_acceleration_structure`, `VK_KHR_pipeline_library`, `VK_KHR_ray_query`, `VK_KHR_ray_tracing_maintenance1`, and `VK_KHR_ray_tracing_pipeline`
+  - Acceleration-structure builds for triangles and axis-aligned bounding boxes
+  - Indexed instance descriptors on Metal 3.0 and indirect descriptors on Metal 3.1+
+  - Refit, copy, compaction, serialization, and build size queries
+  - Enable with `MVK_CONFIG_ENABLE_EXPERIMENTAL_RAY_TRACING=1`
+- Update `MVK_PRIVATE_API_VERSION` to version `44`.
 
 
 
@@ -2843,4 +2850,3 @@ MoltenVK 1.0.0
 Released 2018/02/26
 
 Initial open-source release!
-

@@ -774,6 +774,16 @@ MVK_PUBLIC_SYMBOL VkShaderStageFlagBits mvkVkShaderStageFlagBitsFromMVKShaderSta
 	}
 }
 
+VkShaderStageFlags mvkVkShaderStageFlagsFromMVKShaderStage(MVKShaderStage mvkStage) {
+	VkShaderStageFlags vkStages = mvkVkShaderStageFlagBitsFromMVKShaderStage(mvkStage);
+	if (mvkStage == kMVKShaderStageCompute) {
+		vkStages |= VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
+					VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR |
+					VK_SHADER_STAGE_INTERSECTION_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR;
+	}
+	return vkStages;
+}
+
 #undef mvkMTLWindingFromSpvExecutionMode
 MVK_PUBLIC_SYMBOL MTLWinding mvkMTLWindingFromSpvExecutionMode(uint32_t spvMode) {
 	return mvkMTLWindingFromSpvExecutionModeInObj(spvMode, nullptr);
@@ -834,6 +844,7 @@ MVK_PUBLIC_SYMBOL MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFl
 	MTLBarrierScope mtlScope = MTLBarrierScope(0);
 	if ( mvkIsAnyFlagEnabled(vkAccess, (VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | 
 										VK_ACCESS_2_INDEX_READ_BIT |
+										VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR |
 										VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT | 
 										VK_ACCESS_2_UNIFORM_READ_BIT)) ) {
 		mtlScope |= MTLBarrierScopeBuffers;
@@ -872,13 +883,16 @@ uint64_t mvkBarrierStagesFromPipelineStageFlags(VkPipelineStageFlags2 flags) {
                  VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT))
         result |= 1 << kMVKBarrierStageFragment;
 
-    if (flags & (VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT | VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT |
+    if (flags & (VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR |
+                 VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
+                 VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT | VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT |
                  VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT))
         result |= 1 << kMVKBarrierStageCompute;
 
-    if (flags & (VK_PIPELINE_STAGE_2_BLIT_BIT | VK_PIPELINE_STAGE_2_COPY_BIT | VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT |
-                 VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT | VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT |
-                 VK_PIPELINE_STAGE_2_CLEAR_BIT | VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR | VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT |
+	if (flags & (VK_PIPELINE_STAGE_2_BLIT_BIT | VK_PIPELINE_STAGE_2_COPY_BIT | VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT |
+	             VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT | VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT |
+	             VK_PIPELINE_STAGE_2_CLEAR_BIT | VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR |
+	             VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR | VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT |
                  VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT))
         result |= 1 << kMVKBarrierStageCopy;
 

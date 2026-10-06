@@ -27,6 +27,18 @@
 class MVKBaseObject;
 class MVKPixelFormats;
 
+static inline MTLAttributeFormat mvkMTLAccelerationStructureVertexFormatFromVkFormat(VkFormat vkFormat) {
+	switch (vkFormat) {
+		case VK_FORMAT_R32G32_SFLOAT: return MTLAttributeFormatFloat2;
+		case VK_FORMAT_R32G32B32_SFLOAT: return MTLAttributeFormatFloat3;
+		case VK_FORMAT_R16G16_SFLOAT: return MTLAttributeFormatHalf2;
+		case VK_FORMAT_R16G16B16A16_SFLOAT: return MTLAttributeFormatHalf4;
+		case VK_FORMAT_R16G16_SNORM: return MTLAttributeFormatShort2Normalized;
+		case VK_FORMAT_R16G16B16A16_SNORM: return MTLAttributeFormatShort4Normalized;
+		default: return MTLAttributeFormatInvalid;
+	}
+}
+
 /*
  * This header file should be used internally within MoltenVK in place of mvk_datatypes.h,
  * which is part of the public external MoltenVK C API.
@@ -76,6 +88,8 @@ MTLMultisampleStencilResolveFilter mvkMTLMultisampleStencilResolveFilterFromVkRe
 
 MVKShaderStage mvkShaderStageFromVkShaderStageFlagBitsInObj(VkShaderStageFlagBits vkStage, MVKBaseObject* mvkObj);
 #define mvkShaderStageFromVkShaderStageFlagBits(vkStage) mvkShaderStageFromVkShaderStageFlagBitsInObj(vkStage, this)
+
+VkShaderStageFlags mvkVkShaderStageFlagsFromMVKShaderStage(MVKShaderStage mvkStage);
 
 MTLWinding mvkMTLWindingFromSpvExecutionModeInObj(uint32_t spvMode, MVKBaseObject* mvkObj);
 #define mvkMTLWindingFromSpvExecutionMode(spvMode) mvkMTLWindingFromSpvExecutionModeInObj(spvMode, this)
