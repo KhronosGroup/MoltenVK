@@ -621,7 +621,11 @@ static inline __attribute__((always_inline)) void spvTraceRay(
 					(sbtOffset & 15u) + metadata[context.InstanceId];
 				uint anyHit = reinterpret_cast<device const uint*>(
 					dispatch.hitAddress + ulong(context.shaderRecordIndex) * dispatch.hitStride)[3];
-				if (anyHit) spvCallRayFunction(anyHit, invocation, state);
+				// each candidate goes in a copy of its own: called again with the same object, the any-hit
+				// function acted on an earlier candidate's values.
+				spvRayInvocation candidate = invocation;
+				if (anyHit) spvCallRayFunction(anyHit, candidate, state);
+				action = candidate.action;
 			}
 			if (action != 1) query.commit_triangle_intersection();
 			if (action == 2) query.abort();
