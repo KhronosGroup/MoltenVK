@@ -25,9 +25,17 @@
 #include "MVKFoundation.h"
 #include "MVKCmdDraw.h"
 #include "MVKCmdRendering.h"
+#include "MVKOSExtensions.h"
 #include <sys/mman.h>
 
 using namespace std;
+
+// MVK_CONFIG_PERVERTEX_PREPASS=1 encodes
+// the PerVertex captures of each subpass before its render encoder opens.
+static int mvkPerVertexPrepassMode() {
+	static const int mode = int(mvkGetEnvVarNumber("MVK_CONFIG_PERVERTEX_PREPASS", -1));
+	return mode;
+}
 
 
 #pragma mark -
@@ -833,8 +841,40 @@ MVKPerVertexScratch* MVKCommandEncoder::nextPerVertexScratch() {
 	}
 	_lastPerVertexScratch = (*reservations)[first + _multiviewPassIndex];
 	_pEncodingContext->nextPerVertexScratch += passCount;
-	keepPerVertexScratchResident();
+	// The prepass already kept a captured slot resident for this Metal command buffer.
+	if (first >= _perVertexPrepassEnd) { keepPerVertexScratchResident(); }
 	return _lastPerVertexScratch.get();
+}
+
+void MVKCommandEncoder::addPerVertexPrepassMeshOutput(MVKCommand* draw, const MVKMTLBufferAllocation* output) {
+	_perVertexPrepassMesh.push_back({draw, output});
+}
+
+const MVKMTLBufferAllocation* MVKCommandEncoder::takePerVertexPrepassMeshOutput(MVKCommand* draw) {
+	if (_perVertexPrepassMeshNext >= _perVertexPrepassMesh.size() || _perVertexPrepassMesh[_perVertexPrepassMeshNext].first != draw) { return nullptr; }
+	return _perVertexPrepassMesh[_perVertexPrepassMeshNext++].second;
+}
+
+// Before the render encoder of a subpass opens, applies the Vulkan state commands that follow it and encodes their
+// PerVertex captures on one compute encoder, up to the first command that ends the window: barrier, end of the
+// subpass, copy, query, secondary, or a draw whose capture must stay in place (nonindexed, TES, indirect). Vulkan
+// orders any write a later vertex shader of the subpass reads before the subpass, or behind such a barrier.
+// The subpass then encodes from its first command again, from the restored state and scratch cursor: the draws
+// below _perVertexPrepassEnd replay without capture, so the render encoder no longer restarts for them.
+void MVKCommandEncoder::encodePerVertexPrepass(MVKCommand* command) {
+	_perVertexPrepassEnd = 0;
+	_perVertexPrepassMesh.clear();
+	_perVertexPrepassMeshNext = 0;
+	// Prefill encodes each command as it is recorded; multiview encodes the subpass once per view group.
+	if (mvkPerVertexPrepassMode() != 1 || !command || _cmdBuffer->_immediateCmdEncoder || _subpassContents != VK_SUBPASS_CONTENTS_INLINE || getSubpass()->isMultiview()) { return; }
+	size_t first = _pEncodingContext->nextPerVertexScratch;
+	MVKVulkanStateSnapshot saved = _state.saveVulkanState();
+	_isPerVertexPrepassing = true;
+	while (command && !_isEncodingStopped && command->encodePerVertexPrepass(this)) { command = command->_next; }
+	_isPerVertexPrepassing = false;
+	_state.restoreVulkanState(std::move(saved));
+	_perVertexPrepassEnd = _pEncodingContext->nextPerVertexScratch;
+	_pEncodingContext->nextPerVertexScratch = first;
 }
 
 void MVKCommandEncoder::keepPerVertexScratchResident() {
@@ -953,6 +993,7 @@ void MVKCommandEncoder::setSubpass(MVKCommand* subpassCmd,
 	auto& mtlFeats = getMetalFeatures();
 	_canUseLayeredRendering = mtlFeats.layeredRendering && (mtlFeats.multisampleLayeredRendering || getSubpass()->getSampleCount() == VK_SAMPLE_COUNT_1_BIT);
 
+	encodePerVertexPrepass(subpassCmd ? subpassCmd->_next : nullptr);
 	beginMetalRenderPass(cmdUse);
 }
 

@@ -235,6 +235,7 @@ public:
 						const VkSampleLocationsInfoEXT* pSampleLocationsInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder); return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -273,6 +274,7 @@ public:
 						const VkViewport* pViewports);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder); return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -303,6 +305,7 @@ public:
 						const VkRect2D* pScissors);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder); return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -473,6 +476,7 @@ public:
 						VkCompareOp compareOp);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder); return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -496,6 +500,7 @@ public:
 						uint32_t stencilCompareMask);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder); return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -516,6 +521,7 @@ public:
 						uint32_t stencilWriteMask);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder); return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -536,6 +542,7 @@ public:
 						uint32_t stencilReference);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder); return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;

@@ -966,17 +966,21 @@ void MVKVulkanCommonEncoderState::setLayout(MVKPipelineLayout* layout) {
 }
 
 MVKVulkanCommonEncoderState::MVKVulkanCommonEncoderState(const MVKVulkanCommonEncoderState& other) {
-	memcpy(_descriptorSets, other._descriptorSets, sizeof(_descriptorSets));
-	_pushDescriptor = other._pushDescriptor;
-	setLayout(other._layout);
-	memcpy(_pushDescriptor.cpuBuffer, other._pushDescriptor.cpuBuffer, _pushDescriptor.cpuBufferSize);
+	*this = other;
 }
 
+// Unused before the PerVertex prepass. The copy owns its push descriptor storage: the previous version kept cpuBuffer
+// pointing into the source unless the copy had to grow, so a restored state could alias a destroyed snapshot.
 MVKVulkanCommonEncoderState& MVKVulkanCommonEncoderState::operator=(const MVKVulkanCommonEncoderState& other) {
-	memmove(_descriptorSets, other._descriptorSets, sizeof(_descriptorSets));
+	if (this == &other) { return *this; }
+	_layout = other._layout;
 	_pushDescriptor = other._pushDescriptor;
-	setLayout(other._layout);
-	memmove(_pushDescriptor.cpuBuffer, other._pushDescriptor.cpuBuffer, _pushDescriptor.cpuBufferSize);
+	_pushDescData.resize(other._pushDescData.size());
+	if (other._pushDescData.size()) { memcpy(_pushDescData.data(), other._pushDescData.data(), other._pushDescData.size()); }
+	if (other._pushDescriptor.cpuBuffer) { _pushDescriptor.cpuBuffer = reinterpret_cast<char*>(_pushDescData.data()); }
+	for (uint32_t i = 0; i < kMVKMaxDescriptorSetCount; i++) {
+		_descriptorSets[i] = other._descriptorSets[i] == &other._pushDescriptor ? &_pushDescriptor : other._descriptorSets[i];
+	}
 	return *this;
 }
 

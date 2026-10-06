@@ -189,6 +189,8 @@ static void encodePerVertexInput(MVKCommandEncoder* cmdEncoder, MVKGraphicsPipel
 	// Vulkan ignores primitiveRestartEnable for nonindexed draws.
 	bool restart = mvkPerVertexRequiresRestartAssembly(indexBinding != nullptr, cmdEncoder->getVkGraphics().isPrimitiveRestartEnabled());
 	if (restart && !mvkCanAssemblePerVertexRestart(vertexCount, instanceCount, cmdEncoder->getMetalFeatures().indirectDrawing)) { reject(VK_ERROR_FEATURE_NOT_PRESENT, "restart requires indirect drawing and uint32 dense capture record IDs."); return; }
+	// The PerVertex prepass of this subpass already encoded the capture of this scratch slot.
+	bool prepassed = cmdEncoder->_pEncodingContext->nextPerVertexScratch < cmdEncoder->_perVertexPrepassEnd;
 	auto* scratch = cmdEncoder->nextPerVertexScratch();
 	if (!scratch) { return; }
 	id<MTLRenderPipelineState> directCaptureState = indexBinding ? nil : pipeline->getPerVertexCapturePipelineState(viewCount);
@@ -235,9 +237,11 @@ static void encodePerVertexInput(MVKCommandEncoder* cmdEncoder, MVKGraphicsPipel
 	id<MTLBuffer> primitiveIndices = scratch->buffers[3];
 	*(uint32_t*)captureParams.contents = vertexCount;
 	cmdEncoder->_isIndexedDraw = indexBinding != nullptr;
-	if (indexBinding) {
+	if (indexBinding && !prepassed) {
 		// Capture uses vertexCount records per instance; restart compacts occurrences within that stride.
 		// Indices are read on the GPU, including writes earlier in this command buffer.
+		// The prepass shares one compute encoder between captures: track its state as new, as for the encoder of each capture.
+		if (cmdEncoder->_isPerVertexPrepassing) { cmdEncoder->getState().beginComputeEncoding(); }
 		cmdEncoder->finalizeDrawState(kMVKGraphicsStageVertex);
 		if (!pipeline->hasValidMTLPipelineStates()) { return; }
 		id<MTLComputeCommandEncoder> captureEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
@@ -301,6 +305,7 @@ static void encodePerVertexInput(MVKCommandEncoder* cmdEncoder, MVKGraphicsPipel
 		} else {
 			[captureEncoder dispatchThreadgroups: MTLSizeMake(vertexCount, instanceCount, 1) threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
 		}
+		if (cmdEncoder->_isPerVertexPrepassing) { return; }
 		cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
 	}
 	cmdEncoder->_isIndexedDraw = false;
@@ -549,6 +554,21 @@ void MVKCmdDraw::encodePerVertexInput(MVKCommandEncoder* cmdEncoder, MVKGraphics
 
 void MVKCmdDrawIndexed::encodePerVertexInput(MVKCommandEncoder* cmdEncoder, MVKGraphicsPipeline* pipeline) {
 	::encodePerVertexInput(cmdEncoder, pipeline, _indexCount, _instanceCount, 0, _firstInstance, _drawIndex, &cmdEncoder->getVkGraphics()._indexBuffer, _firstIndex, _vertexOffset);
+}
+
+// Draws without PerVertex capture take no scratch slot and are left to the subpass encoding.
+bool MVKCmdDraw::encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) {
+	if (_vertexCount == 0 || _instanceCount == 0) { return true; }
+	auto* pipeline = cmdEncoder->getGraphicsPipeline();
+	// A nonindexed capture draws in the render pass, and a TES capture waits for the GPU: both end the window.
+	return !pipeline->usesPerVertexInputBuffer() && !pipeline->usesPerVertexTessEval();
+}
+
+bool MVKCmdDrawIndexed::encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) {
+	if (_indexCount == 0 || _instanceCount == 0) { return true; }
+	auto* pipeline = cmdEncoder->getGraphicsPipeline();
+	if (pipeline->usesPerVertexInputBuffer()) { encodePerVertexInput(cmdEncoder, pipeline); }
+	return true;
 }
 
 void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
@@ -2218,14 +2238,21 @@ VkResult MVKCmdDrawMeshTasks::setContent(MVKCommandBuffer* cmdBuff, uint32_t gro
 }
 
 // A mesh pipeline without task shader: one mesh threadgroup per workgroup, of the mesh shader's workgroup size.
-void MVKCmdDrawMeshTasks::encode(MVKCommandEncoder* cmdEncoder) {
-	if (!_groupCountX || !_groupCountY || !_groupCountZ) { return; }
-	cmdEncoder->restartMetalRenderPassIfNeeded();
+void MVKCmdDrawMeshTasks::encode(MVKCommandEncoder* cmdEncoder) { encodeMesh(cmdEncoder, false); }
+
+bool MVKCmdDrawMeshTasks::encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) { return encodeMesh(cmdEncoder, true); }
+
+// This branch has no emulated mesh capture: the prepass has nothing to capture for a native mesh draw.
+bool MVKCmdDrawMeshTasks::encodeMesh(MVKCommandEncoder* cmdEncoder, bool prepass) {
+	if (!_groupCountX || !_groupCountY || !_groupCountZ) { return true; }
+	if (!prepass) { cmdEncoder->restartMetalRenderPassIfNeeded(); }
 	auto* pipeline = cmdEncoder->getGraphicsPipeline();
-	if (!pipeline->isMeshPipeline()) { return; }
+	if (!pipeline->isMeshPipeline()) { return true; }
+	if (prepass) { return true; }
 	cmdEncoder->finalizeDrawState(kMVKGraphicsStageRasterization);
-	if (!pipeline->hasValidMTLPipelineStates()) { return; }
+	if (!pipeline->hasValidMTLPipelineStates()) { return true; }
 	[cmdEncoder->_mtlRenderEncoder drawMeshThreadgroups: MTLSizeMake(_groupCountX, _groupCountY, _groupCountZ)
 	                        threadsPerObjectThreadgroup: MTLSizeMake(1, 1, 1)
 	                          threadsPerMeshThreadgroup: pipeline->getMeshThreadgroupSize()];
+	return true;
 }

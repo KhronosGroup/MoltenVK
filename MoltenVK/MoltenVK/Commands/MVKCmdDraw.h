@@ -67,6 +67,7 @@ public:
 						const VkDeviceSize* pStrides);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder); return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -99,6 +100,7 @@ public:
 						VkIndexType indexType);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder); return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -121,6 +123,7 @@ public:
 						uint32_t drawIndex = 0);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override;
 	void encodePerVertexInput(MVKCommandEncoder* cmdEncoder, MVKGraphicsPipeline* pipeline);
 	void encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder);
 
@@ -150,6 +153,7 @@ public:
 						uint32_t drawIndex = 0);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override;
 	void encodePerVertexInput(MVKCommandEncoder* cmdEncoder, MVKGraphicsPipeline* pipeline);
 
 protected:
@@ -254,9 +258,11 @@ public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+	bool encodeMesh(MVKCommandEncoder* cmdEncoder, bool prepass);
 
 	uint32_t _groupCountX;
 	uint32_t _groupCountY;

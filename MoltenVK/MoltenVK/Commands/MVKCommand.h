@@ -67,6 +67,12 @@ public:
 	/** Encodes this command on the specified command encoder. */
 	virtual void encode(MVKCommandEncoder* cmdEncoder) = 0;
 
+	/**
+	 * PerVertex prepass (MVK_CONFIG_PERVERTEX_PREPASS=1), before the render encoder of a subpass opens: applies
+	 * Vulkan state or encodes a PerVertex capture, and returns true to continue, or false to end the prepass window.
+	 */
+	virtual bool encodePerVertexPrepass(MVKCommandEncoder*) { return false; }
+
 protected:
 	friend MVKCommandBuffer;
 
@@ -89,6 +95,9 @@ public:
 		_value = value;
 		return VK_SUCCESS;
 	}
+
+	/** Every subclass only sets dynamic Vulkan state (MVKCmdRendering.h). */
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder); return true; }
 
 protected:
 	Tv _value;

@@ -111,6 +111,7 @@ public:
 
 	virtual bool isTessellationPipeline() { return false; };
 	virtual MVKGraphicsPipeline* getGraphicsPipeline() { return nullptr; }
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder); return true; }
 
 protected:
 	MVKPipeline* _pipeline;
@@ -168,6 +169,7 @@ public:
 						const VkDescriptorSet* pDescriptorSets);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder); return true; }
 
 	~MVKCmdBindDescriptorSetsStatic() override;
 
@@ -239,6 +241,7 @@ public:
 						const void* pValues);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder); return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -268,6 +271,7 @@ public:
 						const VkWriteDescriptorSet* pDescriptorWrites);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder); return true; }
 
 	~MVKCmdPushDescriptorSet() override;
 
@@ -295,6 +299,7 @@ public:
 						const void* pData);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool encodePerVertexPrepass(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder); return true; }
 
 	~MVKCmdPushDescriptorSetWithTemplate() override;
 

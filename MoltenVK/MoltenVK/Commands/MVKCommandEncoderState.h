@@ -427,6 +427,13 @@ struct MVKMetalComputeCommandEncoderState {
 
 #pragma mark - MVKCommandEncoderState
 
+/** The Vulkan state the PerVertex prepass applies ahead of a subpass, then restores before encoding it. */
+struct MVKVulkanStateSnapshot {
+	MVKVulkanSharedCommandEncoderState   shared;
+	MVKVulkanGraphicsCommandEncoderState graphics;
+	MVKVulkanComputeCommandEncoderState  compute;
+};
+
 /** Holds both Metal and Vulkan state for both compute and graphics. */
 class MVKCommandEncoderState {
 	MVKVulkanSharedCommandEncoderState   _vkShared;
@@ -459,6 +466,13 @@ public:
 	MVKMetalGraphicsCommandEncoderState& mtlGraphics() { return _mtlGraphics; }
 	/** Returns a reference to the Metal compute state. */
 	MVKMetalComputeCommandEncoderState&  mtlCompute()  { return _mtlCompute; }
+	/** Copies the Vulkan state, to restore it with restoreVulkanState(). Metal state is not saved: a new encoder resets it. */
+	MVKVulkanStateSnapshot saveVulkanState() const { return {_vkShared, _vkGraphics, _vkCompute}; }
+	void restoreVulkanState(MVKVulkanStateSnapshot&& saved) {
+		_vkShared = std::move(saved.shared);
+		_vkGraphics = std::move(saved.graphics);
+		_vkCompute = std::move(saved.compute);
+	}
 
 	/**
 	 * Updates the given dynamic state, invalidating the passed flags on the Metal graphics state.
