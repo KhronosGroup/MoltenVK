@@ -5,7 +5,9 @@
 #include "MVKPerVertexReplay.h"
 #include <algorithm>
 #include <cstring>
+#include <functional>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 struct MVKPerVertexScratchRequest {
@@ -82,6 +84,61 @@ static inline bool mvkSizePerVertexIndirectReplay(const void* plan, NSUInteger p
 	return true;
 }
 
+static inline id<MTLBuffer> mvkNewPerVertexScratchBuffer(id<MTLDevice> device, NSUInteger length, bool shared) {
+	return [device newBufferWithLength:length options:shared ? MTLResourceStorageModeShared : MTLResourceStorageModePrivate];
+}
+
+// MVK_CONFIG_PERVERTEX_SCRATCH_POOL=1: the scratch buffers of direct draws come from free lists by storage mode
+// and power-of-two size class, instead of a new Metal buffer per draw. A buffer returns to its list only when its
+// MVKPerVertexScratch is destroyed, at the release of its last reference: the completed handler that
+// keepPerVertexScratchResident adds to every Metal command buffer encoding it, or the submission, destroyed once all
+// its Metal command buffers completed. Pool buffers enter the residency set once, at creation, and stay there: the
+// set does not count references, so removing one after a draw would evict it while a later draw reuses it.
+// ponytail: the pool keeps its high-water mark until it is destroyed; trim the free lists if memory matters.
+struct MVKPerVertexScratchPool {
+	static constexpr uint8_t kMinSizeClass = 8;	// 256 bytes
+	static uint8_t sizeClass(NSUInteger length) {
+		uint8_t sizeClass = kMinSizeClass;
+		while (sizeClass < 63 && (NSUInteger(1) << sizeClass) < length) { ++sizeClass; }
+		return sizeClass;
+	}
+
+	MVKPerVertexScratchPool(NSUInteger maxLength, std::function<void(id<MTLBuffer>)> makeResident) : _maxLength(maxLength), _makeResident(std::move(makeResident)) {}
+	MVKPerVertexScratchPool(const MVKPerVertexScratchPool&) = delete;
+	MVKPerVertexScratchPool& operator=(const MVKPerVertexScratchPool&) = delete;
+	~MVKPerVertexScratchPool() { for (auto& lists : _free) { for (auto& list : lists) { for (id<MTLBuffer> buffer : list) { [buffer release]; } } } }
+
+	// Returns a retained buffer of at least length bytes (at most maxLength), and its class for give().
+	id<MTLBuffer> take(id<MTLDevice> device, NSUInteger length, bool shared, uint8_t& sizeClassOut) {
+		uint8_t c = sizeClassOut = sizeClass(length);
+		{
+			std::lock_guard<std::mutex> lock(_lock);
+			auto& list = _free[shared][c];
+			if ( !list.empty() ) {
+				id<MTLBuffer> buffer = list.back();
+				list.pop_back();
+				return buffer;
+			}
+		}
+		// Every request of this class is at most min(2^c, maxLength) bytes: a power of two above the limit would fail.
+		id<MTLBuffer> buffer = mvkNewPerVertexScratchBuffer(device, std::min(NSUInteger(1) << c, _maxLength), shared);
+		if (buffer && _makeResident) { _makeResident(buffer); }
+		return buffer;
+	}
+
+	// Only once no Metal command buffer can use the buffer any more. Runs on completion threads.
+	void give(id<MTLBuffer> buffer, bool shared, uint8_t c) {
+		std::lock_guard<std::mutex> lock(_lock);
+		try { _free[shared][c].push_back(buffer); } catch (const std::bad_alloc&) { [buffer release]; }
+	}
+
+private:
+	std::mutex _lock;
+	std::vector<id<MTLBuffer>> _free[2][64];
+	NSUInteger _maxLength;
+	std::function<void(id<MTLBuffer>)> _makeResident;
+};
+
 // Individually owned allocations: the shared scratch pool cannot recover from a nil Metal buffer.
 struct MVKPerVertexScratch {
 	id<MTLBuffer> buffers[14] = {};
@@ -90,19 +147,29 @@ struct MVKPerVertexScratch {
 	id<MTLComputePipelineState> indirectPipeline = nil;
 	uint32_t indirectCapacity = 0;
 	id<MTLComputePipelineState> tessTopologyPipeline = nil;
+	// Direct draws with MVK_CONFIG_PERVERTEX_SCRATCH_POOL=1: the pool of the replay buffers, and their size classes.
+	std::shared_ptr<MVKPerVertexScratchPool> pool;
+	uint8_t poolSizeClasses[14] = {};
 	MVKPerVertexScratch() = default;
 	MVKPerVertexScratch(const MVKPerVertexScratch&) = delete;
 	MVKPerVertexScratch& operator=(const MVKPerVertexScratch&) = delete;
-	~MVKPerVertexScratch() { for (auto buffer : buffers) { [buffer release]; } [indexPipeline release]; [widenUint8Pipeline release]; [indirectPipeline release]; [tessTopologyPipeline release]; }
+	~MVKPerVertexScratch() {
+		for (size_t i = 0; i < std::size(buffers); ++i) {
+			if (poolSizeClasses[i]) { pool->give(buffers[i], isSharedReplayBuffer(i), poolSizeClasses[i]); } else { [buffers[i] release]; }
+		}
+		[indexPipeline release]; [widenUint8Pipeline release]; [indirectPipeline release]; [tessTopologyPipeline release];
+	}
+
+	static bool isSharedReplayBuffer(size_t i) { return (i > 0 && i < 5) || i == 7; }
 
 	bool reserveReplay(id<MTLDevice> device, const MVKPerVertexScratchRequest& request) {
 		NSUInteger lengths[] = {request.captureSize, sizeof(uint32_t), request.occurrenceSize, request.primitiveSize, request.cornerSize, request.indexSize, request.restart ? 68 * sizeof(uint32_t) : 0, request.tessSizes[0], request.tessSizes[1], request.tessSizes[2], request.tessSizes[3], request.tessSizes[4]};
 		for (size_t i = 0; i < std::size(lengths); ++i) {
 			if (!lengths[i]) { continue; }
 			if (buffers[i]) { return false; }
-			bool shared = (i > 0 && i < 5) || i == 7;
-			id<MTLBuffer> buffer = [device newBufferWithLength:lengths[i] options:shared ? MTLResourceStorageModeShared : MTLResourceStorageModePrivate];
-			if (!buffer || buffer.length < lengths[i] || (shared && !buffer.contents)) { [buffer release]; return false; }
+			bool shared = isSharedReplayBuffer(i);
+			id<MTLBuffer> buffer = pool ? pool->take(device, lengths[i], shared, poolSizeClasses[i]) : mvkNewPerVertexScratchBuffer(device, lengths[i], shared);
+			if (!buffer || buffer.length < lengths[i] || (shared && !buffer.contents)) { [buffer release]; poolSizeClasses[i] = 0; return false; }
 			buffers[i] = buffer;
 		}
 		return true;
@@ -113,7 +180,7 @@ struct MVKPerVertexScratch {
 		NSUInteger length = std::max(request.planSize, request.tessSizes[5]);
 		if (length) {
 			if (buffers[12]) { return false; }
-			id<MTLBuffer> buffer = [device newBufferWithLength:length options:MTLResourceStorageModeShared];
+			id<MTLBuffer> buffer = mvkNewPerVertexScratchBuffer(device, length, true);
 			if (!buffer || buffer.length < length || !buffer.contents) { [buffer release]; return false; }
 			buffers[12] = buffer;
 			// The GPU ORs admission failures into the status word; each submission starts admitted.
@@ -121,7 +188,7 @@ struct MVKPerVertexScratch {
 		}
 		if (request.snapshotSize) {
 			if (buffers[13]) { return false; }
-			id<MTLBuffer> snapshot = [device newBufferWithLength:request.snapshotSize options:MTLResourceStorageModeShared];
+			id<MTLBuffer> snapshot = mvkNewPerVertexScratchBuffer(device, request.snapshotSize, true);
 			if (!snapshot || snapshot.length < request.snapshotSize || !snapshot.contents) { [snapshot release]; return false; }
 			buffers[13] = snapshot;
 		}
@@ -140,12 +207,14 @@ struct MVKPerVertexScratch {
 
 using MVKPerVertexScratchReservations = std::vector<std::shared_ptr<MVKPerVertexScratch>>;
 
-// Publish only a complete reservation. Failure releases all allocations made by this attempt.
-static inline bool mvkReservePerVertexScratch(id<MTLDevice> device, const std::vector<MVKPerVertexScratchRequest>& requests, MVKPerVertexScratchReservations& reservations) {
+// Publish only a complete reservation. Failure releases all allocations made by this attempt, or returns them to the pool.
+// Indirect draws (sized while encoding, read back by length) and TES draws (test-only) never use the pool.
+static inline bool mvkReservePerVertexScratch(id<MTLDevice> device, const std::vector<MVKPerVertexScratchRequest>& requests, MVKPerVertexScratchReservations& reservations, const std::shared_ptr<MVKPerVertexScratchPool>& pool = nullptr) {
 	MVKPerVertexScratchReservations pending;
 	pending.reserve(requests.size());
 	for (const auto& request : requests) {
 		auto scratch = std::make_shared<MVKPerVertexScratch>();
+		if (!request.indirectCapacity && std::none_of(std::begin(request.tessSizes), std::end(request.tessSizes), [](NSUInteger size) { return size != 0; })) { scratch->pool = pool; }
 		if (request.indirectCapacity ? !scratch->reservePlan(device, request) : !scratch->reserve(device, request)) { return false; }
 		pending.push_back(std::move(scratch));
 	}

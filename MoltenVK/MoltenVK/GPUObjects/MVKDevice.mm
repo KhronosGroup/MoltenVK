@@ -30,6 +30,7 @@
 #include "MVKRenderPass.h"
 #include "MVKSync.h"
 #include "MVKCommandPool.h"
+#include "MVKPerVertexScratch.h"
 #include "MVKFoundation.h"
 #include "MVKStrings.h"
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
@@ -3994,6 +3995,7 @@ VkResult MVKDevice::markLost(bool alsoMarkPhysicalDevice) {
 @public
 	NSMutableArray* _completed;
 	NSMutableArray* _scheduled;
+	NSMutableArray* _resident;		// MVKDevice::addMTLCommandBufferResidency(), created on first use
 }
 @end
 
@@ -4010,6 +4012,7 @@ VkResult MVKDevice::markLost(bool alsoMarkPhysicalDevice) {
 -(void) dealloc {
 	[_completed release];
 	[_scheduled release];
+	[_resident release];
 	[super dealloc];
 }
 
@@ -4113,22 +4116,43 @@ void MVKDevice::endEncoding() {
 	_activeEncodings--;
 }
 
-void MVKDevice::addMTLCommandBufferHandler(id<MTLCommandBuffer> mtlCmdBuff, MTLCommandBufferHandler handler, bool isScheduled) {
-	if ( !mtlCmdBuff ) { return; }
+// Returns the handlers attached to a Metal command buffer, attaching new ones if needed.
+static MVKMTLCommandBufferHandlers* mvkGetMTLCommandBufferHandlers(id<MTLCommandBuffer> mtlCmdBuff) {
 	MVKMTLCommandBufferHandlers* handlers = objc_getAssociatedObject(mtlCmdBuff, &kMVKMTLCommandBufferHandlersKey);
 	if ( !handlers ) {
 		handlers = [MVKMTLCommandBufferHandlers new];		// temp retain
 		objc_setAssociatedObject(mtlCmdBuff, &kMVKMTLCommandBufferHandlersKey, handlers, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 		[handlers release];									// temp release
 	}
+	return handlers;
+}
+
+void MVKDevice::addMTLCommandBufferHandler(id<MTLCommandBuffer> mtlCmdBuff, MTLCommandBufferHandler handler, bool isScheduled) {
+	if ( !mtlCmdBuff ) { return; }
+	MVKMTLCommandBufferHandlers* handlers = mvkGetMTLCommandBufferHandlers(mtlCmdBuff);
 	id copiedHandler = [handler copy];						// temp retain
 	[(isScheduled ? handlers->_scheduled : handlers->_completed) addObject: copiedHandler];
 	[copiedHandler release];								// temp release
 }
 
+void MVKDevice::addMTLCommandBufferResidency(id<MTLCommandBuffer> mtlCmdBuff, id<MTLBuffer> allocation) {
+	if ( !mtlCmdBuff ) { return; }
+	MVKMTLCommandBufferHandlers* handlers = mvkGetMTLCommandBufferHandlers(mtlCmdBuff);
+	if ( !handlers->_resident ) { handlers->_resident = [NSMutableArray new]; }		// retained
+	[handlers->_resident addObject: allocation];
+}
+
 void MVKDevice::commitMTLCommandBuffer(id<MTLCommandBuffer> mtlCmdBuff) {
 	if ( !mtlCmdBuff ) { return; }
 	MVKMTLCommandBufferHandlers* handlers = mvkTakeMTLCommandBufferHandlers(mtlCmdBuff);
+	// Batch residency: resident before the command buffer is committed, removed after its other completed handlers.
+	NSArray* resident = handlers ? handlers->_resident : nil;
+	if (resident.count) {
+		makeResidentBatch(resident);
+		id removal = [^(id<MTLCommandBuffer>) { removeResidencyBatch(resident); } copy];		// temp retain, retains resident
+		[handlers->_completed addObject: removal];
+		[removal release];																		// temp release
+	}
 	NSArray* scheduled = handlers ? handlers->_scheduled : nil;
 	NSArray* completed = handlers ? handlers->_completed : nil;
 	// The end of each Metal handler is its last use of this device, which may be destroyed right after it.
@@ -5806,6 +5830,10 @@ void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
 		[setDescriptor release];
 	}
 #endif
+	// Pool buffers are made resident once, here at their creation, in the set of this device.
+	if (mvkGetEnvVarNumber("MVK_CONFIG_PERVERTEX_SCRATCH_POOL", 0) == 1) {
+		_perVertexScratchPool = std::make_shared<MVKPerVertexScratchPool>(NSUInteger(_physicalDevice->getMTLDevice().maxBufferLength), [this](id<MTLBuffer> buffer) { makeResident(buffer); });
+	}
 
 	auto qFams = _physicalDevice->getQueueFamilies();
 	uint32_t qrCnt = pCreateInfo->queueCreateInfoCount;

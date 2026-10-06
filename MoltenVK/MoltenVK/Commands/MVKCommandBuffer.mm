@@ -37,6 +37,13 @@ static int mvkPerVertexPrepassMode() {
 	return mode;
 }
 
+// MVK_CONFIG_PERVERTEX_BATCH_RESIDENCY=1: the PerVertex scratch of a Metal command buffer enters and leaves the
+// residency set with one commit each, when that command buffer is committed and once it completed, not per draw.
+static bool mvkPerVertexBatchResidency() {
+	static const bool isEnabled = mvkGetEnvVarNumber("MVK_CONFIG_PERVERTEX_BATCH_RESIDENCY", 0) == 1;
+	return isEnabled;
+}
+
 
 #pragma mark -
 #pragma mark MVKCommandEncodingContext
@@ -628,7 +635,7 @@ VkResult MVKCommandBuffer::reservePerVertexScratch(MVKPerVertexScratchReservatio
 VkResult MVKCommandBuffer::reservePerVertexScratch(const std::vector<MVKPerVertexScratchRequest>& requests, MVKPerVertexScratchReservations& scratch) {
 	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 	MVKPerVertexScratchReservations pending;
-	if (!mvkReservePerVertexScratch(getMTLDevice(), requests, pending)) {
+	if (!mvkReservePerVertexScratch(getMTLDevice(), requests, pending, _device->getPerVertexScratchPool())) {
 		VkResult result = _device->getConfigurationResult();
 		return result != VK_SUCCESS ? result : reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Portable PerVertexKHR scratch reservation failed.");
 	}
@@ -880,10 +887,19 @@ void MVKCommandEncoder::encodePerVertexPrepass(MVKCommand* command) {
 void MVKCommandEncoder::keepPerVertexScratchResident() {
 	auto scratch = _lastPerVertexScratch;
 	auto* device = getDevice();
-	for (auto buffer : scratch->buffers) { if (buffer) { device->makeResident(buffer); } }
+	// Pool buffers stay resident from their creation (MVKPerVertexScratchPool): the reference below only delays their return.
+	bool changesResidency = !scratch->pool;
+	bool isBatched = changesResidency && mvkPerVertexBatchResidency();
+	if (isBatched) {
+		for (auto buffer : scratch->buffers) { if (buffer) { device->addMTLCommandBufferResidency(_mtlCmdBuffer, buffer); } }
+	} else if (changesResidency) {
+		for (auto buffer : scratch->buffers) { if (buffer) { device->makeResident(buffer); } }
+	}
 	// This also protects buffers encoded with unretained Metal command buffers and
 	// prefills that outlive their Vulkan command buffer's recorded command list.
+	// Its release, once this command buffer completed, is what returns pool buffers.
 	device->addMTLCommandBufferHandler(_mtlCmdBuffer, ^(id<MTLCommandBuffer>) {
+		if ( !changesResidency || isBatched ) { return; }
 		for (auto buffer : scratch->buffers) { if (buffer) { device->removeResidency(buffer); } }
 	});
 }

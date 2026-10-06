@@ -76,6 +76,7 @@ class MVKCommandEncoder;
 class MVKCommandResourceFactory;
 class MVKPrivateDataSlot;
 struct MVKUseResourceHelper;
+struct MVKPerVertexScratchPool;
 enum class MVKResourceUsageStages : uint8_t;
 
 
@@ -752,6 +753,16 @@ public:
 	void addMTLCommandBufferHandler(id<MTLCommandBuffer> mtlCmdBuff, MTLCommandBufferHandler handler, bool isScheduled = false);
 
 	/**
+	 * MVK_CONFIG_PERVERTEX_BATCH_RESIDENCY=1: adds an allocation that a Metal command buffer uses to the residency
+	 * set when commitMTLCommandBuffer() commits it, together with the others of that command buffer and one residency
+	 * commit, and removes them all, with one commit, from its completed handlers. An abandoned one never adds them.
+	 */
+	void addMTLCommandBufferResidency(id<MTLCommandBuffer> mtlCmdBuff, id<MTLBuffer> allocation);
+
+	/** MVK_CONFIG_PERVERTEX_SCRATCH_POOL=1: the pool of PerVertex scratch buffers, otherwise null. */
+	const std::shared_ptr<MVKPerVertexScratchPool>& getPerVertexScratchPool() { return _perVertexScratchPool; }
+
+	/**
 	 * Runs now, as cleanup, the completion handlers of a Metal command buffer that its owner then releases without
 	 * committing it, which discards its commands. Its status stays MTLCommandBufferStatusNotEnqueued, which handlers
 	 * that report completion must check.
@@ -1068,6 +1079,7 @@ public:
 
 #if !MVK_XCODE_16
 	void makeResident(id allocation) {}
+	void makeResidentBatch(NSArray* allocations) {}
 #else
 	void makeResident(id<MTLAllocation> allocation) {
 		@synchronized(_residencySet) {
@@ -1075,14 +1087,31 @@ public:
 			[_residencySet commit];
 		}
 	}
+
+	/** Adds the allocations to the residency set with a single commit. */
+	void makeResidentBatch(NSArray* allocations) {
+		@synchronized(_residencySet) {
+			for (id<MTLAllocation> allocation in allocations) { [_residencySet addAllocation: allocation]; }
+			[_residencySet commit];
+		}
+	}
 #endif
 
 #if !MVK_XCODE_16
 	void removeResidency(id allocation) {}
+	void removeResidencyBatch(NSArray* allocations) {}
 #else
 	void removeResidency(id<MTLAllocation> allocation) {
 		@synchronized(_residencySet) {
 			[_residencySet removeAllocation:allocation];
+			[_residencySet commit];
+		}
+	}
+
+	/** Removes the allocations from the residency set with a single commit. */
+	void removeResidencyBatch(NSArray* allocations) {
+		@synchronized(_residencySet) {
+			for (id<MTLAllocation> allocation in allocations) { [_residencySet removeAllocation: allocation]; }
 			[_residencySet commit];
 		}
 	}
@@ -1218,6 +1247,7 @@ protected:
 #if MVK_XCODE_16
 	id<MTLResidencySet> _residencySet = nil;
 #endif
+	std::shared_ptr<MVKPerVertexScratchPool> _perVertexScratchPool;
 	uint32_t _visibilityBufferCount = 0;
 	int _capturePipeFileDesc = -1;
 	bool _isPerformanceTracking = false;
