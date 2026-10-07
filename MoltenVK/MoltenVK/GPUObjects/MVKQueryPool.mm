@@ -269,8 +269,7 @@ void MVKOcclusionQueryPool::resetResults(uint32_t firstQuery, uint32_t queryCoun
 }
 
 const uint64_t* MVKOcclusionQueryPool::getQuerySourceValues(uint32_t firstQuery, uint32_t queryCount) {
-	id<MTLBuffer> vizBuff = getVisibilityResultMTLBuffer();
-	return (const uint64_t*)((uintptr_t)vizBuff.contents + getVisibilityResultOffset(firstQuery));
+	return (const uint64_t*)((uintptr_t)_visibilityResultValues + getVisibilityResultOffset(firstQuery));
 }
 
 id<MTLBuffer> MVKOcclusionQueryPool::getResultBuffer(MVKCommandEncoder*, uint32_t firstQuery, uint32_t, NSUInteger& offset) {
@@ -298,6 +297,7 @@ MVKOcclusionQueryPool::MVKOcclusionQueryPool(MVKDevice* device,
 
 	MTLResourceOptions mtlBuffOpts = MTLResourceStorageModeShared | MTLResourceCPUCacheModeDefaultCache;
 	_visibilityResultMTLBuffer = [getMTLDevice() newBufferWithLength: reqBuffLen options: mtlBuffOpts];     // retained
+	_visibilityResultValues = (const uint64_t*)[_visibilityResultMTLBuffer contents];
 	[_visibilityResultMTLBuffer setLabel:@"Occlusion Query Result Buffer"];
 }
 

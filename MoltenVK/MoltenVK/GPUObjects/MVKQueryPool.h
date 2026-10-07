@@ -171,6 +171,9 @@ protected:
 	id<MTLComputeCommandEncoder> encodeComputeCopyResults(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) override;
 
 	id<MTLBuffer> _visibilityResultMTLBuffer;
+	// Borrowed from the retained, pool-owned shared buffer. Its allocation
+	// does not change for the lifetime of this query pool.
+	const uint64_t* _visibilityResultValues;
 };
 
 
@@ -256,4 +259,3 @@ public:
 protected:
 	void propagateDebugName() override {}
 };
-
