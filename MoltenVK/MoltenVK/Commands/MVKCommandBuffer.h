@@ -284,6 +284,9 @@ protected:
 /*** Holds a collection of active queries for each query pool. */
 typedef std::unordered_map<MVKQueryPool*, MVKSmallVector<uint32_t, kMVKDefaultQueryCount>> MVKActivatedQueries;
 
+/** MVK_CONFIG_MESH_INDIRECT_GPU=1: vkCmdDrawMeshTasksIndirectEXT with drawCount 1 (MVKCmdDrawMeshTasksIndirect). */
+bool mvkMeshIndirectGpu();
+
 /** 
  * MVKCommandEncoder uses a visitor design pattern iterate the commands in a MVKCommandBuffer, 
  * tracking and caching dynamic encoding state, and encoding the commands onto Metal MTLCommandBuffers.

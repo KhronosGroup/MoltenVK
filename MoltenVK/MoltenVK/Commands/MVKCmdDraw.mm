@@ -2256,3 +2256,29 @@ bool MVKCmdDrawMeshTasks::encodeMesh(MVKCommandEncoder* cmdEncoder, bool prepass
 	                          threadsPerMeshThreadgroup: pipeline->getMeshThreadgroupSize()];
 	return true;
 }
+
+
+#pragma mark -
+#pragma mark MVKCmdDrawMeshTasksIndirect
+
+VkResult MVKCmdDrawMeshTasksIndirect::setContent(MVKCommandBuffer* cmdBuff, VkBuffer buffer, VkDeviceSize offset) {
+	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
+	_mtlIndirectBuffer = mvkBuffer->getMTLBuffer();
+	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
+	return VK_SUCCESS;
+}
+
+// Native mesh pipelines only. Metal reads the same
+// three words as Vulkan's VkDrawMeshTasksIndirectCommandEXT, so the grid is never read back on the CPU. Beyond its grid
+// limit Metal draws nothing and reports no error, which the direct draw refuses at record time but this one cannot.
+void MVKCmdDrawMeshTasksIndirect::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->restartMetalRenderPassIfNeeded();
+	auto* pipeline = cmdEncoder->getGraphicsPipeline();
+	if (!pipeline->isMeshPipeline()) { return; }
+	cmdEncoder->finalizeDrawState(kMVKGraphicsStageRasterization);
+	if (!pipeline->hasValidMTLPipelineStates()) { return; }
+	[cmdEncoder->_mtlRenderEncoder drawMeshThreadgroupsWithIndirectBuffer: _mtlIndirectBuffer
+	                                                 indirectBufferOffset: _mtlIndirectBufferOffset
+	                                          threadsPerObjectThreadgroup: MTLSizeMake(1, 1, 1)
+	                                            threadsPerMeshThreadgroup: pipeline->getMeshThreadgroupSize()];
+}

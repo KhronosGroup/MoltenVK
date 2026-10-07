@@ -4333,7 +4333,12 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMeshTasksIndirectEXT(
 	uint32_t                                    stride) {
 
 	MVKTraceVulkanCallStart();
-	mvkRefuseIndirectMeshDraw(commandBuffer, "vkCmdDrawMeshTasksIndirectEXT");
+	// MVK_CONFIG_MESH_INDIRECT_GPU=1: a single indirect grid, sized on the GPU (MVKCmdDrawMeshTasksIndirect).
+	if (mvkMeshIndirectGpu() && drawCount <= 1) {
+		if (drawCount) { MVKAddCmd(DrawMeshTasksIndirect, commandBuffer, buffer, offset); }
+	} else {
+		mvkRefuseIndirectMeshDraw(commandBuffer, "vkCmdDrawMeshTasksIndirectEXT");
+	}
 	MVKTraceVulkanCallEnd();
 }
 

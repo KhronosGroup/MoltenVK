@@ -44,6 +44,12 @@ static bool mvkPerVertexBatchResidency() {
 	return isEnabled;
 }
 
+// MVK_CONFIG_MESH_INDIRECT_GPU=1: vkCmdDrawMeshTasksIndirectEXT with drawCount 1 (MVKCmdDrawMeshTasksIndirect).
+bool mvkMeshIndirectGpu() {
+	static const bool isEnabled = mvkGetEnvVarNumber("MVK_CONFIG_MESH_INDIRECT_GPU", 0) == 1;
+	return isEnabled;
+}
+
 
 #pragma mark -
 #pragma mark MVKCommandEncodingContext
