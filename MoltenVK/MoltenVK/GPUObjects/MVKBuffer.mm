@@ -54,6 +54,10 @@ VkResult MVKBuffer::getMemoryRequirements(VkMemoryRequirements* pMemoryRequireme
 	pMemoryRequirements->memoryTypeBits = getPhysicalDevice()->getAllMemoryTypes();
 	// Memoryless storage is not allowed for buffers
 	mvkDisableFlags(pMemoryRequirements->memoryTypeBits, getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
+	// VideoToolbox reads and writes bitstreams from the CPU
+	if (mvkIsAnyFlagEnabled(_usage, VK_BUFFER_USAGE_2_VIDEO_ENCODE_DST_BIT_KHR | VK_BUFFER_USAGE_2_VIDEO_DECODE_SRC_BIT_KHR)) {
+		pMemoryRequirements->memoryTypeBits &= getPhysicalDevice()->getHostVisibleMemoryTypes();
+	}
 	return VK_SUCCESS;
 }
 

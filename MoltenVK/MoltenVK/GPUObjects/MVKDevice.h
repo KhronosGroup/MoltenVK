@@ -55,6 +55,8 @@ class MVKTimelineSemaphore;
 class MVKDeferredOperation;
 class MVKEvent;
 class MVKQueryPool;
+class MVKVideoSession;
+class MVKVideoSessionParameters;
 class MVKShaderModule;
 class MVKPipelineCache;
 class MVKPipelineLayout;
@@ -79,7 +81,7 @@ enum class MVKResourceUsageStages : uint8_t;
 static constexpr uint32_t kMVKVertexContentBufferIndex = 0;
 
 // Parameters to define the sizing of inline collections
-static constexpr uint32_t   kMVKQueueFamilyCount = 4;
+static constexpr uint32_t   kMVKQueueFamilyCount = 5;
 static constexpr uint32_t   kMVKQueueCountPerQueueFamily = 1;		// Must be 1. See comments in MVKPhysicalDevice::getQueueFamilies()
 static constexpr uint32_t   kMVKMinSwapchainImageCount = 2;
 static constexpr uint32_t   kMVKMaxSwapchainImageCount = 3;
@@ -776,6 +778,16 @@ public:
 								  const VkAllocationCallbacks* pAllocator);
 	void destroyQueryPool(MVKQueryPool* mvkQP,
 						  const VkAllocationCallbacks* pAllocator);
+
+	MVKVideoSession* createVideoSession(const VkVideoSessionCreateInfoKHR* pCreateInfo,
+										const VkAllocationCallbacks* pAllocator);
+	void destroyVideoSession(MVKVideoSession* mvkVS,
+							 const VkAllocationCallbacks* pAllocator);
+
+	MVKVideoSessionParameters* createVideoSessionParameters(const VkVideoSessionParametersCreateInfoKHR* pCreateInfo,
+															const VkAllocationCallbacks* pAllocator);
+	void destroyVideoSessionParameters(MVKVideoSessionParameters* mvkVSP,
+									   const VkAllocationCallbacks* pAllocator);
 
 	MVKShaderModule* createShaderModule(const VkShaderModuleCreateInfo* pCreateInfo,
 										const VkAllocationCallbacks* pAllocator);

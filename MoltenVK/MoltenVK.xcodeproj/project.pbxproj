@@ -29,6 +29,7 @@
 		2FEA0A4824902F9F00EEF3AD /* MVKInstance.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB78B1C7DFB4800632CA3 /* MVKInstance.h */; };
 		2FEA0A4924902F9F00EEF3AD /* MVKCommandResourceFactory.h in Headers */ = {isa = PBXBuildFile; fileRef = A95870F61C90D29F009EB096 /* MVKCommandResourceFactory.h */; };
 		2FEA0A4A24902F9F00EEF3AD /* MVKQueryPool.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB78F1C7DFB4800632CA3 /* MVKQueryPool.h */; };
+		3E2CD5B0BFBE56107C7B39FF /* MVKVideo.h in Headers */ = {isa = PBXBuildFile; fileRef = DAB0E2AD12946682EB804841 /* MVKVideo.h */; };
 		2FEA0A4B24902F9F00EEF3AD /* MVKCommandEncoderState.h in Headers */ = {isa = PBXBuildFile; fileRef = A95B7D671D3EE486003183D3 /* MVKCommandEncoderState.h */; };
 		2FEA0A4C24902F9F00EEF3AD /* MVKCommandPipelineStateFactoryShaderSource.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB77C1C7DFB4800632CA3 /* MVKCommandPipelineStateFactoryShaderSource.h */; };
 		2FEA0A4D24902F9F00EEF3AD /* MVKDescriptorSet.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7811C7DFB4800632CA3 /* MVKDescriptorSet.h */; };
@@ -48,6 +49,7 @@
 		2FEA0A5D24902F9F00EEF3AD /* MVKShaderModule.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7971C7DFB4800632CA3 /* MVKShaderModule.h */; };
 		2FEA0A5E24902F9F00EEF3AD /* MVKVulkanAPIObject.h in Headers */ = {isa = PBXBuildFile; fileRef = A99C91012295FAC500A061DA /* MVKVulkanAPIObject.h */; };
 		2FEA0A5F24902F9F00EEF3AD /* MVKCmdQueries.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7701C7DFB4800632CA3 /* MVKCmdQueries.h */; };
+		4755AFABA859CCB500090F02 /* MVKCmdVideo.h in Headers */ = {isa = PBXBuildFile; fileRef = EF5CE8A7DDD79A4AE0968CA5 /* MVKCmdVideo.h */; };
 		2FEA0A6024902F9F00EEF3AD /* MVKCommand.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7761C7DFB4800632CA3 /* MVKCommand.h */; };
 		2FEA0A6124902F9F00EEF3AD /* MVKBaseObject.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149421FB6A3F7005F00B4 /* MVKBaseObject.h */; };
 		2FEA0A6224902F9F00EEF3AD /* MVKMTLBufferAllocation.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C96DCE1DDC20C20053187F /* MVKMTLBufferAllocation.h */; };
@@ -92,6 +94,7 @@
 		2FEA0A8E24902F9F00EEF3AD /* vulkan.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7AD1C7DFB4800632CA3 /* vulkan.mm */; };
 		2FEA0A8F24902F9F00EEF3AD /* MVKSurface.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB79A1C7DFB4800632CA3 /* MVKSurface.mm */; };
 		2FEA0A9024902F9F00EEF3AD /* MVKQueryPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7901C7DFB4800632CA3 /* MVKQueryPool.mm */; };
+		C7FA5CA472D38FE88574F23B /* MVKVideo.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7367E7FDA5CCA78D545D6932 /* MVKVideo.mm */; };
 		2FEA0A9124902F9F00EEF3AD /* MVKInstance.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB78C1C7DFB4800632CA3 /* MVKInstance.mm */; };
 		2FEA0A9224902F9F00EEF3AD /* MVKDeviceMemory.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7861C7DFB4800632CA3 /* MVKDeviceMemory.mm */; };
 		2FEA0A9324902F9F00EEF3AD /* MVKImage.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB78A1C7DFB4800632CA3 /* MVKImage.mm */; };
@@ -111,6 +114,7 @@
 		2FEA0AA324902F9F00EEF3AD /* MVKRenderPass.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7941C7DFB4800632CA3 /* MVKRenderPass.mm */; };
 		2FEA0AA424902F9F00EEF3AD /* MVKCmdTransfer.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB76D1C7DFB4800632CA3 /* MVKCmdTransfer.mm */; };
 		2FEA0AA524902F9F00EEF3AD /* MVKCmdQueries.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7711C7DFB4800632CA3 /* MVKCmdQueries.mm */; };
+		6B5B4C9EBAF1F066991D743C /* MVKCmdVideo.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5077E15274C6AC921FD2B0B6 /* MVKCmdVideo.mm */; };
 		2FEA0AA624902F9F00EEF3AD /* mvk_api.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7AC1C7DFB4800632CA3 /* mvk_api.mm */; };
 		2FEA0AA724902F9F00EEF3AD /* MVKSwapchain.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB79C1C7DFB4800632CA3 /* MVKSwapchain.mm */; };
 		2FEA0AA824902F9F00EEF3AD /* MVKCommandEncoderState.mm in Sources */ = {isa = PBXBuildFile; fileRef = A95B7D681D3EE486003183D3 /* MVKCommandEncoderState.mm */; };
@@ -165,9 +169,13 @@
 		A94FB7BE1C7DFB4800632CA3 /* MVKCmdPipeline.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB76F1C7DFB4800632CA3 /* MVKCmdPipeline.mm */; };
 		A94FB7BF1C7DFB4800632CA3 /* MVKCmdPipeline.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB76F1C7DFB4800632CA3 /* MVKCmdPipeline.mm */; };
 		A94FB7C01C7DFB4800632CA3 /* MVKCmdQueries.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7701C7DFB4800632CA3 /* MVKCmdQueries.h */; };
+		2356B58FAAB18032DEB362B5 /* MVKCmdVideo.h in Headers */ = {isa = PBXBuildFile; fileRef = EF5CE8A7DDD79A4AE0968CA5 /* MVKCmdVideo.h */; };
 		A94FB7C11C7DFB4800632CA3 /* MVKCmdQueries.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7701C7DFB4800632CA3 /* MVKCmdQueries.h */; };
+		41CE1D5BBBF81CFD4A159DDE /* MVKCmdVideo.h in Headers */ = {isa = PBXBuildFile; fileRef = EF5CE8A7DDD79A4AE0968CA5 /* MVKCmdVideo.h */; };
 		A94FB7C21C7DFB4800632CA3 /* MVKCmdQueries.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7711C7DFB4800632CA3 /* MVKCmdQueries.mm */; };
+		703CD56EB5E23C777EF5738F /* MVKCmdVideo.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5077E15274C6AC921FD2B0B6 /* MVKCmdVideo.mm */; };
 		A94FB7C31C7DFB4800632CA3 /* MVKCmdQueries.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7711C7DFB4800632CA3 /* MVKCmdQueries.mm */; };
+		76B9AFB8429E2AA35562F738 /* MVKCmdVideo.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5077E15274C6AC921FD2B0B6 /* MVKCmdVideo.mm */; };
 		A94FB7C41C7DFB4800632CA3 /* MVKCmdRendering.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7721C7DFB4800632CA3 /* MVKCmdRendering.h */; };
 		A94FB7C51C7DFB4800632CA3 /* MVKCmdRendering.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7721C7DFB4800632CA3 /* MVKCmdRendering.h */; };
 		A94FB7C61C7DFB4800632CA3 /* MVKCmdRendering.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7731C7DFB4800632CA3 /* MVKCmdRendering.mm */; };
@@ -220,9 +228,13 @@
 		A94FB7FA1C7DFB4800632CA3 /* MVKPipeline.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB78E1C7DFB4800632CA3 /* MVKPipeline.mm */; };
 		A94FB7FB1C7DFB4800632CA3 /* MVKPipeline.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB78E1C7DFB4800632CA3 /* MVKPipeline.mm */; };
 		A94FB7FC1C7DFB4800632CA3 /* MVKQueryPool.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB78F1C7DFB4800632CA3 /* MVKQueryPool.h */; };
+		558A00BCB90BB20F0E5078F8 /* MVKVideo.h in Headers */ = {isa = PBXBuildFile; fileRef = DAB0E2AD12946682EB804841 /* MVKVideo.h */; };
 		A94FB7FD1C7DFB4800632CA3 /* MVKQueryPool.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB78F1C7DFB4800632CA3 /* MVKQueryPool.h */; };
+		8DDE6FBADB5CAE92CDBEB432 /* MVKVideo.h in Headers */ = {isa = PBXBuildFile; fileRef = DAB0E2AD12946682EB804841 /* MVKVideo.h */; };
 		A94FB7FE1C7DFB4800632CA3 /* MVKQueryPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7901C7DFB4800632CA3 /* MVKQueryPool.mm */; };
+		116DF726AD9B124C5006FB13 /* MVKVideo.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7367E7FDA5CCA78D545D6932 /* MVKVideo.mm */; };
 		A94FB7FF1C7DFB4800632CA3 /* MVKQueryPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7901C7DFB4800632CA3 /* MVKQueryPool.mm */; };
+		F9C50D83646F21CF53ED568E /* MVKVideo.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7367E7FDA5CCA78D545D6932 /* MVKVideo.mm */; };
 		A94FB8001C7DFB4800632CA3 /* MVKQueue.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7911C7DFB4800632CA3 /* MVKQueue.h */; };
 		A94FB8011C7DFB4800632CA3 /* MVKQueue.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7911C7DFB4800632CA3 /* MVKQueue.h */; };
 		A94FB8021C7DFB4800632CA3 /* MVKQueue.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7921C7DFB4800632CA3 /* MVKQueue.mm */; };
@@ -281,6 +293,9 @@
 		A979A96B2B9A277000F69E67 /* IOSurface.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D98D2B8E7D5D004AD576 /* IOSurface.framework */; };
 		A979A96C2B9A277000F69E67 /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9932B8E7E8A004AD576 /* libc++.tbd */; };
 		A979A96D2B9A277000F69E67 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9852B8E7CDB004AD576 /* Metal.framework */; };
+		13F58E3787AC701E04E80960 /* VideoToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E416C49B455A3DEBFBD2DE0 /* VideoToolbox.framework */; };
+		EAD5F8CD49BD6DB1D4A818FB /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 89DE93F6C078490979CAA1C8 /* CoreVideo.framework */; };
+		75E6E680EA2D8A53D2CFEA73 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8A432B6EB42CA2BE9DD14D5A /* CoreMedia.framework */; };
 		A979A96E2B9A277000F69E67 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9872B8E7D10004AD576 /* QuartzCore.framework */; };
 		A981494D1FB6A3F7005F00B4 /* MVKBaseObject.mm in Sources */ = {isa = PBXBuildFile; fileRef = A98149411FB6A3F7005F00B4 /* MVKBaseObject.mm */; };
 		A981494E1FB6A3F7005F00B4 /* MVKBaseObject.mm in Sources */ = {isa = PBXBuildFile; fileRef = A98149411FB6A3F7005F00B4 /* MVKBaseObject.mm */; };
@@ -377,6 +392,9 @@
 		A9F3D9DF24732A4D00745190 /* MVKSmallVector.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F3D9DB24732A4D00745190 /* MVKSmallVector.h */; };
 		A9F4D9752B8E745A004AD576 /* libMoltenVK.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9B8EE0A1A98D796009C5A02 /* libMoltenVK.a */; };
 		A9F4D9862B8E7CDB004AD576 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9852B8E7CDB004AD576 /* Metal.framework */; };
+		BA4570E60A31CDDA3FFC54D1 /* VideoToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E416C49B455A3DEBFBD2DE0 /* VideoToolbox.framework */; };
+		75660A6379842D204B562FCD /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 89DE93F6C078490979CAA1C8 /* CoreVideo.framework */; };
+		D503B1D3A2DE0F77BAE58B63 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8A432B6EB42CA2BE9DD14D5A /* CoreMedia.framework */; };
 		A9F4D9882B8E7D10004AD576 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9872B8E7D10004AD576 /* QuartzCore.framework */; };
 		A9F4D98A2B8E7D18004AD576 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9892B8E7D18004AD576 /* CoreGraphics.framework */; };
 		A9F4D98C2B8E7D3A004AD576 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D98B2B8E7D3A004AD576 /* Foundation.framework */; };
@@ -389,6 +407,9 @@
 		A9F4D9A62B8EB2FC004AD576 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D98B2B8E7D3A004AD576 /* Foundation.framework */; };
 		A9F4D9A72B8EB2FC004AD576 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9892B8E7D18004AD576 /* CoreGraphics.framework */; };
 		A9F4D9A82B8EB2FC004AD576 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9852B8E7CDB004AD576 /* Metal.framework */; };
+		BB2921561C640047F2BE01D0 /* VideoToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E416C49B455A3DEBFBD2DE0 /* VideoToolbox.framework */; };
+		6F052304C6AD43DA20CFD96F /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 89DE93F6C078490979CAA1C8 /* CoreVideo.framework */; };
+		3756E57B0F40C97EA442099E /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8A432B6EB42CA2BE9DD14D5A /* CoreMedia.framework */; };
 		A9F4D9A92B8EB2FC004AD576 /* libMoltenVK.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9B8EE0A1A98D796009C5A02 /* libMoltenVK.a */; };
 		A9F4D9AA2B8EB2FC004AD576 /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9932B8E7E8A004AD576 /* libc++.tbd */; };
 		A9F4D9AC2B8EB2FC004AD576 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9872B8E7D10004AD576 /* QuartzCore.framework */; };
@@ -397,6 +418,9 @@
 		A9F4D9C22B8EB6DC004AD576 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D98B2B8E7D3A004AD576 /* Foundation.framework */; };
 		A9F4D9C32B8EB6DC004AD576 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9892B8E7D18004AD576 /* CoreGraphics.framework */; };
 		A9F4D9C42B8EB6DC004AD576 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9852B8E7CDB004AD576 /* Metal.framework */; };
+		A9AE5B62EA771486417A2307 /* VideoToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E416C49B455A3DEBFBD2DE0 /* VideoToolbox.framework */; };
+		2814368BFCAB1DA7176F5A8B /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 89DE93F6C078490979CAA1C8 /* CoreVideo.framework */; };
+		C4784D19E8B4CB118CAFE698 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8A432B6EB42CA2BE9DD14D5A /* CoreMedia.framework */; };
 		A9F4D9C52B8EB6DC004AD576 /* libMoltenVK.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9B8EE0A1A98D796009C5A02 /* libMoltenVK.a */; };
 		A9F4D9C62B8EB6DC004AD576 /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9932B8E7E8A004AD576 /* libc++.tbd */; };
 		A9F4D9C72B8EB6DC004AD576 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D98F2B8E7D66004AD576 /* IOKit.framework */; };
@@ -405,6 +429,9 @@
 		A9F4D9E12B8EC112004AD576 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D98B2B8E7D3A004AD576 /* Foundation.framework */; };
 		A9F4D9E22B8EC112004AD576 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9892B8E7D18004AD576 /* CoreGraphics.framework */; };
 		A9F4D9E32B8EC112004AD576 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9852B8E7CDB004AD576 /* Metal.framework */; };
+		979AB6A34977D20B637D9FC7 /* VideoToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E416C49B455A3DEBFBD2DE0 /* VideoToolbox.framework */; };
+		B2AD65293AE8C75CC05786E1 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 89DE93F6C078490979CAA1C8 /* CoreVideo.framework */; };
+		98BFF162190243579E9D8936 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8A432B6EB42CA2BE9DD14D5A /* CoreMedia.framework */; };
 		A9F4D9E42B8EC112004AD576 /* libMoltenVK.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9B8EE0A1A98D796009C5A02 /* libMoltenVK.a */; };
 		A9F4D9E52B8EC112004AD576 /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D9932B8E7E8A004AD576 /* libc++.tbd */; };
 		A9F4D9E62B8EC112004AD576 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4D98F2B8E7D66004AD576 /* IOKit.framework */; };
@@ -421,6 +448,7 @@
 		DCFD7EEC2A45BC6E007BBBF7 /* MVKInstance.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB78B1C7DFB4800632CA3 /* MVKInstance.h */; };
 		DCFD7EED2A45BC6E007BBBF7 /* MVKCommandResourceFactory.h in Headers */ = {isa = PBXBuildFile; fileRef = A95870F61C90D29F009EB096 /* MVKCommandResourceFactory.h */; };
 		DCFD7EEE2A45BC6E007BBBF7 /* MVKQueryPool.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB78F1C7DFB4800632CA3 /* MVKQueryPool.h */; };
+		19129DFB36052D885DF86FA8 /* MVKVideo.h in Headers */ = {isa = PBXBuildFile; fileRef = DAB0E2AD12946682EB804841 /* MVKVideo.h */; };
 		DCFD7EEF2A45BC6E007BBBF7 /* MVKCommandEncoderState.h in Headers */ = {isa = PBXBuildFile; fileRef = A95B7D671D3EE486003183D3 /* MVKCommandEncoderState.h */; };
 		DCFD7EF02A45BC6E007BBBF7 /* MVKCommandPipelineStateFactoryShaderSource.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB77C1C7DFB4800632CA3 /* MVKCommandPipelineStateFactoryShaderSource.h */; };
 		DCFD7EF12A45BC6E007BBBF7 /* MVKDescriptorSet.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7811C7DFB4800632CA3 /* MVKDescriptorSet.h */; };
@@ -441,6 +469,7 @@
 		DCFD7F012A45BC6E007BBBF7 /* MVKShaderModule.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7971C7DFB4800632CA3 /* MVKShaderModule.h */; };
 		DCFD7F022A45BC6E007BBBF7 /* MVKVulkanAPIObject.h in Headers */ = {isa = PBXBuildFile; fileRef = A99C91012295FAC500A061DA /* MVKVulkanAPIObject.h */; };
 		DCFD7F032A45BC6E007BBBF7 /* MVKCmdQueries.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7701C7DFB4800632CA3 /* MVKCmdQueries.h */; };
+		805AFBF9227DBF4D1831B02E /* MVKCmdVideo.h in Headers */ = {isa = PBXBuildFile; fileRef = EF5CE8A7DDD79A4AE0968CA5 /* MVKCmdVideo.h */; };
 		DCFD7F042A45BC6E007BBBF7 /* MVKCommand.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7761C7DFB4800632CA3 /* MVKCommand.h */; };
 		DCFD7F052A45BC6E007BBBF7 /* MVKBaseObject.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149421FB6A3F7005F00B4 /* MVKBaseObject.h */; };
 		DCFD7F062A45BC6E007BBBF7 /* MVKMTLBufferAllocation.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C96DCE1DDC20C20053187F /* MVKMTLBufferAllocation.h */; };
@@ -485,6 +514,7 @@
 		DCFD7F332A45BC6E007BBBF7 /* vulkan.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7AD1C7DFB4800632CA3 /* vulkan.mm */; };
 		DCFD7F352A45BC6E007BBBF7 /* MVKSurface.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB79A1C7DFB4800632CA3 /* MVKSurface.mm */; };
 		DCFD7F362A45BC6E007BBBF7 /* MVKQueryPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7901C7DFB4800632CA3 /* MVKQueryPool.mm */; };
+		0A97BF7FB1BB9BF2C2CDB2FE /* MVKVideo.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7367E7FDA5CCA78D545D6932 /* MVKVideo.mm */; };
 		DCFD7F372A45BC6E007BBBF7 /* MVKInstance.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB78C1C7DFB4800632CA3 /* MVKInstance.mm */; };
 		DCFD7F382A45BC6E007BBBF7 /* MVKDeviceMemory.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7861C7DFB4800632CA3 /* MVKDeviceMemory.mm */; };
 		DCFD7F392A45BC6E007BBBF7 /* MVKImage.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB78A1C7DFB4800632CA3 /* MVKImage.mm */; };
@@ -505,6 +535,7 @@
 		DCFD7F4A2A45BC6E007BBBF7 /* MVKRenderPass.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7941C7DFB4800632CA3 /* MVKRenderPass.mm */; };
 		DCFD7F4B2A45BC6E007BBBF7 /* MVKCmdTransfer.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB76D1C7DFB4800632CA3 /* MVKCmdTransfer.mm */; };
 		DCFD7F4C2A45BC6E007BBBF7 /* MVKCmdQueries.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7711C7DFB4800632CA3 /* MVKCmdQueries.mm */; };
+		F2DB72F3443495751F39D6C6 /* MVKCmdVideo.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5077E15274C6AC921FD2B0B6 /* MVKCmdVideo.mm */; };
 		DCFD7F4D2A45BC6E007BBBF7 /* mvk_api.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7AC1C7DFB4800632CA3 /* mvk_api.mm */; };
 		DCFD7F4E2A45BC6E007BBBF7 /* MVKSwapchain.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB79C1C7DFB4800632CA3 /* MVKSwapchain.mm */; };
 		DCFD7F4F2A45BC6E007BBBF7 /* MVKCommandEncoderState.mm in Sources */ = {isa = PBXBuildFile; fileRef = A95B7D681D3EE486003183D3 /* MVKCommandEncoderState.mm */; };
@@ -650,7 +681,9 @@
 		A94FB76E1C7DFB4800632CA3 /* MVKCmdPipeline.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCmdPipeline.h; sourceTree = "<group>"; };
 		A94FB76F1C7DFB4800632CA3 /* MVKCmdPipeline.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdPipeline.mm; sourceTree = "<group>"; };
 		A94FB7701C7DFB4800632CA3 /* MVKCmdQueries.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCmdQueries.h; sourceTree = "<group>"; };
+		EF5CE8A7DDD79A4AE0968CA5 /* MVKCmdVideo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCmdVideo.h; sourceTree = "<group>"; };
 		A94FB7711C7DFB4800632CA3 /* MVKCmdQueries.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdQueries.mm; sourceTree = "<group>"; };
+		5077E15274C6AC921FD2B0B6 /* MVKCmdVideo.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdVideo.mm; sourceTree = "<group>"; };
 		A94FB7721C7DFB4800632CA3 /* MVKCmdRendering.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCmdRendering.h; sourceTree = "<group>"; };
 		A94FB7731C7DFB4800632CA3 /* MVKCmdRendering.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdRendering.mm; sourceTree = "<group>"; };
 		A94FB7741C7DFB4800632CA3 /* MVKCmdDraw.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCmdDraw.h; sourceTree = "<group>"; };
@@ -678,7 +711,9 @@
 		A94FB78D1C7DFB4800632CA3 /* MVKPipeline.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKPipeline.h; sourceTree = "<group>"; };
 		A94FB78E1C7DFB4800632CA3 /* MVKPipeline.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKPipeline.mm; sourceTree = "<group>"; };
 		A94FB78F1C7DFB4800632CA3 /* MVKQueryPool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKQueryPool.h; sourceTree = "<group>"; };
+		DAB0E2AD12946682EB804841 /* MVKVideo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKVideo.h; sourceTree = "<group>"; };
 		A94FB7901C7DFB4800632CA3 /* MVKQueryPool.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKQueryPool.mm; sourceTree = "<group>"; };
+		7367E7FDA5CCA78D545D6932 /* MVKVideo.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKVideo.mm; sourceTree = "<group>"; };
 		A94FB7911C7DFB4800632CA3 /* MVKQueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKQueue.h; sourceTree = "<group>"; };
 		A94FB7921C7DFB4800632CA3 /* MVKQueue.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKQueue.mm; sourceTree = "<group>"; };
 		A94FB7931C7DFB4800632CA3 /* MVKRenderPass.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKRenderPass.h; sourceTree = "<group>"; };
@@ -754,6 +789,9 @@
 		A9F3D9DB24732A4D00745190 /* MVKSmallVector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKSmallVector.h; sourceTree = "<group>"; };
 		A9F4D96B2B8E7366004AD576 /* MoltenVK.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MoltenVK.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		A9F4D9852B8E7CDB004AD576 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		4E416C49B455A3DEBFBD2DE0 /* VideoToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VideoToolbox.framework; path = System/Library/Frameworks/VideoToolbox.framework; sourceTree = SDKROOT; };
+		89DE93F6C078490979CAA1C8 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
+		8A432B6EB42CA2BE9DD14D5A /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
 		A9F4D9872B8E7D10004AD576 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		A9F4D9892B8E7D18004AD576 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		A9F4D98B2B8E7D3A004AD576 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
@@ -780,6 +818,9 @@
 				A979A9672B9A277000F69E67 /* AppKit.framework in Frameworks */,
 				A979A96A2B9A277000F69E67 /* IOKit.framework in Frameworks */,
 				A979A96D2B9A277000F69E67 /* Metal.framework in Frameworks */,
+				13F58E3787AC701E04E80960 /* VideoToolbox.framework in Frameworks */,
+				EAD5F8CD49BD6DB1D4A818FB /* CoreVideo.framework in Frameworks */,
+				75E6E680EA2D8A53D2CFEA73 /* CoreMedia.framework in Frameworks */,
 				A979A9692B9A277000F69E67 /* Foundation.framework in Frameworks */,
 				A979A96E2B9A277000F69E67 /* QuartzCore.framework in Frameworks */,
 			);
@@ -794,6 +835,9 @@
 				A9F4D98C2B8E7D3A004AD576 /* Foundation.framework in Frameworks */,
 				A9F4D98A2B8E7D18004AD576 /* CoreGraphics.framework in Frameworks */,
 				A9F4D9862B8E7CDB004AD576 /* Metal.framework in Frameworks */,
+				BA4570E60A31CDDA3FFC54D1 /* VideoToolbox.framework in Frameworks */,
+				75660A6379842D204B562FCD /* CoreVideo.framework in Frameworks */,
+				D503B1D3A2DE0F77BAE58B63 /* CoreMedia.framework in Frameworks */,
 				A9F4D9752B8E745A004AD576 /* libMoltenVK.a in Frameworks */,
 				A9F4D9942B8E7E9C004AD576 /* libc++.tbd in Frameworks */,
 				A9F4D9902B8E7D66004AD576 /* IOKit.framework in Frameworks */,
@@ -810,6 +854,9 @@
 				A9F4D9A62B8EB2FC004AD576 /* Foundation.framework in Frameworks */,
 				A9F4D9A72B8EB2FC004AD576 /* CoreGraphics.framework in Frameworks */,
 				A9F4D9A82B8EB2FC004AD576 /* Metal.framework in Frameworks */,
+				BB2921561C640047F2BE01D0 /* VideoToolbox.framework in Frameworks */,
+				6F052304C6AD43DA20CFD96F /* CoreVideo.framework in Frameworks */,
+				3756E57B0F40C97EA442099E /* CoreMedia.framework in Frameworks */,
 				A9F4D9A92B8EB2FC004AD576 /* libMoltenVK.a in Frameworks */,
 				A9F4D9AA2B8EB2FC004AD576 /* libc++.tbd in Frameworks */,
 				A9F4D9AC2B8EB2FC004AD576 /* QuartzCore.framework in Frameworks */,
@@ -825,6 +872,9 @@
 				A9F4D9C22B8EB6DC004AD576 /* Foundation.framework in Frameworks */,
 				A9F4D9C32B8EB6DC004AD576 /* CoreGraphics.framework in Frameworks */,
 				A9F4D9C42B8EB6DC004AD576 /* Metal.framework in Frameworks */,
+				A9AE5B62EA771486417A2307 /* VideoToolbox.framework in Frameworks */,
+				2814368BFCAB1DA7176F5A8B /* CoreVideo.framework in Frameworks */,
+				C4784D19E8B4CB118CAFE698 /* CoreMedia.framework in Frameworks */,
 				A9F4D9C52B8EB6DC004AD576 /* libMoltenVK.a in Frameworks */,
 				A9F4D9C62B8EB6DC004AD576 /* libc++.tbd in Frameworks */,
 				A9F4D9C72B8EB6DC004AD576 /* IOKit.framework in Frameworks */,
@@ -840,6 +890,9 @@
 				A9F4D9E12B8EC112004AD576 /* Foundation.framework in Frameworks */,
 				A9F4D9E22B8EC112004AD576 /* CoreGraphics.framework in Frameworks */,
 				A9F4D9E32B8EC112004AD576 /* Metal.framework in Frameworks */,
+				979AB6A34977D20B637D9FC7 /* VideoToolbox.framework in Frameworks */,
+				B2AD65293AE8C75CC05786E1 /* CoreVideo.framework in Frameworks */,
+				98BFF162190243579E9D8936 /* CoreMedia.framework in Frameworks */,
 				A9F4D9E42B8EC112004AD576 /* libMoltenVK.a in Frameworks */,
 				A9F4D9E52B8EC112004AD576 /* libc++.tbd in Frameworks */,
 				A9F4D9FD2B8ECB67004AD576 /* AppKit.framework in Frameworks */,
@@ -890,7 +943,9 @@
 				A94FB76E1C7DFB4800632CA3 /* MVKCmdPipeline.h */,
 				A94FB76F1C7DFB4800632CA3 /* MVKCmdPipeline.mm */,
 				A94FB7701C7DFB4800632CA3 /* MVKCmdQueries.h */,
+				EF5CE8A7DDD79A4AE0968CA5 /* MVKCmdVideo.h */,
 				A94FB7711C7DFB4800632CA3 /* MVKCmdQueries.mm */,
+				5077E15274C6AC921FD2B0B6 /* MVKCmdVideo.mm */,
 				A94FB7721C7DFB4800632CA3 /* MVKCmdRendering.h */,
 				A94FB7731C7DFB4800632CA3 /* MVKCmdRendering.mm */,
 				A94FB76C1C7DFB4800632CA3 /* MVKCmdTransfer.h */,
@@ -938,7 +993,9 @@
 				A9653FB724129C84005999D7 /* MVKPixelFormats.h */,
 				A9653FB924129C84005999D7 /* MVKPixelFormats.mm */,
 				A94FB78F1C7DFB4800632CA3 /* MVKQueryPool.h */,
+				DAB0E2AD12946682EB804841 /* MVKVideo.h */,
 				A94FB7901C7DFB4800632CA3 /* MVKQueryPool.mm */,
+				7367E7FDA5CCA78D545D6932 /* MVKVideo.mm */,
 				A94FB7911C7DFB4800632CA3 /* MVKQueue.h */,
 				A94FB7921C7DFB4800632CA3 /* MVKQueue.mm */,
 				A94FB7931C7DFB4800632CA3 /* MVKRenderPass.h */,
@@ -1075,6 +1132,9 @@
 				A9F4D9892B8E7D18004AD576 /* CoreGraphics.framework */,
 				A9F4D9872B8E7D10004AD576 /* QuartzCore.framework */,
 				A9F4D9852B8E7CDB004AD576 /* Metal.framework */,
+				4E416C49B455A3DEBFBD2DE0 /* VideoToolbox.framework */,
+				89DE93F6C078490979CAA1C8 /* CoreVideo.framework */,
+				8A432B6EB42CA2BE9DD14D5A /* CoreMedia.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -1127,6 +1187,7 @@
 				A9D7105025CDE05E00E38106 /* MVKBitArray.h in Headers */,
 				2FEA0A4924902F9F00EEF3AD /* MVKCommandResourceFactory.h in Headers */,
 				2FEA0A4A24902F9F00EEF3AD /* MVKQueryPool.h in Headers */,
+				3E2CD5B0BFBE56107C7B39FF /* MVKVideo.h in Headers */,
 				2FEA0A4B24902F9F00EEF3AD /* MVKCommandEncoderState.h in Headers */,
 				2FEA0A4C24902F9F00EEF3AD /* MVKCommandPipelineStateFactoryShaderSource.h in Headers */,
 				2FEA0A4D24902F9F00EEF3AD /* MVKDescriptorSet.h in Headers */,
@@ -1151,6 +1212,7 @@
 				2FEA0A5D24902F9F00EEF3AD /* MVKShaderModule.h in Headers */,
 				2FEA0A5E24902F9F00EEF3AD /* MVKVulkanAPIObject.h in Headers */,
 				2FEA0A5F24902F9F00EEF3AD /* MVKCmdQueries.h in Headers */,
+				4755AFABA859CCB500090F02 /* MVKCmdVideo.h in Headers */,
 				2FEA0A6024902F9F00EEF3AD /* MVKCommand.h in Headers */,
 				2FEA0A6124902F9F00EEF3AD /* MVKBaseObject.h in Headers */,
 				1667EB892D5BDEF500ECF248 /* MVKInlineObjectConstructor.h in Headers */,
@@ -1211,6 +1273,7 @@
 				A94FB7F41C7DFB4800632CA3 /* MVKInstance.h in Headers */,
 				A95870F81C90D29F009EB096 /* MVKCommandResourceFactory.h in Headers */,
 				A94FB7FC1C7DFB4800632CA3 /* MVKQueryPool.h in Headers */,
+				558A00BCB90BB20F0E5078F8 /* MVKVideo.h in Headers */,
 				A95B7D691D3EE486003183D3 /* MVKCommandEncoderState.h in Headers */,
 				A94FB7D81C7DFB4800632CA3 /* MVKCommandPipelineStateFactoryShaderSource.h in Headers */,
 				16089AF62C924621003CF426 /* MVKStateTracking.h in Headers */,
@@ -1233,6 +1296,7 @@
 				A9AB952B2B3EDFCC00C4E967 /* MVKInflectionMap.h in Headers */,
 				A99C91042295FAC600A061DA /* MVKVulkanAPIObject.h in Headers */,
 				A94FB7C01C7DFB4800632CA3 /* MVKCmdQueries.h in Headers */,
+				2356B58FAAB18032DEB362B5 /* MVKCmdVideo.h in Headers */,
 				A9B3D73B29F9B3B100745CD4 /* mvk_deprecated_api.h in Headers */,
 				A94FB7CC1C7DFB4800632CA3 /* MVKCommand.h in Headers */,
 				A981494F1FB6A3F7005F00B4 /* MVKBaseObject.h in Headers */,
@@ -1288,6 +1352,7 @@
 				A94FB7F51C7DFB4800632CA3 /* MVKInstance.h in Headers */,
 				A95870F91C90D29F009EB096 /* MVKCommandResourceFactory.h in Headers */,
 				A94FB7FD1C7DFB4800632CA3 /* MVKQueryPool.h in Headers */,
+				8DDE6FBADB5CAE92CDBEB432 /* MVKVideo.h in Headers */,
 				A95B7D6A1D3EE486003183D3 /* MVKCommandEncoderState.h in Headers */,
 				A94FB7D91C7DFB4800632CA3 /* MVKCommandPipelineStateFactoryShaderSource.h in Headers */,
 				16089AF42C924621003CF426 /* MVKStateTracking.h in Headers */,
@@ -1309,6 +1374,7 @@
 				A99C91052295FAC600A061DA /* MVKVulkanAPIObject.h in Headers */,
 				A9AB952D2B3EDFCC00C4E967 /* MVKInflectionMap.h in Headers */,
 				A94FB7C11C7DFB4800632CA3 /* MVKCmdQueries.h in Headers */,
+				41CE1D5BBBF81CFD4A159DDE /* MVKCmdVideo.h in Headers */,
 				A94FB7CD1C7DFB4800632CA3 /* MVKCommand.h in Headers */,
 				A9B3D73D29F9B3B100745CD4 /* mvk_deprecated_api.h in Headers */,
 				A98149501FB6A3F7005F00B4 /* MVKBaseObject.h in Headers */,
@@ -1392,6 +1458,7 @@
 				DCFD7EEC2A45BC6E007BBBF7 /* MVKInstance.h in Headers */,
 				DCFD7EED2A45BC6E007BBBF7 /* MVKCommandResourceFactory.h in Headers */,
 				DCFD7EEE2A45BC6E007BBBF7 /* MVKQueryPool.h in Headers */,
+				19129DFB36052D885DF86FA8 /* MVKVideo.h in Headers */,
 				DCFD7EEF2A45BC6E007BBBF7 /* MVKCommandEncoderState.h in Headers */,
 				DCFD7EF02A45BC6E007BBBF7 /* MVKCommandPipelineStateFactoryShaderSource.h in Headers */,
 				DCFD7EF12A45BC6E007BBBF7 /* MVKDescriptorSet.h in Headers */,
@@ -1414,6 +1481,7 @@
 				1667EB862D5BDEF500ECF248 /* MVKInlineArray.h in Headers */,
 				DCFD7F022A45BC6E007BBBF7 /* MVKVulkanAPIObject.h in Headers */,
 				DCFD7F032A45BC6E007BBBF7 /* MVKCmdQueries.h in Headers */,
+				805AFBF9227DBF4D1831B02E /* MVKCmdVideo.h in Headers */,
 				DCFD7F042A45BC6E007BBBF7 /* MVKCommand.h in Headers */,
 				DCFD7F052A45BC6E007BBBF7 /* MVKBaseObject.h in Headers */,
 				DCFD7F062A45BC6E007BBBF7 /* MVKMTLBufferAllocation.h in Headers */,
@@ -2094,6 +2162,7 @@
 				2FEA0A8E24902F9F00EEF3AD /* vulkan.mm in Sources */,
 				2FEA0A8F24902F9F00EEF3AD /* MVKSurface.mm in Sources */,
 				2FEA0A9024902F9F00EEF3AD /* MVKQueryPool.mm in Sources */,
+				C7FA5CA472D38FE88574F23B /* MVKVideo.mm in Sources */,
 				2FEA0A9124902F9F00EEF3AD /* MVKInstance.mm in Sources */,
 				2FEA0A9224902F9F00EEF3AD /* MVKDeviceMemory.mm in Sources */,
 				2FEA0A9324902F9F00EEF3AD /* MVKImage.mm in Sources */,
@@ -2114,6 +2183,7 @@
 				2FEA0AA324902F9F00EEF3AD /* MVKRenderPass.mm in Sources */,
 				2FEA0AA424902F9F00EEF3AD /* MVKCmdTransfer.mm in Sources */,
 				2FEA0AA524902F9F00EEF3AD /* MVKCmdQueries.mm in Sources */,
+				6B5B4C9EBAF1F066991D743C /* MVKCmdVideo.mm in Sources */,
 				2FEA0AA624902F9F00EEF3AD /* mvk_api.mm in Sources */,
 				2FEA0AA724902F9F00EEF3AD /* MVKSwapchain.mm in Sources */,
 				2FEA0AA824902F9F00EEF3AD /* MVKCommandEncoderState.mm in Sources */,
@@ -2156,6 +2226,7 @@
 				A94FB8321C7DFB4800632CA3 /* vulkan.mm in Sources */,
 				A94FB8121C7DFB4800632CA3 /* MVKSurface.mm in Sources */,
 				A94FB7FE1C7DFB4800632CA3 /* MVKQueryPool.mm in Sources */,
+				116DF726AD9B124C5006FB13 /* MVKVideo.mm in Sources */,
 				A94FB7F61C7DFB4800632CA3 /* MVKInstance.mm in Sources */,
 				A94FB7EA1C7DFB4800632CA3 /* MVKDeviceMemory.mm in Sources */,
 				A94FB7F21C7DFB4800632CA3 /* MVKImage.mm in Sources */,
@@ -2176,6 +2247,7 @@
 				A94FB8061C7DFB4800632CA3 /* MVKRenderPass.mm in Sources */,
 				A94FB7BA1C7DFB4800632CA3 /* MVKCmdTransfer.mm in Sources */,
 				A94FB7C21C7DFB4800632CA3 /* MVKCmdQueries.mm in Sources */,
+				703CD56EB5E23C777EF5738F /* MVKCmdVideo.mm in Sources */,
 				A94FB8301C7DFB4800632CA3 /* mvk_api.mm in Sources */,
 				A94FB8161C7DFB4800632CA3 /* MVKSwapchain.mm in Sources */,
 				A95B7D6B1D3EE486003183D3 /* MVKCommandEncoderState.mm in Sources */,
@@ -2211,6 +2283,7 @@
 				A94FB8331C7DFB4800632CA3 /* vulkan.mm in Sources */,
 				A94FB8131C7DFB4800632CA3 /* MVKSurface.mm in Sources */,
 				A94FB7FF1C7DFB4800632CA3 /* MVKQueryPool.mm in Sources */,
+				F9C50D83646F21CF53ED568E /* MVKVideo.mm in Sources */,
 				A94FB7F71C7DFB4800632CA3 /* MVKInstance.mm in Sources */,
 				A94FB7EB1C7DFB4800632CA3 /* MVKDeviceMemory.mm in Sources */,
 				A94FB7F31C7DFB4800632CA3 /* MVKImage.mm in Sources */,
@@ -2231,6 +2304,7 @@
 				A94FB8071C7DFB4800632CA3 /* MVKRenderPass.mm in Sources */,
 				A94FB7BB1C7DFB4800632CA3 /* MVKCmdTransfer.mm in Sources */,
 				A94FB7C31C7DFB4800632CA3 /* MVKCmdQueries.mm in Sources */,
+				76B9AFB8429E2AA35562F738 /* MVKCmdVideo.mm in Sources */,
 				A94FB8311C7DFB4800632CA3 /* mvk_api.mm in Sources */,
 				A94FB8171C7DFB4800632CA3 /* MVKSwapchain.mm in Sources */,
 				A95B7D6C1D3EE486003183D3 /* MVKCommandEncoderState.mm in Sources */,
@@ -2294,6 +2368,7 @@
 				DCFD7F332A45BC6E007BBBF7 /* vulkan.mm in Sources */,
 				DCFD7F352A45BC6E007BBBF7 /* MVKSurface.mm in Sources */,
 				DCFD7F362A45BC6E007BBBF7 /* MVKQueryPool.mm in Sources */,
+				0A97BF7FB1BB9BF2C2CDB2FE /* MVKVideo.mm in Sources */,
 				DCFD7F372A45BC6E007BBBF7 /* MVKInstance.mm in Sources */,
 				DCFD7F382A45BC6E007BBBF7 /* MVKDeviceMemory.mm in Sources */,
 				DCFD7F392A45BC6E007BBBF7 /* MVKImage.mm in Sources */,
@@ -2314,6 +2389,7 @@
 				DCFD7F4A2A45BC6E007BBBF7 /* MVKRenderPass.mm in Sources */,
 				DCFD7F4B2A45BC6E007BBBF7 /* MVKCmdTransfer.mm in Sources */,
 				DCFD7F4C2A45BC6E007BBBF7 /* MVKCmdQueries.mm in Sources */,
+				F2DB72F3443495751F39D6C6 /* MVKCmdVideo.mm in Sources */,
 				DCFD7F4D2A45BC6E007BBBF7 /* mvk_api.mm in Sources */,
 				DCFD7F4E2A45BC6E007BBBF7 /* MVKSwapchain.mm in Sources */,
 				DCFD7F4F2A45BC6E007BBBF7 /* MVKCommandEncoderState.mm in Sources */,

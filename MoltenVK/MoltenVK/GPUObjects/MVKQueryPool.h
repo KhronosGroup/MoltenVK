@@ -70,7 +70,7 @@ public:
 						VkQueryResultFlags flags);
 
 	/** Encodes commands to copy the results of the specified queries into device memory. */
-	void encodeCopyResults(MVKCommandEncoder* cmdEncoder,
+	virtual void encodeCopyResults(MVKCommandEncoder* cmdEncoder,
 						   uint32_t firstQuery,
 						   uint32_t queryCount,
 						   MVKBuffer* destBuffer,
@@ -106,7 +106,7 @@ public:
 protected:
 	bool areQueriesHostAvailable(uint32_t firstQuery, uint32_t endQuery);
 	virtual NSData* getQuerySourceData(uint32_t firstQuery, uint32_t queryCount) { return nil; }
-    VkResult getResult(uint32_t query, NSData* srcData, uint32_t srcDataQueryOffset, void* pDstData, VkQueryResultFlags flags);
+    virtual VkResult getResult(uint32_t query, NSData* srcData, uint32_t srcDataQueryOffset, void* pDstData, VkQueryResultFlags flags);
 	virtual id<MTLBuffer> getResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, NSUInteger& offset) { return nil; }
 	virtual id<MTLComputeCommandEncoder> encodeComputeCopyResults(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) { return nil; }
 	virtual void encodeDirectCopyResults(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount,
@@ -240,6 +240,49 @@ public:
 
 protected:
 	void propagateDebugName() override {}
+};
+
+
+#pragma mark -
+#pragma mark MVKVideoQueryPool
+
+/** Video encode feedback and result status queries. */
+class MVKVideoQueryPool : public MVKQueryPool {
+
+public:
+	void beginQuery(uint32_t query, VkQueryControlFlags flags, MVKCommandEncoder* cmdEncoder) override;
+	void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) override;
+	void resetResults(uint32_t firstQuery, uint32_t queryCount, MVKCommandEncoder* cmdEncoder) override;
+	void encodeCopyResults(MVKCommandEncoder* cmdEncoder,
+						   uint32_t firstQuery,
+						   uint32_t queryCount,
+						   MVKBuffer* destBuffer,
+						   VkDeviceSize destOffset,
+						   VkDeviceSize stride,
+						   VkQueryResultFlags flags) override;
+
+	/** Records one video operation's result, at execution. */
+	void setFeedback(uint32_t query, uint64_t offset, uint64_t bytesWritten, int32_t status);
+
+#pragma mark Construction
+
+	MVKVideoQueryPool(MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo);
+
+protected:
+	void propagateDebugName() override {}
+	VkResult getResult(uint32_t query, NSData* srcData, uint32_t srcDataQueryOffset, void* pDstData, VkQueryResultFlags flags) override;
+	VkResult writeResult(uint32_t query, bool available, void* pDstData, VkQueryResultFlags flags);
+
+	struct Feedback {
+		uint64_t offset;
+		uint64_t bytesWritten;
+		int32_t status;
+	};
+
+	MVKSmallVector<Feedback, kMVKDefaultQueryCount> _feedback;
+	VkVideoEncodeFeedbackFlagsKHR _feedbackFlags;
+	bool _statusOnly;
+	std::mutex _feedbackLock;
 };
 
 
