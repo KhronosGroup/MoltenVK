@@ -368,6 +368,12 @@ public:
 	/** Returns a new MTLComputePipelineState for copying zero-divisor vertex data for an indirect draw. */
 	id<MTLComputePipelineState> newCmdDrawIndirectCopyZeroDivisorVertexBuffersMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 
+	/** returns a new MTLComputePipelineState for emulating indirect mesh draw count */
+	id<MTLComputePipelineState> newCmdDrawMeshTasksIndirectCountConvertBuffersMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+
+	/** returns a new (retained) MTLFunction from the command shader library */
+	id<MTLFunction> newFunctionNamed(const char* funcName);
+
 	/** Returns a new MTLComputePipelineState for converting an indirect buffer for use in a tessellated draw. */
 	id<MTLComputePipelineState> newCmdDrawIndirectTessConvertBuffersMTLComputePipelineState(bool indexed,
 																				 MVKVulkanAPIDeviceObject* owner);
@@ -399,7 +405,6 @@ protected:
 	id<MTLFunction> newClearVertFunction(MVKRPSKeyClearAtt& attKey);
 	id<MTLFunction> newClearFragFunction(MVKRPSKeyClearAtt& attKey);
 	NSString* getMTLFormatTypeString(MTLPixelFormat mtlPixFmt);
-    id<MTLFunction> newFunctionNamed(const char* funcName);
 	id<MTLFunction> newMTLFunction(NSString* mslSrcCode, NSString* funcName);
 	id<MTLRenderPipelineState> newMTLRenderPipelineState(MTLRenderPipelineDescriptor* plDesc,
 														 MVKVulkanAPIDeviceObject* owner);

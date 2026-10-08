@@ -218,3 +218,53 @@ protected:
 	id<MTLBuffer> _mtlCountBuffer;
 	VkDeviceSize _mtlCountBufferOffset;
 };
+
+
+#pragma mark -
+#pragma mark MVKCmdDrawMeshTasks
+
+/** Vulkan command to draw mesh tasks */
+class MVKCmdDrawMeshTasks : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						uint32_t groupCountX,
+						uint32_t groupCountY,
+						uint32_t groupCountZ);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MTLSize _groupCount;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdDrawMeshTasksIndirect
+
+/** Vulkan command to draw mesh tasks from an indirect buffer, with an optional count buffer */
+class MVKCmdDrawMeshTasksIndirect : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkBuffer buffer,
+						VkDeviceSize offset,
+						VkBuffer countBuffer,
+						VkDeviceSize countBufferOffset,
+						uint32_t drawCount,
+						uint32_t stride);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	id<MTLBuffer> _mtlIndirectBuffer;
+	VkDeviceSize _mtlIndirectBufferOffset;
+	id<MTLBuffer> _mtlCountBuffer;
+	VkDeviceSize _mtlCountBufferOffset;
+	uint32_t _mtlIndirectBufferStride;
+	uint32_t _drawCount;
+};

@@ -1050,6 +1050,11 @@ public:
 		return _barrierFences[stage][index];
 	}
 
+	/** returns the Metal render stages that run Vulkan pre-rasterization shaders */
+	MTLRenderStages getMTLVertexStages() {
+		return _enabledMeshShaderFeatures.meshShader ? MTLRenderStageVertex | MTLRenderStageObject | MTLRenderStageMesh : MTLRenderStageVertex;
+	}
+
 protected:
 	friend class MVKDeviceTrackingMixin;
 

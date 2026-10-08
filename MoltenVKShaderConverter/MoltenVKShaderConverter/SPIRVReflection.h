@@ -333,10 +333,11 @@ namespace mvk {
 					cmp = reflect.get_decoration(varID, spv::DecorationComponent);
 				}
 				// For tessellation shaders, peel away the initial array type. SPIRV-Cross adds the array back automatically.
-				// Only some builtins will be arrayed here.
-				if ((model == spv::ExecutionModelTessellationControl || (model == spv::ExecutionModelTessellationEvaluation && storage == spv::StorageClassInput)) && !patch &&
-					(biType == spv::BuiltInMax || biType == spv::BuiltInPosition || biType == spv::BuiltInPointSize ||
-					 biType == spv::BuiltInClipDistance || biType == spv::BuiltInCullDistance))
+				// Only some builtins will be arrayed here. all mesh shader outputs are arrayed.
+				if (((model == spv::ExecutionModelTessellationControl || (model == spv::ExecutionModelTessellationEvaluation && storage == spv::StorageClassInput)) && !patch &&
+					 (biType == spv::BuiltInMax || biType == spv::BuiltInPosition || biType == spv::BuiltInPointSize ||
+					  biType == spv::BuiltInClipDistance || biType == spv::BuiltInCullDistance)) ||
+					(model == spv::ExecutionModelMeshEXT && storage == spv::StorageClassOutput))
 					type = &reflect.get_type(type->parent_type);
 
 				uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
