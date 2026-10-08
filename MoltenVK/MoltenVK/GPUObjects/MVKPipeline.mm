@@ -759,32 +759,33 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	VkPipelineCreationFeedback* pTessCtlFB = nullptr;
 	VkPipelineCreationFeedback* pTessEvalFB = nullptr;
 	VkPipelineCreationFeedback* pFragmentFB = nullptr;
+
+	// The app may provide fewer stage feedback elements than stages, including none, in which case
+	// feedback must not be written for the stages beyond pipelineStageCreationFeedbackCount.
+	auto getStageFeedback = [pFeedbackInfo](uint32_t stageIdx) -> VkPipelineCreationFeedback* {
+		if ( !pFeedbackInfo || !pFeedbackInfo->pPipelineStageCreationFeedbacks ) { return nullptr; }
+		if (stageIdx >= pFeedbackInfo->pipelineStageCreationFeedbackCount) { return nullptr; }
+		return &pFeedbackInfo->pPipelineStageCreationFeedbacks[stageIdx];
+	};
+
 	for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
 		const auto* pSS = &pCreateInfo->pStages[i];
 		switch (pSS->stage) {
 			case VK_SHADER_STAGE_VERTEX_BIT:
 				pVertexSS = pSS;
-				if (pFeedbackInfo && pFeedbackInfo->pPipelineStageCreationFeedbacks) {
-					pVertexFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[i];
-				}
+				pVertexFB = getStageFeedback(i);
 				break;
 			case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
 				pTessCtlSS = pSS;
-				if (pFeedbackInfo && pFeedbackInfo->pPipelineStageCreationFeedbacks) {
-					pTessCtlFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[i];
-				}
+				pTessCtlFB = getStageFeedback(i);
 				break;
 			case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
 				pTessEvalSS = pSS;
-				if (pFeedbackInfo && pFeedbackInfo->pPipelineStageCreationFeedbacks) {
-					pTessEvalFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[i];
-				}
+				pTessEvalFB = getStageFeedback(i);
 				break;
 			case VK_SHADER_STAGE_FRAGMENT_BIT:
 				pFragmentSS = pSS;
-				if (pFeedbackInfo && pFeedbackInfo->pPipelineStageCreationFeedbacks) {
-					pFragmentFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[i];
-				}
+				pFragmentFB = getStageFeedback(i);
 				break;
 			default:
 				break;
@@ -2374,7 +2375,10 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 			pFeedbackInfo->pPipelineStageCreationFeedbacks[i].flags = 0;
 			pFeedbackInfo->pPipelineStageCreationFeedbacks[i].duration = 0;
 		}
-		pStageFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[0];
+		// The app may provide no stage feedback elements, in which case none must be written.
+		if (pFeedbackInfo->pPipelineStageCreationFeedbacks && pFeedbackInfo->pipelineStageCreationFeedbackCount > 0) {
+			pStageFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[0];
+		}
 		pipelineStart = mvkGetTimestamp();
 	}
 

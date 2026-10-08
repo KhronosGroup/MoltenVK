@@ -96,8 +96,10 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 		}
 
 		if (!spec_list.empty()) {
-			// Sort the specialization list before it is used as a key to index the variants
+			// Sort the specialization list before it is used as a key to index the variants.
+			// Pipelines sharing this library may be created concurrently, so guard the variant map.
 			std::sort(spec_list.begin(), spec_list.end());
+			lock_guard<mutex> lock(_variantsLock);
 			auto entry = _specializationVariants.find(spec_list);
 			if (entry != _specializationVariants.end()) {
 				lib = entry->second->_mtlLibrary;
@@ -267,11 +269,12 @@ MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 	addPerformanceInterval(getPerformanceStats().shaderCompilation.mslLoad, startTime);
 }
 
+// Macro-specialized variants are owned by the library that created them, so they are not
+// shared with the copy. The copy re-creates any variant it needs on first use.
 MVKShaderLibrary::MVKShaderLibrary(const MVKShaderLibrary& other) :
 	MVKBaseDeviceObject(other._device),
 	_owner(other._owner),
-	_maySpecializeWithMacro(other._maySpecializeWithMacro),
-	_specializationVariants(other._specializationVariants) {
+	_maySpecializeWithMacro(other._maySpecializeWithMacro) {
 
 	_mtlLibrary = [other._mtlLibrary retain];
 	_shaderConversionResultInfo = other._shaderConversionResultInfo;
@@ -325,7 +328,7 @@ MVKShaderLibrary* MVKShaderLibraryCache::getShaderLibrary(SPIRVToMSLConversionCo
 	MVKShaderLibrary* shLib = findShaderLibrary(pShaderConfig, pShaderFeedback, startTime);
 	if ( !shLib && !pipeline->shouldFailOnPipelineCompileRequired() ) {
 		SPIRVToMSLConversionResult conversionResult;
-		if (shaderModule->convert(pShaderConfig, conversionResult)) {
+		if (shaderModule->convert(pShaderConfig, conversionResult) && !conversionResult.msl.empty()) {
 			shLib = addShaderLibrary(pShaderConfig, conversionResult);
 			if (pShaderFeedback) {
 				pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime);

@@ -231,16 +231,20 @@ namespace mvk {
 		return getShaderInterfaceVariableAlignment(output);
 	}
 
+	/** Index value meaning no interface variable. */
+	static constexpr size_t kSPIRVNoInterfaceVariable = size_t(-1);
+
 	auto addSat = [](uint32_t a, uint32_t b) { return a == uint32_t(-1) ? a : a + b; };
 
 	template<typename Vi>
 	static inline uint32_t getShaderInterfaceStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
-														   Vi& vars, SPIRVShaderInterfaceVariable* pParentFirstMember,
+														   Vi& vars, size_t parentFirstMemberIdx,
 														   const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
 														   bool patch, uint32_t loc) {
 		bool isUsed = true;
 		auto biType = spv::BuiltInMax;
-		SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
+		// Track the first member by index, because adding to vars may reallocate it.
+		size_t firstMemberIdx = kSPIRVNoInterfaceVariable;
 		size_t mbrCnt = structType->member_types.size();
 		for (uint32_t mbrIdx = 0; mbrIdx < mbrCnt; mbrIdx++) {
 			// Each member may have a location decoration. If not, each member
@@ -259,34 +263,33 @@ namespace mvk {
 			uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
 			for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 				if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct)
-					loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
+					loc = getShaderInterfaceStructMembers(reflect, vars, firstMemberIdx, type, storage, patch, loc);
 				else {
 					// The alignment of a structure is the same as the largest member of the structure.
 					// Consequently, the first flattened member of a structure should align with structure itself.
 					vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
-					auto& currOutput = vars.back();
-					if ( !pFirstMember ) { pFirstMember = &currOutput; }
-					pFirstMember->firstStructMemberAlignment = std::max(pFirstMember->firstStructMemberAlignment, getShaderOutputSize(currOutput));
+					if (firstMemberIdx == kSPIRVNoInterfaceVariable) { firstMemberIdx = vars.size() - 1; }
+					auto& firstMember = vars[firstMemberIdx];
+					firstMember.firstStructMemberAlignment = std::max(firstMember.firstStructMemberAlignment, getShaderOutputSize(vars.back()));
 					loc = addSat(loc, 1);
 				}
 			}
 		}
 
 		// Set the parent's first member alignment to the largest alignment found so far.
-		if ( !pParentFirstMember ) {
-			pParentFirstMember = pFirstMember;
-		} else if (pParentFirstMember && pFirstMember) {
-			pParentFirstMember->firstStructMemberAlignment = std::max(pParentFirstMember->firstStructMemberAlignment, pFirstMember->firstStructMemberAlignment);
+		if (parentFirstMemberIdx != kSPIRVNoInterfaceVariable && firstMemberIdx != kSPIRVNoInterfaceVariable) {
+			auto& parentFirstMember = vars[parentFirstMemberIdx];
+			parentFirstMember.firstStructMemberAlignment = std::max(parentFirstMember.firstStructMemberAlignment, vars[firstMemberIdx].firstStructMemberAlignment);
 		}
 
 		return loc;
 	}
 	template<typename Vo>
 	static inline uint32_t getShaderOutputStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
-														Vo& outputs, SPIRVShaderOutput* pParentFirstMember,
+														Vo& outputs, size_t parentFirstMemberIdx,
 														const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
 														bool patch, uint32_t loc) {
-		return getShaderInterfaceStructMembers(reflect, outputs, pParentFirstMember, structType, storage, patch, loc);
+		return getShaderInterfaceStructMembers(reflect, outputs, parentFirstMemberIdx, structType, storage, patch, loc);
 	}
 
 	/** Given a shader in SPIR-V format, returns interface reflection data. */
@@ -342,8 +345,7 @@ namespace mvk {
 				uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
 				for (uint32_t i = 0; i < elemCnt; i++) {
 					if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct) {
-						SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
-						loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
+						loc = getShaderInterfaceStructMembers(reflect, vars, kSPIRVNoInterfaceVariable, type, storage, patch, loc);
 					} else {
 						vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
 						loc = addSat(loc, 1);

@@ -278,7 +278,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 	}
 
 	if (caUsedCnt == 0 && depthRPAttIdx == VK_ATTACHMENT_UNUSED && stencilRPAttIdx == VK_ATTACHMENT_UNUSED) {
-        mtlRPDesc.defaultRasterSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_defaultSampleCount);
+        mtlRPDesc.defaultRasterSampleCount = mvkSampleCountFromVkSampleCountFlagBits(getDefaultSampleCount());
 	}
 
 #if MVK_USE_METAL_PRIVATE_API

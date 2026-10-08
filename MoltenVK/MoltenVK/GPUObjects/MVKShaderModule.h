@@ -157,8 +157,9 @@ protected:
 
 	/** When true, representing a library created with source, but never specialized */
 	bool _maySpecializeWithMacro;
-	/** Can only be populated when _maySpecializeWithMacro is true */
+	/** Can only be populated when _maySpecializeWithMacro is true. Guarded by _variantsLock. */
 	std::map<std::vector<std::pair<uint32_t, MVKShaderMacroValue>>, MVKShaderLibrary *> _specializationVariants;
+	std::mutex _variantsLock;
 };
 
 
