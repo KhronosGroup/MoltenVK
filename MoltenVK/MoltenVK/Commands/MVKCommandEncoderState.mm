@@ -2006,17 +2006,32 @@ void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKCommandEncoder
 
 void MVKOcclusionQueryCommandEncoderState::endOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query) {
 	assert(_currentPool == pQueryPool && _currentQueryIndex == query && "Ended query that wasn't active!");
-	_shouldAccumulate = true;
 	if (cmdEncoder->_mtlRenderEncoder) {
+		// Leave the accumulation to flushAccumulation() or to a full visibility buffer (nextMetalQuery()),
+		// instead of adding a compute pass after every render pass in which a query ends.
 		nextMetalQuery(cmdEncoder);
 		_metalVisibilityResultMode = VisibilityResultModeNeedsUpdate;
 	} else {
 		// Called outside of a render pass
 		// Run accumulation immediately
+		_shouldAccumulate = true;
 		endMetalRenderPass(cmdEncoder);
 	}
 	_currentVisibilityResultMode = MTLVisibilityResultModeDisabled;
 	_currentPool = nullptr;
+}
+
+void MVKOcclusionQueryCommandEncoderState::flushAccumulation(MVKCommandEncoder* cmdEncoder) {
+	if (_mtlRenderPassQueries.empty()) { return; }
+	_shouldAccumulate = true;
+	if (cmdEncoder->_mtlRenderEncoder) {
+		// Inside a Metal render pass: end it, endMetalRenderEncoding runs the accumulation and the
+		// pass is restarted on the next draw (same mechanism as a full visibility buffer).
+		cmdEncoder->encodeStoreActions(true);
+		cmdEncoder->endMetalRenderEncoding();
+	} else {
+		endMetalRenderPass(cmdEncoder);
+	}
 }
 
 void MVKOcclusionQueryCommandEncoderState::nextMetalQuery(MVKCommandEncoder* cmdEncoder) {
