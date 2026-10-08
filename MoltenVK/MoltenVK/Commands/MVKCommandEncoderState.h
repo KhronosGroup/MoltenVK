@@ -540,6 +540,13 @@ public:
 	/** Ends an occlusion query. */
 	void endOcclusionQuery(MVKCommandEncoder* cmdEncoder, MVKOcclusionQueryPool* pQueryPool, uint32_t query);
 
+	/**
+	 * Adds the visibility results collected so far to their query pools. Accumulation is otherwise
+	 * deferred (see endOcclusionQuery); call this before results are copied or reset and when the
+	 * command buffer ends. If a Metal render pass is active it is ended first.
+	 */
+	void flushAccumulation(MVKCommandEncoder* cmdEncoder);
+
 	void encode(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder* mvkEncoder);
 
 	void prepareHelperDraw(id<MTLRenderCommandEncoder> encoder, MVKCommandEncoder* mvkEncoder);
