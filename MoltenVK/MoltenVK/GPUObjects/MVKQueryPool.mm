@@ -164,6 +164,9 @@ void MVKQueryPool::encodeCopyResults(MVKCommandEncoder* cmdEncoder,
 
 	if (queryCount == 0) { return; }
 
+	// Occlusion results may still be waiting in the visibility buffer of this command buffer.
+	cmdEncoder->_occlusionQueryState.flushAccumulation(cmdEncoder);
+
 	// If this asked for 64-bit results with no availability and packed stride, then we can do
 	// a straight copy. Otherwise, we need a shader.
 	if (mvkIsAnyFlagEnabled(flags, VK_QUERY_RESULT_64_BIT) &&
@@ -249,6 +252,9 @@ void MVKOcclusionQueryPool::resetResults(uint32_t firstQuery, uint32_t queryCoun
     NSUInteger firstOffset = getVisibilityResultOffset(firstQuery);
     NSUInteger lastOffset = getVisibilityResultOffset(firstQuery + queryCount);
     if (cmdEncoder) {
+        // Pending accumulations for these queries must land before the reset, not after it.
+        cmdEncoder->_occlusionQueryState.flushAccumulation(cmdEncoder);
+
         id<MTLBlitCommandEncoder> blitEncoder = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseResetQueryPool);
 
         [blitEncoder fillBuffer: getVisibilityResultMTLBuffer()
