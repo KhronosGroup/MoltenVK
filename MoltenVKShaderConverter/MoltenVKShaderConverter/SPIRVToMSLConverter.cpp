@@ -21,6 +21,7 @@
 #include "MVKStrings.h"
 #include "FileSupport.h"
 #include "SPIRVSupport.h"
+#include <algorithm>
 #include <fstream>
 
 using namespace mvk;
@@ -228,30 +229,38 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToM
 }
 
 
+// Returns a key that is equal for any two entries that match each other.
+static uint64_t matchKey(const mvk::MSLShaderInterfaceVariable& siv) {
+	return ((uint64_t)siv.shaderVar.location << 32) ^ ((uint64_t)siv.shaderVar.builtin << 8) ^ siv.binding;
+}
+
+static uint64_t matchKey(const mvk::MSLResourceBinding& rb) {
+	const auto& b = rb.resourceBinding;
+	return ((uint64_t)b.stage << 56) ^ ((uint64_t)b.desc_set << 32) ^ ((uint64_t)b.binding << 8) ^ (uint64_t)b.basetype;
+}
+
+// Sets the usage of each destination entry from the last matching source entry, like a nested loop
+// over both vectors would, but finds the candidates in a sorted index instead of scanning all of them.
+template<class T>
+static void alignUsage(vector<T>& dst, const vector<T>& src) {
+	vector<pair<uint64_t, size_t>> index;
+	index.reserve(src.size());
+	for (size_t i = 0; i < src.size(); i++) { index.emplace_back(matchKey(src[i]), i); }
+	sort(index.begin(), index.end());
+
+	for (auto& d : dst) {
+		d.outIsUsedByShader = false;
+		uint64_t key = matchKey(d);
+		for (auto it = lower_bound(index.begin(), index.end(), make_pair(key, size_t(0))); it != index.end() && it->first == key; it++) {
+			if (d.matches(src[it->second])) { d.outIsUsedByShader = src[it->second].outIsUsedByShader; }
+		}
+	}
+}
+
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::alignWith(const SPIRVToMSLConversionConfiguration& srcContext) {
-
-	for (auto& si : shaderInputs) {
-		si.outIsUsedByShader = false;
-		for (auto& srcSI : srcContext.shaderInputs) {
-			if (si.matches(srcSI)) { si.outIsUsedByShader = srcSI.outIsUsedByShader; }
-		}
-	}
-
-	for (auto& so : shaderOutputs) {
-		so.outIsUsedByShader = false;
-		for (auto& srcSO : srcContext.shaderOutputs) {
-			if (so.matches(srcSO)) { so.outIsUsedByShader = srcSO.outIsUsedByShader; }
-		}
-	}
-
-    for (auto& rb : resourceBindings) {
-        rb.outIsUsedByShader = false;
-        for (auto& srcRB : srcContext.resourceBindings) {
-			if (rb.matches(srcRB)) {
-				rb.outIsUsedByShader = srcRB.outIsUsedByShader;
-			}
-        }
-    }
+	alignUsage(shaderInputs, srcContext.shaderInputs);
+	alignUsage(shaderOutputs, srcContext.shaderOutputs);
+	alignUsage(resourceBindings, srcContext.resourceBindings);
 }
 
 
