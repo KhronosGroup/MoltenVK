@@ -106,8 +106,7 @@ VkResult MVKDeviceMemory::pullFromDevice(VkDeviceSize offset,
 	if (memSize == 0 || !isMemoryHostAccessible()) { return VK_SUCCESS; }
 
 #if MVK_MACOS
-	if ( !isUnifiedMemoryGPU() && pBlitEnc && _mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {
-		if ( !pBlitEnc->mtlCmdBuffer) { pBlitEnc->mtlCmdBuffer = _device->getAnyQueue()->getMTLCommandBuffer(kMVKCommandUseInvalidateMappedMemoryRanges); }
+	if (needsDeviceSynchronization() && pBlitEnc && pBlitEnc->mtlCmdBuffer) {
 		if ( !pBlitEnc->mtlBlitEncoder) { pBlitEnc->mtlBlitEncoder = [pBlitEnc->mtlCmdBuffer blitCommandEncoder]; }
 		[pBlitEnc->mtlBlitEncoder synchronizeResource: _mtlBuffer];
 	}
@@ -305,6 +304,9 @@ MVKResource* MVKDeviceMemory::getDedicatedResource() {
 MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 								 const VkMemoryAllocateInfo* pAllocateInfo,
 								 const VkAllocationCallbacks* pAllocator) : MVKVulkanAPIDeviceObject(device) {
+	// No Metal work admitted before a loss can use memory created once the loss has begun.
+	_isCreatedDuringLoss = device->isLosing();
+
 	// Set Metal memory parameters
 	_vkMemAllocFlags = 0;
 	_vkMemPropFlags = getDeviceMemoryProperties().memoryTypes[pAllocateInfo->memoryTypeIndex].propertyFlags;

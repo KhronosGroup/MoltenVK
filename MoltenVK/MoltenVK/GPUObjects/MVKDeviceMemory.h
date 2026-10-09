@@ -55,6 +55,21 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT; }
 
+	/**
+	 * Returns whether this memory maps host memory that the application imported (VK_EXT_external_memory_host),
+	 * successfully, before the device began to be lost: only Metal work admitted before the loss may still write it.
+	 */
+	bool isHostMemoryImportedBeforeLoss() { return _isHostMemImported && !_isCreatedDuringLoss && getConfigurationResult() == VK_SUCCESS; }
+
+	/** Returns whether the host sees the GPU's writes to this memory only after a synchronization encoded on the GPU. */
+	bool needsDeviceSynchronization() {
+#if MVK_MACOS
+		return !isUnifiedMemoryGPU() && _mtlBuffer && _mtlStorageMode == MTLStorageModeManaged && isMemoryHostAccessible();
+#else
+		return false;
+#endif
+	}
+
 	/** Returns whether the memory is accessible from the host. */
     inline bool isMemoryHostAccessible() {
         if (_mtlStorageMode == MTLStorageModeMemoryless)
@@ -103,11 +118,11 @@ public:
 	 * If this memory is host-visible, pulls the specified memory range from the device.
 	 *
 	 * If pBlitEnc is not null, it points to a holder for a MTLBlitCommandEncoder and its
-	 * associated MTLCommandBuffer. If this instance has a MTLBuffer using managed memory,
-	 * this function may call synchronizeResource: on the MTLBlitCommandEncoder to
-	 * synchronize the GPU contents to the CPU. If the contents of the pBlitEnc do not
-	 * include a MTLBlitCommandEncoder and MTLCommandBuffer, this function will create
-	 * them and populate the contents into the MVKMTLBlitEncoder struct.
+	 * associated MTLCommandBuffer. If this instance needs a device synchronization, and the
+	 * holder has a MTLCommandBuffer, this function calls synchronizeResource: on its
+	 * MTLBlitCommandEncoder, which it creates if the holder has none, to synchronize the
+	 * GPU contents to the CPU. It never acquires a MTLCommandBuffer: the caller does, before
+	 * it brackets the encoding (see MVKDevice::invalidateMappedMemoryRanges()).
 	 */
 	VkResult pullFromDevice(VkDeviceSize offset,
 							VkDeviceSize size,
@@ -185,6 +200,7 @@ protected:
 	MTLCPUCacheMode _mtlCPUCacheMode;
 	bool _isDedicated = false;
 	bool _isHostMemImported = false;
+	bool _isCreatedDuringLoss = false;
 	VkExternalMemoryHandleTypeFlags _externalMemoryHandleType = 0u;
 };
 

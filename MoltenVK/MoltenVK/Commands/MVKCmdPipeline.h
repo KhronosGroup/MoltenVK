@@ -25,6 +25,7 @@
 
 class MVKCommandBuffer;
 class MVKPipeline;
+class MVKGraphicsPipeline;
 class MVKPipelineLayout;
 class MVKDescriptorSet;
 class MVKDescriptorUpdateTemplate;
@@ -109,6 +110,7 @@ public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff, VkPipeline pipeline);
 
 	virtual bool isTessellationPipeline() { return false; };
+	virtual MVKGraphicsPipeline* getGraphicsPipeline() { return nullptr; }
 
 protected:
 	MVKPipeline* _pipeline;
@@ -125,6 +127,7 @@ public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 	bool isTessellationPipeline() override;
+	MVKGraphicsPipeline* getGraphicsPipeline() override { return (MVKGraphicsPipeline*)_pipeline; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;

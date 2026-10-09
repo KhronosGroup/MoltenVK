@@ -791,11 +791,12 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetEventStatus(
     VkEvent                                     event) {
 	
 	MVKTraceVulkanCallStart();
-	VkResult rslt = MVKDevice::getMVKDevice(device)->getConfigurationResult();
-	if (rslt == VK_SUCCESS) {
-		MVKEvent* mvkEvent = (MVKEvent*)event;
-		rslt = mvkEvent->isSet() ? VK_EVENT_SET : VK_EVENT_RESET;
-	}
+	// Like vkGetSemaphoreCounterValue: the release of Metal waits during a device loss may set the event.
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	bool isSet = ((MVKEvent*)event)->isSet();
+	std::atomic_thread_fence(std::memory_order_seq_cst);
+	VkResult rslt = mvkDev->isLosing() ? mvkDev->getHostWaitResult(true, UINT64_MAX) : mvkDev->getConfigurationResult();
+	if (rslt == VK_SUCCESS) { rslt = isSet ? VK_EVENT_SET : VK_EVENT_RESET; }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -2480,11 +2481,15 @@ MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetSemaphoreCounterValue(
 	uint64_t*									pValue) {
 
 	MVKTraceVulkanCallStart();
-	VkResult rslt = MVKDevice::getMVKDevice(device)->getConfigurationResult();
-	if (rslt == VK_SUCCESS) {
-		auto* mvkSem4 = (MVKTimelineSemaphore*)semaphore;
-		*pValue = mvkSem4->getCounterValue();
-	}
+	// During a device loss, the release of Metal waits may raise the counter past work that never ran, while
+	// submissions may still be reading their command buffers: report the loss once it is published. The counter is
+	// read before the loss is checked, and the fence orders the two reads: a value raised by that release was written
+	// after the loss began, so the check that follows sees the loss.
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	uint64_t value = ((MVKTimelineSemaphore*)semaphore)->getCounterValue();
+	std::atomic_thread_fence(std::memory_order_seq_cst);
+	VkResult rslt = mvkDev->isLosing() ? mvkDev->getHostWaitResult(true, UINT64_MAX) : mvkDev->getConfigurationResult();
+	if (rslt == VK_SUCCESS) { *pValue = value; }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -4299,6 +4304,52 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetLineStipple, EXT);
 
 #pragma mark -
 #pragma mark VK_EXT_multi_draw extension
+
+#pragma mark -
+#pragma mark VK_EXT_mesh_shader extension
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMeshTasksEXT(
+	VkCommandBuffer                             commandBuffer,
+	uint32_t                                    groupCountX,
+	uint32_t                                    groupCountY,
+	uint32_t                                    groupCountZ) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(DrawMeshTasks, commandBuffer, groupCountX, groupCountY, groupCountZ);
+	MVKTraceVulkanCallEnd();
+}
+
+// The first mesh path draws direct mesh workgroups only: indirect mesh draws fail the command buffer.
+static void mvkRefuseIndirectMeshDraw(VkCommandBuffer commandBuffer, const char* command) {
+	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	cmdBuff->setConfigurationResult(cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "%s(): Indirect mesh draws are not supported.", command));
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMeshTasksIndirectEXT(
+	VkCommandBuffer                             commandBuffer,
+	VkBuffer                                    buffer,
+	VkDeviceSize                                offset,
+	uint32_t                                    drawCount,
+	uint32_t                                    stride) {
+
+	MVKTraceVulkanCallStart();
+	mvkRefuseIndirectMeshDraw(commandBuffer, "vkCmdDrawMeshTasksIndirectEXT");
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMeshTasksIndirectCountEXT(
+	VkCommandBuffer                             commandBuffer,
+	VkBuffer                                    buffer,
+	VkDeviceSize                                offset,
+	VkBuffer                                    countBuffer,
+	VkDeviceSize                                countBufferOffset,
+	uint32_t                                    maxDrawCount,
+	uint32_t                                    stride) {
+
+	MVKTraceVulkanCallStart();
+	mvkRefuseIndirectMeshDraw(commandBuffer, "vkCmdDrawMeshTasksIndirectCountEXT");
+	MVKTraceVulkanCallEnd();
+}
 
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawMultiEXT(
 	VkCommandBuffer                             commandBuffer,

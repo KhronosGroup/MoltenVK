@@ -46,7 +46,7 @@ void MVKCmdDebugMarkerBegin::encode(MVKCommandEncoder* cmdEncoder) {
 	if (mtlCmdEnc) {
 		[mtlCmdEnc pushDebugGroup: _markerName];
 	} else {
-		[cmdEncoder->_mtlCmdBuffer pushDebugGroup: _markerName];
+		cmdEncoder->pushCommandBufferDebugGroup(_markerName);
 	}
 }
 
@@ -63,7 +63,7 @@ void MVKCmdDebugMarkerEnd::encode(MVKCommandEncoder* cmdEncoder) {
 	if (mtlCmdEnc) {
 		[mtlCmdEnc popDebugGroup];
 	} else {
-		[cmdEncoder->_mtlCmdBuffer popDebugGroup];
+		cmdEncoder->popCommandBufferDebugGroup();
 	}
 }
 

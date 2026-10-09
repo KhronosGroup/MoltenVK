@@ -83,9 +83,10 @@ VkResult MVKQueryPool::getResults(uint32_t firstQuery,
 	uint32_t endQuery = firstQuery + queryCount;
 
 	if (mvkAreAllFlagsEnabled(flags, VK_QUERY_RESULT_WAIT_BIT)) {
-		_availabilityBlocker.wait(lock, [this, firstQuery, endQuery]{
-			return areQueriesHostAvailable(firstQuery, endQuery);
-		});
+		// A reported device loss makes the queries host-available, but nothing notifies this wait of it, and a query
+		// whose command buffer the loss refused is never finished. Wait in slices, so that the predicate sees the loss.
+		auto isAvailable = [this, firstQuery, endQuery]{ return areQueriesHostAvailable(firstQuery, endQuery); };
+		while ( !_availabilityBlocker.wait_for(lock, chrono::milliseconds(1), isAvailable) ) {}
 	}
 
 	VkResult rqstRslt = VK_SUCCESS;

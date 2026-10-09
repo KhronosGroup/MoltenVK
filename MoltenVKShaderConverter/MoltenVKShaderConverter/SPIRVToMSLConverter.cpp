@@ -22,6 +22,7 @@
 #include "FileSupport.h"
 #include "SPIRVSupport.h"
 #include <fstream>
+#include <algorithm>
 
 using namespace mvk;
 using namespace std;
@@ -131,6 +132,19 @@ MVK_PUBLIC_SYMBOL bool mvk::DescriptorBinding::matches(const mvk::DescriptorBind
 	return true;
 }
 
+MVK_PUBLIC_SYMBOL bool mvk::MSLPerVertexInputBuffer::matches(const mvk::MSLPerVertexInputBuffer& other) const {
+	if (enabled != other.enabled) { return false; }
+	if (!enabled) { return true; }
+	if (layout.stride != other.layout.stride) { return false; }
+	if (binding.vertex_buffer_index != other.binding.vertex_buffer_index || binding.primitive_index_buffer_index != other.binding.primitive_index_buffer_index || binding.primitive_index_location != other.binding.primitive_index_location || binding.primitive_id_buffer_index != other.binding.primitive_id_buffer_index) { return false; }
+	if (!std::equal(layout.builtins.begin(), layout.builtins.end(), other.layout.builtins.begin(), other.layout.builtins.end(), [](const auto& a, const auto& b) {
+		return a.builtin == b.builtin && a.array_index == b.array_index && a.component == b.component && a.byte_offset == b.byte_offset && a.scalar_type == b.scalar_type;
+	})) { return false; }
+	return std::equal(layout.components.begin(), layout.components.end(), other.layout.components.begin(), other.layout.components.end(), [](const auto& a, const auto& b) {
+		return a.location == b.location && a.component == b.component && a.byte_offset == b.byte_offset && a.scalar_type == b.scalar_type;
+	});
+}
+
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::stageSupportsVertexAttributes() const {
 	return (options.entryPointStage == ExecutionModelVertex ||
 			options.entryPointStage == ExecutionModelTessellationControl ||
@@ -191,6 +205,9 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::markAllInterfaceVarsAn
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToMSLConversionConfiguration& other) const {
 
     if ( !options.matches(other.options) ) { return false; }
+	if (!perVertexInputBuffer.matches(other.perVertexInputBuffer)) { return false; }
+	if (!fragmentBarycentricInput.matches(other.fragmentBarycentricInput)) { return false; }
+	if (exportCapturedVertexLayout != other.exportCapturedVertexLayout) { return false; }
 
 	for (const auto& si : shaderInputs) {
 		if (si.outIsUsedByShader && !containsMatching(other.shaderInputs, si)) { return false; }
@@ -281,6 +298,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 
 	CompilerMSL* pMSLCompiler = nullptr;
 	bool wasConverted = true;
+	conversionResult.resultInfo.capturedVertexLayout = {};
 
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 	try {
@@ -305,6 +323,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 		// Establish the MSL options for the compiler
 		// This needs to be done in two steps...for CompilerMSL and its superclass.
 		pMSLCompiler->set_msl_options(shaderConfig.options.mslOptions);
+		if (shaderConfig.fragmentBarycentricInput.enabled) {
+			pMSLCompiler->set_msl_fragment_barycentric_input(shaderConfig.fragmentBarycentricInput.binding);
+		}
+		if (shaderConfig.perVertexInputBuffer.enabled) {
+			pMSLCompiler->set_msl_per_vertex_input_buffer(shaderConfig.perVertexInputBuffer.layout, shaderConfig.perVertexInputBuffer.binding);
+		}
 
 		auto scOpts = pMSLCompiler->get_common_options();
 		scOpts.vertex.flip_vert_y = shaderConfig.options.shouldFlipVertexY;
@@ -347,6 +371,11 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 			}
 		}
 		conversionResult.msl = pMSLCompiler->compile();
+		if (shaderConfig.exportCapturedVertexLayout && pMSLCompiler->needs_output_buffer() &&
+			(pMSLCompiler->get_execution_model() == ExecutionModelVertex ||
+			 (pMSLCompiler->get_execution_model() == ExecutionModelTessellationEvaluation && shaderConfig.options.mslOptions.tese_as_compute))) {
+			conversionResult.resultInfo.capturedVertexLayout = pMSLCompiler->get_msl_captured_vertex_layout();
+		}
 
         if (shouldLogMSL) { logSource(conversionResult.resultLog, conversionResult.msl, "MSL", "Converted"); }
 
@@ -354,7 +383,8 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	} catch (CompilerError& ex) {
 		string errMsg("SPIR-V to MSL conversion error: ");
 		errMsg += ex.what();
-		logError(conversionResult.resultLog, errMsg.data());
+		wasConverted = logError(conversionResult.resultLog, errMsg.data());
+		conversionResult.msl.clear();
         if (shouldLogMSL && pMSLCompiler) {
 			auto partialMSL = pMSLCompiler->get_partial_source();
             logSource(conversionResult.resultLog, partialMSL, "MSL", "Partially converted");
@@ -376,6 +406,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	conversionResult.resultInfo.needsViewRangeBuffer = pMSLCompiler && pMSLCompiler->needs_view_mask_buffer();
 	conversionResult.resultInfo.needsDrawId = pMSLCompiler && pMSLCompiler->has_active_builtin(spv::BuiltInDrawIndex, spv::StorageClassInput);
 	conversionResult.resultInfo.needsDepthClipStateBuffer = pMSLCompiler && pMSLCompiler->needs_depth_clip_state_buffer();
+	conversionResult.resultInfo.needsPerVertexInputBuffer = wasConverted && pMSLCompiler && pMSLCompiler->needs_per_vertex_input_buffer();
 	conversionResult.resultInfo.usesPhysicalStorageBufferAddressesCapability = usesPhysicalStorageBufferAddressesCapability(pMSLCompiler);
 	populateSpecializationMacros(pMSLCompiler, conversionResult.resultInfo.specializationMacros);
 

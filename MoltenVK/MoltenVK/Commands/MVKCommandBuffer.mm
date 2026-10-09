@@ -143,6 +143,16 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 		_secondaryInheritanceRenderingInfo.pColorAttachmentFormats = _secondaryInheritanceColorAttachmentFormats.data();
 	}
 
+	if (_doesContinueRenderPass) {
+		_currentSubpassInfo.renderpass = (MVKRenderPass*)_secondaryInheritanceInfo.renderPass;
+		_currentSubpassInfo.subpassIndex = _secondaryInheritanceInfo.subpass;
+		auto* framebuffer = (MVKFramebuffer*)_secondaryInheritanceInfo.framebuffer;
+		auto attachments = framebuffer ? framebuffer->getAttachments() : MVKArrayRef<MVKImageView*>();
+		// An empty inherited framebuffer may be imageless. Its actual views are only known by the primary.
+		recordRenderPass(attachments, attachments.size() != 0);
+		// Inherited sample count alone cannot tell us whether the primary has resolve views.
+	}
+
 	if (pInheritAttLocInfo) {
 		_secondaryInheritanceColorAttachmentLocations.assign(pInheritAttLocInfo->pColorAttachmentLocations,
 															 pInheritAttLocInfo->pColorAttachmentLocations + pInheritAttLocInfo->colorAttachmentCount);
@@ -167,13 +177,18 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 		}
 	}
 
-    if(_device->shouldPrefillMTLCommandBuffers() && !(_isSecondary || _supportsConcurrentExecution)) {
+	// Immediate prefill encodes each command while it is recorded, before a queue submission exists to wait for the
+	// GPU plan of a PerVertexKHR indirect draw. Devices that may capture PerVertexKHR draws encode at submission instead.
+	auto prefillStyle = getMVKConfig().prefillMetalCommandBuffers;
+	bool isImmediatePrefill = (prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING ||
+							   prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING_NO_AUTORELEASE);
+	bool mayAwaitGPUPlan = getPhysicalDevice()->isPortablePerVertexEnabled() && getEnabledFragmentShaderBarycentricFeatures().fragmentShaderBarycentric;
+    if(_device->shouldPrefillMTLCommandBuffers() && !(_isSecondary || _supportsConcurrentExecution) && !(isImmediatePrefill && mayAwaitGPUPlan)) {
 		@autoreleasepool {
 			_prefilledMTLCmdBuffer = [_commandPool->getMTLCommandBuffer(kMVKCommandUseBeginCommandBuffer, 0) retain];    // retained
-			auto prefillStyle = getMVKConfig().prefillMetalCommandBuffers;
-			if (prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING ||
-				prefillStyle == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_IMMEDIATE_ENCODING_NO_AUTORELEASE ) {
+			if (isImmediatePrefill) {
 				_immediateCmdEncodingContext = new MVKCommandEncodingContext;
+				_immediateCmdEncodingContext->perVertexScratch = &_prefilledPerVertexScratch;
 				_immediateCmdEncoder = new MVKCommandEncoder(this, prefillStyle);
 				_immediateCmdEncoder->beginEncoding(_prefilledMTLCmdBuffer, _immediateCmdEncodingContext);
 			}
@@ -213,6 +228,7 @@ void MVKCommandBuffer::flushImmediateCmdEncoder() {
         
         delete _immediateCmdEncodingContext;
         _immediateCmdEncodingContext = nullptr;
+        if (!_isReusable) { releaseRecordedCommands(); }
     }
 }
 
@@ -244,6 +260,17 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	_needsVisibilityResultMTLBuffer = false;
 	_hasStageCounterTimestampCommand = false;
 	_lastTessellationPipeline = nullptr;
+	_recordedPerVertexPipeline = nullptr;
+	_recordedTessellationPipeline = nullptr;
+	_recordedMeshPipeline = nullptr;
+	_recordedPatchControlPoints = 0;
+	_recordedPrimitiveTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+	_recordedAttachmentsKnown = false;
+	_recordedRenderingError = nullptr;
+	_recordedIndexType = VK_INDEX_TYPE_MAX_ENUM;
+	_needsInheritedPerVertexAttachments = false;
+	_perVertexScratchRequests.clear();
+	_prefilledPerVertexScratch.clear();
 	setConfigurationResult(VK_NOT_READY);
 
 	if (mvkAreAllFlagsEnabled(flags, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)) {
@@ -263,11 +290,21 @@ VkResult MVKCommandBuffer::end() {
 }
 
 void MVKCommandBuffer::checkDeferredEncoding() {
-	if ( !_prefilledMTLCmdBuffer ) { return; }
-
-	if (getMVKConfig().prefillMetalCommandBuffers == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_DEFERRED_ENCODING) {
+	if (_prefilledMTLCmdBuffer && getMVKConfig().prefillMetalCommandBuffers == MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS_STYLE_DEFERRED_ENCODING) {
+		// An indirect PerVertexKHR draw or a PerVertex TES draw waits for its GPU plan or topology while encoding,
+		// which needs its queue submission. Nothing is encoded yet: release the empty prefilled Metal command buffer
+		// and encode at submission.
+		for (const auto& request : _perVertexScratchRequests) {
+			if (request.indirectCapacity || request.tessSizes[5]) {
+				clearPrefilledMTLCommandBuffer();
+				return;
+			}
+		}
+		setConfigurationResult(reservePrefilledPerVertexScratch(0));
+		if (!wasConfigurationSuccessful()) { return; }
 		@autoreleasepool {
 			MVKCommandEncodingContext encodingContext;
+			encodingContext.perVertexScratch = &_prefilledPerVertexScratch;
 			MVKCommandEncoder encoder(this);
 			encoder.encode(_prefilledMTLCmdBuffer, &encodingContext);
 			if (isUsingMetalArgumentBuffers()) {
@@ -289,30 +326,30 @@ void MVKCommandBuffer::addCommand(MVKCommand* command) {
 
 	_commandCount++;
 
-    if(_immediateCmdEncoder) {
-        _immediateCmdEncoder->encodeCommands(command);
-        if( !_isReusable ) {
-            releaseCommands(command);
-            return;
-        }
-    }
-
+    // Multiview rewinds through _next while encoding the subpass terminator.
+    // Link first and retain even one-time commands until flush so replay can traverse them.
     if (_tail) { _tail->_next = command; }
     command->_next = nullptr;
     _tail = command;
     if ( !_head ) { _head = command; }
+    if (_immediateCmdEncoder) { _immediateCmdEncoder->encodeCommands(command); }
 }
 
-void MVKCommandBuffer::submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit,
-							  MVKCommandEncodingContext* pEncodingContext) {
+void MVKCommandBuffer::submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit, MVKCommandEncodingContext* pEncodingContext, const MVKPerVertexScratchReservations& scratch) {
 	if ( !canExecute() ) { return; }
 
 	if (_prefilledMTLCmdBuffer) {
 		cmdBuffSubmit->setActiveMTLCommandBuffer(_prefilledMTLCmdBuffer);
 		clearPrefilledMTLCommandBuffer();
+		_prefilledPerVertexScratch.clear();
 	} else {
+		pEncodingContext->perVertexScratch = &scratch;
+		pEncodingContext->nextPerVertexScratch = 0;
+		pEncodingContext->submission = cmdBuffSubmit;
 		MVKCommandEncoder encoder(this);
 		encoder.encode(cmdBuffSubmit->getActiveMTLCommandBuffer(), pEncodingContext);
+		pEncodingContext->submission = nullptr;
+		pEncodingContext->perVertexScratch = nullptr;
 	}
 
 	if ( !_supportsConcurrentExecution ) { _isExecutingNonConcurrently.clear(); }
@@ -340,6 +377,10 @@ bool MVKCommandBuffer::canExecute() {
 
 // Return the number of bits set in the view mask, with a minimum value of 1.
 uint32_t MVKCommandBuffer::getViewCount() const {
+	return max(__builtin_popcount(getViewMask()), 1);
+}
+
+uint32_t MVKCommandBuffer::getViewMask() const {
 	uint32_t viewMask = 0;
 	if (_doesContinueRenderPass) {
 		MVKRenderPass* inheritedRenderPass = (MVKRenderPass*)_secondaryInheritanceInfo.renderPass;
@@ -351,19 +392,16 @@ uint32_t MVKCommandBuffer::getViewCount() const {
 	} else {
 		viewMask = _currentSubpassInfo.subpassViewMask;
 	}
-	return max(__builtin_popcount(viewMask), 1);
+	return viewMask;
 }
 
 void MVKCommandBuffer::clearPrefilledMTLCommandBuffer() {
 
-	// Metal command buffers do not return to their pool on release, nor do they support the
-	// concept of a reset. In order to become available again in their pool, they must pass
-	// through the commit step. This is unfortunate because if the app adds commands to this
-	// command buffer and then chooses to reset it instead of submit it, we risk committing
-	// a prefilled Metal command buffer that the app did not intend to submit, potentially
-	// causing unexpected side effects. But unfortunately there is nothing else we can do.
+	// A prefilled Metal command buffer that was never submitted is released without being committed: Metal then
+	// discards the commands the application abandoned, and frees its place in its queue, which an enqueued command
+	// buffer would keep. Its handlers run now, as cleanup, while the pools they return buffers to still exist.
 	if (_prefilledMTLCmdBuffer && _prefilledMTLCmdBuffer.status == MTLCommandBufferStatusNotEnqueued) {
-		[_prefilledMTLCmdBuffer commit];
+		getDevice()->abandonMTLCommandBuffer(_prefilledMTLCmdBuffer);
 	}
 
 	[_prefilledMTLCmdBuffer release];
@@ -385,11 +423,252 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 }
 
 // Promote the initial visibility buffer and indication of timestamp use from the secondary buffers.
-void MVKCommandBuffer::recordExecuteCommands(MVKArrayRef<MVKCommandBuffer*const> secondaryCommandBuffers) {
-	for (MVKCommandBuffer* cmdBuff : secondaryCommandBuffers) {
-		if (cmdBuff->_needsVisibilityResultMTLBuffer) { _needsVisibilityResultMTLBuffer = true; }
-		if (cmdBuff->_hasStageCounterTimestampCommand) { _hasStageCounterTimestampCommand = true; }
+VkResult MVKCommandBuffer::recordExecuteCommands(MVKArrayRef<MVKCommandBuffer*const> secondaryCommandBuffers) {
+	size_t firstRequest = _perVertexScratchRequests.size();
+	try {
+		for (MVKCommandBuffer* cmdBuff : secondaryCommandBuffers) {
+			if (cmdBuff->_needsVisibilityResultMTLBuffer) { _needsVisibilityResultMTLBuffer = true; }
+			if (cmdBuff->_hasStageCounterTimestampCommand) { _hasStageCounterTimestampCommand = true; }
+			if (cmdBuff->getConfigurationResult() != VK_SUCCESS) { return cmdBuff->getConfigurationResult(); }
+			if (cmdBuff->_needsInheritedPerVertexAttachments) {
+				VkResult result = validateIndexedPerVertexAttachments();
+				if (result != VK_SUCCESS) { return result; }
+			}
+			_perVertexScratchRequests.insert(_perVertexScratchRequests.end(), cmdBuff->_perVertexScratchRequests.begin(), cmdBuff->_perVertexScratchRequests.end());
+		}
+	} catch (const std::bad_alloc&) { return reportError(VK_ERROR_OUT_OF_HOST_MEMORY, "Portable PerVertexKHR secondary scratch recording allocation failed."); }
+	if (_immediateCmdEncoder) {
+		for (size_t i = firstRequest; i < _perVertexScratchRequests.size(); ++i) {
+			if (_perVertexScratchRequests[i].indirectCapacity) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Portable PerVertexKHR indirect draws cannot be encoded while immediately prefilling Metal command buffers."); }
+		}
 	}
+	return _immediateCmdEncoder ? reservePrefilledPerVertexScratch(firstRequest) : VK_SUCCESS;
+}
+
+void MVKCommandBuffer::recordRenderPass(MVKArrayRef<MVKImageView*> attachments, bool attachmentsKnown) {
+	_recordedAttachmentsKnown = attachmentsKnown;
+	_recordedRenderingError = nullptr;
+	for (auto* attachment : attachments) {
+		if (attachment && attachment->getImage()->getMTLStorageMode() == MTLStorageModeMemoryless) { _recordedRenderingError = "indexed compute capture cannot preserve memoryless attachments."; }
+	}
+}
+
+void MVKCommandBuffer::recordRendering(const VkRenderingInfo* renderingInfo) {
+	recordRenderPass({});
+	MVKRenderingAttachmentIterator attachments(renderingInfo);
+	attachments.iterate([&](const VkRenderingAttachmentInfo* info, VkImageAspectFlagBits aspect, MVKImageView* attachment, bool isResolveAttachment) {
+		if (!attachment) { return; }
+		// Match MVKRenderSubpass: color uses non-null resolve views; depth/stencil also require a resolve mode.
+		if (isResolveAttachment && info->imageView && (aspect == VK_IMAGE_ASPECT_COLOR_BIT || info->resolveMode != VK_RESOLVE_MODE_NONE)) {
+			if (aspect == VK_IMAGE_ASPECT_COLOR_BIT && info->resolveMode != VK_RESOLVE_MODE_AVERAGE_BIT) { _recordedRenderingError = "indexed capture requires average-mode dynamic color resolve."; }
+			if (const char* error = mvkGetPerVertexResolveError(getMetalFeatures(), getPixelFormats(), attachment->getVkFormat(), aspect, info->resolveMode, renderingInfo->flags)) { _recordedRenderingError = error; }
+		}
+		if (attachment->getImage()->getMTLStorageMode() == MTLStorageModeMemoryless) { _recordedRenderingError = "indexed compute capture cannot preserve memoryless attachments."; }
+	});
+}
+
+VkResult MVKCommandBuffer::validateIndexedPerVertexAttachments() {
+	const char* error = _recordedRenderingError;
+	if (!_recordedAttachmentsKnown && !_doesContinueRenderPass) { error = "indexed compute capture requires known rendering attachments."; }
+	if (_currentSubpassInfo.renderpass) {
+		if (const char* resolveError = _currentSubpassInfo.renderpass->getSubpass(_currentSubpassInfo.subpassIndex)->getPerVertexResolveError()) { error = resolveError; }
+	}
+	return error ? reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Portable PerVertexKHR %s", error) : VK_SUCCESS;
+}
+
+VkResult MVKCommandBuffer::recordPerVertexDraw(uint32_t vertexCount, uint32_t instanceCount, bool indexed) {
+	if (!_recordedPerVertexPipeline || !vertexCount || !instanceCount) { return VK_SUCCESS; }
+	if (_recordedPerVertexPipeline->usesPerVertexTessEval()) { return recordPerVertexTessEvalDraw(vertexCount, instanceCount, indexed); }
+	// Dynamic restart can change at execution. Reserve both helper paths before submission.
+	bool dynamicRestart = indexed && _recordedPerVertexPipeline->getDynamicStateFlags().has(MVKRenderStateFlag::PrimitiveRestartEnable);
+	bool restart = mvkPerVertexRequiresRestartAssembly(indexed, dynamicRestart || _recordedPerVertexPipeline->getStaticStateData().enable.has(MVKRenderStateEnableFlag::PrimitiveRestart));
+	if (restart && !mvkCanAssemblePerVertexRestart(vertexCount, instanceCount, getMetalFeatures().indirectDrawing)) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Portable PerVertexKHR restart requires indirect drawing and uint32 dense capture record IDs."); }
+	if (indexed && !mvkPerVertexIndexSize(_recordedIndexType)) {
+		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Portable PerVertexKHR indexed capture requires uint8, uint16 or uint32 indices.");
+	}
+	// Indexed capture runs in compute, and a render pass boundary separates a nonindexed capture from its replay:
+	// either ends and restarts the render encoder. A secondary may omit its framebuffer or inherit an imageless one.
+	// Revalidate in every primary.
+	if (_doesContinueRenderPass) { _needsInheritedPerVertexAttachments = true; }
+	VkResult result = validateIndexedPerVertexAttachments();
+	if (result != VK_SUCCESS) { return result; }
+	auto topology = getRecordedPerVertexTopology();
+	// A dynamic topology may be any of its class, adjacency included, which capture and replay do not support.
+	if (!mvkPerVertexReplayVertexCount(topology)) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Portable PerVertexKHR draws do not support this primitive topology."); }
+	uint64_t indexScratchBytes = restart ? mvkPerVertexRestartIndexScratchSize(vertexCount) : indexed && _recordedIndexType == VK_INDEX_TYPE_UINT8 ? uint64_t(vertexCount) * sizeof(uint16_t) : 0;
+	if (indexScratchBytes > getMetalFeatures().maxMTLBufferSize) { return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Portable PerVertexKHR index scratch buffer exceeds Metal limits."); }
+	uint32_t viewMask = getViewMask();
+	uint32_t passCount = std::max(getDevice()->getMultiviewMetalPassCount(viewMask), 1u);
+	MVKPerVertexScratchRequest requests[32];
+	for (uint32_t pass = 0; pass < passCount; ++pass) {
+		uint32_t views = std::max(getDevice()->getViewCountInMetalPass(viewMask, pass), 1u);
+		uint64_t expandedInstances = uint64_t(instanceCount) * views;
+		if (expandedInstances > UINT32_MAX || !mvkCanEncodePerVertexDraw(vertexCount, uint32_t(expandedInstances), _recordedPerVertexPipeline->getPerVertexCapturedLayout().stride, topology, getMetalFeatures().maxMTLBufferSize)) {
+			return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Portable PerVertexKHR draw exceeds its capture or replay buffer limits.");
+		}
+		if (restart && !mvkCanAssemblePerVertexRestart(vertexCount, uint32_t(expandedInstances), getMetalFeatures().indirectDrawing)) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Portable PerVertexKHR restart requires indirect drawing and uint32 dense capture record IDs."); }
+		uint64_t primitiveCount = uint64_t(mvkPerVertexPrimitiveCount(vertexCount, topology)) * expandedInstances;
+		uint64_t occurrences = primitiveCount * mvkPerVertexReplayVertexCount(topology);
+		requests[pass] = {NSUInteger(uint64_t(vertexCount) * expandedInstances * _recordedPerVertexPipeline->getPerVertexCapturedLayout().stride), NSUInteger(occurrences * 2 * sizeof(uint32_t)), NSUInteger(primitiveCount * 3 * sizeof(uint32_t)), _recordedPerVertexPipeline->usesPortableBarycentrics() ? NSUInteger(occurrences * sizeof(uint32_t)) : 0, NSUInteger(indexScratchBytes), restart, dynamicRestart && _recordedIndexType == VK_INDEX_TYPE_UINT8};
+	}
+	size_t firstRequest = _perVertexScratchRequests.size();
+	try {
+		// Draw-major storage: every pass owns immutable CPU tables and independent GPU scratch.
+		_perVertexScratchRequests.insert(_perVertexScratchRequests.end(), requests, requests + passCount);
+	} catch (const std::bad_alloc&) { return reportError(VK_ERROR_OUT_OF_HOST_MEMORY, "Portable PerVertexKHR scratch recording allocation failed."); }
+	return _immediateCmdEncoder ? reservePrefilledPerVertexScratch(firstRequest) : VK_SUCCESS;
+}
+
+// Vulkan places no bound on indirect vertex and instance counts, and they may be written on the GPU earlier in
+// the same submission. Only a GPU plan, sized for the largest record count a uint32 record ID can represent,
+// is reserved before submission. Once the plan completes, the queue reserves the exact replay scratch from the
+// counts it froze, then encodes the replay (encodePerVertexIndirect).
+VkResult MVKCommandBuffer::recordPerVertexIndirectDraw(bool indexed, uint32_t drawCount) {
+	if (!_recordedPerVertexPipeline) { return VK_SUCCESS; }
+	// Immediate prefill encodes each command as it is recorded, before a queue submission exists to wait for the plan.
+	if (_immediateCmdEncoder) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Portable PerVertexKHR indirect draws cannot be encoded while immediately prefilling Metal command buffers."); }
+	auto* pipeline = _recordedPerVertexPipeline;
+	if (pipeline->getZeroDivisorVertexBindings().size()) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Portable PerVertexKHR indirect draws do not support zero-divisor vertex bindings yet."); }
+	if (indexed && !mvkPerVertexIndexSize(_recordedIndexType)) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Portable PerVertexKHR indexed capture requires uint8, uint16 or uint32 indices."); }
+	// Dynamic restart can change at execution. Reserve the restart assembly whenever it is possible.
+	bool restart = indexed && (pipeline->getDynamicStateFlags().has(MVKRenderStateFlag::PrimitiveRestartEnable) || pipeline->getStaticStateData().enable.has(MVKRenderStateEnableFlag::PrimitiveRestart));
+	if (restart && !getMetalFeatures().indirectDrawing) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Portable PerVertexKHR restart requires indirect drawing."); }
+	// Each indirect draw plans on the GPU in compute, which ends and restarts the render encoder.
+	if (_doesContinueRenderPass) { _needsInheritedPerVertexAttachments = true; }
+	VkResult result = validateIndexedPerVertexAttachments();
+	if (result != VK_SUCCESS) { return result; }
+	auto topology = getRecordedPerVertexTopology();
+	if (!mvkPerVertexReplayVertexCount(topology)) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Portable PerVertexKHR indirect draws do not support this primitive topology."); }
+	MVKPerVertexScratchRequest request{};
+	request.restart = restart;
+	request.indirectCapacity = UINT32_MAX;
+	// Plan words, then one 256-byte perVertexRestart parameter block per dispatch, laid out for the plan's ceiling.
+	uint64_t planSize = 1024 + (restart ? (mvkPerVertexIndirectRestartScanSteps(UINT32_MAX) + 3) * 256 : 0);
+	// Several draws freeze their Vulkan commands in a buffer of their own, at their size. Vulkan bounds maxDrawCount by
+	// the argument buffer, whose stride is at least that size: a legal command never exceeds the Metal limits here.
+	uint64_t snapshotSize = drawCount > 1 ? uint64_t(drawCount) * (indexed ? 5 : 4) * sizeof(uint32_t) : 0;
+	if (planSize > getMetalFeatures().maxMTLBufferSize || snapshotSize > getMetalFeatures().maxMTLBufferSize) { return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Portable PerVertexKHR indirect argument snapshot exceeds Metal buffer limits."); }
+	request.planSize = NSUInteger(planSize);
+	request.snapshotSize = NSUInteger(snapshotSize);
+	// Every multiview pass plans and replays separately.
+	uint32_t passCount = std::max(getDevice()->getMultiviewMetalPassCount(getViewMask()), 1u);
+	size_t firstRequest = _perVertexScratchRequests.size();
+	try {
+		_perVertexScratchRequests.insert(_perVertexScratchRequests.end(), passCount, request);
+	} catch (const std::bad_alloc&) { return reportError(VK_ERROR_OUT_OF_HOST_MEMORY, "Portable PerVertexKHR scratch recording allocation failed."); }
+	return _immediateCmdEncoder ? reservePrefilledPerVertexScratch(firstRequest) : VK_SUCCESS;
+}
+
+// The GPU generator emits at most the uniform level-3 topology per triangle patch: 13 triangles,
+// captured once per corner. Levels outside the proven topologies refuse the draw on the GPU.
+static constexpr uint64_t kMVKPerVertexTessMaxRecordsPerPatch = 39;
+
+VkResult MVKCommandBuffer::recordPerVertexTessEvalDraw(uint32_t vertexCount, uint32_t instanceCount, bool indexed) {
+	if (indexed || instanceCount != 1 || getViewMask()) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "PerVertex TES test requires direct non-indexed draws of one instance without views."); }
+	// Admission fixes three control points. Vertices that do not complete a patch are not tessellated, but
+	// Vulkan still runs the VS for each of them: without a complete patch, only the VS output is reserved.
+	uint64_t patches = vertexCount / 3;
+	// VS/TCS/TES run in compute, which ends and restarts the render encoder.
+	if (_doesContinueRenderPass) { _needsInheritedPerVertexAttachments = true; }
+	VkResult result = validateIndexedPerVertexAttachments();
+	if (result != VK_SUCCESS) { return result; }
+	uint64_t records = patches * kMVKPerVertexTessMaxRecordsPerPatch;
+	uint32_t stride = _recordedPerVertexPipeline->getPerVertexCapturedLayout().stride;
+	if (records > UINT32_MAX || !mvkCanEncodePerVertexDraw(uint32_t(records), 1, stride, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, getMetalFeatures().maxMTLBufferSize)) {
+		return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "PerVertex TES draw exceeds its capture or replay buffer limits.");
+	}
+	MVKPerVertexScratchRequest request = {NSUInteger(records * stride), NSUInteger(records * 2 * sizeof(uint32_t)), NSUInteger(records * sizeof(uint32_t)), _recordedPerVertexPipeline->usesPortableBarycentrics() ? NSUInteger(records * sizeof(uint32_t)) : 0};
+	const auto& limits = getDeviceProperties().limits;
+	// Invocation records, VS output, TCS vertex and patch output, float32 levels (outer[4], inner[2]),
+	// then the generator plan: status, replay arguments and constants, per-patch counts and offsets, patch indices.
+	uint64_t sizes[] = {patches ? 16 + records * 32 : 0, uint64_t(vertexCount) * 4 * limits.maxVertexOutputComponents, patches * 3 * 4 * limits.maxTessellationControlPerVertexOutputComponents, patches * 4 * limits.maxTessellationControlPerPatchOutputComponents, patches * 6 * sizeof(float), patches ? mvkPerVertexTessPlanSize(patches) : 0};
+	for (size_t i = 0; i < std::size(sizes); ++i) {
+		if (sizes[i] > getMetalFeatures().maxMTLBufferSize) { return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "PerVertex TES scratch exceeds Metal buffer limits."); }
+		request.tessSizes[i] = NSUInteger(sizes[i]);
+	}
+	size_t firstRequest = _perVertexScratchRequests.size();
+	try {
+		_perVertexScratchRequests.push_back(request);
+	} catch (const std::bad_alloc&) { return reportError(VK_ERROR_OUT_OF_HOST_MEMORY, "Portable PerVertexKHR scratch recording allocation failed."); }
+	return _immediateCmdEncoder ? reservePrefilledPerVertexScratch(firstRequest) : VK_SUCCESS;
+}
+
+VkResult MVKCommandBuffer::reservePrefilledPerVertexScratch(size_t firstRequest) {
+	try {
+		std::vector<MVKPerVertexScratchRequest> requests(_perVertexScratchRequests.begin() + firstRequest, _perVertexScratchRequests.end());
+		MVKPerVertexScratchReservations scratch;
+		VkResult result = reservePerVertexScratch(requests, scratch);
+		if (result != VK_SUCCESS) { return result; }
+		_prefilledPerVertexScratch.insert(_prefilledPerVertexScratch.end(), scratch.begin(), scratch.end());
+		return VK_SUCCESS;
+	} catch (const std::bad_alloc&) { return VK_ERROR_OUT_OF_HOST_MEMORY; }
+}
+
+VkResult MVKCommandBuffer::reservePerVertexScratch(MVKPerVertexScratchReservations& scratch, std::unordered_set<MVKCommandBuffer*>& prefilledExecutions) {
+	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
+	if (!wasConfigurationSuccessful()) { return getConfigurationResult(); }
+	if (_perVertexScratchRequests.empty()) { return VK_SUCCESS; }
+	// Prefilled buffers are consumed once. Do not consume them during preflight: a later
+	// batch can still fail, and the application must be able to retry the whole submit.
+	if (_prefilledMTLCmdBuffer && prefilledExecutions.insert(this).second) {
+		scratch = _prefilledPerVertexScratch;
+		return VK_SUCCESS;
+	}
+	return reservePerVertexScratch(_perVertexScratchRequests, scratch);
+}
+
+VkResult MVKCommandBuffer::reservePerVertexScratch(const std::vector<MVKPerVertexScratchRequest>& requests, MVKPerVertexScratchReservations& scratch) {
+	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
+	MVKPerVertexScratchReservations pending;
+	if (!mvkReservePerVertexScratch(getMTLDevice(), requests, pending)) {
+		VkResult result = _device->getConfigurationResult();
+		return result != VK_SUCCESS ? result : reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Portable PerVertexKHR scratch reservation failed.");
+	}
+	auto* pool = _commandPool->getCommandEncodingPool();
+	for (size_t i = 0; i < requests.size(); ++i) {
+		if (requests[i].indirectCapacity) {
+			id<MTLComputePipelineState> state = pool->getPerVertexIndirectMTLComputePipelineState();
+			VkResult result = _device->getConfigurationResult();
+			if (result != VK_SUCCESS) { return result; }
+			if (!state || !state.maxTotalThreadsPerThreadgroup || !state.threadExecutionWidth) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "Portable PerVertexKHR indirect planning pipeline is unavailable or has invalid dispatch limits."); }
+			pending[i]->indirectPipeline = [state retain];
+			if (!requests[i].restart) { continue; }
+			// The restart helper is prepared now; its scratch is reserved with the replay.
+			id<MTLComputePipelineState> restartState = pool->getPerVertexRestartMTLComputePipelineState();
+			result = _device->getConfigurationResult();
+			if (result != VK_SUCCESS) { return result; }
+			if (!restartState || !restartState.maxTotalThreadsPerThreadgroup || !restartState.threadExecutionWidth) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "Portable PerVertexKHR index helper pipeline is unavailable or has invalid dispatch limits."); }
+			pending[i]->indexPipeline = [restartState retain];
+			continue;
+		}
+		if (requests[i].tessSizes[5]) {
+			id<MTLComputePipelineState> state = pool->getPerVertexTessTopologyMTLComputePipelineState();
+			VkResult result = _device->getConfigurationResult();
+			if (result != VK_SUCCESS) { return result; }
+			if (!state || !state.maxTotalThreadsPerThreadgroup || !state.threadExecutionWidth) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "PerVertex TES topology pipeline is unavailable or has invalid dispatch limits."); }
+			pending[i]->tessTopologyPipeline = [state retain];
+			continue;
+		}
+		if (!requests[i].indexSize) { continue; }
+		// Secondary requests are flattened into the primary. Prepare in its pool
+		// and retain with scratch so encoding never compiles a helper after success.
+		id<MTLComputePipelineState> state = requests[i].restart ? pool->getPerVertexRestartMTLComputePipelineState() : pool->getConvertUint8IndicesMTLComputePipelineState(true);
+		VkResult result = _device->getConfigurationResult();
+		if (result != VK_SUCCESS) { return result; }
+		if (!state || !state.maxTotalThreadsPerThreadgroup || !state.threadExecutionWidth) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "Portable PerVertexKHR index helper pipeline is unavailable or has invalid dispatch limits."); }
+		pending[i]->indexPipeline = [state retain];
+		if (requests[i].widenUint8) {
+			id<MTLComputePipelineState> widen = pool->getConvertUint8IndicesMTLComputePipelineState(true);
+			result = _device->getConfigurationResult();
+			if (result != VK_SUCCESS) { return result; }
+			if (!widen || !widen.maxTotalThreadsPerThreadgroup || !widen.threadExecutionWidth) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "Portable PerVertexKHR uint8 helper pipeline is unavailable or has invalid dispatch limits."); }
+			pending[i]->widenUint8Pipeline = [widen retain];
+		}
+	}
+	VkResult result = _device->getConfigurationResult();
+	if (result != VK_SUCCESS) { return result; }
+	scratch = std::move(pending);
+	return VK_SUCCESS;
 }
 
 // Track whether a stage-based timestamp command has been added, so we know
@@ -402,8 +681,28 @@ void MVKCommandBuffer::recordTimestampCommand() {
 #pragma mark -
 #pragma mark Tessellation constituent command management
 
+// Compute binds preserve the graphics pipeline used to validate recorded draws.
+bool MVKCommandBuffer::recordedGraphicsPipelineUsesPerVertexTessEval() const { return _recordedPerVertexPipeline && _recordedPerVertexPipeline->usesPerVertexTessEval(); }
+
 void MVKCommandBuffer::recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline) {
 	_lastTessellationPipeline = mvkBindPipeline->isTessellationPipeline() ? mvkBindPipeline : nullptr;
+	if (auto* graphics = mvkBindPipeline->getGraphicsPipeline()) {
+		_recordedPerVertexPipeline = graphics->usesPerVertexInputBuffer() ? graphics : nullptr;
+		bool ordinaryTessellation = graphics->isTessellationPipeline() && !graphics->usesPerVertexTessEval() && !graphics->usesPerVertexInputBuffer();
+		_recordedTessellationPipeline = ordinaryTessellation ? graphics : nullptr;
+		_recordedMeshPipeline = graphics->isMeshPipeline() ? graphics : nullptr;
+	}
+}
+
+VkPrimitiveTopology MVKCommandBuffer::getRecordedPerVertexTopology() const {
+	bool dynamic = _recordedPerVertexPipeline->getDynamicStateFlags().has(MVKRenderStateFlag::PrimitiveTopology);
+	return dynamic ? _recordedPrimitiveTopology : _recordedPerVertexPipeline->getVkPrimitiveTopology();
+}
+
+uint32_t MVKCommandBuffer::getRecordedPatchControlPoints() const {
+	if (!_recordedTessellationPipeline) { return 0; }
+	bool dynamic = _recordedTessellationPipeline->getDynamicStateFlags().has(MVKRenderStateFlag::PatchControlPoints);
+	return dynamic ? _recordedPatchControlPoints : _recordedTessellationPipeline->getStaticStateData().patchControlPoints;
 }
 
 
@@ -449,7 +748,7 @@ void MVKCommandEncoder::encodeCommands(MVKCommand* command) {
 }
 
 void MVKCommandEncoder::encodeCommandsImpl(MVKCommand* command) {
-    while(command) {
+    while(command && !_isEncodingStopped) {
         uint32_t prevMVPassIdx = _multiviewPassIndex;
         command->encode(this);
 
@@ -472,10 +771,81 @@ void MVKCommandEncoder::endEncoding() {
 void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
 	secondaryCmdBuffer->beginSecondaryEncoding(this);
 	MVKCommand* cmd = secondaryCmdBuffer->_head;
-	while (cmd) {
+	while (cmd && !_isEncodingStopped) {
 		cmd->encode(this);
 		cmd = cmd->_next;
 	}
+}
+
+bool MVKCommandEncoder::awaitEncodedWork() {
+	endCurrentMetalEncoding();
+	auto* submission = _pEncodingContext->submission;
+	if (submission) {
+		for (size_t i = 0; i < _commandBufferDebugGroups.size(); ++i) { [_mtlCmdBuffer popDebugGroup]; }
+		// Released by a completed handler of the committed Metal command buffer.
+		_stageCountersMTLFence = nil;
+		_mtlCmdBuffer = submission->continueOnNewMTLCommandBuffer();
+	} else {
+		_mtlCmdBuffer = nil;
+	}
+	if ( !_mtlCmdBuffer ) {
+		_isEncodingStopped = true;
+		return false;
+	}
+	_cmdBuffer->setMetalObjectLabel(_mtlCmdBuffer, _cmdBuffer->_debugName);
+	for (NSString* name : _commandBufferDebugGroups) { [_mtlCmdBuffer pushDebugGroup: name]; }
+	return true;
+}
+
+void MVKCommandEncoder::pushCommandBufferDebugGroup(NSString* name) {
+	[_mtlCmdBuffer pushDebugGroup: name];
+	_commandBufferDebugGroups.push_back([name retain]);
+}
+
+void MVKCommandEncoder::popCommandBufferDebugGroup() {
+	[_mtlCmdBuffer popDebugGroup];
+	if (_commandBufferDebugGroups.empty()) { return; }
+	[_commandBufferDebugGroups.back() release];
+	_commandBufferDebugGroups.pop_back();
+}
+
+const char* MVKCommandEncoder::getIndexedPerVertexAttachmentError() {
+	if (!isInRenderPass()) { return "indexed compute capture requires known rendering attachments."; }
+	if (const char* error = getSubpass()->getPerVertexResolveError()) { return error; }
+	// These are the begin-render-pass views, including imageless and dynamic rendering attachments.
+	// An empty list in an active render pass is valid; there is no image content to preserve.
+	for (auto* attachment : _attachments) {
+		if (attachment && attachment->getImage()->getMTLStorageMode() == MTLStorageModeMemoryless) { return "indexed compute capture cannot preserve memoryless attachments."; }
+	}
+	return nullptr;
+}
+
+MVKPerVertexScratch* MVKCommandEncoder::nextPerVertexScratch() {
+	auto* reservations = _pEncodingContext->perVertexScratch;
+	size_t first = _pEncodingContext->nextPerVertexScratch;
+	uint32_t passCount = std::max(getSubpass()->getMultiviewMetalPassCount(), 1u);
+	if (!reservations || first > reservations->size() || passCount > reservations->size() - first || _multiviewPassIndex >= passCount) {
+		// The draw cannot be encoded: lose the device rather than complete the submission without it.
+		_cmdBuffer->setConfigurationResult(_cmdBuffer->reportError(VK_ERROR_INITIALIZATION_FAILED, "Portable PerVertexKHR draw has no scratch reservation."));
+		getDevice()->markLost();
+		stopEncoding();
+		return nullptr;
+	}
+	_lastPerVertexScratch = (*reservations)[first + _multiviewPassIndex];
+	_pEncodingContext->nextPerVertexScratch += passCount;
+	keepPerVertexScratchResident();
+	return _lastPerVertexScratch.get();
+}
+
+void MVKCommandEncoder::keepPerVertexScratchResident() {
+	auto scratch = _lastPerVertexScratch;
+	auto* device = getDevice();
+	for (auto buffer : scratch->buffers) { if (buffer) { device->makeResident(buffer); } }
+	// This also protects buffers encoded with unretained Metal command buffers and
+	// prefills that outlive their Vulkan command buffer's recorded command list.
+	device->addMTLCommandBufferHandler(_mtlCmdBuffer, ^(id<MTLCommandBuffer>) {
+		for (auto buffer : scratch->buffers) { if (buffer) { device->removeResidency(buffer); } }
+	});
 }
 
 void MVKCommandEncoder::beginRendering(MVKCommand* rendCmd, const VkRenderingInfo* pRenderingInfo) {
@@ -575,6 +945,7 @@ void MVKCommandEncoder::setSubpass(MVKCommand* subpassCmd,
 	if (renderPass) { renderPass->encodeSubpassDependencyBarriers(this, subpassIndex); }
 
 	_lastMultiviewPassCmd = subpassCmd;
+	_firstSubpassPerVertexScratch = _pEncodingContext->nextPerVertexScratch;
 	_subpassContents = subpassContents;
 	_renderSubpassIndex = subpassIndex;
 	_multiviewPassIndex = 0;
@@ -590,6 +961,7 @@ bool MVKCommandEncoder::hasMoreMultiviewPasses() { return _multiviewPassIndex + 
 void MVKCommandEncoder::beginNextMultiviewPass() {
 	encodeStoreActions();
 	_multiviewPassIndex++;
+	_pEncodingContext->nextPerVertexScratch = _firstSubpassPerVertexScratch;
 	beginMetalRenderPass(kMVKCommandUseNextSubpass);
 }
 
@@ -1195,7 +1567,7 @@ void MVKCommandEncoder::setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder,
 // Return the MTLBuffer allocation to the pool once the command buffer is done with it
 const MVKMTLBufferAllocation* MVKCommandEncoder::getTempMTLBuffer(NSUInteger length, bool isPrivate, bool isDedicated) {
     MVKMTLBufferAllocation* mtlBuffAlloc = getCommandEncodingPool()->acquireMTLBufferAllocation(length, isPrivate, isDedicated);
-    [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mcb) { mtlBuffAlloc->returnToPool(); }];
+    getDevice()->addMTLCommandBufferHandler(_mtlCmdBuffer, ^(id<MTLCommandBuffer> mcb) { mtlBuffAlloc->returnToPool(); });
     return mtlBuffAlloc;
 }
 
@@ -1313,7 +1685,7 @@ id<MTLFence> MVKCommandEncoder::getStageCountersMTLFence() {
 		// Create MTLFence as local ref and pass to completion handler
 		// block to release once MTLCommandBuffer no longer needs it.
 		id<MTLFence> mtlFence = [getMTLDevice() newFence];
-		[_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mcb) { [mtlFence release]; }];
+		getDevice()->addMTLCommandBufferHandler(_mtlCmdBuffer, ^(id<MTLCommandBuffer> mcb) { [mtlFence release]; });
 
 		_stageCountersMTLFence = mtlFence;		// retained
 	}
@@ -1345,14 +1717,22 @@ void MVKCommandEncoder::finishQueries() {
     if ( !_pActivatedQueries ) { return; }
 
     MVKActivatedQueries* pAQs = _pActivatedQueries;
-    [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
+    _pActivatedQueries = nullptr;
+    // After a failed continuation, no Metal command buffer remains to complete the queries.
+    if ( !_mtlCmdBuffer ) {
+        for (auto& qryPair : *pAQs) { qryPair.first->release(); }
+        delete pAQs;
+        return;
+    }
+    getDevice()->addMTLCommandBufferHandler(_mtlCmdBuffer, ^(id<MTLCommandBuffer> mtlCmdBuff) {
+        // An abandoned command buffer never ran its queries.
+        bool ran = mtlCmdBuff.status != MTLCommandBufferStatusNotEnqueued;
         for (auto& qryPair : *pAQs) {
-            qryPair.first->finishQueries(qryPair.second.contents());
+            if (ran) { qryPair.first->finishQueries(qryPair.second.contents()); }
             qryPair.first->release();
         }
         delete pAQs;
-    }];
-    _pActivatedQueries = nullptr;
+    });
 }
 
 
@@ -1377,6 +1757,7 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer, MVKPrefillMeta
 }
 
 MVKCommandEncoder::~MVKCommandEncoder() {
+	for (NSString* name : _commandBufferDebugGroups) { [name release]; }
 	[_mtlRenderEncoder release];
 	[_mtlComputeEncoder release];
 	[_mtlBlitEncoder release];

@@ -19,6 +19,7 @@
 #include "MVKCommandEncodingPool.h"
 #include "MVKCommandPool.h"
 #include "MVKImage.h"
+#include "MVKPerVertexReplay.h"
 
 using namespace std;
 
@@ -168,8 +169,53 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getAccumulateOcclusionQueryR
 	MVK_ENC_REZ_ACCESS(_mtlAccumOcclusionQueryResultsComputePipelineState, newAccumulateOcclusionQueryResultsMTLComputePipelineState(_commandPool));
 }
 
-id<MTLComputePipelineState> MVKCommandEncodingPool::getConvertUint8IndicesMTLComputePipelineState() {
-	MVK_ENC_REZ_ACCESS(_mtlConvertUint8IndicesComputePipelineState, newConvertUint8IndicesMTLComputePipelineState(_commandPool));
+id<MTLComputePipelineState> MVKCommandEncodingPool::getConvertUint8IndicesMTLComputePipelineState(bool preserveValues) {
+	// Preflight can overlap encoding on another queue. Synchronize warm reads too.
+	lock_guard<mutex> lock(_lock);
+	auto& state = _mtlConvertUint8IndicesComputePipelineState[preserveValues];
+	if (!state) { state = _commandPool->getDevice()->getCommandResourceFactory()->newConvertUint8IndicesMTLComputePipelineState(_commandPool, preserveValues); }
+	return state;
+}
+
+id<MTLComputePipelineState> MVKCommandEncodingPool::getPerVertexRestartMTLComputePipelineState() {
+	lock_guard<mutex> lock(_lock);
+	if (!_mtlPerVertexRestartComputePipelineState) { _mtlPerVertexRestartComputePipelineState = _commandPool->getDevice()->getCommandResourceFactory()->newPerVertexRestartMTLComputePipelineState(_commandPool); }
+	return _mtlPerVertexRestartComputePipelineState;
+}
+
+id<MTLComputePipelineState> MVKCommandEncodingPool::getPerVertexIndirectMTLComputePipelineState() {
+	lock_guard<mutex> lock(_lock);
+	if (!_mtlPerVertexIndirectComputePipelineState) { _mtlPerVertexIndirectComputePipelineState = _commandPool->getDevice()->getCommandResourceFactory()->newPerVertexIndirectMTLComputePipelineState(_commandPool); }
+	return _mtlPerVertexIndirectComputePipelineState;
+}
+
+id<MTLComputePipelineState> MVKCommandEncodingPool::getPerVertexTessTopologyMTLComputePipelineState() {
+	lock_guard<mutex> lock(_lock);
+	if (!_mtlPerVertexTessTopologyComputePipelineState) { _mtlPerVertexTessTopologyComputePipelineState = _commandPool->getDevice()->getCommandResourceFactory()->newPerVertexTessTopologyMTLComputePipelineState(_commandPool); }
+	return _mtlPerVertexTessTopologyComputePipelineState;
+}
+
+MVKPerVertexReplayTables MVKCommandEncodingPool::getPerVertexReplayTables(VkPrimitiveTopology topology, bool provokingLast, uint32_t vertexCount) {
+	lock_guard<mutex> lock(_lock);
+	auto& entry = _perVertexReplayTables[uint32_t(topology) * 2 + provokingLast];
+	if (entry.second.pairs && entry.first >= vertexCount) { return entry.second; }
+	uint32_t capacity = mvkPerVertexSharedReplayVertexCount(vertexCount);
+	uint64_t primitives = std::max<uint64_t>(mvkPerVertexPrimitiveCount(capacity, topology), 1);
+	uint64_t occurrences = primitives * mvkPerVertexReplayVertexCount(topology);
+	if (!occurrences || occurrences * 8 > _commandPool->getMetalFeatures().maxMTLBufferSize || primitives * 12 > _commandPool->getMetalFeatures().maxMTLBufferSize) { return {}; }
+	id<MTLDevice> mtlDev = _commandPool->getMTLDevice();
+	MVKPerVertexReplayTables tables = {[mtlDev newBufferWithLength: occurrences * 8 options: MTLResourceStorageModeShared],
+									   [mtlDev newBufferWithLength: primitives * 12 options: MTLResourceStorageModeShared],
+									   [mtlDev newBufferWithLength: occurrences * 4 options: MTLResourceStorageModeShared]};
+	auto* mvkDev = _commandPool->getDevice();
+	for (id<MTLBuffer> buffer : {tables.pairs, tables.indices, tables.corners}) {
+		if (buffer) { mvkDev->makeResident(buffer); _perVertexReplayBuffers.push_back(buffer); }
+	}
+	if (!tables.pairs.contents || !tables.indices.contents || !tables.corners.contents) { return {}; }
+	mvkPopulatePerVertexReplay(capacity, 1, topology, provokingLast, (uint32_t*)tables.pairs.contents, (uint32_t*)tables.indices.contents, (uint32_t*)tables.corners.contents);
+	// Keep superseded tables resident until pool destruction because pending command buffers may still read them.
+	entry = {capacity, tables};
+	return tables;
 }
 
 void MVKCommandEncodingPool::clear() {
@@ -270,6 +316,11 @@ void MVKCommandEncodingPool::destroyMetalResources() {
     [_mtlAccumOcclusionQueryResultsComputePipelineState release];
     _mtlAccumOcclusionQueryResultsComputePipelineState = nil;
 
-    [_mtlConvertUint8IndicesComputePipelineState release];
-    _mtlConvertUint8IndicesComputePipelineState = nil;
+	[_mtlPerVertexRestartComputePipelineState release]; _mtlPerVertexRestartComputePipelineState = nil;
+	[_mtlPerVertexIndirectComputePipelineState release]; _mtlPerVertexIndirectComputePipelineState = nil;
+	[_mtlPerVertexTessTopologyComputePipelineState release]; _mtlPerVertexTessTopologyComputePipelineState = nil;
+    for (auto& state : _mtlConvertUint8IndicesComputePipelineState) { [state release]; state = nil; }
+	for (id<MTLBuffer> buffer : _perVertexReplayBuffers) { mvkDev->removeResidency(buffer); [buffer release]; }
+	_perVertexReplayBuffers.clear();
+	_perVertexReplayTables.clear();
 }
