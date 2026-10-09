@@ -1237,9 +1237,9 @@ uint32_t mvkGetNextViewMaskGroup(uint32_t viewMask, uint32_t* startView, uint32_
 	// This is one past the end of the next clump. Clear the bits as we go, so we can use
 	// ffs(3) again on the next clump.
 	// TODO: Find a way to make this faster.
-	while (viewMask & (1 << end)) {
-		if (groupMask) { *groupMask |= viewMask & (1 << end); }
-		viewMask &= ~(1 << (end++));
+	while (viewMask && (viewMask & (1u << end))) {
+		if (groupMask) { *groupMask |= viewMask & (1u << end); }
+		viewMask &= ~(1u << (end++));
 	}
 	if (startView) { *startView = pos; }
 	if (viewCount) { *viewCount = end - pos; }
