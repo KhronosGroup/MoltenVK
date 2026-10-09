@@ -132,3 +132,9 @@ MVK_CACHE_LIBRARY=<library> MVK_CACHE_ARCH=arm64 MVK_CACHE_CROSS_SOURCE=<SPIRV-C
   cross the boundary.
 - The `build/spirv-cross` directory of the library build above holds suitable uninstrumented libraries for the other
   scripts.
+
+## Shared replay tables
+
+The experimental capture/replay path reuses immutable replay tables per command encoding pool, topology and provoking mode. Single-instance draws and complete instanced lists may share a larger table prefix; primitive restart, instanced strips/fans and incomplete lists retain per-draw tables. Superseded buffers stay alive until pool destruction so previously encoded work remains valid. Allocation failure uses the per-draw path.
+
+Run `bash MoltenVK/Tests/run-pervertex-shared-replay-tests.sh <output>` for the CPU prefix and admission checks under ASan/UBSan. This does not enable the experimental path or add a configuration setting. Pipelines needing depth clip emulation remain outside the pinned replay compiler's supported scope and are refused explicitly.

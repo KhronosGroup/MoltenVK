@@ -55,6 +55,7 @@ int main() {
 		scr.entryPoint.fpFastMathFlags = 17;
 		scr.specializationMacros.emplace(7, MSLSpecializationMacroInfo{"testMacro", true, false});
 		scr.needsPerVertexInputBuffer = true;
+		scr.needsDepthClipStateBuffer = true;
 		scr.capturedVertexLayout = layout;
 		std::stringstream bytes;
 		{ cereal::BinaryOutputArchive output(bytes); output(cfg, scr); }
@@ -68,6 +69,7 @@ int main() {
 		check(binding.vertex_buffer_index == 28 && binding.primitive_index_buffer_index == 29 && binding.primitive_index_location == 15, "cfg binding fields lost");
 		check(cfg.matches(restoredCfg) && restoredCfg.matches(cfg), "cfg round-trip changed cache identity");
 		check(restoredScr.needsPerVertexInputBuffer, "scr.needsPerVertexInputBuffer lost");
+		check(restoredScr.needsDepthClipStateBuffer, "scr.needsDepthClipStateBuffer lost");
 		checkLayout(restoredScr.capturedVertexLayout, layout, "scr.capturedVertexLayout user/builtin fields lost");
 		check(restoredScr.entryPoint.mtlFunctionName == "cacheRoundTrip" && restoredScr.entryPoint.fpFastMathFlags == 17 && restoredScr.specializationMacros.at(7).name == "testMacro", "scr surrounding metadata lost");
 		check(bytes.peek() == std::char_traits<char>::eof(), "Archive not fully consumed");

@@ -233,6 +233,15 @@ int main(int argc, char** argv) {
 		check(pointSource.find("[[point_size]]") != std::string::npos, "Replay lost PointSize raster attribute");
 		check(pointSource.find("spvReplayCorners[spvReplayOccurrence]") != std::string::npos, "Point replay lost corner basis");
 		std::ofstream(directory + "/point-replay.metal") << pointSource;
+		// The replay API cannot reproduce the depth transform; it must refuse it instead of ignoring the option.
+		CompilerMSL depthClipReplay(pointProducer);
+		auto depthClipOptions = pointOptions;
+		depthClipOptions.emulate_depth_clip_enable = true;
+		depthClipReplay.set_msl_options(depthClipOptions);
+		bool depthClipRefused = false;
+		try { depthClipReplay.compile_captured_output_replay(pointLayout, {0, 1, 2, 1}, {3, 2, 3}); }
+		catch (const CompilerError&) { depthClipRefused = true; }
+		check(depthClipRefused, "Replay silently accepted unsupported depth clip emulation");
 		auto explicitOnly = readSPIRV(directory + "/explicit-only.spv");
 		std::vector<SPIRVShaderInterfaceVariable> inputs;
 		std::string error;
