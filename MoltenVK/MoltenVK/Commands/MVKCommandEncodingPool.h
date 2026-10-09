@@ -22,11 +22,15 @@
 #include "MVKMTLBufferAllocation.h"
 #include <unordered_map>
 #include <mutex>
+#include <vector>
 
 #import <Metal/Metal.h>
 
 
 class MVKCommandPool;
+
+/** Replay tables shared by the single-instance portable PerVertexKHR draws of a topology. Immutable once returned. */
+struct MVKPerVertexReplayTables { id<MTLBuffer> pairs = nil; id<MTLBuffer> indices = nil; id<MTLBuffer> corners = nil; };
 
 
 #pragma mark -
@@ -149,6 +153,9 @@ public:
 	/** Returns the GPU topology generator for portable PerVertexKHR tessellation. */
 	id<MTLComputePipelineState> getPerVertexTessTopologyMTLComputePipelineState();
 
+	/** Returns resident replay tables covering vertexCount single-instance vertices, or nil buffers if allocation fails. */
+	MVKPerVertexReplayTables getPerVertexReplayTables(VkPrimitiveTopology topology, bool provokingLast, uint32_t vertexCount);
+
 	/** Returns a compute pipeline state that classifies float32 TCS levels into Metal half tessellation factors. */
 
 	/** Deletes all the internal resources. */
@@ -196,4 +203,6 @@ protected:
 	id<MTLComputePipelineState> _mtlPerVertexIndirectComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlPerVertexTessTopologyComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlConvertUint8IndicesComputePipelineState[2] = {nil, nil};
+	std::unordered_map<uint32_t, std::pair<uint32_t, MVKPerVertexReplayTables>> _perVertexReplayTables;
+	std::vector<id<MTLBuffer>> _perVertexReplayBuffers;
 };

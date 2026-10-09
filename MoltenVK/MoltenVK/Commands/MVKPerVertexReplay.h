@@ -112,6 +112,24 @@ static inline void mvkPopulatePerVertexReplay(uint32_t vertexCount, uint32_t ins
 	}
 }
 
+// Without GPU restart assembly, the replay tables of a single-instance draw do not depend on its vertex count: the
+// tables populated for a larger count begin with those of every smaller count. Instanced list draws without dangling
+// vertices are the single-instance draw of vertexCount * instanceCount vertices. One table per topology and provoking
+// mode then serves all these draws; the caller requests vertexCount * instanceCount vertices.
+static inline bool mvkPerVertexReplayIsSizeIndependent(bool restart, VkPrimitiveTopology topology, uint32_t vertexCount, uint32_t instanceCount) {
+	if (restart || uint64_t(vertexCount) * instanceCount > UINT32_MAX) { return false; }
+	if (instanceCount == 1) { return true; }
+	bool list = topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST || topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST || topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	return list && vertexCount % mvkPerVertexReplayVertexCount(topology) == 0;
+}
+
+// Shared tables grow in powers of two, so each is rebuilt O(log n) times.
+static inline uint32_t mvkPerVertexSharedReplayVertexCount(uint32_t vertexCount) {
+	uint64_t capacity = 1024;
+	while (capacity < vertexCount) { capacity *= 2; }
+	return uint32_t(std::min<uint64_t>(capacity, UINT32_MAX));
+}
+
 // Reserve whole locations: a private float3 must not share an application's Component lanes.
 static inline uint32_t mvkAllocatePerVertexVaryingLocation(std::unordered_set<uint32_t>& locations, uint32_t maxLocations) {
 	for (uint32_t location = 0; location < maxLocations; ++location) {

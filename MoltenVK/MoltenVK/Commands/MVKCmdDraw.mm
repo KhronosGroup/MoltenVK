@@ -336,17 +336,24 @@ static void encodePerVertexInput(MVKCommandEncoder* cmdEncoder, MVKGraphicsPipel
 		if (!pipeline->hasValidMTLPipelineStates()) { return; }
 		encoder = cmdEncoder->_mtlRenderEncoder;
 	}
-	auto* pairs = (uint32_t*)occurrences.contents;
-	auto* indices = (uint32_t*)primitiveIndices.contents;
-	auto* corners = (uint32_t*)scratch->buffers[4].contents;
-	if (!restart) { mvkPopulatePerVertexReplay(vertexCount, instanceCount, topology, provokingLast, pairs, indices, corners); }
+	id<MTLBuffer> corners = scratch->buffers[4];
+	MVKPerVertexReplayTables shared;
+	if (mvkPerVertexReplayIsSizeIndependent(restart, topology, vertexCount, instanceCount)) { shared = cmdEncoder->getCommandEncodingPool()->getPerVertexReplayTables(topology, provokingLast, vertexCount * instanceCount); }
+	if (shared.pairs) {
+		// This draw's tables are a prefix of the shared ones: no per-draw CPU population.
+		occurrences = shared.pairs;
+		primitiveIndices = shared.indices;
+		if (corners) { corners = shared.corners; }
+	} else if (!restart) {
+		mvkPopulatePerVertexReplay(vertexCount, instanceCount, topology, provokingLast, (uint32_t*)occurrences.contents, (uint32_t*)primitiveIndices.contents, (uint32_t*)corners.contents);
+	}
 	const auto& replay = pipeline->getPerVertexReplayBinding();
 	const auto& fragment = pipeline->getPerVertexInputBinding();
 	uint32_t replayDraw[] = {0, 0, firstInstance, uint32_t(replayCount)};
 	[encoder setRenderPipelineState: pipeline->getMainPipelineState()];
 	metalState.bindVertexBuffer(encoder, captured, 0, replay.vertex_buffer_index);
 	metalState.bindVertexBuffer(encoder, occurrences, 0, replay.occurrence_buffer_index);
-	if (corners) { metalState.bindVertexBuffer(encoder, scratch->buffers[4], 0, pipeline->getPerVertexReplayBarycentricBinding().corner_buffer_index); }
+	if (corners) { metalState.bindVertexBuffer(encoder, corners, 0, pipeline->getPerVertexReplayBarycentricBinding().corner_buffer_index); }
 	if (restart) { metalState.bindVertexBuffer(encoder, scratch->buffers[6], 256, replay.draw_parameters_buffer_index); }
 	else { metalState.bindVertexBytes(encoder, replayDraw, sizeof(replayDraw), replay.draw_parameters_buffer_index); }
 	if (fragment.vertex_buffer_index != ~0u) {
