@@ -345,6 +345,8 @@ static void encodePerVertexInput(MVKCommandEncoder* cmdEncoder, MVKGraphicsPipel
 		primitiveIndices = shared.indices;
 		if (corners) { corners = shared.corners; }
 	} else if (!restart) {
+		uint64_t occurrenceCount = primitiveCount * replayVertices;
+		if (occurrences.length < occurrenceCount * 2 * sizeof(uint32_t) || primitiveIndices.length < primitiveCount * 3 * sizeof(uint32_t) || (corners && corners.length < occurrenceCount * sizeof(uint32_t))) { reject(VK_ERROR_OUT_OF_DEVICE_MEMORY, "replay table scratch is too small."); return; }
 		mvkPopulatePerVertexReplay(vertexCount, instanceCount, topology, provokingLast, (uint32_t*)occurrences.contents, (uint32_t*)primitiveIndices.contents, (uint32_t*)corners.contents);
 	}
 	const auto& replay = pipeline->getPerVertexReplayBinding();
@@ -431,7 +433,9 @@ static void encodePerVertexTessEval(MVKCommandEncoder* cmdEncoder, MVKGraphicsPi
 	// Classify patches from the written levels, prefix their triangle counts, then emit ordered corner records.
 	float maxLevel = float(cmdEncoder->getDeviceProperties().limits.maxTessellationGenerationLevel);
 	uint32_t primitiveIds = uint32_t(mvkPerVertexTessPrimitiveIdOffset(patches));
-	uint32_t params[] = {patches, *(uint32_t*)&maxLevel, uint32_t(pipeline->perVertexTessReversesCorners()), uint32_t(scratch->buffers[4] != nil), 0, primitiveIds / 4};
+	uint32_t maxLevelBits;
+	memcpy(&maxLevelBits, &maxLevel, sizeof(maxLevelBits));
+	uint32_t params[] = {patches, maxLevelBits, uint32_t(pipeline->perVertexTessReversesCorners()), uint32_t(scratch->buffers[4] != nil), 0, primitiveIds / 4};
 	NSUInteger width = std::min(topology.threadExecutionWidth, topology.maxTotalThreadsPerThreadgroup);
 	computeState.bindPipeline(compute, topology);
 	computeState.bindBuffer(compute, levels, 0, 0);
