@@ -415,6 +415,20 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration
 	return mvkLib ? mvkLib->getMTLFunction(pSpecializationInfo, pShaderFeedback, this) : MVKMTLFunctionNull;
 }
 
+bool MVKShaderModule::getShaderInterfaceVariables(spv::StorageClass storage, spv::ExecutionModel model, const string& entryName,
+												  MVKSmallVector<SPIRVShaderInterfaceVariable, 32>& vars, string& errorLog) {
+	lock_guard<mutex> lock(_accessLock);
+	auto key = make_tuple(storage, model, entryName);
+	auto iter = _interfaceVariables.find(key);
+	if (iter == _interfaceVariables.end()) {
+		MVKSmallVector<SPIRVShaderInterfaceVariable, 32> reflectedVars;
+		if ( !mvk::getShaderInterfaceVariables(getSPIRV(), storage, model, entryName, reflectedVars, errorLog) ) { return false; }
+		iter = _interfaceVariables.emplace(key, std::move(reflectedVars)).first;
+	}
+	vars.assign(iter->second.begin(), iter->second.end());
+	return true;
+}
+
 bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
 							  SPIRVToMSLConversionResult& conversionResult) {
 	const auto& mvkCfg = getMVKConfig();
