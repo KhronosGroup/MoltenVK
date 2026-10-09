@@ -1983,7 +1983,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 		shaderConfig.options.mslOptions.indirect_params_buffer_index = implicit[MVKImplicitBuffer::IndirectParams];
 	}
 	setEmulatedReversedDepthViewportConfig(shaderConfig, implicit, !_usesPerVertexInputBuffer && getPhysicalDevice()->shouldEmulateReversedDepthViewport());
-	setDepthClipConfig(shaderConfig, implicit, !_usesPerVertexInputBuffer && _isRasterizing && isPossibleBothDepthClipClamp(_dynamicStateFlags, _staticStateData, false));
+	setDepthClipConfig(shaderConfig, implicit, _isRasterizing && isPossibleBothDepthClipClamp(_dynamicStateFlags, _staticStateData, false));
 	addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
 
 	// Capture raw Vulkan outputs; replay applies reversed-depth, clip-space and Y fixups exactly once.
