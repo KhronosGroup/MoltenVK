@@ -30,6 +30,7 @@
 #include <shared_mutex>
 #include <string>
 #include <mutex>
+#include <unordered_map>
 #include <os/lock.h>
 
 #import <Metal/Metal.h>
@@ -999,6 +1000,12 @@ public:
 	}
 #endif
 
+	/** Makes the texture of a CAMetalDrawable resident while a swapchain image holds it. */
+	void makeDrawableTextureResident(id<MTLTexture> mtlTexture);
+
+	/** Removes the texture of a CAMetalDrawable from the residency set when no swapchain image holds it anymore. */
+	void removeDrawableTextureResidency(id<MTLTexture> mtlTexture);
+
 	void addResidencySet(id<MTLCommandQueue> queue) {
 #if MVK_XCODE_16
 		if (_residencySet) [queue addResidencySet:_residencySet];
@@ -1114,6 +1121,8 @@ protected:
 #if MVK_XCODE_16
 	id<MTLResidencySet> _residencySet = nil;
 #endif
+	std::unordered_map<id<MTLTexture>, uint32_t> _residentDrawableTextures;
+	std::mutex _residentDrawableTexturesLock;
 	uint32_t _visibilityBufferCount = 0;
 	int _capturePipeFileDesc = -1;
 	bool _isPerformanceTracking = false;

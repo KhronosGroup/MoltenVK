@@ -5161,6 +5161,22 @@ void* MVKDevice::getResourceIdFromHandle(const VkMemoryGetMetalHandleInfoEXT* pG
 	return handle;
 }
 
+// MoltenVK does not allocate the textures of the CAMetalDrawables, so they must be added to the residency set while
+// a swapchain image holds them, in case the app accesses them through a descriptor set. CAMetalLayer recycles its
+// textures, also across the swapchains that replace each other on the same layer, so count the images that hold each one.
+void MVKDevice::makeDrawableTextureResident(id<MTLTexture> mtlTexture) {
+	lock_guard<mutex> lock(_residentDrawableTexturesLock);
+	if (_residentDrawableTextures[mtlTexture]++ == 0) { makeResident(mtlTexture); }
+}
+
+void MVKDevice::removeDrawableTextureResidency(id<MTLTexture> mtlTexture) {
+	lock_guard<mutex> lock(_residentDrawableTexturesLock);
+	auto iter = _residentDrawableTextures.find(mtlTexture);
+	if (iter != _residentDrawableTextures.end() && --iter->second == 0) {
+		removeResidency(mtlTexture);
+		_residentDrawableTextures.erase(iter);
+	}
+}
 
 #pragma mark Construction
 

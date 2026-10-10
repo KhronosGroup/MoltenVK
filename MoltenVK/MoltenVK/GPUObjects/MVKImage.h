@@ -507,6 +507,7 @@ protected:
 	MVKSwapchainSignaler getPresentationSignaler();
 
 	id<CAMetalDrawable> _mtlDrawable = nil;
+	id<MTLTexture> _residentDrawableTexture = nil;
 	id<MTLTexture> _mtlTextureHeadless = nil;
 	MVKSwapchainImageAvailability _availability;
 	MVKSmallVector<MVKSwapchainSignaler, 1> _availabilitySignalers;

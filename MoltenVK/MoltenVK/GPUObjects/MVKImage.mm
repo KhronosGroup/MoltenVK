@@ -1633,6 +1633,9 @@ id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
 				setConfigurationResult(reportError(VK_ERROR_OUT_OF_DATE_KHR, "CAMetalDrawable with valid format could not be acquired after %d attempts.", attemptCnt));
 			} else if ( !_mtlDrawable ) {
 				setConfigurationResult(reportError(VK_ERROR_OUT_OF_POOL_MEMORY, "CAMetalDrawable could not be acquired after %d attempts.", attemptCnt));
+			} else {
+				_residentDrawableTexture = _mtlDrawable.texture;
+				getDevice()->makeDrawableTextureResident(_residentDrawableTexture);
 			}
 		}
 	}
@@ -1769,6 +1772,10 @@ void MVKPresentableSwapchainImage::endPresentation(const MVKImagePresentInfo& pr
 
 // Releases the CAMetalDrawable underlying this image.
 void MVKPresentableSwapchainImage::releaseMetalDrawable() {
+	if (_residentDrawableTexture) {
+		getDevice()->removeDrawableTextureResidency(_residentDrawableTexture);
+		_residentDrawableTexture = nil;
+	}
     [_mtlDrawable release];
 	_mtlDrawable = nil;
 }
