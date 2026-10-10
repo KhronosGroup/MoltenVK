@@ -160,6 +160,7 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdUse) {
 		[mtlCmdBuff commit];
 		[mtlCmdBuff waitUntilCompleted];
 	}
+	_device->flushResidencyRemovalsIfIdle();
 	return _device->getConfigurationResult();
 }
 
@@ -546,8 +547,10 @@ VkResult MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool sign
 	_activeMTLCommandBuffer = nil;
 
 	uint64_t startTime = getPerformanceTimestamp();
+	uint64_t residencySeq = mtlCmdBuff ? getDevice()->trackResidencyCmdBufCommit() : 0;
 	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) {
 		addPerformanceInterval(getPerformanceStats().queue.mtlCommandBufferExecution, startTime);
+		getDevice()->residencyCmdBufCompleted(residencySeq);
 		if (signalCompletion) { this->finish(); }	// Must be the last thing the completetion callback does.
 	}];
 
@@ -743,7 +746,12 @@ VkResult MVKQueuePresentSurfaceSubmission::execute() {
 	// Retrieve the result first, because finish() will destroy this instance.
 	VkResult rslt = getConfigurationResult();
 	if (mtlCmdBuff) {
-		[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) { this->finish(); }];
+		[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) {
+			// Presents are drain points too, so pending residency removals retire
+			// even when the app is only presenting (e.g. sitting in a menu).
+			getDevice()->drainResidencyRemovals();
+			this->finish();
+		}];
 		[mtlCmdBuff commit];
 	} else {
 		finish();
