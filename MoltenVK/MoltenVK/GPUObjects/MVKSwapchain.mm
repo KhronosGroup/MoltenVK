@@ -574,6 +574,24 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 	// TODO: set additional CAMetalLayer properties before extracting drawables:
 	//	- presentsWithTransaction
 	//	- drawsAsynchronously
+
+	// Determine the minimum duration to wait between presentations of the images of this swapchain.
+	//
+	// A value of zero, the default, leaves presentations without a declared frame rate, which is
+	// the existing behaviour. A configured rate allows an app to deliberately present more slowly
+	// than the display is capable of, which in turn allows the OS to lower the refresh rate of a
+	// variable refresh rate display, and to reduce GPU clocks, for the power savings that a
+	// deliberately capped frame rate is usually chosen for.
+	//
+	// Do not derive a default from the refresh rate of the display. A minimum duration equal to
+	// the refresh cycle duration is a knife edge: the next refresh occurs exactly when the minimum
+	// duration expires, so any jitter pushes the presentation to the cycle after it, halving the
+	// frame rate of the frames it affects.
+	//
+	// This is determined once here, rather than at each presentation, because presentation occurs
+	// from a MTLCommandBuffer callback.
+	float maxPresentFrameRate = getMVKConfig().maximumPresentFrameRate;
+	if (maxPresentFrameRate > 0.0f) { _minPresentDuration = 1.0 / maxPresentFrameRate; }
 }
 
 // Initializes the array of images used for the surface of this swapchain.

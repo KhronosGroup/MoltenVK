@@ -350,3 +350,20 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #ifndef MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES
 #   define MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES 0
 #endif
+
+/*
+ * Maximum rate, in frames per second, at which swapchain images are presented.
+ *
+ * Capping the rate allows the OS to lower the refresh rate of a variable refresh rate display,
+ * and to reduce GPU clocks, which is usually the reason for choosing a lower frame rate. Doing
+ * this in the presentation engine is more effective than throttling the render loop, because the
+ * OS is told the intended cadence rather than having to infer it.
+ *
+ * This can only lower the frame rate. It does not raise the refresh rate of a display that the
+ * OS is running at a lower rate.
+ *
+ * A value of zero, the default, leaves presentations without a declared frame rate.
+ */
+#ifndef MVK_CONFIG_MAXIMUM_PRESENT_FRAME_RATE
+#   define MVK_CONFIG_MAXIMUM_PRESENT_FRAME_RATE 0
+#endif

@@ -658,3 +658,26 @@ In the special case of `VK_SEMAPHORE_TYPE_TIMELINE` semaphores, **MoltenVK** wil
 Makes MoltenVK treat all descriptors as if they had `VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT` set.
 Versions of MoltenVK with this flag are less forgiving of applications that bind descriptors that point to
 destroyed objects, so this option can be used to temporarily work around any breakage that may have caused.
+
+---------------------------------------
+#### MVK_CONFIG_MAXIMUM_PRESENT_FRAME_RATE
+
+##### Type: Float
+##### Default: `0`
+
+The maximum rate, in frames per second, at which swapchain images are presented.
+
+Capping the rate in the presentation engine allows the OS to reduce GPU clocks, which is usually
+the reason for choosing a lower frame rate, and is more effective than throttling the render loop,
+because the OS is told the intended cadence rather than having to infer it.
+
+This can only lower the frame rate. It does not raise the rate at which the OS is refreshing the
+display.
+
+The resulting rate is quantized to the refresh rate of the display, because a presentation is shown
+on a refresh cycle, and the cycle used is the first one that is not earlier than the requested
+minimum duration. On a display being refreshed at `R`, requesting a rate of `F` therefore presents
+at `R / ceil(R / F)`. For example, on a display being refreshed at 120Hz, requesting 80 presents at
+60, and requesting 45 presents at 40.
+
+A value of zero, the default, leaves presentations without a declared frame rate.
