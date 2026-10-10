@@ -78,7 +78,7 @@ protected:
  * To return a MVKMTLBufferAllocation retrieved from this pool, back to this pool, 
  * call the returnToPool() function on the MVKMTLBufferAllocation instance.
  */
-class MVKMTLBufferAllocationPool : public MVKObjectPool<MVKMTLBufferAllocation>, public MVKDeviceTrackingMixin {
+class MVKMTLBufferAllocationPool : public MVKReferenceCountingMixin<MVKObjectPool<MVKMTLBufferAllocation>>, public MVKDeviceTrackingMixin {
 
 public:
     /** Returns a new allocation. */
