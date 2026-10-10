@@ -570,6 +570,7 @@ protected:
     friend MVKImageView;
     MVKImageView* _imageView;
 	id<MTLTexture> _mtlTexture;
+	id<MTLTexture> _mtlTextureBase = nil;	// The image texture _mtlTexture was made from, if it is its parent (which keeps it alive).
 	VkComponentMapping _componentSwizzle;
     MTLPixelFormat _mtlPixFmt;
 	uint8_t _planeIndex;
