@@ -23,6 +23,8 @@
 #include "MVKCodec.h"
 #include "MVKSmallVector.h"
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
+#include <MoltenVKShaderConverter/SPIRVReflection.h>
+#include <map>
 #include <mutex>
 
 #import <Metal/Metal.h>
@@ -260,6 +262,13 @@ public:
 	/** Returns the original SPIR-V code that was specified when this object was created. */
 	const std::vector<uint32_t>& getSPIRV() { return _spvConverter.getSPIRV(); }
 
+	/**
+	 * Populates the interface variables of the storage class used by the entry point.
+	 * The SPIR-V code is reflected only once for each entry point and storage class.
+	 */
+	bool getShaderInterfaceVariables(spv::StorageClass storage, spv::ExecutionModel model, const std::string& entryName,
+									 MVKSmallVector<mvk::SPIRVShaderInterfaceVariable, 32>& vars, std::string& errorLog);
+
     /** Sets the number of threads in a single compute kernel workgroup, per dimension. */
     void setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z);
     
@@ -279,6 +288,8 @@ protected:
 	mvk::SPIRVToMSLConverter _spvConverter;
 	MVKShaderLibrary* _directMSLLibrary;
 	MVKShaderModuleKey _key;
+	std::map<std::tuple<spv::StorageClass, spv::ExecutionModel, std::string>,
+			 MVKSmallVector<mvk::SPIRVShaderInterfaceVariable, 32>> _interfaceVariables;
     std::mutex _accessLock;
 };
 
