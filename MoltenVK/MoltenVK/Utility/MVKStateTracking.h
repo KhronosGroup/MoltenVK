@@ -344,6 +344,7 @@ struct MVKRenderStateData {
 	uint8_t cullMode = MTLCullModeNone;
 	uint8_t frontFace = MTLWindingClockwise;
 	uint8_t primitiveType = MTLPrimitiveTypePoint;
+	uint8_t vkPrimitiveTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;  // primitiveType cannot tell a triangle fan from a list
 	MVKPolygonMode polygonMode = MVKPolygonMode::Fill;
 	MVKLineRasterizationMode lineRasterizationMode = MVKLineRasterizationMode::Default;
 	MVKRenderStateEnableFlags enable;

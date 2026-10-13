@@ -180,7 +180,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 	auto& dvcLimits = cmdEncoder->getDeviceProperties().limits;
 
 	// Metal doesn't support triangle fans, so encode it as triangles via an indexed indirect triangles command instead.
-	if (pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
+	if (cmdEncoder->getVkGraphics().getPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
 		encodeIndexedIndirect(cmdEncoder);
 		return;
 	}
@@ -454,7 +454,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 	auto& dvcLimits = cmdEncoder->getDeviceProperties().limits;
 
 	// Metal doesn't support triangle fans, so encode it as triangles via an indexed indirect triangles command instead.
-	if (pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
+	if (cmdEncoder->getVkGraphics().getPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
 		encodeIndexedIndirect(cmdEncoder);
 		return;
 	}
@@ -889,7 +889,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 	auto& mtlFeats = cmdEncoder->getMetalFeatures();
 	auto& dvcLimits = cmdEncoder->getDeviceProperties().limits;
 	// Metal doesn't support triangle fans, so encode it as indexed indirect triangles instead.
-	if (pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
+	if (cmdEncoder->getVkGraphics().getPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
 		encodeIndexedIndirect(cmdEncoder, indirectBuffer, indirectBufferOffset, indirectBufferStride);
 		return;
 	}
@@ -1262,7 +1262,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 	vtxAdjmts.mtlIndexType = ibb.mtlIndexType;
 	vtxAdjmts.isMultiView = (cmdEncoder->getSubpass()->isMultiview() &&
 							 cmdEncoder->getPhysicalDevice()->canUseInstancingForMultiview());
-	vtxAdjmts.isTriangleFan = pipeline->getVkPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+	vtxAdjmts.isTriangleFan = cmdEncoder->getVkGraphics().getPrimitiveTopology() == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
 #if MVK_USE_METAL_PRIVATE_API
 	// With private APIs for primitive restart, we need to handle disabled restart and raw Uint8 indices.
 	vtxAdjmts.isPrimRestart = cmdEncoder->getState().vkGraphics().isPrimitiveRestartEnabled();

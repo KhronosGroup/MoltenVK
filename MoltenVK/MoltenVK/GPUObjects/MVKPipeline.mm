@@ -879,6 +879,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	}
 
 	_staticStateData.primitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(_vkPrimitiveTopology);
+	_staticStateData.vkPrimitiveTopology = static_cast<uint8_t>(_vkPrimitiveTopology);
 	_staticStateData.enable.set(MVKRenderStateEnableFlag::PrimitiveRestart, primitiveRestart);
 
 #if MVK_USE_METAL_PRIVATE_API

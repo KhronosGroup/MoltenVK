@@ -557,7 +557,9 @@ void MVKCmdSetLineWidth::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdSetPrimitiveTopology
 
 void MVKCmdSetPrimitiveTopology::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::PrimitiveTopology)._renderState.primitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(_value);
+	auto& renderState = cmdEncoder->getState().updateDynamicState(MVKRenderStateFlag::PrimitiveTopology)._renderState;
+	renderState.primitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(_value);
+	renderState.vkPrimitiveTopology = static_cast<uint8_t>(_value);
 }
 
 

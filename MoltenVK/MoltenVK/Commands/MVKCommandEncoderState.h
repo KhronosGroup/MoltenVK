@@ -212,6 +212,9 @@ struct MVKVulkanGraphicsCommandEncoderState: public MVKVulkanCommonEncoderState 
 	bool getProvokingVertexMode() const {
 		return pickRenderState(MVKRenderStateFlag::ProvokingVertexMode).provokingVertexMode;
 	}
+	VkPrimitiveTopology getPrimitiveTopology() const {
+		return static_cast<VkPrimitiveTopology>(pickRenderState(MVKRenderStateFlag::PrimitiveTopology).vkPrimitiveTopology);
+	}
 
 	/** Bind the given descriptor sets, placing their bindings into `_descriptorSetBindings`. */
 	void bindDescriptorSets(MVKPipelineLayout* layout,
