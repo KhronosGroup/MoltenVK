@@ -655,14 +655,16 @@ static const MVKMTLBufferAllocation* encodeIndirectCountConversion(
 		id<MTLBuffer> countBuffer,
 		VkDeviceSize countBufferOffset,
 		uint32_t drawCount,
-		bool indexed) {
-	VkDeviceSize commandSize = indexed ? sizeof(MTLDrawIndexedPrimitivesIndirectArguments) : sizeof(MTLDrawPrimitivesIndirectArguments);
+		bool indexed,
+		bool mesh = false) {
+	VkDeviceSize commandSize = mesh ? sizeof(MTLDispatchThreadgroupsIndirectArguments) : indexed ? sizeof(MTLDrawIndexedPrimitivesIndirectArguments) : sizeof(MTLDrawPrimitivesIndirectArguments);
 	auto* convertedBuffer = cmdEncoder->getTempMTLBuffer(commandSize * drawCount, true);
 
 	cmdEncoder->encodeStoreActions(true);
 	auto* computeEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDrawIndirectConvertBuffers);
 	MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
-	id<MTLComputePipelineState> pipeline = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndirectCountConvertBuffersMTLComputePipelineState(indexed);
+	auto* pool = cmdEncoder->getCommandEncodingPool();
+	id<MTLComputePipelineState> pipeline = mesh ? pool->getCmdDrawMeshTasksIndirectCountConvertBuffersMTLComputePipelineState() : pool->getCmdDrawIndirectCountConvertBuffersMTLComputePipelineState(indexed);
 	state.bindPipeline(computeEncoder, pipeline);
 	state.bindBuffer(computeEncoder, indirectBuffer, indirectBufferOffset, 0);
 	state.bindBuffer(computeEncoder, convertedBuffer->_mtlBuffer, convertedBuffer->_offset, 1);
@@ -1534,4 +1536,105 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
             }
         }
     }
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdDrawMeshTasks
+
+// binds the draw index for the task and mesh shaders that read it
+static void setMeshDrawIndex(MVKCommandEncoder* cmdEncoder, MVKGraphicsPipeline* pipeline, uint32_t drawIndex) {
+	auto& task = pipeline->getImplicitBuffers(kMVKShaderStageTessCtl);
+	auto& mesh = pipeline->getImplicitBuffers(kMVKShaderStageVertex);
+	if (task.needed.has(MVKImplicitBuffer::DrawId)) {
+		[cmdEncoder->_mtlRenderEncoder setObjectBytes: &drawIndex length: sizeof(drawIndex) atIndex: task.ids[MVKImplicitBuffer::DrawId]];
+	}
+	if (mesh.needed.has(MVKImplicitBuffer::DrawId)) {
+		[cmdEncoder->_mtlRenderEncoder setMeshBytes: &drawIndex length: sizeof(drawIndex) atIndex: mesh.ids[MVKImplicitBuffer::DrawId]];
+	}
+}
+
+VkResult MVKCmdDrawMeshTasks::setContent(MVKCommandBuffer* cmdBuff,
+										 uint32_t groupCountX,
+										 uint32_t groupCountY,
+										 uint32_t groupCountZ) {
+	_groupCount = MTLSizeMake(groupCountX, groupCountY, groupCountZ);
+	return VK_SUCCESS;
+}
+
+void MVKCmdDrawMeshTasks::encode(MVKCommandEncoder* cmdEncoder) {
+	if ( !(_groupCount.width && _groupCount.height && _groupCount.depth) ) { return; }
+
+	cmdEncoder->restartMetalRenderPassIfNeeded();
+	cmdEncoder->finalizeMeshDrawState();
+	auto* pipeline = cmdEncoder->getGraphicsPipeline();
+	if ( !pipeline->hasValidMTLPipelineStates() ) { return; }
+
+	setMeshDrawIndex(cmdEncoder, pipeline, 0);
+	MTLSize groupCount = _groupCount;
+	if (pipeline->hasMeshGridObject()) {
+		uint32_t grid[] = { (uint32_t)groupCount.width, (uint32_t)groupCount.height, (uint32_t)groupCount.depth };
+		cmdEncoder->getMtlGraphics().bindObjectBytes(cmdEncoder->_mtlRenderEncoder, grid, sizeof(grid), 0);
+		groupCount = MTLSizeMake(1, 1, 1);
+	}
+	[cmdEncoder->_mtlRenderEncoder drawMeshThreadgroups: groupCount
+							 threadsPerObjectThreadgroup: pipeline->getObjectThreadgroupSize()
+							   threadsPerMeshThreadgroup: pipeline->getMeshThreadgroupSize()];
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdDrawMeshTasksIndirect
+
+VkResult MVKCmdDrawMeshTasksIndirect::setContent(MVKCommandBuffer* cmdBuff,
+												 VkBuffer buffer,
+												 VkDeviceSize offset,
+												 VkBuffer countBuffer,
+												 VkDeviceSize countBufferOffset,
+												 uint32_t drawCount,
+												 uint32_t stride) {
+	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
+	_mtlIndirectBuffer = mvkBuffer->getMTLBuffer();
+	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
+	_mtlIndirectBufferStride = stride;
+	_drawCount = drawCount;
+	MVKBuffer* mvkCountBuffer = (MVKBuffer*)countBuffer;
+	_mtlCountBuffer = mvkCountBuffer ? mvkCountBuffer->getMTLBuffer() : nil;
+	_mtlCountBufferOffset = mvkCountBuffer ? mvkCountBuffer->getMTLBufferOffset() + countBufferOffset : 0;
+	return VK_SUCCESS;
+}
+
+void MVKCmdDrawMeshTasksIndirect::encode(MVKCommandEncoder* cmdEncoder) {
+	if ( !_drawCount ) { return; }
+
+	cmdEncoder->restartMetalRenderPassIfNeeded();
+	id<MTLBuffer> indirectBuffer = _mtlIndirectBuffer;
+	VkDeviceSize indirectBufferOffset = _mtlIndirectBufferOffset;
+	uint32_t indirectBufferStride = _mtlIndirectBufferStride;
+	if (_mtlCountBuffer) {
+		auto* convertedBuffer = encodeIndirectCountConversion(cmdEncoder, indirectBuffer, indirectBufferOffset, indirectBufferStride,
+															  _mtlCountBuffer, _mtlCountBufferOffset, _drawCount, false, true);
+		indirectBuffer = convertedBuffer->_mtlBuffer;
+		indirectBufferOffset = convertedBuffer->_offset;
+		indirectBufferStride = sizeof(MTLDispatchThreadgroupsIndirectArguments);
+	}
+
+	cmdEncoder->finalizeMeshDrawState();
+	auto* pipeline = cmdEncoder->getGraphicsPipeline();
+	if ( !pipeline->hasValidMTLPipelineStates() ) { return; }
+
+	for (uint32_t drawIdx = 0; drawIdx < _drawCount; drawIdx++) {
+		setMeshDrawIndex(cmdEncoder, pipeline, drawIdx);
+		if (pipeline->hasMeshGridObject()) {
+			cmdEncoder->getMtlGraphics().bindObjectBuffer(cmdEncoder->_mtlRenderEncoder, indirectBuffer, indirectBufferOffset + drawIdx * indirectBufferStride, 0);
+			[cmdEncoder->_mtlRenderEncoder drawMeshThreadgroups: MTLSizeMake(1, 1, 1)
+									 threadsPerObjectThreadgroup: pipeline->getObjectThreadgroupSize()
+									   threadsPerMeshThreadgroup: pipeline->getMeshThreadgroupSize()];
+			continue;
+		}
+		[cmdEncoder->_mtlRenderEncoder drawMeshThreadgroupsWithIndirectBuffer: indirectBuffer
+														 indirectBufferOffset: indirectBufferOffset + drawIdx * indirectBufferStride
+												  threadsPerObjectThreadgroup: pipeline->getObjectThreadgroupSize()
+													threadsPerMeshThreadgroup: pipeline->getMeshThreadgroupSize()];
+	}
 }

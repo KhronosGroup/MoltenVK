@@ -593,6 +593,10 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectCountCo
 																																																						  : "cmdDrawIndirectCountConvertBuffers", owner);
 }
 
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawMeshTasksIndirectCountConvertBuffersMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("cmdDrawMeshTasksIndirectCountConvertBuffers", owner);
+}
+
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectCopyZeroDivisorVertexBuffersMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
 	return newMTLComputePipelineState("cmdDrawIndirectCopyZeroDivisorVertexBuffers", owner);
 }
