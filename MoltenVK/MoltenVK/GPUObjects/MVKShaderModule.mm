@@ -357,11 +357,24 @@ MVKShaderLibrary* MVKShaderLibraryCache::findShaderLibrary(SPIRVToMSLConversionC
 	return nullptr;
 }
 
+// Returns the configuration to keep for a cached conversion. A cached configuration is only read by
+// matches() and alignWith(), which ignore every resource binding not used by the converted stage, so
+// only those are kept. A pipeline layout gives one resource binding per binding and per shader stage.
+static SPIRVToMSLConversionConfiguration getCachedShaderConfig(const SPIRVToMSLConversionConfiguration* pShaderConfig) {
+	SPIRVToMSLConversionConfiguration config = *pShaderConfig;
+	vector<MSLResourceBinding> usedBindings;
+	for (auto& rb : config.resourceBindings) {
+		if (rb.resourceBinding.stage == config.options.entryPointStage && rb.outIsUsedByShader) { usedBindings.push_back(rb); }
+	}
+	config.resourceBindings = std::move(usedBindings);
+	return config;
+}
+
 // Adds and returns a new shader library configured from the specified conversion configuration.
 MVKShaderLibrary* MVKShaderLibraryCache::addShaderLibrary(const SPIRVToMSLConversionConfiguration* pShaderConfig,
 														  const SPIRVToMSLConversionResult& conversionResult) {
 	MVKShaderLibrary* shLib = new MVKShaderLibrary(_owner, conversionResult);
-	_shaderLibraries.emplace_back(*pShaderConfig, shLib);
+	_shaderLibraries.emplace_back(getCachedShaderConfig(pShaderConfig), shLib);
 	return shLib;
 }
 
@@ -370,7 +383,7 @@ MVKShaderLibrary* MVKShaderLibraryCache::addShaderLibrary(const SPIRVToMSLConver
 														  const SPIRVToMSLConversionResultInfo& resultInfo,
 														  const MVKCompressor<std::string> compressedMSL) {
 	MVKShaderLibrary* shLib = new MVKShaderLibrary(_owner, resultInfo, compressedMSL);
-	_shaderLibraries.emplace_back(*pShaderConfig, shLib);
+	_shaderLibraries.emplace_back(getCachedShaderConfig(pShaderConfig), shLib);
 	return shLib;
 }
 

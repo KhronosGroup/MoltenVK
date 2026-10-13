@@ -29,6 +29,7 @@ Released TBD
 - Fix `VkDeviceMemory` imported from a `MTLTexture` not backing the image bound to it, and over-releasing that texture.
 - Fix leak of the `MTLBuffer` of a host-coherent `VkDeviceMemory` that also holds a `MTLTexture`.
 - Fix pipeline cache matching incompatible shaders when the only difference was in dynamic buffer offset usage.
+- Reduce the memory used by cached shader conversions, by keeping only the resource bindings used by each shader.
 
 
 
