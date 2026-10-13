@@ -29,6 +29,7 @@ Released TBD
 - Fix `VkDeviceMemory` imported from a `MTLTexture` not backing the image bound to it, and over-releasing that texture.
 - Fix leak of the `MTLBuffer` of a host-coherent `VkDeviceMemory` that also holds a `MTLTexture`.
 - Fix pipeline cache matching incompatible shaders when the only difference was in dynamic buffer offset usage.
+- Fix multiview view ranges for view masks with gaps when layered rendering is unavailable, and an undefined shift when view 31 is enabled.
 
 
 
