@@ -90,10 +90,10 @@ VkResult MVKQueryPool::getResults(uint32_t firstQuery,
 
 	VkResult rqstRslt = VK_SUCCESS;
 	@autoreleasepool {
-		NSData* srcData = getQuerySourceData(firstQuery, queryCount);
+		const uint64_t* srcValues = getQuerySourceValues(firstQuery, queryCount);
 		uintptr_t pDstData = (uintptr_t)pData;
 		for (uint32_t query = firstQuery; query < endQuery; query++, pDstData += stride) {
-			VkResult qryRslt = getResult(query, srcData, firstQuery, (void*)pDstData, flags);
+			VkResult qryRslt = getResult(query, srcValues, firstQuery, (void*)pDstData, flags);
 			if (rqstRslt == VK_SUCCESS) { rqstRslt = qryRslt; }
 		}
 	}
@@ -122,7 +122,14 @@ bool MVKQueryPool::areQueriesHostAvailable(uint32_t firstQuery, uint32_t endQuer
     return true;
 }
 
-VkResult MVKQueryPool::getResult(uint32_t query, NSData* srcData, uint32_t srcDataQueryOffset, void* pDstData, VkQueryResultFlags flags) {
+// Called within getResults()'s autorelease pool, keeping any resolved timestamp
+// NSData alive for the complete result batch. Occlusion queries override this
+// to read the pool-owned Metal buffer directly, without allocating a wrapper.
+const uint64_t* MVKQueryPool::getQuerySourceValues(uint32_t firstQuery, uint32_t queryCount) {
+	return (const uint64_t*)getQuerySourceData(firstQuery, queryCount).bytes;
+}
+
+VkResult MVKQueryPool::getResult(uint32_t query, const uint64_t* srcValues, uint32_t srcDataQueryOffset, void* pDstData, VkQueryResultFlags flags) {
 
 	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 
@@ -132,7 +139,7 @@ VkResult MVKQueryPool::getResult(uint32_t query, NSData* srcData, uint32_t srcDa
 
 	// Output the results of this query
 	if (shouldOutput) {
-		uint64_t rsltVal = ((uint64_t*)srcData.bytes)[query - srcDataQueryOffset];
+		uint64_t rsltVal = srcValues[query - srcDataQueryOffset];
 		if (shouldOutput64Bit) {
 			*(uint64_t*)pDstData = rsltVal;
 		} else {
@@ -261,11 +268,8 @@ void MVKOcclusionQueryPool::resetResults(uint32_t firstQuery, uint32_t queryCoun
     }
 }
 
-NSData* MVKOcclusionQueryPool::getQuerySourceData(uint32_t firstQuery, uint32_t queryCount) {
-	id<MTLBuffer> vizBuff = getVisibilityResultMTLBuffer();
-	return [NSData dataWithBytesNoCopy: (void*)((uintptr_t)vizBuff.contents + getVisibilityResultOffset(firstQuery))
-	                            length: queryCount * kMVKQuerySlotSizeInBytes
-	                      freeWhenDone: false];
+const uint64_t* MVKOcclusionQueryPool::getQuerySourceValues(uint32_t firstQuery, uint32_t queryCount) {
+	return (const uint64_t*)((uintptr_t)_visibilityResultValues + getVisibilityResultOffset(firstQuery));
 }
 
 id<MTLBuffer> MVKOcclusionQueryPool::getResultBuffer(MVKCommandEncoder*, uint32_t firstQuery, uint32_t, NSUInteger& offset) {
@@ -293,6 +297,7 @@ MVKOcclusionQueryPool::MVKOcclusionQueryPool(MVKDevice* device,
 
 	MTLResourceOptions mtlBuffOpts = MTLResourceStorageModeShared | MTLResourceCPUCacheModeDefaultCache;
 	_visibilityResultMTLBuffer = [getMTLDevice() newBufferWithLength: reqBuffLen options: mtlBuffOpts];     // retained
+	_visibilityResultValues = (const uint64_t*)[_visibilityResultMTLBuffer contents];
 	[_visibilityResultMTLBuffer setLabel:@"Occlusion Query Result Buffer"];
 }
 
