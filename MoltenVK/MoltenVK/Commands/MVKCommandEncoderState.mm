@@ -640,13 +640,19 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
                                MVKStageResourceBits& exists,
                                MVKStageResourceBindings& bindings,
                                const MVKResourceBinder& RESTRICT binder) {
-	// Clear descriptor set resource use bitarray for new sets and bind them
-	MVKStaticBitSet<kMVKMaxDescriptorSetCount> setsNeeded = resources.resources.descriptorSetData.clearingAllIn(exists.descriptorSetData);
-	exists.descriptorSetData |= resources.resources.descriptorSetData;
-	for (size_t idx : setsNeeded) {
+	if (!mvkEncoder.getMetalFeatures().residencySets) {
+		// Clear descriptor set resource use bitarray for new sets
+		MVKStaticBitSet<kMVKMaxDescriptorSetCount> newSets = resources.resources.descriptorSetData.clearingAllIn(exists.descriptorSetData);
+		exists.descriptorSetData |= resources.resources.descriptorSetData;
+		for (size_t idx : newSets) {
+			const MVKDescriptorSetLayout* layout = common._layout->getDescriptorSetLayout(idx);
+			bindings.descriptorSetResourceUse[idx].resizeAndClear(layout->bindings().size());
+		}
+	}
+
+	// Bind required descriptor sets
+	for (size_t idx : resources.resources.descriptorSetData) {
 		MVKDescriptorSet* set = common._descriptorSets[idx];
-		const MVKDescriptorSetLayout* layout = common._layout->getDescriptorSetLayout(idx);
-		bindings.descriptorSetResourceUse[idx].resizeAndClear(layout->bindings().size());
 		bindBuffer(encoder, set->gpuBufferObject, set->gpuBufferOffset, idx, exists, bindings, binder);
 	}
 
