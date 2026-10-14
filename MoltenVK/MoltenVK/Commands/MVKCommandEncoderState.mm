@@ -640,12 +640,14 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
                                MVKStageResourceBits& exists,
                                MVKStageResourceBindings& bindings,
                                const MVKResourceBinder& RESTRICT binder) {
-	// Clear descriptor set resource use bitarray for new sets
-	MVKStaticBitSet<kMVKMaxDescriptorSetCount> newSets = resources.resources.descriptorSetData.clearingAllIn(exists.descriptorSetData);
-	exists.descriptorSetData |= resources.resources.descriptorSetData;
-	for (size_t idx : newSets) {
-		const MVKDescriptorSetLayout* layout = common._layout->getDescriptorSetLayout(idx);
-		bindings.descriptorSetResourceUse[idx].resizeAndClear(layout->bindings().size());
+	if (!mvkEncoder.getMetalFeatures().residencySets) {
+		// Clear descriptor set resource use bitarray for new sets
+		MVKStaticBitSet<kMVKMaxDescriptorSetCount> newSets = resources.resources.descriptorSetData.clearingAllIn(exists.descriptorSetData);
+		exists.descriptorSetData |= resources.resources.descriptorSetData;
+		for (size_t idx : newSets) {
+			const MVKDescriptorSetLayout* layout = common._layout->getDescriptorSetLayout(idx);
+			bindings.descriptorSetResourceUse[idx].resizeAndClear(layout->bindings().size());
+		}
 	}
 
 	// Bind required descriptor sets
