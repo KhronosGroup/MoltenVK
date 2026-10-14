@@ -321,7 +321,9 @@ void MVKPipelineLayout::populateBindOperations(MVKPipelineBindScript& script, co
 						script.ops.push_back({ bindSamp, set, mslBinding.resourceBinding.msl_sampler, descIdx, nonTexOffset });
 				}
 			}
-		} else if (!_device->hasResidencySet()) {
+		} else {
+			// Residency sets do not perform hazard tracking. Keep explicit per-encoder
+			// declarations for resources referenced through an argument buffer.
 			MVKDescriptorBindOperationCode useTex = partiallyBound ? MVKDescriptorBindOperationCode::UseTextureWithLiveCheck : MVKDescriptorBindOperationCode::UseResource;
 			MVKDescriptorBindOperationCode useBuf = partiallyBound ? MVKDescriptorBindOperationCode::UseBufferWithLiveCheck  : MVKDescriptorBindOperationCode::UseResource;
 			MVKDescriptorGPULayout gpuLayout = desc.gpuLayout;
