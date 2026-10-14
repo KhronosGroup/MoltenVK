@@ -350,3 +350,16 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #ifndef MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES
 #   define MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES 0
 #endif
+
+/*
+ * If set, host memory imported through VK_EXT_external_memory_host is backed by a private
+ * MTLBuffer that mirrors the imported pages, instead of a no-copy MTLBuffer created directly
+ * over them. The imported pages stay the host-visible memory; MoltenVK copies them into the
+ * MTLBuffer on flushes and before every queue submission, and copies the MTLBuffer back on
+ * invalidations and maps. This is a workaround for imported allocations that Metal accepts as
+ * no-copy buffers but then fails at execution time, at the cost of a copy of all shadowed memory
+ * per queue submission. Disabled by default.
+ */
+#ifndef MVK_CONFIG_SHADOW_IMPORTED_HOST_MEMORY
+#   define MVK_CONFIG_SHADOW_IMPORTED_HOST_MEMORY 0
+#endif

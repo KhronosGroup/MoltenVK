@@ -672,6 +672,15 @@ public:
 	/** Returns the list of live resources. */
 	MVKLiveResourceSet& getLiveResources() { return _liveResources; }
 
+	/** Registers device memory that mirrors imported host memory in a private MTLBuffer. */
+	void addShadowedDeviceMemory(MVKDeviceMemory* mvkMem);
+
+	/** Removes device memory registered with addShadowedDeviceMemory(). */
+	void removeShadowedDeviceMemory(MVKDeviceMemory* mvkMem);
+
+	/** Copies all shadowed imported host memory into its MTLBuffers, before a queue submission. */
+	void syncShadowedDeviceMemoryToDevice();
+
     /** Returns the common resource factory for creating command resources. */
     MVKCommandResourceFactory* getCommandResourceFactory() { return _commandResourceFactory; }
 
@@ -1104,6 +1113,8 @@ protected:
 	MVKSmallVector<std::pair<MVKTimelineSemaphore*, uint64_t>> _awaitingTimelineSem4s;
 	MVKSmallVector<MVKVisibilityBuffer> _visibilityBuffers;
 	MVKLiveResourceSet _liveResources;
+	MVKSmallVector<MVKDeviceMemory*, 8> _shadowedDeviceMemory;
+	std::mutex _shadowedDeviceMemoryLock;
 	std::mutex _rezLock;
 	std::mutex _sem4Lock;
     std::mutex _perfLock;
