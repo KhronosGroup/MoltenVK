@@ -1643,6 +1643,7 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		 * and is intended for Apple GPUs. On non-Apple GPUs, this can trigger a Metal compiler error on
 		 * Mac1 NVIDIA, and can classify covered fragments as helpers on legacy AMD Mac2. */
 		shaderConfig.options.mslOptions.check_discarded_frag_stores = getPhysicalDevice()->getMTLDeviceCapabilities().isAppleGPU;
+		shaderConfig.options.mslOptions.use_framebuffer_fetch_subpasses = getPhysicalDevice()->getMTLDeviceCapabilities().isAppleGPU;
 
 		/* Enabling makes dEQP-VK.fragment_shader_interlock.basic.discard.image.pixel_ordered.1xaa.no_sample_shading.1024x1024 and similar tests fail. Requires investigation */
 		shaderConfig.options.mslOptions.force_fragment_with_side_effects_execution = false;
