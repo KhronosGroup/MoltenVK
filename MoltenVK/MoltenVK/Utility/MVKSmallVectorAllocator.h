@@ -18,8 +18,10 @@
 
 #pragma once
 
+#include <cstddef>
 #include <new>
 #include <type_traits>
+#include <utility>
 
 
 namespace mvk_smallvector_memory_allocator
@@ -125,24 +127,31 @@ public:
   template<class S> typename std::enable_if< !std::is_trivially_destructible<S>::value >::type
     swap_stack( mvk_smallvector_allocator &a )
   {
-    T stack_copy[N];
+    // Both allocators hold their elements in their inline stack storage. Move this
+    // allocator's elements to raw temporary storage, move a's elements into this
+    // allocator, then move the temporaries into a. Only constructed elements are
+    // touched; the stack storage beyond num_elements_used is uninitialized memory.
+    alignas( alignof( T ) ) unsigned char tmp_storage[ STACK_SIZE ];
+    T *tmp = reinterpret_cast< T* >( &tmp_storage[0] );
+    const size_t this_count = num_elements_used;
+    const size_t a_count = a.num_elements_used;
 
-    for( size_t i = 0; i < num_elements_used; ++i )
+    for( size_t i = 0; i < this_count; ++i )
     {
-      construct( &stack_copy[i], std::move( S::ptr[i] ) );
+      construct( &tmp[i], std::move( ptr[i] ) );
       destruct( &ptr[i] );
     }
 
-    for( size_t i = 0; i < a.num_elements_used; ++i )
+    for( size_t i = 0; i < a_count; ++i )
     {
       construct( &ptr[i], std::move( a.ptr[i] ) );
-      destruct( &ptr[i] );
+      destruct( &a.ptr[i] );
     }
 
-    for( size_t i = 0; i < num_elements_used; ++i )
+    for( size_t i = 0; i < this_count; ++i )
     {
-      construct( &a.ptr[i], std::move( stack_copy[i] ) );
-      destruct( &stack_copy[i] );
+      construct( &a.ptr[i], std::move( tmp[i] ) );
+      destruct( &tmp[i] );
     }
   }
 

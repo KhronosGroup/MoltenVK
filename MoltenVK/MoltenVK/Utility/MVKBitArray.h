@@ -22,6 +22,7 @@
 #include "MVKFoundation.h"
 
 #include <cassert>
+#include <climits>
 #include <type_traits>
 #include <functional>
 
@@ -200,7 +201,7 @@ public:
 	/** Returns whether this set is not equal to the given set. */
 	constexpr bool operator!=(MVKSmallStaticBitSet other) const { return !(*this == other); }
 	/** Returns whether there are any elements in the intersection between this and another set. */
-	constexpr bool containsAny(MVKSmallStaticBitSet other) const { return (*this & other).any(); }
+	constexpr bool containsAny(MVKSmallStaticBitSet other) const { return (*this & other).areAnyBitsSet(); }
 	/** Returns whether this set is a superset of the given set. */
 	constexpr bool containsAll(MVKSmallStaticBitSet other) const { return (*this & other) == other; }
 	/** Subtracts the elements in the given set from this set. */
@@ -275,13 +276,13 @@ public:
 	/** Returns whether the set is empty. */
 	constexpr bool empty() const { return !any(); }
 	/** Intersects this set with the given set. */
-	constexpr MVKLargeStaticBitSet operator&=(const MVKLargeStaticBitSet& other) {
+	constexpr MVKLargeStaticBitSet& operator&=(const MVKLargeStaticBitSet& other) {
 		for (uint32_t i = 0; i < ArrayLen; i++)
 			bits[i] &= other.bits[i];
 		return *this;
 	}
 	/** Unions this set with the given set. */
-	constexpr MVKLargeStaticBitSet operator|=(const MVKLargeStaticBitSet& other) {
+	constexpr MVKLargeStaticBitSet& operator|=(const MVKLargeStaticBitSet& other) {
 		for (uint32_t i = 0; i < ArrayLen; i++)
 			bits[i] |= other.bits[i];
 		return *this;
@@ -290,7 +291,7 @@ public:
 	constexpr bool operator==(const MVKLargeStaticBitSet& other) const {
 		bool eq = true;
 		for (uint32_t i = 0; i < ArrayLen; i++)
-			eq |= bits[i] == other.bits[i];
+			eq &= bits[i] == other.bits[i];
 		return eq;
 	}
 	/** Returns the intersection of this and another set. */
