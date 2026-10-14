@@ -37,6 +37,7 @@
 #include "MVKSync.h"
 #include "MVKQueue.h"
 #include "MVKQueryPool.h"
+#include "MVKVideo.h"
 #include "MVKSwapchain.h"
 #include "MVKSurface.h"
 #include "MVKFoundation.h"
@@ -3760,6 +3761,205 @@ MVK_PUBLIC_VULKAN_CORE_ALIAS(vkQueueSubmit2, KHR);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetSemaphoreCounterValue, KHR);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkSignalSemaphore, KHR);
 MVK_PUBLIC_VULKAN_CORE_ALIAS(vkWaitSemaphores, KHR);
+
+
+#pragma mark -
+#pragma mark VK_KHR_video_queue extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceVideoCapabilitiesKHR(
+	VkPhysicalDevice                            physicalDevice,
+	const VkVideoProfileInfoKHR*                pVideoProfile,
+	VkVideoCapabilitiesKHR*                     pCapabilities) {
+
+	MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	VkResult rslt = mvkGetPhysicalDeviceVideoCapabilities(mvkPD, pVideoProfile, pCapabilities);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceVideoFormatPropertiesKHR(
+	VkPhysicalDevice                            physicalDevice,
+	const VkPhysicalDeviceVideoFormatInfoKHR*   pVideoFormatInfo,
+	uint32_t*                                   pVideoFormatPropertyCount,
+	VkVideoFormatPropertiesKHR*                 pVideoFormatProperties) {
+
+	MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	VkResult rslt = mvkGetPhysicalDeviceVideoFormatProperties(mvkPD, pVideoFormatInfo, pVideoFormatPropertyCount, pVideoFormatProperties);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateVideoSessionKHR(
+	VkDevice                                    device,
+	const VkVideoSessionCreateInfoKHR*          pCreateInfo,
+	const VkAllocationCallbacks*                pAllocator,
+	VkVideoSessionKHR*                          pVideoSession) {
+
+	MVKTraceVulkanCallStart();
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	MVKVideoSession* mvkVS = mvkDev->createVideoSession(pCreateInfo, pAllocator);
+	*pVideoSession = (VkVideoSessionKHR)mvkVS;
+	VkResult rslt = mvkVS->getConfigurationResult();
+	if (rslt < 0) { *pVideoSession = VK_NULL_HANDLE; mvkDev->destroyVideoSession(mvkVS, pAllocator); }
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyVideoSessionKHR(
+	VkDevice                                    device,
+	VkVideoSessionKHR                           videoSession,
+	const VkAllocationCallbacks*                pAllocator) {
+
+	MVKTraceVulkanCallStart();
+	if ( !videoSession ) { return; }
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	mvkDev->destroyVideoSession((MVKVideoSession*)videoSession, pAllocator);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetVideoSessionMemoryRequirementsKHR(
+	VkDevice                                    device,
+	VkVideoSessionKHR                           videoSession,
+	uint32_t*                                   pMemoryRequirementsCount,
+	VkVideoSessionMemoryRequirementsKHR*        pMemoryRequirements) {
+
+	MVKTraceVulkanCallStart();
+	VkResult rslt = ((MVKVideoSession*)videoSession)->getMemoryRequirements(pMemoryRequirementsCount, pMemoryRequirements);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkBindVideoSessionMemoryKHR(
+	VkDevice                                    device,
+	VkVideoSessionKHR                           videoSession,
+	uint32_t                                    bindSessionMemoryInfoCount,
+	const VkBindVideoSessionMemoryInfoKHR*      pBindSessionMemoryInfos) {
+
+	MVKTraceVulkanCallStart();
+	VkResult rslt = ((MVKVideoSession*)videoSession)->bindMemory(bindSessionMemoryInfoCount, pBindSessionMemoryInfos);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateVideoSessionParametersKHR(
+	VkDevice                                    device,
+	const VkVideoSessionParametersCreateInfoKHR* pCreateInfo,
+	const VkAllocationCallbacks*                pAllocator,
+	VkVideoSessionParametersKHR*                pVideoSessionParameters) {
+
+	MVKTraceVulkanCallStart();
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	MVKVideoSessionParameters* mvkVSP = mvkDev->createVideoSessionParameters(pCreateInfo, pAllocator);
+	*pVideoSessionParameters = (VkVideoSessionParametersKHR)mvkVSP;
+	VkResult rslt = mvkVSP->getConfigurationResult();
+	if (rslt < 0) { *pVideoSessionParameters = VK_NULL_HANDLE; mvkDev->destroyVideoSessionParameters(mvkVSP, pAllocator); }
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkUpdateVideoSessionParametersKHR(
+	VkDevice                                    device,
+	VkVideoSessionParametersKHR                 videoSessionParameters,
+	const VkVideoSessionParametersUpdateInfoKHR* pUpdateInfo) {
+
+	MVKTraceVulkanCallStart();
+	VkResult rslt = ((MVKVideoSessionParameters*)videoSessionParameters)->update(pUpdateInfo);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyVideoSessionParametersKHR(
+	VkDevice                                    device,
+	VkVideoSessionParametersKHR                 videoSessionParameters,
+	const VkAllocationCallbacks*                pAllocator) {
+
+	MVKTraceVulkanCallStart();
+	if ( !videoSessionParameters ) { return; }
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	mvkDev->destroyVideoSessionParameters((MVKVideoSessionParameters*)videoSessionParameters, pAllocator);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBeginVideoCodingKHR(
+	VkCommandBuffer                             commandBuffer,
+	const VkVideoBeginCodingInfoKHR*            pBeginInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(BeginVideoCoding, commandBuffer, pBeginInfo);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEndVideoCodingKHR(
+	VkCommandBuffer                             commandBuffer,
+	const VkVideoEndCodingInfoKHR*              pEndCodingInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(EndVideoCoding, commandBuffer, pEndCodingInfo);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdControlVideoCodingKHR(
+	VkCommandBuffer                             commandBuffer,
+	const VkVideoCodingControlInfoKHR*          pCodingControlInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(ControlVideoCoding, commandBuffer, pCodingControlInfo);
+	MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
+#pragma mark VK_KHR_video_encode_queue extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceVideoEncodeQualityLevelPropertiesKHR(
+	VkPhysicalDevice                            physicalDevice,
+	const VkPhysicalDeviceVideoEncodeQualityLevelInfoKHR* pQualityLevelInfo,
+	VkVideoEncodeQualityLevelPropertiesKHR*     pQualityLevelProperties) {
+
+	MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	VkResult rslt = mvkGetPhysicalDeviceVideoEncodeQualityLevelProperties(mvkPD, pQualityLevelInfo, pQualityLevelProperties);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetEncodedVideoSessionParametersKHR(
+	VkDevice                                    device,
+	const VkVideoEncodeSessionParametersGetInfoKHR* pVideoSessionParametersInfo,
+	VkVideoEncodeSessionParametersFeedbackInfoKHR* pFeedbackInfo,
+	size_t*                                     pDataSize,
+	void*                                       pData) {
+
+	MVKTraceVulkanCallStart();
+	auto* mvkVSP = (MVKVideoSessionParameters*)pVideoSessionParametersInfo->videoSessionParameters;
+	VkResult rslt = mvkVSP->getEncoded(pVideoSessionParametersInfo, pFeedbackInfo, pDataSize, pData);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEncodeVideoKHR(
+	VkCommandBuffer                             commandBuffer,
+	const VkVideoEncodeInfoKHR*                 pEncodeInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(EncodeVideo, commandBuffer, pEncodeInfo);
+	MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
+#pragma mark VK_KHR_video_decode_queue extension
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDecodeVideoKHR(
+	VkCommandBuffer                             commandBuffer,
+	const VkVideoDecodeInfoKHR*                 pDecodeInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(DecodeVideo, commandBuffer, pDecodeInfo);
+	MVKTraceVulkanCallEnd();
+}
 
 
 #pragma mark -

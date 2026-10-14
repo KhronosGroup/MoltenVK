@@ -645,6 +645,8 @@ static MVKBarrierStage commandUseToBarrierStage(MVKCommandUse use) {
 	case kMVKCommandUseAccumOcclusionQuery:          return kMVKBarrierStageNone; /**< Any command terminating a Metal render pass with active visibility buffer. */
 	case kMVKCommandConvertUint8Indices:             return kMVKBarrierStageCopy; /**< Converting a Uint8 index buffer to Uint16. */
 	case kMVKCommandUseRecordGPUCounterSample:       return kMVKBarrierStageNone; /**< Any command triggering the recording of a GPU counter sample. */
+	case kMVKCommandUseEncodeVideo:                  return kMVKBarrierStageCopy; /**< vkCmdEncodeVideoKHR. */
+	case kMVKCommandUseDecodeVideo:                  return kMVKBarrierStageCopy; /**< vkCmdDecodeVideoKHR. */
 	}
 }
 

@@ -29,6 +29,7 @@
 #include "MVKCmdTransfer.h"
 #include "MVKCmdQueries.h"
 #include "MVKCmdDebug.h"
+#include "MVKCmdVideo.h"
 #include "MVKMTLBufferAllocation.h"
 #include <unordered_set>
 

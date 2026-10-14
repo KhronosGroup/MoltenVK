@@ -21,6 +21,9 @@ find_library(APPKIT_LIBRARY AppKit REQUIRED)
 find_library(IOKIT_LIBRARY IOKit REQUIRED)
 find_library(IOSURFACE_LIBRARY IOSurface REQUIRED)
 find_library(QUARTZCORE_LIBRARY QuartzCore REQUIRED)
+find_library(COREMEDIA_LIBRARY CoreMedia REQUIRED)
+find_library(COREVIDEO_LIBRARY CoreVideo REQUIRED)
+find_library(VIDEOTOOLBOX_LIBRARY VideoToolbox REQUIRED)
 target_link_libraries(MoltenVK_Common PUBLIC
 	${FOUNDATION_LIBRARY}
 	${METAL_LIBRARY}
@@ -28,6 +31,9 @@ target_link_libraries(MoltenVK_Common PUBLIC
 	${IOKIT_LIBRARY}
 	${IOSURFACE_LIBRARY}
 	${QUARTZCORE_LIBRARY}
+	${COREMEDIA_LIBRARY}
+	${COREVIDEO_LIBRARY}
+	${VIDEOTOOLBOX_LIBRARY}
 )
 
 ################################################################################
