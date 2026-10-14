@@ -75,6 +75,17 @@ public:
 	/** Returns whether or not the stencil attachment is being used. */
 	bool isStencilAttachmentUsed() const { return _stencilAttachment.attachment != VK_ATTACHMENT_UNUSED; }
 
+	/** Returns whether an active source attachment has a native or fallback resolve. */
+	bool hasResolveAttachments() const {
+		for (size_t i = 0; i < _colorAttachments.size() && i < _resolveAttachments.size(); ++i) {
+			if (_colorAttachments[i].attachment != VK_ATTACHMENT_UNUSED && _resolveAttachments[i].attachment != VK_ATTACHMENT_UNUSED) { return true; }
+		}
+		return (isDepthAttachmentUsed() && _depthResolveAttachment.attachment != VK_ATTACHMENT_UNUSED && _depthResolveMode != VK_RESOLVE_MODE_NONE) || (isStencilAttachmentUsed() && _stencilResolveAttachment.attachment != VK_ATTACHMENT_UNUSED && _stencilResolveMode != VK_RESOLVE_MODE_NONE);
+	}
+
+	/** Returns why an active resolve cannot survive a portable indexed capture split, or nullptr. */
+	const char* getPerVertexResolveError();
+
 	/** Return the depth attachment format. */
 	VkFormat getDepthFormat();
 
@@ -419,6 +430,9 @@ protected:
 
 #pragma mark -
 #pragma mark Support functions
+
+/** Checks native resolve support for a portable indexed capture split. Memoryless views are checked by the caller. */
+const char* mvkGetPerVertexResolveError(const MVKPhysicalDeviceMetalFeatures& features, MVKPixelFormats* formats, VkFormat resolveFormat, VkImageAspectFlagBits aspect, VkResolveModeFlagBits mode, VkRenderingFlags renderingFlags);
 
 /** Returns whether the view mask uses multiview. */
 static constexpr bool mvkIsMultiview(uint32_t viewMask) { return viewMask != 0; }

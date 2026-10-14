@@ -250,6 +250,49 @@ public:
 	/** Returns whether this pipeline has tessellation shaders. */
 	bool isTessellationPipeline() { return _isTessellationPipeline; }
 
+	/** Whether this pipeline draws with a mesh shader, through vkCmdDrawMeshTasksEXT. */
+	bool isMeshPipeline() const { return _isMeshPipeline; }
+
+	/** Threads per mesh threadgroup: the workgroup size of the mesh shader. */
+	MTLSize getMeshThreadgroupSize() const { return _meshThreadgroupSize; }
+
+	/** The mesh grid limit, in threadgroups, that the Metal pipeline state reports; only smaller grids are executed. */
+	NSUInteger getMaxMeshThreadgroupsPerGrid() const { return _maxMeshThreadgroupsPerGrid; }
+
+	/** Portable PerVertexKHR uses render capture for direct draws and compute capture for indexed draws, followed by replay.
+	 * Vertex stage resources describe capture; replay uses getPerVertexReplayBinding() and the optional implicit reversed-depth mask. */
+	bool usesPerVertexInputBuffer() const { return _usesPerVertexInputBuffer; }
+	// Admission is test-only until GPU topology covers arbitrary TCS factors.
+	bool usesPerVertexTessEval() const { return _usesPerVertexInputBuffer && _isTessellationPipeline; }
+
+	/** Whether the ordinary tessellation path keeps float32 TCS levels and classifies them into Metal half factors. */
+	bool usesFloat32TessLevels() const { return _usesFloat32TessLevels && !usesPerVertexTessEval(); }
+	id<MTLComputePipelineState> getTessLevelsToHalfFactorsPipelineState() const { return _mtlTessLevelsToHalfFactorsState; }
+	id<MTLComputePipelineState> getPerVertexTessEvalPipelineState() const { return _mtlPerVertexTessEvalState; }
+	/** Counter-clockwise TES winding reverses the generator's clockwise corner order; a lower-left domain origin reverses it again. */
+	bool perVertexTessReversesCorners() const { return (_tessReflectData.windingOrder == spv::ExecutionModeVertexOrderCcw) != _perVertexTessLowerLeft; }
+	const SPIRV_CROSS_NAMESPACE::MSLCapturedOutputReplayBarycentricBinding& getPerVertexReplayBarycentricBinding() const { return _perVertexReplayBarycentricBinding; }
+	bool usesPortableBarycentrics() const { return _usesPerspectiveBarycentrics || _usesNoPerspectiveBarycentrics; }
+	/**
+	 * Whether the non-indexed capture draws triangles. Other topologies, and every topology of a pipeline whose topology
+	 * is dynamic, capture their vertices as points; a dynamic topology stays within the pipeline's topology class.
+	 */
+	bool capturesPerVertexTriangleLists() const { return _perVertexCapturesTriangleLists; }
+	id<MTLRenderPipelineState> getPerVertexCapturePipelineState(uint32_t viewCount) const {
+		auto itr = _perVertexCapturePipelineStates.find(viewCount);
+		return itr == _perVertexCapturePipelineStates.end() ? nil : itr->second.direct;
+	}
+	id<MTLComputePipelineState> getPerVertexIndexedCapturePipelineState(bool index32, uint32_t viewCount) const {
+		auto itr = _perVertexCapturePipelineStates.find(viewCount);
+		return itr == _perVertexCapturePipelineStates.end() ? nil : (index32 ? itr->second.index32 : itr->second.index16);
+	}
+	const SPIRV_CROSS_NAMESPACE::MSLCapturedVertexLayout& getPerVertexCapturedLayout() const { return _perVertexCapturedLayout; }
+	const SPIRV_CROSS_NAMESPACE::MSLCapturedOutputReplayBinding& getPerVertexReplayBinding() const { return _perVertexReplayBinding; }
+	const SPIRV_CROSS_NAMESPACE::MSLPerVertexInputBinding& getPerVertexInputBinding() const { return _perVertexInputBinding; }
+	uint32_t getPerVertexCaptureBufferIndex() const { return getImplicitBuffers(kMVKShaderStageVertex).ids[MVKImplicitBuffer::Output]; }
+	/** Capture parameters start with the record count per instance (uint32). */
+	uint32_t getPerVertexCaptureParamsBufferIndex() const { return getImplicitBuffers(kMVKShaderStageVertex).ids[MVKImplicitBuffer::IndirectParams]; }
+
 	/** Returns the number of output tessellation patch control points. */
 	uint32_t getOutputControlPointCount() { return _outputControlPointCount; }
 
@@ -339,7 +382,11 @@ protected:
 	bool compileTessControlStageState(MTLComputePipelineDescriptor* tcPLDesc, VkPipelineCreationFeedback* pTessCtlFB);
 	void initDynamicState(const VkGraphicsPipelineCreateInfo* pCreateInfo);
 	void initSampleLocations(const VkGraphicsPipelineCreateInfo* pCreateInfo);
+	bool initPerVertexInputPipeline(const VkGraphicsPipelineCreateInfo* pCreateInfo, const VkPipelineShaderStageCreateInfo* pVertexSS, const VkPipelineShaderStageCreateInfo* pFragmentSS);
+	bool addPerVertexIndexedCapturePipelines(MTLVertexDescriptor* vertexDesc, const mvk::SPIRVToMSLConversionConfiguration& shaderConfig, const VkPipelineShaderStageCreateInfo* pVertexSS, uint32_t viewCount);
+	bool addPerVertexReplayShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, const mvk::SPIRVToMSLConversionConfiguration& shaderConfig, const VkPipelineShaderStageCreateInfo* pVertexSS, const VkPipelineShaderStageCreateInfo* pFragmentSS, SPIRVShaderOutputs& vertexOutputs);
     void initMTLRenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo, const mvk::SPIRVTessReflectionData& reflectData, VkPipelineCreationFeedback* pPipelineFB, const VkPipelineShaderStageCreateInfo* pVertexSS, VkPipelineCreationFeedback* pVertexFB, const VkPipelineShaderStageCreateInfo* pTessCtlSS, VkPipelineCreationFeedback* pTessCtlFB, const VkPipelineShaderStageCreateInfo* pTessEvalSS, VkPipelineCreationFeedback* pTessEvalFB, const VkPipelineShaderStageCreateInfo* pFragmentSS, VkPipelineCreationFeedback* pFragmentFB);
+	bool initMeshPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo, const VkPipelineShaderStageCreateInfo* pTaskSS, const VkPipelineShaderStageCreateInfo* pMeshSS, VkPipelineCreationFeedback* pMeshFB, const VkPipelineShaderStageCreateInfo* pFragmentSS, VkPipelineCreationFeedback* pFragmentFB);
     void initShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig, const VkGraphicsPipelineCreateInfo* pCreateInfo, const mvk::SPIRVTessReflectionData& reflectData);
 	void initReservedVertexAttributeBufferCount(const VkGraphicsPipelineCreateInfo* pCreateInfo);
     void addVertexInputToShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig, const VkGraphicsPipelineCreateInfo* pCreateInfo);
@@ -392,17 +439,41 @@ protected:
 	id<MTLComputePipelineState> _mtlTessVertexStageIndex16State = nil;
 	id<MTLComputePipelineState> _mtlTessVertexStageIndex32State = nil;
 	id<MTLComputePipelineState> _mtlTessControlStageState = nil;
+	id<MTLComputePipelineState> _mtlTessLevelsToHalfFactorsState = nil;
+	id<MTLComputePipelineState> _mtlPerVertexTessEvalState = nil;
 	id<MTLRenderPipelineState> _mtlPipelineState = nil;
+	struct PerVertexCapturePipelineStates {
+		id<MTLRenderPipelineState> direct = nil;
+		id<MTLComputePipelineState> index16 = nil;
+		id<MTLComputePipelineState> index32 = nil;
+	};
+	std::unordered_map<uint32_t, PerVertexCapturePipelineStates> _perVertexCapturePipelineStates;
+	SPIRV_CROSS_NAMESPACE::MSLCapturedVertexLayout _perVertexCapturedLayout;
+	SPIRV_CROSS_NAMESPACE::MSLCapturedOutputReplayBinding _perVertexReplayBinding;
+	SPIRV_CROSS_NAMESPACE::MSLPerVertexInputBinding _perVertexInputBinding;
+	SPIRV_CROSS_NAMESPACE::MSLCapturedOutputReplayBarycentricBinding _perVertexReplayBarycentricBinding;
+	bool _usesPerspectiveBarycentrics = false;
+	bool _usesNoPerspectiveBarycentrics = false;
+	bool _hasPerVertexInputs = false;
+	bool _usesPerVertexInputBuffer = false;
 
 	MVKShaderImplicitRezBinding _reservedVertexAttributeBufferCount;
 	VkPrimitiveTopology _vkPrimitiveTopology;
 	uint32_t _outputControlPointCount;
+	mvk::SPIRVTessReflectionData _tessReflectData;
+	bool _perVertexTessLowerLeft = false;
+	bool _perVertexCapturesTriangleLists = false;
 
 	MVKShaderModule* _vertexModule = nullptr;
 	MVKShaderModule* _tessCtlModule = nullptr;
 	MVKShaderModule* _tessEvalModule = nullptr;
 	MVKShaderModule* _fragmentModule = nullptr;
+	MVKShaderModule* _meshModule = nullptr;
 	bool _ownsVertexModule = false;
+	bool _ownsMeshModule = false;
+	bool _isMeshPipeline = false;
+	MTLSize _meshThreadgroupSize = {};
+	NSUInteger _maxMeshThreadgroupsPerGrid = 0;
 	bool _ownsTessCtlModule = false;
 	bool _ownsTessEvalModule = false;
 	bool _ownsFragmentModule = false;
@@ -411,6 +482,7 @@ protected:
 	bool _isRasterizing = false;
 	bool _isRasterizingColor = false;
 	bool _isTessellationPipeline = false;
+	bool _usesFloat32TessLevels = false;
 	bool _inputAttachmentIsDSAttachment = false;
 	bool _hasRemappedAttachmentLocations = false;
 };

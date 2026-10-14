@@ -294,6 +294,36 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 #endif
 }
 
+const char* mvkGetPerVertexResolveError(const MVKPhysicalDeviceMetalFeatures& features, MVKPixelFormats* formats, VkFormat resolveFormat, VkImageAspectFlagBits aspect, VkResolveModeFlagBits mode, VkRenderingFlags renderingFlags) {
+	// Suspension selects Store, which Metal forbids while a native resolve texture is attached.
+	if (mvkIsAnyFlagEnabled(renderingFlags, VK_RENDERING_SUSPENDING_BIT)) { return "indexed capture cannot suspend rendering with resolve attachments."; }
+	if (!features.combinedStoreResolveAction) { return "indexed capture with resolve requires combined store/resolve to preserve the final source."; }
+	if (aspect == VK_IMAGE_ASPECT_COLOR_BIT && !mvkAreAllFlagsEnabled(formats->getCapabilities(resolveFormat), kMVKMTLFmtCapsResolve)) { return "indexed capture does not support software color resolve."; }
+	if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT && (!features.depthResolve || (mode != VK_RESOLVE_MODE_SAMPLE_ZERO_BIT && mode != VK_RESOLVE_MODE_MIN_BIT && mode != VK_RESOLVE_MODE_MAX_BIT))) { return "indexed capture requires supported native depth resolve."; }
+	if (aspect == VK_IMAGE_ASPECT_STENCIL_BIT && (!features.stencilResolve || mode != VK_RESOLVE_MODE_SAMPLE_ZERO_BIT)) { return "indexed capture requires native sample-zero stencil resolve."; }
+	return nullptr;
+}
+
+const char* MVKRenderSubpass::getPerVertexResolveError() {
+	auto check = [&](uint32_t index, VkImageAspectFlagBits aspect, VkResolveModeFlagBits mode) {
+		// Render-pass formats match valid framebuffer/imageless views; dynamic rendering records their effective formats.
+		if (index >= _renderPass->_attachments.size()) { return "indexed capture resolve attachment index is out of range."; }
+		return mvkGetPerVertexResolveError(_renderPass->getMetalFeatures(), _renderPass->getPixelFormats(), _renderPass->_attachments[index].getFormat(), aspect, mode, _renderPass->getRenderingFlags());
+	};
+	for (size_t i = 0; i < _colorAttachments.size() && i < _resolveAttachments.size(); ++i) {
+		if (_colorAttachments[i].attachment != VK_ATTACHMENT_UNUSED && _resolveAttachments[i].attachment != VK_ATTACHMENT_UNUSED) {
+			if (const char* error = check(_resolveAttachments[i].attachment, VK_IMAGE_ASPECT_COLOR_BIT, VK_RESOLVE_MODE_AVERAGE_BIT)) { return error; }
+		}
+	}
+	if (isDepthAttachmentUsed() && _depthResolveAttachment.attachment != VK_ATTACHMENT_UNUSED && _depthResolveMode != VK_RESOLVE_MODE_NONE) {
+		if (const char* error = check(_depthResolveAttachment.attachment, VK_IMAGE_ASPECT_DEPTH_BIT, _depthResolveMode)) { return error; }
+	}
+	if (isStencilAttachmentUsed() && _stencilResolveAttachment.attachment != VK_ATTACHMENT_UNUSED && _stencilResolveMode != VK_RESOLVE_MODE_NONE) {
+		if (const char* error = check(_stencilResolveAttachment.attachment, VK_IMAGE_ASPECT_STENCIL_BIT, _stencilResolveMode)) { return error; }
+	}
+	return nullptr;
+}
+
 void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
                                           bool isRenderingEntireAttachment,
                                           MVKArrayRef<MVKImageView*const> attachments,
@@ -1237,9 +1267,9 @@ uint32_t mvkGetNextViewMaskGroup(uint32_t viewMask, uint32_t* startView, uint32_
 	// This is one past the end of the next clump. Clear the bits as we go, so we can use
 	// ffs(3) again on the next clump.
 	// TODO: Find a way to make this faster.
-	while (viewMask & (1 << end)) {
-		if (groupMask) { *groupMask |= viewMask & (1 << end); }
-		viewMask &= ~(1 << (end++));
+	while (viewMask && (viewMask & (1u << end))) {
+		if (groupMask) { *groupMask |= viewMask & (1u << end); }
+		viewMask &= ~(1u << (end++));
 	}
 	if (startView) { *startView = pos; }
 	if (viewCount) { *viewCount = end - pos; }

@@ -623,7 +623,24 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newAccumulateOcclusionQue
 	return newMTLComputePipelineState("accumulateOcclusionQueryResults", owner);
 }
 
-id<MTLComputePipelineState> MVKCommandResourceFactory::newConvertUint8IndicesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+id<MTLComputePipelineState> MVKCommandResourceFactory::newPerVertexRestartMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("perVertexRestart", owner);
+}
+
+id<MTLComputePipelineState> MVKCommandResourceFactory::newPerVertexIndirectMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("perVertexIndirect", owner);
+}
+
+id<MTLComputePipelineState> MVKCommandResourceFactory::newPerVertexTessTopologyMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("perVertexTessTopology", owner);
+}
+
+id<MTLComputePipelineState> MVKCommandResourceFactory::newTessLevelsToHalfFactorsMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("tessLevelsToHalfFactors", owner);
+}
+
+id<MTLComputePipelineState> MVKCommandResourceFactory::newConvertUint8IndicesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner, bool preserveValues) {
+	if (preserveValues) { return newMTLComputePipelineState("convertUint8IndicesRaw", owner); }
 #if MVK_USE_METAL_PRIVATE_API
 	if (getMVKConfig().useMetalPrivateAPI) {
 		// Private API allows us to control restart index and enable. Do not convert restart sentinels.
@@ -685,6 +702,10 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newMTLRenderPipelineState(
 id<MTLComputePipelineState> MVKCommandResourceFactory::newMTLComputePipelineState(const char* funcName,
 																				  MVKVulkanAPIDeviceObject* owner) {
 	id<MTLFunction> mtlFunc = newFunctionNamed(funcName);							// temp retain
+	if (!mtlFunc) {
+		owner->setConfigurationResult(owner->reportError(VK_ERROR_INITIALIZATION_FAILED, "Could not find support compute shader function %s.", funcName));
+		return nil;
+	}
 	// Providing a function directly may cause issues with Metal shader validation layer object
 	// management for some reason, so create a temporary pipeline descriptor to provide instead.
 	MTLComputePipelineDescriptor* plDesc = [MTLComputePipelineDescriptor new];		// temp retain

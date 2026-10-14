@@ -22,11 +22,15 @@
 #include "MVKMTLBufferAllocation.h"
 #include <unordered_map>
 #include <mutex>
+#include <vector>
 
 #import <Metal/Metal.h>
 
 
 class MVKCommandPool;
+
+/** Replay tables shared by the single-instance portable PerVertexKHR draws of a topology. Immutable once returned. */
+struct MVKPerVertexReplayTables { id<MTLBuffer> pairs = nil; id<MTLBuffer> indices = nil; id<MTLBuffer> corners = nil; };
 
 
 #pragma mark -
@@ -140,7 +144,19 @@ public:
 	id<MTLComputePipelineState> getAccumulateOcclusionQueryResultsMTLComputePipelineState();
 
 	/** Returns a MTLComputePipelineState for converting a Uint8 index buffer to Uint16. */
-	id<MTLComputePipelineState> getConvertUint8IndicesMTLComputePipelineState();
+	id<MTLComputePipelineState> getConvertUint8IndicesMTLComputePipelineState(bool preserveValues = false);
+
+	id<MTLComputePipelineState> getPerVertexRestartMTLComputePipelineState();
+
+	/** Returns the GPU admission and planning pipeline for portable PerVertexKHR indirect draws. */
+	id<MTLComputePipelineState> getPerVertexIndirectMTLComputePipelineState();
+	/** Returns the GPU topology generator for portable PerVertexKHR tessellation. */
+	id<MTLComputePipelineState> getPerVertexTessTopologyMTLComputePipelineState();
+
+	/** Returns resident replay tables covering vertexCount single-instance vertices, or nil buffers if allocation fails. */
+	MVKPerVertexReplayTables getPerVertexReplayTables(VkPrimitiveTopology topology, bool provokingLast, uint32_t vertexCount);
+
+	/** Returns a compute pipeline state that classifies float32 TCS levels into Metal half tessellation factors. */
 
 	/** Deletes all the internal resources. */
 	void clear();
@@ -183,5 +199,10 @@ protected:
 	id<MTLComputePipelineState> _mtlDrawIndexedCopyIndexBufferComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlCopyQueryPoolResultsComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlAccumOcclusionQueryResultsComputePipelineState = nil;
-	id<MTLComputePipelineState> _mtlConvertUint8IndicesComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlPerVertexRestartComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlPerVertexIndirectComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlPerVertexTessTopologyComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlConvertUint8IndicesComputePipelineState[2] = {nil, nil};
+	std::unordered_map<uint32_t, std::pair<uint32_t, MVKPerVertexReplayTables>> _perVertexReplayTables;
+	std::vector<id<MTLBuffer>> _perVertexReplayBuffers;
 };

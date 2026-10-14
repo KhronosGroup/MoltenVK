@@ -27,9 +27,12 @@
 #include "MVKPixelFormats.h"
 #include "MVKOSExtensions.h"
 #include "mvk_datatypes.hpp"
+#include <atomic>
+#include <condition_variable>
 #include <shared_mutex>
 #include <string>
 #include <mutex>
+#include <unordered_set>
 #include <os/lock.h>
 
 #import <Metal/Metal.h>
@@ -51,6 +54,7 @@ class MVKSwapchain;
 class MVKDeviceMemory;
 class MVKFence;
 class MVKSemaphore;
+class MVKLossReleasable;
 class MVKTimelineSemaphore;
 class MVKDeferredOperation;
 class MVKEvent;
@@ -72,6 +76,7 @@ class MVKCommandEncoder;
 class MVKCommandResourceFactory;
 class MVKPrivateDataSlot;
 struct MVKUseResourceHelper;
+struct MVKPerVertexScratchPool;
 enum class MVKResourceUsageStages : uint8_t;
 
 
@@ -426,6 +431,12 @@ public:
 	/** Returns whether argument buffers are in use. */
 	bool isUsingMetalArgumentBuffers() const { return _isUsingMetalArgumentBuffers; }
 
+	/**
+	 * Returns whether the experimental portable PerVertexKHR capture and replay is enabled. Only the test entry point
+	 * enables it. Otherwise barycentric inputs keep the native Metal path, and PerVertexKHR inputs are not supported.
+	 */
+	bool isPortablePerVertexEnabled() const { return _portablePerVertexEnabled; }
+
 	/** Returns whether or not vertex instancing can be used to implement multiview. */
 	bool canUseInstancingForMultiview() { return _metalFeatures.layeredRendering; }
 
@@ -440,6 +451,13 @@ public:
 
 	/** Returns info on the sizes of argument buffers. */
 	const MVKPhysicalDeviceArgumentBufferSizes& getArgumentBufferSizes() const { return _argumentBufferSizes; }
+
+	/**
+	 * Returns a Metal command queue that only releases semaphore waits after a logical device is lost,
+	 * so that its command buffers never queue behind stalled application work. Created on first use,
+	 * then shared by the logical devices of this physical device. Returns nil if it cannot be created.
+	 */
+	id<MTLCommandQueue> getLossRescueMTLCommandQueue();
 
 
 #pragma mark Construction
@@ -503,6 +521,7 @@ protected:
 	id<MTLDevice> _mtlDevice;
 	const MVKMTLDeviceCapabilities _gpuCapabilities;
 	const MVKExtensionList _supportedExtensions;
+	bool _portablePerVertexEnabled = false;
 	MVKPixelFormats _pixelFormats;
 	VkPhysicalDeviceFeatures _features;
 	MVKPhysicalDeviceVulkan12NoExtFeatures _vulkan12NoExtFeatures;
@@ -527,6 +546,8 @@ protected:
 	uint32_t _privateMemoryTypes;
 	uint32_t _lazilyAllocatedMemoryTypes;
 	MVKPhysicalDeviceArgumentBufferSizes _argumentBufferSizes;
+	id<MTLCommandQueue> _lossRescueMTLQueue = nil;
+	std::mutex _lossRescueLock;
 	bool _hasUnifiedMemory = true;
 	bool _isUsingMetalArgumentBuffers = true;
 };
@@ -690,8 +711,87 @@ public:
 	/** Block the current thread until all queues in this device are idle. */
 	VkResult waitIdle();
 	
-	/** Mark this device (and optionally the physical device) as lost. Releases all waits for this device. */
+	/**
+	 * Marks this device (and optionally the physical device) as lost, without blocking the caller.
+	 * New submissions are refused at once, CPU waits made while encoding submissions are cancelled,
+	 * and Metal waits on this device's semaphores are released. Host waits report the loss only once
+	 * no queue submission is encoding (see beginEncoding()), because a loss reported to a host wait
+	 * allows the application to free the command buffers such a submission may still be reading.
+	 */
 	VkResult markLost(bool alsoMarkPhysicalDevice = false);
+
+	/**
+	 * Returns whether this device has started to be lost, even if host waits do not report it yet.
+	 *
+	 * Sequentially consistent: an encoding admits itself by incrementing the count of active encodings, then reading
+	 * this, while the loss is set, then that count is read. One of the two reads must see the other write. An acquire
+	 * load may be served before the preceding increment is visible (LDAPR on arm64), and both could then miss.
+	 */
+	bool isLosing() { return _losing.load(); }
+
+	/**
+	 * Returns the result of a host wait that returned with the specified completion.
+	 * During a loss not yet reported to host waits, waits up to the timeout for it to be reported.
+	 */
+	VkResult getHostWaitResult(bool isFinished, uint64_t timeout);
+
+	/**
+	 * Brackets the encoding of a queue submission, from its dispatch to a queue worker if it has one. A device loss
+	 * is reported to host waits, and this device destroyed, only while no submission is encoding. endEncoding() is
+	 * the caller's last use of this device and of its queue.
+	 */
+	void beginEncoding();
+	void endEncoding();
+
+	/**
+	 * Adds a completion handler, or a scheduled handler, to a Metal command buffer that commitMTLCommandBuffer()
+	 * commits, or that abandonMTLCommandBuffer() abandons. The handlers of each kind run in the order they were added,
+	 * from one Metal handler: Metal documents no order between the handlers of a command buffer. A device loss is
+	 * reported to host waits, and this device destroyed, only once the handlers of every committed command buffer have
+	 * returned: they use this device and objects that the application may destroy as soon as a loss is reported.
+	 */
+	void addMTLCommandBufferHandler(id<MTLCommandBuffer> mtlCmdBuff, MTLCommandBufferHandler handler, bool isScheduled = false);
+
+	/**
+	 * MVK_CONFIG_PERVERTEX_BATCH_RESIDENCY=1: adds an allocation that a Metal command buffer uses to the residency
+	 * set when commitMTLCommandBuffer() commits it, together with the others of that command buffer and one residency
+	 * commit, and removes them all, with one commit, from its completed handlers. An abandoned one never adds them.
+	 */
+	void addMTLCommandBufferResidency(id<MTLCommandBuffer> mtlCmdBuff, id<MTLBuffer> allocation);
+
+	/** MVK_CONFIG_PERVERTEX_SCRATCH_POOL=1: the pool of PerVertex scratch buffers, otherwise null. */
+	const std::shared_ptr<MVKPerVertexScratchPool>& getPerVertexScratchPool() { return _perVertexScratchPool; }
+
+	/**
+	 * Runs now, as cleanup, the completion handlers of a Metal command buffer that its owner then releases without
+	 * committing it, which discards its commands. Its status stays MTLCommandBufferStatusNotEnqueued, which handlers
+	 * that report completion must check.
+	 */
+	void abandonMTLCommandBuffer(id<MTLCommandBuffer> mtlCmdBuff);
+
+	/**
+	 * Commits a Metal command buffer, counting its handlers added by addMTLCommandBufferHandler(). A device loss is
+	 * then reported only once it has completed, since MoltenVK does not retain the application resources it uses.
+	 */
+	void commitMTLCommandBuffer(id<MTLCommandBuffer> mtlCmdBuff);
+
+	/**
+	 * While this device is being lost, waits until no Metal work committed before the loss inventory closed can still
+	 * write application memory. Used before releasing host memory that the application imported, which it may reuse.
+	 */
+	void waitForLossInventory();
+
+	/** Registers a semaphore or event whose encoded Metal waits must be released if this device is lost. */
+	void addLossReleasable(MVKLossReleasable* releasable);
+
+	/** Unregisters an object registered with addLossReleasable(). */
+	void removeLossReleasable(MVKLossReleasable* releasable);
+
+	/** Adds a CPU wait made while encoding a submission, cancelled as soon as this device starts to be lost. */
+	void addEncodingSemaphore(MVKSemaphoreImpl* sem4);
+
+	/** Removes a CPU wait added with addEncodingSemaphore(). */
+	void removeEncodingSemaphore(MVKSemaphoreImpl* sem4);
 
 	/** Returns whether or not the given descriptor set layout is supported. */
 	void getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
@@ -979,6 +1079,7 @@ public:
 
 #if !MVK_XCODE_16
 	void makeResident(id allocation) {}
+	void makeResidentBatch(NSArray* allocations) {}
 #else
 	void makeResident(id<MTLAllocation> allocation) {
 		@synchronized(_residencySet) {
@@ -986,14 +1087,31 @@ public:
 			[_residencySet commit];
 		}
 	}
+
+	/** Adds the allocations to the residency set with a single commit. */
+	void makeResidentBatch(NSArray* allocations) {
+		@synchronized(_residencySet) {
+			for (id<MTLAllocation> allocation in allocations) { [_residencySet addAllocation: allocation]; }
+			[_residencySet commit];
+		}
+	}
 #endif
 
 #if !MVK_XCODE_16
 	void removeResidency(id allocation) {}
+	void removeResidencyBatch(NSArray* allocations) {}
 #else
 	void removeResidency(id<MTLAllocation> allocation) {
 		@synchronized(_residencySet) {
 			[_residencySet removeAllocation:allocation];
+			[_residencySet commit];
+		}
+	}
+
+	/** Removes the allocations from the residency set with a single commit. */
+	void removeResidencyBatch(NSArray* allocations) {
+		@synchronized(_residencySet) {
+			for (id<MTLAllocation> allocation in allocations) { [_residencySet removeAllocation: allocation]; }
 			[_residencySet commit];
 		}
 	}
@@ -1061,6 +1179,8 @@ protected:
     void initPerformanceTracking();
 	void initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo);
 	void initQueues(const VkDeviceCreateInfo* pCreateInfo);
+	void releaseSemaphoreWaitsAfterLoss();
+	void publishLoss();
 	void initConfiguration();
 	void reservePrivateData(const VkDeviceCreateInfo* pCreateInfo);
 	void enableFeatures(const VkDeviceCreateInfo* pCreateInfo);
@@ -1101,7 +1221,20 @@ protected:
 	MVKSmallVector<MVKPrivateDataSlot*> _privateDataSlots;
 	MVKSmallVector<bool> _privateDataSlotsAvailability;
 	MVKSmallVector<MVKSemaphoreImpl*> _awaitingSemaphores;
+	MVKSmallVector<MVKSemaphoreImpl*> _encodingSemaphores;
 	MVKSmallVector<std::pair<MVKTimelineSemaphore*, uint64_t>> _awaitingTimelineSem4s;
+	std::unordered_set<MVKLossReleasable*> _lossReleasables;
+	std::mutex _lossReleaseLock;
+	std::mutex _lossLock;
+	std::condition_variable _lossCondition;
+	dispatch_queue_t _lossPublisher = nullptr;
+	std::atomic<uint32_t> _activeEncodings{0};
+	std::atomic<int64_t> _pendingMTLCommandBufferHandlers{0};
+	std::atomic<int64_t> _handlersBeforeInventory{0};
+	std::atomic<bool> _isLossInventoryClosed{false};
+	bool _isLossPublished = false;
+	std::atomic<bool> _losing{false};
+	std::atomic<bool> _markPhysicalDeviceLost{false};
 	MVKSmallVector<MVKVisibilityBuffer> _visibilityBuffers;
 	MVKLiveResourceSet _liveResources;
 	std::mutex _rezLock;
@@ -1114,6 +1247,7 @@ protected:
 #if MVK_XCODE_16
 	id<MTLResidencySet> _residencySet = nil;
 #endif
+	std::shared_ptr<MVKPerVertexScratchPool> _perVertexScratchPool;
 	uint32_t _visibilityBufferCount = 0;
 	int _capturePipeFileDesc = -1;
 	bool _isPerformanceTracking = false;

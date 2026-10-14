@@ -106,7 +106,10 @@ MVKCommandPool::MVKCommandPool(MVKDevice* device,
 {}
 
 MVKCommandPool::~MVKCommandPool() {
+	// Reset each command buffer while _commandEncodingPool exists: its cleanup may return Metal buffers there, and
+	// that member is destroyed before _commandBufferPool, which destroys the command buffers.
 	for (auto& mvkCB : _allocatedCommandBuffers) {
+		mvkCB->reset(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 		_commandBufferPool.returnObject(mvkCB);
 	}
 }

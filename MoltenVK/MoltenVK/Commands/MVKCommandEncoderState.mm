@@ -966,17 +966,21 @@ void MVKVulkanCommonEncoderState::setLayout(MVKPipelineLayout* layout) {
 }
 
 MVKVulkanCommonEncoderState::MVKVulkanCommonEncoderState(const MVKVulkanCommonEncoderState& other) {
-	memcpy(_descriptorSets, other._descriptorSets, sizeof(_descriptorSets));
-	_pushDescriptor = other._pushDescriptor;
-	setLayout(other._layout);
-	memcpy(_pushDescriptor.cpuBuffer, other._pushDescriptor.cpuBuffer, _pushDescriptor.cpuBufferSize);
+	*this = other;
 }
 
+// Unused before the PerVertex prepass. The copy owns its push descriptor storage: the previous version kept cpuBuffer
+// pointing into the source unless the copy had to grow, so a restored state could alias a destroyed snapshot.
 MVKVulkanCommonEncoderState& MVKVulkanCommonEncoderState::operator=(const MVKVulkanCommonEncoderState& other) {
-	memmove(_descriptorSets, other._descriptorSets, sizeof(_descriptorSets));
+	if (this == &other) { return *this; }
+	_layout = other._layout;
 	_pushDescriptor = other._pushDescriptor;
-	setLayout(other._layout);
-	memmove(_pushDescriptor.cpuBuffer, other._pushDescriptor.cpuBuffer, _pushDescriptor.cpuBufferSize);
+	_pushDescData.resize(other._pushDescData.size());
+	if (other._pushDescData.size()) { memcpy(_pushDescData.data(), other._pushDescData.data(), other._pushDescData.size()); }
+	if (other._pushDescriptor.cpuBuffer) { _pushDescriptor.cpuBuffer = reinterpret_cast<char*>(_pushDescData.data()); }
+	for (uint32_t i = 0; i < kMVKMaxDescriptorSetCount; i++) {
+		_descriptorSets[i] = other._descriptorSets[i] == &other._pushDescriptor ? &_pushDescriptor : other._descriptorSets[i];
+	}
 	return *this;
 }
 
@@ -1469,7 +1473,11 @@ void MVKMetalGraphicsCommandEncoderState::prepareDraw(
 	bindState(encoder, mvkEncoder, vk);
 
 	// Resources
-	if (pipeline->isTessellationPipeline()) {
+	if (pipeline->usesPerVertexTessEval()) {
+		// Replay has its own buffers; TES resources were consumed by the compute stage.
+	} else if (pipeline->isMeshPipeline()) {
+		// Admitted mesh pipelines have neither vertex input nor mesh-stage resources.
+	} else if (pipeline->isTessellationPipeline()) {
 		bindVulkanGraphicsToMetalGraphics(encoder, mvkEncoder, vk, vkShared, *this, pipeline, kMVKShaderStageTessEval, MVKMetalGraphicsStage::Vertex);
 	} else {
 		bindVulkanGraphicsToMetalGraphics(encoder, mvkEncoder, vk, vkShared, *this, pipeline, kMVKShaderStageVertex,   MVKMetalGraphicsStage::Vertex);
@@ -1643,7 +1651,11 @@ void MVKMetalComputeCommandEncoderState::prepareRenderDispatch(
 
 	id<MTLComputePipelineState> mtlPipeline = nil;
 	if (stage == kMVKShaderStageVertex) {
-		if (!mvkEncoder._isIndexedDraw) {
+		if (pipeline->usesPerVertexInputBuffer() && !pipeline->usesPerVertexTessEval()) {
+			auto* subpass = mvkEncoder.getSubpass();
+			uint32_t viewCount = subpass->isMultiview() ? subpass->getViewCountInMetalPass(mvkEncoder.getMultiviewPassIndex()) : 1;
+			mtlPipeline = pipeline->getPerVertexIndexedCapturePipelineState(vk.isPrimitiveRestartEnabled() || vk._indexBuffer.vkIndexType == VK_INDEX_TYPE_UINT32, viewCount);
+		} else if (!mvkEncoder._isIndexedDraw) {
 			mtlPipeline = pipeline->getTessVertexStageState();
 		} else if (vk._indexBuffer.mtlIndexType == MTLIndexTypeUInt16) {
 			mtlPipeline = pipeline->getTessVertexStageIndex16State();
@@ -1652,6 +1664,8 @@ void MVKMetalComputeCommandEncoderState::prepareRenderDispatch(
 		}
 	} else if (stage == kMVKShaderStageTessCtl) {
 		mtlPipeline = pipeline->getTessControlStageState();
+	} else if (stage == kMVKShaderStageTessEval) {
+		mtlPipeline = pipeline->getPerVertexTessEvalPipelineState();
 	} else {
 		assert(0);
 	}
@@ -1854,17 +1868,34 @@ void MVKCommandEncoderState::bindIndexBuffer(const MVKIndexMTLBufferBinding& buf
 }
 
 void MVKCommandEncoderState::offsetZeroDivisorVertexBuffers(MVKCommandEncoder& mvkEncoder, MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance) {
+	bool dynamicStride = pipeline->getDynamicStateFlags().has(MVKRenderStateFlag::VertexStride);
 	for (const auto& binding : pipeline->getZeroDivisorVertexBindings()) {
 		uint32_t mtlBuffIdx = pipeline->getMetalBufferIndexForVertexAttributeBinding(binding.first);
-		auto& buffer = _vkGraphics._vertexBuffers[binding.first];
+		uint32_t sourceBinding = binding.first;
+		VkDeviceSize offset = 0;
+		for (const auto& translated : pipeline->getTranslatedVertexBindings()) {
+			if (translated.translationBinding != binding.first) { continue; }
+			sourceBinding = translated.binding;
+			offset += translated.translationOffset;
+			break;
+		}
+		const auto& buffer = _vkGraphics._vertexBuffers[sourceBinding];
+		VkDeviceSize stride = dynamicStride ? buffer.stride : binding.second;
+		offset += buffer.offset + VkDeviceSize(firstInstance) * stride;
 		switch (stage) {
 			case kMVKGraphicsStageVertex:
-				[mvkEncoder.getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl) setBufferOffset: buffer.offset + firstInstance * binding.second
-				                                                                                  atIndex: mtlBuffIdx];
+				if (dynamicStride) {
+					[mvkEncoder.getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl) setBufferOffset:offset attributeStride:stride atIndex:mtlBuffIdx];
+				} else {
+					[mvkEncoder.getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl) setBufferOffset: offset atIndex: mtlBuffIdx];
+				}
 				break;
 			case kMVKGraphicsStageRasterization:
-				[mvkEncoder._mtlRenderEncoder setVertexBufferOffset:buffer.offset + firstInstance * binding.second
-				                                            atIndex:mtlBuffIdx];
+				if (dynamicStride) {
+					[mvkEncoder._mtlRenderEncoder setVertexBufferOffset:offset attributeStride:stride atIndex:mtlBuffIdx];
+				} else {
+					[mvkEncoder._mtlRenderEncoder setVertexBufferOffset:offset atIndex:mtlBuffIdx];
+				}
 				break;
 			default:
 				assert(false); // If we hit this, something went wrong.

@@ -196,21 +196,22 @@ class MVKConfigurableMixin {
 public:
 
 	/** Returns a indication of the success of the configuration of this instance. */
-	VkResult getConfigurationResult() { return _configurationResult; }
+	VkResult getConfigurationResult() { return _configurationResult.load(); }
 
 	/** If the existing configuration result is VK_SUCCESS, it is set to the specified value. */
 	void setConfigurationResult(VkResult vkResult) {
-		if (_configurationResult == VK_SUCCESS) { _configurationResult = vkResult; }
+		VkResult expected = VK_SUCCESS;
+		_configurationResult.compare_exchange_strong(expected, vkResult);
 	}
 
 	/** Returns whether the configuration was successful. */
-	bool wasConfigurationSuccessful() { return _configurationResult == VK_SUCCESS; }
+	bool wasConfigurationSuccessful() { return _configurationResult.load() == VK_SUCCESS; }
 
 	/** Resets the indication of the success of the configuration of this instance back to VK_SUCCESS. */
-	void clearConfigurationResult() { _configurationResult = VK_SUCCESS; }
+	void clearConfigurationResult() { _configurationResult.store(VK_SUCCESS); }
 
 protected:
-	VkResult _configurationResult = VK_SUCCESS;
+	std::atomic<VkResult> _configurationResult{VK_SUCCESS};
 };
 
 

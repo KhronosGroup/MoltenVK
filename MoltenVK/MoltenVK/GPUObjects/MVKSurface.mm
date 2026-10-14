@@ -120,7 +120,14 @@ void MVKSurface::releaseLayer() {
 	_layerObserver = nil;
 }
 
+dispatch_queue_t MVKSurface::getDrawableQueue() {
+	std::lock_guard<std::mutex> lock(_layerLock);
+	if ( !_drawableQueue ) { _drawableQueue = dispatch_queue_create("MoltenVK drawables", DISPATCH_QUEUE_SERIAL); }	// retained
+	return _drawableQueue;
+}
+
 MVKSurface::~MVKSurface() {
 	releaseLayer();
+	if (_drawableQueue) { dispatch_release(_drawableQueue); }	// a pending request retains it until it ends
 }
 

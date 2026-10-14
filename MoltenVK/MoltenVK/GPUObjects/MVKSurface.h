@@ -58,6 +58,12 @@ public:
 	/** Returns whether this surface is headless. */
 	bool isHeadless() { return !_mtlCAMetalLayer && wasConfigurationSuccessful(); }
 
+	/**
+	 * Returns the serial queue on which the drawables of the CAMetalLayer are requested, so that the encoding that
+	 * needs one does not wait in Core Animation itself (see MVKPresentableSwapchainImage::getCAMetalDrawable()).
+	 */
+	dispatch_queue_t getDrawableQueue();
+
 #pragma mark Construction
 
 	MVKSurface(MVKInstance* mvkInstance,
@@ -87,5 +93,6 @@ protected:
 	CAMetalLayer* _mtlCAMetalLayer = nil;
 	MVKBlockObserver* _layerObserver = nil;
 	MVKSwapchain* _activeSwapchain = nullptr;
+	dispatch_queue_t _drawableQueue = nullptr;
 };
 

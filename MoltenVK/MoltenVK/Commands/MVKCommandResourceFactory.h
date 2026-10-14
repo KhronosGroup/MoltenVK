@@ -383,7 +383,17 @@ public:
 	id<MTLComputePipelineState> newAccumulateOcclusionQueryResultsMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 
 	/** Returns a new MTLComputePipelineState for converting a Uint8 index buffer to Uint16. */
-	id<MTLComputePipelineState> newConvertUint8IndicesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+	id<MTLComputePipelineState> newPerVertexRestartMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+
+	/** Returns a new MTLComputePipelineState for planning portable PerVertexKHR indirect draws on the GPU. */
+	id<MTLComputePipelineState> newPerVertexIndirectMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+	/** Returns a new MTLComputePipelineState generating portable PerVertexKHR tessellation topology. */
+	id<MTLComputePipelineState> newPerVertexTessTopologyMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+
+	/** Returns a new compute pipeline state that classifies float32 TCS levels into Metal half tessellation factors. */
+	id<MTLComputePipelineState> newTessLevelsToHalfFactorsMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+
+	id<MTLComputePipelineState> newConvertUint8IndicesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner, bool preserveValues = false);
 
 
 #pragma mark Construction

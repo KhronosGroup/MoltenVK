@@ -25,6 +25,25 @@
 #include <vector>
 #include <map>
 
+namespace SPIRV_CROSS_NAMESPACE {
+
+	// Field-wise pipeline cache serialization; no dependency on a particular archive implementation.
+	template<class Archive>
+	void serialize(Archive& archive, MSLCapturedVertexComponent& component) {
+		archive(component.location, component.component, component.byte_offset, component.scalar_type);
+	}
+
+	template<class Archive>
+	void serialize(Archive& archive, MSLCapturedVertexBuiltin& builtin) {
+		archive(builtin.builtin, builtin.array_index, builtin.component, builtin.byte_offset, builtin.scalar_type);
+	}
+
+	template<class Archive>
+	void serialize(Archive& archive, MSLCapturedVertexLayout& layout) {
+		archive(layout.stride, layout.components, layout.builtins);
+	}
+
+}
 
 namespace mvk {
 
@@ -140,6 +159,29 @@ namespace mvk {
 
 	} DescriptorBinding;
 
+	/** Explicit captured producer ABI. Include this value in the pipeline cache archive. */
+	struct MSLPerVertexInputBuffer {
+		bool enabled = false;
+		SPIRV_CROSS_NAMESPACE::MSLCapturedVertexLayout layout;
+		SPIRV_CROSS_NAMESPACE::MSLPerVertexInputBinding binding;
+
+		bool matches(const MSLPerVertexInputBuffer& other) const;
+
+		template<class Archive>
+		void serialize(Archive& archive) {
+			archive(enabled, layout, binding.vertex_buffer_index, binding.primitive_index_buffer_index, binding.primitive_index_location, binding.primitive_id_buffer_index);
+		}
+	};
+
+	/** Explicit portable barycentric varying ABI; disabled bindings do not affect cache identity. */
+	struct MSLFragmentBarycentricInput {
+		bool enabled = false;
+		SPIRV_CROSS_NAMESPACE::MSLFragmentBarycentricInputBinding binding;
+		bool matches(const MSLFragmentBarycentricInput& other) const { return enabled == other.enabled && (!enabled || (binding.perspective_location == other.binding.perspective_location && binding.no_perspective_location == other.binding.no_perspective_location)); }
+		template<class Archive>
+		void serialize(Archive& archive) { archive(enabled, binding.perspective_location, binding.no_perspective_location); }
+	};
+
 	/**
 	 * Configuration passed to the SPIRVToMSLConverter.
 	 *
@@ -153,6 +195,14 @@ namespace mvk {
 		std::vector<MSLResourceBinding> resourceBindings;
 		std::vector<uint32_t> discreteDescriptorSets;
 		std::vector<DescriptorBinding> dynamicBufferDescriptors;
+		MSLPerVertexInputBuffer perVertexInputBuffer;
+		MSLFragmentBarycentricInput fragmentBarycentricInput;
+		bool exportCapturedVertexLayout = false;
+
+		/** Opt in to portable PerVertexKHR inputs using the actual producer layout and reserved resources. */
+		void setPerVertexInputBuffer(const SPIRV_CROSS_NAMESPACE::MSLCapturedVertexLayout& layout, const SPIRV_CROSS_NAMESPACE::MSLPerVertexInputBinding& binding) { perVertexInputBuffer = {true, layout, binding}; }
+
+		void setFragmentBarycentricInput(const SPIRV_CROSS_NAMESPACE::MSLFragmentBarycentricInputBinding& binding) { fragmentBarycentricInput = {true, binding}; }
 
 		/** Returns whether the pipeline stage being converted supports vertex attributes. */
 		bool stageSupportsVertexAttributes() const;
@@ -178,8 +228,9 @@ namespace mvk {
 		/** Marks all interface variables and resources as being used by the shader. */
 		void markAllInterfaceVarsAndResourcesUsed();
 
-        /**
-         * Returns whether this configuration matches the other configuration. It does if
+		/**
+		 * Returns whether this configuration matches the other configuration. It does if
+		 * the enabled captured producer ABI matches exactly,
 		 * the respective options match and any vertex attributes and resource bindings used
 		 * by this configuration can be found in the other configuration. Vertex attributes
 		 * and resource bindings that are in the other configuration but are not used by
@@ -262,8 +313,11 @@ namespace mvk {
 		bool needsViewRangeBuffer = false;
 		bool needsDrawId = false;
 		bool needsDepthClipStateBuffer = false;
+		bool needsPerVertexInputBuffer = false;
 		bool usesPhysicalStorageBufferAddressesCapability = false;
 		std::map<uint32_t, MSLSpecializationMacroInfo> specializationMacros;
+		/** Physical vertex capture ABI; zero stride when no vertex capture record was exported. */
+		SPIRV_CROSS_NAMESPACE::MSLCapturedVertexLayout capturedVertexLayout;
 
 	} SPIRVToMSLConversionResultInfo;
 
