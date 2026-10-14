@@ -1656,6 +1656,9 @@ VkResult MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffe
 	// Attach present handler before presenting to avoid race condition.
 	id<CAMetalDrawable> mtlDrwbl = getCAMetalDrawable();
 	MVKSwapchainSignaler signaler = getPresentationSignaler();
+	// Retrieve the minimum present duration now, because the swapchain may not exist when the
+	// handler runs, for the same reason that MVKImagePresentInfo is passed to it by value.
+	double minPresentDuration = _swapchain->getMinimumPresentDuration();
 	[mtlCmdBuff addScheduledHandler: ^(id<MTLCommandBuffer> mcb) {
 
 		addPresentedHandler(mtlDrwbl, presentInfo, signaler);
@@ -1667,6 +1670,10 @@ VkResult MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffe
 		}
 		if (presentInfo.desiredPresentTime) {
 			[mtlDrwbl presentAtTime: (double)presentInfo.desiredPresentTime * 1.0e-9];
+		} else if (minPresentDuration > 0.0) {
+			// Unlike presentAtTime:, this is a floor and not a deadline, so a frame that takes
+			// longer than the minimum duration simply lands on a later refresh cycle.
+			[mtlDrwbl presentAfterMinimumDuration: minPresentDuration];
 		} else {
 			[mtlDrwbl present];
 		}

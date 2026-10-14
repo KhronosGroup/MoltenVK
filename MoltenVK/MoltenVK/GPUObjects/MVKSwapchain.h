@@ -58,6 +58,12 @@ public:
 	MVKPresentableSwapchainImage* getPresentableImage(uint32_t index) { return _presentableImages[index]; }
 
 	/**
+	 * Returns the minimum duration, in seconds, to wait between presentations of the images
+	 * in this swapchain, or zero if the presentations should not declare a frame rate.
+	 */
+	double getMinimumPresentDuration() { return _minPresentDuration; }
+
+	/**
 	 * Returns the array of presentable images associated with this swapchain.
 	 *
 	 * If pSwapchainImages is null, the value of pCount is updated with the number of
@@ -144,5 +150,6 @@ protected:
 	uint32_t _presentHistoryCount = 0;
 	uint32_t _presentHistoryIndex = 0;
 	uint32_t _presentHistoryHeadIndex = 0;
+	double _minPresentDuration = 0.0;
 	bool _isDeliberatelyScaled = false;
 };
