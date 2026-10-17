@@ -101,7 +101,7 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
             tex = [_heapAllocation.heap
                            newTextureWithDescriptor: mtlTexDesc
                            offset: _heapAllocation.offset];
-            if (_image->_isAliasable) { [_mtlTexture makeAliasable]; }
+            if (_image->_isAliasable) { [tex makeAliasable]; }
         } else if (_image->_isAliasable && dvcMem && dvcMem->isDedicatedAllocation() &&
             !mvkContains(dvcMem->_imageMemoryBindings, memoryBinding)) {
             // This is a dedicated allocation, but it belongs to another aliasable image.

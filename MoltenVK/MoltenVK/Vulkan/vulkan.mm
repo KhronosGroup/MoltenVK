@@ -325,7 +325,7 @@ MVK_PUBLIC_SYMBOL PFN_vkVoidFunction vkGetInstanceProcAddr(
 		func = (PFN_vkVoidFunction)vkGetMoltenVKConfigurationMVK;
 	} else if (instance) {
 		MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
-		func = mvkInst->getProcAddr(pName);
+		func = mvkInst ? mvkInst->getProcAddr(pName) : nullptr;
 	}
 	MVKTraceVulkanCallEnd();
 	return func;
@@ -337,7 +337,7 @@ MVK_PUBLIC_VULKAN_SYMBOL PFN_vkVoidFunction vkGetDeviceProcAddr(
 	
 	MVKTraceVulkanCallStart();
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	PFN_vkVoidFunction func = mvkDev->getProcAddr(pName);
+	PFN_vkVoidFunction func = mvkDev ? mvkDev->getProcAddr(pName) : nullptr;
 	MVKTraceVulkanCallEnd();
 	return func;
 }
