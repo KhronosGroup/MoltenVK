@@ -25,6 +25,8 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
+#include <optional>
+#include <limits>
 
 class MVKDescriptorPool;
 class MVKPipelineLayout;
@@ -489,26 +491,25 @@ union MVKDescriptorSetListItem {
 
 /**
  * The free list used internally by MVKDescriptorPool.
- * Kind of terrible, never resizes allocations.  Once an allocation has been made of a specific size, it's forever that size.
- * Hope: Games will allocate the same set of descriptor sets (and therefore the same sizes) over and over again, so this will work out fine.
+ * Manages free ranges with coalescing (merging adjacent free blocks),
+ * splitting (carving requested sizes from larger blocks), and tail trimming.
  */
 class MVKDescriptorPoolFreeList {
-	struct Entry {
-		size_t size;
-		std::vector<size_t> items;
-		Entry(size_t size_): size(size_) {}
-	};
-	std::vector<Entry> entries;
-	size_t _freeSize;
-
 public:
-	void add(size_t item, size_t size);
-	std::optional<std::pair<size_t, size_t>> get(size_t minSize, size_t maxSize);
+	void add(size_t offset, size_t size);
+	std::optional<std::pair<size_t, size_t>> get(size_t size);
 	void reset();
 	size_t freeSize() const { return _freeSize; }
+	void trimTail(uint32_t& bumpCur);
 
 private:
-	std::vector<Entry>::iterator findEntry(size_t size);
+	struct FreeRange {
+		size_t offset;
+		size_t size;
+	};
+
+	std::vector<FreeRange> _ranges;
+	size_t _freeSize = 0;
 };
 
 /** Represents a Vulkan descriptor pool. */

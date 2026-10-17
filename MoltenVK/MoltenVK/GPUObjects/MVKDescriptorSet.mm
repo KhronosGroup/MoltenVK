@@ -1849,37 +1849,98 @@ void mvkPushDescriptorSetTemplate(void* dst, MVKDescriptorSetLayout* layout, MVK
 
 #pragma mark - MVKDescriptorPoolFreeList
 
-void MVKDescriptorPoolFreeList::add(size_t item, size_t size) {
-	_freeSize += size;
-	auto entry = findEntry(size);
-	if (entry != entries.end() && entry->size == size) {
-		entry->items.push_back(item);
-	} else {
-		entries.emplace(entry, size)->items.push_back(item);
-	}
-}
+void MVKDescriptorPoolFreeList::add(size_t offset, size_t size) {
+	if (size == 0) { return; }
 
-std::optional<std::pair<size_t, size_t>> MVKDescriptorPoolFreeList::get(size_t minSize, size_t maxSize) {
-	for (auto entry = findEntry(minSize); entry != entries.end() && entry->size <= maxSize; ++entry) {
-		if (!entry->items.empty()) {
-			size_t item = entry->items.back();
-			entry->items.pop_back();
-			_freeSize -= entry->size;
-			return std::make_pair(item, entry->size);
+	_freeSize += size;
+
+	// Keep _ranges sorted by offset.
+	auto it = std::lower_bound(_ranges.begin(), _ranges.end(), offset,
+		[](const FreeRange& r, size_t off) { return r.offset < off; });
+
+	// Check if we can coalesce with previous range
+	if (it != _ranges.begin()) {
+		auto prev = it - 1;
+		if (prev->offset + prev->size == offset) {
+			prev->size += size;
+			// Also check if prev now merges with next (it)
+			if (it != _ranges.end() && prev->offset + prev->size == it->offset) {
+				prev->size += it->size;
+				_ranges.erase(it);
+			}
+			return;
 		}
 	}
-	return std::nullopt;
+
+	// Check if we can coalesce with next range
+	if (it != _ranges.end() && offset + size == it->offset) {
+		it->offset = offset;
+		it->size += size;
+		return;
+	}
+
+	// Insert new range
+	_ranges.insert(it, {offset, size});
+}
+
+std::optional<std::pair<size_t, size_t>> MVKDescriptorPoolFreeList::get(size_t size) {
+	if (size == 0) {
+		return std::make_pair(0, 0);
+	}
+
+	// Best-fit search: find smallest range that satisfies range.size >= size
+	auto bestIt = _ranges.end();
+	size_t bestSize = std::numeric_limits<size_t>::max();
+
+	for (auto it = _ranges.begin(); it != _ranges.end(); ++it) {
+		if (it->size >= size) {
+			if (it->size == size) {
+				bestIt = it;
+				break;
+			}
+			if (it->size < bestSize) {
+				bestIt = it;
+				bestSize = it->size;
+			}
+		}
+	}
+
+	if (bestIt == _ranges.end()) {
+		return std::nullopt;
+	}
+
+	size_t allocOffset = bestIt->offset;
+	size_t allocSize = size;
+
+	if (bestIt->size == size) {
+		_freeSize -= size;
+		_ranges.erase(bestIt);
+	} else {
+		// Splitting
+		bestIt->offset += size;
+		bestIt->size -= size;
+		_freeSize -= size;
+	}
+
+	return std::make_pair(allocOffset, allocSize);
+}
+
+void MVKDescriptorPoolFreeList::trimTail(uint32_t& bumpCur) {
+	while (!_ranges.empty()) {
+		auto& last = _ranges.back();
+		if (last.offset + last.size == bumpCur) {
+			bumpCur = static_cast<uint32_t>(last.offset);
+			_freeSize -= last.size;
+			_ranges.pop_back();
+		} else {
+			break;
+		}
+	}
 }
 
 void MVKDescriptorPoolFreeList::reset() {
-	for (auto& entry : entries) {
-		entry.items.clear();
-	}
+	_ranges.clear();
 	_freeSize = 0;
-}
-
-std::vector<MVKDescriptorPoolFreeList::Entry>::iterator MVKDescriptorPoolFreeList::findEntry(size_t size) {
-	return std::lower_bound(entries.begin(), entries.end(), size, [](const Entry& lhs, const size_t& rhs){ return lhs.size < rhs; });
 }
 
 #pragma mark - MVKDescriptorPool
@@ -2061,7 +2122,7 @@ static std::optional<std::pair<uint32_t, uint32_t>> allocate(bool freeAllowed, M
 	if (!size)
 		return std::pair<uint32_t, uint32_t>(0, 0);
 	if (freeAllowed && freeList.freeSize() >= size)
-		if (auto alloc = freeList.get(size, size))
+		if (auto alloc = freeList.get(size))
 			return alloc;
 	if (bumpCur + size <= bumpEnd) {
 		auto res = std::pair<uint32_t, uint32_t>(bumpCur, size);
@@ -2214,6 +2275,8 @@ VkResult MVKDescriptorPool::freeDescriptorSets(uint32_t count, const VkDescripto
 			setItem->freed.next = _firstFreeDescriptorSet;
 			_firstFreeDescriptorSet = setItem;
 		}
+		_cpuBufferFreeList.trimTail(_cpuBufferUsed);
+		_gpuBufferFreeList.trimTail(_gpuBufferUsed);
 	} else {
 		// This should only be called by our own allocate functions running out of memory, in which case this is the most recent allocation.
 		// Just rewind all the bump allocators.
