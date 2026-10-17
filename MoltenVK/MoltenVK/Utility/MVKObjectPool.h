@@ -115,10 +115,9 @@ public:
 		if ( !obj ) { return; }
 
 		if (_isPooling) {
-			if (_tail) { _tail->_next = obj; }
-			obj->_next = nullptr;
-			_tail = obj;
-			if ( !_head ) { _head = obj; }
+			obj->_next = _head;
+			_head = obj;
+			if ( !_tail ) { _tail = obj; }
 			_counts.resident++;
 		} else {
 			destroyObject(obj);

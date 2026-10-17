@@ -4567,12 +4567,16 @@ void MVKDevice::destroyCommandPool(MVKCommandPool* mvkCmdPool,
 
 MVKDeviceMemory* MVKDevice::allocateMemory(const VkMemoryAllocateInfo* pAllocateInfo,
 										   const VkAllocationCallbacks* pAllocator) {
-	return new MVKDeviceMemory(this, pAllocateInfo, pAllocator);
+	@autoreleasepool {
+		return new MVKDeviceMemory(this, pAllocateInfo, pAllocator);
+	}
 }
 
 void MVKDevice::freeMemory(MVKDeviceMemory* mvkDevMem,
 						   const VkAllocationCallbacks* pAllocator) {
-	if (mvkDevMem) { mvkDevMem->destroy(); }
+	@autoreleasepool {
+		if (mvkDevMem) { mvkDevMem->destroy(); }
+	}
 }
 
 // Look for an available pre-reserved private data slot and return its address if found.
