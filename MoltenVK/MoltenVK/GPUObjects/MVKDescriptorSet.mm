@@ -1055,10 +1055,10 @@ static void writeDescriptorSetGPUBuffer(
 				if (buf) {
 					enc.setBuffer(buf->getMTLBuffer(), buf->getMTLBufferOffset() + info->offset);
 					VkDeviceSize size = info->range == VK_WHOLE_SIZE ? buf->getByteCount() - info->offset : info->range;
-					reinterpret_cast<uint32_t*>(base + auxOffsets[binding.auxIndex])[i] = static_cast<uint32_t>(size);
+					reinterpret_cast<uint32_t*>(base + auxOffsets[binding.auxIndex])[start + i] = static_cast<uint32_t>(size);
 				} else {
 					enc.setNullBuffer();
-					reinterpret_cast<uint32_t*>(base + auxOffsets[binding.auxIndex])[i] = 0;
+					reinterpret_cast<uint32_t*>(base + auxOffsets[binding.auxIndex])[start + i] = 0;
 				}
 				break;
 			}
