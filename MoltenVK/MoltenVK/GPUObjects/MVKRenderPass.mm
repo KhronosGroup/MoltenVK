@@ -1066,8 +1066,10 @@ void MVKRenderPass::encodeSubpassDependencyBarriers(MVKCommandEncoder* cmdEncode
 	for (auto& spDep : _subpassDependencies) {
 		if (spDep.dstSubpass != dstSubpass || spDep.srcSubpass == spDep.dstSubpass) { continue; }
 
-		uint64_t sourceStageMask = mvkBarrierStagesFromPipelineStageFlags(spDep.srcStageMask);
-		uint64_t destStageMask = mvkBarrierStagesFromPipelineStageFlags(spDep.dstStageMask);
+		// TOP_OF_PIPE in the first synchronization scope, and BOTTOM_OF_PIPE in the second,
+		// are equivalent to VK_PIPELINE_STAGE_2_NONE, so they must not add any stages.
+		uint64_t sourceStageMask = mvkBarrierStagesFromPipelineStageFlags(spDep.srcStageMask & ~VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
+		uint64_t destStageMask = mvkBarrierStagesFromPipelineStageFlags(spDep.dstStageMask & ~VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
 		cmdEncoder->setBarrier(sourceStageMask, destStageMask);
 	}
 }
