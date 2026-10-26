@@ -285,6 +285,18 @@ public:
 	/** Returns true if the tessellation control shader needs a buffer to store its per-patch output. */
 	bool needsTessCtlPatchOutputBuffer() const { return _stageResources[kMVKShaderStageTessCtl].implicitBuffers.needed.has(MVKImplicitBuffer::PatchOutput); }
 
+	/**
+	 * Bytes per vertex in the vertex stage's output buffer of a tessellated draw.
+	 * The shaders' own size from Metal pipeline reflection if known, else defaultStride (4 x the device maximum components).
+	 */
+	uint32_t getTessVertexOutputStride(uint32_t defaultStride) const { return _tessVtxOutStride ? _tessVtxOutStride : defaultStride; }
+
+	/** As getTessVertexOutputStride(), for the tessellation control stage's per-vertex output. */
+	uint32_t getTessCtlOutputStride(uint32_t defaultStride) const { return _tessCtlOutStride ? _tessCtlOutStride : defaultStride; }
+
+	/** As getTessVertexOutputStride(), for the tessellation control stage's per-patch output. */
+	uint32_t getTessCtlPatchOutputStride(uint32_t defaultStride) const { return _tessCtlPatchOutStride ? _tessCtlPatchOutStride : defaultStride; }
+
 	/** Returns the Vulkan primitive topology. */
 	VkPrimitiveTopology getVkPrimitiveTopology() { return _vkPrimitiveTopology; }
 
@@ -334,9 +346,11 @@ protected:
 	typedef MVKSmallVector<mvk::SPIRVShaderInterfaceVariable, 32> SPIRVShaderInputs;
 
     id<MTLRenderPipelineState> getOrCompilePipeline(MTLRenderPipelineDescriptor* plDesc, id<MTLRenderPipelineState>& plState);
-    id<MTLComputePipelineState> getOrCompilePipeline(MTLComputePipelineDescriptor* plDesc, id<MTLComputePipelineState>& plState, const char* compilerType);
+    id<MTLComputePipelineState> getOrCompilePipeline(MTLComputePipelineDescriptor* plDesc, id<MTLComputePipelineState>& plState, const char* compilerType,
+													 std::initializer_list<NSUInteger> reflectBufferIndexes = {}, NSUInteger* pReflectedSizes = nullptr);
 	bool compileTessVertexStageState(MTLComputePipelineDescriptor* vtxPLDesc, MVKMTLFunction* pVtxFunctions, VkPipelineCreationFeedback* pVertexFB);
 	bool compileTessControlStageState(MTLComputePipelineDescriptor* tcPLDesc, VkPipelineCreationFeedback* pTessCtlFB);
+	void initTessOutputStrides(NSUInteger tcInSize, NSUInteger tcOutSize, NSUInteger tcPatchOutSize);
 	void initDynamicState(const VkGraphicsPipelineCreateInfo* pCreateInfo);
 	void initSampleLocations(const VkGraphicsPipelineCreateInfo* pCreateInfo);
     void initMTLRenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo, const mvk::SPIRVTessReflectionData& reflectData, VkPipelineCreationFeedback* pPipelineFB, const VkPipelineShaderStageCreateInfo* pVertexSS, VkPipelineCreationFeedback* pVertexFB, const VkPipelineShaderStageCreateInfo* pTessCtlSS, VkPipelineCreationFeedback* pTessCtlFB, const VkPipelineShaderStageCreateInfo* pTessEvalSS, VkPipelineCreationFeedback* pTessEvalFB, const VkPipelineShaderStageCreateInfo* pFragmentSS, VkPipelineCreationFeedback* pFragmentFB);
@@ -393,6 +407,10 @@ protected:
 	id<MTLComputePipelineState> _mtlTessVertexStageIndex32State = nil;
 	id<MTLComputePipelineState> _mtlTessControlStageState = nil;
 	id<MTLRenderPipelineState> _mtlPipelineState = nil;
+	uint32_t _tessVtxOutStride = 0;			// 0 = unknown, use the device maximum
+	uint32_t _tessCtlOutStride = 0;
+	uint32_t _tessCtlPatchOutStride = 0;
+	NSUInteger _tessVtxOutReflectedSize = 0;	// Vertex stage output struct size, until the tess control stage is compiled
 
 	MVKShaderImplicitRezBinding _reservedVertexAttributeBufferCount;
 	VkPrimitiveTopology _vkPrimitiveTopology;
@@ -584,6 +602,15 @@ public:
 	 */
 	id<MTLComputePipelineState> newMTLComputePipelineState(MTLComputePipelineDescriptor* plDesc);
 
+	/**
+	 * Before compiling, names up to 4 buffer indexes whose data size
+	 * (size of the pointed-to type) is read from Metal's pipeline reflection.
+	 */
+	void setReflectedBufferIndexes(std::initializer_list<NSUInteger> indexes);
+
+	/** The reflected data size of the i-th buffer index, or 0 if unknown. */
+	NSUInteger getReflectedBufferDataSize(uint32_t i) const { return i < _reflectCount ? _reflectedSizes[i] : 0; }
+
 
 #pragma mark Construction
 
@@ -595,9 +622,12 @@ public:
 	~MVKComputePipelineCompiler() override;
 
 protected:
-	bool compileComplete(id<MTLComputePipelineState> pipelineState, NSError *error);
+	bool compileComplete(id<MTLComputePipelineState> pipelineState, NSError *error, MTLComputePipelineReflection* reflection = nil);
 
 	id<MTLComputePipelineState> _mtlComputePipelineState = nil;
+	NSUInteger _reflectIndexes[4] = {};
+	NSUInteger _reflectedSizes[4] = {};
+	uint32_t _reflectCount = 0;
 };
 
 

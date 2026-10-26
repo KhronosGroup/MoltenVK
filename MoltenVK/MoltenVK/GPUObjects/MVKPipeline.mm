@@ -516,7 +516,9 @@ bool MVKGraphicsPipeline::compileTessVertexStageState(MTLComputePipelineDescript
 		startTime = mvkGetTimestamp();
 	}
 	vtxPLDesc.computeFunction = pVtxFunctions[0].getMTLFunction();
-    bool res = !!getOrCompilePipeline(vtxPLDesc, _mtlTessVertexStageState, vtxCompilerType);
+	// Also read the size of the vertex output struct from Metal's reflection (same in all three variants).
+	NSUInteger vtxOutIdx = _stageResources[kMVKShaderStageVertex].implicitBuffers.ids[MVKImplicitBuffer::Output];
+    bool res = !!getOrCompilePipeline(vtxPLDesc, _mtlTessVertexStageState, vtxCompilerType, {vtxOutIdx}, &_tessVtxOutReflectedSize);
 
 	vtxPLDesc.computeFunction = pVtxFunctions[1].getMTLFunction();
     vtxPLDesc.stageInputDescriptor.indexType = MTLIndexTypeUInt16;
@@ -548,7 +550,14 @@ bool MVKGraphicsPipeline::compileTessControlStageState(MTLComputePipelineDescrip
     if (pTessCtlFB) {
 		startTime = mvkGetTimestamp();
 	}
-    bool res = !!getOrCompilePipeline(tcPLDesc, _mtlTessControlStageState, "Tessellation control");
+	// Read the sizes of the tess control stage's input, per-vertex output and per-patch output structs.
+	const auto& tcImplicit = _stageResources[kMVKShaderStageTessCtl].implicitBuffers.ids;
+	NSUInteger tcIn = getMetalBufferIndexForVertexAttributeBinding(kMVKTessCtlInputBufferBinding);
+	NSUInteger tcOut = tcImplicit[MVKImplicitBuffer::Output];
+	NSUInteger tcPatchOut = tcImplicit[MVKImplicitBuffer::PatchOutput];
+	NSUInteger tcSizes[3] = {};
+    bool res = !!getOrCompilePipeline(tcPLDesc, _mtlTessControlStageState, "Tessellation control", {tcIn, tcOut, tcPatchOut}, tcSizes);
+	initTessOutputStrides(tcSizes[0], tcSizes[1], tcSizes[2]);
 	if (pTessCtlFB) {
 		if (!res) {
 			mvkDisableFlags(pTessCtlFB->flags, VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT);
@@ -1010,13 +1019,33 @@ id<MTLRenderPipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLRenderPi
 	return plState;
 }
 
+// Sizes the tessellation scratch buffers by what the shaders actually write, instead of
+// the device maximum (4 x 124 components). The vertex output buffer must also hold what the tess control stage
+// reads per vertex, so it takes the larger of the two. Sizes are rounded up to 16 bytes. An unknown or implausible
+// size keeps MoltenVK's default for that buffer.
+void MVKGraphicsPipeline::initTessOutputStrides(NSUInteger tcInSize, NSUInteger tcOutSize, NSUInteger tcPatchOutSize) {
+	auto stride = [](NSUInteger size) -> uint32_t {
+		return (size >= 4 && size <= 65536) ? (uint32_t)mvkAlignByteCount(size, 16) : 0;
+	};
+	_tessVtxOutStride = _tessVtxOutReflectedSize ? stride(std::max(_tessVtxOutReflectedSize, tcInSize)) : 0;
+	_tessCtlOutStride = stride(tcOutSize);
+	_tessCtlPatchOutStride = stride(tcPatchOutSize);
+}
+
 // Either returns an existing pipeline state or compiles a new one.
+// If pReflectedSizes is given, the data sizes of the buffers at reflectBufferIndexes are returned in it (0 = unknown).
 id<MTLComputePipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLComputePipelineDescriptor* plDesc,
 																	  id<MTLComputePipelineState>& plState,
-																	  const char* compilerType) {
+																	  const char* compilerType,
+																	  std::initializer_list<NSUInteger> reflectBufferIndexes,
+																	  NSUInteger* pReflectedSizes) {
 	if ( !plState ) {
 		MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(this, compilerType);
+		if (pReflectedSizes) { plc->setReflectedBufferIndexes(reflectBufferIndexes); }
 		plState = plc->newMTLComputePipelineState(plDesc);	// retained
+		if (pReflectedSizes) {
+			for (uint32_t i = 0; i < reflectBufferIndexes.size(); i++) { pReflectedSizes[i] = plc->getReflectedBufferDataSize(i); }
+		}
 		plc->destroy();
 		if ( !plState ) { _hasValidMTLPipelineStates = false; }
 	}
@@ -3062,13 +3091,21 @@ MVKRenderPipelineCompiler::~MVKRenderPipelineCompiler() {
 id<MTLComputePipelineState> MVKComputePipelineCompiler::newMTLComputePipelineState(MTLComputePipelineDescriptor* plDesc) {
 	unique_lock<mutex> lock(_completionLock);
 
+	MTLPipelineOption options = MTLPipelineOptionNone;
+	if (_reflectCount) {
+#if MVK_XCODE_16
+		if (@available(macOS 13.0, iOS 16.0, tvOS 16.0, *)) { options = MTLPipelineOptionBindingInfo | MTLPipelineOptionBufferTypeInfo; }
+#else
+		options = MTLPipelineOptionArgumentInfo | MTLPipelineOptionBufferTypeInfo;	// Older SDKs lack the BindingInfo name (same value)
+#endif
+	}
 	compile(lock, ^{
 		auto mtlDev = getMTLDevice();
 		@synchronized (mtlDev) {
 			[mtlDev newComputePipelineStateWithDescriptor: plDesc
-												  options: MTLPipelineOptionNone
-										completionHandler: ^(id<MTLComputePipelineState> ps, MTLComputePipelineReflection*, NSError* error) {
-											bool isLate = compileComplete(ps, error);
+												  options: options
+										completionHandler: ^(id<MTLComputePipelineState> ps, MTLComputePipelineReflection* reflection, NSError* error) {
+											bool isLate = compileComplete(ps, error, reflection);
 											if (isLate) { destroy(); }
 										}];
 		}
@@ -3077,10 +3114,28 @@ id<MTLComputePipelineState> MVKComputePipelineCompiler::newMTLComputePipelineSta
 	return [_mtlComputePipelineState retain];
 }
 
-bool MVKComputePipelineCompiler::compileComplete(id<MTLComputePipelineState> mtlComputePipelineState, NSError* compileError) {
+void MVKComputePipelineCompiler::setReflectedBufferIndexes(std::initializer_list<NSUInteger> indexes) {
+	_reflectCount = 0;
+	for (NSUInteger idx : indexes) {
+		if (_reflectCount < 4) { _reflectIndexes[_reflectCount++] = idx; }
+	}
+}
+
+bool MVKComputePipelineCompiler::compileComplete(id<MTLComputePipelineState> mtlComputePipelineState, NSError* compileError,
+												 MTLComputePipelineReflection* reflection) {
 	lock_guard<mutex> lock(_completionLock);
 
 	_mtlComputePipelineState = [mtlComputePipelineState retain];		// retained
+	if (reflection && _reflectCount) {
+		if (@available(macOS 13.0, iOS 16.0, tvOS 16.0, *)) {
+			for (id<MTLBinding> binding in reflection.bindings) {
+				if (binding.type != MTLBindingTypeBuffer) { continue; }
+				for (uint32_t i = 0; i < _reflectCount; i++) {
+					if (binding.index == _reflectIndexes[i]) { _reflectedSizes[i] = ((id<MTLBufferBinding>)binding).bufferDataSize; }
+				}
+			}
+		}
+	}
 	return endCompile(compileError);
 }
 
