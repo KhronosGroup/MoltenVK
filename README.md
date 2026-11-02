@@ -1,8 +1,16 @@
 <a class="site-logo" href="https://github.com/KhronosGroup/MoltenVK" title="MoltenVK">
 	<img src="Docs/images/MoltenVK-Logo-Banner.png" alt="MoltenVK" style="width:256px;height:auto">
-</a>
+</a><br><br>
 
 
+> [!CAUTION]
+> **Deprecation notice:** Khronos has deprecated MoltenVK, its Vulkan-on-Metal implementation. This repository is now maintained by the community on a best-effort basis.
+>
+> For Vulkan on Metal, Khronos now recommends KosmicKrisp on Apple Silicon Macs. MoltenVK remains the recommended option for Intel-based Macs and for iOS.
+>
+> You can get KosmicKrisp in either of two ways:
+> - Install the latest macOS Vulkan SDK from [vulkan.lunarg.com](https://vulkan.lunarg.com).
+> - Build the KosmicKrisp driver from the Mesa project source.
 
 MoltenVK
 ========
