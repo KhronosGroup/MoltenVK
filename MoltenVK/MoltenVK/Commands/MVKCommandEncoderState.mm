@@ -467,6 +467,15 @@ static void executeBindOp(id<MTLCommandEncoder> encoder,
 	MVKDevice* dev = mvkEncoder.getDevice();
 	if (Op == MVKDescriptorBindOperationCode::UseAccelerationStructureWithLiveCheck && dev->hasResidencySet())
 		return;
+	if constexpr (Op == MVKDescriptorBindOperationCode::BindAccelerationStructure ||
+				  Op == MVKDescriptorBindOperationCode::UseAccelerationStructureWithLiveCheck) {
+		// without a residency set, the bottom levels a top level reaches are resident only if used
+		if (!dev->hasResidencySet()) {
+			const auto& instances = mvkEncoder.getAccelerationStructureInstances();
+			for (size_t index = 0; index < instances.size(); index++)
+				mvkEncoder.getState().mtlShared()._useResource.add(instances[index], useResourceStage, false);
+		}
+	}
 	for (uint32_t i = 0; i < count; i++, src += stride) {
 		id resource = nil;
 		if constexpr (Op != MVKDescriptorBindOperationCode::BindAccelerationStructure &&
