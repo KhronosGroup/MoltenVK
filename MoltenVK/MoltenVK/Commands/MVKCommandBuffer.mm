@@ -807,7 +807,11 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
     if (_canUseLayeredRendering) {
         uint32_t renderTargetArrayLength;
         bool found3D = false, found2D = false;
-        for (uint32_t i = 0; i < 8; i++) {
+        // Only the subpass's colour attachments can have a texture (populateMTLRenderPassDescriptor sets
+        // indices < getColorAttachmentCount()). Indexing MTLRenderPassDescriptor.colorAttachments lazily
+        // allocates a descriptor per slot, so looping over all 8 slots allocated up to 8 per render pass.
+        uint32_t caCnt = min(getSubpass()->getColorAttachmentCount(), 8u);
+        for (uint32_t i = 0; i < caCnt; i++) {
             id<MTLTexture> mtlTex = mtlRPDesc.colorAttachments[i].texture;
             if (mtlTex == nil) { continue; }
             switch (mtlTex.textureType) {
