@@ -773,7 +773,28 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
     endCurrentMetalEncoding();
 
 	bool isRestart = cmdUse == kMVKCommandUseRestartSubpass;
-    MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
+	// Reuse one descriptor per encoder, reset to defaults before each pass, instead of creating a new
+	// [MTLRenderPassDescriptor renderPassDescriptor] per pass (each one allocates the descriptor, its colour
+	// and sample-buffer attachment arrays and a colour attachment descriptor). Metal copies the descriptor
+	// when the encoder is created, so it can be changed for the next pass.
+	MTLRenderPassDescriptor* mtlRPDesc = getResetMTLRenderPassDescriptor();
+	configureMTLRenderPassDescriptor(mtlRPDesc, isRestart);
+
+    _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
+	retainIfImmediatelyEncoding(_mtlRenderEncoder);
+	_cmdBuffer->setMetalObjectLabel(_mtlRenderEncoder, getMTLRenderCommandEncoderName(cmdUse));
+	getState().beginGraphicsEncoding(getSampleCount());
+
+	encodeBarrierWaits(cmdUse);
+
+	// We shouldn't clear the render area if we are restarting the Metal renderpass
+	// separately from a Vulkan subpass, and we otherwise only need to clear render
+	// area if we're not rendering to the entire attachment.
+    if ( !isRestart && !_isRenderingEntireAttachment ) { clearRenderArea(cmdUse); }
+}
+
+// Everything beginMetalRenderPass writes into the render pass descriptor (moved out of beginMetalRenderPass).
+void MVKCommandEncoder::configureMTLRenderPassDescriptor(MTLRenderPassDescriptor* mtlRPDesc, bool isRestart) {
 	getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc,
 												  _multiviewPassIndex,
 												  _pEncodingContext->getFramebuffer(),
@@ -838,18 +859,103 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 		auto sampPosns = _state.updateSamplePositions();
 		[mtlRPDesc setSamplePositions: sampPosns.data() count: sampPosns.size()];
 	}
+	_mtlRPDescColorSlotMask = (1u << min(getSubpass()->getColorAttachmentCount(), 8u)) - 1u;
+}
 
-    _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
-	retainIfImmediatelyEncoding(_mtlRenderEncoder);
-	_cmdBuffer->setMetalObjectLabel(_mtlRenderEncoder, getMTLRenderCommandEncoderName(cmdUse));
-	getState().beginGraphicsEncoding(getSampleCount());
+// Defaults of a freshly created MTLRenderPassDescriptor, read once from a
+// real one so the reset below restores exactly what [MTLRenderPassDescriptor renderPassDescriptor] gives.
+namespace {
+struct MVKRPAttachmentDefaults {
+	NSUInteger level, slice, depthPlane, resolveLevel, resolveSlice, resolveDepthPlane;
+	MTLLoadAction loadAction;
+	MTLStoreAction storeAction;
+	MTLStoreActionOptions storeActionOptions;
+};
+struct MVKRPDescriptorDefaults {
+	MVKRPAttachmentDefaults color, depth, stencil;
+	MTLClearColor clearColor;
+	double clearDepth;
+	uint32_t clearStencil;
+	MTLMultisampleDepthResolveFilter depthResolveFilter;
+	MTLMultisampleStencilResolveFilter stencilResolveFilter;
+	NSUInteger renderTargetArrayLength, defaultRasterSampleCount;
+};
 
-	encodeBarrierWaits(cmdUse);
+MVKRPAttachmentDefaults mvkReadAttachmentDefaults(MTLRenderPassAttachmentDescriptor* d) {
+	return { d.level, d.slice, d.depthPlane, d.resolveLevel, d.resolveSlice, d.resolveDepthPlane,
+			 d.loadAction, d.storeAction, d.storeActionOptions };
+}
 
-	// We shouldn't clear the render area if we are restarting the Metal renderpass
-	// separately from a Vulkan subpass, and we otherwise only need to clear render
-	// area if we're not rendering to the entire attachment.
-    if ( !isRestart && !_isRenderingEntireAttachment ) { clearRenderArea(cmdUse); }
+const MVKRPDescriptorDefaults& mvkRPDescriptorDefaults() {
+	static MVKRPDescriptorDefaults defaults;
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{
+		@autoreleasepool {
+			MTLRenderPassDescriptor* d = [MTLRenderPassDescriptor renderPassDescriptor];
+			defaults.color = mvkReadAttachmentDefaults(d.colorAttachments[0]);
+			defaults.depth = mvkReadAttachmentDefaults(d.depthAttachment);
+			defaults.stencil = mvkReadAttachmentDefaults(d.stencilAttachment);
+			defaults.clearColor = d.colorAttachments[0].clearColor;
+			defaults.clearDepth = d.depthAttachment.clearDepth;
+			defaults.clearStencil = d.stencilAttachment.clearStencil;
+			defaults.depthResolveFilter = d.depthAttachment.depthResolveFilter;
+			defaults.stencilResolveFilter = d.stencilAttachment.stencilResolveFilter;
+			defaults.renderTargetArrayLength = d.renderTargetArrayLength;
+			defaults.defaultRasterSampleCount = d.defaultRasterSampleCount;
+		}
+	});
+	return defaults;
+}
+
+void mvkResetAttachment(MTLRenderPassAttachmentDescriptor* d, const MVKRPAttachmentDefaults& dflt) {
+	d.texture = nil;
+	d.level = dflt.level;
+	d.slice = dflt.slice;
+	d.depthPlane = dflt.depthPlane;
+	d.resolveTexture = nil;
+	d.resolveLevel = dflt.resolveLevel;
+	d.resolveSlice = dflt.resolveSlice;
+	d.resolveDepthPlane = dflt.resolveDepthPlane;
+	d.loadAction = dflt.loadAction;
+	d.storeAction = dflt.storeAction;
+	d.storeActionOptions = dflt.storeActionOptions;
+}
+} // namespace
+
+// The encoder's descriptor, with every field configureMTLRenderPassDescriptor()
+// can write put back to its default. Fields MoltenVK never writes (tile size, imageblock and threadgroup
+// memory lengths, rasterization rate map, sample-buffer attachments) stay at their defaults untouched.
+// renderTargetWidth/Height are written on every pass, and the sample positions on every pass when the
+// device supports them; the private-API dither/OpenGL-mode flags are written on every pass when enabled.
+MTLRenderPassDescriptor* MVKCommandEncoder::getResetMTLRenderPassDescriptor() {
+	if ( !_mtlRPDescCache ) {
+		_mtlRPDescCache = [MTLRenderPassDescriptor new];		// retained; released in the destructor
+		_mtlRPDescColorSlotMask = 0;
+		return _mtlRPDescCache;
+	}
+	const MVKRPDescriptorDefaults& dflt = mvkRPDescriptorDefaults();
+	MTLRenderPassDescriptor* d = _mtlRPDescCache;
+	for (uint32_t mask = _mtlRPDescColorSlotMask; mask; mask &= mask - 1) {
+		MTLRenderPassColorAttachmentDescriptor* ca = d.colorAttachments[__builtin_ctz(mask)];
+		mvkResetAttachment(ca, dflt.color);
+		ca.clearColor = dflt.clearColor;
+	}
+	_mtlRPDescColorSlotMask = 0;
+
+	MTLRenderPassDepthAttachmentDescriptor* da = d.depthAttachment;
+	mvkResetAttachment(da, dflt.depth);
+	da.clearDepth = dflt.clearDepth;
+	da.depthResolveFilter = dflt.depthResolveFilter;
+
+	MTLRenderPassStencilAttachmentDescriptor* sa = d.stencilAttachment;
+	mvkResetAttachment(sa, dflt.stencil);
+	sa.clearStencil = dflt.clearStencil;
+	sa.stencilResolveFilter = dflt.stencilResolveFilter;
+
+	d.visibilityResultBuffer = nil;
+	d.renderTargetArrayLength = dflt.renderTargetArrayLength;
+	d.defaultRasterSampleCount = dflt.defaultRasterSampleCount;
+	return d;
 }
 
 void MVKCommandEncoder::restartMetalRenderPassIfNeeded() {
@@ -1374,12 +1480,15 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer, MVKPrefillMeta
 	_pEncodingContext = nullptr;
 	_stageCountersMTLFence = nil;
 	_flushCount = 0;
+	_mtlRPDescCache = nil;
+	_mtlRPDescColorSlotMask = 0;
 }
 
 MVKCommandEncoder::~MVKCommandEncoder() {
 	[_mtlRenderEncoder release];
 	[_mtlComputeEncoder release];
 	[_mtlBlitEncoder release];
+	[_mtlRPDescCache release];
 	// _stageCountersMTLFence is released after Metal command buffer completion
 }
 
