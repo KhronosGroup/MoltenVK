@@ -528,6 +528,9 @@ protected:
 	id<MTLFence> getStageCountersMTLFence();
 	NSString* getMTLRenderCommandEncoderName(MVKCommandUse cmdUse);
 	template<typename T> void retainIfImmediatelyEncoding(T& mtlEnc);
+	// One MTLRenderPassDescriptor is reused across this encoder's Metal render passes.
+	MTLRenderPassDescriptor* getResetMTLRenderPassDescriptor();
+	void configureMTLRenderPassDescriptor(MTLRenderPassDescriptor* mtlRPDesc, bool isRestart);
 	template<typename T> void endMetalEncoding(T& mtlEnc);
 	id<MTLFence> getBarrierStageFence(MVKBarrierStage stage);
 
@@ -545,6 +548,8 @@ protected:
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
 	id<MTLFence> _stageCountersMTLFence;
+	MTLRenderPassDescriptor* _mtlRPDescCache;
+	uint32_t _mtlRPDescColorSlotMask;	// Colour slots the last render pass wrote
 	MVKPrefillMetalCommandBuffersStyle _prefillStyle;
 	VkSubpassContents _subpassContents;
 	uint32_t _renderSubpassIndex;
