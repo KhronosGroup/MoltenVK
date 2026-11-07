@@ -44,6 +44,7 @@ VkResult MVKCmdDispatch::setContent(MVKCommandBuffer* cmdBuff,
 
 void MVKCmdDispatch::encode(MVKCommandEncoder* cmdEncoder) {
 	MTLRegion mtlThreadgroupCount = MTLRegionMake3D(_baseGroupX, _baseGroupY, _baseGroupZ, _groupCountX, _groupCountY, _groupCountZ);
+	if ( !cmdEncoder->resolveComputeShaderObjectPipeline() ) { return; }
 	cmdEncoder->finalizeDispatchState();	// Ensure all updated state has been submitted to Metal
 	id<MTLComputeCommandEncoder> mtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch);
 	auto* pipeline = cmdEncoder->getComputePipeline();
@@ -69,7 +70,8 @@ VkResult MVKCmdDispatchIndirect::setContent(MVKCommandBuffer* cmdBuff, VkBuffer 
 }
 
 void MVKCmdDispatchIndirect::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->finalizeDispatchState();	// Ensure all updated state has been submitted to Metal
+    cmdEncoder->resolveComputeShaderObjectPipeline();
+	cmdEncoder->finalizeDispatchState();	// Ensure all updated state has been submitted to Metal
     [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) dispatchThreadgroupsWithIndirectBuffer: _mtlIndirectBuffer
 																				indirectBufferOffset: _mtlIndirectBufferOffset
 																			   threadsPerThreadgroup: cmdEncoder->getComputePipeline()->getThreadgroupSize()];

@@ -133,6 +133,7 @@ typedef MVKCmdBlitImage<4> MVKCmdBlitImageMulti;
 typedef struct {
     VkImageSubresourceLayers srcSubresource;
     VkImageSubresourceLayers dstSubresource;
+	uint32_t dstDepthPlane;		/**< The depth plane resolved into, for a 3D destination image. */
 } MVKMetalResolveSlice;
 
 /**

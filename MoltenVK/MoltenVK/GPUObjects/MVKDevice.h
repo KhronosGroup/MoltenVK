@@ -55,6 +55,8 @@ class MVKTimelineSemaphore;
 class MVKDeferredOperation;
 class MVKEvent;
 class MVKQueryPool;
+class MVKShader;
+class MVKShaderObjectPipelines;
 class MVKShaderModule;
 class MVKPipelineCache;
 class MVKPipelineLayout;
@@ -88,6 +90,8 @@ static constexpr uint32_t   kMVKMaxViewportScissorCount = 16;
 static constexpr uint32_t   kMVKMaxDescriptorSetCount = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
 static constexpr uint32_t   kMVKMaxTextureCount = 128; // Maximum value across all GPUs in Metal feature set tables
 static constexpr uint32_t   kMVKMaxBufferCount = 31;
+static constexpr uint32_t   kMVKMaxVertexInputBindingCount = 31;	// Matches VkPhysicalDeviceLimits::maxVertexInputBindings
+static constexpr uint32_t   kMVKMaxVertexInputAttributeCount = 31;	// Matches VkPhysicalDeviceLimits::maxVertexInputAttributes
 static constexpr uint32_t   kMVKMaxSamplerCount = 16;
 static constexpr uint32_t   kMVKMaxSampleCount = 8;
 static constexpr uint32_t   kMVKSampleLocationCoordinateGridSize = 16;
@@ -532,6 +536,9 @@ protected:
 };
 
 
+/** Bytes of zeros the null vertex buffer holds, enough for the widest attribute Metal fetches. */
+static const NSUInteger kMVKNullVertexMTLBufferSize = 64;
+
 #pragma mark -
 #pragma mark MVKDevice
 
@@ -777,6 +784,16 @@ public:
 	void destroyQueryPool(MVKQueryPool* mvkQP,
 						  const VkAllocationCallbacks* pAllocator);
 
+	/** Returns the cache of pipelines built from bound shader objects. */
+	MVKShaderObjectPipelines* getShaderObjectPipelines() { return _shaderObjectPipelines; }
+
+	VkResult createShaders(uint32_t createInfoCount,
+						   const VkShaderCreateInfoEXT* pCreateInfos,
+						   const VkAllocationCallbacks* pAllocator,
+						   VkShaderEXT* pShaders);
+	void destroyShader(MVKShader* mvkShdr,
+					   const VkAllocationCallbacks* pAllocator);
+
 	MVKShaderModule* createShaderModule(const VkShaderModuleCreateInfo* pCreateInfo,
 										const VkAllocationCallbacks* pAllocator);
 	void destroyShaderModule(MVKShaderModule* mvkShdrMod,
@@ -944,6 +961,18 @@ public:
 	id<MTLBuffer> getDummyBlitMTLBuffer();
 
 	/**
+	 * Returns a small zeroed MTLBuffer that a vertex shader loading its own attributes reads
+	 * an out-of-bounds or unbound attribute from.
+	 */
+	/**
+	 * Returns a buffer of zeros a vertex attribute can be read from, creating it on first use.
+	 *
+	 * Vulkan lets a shader read a vertex attribute the application never bound, and defines the
+	 * result as the default attribute value, which is zero in every component here.
+	 */
+	id<MTLBuffer> getNullVertexMTLBuffer();
+
+	/**
 	 * Returns whether MTLCommandBuffers can be prefilled.
 	 *
 	 * This depends both on whether the app config has requested prefilling, and whether doing so will
@@ -1095,6 +1124,7 @@ protected:
 
 	MVKPerformanceStatistics _performanceStats;
     MVKCommandResourceFactory* _commandResourceFactory = nullptr;
+    MVKShaderObjectPipelines* _shaderObjectPipelines = nullptr;
 	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
 	MVKSmallVector<MVKResource*> _resources;
 	MVKSmallVector<MVKBuffer*> _gpuAddressableBuffers;
@@ -1111,6 +1141,7 @@ protected:
 	std::string _capturePipeFileName;
 	id<MTLSamplerState> _defaultMTLSamplerState = nil;
 	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
+	id<MTLBuffer> _nullVertexMTLBuffer = nil;
 #if MVK_XCODE_16
 	id<MTLResidencySet> _residencySet = nil;
 #endif
