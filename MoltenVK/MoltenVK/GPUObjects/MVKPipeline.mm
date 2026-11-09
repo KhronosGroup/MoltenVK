@@ -1002,9 +1002,25 @@ void MVKGraphicsPipeline::populateRenderingAttachmentInfo(const VkGraphicsPipeli
 id<MTLRenderPipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLRenderPipelineDescriptor* plDesc,
 																	 id<MTLRenderPipelineState>& plState) {
 	if ( !plState ) {
+		VkResult resultBeforeCompile = getConfigurationResult();
 		MVKRenderPipelineCompiler* plc = new MVKRenderPipelineCompiler(this);
 		plState = plc->newMTLRenderPipelineState(plDesc);	// retained
 		plc->destroy();
+#if MVK_MACOS
+		// Metal refuses some shaders for pipelines that run indirect command buffers. Compile without the capability then, and
+		// drop the failure that the first attempt recorded on this pipeline, since the pipeline is usable.
+		if ( !plState && plDesc.supportIndirectCommandBuffers ) {
+			plDesc.supportIndirectCommandBuffers = NO;
+			_supportsICB = false;
+			plc = new MVKRenderPipelineCompiler(this);
+			plState = plc->newMTLRenderPipelineState(plDesc);	// retained
+			plc->destroy();
+			if (plState) {
+				clearConfigurationResult();
+				setConfigurationResult(resultBeforeCompile);
+			}
+		}
+#endif
 		if ( !plState ) { _hasValidMTLPipelineStates = false; }
 	}
 	return plState;
@@ -1181,6 +1197,16 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLRenderPipelineDescriptor
 	initShaderConversionConfig(shaderConfig, pCreateInfo, reflectData);
 
 	MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];	// retained
+
+#if MVK_MACOS
+	// Let this pipeline run commands from Metal indirect command buffers, which the indexed indirect-count draw path uses.
+	if (@available(macOS 13.0, *)) {
+		if ( !_isTessellationPipeline && isUsingMetalArgumentBuffers() && [getMTLDevice() supportsFamily: MTLGPUFamilyApple7] ) {
+			plDesc.supportIndirectCommandBuffers = YES;
+			_supportsICB = true;
+		}
+	}
+#endif
 
 	SPIRVShaderOutputs vtxOutputs;
 	std::string errorLog;

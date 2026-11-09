@@ -396,6 +396,19 @@ static void bindDescriptorSets(MVKImplicitBufferData& target,
 	assert(dynamicOffsets == dynamicOffsetsEnd && "All dynamic offsets should have been used, and no more than that");
 }
 
+/** Records the data bound to a graphics stage slot, so that an indirect command buffer can bind the same data later. */
+static void captureGraphicsImmediateData(MVKCommandEncoder& mvkEncoder, const MVKResourceBinder& binder, uint32_t idx,
+                                         const void* data, size_t size, id<MTLBuffer> tempBuffer, NSUInteger tempOffset) {
+	int stage = &binder == &MVKResourceBinder::Get(MVKResourceBinder::Stage::Vertex) ? 0
+	          : &binder == &MVKResourceBinder::Get(MVKResourceBinder::Stage::Fragment) ? 1 : -1;
+	if (stage < 0 || idx >= kMVKMaxBufferCount) { return; }
+	auto& gfx = mvkEncoder.getMtlGraphics();
+	gfx._boundTemp[stage][idx] = { tempBuffer, tempOffset };
+	auto& copy = gfx._boundBytes[stage][idx];
+	copy.resize(data && !tempBuffer ? size : 0);
+	if (data && !tempBuffer && size) { memcpy(copy.data(), data, size); }
+}
+
 static void bindImmediateData(id<MTLCommandEncoder> encoder,
                               MVKCommandEncoder& mvkEncoder,
                               const uint8_t* data, size_t size,
@@ -403,9 +416,11 @@ static void bindImmediateData(id<MTLCommandEncoder> encoder,
                               const MVKResourceBinder& RESTRICT binder) {
 	if (size < 4096) {
 		binder.setBytes(encoder, data, size, idx);
+		captureGraphicsImmediateData(mvkEncoder, binder, idx, data, size, nil, 0);
 	} else {
 		const MVKMTLBufferAllocation* alloc = mvkEncoder.copyToTempMTLBufferAllocation(data, size);
 		binder.setBuffer(encoder, alloc->_mtlBuffer, alloc->_offset, idx);
+		captureGraphicsImmediateData(mvkEncoder, binder, idx, nullptr, 0, alloc->_mtlBuffer, alloc->_offset);
 	}
 }
 
@@ -696,6 +711,7 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 					mvkEncoder.getSubpass()->getViewCountInMetalPass(mvkEncoder.getMultiviewPassIndex())
 				};
 				binder.setBytes(encoder, viewRange, sizeof(viewRange), idx);
+				captureGraphicsImmediateData(mvkEncoder, binder, idx, viewRange, sizeof(viewRange), nil, 0);
 				break;
 			}
 			case MVKNonVolatileImplicitBuffer::EmulatedReversedDepthViewport:
@@ -1077,6 +1093,9 @@ void MVKMetalGraphicsCommandEncoderState::bindFragmentBuffer(id<MTLRenderCommand
 }
 void MVKMetalGraphicsCommandEncoderState::bindFragmentBytes(id<MTLRenderCommandEncoder> encoder, const void* data, size_t size, NSUInteger index) {
 	bindBytes(encoder, data, size, index, _exists.fragment(), _bindings.fragment(), MVKFragmentBinder());
+	auto& copy = _boundBytes[1][index];
+	copy.resize(size);
+	if (size) { memcpy(copy.data(), data, size); }
 }
 void MVKMetalGraphicsCommandEncoderState::bindFragmentTexture(id<MTLRenderCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index) {
 	bindTexture(encoder, texture, index, _exists.fragment(), _bindings.fragment(), MVKFragmentBinder());
@@ -1089,6 +1108,9 @@ void MVKMetalGraphicsCommandEncoderState::bindVertexBuffer(id<MTLRenderCommandEn
 }
 void MVKMetalGraphicsCommandEncoderState::bindVertexBytes(id<MTLRenderCommandEncoder> encoder, const void* data, size_t size, NSUInteger index) {
 	bindBytes(encoder, data, size, index, _exists.vertex(), _bindings.vertex(), MVKVertexBinder());
+	auto& copy = _boundBytes[0][index];
+	copy.resize(size);
+	if (size) { memcpy(copy.data(), data, size); }
 }
 void MVKMetalGraphicsCommandEncoderState::bindVertexTexture(id<MTLRenderCommandEncoder> encoder, id<MTLTexture> texture, NSUInteger index) {
 	bindTexture(encoder, texture, index, _exists.vertex(), _bindings.vertex(), MVKVertexBinder());

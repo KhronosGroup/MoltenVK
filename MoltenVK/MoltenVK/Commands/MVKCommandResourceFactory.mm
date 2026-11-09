@@ -586,6 +586,10 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectConvert
 																	  : "cmdDrawIndirectConvertBuffers", owner);
 }
 
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndexedIndirectCountToICBMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("cmdDrawIndexedIndirectCountToICB", owner);
+}
+
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectCountConvertBuffersMTLComputePipelineState(bool indexed,
 																																																						   MVKVulkanAPIDeviceObject* owner) {
 	return newMTLComputePipelineState(indexed

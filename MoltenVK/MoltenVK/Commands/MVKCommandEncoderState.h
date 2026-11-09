@@ -352,6 +352,16 @@ struct MVKMetalGraphicsCommandEncoderState : public MVKMetalGraphicsCommandEncod
 
 	MVKOnePerGraphicsStage<MVKStageResourceBindings> _bindings;
 
+	/**
+	 * The inline bytes last bound with setBytes at each buffer slot of the vertex (0) and fragment (1) stages. The bindings table
+	 * only marks such a slot, so a copy is kept to let an indirect command buffer bind the same data from a buffer.
+	 */
+	MVKSmallVector<uint8_t, 64> _boundBytes[2][kMVKMaxBufferCount];
+
+	/** Inline data too large for setBytes is bound from a temporary buffer; this records which one, per stage and slot. */
+	struct BoundTemp { id<MTLBuffer> buffer; NSUInteger offset; };
+	BoundTemp _boundTemp[2][kMVKMaxBufferCount] = {};
+
 	VkViewport _viewports[kMVKMaxViewportScissorCount];
 	VkRect2D _scissors[kMVKMaxViewportScissorCount];
 	MTLSamplePosition _samplePositions[kMVKMaxSampleCount];

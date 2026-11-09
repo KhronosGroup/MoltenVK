@@ -144,6 +144,10 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndirectConvertBuf
 	MVK_ENC_REZ_ACCESS(_mtlDrawIndirectConvertBuffersComputePipelineState[indexed ? 1 : 0], newCmdDrawIndirectConvertBuffersMTLComputePipelineState(indexed, _commandPool));
 }
 
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndexedIndirectCountToICBMTLComputePipelineState() {
+	MVK_ENC_REZ_ACCESS(_mtlDrawIndexedIndirectCountToICBComputePipelineState, newCmdDrawIndexedIndirectCountToICBMTLComputePipelineState(_commandPool));
+}
+
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndirectCountConvertBuffersMTLComputePipelineState(bool indexed) {
 	MVK_ENC_REZ_ACCESS(_mtlDrawIndirectCountConvertBuffersComputePipelineState[indexed ? 1 : 0], newCmdDrawIndirectCountConvertBuffersMTLComputePipelineState(indexed, _commandPool));
 }

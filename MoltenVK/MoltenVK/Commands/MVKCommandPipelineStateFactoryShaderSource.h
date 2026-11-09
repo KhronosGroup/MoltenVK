@@ -359,6 +359,52 @@ kernel void cmdDrawIndexedIndirectCountConvertBuffers(const device char* srcBuff
 	}
 }
 
+// Per-draw state of an indexed indirect-count draw that runs from an indirect command buffer. The CPU fills it while it
+// encodes the draw, which is after this kernel was encoded but before the GPU runs it.
+struct MVKICBContainer { command_buffer icb [[id(0)]]; };
+struct MVKICBRange { uint32_t location; uint32_t length; };
+struct MVKICBBinding { uint64_t address; uint32_t slot; uint32_t pad; };
+struct MVKICBEntry {
+	uint32_t enabled; uint32_t primType; uint32_t indexIs16; uint32_t drawIdSlot;
+	uint64_t indexAddress;
+	uint32_t vtxCount; uint32_t fragCount;
+	MVKICBBinding vtx[31];
+	MVKICBBinding frag[31];
+};
+
+template <typename IndexT>
+static void mvkEncodeICBDraw(command_buffer icb, uint32_t cmdIdx, MTLDrawIndexedPrimitivesIndirectArguments a, const device MVKICBEntry& en, device uint32_t* drawIdPtr) {
+	render_command cmd(icb, cmdIdx);
+	for (uint32_t i = 0; i < en.vtxCount; i++) { cmd.set_vertex_buffer(reinterpret_cast<device uint8_t*>(en.vtx[i].address), en.vtx[i].slot); }
+	for (uint32_t i = 0; i < en.fragCount; i++) { cmd.set_fragment_buffer(reinterpret_cast<device uint8_t*>(en.frag[i].address), en.frag[i].slot); }
+	if (en.drawIdSlot != 0xFFFFFFFFu) { cmd.set_vertex_buffer(drawIdPtr, en.drawIdSlot); }
+	device IndexT* indices = reinterpret_cast<device IndexT*>(en.indexAddress);
+	switch (en.primType) {
+		case 0: cmd.draw_indexed_primitives(primitive_type::point, a.indexCount, indices + a.indexStart, a.instanceCount, a.baseVertex, a.baseInstance); break;
+		case 1: cmd.draw_indexed_primitives(primitive_type::line, a.indexCount, indices + a.indexStart, a.instanceCount, a.baseVertex, a.baseInstance); break;
+		case 2: cmd.draw_indexed_primitives(primitive_type::line_strip, a.indexCount, indices + a.indexStart, a.instanceCount, a.baseVertex, a.baseInstance); break;
+		case 3: cmd.draw_indexed_primitives(primitive_type::triangle, a.indexCount, indices + a.indexStart, a.instanceCount, a.baseVertex, a.baseInstance); break;
+		default: cmd.draw_indexed_primitives(primitive_type::triangle_strip, a.indexCount, indices + a.indexStart, a.instanceCount, a.baseVertex, a.baseInstance); break;
+	}
+}
+
+kernel void cmdDrawIndexedIndirectCountToICB(const device MTLDrawIndexedPrimitivesIndirectArguments* args [[buffer(0)]],
+                                             const device uint32_t* countBuff [[buffer(1)]],
+                                             constant uint32_t& maxDraws [[buffer(2)]],
+                                             const device MVKICBContainer* container [[buffer(3)]],
+                                             device MVKICBRange* ranges [[buffer(5)]],
+                                             constant uint32_t& rangeSlot [[buffer(6)]],
+                                             constant uint32_t& baseCmd [[buffer(7)]],
+                                             const device MVKICBEntry& entry [[buffer(8)]],
+                                             device uint32_t* drawIds [[buffer(9)]],
+                                             uint idx [[thread_position_in_grid]]) {
+	uint32_t n = entry.enabled ? min(countBuff[0], maxDraws) : 0;
+	if (idx == 0) { ranges[rangeSlot].location = baseCmd; ranges[rangeSlot].length = n; }
+	if (idx >= n) { return; }
+	if (entry.indexIs16) { mvkEncodeICBDraw<uint16_t>(container->icb, baseCmd + idx, args[idx], entry, drawIds + idx); }
+	else { mvkEncodeICBDraw<uint32_t>(container->icb, baseCmd + idx, args[idx], entry, drawIds + idx); }
+}
+
 kernel void cmdDrawIndirectCopyZeroDivisorVertexBuffers(const device char* indirectBuff [[buffer(0)]],
                                                          const device char* srcBuff [[buffer(1)]],
                                                          device char* destBuff [[buffer(2)]],
