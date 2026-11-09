@@ -72,6 +72,8 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
+	bool endsIndirectCountBatch() const override { return true; }
+
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
@@ -111,6 +113,8 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
+	bool endsIndirectCountBatch() const override { return true; }
+
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
@@ -129,6 +133,8 @@ public:
 						const VkSubpassEndInfo* pSubpassEndInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+	bool endsIndirectCountBatch() const override { return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -151,6 +157,8 @@ public:
 						const VkRenderingInfo* pRenderingInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+	bool endsIndirectCountBatch() const override { return true; }
 
 
 protected:
@@ -218,6 +226,8 @@ public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+	bool endsIndirectCountBatch() const override { return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;

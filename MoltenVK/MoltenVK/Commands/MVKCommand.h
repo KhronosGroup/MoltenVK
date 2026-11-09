@@ -57,6 +57,8 @@ protected:
  *
  *     VkResult setContent(MVKCommandBuffer* cmdBuff, ...);
  */
+struct MVKIndirectCountParams;
+
 class MVKCommand : public MVKBaseObject, public MVKLinkableMixin<MVKCommand> {
 
 public:
@@ -66,6 +68,18 @@ public:
 
 	/** Encodes this command on the specified command encoder. */
 	virtual void encode(MVKCommandEncoder* cmdEncoder) = 0;
+
+	/**
+	 * If this command is an indirect-count draw, fills in its parameters and returns true.
+	 * Used to convert the indirect buffers of several such draws in one compute pass.
+	 */
+	virtual bool getIndirectCountParams(MVKIndirectCountParams& params) const { return false; }
+
+	/**
+	 * Returns true if converting indirect buffers ahead of this command could be wrong,
+	 * because this command may change buffer contents or end the render pass.
+	 */
+	virtual bool endsIndirectCountBatch() const { return false; }
 
 protected:
 	friend MVKCommandBuffer;

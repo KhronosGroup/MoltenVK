@@ -366,6 +366,17 @@ public:
 	 */
 	id<MTLComputeCommandEncoder> getMTLComputeEncoder(MVKCommandUse cmdUse);
 
+	/** Returns the converted indirect buffer prepared ahead of time for an indirect-count draw command, or null. */
+	const MVKMTLBufferAllocation* getBatchedCountConversion(const MVKCommand* cmd) {
+		auto it = _batchedCountConversions.find(cmd);
+		return it == _batchedCountConversions.end() ? nullptr : it->second;
+	}
+
+	/** Records the converted indirect buffer prepared ahead of time for an indirect-count draw command. */
+	void setBatchedCountConversion(const MVKCommand* cmd, const MVKMTLBufferAllocation* alloc) {
+		_batchedCountConversions[cmd] = alloc;
+	}
+
 	/**
 	 * Returns the current Metal BLIT encoder for the specified use,
      * which determines the label assigned to the returned encoder.
@@ -543,6 +554,7 @@ protected:
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
 	MVKSmallVector<MVKImageView*, kMVKDefaultAttachmentCount> _attachments;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
+	std::unordered_map<const MVKCommand*, const MVKMTLBufferAllocation*> _batchedCountConversions;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
 	id<MTLFence> _stageCountersMTLFence;
 	MVKPrefillMetalCommandBuffersStyle _prefillStyle;
