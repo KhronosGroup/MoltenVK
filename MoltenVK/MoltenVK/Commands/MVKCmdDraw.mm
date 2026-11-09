@@ -647,8 +647,264 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 // require yet more munging of the indirect buffers...
 static const uint32_t kMVKMaxDrawIndirectVertexCount = 1024 * KIBI;
 
+// Converts the indirect buffers of the indirect-count draws that follow 'first' in the command list, up to the
+// next command that could change buffer contents or leave the render pass, in a single compute encoder.
+// Without this, each indirect-count draw ends the Metal render encoder, runs one conversion kernel, and starts a
+// new render encoder, which on a tile-based GPU stores and reloads every attachment each time.
+static const uint32_t kMVKMaxBatchedCountConversions = 8192;
+#if MVK_MACOS
+// Indexed indirect-count draws of at least this many entries run from a Metal indirect command buffer (ICB) that a compute
+// kernel fills with only the real draws. Smaller ones expand to direct draws, which cost less in total.
+static const uint32_t kMVKICBMinDrawCount = 129;
+static const uint32_t kMVKICBSlots = 31;					// the most buffers an ICB command can bind per stage
+static const uint32_t kMVKICBInlineBytesPerDraw = 2048;		// room for the inline data a draw binds
+
+// The state of one draw as the ICB kernel reads it. Keep in sync with MVKICBEntry in the kernel source.
+struct MVKICBBindingRec { uint64_t address; uint32_t slot; uint32_t pad; };
+struct MVKICBEntryRec {
+	uint32_t enabled;		// zero: the kernel encodes nothing and the draw runs as direct draws
+	uint32_t primType;
+	uint32_t indexIs16;
+	uint32_t drawIdSlot;	// vertex buffer slot of the draw ID, or ~0
+	uint64_t indexAddress;
+	uint32_t vtxCount;
+	uint32_t fragCount;
+	MVKICBBindingRec vtx[kMVKICBSlots];
+	MVKICBBindingRec frag[kMVKICBSlots];
+};
+static_assert(sizeof(MVKICBEntryRec) == 1024, "MVKICBEntryRec must match the kernel's MVKICBEntry");
+
+// Creating an ICB costs milliseconds, and each stays in use until the GPU finishes the Metal command buffer, so a command buffer
+// takes a few large ICB chunks and gives each batch a range of commands in the current one. Finished chunks are kept for reuse.
+static const uint32_t kMVKICBChunkCapacity = 16384;
+static const size_t kMVKICBMaxPooledChunks = 24;
+static std::mutex gICBPoolMutex;
+static std::unordered_map<uintptr_t, std::vector<id<MTLIndirectCommandBuffer>>> gICBPool;
+
+static id<MTLIndirectCommandBuffer> acquireICBChunk(id<MTLDevice> device) API_AVAILABLE(macos(13.0)) {
+	{
+		std::lock_guard<std::mutex> lock(gICBPoolMutex);
+		auto& free = gICBPool[(uintptr_t)device];
+		if ( !free.empty() ) { id<MTLIndirectCommandBuffer> icb = free.back(); free.pop_back(); return icb; }
+	}
+	MTLIndirectCommandBufferDescriptor* desc = [MTLIndirectCommandBufferDescriptor new];
+	desc.commandTypes = MTLIndirectCommandTypeDrawIndexed;
+	desc.inheritPipelineState = YES;
+	desc.inheritBuffers = NO;
+	desc.maxVertexBufferBindCount = kMVKICBSlots;
+	desc.maxFragmentBufferBindCount = kMVKICBSlots;
+	id<MTLIndirectCommandBuffer> icb = [device newIndirectCommandBufferWithDescriptor: desc maxCommandCount: kMVKICBChunkCapacity options: MTLResourceStorageModePrivate];
+	[desc release];
+	return icb;
+}
+
+static void recycleICBChunk(id<MTLDevice> device, id<MTLIndirectCommandBuffer> icb) API_AVAILABLE(macos(13.0)) {
+	{
+		std::lock_guard<std::mutex> lock(gICBPoolMutex);
+		auto& free = gICBPool[(uintptr_t)device];
+		if (free.size() < kMVKICBMaxPooledChunks) { free.push_back(icb); return; }
+	}
+	[icb release];
+}
+
+// Writes the state of the draw being encoded into its ICB record, and returns the buffers the ICB commands will read, which the
+// render encoder must be told to make resident. Returns false, leaving the record disabled, if the state cannot be expressed as ICB commands.
+static bool fillICBEntry(MVKCommandEncoder* cmdEncoder, MVKGraphicsPipeline* pipeline, const MVKIndexMTLBufferBinding& ibb,
+						 const MVKCommandEncoder::BatchedICB& rec, MVKSmallVector<id<MTLBuffer>, 64> resident[2]) {
+	if ( !pipeline->hasValidMTLPipelineStates() || !pipeline->supportsIndirectCommandBuffers() ) { return false; }
+	if (ibb.mtlIndexType != MTLIndexTypeUInt16 && ibb.mtlIndexType != MTLIndexTypeUInt32) { return false; }
+	auto& gfx = cmdEncoder->getMtlGraphics();
+	if (gfx.getPrimitiveType() > MTLPrimitiveTypeTriangleStrip) { return false; }	// the kernel handles points, lines and triangles
+	// Besides the draw ID, no volatile implicit buffer may be bound per draw.
+	for (MVKShaderStage st : {kMVKShaderStageVertex, kMVKShaderStageFragment}) {
+		for (MVKImplicitBuffer b : pipeline->getImplicitBuffers(st).needed.removingAll(MVKNonVolatileImplicitBuffers)) {
+			if (b != MVKImplicitBuffer::DrawId) { return false; }
+		}
+	}
+	uint32_t drawIdSlot = pipeline->needsDrawIdBuffer() ? pipeline->getImplicitBuffers(kMVKShaderStageVertex).ids[MVKImplicitBuffer::DrawId] : ~0u;
+
+	MVKICBEntryRec tmp = {};
+	tmp.primType = (uint32_t)gfx.getPrimitiveType();
+	tmp.indexIs16 = ibb.mtlIndexType == MTLIndexTypeUInt16;
+	tmp.indexAddress = ibb.mtlBuffer.gpuAddress + ibb.offset;
+	tmp.drawIdSlot = drawIdSlot;
+	uint8_t* bytesDst = (uint8_t*)rec.bytesBuffer.contents + rec.bytesOffset;
+	uint64_t bytesGpu = rec.bytesBuffer.gpuAddress + rec.bytesOffset;
+	uint32_t bytesUsed = 0;
+	for (int st = 0; st < 2; st++) {
+		const MVKStageResourceBits& exists = st == 0 ? gfx._exists.vertex() : gfx._exists.fragment();
+		const MVKStageResourceBindings& bindings = st == 0 ? gfx._bindings.vertex() : gfx._bindings.fragment();
+		MVKICBBindingRec* out = st == 0 ? tmp.vtx : tmp.frag;
+		uint32_t& count = st == 0 ? tmp.vtxCount : tmp.fragCount;
+		for (uint32_t i = 0; i < kMVKMaxBufferCount; i++) {
+			if ( !exists.buffers.get(i) || (st == 0 && i == drawIdSlot) ) { continue; }
+			const MVKStageResourceBindings::Buffer& b = bindings.buffers[i];
+			if (b.buffer) {
+				if (b.offset >> 32) { return false; }	// a vertex buffer bound with a dynamic stride
+				out[count++] = { b.buffer.gpuAddress + b.offset, i, 0 };
+				resident[st].push_back(b.buffer);
+			} else if (b == MVKStageResourceBindings::NullBuffer()) {
+				continue;
+			} else if (id<MTLBuffer> tempBuf = gfx._boundTemp[st][i].buffer) {	// large inline data, bound from a temporary buffer
+				out[count++] = { tempBuf.gpuAddress + gfx._boundTemp[st][i].offset, i, 0 };
+				resident[st].push_back(tempBuf);
+			} else {																// inline data from setBytes
+				const auto& bytes = gfx._boundBytes[st][i];
+				uint32_t size = (uint32_t)bytes.size();
+				if (size == 0) { return false; }
+				uint32_t at = mvkAlignByteCount(bytesUsed, 16);
+				if (at + size > kMVKICBInlineBytesPerDraw) { return false; }
+				memcpy(bytesDst + at, bytes.data(), size);
+				out[count++] = { bytesGpu + at, i, 0 };
+				bytesUsed = at + size;
+			}
+		}
+	}
+	if (bytesUsed > 0) { resident[0].push_back(rec.bytesBuffer); resident[1].push_back(rec.bytesBuffer); }
+	MVKICBEntryRec* entry = (MVKICBEntryRec*)rec.entry;
+	tmp.enabled = 0;
+	memcpy(entry, &tmp, sizeof(tmp));
+	entry->enabled = 1;
+	return true;
+}
+#endif
+static void encodeBatchedIndirectCountConversions(MVKCommandEncoder* cmdEncoder, MVKCommand* first) {
+	struct Entry { MVKCommand* cmd; MVKIndirectCountParams params; };
+	MVKSmallVector<Entry, 256> batch;
+	for (MVKCommand* cmd = first; cmd; cmd = cmd->_next) {
+		if (cmd != first && cmd->endsIndirectCountBatch()) { break; }
+		MVKIndirectCountParams params;
+		if ( !cmd->getIndirectCountParams(params) ) { continue; }
+		if (cmdEncoder->getBatchedCountConversion(cmd)) { continue; }	// already converted, such as when a multiview pass is encoded again
+		batch.push_back({cmd, params});
+		if (batch.size() >= kMVKMaxBatchedCountConversions) { break; }
+	}
+	if (batch.empty()) { return; }
+
+#if MVK_MACOS
+	// Plan an ICB for the indexed entries that are large enough. The draw state is not known yet: each draw writes it into its
+	// record when it is encoded, and the kernel, which runs on the GPU after all encoding is done, reads it from there.
+	struct ICBPlan { size_t entry; uint32_t base; uint32_t slot; };
+	MVKSmallVector<ICBPlan, 64> icbPlans;
+	id<MTLIndirectCommandBuffer> icb = nil;
+	const MVKMTLBufferAllocation* icbRange = nullptr;
+	const MVKMTLBufferAllocation* icbContainer = nullptr;
+	const MVKMTLBufferAllocation* icbEntries = nullptr;
+	const MVKMTLBufferAllocation* icbBytes = nullptr;
+	const MVKMTLBufferAllocation* icbDrawIds = nullptr;
+	uint32_t icbChunkBase = 0;
+	if (@available(macOS 13.0, *)) {
+		if ([cmdEncoder->getMTLDevice() supportsFamily: MTLGPUFamilyApple7] && !(cmdEncoder->getSubpass()->isMultiview() && cmdEncoder->getPhysicalDevice()->canUseInstancingForMultiview())) {
+			uint32_t total = 0, maxDraws = 0;
+			for (size_t i = 0; i < batch.size(); i++) {
+				const MVKIndirectCountParams& p = batch[i].params;
+				if (p.indexed && p.drawCount >= kMVKICBMinDrawCount && total + p.drawCount <= kMVKICBChunkCapacity) {
+					icbPlans.push_back({i, total, (uint32_t)icbPlans.size()});
+					total += p.drawCount;
+					maxDraws = std::max(maxDraws, p.drawCount);
+				}
+			}
+			if (total > 0) {
+				if (cmdEncoder->_icbChunk == nil || cmdEncoder->_icbChunkUsed + total > kMVKICBChunkCapacity) {
+					cmdEncoder->_icbChunk = acquireICBChunk(cmdEncoder->getMTLDevice());	// owned by the completion handler below
+					cmdEncoder->_icbChunkUsed = 0;
+					id<MTLDevice> mtlDev = cmdEncoder->getMTLDevice();
+					id<MTLIndirectCommandBuffer> chunk = cmdEncoder->_icbChunk;
+					if (chunk) { cmdEncoder->addCompletedHandler(^(id<MTLCommandBuffer> mcb) { recycleICBChunk(mtlDev, chunk); }); }
+				}
+				icb = cmdEncoder->_icbChunk;
+				icbChunkBase = cmdEncoder->_icbChunkUsed;
+				if (icb) { cmdEncoder->_icbChunkUsed += total; }
+				if (icb) {
+					size_t n = icbPlans.size();
+					icbRange = cmdEncoder->getTempMTLBuffer(sizeof(MTLIndirectCommandBufferExecutionRange) * n, true);
+					icbContainer = cmdEncoder->getTempMTLBuffer(sizeof(MTLResourceID), false);
+					icbEntries = cmdEncoder->getTempMTLBuffer(sizeof(MVKICBEntryRec) * n, false);
+					icbBytes = cmdEncoder->getTempMTLBuffer(kMVKICBInlineBytesPerDraw * n, false);
+					icbDrawIds = cmdEncoder->getTempMTLBuffer(sizeof(uint32_t) * maxDraws, false);
+					*(MTLResourceID*)icbContainer->getContents() = icb.gpuResourceID;
+					memset(icbEntries->getContents(), 0, sizeof(MVKICBEntryRec) * n);
+					uint32_t* ids = (uint32_t*)icbDrawIds->getContents();
+					for (uint32_t k = 0; k < maxDraws; k++) { ids[k] = k; }
+				} else {
+					icbPlans.clear();
+				}
+			}
+		}
+	}
+	size_t nextPlan = 0;
+#endif
+
+	cmdEncoder->encodeStoreActions(true);
+	auto* computeEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDrawIndirectConvertBuffers);
+	MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
+#if MVK_MACOS
+	if (icb) { [computeEncoder useResource: icb usage: MTLResourceUsageRead | MTLResourceUsageWrite]; }
+#endif
+	for (size_t entryIdx = 0; entryIdx < batch.size(); entryIdx++) {
+		auto& entry = batch[entryIdx];
+		const MVKIndirectCountParams& p = entry.params;
+		VkDeviceSize commandSize = p.indexed ? sizeof(MTLDrawIndexedPrimitivesIndirectArguments) : sizeof(MTLDrawPrimitivesIndirectArguments);
+		auto* convertedBuffer = cmdEncoder->getTempMTLBuffer(commandSize * p.drawCount, true);
+		id<MTLComputePipelineState> pipeline = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndirectCountConvertBuffersMTLComputePipelineState(p.indexed);
+		uint32_t indirectStride = p.indirectStride;
+		uint32_t drawCount = p.drawCount;
+		state.bindPipeline(computeEncoder, pipeline);
+		state.bindBuffer(computeEncoder, p.indirectBuffer, p.indirectOffset, 0);
+		state.bindBuffer(computeEncoder, convertedBuffer->_mtlBuffer, convertedBuffer->_offset, 1);
+		state.bindStructBytes(computeEncoder, &indirectStride, 2);
+		state.bindStructBytes(computeEncoder, &drawCount, 3);
+		state.bindBuffer(computeEncoder, p.countBuffer, p.countOffset, 4);
+		NSUInteger threadWidth = pipeline.threadExecutionWidth;
+		if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
+			[computeEncoder dispatchThreads: MTLSizeMake(drawCount, 1, 1)
+					  threadsPerThreadgroup: MTLSizeMake(threadWidth, 1, 1)];
+		} else {
+			[computeEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(drawCount, threadWidth), 1, 1)
+						   threadsPerThreadgroup: MTLSizeMake(threadWidth, 1, 1)];
+		}
+#if MVK_MACOS
+		if (nextPlan < icbPlans.size() && icbPlans[nextPlan].entry == entryIdx) {
+			const ICBPlan& plan = icbPlans[nextPlan++];
+			id<MTLComputePipelineState> icbPipelineState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndexedIndirectCountToICBMTLComputePipelineState();
+			uint32_t slot = plan.slot, base = icbChunkBase + plan.base;
+			NSUInteger entryOffset = icbEntries->_offset + slot * sizeof(MVKICBEntryRec);
+			state.bindPipeline(computeEncoder, icbPipelineState);
+			state.bindBuffer(computeEncoder, convertedBuffer->_mtlBuffer, convertedBuffer->_offset, 0);
+			state.bindBuffer(computeEncoder, p.countBuffer, p.countOffset, 1);
+			state.bindStructBytes(computeEncoder, &drawCount, 2);
+			state.bindBuffer(computeEncoder, icbContainer->_mtlBuffer, icbContainer->_offset, 3);
+			state.bindBuffer(computeEncoder, icbRange->_mtlBuffer, icbRange->_offset, 5);
+			state.bindStructBytes(computeEncoder, &slot, 6);
+			state.bindStructBytes(computeEncoder, &base, 7);
+			state.bindBuffer(computeEncoder, icbEntries->_mtlBuffer, entryOffset, 8);
+			state.bindBuffer(computeEncoder, icbDrawIds->_mtlBuffer, icbDrawIds->_offset, 9);
+			NSUInteger icbWidth = icbPipelineState.threadExecutionWidth;
+			if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
+				[computeEncoder dispatchThreads: MTLSizeMake(drawCount, 1, 1) threadsPerThreadgroup: MTLSizeMake(icbWidth, 1, 1)];
+			} else {
+				[computeEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(drawCount, icbWidth), 1, 1) threadsPerThreadgroup: MTLSizeMake(icbWidth, 1, 1)];
+			}
+			MVKCommandEncoder::BatchedICB rec;
+			rec.icb = icb;
+			rec.rangeBuffer = icbRange->_mtlBuffer;
+			rec.rangeOffset = icbRange->_offset + slot * sizeof(MTLIndirectCommandBufferExecutionRange);
+			rec.entry = (char*)icbEntries->getContents() + slot * sizeof(MVKICBEntryRec);
+			rec.bytesBuffer = icbBytes->_mtlBuffer;
+			rec.bytesOffset = icbBytes->_offset + slot * kMVKICBInlineBytesPerDraw;
+			rec.drawIdBuffer = icbDrawIds->_mtlBuffer;
+			rec.drawIdOffset = icbDrawIds->_offset;
+			cmdEncoder->setBatchedICB(entry.cmd, rec);
+		}
+#endif
+		cmdEncoder->setBatchedCountConversion(entry.cmd, convertedBuffer);
+	}
+	cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
+}
+
 static const MVKMTLBufferAllocation* encodeIndirectCountConversion(
 		MVKCommandEncoder* cmdEncoder,
+		MVKCommand* cmd,
 		id<MTLBuffer> indirectBuffer,
 		VkDeviceSize indirectBufferOffset,
 		uint32_t indirectBufferStride,
@@ -656,6 +912,10 @@ static const MVKMTLBufferAllocation* encodeIndirectCountConversion(
 		VkDeviceSize countBufferOffset,
 		uint32_t drawCount,
 		bool indexed) {
+	if (auto* batched = cmdEncoder->getBatchedCountConversion(cmd)) { return batched; }
+	encodeBatchedIndirectCountConversions(cmdEncoder, cmd);
+	if (auto* batched = cmdEncoder->getBatchedCountConversion(cmd)) { return batched; }
+
 	VkDeviceSize commandSize = indexed ? sizeof(MTLDrawIndexedPrimitivesIndirectArguments) : sizeof(MTLDrawPrimitivesIndirectArguments);
 	auto* convertedBuffer = cmdEncoder->getTempMTLBuffer(commandSize * drawCount, true);
 
@@ -873,6 +1133,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 
 	if (_mtlCountBuffer && _drawCount > 0) {
 		auto* convertedBuffer = encodeIndirectCountConversion(cmdEncoder,
+				this,
 				indirectBuffer,
 				indirectBufferOffset,
 				indirectBufferStride,
@@ -1225,6 +1486,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 	uint32_t indirectBufferStride = _mtlIndirectBufferStride;
 	if (_mtlCountBuffer && _drawCount > 0) {
 		auto* convertedBuffer = encodeIndirectCountConversion(cmdEncoder,
+				this,
 				indirectBuffer,
 				indirectBufferOffset,
 				indirectBufferStride,
@@ -1268,6 +1530,27 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 	vtxAdjmts.isPrimRestart = cmdEncoder->getState().vkGraphics().isPrimitiveRestartEnabled();
 	vtxAdjmts.isUint8Index = ibb.vkIndexType == VK_INDEX_TYPE_UINT8;
 	vtxAdjmts.isProvokingVertexLast = cmdEncoder->getState().vkGraphics().getProvokingVertexMode() == MTLProvokingVertexModeLast;
+#endif
+
+#if MVK_MACOS
+	if (auto* prepared = cmdEncoder->getBatchedICB(this)) {
+		// Describe this draw's state to the ICB kernel and run the real draws from the ICB. Anything the ICB cannot express runs
+		// as the direct draws below, and the kernel then encodes no commands for this draw.
+		if ( !prepared->used && !pipeline->isTessellationPipeline() && !vtxAdjmts.needsAdjustment() && zeroDivisorBuffers.empty() ) {
+			cmdEncoder->finalizeDrawState(kMVKGraphicsStageRasterization);	// Ensure all updated state has been submitted to Metal
+			MVKSmallVector<id<MTLBuffer>, 64> resident[2];
+			if (fillICBEntry(cmdEncoder, pipeline, ibb, *prepared, resident)) {
+				prepared->used = true;
+				id<MTLRenderCommandEncoder> mtlEnc = cmdEncoder->_mtlRenderEncoder;
+				for (auto buf : resident[0]) { [mtlEnc useResource: buf usage: MTLResourceUsageRead stages: MTLRenderStageVertex]; }
+				for (auto buf : resident[1]) { [mtlEnc useResource: buf usage: MTLResourceUsageRead stages: MTLRenderStageFragment]; }
+				[mtlEnc useResource: ibb.mtlBuffer usage: MTLResourceUsageRead stages: MTLRenderStageVertex];
+				[mtlEnc useResource: prepared->drawIdBuffer usage: MTLResourceUsageRead stages: MTLRenderStageVertex];
+				[mtlEnc executeCommandsInBuffer: prepared->icb indirectBuffer: prepared->rangeBuffer indirectBufferOffset: prepared->rangeOffset];
+				return;
+			}
+		}
+	}
 #endif
 
 	// The indirect calls for dispatchThreadgroups:... and drawPatches:... have different formats.

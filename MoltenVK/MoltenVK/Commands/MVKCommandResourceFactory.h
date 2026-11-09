@@ -362,6 +362,8 @@ public:
 																																	   MVKVulkanAPIDeviceObject* owner);
 
 	/** Returns a new MTLComputePipelineState for emulating indirect draw count. */
+	id<MTLComputePipelineState> newCmdDrawIndexedIndirectCountToICBMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+
 	id<MTLComputePipelineState> newCmdDrawIndirectCountConvertBuffersMTLComputePipelineState(bool indexed,
 																				 MVKVulkanAPIDeviceObject* owner);
 

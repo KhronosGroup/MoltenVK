@@ -366,6 +366,47 @@ public:
 	 */
 	id<MTLComputeCommandEncoder> getMTLComputeEncoder(MVKCommandUse cmdUse);
 
+	/** Runs the handler when the current Metal command buffer has completed on the GPU. */
+	void addCompletedHandler(MTLCommandBufferHandler handler) { [_mtlCmdBuffer addCompletedHandler: handler]; }
+
+#if MVK_MACOS
+	/**
+	 * An indirect command buffer prepared ahead of time for one indexed indirect-count draw. A compute kernel fills it on the GPU
+	 * from the state record at 'entry', which the draw writes when it is encoded, so the state need not be known at batch time.
+	 */
+	struct BatchedICB {
+		id<MTLIndirectCommandBuffer> icb = nil;
+		id<MTLBuffer> rangeBuffer = nil;
+		NSUInteger rangeOffset = 0;
+		void* entry = nullptr;				// CPU address of the draw's state record
+		id<MTLBuffer> bytesBuffer = nil;	// inline data copied for the draw
+		NSUInteger bytesOffset = 0;
+		id<MTLBuffer> drawIdBuffer = nil;	// 0, 1, 2... for the draw ID of each entry
+		NSUInteger drawIdOffset = 0;
+		bool used = false;					// the state record serves one execution only
+	};
+	BatchedICB* getBatchedICB(const MVKCommand* cmd) {
+		auto it = _batchedICBs.find(cmd);
+		return it == _batchedICBs.end() ? nullptr : &it->second;
+	}
+	void setBatchedICB(const MVKCommand* cmd, const BatchedICB& icb) { _batchedICBs[cmd] = icb; }
+
+	/** The indirect command buffer chunk that batches take command ranges from, for the current Metal command buffer. */
+	id<MTLIndirectCommandBuffer> _icbChunk = nil;
+	uint32_t _icbChunkUsed = 0;
+#endif
+
+	/** Returns the converted indirect buffer prepared ahead of time for an indirect-count draw command, or null. */
+	const MVKMTLBufferAllocation* getBatchedCountConversion(const MVKCommand* cmd) {
+		auto it = _batchedCountConversions.find(cmd);
+		return it == _batchedCountConversions.end() ? nullptr : it->second;
+	}
+
+	/** Records the converted indirect buffer prepared ahead of time for an indirect-count draw command. */
+	void setBatchedCountConversion(const MVKCommand* cmd, const MVKMTLBufferAllocation* alloc) {
+		_batchedCountConversions[cmd] = alloc;
+	}
+
 	/**
 	 * Returns the current Metal BLIT encoder for the specified use,
      * which determines the label assigned to the returned encoder.
@@ -543,6 +584,10 @@ protected:
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
 	MVKSmallVector<MVKImageView*, kMVKDefaultAttachmentCount> _attachments;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
+	std::unordered_map<const MVKCommand*, const MVKMTLBufferAllocation*> _batchedCountConversions;
+#if MVK_MACOS
+	std::unordered_map<const MVKCommand*, BatchedICB> _batchedICBs;
+#endif
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
 	id<MTLFence> _stageCountersMTLFence;
 	MVKPrefillMetalCommandBuffersStyle _prefillStyle;

@@ -142,6 +142,21 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKIndirectCountParams
+
+/** The parameters of an indirect-count draw, needed to convert its indirect buffer ahead of time. */
+struct MVKIndirectCountParams {
+	id<MTLBuffer> indirectBuffer = nil;
+	VkDeviceSize indirectOffset = 0;
+	uint32_t indirectStride = 0;
+	id<MTLBuffer> countBuffer = nil;
+	VkDeviceSize countOffset = 0;
+	uint32_t drawCount = 0;
+	bool indexed = false;
+};
+
+
+#pragma mark -
 #pragma mark MVKCmdDrawIndirect
 
 class MVKCmdDrawIndirect : public MVKCommand {
@@ -162,6 +177,18 @@ public:
 						uint32_t stride);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+	bool getIndirectCountParams(MVKIndirectCountParams& params) const override {
+		if ( !_mtlCountBuffer || _drawCount == 0 ) { return false; }
+		params.indirectBuffer = _mtlIndirectBuffer;
+		params.indirectOffset = _mtlIndirectBufferOffset;
+		params.indirectStride = _mtlIndirectBufferStride;
+		params.countBuffer = _mtlCountBuffer;
+		params.countOffset = _mtlCountBufferOffset;
+		params.drawCount = _drawCount;
+		params.indexed = false;
+		return true;
+	}
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -206,6 +233,18 @@ public:
 						uint32_t stride);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+	bool getIndirectCountParams(MVKIndirectCountParams& params) const override {
+		if ( !_mtlCountBuffer || _drawCount == 0 ) { return false; }
+		params.indirectBuffer = _mtlIndirectBuffer;
+		params.indirectOffset = _mtlIndirectBufferOffset;
+		params.indirectStride = _mtlIndirectBufferStride;
+		params.countBuffer = _mtlCountBuffer;
+		params.countOffset = _mtlCountBufferOffset;
+		params.drawCount = _drawCount;
+		params.indexed = true;
+		return true;
+	}
 	void encode(MVKCommandEncoder* cmdEncoder, const MVKIndexMTLBufferBinding& ibbOrig);
 
 protected:
