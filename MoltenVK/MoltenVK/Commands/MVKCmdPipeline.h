@@ -47,6 +47,8 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
+	bool endsIndirectCountBatch() const override { return true; }
+
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
@@ -84,6 +86,8 @@ public:
 						const VkImageMemoryBarrier* pImageMemoryBarriers);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+	bool endsIndirectCountBatch() const override { return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -322,6 +326,8 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
+	bool endsIndirectCountBatch() const override { return true; }
+
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
@@ -378,6 +384,8 @@ public:
 						const VkImageMemoryBarrier* pImageMemoryBarriers);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+	bool endsIndirectCountBatch() const override { return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;

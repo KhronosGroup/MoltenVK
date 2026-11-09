@@ -433,6 +433,7 @@ void MVKCommandEncoder::beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKComman
     _canUseLayeredRendering = false;
 
     _mtlCmdBuffer = mtlCmdBuff;        // not retained
+	_batchedCountConversions.clear();
 
 	_cmdBuffer->setMetalObjectLabel(_mtlCmdBuffer, _cmdBuffer->_debugName);
 }

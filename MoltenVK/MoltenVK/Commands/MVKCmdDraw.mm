@@ -647,8 +647,56 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 // require yet more munging of the indirect buffers...
 static const uint32_t kMVKMaxDrawIndirectVertexCount = 1024 * KIBI;
 
+// Converts the indirect buffers of the indirect-count draws that follow 'first' in the command list, up to the
+// next command that could change buffer contents or leave the render pass, in a single compute encoder.
+// Without this, each indirect-count draw ends the Metal render encoder, runs one conversion kernel, and starts a
+// new render encoder, which on a tile-based GPU stores and reloads every attachment each time.
+static const uint32_t kMVKMaxBatchedCountConversions = 8192;
+static void encodeBatchedIndirectCountConversions(MVKCommandEncoder* cmdEncoder, MVKCommand* first) {
+	struct Entry { MVKCommand* cmd; MVKIndirectCountParams params; };
+	MVKSmallVector<Entry, 256> batch;
+	for (MVKCommand* cmd = first; cmd; cmd = cmd->_next) {
+		if (cmd != first && cmd->endsIndirectCountBatch()) { break; }
+		MVKIndirectCountParams params;
+		if ( !cmd->getIndirectCountParams(params) ) { continue; }
+		if (cmdEncoder->getBatchedCountConversion(cmd)) { continue; }	// already converted, such as when a multiview pass is encoded again
+		batch.push_back({cmd, params});
+		if (batch.size() >= kMVKMaxBatchedCountConversions) { break; }
+	}
+	if (batch.empty()) { return; }
+
+	cmdEncoder->encodeStoreActions(true);
+	auto* computeEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDrawIndirectConvertBuffers);
+	MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
+	for (auto& entry : batch) {
+		const MVKIndirectCountParams& p = entry.params;
+		VkDeviceSize commandSize = p.indexed ? sizeof(MTLDrawIndexedPrimitivesIndirectArguments) : sizeof(MTLDrawPrimitivesIndirectArguments);
+		auto* convertedBuffer = cmdEncoder->getTempMTLBuffer(commandSize * p.drawCount, true);
+		id<MTLComputePipelineState> pipeline = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndirectCountConvertBuffersMTLComputePipelineState(p.indexed);
+		uint32_t indirectStride = p.indirectStride;
+		uint32_t drawCount = p.drawCount;
+		state.bindPipeline(computeEncoder, pipeline);
+		state.bindBuffer(computeEncoder, p.indirectBuffer, p.indirectOffset, 0);
+		state.bindBuffer(computeEncoder, convertedBuffer->_mtlBuffer, convertedBuffer->_offset, 1);
+		state.bindStructBytes(computeEncoder, &indirectStride, 2);
+		state.bindStructBytes(computeEncoder, &drawCount, 3);
+		state.bindBuffer(computeEncoder, p.countBuffer, p.countOffset, 4);
+		NSUInteger threadWidth = pipeline.threadExecutionWidth;
+		if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
+			[computeEncoder dispatchThreads: MTLSizeMake(drawCount, 1, 1)
+					  threadsPerThreadgroup: MTLSizeMake(threadWidth, 1, 1)];
+		} else {
+			[computeEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(drawCount, threadWidth), 1, 1)
+						   threadsPerThreadgroup: MTLSizeMake(threadWidth, 1, 1)];
+		}
+		cmdEncoder->setBatchedCountConversion(entry.cmd, convertedBuffer);
+	}
+	cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
+}
+
 static const MVKMTLBufferAllocation* encodeIndirectCountConversion(
 		MVKCommandEncoder* cmdEncoder,
+		MVKCommand* cmd,
 		id<MTLBuffer> indirectBuffer,
 		VkDeviceSize indirectBufferOffset,
 		uint32_t indirectBufferStride,
@@ -656,6 +704,10 @@ static const MVKMTLBufferAllocation* encodeIndirectCountConversion(
 		VkDeviceSize countBufferOffset,
 		uint32_t drawCount,
 		bool indexed) {
+	if (auto* batched = cmdEncoder->getBatchedCountConversion(cmd)) { return batched; }
+	encodeBatchedIndirectCountConversions(cmdEncoder, cmd);
+	if (auto* batched = cmdEncoder->getBatchedCountConversion(cmd)) { return batched; }
+
 	VkDeviceSize commandSize = indexed ? sizeof(MTLDrawIndexedPrimitivesIndirectArguments) : sizeof(MTLDrawPrimitivesIndirectArguments);
 	auto* convertedBuffer = cmdEncoder->getTempMTLBuffer(commandSize * drawCount, true);
 
@@ -873,6 +925,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 
 	if (_mtlCountBuffer && _drawCount > 0) {
 		auto* convertedBuffer = encodeIndirectCountConversion(cmdEncoder,
+				this,
 				indirectBuffer,
 				indirectBufferOffset,
 				indirectBufferStride,
@@ -1225,6 +1278,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 	uint32_t indirectBufferStride = _mtlIndirectBufferStride;
 	if (_mtlCountBuffer && _drawCount > 0) {
 		auto* convertedBuffer = encodeIndirectCountConversion(cmdEncoder,
+				this,
 				indirectBuffer,
 				indirectBufferOffset,
 				indirectBufferStride,
