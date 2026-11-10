@@ -24,6 +24,7 @@
 #include "MVKSmallVector.h"
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 #include <mutex>
+#include <atomic>
 
 #import <Metal/Metal.h>
 
@@ -116,8 +117,9 @@ public:
 					 const mvk::SPIRVToMSLConversionResult& conversionResult);
 
 	/**
-	 * When specializationMacroDef is not null, creates a macro-specialized library
-	 * specializationMacroDef contains (specialization id, value) mappings, should be sorted
+	 * Creates a library from MSL read from a pipeline cache. When specializationMacroDef is null, the MSL is
+	 * compiled on the first call to getMTLFunction(). When it is not null, a macro-specialized library is
+	 * compiled immediately; specializationMacroDef contains sorted (specialization id, value) mappings.
 	 */
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 					 const mvk::SPIRVToMSLConversionResultInfo& resultInfo,
@@ -148,12 +150,19 @@ protected:
 						const std::vector<std::pair<uint32_t, MVKShaderMacroValue> >* specializationMacroDef = nullptr);
 	void compressMSL(const std::string& msl);
 	void decompressMSL(std::string& msl);
+	void ensureCompiled(VkPipelineCreationFeedback* pShaderFeedback);
 	MVKCompressor<std::string>& getCompressedMSL() { return _compressedMSL; }
 
 	MVKVulkanAPIDeviceObject* _owner;
 	id<MTLLibrary> _mtlLibrary;
 	MVKCompressor<std::string> _compressedMSL;
 	mvk::SPIRVToMSLConversionResultInfo _shaderConversionResultInfo;
+
+	/** When true, the library was read from a pipeline cache and its MSL has not been compiled yet */
+	std::atomic<bool> _compilePending{false};
+	/** When true, the deferred compile of the cached MSL failed and the library must be converted again */
+	std::atomic<bool> _compileFailed{false};
+	mutable std::mutex _compileLock;
 
 	/** When true, representing a library created with source, but never specialized */
 	bool _maySpecializeWithMacro;
@@ -208,6 +217,7 @@ protected:
 
 	MVKVulkanAPIDeviceObject* _owner;
 	MVKSmallVector<std::pair<mvk::SPIRVToMSLConversionConfiguration, MVKShaderLibrary*>> _shaderLibraries;
+	std::vector<MVKShaderLibrary*> _retiredLibraries;
 };
 
 

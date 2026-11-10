@@ -73,9 +73,8 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 												VkPipelineCreationFeedback* pShaderFeedback,
 												MVKShaderModule* shaderModule) {
 
-	if ( !_mtlLibrary ) { return MVKMTLFunctionNull; }
-
-	id<MTLLibrary> lib = _mtlLibrary;
+	id<MTLLibrary> lib = nil;
+	bool usesMacroVariant = false;
 
 	// If specialization happens on constants mapped to macro, find or compile a library variant
 	// with proper macro definition instead of the "generic" library
@@ -96,6 +95,7 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 		}
 
 		if (!spec_list.empty()) {
+			usesMacroVariant = true;
 			// Sort the specialization list before it is used as a key to index the variants
 			std::sort(spec_list.begin(), spec_list.end());
 			auto entry = _specializationVariants.find(spec_list);
@@ -108,6 +108,12 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 			}
 		}
 	}
+
+	if ( !usesMacroVariant ) {
+		ensureCompiled(pShaderFeedback);
+		lib = _mtlLibrary;
+	}
+	if ( !lib ) { return MVKMTLFunctionNull; }
 
 
 	@synchronized (getMTLDevice()) {
@@ -218,11 +224,30 @@ MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 	_owner(owner),
 	_maySpecializeWithMacro(specializationMacroDef == nullptr) {
 
+	_mtlLibrary = nil;
 	_shaderConversionResultInfo = resultInfo;
 	_compressedMSL = compressedMSL;
+	if ( !specializationMacroDef ) {
+		_compilePending.store(true, std::memory_order_release);
+		return;
+	}
 	string msl;
 	decompressMSL(msl);
 	compileLibrary(msl, specializationMacroDef);
+}
+
+// Compiles the MSL of a library read from a pipeline cache the first time one of its functions is needed.
+void MVKShaderLibrary::ensureCompiled(VkPipelineCreationFeedback* pShaderFeedback) {
+	if ( !_compilePending.load(std::memory_order_acquire) ) { return; }
+	lock_guard<mutex> lock(_compileLock);
+	if ( !_compilePending.load(std::memory_order_relaxed) ) { return; }
+	uint64_t startTime = mvkGetTimestamp();
+	string msl;
+	decompressMSL(msl);
+	compileLibrary(msl);
+	if (pShaderFeedback) { pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime); }
+	if ( !_mtlLibrary ) { _compileFailed.store(true, std::memory_order_release); }
+	_compilePending.store(false, std::memory_order_release);
 }
 
 void MVKShaderLibrary::compileLibrary(const string& msl,
@@ -273,12 +298,19 @@ MVKShaderLibrary::MVKShaderLibrary(const MVKShaderLibrary& other) :
 	_maySpecializeWithMacro(other._maySpecializeWithMacro),
 	_specializationVariants(other._specializationVariants) {
 
+	lock_guard<mutex> lock(other._compileLock);
+	_compilePending.store(other._compilePending.load(std::memory_order_acquire), std::memory_order_relaxed);
+	_compileFailed.store(other._compileFailed.load(std::memory_order_acquire), std::memory_order_relaxed);
 	_mtlLibrary = [other._mtlLibrary retain];
 	_shaderConversionResultInfo = other._shaderConversionResultInfo;
 	_compressedMSL = other._compressedMSL;
 }
 
 MVKShaderLibrary& MVKShaderLibrary::operator=(const MVKShaderLibrary& other) {
+	if (this == &other) { return *this; }
+	scoped_lock lock(_compileLock, other._compileLock);
+	_compilePending.store(other._compilePending.load(std::memory_order_acquire), std::memory_order_relaxed);
+	_compileFailed.store(other._compileFailed.load(std::memory_order_acquire), std::memory_order_relaxed);
 	if (_mtlLibrary != other._mtlLibrary) {
 		[_mtlLibrary release];
 		_mtlLibrary = [other._mtlLibrary retain];
@@ -322,11 +354,23 @@ MVKShaderLibrary* MVKShaderLibraryCache::getShaderLibrary(SPIRVToMSLConversionCo
 														  bool* pWasAdded, VkPipelineCreationFeedback* pShaderFeedback,
 														  uint64_t startTime) {
 	bool wasAdded = false;
+	bool failOnCompile = pipeline->shouldFailOnPipelineCompileRequired();
+	MVKShaderLibrary* retired = nullptr;
 	MVKShaderLibrary* shLib = findShaderLibrary(pShaderConfig, pShaderFeedback, startTime);
-	if ( !shLib && !pipeline->shouldFailOnPipelineCompileRequired() ) {
+	if (shLib && failOnCompile && shLib->_compilePending.load(std::memory_order_acquire)) { shLib = nullptr; }
+	if (shLib && shLib->_compileFailed.load(std::memory_order_acquire)) { retired = shLib; shLib = nullptr; }
+	if ( !shLib && !failOnCompile ) {
 		SPIRVToMSLConversionResult conversionResult;
 		if (shaderModule->convert(pShaderConfig, conversionResult)) {
-			shLib = addShaderLibrary(pShaderConfig, conversionResult);
+			if (retired) {
+				shLib = new MVKShaderLibrary(_owner, conversionResult);
+				for (auto& slPair : _shaderLibraries) {
+					if (slPair.second == retired) { slPair.second = shLib; break; }
+				}
+				_retiredLibraries.push_back(retired);
+			} else {
+				shLib = addShaderLibrary(pShaderConfig, conversionResult);
+			}
 			if (pShaderFeedback) {
 				pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime);
 			}
@@ -387,6 +431,7 @@ void MVKShaderLibraryCache::merge(MVKShaderLibraryCache* other) {
 
 MVKShaderLibraryCache::~MVKShaderLibraryCache() {
 	for (auto& slPair : _shaderLibraries) { slPair.second->destroy(); }
+	for (auto* lib : _retiredLibraries) { lib->destroy(); }
 }
 
 
@@ -398,9 +443,10 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration
 											   MVKPipeline* pipeline,
 											   VkPipelineCreationFeedback* pShaderFeedback) {
 	MVKShaderLibrary* mvkLib = _directMSLLibrary;
+	MVKPipelineCache* pipelineCache = nullptr;
 	if ( !mvkLib ) {
 		uint64_t startTime = pShaderFeedback ? mvkGetTimestamp() : getPerformanceTimestamp();
-		MVKPipelineCache* pipelineCache = pipeline->getPipelineCache();
+		pipelineCache = pipeline->getPipelineCache();
 		if (pipelineCache) {
 			mvkLib = pipelineCache->getShaderLibrary(pShaderConfig, this, pipeline, pShaderFeedback, startTime);
 		} else {
@@ -412,7 +458,15 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration
 		pShaderConfig->markAllInterfaceVarsAndResourcesUsed();
 	}
 
-	return mvkLib ? mvkLib->getMTLFunction(pSpecializationInfo, pShaderFeedback, this) : MVKMTLFunctionNull;
+	if ( !mvkLib ) { return MVKMTLFunctionNull; }
+	MVKMTLFunction mtlFunc = mvkLib->getMTLFunction(pSpecializationInfo, pShaderFeedback, this);
+	if ( !mtlFunc.getMTLFunction() && pipelineCache && mvkLib->_compileFailed.load(std::memory_order_acquire) ) {
+		uint64_t startTime = pShaderFeedback ? mvkGetTimestamp() : getPerformanceTimestamp();
+		if (pShaderFeedback) { mvkDisableFlags(pShaderFeedback->flags, VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT); }
+		mvkLib = pipelineCache->getShaderLibrary(pShaderConfig, this, pipeline, pShaderFeedback, startTime);
+		if (mvkLib) { mtlFunc = mvkLib->getMTLFunction(pSpecializationInfo, pShaderFeedback, this); }
+	}
+	return mtlFunc;
 }
 
 bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
