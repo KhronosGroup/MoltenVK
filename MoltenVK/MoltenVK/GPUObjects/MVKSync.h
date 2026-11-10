@@ -365,13 +365,12 @@ public:
 	 * internal list of fence sitters that will be notified when this fence is signaled,
 	 * and then calls await() on the fence sitter so it is aware that it will be signaled.
 	 *
-	 * Does nothing if this fence has already been signaled, and does not call 
-	 * await() on the fence sitter.
+	 * Returns true if this fence has already been signaled, without adding the sitter.
 	 *
 	 * Each fence sitter should only listen once for each fence. Adding the same fence sitter
 	 * more than once in between each fence reset and signal results in undefined behaviour.
 	 */
-	void addSitter(MVKFenceSitter* fenceSitter);
+	bool addSitter(MVKFenceSitter* fenceSitter);
 
 	/** Removes the specified fence sitter. */
 	void removeSitter(MVKFenceSitter* fenceSitter);
@@ -413,10 +412,9 @@ public:
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; }
 
 	/**
-	 * If this instance has been configured to wait for fences, blocks processing on the
-	 * current thread until any or all of the fences that this instance is waiting for are
-	 * signaled, or until the specified timeout in nanoseconds expires. If this instance
-	 * has not been configured to wait for fences, this function immediately returns true.
+	 * Blocks processing on the current thread until any or all registered fences or
+	 * timeline semaphores are signaled, or until the timeout in nanoseconds expires.
+	 * In wait-any mode, the first signal remains latched throughout registration.
 	 *
 	 * If timeout is the special value UINT64_MAX the timeout is treated as infinite.
 	 *
@@ -427,7 +425,9 @@ public:
 
 #pragma mark Construction
 
-	MVKFenceSitter(bool waitAll) : _blocker(waitAll, 0) {}
+	// Wait-any is a one-shot latch. Reserve it before registering any listeners so
+	// a signal during registration cannot be undone by a later await().
+	MVKFenceSitter(bool waitAll) : _blocker(waitAll, waitAll ? 0 : 1), _waitAll(waitAll) {}
 
 	~MVKFenceSitter() override { [_listener release]; }
 
@@ -437,11 +437,12 @@ private:
 
 	MTLSharedEventListener* getMTLSharedEventListener();
 
-	void await() { _blocker.reserve(); }
+	void await() { if (_waitAll) { _blocker.reserve(); } }
 	void signaled() { _blocker.release(); }
 
 	MVKSemaphoreImpl _blocker;
 	MTLSharedEventListener* _listener = nil;
+	const bool _waitAll;
 };
 
 
