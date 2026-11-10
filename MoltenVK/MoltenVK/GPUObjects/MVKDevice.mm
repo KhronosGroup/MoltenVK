@@ -4629,6 +4629,7 @@ MVKBuffer* MVKDevice::addBuffer(MVKBuffer* mvkBuff) {
 	_resources.push_back(mvkBuff);
 	if (mvkIsAnyFlagEnabled(mvkBuff->getUsage(), VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT)) {
 		_gpuAddressableBuffers.push_back(mvkBuff);
+		_gpuAddressableSnapshot.reset();
 	}
 	return mvkBuff;
 }
@@ -4640,15 +4641,40 @@ MVKBuffer* MVKDevice::removeBuffer(MVKBuffer* mvkBuff) {
 	mvkRemoveFirstOccurance(_resources, mvkBuff);
 	if (mvkIsAnyFlagEnabled(mvkBuff->getUsage(), VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT)) {
 		mvkRemoveFirstOccurance(_gpuAddressableBuffers, mvkBuff);
+		_gpuAddressableSnapshot.reset();
 	}
 	return mvkBuff;
 }
 
-void MVKDevice::encodeGPUAddressableBuffers(MVKUseResourceHelper& resources, MVKResourceUsageStages stage) {
+bool MVKGPUAddressableSnapshot::contains(id<MTLResource> resource) const {
+	return std::binary_search(buffers.begin(), buffers.end(), resource);
+}
+
+MVKGPUAddressableSnapshot::~MVKGPUAddressableSnapshot() {
+	for (id<MTLResource> mtlBuff : buffers) { [mtlBuff release]; }
+}
+
+std::shared_ptr<const MVKGPUAddressableSnapshot> MVKDevice::getGPUAddressableSnapshot() {
 	lock_guard<mutex> lock(_rezLock);
-	for (auto& buff : _gpuAddressableBuffers) {
-		resources.add(buff->getMTLBuffer(), stage, true);
+	if ( !_gpuAddressableSnapshot ) {
+		auto snapshot = std::make_shared<MVKGPUAddressableSnapshot>();
+		auto& buffers = snapshot->buffers;
+		buffers.reserve(_gpuAddressableBuffers.size());
+		for (auto& buff : _gpuAddressableBuffers) {
+			id<MTLResource> mtlBuff = buff->getMTLBuffer();
+			if (mtlBuff) { buffers.push_back(mtlBuff); }
+		}
+		std::sort(buffers.begin(), buffers.end());
+		buffers.erase(std::unique(buffers.begin(), buffers.end()), buffers.end());
+		for (id<MTLResource> mtlBuff : snapshot->buffers) { [mtlBuff retain]; }
+		_gpuAddressableSnapshot = std::move(snapshot);
 	}
+	return _gpuAddressableSnapshot;
+}
+
+void MVKDevice::markGPUAddressableBuffersDirty() {
+	lock_guard<mutex> lock(_rezLock);
+	_gpuAddressableSnapshot.reset();
 }
 
 MVKImage* MVKDevice::addImage(MVKImage* mvkImg) {

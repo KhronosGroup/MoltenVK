@@ -158,6 +158,15 @@ struct MVKUseResourceHelper {
 	};
 	MVKOnePerEnumEntry<Entry, MVKResourceUsageStages> entries;
 	std::unordered_map<id<MTLResource>, ResourceInfo> used;
+	/** GPU-addressable buffers to use read-write in every stage of this encoder, after the other resources. */
+	std::shared_ptr<const MVKGPUAddressableSnapshot> gpuAddressable;
+	MVKResourceUsageStages gpuAddressableStages = MVKResourceUsageStages::None;
+	bool gpuAddressablePending = false;
+	bool gpuAddressableUsed = false;
+	/** Requests the bulk use of the GPU-addressable buffers on this encoder for the given stage. */
+	void addGPUAddressable(std::shared_ptr<const MVKGPUAddressableSnapshot> snapshot, MVKResourceUsageStages stage);
+	bool coveredByGPUAddressable(id<MTLResource> resource, MVKResourceUsageStages stage);
+	void reset();
 	/** Add a resource to the list of resources to use. */
 	void add(id<MTLResource> resource, MVKResourceUsageStages stage, bool write);
 	/**
@@ -243,12 +252,9 @@ struct MVKMetalSharedCommandEncoderState {
 	/** Storage for tracking which objects need to have useResource called on them. */
 	MVKUseResourceHelper _useResource;
 
-	/** Which GPU addressable resources have been added to `_useResource`. */
-	MVKResourceUsageStages _gpuAddressableResourceStages;
 
 	void reset() {
-		_gpuAddressableResourceStages = MVKResourceUsageStages::None;
-		_useResource.used.clear();
+		_useResource.reset();
 	}
 };
 

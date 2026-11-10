@@ -441,6 +441,9 @@ public:
 	/** Copy the bytes to a temporary MTLBuffer that will be returned to a pool after the command buffer is finished. */
 	const MVKMTLBufferAllocation* copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length, bool isDedicated = false);
 
+	/** Keeps the MTLBuffers of the GPU-addressable buffer snapshot alive until the Metal command buffer completes. */
+	void retainUntilCompleted(const std::shared_ptr<const MVKGPUAddressableSnapshot>& gpuAddressable);
+
     /** Returns the command encoding pool. */
     MVKCommandEncodingPool* getCommandEncodingPool();
 
@@ -539,6 +542,7 @@ protected:
 	VkRect2D _renderArea;
 	MVKCommand* _lastMultiviewPassCmd;
     MVKActivatedQueries* _pActivatedQueries;
+	std::shared_ptr<const MVKGPUAddressableSnapshot> _retainedGPUAddressable;
 	MVKSmallVector<GPUCounterQuery, 16> _timestampStageCounterQueries;
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
 	MVKSmallVector<MVKImageView*, kMVKDefaultAttachmentCount> _attachments;

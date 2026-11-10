@@ -28,6 +28,8 @@
 #include "MVKOSExtensions.h"
 #include "mvk_datatypes.hpp"
 #include <shared_mutex>
+#include <memory>
+#include <vector>
 #include <string>
 #include <mutex>
 #include <os/lock.h>
@@ -650,6 +652,16 @@ public:
 	}
 };
 
+/**
+ * The MTLBuffers of every GPU-addressable buffer, retained, listed once for bulk useResources.
+ * The list is sorted, so it also answers membership lookups.
+ */
+struct MVKGPUAddressableSnapshot {
+	std::vector<id<MTLResource>> buffers;
+	bool contains(id<MTLResource> resource) const;
+	~MVKGPUAddressableSnapshot();
+};
+
 /** Represents a Vulkan logical GPU device, associated with a physical device. */
 class MVKDevice : public MVKDispatchableVulkanAPIObject {
 
@@ -867,8 +879,11 @@ public:
 
 #pragma mark Operations
 
-	/** Tell the GPU to be ready to use any of the GPU-addressable buffers. */
-	void encodeGPUAddressableBuffers(MVKUseResourceHelper& resources, MVKResourceUsageStages stage);
+	/** Returns the current list of GPU-addressable MTLBuffers, rebuilding it after buffers were added, bound or removed. */
+	std::shared_ptr<const MVKGPUAddressableSnapshot> getGPUAddressableSnapshot();
+
+	/** Marks the GPU-addressable buffer list as needing a rebuild. */
+	void markGPUAddressableBuffersDirty();
 
 	/** Adds the specified host semaphore to be woken upon device loss. */
 	void addSemaphore(MVKSemaphoreImpl* sem4);
@@ -1098,6 +1113,7 @@ protected:
 	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
 	MVKSmallVector<MVKResource*> _resources;
 	MVKSmallVector<MVKBuffer*> _gpuAddressableBuffers;
+	std::shared_ptr<const MVKGPUAddressableSnapshot> _gpuAddressableSnapshot;
 	MVKSmallVector<MVKPrivateDataSlot*> _privateDataSlots;
 	MVKSmallVector<bool> _privateDataSlotsAvailability;
 	MVKSmallVector<MVKSemaphoreImpl*> _awaitingSemaphores;
