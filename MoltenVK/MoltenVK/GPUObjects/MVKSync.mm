@@ -256,12 +256,12 @@ MVKTimelineSemaphoreMTLEvent::~MVKTimelineSemaphoreMTLEvent() {
 #pragma mark -
 #pragma mark MVKFence
 
-void MVKFence::addSitter(MVKFenceSitter* fenceSitter) {
+bool MVKFence::addSitter(MVKFenceSitter* fenceSitter) {
 	lock_guard<mutex> lock(_lock);
 
 	// We only care about unsignaled fences. If already signaled,
 	// don't add myself to the sitter and don't signal the sitter.
-	if (_isSignaled) { return; }
+	if (_isSignaled) { return true; }
 
 	// Ensure each fence only added once to each fence sitter
 	auto addRslt = _fenceSitters.insert(fenceSitter);	// pair with second element true if was added
@@ -269,6 +269,7 @@ void MVKFence::addSitter(MVKFenceSitter* fenceSitter) {
 		_device->addSemaphore(&fenceSitter->_blocker);
 		fenceSitter->await();
 	}
+	return false;
 }
 
 void MVKFence::removeSitter(MVKFenceSitter* fenceSitter) {
@@ -379,12 +380,16 @@ VkResult mvkWaitForFences(MVKDevice* device,
 
 	VkResult rslt = VK_SUCCESS;
 	MVKFenceSitter fenceSitter(waitAll);
+	bool alreadySignaled = false;
 
 	for (uint32_t i = 0; i < fenceCount; i++) {
-		((MVKFence*)pFences[i])->addSitter(&fenceSitter);
+		if (((MVKFence*)pFences[i])->addSitter(&fenceSitter) && !waitAll) {
+			alreadySignaled = true;
+			break;
+		}
 	}
 
-	bool finished = fenceSitter.wait(timeout);
+	bool finished = alreadySignaled || fenceSitter.wait(timeout);
 	if (device->getConfigurationResult() != VK_SUCCESS) {
 		rslt = device->getConfigurationResult();
 	} else if ( !finished ) {
