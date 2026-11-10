@@ -433,6 +433,7 @@ void MVKCommandEncoder::beginEncoding(id<MTLCommandBuffer> mtlCmdBuff, MVKComman
     _canUseLayeredRendering = false;
 
     _mtlCmdBuffer = mtlCmdBuff;        // not retained
+	_retainedGPUAddressable.reset();
 
 	_cmdBuffer->setMetalObjectLabel(_mtlCmdBuffer, _cmdBuffer->_debugName);
 }
@@ -467,6 +468,7 @@ void MVKCommandEncoder::encodeCommandsImpl(MVKCommand* command) {
 void MVKCommandEncoder::endEncoding() {
 	endCurrentMetalEncoding();
 	finishQueries();
+	_retainedGPUAddressable.reset();
 }
 
 void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
@@ -1337,6 +1339,15 @@ void MVKCommandEncoder::addActivatedQueries(MVKQueryPool* pQueryPool, uint32_t q
     while (query < endQuery) {
         it->second.push_back(query++);
     }
+}
+
+// Queue submissions may use Metal command buffers with unretained references, and an app may
+// destroy a GPU-addressable buffer that no command uses while this command buffer is still running.
+void MVKCommandEncoder::retainUntilCompleted(const std::shared_ptr<const MVKGPUAddressableSnapshot>& gpuAddressable) {
+	if ( !gpuAddressable || gpuAddressable == _retainedGPUAddressable ) { return; }
+	_retainedGPUAddressable = gpuAddressable;
+	std::shared_ptr<const MVKGPUAddressableSnapshot> retained = gpuAddressable;
+	[_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) { (void)retained; }];
 }
 
 // Register a command buffer completion handler that finishes each activated query.

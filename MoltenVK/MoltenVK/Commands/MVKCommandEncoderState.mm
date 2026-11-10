@@ -653,12 +653,10 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 	executeBindOps(encoder, mvkEncoder, common, implicitBufferData, resources.bindScript.ops.contents(), useResourceStage, exists, bindings, binder);
 
 	MVKMetalSharedCommandEncoderState& mtlShared = mvkEncoder.getState().mtlShared();
-	if (resources.usesPhysicalStorageBufferAddresses && !isCompatible(mtlShared._gpuAddressableResourceStages, useResourceStage)) {
-		if (mtlShared._gpuAddressableResourceStages == MVKResourceUsageStages::None)
-			mtlShared._gpuAddressableResourceStages = useResourceStage;
-		else
-			mtlShared._gpuAddressableResourceStages = combineStages(mtlShared._gpuAddressableResourceStages, useResourceStage);
-		mvkEncoder.getDevice()->encodeGPUAddressableBuffers(mtlShared._useResource, useResourceStage);
+	if (resources.usesPhysicalStorageBufferAddresses) {
+		std::shared_ptr<const MVKGPUAddressableSnapshot> gpuAddressable = mvkEncoder.getDevice()->getGPUAddressableSnapshot();
+		mvkEncoder.retainUntilCompleted(gpuAddressable);
+		mtlShared._useResource.addGPUAddressable(std::move(gpuAddressable), useResourceStage);
 	}
 
 	const MVKShaderStageResourceBinding& resourceCounts = common._layout->getResourceCounts().stages[vkStage];
@@ -876,7 +874,39 @@ static bool isCompatible(MVKUseResourceHelper::ResourceInfo current, MVKUseResou
 	return isCompatible(current.stages, add.stages);
 }
 
+static MVKResourceUsageStages widenStages(MVKResourceUsageStages current, MVKResourceUsageStages add) {
+	return current == MVKResourceUsageStages::None ? add : combineStages(current, add);
+}
+
+void MVKUseResourceHelper::addGPUAddressable(std::shared_ptr<const MVKGPUAddressableSnapshot> snapshot, MVKResourceUsageStages stage) {
+	bool changed = snapshot != gpuAddressable;
+	if (changed) { gpuAddressable = std::move(snapshot); }
+	MVKResourceUsageStages stages = widenStages(gpuAddressableStages, stage);
+	changed |= stages != gpuAddressableStages;
+	gpuAddressableStages = stages;
+	if (changed && gpuAddressable && !gpuAddressable->buffers.empty()) { gpuAddressablePending = true; }
+}
+
+bool MVKUseResourceHelper::coveredByGPUAddressable(id<MTLResource> resource, MVKResourceUsageStages stage) {
+	if ( !gpuAddressableUsed || !gpuAddressable || !gpuAddressable->contains(resource) ) { return false; }
+	MVKResourceUsageStages stages = widenStages(gpuAddressableStages, stage);
+	if (stages != gpuAddressableStages) {
+		gpuAddressableStages = stages;
+		gpuAddressablePending = true;
+	}
+	return true;
+}
+
+void MVKUseResourceHelper::reset() {
+	used.clear();
+	gpuAddressable.reset();
+	gpuAddressableStages = MVKResourceUsageStages::None;
+	gpuAddressablePending = false;
+	gpuAddressableUsed = false;
+}
+
 void MVKUseResourceHelper::add(id<MTLResource> resource, MVKResourceUsageStages stage, bool write) {
+	if (coveredByGPUAddressable(resource, stage)) { return; }
 	ResourceInfo info { stage, write, true };
 	auto res = used.emplace(resource, info);
 	if (res.second || !isCompatible(res.first->second, info)) {
@@ -891,6 +921,7 @@ void MVKUseResourceHelper::add(id<MTLResource> resource, MVKResourceUsageStages 
 }
 
 void MVKUseResourceHelper::addImmediate(id<MTLResource> resource, id<MTLCommandEncoder> enc, MVKResourceBinder::UseResource func, MVKResourceUsageStages stage, bool write) {
+	if (coveredByGPUAddressable(resource, stage)) { return; }
 	ResourceInfo info { stage, write, false };
 	auto res = used.emplace(resource, info);
 	if (res.second || !isCompatible(res.first->second, info)) {
@@ -926,6 +957,16 @@ void MVKUseResourceHelper::bindAndResetGraphics(id<MTLRenderCommandEncoder> enco
 			entry.readWrite.clear();
 		}
 	}
+	if (gpuAddressablePending) {
+		MVKResourceUsageStages stages = gpuAddressableStages;
+		for (auto& use : used) {
+			if (gpuAddressable->contains(use.first)) { stages = widenStages(stages, use.second.stages); }
+		}
+		gpuAddressableStages = stages;
+		[encoder useResources:gpuAddressable->buffers.data() count:gpuAddressable->buffers.size() usage:MTLResourceUsageReadWrite stages:getMTLStages(stages)];
+		gpuAddressablePending = false;
+		gpuAddressableUsed = true;
+	}
 }
 void MVKUseResourceHelper::bindAndResetCompute(id<MTLComputeCommandEncoder> encoder) {
 	Entry& entry = entries[MVKResourceUsageStages::Compute];
@@ -941,6 +982,11 @@ void MVKUseResourceHelper::bindAndResetCompute(id<MTLComputeCommandEncoder> enco
 		// Compute should never fill any but the first set
 		assert(entries.elements[i].read.empty());
 		assert(entries.elements[i].readWrite.empty());
+	}
+	if (gpuAddressablePending) {
+		[encoder useResources:gpuAddressable->buffers.data() count:gpuAddressable->buffers.size() usage:MTLResourceUsageReadWrite];
+		gpuAddressablePending = false;
+		gpuAddressableUsed = true;
 	}
 }
 

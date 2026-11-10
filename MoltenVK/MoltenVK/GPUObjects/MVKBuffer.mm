@@ -81,7 +81,9 @@ VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOf
 
 	propagateDebugName();
 
-	return _deviceMemory ? _deviceMemory->addBuffer(this) : VK_SUCCESS;
+	VkResult rslt = _deviceMemory ? _deviceMemory->addBuffer(this) : VK_SUCCESS;
+	if (mvkIsAnyFlagEnabled(getUsage(), VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT)) { _device->markGPUAddressableBuffersDirty(); }
+	return rslt;
 }
 
 VkResult MVKBuffer::bindDeviceMemory2(const VkBindBufferMemoryInfo* pBindInfo) {

@@ -508,10 +508,15 @@ MVKDeviceMemory::~MVKDeviceMemory() {
 	// Unbind any resources that are using me.
 	// Manually null the binding parameter to prevent them from trying to remove themselves from the array.
 	// This will leave texture buffer pointers dangling, but according to Vulkan, those are not supposed to be used again anyways.
+	bool gpuAddressable = false;
 	os_unfair_lock_lock(&s_device_memory_destruction_lock);
-	for (auto& buf : _buffers)             { buf->_deviceMemory = nullptr; }
+	for (auto& buf : _buffers) {
+		buf->_deviceMemory = nullptr;
+		gpuAddressable |= mvkIsAnyFlagEnabled(buf->getUsage(), VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT);
+	}
 	for (auto& img : _imageMemoryBindings) { img->_deviceMemory = nullptr; }
 	os_unfair_lock_unlock(&s_device_memory_destruction_lock);
+	if (gpuAddressable) { _device->markGPUAddressableBuffersDirty(); }
 
 	if (_externalMemoryHandleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_EXT) {
 		[_mtlTexture release];
