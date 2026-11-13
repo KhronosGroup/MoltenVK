@@ -582,6 +582,14 @@ void MVKCommandEncoder::setSubpass(MVKCommand* subpassCmd,
 	auto& mtlFeats = getMetalFeatures();
 	_canUseLayeredRendering = mtlFeats.layeredRendering && (mtlFeats.multisampleLayeredRendering || getSubpass()->getSampleCount() == VK_SAMPLE_COUNT_1_BIT);
 
+	// Hoist indirect-count buffer conversions before starting the Metal render pass
+	// to avoid splitting the render pass into separate compute + restart render encoders.
+	if (subpassCmd && subpassContents == VK_SUBPASS_CONTENTS_INLINE) {
+		for (MVKCommand* cmd = subpassCmd->_next; cmd && !cmd->isEndSubpass(); cmd = cmd->_next) {
+			cmd->preencodeIndirectCount(this);
+		}
+	}
+
 	beginMetalRenderPass(cmdUse);
 }
 

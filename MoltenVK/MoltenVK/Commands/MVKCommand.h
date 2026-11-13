@@ -67,6 +67,12 @@ public:
 	/** Encodes this command on the specified command encoder. */
 	virtual void encode(MVKCommandEncoder* cmdEncoder) = 0;
 
+	/** Returns true if this command ends the current render pass or subpass. */
+	virtual bool isEndSubpass() const { return false; }
+
+	/** Pre-encodes indirect-count buffer conversion before starting a Metal render pass. */
+	virtual void preencodeIndirectCount(MVKCommandEncoder* cmdEncoder) {}
+
 protected:
 	friend MVKCommandBuffer;
 
