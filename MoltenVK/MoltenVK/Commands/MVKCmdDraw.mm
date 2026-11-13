@@ -655,11 +655,12 @@ static const MVKMTLBufferAllocation* encodeIndirectCountConversion(
 		id<MTLBuffer> countBuffer,
 		VkDeviceSize countBufferOffset,
 		uint32_t drawCount,
-		bool indexed) {
+		bool indexed,
+		bool restartRenderPass = true) {
 	VkDeviceSize commandSize = indexed ? sizeof(MTLDrawIndexedPrimitivesIndirectArguments) : sizeof(MTLDrawPrimitivesIndirectArguments);
 	auto* convertedBuffer = cmdEncoder->getTempMTLBuffer(commandSize * drawCount, true);
 
-	cmdEncoder->encodeStoreActions(true);
+	if (restartRenderPass) { cmdEncoder->encodeStoreActions(true); }
 	auto* computeEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDrawIndirectConvertBuffers);
 	MVKMetalComputeCommandEncoderState& state = cmdEncoder->getMtlCompute();
 	id<MTLComputePipelineState> pipeline = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndirectCountConvertBuffersMTLComputePipelineState(indexed);
@@ -678,7 +679,7 @@ static const MVKMTLBufferAllocation* encodeIndirectCountConversion(
 		[computeEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(drawCount, threadWidth), 1, 1)
 						  threadsPerThreadgroup: MTLSizeMake(threadWidth, 1, 1)];
 	}
-	cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
+	if (restartRenderPass) { cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass); }
 	return convertedBuffer;
 }
 
@@ -785,6 +786,7 @@ VkResult MVKCmdDrawIndirect::setContent(MVKCommandBuffer* cmdBuff,
 	_drawCount = drawCount;
 	_mtlCountBuffer = nil;
 	_mtlCountBufferOffset = 0;
+	_preconvertedIndirectBuffer = nullptr;
 
     // Validate
 	auto& mtlFeats = cmdBuff->getMetalFeatures();
@@ -864,6 +866,20 @@ void MVKCmdDrawIndirect::encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder,
 	diiCmd.encode(cmdEncoder, ibb);
 }
 
+void MVKCmdDrawIndirect::preencodeIndirectCount(MVKCommandEncoder* cmdEncoder) {
+	if (_mtlCountBuffer && _drawCount > 0) {
+		_preconvertedIndirectBuffer = encodeIndirectCountConversion(cmdEncoder,
+				_mtlIndirectBuffer,
+				_mtlIndirectBufferOffset,
+				_mtlIndirectBufferStride,
+				_mtlCountBuffer,
+				_mtlCountBufferOffset,
+				_drawCount,
+				false,
+				false);
+	}
+}
+
 void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 
 	cmdEncoder->restartMetalRenderPassIfNeeded();
@@ -871,7 +887,12 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 	VkDeviceSize indirectBufferOffset = _mtlIndirectBufferOffset;
 	uint32_t indirectBufferStride = _mtlIndirectBufferStride;
 
-	if (_mtlCountBuffer && _drawCount > 0) {
+	if (_preconvertedIndirectBuffer) {
+		indirectBuffer = _preconvertedIndirectBuffer->_mtlBuffer;
+		indirectBufferOffset = _preconvertedIndirectBuffer->_offset;
+		indirectBufferStride = sizeof(MTLDrawPrimitivesIndirectArguments);
+		_preconvertedIndirectBuffer = nullptr;
+	} else if (_mtlCountBuffer && _drawCount > 0) {
 		auto* convertedBuffer = encodeIndirectCountConversion(cmdEncoder,
 				indirectBuffer,
 				indirectBufferOffset,
@@ -1183,6 +1204,7 @@ VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
 	_drawCount = drawCount;
 	_mtlCountBuffer = nil;
 	_mtlCountBufferOffset = 0;
+	_preconvertedIndirectBuffer = nullptr;
 
 	// Validate
 	auto& mtlFeats = cmdBuff->getMetalFeatures();
@@ -1218,12 +1240,31 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 	encode(cmdEncoder, cmdEncoder->getVkGraphics()._indexBuffer);
 }
 
+void MVKCmdDrawIndexedIndirect::preencodeIndirectCount(MVKCommandEncoder* cmdEncoder) {
+	if (_mtlCountBuffer && _drawCount > 0) {
+		_preconvertedIndirectBuffer = encodeIndirectCountConversion(cmdEncoder,
+				_mtlIndirectBuffer,
+				_mtlIndirectBufferOffset,
+				_mtlIndirectBufferStride,
+				_mtlCountBuffer,
+				_mtlCountBufferOffset,
+				_drawCount,
+				true,
+				false);
+	}
+}
+
 void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKIndexMTLBufferBinding& ibbOrig) {
 
 	id<MTLBuffer> indirectBuffer = _mtlIndirectBuffer;
 	VkDeviceSize indirectBufferOffset = _mtlIndirectBufferOffset;
 	uint32_t indirectBufferStride = _mtlIndirectBufferStride;
-	if (_mtlCountBuffer && _drawCount > 0) {
+	if (_preconvertedIndirectBuffer) {
+		indirectBuffer = _preconvertedIndirectBuffer->_mtlBuffer;
+		indirectBufferOffset = _preconvertedIndirectBuffer->_offset;
+		indirectBufferStride = sizeof(MTLDrawIndexedPrimitivesIndirectArguments);
+		_preconvertedIndirectBuffer = nullptr;
+	} else if (_mtlCountBuffer && _drawCount > 0) {
 		auto* convertedBuffer = encodeIndirectCountConversion(cmdEncoder,
 				indirectBuffer,
 				indirectBufferOffset,

@@ -579,7 +579,23 @@ id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode,
 				}
 				logCompilation(mtlCompileOptions);
 
-				[mtlDev newLibraryWithSource: mslSourceCode
+				// When MVK_CONFIG_FAST_MATH_ALWAYS is explicitly enabled and position invariance
+				// is not required, strip [[clang::optnone]] from SPIRV-Cross NoContraction math
+				// helpers and relax precise:: to fast:: so Metal can inline hardware fast math.
+				NSString* src = mslSourceCode;
+				if (getMVKConfig().fastMathEnabled == MVK_CONFIG_FAST_MATH_ALWAYS &&
+					!shaderConversionResults.isPositionInvariant) {
+					if ([src containsString: @"[[clang::optnone]] "]) {
+						src = [src stringByReplacingOccurrencesOfString: @"[[clang::optnone]] "
+															 withString: @""];
+					}
+					if ([src containsString: @"precise::"]) {
+						src = [src stringByReplacingOccurrencesOfString: @"precise::"
+															 withString: @"fast::"];
+					}
+				}
+
+				[mtlDev newLibraryWithSource: src
 									options: mtlCompileOptions
 						completionHandler: ^(id<MTLLibrary> mtlLib, NSError* error) {
 							bool isLate = compileComplete(mtlLib, error);

@@ -110,6 +110,7 @@ public:
 						const VkSubpassEndInfo* pSubpassEndInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool isEndSubpass() const override { return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -129,6 +130,7 @@ public:
 						const VkSubpassEndInfo* pSubpassEndInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool isEndSubpass() const override { return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -218,6 +220,7 @@ public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool isEndSubpass() const override { return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
