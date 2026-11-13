@@ -366,6 +366,9 @@ public:
 	 */
 	id<MTLComputeCommandEncoder> getMTLComputeEncoder(MVKCommandUse cmdUse);
 
+	/** Returns the currently active Metal compute encoder, or nil if none is active. */
+	id<MTLComputeCommandEncoder> getActiveMTLComputeEncoder() const { return _mtlComputeEncoder; }
+
 	/**
 	 * Returns the current Metal BLIT encoder for the specified use,
      * which determines the label assigned to the returned encoder.

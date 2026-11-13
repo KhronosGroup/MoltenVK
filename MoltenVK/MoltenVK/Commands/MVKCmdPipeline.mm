@@ -161,11 +161,54 @@ void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 #endif
 
 	if (!cmdEncoder->_mtlRenderEncoder && cmdEncoder->isUsingMetalArgumentBuffers() && cmdEncoder->getDevice()->hasResidencySet()) {
-		cmdEncoder->endCurrentMetalEncoding();
+#if MVK_MACOS
+		// Keep the active serial MTLComputeCommandEncoder alive for compute-only barriers
+		// instead of splitting into a new encoder and MTLFence. Note that mtlFeats.memoryBarriers
+		// only gates render-pass barriers on TBDR GPUs; compute encoders support memoryBarrierWithScope:.
+		id<MTLComputeCommandEncoder> activeComputeEnc = cmdEncoder->getActiveMTLComputeEncoder();
+		bool isComputeOnlyBarrier = (activeComputeEnc != nil);
+		if (isComputeOnlyBarrier) {
+			const VkPipelineStageFlags2 computeOnlyDst = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
+														 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT |
+														 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+			for (auto& b : _barriers) {
+				if (b.dstStageMask == 0 || (b.dstStageMask & ~computeOnlyDst) != 0) {
+					isComputeOnlyBarrier = false;
+					break;
+				}
+			}
+		}
 
-		for (auto& b : _barriers) {
-			uint64_t sourceStageMask = mvkBarrierStagesFromPipelineStageFlags(b.srcStageMask), destStageMask = mvkBarrierStagesFromPipelineStageFlags(b.dstStageMask);
-			cmdEncoder->setBarrier(sourceStageMask, destStageMask);
+		if (isComputeOnlyBarrier) {
+			MTLBarrierScope scope = 0;
+			for (auto& b : _barriers) {
+				switch (b.type) {
+					case MVKPipelineBarrier::Memory:
+						scope |= (mvkMTLBarrierScopeFromVkAccessFlags(b.srcAccessMask) |
+								  mvkMTLBarrierScopeFromVkAccessFlags(b.dstAccessMask));
+						break;
+					case MVKPipelineBarrier::Buffer:
+						scope |= MTLBarrierScopeBuffers;
+						break;
+					case MVKPipelineBarrier::Image:
+						scope |= MTLBarrierScopeTextures;
+						break;
+					default:
+						break;
+				}
+			}
+			if (scope) {
+				[activeComputeEnc memoryBarrierWithScope: scope];
+			}
+		} else
+#endif
+		{
+			cmdEncoder->endCurrentMetalEncoding();
+
+			for (auto& b : _barriers) {
+				uint64_t sourceStageMask = mvkBarrierStagesFromPipelineStageFlags(b.srcStageMask), destStageMask = mvkBarrierStagesFromPipelineStageFlags(b.dstStageMask);
+				cmdEncoder->setBarrier(sourceStageMask, destStageMask);
+			}
 		}
 	}
 
