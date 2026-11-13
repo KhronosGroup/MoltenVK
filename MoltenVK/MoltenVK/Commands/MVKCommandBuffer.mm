@@ -1089,6 +1089,7 @@ static MTLDispatchType getDispatchType(MVKCommandUse use) {
 	switch (use) {
 		case kMVKCommandUseAccumOcclusionQuery:
 		case kMVKCommandUseDispatch:
+		case kMVKCommandUseFillBuffer:
 			return MTLDispatchTypeConcurrent;
 		default:
 			return MTLDispatchTypeSerial;
