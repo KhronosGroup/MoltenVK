@@ -1088,6 +1088,7 @@ void MVKCommandEncoder::endCurrentMetalEncoding() {
 static MTLDispatchType getDispatchType(MVKCommandUse use) {
 	switch (use) {
 		case kMVKCommandUseAccumOcclusionQuery:
+		case kMVKCommandUseDispatch:
 			return MTLDispatchTypeConcurrent;
 		default:
 			return MTLDispatchTypeSerial;

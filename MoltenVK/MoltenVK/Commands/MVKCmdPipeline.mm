@@ -197,6 +197,11 @@ void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 						break;
 				}
 			}
+			// A concurrent compute encoder requires an explicit barrier even for execution-only
+			// Vulkan barriers (scope == 0) to prevent subsequent dispatches from overlapping.
+			if (!scope && activeComputeEnc.dispatchType == MTLDispatchTypeConcurrent) {
+				scope = MTLBarrierScopeBuffers | MTLBarrierScopeTextures;
+			}
 			if (scope) {
 				[activeComputeEnc memoryBarrierWithScope: scope];
 			}
