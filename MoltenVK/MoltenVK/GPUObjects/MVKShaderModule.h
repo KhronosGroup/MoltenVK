@@ -202,12 +202,15 @@ protected:
 	MVKShaderLibrary* addShaderLibrary(const mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
 									   const mvk::SPIRVToMSLConversionResult& conversionResult);
 	MVKShaderLibrary* addShaderLibrary(const mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
+									   MVKShaderLibrary* shLib);
+	MVKShaderLibrary* addShaderLibrary(const mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
 									   const mvk::SPIRVToMSLConversionResultInfo& resultInfo,
 									   const MVKCompressor<std::string> compressedMSL);
 	void merge(MVKShaderLibraryCache* other);
 
 	MVKVulkanAPIDeviceObject* _owner;
 	MVKSmallVector<std::pair<mvk::SPIRVToMSLConversionConfiguration, MVKShaderLibrary*>> _shaderLibraries;
+	std::mutex _compileLock;
 };
 
 
