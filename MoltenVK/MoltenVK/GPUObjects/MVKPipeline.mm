@@ -2586,6 +2586,17 @@ VkResult MVKPipelineCache::writeDataImpl(size_t* pDataSize, void* pData) {
 
 		if ( !pDataSize ) { return VK_SUCCESS; }
 
+		// The size is unknown if this is the first request, or if the cache content has changed
+		// since the size was last determined. The app is not required to query the size before
+		// retrieving the data, and other threads may add to the cache between the two requests,
+		// so the size must be established before it is compared to the size of the app's buffer.
+		if (_dataSize == 0) {
+			mvk::countbuf cb;
+			ostream outStream(&cb);
+			writeData(outStream, true);
+			_dataSize = cb.buffSize;
+		}
+
 		if (pData) {
 			if (*pDataSize >= _dataSize) {
 				mvk::membuf mb((char*)pData, _dataSize);
@@ -2598,12 +2609,6 @@ VkResult MVKPipelineCache::writeDataImpl(size_t* pDataSize, void* pData) {
 				return VK_INCOMPLETE;
 			}
 		} else {
-			if (_dataSize == 0) {
-				mvk::countbuf cb;
-				ostream outStream(&cb);
-				writeData(outStream, true);
-				_dataSize = cb.buffSize;
-			}
 			*pDataSize = _dataSize;
 			return VK_SUCCESS;
 		}
@@ -2731,8 +2736,12 @@ void MVKPipelineCache::readData(const VkPipelineCacheCreateInfo* pCreateInfo) {
 			}
 		}
 
-	} catch (cereal::Exception& ex) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Error reading pipeline cache data: %s", ex.what()));
+	} catch (std::exception& ex) {
+		// The app is not required to validate the initial data beyond what it can learn from the header,
+		// and that data may have been truncated or otherwise damaged, for example by an interrupted save.
+		// Unusable data is not an error. Keep the entries that were read successfully, ignore the rest,
+		// and leave it to the app to repopulate the cache as it creates pipelines.
+		reportMessage(MVK_CONFIG_LOG_LEVEL_WARNING, "Pipeline cache initial data is incomplete or invalid, and was not fully loaded: %s", ex.what());
 	}
 #else
 	setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Pipeline cache serialization is unavailable. To enable pipeline cache serialization, build MoltenVK with MVK_USE_CEREAL=1 build setting."));
