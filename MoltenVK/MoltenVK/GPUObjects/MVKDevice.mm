@@ -1529,6 +1529,11 @@ void MVKPhysicalDevice::populateSubgroupProperties(VkPhysicalDeviceVulkan11Prope
 	if (_features.tessellationShader) {
 		pVk11Props->subgroupSupportedStages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
 	}
+	VkPhysicalDeviceMeshShaderFeaturesEXT meshFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT };
+	VkPhysicalDeviceFeatures2 features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &meshFeatures };
+	getFeatures(&features);
+	if (meshFeatures.meshShader) { pVk11Props->subgroupSupportedStages |= VK_SHADER_STAGE_MESH_BIT_EXT; }
+	if (meshFeatures.taskShader) { pVk11Props->subgroupSupportedStages |= VK_SHADER_STAGE_TASK_BIT_EXT; }
 	pVk11Props->subgroupSupportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT;
 	if (_metalFeatures.simdPermute || _metalFeatures.quadPermute) {
 		pVk11Props->subgroupSupportedOperations |= (VK_SUBGROUP_FEATURE_VOTE_BIT |
