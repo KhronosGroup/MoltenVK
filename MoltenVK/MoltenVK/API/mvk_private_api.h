@@ -44,7 +44,7 @@ typedef unsigned long MTLArgumentBuffersTier;
  */
 
 
-#define MVK_PRIVATE_API_VERSION   43
+#define MVK_PRIVATE_API_VERSION   44
 
 
 #pragma mark -
@@ -247,6 +247,7 @@ typedef struct {
 	const char* shaderDumpDir;                                                 /**< MVK_CONFIG_SHADER_DUMP_DIR */
 	VkBool32 shaderLogEstimatedGLSL;                                           /**< MVK_CONFIG_SHADER_LOG_ESTIMATED_GLSL */
 	VkBool32 liveCheckAllResources;                                            /**< MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES */
+	VkBool32 enableExperimentalRayTracing;                                     /**< MVK_CONFIG_ENABLE_EXPERIMENTAL_RAY_TRACING */
 } MVKConfiguration;
 
 // Legacy support for renamed struct elements.

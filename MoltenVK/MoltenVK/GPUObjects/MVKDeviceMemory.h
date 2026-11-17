@@ -25,6 +25,7 @@
 #import <Metal/Metal.h>
 
 class MVKImageMemoryBinding;
+class MVKAccelerationStructureStorage;
 
 #pragma mark MVKDeviceMemory
 
@@ -122,6 +123,8 @@ public:
 	/** Returns the Metal heap underlying this memory allocation. */
 	id<MTLHeap> getMTLHeap() { return _mtlHeap; }
 
+	bool isAccelerationStructurePlacementCompatible() const;
+
 	/** Returns the Metal storage mode used by this memory allocation. */
 	MTLStorageMode getMTLStorageMode() { return _mtlStorageMode; }
 
@@ -145,6 +148,7 @@ public:
 
 protected:
 	friend class MVKBuffer;
+	friend class MVKAccelerationStructure;
 	friend class MVKImage;
     friend class MVKImageMemoryBinding;
     friend class MVKImagePlane;
@@ -161,9 +165,12 @@ protected:
 	void freeHostMemory();
 	MVKResource* getDedicatedResource();
 	void initExternalMemory(MVKImage* dedicatedImage, bool wantsHeap);
+	MVKAccelerationStructureStorage* acquireAccelerationStructureStorage(VkDeviceSize physicalStart);
+	void releaseAccelerationStructureStorage(MVKAccelerationStructureStorage* storage);
 
 	MVKSmallVector<MVKBuffer*, 4> _buffers;
 	MVKSmallVector<MVKImageMemoryBinding*, 4> _imageMemoryBindings;
+	MVKSmallVector<MVKAccelerationStructureStorage*> _accelerationStructureStorages;
 	std::mutex _rezLock;
     VkDeviceSize _allocationSize = 0;
 	MVKMappedMemoryRange _mappedRange;
@@ -187,4 +194,3 @@ protected:
 	bool _isHostMemImported = false;
 	VkExternalMemoryHandleTypeFlags _externalMemoryHandleType = 0u;
 };
-

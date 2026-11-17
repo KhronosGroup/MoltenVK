@@ -101,12 +101,17 @@ typedef enum : uint8_t {
     kMVKCommandUseClearDepthStencilImage,       /**< vkCmdClearDepthStencilImage. */
     kMVKCommandUseResetQueryPool,               /**< vkCmdResetQueryPool. */
     kMVKCommandUseDispatch,                     /**< vkCmdDispatch. */
+	kMVKCommandUseTraceRays,                    /**< vkCmdTraceRays*. */
     kMVKCommandUseTessellationVertexTessCtl,    /**< vkCmdDraw* - vertex and tessellation control stages. */
 	kMVKCommandUseDrawIndirectConvertBuffers,   /**< vkCmdDrawIndirect* convert indirect buffers. */
 	kMVKCommandUseCopyQueryPoolResults,         /**< vkCmdCopyQueryPoolResults. */
 	kMVKCommandUseAccumOcclusionQuery,          /**< Any command terminating a Metal render pass with active visibility buffer. */
 	kMVKCommandConvertUint8Indices,             /**< Converting a Uint8 index buffer to Uint16. */
-	kMVKCommandUseRecordGPUCounterSample        /**< Any command triggering the recording of a GPU counter sample. */
+	kMVKCommandUseRecordGPUCounterSample,       /**< Any command triggering the recording of a GPU counter sample. */
+	kMVKCommandUseBuildAccelerationStructureConvertBuffers, /**< Convert acceleration-structure build input. */
+	kMVKCommandUseBuildAccelerationStructure,               /**< vkCmdBuildAccelerationStructuresKHR. */
+	kMVKCommandUseCopyAccelerationStructure,                /**< vkCmdCopyAccelerationStructureKHR. */
+	kMVKCommandUseWriteAccelerationStructuresProperties,    /**< vkCmdWriteAccelerationStructuresPropertiesKHR. */
 } MVKCommandUse;
 
 /** Represents a given stage of a graphics pipeline. */

@@ -22,6 +22,8 @@
 #include "MVKCommandBuffer.h"
 #include "MVKCommandEncodingPool.h"
 #include "MVKCommand.h"
+#include "MVKCmdAccelerationStructure.h"
+#include "MVKCmdAccelerationStructureSerialization.h"
 #include "MVKCmdPipeline.h"
 #include "MVKCmdRendering.h"
 #include "MVKCmdDispatch.h"
@@ -33,6 +35,16 @@
 #include <unordered_set>
 
 #import <Metal/Metal.h>
+
+
+struct MVKRayTracingCommandPools {
+#	define MVK_CMD_TYPE_POOL(cmdType)
+#	define MVK_RT_CMD_TYPE_POOL(cmdType)  MVKCommandTypePool<MVKCmd ##cmdType> _cmd ##cmdType ##Pool;
+#	include "MVKCommandTypePools.def"
+
+	explicit MVKRayTracingCommandPools(bool usePooling);
+	void clear();
+};
 
 
 #pragma mark -
@@ -62,7 +74,9 @@ public:
 	// Command type pool member variables.
 	// Each has a form similar to (here for a draw command):  MVKCommandTypePool<MVKCmdDraw> _cmdDrawPool;
 #	define MVK_CMD_TYPE_POOL(cmdType)  MVKCommandTypePool<MVKCmd ##cmdType> _cmd ##cmdType ##Pool;
+#	define MVK_RT_CMD_TYPE_POOL(cmdType)
 #	include "MVKCommandTypePools.def"
+	MVKRayTracingCommandPools& getRayTracingCommandPools();
 
 
 #pragma mark Command resources
@@ -105,5 +119,6 @@ protected:
 	std::unordered_set<MVKCommandBuffer*> _allocatedCommandBuffers;
 	MVKCommandEncodingPool _commandEncodingPool;
 	uint32_t _queueFamilyIndex;
+	MVKRayTracingCommandPools* _rayTracingCommandPools = nullptr;
+	bool _usePooling;
 };
-

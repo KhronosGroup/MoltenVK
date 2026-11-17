@@ -22,6 +22,7 @@
 #include "MVKCommandBuffer.h"
 
 class MVKCommandEncoder;
+class MVKAccelerationStructure;
 
 
 #pragma mark MVKBuffer
@@ -86,15 +87,20 @@ public:
 
 protected:
 	friend class MVKDeviceMemory;
+	friend class MVKAccelerationStructure;
 
 	void propagateDebugName() override;
 	bool needsHostReadSync(MVKPipelineBarrier& barrier);
     bool overlaps(VkDeviceSize offset, VkDeviceSize size, VkDeviceSize &overlapOffset, VkDeviceSize &overlapSize);
 	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
 	void detachMemory();
+	bool addAccelerationStructure(MVKAccelerationStructure* accelerationStructure);
+	void removeAccelerationStructure(MVKAccelerationStructure* accelerationStructure);
+	MVKDeviceMemory* getAccelerationStructureMemoryBinding(VkDeviceSize& memoryOffset);
 
 	VkBufferUsageFlags2 _usage;
 	id<MTLBuffer> _mtlBuffer = nil;
+	MVKSmallVector<MVKAccelerationStructure*> _accelerationStructures;
     std::mutex _lock;
 };
 
@@ -139,4 +145,3 @@ protected:
 	VkExtent2D _textureSize;
 	std::mutex _lock;
 };
-

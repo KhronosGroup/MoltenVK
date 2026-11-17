@@ -142,6 +142,12 @@ public:
 	/** Returns a MTLComputePipelineState for converting a Uint8 index buffer to Uint16. */
 	id<MTLComputePipelineState> getConvertUint8IndicesMTLComputePipelineState();
 
+	id<MTLComputePipelineState> getCmdBuildAccelerationStructureConvertBuffersMTLComputePipelineState();
+	id<MTLComputePipelineState> getCmdSerializeAccelerationStructureGatherMTLComputePipelineState();
+	id<MTLComputePipelineState> getCmdBuildAccelerationStructureConvertTransformsMTLComputePipelineState();
+	id<MTLComputePipelineState> getCmdDeserializeAccelerationStructureInstancesMTLComputePipelineState();
+	id<MTLComputePipelineState> getCmdTraceRaysIndirectConvertMTLComputePipelineState();
+
 	/** Deletes all the internal resources. */
 	void clear();
 
@@ -184,4 +190,9 @@ protected:
 	id<MTLComputePipelineState> _mtlCopyQueryPoolResultsComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlAccumOcclusionQueryResultsComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlConvertUint8IndicesComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlBuildAccStructConvertComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlSerializeAccStructGatherComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlBuildAccStructConvertTransformComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlDeserializeAccStructInstancesComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlTraceRaysIndirectConvertComputePipelineState = nil;
 };
