@@ -336,6 +336,9 @@ public:
 	/** Called by each graphics draw command to establish any outstanding state just prior to performing the draw. */
 	void finalizeDrawState(MVKGraphicsStage stage);
 
+	/** Finalizes the state for a mesh pipeline draw. */
+	void finalizeMeshDrawState();
+
     /** Called by each compute dispatch command to establish any outstanding state just prior to performing the dispatch. */
     void finalizeDispatchState();
 
@@ -397,7 +400,7 @@ public:
 	MVKMetalComputeCommandEncoderState& getMtlCompute() { return _state.mtlCompute(); }
 
 	/** Prepares state for a rasterization pipeline draw. */
-	void prepareDraw() { _state.prepareDraw(_mtlRenderEncoder, *this); }
+	template <bool Mesh = false> void prepareDraw() { _state.prepareDraw<Mesh>(_mtlRenderEncoder, *this); }
 
 	/** Prepares the Metal compute pipeline state to dispatch the given stage of the Vulkan render pipeline. */
 	void prepareRenderDispatch(MVKGraphicsStage stage) { _state.prepareRenderDispatch(_mtlComputeEncoder, *this, stage); }

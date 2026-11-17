@@ -77,6 +77,12 @@ MTLMultisampleStencilResolveFilter mvkMTLMultisampleStencilResolveFilterFromVkRe
 MVKShaderStage mvkShaderStageFromVkShaderStageFlagBitsInObj(VkShaderStageFlagBits vkStage, MVKBaseObject* mvkObj);
 #define mvkShaderStageFromVkShaderStageFlagBits(vkStage) mvkShaderStageFromVkShaderStageFlagBitsInObj(vkStage, this)
 
+/** returns the Vulkan stages using this stage's resources. mesh pipelines have no vertex or tessellation shaders, so mesh and task shaders take those slots */
+static inline VkShaderStageFlags mvkVkShaderStagesFromMVKShaderStage(MVKShaderStage stage) {
+	VkShaderStageFlags alias = stage == kMVKShaderStageVertex ? VK_SHADER_STAGE_MESH_BIT_EXT : stage == kMVKShaderStageTessCtl ? VK_SHADER_STAGE_TASK_BIT_EXT : 0;
+	return mvkVkShaderStageFlagBitsFromMVKShaderStage(stage) | alias;
+}
+
 MTLWinding mvkMTLWindingFromSpvExecutionModeInObj(uint32_t spvMode, MVKBaseObject* mvkObj);
 #define mvkMTLWindingFromSpvExecutionMode(spvMode) mvkMTLWindingFromSpvExecutionModeInObj(spvMode, this)
 

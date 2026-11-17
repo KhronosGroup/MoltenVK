@@ -727,7 +727,7 @@ void MVKCommandEncoder::setBarrier(uint64_t sourceStageMask, uint64_t destStageM
 void MVKCommandEncoder::encodeBarrierWaits(MVKCommandUse use) {
 	if (_mtlRenderEncoder) {
 		[_mtlRenderEncoder insertDebugSignpost:@"Encoding waits"];
-		barrierWait(kMVKBarrierStageVertex, _mtlRenderEncoder, MTLRenderStageVertex);
+		barrierWait(kMVKBarrierStageVertex, _mtlRenderEncoder, _device->getMTLVertexStages());
 		barrierWait(kMVKBarrierStageFragment, _mtlRenderEncoder, MTLRenderStageFragment);
 	}
 	if (_mtlComputeEncoder) {
@@ -746,7 +746,7 @@ void MVKCommandEncoder::encodeBarrierWaits(MVKCommandUse use) {
 
 void MVKCommandEncoder::encodeBarrierUpdates() {
 	if (_mtlRenderEncoder) {
-		barrierUpdate(kMVKBarrierStageVertex, _mtlRenderEncoder, MTLRenderStageVertex);
+		barrierUpdate(kMVKBarrierStageVertex, _mtlRenderEncoder, _device->getMTLVertexStages());
 		barrierUpdate(kMVKBarrierStageFragment, _mtlRenderEncoder, MTLRenderStageFragment);
 	}
 
@@ -974,6 +974,11 @@ void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
 		getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
 		prepareRenderDispatch(stage);
 	}
+}
+
+void MVKCommandEncoder::finalizeMeshDrawState() {
+	prepareDraw<true>();
+	_occlusionQueryState.encode(_mtlRenderEncoder, this);
 }
 
 // Clears the render area of the framebuffer attachments.
@@ -1374,6 +1379,7 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer, MVKPrefillMeta
 	_pEncodingContext = nullptr;
 	_stageCountersMTLFence = nil;
 	_flushCount = 0;
+	_state.mtlShared()._useResource.vertexStages = _device->getMTLVertexStages();
 }
 
 MVKCommandEncoder::~MVKCommandEncoder() {
