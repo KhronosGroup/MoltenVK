@@ -29,6 +29,9 @@ Released TBD
 - Fix `VkDeviceMemory` imported from a `MTLTexture` not backing the image bound to it, and over-releasing that texture.
 - Fix leak of the `MTLBuffer` of a host-coherent `VkDeviceMemory` that also holds a `MTLTexture`.
 - Fix pipeline cache matching incompatible shaders when the only difference was in dynamic buffer offset usage.
+- Fix `vkGetPipelineCacheData()` returning no data when the data is requested without first querying its size,
+  or when the pipeline cache has changed since its size was queried.
+- Fix `vkCreatePipelineCache()` failing when the initial data is truncated or otherwise invalid.
 
 
 
