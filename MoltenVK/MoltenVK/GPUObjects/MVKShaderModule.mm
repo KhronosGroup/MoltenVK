@@ -360,7 +360,12 @@ MVKShaderLibrary* MVKShaderLibraryCache::findShaderLibrary(SPIRVToMSLConversionC
 // Adds and returns a new shader library configured from the specified conversion configuration.
 MVKShaderLibrary* MVKShaderLibraryCache::addShaderLibrary(const SPIRVToMSLConversionConfiguration* pShaderConfig,
 														  const SPIRVToMSLConversionResult& conversionResult) {
-	MVKShaderLibrary* shLib = new MVKShaderLibrary(_owner, conversionResult);
+	return addShaderLibrary(pShaderConfig, new MVKShaderLibrary(_owner, conversionResult));
+}
+
+// Adds and returns a shader library that has already been created from the specified conversion configuration.
+MVKShaderLibrary* MVKShaderLibraryCache::addShaderLibrary(const SPIRVToMSLConversionConfiguration* pShaderConfig,
+														  MVKShaderLibrary* shLib) {
 	_shaderLibraries.emplace_back(*pShaderConfig, shLib);
 	return shLib;
 }
