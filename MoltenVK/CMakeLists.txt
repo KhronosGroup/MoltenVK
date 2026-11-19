@@ -44,8 +44,15 @@ target_compile_definitions(MoltenVK PUBLIC
 	"MVK_FRAMEWORK_VERSION=${PROJECT_VERSION}"
 )
 
-set_target_properties(MoltenVK PROPERTIES VERSION ${PROJECT_VERSION})
-set_target_properties(MoltenVK PROPERTIES SOVERSION ${PROJECT_VERSION_MAJOR})
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+	set_target_properties(MoltenVK PROPERTIES
+		INSTALL_NAME_DIR "@rpath"
+		BUILD_WITH_INSTALL_NAME_DIR ON
+	)
+else()
+	set_target_properties(MoltenVK PROPERTIES VERSION ${PROJECT_VERSION})
+	set_target_properties(MoltenVK PROPERTIES SOVERSION ${PROJECT_VERSION_MAJOR})
+endif()
 
 ################################################################################
 # Dependencies

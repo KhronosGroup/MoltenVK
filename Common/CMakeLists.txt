@@ -17,18 +17,31 @@ target_include_directories(MoltenVK_Common PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 
 find_library(FOUNDATION_LIBRARY Foundation REQUIRED)
 find_library(METAL_LIBRARY Metal REQUIRED)
-find_library(APPKIT_LIBRARY AppKit REQUIRED)
-find_library(IOKIT_LIBRARY IOKit REQUIRED)
 find_library(IOSURFACE_LIBRARY IOSurface REQUIRED)
 find_library(QUARTZCORE_LIBRARY QuartzCore REQUIRED)
-target_link_libraries(MoltenVK_Common PUBLIC
-	${FOUNDATION_LIBRARY}
-	${METAL_LIBRARY}
-	${APPKIT_LIBRARY}
-	${IOKIT_LIBRARY}
-	${IOSURFACE_LIBRARY}
-	${QUARTZCORE_LIBRARY}
-)
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+	find_library(UIKIT_LIBRARY UIKit REQUIRED)
+	find_library(COREGRAPHICS_LIBRARY CoreGraphics REQUIRED)
+	target_link_libraries(MoltenVK_Common PUBLIC
+		${FOUNDATION_LIBRARY}
+		${METAL_LIBRARY}
+		${UIKIT_LIBRARY}
+		${COREGRAPHICS_LIBRARY}
+		${IOSURFACE_LIBRARY}
+		${QUARTZCORE_LIBRARY}
+	)
+else()
+	find_library(APPKIT_LIBRARY AppKit REQUIRED)
+	find_library(IOKIT_LIBRARY IOKit REQUIRED)
+	target_link_libraries(MoltenVK_Common PUBLIC
+		${FOUNDATION_LIBRARY}
+		${METAL_LIBRARY}
+		${APPKIT_LIBRARY}
+		${IOKIT_LIBRARY}
+		${IOSURFACE_LIBRARY}
+		${QUARTZCORE_LIBRARY}
+	)
+endif()
 
 ################################################################################
 # Compiler options
