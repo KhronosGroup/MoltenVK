@@ -1434,16 +1434,24 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->restartMetalRenderPassIfNeeded();
 	MVKCommandEncodingPool* cmdEncPool = cmdEncoder->getCommandEncodingPool();
 
-	id<MTLRenderCommandEncoder> mtlRendEnc = cmdEncoder->_mtlRenderEncoder;
-
-	[mtlRendEnc pushDebugGroup: getMTLDebugGroupLabel()];
 	MVKHelperDrawState state = {};
 	state.pipeline           = cmdEncPool->getCmdClearMTLRenderPipelineState(rpsKey);
 	state.viewportAndScissor = { {}, fbExtent };
 	state.stencilReference   = _clearDepthStencilValue.stencil;
 	state.writeDepth         = rpsKey.isAttachmentUsed(kMVKClearAttachmentDepthIndex);
 	state.writeStencil       = rpsKey.isAttachmentUsed(kMVKClearAttachmentStencilIndex);
+
+	// Preparing the helper draw can end the Metal render pass (occlusion visibility buffer wrap).
+	// If that happens, restart the render pass and prepare again on the new encoder.
+	id<MTLRenderCommandEncoder> mtlRendEnc = cmdEncoder->_mtlRenderEncoder;
 	cmdEncoder->getMtlGraphics().prepareHelperDraw(mtlRendEnc, *cmdEncoder, state);
+	for (int i = 0; i < 2 && cmdEncoder->_mtlRenderEncoder != mtlRendEnc; i++) {
+		cmdEncoder->restartMetalRenderPassIfNeeded();
+		mtlRendEnc = cmdEncoder->_mtlRenderEncoder;
+		cmdEncoder->getMtlGraphics().prepareHelperDraw(mtlRendEnc, *cmdEncoder, state);
+	}
+
+	[mtlRendEnc pushDebugGroup: getMTLDebugGroupLabel()];
 	cmdEncoder->setVertexBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0);
 	cmdEncoder->setFragmentBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0);
 	cmdEncoder->setVertexBytes(mtlRendEnc, vertices, vtxCnt * sizeof(vertices[0]),
