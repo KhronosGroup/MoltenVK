@@ -2048,6 +2048,9 @@ void MVKOcclusionQueryCommandEncoderState::prepareHelperDraw(id<MTLRenderCommand
 	if (_metalVisibilityResultMode != MTLVisibilityResultModeDisabled) {
 		nextMetalQuery(mvkEncoder);
 		_metalVisibilityResultMode = MTLVisibilityResultModeDisabled;
+		// nextMetalQuery() may end the render encoder when the visibility buffer wraps.
+		// The caller must restart the render pass; do not touch the ended encoder.
+		if (mvkEncoder->_mtlRenderEncoder != encoder) { return; }
 		[encoder setVisibilityResultMode:MTLVisibilityResultModeDisabled
 		                          offset:mvkEncoder->_pEncodingContext->visibilityResultBuffer.offset()];
 	}
