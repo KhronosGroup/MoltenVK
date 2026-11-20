@@ -658,3 +658,15 @@ In the special case of `VK_SEMAPHORE_TYPE_TIMELINE` semaphores, **MoltenVK** wil
 Makes MoltenVK treat all descriptors as if they had `VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT` set.
 Versions of MoltenVK with this flag are less forgiving of applications that bind descriptors that point to
 destroyed objects, so this option can be used to temporarily work around any breakage that may have caused.
+
+
+---------------------------------------
+#### MVK_CONFIG_MAX_VRAM_SIZE_MB
+
+##### Type: UInt32
+##### Default: `0`
+
+If non-zero, clamps the maximum reported GPU VRAM size and working set memory budget in megabytes.
+This is particularly helpful on Unified Memory architectures (Apple Silicon) to prevent games
+and Vulkan Memory Allocator (VMA) streaming systems from assuming all physical system memory is
+free GPU VRAM and over-allocating asset caches. Setting this to `0` leaves VRAM sizing unclamped.
