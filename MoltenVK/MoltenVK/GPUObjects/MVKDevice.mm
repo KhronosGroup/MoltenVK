@@ -4565,6 +4565,32 @@ void MVKDevice::destroyCommandPool(MVKCommandPool* mvkCmdPool,
 	if (mvkCmdPool) { mvkCmdPool->destroy(); }
 }
 
+void MVKDevice::registerCommandPool(MVKCommandPool* pool) {
+	std::lock_guard<std::mutex> lock(_rezLock);
+	_commandPools.push_back(pool);
+}
+
+void MVKDevice::unregisterCommandPool(MVKCommandPool* pool) {
+	std::lock_guard<std::mutex> lock(_rezLock);
+	mvkRemoveFirstOccurance(_commandPools, pool);
+}
+
+void MVKDevice::trimCommandPoolBuffers() {
+	MVKSmallVector<MVKCommandPool*> pools;
+	{
+		std::lock_guard<std::mutex> lock(_rezLock);
+		pools.reserve(_commandPools.size());
+		for (auto* pool : _commandPools) {
+			pool->_trimCount.fetch_add(1, std::memory_order_relaxed);
+			pools.push_back(pool);
+		}
+	}
+	for (auto* pool : pools) {
+		pool->trimBufferAllocators();
+		pool->_trimCount.fetch_sub(1, std::memory_order_release);
+	}
+}
+
 MVKDeviceMemory* MVKDevice::allocateMemory(const VkMemoryAllocateInfo* pAllocateInfo,
 										   const VkAllocationCallbacks* pAllocator) {
 	return new MVKDeviceMemory(this, pAllocateInfo, pAllocator);

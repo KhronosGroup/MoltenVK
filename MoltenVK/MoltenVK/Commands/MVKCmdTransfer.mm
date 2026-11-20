@@ -299,9 +299,9 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
 
     if (tmpBuffSize > 0) {
         MVKBufferDescriptorData tempBuffData;
-        tempBuffData.size = tmpBuffSize;
+        tempBuffData.size = (VkDeviceSize)mvkAlignByteCount(mvkEnsurePowerOfTwo((uintptr_t)tmpBuffSize), 64 * KIBI);
         tempBuffData.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-        VkBuffer tempBuff = (VkBuffer)cmdEncoder->getCommandEncodingPool()->getTransferMVKBuffer(tempBuffData);
+        VkBuffer tempBuff = (VkBuffer)cmdEncoder->getCommandEncodingPool()->getTransferMVKBuffer(tempBuffData, cmdEncoder->_mtlCmdBuffer);
 
         MVKCmdBufferImageCopy<N> cpyCmd;
 
@@ -901,7 +901,7 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		MVKImageDescriptorData xferImageData;
 		_dstImage->getTransferDescriptorData(xferImageData);
 		xferImageData.samples = _srcImage->getSampleCount();
-		xfrImage = cmdEncoder->getCommandEncodingPool()->getTransferMVKImage(xferImageData);
+		xfrImage = cmdEncoder->getCommandEncodingPool()->getTransferMVKImage(xferImageData, cmdEncoder->_mtlCmdBuffer);
 
 		if (expCnt) {
 			// Expand the current content of the destination image to the temporary transfer image.
@@ -1780,20 +1780,15 @@ void MVKCmdUpdateBuffer::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLBuffer> dstMTLBuff = _dstBuffer->getMTLBuffer();
     NSUInteger dstMTLBuffOffset = _dstBuffer->getMTLBufferOffset() + _dstOffset;
 
-    // Copy data to the source MTLBuffer
-    MVKMTLBufferAllocation* srcMTLBufferAlloc = cmdEncoder->getCommandEncodingPool()->acquireMTLBufferAllocation(_dataSize);
-    void* pBuffData = srcMTLBufferAlloc->getContents();
-    memcpy(pBuffData, _srcDataCache.data(), _dataSize);
+    // Copy data to the source MTLBuffer via managed temp allocation
+    const MVKMTLBufferAllocation* srcMTLBufferAlloc = cmdEncoder->getTempMTLBuffer(_dataSize);
+    if (!srcMTLBufferAlloc) { return; }
+    memcpy(srcMTLBufferAlloc->getContents(), _srcDataCache.data(), _dataSize);
 
     [mtlBlitEnc copyFromBuffer: srcMTLBufferAlloc->_mtlBuffer
                   sourceOffset: srcMTLBufferAlloc->_offset
                       toBuffer: dstMTLBuff
              destinationOffset: dstMTLBuffOffset
                           size: _dataSize];
-
-    // Return the MTLBuffer allocation to the pool once the command buffer is done with it
-    [cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
-        srcMTLBufferAlloc->returnToPool();
-    }];
 }
 

@@ -20,7 +20,6 @@
 
 
 #include "MVKFoundation.h"
-#include "MVKObjectPool.h"
 #include "MVKDevice.h"
 #include "MVKSmallVector.h"
 
@@ -30,8 +29,14 @@ class MVKMTLBufferAllocationPool;
 #pragma mark -
 #pragma mark MVKMTLBufferAllocation
 
-/** Defines a contiguous region of bytes within a MTLBuffer. */
-class MVKMTLBufferAllocation : public MVKBaseObject, public MVKLinkableMixin<MVKMTLBufferAllocation> {
+/**
+ * Defines a contiguous region of bytes within a MTLBuffer.
+ *
+ * MVKMTLBufferAllocation is a reusable handle. After return to pool,
+ * it does not preserve backing storage identity and may be rebound
+ * to a different MTLBuffer page and offset when re-acquired.
+ */
+class MVKMTLBufferAllocation : public MVKBaseObject {
 
 public:
     id<MTLBuffer> _mtlBuffer;
@@ -78,7 +83,7 @@ protected:
  * To return a MVKMTLBufferAllocation retrieved from this pool, back to this pool, 
  * call the returnToPool() function on the MVKMTLBufferAllocation instance.
  */
-class MVKMTLBufferAllocationPool : public MVKObjectPool<MVKMTLBufferAllocation>, public MVKDeviceTrackingMixin {
+class MVKMTLBufferAllocationPool : public MVKBaseDeviceObject {
 
 public:
     /** Returns a new allocation. */
@@ -90,6 +95,15 @@ public:
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return _device->getVulkanAPIObject(); };
 
+	/** Returns an allocation back to the pool. */
+	void returnAllocation(MVKMTLBufferAllocation* ba);
+
+	/** Returns multiple allocations back to the pool in a single batch. */
+	void returnAllocations(MVKMTLBufferAllocation** allocations, size_t count);
+
+	/** Release backing MTLBuffers that have zero active allocations. */
+	void trim();
+
     /** Configures this instance to dispense MVKMTLBufferAllocation instances of the specified size. */
     MVKMTLBufferAllocationPool(MVKDevice* device, NSUInteger allocationLength, bool makeThreadSafe,
 							   bool isDedicated, MTLStorageMode mtlStorageMode);
@@ -98,20 +112,31 @@ public:
 
 protected:
 	friend class MVKMTLBufferAllocation;
-	
-	MVKMTLBufferAllocation* newObject() override;
-    void returnAllocationUnlocked(MVKMTLBufferAllocation* ba);
-    void returnAllocation(MVKMTLBufferAllocation* ba);
-	uint32_t calcMTLBufferAllocationCount();
-    void addMTLBuffer();
 
-    NSUInteger _nextOffset;
+    void returnAllocationUnlocked(MVKMTLBufferAllocation* ba);
+    void returnAllocationsUnlocked(MVKMTLBufferAllocation** allocations, size_t count);
+	MVKMTLBufferAllocation* popSliceFromPage(size_t pageIndex);
+	size_t allocatePage();
+	uint32_t calcMTLBufferAllocationCount();
+	void trimUnlocked();
+
+    struct MTLBufferPage {
+        id<MTLBuffer> mtlBuffer = nil;
+        uint32_t totalSlots = 0;
+        uint32_t activeCount = 0;
+        uint32_t nextUnallocatedSlot = 0;
+        bool isVolatile = false;
+        MVKSmallVector<MVKMTLBufferAllocation*, 8> freeSlices;
+    };
+
+    std::mutex _lock;
     NSUInteger _allocationLength;
     NSUInteger _mtlBufferLength;
     MTLStorageMode _mtlStorageMode;
-    struct MTLBufferTracker { id<MTLBuffer> mtlBuffer; uint64_t allocationCount; };
-    MVKSmallVector<MTLBufferTracker, 64> _mtlBuffers;
+    MVKSmallVector<MTLBufferPage, 4> _mtlBuffers;
+    MVKSmallVector<MVKMTLBufferAllocation*, 16> _freeAllocationHandles;
     bool _isThreadSafe;
+    bool _dirtyFlag = false;
 };
 
 
@@ -143,6 +168,9 @@ public:
      */
     MVKMTLBufferAllocation* acquireMTLBufferRegion(NSUInteger length);
 
+	/** Trim all sub-pools, releasing empty MTLBuffers. */
+	void trim();
+
     /**
      * Configures this instance to dispense MVKMTLBufferAllocation up to the specified
      * maximum size. Because MVKMTLBufferRegions are created with a power-of-two size,
@@ -158,7 +186,5 @@ public:
 protected:
 	MVKSmallVector<MVKMTLBufferAllocationPool*, 32> _regionPools;
     NSUInteger _maxAllocationLength;
-	bool _isThreadSafe;
-
 };
 

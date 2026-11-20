@@ -88,7 +88,7 @@ public:
      * becuase the content only needs to be valid during the transfer, and it can be
      * reused by subsequent transfers in the same encoding run.
      */
-    MVKImage* getTransferMVKImage(MVKImageDescriptorData& imgData);
+    MVKImage* getTransferMVKImage(MVKImageDescriptorData& imgData, id<MTLCommandBuffer> mtlCmdBuff);
     
     /**
      * Returns an MVKBuffer configured from the specified MTLBuffer configuration,
@@ -101,7 +101,7 @@ public:
      * becuase the content only needs to be valid during the transfer, and it can be 
      * reused by subsequent transfers in the same encoding run.
      */
-    MVKBuffer* getTransferMVKBuffer(MVKBufferDescriptorData& buffData);
+    MVKBuffer* getTransferMVKBuffer(MVKBufferDescriptorData& buffData, id<MTLCommandBuffer> mtlCmdBuff);
     
 	/** Returns a MTLComputePipelineState for copying between two buffers with byte-aligned copy regions. */
     id<MTLComputePipelineState> getCmdCopyBufferBytesMTLComputePipelineState();
@@ -145,6 +145,9 @@ public:
 	/** Deletes all the internal resources. */
 	void clear();
 
+	/** Trim all buffer allocators and reclaim idle transfer buffers and images. */
+	void trimBufferAllocators();
+
 #pragma mark Construction
 
 	MVKCommandEncodingPool(MVKCommandPool* commandPool);
@@ -159,9 +162,17 @@ protected:
     std::unordered_map<MVKRPSKeyBlitImg, id<MTLRenderPipelineState>> _cmdBlitImageMTLRenderPipelineStates;
 	std::unordered_map<MVKRPSKeyClearAtt, id<MTLRenderPipelineState>> _cmdClearMTLRenderPipelineStates;
     std::unordered_map<MVKMTLDepthStencilDescriptorData, id<MTLDepthStencilState>> _mtlDepthStencilStates;
-    std::unordered_map<MVKImageDescriptorData, MVKImage*> _transferImages;
-    std::unordered_map<MVKBufferDescriptorData, MVKBuffer*> _transferBuffers;
-    std::unordered_map<MVKBufferDescriptorData, MVKDeviceMemory*> _transferBufferMemory;
+    struct MVKTransferBufferEntry {
+        MVKBuffer* buffer = nullptr;
+        MVKDeviceMemory* memory = nullptr;
+        uint32_t inFlightCount = 0;
+    };
+    struct MVKTransferImageEntry {
+        MVKImage* image = nullptr;
+        uint32_t inFlightCount = 0;
+    };
+    std::unordered_map<MVKImageDescriptorData, MVKTransferImageEntry> _transferImages;
+    std::unordered_map<MVKBufferDescriptorData, MVKTransferBufferEntry> _transferBuffers;
     MVKMTLBufferAllocator _mtlBufferAllocator;
     MVKMTLBufferAllocator _privateMtlBufferAllocator;
     MVKMTLBufferAllocator _dedicatedMtlBufferAllocator;
