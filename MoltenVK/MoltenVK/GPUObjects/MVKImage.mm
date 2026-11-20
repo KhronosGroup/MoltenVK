@@ -481,8 +481,10 @@ VkResult MVKImageMemoryBinding::getMemoryRequirements(VkMemoryRequirements2* pMe
             auto* dedicatedReqs = (VkMemoryDedicatedRequirements*)next;
             bool writable = mvkIsAnyFlagEnabled(_image->getCombinedUsage(), VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
             bool canUseTexelBuffer = _image->_isLinear && !_image->getIsCompressed();
+            bool cannotUseMTLHeap = _image->getIsDepthStencil();
             dedicatedReqs->requiresDedicatedAllocation = _requiresDedicatedMemoryAllocation;
             dedicatedReqs->prefersDedicatedAllocation = (dedicatedReqs->requiresDedicatedAllocation ||
+                                                        cannotUseMTLHeap ||
                                                         (!canUseTexelBuffer && (writable || !mtlFeats.placementHeaps)));
             break;
         }

@@ -2371,13 +2371,14 @@ VkResult MVKPhysicalDevice::getMemoryProperties(VkPhysicalDeviceMemoryProperties
 					budgetProps->heapBudget[1] = (VkDeviceSize)mvkGetAvailableMemorySize();
 					budgetProps->heapUsage[1] = (VkDeviceSize)mvkGetUsedMemorySize();
 				}
-				budgetProps->heapBudget[0] = (VkDeviceSize)getRecommendedMaxWorkingSetSize();
 				auto currentAllocatedSize = (VkDeviceSize)getCurrentAllocatedSize();
 				if (budgetProps->heapUsage[1] > currentAllocatedSize) {
 					// mapped memory can't be larger than total memory, so ignore and zero-out
 					budgetProps->heapUsage[1] = 0;
 				}
 				budgetProps->heapUsage[0] = currentAllocatedSize - budgetProps->heapUsage[1];
+
+				budgetProps->heapBudget[0] = std::min(_memoryProperties.memoryHeaps[0].size, (VkDeviceSize)getRecommendedMaxWorkingSetSize());
 				break;
 			}
 			default:
@@ -3470,7 +3471,12 @@ MVK_PUBLIC_SYMBOL MTLStorageMode MVKPhysicalDevice::getMTLStorageModeFromVkMemor
 
 uint64_t MVKPhysicalDevice::getVRAMSize() {
 	if (_hasUnifiedMemory) {
-		return mvkGetSystemMemorySize();
+		uint64_t vramSize = mvkGetSystemMemorySize();
+		uint64_t maxVRAM = (uint64_t)getMVKConfig().maxVRAMSizeMB * MEBI;
+		if (maxVRAM > 0 && vramSize > maxVRAM) {
+			vramSize = maxVRAM;
+		}
+		return vramSize;
 	} else {
 		// There's actually no way to query the total physical VRAM on the device in Metal.
 		// Just default to using the recommended max working set size (i.e. the budget).
@@ -3480,11 +3486,18 @@ uint64_t MVKPhysicalDevice::getVRAMSize() {
 
 // If possible, retrieve from the MTLDevice, otherwise from available memory size, or a fixed conservative estimate.
 uint64_t MVKPhysicalDevice::getRecommendedMaxWorkingSetSize() {
+	uint64_t workingSetSize;
 	if ( [_mtlDevice respondsToSelector: @selector(recommendedMaxWorkingSetSize)]) {
-		return _mtlDevice.recommendedMaxWorkingSetSize;
+		workingSetSize = _mtlDevice.recommendedMaxWorkingSetSize;
+	} else {
+		uint64_t freeMem = mvkGetAvailableMemorySize();
+		workingSetSize = freeMem ? freeMem : 256 * MEBI;
 	}
-	uint64_t freeMem = mvkGetAvailableMemorySize();
-	return freeMem ? freeMem : 256 * MEBI;
+	uint64_t maxVRAM = (uint64_t)getMVKConfig().maxVRAMSizeMB * MEBI;
+	if (maxVRAM > 0 && workingSetSize > maxVRAM) {
+		workingSetSize = maxVRAM;
+	}
+	return workingSetSize;
 }
 
 // If possible, retrieve from the MTLDevice, otherwise use the current memory used by this process.

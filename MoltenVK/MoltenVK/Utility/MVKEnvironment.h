@@ -350,3 +350,11 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #ifndef MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES
 #   define MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES 0
 #endif
+
+/**
+ * Clamps the maximum reported GPU VRAM size (and memory budget) in megabytes.
+ * Zero disables clamping (defaults to full system/device memory).
+ */
+#ifndef MVK_CONFIG_MAX_VRAM_SIZE_MB
+#   define MVK_CONFIG_MAX_VRAM_SIZE_MB 0
+#endif
