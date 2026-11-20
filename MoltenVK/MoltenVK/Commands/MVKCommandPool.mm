@@ -23,6 +23,7 @@
 #include "MVKDeviceMemory.h"
 #include "MVKFoundation.h"
 #include "mvk_datatypes.hpp"
+#include <thread>
 
 using namespace std;
 
@@ -85,6 +86,11 @@ id<MTLCommandBuffer> MVKCommandPool::getMTLCommandBuffer(MVKCommandUse cmdUse, u
 void MVKCommandPool::trim() {
 #	define MVK_CMD_TYPE_POOL(cmdType)  _cmd ##cmdType ##Pool.clear();
 #	include "MVKCommandTypePools.def"
+	trimBufferAllocators();
+}
+
+void MVKCommandPool::trimBufferAllocators() {
+	_commandEncodingPool.trimBufferAllocators();
 }
 
 
@@ -100,14 +106,21 @@ MVKCommandPool::MVKCommandPool(MVKDevice* device,
 #	define MVK_CMD_TYPE_POOL(cmdType)  MVK_CMD_TYPE_POOL_LAST(cmdType),
 #	include "MVKCommandTypePools.def"
 	,
-	_commandBufferPool(device, usePooling),
 	_commandEncodingPool(this),
+	_commandBufferPool(device, usePooling),
 	_queueFamilyIndex(pCreateInfo->queueFamilyIndex)
-{}
+{
+	_device->registerCommandPool(this);
+}
 
 MVKCommandPool::~MVKCommandPool() {
+	_device->unregisterCommandPool(this);
 	for (auto& mvkCB : _allocatedCommandBuffers) {
+		mvkCB->reset(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 		_commandBufferPool.returnObject(mvkCB);
+	}
+	while (_trimCount.load(std::memory_order_acquire) > 0) {
+		std::this_thread::sleep_for(std::chrono::microseconds(50));
 	}
 }
 

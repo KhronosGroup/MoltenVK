@@ -574,6 +574,15 @@ void MVKQueueCommandBufferSubmission::finish() {
 	// immediately after a waitIdle() is cleared by fence below, taking the capture scope with it.
 	_queue->_submissionCaptureScope->endScope();
 
+	// After GPU completion, trim temp buffer pools periodically before signaling semaphores/fences
+	uint32_t trimInterval = getMVKConfig().trimCommandPoolInterval;
+	if (trimInterval > 0) {
+		uint32_t count = _device->incrementTrimCompletionCount();
+		if (count % trimInterval == 0) {
+			_device->trimCommandPoolBuffers();
+		}
+	}
+
 	// If using inline semaphore signaling, do so now.
 	for (auto& ss : _signalSemaphores) { ss.encodeSignal(nil); }
 

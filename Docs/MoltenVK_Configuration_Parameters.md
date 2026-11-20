@@ -658,3 +658,14 @@ In the special case of `VK_SEMAPHORE_TYPE_TIMELINE` semaphores, **MoltenVK** wil
 Makes MoltenVK treat all descriptors as if they had `VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT` set.
 Versions of MoltenVK with this flag are less forgiving of applications that bind descriptors that point to
 destroyed objects, so this option can be used to temporarily work around any breakage that may have caused.
+
+
+---------------------------------------
+#### MVK_CONFIG_TRIM_COMMAND_POOL_INTERVAL
+
+##### Type: UInt32
+##### Default: `600`
+
+The interval (measured in command buffer completion callbacks) at which MoltenVK automatically
+trims unused temporary `MTLBuffer` allocators across command pools to reclaim unused GPU memory.
+Setting this to `0` disables automatic periodic trimming. Default is `600` completions (~10 seconds at 60 FPS).

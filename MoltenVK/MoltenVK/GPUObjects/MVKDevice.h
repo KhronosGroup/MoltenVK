@@ -687,6 +687,20 @@ public:
 	/** Retrieves the queue at the lowest queue and queue family indices used by the app. */
 	MVKQueue* getAnyQueue();
 
+	/** Register a command pool for centralized management. */
+	void registerCommandPool(MVKCommandPool* pool);
+
+	/** Unregister a command pool. */
+	void unregisterCommandPool(MVKCommandPool* pool);
+
+	/** Trim all command pool buffer allocators, releasing empty MTLBuffers. */
+	void trimCommandPoolBuffers();
+
+	/** Increment trim completion counter (called by completion handlers). Returns new count. */
+	uint32_t incrementTrimCompletionCount() {
+		return _trimCompletionCount.fetch_add(1, std::memory_order_relaxed) + 1;
+	}
+
 	/** Block the current thread until all queues in this device are idle. */
 	VkResult waitIdle();
 	
@@ -990,10 +1004,18 @@ public:
 
 #if !MVK_XCODE_16
 	void removeResidency(id allocation) {}
+	void removeResidencies(const id<MTLBuffer>* allocations, size_t count) {}
 #else
 	void removeResidency(id<MTLAllocation> allocation) {
 		@synchronized(_residencySet) {
 			[_residencySet removeAllocation:allocation];
+			[_residencySet commit];
+		}
+	}
+	void removeResidencies(const id<MTLBuffer>* allocations, size_t count) {
+		if (count == 0 || !_residencySet) return;
+		@synchronized(_residencySet) {
+			[_residencySet removeAllocations:(const id<MTLAllocation>*)allocations count:count];
 			[_residencySet commit];
 		}
 	}
@@ -1104,6 +1126,29 @@ protected:
 	MVKSmallVector<std::pair<MVKTimelineSemaphore*, uint64_t>> _awaitingTimelineSem4s;
 	MVKSmallVector<MVKVisibilityBuffer> _visibilityBuffers;
 	MVKLiveResourceSet _liveResources;
+	MVKSmallVector<MVKCommandPool*> _commandPools;
+	std::atomic<uint32_t> _trimCompletionCount{0};
+
+	/**
+	 * LOCK ORDERING
+	 *
+	 * Critical section ordering to prevent deadlock:
+	 *
+	 * 1. MVKCommandEncodingPool::_lock
+	 *    - Protects encoding pool state and transfer resources
+	 *    - Acquired before MVKMTLBufferAllocationPool::_lock during trimBufferAllocators(),
+	 *      and before leaf MVKDevice::_rezLock when lazily creating transfer buffers/images
+	 *
+	 * 2. MVKMTLBufferAllocationPool::_lock
+	 *    - Leaf lock protecting individual buffer allocation pool state
+	 *
+	 * 3. MVKDevice::_rezLock
+	 *    - Leaf lock protecting _resources, _commandPools, and _deviceMemories
+	 *    - trimCommandPoolBuffers() snapshots _commandPools and increments _trimCount under _rezLock,
+	 *      then releases _rezLock before calling into MVKCommandEncodingPool
+	 *    - trimBufferAllocators() and destroyMetalResources() release MVKCommandEncodingPool::_lock
+	 *      before calling destroyBuffer() / freeMemory() / destroyImage()
+	 */
 	std::mutex _rezLock;
 	std::mutex _sem4Lock;
     std::mutex _perfLock;

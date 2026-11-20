@@ -31,6 +31,7 @@
 #include "MVKCmdDebug.h"
 #include "MVKMTLBufferAllocation.h"
 #include <unordered_set>
+#include <atomic>
 
 #import <Metal/Metal.h>
 
@@ -87,6 +88,9 @@ public:
 	/** Release any held but unused memory back to the system. */
 	void trim();
 
+	/** Trim buffer allocators in the encoding pool, releasing empty MTLBuffers. */
+	void trimBufferAllocators();
+
 
 #pragma mark Construction
 
@@ -101,9 +105,12 @@ public:
 
 protected:
 	void propagateDebugName() override {}
+	MVKCommandEncodingPool _commandEncodingPool;
 	MVKDeviceObjectPool<MVKCommandBuffer> _commandBufferPool;
 	std::unordered_set<MVKCommandBuffer*> _allocatedCommandBuffers;
-	MVKCommandEncodingPool _commandEncodingPool;
 	uint32_t _queueFamilyIndex;
+
+public:
+	std::atomic<uint32_t> _trimCount{0};
 };
 
