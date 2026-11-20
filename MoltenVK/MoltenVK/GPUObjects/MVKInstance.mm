@@ -34,6 +34,7 @@ using namespace std;
 #pragma mark MVKInstance
 
 MVKEntryPoint* MVKInstance::getEntryPoint(const char* pName) {
+	if (!pName) { return nullptr; }
 	auto iter = _entryPoints.find(pName);
 	return (iter != _entryPoints.end()) ? &iter->second : nullptr;
 }
