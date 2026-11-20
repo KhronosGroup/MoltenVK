@@ -568,7 +568,7 @@ VkResult MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool sign
 // in the app destroying API objects before this function completes execution. For example,
 // this may occur if a GPU semaphore here triggers another submission that triggers a fence,
 // and the app immediately destroys objects. Rare, but it has been encountered.
-void MVKQueueCommandBufferSubmission::finish() {
+void MVKQueueCommandBufferSubmission::finish() { @autoreleasepool {
 
 	// Performed here instead of as part of execute() for rare case where app destroys queue
 	// immediately after a waitIdle() is cleared by fence below, taking the capture scope with it.
@@ -581,7 +581,7 @@ void MVKQueueCommandBufferSubmission::finish() {
 	if (_fence) { _fence->signal(); }
 
 	this->destroy();
-}
+}}
 
 // On device loss, the fence and signal semaphores may be signalled early, and they might then
 // be destroyed on the waiting thread before this submission is done with them. We therefore

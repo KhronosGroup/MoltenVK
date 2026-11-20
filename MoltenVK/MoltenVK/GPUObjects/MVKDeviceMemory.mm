@@ -217,19 +217,21 @@ bool MVKDeviceMemory::ensureMTLHeap() {
 		if (_mtlStorageMode != MTLStorageModePrivate) { return true; }
 	}
 
-	MTLHeapDescriptor* heapDesc = [MTLHeapDescriptor new];
-	heapDesc.type = MTLHeapTypePlacement;
-	heapDesc.storageMode = _mtlStorageMode;
-	heapDesc.cpuCacheMode = _mtlCPUCacheMode;
-	// For now, use tracked resources. Later, we should probably default
-	// to untracked, since Vulkan uses explicit barriers anyway.
-	heapDesc.hazardTrackingMode = MTLHazardTrackingModeTracked;
-	heapDesc.size = _allocationSize;
-	_mtlHeap = [getMTLDevice() newHeapWithDescriptor: heapDesc];	// retained
-	[heapDesc release];
-	if (!_mtlHeap) { return false; }
+	@autoreleasepool {
+		MTLHeapDescriptor* heapDesc = [MTLHeapDescriptor new];
+		heapDesc.type = MTLHeapTypePlacement;
+		heapDesc.storageMode = _mtlStorageMode;
+		heapDesc.cpuCacheMode = _mtlCPUCacheMode;
+		// For now, use tracked resources. Later, we should probably default
+		// to untracked, since Vulkan uses explicit barriers anyway.
+		heapDesc.hazardTrackingMode = MTLHazardTrackingModeTracked;
+		heapDesc.size = _allocationSize;
+		_mtlHeap = [getMTLDevice() newHeapWithDescriptor: heapDesc];	// retained
+		[heapDesc release];
+		if (!_mtlHeap) { return false; }
 
-	propagateDebugName();
+		propagateDebugName();
+	}
 
 	return true;
 }
@@ -244,33 +246,35 @@ bool MVKDeviceMemory::ensureMTLBuffer() {
 
 	if (memLen > getMetalFeatures().maxMTLBufferSize) { return false; }
 
-	id<MTLBuffer> buf;
-	// If host memory was already allocated, it is copied into the new MTLBuffer, and then released.
-	if (_mtlHeap) {
-		buf = [_mtlHeap newBufferWithLength: memLen options: getMTLResourceOptions() offset: 0];	// retained
-		if (_pHostMemory) {
-			memcpy(buf.contents, _pHostMemory, memLen);
+	@autoreleasepool {
+		id<MTLBuffer> buf;
+		// If host memory was already allocated, it is copied into the new MTLBuffer, and then released.
+		if (_mtlHeap) {
+			buf = [_mtlHeap newBufferWithLength: memLen options: getMTLResourceOptions() offset: 0];	// retained
+			if (_pHostMemory) {
+				memcpy(buf.contents, _pHostMemory, memLen);
+				freeHostMemory();
+			}
+			[buf makeAliasable];
+		} else if (_pHostMemory) {
+			auto rezOpts = getMTLResourceOptions();
+			if (_isHostMemImported) {
+				buf = [getMTLDevice() newBufferWithBytesNoCopy: _pHostMemory length: memLen options: rezOpts deallocator: nil];	// retained
+			} else {
+				buf = [getMTLDevice() newBufferWithBytes: _pHostMemory length: memLen options: rezOpts];     // retained
+			}
 			freeHostMemory();
-		}
-		[buf makeAliasable];
-	} else if (_pHostMemory) {
-		auto rezOpts = getMTLResourceOptions();
-		if (_isHostMemImported) {
-			buf = [getMTLDevice() newBufferWithBytesNoCopy: _pHostMemory length: memLen options: rezOpts deallocator: nil];	// retained
 		} else {
-			buf = [getMTLDevice() newBufferWithBytes: _pHostMemory length: memLen options: rezOpts];     // retained
+			buf = [getMTLDevice() newBufferWithLength: memLen options: getMTLResourceOptions()];     // retained
 		}
-		freeHostMemory();
-	} else {
-		buf = [getMTLDevice() newBufferWithLength: memLen options: getMTLResourceOptions()];     // retained
-	}
-	if (!buf) { return false; }
-	_device->makeResident(buf);
-	_device->getLiveResources().add(buf);
-	_pMemory = isMemoryHostAccessible() ? buf.contents : nullptr;
-	_mtlBuffer = buf;
+		if (!buf) { return false; }
+		_device->makeResident(buf);
+		_device->getLiveResources().add(buf);
+		_pMemory = isMemoryHostAccessible() ? buf.contents : nullptr;
+		_mtlBuffer = buf;
 
-	propagateDebugName();
+		propagateDebugName();
+	}
 
 	return true;
 }

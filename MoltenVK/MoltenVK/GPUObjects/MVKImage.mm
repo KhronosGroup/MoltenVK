@@ -55,7 +55,7 @@ static uint32_t mvkGetMTLTextureIOSurfaceID(id<MTLTexture> tex) {
 
 MVKVulkanAPIObject* MVKImagePlane::getVulkanAPIObject() { return _image; }
 
-id<MTLTexture> MVKImagePlane::getMTLTexture() {
+id<MTLTexture> MVKImagePlane::getMTLTexture() { @autoreleasepool {
     if ( !_mtlTexture && _image->_vkFormat ) {
         // Lock and check again in case another thread has created the texture.
         lock_guard<mutex> lock(_image->_lock);
@@ -122,7 +122,7 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
         propagateDebugName();
     }
     return _mtlTexture;
-}
+}}
 
 id<MTLTexture> MVKImagePlane::getMTLTexture(MTLPixelFormat mtlPixFmt) {
     // Note: Retrieve the base texture outside of lock to avoid deadlock if it too needs to be lazily created.
@@ -135,9 +135,11 @@ id<MTLTexture> MVKImagePlane::getMTLTexture(MTLPixelFormat mtlPixFmt) {
         lock_guard<mutex> lock(_image->_lock);
         mtlTex = _mtlTextureViews[mtlPixFmt];
         if ( !mtlTex ) {
-            mtlTex = [baseTexture newTextureViewWithPixelFormat: mtlPixFmt];    // retained
-            _image->_device->getLiveResources().add(mtlTex);
-            _mtlTextureViews[mtlPixFmt] = mtlTex;
+            @autoreleasepool {
+                mtlTex = [baseTexture newTextureViewWithPixelFormat: mtlPixFmt];    // retained
+                _image->_device->getLiveResources().add(mtlTex);
+                _mtlTextureViews[mtlPixFmt] = mtlTex;
+            }
         }
     }
     return mtlTex;
@@ -1949,7 +1951,7 @@ id<MTLTexture> MVKImageViewPlane::newMTLTexture() {
     return newMTLTextureFromBaseMTLTexture(_imageView->_image->getMTLTexture(_planeIndex));
 }
 
-id<MTLTexture> MVKImageViewPlane::newMTLTextureFromBaseMTLTexture(id<MTLTexture> baseMTLTexture) {
+id<MTLTexture> MVKImageViewPlane::newMTLTextureFromBaseMTLTexture(id<MTLTexture> baseMTLTexture) { @autoreleasepool {
     MVKAssert(baseMTLTexture, "Attempting to create an MTLTexture view from a nil base texture.");
     if ( !baseMTLTexture ) { return nil; }
 
@@ -2025,7 +2027,7 @@ id<MTLTexture> MVKImageViewPlane::newMTLTextureFromBaseMTLTexture(id<MTLTexture>
     }
     [aliasTex release];
     return texView;
-}
+}}
 
 
 #pragma mark Construction
