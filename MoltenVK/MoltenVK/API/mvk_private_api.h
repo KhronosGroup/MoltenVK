@@ -284,6 +284,7 @@ typedef struct {
     MVKPerformanceTracker functionSpecialization;		/** Specialize a retrieved MTLFunction, in milliseconds. */
     MVKPerformanceTracker pipelineCompile;				/** Compile MTLFunctions into a pipeline, in milliseconds. */
 	MVKPerformanceTracker glslToSPRIV;					/** Convert GLSL to SPIR-V code, in milliseconds. */
+	MVKPerformanceTracker pipelineCompileWhileEncoding;	/** Build or wait for a shader-object pipeline while encoding a draw, in milliseconds. */
 } MVKShaderCompilationPerformance;
 
 /** MoltenVK performance of pipeline cache activities. */

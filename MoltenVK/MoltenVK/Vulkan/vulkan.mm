@@ -4017,6 +4017,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetLogicOpEXT(
     VkLogicOp                                   logicOp) {
 
     MVKTraceVulkanCallStart();
+    MVKAddCmd(SetLogicOp, commandBuffer, logicOp);
     MVKTraceVulkanCallEnd();
 }
 
@@ -4041,6 +4042,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetAlphaToCoverageEnableEXT(
     VkBool32                                    alphaToCoverageEnable) {
 
     MVKTraceVulkanCallStart();
+    MVKAddCmd(SetAlphaToCoverageEnable, commandBuffer, alphaToCoverageEnable);
     MVKTraceVulkanCallEnd();
 }
 
@@ -4049,6 +4051,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetAlphaToOneEnableEXT(
     VkBool32                                    alphaToOneEnable) {
 
     MVKTraceVulkanCallStart();
+    MVKAddCmd(SetAlphaToOneEnable, commandBuffer, alphaToOneEnable);
     MVKTraceVulkanCallEnd();
 }
 
@@ -4062,6 +4065,94 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetColorBlendAdvancedEXT(
     MVKTraceVulkanCallEnd();
 }
 
+// The NV dynamic states below belong to extensions MoltenVK does not implement. They are
+// provided the same way as vkCmdSetColorBlendAdvancedEXT above: VK_EXT_extended_dynamic_state3
+// names them, so the entry points exist, while the matching feature bits report false to say
+// that they may not be used. Applications that check those bits never reach these.
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetCoverageModulationModeNV(
+    VkCommandBuffer                             commandBuffer,
+    VkCoverageModulationModeNV                  coverageModulationMode) {
+
+    MVKTraceVulkanCallStart();
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetCoverageModulationTableEnableNV(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    coverageModulationTableEnable) {
+
+    MVKTraceVulkanCallStart();
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetCoverageModulationTableNV(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    coverageModulationTableCount,
+    const float*                                pCoverageModulationTable) {
+
+    MVKTraceVulkanCallStart();
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetCoverageReductionModeNV(
+    VkCommandBuffer                             commandBuffer,
+    VkCoverageReductionModeNV                   coverageReductionMode) {
+
+    MVKTraceVulkanCallStart();
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetCoverageToColorEnableNV(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    coverageToColorEnable) {
+
+    MVKTraceVulkanCallStart();
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetCoverageToColorLocationNV(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    coverageToColorLocation) {
+
+    MVKTraceVulkanCallStart();
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetRepresentativeFragmentTestEnableNV(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    representativeFragmentTestEnable) {
+
+    MVKTraceVulkanCallStart();
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetShadingRateImageEnableNV(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    shadingRateImageEnable) {
+
+    MVKTraceVulkanCallStart();
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetViewportSwizzleNV(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    firstViewport,
+    uint32_t                                    viewportCount,
+    const VkViewportSwizzleNV*                  pViewportSwizzles) {
+
+    MVKTraceVulkanCallStart();
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetViewportWScalingEnableNV(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    viewportWScalingEnable) {
+
+    MVKTraceVulkanCallStart();
+    MVKTraceVulkanCallEnd();
+}
+
 MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetColorBlendEnableEXT(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    firstAttachment,
@@ -4069,6 +4160,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetColorBlendEnableEXT(
     const VkBool32*                             pColorBlendEnables) {
 
     MVKTraceVulkanCallStart();
+    MVKAddCmd(SetColorBlendEnable, commandBuffer, firstAttachment, attachmentCount, pColorBlendEnables);
     MVKTraceVulkanCallEnd();
 }
 
@@ -4079,6 +4171,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetColorBlendEquationEXT(
     const VkColorBlendEquationEXT*              pColorBlendEquations) {
 
     MVKTraceVulkanCallStart();
+    MVKAddCmd(SetColorBlendEquation, commandBuffer, firstAttachment, attachmentCount, pColorBlendEquations);
     MVKTraceVulkanCallEnd();
 }
 
@@ -4089,6 +4182,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetColorWriteMaskEXT(
     const VkColorComponentFlags*                pColorWriteMasks) {
 
     MVKTraceVulkanCallStart();
+    MVKAddCmd(SetColorWriteMask, commandBuffer, firstAttachment, attachmentCount, pColorWriteMasks);
     MVKTraceVulkanCallEnd();
 }
 
@@ -4123,6 +4217,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthClipNegativeOneToOneEXT(
     VkBool32                                    negativeOneToOne) {
 
     MVKTraceVulkanCallStart();
+    MVKAddCmd(SetDepthClipNegativeOneToOne, commandBuffer, negativeOneToOne);
     MVKTraceVulkanCallEnd();
 }
 
@@ -4148,6 +4243,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetLineStippleEnableEXT(
     VkBool32                                    stippledLineEnable) {
 
     MVKTraceVulkanCallStart();
+    MVKAddCmd(SetLineStippleEnable, commandBuffer, stippledLineEnable);
     MVKTraceVulkanCallEnd();
 }
 
@@ -4156,6 +4252,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetLogicOpEnableEXT(
     VkBool32                                    logicOpEnable) {
 
     MVKTraceVulkanCallStart();
+    MVKAddCmd(SetLogicOpEnable, commandBuffer, logicOpEnable);
     MVKTraceVulkanCallEnd();
 }
 
@@ -4182,6 +4279,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetRasterizationSamplesEXT(
     VkSampleCountFlagBits                       rasterizationSamples) {
 
     MVKTraceVulkanCallStart();
+    MVKAddCmd(SetRasterizationSamples, commandBuffer, rasterizationSamples);
     MVKTraceVulkanCallEnd();
 }
 
@@ -4208,6 +4306,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetSampleMaskEXT(
     const VkSampleMask*                         pSampleMask) {
 
     MVKTraceVulkanCallStart();
+    MVKAddCmd(SetSampleMask, commandBuffer, samples, pSampleMask);
     MVKTraceVulkanCallEnd();
 }
 
@@ -4216,6 +4315,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetTessellationDomainOriginEXT(
     VkTessellationDomainOrigin                  domainOrigin) {
 
     MVKTraceVulkanCallStart();
+    MVKAddCmd(SetTessellationDomainOrigin, commandBuffer, domainOrigin);
     MVKTraceVulkanCallEnd();
 }
 
@@ -4401,6 +4501,87 @@ void vkCmdSetSampleLocationsEXT(
 	MVKTraceVulkanCallStart();
 	MVKAddCmd(SetSampleLocations, commandBuffer, pSampleLocationsInfo);
 	MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
+#pragma mark VK_EXT_color_write_enable extension
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetColorWriteEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    attachmentCount,
+    const VkBool32*                             pColorWriteEnables) {
+
+    MVKTraceVulkanCallStart();
+    MVKAddCmd(SetColorWriteEnable, commandBuffer, attachmentCount, pColorWriteEnables);
+    MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
+#pragma mark VK_EXT_shader_object extension
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateShadersEXT(
+    VkDevice                                    device,
+    uint32_t                                    createInfoCount,
+    const VkShaderCreateInfoEXT*                pCreateInfos,
+    const VkAllocationCallbacks*                pAllocator,
+    VkShaderEXT*                                pShaders) {
+
+    MVKTraceVulkanCallStart();
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    VkResult rslt = mvkDev->createShaders(createInfoCount, pCreateInfos, pAllocator, pShaders);
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyShaderEXT(
+    VkDevice                                    device,
+    VkShaderEXT                                 shader,
+    const VkAllocationCallbacks*                pAllocator) {
+
+    MVKTraceVulkanCallStart();
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    mvkDev->destroyShader((MVKShader*)shader, pAllocator);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetShaderBinaryDataEXT(
+    VkDevice                                    device,
+    VkShaderEXT                                 shader,
+    size_t*                                     pDataSize,
+    void*                                       pData) {
+
+    MVKTraceVulkanCallStart();
+    MVKShader* mvkShdr = (MVKShader*)shader;
+    VkResult rslt = mvkShdr->getBinaryData(pDataSize, pData);
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindShadersEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    stageCount,
+    const VkShaderStageFlagBits*                pStages,
+    const VkShaderEXT*                          pShaders) {
+
+    MVKTraceVulkanCallStart();
+    MVKAddCmd(BindShaders, commandBuffer, stageCount, pStages, pShaders);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetVertexInputEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    vertexBindingDescriptionCount,
+    const VkVertexInputBindingDescription2EXT*  pVertexBindingDescriptions,
+    uint32_t                                    vertexAttributeDescriptionCount,
+    const VkVertexInputAttributeDescription2EXT* pVertexAttributeDescriptions) {
+
+    MVKTraceVulkanCallStart();
+    MVKAddCmd(SetVertexInput, commandBuffer,
+              vertexBindingDescriptionCount, pVertexBindingDescriptions,
+              vertexAttributeDescriptionCount, pVertexAttributeDescriptions);
+    MVKTraceVulkanCallEnd();
 }
 
 

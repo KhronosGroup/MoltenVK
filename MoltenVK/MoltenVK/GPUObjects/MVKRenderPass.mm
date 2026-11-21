@@ -110,7 +110,7 @@ VkSampleCountFlagBits MVKRenderSubpass::getSampleCount() {
 	if (_stencilAttachment.attachment != VK_ATTACHMENT_UNUSED) {
 		return _renderPass->_attachments[_stencilAttachment.attachment].getSampleCount();
 	}
-	return VK_SAMPLE_COUNT_1_BIT;
+	return _defaultSampleCount;
 }
 
 // Get the portion of the view mask that will be rendered in the specified Metal render pass.
@@ -472,17 +472,31 @@ void MVKRenderSubpass::populatePipelineRenderingCreateInfo() {
 	}
 }
 
+static constexpr VkAttachmentReference2 kMVKUnusedColorAttachment = {
+	VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2, nullptr, VK_ATTACHMENT_UNUSED, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_ASPECT_COLOR_BIT
+};
+
+static size_t mvkRequiredColorAttachmentCount(MVKArrayRef<const uint32_t> colorAttLocs, size_t curCount) {
+	for (uint32_t attLoc : colorAttLocs) {
+		if (attLoc != VK_ATTACHMENT_UNUSED) { curCount = std::max(curCount, (size_t)attLoc + 1); }
+	}
+	return curCount;
+}
+
 bool MVKRenderSubpass::isChangingColorAttachmentLocations(const MVKArrayRef<uint32_t> colorAttLocs,
 														  const MVKArrayRef<MVKImageView*> attachments) {
+	size_t reqCnt = mvkRequiredColorAttachmentCount(colorAttLocs, _colorAttachments.size());
 
 	MVKSmallVector<VkAttachmentReference2, kMVKDefaultAttachmentCount> colorAtts;
 	colorAtts.assign(_colorAttachments.begin(), _colorAttachments.end());
-
 	MVKSmallVector<VkAttachmentReference2, kMVKDefaultAttachmentCount> resolveAtts;
 	resolveAtts.assign(_resolveAttachments.begin(), _resolveAttachments.end());
+	if (colorAtts.size() < reqCnt) { colorAtts.resize(reqCnt, kMVKUnusedColorAttachment); }
+	if (resolveAtts.size() < reqCnt) { resolveAtts.resize(reqCnt, kMVKUnusedColorAttachment); }
 
 	updateColorAttachmentLocations(colorAttLocs, attachments, colorAtts.contents(), resolveAtts.contents());
 
+	if (colorAtts.size() != _colorAttachments.size() || resolveAtts.size() != _resolveAttachments.size()) { return true; }
 	auto attCnt = colorAtts.size();
 	for (uint32_t attIdx = 0; attIdx < attCnt; attIdx++) {
 		if (colorAtts[attIdx].attachment != _colorAttachments[attIdx].attachment) { return true; }
@@ -493,7 +507,12 @@ bool MVKRenderSubpass::isChangingColorAttachmentLocations(const MVKArrayRef<uint
 
 void MVKRenderSubpass::updateColorAttachmentLocations(const MVKArrayRef<uint32_t> colorAttLocs,
 													  const MVKArrayRef<MVKImageView*> attachments) {
+	size_t reqCnt = mvkRequiredColorAttachmentCount(colorAttLocs, _colorAttachments.size());
+	if (_colorAttachments.size() < reqCnt) { _colorAttachments.resize(reqCnt, kMVKUnusedColorAttachment); }
+	if (_resolveAttachments.size() < reqCnt) { _resolveAttachments.resize(reqCnt, kMVKUnusedColorAttachment); }
+
 	updateColorAttachmentLocations(colorAttLocs, attachments, _colorAttachments.contents(), _resolveAttachments.contents());
+	populatePipelineRenderingCreateInfo();
 	_renderPass->linkAttachments();
 }
 

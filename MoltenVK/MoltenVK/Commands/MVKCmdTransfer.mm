@@ -829,6 +829,7 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	uint32_t expCnt = 0;
 	uint32_t copyCnt = 0;
 	uint32_t sliceCnt = 0;
+	bool isDst3D = _dstImage->getImageType() == VK_IMAGE_TYPE_3D;
 
 	for (const auto& vkIR : _vkImageResolves) {
         uint8_t srcPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(vkIR.srcSubresource.aspectMask);
@@ -836,6 +837,10 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
 		VkExtent3D srcImgExt = _srcImage->getExtent3D(srcPlaneIndex, vkIR.srcSubresource.mipLevel);
 		VkExtent3D dstImgExt = _dstImage->getExtent3D(dstPlaneIndex, vkIR.dstSubresource.mipLevel);
+
+		// A multisample image is always 2D, in Metal and in Vulkan alike, so a 3D destination is
+		// resolved one depth plane at a time and only that plane's extent has to be covered.
+		if (isDst3D) { dstImgExt.depth = 1; }
 
 		// If the region does not cover the entire content of the destination level, expand
 		// the destination content in the region to the temporary image. The purpose of this
@@ -846,8 +851,9 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		if ( !mvkVkExtent3DsAreEqual(dstImgExt, vkIR.extent) ) {
 			VkImageBlit& expRgn = expansionRegions[expCnt++];
 			expRgn.srcSubresource = vkIR.dstSubresource;
-			expRgn.srcOffsets[0] = { 0, 0, 0 };
-			expRgn.srcOffsets[1] = { int32_t(dstImgExt.width), int32_t(dstImgExt.height), int32_t(dstImgExt.depth) };
+			expRgn.srcOffsets[0] = { 0, 0, isDst3D ? vkIR.dstOffset.z : 0 };
+			expRgn.srcOffsets[1] = { int32_t(dstImgExt.width), int32_t(dstImgExt.height),
+									 isDst3D ? vkIR.dstOffset.z + 1 : int32_t(dstImgExt.depth) };
 			expRgn.dstSubresource = vkIR.dstSubresource;
 			expRgn.dstOffsets[0] = { 0, 0, 0 };
 			expRgn.dstOffsets[1] = { int32_t(dstImgExt.width), int32_t(dstImgExt.height), int32_t(dstImgExt.depth) };
@@ -864,6 +870,7 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 			cpyRgn.srcOffset = vkIR.srcOffset;
 			cpyRgn.dstSubresource = vkIR.dstSubresource;
 			cpyRgn.dstOffset = vkIR.dstOffset;
+			if (isDst3D) { cpyRgn.dstOffset.z = 0; }		// The temporary holds one plane, at its own origin.
 			cpyRgn.extent = vkIR.extent;
 		}
 
@@ -872,6 +879,7 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		// direct resolve, but that of the DESTINATION if we need a temporary transfer image.
 		mtlResolveSlices[sliceCnt].dstSubresource = vkIR.dstSubresource;
 		mtlResolveSlices[sliceCnt].srcSubresource = needXfrImage ? vkIR.dstSubresource : vkIR.srcSubresource;
+		mtlResolveSlices[sliceCnt].dstDepthPlane = isDst3D ? uint32_t(vkIR.dstOffset.z) : 0;
 		if (mtlFeats.multisampleLayeredRendering) {
 			sliceCnt++;
 		} else {
@@ -901,6 +909,14 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		MVKImageDescriptorData xferImageData;
 		_dstImage->getTransferDescriptorData(xferImageData);
 		xferImageData.samples = _srcImage->getSampleCount();
+
+		// Metal has no multisampled 3D texture, and asking for one silently drops the sample
+		// count, which then makes the copy into it invalid. The temporary holds the one depth
+		// plane being resolved, which is a 2D image.
+		if (isDst3D) {
+			xferImageData.imageType = VK_IMAGE_TYPE_2D;
+			xferImageData.extent.depth = 1;
+		}
 		xfrImage = cmdEncoder->getCommandEncodingPool()->getTransferMVKImage(xferImageData);
 
 		if (expCnt) {
@@ -941,6 +957,7 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		mtlColorAttDesc.slice = rslvSlice.srcSubresource.baseArrayLayer;
 		mtlColorAttDesc.resolveLevel = rslvSlice.dstSubresource.mipLevel;
 		mtlColorAttDesc.resolveSlice = rslvSlice.dstSubresource.baseArrayLayer;
+		mtlColorAttDesc.resolveDepthPlane = rslvSlice.dstDepthPlane;
 		if (rslvSlice.dstSubresource.layerCount > 1) {
 			mtlRPD.renderTargetArrayLength = rslvSlice.dstSubresource.layerCount == VK_REMAINING_ARRAY_LAYERS ?
 				_dstImage->getLayerCount() - rslvSlice.dstSubresource.baseArrayLayer :
