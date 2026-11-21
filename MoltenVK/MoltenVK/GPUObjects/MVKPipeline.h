@@ -28,6 +28,9 @@
 #include "MVKBitArray.h"
 #include "MVKInlineArray.h"
 #include <MoltenVKShaderConverter/SPIRVReflection.h>
+#include <condition_variable>
+#include <dispatch/dispatch.h>
+#include <shared_mutex>
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 #include <unordered_map>
 #include <unordered_set>
@@ -161,6 +164,153 @@ static const uint32_t kMVKTessEvalNumReservedBuffers = 3;
 static const uint32_t kMVKTessEvalInputBufferBinding = 0;
 static const uint32_t kMVKTessEvalPatchInputBufferBinding = 1;
 static const uint32_t kMVKTessEvalLevelBufferBinding = 2;
+
+/**
+ * What a pipeline built for a set of bound shader objects needs beyond a VkGraphicsPipelineCreateInfo.
+ *
+ * Such a pipeline has no VkPipelineCache to record itself in, and passes the binary archive of the
+ * shader that will carry it instead. The rest names the transforms the key has already decided on:
+ * where blendInShader is set the fragment shader carries blending and coverage, and Metal's own
+ * stages are left off; where pullVertices is set the vertex shader loads its own attributes, and
+ * the pipeline is built with no vertex layout. Both then read that state from a buffer per draw.
+ */
+enum class MVKShaderObjectTessStageMode : uint8_t {
+	None = 0,
+	Stage1,
+	Stage2,
+	Stage3,
+};
+
+struct MVKComputeTessParams {
+	uint32_t patchCount;
+	uint32_t patchKind;				// 0 = Triangles, 1 = Quads
+	uint32_t partitionMode;			// 0 = Equal, 1 = FractionalEven, 2 = FractionalOdd
+	uint32_t outputWindingCCW;		// 0 = CW, 1 = CCW
+	uint32_t domainOriginLowerLeft;	// 0 = UpperLeft, 1 = LowerLeft
+	uint32_t pointMode;				// 0 = Triangles, 1 = Points
+	uint32_t useIndirectPatchCount;	// 0 = direct patchCount, 1 = read indirectPatchParams[1]
+	uint32_t maxVerts;
+	uint32_t maxIndices;
+};
+
+struct MVKShaderObjectPipelineConfig {
+	MVKMTLBinaryArchive* binaryArchive = nullptr;
+	bool neverRendersPoints = false;	/**< The key names no topology, and was folded from ones that never draw points. */
+	bool dynamicDepthClip = false;		/**< The vertex shader maps the depth clip convention itself. */
+	bool blendInShader = false;			/**< The fragment shader carries the fragment output operations itself. */
+	bool pullVertices = false;			/**< The vertex shader loads its own attributes. */
+	bool metal4Template = false;		/**< Build an unspecialized Metal 4 pipeline template at shader creation. */
+	bool dynamicSampleMask = false;		/**< The fragment stage masks gl_SampleMask from the dynamic state buffer. */
+	bool noOpFragment = false;			/**< Pair with the device no-op fragment shader for FS-null rasterization. */
+	bool rasterizerDiscard = false;		/**< Build a rasterization-disabled void-vertex pipeline. */
+	bool fsReadsPrimitiveId = false;	/**< Fragment shader reads gl_PrimitiveID; bypass broken Metal 4 specialization. */
+	MVKShaderObjectTessStageMode tessStageMode = MVKShaderObjectTessStageMode::None;
+	id<MTLLibrary> noOpFragmentLibrary = nil;
+	NSString* noOpFragmentFunctionName = nil;
+};
+
+/**
+ * Concrete attachment format and blend/write-mask state used to specialize a creation-time
+ * Metal 4 shader-object pipeline template at draw time.
+ */
+struct MVKShaderObjectSpecializationKey {
+	VkFormat colorAttachmentFormats[kMVKMaxColorAttachmentCount];
+	VkPipelineColorBlendAttachmentState blendAttachments[kMVKMaxColorAttachmentCount];
+	uint8_t colorWriteEnables[kMVKMaxColorAttachmentCount];
+	uint32_t colorAttachmentCount;
+	uint32_t _pad;
+
+	void canonicalize(MVKPixelFormats* pixFmts);
+
+	static MVKShaderObjectSpecializationKey zeroed() {
+		MVKShaderObjectSpecializationKey key;
+		memset(&key, 0, sizeof(key));
+		return key;
+	}
+	bool operator==(const MVKShaderObjectSpecializationKey& other) const {
+		return memcmp(this, &other, sizeof(*this)) == 0;
+	}
+	std::size_t hash() const {
+		return mvkHash((const uint64_t*)this, sizeof(*this) / sizeof(uint64_t));
+	}
+};
+
+static_assert(sizeof(MVKShaderObjectSpecializationKey) % sizeof(uint64_t) == 0,
+			  "MVKShaderObjectSpecializationKey is hashed as 64-bit words.");
+
+struct MVKShaderObjectSpecializationKeyHash {
+	std::size_t operator()(const MVKShaderObjectSpecializationKey& key) const { return key.hash(); }
+};
+
+/**
+ * Finite structural key identifying a creation-time unspecialized Metal 4 pipeline template.
+ */
+struct MVKShaderObjectShapeKey {
+	MVKShader* vertexShader;
+	MVKShader* tessCtlShader;
+	MVKShader* tessEvalShader;
+	MVKShader* fragmentShader;
+	uint8_t rasterizerDiscard;
+	uint8_t sampleCount;
+	uint8_t topologyClass;
+	uint8_t dynamicSampleMask;
+	uint8_t alphaToCoverage;
+	uint8_t alphaToOne;
+	uint8_t multiview;
+	uint8_t _pad;
+
+	static MVKShaderObjectShapeKey zeroed() {
+		MVKShaderObjectShapeKey key;
+		memset(&key, 0, sizeof(key));
+		return key;
+	}
+	bool operator==(const MVKShaderObjectShapeKey& other) const {
+		return memcmp(this, &other, sizeof(*this)) == 0;
+	}
+	std::size_t hash() const {
+		return mvkHash((const uint64_t*)this, sizeof(*this) / sizeof(uint64_t));
+	}
+};
+
+static_assert(sizeof(MVKShaderObjectShapeKey) % sizeof(uint64_t) == 0,
+			  "MVKShaderObjectShapeKey is hashed as 64-bit words.");
+
+struct MVKShaderObjectShapeKeyHash {
+	std::size_t operator()(const MVKShaderObjectShapeKey& key) const { return key.hash(); }
+};
+
+struct MVKShaderObjectTessStage1Key {
+	MVKShader* vertexShader;
+	MVKShader* tessCtlShader;
+
+	bool operator==(const MVKShaderObjectTessStage1Key& other) const {
+		return vertexShader == other.vertexShader && tessCtlShader == other.tessCtlShader;
+	}
+	std::size_t hash() const {
+		return mvkHash((const uint64_t*)this, sizeof(*this) / sizeof(uint64_t));
+	}
+};
+
+struct MVKShaderObjectTessStage1KeyHash {
+	std::size_t operator()(const MVKShaderObjectTessStage1Key& key) const { return key.hash(); }
+};
+
+struct MVKShaderObjectTessStage2Key {
+	MVKShader* vertexShader;
+	MVKShader* tessCtlShader;
+	MVKShader* tessEvalShader;
+
+	bool operator==(const MVKShaderObjectTessStage2Key& other) const {
+		return vertexShader == other.vertexShader && tessCtlShader == other.tessCtlShader && tessEvalShader == other.tessEvalShader;
+	}
+	std::size_t hash() const {
+		return mvkHash((const uint64_t*)this, sizeof(*this) / sizeof(uint64_t));
+	}
+};
+
+struct MVKShaderObjectTessStage2KeyHash {
+	std::size_t operator()(const MVKShaderObjectTessStage2Key& key) const { return key.hash(); }
+};
 
 /** Represents an abstract Vulkan pipeline. */
 class MVKPipeline : public MVKVulkanAPIDeviceObject {
@@ -345,11 +495,36 @@ public:
 	const MTLSamplePosition* getSampleLocations() const { return _sampleLocations; }
 	const MTLPrimitiveTopologyClass getPrimitiveTopologyClass() const { return static_cast<MTLPrimitiveTopologyClass>(_primitiveTopologyClass); }
 
-	/** Constructs an instance for the device and parent (which may be NULL). */
+	/**
+	 * Constructs an instance for the device and parent (which may be NULL). A pipeline built for
+	 * a set of shader objects passes the extra it needs, which vkCreateGraphicsPipelines does not.
+	 */
 	MVKGraphicsPipeline(MVKDevice* device,
 						MVKPipelineCache* pipelineCache,
 						MVKPipeline* parent,
-						const VkGraphicsPipelineCreateInfo* pCreateInfo);
+						const VkGraphicsPipelineCreateInfo* pCreateInfo,
+						const MVKShaderObjectPipelineConfig& soConfig = {});
+
+	/** Returns whether the vertex shader was rewritten to load its own attributes. */
+	bool isPullingVertices() const { return _isPullingVertices; }
+
+	/** Returns whether the fragment shader was rewritten to blend its own outputs. */
+	bool isBlendInShader() const { return _isBlendInShader; }
+
+	/** Returns the per-attachment clamp modes the in-shader blend applies, indexed by location. */
+	const uint8_t* getBlendClampModes() const { return _blendClampModes; }
+
+	/** Returns whether this pipeline is a creation-time unspecialized Metal 4 shader-object template. */
+	bool isMetal4ShaderObjectTemplate() const { return _isMetal4Template; }
+
+	/** Returns whether this tessellation pipeline executes via Metal 4 compute tessellation. */
+	bool isComputeTessellationPipeline() const { return _isComputeTessellation; }
+
+	/** Returns the reflected tessellation parameters for compute-tessellation pipelines. */
+	const mvk::SPIRVTessReflectionData& getTessReflectionData() const { return _tessReflectData; }
+
+	/** Returns a concrete Metal 4 pipeline specialized for the given color attachment and blend state. */
+	id<MTLRenderPipelineState> getSpecializedMTL4PipelineState(const MVKShaderObjectSpecializationKey& key);
 
 	~MVKGraphicsPipeline() override;
 
@@ -364,6 +539,7 @@ protected:
 	void initDynamicState(const VkGraphicsPipelineCreateInfo* pCreateInfo);
 	void initSampleLocations(const VkGraphicsPipelineCreateInfo* pCreateInfo);
     void initMTLRenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo, const mvk::SPIRVTessReflectionData& reflectData, VkPipelineCreationFeedback* pPipelineFB, const VkPipelineShaderStageCreateInfo* pVertexSS, VkPipelineCreationFeedback* pVertexFB, const VkPipelineShaderStageCreateInfo* pTessCtlSS, VkPipelineCreationFeedback* pTessCtlFB, const VkPipelineShaderStageCreateInfo* pTessEvalSS, VkPipelineCreationFeedback* pTessEvalFB, const VkPipelineShaderStageCreateInfo* pFragmentSS, VkPipelineCreationFeedback* pFragmentFB);
+    void initMTL4RenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo, const mvk::SPIRVTessReflectionData& reflectData, const VkPipelineShaderStageCreateInfo* pVertexSS, VkPipelineCreationFeedback* pVertexFB, const VkPipelineShaderStageCreateInfo* pTessCtlSS, const VkPipelineShaderStageCreateInfo* pTessEvalSS, VkPipelineCreationFeedback* pTessEvalFB, const VkPipelineShaderStageCreateInfo* pFragmentSS, VkPipelineCreationFeedback* pFragmentFB);
     void initShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig, const VkGraphicsPipelineCreateInfo* pCreateInfo, const mvk::SPIRVTessReflectionData& reflectData);
 	void initReservedVertexAttributeBufferCount(const VkGraphicsPipelineCreateInfo* pCreateInfo);
     void addVertexInputToShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig, const VkGraphicsPipelineCreateInfo* pCreateInfo);
@@ -373,11 +549,11 @@ protected:
     MTLComputePipelineDescriptor* newMTLTessVertexStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const mvk::SPIRVTessReflectionData& reflectData, mvk::SPIRVToMSLConversionConfiguration& shaderConfig, const VkPipelineShaderStageCreateInfo* pVertexSS, VkPipelineCreationFeedback* pVertexFB, const VkPipelineShaderStageCreateInfo* pTessCtlSS, MVKMTLFunction* pVtxFunctions);
 	MTLComputePipelineDescriptor* newMTLTessControlStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const mvk::SPIRVTessReflectionData& reflectData, mvk::SPIRVToMSLConversionConfiguration& shaderConfig, const VkPipelineShaderStageCreateInfo* pTessCtlSS, VkPipelineCreationFeedback* pTessCtlFB, const VkPipelineShaderStageCreateInfo* pVertexSS, const VkPipelineShaderStageCreateInfo* pTessEvalSS);
 	MTLRenderPipelineDescriptor* newMTLTessRasterStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const mvk::SPIRVTessReflectionData& reflectData, mvk::SPIRVToMSLConversionConfiguration& shaderConfig, const VkPipelineShaderStageCreateInfo* pTessEvalSS, VkPipelineCreationFeedback* pTessEvalFB, const VkPipelineShaderStageCreateInfo* pFragmentSS, VkPipelineCreationFeedback* pFragmentFB, const VkPipelineShaderStageCreateInfo* pTessCtlSS);
-	bool addVertexShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, mvk::SPIRVToMSLConversionConfiguration& shaderConfig, const VkPipelineShaderStageCreateInfo* pVertexSS, VkPipelineCreationFeedback* pVertexFB, const VkPipelineShaderStageCreateInfo*& pFragmentSS);
+	bool addVertexShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, mvk::SPIRVToMSLConversionConfiguration& shaderConfig, const VkPipelineShaderStageCreateInfo* pVertexSS, VkPipelineCreationFeedback* pVertexFB, const VkPipelineShaderStageCreateInfo*& pFragmentSS, MVKMTLFunction* pOutFunc = nullptr, bool deferSpecialization = false);
 	bool addVertexShaderToPipeline(MTLComputePipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, mvk::SPIRVToMSLConversionConfiguration& shaderConfig, SPIRVShaderInputs& nextInputs, const VkPipelineShaderStageCreateInfo* pVertexSS, VkPipelineCreationFeedback* pVertexFB, MVKMTLFunction* pVtxFunctions);
 	bool addTessCtlShaderToPipeline(MTLComputePipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, mvk::SPIRVToMSLConversionConfiguration& shaderConfig, SPIRVShaderOutputs& prevOutput, SPIRVShaderInputs& nextInputs, const VkPipelineShaderStageCreateInfo* pTessCtlSS, VkPipelineCreationFeedback* pTessCtlFB);
-	bool addTessEvalShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, mvk::SPIRVToMSLConversionConfiguration& shaderConfig, SPIRVShaderOutputs& prevOutput, const VkPipelineShaderStageCreateInfo* pTessEvalSS, VkPipelineCreationFeedback* pTessEvalFB, const VkPipelineShaderStageCreateInfo*& pFragmentSS);
-    bool addFragmentShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, mvk::SPIRVToMSLConversionConfiguration& shaderConfig, SPIRVShaderOutputs& prevOutput, const VkPipelineShaderStageCreateInfo* pFragmentSS, VkPipelineCreationFeedback* pFragmentFB);
+	bool addTessEvalShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, mvk::SPIRVToMSLConversionConfiguration& shaderConfig, SPIRVShaderOutputs& prevOutput, const VkPipelineShaderStageCreateInfo* pTessEvalSS, VkPipelineCreationFeedback* pTessEvalFB, const VkPipelineShaderStageCreateInfo*& pFragmentSS, MVKMTLFunction* pOutFunc = nullptr, bool deferSpecialization = false);
+    bool addFragmentShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, mvk::SPIRVToMSLConversionConfiguration& shaderConfig, SPIRVShaderOutputs& prevOutput, const VkPipelineShaderStageCreateInfo* pFragmentSS, VkPipelineCreationFeedback* pFragmentFB, MVKMTLFunction* pOutFunc = nullptr, bool deferSpecialization = false);
 	template<class T>
 	bool addVertexInputToPipeline(T* inputDesc, const VkPipelineVertexInputStateCreateInfo* pVI, const mvk::SPIRVToMSLConversionConfiguration& shaderConfig);
 	void initDefaultVertexAttributes(const VkPipelineVertexInputStateCreateInfo* pVI, const char* pVtxEntryName);
@@ -394,7 +570,8 @@ protected:
 								  const VkPipelineShaderStageCreateInfo* pShaderStage,
 								  VkPipelineCreationFeedback* pStageFB,
 								  MVKShaderModule* pShaderModule,
-								  const char* pStageName);
+								  const char* pStageName,
+								  bool deferSpecialization = false);
 	void populateRenderingAttachmentInfo(const VkGraphicsPipelineCreateInfo* pCreateInfo);
 
 	MVKRenderStateFlags _dynamicStateFlags;
@@ -434,12 +611,312 @@ protected:
 	bool _ownsTessEvalModule = false;
 	bool _ownsFragmentModule = false;
 
+	// Set only for a pipeline built for shader objects, which records itself here instead of in a
+	// pipeline cache, so that the shader that carries it can hand it back in its binary.
+	MVKMTLBinaryArchive* _binaryArchive = nullptr;
+
+	// A pipeline that leaves its topology class unspecified rasterizes lines and triangles alike,
+	// and is told here that it will never be asked for points, which keeps the point size out of
+	// the shader that an unspecified class would otherwise call for.
+	bool _neverRendersPoints = false;
+
+	// A shader object draw can change the depth clip convention, so the shader is asked to read it
+	// from the state the draw supplies rather than have it baked in.
+	bool _dynamicDepthClipRequested = false;
+
 	uint8_t _primitiveTopologyClass;
+	bool _blendInShaderRequested = false;
+	bool _isBlendInShader = false;
+	bool _pullVerticesRequested = false;
+	bool _isPullingVertices = false;
+	uint8_t _blendClampModes[kMVKMaxColorAttachmentCount] = {};
 	bool _isRasterizing = false;
 	bool _isRasterizingColor = false;
 	bool _isTessellationPipeline = false;
 	bool _inputAttachmentIsDSAttachment = false;
 	bool _hasRemappedAttachmentLocations = false;
+	bool _isMetal4Template = false;
+	bool _isComputeTessellation = false;
+	MVKShaderObjectTessStageMode _tessStageMode = MVKShaderObjectTessStageMode::None;
+	mvk::SPIRVTessReflectionData _tessReflectData = {};
+	bool _dynamicSampleMaskRequested = false;
+	bool _noOpFragmentRequested = false;
+	bool _fsReadsPrimitiveId = false;
+	id<MTLLibrary> _noOpFragmentLibrary = nil;
+	NSString* _noOpFragmentFunctionName = nil;
+	id _mtl4BaseDesc = nil;
+	std::mutex _mtl4SpecLock;
+	std::unordered_map<MVKShaderObjectSpecializationKey, id<MTLRenderPipelineState>, MVKShaderObjectSpecializationKeyHash> _mtl4SpecializedStates;
+};
+
+
+#pragma mark -
+#pragma mark MVKShaderObjectPipelines
+
+class MVKShader;
+class MVKComputePipeline;
+
+/**
+ * Everything a set of bound shader objects must be paired with to make a Metal pipeline.
+ *
+ * Vulkan lets a shader object defer all of this to draw time, while Metal needs it before a
+ * MTLRenderPipelineState can be built, so a draw can only be served by a pipeline built for
+ * these exact values. The struct is plain data with no padding left uninitialized, so it can
+ * be hashed and compared as raw bytes.
+ */
+struct MVKShaderObjectPipelineKey {
+	MVKShader* shaders[kMVKShaderStageCount];
+	MVKDynamicVertexInput vertexInput;
+	MVKDynamicPipelineState pipelineState;
+	VkFormat colorAttachmentFormats[kMVKMaxColorAttachmentCount];
+	VkFormat depthAttachmentFormat;
+	VkFormat stencilAttachmentFormat;
+	uint32_t colorAttachmentCount;
+	uint32_t viewMask;
+	uint32_t pullVertices;
+
+	/**
+	 * Folds the key down to what a Metal pipeline is actually built from, so that draws differing
+	 * only in state no pipeline can read, or that the shaders carry for themselves, share one.
+	 *
+	 * Every site that looks a key up must apply this, and apply it the same way, or the draw and
+	 * the prefetch that was meant to anticipate it would not name the same pipeline.
+	 */
+	void canonicalize(MVKPixelFormats* pixFmts, bool dynamicVertexStride);
+
+	/** Returns a key with every byte, padding included, cleared. */
+	static MVKShaderObjectPipelineKey zeroed() {
+		MVKShaderObjectPipelineKey key;
+		memset(&key, 0, sizeof(key));
+		return key;
+	}
+
+	bool operator==(const MVKShaderObjectPipelineKey& other) const {
+		return memcmp(this, &other, sizeof(*this)) == 0;
+	}
+	std::size_t hash() const {
+		return mvkHash((const uint64_t*)this, sizeof(*this) / sizeof(uint64_t));
+	}
+
+private:
+	/**
+	 * Replaces each binding's stride with the smallest one that lays the attributes out the same
+	 * way, and marks the strides as coming from the vertex buffer bindings, so that draws
+	 * differing only in stride share a pipeline.
+	 *
+	 * Metal can set the stride per draw where dynamicVertexStride is supported, so the value
+	 * baked into a pipeline does not matter, with one exception: MoltenVK synthesizes a
+	 * translation buffer for an attribute whose offset and size exceed the stride, and that
+	 * decision is baked. A stride large enough to hold every attribute needs no translation, so
+	 * all such strides are equivalent and collapse to one. A smaller stride does need it, and
+	 * keeps its own value and its own pipeline, as does a stride of zero, which Metal expresses
+	 * as a constant step function rather than as a stride.
+	 *
+	 * See setVertexBuffer:offset:attributeStride:atIndex: in
+	 * https://developer.apple.com/documentation/metal/mtlrendercommandencoder
+	 */
+	void canonicalizeVertexStrides(MVKPixelFormats* pixFmts);
+
+	/**
+	 * Drops the topology from the key where Metal does not need the pipeline to declare a
+	 * topology class, so that draws differing only in topology share one pipeline.
+	 *
+	 * Metal only consults the class where it has to route something: a layered target needs it to
+	 * place the layer index, and tessellation feeds patches through it. Anything else can leave it
+	 * unspecified, and one such pipeline rasterizes points, lines and triangles alike.
+	 *
+	 * See inputPrimitiveTopology in
+	 * https://developer.apple.com/documentation/metal/mtlrenderpipelinedescriptor
+	 */
+	void canonicalizeTopology();
+
+	/**
+	 * Folds state the built pipeline never reads to one value, so that draws differing only in
+	 * state that cannot reach Metal share a pipeline.
+	 *
+	 * Blend state belongs to an attachment that is being rendered to, a blend equation is read
+	 * only where blending is enabled, a logic op only where it is enabled, and a domain origin
+	 * only where there is a tessellation stage to apply it. A sample mask is consulted only for
+	 * the samples the draw has, so one covering all of them is the same as no mask at all.
+	 */
+	void canonicalizeUnusedState();
+
+	/**
+	 * Drops vertex attributes the vertex shader does not read, so that draws differing only in
+	 * the rest of the layout share a pipeline.
+	 *
+	 * Vulkan lets a layout describe attributes a shader ignores, and they reach nothing but the
+	 * vertex descriptor the pipeline is built with, so a draw that changes one of them is asking
+	 * for a pipeline that draws exactly what the last one did. Where the locations a shader reads
+	 * cannot be established, the whole layout is kept.
+	 */
+	void canonicalizeVertexAttributes();
+
+	/**
+	 * Hands the fragment output operations to the fragment shader where the draw actually uses
+	 * one, and clears the state it then reads from a buffer instead.
+	 *
+	 * Metal bakes blending, the colour write mask, the sample mask, alpha to coverage and alpha
+	 * to one into the pipeline, and the sample mask into the shader itself, so under
+	 * VK_EXT_shader_object, where a draw can change any of them, each combination would cost a
+	 * pipeline and a compile. Handing them to the shader leaves a single Metal pipeline per set
+	 * of shaders, and changing any of the state costs a buffer update rather than a build.
+	 *
+	 * A draw that writes every channel straight through with the defaults is left alone. It uses
+	 * none of these operations, so it would gain no pipeline, and the rewritten shader reads the
+	 * attachment it writes and writes a sample mask, which gives up the hidden surface removal
+	 * and the early depth test that opaque geometry depends on. That leaves exactly two shapes of
+	 * fragment shader, which is one bit in the key rather than a value per configuration.
+	 */
+	void canonicalizeFragmentOutputState();
+
+	/** Returns whether any attachment being rendered to blends or masks a channel. */
+	bool blendsOrMasks() const;
+
+	/** Returns whether the draw departs from the defaults for the sample mask or the alpha operations. */
+	bool coversPartially() const;
+
+	/** Clears the vertex layout a shader that loads its own attributes reads from a buffer instead. */
+	void dropVertexInput() {
+		memset(&vertexInput, 0, sizeof(vertexInput));
+		pullVertices = 1;
+	}
+};
+
+static_assert(sizeof(MVKShaderObjectPipelineKey) % sizeof(uint64_t) == 0,
+			  "The key is hashed as whole 64-bit words, so its size must be a multiple of one.");
+
+struct MVKShaderObjectPipelineKeyHash {
+	std::size_t operator()(const MVKShaderObjectPipelineKey& key) const { return key.hash(); }
+};
+
+/**
+ * Builds and retains the pipelines that bound shader objects and render state amount to.
+ *
+ * On Metal 4 devices, compute pipelines and unspecialized Metal 4 graphics pipeline templates
+ * are prepared synchronously during vkCreateShadersEXT across compatible live shader tuples,
+ * and draws only specialize color attachment formats and blend/write-mask state without
+ * translating SPIR-V or compiling application shader bodies. Legacy tessellation draws still
+ * use the per-key pipeline cache. Pipelines are kept until the device or a participating
+ * shader is destroyed.
+ */
+class MVKShaderObjectPipelines : public MVKBaseObject {
+
+public:
+
+	MVKVulkanAPIObject* getVulkanAPIObject() override;
+
+	/**
+	 * Returns the pipeline for the given key, building it on first use. Returns null on failure.
+	 *
+	 * The build runs outside the cache lock, so different keys build in parallel. A second caller
+	 * for a key that is already being built waits for that build rather than starting another.
+	 * If supplied, pCompiledOrWaited is set when this call builds or waits for a pipeline.
+	 */
+	MVKGraphicsPipeline* getPipeline(const MVKShaderObjectPipelineKey& key, bool* pCompiledOrWaited = nullptr);
+
+	/**
+	 * Builds the pipeline for the given key on a background thread, if it is not already cached
+	 * or being built. Called when a draw is recorded, so that by the time the command buffer is
+	 * submitted the pipeline it needs already exists, and the submit path finds it instead of
+	 * building it. The shaders in the key are retained for the duration of the build.
+	 */
+	void prefetchPipeline(const MVKShaderObjectPipelineKey& key);
+
+	/** Discards every pipeline built from the given shader, which is about to be destroyed. */
+	void removeShader(MVKShader* shader);
+
+	/** Prepares and retains a compute pipeline before the shader is published. */
+	VkResult prepareComputePipeline(MVKShader* shader);
+
+	/** Prepares Metal 4 pipeline templates for an unlinked graphics shader before it is published. */
+	VkResult prepareGraphicsShader(MVKShader* shader);
+
+	/** Prepares Metal 4 pipeline templates for a linked shader group before it is published. */
+	VkResult prepareLinkedShaders(MVKShader*const* shaders, uint32_t count);
+
+	/** Returns whether creation-time Metal 4 graphics templates are enabled on this device. */
+	bool isMetal4Enabled() const;
+
+	/**
+	 * Looks up a creation-time Metal 4 pipeline template and specializes it for concrete
+	 * attachment formats and blend state. Never translates SPIR-V or compiles application bodies.
+	 */
+	bool getMetal4Pipeline(const MVKShaderObjectShapeKey& shapeKey,
+						   const MVKShaderObjectSpecializationKey& specKey,
+						   MVKGraphicsPipeline*& outTemplate,
+						   id<MTLRenderPipelineState>& outMTLState);
+
+	/**
+	 * Looks up creation-time Metal 4 compute-tessellation Stage 1, Stage 2, and Stage 3 pipelines
+	 * and specializes Stage 3 for concrete attachment formats and blend state.
+	 */
+	bool getMetal4TessellationPipeline(MVKShader* vs, MVKShader* tcs, MVKShader* tes,
+									   const MVKShaderObjectShapeKey& stage3ShapeKey,
+									   const MVKShaderObjectSpecializationKey& specKey,
+									   MVKGraphicsPipeline*& outStage1,
+									   MVKGraphicsPipeline*& outStage2,
+									   MVKGraphicsPipeline*& outStage3,
+									   id<MTLRenderPipelineState>& outMTLState);
+
+	/** Returns the built-in compute tessellator pipeline states (compiled at shader creation). */
+	id<MTLComputePipelineState> getTessResetPipelineState() const { return _tessResetState; }
+	id<MTLComputePipelineState> getTessCountPipelineState() const { return _tessCountState; }
+	id<MTLComputePipelineState> getTessEmitPipelineState() const { return _tessEmitState; }
+
+	/** Returns a compute pipeline prepared during shader creation, or null on an invariant failure. */
+	MVKComputePipeline* getComputePipeline(MVKShader* shader);
+
+	MVKShaderObjectPipelines(MVKDevice* device);
+
+	~MVKShaderObjectPipelines();
+
+protected:
+	MVKGraphicsPipeline* newPipeline(const MVKShaderObjectPipelineKey& key);
+	MVKComputePipeline* newComputePipeline(MVKShader* shader, VkResult& result);
+	bool initNoOpFragmentLibraryLocked();
+	bool initComputeTessellatorLocked();
+	bool areStagesCompatible(MVKShader* prev, MVKShader* next) const;
+	bool areTessCtlEvalCompatible(MVKShader* tcs, MVKShader* tes, mvk::SPIRVTessReflectionData& outMerged) const;
+	void collectShapesForVertex(MVKShader* vs, std::vector<MVKShaderObjectShapeKey>& outShapes) const;
+	void collectShapesForPair(MVKShader* vs, MVKShader* fs, std::vector<MVKShaderObjectShapeKey>& outShapes) const;
+	void collectShapesForTessEval(MVKShader* tcs, MVKShader* tes, const mvk::SPIRVTessReflectionData& refl, std::vector<MVKShaderObjectShapeKey>& outShapes) const;
+	void collectShapesForTessPair(MVKShader* tcs, MVKShader* tes, MVKShader* fs, const mvk::SPIRVTessReflectionData& refl, std::vector<MVKShaderObjectShapeKey>& outShapes) const;
+	MVKGraphicsPipeline* newMetal4Template(const MVKShaderObjectShapeKey& shapeKey);
+	MVKGraphicsPipeline* newTessStage1(MVKShader* vs, MVKShader* tcs);
+	MVKGraphicsPipeline* newTessStage2(MVKShader* vs, MVKShader* tcs, MVKShader* tes);
+	VkResult buildTemplatesInParallel(const std::vector<MVKShaderObjectShapeKey>& shapes,
+									  std::vector<MVKGraphicsPipeline*>& outBuilt);
+
+	MVKDevice* _device;
+	/** A cache entry. While building is set the pipeline is not yet valid and waiters block on _built. */
+	struct Entry {
+		MVKGraphicsPipeline* pipeline = nullptr;
+		bool building = false;
+	};
+	std::unordered_map<MVKShaderObjectPipelineKey, Entry, MVKShaderObjectPipelineKeyHash> _pipelines;
+	std::unordered_map<MVKShader*, MVKComputePipeline*> _computePipelines;
+	std::unordered_set<MVKShader*> _computePipelinesBuilding;
+	std::mutex _lock;
+	std::condition_variable _built;
+	dispatch_group_t _prefetches;
+
+	// Creation-time Metal 4 graphics template state.
+	MVKSmallVector<uint8_t, 4> _supportedSampleCounts;
+	id<MTLLibrary> _noOpFragmentLibrary = nil;
+	id<MTLLibrary> _tessLib = nil;
+	id<MTLComputePipelineState> _tessResetState = nil;
+	id<MTLComputePipelineState> _tessCountState = nil;
+	id<MTLComputePipelineState> _tessEmitState = nil;
+	std::vector<MVKShader*> _liveVertexShaders;
+	std::vector<MVKShader*> _liveTessCtlShaders;
+	std::vector<MVKShader*> _liveTessEvalShaders;
+	std::vector<MVKShader*> _liveFragmentShaders;
+	std::unordered_map<MVKShaderObjectShapeKey, MVKGraphicsPipeline*, MVKShaderObjectShapeKeyHash> _metal4Templates;
+	std::unordered_map<MVKShaderObjectTessStage1Key, MVKGraphicsPipeline*, MVKShaderObjectTessStage1KeyHash> _tessStage1;
+	std::unordered_map<MVKShaderObjectTessStage2Key, MVKGraphicsPipeline*, MVKShaderObjectTessStage2KeyHash> _tessStage2;
+	std::mutex _creationMutex;
+	std::shared_mutex _publishedLock;
 };
 
 
@@ -472,13 +949,15 @@ public:
 	MVKComputePipeline(MVKDevice* device,
 					   MVKPipelineCache* pipelineCache,
 					   MVKPipeline* parent,
-					   const VkComputePipelineCreateInfo* pCreateInfo);
+					   const VkComputePipelineCreateInfo* pCreateInfo,
+					   MVKMTLBinaryArchive* shaderBinaryArchive = nullptr);
 
 	~MVKComputePipeline() override;
 
 protected:
     MVKMTLFunction getMTLFunction(const VkComputePipelineCreateInfo* pCreateInfo,
-								  VkPipelineCreationFeedback* pStageFB);
+								  VkPipelineCreationFeedback* pStageFB,
+								  bool deferSpecialization = false);
 	uint32_t getImplicitBufferIndex(uint32_t bufferIndexOffset);
 
     id<MTLComputePipelineState> _mtlPipelineState;
@@ -525,6 +1004,9 @@ public:
 	/** Merges the contents of the specified number of pipeline caches into this cache. */
 	VkResult mergePipelineCaches(uint32_t srcCacheCount, const VkPipelineCache* pSrcCaches);
 
+	/** Returns the archive of compiled pipelines this cache carries between runs. */
+	MVKMTLBinaryArchive* getBinaryArchive() { return &_mtlBinaryArchive; }
+
 #pragma mark Construction
 
 	/** Constructs an instance for the specified device. */
@@ -547,6 +1029,7 @@ protected:
 	void markDirty();
 
 	std::unordered_map<MVKShaderModuleKey, MVKShaderLibraryCache*> _shaderCache;
+	MVKMTLBinaryArchive _mtlBinaryArchive;
 	size_t _dataSize = 0;
 	std::mutex _shaderCacheLock;
 	bool _isExternallySynchronized = false;

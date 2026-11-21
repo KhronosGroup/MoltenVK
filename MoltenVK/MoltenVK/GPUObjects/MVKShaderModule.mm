@@ -17,7 +17,10 @@
  */
 
 #include "MVKShaderModule.h"
+#include <MoltenVKShaderConverter/SPIRVBlendInShader.h>
+#include <MoltenVKShaderConverter/SPIRVVertexPulling.h>
 #include "MVKPipeline.h"
+#include <MoltenVKShaderConverter/SPIRVDepthClip.h>
 #include "MVKFoundation.h"
 #include <sys/stat.h>
 
@@ -32,6 +35,9 @@ MVKMTLFunction::MVKMTLFunction(id<MTLFunction> mtlFunc, const SPIRVToMSLConversi
 
 MVKMTLFunction::MVKMTLFunction(const MVKMTLFunction& other) {
 	_mtlFunction = [other._mtlFunction retain];		// retained
+	_mtlLibrary = [other._mtlLibrary retain];		// retained
+	_mtlFunctionName = [other._mtlFunctionName retain];		// retained
+	_mtlFunctionConstantValues = [other._mtlFunctionConstantValues retain];		// retained
 	shaderConversionResults = other.shaderConversionResults;
 	threadGroupSize = other.threadGroupSize;
 }
@@ -41,14 +47,31 @@ MVKMTLFunction& MVKMTLFunction::operator=(const MVKMTLFunction& other) {
 	[other._mtlFunction retain];
 	[_mtlFunction release];
 	_mtlFunction = other._mtlFunction;
+	setDeferredSpecialization(other._mtlLibrary, other._mtlFunctionName, other._mtlFunctionConstantValues);
 
 	shaderConversionResults = other.shaderConversionResults;
 	threadGroupSize = other.threadGroupSize;
 	return *this;
 }
 
+void MVKMTLFunction::setDeferredSpecialization(id<MTLLibrary> mtlLibrary, NSString* mtlFunctionName, MTLFunctionConstantValues* mtlFCVals) {
+	// Retain new objects first in case they are the same objects
+	[mtlLibrary retain];
+	[mtlFunctionName retain];
+	[mtlFCVals retain];
+	[_mtlLibrary release];
+	[_mtlFunctionName release];
+	[_mtlFunctionConstantValues release];
+	_mtlLibrary = mtlLibrary;
+	_mtlFunctionName = mtlFunctionName;
+	_mtlFunctionConstantValues = mtlFCVals;
+}
+
 MVKMTLFunction::~MVKMTLFunction() {
 	[_mtlFunction release];
+	[_mtlLibrary release];
+	[_mtlFunctionName release];
+	[_mtlFunctionConstantValues release];
 }
 
 
@@ -71,7 +94,8 @@ static uint32_t getWorkgroupDimensionSize(const SPIRVWorkgroupSizeDimension& wgD
 
 MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpecializationInfo,
 												VkPipelineCreationFeedback* pShaderFeedback,
-												MVKShaderModule* shaderModule) {
+												MVKShaderModule* shaderModule,
+												bool deferSpecialization) {
 
 	if ( !_mtlLibrary ) { return MVKMTLFunctionNull; }
 
@@ -98,13 +122,21 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 		if (!spec_list.empty()) {
 			// Sort the specialization list before it is used as a key to index the variants
 			std::sort(spec_list.begin(), spec_list.end());
-			auto entry = _specializationVariants.find(spec_list);
-			if (entry != _specializationVariants.end()) {
-				lib = entry->second->_mtlLibrary;
-			} else {
+			{
+				std::lock_guard<std::mutex> lock(_specializationLock);
+				auto entry = _specializationVariants.find(spec_list);
+				if (entry != _specializationVariants.end()) {
+					lib = entry->second->_mtlLibrary;
+				}
+			}
+			if (lib == _mtlLibrary) {
 				MVKShaderLibrary *new_mvklib = new MVKShaderLibrary(_owner, _shaderConversionResultInfo, _compressedMSL, &spec_list);
-				_specializationVariants[spec_list] = new_mvklib;
-				lib = new_mvklib->_mtlLibrary;
+				std::lock_guard<std::mutex> lock(_specializationLock);
+				auto [iter, inserted] = _specializationVariants.emplace(spec_list, new_mvklib);
+				if (!inserted) {
+					delete new_mvklib;
+				}
+				lib = iter->second->_mtlLibrary;
 			}
 		}
 	}
@@ -124,6 +156,7 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 				pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime);
 			}
 
+			MTLFunctionConstantValues* deferredFCVals = nil;
 			if (mtlFunc) {
 				// If the Metal function expects to be specialized, populate Metal function constant values from
 				// the Vulkan specialization info, and compile a specialized Metal function, otherwise simply use
@@ -149,14 +182,20 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 						}
 					}
 
-					// Compile the specialized Metal function, and use it instead of the unspecialized Metal function.
-					MVKFunctionSpecializer fs(_owner);
-					if (pShaderFeedback) {
-						startTime = mvkGetTimestamp();
-					}
-					mtlFunc = [fs.newMTLFunction(lib, mtlFuncName, mtlFCVals) autorelease];
-					if (pShaderFeedback) {
-						pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime);
+					if (deferSpecialization) {
+						// The caller builds its pipeline from the library and name, and applies
+						// these values itself as part of that build.
+						deferredFCVals = mtlFCVals;
+					} else {
+						// Compile the specialized Metal function, and use it instead of the unspecialized Metal function.
+						MVKFunctionSpecializer fs(_owner);
+						if (pShaderFeedback) {
+							startTime = mvkGetTimestamp();
+						}
+						mtlFunc = [fs.newMTLFunction(lib, mtlFuncName, mtlFCVals) autorelease];
+						if (pShaderFeedback) {
+							pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime);
+						}
 					}
 				}
 			}
@@ -167,9 +206,11 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 			_owner->setMetalObjectLabel(mtlFunc, dbName);
 
 			auto& wgSize = _shaderConversionResultInfo.entryPoint.workgroupSize;
-			return MVKMTLFunction(mtlFunc, _shaderConversionResultInfo, MTLSizeMake(getWorkgroupDimensionSize(wgSize.width, pSpecializationInfo),
-																					getWorkgroupDimensionSize(wgSize.height, pSpecializationInfo),
-																					getWorkgroupDimensionSize(wgSize.depth, pSpecializationInfo)));
+			MVKMTLFunction func(mtlFunc, _shaderConversionResultInfo, MTLSizeMake(getWorkgroupDimensionSize(wgSize.width, pSpecializationInfo),
+																				  getWorkgroupDimensionSize(wgSize.height, pSpecializationInfo),
+																				  getWorkgroupDimensionSize(wgSize.depth, pSpecializationInfo)));
+			if (deferSpecialization && mtlFunc) { func.setDeferredSpecialization(lib, mtlFuncName, deferredFCVals); }
+			return func;
 		}
 	}
 }
@@ -396,7 +437,8 @@ MVKShaderLibraryCache::~MVKShaderLibraryCache() {
 MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration* pShaderConfig,
 											   const VkSpecializationInfo* pSpecializationInfo,
 											   MVKPipeline* pipeline,
-											   VkPipelineCreationFeedback* pShaderFeedback) {
+											   VkPipelineCreationFeedback* pShaderFeedback,
+											   bool deferSpecialization) {
 	MVKShaderLibrary* mvkLib = _directMSLLibrary;
 	if ( !mvkLib ) {
 		uint64_t startTime = pShaderFeedback ? mvkGetTimestamp() : getPerformanceTimestamp();
@@ -412,7 +454,7 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration
 		pShaderConfig->markAllInterfaceVarsAndResourcesUsed();
 	}
 
-	return mvkLib ? mvkLib->getMTLFunction(pSpecializationInfo, pShaderFeedback, this) : MVKMTLFunctionNull;
+	return mvkLib ? mvkLib->getMTLFunction(pSpecializationInfo, pShaderFeedback, this, deferSpecialization) : MVKMTLFunctionNull;
 }
 
 bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pShaderConfig,
@@ -548,6 +590,403 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 
 MVKShaderModule::~MVKShaderModule() {
 	if (_directMSLLibrary) { _directMSLLibrary->destroy(); }
+}
+
+
+#pragma mark -
+#pragma mark MVKShader
+
+void MVKShader::initSpecialization(const VkSpecializationInfo* pSpecInfo) {
+	_specializationEntries.clear();
+	_specializationData.clear();
+	_specializationInfo = {};
+	_hasSpecializationInfo = false;
+	if ( !pSpecInfo ) { return; }
+
+	_specializationEntries.reserve(pSpecInfo->mapEntryCount);
+	for (uint32_t i = 0; i < pSpecInfo->mapEntryCount; i++) {
+		_specializationEntries.push_back(pSpecInfo->pMapEntries[i]);
+	}
+	_specializationData.resize(pSpecInfo->dataSize);
+	if (pSpecInfo->dataSize) { memcpy(_specializationData.data(), pSpecInfo->pData, pSpecInfo->dataSize); }
+
+	_specializationInfo.mapEntryCount = pSpecInfo->mapEntryCount;
+	_specializationInfo.pMapEntries = _specializationEntries.data();
+	_specializationInfo.dataSize = pSpecInfo->dataSize;
+	_specializationInfo.pData = _specializationData.data();
+	_hasSpecializationInfo = true;
+}
+
+void MVKShader::initLayout(const VkShaderCreateInfoEXT* pCreateInfo) {
+	VkPipelineLayoutCreateInfo plCreateInfo = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.setLayoutCount = pCreateInfo->setLayoutCount,
+		.pSetLayouts = pCreateInfo->pSetLayouts,
+		.pushConstantRangeCount = pCreateInfo->pushConstantRangeCount,
+		.pPushConstantRanges = pCreateInfo->pPushConstantRanges,
+	};
+	_pipelineLayout = MVKPipelineLayout::Create(getDevice(), &plCreateInfo);
+}
+
+void MVKShader::initFromSPIRV(const VkShaderCreateInfoEXT* pCreateInfo, const void* pCode, size_t codeSize, const char* pName) {
+	VkShaderModuleCreateInfo smCreateInfo = {
+		.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.codeSize = codeSize,
+		.pCode = (const uint32_t*)pCode,
+	};
+	_shaderModule = new MVKShaderModule(getDevice(), &smCreateInfo);
+	setConfigurationResult(_shaderModule->getConfigurationResult());
+	_entryPointName = pName ? pName : "main";
+
+	// Only Apple GPUs can read a color attachment back in the fragment function, which the
+	// rewrite depends on.
+	if (_stage == VK_SHADER_STAGE_FRAGMENT_BIT && getPhysicalDevice()->getMTLDeviceCapabilities().isAppleGPU) {
+		_canBlendInShader = mvk::canBlendFragmentOutputsInShader(_shaderModule->getSPIRV(), &_canDeriveCoverage, _entryPointName.c_str());
+	}
+	if (_stage == VK_SHADER_STAGE_FRAGMENT_BIT) { _shaderModule->prepareFragmentOutput(); }
+
+	// Loading attributes in the shader reaches the vertex buffers through their GPU addresses,
+	// available on the same terms as VK_KHR_buffer_device_address, and replaces work that
+	// Apple GPUs, having no vertex fetch hardware, do in the vertex function anyway.
+	if (_stage == VK_SHADER_STAGE_VERTEX_BIT && getPhysicalDevice()->getMTLDeviceCapabilities().isAppleGPU &&
+		getMetalFeatures().argumentBuffersTier >= MTLArgumentBuffersTier2 && mvkSupportsBufferDeviceAddress()) {
+		_canPullVertices = mvk::canPullVerticesInShader(_shaderModule->getSPIRV(), _entryPointName.c_str());
+		if (_canPullVertices) {
+			std::string pullLog;
+			if ( !_shaderModule->prepareVertexPulling(pullLog, _entryPointName.c_str()) ) {
+				reportWarning(VK_ERROR_FEATURE_NOT_PRESENT,
+							  "vkCreateShadersEXT(): Could not prepare vertex pulling; using the vertex layout: %s",
+							  pullLog.c_str());
+				_canPullVertices = false;
+			}
+		}
+	}
+
+	reflectForPipelineKeys();
+}
+
+void MVKShader::initFromBinary(const VkShaderCreateInfoEXT* pCreateInfo) {
+	// A binary that is too short to hold a header cannot be one of ours, and is rejected the
+	// same way as one built by a different driver or an incompatible version of this one.
+	// The first version of the layout ends before the specialization fields, and is otherwise
+	// laid out the same way.
+	static constexpr size_t kV1HeaderSize = offsetof(MVKShaderBinaryHeader, specializationEntryCount);
+	if ( !pCreateInfo->pCode || pCreateInfo->codeSize < kV1HeaderSize) {
+		setConfigurationResult(VK_INCOMPATIBLE_SHADER_BINARY_EXT);
+		return;
+	}
+
+	MVKShaderBinaryHeader hdr = {};
+	memcpy(&hdr, pCreateInfo->pCode, kV1HeaderSize);
+
+	// Vulkan guarantees that a binary from a device reporting the same shaderBinaryUUID and the same
+	// or a lower shaderBinaryVersion is usable, so each earlier layout continues to be read.
+	if (hdr.magic != kMVKShaderBinaryMagic ||
+		hdr.version < kMVKShaderBinaryMinVersion || hdr.version > kMVKShaderBinaryVersion ||
+		memcmp(hdr.uuid, getDeviceProperties().pipelineCacheUUID, VK_UUID_SIZE) != 0 ||
+		hdr.nameSize == 0 ||
+		hdr.stage != (uint32_t)pCreateInfo->stage) {
+
+		setConfigurationResult(VK_INCOMPATIBLE_SHADER_BINARY_EXT);
+		return;
+	}
+
+	// The first layout stored no specialization, and was always recreated with the create info's.
+	bool hasStoredSpecialization = hdr.version >= 2;
+	size_t hdrSize = hasStoredSpecialization ? sizeof(MVKShaderBinaryHeader) : kV1HeaderSize;
+	if (pCreateInfo->codeSize < hdrSize) {
+		setConfigurationResult(VK_INCOMPATIBLE_SHADER_BINARY_EXT);
+		return;
+	}
+	if (hasStoredSpecialization) { memcpy(&hdr, pCreateInfo->pCode, hdrSize); }
+
+	// The code is SPIR-V, which is a whole number of words starting with its magic number.
+	if (hdr.codeSize < sizeof(uint32_t) || (hdr.codeSize % sizeof(uint32_t)) != 0) {
+		setConfigurationResult(VK_INCOMPATIBLE_SHADER_BINARY_EXT);
+		return;
+	}
+
+	size_t remainingSize = pCreateInfo->codeSize - hdrSize;
+	if (hdr.codeSize > remainingSize) {
+		setConfigurationResult(VK_INCOMPATIBLE_SHADER_BINARY_EXT);
+		return;
+	}
+	remainingSize -= hdr.codeSize;
+	if (hdr.nameSize > remainingSize) {
+		setConfigurationResult(VK_INCOMPATIBLE_SHADER_BINARY_EXT);
+		return;
+	}
+	remainingSize -= hdr.nameSize;
+	if (hdr.specializationEntryCount > remainingSize / sizeof(MVKShaderBinarySpecializationEntry)) {
+		setConfigurationResult(VK_INCOMPATIBLE_SHADER_BINARY_EXT);
+		return;
+	}
+	size_t specializationEntriesSize = (size_t)hdr.specializationEntryCount * sizeof(MVKShaderBinarySpecializationEntry);
+	remainingSize -= specializationEntriesSize;
+	if (hdr.specializationDataSize > remainingSize) {
+		setConfigurationResult(VK_INCOMPATIBLE_SHADER_BINARY_EXT);
+		return;
+	}
+	remainingSize -= hdr.specializationDataSize;
+	if (hdr.archiveSize != remainingSize) {
+		setConfigurationResult(VK_INCOMPATIBLE_SHADER_BINARY_EXT);
+		return;
+	}
+
+	const uint8_t* pBody = (const uint8_t*)pCreateInfo->pCode + hdrSize;
+	const char* pName = (const char*)(pBody + hdr.codeSize);
+
+	uint32_t spvMagic;
+	memcpy(&spvMagic, pBody, sizeof(spvMagic));
+	if (spvMagic != spv::MagicNumber) {
+		setConfigurationResult(VK_INCOMPATIBLE_SHADER_BINARY_EXT);
+		return;
+	}
+
+	// The entry point name is stored NUL-terminated, so a binary whose final byte is not a
+	// NUL has been truncated or tampered with, and must not be read past.
+	if (pName[hdr.nameSize - 1] != '\0') {
+		setConfigurationResult(VK_INCOMPATIBLE_SHADER_BINARY_EXT);
+		return;
+	}
+
+	// Copy the fixed-width serialized specialization entries into aligned Vulkan entries.
+	const uint8_t* pSpecEntries = (const uint8_t*)pName + hdr.nameSize;
+	std::vector<VkSpecializationMapEntry> specEntries(hdr.specializationEntryCount);
+	for (uint32_t i = 0; i < hdr.specializationEntryCount; i++) {
+		MVKShaderBinarySpecializationEntry entry;
+		memcpy(&entry, pSpecEntries + i * sizeof(entry), sizeof(entry));
+		// Each entry must lie within the data, as Vulkan requires of the specialization it came from.
+		if (entry.offset > hdr.specializationDataSize || entry.size > hdr.specializationDataSize - entry.offset) {
+			setConfigurationResult(VK_INCOMPATIBLE_SHADER_BINARY_EXT);
+			return;
+		}
+		specEntries[i] = { entry.constantID, entry.offset, (size_t)entry.size };
+	}
+	const uint8_t* pSpecData = pSpecEntries + specializationEntriesSize;
+
+	// The binary stands for the shader it was retrieved from, specialization included, so the
+	// specialization it carries replaces whatever the create info names, which Vulkan does not
+	// constrain for binary code.
+	if (hasStoredSpecialization) {
+		VkSpecializationInfo binarySpecInfo = {
+			.mapEntryCount = hdr.specializationEntryCount,
+			.pMapEntries = specEntries.data(),
+			.dataSize = hdr.specializationDataSize,
+			.pData = pSpecData,
+		};
+		initSpecialization(hdr.specializationEntryCount || hdr.specializationDataSize ? &binarySpecInfo : nullptr);
+	}
+
+	// The pipelines this shader took part in when the binary was written. Metal decides for itself
+	// whether they are usable here, and silently builds the ones that are not.
+	if (hdr.archiveSize) {
+		_binaryArchive.setBytes(pSpecData + hdr.specializationDataSize, hdr.archiveSize);
+
+		// Open the archive eagerly during shader creation rather than on a later draw.
+		if (_device->getShaderObjectPipelines()->isMetal4Enabled()) {
+			_binaryArchive.getMTL4ArchiveForLookup();
+		} else {
+			_binaryArchive.getMTLBinaryArchiveForLookup();
+		}
+	}
+
+	initFromSPIRV(pCreateInfo, pBody, hdr.codeSize, pName);
+}
+
+// Vulkan guarantees that repeated calls return the same binary for the lifetime of the shader, so
+// the archive is captured the first time one is asked for and that capture is reused afterwards,
+// even though later draws may have added more pipelines to it.
+const std::vector<char>& MVKShader::getBinaryArchiveBytes() {
+	lock_guard<mutex> lock(_binaryArchiveSnapshotLock);
+	if ( !_hasBinaryArchiveSnapshot ) {
+		_binaryArchiveSnapshot = _binaryArchive.getBytes();
+		_hasBinaryArchiveSnapshot = true;
+	}
+	return _binaryArchiveSnapshot;
+}
+
+VkResult MVKShader::getBinaryData(size_t* pDataSize, void* pData) {
+	const std::vector<uint32_t>& spv = _shaderModule->getSPIRV();
+	const std::vector<char>& archive = getBinaryArchiveBytes();
+	if (spv.size() > UINT32_MAX / sizeof(uint32_t) ||
+		_entryPointName.size() >= UINT32_MAX ||
+		archive.size() > UINT32_MAX ||
+		_specializationEntries.size() > UINT32_MAX ||
+		_specializationData.size() > UINT32_MAX) {
+		return VK_ERROR_OUT_OF_HOST_MEMORY;
+	}
+	uint32_t codeSize = (uint32_t)(spv.size() * sizeof(uint32_t));
+	uint32_t nameSize = (uint32_t)(_entryPointName.size() + 1);
+	uint32_t archiveSize = (uint32_t)archive.size();
+	uint32_t specializationEntryCount = (uint32_t)_specializationEntries.size();
+	uint32_t specializationDataSize = (uint32_t)_specializationData.size();
+	size_t specializationEntriesSize = (size_t)specializationEntryCount * sizeof(MVKShaderBinarySpecializationEntry);
+	size_t binSize = sizeof(MVKShaderBinaryHeader) + codeSize + nameSize +
+					 specializationEntriesSize + specializationDataSize + archiveSize;
+
+	if ( !pData ) {
+		*pDataSize = binSize;
+		return VK_SUCCESS;
+	}
+
+	// Vulkan requires that a buffer too small to hold the binary is left untouched, and that
+	// the size reported back is the size actually written, which in that case is none of it.
+	if (*pDataSize < binSize) {
+		*pDataSize = 0;
+		return VK_INCOMPLETE;
+	}
+
+	MVKShaderBinaryHeader hdr = {};
+	hdr.magic = kMVKShaderBinaryMagic;
+	hdr.version = kMVKShaderBinaryVersion;
+	memcpy(hdr.uuid, getDeviceProperties().pipelineCacheUUID, VK_UUID_SIZE);
+	hdr.stage = _stage;
+	hdr.codeSize = codeSize;
+	hdr.nameSize = nameSize;
+	hdr.archiveSize = archiveSize;
+	hdr.specializationEntryCount = specializationEntryCount;
+	hdr.specializationDataSize = specializationDataSize;
+
+	uint8_t* pDst = (uint8_t*)pData;
+	memcpy(pDst, &hdr, sizeof(hdr));
+	memcpy(pDst + sizeof(hdr), spv.data(), codeSize);
+	memcpy(pDst + sizeof(hdr) + codeSize, _entryPointName.c_str(), nameSize);
+	uint8_t* pSpecEntries = pDst + sizeof(hdr) + codeSize + nameSize;
+	for (uint32_t i = 0; i < specializationEntryCount; i++) {
+		MVKShaderBinarySpecializationEntry entry = {
+			.constantID = _specializationEntries[i].constantID,
+			.offset = _specializationEntries[i].offset,
+			.size = _specializationEntries[i].size,
+		};
+		memcpy(pSpecEntries + i * sizeof(entry), &entry, sizeof(entry));
+	}
+	uint8_t* pSpecData = pSpecEntries + specializationEntriesSize;
+	if (specializationDataSize) { memcpy(pSpecData, _specializationData.data(), specializationDataSize); }
+	if (archiveSize) { memcpy(pSpecData + specializationDataSize, archive.data(), archiveSize); }
+
+	*pDataSize = binSize;
+	return VK_SUCCESS;
+}
+
+// Everything a pipeline key needs to know about the SPIR-V, answered once here rather than on
+// the draw that first asks. None of it can change for a given shader, and a draw that has to ask
+// is on the path this extension exists to keep clear.
+void MVKShader::reflectForPipelineKeys() {
+	const std::vector<uint32_t>& spirv = _shaderModule->getSPIRV();
+	std::string errorLog;
+
+	if (_stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
+		mvk::getShaderInputs(spirv, spv::ExecutionModelFragment, _entryPointName, _stageInputs, errorLog);
+		for (auto& in : _stageInputs) {
+			if (in.builtin == spv::BuiltInPrimitiveId && in.isUsed) { _readsPrimitiveId = true; break; }
+		}
+		MVKSmallVector<mvk::SPIRVShaderInterfaceVariable, 32> fragOutputs;
+		if (mvk::getShaderOutputs(spirv, spv::ExecutionModelFragment, _entryPointName, fragOutputs, errorLog)) {
+			for (auto& out : fragOutputs) {
+				if (out.builtin == spv::BuiltInSampleMask) { _writesSampleMask = true; }
+				if (out.builtin == spv::BuiltInMax && out.location == 0 &&
+					out.baseType == SPIRV_CROSS_NAMESPACE::SPIRType::Float && out.vecWidth == 4) {
+					_canDeriveCoverage = true;
+				}
+			}
+		}
+		return;
+	}
+
+	if (_stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) {
+		mvk::getShaderInputs(spirv, spv::ExecutionModelTessellationControl, _entryPointName, _stageInputs, errorLog);
+		mvk::getShaderOutputs(spirv, spv::ExecutionModelTessellationControl, _entryPointName, _stageOutputs, errorLog);
+		mvk::getTessStageReflectionData(spirv, spv::ExecutionModelTessellationControl, _entryPointName, _tessReflectData, errorLog);
+		return;
+	}
+
+	// Only a shader that writes a position the rewrite can reach takes the depth clip convention
+	// out of its pipeline key; anything else keeps it, and has the convention baked in as before.
+	spv::ExecutionModel model;
+	switch (_stage) {
+		case VK_SHADER_STAGE_VERTEX_BIT:					model = spv::ExecutionModelVertex;					break;
+		case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:	model = spv::ExecutionModelTessellationEvaluation;	break;
+		case VK_SHADER_STAGE_GEOMETRY_BIT:					model = spv::ExecutionModelGeometry;				break;
+		default:											return;		// Nothing below applies to a later stage.
+	}
+	_canMapDepthClip = mvk::canMapDepthClipInShader(spirv, errorLog, _entryPointName.c_str());
+
+	if (_stage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) {
+		mvk::getShaderInputs(spirv, spv::ExecutionModelTessellationEvaluation, _entryPointName, _stageInputs, errorLog);
+		mvk::getTessStageReflectionData(spirv, spv::ExecutionModelTessellationEvaluation, _entryPointName, _tessReflectData, errorLog);
+	}
+
+	// Track layer/viewport routing (needs explicit topology class in Metal) and Position output
+	// (required for rasterization). Assume both conservatively if reflection fails.
+	if (mvk::getShaderOutputs(spirv, model, _entryPointName, _stageOutputs, errorLog)) {
+		for (auto& output : _stageOutputs) {
+			if ((output.builtin == spv::BuiltInLayer || output.builtin == spv::BuiltInViewportIndex) && output.isUsed) {
+				_writesLayer = true;
+			}
+			if (output.builtin == spv::BuiltInPosition && output.isUsed) { _writesPosition = true; }
+		}
+	} else {
+		_writesLayer = true;
+		_writesPosition = true;
+	}
+
+	// An attribute the shader never reads cannot change what is drawn, but it does change the
+	// vertex descriptor a pipeline is built with, so knowing which locations are read lets draws
+	// that differ only in the rest of the layout share a pipeline. The reflection expands a matrix
+	// or an array across the run of locations it occupies, so each arrives here in its own right.
+	if (_stage != VK_SHADER_STAGE_VERTEX_BIT) { return; }
+	MVKSmallVector<mvk::SPIRVShaderInterfaceVariable, 32> inputs;
+	if ( !mvk::getShaderInputs(spirv, spv::ExecutionModelVertex, _entryPointName, inputs, errorLog) ) { return; }
+
+	_consumedVertexLocationsValid = true;
+	for (auto& input : inputs) {
+		if (input.builtin == spv::BuiltInViewIndex && input.isUsed) { _writesLayer = true; }
+		if (input.builtin != spv::BuiltInMax) { continue; }		// Builtins occupy no location.
+		if ( !input.isUsed ) { continue; }
+
+		// A 64-bit type wider than two components covers two locations, which the reflection
+		// above does not expand, so such a shader keeps its whole layout.
+		bool is64Bit = (input.baseType == SPIRV_CROSS_NAMESPACE::SPIRType::Double ||
+						input.baseType == SPIRV_CROSS_NAMESPACE::SPIRType::Int64 ||
+						input.baseType == SPIRV_CROSS_NAMESPACE::SPIRType::UInt64);
+		if (is64Bit || input.location >= 64) {
+			_consumedVertexLocationsValid = false;
+			return;
+		}
+		_consumedVertexLocations |= (1ull << input.location);
+	}
+}
+
+MVKShader::MVKShader(MVKDevice* device, const VkShaderCreateInfoEXT* pCreateInfo) :
+	MVKVulkanAPIDeviceObject(device), _binaryArchive(device) {
+	_stage = pCreateInfo->stage;
+	_nextStage = pCreateInfo->nextStage;
+	_flags = pCreateInfo->flags;
+
+	initSpecialization(pCreateInfo->pSpecializationInfo);
+	initLayout(pCreateInfo);
+
+	switch (pCreateInfo->codeType) {
+		case VK_SHADER_CODE_TYPE_SPIRV_EXT:
+			initFromSPIRV(pCreateInfo, pCreateInfo->pCode, pCreateInfo->codeSize, pCreateInfo->pName);
+			break;
+		case VK_SHADER_CODE_TYPE_BINARY_EXT:
+			initFromBinary(pCreateInfo);
+			break;
+		default:
+			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkCreateShadersEXT(): Unsupported shader code type %d.", pCreateInfo->codeType));
+			break;
+	}
+}
+
+MVKShader::~MVKShader() {
+	if (_shaderModule) { _shaderModule->destroy(); }
+	if (_pipelineLayout) { _pipelineLayout->destroy(); }
 }
 
 

@@ -33,6 +33,7 @@
 #include "MVKFoundation.h"
 #include "MVKStrings.h"
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
+#include <MoltenVKShaderConverter/SPIRVVertexPulling.h>
 
 #import "CAMetalLayer+MoltenVK.h"
 
@@ -692,6 +693,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				extDynState->extendedDynamicState = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT: {
+				auto* shdrObjFeatures = (VkPhysicalDeviceShaderObjectFeaturesEXT*)next;
+				shdrObjFeatures->shaderObject = supportsMetal4ShaderObjects();
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT: {
 				auto* extDynState2 = (VkPhysicalDeviceExtendedDynamicState2FeaturesEXT*)next;
 				extDynState2->extendedDynamicState2 = true;
@@ -1115,6 +1121,15 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				mvkCopy(physicalDeviceDriverProps->driverName, supportedProps12.driverName, VK_MAX_DRIVER_NAME_SIZE);
 				mvkCopy(physicalDeviceDriverProps->driverInfo, supportedProps12.driverInfo, VK_MAX_DRIVER_INFO_SIZE);
 				physicalDeviceDriverProps->conformanceVersion = supportedProps12.conformanceVersion;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_PROPERTIES_EXT: {
+				auto* shdrObjProps = (VkPhysicalDeviceShaderObjectPropertiesEXT*)next;
+				// A shader binary is the SPIR-V it was created from, wrapped in a header. It is
+				// therefore invalidated by exactly what invalidates the pipeline cache, so the
+				// two share a UUID rather than tracking the same inputs twice.
+				mvkCopy(shdrObjProps->shaderBinaryUUID, _properties.pipelineCacheUUID, VK_UUID_SIZE);
+				shdrObjProps->shaderBinaryVersion = kMVKShaderBinaryVersion;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES: {
@@ -3606,6 +3621,9 @@ void MVKPhysicalDevice::initExtensions() {
 		pWritableExtns->vk_AMD_shader_image_load_store_lod.enabled = false;
 		pWritableExtns->vk_IMG_format_pvrtc.enabled = false;
 	}
+	if (!supportsMetal4ShaderObjects()) {
+		pWritableExtns->vk_EXT_shader_object.enabled = false;
+	}
 
 #if MVK_USE_METAL_PRIVATE_API
 	if (!getMVKConfig().useMetalPrivateAPI) {
@@ -4368,6 +4386,74 @@ void MVKDevice::destroyQueryPool(MVKQueryPool* mvkQP,
 	if (mvkQP) { mvkQP->destroy(); }
 }
 
+VkResult MVKDevice::createShaders(uint32_t createInfoCount,
+								  const VkShaderCreateInfoEXT* pCreateInfos,
+								  const VkAllocationCallbacks* pAllocator,
+								  VkShaderEXT* pShaders) {
+	// Vulkan keeps the shaders created before a failure, and requires every handle from the
+	// failing one onward to be VK_NULL_HANDLE, so that the application can see how far it got
+	// and owns exactly the shaders that were created.
+	for (uint32_t i = 0; i < createInfoCount; i++) { pShaders[i] = VK_NULL_HANDLE; }
+
+	bool isLinkedGroup = createInfoCount > 1 && mvkIsAnyFlagEnabled(pCreateInfos[0].flags, VK_SHADER_CREATE_LINK_STAGE_BIT_EXT);
+	if (isLinkedGroup) {
+		MVKSmallVector<MVKShader*, 4> created;
+		created.reserve(createInfoCount);
+		VkResult rslt = VK_SUCCESS;
+		for (uint32_t i = 0; i < createInfoCount; i++) {
+			auto* mvkShdr = new MVKShader(this, &pCreateInfos[i]);
+			rslt = mvkShdr->getConfigurationResult();
+			if (rslt != VK_SUCCESS) {
+				mvkShdr->destroy();
+				return rslt;
+			}
+			created.push_back(mvkShdr);
+			pShaders[i] = (VkShaderEXT)mvkShdr;
+		}
+		rslt = _shaderObjectPipelines->prepareLinkedShaders(created.data(), createInfoCount);
+		if (rslt != VK_SUCCESS) {
+			for (uint32_t i = 0; i < createInfoCount; i++) {
+				created[i]->destroy();
+				pShaders[i] = VK_NULL_HANDLE;
+			}
+		}
+		return rslt;
+	}
+
+	VkResult rslt = VK_SUCCESS;
+	for (uint32_t i = 0; i < createInfoCount; i++) {
+		auto* mvkShdr = new MVKShader(this, &pCreateInfos[i]);
+		rslt = mvkShdr->getConfigurationResult();
+		if (rslt != VK_SUCCESS) {
+			mvkShdr->destroy();
+			break;
+		}
+		if (mvkShdr->getStage() == VK_SHADER_STAGE_COMPUTE_BIT) {
+			rslt = _shaderObjectPipelines->prepareComputePipeline(mvkShdr);
+		} else if (mvkShdr->getStage() == VK_SHADER_STAGE_VERTEX_BIT ||
+				   mvkShdr->getStage() == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT ||
+				   mvkShdr->getStage() == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT ||
+				   mvkShdr->getStage() == VK_SHADER_STAGE_FRAGMENT_BIT) {
+			rslt = _shaderObjectPipelines->prepareGraphicsShader(mvkShdr);
+		}
+		if (rslt != VK_SUCCESS) {
+			mvkShdr->destroy();
+			break;
+		}
+		pShaders[i] = (VkShaderEXT)mvkShdr;
+	}
+	return rslt;
+}
+
+void MVKDevice::destroyShader(MVKShader* mvkShdr,
+							  const VkAllocationCallbacks* pAllocator) {
+	if ( !mvkShdr ) { return; }
+
+	// Pipelines built from this shader hold its translated MSL, and outlive it otherwise.
+	_shaderObjectPipelines->removeShader(mvkShdr);
+	mvkShdr->destroy();
+}
+
 MVKShaderModule* MVKDevice::createShaderModule(const VkShaderModuleCreateInfo* pCreateInfo,
 											   const VkAllocationCallbacks* pAllocator) {
 	return new MVKShaderModule(this, pCreateInfo);
@@ -4780,6 +4866,7 @@ void MVKDevice::logPerformanceSummary() {
 	logDuration(shaderCompilation.functionRetrieval);
 	logDuration(shaderCompilation.functionSpecialization);
 	logDuration(shaderCompilation.pipelineCompile);
+	logDuration(shaderCompilation.pipelineCompileWhileEncoding);
 	logDuration(pipelineCache.sizePipelineCache);
 	logDuration(pipelineCache.readPipelineCache);
 	logDuration(pipelineCache.writePipelineCache);
@@ -4800,6 +4887,7 @@ const char* MVKDevice::getActivityPerformanceDescription(MVKPerformanceTracker& 
 	ifActivityReturnName(shaderCompilation.functionRetrieval,      "Retrieve a MTLFunction from a MTLLibrary");
 	ifActivityReturnName(shaderCompilation.functionSpecialization, "Specialize a retrieved MTLFunction");
 	ifActivityReturnName(shaderCompilation.pipelineCompile,        "Compile MTLFunctions into a pipeline");
+	ifActivityReturnName(shaderCompilation.pipelineCompileWhileEncoding, "Build or wait for a shader object pipeline while encoding");
 	ifActivityReturnName(pipelineCache.sizePipelineCache,          "Calculate pipeline cache size");
 	ifActivityReturnName(pipelineCache.readPipelineCache,          "Read MSL from pipeline cache");
 	ifActivityReturnName(pipelineCache.writePipelineCache,         "Write MSL to pipeline cache");
@@ -4901,6 +4989,18 @@ uint32_t MVKDevice::getViewCountInMetalPass(uint32_t viewMask, uint32_t passIdx)
 
 
 #pragma mark Metal
+
+bool MVKPhysicalDevice::supportsMetal4ShaderObjects() const {
+#if MVK_XCODE_26 && !MVK_OS_SIMULATOR
+	if (@available(macOS 26.0, iOS 26.0, *)) {
+		return _gpuCapabilities.supportsMetal4 &&
+			   _gpuCapabilities.isAppleGPU &&
+			   _metalFeatures.argumentBuffersTier >= MTLArgumentBuffersTier2 &&
+			   mvkSupportsBufferDeviceAddress();
+	}
+#endif
+	return false;
+}
 
 uint32_t MVKDevice::getMetalBufferIndexForVertexAttributeBinding(uint32_t binding) {
 	return ((_physicalDevice->_metalFeatures.maxPerStageBufferCount - 1) - binding);
@@ -5239,6 +5339,25 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 																? "Metal argument buffers" : "Metal3 argument buffers") : "discrete resource indexes");
 
 	_commandResourceFactory = new MVKCommandResourceFactory(this);
+
+#if MVK_XCODE_26 && !MVK_OS_SIMULATOR
+	if (_physicalDevice->supportsMetal4ShaderObjects()) {
+		if (@available(macOS 26.0, iOS 26.0, *)) {
+			@autoreleasepool {
+				MTL4CompilerDescriptor* compDesc = [MTL4CompilerDescriptor new];
+				NSError* compErr = nil;
+				_mtl4Compiler = [_physicalDevice->_mtlDevice newCompilerWithDescriptor:compDesc error:&compErr];
+				[compDesc release];
+				if ( !_mtl4Compiler && compErr ) {
+					reportWarning(VK_ERROR_INITIALIZATION_FAILED, "Could not create Metal 4 compiler: %s",
+								  compErr.localizedDescription.UTF8String);
+				}
+			}
+		}
+	}
+#endif
+
+	_shaderObjectPipelines = new MVKShaderObjectPipelines(this);
 
 	startAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE, _physicalDevice->_mtlDevice);
 
@@ -5590,6 +5709,10 @@ void MVKDevice::reservePrivateData(const VkDeviceCreateInfo* pCreateInfo) {
 }
 
 MVKDevice::~MVKDevice() {
+	if (_shaderObjectPipelines) { delete _shaderObjectPipelines; }
+	[_mtl4Compiler release];
+	_mtl4Compiler = nil;
+
 	if (_isPerformanceTracking) {
 		auto perfLogStyle = getMVKConfig().activityPerformanceLoggingStyle;
 		if (perfLogStyle == MVK_CONFIG_ACTIVITY_PERFORMANCE_LOGGING_STYLE_DEVICE_LIFETIME) {

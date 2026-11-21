@@ -17,6 +17,8 @@
  */
 
 #include "MVKPipeline.h"
+#include <MoltenVKShaderConverter/SPIRVBlendInShader.h>
+#include <MoltenVKShaderConverter/SPIRVVertexPulling.h>
 #include "MVKCommandBuffer.h"
 #include "MVKInlineObjectConstructor.h"
 #include "MVKImage.h"
@@ -439,6 +441,8 @@ static void populateResourceUsage(MVKPipelineStageResourceInfo& dst, SPIRVToMSLC
 	dst.implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::ViewRange,     results.needsViewRangeBuffer);
 	dst.implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::DrawId,        results.needsDrawId);
 	dst.implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::DepthClip,     results.needsDepthClipStateBuffer);
+	dst.implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::BlendState,    results.isBlendInShader);
+	dst.implicitBuffers.needed |= MVKImplicitBufferList(MVKImplicitBuffer::VertexPull,    results.isPullingVertices);
 
 	typedef SPIRV_CROSS_NAMESPACE::SPIRType SPIRType;
 	bool isArgBuf[kMVKMaxDescriptorSetCount] = {};
@@ -519,17 +523,21 @@ bool MVKGraphicsPipeline::compileTessVertexStageState(MTLComputePipelineDescript
     bool res = !!getOrCompilePipeline(vtxPLDesc, _mtlTessVertexStageState, vtxCompilerType);
 
 	vtxPLDesc.computeFunction = pVtxFunctions[1].getMTLFunction();
-    vtxPLDesc.stageInputDescriptor.indexType = MTLIndexTypeUInt16;
-    for (uint32_t i = 0; i < 31; i++) {
-		MTLBufferLayoutDescriptor* blDesc = vtxPLDesc.stageInputDescriptor.layouts[i];
-        if (blDesc.stepFunction == MTLStepFunctionThreadPositionInGridX) {
-                blDesc.stepFunction = MTLStepFunctionThreadPositionInGridXIndexed;
-        }
-    }
+	if ( !_isPullingVertices ) {
+		vtxPLDesc.stageInputDescriptor.indexType = MTLIndexTypeUInt16;
+		for (uint32_t i = 0; i < 31; i++) {
+			MTLBufferLayoutDescriptor* blDesc = vtxPLDesc.stageInputDescriptor.layouts[i];
+			if (blDesc.stepFunction == MTLStepFunctionThreadPositionInGridX) {
+				blDesc.stepFunction = MTLStepFunctionThreadPositionInGridXIndexed;
+			}
+		}
+	}
     res |= !!getOrCompilePipeline(vtxPLDesc, _mtlTessVertexStageIndex16State, vtxCompilerType);
 
 	vtxPLDesc.computeFunction = pVtxFunctions[2].getMTLFunction();
-    vtxPLDesc.stageInputDescriptor.indexType = MTLIndexTypeUInt32;
+	if ( !_isPullingVertices ) {
+		vtxPLDesc.stageInputDescriptor.indexType = MTLIndexTypeUInt32;
+	}
     res |= !!getOrCompilePipeline(vtxPLDesc, _mtlTessVertexStageIndex32State, vtxCompilerType);
 
 	if (pVertexFB) {
@@ -704,9 +712,23 @@ static bool usesConstantColor(MVKRenderStateFlags dynamic, const VkPipelineColor
 MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 										 MVKPipelineCache* pipelineCache,
 										 MVKPipeline* parent,
-										 const VkGraphicsPipelineCreateInfo* pCreateInfo) :
-	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, getPipelineCreateFlags(pCreateInfo), parent)
+										 const VkGraphicsPipelineCreateInfo* pCreateInfo,
+										 const MVKShaderObjectPipelineConfig& soConfig) :
+	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, getPipelineCreateFlags(pCreateInfo), parent),
+	_binaryArchive(soConfig.binaryArchive),
+	_neverRendersPoints(soConfig.neverRendersPoints),
+	_dynamicDepthClipRequested(soConfig.dynamicDepthClip)
 {
+	_blendInShaderRequested = soConfig.blendInShader;
+	_pullVerticesRequested = soConfig.pullVertices;
+	_isMetal4Template = soConfig.metal4Template;
+	_tessStageMode = soConfig.tessStageMode;
+	_isComputeTessellation = (_isMetal4Template && _tessStageMode == MVKShaderObjectTessStageMode::Stage3);
+	_dynamicSampleMaskRequested = soConfig.dynamicSampleMask;
+	_noOpFragmentRequested = soConfig.noOpFragment;
+	_fsReadsPrimitiveId = soConfig.fsReadsPrimitiveId;
+	_noOpFragmentLibrary = soConfig.noOpFragmentLibrary;
+	_noOpFragmentFunctionName = soConfig.noOpFragmentFunctionName;
 	// Extract dynamic state first, as it can affect many configurations.
 	initDynamicState(pCreateInfo);
 
@@ -718,8 +740,8 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 
 	// Determine rasterization early, as various other structs are validated and interpreted in this context.
 	const VkPipelineRenderingCreateInfo* pRendInfo = getRenderingCreateInfo(pCreateInfo);
-	_isRasterizing = !isRasterizationDisabled(pCreateInfo);
-	_isRasterizingColor = _isRasterizing && mvkHasColorAttachments(pRendInfo);
+	_isRasterizing = !soConfig.rasterizerDiscard && !isRasterizationDisabled(pCreateInfo);
+	_isRasterizingColor = _isRasterizing && (_isMetal4Template || mvkHasColorAttachments(pRendInfo));
 	populateRenderingAttachmentInfo(pCreateInfo);
 
 	const VkPipelineCreationFeedbackCreateInfo* pFeedbackInfo = nullptr;
@@ -804,10 +826,12 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	// Get the tessellation parameters from the shaders.
 	SPIRVTessReflectionData reflectData;
 	std::string reflectErrorLog;
-	if (pTessCtlSS && pTessEvalSS) {
+	if (_tessStageMode == MVKShaderObjectTessStageMode::Stage1) {
+		_isTessellationPipeline = true;
+	} else if (pTessCtlSS && pTessEvalSS) {
 		_isTessellationPipeline = true;
 
-		if (!getTessReflectionData(_tessCtlModule->getSPIRV(), pTessCtlSS->pName, _tessEvalModule->getSPIRV(), pTessEvalSS->pName, reflectData, reflectErrorLog) ) {
+		if (!mvk::getTessReflectionData(_tessCtlModule->getSPIRV(), pTessCtlSS->pName, _tessEvalModule->getSPIRV(), pTessEvalSS->pName, reflectData, reflectErrorLog) ) {
 			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to reflect tessellation shaders: %s", reflectErrorLog.c_str()));
 			return;
 		}
@@ -816,6 +840,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support isoline tessellation."));
 			return;
 		}
+		_tessReflectData = reflectData;
 	}
 
 	// Tessellation - must ignore allowed bad pTessellationState pointer if not tess pipeline
@@ -926,7 +951,10 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	MVKRenderStateFlags needed = MVKRenderStateFlags::all();
 	if (!_dynamicStateFlags.has(MVKRenderStateFlag::StencilTestEnable) && !_staticStateData.depthStencil.stencilTestEnabled)
 		needed.remove(MVKRenderStateFlag::StencilReference);
-	if (!_isRasterizingColor || !usesConstantColor(_dynamicStateFlags, pCreateInfo->pColorBlendState))
+	// A shader that blends for itself is handed the blend constants in its state buffer, so they
+	// remain live even though the pipeline it is built for names no constant factor.
+	if (!_blendInShaderRequested && !_isMetal4Template &&
+		(!_isRasterizingColor || !usesConstantColor(_dynamicStateFlags, pCreateInfo->pColorBlendState)))
 		needed.remove(MVKRenderStateFlag::BlendConstants);
 	if (_primitiveTopologyClass == MTLPrimitiveTopologyClassPoint || _primitiveTopologyClass == MTLPrimitiveTopologyClassLine)
 		needed.removeAll({ MVKRenderStateFlag::CullMode, MVKRenderStateFlag::FrontFace });
@@ -1002,10 +1030,20 @@ void MVKGraphicsPipeline::populateRenderingAttachmentInfo(const VkGraphicsPipeli
 id<MTLRenderPipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLRenderPipelineDescriptor* plDesc,
 																	 id<MTLRenderPipelineState>& plState) {
 	if ( !plState ) {
+		// The archive that will outlive this run: the cache the application asked for, or the
+		// shader object that will hand its binary back. It is searched only where an earlier run
+		// seeded it, and the pipeline is merely recorded here, to be written into it if and when
+		// the application asks for something that carries it.
+		MVKPipelineCache* plCache = getPipelineCache();
+		MVKMTLBinaryArchive* plArch = _binaryArchive ? _binaryArchive : (plCache ? plCache->getBinaryArchive() : nullptr);
+		id<MTLBinaryArchive> mtlArch = plArch ? plArch->getMTLBinaryArchiveForLookup() : nil;
+		if (mtlArch) { plDesc.binaryArchives = @[mtlArch]; }
+
 		MVKRenderPipelineCompiler* plc = new MVKRenderPipelineCompiler(this);
 		plState = plc->newMTLRenderPipelineState(plDesc);	// retained
 		plc->destroy();
 		if ( !plState ) { _hasValidMTLPipelineStates = false; }
+		if (plState && plArch) { plArch->recordRenderPipeline(plDesc); }
 	}
 	return plState;
 }
@@ -1100,7 +1138,30 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 		}
 	}
 
-	if (!isTessellationPipeline()) {
+	if (_tessStageMode == MVKShaderObjectTessStageMode::Stage1) {
+		SPIRVToMSLConversionConfiguration shaderConfig;
+		initShaderConversionConfig(shaderConfig, pCreateInfo, reflectData);
+		MVKMTLFunction vtxFunctions[3] = {};
+		MTLComputePipelineDescriptor* vtxPLDesc = newMTLTessVertexStageDescriptor(pCreateInfo, reflectData, shaderConfig, pVertexSS, pVertexFB, pTessCtlSS, vtxFunctions);
+		if (vtxPLDesc) {
+			compileTessVertexStageState(vtxPLDesc, vtxFunctions, pVertexFB);
+			[vtxPLDesc release];
+		} else {
+			_hasValidMTLPipelineStates = false;
+		}
+	} else if (_tessStageMode == MVKShaderObjectTessStageMode::Stage2) {
+		SPIRVToMSLConversionConfiguration shaderConfig;
+		initShaderConversionConfig(shaderConfig, pCreateInfo, reflectData);
+		MTLComputePipelineDescriptor* tcPLDesc = newMTLTessControlStageDescriptor(pCreateInfo, reflectData, shaderConfig, pTessCtlSS, pTessCtlFB, pVertexSS, pTessEvalSS);
+		if (tcPLDesc) {
+			compileTessControlStageState(tcPLDesc, pTessCtlFB);
+			[tcPLDesc release];
+		} else {
+			_hasValidMTLPipelineStates = false;
+		}
+	} else if (_isMetal4Template) {
+		initMTL4RenderPipelineState(pCreateInfo, reflectData, pVertexSS, pVertexFB, pTessCtlSS, pTessEvalSS, pTessEvalFB, pFragmentSS, pFragmentFB);
+	} else if (!isTessellationPipeline()) {
 		MTLRenderPipelineDescriptor* plDesc = newMTLRenderPipelineDescriptor(pCreateInfo, reflectData, pVertexSS, pVertexFB, pFragmentSS, pFragmentFB);	// temp retain
 		if (plDesc) {
 			auto viewMask = getRenderingCreateInfo(pCreateInfo)->viewMask;
@@ -1167,6 +1228,262 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 		}
 		pPipelineFB->duration = mvkGetElapsedNanoseconds(pipelineStart);
 	}
+}
+
+#if MVK_XCODE_26 && !MVK_OS_SIMULATOR
+static MTL4FunctionDescriptor* mvkNewMTL4FunctionDescriptor(const MVKMTLFunction& func) API_AVAILABLE(macos(26.0), ios(26.0)) {
+	MTL4LibraryFunctionDescriptor* baseDesc = [MTL4LibraryFunctionDescriptor new];
+	baseDesc.library = func.getMTLLibrary();
+	baseDesc.name = func.getMTLFunctionName();
+	if (MTLFunctionConstantValues* fcVals = func.getMTLFunctionConstantValues()) {
+		MTL4SpecializedFunctionDescriptor* specDesc = [MTL4SpecializedFunctionDescriptor new];
+		specDesc.functionDescriptor = baseDesc;
+		specDesc.constantValues = fcVals;
+		[baseDesc release];
+		return specDesc;
+	}
+	return baseDesc;
+}
+#endif
+
+void MVKGraphicsPipeline::initMTL4RenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo,
+													  const SPIRVTessReflectionData& reflectData,
+													  const VkPipelineShaderStageCreateInfo* pVertexSS,
+													  VkPipelineCreationFeedback* pVertexFB,
+													  const VkPipelineShaderStageCreateInfo* pTessCtlSS,
+													  const VkPipelineShaderStageCreateInfo* pTessEvalSS,
+													  VkPipelineCreationFeedback* pTessEvalFB,
+													  const VkPipelineShaderStageCreateInfo* pFragmentSS,
+													  VkPipelineCreationFeedback* pFragmentFB) {
+#if MVK_XCODE_26 && !MVK_OS_SIMULATOR
+	if (@available(macOS 26.0, iOS 26.0, *)) {
+		id<MTL4Compiler> mtl4Compiler = _device->getMTL4Compiler();
+		if ( !mtl4Compiler ) {
+			_hasValidMTLPipelineStates = false;
+			return;
+		}
+
+		SPIRVToMSLConversionConfiguration shaderConfig;
+		initShaderConversionConfig(shaderConfig, pCreateInfo, reflectData);
+		shaderConfig.options.mslOptions.enable_frag_output_mask = ~0u;
+		shaderConfig.options.mslOptions.enable_frag_depth_builtin = true;
+		shaderConfig.options.mslOptions.enable_frag_stencil_ref_builtin = true;
+
+		SPIRVShaderOutputs prevStageOutputs;
+		MVKMTLFunction vtxFunc;
+		const VkPipelineShaderStageCreateInfo* pFragStage = (_isRasterizing && !_noOpFragmentRequested) ? pFragmentSS : nullptr;
+
+		if (_isComputeTessellation) {
+			SPIRVShaderOutputs tcOutputs;
+			std::string errorLog;
+			if (!getShaderOutputs(_tessCtlModule->getSPIRV(), spv::ExecutionModelTessellationControl, pTessCtlSS->pName, tcOutputs, errorLog)) {
+				setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation control outputs: %s", errorLog.c_str()));
+				_hasValidMTLPipelineStates = false;
+				return;
+			}
+			if (_isRasterizing && pFragmentSS && !_noOpFragmentRequested) {
+				if (!getShaderOutputs(_tessEvalModule->getSPIRV(), spv::ExecutionModelTessellationEvaluation, pTessEvalSS->pName, prevStageOutputs, errorLog)) {
+					setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation evaluation outputs: %s", errorLog.c_str()));
+					_hasValidMTLPipelineStates = false;
+					return;
+				}
+			}
+			if (!addTessEvalShaderToPipeline(nil, pCreateInfo, shaderConfig, tcOutputs, pTessEvalSS, pTessEvalFB, pFragStage, &vtxFunc, true)) {
+				_hasValidMTLPipelineStates = false;
+				return;
+			}
+		} else {
+			if (_isRasterizing && pFragmentSS && !_noOpFragmentRequested) {
+				std::string errorLog;
+				if (!getShaderOutputs(_vertexModule->getSPIRV(), spv::ExecutionModelVertex, pVertexSS->pName, prevStageOutputs, errorLog)) {
+					setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get vertex outputs: %s", errorLog.c_str()));
+					_hasValidMTLPipelineStates = false;
+					return;
+				}
+			}
+			if (!addVertexShaderToPipeline(nil, pCreateInfo, shaderConfig, pVertexSS, pVertexFB, pFragStage, &vtxFunc, true)) {
+				_hasValidMTLPipelineStates = false;
+				return;
+			}
+		}
+		if (!vtxFunc.getMTLLibrary() || !vtxFunc.getMTLFunctionName()) {
+			_hasValidMTLPipelineStates = false;
+			return;
+		}
+
+		if (vtxFunc.shaderConversionResults.isRasterizationDisabled) {
+			_isRasterizing = false;
+			_isRasterizingColor = false;
+		}
+
+		MVKMTLFunction fragFunc;
+		if (_isRasterizing) {
+			if (_noOpFragmentRequested) {
+				if (_dynamicSampleMaskRequested) {
+					_stageResources[kMVKShaderStageFragment].implicitBuffers.needed.add(MVKImplicitBuffer::BlendState);
+				}
+			} else if (pFragStage) {
+				if (!addFragmentShaderToPipeline(nil, pCreateInfo, shaderConfig, prevStageOutputs, pFragStage, pFragmentFB, &fragFunc, true)) {
+					_hasValidMTLPipelineStates = false;
+					return;
+				}
+				if (!fragFunc.getMTLLibrary() || !fragFunc.getMTLFunctionName()) {
+					_hasValidMTLPipelineStates = false;
+					return;
+				}
+			}
+		}
+
+		@autoreleasepool {
+			MTL4RenderPipelineDescriptor* mtl4Desc = [[MTL4RenderPipelineDescriptor new] autorelease];
+			MTL4FunctionDescriptor* vtxDesc = [mvkNewMTL4FunctionDescriptor(vtxFunc) autorelease];
+			mtl4Desc.vertexFunctionDescriptor = vtxDesc;
+			mtl4Desc.vertexDescriptor = nil;
+			mtl4Desc.rasterizationEnabled = _isRasterizing;
+
+			if (_isRasterizing) {
+				if (_noOpFragmentRequested) {
+					MTL4LibraryFunctionDescriptor* noOpDesc = [[MTL4LibraryFunctionDescriptor new] autorelease];
+					noOpDesc.library = _noOpFragmentLibrary;
+					noOpDesc.name = _noOpFragmentFunctionName;
+					mtl4Desc.fragmentFunctionDescriptor = noOpDesc;
+				} else if (pFragStage) {
+					MTL4FunctionDescriptor* fragDesc = [mvkNewMTL4FunctionDescriptor(fragFunc) autorelease];
+					mtl4Desc.fragmentFunctionDescriptor = fragDesc;
+				}
+				mtl4Desc.rasterSampleCount = pCreateInfo->pMultisampleState
+					? mvkSampleCountFromVkSampleCountFlagBits(pCreateInfo->pMultisampleState->rasterizationSamples)
+					: 1;
+				mtl4Desc.inputPrimitiveTopology = pCreateInfo->pInputAssemblyState
+					? getPrimitiveTopologyClass()
+					: MTLPrimitiveTopologyClassUnspecified;
+				mtl4Desc.alphaToCoverageState = (pCreateInfo->pMultisampleState && pCreateInfo->pMultisampleState->alphaToCoverageEnable)
+					? MTL4AlphaToCoverageStateEnabled : MTL4AlphaToCoverageStateDisabled;
+				mtl4Desc.alphaToOneState = (pCreateInfo->pMultisampleState && pCreateInfo->pMultisampleState->alphaToOneEnable)
+					? MTL4AlphaToOneStateEnabled : MTL4AlphaToOneStateDisabled;
+
+				// Work around a macOS 26 Metal 4 specialization bug that zeroes fragment [[primitive_id]]
+				// by keeping the concrete base descriptor for direct compilation at draw time.
+				if (_fsReadsPrimitiveId) {
+					_mtl4BaseDesc = [mtl4Desc copy];
+				}
+
+				for (uint32_t caIdx = 0; caIdx < kMVKMaxColorAttachmentCount; caIdx++) {
+					MTL4RenderPipelineColorAttachmentDescriptor* cd = mtl4Desc.colorAttachments[caIdx];
+					cd.pixelFormat = MTLPixelFormatUnspecialized;
+					cd.blendingState = MTL4BlendStateUnspecialized;
+					cd.sourceRGBBlendFactor = MTLBlendFactorUnspecialized;
+					cd.destinationRGBBlendFactor = MTLBlendFactorUnspecialized;
+					cd.rgbBlendOperation = MTLBlendOperationUnspecialized;
+					cd.sourceAlphaBlendFactor = MTLBlendFactorUnspecialized;
+					cd.destinationAlphaBlendFactor = MTLBlendFactorUnspecialized;
+					cd.alphaBlendOperation = MTLBlendOperationUnspecialized;
+					cd.writeMask = MTLColorWriteMaskUnspecialized;
+				}
+			} else {
+				mtl4Desc.fragmentFunctionDescriptor = nil;
+				mtl4Desc.rasterSampleCount = 1;
+				mtl4Desc.inputPrimitiveTopology = MTLPrimitiveTopologyClassUnspecified;
+				mtl4Desc.alphaToCoverageState = MTL4AlphaToCoverageStateDisabled;
+				mtl4Desc.alphaToOneState = MTL4AlphaToOneStateDisabled;
+			}
+
+			NSError* err = nil;
+			_mtlPipelineState = [mtl4Compiler newRenderPipelineStateWithDescriptor:mtl4Desc
+															   compilerTaskOptions:nil
+																			 error:&err];
+			if ( !_mtlPipelineState ) {
+				_hasValidMTLPipelineStates = false;
+				setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED,
+												   "Metal 4 shader-object template pipeline failed: %s",
+												   err ? err.localizedDescription.UTF8String : "unknown error"));
+			}
+		}
+		return;
+	}
+#endif
+	_hasValidMTLPipelineStates = false;
+}
+
+id<MTLRenderPipelineState> MVKGraphicsPipeline::getSpecializedMTL4PipelineState(const MVKShaderObjectSpecializationKey& key) {
+	if ( !_isMetal4Template || !_isRasterizing ) { return _mtlPipelineState; }
+
+#if MVK_XCODE_26 && !MVK_OS_SIMULATOR
+	if (@available(macOS 26.0, iOS 26.0, *)) {
+		{
+			std::lock_guard<std::mutex> lock(_mtl4SpecLock);
+			auto iter = _mtl4SpecializedStates.find(key);
+			if (iter != _mtl4SpecializedStates.end()) { return iter->second; }
+		}
+
+		id<MTL4Compiler> mtl4Compiler = _device->getMTL4Compiler();
+		if ( !mtl4Compiler || !_mtlPipelineState ) { return nil; }
+
+		id<MTLRenderPipelineState> specialized = nil;
+		@autoreleasepool {
+			bool bypassSpec = (_fsReadsPrimitiveId && _mtl4BaseDesc != nil);
+			MTL4RenderPipelineDescriptor* specDesc = bypassSpec
+				? [[(MTL4RenderPipelineDescriptor*)_mtl4BaseDesc copy] autorelease]
+				: [[MTL4RenderPipelineDescriptor new] autorelease];
+			MVKPixelFormats* pixFmts = getPixelFormats();
+			for (uint32_t caIdx = 0; caIdx < kMVKMaxColorAttachmentCount; caIdx++) {
+				MTL4RenderPipelineColorAttachmentDescriptor* cd = specDesc.colorAttachments[caIdx];
+				VkFormat attachFmt = (caIdx < key.colorAttachmentCount) ? key.colorAttachmentFormats[caIdx] : VK_FORMAT_UNDEFINED;
+				MTLPixelFormat mtlPixFmt = pixFmts->getMTLPixelFormat(attachFmt);
+				cd.pixelFormat = mtlPixFmt;
+				if (mtlPixFmt == MTLPixelFormatInvalid) {
+					cd.blendingState = MTL4BlendStateDisabled;
+					cd.writeMask = MTLColorWriteMaskNone;
+					continue;
+				}
+				const auto& ba = key.blendAttachments[caIdx];
+				VkColorComponentFlags writeMaskFlags = key.colorWriteEnables[caIdx] ? ba.colorWriteMask : 0;
+				if (mtlPixFmt == MTLPixelFormatRGB9E5Float) {
+					cd.writeMask = writeMaskFlags ? MTLColorWriteMaskAll : MTLColorWriteMaskNone;
+				} else {
+					cd.writeMask = mvkMTLColorWriteMaskFromVkChannelFlags(writeMaskFlags);
+				}
+				bool supportsBlend = (pixFmts->getCapabilities(mtlPixFmt) & kMVKMTLFmtCapsBlend) != 0;
+				if (supportsBlend && ba.blendEnable) {
+					cd.blendingState = MTL4BlendStateEnabled;
+					cd.rgbBlendOperation = mvkMTLBlendOperationFromVkBlendOp(ba.colorBlendOp);
+					cd.sourceRGBBlendFactor = mvkMTLBlendFactorFromVkBlendFactor(ba.srcColorBlendFactor);
+					cd.destinationRGBBlendFactor = mvkMTLBlendFactorFromVkBlendFactor(ba.dstColorBlendFactor);
+					cd.alphaBlendOperation = mvkMTLBlendOperationFromVkBlendOp(ba.alphaBlendOp);
+					cd.sourceAlphaBlendFactor = mvkMTLBlendFactorFromVkBlendFactor(ba.srcAlphaBlendFactor);
+					cd.destinationAlphaBlendFactor = mvkMTLBlendFactorFromVkBlendFactor(ba.dstAlphaBlendFactor);
+				} else {
+					cd.blendingState = MTL4BlendStateDisabled;
+				}
+			}
+
+			NSError* err = nil;
+			if (bypassSpec) {
+				specialized = [mtl4Compiler newRenderPipelineStateWithDescriptor:specDesc
+															 compilerTaskOptions:nil
+																		   error:&err];
+			} else {
+				specialized = [mtl4Compiler newRenderPipelineStateBySpecializationWithDescriptor:specDesc
+																						pipeline:_mtlPipelineState
+																						   error:&err];
+			}
+			if ( !specialized && err ) {
+				reportError(VK_ERROR_INITIALIZATION_FAILED,
+							"Metal 4 shader-object specialization failed: %s",
+							err.localizedDescription.UTF8String);
+			}
+		}
+
+		std::lock_guard<std::mutex> lock(_mtl4SpecLock);
+		auto [iter, inserted] = _mtl4SpecializedStates.emplace(key, specialized);
+		if (!inserted) {
+			[specialized release];
+			return iter->second;
+		}
+		return specialized;
+	}
+#endif
+	return nil;
 }
 
 // Returns a retained MTLRenderPipelineDescriptor constructed from this instance, or nil if an error occurs.
@@ -1239,8 +1556,10 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessVertexStageDescript
 
 	// Vertex input
 	plDesc.stageInputDescriptor = [MTLStageInputOutputDescriptor stageInputOutputDescriptor];
-	if (!addVertexInputToPipeline(plDesc.stageInputDescriptor, pCreateInfo->pVertexInputState, shaderConfig)) { return nil; }
-	plDesc.stageInputDescriptor.indexBufferIndex = _stageResources[kMVKShaderStageVertex].implicitBuffers.ids[MVKImplicitBuffer::Index];
+	if ( !_isPullingVertices ) {
+		if (!addVertexInputToPipeline(plDesc.stageInputDescriptor, pCreateInfo->pVertexInputState, shaderConfig)) { return nil; }
+		plDesc.stageInputDescriptor.indexBufferIndex = _stageResources[kMVKShaderStageVertex].implicitBuffers.ids[MVKImplicitBuffer::Index];
+	}
 
 	plDesc.threadGroupSizeIsMultipleOfThreadExecutionWidth = YES;
 
@@ -1401,6 +1720,9 @@ static constexpr const char* getImplicitBufferName(MVKImplicitBuffer buffer) {
 		case MVKImplicitBuffer::Index:          return "index";
 		case MVKImplicitBuffer::DispatchBase:   return "dispatch base";
 		case MVKImplicitBuffer::DrawId:         return "draw ID";
+		case MVKImplicitBuffer::ClipConvention: return "clip convention";
+		case MVKImplicitBuffer::BlendState:     return "blend state";
+		case MVKImplicitBuffer::VertexPull:     return "vertex pull";
 		case MVKImplicitBuffer::Count:          break;
 	}
 	assert(0);
@@ -1464,29 +1786,65 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 													SPIRVToMSLConversionConfiguration& shaderConfig,
 													const VkPipelineShaderStageCreateInfo* pVertexSS,
 													VkPipelineCreationFeedback* pVertexFB,
-													const VkPipelineShaderStageCreateInfo*& pFragmentSS) {
+													const VkPipelineShaderStageCreateInfo*& pFragmentSS,
+													MVKMTLFunction* pOutFunc,
+													bool deferSpecialization) {
 	const auto& implicit = _stageResources[kMVKShaderStageVertex].implicitBuffers.ids;
 	shaderConfig.options.entryPointStage = spv::ExecutionModelVertex;
 	shaderConfig.options.entryPointName = pVertexSS->pName;
 	addCommonImplicitBuffersToShaderConfig(shaderConfig, implicit);
 	shaderConfig.options.mslOptions.shader_output_buffer_index = implicit[MVKImplicitBuffer::Output];
 	shaderConfig.options.mslOptions.view_mask_buffer_index = implicit[MVKImplicitBuffer::ViewRange];
+	// This vertex stage feeds the rasterizer, so it is the one that maps the depth.
+	shaderConfig.options.dynamicDepthClip = _dynamicDepthClipRequested;
+	shaderConfig.options.clipConventionBufferIndex = implicit[MVKImplicitBuffer::ClipConvention];
 	shaderConfig.options.mslOptions.draw_id_buffer_index = implicit[MVKImplicitBuffer::DrawId];
 	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
 	setEmulatedReversedDepthViewportConfig(shaderConfig, implicit, getPhysicalDevice()->shouldEmulateReversedDepthViewport());
 	setDepthClipConfig(shaderConfig, implicit, _isRasterizing && isPossibleBothDepthClipClamp(_dynamicStateFlags, _staticStateData, false));
 	addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
+	if (_pullVerticesRequested) {
+		shaderConfig.options.pullVertices = true;
+		shaderConfig.options.pullStateBufferIndex = implicit[MVKImplicitBuffer::VertexPull];
+	}
 
-	MVKMTLFunction func = getMTLFunction(shaderConfig, pVertexSS, pVertexFB, _vertexModule, "Vertex");
+	// Fragment output settings do not affect a vertex shader, but would otherwise make its
+	// conversion key vary with the draw's attachments.
+	auto& mslOpts = shaderConfig.options.mslOptions;
+	uint32_t fragOutputMask = mslOpts.enable_frag_output_mask;
+	bool fragDepth = mslOpts.enable_frag_depth_builtin;
+	bool fragStencil = mslOpts.enable_frag_stencil_ref_builtin;
+	bool pointSize = mslOpts.enable_point_size_builtin;
+	bool pointSizeDefault = mslOpts.enable_point_size_default;
+	if (_pullVerticesRequested) {
+		mslOpts.enable_frag_output_mask = ~0u;
+		mslOpts.enable_frag_depth_builtin = true;
+		mslOpts.enable_frag_stencil_ref_builtin = true;
+		bool canRenderPoints = _isRasterizing && !_neverRendersPoints &&
+			(getPrimitiveTopologyClass() == MTLPrimitiveTopologyClassUnspecified ||
+			 getPrimitiveTopologyClass() == MTLPrimitiveTopologyClassPoint);
+		mslOpts.enable_point_size_builtin = canRenderPoints;
+		mslOpts.enable_point_size_default = canRenderPoints;
+	}
+	MVKMTLFunction func = getMTLFunction(shaderConfig, pVertexSS, pVertexFB, _vertexModule, "Vertex", deferSpecialization);
+	mslOpts.enable_frag_output_mask = fragOutputMask;
+	mslOpts.enable_frag_depth_builtin = fragDepth;
+	mslOpts.enable_frag_stencil_ref_builtin = fragStencil;
+	mslOpts.enable_point_size_builtin = pointSize;
+	mslOpts.enable_point_size_default = pointSizeDefault;
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
-	plDesc.vertexFunction = mtlFunc;
+	if (plDesc) { plDesc.vertexFunction = mtlFunc; }
+	if (pOutFunc) { *pOutFunc = func; }
 	if ( !mtlFunc ) { return false; }
 
 	auto& funcRslts = func.shaderConversionResults;
-	plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled;
+	// The rewrite can decline, so the pipeline follows what the converter actually did.
+	_isPullingVertices = funcRslts.isPullingVertices;
+	if (plDesc) { plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled; }
 	populateResourceUsage(_stageResources[kMVKShaderStageVertex], shaderConfig, funcRslts, spv::ExecutionModelVertex);
 	_stageResources[kMVKShaderStageVertex].implicitBuffers.needed.set(MVKImplicitBuffer::EmulatedReversedDepthViewport, shaderConfig.options.mslOptions.emulate_reversed_depth_viewport);
+	_stageResources[kMVKShaderStageVertex].implicitBuffers.needed.set(MVKImplicitBuffer::ClipConvention, funcRslts.isDepthClipInShader);
 	_layout->populateBindOperations(_stageResources[kMVKShaderStageVertex].bindScript, shaderConfig, spv::ExecutionModelVertex);
 
 	if (funcRslts.isRasterizationDisabled) {
@@ -1516,8 +1874,12 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 	shaderConfig.options.mslOptions.disable_rasterization = true;
 	setEmulatedReversedDepthViewportConfig(shaderConfig, implicit, false);
 	setDepthClipConfig(shaderConfig, implicit, false);
-    addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
+	addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
 	addNextStageInputToShaderConversionConfig(shaderConfig, tcInputs);
+	if (_pullVerticesRequested) {
+		shaderConfig.options.pullVertices = true;
+		shaderConfig.options.pullStateBufferIndex = implicit[MVKImplicitBuffer::VertexPull];
+	}
 
 	// We need to compile this function three times, with no indexing, 16-bit indices, and 32-bit indices.
 	static const CompilerMSL::Options::IndexType indexTypes[] = {
@@ -1534,12 +1896,13 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 		pVtxFunctions[i] = func;
 
 		auto& funcRslts = func.shaderConversionResults;
+		_isPullingVertices = funcRslts.isPullingVertices;
 		populateResourceUsage(_stageResources[kMVKShaderStageVertex], shaderConfig, funcRslts, spv::ExecutionModelVertex);
 	}
 
 	_layout->populateBindOperations(_stageResources[kMVKShaderStageVertex].bindScript, shaderConfig, spv::ExecutionModelVertex);
 
-	_stageResources[kMVKShaderStageVertex].implicitBuffers.needed.set(MVKImplicitBuffer::Index, !shaderConfig.shaderInputs.empty());
+	_stageResources[kMVKShaderStageVertex].implicitBuffers.needed.set(MVKImplicitBuffer::Index, !shaderConfig.shaderInputs.empty() || _isPullingVertices);
 	return verifyImplicitBuffers(kMVKShaderStageVertex);
 }
 
@@ -1589,30 +1952,46 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 													  SPIRVShaderOutputs& tcOutputs,
 													  const VkPipelineShaderStageCreateInfo* pTessEvalSS,
 													  VkPipelineCreationFeedback* pTessEvalFB,
-													  const VkPipelineShaderStageCreateInfo*& pFragmentSS) {
+													  const VkPipelineShaderStageCreateInfo*& pFragmentSS,
+													  MVKMTLFunction* pOutFunc,
+													  bool deferSpecialization) {
 	const auto& implicit = _stageResources[kMVKShaderStageTessEval].implicitBuffers.ids;
 	shaderConfig.options.entryPointStage = spv::ExecutionModelTessellationEvaluation;
 	shaderConfig.options.entryPointName = pTessEvalSS->pName;
 	addCommonImplicitBuffersToShaderConfig(shaderConfig, implicit);
+	// With tessellation it is this stage that feeds the rasterizer, so it maps the depth in place
+	// of the vertex stage, which by then has written a position only the tessellator reads.
+	shaderConfig.options.dynamicDepthClip = _dynamicDepthClipRequested;
+	shaderConfig.options.clipConventionBufferIndex = implicit[MVKImplicitBuffer::ClipConvention];
 	shaderConfig.options.mslOptions.shader_input_buffer_index = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalInputBufferBinding);
 	shaderConfig.options.mslOptions.shader_patch_input_buffer_index = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalPatchInputBufferBinding);
 	shaderConfig.options.mslOptions.shader_tess_factor_buffer_index = getMetalBufferIndexForVertexAttributeBinding(kMVKTessEvalLevelBufferBinding);
 	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 	shaderConfig.options.mslOptions.raw_buffer_tese_input = true;
 	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
+	if (_isComputeTessellation) {
+		shaderConfig.options.computeTessellationEval = true;
+		shaderConfig.options.tessCoordBufferIndex = implicit[MVKImplicitBuffer::IndirectParams];
+		shaderConfig.options.mslOptions.tess_domain_origin_lower_left = false;
+	}
 	setEmulatedReversedDepthViewportConfig(shaderConfig, implicit, getPhysicalDevice()->shouldEmulateReversedDepthViewport());
 	setDepthClipConfig(shaderConfig, implicit, _isRasterizing && isPossibleBothDepthClipClamp(_dynamicStateFlags, _staticStateData, false));
 	addPrevStageOutputToShaderConversionConfig(shaderConfig, tcOutputs);
 
-	MVKMTLFunction func = getMTLFunction(shaderConfig, pTessEvalSS, pTessEvalFB, _tessEvalModule, "Tessellation evaluation");
+	MVKMTLFunction func = getMTLFunction(shaderConfig, pTessEvalSS, pTessEvalFB, _tessEvalModule, "Tessellation evaluation", deferSpecialization);
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
-	plDesc.vertexFunction = mtlFunc;	// Yeah, you read that right. Tess. eval functions are a kind of vertex function in Metal.
+	if (plDesc) { plDesc.vertexFunction = mtlFunc; }	// Yeah, you read that right. Tess. eval functions are a kind of vertex function in Metal.
+	if (pOutFunc) { *pOutFunc = func; }
 	if ( !mtlFunc ) { return false; }
 
 	auto& funcRslts = func.shaderConversionResults;
-	plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled;
+	if (plDesc) { plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled; }
 	populateResourceUsage(_stageResources[kMVKShaderStageTessEval], shaderConfig, funcRslts, spv::ExecutionModelTessellationEvaluation);
 	_stageResources[kMVKShaderStageTessEval].implicitBuffers.needed.set(MVKImplicitBuffer::EmulatedReversedDepthViewport, shaderConfig.options.mslOptions.emulate_reversed_depth_viewport);
+	_stageResources[kMVKShaderStageTessEval].implicitBuffers.needed.set(MVKImplicitBuffer::ClipConvention, funcRslts.isDepthClipInShader);
+	if (_isComputeTessellation) {
+		_stageResources[kMVKShaderStageTessEval].implicitBuffers.needed.add(MVKImplicitBuffer::IndirectParams);
+	}
 	_layout->populateBindOperations(_stageResources[kMVKShaderStageTessEval].bindScript, shaderConfig, spv::ExecutionModelTessellationEvaluation);
 
 	if (funcRslts.isRasterizationDisabled) {
@@ -1627,7 +2006,9 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 													  SPIRVToMSLConversionConfiguration& shaderConfig,
 													  SPIRVShaderOutputs& shaderOutputs,
 													  const VkPipelineShaderStageCreateInfo* pFragmentSS,
-													  VkPipelineCreationFeedback* pFragmentFB) {
+													  VkPipelineCreationFeedback* pFragmentFB,
+													  MVKMTLFunction* pOutFunc,
+													  bool deferSpecialization) {
 	const auto& implicit = _stageResources[kMVKShaderStageFragment].implicitBuffers.ids;
 	auto& mtlFeats = getMetalFeatures();
 	if (pFragmentSS) {
@@ -1647,6 +2028,35 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		/* Enabling makes dEQP-VK.fragment_shader_interlock.basic.discard.image.pixel_ordered.1xaa.no_sample_shading.1024x1024 and similar tests fail. Requires investigation */
 		shaderConfig.options.mslOptions.force_fragment_with_side_effects_execution = false;
 		shaderConfig.options.mslOptions.input_attachment_is_ds_attachment = _inputAttachmentIsDSAttachment;
+		if (_blendInShaderRequested) {
+			shaderConfig.options.blendInShader = true;
+			shaderConfig.options.blendStateBufferIndex = _stageResources[kMVKShaderStageFragment].implicitBuffers.ids[MVKImplicitBuffer::BlendState];
+			if (_isMetal4Template) {
+				// Metal 4 handles blending, write masks, alpha-to-coverage and alpha-to-one natively;
+				// attachmentMask = 0 emits only the dynamic sample-mask intersection without framebuffer fetch.
+				shaderConfig.options.blendMultisampled = false;
+				shaderConfig.options.blendAttachmentMask = 0u;
+				shaderConfig.options.blendDynamicMultisample = true;
+			} else {
+				shaderConfig.options.blendMultisampled = (_isRasterizing && pCreateInfo->pMultisampleState &&
+														  pCreateInfo->pMultisampleState->rasterizationSamples > VK_SAMPLE_COUNT_1_BIT);
+				// A shader may write outputs past the attachments that exist; those keep Metal's
+				// behaviour, because there is nothing to fetch behind them.
+				const VkPipelineRenderingCreateInfo* pRendInfoBlend = getRenderingCreateInfo(pCreateInfo);
+				uint32_t attMask = 0;
+				for (uint32_t caIdx = 0; caIdx < pRendInfoBlend->colorAttachmentCount && caIdx < _colorAttachmentLocations.size(); caIdx++) {
+					uint32_t caLoc = _colorAttachmentLocations[caIdx];
+					if (caLoc != VK_ATTACHMENT_UNUSED && caLoc < kMVKMaxColorAttachmentCount &&
+						pRendInfoBlend->pColorAttachmentFormats[caIdx] != VK_FORMAT_UNDEFINED) {
+						attMask |= (1u << caLoc);
+					}
+				}
+				shaderConfig.options.blendAttachmentMask = attMask;
+				// The one shader that carries blending carries the coverage operations with it, so
+				// that a draw departing from any of the defaults needs no pipeline of its own.
+				shaderConfig.options.blendDynamicMultisample = true;
+			}
+		}
 		if (mtlFeats.needsSampleDrefLodArrayWorkaround) {
 			shaderConfig.options.mslOptions.sample_dref_lod_array_as_grad = true;
 		}
@@ -1667,12 +2077,15 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		}
 		addPrevStageOutputToShaderConversionConfig(shaderConfig, shaderOutputs);
 
-		MVKMTLFunction func = getMTLFunction(shaderConfig, pFragmentSS, pFragmentFB, _fragmentModule, "Fragment");
+		MVKMTLFunction func = getMTLFunction(shaderConfig, pFragmentSS, pFragmentFB, _fragmentModule, "Fragment", deferSpecialization);
 		id<MTLFunction> mtlFunc = func.getMTLFunction();
-		plDesc.fragmentFunction = mtlFunc;
+		if (plDesc) { plDesc.fragmentFunction = mtlFunc; }
+		if (pOutFunc) { *pOutFunc = func; }
 		if ( !mtlFunc ) { return false; }
 
 		auto& funcRslts = func.shaderConversionResults;
+		// The rewrite can decline, so the pipeline follows what the converter actually did.
+		_isBlendInShader = funcRslts.isBlendInShader;
 		populateResourceUsage(_stageResources[kMVKShaderStageFragment], shaderConfig, funcRslts, spv::ExecutionModelFragment);
 		_layout->populateBindOperations(_stageResources[kMVKShaderStageFragment].bindScript, shaderConfig, spv::ExecutionModelFragment);
 	}
@@ -1998,6 +2411,20 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
 			VkFormat attachFmt = pRendInfo->pColorAttachmentFormats[caIdx];
 			MTLPixelFormat mtlPixFmt = getPixelFormats()->getMTLPixelFormat(attachFmt);
 			bool supportsBlend = getPixelFormats()->getCapabilities(mtlPixFmt) & kMVKMTLFmtCapsBlend;
+
+			// The shader blends and masks for itself, so Metal is told to write every channel
+			// straight through. Fixed-point attachments clamp, which the shader must reproduce.
+			if (_isBlendInShader && caLoc < kMVKMaxColorAttachmentCount) {
+				const char* fmtName = getPixelFormats()->getName(attachFmt);
+				bool isSnorm = fmtName && strstr(fmtName, "SNORM");
+				bool isUnorm = fmtName && (strstr(fmtName, "UNORM") || strstr(fmtName, "SRGB"));
+				_blendClampModes[caLoc] = isSnorm ? mvk::kSPIRVBlendClampSnorm : (isUnorm ? mvk::kSPIRVBlendClampUnorm : mvk::kSPIRVBlendClampNone);
+				MTLRenderPipelineColorAttachmentDescriptor* cd = plDesc.colorAttachments[caLoc];
+				cd.pixelFormat = mtlPixFmt;
+				cd.writeMask = MTLColorWriteMaskAll;
+				cd.blendingEnabled = NO;
+				continue;
+			}
 			MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[caLoc];
             colorDesc.pixelFormat = mtlPixFmt;
 
@@ -2122,6 +2549,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 		_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::Output]         = getImplicitBufferIndex(stage, 4);
 		_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::EmulatedReversedDepthViewport] = getImplicitBufferIndex(stage, 7);
 		_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::DepthClip]       = getImplicitBufferIndex(stage, 8);
+		_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::ClipConvention]  = getImplicitBufferIndex(stage, 9);
 		uint32_t extra = getImplicitBufferIndex(stage, 3);
 		switch (stage) {
 			case kMVKShaderStageVertex:
@@ -2131,9 +2559,11 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::ViewRange] = extra;
 				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::Index]     = extra;
 				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::DrawId]    = getImplicitBufferIndex(stage, 5);
+				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::VertexPull] = getImplicitBufferIndex(stage, 6);
 				break;
 			case kMVKShaderStageFragment:
 				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::ViewRange] = extra;
+				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::BlendState] = getImplicitBufferIndex(stage, 5);
 				break;
 			case kMVKShaderStageTessCtl:
 				_stageResources[stage].implicitBuffers.ids[MVKImplicitBuffer::PatchOutput]    = getImplicitBufferIndex(stage, 5);
@@ -2156,7 +2586,9 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	// However, if alpha-to-coverage is enabled, we must enable the fragment shader first color output,
 	// even without a color attachment present or in use, so that coverage can be calculated.
 	// Must ignore allowed bad pMultisampleState pointer if rasterization disabled
-	bool hasA2C = _isRasterizing && pCreateInfo->pMultisampleState && pCreateInfo->pMultisampleState->alphaToCoverageEnable;
+	// A shader deriving coverage for itself reads location zero, so that output must survive too.
+	bool hasA2C = _isRasterizing && ((pCreateInfo->pMultisampleState && pCreateInfo->pMultisampleState->alphaToCoverageEnable) ||
+									 _blendInShaderRequested);
 	shaderConfig.options.mslOptions.enable_frag_output_mask = hasA2C ? 1 : 0;
 	if (_isRasterizingColor && pCreateInfo->pColorBlendState) {
 		for (uint32_t caIdx = 0; caIdx < pCreateInfo->pColorBlendState->attachmentCount; caIdx++) {
@@ -2168,13 +2600,20 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 
 	shaderConfig.options.mslOptions.ios_support_base_vertex_instance = mtlFeats.baseVertexInstanceDrawing;
 	shaderConfig.options.mslOptions.texture_1D_as_2D = mvkCfg.texture1DAs2D;
-	shaderConfig.options.mslOptions.enable_point_size_builtin = isRenderingPoints() || reflectData.pointMode;
+	shaderConfig.options.mslOptions.enable_point_size_builtin = (isRenderingPoints() && !_neverRendersPoints) ||
+															   reflectData.pointMode;
 	shaderConfig.options.mslOptions.enable_point_size_default = shaderConfig.options.mslOptions.enable_point_size_builtin;
 	shaderConfig.options.mslOptions.default_point_size = 1.0f; // See VK_KHR_maintenance5
 	shaderConfig.options.mslOptions.enable_frag_depth_builtin = pixFmts->isDepthFormat(pixFmts->getMTLPixelFormat(pRendInfo->depthAttachmentFormat));
 	shaderConfig.options.mslOptions.enable_frag_stencil_ref_builtin = pixFmts->isStencilFormat(pixFmts->getMTLPixelFormat(pRendInfo->stencilAttachmentFormat));
     shaderConfig.options.shouldFlipVertexY = mvkCfg.shaderConversionFlipVertexY;
-    shaderConfig.options.shouldFixupClipSpace = isDepthClipNegativeOneToOne(pCreateInfo);
+    // A shader object draw can change the convention, so the shader reads it from the state the
+    // draw supplies instead of having it baked in. Where it is baked in, SPIRV-Cross writes it.
+    // Only the stage that feeds the rasterizer maps the depth, and each stage turns this on for
+    // itself below. A vertex stage feeding a tessellator writes a position the tessellator reads,
+    // not one Metal clips, and mapping it there would map it twice.
+    shaderConfig.options.dynamicDepthClip = false;
+    shaderConfig.options.shouldFixupClipSpace = !_dynamicDepthClipRequested && isDepthClipNegativeOneToOne(pCreateInfo);
     shaderConfig.options.mslOptions.tess_domain_origin_lower_left = pTessDomainOriginState && pTessDomainOriginState->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
     shaderConfig.options.mslOptions.multiview = mvkIsMultiview(pRendInfo->viewMask);
     shaderConfig.options.mslOptions.multiview_layered_rendering = getPhysicalDevice()->canUseInstancingForMultiview();
@@ -2226,6 +2665,16 @@ void MVKGraphicsPipeline::initReservedVertexAttributeBufferCount(const VkGraphic
 				}
 			}
 		}
+	}
+
+	// A pulled vertex shader loads every attribute (including unbound defaults) from its pull
+	// state buffer, so it reserves no Metal vertex buffer slots.
+	if (_pullVerticesRequested) {
+		_defaultVertexAttributes.clear();
+		mvkClear<uint32_t>(_reservedVertexAttributeBufferCount.stages, kMVKShaderStageCount);
+		_reservedVertexAttributeBufferCount.stages[kMVKShaderStageTessCtl] = kMVKTessCtlNumReservedBuffers;
+		_reservedVertexAttributeBufferCount.stages[kMVKShaderStageTessEval] = kMVKTessEvalNumReservedBuffers;
+		return;
 	}
 
 	// A location the shader reads and the application described nothing for is served from one
@@ -2380,11 +2829,13 @@ MVKMTLFunction MVKGraphicsPipeline::getMTLFunction(SPIRVToMSLConversionConfigura
 												   const VkPipelineShaderStageCreateInfo* pShaderStage,
 												   VkPipelineCreationFeedback* pStageFB,
 												   MVKShaderModule* pShaderModule,
-												   const char* pStageName) {
+												   const char* pStageName,
+												   bool deferSpecialization) {
 	MVKMTLFunction func = pShaderModule->getMTLFunction(&shaderConfig,
 													    pShaderStage->pSpecializationInfo,
 													    this,
-													    pStageFB);
+													    pStageFB,
+													    deferSpecialization);
 	if ( !func.getMTLFunction() ) {
 		if (shouldFailOnPipelineCompileRequired()) {
 			setConfigurationResult(VK_PIPELINE_COMPILE_REQUIRED);
@@ -2402,6 +2853,9 @@ MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 		[_mtlTessVertexStageIndex32State release];
 		[_mtlTessControlStageState release];
 		[_mtlPipelineState release];
+		[_mtl4BaseDesc release];
+		for (auto& entry : _mtl4SpecializedStates) { [entry.second release]; }
+		_mtl4SpecializedStates.clear();
 		if (_ownsVertexModule) delete _vertexModule;
 		if (_ownsTessCtlModule) delete _tessCtlModule;
 		if (_ownsTessEvalModule) delete _tessEvalModule;
@@ -2411,12 +2865,2179 @@ MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 
 
 #pragma mark -
+#pragma mark MVKShaderObjectPipelines
+
+void MVKShaderObjectPipelineKey::canonicalize(MVKPixelFormats* pixFmts, bool dynamicVertexStride) {
+	// Attributes first: a stride only has to cover the attributes that are kept.
+	canonicalizeVertexAttributes();
+
+	// A shader loading its own attributes needs no layout at all, so the strides it would have
+	// been built with do not matter. The vertex stage of a tessellated draw runs as a compute
+	// kernel, which the rewrite does not address, so such a draw keeps its layout.
+	MVKShader* vtxShader = shaders[kMVKShaderStageVertex];
+	if (vtxShader && vtxShader->canPullVertices() && !shaders[kMVKShaderStageTessCtl] &&
+		!mvkIsMultiview(viewMask) &&
+		mvkCanPullVertexInput(vertexInput, pixFmts)) {
+		dropVertexInput();
+	} else if (dynamicVertexStride) {
+		canonicalizeVertexStrides(pixFmts);
+	}
+
+	canonicalizeTopology();
+	canonicalizeUnusedState();
+	// Last: it reads the sample mask the fold above leaves behind.
+	canonicalizeFragmentOutputState();
+}
+
+bool MVKShaderObjectPipelineKey::blendsOrMasks() const {
+	const VkColorComponentFlags allChannels = (VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+											   VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
+	for (uint32_t caIdx = 0; caIdx < colorAttachmentCount && caIdx < kMVKMaxColorAttachmentCount; caIdx++) {
+		if (colorAttachmentFormats[caIdx] == VK_FORMAT_UNDEFINED) { continue; }
+		const VkPipelineColorBlendAttachmentState& blendAtt = pipelineState.blendAttachments[caIdx];
+		if (blendAtt.blendEnable) { return true; }
+		if (blendAtt.colorWriteMask != allChannels) { return true; }
+		if ( !pipelineState.colorWriteEnables[caIdx] ) { return true; }
+	}
+	return false;
+}
+
+bool MVKShaderObjectPipelineKey::coversPartially() const {
+	// canonicalizeUnusedState() has already folded a mask covering every sample the draw has to
+	// all ones, which is what setting no mask means, so anything else drops a sample.
+	return (pipelineState.sampleMask != ~0u ||
+			pipelineState.alphaToCoverageEnable ||
+			pipelineState.alphaToOneEnable);
+}
+
+void MVKShaderObjectPipelineKey::canonicalizeFragmentOutputState() {
+	MVKShader* fragShader = shaders[kMVKShaderStageFragment];
+	if ( !fragShader || !fragShader->canBlendInShader() ) { return; }	// Metal does it; the state stays.
+
+	// A logic op replaces blending entirely, and reaches Metal through the same colour blend state
+	// the rewrite turns off, so a draw using one keeps that state and Metal's own stages. It is
+	// available only where MoltenVK is allowed Metal's private API, and takes a bounded set of
+	// values, so leaving it in the key costs little.
+	// See the Vulkan specification, Logical Operations.
+	if (pipelineState.logicOpEnable) { return; }
+
+	// Both alpha operations read the alpha of the floating point output at location zero, and are
+	// skipped where the shader has no such output. Neither then decides anything about the
+	// pipeline, so they leave the key rather than force the shader that can carry them.
+	// See the Vulkan specification, Multisample Coverage.
+	if ( !fragShader->canDeriveCoverage() ) {
+		pipelineState.alphaToCoverageEnable = 0;
+		pipelineState.alphaToOneEnable = 0;
+	}
+
+	if ( !blendsOrMasks() && !coversPartially() ) { return; }			// The plain shader.
+
+	pipelineState.blendInShader = 1;
+	for (auto& blendAtt : pipelineState.blendAttachments) { blendAtt = {}; }
+	for (auto& colorWriteEnable : pipelineState.colorWriteEnables) { colorWriteEnable = VK_TRUE; }
+	pipelineState.sampleMask = ~0u;
+	pipelineState.alphaToCoverageEnable = 0;
+	pipelineState.alphaToOneEnable = 0;
+}
+
+void MVKShaderObjectPipelineKey::canonicalizeVertexAttributes() {
+	MVKShader* vtxShader = shaders[kMVKShaderStageVertex];
+	if ( !vtxShader ) { return; }
+
+	uint64_t consumedLocations = 0;
+	if ( !vtxShader->getConsumedVertexLocations(consumedLocations) ) { return; }
+
+	uint32_t keptCnt = 0;
+	for (uint32_t vaIdx = 0; vaIdx < vertexInput.attributeCount; vaIdx++) {
+		const MVKDynamicVertexAttribute& va = vertexInput.attributes[vaIdx];
+		if (va.location < 64 && mvkIsAnyFlagEnabled(consumedLocations, 1ull << va.location)) {
+			vertexInput.attributes[keptCnt++] = va;
+		}
+	}
+
+	// The tail is cleared so that two layouts keeping the same attributes compare equal as bytes,
+	// the way the rest of the key does.
+	for (uint32_t vaIdx = keptCnt; vaIdx < vertexInput.attributeCount; vaIdx++) {
+		vertexInput.attributes[vaIdx] = {};
+	}
+	vertexInput.attributeCount = keptCnt;
+}
+
+void MVKShaderObjectPipelineKey::canonicalizeUnusedState() {
+	static const MVKDynamicPipelineState dfltState;
+	MVKDynamicPipelineState& dps = pipelineState;
+
+	// Metal reads the mask only for the samples the draw has. A mask covering all of them leaves
+	// every sample alone, which is what no mask at all means, and takes the same pipeline and the
+	// same shader as a draw that never set one.
+	uint32_t consulted = dps.rasterizationSamples >= 32 ? ~0u : (1u << dps.rasterizationSamples) - 1;
+	dps.sampleMask = (dps.sampleMask & consulted) == consulted ? ~0u : dps.sampleMask & consulted;
+
+	// A divisor counts instances, so a binding advancing per vertex never consults it.
+	for (uint32_t vbIdx = 0; vbIdx < vertexInput.bindingCount; vbIdx++) {
+		MVKDynamicVertexBinding& vb = vertexInput.bindings[vbIdx];
+		if (vb.inputRate == VK_VERTEX_INPUT_RATE_VERTEX) { vb.divisor = 1; }
+	}
+
+	// Where the shader maps the depth clip convention for itself, reading it from the state the
+	// draw supplies, the convention decides nothing about the pipeline and leaves the key. An
+	// application that never enabled the feature has only one convention, and nothing to collapse.
+	for (auto* shader : shaders) {
+		if (shader && shader->getEnabledDepthClipControlFeatures().depthClipControl && shader->canMapDepthClip()) {
+			dps.negativeOneToOne = 0;
+			break;
+		}
+	}
+
+	// The domain origin reaches Metal through the tessellation state, and the logic op through a
+	// colour blend state that has it enabled.
+	if ( !(shaders[kMVKShaderStageTessCtl] && shaders[kMVKShaderStageTessEval]) ) {
+		dps.domainOrigin = dfltState.domainOrigin;
+	}
+	if ( !dps.logicOpEnable ) { dps.logicOp = dfltState.logicOp; }
+
+	for (uint32_t caIdx = 0; caIdx < kMVKMaxColorAttachmentCount; caIdx++) {
+		VkPipelineColorBlendAttachmentState& blendAtt = dps.blendAttachments[caIdx];
+		if (caIdx >= colorAttachmentCount || colorAttachmentFormats[caIdx] == VK_FORMAT_UNDEFINED) {
+			// Nothing is rendered here, so none of this attachment's state is ever read.
+			blendAtt = dfltState.blendAttachments[caIdx];
+			dps.colorWriteEnables[caIdx] = dfltState.colorWriteEnables[caIdx];
+		} else if ( !blendAtt.blendEnable ) {
+			// The equation is ignored, but the write mask is not.
+			VkColorComponentFlags colorWriteMask = blendAtt.colorWriteMask;
+			blendAtt = dfltState.blendAttachments[caIdx];
+			blendAtt.colorWriteMask = colorWriteMask;
+		}
+	}
+}
+
+void MVKShaderObjectPipelineKey::canonicalizeTopology() {
+	// Only lines and triangles are folded together. A pipeline that admits points has to carry a
+	// point size through the vertex stage, which costs every vertex it ever draws, so points keep
+	// a pipeline of their own rather than impose that on the two topologies that never need it.
+	// A triangle fan is not a class Metal rasterizes but one MoltenVK emulates, and a patch list
+	// is the tessellator's input, so both mean something beyond their class and stay as they are.
+	if (pipelineState.topology != VK_PRIMITIVE_TOPOLOGY_LINE_LIST &&
+		pipelineState.topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) { return; }
+
+	// Tessellation rasterizes what the domain produces, and Metal takes that through the class.
+	if (shaders[kMVKShaderStageTessCtl] && shaders[kMVKShaderStageTessEval]) { return; }
+
+	// A layered target needs the class so Metal can route the layer index, whether the layer comes
+	// from multiview or from the shader writing the built-in itself.
+	if (viewMask) { return; }
+	for (auto* shader : shaders) {
+		if (shader && shader->writesLayer()) { return; }
+	}
+
+	pipelineState.topology = kMVKTopologyClassNotNeeded;
+}
+
+void MVKShaderObjectPipelineKey::canonicalizeVertexStrides(MVKPixelFormats* pixFmts) {
+
+	// Vulkan allows a stride of zero, meaning every vertex reads the same data, which Metal
+	// expresses as a constant step function baked into the pipeline rather than as a stride.
+	// Such a binding cannot take its stride from the draw, so the key is left as it is.
+	for (uint32_t vbIdx = 0; vbIdx < vertexInput.bindingCount; vbIdx++) {
+		if (vertexInput.bindings[vbIdx].stride == 0) { return; }
+	}
+
+	for (uint32_t vbIdx = 0; vbIdx < vertexInput.bindingCount; vbIdx++) {
+		auto& vb = vertexInput.bindings[vbIdx];
+		uint32_t minStride = 0;
+		for (uint32_t vaIdx = 0; vaIdx < vertexInput.attributeCount; vaIdx++) {
+			const auto& va = vertexInput.attributes[vaIdx];
+			if (va.binding != vb.binding) { continue; }
+			uint32_t attrEnd = va.offset + pixFmts->getBytesPerBlock((VkFormat)va.format);
+			minStride = std::max(minStride, attrEnd);
+		}
+		// A binding no attribute reads has no extent to collapse to, and must not be given a
+		// stride of zero, which means something else entirely.
+		if (minStride > 0 && vb.stride >= minStride) { vb.stride = minStride; }
+	}
+	// The pipeline built from this key now takes its stride from the vertex buffer bindings.
+	vertexInput.stridesFromVertexBuffers = 1;
+}
+
+MVKVulkanAPIObject* MVKShaderObjectPipelines::getVulkanAPIObject() { return _device; }
+
+void MVKShaderObjectSpecializationKey::canonicalize(MVKPixelFormats* pixFmts) {
+	static const VkPipelineColorBlendAttachmentState dfltBlend = {
+		.blendEnable = VK_FALSE,
+		.srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
+		.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO,
+		.colorBlendOp = VK_BLEND_OP_ADD,
+		.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+		.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+		.alphaBlendOp = VK_BLEND_OP_ADD,
+		.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+	};
+	colorAttachmentCount = std::min(colorAttachmentCount, kMVKMaxColorAttachmentCount);
+	uint32_t lastUsed = 0;
+	for (uint32_t caIdx = 0; caIdx < kMVKMaxColorAttachmentCount; caIdx++) {
+		VkFormat fmt = (caIdx < colorAttachmentCount) ? colorAttachmentFormats[caIdx] : VK_FORMAT_UNDEFINED;
+		MTLPixelFormat mtlFmt = pixFmts->getMTLPixelFormat(fmt);
+		if (mtlFmt == MTLPixelFormatInvalid) {
+			colorAttachmentFormats[caIdx] = VK_FORMAT_UNDEFINED;
+			blendAttachments[caIdx] = {};
+			colorWriteEnables[caIdx] = 0;
+			continue;
+		}
+		lastUsed = caIdx + 1;
+		VkColorComponentFlags mask = colorWriteEnables[caIdx] ? blendAttachments[caIdx].colorWriteMask : 0;
+		if (mtlFmt == MTLPixelFormatRGB9E5Float) {
+			mask = mask ? (VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT) : 0;
+		}
+		colorWriteEnables[caIdx] = 1;
+		bool supportsBlend = (pixFmts->getCapabilities(mtlFmt) & kMVKMTLFmtCapsBlend) != 0;
+		if (!supportsBlend || !blendAttachments[caIdx].blendEnable) {
+			blendAttachments[caIdx] = dfltBlend;
+			blendAttachments[caIdx].colorWriteMask = mask;
+		} else {
+			blendAttachments[caIdx].colorWriteMask = mask;
+		}
+	}
+	colorAttachmentCount = lastUsed;
+}
+
+MVKShaderObjectPipelines::MVKShaderObjectPipelines(MVKDevice* device)
+	: _device(device), _prefetches(dispatch_group_create()) {
+	id<MTLDevice> mtlDev = _device->getPhysicalDevice()->getMTLDevice();
+	for (uint8_t sc : { (uint8_t)1, (uint8_t)2, (uint8_t)4, (uint8_t)8 }) {
+		if ([mtlDev supportsTextureSampleCount:sc]) { _supportedSampleCounts.push_back(sc); }
+	}
+	if (_supportedSampleCounts.empty()) { _supportedSampleCounts.push_back(1); }
+}
+
+MVKShaderObjectPipelines::~MVKShaderObjectPipelines() {
+	// A prefetch may still be building on a background thread; it holds a pointer to this cache.
+	dispatch_group_wait(_prefetches, DISPATCH_TIME_FOREVER);
+	dispatch_release(_prefetches);
+	for (auto& entry : _pipelines) { if (entry.second.pipeline) { entry.second.pipeline->destroy(); } }
+	for (auto& entry : _computePipelines) { if (entry.second) { entry.second->destroy(); } }
+	for (auto& entry : _metal4Templates) { if (entry.second) { entry.second->destroy(); } }
+	for (auto& entry : _tessStage1) { if (entry.second) { entry.second->destroy(); } }
+	for (auto& entry : _tessStage2) { if (entry.second) { entry.second->destroy(); } }
+	[_noOpFragmentLibrary release];
+	_noOpFragmentLibrary = nil;
+	[_tessResetState release];
+	_tessResetState = nil;
+	[_tessCountState release];
+	_tessCountState = nil;
+	[_tessEmitState release];
+	_tessEmitState = nil;
+	[_tessLib release];
+	_tessLib = nil;
+}
+
+bool MVKShaderObjectPipelines::isMetal4Enabled() const {
+#if MVK_XCODE_26 && !MVK_OS_SIMULATOR
+	if (@available(macOS 26.0, iOS 26.0, *)) {
+		return _device->getPhysicalDevice()->supportsMetal4ShaderObjects() && _device->getMTL4Compiler() != nil;
+	}
+#endif
+	return false;
+}
+
+bool MVKShaderObjectPipelines::initNoOpFragmentLibraryLocked() {
+	if (_noOpFragmentLibrary) { return true; }
+	@autoreleasepool {
+		uint32_t blendBufIdx = _device->getMetalBufferIndexForVertexAttributeBinding(5);
+		NSString* src = [NSString stringWithFormat:
+			@"#include <metal_stdlib>\n"
+			 "using namespace metal;\n"
+			 "struct MVKNoOpMaskOut { uint mask [[sample_mask]]; };\n"
+			 "struct MVKNoOpBlendState {\n"
+			 "    float4 constantTerm[32];\n"
+			 "    float4 coefficients[32];\n"
+			 "    float4 saturate[8];\n"
+			 "    float4 opFactors[8];\n"
+			 "    uint4 control[8];\n"
+			 "    uint4 multisample;\n"
+			 "};\n"
+			 "fragment void mvkNoOpFragment() {}\n"
+			 "fragment MVKNoOpMaskOut mvkNoOpFragmentSampleMask(uint inMask [[sample_mask]], constant MVKNoOpBlendState& bs [[buffer(%u)]]) {\n"
+			 "    return { inMask & bs.multisample.x };\n"
+			 "}\n", blendBufIdx];
+		MTLCompileOptions* opts = [[MTLCompileOptions new] autorelease];
+		NSError* err = nil;
+		_noOpFragmentLibrary = [_device->getPhysicalDevice()->getMTLDevice() newLibraryWithSource:src options:opts error:&err];
+		if ( !_noOpFragmentLibrary ) {
+			reportError(VK_ERROR_INITIALIZATION_FAILED, "Could not compile no-op fragment shader library: %s",
+						err ? err.localizedDescription.UTF8String : "unknown error");
+			return false;
+		}
+	}
+	return true;
+}
+
+bool MVKShaderObjectPipelines::initComputeTessellatorLocked() {
+	if (_tessResetState && _tessCountState && _tessEmitState) { return true; }
+	@autoreleasepool {
+		static NSString* const kComputeTessMSL = @R"MSL(
+#include <metal_stdlib>
+using namespace metal;
+
+struct MVKComputeTessParams {
+	uint patchCount;
+	uint patchKind;              // 0 = Triangles, 1 = Quads
+	uint partitionMode;          // 0 = Equal, 1 = FractionalEven, 2 = FractionalOdd
+	uint outputWindingCCW;       // 0 = CW, 1 = CCW
+	uint domainOriginLowerLeft;  // 0 = UpperLeft, 1 = LowerLeft
+	uint pointMode;              // 0 = Triangles, 1 = Points
+	uint useIndirectPatchCount;  // 0 = direct, 1 = indirectPatchParams[1]
+	uint maxVerts;
+	uint maxIndices;
+};
+
+struct MVKComputeTessCounters {
+	atomic_uint totalVerts;
+	atomic_uint totalIndices;
+	uint pad0;
+	uint pad1;
+};
+
+struct MVKComputeTessPatchMeta {
+	uint vtxBase;
+	uint idxBase;
+	uint vtxCount;
+	uint idxCount;
+};
+
+struct MVKComputeTessEvalPoint {
+	float u;
+	float v;
+	float w;
+	uint patchId;
+};
+
+static inline float mvkClampTessLevel(float raw, uint partitionMode) {
+	if (isnan(raw)) { raw = 1.0f; }
+	if (partitionMode == 1u) {
+		return clamp(raw, 2.0f, 64.0f);
+	} else if (partitionMode == 2u) {
+		return clamp(raw, 1.0f, 63.0f);
+	}
+	return clamp(ceil(raw), 1.0f, 64.0f);
+}
+
+static inline uint mvkRoundTessLevel(float clamped, uint partitionMode) {
+	uint n = (uint)ceil(clamped);
+	if (partitionMode == 1u) {
+		n += (n & 1u);
+		return max(n, 2u);
+	} else if (partitionMode == 2u) {
+		n += 1u - (n & 1u);
+		return max(n, 1u);
+	}
+	return max(n, 1u);
+}
+
+static inline uint mvkHiPow2(uint x) {
+	return 1u << (31u - clz(x));
+}
+
+static inline uint mvkBinarySplit(uint L) {
+	if (L <= 1u) { return L; }
+	uint P = mvkHiPow2(L);
+	return min(L - (P >> 1u), P);
+}
+
+static inline uint mvkStitchTransitionOuter(uint j, uint M, uint N) {
+	uint outH = M >> 1u;
+	uint inH = N >> 1u;
+	if ((N & 1u) != 0u && j == inH) { return outH; }
+	bool rightHalf = (j >= inH);
+	uint k = rightHalf ? (N - 1u - j) : j;
+	uint inLo = 0u, inHi = inH + 1u;
+	uint outLo = 0u, outHi = outH;
+	uint target = k + 1u;
+	uint mapped = outLo;
+	while (inHi - inLo > 1u) {
+		uint inMid = inLo + mvkBinarySplit(inHi - inLo);
+		uint outMid = outLo + mvkBinarySplit(outHi - outLo);
+		if (target == inMid) {
+			mapped = outMid;
+			break;
+		}
+		if (target < inMid) {
+			inHi = inMid;
+			outHi = outMid;
+		} else {
+			inLo = inMid;
+			outLo = outMid;
+			mapped = outLo;
+		}
+	}
+	return rightHalf ? (M - mapped) : mapped;
+}
+
+static inline float mvkEdgeCoord(uint i, uint n, float f, uint partitionMode) {
+	if (i == 0u) { return 0.0f; }
+	if (i >= n) { return 1.0f; }
+	if (i * 2u == n) { return 0.5f; }
+	bool mirror = (i * 2u > n);
+	uint k = mirror ? (n - i) : i;
+	uint fxp;
+	if (partitionMode == 0u || n <= 1u) {
+		uint invN = uint(rint(65536.0f / float(n)));
+		fxp = k * invN;
+	} else {
+		uint halfSegs = n >> 1u;
+		uint fracIdx = (halfSegs <= 1u) ? 0u : (2u * (halfSegs - mvkHiPow2(halfSegs - 1u)) - 1u);
+		uint m = n - 2u;
+		float w = 0.5f * (f - float(m));
+		uint invN = uint(rint(65536.0f / float(n)));
+		uint invM = (m > 0u) ? uint(rint(65536.0f / float(m))) : 0u;
+		uint uCeil = k * invN;
+		uint uFloor = (k <= fracIdx) ? (k * invM) : ((k - 1u) * invM);
+		fxp = uint(floor(mix(float(uFloor), float(uCeil), w) + 0.5f));
+	}
+	fxp = min(fxp, 65536u);
+	return float(mirror ? (65536u - fxp) : fxp) * (1.0f / 65536.0f);
+}
+
+static inline void mvkEmitPoint(device MVKComputeTessEvalPoint* coords, uint maxVerts, uint idx,
+								float u, float v, float w, uint patchId) {
+	if (idx < maxVerts) {
+		coords[idx] = { u, v, w, patchId };
+	}
+}
+
+static inline void mvkEmitTri(device uint* indices, uint maxIndices, thread uint& idxPos,
+							  uint a, uint b, uint c, bool ccw) {
+	if (idxPos + 2u < maxIndices) {
+		indices[idxPos + 0u] = a;
+		indices[idxPos + 1u] = ccw ? c : b;
+		indices[idxPos + 2u] = ccw ? b : c;
+	}
+	idxPos += 3u;
+}
+
+// Stitches outer edge (outerStart..outerStart+M, wrapping modulo outerMod around outerBase)
+// to inner edge (innerStart..innerStart+N with step innerStep, wrapping if innerMod > 0).
+static inline uint mvkRingVert(uint base, uint offset, uint mod) {
+	return base + (mod > 0u ? (offset % mod) : offset);
+}
+
+static inline void mvkEmitStitchRing(device uint* indices, uint maxIndices, thread uint& idxPos,
+									 uint outerBase, uint outerStart, uint outerMod, uint M,
+									 uint innerBase, uint innerStart, uint innerMod, uint N,
+									 bool ccw) {
+	uint i = 0u;
+	for (uint j = 0u; j < N; j++) {
+		uint nextOut = mvkStitchTransitionOuter(j, M, N);
+		while (i < nextOut) {
+			uint o0 = mvkRingVert(outerBase, outerStart + i, outerMod);
+			uint o1 = mvkRingVert(outerBase, outerStart + i + 1u, outerMod);
+			uint in0 = mvkRingVert(innerBase, innerStart + j, innerMod);
+			mvkEmitTri(indices, maxIndices, idxPos, o0, o1, in0, ccw);
+			i++;
+		}
+		uint o0 = mvkRingVert(outerBase, outerStart + i, outerMod);
+		uint in0 = mvkRingVert(innerBase, innerStart + j, innerMod);
+		uint in1 = mvkRingVert(innerBase, innerStart + j + 1u, innerMod);
+		mvkEmitTri(indices, maxIndices, idxPos, o0, in1, in0, ccw);
+	}
+	while (i < M) {
+		uint o0 = mvkRingVert(outerBase, outerStart + i, outerMod);
+		uint o1 = mvkRingVert(outerBase, outerStart + i + 1u, outerMod);
+		uint in0 = mvkRingVert(innerBase, innerStart + N, innerMod);
+		mvkEmitTri(indices, maxIndices, idxPos, o0, o1, in0, ccw);
+		i++;
+	}
+}
+
+static inline void mvkEmitStitchQuadEdge(device uint* indices, uint maxIndices, thread uint& idxPos,
+										 uint outerBase, uint outerStart, uint outerMod, uint M,
+										 uint innerFirst, int innerStep, uint N, bool ccw) {
+	uint i = 0u;
+	for (uint j = 0u; j < N; j++) {
+		uint nextOut = mvkStitchTransitionOuter(j, M, N);
+		while (i < nextOut) {
+			uint o0 = mvkRingVert(outerBase, outerStart + i, outerMod);
+			uint o1 = mvkRingVert(outerBase, outerStart + i + 1u, outerMod);
+			uint in0 = uint(int(innerFirst) + int(j) * innerStep);
+			mvkEmitTri(indices, maxIndices, idxPos, o0, o1, in0, ccw);
+			i++;
+		}
+		uint o0 = mvkRingVert(outerBase, outerStart + i, outerMod);
+		uint in0 = uint(int(innerFirst) + int(j) * innerStep);
+		uint in1 = uint(int(innerFirst) + int(j + 1u) * innerStep);
+		mvkEmitTri(indices, maxIndices, idxPos, o0, in1, in0, ccw);
+	}
+	while (i < M) {
+		uint o0 = mvkRingVert(outerBase, outerStart + i, outerMod);
+		uint o1 = mvkRingVert(outerBase, outerStart + i + 1u, outerMod);
+		uint in0 = uint(int(innerFirst) + int(N) * innerStep);
+		mvkEmitTri(indices, maxIndices, idxPos, o0, o1, in0, ccw);
+		i++;
+	}
+}
+
+kernel void mvkComputeTessReset(device MVKComputeTessCounters* counters [[buffer(0)]],
+								device uint* drawArgs [[buffer(1)]],
+								uint tid [[thread_position_in_grid]]) {
+	if (tid == 0u) {
+		atomic_store_explicit(&counters->totalVerts, 0u, memory_order_relaxed);
+		atomic_store_explicit(&counters->totalIndices, 0u, memory_order_relaxed);
+		for (uint i = 0u; i < 5u; i++) { drawArgs[i] = 0u; }
+	}
+}
+
+kernel void mvkComputeTessCount(const device uchar* tessFactorsRaw [[buffer(0)]],
+								constant MVKComputeTessParams& params [[buffer(1)]],
+								const device uint* indirectPatchParams [[buffer(2)]],
+								device MVKComputeTessCounters* counters [[buffer(3)]],
+								device MVKComputeTessPatchMeta* patchMeta [[buffer(4)]],
+								uint pid [[thread_position_in_grid]]) {
+	uint patchCount = params.useIndirectPatchCount ? indirectPatchParams[1] : params.patchCount;
+	if (pid >= patchCount) { return; }
+
+	uint vtxCount = 0u;
+	uint triCount = 0u;
+
+	if (params.patchKind == 0u) {
+		const device MTLTriangleTessellationFactorsHalf* tf =
+			(const device MTLTriangleTessellationFactorsHalf*)tessFactorsRaw;
+		float ro0 = float(tf[pid].edgeTessellationFactor[0]);
+		float ro1 = float(tf[pid].edgeTessellationFactor[1]);
+		float ro2 = float(tf[pid].edgeTessellationFactor[2]);
+		float ri0 = float(tf[pid].insideTessellationFactor);
+		if (!(ro0 > 0.0f && ro1 > 0.0f && ro2 > 0.0f)) {
+			patchMeta[pid] = { 0u, 0u, 0u, 0u };
+			return;
+		}
+		uint O0 = mvkRoundTessLevel(mvkClampTessLevel(ro0, params.partitionMode), params.partitionMode);
+		uint O1 = mvkRoundTessLevel(mvkClampTessLevel(ro1, params.partitionMode), params.partitionMode);
+		uint O2 = mvkRoundTessLevel(mvkClampTessLevel(ro2, params.partitionMode), params.partitionMode);
+		uint I  = mvkRoundTessLevel(mvkClampTessLevel(ri0, params.partitionMode), params.partitionMode);
+		if (I == 1u && (O0 > 1u || O1 > 1u || O2 > 1u)) {
+			I = (params.partitionMode == 2u) ? 3u : 2u;
+		}
+		if (I == 1u) {
+			vtxCount = 3u;
+			triCount = 1u;
+		} else {
+			vtxCount = O0 + O1 + O2;
+			triCount = O0 + O1 + O2;
+			uint numInner = I / 2u;
+			for (uint r = 1u; r <= numInner; r++) {
+				uint L = I - 2u * r;
+				vtxCount += (L == 0u) ? 1u : (3u * L);
+				triCount += (L == 1u) ? 4u : (6u * L);
+			}
+		}
+	} else {
+		const device MTLQuadTessellationFactorsHalf* qf =
+			(const device MTLQuadTessellationFactorsHalf*)tessFactorsRaw;
+		float ro0 = float(qf[pid].edgeTessellationFactor[0]);
+		float ro1 = float(qf[pid].edgeTessellationFactor[1]);
+		float ro2 = float(qf[pid].edgeTessellationFactor[2]);
+		float ro3 = float(qf[pid].edgeTessellationFactor[3]);
+		float ri0 = float(qf[pid].insideTessellationFactor[0]);
+		float ri1 = float(qf[pid].insideTessellationFactor[1]);
+		if (!(ro0 > 0.0f && ro1 > 0.0f && ro2 > 0.0f && ro3 > 0.0f)) {
+			patchMeta[pid] = { 0u, 0u, 0u, 0u };
+			return;
+		}
+		uint O0 = mvkRoundTessLevel(mvkClampTessLevel(ro0, params.partitionMode), params.partitionMode);
+		uint O1 = mvkRoundTessLevel(mvkClampTessLevel(ro1, params.partitionMode), params.partitionMode);
+		uint O2 = mvkRoundTessLevel(mvkClampTessLevel(ro2, params.partitionMode), params.partitionMode);
+		uint O3 = mvkRoundTessLevel(mvkClampTessLevel(ro3, params.partitionMode), params.partitionMode);
+		uint I0 = mvkRoundTessLevel(mvkClampTessLevel(ri0, params.partitionMode), params.partitionMode);
+		uint I1 = mvkRoundTessLevel(mvkClampTessLevel(ri1, params.partitionMode), params.partitionMode);
+		bool singleQuad = (I0 == 1u && I1 == 1u && O0 == 1u && O1 == 1u && O2 == 1u && O3 == 1u);
+		if (!singleQuad) {
+			uint minInner = (params.partitionMode == 2u) ? 3u : 2u;
+			if (I0 == 1u) { I0 = minInner; }
+			if (I1 == 1u) { I1 = minInner; }
+		}
+		if (singleQuad) {
+			vtxCount = 4u;
+			triCount = 2u;
+		} else {
+			vtxCount = O0 + O1 + O2 + O3 + (I0 - 1u) * (I1 - 1u);
+			triCount = 2u * (I0 - 2u) * (I1 - 2u) + 2u * (I0 - 2u) + 2u * (I1 - 2u) + O0 + O1 + O2 + O3;
+		}
+	}
+
+	uint idxCount = params.pointMode ? 0u : (triCount * 3u);
+	uint vtxBase = atomic_fetch_add_explicit(&counters->totalVerts, vtxCount, memory_order_relaxed);
+	uint idxBase = idxCount ? atomic_fetch_add_explicit(&counters->totalIndices, idxCount, memory_order_relaxed) : 0u;
+	patchMeta[pid] = { vtxBase, idxBase, vtxCount, idxCount };
+}
+
+kernel void mvkComputeTessEmit(const device uchar* tessFactorsRaw [[buffer(0)]],
+							   constant MVKComputeTessParams& params [[buffer(1)]],
+							   const device uint* indirectPatchParams [[buffer(2)]],
+							   device MVKComputeTessCounters* counters [[buffer(3)]],
+							   const device MVKComputeTessPatchMeta* patchMeta [[buffer(4)]],
+							   device MVKComputeTessEvalPoint* coords [[buffer(5)]],
+							   device uint* indices [[buffer(6)]],
+							   device uint* drawArgs [[buffer(7)]],
+							   uint pid [[thread_position_in_grid]]) {
+	if (pid == 0u) {
+		uint tv = min(atomic_load_explicit(&counters->totalVerts, memory_order_relaxed), params.maxVerts);
+		uint ti = min(atomic_load_explicit(&counters->totalIndices, memory_order_relaxed), params.maxIndices);
+		if (params.pointMode) {
+			drawArgs[0] = tv;
+			drawArgs[1] = 1u;
+			drawArgs[2] = 0u;
+			drawArgs[3] = 0u;
+		} else {
+			drawArgs[0] = (ti / 3u) * 3u;
+			drawArgs[1] = 1u;
+			drawArgs[2] = 0u;
+			drawArgs[3] = 0u;
+			drawArgs[4] = 0u;
+		}
+	}
+
+	uint patchCount = params.useIndirectPatchCount ? indirectPatchParams[1] : params.patchCount;
+	if (pid >= patchCount) { return; }
+
+	MVKComputeTessPatchMeta meta = patchMeta[pid];
+	if (meta.vtxCount == 0u) { return; }
+
+	uint vtxPos = meta.vtxBase;
+	uint idxPos = meta.idxBase;
+
+	if (params.patchKind == 0u) {
+		const device MTLTriangleTessellationFactorsHalf* tf =
+			(const device MTLTriangleTessellationFactorsHalf*)tessFactorsRaw;
+		float fO0 = mvkClampTessLevel(float(tf[pid].edgeTessellationFactor[0]), params.partitionMode);
+		float fO1 = mvkClampTessLevel(float(tf[pid].edgeTessellationFactor[1]), params.partitionMode);
+		float fO2 = mvkClampTessLevel(float(tf[pid].edgeTessellationFactor[2]), params.partitionMode);
+		float fI  = mvkClampTessLevel(float(tf[pid].insideTessellationFactor), params.partitionMode);
+		uint O0 = mvkRoundTessLevel(fO0, params.partitionMode);
+		uint O1 = mvkRoundTessLevel(fO1, params.partitionMode);
+		uint O2 = mvkRoundTessLevel(fO2, params.partitionMode);
+		uint I  = mvkRoundTessLevel(fI, params.partitionMode);
+		if (I == 1u && (O0 > 1u || O1 > 1u || O2 > 1u)) {
+			I = (params.partitionMode == 2u) ? 3u : 2u;
+			fI = float(I);
+		}
+		bool ccw = ((params.outputWindingCCW ^ params.domainOriginLowerLeft) != 0u);
+
+		if (I == 1u) {
+			// Corners in CW order: C2=(0,0,1), C0=(1,0,0), C1=(0,1,0)
+			mvkEmitPoint(coords, params.maxVerts, vtxPos + 0u, 0.0f, 0.0f, 1.0f, pid);
+			mvkEmitPoint(coords, params.maxVerts, vtxPos + 1u, 1.0f, 0.0f, 0.0f, pid);
+			mvkEmitPoint(coords, params.maxVerts, vtxPos + 2u, 0.0f, 1.0f, 0.0f, pid);
+			if (!params.pointMode) {
+				mvkEmitTri(indices, params.maxIndices, idxPos, vtxPos + 0u, vtxPos + 1u, vtxPos + 2u, ccw);
+			}
+			return;
+		}
+
+		// Ring 0 (outer perimeter in CW order: C2->C0 [O1], C0->C1 [O2], C1->C2 [O0])
+		uint ring0Base = vtxPos;
+		uint ring0Len = O1 + O2 + O0;
+		for (uint i = 0u; i < O1; i++) {
+			float u = mvkEdgeCoord(i, O1, fO1, params.partitionMode);
+			mvkEmitPoint(coords, params.maxVerts, vtxPos++, u, 0.0f, 1.0f - u, pid);
+		}
+		for (uint i = 0u; i < O2; i++) {
+			float v = mvkEdgeCoord(i, O2, fO2, params.partitionMode);
+			mvkEmitPoint(coords, params.maxVerts, vtxPos++, 1.0f - v, v, 0.0f, pid);
+		}
+		for (uint i = 0u; i < O0; i++) {
+			float w = mvkEdgeCoord(i, O0, fO0, params.partitionMode);
+			mvkEmitPoint(coords, params.maxVerts, vtxPos++, 0.0f, 1.0f - w, w, pid);
+		}
+
+		uint prevBase = ring0Base;
+		uint prevMod = ring0Len;
+		uint prevM0 = O1, prevM1 = O2, prevM2 = O0;
+		uint prevS0 = 0u, prevS1 = O1, prevS2 = O1 + O2;
+
+		uint numInner = I / 2u;
+		for (uint r = 1u; r <= numInner; r++) {
+			uint L = I - 2u * r;
+			uint curBase = vtxPos;
+			if (L == 0u) {
+				mvkEmitPoint(coords, params.maxVerts, vtxPos++, 1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f, pid);
+				if (!params.pointMode) {
+					mvkEmitStitchRing(indices, params.maxIndices, idxPos, prevBase, prevS0, prevMod, prevM0, curBase, 0u, 1u, 0u, ccw);
+					mvkEmitStitchRing(indices, params.maxIndices, idxPos, prevBase, prevS1, prevMod, prevM1, curBase, 0u, 1u, 0u, ccw);
+					mvkEmitStitchRing(indices, params.maxIndices, idxPos, prevBase, prevS2, prevMod, prevM2, curBase, 0u, 1u, 0u, ccw);
+				}
+			} else {
+				float s = (2.0f / 3.0f) * mvkEdgeCoord(r, I, fI, params.partitionMode);
+				float maxUVW = 1.0f - 2.0f * s;
+				float fSub = mvkClampTessLevel(fI - 2.0f * float(r), params.partitionMode);
+				uint curMod = 3u * L;
+				// Side 0: P2(s,s,max) -> P0(max,s,s)
+				for (uint i = 0u; i < L; i++) {
+					float t = mvkEdgeCoord(i, L, fSub, params.partitionMode);
+					float u = mix(s, maxUVW, t);
+					mvkEmitPoint(coords, params.maxVerts, vtxPos++, u, s, 1.0f - u - s, pid);
+				}
+				// Side 1: P0(max,s,s) -> P1(s,max,s)
+				for (uint i = 0u; i < L; i++) {
+					float t = mvkEdgeCoord(i, L, fSub, params.partitionMode);
+					float v = mix(s, maxUVW, t);
+					mvkEmitPoint(coords, params.maxVerts, vtxPos++, 1.0f - v - s, v, s, pid);
+				}
+				// Side 2: P1(s,max,s) -> P2(s,s,max)
+				for (uint i = 0u; i < L; i++) {
+					float t = mvkEdgeCoord(i, L, fSub, params.partitionMode);
+					float w = mix(s, maxUVW, t);
+					mvkEmitPoint(coords, params.maxVerts, vtxPos++, s, 1.0f - w - s, w, pid);
+				}
+				if (!params.pointMode) {
+					mvkEmitStitchRing(indices, params.maxIndices, idxPos, prevBase, prevS0, prevMod, prevM0, curBase, 0u, curMod, L, ccw);
+					mvkEmitStitchRing(indices, params.maxIndices, idxPos, prevBase, prevS1, prevMod, prevM1, curBase, L, curMod, L, ccw);
+					mvkEmitStitchRing(indices, params.maxIndices, idxPos, prevBase, prevS2, prevMod, prevM2, curBase, 2u * L, curMod, L, ccw);
+					if (L == 1u) {
+						mvkEmitTri(indices, params.maxIndices, idxPos, curBase + 0u, curBase + 1u, curBase + 2u, ccw);
+					}
+				}
+				prevBase = curBase;
+				prevMod = curMod;
+				prevM0 = L; prevM1 = L; prevM2 = L;
+				prevS0 = 0u; prevS1 = L; prevS2 = 2u * L;
+			}
+		}
+	} else {
+		const device MTLQuadTessellationFactorsHalf* qf =
+			(const device MTLQuadTessellationFactorsHalf*)tessFactorsRaw;
+		float fO0 = mvkClampTessLevel(float(qf[pid].edgeTessellationFactor[0]), params.partitionMode);
+		float fO1 = mvkClampTessLevel(float(qf[pid].edgeTessellationFactor[1]), params.partitionMode);
+		float fO2 = mvkClampTessLevel(float(qf[pid].edgeTessellationFactor[2]), params.partitionMode);
+		float fO3 = mvkClampTessLevel(float(qf[pid].edgeTessellationFactor[3]), params.partitionMode);
+		float fI0 = mvkClampTessLevel(float(qf[pid].insideTessellationFactor[0]), params.partitionMode);
+		float fI1 = mvkClampTessLevel(float(qf[pid].insideTessellationFactor[1]), params.partitionMode);
+		uint O0 = mvkRoundTessLevel(fO0, params.partitionMode);
+		uint O1 = mvkRoundTessLevel(fO1, params.partitionMode);
+		uint O2 = mvkRoundTessLevel(fO2, params.partitionMode);
+		uint O3 = mvkRoundTessLevel(fO3, params.partitionMode);
+		uint I0 = mvkRoundTessLevel(fI0, params.partitionMode);
+		uint I1 = mvkRoundTessLevel(fI1, params.partitionMode);
+		bool singleQuad = (I0 == 1u && I1 == 1u && O0 == 1u && O1 == 1u && O2 == 1u && O3 == 1u);
+		if (!singleQuad) {
+			uint minInner = (params.partitionMode == 2u) ? 3u : 2u;
+			if (I0 == 1u) { I0 = minInner; fI0 = float(I0); }
+			if (I1 == 1u) { I1 = minInner; fI1 = float(I1); }
+		}
+		bool ccw = (params.outputWindingCCW != 0u);
+		bool flipV = (params.domainOriginLowerLeft != 0u);
+
+		if (singleQuad) {
+			float v0 = flipV ? 1.0f : 0.0f;
+			float v1 = flipV ? 0.0f : 1.0f;
+			mvkEmitPoint(coords, params.maxVerts, vtxPos + 0u, 0.0f, v0, 0.0f, pid);
+			mvkEmitPoint(coords, params.maxVerts, vtxPos + 1u, 1.0f, v0, 0.0f, pid);
+			mvkEmitPoint(coords, params.maxVerts, vtxPos + 2u, 1.0f, v1, 0.0f, pid);
+			mvkEmitPoint(coords, params.maxVerts, vtxPos + 3u, 0.0f, v1, 0.0f, pid);
+			if (!params.pointMode) {
+				mvkEmitTri(indices, params.maxIndices, idxPos, vtxPos + 0u, vtxPos + 1u, vtxPos + 3u, ccw);
+				mvkEmitTri(indices, params.maxIndices, idxPos, vtxPos + 1u, vtxPos + 2u, vtxPos + 3u, ccw);
+			}
+			return;
+		}
+
+		// Outer perimeter in CW order: Top (v=0, O1), Right (u=1, O2), Bottom (v=1, O3), Left (u=0, O0)
+		uint outerBase = vtxPos;
+		uint outerMod = O1 + O2 + O3 + O0;
+		for (uint i = 0u; i < O1; i++) {
+			float u = mvkEdgeCoord(i, O1, fO1, params.partitionMode);
+			float v = flipV ? 1.0f : 0.0f;
+			mvkEmitPoint(coords, params.maxVerts, vtxPos++, u, v, 0.0f, pid);
+		}
+		for (uint i = 0u; i < O2; i++) {
+			float v = mvkEdgeCoord(i, O2, fO2, params.partitionMode);
+			mvkEmitPoint(coords, params.maxVerts, vtxPos++, 1.0f, flipV ? (1.0f - v) : v, 0.0f, pid);
+		}
+		for (uint i = 0u; i < O3; i++) {
+			float u = 1.0f - mvkEdgeCoord(i, O3, fO3, params.partitionMode);
+			float v = flipV ? 0.0f : 1.0f;
+			mvkEmitPoint(coords, params.maxVerts, vtxPos++, u, v, 0.0f, pid);
+		}
+		for (uint i = 0u; i < O0; i++) {
+			float v = 1.0f - mvkEdgeCoord(i, O0, fO0, params.partitionMode);
+			mvkEmitPoint(coords, params.maxVerts, vtxPos++, 0.0f, flipV ? (1.0f - v) : v, 0.0f, pid);
+		}
+
+		// Inner grid: (I0 - 1) x (I1 - 1)
+		uint innerW = I0 - 1u;
+		uint innerH = I1 - 1u;
+		uint innerBase = vtxPos;
+		for (uint iy = 0u; iy < innerH; iy++) {
+			float v = mvkEdgeCoord(iy + 1u, I1, fI1, params.partitionMode);
+			float vOut = flipV ? (1.0f - v) : v;
+			for (uint ix = 0u; ix < innerW; ix++) {
+				float u = mvkEdgeCoord(ix + 1u, I0, fI0, params.partitionMode);
+				mvkEmitPoint(coords, params.maxVerts, vtxPos++, u, vOut, 0.0f, pid);
+			}
+		}
+
+		if (!params.pointMode) {
+			// 4 border strips
+			// Top: outer [0..O1] -> inner row 0 left-to-right
+			mvkEmitStitchQuadEdge(indices, params.maxIndices, idxPos,
+								  outerBase, 0u, outerMod, O1,
+								  innerBase, 1, innerW - 1u, ccw);
+			// Right: outer [O1..O1+O2] -> inner col (innerW-1) top-to-bottom
+			mvkEmitStitchQuadEdge(indices, params.maxIndices, idxPos,
+								  outerBase, O1, outerMod, O2,
+								  innerBase + (innerW - 1u), int(innerW), innerH - 1u, ccw);
+			// Bottom: outer [O1+O2..O1+O2+O3] -> inner row (innerH-1) right-to-left
+			mvkEmitStitchQuadEdge(indices, params.maxIndices, idxPos,
+								  outerBase, O1 + O2, outerMod, O3,
+								  innerBase + (innerH - 1u) * innerW + (innerW - 1u), -1, innerW - 1u, ccw);
+			// Left: outer [O1+O2+O3..outerMod] -> inner col 0 bottom-to-top
+			mvkEmitStitchQuadEdge(indices, params.maxIndices, idxPos,
+								  outerBase, O1 + O2 + O3, outerMod, O0,
+								  innerBase + (innerH - 1u) * innerW, -int(innerW), innerH - 1u, ccw);
+
+			// Interior quad grid (4-way symmetric diagonal split matching Metal/D3D11 tessellator)
+			uint cellsX = innerW - 1u;
+			uint cellsY = innerH - 1u;
+			for (uint iy = 0u; iy < cellsY; iy++) {
+				bool midY = (2u * iy + 1u == cellsY);
+				bool topHalf = (2u * iy + 1u < cellsY);
+				for (uint ix = 0u; ix < cellsX; ix++) {
+					bool midX = (2u * ix + 1u == cellsX);
+					bool leftHalf = (2u * ix + 1u < cellsX);
+					uint p00 = innerBase + iy * innerW + ix;
+					uint p10 = p00 + 1u;
+					uint p01 = p00 + innerW;
+					uint p11 = p01 + 1u;
+					bool diagSlash = midY ? true : (midX ? false : (topHalf != leftHalf));
+					if (diagSlash) {
+						mvkEmitTri(indices, params.maxIndices, idxPos, p00, p10, p01, ccw);
+						mvkEmitTri(indices, params.maxIndices, idxPos, p10, p11, p01, ccw);
+					} else {
+						mvkEmitTri(indices, params.maxIndices, idxPos, p00, p10, p11, ccw);
+						mvkEmitTri(indices, params.maxIndices, idxPos, p00, p11, p01, ccw);
+					}
+				}
+			}
+		}
+	}
+}
+)MSL";
+
+		id<MTLDevice> mtlDev = _device->getPhysicalDevice()->getMTLDevice();
+		MTLCompileOptions* opts = [[MTLCompileOptions new] autorelease];
+		NSError* err = nil;
+		_tessLib = [mtlDev newLibraryWithSource:kComputeTessMSL options:opts error:&err];
+		if (!_tessLib) {
+			reportError(VK_ERROR_INITIALIZATION_FAILED, "Could not compile compute tessellator library: %s",
+						err ? err.localizedDescription.UTF8String : "unknown error");
+			return false;
+		}
+		auto buildKernel = [&](NSString* name, id<MTLComputePipelineState>& outState) -> bool {
+			id<MTLFunction> fn = [[_tessLib newFunctionWithName:name] autorelease];
+			if (!fn) { return false; }
+			NSError* psoErr = nil;
+			outState = [mtlDev newComputePipelineStateWithFunction:fn error:&psoErr];
+			if (!outState) {
+				reportError(VK_ERROR_INITIALIZATION_FAILED, "Could not compile compute tessellator pipeline %s: %s",
+							name.UTF8String, psoErr ? psoErr.localizedDescription.UTF8String : "unknown error");
+				return false;
+			}
+			return true;
+		};
+		if (!buildKernel(@"mvkComputeTessReset", _tessResetState) ||
+			!buildKernel(@"mvkComputeTessCount", _tessCountState) ||
+			!buildKernel(@"mvkComputeTessEmit", _tessEmitState)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool mvkAreInterfaceBaseTypesCompatible(SPIRType::BaseType vsType, SPIRType::BaseType fsType) {
+	auto classify = [](SPIRType::BaseType t) -> int {
+		switch (t) {
+			case SPIRType::Float: return 1;
+			case SPIRType::Half:  return 2;
+			case SPIRType::Int:
+			case SPIRType::UInt:  return 3;
+			case SPIRType::Short:
+			case SPIRType::UShort: return 4;
+			case SPIRType::SByte:
+			case SPIRType::UByte: return 5;
+			default: return 0;
+		}
+	};
+	int c1 = classify(vsType);
+	int c2 = classify(fsType);
+	if (c1 == 0 || c2 == 0) { return true; }
+	return c1 == c2;
+}
+
+bool MVKShaderObjectPipelines::areStagesCompatible(MVKShader* prev, MVKShader* next) const {
+	if (!prev || !next) { return false; }
+	if (!mvkIsAnyFlagEnabled(prev->getNextStage(), next->getStage())) { return false; }
+
+	bool checkPerPatch = (prev->getStage() == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT &&
+						  next->getStage() == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+	const auto& prevOuts = prev->getStageOutputs();
+	const auto& nextIns = next->getStageInputs();
+	for (const auto& ni : nextIns) {
+		if (!ni.isUsed || ni.builtin != spv::BuiltInMax) { continue; }
+		bool matched = false;
+		for (const auto& po : prevOuts) {
+			if (po.builtin != spv::BuiltInMax || po.location != ni.location) { continue; }
+			if (checkPerPatch && po.perPatch != ni.perPatch) { continue; }
+			if (!mvkAreInterfaceBaseTypesCompatible(po.baseType, ni.baseType)) { return false; }
+			matched = true;
+			break;
+		}
+		if (!matched) { return false; }
+	}
+	return true;
+}
+
+bool MVKShaderObjectPipelines::areTessCtlEvalCompatible(MVKShader* tcs, MVKShader* tes,
+														SPIRVTessReflectionData& outMerged) const {
+	if (!areStagesCompatible(tcs, tes)) { return false; }
+	std::string errLog;
+	if (!mergeTessReflectionData(tcs->getTessReflectionData(), tes->getTessReflectionData(), outMerged, errLog)) {
+		return false;
+	}
+	if (outMerged.patchKind != spv::ExecutionModeTriangles && outMerged.patchKind != spv::ExecutionModeQuads) {
+		return false;
+	}
+	return true;
+}
+
+static constexpr uint8_t kMVKLayeredTopos[3] = {
+	(uint8_t)MTLPrimitiveTopologyClassPoint,
+	(uint8_t)MTLPrimitiveTopologyClassLine,
+	(uint8_t)MTLPrimitiveTopologyClassTriangle,
+};
+static constexpr uint8_t kMVKDefaultTopos[1] = { (uint8_t)MTLPrimitiveTopologyClassUnspecified };
+
+static void mvkAppendRasterShapes(const MVKShaderObjectShapeKey& baseKey,
+								  const MVKSmallVector<uint8_t, 5>& sampleCounts,
+								  const uint8_t* topos, uint32_t topoCnt,
+								  MVKShader* fs,
+								  std::vector<MVKShaderObjectShapeKey>& outShapes) {
+	bool canCover = (fs != nullptr && fs->canDeriveCoverage());
+	uint8_t maxA2C = canCover ? 1 : 0;
+	uint8_t maxA2O = (canCover && fs->getEnabledFeatures().alphaToOne) ? 1 : 0;
+
+	for (uint8_t sc : sampleCounts) {
+		for (uint32_t tIdx = 0; tIdx < topoCnt; tIdx++) {
+			for (uint8_t dynMask = 0; dynMask <= 1; dynMask++) {
+				for (uint8_t a2c = 0; a2c <= maxA2C; a2c++) {
+					for (uint8_t a2o = 0; a2o <= maxA2O; a2o++) {
+						MVKShaderObjectShapeKey k = baseKey;
+						k.fragmentShader = fs;
+						k.sampleCount = sc;
+						k.topologyClass = topos[tIdx];
+						k.dynamicSampleMask = dynMask;
+						k.alphaToCoverage = a2c;
+						k.alphaToOne = a2o;
+						outShapes.push_back(k);
+					}
+				}
+			}
+		}
+	}
+}
+
+void MVKShaderObjectPipelines::collectShapesForVertex(MVKShader* vs, std::vector<MVKShaderObjectShapeKey>& outShapes) const {
+	bool hasMultiview = vs->getEnabledMultiviewFeatures().multiview;
+	for (uint8_t mv = 0; mv <= (hasMultiview ? 1 : 0); mv++) {
+		auto discardKey = MVKShaderObjectShapeKey::zeroed();
+		discardKey.vertexShader = vs;
+		discardKey.rasterizerDiscard = 1;
+		discardKey.sampleCount = 1;
+		discardKey.multiview = mv;
+		outShapes.push_back(discardKey);
+
+		if (!vs->writesPosition()) { continue; }
+
+		auto baseKey = MVKShaderObjectShapeKey::zeroed();
+		baseKey.vertexShader = vs;
+		baseKey.multiview = mv;
+		bool layered = (mv != 0 || vs->writesLayer());
+		const uint8_t* topos = layered ? kMVKLayeredTopos : kMVKDefaultTopos;
+		mvkAppendRasterShapes(baseKey, _supportedSampleCounts, topos, layered ? 3u : 1u, nullptr, outShapes);
+	}
+}
+
+void MVKShaderObjectPipelines::collectShapesForPair(MVKShader* vs, MVKShader* fs, std::vector<MVKShaderObjectShapeKey>& outShapes) const {
+	if (!vs->writesPosition()) { return; }
+
+	bool hasMultiview = vs->getEnabledMultiviewFeatures().multiview;
+	for (uint8_t mv = 0; mv <= (hasMultiview ? 1 : 0); mv++) {
+		auto baseKey = MVKShaderObjectShapeKey::zeroed();
+		baseKey.vertexShader = vs;
+		baseKey.multiview = mv;
+		bool layered = (mv != 0 || vs->writesLayer());
+		const uint8_t* topos = layered ? kMVKLayeredTopos : kMVKDefaultTopos;
+		mvkAppendRasterShapes(baseKey, _supportedSampleCounts, topos, layered ? 3u : 1u, fs, outShapes);
+	}
+}
+
+void MVKShaderObjectPipelines::collectShapesForTessEval(MVKShader* tcs, MVKShader* tes,
+														const SPIRVTessReflectionData& refl,
+														std::vector<MVKShaderObjectShapeKey>& outShapes) const {
+	uint8_t topo = (uint8_t)(refl.pointMode ? MTLPrimitiveTopologyClassPoint : MTLPrimitiveTopologyClassTriangle);
+	auto discardKey = MVKShaderObjectShapeKey::zeroed();
+	discardKey.tessCtlShader = tcs;
+	discardKey.tessEvalShader = tes;
+	discardKey.rasterizerDiscard = 1;
+	discardKey.sampleCount = 1;
+	discardKey.topologyClass = topo;
+	outShapes.push_back(discardKey);
+
+	if (!tes->writesPosition()) { return; }
+
+	auto baseKey = MVKShaderObjectShapeKey::zeroed();
+	baseKey.tessCtlShader = tcs;
+	baseKey.tessEvalShader = tes;
+	mvkAppendRasterShapes(baseKey, _supportedSampleCounts, &topo, 1u, nullptr, outShapes);
+}
+
+void MVKShaderObjectPipelines::collectShapesForTessPair(MVKShader* tcs, MVKShader* tes, MVKShader* fs,
+														const SPIRVTessReflectionData& refl,
+														std::vector<MVKShaderObjectShapeKey>& outShapes) const {
+	if (!tes->writesPosition()) { return; }
+
+	uint8_t topo = (uint8_t)(refl.pointMode ? MTLPrimitiveTopologyClassPoint : MTLPrimitiveTopologyClassTriangle);
+	auto baseKey = MVKShaderObjectShapeKey::zeroed();
+	baseKey.tessCtlShader = tcs;
+	baseKey.tessEvalShader = tes;
+	mvkAppendRasterShapes(baseKey, _supportedSampleCounts, &topo, 1u, fs, outShapes);
+}
+
+static VkPipelineShaderStageCreateFlags mvkPipelineStageFlagsFromShaderFlags(VkShaderCreateFlagsEXT flags) {
+	VkPipelineShaderStageCreateFlags stageFlags = 0;
+	if (mvkIsAnyFlagEnabled(flags, VK_SHADER_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT)) {
+		mvkEnableFlags(stageFlags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT);
+	}
+	if (mvkIsAnyFlagEnabled(flags, VK_SHADER_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT)) {
+		mvkEnableFlags(stageFlags, VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT);
+	}
+	return stageFlags;
+}
+
+static VkPipelineShaderStageCreateInfo mvkMakePipelineStageCreateInfo(MVKShader* shader) {
+	return {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = mvkPipelineStageFlagsFromShaderFlags(shader->getFlags()),
+		.stage = shader->getStage(),
+		.module = (VkShaderModule)shader->getShaderModule(),
+		.pName = shader->getEntryPointName(),
+		.pSpecializationInfo = shader->getSpecializationInfo(),
+	};
+}
+
+static MVKGraphicsPipeline* mvkNewValidatedGraphicsPipeline(MVKDevice* device,
+															const VkGraphicsPipelineCreateInfo* pCI,
+															const MVKShaderObjectPipelineConfig& soConfig) {
+	auto* plne = new MVKGraphicsPipeline(device, nullptr, nullptr, pCI, soConfig);
+	if (plne->getConfigurationResult() != VK_SUCCESS || !plne->hasValidMTLPipelineStates()) {
+		plne->destroy();
+		return nullptr;
+	}
+	return plne;
+}
+
+static MVKPipelineLayout* mvkSelectSupersetLayout(std::initializer_list<MVKShader*> shaders) {
+	MVKPipelineLayout* layout = nullptr;
+	for (MVKShader* s : shaders) {
+		if (!s || !s->getPipelineLayout()) { continue; }
+		MVKPipelineLayout* cand = s->getPipelineLayout();
+		if (!layout || cand->getDescriptorSetCount() > layout->getDescriptorSetCount() ||
+			(cand->getDescriptorSetCount() == layout->getDescriptorSetCount() &&
+			 cand->getPushConstantsLength() > layout->getPushConstantsLength())) {
+			layout = cand;
+		}
+	}
+	return layout;
+}
+
+MVKGraphicsPipeline* MVKShaderObjectPipelines::newTessStage1(MVKShader* vs, MVKShader* tcs) {
+	VkPipelineShaderStageCreateInfo ssCIs[2] = {
+		mvkMakePipelineStageCreateInfo(vs),
+		mvkMakePipelineStageCreateInfo(tcs),
+	};
+	VkPipelineVertexInputStateCreateInfo viCI = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+	VkPipelineInputAssemblyStateCreateInfo iaCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+		.topology = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST,
+	};
+	VkPipelineRasterizationStateCreateInfo rsCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+		.rasterizerDiscardEnable = VK_TRUE,
+		.polygonMode = VK_POLYGON_MODE_FILL,
+		.lineWidth = 1.0f,
+	};
+	VkPipelineRenderingCreateInfo rendCI = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
+	VkGraphicsPipelineCreateInfo plCI = {
+		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+		.pNext = &rendCI,
+		.stageCount = 2,
+		.pStages = ssCIs,
+		.pVertexInputState = &viCI,
+		.pInputAssemblyState = &iaCI,
+		.pRasterizationState = &rsCI,
+		.layout = (VkPipelineLayout)mvkSelectSupersetLayout({ vs, tcs }),
+		.basePipelineIndex = -1,
+	};
+	MVKShaderObjectPipelineConfig soConfig = {
+		.pullVertices = true,
+		.rasterizerDiscard = true,
+		.tessStageMode = MVKShaderObjectTessStageMode::Stage1,
+	};
+	return mvkNewValidatedGraphicsPipeline(_device, &plCI, soConfig);
+}
+
+MVKGraphicsPipeline* MVKShaderObjectPipelines::newTessStage2(MVKShader* vs, MVKShader* tcs, MVKShader* tes) {
+	VkPipelineShaderStageCreateInfo ssCIs[3] = {
+		mvkMakePipelineStageCreateInfo(vs),
+		mvkMakePipelineStageCreateInfo(tcs),
+		mvkMakePipelineStageCreateInfo(tes),
+	};
+	VkPipelineVertexInputStateCreateInfo viCI = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+	VkPipelineInputAssemblyStateCreateInfo iaCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+		.topology = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST,
+	};
+	VkPipelineTessellationStateCreateInfo tsCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
+		.patchControlPoints = 1,
+	};
+	VkPipelineRasterizationStateCreateInfo rsCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+		.rasterizerDiscardEnable = VK_TRUE,
+		.polygonMode = VK_POLYGON_MODE_FILL,
+		.lineWidth = 1.0f,
+	};
+	VkPipelineRenderingCreateInfo rendCI = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
+	VkGraphicsPipelineCreateInfo plCI = {
+		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+		.pNext = &rendCI,
+		.stageCount = 3,
+		.pStages = ssCIs,
+		.pVertexInputState = &viCI,
+		.pInputAssemblyState = &iaCI,
+		.pTessellationState = &tsCI,
+		.pRasterizationState = &rsCI,
+		.layout = (VkPipelineLayout)mvkSelectSupersetLayout({ vs, tcs, tes }),
+		.basePipelineIndex = -1,
+	};
+	MVKShaderObjectPipelineConfig soConfig = {
+		.pullVertices = true,
+		.rasterizerDiscard = true,
+		.tessStageMode = MVKShaderObjectTessStageMode::Stage2,
+	};
+	return mvkNewValidatedGraphicsPipeline(_device, &plCI, soConfig);
+}
+
+static id mvkNewMetal4CaptureCompiler(MVKDevice* device, id& outSerializer) {
+	outSerializer = nil;
+#if MVK_XCODE_26 && !MVK_OS_SIMULATOR
+	if (@available(macOS 26.0, iOS 26.0, *)) {
+		@autoreleasepool {
+			id<MTLDevice> mtlDev = device->getPhysicalDevice()->getMTLDevice();
+			MTL4PipelineDataSetSerializerDescriptor* serDesc = [[MTL4PipelineDataSetSerializerDescriptor new] autorelease];
+			serDesc.configuration = MTL4PipelineDataSetSerializerConfigurationCaptureBinaries;
+			id<MTL4PipelineDataSetSerializer> ser = [mtlDev newPipelineDataSetSerializerWithDescriptor:serDesc];
+			if (!ser) { return nil; }
+			MTL4CompilerDescriptor* compDesc = [[MTL4CompilerDescriptor new] autorelease];
+			compDesc.pipelineDataSetSerializer = ser;
+			NSError* err = nil;
+			id<MTL4Compiler> compiler = [mtlDev newCompilerWithDescriptor:compDesc error:&err];
+			if (!compiler) {
+				[ser release];
+				return nil;
+			}
+			outSerializer = ser;
+			return compiler;
+		}
+	}
+#endif
+	return nil;
+}
+
+MVKGraphicsPipeline* MVKShaderObjectPipelines::newMetal4Template(const MVKShaderObjectShapeKey& shapeKey) {
+	MVKShader* vs = shapeKey.vertexShader;
+	MVKShader* tcs = shapeKey.tessCtlShader;
+	MVKShader* tes = shapeKey.tessEvalShader;
+	MVKShader* fs = shapeKey.fragmentShader;
+	bool isTessStage3 = (tcs != nullptr && tes != nullptr);
+	bool discard = shapeKey.rasterizerDiscard != 0;
+	bool noOpFS = (!discard && fs == nullptr);
+
+	VkPipelineShaderStageCreateInfo ssCIs[3] = {};
+	uint32_t ssCnt = 0;
+	if (isTessStage3) {
+		ssCIs[ssCnt++] = mvkMakePipelineStageCreateInfo(tcs);
+		ssCIs[ssCnt++] = mvkMakePipelineStageCreateInfo(tes);
+	} else {
+		ssCIs[ssCnt++] = mvkMakePipelineStageCreateInfo(vs);
+	}
+	if (!discard && fs) {
+		ssCIs[ssCnt++] = mvkMakePipelineStageCreateInfo(fs);
+	}
+
+	VkPipelineVertexInputStateCreateInfo viCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.vertexBindingDescriptionCount = 0,
+		.pVertexBindingDescriptions = nullptr,
+		.vertexAttributeDescriptionCount = 0,
+		.pVertexAttributeDescriptions = nullptr,
+	};
+
+	VkPrimitiveTopology topo = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	if (shapeKey.topologyClass == MTLPrimitiveTopologyClassPoint) { topo = VK_PRIMITIVE_TOPOLOGY_POINT_LIST; }
+	else if (shapeKey.topologyClass == MTLPrimitiveTopologyClassLine) { topo = VK_PRIMITIVE_TOPOLOGY_LINE_LIST; }
+
+	VkPipelineInputAssemblyStateCreateInfo iaCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.topology = topo,
+		.primitiveRestartEnable = VK_TRUE,
+	};
+
+	VkPipelineTessellationStateCreateInfo tsCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.patchControlPoints = 1,
+	};
+
+	VkPipelineViewportStateCreateInfo vpCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.viewportCount = 0,
+		.pViewports = nullptr,
+		.scissorCount = 0,
+		.pScissors = nullptr,
+	};
+
+	VkPipelineRasterizationStateCreateInfo rsCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.depthClampEnable = VK_FALSE,
+		.rasterizerDiscardEnable = discard ? VK_TRUE : VK_FALSE,
+		.polygonMode = VK_POLYGON_MODE_FILL,
+		.cullMode = VK_CULL_MODE_NONE,
+		.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+		.depthBiasEnable = VK_FALSE,
+		.depthBiasConstantFactor = 0,
+		.depthBiasClamp = 0,
+		.depthBiasSlopeFactor = 0,
+		.lineWidth = 1,
+	};
+
+	VkSampleMask allSamples = ~0u;
+	VkPipelineMultisampleStateCreateInfo msCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.rasterizationSamples = (VkSampleCountFlagBits)shapeKey.sampleCount,
+		.sampleShadingEnable = VK_FALSE,
+		.minSampleShading = 0,
+		.pSampleMask = &allSamples,
+		.alphaToCoverageEnable = shapeKey.alphaToCoverage ? VK_TRUE : VK_FALSE,
+		.alphaToOneEnable = shapeKey.alphaToOne ? VK_TRUE : VK_FALSE,
+	};
+
+	VkPipelineDepthStencilStateCreateInfo dsCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+	};
+
+	VkPipelineColorBlendStateCreateInfo cbCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.logicOpEnable = VK_FALSE,
+		.logicOp = VK_LOGIC_OP_COPY,
+		.attachmentCount = 0,
+		.pAttachments = nullptr,
+		.blendConstants = { 0, 0, 0, 0 },
+	};
+
+	static const VkDynamicState fixedDynStates[] = {
+		VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
+		VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
+		VK_DYNAMIC_STATE_LINE_WIDTH,
+		VK_DYNAMIC_STATE_DEPTH_BIAS,
+		VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE,
+		VK_DYNAMIC_STATE_BLEND_CONSTANTS,
+		VK_DYNAMIC_STATE_DEPTH_BOUNDS,
+		VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE,
+		VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
+		VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
+		VK_DYNAMIC_STATE_STENCIL_REFERENCE,
+		VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE,
+		VK_DYNAMIC_STATE_STENCIL_OP,
+		VK_DYNAMIC_STATE_CULL_MODE,
+		VK_DYNAMIC_STATE_FRONT_FACE,
+		VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE,
+		VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE,
+		VK_DYNAMIC_STATE_DEPTH_COMPARE_OP,
+		VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE,
+		VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE,
+		VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
+		VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT,
+		VK_DYNAMIC_STATE_POLYGON_MODE_EXT,
+		VK_DYNAMIC_STATE_DEPTH_CLAMP_ENABLE_EXT,
+		VK_DYNAMIC_STATE_DEPTH_CLIP_ENABLE_EXT,
+		VK_DYNAMIC_STATE_LINE_RASTERIZATION_MODE_EXT,
+	};
+
+	VkPipelineDynamicStateCreateInfo dynCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.dynamicStateCount = (uint32_t)(sizeof(fixedDynStates) / sizeof(fixedDynStates[0])),
+		.pDynamicStates = fixedDynStates,
+	};
+
+	VkPipelineRenderingCreateInfo rendCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+		.pNext = nullptr,
+		.viewMask = shapeKey.multiview ? 0x3u : 0u,
+		.colorAttachmentCount = 0,
+		.pColorAttachmentFormats = nullptr,
+		.depthAttachmentFormat = VK_FORMAT_UNDEFINED,
+		.stencilAttachmentFormat = VK_FORMAT_UNDEFINED,
+	};
+
+	MVKPipelineLayout* layout = isTessStage3
+		? mvkSelectSupersetLayout({ tcs, tes, fs })
+		: mvkSelectSupersetLayout({ vs, fs });
+
+	VkGraphicsPipelineCreateInfo plCI = {
+		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+		.pNext = &rendCI,
+		.flags = 0,
+		.stageCount = ssCnt,
+		.pStages = ssCIs,
+		.pVertexInputState = &viCI,
+		.pInputAssemblyState = (shapeKey.topologyClass == MTLPrimitiveTopologyClassUnspecified) ? nullptr : &iaCI,
+		.pTessellationState = isTessStage3 ? &tsCI : nullptr,
+		.pViewportState = &vpCI,
+		.pRasterizationState = &rsCI,
+		.pMultisampleState = &msCI,
+		.pDepthStencilState = &dsCI,
+		.pColorBlendState = &cbCI,
+		.pDynamicState = &dynCI,
+		.layout = (VkPipelineLayout)layout,
+		.renderPass = VK_NULL_HANDLE,
+		.subpass = 0,
+		.basePipelineHandle = VK_NULL_HANDLE,
+		.basePipelineIndex = -1,
+	};
+
+	MVKShader* preRastShader = isTessStage3 ? tes : vs;
+	bool dynamicDepthClip = preRastShader->getEnabledDepthClipControlFeatures().depthClipControl && preRastShader->canMapDepthClip();
+	MVKShaderObjectPipelineConfig soConfig = {
+		.binaryArchive            = nullptr,
+		.neverRendersPoints       = (shapeKey.topologyClass == MTLPrimitiveTopologyClassLine ||
+									 shapeKey.topologyClass == MTLPrimitiveTopologyClassTriangle),
+		.dynamicDepthClip         = dynamicDepthClip,
+		.blendInShader            = (!discard && fs != nullptr && shapeKey.dynamicSampleMask != 0),
+		.pullVertices             = !isTessStage3,
+		.metal4Template           = true,
+		.dynamicSampleMask        = shapeKey.dynamicSampleMask != 0,
+		.noOpFragment             = noOpFS,
+		.rasterizerDiscard        = discard,
+		.fsReadsPrimitiveId       = (!discard && fs != nullptr && fs->readsPrimitiveId()),
+		.tessStageMode            = isTessStage3 ? MVKShaderObjectTessStageMode::Stage3 : MVKShaderObjectTessStageMode::None,
+		.noOpFragmentLibrary      = noOpFS ? _noOpFragmentLibrary : nil,
+		.noOpFragmentFunctionName = noOpFS ? (shapeKey.dynamicSampleMask ? @"mvkNoOpFragmentSampleMask" : @"mvkNoOpFragment") : nil,
+	};
+
+	return mvkNewValidatedGraphicsPipeline(_device, &plCI, soConfig);
+}
+
+VkResult MVKShaderObjectPipelines::buildTemplatesInParallel(const std::vector<MVKShaderObjectShapeKey>& shapes,
+															std::vector<MVKGraphicsPipeline*>& outBuilt) {
+	outBuilt.assign(shapes.size(), nullptr);
+	if (shapes.empty()) { return VK_SUCCESS; }
+
+	// Prime the first shape synchronously so SPIR-V->MSL library compilation happens once
+	// before parallel workers build the remaining shape PSOs from the cached MTLLibrary.
+	@autoreleasepool {
+		outBuilt[0] = newMetal4Template(shapes[0]);
+	}
+	if (!outBuilt[0]) { return VK_ERROR_INITIALIZATION_FAILED; }
+
+	if (shapes.size() > 1) {
+		size_t remaining = shapes.size() - 1;
+		dispatch_apply(remaining, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t idx) {
+			@autoreleasepool {
+				outBuilt[idx + 1] = newMetal4Template(shapes[idx + 1]);
+			}
+		});
+	}
+
+	for (auto* p : outBuilt) {
+		if (!p) {
+			for (auto* built : outBuilt) { if (built) { built->destroy(); } }
+			outBuilt.clear();
+			return VK_ERROR_INITIALIZATION_FAILED;
+		}
+	}
+	return VK_SUCCESS;
+}
+
+VkResult MVKShaderObjectPipelines::prepareGraphicsShader(MVKShader* shader) {
+	if (!isMetal4Enabled()) { return VK_SUCCESS; }
+
+	std::lock_guard<std::mutex> createLock(_creationMutex);
+	if (!initNoOpFragmentLibraryLocked()) { return VK_ERROR_INITIALIZATION_FAILED; }
+
+	if (shader->getStage() == VK_SHADER_STAGE_VERTEX_BIT) {
+		if (!shader->canPullVertices()) {
+			reportWarning(VK_ERROR_FEATURE_NOT_PRESENT,
+						  "vkCreateShadersEXT(): Vertex shader declined runtime vertex pulling; falling back to legacy path.");
+			return VK_SUCCESS;
+		}
+		std::vector<MVKShaderObjectShapeKey> shapes;
+		bool canRasterizeDirectly = (shader->getNextStage() == 0 || mvkIsAnyFlagEnabled(shader->getNextStage(), VK_SHADER_STAGE_FRAGMENT_BIT));
+		if (canRasterizeDirectly) {
+			collectShapesForVertex(shader, shapes);
+		}
+		if (!shader->isLinked() && mvkIsAnyFlagEnabled(shader->getNextStage(), VK_SHADER_STAGE_FRAGMENT_BIT)) {
+			for (MVKShader* fs : _liveFragmentShaders) {
+				if (areStagesCompatible(shader, fs)) {
+					collectShapesForPair(shader, fs, shapes);
+				}
+			}
+		}
+
+		std::vector<std::pair<MVKShaderObjectTessStage1Key, MVKGraphicsPipeline*>> builtS1;
+		std::vector<std::pair<MVKShaderObjectTessStage2Key, MVKGraphicsPipeline*>> builtS2;
+		if (!shader->isLinked() && mvkIsAnyFlagEnabled(shader->getNextStage(), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)) {
+			for (MVKShader* tcs : _liveTessCtlShaders) {
+				if (!areStagesCompatible(shader, tcs)) { continue; }
+				MVKGraphicsPipeline* s1 = newTessStage1(shader, tcs);
+				if (s1) { builtS1.emplace_back(MVKShaderObjectTessStage1Key{ shader, tcs }, s1); }
+				for (MVKShader* tes : _liveTessEvalShaders) {
+					SPIRVTessReflectionData merged;
+					if (!areTessCtlEvalCompatible(tcs, tes, merged)) { continue; }
+					MVKGraphicsPipeline* s2 = newTessStage2(shader, tcs, tes);
+					if (s2) { builtS2.emplace_back(MVKShaderObjectTessStage2Key{ shader, tcs, tes }, s2); }
+				}
+			}
+		}
+
+		std::vector<MVKGraphicsPipeline*> built;
+		VkResult rslt = buildTemplatesInParallel(shapes, built);
+		if (rslt != VK_SUCCESS) {
+			for (auto& e : builtS1) { e.second->destroy(); }
+			for (auto& e : builtS2) { e.second->destroy(); }
+			return rslt;
+		}
+
+		std::unique_lock<std::shared_mutex> pubLock(_publishedLock);
+		for (size_t i = 0; i < shapes.size(); i++) {
+			_metal4Templates[shapes[i]] = built[i];
+		}
+		for (auto& e : builtS1) { _tessStage1[e.first] = e.second; }
+		for (auto& e : builtS2) { _tessStage2[e.first] = e.second; }
+		if (!shader->isLinked()) { _liveVertexShaders.push_back(shader); }
+		return VK_SUCCESS;
+	}
+
+	if (shader->getStage() == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) {
+		if (!initComputeTessellatorLocked()) { return VK_ERROR_INITIALIZATION_FAILED; }
+		if (shader->isLinked()) { return VK_SUCCESS; }
+
+		std::vector<std::pair<MVKShaderObjectTessStage1Key, MVKGraphicsPipeline*>> builtS1;
+		std::vector<std::pair<MVKShaderObjectTessStage2Key, MVKGraphicsPipeline*>> builtS2;
+		std::vector<MVKShaderObjectShapeKey> shapes;
+
+		for (MVKShader* vs : _liveVertexShaders) {
+			if (!areStagesCompatible(vs, shader)) { continue; }
+			MVKGraphicsPipeline* s1 = newTessStage1(vs, shader);
+			if (s1) { builtS1.emplace_back(MVKShaderObjectTessStage1Key{ vs, shader }, s1); }
+		}
+		for (MVKShader* tes : _liveTessEvalShaders) {
+			SPIRVTessReflectionData merged;
+			if (!areTessCtlEvalCompatible(shader, tes, merged)) { continue; }
+			for (MVKShader* vs : _liveVertexShaders) {
+				if (!areStagesCompatible(vs, shader)) { continue; }
+				MVKGraphicsPipeline* s2 = newTessStage2(vs, shader, tes);
+				if (s2) { builtS2.emplace_back(MVKShaderObjectTessStage2Key{ vs, shader, tes }, s2); }
+			}
+			collectShapesForTessEval(shader, tes, merged, shapes);
+			if (mvkIsAnyFlagEnabled(tes->getNextStage(), VK_SHADER_STAGE_FRAGMENT_BIT)) {
+				for (MVKShader* fs : _liveFragmentShaders) {
+					if (areStagesCompatible(tes, fs)) {
+						collectShapesForTessPair(shader, tes, fs, merged, shapes);
+					}
+				}
+			}
+		}
+
+		std::vector<MVKGraphicsPipeline*> built;
+		VkResult rslt = buildTemplatesInParallel(shapes, built);
+		if (rslt != VK_SUCCESS) {
+			for (auto& e : builtS1) { e.second->destroy(); }
+			for (auto& e : builtS2) { e.second->destroy(); }
+			return rslt;
+		}
+
+		std::unique_lock<std::shared_mutex> pubLock(_publishedLock);
+		for (auto& e : builtS1) { _tessStage1[e.first] = e.second; }
+		for (auto& e : builtS2) { _tessStage2[e.first] = e.second; }
+		for (size_t i = 0; i < shapes.size(); i++) {
+			_metal4Templates[shapes[i]] = built[i];
+		}
+		_liveTessCtlShaders.push_back(shader);
+		return VK_SUCCESS;
+	}
+
+	if (shader->getStage() == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) {
+		if (!initComputeTessellatorLocked()) { return VK_ERROR_INITIALIZATION_FAILED; }
+		if (shader->isLinked()) { return VK_SUCCESS; }
+
+		std::vector<std::pair<MVKShaderObjectTessStage2Key, MVKGraphicsPipeline*>> builtS2;
+		std::vector<MVKShaderObjectShapeKey> shapes;
+
+		for (MVKShader* tcs : _liveTessCtlShaders) {
+			SPIRVTessReflectionData merged;
+			if (!areTessCtlEvalCompatible(tcs, shader, merged)) { continue; }
+			for (MVKShader* vs : _liveVertexShaders) {
+				if (!areStagesCompatible(vs, tcs)) { continue; }
+				MVKGraphicsPipeline* s2 = newTessStage2(vs, tcs, shader);
+				if (s2) { builtS2.emplace_back(MVKShaderObjectTessStage2Key{ vs, tcs, shader }, s2); }
+			}
+			collectShapesForTessEval(tcs, shader, merged, shapes);
+			if (mvkIsAnyFlagEnabled(shader->getNextStage(), VK_SHADER_STAGE_FRAGMENT_BIT)) {
+				for (MVKShader* fs : _liveFragmentShaders) {
+					if (areStagesCompatible(shader, fs)) {
+						collectShapesForTessPair(tcs, shader, fs, merged, shapes);
+					}
+				}
+			}
+		}
+
+		std::vector<MVKGraphicsPipeline*> built;
+		VkResult rslt = buildTemplatesInParallel(shapes, built);
+		if (rslt != VK_SUCCESS) {
+			for (auto& e : builtS2) { e.second->destroy(); }
+			return rslt;
+		}
+
+		std::unique_lock<std::shared_mutex> pubLock(_publishedLock);
+		for (auto& e : builtS2) { _tessStage2[e.first] = e.second; }
+		for (size_t i = 0; i < shapes.size(); i++) {
+			_metal4Templates[shapes[i]] = built[i];
+		}
+		_liveTessEvalShaders.push_back(shader);
+		return VK_SUCCESS;
+	}
+
+	if (shader->getStage() == VK_SHADER_STAGE_FRAGMENT_BIT) {
+		if (shader->isLinked()) { return VK_SUCCESS; }
+		std::vector<MVKShaderObjectShapeKey> shapes;
+		for (MVKShader* vs : _liveVertexShaders) {
+			if (areStagesCompatible(vs, shader)) {
+				collectShapesForPair(vs, shader, shapes);
+			}
+		}
+		for (MVKShader* tcs : _liveTessCtlShaders) {
+			for (MVKShader* tes : _liveTessEvalShaders) {
+				SPIRVTessReflectionData merged;
+				if (!areTessCtlEvalCompatible(tcs, tes, merged)) { continue; }
+				if (areStagesCompatible(tes, shader)) {
+					collectShapesForTessPair(tcs, tes, shader, merged, shapes);
+				}
+			}
+		}
+		std::vector<MVKGraphicsPipeline*> built;
+		VkResult rslt = buildTemplatesInParallel(shapes, built);
+		if (rslt != VK_SUCCESS) { return rslt; }
+
+		std::unique_lock<std::shared_mutex> pubLock(_publishedLock);
+		for (size_t i = 0; i < shapes.size(); i++) {
+			_metal4Templates[shapes[i]] = built[i];
+		}
+		_liveFragmentShaders.push_back(shader);
+		return VK_SUCCESS;
+	}
+
+	return VK_SUCCESS;
+}
+
+VkResult MVKShaderObjectPipelines::prepareLinkedShaders(MVKShader*const* shaders, uint32_t count) {
+	MVKShader* vs = nullptr;
+	MVKShader* tcs = nullptr;
+	MVKShader* tes = nullptr;
+	MVKShader* fs = nullptr;
+	for (uint32_t i = 0; i < count; i++) {
+		MVKShader* s = shaders[i];
+		switch (s->getStage()) {
+			case VK_SHADER_STAGE_VERTEX_BIT:                  vs = s; break;
+			case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:    tcs = s; break;
+			case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: tes = s; break;
+			case VK_SHADER_STAGE_FRAGMENT_BIT:                fs = s; break;
+			case VK_SHADER_STAGE_COMPUTE_BIT: {
+				VkResult rslt = prepareComputePipeline(s);
+				if (rslt != VK_SUCCESS) { return rslt; }
+				break;
+			}
+			default: break;
+		}
+	}
+
+	if (!isMetal4Enabled() || !vs || !vs->canPullVertices()) { return VK_SUCCESS; }
+
+	std::lock_guard<std::mutex> createLock(_creationMutex);
+	if (!initNoOpFragmentLibraryLocked()) { return VK_ERROR_INITIALIZATION_FAILED; }
+
+	if (tcs && tes) {
+		SPIRVTessReflectionData merged;
+		if (!areTessCtlEvalCompatible(tcs, tes, merged)) { return VK_SUCCESS; }
+		if (!initComputeTessellatorLocked()) { return VK_ERROR_INITIALIZATION_FAILED; }
+
+		MVKGraphicsPipeline* s1 = newTessStage1(vs, tcs);
+		if (!s1) { return VK_ERROR_INITIALIZATION_FAILED; }
+		MVKGraphicsPipeline* s2 = newTessStage2(vs, tcs, tes);
+		if (!s2) { s1->destroy(); return VK_ERROR_INITIALIZATION_FAILED; }
+
+		std::vector<MVKShaderObjectShapeKey> shapes;
+		collectShapesForTessEval(tcs, tes, merged, shapes);
+		if (fs) { collectShapesForTessPair(tcs, tes, fs, merged, shapes); }
+
+		std::vector<MVKGraphicsPipeline*> built;
+		VkResult rslt = buildTemplatesInParallel(shapes, built);
+		if (rslt != VK_SUCCESS) {
+			s1->destroy();
+			s2->destroy();
+			return rslt;
+		}
+
+		std::unique_lock<std::shared_mutex> pubLock(_publishedLock);
+		_tessStage1[MVKShaderObjectTessStage1Key{ vs, tcs }] = s1;
+		_tessStage2[MVKShaderObjectTessStage2Key{ vs, tcs, tes }] = s2;
+		for (size_t i = 0; i < shapes.size(); i++) {
+			_metal4Templates[shapes[i]] = built[i];
+		}
+		return VK_SUCCESS;
+	}
+
+	if (tcs || tes) { return VK_SUCCESS; }
+
+	std::vector<MVKShaderObjectShapeKey> shapes;
+	collectShapesForVertex(vs, shapes);
+	if (fs) { collectShapesForPair(vs, fs, shapes); }
+
+	std::vector<MVKGraphicsPipeline*> built;
+	VkResult rslt = buildTemplatesInParallel(shapes, built);
+	if (rslt != VK_SUCCESS) { return rslt; }
+
+	std::unique_lock<std::shared_mutex> pubLock(_publishedLock);
+	for (size_t i = 0; i < shapes.size(); i++) {
+		_metal4Templates[shapes[i]] = built[i];
+	}
+	return VK_SUCCESS;
+}
+
+bool MVKShaderObjectPipelines::getMetal4Pipeline(const MVKShaderObjectShapeKey& shapeKey,
+												 const MVKShaderObjectSpecializationKey& specKey,
+												 MVKGraphicsPipeline*& outTemplate,
+												 id<MTLRenderPipelineState>& outMTLState) {
+	std::shared_lock<std::shared_mutex> pubLock(_publishedLock);
+	auto iter = _metal4Templates.find(shapeKey);
+	if (iter == _metal4Templates.end() || !iter->second) {
+		_device->reportError(VK_ERROR_INITIALIZATION_FAILED,
+							 "vkCmdDraw(): No creation-time Metal 4 pipeline template exists for the bound shader objects.");
+		return false;
+	}
+	MVKGraphicsPipeline* tmpl = iter->second;
+	id<MTLRenderPipelineState> mtlState = tmpl->getSpecializedMTL4PipelineState(specKey);
+	if ( !mtlState ) { return false; }
+	outTemplate = tmpl;
+	outMTLState = mtlState;
+	return true;
+}
+
+bool MVKShaderObjectPipelines::getMetal4TessellationPipeline(MVKShader* vs, MVKShader* tcs, MVKShader* tes,
+															 const MVKShaderObjectShapeKey& stage3ShapeKey,
+															 const MVKShaderObjectSpecializationKey& specKey,
+															 MVKGraphicsPipeline*& outStage1,
+															 MVKGraphicsPipeline*& outStage2,
+															 MVKGraphicsPipeline*& outStage3,
+															 id<MTLRenderPipelineState>& outMTLState) {
+	std::shared_lock<std::shared_mutex> pubLock(_publishedLock);
+	auto it1 = _tessStage1.find(MVKShaderObjectTessStage1Key{ vs, tcs });
+	auto it2 = _tessStage2.find(MVKShaderObjectTessStage2Key{ vs, tcs, tes });
+	auto it3 = _metal4Templates.find(stage3ShapeKey);
+	if (it1 == _tessStage1.end() || !it1->second ||
+		it2 == _tessStage2.end() || !it2->second ||
+		it3 == _metal4Templates.end() || !it3->second) {
+		return false;
+	}
+	id<MTLRenderPipelineState> mtlState = it3->second->getSpecializedMTL4PipelineState(specKey);
+	if ( !mtlState ) { return false; }
+	outStage1 = it1->second;
+	outStage2 = it2->second;
+	outStage3 = it3->second;
+	outMTLState = mtlState;
+	return true;
+}
+
+MVKGraphicsPipeline* MVKShaderObjectPipelines::getPipeline(const MVKShaderObjectPipelineKey& key, bool* pCompiledOrWaited) {
+	std::unique_lock<std::mutex> lock(_lock);
+
+	auto iter = _pipelines.find(key);
+	if (iter != _pipelines.end()) {
+		// Someone else is building this exact key, most likely a record-time prefetch of this
+		// very draw. Waiting on it costs no more than building it here would have.
+		if (pCompiledOrWaited) { *pCompiledOrWaited = iter->second.building; }
+		_built.wait(lock, [&] { return !_pipelines[key].building; });
+		return _pipelines[key].pipeline;
+	}
+
+	// Nothing had this key, so this call is the build, and a caller that must never be the one to
+	// build is told so.
+	if (pCompiledOrWaited) { *pCompiledOrWaited = true; }
+
+	// Claim the key, then build without holding the lock so other keys can build alongside.
+	_pipelines[key] = { nullptr, true };
+	lock.unlock();
+	MVKGraphicsPipeline* plne = newPipeline(key);
+	lock.lock();
+	_pipelines[key] = { plne, false };		// Cached even when null, so a failing combination is not rebuilt every draw.
+	_built.notify_all();
+	return plne;
+}
+
+void MVKShaderObjectPipelines::prefetchPipeline(const MVKShaderObjectPipelineKey& key) {
+	{
+		std::lock_guard<std::mutex> lock(_lock);
+		if (_pipelines.find(key) != _pipelines.end()) { return; }		// Cached or already being built.
+	}
+	// The command buffer that recorded this draw keeps its shaders alive until it is freed or
+	// reset, but this block may run after either, so it holds its own references. The key is
+	// copied by value: a block captures a reference parameter as the reference itself, which
+	// would point into the caller's stack frame long after it has been unwound.
+	MVKShaderObjectPipelineKey keyCopy = key;
+	for (auto* shader : keyCopy.shaders) { if (shader) { shader->retain(); } }
+	dispatch_group_async(_prefetches, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{ @autoreleasepool {
+		getPipeline(keyCopy);
+		for (auto* shader : keyCopy.shaders) { if (shader) { shader->release(); } }
+	}});
+}
+
+void MVKShaderObjectPipelines::removeShader(MVKShader* shader) {
+	std::unique_lock<std::mutex> lock(_lock);
+
+	for (auto iter = _pipelines.begin(); iter != _pipelines.end(); ) {
+		bool usesShader = false;
+		for (auto* keyShader : iter->first.shaders) { usesShader = usesShader || (keyShader == shader); }
+		if (usesShader) {
+			// A prefetch of this shader may be mid-build; it holds a reference, so the shader
+			// object outlives it, but the finished pipeline must still be destroyed here.
+			if (iter->second.building) {
+				MVKShaderObjectPipelineKey key = iter->first;
+				_built.wait(lock, [&] { return !_pipelines[key].building; });
+				iter = _pipelines.begin();		// The map may have changed while waiting.
+				continue;
+			}
+			if (iter->second.pipeline) { iter->second.pipeline->destroy(); }
+			iter = _pipelines.erase(iter);
+		} else {
+			++iter;
+		}
+	}
+
+	auto cpIter = _computePipelines.find(shader);
+	if (cpIter != _computePipelines.end()) {
+		if (cpIter->second) { cpIter->second->destroy(); }
+		_computePipelines.erase(cpIter);
+	}
+	lock.unlock();
+
+	std::lock_guard<std::mutex> createLock(_creationMutex);
+	std::unique_lock<std::shared_mutex> pubLock(_publishedLock);
+	_liveVertexShaders.erase(std::remove(_liveVertexShaders.begin(), _liveVertexShaders.end(), shader), _liveVertexShaders.end());
+	_liveTessCtlShaders.erase(std::remove(_liveTessCtlShaders.begin(), _liveTessCtlShaders.end(), shader), _liveTessCtlShaders.end());
+	_liveTessEvalShaders.erase(std::remove(_liveTessEvalShaders.begin(), _liveTessEvalShaders.end(), shader), _liveTessEvalShaders.end());
+	_liveFragmentShaders.erase(std::remove(_liveFragmentShaders.begin(), _liveFragmentShaders.end(), shader), _liveFragmentShaders.end());
+	for (auto iter = _metal4Templates.begin(); iter != _metal4Templates.end(); ) {
+		if (iter->first.vertexShader == shader || iter->first.tessCtlShader == shader ||
+			iter->first.tessEvalShader == shader || iter->first.fragmentShader == shader) {
+			if (iter->second) { iter->second->destroy(); }
+			iter = _metal4Templates.erase(iter);
+		} else {
+			++iter;
+		}
+	}
+	for (auto iter = _tessStage1.begin(); iter != _tessStage1.end(); ) {
+		if (iter->first.vertexShader == shader || iter->first.tessCtlShader == shader) {
+			if (iter->second) { iter->second->destroy(); }
+			iter = _tessStage1.erase(iter);
+		} else {
+			++iter;
+		}
+	}
+	for (auto iter = _tessStage2.begin(); iter != _tessStage2.end(); ) {
+		if (iter->first.vertexShader == shader || iter->first.tessCtlShader == shader || iter->first.tessEvalShader == shader) {
+			if (iter->second) { iter->second->destroy(); }
+			iter = _tessStage2.erase(iter);
+		} else {
+			++iter;
+		}
+	}
+}
+
+MVKComputePipeline* MVKShaderObjectPipelines::getComputePipeline(MVKShader* shader) {
+	std::lock_guard<std::mutex> lock(_lock);
+
+	auto iter = _computePipelines.find(shader);
+	if (iter != _computePipelines.end()) { return iter->second; }
+
+	_device->reportError(VK_ERROR_INITIALIZATION_FAILED,
+						 "vkCmdDispatch(): No prepared pipeline exists for the bound compute shader object.");
+	return nullptr;
+}
+
+VkResult MVKShaderObjectPipelines::prepareComputePipeline(MVKShader* shader) {
+	std::unique_lock<std::mutex> lock(_lock);
+	_built.wait(lock, [&] { return _computePipelinesBuilding.find(shader) == _computePipelinesBuilding.end(); });
+	if (_computePipelines.find(shader) != _computePipelines.end()) { return VK_SUCCESS; }
+	_computePipelinesBuilding.insert(shader);
+	lock.unlock();
+
+	VkResult result = VK_SUCCESS;
+	MVKComputePipeline* pipeline = newComputePipeline(shader, result);
+	lock.lock();
+	if (pipeline) { _computePipelines[shader] = pipeline; }
+	_computePipelinesBuilding.erase(shader);
+	_built.notify_all();
+	return result;
+}
+
+MVKComputePipeline* MVKShaderObjectPipelines::newComputePipeline(MVKShader* shader, VkResult& result) {
+	VkComputePipelineCreateInfo plCI = {
+		.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = mvkIsAnyFlagEnabled(shader->getFlags(), VK_SHADER_CREATE_DISPATCH_BASE_BIT_EXT) ? VK_PIPELINE_CREATE_DISPATCH_BASE : 0u,
+		.stage = mvkMakePipelineStageCreateInfo(shader),
+		.layout = (VkPipelineLayout)shader->getPipelineLayout(),
+		.basePipelineHandle = VK_NULL_HANDLE,
+		.basePipelineIndex = -1,
+	};
+
+	auto* plne = new MVKComputePipeline(_device, nullptr, nullptr, &plCI, isMetal4Enabled() ? shader->getBinaryArchive() : nullptr);
+	if (plne->getConfigurationResult() != VK_SUCCESS || !plne->hasValidMTLPipelineStates()) {
+		result = plne->getConfigurationResult();
+		if (result == VK_SUCCESS) { result = VK_ERROR_INITIALIZATION_FAILED; }
+		_device->reportError(result, "vkCreateShadersEXT(): Could not prepare a pipeline for the compute shader object.");
+		plne->destroy();
+		return nullptr;
+	}
+	return plne;
+}
+
+MVKGraphicsPipeline* MVKShaderObjectPipelines::newPipeline(const MVKShaderObjectPipelineKey& key) {
+	const MVKDynamicPipelineState& dps = key.pipelineState;
+
+	VkPipelineShaderStageCreateInfo ssCIs[kMVKShaderStageCount];
+	uint32_t ssCnt = 0;
+	for (uint32_t stage = 0; stage < kMVKShaderStageCount; stage++) {
+		MVKShader* shader = key.shaders[stage];
+		if ( !shader || stage == kMVKShaderStageCompute ) { continue; }
+		ssCIs[ssCnt++] = {
+			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.stage = shader->getStage(),
+			.module = (VkShaderModule)shader->getShaderModule(),
+			.pName = shader->getEntryPointName(),
+			.pSpecializationInfo = shader->getSpecializationInfo(),
+		};
+	}
+
+	// Vertex input. A divisor other than one needs the divisor structure chained on, so the
+	// divisors are always collected and the structure only chained when one of them differs.
+	VkVertexInputBindingDescription vibDescs[kMVKMaxVertexInputBindingCount];
+	VkVertexInputBindingDivisorDescription vibDivisors[kMVKMaxVertexInputBindingCount];
+	uint32_t vibDivisorCnt = 0;
+	for (uint32_t i = 0; i < key.vertexInput.bindingCount; i++) {
+		const auto& vb = key.vertexInput.bindings[i];
+		vibDescs[i] = { .binding = vb.binding, .stride = vb.stride, .inputRate = (VkVertexInputRate)vb.inputRate };
+		if (vb.inputRate == VK_VERTEX_INPUT_RATE_INSTANCE && vb.divisor != 1) {
+			vibDivisors[vibDivisorCnt++] = { .binding = vb.binding, .divisor = vb.divisor };
+		}
+	}
+	VkVertexInputAttributeDescription viaDescs[kMVKMaxVertexInputAttributeCount];
+	for (uint32_t i = 0; i < key.vertexInput.attributeCount; i++) {
+		const auto& va = key.vertexInput.attributes[i];
+		viaDescs[i] = { .location = va.location, .binding = va.binding, .format = (VkFormat)va.format, .offset = va.offset };
+	}
+	VkPipelineVertexInputDivisorStateCreateInfo viDivisorCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.vertexBindingDivisorCount = vibDivisorCnt,
+		.pVertexBindingDivisors = vibDivisors,
+	};
+	VkPipelineVertexInputStateCreateInfo viCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+		.pNext = vibDivisorCnt ? &viDivisorCI : nullptr,
+		.flags = 0,
+		.vertexBindingDescriptionCount = key.vertexInput.bindingCount,
+		.pVertexBindingDescriptions = vibDescs,
+		.vertexAttributeDescriptionCount = key.vertexInput.attributeCount,
+		.pVertexAttributeDescriptions = viaDescs,
+	};
+
+	VkPipelineInputAssemblyStateCreateInfo iaCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.topology = (VkPrimitiveTopology)dps.topology,
+		.primitiveRestartEnable = VK_TRUE,		// Metal cannot disable it; kept dynamic below.
+	};
+
+	VkPipelineTessellationDomainOriginStateCreateInfo tsOriginCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.domainOrigin = (VkTessellationDomainOrigin)dps.domainOrigin,
+	};
+	VkPipelineTessellationStateCreateInfo tsCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
+		.pNext = &tsOriginCI,
+		.flags = 0,
+		.patchControlPoints = 3,				// Kept dynamic below.
+	};
+
+	VkPipelineViewportDepthClipControlCreateInfoEXT vpClipCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT,
+		.pNext = nullptr,
+		.negativeOneToOne = dps.negativeOneToOne,
+	};
+	VkPipelineViewportStateCreateInfo vpCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+		.pNext = dps.negativeOneToOne ? &vpClipCI : nullptr,
+		.flags = 0,
+		.viewportCount = 0,						// Both counts come from the dynamic state below.
+		.pViewports = nullptr,
+		.scissorCount = 0,
+		.pScissors = nullptr,
+	};
+
+	VkPipelineRasterizationStateCreateInfo rsCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.depthClampEnable = VK_FALSE,			// All of these are kept dynamic below.
+		.rasterizerDiscardEnable = VK_FALSE,
+		.polygonMode = VK_POLYGON_MODE_FILL,
+		.cullMode = VK_CULL_MODE_NONE,
+		.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+		.depthBiasEnable = VK_FALSE,
+		.depthBiasConstantFactor = 0,
+		.depthBiasClamp = 0,
+		.depthBiasSlopeFactor = 0,
+		.lineWidth = 1,
+	};
+
+	VkSampleMask sampleMask = dps.sampleMask;
+	VkPipelineMultisampleStateCreateInfo msCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.rasterizationSamples = (VkSampleCountFlagBits)dps.rasterizationSamples,
+		.sampleShadingEnable = VK_FALSE,
+		.minSampleShading = 0,
+		.pSampleMask = &sampleMask,
+		.alphaToCoverageEnable = dps.alphaToCoverageEnable,
+		.alphaToOneEnable = dps.alphaToOneEnable,
+	};
+
+	VkPipelineDepthStencilStateCreateInfo dsCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,								// Every field below is kept dynamic.
+	};
+
+	// VK_EXT_color_write_enable turns writes off for a whole attachment, which Metal expresses
+	// as an empty write mask, so the two are folded together before the pipeline is built.
+	VkPipelineColorBlendAttachmentState blendAtts[kMVKMaxColorAttachmentCount];
+	for (uint32_t caIdx = 0; caIdx < kMVKMaxColorAttachmentCount; caIdx++) {
+		blendAtts[caIdx] = dps.blendAttachments[caIdx];
+		if ( !dps.colorWriteEnables[caIdx] ) { blendAtts[caIdx].colorWriteMask = 0; }
+	}
+
+	VkPipelineColorBlendStateCreateInfo cbCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.logicOpEnable = dps.logicOpEnable,
+		.logicOp = (VkLogicOp)dps.logicOp,
+		.attachmentCount = key.colorAttachmentCount,
+		.pAttachments = blendAtts,
+		.blendConstants = { 0, 0, 0, 0 },		// Kept dynamic below.
+	};
+
+	// Only the state Metal can change on an already built pipeline is left dynamic. Anything
+	// else has been baked in above, and is part of the key that selected this pipeline.
+	//
+	// The vertex stride is the exception that can go either way. Both vkCmdSetVertexInputEXT
+	// and vkCmdBindVertexBuffers2 set it and the later call wins, so when the buffers set it
+	// last the pipeline must read it from them instead of from its own baked layout. Metal can
+	// only do that where it supports setting the stride per draw.
+	VkDynamicState dynStates[40];
+	uint32_t dynStateCnt = 0;
+	if (key.vertexInput.stridesFromVertexBuffers &&
+		_device->getPhysicalDevice()->getMetalFeatures()->dynamicVertexStride) {
+		dynStates[dynStateCnt++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE;
+	}
+	static const VkDynamicState fixedDynStates[] = {
+		VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
+		VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
+		VK_DYNAMIC_STATE_LINE_WIDTH,
+		VK_DYNAMIC_STATE_DEPTH_BIAS,
+		VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE,
+		VK_DYNAMIC_STATE_BLEND_CONSTANTS,
+		VK_DYNAMIC_STATE_DEPTH_BOUNDS,
+		VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE,
+		VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
+		VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
+		VK_DYNAMIC_STATE_STENCIL_REFERENCE,
+		VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE,
+		VK_DYNAMIC_STATE_STENCIL_OP,
+		VK_DYNAMIC_STATE_CULL_MODE,
+		VK_DYNAMIC_STATE_FRONT_FACE,
+		VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE,
+		VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE,
+		VK_DYNAMIC_STATE_DEPTH_COMPARE_OP,
+		VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE,
+		VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE,
+		// The key holds only the topology class, so the pipeline is built for a representative
+		// of that class and the draw must supply the real topology itself.
+		VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
+		VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT,
+		VK_DYNAMIC_STATE_POLYGON_MODE_EXT,
+		VK_DYNAMIC_STATE_DEPTH_CLAMP_ENABLE_EXT,
+		VK_DYNAMIC_STATE_DEPTH_CLIP_ENABLE_EXT,
+		VK_DYNAMIC_STATE_LINE_RASTERIZATION_MODE_EXT,
+	};
+	for (VkDynamicState ds : fixedDynStates) { dynStates[dynStateCnt++] = ds; }
+	assert(dynStateCnt <= sizeof(dynStates) / sizeof(dynStates[0]));
+
+	VkPipelineDynamicStateCreateInfo dynCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.dynamicStateCount = dynStateCnt,
+		.pDynamicStates = dynStates,
+	};
+
+	VkPipelineRenderingCreateInfo rendCI = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+		.pNext = nullptr,
+		.viewMask = key.viewMask,
+		.colorAttachmentCount = key.colorAttachmentCount,
+		.pColorAttachmentFormats = key.colorAttachmentFormats,
+		.depthAttachmentFormat = key.depthAttachmentFormat,
+		.stencilAttachmentFormat = key.stencilAttachmentFormat,
+	};
+
+	// Any bound shader carries the same layout, so the first one answers for all of them.
+	MVKPipelineLayout* layout = nullptr;
+	for (auto* shader : key.shaders) {
+		if (shader && !layout) { layout = shader->getPipelineLayout(); }
+	}
+
+	bool isTess = key.shaders[kMVKShaderStageTessCtl] && key.shaders[kMVKShaderStageTessEval];
+	VkGraphicsPipelineCreateInfo plCI = {
+		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+		.pNext = &rendCI,
+		.flags = 0,
+		.stageCount = ssCnt,
+		.pStages = ssCIs,
+		.pVertexInputState = &viCI,
+		// Withholding the input assembly state is what leaves the topology class unspecified, which
+		// is how one pipeline comes to serve every topology the key no longer distinguishes.
+		.pInputAssemblyState = ((VkPrimitiveTopology)dps.topology == kMVKTopologyClassNotNeeded) ? nullptr : &iaCI,
+		.pTessellationState = isTess ? &tsCI : nullptr,
+		.pViewportState = &vpCI,
+		.pRasterizationState = &rsCI,
+		.pMultisampleState = &msCI,
+		.pDepthStencilState = &dsCI,
+		.pColorBlendState = &cbCI,
+		.pDynamicState = &dynCI,
+		.layout = (VkPipelineLayout)layout,
+		.renderPass = VK_NULL_HANDLE,
+		.subpass = 0,
+		.basePipelineHandle = VK_NULL_HANDLE,
+		.basePipelineIndex = -1,
+	};
+
+	// A shader object pipeline has no pipeline cache to record itself in, so it is recorded in the
+	// archive of the first shader of the key. Metal searches every archive a descriptor names, and
+	// the same shader leads the key whenever this combination is built again, so the pipeline is
+	// found through the binary that shader hands back.
+	MVKMTLBinaryArchive* plArch = nullptr;
+	for (auto* shader : key.shaders) {
+		if (shader && !plArch) { plArch = shader->getBinaryArchive(); }
+	}
+
+	// A key that no longer names a topology was folded from lines and triangles only, so the
+	// pipeline it builds is never asked to draw points.
+	bool neverRendersPoints = (VkPrimitiveTopology)dps.topology == kMVKTopologyClassNotNeeded;
+
+	// Asked for wherever a shader can map the convention itself, which is the same test that took
+	// it out of the key, so the pipeline is built for a draw that supplies it. An application that
+	// never enabled the feature has only one convention to draw with, and is left alone.
+	bool dynamicDepthClip = false;
+	for (auto* shader : key.shaders) {
+		if (shader && shader->getEnabledDepthClipControlFeatures().depthClipControl && shader->canMapDepthClip()) {
+			dynamicDepthClip = true;
+			break;
+		}
+	}
+
+	// The fragment output operations are handed to the shader only where the draw actually
+	// uses one. A draw writing every channel straight through at full coverage gains nothing
+	// from reading the attachment, and reading one costs the hidden surface removal that
+	// opaque geometry depends on, so it keeps the plain shader and Metal's own stages.
+	MVKShader* fragShader = key.shaders[kMVKShaderStageFragment];
+	bool blendInShader = dps.blendInShader && fragShader && fragShader->canBlendInShader();
+
+	MVKShaderObjectPipelineConfig soConfig = {
+		.binaryArchive      = plArch,
+		.neverRendersPoints = neverRendersPoints,
+		.dynamicDepthClip   = dynamicDepthClip,
+		.blendInShader      = blendInShader,
+		.pullVertices       = key.pullVertices != 0,
+	};
+	auto* plne = new MVKGraphicsPipeline(_device, nullptr, nullptr, &plCI, soConfig);
+	if (plne->getConfigurationResult() != VK_SUCCESS || !plne->hasValidMTLPipelineStates()) {
+		reportError(plne->getConfigurationResult(), "vkCmdDraw(): Could not build a pipeline for the bound shader objects.");
+		plne->destroy();
+		return nullptr;
+	}
+	return plne;
+}
+
+
+#pragma mark -
 #pragma mark MVKComputePipeline
 
 MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 									   MVKPipelineCache* pipelineCache,
 									   MVKPipeline* parent,
-									   const VkComputePipelineCreateInfo* pCreateInfo) :
+									   const VkComputePipelineCreateInfo* pCreateInfo,
+									   MVKMTLBinaryArchive* shaderBinaryArchive) :
 	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, getPipelineCreateFlags(pCreateInfo), parent) {
 
 	_allowsDispatchBase = mvkAreAllFlagsEnabled(_flags, VK_PIPELINE_CREATE_2_DISPATCH_BASE_BIT);
@@ -2452,30 +5073,71 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 		pipelineStart = mvkGetTimestamp();
 	}
 
-	MVKMTLFunction func = getMTLFunction(pCreateInfo, pStageFB);
+	bool useMetal4Archive = (shaderBinaryArchive != nullptr && _device->getShaderObjectPipelines()->isMetal4Enabled());
+	MVKMTLFunction func = getMTLFunction(pCreateInfo, pStageFB, useMetal4Archive);
 	_mtlThreadgroupSize = func.threadGroupSize;
 	_mtlPipelineState = nil;
 
-	id<MTLFunction> mtlFunc = func.getMTLFunction();
-	if (mtlFunc) {
-		MTLComputePipelineDescriptor* plDesc = [MTLComputePipelineDescriptor new];	// temp retain
-		plDesc.computeFunction = mtlFunc;
-		plDesc.maxTotalThreadsPerThreadgroup = _mtlThreadgroupSize.width * _mtlThreadgroupSize.height * _mtlThreadgroupSize.depth;
-		plDesc.threadGroupSizeIsMultipleOfThreadExecutionWidth = mvkIsAnyFlagEnabled(pCreateInfo->stage.flags, VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT);
+#if MVK_XCODE_26 && !MVK_OS_SIMULATOR
+	if (useMetal4Archive && func.getMTLLibrary() && func.getMTLFunctionName()) {
+		if (@available(macOS 26.0, iOS 26.0, *)) {
+			@autoreleasepool {
+				id serializer = nil;
+				id<MTL4Compiler> mtl4Compiler = mvkNewMetal4CaptureCompiler(_device, serializer);
+				id<MTL4Compiler> activeCompiler = mtl4Compiler ? mtl4Compiler : _device->getMTL4Compiler();
+				if (activeCompiler) {
+					MTL4ComputePipelineDescriptor* plDesc = [[MTL4ComputePipelineDescriptor new] autorelease];
+					plDesc.computeFunctionDescriptor = [mvkNewMTL4FunctionDescriptor(func) autorelease];
+					plDesc.maxTotalThreadsPerThreadgroup = _mtlThreadgroupSize.width * _mtlThreadgroupSize.height * _mtlThreadgroupSize.depth;
+					plDesc.threadGroupSizeIsMultipleOfThreadExecutionWidth = mvkIsAnyFlagEnabled(pCreateInfo->stage.flags, VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT);
+					setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
 
-		// Metal does not allow the name of the pipeline to be changed after it has been created,
-		// and we need to create the Metal pipeline immediately to provide error feedback to app.
-		// The best we can do at this point is set the pipeline name from the layout.
-		setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
+					MTL4CompilerTaskOptions* taskOpts = nil;
+					id lookupArch = shaderBinaryArchive->getMTL4ArchiveForLookup();
+					if (lookupArch) {
+						taskOpts = [[MTL4CompilerTaskOptions new] autorelease];
+						taskOpts.lookupArchives = @[ lookupArch ];
+					}
 
-		MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(this);
-		_mtlPipelineState = plc->newMTLComputePipelineState(plDesc);	// retained
-		plc->destroy();
-		[plDesc release];															// temp release
+					NSError* err = nil;
+					_mtlPipelineState = [activeCompiler newComputePipelineStateWithDescriptor:plDesc
+																		  compilerTaskOptions:taskOpts
+																						error:&err];
+					if (_mtlPipelineState && serializer) {
+						shaderBinaryArchive->setMTL4Serializer(serializer);
+					}
+				}
+				[mtl4Compiler release];
+				[serializer release];
+			}
+			if ( !_mtlPipelineState ) { _hasValidMTLPipelineStates = false; }
+		}
+	}
+	if (useMetal4Archive && !_mtlPipelineState) { _hasValidMTLPipelineStates = false; }
+#endif
 
-		if ( !_mtlPipelineState ) { _hasValidMTLPipelineStates = false; }
-	} else {
-		_hasValidMTLPipelineStates = false;
+	if ( !_mtlPipelineState && !useMetal4Archive ) {
+		id<MTLFunction> mtlFunc = func.getMTLFunction();
+		if (mtlFunc) {
+			MTLComputePipelineDescriptor* plDesc = [MTLComputePipelineDescriptor new];	// temp retain
+			plDesc.computeFunction = mtlFunc;
+			plDesc.maxTotalThreadsPerThreadgroup = _mtlThreadgroupSize.width * _mtlThreadgroupSize.height * _mtlThreadgroupSize.depth;
+			plDesc.threadGroupSizeIsMultipleOfThreadExecutionWidth = mvkIsAnyFlagEnabled(pCreateInfo->stage.flags, VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT);
+
+			// Metal does not allow the name of the pipeline to be changed after it has been created,
+			// and we need to create the Metal pipeline immediately to provide error feedback to app.
+			// The best we can do at this point is set the pipeline name from the layout.
+			setMetalObjectLabel(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
+
+			MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(this);
+			_mtlPipelineState = plc->newMTLComputePipelineState(plDesc);	// retained
+			plc->destroy();
+			[plDesc release];															// temp release
+
+			if ( !_mtlPipelineState ) { _hasValidMTLPipelineStates = false; }
+		} else {
+			_hasValidMTLPipelineStates = false;
+		}
 	}
 	if (pPipelineFB) {
 		if (_hasValidMTLPipelineStates) { mvkEnableFlags(pPipelineFB->flags, VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT); }
@@ -2488,7 +5150,8 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 
 // Returns a MTLFunction to use when creating the MTLComputePipelineState.
 MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateInfo* pCreateInfo,
-												  VkPipelineCreationFeedback* pStageFB) {
+												  VkPipelineCreationFeedback* pStageFB,
+												  bool deferSpecialization) {
 
     const VkPipelineShaderStageCreateInfo* pSS = &pCreateInfo->stage;
     if ( !mvkAreAllFlagsEnabled(pSS->stage, VK_SHADER_STAGE_COMPUTE_BIT) ) { return MVKMTLFunctionNull; }
@@ -2540,8 +5203,8 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderConfig.options.mslOptions.indirect_params_buffer_index = _stageResources.implicitBuffers.ids[MVKImplicitBuffer::DispatchBase];
 	shaderConfig.options.mslOptions.replace_recursive_inputs = mvkOSVersionIsAtLeast(14.0, 17.0, 1.0);
 
-    MVKMTLFunction func = _module->getMTLFunction(&shaderConfig, pSS->pSpecializationInfo, this, pStageFB);
-	if ( !func.getMTLFunction() ) {
+    MVKMTLFunction func = _module->getMTLFunction(&shaderConfig, pSS->pSpecializationInfo, this, pStageFB, deferSpecialization);
+	if ( !func.getMTLFunction() && !(deferSpecialization && func.getMTLLibrary() && func.getMTLFunctionName()) ) {
 		if (shouldFailOnPipelineCompileRequired()) {
 			setConfigurationResult(VK_PIPELINE_COMPILE_REQUIRED);
 		} else {
@@ -2618,6 +5281,7 @@ static uint32_t kDataHeaderSize = (sizeof(uint32_t) * 4) + VK_UUID_SIZE;
 typedef enum {
 	MVKPipelineCacheEntryTypeEOF = 0,
 	MVKPipelineCacheEntryTypeShaderLibrary = 1,
+	MVKPipelineCacheEntryTypeBinaryArchive = 2,
 } MVKPipelineCacheEntryType;
 
 // Helper class to iterate through the shader libraries in a shader library cache in order to serialize them.
@@ -2659,6 +5323,9 @@ VkResult MVKPipelineCache::writeDataImpl(size_t* pDataSize, void* pData) {
 	try {
 
 		if ( !pDataSize ) { return VK_SUCCESS; }
+
+		// Pipelines added to the archive since the last write change the size it serializes to.
+		if (_mtlBinaryArchive.isDirty()) { _dataSize = 0; }
 
 		if (pData) {
 			if (*pDataSize >= _dataSize) {
@@ -2728,6 +5395,14 @@ void MVKPipelineCache::writeData(ostream& outstream, bool isCounting) {
 	}
 
 	// Mark the end of the archive
+	// Compiled pipelines, as one Metal archive covering every pipeline this cache has built.
+	const std::vector<char>& mtlArchBytes = _mtlBinaryArchive.getBytes();
+	if ( !mtlArchBytes.empty() ) {
+		cacheEntryType = MVKPipelineCacheEntryTypeBinaryArchive;
+		writer(cacheEntryType);
+		writer(mtlArchBytes);
+	}
+
 	cacheEntryType = MVKPipelineCacheEntryTypeEOF;
 	writer(cacheEntryType);
 #else
@@ -2795,6 +5470,13 @@ void MVKPipelineCache::readData(const VkPipelineCacheCreateInfo* pCreateInfo) {
 					addPerformanceInterval(getPerformanceStats().pipelineCache.readPipelineCache, startTime);
 					slCache->addShaderLibrary(&shaderConversionConfig, resultInfo, compressedMSL);
 
+					break;
+				}
+
+				case MVKPipelineCacheEntryTypeBinaryArchive: {
+					std::vector<char> mtlArchBytes;
+					reader(mtlArchBytes);
+					_mtlBinaryArchive.setBytes(mtlArchBytes.data(), mtlArchBytes.size());
 					break;
 				}
 
@@ -3000,7 +5682,18 @@ namespace mvk {
 				opt.tessPatchKind,
 				opt.numTessControlPoints,
 				opt.shouldFlipVertexY,
-				opt.shouldFixupClipSpace);
+				opt.shouldFixupClipSpace,
+				opt.dynamicDepthClip,
+				opt.clipConventionBufferIndex,
+				opt.blendInShader,
+				opt.blendMultisampled,
+				opt.blendStateBufferIndex,
+				opt.blendAttachmentMask,
+				opt.blendDynamicMultisample,
+				opt.pullVertices,
+				opt.computeTessellationEval,
+				opt.pullStateBufferIndex,
+				opt.tessCoordBufferIndex);
 	}
 
 	template<class Archive>
@@ -3041,6 +5734,7 @@ namespace mvk {
 		archive(scr.entryPoint,
 				scr.specializationMacros,
 				scr.isRasterizationDisabled,
+				scr.isDepthClipInShader,
 				scr.isPositionInvariant,
 				scr.needsSwizzleBuffer,
 				scr.needsOutputBuffer,
@@ -3052,7 +5746,9 @@ namespace mvk {
 				scr.needsViewRangeBuffer,
 				scr.needsDrawId,
 				scr.needsDepthClipStateBuffer,
-				scr.usesPhysicalStorageBufferAddressesCapability);
+				scr.usesPhysicalStorageBufferAddressesCapability,
+				scr.isBlendInShader,
+				scr.isPullingVertices);
 	}
 
 	template<class Archive>
@@ -3080,8 +5776,196 @@ void serialize(Archive & archive, MVKCompressor<C>& comp) {
 
 #pragma mark Construction
 
+#pragma mark Metal binary archive
+
+// Metal serializes an archive to a file rather than to memory, so a scratch file carries it
+// between the archive and the bytes this cache stores.
+static NSURL* mvkNewTempArchiveURL() {
+	NSString* path = [NSTemporaryDirectory() stringByAppendingPathComponent:
+					  [NSString stringWithFormat: @"MoltenVK-%u.metallib", arc4random()]];
+	return [NSURL fileURLWithPath: path];
+}
+
+id<MTLBinaryArchive> MVKMTLBinaryArchive::getMTLBinaryArchiveForLookup() {
+	lock_guard<mutex> lock(_lock);
+	if (_bytes.empty()) { return nil; }
+	id<MTLBinaryArchive> mtlArch = getMTLBinaryArchiveLocked();
+	return _isSeedUnusable ? nil : mtlArch;
+}
+
+id<MTLBinaryArchive> MVKMTLBinaryArchive::getMTLBinaryArchiveLocked() {
+	if (_mtlBinaryArchive) { return _mtlBinaryArchive; }
+	if ( !mvkOSVersionIsAtLeast(11.0, 14.0, 1.0) ) { return nil; }
+
+	@autoreleasepool {
+		MTLBinaryArchiveDescriptor* baDesc = [MTLBinaryArchiveDescriptor new];		// temp retained
+		NSURL* url = nil;
+		id<MTLDevice> mtlDev = _device->getPhysicalDevice()->getMTLDevice();
+
+		// Seed the archive with what an earlier run left behind, if anything.
+		if ( !_bytes.empty() ) {
+			url = mvkNewTempArchiveURL();
+			NSData* data = [NSData dataWithBytes: _bytes.data() length: _bytes.size()];
+			if ([data writeToURL: url atomically: YES]) { baDesc.url = url; }
+		}
+
+		NSError* err = nil;
+		_mtlBinaryArchive = [[mtlDev newBinaryArchiveWithDescriptor: baDesc error: &err] retain];
+
+		// Archives are only valid for the GPU and driver that wrote them, so one this device
+		// cannot open is not treated as an error, and the run starts an empty one instead. The
+		// bytes it was seeded with are kept, and handed back unchanged until something is recorded,
+		// so that data passed through this object is not altered merely by having been opened.
+		if ( !_mtlBinaryArchive && baDesc.url ) {
+			baDesc.url = nil;
+			_mtlBinaryArchive = [[mtlDev newBinaryArchiveWithDescriptor: baDesc error: &err] retain];
+			_isSeedUnusable = true;
+		}
+		if (url) { [[NSFileManager defaultManager] removeItemAtURL: url error: nil]; }
+		[baDesc release];
+	}
+	return _mtlBinaryArchive;
+}
+
+void MVKMTLBinaryArchive::recordRenderPipeline(MTLRenderPipelineDescriptor* mtlRPLDesc) {
+	if ( !mvkOSVersionIsAtLeast(11.0, 14.0, 1.0) ) { return; }
+
+	// The copy leaves behind the archive the build was given, which is not the one this descriptor
+	// is going to be added to, and holds the functions alive until that happens.
+	MTLRenderPipelineDescriptor* rplDesc = [mtlRPLDesc copy];		// retained
+	rplDesc.binaryArchives = nil;
+
+	lock_guard<mutex> lock(_lock);
+	_recordedRPLDescs.push_back(rplDesc);
+	_isDirty = true;
+}
+
+// Writes everything recorded since the last time into the archive. Adding a pipeline costs about
+// as much as building it, so it happens here, once something is going to keep the result, rather
+// than on the draw that built it.
+void MVKMTLBinaryArchive::addRecordedPipelinesLocked() {
+	if (_recordedRPLDescs.empty()) { return; }
+
+	@autoreleasepool {
+		id<MTLBinaryArchive> mtlArch = getMTLBinaryArchiveLocked();
+		for (auto* rplDesc : _recordedRPLDescs) {
+			NSError* err = nil;
+			if (mtlArch) { [mtlArch addRenderPipelineFunctionsWithDescriptor: rplDesc error: &err]; }
+			[rplDesc release];
+		}
+	}
+	_recordedRPLDescs.clear();
+}
+
+id MVKMTLBinaryArchive::getMTL4ArchiveForLookup() {
+	lock_guard<mutex> lock(_lock);
+	if (_mtl4Archive) { return _mtl4Archive; }
+	if (_bytes.empty() || _isSeedUnusable) { return nil; }
+#if MVK_XCODE_26 && !MVK_OS_SIMULATOR
+	if (@available(macOS 26.0, iOS 26.0, *)) {
+		@autoreleasepool {
+			NSURL* url = mvkNewTempArchiveURL();
+			NSData* data = [NSData dataWithBytes:_bytes.data() length:_bytes.size()];
+			if ([data writeToURL:url atomically:YES]) {
+				NSError* err = nil;
+				id<MTLDevice> mtlDev = _device->getPhysicalDevice()->getMTLDevice();
+				_mtl4Archive = [mtlDev newArchiveWithURL:url error:&err];
+			}
+			// MTL4Archive reads lazily from its backing URL during compiler lookup, so keep the
+			// temp file alive until ~MVKMTLBinaryArchive() releases the archive.
+			if (_mtl4Archive) {
+				_mtl4ArchiveURL = [url retain];
+			} else {
+				[[NSFileManager defaultManager] removeItemAtURL:url error:nil];
+				_isSeedUnusable = true;
+			}
+		}
+	}
+#endif
+	return _mtl4Archive;
+}
+
+void MVKMTLBinaryArchive::setMTL4Serializer(id serializer) {
+	lock_guard<mutex> lock(_lock);
+	if (_mtl4Serializer == serializer) { return; }
+	[serializer retain];
+	[_mtl4Serializer release];
+	_mtl4Serializer = serializer;
+	_isMTL4Dirty = (serializer != nil);
+}
+
+bool MVKMTLBinaryArchive::isDirty() {
+	lock_guard<mutex> lock(_lock);
+	return _isDirty || _isMTL4Dirty;
+}
+
+const std::vector<char>& MVKMTLBinaryArchive::getBytes() {
+	lock_guard<mutex> lock(_lock);
+	addRecordedPipelinesLocked();
+	refreshBytesLocked();
+	return _bytes;
+}
+
+void MVKMTLBinaryArchive::setBytes(const void* pBytes, size_t byteCount) {
+	lock_guard<mutex> lock(_lock);
+	const char* bytes = (const char*)pBytes;
+	_bytes.assign(bytes, bytes + byteCount);
+}
+
+// Brings the stored bytes up to date with what the archive now holds, before they are written out.
+void MVKMTLBinaryArchive::refreshBytesLocked() {
+#if MVK_XCODE_26 && !MVK_OS_SIMULATOR
+	if (_mtl4Serializer && _isMTL4Dirty) {
+		if (@available(macOS 26.0, iOS 26.0, *)) {
+			@autoreleasepool {
+				NSURL* url = mvkNewTempArchiveURL();
+				NSError* err = nil;
+				if ([(id<MTL4PipelineDataSetSerializer>)_mtl4Serializer serializeAsArchiveAndFlushToURL:url error:&err]) {
+					NSData* data = [NSData dataWithContentsOfURL:url];
+					if (data) {
+						const char* bytes = (const char*)data.bytes;
+						_bytes.assign(bytes, bytes + data.length);
+					}
+				}
+				[[NSFileManager defaultManager] removeItemAtURL:url error:nil];
+				_isMTL4Dirty = false;
+			}
+			return;
+		}
+	}
+#endif
+	if ( !_mtlBinaryArchive || !_isDirty ) { return; }
+
+	@autoreleasepool {
+		NSURL* url = mvkNewTempArchiveURL();
+		NSError* err = nil;
+		if ([_mtlBinaryArchive serializeToURL: url error: &err]) {
+			NSData* data = [NSData dataWithContentsOfURL: url];
+			if (data) {
+				const char* bytes = (const char*)data.bytes;
+				_bytes.assign(bytes, bytes + data.length);
+			}
+		}
+		[[NSFileManager defaultManager] removeItemAtURL: url error: nil];
+		_isDirty = false;
+	}
+}
+
+MVKMTLBinaryArchive::~MVKMTLBinaryArchive() {
+	for (auto* rplDesc : _recordedRPLDescs) { [rplDesc release]; }
+	[_mtlBinaryArchive release];
+	[_mtl4Archive release];
+	if (_mtl4ArchiveURL) {
+		[[NSFileManager defaultManager] removeItemAtURL:_mtl4ArchiveURL error:nil];
+		[_mtl4ArchiveURL release];
+	}
+	[_mtl4Serializer release];
+}
+
+
 MVKPipelineCache::MVKPipelineCache(MVKDevice* device, const VkPipelineCacheCreateInfo* pCreateInfo) :
 	MVKVulkanAPIDeviceObject(device),
+	_mtlBinaryArchive(device),
 	_isExternallySynchronized(getEnabledPipelineCreationCacheControlFeatures().pipelineCreationCacheControl &&
 							  mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT)),
 	_isMergeInternallySynchronized(getEnabledPipelineCreationCacheControlFeatures().pipelineCreationCacheControl &&
@@ -3204,12 +6088,12 @@ void mvkValidateCeralArchiveDefinitions() {
 	missingBytes += mvkValidateCerealArchiveSize<SPIRV_CROSS_NAMESPACE::MSLConstexprSampler>();
 	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVWorkgroupSizeDimension>(3);
 	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVEntryPoint>(20);						// Contains string
-	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionOptions>(24);			// Contains string
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionOptions>(30);			// Contains string
 	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLShaderInterfaceVariable>(3);
 	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLResourceBinding>(2);
 	missingBytes += mvkValidateCerealArchiveSize<mvk::DescriptorBinding>();
-	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionConfiguration>(104);	// Contains collection
-	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionResultInfo>(39);		// Contains collection
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionConfiguration>(110);	// Contains collection
+	missingBytes += mvkValidateCerealArchiveSize<mvk::SPIRVToMSLConversionResultInfo>(36);		// Contains collection
 	missingBytes += mvkValidateCerealArchiveSize<mvk::MSLSpecializationMacroInfo>(22);			// Contains string
 	missingBytes += mvkValidateCerealArchiveSize<MVKShaderModuleKey>();
 	missingBytes += mvkValidateCerealArchiveSize<MVKCompressor<std::string>>(20);				// Contains collection

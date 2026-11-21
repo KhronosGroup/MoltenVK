@@ -29,6 +29,7 @@
 
 class MVKCommandEncoder;
 class MVKGraphicsPipeline;
+class MVKShader;
 class MVKDescriptorSet;
 class MVKOcclusionQueryPool;
 
@@ -134,6 +135,9 @@ struct MVKImplicitBufferData {
 	MVKSmallVector<uint32_t, 8> dynamicOffsets;
 	uint32_t emulatedReversedDepthViewportMask = 0;
 	MVKDepthClipState depthClipState;
+	// A shader that maps the depth clip convention for itself reads this, laid out as
+	// mvk::SPIRVDepthClipState: non-zero in the first component maps a depth running from minus one.
+	uint32_t clipConvention[4] = {};
 };
 
 enum class MVKResourceUsageStages : uint8_t {
@@ -188,6 +192,21 @@ struct MVKVulkanCommonEncoderState {
 /** Tracks the state of a Vulkan render encoder. */
 struct MVKVulkanGraphicsCommandEncoderState: public MVKVulkanCommonEncoderState {
 	MVKGraphicsPipeline* _pipeline = nullptr;
+	/** Concrete specialized MTLRenderPipelineState for a Metal 4 shader object template, when active. */
+	id<MTLRenderPipelineState> _shaderObjectMTLState = nil;
+	/** Creation-time Stage 1 (pulled VS compute) and Stage 2 (TCS compute) pipelines for Metal 4 compute tessellation. */
+	MVKGraphicsPipeline* _shaderObjectTessStage1 = nullptr;
+	MVKGraphicsPipeline* _shaderObjectTessStage2 = nullptr;
+	/**
+	 * The shader objects bound by vkCmdBindShadersEXT, indexed by MVKShaderStage.
+	 *
+	 * A draw uses these only while _pipeline is null, because binding a pipeline unbinds every
+	 * shader object and vice versa. The pipeline a set of them amounts to cannot be built until
+	 * the draw, since Metal needs state that Vulkan leaves dynamic until then.
+	 */
+	MVKShader* _shaderObjects[kMVKShaderStageCount] = {};
+	MVKDynamicVertexInput _dynamicVertexInput;
+	MVKDynamicPipelineState _dynamicPipelineState;
 	MVKRenderStateData _renderState;
 	MVKVertexMTLBufferBinding _vertexBuffers[kMVKMaxBufferCount];
 	MVKIndexMTLBufferBinding _indexBuffer;
@@ -225,6 +244,8 @@ struct MVKVulkanGraphicsCommandEncoderState: public MVKVulkanCommonEncoderState 
 /** Tracks the state of a Vulkan compute encoder. */
 struct MVKVulkanComputeCommandEncoderState: public MVKVulkanCommonEncoderState {
 	MVKComputePipeline* _pipeline = nullptr;
+	/** The compute shader object bound by vkCmdBindShadersEXT, used only while _pipeline is null. */
+	MVKShader* _shaderObject = nullptr;
 	MVKImplicitBufferData _implicitBufferData;
 
 	/** Bind the given descriptor sets, placing their bindings into `_descriptorSetBindings`. */
@@ -366,6 +387,8 @@ struct MVKMetalGraphicsCommandEncoderState : public MVKMetalGraphicsCommandEncod
 
 	/** Mark the given pieces of render state as dirty. */
 	void markDirty(MVKRenderStateFlags flags) { _stateReady.removeAll(flags); }
+	/** Mark only the bound Metal render pipeline state as dirty (same template, new specialization). */
+	void markPipelineDirty() { _flags.remove(MVKMetalRenderEncoderStateFlag::PipelineReady); }
 	/** Mark everything dirty that needs to be marked when changing pipelines. */
 	void changePipeline(MVKGraphicsPipeline* from, MVKGraphicsPipeline* to);
 
@@ -463,8 +486,63 @@ public:
 	 */
 	MVKVulkanGraphicsCommandEncoderState& updateDynamicState(MVKRenderStateFlags state) {
 		_mtlGraphics.markDirty(state);
+		// A shader that blends for itself folds the blend constants into the coefficients it is
+		// given, so changing them has to reach that buffer rather than only Metal's blend stage.
+		if (state.has(MVKRenderStateFlag::BlendConstants)) { invalidateBlendStateBuffer(); }
 		return _vkGraphics;
 	}
+
+	/** Adopts a pipeline built for the currently bound shader objects, leaving them bound. */
+	void useShaderObjectPipeline(MVKGraphicsPipeline* pipeline,
+								 id<MTLRenderPipelineState> mtlState = nil,
+								 MVKGraphicsPipeline* tessStage1 = nullptr,
+								 MVKGraphicsPipeline* tessStage2 = nullptr);
+
+	/** The compute counterpart of useShaderObjectPipeline(). */
+	void useShaderObjectComputePipeline(MVKComputePipeline* pipeline);
+
+	/** Returns whether any graphics shader object is bound, meaning no pipeline is. */
+	bool hasGraphicsShaderObjects() const;
+
+	/** Binds the given shader objects, unbinding any pipeline bound at the same bind point. */
+	void bindShaders(uint32_t count, const VkShaderStageFlagBits* pStages, MVKShader*const* pShaders);
+
+	/** Sets the vertex input state that a shader object draw builds its vertex layout from. */
+	void setVertexInput(const MVKDynamicVertexInput& vertexInput);
+
+	/**
+	 * Updates the pipeline state that Metal cannot change after a pipeline is built.
+	 *
+	 * Use the returned reference to make the change. Any pipeline already resolved for a shader
+	 * object draw was built for the old values and no longer matches, so it is dropped and the
+	 * next draw resolves again. A pipeline bound with vkCmdBindPipeline is left alone, because
+	 * these setters do not apply to it.
+	 */
+	MVKDynamicPipelineState& updateDynamicPipelineState() {
+		invalidateShaderObjectPipeline();
+		return _vkGraphics._dynamicPipelineState;
+	}
+
+	/**
+	 * Returns the same state without invalidating anything, for a setter that will compare before
+	 * it writes and call invalidateShaderObjectPipeline() only if the value actually changed.
+	 *
+	 * Applications commonly re-set every dynamic state before each draw, so treating a write of
+	 * the value already there as a change would rebuild the pipeline key on every one of them.
+	 */
+	MVKDynamicPipelineState& dynamicPipelineState() { return _vkGraphics._dynamicPipelineState; }
+
+	/**
+	 * Drops any pipeline resolved for bound shader objects, so the next draw resolves again, and
+	 * marks the blend state buffer dirty for a pipeline whose shader blends for itself.
+	 */
+	void invalidateShaderObjectPipeline();
+
+	/** Marks the buffer a shader that blends for itself reads its state from as needing a rebind. */
+	void invalidateBlendStateBuffer();
+
+	/** Marks the buffer a shader that loads its own attributes reads the vertex layout from as needing a rebind. */
+	void invalidateVertexPullBuffer();
 
 	/** Returns the current sample positions and marks those positions as the currently bound positions. */
 	MVKArrayRef<const MTLSamplePosition> updateSamplePositions();
@@ -490,6 +568,7 @@ public:
 	void setGraphicsEmulatedReversedDepthViewportMask(uint32_t mask);
 	/** Updates the depth clip and clamp emulation state used by graphics shaders. */
 	void setGraphicsDepthClipState(const MVKDepthClipState& depthClipState);
+	void setGraphicsDepthClipNegativeOneToOne(bool negativeOneToOne);
 	/** Binds the given compute pipeline to the Vulkan graphics state, invalidating any necessary resources. */
 	void bindComputePipeline(MVKComputePipeline* pipeline);
 	/** Binds the given push constants to the Vulkan state, invalidating any necessary resources. */
@@ -507,7 +586,7 @@ public:
 	/** Applies the given descriptor update template to the push descriptor to its specified bindPoint. */
 	void pushDescriptorSet(MVKDescriptorUpdateTemplate* updateTemplate, MVKPipelineLayout* layout, uint32_t set, const void* data);
 	/** Binds the given vertex buffers to the Vulkan state, invalidating any necessary resources. */
-	void bindVertexBuffers(uint32_t firstBinding, MVKArrayRef<const MVKVertexMTLBufferBinding> buffers);
+	void bindVertexBuffers(uint32_t firstBinding, MVKArrayRef<const MVKVertexMTLBufferBinding> buffers, bool hasStrides);
 	/** Binds the given index buffer to the Vulkan state, invalidating any necessary resources. */
 	void bindIndexBuffer(const MVKIndexMTLBufferBinding& buffer);
 	void offsetZeroDivisorVertexBuffers(MVKCommandEncoder& mvkEncoder, MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);

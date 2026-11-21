@@ -22,6 +22,7 @@
 #include "MVKSync.h"
 #include "MVKCodec.h"
 #include "MVKSmallVector.h"
+#include <MoltenVKShaderConverter/SPIRVReflection.h>
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 #include <mutex>
 
@@ -41,6 +42,18 @@ typedef struct MVKMTLFunction {
 	MTLSize threadGroupSize;
 	id<MTLFunction> getMTLFunction() { return _mtlFunction; }
 
+	/**
+	 * The library, function name and function constant values the function was found from.
+	 *
+	 * These are populated only where specialization was deferred, in which case the function
+	 * above is the unspecialized one, and the constant values, nil if the function has none,
+	 * are to be applied by whatever builds the pipeline from the library and name.
+	 */
+	id<MTLLibrary> getMTLLibrary() const { return _mtlLibrary; }
+	NSString* getMTLFunctionName() const { return _mtlFunctionName; }
+	MTLFunctionConstantValues* getMTLFunctionConstantValues() const { return _mtlFunctionConstantValues; }
+	void setDeferredSpecialization(id<MTLLibrary> mtlLibrary, NSString* mtlFunctionName, MTLFunctionConstantValues* mtlFCVals);
+
 	MVKMTLFunction(id<MTLFunction> mtlFunc, const mvk::SPIRVToMSLConversionResultInfo scRslts, MTLSize tgSize);
 	MVKMTLFunction(const MVKMTLFunction& other);
 	MVKMTLFunction& operator=(const MVKMTLFunction& other);
@@ -49,6 +62,9 @@ typedef struct MVKMTLFunction {
 
 private:
 	id<MTLFunction> _mtlFunction = nil;
+	id<MTLLibrary> _mtlLibrary = nil;
+	NSString* _mtlFunctionName = nil;
+	MTLFunctionConstantValues* _mtlFunctionConstantValues = nil;
 
 } MVKMTLFunction;
 
@@ -141,7 +157,8 @@ protected:
 
 	MVKMTLFunction getMTLFunction(const VkSpecializationInfo* pSpecializationInfo,
 								  VkPipelineCreationFeedback* pShaderFeedback,
-								  MVKShaderModule* shaderModule);
+								  MVKShaderModule* shaderModule,
+								  bool deferSpecialization = false);
 	void handleCompilationError(NSError* err, const char* opDesc);
     MTLFunctionConstant* getFunctionConstant(NSArray<MTLFunctionConstant*>* mtlFCs, NSUInteger mtlFCID);
 	void compileLibrary(const std::string& msl,
@@ -159,6 +176,7 @@ protected:
 	bool _maySpecializeWithMacro;
 	/** Can only be populated when _maySpecializeWithMacro is true */
 	std::map<std::vector<std::pair<uint32_t, MVKShaderMacroValue>>, MVKShaderLibrary *> _specializationVariants;
+	std::mutex _specializationLock;
 };
 
 
@@ -247,11 +265,17 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT; }
 
-	/** Returns the Metal shader function, possibly specialized. */
+	/**
+	 * Returns the Metal shader function, possibly specialized.
+	 *
+	 * Where deferSpecialization is set, a function that has function constants is returned
+	 * unspecialized, along with the library, name and constant values to specialize it with.
+	 */
 	MVKMTLFunction getMTLFunction(mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
 								  const VkSpecializationInfo* pSpecializationInfo,
 								  MVKPipeline* pipeline,
-								  VkPipelineCreationFeedback* pShaderFeedback);
+								  VkPipelineCreationFeedback* pShaderFeedback,
+								  bool deferSpecialization = false);
 
 	/** Convert the SPIR-V to MSL, using the specified shader conversion configuration. */
 	bool convert(mvk::SPIRVToMSLConversionConfiguration* pShaderConfig,
@@ -259,6 +283,12 @@ public:
 
 	/** Returns the original SPIR-V code that was specified when this object was created. */
 	const std::vector<uint32_t>& getSPIRV() { return _spvConverter.getSPIRV(); }
+
+	/** Prepares vertex-pulling SPIR-V before a shader object is published. */
+	bool prepareVertexPulling(std::string& log, const char* entryPointName = nullptr) { return _spvConverter.prepareVertexPulling(log, entryPointName); }
+
+	/** Prepares fragment-output SPIR-V before a shader object is published. */
+	void prepareFragmentOutput() { _spvConverter.prepareFragmentOutput(); }
 
     /** Sets the number of threads in a single compute kernel workgroup, per dimension. */
     void setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z);
@@ -280,6 +310,273 @@ protected:
 	MVKShaderLibrary* _directMSLLibrary;
 	MVKShaderModuleKey _key;
     std::mutex _accessLock;
+};
+
+
+#pragma mark -
+#pragma mark MVKMTLBinaryArchive
+
+/**
+ * A Metal binary archive of compiled pipelines, and the bytes it serializes to.
+ *
+ * Metal will only hand back a compiled pipeline it has been given beforehand, so a pipeline built
+ * against an archive that already holds it is loaded instead of compiled. This is the only part of
+ * pipeline creation a later run can avoid outright: a cached shader saves the front end, but the
+ * pipeline state itself was compiled again on every run.
+ *
+ * https://developer.apple.com/documentation/metal/mtlbinaryarchive
+ */
+class MVKMTLBinaryArchive {
+
+public:
+
+	/**
+	 * Returns the archive a pipeline should be built against, or nil when there is nothing in it
+	 * to find. An archive that no earlier run seeded holds no pipeline this run has not already
+	 * built, so searching it costs a build without ever saving one.
+	 */
+	id<MTLBinaryArchive> getMTLBinaryArchiveForLookup();
+
+	/**
+	 * Records a pipeline to be written into the archive when its bytes are next asked for.
+	 *
+	 * Adding to a Metal archive costs about as much as building the pipeline again, so it is left
+	 * until something is going to keep the result. Until then this only retains the descriptor,
+	 * which holds onto the functions the archive will need.
+	 */
+	void recordRenderPipeline(MTLRenderPipelineDescriptor* mtlRPLDesc);
+
+	/** Returns the serialized archive, including every pipeline recorded into it. */
+	const std::vector<char>& getBytes();
+
+	/** Seeds the archive from an earlier run. Must be called before the archive is first used. */
+	void setBytes(const void* pBytes, size_t byteCount);
+
+	/** Opens and returns a Metal 4 lookup archive from seeded bytes, or nil if none/unusable. */
+	id getMTL4ArchiveForLookup();
+
+	/** Attaches a Metal 4 pipeline serializer that captured pipelines for this shader. */
+	void setMTL4Serializer(id serializer);
+
+	/** Returns whether a pipeline has been recorded since the bytes were last brought up to date. */
+	bool isDirty();
+
+	MVKMTLBinaryArchive(MVKDevice* device) : _device(device) {}
+
+	~MVKMTLBinaryArchive();
+
+protected:
+	id<MTLBinaryArchive> getMTLBinaryArchiveLocked();
+	void addRecordedPipelinesLocked();
+	void refreshBytesLocked();
+
+	MVKDevice* _device;
+	std::vector<char> _bytes;
+	std::vector<MTLRenderPipelineDescriptor*> _recordedRPLDescs;
+	id<MTLBinaryArchive> _mtlBinaryArchive = nil;
+	id _mtl4Archive = nil;
+	NSURL* _mtl4ArchiveURL = nil;
+	id _mtl4Serializer = nil;
+	std::mutex _lock;
+	bool _isDirty = false;
+	bool _isMTL4Dirty = false;
+	bool _isSeedUnusable = false;	/**< The bytes it was seeded with could not be opened on this device. */
+};
+
+
+#pragma mark -
+#pragma mark MVKShader
+
+class MVKPipelineLayout;
+
+/**
+ * The header prefixed to the binary returned by vkGetShaderBinaryDataEXT.
+ *
+ * A binary carries the original SPIR-V and specialization data so the shader can be recreated
+ * with the same behavior. The optional Metal archive is an implementation cache, not the shader
+ * identity.
+ *
+ * Only what identifies the code is stored. Fields such as nextStage and flags come from the
+ * create info every time, and would break the requirement that a binary round-trips to an
+ * identical binary, because an application may legitimately supply different ones when it
+ * recreates a shader from a binary it was handed.
+ */
+typedef struct MVKShaderBinaryHeader {
+	uint32_t magic;
+	uint32_t version;
+	uint8_t  uuid[VK_UUID_SIZE];
+	uint32_t stage;
+	uint32_t codeSize;
+	uint32_t nameSize;
+	uint32_t archiveSize;
+	uint32_t specializationEntryCount;
+	uint32_t specializationDataSize;
+} MVKShaderBinaryHeader;
+
+typedef struct MVKShaderBinarySpecializationEntry {
+	uint32_t constantID;
+	uint32_t offset;
+	uint64_t size;
+} MVKShaderBinarySpecializationEntry;
+
+static constexpr uint32_t kMVKShaderBinaryMagic = 0x4D564B53;	// 'MVKS'
+
+// Raised whenever the layout changes. shaderBinaryVersion reports it, and Vulkan requires a binary
+// from a device reporting the same shaderBinaryUUID and a lower version to remain usable, so every
+// layout from kMVKShaderBinaryMinVersion on is still read. Version 1 has no specialization fields.
+static constexpr uint32_t kMVKShaderBinaryVersion = 2;
+static constexpr uint32_t kMVKShaderBinaryMinVersion = 1;
+
+/** Represents a Vulkan shader object. */
+class MVKShader : public MVKVulkanAPIDeviceObject {
+
+public:
+
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_SHADER_EXT; }
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT; }
+
+	/** Returns the single stage this shader was created for. */
+	VkShaderStageFlagBits getStage() const { return _stage; }
+
+	/** Returns the stages this shader permits as its successor. */
+	VkShaderStageFlags getNextStage() const { return _nextStage; }
+
+	/** Returns the flags this shader was created with. */
+	VkShaderCreateFlagsEXT getFlags() const { return _flags; }
+
+	/** Returns the shader module holding this shader's SPIR-V. */
+	MVKShaderModule* getShaderModule() { return _shaderModule; }
+
+	/** Returns the name of the SPIR-V entry point to use. */
+	const char* getEntryPointName() const { return _entryPointName.c_str(); }
+
+	/** Returns the specialization constants to apply, or null if there are none. */
+	const VkSpecializationInfo* getSpecializationInfo() const { return _hasSpecializationInfo ? &_specializationInfo : nullptr; }
+
+	/** Returns the pipeline layout describing this shader's descriptor bindings and push constants. */
+	MVKPipelineLayout* getPipelineLayout() const { return _pipelineLayout; }
+
+	/**
+	 * Returns whether this fragment shader can be rewritten to blend its own outputs.
+	 *
+	 * Answered when the shader is created, because it decides whether blend state belongs in
+	 * the key its pipelines are cached under, which must be known before one is built.
+	 */
+	bool canBlendInShader() const { return _canBlendInShader; }
+
+	/**
+	 * Returns whether this vertex shader can be rewritten to load its own attributes.
+	 *
+	 * Answered when the shader is created, for the same reason as canBlendInShader().
+	 */
+	bool canPullVertices() const { return _canPullVertices; }
+
+	/** Writes this shader's binary representation, following the vkGetShaderBinaryDataEXT rules. */
+	VkResult getBinaryData(size_t* pDataSize, void* pData);
+
+	/**
+	 * Returns the archive of pipelines that were built from this shader, which a binary carries
+	 * so that a later run loads them instead of compiling them again.
+	 */
+	MVKMTLBinaryArchive* getBinaryArchive() { return &_binaryArchive; }
+
+	/**
+	 * Returns whether this fragment shader writes the location zero output that alpha to
+	 * coverage derives coverage from, which decides whether it can take that state over.
+	 */
+	bool canDeriveCoverage() const { return _canDeriveCoverage; }
+
+	/**
+	 * Returns whether this shader writes the layer built-in, which decides whether a pipeline
+	 * built from it has to declare a topology class.
+	 */
+	bool writesLayer() const { return _writesLayer; }
+
+	/**
+	 * Returns whether this pre-rasterization shader statically writes the Position built-in.
+	 * A vertex or tessellation evaluation shader that does not write Position can only be used
+	 * with rasterizer discard enabled (Metal rejects rasterization with a void vertex return type).
+	 */
+	bool writesPosition() const { return _writesPosition; }
+
+	/** Returns whether this fragment shader reads the PrimitiveId built-in. */
+	bool readsPrimitiveId() const { return _readsPrimitiveId; }
+
+	/**
+	 * Populates a mask of the vertex input locations this shader reads, and returns whether that
+	 * mask can be trusted. Where it cannot, every location must be treated as read.
+	 */
+	bool getConsumedVertexLocations(uint64_t& locationMask) const {
+		locationMask = _consumedVertexLocations;
+		return _consumedVertexLocationsValid;
+	}
+
+	/**
+	 * Returns whether this shader can map the depth clip convention itself, which decides whether
+	 * the convention has to stay in the key of the pipelines built from it.
+	 */
+	bool canMapDepthClip() const { return _canMapDepthClip; }
+
+	/** Returns whether this fragment shader already writes the SampleMask built-in. */
+	bool writesSampleMask() const { return _writesSampleMask; }
+
+	/** Returns whether this shader was created as part of a linked stage group. */
+	bool isLinked() const { return mvkIsAnyFlagEnabled(_flags, VK_SHADER_CREATE_LINK_STAGE_BIT_EXT); }
+
+	/** Returns the reflected stage outputs (for pre-raster stages) or stage inputs (for fragment/tess). */
+	const MVKSmallVector<mvk::SPIRVShaderInterfaceVariable, 32>& getStageOutputs() const { return _stageOutputs; }
+	const MVKSmallVector<mvk::SPIRVShaderInterfaceVariable, 32>& getStageInputs() const { return _stageInputs; }
+
+	/** Returns the reflected tessellation execution modes for TCS or TES shaders. */
+	const mvk::SPIRVTessReflectionData& getTessReflectionData() const { return _tessReflectData; }
+
+	MVKShader(MVKDevice* device, const VkShaderCreateInfoEXT* pCreateInfo);
+
+	~MVKShader() override;
+
+protected:
+	void propagateDebugName() override {}
+	void initFromSPIRV(const VkShaderCreateInfoEXT* pCreateInfo, const void* pCode, size_t codeSize, const char* pName);
+	void reflectForPipelineKeys();
+	void initFromBinary(const VkShaderCreateInfoEXT* pCreateInfo);
+	void initLayout(const VkShaderCreateInfoEXT* pCreateInfo);
+	void initSpecialization(const VkSpecializationInfo* pSpecInfo);
+
+	const std::vector<char>& getBinaryArchiveBytes();
+
+	MVKShaderModule* _shaderModule = nullptr;
+	MVKPipelineLayout* _pipelineLayout = nullptr;
+	MVKMTLBinaryArchive _binaryArchive;
+	// Vulkan requires a binary to be invariant for the lifetime of the shader, so the archive is
+	// captured the first time one is asked for, and every later binary repeats that capture even
+	// if more pipelines have been built from this shader since.
+	std::vector<char> _binaryArchiveSnapshot;
+	std::mutex _binaryArchiveSnapshotLock;
+	bool _hasBinaryArchiveSnapshot = false;
+	uint64_t _consumedVertexLocations = 0;
+	bool _consumedVertexLocationsValid = false;
+	bool _writesLayer = false;
+	bool _writesPosition = false;
+	bool _readsPrimitiveId = false;
+	bool _writesSampleMask = false;
+	bool _canMapDepthClip = false;
+	MVKSmallVector<mvk::SPIRVShaderInterfaceVariable, 32> _stageOutputs;
+	MVKSmallVector<mvk::SPIRVShaderInterfaceVariable, 32> _stageInputs;
+	mvk::SPIRVTessReflectionData _tessReflectData = {};
+	std::string _entryPointName;
+	MVKSmallVector<VkSpecializationMapEntry, 8> _specializationEntries;
+	MVKSmallVector<uint8_t, 64> _specializationData;
+	VkSpecializationInfo _specializationInfo = {};
+	VkShaderStageFlagBits _stage = VK_SHADER_STAGE_VERTEX_BIT;
+	VkShaderStageFlags _nextStage = 0;
+	VkShaderCreateFlagsEXT _flags = 0;
+	bool _hasSpecializationInfo = false;
+	bool _canBlendInShader = false;
+	bool _canDeriveCoverage = false;
+	bool _canPullVertices = false;
 };
 
 

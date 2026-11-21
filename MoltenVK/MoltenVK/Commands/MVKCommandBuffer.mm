@@ -25,6 +25,7 @@
 #include "MVKFoundation.h"
 #include "MVKCmdDraw.h"
 #include "MVKCmdRendering.h"
+#include "MVKImage.h"
 #include <sys/mman.h>
 
 using namespace std;
@@ -244,6 +245,7 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	_needsVisibilityResultMTLBuffer = false;
 	_hasStageCounterTimestampCommand = false;
 	_lastTessellationPipeline = nullptr;
+	_shaderObjectRecordState = {};
 	setConfigurationResult(VK_NOT_READY);
 
 	if (mvkAreAllFlagsEnabled(flags, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)) {
@@ -404,6 +406,82 @@ void MVKCommandBuffer::recordTimestampCommand() {
 
 void MVKCommandBuffer::recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline) {
 	_lastTessellationPipeline = mvkBindPipeline->isTessellationPipeline() ? mvkBindPipeline : nullptr;
+	// Binding a pipeline unbinds every shader object, as the encoder will do when this is encoded.
+	_shaderObjectRecordState.clearShaders();
+}
+
+
+#pragma mark -
+#pragma mark Shader object pipeline prefetch
+
+void MVKShaderObjectRecordState::setAttachmentsFromSubpass(MVKRenderSubpass* subpass) {
+	colorAttachmentCount = std::min(subpass->getColorAttachmentCount(), kMVKMaxColorAttachmentCount);
+	for (uint32_t caIdx = 0; caIdx < kMVKMaxColorAttachmentCount; caIdx++) {
+		colorAttachmentFormats[caIdx] = (caIdx < colorAttachmentCount) ? subpass->getColorAttachmentFormat(caIdx) : VK_FORMAT_UNDEFINED;
+	}
+	depthAttachmentFormat = subpass->getDepthFormat();
+	stencilAttachmentFormat = subpass->getStencilFormat();
+	sampleCount = subpass->getSampleCount();
+}
+
+void MVKShaderObjectRecordState::setAttachmentsFromRenderingInfo(const VkRenderingInfo* pRenderingInfo) {
+	// The encoder will build a render pass from this same info at submit; mirror how it reads the
+	// formats, from the attachment image views, so the prefetched key matches the one it resolves.
+	auto fmtOf = [](const VkRenderingAttachmentInfo* pAtt) -> VkFormat {
+		return (pAtt && pAtt->imageView) ? ((MVKImageView*)pAtt->imageView)->getVkFormat() : VK_FORMAT_UNDEFINED;
+	};
+	colorAttachmentCount = std::min(pRenderingInfo->colorAttachmentCount, kMVKMaxColorAttachmentCount);
+	sampleCount = VK_SAMPLE_COUNT_1_BIT;
+	for (uint32_t caIdx = 0; caIdx < kMVKMaxColorAttachmentCount; caIdx++) {
+		const VkRenderingAttachmentInfo* pAtt = (caIdx < colorAttachmentCount) ? &pRenderingInfo->pColorAttachments[caIdx] : nullptr;
+		colorAttachmentFormats[caIdx] = fmtOf(pAtt);
+		if (pAtt && pAtt->imageView) { sampleCount = ((MVKImageView*)pAtt->imageView)->getSampleCount(); }
+	}
+	depthAttachmentFormat = fmtOf(pRenderingInfo->pDepthAttachment);
+	stencilAttachmentFormat = fmtOf(pRenderingInfo->pStencilAttachment);
+	if (pRenderingInfo->pDepthAttachment && pRenderingInfo->pDepthAttachment->imageView) {
+		sampleCount = ((MVKImageView*)pRenderingInfo->pDepthAttachment->imageView)->getSampleCount();
+	}
+}
+
+void MVKCommandBuffer::recordShaderObjectDraw() {
+	const auto& rs = _shaderObjectRecordState;
+	if ( !rs.hasShaderObjects() ) { return; }
+
+	// Creation-time Metal 4 templates serve pullable non-tessellated and compute-tessellated draws
+	// without any record-time pipeline compilation or prefetch.
+	MVKShader* vs = rs.shaders[kMVKShaderStageVertex];
+	MVKShader* tcs = rs.shaders[kMVKShaderStageTessCtl];
+	MVKShader* tes = rs.shaders[kMVKShaderStageTessEval];
+	if (_device->getShaderObjectPipelines()->isMetal4Enabled() &&
+		vs && vs->canPullVertices() &&
+		mvkCanPullVertexInput(rs.vertexInput, getPixelFormats())) {
+		if (!tcs && !tes) { return; }
+		if (tcs && tes && !mvkIsMultiview(_currentSubpassInfo.subpassViewMask)) {
+			mvk::SPIRVTessReflectionData mergedRefl;
+			std::string reflErr;
+			if (mvk::mergeTessReflectionData(tcs->getTessReflectionData(), tes->getTessReflectionData(), mergedRefl, reflErr) &&
+				(mergedRefl.patchKind == spv::ExecutionModeTriangles || mergedRefl.patchKind == spv::ExecutionModeQuads)) {
+				return;
+			}
+		}
+	}
+
+	// Assembled exactly as MVKCommandEncoder::resolveShaderObjectPipeline() will assemble it at
+	// submit, so that the build started here is the one the submit path then finds.
+	auto key = MVKShaderObjectPipelineKey::zeroed();
+	for (uint32_t stage = 0; stage < kMVKShaderStageCount; stage++) { key.shaders[stage] = rs.shaders[stage]; }
+	key.vertexInput = rs.vertexInput;
+	key.pipelineState = rs.pipelineState;
+	key.colorAttachmentCount = rs.colorAttachmentCount;
+	for (uint32_t caIdx = 0; caIdx < kMVKMaxColorAttachmentCount; caIdx++) { key.colorAttachmentFormats[caIdx] = rs.colorAttachmentFormats[caIdx]; }
+	key.depthAttachmentFormat = rs.depthAttachmentFormat;
+	key.stencilAttachmentFormat = rs.stencilAttachmentFormat;
+	key.viewMask = _currentSubpassInfo.subpassViewMask;
+	key.pipelineState.rasterizationSamples = rs.sampleCount;
+	key.canonicalize(getPixelFormats(), getMetalFeatures().dynamicVertexStride);
+
+	_device->getShaderObjectPipelines()->prefetchPipeline(key);
 }
 
 
@@ -578,6 +656,10 @@ void MVKCommandEncoder::setSubpass(MVKCommand* subpassCmd,
 	_subpassContents = subpassContents;
 	_renderSubpassIndex = subpassIndex;
 	_multiviewPassIndex = 0;
+
+	// A new render pass or subpass may have different attachment formats or sample count,
+	// so re-resolve any bound shader-object pipeline before the next draw.
+	_state.invalidateShaderObjectPipeline();
 
 	auto& mtlFeats = getMetalFeatures();
 	_canUseLayeredRendering = mtlFeats.layeredRendering && (mtlFeats.multisampleLayeredRendering || getSubpass()->getSampleCount() == VK_SAMPLE_COUNT_1_BIT);
@@ -895,6 +977,155 @@ uint32_t MVKCommandEncoder::getFramebufferLayerCount() {
 	return mvkFB ? mvkFB->getLayerCount() : 0;
 }
 
+bool MVKCommandEncoder::resolveShaderObjectPipeline() {
+	if (getVkGraphics()._pipeline) { return true; }
+	if (!_state.hasGraphicsShaderObjects()) { return false; }
+
+	const auto& vkGfx = getVkGraphics();
+	MVKRenderSubpass* subpass = getSubpass();
+	auto* soPipelines = getDevice()->getShaderObjectPipelines();
+
+	// Sync dynamic rasterizationSamples when rendering without attachments.
+	bool discard = vkGfx._renderState.enable.has(MVKRenderStateEnableFlag::RasterizerDiscard);
+	if (!discard && subpass &&
+		!subpass->hasColorAttachments() &&
+		!subpass->isDepthAttachmentUsed() &&
+		!subpass->isStencilAttachmentUsed()) {
+		VkSampleCountFlagBits desiredSamples = vkGfx._dynamicPipelineState.rasterizationSamples
+			? (VkSampleCountFlagBits)vkGfx._dynamicPipelineState.rasterizationSamples
+			: VK_SAMPLE_COUNT_1_BIT;
+		if (subpass->getDefaultSampleCount() != desiredSamples) {
+			subpass->setDefaultSampleCount(desiredSamples);
+			encodeStoreActions(true);
+			beginMetalRenderPass(kMVKCommandUseRestartSubpass);
+		}
+	}
+
+	// Resolve from creation-time Metal 4 templates (non-tessellated or compute tessellation).
+	MVKShader* vs = vkGfx._shaderObjects[kMVKShaderStageVertex];
+	MVKShader* tcs = vkGfx._shaderObjects[kMVKShaderStageTessCtl];
+	MVKShader* tes = vkGfx._shaderObjects[kMVKShaderStageTessEval];
+	MVKShader* fs = vkGfx._shaderObjects[kMVKShaderStageFragment];
+	if (soPipelines->isMetal4Enabled() &&
+		vs && vs->canPullVertices() &&
+		mvkCanPullVertexInput(vkGfx._dynamicVertexInput, getPixelFormats())) {
+		const auto& dps = vkGfx._dynamicPipelineState;
+		bool isMultiview = (subpass && subpass->isMultiview());
+
+		auto specKey = MVKShaderObjectSpecializationKey::zeroed();
+		if (!discard && subpass) {
+			specKey.colorAttachmentCount = std::min(subpass->getColorAttachmentCount(), kMVKMaxColorAttachmentCount);
+			for (uint32_t caIdx = 0; caIdx < specKey.colorAttachmentCount; caIdx++) {
+				specKey.colorAttachmentFormats[caIdx] = subpass->getColorAttachmentFormat(caIdx);
+				uint32_t vkAttIdx = subpass->getClearColorAttachmentIndex(caIdx);
+				if (vkAttIdx < kMVKMaxColorAttachmentCount) {
+					specKey.blendAttachments[caIdx] = dps.blendAttachments[vkAttIdx];
+					specKey.colorWriteEnables[caIdx] = dps.colorWriteEnables[vkAttIdx];
+				}
+			}
+			specKey.canonicalize(getPixelFormats());
+		}
+
+		auto populateShape = [&](MVKShaderObjectShapeKey& shapeKey, bool effectiveDiscard) {
+			if (effectiveDiscard) {
+				shapeKey.fragmentShader = nullptr;
+				shapeKey.rasterizerDiscard = 1;
+				shapeKey.sampleCount = 1;
+				return;
+			}
+			shapeKey.fragmentShader = fs;
+			shapeKey.sampleCount = (uint8_t)std::max(subpass ? subpass->getSampleCount() : 1u, 1u);
+			uint32_t consulted = shapeKey.sampleCount >= 32 ? ~0u : (1u << shapeKey.sampleCount) - 1;
+			shapeKey.dynamicSampleMask = ((dps.sampleMask & consulted) != consulted) ? 1 : 0;
+			bool canCover = (fs != nullptr && fs->canDeriveCoverage());
+			shapeKey.alphaToCoverage = (canCover && dps.alphaToCoverageEnable) ? 1 : 0;
+			shapeKey.alphaToOne = (canCover && getEnabledFeatures().alphaToOne && dps.alphaToOneEnable) ? 1 : 0;
+		};
+
+		if (tcs && tes && !isMultiview) {
+			mvk::SPIRVTessReflectionData mergedRefl;
+			std::string reflErr;
+			if (mvk::mergeTessReflectionData(tcs->getTessReflectionData(), tes->getTessReflectionData(), mergedRefl, reflErr) &&
+				(mergedRefl.patchKind == spv::ExecutionModeTriangles || mergedRefl.patchKind == spv::ExecutionModeQuads)) {
+				auto shapeKey = MVKShaderObjectShapeKey::zeroed();
+				shapeKey.tessCtlShader = tcs;
+				shapeKey.tessEvalShader = tes;
+				shapeKey.topologyClass = (uint8_t)(mergedRefl.pointMode ? MTLPrimitiveTopologyClassPoint : MTLPrimitiveTopologyClassTriangle);
+				populateShape(shapeKey, discard || !tes->writesPosition());
+				MVKGraphicsPipeline* stage1 = nullptr;
+				MVKGraphicsPipeline* stage2 = nullptr;
+				MVKGraphicsPipeline* stage3 = nullptr;
+				id<MTLRenderPipelineState> mtlState = nil;
+				if (soPipelines->getMetal4TessellationPipeline(vs, tcs, tes, shapeKey, specKey, stage1, stage2, stage3, mtlState)) {
+					_state.useShaderObjectPipeline(stage3, mtlState, stage1, stage2);
+					return true;
+				}
+			}
+		} else if (!tcs && !tes) {
+			bool effectiveDiscard = discard || !vs->writesPosition();
+			auto shapeKey = MVKShaderObjectShapeKey::zeroed();
+			shapeKey.vertexShader = vs;
+			shapeKey.multiview = isMultiview ? 1 : 0;
+			populateShape(shapeKey, effectiveDiscard);
+			if (!effectiveDiscard && (vs->writesLayer() || isMultiview)) {
+				shapeKey.topologyClass = (uint8_t)mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology((VkPrimitiveTopology)dps.topology);
+			}
+
+			MVKGraphicsPipeline* templatePlne = nullptr;
+			id<MTLRenderPipelineState> mtlState = nil;
+			if (soPipelines->getMetal4Pipeline(shapeKey, specKey, templatePlne, mtlState)) {
+				_state.useShaderObjectPipeline(templatePlne, mtlState);
+				return true;
+			}
+			return false;
+		}
+	}
+
+	auto key = MVKShaderObjectPipelineKey::zeroed();
+	for (uint32_t stage = 0; stage < kMVKShaderStageCount; stage++) {
+		key.shaders[stage] = vkGfx._shaderObjects[stage];
+	}
+	key.vertexInput = vkGfx._dynamicVertexInput;
+	key.pipelineState = vkGfx._dynamicPipelineState;
+
+	// The attachments a draw renders to are fixed for the render pass, not set by the shaders,
+	// so they come from the subpass rather than from any dynamic state.
+	key.colorAttachmentCount = std::min(subpass->getColorAttachmentCount(), kMVKMaxColorAttachmentCount);
+	for (uint32_t caIdx = 0; caIdx < key.colorAttachmentCount; caIdx++) {
+		key.colorAttachmentFormats[caIdx] = subpass->getColorAttachmentFormat(caIdx);
+	}
+	key.depthAttachmentFormat = subpass->getDepthFormat();
+	key.stencilAttachmentFormat = subpass->getStencilFormat();
+	key.viewMask = subpass->getViewMask();
+
+	// Metal cannot rasterize into a sample count the attachments do not have, and Vulkan requires
+	// the two to agree, so the subpass wins over a stale vkCmdSetRasterizationSamplesEXT value.
+	key.pipelineState.rasterizationSamples = subpass->getSampleCount();
+
+	key.canonicalize(getPixelFormats(), getMetalFeatures().dynamicVertexStride);
+
+	// Record both builds and waits for a record-time prefetch.
+	bool compiledOrWaited = false;
+	uint64_t startTime = getPerformanceTimestamp();
+	auto* plne = getDevice()->getShaderObjectPipelines()->getPipeline(key, &compiledOrWaited);
+	if (compiledOrWaited) {
+		addPerformanceInterval(getPerformanceStats().shaderCompilation.pipelineCompileWhileEncoding, startTime);
+	}
+	if (plne) { _state.useShaderObjectPipeline(plne); }
+	return plne != nullptr;
+}
+
+bool MVKCommandEncoder::resolveComputeShaderObjectPipeline() {
+	if (getVkCompute()._pipeline) { return true; }
+
+	MVKShader* shader = getVkCompute()._shaderObject;
+	if ( !shader ) { return false; }
+
+	auto* plne = getDevice()->getShaderObjectPipelines()->getComputePipeline(shader);
+	if (plne) { _state.useShaderObjectComputePipeline(plne); }
+	return plne != nullptr;
+}
+
 void MVKCommandEncoder::bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline) {
     switch (pipelineBindPoint) {
         case VK_PIPELINE_BIND_POINT_GRAPHICS:
@@ -944,6 +1175,7 @@ void MVKCommandEncoder::updateColorAttachmentLocations(const MVKArrayRef<uint32_
 			encodeStoreActions(true);
 			endMetalRenderEncoding();
 			mvkSP->updateColorAttachmentLocations(colorAttLocs, atts);
+			_state.invalidateShaderObjectPipeline();
 		}
 	}
 }

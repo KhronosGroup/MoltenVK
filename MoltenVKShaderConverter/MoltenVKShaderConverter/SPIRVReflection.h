@@ -96,6 +96,119 @@ namespace mvk {
 #pragma mark Functions
 
 	/**
+	 * Reflects the tessellation execution modes declared by a single TCS or TES shader.
+	 * Unspecified modes remain at ExecutionModeMax (and numControlPoints remains 0).
+	 */
+	template<typename Vs>
+	static inline bool getTessStageReflectionData(const Vs& spirv, spv::ExecutionModel stage,
+												  const std::string& entryName,
+												  SPIRVTessReflectionData& reflectData,
+												  std::string& errorLog) {
+		reflectData = {};
+#ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+		try {
+#endif
+			SPIRV_CROSS_NAMESPACE::CompilerReflection refl(spirv);
+			if (!entryName.empty()) {
+				refl.set_entry_point(entryName, stage);
+			}
+			refl.compile();
+			const SPIRV_CROSS_NAMESPACE::Bitset& modes = refl.get_execution_mode_bitset();
+
+			if (modes.get(spv::ExecutionModeTriangles)) {
+				reflectData.patchKind = spv::ExecutionModeTriangles;
+			} else if (modes.get(spv::ExecutionModeQuads)) {
+				reflectData.patchKind = spv::ExecutionModeQuads;
+			} else if (modes.get(spv::ExecutionModeIsolines)) {
+				reflectData.patchKind = spv::ExecutionModeIsolines;
+			}
+
+			if (modes.get(spv::ExecutionModeVertexOrderCw)) {
+				reflectData.windingOrder = spv::ExecutionModeVertexOrderCw;
+			} else if (modes.get(spv::ExecutionModeVertexOrderCcw)) {
+				reflectData.windingOrder = spv::ExecutionModeVertexOrderCcw;
+			}
+
+			reflectData.pointMode = modes.get(spv::ExecutionModePointMode);
+
+			if (modes.get(spv::ExecutionModeSpacingEqual)) {
+				reflectData.partitionMode = spv::ExecutionModeSpacingEqual;
+			} else if (modes.get(spv::ExecutionModeSpacingFractionalEven)) {
+				reflectData.partitionMode = spv::ExecutionModeSpacingFractionalEven;
+			} else if (modes.get(spv::ExecutionModeSpacingFractionalOdd)) {
+				reflectData.partitionMode = spv::ExecutionModeSpacingFractionalOdd;
+			}
+
+			if (modes.get(spv::ExecutionModeOutputVertices)) {
+				reflectData.numControlPoints = refl.get_execution_mode_argument(spv::ExecutionModeOutputVertices);
+			}
+			return true;
+#ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+		} catch (SPIRV_CROSS_NAMESPACE::CompilerError& ex) {
+			errorLog = ex.what();
+			return false;
+		}
+#endif
+	}
+
+	/**
+	 * Merges tessellation reflection data from a TCS and TES shader, rejecting conflicting
+	 * or incomplete modes.
+	 */
+	static inline bool mergeTessReflectionData(const SPIRVTessReflectionData& tesc,
+											   const SPIRVTessReflectionData& tese,
+											   SPIRVTessReflectionData& merged,
+											   std::string& errorLog) {
+		merged = {};
+		if (tesc.patchKind != spv::ExecutionModeMax && tese.patchKind != spv::ExecutionModeMax &&
+			tesc.patchKind != tese.patchKind) {
+			errorLog = "Tessellation shaders specify conflicting patch modes.";
+			return false;
+		}
+		merged.patchKind = (tesc.patchKind != spv::ExecutionModeMax) ? tesc.patchKind : tese.patchKind;
+		if (merged.patchKind == spv::ExecutionModeMax) {
+			errorLog = "Neither tessellation shader specifies a patch input mode (Triangles, Quads, or Isolines).";
+			return false;
+		}
+
+		if (tesc.windingOrder != spv::ExecutionModeMax && tese.windingOrder != spv::ExecutionModeMax &&
+			tesc.windingOrder != tese.windingOrder) {
+			errorLog = "Tessellation shaders specify conflicting winding order modes.";
+			return false;
+		}
+		merged.windingOrder = (tesc.windingOrder != spv::ExecutionModeMax) ? tesc.windingOrder : tese.windingOrder;
+		if (merged.windingOrder == spv::ExecutionModeMax) {
+			errorLog = "Neither tessellation shader specifies a winding order mode (VertexOrderCw or VertexOrderCcw).";
+			return false;
+		}
+
+		merged.pointMode = tesc.pointMode || tese.pointMode;
+
+		if (tesc.partitionMode != spv::ExecutionModeMax && tese.partitionMode != spv::ExecutionModeMax &&
+			tesc.partitionMode != tese.partitionMode) {
+			errorLog = "Tessellation shaders specify conflicting partition modes.";
+			return false;
+		}
+		merged.partitionMode = (tesc.partitionMode != spv::ExecutionModeMax) ? tesc.partitionMode : tese.partitionMode;
+		if (merged.partitionMode == spv::ExecutionModeMax) {
+			errorLog = "Neither tessellation shader specifies a partition mode (SpacingEqual, SpacingFractionalOdd, or SpacingFractionalEven).";
+			return false;
+		}
+
+		if (tesc.numControlPoints != 0 && tese.numControlPoints != 0 &&
+			tesc.numControlPoints != tese.numControlPoints) {
+			errorLog = "Tessellation shaders specify conflicting output control point counts.";
+			return false;
+		}
+		merged.numControlPoints = (tesc.numControlPoints != 0) ? tesc.numControlPoints : tese.numControlPoints;
+		if (merged.numControlPoints == 0) {
+			errorLog = "Neither tessellation shader specifies the number of output control points.";
+			return false;
+		}
+		return true;
+	}
+
+	/**
 	 * Given a tessellation control shader and a tessellation evaluation shader,
 	 * both in SPIR-V format, returns tessellation reflection data.
 	 */
