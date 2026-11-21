@@ -459,6 +459,7 @@ kernel void cmdDrawIndexedCopyIndex16Buffer(const device uint16_t* srcBuff [[buf
                                             device uint16_t* destBuff [[buffer(1)]],
                                             const device MTLDrawIndexedPrimitivesIndirectArguments& params [[buffer(2)]],
                                             uint i [[thread_position_in_grid]]) {
+	if (i >= params.indexCount) { return; }
 	destBuff[i] = srcBuff[params.indexStart + i];
 }
 
@@ -466,6 +467,7 @@ kernel void cmdDrawIndexedCopyIndex32Buffer(const device uint32_t* srcBuff [[buf
                                             device uint32_t* destBuff [[buffer(1)]],
                                             const device MTLDrawIndexedPrimitivesIndirectArguments& params [[buffer(2)]],
                                             uint i [[thread_position_in_grid]]) {
+	if (i >= params.indexCount) { return; }
 	destBuff[i] = srcBuff[params.indexStart + i];
 }
 
