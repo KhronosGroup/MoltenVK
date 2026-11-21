@@ -233,6 +233,18 @@ namespace mvk {
 
 	auto addSat = [](uint32_t a, uint32_t b) { return a == uint32_t(-1) ? a : a + b; };
 
+	static inline uint32_t getInterfaceArrayElementCount(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
+														 const SPIRV_CROSS_NAMESPACE::SPIRType* type) {
+		uint32_t count = type->columns;
+		for (size_t i = 0; i < type->array.size(); i++) {
+			uint32_t dim = (i < type->array_size_literal.size() && type->array_size_literal[i])
+				? type->array[i]
+				: reflect.evaluate_constant_u32(type->array[i]);
+			count *= std::max(dim, 1u);
+		}
+		return count;
+	}
+
 	template<typename Vi>
 	static inline uint32_t getShaderInterfaceStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
 														   Vi& vars, SPIRVShaderInterfaceVariable* pParentFirstMember,
@@ -256,7 +268,7 @@ namespace mvk {
 				isUsed = reflect.has_active_builtin(biType, storage);
 			}
 			const SPIRV_CROSS_NAMESPACE::SPIRType* type = &reflect.get_type(structType->member_types[mbrIdx]);
-			uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
+			uint32_t elemCnt = getInterfaceArrayElementCount(reflect, type);
 			for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 				if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct)
 					loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
@@ -339,7 +351,7 @@ namespace mvk {
 					 biType == spv::BuiltInClipDistance || biType == spv::BuiltInCullDistance))
 					type = &reflect.get_type(type->parent_type);
 
-				uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
+				uint32_t elemCnt = getInterfaceArrayElementCount(reflect, type);
 				for (uint32_t i = 0; i < elemCnt; i++) {
 					if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct) {
 						SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
