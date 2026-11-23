@@ -23,6 +23,8 @@ Released TBD
   - `VK_EXT_multi_draw`
   - `VK_EXT_nested_command_buffer`
   - `VK_EXT_ycbcr_2plane_444_formats`
+- Add `MVKConfiguration::swapchainDeferredAcquire`, and environment variable `MVK_CONFIG_SWAPCHAIN_DEFERRED_ACQUIRE`,
+  to optionally retrieve the `CAMetalDrawable` during `vkAcquireNextImageKHR()`, instead of on first use of the swapchain image.
 - Fix inconsistent image `memoryTypeBits` when `VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT` is used.
 - Fix shader stage interface matching of 16-bit floating point variables.
 - Fix spurious warning about blending on attachment formats that do not support it.

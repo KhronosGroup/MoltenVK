@@ -1577,6 +1577,10 @@ VkResult MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphor
 	// This is not done earlier so the texture is retained for any post-processing such as screen captures, etc.
 	releaseMetalDrawable();
 
+	// If deferred acquisition is disabled, retrieve the drawable now, instead of on first use.
+	// This is done before locking, because retrieving the drawable may block.
+	if ( !getMVKConfig().swapchainDeferredAcquire ) { getCAMetalDrawable(); }
+
 	lock_guard<mutex> lock(_availabilityLock);
 
 	// Upon acquisition, update acquisition ID immediately, to move it to the back of the chain,
