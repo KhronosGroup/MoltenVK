@@ -350,3 +350,12 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 #ifndef MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES
 #   define MVK_CONFIG_LIVE_CHECK_ALL_RESOURCES 0
 #endif
+
+/**
+ * Defer retrieving the CAMetalDrawable of a swapchain image until the image is first used.
+ * Enabled by default. If disabled, the CAMetalDrawable is retrieved during vkAcquireNextImageKHR(),
+ * which may then block until a drawable is available, regardless of the timeout passed to it.
+ */
+#ifndef MVK_CONFIG_SWAPCHAIN_DEFERRED_ACQUIRE
+#   define MVK_CONFIG_SWAPCHAIN_DEFERRED_ACQUIRE 1
+#endif

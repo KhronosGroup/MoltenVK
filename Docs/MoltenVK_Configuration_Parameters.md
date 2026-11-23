@@ -452,6 +452,23 @@ apps to select a queue family with the appropriate requirements.
 
 
 ---------------------------------------
+#### MVK_CONFIG_SWAPCHAIN_DEFERRED_ACQUIRE
+
+##### Type: Boolean
+##### Default: `1`
+
+If enabled, the `CAMetalDrawable` underlying a swapchain image is not retrieved when the image
+is acquired by `vkAcquireNextImageKHR()`, but is deferred until the image is first used, typically
+when a render pass that uses the image is encoded to _Metal_. Depending on the value of the
+`MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS` parameter, that is during `vkEndCommandBuffer()`,
+`vkCmdBeginRenderPass()`, or `vkQueueSubmit()`, and that call may block until a drawable is available.
+
+If disabled, the `CAMetalDrawable` is retrieved during `vkAcquireNextImageKHR()`, so any wait for a
+drawable occurs there instead. In this case, `vkAcquireNextImageKHR()` may block until a drawable
+is available, regardless of the `timeout` value passed to it.
+
+
+---------------------------------------
 #### MVK_CONFIG_SWAPCHAIN_MIN_MAG_FILTER_USE_NEAREST
 
 ##### Type: Boolean
