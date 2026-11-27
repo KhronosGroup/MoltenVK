@@ -438,6 +438,19 @@ public:
     /** Get a temporary MTLBuffer that will be returned to a pool after the command buffer is finished. */
     const MVKMTLBufferAllocation* getTempMTLBuffer(NSUInteger length, bool isPrivate = false, bool isDedicated = false);
 
+	/** Enshrouded perf test (C10): records an indirect-count conversion encoded before the command's render pass. */
+	void perfAddHoistedIndirect(const MVKCommand* cmd, const MVKMTLBufferAllocation* converted, uint32_t drawCount) { _perfHoistedIndirect[cmd] = {converted, drawCount}; }
+
+	/** Enshrouded perf test (C10): returns and forgets the conversion encoded before the render pass for this command, or nullptr. */
+	const MVKMTLBufferAllocation* perfTakeHoistedIndirect(const MVKCommand* cmd, uint32_t& drawCount) {
+		auto it = _perfHoistedIndirect.find(cmd);
+		if (it == _perfHoistedIndirect.end()) { return nullptr; }
+		auto* converted = it->second.first;
+		drawCount = it->second.second;
+		_perfHoistedIndirect.erase(it);
+		return converted;
+	}
+
 	/** Copy the bytes to a temporary MTLBuffer that will be returned to a pool after the command buffer is finished. */
 	const MVKMTLBufferAllocation* copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length, bool isDedicated = false);
 
@@ -454,6 +467,15 @@ public:
 
 	/** Insert a new execution barrier */
 	void setBarrier(uint64_t sourceStageMask, uint64_t destStageMask);
+
+	/**
+	 * Enshrouded perf C2: a compute-to-compute barrier handled inside the open compute encoder (memory barrier,
+	 * no encoder end). Its fence bookkeeping (setBarrier) is deferred to the end of that encoder, so later
+	 * encoders still wait for all compute work before the barrier. MVK_PERF_KEEP_COMPUTE_ENCODER=0 disables.
+	 */
+	bool perfTryInlineComputeBarrier(uint64_t sourceStageMask, uint64_t destStageMask);
+	uint64_t _perfDeferredBarrierSrc = 0;
+	uint64_t _perfDeferredBarrierDst = 0;
 
 	/** Encode waits for a specific stage in given encoder. */
 	void barrierWait(MVKBarrierStage stage, id<MTLRenderCommandEncoder> mtlEncoder, MTLRenderStages beforeStages);
@@ -523,6 +545,7 @@ protected:
 	bool hasMoreMultiviewPasses();
 	void beginNextMultiviewPass();
 	void encodeCommandsImpl(MVKCommand* command);
+	void perfHoistIndirectCounts(MVKCommand* firstInRenderPass);
 	void encodeGPUCounterSample(MVKGPUCounterQueryPool* mvkQryPool, uint32_t sampleIndex, MVKCounterSamplingFlags samplingPoints);
 	void encodeTimestampStageCounterSamples();
 	id<MTLFence> getStageCountersMTLFence();
@@ -549,6 +572,7 @@ protected:
 	VkSubpassContents _subpassContents;
 	uint32_t _renderSubpassIndex;
 	uint32_t _multiviewPassIndex;
+	std::unordered_map<const MVKCommand*, std::pair<const MVKMTLBufferAllocation*, uint32_t>> _perfHoistedIndirect;	// C10
     uint32_t _flushCount;
 	MVKCommandUse _mtlComputeEncoderUse;
 	uint32_t _mtlComputeEncoderStages;

@@ -230,6 +230,50 @@ void MVKShaderLibrary::compileLibrary(const string& msl,
 	MVKShaderLibraryCompiler* slc = new MVKShaderLibraryCompiler(_owner);
 	NSString* nsSrc = [[NSString alloc] initWithUTF8String: msl.c_str()];	// temp retained
 
+	// SPIRV-Cross honours SPIR-V NoContraction ("precise") by routing float add, subtract and multiply
+	// through helper functions marked [[clang::optnone]], so every such operation becomes an unoptimized,
+	// non-inlined call. In GPU-driven games most compute shaders use them, which is very slow on Metal.
+	// Outside vertex shaders, where cross-pipeline invariance does not apply, letting Metal optimize these
+	// helpers is far faster and visually equivalent. Only the precise-math helpers are changed: other
+	// optnone helpers (spvMulExtended works around a Metal compiler crash; spvQuantizeToF16 and spvReflect
+	// match Vulkan conformance results) are left alone.
+	// MVK_PERF_OPTIMIZE_PRECISE_MATH=0 disables this.
+	static const bool optimizePreciseMath = [] { const char* s = getenv("MVK_PERF_OPTIMIZE_PRECISE_MATH"); return !s || atoi(s) != 0; }();
+	if (optimizePreciseMath && [nsSrc containsString: @"[[clang::optnone]]"] && ![nsSrc containsString: @"\nvertex "]) {
+		NSMutableString* optSrc = [nsSrc mutableCopy];
+		for (NSString* helper in @[@"T spvFAdd(", @"T spvFSub(", @"T spvFMul(",
+								   @"vec<T, Cols> spvFMulVectorMatrix(", @"vec<T, Rows> spvFMulMatrixVector(",
+								   @"matrix<T, RCols, LRows> spvFMulMatrixMatrix("]) {
+			[optSrc replaceOccurrencesOfString: [@"[[clang::optnone]] " stringByAppendingString: helper]
+								   withString: helper
+									  options: 0
+										range: NSMakeRange(0, optSrc.length)];
+		}
+		[nsSrc release];
+		nsSrc = optSrc;
+	}
+
+	// Enshrouded perf C15: SPIRV-Cross writes transcendental functions as precise::powr, precise::log2 etc.
+	// when the SPIR-V asks to preserve NaN/Inf/signed zero, and the explicit precise:: namespace keeps them
+	// exact even when the shader is compiled with fast math. The game's heaviest compute kernels call
+	// hundreds of them (Phase 5b census). With MVK_PERF_FAST_TRANSCENDENTALS=1 they use the fast:: versions
+	// instead (vertex shaders are left alone, as above). Off by default until checked visually.
+	static const bool fastTranscendentals = [] {
+		const char* s = getenv("MVK_PERF_FAST_TRANSCENDENTALS");
+		bool on = s ? atoi(s) != 0 : mvkPerfIsEnshrouded();	// default on for Enshrouded only
+		if (on) { fprintf(stderr, "[mvk-perf] C15 fast transcendentals on (non-vertex shaders)\n"); }
+		return on;
+	}();
+	if (fastTranscendentals && [nsSrc containsString: @"precise::"] && ![nsSrc containsString: @"\nvertex "]) {
+		static NSRegularExpression* re = [[NSRegularExpression alloc]
+			initWithPattern: @"\\bprecise::(powr|pow|log2|log10|log|exp2|exp10|exp|sqrt|rsqrt|sin|cos|tan|asin|acos|atan2|atan|sinh|cosh|tanh|divide)\\("
+					options: 0 error: nil];
+		NSMutableString* fastSrc = [nsSrc mutableCopy];
+		[re replaceMatchesInString: fastSrc options: 0 range: NSMakeRange(0, fastSrc.length) withTemplate: @"fast::$1("];
+		[nsSrc release];
+		nsSrc = fastSrc;
+	}
+
 	// If specialization macro is used, translate the id to macro information and pass it to compiler
 	vector<pair<MSLSpecializationMacroInfo, MVKShaderMacroValue>> macro_def;
 	if (specializationMacroDef) {
@@ -554,6 +598,28 @@ MVKShaderModule::~MVKShaderModule() {
 #pragma mark -
 #pragma mark MVKShaderLibraryCompiler
 
+// Enshrouded perf C12: choose the Metal math mode per shader instead of all-or-nothing fast math.
+// MVK_PERF_MATH_MODE:
+//   relaxed       every shader in Metal Relaxed mode (fast-math reassociation and contraction, but NaN/Inf kept)
+//   compute-fast  compute kernels in Fast mode; vertex and fragment shaders keep the shader's own flags (Safe here)
+// Unset: unchanged (MVK_CONFIG_FAST_MATH_ENABLED decides). Leave MVK_CONFIG_FAST_MATH_ENABLED unset with this,
+// since its "always" setting overrides these flags.
+static uint32_t mvkPerfMathFlags(NSString* mslSourceCode, uint32_t fpFastMathFlags) {
+	static const int mode = [] {
+		const char* s = getenv("MVK_PERF_MATH_MODE");
+		int m = !s ? 0 : !strcmp(s, "relaxed") ? 1 : !strcmp(s, "compute-fast") ? 2 : 0;
+		fprintf(stderr, "[mvk-perf] C12 math mode: %s\n", m == 1 ? "Relaxed for all shaders" : m == 2 ? "Fast for compute, shader's own for vertex/fragment" : "unchanged");
+		return m;
+	}();
+	const uint32_t relaxed = spv::FPFastMathModeNSZMask | spv::FPFastMathModeAllowRecipMask |
+							 spv::FPFastMathModeAllowReassocMask | spv::FPFastMathModeAllowContractMask;
+	switch (mode) {
+		case 1: return relaxed;
+		case 2: return [mslSourceCode containsString: @"\nkernel void "] ? (relaxed | spv::FPFastMathModeNotNaNMask | spv::FPFastMathModeNotInfMask) : fpFastMathFlags;
+		default: return fpFastMathFlags;
+	}
+}
+
 id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode,
 													   const SPIRVToMSLConversionResultInfo& shaderConversionResults,
 													   const vector<pair<MSLSpecializationMacroInfo, MVKShaderMacroValue>>& specializationMacroDef) {
@@ -563,7 +629,7 @@ id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode,
 		auto mtlDev = getMTLDevice();
 		@synchronized (mtlDev) {
 			@autoreleasepool {
-				auto mtlCompileOptions = getDevice()->getMTLCompileOptions(shaderConversionResults.entryPoint.fpFastMathFlags,
+				auto mtlCompileOptions = getDevice()->getMTLCompileOptions(mvkPerfMathFlags(mslSourceCode, shaderConversionResults.entryPoint.fpFastMathFlags),
 																		   shaderConversionResults.isPositionInvariant);
 				if (!specializationMacroDef.empty()) {
 					size_t macro_count = specializationMacroDef.size();

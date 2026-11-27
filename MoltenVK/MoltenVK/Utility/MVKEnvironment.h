@@ -25,6 +25,38 @@
 #include "MVKLogging.h"
 #ifdef __cplusplus
 #include <string>
+#include <sys/sysctl.h>
+#include <unistd.h>
+#include <cstdlib>
+#include <cstring>
+#include <strings.h>
+
+/**
+ * Enshrouded perf profile: true when this process is Enshrouded. Its aggressive shader tunings
+ * (fast math for every shader, fast transcendentals, a smaller tessellation budget) stay limited
+ * to it, so other games keep MoltenVK's exact-math defaults. Checks the Steam app ID that Steam
+ * passes to games, then the process arguments, where Wine shows the Windows executable.
+ */
+static inline bool mvkPerfIsEnshrouded() {
+	static const bool isEnshrouded = [] {
+		const char* appId = getenv("SteamAppId");
+		if (appId && strcmp(appId, "1203620") == 0) { return true; }
+		int mib[3] = { CTL_KERN, KERN_PROCARGS2, getpid() };
+		size_t len = 0;
+		if (sysctl(mib, 3, nullptr, &len, nullptr, 0) != 0 || len == 0) { return false; }
+		char* buf = (char*)malloc(len + 1);
+		if ( !buf ) { return false; }
+		bool found = false;
+		if (sysctl(mib, 3, buf, &len, nullptr, 0) == 0) {
+			for (size_t i = 0; i + 14 <= len; i++) {
+				if (strncasecmp(buf + i, "enshrouded.exe", 14) == 0) { found = true; break; }
+			}
+		}
+		free(buf);
+		return found;
+	}();
+	return isEnshrouded;
+}
 #endif
 
 
@@ -181,7 +213,7 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 
 /** Set the fast math Metal Compiler options. By default, set to use fast math as determined by the shader. */
 #ifndef MVK_CONFIG_FAST_MATH_ENABLED
-#   define MVK_CONFIG_FAST_MATH_ENABLED    MVK_CONFIG_FAST_MATH_ON_DEMAND
+#   define MVK_CONFIG_FAST_MATH_ENABLED    (mvkPerfIsEnshrouded() ? MVK_CONFIG_FAST_MATH_ALWAYS : MVK_CONFIG_FAST_MATH_ON_DEMAND)
 #endif
 
 /** Set the logging level: */
@@ -297,6 +329,11 @@ void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVK
 /** Support Metal argument buffers. Enabled by default. */
 #ifndef MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS
 #   define MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS    1
+#endif
+
+/** Use a queue-wide Metal residency set (needs argument buffers). Enabled by default. 0 = declare resources per encoder. */
+#ifndef MVK_CONFIG_USE_RESIDENCY_SETS
+#   define MVK_CONFIG_USE_RESIDENCY_SETS    1
 #endif
 
 /** Compress MSL shader source code in a pipeline cache. Defaults to no compression. */

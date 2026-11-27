@@ -129,6 +129,7 @@ public:
 						const VkSubpassEndInfo* pSubpassEndInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool perfEndsRenderPass() override { return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -151,6 +152,8 @@ public:
 						const VkRenderingInfo* pRenderingInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	// C10: only dynamic rendering hoists; classic render passes encode external dependency barriers when they begin.
+	bool perfBeginsRenderPass() override { return true; }
 
 
 protected:
@@ -218,6 +221,7 @@ public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	bool perfEndsRenderPass() override { return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;

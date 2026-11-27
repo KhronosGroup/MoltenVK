@@ -425,6 +425,14 @@ MVKSwapchain::MVKSwapchain(MVKDevice* device, const VkSwapchainCreateInfoKHR* pC
 
 	_isDeliberatelyScaled = pScalingInfo && pScalingInfo->scalingBehavior;
 
+	// A swapchain created at a size other than the surface's is also deliberately scaled: the layer
+	// stretches it to fill. Wine's virtual desktop keeps the window at the desktop size when a game
+	// picks a lower fullscreen resolution, so reporting VK_SUBOPTIMAL_KHR here made such games recreate
+	// the swapchain at the same size every frame. Swapchains created at the surface size still report resizes.
+	if ( !_isDeliberatelyScaled && !isHeadless() && !mvkVkExtent2DsAreEqual(_imageExtent, _surface->getExtent()) ) {
+		_isDeliberatelyScaled = true;
+	}
+
 	// Set the list of present modes that can be specified in a queue
 	// present submission without causing the swapchain to be rebuilt.
 	if (pPresentModesInfo) {

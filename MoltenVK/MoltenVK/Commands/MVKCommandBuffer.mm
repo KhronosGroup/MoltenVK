@@ -448,9 +448,31 @@ void MVKCommandEncoder::encodeCommands(MVKCommand* command) {
 	}
 }
 
+// Enshrouded perf test (C10): MVK_PERF_HOIST_INDIRECT_COUNT=0 turns off converting indirect-count draws before their render pass.
+static bool mvkPerfHoistIndirectCountEnabled() {
+	static const bool enabled = [] {
+		const char* env = getenv("MVK_PERF_HOIST_INDIRECT_COUNT");
+		bool on = !(env && env[0] == '0');
+		fprintf(stderr, "[mvk-perf] indirect-count conversion before render passes: %s\n", on ? "on" : "off");
+		return on;
+	}();
+	return enabled;
+}
+
+// Enshrouded perf test (C10): before a render pass begins, encode the indirect-count conversions of the draws in it,
+// all in one compute encoder, so none of them has to end and restart the Metal render pass. Stops at the end of the
+// pass, or at a barrier that could make new indirect arguments visible within the pass (later draws convert in place).
+void MVKCommandEncoder::perfHoistIndirectCounts(MVKCommand* firstInRenderPass) {
+	for (MVKCommand* cmd = firstInRenderPass; cmd && !cmd->perfEndsRenderPass(); cmd = cmd->_next) {
+		if (cmd->perfBlocksIndirectHoist()) { break; }
+		cmd->perfHoistIndirectCount(this);
+	}
+}
+
 void MVKCommandEncoder::encodeCommandsImpl(MVKCommand* command) {
     while(command) {
         uint32_t prevMVPassIdx = _multiviewPassIndex;
+		if (command->perfBeginsRenderPass() && mvkPerfHoistIndirectCountEnabled()) { perfHoistIndirectCounts(command->_next); }
         command->encode(this);
 
         if(_multiviewPassIndex > prevMVPassIdx) {
@@ -1075,10 +1097,61 @@ void MVKCommandEncoder::endCurrentMetalEncoding() {
     _mtlBlitEncoderUse = kMVKCommandUseNone;
 
 	encodeTimestampStageCounterSamples();
+
+	// C2: barriers kept inside the compute encoder that just ended now take effect for later encoders,
+	// exactly as if the encoder had been ended at the last of them (its fence update covers that work).
+	if (_perfDeferredBarrierSrc) {
+		setBarrier(_perfDeferredBarrierSrc, _perfDeferredBarrierDst);
+		_perfDeferredBarrierSrc = _perfDeferredBarrierDst = 0;
+	}
+}
+
+bool MVKCommandEncoder::perfTryInlineComputeBarrier(uint64_t sourceStageMask, uint64_t destStageMask) {
+	static const bool enabled = [] {
+		const char* s = getenv("MVK_PERF_KEEP_COMPUTE_ENCODER");
+		bool on = !s || atoi(s) != 0;
+		fprintf(stderr, "[mvk-perf] C2 compute-to-compute barriers inside the compute encoder: %s\n", on ? "on" : "off");
+		return on;
+	}();
+	// C2-wide: the destination may also be draws (vertex/fragment, including DRAW_INDIRECT) or copies. Those
+	// consumers can only run in later render or blit encoders, which wait for the fence this encoder updates when
+	// it ends (the deferred setBarrier below), exactly as if the encoder had ended here. Compute consumers in this
+	// encoder are ordered by the memory barrier. The source must still be compute only: earlier copy or render
+	// work isn't in this encoder. MVK_PERF_C2_WIDE=0 restricts C2 to compute -> compute again.
+	static const bool wide = [] {
+		const char* s = getenv("MVK_PERF_C2_WIDE");
+		bool on = !s || atoi(s) != 0;
+		fprintf(stderr, "[mvk-perf] C2-wide (compute -> any stage barriers inside the compute encoder): %s\n", on ? "on" : "off");
+		return on;
+	}();
+	const uint64_t computeOnly = 1ull << kMVKBarrierStageCompute;
+	if ( !enabled || !_mtlComputeEncoder || _mtlRenderEncoder || _mtlBlitEncoder ||
+		sourceStageMask != computeOnly || (destStageMask != computeOnly && !wide) ) { return false; }
+
+	// Serial dispatch already orders the dispatches; the memory barrier makes earlier writes visible.
+	[_mtlComputeEncoder memoryBarrierWithScope: MTLBarrierScopeBuffers | MTLBarrierScopeTextures];
+	_perfDeferredBarrierSrc |= sourceStageMask;
+	_perfDeferredBarrierDst |= destStageMask;
+	return true;
+}
+
+// Enshrouded perf C3: vkCmdDispatch encoders run concurrently, so dispatches with no Vulkan barrier between them
+// may overlap. Vulkan already allows that; barriers between dispatches are memory barriers inside the encoder (C2)
+// or end it. MoltenVK's internal compute work keeps serial encoders. MVK_PERF_CONCURRENT_DISPATCH=0 disables.
+static bool perfConcurrentDispatch() {
+	static const bool on = [] {
+		const char* s = getenv("MVK_PERF_CONCURRENT_DISPATCH");
+		bool v = !s || atoi(s) != 0;
+		fprintf(stderr, "[mvk-perf] C3 concurrent dispatch for vkCmdDispatch: %s\n", v ? "on" : "off");
+		return v;
+	}();
+	return on;
 }
 
 static MTLDispatchType getDispatchType(MVKCommandUse use) {
 	switch (use) {
+		case kMVKCommandUseDispatch:
+			return perfConcurrentDispatch() ? MTLDispatchTypeConcurrent : MTLDispatchTypeSerial;
 		case kMVKCommandUseAccumOcclusionQuery:
 			return MTLDispatchTypeConcurrent;
 		default:
@@ -1195,7 +1268,10 @@ void MVKCommandEncoder::setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder,
 // Return the MTLBuffer allocation to the pool once the command buffer is done with it
 const MVKMTLBufferAllocation* MVKCommandEncoder::getTempMTLBuffer(NSUInteger length, bool isPrivate, bool isDedicated) {
     MVKMTLBufferAllocation* mtlBuffAlloc = getCommandEncodingPool()->acquireMTLBufferAllocation(length, isPrivate, isDedicated);
-    [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mcb) { mtlBuffAlloc->returnToPool(); }];
+    // The handler may run after the app has destroyed the command pool that owns the encoding pool.
+    MVKCommandPool* cmdPool = _cmdBuffer->getCommandPool();
+    cmdPool->retain();
+    [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mcb) { mtlBuffAlloc->returnToPool(); cmdPool->release(); }];
     return mtlBuffAlloc;
 }
 
@@ -1321,7 +1397,9 @@ id<MTLFence> MVKCommandEncoder::getStageCountersMTLFence() {
 }
 
 void MVKCommandEncoder::resetQueries(MVKQueryPool* pQueryPool, uint32_t firstQuery, uint32_t queryCount) {
-    addActivatedQueries(pQueryPool, firstQuery, queryCount);
+    // A reset does not make queries available, so it must not add them to this command buffer's activated queries.
+    // Otherwise the completion of this command buffer would mark queries as available (and, for timestamps,
+    // overwrite their values) that a later command buffer has encoded but the GPU has not executed yet.
 }
 
 // Marks the specified queries as activated

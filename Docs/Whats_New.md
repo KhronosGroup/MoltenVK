@@ -29,6 +29,9 @@ Released TBD
 - Fix `VkDeviceMemory` imported from a `MTLTexture` not backing the image bound to it, and over-releasing that texture.
 - Fix leak of the `MTLBuffer` of a host-coherent `VkDeviceMemory` that also holds a `MTLTexture`.
 - Fix pipeline cache matching incompatible shaders when the only difference was in dynamic buffer offset usage.
+- Fix descriptor set argument buffers not being rebound after `vkCmdClearAttachments()` or an internal compute command replaced their Metal buffer binding.
+- Fix buffer sizes written to the wrong array element by descriptor updates with a non-zero `dstArrayElement` when using Metal argument buffers.
+- Fix 2D array views of 3D images recreating their `MTLTexture` on every use and releasing it while a command buffer still uses it.
 
 
 

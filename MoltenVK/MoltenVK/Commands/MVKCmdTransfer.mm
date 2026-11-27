@@ -190,8 +190,8 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             VkExtent3D dstExtent = vkIC.extent;
             if (isSrcCompressed && !isDstCompressed) {
                 VkExtent2D srcBlockExtent = pixFmts->getBlockTexelSize(srcMTLPixFmt);
-                dstExtent.width /= srcBlockExtent.width;
-                dstExtent.height /= srcBlockExtent.height;
+                dstExtent.width = (dstExtent.width + srcBlockExtent.width - 1) / srcBlockExtent.width;
+                dstExtent.height = (dstExtent.height + srcBlockExtent.height - 1) / srcBlockExtent.height;
             } else if (!isSrcCompressed && isDstCompressed) {
                 VkExtent2D dstBlockExtent = pixFmts->getBlockTexelSize(dstMTLPixFmt);
                 dstExtent.width *= dstBlockExtent.width;
@@ -207,7 +207,8 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
 
             size_t bytesPerRow = pixFmts->getBytesPerRow(srcMTLPixFmt, vkIC.extent.width);
             size_t bytesPerRegion = pixFmts->getBytesPerLayer(srcMTLPixFmt, bytesPerRow, vkIC.extent.height);
-            tmpBuffSize += bytesPerRegion * vkIC.extent.depth * layerCount;
+            // Metal copies every sample of a multisampled texture to/from a buffer, so the buffer holds sampleCount times the texels.
+            tmpBuffSize += bytesPerRegion * vkIC.extent.depth * layerCount * (size_t)mvkSampleCountFromVkSampleCountFlagBits(_srcImage->getSampleCount());
         } else {
             // Map the source pixel format to the dest pixel format through a texture view on the reinterpretable texture.
             // If the source and dest pixel formats are the same, this will simply degenerate to the texture itself.
@@ -1188,6 +1189,11 @@ void MVKCmdBufferImageCopy<N>::encode(MVKCommandEncoder* cmdEncoder) {
 			blitOptions |= MTLBlitOptionRowLinearPVRTC;
 		}
 
+		// Metal copies every sample of a multisampled texture, so each row and image holds sampleCount times the data.
+		uint32_t sampleCnt = mvkSampleCountFromVkSampleCountFlagBits(_image->getSampleCount());
+		bytesPerRow *= sampleCnt;
+		bytesPerImg *= sampleCnt;
+
 		// Don't supply bytes per image if not an arrayed texture
 		if ( !isArrayTexture() ) { bytesPerImg = 0; }
 
@@ -1196,6 +1202,43 @@ void MVKCmdBufferImageCopy<N>::encode(MVKCommandEncoder* cmdEncoder) {
         uint32_t layCnt = cpyRgn.imageSubresource.layerCount == VK_REMAINING_ARRAY_LAYERS ?
             _image->getLayerCount() - cpyRgn.imageSubresource.baseArrayLayer :
             cpyRgn.imageSubresource.layerCount;
+        // An image clamped to the device limits (see the MVKImage constructor) may have fewer layers than
+        // the app thinks, and its buffer rows may be wider than Metal allows for the clamped texture.
+        // Drop the missing layers, and copy over-wide rows one at a time, instead of writing out of bounds.
+        layCnt = std::min(layCnt, _image->getLayerCount() > cpyRgn.imageSubresource.baseArrayLayer
+                     ? _image->getLayerCount() - cpyRgn.imageSubresource.baseArrayLayer : 0u);
+        VkExtent2D blkSize = pixFmts->getBlockTexelSize(mtlPixFmt);
+        auto& devLimits = _image->getDeviceProperties().limits;
+        uint32_t maxRowTexels = (mtlTexture.textureType == MTLTextureType3D ? devLimits.maxImageDimension3D : devLimits.maxImageDimension2D);
+        bool splitRows = (cpyRgn.imageExtent.width > mtlTxtSize.width &&    // region overruns a clamped texture
+                          bytesPerRow > pixFmts->getBytesPerRow(mtlPixFmt, maxRowTexels) &&
+                          blkSize.width == 1 && blkSize.height == 1 && blitOptions == MTLBlitOptionNone);
+        if (splitRows) {
+            NSUInteger rowBytes = pixFmts->getBytesPerRow(mtlPixFmt, (uint32_t)mtlTxtSize.width);
+            NSUInteger sliceStride = isArrayTexture() ? bytesPerImg : 0;
+            for (uint32_t lyrIdx = 0; lyrIdx < layCnt; lyrIdx++) {
+                for (NSUInteger z = 0; z < mtlTxtSize.depth; z++) {
+                    for (NSUInteger y = 0; y < mtlTxtSize.height; y++) {
+                        NSUInteger offset = mtlBuffOffset + (bytesPerImg * lyrIdx) + (sliceStride * z) + (bytesPerRow * y);
+                        MTLOrigin org = MTLOriginMake(mtlTxtOrigin.x, mtlTxtOrigin.y + y, mtlTxtOrigin.z + z);
+                        MTLSize sz = MTLSizeMake(mtlTxtSize.width, 1, 1);
+                        NSUInteger bpi = isArrayTexture() ? rowBytes : 0;
+                        if (_toImage) {
+                            [mtlBlitEnc copyFromBuffer: mtlBuffer sourceOffset: offset sourceBytesPerRow: rowBytes
+                                   sourceBytesPerImage: bpi sourceSize: sz toTexture: mtlTexture
+                                      destinationSlice: (cpyRgn.imageSubresource.baseArrayLayer + lyrIdx)
+                                      destinationLevel: mipLevel destinationOrigin: org options: blitOptions];
+                        } else {
+                            [mtlBlitEnc copyFromTexture: mtlTexture sourceSlice: (cpyRgn.imageSubresource.baseArrayLayer + lyrIdx)
+                                            sourceLevel: mipLevel sourceOrigin: org sourceSize: sz toBuffer: mtlBuffer
+                                      destinationOffset: offset destinationBytesPerRow: rowBytes
+                               destinationBytesPerImage: bpi options: blitOptions];
+                        }
+                    }
+                }
+            }
+            continue;
+        }
         for (uint32_t lyrIdx = 0; lyrIdx < layCnt; lyrIdx++) {
             if (_toImage) {
                 [mtlBlitEnc copyFromBuffer: mtlBuffer
@@ -1618,6 +1661,14 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
         uint32_t layerEnd = (layerCnt == VK_REMAINING_ARRAY_LAYERS
                              ? _image->getLayerCount()
                              : (layerStart + layerCnt));
+
+        // Stay inside an image clamped to the device limits (see the MVKImage constructor).
+        mipLvlEnd = std::min(mipLvlEnd, _image->getMipLevelCount());
+        if ( !is3D ) {
+            layerEnd = std::min(layerEnd, _image->getLayerCount());
+            if (layerStart >= layerEnd) { continue; }
+            layerCnt = layerEnd - layerStart;
+        }
 
         // Iterate across mipmap levels and layers, and perform and empty render to clear each
         for (uint32_t mipLvl = mipLvlStart; mipLvl < mipLvlEnd; mipLvl++) {

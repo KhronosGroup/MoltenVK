@@ -67,6 +67,18 @@ public:
 	/** Encodes this command on the specified command encoder. */
 	virtual void encode(MVKCommandEncoder* cmdEncoder) = 0;
 
+	/** Enshrouded perf test (C10): true for commands that begin a Vulkan render pass. */
+	virtual bool perfBeginsRenderPass() { return false; }
+
+	/** Enshrouded perf test (C10): true for commands that end a Vulkan render pass. */
+	virtual bool perfEndsRenderPass() { return false; }
+
+	/** Enshrouded perf test (C10): true if indirect draws after this command must not be converted before the render pass. */
+	virtual bool perfBlocksIndirectHoist() { return false; }
+
+	/** Enshrouded perf test (C10): encodes this command's indirect-count conversion now, before its render pass begins. */
+	virtual void perfHoistIndirectCount(MVKCommandEncoder* cmdEncoder) {}
+
 protected:
 	friend MVKCommandBuffer;
 

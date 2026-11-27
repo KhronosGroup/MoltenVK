@@ -46,6 +46,9 @@ public:
 	/** Returns a reference to this object suitable for use as a Vulkan API handle. */
 	virtual void* getVkHandle() { return this; }
 
+	/** Returns the handle value without modifying the object. For identifying the object in messages only; never hand the result to the loader. */
+	virtual void* getVkHandleForReport() { return getVkHandle(); }
+
 	/** Returns the Vulkan type of this object. */
 	virtual VkObjectType getVkObjectType() = 0;
 
@@ -108,6 +111,9 @@ public:
 		set_loader_magic_value(&_icdRef);
 		return &_icdRef;
 	}
+
+	/** Returns the handle without re-establishing the loader magic number, which would clobber the loader's dispatch pointer. */
+	void* getVkHandleForReport() override { return &_icdRef; }
 
     /**
      * Retrieves the MVKDispatchableVulkanAPIObject instance referenced by the dispatchable Vulkan handle.

@@ -111,6 +111,19 @@ VkResult MVKCmdPipelineBarrier<N>::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
+// Enshrouded perf test (C10): a barrier inside a render pass that makes writes visible to indirect-command
+// reads (or that is not specific about it) means indirect arguments may change within the pass, so draws
+// after it must convert their arguments where they are, not before the pass.
+template <size_t N>
+bool MVKCmdPipelineBarrier<N>::perfBlocksIndirectHoist() {
+	static const VkPipelineStageFlags2 stages = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+	static const VkAccessFlags2 access = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+	for (auto& b : _barriers) {
+		if (mvkIsAnyFlagEnabled(b.dstStageMask, stages) || mvkIsAnyFlagEnabled(b.dstAccessMask, access)) { return true; }
+	}
+	return false;
+}
+
 template <size_t N>
 void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	
@@ -160,11 +173,30 @@ void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	}
 #endif
 
+	// C2: a barrier whose every entry is compute-to-compute (and needs no host sync) stays inside the open
+	// compute encoder. Anything touching copies, render stages, indirect args or the host keeps the fence path.
+	bool keptInComputeEncoder = false;
 	if (!cmdEncoder->_mtlRenderEncoder && cmdEncoder->isUsingMetalArgumentBuffers() && cmdEncoder->getDevice()->hasResidencySet()) {
+		uint64_t srcStages = 0, dstStages = 0;
+		bool touchesHost = false;
+		for (auto& b : _barriers) {
+			// TOP_OF_PIPE in the first scope and BOTTOM_OF_PIPE in the second are equivalent to NONE (Vulkan spec),
+			// but MoltenVK maps them to every stage. Enshrouded adds them to almost every compute barrier.
+			srcStages |= mvkBarrierStagesFromPipelineStageFlags(b.srcStageMask & ~VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
+			dstStages |= mvkBarrierStagesFromPipelineStageFlags(b.dstStageMask & ~VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
+			touchesHost |= mvkIsAnyFlagEnabled(b.srcStageMask | b.dstStageMask, VK_PIPELINE_STAGE_HOST_BIT);
+		}
+		keptInComputeEncoder = !_barriers.empty() && !touchesHost && cmdEncoder->perfTryInlineComputeBarrier(srcStages, dstStages);
+	}
+
+	if (!keptInComputeEncoder && !cmdEncoder->_mtlRenderEncoder && cmdEncoder->isUsingMetalArgumentBuffers() && cmdEncoder->getDevice()->hasResidencySet()) {
 		cmdEncoder->endCurrentMetalEncoding();
 
 		for (auto& b : _barriers) {
-			uint64_t sourceStageMask = mvkBarrierStagesFromPipelineStageFlags(b.srcStageMask), destStageMask = mvkBarrierStagesFromPipelineStageFlags(b.dstStageMask);
+			// TOP_OF_PIPE in the first synchronization scope, and BOTTOM_OF_PIPE in the second,
+			// are equivalent to VK_PIPELINE_STAGE_2_NONE, so they must not add any stages.
+			uint64_t sourceStageMask = mvkBarrierStagesFromPipelineStageFlags(b.srcStageMask & ~VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
+			uint64_t destStageMask = mvkBarrierStagesFromPipelineStageFlags(b.dstStageMask & ~VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
 			cmdEncoder->setBarrier(sourceStageMask, destStageMask);
 		}
 	}

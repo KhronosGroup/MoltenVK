@@ -162,13 +162,14 @@ public:
 						uint32_t stride);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	void perfHoistIndirectCount(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	void encodeIndexedIndirect(MVKCommandEncoder* cmdEncoder,
 								 id<MTLBuffer> indirectBuffer,
 								 VkDeviceSize indirectBufferOffset,
-								 uint32_t indirectBufferStride);
+								 uint32_t indirectBufferStride, uint32_t drawCount);
 
 	id<MTLBuffer> _mtlIndirectBuffer;
 	VkDeviceSize _mtlIndirectBufferOffset;
@@ -176,6 +177,7 @@ protected:
 	uint32_t _drawCount;
 	id<MTLBuffer> _mtlCountBuffer;
 	VkDeviceSize _mtlCountBufferOffset;
+	uint8_t _perfSite = 0;		// C4s: which per-site cap applies
 };
 
 
@@ -207,6 +209,7 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 	void encode(MVKCommandEncoder* cmdEncoder, const MVKIndexMTLBufferBinding& ibbOrig);
+	void perfHoistIndirectCount(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -217,4 +220,5 @@ protected:
 	uint32_t _drawCount;
 	id<MTLBuffer> _mtlCountBuffer;
 	VkDeviceSize _mtlCountBufferOffset;
+	uint8_t _perfSite = 0;		// C4s: which per-site cap applies
 };
