@@ -190,8 +190,8 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             VkExtent3D dstExtent = vkIC.extent;
             if (isSrcCompressed && !isDstCompressed) {
                 VkExtent2D srcBlockExtent = pixFmts->getBlockTexelSize(srcMTLPixFmt);
-                dstExtent.width /= srcBlockExtent.width;
-                dstExtent.height /= srcBlockExtent.height;
+                dstExtent.width = (dstExtent.width + srcBlockExtent.width - 1) / srcBlockExtent.width;
+                dstExtent.height = (dstExtent.height + srcBlockExtent.height - 1) / srcBlockExtent.height;
             } else if (!isSrcCompressed && isDstCompressed) {
                 VkExtent2D dstBlockExtent = pixFmts->getBlockTexelSize(dstMTLPixFmt);
                 dstExtent.width *= dstBlockExtent.width;
@@ -207,7 +207,8 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
 
             size_t bytesPerRow = pixFmts->getBytesPerRow(srcMTLPixFmt, vkIC.extent.width);
             size_t bytesPerRegion = pixFmts->getBytesPerLayer(srcMTLPixFmt, bytesPerRow, vkIC.extent.height);
-            tmpBuffSize += bytesPerRegion * vkIC.extent.depth * layerCount;
+            // Metal copies every sample of a multisampled texture to/from a buffer, so the buffer holds sampleCount times the texels.
+            tmpBuffSize += bytesPerRegion * vkIC.extent.depth * layerCount * (size_t)mvkSampleCountFromVkSampleCountFlagBits(_srcImage->getSampleCount());
         } else {
             // Map the source pixel format to the dest pixel format through a texture view on the reinterpretable texture.
             // If the source and dest pixel formats are the same, this will simply degenerate to the texture itself.
@@ -1187,6 +1188,11 @@ void MVKCmdBufferImageCopy<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		if (pixFmts->isPVRTCFormat(mtlPixFmt)) {
 			blitOptions |= MTLBlitOptionRowLinearPVRTC;
 		}
+
+		// Metal copies every sample of a multisampled texture, so each row and image holds sampleCount times the data.
+		uint32_t sampleCnt = mvkSampleCountFromVkSampleCountFlagBits(_image->getSampleCount());
+		bytesPerRow *= sampleCnt;
+		bytesPerImg *= sampleCnt;
 
 		// Don't supply bytes per image if not an arrayed texture
 		if ( !isArrayTexture() ) { bytesPerImg = 0; }

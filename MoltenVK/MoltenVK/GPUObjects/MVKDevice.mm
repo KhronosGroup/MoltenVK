@@ -3921,11 +3921,53 @@ void MVKDevice::getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateI
 	//   "If the descriptor set layout satisfies the VkPhysicalDeviceMaintenance3Properties::maxPerSetDescriptors
 	//   limit, this command is guaranteed to return VK_TRUE in VkDescriptorSetLayout::supported...
 	//   "This command does not consider other limits such as maxPerStageDescriptor*..."
-	uint32_t descriptorCount = 0;
-	for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
-		descriptorCount += pCreateInfo->pBindings[i].descriptorCount;
+	// Descriptors in update-after-bind bindings are counted against the update-after-bind limits instead.
+	const VkDescriptorBindingFlags* pBindingFlags = nullptr;
+	uint32_t bindingFlagsCount = 0;
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		if (next->sType == VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO) {
+			auto* pFlagsInfo = (VkDescriptorSetLayoutBindingFlagsCreateInfo*)next;
+			pBindingFlags = pFlagsInfo->pBindingFlags;
+			bindingFlagsCount = pFlagsInfo->bindingCount;
+		}
 	}
-	pSupport->supported = (descriptorCount < _physicalDevice->getMaxPerSetDescriptorCount());
+
+	VkPhysicalDeviceVulkan12Properties props12 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES };
+	VkPhysicalDeviceProperties2 props2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &props12 };
+	_physicalDevice->getProperties(&props2);
+
+	uint64_t descriptorCount = 0, uabCount = 0;
+	uint64_t uabSamplers = 0, uabUBs = 0, uabUBDyns = 0, uabSBs = 0, uabSBDyns = 0, uabSampledImgs = 0, uabStorageImgs = 0, uabInputAtts = 0;
+	for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
+		auto& bind = pCreateInfo->pBindings[i];
+		bool isUAB = i < bindingFlagsCount && mvkIsAnyFlagEnabled(pBindingFlags[i], VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);
+		if ( !isUAB ) { descriptorCount += bind.descriptorCount; continue; }
+		uabCount += bind.descriptorCount;
+		switch (bind.descriptorType) {
+			case VK_DESCRIPTOR_TYPE_SAMPLER:					uabSamplers += bind.descriptorCount; break;
+			case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:		uabSamplers += bind.descriptorCount; uabSampledImgs += bind.descriptorCount; break;
+			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:		uabSampledImgs += bind.descriptorCount; break;
+			case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+			case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:		uabStorageImgs += bind.descriptorCount; break;
+			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:				uabUBs += bind.descriptorCount; break;
+			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:		uabUBDyns += bind.descriptorCount; break;
+			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:				uabSBs += bind.descriptorCount; break;
+			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:		uabSBDyns += bind.descriptorCount; break;
+			case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:			uabInputAtts += bind.descriptorCount; break;
+			default: break;
+		}
+	}
+	pSupport->supported = (descriptorCount < _physicalDevice->getMaxPerSetDescriptorCount() &&
+						   uabCount <= props12.maxPerStageUpdateAfterBindResources &&
+						   uabSamplers <= props12.maxDescriptorSetUpdateAfterBindSamplers &&
+						   uabUBs <= props12.maxDescriptorSetUpdateAfterBindUniformBuffers &&
+						   uabUBDyns <= props12.maxDescriptorSetUpdateAfterBindUniformBuffersDynamic &&
+						   uabSBs <= props12.maxDescriptorSetUpdateAfterBindStorageBuffers &&
+						   uabSBDyns <= props12.maxDescriptorSetUpdateAfterBindStorageBuffersDynamic &&
+						   uabSampledImgs <= props12.maxDescriptorSetUpdateAfterBindSampledImages &&
+						   uabStorageImgs <= props12.maxDescriptorSetUpdateAfterBindStorageImages &&
+						   uabInputAtts <= props12.maxDescriptorSetUpdateAfterBindInputAttachments);
 
 	// Check whether the layout has a variable-count descriptor, and if so, whether we can support it.
 	for (auto* next = (VkBaseOutStructure*)pSupport->pNext; next; next = next->pNext) {

@@ -211,7 +211,7 @@ void MVKInstance::debugReportMessage(MVKVulkanAPIObject* mvkAPIObj, MVKConfigLog
 
 	if (_hasDebugReportCallbacks) {
 		VkDebugReportFlagsEXT flags = getVkDebugReportFlagsFromLogLevel(logLevel);
-		uint64_t object = (uint64_t)(mvkAPIObj ? mvkAPIObj->getVkHandle() : nullptr);
+		uint64_t object = (uint64_t)(mvkAPIObj ? mvkAPIObj->getVkHandleForReport() : nullptr);
 		VkDebugReportObjectTypeEXT objectType = mvkAPIObj ? mvkAPIObj->getVkDebugReportObjectType() : VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT;
 		debugReportMessage(flags, objectType, object, 0, 0, _debugReportCallbackLayerPrefix, pMessage);
 	}
@@ -221,7 +221,7 @@ void MVKInstance::debugReportMessage(MVKVulkanAPIObject* mvkAPIObj, MVKConfigLog
 			.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
 			.pNext = nullptr,
 			.objectType = mvkAPIObj ? mvkAPIObj->getVkObjectType() : VK_OBJECT_TYPE_UNKNOWN,
-			.objectHandle = (uint64_t)(mvkAPIObj ? mvkAPIObj->getVkHandle() : nullptr),
+			.objectHandle = (uint64_t)(mvkAPIObj ? mvkAPIObj->getVkHandleForReport() : nullptr),
 			.pObjectName = mvkAPIObj ? mvkAPIObj->getDebugName().UTF8String : nullptr
 		};
 		VkDebugUtilsMessengerCallbackDataEXT dumcbd = {

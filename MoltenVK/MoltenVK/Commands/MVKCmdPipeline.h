@@ -46,6 +46,8 @@ public:
 						const VkCommandBuffer* pCommandBuffers);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
+	// Secondary command buffers may change indirect arguments or contain their barriers.
+	bool perfBlocksIndirectHoist() override { return true; }
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;

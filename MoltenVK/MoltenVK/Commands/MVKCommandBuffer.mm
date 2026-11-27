@@ -1397,7 +1397,9 @@ id<MTLFence> MVKCommandEncoder::getStageCountersMTLFence() {
 }
 
 void MVKCommandEncoder::resetQueries(MVKQueryPool* pQueryPool, uint32_t firstQuery, uint32_t queryCount) {
-    addActivatedQueries(pQueryPool, firstQuery, queryCount);
+    // A reset does not make queries available, so it must not add them to this command buffer's activated queries.
+    // Otherwise the completion of this command buffer would mark queries as available (and, for timestamps,
+    // overwrite their values) that a later command buffer has encoded but the GPU has not executed yet.
 }
 
 // Marks the specified queries as activated
