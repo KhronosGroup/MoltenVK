@@ -868,7 +868,7 @@ public:
 #pragma mark Operations
 
 	/** Tell the GPU to be ready to use any of the GPU-addressable buffers. */
-	void encodeGPUAddressableBuffers(MVKUseResourceHelper& resources, MVKResourceUsageStages stage);
+	void encodeGPUAddressableBuffers(MVKUseResourceHelper& resources, MVKResourceUsageStages stage, id<MTLCommandBuffer> mtlCmdBuff);
 
 	/** Adds the specified host semaphore to be woken upon device loss. */
 	void addSemaphore(MVKSemaphoreImpl* sem4);
@@ -984,6 +984,12 @@ public:
 		@synchronized(_residencySet) {
 			[_residencySet addAllocation: allocation];
 			[_residencySet commit];
+			// Cheap diagnostic: report each time the set grows past a new GiB (eviction starts near 13.7 GiB, MoltenVK #2890).
+			uint64_t gib = _residencySet.allocatedSize >> 30;
+			if (gib > _residencySetLoggedGiB) {
+				_residencySetLoggedGiB = gib;
+				reportMessage(MVK_CONFIG_LOG_LEVEL_INFO, "Residency set allocated size passed %llu GiB.", gib);
+			}
 		}
 	}
 #endif
@@ -1113,6 +1119,7 @@ protected:
 	id<MTLBuffer> _dummyBlitMTLBuffer = nil;
 #if MVK_XCODE_16
 	id<MTLResidencySet> _residencySet = nil;
+	uint64_t _residencySetLoggedGiB = 0;
 #endif
 	uint32_t _visibilityBufferCount = 0;
 	int _capturePipeFileDesc = -1;

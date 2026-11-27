@@ -1268,7 +1268,10 @@ void MVKCommandEncoder::setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder,
 // Return the MTLBuffer allocation to the pool once the command buffer is done with it
 const MVKMTLBufferAllocation* MVKCommandEncoder::getTempMTLBuffer(NSUInteger length, bool isPrivate, bool isDedicated) {
     MVKMTLBufferAllocation* mtlBuffAlloc = getCommandEncodingPool()->acquireMTLBufferAllocation(length, isPrivate, isDedicated);
-    [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mcb) { mtlBuffAlloc->returnToPool(); }];
+    // The handler may run after the app has destroyed the command pool that owns the encoding pool.
+    MVKCommandPool* cmdPool = _cmdBuffer->getCommandPool();
+    cmdPool->retain();
+    [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mcb) { mtlBuffAlloc->returnToPool(); cmdPool->release(); }];
     return mtlBuffAlloc;
 }
 

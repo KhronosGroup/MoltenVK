@@ -1229,6 +1229,27 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	_extent.depth = max(pCreateInfo->extent.depth, minDim);
     _arrayLayers = max(pCreateInfo->arrayLayers, minDim);
 
+	// Metal aborts the process on a texture larger than its hard limits (16384 for 1D/2D/cube, 2048 for 3D and
+	// array layers on Apple GPUs). Some games ignore the reported limits (Enshrouded's Ultra dynamic GI asks for a
+	// 3072-wide 3D atlas), so clamp instead: writes past the edge are dropped and reads clamp, rather than a crash.
+	{
+		auto& lim = getDeviceProperties().limits;
+		bool isCube = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+		uint32_t maxDim = (pCreateInfo->imageType == VK_IMAGE_TYPE_3D ? lim.maxImageDimension3D
+						   : pCreateInfo->imageType == VK_IMAGE_TYPE_1D ? lim.maxImageDimension1D
+						   : isCube ? lim.maxImageDimensionCube : lim.maxImageDimension2D);
+		uint32_t maxLayers = lim.maxImageArrayLayers;
+		if (isCube) { maxLayers -= maxLayers % 6; }
+		if (_extent.width > maxDim || _extent.height > maxDim || _extent.depth > maxDim || _arrayLayers > maxLayers) {
+			MVKLogWarn("vkCreateImage(): image extent (%u, %u, %u) x %u layers exceeds the device limits (%u, %u layers); clamping it.",
+					   _extent.width, _extent.height, _extent.depth, _arrayLayers, maxDim, maxLayers);
+			_extent.width = min(_extent.width, maxDim);
+			_extent.height = min(_extent.height, maxDim);
+			_extent.depth = min(_extent.depth, maxDim);
+			_arrayLayers = min(_arrayLayers, maxLayers);
+		}
+	}
+
 	// Perform validation and adjustments before configuring other settings
 	bool isAttachment = mvkIsAnyFlagEnabled(pCreateInfo->usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
 																 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
@@ -1430,6 +1451,12 @@ uint32_t MVKImage::validateMipLevels(const VkImageCreateInfo* pCreateInfo, bool 
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, native 1D images cannot use mipmaps. Setting mip levels to 1. Consider enabling MVK_CONFIG_TEXTURE_1D_AS_2D."));
 		validMipLevels = 1;
 	}
+
+	// A clamped image (see the constructor) can't keep more levels than its clamped extent allows.
+	uint32_t maxDim = max(_extent.width, max(_extent.height, _extent.depth));
+	uint32_t maxLevels = 1;
+	while (maxDim > 1) { maxDim >>= 1; maxLevels++; }
+	validMipLevels = min(validMipLevels, maxLevels);
 
 	return validMipLevels;
 }
@@ -2331,6 +2358,29 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
 	if (_subresourceRange.layerCount == VK_REMAINING_ARRAY_LAYERS) {
 		uint32_t imgLayerCnt = getIs2dViewOf3d() ? _image->getExtent3D(0, _subresourceRange.baseMipLevel).depth : _image->getLayerCount();
 		_subresourceRange.layerCount = imgLayerCnt - _subresourceRange.baseArrayLayer;
+	}
+
+	// Keep the view inside an image that was clamped to the device limits (see the MVKImage constructor),
+	// otherwise Metal aborts on the out-of-range texture view.
+	{
+		uint32_t imgLvlCnt = _image->getMipLevelCount();
+		if (_subresourceRange.levelCount > imgLvlCnt) { _subresourceRange.levelCount = imgLvlCnt; }
+		if (_subresourceRange.baseMipLevel + _subresourceRange.levelCount > imgLvlCnt) {
+			_subresourceRange.baseMipLevel = imgLvlCnt - _subresourceRange.levelCount;
+		}
+		if ( !getIs2dViewOf3d() ) {
+			uint32_t imgLayerCnt = _image->getLayerCount();
+			if (_subresourceRange.layerCount > imgLayerCnt) { _subresourceRange.layerCount = imgLayerCnt; }
+			if (_subresourceRange.baseArrayLayer + _subresourceRange.layerCount > imgLayerCnt) {
+				_subresourceRange.baseArrayLayer = imgLayerCnt - _subresourceRange.layerCount;
+			}
+		} else {
+			uint32_t depth = _image->getExtent3D(0, _subresourceRange.baseMipLevel).depth;
+			if (_subresourceRange.layerCount > depth) { _subresourceRange.layerCount = depth; }
+			if (_subresourceRange.baseArrayLayer + _subresourceRange.layerCount > depth) {
+				_subresourceRange.baseArrayLayer = depth - _subresourceRange.layerCount;
+			}
+		}
 	}
 
 	auto& mtlFeats = getMetalFeatures();

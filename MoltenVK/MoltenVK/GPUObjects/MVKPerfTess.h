@@ -16,6 +16,7 @@
 #pragma once
 
 #import <Metal/Metal.h>
+#include "MVKEnvironment.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -37,7 +38,7 @@ inline uint32_t mvkPerfTessIndirectVerts() {
 	static const uint32_t budget = [] {
 		const char* env = getenv("MVK_PERF_TESS_INDIRECT_VERTS");
 		long n = env ? strtol(env, nullptr, 0) : 0;
-		uint32_t b = (n >= 64 && n <= (1L << 24)) ? (uint32_t)n : 1024 * 1024;
+		uint32_t b = (n >= 64 && n <= (1L << 24)) ? (uint32_t)n : (mvkPerfIsEnshrouded() ? 262144 : 1024 * 1024);
 		fprintf(stderr, "[mvk-perf] tessellated indirect draw budget: %u vertices%s\n", b, (env && b == n) ? "" : " (default)");
 		return b;
 	}();

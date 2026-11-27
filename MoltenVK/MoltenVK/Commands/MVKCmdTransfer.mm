@@ -1196,6 +1196,43 @@ void MVKCmdBufferImageCopy<N>::encode(MVKCommandEncoder* cmdEncoder) {
         uint32_t layCnt = cpyRgn.imageSubresource.layerCount == VK_REMAINING_ARRAY_LAYERS ?
             _image->getLayerCount() - cpyRgn.imageSubresource.baseArrayLayer :
             cpyRgn.imageSubresource.layerCount;
+        // An image clamped to the device limits (see the MVKImage constructor) may have fewer layers than
+        // the app thinks, and its buffer rows may be wider than Metal allows for the clamped texture.
+        // Drop the missing layers, and copy over-wide rows one at a time, instead of writing out of bounds.
+        layCnt = std::min(layCnt, _image->getLayerCount() > cpyRgn.imageSubresource.baseArrayLayer
+                     ? _image->getLayerCount() - cpyRgn.imageSubresource.baseArrayLayer : 0u);
+        VkExtent2D blkSize = pixFmts->getBlockTexelSize(mtlPixFmt);
+        auto& devLimits = _image->getDeviceProperties().limits;
+        uint32_t maxRowTexels = (mtlTexture.textureType == MTLTextureType3D ? devLimits.maxImageDimension3D : devLimits.maxImageDimension2D);
+        bool splitRows = (cpyRgn.imageExtent.width > mtlTxtSize.width &&    // region overruns a clamped texture
+                          bytesPerRow > pixFmts->getBytesPerRow(mtlPixFmt, maxRowTexels) &&
+                          blkSize.width == 1 && blkSize.height == 1 && blitOptions == MTLBlitOptionNone);
+        if (splitRows) {
+            NSUInteger rowBytes = pixFmts->getBytesPerRow(mtlPixFmt, (uint32_t)mtlTxtSize.width);
+            NSUInteger sliceStride = isArrayTexture() ? bytesPerImg : 0;
+            for (uint32_t lyrIdx = 0; lyrIdx < layCnt; lyrIdx++) {
+                for (NSUInteger z = 0; z < mtlTxtSize.depth; z++) {
+                    for (NSUInteger y = 0; y < mtlTxtSize.height; y++) {
+                        NSUInteger offset = mtlBuffOffset + (bytesPerImg * lyrIdx) + (sliceStride * z) + (bytesPerRow * y);
+                        MTLOrigin org = MTLOriginMake(mtlTxtOrigin.x, mtlTxtOrigin.y + y, mtlTxtOrigin.z + z);
+                        MTLSize sz = MTLSizeMake(mtlTxtSize.width, 1, 1);
+                        NSUInteger bpi = isArrayTexture() ? rowBytes : 0;
+                        if (_toImage) {
+                            [mtlBlitEnc copyFromBuffer: mtlBuffer sourceOffset: offset sourceBytesPerRow: rowBytes
+                                   sourceBytesPerImage: bpi sourceSize: sz toTexture: mtlTexture
+                                      destinationSlice: (cpyRgn.imageSubresource.baseArrayLayer + lyrIdx)
+                                      destinationLevel: mipLevel destinationOrigin: org options: blitOptions];
+                        } else {
+                            [mtlBlitEnc copyFromTexture: mtlTexture sourceSlice: (cpyRgn.imageSubresource.baseArrayLayer + lyrIdx)
+                                            sourceLevel: mipLevel sourceOrigin: org sourceSize: sz toBuffer: mtlBuffer
+                                      destinationOffset: offset destinationBytesPerRow: rowBytes
+                               destinationBytesPerImage: bpi options: blitOptions];
+                        }
+                    }
+                }
+            }
+            continue;
+        }
         for (uint32_t lyrIdx = 0; lyrIdx < layCnt; lyrIdx++) {
             if (_toImage) {
                 [mtlBlitEnc copyFromBuffer: mtlBuffer
@@ -1618,6 +1655,14 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
         uint32_t layerEnd = (layerCnt == VK_REMAINING_ARRAY_LAYERS
                              ? _image->getLayerCount()
                              : (layerStart + layerCnt));
+
+        // Stay inside an image clamped to the device limits (see the MVKImage constructor).
+        mipLvlEnd = std::min(mipLvlEnd, _image->getMipLevelCount());
+        if ( !is3D ) {
+            layerEnd = std::min(layerEnd, _image->getLayerCount());
+            if (layerStart >= layerEnd) { continue; }
+            layerCnt = layerEnd - layerStart;
+        }
 
         // Iterate across mipmap levels and layers, and perform and empty render to clear each
         for (uint32_t mipLvl = mipLvlStart; mipLvl < mipLvlEnd; mipLvl++) {

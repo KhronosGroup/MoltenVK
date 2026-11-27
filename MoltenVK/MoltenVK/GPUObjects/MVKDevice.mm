@@ -4644,10 +4644,24 @@ MVKBuffer* MVKDevice::removeBuffer(MVKBuffer* mvkBuff) {
 	return mvkBuff;
 }
 
-void MVKDevice::encodeGPUAddressableBuffers(MVKUseResourceHelper& resources, MVKResourceUsageStages stage) {
-	lock_guard<mutex> lock(_rezLock);
-	for (auto& buff : _gpuAddressableBuffers) {
-		resources.add(buff->getMTLBuffer(), stage, true);
+void MVKDevice::encodeGPUAddressableBuffers(MVKUseResourceHelper& resources, MVKResourceUsageStages stage, id<MTLCommandBuffer> mtlCmdBuff) {
+	// With a residency set, device-memory buffers are already resident, so no useResource is needed
+	// (and none must be issued for buffers that may be destroyed while the command buffer is in flight).
+	if (hasResidencySet()) { return; }
+
+	// Command buffers hold resources unretained, so retain the buffers until the command buffer completes.
+	NSMutableArray* retained = mtlCmdBuff ? [NSMutableArray new] : nil;
+	{
+		lock_guard<mutex> lock(_rezLock);
+		for (auto& buff : _gpuAddressableBuffers) {
+			id<MTLBuffer> mtlBuff = buff->getMTLBuffer();
+			if ( !mtlBuff ) { continue; }
+			resources.add(mtlBuff, stage, true);
+			[retained addObject: mtlBuff];
+		}
+	}
+	if (retained) {
+		[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer>) { [retained release]; }];
 	}
 }
 
@@ -5493,7 +5507,7 @@ void MVKDevice::enableExtensions(const VkDeviceCreateInfo* pCreateInfo) {
 // Create the command queues
 void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
 #if MVK_XCODE_16
-	if (_physicalDevice->_isUsingMetalArgumentBuffers && _physicalDevice->_metalFeatures.residencySets) {
+	if (_physicalDevice->_isUsingMetalArgumentBuffers && _physicalDevice->_metalFeatures.residencySets && getMVKConfig().useResidencySets) {
 		MTLResidencySetDescriptor *setDescriptor;
 		setDescriptor = [MTLResidencySetDescriptor new];
 		setDescriptor.label = @"Primary residency set";

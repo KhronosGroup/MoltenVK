@@ -485,14 +485,9 @@ VkResult MVKQueueCommandBufferSubmission::execute() {
 // Returns the active MTLCommandBuffer, lazily retrieving it from the queue if needed.
 id<MTLCommandBuffer> MVKQueueCommandBufferSubmission::getActiveMTLCommandBuffer() {
 	if ( !_activeMTLCommandBuffer ) {
-		bool needsRetain = false;
-		if (!_device->hasResidencySet() && (getEnabledDescriptorIndexingFeatures().descriptorBindingPartiallyBound || getMVKConfig().liveCheckAllResources)) {
-			// Partially bound descriptors will get bound by us even if they're not used at runtime by the shader.
-			// The application is free to destroy them even if they're not used at runtime even if we bound them.
-			// Metal will be very unhappy if we destroy something we bound, even if it isn't used at runtime.
-			needsRetain = true;
-		}
-		setActiveMTLCommandBuffer(_queue->getMTLCommandBuffer(_commandUse, needsRetain));
+		// Always retain refs: Vulkan allows destroying resources once the host observes a later semaphore signal, which can
+		// precede MTLCommandBuffer completion. Also covers partially bound descriptors.
+		setActiveMTLCommandBuffer(_queue->getMTLCommandBuffer(_commandUse, true));
 	}
 	return _activeMTLCommandBuffer;
 }

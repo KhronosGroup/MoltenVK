@@ -200,11 +200,13 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 	struct {
 		uint32_t inControlPointCount = 0;
 		uint32_t patchCount = 0;
+		uint32_t patchesPerInstance = 1;
 	} tessParams;
     uint32_t outControlPointCount = 0;
     if (pipeline->isTessellationPipeline()) {
         tessParams.inControlPointCount = cmdEncoder->getVkGraphics().getPatchControlPoints();
         outControlPointCount = pipeline->getOutputControlPointCount();
+        tessParams.patchesPerInstance = std::max(mvkCeilingDivide(_vertexCount, tessParams.inControlPointCount), 1u);
         tessParams.patchCount = mvkCeilingDivide(_vertexCount, tessParams.inControlPointCount) * _instanceCount;
     }
     if (pipeline->needsDrawIdBuffer()) {
@@ -313,6 +315,9 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                     [cmdEncoder->_mtlRenderEncoder setTessellationFactorBuffer: tcLevelBuff->_mtlBuffer
                                                                         offset: tcLevelBuff->_offset
                                                                 instanceStride: 0];
+                    [cmdEncoder->_mtlRenderEncoder setVertexBytes: &tessParams
+                                                           length: sizeof(tessParams)
+                                                          atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessEval).ids[MVKImplicitBuffer::IndirectParams]];
                     [cmdEncoder->_mtlRenderEncoder drawPatches: outControlPointCount
                                                     patchStart: 0
                                                     patchCount: tessParams.patchCount
@@ -484,11 +489,13 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 	struct {
 		uint32_t inControlPointCount = 0;
 		uint32_t patchCount = 0;
+		uint32_t patchesPerInstance = 1;
 	} tessParams;
     uint32_t outControlPointCount = 0;
     if (pipeline->isTessellationPipeline()) {
         tessParams.inControlPointCount = cmdEncoder->getVkGraphics().getPatchControlPoints();
         outControlPointCount = pipeline->getOutputControlPointCount();
+        tessParams.patchesPerInstance = std::max(mvkCeilingDivide(_indexCount, tessParams.inControlPointCount), 1u);
         tessParams.patchCount = mvkCeilingDivide(_indexCount, tessParams.inControlPointCount) * _instanceCount;
     }
     if (pipeline->needsDrawIdBuffer()) {
@@ -602,6 +609,9 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                                                                 instanceStride: 0];
                     // The tessellation control shader produced output in the correct order, so there's no need to use
                     // an index buffer here.
+                    [cmdEncoder->_mtlRenderEncoder setVertexBytes: &tessParams
+                                                           length: sizeof(tessParams)
+                                                          atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessEval).ids[MVKImplicitBuffer::IndirectParams]];
                     [cmdEncoder->_mtlRenderEncoder drawPatches: outControlPointCount
                                                     patchStart: 0
                                                     patchCount: tessParams.patchCount
@@ -658,6 +668,7 @@ static const MVKMTLBufferAllocation* encodeIndirectCountConversion(
 		VkDeviceSize countBufferOffset,
 		uint32_t drawCount,
 		bool perfCapped,				// C4d: drawCount was lowered by the C4 cap
+		uint8_t perfSite,				// C4s: the per-site cap and statistics slot
 		bool indexed,
 		bool inRenderPass = true) {	// C10: false when encoded before the render pass begins
 	VkDeviceSize commandSize = indexed ? sizeof(MTLDrawIndexedPrimitivesIndirectArguments) : sizeof(MTLDrawPrimitivesIndirectArguments);
@@ -675,9 +686,9 @@ static const MVKMTLBufferAllocation* encodeIndirectCountConversion(
 	state.bindBuffer(computeEncoder, countBuffer, countBufferOffset, 4);
 	uint32_t icountStatsOn = mvkPerfICountStatsEnabled() ? (perfCapped ? 3 : 1) : 0;	// bit 1 (C4d): only capped commands can be truncated
 	id<MTLBuffer> icountStats = mvkPerfICountStatsBuffer(cmdEncoder->getMTLDevice());
-	state.bindBuffer(computeEncoder, icountStats, 0, 5);
+	state.bindBuffer(computeEncoder, icountStats, perfSite * kMVKPerfICountSiteStride, 5);
 	state.bindStructBytes(computeEncoder, &icountStatsOn, 6);
-	if (icountStatsOn) { mvkPerfICountRecord(icountStats, drawCount); }
+	if (icountStatsOn) { mvkPerfICountRecord(icountStats, perfSite, drawCount); }
 
 	NSUInteger threadWidth = pipeline.threadExecutionWidth;
 	if (cmdEncoder->getMetalFeatures().nonUniformThreadgroups) {
@@ -820,7 +831,7 @@ VkResult MVKCmdDrawIndirect::setContent(MVKCommandBuffer* cmdBuff,
 	}
 	MVKBuffer* mvkCountBuffer = (MVKBuffer*)countBuffer;
 	_mtlCountBuffer = mvkCountBuffer->getMTLBuffer();
-	{ uint32_t appMax = _drawCount; _drawCount = mvkPerfICountCap(_drawCount); _perfCapped = _drawCount < appMax; }	// C4, C4d
+	{ uint32_t appMax = _drawCount; _drawCount = mvkPerfICountCap(_drawCount, _perfSite); _perfCapped = _drawCount < appMax; }	// C4, C4d
 	_mtlCountBufferOffset = mvkCountBuffer->getMTLBufferOffset() + countBufferOffset;
 	return VK_SUCCESS;
 }
@@ -880,7 +891,7 @@ void MVKCmdDrawIndirect::perfHoistIndirectCount(MVKCommandEncoder* cmdEncoder) {
 	if ( !_mtlCountBuffer || _drawCount == 0 ) { return; }
 	cmdEncoder->perfAddHoistedIndirect(this, encodeIndirectCountConversion(cmdEncoder, _mtlIndirectBuffer, _mtlIndirectBufferOffset,
 																		 _mtlIndirectBufferStride, _mtlCountBuffer, _mtlCountBufferOffset,
-																		 _drawCount, _perfCapped, false, false));
+																		 _drawCount, _perfCapped, _perfSite, false, false));
 }
 
 void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
@@ -901,6 +912,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 				_mtlCountBufferOffset,
 				_drawCount,
 				_perfCapped,
+				_perfSite,
 				false);
 		}
 		indirectBuffer = convertedBuffer->_mtlBuffer;
@@ -960,7 +972,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         vertexCount = mvkPerfTessIndirectVerts();	// C7: was kMVKMaxDrawIndirectVertexCount
         patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
         VkDeviceSize indirectSize = (2 * sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments) + sizeof(MTLStageInRegionIndirectArguments)) * _drawCount;
-		paramsIncr = std::max((size_t)dvcLimits.minUniformBufferOffsetAlignment, sizeof(uint32_t) * 2);
+		paramsIncr = std::max((size_t)dvcLimits.minUniformBufferOffsetAlignment, sizeof(uint32_t) * 3);
 		VkDeviceSize paramsSize = paramsIncr * _drawCount;
         tempIndirectBuff = cmdEncoder->getTempMTLBuffer(indirectSize, true);
         mtlIndBuff = tempIndirectBuff->_mtlBuffer;
@@ -1146,6 +1158,9 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 							[cmdEncoder->_mtlRenderEncoder setTessellationFactorBuffer: tcLevelBuff->_mtlBuffer
 																				offset: tcLevelBuff->_offset
 																		instanceStride: 0];
+							[cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcParamsBuff->_mtlBuffer
+																	offset: tcParamsBuff->_offset + drawIdx * paramsIncr
+																   atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessEval).ids[MVKImplicitBuffer::IndirectParams]];
 							[cmdEncoder->_mtlRenderEncoder drawPatches: outControlPointCount
 													  patchIndexBuffer: nil
 												patchIndexBufferOffset: 0
@@ -1236,7 +1251,7 @@ VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
 	}
 	MVKBuffer* mvkCountBuffer = (MVKBuffer*)countBuffer;
 	_mtlCountBuffer = mvkCountBuffer->getMTLBuffer();
-	{ uint32_t appMax = _drawCount; _drawCount = mvkPerfICountCap(_drawCount); _perfCapped = _drawCount < appMax; }	// C4, C4d
+	{ uint32_t appMax = _drawCount; _drawCount = mvkPerfICountCap(_drawCount, _perfSite); _perfCapped = _drawCount < appMax; }	// C4, C4d
 	_mtlCountBufferOffset = mvkCountBuffer->getMTLBufferOffset() + countBufferOffset;
 	return VK_SUCCESS;
 }
@@ -1246,7 +1261,7 @@ void MVKCmdDrawIndexedIndirect::perfHoistIndirectCount(MVKCommandEncoder* cmdEnc
 	if ( !_mtlCountBuffer || _drawCount == 0 ) { return; }
 	cmdEncoder->perfAddHoistedIndirect(this, encodeIndirectCountConversion(cmdEncoder, _mtlIndirectBuffer, _mtlIndirectBufferOffset,
 																		 _mtlIndirectBufferStride, _mtlCountBuffer, _mtlCountBufferOffset,
-																		 _drawCount, _perfCapped, true, false));
+																		 _drawCount, _perfCapped, _perfSite, true, false));
 }
 
 void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
@@ -1270,6 +1285,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 				_mtlCountBufferOffset,
 				_drawCount,
 				_perfCapped,
+				_perfSite,
 				true);
 		}
 		indirectBuffer = convertedBuffer->_mtlBuffer;
@@ -1343,7 +1359,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
         vertexCount = mvkPerfTessIndirectVerts();	// C7: was kMVKMaxDrawIndirectVertexCount
         patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
         VkDeviceSize indirectSize = (sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments) + sizeof(MTLStageInRegionIndirectArguments)) * _drawCount;
-		paramsIncr = std::max((size_t)dvcLimits.minUniformBufferOffsetAlignment, sizeof(uint32_t) * 2);
+		paramsIncr = std::max((size_t)dvcLimits.minUniformBufferOffsetAlignment, sizeof(uint32_t) * 3);
 		VkDeviceSize paramsSize = paramsIncr * _drawCount;
         tempIndirectBuff = cmdEncoder->getTempMTLBuffer(indirectSize, true);
         mtlIndBuff = tempIndirectBuff->_mtlBuffer;
@@ -1551,6 +1567,9 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder, const MVKI
 							[cmdEncoder->_mtlRenderEncoder setTessellationFactorBuffer: tcLevelBuff->_mtlBuffer
 																				offset: tcLevelBuff->_offset
 																		instanceStride: 0];
+							[cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcParamsBuff->_mtlBuffer
+																	offset: tcParamsBuff->_offset + drawIdx * paramsIncr
+																   atIndex: pipeline->getImplicitBuffers(kMVKShaderStageTessEval).ids[MVKImplicitBuffer::IndirectParams]];
 							[cmdEncoder->_mtlRenderEncoder drawPatches: outControlPointCount
 							                          patchIndexBuffer: nil
 							                    patchIndexBufferOffset: 0

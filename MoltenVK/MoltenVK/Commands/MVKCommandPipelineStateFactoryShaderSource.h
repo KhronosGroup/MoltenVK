@@ -441,9 +441,11 @@ kernel void cmdDrawIndirectTessConvertBuffers(const device char* srcBuff [[buffe
 	device auto& destTE = *(device MTLDrawPatchIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2);
 	uint32_t vertexCount = src.vertexCount, instanceCount = src.instanceCount;
 	mvkPerfTessClampDraw(vertexCount, instanceCount, inControlPointCount, maxVertexCount, stats);
-	uint32_t patchCount = (vertexCount * instanceCount + inControlPointCount - 1) / inControlPointCount;
+	uint32_t patchesPerInstance = max((vertexCount + inControlPointCount - 1) / inControlPointCount, 1u);
+	uint32_t patchCount = (instanceCount > 1) ? patchesPerInstance * instanceCount : (vertexCount * instanceCount + inControlPointCount - 1) / inControlPointCount;
 	params[0] = inControlPointCount;
 	params[1] = patchCount;
+	params[2] = patchesPerInstance;
 	destVtx.threadgroupsPerGrid[0] = (vertexCount + vtxThreadExecWidth - 1) / vtxThreadExecWidth;
 	destVtx.threadgroupsPerGrid[1] = instanceCount;
 	destVtx.threadgroupsPerGrid[2] = 1;
@@ -484,9 +486,11 @@ kernel void cmdDrawIndexedIndirectTessConvertBuffers(const device char* srcBuff 
 	device auto& destTE = *(device MTLDrawPatchIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2);
 	uint32_t indexCount = src.indexCount, instanceCount = src.instanceCount;
 	mvkPerfTessClampDraw(indexCount, instanceCount, inControlPointCount, maxVertexCount, stats);
-	uint32_t patchCount = (indexCount * instanceCount + inControlPointCount - 1) / inControlPointCount;
+	uint32_t patchesPerInstance = max((indexCount + inControlPointCount - 1) / inControlPointCount, 1u);
+	uint32_t patchCount = (instanceCount > 1) ? patchesPerInstance * instanceCount : (indexCount * instanceCount + inControlPointCount - 1) / inControlPointCount;
 	params[0] = inControlPointCount;
 	params[1] = patchCount;
+	params[2] = patchesPerInstance;
 	destVtx.threadgroupsPerGrid[0] = (indexCount + vtxThreadExecWidth - 1) / vtxThreadExecWidth;
 	destVtx.threadgroupsPerGrid[1] = instanceCount;
 	destVtx.threadgroupsPerGrid[2] = 1;

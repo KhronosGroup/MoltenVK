@@ -178,6 +178,7 @@ protected:
 	id<MTLBuffer> _mtlCountBuffer;
 	VkDeviceSize _mtlCountBufferOffset;
 	bool _perfCapped = false;	// C4d: the C4 cap lowered _drawCount below the app's maxDrawCount
+	uint8_t _perfSite = 0;		// C4s: which per-site cap applies
 };
 
 
@@ -221,4 +222,5 @@ protected:
 	id<MTLBuffer> _mtlCountBuffer;
 	VkDeviceSize _mtlCountBufferOffset;
 	bool _perfCapped = false;	// C4d: the C4 cap lowered _drawCount below the app's maxDrawCount
+	uint8_t _perfSite = 0;		// C4s: which per-site cap applies
 };

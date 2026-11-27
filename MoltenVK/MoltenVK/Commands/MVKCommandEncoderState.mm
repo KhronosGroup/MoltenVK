@@ -664,7 +664,7 @@ static void bindMetalResources(id<MTLCommandEncoder> encoder,
 			mtlShared._gpuAddressableResourceStages = useResourceStage;
 		else
 			mtlShared._gpuAddressableResourceStages = combineStages(mtlShared._gpuAddressableResourceStages, useResourceStage);
-		mvkEncoder.getDevice()->encodeGPUAddressableBuffers(mtlShared._useResource, useResourceStage);
+		mvkEncoder.getDevice()->encodeGPUAddressableBuffers(mtlShared._useResource, useResourceStage, mvkEncoder._mtlCmdBuffer);
 	}
 
 	const MVKShaderStageResourceBinding& resourceCounts = common._layout->getResourceCounts().stages[vkStage];

@@ -260,7 +260,7 @@ void MVKShaderLibrary::compileLibrary(const string& msl,
 	// instead (vertex shaders are left alone, as above). Off by default until checked visually.
 	static const bool fastTranscendentals = [] {
 		const char* s = getenv("MVK_PERF_FAST_TRANSCENDENTALS");
-		bool on = s && atoi(s) != 0;
+		bool on = s ? atoi(s) != 0 : mvkPerfIsEnshrouded();	// default on for Enshrouded only
 		if (on) { fprintf(stderr, "[mvk-perf] C15 fast transcendentals on (non-vertex shaders)\n"); }
 		return on;
 	}();
